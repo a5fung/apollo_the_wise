@@ -1978,3 +1978,12 @@ EVIDENCE: branch 663-ep-scan-determinism @ df498f7e (Fable card), merged 1b66938
 - **20 consecutive full-suite runs:** 20 of 20 PASS on the fixed tree, 9,264 passed / 10 skipped each (~135 s per run, 2026-10-03), the two named guards (`test_624_lowcap_lane.py::test_run_ep_scan_is_byte_identical_with_an_admitted_alert_lane_on_off_and_raising` and the ep_theme toggle-OFF guard) in every run; plus 20 adversarial shuffled orders and 10 fresh processes, all green. Full suite on main after the merge: 9,498 passed.
 - **The remaining source, named and RED-proved:** the CI log of run 34865695231 shows the ON scan's post-scan block ending with an EMPTY message (`str(TimeoutError())`) — the harness made a LIVE Yahoo call (`compute_setup_class_fields → get_recent_upgrade_events → yf.Ticker`) that blew the 25 s post-scan ceiling on a cold runner; the cancel bypassed every `except Exception`, so `setup_class` was never written (d747f414 had fixed only the exception path). Named in `ep_detector.py` ahead of the post-scan try (three keys seeded with None before it); `tests/test_663_ep_scan_result_shape.py::test_a_post_scan_ceiling_timeout_keeps_the_advisory_keys_present_as_none` drives the real ceiling and goes RED when the seed is removed while d747f414's own test stays green; the harness is hermetic (`test_the_admit_harness_never_leaves_the_process`), and an AST gate fails any result key written only under a try or coroutine without a seed.
 - **Not claimed:** the 2026-09-14 LOCAL failure is inferred from the same mechanism (no log survived it); a 3.13 run was not done.
+
+## #466 — the swallow-a-failure baseline is at zero and the deploy gate is zero-tolerance (2026-10-05)
+
+BAR: "drive the preflight count to 0, then flip the gate from baseline-allowed to zero-tolerance"
+
+EVIDENCE: deploy of 571241c7 on 2026-10-05 21:15 ET (both + execution), captured in `scripts/probes/_1005/deploy_both_2115.log`.
+- **Count at 0, gate zero-tolerance:** the deploy's `[5k/7]` line reads "Preflight no-silent-failures - OK (194 files in agents/core/channels/shared scanned; no broad+silent swallows - zero-tolerance, #466)"; the same check passes locally on 571241c7.
+- **The new log lines are safe live:** Monday 10-05, a full scan day, the market and execution containers logged 0 Traceback / 0 NameError over 14 hours (`scripts/probes/_1005/monday_night_checks.out`).
+- **Not claimed:** that every newly-logged fallback has fired once — they log only when their dependency fails.
