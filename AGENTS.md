@@ -97,7 +97,7 @@ Skip sets must include common English words (OF, IN, AT, ON, BY, TO, AS, AN, OR,
 - Alpaca bars use **IEX feed** (free), not SIP (paid) — critical for `get_first_bar()`
 - **Open intensity projection**: only applied after 15 min since open (≥9:45 AM). Pre-9:45 uses raw RVOL — opening minutes are always dense and create false 30x+ projections.
 - **Extension check**: uses MIN(close) over last ~5 trading days, not a single point 5 days ago.
-- HIGH ≥ ep_threshold (regime-dependent) → immediate Telegram alert; MODERATE 50-69 → morning briefing
+- HIGH ≥ 65 in EVERY regime since 08-22 (#533; the per-regime bar acts only with `ep_score_separation` OFF; regime still sets SIZE) → immediate Telegram alert
 
 ### 9M EP Detection (Parallel Track)
 - **No LLM** — pure quantitative virgin 9M detection (Pradeep Bonde)

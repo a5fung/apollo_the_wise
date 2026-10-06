@@ -200,7 +200,7 @@ Bottom-up from price action (themes emerge from RS, not hypotheses); lifecycle N
 - Alpaca bars use feed selected by `ALPACA_DATA_FEED` env var (`iex` default; `sip` requires Algo Trader Plus subscription) — resolved by `alpaca_client.get_data_feed()`.
 - **Open intensity projection**: only applied after 15 min since open (≥9:45 AM). Pre-9:45 uses raw RVOL — opening minutes are always dense and create false 30x+ projections.
 - **Extension check**: uses MIN(close) over last ~5 trading days, not a single point 5 days ago.
-- HIGH ≥ ep_threshold (regime-dependent) → immediate Telegram alert; MODERATE 50-69 → morning briefing
+- HIGH ≥ 65 in EVERY regime since 08-22 (#533; the per-regime bar acts only with `ep_score_separation` OFF; regime still sets SIZE) → immediate Telegram alert
 - **ORB submission window**: `now_et.hour == 9 and now_et.minute < 45`. HIGHs at 9:45–9:59 → `WINDOW_OUT_OF_ORB`. 10:00 ET cleanup job cancels any unfilled `order_placed`. (Also documented in `docs/setups/magna53_ep.md`.)
 - **Fade guard** (`entry_pipeline.py::check_fade_guard`): tiered — MAGNA53 HIGH passes `None` (skipped), 9M Day 2 passes `0.25` (skip if last < lower 25% of ORB). Stop-buy mechanics + 10:00 ET unfilled-cancel are the real backstop.
 
