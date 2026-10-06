@@ -1,0 +1,160 @@
+#327 H11 — confluence + per-stock character on the 277 real EPs. Pre-registration: h11_run.py docstring. $0, local files.
+Measure: +2-first rate (stop 1xADR$ / target 2xADR$ from the entry, stop-first on a straddle, by session 10) — H2's fire edge.
+Splits: the program's (09-27) — ERA A = alert < 08-22 (the rule change), DISC <= 08-14, HOA 08-15..08-21, ERA B >= 08-22; the row 'post-08-14 (HOA+B)' is the task text's 'after 08-14'. The verdict is the same under either.
+Pop: Part A = the 632 first fires (ok = has a reclaimed level + MA history); Part B = one daily-grade SMA20/21-EMA reclaim fire per campaign (entry at the close).
+
+POPULATION (outcome-readable fires, i.e. >= 10 sessions after the fire, non-abstaining)
+  ERA A                Part A 544 (matched  62) · Part B 173 (matched  39) · union 717 (matched 101, 65 names)
+    DISC (<=08-14)     Part A 526 (matched  61) · Part B 165 (matched  37) · union 691 (matched  98, 64 names)
+    ex-May             Part A 380 (matched  50) · Part B 118 (matched  29) · union 498 (matched  79, 48 names)
+    HOA (08-15..21)    Part A  18 (matched   1) · Part B   8 (matched   2) · union  26 (matched   3, 2 names)
+  ERA B (>=08-22)      Part A  30 (matched   1) · Part B   5 (matched   1) · union  35 (matched   2, 1 names)
+  post-08-14 (HOA+B)   Part A  48 (matched   2) · Part B  13 (matched   3) · union  61 (matched   5, 3 names)
+  (excluded before this table: 48 ERA A + 2 ERA B high-break fires with no reclaimed level; AVEX 05-12 low reclaim, 18 prior closes; Part B: 48 ERA A + 3 ERA B campaigns whose EP close never cleared its own SMA20/21-EMA, 38 + 6 with no MA touch in 20 sessions, AVEX no history; fires with < 10 sessions after them — see h11_pop_out.txt)
+
+── PRIMARY — either MA (SMA20 or 21-EMA) · UNION A+B ──
+  ERA A                matched n 101 ( 65 names)  21.8% | non-matched n 616 (227 names)  25.0% | diff -3.2 pts | drop-best-2 -6.4 [PGY,TE] p 0.616 | tail >=3R (1xADR hold) 8.9% vs 8.2% | mean R 1xADR hold -0.47 vs -0.25 · lane-stop hold -0.43 vs -0.50
+    DISC (<=08-14)     matched n  98 ( 64 names)  22.4% | non-matched n 593 (219 names)  25.5% | diff -3.0 pts | drop-best-2 -6.3 [PGY,TE] p 0.635 | tail >=3R (1xADR hold) 9.2% vs 8.6% | mean R 1xADR hold -0.45 vs -0.22 · lane-stop hold -0.41 vs -0.49
+    ex-May             matched n  79 ( 48 names)  19.0% | non-matched n 419 (168 names)  22.0% | diff -3.0 pts | drop-best-2 -7.3 [PGY,TH] | tail >=3R (1xADR hold) 8.9% vs 6.2% | mean R 1xADR hold -0.50 vs -0.40 · lane-stop hold -0.52 vs -0.69
+    HOA (08-15..21)    matched n   3 (  2 names)   0.0% | non-matched n  23 ( 10 names)  13.0% | diff -13.0 pts | drop-best-2 — [TWST,UUUU] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -1.00 vs -1.10 · lane-stop hold -1.17 vs -0.80
+  ERA B (>=08-22)      matched n   2 (  1 names)  50.0% | non-matched n  33 ( 16 names)  12.1% | diff +37.9 pts | drop-best-2 — [CRWD] | tail >=3R (1xADR hold) 33.3% vs 5.3% | mean R 1xADR hold +0.86 vs -0.26 · lane-stop hold +1.16 vs -1.03
+  post-08-14 (HOA+B)   matched n   5 (  3 names)  20.0% | non-matched n  56 ( 26 names)  12.5% | diff +7.5 pts | drop-best-2 -12.5 [CRWD,TWST] | tail >=3R (1xADR hold) 16.7% vs 3.1% | mean R 1xADR hold -0.07 vs -0.60 · lane-stop hold -0.24 vs -0.93
+  => VERDICT FAIL · [1 ERA A >= +8 pts, matched n >= 60: missed (-3.2 pts)] · [2 ex-May >= +8 pts: missed (-3.0 pts)] · [3 ERA B same sign: unreadable (matched 2 / non-matched 33; need >= 8 each; sign +37.9)]
+
+── PRIMARY — either MA (SMA20 or 21-EMA) · Part A only (632 first fires) ──
+  ERA A                matched n  62 ( 46 names)  25.8% | non-matched n 482 (216 names)  26.3% | diff -0.5 pts | drop-best-2 -4.3 [TE,TH] p 0.827 | tail >=3R (1xADR hold) 9.7% vs 7.6% | mean R 1xADR hold -0.40 vs -0.25 · lane-stop hold -0.48 vs -0.52
+    DISC (<=08-14)     matched n  61 ( 46 names)  26.2% | non-matched n 465 (210 names)  26.9% | diff -0.7 pts | drop-best-2 -4.5 [TE,TH] p 0.851 | tail >=3R (1xADR hold) 9.8% vs 8.0% | mean R 1xADR hold -0.40 vs -0.21 · lane-stop hold -0.47 vs -0.51
+    ex-May             matched n  50 ( 36 names)  22.0% | non-matched n 330 (158 names)  23.0% | diff -1.0 pts | drop-best-2 -6.0 [LFST,TH] | tail >=3R (1xADR hold) 10.0% vs 5.7% | mean R 1xADR hold -0.40 vs -0.39 · lane-stop hold -0.56 vs -0.69
+    HOA (08-15..21)    matched n   1 (  1 names)   0.0% | non-matched n  17 (  8 names)  11.8% | diff -11.8 pts | drop-best-2 — [UUUU] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -1.00 vs -1.26 · lane-stop hold -1.00 vs -0.72
+  ERA B (>=08-22)      matched n   1 (  1 names) 100.0% | non-matched n  29 ( 15 names)  10.3% | diff +89.7 pts | drop-best-2 — [CRWD] | tail >=3R (1xADR hold) 50.0% vs 6.2% | mean R 1xADR hold +1.80 vs -0.27 · lane-stop hold -1.00 vs -1.04
+  post-08-14 (HOA+B)   matched n   2 (  2 names)  50.0% | non-matched n  46 ( 23 names)  10.9% | diff +39.1 pts | drop-best-2 — [CRWD,UUUU] | tail >=3R (1xADR hold) 33.3% vs 3.9% | mean R 1xADR hold +0.86 vs -0.64 · lane-stop hold -1.00 vs -0.91
+  => VERDICT FAIL · [1 ERA A >= +8 pts, matched n >= 60: missed (-0.5 pts)] · [2 ex-May >= +8 pts: missed (-1.0 pts)] · [3 ERA B same sign: unreadable (matched 1 / non-matched 29; need >= 8 each; sign +89.7)]
+
+── PRIMARY — either MA (SMA20 or 21-EMA) · Part B only (MA-reclaim fire) ──
+  ERA A                matched n  39 ( 39 names)  15.4% | non-matched n 134 (130 names)  20.1% | diff -4.8 pts | drop-best-2 -9.3 [MTW,TE] p 0.283 | tail >=3R (1xADR hold) 7.7% vs 10.4% | mean R 1xADR hold -0.57 vs -0.27 · lane-stop hold -0.35 vs -0.43
+    DISC (<=08-14)     matched n  37 ( 37 names)  16.2% | non-matched n 128 (125 names)  20.3% | diff -4.1 pts | drop-best-2 -8.9 [MTW,TE] p 0.360 | tail >=3R (1xADR hold) 8.1% vs 10.9% | mean R 1xADR hold -0.55 vs -0.25 · lane-stop hold -0.30 vs -0.40
+    ex-May             matched n  29 ( 29 names)  13.8% | non-matched n  89 ( 88 names)  18.0% | diff -4.2 pts | drop-best-2 -10.6 [MTW,PGY] | tail >=3R (1xADR hold) 6.9% vs 7.8% | mean R 1xADR hold -0.66 vs -0.47 · lane-stop hold -0.45 vs -0.67
+    HOA (08-15..21)    matched n   2 (  2 names)   0.0% | non-matched n   6 (  6 names)  16.7% | diff -16.7 pts | drop-best-2 — [TWST,UUUU] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -1.00 vs -0.66 · lane-stop hold -1.26 vs -1.02
+  ERA B (>=08-22)      matched n   1 (  1 names)   0.0% | non-matched n   4 (  4 names)  25.0% | diff -25.0 pts | drop-best-2 — [CRWD] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -1.00 vs -0.23 · lane-stop hold +3.31 vs -1.00
+  post-08-14 (HOA+B)   matched n   3 (  3 names)   0.0% | non-matched n  10 ( 10 names)  20.0% | diff -20.0 pts | drop-best-2 -20.0 [CRWD,TWST] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -1.00 vs -0.46 · lane-stop hold +0.27 vs -1.01
+  => VERDICT FAIL · [1 ERA A >= +8 pts, matched n >= 60: unreadable (matched n 39 < 60)] · [2 ex-May >= +8 pts: missed (-4.2 pts)] · [3 ERA B same sign: unreadable (matched 1 / non-matched 4; need >= 8 each; sign -25.0)]
+
+── SMA20 only · UNION A+B ──
+  ERA A                matched n  55 ( 39 names)  20.0% | non-matched n 590 (225 names)  26.3% | diff -6.3 pts | drop-best-2 -12.5 [AGX,TH] p 0.408 | tail >=3R (1xADR hold) 7.3% vs 8.6% | mean R 1xADR hold -0.55 vs -0.24 · lane-stop hold -0.69 vs -0.45
+    DISC (<=08-14)     matched n  54 ( 39 names)  20.4% | non-matched n 570 (218 names)  26.8% | diff -6.5 pts | drop-best-2 -12.8 [AGX,TH] p 0.370 | tail >=3R (1xADR hold) 7.4% vs 8.9% | mean R 1xADR hold -0.54 vs -0.20 · lane-stop hold -0.68 vs -0.44
+    ex-May             matched n  44 ( 31 names)  18.2% | non-matched n 404 (168 names)  23.0% | diff -4.8 pts | drop-best-2 -13.0 [AGX,TH] | tail >=3R (1xADR hold) 9.1% vs 6.6% | mean R 1xADR hold -0.43 vs -0.39 · lane-stop hold -0.58 vs -0.65
+    HOA (08-15..21)    matched n   1 (  1 names)   0.0% | non-matched n  20 (  9 names)  10.0% | diff -10.0 pts | drop-best-2 — [UUUU] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -1.00 vs -1.22 · lane-stop hold -1.25 vs -0.77
+  ERA B (>=08-22)      matched n   0 (  0 names) —% | non-matched n  35 ( 16 names)  14.3% | diff — pts | drop-best-2 — [] | tail >=3R (1xADR hold) —% vs 7.3% | mean R 1xADR hold — vs -0.18 · lane-stop hold — vs -0.91
+  post-08-14 (HOA+B)   matched n   1 (  1 names)   0.0% | non-matched n  55 ( 25 names)  12.7% | diff -12.7 pts | drop-best-2 — [UUUU] | tail >=3R (1xADR hold) 0.0% vs 4.7% | mean R 1xADR hold -1.00 vs -0.55 · lane-stop hold -1.25 vs -0.85
+  => VERDICT FAIL · [1 ERA A >= +8 pts, matched n >= 60: unreadable (matched n 55 < 60)] · [2 ex-May >= +8 pts: missed (-4.8 pts)] · [3 ERA B same sign: unreadable (matched 0 / non-matched 35; need >= 8 each; sign —)]
+
+── SMA20 only · Part A only (632 first fires) ──
+  ERA A                matched n  35 ( 27 names)  22.9% | non-matched n 509 (221 names)  26.5% | diff -3.7 pts | drop-best-2 -10.9 [PGY,TH] p 0.567 | tail >=3R (1xADR hold) 8.6% vs 7.8% | mean R 1xADR hold -0.51 vs -0.25 · lane-stop hold -1.00 vs -0.48
+    DISC (<=08-14)     matched n  35 ( 27 names)  22.9% | non-matched n 491 (215 names)  27.1% | diff -4.2 pts | drop-best-2 -11.5 [PGY,TH] p 0.578 | tail >=3R (1xADR hold) 8.6% vs 8.1% | mean R 1xADR hold -0.51 vs -0.21 · lane-stop hold -1.00 vs -0.47
+    ex-May             matched n  28 ( 22 names)  17.9% | non-matched n 352 (164 names)  23.3% | diff -5.4 pts | drop-best-2 -15.3 [PGY,TH] | tail >=3R (1xADR hold) 10.7% vs 5.9% | mean R 1xADR hold -0.39 vs -0.39 · lane-stop hold -0.95 vs -0.65
+    HOA (08-15..21)    matched n   0 (  0 names) —% | non-matched n  18 (  8 names)  11.1% | diff — pts | drop-best-2 — [] | tail >=3R (1xADR hold) —% vs 0.0% | mean R 1xADR hold — vs -1.24 · lane-stop hold — vs -0.73
+  ERA B (>=08-22)      matched n   0 (  0 names) —% | non-matched n  30 ( 15 names)  13.3% | diff — pts | drop-best-2 — [] | tail >=3R (1xADR hold) —% vs 8.8% | mean R 1xADR hold — vs -0.15 · lane-stop hold — vs -1.04
+  post-08-14 (HOA+B)   matched n   0 (  0 names) —% | non-matched n  48 ( 23 names)  12.5% | diff — pts | drop-best-2 — [] | tail >=3R (1xADR hold) —% vs 5.6% | mean R 1xADR hold — vs -0.55 · lane-stop hold — vs -0.91
+  => VERDICT FAIL · [1 ERA A >= +8 pts, matched n >= 60: unreadable (matched n 35 < 60)] · [2 ex-May >= +8 pts: missed (-5.4 pts)] · [3 ERA B same sign: unreadable (matched 0 / non-matched 30; need >= 8 each; sign —)]
+
+── SMA20 only · Part B only (MA-reclaim fire) ──
+  ERA A                matched n  20 ( 20 names)  15.0% | non-matched n  81 ( 79 names)  24.7% | diff -9.7 pts | drop-best-2 -19.1 [AGX,MTW] p 0.386 | tail >=3R (1xADR hold) 5.0% vs 13.4% | mean R 1xADR hold -0.61 vs -0.17 · lane-stop hold -0.15 vs -0.27
+    DISC (<=08-14)     matched n  19 ( 19 names)  15.8% | non-matched n  79 ( 77 names)  25.3% | diff -9.5 pts | drop-best-2 -19.4 [AGX,MTW] p 0.418 | tail >=3R (1xADR hold) 5.3% vs 13.9% | mean R 1xADR hold -0.59 vs -0.14 · lane-stop hold -0.09 vs -0.24
+    ex-May             matched n  16 ( 16 names)  18.8% | non-matched n  52 ( 52 names)  21.2% | diff -2.4 pts | drop-best-2 -14.0 [AGX,MTW] | tail >=3R (1xADR hold) 6.2% vs 11.3% | mean R 1xADR hold -0.52 vs -0.40 · lane-stop hold +0.07 vs -0.66
+    HOA (08-15..21)    matched n   1 (  1 names)   0.0% | non-matched n   2 (  2 names)   0.0% | diff +0.0 pts | drop-best-2 — [UUUU] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -1.00 vs -1.03 · lane-stop hold -1.25 vs -1.01
+  ERA B (>=08-22)      matched n   0 (  0 names) —% | non-matched n   5 (  5 names)  20.0% | diff — pts | drop-best-2 — [] | tail >=3R (1xADR hold) —% vs 0.0% | mean R 1xADR hold — vs -0.34 · lane-stop hold — vs -0.38
+  post-08-14 (HOA+B)   matched n   1 (  1 names)   0.0% | non-matched n   7 (  7 names)  14.3% | diff -14.3 pts | drop-best-2 — [UUUU] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -1.00 vs -0.55 · lane-stop hold -1.25 vs -0.57
+  => VERDICT FAIL · [1 ERA A >= +8 pts, matched n >= 60: unreadable (matched n 20 < 60)] · [2 ex-May >= +8 pts: missed (-2.4 pts)] · [3 ERA B same sign: unreadable (matched 0 / non-matched 5; need >= 8 each; sign —)]
+
+── 21-EMA only · UNION A+B ──
+  ERA A                matched n  72 ( 44 names)  22.2% | non-matched n 584 (224 names)  25.3% | diff -3.1 pts | drop-best-2 -7.7 [PGY,TE] p 0.661 | tail >=3R (1xADR hold) 8.3% vs 8.2% | mean R 1xADR hold -0.52 vs -0.24 · lane-stop hold -0.46 vs -0.50
+    DISC (<=08-14)     matched n  69 ( 43 names)  23.2% | non-matched n 562 (217 names)  25.8% | diff -2.6 pts | drop-best-2 -7.3 [PGY,TE] p 0.680 | tail >=3R (1xADR hold) 8.7% vs 8.5% | mean R 1xADR hold -0.50 vs -0.20 · lane-stop hold -0.43 vs -0.49
+    ex-May             matched n  56 ( 32 names)  17.9% | non-matched n 395 (167 names)  22.3% | diff -4.4 pts | drop-best-2 -10.7 [FCEL,PGY] | tail >=3R (1xADR hold) 7.1% vs 6.0% | mean R 1xADR hold -0.63 vs -0.38 · lane-stop hold -0.68 vs -0.68
+    HOA (08-15..21)    matched n   3 (  2 names)   0.0% | non-matched n  22 (  9 names)  13.6% | diff -13.6 pts | drop-best-2 — [TWST,UUUU] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -1.00 vs -1.10 · lane-stop hold -1.17 vs -0.79
+  ERA B (>=08-22)      matched n   2 (  1 names)  50.0% | non-matched n  31 ( 15 names)  12.9% | diff +37.1 pts | drop-best-2 — [CRWD] | tail >=3R (1xADR hold) 33.3% vs 5.7% | mean R 1xADR hold +0.86 vs -0.33 · lane-stop hold +1.16 vs -1.04
+  post-08-14 (HOA+B)   matched n   5 (  3 names)  20.0% | non-matched n  53 ( 24 names)  13.2% | diff +6.8 pts | drop-best-2 -13.2 [CRWD,TWST] | tail >=3R (1xADR hold) 16.7% vs 3.3% | mean R 1xADR hold -0.07 vs -0.65 · lane-stop hold -0.24 vs -0.92
+  => VERDICT FAIL · [1 ERA A >= +8 pts, matched n >= 60: missed (-3.1 pts)] · [2 ex-May >= +8 pts: missed (-4.4 pts)] · [3 ERA B same sign: unreadable (matched 2 / non-matched 31; need >= 8 each; sign +37.1)]
+
+── 21-EMA only · Part A only (632 first fires) ──
+  ERA A                matched n  47 ( 36 names)  25.5% | non-matched n 490 (218 names)  26.3% | diff -0.8 pts | drop-best-2 -4.1 [LFST,TE] p 0.828 | tail >=3R (1xADR hold) 8.5% vs 7.9% | mean R 1xADR hold -0.46 vs -0.24 · lane-stop hold -0.34 vs -0.52
+    DISC (<=08-14)     matched n  46 ( 36 names)  26.1% | non-matched n 473 (212 names)  26.8% | diff -0.8 pts | drop-best-2 -4.1 [LFST,TE] p 0.827 | tail >=3R (1xADR hold) 8.7% vs 8.2% | mean R 1xADR hold -0.45 vs -0.20 · lane-stop hold -0.33 vs -0.51
+    ex-May             matched n  39 ( 29 names)  20.5% | non-matched n 335 (161 names)  23.3% | diff -2.8 pts | drop-best-2 -7.1 [LFST,PGY] | tail >=3R (1xADR hold) 7.7% vs 6.2% | mean R 1xADR hold -0.52 vs -0.36 · lane-stop hold -0.51 vs -0.69
+    HOA (08-15..21)    matched n   1 (  1 names)   0.0% | non-matched n  17 (  8 names)  11.8% | diff -11.8 pts | drop-best-2 — [UUUU] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -1.00 vs -1.26 · lane-stop hold -1.00 vs -0.72
+  ERA B (>=08-22)      matched n   1 (  1 names) 100.0% | non-matched n  29 ( 15 names)  10.3% | diff +89.7 pts | drop-best-2 — [CRWD] | tail >=3R (1xADR hold) 50.0% vs 6.2% | mean R 1xADR hold +1.80 vs -0.27 · lane-stop hold -1.00 vs -1.04
+  post-08-14 (HOA+B)   matched n   2 (  2 names)  50.0% | non-matched n  46 ( 23 names)  10.9% | diff +39.1 pts | drop-best-2 — [CRWD,UUUU] | tail >=3R (1xADR hold) 33.3% vs 3.9% | mean R 1xADR hold +0.86 vs -0.64 · lane-stop hold -1.00 vs -0.91
+  => VERDICT FAIL · [1 ERA A >= +8 pts, matched n >= 60: unreadable (matched n 47 < 60)] · [2 ex-May >= +8 pts: missed (-2.8 pts)] · [3 ERA B same sign: unreadable (matched 1 / non-matched 29; need >= 8 each; sign +89.7)]
+
+── 21-EMA only · Part B only (MA-reclaim fire) ──
+  ERA A                matched n  25 ( 25 names)  16.0% | non-matched n  94 ( 90 names)  20.2% | diff -4.2 pts | drop-best-2 -11.5 [PGY,TE] p 0.428 | tail >=3R (1xADR hold) 8.0% vs 9.5% | mean R 1xADR hold -0.64 vs -0.23 · lane-stop hold -0.68 vs -0.39
+    DISC (<=08-14)     matched n  23 ( 23 names)  17.4% | non-matched n  89 ( 86 names)  20.2% | diff -2.8 pts | drop-best-2 -10.7 [PGY,TE] p 0.526 | tail >=3R (1xADR hold) 8.7% vs 10.1% | mean R 1xADR hold -0.61 vs -0.21 · lane-stop hold -0.63 vs -0.35
+    ex-May             matched n  17 ( 17 names)  11.8% | non-matched n  60 ( 59 names)  16.7% | diff -4.9 pts | drop-best-2 -16.7 [FCEL,PGY] | tail >=3R (1xADR hold) 5.9% vs 4.9% | mean R 1xADR hold -0.87 vs -0.49 · lane-stop hold -1.07 vs -0.64
+    HOA (08-15..21)    matched n   2 (  2 names)   0.0% | non-matched n   5 (  5 names)  20.0% | diff -20.0 pts | drop-best-2 — [TWST,UUUU] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -1.00 vs -0.59 · lane-stop hold -1.26 vs -1.02
+  ERA B (>=08-22)      matched n   1 (  1 names)   0.0% | non-matched n   2 (  2 names)  50.0% | diff -50.0 pts | drop-best-2 — [CRWD] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -1.00 vs -1.00 · lane-stop hold +3.31 vs -1.00
+  post-08-14 (HOA+B)   matched n   3 (  3 names)   0.0% | non-matched n   7 (  7 names)  28.6% | diff -28.6 pts | drop-best-2 -28.6 [CRWD,TWST] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -1.00 vs -0.73 · lane-stop hold +0.27 vs -1.01
+  => VERDICT FAIL · [1 ERA A >= +8 pts, matched n >= 60: unreadable (matched n 25 < 60)] · [2 ex-May >= +8 pts: missed (-4.9 pts)] · [3 ERA B same sign: unreadable (matched 1 / non-matched 2; need >= 8 each; sign -50.0)]
+
+── SHOWN, NOT COUNTED (ERA A unless stated) ──
+  scaled barriers (trailing 3-session range), union: matched n 101 ( 65 names)  21.8% | non-matched n 616 (227 names)  19.2% | diff +2.6 pts | drop-best-2 +1.5 [PGY,TE] | tail >=3R (1xADR hold) 8.9% vs 8.2% | mean R 1xADR hold -0.47 vs -0.25 · lane-stop hold -0.43 vs -0.50
+  fillable entry (next 5-min open + 5 bps), Part A: matched n  62 ( 46 names)  22.6% | non-matched n 482 (216 names)  25.9% | diff -3.4 pts | drop-best-2 -5.6 [TE,TH] | tail >=3R (1xADR hold) 9.7% vs 7.6% | mean R 1xADR hold -0.40 vs -0.25 · lane-stop hold -0.48 vs -0.52
+  at-fire MA (entry as today's close), Part A: matched n  72 ( 52 names)  25.0% | non-matched n 472 (212 names)  26.5% | diff -1.5 pts | drop-best-2 -5.9 [DYN,TH] | tail >=3R (1xADR hold) 8.3% vs 7.8% | mean R 1xADR hold -0.43 vs -0.24 · lane-stop hold -0.47 vs -0.52
+  Part A trail arm (the lane's own exit): mean R lane-stop -0.06 vs -0.30 · 1xADR -0.05 vs -0.01 · tail >=3R lane-stop 4.8% vs 6.0% · 1xADR 3.2% vs 4.1%
+  Part B trail arm is degenerate: 134 of 174 ERA A MA-reclaim fires exit the trail at ~0R on the entry bar (close < max(SMA10, SMA20)) -> Part B R is read on the hold ('none') arm
+  Part B two-fold = EP-LOW only (the MNTS blueprint letter): matched n  25 ( 25 names)  20.0% | non-matched n 148 (143 names)  18.9% | diff +1.1 pts | drop-best-2 -5.9 [PGY,TE] | tail >=3R (1xADR hold) 8.0% vs 10.1% | mean R 1xADR hold -0.54 vs -0.30 · lane-stop hold -0.57 vs -0.39
+
+  SESSION BUCKETS (union, either MA) — the lateness confound:
+  s01-02               matched n  40 ( 25 names)  40.0% | non-matched n 341 (194 names)  29.3% | diff +10.7 pts | drop-best-2 +4.0 [PGY,TE] | tail >=3R (1xADR hold) 20.0% vs 7.6% | mean R 1xADR hold +0.15 vs -0.28 · lane-stop hold +0.02 vs -0.50
+  s03-05               matched n  12 (  9 names)   8.3% | non-matched n 103 ( 73 names)  20.4% | diff -12.1 pts | drop-best-2 -20.4 [AVEX,NBIS] | tail >=3R (1xADR hold) 0.0% vs 11.7% | mean R 1xADR hold -1.07 vs -0.16 · lane-stop hold -1.11 vs -0.42
+  s06-10               matched n  26 ( 21 names)  15.4% | non-matched n  81 ( 68 names)  16.0% | diff -0.7 pts | drop-best-2 -11.7 [AGX,FIG] | tail >=3R (1xADR hold) 0.0% vs 3.7% | mean R 1xADR hold -1.00 vs -0.44 · lane-stop hold -1.07 vs -0.73
+  s11+                 matched n  23 ( 18 names)   4.3% | non-matched n  91 ( 81 names)  22.0% | diff -17.6 pts | drop-best-2 -22.0 [CRSR,MTW] | tail >=3R (1xADR hold) 4.3% vs 10.6% | mean R 1xADR hold -0.63 vs -0.09 · lane-stop hold -0.14 vs -0.40
+  bucket-weighted diff (weights = matched n, buckets with >= 3 per arm): -1.4 pts
+    Part A bucket-weighted diff: +0.7 pts
+    Part B bucket-weighted diff: -4.3 pts
+  s6+ (MNTS shape)     matched n  49 ( 38 names)  10.2% | non-matched n 172 (134 names)  19.2% | diff -9.0 pts | drop-best-2 -14.8 [AGX,MTW] | tail >=3R (1xADR hold) 2.0% vs 7.4% | mean R 1xADR hold -0.83 vs -0.25 · lane-stop hold -0.63 vs -0.55
+  ex-May s6+           matched n  36 ( 25 names)   8.3% | non-matched n 112 ( 92 names)  16.1% | diff -7.7 pts | drop-best-2 -16.1 [AGX,MTW] | tail >=3R (1xADR hold) 2.8% vs 6.1% | mean R 1xADR hold -0.76 vs -0.32 · lane-stop hold -0.47 vs -0.71
+
+  WITHIN RUNG (ERA A, either MA):
+  ep_low_reclaim       matched n  33 ( 33 names)  24.2% | non-matched n 167 (160 names)  28.1% | diff -3.9 pts | drop-best-2 -8.8 [PGY,TE] | tail >=3R (1xADR hold) 9.1% vs 11.3% | mean R 1xADR hold -0.39 vs +0.05 · lane-stop hold -0.26 vs -0.52
+  ep_close_reclaim     matched n   9 (  9 names)  44.4% | non-matched n 132 (127 names)  25.8% | diff +18.7 pts | drop-best-2 +2.8 [LFST,TH] | tail >=3R (1xADR hold) 22.2% vs 3.0% | mean R 1xADR hold +0.43 vs -0.59 · lane-stop hold +0.13 vs -0.57
+  ep_close_620_prox    matched n  20 ( 20 names)  20.0% | non-matched n 183 (178 names)  25.1% | diff -5.1 pts | drop-best-2 -14.0 [AVEX,TH] | tail >=3R (1xADR hold) 5.0% vs 7.7% | mean R 1xADR hold -0.81 vs -0.28 · lane-stop hold -1.11 vs -0.48
+  ma20_21_reclaim      matched n  39 ( 39 names)  15.4% | non-matched n 134 (130 names)  20.1% | diff -4.8 pts | drop-best-2 -9.3 [MTW,TE] | tail >=3R (1xADR hold) 7.7% vs 10.4% | mean R 1xADR hold -0.57 vs -0.27 · lane-stop hold -0.35 vs -0.43
+  Part A matched fires on campaigns whose EP close never cleared its own SMA20/21-EMA: 21 of 62
+  Part A, those excl.  matched n  41 ( 34 names)  24.4% | non-matched n 400 (182 names)  28.0% | diff -3.6 pts | drop-best-2 -7.5 [PGY,TE] | tail >=3R (1xADR hold) 7.3% vs 8.5% | mean R 1xADR hold -0.51 vs -0.17 · lane-stop hold -0.44 vs -0.46
+
+  THE BIG-WINNER SET (the rerun's 7 >= 3R EPs, his 4 labelled EPs) — which fires were matched:
+    ALOY  2026-06-01 runner   Part A ep_close_620_prox  s1 matched 0 hab none/None | +2-first stop | R 1xADR hold -1.00 lane trail -1.00 1xADR trail -1.00
+    ALOY  2026-06-01 runner   Part A ep_close_reclaim   s1 matched 0 hab none/None | +2-first target | R 1xADR hold +3.99 lane trail -1.00 1xADR trail +3.19
+    ALOY  2026-06-01 runner   Part B ma20_21_reclaim    s17 matched 0 hab none/None | +2-first stop | R 1xADR hold -1.00 lane trail +0.00 1xADR trail +0.00
+    ARM   2026-05-20 runner   Part B ma20_21_reclaim    s13 matched 0 hab sma20/0 | +2-first stop | R 1xADR hold -1.00 lane trail +0.00 1xADR trail +0.00
+    EFOR  2026-07-22 runner   Part A ep_close_620_prox  s1 matched 0 hab none/None | +2-first target | R 1xADR hold +9.28 lane trail -1.00 1xADR trail +8.91
+    EFOR  2026-07-22 runner   Part A ep_low_reclaim     s1 matched 0 hab none/None | +2-first target | R 1xADR hold +9.07 lane trail -1.00 1xADR trail +8.69
+    HQ    2026-06-15 runner   Part A ep_close_reclaim   s1 matched 0 hab none/None | +2-first target | R 1xADR hold +1.17 lane trail +4.09 1xADR trail +2.26
+    HQ    2026-06-15 runner   Part B ma20_21_reclaim    s14 matched 0 hab none/None | +2-first stop | R 1xADR hold -1.00 lane trail +0.00 1xADR trail +0.00
+    HTFL  2026-08-14 labelled Part A ep_close_620_prox  s1 matched 0 hab none/None | +2-first target | R 1xADR hold +2.87 lane trail -1.00 1xADR trail +3.14
+    HTFL  2026-08-14 labelled Part A ep_close_reclaim   s1 matched 0 hab none/None | +2-first target | R 1xADR hold +2.52 lane trail -1.00 1xADR trail +2.78
+    HTFL  2026-08-14 labelled Part B ma20_21_reclaim    s19 matched 0 hab none/None | +2-first stop | R 1xADR hold -1.00 lane trail -0.36 1xADR trail -0.71
+    NRIX  2026-06-08 runner   Part A ep_close_620_prox  s2 matched 0 hab sma50/0 | +2-first target | R 1xADR hold +9.75 lane trail -1.00 1xADR trail -0.23
+    NRIX  2026-06-08 runner   Part A ep_low_reclaim     s1 matched 0 hab sma50/0 | +2-first stop | R 1xADR hold -1.00 lane trail -1.00 1xADR trail -1.00
+    PLTR  2026-08-04 labelled Part A ep_close_620_prox  s1 matched 0 hab none/None | +2-first target | R 1xADR hold +1.34 lane trail -1.00 1xADR trail +1.78
+    PLTR  2026-08-04 labelled Part A ep_close_reclaim   s1 matched 0 hab none/None | +2-first stop | R 1xADR hold -1.06 lane trail -1.00 1xADR trail -1.06
+    TE    2026-05-12 runner   Part A ep_close_620_prox  s1 matched 0 hab none/None | +2-first target | R 1xADR hold +5.83 lane trail +11.09 1xADR trail +7.79
+    TE    2026-05-12 runner   Part A ep_low_reclaim     s1 matched 1 hab none/None | +2-first target | R 1xADR hold +5.98 lane trail +14.16 1xADR trail +7.93
+    TE    2026-05-12 runner   Part B ma20_21_reclaim    s1 matched 1 hab none/None | +2-first target | R 1xADR hold +5.82 lane trail +10.91 1xADR trail +7.78
+    TEAM  2026-08-07 labelled Part A ep_close_620_prox  s1 matched 0 hab none/None | +2-first target | R 1xADR hold +3.01 lane trail +9.27 1xADR trail +3.01
+    TEAM  2026-08-07 labelled Part A ep_close_reclaim   s1 matched 0 hab none/None | +2-first target | R 1xADR hold +2.87 lane trail +6.16 1xADR trail +2.87
+
+── HABITUAL-SUPPORT LEG (per-stock arm; counted draw: matched_hab vs every other fire on labelled stocks) ──
+  ERA A labels: none 183 · sma10 30 · sma50 25 · sma20 23
+  ERA B labels: none 10 · sma20 3 · sma50 3
+  ERA A                matched n  33 ( 27 names)  30.3% | non-matched n 180 ( 67 names)  28.3% | diff +2.0 pts | drop-best-2 -7.6 [AGX,FCEL] p 0.405 | tail >=3R (1xADR hold) 12.1% vs 7.2% | mean R 1xADR hold -0.29 vs -0.21 · lane-stop hold +0.21 vs -0.66
+    DISC (<=08-14)     matched n  33 ( 27 names)  30.3% | non-matched n 163 ( 64 names)  29.4% | diff +0.9 pts | drop-best-2 -8.8 [AGX,FCEL] p 0.337 | tail >=3R (1xADR hold) 12.1% vs 8.0% | mean R 1xADR hold -0.29 vs -0.17 · lane-stop hold +0.21 vs -0.64
+    ex-May             matched n  30 ( 25 names)  33.3% | non-matched n 158 ( 61 names)  24.7% | diff +8.6 pts | drop-best-2 -1.6 [AGX,FCEL] | tail >=3R (1xADR hold) 13.3% vs 6.3% | mean R 1xADR hold -0.22 vs -0.34 · lane-stop hold +0.33 vs -0.71
+    HOA (08-15..21)    matched n   0 (  0 names) —% | non-matched n  17 (  5 names)  17.6% | diff — pts | drop-best-2 — [] | tail >=3R (1xADR hold) —% vs 0.0% | mean R 1xADR hold — vs -0.65 · lane-stop hold — vs -0.91
+  ERA B (>=08-22)      matched n   2 (  2 names)   0.0% | non-matched n   9 (  5 names)   0.0% | diff +0.0 pts | drop-best-2 — [ALAB,SNOW] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -0.26 vs -0.45 · lane-stop hold -1.00 vs -1.23
+  post-08-14 (HOA+B)   matched n   2 (  2 names)   0.0% | non-matched n  26 ( 10 names)  11.5% | diff -11.5 pts | drop-best-2 — [ALAB,SNOW] | tail >=3R (1xADR hold) 0.0% vs 0.0% | mean R 1xADR hold -0.26 vs -0.57 · lane-stop hold -1.00 vs -1.03
+  => VERDICT CAN'T TELL (n) · [1 ERA A >= +8 pts, matched n >= 60: unreadable (matched n 33 < 60)] · [2 ex-May >= +8 pts: met (+8.6 pts; drop-best-2 -1.6 — the bar is drop-2-blind)] · [3 ERA B same sign: unreadable (matched 2 / non-matched 9; need >= 8 each; sign +0.0)]
+  beside: matched_hab vs MISMATCHED (level near a different MA), ERA A: matched n  33 ( 27 names)  30.3% | non-matched n  60 ( 39 names)  28.3% | diff +2.0 pts | drop-best-2 -7.6 [AGX,FCEL] | tail >=3R (1xADR hold) 12.1% vs 10.0% | mean R 1xADR hold -0.29 vs -0.23 · lane-stop hold +0.21 vs -0.52
+  hab=sma10            matched n  17 ( 13 names)  29.4% | non-matched n  64 ( 24 names)  26.6% | diff +2.8 pts | drop-best-2 -12.3 [FCEL,LFST] | tail >=3R (1xADR hold) 11.8% vs 4.7% | mean R 1xADR hold -0.09 vs -0.32 · lane-stop hold +0.56 vs -0.63
+  hab=sma20            matched n  13 ( 11 names)  30.8% | non-matched n  50 ( 20 names)  34.0% | diff -3.2 pts | drop-best-2 -24.0 [AGX,PRAA] | tail >=3R (1xADR hold) 7.7% vs 6.0% | mean R 1xADR hold -0.70 vs -0.26 · lane-stop hold -0.81 vs -0.85
+  hab=sma50            matched n   3 (  3 names)  33.3% | non-matched n  66 ( 23 names)  25.8% | diff +7.6 pts | drop-best-2 -25.8 [KURA,LPTH] | tail >=3R (1xADR hold) 33.3% vs 10.6% | mean R 1xADR hold +0.38 vs -0.07 · lane-stop hold +2.60 vs -0.55
+
+DRAWS CLEARING THE FULL BAR: 0 [] (counted draws: either/SMA20/EMA21 on the union + habitual = 4; noise 0.2)

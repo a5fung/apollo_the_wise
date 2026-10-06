@@ -1,0 +1,41 @@
+#327 H11 — POPULATION (no outcomes read). Splits: ERA A = alert < 2026-08-22 (DISC <= 08-14, HOA 08-15..08-21); ERA B >= 08-22.
+
+GATE: alerts 277 (ERA A 261, ERA B 16); fires 632 (ERA A 595, ERA B 37); runners 7; labelled in the 277: 4
+      fires' adr_dollar == campaigns.tsv adr_dollar on 632 of 632
+
+PART A — the 632 first fires
+  A    fires 595: ok 546 · no_level(high break) 48 · no_history 1 | SMA20 lacking 0 · EMA21 lacking 7 | matched either 62 (46 names) · sma20 35 · ema21 47 · at-fire either 72
+  DISC fires 573: ok 526 · no_level(high break) 46 · no_history 1 | SMA20 lacking 0 · EMA21 lacking 7 | matched either 61 (46 names) · sma20 35 · ema21 46 · at-fire either 71
+  HOA  fires  22: ok 20 · no_level(high break) 2 · no_history 0 | SMA20 lacking 0 · EMA21 lacking 0 | matched either 1 (1 names) · sma20 0 · ema21 1 · at-fire either 1
+  B    fires  37: ok 35 · no_level(high break) 2 · no_history 0 | SMA20 lacking 0 · EMA21 lacking 0 | matched either 2 (2 names) · sma20 0 · ema21 2 · at-fire either 2
+  no_history fires: AVEX 2026-05-12 ep_low_reclaim (18 closes)
+  EMA21-lacking ok fires: AVEX 2026-05-12 (22), STDN 2026-08-14 (22), STDN 2026-08-14 (23), XE 2026-06-15 (36), XE 2026-06-15 (38), XE 2026-06-15 (40)
+
+  matched share by SESSION BUCKET (ERA A, ok fires; matched = either):
+    s01-02  fires 359 | matched  34 (  9.5%)
+    s03-05  fires  95 | matched   9 (  9.5%)
+    s06-10  fires  57 | matched  13 ( 22.8%)
+    s11+    fires  35 | matched   6 ( 17.1%)
+    matched fires at session 6+: 19 of 62 (30.6%)
+  by rung (ERA A ok): ep_low_reclaim 33/201 · ep_close_reclaim 9/142 · ep_close_620_prox 20/203
+    ep_low_reclaim: SMA20 minus level in ADR, median -0.61 (p10 -2.75, p90 +1.39) n 201
+    ep_close_reclaim: SMA20 minus level in ADR, median -2.27 (p10 -4.77, p90 +0.47) n 142
+    ep_close_620_prox: SMA20 minus level in ADR, median -1.69 (p10 -4.42, p90 +0.78) n 203
+
+PART B — the 20/21-DMA reclaim fire, one per campaign (daily grade, entry at the close)
+  A    campaigns 261: ep_close_not_above_ma 48 · fire 174 · no_fire_in_20 38 · no_history 1 | matched (two-fold, EP low or close) 39 · EP-low-only 25
+  DISC campaigns 250: ep_close_not_above_ma 47 · fire 165 · no_fire_in_20 37 · no_history 1 | matched (two-fold, EP low or close) 37 · EP-low-only 23
+  HOA  campaigns  11: ep_close_not_above_ma 1 · fire 9 · no_fire_in_20 1 | matched (two-fold, EP low or close) 2 · EP-low-only 2
+  B    campaigns  16: ep_close_not_above_ma 3 · fire 7 · no_fire_in_20 6 | matched (two-fold, EP low or close) 1 · EP-low-only 1
+  Part B fires by SESSION BUCKET (ERA A):
+    s01-02  fires  22 | matched   6
+    s03-05  fires  20 | matched   3
+    s06-10  fires  50 | matched  13
+    s11+    fires  82 | matched  17
+  no_history / hole campaigns: AVEX 2026-05-12 no_history
+
+HABITUAL SUPPORT LABELS (one per campaign, strictly pre-EP)
+  ERA A: none 183 · sma10 30 · sma50 25 · sma20 23 | unlabelled why: {'tests<3_or_tie': 179, 'history<54': 4} | pullback lows in uptrend per campaign: median 5
+  ERA B: none 10 · sma20 3 · sma50 3 | unlabelled why: {'tests<3_or_tie': 10} | pullback lows in uptrend per campaign: median 9.5
+  fires on LABELLED stocks, ERA A: Part A 161 (matched_hab 14, mismatched 30) · Part B 52 (matched_hab 19, mismatched 30)
+  matched_hab by bucket (ERA A, A+B): s01-02 15/113 · s03-05 4/35 · s06-10 8/28 · s11+ 6/37

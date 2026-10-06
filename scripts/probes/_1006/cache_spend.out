@@ -1,0 +1,27 @@
+30d total: {'usd': Decimal('48.00'), 'inp': 19649353, 'outp': 1866361, 'cw': 695754, 'cr': 20799603, 'n': 5543}
+caller | model | calls | usd | input_tok | avg_in | output_tok | cache_write | cache_read
+eval_519_option_a | claude-opus-5-5 | 384 | 9.22 | 851592 | 2218 | 102773 | 87061 | 16628651
+theme_discovery | claude-sonnet-5 | 189 | 7.73 | 661599 | 3501 | 558771 | 239667 | 1081320
+perplexity_news_search | openai/gpt-5.6-luna | 891 | 7.18 | 6172448 | 6928 | 180185 | 0 | 0
+theme_assignment | claude-sonnet-5 | 181 | 5.22 | 586860 | 3242 | 321813 | 176378 | 1946749
+perplexity_news_search | openai/gpt-6-luna | 672 | 2.28 | 6564827 | 9769 | 120935 | 0 | 0
+chart_axis_pilot | claude-opus-5-5 | 64 | 2.12 | 362458 | 5663 | 33267 | 0 | 0
+theme_validation | claude-sonnet-5 | 1309 | 1.81 | 840399 | 642 | 13265 | 0 | 0
+theme_assignment | claude-sonnet-5-5 | 62 | 1.36 | 217242 | 3504 | 64040 | 58909 | 693326
+ep_catalyst_grade | claude-sonnet-5 | 111 | 1.18 | 419415 | 3779 | 33757 | 0 | 0
+theme_discovery | claude-sonnet-5-5 | 62 | 0.95 | 167246 | 2698 | 31426 | 87249 | 407395
+judge_robustness_eval | claude-opus-5-5 | 36 | 0.90 | 111623 | 3101 | 22518 | 0 | 0
+theme_validation | claude-sonnet-5-5 | 451 | 0.79 | 280471 | 622 | 22460 | 0 | 0
+ep_catalyst_grade | claude-sonnet-5-5 | 74 | 0.72 | 283945 | 3837 | 14940 | 0 | 0
+theme_ecosystem_assignment | claude-haiku-4-5-20251001 | 167 | 0.68 | 312559 | 1872 | 73393 | 0 | 0
+theme_merge_adjudication | claude-haiku-4-5-20251001 | 161 | 0.60 | 272375 | 1692 | 65396 | 0 | 0
+theme_synthesis | claude-sonnet-5 | 14 | 0.55 | 94475 | 6748 | 35835 | 0 | 0
+ep_grade_judge | claude-opus-5 | 14 | 0.55 | 68363 | 4883 | 8444 | 0 | 0
+model_replay | claude-sonnet-5 | 30 | 0.52 | 98964 | 3299 | 25630 | 24501 | 42162
+catalyst_metrics_extractor | claude-sonnet-5 | 17 | 0.36 | 65940 | 3879 | 23067 | 0 | 0
+system_review_weekly | claude-sonnet-5 | 3 | 0.34 | 106214 | 35405 | 12414 | 0 | 0
+mgmt_judge | claude-opus-5 | 32 | 0.33 | 44947 | 1405 | 4347 | 0 | 0
+theme_split | claude-sonnet-5 | 22 | 0.28 | 64347 | 2925 | 15360 | 0 | 0
+ep_grade_judge | claude-opus-5-5 | 10 | 0.28 | 44180 | 4418 | 5221 | 0 | 0
+judge_named_themes | claude-haiku-4-5-20251001 | 159 | 0.26 | 211549 | 1330 | 9990 | 0 | 0
+judge_divergence | claude-sonnet-5 | 15 | 0.23 | 74889 | 4993 | 7587 | 0 | 0

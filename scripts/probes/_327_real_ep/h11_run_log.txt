@@ -1,0 +1,5 @@
+ANCHOR (Part B walk == H2's at-the-close walk on the 632 first fires): 1252 of 1252 rows identical, drift 0
+
+wrote h11_rows.tsv: 632 rows
+wrote h11_marows.tsv: 277 rows
+wrote h11_habitual.tsv: 277 rows
