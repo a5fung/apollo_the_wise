@@ -1997,3 +1997,12 @@ EVIDENCE: the first live entry since the 2026-10-03 switch — CEG, trade #409, 
 - **The new size, from the execution log at the order:** "Order spec: CEG entry=$300.71 stop=$281.29 (2R below; ORB L=$291.00) shares=3 risk=$77.22 position=$902.13 risk_pct=1.50% equity=$5148" — 1.50% = 2% × 0.75 Choppy, and $77.22 = $5,148 × 1.5%. 3 shares = floor($77.22 ÷ $19.42 per share), also the 20% notional cap's limit (floor($1,029.60 ÷ $300.71)). The fill's actual risk is $58.26 (whole shares).
 - **WOULD-FAIL-IF checked:** not sized at the old 1% (that would be 0.75% → $38.61 and 1 share) and not above 2% × the multiplier.
 - **Not claimed:** a Bull-regime entry at the full 2% has not happened yet; the two other live rows today (VST #412, TLN #413) were skipped out of the ORB window, not sized.
+
+## #394 — coil-finder tuned and orderliness decided, both live and verified (2026-10-06)
+
+BAR: "cap tuned + orderliness decided"
+
+EVIDENCE: his sign 2026-10-03 (*"Sign"*) on the C1 tables — keep the 50% hold cap, keep the board order, orderliness display-only (no demotion); C2 + C3 deployed 10-03/10-04.
+- **Verified live Mon 10-05** (`scripts/probes/_1005/board_last_eval.out`, `orderliness_adv_verify.out`): the 17:35 scan wrote 106 rows, all 106 with orderliness (15 of 15 recomputed exactly); `/anticipation` rendered 12 lines each with 'overnight gaps N× daily range'; the board holds only last_eval 2026-10-05 rows in streak-desc / today_pct-asc order and none of the five summer buyout names.
+- **Re-check armed:** review `coil_tune_rerun_394` (128 settled rows, earliest 11-14) — accruing 112/128 on 10-06.
+- **Not dropped, moved:** the 10-04 buyout-screen review fix's event-gated first firing (first-seen screen N ≥ 1 + price hold) now lives on #692 as an explicit DONE-WHEN / WOULD-FAIL-IF.
