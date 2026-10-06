@@ -1693,3 +1693,50 @@ His words, verbatim, and what each adds to the structure read:
   prior close and the close below it (a gap up that reversed to a red close); his read differs and is
   recorded as he said it.
 - BLZE 08-04 good · IBTA 08-04 bad · KRO 08-06 good · HURN 07-29 bad (his reply read "kro - bad"; confirmed: "last one was hurn bad").
+
+## 2026-10-06 — Qullamaggie book interview excerpt: EP, parabolic short, momentum burst (operator-shared reference)
+
+Shared as reference ("just got reference"), 8 page photos of an interview with Kristjan Kullamägi (Qullamaggie).
+Paraphrased with short quotes; the photos were not kept. **Reference, not a ruling** — nothing here changes a live
+rule until he says so (THE LINE).
+
+**Episodic pivot (his main strategy, learned from Pradeep Bonde / Stockbee):**
+- Three ingredients: "a major news item, a big gap up, and a huge increase in volume" — best "especially in a bull
+  market environment". Example TEM Jan 2025 (AI healthcare app, ~10× average volume out of the gate, more than doubled).
+- Finding them: a daily scan of stocks "up at least 10% on high volume"; 99% are not of interest (no news, or not
+  the right type of stock). "I'm not going to buy a utility stock. It needs to be a stock that can make a big move."
+  Best sectors: technology, biotech, small caps; sometimes sector-wide (quantum computing, Dec 2024).
+- **Best EP is a neglected stock:** sideways for months or years, then ~10× its average daily volume. "You don't
+  want a stock that has already been up a lot in a short amount of time." Example PTON Aug 2024 earnings.
+- Prefers a breakout from a sideways consolidation, but it is not required.
+- **Entry:** if opening volume is large enough, buy a move above the high of the FIRST 5-MINUTE bar; otherwise wait
+  and buy above the first 1-HOUR bar. "I always buy into strength." **Stop: the low of the day.**
+- Hold for weeks or months. LAES Dec 11 2024: a sector EP he sold the same day on a weak close although it never hit
+  his stop; it then ran ~800% in under two weeks — "stick to my rules and not let my mental state influence trade
+  execution."
+- Themes: several stocks in one sector on the scan; one or two leaders, the rest laggards that traders chase later.
+
+**Parabolic short:**
+- Short stocks up very sharply several days in a row (several hundred percent) that start showing weakness —
+  typically small-cap pump-and-dumps. Pump tell: up several hundred percent with no filings or news and not part of a
+  sector theme. Once a sector is hot, small caps move on any news (vaccines 2020, quantum Dec 2024).
+- **A+ setup:** up three or four days in a row, total gain at least 300%. Never short day 1 ("I've seen stocks go
+  up 1,000% in one day"), rarely day 2, usually day 3 or 4 — shorting early means several mid-size losses.
+- **Trigger:** break of the opening-range low, or, if it keeps rising, a break below a 5-minute candle. **Stop: the
+  high of the day** (most of the time). LAES: shorted day 3, stopped out; re-shorted day 5 near $10, covered ~$5.
+
+**Momentum burst (breakout swing, from Bonde):**
+- Most of an explosive move is over in three to five days — the holding period.
+- A leading stock (top 1-2% by gain over the past 1, 3 and 6 months) in an uptrend that consolidates sideways for
+  one to three weeks, preferably on reduced volume; buy the breakout above the opening range or the first 5-, 30- or
+  60-minute bar high (longer = worse price, fewer false breakouts); hold three to five days.
+
+**Where this differs from our live MAGNA53 EP today (facts, for his reading — no change proposed):**
+- Entry bar: we buy above the first **1-minute** bar's high (09:31–09:44); the book uses the first 5-minute bar, or
+  the first 1-hour bar when volume needs confirming.
+- Stop: we use entry − 2R (R = entry − ORB low); the book uses the low of the day.
+- Stock type: we have no utility / "can't make a big move" exclusion — the 10-06 live entry CEG is a $94.8B utility.
+- Neglect: the old score's neglect / prior-momentum terms were deleted 2026-08-22 (they fired on real EPs and junk at
+  the same rate); the book names neglect as the best EP trait.
+- Parabolic short: our `days_up_streak >= 3` gate matches "day 3 or 4"; see `docs/setups/parabolic_short.md` for the
+  gain and trigger rules.
