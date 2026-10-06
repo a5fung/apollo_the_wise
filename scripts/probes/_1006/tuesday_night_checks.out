@@ -1,0 +1,42 @@
+== #655 rule B (one-night wait)
+   {'th': 'Cardiac & Bioelectric Ablation Device Innovators', 'm': 2, 'p': '2'}
+   {'th': 'Laser & RF/Photonic Component Suppliers for AI and Optical Build-Out', 'm': 2, 'p': '2'}
+  B rows: 2 | any prior_members >=3 or null: 0
+  17:31:13 theme_correctness_check            G1 567/612 (92.6% bar 90.0%) · G2 22/612 (3.6% bar<= 5.0%) · G3 105/120 (87.5% bar 90.0%) · G4 7/120 small (5.8% bar<= 10.0%) · latency median 17.5 sessions (n=8)
+== #543 dead-column sweep
+  (none) ['dead_column_suspect', 'dead_column_detected']
+== #580 breadth
+  theme_date 2026-10-06
+   {'stage': 'Fading', 'n': 31, 'zero': 12, 'nul': 0}
+   {'stage': 'Mainstream', 'n': 55, 'zero': 0, 'nul': 0}
+   {'stage': 'Retired', 'n': 10, 'zero': 0, 'nul': 10}
+   {'stage': 'Accelerating', 'n': 4, 'zero': 0, 'nul': 0}
+   {'stage': 'Nascent', 'n': 30, 'zero': 3, 'nul': 0}
+  breadth fades tonight: 13
+     Homebuilders & Residential Construction Supply Chain: breadth 38%, members 8
+     Enterprise HR & Workforce Management SaaS: breadth 33%, members 4
+     Crypto Exchange & Stablecoin Infrastructure Equities: breadth 0%, members 3
+     Specialty P&C Insurance Underwriters Rotation Reversal: breadth 21%, members 14
+     Non-Alcoholic Beverages & Energy Drinks: breadth 20%, members 5
+     Peptide & Hormone Therapies for Metabolic & Endocrine Disorders: breadth 33%, members 3
+     Life Insurance & Annuity Providers: breadth 33%, members 9
+     Canadian Big Banks: breadth 0%, members 5
+     Bank Stocks: Rising-Rate NIM Expansion: breadth 9%, members 45
+     Business Development Companies & Private Credit Lenders: breadth 0%, members 6
+     Cloud Supply Chain & Warehouse Management Software: breadth 0%, members 3
+     Global Agriculture Value Chain Recovery: breadth 0%, members 3
+     Energy Supply Disruption: Middle East Geopolitical Risk: breadth 25%, members 9
+== #693 night 2
+  07:00:10 llm_request_rewrite_adopted        claude-sonnet-5-5: forced_tool_to_structured_output
+  08:25:16 llm_request_rewrite_adopted        claude-opus-5-5: forced_tool_to_structured_output
+  17:05:08 llm_request_rewrite_adopted        claude-sonnet-5-5: thinking_disabled_to_between_tools
+  17:10:07 theme_parent_pass_ran              Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+== #598 flag transitions today (PURR must not repeat)
+  (none) ['flag_stage_transition']
+== #635 error rows today
+  (none) ['ep_repoll_upgrade_error', 'ep_candidate_parse_error', 'drawdown_breaker_read_error']
+== sweep log
+21:05:12 [agents.market_intelligence.theme_engine] INFO: Small-Fading retire (#655 B): 7 weak-Fading theme(s) under 3 members kept tonight — not under 3 the night before (one-night wait): 'Defense Intelligence & Cybersecurity IT Contractors' 3 -> 2, 'Home Improvement Retail & Building Products' 4 -> 2, 'Insurance Brokerage & Risk Advisory Firms' 3 -> 2, 'Mortgage REITs (Agency & Residential MBS)' 3 -> 2, 'Offshore IT Services & Digital Engineering Outsourcers' 4 -> 1, 'Power Semiconductors (GaN, SiC & Discrete Power ICs)' 3 -> 2, 'Primary Silver Miners' 3 -> 2
+21:30:51 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 88 tables, 2 dead (0 new), 0 suspect, 0 error(s)
+== tracebacks today
+0

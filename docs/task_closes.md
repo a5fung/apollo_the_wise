@@ -2006,3 +2006,24 @@ EVIDENCE: his sign 2026-10-03 (*"Sign"*) on the C1 tables — keep the 50% hold 
 - **Verified live Mon 10-05** (`scripts/probes/_1005/board_last_eval.out`, `orderliness_adv_verify.out`): the 17:35 scan wrote 106 rows, all 106 with orderliness (15 of 15 recomputed exactly); `/anticipation` rendered 12 lines each with 'overnight gaps N× daily range'; the board holds only last_eval 2026-10-05 rows in streak-desc / today_pct-asc order and none of the five summer buyout names.
 - **Re-check armed:** review `coil_tune_rerun_394` (128 settled rows, earliest 11-14) — accruing 112/128 on 10-06.
 - **Not dropped, moved:** the 10-04 buyout-screen review fix's event-gated first firing (first-seen screen N ≥ 1 + price hold) now lives on #692 as an explicit DONE-WHEN / WOULD-FAIL-IF.
+
+## #580 — theme strength is reported with breadth from one stored number, and no live theme has a NULL breadth (2026-10-06)
+
+BAR: "`/theme` and the dashboard both show strength + breadth from the same stored number; no NULL breadth on any non-Retired theme; a written before/after showing what the trim was doing to rank order, with a ruling on whether it stays."
+
+EVIDENCE:
+- **Same stored number on both surfaces:** DISPLAY HALF VERIFIED LIVE 2026-09-30 12:07 ET — the real `/themes` reply and the dashboard's Ecosystems view both read `RS 84 · 6 stocks · 67% above 20-day avg` (b51ea5b9 + portfolio-app2 085ba72).
+- **No NULL breadth on any non-Retired theme, two weekday runs:** Mon 10-05 and Tue 10-06 — every non-Retired stage has 0 NULL `pct_above_20sma`; the only NULLs are Retired tombstones (`scripts/probes/_1005/monday_night_checks.out`, `scripts/probes/_1006/tuesday_night_checks.out`).
+- **The trim written up and ruled:** `docs/analysis/580_theme_trim_and_breadth_2026-09-30.md`; his ruling recorded on the line 09-30 — the trim stays.
+- **The Saturday breadth rule (his 09-30 'aligned'), both nights:** 0 Accelerating/Mainstream themes at 0% breadth after each run; every `theme_breadth_fade` row names a theme under 40% (19 on 10-05, 13 on 10-06).
+- **Not claimed:** EP alerts losing the +10 only on faded themes was not separately traced alert-by-alert.
+
+## #635 — the Tier-2/3 silent failures (F5–F13) each leave a trace, every new alarm proven able to fire (2026-10-06)
+
+BAR: "each remaining finding either surfaced (audit row + deduped Telegram, the Tier-1 pattern in `core/job_audit.record_job_failure`) or explicitly ruled out with a reason, and every new alarm PROVEN able to fire by mutation before it is trusted."
+
+EVIDENCE:
+- **Surfaced:** commit A 082e148d + c6245910 (F5 the nightly `*_failed` sweep, F13 state-alert failure) shipped 09-30; commit B 6947cf48 + 8b317ca5 (F6 re-poll upgrade error, F8 parse drops incl. the missing-prevDay half, F9 breaker read, F10 partial-fill close failure, F11 SDK-shape guard, F12 stuck-order watchdog) shipped Sat 10-03, both + execution.
+- **Ruled out with a reason:** F7 — DEAD, not built (the 9M scan is gated off since 2026-09-08).
+- **Proven able to fire by mutation:** recorded in `tests/test_501_tier1_silent_failure_surfaces.py` (MUTATION CHECKS 2026-09-30 + REVIEW-FIX MUTATION CHECKS) and the commit messages — deleting each emitter turns its named test red.
+- **Quiet on ordinary days (the line's DONE-WHEN):** Mon 10-05 and Tue 10-06 — 0 `ep_repoll_upgrade_error`, `ep_candidate_parse_error`, `drawdown_breaker_read_error` rows, 0 Tracebacks; the F5 sweep's 10-06 page named two REAL failures (the rehearsal's paper KO coverage miss, a truncated second-opinion call), not noise.
