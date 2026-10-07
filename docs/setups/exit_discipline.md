@@ -349,6 +349,65 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-10-06 — #687: the failed-exit stop restore WAITS for the broker to release the cancelled stop's shares (TRADE STATE — no exit rule, stop level, target or size changed)
+
+**Trigger**: his ruling of 2026-10-06 (*"aligned with rec"*, then *"Ok, move it to Wednesday"*) on the paper
+rehearsal's Day A finding: build the stop-restore retry; deploy Wed 10-07 21:15 ET; full paper rehearsal Day A Thu
+10-08, Day B Fri 10-09. Built exactly that, nothing wider.
+
+**The gap** (paper Day A 2026-10-06, step B2 — PEP, 4 sh: a 3-sh stop for the row + one extra 1-sh resting sell;
+`scripts/probes/_1006/rehearsal_dayA_final.log`, `a2_why.out`): `execute_full_exit` cancelled the stop at 09:35:43;
+the broker confirmed the cancel only at 09:35:50. `_await_shares_released` gave up after 5 s, the sale was refused
+(`held_for_orders 4`) and `_restore_stop_after_failed_exit` made ONE attempt at 09:35:48, refused the same way — the
+cancelled stop's shares were not released yet. Page: STOP NOT RESTORED; the stop-ACK watchdog placed a fallback at
+09:36:30 — ~40 s with no stop.
+
+**The change** (`order_manager._restore_stop_after_failed_exit` → `_retry_restore_while_shares_held`):
+- a placement refused because the shares are still HELD (`_is_shares_held_refusal`: the text `insufficient qty` /
+  `held_for_orders` — NOT the bare code 40310000, which Alpaca also uses for refusals time cannot cure, e.g. the same
+  day's opg-cutoff probe) is retried: every `_RESTORE_RETRY_SLEEP_S` = 0.5 s, at most `_RESTORE_RETRY_POLLS` = 30
+  polls (~15 s), one `get_position` read per poll; once `qty_available` ≥ the restore's count, the SAME stop is
+  placed again (same price, same count, sized once as before). The retry carries a mode-bound client order id; the
+  first attempt keeps today's call exactly.
+- a poll whose position read is empty asks the shared sizing (`_broker_free_qty_for_restore`, same exclude id):
+  flat → nothing placed (ruling (i)'s `restore_skipped_broker_flat` row, RESTORE_FLAT); every share held by OTHER
+  live orders → RESTORE_COVERED; unreadable → keep waiting.
+- a re-attempt refused because the price is already through the stop → ruling (3)'s market sale, as the first
+  attempt would; refused for anything else → RESTORE_FAILED.
+- the window spent → RESTORE_FAILED and today's page, unchanged.
+- rows: `stop_restore_retried` when a retry PLACED the stop (attempts, polls, seconds slept, wall-clock seconds,
+  order id — the positive observable for the live check); `stop_restore_retry_ended` (outcome) otherwise.
+- both callers — the 16:45 sale (`execute_full_exit`) and the 19:01 opening-auction sale (`execute_depth_open_sale`)
+  — hold the per-trade lock through the wait, so a failed exit can hold it up to ~15 s longer than before; the
+  re-protect paths try-lock and defer, as they already do.
+
+**Unchanged**: a first attempt that succeeds (byte-identical — `tests/test_687_toggle_off_convergence.py`, 43
+scenarios, no re-pin and no allow-list entry), every other refusal, the price-through-the-stop branch, flat,
+covered, the no-order-id case, the pointer write. `_await_shares_released` and the SALE are outside the ruling: a
+cancel that takes longer than 5 s still fails the sale — what changes is that the stop comes back.
+
+**Known, NOT changed (his call if it matters)**: the stream's cancel handler (`trade_stream._handle_cancel_or_reject`
+§2) finds the trade by the CANCELLED stop's id and nulls the pointer unconditionally. A retry lands as the cancel
+settles — the same moment that event arrives — so the two can interleave: (a) the restore re-points the row first →
+the stream matches nothing (no page, no `stop_cancel_by_planned_sale_silent` row); (b) the stream reads the row
+first and nulls it after the restore's write → pointer NULL while the restored stop is live (the coverage repair,
+the sync and ingest R1 re-adopt a live broker stop). Pre-existing for any restore that succeeds; the retry makes it
+more likely.
+
+**Reversion-flag**: REFINEMENT of #646 / #687 (c) — the same stop, at the same price, for the same count; it waits for
+the broker before giving up. Not a reversal.
+
+**Status**: built on branch `worktree-wf_ab25af87-43d-1` (2026-10-06), NOT merged or deployed (deploy Wed 10-07 21:15
+ET: `broker/` → both + execution, two steps). Tests: `tests/test_687_restore_retry_held_shares.py` (13: the B2 shape
+restores the same stop on the poll that shows the shares free + one `stop_restore_retried` row; a refusal that
+outlasts the window → today's page + `stop_restore_retry_ended`; a first attempt that succeeds never polls and makes
+today's exact call; the price-through-the-stop and any other refusal → today's branch at once; a retry refused through
+the price sells; a flat broker seen while waiting places nothing; the opening-auction sale's restore retries too —
+6 red with the window set to zero polls, 7 with the held-shares classifier off),
+`tests/test_646_full_exit_never_returns_naked.py` (`_wire` zeroes the retry sleep).
+The rehearsal (`scripts/probes/_687/paper_rehearsal.py`) changed with it: steps wait for orders to be routed (never
+`pending_new`), A4 (market-on-close) is informational, and Day A cleans up only when Day B has nothing left to test.
+
 ### 2026-10-04 — #687 ruling (a): the stop-coverage repair reads the broker before it places — a FLAT broker gets no stop (TRADE STATE — no exit rule, stop level, target or size changed)
 
 **Trigger**: his ruling of 2026-10-04 (his word: *"A"*) on the fork ruling (i)'s review opened the same morning (the

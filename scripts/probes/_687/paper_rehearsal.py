@@ -35,15 +35,18 @@ mi_live_orders / stop_order_id, legs of those, and our client-order-id prefix), 
 only when no non-rehearsal paper row or foreign order exists on it, delete our rows by id AND
 signal_type (SET LOCAL mi.allow_trade_delete), then verify.
 
-THE STEPS (spec times; the first three run at start time — said so in the log):
-  A1  P1 = 3 sh of TICKER_P1, GTC stop 5% below the fill → assert every share reserved.
-  A2  execute_partial_exit(limit far above) → OCO third resting, 2/3 stop live, all reserved.
-  A3  price-only replace of the 2/3 stop +1% → new id, still covering.
-  B1  P2 = 4 sh of TICKER_P2: a 3-sh GTC stop for the row + one EXTRA 1-sh resting sell that the
-      books do not know about (so it is not a pending exit) → execute_full_exit → assert rejected,
-      stop restored at the same price <= 5 s, page sent. The extra sell is then cancelled and the
-      extra share sold, so P2 = 3 sh under its restored stop.
-  A4  15:51 a market-on-close BUY of 1 sh on the flat PROBE ticker → assert rejected (cutoff).
+THE STEPS (spec times, ET):
+  A1  10:00  P1 = 3 sh of TICKER_P1, GTC stop 5% below the fill → assert every share reserved.
+  A2  10:05  execute_partial_exit(limit far above) → OCO third resting, 2/3 stop live, all reserved.
+  A3  10:10  price-only replace of the 2/3 stop +1% → new id, still covering.
+  B1  10:15  P2 = 4 sh of TICKER_P2: a 3-sh GTC stop for the row + one EXTRA 1-sh resting sell that
+      the books do not know about (so it is not a pending exit) → execute_full_exit → assert
+      rejected, stop restored at the same price <= 5 s after the rejection (the restore may retry
+      while the broker releases the cancelled stop's shares — #687 2026-10-06), page sent. The
+      extra sell is then cancelled and the extra share sold, so P2 = 3 sh under its restored stop.
+  A4  15:51 a market-on-close BUY of 1 sh on the flat PROBE ticker — INFORMATIONAL, never a FAIL:
+      paper ACCEPTED it on 2026-10-06, and production never sends a market-on-close order, so the
+      step only records what paper's cutoff did (accepted → cancelled at once, or rejected).
   A5  16:30 a 1-sh sell of P1 while the stop + OCO hold everything → assert insufficient qty /
       held_for_orders (the OKTA error).
   A6  16:45 execute_full_exit(P1) → lock held, stop cancelled and shares free <= 5 s,
@@ -62,7 +65,24 @@ THE STEPS (spec times; the first three run at start time — said so in the log)
   D5  cancel the OCO → the existing handler re-protects the third (1-sh stop) <= 60 s.
   D6  cleanup.
 
-EXIT CODES: 0 every step PASS/SKIP-by-design · 1 a FAIL · 2 refused / could not run.
+SPACING (#687 2026-10-06 — A2 fired 2 s after A1 while A1's stop was still `pending_new`, and the
+production partial exit, reading that stop as not live, aborted). A1/A2/A3/B1 run no earlier than
+their SPEC times 10:00/10:05/10:10/10:15 ET (B1 has no spec time; 10:15 follows A3) — clear of the
+09:31-09:45 ORB window and the 09:35 stop refresh — AND every order a step places is waited on
+until the broker shows it live (`new` for a stop or a resting sell, `filled` for a market buy;
+never `pending_new`) and the position's held count has settled, before the next step runs. Started
+after 10:15, the steps run back to back, still gated on those reads.
+
+END OF DAY A (#687 2026-10-06 — a FAIL in a step Day B does not need wiped Day B's positions):
+Day B tests what Day A QUEUED. It depends on DAY_B_DEPENDS_ON — P1: A1, A2, A6 (its 16:45 sale);
+P2: B1, A8, A9 (its opening-auction sale; A8 re-reads P2's readiness at 18:50 itself, so B2's
+restore timing or B3's 09:36 snapshot no longer decide it). Day A cleans up automatically ONLY when
+every position has a failed dependency — Day B would have nothing to test. Otherwise the state is
+left for Day B, whose own cleanup flattens everything in market hours; Day B skips the checks of a
+position whose sale was never queued.
+
+STATUSES: PASS · FAIL · SKIP (by design) · INFO (recorded, never counted as a failure — A4).
+EXIT CODES: 0 every step PASS/SKIP/INFO · 1 a FAIL · 2 refused / could not run.
 """
 from __future__ import annotations
 
@@ -93,6 +113,10 @@ REASON = "sma_trail_stop"
 LIVE_STATUSES = {"new", "accepted", "held", "partially_filled", "accepted_for_bidding",
                  "pending_new", "pending_replace"}
 QUEUED_OK = {"new", "accepted", "held", "pending_new", "accepted_for_bidding"}
+# A resting stop / limit sell the broker has actually ROUTED. `LIVE_STATUSES` above also holds
+# `pending_new` — waiting on it returned at once on 10-06 and A2 fired against a pending stop.
+STOP_LIVE = {"new"}
+SETTLE_BUDGET_S = 30.0                     # per wait for an order / the held count to settle
 TERMINAL = {"filled", "canceled", "cancelled", "expired", "rejected", "replaced", "done_for_day"}
 # Rejection texts that mean "rejected for a reason OTHER than the time cutoff" — a cutoff probe that
 # hits one of these proves nothing (a broken system would read the same).
@@ -101,6 +125,10 @@ WRONG_REASON = re.compile(
     r"qty|quantity|asset .* not found|account .* blocked", re.I)
 
 # Fixed ET times (spec §8, plus the 19:01 opening-auction job the CHECKED section makes the vehicle).
+T_A1 = dtime(10, 0)
+T_A2 = dtime(10, 5)
+T_A3 = dtime(10, 10)
+T_B1 = dtime(10, 15)                       # no spec time — after A3 and its 20 s observation
 T_CLS = dtime(15, 51)
 T_HELD = dtime(16, 30)
 T_FULL_EXIT = dtime(16, 45)
@@ -111,6 +139,14 @@ T_DAYB_OPEN = dtime(9, 30, 5)
 T_DAYB_FILL_DEADLINE = dtime(9, 40)
 T_DAYB_REFRESH_CHECK = dtime(9, 36, 30)
 LATEST_DAY_A_START = dtime(15, 40)
+
+# Day B tests what Day A QUEUED for it — these are the Day-A steps it DEPENDS on, per position.
+# A FAIL anywhere else (B2's restore timing, B2b, B3's 09:36 snapshot, A3, the A4/A7 cutoff probes,
+# A5, A6a/b/d/e/f, A9b) never wipes the positions Day B needs (#687 2026-10-06).
+DAY_B_DEPENDS_ON = {
+    "p1": ("A1", "A2", "A6"),    # P1 under its stop · its OCO third resting · its 16:45 sale sent
+    "p2": ("B1", "A8", "A9"),    # P2 under its stop · marked at 18:50 (ready) · its opg sale queued
+}
 
 
 class RehearsalRefused(RuntimeError):
@@ -223,12 +259,18 @@ class StepLog:
     def step(self, sid: str, title: str, ok: bool | None, detail: str = "", *,
              status: str | None = None) -> bool:
         st = status or ("PASS" if ok else "FAIL")
-        self.results.append({"step": sid, "title": title, "status": st, "detail": detail})
+        self.results.append({"step": sid, "title": title, "status": st, "detail": detail,
+                             "at": self.now()})
         self._write(f"[{sid}] {st} — {title}" + (f" | {detail}" if detail else ""))
         return st == "PASS"
 
     def failed(self) -> list[dict]:
         return [r for r in self.results if r["status"] == "FAIL"]
+
+    def status_of(self, sid: str) -> str | None:
+        """The LAST recorded status of a step id (None = it never recorded one)."""
+        hits = [r["status"] for r in self.results if r["step"] == sid]
+        return hits[-1] if hits else None
 
 
 # ── The rehearsal (env-agnostic) ───────────────────────────────────────────────────────────────────
@@ -265,6 +307,26 @@ class Rehearsal:
                 return pos
             await self.env.sleep(0.5)
         return pos
+
+    async def _settle(self, ticker: str, qty: float, free: float,
+                      budget_s: float = SETTLE_BUDGET_S):
+        """SPACING: wait until the broker shows `qty` shares held with `free` of them unreserved —
+        the held count has settled — before the next step. Returns the last position read."""
+        pos = None
+        for _ in range(int(budget_s / 0.5) + 1):
+            pos = await self.env.position(ticker)
+            if (pos and abs(float(pos.get("qty") or 0) - qty) < 1e-9
+                    and abs(float(pos.get("qty_available") or 0) - free) < 1e-9):
+                return pos
+            await self.env.sleep(0.5)
+        return pos
+
+    async def _not_before(self, day: date, t: dtime, label: str) -> None:
+        """SPACING: a Day A step runs no earlier than its spec time."""
+        when = self._at(day, t)
+        if self.env.now() < when:
+            self.log.note(f"{label}: waiting for {t.strftime('%H:%M')} ET (spec time)")
+            await self.env.sleep_until(when)
 
     async def _audit_for_trade(self, events, since, trade_id, *, budget_s=0.0, extra=None):
         """Audit rows of `events` since `since` naming this trade (and matching `extra`)."""
@@ -331,11 +393,12 @@ class Rehearsal:
         await env.write_audit(START_EVENT, f"#687 paper rehearsal Day A started ({self.t1}, "
                               f"{self.t2}, probe {self.probe})", {"state": self.state})
         env.install_page_router()
-        log.note("A1-A3 and B1 run NOW (spec 10:00/10:05/10:10) — the steps, not the clock time, are "
-                 "what the rehearsal checks")
+        log.note("A1/A2/A3/B1 run no earlier than 10:00/10:05/10:10/10:15 ET (spec times; B1 has none) "
+                 "and each waits for the previous step's orders to show live at the broker (never "
+                 "pending_new) and its held shares to settle")
 
-        await self._a1_a3()
-        await self._b1_b2()
+        await self._a1_a3(today)
+        await self._b1_b2(today)
         await self._save()
 
         await self._fixed(today, T_CLS, self._a4_cls_probe)
@@ -349,10 +412,30 @@ class Rehearsal:
         log.note(f"pages sent by THIS process (paper prefix + rehearsal tag): "
                  f"{[p['text'][:120] for p in env.pages] or 'none'}; pages from the production "
                  f"stream / 19:01 job carry the system's own paper prefix")
-        if not self.state["p1"].get("sale_id") and not self.state["p2"].get("sale_id"):
-            log.note("no sale is queued for Day B — cleaning up now")
+        broken = self._day_b_broken_chains()
+        intact = [n for n in DAY_B_DEPENDS_ON if n not in broken]
+        why = "; ".join(f"{n.upper()}: {w}" for n, w in broken.items()) or "none"
+        if intact:
+            log.note(f"Day B has {[n.upper() for n in intact]} to test — state LEFT for Day B (its "
+                     f"cleanup flattens everything); positions Day B cannot test: {why}")
+        else:
+            log.note(f"Day B has nothing to test — a step it depends on failed ({why}) — "
+                     f"cleaning up now")
             await self.cleanup()
         return self._summary("Day A")
+
+    def _day_b_broken_chains(self) -> dict[str, str]:
+        """{position: why} for each position whose Day-B dependencies (DAY_B_DEPENDS_ON) did not
+        all PASS, or whose sale was never queued. Empty = Day B can test both positions."""
+        out = {}
+        for name, deps in DAY_B_DEPENDS_ON.items():
+            bad = [f"{s} {self.log.status_of(s) or 'never ran'}" for s in deps
+                   if self.log.status_of(s) != "PASS"]
+            if not bad and not (self.state.get(name) or {}).get("sale_id"):
+                bad = ["no sale queued"]
+            if bad:
+                out[name] = ", ".join(bad)
+        return out
 
     async def _fixed(self, day: date, t: dtime, fn) -> None:
         when = self._at(day, t)
@@ -367,10 +450,11 @@ class Rehearsal:
             self.log.step(getattr(fn, "__name__", "?"), "step raised", False,
                           f"{type(e).__name__}: {e}")
 
-    async def _a1_a3(self) -> None:
+    async def _a1_a3(self, today: date) -> None:
         env, log, p1 = self.env, self.log, self.state["p1"]
         t = self.t1
         try:
+            await self._not_before(today, T_A1, "A1")
             buy = await env.submit(t, 3, "buy", kind="market", tif="day")
             self.state["order_ids"].append(buy["id"])
             if await self._wait_status(buy["id"], {"filled"}) != "filled":
@@ -380,39 +464,50 @@ class Rehearsal:
             stop_px, entry = round(fill * 0.95, 2), round(fill * 0.97, 2)
             stop = await env.submit(t, 3, "sell", kind="stop", tif="gtc", stop=stop_px)
             self.state["order_ids"].append(stop["id"])
-            if await self._wait_status(stop["id"], LIVE_STATUSES) not in LIVE_STATUSES:
-                log.step("A1", f"GTC stop 5% below on {t}", False, "the stop never went live")
+            # SPACING: the stop must be ROUTED (`new`), not `pending_new` — on 10-06 A2 fired 2 s
+            # after this while the stop was pending_new and the production partial exit aborted.
+            st = await self._wait_status(stop["id"], STOP_LIVE, budget_s=SETTLE_BUDGET_S)
+            if st not in STOP_LIVE:
+                log.step("A1", f"GTC stop 5% below on {t}", False,
+                         f"the stop never went live (status {st or 'unreadable'} after "
+                         f"{SETTLE_BUDGET_S:.0f} s)")
                 return
             tid = await env.insert_trade(ticker=t, shares=3, entry=entry, stop=stop_px,
                                          stop_id=stop["id"], alert_date=env.et_today())
             p1.update(trade_id=tid, fill=fill, stop_price=stop_px, entry=entry)
             await self._save()
             row = await env.trade(tid)
-            pos = await self._wait_avail(t, 0.0)
+            pos = await self._settle(t, 3, 0.0)
             ok = (row["account_mode"] == ACCOUNT_MODE and row["signal_type"] == TAG_SIGNAL_TYPE
                   and row.get("partial_taken") is True
                   and pos and float(pos["qty"]) == 3 and float(pos["qty_available"]) == 0)
             log.step("A1", f"buy 3 {t} + GTC stop 5% below; every share reserved", ok,
-                     f"fill ${fill:.2f}, stop ${stop_px} ({stop['id'][:8]}), row #{tid} entry "
+                     f"fill ${fill:.2f}, stop ${stop_px} ({stop['id'][:8]}, {st}), row #{tid} entry "
                      f"${entry} (set 3% under the fill so the breakeven step stays below market), "
                      f"partial_taken {row.get('partial_taken')} (TRUE keeps production's +2R "
                      f"profit trigger off it), position {pos and pos['qty']} / free {pos and pos['qty_available']}")
             if not ok:
                 return
 
+            await self._not_before(today, T_A2, "A2")
             limit = round(fill * 1.5, 2)
             ok = await env.partial_exit(tid, 1, limit)
             rows = await env.order_rows(tid)
             oco = [r for r in rows if r["purpose"] == "partial_exit"]
             oco_id = oco[-1]["alpaca_order_id"] if oco else None
             row = await env.trade(tid)
+            # SPACING: the OCO third and the 2/3 stop are each read once the broker shows it live.
+            if oco_id:
+                await self._wait_status(oco_id, STOP_LIVE, budget_s=SETTLE_BUDGET_S)
+            if row["stop_order_id"]:
+                await self._wait_status(row["stop_order_id"], STOP_LIVE, budget_s=SETTLE_BUDGET_S)
             stop2 = await env.get_order(row["stop_order_id"]) if row["stop_order_id"] else None
             oco_o = await env.get_order(oco_id) if oco_id else None
-            pos = await self._wait_avail(t, 0.0)
+            pos = await self._settle(t, 3, 0.0)
             good = bool(ok and oco_o and stop2
-                        and canon(oco_o["status"]) in LIVE_STATUSES and float(oco_o["qty"]) == 1
+                        and canon(oco_o["status"]) in STOP_LIVE and float(oco_o["qty"]) == 1
                         and abs(float(oco_o.get("limit_price") or 0) - limit) < 0.011
-                        and canon(stop2["status"]) in LIVE_STATUSES and float(stop2["qty"]) == 2
+                        and canon(stop2["status"]) in STOP_LIVE and float(stop2["qty"]) == 2
                         and pos and float(pos["qty_available"]) == 0)
             p1.update(oco_id=oco_id, stop2_id=row["stop_order_id"], limit=limit)
             await self._save()
@@ -425,14 +520,15 @@ class Rehearsal:
             if not good:
                 return
 
+            await self._not_before(today, T_A3, "A3")
             old_id = row["stop_order_id"]
             new_px = round(float(stop2["stop_price"]) * 1.01, 2)   # the LIVE broker stop, +1%
             new = await env.replace_stop_price(tid, old_id, new_px)
-            st = await self._wait_status(new["id"], LIVE_STATUSES)
+            st = await self._wait_status(new["id"], STOP_LIVE, budget_s=SETTLE_BUDGET_S)
             row = await env.trade(tid)
             n = await env.get_order(new["id"])
-            pos = await self._wait_avail(t, 0.0)
-            good = (new["id"] != old_id and st in LIVE_STATUSES and float(n["qty"]) == 2
+            pos = await self._settle(t, 3, 0.0)
+            good = (new["id"] != old_id and st in STOP_LIVE and float(n["qty"]) == 2
                     and abs(float(n["stop_price"]) - new_px) < 0.011
                     and row["stop_order_id"] == new["id"]
                     and pos and float(pos["qty_available"]) == 0)
@@ -457,10 +553,11 @@ class Rehearsal:
         except Exception as e:
             log.step("A1-A3", "P1 setup raised", False, f"{type(e).__name__}: {e}")
 
-    async def _b1_b2(self) -> None:
+    async def _b1_b2(self, today: date) -> None:
         env, log, p2 = self.env, self.log, self.state["p2"]
         t = self.t2
         try:
+            await self._not_before(today, T_B1, "B1")
             buy = await env.submit(t, 4, "buy", kind="market", tif="day")
             self.state["order_ids"].append(buy["id"])
             if await self._wait_status(buy["id"], {"filled"}) != "filled":
@@ -470,23 +567,25 @@ class Rehearsal:
             stop_px = round(fill * 0.95, 2)
             stop = await env.submit(t, 3, "sell", kind="stop", tif="gtc", stop=stop_px)
             self.state["order_ids"].append(stop["id"])
-            await self._wait_status(stop["id"], LIVE_STATUSES)
+            st_stop = await self._wait_status(stop["id"], STOP_LIVE, budget_s=SETTLE_BUDGET_S)
             extra = await env.submit(t, 1, "sell", kind="limit", tif="gtc", limit=round(fill * 1.5, 2))
             self.state["order_ids"].append(extra["id"])
-            await self._wait_status(extra["id"], LIVE_STATUSES)
+            st_extra = await self._wait_status(extra["id"], STOP_LIVE, budget_s=SETTLE_BUDGET_S)
             tid = await env.insert_trade(ticker=t, shares=3, entry=round(fill * 0.97, 2),
                                          stop=stop_px, stop_id=stop["id"],
                                          alert_date=env.et_today())
             p2.update(trade_id=tid, fill=fill, stop_price=stop_px, extra_id=extra["id"])
             await self._save()
-            pos = await self._wait_avail(t, 0.0)
+            pos = await self._settle(t, 4, 0.0)
             row = await env.trade(tid)
             ok = bool(pos and float(pos["qty"]) == 4 and float(pos["qty_available"]) == 0
+                      and st_stop in STOP_LIVE and st_extra in STOP_LIVE
                       and row and row.get("partial_taken") is True)
             log.step("B1", f"P2: 4 {t}, row of 3 under a 3-sh stop + one extra 1-sh resting sell "
                      f"the books do not know (holds a share, not a pending exit)", ok,
-                     f"fill ${fill:.2f}, stop ${stop_px} ({stop['id'][:8]}), extra {extra['id'][:8]}, "
-                     f"row #{tid} partial_taken {row and row.get('partial_taken')}, position {pos and pos['qty']} / free {pos and pos['qty_available']}")
+                     f"fill ${fill:.2f}, stop ${stop_px} ({stop['id'][:8]}, {st_stop}), extra "
+                     f"{extra['id'][:8]} ({st_extra}), row #{tid} partial_taken "
+                     f"{row and row.get('partial_taken')}, position {pos and pos['qty']} / free {pos and pos['qty_available']}")
             if not ok:
                 return
 
@@ -495,33 +594,62 @@ class Rehearsal:
                 ok = await env.full_exit(tid, REASON)
             close = [e for e in spy if e["name"] == "close_position"]
             place = [e for e in spy if e["name"] == "place_stop_order"]
+            # The restore may RETRY while the broker releases the cancelled stop's shares (#687
+            # 2026-10-06): the clock runs from the rejected sale to the placement that WORKED.
+            placed_ok = [e for e in place if e.get("ok")]
             rej = await self._audit_for_trade(["full_exit_rejected"], since, tid)
+            retried = await self._audit_for_trade(["stop_restore_retried"], since, tid)
             row = await env.trade(tid)
             restored = await env.get_order(row["stop_order_id"]) if row["stop_order_id"] else None
-            st = await self._wait_status(row["stop_order_id"], LIVE_STATUSES) if restored else ""
-            dt = (place[0]["t"] - close[0]["t"]) if (close and place) else None
+            st = (await self._wait_status(row["stop_order_id"], STOP_LIVE, budget_s=SETTLE_BUDGET_S)
+                  if restored else "")
+            if restored:
+                restored = await env.get_order(row["stop_order_id"])
+            dt = (placed_ok[-1]["t"] - close[0]["t"]) if (close and placed_ok) else None
             page = [p for p in env.pages if "FAILED" in p["text"] and t in p["text"]]
+            says_restored = bool(page and "Stop RESTORED" in page[-1]["text"]
+                                 and "NOT RESTORED" not in page[-1]["text"])
             good = bool(ok is False and close and close[0]["ok"] is False and rej and restored
-                        and row["stop_order_id"] != stop["id"] and st in LIVE_STATUSES
+                        and row["stop_order_id"] != stop["id"] and st in STOP_LIVE
                         and abs(float(restored["stop_price"]) - stop_px) < 0.011
-                        and float(restored["qty"]) == 3 and dt is not None and dt <= 5.0 and page)
+                        and float(restored["qty"]) == 3 and dt is not None and dt <= 5.0
+                        and says_restored)
             p2.update(restored_stop_id=row["stop_order_id"])
             await self._save()
             log.step("B2", "extra sell holds a share → execute_full_exit rejected → stop restored at "
                      "the same price <= 5 s → page", good,
                      f"returned {ok}; sell error: {close and (close[0].get('error') or '')[:160]}; "
-                     f"full_exit_rejected rows {len(rej)}; restored "
+                     f"full_exit_rejected rows {len(rej)}; restore placements {len(place)} "
+                     f"({len(place) - len(placed_ok)} refused), stop_restore_retried rows "
+                     f"{len(retried)}"
+                     + (f" (attempts {retried[-1]['detail'].get('attempts')}, waited "
+                        f"{retried[-1]['detail'].get('slept_s')} s)" if retried else "")
+                     + "; restored "
                      f"{restored and (restored['id'][:8], st, restored['qty'], restored.get('stop_price'))} "
-                     f"{'%.2f s' % dt if dt is not None else '(no restore call)'} after the rejection; "
-                     f"page: {page[0]['text'][:140] if page else 'NONE'}")
+                     f"{'%.2f s' % dt if dt is not None else '(no successful restore)'} after the "
+                     f"rejection; page: {page[-1]['text'][:140] if page else 'NONE'}")
             silent = await self._audit_for_trade(
                 ["stop_cancel_by_planned_sale_silent"], since, tid, budget_s=30,
                 extra={"cancelled_order_id": stop["id"]})
-            log.step("B2b", "the stream recorded the planned-sale cancel instead of paging "
-                     "'unprotected'", bool(silent),
-                     "stop_cancel_by_planned_sale_silent row found" if silent else
-                     "NO row in 30 s — the paper stream did not take the silent path (it paged, "
-                     "or it is not running for paper)")
+            ptr = await self._audit_for_trade(["stop_order_id_changed"], since, tid)
+            nulled = [r for r in ptr if r["detail"].get("reason") == "cancel_or_reject_null"]
+            repointed = [r for r in ptr
+                         if r["detail"].get("reason") == "restored_after_failed_full_exit"]
+            if not silent and repointed and not nulled:
+                # The restore re-pointed the row BEFORE the stream handled the cancel: the stream
+                # looks the trade up by the cancelled stop's id, found nothing, and so could neither
+                # record nor page. The planned-sale path was not exercised — nothing to prove here.
+                log.step("B2b", "the stream recorded the planned-sale cancel instead of paging "
+                         "'unprotected'", None,
+                         "skipped — the restore re-pointed the row before the stream saw the cancel "
+                         "(no cancel_or_reject_null row): the stream could not match the trade, so "
+                         "it neither recorded nor paged", status="SKIP")
+            else:
+                log.step("B2b", "the stream recorded the planned-sale cancel instead of paging "
+                         "'unprotected'", bool(silent),
+                         "stop_cancel_by_planned_sale_silent row found" if silent else
+                         "NO row in 30 s — the paper stream did not take the silent path (it paged, "
+                         "or it is not running for paper)")
 
             # Make P2 an ordinary 3-sh position again for the opening-auction step — only if the
             # failed exit really left all 4 shares (a sale that went through must not be followed by
@@ -538,10 +666,10 @@ class Rehearsal:
             sell = await env.submit(t, 1, "sell", kind="market", tif="day")
             self.state["order_ids"].append(sell["id"])
             filled = await self._wait_status(sell["id"], {"filled"})
-            pos = await self._wait_avail(t, 0.0)
+            pos = await self._settle(t, 3, 0.0)
             ok = bool(filled == "filled" and pos and float(pos["qty"]) == 3
                       and float(pos["qty_available"]) == 0)
-            p2["ready"] = ok
+            p2["ready"] = ok          # B3's own verdict; A8 re-reads readiness itself at 18:50
             await self._save()
             log.step("B3", f"extra sell cancelled + extra share sold → P2 = 3 {t} under the restored "
                      f"stop", ok, f"position {pos and pos['qty']} / free {pos and pos['qty_available']}")
@@ -551,7 +679,9 @@ class Rehearsal:
             log.step("B1-B3", "P2 raised", False, f"{type(e).__name__}: {e}")
 
     async def _cutoff_probe(self, sid: str, tif: str, valid_from: dtime, valid_to: dtime,
-                            label: str) -> None:
+                            label: str, *, informational: bool = False) -> None:
+        """Send a 1-sh BUY on the flat probe ticker inside the window where only the time cutoff
+        can reject it. `informational` (A4): record what happened as INFO — never a PASS or FAIL."""
         now_t = self.env.now().timetz().replace(tzinfo=None)
         if not (valid_from <= now_t < valid_to):
             self.log.step(sid, label, None, f"skipped — now {now_t:%H:%M:%S} is outside "
@@ -565,18 +695,33 @@ class Rehearsal:
         except Exception as e:
             text = str(e)
             wrong = WRONG_REASON.search(text)
-            self.log.step(sid, label, not wrong,
-                          ("rejected for another reason (proves nothing): " if wrong else
-                           "rejected: ") + text[:300])
+            detail = ("rejected for another reason (proves nothing): " if wrong else
+                      "rejected: ") + text[:300]
+            if informational:
+                self.log.step(sid, label, None, f"at {now_t:%H:%M:%S} {detail}", status="INFO")
+            else:
+                self.log.step(sid, label, not wrong, detail)
             return
         self.state["order_ids"].append(o["id"])
-        await self.env.cancel(o["id"])
+        cancelled = await self.env.cancel(o["id"])
+        if informational:
+            self.log.step(sid, label, None,
+                          f"ACCEPTED at {now_t:%H:%M:%S} ({o['id'][:8]}; cancel "
+                          f"{'sent' if cancelled else 'REFUSED — cleanup takes it'}) — paper "
+                          f"takes this order after the documented 15:50 cutoff; production never "
+                          f"sends a market-on-close order, so this is recorded, not judged",
+                          status="INFO")
+            return
         self.log.step(sid, label, False, f"ACCEPTED ({o['id'][:8]}, cancelled at once) — the "
                       f"cutoff is not where the design assumes")
 
     async def _a4_cls_probe(self) -> None:
+        # INFORMATIONAL since 2026-10-06: paper ACCEPTED this 15:51 market-on-close BUY that day;
+        # production never sends a market-on-close order (the ruled vehicles are the 16:45 market
+        # sell and the 19:01 opening-auction sell), so paper's cutoff is recorded, never a FAIL.
         await self._cutoff_probe("A4", "cls", dtime(15, 50), dtime(16, 0),
-                                 f"15:51 market-on-close BUY 1 {self.probe} → rejected (cutoff)")
+                                 f"15:51 market-on-close BUY 1 {self.probe} — paper's cutoff "
+                                 f"(informational)", informational=True)
 
     async def _a7_opg_probe(self) -> None:
         await self._cutoff_probe("A7", "opg", dtime(9, 28), dtime(19, 0),
@@ -660,11 +805,37 @@ class Rehearsal:
                  f"{len(silent)}" + ("" if silent else " — the paper stream paged or is not "
                                                        "running (check its log)"))
 
+    async def _p2_ready(self) -> tuple[bool, str]:
+        """Is P2 what the opening-auction sale needs, read NOW from the row and the broker: the row
+        open at 3 sh, the broker holding 3 sh, the row's stop live for 3 sh, nothing else resting.
+        (#687 2026-10-06: B3's 09:36 snapshot no longer decides this — a restore that was late but
+        landed, or the watchdog's fallback, leaves P2 ready by evening.)"""
+        p2 = self.state["p2"]
+        row = await self.env.trade(p2["trade_id"])
+        pos = await self.env.position(self.t2)
+        sid = row and row.get("stop_order_id")
+        so = await self.env.get_order(sid) if sid else None
+        others = [o for o in await self.env.open_orders(self.t2) if o["id"] != sid]
+        ok = bool(row and row["status"] == "filled" and float(row["remaining_shares"]) == 3
+                  and pos and float(pos["qty"]) == 3
+                  and so and canon(so["status"]) in STOP_LIVE and float(so["qty"]) == 3
+                  and "stop" in str(so.get("type")) and not others)
+        return ok, (f"row {row and (row['status'], row['remaining_shares'])}, position "
+                    f"{pos and pos['qty']}, row stop {sid and sid[:8]} "
+                    f"{so and (canon(so['status']), so['qty'])}, other open orders "
+                    f"{[(o['id'][:8], o['type'], o['qty']) for o in others]}; B3 said "
+                    f"{'ready' if p2.get('ready') else 'not ready'}")
+
     async def _a8_mark_depth(self) -> None:
         p2 = self.state["p2"]
-        if not p2.get("ready"):
+        if not p2.get("trade_id"):
             self.log.step("A8", "stamp P2 for the opening-auction sale", None,
-                          "skipped — P2 not ready", status="SKIP")
+                          "skipped — P2 was never set up (B1)", status="SKIP")
+            return
+        ready, detail = await self._p2_ready()
+        if not ready:
+            self.log.step("A8", "P2 ready for the opening-auction sale (3 sh under a live 3-sh "
+                          "stop, nothing else resting)", False, detail)
             return
         # The stop the 19:01 sale must cancel is the row's stop AT MARKING TIME — not B2's restored
         # id, which anything replacing the stop between B3 and 19:01 would make stale.
@@ -673,8 +844,9 @@ class Rehearsal:
                                                        "depth_sell_pending_on": self.env.et_today()})
         p2["marked_at"] = self.env.now().isoformat()
         await self._save()
-        self.log.step("A8", f"P2 #{p2['trade_id']} stamped exit_rule='depth', marked to sell at the "
-                      f"next open (the 16:45 decision skips a same-day row; unit-tested)", True)
+        self.log.step("A8", f"P2 #{p2['trade_id']} ready and stamped exit_rule='depth', marked to sell "
+                      f"at the next open (the 16:45 decision skips a same-day row; unit-tested)",
+                      True, detail)
 
     async def _a8_check_depth_sale(self) -> None:
         env, log, p2 = self.env, self.log, self.state["p2"]
@@ -814,10 +986,17 @@ class Rehearsal:
             log.step("D2", f"{name.upper()} {t} sale filled by 09:40", canon(o.get("status")) == "filled",
                      f"{canon(o.get('status'))} at {at} for ${px}; {slip}")
         await self._save()
-        # Rows: P2 closes; P1 stays open at the OCO third.
+        # Rows: P2 closes; P1 stays open at the OCO third. Only a position whose sale Day A QUEUED
+        # is checked — Day A now leaves a position without one for Day B's cleanup (#687 2026-10-06).
+        p1, p2 = self.state["p1"], self.state["p2"]
+        for label, p in (("D3", p2), ("D3b", p1)):
+            if p.get("trade_id") and not p.get("sale_id"):
+                log.step(label, f"{'P2' if p is p2 else 'P1'} row after the fill", None,
+                         "skipped — Day A queued no sale for it", status="SKIP")
+        r1 = r2 = None
         for _ in range(30):
-            r1 = await env.trade(self.state["p1"]["trade_id"]) if self.state["p1"].get("trade_id") else None
-            r2 = await env.trade(self.state["p2"]["trade_id"]) if self.state["p2"].get("trade_id") else None
+            r1 = await env.trade(p1["trade_id"]) if p1.get("sale_id") else None
+            r2 = await env.trade(p2["trade_id"]) if p2.get("sale_id") else None
             if (not r2 or r2["status"] == "closed") and (not r1 or float(r1["remaining_shares"]) == 1):
                 break
             await env.sleep(2.0)
@@ -832,6 +1011,11 @@ class Rehearsal:
     async def _d4_refresh(self, today: date) -> None:
         env, log, p1 = self.env, self.log, self.state["p1"]
         if not p1.get("trade_id"):
+            return
+        if not p1.get("sale_id"):
+            log.step("D4", "the 09:35 refresh did nothing for P1 (covered by the resting OCO)", None,
+                     "skipped — Day A queued no sale for P1, so there is no OCO-only third to check",
+                     status="SKIP")
             return
         await env.sleep_until(self._at(today, T_DAYB_REFRESH_CHECK))
         rows = [r for r in await env.audit_rows(["stop_refresh_ran"], self._at(today, dtime(9, 34)))]
@@ -982,7 +1166,8 @@ class Rehearsal:
     def _summary(self, label: str) -> int:
         fails = self.log.failed()
         self.log.note(f"{label} RESULT: {sum(r['status'] == 'PASS' for r in self.log.results)} PASS, "
-                      f"{len(fails)} FAIL, {sum(r['status'] == 'SKIP' for r in self.log.results)} SKIP"
+                      f"{len(fails)} FAIL, {sum(r['status'] == 'SKIP' for r in self.log.results)} SKIP, "
+                      f"{sum(r['status'] == 'INFO' for r in self.log.results)} INFO"
                       + (f" — FAILED: {[f['step'] for f in fails]}" if fails else ""))
         return 1 if fails else 0
 
@@ -1355,7 +1540,29 @@ class FakeEnv:
 
     def __init__(self, *, start: datetime, held=None, open_orders=None, same_account=False,
                  stream_silent=True, prod_depth_job=True, broken_close_qty=False,
-                 foreign_rows=None, partial_taken_false=False):
+                 foreign_rows=None, partial_taken_false=False, pending_new_s=0.0,
+                 restore_retries=0, stream_missed_cancel=False, cls_accepted=False,
+                 restore_lost_watchdog_s=None, partial_exit_fails=False):
+        # #687 2026-10-06 knobs:
+        #   pending_new_s — a stop / limit sell the script places sits `pending_new` this long
+        #     before the broker shows it `new` (10-06: A2 fired against a pending stop);
+        #   restore_retries — B2's restore is refused this many times (held shares) before it lands;
+        #   stream_missed_cancel — the restore re-points the row before the stream handles the
+        #     cancel, so the stream cannot match the trade (no null, no silent row, no page);
+        #   cls_accepted — paper takes the 15:51 market-on-close order (it did on 10-06);
+        #   restore_lost_watchdog_s — B2's restore never lands (10-06) and the stop-ACK watchdog
+        #     places a fallback this many seconds later;
+        #   partial_exit_fails — the production partial exit returns False (A2 FAILs).
+        self.pending_new_s = float(pending_new_s)
+        self.restore_retries = int(restore_retries)
+        self.stream_missed_cancel = stream_missed_cancel
+        self.cls_accepted = cls_accepted
+        self.restore_lost_watchdog_s = restore_lost_watchdog_s
+        self.partial_exit_fails = partial_exit_fails
+        self.partial_exit_saw = None            # the P1 stop's status when the partial exit ran
+        self.partial_exit_at = None
+        self._timers: list[tuple] = []
+        self._stream_hold: list | None = None
         self.clock = start
         self.pages: list[dict] = []
         self.tripwire_armed = False
@@ -1391,6 +1598,11 @@ class FakeEnv:
         await self.sleep_until(self.clock + timedelta(seconds=s))
 
     async def sleep_until(self, when):
+        for at, fn in sorted((x for x in self._timers if x[0] <= when), key=lambda x: x[0]):
+            self._timers.remove((at, fn))
+            if at > self.clock:
+                self.clock = at
+            fn()
         for t, fn in ((dtime(9, 30), self._open_auction), (dtime(9, 35), self._refresh_0935),
                       (dtime(19, 1), self._depth_job_1901)):
             at = datetime.combine(self.clock.date(), t, tzinfo=_ET)
@@ -1452,22 +1664,32 @@ class FakeEnv:
         self.positions[o["symbol"]] = self.positions.get(o["symbol"], 0) + (
             o["qty"] if o["side"] == "buy" else -o["qty"])
 
+    def _promote(self):
+        """A `pending_new` order the broker has since routed reads `new` (pending_new_s)."""
+        for o in self.orders.values():
+            if o["status"] == "pending_new" and o.get("live_at") and self.clock >= o["live_at"]:
+                o["status"] = "new"
+
     async def position(self, t):
         self._call("get_position")
+        self._promote()
         q = self.positions.get(t, 0.0)
         return {"symbol": t, "qty": q, "qty_available": self._avail(t)} if q else None
 
     async def open_orders(self, t):
         self._call("get_open_orders")
+        self._promote()
         return [dict(o) for o in self.orders.values() if o["symbol"] == t
                 and o["status"] in LIVE_STATUSES]
 
     async def get_order(self, oid):
         self._call("get_order")
+        self._promote()
         return dict(self.orders[oid]) if oid in self.orders else None
 
     async def cancel(self, oid):
         self._call("cancel_order")
+        self._promote()
         o = self.orders.get(oid)
         if not o or o["status"] not in LIVE_STATUSES:
             return False
@@ -1476,7 +1698,10 @@ class FakeEnv:
             self.orders[leg["id"]]["status"] = "canceled"
         if self._spy is not None:
             self._spy.append({"name": "cancel_order", "args": (oid,), "t": self._mono(), "ok": True})
-        self._stream_on_cancel(o)
+        if self._stream_hold is not None:
+            self._stream_hold.append(o)          # the stream sees it after the sale's outcome
+        else:
+            self._stream_on_cancel(o)
         return True
 
     def _mono(self):
@@ -1485,7 +1710,7 @@ class FakeEnv:
     async def submit(self, t, qty, side, *, kind, tif, limit=None, stop=None):
         self._call("submit_order")
         now_t = self.clock.timetz().replace(tzinfo=None)
-        if tif == "cls" and now_t >= dtime(15, 50):
+        if tif == "cls" and now_t >= dtime(15, 50) and not self.cls_accepted:
             raise RuntimeError('{"code":42210000,"message":"market on close orders must be '
                                'submitted before 15:50"}')
         if tif == "opg" and dtime(9, 28) <= now_t < dtime(19, 0):
@@ -1499,6 +1724,9 @@ class FakeEnv:
                       coid=f"apollo_paper_{TAG_SIGNAL_TYPE}_{t}_{self._n}")
         if kind == "market" and tif == "day" and self._hours():
             self._fill(o)
+        elif kind in ("stop", "limit") and self.pending_new_s > 0:
+            o["status"] = "pending_new"
+            o["live_at"] = self.clock + timedelta(seconds=self.pending_new_s)
         elif kind in ("stop", "limit") or tif in ("cls", "opg") or not self._hours():
             o["status"] = "new"
         return dict(o)
@@ -1573,8 +1801,15 @@ class FakeEnv:
                                  "qty": o["qty"], "status": o["status"]})
 
     async def partial_exit(self, tid, shares, limit_price):
+        self._promote()
         r = self.trades[tid]
         old = self.orders[r["stop_order_id"]]
+        self.partial_exit_saw, self.partial_exit_at = old["status"], self.clock
+        # Production aborts when the stop it must replace is not CONFIRMED live
+        # (`_STOP_CONFIRMED_LIVE_STATUSES` has no pending_new) — the 10-06 A2 failure.
+        if self.partial_exit_fails or old["status"] not in {
+                "new", "accepted", "held", "partially_filled", "accepted_for_bidding"}:
+            return False
         old["status"] = "replaced"
         stop2 = self._new(r["ticker"], r["remaining_shares"] - shares, "sell", "stop", "gtc",
                           status="new", stop=old["stop_price"])
@@ -1614,6 +1849,7 @@ class FakeEnv:
         r = self.trades[tid]
         t, stop_id = r["ticker"], r["stop_order_id"]
         self.locked.add(tid)
+        self._stream_hold, refused = [], False
         try:
             pending = [x for x in self.live_orders if x["trade_id"] == tid
                        and x["purpose"] == "partial_exit"
@@ -1636,17 +1872,47 @@ class FakeEnv:
                       "qty": None if self.broken_close_qty else sell_qty,
                       "lock_held": True, "qty_available": self._avail(t)}
                 if qty > self._avail(t) + 1e-9:
+                    refused = True
                     err = (f"insufficient qty available for order (requested: {qty:g}, "
                            f"available: {self._avail(t):g}) held_for_orders")
                     self._spy_ev(**ev, ok=False, error=err)
                     self._audit("full_exit_rejected", {"trade_id": tid})
                     self.clock += timedelta(seconds=1)
                     free = self.positions[t] - self._held(t, exclude=(stop_id,))
-                    restored = self._new(t, min(free, r["remaining_shares"]), "sell", "stop", "gtc",
-                                         status="new", stop=r["stop_price"])
+                    want = min(free, r["remaining_shares"])
+                    if self.restore_lost_watchdog_s is not None:
+                        # 10-06: the ONE restore attempt was refused; the stop-ACK watchdog placed
+                        # a fallback ~40 s later.
+                        self._spy_ev(name="place_stop_order", args=(t,), qty=want, ok=False,
+                                     error=err)
+                        r["stop_order_id"] = None
+
+                        def _watchdog(tid=tid, t=t, want=want, px=r["stop_price"]):
+                            fb = self._new(t, want, "sell", "stop", "gtc", status="new", stop=px)
+                            self.trades[tid]["stop_order_id"] = fb["id"]
+                            self._audit("stop_ack_timeout_remediated", {"trade_id": tid})
+
+                        self._timers.append(
+                            (self.clock + timedelta(seconds=self.restore_lost_watchdog_s), _watchdog))
+                        self._page(f"📄 PAPER ⚠️ Full exit FAILED for {t}: {err}\n🚨 STOP NOT "
+                                   f"RESTORED — position is UNPROTECTED. Manual action required.")
+                        return False
+                    for _ in range(self.restore_retries):   # held: the cancel has not settled
+                        self._spy_ev(name="place_stop_order", args=(t,), qty=want, ok=False,
+                                     error=err)
+                        self.clock += timedelta(seconds=0.5)
+                    restored = self._new(t, want, "sell", "stop", "gtc", status="new",
+                                         stop=r["stop_price"])
                     self._spy_ev(name="place_stop_order", args=(t,), qty=restored["qty"], ok=True)
                     r["stop_order_id"] = restored["id"]
-                    self._page(f"📄 PAPER ⚠️ Full exit FAILED for {t}: {err}\nStop re-placed")
+                    self._audit("stop_order_id_changed", {"trade_id": tid, "new_id": restored["id"],
+                                                          "reason": "restored_after_failed_full_exit"})
+                    if self.restore_retries:
+                        self._audit("stop_restore_retried",
+                                    {"trade_id": tid, "attempts": self.restore_retries + 1,
+                                     "slept_s": 0.5 * self.restore_retries})
+                    self._page(f"📄 PAPER ⚠️ Full exit FAILED for {t}: {err}\nStop RESTORED at "
+                               f"${r['stop_price']:.2f} — position is protected.")
                     return False
                 self._spy_ev(**ev, ok=True)
                 o = self._new(t, qty, "sell", "market", "day", status="accepted")
@@ -1658,6 +1924,12 @@ class FakeEnv:
             return True
         finally:
             self.locked.discard(tid)
+            held, self._stream_hold = self._stream_hold or [], None
+            for o in held:
+                # stream_missed_cancel: the restore re-pointed the row first, so the stream's
+                # lookup by the cancelled stop's id finds nothing — no null, no row, no page.
+                if not (refused and self.stream_missed_cancel):
+                    self._stream_on_cancel(o)
 
     async def full_exit(self, tid, reason):
         return await self._sale(tid, reason, "close")
@@ -1669,6 +1941,9 @@ class FakeEnv:
         planned = {(a["detail"]["trade_id"], a["detail"]["stop_order_id"]) for a in self.audit
                    if a["event_type"] == "planned_sale_stop_cancel"}
         for tid, r in self.trades.items():
+            if (tid, o["id"]) in planned:
+                self._audit("stop_order_id_changed", {"trade_id": tid, "new_id": None,
+                                                      "reason": "cancel_or_reject_null"})
             if (tid, o["id"]) in planned and self.stream_silent:
                 self._audit("stop_cancel_by_planned_sale_silent",
                             {"trade_id": tid, "cancelled_order_id": o["id"]})

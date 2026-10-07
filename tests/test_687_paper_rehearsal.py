@@ -214,10 +214,14 @@ async def test_every_call_in_the_whole_two_day_sequence_is_paper(tmp_path):
 async def test_the_dry_run_passes_end_to_end_and_cleans_up(tmp_path):
     rc, env, log = await _dry(tmp_path)
     assert rc == 0, log.failed()
-    want = {"A1", "A2", "A3", "B1", "B2", "B2b", "B3", "A4", "A5", "A6", "A6a", "A6b", "A6c",
+    want = {"A1", "A2", "A3", "B1", "B2", "B2b", "B3", "A5", "A6", "A6a", "A6b", "A6c",
             "A6d", "A6e", "A6f", "A7", "A8", "A9", "A9b", "D1r", "D1", "D2", "D3", "D3b", "D4", "D5",
             "CLEANUP"}
     assert want <= set(_steps(log, "PASS")), _steps(log)
+    assert _steps(log)["A4"] == "INFO"                 # recorded, never judged (2026-10-06)
+    # Day A left both positions for Day B — exactly one cleanup ran, at the END of Day B.
+    cleanups = [r for r in log.results if r["step"] == "CLEANUP"]
+    assert len(cleanups) == 1 and cleanups[0]["at"].date() == pr.date(2026, 10, 6)
     assert env.trades == {}
     assert all(not q for q in env.positions.values())
     assert not [o for o in env.orders.values() if o["status"] in pr.LIVE_STATUSES]
@@ -345,3 +349,156 @@ async def test_no_rehearsal_row_is_eligible_for_the_production_profit_trigger(tm
 async def test_a_row_left_eligible_for_the_profit_trigger_fails_A1_and_B1(tmp_path):
     rc, _, log = await _dry(tmp_path, cmd="day-a", partial_taken_false=True)
     assert rc == 1 and {"A1", "B1"} <= set(_steps(log, "FAIL")), _steps(log)
+
+
+# ── #687 2026-10-06 (i) SPACING: never fire a step against a pending_new order ───────────────────
+
+async def _day_a_from(tmp_path, start, **kw):
+    env = pr.FakeEnv(start=start, **kw)
+    log = pr.StepLog(str(tmp_path / "r.log"), env.now)
+    rc = await pr.Rehearsal(env, log, TICKERS).day_a()
+    return rc, env, log
+
+
+MON_0920 = pr.datetime(2026, 10, 5, 9, 20, tzinfo=pr._ET)
+MON_1300 = pr.datetime(2026, 10, 5, 13, 0, tzinfo=pr._ET)   # past the spec times: back to back
+
+
+@pytest.mark.asyncio
+async def test_a2_waits_until_the_p1_stop_is_routed_not_pending_new(tmp_path):
+    """10-06: A2 fired 2 s after A1 while A1's stop was `pending_new`; the production partial exit
+    read it as not live and aborted. Started past the spec times the steps run back to back — and
+    every stop the script places still waits for `new` before the next step."""
+    rc, env, log = await _day_a_from(tmp_path, MON_1300, pending_new_s=3.0)
+    assert env.partial_exit_saw == "new", env.partial_exit_saw
+    assert _steps(log)["A2"] == "PASS" and _steps(log)["B1"] == "PASS", _steps(log)
+    assert rc == 0, log.failed()
+
+
+@pytest.mark.asyncio
+async def test_the_pending_new_check_discriminates(tmp_path, monkeypatch):
+    """Negative control: waiting on the OLD set (which includes pending_new) reproduces 10-06's A2."""
+    monkeypatch.setattr(pr, "STOP_LIVE", pr.LIVE_STATUSES)
+    rc, env, log = await _day_a_from(tmp_path, MON_1300, pending_new_s=3.0)
+    assert env.partial_exit_saw == "pending_new"
+    assert _steps(log)["A2"] == "FAIL"
+
+
+@pytest.mark.asyncio
+async def test_the_morning_steps_run_no_earlier_than_their_spec_times(tmp_path):
+    rc, env, log = await _day_a_from(tmp_path, MON_0920)
+    at = {r["step"]: r["at"].timetz().replace(tzinfo=None) for r in log.results}
+    assert at["A1"] >= pr.T_A1 and at["A2"] >= pr.T_A2 and at["A3"] >= pr.T_A3, at
+    assert at["B1"] >= pr.T_B1, at
+    assert env.partial_exit_at.timetz().replace(tzinfo=None) >= pr.T_A2
+    assert rc == 0, log.failed()
+
+
+# ── B2 with the restore retry (#687 2026-10-06, the order_manager fix) ──────────────────────────
+
+@pytest.mark.asyncio
+async def test_b2_passes_when_the_restore_lands_on_a_retry(tmp_path):
+    rc, _, log = await _dry(tmp_path, cmd="day-a", restore_retries=3)
+    b2 = [r for r in log.results if r["step"] == "B2"][0]
+    assert b2["status"] == "PASS", b2
+    assert "4 (3 refused)" in b2["detail"] and "stop_restore_retried rows 1" in b2["detail"], b2
+
+
+@pytest.mark.asyncio
+async def test_b2_still_fails_when_the_restore_never_lands(tmp_path):
+    """The 10-06 shape: one refused restore, the watchdog's fallback 45 s later."""
+    rc, _, log = await _dry(tmp_path, cmd="day-a", restore_lost_watchdog_s=45)
+    assert _steps(log)["B2"] == "FAIL" and rc == 1
+
+
+@pytest.mark.asyncio
+async def test_b2b_skips_when_the_restore_repointed_the_row_before_the_stream_saw_the_cancel(tmp_path):
+    """A restore that lands at the moment the cancel settles can re-point the row before the stream
+    handles the cancel; the stream (lookup by the cancelled stop's id) then matches nothing and can
+    neither record nor page — B2b has nothing to prove, so it SKIPs instead of failing."""
+    rc, _, log = await _dry(tmp_path, cmd="day-a", restore_retries=2, stream_missed_cancel=True)
+    b2b = [r for r in log.results if r["step"] == "B2b"][0]
+    assert b2b["status"] == "SKIP" and "re-pointed" in b2b["detail"], b2b
+    assert rc == 0, log.failed()
+
+
+# ── (ii) A4 is informational ────────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_a4_records_an_accepted_market_on_close_as_info_never_fail(tmp_path):
+    rc, env, log = await _dry(tmp_path, cmd="day-a", cls_accepted=True)
+    a4 = [r for r in log.results if r["step"] == "A4"][0]
+    assert a4["status"] == "INFO" and "ACCEPTED" in a4["detail"], a4
+    assert rc == 0 and "A4" not in [f["step"] for f in log.failed()]
+    probe = [o for o in env.orders.values() if o["symbol"] == "PG" and o["tif"] == "cls"]
+    assert probe and probe[0]["status"] == "canceled"
+
+
+@pytest.mark.asyncio
+async def test_a4_records_a_rejected_market_on_close_as_info(tmp_path):
+    rc, _, log = await _dry(tmp_path, cmd="day-a")
+    a4 = [r for r in log.results if r["step"] == "A4"][0]
+    assert a4["status"] == "INFO" and "rejected" in a4["detail"], a4
+
+
+@pytest.mark.asyncio
+async def test_a7_is_still_judged(tmp_path):
+    rc, _, log = await _dry(tmp_path, cmd="day-a")
+    assert _steps(log)["A7"] == "PASS"
+
+
+# ── (iii) the end of Day A cleans up only when Day B has nothing left to test ────────────────────
+
+def _day_a_cleaned(log):
+    return [r for r in log.results if r["step"] == "CLEANUP" and r["at"].date() == pr.date(2026, 10, 5)]
+
+
+@pytest.mark.asyncio
+async def test_the_10_06_shape_leaves_p2_for_day_b(tmp_path):
+    """10-06: B2 and B3 FAILED on the restore's timing, but the watchdog's fallback stop left P2
+    3 sh under a live stop by evening. A8 re-reads that itself → P2 is marked, its opening-auction
+    sale queues, and Day A no longer wipes it."""
+    rc, env, log = await _dry(tmp_path, cmd="day-a", restore_lost_watchdog_s=45)
+    st = _steps(log)
+    assert st["B2"] == "FAIL" and st["B3"] == "FAIL", st
+    assert st["A8"] == "PASS" and st["A9"] == "PASS", st
+    assert not _day_a_cleaned(log) and len(env.trades) == 2
+    env.clock = pr.datetime(2026, 10, 6, 9, 0, tzinfo=pr._ET)
+    await pr.Rehearsal(env, log, TICKERS).day_b()
+    assert _steps(log)["D3"] == "PASS"             # P2's opening-auction sale filled, row closed
+
+
+@pytest.mark.asyncio
+async def test_a_broken_p1_chain_leaves_p2_and_day_b_skips_p1s_checks(tmp_path):
+    rc, env, log = await _dry(tmp_path, partial_exit_fails=True)
+    st = _steps(log)
+    assert st["A2"] == "FAIL" and st["A9"] == "PASS", st
+    assert not _day_a_cleaned(log)
+    assert st["D3"] == "PASS" and st["D3b"] == "SKIP" and st["D4"] == "SKIP", st
+    assert st["CLEANUP"] == "PASS" and env.trades == {}
+    assert {f["step"] for f in log.failed()} == {"A2"}, log.failed()
+
+
+@pytest.mark.asyncio
+async def test_day_a_cleans_up_when_every_position_lost_a_dependency(tmp_path):
+    rc, env, log = await _dry(tmp_path, cmd="day-a", partial_taken_false=True)
+    assert {"A1", "B1"} <= set(_steps(log, "FAIL"))
+    assert _day_a_cleaned(log) and env.trades == {}
+    with open(log.path, encoding="utf-8") as fh:
+        note = [line for line in fh if "Day B has nothing to test" in line]
+    assert note and "P1: A1 FAIL" in note[0] and "P2: B1 FAIL" in note[0], note
+
+
+def test_a_failure_outside_the_dependencies_breaks_no_chain(tmp_path):
+    env = pr.FakeEnv(start=pr.datetime(2026, 10, 5, 13, 0, tzinfo=pr._ET))
+    log = pr.StepLog(str(tmp_path / "r.log"), env.now)
+    reh = pr.Rehearsal(env, log, TICKERS)
+    reh.state = {"p1": {"sale_id": "s1"}, "p2": {"sale_id": "s2"}}
+    for sid in ("A1", "A2", "A6", "B1", "A8", "A9"):
+        log.step(sid, sid, True)
+    for sid in ("A3", "A5", "A6b", "B2", "B2b", "B3", "A7", "A9b"):
+        log.step(sid, sid, False)
+    log.step("A4", "A4", None, status="INFO")
+    assert reh._day_b_broken_chains() == {}
+    log.step("A9", "A9 again", False)                  # the LAST status of a step decides
+    assert set(reh._day_b_broken_chains()) == {"p2"}

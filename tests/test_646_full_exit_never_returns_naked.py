@@ -104,8 +104,12 @@ def _wire(monkeypatch, *, close_raises, available=SHARES, place_ok=True,
     monkeypatch.setattr(om.alpaca, "get_all_positions", all_positions)
     monkeypatch.setattr(om.alpaca, "get_open_orders", orders)
     monkeypatch.setattr(om, "_EXIT_RELEASE_SLEEP_S", 0)
+    # #687 2026-10-06: a restore refused for held shares now waits up to ~15 s for the release —
+    # zero the poll sleep so a persistent refusal here costs no wall-clock time.
+    monkeypatch.setattr(om, "_RESTORE_RETRY_SLEEP_S", 0)
     return {"cancel": cancel, "close": close, "place": place, "pos": position, "sent": sent,
-            "all_pos": all_positions, "orders": orders, "executed": executed, "events": events}
+            "all_pos": all_positions, "orders": orders, "executed": executed, "events": events,
+            "trade": trade}
 
 
 @pytest.mark.asyncio

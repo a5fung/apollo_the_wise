@@ -5159,9 +5159,157 @@ async def _sell_at_market_for_refused_stop(
     return order, qty
 
 
+# ⚖ #687 — operator ruling 2026-10-06 ("aligned with rec", then "Ok, move it to Wednesday"): the
+# failed-exit restore WAITS for the broker to release the cancelled stop's shares instead of giving
+# up on its first refusal. Paper rehearsal Day A 2026-10-06, step B2 (PEP, 4 sh: a 3-sh stop for
+# the row + one extra 1-sh resting sell): `execute_full_exit` cancelled the stop at 09:35:43; the
+# broker confirmed the cancel only at 09:35:50; `_await_shares_released` gave up after 5 s; the sale
+# was refused (`held_for_orders 4`) and the ONE restore attempt, at 09:35:48, was refused the same
+# way — the cancelled stop's shares were not released yet. The page said STOP NOT RESTORED and the
+# stop-ACK watchdog placed a fallback at 09:36:30: ~40 s with no stop.
+# A refusal that says the shares are still HELD is now retried: every 0.5 s, up to 30 polls (~15 s),
+# re-read the broker position and re-place the SAME stop (same price, same count) once the broker
+# shows that many shares free. Every other refusal and every first attempt that succeeds are
+# today's path, untouched; the window running out is today's RESTORE_FAILED and today's page.
+_RESTORE_RETRY_POLLS = 30          # ~15 s in all
+_RESTORE_RETRY_SLEEP_S = 0.5
+# What a "the shares are still held" refusal says. NOT the bare code 40310000: Alpaca uses that code
+# for refusals that time cannot cure too (the same Day A's opening-auction probe — "opg orders must
+# be submitted after 7:00pm" — carried it), and waiting on those would only delay the page.
+_SHARES_HELD_SIGNATURES = ("insufficient qty", "held_for_orders")
+STOP_RESTORE_RETRIED_EVENT = "stop_restore_retried"         # a retry PLACED the stop
+STOP_RESTORE_RETRY_ENDED_EVENT = "stop_restore_retry_ended"  # a retry ended without placing one
+_RESTORE_SITE = "order_manager.restore_after_failed_exit"
+
+
+def _is_shares_held_refusal(exc: BaseException) -> bool:
+    """True iff the broker refused the stop because the shares are still reserved by orders
+    (`insufficient qty available … held_for_orders N`) — the one refusal waiting can cure."""
+    msg = str(exc).lower()
+    return any(sig in msg for sig in _SHARES_HELD_SIGNATURES)
+
+
+class _RestoreRetry(NamedTuple):
+    """How `_retry_restore_while_shares_held` ended. `outcome` None = it placed `placed`."""
+    outcome: "str | None"
+    placed: "dict | None"
+    attempts: int          # placement attempts, the first (refused) one included
+    polls: int             # broker reads, one per _RESTORE_RETRY_SLEEP_S sleep
+    elapsed_s: float       # wall clock from the first refusal to the end
+    last_error: str
+
+
+async def _audit_restore_retry(
+    event: str, trade_id: int, ticker: str, account_mode: str, *, stop_price: float, qty: int,
+    retry: "_RestoreRetry", cancelled_stop_id: "str | None", outcome: str,
+    order_id: "str | None" = None,
+) -> None:
+    """The ONE row a retried restore writes — `stop_restore_retried` when it placed the stop (the
+    live check's positive observable), `stop_restore_retry_ended` when it did not (window spent, a
+    different refusal, a flat broker, the price through the stop): attempts, polls and how long."""
+    slept_s = round(retry.polls * _RESTORE_RETRY_SLEEP_S, 2)
+    if event == STOP_RESTORE_RETRIED_EVENT:
+        summary = (f"{ticker}: stop RESTORED at ${stop_price:.2f} for {qty} sh on attempt "
+                   f"{retry.attempts}, after waiting {slept_s:.1f}s for the broker to release the "
+                   f"cancelled stop's shares")
+    else:
+        summary = (f"{ticker}: stop restore retry ended '{outcome}' after {retry.attempts} "
+                   f"attempt(s) and {slept_s:.1f}s of waiting — {retry.last_error[:160]}")
+    await log_audit_event(
+        event, summary,
+        json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                    "stop_price": stop_price, "qty": int(qty), "outcome": outcome,
+                    "attempts": retry.attempts, "polls": retry.polls, "slept_s": slept_s,
+                    "elapsed_s": retry.elapsed_s,
+                    "window_s": _RESTORE_RETRY_POLLS * _RESTORE_RETRY_SLEEP_S,
+                    "cancelled_stop_id": cancelled_stop_id, "order_id": order_id,
+                    "site": _RESTORE_SITE, "last_error": retry.last_error[:300]}),
+    )
+
+
+async def _retry_restore_while_shares_held(
+    trade_id: int, ticker: str, shares: float, stop_price: float, account_mode: str, *,
+    qty: int, first_error: BaseException, cancelled_stop_id: "str | None", reason: str,
+    signal_type: "str | None",
+) -> _RestoreRetry:
+    """The broker refused the restore because the cancelled stop's shares are still HELD (#687,
+    ruling 2026-10-06). Poll the position every `_RESTORE_RETRY_SLEEP_S`, at most
+    `_RESTORE_RETRY_POLLS` times; once it shows `qty` shares free, place the SAME stop again.
+
+    One broker read per poll (`get_position`'s `qty_available` — the count the broker's own refusal
+    is checked against). A poll whose read comes back empty asks `_broker_free_qty_for_restore`
+    (same `exclude_ids`) and honours its answers exactly as the restore's own pre-place branches
+    do: FLAT → nothing placed (the same `restore_skipped_broker_flat` row), every share held by
+    OTHER live orders → COVERED, unreadable → keep waiting. A re-attempt refused because the price
+    is already through the stop takes ruling (3)'s sale, as the first attempt would; refused for
+    held shares → keep waiting; refused for anything else → FAILED. The window running out →
+    FAILED (the caller pages exactly as today).
+
+    Bounded by the poll COUNT, not the wall clock, so a patched or fast `asyncio.sleep` can never
+    spin it forever. The caller holds the per-trade lock throughout (≤ ~15 s more than before)."""
+    started = time.monotonic()
+    attempts, polls, last_error = 1, 0, str(first_error)
+
+    def _end(outcome: "str | None", placed: "dict | None" = None) -> _RestoreRetry:
+        return _RestoreRetry(outcome, placed, attempts, polls,
+                             round(time.monotonic() - started, 2), last_error)
+
+    logger.warning(
+        f"_restore_stop_after_failed_exit: {ticker} — the broker still holds the cancelled stop's "
+        f"shares; waiting up to {_RESTORE_RETRY_POLLS * _RESTORE_RETRY_SLEEP_S:.0f}s to re-place "
+        f"the {qty}-sh stop at ${stop_price:.2f}")
+    while polls < _RESTORE_RETRY_POLLS:
+        polls += 1
+        await asyncio.sleep(_RESTORE_RETRY_SLEEP_S)
+        try:
+            pos = await alpaca.get_position(ticker, account_mode=account_mode)
+        except Exception as e:   # loud-ok: an unreadable poll means "not yet"; the window bounds it
+            logger.warning(f"_restore_stop_after_failed_exit: {ticker} position poll failed — {e}")
+            pos = None
+        if pos is None:
+            free, source = await _broker_free_qty_for_restore(
+                ticker, account_mode, shares, exclude_ids=(cancelled_stop_id,))
+            if source == BROKER_FLAT_SOURCE:
+                await _audit_restore_skipped_broker_flat(
+                    trade_id, ticker, account_mode, stop_price=stop_price, site=_RESTORE_SITE,
+                    fallback_qty=shares)
+                return _end(RESTORE_FLAT)
+            if source == "broker" and free <= 0:
+                logger.warning(f"_restore_stop_after_failed_exit: {ticker} — the broker shows no "
+                               f"free shares (live resting orders hold them); no stop re-placed")
+                return _end(RESTORE_COVERED)
+            continue
+        if float(pos.get("qty_available") or 0) < qty:
+            continue                     # still held: the cancel has not settled at the broker
+        attempts += 1
+        try:
+            placed = await alpaca.place_stop_order(
+                ticker, qty, stop_price, account_mode=account_mode,
+                client_order_id=alpaca.make_client_order_id(
+                    account_mode, signal_type or "unknown", ticker))
+        except Exception as e:   # loud-ok: classified below; every end is logged and audited
+            last_error = str(e)
+            logger.error(f"_restore_stop_after_failed_exit: re-placing {ticker} stop FAILED again "
+                         f"(attempt {attempts}) — {e}")
+            if _is_stop_above_market(e):
+                sold = await _sell_free_shares_after_stop_breach(
+                    trade_id, ticker, qty, reason, account_mode, stop_price=stop_price,
+                    site=_RESTORE_SITE, error=str(e))
+                return _end(RESTORE_SOLD if sold else RESTORE_FAILED)
+            if _is_shares_held_refusal(e):
+                continue
+            return _end(RESTORE_FAILED)
+        return _end(None, placed)
+    logger.error(f"_restore_stop_after_failed_exit: {ticker} — the broker still held the shares "
+                 f"after {polls * _RESTORE_RETRY_SLEEP_S:.1f}s ({attempts} attempt(s)); the stop "
+                 f"is NOT restored")
+    return _end(RESTORE_FAILED)
+
+
 async def _restore_stop_after_failed_exit(
     trade_id: int, ticker: str, shares: float, stop_price: "float | None", account_mode: str,
     *, cancelled_stop_id: "str | None" = None, reason: str = "stop_hit",
+    signal_type: "str | None" = None,
 ) -> str:
     """Put back the protective stop a failed full exit already cancelled.
 
@@ -5186,6 +5334,13 @@ async def _restore_stop_after_failed_exit(
     The row is NOT resolved here (see `_broker_free_qty_for_restore` — the sync may not close it;
     since ruling (a) the after-close coverage repair reads the broker too and places nothing on a
     flat one); the page says so. An UNREADABLE broker still restores from `shares`.
+
+    ⚖ #687 ruling 2026-10-06: a placement refused because the cancelled stop's shares are still
+    HELD (`_is_shares_held_refusal`) is retried while the broker releases them —
+    `_retry_restore_while_shares_held`, ≤ ~15 s; `stop_restore_retried` /
+    `stop_restore_retry_ended` record how it went. A first attempt that succeeds, and every other
+    refusal, take exactly the path above. `signal_type` names the strategy on the retry's
+    mode-bound client order id only.
     """
     if not stop_price:
         logger.error(f"_restore_stop_after_failed_exit: {ticker} has no stop price to restore")
@@ -5207,6 +5362,7 @@ async def _restore_stop_after_failed_exit(
         logger.error(f"_restore_stop_after_failed_exit: {ticker} has no share count to restore "
                      f"({source})")
         return RESTORE_FAILED
+    retry: "_RestoreRetry | None" = None
     try:
         placed = await alpaca.place_stop_order(
             ticker, qty, float(stop_price), account_mode=account_mode)
@@ -5215,12 +5371,29 @@ async def _restore_stop_after_failed_exit(
         if _is_stop_above_market(e):
             sold = await _sell_free_shares_after_stop_breach(
                 trade_id, ticker, qty, reason, account_mode, stop_price=float(stop_price),
-                site="order_manager.restore_after_failed_exit", error=str(e))
+                site=_RESTORE_SITE, error=str(e))
             if sold:
                 return RESTORE_SOLD
-        return RESTORE_FAILED
+            return RESTORE_FAILED
+        if not _is_shares_held_refusal(e):
+            return RESTORE_FAILED
+        retry = await _retry_restore_while_shares_held(
+            trade_id, ticker, shares, float(stop_price), account_mode, qty=qty, first_error=e,
+            cancelled_stop_id=cancelled_stop_id, reason=reason, signal_type=signal_type)
+        if retry.outcome is not None:
+            await _audit_restore_retry(
+                STOP_RESTORE_RETRY_ENDED_EVENT, trade_id, ticker, account_mode,
+                stop_price=float(stop_price), qty=qty, retry=retry,
+                cancelled_stop_id=cancelled_stop_id, outcome=retry.outcome)
+            return retry.outcome
+        placed = retry.placed
     new_id = (placed or {}).get("id")
     if not new_id:
+        if retry is not None:
+            await _audit_restore_retry(
+                STOP_RESTORE_RETRY_ENDED_EVENT, trade_id, ticker, account_mode,
+                stop_price=float(stop_price), qty=qty, retry=retry,
+                cancelled_stop_id=cancelled_stop_id, outcome=RESTORE_FAILED)
         return RESTORE_FAILED
     try:
         await set_stop_order_id(trade_id, new_id, reason="restored_after_failed_full_exit",
@@ -5230,6 +5403,11 @@ async def _restore_stop_after_failed_exit(
                      f"pointer write failed — {e}")
     logger.warning(f"_restore_stop_after_failed_exit: {ticker} stop RESTORED at ${stop_price} "
                    f"for {qty} sh ({new_id}, sized from {source}) after a failed full exit")
+    if retry is not None:
+        await _audit_restore_retry(
+            STOP_RESTORE_RETRIED_EVENT, trade_id, ticker, account_mode,
+            stop_price=float(stop_price), qty=qty, retry=retry,
+            cancelled_stop_id=cancelled_stop_id, outcome=RESTORE_PLACED, order_id=new_id)
     return RESTORE_PLACED
 
 
@@ -5565,7 +5743,8 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
                 logger.warning(f"full_exit_rejected audit write failed for {ticker}: {_ae}")
             restored = await _restore_stop_after_failed_exit(
                 trade_id, ticker, cancelled_stop_shares, cancelled_stop_price, account_mode,
-                cancelled_stop_id=trade.get("stop_order_id"), reason=reason)
+                cancelled_stop_id=trade.get("stop_order_id"), reason=reason,
+                signal_type=trade.get("signal_type"))
             # #647: HTML layer — `{e}` is Alpaca's JSON (`existing_qty`, `held_for_orders`), which
             # 400'd the legacy-Markdown send of the 2026-09-11 OKTA page; the plain retry then
             # stripped the JSON's underscores. The page must land first time, intact.
@@ -5750,7 +5929,7 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
                 logger.warning(f"full_exit_rejected audit write failed for {ticker}: {_ae}")
             restored = await _restore_stop_after_failed_exit(
                 trade_id, ticker, float(sell_qty), stop_price, account_mode,
-                cancelled_stop_id=stop_id, reason=reason)
+                cancelled_stop_id=stop_id, reason=reason, signal_type=trade.get("signal_type"))
             await _clear_depth_sell_mark(trade_id)
             await send_telegram_message(md_to_html(
                 f"{mode_prefix(account_mode)}⚠️ Opening-auction sale FAILED for {ticker}: {e}"
