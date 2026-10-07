@@ -36,6 +36,25 @@ only when no non-rehearsal paper row or foreign order exists on it, delete our r
 signal_type (SET LOCAL mi.allow_trade_delete), then verify.
 
 THE STEPS (spec times, ET):
+  R1  09:35:30  INFORMATIONAL — never a FAIL, never in Day A's tally, never decides Day A's cleanup,
+      never a Day B dependency (operator "Ok", 2026-10-06). The 10-06 B1→B2 TIMING on a DEDICATED
+      ticker (default CL, `--r1-ticker`; checked like the others at the start AND again right before
+      R1 places — not held, no open orders, no trade rows — a ticker that fails is SKIPPED as INFO,
+      the rest of Day A runs):
+      4 sh at market, then at once — NO wait for routing — the 3-sh GTC stop, the extra 1-sh resting
+      sell and the row (exactly as B1), and execute_full_exit. On 10-06 that shape had the broker
+      confirm the stop's cancel 7 s after the request, so the sale AND the restore's first attempt
+      were refused held_for_orders — the condition the stop-restore retry exists for, which B2's
+      routed spacing will most likely never produce. Records which path ran (`stop_restore_retried`
+      → "retry PROVEN live"; a first attempt that worked → "retry NOT exercised";
+      `stop_restore_retry_ended` + its outcome), any STOP NOT RESTORED page, any
+      `stop_ack_timeout_remediated` row, and the times of the cancel request, the broker's cancel
+      confirmation and the restore. R1f then leaves the ticker FLAT before A1 (under the trade lock,
+      so the stop-ACK watchdog cannot re-protect the row mid-flatten): cancel the restored stop and
+      the extra sell, sell every share at market, wait until the broker shows no position and no
+      open order, delete the row as cleanup does. A flatten that fails is INFO too; `cleanup` covers
+      R1's ticker and order ids (kept in the state) and reports them as INFO `R1c`. The R1 row is
+      one more open paper row for ~1-2 minutes inside the ORB window.
   A1  10:00  P1 = 3 sh of TICKER_P1, GTC stop 5% below the fill → assert every share reserved.
   A2  10:05  execute_partial_exit(limit far above) → OCO third resting, 2/3 stop live, all reserved.
   A3  10:10  price-only replace of the 2/3 stop +1% → new id, still covering.
@@ -76,7 +95,8 @@ their SPEC times 10:00/10:05/10:10/10:15 ET (B1 has no spec time; 10:15 follows 
 09:31-09:45 ORB window and the 09:35 stop refresh — AND every order a step places is waited on
 until the broker shows it live (`new` for a stop or a resting sell, `filled` for a market buy;
 never `pending_new`) and the position's held count has settled, before the next step runs. Started
-after 10:15, the steps run back to back, still gated on those reads.
+after 10:15, the steps run back to back, still gated on those reads. R1 alone is NOT spaced — its
+whole point is the unrouted stop — and it runs (and flattens) before A1 whatever the start time.
 
 END OF DAY A (#687 2026-10-06 — a FAIL in a step Day B does not need wiped Day B's positions):
 Day B tests what Day A QUEUED. It depends on DAY_B_DEPENDS_ON — P1: A1, A2, A6 (its 16:45 sale);
@@ -86,7 +106,7 @@ every position has a failed dependency — Day B would have nothing to test. Oth
 left for Day B, whose own cleanup flattens everything in market hours; Day B skips the checks of a
 position whose sale was never queued.
 
-STATUSES: PASS · FAIL · SKIP (by design) · INFO (recorded, never counted as a failure — A4).
+STATUSES: PASS · FAIL · SKIP (by design) · INFO (recorded, never counted as a failure — A4, R1/R1f/R1c).
 EXIT CODES: 0 every step PASS/SKIP/INFO · 1 a FAIL · 2 refused / could not run.
 """
 from __future__ import annotations
@@ -107,6 +127,7 @@ _ET = ZoneInfo("America/New_York")
 ACCOUNT_MODE = "paper"                     # literal, threaded to every call — NEVER live
 TAG_SIGNAL_TYPE = "integration_test"       # the paper-validation scripts' row tag
 DEFAULT_TICKERS = ("KO", "PEP", "PG")      # P1, P2, cutoff probe — liquid large-caps
+DEFAULT_R1_TICKER = "CL"                   # R1's own liquid large-cap — no other step uses it
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATE_EVENT = "paper_rehearsal_687_state"
 START_EVENT = "paper_rehearsal_687_start"
@@ -153,6 +174,14 @@ T_DAYB_OPEN = dtime(9, 30, 5)
 T_DAYB_FILL_DEADLINE = dtime(9, 40)
 T_DAYB_REFRESH_CHECK = dtime(9, 36, 30)
 LATEST_DAY_A_START = dtime(15, 40)
+# R1 (informational): 10-06's B2 ran at 09:35:43; 09:35:30 is after the 09:35:00 stop refresh.
+T_R1 = dtime(9, 35, 30)
+R1_STREAM_WAIT_S = 10.0       # for the stream's row on the cancel (its confirmation, as seen here)
+R1_WATCHDOG_WAIT_S = 60.0     # a restore that did not land: the stop-ACK watchdog (fill + 30 s, 30 s tick)
+R1_FLAT_BUDGET_S = 30.0       # for the shares to free / the broker to show the ticker flat
+# The stream's own rows on a stop cancel (`stop_order_id_changed` only with a cancel_or_reject_* reason).
+R1_STREAM_EVENTS = ("stop_cancel_by_planned_sale_silent", "stop_pointer_repair_deferred",
+                    "stop_order_id_changed", "dead_stop_price_preserved")
 
 # Day B tests what Day A QUEUED for it — these are the Day-A steps it DEPENDS on, per position.
 # A FAIL anywhere else (B2's restore timing, B2b, B3's 09:36 snapshot, A3, the A4/A7 cutoff probes,
@@ -177,6 +206,35 @@ def canon(status) -> str:
 
 def _num(v):
     return float(v) if v is not None else None
+
+
+def _ts(x) -> datetime | None:
+    """A timestamp (datetime or ISO string) as an aware datetime, or None."""
+    if x is None or x == "":
+        return None
+    if isinstance(x, str):
+        try:
+            x = datetime.fromisoformat(x)
+        except ValueError:
+            return None
+    if not isinstance(x, datetime):
+        return None
+    return x if x.tzinfo is not None else x.replace(tzinfo=_ET)
+
+
+def _hms(x) -> str:
+    """HH:MM:SS.d ET for a log line ('?' when unknown)."""
+    t = _ts(x)
+    if t is None:
+        return "?"
+    t = t.astimezone(_ET)
+    return t.strftime("%H:%M:%S") + f".{t.microsecond // 100000}"
+
+
+def _gap(a, b) -> str:
+    """' (+N.N s)' from a to b, or '' when either is unknown."""
+    ta, tb = _ts(a), _ts(b)
+    return f" ({(tb - ta).total_seconds():+.1f} s)" if ta and tb else ""
 
 
 # ── Safety guards (pure, unit-tested) ──────────────────────────────────────────────────────────────
@@ -290,10 +348,12 @@ class StepLog:
 # ── The rehearsal (env-agnostic) ───────────────────────────────────────────────────────────────────
 
 class Rehearsal:
-    def __init__(self, env, log: StepLog, tickers=DEFAULT_TICKERS):
+    def __init__(self, env, log: StepLog, tickers=DEFAULT_TICKERS, r1_ticker=DEFAULT_R1_TICKER):
         self.env = env
         self.log = log
         self.t1, self.t2, self.probe = tickers
+        self.r1_ticker = (r1_ticker or "").strip().upper() or None
+        self.r1_skip: str | None = None        # set by Day A's preflight: why R1 will not run
         self.state: dict = {}
 
     # ── helpers ──
@@ -383,6 +443,37 @@ class Rehearsal:
                                        f"(ids {ours}) — run `cleanup` first")
         self.log.note(f"TICKERS OK: P1={self.t1} P2={self.t2} probe={self.probe} — not held, no "
                       f"open orders, no trade rows in the paper account")
+        self.r1_skip = await self._r1_ticker_check()
+        self.log.note(f"R1 TICKER OK: {self.r1_ticker} — not held, no open orders, no trade rows "
+                      f"in the paper account" if not self.r1_skip else
+                      f"R1 will be SKIPPED (informational step): {self.r1_skip}")
+
+    async def _r1_ticker_check(self) -> str | None:
+        """R1's start-of-day checks on its OWN ticker — the same three as the others, but a ticker
+        that fails them only skips R1 (INFO); it never refuses Day A. None = R1 may run."""
+        t = self.r1_ticker
+        if not t:
+            return "no R1 ticker (--r1-ticker '')"
+        if t in (self.t1, self.t2, self.probe):
+            return f"{t} is also P1/P2/the probe — R1 needs a ticker no other step uses"
+        try:
+            pos = await self.env.position(t)
+            orders = await self.env.open_orders(t)
+            foreign = await self.env.foreign_open_rows(t)
+            ours = await self.env.sentinel_rows(t)
+        except LiveTouched:
+            raise
+        except Exception as e:
+            return f"{t} could not be checked ({type(e).__name__}: {str(e)[:160]})"
+        if pos and abs(float(pos.get("qty") or 0)) > 0:
+            return f"the paper account already holds {t} ({pos.get('qty')} sh)"
+        if orders:
+            return f"the paper account has {len(orders)} open order(s) in {t}"
+        if foreign:
+            return f"{foreign} open paper trade row(s) exist for {t}"
+        if ours:
+            return f"rehearsal rows for {t} are left from an earlier run (ids {ours}) — run `cleanup`"
+        return None
 
     # ── Day A ──
     async def day_a(self) -> int:
@@ -403,7 +494,8 @@ class Rehearsal:
         log.note(f"open paper trade rows before the rehearsal: {await env.open_paper_rows()} "
                  f"(the rehearsal adds 2; they count toward the PAPER 5-position cap until cleanup)")
         self.state = {"day_a": today.isoformat(), "tickers": [self.t1, self.t2, self.probe],
-                      "started_at": env.now().isoformat(), "order_ids": [], "p1": {}, "p2": {}}
+                      "started_at": env.now().isoformat(), "order_ids": [], "p1": {}, "p2": {},
+                      "r1": {}}
         await env.write_audit(START_EVENT, f"#687 paper rehearsal Day A started ({self.t1}, "
                               f"{self.t2}, probe {self.probe})", {"state": self.state})
         env.install_page_router()
@@ -411,6 +503,7 @@ class Rehearsal:
                  "and each waits for the previous step's orders to show live at the broker (never "
                  "pending_new) and its held shares to settle")
 
+        await self._r1_race(today)              # INFORMATIONAL — before A1, its ticker left flat
         await self._a1_a3(today)
         await self._b1_b2(today)
         await self._save()
@@ -463,6 +556,241 @@ class Rehearsal:
         except Exception as e:   # one step's crash must not strand the rest; logged as a FAIL
             self.log.step(getattr(fn, "__name__", "?"), "step raised", False,
                           f"{type(e).__name__}: {e}")
+
+    # ── R1 (INFORMATIONAL): the 10-06 timing, so the restore retry gets a real chance live ──
+    async def _r1_race(self, today: date) -> None:
+        """R1 + R1f — status INFO only, whatever happens: never a FAIL, never in Day A's tally, never
+        a Day B dependency (not in DAY_B_DEPENDS_ON), never triggers or blocks Day A's cleanup.
+        Only `LiveTouched` (the paper guard) escapes."""
+        env, log, t = self.env, self.log, self.r1_ticker
+        title = (f"R1 the stop-restore retry against the real broker — B1→B2 on {t} with NO "
+                 f"routing waits (informational)")
+        if self.r1_skip:
+            log.step("R1", title, None, f"skipped — {self.r1_skip}; the rest of Day A proceeds",
+                     status="INFO")
+            return
+        r1 = self.state.setdefault("r1", {})
+        try:
+            await self._not_before(today, T_R1, "R1")
+            # Checked at launch (~09:24); a paper entry in the 09:31 ORB window could have taken
+            # the ticker since — check again right before placing.
+            again = await self._r1_ticker_check()
+            if again:
+                log.step("R1", title, None, f"skipped — at {_hms(env.now())} ET {again}; the "
+                         f"rest of Day A proceeds", status="INFO")
+                return
+            r1.update(ticker=t, started_at=env.now().isoformat())
+            await self._save()                  # from here `cleanup` covers R1's ticker
+            detail = await self._r1_shape(t, r1)
+        except LiveTouched:
+            raise
+        except Exception as e:
+            detail = f"R1 raised {type(e).__name__}: {str(e)[:300]} — recorded, never judged"
+        log.step("R1", title, None, detail, status="INFO")
+        if not r1.get("ticker"):
+            return                              # nothing was placed
+        try:
+            flat = await self._r1_flatten(t, r1)
+        except LiveTouched:
+            raise
+        except Exception as e:
+            flat = (f"flatten raised {type(e).__name__}: {str(e)[:200]} — `cleanup` covers {t} "
+                    f"(its ticker and order ids are in the rehearsal state)")
+        try:
+            await self._save()
+        except LiveTouched:
+            raise
+        except Exception as e:
+            flat += f"; state save failed ({type(e).__name__})"
+        log.step("R1f", f"R1: leave {t} flat before A1 (informational)", None, flat, status="INFO")
+
+    async def _r1_shape(self, t: str, r1: dict) -> str:
+        """B1 → B2 exactly, minus every wait for routing. Returns R1's INFO detail."""
+        env = self.env
+
+        def keep(key: str, oid: str) -> None:
+            r1[key] = oid
+            self.state["order_ids"].append(oid)
+
+        buy = await env.submit(t, 4, "buy", kind="market", tif="day")
+        keep("buy_id", buy["id"])
+        if await self._wait_status(buy["id"], {"filled"}) != "filled":
+            return (f"the 4-sh market buy {buy['id'][:8]} did not fill in 15 s — nothing to race "
+                    f"(R1f flattens whatever filled)")
+        bo = await env.get_order(buy["id"])
+        fill = float(bo["filled_avg_price"])
+        stop_px = round(fill * 0.95, 2)
+        # 10-06's shape: from the fill to the exit NOTHING waits for the broker to route anything.
+        t_stop = env.now()
+        stop = await env.submit(t, 3, "sell", kind="stop", tif="gtc", stop=stop_px)
+        keep("stop_id", stop["id"])
+        extra = await env.submit(t, 1, "sell", kind="limit", tif="gtc", limit=round(fill * 1.5, 2))
+        keep("extra_id", extra["id"])
+        tid = await env.insert_trade(ticker=t, shares=3, entry=round(fill * 0.97, 2), stop=stop_px,
+                                     stop_id=stop["id"], alert_date=env.et_today())
+        r1.update(trade_id=tid, fill=fill, stop_price=stop_px)
+        since, n_pages = env.now(), len(env.pages)
+        async with env.exit_spy(tid) as spy:
+            ok = await env.full_exit(tid, REASON)
+        await self._save()
+
+        cancels = [e for e in spy if e["name"] == "cancel_order"]
+        close = [e for e in spy if e["name"] == "close_position"]
+        place = [e for e in spy if e["name"] == "place_stop_order"]
+        placed_ok = [e for e in place if e.get("ok")]
+        for e in placed_ok:
+            if e.get("order_id"):
+                keep("restored_stop_id", e["order_id"])
+        sale_refused = bool(close) and close[0].get("ok") is False
+        retried = await self._audit_for_trade(["stop_restore_retried"], since, tid)
+        ended = await self._audit_for_trade(["stop_restore_retry_ended"], since, tid)
+        # A restore that did not land leaves the row with no stop: give the stop-ACK watchdog's
+        # fallback (filled_at + 30 s, a 30 s tick) its chance to show before R1f flattens.
+        wd = await self._audit_for_trade(
+            ["stop_ack_timeout_remediated"], since, tid,
+            budget_s=R1_WATCHDOG_WAIT_S if (sale_refused and not placed_ok) else 0.0)
+        # The cancel's confirmation: the broker's own stamp, and when the stream saw it here.
+        confirmed = None
+        if cancels:
+            await self._wait_status(stop["id"], TERMINAL, budget_s=R1_STREAM_WAIT_S)
+            confirmed = await env.cancelled_at(stop["id"])
+        stream: list = []
+        for _ in range(int(R1_STREAM_WAIT_S) + 1):
+            stream = [r for r in await self._audit_for_trade(list(R1_STREAM_EVENTS), since, tid)
+                      if r["event_type"] != "stop_order_id_changed"
+                      or str(r["detail"].get("reason") or "").startswith("cancel_or_reject")]
+            if stream or not cancels:
+                break
+            await env.sleep(1.0)
+        pages = [p["text"] for p in env.pages[n_pages:] if "FAILED" in p["text"]]
+        not_restored = any("NOT RESTORED" in p for p in pages)
+        page_line = (f" (its last line: {pages[-1].strip().splitlines()[-1][-120:]})" if pages
+                     else " (no failure page)")
+        trail = [f"{_hms(r.get('at'))} {r['event_type']}"
+                 + (f"({r['detail'].get('reason')})" if r["detail"].get("reason") else "")
+                 for r in await env.audit_rows(None, since) if r["detail"].get("trade_id") == tid]
+
+        if not sale_refused:
+            path = ("shape NOT reproduced — " + ("the sale went through" if close else
+                                                 "no sale was sent") + f" (returned {ok})")
+        elif retried:
+            d = retried[-1]["detail"]
+            path = (f"retry PROVEN live — the first restore attempt was refused while the broker "
+                    f"still held the cancelled stop's shares and the retry placed the stop "
+                    f"(stop_restore_retried: attempt {d.get('attempts')}, waited "
+                    f"{d.get('slept_s')} s, {d.get('elapsed_s')} s wall clock)")
+        elif ended:
+            d = ended[-1]["detail"]
+            path = (f"retry RAN but did not place the stop — stop_restore_retry_ended "
+                    f"'{d.get('outcome')}' after {d.get('attempts')} attempt(s), "
+                    f"{d.get('slept_s')} s waited")
+        elif place and place[0].get("ok"):
+            path = ("retry NOT exercised — the restore's FIRST attempt placed the stop (the cancel "
+                    "had already released the shares)")
+        elif placed_ok:
+            path = "a later placement worked but there is NO stop_restore_retried row"
+        elif place:
+            path = "NOT restored — every placement refused and no retry row"
+        else:
+            path = "no restore placement was made (see the rows)"
+        t_cancel = cancels[0].get("at") if cancels else None
+        t_rest = placed_ok[-1].get("at") if placed_ok else None
+        err = (close[0].get("error") or "")[:120] if close else ""
+        return (f"{path}. Times (ET): stop sent {_hms(t_stop)} ({canon(stop.get('status'))}, "
+                f"extra {canon(extra.get('status'))}); exit called {_hms(since)}; cancel requested "
+                f"{_hms(t_cancel)}; broker confirmed the cancel {_hms(confirmed)}"
+                f"{_gap(t_cancel, confirmed)}; stream saw it "
+                f"{_hms(stream[0].get('at')) if stream else 'NO row'}; sale "
+                f"{'refused' if sale_refused else 'sent'} {_hms(close[0].get('at') if close else None)}"
+                f"{' (' + err + ')' if err else ''}; restore attempts {len(place)} "
+                f"({len(place) - len(placed_ok)} refused), first {_hms(place[0].get('at') if place else None)}, "
+                f"placed {_hms(t_rest)}{_gap(t_cancel, t_rest)} "
+                f"{placed_ok[-1].get('order_id', '')[:8] if placed_ok else ''}. "
+                f"STOP NOT RESTORED page: {'YES' if not_restored else 'no'}"
+                f"{page_line}; "
+                f"stop_ack_timeout_remediated: "
+                f"{'YES at ' + _hms(wd[-1].get('at')) if wd else 'no'}; row #{tid} audit trail: "
+                f"{trail[:14] or 'none'}")
+
+    async def _r1_flatten(self, t: str, r1: dict) -> str:
+        """R1f — leave R1's ticker FLAT: under the trade lock (the stop-ACK watchdog and the coverage
+        repair try-lock and defer, so neither can re-protect the row between the stop's cancel and
+        the sale), cancel every order of ours on it, sell every share at market once the broker
+        frees them, wait until it shows no position and no open order, then delete the row."""
+        tid = r1.get("trade_id")
+        if tid:
+            async with self.env.trade_lock(tid):
+                return await self._r1_flatten_locked(t, r1, tid)
+        return await self._r1_flatten_locked(t, r1, None)
+
+    async def _r1_flatten_locked(self, t: str, r1: dict, tid) -> str:
+        env = self.env
+        known = {v for k, v in r1.items() if k.endswith("_id") and isinstance(v, str)}
+        cancelled: list[str] = []
+        foreign: list = []
+        for _round in range(4):
+            # The restore's FIRST attempt carries no rehearsal client id — it is found by the id the
+            # spy saw (restored_stop_id) or the row's pointer (a watchdog fallback too).
+            row = await env.trade(tid) if tid else None
+            if row and row.get("stop_order_id"):
+                known.add(row["stop_order_id"])
+            if tid:
+                known |= {r["alpaca_order_id"] for r in await env.order_rows(tid)
+                          if r["alpaca_order_id"]}
+            orders = await env.open_orders(t)
+            mine = [o for o in orders if o["id"] in known or is_ours_coid(o.get("client_order_id"), t)]
+            foreign = [o for o in orders if o not in mine]
+            if not mine:
+                break
+            for o in mine:
+                if tid and "stop" in str(o.get("type")):
+                    await env.mark_planned_cancel(tid, t, o["id"])   # recorded, never paged
+                await env.cancel(o["id"])
+                cancelled.append(o["id"][:8])
+            for o in mine:
+                await self._wait_status(o["id"], TERMINAL)
+        pos = await env.position(t)
+        qty = float(pos["qty"]) if pos else 0.0
+        foreign_rows = await env.foreign_open_rows(t)
+        covers = f"`cleanup` covers {t} (its ticker and order ids are in the rehearsal state)"
+        if qty < 0:
+            return f"{t}: SHORT {qty:g} sh — not touched, cover by hand; {covers}"
+        if qty and (foreign or foreign_rows):
+            return (f"{t}: {qty:g} sh NOT flattened — {foreign_rows} non-rehearsal paper row(s) / "
+                    f"{len(foreign)} foreign order(s) on it; {covers}")
+        sold = "nothing to sell"
+        if qty:
+            # Load-bearing: a sale sent before the cancels settle is refused held_for_orders —
+            # the very race R1 exists to provoke.
+            await self._wait_avail(t, qty, budget_s=R1_FLAT_BUDGET_S)
+            try:
+                sell = await env.submit(t, qty, "sell", kind="market", tif="day")
+            except LiveTouched:
+                raise
+            except Exception as e:
+                return (f"{t}: the market sale of {qty:g} sh was REFUSED ({str(e)[:160]}); row "
+                        f"#{tid} LEFT; {covers}")
+            r1["flatten_id"] = sell["id"]
+            self.state["order_ids"].append(sell["id"])
+            st = await self._wait_status(sell["id"], {"filled"}, budget_s=20)
+            sold = f"sold {qty:g} sh ({sell['id'][:8]} {st})"
+        pos, orders, flat = None, [], False
+        for _ in range(int(R1_FLAT_BUDGET_S / 0.5) + 1):
+            pos = await env.position(t)
+            orders = await env.open_orders(t)
+            if not (pos and float(pos.get("qty") or 0)) and not orders:
+                flat = True
+                break
+            await env.sleep(0.5)
+        if not flat:
+            return (f"{t} NOT flat after {R1_FLAT_BUDGET_S:.0f} s (position "
+                    f"{pos and pos.get('qty')}, open orders "
+                    f"{[(o['id'][:8], o.get('type'), o.get('qty')) for o in orders]}; cancelled "
+                    f"{cancelled or 'nothing'}; {sold}) — row #{tid} LEFT; {covers}")
+        deleted = await env.delete_trades([tid]) if tid else 0
+        r1["flat"] = True
+        return (f"{t} flat at {_hms(env.now())} ET: cancelled {cancelled or 'nothing'}; {sold}; the "
+                f"broker shows no position and no open order; row #{tid} deleted ({deleted})")
 
     async def _a1_a3(self, today: date) -> None:
         env, log, p1 = self.env, self.log, self.state["p1"]
@@ -1139,7 +1467,7 @@ class Rehearsal:
         self.state = env.load_state() or {}
         await self.preflight(day="status")
         log.note(f"state: {json.dumps(self.state, default=str)[:1500]}")
-        for t in self.state.get("tickers") or [self.t1, self.t2, self.probe]:
+        for t in self._cleanup_tickers():
             pos = await env.position(t)
             orders = await env.open_orders(t)
             log.note(f"{t}: position {pos and (pos['qty'], pos['qty_available'])}; open orders "
@@ -1159,12 +1487,13 @@ class Rehearsal:
             self.state = env.load_state() or {}
             if not env.tripwire_armed:
                 await self.preflight(day="cleanup")
-        tickers = self.state.get("tickers") or [self.t1, self.t2, self.probe]
+        tickers = self._cleanup_tickers()
         trade_ids = set()
         for t in tickers:
             trade_ids |= set(await env.sentinel_rows(t))
         base = set(self.state.get("order_ids") or [])
-        for p in (self.state.get("p1") or {}, self.state.get("p2") or {}):
+        for p in (self.state.get("p1") or {}, self.state.get("p2") or {},
+                  self.state.get("r1") or {}):
             base |= {v for k, v in p.items() if k.endswith("_id") and isinstance(v, str)}
         residue = []
         foreign_by_ticker: dict[str, list] = {}
@@ -1230,8 +1559,13 @@ class Rehearsal:
             pos = await env.position(t)
             if pos and abs(float(pos["qty"])) and not any(r.startswith(t) for r in residue):
                 residue.append(f"{t}: still {pos['qty']} sh")
+        r1t = self._r1_cleanup_ticker()
         if left_rows:
-            residue.append(f"rehearsal rows remain for {left_rows}")
+            main_left = [t for t in left_rows if t != r1t]
+            if main_left:
+                residue.append(f"rehearsal rows remain for {main_left}")
+            if r1t in left_rows:
+                residue.append(f"{r1t}: rehearsal row(s) remain")
         audit = await env.audit_rows(None, datetime.fromisoformat(self.state["started_at"])) \
             if self.state.get("started_at") else []
         touched = [r for r in audit if r["detail"].get("trade_id") in trade_ids]
@@ -1241,10 +1575,29 @@ class Rehearsal:
                                "audit_ids_naming_rehearsal_trades": [r["id"] for r in touched]})
         log.note(f"production audit rows that name the rehearsal trades (they stay; account_mode "
                  f"'paper' in their detail): {[(r['id'], r['event_type']) for r in touched]}")
+        # R1 is informational: what is left on ITS ticker is reported as INFO (R1c), never in the
+        # CLEANUP verdict — but it still makes the `cleanup` command exit 1, so it is re-run.
+        r1_res = [r for r in residue if r1t and r.startswith(f"{r1t}:")]
+        main_res = [r for r in residue if r not in r1_res]
         self.log.step("CLEANUP", f"orders cancelled, positions flat, {deleted} rehearsal row(s) "
-                      f"deleted", not residue, "; ".join(residue) or "clean")
+                      f"deleted", not main_res, "; ".join(main_res) or "clean")
+        if r1t:
+            self.log.step("R1c", f"cleanup of R1's ticker {r1t} (informational)", None,
+                          "; ".join(r1_res) or "clean", status="INFO")
         env.clear_state()
         return 0 if not residue else 1
+
+    def _r1_cleanup_ticker(self) -> str | None:
+        """R1's ticker — only once R1 started placing orders on it. A ticker R1 SKIPPED (held,
+        orders, rows) is never added: cleanup must not flatten what the rehearsal never touched."""
+        return (self.state.get("r1") or {}).get("ticker") or None
+
+    def _cleanup_tickers(self) -> list[str]:
+        ts = list(self.state.get("tickers") or [self.t1, self.t2, self.probe])
+        r1t = self._r1_cleanup_ticker()
+        if r1t and r1t not in ts:
+            ts.append(r1t)
+        return ts
 
     def _summary(self, label: str) -> int:
         fails = self.log.failed()
@@ -1334,6 +1687,19 @@ class RealEnv:
 
     async def cancel(self, oid) -> bool:
         return await self.alpaca.cancel_order(oid, account_mode=ACCOUNT_MODE)
+
+    async def cancelled_at(self, oid):
+        """The broker's own stamp for an order's cancel (R1) — `canceled_at` on the raw order,
+        which `_order_to_dict` does not carry. Read through the PAPER client (tripwire-guarded)."""
+        client = self.alpaca.get_trading_client(ACCOUNT_MODE)
+        o = await asyncio.to_thread(client.get_order_by_id, oid)
+        return getattr(o, "canceled_at", None)
+
+    def trade_lock(self, tid):
+        """The per-trade #151 advisory lock (BLOCKING) — R1f holds it while it flattens, so the
+        try-locking re-protect paths (stop-ACK watchdog, coverage repair) defer. Never taken
+        around `full_exit`, which takes the same lock itself."""
+        return self.om._trade_advisory_lock(tid)
 
     def _coid(self, ticker: str) -> str:
         coid = self.alpaca.make_client_order_id(ACCOUNT_MODE, TAG_SIGNAL_TYPE, ticker)
@@ -1437,7 +1803,7 @@ class RealEnv:
             except (TypeError, ValueError):
                 d = {}
             out.append({"id": r["id"], "event_type": r["event_type"], "summary": r["summary"],
-                        "detail": d if isinstance(d, dict) else {}})
+                        "detail": d if isinstance(d, dict) else {}, "at": r["created_at"]})
         return out
 
     async def write_audit(self, event, summary, detail) -> None:
@@ -1665,7 +2031,8 @@ class FakeEnv:
         self.pages: list[dict] = []
         self.tripwire_armed = False
         self.calls: list[tuple] = []           # (fn, account_mode) for every broker call
-        self.prices = {"KO": 70.0, "PEP": 150.0, "PG": 160.0}
+        self.prices = {"KO": 70.0, "PEP": 150.0, "PG": 160.0, "CL": 85.0}
+        self._tid = 0                          # trade ids never reused (R1's row is deleted early)
         self.positions: dict[str, float] = dict(held or {})
         self.orders: dict[str, dict] = {}
         self.trades: dict[int, dict] = {}
@@ -1792,10 +2159,12 @@ class FakeEnv:
         if not o or o["status"] not in LIVE_STATUSES:
             return False
         o["status"] = "canceled"
+        o["canceled_at"] = self.clock
         for leg in o["legs"]:
             self.orders[leg["id"]]["status"] = "canceled"
         if self._spy is not None:
-            self._spy.append({"name": "cancel_order", "args": (oid,), "t": self._mono(), "ok": True})
+            self._spy.append({"name": "cancel_order", "args": (oid,), "t": self._mono(), "ok": True,
+                              "at": self.clock.isoformat()})
         if self._stream_hold is not None:
             self._stream_hold.append(o)          # the stream sees it after the sale's outcome
         else:
@@ -1804,6 +2173,18 @@ class FakeEnv:
 
     def _mono(self):
         return self.clock.timestamp()
+
+    async def cancelled_at(self, oid):
+        self._call("get_order")
+        return (self.orders.get(oid) or {}).get("canceled_at")
+
+    @contextlib.asynccontextmanager
+    async def trade_lock(self, tid):
+        self.locked.add(tid)
+        try:
+            yield
+        finally:
+            self.locked.discard(tid)
 
     async def submit(self, t, qty, side, *, kind, tif, limit=None, stop=None):
         self._call("submit_order")
@@ -1838,7 +2219,8 @@ class FakeEnv:
 
     # db
     async def insert_trade(self, *, ticker, shares, entry, stop, stop_id, alert_date):
-        tid = 9000 + len(self.trades) + 1
+        self._tid += 1
+        tid = 9000 + self._tid
         self.trades[tid] = {"id": tid, "ticker": ticker, "alert_date": alert_date, "status": "filled",
                             "account_mode": ACCOUNT_MODE, "signal_type": TAG_SIGNAL_TYPE,
                             "entry_shares": shares, "remaining_shares": float(shares),
@@ -1941,6 +2323,7 @@ class FakeEnv:
     def _spy_ev(self, **ev):
         if self._spy is not None:
             ev.setdefault("t", self._mono())
+            ev.setdefault("at", self.clock.isoformat())
             self._spy.append(ev)
 
     async def _sale(self, tid, reason, vehicle):
@@ -1986,8 +2369,15 @@ class FakeEnv:
                         self._spy_ev(name="place_stop_order", args=(t,), qty=want, ok=False,
                                      error=err)
                         r["stop_order_id"] = None
+                        # Since the retry (#687 2026-10-06) a held refusal that never clears ends
+                        # in this row once the window is spent; the page is unchanged.
+                        self._audit("stop_restore_retry_ended",
+                                    {"trade_id": tid, "outcome": "failed", "attempts": 1,
+                                     "slept_s": 15.0, "elapsed_s": 15.0})
 
                         def _watchdog(tid=tid, t=t, want=want, px=r["stop_price"]):
+                            if tid not in self.trades:     # the row was deleted (R1f, cleanup)
+                                return
                             fb = self._new(t, want, "sell", "stop", "gtc", status="new", stop=px)
                             self.trades[tid]["stop_order_id"] = fb["id"]
                             self._audit("stop_ack_timeout_remediated", {"trade_id": tid})
@@ -2016,7 +2406,8 @@ class FakeEnv:
                     if self.restore_retries:
                         self._audit("stop_restore_retried",
                                     {"trade_id": tid, "attempts": self.restore_retries + 1,
-                                     "slept_s": 0.5 * self.restore_retries})
+                                     "slept_s": 0.5 * self.restore_retries,
+                                     "elapsed_s": 0.5 * self.restore_retries})
                     self._page(f"📄 PAPER ⚠️ Full exit FAILED for {t}: {err}\nStop RESTORED at "
                                f"${r['stop_price']:.2f} — position is protected.")
                     return False
@@ -2041,6 +2432,8 @@ class FakeEnv:
                 # The stream nulled the pointer after the restore's write and did not see the
                 # restored stop: the stop-ACK watchdog (09-15 ET) re-adopts the live broker stop.
                 def _readopt(tid=tid, rid=restored_id):
+                    if tid not in self.trades:             # the row was deleted (R1f, cleanup)
+                        return
                     self.trades[tid]["stop_order_id"] = rid
                     self._audit("stop_order_id_changed", {"trade_id": tid, "new_id": rid,
                                                           "reason": "watchdog_synced_from_broker"})
@@ -2142,13 +2535,15 @@ def _log_path(day: date, dry: bool) -> str:
     return os.path.join(HERE, f"rehearsal_{day.isoformat()}{'_dryrun' if dry else ''}.log")
 
 
-async def run_dry(cmd: str, tickers, log_dir: str | None = None, **fake_kw) -> tuple[int, "FakeEnv", StepLog]:
+async def run_dry(cmd: str, tickers, log_dir: str | None = None,
+                  r1_ticker: str | None = DEFAULT_R1_TICKER,
+                  **fake_kw) -> tuple[int, "FakeEnv", StepLog]:
     """Day A from 13:00 ET on a Monday, then Day B the next morning — all against FakeEnv."""
     day_a = date(2026, 10, 5)
     env = FakeEnv(start=datetime.combine(day_a, dtime(13, 0), tzinfo=_ET), **fake_kw)
     path = os.path.join(log_dir or HERE, f"rehearsal_{day_a.isoformat()}_dryrun.log")
     log = StepLog(path, env.now)
-    reh = Rehearsal(env, log, tickers)
+    reh = Rehearsal(env, log, tickers, r1_ticker=r1_ticker)
     rc = 0
     if cmd in ("day-a", "all"):
         rc = await reh.day_a()
@@ -2158,7 +2553,8 @@ async def run_dry(cmd: str, tickers, log_dir: str | None = None, **fake_kw) -> t
     return rc, env, log
 
 
-async def run_real(cmd: str, tickers, send_pages: bool) -> int:
+async def run_real(cmd: str, tickers, send_pages: bool,
+                   r1_ticker: str | None = DEFAULT_R1_TICKER) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     from agents.market_intelligence.agent import _bootstrap_alpaca_credentials
     _bootstrap_alpaca_credentials()
@@ -2168,7 +2564,7 @@ async def run_real(cmd: str, tickers, send_pages: bool) -> int:
         if st:
             await env.save_state(st)
     log = StepLog(_log_path(env.et_today(), False), env.now)
-    reh = Rehearsal(env, log, tickers)
+    reh = Rehearsal(env, log, tickers, r1_ticker=r1_ticker)
     if cmd == "day-a":
         return await reh.day_a()
     if cmd == "day-b":
@@ -2184,6 +2580,8 @@ def main(argv=None) -> int:
     ap.add_argument("--dry-run", action="store_true", help="fakes only — no broker, no DB")
     ap.add_argument("--tickers", default=",".join(DEFAULT_TICKERS),
                     help="P1,P2,PROBE (default %(default)s)")
+    ap.add_argument("--r1-ticker", default=DEFAULT_R1_TICKER,
+                    help="R1's own ticker (informational step; default %(default)s; '' skips R1)")
     ap.add_argument("--capture-pages", action="store_true",
                     help="log the pages this process would send instead of sending them")
     a = ap.parse_args(argv)
@@ -2197,9 +2595,10 @@ def main(argv=None) -> int:
             if cmd not in ("all",):
                 print("--dry-run runs day-a then day-b against fakes")
                 return 2
-            rc, _, _ = asyncio.run(run_dry(cmd, tickers))
+            rc, _, _ = asyncio.run(run_dry(cmd, tickers, r1_ticker=a.r1_ticker))
             return rc
-        return asyncio.run(run_real(a.cmd, tickers, send_pages=not a.capture_pages))
+        return asyncio.run(run_real(a.cmd, tickers, send_pages=not a.capture_pages,
+                                    r1_ticker=a.r1_ticker))
     except RehearsalRefused as e:
         print(f"REFUSED: {e}")
         return 2

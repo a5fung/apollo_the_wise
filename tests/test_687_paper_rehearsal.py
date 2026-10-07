@@ -161,6 +161,10 @@ def _recording_alpaca(seen):
             seen.append(("submit_order", self.mode))
             return types.SimpleNamespace(id="x")
 
+        def get_order_by_id(self, oid):       # R1's read of the broker's cancel stamp
+            seen.append(("get_order_by_id", self.mode))
+            return types.SimpleNamespace(canceled_at=None)
+
     def get_trading_client(mode=None):
         seen.append(("get_trading_client", mode))
         return _Client(mode)
@@ -188,6 +192,7 @@ async def test_every_broker_call_through_the_real_adapter_is_paper():
     await env.open_orders("KO")
     await env.get_order("abc")
     await env.cancel("abc")
+    assert await env.cancelled_at("abc") is None
     for kind, tif, extra in (("market", "day", {}), ("limit", "gtc", {"limit": 99.0}),
                              ("stop", "gtc", {"stop": 60.0}), ("market", "cls", {}),
                              ("market", "opg", {})):
@@ -195,6 +200,7 @@ async def test_every_broker_call_through_the_real_adapter_is_paper():
                          **extra)
     modes = [s[1] for s in seen]
     assert modes and set(modes) == {"paper"}, seen
+    assert ("get_order_by_id", "paper") in seen
     assert len([s for s in seen if s[0] == "submit_order"]) == 5
     coids = [s[2] for s in seen if s[0] == "make_client_order_id"]
     assert len(coids) == 5 and all(c.startswith("apollo_paper_integration_test_KO_") for c in coids)
@@ -219,6 +225,7 @@ async def test_the_dry_run_passes_end_to_end_and_cleans_up(tmp_path):
             "CLEANUP"}
     assert want <= set(_steps(log, "PASS")), _steps(log)
     assert _steps(log)["A4"] == "INFO"                 # recorded, never judged (2026-10-06)
+    assert {_steps(log)[s] for s in ("R1", "R1f", "R1c")} == {"INFO"}, _steps(log)
     # Day A left both positions for Day B — exactly one cleanup ran, at the END of Day B.
     cleanups = [r for r in log.results if r["step"] == "CLEANUP"]
     assert len(cleanups) == 1 and cleanups[0]["at"].date() == pr.date(2026, 10, 6)
@@ -406,6 +413,7 @@ async def test_the_morning_steps_run_no_earlier_than_their_spec_times(tmp_path):
     at = {r["step"]: r["at"].timetz().replace(tzinfo=None) for r in log.results}
     assert at["A1"] >= pr.T_A1 and at["A2"] >= pr.T_A2 and at["A3"] >= pr.T_A3, at
     assert at["B1"] >= pr.T_B1, at
+    assert pr.T_R1 <= at["R1"] <= at["R1f"] < pr.T_A1, at       # R1 flat before A1's 10:00
     assert env.partial_exit_at.timetz().replace(tzinfo=None) >= pr.T_A2
     assert rc == 0, log.failed()
 
@@ -635,3 +643,181 @@ def test_a_failure_outside_the_dependencies_breaks_no_chain(tmp_path):
     assert reh._day_b_broken_chains() == {}
     log.step("A9", "A9 again", False)                  # the LAST status of a step decides
     assert set(reh._day_b_broken_chains()) == {"p2"}
+
+
+# ── R1: the 10-06 timing on its own ticker — INFORMATIONAL (#687, operator "Ok" 2026-10-06) ──────
+# B2 now waits for routed orders, so its restore most likely works on the FIRST attempt and never
+# exercises the held-shares retry against the real broker. R1 re-creates 10-06's unrouted shape on
+# a dedicated ticker. Whatever it sees it is INFO: never a FAIL, never in Day A's tally, never a
+# Day B dependency, never the reason Day A cleans up (or does not).
+
+def _non_r1(log):
+    return {r["step"]: r["status"] for r in log.results if not r["step"].startswith("R1")}
+
+
+def _cl_left(env):
+    return (env.positions.get("CL"),
+            [o["id"] for o in env.orders.values()
+             if o["symbol"] == "CL" and o["status"] in pr.LIVE_STATUSES],
+            [tid for tid, r in env.trades.items() if r["ticker"] == "CL"])
+
+
+@pytest.mark.asyncio
+async def test_r1_says_the_retry_was_proven_live_when_the_retry_placed_the_stop(tmp_path):
+    rc, env, log = await _dry(tmp_path, cmd="day-a", restore_retries=3)
+    r1 = _step(log, "R1")
+    assert r1["status"] == "INFO" and "retry PROVEN live" in r1["detail"], r1
+    assert "stop_restore_retried: attempt 4" in r1["detail"], r1
+    for when in ("cancel requested 13:", "broker confirmed the cancel 13:", "placed 13:"):
+        assert when in r1["detail"], (when, r1["detail"])
+    assert "STOP NOT RESTORED page: no" in r1["detail"], r1
+    r1f = _step(log, "R1f")
+    assert r1f["status"] == "INFO" and "CL flat" in r1f["detail"], r1f
+    assert _cl_left(env) == (0.0, [], []), _cl_left(env)
+    assert rc == 0, log.failed()
+
+
+@pytest.mark.asyncio
+async def test_r1_says_the_retry_was_not_exercised_when_the_first_attempt_worked(tmp_path):
+    rc, env, log = await _dry(tmp_path, cmd="day-a")
+    r1 = _step(log, "R1")
+    assert r1["status"] == "INFO" and "retry NOT exercised" in r1["detail"], r1
+    assert "PROVEN" not in r1["detail"]
+    assert _cl_left(env) == (0.0, [], []) and rc == 0
+
+
+@pytest.mark.asyncio
+async def test_r1_records_the_unrestored_page_the_retry_end_and_the_watchdog_fallback(tmp_path):
+    """The restore never lands: R1 records the retry's end, the STOP NOT RESTORED page and the
+    stop-ACK watchdog's fallback — and R1f still cancels that fallback and leaves CL flat."""
+    rc, env, log = await _dry(tmp_path, cmd="day-a", restore_lost_watchdog_s=45)
+    r1 = _step(log, "R1")
+    assert r1["status"] == "INFO", r1
+    assert "stop_restore_retry_ended 'failed'" in r1["detail"], r1
+    assert "STOP NOT RESTORED page: YES" in r1["detail"], r1
+    assert "stop_ack_timeout_remediated: YES" in r1["detail"], r1
+    assert _step(log, "R1f")["status"] == "INFO" and _cl_left(env) == (0.0, [], [])
+    assert "R1" not in [f["step"] for f in log.failed()]      # B2 FAILs here; R1 never does
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kw,r1_ticker,why", [
+    ({"held": {"CL": 5}}, "CL", "already holds CL"),
+    ({"open_orders": {"CL": 1}}, "CL", "open order"),
+    ({"foreign_rows": {"CL": 1}}, "CL", "open paper trade row"),
+    ({}, "PEP", "no other step uses"),
+    ({}, "", "no R1 ticker"),
+])
+async def test_r1_is_skipped_as_info_when_its_ticker_is_not_clean(tmp_path, kw, r1_ticker, why):
+    """A ticker that fails the start-of-day checks skips R1 (INFO) — Day A is NOT refused, and
+    cleanup never adds a ticker R1 never touched (a held CL is left exactly as it was)."""
+    rc, env, log = await _dry(tmp_path, r1_ticker=r1_ticker, **kw)
+    r1 = _step(log, "R1")
+    assert r1["status"] == "INFO" and "skipped" in r1["detail"] and why in r1["detail"], r1
+    assert "R1f" not in _steps(log) and "R1c" not in _steps(log)
+    assert not [o for o in env.orders.values() if o["symbol"] == "CL" and o["client_order_id"]]
+    assert rc == 0, log.failed()
+    if kw.get("held"):
+        assert env.positions["CL"] == 5                       # untouched through Day B's cleanup
+
+
+SHAPES = [{}, {"restore_retries": 3}, {"restore_lost_watchdog_s": 45},
+          {"partial_taken_false": True}, {"partial_exit_fails": True}]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kw", SHAPES, ids=[",".join(k) or "default" for k in SHAPES])
+async def test_r1_never_changes_day_as_tally_or_its_cleanup_decision(tmp_path, kw):
+    """The same Day A with R1 and with R1 skipped: every other step's status, the exit code and
+    whether Day A cleaned up at its end are identical; R1's own lines are INFO."""
+    (tmp_path / "with").mkdir()
+    (tmp_path / "without").mkdir()
+    rc1, _, with_r1 = await pr.run_dry("day-a", TICKERS, log_dir=str(tmp_path / "with"), **kw)
+    rc0, _, without = await pr.run_dry("day-a", TICKERS, log_dir=str(tmp_path / "without"),
+                                       r1_ticker=None, **kw)
+    assert _non_r1(with_r1) == _non_r1(without), (_non_r1(with_r1), _non_r1(without))
+    assert rc1 == rc0
+    assert bool(_day_a_cleaned(with_r1)) == bool(_day_a_cleaned(without))
+    assert {r["status"] for r in with_r1.results if r["step"].startswith("R1")} == {"INFO"}
+    assert {r["step"] for r in with_r1.results if r["step"].startswith("R1")} >= {"R1", "R1f"}
+
+
+@pytest.mark.asyncio
+async def test_r1_crashing_is_info_and_still_leaves_its_ticker_flat(tmp_path):
+    env = pr.FakeEnv(start=MON_1300)
+    real = env.full_exit
+
+    async def boom(tid, reason):
+        if env.trades[tid]["ticker"] == "CL":
+            raise RuntimeError("broker 500")
+        return await real(tid, reason)
+
+    env.full_exit = boom
+    log = pr.StepLog(str(tmp_path / "r.log"), env.now)
+    rc = await pr.Rehearsal(env, log, TICKERS).day_a()
+    r1 = _step(log, "R1")
+    assert r1["status"] == "INFO" and "R1 raised RuntimeError" in r1["detail"], r1
+    assert _step(log, "R1f")["status"] == "INFO" and _cl_left(env) == (0.0, [], [])
+    assert rc == 0 and not log.failed(), log.failed()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("still_refused", [False, True])
+async def test_the_cleanup_command_covers_r1s_ticker_when_its_flatten_failed(tmp_path, still_refused):
+    """R1f's sale refused → INFO, the row and the shares are LEFT, R1's ticker and ids stay in the
+    state. The ordinary `cleanup` then flattens CL and deletes the row; what it cannot clear on CL
+    is INFO (R1c), never the CLEANUP verdict — but `cleanup` still exits 1 so it is re-run."""
+    env = pr.FakeEnv(start=MON_1300)
+    real_submit = env.submit
+    refuse = {"on": True}
+
+    async def refusing(t, qty, side, **kw):
+        if refuse["on"] and t == "CL" and side == "sell" and kw.get("kind") == "market":
+            raise RuntimeError('{"message":"insufficient qty available for order"}')
+        return await real_submit(t, qty, side, **kw)
+
+    env.submit = refusing
+    log = pr.StepLog(str(tmp_path / "r.log"), env.now)
+    rc = await pr.Rehearsal(env, log, TICKERS).day_a()
+    r1f = _step(log, "R1f")
+    assert r1f["status"] == "INFO" and "REFUSED" in r1f["detail"], r1f
+    assert "`cleanup` covers CL" in r1f["detail"], r1f
+    assert rc == 0 and not log.failed(), log.failed()           # Day A's result is untouched
+    assert not _day_a_cleaned(log)                               # ...and so is its cleanup decision
+    pos, live, rows = _cl_left(env)
+    assert pos == 4 and rows, _cl_left(env)
+    assert env.state["r1"]["ticker"] == "CL" and env.state["r1"]["buy_id"] in env.state["order_ids"]
+    assert "CL" not in env.state["tickers"]                      # Day B's P1/P2/probe unpack stays 3
+
+    refuse["on"] = still_refused
+    env.clock = pr.datetime(2026, 10, 6, 10, 0, tzinfo=pr._ET)   # `cleanup` in market hours
+    rc_clean = await pr.Rehearsal(env, log, TICKERS).cleanup()
+    assert _step(log, "CLEANUP")["status"] == "PASS", _step(log, "CLEANUP")
+    r1c = _step(log, "R1c")
+    assert r1c["status"] == "INFO"
+    assert env.trades == {}
+    if still_refused:
+        assert rc_clean == 1 and "CL: flatten of 4.0 sh FAILED" in r1c["detail"], r1c
+    else:
+        assert rc_clean == 0 and r1c["detail"] == "clean", r1c
+        assert _cl_left(env) == (0.0, [], [])
+
+
+@pytest.mark.asyncio
+async def test_r1_rechecks_its_ticker_right_before_it_places(tmp_path):
+    """Day A checks at launch (~09:24) but R1 places at 09:35:30, inside the ORB window: a paper
+    entry that took CL in between skips R1 and leaves that position exactly as it was."""
+    env = pr.FakeEnv(start=MON_0920)
+
+    def _paper_entry():
+        env.positions["CL"] = 7.0
+        env.foreign_rows["CL"] = 1
+
+    env._timers.append((pr.datetime(2026, 10, 5, 9, 33, tzinfo=pr._ET), _paper_entry))
+    log = pr.StepLog(str(tmp_path / "r.log"), env.now)
+    rc = await pr.Rehearsal(env, log, TICKERS).day_a()
+    r1 = _step(log, "R1")
+    assert r1["status"] == "INFO" and "skipped — at 09:35:30" in r1["detail"], r1
+    assert "R1f" not in _steps(log) and env.positions["CL"] == 7.0
+    assert not (env.state.get("r1") or {}).get("ticker")          # cleanup will not touch CL
+    assert rc == 0, log.failed()

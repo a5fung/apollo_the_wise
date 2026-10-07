@@ -425,6 +425,24 @@ WORKING restore never produces: the stream takes its replacement branch). The dr
 `trade_stream._find_replacement_stop` (knobs `stream_null_late`, `stream_sees_replacement`). A8's 18:50 readiness
 accepts a stop reading `accepted`/`held` (re-placed after the close), never `pending_new`.
 
+**R1 — the retry given a real chance live (his "Ok", 2026-10-06; INFORMATIONAL only).** Because B2 now waits for
+routed orders, its restore will most likely work on the first attempt and never exercise the retry against the real
+broker. R1 re-creates 10-06's timing at 09:35:30 ET, before A1, on a DEDICATED ticker (default CL, `--r1-ticker`;
+checked at launch and again right before it places — not held, no open orders, no trade rows — a ticker that fails is
+skipped as INFO): 4 sh at market, then with NO wait for routing the 3-sh GTC stop, the extra 1-sh resting sell and the
+`integration_test` / `paper` row of 3 (exactly as B1), and `execute_full_exit` at once. It records which path ran
+(`stop_restore_retried` → "retry PROVEN live", a first attempt that worked → "retry NOT exercised",
+`stop_restore_retry_ended` + outcome), any STOP NOT RESTORED page, any `stop_ack_timeout_remediated` row, and the
+times of the cancel request, the broker's own cancel stamp (`canceled_at`) and the restore. R1f then leaves the ticker
+flat under the per-trade lock (so the try-locking stop-ACK watchdog cannot re-protect the row mid-flatten): cancel the
+restored stop and the extra sell, sell every share once the broker frees them, wait until it shows no position and no
+open order, delete the row as cleanup does. Every R1 line is INFO — never a FAIL, never in Day A's tally, never a Day B
+dependency, never the reason Day A cleans up; a failed flatten is INFO too, and `cleanup` covers R1's ticker and order
+ids (kept in the state) with its own INFO line `R1c`. The R1 row is one more open paper row for ~1-2 minutes inside the
+ORB window. Tests: `tests/test_687_paper_rehearsal.py` (R1 in the retry / first-attempt / restore-lost / skipped /
+crashed shapes; the same Day A with and without R1 gives identical statuses, exit code and cleanup decision; `cleanup`
+flattens R1's ticker after a refused flatten).
+
 ### 2026-10-04 — #687 ruling (a): the stop-coverage repair reads the broker before it places — a FLAT broker gets no stop (TRADE STATE — no exit rule, stop level, target or size changed)
 
 **Trigger**: his ruling of 2026-10-04 (his word: *"A"*) on the fork ruling (i)'s review opened the same morning (the
