@@ -632,7 +632,18 @@ class Rehearsal:
         since, n_pages = env.now(), len(env.pages)
         async with env.exit_spy(tid) as spy:
             ok = await env.full_exit(tid, REASON)
-        await self._save()
+        # The VERDICT first, from the spy and the two retry rows: every read after it is auxiliary
+        # and degrades to '?' on its own error — an API or DB blip must never cost R1 its verdict.
+        aux_errors: list[str] = []
+
+        async def soft(coro, default):
+            try:
+                return await coro
+            except LiveTouched:
+                raise
+            except Exception as e:
+                aux_errors.append(f"{type(e).__name__}: {str(e)[:80]}")
+                return default
 
         cancels = [e for e in spy if e["name"] == "cancel_order"]
         close = [e for e in spy if e["name"] == "close_position"]
@@ -642,34 +653,8 @@ class Rehearsal:
             if e.get("order_id"):
                 keep("restored_stop_id", e["order_id"])
         sale_refused = bool(close) and close[0].get("ok") is False
-        retried = await self._audit_for_trade(["stop_restore_retried"], since, tid)
-        ended = await self._audit_for_trade(["stop_restore_retry_ended"], since, tid)
-        # A restore that did not land leaves the row with no stop: give the stop-ACK watchdog's
-        # fallback (filled_at + 30 s, a 30 s tick) its chance to show before R1f flattens.
-        wd = await self._audit_for_trade(
-            ["stop_ack_timeout_remediated"], since, tid,
-            budget_s=R1_WATCHDOG_WAIT_S if (sale_refused and not placed_ok) else 0.0)
-        # The cancel's confirmation: the broker's own stamp, and when the stream saw it here.
-        confirmed = None
-        if cancels:
-            await self._wait_status(stop["id"], TERMINAL, budget_s=R1_STREAM_WAIT_S)
-            confirmed = await env.cancelled_at(stop["id"])
-        stream: list = []
-        for _ in range(int(R1_STREAM_WAIT_S) + 1):
-            stream = [r for r in await self._audit_for_trade(list(R1_STREAM_EVENTS), since, tid)
-                      if r["event_type"] != "stop_order_id_changed"
-                      or str(r["detail"].get("reason") or "").startswith("cancel_or_reject")]
-            if stream or not cancels:
-                break
-            await env.sleep(1.0)
-        pages = [p["text"] for p in env.pages[n_pages:] if "FAILED" in p["text"]]
-        not_restored = any("NOT RESTORED" in p for p in pages)
-        page_line = (f" (its last line: {pages[-1].strip().splitlines()[-1][-120:]})" if pages
-                     else " (no failure page)")
-        trail = [f"{_hms(r.get('at'))} {r['event_type']}"
-                 + (f"({r['detail'].get('reason')})" if r["detail"].get("reason") else "")
-                 for r in await env.audit_rows(None, since) if r["detail"].get("trade_id") == tid]
-
+        retried = await soft(self._audit_for_trade(["stop_restore_retried"], since, tid), [])
+        ended = await soft(self._audit_for_trade(["stop_restore_retry_ended"], since, tid), [])
         if not sale_refused:
             path = ("shape NOT reproduced — " + ("the sale went through" if close else
                                                  "no sale was sent") + f" (returned {ok})")
@@ -693,24 +678,60 @@ class Rehearsal:
             path = "NOT restored — every placement refused and no retry row"
         else:
             path = "no restore placement was made (see the rows)"
+        pages = [p["text"] for p in env.pages[n_pages:] if "FAILED" in p["text"]]
+        not_restored = any("NOT RESTORED" in p for p in pages)
+        page_line = (f" (its last line: {pages[-1].strip().splitlines()[-1][-120:]})" if pages
+                     else " (no failure page)")
+
+        await soft(self._save(), None)
+        # A restore that did not land leaves the row with no stop: give the stop-ACK watchdog's
+        # fallback (filled_at + 30 s, a 30 s tick) its chance to show before R1f flattens.
+        wd = await soft(self._audit_for_trade(
+            ["stop_ack_timeout_remediated"], since, tid,
+            budget_s=R1_WATCHDOG_WAIT_S if (sale_refused and not placed_ok) else 0.0), [])
+        # The cancel's confirmation: the broker's own stamp, and when the stream saw it here.
+        confirmed = None
+        if cancels:
+            await soft(self._wait_status(stop["id"], TERMINAL, budget_s=R1_STREAM_WAIT_S), "")
+            confirmed = await soft(env.cancelled_at(stop["id"]), None)
+
+        async def stream_rows() -> list:
+            rows: list = []
+            for _ in range(int(R1_STREAM_WAIT_S) + 1):
+                rows = [r for r in await self._audit_for_trade(list(R1_STREAM_EVENTS), since, tid)
+                        if r["event_type"] != "stop_order_id_changed"
+                        or str(r["detail"].get("reason") or "").startswith("cancel_or_reject")]
+                if rows or not cancels:
+                    break
+                await env.sleep(1.0)
+            return rows
+
+        stream = await soft(stream_rows(), [])
+        trail = [f"{_hms(r.get('at'))} {r['event_type']}"
+                 + (f"({r['detail'].get('reason')})" if r["detail"].get("reason") else "")
+                 for r in await soft(env.audit_rows(None, since), [])
+                 if r["detail"].get("trade_id") == tid]
+
         t_cancel = cancels[0].get("at") if cancels else None
         t_rest = placed_ok[-1].get("at") if placed_ok else None
         err = (close[0].get("error") or "")[:120] if close else ""
-        return (f"{path}. Times (ET): stop sent {_hms(t_stop)} ({canon(stop.get('status'))}, "
-                f"extra {canon(extra.get('status'))}); exit called {_hms(since)}; cancel requested "
-                f"{_hms(t_cancel)}; broker confirmed the cancel {_hms(confirmed)}"
-                f"{_gap(t_cancel, confirmed)}; stream saw it "
+        rest_id = (placed_ok[-1].get("order_id") or "")[:8] if placed_ok else ""
+        return (f"{path}. Times (ET; an attempt's time is when it was SENT): stop sent "
+                f"{_hms(t_stop)} ({canon(stop.get('status'))}, extra {canon(extra.get('status'))}); "
+                f"exit called {_hms(since)}; cancel requested {_hms(t_cancel)}; broker confirmed "
+                f"the cancel {_hms(confirmed)}{_gap(t_cancel, confirmed)}; stream saw it "
                 f"{_hms(stream[0].get('at')) if stream else 'NO row'}; sale "
-                f"{'refused' if sale_refused else 'sent'} {_hms(close[0].get('at') if close else None)}"
-                f"{' (' + err + ')' if err else ''}; restore attempts {len(place)} "
-                f"({len(place) - len(placed_ok)} refused), first {_hms(place[0].get('at') if place else None)}, "
-                f"placed {_hms(t_rest)}{_gap(t_cancel, t_rest)} "
-                f"{placed_ok[-1].get('order_id', '')[:8] if placed_ok else ''}. "
-                f"STOP NOT RESTORED page: {'YES' if not_restored else 'no'}"
-                f"{page_line}; "
+                f"{'refused' if sale_refused else 'sent'} "
+                f"{_hms(close[0].get('at') if close else None)}{' (' + err + ')' if err else ''}; "
+                f"restore attempts {len(place)} ({len(place) - len(placed_ok)} refused), first "
+                f"{_hms(place[0].get('at') if place else None)}, placed {_hms(t_rest)}"
+                f"{_gap(t_cancel, t_rest)} {rest_id}. "
+                f"STOP NOT RESTORED page: {'YES' if not_restored else 'no'}{page_line}; "
                 f"stop_ack_timeout_remediated: "
                 f"{'YES at ' + _hms(wd[-1].get('at')) if wd else 'no'}; row #{tid} audit trail: "
-                f"{trail[:14] or 'none'}")
+                f"{trail[:14] or 'none'}"
+                + (f"; auxiliary reads that failed (verdict unaffected): {aux_errors}"
+                   if aux_errors else ""))
 
     async def _r1_flatten(self, t: str, r1: dict) -> str:
         """R1f — leave R1's ticker FLAT: under the trade lock (the stop-ACK watchdog and the coverage

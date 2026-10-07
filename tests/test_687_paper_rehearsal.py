@@ -821,3 +821,22 @@ async def test_r1_rechecks_its_ticker_right_before_it_places(tmp_path):
     assert "R1f" not in _steps(log) and env.positions["CL"] == 7.0
     assert not (env.state.get("r1") or {}).get("ticker")          # cleanup will not touch CL
     assert rc == 0, log.failed()
+
+
+@pytest.mark.asyncio
+async def test_a_failing_auxiliary_read_never_costs_r1_its_verdict(tmp_path):
+    """The verdict comes from the spy and the retry rows; the broker-stamp read (a call only R1
+    makes) failing live degrades that one time to '?' and is named — the verdict stays."""
+    env = pr.FakeEnv(start=MON_1300, restore_retries=2)
+
+    async def broken(oid):
+        raise RuntimeError("APIError 500")
+
+    env.cancelled_at = broken
+    log = pr.StepLog(str(tmp_path / "r.log"), env.now)
+    rc = await pr.Rehearsal(env, log, TICKERS).day_a()
+    r1 = _step(log, "R1")
+    assert r1["status"] == "INFO" and "retry PROVEN live" in r1["detail"], r1
+    assert "broker confirmed the cancel ?" in r1["detail"], r1
+    assert "auxiliary reads that failed (verdict unaffected)" in r1["detail"], r1
+    assert _cl_left(env) == (0.0, [], []) and rc == 0
