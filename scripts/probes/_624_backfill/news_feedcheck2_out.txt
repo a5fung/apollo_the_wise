@@ -1,0 +1,41 @@
+2026-06-15 Mon 232 {'GlobeNewswire Inc.': 95, 'Benzinga': 67, 'The Motley Fool': 51, 'Investing.com': 19}
+2026-06-17 Wed 234 {'GlobeNewswire Inc.': 89, 'Benzinga': 72, 'The Motley Fool': 67, 'Investing.com': 6}
+2026-06-19 Fri 137 {'GlobeNewswire Inc.': 81, 'The Motley Fool': 51, 'Investing.com': 5}
+2026-06-23 Tue 195 {'GlobeNewswire Inc.': 102, 'The Motley Fool': 76, 'Investing.com': 17}
+2026-06-25 Thu 212 {'GlobeNewswire Inc.': 110, 'The Motley Fool': 82, 'Investing.com': 20}
+2026-06-29 Mon 157 {'GlobeNewswire Inc.': 95, 'The Motley Fool': 50, 'Investing.com': 12}
+2026-07-01 Wed 202 {'GlobeNewswire Inc.': 120, 'The Motley Fool': 68, 'Investing.com': 14}
+2026-07-03 Fri 145 {'GlobeNewswire Inc.': 87, 'The Motley Fool': 54, 'Investing.com': 4}
+2026-07-07 Tue 220 {'GlobeNewswire Inc.': 120, 'The Motley Fool': 87, 'Investing.com': 13}
+2026-07-09 Thu 181 {'GlobeNewswire Inc.': 106, 'The Motley Fool': 69, 'Investing.com': 6}
+2026-07-13 Mon 169 {'GlobeNewswire Inc.': 95, 'The Motley Fool': 63, 'Investing.com': 11}
+2026-07-15 Wed 165 {'GlobeNewswire Inc.': 101, 'The Motley Fool': 52, 'Investing.com': 12}
+2026-07-17 Fri 169 {'GlobeNewswire Inc.': 97, 'The Motley Fool': 72}
+2026-07-21 Tue 169 {'GlobeNewswire Inc.': 100, 'The Motley Fool': 69}
+2026-07-23 Thu 197 {'GlobeNewswire Inc.': 116, 'The Motley Fool': 81}
+2026-07-27 Mon 165 {'GlobeNewswire Inc.': 111, 'The Motley Fool': 54}
+2026-07-29 Wed 190 {'GlobeNewswire Inc.': 109, 'The Motley Fool': 81}
+2026-07-31 Fri 178 {'GlobeNewswire Inc.': 100, 'The Motley Fool': 78}
+2026-08-04 Tue 170 {'GlobeNewswire Inc.': 111, 'The Motley Fool': 59}
+2026-08-06 Thu 177 {'GlobeNewswire Inc.': 108, 'The Motley Fool': 69}
+2026-08-10 Mon 87 {'The Motley Fool': 50, 'GlobeNewswire Inc.': 37}
+2026-08-12 Wed 63 {'The Motley Fool': 63}
+2026-08-14 Fri 62 {'The Motley Fool': 62}
+2026-08-18 Tue 55 {'The Motley Fool': 55}
+2026-08-20 Thu 58 {'The Motley Fool': 58}
+2026-08-24 Mon 107 {'The Motley Fool': 63, 'GlobeNewswire Inc.': 44}
+2026-08-26 Wed 177 {'GlobeNewswire Inc.': 110, 'The Motley Fool': 67}
+2026-08-28 Fri 257 {'Zacks Investment Research': 98, 'GlobeNewswire Inc.': 82, 'The Motley Fool': 77}
+2026-09-01 Tue 307 {'Zacks Investment Research': 136, 'GlobeNewswire Inc.': 93, 'The Motley Fool': 78}
+2026-09-03 Thu 370 {'Zacks Investment Research': 184, 'GlobeNewswire Inc.': 121, 'The Motley Fool': 65}
+2026-09-07 Mon 243 {'Zacks Investment Research': 121, 'GlobeNewswire Inc.': 85, 'The Motley Fool': 37}
+2026-09-09 Wed 211 {'Zacks Investment Research': 113, 'GlobeNewswire Inc.': 66, 'The Motley Fool': 32}
+2026-09-11 Fri 202 {'Zacks Investment Research': 115, 'GlobeNewswire Inc.': 51, 'The Motley Fool': 36}
+2026-09-15 Tue 262 {'Zacks Investment Research': 136, 'GlobeNewswire Inc.': 71, 'The Motley Fool': 55}
+2026-09-17 Thu 193 {'Zacks Investment Research': 77, 'GlobeNewswire Inc.': 59, 'The Motley Fool': 57}
+2026-09-21 Mon 258 {'Zacks Investment Research': 147, 'GlobeNewswire Inc.': 70, 'The Motley Fool': 41}
+2026-09-23 Wed 292 {'Zacks Investment Research': 153, 'GlobeNewswire Inc.': 88, 'The Motley Fool': 51}
+2026-09-25 Fri 131 {'GlobeNewswire Inc.': 87, 'The Motley Fool': 44}
+2026-09-29 Tue 484 {'Zacks Investment Research': 334, 'GlobeNewswire Inc.': 93, 'The Motley Fool': 57}
+2026-10-01 Thu 562 {'Zacks Investment Research': 385, 'GlobeNewswire Inc.': 107, 'The Motley Fool': 70}
+2026-10-05 Mon 479 {'Zacks Investment Research': 322, 'GlobeNewswire Inc.': 101, 'The Motley Fool': 56}

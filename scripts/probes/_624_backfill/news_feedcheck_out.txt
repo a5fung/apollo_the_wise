@@ -1,0 +1,23 @@
+== latest article per name (desc, limit 3)
+PLTR 200 [('2026-10-06', 'The Motley Fool', 'Not Microsoft. Not Google. Analysts Call This $2.7'), ('2026-10-06', 'Zacks Investment Research', 'Should Invesco S&P 100 Equal Weight ETF (EQWL) Be '), ('2026-10-06', 'The Motley Fool', 'Nvidia, Palantir, and Alphabet Are Sending Shockwa')]
+AAPL 200 [('2026-10-06', 'The Motley Fool', 'Not Nvidia. Not Micron. If I Could Buy and Hold On'), ('2026-10-06', 'Zacks Investment Research', 'Is iShares MSCI USA Quality Factor ETF (QUAL) a St'), ('2026-10-06', 'The Motley Fool', 'Warren Buffett Says Buy This Vanguard Index Fund -')]
+JAGX 200 [('2026-06-26', 'GlobeNewswire Inc.', 'Life Sciences Virtual Investor Forum Presentations'), ('2025-09-01', 'GlobeNewswire Inc.', 'Toronto Star Unveils Commemorative Magazine, Iconi'), ('2024-07-23', 'Benzinga', 'Why Jaguar Health Stock Is Crashing - Benzinga')]
+AEIS 200 [('2026-10-06', 'Zacks Investment Research', "Can Rising AI Demand Drive Growth for ASML's Advan"), ('2026-10-05', 'Zacks Investment Research', 'Are Computer and Technology Stocks Lagging  Advanc'), ('2026-09-07', 'Zacks Investment Research', 'ASML Bets Big on AI & Capacity Expansion: Should Y')]
+FTK 200 [('2026-10-06', 'GlobeNewswire Inc.', 'FLOTEK DEADLINE: ROSEN, SKILLED INVESTOR COUNSEL, '), ('2026-10-05', 'GlobeNewswire Inc.', 'Bronstein, Gewirtz & Grossman LLC Urges Flotek Ind'), ('2026-10-05', 'GlobeNewswire Inc.', 'Bronstein, Gewirtz & Grossman LLC Urges Qfin Holdi')]
+BLZE 200 [('2026-08-05', 'The Motley Fool', 'Why Backblaze Stock Jumped Today'), ('2026-05-08', 'Investing.com', 'Is Backblaze the Next Momentum Monster?'), ('2025-08-07', 'The Motley Fool', 'Backblaze (BLZE) Q2 Revenue Jumps 16%')]
+== PLTR articles per month (cap 1000)
+PLTR 2024-03-01 112  [('The Motley Fool', 73), ('Benzinga', 12), ('Zacks Investment Research', 11), ('MarketWatch', 9), ('Seeking Alpha', 7)]
+PLTR 2025-03-01 68  [('The Motley Fool', 60), ('Benzinga', 6), ('GlobeNewswire Inc.', 1), ('MarketWatch', 1)]
+PLTR 2025-09-01 76  [('The Motley Fool', 64), ('Investing.com', 7), ('Benzinga', 4), ('GlobeNewswire Inc.', 1)]
+PLTR 2026-03-01 115  [('The Motley Fool', 79), ('Benzinga', 27), ('Investing.com', 7), ('GlobeNewswire Inc.', 2)]
+PLTR 2026-06-01 70  [('The Motley Fool', 48), ('Benzinga', 15), ('Investing.com', 4), ('GlobeNewswire Inc.', 3)]
+PLTR 2026-08-01 52  [('The Motley Fool', 45), ('Zacks Investment Research', 6), ('GlobeNewswire Inc.', 1)]
+== market-wide articles on one weekday per period (no ticker filter; cap 1000)
+2024-03-12 836  [('Zacks Investment Research', 400), ('GlobeNewswire Inc.', 206), ('Benzinga', 98), ('The Motley Fool', 78), ('MarketWatch', 37)]
+2024-09-17 215  [('GlobeNewswire Inc.', 105), ('Benzinga', 60), ('The Motley Fool', 48), ('Investing.com', 2)]
+2025-03-11 177  [('GlobeNewswire Inc.', 95), ('Benzinga', 42), ('The Motley Fool', 37), ('Investing.com', 3)]
+2025-09-16 231  [('GlobeNewswire Inc.', 106), ('The Motley Fool', 52), ('Benzinga', 51), ('Investing.com', 22)]
+2026-03-10 251  [('GlobeNewswire Inc.', 102), ('The Motley Fool', 72), ('Benzinga', 67), ('Investing.com', 10)]
+2026-06-16 260  [('GlobeNewswire Inc.', 111), ('Benzinga', 73), ('The Motley Fool', 65), ('Investing.com', 11)]
+2026-08-18 55  [('The Motley Fool', 55)]
+2026-09-15 262  [('Zacks Investment Research', 136), ('GlobeNewswire Inc.', 71), ('The Motley Fool', 55)]

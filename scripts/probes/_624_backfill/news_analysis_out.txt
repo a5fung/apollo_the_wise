@@ -1,0 +1,229 @@
+signals 768 missing polygon rows 0 alpaca rows 768
+
+== ALL 768 backfill signals (n=768)
+   Polygon raw >=1 article in window      : 137/768 = 17.8%
+   Polygon primary-subject >=1            : 104/768 = 13.5%
+   Polygon any article in prior 7d too    : 223/768
+   Alpaca/Benzinga raw >=1                : 620/768 = 80.7%
+   Alpaca/Benzinga primary-subject >=1    : 436/768 = 56.8%
+   either source primary-subject >=1      : 447/768
+
+== walked (settled) trades, whole window (n=317)
+   Polygon raw >=1 article in window      : 49/317 = 15.5%
+   Polygon primary-subject >=1            : 36/317 = 11.4%
+   Polygon any article in prior 7d too    : 87/317
+   Alpaca/Benzinga raw >=1                : 265/317 = 83.6%
+   Alpaca/Benzinga primary-subject >=1    : 164/317 = 51.7%
+   either source primary-subject >=1      : 165/317
+
+== walked OOS 2024-01-02..2026-06-05 (the 279) (n=279)
+   Polygon raw >=1 article in window      : 49/279 = 17.6%
+   Polygon primary-subject >=1            : 36/279 = 12.9%
+   Polygon any article in prior 7d too    : 82/279
+   Alpaca/Benzinga raw >=1                : 234/279 = 83.9%
+   Alpaca/Benzinga primary-subject >=1    : 149/279 = 53.4%
+   either source primary-subject >=1      : 150/279
+
+-- by year (all signals)
+
+== year 2024 (n=228)
+   Polygon raw >=1 article in window      : 77/228 = 33.8%
+   Polygon primary-subject >=1            : 52/228 = 22.8%
+   Polygon any article in prior 7d too    : 121/228
+   Alpaca/Benzinga raw >=1                : 175/228 = 76.8%
+   Alpaca/Benzinga primary-subject >=1    : 132/228 = 57.9%
+   either source primary-subject >=1      : 139/228
+
+== year 2025 (n=332)
+   Polygon raw >=1 article in window      : 44/332 = 13.3%
+   Polygon primary-subject >=1            : 37/332 = 11.1%
+   Polygon any article in prior 7d too    : 60/332
+   Alpaca/Benzinga raw >=1                : 277/332 = 83.4%
+   Alpaca/Benzinga primary-subject >=1    : 194/332 = 58.4%
+   either source primary-subject >=1      : 195/332
+
+== year 2026 (n=208)
+   Polygon raw >=1 article in window      : 16/208 = 7.7%
+   Polygon primary-subject >=1            : 15/208 = 7.2%
+   Polygon any article in prior 7d too    : 42/208
+   Alpaca/Benzinga raw >=1                : 168/208 = 80.8%
+   Alpaca/Benzinga primary-subject >=1    : 110/208 = 52.9%
+   either source primary-subject >=1      : 113/208
+
+-- by year (walked)
+
+== walked 2024 (n=87)
+   Polygon raw >=1 article in window      : 26/87 = 29.9%
+   Polygon primary-subject >=1            : 16/87 = 18.4%
+   Polygon any article in prior 7d too    : 43/87
+   Alpaca/Benzinga raw >=1                : 67/87 = 77.0%
+   Alpaca/Benzinga primary-subject >=1    : 47/87 = 54.0%
+   either source primary-subject >=1      : 48/87
+
+== walked 2025 (n=138)
+   Polygon raw >=1 article in window      : 19/138 = 13.8%
+   Polygon primary-subject >=1            : 16/138 = 11.6%
+   Polygon any article in prior 7d too    : 25/138
+   Alpaca/Benzinga raw >=1                : 120/138 = 87.0%
+   Alpaca/Benzinga primary-subject >=1    : 73/138 = 52.9%
+   either source primary-subject >=1      : 73/138
+
+== walked 2026 (n=92)
+   Polygon raw >=1 article in window      : 4/92 = 4.3%
+   Polygon primary-subject >=1            : 4/92 = 4.3%
+   Polygon any article in prior 7d too    : 19/92
+   Alpaca/Benzinga raw >=1                : 78/92 = 84.8%
+   Alpaca/Benzinga primary-subject >=1    : 44/92 = 47.8%
+   either source primary-subject >=1      : 44/92
+
+== Polygon publisher mix by year (articles in window; top 8 each)
+2024 134 [('Benzinga', 57), ('GlobeNewswire Inc.', 37), ('MarketWatch', 16), ('Zacks Investment Research', 16), ('The Motley Fool', 4), ('Seeking Alpha', 2), ('Investing.com', 2)]
+2025 59 [('Benzinga', 28), ('GlobeNewswire Inc.', 28), ('The Motley Fool', 3)]
+2026 18 [('Benzinga', 9), ('GlobeNewswire Inc.', 8), ('Zacks Investment Research', 1)]
+
+== Polygon publisher mix of PRIMARY-subject articles by year
+2024 72 [('GlobeNewswire Inc.', 37), ('Zacks Investment Research', 16), ('Benzinga', 7), ('MarketWatch', 6), ('The Motley Fool', 4), ('Seeking Alpha', 1), ('Investing.com', 1)]
+2025 49 [('GlobeNewswire Inc.', 27), ('Benzinga', 21), ('The Motley Fool', 1)]
+2026 16 [('GlobeNewswire Inc.', 8), ('Benzinga', 7), ('Zacks Investment Research', 1)]
+
+== Alpaca publisher mix by year
+2024 510 [('benzinga', 510)]
+2025 770 [('benzinga', 770)]
+2026 509 [('benzinga', 509)]
+
+== input size per signal, chars of title+description (Polygon)
+raw: signals=768 total=111,979 chars mean/signal=146 median(all)=0 p90=439 max=5223 | with>=1 article n=137 median=502 p90=1558
+primary-subject: signals=768 total=53,734 chars mean/signal=70 median(all)=0 p90=323 max=2102 | with>=1 article n=104 median=414 p90=975
+Alpaca primary-subject: signals=768 total=110,064 chars mean/signal=143 median(all)=86 p90=390 | with>=1: n=436 median=196
+
+== tail trades (R >= 3), walked
+
+OMIC 2024-09-13 tick 09:30 R=5.86 [OOS] name='Singular Genomics Systems, Inc. Common Stock'  Polygon raw=1 prim=1 earlier7d=0 | Alpaca raw=1 prim=1
+   POLY 2024-09-12T20:31Z Benzinga               prim=1 tk=1 | Singular Genomics Receives Non-Binding Acquisition Proposal from Deerfield
+   ALP  2024-09-12T20:32Z benzinga   prim=1 tk=1 | Singular Genomics Systems Receives Non-Binding Proposal From Deerfield Management To Acquire All Singular Stock It Does Not Already Own For 
+
+ARQQ 2024-11-22 tick 09:30 R=4.28 [OOS] name='Arqit Quantum Inc. Ordinary Shares'  Polygon raw=0 prim=0 earlier7d=0 | Alpaca raw=0 prim=0
+
+NUKK 2024-12-18 tick 09:30 R=4.05 [OOS] name='Nukkleus Inc. Common Stock'  Polygon raw=0 prim=0 earlier7d=0 | Alpaca raw=3 prim=0
+   ALP  2024-12-18T02:20Z benzinga   prim=0 tk=5 | Nukkleus, Micron, Teva Pharmaceutical, Quantum Computing, Tesla: Why These 5 Stocks Are On Investors' Radars Today
+   ALP  2024-12-18T09:34Z benzinga   prim=0 tk=20 | Why Corvus Pharmaceuticals Shares Are Trading Higher By Around 22%; Here Are 20 Stocks Moving Premarket
+   ALP  2024-12-18T11:22Z benzinga   prim=0 tk=10 | US Stocks To Open Higher As Rate Cut Expectations Surge: All Eyes On Dow Jones To Break Its 9-Day Losing Streak
+
+CRNC 2025-01-03 tick 09:30 R=3.06 [OOS] name='Cerence Inc. Common Stock'  Polygon raw=0 prim=0 earlier7d=0 | Alpaca raw=1 prim=1
+   ALP  2025-01-03T13:04Z benzinga   prim=1 tk=1 | Cerence AI Reveals Expanded Collaboration With NVIDIA To Advance  Capabilities Of CaLLM Family Of Language Models
+
+ZEPP 2025-07-11 tick 09:35 R=4.31 [OOS] name='Zepp Health Corporation American depositary shares, each representing sixteen Class A ordinary shares'  Polygon raw=0 prim=0 earlier7d=0 | Alpaca raw=0 prim=0
+
+CLPT 2025-09-24 tick 09:30 R=4.97 [OOS] name='ClearPoint Neuro, Inc. Common Stock'  Polygon raw=0 prim=0 earlier7d=0 | Alpaca raw=1 prim=0
+   ALP  2025-09-24T12:10Z benzinga   prim=0 tk=12 | 12 Health Care Stocks Moving In Wednesday's Pre-Market Session
+
+AKAN 2026-04-29 tick 09:40 R=6.00 [OOS] name='Akanda Corp. Common Shares'  Polygon raw=0 prim=0 earlier7d=0 | Alpaca raw=3 prim=0
+   ALP  2026-04-28T21:05Z benzinga   prim=0 tk=12 | 12 Health Care Stocks Moving In Tuesday's After-Market Session
+   ALP  2026-04-29T09:39Z benzinga   prim=0 tk=20 | Why Seagate Shares Are Trading Higher By Around 18%; Here Are 20 Stocks Moving Premarket
+   ALP  2026-04-29T12:06Z benzinga   prim=0 tk=12 | 12 Health Care Stocks Moving In Wednesday's Pre-Market Session
+
+BLZE 2026-06-23 tick 09:30 R=3.93 [in-sample (after 2026-06-05)] name='Backblaze, Inc. Class A Common Stock'  Polygon raw=0 prim=0 earlier7d=0 | Alpaca raw=1 prim=1
+   ALP  2026-06-23T12:31Z benzinga   prim=1 tk=2 | Backblaze Signs $335M, 5-Year Multi-Exabyte Storage Deal With CoreWeave
+
+DFNS 2026-07-28 tick 09:30 R=5.07 [in-sample (after 2026-06-05)] name='T3 Defense Inc. Common Stock'  Polygon raw=0 prim=0 earlier7d=0 | Alpaca raw=3 prim=1
+   ALP  2026-07-27T21:06Z benzinga   prim=0 tk=12 | 12 Information Technology Stocks Moving In Monday's After-Market Session
+   ALP  2026-07-28T01:40Z benzinga   prim=1 tk=5 | Nvidia, Applied Digital, Celestica, T3 Defense Corp. and SanDisk: Why These Stocks Are on Investors' Radars Today
+   ALP  2026-07-28T12:05Z benzinga   prim=0 tk=12 | 12 Information Technology Stocks Moving In Tuesday's Pre-Market Session
+
+WETO 2026-08-17 tick 09:30 R=13.08 [in-sample (after 2026-06-05)] name='Wetour Robotics Limited Ordinary Shares'  Polygon raw=0 prim=0 earlier7d=0 | Alpaca raw=1 prim=0
+   ALP  2026-08-17T12:06Z benzinga   prim=0 tk=12 | 12 Industrials Stocks Moving In Monday's Pre-Market Session
+
+== by half-year: Polygon primary>=1 (and Alpaca primary>=1 when pulled), all signals
+2024H1: n=101 polygon raw  61 (60.4%) prim  45 (44.6%) | alpaca raw  81 (80.2%) prim  66 (65.3%)
+2024H2: n=127 polygon raw  16 (12.6%) prim   7 ( 5.5%) | alpaca raw  94 (74.0%) prim  66 (52.0%)
+2025H1: n=141 polygon raw   8 ( 5.7%) prim   8 ( 5.7%) | alpaca raw 112 (79.4%) prim  75 (53.2%)
+2025H2: n=191 polygon raw  36 (18.8%) prim  29 (15.2%) | alpaca raw 165 (86.4%) prim 119 (62.3%)
+2026H1: n=153 polygon raw  13 ( 8.5%) prim  12 ( 7.8%) | alpaca raw 121 (79.1%) prim  82 (53.6%)
+2026H2: n= 55 polygon raw   3 ( 5.5%) prim   3 ( 5.5%) | alpaca raw  47 (85.5%) prim  28 (50.9%)
+2026 before Benzinga left Polygon (<2026-06-19): n=145 polygon prim>=1 12 (8.3%) | alpaca prim>=1 79 (54.5%)
+2026-06-19 on (Benzinga absent from Polygon): n=63 polygon prim>=1 3 (4.8%) | alpaca prim>=1 31 (49.2%)
+
+== Alpaca/Benzinga primary-subject articles also present in Polygon (title match), by year
+2024: 26/260 = 10% of Alpaca primary articles also in Polygon (window+prior7d)
+2025: 22/348 = 6% of Alpaca primary articles also in Polygon (window+prior7d)
+2026: 6/229 = 3% of Alpaca primary articles also in Polygon (window+prior7d)
+
+== both-source view: signals with Alpaca primary>=1 but Polygon primary==0
+alpaca-only 343 | polygon-only 11 | both 93 | neither 321
+
+== the 19 live lane rows (2026-09-09..10-05): Polygon vs Alpaca/Benzinga, same window
+
+COLA 2026-09-11 09:30 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=0 prim=0
+
+PCLA 2026-09-10 09:30 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=1 prim=0
+   ALP  09-10T08:34Z benzinga prim=0 tk=20 | Why AeroVironment Shares Are Trading Higher By Around 6%; Here Are 20 Stocks Moving Premarket
+
+BIAF 2026-09-09 09:30 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=2 prim=1
+   ALP  09-09T12:06Z benzinga prim=1 tk=1 | bioAffinity Technologies Regains Nasdaq Compliance
+   ALP  09-09T12:06Z benzinga prim=0 tk=12 | 12 Health Care Stocks Moving In Wednesday's Pre-Market Session
+
+TNON 2026-09-11 09:30 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=3 prim=1
+   ALP  09-10T21:06Z benzinga prim=0 tk=12 | 12 Health Care Stocks Moving In Thursday's After-Market Session
+   ALP  09-11T12:06Z benzinga prim=0 tk=12 | 12 Health Care Stocks Moving In Friday's Pre-Market Session
+   ALP  09-11T12:59Z benzinga prim=1 tk=1 | Tenon Medical Stock Extends Multi-Day Rally: What's Happening?
+
+PCLA 2026-09-11 09:30 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=3 prim=0
+   ALP  09-10T21:06Z benzinga prim=0 tk=12 | 12 Information Technology Stocks Moving In Thursday's After-Market Session
+   ALP  09-11T08:58Z benzinga prim=0 tk=21 | Why RH Shares Are Trading Higher By Over 8%; Here Are 20 Stocks Moving Premarket
+   ALP  09-11T12:06Z benzinga prim=0 tk=12 | 12 Information Technology Stocks Moving In Friday's Pre-Market Session
+
+MKDW 2026-09-11 09:40 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=1 prim=0
+   ALP  09-11T12:06Z benzinga prim=0 tk=12 | 12 Consumer Discretionary Stocks Moving In Friday's Pre-Market Session
+
+MKDW 2026-09-17 09:30 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=1 prim=0
+   ALP  09-17T12:05Z benzinga prim=0 tk=12 | 12 Consumer Discretionary Stocks Moving In Thursday's Pre-Market Session
+
+RLGT 2026-09-15 09:30 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=9 prim=3
+   ALP  09-14T20:10Z benzinga prim=1 tk=1 | Radiant Logistics Q4 Adj. EPS $0.15 Beats $0.09 Estimate, Sales $261.436M Beat $231.300M Estimate
+   ALP  09-14T21:06Z benzinga prim=0 tk=12 | 12 Industrials Stocks Moving In Monday's After-Market Session
+   ALP  09-14T21:15Z benzinga prim=1 tk=1 | Radiant Logistics Q4 2026 Earnings Call Transcript
+   ALP  09-14T05:33Z benzinga prim=0 tk=5 | Dow Surges Over 500 Points as Crude Oil Prices Cool: Investor Sentiment Improves, But Greed Index Remains In ‘Fear’ Zone
+   ALP  09-15T09:18Z benzinga prim=0 tk=20 | Why Veea Shares Are Trading Higher By 58%; Here Are 20 Stocks Moving Premarket
+   ALP  09-15T11:14Z benzinga prim=0 tk=3 | Market-Moving News for September 15th
+   ALP  09-15T12:05Z benzinga prim=0 tk=12 | 12 Industrials Stocks Moving In Tuesday's Pre-Market Session
+   ALP  09-15T12:36Z benzinga prim=1 tk=1 | Citizens Upgrades Radiant Logistics to Market Outperform, Announces $10 Price Target
+   ALP  09-15T12:55Z benzinga prim=0 tk=5 | This Ulta Beauty Analyst Is No Longer Bearish; Here Are Top 5 Upgrades For Tuesday
+
+VNCE 2026-09-14 09:50 ET | Polygon raw=0 prim=0 prior7d=1 | Alpaca raw=0 prim=0
+
+GRML 2026-09-22 09:30 ET | Polygon raw=0 prim=0 prior7d=1 | Alpaca raw=3 prim=1
+   ALP  09-22T01:38Z benzinga prim=0 tk=5 | Meta Platforms, Greenland Mines, Intel, AMD and GameStop: Why These 5 Stocks Are on Investors' Radars Today
+   ALP  09-22T12:06Z benzinga prim=0 tk=12 | 12 Health Care Stocks Moving In Tuesday's Pre-Market Session
+   ALP  09-22T12:32Z benzinga prim=1 tk=14 | Stock Market Today: S&P 500, Dow, Futures Gain Nasdaq 100 Slips as Trump Administration Targets Iranian Airlines— Lennar, Greenlan
+
+SVRN 2026-09-21 09:55 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=1 prim=0
+   ALP  09-21T12:06Z benzinga prim=0 tk=11 | 11 Industrials Stocks Moving In Monday's Pre-Market Session
+
+VEEA 2026-09-17 09:30 ET | Polygon raw=0 prim=0 prior7d=1 | Alpaca raw=1 prim=0
+   ALP  09-17T12:05Z benzinga prim=0 tk=12 | 12 Information Technology Stocks Moving In Thursday's Pre-Market Session
+
+GRML 2026-09-24 09:40 ET | Polygon raw=0 prim=0 prior7d=1 | Alpaca raw=5 prim=2
+   ALP  09-23T21:05Z benzinga prim=0 tk=12 | 12 Health Care Stocks Moving In Wednesday's After-Market Session
+   ALP  09-23T21:25Z benzinga prim=1 tk=1 | Greenland Mines Enters Agreement With Institutional Investors For ~$38.4M Direct Offering Of 1,765,420 Common Shares And Pre-Funde
+   ALP  09-24T06:42Z benzinga prim=1 tk=1 | Greenland Mines Fully Funds 2027 Milestones With $42M Raise At $12.00 Per Share, Wraps Sarfartoq NdPr Field Program
+   ALP  09-24T09:05Z benzinga prim=0 tk=20 | Why GlucoTrack Shares Are Trading Higher By Around 118%; Here Are 20 Stocks Moving Premarket
+   ALP  09-24T12:05Z benzinga prim=0 tk=12 | 12 Health Care Stocks Moving In Thursday's Pre-Market Session
+
+GRML 2026-09-23 09:30 ET | Polygon raw=0 prim=0 prior7d=1 | Alpaca raw=1 prim=0
+   ALP  09-23T12:06Z benzinga prim=0 tk=12 | 12 Health Care Stocks Moving In Wednesday's Pre-Market Session
+
+NCT 2026-09-22 09:30 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=1 prim=0
+   ALP  09-22T12:06Z benzinga prim=0 tk=12 | 12 Industrials Stocks Moving In Tuesday's Pre-Market Session
+
+XRPN 2026-09-30 09:40 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=0 prim=0
+
+JAGX 2026-09-25 09:30 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=1 prim=1
+   ALP  09-25T12:28Z benzinga prim=1 tk=1 | Jaguar Health Announces Issuance Of 182,091 Shares To Streeterville Capital For $1.67832M Reduction In 2021 Note Balance; 2025 Str
+
+SRZN 2026-09-24 09:30 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=1 prim=0
+   ALP  09-24T12:05Z benzinga prim=0 tk=12 | 12 Health Care Stocks Moving In Thursday's Pre-Market Session
+
+SDEV 2026-10-05 09:30 ET | Polygon raw=0 prim=0 prior7d=0 | Alpaca raw=3 prim=0
+   ALP  10-02T21:05Z benzinga prim=0 tk=12 | 12 Health Care Stocks Moving In Friday's After-Market Session
+   ALP  10-05T09:10Z benzinga prim=0 tk=21 | Why PTC Shares Are Trading Higher By Around 35%; Here Are 20 Stocks Moving Premarket
+   ALP  10-05T12:05Z benzinga prim=0 tk=12 | 12 Health Care Stocks Moving In Monday's Pre-Market Session

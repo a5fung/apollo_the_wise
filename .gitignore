@@ -129,3 +129,6 @@ scripts/probes/_668_out/bars.csv.gz
 scripts/probes/_624_backfill/min_*.tsv.gz
 scripts/probes/_624_backfill/s0_daily.tsv.gz
 scripts/probes/_624_backfill/digests.pkl
+scripts/probes/_624_backfill/news_raw.jsonl
+scripts/probes/_624_backfill/news_alpaca_raw.jsonl
+scripts/probes/_624_backfill/news_alert_raw.jsonl
