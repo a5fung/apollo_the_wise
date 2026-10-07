@@ -2027,3 +2027,14 @@ EVIDENCE:
 - **Ruled out with a reason:** F7 — DEAD, not built (the 9M scan is gated off since 2026-09-08).
 - **Proven able to fire by mutation:** recorded in `tests/test_501_tier1_silent_failure_surfaces.py` (MUTATION CHECKS 2026-09-30 + REVIEW-FIX MUTATION CHECKS) and the commit messages — deleting each emitter turns its named test red.
 - **Quiet on ordinary days (the line's DONE-WHEN):** Mon 10-05 and Tue 10-06 — 0 `ep_repoll_upgrade_error`, `ep_candidate_parse_error`, `drawdown_breaker_read_error` rows, 0 Tracebacks; the F5 sweep's 10-06 page named two REAL failures (the rehearsal's paper KO coverage miss, a truncated second-opinion call), not noise.
+
+## #658 — both 2026-09-13 theme changes deployed, the EP-boost stage-2 verdicts reported, and the 15-day watch read and ruled (2026-10-06)
+
+BAR: "both deployed, and the EP fix's stage-2 verdicts reported to him with the four named rejections and every new HIGH crossing, BEFORE it is left acting."
+
+EVIDENCE:
+- **Both deployed:** 2026-09-14 (both scopes) — (A) the cross-sector co-movement assignment (`b22e9ff3`, toggle `theme_assign_comove`), (B) the EP theme-belonging fix (`4835c0c7`); VERIFY-LIVE PASS 2026-09-15 (fit call made, shadow row with a real verdict, both counters in the summary).
+- **Stage-2 verdicts with the four named rejections and every new HIGH crossing:** `docs/analysis/ep_theme_belonging_stage2_results_2026-09-14.md` (US$1.79) — Dominion→fracking, Bakkt→satellite imagery, QBTS→satellite imagery, Compass Pathways→custom AI silicon all REJECTED; the one definite new HIGH crossing named (GFS 2026-05-21, 56.4 → 68.4 vs a 65 bar).
+- **The 15-day watch (its DONE-WHEN), read 2026-10-06:** `scripts/probes/_1006/p658_15day.out` — P1a pass (added over the label every week: 13/23/7/2), P1b missed (declined to add 119 label-matched candidates vs 45 added); boosted EP alerts 3 of 16. Sample of 20 (`scripts/probes/_1006/p658_removals.out`): 50 distinct pairs; of 14 sampled, 7 clearly right (foreign names mislabelled by sector, opposite-trading), 7 on-thesis peers not moving with the group — right under the trade-together rule.
+- **His ruling 2026-10-06 (*"ok"* to "keep as is and close #658"):** both changes stay ON as built.
+- **Not claimed:** the boosted-share delta is unreadable at n = 16 alerts; it is not a verdict on the +10's value.
