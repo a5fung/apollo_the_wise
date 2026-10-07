@@ -215,6 +215,8 @@ monotonicity across four buckets is what makes it worth reporting, not a p-value
 
 ## 5. WHAT IS *NOT* ENCODED — named honestly, so nobody claims coverage
 
+- **Pivot lines with base length and depth** (operator-shared reference, PENG 2026-10-07: *"the horizontal pivot lines that trader drew ... a clear pivot there, so this is useful for charting"* — `operator_shared_notes.md` 2026-10-07). A line at each prior swing high, labelled 'N days · X%' (days since the high · pullback depth from it); the EP is read as 'cleared the 36-day/31% pivot, 63-day/51% pivot still 24% overhead'. Our encoder counts cleared zones but does not name the nearest cleared pivot, the next overhead one, or the base length/depth attached to each — a candidate input for #327 H9 (stops and targets on the ladder) and the chart reads (#594).
+
 - **Stage analysis** (*"possibly moving to a Stage-2 uptrend after bottoming and basing"* — his SE
   condition 3). No classifier exists. Named in the notes as the biggest of the four SE gaps.
 - **Group / theme strength** (*"retail group is strong where this belongs"* — SE condition 4).

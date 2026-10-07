@@ -1764,3 +1764,14 @@ confirmation from other traders."* → added to the labelled EP list (`operator_
   the second making a higher high — is the trader's name for it; reference only, not a rule.
 - **What we did:** HIGH 73.8, catalyst `strong` (the grader saw 'multiple company records' + a raised FY2027
   outlook but not the figures), live #414 — trigger $69.20 (ORB high), filled $72.21, stop $62.20.
+- **His follow-up, same day:** *"The other things to note is the horizontal pivot lines that trader drew on the
+  chart. You can see a clear pivot there, so this is useful for charting."* What the chart draws (read off the
+  image he shared, so approximate prices): a horizontal line at each prior swing HIGH, carried right to today,
+  labelled with **days since that high · depth of the pullback from it** —
+  - **"36 days · 31%"** at ~$66: the late-August swing high; the base under it fell ~31% (to ~$45) over 36 days.
+    The 10-07 EP gapped and held ABOVE this pivot (close $72.78) — the level it cleared.
+  - **"63 days · 51%"** at ~$90: the July spike high (that day was itself an EP, marked E); ~51% down to the base
+    low over 63 days. Still ~24% overhead — the next supply shelf.
+  - Two short minor pivots (~$53.5, ~$57) inside the base, cleared on the way up in late September.
+  Why it matters for us: these are the supply-ladder levels of `structure_model.md` drawn explicitly — "which
+  pivot did the gap clear, and how far is the next one" — with the base's length and depth attached.
