@@ -1253,6 +1253,13 @@ _repoll_shadow_date = None
 # comment at the call site): telemetry only, never read by anything that admits or rejects.
 _PARSE_DROP_AUDIT_MIN = 50
 _PARSE_DROP_AUDIT_FRAC = 0.01
+# BASELINED 2026-10-07 from the first real rows: every tick of an ordinary day dropped 139-150 of
+# ~13,250 snapshot rows (1.05-1.13%), ALL `no prev_close` (thin units / warrants / preferreds /
+# just-listed: XSLL, TLAC, WHLRL, AEAQ...) and 0 raised — just over the 1% floor, so the alarm
+# fired 38 times and paged via the L1 '*_error' sweep with nothing broken. Raised drops keep the
+# 1% floor; a tick whose drops include no-prev-close rows audits only past 4% (~530 rows), well
+# above that background and far below a feed-wide `prevDay` loss (every row).
+_PARSE_DROP_MISSING_AUDIT_FRAC = 0.04
 
 
 class _ParseDropTally:
@@ -1308,8 +1315,11 @@ class _ParseDropTally:
             logger.warning(f"#635 F8 parse-drop tally (no prev close) failed: {_te}")
 
     def should_audit(self, n_snapshots: int) -> bool:
-        return (self.total >= _PARSE_DROP_AUDIT_MIN
-                and self.total >= n_snapshots * _PARSE_DROP_AUDIT_FRAC)
+        raised_only = (self.n_raised >= _PARSE_DROP_AUDIT_MIN
+                       and self.n_raised >= n_snapshots * _PARSE_DROP_AUDIT_FRAC)
+        with_missing = (self.total >= _PARSE_DROP_AUDIT_MIN
+                        and self.total >= n_snapshots * _PARSE_DROP_MISSING_AUDIT_FRAC)
+        return raised_only or with_missing
 
 
 def _is_premarket(now_et: datetime) -> bool:
@@ -4005,6 +4015,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             "sample_no_prev_close": _parse_drops.sample_no_prev_close,
                             "threshold_min": _PARSE_DROP_AUDIT_MIN,
                             "threshold_frac": _PARSE_DROP_AUDIT_FRAC,
+                            "threshold_frac_with_missing": _PARSE_DROP_MISSING_AUDIT_FRAC,
                             "scan_date": today.isoformat()}),
             ))
             _WATCHDOG_BG_TASKS.add(_pdt)

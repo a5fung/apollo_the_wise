@@ -1455,3 +1455,31 @@ async def test_f12_a_healthy_watchdog_raises_no_error_row(monkeypatch, stuck_env
     assert [r[0] for r in audit] == ["stuck_pending_new_detected"]      # the normal page, nothing else
     assert len(tg) == 1 and "pending_new" in tg[0].lower()
 
+
+
+# ─── #635 F8 baseline (2026-10-07): the thin-ticker background must stay silent ───────────────────
+# The first real rows: every tick of 10-07 dropped 139-150 of ~13,250 snapshot rows, all
+# `no prev_close`, 0 raised (just over the old 1% floor -> 38 audit rows, an L1 page, nothing broken).
+
+def test_f8_baseline_the_ordinary_no_prev_close_background_stays_silent():
+    from agents.market_intelligence.ep_detector import _ParseDropTally
+    t = _ParseDropTally()
+    for i in range(150):
+        t.note_no_prev_close(f"T{i}")
+    assert not t.should_audit(13235)
+
+
+def test_f8_baseline_a_feed_wide_prev_close_loss_still_audits():
+    from agents.market_intelligence.ep_detector import _ParseDropTally
+    t = _ParseDropTally()
+    for i in range(600):
+        t.note_no_prev_close(f"T{i}")
+    assert t.should_audit(13235)          # 4.5% of the board: well past the 1.1% background
+
+
+def test_f8_baseline_raised_drops_keep_the_one_percent_floor():
+    from agents.market_intelligence.ep_detector import _ParseDropTally
+    t = _ParseDropTally()
+    for i in range(140):
+        t.note_raised(f"T{i}", ValueError("bad row"))
+    assert t.should_audit(13235)          # 1.06% raised: a real parse failure is not background
