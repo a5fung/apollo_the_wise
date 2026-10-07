@@ -600,21 +600,33 @@ class Rehearsal:
             rej = await self._audit_for_trade(["full_exit_rejected"], since, tid)
             retried = await self._audit_for_trade(["stop_restore_retried"], since, tid)
             row = await env.trade(tid)
-            restored = await env.get_order(row["stop_order_id"]) if row["stop_order_id"] else None
-            st = (await self._wait_status(row["stop_order_id"], STOP_LIVE, budget_s=SETTLE_BUDGET_S)
+            pointer = row["stop_order_id"]
+            # The restored stop is read by the id the placement RETURNED, not through the row's
+            # pointer: the stream's cancel handler nulls the pointer unconditionally, and a restore
+            # that lands as the cancel settles can be nulled AFTER its own write (the race named in
+            # exit_discipline.md 2026-10-06). That is reported beside B2, never mistaken for a
+            # restore that failed.
+            restored_id = (placed_ok[-1].get("order_id") if placed_ok else None) or pointer
+            restored = await env.get_order(restored_id) if restored_id else None
+            st = (await self._wait_status(restored_id, STOP_LIVE, budget_s=SETTLE_BUDGET_S)
                   if restored else "")
             if restored:
-                restored = await env.get_order(row["stop_order_id"])
+                restored = await env.get_order(restored_id)
+            pointer_note = (
+                "row points at it" if restored_id and pointer == restored_id else
+                "row pointer NULL — the stream's cancel handler nulled it after the restore wrote "
+                "it (the named race); the watchdog / sync re-adopt a live broker stop"
+                if pointer is None else f"row points at {pointer[:8]}")
             dt = (placed_ok[-1]["t"] - close[0]["t"]) if (close and placed_ok) else None
             page = [p for p in env.pages if "FAILED" in p["text"] and t in p["text"]]
             says_restored = bool(page and "Stop RESTORED" in page[-1]["text"]
                                  and "NOT RESTORED" not in page[-1]["text"])
             good = bool(ok is False and close and close[0]["ok"] is False and rej and restored
-                        and row["stop_order_id"] != stop["id"] and st in STOP_LIVE
+                        and restored_id != stop["id"] and st in STOP_LIVE
                         and abs(float(restored["stop_price"]) - stop_px) < 0.011
                         and float(restored["qty"]) == 3 and dt is not None and dt <= 5.0
                         and says_restored)
-            p2.update(restored_stop_id=row["stop_order_id"])
+            p2.update(restored_stop_id=restored_id)
             await self._save()
             log.step("B2", "extra sell holds a share → execute_full_exit rejected → stop restored at "
                      "the same price <= 5 s → page", good,
@@ -627,7 +639,8 @@ class Rehearsal:
                      + "; restored "
                      f"{restored and (restored['id'][:8], st, restored['qty'], restored.get('stop_price'))} "
                      f"{'%.2f s' % dt if dt is not None else '(no successful restore)'} after the "
-                     f"rejection; page: {page[-1]['text'][:140] if page else 'NONE'}")
+                     f"rejection ({pointer_note if restored else 'row pointer ' + str(pointer and pointer[:8])}); "
+                     f"page: {page[-1]['text'][:140] if page else 'NONE'}")
             silent = await self._audit_for_trade(
                 ["stop_cancel_by_planned_sale_silent"], since, tid, budget_s=30,
                 extra={"cancelled_order_id": stop["id"]})
@@ -1485,6 +1498,8 @@ class RealEnv:
                 try:
                     out = await real(*args, **kwargs)
                     ev["ok"] = out is not False
+                    if isinstance(out, dict):
+                        ev["order_id"] = out.get("id")    # B2 reads the restored stop by its id
                     return out
                 except Exception as e:
                     ev["ok"], ev["error"] = False, str(e)
@@ -1542,7 +1557,8 @@ class FakeEnv:
                  stream_silent=True, prod_depth_job=True, broken_close_qty=False,
                  foreign_rows=None, partial_taken_false=False, pending_new_s=0.0,
                  restore_retries=0, stream_missed_cancel=False, cls_accepted=False,
-                 restore_lost_watchdog_s=None, partial_exit_fails=False):
+                 restore_lost_watchdog_s=None, partial_exit_fails=False,
+                 stream_nulls_restored=False):
         # #687 2026-10-06 knobs:
         #   pending_new_s — a stop / limit sell the script places sits `pending_new` this long
         #     before the broker shows it `new` (10-06: A2 fired against a pending stop);
@@ -1552,7 +1568,10 @@ class FakeEnv:
         #   cls_accepted — paper takes the 15:51 market-on-close order (it did on 10-06);
         #   restore_lost_watchdog_s — B2's restore never lands (10-06) and the stop-ACK watchdog
         #     places a fallback this many seconds later;
-        #   partial_exit_fails — the production partial exit returns False (A2 FAILs).
+        #   partial_exit_fails — the production partial exit returns False (A2 FAILs);
+        #   stream_nulls_restored — the stream read the row before the restore re-pointed it and
+        #     nulled it AFTER (the other ordering of the race); the watchdog re-adopts it 30 s later.
+        self.stream_nulls_restored = stream_nulls_restored
         self.pending_new_s = float(pending_new_s)
         self.restore_retries = int(restore_retries)
         self.stream_missed_cancel = stream_missed_cancel
@@ -1903,7 +1922,8 @@ class FakeEnv:
                         self.clock += timedelta(seconds=0.5)
                     restored = self._new(t, want, "sell", "stop", "gtc", status="new",
                                          stop=r["stop_price"])
-                    self._spy_ev(name="place_stop_order", args=(t,), qty=restored["qty"], ok=True)
+                    self._spy_ev(name="place_stop_order", args=(t,), qty=restored["qty"], ok=True,
+                                 order_id=restored["id"])
                     r["stop_order_id"] = restored["id"]
                     self._audit("stop_order_id_changed", {"trade_id": tid, "new_id": restored["id"],
                                                           "reason": "restored_after_failed_full_exit"})
@@ -1930,6 +1950,16 @@ class FakeEnv:
                 # lookup by the cancelled stop's id finds nothing — no null, no row, no page.
                 if not (refused and self.stream_missed_cancel):
                     self._stream_on_cancel(o)
+            rid = self.trades[tid].get("stop_order_id") if tid in self.trades else None
+            if refused and self.stream_nulls_restored and rid:
+                self.trades[tid]["stop_order_id"] = None      # nulled after the restore's write
+
+                def _readopt(tid=tid, rid=rid):
+                    self.trades[tid]["stop_order_id"] = rid
+                    self._audit("stop_order_id_changed", {"trade_id": tid, "new_id": rid,
+                                                          "reason": "watchdog_synced_from_broker"})
+
+                self._timers.append((self.clock + timedelta(seconds=30), _readopt))
 
     async def full_exit(self, tid, reason):
         return await self._sale(tid, reason, "close")

@@ -405,6 +405,17 @@ async def test_b2_passes_when_the_restore_lands_on_a_retry(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_b2_reads_the_restored_stop_by_its_id_when_the_stream_nulled_the_pointer(tmp_path):
+    """The other ordering of the race: the stream read the row first and nulled the pointer AFTER
+    the restore wrote it. The restored stop is live at the broker — B2 reads it by the id the
+    placement returned, passes, and NAMES the null; it must not read as a failed restore."""
+    rc, env, log = await _dry(tmp_path, cmd="day-a", restore_retries=1, stream_nulls_restored=True)
+    b2 = [r for r in log.results if r["step"] == "B2"][0]
+    assert b2["status"] == "PASS" and "row pointer NULL" in b2["detail"], b2
+    assert _steps(log)["A8"] == "PASS" and rc == 0, log.failed()     # re-adopted by evening
+
+
+@pytest.mark.asyncio
 async def test_b2_still_fails_when_the_restore_never_lands(tmp_path):
     """The 10-06 shape: one refused restore, the watchdog's fallback 45 s later."""
     rc, _, log = await _dry(tmp_path, cmd="day-a", restore_lost_watchdog_s=45)
