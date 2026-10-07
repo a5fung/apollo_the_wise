@@ -2038,3 +2038,15 @@ EVIDENCE:
 - **The 15-day watch (its DONE-WHEN), read 2026-10-06:** `scripts/probes/_1006/p658_15day.out` — P1a pass (added over the label every week: 13/23/7/2), P1b missed (declined to add 119 label-matched candidates vs 45 added); boosted EP alerts 3 of 16. Sample of 20 (`scripts/probes/_1006/p658_removals.out`): 50 distinct pairs; of 14 sampled, 7 clearly right (foreign names mislabelled by sector, opposite-trading), 7 on-thesis peers not moving with the group — right under the trade-together rule.
 - **His ruling 2026-10-06 (*"ok"* to "keep as is and close #658"):** both changes stay ON as built.
 - **Not claimed:** the boosted-share delta is unreadable at n = 16 alerts; it is not a verdict on the +10's value.
+
+### ⚠ Addendum to the #635 close (2026-10-07) — its WOULD-FAIL-IF fired the day after the close
+
+The line's WOULD-FAIL-IF was *"a new alarm firing on an ordinary day without the failure it names"*. On Wed 10-07
+F8 (`ep_candidate_parse_error`) fired on all 38 EP-scan ticks (07:00–09:55 ET) and paged via the L1 '*_error'
+sweep: every tick dropped 139–150 of ~13,250 snapshot rows, ALL `no prev_close` (thin units/warrants/preferreds/
+just-listed), 0 raised — the ordinary background sat just over the un-baselined 1% floor (Mon/Tue were just
+under it, which is why the two "quiet" days I closed on did not discriminate). Fixed the same day (commit
+"#635 F8 baselined from its first real rows"): no-prev-close drops audit past 4%, raised drops keep 1%; tests
+pin both and a feed-wide loss still audits. Ships with the 10-07 21:15 ET deploy. VERIFY Thu 10-08: 0
+`ep_candidate_parse_error` rows on an ordinary scan day, and the 07:00 tick's dropped count still ~1.1% in the
+log. Lesson: a two-day quiet window on an un-baselined threshold was not a discriminating close condition.
