@@ -1752,3 +1752,15 @@ our system"*)** — each book rule, where it is measured, and on what. All $0 on
 | Neglect: sideways for months, then ~10× volume | neglect / prior-momentum terms deleted 08-22 (fired on real EPs and junk alike) | same #686 follow-up — a base-length + EP-day volume-multiple feature, measured on the TAIL, against his labelled EPs | `mi_daily_closes` |
 | Parabolic short: day 3-4, ≥ 300% total, short the OR-low break, stop at the high of day | detection only (shadow): streak ≥ 3 + cap-tier prior move; no trigger or stop defined | `docs/setups/parabolic_short.md` — replay the book's A+ definition against our climax rows | `mi_parabolic_candidates` + minute bars |
 | Momentum burst: top 1-2% by 1/3/6-month gain, 1-3 week base on lower volume, buy the OR / 5-30-60-min high, hold 3-5 days | flag board (TIGHTENING/COILED) + #397 breakout-entry shadow | #397 — the leading-stock filter and the 3-5 day hold as arms on the breakout shadow | `mi_flag_candidates`, shadow rows |
+
+## 2026-10-07 — PENG, another trader's EP call that he confirmed (operator-shared)
+
+He shared @TedHZhang's post (12:33 PM, 07 Oct 26): *"$PENG is an EP - double beat and raise on earnings. This is
+a rare setup that I've only seen once - HVE followed by HVE and higher highs."* — with a daily chart: two
+consecutive highest-volume-ever days (16M +381%, then 19M +500% vs ~3M average), the second gapping to a higher
+high out of a ~36-day base, RS 94 (1M/3M/6M 98/94/97). His words: *"We caught peng this morning, good to see
+confirmation from other traders."* → added to the labelled EP list (`operator_labelled_eps.md`).
+- **Setup note to keep:** "HVE followed by HVE and higher highs" — back-to-back highest-volume-ever sessions,
+  the second making a higher high — is the trader's name for it; reference only, not a rule.
+- **What we did:** HIGH 73.8, catalyst `strong` (the grader saw 'multiple company records' + a raised FY2027
+  outlook but not the figures), live #414 — trigger $69.20 (ORB high), filled $72.21, stop $62.20.

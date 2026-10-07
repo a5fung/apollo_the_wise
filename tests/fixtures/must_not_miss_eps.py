@@ -655,6 +655,21 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
         gap_pct=23.09, gap_basis="session open (_552_cohort.psv)", prev_close=66.78,
         unverified_gates=_UNVERIFIED_STANDARD,
     ),
+    EPFixtureMember(
+        ticker=_op("PENG").ticker, alert_date=_op("PENG").alert_date,
+        label_source="operator",
+        label_note=(
+            "Operator, 2026-10-07, on another trader's post calling PENG an EP (\"double beat and "
+            "raise on earnings ... HVE followed by HVE and higher highs\"): \"We caught peng this "
+            "morning, good to see confirmation from other traders.\" Our system: HIGH 73.8, catalyst "
+            "strong, alerted 09:35 ET and bought live (#414, entry $72.21, stop $62.20)."
+        ),
+        prev_close=64.21,  # mi_daily_closes 2026-10-06 close
+        gap_pct_admitted=13.08,
+        gap_pct_admitted_basis="mi_ep_alerts.gap_pct of the 2026-10-07 09:35 ET HIGH alert (the acting reading)",
+        # The open-vs-prior-close gap needs 2026-10-07's daily open, not stored until that night's pull.
+        unverified_gates=_UNVERIFIED_STANDARD + ("gap_pct",),
+    ),
 ]
 
 

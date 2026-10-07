@@ -166,6 +166,10 @@ def load_population() -> list[tuple[str, str, str, str]]:
         for tk, d, verdict in pops[pop]:
             if pop != "REAL_EP" and (tk, d) in late:
                 continue
+            # The REAL_EP side is frozen the same way: a labelled EP added after registration
+            # (PENG 2026-10-07, labelled that day) is not in the registered population.
+            if pop == "REAL_EP" and d > PREREG_RULINGS_THROUGH:
+                continue
             out.append((pop, tk, d, verdict))
     return out
 

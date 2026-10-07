@@ -45,6 +45,7 @@ module's comment for the full trace).
 | **HTFL** | 2026-08-14 | 26.0% | *"i'd say htfl is another recent one"* | ⚠️ **Selection worked, entry refused it.** 96 / HIGH / game_changer, then skipped: `setup:stop_too_wide` (ORB range $2.55 = 7.0% vs 1.5×ATR $2.19). Stock 31.01 → 48.91. |
 | **MRNA** | 2026-08-19 | 84.3% | *"MRNA is a textbook EP... the news is truly gamechanging, the move, etc. is textbook."* | ✅ **Caught**, 115.2 / HIGH. Full write-up: `docs/methodology/ep_reference_mrna_2026-08-19.md`. |
 | **CHPT** | 2026-09-03 | 33.0% | *"a perfect EP type with news catalyst, and ORB 1min high entry worked, also it closed with the highest volume ever"* | ❌ **Never scored** — `filter:mcap_too_small: $134M`, rejected before anything looked at it. Prompted the low-cap lane (#624). |
+| **PENG** | 2026-10-07 | 13.1% (at the 09:35 alert) | *"We caught peng this morning, good to see confirmation from other traders."* (on @TedHZhang's post: *"$PENG is an EP - double beat and raise on earnings. This is a rare setup that I've only seen once - HVE followed by HVE and higher highs."*) | ✅ **Caught and bought.** HIGH 73.8, catalyst `strong` (the grader saw only 'multiple company records' + a raised FY2027 outlook, not the figures), alerted 09:35 ET, live #414: stop-buy at ORB high $69.20 filled at $72.21, stop $62.20 (= ORB high − 2R). ⚠ The fill sat 4.3% above the trigger, so the real risk was $100 against a $76 budget. |
 
 ## What the list says, as of 2026-09-05
 

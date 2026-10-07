@@ -49,6 +49,7 @@ OPERATOR_LABELLED_EPS: tuple[OperatorLabelledEP, ...] = (
     OperatorLabelledEP("HTFL", "2026-08-14"),
     OperatorLabelledEP("MRNA", "2026-08-19"),
     OperatorLabelledEP("CHPT", "2026-09-03"),
+    OperatorLabelledEP("PENG", "2026-10-07"),
 )
 
 
