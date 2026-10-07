@@ -240,9 +240,25 @@ async def test_rows_are_tagged_paper_and_integration_test_on_the_et_date(tmp_pat
 
 @pytest.mark.asyncio
 async def test_a_stream_that_pages_instead_of_recording_fails_the_no_page_steps(tmp_path):
+    """A6f / A9b: a sale that WORKED leaves no replacement stop, so a stream without the planned-
+    sale silent path pages 'unprotected' there. B2's restored stop takes the stream's REPLACEMENT
+    branch instead — it never reaches the silent path, so B2b is judged on that branch and passes
+    (its own FAIL arm is the next test)."""
     rc, _, log = await _dry(tmp_path, stream_silent=False)
     fails = _steps(log, "FAIL")
-    assert rc == 1 and {"A6f", "B2b", "A9b"} <= set(fails), fails
+    assert rc == 1 and {"A6f", "A9b"} <= set(fails), fails
+    assert _steps(log)["B2b"] == "PASS", _steps(log)
+
+
+@pytest.mark.asyncio
+async def test_b2b_fails_when_the_stream_neither_sees_the_restored_stop_nor_records_the_cancel(tmp_path):
+    """The broken system B2b must catch: the pointer nulled, no replacement seen, no silent row —
+    the stream paged 'unprotected'."""
+    rc, _, log = await _dry(tmp_path, cmd="day-a", stream_silent=False,
+                            stream_sees_replacement=False)
+    b2b = [r for r in log.results if r["step"] == "B2b"][0]
+    assert b2b["status"] == "FAIL" and "NONE of the three rows" in b2b["detail"], b2b
+    assert rc == 1
 
 
 @pytest.mark.asyncio
@@ -396,22 +412,111 @@ async def test_the_morning_steps_run_no_earlier_than_their_spec_times(tmp_path):
 
 # ── B2 with the restore retry (#687 2026-10-06, the order_manager fix) ──────────────────────────
 
+def _step(log, sid):
+    return [r for r in log.results if r["step"] == sid][-1]
+
+
+def _p2_rows(env, event):
+    p2 = [tid for tid, r in env.trades.items() if r["ticker"] == "PEP"]
+    return [a for a in env.audit if a["event_type"] == event and a["detail"].get("trade_id") in p2]
+
+
 @pytest.mark.asyncio
 async def test_b2_passes_when_the_restore_lands_on_a_retry(tmp_path):
     rc, _, log = await _dry(tmp_path, cmd="day-a", restore_retries=3)
-    b2 = [r for r in log.results if r["step"] == "B2"][0]
+    b2 = _step(log, "B2")
     assert b2["status"] == "PASS", b2
     assert "4 (3 refused)" in b2["detail"] and "stop_restore_retried rows 1" in b2["detail"], b2
+    assert "path: RETRY" in b2["detail"] and "retry PROVEN live" in b2["detail"], b2
+
+
+@pytest.mark.asyncio
+async def test_b2_first_attempt_passes_and_says_the_retry_was_not_exercised(tmp_path):
+    """Review 2026-10-06, MUST-FIX 2: Thursday's spacing likely settles the cancel before the sale,
+    so the FIRST restore attempt works. B2 passes on the spec's 5 s bar and SAYS the retry was not
+    exercised live — it must not fail for want of a `stop_restore_retried` row."""
+    rc, _, log = await _dry(tmp_path, cmd="day-a")
+    b2 = _step(log, "B2")
+    assert b2["status"] == "PASS", b2
+    assert "path: FIRST ATTEMPT" in b2["detail"] and "NOT exercised live" in b2["detail"], b2
+    assert "stop_restore_retried rows 0" in b2["detail"], b2
+
+
+@pytest.mark.asyncio
+async def test_b2_fails_a_retry_slower_than_its_bar(tmp_path):
+    """40 refusals 0.5 s apart = 20 s from the first refused attempt > RETRY_BAR_S."""
+    assert pr.RETRY_BAR_S < 40 * 0.5
+    rc, _, log = await _dry(tmp_path, cmd="day-a", restore_retries=40)
+    b2 = _step(log, "B2")
+    assert b2["status"] == "FAIL" and "path: RETRY" in b2["detail"], b2
+
+
+@pytest.mark.asyncio
+async def test_b2_fails_a_retry_that_wrote_no_retried_row(tmp_path, monkeypatch):
+    """On the retry path the `stop_restore_retried` row IS the live proof the DONE-WHEN reads —
+    a retried placement without it is a FAIL, not a pass."""
+    real = pr.FakeEnv._audit
+
+    def _drop(self, event, detail, summary=""):
+        if event != "stop_restore_retried":
+            real(self, event, detail, summary)
+
+    monkeypatch.setattr(pr.FakeEnv, "_audit", _drop)
+    rc, _, log = await _dry(tmp_path, cmd="day-a", restore_retries=2)
+    b2 = _step(log, "B2")
+    assert b2["status"] == "FAIL" and "NO stop_restore_retried row" in b2["detail"], b2
+
+
+def test_the_retry_bar_tracks_the_production_window():
+    from agents.market_intelligence.broker import order_manager as om
+    assert pr.RESTORE_RETRY_WINDOW_S == om._RESTORE_RETRY_WINDOW_S
+    assert pr.RESTORE_RETRY_WINDOW_S == om._RESTORE_RETRY_POLLS * om._RESTORE_RETRY_SLEEP_S
+
+
+# ── B2b: the stream's three no-page outcomes (review 2026-10-06, MUST-FIX 1) ────────────────────
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("retries", [0, 3])
+async def test_b2b_passes_on_the_deferred_repair_when_the_stream_nulled_first(tmp_path, retries):
+    """The likeliest shape for a restore that WORKS: the stream nulls the pointer as the cancel
+    lands, the restore writes its own, the stream's re-check finds the restored stop and its #646
+    (e) fill defers. NO silent row is written — the old B2b, keyed on that row alone, FAILED here."""
+    rc, env, log = await _dry(tmp_path, cmd="day-a", restore_retries=retries)
+    b2b = _step(log, "B2b")
+    assert b2b["status"] == "PASS" and "stop_pointer_repair_deferred" in b2b["detail"], b2b
+    assert not [a for a in _p2_rows(env, "stop_cancel_by_planned_sale_silent")
+                if a["at"].hour < 12], "a working restore takes the replacement branch, not silent"
+    assert rc == 0, log.failed()
+
+
+@pytest.mark.asyncio
+async def test_b2b_passes_on_the_stream_repair_when_its_null_landed_after_the_restore(tmp_path):
+    """The race (b) ordering: the stream nulled the pointer AFTER the restore's write; its own
+    #646 (e) fill writes the restored stop back at once (`cancel_or_reject_restored`)."""
+    rc, env, log = await _dry(tmp_path, cmd="day-a", restore_retries=1, stream_null_late=True)
+    b2, b2b = _step(log, "B2"), _step(log, "B2b")
+    assert b2b["status"] == "PASS" and "cancel_or_reject_restored" in b2b["detail"], b2b
+    assert b2["status"] == "PASS" and "row points at it" in b2["detail"], b2
+    assert rc == 0, log.failed()
+
+
+@pytest.mark.asyncio
+async def test_b2b_passes_on_the_silent_row_when_the_stream_misses_the_restored_stop(tmp_path):
+    rc, _, log = await _dry(tmp_path, cmd="day-a", stream_sees_replacement=False)
+    b2b = _step(log, "B2b")
+    assert b2b["status"] == "PASS" and "SILENT path" in b2b["detail"], b2b
 
 
 @pytest.mark.asyncio
 async def test_b2_reads_the_restored_stop_by_its_id_when_the_stream_nulled_the_pointer(tmp_path):
-    """The other ordering of the race: the stream read the row first and nulled the pointer AFTER
-    the restore wrote it. The restored stop is live at the broker — B2 reads it by the id the
-    placement returned, passes, and NAMES the null; it must not read as a failed restore."""
-    rc, env, log = await _dry(tmp_path, cmd="day-a", restore_retries=1, stream_nulls_restored=True)
-    b2 = [r for r in log.results if r["step"] == "B2"][0]
+    """The race (b) ordering with the stream's broker check MISSING the restored stop: the pointer
+    stays NULL while the stop is live. B2 reads it by the id the placement returned, passes, and
+    NAMES the null; the stop-ACK watchdog re-adopts it, so P2 is ready by evening."""
+    rc, env, log = await _dry(tmp_path, cmd="day-a", restore_retries=1, stream_null_late=True,
+                              stream_sees_replacement=False)
+    b2 = _step(log, "B2")
     assert b2["status"] == "PASS" and "row pointer NULL" in b2["detail"], b2
+    assert "#646 (e)" in b2["detail"], b2
     assert _steps(log)["A8"] == "PASS" and rc == 0, log.failed()     # re-adopted by evening
 
 
@@ -456,6 +561,23 @@ async def test_a4_records_a_rejected_market_on_close_as_info(tmp_path):
 async def test_a7_is_still_judged(tmp_path):
     rc, _, log = await _dry(tmp_path, cmd="day-a")
     assert _steps(log)["A7"] == "PASS"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status,ready", [("new", True), ("accepted", True), ("held", True),
+                                          ("pending_new", False)])
+async def test_a8_takes_a_stop_re_placed_after_the_close(tmp_path, status, ready):
+    """Review 2026-10-06 (NICE 6): at 18:50 a stop re-placed after the close reads `accepted`, not
+    `new` — it still protects P2 at the open. Only an unrouted `pending_new` stop is not ready."""
+    env = pr.FakeEnv(start=pr.datetime(2026, 10, 5, 18, 50, tzinfo=pr._ET))
+    env.positions["PEP"] = 3.0
+    stop = env._new("PEP", 3, "sell", "stop", "gtc", status=status, stop=140.0)
+    tid = await env.insert_trade(ticker="PEP", shares=3, entry=150.0, stop=140.0,
+                                 stop_id=stop["id"], alert_date=pr.date(2026, 10, 5))
+    reh = pr.Rehearsal(env, pr.StepLog(str(tmp_path / "r.log"), env.now), TICKERS)
+    reh.state = {"p2": {"trade_id": tid}}
+    ok, detail = await reh._p2_ready()
+    assert ok is ready, detail
 
 
 # ── (iii) the end of Day A cleans up only when Day B has nothing left to test ────────────────────

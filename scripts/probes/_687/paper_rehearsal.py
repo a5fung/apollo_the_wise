@@ -41,8 +41,13 @@ THE STEPS (spec times, ET):
   A3  10:10  price-only replace of the 2/3 stop +1% → new id, still covering.
   B1  10:15  P2 = 4 sh of TICKER_P2: a 3-sh GTC stop for the row + one EXTRA 1-sh resting sell that
       the books do not know about (so it is not a pending exit) → execute_full_exit → assert
-      rejected, stop restored at the same price <= 5 s after the rejection (the restore may retry
-      while the broker releases the cancelled stop's shares — #687 2026-10-06), page sent. The
+      rejected, stop restored at the same price, page sent. Two paths (#687 2026-10-06): the
+      restore's FIRST attempt works → <= 5 s after the rejection (the retry is then NOT exercised
+      live — unit-tested only); it is refused while the broker still holds the cancelled stop's
+      shares and the RETRY places it → <= RETRY_BAR_S after that first refusal + a
+      `stop_restore_retried` row (the retry PROVEN live). B2's detail names the path. B2b: the
+      stream did not page "unprotected" — its silent row, or its replacement branch's
+      `cancel_or_reject_restored` / `stop_pointer_repair_deferred` naming the restored stop. The
       extra sell is then cancelled and the extra share sold, so P2 = 3 sh under its restored stop.
   A4  15:51 a market-on-close BUY of 1 sh on the flat PROBE ticker — INFORMATIONAL, never a FAIL:
       paper ACCEPTED it on 2026-10-06, and production never sends a market-on-close order, so the
@@ -116,7 +121,16 @@ QUEUED_OK = {"new", "accepted", "held", "pending_new", "accepted_for_bidding"}
 # A resting stop / limit sell the broker has actually ROUTED. `LIVE_STATUSES` above also holds
 # `pending_new` — waiting on it returned at once on 10-06 and A2 fired against a pending stop.
 STOP_LIVE = {"new"}
+# A8 at 18:50 (after the close): a stop re-placed after 16:00 reads `accepted` (queued for the next
+# session) or `held`, not `new` — both still protect P2 at the open. Only `pending_new` (not yet
+# routed) caused the 10-06 problem, so it alone stays out (review 2026-10-06, NICE 6).
+STOP_READY_1850 = {"new", "accepted", "held"}
 SETTLE_BUDGET_S = 30.0                     # per wait for an order / the held count to settle
+# B2's bar when the restore's first attempt is REFUSED and its held-shares retry places the stop:
+# order_manager._RESTORE_RETRY_WINDOW_S (15 s, pinned by a test) from the first refused attempt,
+# plus 2 s for the broker round trips at its ends (that refusal, the last poll's read).
+RESTORE_RETRY_WINDOW_S = 15.0
+RETRY_BAR_S = RESTORE_RETRY_WINDOW_S + 2.0
 TERMINAL = {"filled", "canceled", "cancelled", "expired", "rejected", "replaced", "done_for_day"}
 # Rejection texts that mean "rejected for a reason OTHER than the time cutoff" — a cutoff probe that
 # hits one of these proves nothing (a broken system would read the same).
@@ -595,7 +609,11 @@ class Rehearsal:
             close = [e for e in spy if e["name"] == "close_position"]
             place = [e for e in spy if e["name"] == "place_stop_order"]
             # The restore may RETRY while the broker releases the cancelled stop's shares (#687
-            # 2026-10-06): the clock runs from the rejected sale to the placement that WORKED.
+            # 2026-10-06). Two paths, two bars (review 2026-10-06, MUST-FIX 2): the FIRST attempt
+            # worked → the spec's <= 5 s from the rejected sale; it was refused and a retry worked →
+            # <= RETRY_BAR_S from that first refused placement, AND the retry's own row. Thursday's
+            # spacing likely settles the cancel before the sale, so the first attempt works and the
+            # retry is NOT exercised live — the detail says which path ran.
             placed_ok = [e for e in place if e.get("ok")]
             rej = await self._audit_for_trade(["full_exit_rejected"], since, tid)
             retried = await self._audit_for_trade(["stop_restore_retried"], since, tid)
@@ -604,7 +622,8 @@ class Rehearsal:
             # The restored stop is read by the id the placement RETURNED, not through the row's
             # pointer: the stream's cancel handler nulls the pointer unconditionally, and a restore
             # that lands as the cancel settles can be nulled AFTER its own write (the race named in
-            # exit_discipline.md 2026-10-06). That is reported beside B2, never mistaken for a
+            # exit_discipline.md 2026-10-06; the same handler's #646 (e) fill writes it back once
+            # its broker check confirms the stop). That is reported beside B2, never mistaken for a
             # restore that failed.
             restored_id = (placed_ok[-1].get("order_id") if placed_ok else None) or pointer
             restored = await env.get_order(restored_id) if restored_id else None
@@ -615,54 +634,49 @@ class Rehearsal:
             pointer_note = (
                 "row points at it" if restored_id and pointer == restored_id else
                 "row pointer NULL — the stream's cancel handler nulled it after the restore wrote "
-                "it (the named race); the watchdog / sync re-adopt a live broker stop"
+                "it (the named race); the same handler's #646 (e) fill writes it back once its "
+                "broker check confirms the stop (the stop-ACK watchdog, 09-15 ET, is the backstop)"
                 if pointer is None else f"row points at {pointer[:8]}")
             dt = (placed_ok[-1]["t"] - close[0]["t"]) if (close and placed_ok) else None
+            first_try = bool(place and place[0].get("ok"))
+            dt_retry = (placed_ok[-1]["t"] - place[0]["t"]) if (placed_ok and not first_try) \
+                else None
+            if first_try:
+                path = ("FIRST ATTEMPT — the shares were free; the held-shares retry was NOT "
+                        "exercised live (unit-tested only)")
+                in_time = dt is not None and dt <= 5.0
+            elif placed_ok:
+                path = (f"RETRY — {len(place) - len(placed_ok)} refused, then placed "
+                        f"{'%.2f s' % dt_retry} after the first refused attempt"
+                        + (f" (stop_restore_retried: attempts {retried[-1]['detail'].get('attempts')}, "
+                           f"waited {retried[-1]['detail'].get('slept_s')} s) — retry PROVEN live"
+                           if retried else " — but NO stop_restore_retried row"))
+                in_time = bool(retried) and dt_retry is not None and dt_retry <= RETRY_BAR_S
+            else:
+                path = "NOT RESTORED — no placement worked"
+                in_time = False
             page = [p for p in env.pages if "FAILED" in p["text"] and t in p["text"]]
             says_restored = bool(page and "Stop RESTORED" in page[-1]["text"]
                                  and "NOT RESTORED" not in page[-1]["text"])
             good = bool(ok is False and close and close[0]["ok"] is False and rej and restored
                         and restored_id != stop["id"] and st in STOP_LIVE
                         and abs(float(restored["stop_price"]) - stop_px) < 0.011
-                        and float(restored["qty"]) == 3 and dt is not None and dt <= 5.0
-                        and says_restored)
+                        and float(restored["qty"]) == 3 and in_time and says_restored)
             p2.update(restored_stop_id=restored_id)
             await self._save()
             log.step("B2", "extra sell holds a share → execute_full_exit rejected → stop restored at "
-                     "the same price <= 5 s → page", good,
-                     f"returned {ok}; sell error: {close and (close[0].get('error') or '')[:160]}; "
+                     f"the same price (first attempt <= 5 s after the rejection, or the held-shares "
+                     f"retry <= {RETRY_BAR_S:g} s after its first refusal) → page", good,
+                     f"path: {path}; returned {ok}; sell error: "
+                     f"{close and (close[0].get('error') or '')[:160]}; "
                      f"full_exit_rejected rows {len(rej)}; restore placements {len(place)} "
                      f"({len(place) - len(placed_ok)} refused), stop_restore_retried rows "
-                     f"{len(retried)}"
-                     + (f" (attempts {retried[-1]['detail'].get('attempts')}, waited "
-                        f"{retried[-1]['detail'].get('slept_s')} s)" if retried else "")
-                     + "; restored "
+                     f"{len(retried)}; restored "
                      f"{restored and (restored['id'][:8], st, restored['qty'], restored.get('stop_price'))} "
                      f"{'%.2f s' % dt if dt is not None else '(no successful restore)'} after the "
                      f"rejection ({pointer_note if restored else 'row pointer ' + str(pointer and pointer[:8])}); "
                      f"page: {page[-1]['text'][:140] if page else 'NONE'}")
-            silent = await self._audit_for_trade(
-                ["stop_cancel_by_planned_sale_silent"], since, tid, budget_s=30,
-                extra={"cancelled_order_id": stop["id"]})
-            ptr = await self._audit_for_trade(["stop_order_id_changed"], since, tid)
-            nulled = [r for r in ptr if r["detail"].get("reason") == "cancel_or_reject_null"]
-            repointed = [r for r in ptr
-                         if r["detail"].get("reason") == "restored_after_failed_full_exit"]
-            if not silent and repointed and not nulled:
-                # The restore re-pointed the row BEFORE the stream handled the cancel: the stream
-                # looks the trade up by the cancelled stop's id, found nothing, and so could neither
-                # record nor page. The planned-sale path was not exercised — nothing to prove here.
-                log.step("B2b", "the stream recorded the planned-sale cancel instead of paging "
-                         "'unprotected'", None,
-                         "skipped — the restore re-pointed the row before the stream saw the cancel "
-                         "(no cancel_or_reject_null row): the stream could not match the trade, so "
-                         "it neither recorded nor paged", status="SKIP")
-            else:
-                log.step("B2b", "the stream recorded the planned-sale cancel instead of paging "
-                         "'unprotected'", bool(silent),
-                         "stop_cancel_by_planned_sale_silent row found" if silent else
-                         "NO row in 30 s — the paper stream did not take the silent path (it paged, "
-                         "or it is not running for paper)")
+            await self._b2b_stream_verdict(tid, stop["id"], restored_id if restored else None, since)
 
             # Make P2 an ordinary 3-sh position again for the opening-auction step — only if the
             # failed exit really left all 4 shares (a sale that went through must not be followed by
@@ -690,6 +704,62 @@ class Rehearsal:
             raise
         except Exception as e:
             log.step("B1-B3", "P2 raised", False, f"{type(e).__name__}: {e}")
+
+    async def _b2b_stream_verdict(self, tid, cancelled_id: str, restored_id, since) -> None:
+        """B2b — what the paper stream did with the stop B2's sale cancelled. It must NOT page
+        'unprotected'; three rows each prove it did not (review 2026-10-06, MUST-FIX 1):
+          * `stop_cancel_by_planned_sale_silent` — no replacement seen, our planned sale's cancel
+            recorded (the 10-06 shape, where the restore failed);
+          * `stop_order_id_changed` reason `cancel_or_reject_restored` naming the RESTORED stop —
+            its broker check found the restored stop and its #646 (e) fill re-pointed the row;
+          * `stop_pointer_repair_deferred` naming the restored stop — it found it, and the
+            restore's own pointer write stood (the likeliest shape for a restore that works).
+        FAIL only when none appears in 30 s (it paged, or the paper stream is not running).
+        SKIP when the restore re-pointed the row before the stream saw the cancel: its lookup by
+        the cancelled id matched nothing, so it could neither record nor page."""
+        env, log = self.env, self.log
+        label = "the stream handled the planned-sale cancel without paging 'unprotected'"
+        silent = repaired = deferred = []
+        rows: list = []
+        for _ in range(31):
+            rows = await self._audit_for_trade(
+                ["stop_cancel_by_planned_sale_silent", "stop_order_id_changed",
+                 "stop_pointer_repair_deferred"], since, tid)
+            silent = [r for r in rows if r["event_type"] == "stop_cancel_by_planned_sale_silent"
+                      and r["detail"].get("cancelled_order_id") == cancelled_id]
+            repaired = [r for r in rows if r["event_type"] == "stop_order_id_changed"
+                        and r["detail"].get("reason") == "cancel_or_reject_restored"
+                        and restored_id and r["detail"].get("new_id") == restored_id]
+            deferred = [r for r in rows if r["event_type"] == "stop_pointer_repair_deferred"
+                        and r["detail"].get("cancelled_order_id") == cancelled_id
+                        and restored_id
+                        and r["detail"].get("confirmed_replacement_id") == restored_id]
+            if silent or repaired or deferred:
+                break
+            await env.sleep(1.0)
+        ptr = [r for r in rows if r["event_type"] == "stop_order_id_changed"]
+        nulled = [r for r in ptr if r["detail"].get("reason") == "cancel_or_reject_null"]
+        repointed = [r for r in ptr
+                     if r["detail"].get("reason") == "restored_after_failed_full_exit"]
+        if repaired or deferred:
+            how = ("its broker check found the restored stop and re-pointed the row "
+                   "(cancel_or_reject_restored)" if repaired else
+                   "its broker check found the restored stop; the restore's own pointer stood "
+                   "(stop_pointer_repair_deferred)")
+            log.step("B2b", label, True, f"REPLACEMENT path — {how}; the 'Stop replaced' notice, "
+                     f"not 'unprotected'")
+        elif silent:
+            log.step("B2b", label, True, "SILENT path — no replacement seen; "
+                     "stop_cancel_by_planned_sale_silent recorded the planned sale's cancel")
+        elif repointed and not nulled:
+            log.step("B2b", label, None,
+                     "skipped — the restore re-pointed the row before the stream saw the cancel "
+                     "(no cancel_or_reject_null row): the stream could not match the trade, so "
+                     "it neither recorded nor paged", status="SKIP")
+        else:
+            log.step("B2b", label, False,
+                     f"NONE of the three rows in 30 s (cancel_or_reject_null rows {len(nulled)}) — "
+                     f"the paper stream paged 'unprotected', or it is not running for paper")
 
     async def _cutoff_probe(self, sid: str, tif: str, valid_from: dtime, valid_to: dtime,
                             label: str, *, informational: bool = False) -> None:
@@ -831,7 +901,7 @@ class Rehearsal:
         others = [o for o in await self.env.open_orders(self.t2) if o["id"] != sid]
         ok = bool(row and row["status"] == "filled" and float(row["remaining_shares"]) == 3
                   and pos and float(pos["qty"]) == 3
-                  and so and canon(so["status"]) in STOP_LIVE and float(so["qty"]) == 3
+                  and so and canon(so["status"]) in STOP_READY_1850 and float(so["qty"]) == 3
                   and "stop" in str(so.get("type")) and not others)
         return ok, (f"row {row and (row['status'], row['remaining_shares'])}, position "
                     f"{pos and pos['qty']}, row stop {sid and sid[:8]} "
@@ -1558,7 +1628,7 @@ class FakeEnv:
                  foreign_rows=None, partial_taken_false=False, pending_new_s=0.0,
                  restore_retries=0, stream_missed_cancel=False, cls_accepted=False,
                  restore_lost_watchdog_s=None, partial_exit_fails=False,
-                 stream_nulls_restored=False):
+                 stream_null_late=False, stream_sees_replacement=True):
         # #687 2026-10-06 knobs:
         #   pending_new_s — a stop / limit sell the script places sits `pending_new` this long
         #     before the broker shows it `new` (10-06: A2 fired against a pending stop);
@@ -1568,10 +1638,19 @@ class FakeEnv:
         #   cls_accepted — paper takes the 15:51 market-on-close order (it did on 10-06);
         #   restore_lost_watchdog_s — B2's restore never lands (10-06) and the stop-ACK watchdog
         #     places a fallback this many seconds later;
-        #   partial_exit_fails — the production partial exit returns False (A2 FAILs);
-        #   stream_nulls_restored — the stream read the row before the restore re-pointed it and
-        #     nulled it AFTER (the other ordering of the race); the watchdog re-adopts it 30 s later.
-        self.stream_nulls_restored = stream_nulls_restored
+        #   partial_exit_fails — the production partial exit returns False (A2 FAILs).
+        # B2's stream ordering (review 2026-10-06, MUST-FIX 1). By DEFAULT the stream nulls the
+        # pointer as the cancel lands, BEFORE the restore writes its own; its broker check (the 3 s
+        # re-check) then finds the restored stop and its #646 (e) fill DEFERS to the restore's write
+        # (`stop_pointer_repair_deferred`) — the likeliest shape for a restore that works.
+        #   stream_null_late — the stream read the row before the restore re-pointed it and nulled
+        #     it AFTER the restore's write; its #646 (e) fill then writes the restored stop back
+        #     (`stop_order_id_changed` reason `cancel_or_reject_restored`);
+        #   stream_sees_replacement=False — the stream's broker reads miss the restored stop: no
+        #     repair, the planned-sale silent row; with stream_null_late the pointer stays NULL and
+        #     the stop-ACK watchdog re-adopts the live stop 30 s later.
+        self.stream_null_late = stream_null_late
+        self.stream_sees_replacement = stream_sees_replacement
         self.pending_new_s = float(pending_new_s)
         self.restore_retries = int(restore_retries)
         self.stream_missed_cancel = stream_missed_cancel
@@ -1869,6 +1948,8 @@ class FakeEnv:
         t, stop_id = r["ticker"], r["stop_order_id"]
         self.locked.add(tid)
         self._stream_hold, refused = [], False
+        nulled: set = set()                      # cancels whose stream null already ran
+        restored_id = None
         try:
             pending = [x for x in self.live_orders if x["trade_id"] == tid
                        and x["purpose"] == "partial_exit"
@@ -1920,10 +2001,15 @@ class FakeEnv:
                         self._spy_ev(name="place_stop_order", args=(t,), qty=want, ok=False,
                                      error=err)
                         self.clock += timedelta(seconds=0.5)
+                    if not (self.stream_null_late or self.stream_missed_cancel):
+                        for o in self._stream_hold:      # the cancel lands: the stream nulls first
+                            self._stream_on_cancel(o, check=False)
+                            nulled.add(o["id"])
                     restored = self._new(t, want, "sell", "stop", "gtc", status="new",
                                          stop=r["stop_price"])
                     self._spy_ev(name="place_stop_order", args=(t,), qty=restored["qty"], ok=True,
                                  order_id=restored["id"])
+                    restored_id = restored["id"]
                     r["stop_order_id"] = restored["id"]
                     self._audit("stop_order_id_changed", {"trade_id": tid, "new_id": restored["id"],
                                                           "reason": "restored_after_failed_full_exit"})
@@ -1949,12 +2035,12 @@ class FakeEnv:
                 # stream_missed_cancel: the restore re-pointed the row first, so the stream's
                 # lookup by the cancelled stop's id finds nothing — no null, no row, no page.
                 if not (refused and self.stream_missed_cancel):
-                    self._stream_on_cancel(o)
-            rid = self.trades[tid].get("stop_order_id") if tid in self.trades else None
-            if refused and self.stream_nulls_restored and rid:
-                self.trades[tid]["stop_order_id"] = None      # nulled after the restore's write
-
-                def _readopt(tid=tid, rid=rid):
+                    self._stream_on_cancel(o, null=o["id"] not in nulled)
+            if (restored_id and tid in self.trades
+                    and self.trades[tid].get("stop_order_id") is None):
+                # The stream nulled the pointer after the restore's write and did not see the
+                # restored stop: the stop-ACK watchdog (09-15 ET) re-adopts the live broker stop.
+                def _readopt(tid=tid, rid=restored_id):
                     self.trades[tid]["stop_order_id"] = rid
                     self._audit("stop_order_id_changed", {"trade_id": tid, "new_id": rid,
                                                           "reason": "watchdog_synced_from_broker"})
@@ -1967,22 +2053,53 @@ class FakeEnv:
     async def depth_open_sale(self, tid):
         return await self._sale(tid, REASON, "opg")
 
-    def _stream_on_cancel(self, o):
+    def _stream_on_cancel(self, o, *, null=True, check=True):
+        """The production cancel handler (`trade_stream._handle_cancel_or_reject`) as far as the
+        rehearsal's checks read it. A stop OUR planned sale cancelled: (null) the row's pointer is
+        cleared unconditionally (`cancel_or_reject_null`); (check) the broker is asked for a
+        DIFFERENT live sell stop covering the row — the REAL `_find_replacement_stop` over what
+        `get_open_orders` shows (held OCO legs hidden, #566). Found → the #646 (e) fill: written
+        only while the pointer is still NULL (`cancel_or_reject_restored`), else
+        `stop_pointer_repair_deferred`. Not found → the planned-sale silent row (with
+        stream_silent=False, the "unprotected" page instead). `null` / `check` split the handler so
+        B2 can put the restore's own pointer write between them."""
         planned = {(a["detail"]["trade_id"], a["detail"]["stop_order_id"]) for a in self.audit
                    if a["event_type"] == "planned_sale_stop_cancel"}
         for tid, r in self.trades.items():
-            if (tid, o["id"]) in planned:
+            if (tid, o["id"]) in planned and null:
+                r["stop_order_id"] = None
                 self._audit("stop_order_id_changed", {"trade_id": tid, "new_id": None,
                                                       "reason": "cancel_or_reject_null"})
-            if (tid, o["id"]) in planned and self.stream_silent:
-                self._audit("stop_cancel_by_planned_sale_silent",
-                            {"trade_id": tid, "cancelled_order_id": o["id"]})
-            if o.get("order_class") == "oco" and any(
+            if (tid, o["id"]) in planned and check:
+                rep = self._stream_replacement(o, r) if self.stream_sees_replacement else None
+                if rep and r["stop_order_id"] is None:
+                    r["stop_order_id"] = rep["id"]
+                    self._audit("stop_order_id_changed", {"trade_id": tid, "new_id": rep["id"],
+                                                          "reason": "cancel_or_reject_restored"})
+                elif rep:
+                    self._audit("stop_pointer_repair_deferred",
+                                {"trade_id": tid, "cancelled_order_id": o["id"],
+                                 "confirmed_replacement_id": rep["id"]})
+                elif self.stream_silent:
+                    self._audit("stop_cancel_by_planned_sale_silent",
+                                {"trade_id": tid, "cancelled_order_id": o["id"]})
+            if check and o.get("order_class") == "oco" and any(
                     x["trade_id"] == tid and x["alpaca_order_id"] == o["id"]
                     for x in self.live_orders):
                 n = self._new(o["symbol"], o["qty"], "sell", "stop", "gtc", status="new",
                               stop=r["stop_price"])
                 r["stop_order_id"] = n["id"]
+
+    def _stream_replacement(self, o, r):
+        # The CLI dry run (`python scripts/probes/_687/paper_rehearsal.py day-a --dry-run`) puts
+        # only this script's directory on sys.path; the repo root is needed for the real function.
+        root = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        from agents.market_intelligence.broker.trade_stream import _find_replacement_stop
+        shown = [dict(x) for x in self.orders.values()
+                 if x["status"] in LIVE_STATUSES and not x.get("is_leg")]
+        return _find_replacement_stop(shown, o["symbol"], o["id"], r["remaining_shares"])
 
     async def _depth_job_1901(self):
         if not self.prod_depth_job:

@@ -5173,6 +5173,9 @@ async def _sell_at_market_for_refused_stop(
 # today's path, untouched; the window running out is today's RESTORE_FAILED and today's page.
 _RESTORE_RETRY_POLLS = 30          # ~15 s in all
 _RESTORE_RETRY_SLEEP_S = 0.5
+# The same ~15 s as a WALL-CLOCK cap: slow broker reads must not stretch 30 polls into minutes.
+# Its own constant (not POLLS × SLEEP) so a test that zeroes the sleep keeps a real window.
+_RESTORE_RETRY_WINDOW_S = 15.0
 # What a "the shares are still held" refusal says. NOT the bare code 40310000: Alpaca uses that code
 # for refusals that time cannot cure too (the same Day A's opening-auction probe — "opg orders must
 # be submitted after 7:00pm" — carried it), and waiting on those would only delay the page.
@@ -5221,7 +5224,7 @@ async def _audit_restore_retry(
                     "stop_price": stop_price, "qty": int(qty), "outcome": outcome,
                     "attempts": retry.attempts, "polls": retry.polls, "slept_s": slept_s,
                     "elapsed_s": retry.elapsed_s,
-                    "window_s": _RESTORE_RETRY_POLLS * _RESTORE_RETRY_SLEEP_S,
+                    "window_s": _RESTORE_RETRY_WINDOW_S,
                     "cancelled_stop_id": cancelled_stop_id, "order_id": order_id,
                     "site": _RESTORE_SITE, "last_error": retry.last_error[:300]}),
     )
@@ -5245,8 +5248,12 @@ async def _retry_restore_while_shares_held(
     held shares → keep waiting; refused for anything else → FAILED. The window running out →
     FAILED (the caller pages exactly as today).
 
-    Bounded by the poll COUNT, not the wall clock, so a patched or fast `asyncio.sleep` can never
-    spin it forever. The caller holds the per-trade lock throughout (≤ ~15 s more than before)."""
+    Bounded TWICE: by the poll COUNT, so a patched or fast `asyncio.sleep` can never spin it
+    forever, AND by the wall clock (`_RESTORE_RETRY_WINDOW_S`, 15 s from the first refusal), so
+    slow broker reads cannot stretch 30 polls into minutes (a hung read is up to ~90 s) while
+    the caller holds the per-trade lock and a pool connection — the 16:45 and 19:01 loops are
+    serial. No new poll starts once the window is spent; the one in flight finishes.
+    The caller holds the per-trade lock throughout (≤ ~15 s more than before)."""
     started = time.monotonic()
     attempts, polls, last_error = 1, 0, str(first_error)
 
@@ -5256,9 +5263,9 @@ async def _retry_restore_while_shares_held(
 
     logger.warning(
         f"_restore_stop_after_failed_exit: {ticker} — the broker still holds the cancelled stop's "
-        f"shares; waiting up to {_RESTORE_RETRY_POLLS * _RESTORE_RETRY_SLEEP_S:.0f}s to re-place "
+        f"shares; waiting up to {_RESTORE_RETRY_WINDOW_S:.0f}s to re-place "
         f"the {qty}-sh stop at ${stop_price:.2f}")
-    while polls < _RESTORE_RETRY_POLLS:
+    while polls < _RESTORE_RETRY_POLLS and time.monotonic() - started < _RESTORE_RETRY_WINDOW_S:
         polls += 1
         await asyncio.sleep(_RESTORE_RETRY_SLEEP_S)
         try:
@@ -5301,8 +5308,8 @@ async def _retry_restore_while_shares_held(
             return _end(RESTORE_FAILED)
         return _end(None, placed)
     logger.error(f"_restore_stop_after_failed_exit: {ticker} — the broker still held the shares "
-                 f"after {polls * _RESTORE_RETRY_SLEEP_S:.1f}s ({attempts} attempt(s)); the stop "
-                 f"is NOT restored")
+                 f"after {time.monotonic() - started:.1f}s ({polls} poll(s), {attempts} "
+                 f"attempt(s)); the stop is NOT restored")
     return _end(RESTORE_FAILED)
 
 

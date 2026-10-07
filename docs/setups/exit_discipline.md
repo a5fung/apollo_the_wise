@@ -367,8 +367,10 @@ cancelled stop's shares were not released yet. Page: STOP NOT RESTORED; the stop
   `held_for_orders` — NOT the bare code 40310000, which Alpaca also uses for refusals time cannot cure, e.g. the same
   day's opg-cutoff probe) is retried: every `_RESTORE_RETRY_SLEEP_S` = 0.5 s, at most `_RESTORE_RETRY_POLLS` = 30
   polls (~15 s), one `get_position` read per poll; once `qty_available` ≥ the restore's count, the SAME stop is
-  placed again (same price, same count, sized once as before). The retry carries a mode-bound client order id; the
-  first attempt keeps today's call exactly.
+  placed again (same price, same count, sized once as before). The window is ALSO capped by the wall clock
+  (`_RESTORE_RETRY_WINDOW_S` = 15 s from the first refusal — no poll starts after it; review 2026-10-06), so slow
+  broker reads (a hung one is up to ~90 s) cannot stretch 30 polls into minutes while the lock is held. The retry
+  carries a mode-bound client order id; the first attempt keeps today's call exactly.
 - a poll whose position read is empty asks the shared sizing (`_broker_free_qty_for_restore`, same exclude id):
   flat → nothing placed (ruling (i)'s `restore_skipped_broker_flat` row, RESTORE_FLAT); every share held by OTHER
   live orders → RESTORE_COVERED; unreadable → keep waiting.
@@ -390,9 +392,13 @@ cancel that takes longer than 5 s still fails the sale — what changes is that 
 §2) finds the trade by the CANCELLED stop's id and nulls the pointer unconditionally. A retry lands as the cancel
 settles — the same moment that event arrives — so the two can interleave: (a) the restore re-points the row first →
 the stream matches nothing (no page, no `stop_cancel_by_planned_sale_silent` row); (b) the stream reads the row
-first and nulls it after the restore's write → pointer NULL while the restored stop is live (the coverage repair,
-the sync and ingest R1 re-adopt a live broker stop). Pre-existing for any restore that succeeds; the retry makes it
-more likely.
+first and nulls it after the restore's write → pointer NULL while the restored stop is live. The immediate repair
+for (b) is the SAME handler's #646 (e) fill (`expected_prior=None`): its broker check (immediate, then the 3 s
+re-check) finds the restored stop and writes it back (`cancel_or_reject_restored`); only if that check misses it
+does the pointer stay NULL until the stop-ACK watchdog's backstop (09-15 ET, try-lock, `watchdog_synced_from_broker`)
+re-adopts the live broker stop. When the stream nulls FIRST and the restore writes after (the likeliest order for a
+restore that works), the fill defers to the restore's write (`stop_pointer_repair_deferred`). Pre-existing for any
+restore that succeeds; the retry makes it more likely.
 
 **Reversion-flag**: REFINEMENT of #646 / #687 (c) — the same stop, at the same price, for the same count; it waits for
 the broker before giving up. Not a reversal.
@@ -403,10 +409,21 @@ restores the same stop on the poll that shows the shares free + one `stop_restor
 outlasts the window → today's page + `stop_restore_retry_ended`; a first attempt that succeeds never polls and makes
 today's exact call; the price-through-the-stop and any other refusal → today's branch at once; a retry refused through
 the price sells; a flat broker seen while waiting places nothing; the opening-auction sale's restore retries too —
-6 red with the window set to zero polls, 7 with the held-shares classifier off),
+6 red with the window set to zero polls, 7 with the held-shares classifier off; +2 for the wall-clock cap: 5 s reads
+end the retry after 3 polls, and 2 s reads still restore inside it),
 `tests/test_646_full_exit_never_returns_naked.py` (`_wire` zeroes the retry sleep).
 The rehearsal (`scripts/probes/_687/paper_rehearsal.py`) changed with it: steps wait for orders to be routed (never
 `pending_new`), A4 (market-on-close) is informational, and Day A cleans up only when Day B has nothing left to test.
+Review fixes (2026-10-06): **B2** is judged by the path that ran — the restore's FIRST attempt worked → the spec's ≤ 5 s
+after the rejected sale, and the detail says the retry was NOT exercised live (unit-tested only); the first attempt
+was refused and the retry placed the stop → ≤ `RETRY_BAR_S` (the 15 s window + 2 s of broker round trips) after that
+first refusal AND a `stop_restore_retried` row (the retry PROVEN live). Thursday's 10:15 spacing likely settles the
+cancel before the sale, so the first-attempt path is the expected one. **B2b** passes on any of the stream's three
+no-page outcomes for the restored stop — the planned-sale silent row, `cancel_or_reject_restored`, or
+`stop_pointer_repair_deferred` — and FAILS only when none appears in 30 s (before, it required the silent row, which a
+WORKING restore never produces: the stream takes its replacement branch). The dry-run fake now runs the real
+`trade_stream._find_replacement_stop` (knobs `stream_null_late`, `stream_sees_replacement`). A8's 18:50 readiness
+accepts a stop reading `accepted`/`held` (re-placed after the close), never `pending_new`.
 
 ### 2026-10-04 — #687 ruling (a): the stop-coverage repair reads the broker before it places — a FLAT broker gets no stop (TRADE STATE — no exit rule, stop level, target or size changed)
 

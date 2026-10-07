@@ -143,6 +143,61 @@ async def test_a_refusal_that_outlasts_the_window_fails_with_todays_page(monkeyp
 async def test_the_window_is_about_fifteen_seconds():
     assert om._RESTORE_RETRY_SLEEP_S == 0.5
     assert om._RESTORE_RETRY_POLLS * om._RESTORE_RETRY_SLEEP_S == 15.0
+    assert om._RESTORE_RETRY_WINDOW_S == 15.0
+
+
+def _slow_reads(monkeypatch, h, read_s):
+    """Every position read the RETRY makes (after the first restore attempt) costs `read_s` seconds
+    on the fake clock, and the retry's wall clock is that fake clock (only `order_manager`'s `time`
+    is swapped — the event loop keeps the real one)."""
+    import time as _time
+    import types
+    fake_time = types.SimpleNamespace(
+        **{k: getattr(_time, k) for k in dir(_time) if not k.startswith("_")})
+    fake_time.monotonic = lambda: h["clock"]["t"]
+    monkeypatch.setattr(om, "time", fake_time)
+    answer = h["pos"].side_effect
+
+    def _pos(*a, **k):
+        if h["placed"]:
+            h["clock"]["t"] += read_s
+        return answer(*a, **k)
+
+    h["pos"].side_effect = _pos
+
+
+@pytest.mark.asyncio
+async def test_slow_broker_reads_cannot_stretch_the_window_past_fifteen_seconds(monkeypatch):
+    """Review 2026-10-06 (NICE 3): bounded by the poll COUNT alone, 30 polls whose reads each took
+    5 s held the per-trade lock for ~165 s. The wall clock now ends it: no poll STARTS once 15 s
+    have passed since the first refusal — 3 polls here (5.5 s each), today's page, one row."""
+    rows = _audit_rows(monkeypatch)
+    h = _b2(monkeypatch, release_at=10_000.0)
+    _slow_reads(monkeypatch, h, read_s=5.0)
+
+    assert await om.execute_full_exit(382, "sma_trail_stop") is False
+
+    end = _rows(rows, om.STOP_RESTORE_RETRY_ENDED_EVENT)
+    assert len(end) == 1 and end[0]["outcome"] == om.RESTORE_FAILED, end
+    assert end[0]["polls"] == 3, end
+    assert 15.0 <= end[0]["elapsed_s"] < 15.0 + 5.5, end    # the read in flight may finish
+    assert len(h["placed"]) == 1 and "STOP NOT RESTORED" in h["sent"][-1]
+
+
+@pytest.mark.asyncio
+async def test_slow_reads_still_restore_when_the_shares_free_inside_the_window(monkeypatch):
+    """The cap only ends a retry the broker never answers in time — shares freed 10 s into the
+    retry on 2 s reads are still re-protected (the B2 shape, slower broker)."""
+    rows = _audit_rows(monkeypatch)
+    h = _b2(monkeypatch, release_at=15.0)          # first attempt at +5 s; freed at +15 s
+    _slow_reads(monkeypatch, h, read_s=2.0)
+
+    await om.execute_full_exit(382, "sma_trail_stop")
+
+    ok = _rows(rows, om.STOP_RESTORE_RETRIED_EVENT)
+    assert len(ok) == 1 and ok[0]["order_id"] == "stop-2", rows
+    assert ok[0]["polls"] == 4 and ok[0]["elapsed_s"] == 10.0, ok
+    assert [p["t"] for p in h["placed"]] == [5.0, 15.0] and "Stop RESTORED" in h["sent"][-1]
 
 
 # ── (c) the first attempt succeeds → no polling, today's result exactly ───────────────────────
