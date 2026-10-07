@@ -1,0 +1,9 @@
+cand rows high>=+15% symbol-ok: 155280; after raw floors: 26689; tickers 4277
+f300 pool rows 3763; daily tickers 4957
+daily rows 1952947
+sectypes 14064
+lane signals 19; lane replays rows 19 (written to file, not printed)
+s300 pool ticker-days 261
+audit rows 40
+
+[exited with code 0]

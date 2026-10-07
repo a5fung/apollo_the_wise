@@ -1,0 +1,9 @@
+#624 backfill pre-registration freeze
+doc: docs/analysis/624_lowcap_backfill_2026-10-06.md
+section: from '## Pre-registration (frozen before any outcome was seen)' up to (not incl.) '## Results'
+section_bytes: 23933
+sha256: e56902f4e3ced2ecce35547b2f332cb9e4887aa3aeae59fa997270b94438fc90
+repo_HEAD: 9e3b6c7c60f4c39d70ca5c2c56776c7f6bcb1db1
+frozen_at: 2026-10-06 16:05 PDT / 19:05 EDT
+outcomes_computed_before_freeze: none (mi_lowcap_lane_replays not read; no Polygon call made)
+verify: python3 -c "import hashlib;s=open('docs/analysis/624_lowcap_backfill_2026-10-06.md').read();print(hashlib.sha256(s[s.index('## Pre-registration (frozen'):s.index('## Results')].encode()).hexdigest())"

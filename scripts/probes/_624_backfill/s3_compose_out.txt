@@ -1,0 +1,32 @@
+# #624 COMPOSITION (no outcome computed) — k=15, 09:30 price open930, cap basis pc; window 2024-01-02..2026-09-03; prefilter rows 13921 on 671 sessions
+PREFILTER (s1_lists): {'day_volume_below_p90': 4073, 'no_volume_history': 863, 'nonstock_today': 6726, 'skip_tickers': 863, 'pass_live_window': 243, 'pass_backfill_window': 13921, 'pass_backfill_typed_stock': 12664, 'pass_backfill_untyped_today': 1257, 'pass_backfill_other_type': 0, 'pass_backfill_names': 3391}
+SCREEN P (k=15, cap pc): {'never_passed_free_terms': 12524, 'signal': 768, 'rejected_cap': 567, 'non_common': 6, 'no_minute_bars': 55, 'tick_capped_rolls': 5, 'tick_capped_ticks': 3, 'cap_unavailable': 1}; reference reads missing for survivors 0
+SCREEN S3_rt_volume (k=0, cap pc): {'never_passed_free_terms': 11778, 'signal': 1037, 'rejected_cap': 1038, 'non_common': 12, 'no_minute_bars': 55, 'tick_capped_rolls': 7, 'tick_capped_ticks': 3, 'cap_unavailable': 1}; reference reads missing for survivors 0
+SCREEN S4_cap_at_tick (k=15, cap tick): {'never_passed_free_terms': 12524, 'signal': 697, 'rejected_cap': 638, 'non_common': 6, 'no_minute_bars': 55, 'tick_capped_rolls': 5, 'tick_capped_ticks': 3, 'cap_unavailable': 1}; reference reads missing for survivors 0
+
+## POPULATION P: 768 signals on 509 tickers over 434 sessions (expected ~670, plausible 300-1,500)
+   DISC_2024: signals 228, walkable (tick < 09:45) 132, tickers 173
+   HELD_A_2025-0605: signals 467, walkable (tick < 09:45) 338, tickers 337
+   INSAMPLE_0608-0903: signals 73, walkable (tick < 09:45) 56, tickers 59
+   OUT-OF-SAMPLE (2024-01-02..2026-06-05): 695
+   by tick: 09:30 449, 09:31 26, 09:35 28, 09:40 23, 09:45 23, 09:50 118, 09:55 101
+   cap band: {'100-200M': 138, '200-500M': 223, '<25M': 237, '25-100M': 170}
+   prior close (raw): {'5-10': 525, '10-20': 184, '20-50': 54, '50+': 5}
+   gap at the tick: {'100+': 40, '20-30': 204, '30-50': 188, '15-20': 223, '50-100': 113}
+   typed today: {'untyped_today': 115, 'CS': 619, 'ADRC': 34}; Polygon type on D: {'CS': 725, 'ADRC': 43}
+   stamps: {'adv_too_low': 449, 'pm_shares_floor': 7, 'extended': 258, 'cooldown': 147, 'atr_too_high': 82, 'adv_no_data': 3}; E (extension passed) 510; G (all five passed) 183
+   serial rows (>= 3 lane signals in 60 days ending D) 28; first-in-60-days rows 621
+   tickers with >= 3 signals in any 60-day span (21): ADVB, ARQQ, ASPC, BMR, CERO, CYN, DFNS, FORD, GSIT, HOLO, HUSA, LUNR, MNTS, NVA, PHUN, RNAZ, SBET, SDOT, UMAC, WETO, WSHP
+   top tickers by signal count: [('HOLO', 8), ('PHUN', 6), ('MNTS', 6), ('LUNR', 5), ('RENT', 5), ('ADVB', 5), ('SMLR', 4), ('RGC', 4), ('ARQQ', 4), ('UMAC', 4), ('NUKK', 4), ('HUSA', 4)]
+   top months: [('2025-06', 47), ('2025-10', 43), ('2025-12', 39), ('2025-09', 38), ('2025-07', 37), ('2026-05', 37)]
+
+## EXCLUSIONS (P screen, per ticker-day): {'never_passed_free_terms': 12524, 'signal': 768, 'rejected_cap': 567, 'non_common': 6, 'no_minute_bars': 55, 'cap_unavailable': 1}
+   non-common detail: {'non_common:WARRANT': 3, 'non_common:ETF': 3}
+   cap unavailable detail: {'cap_unavailable': 1}
+   untyped-today names in P: 115 rows on 81 tickers
+
+## VOID / HALT CHECKS (before any outcome)
+   W1 survivorship: 110 of 509 signal tickers (21.6%) stopped trading before 2026-09-01 (bar >= 5%); untyped-today rows in P 115 (bar > 0) -> ok
+   W2 cap coverage: unreadable 1 of 1336 free-term survivors that reached a cap read (0.1%; bar 20%) -> ok
+   W4 data: walkable signals 526; no 09:30 bar 0; signals with a gap in the minute record between their submit and 10:00 192 -> 36.5% (bar 15%); minute-pull errors 0 (0.00%; bar 2%)
+   HALT checks: top ticker HOLO 8/768 (1.0%); top month 2025-06 47/768 (6.1%) -> no halt

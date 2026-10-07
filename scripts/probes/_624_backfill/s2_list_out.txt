@@ -1,0 +1,3 @@
+k=15: free-term survivors 1342; counts {'never_passed_free_terms': 12524, 'no_minute_bars': 55}
+k=0: free-term survivors 2088; counts {'never_passed_free_terms': 11778, 'no_minute_bars': 55}
+union 2088; to read 2085 -> list_ref_s2.txt

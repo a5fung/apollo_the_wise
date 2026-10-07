@@ -1,0 +1,5 @@
+   PATH OMIC 2024-09-13 tick 09:30:00: entry 9.19 at 2024-09-13 09:31:00-04:00, stop 8.2500, ORB 9.15/8.7, partial True, exit session 10 (2024-09-27), final sma_trail_stop, R +5.86
+   PATH AKAN 2026-04-29 tick 09:40:00: entry 20.2 at 2026-04-29 09:53:00-04:00, stop 18.8200, ORB 20.1/19.46, partial True, exit session 7 (2026-05-08), final stop_hit, R +6.00
+outcomes: {'no_trade': 406, 'settled': 317, 'unscoreable': 45}
+max exit session by block: {'DISC_2024': 12, 'HELD_A_2025-0605': 15, 'INSAMPLE_0608-0903': 15}
+hold buckets: {('DISC_2024', '1-5'): 12, ('DISC_2024', '6-20'): 5, ('DISC_2024', 'exit day 0'): 70, ('HELD_A_2025-0605', '1-5'): 28, ('HELD_A_2025-0605', '6-20'): 13, ('HELD_A_2025-0605', 'exit day 0'): 151, ('INSAMPLE_0608-0903', '1-5'): 9, ('INSAMPLE_0608-0903', '6-20'): 6, ('INSAMPLE_0608-0903', 'exit day 0'): 23}

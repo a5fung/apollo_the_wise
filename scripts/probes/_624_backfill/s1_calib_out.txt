@@ -1,0 +1,122 @@
+# #624 Stage 1 phase 1 — run 2026-10-06T19:24:10-04:00
+minute pulls logged 534 (errors 0, zero-bar keys 0); keys with bars 534; reference reads 251
+
+## C1 — the acting (delayed) volume: proxy = Polygon minute volume in [04:00, T - k)
+   k=15: F300 median ratio 0.986, within ±20% 87.7%, p90-verdict agreement F300 300/300 (100.0%), L19 19/19; F300 rows with no minute bars 0 -> PASS
+   k=14: F300 median ratio 0.999, within ±20% 82.3%, p90-verdict agreement F300 300/300 (100.0%), L19 19/19; F300 rows with no minute bars 0 -> PASS
+   k=16: F300 median ratio 0.962, within ±20% 83.3%, p90-verdict agreement F300 300/300 (100.0%), L19 19/19; F300 rows with no minute bars 0 -> PASS
+   k=10: F300 median ratio 1.012, within ±20% 65.3%, p90-verdict agreement F300 299/300 (99.7%), L19 19/19; F300 rows with no minute bars 0 -> fail
+   k=20: F300 median ratio 0.828, within ±20% 51.0%, p90-verdict agreement F300 299/300 (99.7%), L19 16/19; F300 rows with no minute bars 0 -> fail
+   k= 0: F300 median ratio 1.195, within ±20% 45.7%, p90-verdict agreement F300 298/300 (99.3%), L19 19/19; F300 rows with no minute bars 0 -> fail
+   C1 -> k = 15
+   k=15 median ratio by tick (F300): 09:30 0.990 (n=149), 09:35 0.981 (n=10), 09:40 0.989 (n=10), 09:45 0.962 (n=22), 09:50 0.989 (n=71), 09:55 0.988 (n=38)
+
+## C2 — the price at the tick vs the stored live current_price (L19)
+   mode open930: within 1% on 17/19 -> PASS
+      BIAF 2026-09-09 09:30 recon 10.9 vs stored 10.87 (+0.28%)
+      PCLA 2026-09-10 09:30 recon 9.15 vs stored 9.15 (+0.00%)
+      COLA 2026-09-11 09:30 recon 10.67 vs stored 10.67 (+0.00%)
+      MKDW 2026-09-11 09:40 recon 5.87 vs stored 5.87 (+0.00%)
+      PCLA 2026-09-11 09:30 recon 12.58 vs stored 12.56 (+0.16%)
+      TNON 2026-09-11 09:30 recon 8.14 vs stored 8.2 (-0.73%)
+      VNCE 2026-09-14 09:50 recon 6.4048 vs stored 6.5 (-1.46%) MISS
+      RLGT 2026-09-15 09:30 recon 9.45 vs stored 9.45 (+0.00%)
+      MKDW 2026-09-17 09:30 recon 9.3 vs stored 9.34 (-0.43%)
+      VEEA 2026-09-17 09:30 recon 7.85 vs stored 8.0 (-1.88%) MISS
+      SVRN 2026-09-21 09:55 recon 26.305 vs stored 26.305 (+0.00%)
+      GRML 2026-09-22 09:30 recon 13.7 vs stored 13.75 (-0.36%)
+      NCT 2026-09-22 09:30 recon 6.77 vs stored 6.79 (-0.29%)
+      GRML 2026-09-23 09:30 recon 17.335 vs stored 17.37 (-0.20%)
+      GRML 2026-09-24 09:40 recon 12.9352 vs stored 12.94 (-0.04%)
+      SRZN 2026-09-24 09:30 recon 30.56 vs stored 30.485 (+0.25%)
+      JAGX 2026-09-25 09:30 recon 9.09 vs stored 9.0598 (+0.33%)
+      XRPN 2026-09-30 09:40 recon 14.915 vs stored 14.915 (+0.00%)
+      SDEV 2026-10-05 09:30 recon 9.71 vs stored 9.765 (-0.56%)
+   mode close929: within 1% on 16/19 -> PASS
+      BIAF 2026-09-09 09:30 recon 10.91 vs stored 10.87 (+0.37%)
+      PCLA 2026-09-10 09:30 recon 9.16 vs stored 9.15 (+0.11%)
+      COLA 2026-09-11 09:30 recon 10.63 vs stored 10.67 (-0.37%)
+      MKDW 2026-09-11 09:40 recon 5.87 vs stored 5.87 (+0.00%)
+      PCLA 2026-09-11 09:30 recon 12.67 vs stored 12.56 (+0.88%)
+      TNON 2026-09-11 09:30 recon 8.14 vs stored 8.2 (-0.73%)
+      VNCE 2026-09-14 09:50 recon 6.4048 vs stored 6.5 (-1.46%) MISS
+      RLGT 2026-09-15 09:30 recon 9.47 vs stored 9.45 (+0.21%)
+      MKDW 2026-09-17 09:30 recon 9.34 vs stored 9.34 (+0.00%)
+      VEEA 2026-09-17 09:30 recon 7.91 vs stored 8.0 (-1.12%) MISS
+      SVRN 2026-09-21 09:55 recon 26.305 vs stored 26.305 (+0.00%)
+      GRML 2026-09-22 09:30 recon 13.6413 vs stored 13.75 (-0.79%)
+      NCT 2026-09-22 09:30 recon 6.95 vs stored 6.79 (+2.36%) MISS
+      GRML 2026-09-23 09:30 recon 17.5 vs stored 17.37 (+0.75%)
+      GRML 2026-09-24 09:40 recon 12.9352 vs stored 12.94 (-0.04%)
+      SRZN 2026-09-24 09:30 recon 30.57 vs stored 30.485 (+0.28%)
+      JAGX 2026-09-25 09:30 recon 9.0802 vs stored 9.0598 (+0.23%)
+      XRPN 2026-09-30 09:40 recon 14.915 vs stored 14.915 (+0.00%)
+      SDEV 2026-10-05 09:30 recon 9.72 vs stored 9.765 (-0.46%)
+   C2 -> open930
+
+## C4 — the reconstructed history fed the STORED delayed volume (L19)
+   BIAF 2026-09-09: history n 41 vs stored 41; percentile 90.2 vs stored 90.2
+   PCLA 2026-09-10: history n 42 vs stored 42; percentile 100.0 vs stored 100.0
+   COLA 2026-09-11: history n 37 vs stored 37; percentile 100.0 vs stored 100.0
+   MKDW 2026-09-11: history n 37 vs stored 37; percentile 100.0 vs stored 100.0
+   PCLA 2026-09-11: history n 43 vs stored 43; percentile 100.0 vs stored 100.0
+   TNON 2026-09-11: history n 43 vs stored 43; percentile 100.0 vs stored 100.0
+   VNCE 2026-09-14: history n 41 vs stored 41; percentile 100.0 vs stored 100.0
+   RLGT 2026-09-15: history n 41 vs stored 41; percentile 100.0 vs stored 100.0
+   MKDW 2026-09-17: history n 36 vs stored 36; percentile 100.0 vs stored 100.0
+   VEEA 2026-09-17: history n 42 vs stored 42; percentile 95.2 vs stored 95.2
+   SVRN 2026-09-21: history n 41 vs stored 41; percentile 97.6 vs stored 97.6
+   GRML 2026-09-22: history n 41 vs stored 41; percentile 100.0 vs stored 100.0
+   NCT 2026-09-22: history n 41 vs stored 41; percentile 100.0 vs stored 100.0
+   GRML 2026-09-23: history n 41 vs stored 41; percentile 97.6 vs stored 97.6
+   GRML 2026-09-24: history n 42 vs stored 42; percentile 92.9 vs stored 92.9
+   SRZN 2026-09-24: history n 42 vs stored 42; percentile 100.0 vs stored 100.0
+   JAGX 2026-09-25: history n 43 vs stored 43; percentile 100.0 vs stored 100.0
+   XRPN 2026-09-30: history n 41 vs stored 41; percentile 95.1 vs stored 95.1
+   SDEV 2026-10-05: history n 41 vs stored 41; percentile 100.0 vs stored 100.0
+   C4 -> 19/19 reproduced -> PASS
+
+## C3 — Polygon point-in-time shares x raw prior close vs the live cap (yfinance)
+   basis pc: S300 agreement 210/215 (97.7%; unreadable 0); L19 19/19 (unreadable 0); median |log ratio| S300 0.001 -> PASS
+      BIAF 2026-09-09: polygon 5.4M vs live 5.4M
+      PCLA 2026-09-10: polygon 71.3M vs live 71.3M
+      COLA 2026-09-11: polygon 37.3M vs live 48.0M
+      MKDW 2026-09-11: polygon 174.4M vs live 200.7M
+      PCLA 2026-09-11: polygon 93.4M vs live 93.4M
+      TNON 2026-09-11: polygon 3.5M vs live 5.5M
+      VNCE 2026-09-14: polygon 67.8M vs live 84.1M
+      RLGT 2026-09-15: polygon 385.0M vs live 384.5M
+      MKDW 2026-09-17: polygon 266.4M vs live 266.4M
+      VEEA 2026-09-17: polygon 19.0M vs live 24.7M
+      SVRN 2026-09-21: polygon 38.1M vs live 49.3M
+      GRML 2026-09-22: polygon 29.9M vs live 43.7M
+      NCT 2026-09-22: polygon 5.8M vs live 5.8M
+      GRML 2026-09-23: polygon 45.0M vs live 55.2M
+      GRML 2026-09-24: polygon 98.8M vs live 41.1M
+      SRZN 2026-09-24: polygon 189.9M vs live 361.4M
+      JAGX 2026-09-25: polygon 3.7M vs live 3.7M
+      XRPN 2026-09-30: polygon 407.5M vs live 471.2M
+      SDEV 2026-10-05: polygon 378.6M vs live 494.1M
+   basis tick: S300 agreement 208/215 (96.7%; unreadable 0); L19 19/19 (unreadable 0); median |log ratio| S300 0.090 -> PASS
+   C3 -> pc  (S300 drew 215: pool had 65 below / 196 at-or-above $500M — 'up to 150' each)
+
+## INPUT CHECK (added, not a gate) — Polygon's own market_cap on D = dated shares x the RAW close on D?
+   CYN 2024-07-15 (a later 150:1 reverse split): implied px 9.18 vs raw close 9.18 vs adjusted close 1377.0
+   AMIX 2024-10-28 (a later 21:1 reverse split): implied px 12.38 vs raw close 12.38 vs adjusted close 259.98
+   DRCT 2024-06-13 (a later 220:1 reverse split): implied px 4.64 vs raw close 4.64 vs adjusted close 1020.8
+   DGNX 2025-10-07 (a later 8:1 reverse split): implied px 24.2 vs raw close 24.2 vs adjusted close 193.6
+   FTEL 2024-04-05 (a later 16:1 reverse split): implied px 8.25 vs raw close 8.25 vs adjusted close 132.0
+   MTEN 2025-03-17 (a later 200:1 reverse split): implied px 7.71 vs raw close 7.71 vs adjusted close 1542.0
+   UBXG 2024-08-21 (a later 400:1 reverse split): implied px 34.3 vs raw close 34.3 vs adjusted close 13720.0
+   FBLG 2024-05-14 (a later 20:1 reverse split): implied px 11.3 vs raw close 11.3 vs adjusted close 226.0
+   GCTK 2025-06-20 (a later 15:1 reverse split): implied px 6.305 vs raw close 6.32 vs adjusted close 94.8
+   FTEL 2024-09-13 (a later 16:1 reverse split): implied px 15.78 vs raw close 15.78 vs adjusted close 252.48
+   -> 10/10 match the RAW close: the dated shares are in D's own (pre-split) units
+
+## W6 — prefilter safety on F300 + L19
+   rows checked 319: minute volume 04:00->09:40 above the day's mi_daily_closes volume on 0; minute high 04:00->09:55 above the daily high on 129 (binds only if C2 adopted the 09:29 close: open930)
+   live rows failing the prefilter: 0 []
+   W6 -> volume half SAFE; price half safe as written
+
+## PHASE 1 VERDICT: C1-C4 pass; W6 volume safe True
+live-window free-term survivors 38; still needing a reference read 8 -> list_ref_s1b.txt

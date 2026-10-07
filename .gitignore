@@ -124,3 +124,8 @@ scripts/probes/_lat_*
 
 # #668 alpha-capture cause split — raw bar pull (611 KB), re-derivable by re-running _668_pull.py --bars
 scripts/probes/_668_out/bars.csv.gz
+
+# #624 history replay captures (2026-10-06) — large Polygon/prod pulls, machine-local
+scripts/probes/_624_backfill/min_*.tsv.gz
+scripts/probes/_624_backfill/s0_daily.tsv.gz
+scripts/probes/_624_backfill/digests.pkl

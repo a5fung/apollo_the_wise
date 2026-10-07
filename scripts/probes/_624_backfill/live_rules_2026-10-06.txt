@@ -1,0 +1,320 @@
+APOLLO LIVE RULES — generated from code + prod state, never from hand-written prose
+generated 2026-10-06 15:49 PDT · prod: reachable (server checkout 571241c7)
+
+== ⚠ DRIFT — where the prose contradicts code or prod (0 finding(s)) ==
+  none found — every checked claim matches the acting state
+
+== ENTRY — what gets admitted and alerted ==
+  MAGNA53 EP — strategy phase 'live', REAL money [mi_strategies]
+    gap floor: a stock must gap 9%  [code default (env unset in prod)] over yesterday's close to be a candidate
+    universe floors: prior close ≥ $5.0, prior-day volume ≥ 50,000 shares  [code constant (local; not re-checked on server) agents/market_intelligence/ep_detector.py:192]
+    pre-market shares floor: 25,000 shares  [code constant (local; not re-checked on server) agents/market_intelligence/ep_detector.py:189] (carve-outs: 5× pre-market volume anomaly, or gap ≥10% with a strong-or-better catalyst)
+    extension cap: skip if already up 50%  [code constant (local; not re-checked on server) agents/market_intelligence/ep_detector.py:246] off the lowest close of the last ~5 days
+    re-alert cooldown: 60 days  [code constant (local; not re-checked on server) agents/market_intelligence/ep_detector.py:278] (bypassed by gap ≥15% on a fresh earnings day)
+    grading shortlist: only the top 20  [code constant (local; not re-checked on server) agents/market_intelligence/ep_rubric.py:500] per tick get graded; ranked by the liquidity-led pre-score — toggle `ep_shortlist_prescore`: global=on [code default (env unset in prod) (no DB row)]
+    alert bar: score ≥ 65  [code constant (local; not re-checked on server) agents/market_intelligence/ep_rubric.py:355] on the presented scale (= raw 40  [code constant (local; not re-checked on server) agents/market_intelligence/ep_rubric.py:354]) fires a HIGH alert — toggle `ep_score_separation`: global=on [code default (env unset in prod) (no DB row)]
+    catalyst grade correction (lattice) — toggle `catalyst_tier_lattice`: global=on [code default (env unset in prod) (no DB row)] (when on, every filter and the score read the corrected grade)
+    earnings revenue gate: earnings catalysts downgraded unless revenue grew 5%  [code default (env unset in prod)] year-over-year (enabled: True  [code default (env unset in prod)])
+    real-time price overlay: hybrid pass-2 True  [prod env (apollo-execution, apollo-market)], full-universe overlay True  [prod env (apollo-execution, apollo-market)]
+      gap authority (real-time price DECIDES): `ep_rt_gap_authoritative`: global=on [mi_safeguard_state (set 2026-08-27)]; remove-only half `ep_rt_gap_down_authoritative`: global=on [mi_safeguard_state (set 2026-08-02)]
+      sustain rule (level must hold 3 minutes  [code default (env unset in prod)]): `ep_rt_sustain_enabled`: global=on [mi_safeguard_state (set 2026-08-02)]
+    at submission: gap re-checked on live price — `ep_rt_entry_gap_recheck`: global=on [mi_safeguard_state (set 2026-08-02)]; ask-aware trigger — `entry_ask_aware`: live=on [mi_safeguard_state (set 2026-08-07)]
+    fade guard: MAGNA53 HIGH skips it (ratio None — agents/market_intelligence/broker/live_tracker.py:716); other strategies use ratio 0.5  [code constant (local; not re-checked on server) agents/market_intelligence/broker/entry_pipeline.py:55]
+  
+  9M EP (alert stream; the 9M Day-2 ENTRY was deleted 2026-08-02 — phase: deprecated)
+    price ≥ $5.0, dollar volume ≥ 50,000,000  [code constant (local; not re-checked on server) agents/market_intelligence/ninem_detector.py:41] traded (confirmed) / 30,000,000  [code constant (local; not re-checked on server) agents/market_intelligence/ninem_detector.py:42] (anticipation)
+    direction: gap ≥ 3%  [code constant (local; not re-checked on server) agents/market_intelligence/ninem_detector.py:46] OR intraday gain ≥ 4%  [code constant (local; not re-checked on server) agents/market_intelligence/ninem_detector.py:47]; volume anomaly ≥ 3× 20-day average  [code constant (local; not re-checked on server) agents/market_intelligence/ninem_detector.py:45]
+
+== EXIT — every path that reduces or closes a position ==
+  initial stop (MAGNA53): entry − 2R where R = entry − ORB low (placed at 2·ORB_low − ORB_high), at half size — dollar risk unchanged [agents/market_intelligence/broker/order_manager.py:620; operator-signed 2026-08-16]
+  
+  partial profit — TWO code paths exist; exactly ONE acts (misreading this is the 2026-08-23 failure this tool exists to prevent):
+    1. INTRADAY [ACTING] — order_manager.scan_profit_triggers, every 5 minutes 9:30–16:00 ET:
+       sells 1/3 the first time the in-hold minute HIGH reaches entry + 8 × R, then moves the stop to breakeven.
+       ⚠ that 8 is MAGNA53's OWN mi_strategies.profit_trigger_r, which OVERRIDES constants.PROFIT_TRIGGER_R = 2  [code constant agents/market_intelligence/constants.py:335] (#545, operator-signed 2026-09-06). Other strategies still act on the constant.
+       R here = entry − ORB low for MAGNA53 (NOT the placed 2R stop distance — that would silently make the target +4R) [agents/market_intelligence/broker/order_manager.py:9327]
+    2. DAY 3-5 TIME GATE [STANDING DOWN — never fires while the intraday trigger is on] — live_tracker.run_partial_exits at 3:45 PM ET:
+       day 3-4 sell 1/3 if the close is above entry; day 5+ sell 1/3 regardless.
+       the stand-down is mechanical: skip_partial_decision=bool(PROFIT_TRIGGER_R) [agents/market_intelligence/broker/live_tracker.py:1250] — setting PROFIT_TRIGGER_R=None restores this path with no code change.
+  
+  breakeven — TWO ways the stop reaches entry (#545, 2026-09-06):
+    1. PRICE-ARMED [ACTING for MAGNA53] — order_manager.scan_breakeven_arms, same 5-minute poll: moves the stop to entry the first time the in-hold minute HIGH reaches entry + 3 × R, WHETHER OR NOT A PARTIAL HAS FIRED.
+       mi_strategies.breakeven_arm_r; NULL = OFF and there is no global default, so every other strategy has this path dark.
+    2. AT-PARTIAL [always] — execute_partial_exit folds the stop to entry when the partial fills. Independent of path 1; both are raise-only.
+  
+  order shape of the partial (runtime toggles, per account mode):
+    resting GTC limit AT the target instead of a market sell — `profit_take_resting_limit`: live=on [mi_safeguard_state (set 2026-08-10)]
+    freed 1/3 protected by an OCO (limit at target + stop at breakeven) — `profit_take_oco`: live=on [mi_safeguard_state (set 2026-08-17)]
+    breakeven applied at the BROKER in real time — `breakeven_at_broker`: live=on [mi_safeguard_state (set date unrecorded)]
+    bracket-leg-safe stop handling (lets the partial execute on bracket orders) — `partial_exit_leg_safe`: global=on [mi_safeguard_state (set 2026-08-04)]
+  
+  trail: max(stock's 10-day, 20-day SMA) once enough closes exist; close below it exits (seeded from the stock's own closes since the 2026-08-08 fix)
+    depth rule for NEW MAGNA53 trades (stop rests one ADR20 under the line; a close below the line sells in the next opening auction, order sent 7:01 PM ET) — `magna53_depth_exit`: (no row)=off [no mi_safeguard_state row (fail-closed default)]
+      trades stamped exit_rule='depth' keep it for life; NULL rows keep today's stop (resting ON the line, close-below sale queued at 4:45 PM for the next open)
+  stop moves are RAISE-ONLY, enforced against the live broker stop in update_stop (2026-08-10)
+  giveback floor: RULED OUT by the operator 2026-08-11 — winners run; no peak-lock floor
+
+== SIZING + SAFEGUARDS ==
+  risk per trade: 0.02  [code constant agents/market_intelligence/constants.py:8] of equity (1.0 = 100%); position cap 0.2  [code constant agents/market_intelligence/constants.py:11] of equity per name
+  regime-keyed sizing: True  [prod env (apollo-execution, apollo-market)] — when true, risk % is scaled by market regime and the old VIX/QQQ halving is replaced
+    multipliers: Bull 1.0×, Choppy 0.75×, Correcting 0.5×, Crisis 0.25×; unknown/stale regime floors to 0.25×  [code constant agents/market_intelligence/constants.py:81] and alerts loudly
+  max open positions: 5  [code constant agents/market_intelligence/constants.py:320]; daily realized-loss stop: 0.02  [code constant agents/market_intelligence/constants.py:321] of equity
+  circuit breaker (KEPT, operator-ruled 2026-07-31): 10  [code constant agents/market_intelligence/constants.py:337] straight losses pauses entries for 1 day(s)  [code constant agents/market_intelligence/constants.py:344]
+  drawdown breaker: phase active  [prod env (apollo-execution, apollo-market)] — tiers WATCH -0.04  [code constant agents/market_intelligence/constants.py:367] (warn) / REDUCE -0.07  [code constant agents/market_intelligence/constants.py:368] (half size) / BLOCK -0.12  [code constant agents/market_intelligence/constants.py:369] (no entries)
+    current drawdown state: live=OK, paper=OK [mi_safeguard_state]
+  operator halt (/pause): off — trading allowed [mi_safeguard_state]
+  kill/scale band: HOLD [mi_safeguard_state]
+  master kill switch: LIVE_TRADING_ENABLED True  [prod env (apollo-execution, apollo-market)] (boot-read)
+  strategy phases [mi_strategies]: 9m_day2=deprecated, fishhook_v3=deprecated, flag_continuation=deprecated, magna53=live+real$, magna53_lowcap=shadow, parabolic_short=shadow, shadow_orb_5m=shadow, wick_fill=shadow
+
+== REPLACED — the rule-change history, newest first (⇄ = supersession/reversal) ==
+  docs/setups/catalyst_rubric.md:
+      2026-09-04  Scoring order: #321 recovery now runs before the beat+guidance carve-out (operator-approved)
+      2026-09-04  #321 write-back: a recovered YoY now survives to every later tick (NSSC bug) + DG date guard
+      2026-09-04  In-window #321 recovery, DETACHED, behind `live_yoy_recovery_inwindow`
+      2026-07-24  FL-5 reconcile: doc synced to code
+      2026-07-13  #416: M&A-filter binding-context guards A/B/C (operator-signed 7/12, rulings-pack R6)
+      2026-06-28  #321 + #320 LIVE: recovered YoY DRIVES the gate + stale-boost reset (operator: these are BUGS)
+      2026-06-05  #149 SHADOW: deterministic yfinance YoY recovery (advisory; gate UNCHANGED)
+      2026-05-28  Safety-net carve-out: guidance + beat overrides missing-YoY downgrade
+      2026-05-17  PROVISIONAL doc created
+      2026-05-16  Initial design locked (see `analysis/2026-05-16/catalyst_rubric_design.md`)
+  
+  docs/setups/convergence.md:
+      2026-05-08  Cross-strategy ranking spec locked (related but separate concern)
+      2026-05-08  Generalized scope from earnings-only to multi-catalyst
+      2026-05-07  Initial spike memo
+  
+  docs/setups/delayed_ep_reentry.md:
+      2026-08-16  THE ENTRY ARCHITECTURE (operator) — a PIVOT LADDER plus an intraday trigger
+      2026-08-16  THE EP-DAY LOW IS AN INVALIDATION LINE (operator), and the data is emphatic
+  
+  docs/setups/exit_discipline.md:
+      2026-10-04  #687 ruling (a): the stop-coverage repair reads the broker before it places — a FLAT broker gets no stop (TRAD
+      2026-10-04  #687 ruling (i): the failed-exit stop restore tells a FLAT broker from an UNREADABLE one — a real zero places 
+    ⇄ 2026-10-03  #687 ruling (iii): a stop the broker refuses because the price is already through it → SELL AT MARKET at the o
+      2026-10-02  (later) — #687 ruling (ii): a PLAIN resting profit-take limit is left resting; the other shares follow the clo
+      2026-10-02  #687: his four rulings of 2026-10-01 built; the three review rounds cut back to parts A + B
+      2026-10-01  #687 part B: the DEPTH exit rule for NEW MAGNA53 trades — BUILT behind `magna53_depth_exit`, toggle OFF (no li
+      2026-10-01  BUG FIX (#687 part A): six defects in today's close-below-the-line exit (TRADE STATE — no exit rule, stop leve
+      2026-09-28  the +8 ORB-R partial FIRED LIVE for the first time (KOD, trade 404) — verified at the broker, no rule changed
+      2026-09-19  #665: the setup-review section's REPORTED numbers now carry their exit era too (REPORTING ONLY — no exit rule,
+    ⇄ 2026-09-09  #631: ONE exit-counterfactual recorder, ONE read — two shadow tables retired read-only, six reviews folded, on
+    ⇄ 2026-09-06  (evening PT) — #545 FLIPPED LIVE for MAGNA53: partial +2R → +8R, price-armed breakeven ON at +3R (OPERATOR-SIG
+      2026-09-06  #545: the partial's MULTIPLE becomes per-strategy and a PRICE-ARMED breakeven exists — BOTH BUILT DARK (no exi
+      2026-09-06  BUG FIX (#545 follow-up): `live_replay` now follows MAGNA53's live partial/breakeven level instead of a hardco
+      2026-09-04  BUG FIX (#600 fork 2): the cancel/reject handler discarded the dead stop's own price the instant it nulled the
+      2026-09-03  BUG FIX (#600): a re-protect could re-arm the stop BELOW the last level the broker held — the raise-only rule 
+      2026-09-03  #482: counterfactual stops and harvests are RECORDED beside every MAGNA53 fill, era-stamped (RECORD ONLY — no 
+      2026-08-24  BUG FIX (#591): the day-1 stop-out closed the row while a profit-take was still resting at the broker (TRADE S
+      2026-08-24  BUG FIX (#588): the day-1 stop leg recorded the whole tracked position, double-counting a resting partial (REC
+      2026-08-23  RECORD OF OBSERVED STATE: four exit runtime toggles are ON in prod; the flips were never logged here (NO behav
+      2026-08-23  #585: the weekly setup review now reports only current-rule-era cohorts (REPORTING ONLY, no exit rule/stop/siz
+    ⇄ 2026-08-16  MAGNA53 protective stop → entry − 2R at half size; +2R target pinned to the ORB R (OPERATOR-SIGNED, THE LINE)
+      2026-08-15  BUILT (#566): OCO on the freed 1/3 at +2R + the accounting fix — SHIPPED DARK, default OFF
+      2026-08-15  ⚠ ETON's +$21.89 was a LUCKY ACCIDENT, not evidence the design works
+      2026-08-14  PROPOSAL (operator-designed, NOT SHIPPED): OCO on the freed 1/3 at +2R — closes the uncovered-shares hole
+      2026-08-11  OPERATOR RULING: no peak-lock giveback floor. We let winners run.
+      2026-08-10  BUG FIX: update_stop could LOWER a live stop; raise-only floor added against the broker stop
+      2026-08-08  Real-time breakeven at the BROKER — SHIPPED DARK (#548 defect 2)
+      2026-08-08  ⚠ FINDING, NOTHING CHANGED: the +2R rule fired once on live money and BOTH halves under-delivered
+      2026-08-08  #508 CLOSED: the sell-discipline surface is verified live, and it says the candidates are inert
+      2026-08-04  The partial-exit breaker can now be reset, because it had deadlocked the fix
+      2026-08-04  The profit-trigger Telegram now announces ONCE per trade, not once per 5-minute poll
+      2026-08-04  Profit-trigger partial could NEVER execute on MAGNA53 (bracket-leg stop) — leg-safe mechanism, shipped OFF
+      2026-08-01  Intraday profit trigger BUILT (shipped OFF; operator-signed)
+      2026-08-01  SSoT created; no behaviour change
+  
+  docs/setups/flag_continuation.md:
+    ⇄ 2026-09-27  #354 closed; the undercut → `WATCH_UR` item (ADR 0026 D3) DROPPED, board unchanged
+      2026-09-13  #354 Sunday shadow sub-piece: failure telemetry (`failed_at` / `low_after_breakout` / `undercut_after_breakout
+      2026-07-24  FL-5 reconcile: doc synced to code (line citations + header clarity, no values changed)
+    ⇄ 2026-07-19  Retired as a standalone strategy; absorbed as Family-A's Confirm (b) entry (ADR 0026 D1, card C4)
+      2026-05-28  Intraday detector idempotency guard (#145, ADTN/IREN-class false-fire)
+      2026-05-19  Universe path (e): flag-stage carryforward (RVMD-class fix)
+      2026-05-17  P7.2 universe expansion: MAGNA53-failed carryforward
+      2026-05-08  Stable-anchor pivot (1% walk threshold)
+    ⇄ 2026-05-08  Tightened `_PIVOT_HIGH_BAND` 5% → 2%
+      2026-05-05  (session 5b) — Fresh-tightening dry-volume gate hybrid
+      2026-05-04  (session 6) — Burst-class universe + fresh-tightening COILED path
+      2026-05-01  Initial Stage 1 ship (5-stage state machine, hysteresis, 17:25 ET cron)
+  
+  docs/setups/magna53_ep.md:
+      2026-10-03  (night) — #692b: ruling 2 REVERTED — `mna` is again the grade for a price-fixing buyout (S19 of the judge-eval
+      2026-10-03  #692: the news NOMINATES, the PRICE DECIDES — pre-market the news blocks a nominated target, at 09:35 the open
+      2026-10-02  #692: the M&A filter asks ONE question — is THIS ticker the TARGET of a SIGNED deal that fixes its price (BUIL
+      2026-10-02  #687 cut-back round: review rounds reverted to parts A + B, his four rulings of 2026-10-01 built (depth flow s
+      2026-10-01  #687: the DEPTH exit rule for NEW MAGNA53 trades — BUILT, toggle `magna53_depth_exit` OFF (no live change unti
+      2026-09-30  two EP-scan swallows now leave an audit row (#635 F6 + F8, OBSERVABILITY ONLY — no criteria, grade, stop, targ
+      2026-09-29  the theme-fit check runs on Sonnet 5.5 without its pre-verdict reasoning field (REFINEMENT of 2026-09-13 late 
+      2026-09-22  the two MAGNA53 near-miss replays price under MAGNA53's CURRENT bracket again (BUG FIX — no criteria, stop, ta
+      2026-09-13  (late evening, same day) — BELONGING is TWO-STAGE: correlation SHORTLISTS, the nightly assignment judgement DE
+      2026-09-13  THEME BONUS keys on BELONGING at alert time, not on last night's ticker list (OPERATOR-DIRECTED BUG FIX, shipp
+    ⇄ 2026-09-06  (evening PT) — #545 exit tactics are LIVE for MAGNA53 — OPERATOR-SIGNED, supersedes the PROPOSED entry below
+    ⇄ 2026-09-06  #545 PROPOSED exit tactics: partial +2R → +8R, breakeven decoupled and armed at +3R on price — PLUMBING BUILT 
+      2026-09-04  #624: the low-cap lane ships as a SHADOW RECORDER (NO criteria, floor, stop, target, size or admission change)
+      2026-09-03  #482: the stop conflict (08-16 read vs Phase 3) now settles on live fills by ACCRUAL, not another re-slice (RE
+      2026-09-03  #593: the "tradeable miss" definition is REWIRED from a price-move test to a bracket replay (OPERATOR-DIRECTED
+      2026-08-30  #533: within-day slot ranking flips from accidental ALPHABETICAL to prior-day RS (OPERATOR-SIGNED, ONE-FLAG RE
+    ⇄ 2026-08-29  MAX_EXTENSION_PCT REVERTED 75% → 50% (OPERATOR-SIGNED; the 08-22 loosening rested on corrupt evidence)
+      2026-08-28  #593: the sustain rule's revert condition is re-stated as a RATE on TRADEABLE misses (OPERATOR-SIGNED)
+      2026-08-28  STATUS RECORD: two real-time toggles went live and the SSoT never said so
+    ⇄ 2026-08-27  #233: the Perplexity agreement boost is RETIRED; the DISAGREEMENT goes to the judge instead (OPERATOR-SIGNED, 
+      2026-08-27  #559: the real-time gap decides the 9% floor in BOTH directions — `ep_rt_gap_authoritative` ON (OPERATOR-SIGNE
+    ⇄ 2026-08-27  #602: the judge's two decisions get two separate vocabularies, and each states its own one-line reason (OPERAT
+      2026-08-27  #490 §6.1: the real-time volume read can no longer reject a name on data that does not exist yet (BUG FIX, DAR
+    ⇄ 2026-08-22  ONE GRADE EVERYWHERE: the admission filters read the corrected (lattice) grade (OPERATOR-DIRECTED, REVERSAL of
+      2026-08-22  Grading shortlist ranks by the three-term PRE-SCORE, not gap size (OPERATOR-DIRECTED, ONE-FLAG REVERTIBLE)
+      2026-08-22  Near-miss band [50, 65) restored in the morning briefing, VISIBILITY ONLY (operator-directed) [#533 follow-on]
+    ⇄ 2026-08-22  RESCALE: the separation score presents as 1.25×raw+15, bar expressed as 65, dead 50 cutline removed (PRESENTAT
+      2026-08-22  SEPARATION: flat gap credit + floors trimmed to branch 4 + uniform HIGH bar 40 (OPERATOR-SIGNED, ONE-FLAG REVE
+      2026-08-22  Catalyst tier FLIPPED to the corrected lattice (OPERATOR-SIGNED, ONE-FLAG REVERTIBLE) [#533 Change 6]
+    ⇄ 2026-08-22  Two backwards-running score components DELETED [#533]
+      2026-08-22  Score ranks on LIQUIDITY, not relative volume [#533]
+    ⇄ 2026-08-22  Extension cap loosened 50% → 75% [#577A]
+    ⇄ 2026-08-19  `MIN_GAP_PCT`: 10.0% → 9.0% (OPERATOR-SIGNED, REVERSAL of 2026-05-17 R2)
+      2026-08-16  Protective stop moves to entry − 2R at half size; the +2R target does NOT move (OPERATOR-SIGNED, THE LINE)
+      2026-08-08  #516: a keyword match may no longer overrule a contrary classification (OPERATOR-SIGNED)
+      2026-08-07  #541: the entry trigger is now ASK-aware, not last-trade-aware (OPERATOR-SIGNED, LIVE)
+      2026-08-02  #490: real-time admission requires the level to SUSTAIN 3 bars (BUILT OFF, operator-signed)
+      2026-08-01  #490: MIN_GAP_PCT now enforced at SUBMISSION, not only at the scan tick (BUG FIX; built OFF)
+      2026-08-01  #490: gap authority SPLIT — the REMOVE half gets its own toggle (built OFF, awaiting sign-off)
+      2026-07-25  #490 RT-1: full real-time detection built DARK (shadow note only — NO criteria change)
+      2026-07-24  FL-5 reconcile: doc synced to code
+      2026-07-23  #500 Price-aware initial ORB entry: bounded limit-buy fallback when price is already above the ORB high (+ bro
+      2026-07-19  Large-cap rel_volume floor SHADOW observer added (audit-only, no criteria change)
+    ⇄ 2026-07-18  Analyst-upgrades bonus REMOVED — dead feed since 2026-03-14 (#332, operator-signed)
+      2026-07-18  Extension-rule wording corrected (transcription fix, NOT a criterion change) [#481]
+      2026-07-04  #347: LIVE enriched grade corpus + acting re-poll (operator-approved flip)
+      2026-06-20  Live AUTO-ENTRY for the real-money cutover (operator-signed)
+      2026-06-19  #344 catalyst corpus-completeness — SHADOW (live flip GATED)
+      2026-06-14  M&A filter: acquirer-direction on the TITLE path (#284) — AWAITING SIGN-OFF
+      2026-06-12  Rubric v3: catalyst FRESHNESS clause (judge + fallback grader)
+    ⇄ 2026-06-08  Holistic Grade Judge supersedes the conviction floor (W2c, ADR 0011) — toggle-gated, SHIPPED DORMANT
+      2026-05-27  M&A filter Part B: sister-ticker possessive proximity check (#119)
+      2026-05-27  Override respects revenue-weak downgrade + Claude text fallback (#131/#132)
+      2026-05-23  M&A filter: Polygon news multi-ticker-tag-bleed fix (#88)
+      2026-05-21  PM — REVENUE_STAGE_MIN_USD code default REVERTED to $5M (#68, advisor flagged)
+      2026-05-21  AM — REVENUE_STAGE_MIN_USD code default lowered to $0.01 (#63, since reverted)
+      2026-05-20  Pre-revenue gate: skip earnings boost + rubric for clinical-stage / SPAC
+    ⇄ 2026-05-17  PM — P7.2: MAGNA53→flag carryforward (R3 alpha-slip hedge)
+      2026-05-17  EP Selectivity Phase 2 — five filter ships (R2/R6/R4/R1/R3) + bug fixes
+      2026-05-13  M&A filter: drop direction-blind keywords (NBIS class)
+      2026-05-08  (session 2) — Aligned `is_earnings_day` fail-soft direction across all 4 sites
+      2026-05-08  Earnings-day pre-score catalyst boost
+      2026-05-08  EP cooldown bypass on fresh earnings catalyst
+      2026-05-08  Pre-market shares floor relative-anomaly carve-out
+    ⇄ 2026-05-08  `is_earnings_day` window tightened ±1 day → {yesterday, today}
+      2026-05-06  Wave B #2: Unify EP volume gate to RVOL@T (one primitive, two anchors)
+      2026-05-03  Catalyst hedge-phrase downgrade
+    ⇄ 2026-05-03  pm_rvol gate universe: top-500 → $5M $-vol floor
+  
+  docs/setups/ninem.md:
+      2026-10-03  the #54 monthly check (9M Day 2 stop/ATR distribution) leaves the sweep [#691]
+      2026-09-23  doc fix: intraday scan has been gated off since 2026-09-08, not LIVE
+    ⇄ 2026-08-02  Day-2 ORB entry DELETED (the strategy, not the character) [#515, operator-directed]
+      2026-07-24  FL-5 reconcile: doc synced to code
+    ⇄ 2026-06-18  RETIRE 9M Day-2 ORB entry → shadow (consolidation replacement) [operator-SIGNED]
+      2026-05-17  P7.3b 9M universe-watch (Pradeep methodology)
+      2026-05-13  Sugar baby M&A filter (WEN-class coverage closure)
+      2026-05-08  Sugar baby destroyed-name trend gate (ATEC 5/07 incident)
+      2026-05-07  Wave C #5: 9M EP per-scan digest
+      2026-05-06  Net-up gate categorical fix
+      2026-05-04  Cross-ticker open-position guard (TEAM 5/04 near-miss)
+      2026-05-04  Parallelize 9M Day 2 cron + drop bar-retry delay
+      2026-05-01  9M Day 2 stop clobber bug (critical)
+  
+  docs/setups/parabolic_short.md:
+      2026-07-24  FL-5 reconcile: doc synced to code
+      2026-05-08  (session 2) — Aligned `is_earnings_day` fail-soft direction across all 4 sites
+    ⇄ 2026-05-08  Tightened `_PIVOT_HIGH_BAND` 5% → 2%
+    ⇄ 2026-05-08  Restored `days_up_streak >= 3` HARD gate (after same-day reversal)
+    ⇄ 2026-05-08  (REVERTED same day) Removed `days_up_streak >= 3` HARD gate
+      2026-05-08  Tightened `is_earnings_day` window from ±1 day to {yesterday, today}
+      2026-05-08  Added `is_earnings_today` HARD gate for climax tier
+      2026-05-01  Initial ship (Stage 1 telemetry, 17:15 ET cron)
+  
+  docs/setups/safeguards.md:
+    ⇄ 2026-10-03  Stop-ACK watchdog: a fallback stop refused because the price is already through it → the free shares are SOLD 
+    ⇄ 2026-10-03  base risk per trade 1% → 2% (`constants.RISK_PCT` 0.01 → 0.02; #688, operator-signed 2026-09-29, go 2026-10-03
+      2026-10-02  `daily_loss_limit`: a loss on a PARTIAL sale counts AT ONCE, and only once (#687 ruling (1), operator-signed 2
+      2026-09-30  `read_breaker_state` read errors are now AUDITED + PAGED (#635 F9, observability only — NO safeguard behaviour
+      2026-09-07  Per-strategy sizing knob (`position_size_multiplier`) wired for the FIRST time (#628, BUG FIX — no size change
+      2026-08-26  QUARTERLY REVIEW #1 (operator sign-off condition #1): **HOLD**, and the driver is a winner ageing out, not los
+      2026-08-23  Kill/scale bands now divide by risk actually placed, not the pre-cap budget (#586, operator-signed)
+      2026-08-23  The 20% notional cap's truncations are now recorded (#571, telemetry only)
+    ⇄ 2026-08-09  Closed-trade cohort bias: entry-day floor PROPOSED then REMOVED; open-book reporting shipped
+      2026-08-08  Partial-exit circuit breaker is now PER ACCOUNT MODE (#525, operator-signed)
+      2026-08-05  `circuit_breaker`: a REALIZED PARTIAL now counts as an outcome (operator-signed)
+      2026-08-04  A stop is now resting during EVERY minute of market hours (post-close refresh, 16:20 ET)
+    ⇄ 2026-07-31  Count-based `circuit_breaker` KEPT; its pre-committed removal CANCELLED (operator-ruled)
+    ⇄ 2026-07-26  Regime-keyed risk multiplier replaces VIX-scaled sizing + fail-open→fail-safe (#456 DoD(a), operator-ruled; SH
+      2026-07-24  FL-2 daily-loss COVERAGE fix: realized losses attributed by CLOSE day, not `alert_date` (operator-signed; cove
+    ⇄ 2026-07-18  #461: position-cap check→insert TOCTOU race closed (transactional cap check; NO cap-value change; operator-app
+      2026-07-11  #436 fork B: exclude inert `pending_confirmation` proposals from the position cap (operator-signed)
+      2026-06-20  Live AUTO-ENTRY wired (real-money, operator-signed; START-SMALL launch)
+      2026-06-19  Manual real-money trading halt `/pause` added (#345, operator-requested)
+      2026-06-12  Kill/scale criteria bands SIGNED (#268b)
+      2026-06-06  #197 cap+1 game_changer slot SHADOW shipped; #198 closed obsolete
+    ⇄ 2026-06-04  PDT lockout guard RETIRED (FINRA Rule 4210 / Alpaca intraday-margin framework)
+      2026-06-03  Promotion timing RESOLVED: arm BEFORE cutover (paper evidence sufficient)
+      2026-05-18  Drawdown breaker: tiered redesign (OK/WATCH/REDUCE/BLOCK)
+      2026-05-18  Stop-ACK timeout watchdog: first real production catch (GOOGL #56)
+      2026-05-17  Trade-state ownership refactor (T1.1/T1.2/T1.4) + Gate 5 G (column-write authority preflight)
+      2026-05-17  Stop-ACK timeout watchdog (silent-failure gate, sibling of Gate 5 A)
+      2026-05-08  Initial shadow ship
+  
+  docs/setups/wick_fill.md:
+      2026-07-24  FL-5 reconcile: doc synced to code
+      2026-04-29  Crash-recovery trend floor added (VISN incident) [backfilled 2026-07-24]
+      2026-04-28  Initial Stage 1 ship
+  
+  docs/architecture/theme_engine.md:
+      2026-10-05  #655 rule B: a weak-Fading theme under 3 members now gets ONE NIGHT to recover (operator ruling after the firs
+    ⇄ 2026-10-04  #655: a weak-Fading theme under 3 members retires the night it is weak (rule B, toggle DEFAULT ON) · a re-prom
+      2026-10-03  #491: the RE-HOMING PASS — a stock whose business changed can now LEAVE its legacy theme on the tape and JOIN 
+      2026-10-03  #580: a stored 0% breadth now counts as 0% in the breadth-decay rule (BUG FIX, money path)
+      2026-10-03  #580: a theme is born WITH breadth on every birth path (money path: it is the decay rule's first prior reading
+      2026-10-02  #693: "thinking off" is now really off on Sonnet 5.5, a decline says why, and two tools write their notes AFTE
+      2026-09-30  #580: every theme line shows its member count and breadth in plain words; the broken Δ is gone
+      2026-09-29  (evening) — theme jobs back on Sonnet 5.5: reasoning in thinking, reasons after the verdict (#689)
+      2026-09-29  BUG FIX: Sonnet 5.5 refuses prompts that make it write its reasoning out; theme stack restored
+      2026-09-28  BUG FIX: the co-movement test could not price the assignment pool, so the sector label kept deciding cross-sec
+      2026-09-27  #655: the operator's four signed correctness bars now score the board every night
+      2026-09-25  #657 Shape A: the two REMOVAL sites now get the run's co-movement context (OPERATOR-SIGNED "Yes to both")
+      2026-09-25  BUG FIX: the sector cap moved members into a theme they never passed the membership test for (SR / ATO in a ta
+      2026-09-20  #661: the assignment LLM call has a SEAM — the EP money path no longer runs through the nightly batch driver (
+      2026-09-18  #660: the market-adjusted correlation maths moved to its own module (PURE MOVE, verdicts byte-identical)
+      2026-09-13  (late evening) — the ASSIGNMENT JUDGEMENT is now on the EP money path (`judge_theme_fit`)
+    ⇄ 2026-09-13  birth gate `observe` → `on` (OPERATOR-SIGNED)
+    ⇄ 2026-09-13  (same day, ~19:22 UTC) — REVERTED `on` → `observe` ON HIS INSTRUCTION ("Revert")
+      2026-09-13  (23:10 UTC) — FLIPPED to `dedup_only` ON HIS INSTRUCTION ("Go with rec")
+      2026-09-13  (evening) — SPLIT the toggle: new mode `dedup_only`, the join arm alone (SHIPPED DARK)
+    ⇄ 2026-09-13  THE MEMBERSHIP TEST ASKS THE TAPE: market-adjusted co-movement at 0.35 replaces the sector-identity test (OPER
+      2026-09-12  #651: the judge's named groups are captured, and the read that turns them into "how late is the engine" is bui
+      2026-09-09  #486: the naming lag, read — two cluster artifacts killed at the source, the recorder made truthful, cluster m
+      2026-09-08  seed-story vs active-theme matcher: calibrated on 25 labelled seeds, NOT shipped
+      2026-09-07  discovery now records what it was SHOWN and what it DECLINED (#486)
+      2026-09-02  a theme rename no longer discards the operator's rulings (#601)
+      2026-08-26  a too-narrow theme NAME is renamed, not paid for by evicting the members (three fixes)
+    ⇄ 2026-08-18  discovery batch cap tightened 37→22 (headroom, not a re-raise)
+      2026-08-13  #479 themes state-change message redesign (observability-only)
+      2026-08-10  output-bounded batching: the four theme LLM callers can no longer out-write their ceilings
+      2026-08-09  #530 shadow_v2 re-mint no longer overwrites an unchanged thesis with fresh generic text
+      2026-08-07  (b) — #543: the two theme LLM stages were being TRUNCATED, and it was invisible
+      2026-08-05  (c) — #491 M2 seeded assignment-pool exemption (theme membership, $0 LLM)
+      2026-08-05  (b) — #534 D3(b) ecosystem-reactivation detector (observability + discovery seed, $0)
+    ⇄ 2026-08-05  assignment pool widened: RS floor 90 → 70, ceiling 200 → 600 (#534 D2, operator-signed)
+      2026-08-04  (b) — #531 nightly THEME QUALITY check (two regression guards, observability-only)
+    ⇄ 2026-08-04  #368 crypto→AI-conversion consolidation (four fixes, live-on-deploy)
+    ⇄ 2026-07-27  (d) — Phase-1 BIRTH GATE + shadow_v2/coverage_probe retirements (built dark, flag OFF)
+      2026-07-27  (c) — #167 registry: birth-bias correction + decision-record telemetry (still dark, flag OFF)
+    ⇄ 2026-07-27  (b) — #167 Lane-2 v2 reframed: incremental narrative REGISTRY (supersedes same-day pool draft; still dark, fla
+    ⇄ 2026-07-27  (a) — #167 Lane-2 grouping v2: grounded input + 10-trading-day rolling window (SUPERSEDED same day by (b) — ne
+    ⇄ 2026-07-18  judge → narrative-radar feed for judge-only theme inferences (#322)
+    ⇄ 2026-07-17  biotech sector-cap 0 → PER-FAMILY (#476, operator-signed)
+    ⇄ 2026-07-17  assignment pool: fixed top-40 count → RS-level floor (#476)
+  
+  docs/analysis/mna_filter_operator_labels_2026-10-01.md:
+      2026-10-03  his sign-off on the #692 replay (151 stock-days since 05-15)
+  

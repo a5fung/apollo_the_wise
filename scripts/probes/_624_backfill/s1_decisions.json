@@ -1,0 +1,22 @@
+{
+ "k": 15,
+ "mode930": "open930",
+ "c4_pass": true,
+ "cap_basis": "pc",
+ "w6_volume_safe": true,
+ "w6_price_widen": false,
+ "halt_phase1": [],
+ "lw_survivors": 38,
+ "a1_recall": 19,
+ "a1_unexplained": 3,
+ "a1_pass": true,
+ "a2": [
+  19,
+  19,
+  11,
+  11,
+  10,
+  10
+ ],
+ "a2_pass": true
+}

@@ -1,0 +1,10 @@
+2024-03-06 pre-open terms identical with D and later rows poisoned: True
+2025-07-15 pre-open terms identical with D and later rows poisoned: True
+2026-06-01 pre-open terms identical with D and later rows poisoned: True
+W5 PASS
+2024-03-06 pre-open terms identical with D and later rows poisoned: True
+2025-07-15 pre-open terms identical with D and later rows poisoned: True
+2026-06-01 pre-open terms identical with D and later rows poisoned: True
+W5 PASS
+non-vacuity: values [42, 1133494.24, 8.7566, 0.44, 1.0, 28]
+leaky variant differs under poison: True

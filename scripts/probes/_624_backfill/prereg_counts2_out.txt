@@ -1,0 +1,5 @@
+{'yr': 2024, 'superset_high15': 7983, 'open15': 1449, 'day_vol_p90': 6134, 'day_vol_p90_open15': 1292, 'day_vol_p90_untyped': 1131, 'day_vol_p90_cs_adrc': 4564, 'no_history': 251, 'names_p90': 2220}
+{'yr': 2025, 'superset_high15': 11800, 'open15': 1935, 'day_vol_p90': 8432, 'day_vol_p90_open15': 1721, 'day_vol_p90_untyped': 772, 'day_vol_p90_cs_adrc': 6168, 'no_history': 611, 'names_p90': 2667}
+{'yr': 2026, 'superset_high15': 9543, 'open15': 1472, 'day_vol_p90': 6086, 'day_vol_p90_open15': 1190, 'day_vol_p90_untyped': 33, 'day_vol_p90_cs_adrc': 3793, 'no_history': 608, 'names_p90': 2048}
+=== distinct untyped tickers in the p90 superset (Polygon type lookups needed)
+3023

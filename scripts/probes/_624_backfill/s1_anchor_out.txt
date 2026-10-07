@@ -1,0 +1,55 @@
+# #624 Stage 1 phase 2 — run 2026-10-06T19:25:17-04:00
+minute pulls logged 534 (errors 0, zero-bar keys 0); keys with bars 534; reference reads 259
+
+## A1 — the full screen on the 19 live sessions (k=15, 09:30 price open930, cap basis pc)
+   live-window prefilter rows 243; screen counts {'never_passed_free_terms': 205, 'rejected_cap': 15, 'signal': 23}
+   RE-FOUND BIAF 2026-09-09: live tick 09:30 / backfill 09:30
+   RE-FOUND PCLA 2026-09-10: live tick 09:30 / backfill 09:30
+   RE-FOUND COLA 2026-09-11: live tick 09:30 / backfill 09:30
+   RE-FOUND MKDW 2026-09-11: live tick 09:40 / backfill 09:40
+   RE-FOUND PCLA 2026-09-11: live tick 09:30 / backfill 09:30
+   RE-FOUND TNON 2026-09-11: live tick 09:30 / backfill 09:30
+   RE-FOUND VNCE 2026-09-14: live tick 09:50 / backfill 09:50
+   RE-FOUND RLGT 2026-09-15: live tick 09:30 / backfill 09:30
+   RE-FOUND MKDW 2026-09-17: live tick 09:30 / backfill 09:30
+   RE-FOUND VEEA 2026-09-17: live tick 09:30 / backfill 09:30
+   RE-FOUND SVRN 2026-09-21: live tick 09:55 / backfill 09:55
+   RE-FOUND GRML 2026-09-22: live tick 09:30 / backfill 09:30
+   RE-FOUND NCT 2026-09-22: live tick 09:30 / backfill 09:30
+   RE-FOUND GRML 2026-09-23: live tick 09:30 / backfill 09:30
+   RE-FOUND GRML 2026-09-24: live tick 09:40 / backfill 09:40
+   RE-FOUND SRZN 2026-09-24: live tick 09:30 / backfill 09:30
+   RE-FOUND JAGX 2026-09-25: live tick 09:30 / backfill 09:30
+   RE-FOUND XRPN 2026-09-30: live tick 09:40 / backfill 09:40
+   RE-FOUND SDEV 2026-10-05: live tick 09:30 / backfill 09:30
+   recall 19/19 -> PASS
+   backfill-only signals:
+     ELMT 2026-09-14 @ 09:30 gap 38.8% pct 100.0 polygon cap $493M typed today CS: UNEXPLAINED (live cap on file $493M)
+     DSP 2026-09-18 @ 09:50 gap 15.8% pct 100.0 polygon cap $212M typed today CS: live cap $667M >= $500M (mi_ep_scan_log)
+     PRTH 2026-09-21 @ 09:30 gap 33.5% pct 100.0 polygon cap $481M typed today CS: UNEXPLAINED (live cap on file $481M)
+     VEEE 2026-09-21 @ 09:55 gap 98.6% pct 100.0 polygon cap $5M typed today CS: UNEXPLAINED
+   backfill-only signals 4; unexplained 3 -> PASS
+
+## A2 — the primary walker re-prices the live walks (mi_lowcap_lane_replays), each at the live row's own tick, exit rules, as-of date and last session
+   BIAF 2026-09-09 tick 09:30: mine filled/settled entry 11.4903 R -1.0 | live filled/settled entry 11.4903 R -1.0 (bars stored, last 2026-09-22)
+   PCLA 2026-09-10 tick 09:30: mine filled/unscoreable entry 10.0237 R None | live filled/unscoreable entry 10.0237 R None (bars stored, last 2026-09-22)
+   COLA 2026-09-11 tick 09:30: mine abstain/unscoreable entry None R None | live abstain/unscoreable entry None R None (bars stored, last 2026-09-22)
+   MKDW 2026-09-11 tick 09:40: mine no_entry/no_trade entry None R None | live no_entry/no_trade entry None R None (bars stored, last 2026-09-22)
+   PCLA 2026-09-11 tick 09:30: mine filled/settled entry 12.7 R -1.0 | live filled/settled entry 12.7 R -1.0 (bars stored, last 2026-09-22)
+   TNON 2026-09-11 tick 09:30: mine filled/settled entry 8.25 R -1.0 | live filled/settled entry 8.25 R -1.0 (bars stored, last 2026-09-22)
+   VNCE 2026-09-14 tick 09:50: mine window_out_of_orb/no_trade entry None R None | live window_out_of_orb/no_trade entry None R None (bars None, last 2026-09-22)
+   RLGT 2026-09-15 tick 09:30: mine filled/settled entry 9.45 R 0.0 | live filled/settled entry 9.45 R 0.0 (bars stored, last 2026-09-22)
+   MKDW 2026-09-17 tick 09:30: mine filled/settled entry 9.3 R -1.0 | live filled/settled entry 9.3 R -1.0 (bars stored, last 2026-09-22)
+   VEEA 2026-09-17 tick 09:30: mine filled/settled entry 8.16 R -1.652 | live filled/settled entry 8.16 R -1.652 (bars stored, last 2026-09-22)
+   SVRN 2026-09-21 tick 09:55: mine window_out_of_orb/no_trade entry None R None | live window_out_of_orb/no_trade entry None R None (bars None, last 2026-09-22)
+   GRML 2026-09-22 tick 09:30: mine orb_invalid/no_trade entry None R None | live orb_invalid/no_trade entry None R None (bars stored, last 2026-09-22)
+   NCT 2026-09-22 tick 09:30: mine filled/settled entry 6.85 R -1.0 | live filled/settled entry 6.85 R -1.0 (bars stored, last 2026-09-22)
+   GRML 2026-09-23 tick 09:30: mine no_entry/no_trade entry None R None | live no_entry/no_trade entry None R None (bars stored, last 2026-09-23)
+   GRML 2026-09-24 tick 09:40: mine filled/settled entry 12.91 R 0.0 | live filled/settled entry 12.91 R 0.0 (bars stored, last 2026-09-28)
+   SRZN 2026-09-24 tick 09:30: mine orb_invalid/no_trade entry None R None | live orb_invalid/no_trade entry None R None (bars stored, last 2026-09-24)
+   JAGX 2026-09-25 tick 09:30: mine filled/settled entry 9.09 R 0.0 | live filled/settled entry 9.09 R 0.0 (bars stored, last 2026-09-25)
+   XRPN 2026-09-30 tick 09:40: mine filled/settled entry 14.63 R 2.651 | live filled/settled entry 14.63 R 2.651 (bars stored, last 2026-10-06)
+   SDEV 2026-10-05 tick 09:30: mine abstain/unscoreable entry None R None | live abstain/unscoreable entry None R None (bars stored, last 2026-10-05)
+   entry status agree 19/19; entry price within 0.5% 11/11; R within 0.05R 10/10 -> PASS
+
+## PHASE 2 VERDICT: A1 pass; A2 pass
