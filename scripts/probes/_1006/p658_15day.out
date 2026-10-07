@@ -1,0 +1,24 @@
+2026-09-15 admitted_over_sector 3 rejected_over_sector 1
+2026-09-16 admitted_over_sector 3 rejected_over_sector 5
+2026-09-17 admitted_over_sector 2 rejected_over_sector 3
+2026-09-18 admitted_over_sector 5 rejected_over_sector 5
+2026-09-21 admitted_over_sector 5 rejected_over_sector 7
+2026-09-22 admitted_over_sector 5 rejected_over_sector 13
+2026-09-23 admitted_over_sector 6 rejected_over_sector 6
+2026-09-24 admitted_over_sector 4 rejected_over_sector 9
+2026-09-25 admitted_over_sector 3 rejected_over_sector 12
+2026-09-28 admitted_over_sector 3 rejected_over_sector 7
+2026-09-30 admitted_over_sector 2 rejected_over_sector 10
+2026-10-01 admitted_over_sector 2 rejected_over_sector 6
+2026-10-02 admitted_over_sector 0 rejected_over_sector 11
+2026-10-05 admitted_over_sector 1 rejected_over_sector 0
+2026-10-05 admitted_over_sector 1 rejected_over_sector 14
+2026-10-05 admitted_over_sector 0 rejected_over_sector 0
+2026-10-06 admitted_over_sector 0 rejected_over_sector 0
+2026-10-06 admitted_over_sector 0 rejected_over_sector 10
+2026-10-06 admitted_over_sector 0 rejected_over_sector 0
+TOTAL admitted_over_sector 45 rejected_over_sector 119 | per ISO week admitted: {38: 13, 39: 23, 40: 7, 41: 2}
+trading days 09-15..10-06: 16
+alert theme column: in_active_theme
+alerts since 09-15: {'n': 16, 'boosted': 3}
+   {'event_type': 'ep_theme_fit_llm_proposed', 'n': 28}

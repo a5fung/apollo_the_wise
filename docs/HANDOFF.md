@@ -1408,3 +1408,15 @@ stagger cards, one at a time.
 **Tue 10-06 night checks:** #655 B rows all `prior_members` < 3 + G4 ≤ 10%; #543 sweep log 'K suspect', no page; #580 / #693 night 2; #598 PURR not re-announced. Evidence for all of today: `scripts/probes/_1005/`.
 
 **Standing:** Fable at 93% for the week — Opus/Sonnet only. Saturday 10-10 build slot: #694 test then build, #695, #693 replay, #655 option (a).
+
+## 2026-10-06 (Tue) CLOSE — 🔴 RESUME HERE. Supersedes the 10-05 close above.
+
+**Board 45 → 41** — closed #688 (2% risk on CEG, the first live entry since the switch), #394 (coil tune, verified live), #580 (breadth beside strength, 0 NULL two nights), #635 (F5–F13 surfaced + mutation-proven, quiet Mon–Tue). Server 571241c7; main has three small fixes queued for Wed noon (acting EP-bar labels 0566ae36, live-only open trades dffea502, second-opinion ceiling 3e8c8668).
+
+**#687 depth exit — pulled forward on his "move it to Wednesday":** Tue's paper Day A failed (4/5/4: harness fired steps seconds after the buys; one REAL gap — a refused exit's single stop-restore attempt failed while the broker still held the cancelled stop's shares, ~40 s bare until the watchdog). Restore-retry built + reviewed + R1 (an INFO step that tries to make the retry fire live) on branch `worktree-wf_ab25af87-43d-1` @ 271dc904 — merge AFTER the Wed noon deploy, deploy Wed 21:15 ET both + execution; Thu 10-08 09:35 Day A (docker cp the new script first), Fri 10-09 Day B + his go-live call.
+
+**His rulings / directions today:** #327 (2): H10 + H11 run (H10 holds — stops rank differently in capped dollars; H11 fails), H6–H9 Sat. #694: test several tie-breakers before choosing. Book (Qullamaggie) excerpt captured + test map, no changes. #624: history replay done (2.5% ≥ 3R on 279 trades, mean −0.42R); he names the catalyst as the gap → history can't rebuild it → PAPER LANE (live EP path, cap < $500M, paper) design + build Sun 10-11. #692: Polygon lost Benzinga mid-June → the deal headline scan also reads Alpaca/Benzinga ($0), Sun 10-11.
+
+**Waiting on him:** #658 15-day read — P1b missed (tape removed 119 label-matched members vs added 45); keep, or sample 20 removals first.
+
+**Standing:** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.

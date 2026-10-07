@@ -268,12 +268,6 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 - 🔴 **opus-5-5 rejected forced `tool_choice` and `thinking: disabled` (HTTP 400); both judges failed open.** Fix: ONE factory `shared/llm_client.py` (`make_async_anthropic`/`make_anthropic`) — every production client goes through it (AST-gated, `tests/test_llm_client_factory_population.py`); a rejected feature is rewritten (forced tool → structured output + synthesized `tool_use`; thinking-off → `between_tools` on 5.5, else dropped + headroom, #693) and remembered per model. The nightly refresh now CANARIES a release through the adapter before adopting it; a failure keeps the last working id and Telegrams the exact error.
 
-### 2026-09-14 — a measure that never asks what the system already did counts its wins as losses
-
-- 🔴 **Two days running, a miss rule scored our own output as our failures.** Lane 2's review said *"8 genuine misses, 81 days of earliness"* — **5 were Lane 2's own same-day proposals** (verified row by row) and a sixth was already on the board; the real figure is 29 days of its own LEAD. The day before, *"53 junk one-day themes"* merely restated its bucket's definition. **Before counting a miss, query what the system already found that day and exclude it.** [[check-what-the-system-already-did]]
-- ⚠ **Two silent-dark catches before their deploys, both #456 class.** `ep_theme_belonging.py` loads in `apollo-execution` but was not routed there, so `deploy.sh market-agent` alone would have left the running container stale. Regenerate `scripts/exec_loaded_modules.txt`; a theme/EP deploy is **two steps**.
-- ⚠ **A replacement expectation can be unmeasurable too**, and **UTC rolls at 17:00 PDT** — ~20 stamps dated Sunday's work as Monday. Retiring P1 (it could not fail) gave P1a/P1b, but `comove_stats` had no mirror counter; `rejected_over_sector` was added before shipping, not after. Run `scripts/operator_now.py`; never take the harness date.
-
 Older entries → `CHANGELOG.md` (search any concept).
 
 ---

@@ -43,6 +43,12 @@
 
 ## 2026-09-13 — a check that cannot fail reads exactly like one that passes
 
+### 2026-09-14 — a measure that never asks what the system already did counts its wins as losses
+
+- 🔴 **Two days running, a miss rule scored our own output as our failures.** Lane 2's review said *"8 genuine misses, 81 days of earliness"* — **5 were Lane 2's own same-day proposals** (verified row by row) and a sixth was already on the board; the real figure is 29 days of its own LEAD. The day before, *"53 junk one-day themes"* merely restated its bucket's definition. **Before counting a miss, query what the system already found that day and exclude it.** [[check-what-the-system-already-did]]
+- ⚠ **Two silent-dark catches before their deploys, both #456 class.** `ep_theme_belonging.py` loads in `apollo-execution` but was not routed there, so `deploy.sh market-agent` alone would have left the running container stale. Regenerate `scripts/exec_loaded_modules.txt`; a theme/EP deploy is **two steps**.
+- ⚠ **A replacement expectation can be unmeasurable too**, and **UTC rolls at 17:00 PDT** — ~20 stamps dated Sunday's work as Monday. Retiring P1 (it could not fail) gave P1a/P1b, but `comove_stats` had no mirror counter; `rejected_over_sector` was added before shipping, not after. Run `scripts/operator_now.py`; never take the harness date.
+
 ### 2026-09-13 — an expectation written AFTER the data is not an expectation
 
 - 🔴 **A bar derived for ONE pair does not transfer to a best-of-many search.** Correlation ≥0.35 against every live basket put a utility in a fracking theme (57% of alerts admitted) — caught by replay before one live tick. Fix: correlation SHORTLISTS, the nightly assignment judgement DECIDES (`theme_engine.judge_theme_fit`, ONE definition of "fits"). SSoT `magna53_ep.md`.
