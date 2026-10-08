@@ -1,0 +1,68 @@
+== #655 rule B (one-night wait)
+   {'th': 'Defense Intelligence & Cybersecurity IT Contractors', 'm': 2, 'p': '2'}
+   {'th': 'Mortgage REITs (Agency & Residential MBS)', 'm': 2, 'p': '2'}
+   {'th': 'Power Semiconductors (GaN, SiC & Discrete Power ICs)', 'm': 2, 'p': '2'}
+  B rows: 3 | any prior_members >=3 or null: 0
+  17:31:12 theme_correctness_check            G1 536/573 (93.5% bar 90.0%) · G2 16/573 (2.8% bar<= 5.0%) · G3 106/124 (85.5% bar 90.0%) · G4 15/124 small (12.1% bar<= 10.0%) · latency median 17.5 sessions (n=8)
+== #543 dead-column sweep
+  (none) ['dead_column_suspect', 'dead_column_detected']
+== #580 breadth
+  theme_date 2026-10-07
+   {'stage': 'Fading', 'n': 37, 'zero': 15, 'nul': 0}
+   {'stage': 'Mainstream', 'n': 51, 'zero': 1, 'nul': 0}
+   {'stage': 'Retired', 'n': 13, 'zero': 0, 'nul': 13}
+   {'stage': 'Accelerating', 'n': 2, 'zero': 1, 'nul': 0}
+   {'stage': 'Nascent', 'n': 34, 'zero': 6, 'nul': 0}
+  breadth fades tonight: 16
+     Bank Stocks: Rising-Rate NIM Expansion: breadth 2%, members 45
+     U.S. Shale Oil E&P Producers (Crude-Price Driven): breadth 18%, members 11
+     Peptide & Hormone Therapies for Metabolic & Endocrine Disorders: breadth 33%, members 3
+     Homebuilders & Residential Construction Supply Chain: breadth 0%, members 8
+     Enterprise HR & Workforce Management SaaS: breadth 33%, members 4
+     Energy Supply Disruption: Middle East Geopolitical Risk: breadth 12%, members 9
+     Specialty P&C Insurance Underwriters Rotation Reversal: breadth 36%, members 14
+     Non-Alcoholic Beverages & Energy Drinks: breadth 0%, members 5
+     mRNA Vaccine & Personalized Cancer Therapy Platforms: breadth 25%, members 4
+     Medical Device Mean-Reversion & Rotation Recovery: breadth 25%, members 16
+     Life Insurance & Annuity Providers: breadth 22%, members 9
+     HBM & AI-Driven Memory Chip Makers: breadth 33%, members 3
+     Cloud Supply Chain & Warehouse Management Software: breadth 33%, members 3
+     Business Development Companies & Private Credit Lenders: breadth 0%, members 6
+     Bitcoin Holding & Trading Proxy Equities: breadth 0%, members 4
+     AI-Driven Diagnostics & Imaging Re-Rating: breadth 11%, members 9
+== #693 night 2
+  17:11:24 theme_parent_pass_ran              Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+  18:05:20 theme_synthesis_run                58 candidates → 1 proposed → 0 kept
+== #598 flag transitions today (PURR must not repeat)
+  (none) ['flag_stage_transition']
+== #635 error rows today
+  07:00:01 ep_candidate_parse_error           150 of 13235 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['XSLL', 'TLAC', 'QRED', 'ARTC', 'PBHC']
+  07:05:00 ep_candidate_parse_error           150 of 13235 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['WENC', 'ARTC', 'OBA', 'AEAQ', 'WHLRL']
+  07:10:00 ep_candidate_parse_error           150 of 13235 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['NHIV', 'PCAP', 'ACGC', 'MDRR', 'PBHC']
+  07:15:00 ep_candidate_parse_error           150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['AESP', 'GSRF', 'LTGR', 'WHLRL', 'FJDI']
+  07:20:00 ep_candidate_parse_error           150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['LCCC', 'HAVA', 'BREZ', 'NHIV', 'HACQ']
+  07:25:00 ep_candidate_parse_error           150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['TLAC', 'OCAC', 'CAQ', 'KELYB', 'GSRF']
+  07:30:00 ep_candidate_parse_error           150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['KELYB', 'TCGX', 'SAC', 'NCO', 'UAC']
+  07:35:00 ep_candidate_parse_error           150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['OBA', 'AEAQ', 'WHLRL', 'ADAC', 'LPCV']
+  07:40:00 ep_candidate_parse_error           150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['WHLRL', 'FJDI', 'TAVI', 'AMAC', 'PTAC']
+  07:45:00 ep_candidate_parse_error           150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['SORN', 'SIM', 'EMIS', 'NMP', 'XSLL']
+  07:50:00 ep_candidate_parse_error           149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['NBRG', 'JTTT', 'NSAI', 'EMIS', 'AEAQ']
+  07:55:00 ep_candidate_parse_error           149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['RNGT', 'WLYB', 'HAVA', 'BLIV', 'PLMK']
+  08:00:00 ep_candidate_parse_error           149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['BACC', 'FDMM', 'SAMO', 'OIMAU', 'RAND']
+  08:05:00 ep_candidate_parse_error           149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['IDAC', 'KELYB', 'GSRF', 'NCO', 'ALF']
+  08:10:00 ep_candidate_parse_error           149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['SCPQ', 'ITHA', 'IGAC', 'TLNC', 'KEYY']
+  08:15:00 ep_candidate_parse_error           149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['ELLO', 'KPET', 'VECA', 'EWAV', 'HCIC']
+  08:20:00 ep_candidate_parse_error           149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['EURK', 'FSHP', 'XIII', 'SOCA', 'QETA']
+  08:25:00 ep_candidate_parse_error           149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['WENC', 'PONO', 'RACD', 'FVAV', 'FTHA']
+  08:30:00 ep_candidate_parse_error           148 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 148 with prev_close 0/missing; first error: None); sample ['WHLRL', 'ADAC', 'LPCV', 'VHCP', 'ARTC']
+  08:35:00 ep_candidate_parse_error           147 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['IACO', 'YICC', 'SORN', 'IPXG', 'XSLL']
+  08:40:00 ep_candidate_parse_error           147 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['NBRG', 'JTTT', 'MYX', 'PALO', 'NSAI']
+  08:45:00 ep_candidate_parse_error           147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['GSRF', 'LTGR', 'AESP', 'WHLRL', 'FJDI']
+  08:50:00 ep_candidate_parse_error           147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['TLAC', 'OCAC', 'CAQ', 'KELYB', 'GSRF']
+  08:55:00 ep_candidate_parse_error           147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['CAQ', 'TLAC', 'OCAC', 'NCO', 'IDAC']
+  09:00:00 ep_candidate_parse_error           147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['HCAC', 'WLYB', 'INTJ', 'PGAC', 'LPBB']
+  09:00:01 ep_candidate_parse_error           147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['LPAA', 'MAYS', 'RACD', 'FORTY', 'INTJ']
+  09:05:00 ep_candidate_parse_error           147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['ALF', 'QETA', 'SVIV', 'TAVI', 'RNGT']
+  09:10:00 ep_candidate_parse_error           147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['OHAC', 'BLIV', 'KEYY', 'NBRG', 'JTTT']
+  09:15:00 ep_candidate_parse_error           147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['SORN', 'IPXG', 'IACO', 'YICC', 'TLAC']
+  09:20:00 ep_candidate_parse_error           147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['SORN', 'IPXG', 'IACO', 'YICC', 'TLAC']
