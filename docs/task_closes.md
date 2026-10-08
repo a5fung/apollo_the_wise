@@ -2060,3 +2060,4 @@ EVIDENCE:
 - **Every hypothesis tested:** 09-27 H2–H5, H12, H13 (`327_hypothesis_tests_2026-09-27.md`); 10-06 H10 holds / H11 fails (`327_h10_h11_2026-10-06.md`); 10-08 H6/H8/H9 fail, H7 not testable (`327_h6_h9_2026-10-08.md`) — each re-derived by a second agent; none passes its bar.
 - **His call, 2026-10-08:** *"yes, leave it recording"* to "nothing goes live: close #327 and leave the lane recording in shadow".
 - **Not lost:** the pre-registered mid-November re-read (§7 of the hypotheses doc) + H6's ERA B 40-session read are a cadence review, `delayed_entry_mid_november_reread` (due 2026-11-16); the live tail rate keeps accruing under `delayed_entry_shadow_first_read` (20 of 30 settled fires on 10-08).
+- **#635 addendum verify (Thu 10-08):** 0 `ep_candidate_parse_error` rows on an ordinary scan day while the EP scan ran (2,359 scan-log rows) — the baselined F8 floor holds. (The per-tick INFO drop-count line ships Fri noon with b00386a7.)

@@ -1,0 +1,97 @@
+== #655 rule B (one-night wait)
+   {'th': 'Automotive Thermal & Powertrain Components Suppliers', 'm': 2, 'p': '2'}
+   {'th': 'Branded Footwear & Apparel Brand Turnaround', 'm': 2, 'p': '2'}
+   {'th': 'Coal Mining Producers', 'm': 2, 'p': '2'}
+   {'th': 'Home Improvement Retail & Building Products', 'm': 2, 'p': '2'}
+   {'th': 'Latin America Telecom & Pay-TV Services', 'm': 2, 'p': '2'}
+   {'th': 'Live Music & Concert Promotion', 'm': 2, 'p': '2'}
+   {'th': 'Low-Cost & Regional Passenger Airline Rebound', 'm': 2, 'p': '2'}
+  B rows: 7 | any prior_members >=3 or null: 0
+  17:31:14 theme_correctness_check            G1 570/609 (93.6% bar 90.0%) · G2 18/609 (3.0% bar<= 5.0%) · G3 103/122 (84.4% bar 90.0%) · G4 15/122 small (12.3% bar<= 10.0%) · latency median 9 sessions (n=9)
+== #543 dead-column sweep
+  (none) ['dead_column_suspect', 'dead_column_detected']
+== #580 breadth
+  theme_date 2026-10-08
+   {'stage': 'Fading', 'n': 37, 'zero': 18, 'nul': 0}
+   {'stage': 'Mainstream', 'n': 50, 'zero': 0, 'nul': 0}
+   {'stage': 'Retired', 'n': 14, 'zero': 0, 'nul': 14}
+   {'stage': 'Accelerating', 'n': 1, 'zero': 0, 'nul': 0}
+   {'stage': 'Nascent', 'n': 34, 'zero': 3, 'nul': 0}
+  breadth fades tonight: 10
+     Bank Stocks: Rising-Rate NIM Expansion: breadth 5%, members 44
+     mRNA Vaccine & Personalized Cancer Therapy Platforms: breadth 33%, members 4
+     Medical Device Mean-Reversion & Rotation Recovery: breadth 31%, members 16
+     Peptide & Hormone Therapies for Metabolic & Endocrine Disorders: breadth 33%, members 3
+     Wealth Management & Retail Brokerage Platforms: breadth 29%, members 14
+     Bitcoin Holding & Trading Proxy Equities: breadth 0%, members 4
+     Homebuilders & Residential Construction Supply Chain: breadth 0%, members 8
+     Life Insurance & Annuity Providers: breadth 33%, members 9
+     HBM & AI-Driven Memory Chip Makers: breadth 33%, members 3
+     Bitcoin Treasury & Crypto Proxy Equities Correlation Basket: breadth 0%, members 4
+== #693 night 2
+  07:00:10 llm_request_rewrite_adopted        claude-sonnet-5-5: forced_tool_to_structured_output
+  07:00:27 llm_request_rewrite_adopted        claude-opus-5-5: forced_tool_to_structured_output
+  17:03:20 llm_request_rewrite_adopted        claude-sonnet-5-5: thinking_disabled_to_between_tools
+  17:07:49 theme_parent_pass_ran              Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+== #598 flag transitions today (PURR must not repeat)
+  17:25:04 flag_stage_transition              KOD entered COILED 2026-10-08
+== #635 error rows today
+  (none) ['ep_repoll_upgrade_error', 'ep_candidate_parse_error', 'drawdown_breaker_read_error']
+Traceback (most recent call last):
+  File "/tmp/tnc8.py", line 58, in extra
+    n = await c.fetchval("""SELECT count(*) FROM mi_audit_log WHERE event_type='ep_candidate_parse_error'
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 741, in fetchval
+    data = await self._execute(query, args, 1, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 1904, in _execute
+    result, _ = await self.__execute(
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 2003, in __execute
+    result, stmt = await self._do_execute(
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 2046, in _do_execute
+    stmt = await self._get_statement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 466, in _get_statement
+    statement = await self._protocol.prepare(
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 161, in prepare
+RuntimeError: Task <Task pending name='Task-5' coro=<extra() running at /tmp/tnc8.py:58> cb=[_run_until_complete_cb() at /usr/local/lib/python3.12/asyncio/base_events.py:181]> got Future <Future pending cb=[BaseProtocol._on_waiter_completed()]> attached to a different loop
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/tnc8.py", line 64, in <module>
+    asyncio.run(extra())
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/tmp/tnc8.py", line 57, in extra
+    async with pool.acquire() as c:
+               ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/pool.py", line 1194, in __aexit__
+    await self.pool.release(con)
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/pool.py", line 1055, in release
+    return await asyncio.shield(ch.release(timeout))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/pool.py", line 285, in release
+    raise ex
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/pool.py", line 274, in release
+    await self._con.reset(timeout=budget)
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 1594, in reset
+    await self.execute(reset_query)
+  File "/usr/local/lib/python3.12/site-packages/asyncpg/connection.py", line 377, in execute
+    result = await self._protocol.query(query, timeout)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 330, in query
+  File "asyncpg/protocol/protocol.pyx", line 737, in asyncpg.protocol.protocol.BaseProtocol._check_state
+asyncpg.exceptions._base.InterfaceError: cannot perform operation: another operation is in progress
+21:03:22 [agents.market_intelligence.theme_engine] INFO: Small-Fading retire (#655 B): 12 weak-Fading theme(s) under 3 members kept tonight — not under 3 the night before (one-night wait): 'Autonomous Vehicle & ADAS Technology Enablers' 3 -> 2, 'Bitcoin Miners Pivoting to AI Data Center Hosting' 4
+21:30:54 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 88 tables, 3 dead (0 new), 0 suspect, 0 error(s)
