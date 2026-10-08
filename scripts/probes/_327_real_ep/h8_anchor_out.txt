@@ -1,0 +1,6 @@
+ANCHOR A — ep_high_break through h8's walker (mode hb) @ 09-25 vs fires.tsv replayed ep_high_break rows: {'match': 49, 'lane_recorded_skipped': 1}
+ANCHOR B — H2 at-the-close walk on the long-file loader @ 09-25 vs hyp_rows_h2 close rows: 1252 of 1252 identical, drift 0
+ANCHOR C — settle (lane compute_settlement) @ 09-25 on the long-file loader, 1xADR stop, vs reentry_rows attempt 1 adr_100: {'match': 1264}
+ANCHOR E — h8's per-bar fold vs the lane's evaluate_session_minute state, session by session: {'match': 4787}
+
+ANCHORS PASSED

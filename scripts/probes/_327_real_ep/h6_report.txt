@@ -1,0 +1,189 @@
+════════════════════════════════════════════════════════════════════════════════════════════════════
+H6 — POPULATION (stated first)
+H6 GATE — population and data, printed before any result
+ERA A: 261 campaigns / 243 names / tiers {'HIGH': 184, 'MODERATE': 66, 'none': 11}
+ERA B: 16 campaigns / 16 names / tiers {'HIGH': 14, 'MODERATE': 2}
+campaigns.tsv rows 277; fires.tsv 632 (ERA A 595, ERA B 37)
+sat_daily_long vs daily.tsv on overlap: 51274 bars compared, 0 differ, 0 daily.tsv bars absent from the long pull, 0 long-pull bars in 2025-12-01..09-25 absent from daily.tsv
+gap cuts (rows before the last > 30-day gap dropped): AKTS from 2026-01-09 (243 rows dropped), FIG from 2025-07-31 (350 rows dropped), LIFE from 2026-01-29 (107 rows dropped)
+last bar per ticker: {datetime.date(2026, 10, 5): 256}
+calendar: EP dates with >= 40 sessions by 2026-10-05: <= 2026-08-07; with >= 60: <= 2026-07-10
+ERA A: 261 campaigns; max sessions 101; ARM40 217 (holes inside 40: 0); ARM60 134 (holes inside 60: 0)
+   ARM40 by EP month {'05': 74, '06': 53, '07': 41, '08': 49}; ARM60 by month {'05': 74, '06': 53, '07': 7}
+ERA B: 16 campaigns; max sessions 26; ARM40 0 (holes inside 40: 0); ARM60 0 (holes inside 60: 0)
+   ARM40 by EP month {}; ARM60 by month {}
+campaigns with a missing bar inside their first 40 sessions: []
+ERA A first fires 595: with >= 20 / 40 / 60 sessions after the fire by 2026-10-05: 593 / 422 / 302
+ERA B first fires 37: with >= 20 / 40 / 60 sessions after the fire by 2026-10-05: 16 / 0 / 0
+Family A captures: 354_all scan 2026-05-04..2026-07-24 (35699 rows); 668_high scan 2026-05-19..2026-09-23 (2305 rows)
+   tickers of the 277 with any captured flag row: 243 of 256
+his labelled EP in the 277: HTFL 2026-08-14 era A sessions by 2026-10-05: 35
+his labelled EP in the 277: MRNA 2026-08-19 era A sessions by 2026-10-05: 32
+his labelled EP in the 277: PLTR 2026-08-04 era A sessions by 2026-10-05: 43
+his labelled EP in the 277: TEAM 2026-08-07 era A sessions by 2026-10-05: 40
+runners (summary.json): [('ALOY', '2026-06-01'), ('ARM', '2026-05-20'), ('EFOR', '2026-07-22'), ('HQ', '2026-06-15'), ('NRIX', '2026-06-08'), ('TE', '2026-05-12'), ('VPG', '2026-05-12')]
+
+H6 ANCHORS — run before any result
+(A1) adr_075   none : 632 of 632 reproduce reentry_rows attempt 1
+(A1) adr_075   trail: 632 of 632 reproduce reentry_rows attempt 1
+(A1) adr_100   none : 632 of 632 reproduce reentry_rows attempt 1
+(A1) adr_100   trail: 632 of 632 reproduce reentry_rows attempt 1
+(A1) adr_150   none : 632 of 632 reproduce reentry_rows attempt 1
+(A1) adr_150   trail: 632 of 632 reproduce reentry_rows attempt 1
+(A1) incumbent none : 632 of 632 reproduce reentry_rows attempt 1
+(A1) incumbent trail: 632 of 632 reproduce reentry_rows attempt 1
+(A2) lane arm (incumbent + trail)   runner fires kept >= 3R 4 of 11, runner mean +2.7, rest mean house -0.32 / gap-charged -0.35 (n 614)
+(A2) 1xADR + trail                  runner fires kept >= 3R 7 of 11, runner mean +4.4, rest mean house -0.11 / gap-charged -0.13 (n 620)
+(A2) 1xADR + sma21_2x               runner fires kept >= 3R 8 of 11, runner mean +5.5, rest mean house -0.22 / gap-charged -0.25 (n 620)
+(A2) 1xADR + sma50_1x               runner fires kept >= 3R 5 of 11, runner mean +3.8, rest mean house -0.16 / gap-charged -0.17 (n 620)
+(A2) 1xADR + none                   runner fires kept >= 3R 8 of 11, runner mean +5.8, rest mean house -0.31 / gap-charged -0.37 (n 620)
+(A3) FAST label on sat_daily_long: 11 ran +50% within 15 sessions, 7 held +30% at s15 (summary.json: 11 / 7)
+
+════════════════════════════════════════════════════════════════════════════════════════════════════
+(a) 40-SESSION LAUNCH CENSUS — ERA A campaigns with >= 40 sessions (EP <= 08-07)
+campaigns read 217 of 217 (holes: 0); launches (>= +50% from a post-EP low, sessions 1-40, high in a later session): 47 on 45 names; unique (ticker, start date) 47
+   by EP month (launches / campaigns): 05: 18/74, 06: 15/53, 07: 10/41, 08: 4/49
+   start session (primary = deepest low before the biggest high): <=5 30 · 6-10 4 · 11-20 8 · 21-30 5 · 31-40 0
+   earliest-qualifying-low variant: start <= 20 45 · > 20 2
+   launch low vs the EP-day anchors: {'below_ep_low': 35, 'ep_low_to_close': 9, 'above_ep_close': 3}
+   start inside the campaign's own 20-session lane window: 42; outside it but inside a re-entry or another EP's window: 3; OUTSIDE EVERY recorded attempt window: 2
+   Family A (mi_flag_candidates WATCH/TIGHTENING/COILED/TRIGGERED within 30 days before the start): {'not_covered': 15, 'covered': 20, 'unknown': 12}; loose (any row): {'covered': 42, 'not_covered': 4, 'unknown': 1}
+   >> outside every window AND not on Family A: 1 (unknowns as covered) .. 2 (unknowns as uncovered) of 47; half = 23.5  =>  (a) FAIL
+   lane attempt (incumbent stop) open at the start: 33; a lane attempt fired between start and the +50% cross: 35; neither: 5
+   patterns whose first fire was already used before the start: {'0': 22, '1': 5, '2': 9, '3': 10, '4': 1}
+   (b) cheap column — a close above the post-EP base high (sessions 1..start) after the start: 40 of 47; before the +50% cross: 37; median % left from that close to the 40-session peak: 36.5
+
+   every launch by name (ticker EP · start s/date · low vs EP close · zone · +50% cross s · peak gain · windows · Family A · lane attempt):
+   BZH   2026-05-11 · s 6 2026-05-19 · -16% · below_ep_low    · cross s39 · +52.0% · own      · famA not_covered ·  fired:ep_low_reclaim#2;ep_close_620_prox#2;ep_close_620_prox#3
+   DRTS  2026-05-11 · s20 2026-06-09 · -15% · below_ep_low    · cross s36 · +61.3% · own      · famA covered     · open:ep_low_reclaim#3
+   MRAM  2026-05-11 · s 1 2026-05-12 · -15% · ep_low_to_close · cross s 2 · +51.3% · own      · famA covered     · open:ep_close_reclaim#1 fired:ep_close_reclaim#1;ep_close_reclaim#2
+   WYFI  2026-05-11 · s20 2026-06-09 · -19% · below_ep_low    · cross s25 · +115.1% · own      · famA covered     · open:ep_close_reclaim#2;ep_close_620_prox#2;ep_low_reclaim#2
+   AVEX  2026-05-12 · s 3 2026-05-15 · -18% · below_ep_low    · cross s11 · +78.2% · own      · famA not_covered ·  fired:ep_close_620_prox#1;ep_close_620_prox#2
+   TE    2026-05-12 · s 1 2026-05-13 · -10% · below_ep_low    · cross s 6 · +137.5% · own      · famA covered     · open:ep_low_reclaim#1;ep_close_620_prox#1 fired:ep_low_reclaim#1;ep_close_620_prox#1
+   VPG   2026-05-12 · s 5 2026-05-19 · +5% · above_ep_close  · cross s14 · +68.6% · own      · famA covered     · open:ep_high_break#1
+   AIP   2026-05-13 · s 3 2026-05-18 · -11% · ep_low_to_close · cross s31 · +59.1% · own      · famA covered     ·  fired:ep_close_620_prox#1;ep_close_reclaim#2;ep_close_620_prox#2
+   FPS   2026-05-14 · s 3 2026-05-19 · -17% · below_ep_low    · cross s14 · +58.0% · own      · famA covered     ·  fired:ep_low_reclaim#1
+   STUB  2026-05-14 · s 1 2026-05-15 · -5% · below_ep_low    · cross s29 · +72.2% · own      · famA not_covered · open:ep_low_reclaim#1;ep_close_620_prox#1 fired:ep_low_reclaim#1;ep_close_620_prox#1
+   AGYS  2026-05-19 · s 1 2026-05-20 · -8% · below_ep_low    · cross s29 · +56.8% · own      · famA not_covered · open:ep_low_reclaim#1 fired:ep_low_reclaim#1;ep_close_620_prox#1;ep_close_620_prox#2
+   ALAB  2026-05-20 · s 1 2026-05-21 · -2% · ep_low_to_close · cross s21 · +77.2% · own      · famA covered     · open:ep_close_reclaim#1;ep_close_620_prox#1 fired:ep_close_reclaim#1;ep_close_620_prox#1
+   ARM   2026-05-20 · s 1 2026-05-21 · +4% · above_ep_close  · cross s 7 · +70.2% · own      · famA covered     · open:ep_high_break#1 fired:ep_high_break#1
+   GH    2026-05-20 · s 1 2026-05-21 · -3% · ep_low_to_close · cross s28 · +56.5% · own      · famA not_covered · open:ep_close_reclaim#1;ep_close_620_prox#1 fired:ep_close_reclaim#1;ep_close_620_prox#1
+   SLS   2026-05-20 · s 1 2026-05-21 · -22% · below_ep_low    · cross s24 · +128.1% · own      · famA covered     ·  fired:ep_low_reclaim#1;ep_close_620_prox#1;ep_close_620_prox#2;ep_close_620_prox#3
+   RLAY  2026-05-21 · s10 2026-06-05 · -5% · below_ep_low    · cross s25 · +60.9% · own      · famA covered     · open:ep_low_reclaim#2;ep_close_620_prox#4 fired:ep_low_reclaim#3
+   ASTI  2026-05-27 · s 1 2026-05-28 · -9% · ep_low_to_close · cross s 2 · +59.3% · own      · famA covered     · open:ep_close_reclaim#1 fired:ep_close_reclaim#1
+   BHVN  2026-05-29 · s 3 2026-06-03 · -10% · below_ep_low    · cross s15 · +74.5% · own      · famA not_covered · open:ep_close_620_prox#1;ep_low_reclaim#2 fired:ep_close_620_prox#1;ep_close_reclaim#2;ep_close_reclaim#3;ep_close_reclaim#4;ep_low_reclaim#2
+   ALOY  2026-06-01 · s 2 2026-06-03 · -6% · ep_low_to_close · cross s 9 · +98.4% · own      · famA covered     · open:ep_close_reclaim#1;ep_close_620_prox#1 fired:ep_close_reclaim#2;ep_close_620_prox#2
+   ABVX  2026-06-03 · s14 2026-06-24 · -17% · below_ep_low    · cross s18 · +97.9% · own      · famA not_covered · open:ep_low_reclaim#1 fired:ep_low_reclaim#1
+   PGY   2026-06-04 · s 2 2026-06-08 · -9% · below_ep_low    · cross s40 · +58.2% · own      · famA covered     · open:ep_low_reclaim#1;ep_close_620_prox#1 fired:ep_close_620_prox#1;ep_low_reclaim#2
+   NRIX  2026-06-08 · s 1 2026-06-09 · -6% · below_ep_low    · cross s12 · +73.1% · own      · famA not_covered · open:ep_low_reclaim#1 fired:ep_low_reclaim#1;ep_close_620_prox#1;ep_low_reclaim#2;ep_low_reclaim#3;ep_close_620_prox#2
+   ELVN  2026-06-11 · s 1 2026-06-12 · -3% · below_ep_low    · cross s35 · +59.8% · own      · famA not_covered · open:ep_low_reclaim#1 fired:ep_low_reclaim#1
+   NAVN  2026-06-11 · s 4 2026-06-17 · -19% · below_ep_low    · cross s16 · +62.8% · own      · famA covered     ·  fired:ep_low_reclaim#1;ep_close_620_prox#1
+   AKTS  2026-06-12 · s 1 2026-06-15 · -6% · below_ep_low    · cross s 8 · +66.8% · own      · famA not_covered · open:ep_high_break#1;ep_close_reclaim#1;ep_low_reclaim#1;ep_close_620_prox#1 fired:ep_high_break#1;ep_close_reclaim#1;ep_low_reclaim#1;ep_close_620_prox#1;ep_high_break#2;ep_close_reclaim#2;ep_low_reclaim#2;ep_close_620_prox#2
+   AUGO  2026-06-15 · s22 2026-07-17 · -27% · below_ep_low    · cross s37 · +64.3% · reentry  · famA not_covered · open:ep_low_reclaim#2
+   HQ    2026-06-15 · s 1 2026-06-16 · -4% · ep_low_to_close · cross s 3 · +162.1% · own      · famA not_covered · open:ep_close_reclaim#1 fired:ep_close_reclaim#1
+   HYMC  2026-06-15 · s22 2026-07-17 · -35% · below_ep_low    · cross s37 · +65.2% · OUTSIDE  · famA not_covered · none
+   XE    2026-06-15 · s21 2026-07-16 · -37% · below_ep_low    · cross s36 · +74.3% · reentry  · famA not_covered · open:ep_close_620_prox#2
+   RXT   2026-06-16 · s28 2026-07-28 · -43% · below_ep_low    · cross s38 · +59.3% · reentry  · famA unknown     · open:ep_close_620_prox#4;ep_low_reclaim#2
+   AEHR  2026-06-17 · s13 2026-07-08 · -44% · below_ep_low    · cross s18 · +132.8% · own      · famA covered     · none
+   FCEL  2026-06-24 · s 1 2026-06-25 · -15% · below_ep_low    · cross s 3 · +105.9% · own      · famA covered     · open:ep_low_reclaim#1 fired:ep_low_reclaim#1;ep_low_reclaim#2
+   OUST  2026-06-29 · s20 2026-07-28 · -43% · below_ep_low    · cross s25 · +68.2% · own      · famA covered     · none
+   PENG  2026-07-08 · s15 2026-07-29 · -44% · below_ep_low    · cross s28 · +50.8% · own      · famA covered     · none
+   CRCL  2026-07-10 · s16 2026-08-03 · -12% · below_ep_low    · cross s30 · +78.6% · own      · famA unknown     · open:ep_low_reclaim#2;ep_close_620_prox#2
+   TSEM  2026-07-14 · s11 2026-07-29 · -28% · below_ep_low    · cross s24 · +50.1% · own      · famA unknown     · open:ep_low_reclaim#2 fired:ep_close_620_prox#3
+   AEHR  2026-07-15 · s10 2026-07-29 · -27% · below_ep_low    · cross s14 · +131.0% · own      · famA unknown     ·  fired:ep_close_620_prox#2
+   IREN  2026-07-20 · s 7 2026-07-29 · -28% · below_ep_low    · cross s17 · +70.4% · own      · famA unknown     ·  fired:ep_low_reclaim#2
+   EFOR  2026-07-22 · s 1 2026-07-23 · -5% · below_ep_low    · cross s 8 · +78.5% · own      · famA not_covered · open:ep_low_reclaim#1;ep_close_620_prox#1 fired:ep_low_reclaim#1;ep_close_620_prox#1;ep_low_reclaim#2;ep_close_620_prox#2
+   SMCI  2026-07-22 · s 5 2026-07-29 · -16% · below_ep_low    · cross s16 · +64.8% · own      · famA unknown     · open:ep_low_reclaim#1 fired:ep_close_reclaim#3;ep_close_620_prox#2;ep_low_reclaim#2
+   ARM   2026-07-30 · s 2 2026-08-03 · -9% · below_ep_low    · cross s37 · +53.6% · own      · famA unknown     · open:ep_low_reclaim#1 fired:ep_low_reclaim#1;ep_close_reclaim#2;ep_close_620_prox#2
+   BLZE  2026-07-31 · s 1 2026-08-03 · -2% · ep_low_to_close · cross s 2 · +78.4% · own      · famA covered     · open:ep_close_reclaim#1 fired:ep_close_reclaim#1
+   COHU  2026-07-31 · s23 2026-09-02 · -10% · below_ep_low    · cross s37 · +55.5% · OUTSIDE  · famA unknown     · none
+   FTK   2026-08-03 · s 1 2026-08-04 · -2% · ep_low_to_close · cross s 7 · +51.0% · own      · famA unknown     · open:ep_high_break#1;ep_close_reclaim#1 fired:ep_high_break#1;ep_close_reclaim#1
+   BTDR  2026-08-04 · s 5 2026-08-11 · -26% · below_ep_low    · cross s24 · +61.8% · own      · famA unknown     ·  fired:ep_low_reclaim#2;ep_close_620_prox#3;ep_close_620_prox#4
+   LIFE  2026-08-04 · s 1 2026-08-05 · -13% · below_ep_low    · cross s14 · +77.7% · own      · famA unknown     · open:ep_low_reclaim#1 fired:ep_low_reclaim#1
+   CAI   2026-08-06 · s 1 2026-08-07 · +1% · above_ep_close  · cross s29 · +63.5% · own      · famA unknown     · open:ep_high_break#1 fired:ep_high_break#1
+   launch campaigns where a lane FIRST fire (incumbent, trail, s20) ended >= 3R: 11 of 46 that fired (of 47 launches)
+   launch campaigns where a lane FIRST fire (adr_100, trail, s20) ended >= 3R: 9 of 46 that fired (of 47 launches)
+   launch campaigns where a lane FIRST fire (adr_100, slow:sma21_2x, s20) ended >= 3R: 16 of 46 that fired (of 47 launches)
+   launch campaigns where a lane FIRST fire (adr_100, handoff:sma21_2x, s60) ended >= 3R: 14 of 46 that fired (of 47 launches)
+
+════════════════════════════════════════════════════════════════════════════════════════════════════
+(c) HAND-OFF EXIT — lane trail until +3R or a new post-EP high, then a runner exit, no 20-session cap
+    judged R = gap-charged (a stop whose session opened below it fills at the open); house R beside
+   stop      arm                      K | winners kept>=3R of 11 · mean | rest n · mean (settled n·mean / open-marked n·mean) | all-fire mean · >=3R | house: kept · win mean · rest mean
+   adr_100   handoff:sma21_2x        60 |  7 of 11 · +3.8 | 584 · -0.15 (580·-0.19 / 4·+4.92) | -0.08 · 40 | 7 · +3.8 · -0.13
+   adr_100   handoff:sma50_1x        60 |  3 of 11 · +3.1 | 584 · -0.11 (558·-0.40 / 26·+5.99) | -0.05 · 33 | 3 · +3.1 · -0.09
+   adr_100   handoff:ema65_1x        60 |  2 of 11 · +3.0 | 584 · -0.15 (549·-0.47 / 35·+4.86) | -0.09 · 30 | 2 · +3.0 · -0.13
+   adr_100   handoff:sma21_2x        HZ |  7 of 11 · +3.8 | 584 · -0.15 (580·-0.19 / 4·+4.92) | -0.08 · 40 | 7 · +3.8 · -0.13
+   adr_100   handoff:sma21_2x        40 |  7 of 11 · +3.8 | 584 · -0.14 (572·-0.26 / 12·+5.70) | -0.06 · 40 | 7 · +3.8 · -0.11
+   incumbent handoff:sma21_2x        60 |  3 of 11 · +1.6 | 531 · -0.34 (527·-0.38 / 4·+4.42) | -0.30 · 27 | 3 · +1.6 · -0.31
+   incumbent handoff:sma50_1x        60 |  2 of 11 · +0.5 | 531 · -0.25 (514·-0.57 / 17·+9.38) | -0.24 · 27 | 2 · +0.5 · -0.23
+   incumbent handoff:ema65_1x        60 |  2 of 11 · +0.4 | 531 · -0.35 (509·-0.60 / 22·+5.32) | -0.34 · 25 | 2 · +0.4 · -0.33
+   adr_075   handoff:sma21_2x        60 |  6 of 11 · +4.6 | 584 · -0.22 (580·-0.27 / 4·+6.56) | -0.13 · 42 | 6 · +4.6 · -0.19
+   adr_100   trail                   20 |  7 of 11 · +4.4 | 584 · -0.11 (583·-0.12 / 1·+5.10) | -0.03 · 26 | 7 · +4.4 · -0.08
+   adr_100   trail                   60 |  7 of 11 · +4.4 | 584 · -0.12 (583·-0.12 / 1·+5.10) | -0.03 · 25 | 7 · +4.4 · -0.09
+   adr_100   slow:sma21_2x           20 |  8 of 11 · +5.5 | 584 · -0.25 (518·-0.72 / 66·+3.40) | -0.14 · 42 | 8 · +5.5 · -0.22
+   adr_100   slow:sma21_2x           60 |  8 of 11 · +4.7 | 584 · -0.28 (578·-0.33 / 6·+4.02) | -0.19 · 44 | 8 · +4.7 · -0.25
+   adr_100   none                    20 |  8 of 11 · +5.8 | 584 · -0.37 (582·-0.39 / 2·+3.76) | -0.26 · 49 | 8 · +5.8 · -0.31
+   adr_100   none                    60 |  3 of 11 · +2.7 | 584 · -0.41 (513·-1.07 / 71·+4.37) | -0.35 · 45 | 3 · +2.7 · -0.35
+   incumbent trail                   20 |  4 of 11 · +2.7 | 531 · -0.27 (530·-0.27 / 1·+1.62) | -0.21 · 31 | 4 · +2.7 · -0.25
+   incumbent trail                   60 |  4 of 11 · +2.7 | 531 · -0.27 (530·-0.28 / 1·+1.62) | -0.21 · 31 | 4 · +2.7 · -0.25
+   PRIMARY (1xADR, hand-off -> sma21_2x, s60), ERA A: kept 7 of 11 (bar >= 8), winner mean +3.77 (bar >= +5.5), non-winner mean -0.153 (bar >= -0.14) on n 584; open-marked short of s60: 4
+      ERA A all-fire mean -0.080 (n 595); after dropping the best two names (EFOR, MTW) -0.129; >=3R share 40/595 = 6.7%
+      ERA B (direction only; every fire an open mark <= 26 sessions or settled early): n 36 readable of 37, mean -0.393 (settled 31 · -0.79; open-marked 5 · +2.08); >=3R 1; same sign as ERA A: True
+      ERA B after dropping the best two names (SEI, QCOM): -0.710 (n 30)
+      ERA B on the 1xADR trail at s20 (the arm the hand-off replaces): mean -0.550
+   >> (c) hand-off FAIL (judged R)
+   the 11 winner fires (1xADR): fire · lane-trail s20 · trail s60 · sma21_2x s20 · hand-off sma21_2x s60 / HZ (kind, exit session, hand-off session)
+   ALOY|2026-06-01|ep_close_620_prox        -1.0   -1.0   -1.0     -1.0 (stop s1, h-)    -1.0 (stop s1)
+   ALOY|2026-06-01|ep_close_reclaim         +3.2   +3.2   +3.4     +3.4 (exit s19, h1)    +3.4 (exit s19)
+   ARM|2026-05-20|ep_high_break             +4.8   +4.8   +8.4     +5.7 (exit s22, h1)    +5.7 (exit s22)
+   EFOR|2026-07-22|ep_close_620_prox        +8.9   +8.9   +9.3     +8.3 (exit s29, h2)    +8.3 (exit s29)
+   EFOR|2026-07-22|ep_low_reclaim           +8.7   +8.7   +9.1     +8.1 (exit s29, h2)    +8.1 (exit s29)
+   HQ|2026-06-15|ep_close_reclaim           +2.3   +2.3   +1.4     +1.4 (exit s17, h1)    +1.4 (exit s17)
+   NRIX|2026-06-08|ep_close_620_prox        -0.2   -0.2   +9.7     -0.2 (exit s0, h-)    -0.2 (exit s0)
+   NRIX|2026-06-08|ep_low_reclaim           -1.0   -1.0   -1.0     -1.0 (stop s0, h-)    -1.0 (stop s0)
+   TE|2026-05-12|ep_close_620_prox          +7.8   +7.8   +4.3     +4.3 (exit s19, h3)    +4.3 (exit s19)
+   TE|2026-05-12|ep_low_reclaim             +7.9   +7.9   +4.5     +4.5 (exit s19, h3)    +4.5 (exit s19)
+   VPG|2026-05-12|ep_high_break             +6.8   +6.8  +12.4     +8.1 (exit s35, h1)    +8.1 (exit s35)
+   per-fire difference, hand-off minus the 1xADR lane trail s20, ERA A non-winners: -0.043 (n 584); share where the hand-off is worse: 18%
+
+════════════════════════════════════════════════════════════════════════════════════════════════════
+SLOW-EXIT CELLS — s60 vs s20 on the SAME ERA A first fires with >= 60 sessions after the fire
+   adr_100   sma21_2x  s20->s60: n 302 · mean +0.012 -> -0.061 (total +3.5R -> -18.5R) · >=3R 28 -> 27 · still open at s60 0 · drop best two (GH, STUB) -0.139  => FAIL  [PRIMARY]
+   adr_100   sma21_2x  s20->s40: n 422 · mean -0.059 -> -0.110 (total -24.8R -> -46.2R) · >=3R 35 -> 33 · still open at s40 9 · drop best two (EFOR, CBRL) -0.179  => does not clear
+   adr_100   sma50_1x  s20->s60: n 302 · mean -0.018 -> -0.140 (total -5.3R -> -42.2R) · >=3R 28 -> 22 · still open at s60 11 · drop best two (AGYS, GH) -0.250  => FAIL  [PRIMARY]
+   adr_100   sma50_1x  s20->s40: n 422 · mean -0.002 -> -0.075 (total -0.8R -> -31.7R) · >=3R 35 -> 34 · still open at s40 35 · drop best two (EFOR, AGYS) -0.155  => does not clear
+   adr_100   ema65_1x  s20->s60: n 302 · mean -0.047 -> -0.204 (total -14.3R -> -61.5R) · >=3R 28 -> 18 · still open at s60 15 · drop best two (AGYS, GH) -0.315  => FAIL  [PRIMARY]
+   adr_100   ema65_1x  s20->s40: n 422 · mean -0.047 -> -0.130 (total -19.8R -> -54.8R) · >=3R 35 -> 34 · still open at s40 36 · drop best two (EFOR, AGYS) -0.210  => does not clear
+   adr_100   TRAIL     s20->s60: n 302 · mean +0.035 -> +0.029 (total +10.7R -> +8.7R) · >=3R 15 -> 15 · still open at s60 0 · drop best two (TE, BHVN) -0.060  => does not clear
+   adr_100   TRAIL     s20->s40: n 422 · mean +0.043 -> +0.036 (total +18.3R -> +15.0R) · >=3R 20 -> 19 · still open at s40 0 · drop best two (EFOR, TE) -0.044  => does not clear
+   incumbent sma21_2x  s20->s60: n 280 · mean -0.195 -> -0.252 (total -54.5R -> -70.5R) · >=3R 22 -> 17 · still open at s60 0 · drop best two (ALAB, ANF) -0.422  => does not clear
+   incumbent sma21_2x  s20->s40: n 391 · mean -0.278 -> -0.314 (total -108.8R -> -122.8R) · >=3R 26 -> 21 · still open at s40 2 · drop best two (ANF, ALAB) -0.450  => does not clear
+   incumbent sma50_1x  s20->s60: n 280 · mean -0.222 -> -0.371 (total -62.2R -> -103.8R) · >=3R 22 -> 16 · still open at s60 6 · drop best two (GH, MMYT) -0.489  => does not clear
+   incumbent sma50_1x  s20->s40: n 391 · mean -0.225 -> -0.331 (total -88.1R -> -129.5R) · >=3R 26 -> 25 · still open at s40 19 · drop best two (MMYT, GH) -0.423  => does not clear
+   incumbent ema65_1x  s20->s60: n 280 · mean -0.267 -> -0.424 (total -74.6R -> -118.8R) · >=3R 18 -> 12 · still open at s60 8 · drop best two (GH, STUB) -0.540  => does not clear
+   incumbent ema65_1x  s20->s40: n 391 · mean -0.296 -> -0.406 (total -115.6R -> -158.6R) · >=3R 22 -> 21 · still open at s40 22 · drop best two (GH, STUB) -0.480  => does not clear
+   incumbent TRAIL     s20->s60: n 280 · mean -0.156 -> -0.159 (total -43.6R -> -44.5R) · >=3R 17 -> 17 · still open at s60 0 · drop best two (TE, MMYT) -0.299  => does not clear
+   incumbent TRAIL     s20->s40: n 391 · mean -0.150 -> -0.153 (total -58.5R -> -59.9R) · >=3R 25 -> 25 · still open at s40 0 · drop best two (TE, MMYT) -0.253  => does not clear
+   >> primary slow-exit cells (1xADR, s20 -> s60) clearing: 0 of 3
+
+════════════════════════════════════════════════════════════════════════════════════════════════════
+(d) SLOW-LEADER LABEL (s40 close >= +25% over the EP-day close AND above its 50-day SMA) beside the FAST one
+   ERA A campaigns with 40 sessions: 217; SLOW 29 (13.4%); FAST 7 of the same 217 (FAST on all ERA A with 15 sessions: 7); both 3
+   SLOW only: DRTS 2026-05-11 (+26%, fired 3), WYFI 2026-05-11 (+44%, fired 3), AMBQ 2026-05-12 (+28%, fired 2), SIBN 2026-05-12 (+26%, fired 2), GO 2026-05-14 (+28%, fired 2), AGYS 2026-05-19 (+35%, fired 2), DYN 2026-05-20 (+34%, fired 2), GH 2026-05-20 (+29%, fired 2), SLS 2026-05-20 (+39%, fired 2), RLAY 2026-05-21 (+41%, fired 2), BHVN 2026-05-29 (+25%, fired 3), ABVX 2026-06-03 (+39%, fired 2), PGY 2026-06-04 (+44%, fired 2), CBRL 2026-06-10 (+30%, fired 2), ELVN 2026-06-11 (+47%, fired 1), IDCC 2026-06-11 (+26%, fired 3), NAVN 2026-06-11 (+27%, fired 2), MMYT 2026-06-15 (+33%, fired 2), DFTX 2026-06-22 (+26%, fired 2), CRCL 2026-07-10 (+54%, fired 2), SMCI 2026-07-22 (+32%, fired 3), ARM 2026-07-30 (+28%, fired 3), COHU 2026-07-31 (+38%, fired 2), FET 2026-07-31 (+32%, fired 1), CAI 2026-08-06 (+42%, fired 1), TEAM 2026-08-07 (+32%, fired 2)
+   FAST and SLOW: VPG 2026-05-12, NRIX 2026-06-08, EFOR 2026-07-22
+   FAST, not SLOW at s40: TE 2026-05-12 (+17%), ARM 2026-05-20 (+5%), ALOY 2026-06-01 (-32%), HQ 2026-06-15 (-16%)
+   his labelled PLTR 2026-08-04: sessions 43; fast False; slow False; s40 +15.0%; max high within 40 +19.7%; lane fired 2
+   his labelled TEAM 2026-08-07: sessions 40; fast False; slow True; s40 +31.9%; max high within 40 +34.2%; lane fired 2
+   his labelled HTFL 2026-08-14: sessions 35; fast False; slow unreadable (< 40 sessions); s40 —; max high within 40 —; lane fired 2
+   his labelled MRNA 2026-08-19: sessions 32; fast False; slow unreadable (< 40 sessions); s40 —; max high within 40 —; lane fired 0
+   lane first fires on SLOW-leader campaigns, kept >= 3R per arm (judged R):
+     incumbent trail                s20: 9 of 59 fires on 29 slow-leader EPs kept >= 3R, mean +0.70
+     adr_100   trail                s20: 12 of 60 fires on 29 slow-leader EPs kept >= 3R, mean +1.37
+     adr_100   slow:sma21_2x        s20: 21 of 60 fires on 29 slow-leader EPs kept >= 3R, mean +2.12
+     adr_100   handoff:sma21_2x     s60: 20 of 60 fires on 29 slow-leader EPs kept >= 3R, mean +1.70
+     adr_100   trail                s60: 12 of 60 fires on 29 slow-leader EPs kept >= 3R, mean +1.35
+     incumbent handoff:sma21_2x     s60: 10 of 59 fires on 29 slow-leader EPs kept >= 3R, mean +0.64
+
+════════════════════════════════════════════════════════════════════════════════════════════════════
+ERA B: 16 campaigns (EP 2026-08-27..2026-09-08), max 26 sessions by 10-05 — 0 can be read at 40 or 60 sessions (census, slow label, s40/s60 cells): NOT_TESTABLE. 40 sessions exist for the first ERA B EP on 2026-10-23 and for the last on 2026-11-03; 60 on 2026-11-20 .. 2026-12-02 (production calendar).

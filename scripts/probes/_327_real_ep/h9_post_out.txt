@@ -1,0 +1,20 @@
+ERA A: 595 fires; scored under ALL six arms: 546 (9 winner fires)
+  inc_trail     all-in sum  -182.4R (drop-best-2 names  -214.0; KURA +16.1, TEAM +15.4) | $-R sum  -30.6 (drop-best-2  -39.1) | >=3R 28 (5.1%)
+  adr100_trail  all-in sum   -34.7R (drop-best-2 names   -63.8; EFOR +17.6, BHVN +11.5) | $-R sum  -33.9 (drop-best-2  -51.7) | >=3R 22 (4.0%)
+  Q_ST          all-in sum   -58.3R (drop-best-2 names   -72.9; QBTS +8.4, GRND +6.3) | $-R sum  -23.4 (drop-best-2  -29.7) | >=3R 7 (1.3%)
+  Q_S           all-in sum  -124.7R (drop-best-2 names  -162.4; KURA +29.1, CLF +8.6) | $-R sum  -44.9 (drop-best-2  -52.4) | >=3R 15 (2.7%)
+  P_ST          all-in sum   -15.6R (drop-best-2 names   -43.7; TATT +20.1, CRSR +8.0) | $-R sum  -22.4 (drop-best-2  -29.3) | >=3R 12 (2.2%)
+  P_S           all-in sum  -109.9R (drop-best-2 names  -131.5; KURA +13.7, BHVN +7.9) | $-R sum  -54.5 (drop-best-2  -62.4) | >=3R 10 (1.8%)
+  ladder-killed fires (entry below the gap fill): 37 on 26 names; worth on the lane's stop +32.7R / +17.5 $-R; on 1xADR +21.2R / +16.8 $-R; >= 3R on 1xADR: ['TE close_620_prox', 'TE low_reclaim']
+  killed by pattern: {'ep_low_reclaim': 23, 'ep_close_620_prox': 12, 'ep_close_reclaim': 2}
+
+ERA B: 37 fires; scored under ALL six arms: 24 (0 winner fires)
+  inc_trail     all-in sum   -22.9R (drop-best-2 names   -21.1; ERO -0.8, CHRN -1.0) | $-R sum   -3.0 (drop-best-2   -3.1) | >=3R 0 (0.0%)
+  adr100_trail  all-in sum   -10.9R (drop-best-2 names   -14.0; IONQ +2.4, QCOM +0.7) | $-R sum   -5.1 (drop-best-2   -6.6) | >=3R 0 (0.0%)
+  Q_ST          all-in sum    -7.7R (drop-best-2 names   -11.7; SEI +2.9, IONQ +1.1) | $-R sum   -2.8 (drop-best-2   -3.3) | >=3R 1 (4.2%)
+  Q_S           all-in sum   -13.5R (drop-best-2 names   -18.7; IONQ +5.7, SOLS -0.5) | $-R sum   -3.7 (drop-best-2   -4.9) | >=3R 1 (4.2%)
+  P_ST          all-in sum    -2.4R (drop-best-2 names    -6.7; IONQ +2.9, QCOM +1.4) | $-R sum   -2.1 (drop-best-2   -3.0) | >=3R 0 (0.0%)
+  P_S           all-in sum    -4.1R (drop-best-2 names   -10.3; IONQ +5.7, SEI +0.6) | $-R sum   -3.3 (drop-best-2   -4.9) | >=3R 1 (4.2%)
+  ladder-killed fires (entry below the gap fill): 3 on 3 names; worth on the lane's stop -3.0R / -0.3 $-R; on 1xADR -1.6R / -1.3 $-R; >= 3R on 1xADR: []
+  killed by pattern: {'ep_low_reclaim': 3}
+

@@ -1,0 +1,3 @@
+wrote h7_campaigns.tsv: 277 rows
+wrote h7_fires.tsv: 116 rows
+wrote h7_controls.tsv: 12384 rows

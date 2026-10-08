@@ -132,3 +132,4 @@ scripts/probes/_624_backfill/digests.pkl
 scripts/probes/_624_backfill/news_raw.jsonl
 scripts/probes/_624_backfill/news_alpaca_raw.jsonl
 scripts/probes/_624_backfill/news_alert_raw.jsonl
+scripts/probes/_327_real_ep/h6_fire_rows.tsv

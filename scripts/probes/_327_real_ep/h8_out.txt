@@ -1,0 +1,156 @@
+#327 H8 — an EP-high reclaim after a dip as a FIRST strength entry. Report of h8_rows.tsv / h8_ctl.tsv (h8_run.py, horizon 10-05).
+BAR (verbatim): "Pass: >= +5 pts · n >= 100 on >= 60 names · survives drop-best · ERA B same sign." — on the STRICT primary, fillable entry,
+original +-pre-EP-ADR barriers, pess, resolved by session 10 (h8_run.py docstring). Edge = fire +2-first rate minus the same campaigns' control sessions.
+
+============================================================================================================================================
+POPULATION STRICT  (PRIMARY — verbatim: no lane rung fired before the H8 touch)
+============================================================================================================================================
+
+  [A]
+    edge FILLABLE entry, original barriers (THE BAR)  fires  28 on  28 names (abstain 0) vs ctl  509 | +2 first 21.4% vs 24.4% -> -2.9 pts (drop-1 -4.7 ['ALAB']; drop-2 -8.1 ['ALAB', 'ASPI']) | -1 first 67.9% vs 61.7% -> +6.2 | week-shuffle p 0.328
+    edge recorded entry (= EP high)                   fires  28 on  28 names (abstain 0) vs ctl  509 | +2 first 21.4% vs 24.4% -> -2.9 pts (drop-1 -4.7 ['ALAB']; drop-2 -8.1 ['ALAB', 'ASPI']) | -1 first 67.9% vs 61.7% -> +6.2
+    edge at-the-close entry                           fires  28 on  28 names (abstain 0) vs ctl  509 | +2 first 35.7% vs 24.4% -> +11.4 pts (drop-1 +10.1 ['ALAB']; drop-2 +7.3 ['ALAB', 'ASPI']) | -1 first 53.6% vs 61.7% -> -8.1
+    edge fillable, scaled barriers                    fires  28 on  28 names (abstain 0) vs ctl  509 | +2 first 21.4% vs 23.8% -> -2.3 pts (drop-1 -4.1 ['ALAB']; drop-2 -7.7 ['ALAB', 'ASPI']) | -1 first 57.1% vs 62.5% -> -5.3
+    edge sensitivity: same-bar fires kept only if 1-min = dip first (7 dropped) fires  21 on  21 names (abstain 0) vs ctl  509 | +2 first 28.6% vs 24.4% -> +4.2 pts (drop-1 +1.7 ['ALAB']; drop-2 -2.4 ['ALAB', 'ASPI']) | -1 first 57.1% vs 61.7% -> -4.5
+    R DIP-LOW stop  fillable: n  28 (killed/abstain 0) stop width med 0.70 ADR / 4.1% | TRAIL: >= 3R 2 (7.1%) · mean -0.03R · at s10 +0.09R (n 28) · sum -0.8R · drop-2 sum -13.7R ['FET +7.0', 'HQ +5.9'] · worst -1.05 · stops 20 (day-0 16) | NONE: >= 3R 3 (10.7%) · mean -0.22R · at s10 +0.17R · worst -1.05
+    R DIP-LOW stop  recorded: n  28 (killed/abstain 0) stop width med 0.64 ADR / 4.0% | TRAIL: >= 3R 2 (7.1%) · mean +0.03R · at s10 +0.14R (n 28) · sum +0.7R · drop-2 sum -12.4R ['FET +7.2', 'HQ +6.0'] · worst -1.00 · stops 20 (day-0 16) | NONE: >= 3R 3 (10.7%) · mean -0.20R · at s10 +0.20R · worst -1.00
+    R 1xADR stop    fillable: n  28 (killed/abstain 0) stop width med 1.00 ADR / 5.7% | TRAIL: >= 3R 1 (3.6%) · mean -0.18R · at s10 -0.09R (n 28) · sum -5.0R · drop-2 sum -12.6R ['FET +5.2', 'TEAM +2.4'] · worst -1.20 · stops 17 (day-0 8) | NONE: >= 3R 2 (7.1%) · mean -0.09R · at s10 -0.09R · worst -1.20
+    R 1xADR stop    recorded: n  28 (killed/abstain 0) stop width med 1.00 ADR / 5.7% | TRAIL: >= 3R 1 (3.6%) · mean -0.14R · at s10 -0.06R (n 28) · sum -3.9R · drop-2 sum -11.6R ['FET +5.2', 'TEAM +2.5'] · worst -1.18 · stops 17 (day-0 7) | NONE: >= 3R 2 (7.1%) · mean -0.08R · at s10 -0.08R · worst -1.18
+    split EP low undercut first          edge fires 0 (abstain 0)
+    split close-only dip (EP low held)   edge fires  28 on  28 names (abstain 0) vs ctl  509 | +2 first 21.4% vs 24.4% -> -2.9 pts (drop-1 -4.7 ['ALAB']; drop-2 -8.1 ['ALAB', 'ASPI']) | -1 first 67.9% vs 61.7% -> +6.2
+                                         1xADR trail mean -0.18R · none mean -0.09R · >= 3R 1 of 28
+    bucket s1-2   edge fires  28 on  28 names (abstain 0) vs ctl  509 | +2 first 21.4% vs 24.4% -> -2.9 pts (drop-1 -4.7 ['ALAB']; drop-2 -8.1 ['ALAB', 'ASPI']) | -1 first 67.9% vs 61.7% -> +6.2
+    bucket s3+    edge fires 0 (abstain 0)
+    context: lane's own stop        on these 28 campaigns: 66 first fires, -1.8R total (-0.03R a fire); campaigns with a lane fire >= 3R: 5
+    context: lane fires at 1xADR    on these 28 campaigns: 66 first fires, +0.4R total (+0.01R a fire); campaigns with a lane fire >= 3R: 3
+
+  [DISC]
+    edge FILLABLE entry, original barriers (THE BAR)  fires  27 on  27 names (abstain 0) vs ctl  492 | +2 first 22.2% vs 23.6% -> -1.4 pts (drop-1 -3.2 ['ALAB']; drop-2 -6.6 ['ALAB', 'ASPI']) | -1 first 66.7% vs 62.6% -> +4.1 | week-shuffle p 0.365
+    edge recorded entry (= EP high)                   fires  27 on  27 names (abstain 0) vs ctl  492 | +2 first 22.2% vs 23.6% -> -1.4 pts (drop-1 -3.2 ['ALAB']; drop-2 -6.6 ['ALAB', 'ASPI']) | -1 first 66.7% vs 62.6% -> +4.1
+    edge at-the-close entry                           fires  27 on  27 names (abstain 0) vs ctl  492 | +2 first 37.0% vs 23.6% -> +13.5 pts (drop-1 +12.2 ['ALAB']; drop-2 +9.4 ['ALAB', 'ASPI']) | -1 first 51.9% vs 62.6% -> -10.7
+    edge fillable, scaled barriers                    fires  27 on  27 names (abstain 0) vs ctl  492 | +2 first 22.2% vs 23.0% -> -0.7 pts (drop-1 -2.5 ['ALAB']; drop-2 -6.1 ['ALAB', 'ASPI']) | -1 first 55.6% vs 62.8% -> -7.2
+
+  [HOA]
+    edge FILLABLE entry, original barriers (THE BAR)  fires   1 on   1 names (abstain 0) vs ctl   17 | +2 first 0.0% vs 47.1% -> -47.1 pts (drop-1 -47.1 []; drop-2 -47.1 []) | -1 first 100.0% vs 35.3% -> +64.7
+    edge recorded entry (= EP high)                   fires   1 on   1 names (abstain 0) vs ctl   17 | +2 first 0.0% vs 47.1% -> -47.1 pts (drop-1 -47.1 []; drop-2 -47.1 []) | -1 first 100.0% vs 35.3% -> +64.7
+    edge at-the-close entry                           fires   1 on   1 names (abstain 0) vs ctl   17 | +2 first 0.0% vs 47.1% -> -47.1 pts (drop-1 -47.1 []; drop-2 -47.1 []) | -1 first 100.0% vs 35.3% -> +64.7
+    edge fillable, scaled barriers                    fires   1 on   1 names (abstain 0) vs ctl   17 | +2 first 0.0% vs 47.1% -> -47.1 pts (drop-1 -47.1 []; drop-2 -47.1 []) | -1 first 100.0% vs 52.9% -> +47.1
+
+  [exMay]
+    edge FILLABLE entry, original barriers (THE BAR)  fires  17 on  17 names (abstain 0) vs ctl  309 | +2 first 17.6% vs 21.0% -> -3.4 pts (drop-1 -7.2 ['FET']; drop-2 -12.9 ['FET', 'HQ']) | -1 first 76.5% vs 61.8% -> +14.7
+    edge recorded entry (= EP high)                   fires  17 on  17 names (abstain 0) vs ctl  309 | +2 first 17.6% vs 21.0% -> -3.4 pts (drop-1 -7.2 ['FET']; drop-2 -12.9 ['FET', 'HQ']) | -1 first 76.5% vs 61.8% -> +14.7
+    edge at-the-close entry                           fires  17 on  17 names (abstain 0) vs ctl  309 | +2 first 29.4% vs 21.0% -> +8.4 pts (drop-1 +5.3 ['FET']; drop-2 +0.4 ['FET', 'HQ']) | -1 first 64.7% vs 61.8% -> +2.9
+    edge fillable, scaled barriers                    fires  17 on  17 names (abstain 0) vs ctl  309 | +2 first 23.5% vs 21.4% -> +2.2 pts (drop-1 -3.6 ['BRUN']; drop-2 -8.7 ['BRUN', 'FET']) | -1 first 70.6% vs 66.0% -> +4.6
+
+  [B]
+    edge FILLABLE entry, original barriers (THE BAR)  fires   1 on   1 names (abstain 0) vs ctl   14 | +2 first 0.0% vs 57.1% -> -57.1 pts (drop-1 -57.1 []; drop-2 -57.1 []) | -1 first 100.0% vs 42.9% -> +57.1
+    edge recorded entry (= EP high)                   fires   1 on   1 names (abstain 0) vs ctl   14 | +2 first 0.0% vs 57.1% -> -57.1 pts (drop-1 -57.1 []; drop-2 -57.1 []) | -1 first 100.0% vs 42.9% -> +57.1
+    edge at-the-close entry                           fires   1 on   1 names (abstain 0) vs ctl   14 | +2 first 0.0% vs 57.1% -> -57.1 pts (drop-1 -57.1 []; drop-2 -57.1 []) | -1 first 100.0% vs 42.9% -> +57.1
+    edge fillable, scaled barriers                    fires   1 on   1 names (abstain 0) vs ctl   14 | +2 first 0.0% vs 57.1% -> -57.1 pts (drop-1 -57.1 []; drop-2 -57.1 []) | -1 first 100.0% vs 7.1% -> +92.9
+    edge sensitivity: same-bar fires kept only if 1-min = dip first (0 dropped) fires   1 on   1 names (abstain 0) vs ctl   14 | +2 first 0.0% vs 57.1% -> -57.1 pts (drop-1 -57.1 []; drop-2 -57.1 []) | -1 first 100.0% vs 42.9% -> +57.1
+    R DIP-LOW stop  fillable: n   1 (killed/abstain 0) stop width med 1.88 ADR / 8.1% | TRAIL: >= 3R 0 (0.0%) · mean -1.01R · at s10 -1.01R (n 1) · sum -1.0R · drop-2 sum +0.0R ['CRWD -1.0'] · worst -1.01 · stops 1 (day-0 0) | NONE: >= 3R 0 (0.0%) · mean -1.01R · at s10 -1.01R · worst -1.01
+    R DIP-LOW stop  recorded: n   1 (killed/abstain 0) stop width med 1.87 ADR / 8.1% | TRAIL: >= 3R 0 (0.0%) · mean -1.00R · at s10 -1.00R (n 1) · sum -1.0R · drop-2 sum +0.0R ['CRWD -1.0'] · worst -1.00 · stops 1 (day-0 0) | NONE: >= 3R 0 (0.0%) · mean -1.00R · at s10 -1.00R · worst -1.00
+    R 1xADR stop    fillable: n   1 (killed/abstain 0) stop width med 1.00 ADR / 4.3% | TRAIL: >= 3R 0 (0.0%) · mean -1.01R · at s10 -1.01R (n 1) · sum -1.0R · drop-2 sum +0.0R ['CRWD -1.0'] · worst -1.01 · stops 1 (day-0 0) | NONE: >= 3R 0 (0.0%) · mean -1.01R · at s10 -1.01R · worst -1.01
+    R 1xADR stop    recorded: n   1 (killed/abstain 0) stop width med 1.00 ADR / 4.3% | TRAIL: >= 3R 0 (0.0%) · mean -1.00R · at s10 -1.00R (n 1) · sum -1.0R · drop-2 sum +0.0R ['CRWD -1.0'] · worst -1.00 · stops 1 (day-0 0) | NONE: >= 3R 0 (0.0%) · mean -1.00R · at s10 -1.00R · worst -1.00
+    split EP low undercut first          edge fires 0 (abstain 0)
+    split close-only dip (EP low held)   edge fires   1 on   1 names (abstain 0) vs ctl   14 | +2 first 0.0% vs 57.1% -> -57.1 pts (drop-1 -57.1 []; drop-2 -57.1 []) | -1 first 100.0% vs 42.9% -> +57.1
+                                         1xADR trail mean -1.01R · none mean -1.01R · >= 3R 0 of 1
+    bucket s1-2   edge fires   1 on   1 names (abstain 0) vs ctl   14 | +2 first 0.0% vs 57.1% -> -57.1 pts (drop-1 -57.1 []; drop-2 -57.1 []) | -1 first 100.0% vs 42.9% -> +57.1
+    bucket s3+    edge fires 0 (abstain 0)
+    context: lane's own stop        on these 1 campaigns: 2 first fires, -2.0R total (-1.00R a fire); campaigns with a lane fire >= 3R: 0
+    context: lane fires at 1xADR    on these 1 campaigns: 2 first fires, -1.3R total (-0.65R a fire); campaigns with a lane fire >= 3R: 0
+
+  TAIL RETENTION (the rerun's 7 big-winner EPs; his 4 labelled EPs) — fired on, and final trail R at the fillable entry per stop:
+    RUNNER HQ 2026-06-15 -> 2026-06-16 s1 | DIP +5.92R (width 0.41 ADR, s10 +5.92) · 1xADR +2.41R (s10 +2.41) · none-arm 1xADR +1.31R | edge walk target | lane max R +2.26 (1xADR) / +4.09 (own stop)
+    LABELLED HTFL 2026-08-14 -> 2026-08-17 s1 | DIP -1.01R (width 0.82 ADR, s10 -1.01) · 1xADR -1.01R (s10 -1.01) · none-arm 1xADR -1.01R | edge walk stop | lane max R +3.14 (1xADR) / -1.00 (own stop)
+    LABELLED PLTR 2026-08-04 -> 2026-08-05 s1 | DIP -1.02R (width 0.53 ADR, s10 -1.02) · 1xADR -1.20R (s10 -1.20) · none-arm 1xADR -1.20R | edge walk stop | lane max R +1.78 (1xADR) / -1.00 (own stop)
+    LABELLED TEAM 2026-08-07 -> 2026-08-10 s1 | DIP +2.79R (width 0.88 ADR, s10 +2.17) · 1xADR +2.45R (s10 +1.91) · none-arm 1xADR +2.45R | edge walk target | lane max R +3.01 (1xADR) / +9.27 (own stop)
+    runners fired on: 1 of 7 · ended >= 3R at 1xADR trail: 0 · at DIP trail: 1 | labelled fired on: 3 of 4
+
+  VERDICT [strict]: (1) ERA A edge -2.9 pts >= +5 -> False · (2) n 28 on 28 names >= 100/60 -> False · (3) drop-best -4.7 >= +5 -> False (drop-best-two -8.1 -> False) · (4) ERA B n 1 edge -57.1 -> can't tell  =>  FAIL-on-n
+    program standard beside: week-shuffle p (ERA A) 0.328 · DISC -1.4 (p 0.365) · HOA -47.1 (n 1) · ex-May -3.4 (n 17)
+
+============================================================================================================================================
+POPULATION VARIANT  (VARIANT beside — only campaigns whose ep_high_break fired are excluded; the row's own ~129)
+============================================================================================================================================
+
+  [A]
+    edge FILLABLE entry, original barriers (THE BAR)  fires 131 on 129 names (abstain 0) vs ctl 2316 | +2 first 26.0% vs 29.2% -> -3.3 pts (drop-1 -3.7 ['ALAB']; drop-2 -4.0 ['ALAB', 'ANF']) | -1 first 67.2% vs 60.1% -> +7.1 | week-shuffle p 0.128
+    edge recorded entry (= EP high)                   fires 131 on 129 names (abstain 0) vs ctl 2316 | +2 first 28.2% vs 29.2% -> -1.0 pts (drop-1 -1.3 ['ALAB']; drop-2 -1.6 ['ALAB', 'ANF']) | -1 first 64.9% vs 60.1% -> +4.8
+    edge at-the-close entry                           fires 131 on 129 names (abstain 0) vs ctl 2316 | +2 first 31.3% vs 29.2% -> +2.1 pts (drop-1 +1.7 ['ALAB']; drop-2 +1.0 ['ALAB', 'ARGX']) | -1 first 62.6% vs 60.1% -> +2.5
+    edge fillable, scaled barriers                    fires 131 on 129 names (abstain 0) vs ctl 2316 | +2 first 21.4% vs 27.7% -> -6.3 pts (drop-1 -6.7 ['ALAB']; drop-2 -7.2 ['ALAB', 'ALOY']) | -1 first 58.8% vs 59.8% -> -1.0
+    edge sensitivity: same-bar fires kept only if 1-min = dip first (7 dropped) fires 124 on 123 names (abstain 0) vs ctl 2316 | +2 first 27.4% vs 29.2% -> -1.8 pts (drop-1 -2.2 ['ALAB']; drop-2 -2.5 ['ALAB', 'ANF']) | -1 first 65.3% vs 60.1% -> +5.3
+    R DIP-LOW stop  fillable: n 131 (killed/abstain 0) stop width med 1.83 ADR / 9.8% | TRAIL: >= 3R 3 (2.3%) · mean -0.14R · at s10 -0.06R (n 131) · sum -18.7R · drop-2 sum -31.6R ['FET +7.0', 'HQ +5.9'] · worst -1.61 · stops 48 (day-0 17) | NONE: >= 3R 5 (3.8%) · mean -0.35R · at s10 -0.07R · worst -1.61
+    R DIP-LOW stop  recorded: n 131 (killed/abstain 0) stop width med 1.75 ADR / 9.5% | TRAIL: >= 3R 3 (2.3%) · mean -0.12R · at s10 -0.04R (n 131) · sum -15.5R · drop-2 sum -28.6R ['FET +7.2', 'HQ +6.0'] · worst -1.97 · stops 48 (day-0 17) | NONE: >= 3R 5 (3.8%) · mean -0.34R · at s10 -0.05R · worst -1.97
+    R 1xADR stop    fillable: n 131 (killed/abstain 0) stop width med 1.00 ADR / 5.6% | TRAIL: >= 3R 4 (3.1%) · mean -0.28R · at s10 -0.19R (n 131) · sum -36.5R · drop-2 sum -49.5R ['EFOR +7.7', 'FET +5.2'] · worst -1.58 · stops 76 (day-0 17) | NONE: >= 3R 8 (6.1%) · mean -0.38R · at s10 -0.19R · worst -2.21
+    R 1xADR stop    recorded: n 131 (killed/abstain 0) stop width med 1.00 ADR / 5.6% | TRAIL: >= 3R 5 (3.8%) · mean -0.21R · at s10 -0.08R (n 131) · sum -27.7R · drop-2 sum -41.5R ['EFOR +7.8', 'TE +5.9'] · worst -2.19 · stops 74 (day-0 14) | NONE: >= 3R 9 (6.9%) · mean -0.34R · at s10 -0.10R · worst -2.19
+    split EP low undercut first          edge fires  57 on  56 names (abstain 0) vs ctl  995 | +2 first 28.1% vs 35.7% -> -7.6 pts (drop-1 -8.4 ['ANF']; drop-2 -8.9 ['ANF', 'BLSH']) | -1 first 64.9% vs 54.3% -> +10.6
+                                         1xADR trail mean -0.14R · none mean -0.26R · >= 3R 2 of 57
+    split close-only dip (EP low held)   edge fires  74 on  74 names (abstain 0) vs ctl 1321 | +2 first 24.3% vs 24.4% -> -0.1 pts (drop-1 -0.7 ['ALAB']; drop-2 -2.0 ['ALAB', 'ARGX']) | -1 first 68.9% vs 64.4% -> +4.5
+                                         1xADR trail mean -0.39R · none mean -0.48R · >= 3R 2 of 74
+    bucket s1-2   edge fires  75 on  74 names (abstain 0) vs ctl 2316 | +2 first 28.0% vs 29.2% -> -1.2 pts (drop-1 -2.0 ['ALAB']; drop-2 -3.2 ['ALAB', 'ARGX']) | -1 first 65.3% vs 60.1% -> +5.3
+    bucket s3+    edge fires  56 on  55 names (abstain 0) vs ctl 2316 | +2 first 23.2% vs 29.2% -> -6.0 pts (drop-1 -7.2 ['ANF']; drop-2 -8.2 ['ANF', 'BLSH']) | -1 first 69.6% vs 60.1% -> +9.6
+    context: lane's own stop        on these 131 campaigns: 295 first fires, +1.8R total (+0.01R a fire); campaigns with a lane fire >= 3R: 21
+    context: lane fires at 1xADR    on these 131 campaigns: 295 first fires, +80.2R total (+0.27R a fire); campaigns with a lane fire >= 3R: 15
+
+  [DISC]
+    edge FILLABLE entry, original barriers (THE BAR)  fires 126 on 124 names (abstain 0) vs ctl 2227 | +2 first 26.2% vs 29.3% -> -3.1 pts (drop-1 -3.5 ['ALAB']; drop-2 -3.8 ['ALAB', 'ANF']) | -1 first 66.7% vs 59.8% -> +6.9 | week-shuffle p 0.114
+    edge recorded entry (= EP high)                   fires 126 on 124 names (abstain 0) vs ctl 2227 | +2 first 28.6% vs 29.3% -> -0.7 pts (drop-1 -1.1 ['ALAB']; drop-2 -1.4 ['ALAB', 'ANF']) | -1 first 64.3% vs 59.8% -> +4.5
+    edge at-the-close entry                           fires 126 on 124 names (abstain 0) vs ctl 2227 | +2 first 31.7% vs 29.3% -> +2.5 pts (drop-1 +2.1 ['ALAB']; drop-2 +1.4 ['ALAB', 'ARX']) | -1 first 62.7% vs 59.8% -> +2.9
+    edge fillable, scaled barriers                    fires 126 on 124 names (abstain 0) vs ctl 2227 | +2 first 21.4% vs 27.8% -> -6.4 pts (drop-1 -6.8 ['ALAB']; drop-2 -7.3 ['ALAB', 'ALOY']) | -1 first 57.9% vs 59.2% -> -1.2
+
+  [HOA]
+    edge FILLABLE entry, original barriers (THE BAR)  fires   5 on   5 names (abstain 0) vs ctl   89 | +2 first 20.0% vs 28.1% -> -8.1 pts (drop-1 -34.3 ['ARGX']; drop-2 -34.3 ['ARGX']) | -1 first 80.0% vs 67.4% -> +12.6
+    edge recorded entry (= EP high)                   fires   5 on   5 names (abstain 0) vs ctl   89 | +2 first 20.0% vs 28.1% -> -8.1 pts (drop-1 -34.3 ['ARGX']; drop-2 -34.3 ['ARGX']) | -1 first 80.0% vs 67.4% -> +12.6
+    edge at-the-close entry                           fires   5 on   5 names (abstain 0) vs ctl   89 | +2 first 20.0% vs 28.1% -> -8.1 pts (drop-1 -34.3 ['ARGX']; drop-2 -34.3 ['ARGX']) | -1 first 60.0% vs 67.4% -> -7.4
+    edge fillable, scaled barriers                    fires   5 on   5 names (abstain 0) vs ctl   89 | +2 first 20.0% vs 24.7% -> -4.7 pts (drop-1 -28.6 ['ARGX']; drop-2 -28.6 ['ARGX']) | -1 first 80.0% vs 74.2% -> +5.8
+
+  [exMay]
+    edge FILLABLE entry, original barriers (THE BAR)  fires  85 on  85 names (abstain 0) vs ctl 1508 | +2 first 27.1% vs 25.5% -> +1.6 pts (drop-1 +0.5 ['ARGX']; drop-2 -0.2 ['ARGX', 'AVAV']) | -1 first 67.1% vs 62.0% -> +5.1
+    edge recorded entry (= EP high)                   fires  85 on  85 names (abstain 0) vs ctl 1508 | +2 first 27.1% vs 25.5% -> +1.6 pts (drop-1 +0.5 ['ARGX']; drop-2 -0.2 ['ARGX', 'AVAV']) | -1 first 67.1% vs 62.0% -> +5.1
+    edge at-the-close entry                           fires  85 on  85 names (abstain 0) vs ctl 1508 | +2 first 30.6% vs 25.5% -> +5.1 pts (drop-1 +4.0 ['ARGX']; drop-2 +3.4 ['ARGX', 'AVAV']) | -1 first 63.5% vs 62.0% -> +1.5
+    edge fillable, scaled barriers                    fires  85 on  85 names (abstain 0) vs ctl 1508 | +2 first 23.5% vs 24.3% -> -0.8 pts (drop-1 -1.5 ['ALOY']; drop-2 -2.6 ['ALOY', 'ARGX']) | -1 first 58.8% vs 63.7% -> -4.9
+
+  [B]
+    edge FILLABLE entry, original barriers (THE BAR)  fires   6 on   6 names (abstain 0) vs ctl   71 | +2 first 16.7% vs 52.1% -> -35.4 pts (drop-1 -50.8 ['ALAB']; drop-2 -50.8 ['ALAB']) | -1 first 83.3% vs 47.9% -> +35.4
+    edge recorded entry (= EP high)                   fires   6 on   6 names (abstain 0) vs ctl   71 | +2 first 16.7% vs 52.1% -> -35.4 pts (drop-1 -50.8 ['ALAB']; drop-2 -50.8 ['ALAB']) | -1 first 83.3% vs 47.9% -> +35.4
+    edge at-the-close entry                           fires   6 on   6 names (abstain 0) vs ctl   71 | +2 first 33.3% vs 52.1% -> -18.8 pts (drop-1 -30.8 ['ALAB']; drop-2 -44.0 ['ALAB', 'OKTA']) | -1 first 66.7% vs 47.9% -> +18.8
+    edge fillable, scaled barriers                    fires   6 on   6 names (abstain 0) vs ctl   71 | +2 first 16.7% vs 47.9% -> -31.2 pts (drop-1 -46.0 ['ALAB']; drop-2 -46.0 ['ALAB']) | -1 first 83.3% vs 39.4% -> +43.9
+    edge sensitivity: same-bar fires kept only if 1-min = dip first (0 dropped) fires   6 on   6 names (abstain 0) vs ctl   71 | +2 first 16.7% vs 52.1% -> -35.4 pts (drop-1 -50.8 ['ALAB']; drop-2 -50.8 ['ALAB']) | -1 first 83.3% vs 47.9% -> +35.4
+    R DIP-LOW stop  fillable: n   7 (killed/abstain 0) stop width med 2.47 ADR / 8.5% | TRAIL: >= 3R 0 (0.0%) · mean -0.59R · at s10 -0.64R (n 6) · sum -4.1R · drop-2 sum -4.3R ['ALAB +0.4', 'IONQ -0.3'] · worst -1.02 · stops 3 (day-0 1) | NONE: >= 3R 0 (0.0%) · mean -0.18R · at s10 -0.22R · worst -1.02
+    R DIP-LOW stop  recorded: n   7 (killed/abstain 0) stop width med 2.46 ADR / 8.4% | TRAIL: >= 3R 0 (0.0%) · mean -0.57R · at s10 -0.63R (n 6) · sum -4.0R · drop-2 sum -4.2R ['ALAB +0.4', 'IONQ -0.2'] · worst -1.02 · stops 3 (day-0 1) | NONE: >= 3R 0 (0.0%) · mean -0.15R · at s10 -0.21R · worst -1.02
+    R 1xADR stop    fillable: n   7 (killed/abstain 0) stop width med 1.00 ADR / 4.4% | TRAIL: >= 3R 0 (0.0%) · mean -0.64R · at s10 -0.64R (n 7) · sum -4.5R · drop-2 sum -5.1R ['ALAB +1.6', 'HOOD -1.0'] · worst -1.02 · stops 6 (day-0 3) | NONE: >= 3R 0 (0.0%) · mean -0.55R · at s10 -0.55R · worst -1.02
+    R 1xADR stop    recorded: n   7 (killed/abstain 0) stop width med 1.00 ADR / 4.4% | TRAIL: >= 3R 0 (0.0%) · mean -0.63R · at s10 -0.63R (n 7) · sum -4.4R · drop-2 sum -5.0R ['ALAB +1.6', 'CRWD -1.0'] · worst -1.00 · stops 6 (day-0 3) | NONE: >= 3R 0 (0.0%) · mean -0.53R · at s10 -0.53R · worst -1.00
+    split EP low undercut first          edge fires   3 on   3 names (abstain 0) vs ctl   36 | +2 first 33.3% vs 47.2% -> -13.9 pts (drop-1 -42.9 ['ALAB']; drop-2 -42.9 ['ALAB']) | -1 first 66.7% vs 52.8% -> +13.9
+                                         1xADR trail mean -0.37R · none mean -0.20R · >= 3R 0 of 4
+    split close-only dip (EP low held)   edge fires   3 on   3 names (abstain 0) vs ctl   35 | +2 first 0.0% vs 57.1% -> -57.1 pts (drop-1 -57.1 []; drop-2 -57.1 []) | -1 first 100.0% vs 42.9% -> +57.1
+                                         1xADR trail mean -1.01R · none mean -1.01R · >= 3R 0 of 3
+    bucket s1-2   edge fires   2 on   2 names (abstain 0) vs ctl   71 | +2 first 0.0% vs 52.1% -> -52.1 pts (drop-1 -52.1 []; drop-2 -52.1 []) | -1 first 100.0% vs 47.9% -> +52.1
+    bucket s3+    edge fires   4 on   4 names (abstain 0) vs ctl   71 | +2 first 25.0% vs 52.1% -> -27.1 pts (drop-1 -50.8 ['ALAB']; drop-2 -50.8 ['ALAB']) | -1 first 75.0% vs 47.9% -> +27.1
+    context: lane's own stop        on these 7 campaigns: 11 first fires, -10.1R total (-0.92R a fire); campaigns with a lane fire >= 3R: 0
+    context: lane fires at 1xADR    on these 7 campaigns: 13 first fires, -3.2R total (-0.24R a fire); campaigns with a lane fire >= 3R: 0
+
+  TAIL RETENTION (the rerun's 7 big-winner EPs; his 4 labelled EPs) — fired on, and final trail R at the fillable entry per stop:
+    RUNNER ALOY 2026-06-01 -> 2026-06-02 s1 | DIP -1.01R (width 0.82 ADR, s10 -1.01) · 1xADR -1.01R (s10 -1.01) · none-arm 1xADR -1.01R | edge walk stop | lane max R +3.19 (1xADR) / -1.00 (own stop)
+    RUNNER EFOR 2026-07-22 -> 2026-07-27 s3 | DIP +4.89R (width 1.58 ADR, s10 +5.26) · 1xADR +7.75R (s10 +8.34) · none-arm 1xADR +8.37R | edge walk target | lane max R +8.91 (1xADR) / -1.00 (own stop)
+    RUNNER HQ 2026-06-15 -> 2026-06-16 s1 | DIP +5.92R (width 0.41 ADR, s10 +5.92) · 1xADR +2.41R (s10 +2.41) · none-arm 1xADR +1.31R | edge walk target | lane max R +2.26 (1xADR) / +4.09 (own stop)
+    LABELLED HTFL 2026-08-14 -> 2026-08-17 s1 | DIP -1.01R (width 0.82 ADR, s10 -1.01) · 1xADR -1.01R (s10 -1.01) · none-arm 1xADR -1.01R | edge walk stop | lane max R +3.14 (1xADR) / -1.00 (own stop)
+    RUNNER NRIX 2026-06-08 -> 2026-06-12 s4 | DIP +1.37R (width 4.55 ADR, s10 +1.59) · 1xADR -1.01R (s10 -1.01) · none-arm 1xADR -1.01R | edge walk stop | lane max R -0.23 (1xADR) / -1.00 (own stop)
+    LABELLED PLTR 2026-08-04 -> 2026-08-05 s1 | DIP -1.02R (width 0.53 ADR, s10 -1.02) · 1xADR -1.20R (s10 -1.20) · none-arm 1xADR -1.20R | edge walk stop | lane max R +1.78 (1xADR) / -1.00 (own stop)
+    RUNNER TE 2026-05-12 -> 2026-05-18 s4 | DIP +1.89R (width 2.94 ADR, s10 +3.69) · 1xADR -1.01R (s10 -1.01) · none-arm 1xADR -1.01R | edge walk stop | lane max R +7.93 (1xADR) / +14.16 (own stop)
+    LABELLED TEAM 2026-08-07 -> 2026-08-10 s1 | DIP +2.79R (width 0.88 ADR, s10 +2.17) · 1xADR +2.45R (s10 +1.91) · none-arm 1xADR +2.45R | edge walk target | lane max R +3.01 (1xADR) / +9.27 (own stop)
+    runners fired on: 5 of 7 · ended >= 3R at 1xADR trail: 1 · at DIP trail: 2 | labelled fired on: 3 of 4
+
+  VERDICT [variant]: (1) ERA A edge -3.3 pts >= +5 -> False · (2) n 131 on 129 names >= 100/60 -> True · (3) drop-best -3.7 >= +5 -> False (drop-best-two -4.0 -> False) · (4) ERA B n 6 edge -35.4 -> can't tell  =>  FAIL
+    program standard beside: week-shuffle p (ERA A) 0.128 · DISC -3.1 (p 0.114) · HOA -8.1 (n 5) · ex-May +1.6 (n 85)
+
+============================================================================================================================================
+INCUMBENT for scale — the lane's ep_high_break (no dip ever) on the same instrument, from hyp_rows_h2.tsv (09-27, horizon 09-25):
+    ep_high_break fill DISC fires  46 vs ctl  807: 21.7% vs 18.6% -> +3.2 pts
+    ep_high_break fill HOA  fires   2 vs ctl   29: 100.0% vs 10.3% -> +89.7 pts
+    ep_high_break fill B    fires   2 vs ctl    3: 0.0% vs 0.0% -> +0.0 pts
+    ep_high_break rec  DISC fires  46 vs ctl  807: 30.4% vs 18.6% -> +11.8 pts
+    ep_high_break rec  HOA  fires   2 vs ctl   29: 100.0% vs 10.3% -> +89.7 pts
+    ep_high_break rec  B    fires   2 vs ctl    3: 0.0% vs 0.0% -> +0.0 pts
+
+FINAL: strict (primary) FAIL-on-n · variant (beside) FAIL

@@ -1,0 +1,54 @@
+sat keys 50 in non-full old? True 50
+old classes [(('A', 'full'), 212), (('A', 'none'), 3), (('A', 'one_bar'), 35), (('A', 'partial'), 11), (('B', 'full'), 15), (('B', 'partial'), 1)]
+merged [(('A', 'dark'), 1), (('A', 'full'), 249), (('A', 'thin'), 11), (('B', 'full'), 15), (('B', 'thin'), 1)]
+in_pop Counter({'A': 177, 'B': 11}) no_shakeout Counter({'A': 83, 'B': 5})
+in_pop names A 168
+EP-day range/ADR mean on A in_pop 2.39 median 2.12
+A in_pop with any qualified cross (any time) 100 after 10:30 100
+rejections [(('A', 'cancel'), 7), (('A', 'expired'), 1), (('A', 'pre_shakeout'), 6), (('A', 'reach'), 55), (('B', 'cancel'), 1), (('B', 'pre_shakeout'), 1), (('B', 'reach'), 5)]
+fires Counter({'A': 51, 'B': 4})
+fire key sets equal True 0
+mismatched entry/stop []
+MODERATE among A fires Counter({'HIGH': 37, 'MODERATE': 12, 'none': 2})
+
+== (2) re-walk ==
+A (13, 51, 886, 3313, -1.2529370335517278)
+B (1, 4, 44, 248, 7.258064516129032)
+A exMay (11, 39, 750, 2533, -1.4040308947533582)
+fire outcome mismatches []
+obs -1.253 one-sided p (gap >= obs) 0.6275
+
+== (3) census ==
+HOA 11 Counter({'in_pop': 7, 'no_shakeout': 4}) ['AMLX', 'BULL', 'MRNA', 'MRVL', 'RARE', 'SCSC', 'TEM']
+NRIX 2026-06-08 in_pop bstop: qualified_crosses=2;r3_out_of_reach=2 no_fire | close: qualified_crosses=2;r3_out_of_reach=2 no_fire
+TE 2026-05-12 in_pop bstop:  no_fire | close:  no_fire
+HTFL 2026-08-14 in_pop bstop:  no_fire | close:  no_fire
+MRNA 2026-08-19 in_pop bstop:  no_fire | close:  no_fire
+VPG 2026-05-12 in_pop bstop: arm_cancelled_base_broke=1;qualified_crosses=1 no_fire | close: qualified_crosses=1 fired
+TEAM 2026-08-07 in_pop bstop: qualified_crosses=1 fired | close: qualified_crosses=1 fired
+TEVA 2026-07-29 in_pop bstop: qualified_crosses=1 fired | close: qualified_crosses=1 fired
+bstop JBIO 18.47 18.125 17.6182 0.5 0.203 3.3222 8.2029 10:41 target
+close JBIO 18.415 18.125 17.5632 0.5 0.17 3.3868 9.9483 10:35 target
+bstop TEAM 143.9 142.83 139.1948 0.5 0.114 9.7083 42.6916 12:00 target
+close TEAM 143.68 142.83 138.9748 0.5 0.09 9.7551 54.0 11:40 target
+bstop TEVA 33.55 33.48 33.0385 0.5 0.068 8.5431 62.4286 13:05 target
+close TEVA 33.54 33.48 33.0285 0.5 0.059 8.5626 73.0 13:00 target
+close VPG 82.63 81.15 80.4534 0.5 0.34 -1.0 -1.0 12:10 target
+A in_pop days with any raw MACD<0 bull cross >=10:30: 162 of 177 ; all such crosses fail basing on 46
+in_pop with >=1 of 2 prior sessions on disk (>=100 bars): 37 ; fires: 16 [('ABSI', '2026-06-24'), ('AEHR', '2026-06-17'), ('BE', '2026-08-12'), ('BTDR', '2026-08-04'), ('CRWV', '2026-08-12'), ('DELL', '2026-05-29'), ('ECG', '2026-08-05'), ('EOSE', '2026-05-13'), ('EROC', '2026-08-12'), ('HUT', '2026-07-20'), ('JBIO', '2026-06-22'), ('LRCX', '2026-07-30')]
+
+== (4) warm-up sensitivity ==
+in_pop days with warm-up seed 37 | ERA A fires no-warm 51 with warm 44 lost [('BE', '2026-08-12'), ('BTDR', '2026-08-04'), ('CRWV', '2026-08-12'), ('DELL', '2026-05-29'), ('ECG', '2026-08-05'), ('EOSE', '2026-05-13'), ('JBIO', '2026-06-22'), ('RLAY', '2026-05-21')] gained [('MRVL', '2026-08-19')]
+same campaign different entry [('EROC', '2026-08-12'), ('NOW', '2026-06-01'), ('LRCX', '2026-07-30'), ('AEHR', '2026-06-17'), ('HUT', '2026-07-20')]
+no-warm (51, 13, 25.5, 3313, 26.7, -1.25)
+warm (44, 11, 25.0, 2858, 25.8, -0.79)
+
+== (5) ADR$ look-ahead ==
+EP close/open ratio across in_pop: median 0.981 p10 0.87 p90 1.066
+EP close / fire entry, fires: median 0.995 min 0.92 max 1.053
+EP-close ADR$ (as run): qdays, fires, names, hits, fire%, ctl n, ctl%, gap = (100, 51, 51, 13, 25.5, 3313, 26.7, -1.25)
+EP-open ADR$ (causal):  qdays, fires, names, hits, fire%, ctl n, ctl%, gap = (105, 54, 54, 16, 29.6, 3508, 27.7, 1.95)
+lost 0 gained 3
+gained [('MRLN', '2026-06-05'), ('SHAZ', '2026-06-12'), ('SNX', '2026-06-25')]
+original 51 fires, causal barriers: (51, 15, 3313, 908, 2.0)
+original 51 fires, prior-close barriers: (51, 15, 3313, 946, 0.86)

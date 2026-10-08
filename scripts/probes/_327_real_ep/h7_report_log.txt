@@ -1,0 +1,153 @@
+======================================================================================================================
+H7 — day-0 afternoon re-entry after the opening shakeout (TEAM 08-07). Pre-registration: h7_run.py docstring.
+======================================================================================================================
+POPULATION
+  ERA A: 261 campaigns | minute.tsv.gz alone {'full': 212, 'one_bar': 35, 'none': 3, 'partial': 11} | merged {'full': 249, 'thin': 11, 'dark': 1} | status {'no_shakeout': 83, 'in_pop': 177, 'dark_day0': 1}
+    dark 1: ['STC 2026-05-19 (88 bars)'] | first bar after 09:31: ['HGTY 2026-08-05 09:33']
+    restricted population (shakeout below the first 1-min bar's low): 177 campaigns / 168 names | fired: {'bstop': 51, 'close': 57} | no fire: {'bstop': 126, 'close': 120}
+    bstop rejections (summed over crosses): {'qualified_crosses': 120, 'r2_no_shakeout_yet': 6, 'r3_out_of_reach': 55, 'arm_cancelled_base_broke': 7, 'arm_expired_no_fill': 1}
+    close rejections (summed over crosses): {'qualified_crosses': 118, 'r2_no_shakeout_yet': 6, 'r3_out_of_reach': 55}
+  ERA B: 16 campaigns | minute.tsv.gz alone {'full': 15, 'partial': 1} | merged {'full': 15, 'thin': 1} | status {'in_pop': 11, 'no_shakeout': 5}
+    dark 0: [] | first bar after 09:31: []
+    restricted population (shakeout below the first 1-min bar's low): 11 campaigns / 11 names | fired: {'bstop': 4, 'close': 4} | no fire: {'bstop': 7, 'close': 7}
+    bstop rejections (summed over crosses): {'qualified_crosses': 11, 'arm_cancelled_base_broke': 1, 'r2_no_shakeout_yet': 1, 'r3_out_of_reach': 5}
+    close rejections (summed over crosses): {'qualified_crosses': 10, 'r2_no_shakeout_yet': 1, 'r3_out_of_reach': 5}
+  big-winner EPs (7): ['ALOY 2026-06-01 no_shakeout bstop=— close=—', 'ARM 2026-05-20 no_shakeout bstop=— close=—', 'EFOR 2026-07-22 no_shakeout bstop=— close=—', 'HQ 2026-06-15 no_shakeout bstop=— close=—', 'NRIX 2026-06-08 in_pop bstop=no_fire close=no_fire', 'TE 2026-05-12 in_pop bstop=no_fire close=no_fire', 'VPG 2026-05-12 in_pop bstop=no_fire close=fired']
+  his labelled EPs (4): ['HTFL 2026-08-14 in_pop bstop=no_fire close=no_fire', 'MRNA 2026-08-19 in_pop bstop=no_fire close=no_fire', 'PLTR 2026-08-04 no_shakeout bstop=— close=—', 'TEAM 2026-08-07 in_pop bstop=fired close=fired']
+
+TEAM 08-07 (validity check: fill within 11:50-12:20 ET; his entry ~12:05 at $144.39, stop 141.51)
+  bstop : cross 11:40 -> entry 12:00 at 143.90 | stop 139.19 (0.5 ADR; basing low 142.83) | +2/-1: target | trail +9.71R none +9.71R | unfloored-stop trail +42.69R | REPRODUCED True
+  close : cross 11:40 -> entry 11:40 at 143.68 | stop 138.97 (0.5 ADR; basing low 142.83) | +2/-1: target | trail +9.76R none +9.76R | unfloored-stop trail +54.00R | REPRODUCED False
+
+----------------------------------------------------------------------------------------------------------------------
+RULE bstop  (PRIMARY)
+----------------------------------------------------------------------------------------------------------------------
+  ERA A
+    edge (+2 ADR before -1 ADR by s10, pess): fires 51 (51 names; abstain 0) vs controls 3313 | +2 first 25.5% vs 26.7% -> GAP -1.3 pts (drop-2 -1.6 ['AKTS', 'BLZE']; week-block p 0.475) | -1 first 68.6% vs 69.8% (-1.2)
+    beside: paired per-campaign gap -1.2 pts (n 51, p 0.303) | opt bound gap -1.3 | fillable gap -1.3 (n 51)
+    R at the H7 stop (trail arm, gap-charged): n 51 mean -0.34R sum -17.2 drop-2 -35.5 ['TEAM +9.7', 'TEVA +8.5'] | >=3R 3 = 5.9% vs controls 2.7% (ctl mean -0.52R, n 3288) | worst -1.92 | same-day stop 21.6% vs ctl 24.3%
+      tail names: ['JBIO +3.3', 'TEAM +9.7', 'TEVA +8.5']
+    fillable R mean -0.36 (>=3R 5.9%) | unfloored basing-low stop: mean +1.43R, >=3R 5.9%, worst -3.15 | floor binds 98% | median stop 0.50 ADR (basing 0.20) | reach {'open': 7, 'both': 30, 'orb_low': 14} | fills {'14:00+': 20, '12:00-13:59': 22, '10:30-11:59': 9}
+    vs the lane's first fire on the same campaigns (descriptive): n 48 H7 -0.28R vs lane +0.22R; >=3R 3 vs 6
+  ERA A ex-May
+    edge (+2 ADR before -1 ADR by s10, pess): fires 39 (39 names; abstain 0) vs controls 2533 | +2 first 28.2% vs 29.6% -> GAP -1.4 pts (drop-2 -1.9 ['AKTS', 'BLZE']; week-block p 0.514) | -1 first 64.1% vs 65.9% (-1.7)
+    beside: paired per-campaign gap -1.4 pts (n 39, p 0.329) | opt bound gap -1.4 | fillable gap -1.4 (n 39)
+    R at the H7 stop (trail arm, gap-charged): n 39 mean -0.14R sum -5.3 drop-2 -23.6 ['TEAM +9.7', 'TEVA +8.5'] | >=3R 3 = 7.7% vs controls 3.5% (ctl mean -0.36R, n 2515) | worst -1.92 | same-day stop 23.1% vs ctl 23.5%
+      tail names: ['JBIO +3.3', 'TEAM +9.7', 'TEVA +8.5']
+    fillable R mean -0.16 (>=3R 7.7%) | unfloored basing-low stop: mean +2.18R, >=3R 7.7%, worst -3.15 | floor binds 100% | median stop 0.50 ADR (basing 0.20) | reach {'open': 4, 'both': 24, 'orb_low': 11} | fills {'14:00+': 16, '12:00-13:59': 16, '10:30-11:59': 7}
+    vs the lane's first fire on the same campaigns (descriptive): n 36 H7 -0.04R vs lane +0.53R; >=3R 3 vs 6
+  ERA A May
+    edge (+2 ADR before -1 ADR by s10, pess): fires 12 (12 names; abstain 0) vs controls 780 | +2 first 16.7% vs 17.4% -> GAP -0.8 pts (drop-2 -6.6 ['DELL', 'FIG']; week-block p —) | -1 first 83.3% vs 82.6% (+0.8)
+    beside: paired per-campaign gap -0.8 pts (n 12, p 0.503) | opt bound gap -0.8 | fillable gap -0.8 (n 12)
+    R at the H7 stop (trail arm, gap-charged): n 12 mean -0.99R sum -11.9 drop-2 -10.0 ['IBRX -0.9', 'AIP -1.0'] | >=3R 0 = 0.0% vs controls 0.0% (ctl mean -1.01R, n 773) | worst -1.00 | same-day stop 16.7% vs ctl 26.9%
+      tail names: []
+    fillable R mean -1.01 (>=3R 0.0%) | unfloored basing-low stop: mean -1.03R, >=3R 0.0%, worst -1.32 | floor binds 92% | median stop 0.50 ADR (basing 0.23) | reach {'open': 3, 'orb_low': 3, 'both': 6} | fills {'14:00+': 4, '12:00-13:59': 6, '10:30-11:59': 2}
+    vs the lane's first fire on the same campaigns (descriptive): n 12 H7 -0.99R vs lane -0.72R; >=3R 0 vs 0
+  ERA A in-sample <=08-14
+    edge (+2 ADR before -1 ADR by s10, pess): fires 51 (51 names; abstain 0) vs controls 3313 | +2 first 25.5% vs 26.7% -> GAP -1.3 pts (drop-2 -1.6 ['AKTS', 'BLZE']; week-block p —) | -1 first 68.6% vs 69.8% (-1.2)
+    beside: paired per-campaign gap -1.2 pts (n 51, p 0.303) | opt bound gap -1.3 | fillable gap -1.3 (n 51)
+    R at the H7 stop (trail arm, gap-charged): n 51 mean -0.34R sum -17.2 drop-2 -35.5 ['TEAM +9.7', 'TEVA +8.5'] | >=3R 3 = 5.9% vs controls 2.7% (ctl mean -0.52R, n 3288) | worst -1.92 | same-day stop 21.6% vs ctl 24.3%
+      tail names: ['JBIO +3.3', 'TEAM +9.7', 'TEVA +8.5']
+    fillable R mean -0.36 (>=3R 5.9%) | unfloored basing-low stop: mean +1.43R, >=3R 5.9%, worst -3.15 | floor binds 98% | median stop 0.50 ADR (basing 0.20) | reach {'open': 7, 'both': 30, 'orb_low': 14} | fills {'14:00+': 20, '12:00-13:59': 22, '10:30-11:59': 9}
+    vs the lane's first fire on the same campaigns (descriptive): n 48 H7 -0.28R vs lane +0.22R; >=3R 3 vs 6
+  ERA A held-out week 08-15..21
+    edge (+2 ADR before -1 ADR by s10, pess): fires 0 (0 names; abstain 0) vs controls 0 | +2 first —% vs —% -> GAP — pts (drop-2 — ; week-block p —) | -1 first —% vs —% (—)
+    beside: paired per-campaign gap — pts (n None, p —) | opt bound gap — | fillable gap — (n 0)
+    R at the H7 stop (trail arm, gap-charged): n 0 mean —R sum — drop-2 —  | >=3R None = —% vs controls —% (ctl mean —R, n None) | worst — | same-day stop —% vs ctl —%
+      tail names: None
+    fillable R mean — (>=3R —%) | unfloored basing-low stop: mean —R, >=3R —%, worst — | floor binds —% | median stop — ADR (basing —) | reach {} | fills {}
+    vs the lane's first fire on the same campaigns (descriptive): n 0 H7 —R vs lane —R; >=3R 0 vs 0
+  ERA A full-bar days only
+    edge (+2 ADR before -1 ADR by s10, pess): fires 50 (50 names; abstain 0) vs controls 3249 | +2 first 26.0% vs 27.3% -> GAP -1.3 pts (drop-2 -1.7 ['AKTS', 'BLZE']; week-block p —) | -1 first 68.0% vs 69.2% (-1.2)
+    beside: paired per-campaign gap -1.3 pts (n 50, p 0.303) | opt bound gap -1.3 | fillable gap -1.3 (n 50)
+    R at the H7 stop (trail arm, gap-charged): n 50 mean -0.32R sum -16.2 drop-2 -34.5 ['TEAM +9.7', 'TEVA +8.5'] | >=3R 3 = 6.0% vs controls 2.8% (ctl mean -0.51R, n 3224) | worst -1.92 | same-day stop 20.0% vs ctl 23.1%
+      tail names: ['JBIO +3.3', 'TEAM +9.7', 'TEVA +8.5']
+    fillable R mean -0.34 (>=3R 6.0%) | unfloored basing-low stop: mean +1.48R, >=3R 6.0%, worst -3.15 | floor binds 98% | median stop 0.50 ADR (basing 0.21) | reach {'open': 7, 'both': 30, 'orb_low': 13} | fills {'14:00+': 19, '12:00-13:59': 22, '10:30-11:59': 9}
+    vs the lane's first fire on the same campaigns (descriptive): n 47 H7 -0.26R vs lane +0.24R; >=3R 3 vs 6
+  ERA A without TEAM
+    edge (+2 ADR before -1 ADR by s10, pess): fires 50 (50 names; abstain 0) vs controls 3248 | +2 first 24.0% vs 25.3% -> GAP -1.3 pts (drop-2 -1.7 ['AKTS', 'BLZE']; week-block p —) | -1 first 70.0% vs 71.2% (-1.2)
+    beside: paired per-campaign gap -1.3 pts (n 50, p 0.303) | opt bound gap -1.3 | fillable gap -1.3 (n 50)
+    R at the H7 stop (trail arm, gap-charged): n 50 mean -0.54R sum -26.9 drop-2 -38.8 ['TEVA +8.5', 'JBIO +3.3'] | >=3R 2 = 4.0% vs controls 1.5% (ctl mean -0.64R, n 3224) | worst -1.92 | same-day stop 22.0% vs ctl 24.7%
+      tail names: ['JBIO +3.3', 'TEVA +8.5']
+    fillable R mean -0.56 (>=3R 4.0%) | unfloored basing-low stop: mean +0.60R, >=3R 4.0%, worst -3.15 | floor binds 98% | median stop 0.50 ADR (basing 0.21) | reach {'open': 7, 'both': 29, 'orb_low': 14} | fills {'14:00+': 20, '12:00-13:59': 21, '10:30-11:59': 9}
+    vs the lane's first fire on the same campaigns (descriptive): n 47 H7 -0.49R vs lane +0.09R; >=3R 2 vs 5
+  ERA B
+    edge (+2 ADR before -1 ADR by s10, pess): fires 4 (4 names; abstain 0) vs controls 248 | +2 first 25.0% vs 17.7% -> GAP +7.3 pts (drop-2 +0.0 ['QCOM']; week-block p —) | -1 first 75.0% vs 82.3% (-7.3)
+    beside: paired per-campaign gap +8.1 pts (n 4, p 0.503) | opt bound gap +7.3 | fillable gap +7.3 (n 4)
+    R at the H7 stop (trail arm, gap-charged): n 4 mean -1.00R sum -4.0 drop-2 -2.0 ['AGX -1.0', 'CHRN -1.0'] | >=3R 0 = 0.0% vs controls 0.0% (ctl mean -0.83R, n 247) | worst -1.00 | same-day stop 75.0% vs ctl 64.8%
+      tail names: []
+    fillable R mean -1.03 (>=3R 0.0%) | unfloored basing-low stop: mean -1.00R, >=3R 0.0%, worst -1.00 | floor binds 100% | median stop 0.50 ADR (basing 0.25) | reach {'both': 2, 'open': 1, 'orb_low': 1} | fills {'12:00-13:59': 2, '14:00+': 2}
+    vs the lane's first fire on the same campaigns (descriptive): n 4 H7 -1.00R vs lane -0.78R; >=3R 0 vs 0
+  winner capture (fired): ['TEAM 2026-08-07 labelled trail +9.71R edge target']
+
+----------------------------------------------------------------------------------------------------------------------
+RULE close  (sensitivity: the lane-convention cross-close entry)
+----------------------------------------------------------------------------------------------------------------------
+  ERA A
+    edge (+2 ADR before -1 ADR by s10, pess): fires 57 (57 names; abstain 0) vs controls 3703 | +2 first 26.3% vs 25.7% -> GAP +0.6 pts (drop-2 +0.4 ['AKTS', 'BLZE']; week-block p 0.513) | -1 first 70.2% vs 71.2% (-1.0)
+    beside: paired per-campaign gap +0.6 pts (n 57, p 0.364) | opt bound gap +0.6 | fillable gap +0.6 (n 57)
+    R at the H7 stop (trail arm, gap-charged): n 56 mean -0.35R sum -19.7 drop-2 -38.0 ['TEAM +9.8', 'TEVA +8.6'] | >=3R 3 = 5.4% vs controls 3.6% (ctl mean -0.36R, n 3676) | worst -1.89 | same-day stop 25.0% vs ctl 26.3%
+      tail names: ['JBIO +3.4', 'TEAM +9.8', 'TEVA +8.6']
+    fillable R mean -0.38 (>=3R 5.3%) | unfloored basing-low stop: mean +1.64R, >=3R 7.1%, worst -3.20 | floor binds 100% | median stop 0.50 ADR (basing 0.19) | reach {'open': 8, 'both': 35, 'orb_low': 14} | fills {'14:00+': 20, '12:00-13:59': 26, '10:30-11:59': 11}
+    vs the lane's first fire on the same campaigns (descriptive): n 52 H7 -0.30R vs lane +0.37R; >=3R 3 vs 8
+  ERA A ex-May
+    edge (+2 ADR before -1 ADR by s10, pess): fires 42 (42 names; abstain 0) vs controls 2728 | +2 first 28.6% vs 27.5% -> GAP +1.1 pts (drop-2 +0.7 ['AKTS', 'BLZE']; week-block p 0.485) | -1 first 66.7% vs 68.3% (-1.6)
+    beside: paired per-campaign gap +1.1 pts (n 42, p 0.303) | opt bound gap +1.1 | fillable gap +1.1 (n 42)
+    R at the H7 stop (trail arm, gap-charged): n 41 mean -0.14R sum -5.9 drop-2 -24.2 ['TEAM +9.8', 'TEVA +8.6'] | >=3R 3 = 7.3% vs controls 3.3% (ctl mean -0.42R, n 2709) | worst -1.89 | same-day stop 24.4% vs ctl 24.8%
+      tail names: ['JBIO +3.4', 'TEAM +9.8', 'TEVA +8.6']
+    fillable R mean -0.18 (>=3R 7.1%) | unfloored basing-low stop: mean +2.62R, >=3R 9.8%, worst -3.20 | floor binds 100% | median stop 0.50 ADR (basing 0.19) | reach {'open': 4, 'both': 27, 'orb_low': 11} | fills {'14:00+': 16, '12:00-13:59': 17, '10:30-11:59': 9}
+    vs the lane's first fire on the same campaigns (descriptive): n 37 H7 -0.05R vs lane +0.49R; >=3R 3 vs 6
+  ERA A May
+    edge (+2 ADR before -1 ADR by s10, pess): fires 15 (15 names; abstain 0) vs controls 975 | +2 first 20.0% vs 20.6% -> GAP -0.6 pts (drop-2 -5.1 ['DELL', 'FIG']; week-block p —) | -1 first 80.0% vs 79.4% (+0.6)
+    beside: paired per-campaign gap -0.6 pts (n 15, p 0.503) | opt bound gap -0.6 | fillable gap -0.6 (n 15)
+    R at the H7 stop (trail arm, gap-charged): n 15 mean -0.92R sum -13.8 drop-2 -13.0 ['EVTC -0.0', 'IBRX -0.8'] | >=3R 0 = 0.0% vs controls 4.3% (ctl mean -0.20R, n 967) | worst -1.00 | same-day stop 26.7% vs ctl 30.4%
+      tail names: []
+    fillable R mean -0.94 (>=3R 0.0%) | unfloored basing-low stop: mean -1.03R, >=3R 0.0%, worst -1.46 | floor binds 100% | median stop 0.50 ADR (basing 0.22) | reach {'open': 4, 'orb_low': 3, 'both': 8} | fills {'14:00+': 4, '12:00-13:59': 9, '10:30-11:59': 2}
+    vs the lane's first fire on the same campaigns (descriptive): n 15 H7 -0.92R vs lane +0.07R; >=3R 0 vs 2
+  ERA A in-sample <=08-14
+    edge (+2 ADR before -1 ADR by s10, pess): fires 57 (57 names; abstain 0) vs controls 3703 | +2 first 26.3% vs 25.7% -> GAP +0.6 pts (drop-2 +0.4 ['AKTS', 'BLZE']; week-block p —) | -1 first 70.2% vs 71.2% (-1.0)
+    beside: paired per-campaign gap +0.6 pts (n 57, p 0.364) | opt bound gap +0.6 | fillable gap +0.6 (n 57)
+    R at the H7 stop (trail arm, gap-charged): n 56 mean -0.35R sum -19.7 drop-2 -38.0 ['TEAM +9.8', 'TEVA +8.6'] | >=3R 3 = 5.4% vs controls 3.6% (ctl mean -0.36R, n 3676) | worst -1.89 | same-day stop 25.0% vs ctl 26.3%
+      tail names: ['JBIO +3.4', 'TEAM +9.8', 'TEVA +8.6']
+    fillable R mean -0.38 (>=3R 5.3%) | unfloored basing-low stop: mean +1.64R, >=3R 7.1%, worst -3.20 | floor binds 100% | median stop 0.50 ADR (basing 0.19) | reach {'open': 8, 'both': 35, 'orb_low': 14} | fills {'14:00+': 20, '12:00-13:59': 26, '10:30-11:59': 11}
+    vs the lane's first fire on the same campaigns (descriptive): n 52 H7 -0.30R vs lane +0.37R; >=3R 3 vs 8
+  ERA A held-out week 08-15..21
+    edge (+2 ADR before -1 ADR by s10, pess): fires 0 (0 names; abstain 0) vs controls 0 | +2 first —% vs —% -> GAP — pts (drop-2 — ; week-block p —) | -1 first —% vs —% (—)
+    beside: paired per-campaign gap — pts (n None, p —) | opt bound gap — | fillable gap — (n 0)
+    R at the H7 stop (trail arm, gap-charged): n 0 mean —R sum — drop-2 —  | >=3R None = —% vs controls —% (ctl mean —R, n None) | worst — | same-day stop —% vs ctl —%
+      tail names: None
+    fillable R mean — (>=3R —%) | unfloored basing-low stop: mean —R, >=3R —%, worst — | floor binds —% | median stop — ADR (basing —) | reach {} | fills {}
+    vs the lane's first fire on the same campaigns (descriptive): n 0 H7 —R vs lane —R; >=3R 0 vs 0
+  ERA A full-bar days only
+    edge (+2 ADR before -1 ADR by s10, pess): fires 55 (55 names; abstain 0) vs controls 3574 | +2 first 27.3% vs 26.6% -> GAP +0.7 pts (drop-2 +0.4 ['AKTS', 'BLZE']; week-block p —) | -1 first 69.1% vs 70.2% (-1.1)
+    beside: paired per-campaign gap +0.7 pts (n 55, p 0.372) | opt bound gap +0.7 | fillable gap +0.7 (n 55)
+    R at the H7 stop (trail arm, gap-charged): n 54 mean -0.35R sum -18.7 drop-2 -37.0 ['TEAM +9.8', 'TEVA +8.6'] | >=3R 3 = 5.6% vs controls 3.7% (ctl mean -0.35R, n 3547) | worst -1.89 | same-day stop 24.1% vs ctl 25.4%
+      tail names: ['JBIO +3.4', 'TEAM +9.8', 'TEVA +8.6']
+    fillable R mean -0.38 (>=3R 5.5%) | unfloored basing-low stop: mean +1.74R, >=3R 7.4%, worst -3.20 | floor binds 100% | median stop 0.50 ADR (basing 0.19) | reach {'open': 8, 'both': 34, 'orb_low': 13} | fills {'14:00+': 19, '12:00-13:59': 25, '10:30-11:59': 11}
+    vs the lane's first fire on the same campaigns (descriptive): n 50 H7 -0.29R vs lane +0.38R; >=3R 3 vs 8
+  ERA A without TEAM
+    edge (+2 ADR before -1 ADR by s10, pess): fires 56 (56 names; abstain 0) vs controls 3638 | +2 first 25.0% vs 24.4% -> GAP +0.6 pts (drop-2 +0.4 ['AKTS', 'BLZE']; week-block p —) | -1 first 71.4% vs 72.5% (-1.1)
+    beside: paired per-campaign gap +0.7 pts (n 56, p 0.364) | opt bound gap +0.6 | fillable gap +0.6 (n 56)
+    R at the H7 stop (trail arm, gap-charged): n 55 mean -0.54R sum -29.5 drop-2 -41.4 ['TEVA +8.6', 'JBIO +3.4'] | >=3R 2 = 3.6% vs controls 2.5% (ctl mean -0.47R, n 3612) | worst -1.89 | same-day stop 25.5% vs ctl 26.7%
+      tail names: ['JBIO +3.4', 'TEVA +8.6']
+    fillable R mean -0.56 (>=3R 3.6%) | unfloored basing-low stop: mean +0.69R, >=3R 5.5%, worst -3.20 | floor binds 100% | median stop 0.50 ADR (basing 0.19) | reach {'open': 8, 'both': 34, 'orb_low': 14} | fills {'14:00+': 20, '12:00-13:59': 26, '10:30-11:59': 10}
+    vs the lane's first fire on the same campaigns (descriptive): n 51 H7 -0.50R vs lane +0.26R; >=3R 2 vs 7
+  ERA B
+    edge (+2 ADR before -1 ADR by s10, pess): fires 4 (4 names; abstain 0) vs controls 248 | +2 first 25.0% vs 17.7% -> GAP +7.3 pts (drop-2 +0.0 ['QCOM']; week-block p —) | -1 first 75.0% vs 82.3% (-7.3)
+    beside: paired per-campaign gap +8.1 pts (n 4, p 0.503) | opt bound gap +7.3 | fillable gap +7.3 (n 4)
+    R at the H7 stop (trail arm, gap-charged): n 4 mean -1.00R sum -4.0 drop-2 -2.0 ['AGX -1.0', 'CHRN -1.0'] | >=3R 0 = 0.0% vs controls 0.0% (ctl mean -0.83R, n 247) | worst -1.00 | same-day stop 75.0% vs ctl 64.8%
+      tail names: []
+    fillable R mean -1.03 (>=3R 0.0%) | unfloored basing-low stop: mean -1.00R, >=3R 0.0%, worst -1.00 | floor binds 100% | median stop 0.50 ADR (basing 0.22) | reach {'both': 2, 'open': 1, 'orb_low': 1} | fills {'12:00-13:59': 3, '14:00+': 1}
+    vs the lane's first fire on the same campaigns (descriptive): n 4 H7 -1.00R vs lane -0.78R; >=3R 0 vs 0
+  winner capture (fired): ['TEAM 2026-08-07 labelled trail +9.76R edge target', 'VPG 2026-05-12 runner trail -1.00R edge target']
+
+======================================================================================================================
+VERDICT against the verbatim bar (rule bstop, ERA A, recorded entry, pess): NOT_TESTABLE
+  L1 gap >= +5: False
+  L2 n >= 100 on >= 60 names: False
+  L3 drop-best-two >= +5: False
+  L4 ex-May > 0: False
+  L5 ERA B same sign: can't tell
+  program extras (not in the verbatim bar): week-block p 0.475; fillable gap -1.3 pts
+
+wrote h7_report.txt, h7_summary.json

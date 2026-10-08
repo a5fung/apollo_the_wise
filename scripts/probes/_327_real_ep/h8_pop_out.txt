@@ -1,0 +1,57 @@
+#327 H8 — POPULATION (no outcome read). ERA A = alert < 2026-08-22 (DISC <= 08-14, HOA 08-15..08-21); ERA B >= 08-22. Horizon 2026-10-05. Sessions 1-20.
+
+GATE: alerts 277 (ERA A 261, ERA B 16); first fires 632; runners 7 [('ALOY', '2026-06-01'), ('ARM', '2026-05-20'), ('EFOR', '2026-07-22'), ('HQ', '2026-06-15'), ('NRIX', '2026-06-08'), ('TE', '2026-05-12'), ('VPG', '2026-05-12')]; labelled in the 277 4 [('HTFL', '2026-08-14'), ('MRNA', '2026-08-19'), ('PLTR', '2026-08-04'), ('TEAM', '2026-08-07')]
+      fires.tsv EP high/close == the long-file EP-day bar on 632 of 632
+
+ERA A: campaigns 261 — abstain_ordering_no_minutes 2 · dip_no_touch 88 · fire 164 · no_dip 7
+   campaigns with a daily-bar hole inside sessions 1-20: 0; sessions where the daily high reached the EP high after a dip but no 5-min bar did: 0
+   H8 touches after a dip: 164 on 158 names | grade minute 162 · daily 2 | dip in the touch session 70 · same 5-min bar 30 (1-min: {'touch_first': 8, 'dip_first': 17, 'same_minute': 5}) | EP low undercut first 64
+   ep_high_break already fired (variant exclusion): 33 of the 164; any lane rung before the touch: 136 ({'ep_close_reclaim': 74, 'ep_close_620_prox': 74, 'ep_high_break': 33, 'ep_low_reclaim': 64}); same-day ambiguous (daily-grade H8): 0
+   STRICT  fires 28 on 28 names; readable (>= 10 sessions after) 28 on 28 names | DISC 27 · HOA 1 · ex-May 17 | runners fired 1 of 7 · labelled fired 3 of 4
+      session buckets {'s01-02': 28} | DIP stop width in ADR median 0.70 (p10 0.14, p90 1.36)
+   VARIANT fires 131 on 129 names; readable (>= 10 sessions after) 131 on 129 names | DISC 126 · HOA 5 · ex-May 85 | runners fired 5 of 7 · labelled fired 3 of 4
+      session buckets {'s01-02': 75, 's03-05': 29, 's06-10': 16, 's11+': 11} | DIP stop width in ADR median 1.83 (p10 0.62, p90 3.83)
+   lens check (row: 159 of 261 ERA A dipped then reached the EP high; 30 had a high-break fire): touch-after-dip 164 + abstained-ordering 2; with ep_high_break 33
+
+ERA B: campaigns 16 — abstain_ordering_no_minutes 1 · dip_no_touch 7 · fire 8
+   campaigns with a daily-bar hole inside sessions 1-20: 0; sessions where the daily high reached the EP high after a dip but no 5-min bar did: 0
+   H8 touches after a dip: 8 on 8 names | grade minute 5 · daily 3 | dip in the touch session 1 · same 5-min bar 0 (1-min: {}) | EP low undercut first 4
+   ep_high_break already fired (variant exclusion): 1 of the 8; any lane rung before the touch: 7 ({'ep_low_reclaim': 4, 'ep_close_620_prox': 5, 'ep_close_reclaim': 3, 'ep_high_break': 1}); same-day ambiguous (daily-grade H8): 0
+   STRICT  fires 1 on 1 names; readable (>= 10 sessions after) 1 on 1 names | DISC 0 · HOA 0 · ex-May 1 | runners fired 0 of 7 · labelled fired 0 of 4
+      session buckets {'s01-02': 1} | DIP stop width in ADR median 1.88 (p10 1.88, p90 1.88)
+   VARIANT fires 7 on 7 names; readable (>= 10 sessions after) 6 on 6 names | DISC 0 · HOA 0 · ex-May 6 | runners fired 0 of 7 · labelled fired 0 of 4
+      session buckets {'s01-02': 2, 's03-05': 2, 's06-10': 2, 's11+': 1} | DIP stop width in ADR median 2.47 (p10 0.87, p90 4.89)
+   lens check (row: 159 of 261 ERA A dipped then reached the EP high; 30 had a high-break fire): touch-after-dip 8 + abstained-ordering 1; with ep_high_break 1
+
+STRICT fires (ticker ep_date -> fire_date s_idx grade fm | rungs before / ambiguous):
+   A AEIS   2026-08-04 -> 2026-08-05 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A ALAB   2026-05-20 -> 2026-05-21 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A ASPI   2026-05-26 -> 2026-05-27 s1 minute 590 | undercut 0 same_bar 0 readable 1
+   A BRUN   2026-08-12 -> 2026-08-13 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A BW     2026-05-11 -> 2026-05-12 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A CHA    2026-05-29 -> 2026-06-01 s1 minute 575 | undercut 0 same_bar 0 readable 1
+   A CPA    2026-05-14 -> 2026-05-18 s2 minute 575 | undercut 0 same_bar 0 readable 1
+   A CRSR   2026-08-07 -> 2026-08-10 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   B CRWD   2026-08-27 -> 2026-08-31 s2 minute 570 | undercut 0 same_bar 0 readable 1
+   A CRWV   2026-08-12 -> 2026-08-13 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A ETON   2026-08-14 -> 2026-08-17 s1 minute 575 | undercut 0 same_bar 0 readable 1
+   A FET    2026-07-31 -> 2026-08-03 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A FUTU   2026-05-26 -> 2026-05-27 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A GH     2026-05-20 -> 2026-05-21 s1 minute 595 | undercut 0 same_bar 0 readable 1
+   A HQ     2026-06-15 -> 2026-06-16 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A HTFL   2026-08-14 -> 2026-08-17 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A KLAR   2026-05-14 -> 2026-05-15 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A MRVL   2026-08-19 -> 2026-08-20 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A NBIS   2026-08-12 -> 2026-08-13 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A OUST   2026-06-29 -> 2026-06-30 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A PLTR   2026-08-04 -> 2026-08-05 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A POWI   2026-05-26 -> 2026-05-27 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A QURE   2026-06-17 -> 2026-06-18 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A SIBN   2026-05-12 -> 2026-05-13 s1 minute 580 | undercut 0 same_bar 0 readable 1
+   A SYRE   2026-06-22 -> 2026-06-23 s1 minute 580 | undercut 0 same_bar 0 readable 1
+   A TEAM   2026-08-07 -> 2026-08-10 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A TEVA   2026-07-29 -> 2026-07-30 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A VSTS   2026-05-12 -> 2026-05-13 s1 minute 570 | undercut 0 same_bar 1 readable 1
+   A ZBRA   2026-08-04 -> 2026-08-05 s1 minute 570 | undercut 0 same_bar 1 readable 1
+abstained campaigns (ordering, no minutes): B:AGX 2026-09-03@2026-09-09, A:TEM 2026-08-19@2026-08-31, A:U 2026-08-06@2026-09-01
+runner / labelled campaigns: ALOY 2026-06-01 fire strict=0 variant=1 before=ep_close_reclaim; ARM 2026-05-20 no_dip strict=None variant=None before=None; EFOR 2026-07-22 fire strict=0 variant=1 before=ep_close_620_prox,ep_low_reclaim; HQ 2026-06-15 fire strict=1 variant=1 before=None; HTFL 2026-08-14 fire strict=1 variant=1 before=None; MRNA 2026-08-19 dip_no_touch strict=None variant=None before=None; NRIX 2026-06-08 fire strict=0 variant=1 before=ep_close_620_prox,ep_low_reclaim; PLTR 2026-08-04 fire strict=1 variant=1 before=None; TE 2026-05-12 fire strict=0 variant=1 before=ep_close_620_prox,ep_low_reclaim; TEAM 2026-08-07 fire strict=1 variant=1 before=None; VPG 2026-05-12 no_dip strict=None variant=None before=None

@@ -1,0 +1,15 @@
+H6 ANCHORS — run before any result
+(A1) adr_075   none : 632 of 632 reproduce reentry_rows attempt 1
+(A1) adr_075   trail: 632 of 632 reproduce reentry_rows attempt 1
+(A1) adr_100   none : 632 of 632 reproduce reentry_rows attempt 1
+(A1) adr_100   trail: 632 of 632 reproduce reentry_rows attempt 1
+(A1) adr_150   none : 632 of 632 reproduce reentry_rows attempt 1
+(A1) adr_150   trail: 632 of 632 reproduce reentry_rows attempt 1
+(A1) incumbent none : 632 of 632 reproduce reentry_rows attempt 1
+(A1) incumbent trail: 632 of 632 reproduce reentry_rows attempt 1
+(A2) lane arm (incumbent + trail)   runner fires kept >= 3R 4 of 11, runner mean +2.7, rest mean house -0.32 / gap-charged -0.35 (n 614)
+(A2) 1xADR + trail                  runner fires kept >= 3R 7 of 11, runner mean +4.4, rest mean house -0.11 / gap-charged -0.13 (n 620)
+(A2) 1xADR + sma21_2x               runner fires kept >= 3R 8 of 11, runner mean +5.5, rest mean house -0.22 / gap-charged -0.25 (n 620)
+(A2) 1xADR + sma50_1x               runner fires kept >= 3R 5 of 11, runner mean +3.8, rest mean house -0.16 / gap-charged -0.17 (n 620)
+(A2) 1xADR + none                   runner fires kept >= 3R 8 of 11, runner mean +5.8, rest mean house -0.31 / gap-charged -0.37 (n 620)
+(A3) FAST label on sat_daily_long: 11 ran +50% within 15 sessions, 7 held +30% at s15 (summary.json: 11 / 7)

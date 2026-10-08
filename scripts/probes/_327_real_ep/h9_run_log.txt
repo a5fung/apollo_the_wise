@@ -1,0 +1,178 @@
+#327 H9 — stops and targets on the supply ladder (h9_ladder.py, run 2026-10-08; pre-registration = docstring)
+======================================================================================================================
+GATE / POPULATION
+  fires.tsv 632 first fires (ERA A 595, ERA B 37) on 267 campaigns; alerts ERA A 261 / ERA B 16; era label == alert-date rule: True
+  winner fires (rerun §D runners x patterns, read from summary.json): 11 on 7 EPs: ALOY close_620_prox, ALOY close_reclaim, ARM high_break, EFOR close_620_prox, EFOR low_reclaim, HQ close_reclaim, NRIX close_620_prox, NRIX low_reclaim, TE close_620_prox, TE low_reclaim, VPG high_break
+  labelled EPs in the 277: ['HTFL 2026-08-14', 'MRNA 2026-08-19', 'PLTR 2026-08-04', 'TEAM 2026-08-07']
+  long-history holes cut (> 30 calendar days; rows before dropped): AKTS 2024-12-17->2026-01-09 (243 rows dropped); FIG 2025-05-23->2025-07-31 (350 rows dropped); LIFE 2024-06-04->2026-01-29 (107 rows dropped)
+  sat_daily_long vs daily.tsv on overlap: 51274 rows, 0 mismatches (0 = same scale; the split-adjust guard)
+  ladders built: 277 of 277 campaigns; errors none; history < 30 sessions (encoder 'insufficient_history' flag, still used): ['AVEX 2026-05-12 (17d)', 'STDN 2026-08-14 (21d)']
+  pre-EP sessions: median 616, < 120: 19; prior close (history) vs alerts.tsv prior_close off by > 2%: 0
+  ladder Q: levels per campaign (excl. history high) median 12 (0 levels: 15); levels the EP OPEN gapped over (prior close < L < open): median 3, campaigns with >= 1: 223 of 277
+  ladder P: levels per campaign (excl. history high) median 6 (0 levels: 14); levels the EP OPEN gapped over (prior close < L < open): median 1, campaigns with >= 1: 169 of 277
+  grid rows built 632 of 632; excluded none; day-0 source re-derivation mismatches 0; d0 kinds {'real_intraday_bars': 579, 'daily_fold': 35, 'cached_pseudo_bars': 9, 'no_source': 9}
+
+ANCHORS (HALT on drift)
+  (1) price-target first passage vs p3_grid.first_passages (1xADR target + no target, every row x stop): {'match': 15588}
+  (2) grid:adr_100/none/trail_max10_20: mine {'runner_fires': 11, 'runner_kept3': 7, 'runner_mean': 4.3729, 'rest_n': 620, 'rest_mean': -0.1395} | summary.json {'runner_fires': 11, 'runner_kept3': 7, 'runner_mean': 4.3729, 'rest_n': 620, 'rest_mean': -0.1395} -> MATCH
+  (2) grid:incumbent/none/trail_max10_20: mine {'runner_fires': 11, 'runner_kept3': 4, 'runner_mean': 2.6581, 'rest_n': 614, 'rest_mean': -0.3514} | summary.json {'runner_fires': 11, 'runner_kept3': 4, 'runner_mean': 2.6581, 'rest_n': 614, 'rest_mean': -0.3514} -> MATCH
+
+(1) POPULATION — per arm, per era: fires · killed (entry below the gap fill) · below the 0.5% floor · day-0 abstain · scored
+  inc_trail     ERA A: 595 fires · killed 0 · floor 0 · d0-abstain 0 · other 0 · SCORED 595 | ERA B: 37 fires · killed 0 · floor 0 · d0-abstain 7 · other 0 · SCORED 30
+  adr100_trail  ERA A: 595 fires · killed 0 · floor 0 · d0-abstain 0 · other 0 · SCORED 595 | ERA B: 37 fires · killed 0 · floor 0 · d0-abstain 1 · other 0 · SCORED 36
+  Q_ST          ERA A: 595 fires · killed 37 · floor 10 · d0-abstain 0 · other 0 · SCORED 548 | ERA B: 37 fires · killed 3 · floor 2 · d0-abstain 3 · other 0 · SCORED 29
+  Q_S           ERA A: 595 fires · killed 37 · floor 10 · d0-abstain 0 · other 0 · SCORED 548 | ERA B: 37 fires · killed 3 · floor 2 · d0-abstain 3 · other 0 · SCORED 29
+  P_ST          ERA A: 595 fires · killed 37 · floor 5 · d0-abstain 0 · other 0 · SCORED 553 | ERA B: 37 fires · killed 3 · floor 0 · d0-abstain 2 · other 0 · SCORED 32
+  P_S           ERA A: 595 fires · killed 37 · floor 5 · d0-abstain 0 · other 0 · SCORED 553 | ERA B: 37 fires · killed 3 · floor 0 · d0-abstain 2 · other 0 · SCORED 32
+  Q_ST kill reasons: {'entry_below_gap_fill': 40}
+  P_ST kill reasons: {'entry_below_gap_fill': 40}
+
+WIDTH DISTRIBUTION — stop distance below the recorded entry (all fires with a placeable stop), p10 / p25 / MEDIAN / p75 / p90
+  ERA A lane's own stop   n 595 | % of entry   0.5   1.1   2.5   5.1   9.3 | x ADR 0.08 0.18 0.42 0.87 1.44 | stops > 10% wide (cap not binding at 2%): 50
+  ERA A 1xADR             n 595 | % of entry   3.7   4.6   5.9   8.0   9.8 | x ADR 1.00 1.00 1.00 1.00 1.00 | stops > 10% wide (cap not binding at 2%): 57
+  ERA A ladder Q          n 558 | % of entry   0.9   1.6   4.0   8.1  13.6 | x ADR 0.16 0.29 0.61 1.25 2.23 | stops > 10% wide (cap not binding at 2%): 100
+  ERA A ladder P (10-07)  n 558 | % of entry   1.4   2.9   6.3  10.5  16.1 | x ADR 0.26 0.49 0.99 1.67 2.53 | stops > 10% wide (cap not binding at 2%): 150
+  ERA A ladder Q stop anchored on: {'q_pivot': 405, 'hist_high': 32, 'gap_fill': 109, 'q_sma50': 12}
+  ERA A ladder P stop anchored on: {'pivot_line': 311, 'hist_high': 27, 'gap_fill': 220}
+  ERA B lane's own stop   n  37 | % of entry   0.3   0.6   1.4   2.5   4.9 | x ADR 0.07 0.13 0.27 0.55 1.14 | stops > 10% wide (cap not binding at 2%): 1
+  ERA B 1xADR             n  37 | % of entry   2.9   3.3   4.7   5.4   5.8 | x ADR 1.00 1.00 1.00 1.00 1.00 | stops > 10% wide (cap not binding at 2%): 1
+  ERA B ladder Q          n  34 | % of entry   0.7   1.2   2.6   7.5   9.7 | x ADR 0.17 0.27 0.52 1.62 2.87 | stops > 10% wide (cap not binding at 2%): 3
+  ERA B ladder P (10-07)  n  34 | % of entry   1.3   2.3   6.5   9.4  11.2 | x ADR 0.33 0.45 1.33 2.50 2.89 | stops > 10% wide (cap not binding at 2%): 6
+  ERA B ladder Q stop anchored on: {'gap_fill': 9, 'q_pivot': 25}
+  ERA B ladder P stop anchored on: {'gap_fill': 18, 'pivot_line': 16}
+
+NEXT-ZONE TARGET — distance above the entry and HIT RATE (high reaches the zone before the stop, pess, by the final mark)
+  Q_ST ERA A: scored 548; with a zone overhead 464 (blue sky above the entry 84); target distance median 0.77R (p25 0.32, p75 2.16) = 0.49 x ADR; zones <= 3R away 388 of 464
+      HIT RATE 232 of 464 = 50.0% before the stop; arm exits: target 194 · stop 200 · trail 153 · open at mark 1
+  Q_ST ERA B: scored 29; with a zone overhead 23 (blue sky above the entry 6); target distance median 0.99R (p25 0.40, p75 2.83) = 0.52 x ADR; zones <= 3R away 19 of 23
+      HIT RATE 9 of 23 = 39.1% before the stop; arm exits: target 8 · stop 10 · trail 11 · open at mark 0
+  P_ST ERA A: scored 553; with a zone overhead 469 (blue sky above the entry 84); target distance median 1.01R (p25 0.38, p75 2.77) = 0.98 x ADR; zones <= 3R away 372 of 469
+      HIT RATE 214 of 469 = 45.6% before the stop; arm exits: target 172 · stop 172 · trail 208 · open at mark 1
+  P_ST ERA B: scored 32; with a zone overhead 26 (blue sky above the entry 6); target distance median 0.79R (p25 0.30, p75 1.90) = 1.08 x ADR; zones <= 3R away 21 of 26
+      HIT RATE 14 of 26 = 53.8% before the stop; arm exits: target 13 · stop 7 · trail 11 · open at mark 1
+
+(2) RESULTS AGAINST THE BAR — final mark (session 20 or 09-25), gap-charged R; $ = capped dollars at today's 2% risk x regime, 20% notional cap
+  bar's −0.14R = rerun §D grid:adr_100/none/trail_max10_20 rest mean −0.1395 on a POOLED A+B set (n 620). Like-for-like 1xADR trail non-winner mean: ERA A -0.12 · ERA B -0.49
+
+  ── inc_trail ──
+   winner fires kept >= 3R: 4 of 11  (scored 11; winner mean +2.66R / +1.89 $-R; winner $-R total +20.8)
+   ERA A                non-winner n 584 on 228 names | mean -0.32R (drop-best-2 -0.38: KURA +16.1, TEAM +15.4) | >=3R 29 (5.0%) | worst -3.30 | slip -0.41
+                        $-R mean -0.062 (drop-best-2 -0.077) sum -36.2 | ALL scored fires >=3R share 5.5% (n 595) | vs 1xADR trail same fires: -0.203R (n 584, week-block p 0.000), +0.028 $-R
+     A-DISC (<=08-14)   non-winner n 562 on 221 names | mean -0.32R (drop-best-2 -0.38: KURA +16.1, TEAM +15.4) | >=3R 29 (5.2%) | worst -3.30 | slip -0.41
+                        $-R mean -0.061 (drop-best-2 -0.077) sum -34.4 | ALL scored fires >=3R share 5.8% (n 573) | vs 1xADR trail same fires: -0.195R (n 562, week-block p 0.000), +0.029 $-R
+     A-HOA (08-15..21)  non-winner n  22 on   9 names | mean -0.37R (drop-best-2 -0.54: TEM +0.8, ARGX +0.7) | >=3R 0 (0.0%) | worst -1.00 | slip -0.44
+                        $-R mean -0.084 (drop-best-2 -0.131) sum -1.9 | ALL scored fires >=3R share 0.0% (n 22) | vs 1xADR trail same fires: -0.421R (n 22), +0.006 $-R
+   ERA B                non-winner n  30 on  14 names | mean -0.93R (drop-best-2 -1.00: DG -0.1, ERO -0.8) | >=3R 0 (0.0%) | worst -3.31 | slip -1.08
+                        $-R mean -0.118 (drop-best-2 -0.135) sum -3.5 | ALL scored fires >=3R share 0.0% (n 30) | vs 1xADR trail same fires: -0.515R (n 30), +0.098 $-R
+
+  ── adr100_trail ──
+   winner fires kept >= 3R: 7 of 11  (scored 11; winner mean +4.37R / +2.97 $-R; winner $-R total +32.7)
+   ERA A                non-winner n 584 on 228 names | mean -0.12R (drop-best-2 -0.16: BHVN +11.5, BLSH +9.7) | >=3R 17 (2.9%) | worst -2.81 | slip -0.14
+                        $-R mean -0.090 (drop-best-2 -0.117) sum -52.6 | ALL scored fires >=3R share 4.0% (n 595) | vs 1xADR trail same fires: +0.000R (n 584, week-block p 1.000), +0.000 $-R
+     A-DISC (<=08-14)   non-winner n 562 on 221 names | mean -0.12R (drop-best-2 -0.16: BHVN +11.5, BLSH +9.7) | >=3R 17 (3.0%) | worst -2.81 | slip -0.14
+                        $-R mean -0.090 (drop-best-2 -0.118) sum -50.6 | ALL scored fires >=3R share 4.2% (n 573) | vs 1xADR trail same fires: +0.000R (n 562, week-block p 1.000), +0.000 $-R
+     A-HOA (08-15..21)  non-winner n  22 on   9 names | mean +0.05R (drop-best-2 -0.27: TEM +3.1, TWST +2.5) | >=3R 0 (0.0%) | worst -1.16 | slip +0.03
+                        $-R mean -0.090 (drop-best-2 -0.192) sum -2.0 | ALL scored fires >=3R share 0.0% (n 22) | vs 1xADR trail same fires: +0.000R (n 22), +0.000 $-R
+   ERA B                non-winner n  36 on  15 names | mean -0.49R (drop-best-2 -0.65: IONQ +1.7, QCOM +0.8) | >=3R 0 (0.0%) | worst -1.54 | slip -0.51
+                        $-R mean -0.230 (drop-best-2 -0.306) sum -8.3 | ALL scored fires >=3R share 0.0% (n 36) | vs 1xADR trail same fires: +0.000R (n 36), +0.000 $-R
+
+  ── Q_ST ──
+   winner fires kept >= 3R: 1 of 11  (scored 9; winner mean +0.19R / +0.48 $-R; winner $-R total +4.3)
+   ERA A                non-winner n 539 on 215 names | mean -0.11R (drop-best-2 -0.14: QBTS +8.4, GRND +6.3) | >=3R 6 (1.1%) | worst -2.09 | slip -0.15
+                        $-R mean -0.051 (drop-best-2 -0.063) sum -27.7 | ALL scored fires >=3R share 1.3% (n 548) | vs 1xADR trail same fires: +0.017R (n 539, week-block p 0.434), +0.048 $-R
+     A-DISC (<=08-14)   non-winner n 519 on 209 names | mean -0.11R (drop-best-2 -0.14: QBTS +8.4, GRND +6.3) | >=3R 6 (1.2%) | worst -2.09 | slip -0.15
+                        $-R mean -0.053 (drop-best-2 -0.066) sum -27.5 | ALL scored fires >=3R share 1.3% (n 528) | vs 1xADR trail same fires: +0.025R (n 519, week-block p 0.389), +0.046 $-R
+     A-HOA (08-15..21)  non-winner n  20 on   8 names | mean -0.13R (drop-best-2 -0.32: ARGX +1.4, TWST +0.8) | >=3R 0 (0.0%) | worst -1.00 | slip -0.16
+                        $-R mean -0.008 (drop-best-2 -0.050) sum -0.2 | ALL scored fires >=3R share 0.0% (n 20) | vs 1xADR trail same fires: -0.188R (n 20), +0.088 $-R
+   ERA B                non-winner n  29 on  13 names | mean -0.43R (drop-best-2 -0.66: SEI +2.9, IONQ +1.1) | >=3R 1 (3.4%) | worst -3.32 | slip -0.48
+                        $-R mean -0.159 (drop-best-2 -0.204) sum -4.6 | ALL scored fires >=3R share 3.4% (n 29) | vs 1xADR trail same fires: +0.103R (n 29), +0.076 $-R
+   BAR: keeps >= 9 of 11: NO (1) · ERA A non-winner mean >= −0.14: YES (-0.111) · ERA B same sign (vs 1xADR, A +0.017 / B +0.103): YES  ->  FAIL
+
+  ── Q_S ──
+   winner fires kept >= 3R: 1 of 11  (scored 9; winner mean +0.07R / +0.46 $-R; winner $-R total +4.2)
+   ERA A                non-winner n 539 on 215 names | mean -0.24R (drop-best-2 -0.31: KURA +29.1, CLF +8.6) | >=3R 14 (2.6%) | worst -3.88 | slip -0.28
+                        $-R mean -0.092 (drop-best-2 -0.106) sum -49.3 | ALL scored fires >=3R share 2.7% (n 548) | vs 1xADR trail same fires: -0.108R (n 539, week-block p 0.096), +0.008 $-R
+     A-DISC (<=08-14)   non-winner n 519 on 209 names | mean -0.24R (drop-best-2 -0.32: KURA +29.1, CLF +8.6) | >=3R 13 (2.5%) | worst -3.88 | slip -0.28
+                        $-R mean -0.094 (drop-best-2 -0.110) sum -49.0 | ALL scored fires >=3R share 2.7% (n 528) | vs 1xADR trail same fires: -0.107R (n 519, week-block p 0.097), +0.005 $-R
+     A-HOA (08-15..21)  non-winner n  20 on   8 names | mean -0.07R (drop-best-2 -0.51: TEM +5.5, ARGX +1.4) | >=3R 1 (5.0%) | worst -1.88 | slip -0.10
+                        $-R mean -0.018 (drop-best-2 -0.140) sum -0.4 | ALL scored fires >=3R share 5.0% (n 20) | vs 1xADR trail same fires: -0.127R (n 20), +0.077 $-R
+   ERA B                non-winner n  29 on  13 names | mean -0.63R (drop-best-2 -0.91: IONQ +5.7, SOLS -0.5) | >=3R 1 (3.4%) | worst -3.32 | slip -0.68
+                        $-R mean -0.187 (drop-best-2 -0.267) sum -5.4 | ALL scored fires >=3R share 3.4% (n 29) | vs 1xADR trail same fires: -0.096R (n 29), +0.047 $-R
+   BAR: keeps >= 9 of 11: NO (1) · ERA A non-winner mean >= −0.14: NO (-0.236) · ERA B same sign (vs 1xADR, A -0.108 / B -0.096): YES  ->  FAIL
+
+  ── P_ST ──
+   winner fires kept >= 3R: 1 of 11  (scored 9; winner mean +0.29R / +0.48 $-R; winner $-R total +4.3)
+   ERA A                non-winner n 544 on 216 names | mean -0.04R (drop-best-2 -0.09: TATT +20.1, CRSR +8.0) | >=3R 11 (2.0%) | worst -2.82 | slip -0.07
+                        $-R mean -0.050 (drop-best-2 -0.064) sum -27.4 | ALL scored fires >=3R share 2.2% (n 553) | vs 1xADR trail same fires: +0.090R (n 544, week-block p 0.206), +0.049 $-R
+     A-DISC (<=08-14)   non-winner n 524 on 210 names | mean -0.06R (drop-best-2 -0.11: TATT +20.1, CRSR +8.0) | >=3R 11 (2.1%) | worst -2.82 | slip -0.08
+                        $-R mean -0.059 (drop-best-2 -0.073) sum -30.9 | ALL scored fires >=3R share 2.3% (n 533) | vs 1xADR trail same fires: +0.083R (n 524, week-block p 0.231), +0.041 $-R
+     A-HOA (08-15..21)  non-winner n  20 on   8 names | mean +0.35R (drop-best-2 +0.18: MRVL +2.8, ARGX +1.4) | >=3R 0 (0.0%) | worst -1.00 | slip +0.33
+                        $-R mean +0.172 (drop-best-2 +0.058) sum +3.4 | ALL scored fires >=3R share 0.0% (n 20) | vs 1xADR trail same fires: +0.290R (n 20), +0.267 $-R
+   ERA B                non-winner n  32 on  14 names | mean +0.03R (drop-best-2 -0.30: QCOM +6.5, IONQ +2.9) | >=3R 1 (3.1%) | worst -1.00 | slip +0.00
+                        $-R mean -0.095 (drop-best-2 -0.160) sum -3.0 | ALL scored fires >=3R share 3.1% (n 32) | vs 1xADR trail same fires: +0.523R (n 32), +0.119 $-R
+   BAR: keeps >= 9 of 11: NO (1) · ERA A non-winner mean >= −0.14: YES (-0.040) · ERA B same sign (vs 1xADR, A +0.090 / B +0.523): YES  ->  FAIL
+
+  ── P_S ──
+   winner fires kept >= 3R: 1 of 11  (scored 9; winner mean +0.29R / +0.48 $-R; winner $-R total +4.3)
+   ERA A                non-winner n 544 on 216 names | mean -0.22R (drop-best-2 -0.26: KURA +13.7, BHVN +7.9) | >=3R 9 (1.7%) | worst -2.82 | slip -0.24
+                        $-R mean -0.110 (drop-best-2 -0.126) sum -60.1 | ALL scored fires >=3R share 1.8% (n 553) | vs 1xADR trail same fires: -0.086R (n 544, week-block p 0.077), -0.011 $-R
+     A-DISC (<=08-14)   non-winner n 524 on 210 names | mean -0.23R (drop-best-2 -0.27: KURA +13.7, BHVN +7.9) | >=3R 8 (1.5%) | worst -2.82 | slip -0.26
+                        $-R mean -0.113 (drop-best-2 -0.129) sum -59.2 | ALL scored fires >=3R share 1.7% (n 533) | vs 1xADR trail same fires: -0.093R (n 524, week-block p 0.061), -0.013 $-R
+     A-HOA (08-15..21)  non-winner n  20 on   8 names | mean +0.15R (drop-best-2 -0.33: TEM +6.9, ARGX +1.4) | >=3R 1 (5.0%) | worst -1.88 | slip +0.13
+                        $-R mean -0.044 (drop-best-2 -0.192) sum -0.9 | ALL scored fires >=3R share 5.0% (n 20) | vs 1xADR trail same fires: +0.095R (n 20), +0.052 $-R
+   ERA B                non-winner n  32 on  14 names | mean -0.31R (drop-best-2 -0.57: IONQ +5.7, SEI +0.6) | >=3R 1 (3.1%) | worst -1.07 | slip -0.34
+                        $-R mean -0.171 (drop-best-2 -0.249) sum -5.5 | ALL scored fires >=3R share 3.1% (n 32) | vs 1xADR trail same fires: +0.184R (n 32), +0.043 $-R
+   BAR: keeps >= 9 of 11: NO (1) · ERA A non-winner mean >= −0.14: NO (-0.217) · ERA B same sign (vs 1xADR, A -0.086 / B +0.184): NO  ->  FAIL
+
+WINNER FIRES AND HIS LABELLED EPs, BY NAME — ladder Q: stop anchor · width · target distance · R under each arm
+  WIN ALOY  2026-06-01 ep_close_reclaim   s1 entry 11.30 pc 9.16 | Q stop 10.64 on q_pivot 10.73 (lbl 4d·15.5%) w 5.9% = 0.72xADR · tgt 13.75 (3.69R) | P w 5.9% on pivot_line
+      R: lane -1.00 · 1xADR +3.19 · Q_S -1.00 · Q_ST -1.00 · P_S -1.00 · P_ST -1.00
+  WIN ALOY  2026-06-01 ep_close_620_prox  s1 entry 11.36 pc 9.16 | Q stop 10.64 on q_pivot 10.73 (lbl 4d·15.5%) w 6.3% = 0.78xADR · tgt 13.75 (3.33R) | P w 6.3% on pivot_line
+      R: lane -1.00 · 1xADR -1.00 · Q_S -1.00 · Q_ST -1.00 · P_S -1.00 · P_ST -1.00
+  WIN ARM   2026-05-20 ep_high_break      s1 entry 259.44 pc 223.15 | Q stop 237.74 on q_pivot 239.50 (lbl 10d·16.1%) w 8.4% = 1.23xADR · tgt — (—R) | P w 8.4% on pivot_line
+      R: lane +2.50 · 1xADR +4.75 · Q_S +3.85 · Q_ST +3.85 · P_S +3.85 · P_ST +3.85
+  WIN EFOR  2026-07-22 ep_low_reclaim     s1 entry 20.14 pc 18.31 | Q stop 19.75 on q_pivot 19.88 (lbl 43d·15.0%) w 2.0% = 0.30xADR · tgt 21.39 (3.13R) | P w 2.9% on pivot_line
+      R: lane -1.00 · 1xADR +8.69 · Q_S -1.00 · Q_ST -1.00 · P_S -1.00 · P_ST -1.00
+  WIN EFOR  2026-07-22 ep_close_620_prox  s1 entry 19.86 pc 18.31 | Q stop 19.56 on q_pivot 19.69 (lbl 16d·14.2%) w 1.5% = 0.23xADR · tgt 19.88 (0.07R) | P w 1.5% on pivot_line
+      R: lane -1.00 · 1xADR +8.91 · Q_S -1.00 · Q_ST +0.07 · P_S -1.00 · P_ST -1.00
+  WIN HQ    2026-06-15 ep_close_reclaim   s1 entry 18.38 pc 10.91 | Q stop 14.43 on q_pivot 14.65 (lbl 14d·33.4%) w 21.5% = 1.81xADR · tgt — (—R) | P w 21.5% on pivot_line
+      R: lane +4.09 · 1xADR +2.26 · Q_S +1.25 · Q_ST +1.25 · P_S +1.25 · P_ST +1.25
+  WIN NRIX  2026-06-08 ep_low_reclaim     s1 entry 15.49 pc 14.64 | Q stop 15.28 on q_pivot 15.36 (lbl 64d·8.8%) w 1.4% = 0.27xADR · tgt 16.11 (2.91R) | P w 6.0% on gap_fill
+      R: lane -1.00 · 1xADR -1.00 · Q_S -1.00 · Q_ST -1.00 · P_S +0.16 · P_ST +0.16
+  WIN NRIX  2026-06-08 ep_close_620_prox  s2 entry 15.48 pc 14.64 | Q stop 15.28 on q_pivot 15.36 (lbl 64d·8.8%) w 1.3% = 0.25xADR · tgt 16.11 (3.20R) | P w 5.9% on gap_fill
+      R: lane -1.00 · 1xADR -0.23 · Q_S -1.00 · Q_ST -1.00 · P_S -0.20 · P_ST -0.20
+  WIN TE    2026-05-12 ep_low_reclaim     s1 entry 5.54 pc 6.04 | Q KILLED (entry_below_gap_fill) | P KILLED
+      R: lane +14.16 · 1xADR +7.93 · Q_S killed · Q_ST killed · P_S killed · P_ST killed
+  WIN TE    2026-05-12 ep_close_620_prox  s1 entry 5.61 pc 6.04 | Q KILLED (entry_below_gap_fill) | P KILLED
+      R: lane +11.09 · 1xADR +7.79 · Q_S killed · Q_ST killed · P_S killed · P_ST killed
+  WIN VPG   2026-05-12 ep_high_break      s1 entry 87.88 pc 66.60 | Q stop 68.42 on hist_high 68.86 (lbl 2d·7.9%) w 22.1% = 4.47xADR · tgt — (—R) | P w 22.1% on hist_high
+      R: lane +3.39 · 1xADR +6.81 · Q_S +1.52 · Q_ST +1.52 · P_S +1.52 · P_ST +1.52
+  LAB HTFL  2026-08-14 ep_close_reclaim   s1 entry 42.83 pc 31.01 | Q stop 41.00 on q_pivot 41.22 (lbl 201d·51.2%) w 4.3% = 0.83xADR · tgt — (—R) | P w 4.3% on pivot_line
+      R: lane -1.00 · 1xADR +2.78 · Q_S -1.00 · Q_ST -1.00 · P_S -1.00 · P_ST -1.00
+  LAB HTFL  2026-08-14 ep_close_620_prox  s1 entry 42.05 pc 31.01 | Q stop 41.00 on q_pivot 41.22 (lbl 201d·51.2%) w 2.5% = 0.48xADR · tgt — (—R) | P w 2.5% on pivot_line
+      R: lane -1.00 · 1xADR +3.14 · Q_S -1.00 · Q_ST -1.00 · P_S -1.00 · P_ST -1.00
+  LAB PLTR  2026-08-04 ep_close_reclaim   s1 entry 163.69 pc 125.65 | Q stop 162.46 on q_pivot 163.20 (lbl 226d·34.8%) w 0.7% = 0.17xADR · tgt 163.70 (0.01R) | P w 1.2% on pivot_line
+      R: lane -1.00 · 1xADR -1.06 · Q_S -1.00 · Q_ST +0.01 · P_S -1.00 · P_ST +0.01
+  LAB PLTR  2026-08-04 ep_close_620_prox  s1 entry 159.63 pc 125.65 | Q stop 151.94 on q_pivot 152.68 (lbl 71d·30.3%) w 4.8% = 1.04xADR · tgt 161.45 (0.24R) | P w 13.4% on pivot_line
+      R: lane -1.00 · 1xADR +1.78 · Q_S +1.71 · Q_ST +0.24 · P_S +0.61 · P_ST +0.08
+  LAB TEAM  2026-08-07 ep_close_reclaim   s1 entry 149.39 pc 110.17 | Q stop 139.74 on q_pivot 140.68 (lbl 133d·60.2%) w 6.5% = 1.03xADR · tgt 165.16 (1.63R) | P w 6.5% on pivot_line
+      R: lane +6.16 · 1xADR +2.87 · Q_S +2.80 · Q_ST +1.63 · P_S +2.80 · P_ST +1.51
+  LAB TEAM  2026-08-07 ep_close_620_prox  s1 entry 148.06 pc 110.17 | Q stop 139.74 on q_pivot 140.68 (lbl 133d·60.2%) w 5.6% = 0.88xADR · tgt 165.16 (2.05R) | P w 5.6% on pivot_line
+      R: lane +9.27 · 1xADR +3.01 · Q_S +3.41 · Q_ST +2.05 · P_S +3.41 · P_ST +1.91
+
+SENSITIVITY (descriptive, not judged) — the 'just below' buffer
+  Q_ST_b000  keeps 1 of 11 · ERA A non-winner -0.122 · ERA B -0.510
+  Q_ST       keeps 1 of 11 · ERA A non-winner -0.111 · ERA B -0.434
+  Q_ST_b025  keeps 1 of 11 · ERA A non-winner -0.074 · ERA B -0.308
+  Q_S_b000   keeps 1 of 11 · ERA A non-winner -0.231 · ERA B -0.446
+  Q_S        keeps 1 of 11 · ERA A non-winner -0.236 · ERA B -0.634
+  Q_S_b025   keeps 1 of 11 · ERA A non-winner -0.252 · ERA B -0.481
+
+(3) VERDICT against the verbatim bar (keeps >= 9 of 11 · non-winner mean >= −0.14R · ERA B same sign)
+  Q_ST  FAIL  (keeps N · mean Y · ERA B Y)   <- PRIMARY (the hypothesis as written)
+  Q_S   FAIL  (keeps N · mean N · ERA B Y)
+  P_ST  FAIL  (keeps N · mean Y · ERA B Y)
+  P_S   FAIL  (keeps N · mean N · ERA B N)
+  4 draws (2 ladders x 2 arms); the regime multiplier is live only from 2026-07-26 — earlier fires are sized as if it were.
+
+wrote h9_out.txt, h9_rows.tsv, h9_levels.tsv

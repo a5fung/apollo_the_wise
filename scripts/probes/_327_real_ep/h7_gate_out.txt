@@ -1,0 +1,15 @@
+ok  alerts: 277 campaigns, ERA A 261, ERA B 16
+ok  era label == alert_date < 2026-08-22
+ok  minute.tsv.gz ALONE, EP-day classes (>=300 full): ERA A {'full': 212, 'one_bar': 35, 'none': 3, 'partial': 11}; ERA B {'full': 15, 'partial': 1} (hypotheses doc: 212 full / 11 partial / 35 one-bar / 3 none; ERA B 15 of 16)
+ok  ERA B full on minute.tsv.gz alone == 15 of 16
+ok  sat_day0_minutes keys (50) == the 277's non-full EP days on minute.tsv.gz (50)
+    MERGED EP-day classes: ERA A {'full': 249, 'thin': 11, 'dark': 1}; ERA B {'full': 15, 'thin': 1}
+    DARK EP days (< 100 RTH 1-min bars after the merge; counted, never imputed): 1 ['STC 2026-05-19 (88 bars)']
+ok  named campaign present: TEAM 2026-08-07
+ok  named campaign present: MRNA 2026-08-19
+ok  named campaign present: PLTR 2026-08-04
+ok  named campaign present: HTFL 2026-08-14
+ok  rerun's big-winner EPs (summary.json): [('ALOY', '2026-06-01'), ('ARM', '2026-05-20'), ('EFOR', '2026-07-22'), ('HQ', '2026-06-15'), ('NRIX', '2026-06-08'), ('TE', '2026-05-12'), ('VPG', '2026-05-12')]
+    his labelled EPs in the 277: [('HTFL', '2026-08-14'), ('MRNA', '2026-08-19'), ('PLTR', '2026-08-04'), ('TEAM', '2026-08-07')]
+
+GATE PASSED

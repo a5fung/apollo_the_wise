@@ -1,0 +1,8 @@
+ok  (a) TEAM 08-07 merged day-0 buckets = 78 (want 78; src minute_tsv)
+ok  (a) TEAM MACD/signal at 11:10/11:15/11:40/12:05: [('11:10', (-1.86, -1.28)), ('11:15', (-1.72, -1.37)), ('11:40', (-1.54, -1.58)), ('12:05', (-0.89, -1.27))]
+ok  (a) TEAM qualified 620 crosses on day 0: [('11:40', 143.68)]
+ok  (b) Saturday keys' merged 1-min RTH counts == pull status n_rth: 50 of 50 []
+ok  (c) +2/-1 walker reproduces hyp_rows_h2.tsv fire rows (orig/pess/rec): 626 of 626 (ref rows 626) []
+ok  (d) TEAM day-0 11:40 cross 143.68 / stop 141.51 through compute_settlement: trail +21.15R (want +21.15), fillable +20.59R (want +20.59)
+
+ANCHORS PASSED (0 drift)
