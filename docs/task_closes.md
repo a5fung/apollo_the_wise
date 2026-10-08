@@ -2050,3 +2050,13 @@ under it, which is why the two "quiet" days I closed on did not discriminate). F
 pin both and a feed-wide loss still audits. Ships with the 10-07 21:15 ET deploy. VERIFY Thu 10-08: 0
 `ep_candidate_parse_error` rows on an ordinary scan day, and the 07:00 tick's dropped count still ~1.1% in the
 log. Lesson: a two-day quiet window on an un-baselined threshold was not a discriminating close condition.
+
+## #327 — the delayed-entry lane's tail read done and every untested idea tested; his call: nothing graduates, keep recording (2026-10-08)
+
+BAR: "a tail-rate read per pattern on settled 20-session outcomes, measured on the TAIL not the median (`analysis_standard.md` §THE STATISTIC), with the near-zero-stop rows excluded → then his call on whether any pattern graduates."
+
+EVIDENCE:
+- **The tail read:** `docs/analysis/327_delayed_entry_tail_read_2026-09-22.md` (2,980 of 3,537 fires settled at 20 sessions; per pattern, on the tail, near-zero stops excluded).
+- **Every hypothesis tested:** 09-27 H2–H5, H12, H13 (`327_hypothesis_tests_2026-09-27.md`); 10-06 H10 holds / H11 fails (`327_h10_h11_2026-10-06.md`); 10-08 H6/H8/H9 fail, H7 not testable (`327_h6_h9_2026-10-08.md`) — each re-derived by a second agent; none passes its bar.
+- **His call, 2026-10-08:** *"yes, leave it recording"* to "nothing goes live: close #327 and leave the lane recording in shadow".
+- **Not lost:** the pre-registered mid-November re-read (§7 of the hypotheses doc) + H6's ERA B 40-session read are a cadence review, `delayed_entry_mid_november_reread` (due 2026-11-16); the live tail rate keeps accruing under `delayed_entry_shadow_first_read` (20 of 30 settled fires on 10-08).

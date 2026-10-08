@@ -9965,6 +9965,35 @@ reviews:
       CLOSED 2026-08-02 — the DECISION was made and signed on 2026-08-01 when task #343 closed: hold, no promotion. The eval's own read was that the signal is too thin to promote (C-B = 2/36), so 'hold' is the designed outcome rather than a deferral, and all 37 shadow detail rows were hand-inspected before signing. Nothing remains to wait for.
     added_on: 2026-06-18
 
+  - review_id: delayed_entry_mid_november_reread
+    kind: cadence
+    title: "#327 delayed-entry lane — the pre-registered mid-November re-read on current-rules (ERA B) campaigns"
+    question: |
+      #327 closed 2026-10-08 on his "yes, leave it recording" (none of H1-H13 passed its bar). Re-read the
+      lane on the campaigns it has recorded since 2026-08-22: does ERA B show the tail ERA A did, and does
+      H6's slow-move question (moves starting in sessions 21-40) look different on current rules?
+    predicate_sql: null
+    threshold: 0
+    earliest_review_date: 2026-11-16
+    discriminates_on: [mi_delayed_entry_trigger.fire_date, mi_delayed_entry_trigger.realized_r]
+    action_when_ready: |
+      Run EXACTLY the re-read pre-registered in docs/analysis/327_hypotheses_2026-09-27.md §7 (unit =
+      campaign, population = live EP alerts dated >= 2026-08-22 with >= 15 sessions by 11-15, a TAIL count
+      plus the direction-only checks written there; any EP-rule change since makes ERA C, never pooled).
+      Add H6's ERA B read now that 40 sessions exist (first 10-23, last 11-03): launches outside every
+      window, and the hand-off exit vs the lane trail. Report in one table to him; graduating anything is
+      CHANGE_PROCESS + his sign-off. Read beside delayed_entry_shadow_first_read (the live tail rate, 30
+      settled fires) if it has fired by then.
+    can_fire:
+      predicate_runs: "N/A by design - `kind: cadence`, predicate_sql is null; it becomes due 2026-11-16 and cannot read zero."
+      nonzero_possible: "The lane records every weekday (mi_delayed_entry_trigger); ~25 live EP campaigns a month (§7 of the hypotheses doc), so ~49 ERA B campaigns qualify by 11-15."
+      lane_live: "The delayed-entry watch lane runs nightly in shadow (no money) and stays on by his 2026-10-08 ruling."
+      threshold_vs_observed: "0 - cadence entry, the date is the gate."
+      era_scoped: "ERA B = alerts from 2026-08-22; anything after a later EP-rule change is ERA C and is reported separately (§7 rule 1)."
+      population_actionable: "The population and the statistic are pre-registered in §7 of the hypotheses doc; the action points there instead of re-deriving them."
+      instrument_trusted: "The same walkers H1-H13 used (anchors reproduced exactly on 10-06/10-08); the lane's own realized_r for live fires."
+    status: pending
+    added_on: 2026-10-08
   - review_id: ep_mcap_floor_500m_review
     kind: cadence
     title: "EP $500M market-cap floor — is it filtering out net-winner near-miss gappers? (BLZE $487M seed)"
