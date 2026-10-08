@@ -1,0 +1,108 @@
+2026-10-08T09:25:09-04:00 [note] PAPER GUARD OK: paper account c126091e-cef0-474a-bfc5-6309f6e3fd4a != live account 68f00b2a-5b67-4490-83b7-058af8f5b50f; paper endpoint https://paper-api.alpaca.markets; live tripwire armed (any non-paper client lookup raises; live keys removed from this process)
+2026-10-08T09:25:09-04:00 [note] state: {}
+2026-10-08T09:25:09-04:00 [note] KO: position None; open orders []; rehearsal rows []
+2026-10-08T09:25:09-04:00 [note] PEP: position None; open orders []; rehearsal rows []
+2026-10-08T09:25:09-04:00 [note] PG: position None; open orders []; rehearsal rows []
+2026-10-08T09:25:21-04:00 [note] PAPER GUARD OK: paper account c126091e-cef0-474a-bfc5-6309f6e3fd4a != live account 68f00b2a-5b67-4490-83b7-058af8f5b50f; paper endpoint https://paper-api.alpaca.markets; live tripwire armed (any non-paper client lookup raises; live keys removed from this process)
+2026-10-08T09:25:21-04:00 [note] TICKERS OK: P1=KO P2=PEP probe=PG — not held, no open orders, no trade rows in the paper account
+2026-10-08T09:25:21-04:00 [note] R1 TICKER OK: CL — not held, no open orders, no trade rows in the paper account
+2026-10-08T09:31:00-04:00 [note] paper toggles in mi_safeguard_state (read-only; patched IN-PROCESS for the partial only, prod unaffected): {'profit_take_resting_limit': 'no row', 'profit_take_oco': 'no row', 'magna53_depth_exit': 'no row'}
+2026-10-08T09:31:00-04:00 [note] open paper trade rows before the rehearsal: 0 (the rehearsal adds 2; they count toward the PAPER 5-position cap until cleanup)
+2026-10-08T09:31:00-04:00 [note] A1/A2/A3/B1 run no earlier than 10:00/10:05/10:10/10:15 ET (spec times; B1 has none) and each waits for the previous step's orders to show live at the broker (never pending_new) and its held shares to settle
+2026-10-08T09:31:00-04:00 [note] R1: waiting for 09:35 ET (spec time)
+2026-10-08T09:35:39-04:00 [R1] INFO — R1 the stop-restore retry against the real broker — B1→B2 on CL with NO routing waits (informational) | retry NOT exercised — the restore's FIRST attempt placed the stop (the cancel had already released the shares). Times (ET; an attempt's time is when it was SENT): stop sent 09:35:38.3 (pending_new, extra pending_new); exit called 09:35:38.3; cancel requested 09:35:38.3; broker confirmed the cancel 09:35:38.8 (+0.5 s); stream saw it 09:35:38.8; sale refused 09:35:38.9 ({"available":"3","code":40310000,"existing_qty":"4","held_for_orders":"1","message":"insufficient qty available for orde); restore attempts 1 (0 refused), first 09:35:38.9, placed 09:35:38.9 (+0.6 s) 32095cef. STOP NOT RESTORED page: no (its last line: Stop RESTORED at $82.93 — position is protected.); stop_ack_timeout_remediated: no; row #416 audit trail: ['09:35:38.3 planned_sale_stop_cancel(sma_trail_stop)', '09:35:38.8 dead_stop_price_preserved', '09:35:38.8 stop_order_id_changed(cancel_or_reject_null)', '09:35:38.9 full_exit_rejected(sma_trail_stop)', '09:35:38.9 stop_order_id_changed(restored_after_failed_full_exit)']
+2026-10-08T09:35:43-04:00 [R1f] INFO — R1: leave CL flat before A1 (informational) | CL flat at 09:35:43.8 ET: cancelled ['32095cef', '566ad2ee', '3a328a03']; sold 4 sh (d9ee51b5 filled); the broker shows no position and no open order; row #416 deleted (1)
+2026-10-08T09:35:43-04:00 [note] A1: waiting for 10:00 ET (spec time)
+2026-10-08T10:00:03-04:00 [A1] PASS — buy 3 KO + GTC stop 5% below; every share reserved | fill $86.76, stop $82.43 (315ba82c, new), row #417 entry $84.16 (set 3% under the fill so the breakeven step stays below market), partial_taken True (TRUE keeps production's +2R profit trigger off it), position 3.0 / free 0.0
+2026-10-08T10:00:03-04:00 [note] A2: waiting for 10:05 ET (spec time)
+2026-10-08T10:05:00-04:00 [A2] PASS — execute_partial_exit (limit far above) → OCO third resting, 2/3 stop live, every share reserved | returned True; OCO 39e09ba2 ('new', 1.0, 130.14); 2/3 stop ('18d33d91', 'new', 2.0, 82.43); free 0.0
+2026-10-08T10:05:00-04:00 [note] A3: waiting for 10:10 ET (spec time)
+2026-10-08T10:10:00-04:00 [A3] PASS — price-only replace of the 2/3 stop +1% → a new id, still covering | 18d33d91 → 53b0aa02 @ $83.25 (new, qty 2.0); row pointer 53b0aa02; free 0.0
+2026-10-08T10:10:20-04:00 [note] A3: audit rows naming P1 in the 20 s after the replace: none — the stream's unprotected page leaves no row; check the paper channel for a 'Stop order ... Position unprotected' page on KO around 10:10:00 ET
+2026-10-08T10:10:20-04:00 [note] B1: waiting for 10:15 ET (spec time)
+2026-10-08T10:15:01-04:00 [B1] PASS — P2: 4 PEP, row of 3 under a 3-sh stop + one extra 1-sh resting sell the books do not know (holds a share, not a pending exit) | fill $126.48, stop $120.16 (831b5850, new), extra 1c40f9b5 (new), row #418 partial_taken True, position 4.0 / free 0.0
+2026-10-08T10:15:03-04:00 [B2] PASS — extra sell holds a share → execute_full_exit rejected → stop restored at the same price (first attempt <= 5 s after the rejection, or the held-shares retry <= 17 s after its first refusal) → page | path: FIRST ATTEMPT — the shares were free; the held-shares retry was NOT exercised live (unit-tested only); returned False; sell error: {"available":"3","code":40310000,"existing_qty":"4","held_for_orders":"1","message":"insufficient qty available for order (requested: 4, available: 3)","symbol"; full_exit_rejected rows 1; restore placements 1 (0 refused), stop_restore_retried rows 0; restored ('492dd1b3', 'new', 3.0, 120.16) 0.16 s after the rejection (row points at it); page: 📄 PAPER 🧪 #687 REHEARSAL (paper test order, not a real position) — ⚠️ Full exit FAILED for PEP: {"available":"3","code":40310000,"existing_q
+2026-10-08T10:15:05-04:00 [B2b] PASS — the stream handled the planned-sale cancel without paging 'unprotected' | REPLACEMENT path — its broker check found the restored stop; the restore's own pointer stood (stop_pointer_repair_deferred); the 'Stop replaced' notice, not 'unprotected'
+2026-10-08T10:15:07-04:00 [B3] PASS — extra sell cancelled + extra share sold → P2 = 3 PEP under the restored stop | position 3.0 / free 0.0
+2026-10-08T10:15:07-04:00 [note] waiting for 15:51 ET
+2026-10-08T15:51:00-04:00 [A4] INFO — 15:51 market-on-close BUY 1 PG — paper's cutoff (informational) | ACCEPTED at 15:51:00 (1bede892; cancel sent) — paper takes this order after the documented 15:50 cutoff; production never sends a market-on-close order, so this is recorded, not judged
+2026-10-08T15:51:00-04:00 [note] waiting for 16:30 ET
+2026-10-08T16:30:00-04:00 [A5] PASS — 16:30 1-sh sell of KO while stop + OCO hold every share → insufficient qty / held_for_orders | {"available":"0","code":40310000,"existing_qty":"3","held_for_orders":"3","message":"insufficient qty available for order (requested: 1, available: 0)","related_orders":["39e09ba2-92ba-43c7-8548-5eb3bb079806","53b0aa02-0e70-402d-8865-66ad4790bf4a"],"symbol":"KO"}
+2026-10-08T16:30:00-04:00 [note] waiting for 16:45 ET
+2026-10-08T16:45:00-04:00 [A6] PASS — 16:45 execute_full_exit returned True | returned True
+2026-10-08T16:45:00-04:00 [A6a] PASS — the per-trade lock was held when the sale went out | pg_locks advisory (5259602, 417) granted=True
+2026-10-08T16:45:00-04:00 [A6b] PASS — stop cancelled and the shares free <= 5 s | cancel 53b0aa02 → canceled; sale sent 0.05 s after the cancel with 2.0 sh free
+2026-10-08T16:45:00-04:00 [A6c] PASS — close_position(qty=2) accepted | qty=2 ok=True order 62a96d17 accepted 
+2026-10-08T16:45:00-04:00 [A6d] PASS — the OCO third untouched | OCO 39e09ba2 new
+2026-10-08T16:45:00-04:00 [A6e] PASS — a full_exit row written | mi_live_orders full_exit [('62a96d17', 2.0)]
+2026-10-08T16:45:03-04:00 [A6f] PASS — NO 'unprotected' page: the stream recorded the planned-sale cancel | planned_sale_stop_cancel 1, stop_cancel_by_planned_sale_silent 1
+2026-10-08T16:45:03-04:00 [note] waiting for 16:46 ET
+2026-10-08T16:46:00-04:00 [A7] PASS — 16:46 opening-auction BUY 1 PG → rejected (cutoff) | rejected: {"code":40310000,"message":"opg orders must be submitted after 7:00pm and before 9:28am"}
+2026-10-08T16:46:00-04:00 [note] waiting for 18:50 ET
+2026-10-08T18:50:00-04:00 [A8] PASS — P2 #418 ready and stamped exit_rule='depth', marked to sell at the next open (the 16:45 decision skips a same-day row; unit-tested) | row ('filled', 3.0), position 3.0, row stop 492dd1b3 ('new', 3.0), other open orders []; B3 said ready
+2026-10-08T18:50:00-04:00 [note] waiting for 19:04 ET
+2026-10-08T19:04:00-04:00 [A9] PASS — the opening-auction (opg) sale queued for P2 at 19:01 | driven by the PRODUCTION 19:01 job; order 5f38a844 accepted qty 3.0; stop 492dd1b3 canceled; other rows none
+2026-10-08T19:04:00-04:00 [A9b] PASS — NO 'unprotected' page for the depth stop's cancel | silent row found
+2026-10-08T19:04:00-04:00 [note] pages sent by THIS process (paper prefix + rehearsal tag): ['📄 PAPER 🧪 #687 REHEARSAL (paper test order, not a real position) — ⚠️ Full exit FAILED for CL: {"available":"3","code":4', '📄 PAPER 🧪 #687 REHEARSAL (paper test order, not a real position) — 📋 *Profit-take resting (OCO):* KO\nLimit sell 1 sh @ $', '📄 PAPER 🧪 #687 REHEARSAL (paper test order, not a real position) — ⚠️ Full exit FAILED for PEP: {"available":"3","code":', '📄 PAPER 🧪 #687 REHEARSAL (paper test order, not a real position) — 📋 *Closing order placed:* KO — sma_trail_stop\nMarket ']; pages from the production stream / 19:01 job carry the system's own paper prefix
+2026-10-08T19:04:00-04:00 [note] Day B has ['P1', 'P2'] to test — state LEFT for Day B (its cleanup flattens everything); positions Day B cannot test: none
+2026-10-08T19:04:00-04:00 [note] Day A RESULT: 19 PASS, 0 FAIL, 0 SKIP, 3 INFO
+==STATE
+{
+ "day_a": "2026-10-08",
+ "tickers": [
+  "KO",
+  "PEP",
+  "PG"
+ ],
+ "started_at": "2026-10-08T09:31:00.016011-04:00",
+ "order_ids": [
+  "64e52fa8-ddf0-4b36-a16f-979ff1777f1b",
+  "3a328a03-3288-44dd-b71d-dd12f8bc70f0",
+  "566ad2ee-fcb9-4393-878c-76d66fa20a0d",
+  "32095cef-934e-457e-aed0-131092267511",
+  "d9ee51b5-6c5e-4907-b1ee-90fd3054d692",
+  "50e36552-1386-4984-9058-dd2a30a8a6dc",
+  "315ba82c-55f9-40b4-a805-e82f930072a9",
+  "d156d056-e66a-4ef7-abcd-93226bbd7d8d",
+  "831b5850-3d1e-4a88-ad36-be33d274ef9d",
+  "1c40f9b5-c500-4c62-9113-75e0f99851ed",
+  "b38e8567-53a6-49ce-aa6a-b1bbf25d7273",
+  "1bede892-7aa9-45c2-920d-e20aba89eb6a"
+ ],
+ "p1": {
+  "trade_id": 417,
+  "fill": 86.763333,
+  "stop_price": 82.43,
+  "entry": 84.16,
+  "oco_id": "39e09ba2-92ba-43c7-8548-5eb3bb079806",
+  "stop2_id": "18d33d91-bdcd-45ae-89e1-495debb8d741",
+  "limit": 130.14,
+  "stop3_id": "53b0aa02-0e70-402d-8865-66ad4790bf4a",
+  "stop3_price": 83.25,
+  "sale_id": "62a96d17-af9f-490e-8bb4-328e08c0cbbe"
+ },
+ "p2": {
+  "trade_id": 418,
+  "fill": 126.48,
+  "stop_price": 120.16,
+  "extra_id": "1c40f9b5-c500-4c62-9113-75e0f99851ed",
+  "restored_stop_id": "492dd1b3-3cb1-40a4-9938-c45b8f28457f",
+  "ready": true,
+  "stop_at_mark": "492dd1b3-3cb1-40a4-9938-c45b8f28457f",
+  "marked_at": "2026-10-08T18:50:00.118101-04:00",
+  "sale_id": "5f38a844-7acf-4f5e-a841-ae7847b71707"
+ },
+ "r1": {
+  "ticker": "CL",
+  "started_at": "2026-10-08T09:35:30.063409-04:00",
+  "buy_id": "64e52fa8-ddf0-4b36-a16f-979ff1777f1b",
+  "stop_id": "3a328a03-3288-44dd-b71d-dd12f8bc70f0",
+  "extra_id": "566ad2ee-fcb9-4393-878c-76d66fa20a0d",
+  "trade_id": 416,
+  "fill": 87.3,
+  "stop_price": 82.93,
+  "restored_stop_id": "32095cef-934e-457e-aed0-131092267511",
+  "flatten_id": "d9ee51b5-6c5e-4907-b1ee-90fd3054d692",
+  "flat": true
+ }
+}==PS
