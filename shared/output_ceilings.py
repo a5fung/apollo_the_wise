@@ -241,8 +241,11 @@ CEILINGS: dict[str, OutputCeiling] = {
         "thinking=DISABLED at both call sites (forced tool from turn 1, no advisor "
         "branch) — this number is a text-only budget again."),
     "theme_descriptions": OutputCeiling(
-        500, "DESCRIPTION_MODEL", "claude-haiku-4-5-20251001",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
-        "136 haiku calls, max completed 308 (62% of cap)."),
+        2000, "DESCRIPTION_MODEL", "claude-haiku-5-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        "136 haiku-4-5 calls, max completed 308 (62% of 500). 2026-10-08: the tier moved to haiku-5-5 (10-07 "
+        "21:22 resolution) and this prompt's output went from avg 51 to avg 328 tokens on its first 4 calls, "
+        "one cut at 500 (a 15-ticker JSON map cut mid-object loses that whole chunk's descriptions); raised to "
+        "2000 like description_backfill, billed only on use."),
     "theme_validation": OutputCeiling(
         1000, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "RAISED 2026-08-13 from 400 (#479): near-ceiling fired at 385/400. Verified in "

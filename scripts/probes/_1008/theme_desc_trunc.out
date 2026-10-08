@@ -1,0 +1,11 @@
+{'d': datetime.date(2026, 10, 5), 'model': 'claude-haiku-4-5-20251001', 'n': 3, 'mx': 76, 'av': Decimal('44'), 'trunc': 0, 'avg_in': Decimal('430'), 'max_in': 524}
+{'d': datetime.date(2026, 10, 6), 'model': 'claude-haiku-4-5-20251001', 'n': 1, 'mx': 109, 'av': Decimal('109'), 'trunc': 0, 'avg_in': Decimal('638'), 'max_in': 638}
+{'d': datetime.date(2026, 10, 7), 'model': 'claude-haiku-4-5-20251001', 'n': 1, 'mx': 44, 'av': Decimal('44'), 'trunc': 0, 'avg_in': Decimal('425'), 'max_in': 425}
+{'d': datetime.date(2026, 10, 8), 'model': 'claude-haiku-5-5', 'n': 4, 'mx': 500, 'av': Decimal('328'), 'trunc': 1, 'avg_in': Decimal('665'), 'max_in': 781}
+TRUNC: {'t': datetime.datetime(2026, 10, 8, 17, 2, 17, 765080), 'model': 'claude-haiku-5-5', 'input_tokens': 781, 'output_tokens': 500, 'stop_reason': 'max_tokens'}
+MODEL: 10-07 21:22 model_resolution_change MARKET_AGENT_MODEL: claude-haiku-4-5-20251001 -> claude-haiku-5-5 [cache]
+MODEL: 10-07 21:22 model_resolution_change JUDGE_NAMED_THEMES_MODEL: claude-haiku-4-5-20251001 -> claude-haiku-5-5 [cache]
+MODEL: 10-07 21:22 model_resolution_change HEALTHCHECK_MODEL: claude-haiku-4-5-20251001 -> claude-haiku-5-5 [cache]
+MODEL: 10-07 21:22 model_resolution_change ECOSYSTEM_ASSIGN_MODEL: claude-haiku-4-5-20251001 -> claude-haiku-5-5 [cache]
+MODEL: 10-07 21:22 model_resolution_change DESCRIPTION_MODEL: claude-haiku-4-5-20251001 -> claude-haiku-5-5 [cache]
+MODEL: 10-07 21:22 model_resolution_change COMPRESSION_MODEL: claude-haiku-4-5-20251001 -> claude-haiku-5-5 [cache]

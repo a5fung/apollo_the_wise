@@ -1,0 +1,11 @@
+catalyst_type_classifier           claude-haiku-4-5-20251001  n=9    avg=114    max=144   trunc=0  cap=220
+catalyst_type_classifier           claude-haiku-5-5           n=1    avg=137    max=137   trunc=0  cap=220
+description_backfill               claude-haiku-4-5-20251001  n=5    avg=110    max=196   trunc=0  cap=2000
+description_backfill               claude-haiku-5-5           n=1    avg=246    max=246   trunc=0  cap=2000
+judge_named_themes                 claude-haiku-4-5-20251001  n=9    avg=66     max=100   trunc=0  cap=900
+model_replay                       claude-haiku-5-5           n=15   avg=150    max=310   trunc=0  cap=?
+theme_descriptions                 claude-haiku-4-5-20251001  n=9    avg=51     max=109   trunc=0  cap=500
+theme_descriptions                 claude-haiku-5-5           n=4    avg=328    max=500   trunc=1  cap=500
+theme_ecosystem_assignment         claude-haiku-4-5-20251001  n=58   avg=331    max=457   trunc=0  cap=1000
+theme_ecosystem_assignment         claude-haiku-5-5           n=8    avg=319    max=413   trunc=0  cap=1000
+theme_merge_adjudication           claude-haiku-4-5-20251001  n=46   avg=404    max=519   trunc=0  cap=700

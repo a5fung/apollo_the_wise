@@ -6048,7 +6048,7 @@ reviews:
       population_actionable: "The action is a build sequence (ADR 0006 section 7), not a read of this population; it waits on his scoping session."
       instrument_trusted: "mi_ep_scan_outcomes is the nightly outcome writer used by the weekly review's EP outcomes section."
     threshold: 30
-    earliest_review_date: 2026-10-01
+    earliest_review_date: 2026-11-01   # the 10-05 re-park moved deferred_until but not this — the checker reads THIS (fixed 10-08 after it escalated as overdue)
     # >> GATE MET 2026-07-13 (Opus): 53>=30 settled C1 data + past the 6/22 cutover → the
     #    SEQUENCING gate is CLEAR to build. But the action is a BIG-ROCK (a new C2/C3 multi-turn
     #    investigator+advisor LLM subsystem per ADR 0006 §7) → needs its own scoping/build session,
@@ -7529,7 +7529,7 @@ reviews:
       population_actionable: "The action classifies exactly these L2 events (false positive in a trending metric vs real anomaly)."
       instrument_trusted: "mi_audit_log anomaly_detected rows are what the L2 path writes and what the weekly review counts."
     threshold: 6
-    earliest_review_date: 2026-10-01
+    earliest_review_date: 2026-11-01   # the 10-05 re-park moved deferred_until but not this — the checker reads THIS (fixed 10-08 after it escalated as overdue)
     action_when_ready: |
       With ≥6 L2 events in last 90d, categorize each:
         - FP (false positive, metric in transition): supports change
