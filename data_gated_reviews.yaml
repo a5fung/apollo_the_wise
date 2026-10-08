@@ -12824,6 +12824,15 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_10_08: >-
+      RAN 2026-10-08 16:45 PDT, same SQL (scripts/probes/_rank_shadow/verify_rank_shadow_2026-10-08.out): n = 22
+      sessions, 47 rows, 39 with a matured 5-day outcome. Two new sessions, both a pool of ONE (outside the
+      rule's reach — a lone alert is taken regardless of rank): PENG 10-07 (bought; 2.5x ADR in two sessions,
+      low held) and WOLF 10-08 (not filled). SNPS/ACN (10-01) MATURED: SNPS (top quartile) 2.6x ADR, held its
+      EP-day low; ACN (rank 0.75) 1.6x, broke its low. Updated cells (EOD rank): top quartile 6 matured, 0
+      reached 8x, 4 broke their low; the rest 33 matured, 2 reached 8x (MRNA, KOD — neither top quartile), 22
+      broke their low. 09:45 rank: top 5 / 0 / 3, rest 34 / 2 / 23. Conclusion unchanged: THIN (22 of 25),
+      directional only, against the rule. Next movement: the 10-05/10-06 pools mature ~10-13/10-14.
     resolution_2026_10_07: >-
       RAN 2026-10-07 06:50 PDT, same SQL (scripts/probes/_rank_shadow/verify_rank_shadow_2026-10-07.out): n = 20
       sessions, 45 rows. The one new session is 2026-10-06, a pool of 3 HIGH power names: CEG (bought, rank 0.5
