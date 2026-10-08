@@ -1420,3 +1420,11 @@ stagger cards, one at a time.
 **Waiting on him:** #658 15-day read — P1b missed (tape removed 119 label-matched members vs added 45); keep, or sample 20 removals first.
 
 **Standing:** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
+
+## 2026-10-07 (Wed) CLOSE — 🔴 RESUME HERE. Supersedes the 10-06 close above.
+
+**Board 40 → 41** — filed #696 (/trades shows R on closed trades, no attempts count; his ask, carryover 1 on his auth). No closes today. Server = dc040c7c (deployed 21:15 ET, both + execution, verified in both containers): acting EP-bar labels, live-only open trades, second-opinion ceiling, #635 F8 baseline, #687 restore-retry + rehearsal R1. ⚠ The NOON deploy was missed (fixed-duration sleeps drift while the laptop sleeps — wakes are wall-clock loops now). After the deploy, simplify commit b00386a7 touched ep_detector.py again (comments, the threshold fold, a per-tick INFO drop-count log) — ships Fri noon (rehearsal freeze Thu 09:35 → Fri ~09:40).
+
+**Today:** paper KO/PEP flat; VICR stopped out at the open $287.23 (+7.5R) — under the depth rule it would sell at Thu's open (close $283.30 < line $292.84, depth stop $274 untouched): compare Thu. PENG caught + bought live, added to his labelled EP list; its fill sat 4.3% above the trigger (real risk +31% over budget, #482 data point). Book/trader chart notes (PENG pivot lines) captured. #635 F8 fired on every tick on the thin-ticker background → baselined (no-prev-close past 4%); the #635 close carries an addendum. #655: wait night 2 G4 12.1% (7 held), rule A hold-out → his ruling: RULE A OFF; next = scope a fix for 2–3-member themes. #597/#540 still event-gated (→ 10-21); #505 0 links in 7 runs → read by Fri.
+
+**Thu 10-08:** 09:28 ET `status` → docker cp the new paper_rehearsal.py → in-container `day-a --dry-run` → launch day-a (R1 09:35:30, A1 10:00). VICR open vs 287.23. #327 H6–H9. F8 verify = 0 `ep_candidate_parse_error` rows. Night: #655 G4. **Fri 10-09:** Day B + his #687 go-live call; #694 tie-breaker test; #505 queue read; noon deploy of b00386a7 (diff dc040c7c..HEAD first). **Sun 10-11:** #624 paper lane + #692 Alpaca/Benzinga scan.
