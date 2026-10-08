@@ -1,0 +1,91 @@
+HOLD-OUT live rows: 10-05 G3 100/116=86.2%, 10-06 G3 105/120=87.5%, 10-07 G3 106/124=85.5%
+
+SOURCE CHECK — study's rebuilt verdicts vs live rows on the 5 overlap nights:
+  2026-09-28: themes in both 117, same verdict 114 (97.4%) | fails rebuilt 13 live 12
+  2026-09-29: themes in both 122, same verdict 119 (97.5%) | fails rebuilt 14 live 13
+  2026-09-30: themes in both 129, same verdict 125 (96.9%) | fails rebuilt 14 live 12
+  2026-10-01: themes in both 131, same verdict 130 (99.2%) | fails rebuilt 15 live 14
+  2026-10-02: themes in both 133, same verdict 132 (99.2%) | fails rebuilt 17 live 16
+
+A3a (switched on Mon 10-05): retires 9 in the hold-out | later-real at 10-07 0 []
+   G3 after rule by night: 10-05 86.2% (100/116) FAIL | 10-06 87.5% (105/120) FAIL | 10-07 92.2% (106/115) PASS
+   2026-10-07 retire Bitcoin Mining Stocks Rotation Reversal                        size  2 Fading       rs_avg None | 10-07: on board, fail
+   2026-10-07 retire Digital Advertising & Ad-Tech Monetization Platforms           size  2 Mainstream   rs_avg 92.9 | 10-07: on board, fail
+   2026-10-07 retire Digital Dollar & Crypto Payments Infrastructure                size  2 Mainstream   rs_avg 92.7 | 10-07: on board, fail
+   2026-10-07 retire Emerging Medical Device Innovators Breakout                    size  3 Mainstream   rs_avg 84.6 | 10-07: on board, fail
+   2026-10-07 retire Enterprise Unstructured Data Storage Infrastructure            size  3 Mainstream   rs_avg 95.9 | 10-07: on board, fail
+   2026-10-07 retire Fintech Payments, Prepaid & Consumer Digital Banking Apps      size  3 Nascent      rs_avg 91.0 | 10-07: on board, fail
+   2026-10-07 retire Latin America Telecom & Pay-TV Services                        size  2 Fading       rs_avg None | 10-07: on board, fail
+   2026-10-07 retire Programmatic Advertising & Cloud Communications API Platforms  size  2 Nascent      rs_avg 91.2 | 10-07: on board, fail
+   2026-10-07 retire Specialty Biopharma Clinical & Commercial Breakouts (Retinal,  size  3 Nascent      rs_avg 94.5 | 10-07: on board, fail
+
+A3b (running since 09-08): retires 5 in the hold-out | later-real at 10-07 0 []
+   G3 after rule by night: 10-05 94.1% (95/101) PASS | 10-06 94.3% (99/105) PASS | 10-07 91.6% (98/107) PASS
+   of which already retired in discovery and still on the live board: {'10-05': 13, '10-06': 12, '10-07': 12}
+   2026-10-05 retire Bitcoin Mining Stocks Rotation Reversal                        size  3 Fading       rs_avg None | 10-07: on board, fail
+   2026-10-05 retire Specialty Biopharma Clinical & Commercial Breakouts (Retinal,  size  3 Nascent      rs_avg 96.8 | 10-07: on board, fail
+   2026-10-06 retire Fintech Payments, Prepaid & Consumer Digital Banking Apps      size  3 Nascent      rs_avg 90.5 | 10-07: on board, fail
+   2026-10-07 retire Latin America Telecom & Pay-TV Services                        size  2 Fading       rs_avg None | 10-07: on board, fail
+   2026-10-07 retire Programmatic Advertising & Cloud Communications API Platforms  size  2 Nascent      rs_avg 91.2 | 10-07: on board, fail
+
+A5a (switched on Mon 10-05): retires 0 in the hold-out | later-real at 10-07 0 []
+   G3 after rule by night: 10-05 86.2% (100/116) FAIL | 10-06 87.5% (105/120) FAIL | 10-07 85.5% (106/124) FAIL
+
+A5b (running since 09-08): retires 2 in the hold-out | later-real at 10-07 0 []
+   G3 after rule by night: 10-05 91.5% (97/106) PASS | 10-06 91.0% (101/111) PASS | 10-07 88.5% (100/113) FAIL
+   of which already retired in discovery and still on the live board: {'10-05': 10, '10-06': 9, '10-07': 9}
+   2026-10-07 retire Bitcoin Mining Stocks Rotation Reversal                        size  2 Fading       rs_avg None | 10-07: on board, fail
+   2026-10-07 retire Specialty Biopharma Clinical & Commercial Breakouts (Retinal,  size  3 Nascent      rs_avg 94.5 | 10-07: on board, fail
+
+FORWARD CHECK — discovery-window retirements re-judged on the hold-out nights (on board? passing G3?)
+  A3: 26 discovery retirements | later-real at 10-02 (study) 7 | later-real at 10-07 8
+    Cloud Data Storage & Analytics Infrastructure              REAL@10-02 REAL@10-07  10-05 PASS/3   10-06 PASS/3   10-07 PASS/3  
+    Cloud Supply Chain & Warehouse Management Software         REAL@10-02 REAL@10-07  10-05 PASS/3   10-06 PASS/3   10-07 PASS/3  
+    Consumer PC & Gaming Hardware Refresh Cycle                REAL@10-02             10-05 --       10-06 --       10-07 --      
+    Digital Advertising & Ad-Tech Monetization Platforms       REAL@10-02             10-05 fail/2   10-06 fail/2   10-07 fail/2  
+    Life Sciences & Healthcare Data/CRM Platforms              REAL@10-02 REAL@10-07  10-05 PASS/3   10-06 fail/3   10-07 PASS/3  
+    Post-Acute & Home-Based Healthcare Services                REAL@10-02 REAL@10-07  10-05 PASS/8   10-06 PASS/8   10-07 PASS/6  
+    Wealth Management & Retail Brokerage Platforms             REAL@10-02 REAL@10-07  10-05 PASS/12  10-06 PASS/14  10-07 PASS/14 
+    Cardiac & Bioelectric Ablation Device Innovators                                  10-05 fail/2   10-06 --       10-07 --      
+    Defense Electronics & Aerospace Subsystem Suppliers                               10-05 --       10-06 --       10-07 --      
+    Diabetes Management Devices (CGM, Insulin Pumps & Delivery            REAL@10-07  10-05 fail/3   10-06 fail/3   10-07 PASS/3  
+    Digital Dollar & Crypto Payments Infrastructure                                   10-05 fail/2   10-06 fail/2   10-07 fail/2  
+    Digital Insurance Distribution & InsurTech Platforms                              10-05 --       10-06 --       10-07 --      
+    Direct-to-Consumer Health & Wellness Subscription Brands                          10-05 --       10-06 --       10-07 --      
+    Diversified Power Generation Capacity Expansion for AI Ele                        10-05 --       10-06 --       10-07 --      
+    Electric & Unmanned Aircraft Innovators                                           10-05 --       10-06 --       10-07 --      
+    Emerging Market Digital Payment Processors                                        10-05 --       10-06 --       10-07 --      
+    Emerging Medical Device Innovators Breakout                                       10-05 fail/3   10-06 fail/3   10-07 fail/3  
+    Enterprise Unstructured Data Storage Infrastructure                               10-05 fail/3   10-06 fail/3   10-07 fail/3  
+    Industrial Construction Execution & On-Site Supply Chain              REAL@10-07  10-05 fail/8   10-06 PASS/10  10-07 PASS/10 
+    Industrial Equipment & Flow Control – Capex Cycle Recovery                        10-05 --       10-06 --       10-07 --      
+    Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound                         10-05 --       10-06 --       10-07 --      
+    Liquid Biopsy & Molecular Cancer Diagnostics Testing                  REAL@10-07  10-05 fail/3   10-06 PASS/4   10-07 PASS/4  
+    Media Streaming & Entertainment Content Turnaround                                10-05 --       10-06 --       10-07 --      
+    Molecular & Genomic Diagnostic Testing                                            10-05 --       10-06 --       10-07 --      
+    Newly Public Digital Trading & Brokerage Platforms                                10-05 --       10-06 --       10-07 --      
+    Video & Streaming Content Distribution Rebound                                    10-05 --       10-06 --       10-07 --      
+  A5: 23 discovery retirements | later-real at 10-02 (study) 4 | later-real at 10-07 6
+    Cloud Data Storage & Analytics Infrastructure              REAL@10-02 REAL@10-07  10-05 PASS/3   10-06 PASS/3   10-07 PASS/3  
+    Cloud Supply Chain & Warehouse Management Software         REAL@10-02 REAL@10-07  10-05 PASS/3   10-06 PASS/3   10-07 PASS/3  
+    Consumer PC & Gaming Hardware Refresh Cycle                REAL@10-02             10-05 --       10-06 --       10-07 --      
+    Life Sciences & Healthcare Data/CRM Platforms              REAL@10-02 REAL@10-07  10-05 PASS/3   10-06 fail/3   10-07 PASS/3  
+    Cardiac & Bioelectric Ablation Device Innovators                                  10-05 fail/2   10-06 --       10-07 --      
+    Defense Electronics & Aerospace Subsystem Suppliers                               10-05 --       10-06 --       10-07 --      
+    Diabetes Management Devices (CGM, Insulin Pumps & Delivery            REAL@10-07  10-05 fail/3   10-06 fail/3   10-07 PASS/3  
+    Digital Dollar & Crypto Payments Infrastructure                                   10-05 fail/2   10-06 fail/2   10-07 fail/2  
+    Digital Insurance Distribution & InsurTech Platforms                              10-05 --       10-06 --       10-07 --      
+    Direct-to-Consumer Health & Wellness Subscription Brands                          10-05 --       10-06 --       10-07 --      
+    Diversified Power Generation Capacity Expansion for AI Ele                        10-05 --       10-06 --       10-07 --      
+    Electric & Unmanned Aircraft Innovators                                           10-05 --       10-06 --       10-07 --      
+    Emerging Market Digital Payment Processors                                        10-05 --       10-06 --       10-07 --      
+    Emerging Medical Device Innovators Breakout                                       10-05 fail/3   10-06 fail/3   10-07 fail/3  
+    Enterprise Unstructured Data Storage Infrastructure                               10-05 fail/3   10-06 fail/3   10-07 fail/3  
+    Industrial Construction Execution & On-Site Supply Chain              REAL@10-07  10-05 fail/8   10-06 PASS/10  10-07 PASS/10 
+    Industrial Equipment & Flow Control – Capex Cycle Recovery                        10-05 --       10-06 --       10-07 --      
+    Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound                         10-05 --       10-06 --       10-07 --      
+    Liquid Biopsy & Molecular Cancer Diagnostics Testing                  REAL@10-07  10-05 fail/3   10-06 PASS/4   10-07 PASS/4  
+    Media Streaming & Entertainment Content Turnaround                                10-05 --       10-06 --       10-07 --      
+    Molecular & Genomic Diagnostic Testing                                            10-05 --       10-06 --       10-07 --      
+    Newly Public Digital Trading & Brokerage Platforms                                10-05 --       10-06 --       10-07 --      
+    Video & Streaming Content Distribution Rebound                                    10-05 --       10-06 --       10-07 --      

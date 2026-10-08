@@ -1,0 +1,77 @@
+DISCOVERY anchor — study capture, verify_b/verify_c method, nights 2026-09-08 .. 2026-10-02 (19)
+  2026-09-08 board 106 judgeable 105 fails 16 G3 84.8%
+  2026-09-09 board 103 judgeable 101 fails 12 G3 88.1%
+  2026-09-10 board 116 judgeable 116 fails 16 G3 86.2%
+  2026-09-11 board 119 judgeable 119 fails 19 G3 84.0%
+  2026-09-14 board 121 judgeable 120 fails 20 G3 83.3%
+  2026-09-15 board 115 judgeable 114 fails 17 G3 85.1%
+  2026-09-16 board 118 judgeable 117 fails 16 G3 86.3%
+  2026-09-17 board 118 judgeable 116 fails 17 G3 85.3%
+  2026-09-18 board 110 judgeable 108 fails 14 G3 87.0%
+  2026-09-21 board 113 judgeable 111 fails 14 G3 87.4%
+  2026-09-22 board 109 judgeable 108 fails 13 G3 88.0%
+  2026-09-23 board 115 judgeable 114 fails 10 G3 91.2%
+  2026-09-24 board 109 judgeable 108 fails 12 G3 88.9%
+  2026-09-25 board 118 judgeable 118 fails 16 G3 86.4%
+  2026-09-28 board 118 judgeable 118 fails 13 G3 89.0%
+  2026-09-29 board 122 judgeable 122 fails 14 G3 88.5%
+  2026-09-30 board 129 judgeable 129 fails 14 G3 89.1%
+  2026-10-01 board 131 judgeable 131 fails 15 G3 88.5%
+  2026-10-02 board 133 judgeable 133 fails 17 G3 87.2%
+
+A3: retire events 26 | later-real (on 10-02 board AND pass 10-02) 7
+   G3 nights >= 90%: verify_c formula 17/19 | passing/judgeable 17/19
+   per night (judgeable): 09-08=84.8 09-09=88.1 09-10=94.3 09-11=92.6 09-14=94.3 09-15=96.9 09-16=98.0 09-17=96.0 09-18=97.8 09-21=98.9 09-22=100.0 09-23=99.0 09-24=96.7 09-25=96.0 09-28=98.0 09-29=99.0 09-30=98.2 10-01=96.5 10-02=94.0
+   2026-09-10 retire Cloud Supply Chain & Warehouse Management Software             size@retire  2 LATER-REAL
+   2026-09-10 retire Digital Insurance Distribution & InsurTech Platforms           size@retire  4 
+   2026-09-10 retire Diversified Power Generation Capacity Expansion for AI Electri size@retire  5 
+   2026-09-10 retire Enterprise Unstructured Data Storage Infrastructure            size@retire  3 
+   2026-09-10 retire Industrial Construction Execution & On-Site Supply Chain       size@retire  7 
+   2026-09-10 retire Life Sciences & Healthcare Data/CRM Platforms                  size@retire  3 LATER-REAL
+   2026-09-10 retire Media Streaming & Entertainment Content Turnaround             size@retire  2 
+   2026-09-10 retire Molecular & Genomic Diagnostic Testing                         size@retire  4 
+   2026-09-10 retire Newly Public Digital Trading & Brokerage Platforms             size@retire  2 
+   2026-09-10 retire Video & Streaming Content Distribution Rebound                 size@retire  3 
+   2026-09-11 retire Consumer PC & Gaming Hardware Refresh Cycle                    size@retire  2 LATER-REAL
+   2026-09-14 retire Cardiac & Bioelectric Ablation Device Innovators               size@retire  2 
+   2026-09-14 retire Emerging Market Digital Payment Processors                     size@retire  2 
+   2026-09-14 retire Industrial Equipment & Flow Control – Capex Cycle Recovery     size@retire  4 
+   2026-09-15 retire Defense Electronics & Aerospace Subsystem Suppliers            size@retire  4 
+   2026-09-15 retire Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound      size@retire  4 
+   2026-09-16 retire Emerging Medical Device Innovators Breakout                    size@retire  3 
+   2026-09-18 retire Post-Acute & Home-Based Healthcare Services                    size@retire  2 LATER-REAL
+   2026-09-18 retire Wealth Management & Retail Brokerage Platforms                 size@retire 14 LATER-REAL
+   2026-09-21 retire Cloud Data Storage & Analytics Infrastructure                  size@retire  4 LATER-REAL
+   2026-09-21 retire Digital Advertising & Ad-Tech Monetization Platforms           size@retire  5 LATER-REAL
+   2026-09-25 retire Electric & Unmanned Aircraft Innovators                        size@retire  2 
+   2026-09-28 retire Diabetes Management Devices (CGM, Insulin Pumps & Delivery)    size@retire  3 
+   2026-09-28 retire Liquid Biopsy & Molecular Cancer Diagnostics Testing           size@retire  3 
+   2026-09-29 retire Direct-to-Consumer Health & Wellness Subscription Brands       size@retire  3 
+   2026-09-30 retire Digital Dollar & Crypto Payments Infrastructure                size@retire  2 
+
+A5: retire events 23 | later-real (on 10-02 board AND pass 10-02) 4
+   G3 nights >= 90%: verify_c formula 15/19 | passing/judgeable 15/19
+   per night (judgeable): 09-08=84.8 09-09=88.1 09-10=86.2 09-11=84.0 09-14=90.9 09-15=92.2 09-16=95.1 09-17=95.0 09-18=95.7 09-21=95.8 09-22=96.8 09-23=99.0 09-24=96.8 09-25=94.3 09-28=95.3 09-29=95.4 09-30=96.5 10-01=95.8 10-02=94.1
+   2026-09-14 retire Cloud Supply Chain & Warehouse Management Software             size@retire  2 LATER-REAL
+   2026-09-14 retire Digital Insurance Distribution & InsurTech Platforms           size@retire  4 
+   2026-09-14 retire Diversified Power Generation Capacity Expansion for AI Electri size@retire  4 
+   2026-09-14 retire Enterprise Unstructured Data Storage Infrastructure            size@retire  3 
+   2026-09-14 retire Industrial Construction Execution & On-Site Supply Chain       size@retire  8 
+   2026-09-14 retire Life Sciences & Healthcare Data/CRM Platforms                  size@retire  3 LATER-REAL
+   2026-09-14 retire Media Streaming & Entertainment Content Turnaround             size@retire  3 
+   2026-09-14 retire Molecular & Genomic Diagnostic Testing                         size@retire  4 
+   2026-09-14 retire Newly Public Digital Trading & Brokerage Platforms             size@retire  2 
+   2026-09-14 retire Video & Streaming Content Distribution Rebound                 size@retire  2 
+   2026-09-15 retire Consumer PC & Gaming Hardware Refresh Cycle                    size@retire  2 LATER-REAL
+   2026-09-16 retire Cardiac & Bioelectric Ablation Device Innovators               size@retire  2 
+   2026-09-16 retire Emerging Market Digital Payment Processors                     size@retire  2 
+   2026-09-16 retire Industrial Equipment & Flow Control – Capex Cycle Recovery     size@retire  4 
+   2026-09-17 retire Defense Electronics & Aerospace Subsystem Suppliers            size@retire  4 
+   2026-09-17 retire Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound      size@retire  3 
+   2026-09-18 retire Emerging Medical Device Innovators Breakout                    size@retire  3 
+   2026-09-23 retire Cloud Data Storage & Analytics Infrastructure                  size@retire  4 LATER-REAL
+   2026-09-29 retire Electric & Unmanned Aircraft Innovators                        size@retire  2 
+   2026-09-30 retire Diabetes Management Devices (CGM, Insulin Pumps & Delivery)    size@retire  3 
+   2026-09-30 retire Liquid Biopsy & Molecular Cancer Diagnostics Testing           size@retire  3 
+   2026-10-01 retire Direct-to-Consumer Health & Wellness Subscription Brands       size@retire  2 
+   2026-10-02 retire Digital Dollar & Crypto Payments Infrastructure                size@retire  2 
