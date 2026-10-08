@@ -185,6 +185,77 @@ def test_g4_passes_at_zero_small_themes_and_fails_on_one_two_member_theme():
     assert bad["pass_bar"] is False and bad["list"] == ["Tiny"]
 
 
+
+# ── G4 settled (operator 2026-10-08: keep rule B's wait, report G4 two ways) ─────────────────────
+_TONIGHT = date(2026, 10, 8)
+
+
+def _row(name, n, *, stage="Fading", rs_avg=None, d=_TONIGHT):
+    return {"name": name, "stage": stage, "rs_avg": rs_avg, "theme_date": d,
+            "tickers": [f"{name}{i}" for i in range(n)]}
+
+
+def _hist(name, n, d):
+    return {"date": d, "name": name, "tickers": [f"{name}{i}" for i in range(n)]}
+
+
+def test_waiting_night_holds_only_a_newly_shrunk_weak_fading_theme():
+    board = [
+        _row("Shrunk", 2),                              # 4 last night -> held tonight
+        _row("New", 1),                                 # no previous night -> held
+        _row("StaleOnly", 2),                           # previous row 9 days back -> no prior -> held
+        _row("AlreadySmall", 2),                        # 2 last night -> retire-eligible, not waiting
+        _row("Scored", 2, rs_avg=71.0),                 # numeric rs_avg -> the scored path, never held
+        _row("Live", 2, stage="Nascent"),               # not Fading
+        _row("Big", 3),                                 # not under 3
+    ]
+    yday = _TONIGHT - timedelta(days=1)
+    history = [
+        _hist("Shrunk", 4, yday), _hist("Shrunk", 2, _TONIGHT),   # tonight's own row is not "prior"
+        _hist("StaleOnly", 2, _TONIGHT - timedelta(days=9)),
+        _hist("AlreadySmall", 5, _TONIGHT - timedelta(days=3)), _hist("AlreadySmall", 2, yday),
+        _hist("Scored", 5, yday), _hist("Live", 5, yday), _hist("Big", 5, yday),
+    ]
+    assert tc.waiting_night_names(board, history) == {"Shrunk", "New", "StaleOnly"}
+
+
+def test_waiting_night_agrees_with_rule_b_itself():
+    """Same verdict as the engine's own predicate on the same rows: held = the weak-Fading shape
+    AND NOT already waited a night — computed by theme_engine, not re-derived here."""
+    import agents.market_intelligence.theme_engine as te
+    yday = _TONIGHT - timedelta(days=1)
+    cases = [(2, 4), (1, None), (2, 2), (1, 1), (2, 3), (3, 2)]
+    board = [_row(f"T{i}", n) for i, (n, _p) in enumerate(cases)]
+    history = [_hist(f"T{i}", p, yday) for i, (_n, p) in enumerate(cases) if p is not None]
+    prior = te._prior_member_counts(
+        [{"name": h["name"], "tickers": h["tickers"], "theme_date": h["date"]} for h in history],
+        _TONIGHT)
+    expect = {th["name"] for th in board
+              if te._is_weak_fading_shape(th) and not te._waited_a_night(prior.get(th["name"]))}
+    assert tc.waiting_night_names(board, history) == expect == {"T0", "T1", "T4"}
+
+
+def test_g4_settled_drops_the_held_themes_and_leaves_the_signed_bar_alone():
+    board = [{"name": f"T{i}", "stage": "Mainstream", "tickers": ["A", "B", "C"]} for i in range(8)]
+    board += [{"name": "Held", "stage": "Fading", "tickers": ["X"]},
+              {"name": "Tiny", "stage": "Nascent", "tickers": ["Y", "Z"]}]
+    g4 = tc.compute_g4(board, waiting={"Held", "NotOnBoard"})
+    assert (g4["small"], g4["n_board"], g4["rate_pct"], g4["pass_bar"]) == (2, 10, 20.0, False)
+    st = g4["settled"]
+    assert (st["small"], st["n_board"], st["rate_pct"], st["pass_bar"]) == (1, 9, 11.1, False)
+    assert st["list"] == ["Tiny"] and st["waiting"] == ["Held"]
+    assert tc.compute_g4(board)["settled"]["small"] == 2      # nothing held -> same as the bar
+
+
+def test_wait_literals_match_the_engine():
+    import inspect
+    import agents.market_intelligence.db as db
+    import agents.market_intelligence.theme_engine as te
+    assert tc.WAIT_SMALL_MIN_MEMBERS == te.SMALL_FADING_RETIRE_MIN_MEMBERS
+    assert tc.WAIT_PRIOR_WINDOW_DAYS == (
+        inspect.signature(db.get_active_themes).parameters["stale_after_days"].default)
+
+
 def test_g3_passes_a_real_group_and_fails_an_unstructured_one(factor_excess):
     rng = np.random.default_rng(7)
     excess = dict(factor_excess)
@@ -333,6 +404,8 @@ def test_a_working_night_writes_one_audit_row_with_the_report(wired, monkeypatch
     detail = json.loads(log.await_args.args[2])
     assert "g1" in detail and "g2" in detail and "g3" in detail and "g4" in detail
     assert "latency" in detail
+    assert detail["g4"]["settled"]["waiting"] == []
+    assert "settled 1/1" in log.await_args.args[1]
 
 
 def test_the_check_is_in_the_liveness_registry():
