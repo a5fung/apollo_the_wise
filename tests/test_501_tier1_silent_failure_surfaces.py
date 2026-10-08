@@ -1214,7 +1214,7 @@ async def test_f8_review_rows_with_no_prev_close_are_counted_and_audited(monkeyp
 @pytest.mark.asyncio
 async def test_f8_review_raised_and_missing_rows_share_one_tick_aggregate(monkeypatch):
     """30 raise-drops + 30 no-prevDay drops: EACH is below the 50-row floor, together they trip
-    it - ONE row, one threshold, the split kept in the detail."""
+    the all-drops floor - ONE row, the split kept in the detail."""
     from tests.test_624_lowcap_lane import _run_scan_once
     bad = {**{f"R{i:04d}": {"prevDay": None, "min": {"c": 5.0}} for i in range(30)},
            **{f"N{i:04d}": {"min": {"c": 5.0}} for i in range(30)}}
@@ -1457,29 +1457,19 @@ async def test_f12_a_healthy_watchdog_raises_no_error_row(monkeypatch, stuck_env
 
 
 
-# ─── #635 F8 baseline (2026-10-07): the thin-ticker background must stay silent ───────────────────
-# The first real rows: every tick of 10-07 dropped 139-150 of ~13,250 snapshot rows, all
-# `no prev_close`, 0 raised (just over the old 1% floor -> 38 audit rows, an L1 page, nothing broken).
+# ─── #635 F8 baseline (2026-10-07): see the constants by `_ParseDropTally` for the evidence ────────
 
-def test_f8_baseline_the_ordinary_no_prev_close_background_stays_silent():
+@pytest.mark.parametrize("n_missing, n_raised, audits", [
+    pytest.param(150, 0, False, id="ordinary-no-prev-close-background-1.1pct"),
+    pytest.param(600, 0, True, id="no-prev-close-past-4pct"),
+    pytest.param(0, 140, True, id="raised-keeps-the-1pct-floor"),
+    pytest.param(400, 30, False, id="between-the-floors-stays-silent"),
+])
+def test_f8_baseline_split_thresholds(n_missing, n_raised, audits):
     from agents.market_intelligence.ep_detector import _ParseDropTally
     t = _ParseDropTally()
-    for i in range(150):
-        t.note_no_prev_close(f"T{i}")
-    assert not t.should_audit(13235)
-
-
-def test_f8_baseline_a_feed_wide_prev_close_loss_still_audits():
-    from agents.market_intelligence.ep_detector import _ParseDropTally
-    t = _ParseDropTally()
-    for i in range(600):
-        t.note_no_prev_close(f"T{i}")
-    assert t.should_audit(13235)          # 4.5% of the board: well past the 1.1% background
-
-
-def test_f8_baseline_raised_drops_keep_the_one_percent_floor():
-    from agents.market_intelligence.ep_detector import _ParseDropTally
-    t = _ParseDropTally()
-    for i in range(140):
-        t.note_raised(f"T{i}", ValueError("bad row"))
-    assert t.should_audit(13235)          # 1.06% raised: a real parse failure is not background
+    for i in range(n_missing):
+        t.note_no_prev_close(f"N{i}")
+    for i in range(n_raised):
+        t.note_raised(f"R{i}", ValueError("bad row"))
+    assert t.should_audit(13235) is audits

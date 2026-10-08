@@ -170,6 +170,11 @@ class EPFixtureMember(NamedTuple):
     # enforced by test_577_must_not_miss_eps.py::test_coverage_is_declared_for_every_member.
     unverified_gates: Tuple[str, ...] = ()
 
+    # The day he GAVE the label (ISO), when it differs from the alert or matters to a frozen study —
+    # pre-registered reads freeze on it, like ChartRuling.ruling_date. None = labelled on or before
+    # the alert date's own era (every member before 2026-10-07).
+    labelled_on: Optional[str] = None
+
     # A member can be present (for the record, evidence cited) but excluded from the pass/fail
     # replay — e.g. the source data itself flags the print as an artifact. Never a silent drop:
     # exclude_reason is mandatory whenever excluded=True (coverage test enforces this too).
@@ -664,6 +669,7 @@ MUST_NOT_MISS: list[EPFixtureMember] = [
             "morning, good to see confirmation from other traders.\" Our system: HIGH 73.8, catalyst "
             "strong, alerted 09:35 ET and bought live (#414, entry $72.21, stop $62.20)."
         ),
+        labelled_on="2026-10-07",
         prev_close=64.21,  # mi_daily_closes 2026-10-06 close
         gap_pct_admitted=13.08,
         gap_pct_admitted_basis="mi_ep_alerts.gap_pct of the 2026-10-07 09:35 ET HIGH alert (the acting reading)",

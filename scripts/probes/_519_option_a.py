@@ -160,18 +160,13 @@ def load_population() -> list[tuple[str, str, str, str]]:
     keep = ("REAL_EP", "APPROVED", "BAD_CHART", "OTHER_REJECTED")
     # FROZEN at registration: the labelled side is the rulings given through PREREG_RULINGS_THROUGH.
     # A later session (2026-10-05, sample #3) must not change a registered population.
-    late = {(r.ticker, r.alert_date) for r in CHART_RULINGS if r.ruling_date > PREREG_RULINGS_THROUGH}
-    out: list[tuple[str, str, str, str]] = []
-    for pop in keep:
-        for tk, d, verdict in pops[pop]:
-            if pop != "REAL_EP" and (tk, d) in late:
-                continue
-            # The REAL_EP side is frozen the same way: a labelled EP added after registration
-            # (PENG 2026-10-07, labelled that day) is not in the registered population.
-            if pop == "REAL_EP" and d > PREREG_RULINGS_THROUGH:
-                continue
-            out.append((pop, tk, d, verdict))
-    return out
+    # The REAL_EP side freezes the same way, on the day each EP was LABELLED (`labelled_on`, else its
+    # alert date) — retroactive labels are the normal pattern here (BFLY/PLTR/HTFL were added weeks later).
+    late_ruling = {(r.ticker, r.alert_date) for r in CHART_RULINGS if r.ruling_date > PREREG_RULINGS_THROUGH}
+    late_label = {(m.ticker, m.alert_date) for m in MUST_NOT_MISS
+                  if (m.labelled_on or m.alert_date) > PREREG_RULINGS_THROUGH}
+    return [(pop, tk, d, verdict) for pop in keep for tk, d, verdict in pops[pop]
+            if (tk, d) not in (late_label if pop == "REAL_EP" else late_ruling)]
 
 
 def operator_words_for(ticker: str, iso_date: str) -> str:

@@ -51,6 +51,80 @@ def test_population_counts_match_the_pre_registration():
     assert by_pop == {"REAL_EP": 30, "APPROVED": 9, "BAD_CHART": 21, "OTHER_REJECTED": 4}
 
 
+# The exact 64 registered keys (pinned 2026-10-07, after PENG — a later label — leaked in once):
+# a swap or a flipped `excluded` that leaves the COUNTS unchanged still fails here.
+_REGISTERED_KEYS = {
+    ('APPROVED', 'AVAH', '2026-08-13'),
+    ('APPROVED', 'CAR', '2026-04-01'),
+    ('APPROVED', 'HAE', '2026-08-18'),
+    ('APPROVED', 'MRVI', '2026-08-19'),
+    ('APPROVED', 'NIQ', '2026-08-11'),
+    ('APPROVED', 'OMER', '2026-07-27'),
+    ('APPROVED', 'RNG', '2026-07-24'),
+    ('APPROVED', 'TBBB', '2026-08-13'),
+    ('APPROVED', 'WYFI', '2026-08-12'),
+    ('BAD_CHART', 'ABVX', '2026-06-03'),
+    ('BAD_CHART', 'ADVB', '2026-07-24'),
+    ('BAD_CHART', 'AEHR', '2026-08-14'),
+    ('BAD_CHART', 'AVGU', '2026-06-02'),
+    ('BAD_CHART', 'BW', '2026-08-11'),
+    ('BAD_CHART', 'CAR', '2026-04-21'),
+    ('BAD_CHART', 'CAR', '2026-04-22'),
+    ('BAD_CHART', 'CRWG', '2026-06-01'),
+    ('BAD_CHART', 'FRMI', '2026-08-11'),
+    ('BAD_CHART', 'GDC', '2026-05-06'),
+    ('BAD_CHART', 'IPCX', '2026-07-29'),
+    ('BAD_CHART', 'JLHL', '2026-06-08'),
+    ('BAD_CHART', 'LPTH', '2026-08-14'),
+    ('BAD_CHART', 'MRAM', '2026-05-13'),
+    ('BAD_CHART', 'MRLN', '2026-06-05'),
+    ('BAD_CHART', 'NVTS', '2026-06-03'),
+    ('BAD_CHART', 'NVTX', '2026-06-03'),
+    ('BAD_CHART', 'QH', '2026-06-18'),
+    ('BAD_CHART', 'QTTB', '2026-07-13'),
+    ('BAD_CHART', 'RARE', '2026-08-20'),
+    ('BAD_CHART', 'YOU', '2026-08-05'),
+    ('OTHER_REJECTED', 'ARQQ', '2026-06-15'),
+    ('OTHER_REJECTED', 'AVAH', '2026-06-02'),
+    ('OTHER_REJECTED', 'CGEM', '2026-06-08'),
+    ('OTHER_REJECTED', 'MXL', '2026-04-21'),
+    ('REAL_EP', 'AEHR', '2026-03-31'),
+    ('REAL_EP', 'ALGM', '2026-04-08'),
+    ('REAL_EP', 'AMD', '2026-04-24'),
+    ('REAL_EP', 'AMKR', '2026-04-08'),
+    ('REAL_EP', 'APLD', '2026-04-08'),
+    ('REAL_EP', 'ARM', '2026-05-06'),
+    ('REAL_EP', 'ASX', '2026-04-08'),
+    ('REAL_EP', 'BE', '2026-04-08'),
+    ('REAL_EP', 'BFLY', '2026-06-18'),
+    ('REAL_EP', 'FLY', '2026-03-12'),
+    ('REAL_EP', 'HTFL', '2026-08-14'),
+    ('REAL_EP', 'HUT', '2026-04-08'),
+    ('REAL_EP', 'INTC', '2026-04-24'),
+    ('REAL_EP', 'IREN', '2026-04-08'),
+    ('REAL_EP', 'MRNA', '2026-08-19'),
+    ('REAL_EP', 'MRVL', '2026-03-31'),
+    ('REAL_EP', 'MU', '2026-04-08'),
+    ('REAL_EP', 'NBIS', '2026-04-08'),
+    ('REAL_EP', 'PLTR', '2026-08-04'),
+    ('REAL_EP', 'QBTS', '2026-04-08'),
+    ('REAL_EP', 'QCOM', '2026-04-24'),
+    ('REAL_EP', 'QURE', '2026-05-29'),
+    ('REAL_EP', 'SMTC', '2026-03-30'),
+    ('REAL_EP', 'SNDK', '2026-04-08'),
+    ('REAL_EP', 'SNOW', '2026-05-07'),
+    ('REAL_EP', 'STRL', '2026-04-08'),
+    ('REAL_EP', 'TEAM', '2026-08-07'),
+    ('REAL_EP', 'UMC', '2026-04-17'),
+    ('REAL_EP', 'UMC', '2026-05-06'),
+    ('REAL_EP', 'USAR', '2026-04-08'),
+}
+
+
+def test_population_is_exactly_the_registered_set():
+    assert {(p, tk, d) for p, tk, d, _v in mod.load_population()} == _REGISTERED_KEYS
+
+
 def test_data_defect_and_pointed_at_are_excluded():
     pop = mod.load_population()
     keys = {(tk, d) for _, tk, d, _ in pop}

@@ -1248,31 +1248,27 @@ def should_repoll_shadow(cached_quality: str, grade_source_count: int,
 _repoll_shadow_state: dict = {}
 _repoll_shadow_date = None
 
-# #635 F8 - the per-ticker candidate-build bulkhead audits in AGGREGATE once a tick drops at
-# least this many snapshot rows AND at least this share of the snapshot. UN-BASELINED (see the
-# comment at the call site): telemetry only, never read by anything that admits or rejects.
+# #635 F8 - the candidate-build drops audit in AGGREGATE once a tick drops >= 50 rows AND (raised
+# drops >= 1% of the snapshot OR all drops >= 4%). Telemetry only; nothing admits or rejects on it.
+# BASELINED 2026-10-07 from the first real rows: every ordinary tick dropped 139-150 of ~13,250 rows
+# (1.05-1.13%), ALL `no prev_close` (thin units/warrants/preferreds/just-listed), 0 raised — the old
+# combined 1% floor fired 38 times and paged via the L1 '*_error' sweep with nothing broken.
 _PARSE_DROP_AUDIT_MIN = 50
-_PARSE_DROP_AUDIT_FRAC = 0.01
-# BASELINED 2026-10-07 from the first real rows: every tick of an ordinary day dropped 139-150 of
-# ~13,250 snapshot rows (1.05-1.13%), ALL `no prev_close` (thin units / warrants / preferreds /
-# just-listed: XSLL, TLAC, WHLRL, AEAQ...) and 0 raised — just over the 1% floor, so the alarm
-# fired 38 times and paged via the L1 '*_error' sweep with nothing broken. Raised drops keep the
-# 1% floor; a tick whose drops include no-prev-close rows audits only past 4% (~530 rows), well
-# above that background and far below a feed-wide `prevDay` loss (every row).
-_PARSE_DROP_MISSING_AUDIT_FRAC = 0.04
+_PARSE_DROP_AUDIT_FRAC = 0.01           # raised drops alone
+_PARSE_DROP_MISSING_AUDIT_FRAC = 0.04   # all drops, no-prev-close included
 
 
 class _ParseDropTally:
     """#635 F8 - per-scan tally of snapshot rows the candidate build silently DROPPED.
 
-    Two shapes, one aggregate (same threshold, same audit row):
+    Two shapes, one audit row, split thresholds (the constants above):
       * `n_raised`         - the per-ticker build raised (the bulkhead's `continue`).
       * `n_no_prev_close`  - the row read `prev_close` = 0 / had no `prevDay` at all. That is NOT an
                              exception: `_universe_floor_skip` returns None when the gap cannot be
                              computed, so the row left no trace anywhere. A Polygon rename of
                              `prevDay` would drop EVERY ticker this way with zero exceptions.
-    The split is kept in the audit detail so the un-baselined threshold can be tuned from the first
-    real rows (a thin/just-listed ticker legitimately has prevDay.c == 0).
+    The split is kept in the audit detail (a thin/just-listed ticker legitimately has
+    prevDay.c == 0 — that background is why no-prev-close drops have the higher floor).
 
     Every method is fail-safe: the tally sits inside the scan's per-ticker `except`, so nothing it
     does may raise into the scan loop (a hostile `__str__` on the swallowed exception included).
@@ -1315,11 +1311,10 @@ class _ParseDropTally:
             logger.warning(f"#635 F8 parse-drop tally (no prev close) failed: {_te}")
 
     def should_audit(self, n_snapshots: int) -> bool:
-        raised_only = (self.n_raised >= _PARSE_DROP_AUDIT_MIN
-                       and self.n_raised >= n_snapshots * _PARSE_DROP_AUDIT_FRAC)
-        with_missing = (self.total >= _PARSE_DROP_AUDIT_MIN
-                        and self.total >= n_snapshots * _PARSE_DROP_MISSING_AUDIT_FRAC)
-        return raised_only or with_missing
+        def past(n: int, frac: float) -> bool:
+            return n >= max(_PARSE_DROP_AUDIT_MIN, n_snapshots * frac)
+        return (past(self.n_raised, _PARSE_DROP_AUDIT_FRAC)
+                or past(self.total, _PARSE_DROP_MISSING_AUDIT_FRAC))
 
 
 def _is_premarket(now_et: datetime) -> bool:
@@ -3982,15 +3977,17 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             _parse_drops.note_raised(ticker, _pe)
             continue
 
-    # #635 F8: aggregate audit of the parse-drops above. THRESHOLD IS UN-BASELINED (no prod data
-    # in hand when this shipped): chosen so a systemic schema change (hundreds of the ~10k
-    # tickers) trips it and a stray malformed row or two never does - max(50 tickers, 1% of the
-    # snapshot), raised + no-prev-close COMBINED. The audit detail carries the exact counts (split
-    # by shape), size, first error and samples so the number can be tuned from the first real
-    # rows. Audit ONLY (no Telegram - the nightly `%error%` sweep shows it); fire-and-forget with
-    # a strong ref (the _WATCHDOG_BG_TASKS idiom) so a slow audit write can never delay the scan
+    # #635 F8: aggregate audit of the parse-drops above (thresholds + baseline: the constants by
+    # `_ParseDropTally`). ⚠ An `*_error` row PAGES — the L1 `silent_audit_error_window` invariant
+    # counts every one — so it fires only past threshold; every tick also logs its counts at INFO,
+    # so the ordinary background stays visible and the 4% floor can be re-checked. Fire-and-forget
+    # with a strong ref (the _WATCHDOG_BG_TASKS idiom) so a slow audit write can never delay the scan
     # on the ORB path. The WHOLE block is guarded: no part of the alarm may raise into the scan.
     try:
+        if _parse_drops.total:
+            logger.info(f"EP scan: candidate build dropped {_parse_drops.total}/{len(snapshots)} "
+                        f"snapshot rows ({_parse_drops.n_raised} raised, "
+                        f"{_parse_drops.n_no_prev_close} with prev_close 0/missing)")
         if _parse_drops.should_audit(len(snapshots)):
             logger.error(
                 f"EP scan: {_parse_drops.total}/{len(snapshots)} snapshot rows DROPPED in the "
