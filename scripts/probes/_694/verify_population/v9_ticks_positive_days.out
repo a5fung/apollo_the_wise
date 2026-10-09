@@ -1,0 +1,2278 @@
+scan_date|tick|ticker|rank_by_gap|fr
+2026-05-06|07:00:00.138467|AVTX|1|quality filter: filter:mcap_too_small: $
+2026-05-06|07:00:00.138467|COMP|2|
+2026-05-06|07:00:00.138467|SKK|3|already up 227% in prior 5 days (extende
+2026-05-06|07:00:00.138467|FLEX|4|
+2026-05-06|07:00:00.138467|AMD|5|
+2026-05-06|07:00:00.138467|VECO|6|M&A/buyout catalyst — no momentum trade
+2026-05-06|07:00:00.138467|GEO|7|
+2026-05-06|07:00:00.138467|FLYW|8|pre-mkt volume 5,364 < 25,000 shares
+2026-05-06|07:00:00.138467|ELPW|9|filter:pm_rvol_too_low: pm_rvol=0.47x (t
+2026-05-06|07:00:00.138467|NVAX|10|score 34 < 50 (catalyst=routine)
+2026-05-06|07:00:00.138467|SMCI|11|
+2026-05-06|07:00:00.138467|ARTV|12|pre-mkt volume 11,339 < 25,000 shares
+2026-05-06|07:00:00.138467|HUT|13|score 7 < 50 (catalyst=strong)
+2026-05-06|07:00:00.138467|UMC|14|score 22 < 50 (catalyst=strong)
+2026-05-06|07:00:00.138467|YOU|15|pre-mkt volume 6,654 < 25,000 shares
+2026-05-06|07:00:00.138467|MASS|16|pre-mkt volume 153 < 25,000 shares
+2026-05-06|07:00:00.138467|VCYT|17|filter:pm_rvol_too_low: pm_rvol=0.39x (t
+2026-05-06|07:00:00.138467|SSRM|18|filter:pm_rvol_too_low: pm_rvol=0.97x (t
+2026-05-06|07:00:00.138467|CVKD|19|pre-mkt volume 500 < 25,000 shares
+2026-05-06|07:00:00.138467|SBSW|20|score 33 < 50 (catalyst=routine)
+2026-05-06|07:00:00.138467|PN|21|outside top-20 gap cap (gap 11.9%)
+2026-05-06|07:00:00.138467|LFVN|22|outside top-20 gap cap (gap 11.7%)
+2026-05-06|07:00:00.138467|ARM|23|outside top-20 gap cap (gap 11.7%)
+2026-05-06|07:00:00.138467|OSCR|24|outside top-20 gap cap (gap 11.5%)
+2026-05-06|07:00:00.138467|POET|25|outside top-20 gap cap (gap 11.2%)
+2026-05-06|07:00:00.138467|DGXX|26|outside top-20 gap cap (gap 10.8%)
+2026-05-06|07:00:00.138467|GFI|27|outside top-20 gap cap (gap 10.8%)
+2026-05-06|07:00:00.138467|DRD|28|outside top-20 gap cap (gap 10.7%)
+2026-05-06|07:00:00.138467|HMY|29|outside top-20 gap cap (gap 10.5%)
+2026-05-06|07:00:00.138467|KMT|30|outside top-20 gap cap (gap 10.4%)
+2026-05-06|07:00:00.138467|AMWL|31|outside top-20 gap cap (gap 10.2%)
+2026-05-06|07:00:00.138467|PENG|32|outside top-20 gap cap (gap 10.2%)
+2026-05-06|07:00:00.138467|TWIN|33|outside top-20 gap cap (gap 9.8%)
+2026-05-06|07:00:00.138467|VCX|34|outside top-20 gap cap (gap 9.6%)
+2026-05-06|07:00:00.138467|SCZM|35|outside top-20 gap cap (gap 9.4%)
+2026-05-06|07:00:00.138467|DBVT|36|outside top-20 gap cap (gap 9.1%)
+2026-05-06|07:00:00.138467|CXDO|37|outside top-20 gap cap (gap 9.0%)
+2026-05-06|07:00:00.138467|HNGE|38|outside top-20 gap cap (gap 8.9%)
+2026-05-06|07:00:00.138467|MT|39|outside top-20 gap cap (gap 8.9%)
+2026-05-06|07:00:00.138467|NG|40|outside top-20 gap cap (gap 8.9%)
+2026-05-06|07:00:00.138467|ADPT|41|outside top-20 gap cap (gap 8.8%)
+2026-05-06|07:00:00.138467|AU|42|outside top-20 gap cap (gap 8.8%)
+2026-05-06|07:00:00.138467|HYMC|43|outside top-20 gap cap (gap 8.7%)
+2026-05-06|07:00:00.138467|TECK|44|outside top-20 gap cap (gap 8.7%)
+2026-05-06|07:00:00.138467|NBTX|45|outside top-20 gap cap (gap 8.6%)
+2026-05-06|07:00:00.138467|USNA|46|outside top-20 gap cap (gap 8.5%)
+2026-05-06|07:00:00.138467|STLA|47|outside top-20 gap cap (gap 8.3%)
+2026-05-06|07:00:00.138467|GIG|48|outside top-20 gap cap (gap 8.2%)
+2026-05-06|07:00:00.138467|ALAB|49|outside top-20 gap cap (gap 8.0%)
+2026-05-06|07:05:00.112898|AVTX|1|quality filter: filter:mcap_too_small: $
+2026-05-06|07:05:00.112898|COMP|2|already scored earlier today
+2026-05-06|07:05:00.112898|FLEX|3|already scored earlier today
+2026-05-06|07:05:00.112898|SKK|4|already up 227% in prior 5 days (extende
+2026-05-06|07:05:00.112898|AMD|5|already scored earlier today
+2026-05-06|07:05:00.112898|VECO|6|M&A/buyout catalyst — no momentum trade
+2026-05-06|07:05:00.112898|GEO|7|already scored earlier today
+2026-05-06|07:05:00.112898|NVAX|8|score 34 < 50 (catalyst=routine)
+2026-05-06|07:05:00.112898|FLYW|9|pre-mkt volume 8,911 < 25,000 shares
+2026-05-06|07:05:00.112898|ELPW|10|filter:pm_rvol_too_low: pm_rvol=0.46x (t
+2026-05-06|07:05:00.112898|SMCI|11|already scored earlier today
+2026-05-06|07:05:00.112898|ARTV|12|pre-mkt volume 11,783 < 25,000 shares
+2026-05-06|07:05:00.112898|HUT|13|score 7 < 50 (catalyst=strong)
+2026-05-06|07:05:00.112898|POET|14|quality filter: filter:atr_too_high: 22.
+2026-05-06|07:05:00.112898|UMC|15|score 22 < 50 (catalyst=strong)
+2026-05-06|07:05:00.112898|MASS|16|pre-mkt volume 153 < 25,000 shares
+2026-05-06|07:05:00.112898|VCYT|17|filter:pm_rvol_too_low: pm_rvol=0.43x (t
+2026-05-06|07:05:00.112898|ARM|18|score -12 < 50 (catalyst=routine)
+2026-05-06|07:05:00.112898|SSRM|19|filter:pm_rvol_too_low: pm_rvol=0.95x (t
+2026-05-06|07:05:00.112898|SBSW|20|score 33 < 50 (catalyst=routine)
+2026-05-06|07:05:00.112898|CVKD|21|outside top-20 gap cap (gap 12.2%)
+2026-05-06|07:05:00.112898|KMT|22|outside top-20 gap cap (gap 12.0%)
+2026-05-06|07:05:00.112898|PN|23|outside top-20 gap cap (gap 11.9%)
+2026-05-06|07:05:00.112898|YOU|24|outside top-20 gap cap (gap 11.8%)
+2026-05-06|07:05:00.112898|CXDO|25|outside top-20 gap cap (gap 11.7%)
+2026-05-06|07:05:00.112898|LFVN|26|outside top-20 gap cap (gap 11.7%)
+2026-05-06|07:05:00.112898|HMY|27|outside top-20 gap cap (gap 11.2%)
+2026-05-06|07:05:00.112898|GFI|28|outside top-20 gap cap (gap 11.0%)
+2026-05-06|07:05:00.112898|OSCR|29|outside top-20 gap cap (gap 11.0%)
+2026-05-06|07:05:00.112898|DRD|30|outside top-20 gap cap (gap 10.7%)
+2026-05-06|07:05:00.112898|AMWL|31|outside top-20 gap cap (gap 10.2%)
+2026-05-06|07:05:00.112898|PENG|32|outside top-20 gap cap (gap 10.2%)
+2026-05-06|07:05:00.112898|TWIN|33|outside top-20 gap cap (gap 9.8%)
+2026-05-06|07:05:00.112898|VCX|34|outside top-20 gap cap (gap 9.6%)
+2026-05-06|07:05:00.112898|DGXX|35|outside top-20 gap cap (gap 9.6%)
+2026-05-06|07:05:00.112898|SCZM|36|outside top-20 gap cap (gap 9.4%)
+2026-05-06|07:05:00.112898|TECK|37|outside top-20 gap cap (gap 9.2%)
+2026-05-06|07:05:00.112898|DBVT|38|outside top-20 gap cap (gap 9.1%)
+2026-05-06|07:05:00.112898|HNGE|39|outside top-20 gap cap (gap 8.9%)
+2026-05-06|07:05:00.112898|MT|40|outside top-20 gap cap (gap 8.9%)
+2026-05-06|07:05:00.112898|NG|41|outside top-20 gap cap (gap 8.9%)
+2026-05-06|07:05:00.112898|ADPT|42|outside top-20 gap cap (gap 8.8%)
+2026-05-06|07:05:00.112898|AU|43|outside top-20 gap cap (gap 8.8%)
+2026-05-06|07:05:00.112898|HYMC|44|outside top-20 gap cap (gap 8.7%)
+2026-05-06|07:05:00.112898|STLA|45|outside top-20 gap cap (gap 8.6%)
+2026-05-06|07:05:00.112898|NBTX|46|outside top-20 gap cap (gap 8.6%)
+2026-05-06|07:05:00.112898|IAG|47|outside top-20 gap cap (gap 8.5%)
+2026-05-06|07:05:00.112898|USNA|48|outside top-20 gap cap (gap 8.5%)
+2026-05-06|07:05:00.112898|GIG|49|outside top-20 gap cap (gap 8.2%)
+2026-05-06|07:10:00.016909|AVTX|1|quality filter: filter:mcap_too_small: $
+2026-05-06|07:10:00.016909|COMP|2|already scored earlier today
+2026-05-06|07:10:00.016909|SKK|3|already up 227% in prior 5 days (extende
+2026-05-06|07:10:00.016909|FLEX|4|already scored earlier today
+2026-05-06|07:10:00.016909|AMD|5|already scored earlier today
+2026-05-06|07:10:00.016909|VECO|6|M&A/buyout catalyst — no momentum trade
+2026-05-06|07:10:00.016909|GEO|7|already scored earlier today
+2026-05-06|07:10:00.016909|FLYW|8|pre-mkt volume 8,911 < 25,000 shares
+2026-05-06|07:10:00.016909|NVAX|9|score 34 < 50 (catalyst=routine)
+2026-05-06|07:10:00.016909|ELPW|10|filter:pm_rvol_too_low: pm_rvol=0.45x (t
+2026-05-06|07:10:00.016909|SMCI|11|already scored earlier today
+2026-05-06|07:10:00.016909|HUT|12|score 7 < 50 (catalyst=strong)
+2026-05-06|07:10:00.016909|ARTV|13|pre-mkt volume 11,783 < 25,000 shares
+2026-05-06|07:10:00.016909|UMC|14|score 22 < 50 (catalyst=strong)
+2026-05-06|07:10:00.016909|MASS|15|pre-mkt volume 153 < 25,000 shares
+2026-05-06|07:10:00.016909|SSRM|16|pre-mkt volume 6,619 < 25,000 shares
+2026-05-06|07:10:00.016909|VCYT|17|filter:pm_rvol_too_low: pm_rvol=0.40x (t
+2026-05-06|07:10:00.016909|CVKD|18|pre-mkt volume 500 < 25,000 shares
+2026-05-06|07:10:00.016909|POET|19|quality filter: filter:atr_too_high: 22.
+2026-05-06|07:10:00.016909|KMT|20|pre-mkt volume 2,711 < 25,000 shares
+2026-05-06|07:10:00.016909|PENG|21|outside top-20 gap cap (gap 11.8%)
+2026-05-06|07:10:00.016909|SBSW|22|outside top-20 gap cap (gap 11.8%)
+2026-05-06|07:10:00.016909|YOU|23|outside top-20 gap cap (gap 11.8%)
+2026-05-06|07:10:00.016909|CXDO|24|outside top-20 gap cap (gap 11.7%)
+2026-05-06|07:10:00.016909|ARM|25|outside top-20 gap cap (gap 11.7%)
+2026-05-06|07:10:00.016909|PN|26|outside top-20 gap cap (gap 11.3%)
+2026-05-06|07:10:00.016909|HMY|27|outside top-20 gap cap (gap 11.3%)
+2026-05-06|07:10:00.016909|LFVN|28|outside top-20 gap cap (gap 10.8%)
+2026-05-06|07:10:00.016909|DRD|29|outside top-20 gap cap (gap 10.7%)
+2026-05-06|07:10:00.016909|OSCR|30|outside top-20 gap cap (gap 10.7%)
+2026-05-06|07:10:00.016909|AMWL|31|outside top-20 gap cap (gap 10.2%)
+2026-05-06|07:10:00.016909|GFI|32|outside top-20 gap cap (gap 10.2%)
+2026-05-06|07:10:00.016909|TWIN|33|outside top-20 gap cap (gap 9.8%)
+2026-05-06|07:10:00.016909|SCZM|34|outside top-20 gap cap (gap 9.6%)
+2026-05-06|07:10:00.016909|VCX|35|outside top-20 gap cap (gap 9.6%)
+2026-05-06|07:10:00.016909|DGXX|36|outside top-20 gap cap (gap 9.4%)
+2026-05-06|07:10:00.016909|MT|37|outside top-20 gap cap (gap 9.2%)
+2026-05-06|07:10:00.016909|TECK|38|outside top-20 gap cap (gap 9.1%)
+2026-05-06|07:10:00.016909|STLA|39|outside top-20 gap cap (gap 9.0%)
+2026-05-06|07:10:00.016909|HNGE|40|outside top-20 gap cap (gap 8.9%)
+2026-05-06|07:10:00.016909|NG|41|outside top-20 gap cap (gap 8.9%)
+2026-05-06|07:10:00.016909|ADPT|42|outside top-20 gap cap (gap 8.8%)
+2026-05-06|07:10:00.016909|HYMC|43|outside top-20 gap cap (gap 8.8%)
+2026-05-06|07:10:00.016909|AU|44|outside top-20 gap cap (gap 8.8%)
+2026-05-06|07:10:00.016909|NBTX|45|outside top-20 gap cap (gap 8.6%)
+2026-05-06|07:10:00.016909|DBVT|46|outside top-20 gap cap (gap 8.5%)
+2026-05-06|07:10:00.016909|IAG|47|outside top-20 gap cap (gap 8.5%)
+2026-05-06|07:10:00.016909|USNA|48|outside top-20 gap cap (gap 8.5%)
+2026-05-06|07:10:00.016909|BCS|49|outside top-20 gap cap (gap 8.4%)
+2026-05-06|07:10:00.016909|RCL|50|outside top-20 gap cap (gap 8.3%)
+2026-05-06|07:10:00.016909|GIG|51|outside top-20 gap cap (gap 8.2%)
+2026-05-07|07:00:00.141497|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|07:00:00.141497|SITM|2|pre-mkt volume 3,239 < 25,000 shares
+2026-05-07|07:00:00.141497|FLNC|3|
+2026-05-07|07:00:00.141497|CCRN|4|pre-mkt volume 24,447 < 25,000 shares
+2026-05-07|07:00:00.141497|PCT|5|
+2026-05-07|07:00:00.141497|HIMX|6|EP cooldown — alerted within last 60 day
+2026-05-07|07:00:00.141497|AKAN|7|filter:pm_rvol_too_low: pm_rvol=0.79x (t
+2026-05-07|07:00:00.141497|BLBD|8|pre-mkt volume 853 < 25,000 shares
+2026-05-07|07:00:00.141497|NDLS|9|pre-mkt volume 918 < 25,000 shares
+2026-05-07|07:00:00.141497|HNRG|10|pre-mkt volume 5,467 < 25,000 shares
+2026-05-07|07:00:00.141497|FTNT|11|
+2026-05-07|07:00:00.141497|KLIC|12|pre-mkt volume 17,550 < 25,000 shares
+2026-05-07|07:00:00.141497|SEZL|13|pre-mkt volume 10,247 < 25,000 shares
+2026-05-07|07:00:00.141497|ELA|14|pre-mkt volume 726 < 25,000 shares
+2026-05-07|07:00:00.141497|ARRY|15|
+2026-05-07|07:00:00.141497|TAOX|16|pre-mkt volume 12,300 < 25,000 shares
+2026-05-07|07:00:00.141497|ORA|17|pre-mkt volume 7,320 < 25,000 shares
+2026-05-07|07:00:00.141497|DASH|18|pre-mkt volume 14,897 < 25,000 shares
+2026-05-07|07:00:00.141497|GLIBK|19|pre-mkt volume 202 < 25,000 shares
+2026-05-07|07:00:00.141497|LFST|20|pre-mkt volume 4,506 < 25,000 shares
+2026-05-07|07:00:00.141497|EZPW|21|outside top-20 gap cap (gap 9.6%)
+2026-05-07|07:00:00.141497|CGNX|22|outside top-20 gap cap (gap 9.2%)
+2026-05-07|07:00:00.141497|MKSI|23|outside top-20 gap cap (gap 8.9%)
+2026-05-07|07:00:00.141497|NSP|24|outside top-20 gap cap (gap 8.9%)
+2026-05-07|07:00:00.141497|GIG|25|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:00:00.141497|JLHL|26|outside top-20 gap cap (gap 8.4%)
+2026-05-07|07:00:00.141497|BBSI|27|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:00:00.141497|IMOS|28|outside top-20 gap cap (gap 8.1%)
+2026-05-07|07:05:00.015719|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|07:05:00.015719|SITM|2|pre-mkt volume 3,239 < 25,000 shares
+2026-05-07|07:05:00.015719|FLNC|3|already scored earlier today
+2026-05-07|07:05:00.015719|CCRN|4|quality filter: filter:mcap_too_small: $
+2026-05-07|07:05:00.015719|PCT|5|already scored earlier today
+2026-05-07|07:05:00.015719|HIMX|6|EP cooldown — alerted within last 60 day
+2026-05-07|07:05:00.015719|AKAN|7|filter:pm_rvol_too_low: pm_rvol=0.76x (t
+2026-05-07|07:05:00.015719|NDLS|8|pre-mkt volume 918 < 25,000 shares
+2026-05-07|07:05:00.015719|HNRG|9|pre-mkt volume 5,467 < 25,000 shares
+2026-05-07|07:05:00.015719|BLBD|10|pre-mkt volume 1,564 < 25,000 shares
+2026-05-07|07:05:00.015719|FTNT|11|already scored earlier today
+2026-05-07|07:05:00.015719|SEZL|12|pre-mkt volume 10,559 < 25,000 shares
+2026-05-07|07:05:00.015719|KLIC|13|pre-mkt volume 17,550 < 25,000 shares
+2026-05-07|07:05:00.015719|ELA|14|pre-mkt volume 726 < 25,000 shares
+2026-05-07|07:05:00.015719|ARRY|15|already scored earlier today
+2026-05-07|07:05:00.015719|TAOX|16|pre-mkt volume 12,300 < 25,000 shares
+2026-05-07|07:05:00.015719|ORA|17|pre-mkt volume 7,320 < 25,000 shares
+2026-05-07|07:05:00.015719|DASH|18|pre-mkt volume 14,897 < 25,000 shares
+2026-05-07|07:05:00.015719|GLIBK|19|pre-mkt volume 202 < 25,000 shares
+2026-05-07|07:05:00.015719|LFST|20|pre-mkt volume 4,506 < 25,000 shares
+2026-05-07|07:05:00.015719|EZPW|21|outside top-20 gap cap (gap 9.6%)
+2026-05-07|07:05:00.015719|CGNX|22|outside top-20 gap cap (gap 9.2%)
+2026-05-07|07:05:00.015719|MKSI|23|outside top-20 gap cap (gap 8.9%)
+2026-05-07|07:05:00.015719|NSP|24|outside top-20 gap cap (gap 8.9%)
+2026-05-07|07:05:00.015719|GIG|25|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:05:00.015719|JLHL|26|outside top-20 gap cap (gap 8.4%)
+2026-05-07|07:05:00.015719|BBSI|27|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:05:00.015719|IMOS|28|outside top-20 gap cap (gap 8.1%)
+2026-05-07|07:10:00.021420|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|07:10:00.021420|SITM|2|pre-mkt volume 3,608 < 25,000 shares
+2026-05-07|07:10:00.021420|FLNC|3|already scored earlier today
+2026-05-07|07:10:00.021420|CCRN|4|quality filter: filter:mcap_too_small: $
+2026-05-07|07:10:00.021420|HIMX|5|EP cooldown — alerted within last 60 day
+2026-05-07|07:10:00.021420|PCT|6|already scored earlier today
+2026-05-07|07:10:00.021420|NDLS|7|pre-mkt volume 918 < 25,000 shares
+2026-05-07|07:10:00.021420|AKAN|8|filter:pm_rvol_too_low: pm_rvol=0.74x (t
+2026-05-07|07:10:00.021420|HNRG|9|pre-mkt volume 5,467 < 25,000 shares
+2026-05-07|07:10:00.021420|BLBD|10|pre-mkt volume 1,564 < 25,000 shares
+2026-05-07|07:10:00.021420|FTNT|11|already scored earlier today
+2026-05-07|07:10:00.021420|SEZL|12|pre-mkt volume 10,988 < 25,000 shares
+2026-05-07|07:10:00.021420|KLIC|13|pre-mkt volume 17,550 < 25,000 shares
+2026-05-07|07:10:00.021420|ELA|14|pre-mkt volume 726 < 25,000 shares
+2026-05-07|07:10:00.021420|ARRY|15|already scored earlier today
+2026-05-07|07:10:00.021420|TAOX|16|pre-mkt volume 12,300 < 25,000 shares
+2026-05-07|07:10:00.021420|DASH|17|pre-mkt volume 15,987 < 25,000 shares
+2026-05-07|07:10:00.021420|ORA|18|pre-mkt volume 7,320 < 25,000 shares
+2026-05-07|07:10:00.021420|GLIBK|19|pre-mkt volume 202 < 25,000 shares
+2026-05-07|07:10:00.021420|LFST|20|pre-mkt volume 4,506 < 25,000 shares
+2026-05-07|07:10:00.021420|EZPW|21|outside top-20 gap cap (gap 9.6%)
+2026-05-07|07:10:00.021420|CGNX|22|outside top-20 gap cap (gap 9.2%)
+2026-05-07|07:10:00.021420|MKSI|23|outside top-20 gap cap (gap 8.9%)
+2026-05-07|07:10:00.021420|NSP|24|outside top-20 gap cap (gap 8.9%)
+2026-05-07|07:10:00.021420|GIG|25|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:10:00.021420|JLHL|26|outside top-20 gap cap (gap 8.4%)
+2026-05-07|07:10:00.021420|BBSI|27|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:10:00.021420|IMOS|28|outside top-20 gap cap (gap 8.1%)
+2026-05-07|07:15:00.019271|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|07:15:00.019271|SITM|2|pre-mkt volume 4,095 < 25,000 shares
+2026-05-07|07:15:00.019271|CCRN|3|quality filter: filter:mcap_too_small: $
+2026-05-07|07:15:00.019271|HIMX|4|EP cooldown — alerted within last 60 day
+2026-05-07|07:15:00.019271|FLNC|5|already scored earlier today
+2026-05-07|07:15:00.019271|PCT|6|already scored earlier today
+2026-05-07|07:15:00.019271|NDLS|7|pre-mkt volume 918 < 25,000 shares
+2026-05-07|07:15:00.019271|AKAN|8|filter:pm_rvol_too_low: pm_rvol=0.73x (t
+2026-05-07|07:15:00.019271|HNRG|9|pre-mkt volume 5,467 < 25,000 shares
+2026-05-07|07:15:00.019271|BLBD|10|pre-mkt volume 1,564 < 25,000 shares
+2026-05-07|07:15:00.019271|FTNT|11|already scored earlier today
+2026-05-07|07:15:00.019271|SEZL|12|pre-mkt volume 10,988 < 25,000 shares
+2026-05-07|07:15:00.019271|KLIC|13|pre-mkt volume 17,550 < 25,000 shares
+2026-05-07|07:15:00.019271|ELA|14|pre-mkt volume 726 < 25,000 shares
+2026-05-07|07:15:00.019271|ARRY|15|already scored earlier today
+2026-05-07|07:15:00.019271|ORA|16|pre-mkt volume 7,320 < 25,000 shares
+2026-05-07|07:15:00.019271|DASH|17|pre-mkt volume 17,999 < 25,000 shares
+2026-05-07|07:15:00.019271|GLIBK|18|pre-mkt volume 202 < 25,000 shares
+2026-05-07|07:15:00.019271|LFST|19|pre-mkt volume 4,506 < 25,000 shares
+2026-05-07|07:15:00.019271|EZPW|20|pre-mkt volume 4,691 < 25,000 shares
+2026-05-07|07:15:00.019271|CGNX|21|outside top-20 gap cap (gap 9.2%)
+2026-05-07|07:15:00.019271|MKSI|22|outside top-20 gap cap (gap 8.9%)
+2026-05-07|07:15:00.019271|NSP|23|outside top-20 gap cap (gap 8.9%)
+2026-05-07|07:15:00.019271|GIG|24|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:15:00.019271|TAOX|25|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:15:00.019271|JLHL|26|outside top-20 gap cap (gap 8.4%)
+2026-05-07|07:15:00.019271|BBSI|27|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:15:00.019271|ICL|28|outside top-20 gap cap (gap 8.2%)
+2026-05-07|07:15:00.019271|IMOS|29|outside top-20 gap cap (gap 8.1%)
+2026-05-07|07:20:00.020849|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|07:20:00.020849|SITM|2|pre-mkt volume 5,368 < 25,000 shares
+2026-05-07|07:20:00.020849|FLNC|3|already scored earlier today
+2026-05-07|07:20:00.020849|CCRN|4|quality filter: filter:mcap_too_small: $
+2026-05-07|07:20:00.020849|PCT|5|already scored earlier today
+2026-05-07|07:20:00.020849|BLBD|6|pre-mkt volume 1,872 < 25,000 shares
+2026-05-07|07:20:00.020849|NDLS|7|pre-mkt volume 918 < 25,000 shares
+2026-05-07|07:20:00.020849|DDOG|8|score 24 < 50 (catalyst=routine)
+2026-05-07|07:20:00.020849|ELA|9|pre-mkt volume 1,030 < 25,000 shares
+2026-05-07|07:20:00.020849|HNRG|10|pre-mkt volume 7,408 < 25,000 shares
+2026-05-07|07:20:00.020849|HIMX|11|EP cooldown — alerted within last 60 day
+2026-05-07|07:20:00.020849|AKAN|12|filter:pm_rvol_too_low: pm_rvol=0.73x (t
+2026-05-07|07:20:00.020849|SEZL|13|pre-mkt volume 14,543 < 25,000 shares
+2026-05-07|07:20:00.020849|FTNT|14|already scored earlier today
+2026-05-07|07:20:00.020849|KLIC|15|pre-mkt volume 17,550 < 25,000 shares
+2026-05-07|07:20:00.020849|ERNA|16|already up 64% in prior 5 days (extended
+2026-05-07|07:20:00.020849|ARRY|17|already scored earlier today
+2026-05-07|07:20:00.020849|TRDA|18|pre-mkt volume 1,975 < 25,000 shares
+2026-05-07|07:20:00.020849|ORA|19|pre-mkt volume 7,320 < 25,000 shares
+2026-05-07|07:20:00.020849|LFST|20|pre-mkt volume 5,028 < 25,000 shares
+2026-05-07|07:20:00.020849|CGNX|21|outside top-20 gap cap (gap 10.2%)
+2026-05-07|07:20:00.020849|DASH|22|outside top-20 gap cap (gap 10.0%)
+2026-05-07|07:20:00.020849|GLIBK|23|outside top-20 gap cap (gap 9.8%)
+2026-05-07|07:20:00.020849|EZPW|24|outside top-20 gap cap (gap 9.6%)
+2026-05-07|07:20:00.020849|FA|25|outside top-20 gap cap (gap 9.4%)
+2026-05-07|07:20:00.020849|PGY|26|outside top-20 gap cap (gap 9.2%)
+2026-05-07|07:20:00.020849|GIG|27|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:20:00.020849|TAOX|28|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:20:00.020849|JLHL|29|outside top-20 gap cap (gap 8.4%)
+2026-05-07|07:20:00.020849|BBSI|30|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:20:00.020849|BLLN|31|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:20:00.020849|ROOT|32|outside top-20 gap cap (gap 8.2%)
+2026-05-07|07:20:00.020849|U|33|outside top-20 gap cap (gap 8.1%)
+2026-05-07|07:20:00.020849|IMOS|34|outside top-20 gap cap (gap 8.1%)
+2026-05-07|07:25:00.018095|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|07:25:00.018095|SITM|2|pre-mkt volume 6,169 < 25,000 shares
+2026-05-07|07:25:00.018095|FLNC|3|already scored earlier today
+2026-05-07|07:25:00.018095|CCRN|4|quality filter: filter:mcap_too_small: $
+2026-05-07|07:25:00.018095|DDOG|5|score 30 < 50 (catalyst=routine)
+2026-05-07|07:25:00.018095|PCT|6|already scored earlier today
+2026-05-07|07:25:00.018095|BLBD|7|pre-mkt volume 1,872 < 25,000 shares
+2026-05-07|07:25:00.018095|ERNA|8|already up 64% in prior 5 days (extended
+2026-05-07|07:25:00.018095|ELA|9|pre-mkt volume 2,078 < 25,000 shares
+2026-05-07|07:25:00.018095|HNRG|10|pre-mkt volume 7,408 < 25,000 shares
+2026-05-07|07:25:00.018095|NDLS|11|pre-mkt volume 1,285 < 25,000 shares
+2026-05-07|07:25:00.018095|SEZL|12|pre-mkt volume 14,664 < 25,000 shares
+2026-05-07|07:25:00.018095|HIMX|13|EP cooldown — alerted within last 60 day
+2026-05-07|07:25:00.018095|FTNT|14|already scored earlier today
+2026-05-07|07:25:00.018095|XMTR|15|pre-mkt volume 3,771 < 25,000 shares
+2026-05-07|07:25:00.018095|KLIC|16|pre-mkt volume 17,550 < 25,000 shares
+2026-05-07|07:25:00.018095|AKAN|17|filter:pm_rvol_too_low: pm_rvol=0.73x (t
+2026-05-07|07:25:00.018095|ARRY|18|already scored earlier today
+2026-05-07|07:25:00.018095|PGY|19|routine catalyst, gap 10.9%
+2026-05-07|07:25:00.018095|AAON|20|pre-mkt volume 9,190 < 25,000 shares
+2026-05-07|07:25:00.018095|ORA|21|outside top-20 gap cap (gap 10.6%)
+2026-05-07|07:25:00.018095|SNOW|22|outside top-20 gap cap (gap 10.5%)
+2026-05-07|07:25:00.018095|LFST|23|outside top-20 gap cap (gap 10.4%)
+2026-05-07|07:25:00.018095|CGNX|24|outside top-20 gap cap (gap 10.2%)
+2026-05-07|07:25:00.018095|DASH|25|outside top-20 gap cap (gap 10.0%)
+2026-05-07|07:25:00.018095|HWM|26|outside top-20 gap cap (gap 10.0%)
+2026-05-07|07:25:00.018095|GLIBK|27|outside top-20 gap cap (gap 9.8%)
+2026-05-07|07:25:00.018095|EZPW|28|outside top-20 gap cap (gap 9.6%)
+2026-05-07|07:25:00.018095|FA|29|outside top-20 gap cap (gap 9.4%)
+2026-05-07|07:25:00.018095|MDB|30|outside top-20 gap cap (gap 8.9%)
+2026-05-07|07:25:00.018095|GIG|31|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:25:00.018095|TAOX|32|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:25:00.018095|JLHL|33|outside top-20 gap cap (gap 8.4%)
+2026-05-07|07:25:00.018095|BLLN|34|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:25:00.018095|BBSI|35|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:25:00.018095|ROOT|36|outside top-20 gap cap (gap 8.2%)
+2026-05-07|07:25:00.018095|U|37|outside top-20 gap cap (gap 8.1%)
+2026-05-07|07:25:00.018095|IMOS|38|outside top-20 gap cap (gap 8.1%)
+2026-05-07|07:30:00.021796|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|07:30:00.021796|SITM|2|pre-mkt volume 6,443 < 25,000 shares
+2026-05-07|07:30:00.021796|FLNC|3|already scored earlier today
+2026-05-07|07:30:00.021796|CCRN|4|quality filter: filter:mcap_too_small: $
+2026-05-07|07:30:00.021796|PCT|5|already scored earlier today
+2026-05-07|07:30:00.021796|DDOG|6|score 30 < 50 (catalyst=routine)
+2026-05-07|07:30:00.021796|BLBD|7|pre-mkt volume 1,872 < 25,000 shares
+2026-05-07|07:30:00.021796|HIMX|8|EP cooldown — alerted within last 60 day
+2026-05-07|07:30:00.021796|ERNA|9|already up 64% in prior 5 days (extended
+2026-05-07|07:30:00.021796|ELA|10|pre-mkt volume 2,078 < 25,000 shares
+2026-05-07|07:30:00.021796|HNRG|11|pre-mkt volume 7,408 < 25,000 shares
+2026-05-07|07:30:00.021796|SEZL|12|pre-mkt volume 17,677 < 25,000 shares
+2026-05-07|07:30:00.021796|NDLS|13|pre-mkt volume 1,285 < 25,000 shares
+2026-05-07|07:30:00.021796|FTNT|14|already scored earlier today
+2026-05-07|07:30:00.021796|KLIC|15|pre-mkt volume 18,557 < 25,000 shares
+2026-05-07|07:30:00.021796|AKAN|16|filter:pm_rvol_too_low: pm_rvol=0.72x (t
+2026-05-07|07:30:00.021796|XMTR|17|pre-mkt volume 4,959 < 25,000 shares
+2026-05-07|07:30:00.021796|HWM|18|pre-mkt volume 18,338 < 25,000 shares
+2026-05-07|07:30:00.021796|AAON|19|pre-mkt volume 19,522 < 25,000 shares
+2026-05-07|07:30:00.021796|ORA|20|pre-mkt volume 8,296 < 25,000 shares
+2026-05-07|07:30:00.021796|DASH|21|outside top-20 gap cap (gap 10.4%)
+2026-05-07|07:30:00.021796|LFST|22|outside top-20 gap cap (gap 10.4%)
+2026-05-07|07:30:00.021796|ARRY|23|outside top-20 gap cap (gap 10.4%)
+2026-05-07|07:30:00.021796|GLIBK|24|outside top-20 gap cap (gap 9.8%)
+2026-05-07|07:30:00.021796|IMOS|25|outside top-20 gap cap (gap 9.6%)
+2026-05-07|07:30:00.021796|EZPW|26|outside top-20 gap cap (gap 9.6%)
+2026-05-07|07:30:00.021796|PGY|27|outside top-20 gap cap (gap 9.4%)
+2026-05-07|07:30:00.021796|FA|28|outside top-20 gap cap (gap 9.4%)
+2026-05-07|07:30:00.021796|JMIA|29|outside top-20 gap cap (gap 9.2%)
+2026-05-07|07:30:00.021796|GIG|30|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:30:00.021796|TAOX|31|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:30:00.021796|JLHL|32|outside top-20 gap cap (gap 8.4%)
+2026-05-07|07:30:00.021796|SNOW|33|outside top-20 gap cap (gap 8.4%)
+2026-05-07|07:30:00.021796|BBSI|34|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:30:00.021796|BLLN|35|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:30:00.021796|ROOT|36|outside top-20 gap cap (gap 8.2%)
+2026-05-07|07:35:00.014649|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|07:35:00.014649|FLNC|2|already scored earlier today
+2026-05-07|07:35:00.014649|CCRN|3|quality filter: filter:mcap_too_small: $
+2026-05-07|07:35:00.014649|SITM|4|pre-mkt volume 6,767 < 25,000 shares
+2026-05-07|07:35:00.014649|PCT|5|already scored earlier today
+2026-05-07|07:35:00.014649|DDOG|6|score 30 < 50 (catalyst=routine)
+2026-05-07|07:35:00.014649|BLBD|7|pre-mkt volume 2,081 < 25,000 shares
+2026-05-07|07:35:00.014649|AAON|8|pre-mkt volume 21,099 < 25,000 shares
+2026-05-07|07:35:00.014649|ELA|9|pre-mkt volume 2,278 < 25,000 shares
+2026-05-07|07:35:00.014649|HNRG|10|pre-mkt volume 8,299 < 25,000 shares
+2026-05-07|07:35:00.014649|HIMX|11|EP cooldown — alerted within last 60 day
+2026-05-07|07:35:00.014649|NDLS|12|pre-mkt volume 1,285 < 25,000 shares
+2026-05-07|07:35:00.014649|FTNT|13|already scored earlier today
+2026-05-07|07:35:00.014649|SEZL|14|pre-mkt volume 18,035 < 25,000 shares
+2026-05-07|07:35:00.014649|KLIC|15|pre-mkt volume 18,557 < 25,000 shares
+2026-05-07|07:35:00.014649|ERNA|16|already up 64% in prior 5 days (extended
+2026-05-07|07:35:00.014649|AKAN|17|filter:pm_rvol_too_low: pm_rvol=0.72x (t
+2026-05-07|07:35:00.014649|XMTR|18|pre-mkt volume 4,959 < 25,000 shares
+2026-05-07|07:35:00.014649|FOUR|19|pre-mkt volume 10,765 < 25,000 shares
+2026-05-07|07:35:00.014649|HWM|20|pre-mkt volume 21,494 < 25,000 shares
+2026-05-07|07:35:00.014649|JMIA|21|outside top-20 gap cap (gap 10.9%)
+2026-05-07|07:35:00.014649|IMOS|22|outside top-20 gap cap (gap 10.4%)
+2026-05-07|07:35:00.014649|LFST|23|outside top-20 gap cap (gap 10.4%)
+2026-05-07|07:35:00.014649|VCX|24|outside top-20 gap cap (gap 10.2%)
+2026-05-07|07:35:00.014649|DASH|25|outside top-20 gap cap (gap 10.2%)
+2026-05-07|07:35:00.014649|ARRY|26|outside top-20 gap cap (gap 10.1%)
+2026-05-07|07:35:00.014649|ORA|27|outside top-20 gap cap (gap 10.1%)
+2026-05-07|07:35:00.014649|PGY|28|outside top-20 gap cap (gap 9.9%)
+2026-05-07|07:35:00.014649|GLIBK|29|outside top-20 gap cap (gap 9.8%)
+2026-05-07|07:35:00.014649|EZPW|30|outside top-20 gap cap (gap 9.6%)
+2026-05-07|07:35:00.014649|CGNX|31|outside top-20 gap cap (gap 9.5%)
+2026-05-07|07:35:00.014649|FA|32|outside top-20 gap cap (gap 9.4%)
+2026-05-07|07:35:00.014649|SNOW|33|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:35:00.014649|GIG|34|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:35:00.014649|TAOX|35|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:35:00.014649|JLHL|36|outside top-20 gap cap (gap 8.4%)
+2026-05-07|07:35:00.014649|BLLN|37|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:35:00.014649|BBSI|38|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:35:00.014649|ROOT|39|outside top-20 gap cap (gap 8.2%)
+2026-05-07|07:40:00.019917|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|07:40:00.019917|FLNC|2|already scored earlier today
+2026-05-07|07:40:00.019917|SITM|3|pre-mkt volume 6,982 < 25,000 shares
+2026-05-07|07:40:00.019917|CCRN|4|quality filter: filter:mcap_too_small: $
+2026-05-07|07:40:00.019917|DDOG|5|score 30 < 50 (catalyst=routine)
+2026-05-07|07:40:00.019917|HIMX|6|EP cooldown — alerted within last 60 day
+2026-05-07|07:40:00.019917|PCT|7|already scored earlier today
+2026-05-07|07:40:00.019917|AAON|8|pre-mkt volume 21,099 < 25,000 shares
+2026-05-07|07:40:00.019917|BLBD|9|pre-mkt volume 3,106 < 25,000 shares
+2026-05-07|07:40:00.019917|ELA|10|pre-mkt volume 2,903 < 25,000 shares
+2026-05-07|07:40:00.019917|AKAN|11|filter:pm_rvol_too_low: pm_rvol=0.72x (t
+2026-05-07|07:40:00.019917|HNRG|12|pre-mkt volume 8,299 < 25,000 shares
+2026-05-07|07:40:00.019917|NDLS|13|pre-mkt volume 1,285 < 25,000 shares
+2026-05-07|07:40:00.019917|XMTR|14|pre-mkt volume 5,490 < 25,000 shares
+2026-05-07|07:40:00.019917|SEZL|15|pre-mkt volume 18,375 < 25,000 shares
+2026-05-07|07:40:00.019917|ERNA|16|already up 64% in prior 5 days (extended
+2026-05-07|07:40:00.019917|FTNT|17|already scored earlier today
+2026-05-07|07:40:00.019917|KLIC|18|pre-mkt volume 18,863 < 25,000 shares
+2026-05-07|07:40:00.019917|TREX|19|pre-mkt volume 14,745 < 25,000 shares
+2026-05-07|07:40:00.019917|JMIA|20|score 46 < 50 (catalyst=strong)
+2026-05-07|07:40:00.019917|HWM|21|outside top-20 gap cap (gap 11.5%)
+2026-05-07|07:40:00.019917|IMOS|22|outside top-20 gap cap (gap 10.4%)
+2026-05-07|07:40:00.019917|LFST|23|outside top-20 gap cap (gap 10.4%)
+2026-05-07|07:40:00.019917|ARRY|24|outside top-20 gap cap (gap 10.2%)
+2026-05-07|07:40:00.019917|ORA|25|outside top-20 gap cap (gap 10.1%)
+2026-05-07|07:40:00.019917|DASH|26|outside top-20 gap cap (gap 10.0%)
+2026-05-07|07:40:00.019917|GCT|27|outside top-20 gap cap (gap 10.0%)
+2026-05-07|07:40:00.019917|GLIBK|28|outside top-20 gap cap (gap 9.8%)
+2026-05-07|07:40:00.019917|FOUR|29|outside top-20 gap cap (gap 9.7%)
+2026-05-07|07:40:00.019917|EZPW|30|outside top-20 gap cap (gap 9.6%)
+2026-05-07|07:40:00.019917|FA|31|outside top-20 gap cap (gap 9.4%)
+2026-05-07|07:40:00.019917|WRBY|32|outside top-20 gap cap (gap 8.9%)
+2026-05-07|07:40:00.019917|GIG|33|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:40:00.019917|TAOX|34|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:40:00.019917|SNOW|35|outside top-20 gap cap (gap 8.6%)
+2026-05-07|07:40:00.019917|JLHL|36|outside top-20 gap cap (gap 8.4%)
+2026-05-07|07:40:00.019917|BBSI|37|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:40:00.019917|BLLN|38|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:45:00.023097|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|07:45:00.023097|FLNC|2|already scored earlier today
+2026-05-07|07:45:00.023097|SITM|3|pre-mkt volume 9,634 < 25,000 shares
+2026-05-07|07:45:00.023097|CCRN|4|quality filter: filter:mcap_too_small: $
+2026-05-07|07:45:00.023097|PCT|5|already scored earlier today
+2026-05-07|07:45:00.023097|DDOG|6|score 30 < 50 (catalyst=routine)
+2026-05-07|07:45:00.023097|XMTR|7|pre-mkt volume 9,693 < 25,000 shares
+2026-05-07|07:45:00.023097|AAON|8|pre-mkt volume 23,382 < 25,000 shares
+2026-05-07|07:45:00.023097|ELA|9|pre-mkt volume 6,104 < 25,000 shares
+2026-05-07|07:45:00.023097|HIMX|10|EP cooldown — alerted within last 60 day
+2026-05-07|07:45:00.023097|BLBD|11|pre-mkt volume 3,342 < 25,000 shares
+2026-05-07|07:45:00.023097|ERNA|12|already up 64% in prior 5 days (extended
+2026-05-07|07:45:00.023097|NDLS|13|pre-mkt volume 1,285 < 25,000 shares
+2026-05-07|07:45:00.023097|HNRG|14|pre-mkt volume 8,923 < 25,000 shares
+2026-05-07|07:45:00.023097|AKAN|15|filter:pm_rvol_too_low: pm_rvol=0.71x (t
+2026-05-07|07:45:00.023097|FTNT|16|already scored earlier today
+2026-05-07|07:45:00.023097|SEZL|17|pre-mkt volume 18,626 < 25,000 shares
+2026-05-07|07:45:00.023097|KLIC|18|pre-mkt volume 20,208 < 25,000 shares
+2026-05-07|07:45:00.023097|GCT|19|score 24 < 50 (catalyst=routine)
+2026-05-07|07:45:00.023097|TREX|20|pre-mkt volume 14,745 < 25,000 shares
+2026-05-07|07:45:00.023097|HWM|21|outside top-20 gap cap (gap 12.7%)
+2026-05-07|07:45:00.023097|JMIA|22|outside top-20 gap cap (gap 11.7%)
+2026-05-07|07:45:00.023097|VCX|23|outside top-20 gap cap (gap 11.3%)
+2026-05-07|07:45:00.023097|FOUR|24|outside top-20 gap cap (gap 10.8%)
+2026-05-07|07:45:00.023097|IMOS|25|outside top-20 gap cap (gap 10.4%)
+2026-05-07|07:45:00.023097|LFST|26|outside top-20 gap cap (gap 10.4%)
+2026-05-07|07:45:00.023097|DASH|27|outside top-20 gap cap (gap 10.0%)
+2026-05-07|07:45:00.023097|ARRY|28|outside top-20 gap cap (gap 10.0%)
+2026-05-07|07:45:00.023097|GLIBK|29|outside top-20 gap cap (gap 9.8%)
+2026-05-07|07:45:00.023097|EZPW|30|outside top-20 gap cap (gap 9.6%)
+2026-05-07|07:45:00.023097|ORA|31|outside top-20 gap cap (gap 9.4%)
+2026-05-07|07:45:00.023097|FA|32|outside top-20 gap cap (gap 9.4%)
+2026-05-07|07:45:00.023097|PGY|33|outside top-20 gap cap (gap 9.0%)
+2026-05-07|07:45:00.023097|MDA|34|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:45:00.023097|GIG|35|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:45:00.023097|TAOX|36|outside top-20 gap cap (gap 8.7%)
+2026-05-07|07:45:00.023097|BBSI|37|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:45:00.023097|BLLN|38|outside top-20 gap cap (gap 8.3%)
+2026-05-07|07:45:00.023097|SNOW|39|outside top-20 gap cap (gap 8.2%)
+2026-05-07|08:00:00.025233|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|08:00:00.025233|FLNC|2|already scored earlier today
+2026-05-07|08:00:00.025233|SITM|3|pre-mkt volume 12,557 < 25,000 shares
+2026-05-07|08:00:00.025233|CCRN|4|quality filter: filter:mcap_too_small: $
+2026-05-07|08:00:00.025233|AAON|5|score 30 < 50 (catalyst=routine)
+2026-05-07|08:00:00.025233|PCT|6|already scored earlier today
+2026-05-07|08:00:00.025233|DDOG|7|score 30 < 50 (catalyst=routine)
+2026-05-07|08:00:00.025233|ELA|8|pre-mkt volume 6,656 < 25,000 shares
+2026-05-07|08:00:00.025233|XMTR|9|pre-mkt volume 10,608 < 25,000 shares
+2026-05-07|08:00:00.025233|BLBD|10|pre-mkt volume 4,007 < 25,000 shares
+2026-05-07|08:00:00.025233|ERNA|11|already up 64% in prior 5 days (extended
+2026-05-07|08:00:00.025233|NDLS|12|pre-mkt volume 1,285 < 25,000 shares
+2026-05-07|08:00:00.025233|FOUR|13|pre-mkt volume 18,109 < 25,000 shares
+2026-05-07|08:00:00.025233|HIMX|14|EP cooldown — alerted within last 60 day
+2026-05-07|08:00:00.025233|SEZL|15|pre-mkt volume 19,082 < 25,000 shares
+2026-05-07|08:00:00.025233|HNRG|16|pre-mkt volume 14,249 < 25,000 shares
+2026-05-07|08:00:00.025233|KLIC|17|pre-mkt volume 22,605 < 25,000 shares
+2026-05-07|08:00:00.025233|FTNT|18|already scored earlier today
+2026-05-07|08:00:00.025233|JMIA|19|score 46 < 50 (catalyst=strong)
+2026-05-07|08:00:00.025233|AKAN|20|filter:pm_rvol_too_low: pm_rvol=0.69x (t
+2026-05-07|08:00:00.025233|MTSI|21|outside top-20 gap cap (gap 14.3%)
+2026-05-07|08:00:00.025233|TREX|22|outside top-20 gap cap (gap 12.8%)
+2026-05-07|08:00:00.025233|CPS|23|outside top-20 gap cap (gap 12.5%)
+2026-05-07|08:00:00.025233|LFST|24|outside top-20 gap cap (gap 12.2%)
+2026-05-07|08:00:00.025233|HWM|25|outside top-20 gap cap (gap 11.4%)
+2026-05-07|08:00:00.025233|VCX|26|outside top-20 gap cap (gap 11.3%)
+2026-05-07|08:00:00.025233|GCT|27|outside top-20 gap cap (gap 11.3%)
+2026-05-07|08:00:00.025233|PGY|28|outside top-20 gap cap (gap 11.1%)
+2026-05-07|08:00:00.025233|EZPW|29|outside top-20 gap cap (gap 10.2%)
+2026-05-07|08:00:00.025233|DASH|30|outside top-20 gap cap (gap 10.1%)
+2026-05-07|08:00:00.025233|FUN|31|outside top-20 gap cap (gap 9.8%)
+2026-05-07|08:00:00.025233|GLIBK|32|outside top-20 gap cap (gap 9.8%)
+2026-05-07|08:00:00.025233|EXK|33|outside top-20 gap cap (gap 9.7%)
+2026-05-07|08:00:00.025233|TPB|34|outside top-20 gap cap (gap 9.5%)
+2026-05-07|08:00:00.025233|TAOX|35|outside top-20 gap cap (gap 9.5%)
+2026-05-07|08:00:00.025233|FA|36|outside top-20 gap cap (gap 9.4%)
+2026-05-07|08:00:00.025233|ORA|37|outside top-20 gap cap (gap 9.2%)
+2026-05-07|08:00:00.025233|ARRY|38|outside top-20 gap cap (gap 9.1%)
+2026-05-07|08:00:00.025233|ICL|39|outside top-20 gap cap (gap 8.9%)
+2026-05-07|08:00:00.025233|MDA|40|outside top-20 gap cap (gap 8.4%)
+2026-05-07|08:00:00.025233|NVST|41|outside top-20 gap cap (gap 8.4%)
+2026-05-07|08:00:00.025233|PDC|42|outside top-20 gap cap (gap 8.3%)
+2026-05-07|08:00:00.025233|BBSI|43|outside top-20 gap cap (gap 8.3%)
+2026-05-07|08:00:00.025233|BLLN|44|outside top-20 gap cap (gap 8.3%)
+2026-05-07|08:00:00.025233|IMOS|45|outside top-20 gap cap (gap 8.1%)
+2026-05-07|08:05:00.036663|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|08:05:00.036663|FLNC|2|already scored earlier today
+2026-05-07|08:05:00.036663|SITM|3|pre-mkt volume 12,557 < 25,000 shares
+2026-05-07|08:05:00.036663|CCRN|4|quality filter: filter:mcap_too_small: $
+2026-05-07|08:05:00.036663|AAON|5|score 30 < 50 (catalyst=routine)
+2026-05-07|08:05:00.036663|DDOG|6|score 30 < 50 (catalyst=routine)
+2026-05-07|08:05:00.036663|PCT|7|already scored earlier today
+2026-05-07|08:05:00.036663|ELA|8|pre-mkt volume 6,656 < 25,000 shares
+2026-05-07|08:05:00.036663|XMTR|9|pre-mkt volume 10,608 < 25,000 shares
+2026-05-07|08:05:00.036663|HIMX|10|EP cooldown — alerted within last 60 day
+2026-05-07|08:05:00.036663|BLBD|11|pre-mkt volume 4,135 < 25,000 shares
+2026-05-07|08:05:00.036663|ERNA|12|already up 64% in prior 5 days (extended
+2026-05-07|08:05:00.036663|NDLS|13|pre-mkt volume 1,285 < 25,000 shares
+2026-05-07|08:05:00.036663|FTNT|14|already scored earlier today
+2026-05-07|08:05:00.036663|SEZL|15|pre-mkt volume 20,736 < 25,000 shares
+2026-05-07|08:05:00.036663|KLIC|16|pre-mkt volume 23,439 < 25,000 shares
+2026-05-07|08:05:00.036663|JMIA|17|score 46 < 50 (catalyst=strong)
+2026-05-07|08:05:00.036663|AKAN|18|filter:pm_rvol_too_low: pm_rvol=0.68x (t
+2026-05-07|08:05:00.036663|HNRG|19|pre-mkt volume 16,432 < 25,000 shares
+2026-05-07|08:05:00.036663|FOUR|20|pre-mkt volume 18,875 < 25,000 shares
+2026-05-07|08:05:00.036663|TREX|21|outside top-20 gap cap (gap 12.8%)
+2026-05-07|08:05:00.036663|CPS|22|outside top-20 gap cap (gap 12.5%)
+2026-05-07|08:05:00.036663|MTSI|23|outside top-20 gap cap (gap 12.3%)
+2026-05-07|08:05:00.036663|LFST|24|outside top-20 gap cap (gap 12.2%)
+2026-05-07|08:05:00.036663|HWM|25|outside top-20 gap cap (gap 11.5%)
+2026-05-07|08:05:00.036663|GCT|26|outside top-20 gap cap (gap 11.1%)
+2026-05-07|08:05:00.036663|PGY|27|outside top-20 gap cap (gap 11.1%)
+2026-05-07|08:05:00.036663|TPB|28|outside top-20 gap cap (gap 10.8%)
+2026-05-07|08:05:00.036663|VCX|29|outside top-20 gap cap (gap 10.7%)
+2026-05-07|08:05:00.036663|EZPW|30|outside top-20 gap cap (gap 10.7%)
+2026-05-07|08:05:00.036663|FUN|31|outside top-20 gap cap (gap 10.5%)
+2026-05-07|08:05:00.036663|DASH|32|outside top-20 gap cap (gap 10.1%)
+2026-05-07|08:05:00.036663|GLIBK|33|outside top-20 gap cap (gap 9.8%)
+2026-05-07|08:05:00.036663|TAOX|34|outside top-20 gap cap (gap 9.5%)
+2026-05-07|08:05:00.036663|FA|35|outside top-20 gap cap (gap 9.4%)
+2026-05-07|08:05:00.036663|ORA|36|outside top-20 gap cap (gap 9.2%)
+2026-05-07|08:05:00.036663|ICL|37|outside top-20 gap cap (gap 8.9%)
+2026-05-07|08:05:00.036663|ARRY|38|outside top-20 gap cap (gap 8.9%)
+2026-05-07|08:05:00.036663|EXK|39|outside top-20 gap cap (gap 8.8%)
+2026-05-07|08:05:00.036663|MDA|40|outside top-20 gap cap (gap 8.4%)
+2026-05-07|08:05:00.036663|PDC|41|outside top-20 gap cap (gap 8.3%)
+2026-05-07|08:05:00.036663|BBSI|42|outside top-20 gap cap (gap 8.3%)
+2026-05-07|08:05:00.036663|BLLN|43|outside top-20 gap cap (gap 8.3%)
+2026-05-07|08:05:00.036663|HAE|44|outside top-20 gap cap (gap 8.2%)
+2026-05-07|08:05:00.036663|IMOS|45|outside top-20 gap cap (gap 8.1%)
+2026-05-07|08:10:00.022077|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|08:10:00.022077|FLNC|2|already scored earlier today
+2026-05-07|08:10:00.022077|SITM|3|pre-mkt volume 14,269 < 25,000 shares
+2026-05-07|08:10:00.022077|CCRN|4|quality filter: filter:mcap_too_small: $
+2026-05-07|08:10:00.022077|AAON|5|score 30 < 50 (catalyst=routine)
+2026-05-07|08:10:00.022077|DDOG|6|score 30 < 50 (catalyst=routine)
+2026-05-07|08:10:00.022077|PCT|7|already scored earlier today
+2026-05-07|08:10:00.022077|ELA|8|pre-mkt volume 6,656 < 25,000 shares
+2026-05-07|08:10:00.022077|XMTR|9|pre-mkt volume 10,608 < 25,000 shares
+2026-05-07|08:10:00.022077|HIMX|10|EP cooldown — alerted within last 60 day
+2026-05-07|08:10:00.022077|SEZL|11|
+2026-05-07|08:10:00.022077|BLBD|12|pre-mkt volume 4,135 < 25,000 shares
+2026-05-07|08:10:00.022077|ERNA|13|already up 64% in prior 5 days (extended
+2026-05-07|08:10:00.022077|NDLS|14|pre-mkt volume 1,285 < 25,000 shares
+2026-05-07|08:10:00.022077|MTSI|15|pre-mkt volume 20,970 < 25,000 shares
+2026-05-07|08:10:00.022077|FTNT|16|already scored earlier today
+2026-05-07|08:10:00.022077|JMIA|17|score 46 < 50 (catalyst=strong)
+2026-05-07|08:10:00.022077|KLIC|18|score 0 < 50 (catalyst=routine)
+2026-05-07|08:10:00.022077|FOUR|19|pre-mkt volume 19,672 < 25,000 shares
+2026-05-07|08:10:00.022077|AKAN|20|filter:pm_rvol_too_low: pm_rvol=0.67x (t
+2026-05-07|08:10:00.022077|TREX|21|outside top-20 gap cap (gap 12.8%)
+2026-05-07|08:10:00.022077|CPS|22|outside top-20 gap cap (gap 12.5%)
+2026-05-07|08:10:00.022077|LFST|23|outside top-20 gap cap (gap 12.2%)
+2026-05-07|08:10:00.022077|HWM|24|outside top-20 gap cap (gap 11.8%)
+2026-05-07|08:10:00.022077|GCT|25|outside top-20 gap cap (gap 11.2%)
+2026-05-07|08:10:00.022077|PGY|26|outside top-20 gap cap (gap 10.9%)
+2026-05-07|08:10:00.022077|TPB|27|outside top-20 gap cap (gap 10.8%)
+2026-05-07|08:10:00.022077|DASH|28|outside top-20 gap cap (gap 10.7%)
+2026-05-07|08:10:00.022077|EZPW|29|outside top-20 gap cap (gap 10.7%)
+2026-05-07|08:10:00.022077|HNRG|30|outside top-20 gap cap (gap 10.5%)
+2026-05-07|08:10:00.022077|FUN|31|outside top-20 gap cap (gap 10.5%)
+2026-05-07|08:10:00.022077|VCX|32|outside top-20 gap cap (gap 10.1%)
+2026-05-07|08:10:00.022077|GLIBK|33|outside top-20 gap cap (gap 9.8%)
+2026-05-07|08:10:00.022077|EXK|34|outside top-20 gap cap (gap 9.8%)
+2026-05-07|08:10:00.022077|TAOX|35|outside top-20 gap cap (gap 9.5%)
+2026-05-07|08:10:00.022077|FA|36|outside top-20 gap cap (gap 9.4%)
+2026-05-07|08:10:00.022077|ORA|37|outside top-20 gap cap (gap 9.3%)
+2026-05-07|08:10:00.022077|ICL|38|outside top-20 gap cap (gap 9.3%)
+2026-05-07|08:10:00.022077|WRBY|39|outside top-20 gap cap (gap 8.9%)
+2026-05-07|08:10:00.022077|MDA|40|outside top-20 gap cap (gap 8.4%)
+2026-05-07|08:10:00.022077|PDC|41|outside top-20 gap cap (gap 8.3%)
+2026-05-07|08:10:00.022077|BBSI|42|outside top-20 gap cap (gap 8.3%)
+2026-05-07|08:10:00.022077|BLLN|43|outside top-20 gap cap (gap 8.3%)
+2026-05-07|08:10:00.022077|ARRY|44|outside top-20 gap cap (gap 8.2%)
+2026-05-07|08:10:00.022077|HAE|45|outside top-20 gap cap (gap 8.2%)
+2026-05-07|08:10:00.022077|IMOS|46|outside top-20 gap cap (gap 8.1%)
+2026-05-07|08:20:00.045051|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|08:20:00.045051|ATRA|2|quality filter: filter:adv_too_low: $289
+2026-05-07|08:20:00.045051|FLNC|3|already scored earlier today
+2026-05-07|08:20:00.045051|SITM|4|pre-mkt volume 16,317 < 25,000 shares
+2026-05-07|08:20:00.045051|CCRN|5|quality filter: filter:mcap_too_small: $
+2026-05-07|08:20:00.045051|AAON|6|score 30 < 50 (catalyst=routine)
+2026-05-07|08:20:00.045051|DDOG|7|score 30 < 50 (catalyst=routine)
+2026-05-07|08:20:00.045051|PCT|8|already scored earlier today
+2026-05-07|08:20:00.045051|ELA|9|pre-mkt volume 7,376 < 25,000 shares
+2026-05-07|08:20:00.045051|HIMX|10|EP cooldown — alerted within last 60 day
+2026-05-07|08:20:00.045051|SEZL|11|already scored earlier today
+2026-05-07|08:20:00.045051|BLBD|12|pre-mkt volume 4,320 < 25,000 shares
+2026-05-07|08:20:00.045051|ERNA|13|already up 64% in prior 5 days (extended
+2026-05-07|08:20:00.045051|MTSI|14|
+2026-05-07|08:20:00.045051|NDLS|15|pre-mkt volume 1,285 < 25,000 shares
+2026-05-07|08:20:00.045051|FTNT|16|already scored earlier today
+2026-05-07|08:20:00.045051|XMTR|17|pre-mkt volume 11,017 < 25,000 shares
+2026-05-07|08:20:00.045051|FOUR|18|M&A/buyout catalyst — no momentum trade
+2026-05-07|08:20:00.045051|PGY|19|score 36 < 50 (catalyst=routine)
+2026-05-07|08:20:00.045051|VCX|20|EP cooldown — alerted within last 60 day
+2026-05-07|08:20:00.045051|JMIA|21|outside top-20 gap cap (gap 12.8%)
+2026-05-07|08:20:00.045051|KLIC|22|outside top-20 gap cap (gap 12.8%)
+2026-05-07|08:20:00.045051|HNRG|23|outside top-20 gap cap (gap 12.4%)
+2026-05-07|08:20:00.045051|HWM|24|outside top-20 gap cap (gap 12.3%)
+2026-05-07|08:20:00.045051|LFST|25|outside top-20 gap cap (gap 12.2%)
+2026-05-07|08:20:00.045051|TPB|26|outside top-20 gap cap (gap 12.0%)
+2026-05-07|08:20:00.045051|TREX|27|outside top-20 gap cap (gap 11.6%)
+2026-05-07|08:20:00.045051|WRBY|28|outside top-20 gap cap (gap 11.2%)
+2026-05-07|08:20:00.045051|CPS|29|outside top-20 gap cap (gap 11.2%)
+2026-05-07|08:20:00.045051|AKAN|30|outside top-20 gap cap (gap 11.1%)
+2026-05-07|08:20:00.045051|FUN|31|outside top-20 gap cap (gap 10.5%)
+2026-05-07|08:20:00.045051|ICL|32|outside top-20 gap cap (gap 10.0%)
+2026-05-07|08:20:00.045051|TAOX|33|outside top-20 gap cap (gap 9.8%)
+2026-05-07|08:20:00.045051|GLIBK|34|outside top-20 gap cap (gap 9.8%)
+2026-05-07|08:20:00.045051|EZPW|35|outside top-20 gap cap (gap 9.4%)
+2026-05-07|08:20:00.045051|ORA|36|outside top-20 gap cap (gap 9.3%)
+2026-05-07|08:20:00.045051|CGNX|37|outside top-20 gap cap (gap 8.8%)
+2026-05-07|08:20:00.045051|DASH|38|outside top-20 gap cap (gap 8.7%)
+2026-05-07|08:20:00.045051|EXK|39|outside top-20 gap cap (gap 8.5%)
+2026-05-07|08:20:00.045051|SNOW|40|outside top-20 gap cap (gap 8.4%)
+2026-05-07|08:20:00.045051|BBSI|41|outside top-20 gap cap (gap 8.3%)
+2026-05-07|08:20:00.045051|BLLN|42|outside top-20 gap cap (gap 8.3%)
+2026-05-07|08:20:00.045051|ARRY|43|outside top-20 gap cap (gap 8.2%)
+2026-05-07|08:20:00.045051|HAE|44|outside top-20 gap cap (gap 8.2%)
+2026-05-07|08:20:00.045051|PICS|45|outside top-20 gap cap (gap 8.2%)
+2026-05-07|08:20:00.045051|OCS|46|outside top-20 gap cap (gap 8.2%)
+2026-05-07|08:20:00.045051|IMOS|47|outside top-20 gap cap (gap 8.1%)
+2026-05-07|08:25:00.019041|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|08:25:00.019041|ATRA|2|quality filter: filter:adv_too_low: $289
+2026-05-07|08:25:00.019041|FLNC|3|already scored earlier today
+2026-05-07|08:25:00.019041|SITM|4|pre-mkt volume 17,361 < 25,000 shares
+2026-05-07|08:25:00.019041|CCRN|5|quality filter: filter:mcap_too_small: $
+2026-05-07|08:25:00.019041|AAON|6|score 30 < 50 (catalyst=routine)
+2026-05-07|08:25:00.019041|DDOG|7|score 30 < 50 (catalyst=routine)
+2026-05-07|08:25:00.019041|PCT|8|already scored earlier today
+2026-05-07|08:25:00.019041|HIMX|9|EP cooldown — alerted within last 60 day
+2026-05-07|08:25:00.019041|ELA|10|pre-mkt volume 7,708 < 25,000 shares
+2026-05-07|08:25:00.019041|BLBD|11|pre-mkt volume 4,320 < 25,000 shares
+2026-05-07|08:25:00.019041|SEZL|12|already scored earlier today
+2026-05-07|08:25:00.019041|MTSI|13|already scored earlier today
+2026-05-07|08:25:00.019041|NDLS|14|pre-mkt volume 1,285 < 25,000 shares
+2026-05-07|08:25:00.019041|ERNA|15|already up 64% in prior 5 days (extended
+2026-05-07|08:25:00.019041|FTNT|16|already scored earlier today
+2026-05-07|08:25:00.019041|XMTR|17|pre-mkt volume 11,017 < 25,000 shares
+2026-05-07|08:25:00.019041|JMIA|18|score 46 < 50 (catalyst=strong)
+2026-05-07|08:25:00.019041|VEEE|19|quality filter: filter:adv_too_low: $443
+2026-05-07|08:25:00.019041|FOUR|20|M&A/buyout catalyst — no momentum trade
+2026-05-07|08:25:00.019041|HNRG|21|outside top-20 gap cap (gap 13.1%)
+2026-05-07|08:25:00.019041|KLIC|22|outside top-20 gap cap (gap 12.8%)
+2026-05-07|08:25:00.019041|PGY|23|outside top-20 gap cap (gap 12.7%)
+2026-05-07|08:25:00.019041|TPB|24|outside top-20 gap cap (gap 12.4%)
+2026-05-07|08:25:00.019041|HWM|25|outside top-20 gap cap (gap 12.2%)
+2026-05-07|08:25:00.019041|WRBY|26|outside top-20 gap cap (gap 11.2%)
+2026-05-07|08:25:00.019041|CPS|27|outside top-20 gap cap (gap 11.2%)
+2026-05-07|08:25:00.019041|VCX|28|outside top-20 gap cap (gap 10.7%)
+2026-05-07|08:25:00.019041|ARRY|29|outside top-20 gap cap (gap 10.7%)
+2026-05-07|08:25:00.019041|FUN|30|outside top-20 gap cap (gap 10.5%)
+2026-05-07|08:25:00.019041|ICL|31|outside top-20 gap cap (gap 10.3%)
+2026-05-07|08:25:00.019041|AKAN|32|outside top-20 gap cap (gap 10.3%)
+2026-05-07|08:25:00.019041|DASH|33|outside top-20 gap cap (gap 9.9%)
+2026-05-07|08:25:00.019041|TAOX|34|outside top-20 gap cap (gap 9.8%)
+2026-05-07|08:25:00.019041|GLIBK|35|outside top-20 gap cap (gap 9.8%)
+2026-05-07|08:25:00.019041|TREX|36|outside top-20 gap cap (gap 9.6%)
+2026-05-07|08:25:00.019041|EZPW|37|outside top-20 gap cap (gap 9.4%)
+2026-05-07|08:25:00.019041|LFST|38|outside top-20 gap cap (gap 9.4%)
+2026-05-07|08:25:00.019041|ORA|39|outside top-20 gap cap (gap 9.3%)
+2026-05-07|08:25:00.019041|CGNX|40|outside top-20 gap cap (gap 8.8%)
+2026-05-07|08:25:00.019041|EXK|41|outside top-20 gap cap (gap 8.7%)
+2026-05-07|08:25:00.019041|SNOW|42|outside top-20 gap cap (gap 8.4%)
+2026-05-07|08:25:00.019041|BLLN|43|outside top-20 gap cap (gap 8.3%)
+2026-05-07|08:25:00.019041|BBSI|44|outside top-20 gap cap (gap 8.3%)
+2026-05-07|08:25:00.019041|HAE|45|outside top-20 gap cap (gap 8.2%)
+2026-05-07|08:25:00.019041|OCS|46|outside top-20 gap cap (gap 8.2%)
+2026-05-07|08:25:00.019041|PICS|47|outside top-20 gap cap (gap 8.2%)
+2026-05-07|08:25:00.019041|IMOS|48|outside top-20 gap cap (gap 8.1%)
+2026-05-07|09:15:00.034883|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|09:15:00.034883|ATRA|2|quality filter: filter:adv_too_low: $289
+2026-05-07|09:15:00.034883|AAON|3|score 30 < 50 (catalyst=routine)
+2026-05-07|09:15:00.034883|FLNC|4|already scored earlier today
+2026-05-07|09:15:00.034883|SITM|5|
+2026-05-07|09:15:00.034883|HIMX|6|EP cooldown — alerted within last 60 day
+2026-05-07|09:15:00.034883|DDOG|7|score 30 < 50 (catalyst=routine)
+2026-05-07|09:15:00.034883|CCRN|8|quality filter: filter:mcap_too_small: $
+2026-05-07|09:15:00.034883|JMIA|9|
+2026-05-07|09:15:00.034883|PCT|10|already scored earlier today
+2026-05-07|09:15:00.034883|XMTR|11|pre-mkt volume 16,869 < 25,000 shares
+2026-05-07|09:15:00.034883|HNRG|12|score 36 < 50 (catalyst=routine)
+2026-05-07|09:15:00.034883|ELA|13|pre-mkt volume 12,615 < 25,000 shares
+2026-05-07|09:15:00.034883|NDLS|14|pre-mkt volume 1,285 < 25,000 shares
+2026-05-07|09:15:00.034883|SEZL|15|already scored earlier today
+2026-05-07|09:15:00.034883|FTNT|16|already scored earlier today
+2026-05-07|09:15:00.034883|ERNA|17|already up 64% in prior 5 days (extended
+2026-05-07|09:15:00.034883|BLBD|18|pre-mkt volume 10,591 < 25,000 shares
+2026-05-07|09:15:00.034883|AKAN|19|filter:pm_rvol_too_low: pm_rvol=0.70x (t
+2026-05-07|09:15:00.034883|MTSI|20|already scored earlier today
+2026-05-07|09:15:00.034883|KLIC|21|outside top-20 gap cap (gap 13.8%)
+2026-05-07|09:15:00.034883|CPS|22|outside top-20 gap cap (gap 12.8%)
+2026-05-07|09:15:00.034883|CGNX|23|outside top-20 gap cap (gap 12.6%)
+2026-05-07|09:15:00.034883|FOUR|24|outside top-20 gap cap (gap 12.2%)
+2026-05-07|09:15:00.034883|PGY|25|outside top-20 gap cap (gap 11.9%)
+2026-05-07|09:15:00.034883|LFST|26|outside top-20 gap cap (gap 11.4%)
+2026-05-07|09:15:00.034883|PTON|27|outside top-20 gap cap (gap 11.2%)
+2026-05-07|09:15:00.034883|EZPW|28|outside top-20 gap cap (gap 10.7%)
+2026-05-07|09:15:00.034883|SNOW|29|outside top-20 gap cap (gap 10.2%)
+2026-05-07|09:15:00.034883|HWM|30|outside top-20 gap cap (gap 10.0%)
+2026-05-07|09:15:00.034883|TAOX|31|outside top-20 gap cap (gap 9.8%)
+2026-05-07|09:15:00.034883|VCX|32|outside top-20 gap cap (gap 9.8%)
+2026-05-07|09:15:00.034883|MKSI|33|outside top-20 gap cap (gap 9.4%)
+2026-05-07|09:15:00.034883|MDB|34|outside top-20 gap cap (gap 9.4%)
+2026-05-07|09:15:00.034883|ARRY|35|outside top-20 gap cap (gap 9.3%)
+2026-05-07|09:15:00.034883|DGII|36|outside top-20 gap cap (gap 9.1%)
+2026-05-07|09:15:00.034883|WRBY|37|outside top-20 gap cap (gap 9.0%)
+2026-05-07|09:15:00.034883|GWW|38|outside top-20 gap cap (gap 9.0%)
+2026-05-07|09:15:00.034883|IMOS|39|outside top-20 gap cap (gap 9.0%)
+2026-05-07|09:15:00.034883|DASH|40|outside top-20 gap cap (gap 9.0%)
+2026-05-07|09:15:00.034883|RUN|41|outside top-20 gap cap (gap 8.7%)
+2026-05-07|09:15:00.034883|EXK|42|outside top-20 gap cap (gap 8.6%)
+2026-05-07|09:15:00.034883|GCT|43|outside top-20 gap cap (gap 8.5%)
+2026-05-07|09:15:00.034883|TREX|44|outside top-20 gap cap (gap 8.4%)
+2026-05-07|09:15:00.034883|ORA|45|outside top-20 gap cap (gap 8.4%)
+2026-05-07|09:15:00.034883|ICL|46|outside top-20 gap cap (gap 8.4%)
+2026-05-07|09:15:00.034883|BLLN|47|outside top-20 gap cap (gap 8.3%)
+2026-05-07|09:15:00.034883|BBSI|48|outside top-20 gap cap (gap 8.3%)
+2026-05-07|09:15:00.034883|NVST|49|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:15:00.034883|HAE|50|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:15:00.034883|NAMS|51|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:15:00.034883|PICS|52|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:15:00.034883|ALB|53|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:15:00.034883|U|54|outside top-20 gap cap (gap 8.0%)
+2026-05-07|09:20:00.050402|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|09:20:00.050402|ATRA|2|quality filter: filter:adv_too_low: $289
+2026-05-07|09:20:00.050402|AAON|3|score 30 < 50 (catalyst=routine)
+2026-05-07|09:20:00.050402|FLNC|4|already scored earlier today
+2026-05-07|09:20:00.050402|SITM|5|already scored earlier today
+2026-05-07|09:20:00.050402|DDOG|6|score 30 < 50 (catalyst=routine)
+2026-05-07|09:20:00.050402|HIMX|7|EP cooldown — alerted within last 60 day
+2026-05-07|09:20:00.050402|JMIA|8|already scored earlier today
+2026-05-07|09:20:00.050402|CCRN|9|quality filter: filter:mcap_too_small: $
+2026-05-07|09:20:00.050402|PCT|10|already scored earlier today
+2026-05-07|09:20:00.050402|XMTR|11|pre-mkt volume 17,413 < 25,000 shares
+2026-05-07|09:20:00.050402|HNRG|12|score 36 < 50 (catalyst=routine)
+2026-05-07|09:20:00.050402|NDLS|13|pre-mkt volume 1,285 < 25,000 shares
+2026-05-07|09:20:00.050402|SEZL|14|already scored earlier today
+2026-05-07|09:20:00.050402|PGY|15|score 42 < 50 (catalyst=routine)
+2026-05-07|09:20:00.050402|BLBD|16|pre-mkt volume 10,591 < 25,000 shares
+2026-05-07|09:20:00.050402|ERNA|17|already up 64% in prior 5 days (extended
+2026-05-07|09:20:00.050402|FTNT|18|already scored earlier today
+2026-05-07|09:20:00.050402|ELA|19|pre-mkt volume 13,078 < 25,000 shares
+2026-05-07|09:20:00.050402|MTSI|20|already scored earlier today
+2026-05-07|09:20:00.050402|KLIC|21|outside top-20 gap cap (gap 13.8%)
+2026-05-07|09:20:00.050402|CPS|22|outside top-20 gap cap (gap 12.8%)
+2026-05-07|09:20:00.050402|AKAN|23|outside top-20 gap cap (gap 12.0%)
+2026-05-07|09:20:00.050402|PTON|24|outside top-20 gap cap (gap 11.5%)
+2026-05-07|09:20:00.050402|LFST|25|outside top-20 gap cap (gap 11.4%)
+2026-05-07|09:20:00.050402|FOUR|26|outside top-20 gap cap (gap 11.4%)
+2026-05-07|09:20:00.050402|EZPW|27|outside top-20 gap cap (gap 10.7%)
+2026-05-07|09:20:00.050402|CGNX|28|outside top-20 gap cap (gap 10.6%)
+2026-05-07|09:20:00.050402|MDB|29|outside top-20 gap cap (gap 10.4%)
+2026-05-07|09:20:00.050402|SNOW|30|outside top-20 gap cap (gap 10.4%)
+2026-05-07|09:20:00.050402|ICL|31|outside top-20 gap cap (gap 10.3%)
+2026-05-07|09:20:00.050402|VCX|32|outside top-20 gap cap (gap 10.1%)
+2026-05-07|09:20:00.050402|HWM|33|outside top-20 gap cap (gap 10.0%)
+2026-05-07|09:20:00.050402|RUN|34|outside top-20 gap cap (gap 9.8%)
+2026-05-07|09:20:00.050402|TAOX|35|outside top-20 gap cap (gap 9.8%)
+2026-05-07|09:20:00.050402|MKSI|36|outside top-20 gap cap (gap 9.4%)
+2026-05-07|09:20:00.050402|DGII|37|outside top-20 gap cap (gap 9.1%)
+2026-05-07|09:20:00.050402|WRBY|38|outside top-20 gap cap (gap 9.0%)
+2026-05-07|09:20:00.050402|IMOS|39|outside top-20 gap cap (gap 9.0%)
+2026-05-07|09:20:00.050402|GWW|40|outside top-20 gap cap (gap 8.9%)
+2026-05-07|09:20:00.050402|U|41|outside top-20 gap cap (gap 8.9%)
+2026-05-07|09:20:00.050402|ARRY|42|outside top-20 gap cap (gap 8.9%)
+2026-05-07|09:20:00.050402|DASH|43|outside top-20 gap cap (gap 8.6%)
+2026-05-07|09:20:00.050402|ALB|44|outside top-20 gap cap (gap 8.5%)
+2026-05-07|09:20:00.050402|TREX|45|outside top-20 gap cap (gap 8.4%)
+2026-05-07|09:20:00.050402|ORA|46|outside top-20 gap cap (gap 8.4%)
+2026-05-07|09:20:00.050402|BBSI|47|outside top-20 gap cap (gap 8.3%)
+2026-05-07|09:20:00.050402|BLLN|48|outside top-20 gap cap (gap 8.3%)
+2026-05-07|09:20:00.050402|NVST|49|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:20:00.050402|HAE|50|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:20:00.050402|NAMS|51|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:20:00.050402|PICS|52|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:20:00.050402|EXK|53|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:25:00.042461|AGL|1|quality filter: filter:mcap_too_small: $
+2026-05-07|09:25:00.042461|ATRA|2|quality filter: filter:adv_too_low: $289
+2026-05-07|09:25:00.042461|AAON|3|score 30 < 50 (catalyst=routine)
+2026-05-07|09:25:00.042461|FLNC|4|already scored earlier today
+2026-05-07|09:25:00.042461|SITM|5|already scored earlier today
+2026-05-07|09:25:00.042461|JMIA|6|already scored earlier today
+2026-05-07|09:25:00.042461|DDOG|7|score 30 < 50 (catalyst=routine)
+2026-05-07|09:25:00.042461|CCRN|8|quality filter: filter:mcap_too_small: $
+2026-05-07|09:25:00.042461|HIMX|9|EP cooldown — alerted within last 60 day
+2026-05-07|09:25:00.042461|PCT|10|already scored earlier today
+2026-05-07|09:25:00.042461|XMTR|11|pre-mkt volume 18,640 < 25,000 shares
+2026-05-07|09:25:00.042461|HNRG|12|score 36 < 50 (catalyst=routine)
+2026-05-07|09:25:00.042461|BLBD|13|pre-mkt volume 11,675 < 25,000 shares
+2026-05-07|09:25:00.042461|MTSI|14|already scored earlier today
+2026-05-07|09:25:00.042461|SEZL|15|already scored earlier today
+2026-05-07|09:25:00.042461|NDLS|16|pre-mkt volume 1,285 < 25,000 shares
+2026-05-07|09:25:00.042461|FTNT|17|already scored earlier today
+2026-05-07|09:25:00.042461|ERNA|18|already up 64% in prior 5 days (extended
+2026-05-07|09:25:00.042461|PGY|19|score 36 < 50 (catalyst=routine)
+2026-05-07|09:25:00.042461|ELA|20|pre-mkt volume 15,791 < 25,000 shares
+2026-05-07|09:25:00.042461|KLIC|21|outside top-20 gap cap (gap 13.8%)
+2026-05-07|09:25:00.042461|AKAN|22|outside top-20 gap cap (gap 13.1%)
+2026-05-07|09:25:00.042461|CPS|23|outside top-20 gap cap (gap 12.8%)
+2026-05-07|09:25:00.042461|FOUR|24|outside top-20 gap cap (gap 12.2%)
+2026-05-07|09:25:00.042461|PTON|25|outside top-20 gap cap (gap 11.5%)
+2026-05-07|09:25:00.042461|LFST|26|outside top-20 gap cap (gap 11.4%)
+2026-05-07|09:25:00.042461|U|27|outside top-20 gap cap (gap 10.7%)
+2026-05-07|09:25:00.042461|EZPW|28|outside top-20 gap cap (gap 10.7%)
+2026-05-07|09:25:00.042461|SNOW|29|outside top-20 gap cap (gap 10.2%)
+2026-05-07|09:25:00.042461|ICL|30|outside top-20 gap cap (gap 10.1%)
+2026-05-07|09:25:00.042461|VCX|31|outside top-20 gap cap (gap 10.1%)
+2026-05-07|09:25:00.042461|MDB|32|outside top-20 gap cap (gap 9.9%)
+2026-05-07|09:25:00.042461|MKSI|33|outside top-20 gap cap (gap 9.4%)
+2026-05-07|09:25:00.042461|RUN|34|outside top-20 gap cap (gap 9.2%)
+2026-05-07|09:25:00.042461|DGII|35|outside top-20 gap cap (gap 9.1%)
+2026-05-07|09:25:00.042461|GWW|36|outside top-20 gap cap (gap 8.9%)
+2026-05-07|09:25:00.042461|DASH|37|outside top-20 gap cap (gap 8.9%)
+2026-05-07|09:25:00.042461|ALB|38|outside top-20 gap cap (gap 8.9%)
+2026-05-07|09:25:00.042461|IMOS|39|outside top-20 gap cap (gap 8.9%)
+2026-05-07|09:25:00.042461|ARRY|40|outside top-20 gap cap (gap 8.9%)
+2026-05-07|09:25:00.042461|TAOX|41|outside top-20 gap cap (gap 8.7%)
+2026-05-07|09:25:00.042461|MRNA|42|outside top-20 gap cap (gap 8.6%)
+2026-05-07|09:25:00.042461|EXK|43|outside top-20 gap cap (gap 8.5%)
+2026-05-07|09:25:00.042461|PTC|44|outside top-20 gap cap (gap 8.4%)
+2026-05-07|09:25:00.042461|TREX|45|outside top-20 gap cap (gap 8.4%)
+2026-05-07|09:25:00.042461|ORA|46|outside top-20 gap cap (gap 8.4%)
+2026-05-07|09:25:00.042461|BBSI|47|outside top-20 gap cap (gap 8.3%)
+2026-05-07|09:25:00.042461|BLLN|48|outside top-20 gap cap (gap 8.3%)
+2026-05-07|09:25:00.042461|NVST|49|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:25:00.042461|HAE|50|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:25:00.042461|NAMS|51|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:25:00.042461|PICS|52|outside top-20 gap cap (gap 8.2%)
+2026-05-07|09:25:00.042461|HWM|53|outside top-20 gap cap (gap 8.0%)
+2026-05-07|09:25:00.042461|PSTV|54|outside top-20 gap cap (gap 8.0%)
+2026-08-04|07:00:00.134235|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|07:00:00.134235|POET|2|score 35 < 50 (catalyst=routine)
+2026-08-04|07:00:00.134235|BLZE|3|
+2026-08-04|07:00:00.134235|LIFE|4|pre-mkt volume 2,981 < 25,000 shares
+2026-08-04|07:00:00.134235|AAOI|5|score 35 < 50 (catalyst=routine)
+2026-08-04|07:00:00.134235|PLTR|6|
+2026-08-04|07:00:00.134235|IBTA|7|score 33 < 50 (catalyst=routine)
+2026-08-04|07:00:00.134235|VOYG|8|pre-mkt volume 14,606 < 25,000 shares
+2026-08-04|07:00:00.134235|AIOS|9|quality filter: filter:adv_too_low: $212
+2026-08-04|07:00:00.134235|COHR|10|score 23 < 50 (catalyst=routine)
+2026-08-04|07:00:00.134235|AEIS|11|score 42 < 50 (catalyst=strong)
+2026-08-04|07:00:00.134235|WIX|12|score 35 < 50 (catalyst=routine)
+2026-08-04|07:00:00.134235|LWLG|13|routine catalyst, gap 10.3%
+2026-08-04|07:05:00.021105|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|07:05:00.021105|POET|2|score 40 < 50 (catalyst=routine)
+2026-08-04|07:05:00.021105|BLZE|3|already scored earlier today
+2026-08-04|07:05:00.021105|AAOI|4|score 35 < 50 (catalyst=routine)
+2026-08-04|07:05:00.021105|LIFE|5|pre-mkt volume 2,981 < 25,000 shares
+2026-08-04|07:05:00.021105|PLTR|6|already scored earlier today
+2026-08-04|07:05:00.021105|IBTA|7|score 33 < 50 (catalyst=routine)
+2026-08-04|07:05:00.021105|VOYG|8|pre-mkt volume 14,606 < 25,000 shares
+2026-08-04|07:05:00.021105|AIOS|9|quality filter: filter:adv_too_low: $212
+2026-08-04|07:05:00.021105|COHR|10|score 23 < 50 (catalyst=routine)
+2026-08-04|07:05:00.021105|LITE|11|routine catalyst, gap 11.4%
+2026-08-04|07:05:00.021105|AEIS|12|score 42 < 50 (catalyst=strong)
+2026-08-04|07:05:00.021105|WIX|13|score 35 < 50 (catalyst=routine)
+2026-08-04|07:05:00.021105|LWLG|14|routine catalyst, gap 10.3%
+2026-08-04|07:10:00.034143|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|07:10:00.034143|BLZE|2|already scored earlier today
+2026-08-04|07:10:00.034143|AAOI|3|score 35 < 50 (catalyst=routine)
+2026-08-04|07:10:00.034143|LIFE|4|pre-mkt volume 2,981 < 25,000 shares
+2026-08-04|07:10:00.034143|IBTA|5|score 33 < 50 (catalyst=routine)
+2026-08-04|07:10:00.034143|PLTR|6|already scored earlier today
+2026-08-04|07:10:00.034143|VOYG|7|pre-mkt volume 14,606 < 25,000 shares
+2026-08-04|07:10:00.034143|POET|8|score 30 < 50 (catalyst=routine)
+2026-08-04|07:10:00.034143|AIOS|9|quality filter: filter:adv_too_low: $212
+2026-08-04|07:10:00.034143|COHR|10|score 23 < 50 (catalyst=routine)
+2026-08-04|07:10:00.034143|LWLG|11|score 30 < 50 (catalyst=routine)
+2026-08-04|07:10:00.034143|AEIS|12|score 42 < 50 (catalyst=strong)
+2026-08-04|07:10:00.034143|LITE|13|routine catalyst, gap 10.5%
+2026-08-04|07:10:00.034143|WIX|14|score 35 < 50 (catalyst=routine)
+2026-08-04|07:15:00.027190|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|07:15:00.027190|BLZE|2|already scored earlier today
+2026-08-04|07:15:00.027190|AAOI|3|score 35 < 50 (catalyst=routine)
+2026-08-04|07:15:00.027190|LIFE|4|pre-mkt volume 2,981 < 25,000 shares
+2026-08-04|07:15:00.027190|PLTR|5|already scored earlier today
+2026-08-04|07:15:00.027190|IBTA|6|score 33 < 50 (catalyst=routine)
+2026-08-04|07:15:00.027190|VOYG|7|pre-mkt volume 14,606 < 25,000 shares
+2026-08-04|07:15:00.027190|AIOS|8|quality filter: filter:adv_too_low: $212
+2026-08-04|07:15:00.027190|AHCO|9|M&A/buyout catalyst — no momentum trade
+2026-08-04|07:15:00.027190|LWLG|10|score 30 < 50 (catalyst=routine)
+2026-08-04|07:15:00.027190|COHR|11|score 23 < 50 (catalyst=routine)
+2026-08-04|07:15:00.027190|POET|12|score 30 < 50 (catalyst=routine)
+2026-08-04|07:15:00.027190|OCC|13|filter:pm_rvol_too_low: pm_rvol=0.10x (t
+2026-08-04|07:15:00.027190|AEIS|14|score 42 < 50 (catalyst=strong)
+2026-08-04|07:15:00.027190|WIX|15|score 35 < 50 (catalyst=routine)
+2026-08-04|07:15:00.027190|LITE|16|routine catalyst, gap 10.0%
+2026-08-04|07:20:00.027484|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|07:20:00.027484|AAOI|2|score 35 < 50 (catalyst=routine)
+2026-08-04|07:20:00.027484|BLZE|3|already scored earlier today
+2026-08-04|07:20:00.027484|VOYG|4|pre-mkt volume 18,082 < 25,000 shares
+2026-08-04|07:20:00.027484|LIFE|5|
+2026-08-04|07:20:00.027484|IBTA|6|score 33 < 50 (catalyst=routine)
+2026-08-04|07:20:00.027484|PLTR|7|already scored earlier today
+2026-08-04|07:20:00.027484|AIOS|8|quality filter: filter:adv_too_low: $212
+2026-08-04|07:20:00.027484|POET|9|score 30 < 50 (catalyst=routine)
+2026-08-04|07:20:00.027484|COHR|10|score 23 < 50 (catalyst=routine)
+2026-08-04|07:20:00.027484|AEIS|11|score 42 < 50 (catalyst=strong)
+2026-08-04|07:20:00.027484|FN|12|pre-mkt volume 13,260 < 25,000 shares
+2026-08-04|07:20:00.027484|LWLG|13|score 30 < 50 (catalyst=routine)
+2026-08-04|07:20:00.027484|WIX|14|score 35 < 50 (catalyst=routine)
+2026-08-04|07:20:00.027484|LITE|15|routine catalyst, gap 10.7%
+2026-08-04|07:25:00.019505|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|07:25:00.019505|BLZE|2|already scored earlier today
+2026-08-04|07:25:00.019505|VOYG|3|pre-mkt volume 18,697 < 25,000 shares
+2026-08-04|07:25:00.019505|AAOI|4|score 35 < 50 (catalyst=routine)
+2026-08-04|07:25:00.019505|IBTA|5|score 33 < 50 (catalyst=routine)
+2026-08-04|07:25:00.019505|LIFE|6|already scored earlier today
+2026-08-04|07:25:00.019505|PLTR|7|already scored earlier today
+2026-08-04|07:25:00.019505|INSP|8|filter:pm_rvol_too_low: pm_rvol=0.36x (t
+2026-08-04|07:25:00.019505|WIX|9|score 35 < 50 (catalyst=routine)
+2026-08-04|07:25:00.019505|POET|10|score 30 < 50 (catalyst=routine)
+2026-08-04|07:25:00.019505|AIOS|11|quality filter: filter:adv_too_low: $212
+2026-08-04|07:25:00.019505|COHR|12|score 23 < 50 (catalyst=routine)
+2026-08-04|07:25:00.019505|AEIS|13|score 42 < 50 (catalyst=strong)
+2026-08-04|07:25:00.019505|MRAM|14|quality filter: filter:mcap_too_small: $
+2026-08-04|07:25:00.019505|FN|15|routine catalyst, gap 11.9%
+2026-08-04|07:25:00.019505|LITE|16|routine catalyst, gap 10.8%
+2026-08-04|07:30:00.032383|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|07:30:00.032383|VOYG|2|pre-mkt volume 19,367 < 25,000 shares
+2026-08-04|07:30:00.032383|AAOI|3|score 35 < 50 (catalyst=routine)
+2026-08-04|07:30:00.032383|IBTA|4|score 33 < 50 (catalyst=routine)
+2026-08-04|07:30:00.032383|BLZE|5|already scored earlier today
+2026-08-04|07:30:00.032383|COHR|6|score 28 < 50 (catalyst=routine)
+2026-08-04|07:30:00.032383|INSP|7|filter:pm_rvol_too_low: pm_rvol=0.33x (t
+2026-08-04|07:30:00.032383|LIFE|8|already scored earlier today
+2026-08-04|07:30:00.032383|PLTR|9|already scored earlier today
+2026-08-04|07:30:00.032383|AIOS|10|quality filter: filter:adv_too_low: $212
+2026-08-04|07:30:00.032383|LWLG|11|score 30 < 50 (catalyst=routine)
+2026-08-04|07:30:00.032383|POET|12|score 30 < 50 (catalyst=routine)
+2026-08-04|07:30:00.032383|AEIS|13|score 42 < 50 (catalyst=strong)
+2026-08-04|07:30:00.032383|MRAM|14|quality filter: filter:mcap_too_small: $
+2026-08-04|07:30:00.032383|FN|15|routine catalyst, gap 11.9%
+2026-08-04|07:30:00.032383|LITE|16|routine catalyst, gap 11.4%
+2026-08-04|07:35:00.020954|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|07:35:00.020954|BLZE|2|already scored earlier today
+2026-08-04|07:35:00.020954|AAOI|3|score 35 < 50 (catalyst=routine)
+2026-08-04|07:35:00.020954|COHR|4|score 28 < 50 (catalyst=routine)
+2026-08-04|07:35:00.020954|IBTA|5|score 33 < 50 (catalyst=routine)
+2026-08-04|07:35:00.020954|VOYG|6|pre-mkt volume 20,950 < 25,000 shares
+2026-08-04|07:35:00.020954|LIFE|7|already scored earlier today
+2026-08-04|07:35:00.020954|POET|8|score 30 < 50 (catalyst=routine)
+2026-08-04|07:35:00.020954|INSP|9|filter:pm_rvol_too_low: pm_rvol=0.63x (t
+2026-08-04|07:35:00.020954|PLTR|10|already scored earlier today
+2026-08-04|07:35:00.020954|AIOS|11|quality filter: filter:adv_too_low: $212
+2026-08-04|07:35:00.020954|LWLG|12|score 30 < 50 (catalyst=routine)
+2026-08-04|07:35:00.020954|AEIS|13|score 42 < 50 (catalyst=strong)
+2026-08-04|07:35:00.020954|FN|14|pre-mkt volume 14,865 < 25,000 shares
+2026-08-04|07:35:00.020954|MRAM|15|quality filter: filter:mcap_too_small: $
+2026-08-04|07:35:00.020954|LITE|16|routine catalyst, gap 11.9%
+2026-08-04|07:35:00.020954|OCC|17|filter:pm_rvol_too_low: pm_rvol=0.73x (t
+2026-08-04|07:35:00.020954|CIEN|18|routine catalyst, gap 10.0%
+2026-08-04|07:40:00.050686|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|07:40:00.050686|BLZE|2|already scored earlier today
+2026-08-04|07:40:00.050686|AAOI|3|score 35 < 50 (catalyst=routine)
+2026-08-04|07:40:00.050686|COHR|4|score 28 < 50 (catalyst=routine)
+2026-08-04|07:40:00.050686|IBTA|5|score 33 < 50 (catalyst=routine)
+2026-08-04|07:40:00.050686|VOYG|6|pre-mkt volume 22,588 < 25,000 shares
+2026-08-04|07:40:00.050686|PLTR|7|already scored earlier today
+2026-08-04|07:40:00.050686|INSP|8|filter:pm_rvol_too_low: pm_rvol=0.63x (t
+2026-08-04|07:40:00.050686|MRAM|9|quality filter: filter:mcap_too_small: $
+2026-08-04|07:40:00.050686|AIOS|10|quality filter: filter:adv_too_low: $212
+2026-08-04|07:40:00.050686|AEIS|11|score 42 < 50 (catalyst=strong)
+2026-08-04|07:40:00.050686|FN|12|pre-mkt volume 15,705 < 25,000 shares
+2026-08-04|07:40:00.050686|POET|13|score 30 < 50 (catalyst=routine)
+2026-08-04|07:40:00.050686|LIFE|14|already scored earlier today
+2026-08-04|07:40:00.050686|LWLG|15|score 30 < 50 (catalyst=routine)
+2026-08-04|07:40:00.050686|LITE|16|routine catalyst, gap 11.8%
+2026-08-04|07:40:00.050686|OCC|17|filter:pm_rvol_too_low: pm_rvol=0.79x (t
+2026-08-04|07:45:00.022253|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|07:45:00.022253|COHR|2|score 28 < 50 (catalyst=routine)
+2026-08-04|07:45:00.022253|AAOI|3|score 35 < 50 (catalyst=routine)
+2026-08-04|07:45:00.022253|BLZE|4|already scored earlier today
+2026-08-04|07:45:00.022253|IBTA|5|score 33 < 50 (catalyst=routine)
+2026-08-04|07:45:00.022253|MRAM|6|quality filter: filter:mcap_too_small: $
+2026-08-04|07:45:00.022253|VOYG|7|pre-mkt volume 22,588 < 25,000 shares
+2026-08-04|07:45:00.022253|PLTR|8|already scored earlier today
+2026-08-04|07:45:00.022253|INSP|9|filter:pm_rvol_too_low: pm_rvol=0.62x (t
+2026-08-04|07:45:00.022253|AEIS|10|score 42 < 50 (catalyst=strong)
+2026-08-04|07:45:00.022253|AIOS|11|quality filter: filter:adv_too_low: $212
+2026-08-04|07:45:00.022253|FN|12|pre-mkt volume 15,813 < 25,000 shares
+2026-08-04|07:45:00.022253|LIFE|13|already scored earlier today
+2026-08-04|07:45:00.022253|OCC|14|quality filter: filter:mcap_too_small: $
+2026-08-04|07:45:00.022253|LITE|15|score 15 < 50 (catalyst=routine)
+2026-08-04|07:45:00.022253|LWLG|16|score 30 < 50 (catalyst=routine)
+2026-08-04|07:45:00.022253|POET|17|score 30 < 50 (catalyst=routine)
+2026-08-04|07:50:00.028500|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|07:50:00.028500|COHR|2|score 28 < 50 (catalyst=routine)
+2026-08-04|07:50:00.028500|AAOI|3|score 35 < 50 (catalyst=routine)
+2026-08-04|07:50:00.028500|BLZE|4|already scored earlier today
+2026-08-04|07:50:00.028500|IBTA|5|score 33 < 50 (catalyst=routine)
+2026-08-04|07:50:00.028500|VOYG|6|pre-mkt volume 23,406 < 25,000 shares
+2026-08-04|07:50:00.028500|MRAM|7|quality filter: filter:mcap_too_small: $
+2026-08-04|07:50:00.028500|PLTR|8|already scored earlier today
+2026-08-04|07:50:00.028500|INSP|9|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|07:50:00.028500|AIOS|10|quality filter: filter:adv_too_low: $212
+2026-08-04|07:50:00.028500|LITE|11|score 15 < 50 (catalyst=routine)
+2026-08-04|07:50:00.028500|FN|12|pre-mkt volume 16,046 < 25,000 shares
+2026-08-04|07:50:00.028500|AEIS|13|score 42 < 50 (catalyst=strong)
+2026-08-04|07:50:00.028500|POET|14|score 30 < 50 (catalyst=routine)
+2026-08-04|07:50:00.028500|LWLG|15|score 30 < 50 (catalyst=routine)
+2026-08-04|07:50:00.028500|LIFE|16|already scored earlier today
+2026-08-04|07:50:00.028500|OCC|17|quality filter: filter:mcap_too_small: $
+2026-08-04|07:55:00.027779|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|07:55:00.027779|BLZE|2|already scored earlier today
+2026-08-04|07:55:00.027779|COHR|3|score 28 < 50 (catalyst=routine)
+2026-08-04|07:55:00.027779|AAOI|4|score 35 < 50 (catalyst=routine)
+2026-08-04|07:55:00.027779|IBTA|5|score 33 < 50 (catalyst=routine)
+2026-08-04|07:55:00.027779|AEIS|6|
+2026-08-04|07:55:00.027779|VOYG|7|pre-mkt volume 24,037 < 25,000 shares
+2026-08-04|07:55:00.027779|LIFE|8|already scored earlier today
+2026-08-04|07:55:00.027779|PLTR|9|already scored earlier today
+2026-08-04|07:55:00.027779|INSP|10|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|07:55:00.027779|MRAM|11|quality filter: filter:mcap_too_small: $
+2026-08-04|07:55:00.027779|LITE|12|score 15 < 50 (catalyst=routine)
+2026-08-04|07:55:00.027779|AIOS|13|quality filter: filter:adv_too_low: $212
+2026-08-04|07:55:00.027779|FN|14|pre-mkt volume 17,180 < 25,000 shares
+2026-08-04|07:55:00.027779|OCC|15|quality filter: filter:mcap_too_small: $
+2026-08-04|07:55:00.027779|LWLG|16|score 30 < 50 (catalyst=routine)
+2026-08-04|07:55:00.027779|POET|17|score 30 < 50 (catalyst=routine)
+2026-08-04|08:00:00.019082|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|08:00:00.019082|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|08:00:00.019082|BLZE|3|already scored earlier today
+2026-08-04|08:00:00.019082|AAOI|4|score 35 < 50 (catalyst=routine)
+2026-08-04|08:00:00.019082|COHR|5|score 28 < 50 (catalyst=routine)
+2026-08-04|08:00:00.019082|AEIS|6|already scored earlier today
+2026-08-04|08:00:00.019082|VOYG|7|pre-mkt volume 24,037 < 25,000 shares
+2026-08-04|08:00:00.019082|FN|8|pre-mkt volume 17,515 < 25,000 shares
+2026-08-04|08:00:00.019082|LIFE|9|already scored earlier today
+2026-08-04|08:00:00.019082|PLTR|10|already scored earlier today
+2026-08-04|08:00:00.019082|MRAM|11|quality filter: filter:mcap_too_small: $
+2026-08-04|08:00:00.019082|OCC|12|quality filter: filter:mcap_too_small: $
+2026-08-04|08:00:00.019082|INSP|13|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|08:00:00.019082|TSAT|14|pre-mkt volume 1,205 < 25,000 shares
+2026-08-04|08:00:00.019082|POET|15|score 30 < 50 (catalyst=routine)
+2026-08-04|08:00:00.019082|AIOS|16|quality filter: filter:adv_too_low: $212
+2026-08-04|08:00:00.019082|LITE|17|score 15 < 50 (catalyst=routine)
+2026-08-04|08:00:00.019082|LWLG|18|score 30 < 50 (catalyst=routine)
+2026-08-04|08:00:00.019082|CAT|19|
+2026-08-04|08:05:00.022799|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|08:05:00.022799|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|08:05:00.022799|LIFE|3|already scored earlier today
+2026-08-04|08:05:00.022799|BLZE|4|already scored earlier today
+2026-08-04|08:05:00.022799|AAOI|5|score 35 < 50 (catalyst=routine)
+2026-08-04|08:05:00.022799|COHR|6|score 28 < 50 (catalyst=routine)
+2026-08-04|08:05:00.022799|VOYG|7|pre-mkt volume 24,554 < 25,000 shares
+2026-08-04|08:05:00.022799|MRAM|8|quality filter: filter:mcap_too_small: $
+2026-08-04|08:05:00.022799|AEIS|9|already scored earlier today
+2026-08-04|08:05:00.022799|POET|10|score 35 < 50 (catalyst=routine)
+2026-08-04|08:05:00.022799|OCC|11|quality filter: filter:mcap_too_small: $
+2026-08-04|08:05:00.022799|PLTR|12|already scored earlier today
+2026-08-04|08:05:00.022799|INSP|13|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|08:05:00.022799|FN|14|pre-mkt volume 17,714 < 25,000 shares
+2026-08-04|08:05:00.022799|TSAT|15|pre-mkt volume 1,205 < 25,000 shares
+2026-08-04|08:05:00.022799|AIOS|16|quality filter: filter:adv_too_low: $212
+2026-08-04|08:05:00.022799|LITE|17|score 15 < 50 (catalyst=routine)
+2026-08-04|08:05:00.022799|LWLG|18|score 30 < 50 (catalyst=routine)
+2026-08-04|08:05:00.022799|WGS|19|routine catalyst, gap 10.6%
+2026-08-04|08:05:00.022799|CAT|20|already scored earlier today
+2026-08-04|08:10:00.040222|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|08:10:00.040222|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|08:10:00.040222|AAOI|3|score 40 < 50 (catalyst=routine)
+2026-08-04|08:10:00.040222|BLZE|4|already scored earlier today
+2026-08-04|08:10:00.040222|LIFE|5|already scored earlier today
+2026-08-04|08:10:00.040222|COHR|6|score 28 < 50 (catalyst=routine)
+2026-08-04|08:10:00.040222|POET|7|score 35 < 50 (catalyst=routine)
+2026-08-04|08:10:00.040222|VOYG|8|
+2026-08-04|08:10:00.040222|MRAM|9|quality filter: filter:mcap_too_small: $
+2026-08-04|08:10:00.040222|AEIS|10|already scored earlier today
+2026-08-04|08:10:00.040222|OCC|11|quality filter: filter:mcap_too_small: $
+2026-08-04|08:10:00.040222|PLTR|12|already scored earlier today
+2026-08-04|08:10:00.040222|INSP|13|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|08:10:00.040222|FN|14|score 28 < 50 (catalyst=routine)
+2026-08-04|08:10:00.040222|AIOS|15|quality filter: filter:adv_too_low: $212
+2026-08-04|08:10:00.040222|LITE|16|score 15 < 50 (catalyst=routine)
+2026-08-04|08:10:00.040222|LWLG|17|score 30 < 50 (catalyst=routine)
+2026-08-04|08:10:00.040222|TSAT|18|pre-mkt volume 1,625 < 25,000 shares
+2026-08-04|08:10:00.040222|WGS|19|routine catalyst, gap 11.3%
+2026-08-04|08:10:00.040222|CAT|20|already scored earlier today
+2026-08-04|08:15:00.031714|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|08:15:00.031714|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|08:15:00.031714|AAOI|3|score 40 < 50 (catalyst=routine)
+2026-08-04|08:15:00.031714|BLZE|4|already scored earlier today
+2026-08-04|08:15:00.031714|COHR|5|score 28 < 50 (catalyst=routine)
+2026-08-04|08:15:00.031714|VOYG|6|already scored earlier today
+2026-08-04|08:15:00.031714|LWLG|7|score 35 < 50 (catalyst=routine)
+2026-08-04|08:15:00.031714|POET|8|score 35 < 50 (catalyst=routine)
+2026-08-04|08:15:00.031714|LIFE|9|already scored earlier today
+2026-08-04|08:15:00.031714|MRAM|10|quality filter: filter:mcap_too_small: $
+2026-08-04|08:15:00.031714|AEIS|11|already scored earlier today
+2026-08-04|08:15:00.031714|PLTR|12|already scored earlier today
+2026-08-04|08:15:00.031714|FN|13|score 33 < 50 (catalyst=routine)
+2026-08-04|08:15:00.031714|INSP|14|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|08:15:00.031714|LITE|15|score 15 < 50 (catalyst=routine)
+2026-08-04|08:15:00.031714|AIOS|16|quality filter: filter:adv_too_low: $212
+2026-08-04|08:15:00.031714|OCC|17|quality filter: filter:mcap_too_small: $
+2026-08-04|08:15:00.031714|WGS|18|score 10 < 50 (catalyst=routine)
+2026-08-04|08:15:00.031714|CAT|19|already scored earlier today
+2026-08-04|08:15:00.031714|RFIL|20|filter:pm_rvol_too_low: pm_rvol=0.59x (t
+2026-08-04|08:20:00.037992|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|08:20:00.037992|BTDR|2|
+2026-08-04|08:20:00.037992|IBTA|3|score 38 < 50 (catalyst=routine)
+2026-08-04|08:20:00.037992|AAOI|4|score 40 < 50 (catalyst=routine)
+2026-08-04|08:20:00.037992|BLZE|5|already scored earlier today
+2026-08-04|08:20:00.037992|LIFE|6|already scored earlier today
+2026-08-04|08:20:00.037992|POET|7|score 35 < 50 (catalyst=routine)
+2026-08-04|08:20:00.037992|MRAM|8|quality filter: filter:mcap_too_small: $
+2026-08-04|08:20:00.037992|COHR|9|score 28 < 50 (catalyst=routine)
+2026-08-04|08:20:00.037992|VOYG|10|already scored earlier today
+2026-08-04|08:20:00.037992|LWLG|11|score 35 < 50 (catalyst=routine)
+2026-08-04|08:20:00.037992|AEIS|12|already scored earlier today
+2026-08-04|08:20:00.037992|PLTR|13|already scored earlier today
+2026-08-04|08:20:00.037992|INSP|14|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|08:20:00.037992|FN|15|score 28 < 50 (catalyst=routine)
+2026-08-04|08:20:00.037992|AIOS|16|quality filter: filter:adv_too_low: $212
+2026-08-04|08:20:00.037992|LITE|17|score 15 < 50 (catalyst=routine)
+2026-08-04|08:20:00.037992|OCC|18|quality filter: filter:mcap_too_small: $
+2026-08-04|08:20:00.037992|WGS|19|score 10 < 50 (catalyst=routine)
+2026-08-04|08:20:00.037992|CAT|20|already scored earlier today
+2026-08-04|08:20:00.037992|RFIL|21|outside top-20 gap cap (gap 10.5%)
+2026-08-04|08:25:00.041833|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|08:25:00.041833|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|08:25:00.041833|BLZE|3|already scored earlier today
+2026-08-04|08:25:00.041833|AAOI|4|score 35 < 50 (catalyst=routine)
+2026-08-04|08:25:00.041833|LIFE|5|already scored earlier today
+2026-08-04|08:25:00.041833|POET|6|score 35 < 50 (catalyst=routine)
+2026-08-04|08:25:00.041833|MRAM|7|quality filter: filter:mcap_too_small: $
+2026-08-04|08:25:00.041833|VOYG|8|already scored earlier today
+2026-08-04|08:25:00.041833|COHR|9|score 28 < 50 (catalyst=routine)
+2026-08-04|08:25:00.041833|AEIS|10|already scored earlier today
+2026-08-04|08:25:00.041833|BTDR|11|already scored earlier today
+2026-08-04|08:25:00.041833|LWLG|12|score 35 < 50 (catalyst=routine)
+2026-08-04|08:25:00.041833|PLTR|13|already scored earlier today
+2026-08-04|08:25:00.041833|INSP|14|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|08:25:00.041833|FN|15|score 28 < 50 (catalyst=routine)
+2026-08-04|08:25:00.041833|AIOS|16|quality filter: filter:adv_too_low: $212
+2026-08-04|08:25:00.041833|LITE|17|score 15 < 50 (catalyst=routine)
+2026-08-04|08:25:00.041833|OCC|18|quality filter: filter:mcap_too_small: $
+2026-08-04|08:25:00.041833|CAT|19|already scored earlier today
+2026-08-04|08:25:00.041833|RFIL|20|filter:pm_rvol_too_low: pm_rvol=0.58x (t
+2026-08-04|08:25:00.041833|WGS|21|outside top-20 gap cap (gap 10.5%)
+2026-08-04|08:30:00.027611|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|08:30:00.027611|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|08:30:00.027611|AAOI|3|score 35 < 50 (catalyst=routine)
+2026-08-04|08:30:00.027611|BLZE|4|already scored earlier today
+2026-08-04|08:30:00.027611|MRAM|5|quality filter: filter:mcap_too_small: $
+2026-08-04|08:30:00.027611|VOYG|6|already scored earlier today
+2026-08-04|08:30:00.027611|LIFE|7|already scored earlier today
+2026-08-04|08:30:00.027611|BTDR|8|already scored earlier today
+2026-08-04|08:30:00.027611|POET|9|score 35 < 50 (catalyst=routine)
+2026-08-04|08:30:00.027611|PLTR|10|already scored earlier today
+2026-08-04|08:30:00.027611|AEIS|11|already scored earlier today
+2026-08-04|08:30:00.027611|COHR|12|score 28 < 50 (catalyst=routine)
+2026-08-04|08:30:00.027611|INSP|13|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|08:30:00.027611|FN|14|score 28 < 50 (catalyst=routine)
+2026-08-04|08:30:00.027611|LWLG|15|score 30 < 50 (catalyst=routine)
+2026-08-04|08:30:00.027611|AIOS|16|quality filter: filter:adv_too_low: $212
+2026-08-04|08:30:00.027611|LITE|17|score 15 < 50 (catalyst=routine)
+2026-08-04|08:30:00.027611|OCC|18|filter:pm_rvol_too_low: pm_rvol=0.64x (t
+2026-08-04|08:30:00.027611|CAT|19|already scored earlier today
+2026-08-04|08:30:00.027611|RFIL|20|filter:pm_rvol_too_low: pm_rvol=0.53x (t
+2026-08-04|08:30:00.027611|WGS|21|outside top-20 gap cap (gap 10.5%)
+2026-08-04|08:35:00.028857|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|08:35:00.028857|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|08:35:00.028857|AAOI|3|score 35 < 50 (catalyst=routine)
+2026-08-04|08:35:00.028857|MRAM|4|quality filter: filter:mcap_too_small: $
+2026-08-04|08:35:00.028857|LIFE|5|already scored earlier today
+2026-08-04|08:35:00.028857|VOYG|6|already scored earlier today
+2026-08-04|08:35:00.028857|BLZE|7|already scored earlier today
+2026-08-04|08:35:00.028857|POET|8|score 35 < 50 (catalyst=routine)
+2026-08-04|08:35:00.028857|PLTR|9|already scored earlier today
+2026-08-04|08:35:00.028857|AEIS|10|already scored earlier today
+2026-08-04|08:35:00.028857|INSP|11|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|08:35:00.028857|FN|12|score 28 < 50 (catalyst=routine)
+2026-08-04|08:35:00.028857|COHR|13|score 23 < 50 (catalyst=routine)
+2026-08-04|08:35:00.028857|AIOS|14|quality filter: filter:adv_too_low: $212
+2026-08-04|08:35:00.028857|LWLG|15|score 30 < 50 (catalyst=routine)
+2026-08-04|08:35:00.028857|OCC|16|filter:pm_rvol_too_low: pm_rvol=0.40x (t
+2026-08-04|08:35:00.028857|BTDR|17|already scored earlier today
+2026-08-04|08:35:00.028857|LITE|18|score 15 < 50 (catalyst=routine)
+2026-08-04|08:35:00.028857|WGS|19|score 10 < 50 (catalyst=routine)
+2026-08-04|08:35:00.028857|ZBRA|20|
+2026-08-04|08:35:00.028857|CAT|21|outside top-20 gap cap (gap 10.6%)
+2026-08-04|08:35:00.028857|RFIL|22|outside top-20 gap cap (gap 10.5%)
+2026-08-04|08:40:00.025312|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|08:40:00.025312|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|08:40:00.025312|BLZE|3|already scored earlier today
+2026-08-04|08:40:00.025312|AAOI|4|score 35 < 50 (catalyst=routine)
+2026-08-04|08:40:00.025312|LIFE|5|already scored earlier today
+2026-08-04|08:40:00.025312|MRAM|6|quality filter: filter:mcap_too_small: $
+2026-08-04|08:40:00.025312|VOYG|7|already scored earlier today
+2026-08-04|08:40:00.025312|PLTR|8|already scored earlier today
+2026-08-04|08:40:00.025312|POET|9|score 35 < 50 (catalyst=routine)
+2026-08-04|08:40:00.025312|AEIS|10|already scored earlier today
+2026-08-04|08:40:00.025312|INSP|11|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|08:40:00.025312|ACLS|12|M&A/buyout catalyst — no momentum trade
+2026-08-04|08:40:00.025312|AIOS|13|quality filter: filter:adv_too_low: $212
+2026-08-04|08:40:00.025312|FN|14|score 28 < 50 (catalyst=routine)
+2026-08-04|08:40:00.025312|COHR|15|score 23 < 50 (catalyst=routine)
+2026-08-04|08:40:00.025312|OCC|16|filter:pm_rvol_too_low: pm_rvol=0.33x (t
+2026-08-04|08:40:00.025312|LITE|17|score 15 < 50 (catalyst=routine)
+2026-08-04|08:40:00.025312|LWLG|18|score 30 < 50 (catalyst=routine)
+2026-08-04|08:40:00.025312|BTDR|19|already scored earlier today
+2026-08-04|08:40:00.025312|WGS|20|score 10 < 50 (catalyst=routine)
+2026-08-04|08:40:00.025312|ZBRA|21|outside top-20 gap cap (gap 12.5%)
+2026-08-04|08:40:00.025312|CAT|22|outside top-20 gap cap (gap 11.2%)
+2026-08-04|08:40:00.025312|RFIL|23|outside top-20 gap cap (gap 10.5%)
+2026-08-04|08:45:00.022947|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|08:45:00.022947|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|08:45:00.022947|W|3|score 5 < 50 (catalyst=routine)
+2026-08-04|08:45:00.022947|AAOI|4|score 35 < 50 (catalyst=routine)
+2026-08-04|08:45:00.022947|BLZE|5|already scored earlier today
+2026-08-04|08:45:00.022947|LIFE|6|already scored earlier today
+2026-08-04|08:45:00.022947|MRAM|7|quality filter: filter:mcap_too_small: $
+2026-08-04|08:45:00.022947|VOYG|8|already scored earlier today
+2026-08-04|08:45:00.022947|POET|9|score 35 < 50 (catalyst=routine)
+2026-08-04|08:45:00.022947|PLTR|10|already scored earlier today
+2026-08-04|08:45:00.022947|AEIS|11|already scored earlier today
+2026-08-04|08:45:00.022947|INSP|12|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|08:45:00.022947|COHR|13|score 23 < 50 (catalyst=routine)
+2026-08-04|08:45:00.022947|ACLS|14|M&A/buyout catalyst — no momentum trade
+2026-08-04|08:45:00.022947|MED|15|pre-mkt volume 531 < 25,000 shares
+2026-08-04|08:45:00.022947|AIOS|16|quality filter: filter:adv_too_low: $212
+2026-08-04|08:45:00.022947|WGS|17|score 10 < 50 (catalyst=routine)
+2026-08-04|08:45:00.022947|OCC|18|filter:pm_rvol_too_low: pm_rvol=0.24x (t
+2026-08-04|08:45:00.022947|LITE|19|score 15 < 50 (catalyst=routine)
+2026-08-04|08:45:00.022947|LWLG|20|score 30 < 50 (catalyst=routine)
+2026-08-04|08:45:00.022947|ZBRA|21|outside top-20 gap cap (gap 13.2%)
+2026-08-04|08:45:00.022947|FN|22|outside top-20 gap cap (gap 13.0%)
+2026-08-04|08:45:00.022947|CAT|23|outside top-20 gap cap (gap 11.4%)
+2026-08-04|08:45:00.022947|BTDR|24|outside top-20 gap cap (gap 11.3%)
+2026-08-04|08:45:00.022947|RFIL|25|outside top-20 gap cap (gap 10.5%)
+2026-08-04|08:50:00.030130|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|08:50:00.030130|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|08:50:00.030130|BLZE|3|already scored earlier today
+2026-08-04|08:50:00.030130|LIFE|4|already scored earlier today
+2026-08-04|08:50:00.030130|AAOI|5|score 35 < 50 (catalyst=routine)
+2026-08-04|08:50:00.030130|W|6|score 5 < 50 (catalyst=routine)
+2026-08-04|08:50:00.030130|MRAM|7|quality filter: filter:mcap_too_small: $
+2026-08-04|08:50:00.030130|VOYG|8|already scored earlier today
+2026-08-04|08:50:00.030130|AEIS|9|already scored earlier today
+2026-08-04|08:50:00.030130|PLTR|10|already scored earlier today
+2026-08-04|08:50:00.030130|INSP|11|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|08:50:00.030130|POET|12|score 30 < 50 (catalyst=routine)
+2026-08-04|08:50:00.030130|ACLS|13|M&A/buyout catalyst — no momentum trade
+2026-08-04|08:50:00.030130|LWLG|14|score 30 < 50 (catalyst=routine)
+2026-08-04|08:50:00.030130|MED|15|pre-mkt volume 531 < 25,000 shares
+2026-08-04|08:50:00.030130|FN|16|score 28 < 50 (catalyst=routine)
+2026-08-04|08:50:00.030130|AIOS|17|quality filter: filter:adv_too_low: $212
+2026-08-04|08:50:00.030130|WGS|18|score 10 < 50 (catalyst=routine)
+2026-08-04|08:50:00.030130|OCC|19|filter:pm_rvol_too_low: pm_rvol=0.21x (t
+2026-08-04|08:50:00.030130|COHR|20|score 23 < 50 (catalyst=routine)
+2026-08-04|08:50:00.030130|ZBRA|21|outside top-20 gap cap (gap 13.2%)
+2026-08-04|08:50:00.030130|LITE|22|outside top-20 gap cap (gap 12.9%)
+2026-08-04|08:50:00.030130|CAT|23|outside top-20 gap cap (gap 11.4%)
+2026-08-04|08:50:00.030130|RFIL|24|outside top-20 gap cap (gap 10.5%)
+2026-08-04|08:55:00.017919|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|08:55:00.017919|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|08:55:00.017919|BLZE|3|already scored earlier today
+2026-08-04|08:55:00.017919|LIFE|4|already scored earlier today
+2026-08-04|08:55:00.017919|W|5|score 5 < 50 (catalyst=routine)
+2026-08-04|08:55:00.017919|AAOI|6|score 35 < 50 (catalyst=routine)
+2026-08-04|08:55:00.017919|MRAM|7|quality filter: filter:mcap_too_small: $
+2026-08-04|08:55:00.017919|IMC|8|quality filter: filter:adv_no_data
+2026-08-04|08:55:00.017919|PLTR|9|already scored earlier today
+2026-08-04|08:55:00.017919|VOYG|10|already scored earlier today
+2026-08-04|08:55:00.017919|AEIS|11|already scored earlier today
+2026-08-04|08:55:00.017919|POET|12|score 30 < 50 (catalyst=routine)
+2026-08-04|08:55:00.017919|INSP|13|pre-mkt volume 5,473 < 25,000 shares
+2026-08-04|08:55:00.017919|MED|14|pre-mkt volume 531 < 25,000 shares
+2026-08-04|08:55:00.017919|LWLG|15|score 30 < 50 (catalyst=routine)
+2026-08-04|08:55:00.017919|FN|16|score 28 < 50 (catalyst=routine)
+2026-08-04|08:55:00.017919|AIOS|17|quality filter: filter:adv_too_low: $212
+2026-08-04|08:55:00.017919|WGS|18|score 10 < 50 (catalyst=routine)
+2026-08-04|08:55:00.017919|OCC|19|filter:pm_rvol_too_low: pm_rvol=0.22x (t
+2026-08-04|08:55:00.017919|COHR|20|score 23 < 50 (catalyst=routine)
+2026-08-04|08:55:00.017919|BTDR|21|outside top-20 gap cap (gap 12.8%)
+2026-08-04|08:55:00.017919|LITE|22|outside top-20 gap cap (gap 12.2%)
+2026-08-04|08:55:00.017919|CAT|23|outside top-20 gap cap (gap 11.8%)
+2026-08-04|08:55:00.017919|GENI|24|outside top-20 gap cap (gap 10.9%)
+2026-08-04|08:55:00.017919|RFIL|25|outside top-20 gap cap (gap 10.5%)
+2026-08-04|08:55:00.017919|UFPT|26|outside top-20 gap cap (gap 10.3%)
+2026-08-04|09:00:00.156985|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|09:00:00.156985|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|09:00:00.156985|LIFE|3|already scored earlier today
+2026-08-04|09:00:00.156985|BLZE|4|already scored earlier today
+2026-08-04|09:00:00.156985|W|5|score 5 < 50 (catalyst=routine)
+2026-08-04|09:00:00.156985|AAOI|6|score 35 < 50 (catalyst=routine)
+2026-08-04|09:00:00.156985|MRAM|7|quality filter: filter:mcap_too_small: $
+2026-08-04|09:00:00.156985|VOYG|8|already scored earlier today
+2026-08-04|09:00:00.156985|AEIS|9|already scored earlier today
+2026-08-04|09:00:00.156985|PLTR|10|already scored earlier today
+2026-08-04|09:00:00.156985|POET|11|score 35 < 50 (catalyst=routine)
+2026-08-04|09:00:00.156985|INSP|12|pre-mkt volume 6,039 < 25,000 shares
+2026-08-04|09:00:00.156985|IMC|13|quality filter: filter:adv_no_data
+2026-08-04|09:00:00.156985|FN|14|score 28 < 50 (catalyst=routine)
+2026-08-04|09:00:00.156985|MED|15|pre-mkt volume 531 < 25,000 shares
+2026-08-04|09:00:00.156985|AIOS|16|quality filter: filter:adv_too_low: $212
+2026-08-04|09:00:00.156985|LWLG|17|score 30 < 50 (catalyst=routine)
+2026-08-04|09:00:00.156985|OCC|18|filter:pm_rvol_too_low: pm_rvol=0.20x (t
+2026-08-04|09:00:00.156985|COHR|19|score 23 < 50 (catalyst=routine)
+2026-08-04|09:00:00.156985|LITE|20|score 15 < 50 (catalyst=routine)
+2026-08-04|09:00:00.156985|WGS|21|outside top-20 gap cap (gap 12.2%)
+2026-08-04|09:00:00.156985|BTDR|22|outside top-20 gap cap (gap 12.0%)
+2026-08-04|09:00:00.156985|CAT|23|outside top-20 gap cap (gap 11.8%)
+2026-08-04|09:00:00.156985|UFPT|24|outside top-20 gap cap (gap 11.2%)
+2026-08-04|09:00:00.156985|ZBRA|25|outside top-20 gap cap (gap 10.8%)
+2026-08-04|09:00:00.156985|RFIL|26|outside top-20 gap cap (gap 10.5%)
+2026-08-04|09:00:00.157885|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|09:00:00.157885|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|09:00:00.157885|LIFE|3|already scored earlier today
+2026-08-04|09:00:00.157885|BLZE|4|already scored earlier today
+2026-08-04|09:00:00.157885|W|5|score 5 < 50 (catalyst=routine)
+2026-08-04|09:00:00.157885|AAOI|6|score 35 < 50 (catalyst=routine)
+2026-08-04|09:00:00.157885|MRAM|7|quality filter: filter:mcap_too_small: $
+2026-08-04|09:00:00.157885|VOYG|8|already scored earlier today
+2026-08-04|09:00:00.157885|AEIS|9|already scored earlier today
+2026-08-04|09:00:00.157885|PLTR|10|already scored earlier today
+2026-08-04|09:00:00.157885|POET|11|score 35 < 50 (catalyst=routine)
+2026-08-04|09:00:00.157885|INSP|12|pre-mkt volume 6,039 < 25,000 shares
+2026-08-04|09:00:00.157885|IMC|13|quality filter: filter:adv_no_data
+2026-08-04|09:00:00.157885|FN|14|score 28 < 50 (catalyst=routine)
+2026-08-04|09:00:00.157885|MED|15|pre-mkt volume 531 < 25,000 shares
+2026-08-04|09:00:00.157885|AIOS|16|quality filter: filter:adv_too_low: $212
+2026-08-04|09:00:00.157885|LWLG|17|score 30 < 50 (catalyst=routine)
+2026-08-04|09:00:00.157885|OCC|18|filter:pm_rvol_too_low: pm_rvol=0.20x (t
+2026-08-04|09:00:00.157885|COHR|19|score 23 < 50 (catalyst=routine)
+2026-08-04|09:00:00.157885|LITE|20|score 15 < 50 (catalyst=routine)
+2026-08-04|09:00:00.157885|WGS|21|outside top-20 gap cap (gap 12.2%)
+2026-08-04|09:00:00.157885|CAT|22|outside top-20 gap cap (gap 11.8%)
+2026-08-04|09:00:00.157885|UFPT|23|outside top-20 gap cap (gap 11.2%)
+2026-08-04|09:00:00.157885|ZBRA|24|outside top-20 gap cap (gap 10.8%)
+2026-08-04|09:00:00.157885|RFIL|25|outside top-20 gap cap (gap 10.5%)
+2026-08-04|09:05:00.042375|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|09:05:00.042375|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|09:05:00.042375|LIFE|3|already scored earlier today
+2026-08-04|09:05:00.042375|BLZE|4|already scored earlier today
+2026-08-04|09:05:00.042375|W|5|score 5 < 50 (catalyst=routine)
+2026-08-04|09:05:00.042375|MRAM|6|quality filter: filter:mcap_too_small: $
+2026-08-04|09:05:00.042375|AAOI|7|score 35 < 50 (catalyst=routine)
+2026-08-04|09:05:00.042375|PLTR|8|already scored earlier today
+2026-08-04|09:05:00.042375|VOYG|9|already scored earlier today
+2026-08-04|09:05:00.042375|POET|10|score 30 < 50 (catalyst=routine)
+2026-08-04|09:05:00.042375|INSP|11|pre-mkt volume 7,353 < 25,000 shares
+2026-08-04|09:05:00.042375|AEIS|12|already scored earlier today
+2026-08-04|09:05:00.042375|IMC|13|quality filter: filter:adv_no_data
+2026-08-04|09:05:00.042375|FN|14|score 28 < 50 (catalyst=routine)
+2026-08-04|09:05:00.042375|MED|15|pre-mkt volume 531 < 25,000 shares
+2026-08-04|09:05:00.042375|AIOS|16|quality filter: filter:adv_too_low: $212
+2026-08-04|09:05:00.042375|LWLG|17|score 30 < 50 (catalyst=routine)
+2026-08-04|09:05:00.042375|OCC|18|filter:pm_rvol_too_low: pm_rvol=0.19x (t
+2026-08-04|09:05:00.042375|COHR|19|score 23 < 50 (catalyst=routine)
+2026-08-04|09:05:00.042375|LITE|20|score 15 < 50 (catalyst=routine)
+2026-08-04|09:05:00.042375|WGS|21|outside top-20 gap cap (gap 12.2%)
+2026-08-04|09:05:00.042375|CAT|22|outside top-20 gap cap (gap 11.4%)
+2026-08-04|09:05:00.042375|UFPT|23|outside top-20 gap cap (gap 11.2%)
+2026-08-04|09:05:00.042375|VGNT|24|outside top-20 gap cap (gap 10.6%)
+2026-08-04|09:05:00.042375|RFIL|25|outside top-20 gap cap (gap 10.5%)
+2026-08-04|09:10:00.053121|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|09:10:00.053121|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|09:10:00.053121|LIFE|3|already scored earlier today
+2026-08-04|09:10:00.053121|BLZE|4|already scored earlier today
+2026-08-04|09:10:00.053121|W|5|score 5 < 50 (catalyst=routine)
+2026-08-04|09:10:00.053121|VOYG|6|already scored earlier today
+2026-08-04|09:10:00.053121|AAOI|7|score 35 < 50 (catalyst=routine)
+2026-08-04|09:10:00.053121|MRAM|8|quality filter: filter:mcap_too_small: $
+2026-08-04|09:10:00.053121|PLTR|9|already scored earlier today
+2026-08-04|09:10:00.053121|INSP|10|pre-mkt volume 7,353 < 25,000 shares
+2026-08-04|09:10:00.053121|POET|11|score 30 < 50 (catalyst=routine)
+2026-08-04|09:10:00.053121|AEIS|12|already scored earlier today
+2026-08-04|09:10:00.053121|IMC|13|quality filter: filter:adv_no_data
+2026-08-04|09:10:00.053121|MED|14|pre-mkt volume 531 < 25,000 shares
+2026-08-04|09:10:00.053121|FN|15|score 28 < 50 (catalyst=routine)
+2026-08-04|09:10:00.053121|AIOS|16|quality filter: filter:adv_too_low: $212
+2026-08-04|09:10:00.053121|OCC|17|filter:pm_rvol_too_low: pm_rvol=0.18x (t
+2026-08-04|09:10:00.053121|LWLG|18|score 30 < 50 (catalyst=routine)
+2026-08-04|09:10:00.053121|COHR|19|score 23 < 50 (catalyst=routine)
+2026-08-04|09:10:00.053121|WGS|20|score 10 < 50 (catalyst=routine)
+2026-08-04|09:10:00.053121|BTDR|21|outside top-20 gap cap (gap 12.1%)
+2026-08-04|09:10:00.053121|LITE|22|outside top-20 gap cap (gap 11.9%)
+2026-08-04|09:10:00.053121|UFPT|23|outside top-20 gap cap (gap 11.2%)
+2026-08-04|09:10:00.053121|CAT|24|outside top-20 gap cap (gap 10.9%)
+2026-08-04|09:10:00.053121|VGNT|25|outside top-20 gap cap (gap 10.6%)
+2026-08-04|09:10:00.053121|RFIL|26|outside top-20 gap cap (gap 10.5%)
+2026-08-04|09:15:00.043550|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|09:15:00.043550|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|09:15:00.043550|LIFE|3|already scored earlier today
+2026-08-04|09:15:00.043550|BLZE|4|already scored earlier today
+2026-08-04|09:15:00.043550|W|5|score 5 < 50 (catalyst=routine)
+2026-08-04|09:15:00.043550|VOYG|6|already scored earlier today
+2026-08-04|09:15:00.043550|AAOI|7|score 35 < 50 (catalyst=routine)
+2026-08-04|09:15:00.043550|PLTR|8|already scored earlier today
+2026-08-04|09:15:00.043550|MRAM|9|quality filter: filter:mcap_too_small: $
+2026-08-04|09:15:00.043550|POET|10|score 30 < 50 (catalyst=routine)
+2026-08-04|09:15:00.043550|INSP|11|pre-mkt volume 7,353 < 25,000 shares
+2026-08-04|09:15:00.043550|MED|12|pre-mkt volume 531 < 25,000 shares
+2026-08-04|09:15:00.043550|AIOS|13|quality filter: filter:adv_too_low: $212
+2026-08-04|09:15:00.043550|OCC|14|filter:pm_rvol_too_low: pm_rvol=0.18x (t
+2026-08-04|09:15:00.043550|FN|15|score 28 < 50 (catalyst=routine)
+2026-08-04|09:15:00.043550|WGS|16|score 10 < 50 (catalyst=routine)
+2026-08-04|09:15:00.043550|COHR|17|score 23 < 50 (catalyst=routine)
+2026-08-04|09:15:00.043550|AEIS|18|already scored earlier today
+2026-08-04|09:15:00.043550|LWLG|19|score 30 < 50 (catalyst=routine)
+2026-08-04|09:15:00.043550|LITE|20|score 15 < 50 (catalyst=routine)
+2026-08-04|09:15:00.043550|IMC|21|outside top-20 gap cap (gap 12.2%)
+2026-08-04|09:15:00.043550|CAT|22|outside top-20 gap cap (gap 11.6%)
+2026-08-04|09:15:00.043550|UFPT|23|outside top-20 gap cap (gap 11.2%)
+2026-08-04|09:15:00.043550|VGNT|24|outside top-20 gap cap (gap 10.6%)
+2026-08-04|09:15:00.043550|RFIL|25|outside top-20 gap cap (gap 10.5%)
+2026-08-04|09:15:00.043550|XMTR|26|outside top-20 gap cap (gap 10.2%)
+2026-08-04|09:20:00.048600|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|09:20:00.048600|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|09:20:00.048600|LIFE|3|already scored earlier today
+2026-08-04|09:20:00.048600|BLZE|4|already scored earlier today
+2026-08-04|09:20:00.048600|W|5|score 5 < 50 (catalyst=routine)
+2026-08-04|09:20:00.048600|AAOI|6|score 35 < 50 (catalyst=routine)
+2026-08-04|09:20:00.048600|VOYG|7|already scored earlier today
+2026-08-04|09:20:00.048600|PLTR|8|already scored earlier today
+2026-08-04|09:20:00.048600|INSP|9|pre-mkt volume 7,572 < 25,000 shares
+2026-08-04|09:20:00.048600|POET|10|score 35 < 50 (catalyst=routine)
+2026-08-04|09:20:00.048600|MRAM|11|quality filter: filter:mcap_too_small: $
+2026-08-04|09:20:00.048600|LWLG|12|score 30 < 50 (catalyst=routine)
+2026-08-04|09:20:00.048600|COHR|13|score 23 < 50 (catalyst=routine)
+2026-08-04|09:20:00.048600|MED|14|pre-mkt volume 531 < 25,000 shares
+2026-08-04|09:20:00.048600|FN|15|score 28 < 50 (catalyst=routine)
+2026-08-04|09:20:00.048600|AIOS|16|quality filter: filter:adv_too_low: $212
+2026-08-04|09:20:00.048600|AEIS|17|already scored earlier today
+2026-08-04|09:20:00.048600|WGS|18|score 10 < 50 (catalyst=routine)
+2026-08-04|09:20:00.048600|OCC|19|filter:pm_rvol_too_low: pm_rvol=0.18x (t
+2026-08-04|09:20:00.048600|LITE|20|score 15 < 50 (catalyst=routine)
+2026-08-04|09:20:00.048600|IMC|21|outside top-20 gap cap (gap 12.2%)
+2026-08-04|09:20:00.048600|CAT|22|outside top-20 gap cap (gap 11.3%)
+2026-08-04|09:20:00.048600|UFPT|23|outside top-20 gap cap (gap 11.2%)
+2026-08-04|09:20:00.048600|ALMU|24|outside top-20 gap cap (gap 11.0%)
+2026-08-04|09:20:00.048600|VGNT|25|outside top-20 gap cap (gap 10.6%)
+2026-08-04|09:20:00.048600|ALAB|26|outside top-20 gap cap (gap 10.6%)
+2026-08-04|09:20:00.048600|RFIL|27|outside top-20 gap cap (gap 10.5%)
+2026-08-04|09:25:00.038324|AMRC|1|score 38 < 50 (catalyst=routine)
+2026-08-04|09:25:00.038324|IBTA|2|score 38 < 50 (catalyst=routine)
+2026-08-04|09:25:00.038324|LIFE|3|already scored earlier today
+2026-08-04|09:25:00.038324|BLZE|4|already scored earlier today
+2026-08-04|09:25:00.038324|VOYG|5|already scored earlier today
+2026-08-04|09:25:00.038324|AAOI|6|score 35 < 50 (catalyst=routine)
+2026-08-04|09:25:00.038324|MED|7|pre-mkt volume 3,381 < 25,000 shares
+2026-08-04|09:25:00.038324|W|8|score 5 < 50 (catalyst=routine)
+2026-08-04|09:25:00.038324|PLTR|9|already scored earlier today
+2026-08-04|09:25:00.038324|MRAM|10|quality filter: filter:mcap_too_small: $
+2026-08-04|09:25:00.038324|INSP|11|pre-mkt volume 7,572 < 25,000 shares
+2026-08-04|09:25:00.038324|POET|12|score 30 < 50 (catalyst=routine)
+2026-08-04|09:25:00.038324|COHR|13|score 23 < 50 (catalyst=routine)
+2026-08-04|09:25:00.038324|WGS|14|score 10 < 50 (catalyst=routine)
+2026-08-04|09:25:00.038324|LWLG|15|score 30 < 50 (catalyst=routine)
+2026-08-04|09:25:00.038324|AIOS|16|quality filter: filter:adv_too_low: $212
+2026-08-04|09:25:00.038324|OCC|17|filter:pm_rvol_too_low: pm_rvol=0.17x (t
+2026-08-04|09:25:00.038324|AEIS|18|already scored earlier today
+2026-08-04|09:25:00.038324|FN|19|score 28 < 50 (catalyst=routine)
+2026-08-04|09:25:00.038324|LITE|20|score 15 < 50 (catalyst=routine)
+2026-08-04|09:25:00.038324|IPGP|21|outside top-20 gap cap (gap 12.4%)
+2026-08-04|09:25:00.038324|CAT|22|outside top-20 gap cap (gap 12.2%)
+2026-08-04|09:25:00.038324|IMC|23|outside top-20 gap cap (gap 12.2%)
+2026-08-04|09:25:00.038324|INFU|24|outside top-20 gap cap (gap 11.4%)
+2026-08-04|09:25:00.038324|UFPT|25|outside top-20 gap cap (gap 11.2%)
+2026-08-04|09:25:00.038324|ALMU|26|outside top-20 gap cap (gap 10.9%)
+2026-08-04|09:25:00.038324|ALAB|27|outside top-20 gap cap (gap 10.8%)
+2026-08-04|09:25:00.038324|VGNT|28|outside top-20 gap cap (gap 10.6%)
+2026-08-04|09:25:00.038324|RFIL|29|outside top-20 gap cap (gap 10.5%)
+2026-08-07|07:00:00.126664|DOCS|1|score 48 < 50 (catalyst=routine)
+2026-08-07|07:00:00.126664|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|07:00:00.126664|PUBM|3|score 36 < 50 (catalyst=routine)
+2026-08-07|07:00:00.126664|TEAM|4|score 40 < 50 (catalyst=routine)
+2026-08-07|07:00:00.126664|FIGS|5|score 40 < 50 (catalyst=routine)
+2026-08-07|07:00:00.126664|QNST|6|score 30 < 50 (catalyst=routine)
+2026-08-07|07:00:00.126664|FROG|7|pre-mkt volume 9,911 < 25,000 shares
+2026-08-07|07:00:00.126664|CRSR|8|score 12 < 50 (catalyst=routine)
+2026-08-07|07:00:00.126664|TWLO|9|score 24 < 50 (catalyst=routine)
+2026-08-07|07:00:00.126664|CLRO|10|already up 166% in prior 5 days (extende
+2026-08-07|07:00:00.126664|FNKO|11|quality filter: filter:mcap_too_small: $
+2026-08-07|07:00:00.126664|HASI|12|filter:pm_rvol_too_low: pm_rvol=0.84x (t
+2026-08-07|07:00:00.126664|WLDN|13|pre-mkt volume 452 < 25,000 shares
+2026-08-07|07:00:00.126664|NET|14|score 18 < 50 (catalyst=routine)
+2026-08-07|07:00:00.126664|PSIX|15|pre-mkt volume 3,875 < 25,000 shares
+2026-08-07|07:00:00.126664|SPT|16|quality filter: filter:mcap_too_small: $
+2026-08-07|07:00:00.126664|INOD|17|score 34 < 50 (catalyst=routine)
+2026-08-07|07:00:00.126664|AAOI|18|already up 62% in prior 5 days (extended
+2026-08-07|07:00:00.126664|AKAM|19|score 18 < 50 (catalyst=routine)
+2026-08-07|07:00:00.126664|DV|20|M&A/buyout catalyst — no momentum trade
+2026-08-07|07:00:00.126664|CART|21|outside top-20 gap cap (gap 12.3%)
+2026-08-07|07:00:00.126664|ONTO|22|outside top-20 gap cap (gap 12.0%)
+2026-08-07|07:00:00.126664|GRPN|23|outside top-20 gap cap (gap 10.8%)
+2026-08-07|07:00:00.126664|PCLA|24|outside top-20 gap cap (gap 10.7%)
+2026-08-07|07:00:00.126664|ACMR|25|outside top-20 gap cap (gap 10.7%)
+2026-08-07|07:10:00.028513|DOCS|1|score 48 < 50 (catalyst=routine)
+2026-08-07|07:10:00.028513|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|07:10:00.028513|CLRO|3|already up 166% in prior 5 days (extende
+2026-08-07|07:10:00.028513|PUBM|4|score 36 < 50 (catalyst=routine)
+2026-08-07|07:10:00.028513|TEAM|5|score 40 < 50 (catalyst=routine)
+2026-08-07|07:10:00.028513|FIGS|6|score 40 < 50 (catalyst=routine)
+2026-08-07|07:10:00.028513|QNST|7|score 30 < 50 (catalyst=routine)
+2026-08-07|07:10:00.028513|FROG|8|pre-mkt volume 9,911 < 25,000 shares
+2026-08-07|07:10:00.028513|TWLO|9|score 24 < 50 (catalyst=routine)
+2026-08-07|07:10:00.028513|CRSR|10|score 12 < 50 (catalyst=routine)
+2026-08-07|07:10:00.028513|NET|11|score 18 < 50 (catalyst=routine)
+2026-08-07|07:10:00.028513|HASI|12|filter:pm_rvol_too_low: pm_rvol=0.73x (t
+2026-08-07|07:10:00.028513|WLDN|13|pre-mkt volume 452 < 25,000 shares
+2026-08-07|07:10:00.028513|SPT|14|quality filter: filter:mcap_too_small: $
+2026-08-07|07:10:00.028513|PSIX|15|pre-mkt volume 3,875 < 25,000 shares
+2026-08-07|07:10:00.028513|INOD|16|score 34 < 50 (catalyst=routine)
+2026-08-07|07:10:00.028513|FNKO|17|quality filter: filter:mcap_too_small: $
+2026-08-07|07:10:00.028513|CART|18|score 18 < 50 (catalyst=routine)
+2026-08-07|07:10:00.028513|AAOI|19|already up 62% in prior 5 days (extended
+2026-08-07|07:10:00.028513|AKAM|20|score 18 < 50 (catalyst=routine)
+2026-08-07|07:10:00.028513|DV|21|outside top-20 gap cap (gap 13.2%)
+2026-08-07|07:10:00.028513|ONTO|22|outside top-20 gap cap (gap 12.0%)
+2026-08-07|07:10:00.028513|GRPN|23|outside top-20 gap cap (gap 10.8%)
+2026-08-07|07:10:00.028513|ACMR|24|outside top-20 gap cap (gap 10.7%)
+2026-08-07|07:15:00.021768|DOCS|1|score 48 < 50 (catalyst=routine)
+2026-08-07|07:15:00.021768|CLRO|2|already up 166% in prior 5 days (extende
+2026-08-07|07:15:00.021768|VATE|3|quality filter: filter:adv_too_low: $745
+2026-08-07|07:15:00.021768|PUBM|4|score 36 < 50 (catalyst=routine)
+2026-08-07|07:15:00.021768|TEAM|5|score 40 < 50 (catalyst=routine)
+2026-08-07|07:15:00.021768|FIGS|6|score 40 < 50 (catalyst=routine)
+2026-08-07|07:15:00.021768|QNST|7|score 30 < 50 (catalyst=routine)
+2026-08-07|07:15:00.021768|FROG|8|pre-mkt volume 10,288 < 25,000 shares
+2026-08-07|07:15:00.021768|TWLO|9|score 24 < 50 (catalyst=routine)
+2026-08-07|07:15:00.021768|CRSR|10|score 12 < 50 (catalyst=routine)
+2026-08-07|07:15:00.021768|WLDN|11|pre-mkt volume 452 < 25,000 shares
+2026-08-07|07:15:00.021768|NET|12|score 18 < 50 (catalyst=routine)
+2026-08-07|07:15:00.021768|PSIX|13|pre-mkt volume 3,875 < 25,000 shares
+2026-08-07|07:15:00.021768|SPT|14|quality filter: filter:mcap_too_small: $
+2026-08-07|07:15:00.021768|FNKO|15|quality filter: filter:mcap_too_small: $
+2026-08-07|07:15:00.021768|INOD|16|score 34 < 50 (catalyst=routine)
+2026-08-07|07:15:00.021768|CART|17|score 18 < 50 (catalyst=routine)
+2026-08-07|07:15:00.021768|AAOI|18|already up 62% in prior 5 days (extended
+2026-08-07|07:15:00.021768|DV|19|M&A/buyout catalyst — no momentum trade
+2026-08-07|07:15:00.021768|AKAM|20|score 18 < 50 (catalyst=routine)
+2026-08-07|07:15:00.021768|ONTO|21|outside top-20 gap cap (gap 12.0%)
+2026-08-07|07:15:00.021768|GRPN|22|outside top-20 gap cap (gap 10.8%)
+2026-08-07|07:15:00.021768|ACMR|23|outside top-20 gap cap (gap 10.7%)
+2026-08-07|07:20:00.024716|DOCS|1|score 48 < 50 (catalyst=routine)
+2026-08-07|07:20:00.024716|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|07:20:00.024716|CLRO|3|already up 166% in prior 5 days (extende
+2026-08-07|07:20:00.024716|PUBM|4|score 36 < 50 (catalyst=routine)
+2026-08-07|07:20:00.024716|FIGS|5|score 40 < 50 (catalyst=routine)
+2026-08-07|07:20:00.024716|TEAM|6|score 40 < 50 (catalyst=routine)
+2026-08-07|07:20:00.024716|QNST|7|score 30 < 50 (catalyst=routine)
+2026-08-07|07:20:00.024716|FROG|8|score 24 < 50 (catalyst=routine)
+2026-08-07|07:20:00.024716|CRSR|9|score 12 < 50 (catalyst=routine)
+2026-08-07|07:20:00.024716|TWLO|10|score 24 < 50 (catalyst=routine)
+2026-08-07|07:20:00.024716|NET|11|score 18 < 50 (catalyst=routine)
+2026-08-07|07:20:00.024716|PSIX|12|pre-mkt volume 6,384 < 25,000 shares
+2026-08-07|07:20:00.024716|WLDN|13|pre-mkt volume 1,150 < 25,000 shares
+2026-08-07|07:20:00.024716|SPT|14|quality filter: filter:mcap_too_small: $
+2026-08-07|07:20:00.024716|ACMR|15|score 10 < 50 (catalyst=routine)
+2026-08-07|07:20:00.024716|CART|16|score 18 < 50 (catalyst=routine)
+2026-08-07|07:20:00.024716|INOD|17|score 34 < 50 (catalyst=routine)
+2026-08-07|07:20:00.024716|DV|18|M&A/buyout catalyst — no momentum trade
+2026-08-07|07:20:00.024716|FNKO|19|quality filter: filter:mcap_too_small: $
+2026-08-07|07:20:00.024716|AAOI|20|already up 62% in prior 5 days (extended
+2026-08-07|07:20:00.024716|AKAM|21|outside top-20 gap cap (gap 12.0%)
+2026-08-07|07:20:00.024716|ONTO|22|outside top-20 gap cap (gap 11.7%)
+2026-08-07|07:20:00.024716|GRPN|23|outside top-20 gap cap (gap 10.8%)
+2026-08-07|07:20:00.024716|TE|24|outside top-20 gap cap (gap 10.6%)
+2026-08-07|07:25:00.049053|DOCS|1|score 48 < 50 (catalyst=routine)
+2026-08-07|07:25:00.049053|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|07:25:00.049053|CLRO|3|already up 166% in prior 5 days (extende
+2026-08-07|07:25:00.049053|PUBM|4|score 36 < 50 (catalyst=routine)
+2026-08-07|07:25:00.049053|FIGS|5|score 40 < 50 (catalyst=routine)
+2026-08-07|07:25:00.049053|TEAM|6|score 40 < 50 (catalyst=routine)
+2026-08-07|07:25:00.049053|QNST|7|score 30 < 50 (catalyst=routine)
+2026-08-07|07:25:00.049053|FROG|8|score 24 < 50 (catalyst=routine)
+2026-08-07|07:25:00.049053|TWLO|9|score 24 < 50 (catalyst=routine)
+2026-08-07|07:25:00.049053|CRSR|10|score 12 < 50 (catalyst=routine)
+2026-08-07|07:25:00.049053|PSIX|11|pre-mkt volume 6,691 < 25,000 shares
+2026-08-07|07:25:00.049053|NET|12|score 18 < 50 (catalyst=routine)
+2026-08-07|07:25:00.049053|WLDN|13|pre-mkt volume 1,150 < 25,000 shares
+2026-08-07|07:25:00.049053|SPT|14|quality filter: filter:mcap_too_small: $
+2026-08-07|07:25:00.049053|ACMR|15|score 10 < 50 (catalyst=routine)
+2026-08-07|07:25:00.049053|CART|16|score 18 < 50 (catalyst=routine)
+2026-08-07|07:25:00.049053|DV|17|M&A/buyout catalyst — no momentum trade
+2026-08-07|07:25:00.049053|INOD|18|score 34 < 50 (catalyst=routine)
+2026-08-07|07:25:00.049053|AAOI|19|already up 62% in prior 5 days (extended
+2026-08-07|07:25:00.049053|AKAM|20|score 18 < 50 (catalyst=routine)
+2026-08-07|07:25:00.049053|FNKO|21|outside top-20 gap cap (gap 11.9%)
+2026-08-07|07:25:00.049053|GRPN|22|outside top-20 gap cap (gap 10.8%)
+2026-08-07|07:25:00.049053|ONTO|23|outside top-20 gap cap (gap 10.6%)
+2026-08-07|07:30:00.024494|DOCS|1|
+2026-08-07|07:30:00.024494|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|07:30:00.024494|CLRO|3|already up 166% in prior 5 days (extende
+2026-08-07|07:30:00.024494|PUBM|4|score 36 < 50 (catalyst=routine)
+2026-08-07|07:30:00.024494|TEAM|5|score 40 < 50 (catalyst=routine)
+2026-08-07|07:30:00.024494|FIGS|6|score 40 < 50 (catalyst=routine)
+2026-08-07|07:30:00.024494|QNST|7|score 30 < 50 (catalyst=routine)
+2026-08-07|07:30:00.024494|CRSR|8|score 12 < 50 (catalyst=routine)
+2026-08-07|07:30:00.024494|FROG|9|score 24 < 50 (catalyst=routine)
+2026-08-07|07:30:00.024494|TWLO|10|score 24 < 50 (catalyst=routine)
+2026-08-07|07:30:00.024494|PSIX|11|pre-mkt volume 6,691 < 25,000 shares
+2026-08-07|07:30:00.024494|NET|12|score 18 < 50 (catalyst=routine)
+2026-08-07|07:30:00.024494|WLDN|13|pre-mkt volume 1,150 < 25,000 shares
+2026-08-07|07:30:00.024494|SPT|14|quality filter: filter:mcap_too_small: $
+2026-08-07|07:30:00.024494|ACMR|15|score 10 < 50 (catalyst=routine)
+2026-08-07|07:30:00.024494|CART|16|score 18 < 50 (catalyst=routine)
+2026-08-07|07:30:00.024494|FNKO|17|quality filter: filter:mcap_too_small: $
+2026-08-07|07:30:00.024494|NTRA|18|pre-mkt volume 1,394 < 25,000 shares
+2026-08-07|07:30:00.024494|AAOI|19|already up 62% in prior 5 days (extended
+2026-08-07|07:30:00.024494|INOD|20|score 34 < 50 (catalyst=routine)
+2026-08-07|07:30:00.024494|DV|21|outside top-20 gap cap (gap 13.2%)
+2026-08-07|07:30:00.024494|AKAM|22|outside top-20 gap cap (gap 12.0%)
+2026-08-07|07:30:00.024494|ONTO|23|outside top-20 gap cap (gap 11.5%)
+2026-08-07|07:30:00.024494|GRPN|24|outside top-20 gap cap (gap 10.8%)
+2026-08-07|07:35:00.026790|DOCS|1|already scored earlier today
+2026-08-07|07:35:00.026790|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|07:35:00.026790|PUBM|3|score 36 < 50 (catalyst=routine)
+2026-08-07|07:35:00.026790|TEAM|4|score 40 < 50 (catalyst=routine)
+2026-08-07|07:35:00.026790|FIGS|5|score 40 < 50 (catalyst=routine)
+2026-08-07|07:35:00.026790|QNST|6|score 30 < 50 (catalyst=routine)
+2026-08-07|07:35:00.026790|CLRO|7|already up 166% in prior 5 days (extende
+2026-08-07|07:35:00.026790|CRSR|8|score 12 < 50 (catalyst=routine)
+2026-08-07|07:35:00.026790|FROG|9|score 24 < 50 (catalyst=routine)
+2026-08-07|07:35:00.026790|TWLO|10|score 24 < 50 (catalyst=routine)
+2026-08-07|07:35:00.026790|NET|11|score 18 < 50 (catalyst=routine)
+2026-08-07|07:35:00.026790|PSIX|12|pre-mkt volume 6,852 < 25,000 shares
+2026-08-07|07:35:00.026790|WLDN|13|pre-mkt volume 1,560 < 25,000 shares
+2026-08-07|07:35:00.026790|SPT|14|quality filter: filter:mcap_too_small: $
+2026-08-07|07:35:00.026790|CART|15|score 18 < 50 (catalyst=routine)
+2026-08-07|07:35:00.026790|ACMR|16|score 10 < 50 (catalyst=routine)
+2026-08-07|07:35:00.026790|NTRA|17|pre-mkt volume 2,431 < 25,000 shares
+2026-08-07|07:35:00.026790|INOD|18|score 34 < 50 (catalyst=routine)
+2026-08-07|07:35:00.026790|FNKO|19|quality filter: filter:mcap_too_small: $
+2026-08-07|07:35:00.026790|AAOI|20|already up 62% in prior 5 days (extended
+2026-08-07|07:35:00.026790|DV|21|outside top-20 gap cap (gap 12.8%)
+2026-08-07|07:35:00.026790|AKAM|22|outside top-20 gap cap (gap 11.5%)
+2026-08-07|07:35:00.026790|ONTO|23|outside top-20 gap cap (gap 11.5%)
+2026-08-07|07:35:00.026790|GRPN|24|outside top-20 gap cap (gap 10.8%)
+2026-08-07|07:35:00.026790|TE|25|outside top-20 gap cap (gap 10.4%)
+2026-08-07|07:40:00.023577|DOCS|1|already scored earlier today
+2026-08-07|07:40:00.023577|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|07:40:00.023577|PUBM|3|score 36 < 50 (catalyst=routine)
+2026-08-07|07:40:00.023577|TEAM|4|score 40 < 50 (catalyst=routine)
+2026-08-07|07:40:00.023577|FIGS|5|score 40 < 50 (catalyst=routine)
+2026-08-07|07:40:00.023577|QNST|6|score 30 < 50 (catalyst=routine)
+2026-08-07|07:40:00.023577|CRSR|7|score 12 < 50 (catalyst=routine)
+2026-08-07|07:40:00.023577|CLRO|8|already up 166% in prior 5 days (extende
+2026-08-07|07:40:00.023577|TWLO|9|score 24 < 50 (catalyst=routine)
+2026-08-07|07:40:00.023577|FROG|10|score 24 < 50 (catalyst=routine)
+2026-08-07|07:40:00.023577|NET|11|score 18 < 50 (catalyst=routine)
+2026-08-07|07:40:00.023577|ACMR|12|score 16 < 50 (catalyst=routine)
+2026-08-07|07:40:00.023577|PSIX|13|pre-mkt volume 6,852 < 25,000 shares
+2026-08-07|07:40:00.023577|WLDN|14|pre-mkt volume 1,560 < 25,000 shares
+2026-08-07|07:40:00.023577|SPT|15|quality filter: filter:mcap_too_small: $
+2026-08-07|07:40:00.023577|CART|16|score 18 < 50 (catalyst=routine)
+2026-08-07|07:40:00.023577|NTRA|17|pre-mkt volume 2,431 < 25,000 shares
+2026-08-07|07:40:00.023577|FNKO|18|quality filter: filter:mcap_too_small: $
+2026-08-07|07:40:00.023577|INOD|19|score 34 < 50 (catalyst=routine)
+2026-08-07|07:40:00.023577|DV|20|M&A/buyout catalyst — no momentum trade
+2026-08-07|07:40:00.023577|AAOI|21|outside top-20 gap cap (gap 12.9%)
+2026-08-07|07:40:00.023577|ULBI|22|outside top-20 gap cap (gap 11.9%)
+2026-08-07|07:40:00.023577|ONTO|23|outside top-20 gap cap (gap 11.5%)
+2026-08-07|07:40:00.023577|SEI|24|outside top-20 gap cap (gap 11.2%)
+2026-08-07|07:40:00.023577|GRPN|25|outside top-20 gap cap (gap 10.8%)
+2026-08-07|07:45:00.026188|DOCS|1|already scored earlier today
+2026-08-07|07:45:00.026188|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|07:45:00.026188|PUBM|3|score 36 < 50 (catalyst=routine)
+2026-08-07|07:45:00.026188|TEAM|4|score 40 < 50 (catalyst=routine)
+2026-08-07|07:45:00.026188|FIGS|5|score 40 < 50 (catalyst=routine)
+2026-08-07|07:45:00.026188|QNST|6|score 30 < 50 (catalyst=routine)
+2026-08-07|07:45:00.026188|CRSR|7|score 12 < 50 (catalyst=routine)
+2026-08-07|07:45:00.026188|TWLO|8|score 24 < 50 (catalyst=routine)
+2026-08-07|07:45:00.026188|FROG|9|score 24 < 50 (catalyst=routine)
+2026-08-07|07:45:00.026188|NET|10|score 18 < 50 (catalyst=routine)
+2026-08-07|07:45:00.026188|PSIX|11|pre-mkt volume 6,852 < 25,000 shares
+2026-08-07|07:45:00.026188|WLDN|12|pre-mkt volume 1,560 < 25,000 shares
+2026-08-07|07:45:00.026188|ACMR|13|score 10 < 50 (catalyst=routine)
+2026-08-07|07:45:00.026188|SPT|14|quality filter: filter:mcap_too_small: $
+2026-08-07|07:45:00.026188|CART|15|score 18 < 50 (catalyst=routine)
+2026-08-07|07:45:00.026188|NTRA|16|pre-mkt volume 2,431 < 25,000 shares
+2026-08-07|07:45:00.026188|FNKO|17|quality filter: filter:mcap_too_small: $
+2026-08-07|07:45:00.026188|AAOI|18|already up 62% in prior 5 days (extended
+2026-08-07|07:45:00.026188|INOD|19|score 34 < 50 (catalyst=routine)
+2026-08-07|07:45:00.026188|DV|20|M&A/buyout catalyst — no momentum trade
+2026-08-07|07:45:00.026188|ULBI|21|outside top-20 gap cap (gap 12.2%)
+2026-08-07|07:45:00.026188|ONTO|22|outside top-20 gap cap (gap 11.5%)
+2026-08-07|07:45:00.026188|SEI|23|outside top-20 gap cap (gap 11.2%)
+2026-08-07|07:45:00.026188|GRPN|24|outside top-20 gap cap (gap 10.8%)
+2026-08-07|07:45:00.026188|TE|25|outside top-20 gap cap (gap 10.3%)
+2026-08-07|07:50:00.024606|DOCS|1|already scored earlier today
+2026-08-07|07:50:00.024606|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|07:50:00.024606|PUBM|3|score 36 < 50 (catalyst=routine)
+2026-08-07|07:50:00.024606|TEAM|4|score 40 < 50 (catalyst=routine)
+2026-08-07|07:50:00.024606|FIGS|5|score 40 < 50 (catalyst=routine)
+2026-08-07|07:50:00.024606|QNST|6|score 30 < 50 (catalyst=routine)
+2026-08-07|07:50:00.024606|FROG|7|score 24 < 50 (catalyst=routine)
+2026-08-07|07:50:00.024606|CRSR|8|score 12 < 50 (catalyst=routine)
+2026-08-07|07:50:00.024606|TWLO|9|score 24 < 50 (catalyst=routine)
+2026-08-07|07:50:00.024606|NET|10|score 18 < 50 (catalyst=routine)
+2026-08-07|07:50:00.024606|CART|11|score 24 < 50 (catalyst=routine)
+2026-08-07|07:50:00.024606|PSIX|12|pre-mkt volume 6,852 < 25,000 shares
+2026-08-07|07:50:00.024606|WLDN|13|pre-mkt volume 1,560 < 25,000 shares
+2026-08-07|07:50:00.024606|SPT|14|quality filter: filter:mcap_too_small: $
+2026-08-07|07:50:00.024606|NTRA|15|pre-mkt volume 2,431 < 25,000 shares
+2026-08-07|07:50:00.024606|CLRO|16|already up 166% in prior 5 days (extende
+2026-08-07|07:50:00.024606|INOD|17|score 34 < 50 (catalyst=routine)
+2026-08-07|07:50:00.024606|AAOI|18|already up 62% in prior 5 days (extended
+2026-08-07|07:50:00.024606|DV|19|M&A/buyout catalyst — no momentum trade
+2026-08-07|07:50:00.024606|FNKO|20|quality filter: filter:mcap_too_small: $
+2026-08-07|07:50:00.024606|ULBI|21|outside top-20 gap cap (gap 12.4%)
+2026-08-07|07:50:00.024606|ONTO|22|outside top-20 gap cap (gap 11.5%)
+2026-08-07|07:50:00.024606|ACMR|23|outside top-20 gap cap (gap 11.4%)
+2026-08-07|07:50:00.024606|TE|24|outside top-20 gap cap (gap 11.2%)
+2026-08-07|07:50:00.024606|GRPN|25|outside top-20 gap cap (gap 10.8%)
+2026-08-07|07:55:00.027783|DOCS|1|already scored earlier today
+2026-08-07|07:55:00.027783|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|07:55:00.027783|PUBM|3|score 36 < 50 (catalyst=routine)
+2026-08-07|07:55:00.027783|TEAM|4|score 40 < 50 (catalyst=routine)
+2026-08-07|07:55:00.027783|QNST|5|score 30 < 50 (catalyst=routine)
+2026-08-07|07:55:00.027783|FIGS|6|score 40 < 50 (catalyst=routine)
+2026-08-07|07:55:00.027783|FROG|7|score 24 < 50 (catalyst=routine)
+2026-08-07|07:55:00.027783|CRSR|8|score 12 < 50 (catalyst=routine)
+2026-08-07|07:55:00.027783|TWLO|9|score 24 < 50 (catalyst=routine)
+2026-08-07|07:55:00.027783|PSIX|10|pre-mkt volume 6,852 < 25,000 shares
+2026-08-07|07:55:00.027783|NET|11|score 18 < 50 (catalyst=routine)
+2026-08-07|07:55:00.027783|WLDN|12|pre-mkt volume 1,560 < 25,000 shares
+2026-08-07|07:55:00.027783|SPT|13|quality filter: filter:mcap_too_small: $
+2026-08-07|07:55:00.027783|NTRA|14|pre-mkt volume 2,431 < 25,000 shares
+2026-08-07|07:55:00.027783|CLRO|15|already up 166% in prior 5 days (extende
+2026-08-07|07:55:00.027783|CART|16|score 18 < 50 (catalyst=routine)
+2026-08-07|07:55:00.027783|INOD|17|score 34 < 50 (catalyst=routine)
+2026-08-07|07:55:00.027783|DV|18|M&A/buyout catalyst — no momentum trade
+2026-08-07|07:55:00.027783|FNKO|19|quality filter: filter:mcap_too_small: $
+2026-08-07|07:55:00.027783|ULBI|20|quality filter: filter:adv_too_low: $162
+2026-08-07|07:55:00.027783|ACMR|21|outside top-20 gap cap (gap 12.1%)
+2026-08-07|07:55:00.027783|AAOI|22|outside top-20 gap cap (gap 11.9%)
+2026-08-07|07:55:00.027783|ONTO|23|outside top-20 gap cap (gap 11.5%)
+2026-08-07|07:55:00.027783|GRPN|24|outside top-20 gap cap (gap 10.8%)
+2026-08-07|08:00:00.023930|DOCS|1|already scored earlier today
+2026-08-07|08:00:00.023930|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|08:00:00.023930|PUBM|3|score 36 < 50 (catalyst=routine)
+2026-08-07|08:00:00.023930|TEAM|4|score 40 < 50 (catalyst=routine)
+2026-08-07|08:00:00.023930|QNST|5|score 30 < 50 (catalyst=routine)
+2026-08-07|08:00:00.023930|FIGS|6|score 40 < 50 (catalyst=routine)
+2026-08-07|08:00:00.023930|FROG|7|score 24 < 50 (catalyst=routine)
+2026-08-07|08:00:00.023930|TWLO|8|score 24 < 50 (catalyst=routine)
+2026-08-07|08:00:00.023930|CART|9|score 24 < 50 (catalyst=routine)
+2026-08-07|08:00:00.023930|PSIX|10|pre-mkt volume 7,636 < 25,000 shares
+2026-08-07|08:00:00.023930|CRSR|11|score 12 < 50 (catalyst=routine)
+2026-08-07|08:00:00.023930|NET|12|score 18 < 50 (catalyst=routine)
+2026-08-07|08:00:00.023930|WLDN|13|pre-mkt volume 1,560 < 25,000 shares
+2026-08-07|08:00:00.023930|SPT|14|quality filter: filter:mcap_too_small: $
+2026-08-07|08:00:00.023930|NTRA|15|pre-mkt volume 2,786 < 25,000 shares
+2026-08-07|08:00:00.023930|INOD|16|score 34 < 50 (catalyst=routine)
+2026-08-07|08:00:00.023930|FNKO|17|quality filter: filter:mcap_too_small: $
+2026-08-07|08:00:00.023930|CLRO|18|already up 166% in prior 5 days (extende
+2026-08-07|08:00:00.023930|DV|19|M&A/buyout catalyst — no momentum trade
+2026-08-07|08:00:00.023930|ULBI|20|quality filter: filter:adv_too_low: $162
+2026-08-07|08:00:00.023930|AAOI|21|outside top-20 gap cap (gap 12.3%)
+2026-08-07|08:00:00.023930|ACMR|22|outside top-20 gap cap (gap 11.9%)
+2026-08-07|08:00:00.023930|ONTO|23|outside top-20 gap cap (gap 11.5%)
+2026-08-07|08:00:00.023930|GRPN|24|outside top-20 gap cap (gap 10.8%)
+2026-08-07|08:05:00.029813|DOCS|1|already scored earlier today
+2026-08-07|08:05:00.029813|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|08:05:00.029813|PUBM|3|score 36 < 50 (catalyst=routine)
+2026-08-07|08:05:00.029813|TEAM|4|score 40 < 50 (catalyst=routine)
+2026-08-07|08:05:00.029813|FRD|5|quality filter: filter:mcap_too_small: $
+2026-08-07|08:05:00.029813|QNST|6|score 30 < 50 (catalyst=routine)
+2026-08-07|08:05:00.029813|FIGS|7|score 40 < 50 (catalyst=routine)
+2026-08-07|08:05:00.029813|FROG|8|score 24 < 50 (catalyst=routine)
+2026-08-07|08:05:00.029813|TWLO|9|score 24 < 50 (catalyst=routine)
+2026-08-07|08:05:00.029813|CART|10|score 24 < 50 (catalyst=routine)
+2026-08-07|08:05:00.029813|NET|11|score 18 < 50 (catalyst=routine)
+2026-08-07|08:05:00.029813|PSIX|12|pre-mkt volume 7,891 < 25,000 shares
+2026-08-07|08:05:00.029813|SPT|13|quality filter: filter:mcap_too_small: $
+2026-08-07|08:05:00.029813|WLDN|14|pre-mkt volume 1,560 < 25,000 shares
+2026-08-07|08:05:00.029813|NTRA|15|pre-mkt volume 2,786 < 25,000 shares
+2026-08-07|08:05:00.029813|CRSR|16|score 6 < 50 (catalyst=routine)
+2026-08-07|08:05:00.029813|INOD|17|score 34 < 50 (catalyst=routine)
+2026-08-07|08:05:00.029813|FNKO|18|quality filter: filter:mcap_too_small: $
+2026-08-07|08:05:00.029813|ACMR|19|score 10 < 50 (catalyst=routine)
+2026-08-07|08:05:00.029813|DV|20|M&A/buyout catalyst — no momentum trade
+2026-08-07|08:05:00.029813|CLRO|21|outside top-20 gap cap (gap 12.4%)
+2026-08-07|08:05:00.029813|ULBI|22|outside top-20 gap cap (gap 12.4%)
+2026-08-07|08:05:00.029813|AAOI|23|outside top-20 gap cap (gap 12.1%)
+2026-08-07|08:05:00.029813|ONTO|24|outside top-20 gap cap (gap 11.5%)
+2026-08-07|08:05:00.029813|GRPN|25|outside top-20 gap cap (gap 10.8%)
+2026-08-07|08:10:00.024767|DOCS|1|already scored earlier today
+2026-08-07|08:10:00.024767|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|08:10:00.024767|PUBM|3|score 36 < 50 (catalyst=routine)
+2026-08-07|08:10:00.024767|TEAM|4|score 40 < 50 (catalyst=routine)
+2026-08-07|08:10:00.024767|FRD|5|quality filter: filter:mcap_too_small: $
+2026-08-07|08:10:00.024767|QNST|6|score 30 < 50 (catalyst=routine)
+2026-08-07|08:10:00.024767|FIGS|7|score 40 < 50 (catalyst=routine)
+2026-08-07|08:10:00.024767|TWLO|8|score 24 < 50 (catalyst=routine)
+2026-08-07|08:10:00.024767|CRSR|9|score 12 < 50 (catalyst=routine)
+2026-08-07|08:10:00.024767|FROG|10|score 24 < 50 (catalyst=routine)
+2026-08-07|08:10:00.024767|NET|11|score 18 < 50 (catalyst=routine)
+2026-08-07|08:10:00.024767|PSIX|12|pre-mkt volume 10,206 < 25,000 shares
+2026-08-07|08:10:00.024767|CART|13|score 24 < 50 (catalyst=routine)
+2026-08-07|08:10:00.024767|SPT|14|quality filter: filter:mcap_too_small: $
+2026-08-07|08:10:00.024767|WLDN|15|pre-mkt volume 1,560 < 25,000 shares
+2026-08-07|08:10:00.024767|CLRO|16|already up 166% in prior 5 days (extende
+2026-08-07|08:10:00.024767|NTRA|17|pre-mkt volume 2,786 < 25,000 shares
+2026-08-07|08:10:00.024767|INOD|18|score 34 < 50 (catalyst=routine)
+2026-08-07|08:10:00.024767|FNKO|19|quality filter: filter:mcap_too_small: $
+2026-08-07|08:10:00.024767|DV|20|M&A/buyout catalyst — no momentum trade
+2026-08-07|08:10:00.024767|ACMR|21|outside top-20 gap cap (gap 12.7%)
+2026-08-07|08:10:00.024767|ULBI|22|outside top-20 gap cap (gap 12.4%)
+2026-08-07|08:10:00.024767|ONTO|23|outside top-20 gap cap (gap 11.5%)
+2026-08-07|08:10:00.024767|GRPN|24|outside top-20 gap cap (gap 10.8%)
+2026-08-07|08:10:00.024767|AAOI|25|outside top-20 gap cap (gap 10.5%)
+2026-08-07|08:15:00.032078|DOCS|1|already scored earlier today
+2026-08-07|08:15:00.032078|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|08:15:00.032078|PUBM|3|score 36 < 50 (catalyst=routine)
+2026-08-07|08:15:00.032078|TEAM|4|score 40 < 50 (catalyst=routine)
+2026-08-07|08:15:00.032078|FRD|5|quality filter: filter:mcap_too_small: $
+2026-08-07|08:15:00.032078|QNST|6|score 30 < 50 (catalyst=routine)
+2026-08-07|08:15:00.032078|FIGS|7|score 40 < 50 (catalyst=routine)
+2026-08-07|08:15:00.032078|CRSR|8|score 12 < 50 (catalyst=routine)
+2026-08-07|08:15:00.032078|TWLO|9|score 24 < 50 (catalyst=routine)
+2026-08-07|08:15:00.032078|FROG|10|score 24 < 50 (catalyst=routine)
+2026-08-07|08:15:00.032078|NET|11|score 18 < 50 (catalyst=routine)
+2026-08-07|08:15:00.032078|PSIX|12|pre-mkt volume 10,206 < 25,000 shares
+2026-08-07|08:15:00.032078|SPT|13|quality filter: filter:mcap_too_small: $
+2026-08-07|08:15:00.032078|WLDN|14|pre-mkt volume 1,560 < 25,000 shares
+2026-08-07|08:15:00.032078|CART|15|score 18 < 50 (catalyst=routine)
+2026-08-07|08:15:00.032078|NTRA|16|pre-mkt volume 2,786 < 25,000 shares
+2026-08-07|08:15:00.032078|INOD|17|score 34 < 50 (catalyst=routine)
+2026-08-07|08:15:00.032078|ACMR|18|score 10 < 50 (catalyst=routine)
+2026-08-07|08:15:00.032078|FNKO|19|quality filter: filter:mcap_too_small: $
+2026-08-07|08:15:00.032078|DV|20|M&A/buyout catalyst — no momentum trade
+2026-08-07|08:15:00.032078|CLRO|21|outside top-20 gap cap (gap 12.8%)
+2026-08-07|08:15:00.032078|ULBI|22|outside top-20 gap cap (gap 12.2%)
+2026-08-07|08:15:00.032078|ONTO|23|outside top-20 gap cap (gap 11.5%)
+2026-08-07|08:15:00.032078|AAOI|24|outside top-20 gap cap (gap 10.2%)
+2026-08-07|08:20:00.044738|DOCS|1|already scored earlier today
+2026-08-07|08:20:00.044738|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|08:20:00.044738|PUBM|3|score 36 < 50 (catalyst=routine)
+2026-08-07|08:20:00.044738|TEAM|4|score 40 < 50 (catalyst=routine)
+2026-08-07|08:20:00.044738|FRD|5|quality filter: filter:mcap_too_small: $
+2026-08-07|08:20:00.044738|QNST|6|score 30 < 50 (catalyst=routine)
+2026-08-07|08:20:00.044738|FIGS|7|score 40 < 50 (catalyst=routine)
+2026-08-07|08:20:00.044738|CRSR|8|score 12 < 50 (catalyst=routine)
+2026-08-07|08:20:00.044738|PSIX|9|pre-mkt volume 11,746 < 25,000 shares
+2026-08-07|08:20:00.044738|FROG|10|score 24 < 50 (catalyst=routine)
+2026-08-07|08:20:00.044738|TWLO|11|score 24 < 50 (catalyst=routine)
+2026-08-07|08:20:00.044738|NET|12|score 18 < 50 (catalyst=routine)
+2026-08-07|08:20:00.044738|SPT|13|quality filter: filter:mcap_too_small: $
+2026-08-07|08:20:00.044738|WLDN|14|pre-mkt volume 1,821 < 25,000 shares
+2026-08-07|08:20:00.044738|CLRO|15|already up 166% in prior 5 days (extende
+2026-08-07|08:20:00.044738|CART|16|score 18 < 50 (catalyst=routine)
+2026-08-07|08:20:00.044738|NTRA|17|pre-mkt volume 2,786 < 25,000 shares
+2026-08-07|08:20:00.044738|INOD|18|score 34 < 50 (catalyst=routine)
+2026-08-07|08:20:00.044738|FNKO|19|quality filter: filter:mcap_too_small: $
+2026-08-07|08:20:00.044738|DV|20|M&A/buyout catalyst — no momentum trade
+2026-08-07|08:20:00.044738|ACMR|21|outside top-20 gap cap (gap 12.9%)
+2026-08-07|08:20:00.044738|ULBI|22|outside top-20 gap cap (gap 12.2%)
+2026-08-07|08:20:00.044738|ONTO|23|outside top-20 gap cap (gap 11.5%)
+2026-08-07|08:20:00.044738|AAOI|24|outside top-20 gap cap (gap 11.1%)
+2026-08-07|08:25:00.019334|DOCS|1|already scored earlier today
+2026-08-07|08:25:00.019334|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|08:25:00.019334|TEAM|3|score 40 < 50 (catalyst=routine)
+2026-08-07|08:25:00.019334|PUBM|4|score 36 < 50 (catalyst=routine)
+2026-08-07|08:25:00.019334|FRD|5|quality filter: filter:mcap_too_small: $
+2026-08-07|08:25:00.019334|QNST|6|score 30 < 50 (catalyst=routine)
+2026-08-07|08:25:00.019334|FIGS|7|score 40 < 50 (catalyst=routine)
+2026-08-07|08:25:00.019334|CRSR|8|score 12 < 50 (catalyst=routine)
+2026-08-07|08:25:00.019334|TWLO|9|score 24 < 50 (catalyst=routine)
+2026-08-07|08:25:00.019334|PSIX|10|pre-mkt volume 11,746 < 25,000 shares
+2026-08-07|08:25:00.019334|FROG|11|score 24 < 50 (catalyst=routine)
+2026-08-07|08:25:00.019334|NET|12|score 18 < 50 (catalyst=routine)
+2026-08-07|08:25:00.019334|SPT|13|quality filter: filter:mcap_too_small: $
+2026-08-07|08:25:00.019334|WLDN|14|pre-mkt volume 1,821 < 25,000 shares
+2026-08-07|08:25:00.019334|CART|15|score 18 < 50 (catalyst=routine)
+2026-08-07|08:25:00.019334|INOD|16|score 34 < 50 (catalyst=routine)
+2026-08-07|08:25:00.019334|NTRA|17|pre-mkt volume 2,786 < 25,000 shares
+2026-08-07|08:25:00.019334|FNKO|18|quality filter: filter:mcap_too_small: $
+2026-08-07|08:25:00.019334|DV|19|M&A/buyout catalyst — no momentum trade
+2026-08-07|08:25:00.019334|ACMR|20|score 10 < 50 (catalyst=routine)
+2026-08-07|08:25:00.019334|ULBI|21|outside top-20 gap cap (gap 12.2%)
+2026-08-07|08:25:00.019334|ONTO|22|outside top-20 gap cap (gap 11.5%)
+2026-08-07|08:25:00.019334|AAOI|23|outside top-20 gap cap (gap 10.9%)
+2026-08-07|08:25:00.019334|PHR|24|outside top-20 gap cap (gap 10.2%)
+2026-08-07|08:30:00.026475|DOCS|1|already scored earlier today
+2026-08-07|08:30:00.026475|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|08:30:00.026475|TEAM|3|score 40 < 50 (catalyst=routine)
+2026-08-07|08:30:00.026475|PUBM|4|score 36 < 50 (catalyst=routine)
+2026-08-07|08:30:00.026475|FRD|5|quality filter: filter:mcap_too_small: $
+2026-08-07|08:30:00.026475|QNST|6|score 30 < 50 (catalyst=routine)
+2026-08-07|08:30:00.026475|FIGS|7|score 40 < 50 (catalyst=routine)
+2026-08-07|08:30:00.026475|PSIX|8|pre-mkt volume 13,159 < 25,000 shares
+2026-08-07|08:30:00.026475|CRSR|9|score 12 < 50 (catalyst=routine)
+2026-08-07|08:30:00.026475|TWLO|10|score 24 < 50 (catalyst=routine)
+2026-08-07|08:30:00.026475|NTRA|11|pre-mkt volume 4,038 < 25,000 shares
+2026-08-07|08:30:00.026475|FNKO|12|quality filter: filter:mcap_too_small: $
+2026-08-07|08:30:00.026475|NET|13|score 18 < 50 (catalyst=routine)
+2026-08-07|08:30:00.026475|SPT|14|quality filter: filter:mcap_too_small: $
+2026-08-07|08:30:00.026475|FROG|15|score 24 < 50 (catalyst=routine)
+2026-08-07|08:30:00.026475|CART|16|score 18 < 50 (catalyst=routine)
+2026-08-07|08:30:00.026475|INOD|17|score 34 < 50 (catalyst=routine)
+2026-08-07|08:30:00.026475|WLDN|18|score 34 < 50 (catalyst=routine)
+2026-08-07|08:30:00.026475|DV|19|M&A/buyout catalyst — no momentum trade
+2026-08-07|08:30:00.026475|ACMR|20|score 10 < 50 (catalyst=routine)
+2026-08-07|08:30:00.026475|CLRO|21|outside top-20 gap cap (gap 12.2%)
+2026-08-07|08:30:00.026475|ULBI|22|outside top-20 gap cap (gap 12.2%)
+2026-08-07|08:30:00.026475|ONTO|23|outside top-20 gap cap (gap 11.5%)
+2026-08-07|08:30:00.026475|AAOI|24|outside top-20 gap cap (gap 11.4%)
+2026-08-07|08:30:00.026475|PHR|25|outside top-20 gap cap (gap 10.2%)
+2026-08-07|08:35:00.037250|DOCS|1|already scored earlier today
+2026-08-07|08:35:00.037250|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|08:35:00.037250|TEAM|3|score 40 < 50 (catalyst=routine)
+2026-08-07|08:35:00.037250|PUBM|4|score 36 < 50 (catalyst=routine)
+2026-08-07|08:35:00.037250|FRD|5|quality filter: filter:mcap_too_small: $
+2026-08-07|08:35:00.037250|QNST|6|score 30 < 50 (catalyst=routine)
+2026-08-07|08:35:00.037250|FIGS|7|score 40 < 50 (catalyst=routine)
+2026-08-07|08:35:00.037250|PSIX|8|pre-mkt volume 13,295 < 25,000 shares
+2026-08-07|08:35:00.037250|CRSR|9|score 12 < 50 (catalyst=routine)
+2026-08-07|08:35:00.037250|TWLO|10|score 24 < 50 (catalyst=routine)
+2026-08-07|08:35:00.037250|NTRA|11|pre-mkt volume 4,038 < 25,000 shares
+2026-08-07|08:35:00.037250|SPT|12|quality filter: filter:mcap_too_small: $
+2026-08-07|08:35:00.037250|FNKO|13|quality filter: filter:mcap_too_small: $
+2026-08-07|08:35:00.037250|NET|14|score 18 < 50 (catalyst=routine)
+2026-08-07|08:35:00.037250|FROG|15|score 24 < 50 (catalyst=routine)
+2026-08-07|08:35:00.037250|INOD|16|score 34 < 50 (catalyst=routine)
+2026-08-07|08:35:00.037250|WLDN|17|score 34 < 50 (catalyst=routine)
+2026-08-07|08:35:00.037250|CART|18|score 18 < 50 (catalyst=routine)
+2026-08-07|08:35:00.037250|DV|19|M&A/buyout catalyst — no momentum trade
+2026-08-07|08:35:00.037250|ACMR|20|score 10 < 50 (catalyst=routine)
+2026-08-07|08:35:00.037250|CLRO|21|outside top-20 gap cap (gap 12.2%)
+2026-08-07|08:35:00.037250|AAOI|22|outside top-20 gap cap (gap 12.0%)
+2026-08-07|08:35:00.037250|ULBI|23|outside top-20 gap cap (gap 11.9%)
+2026-08-07|08:35:00.037250|ONTO|24|outside top-20 gap cap (gap 11.5%)
+2026-08-07|08:35:00.037250|PHR|25|outside top-20 gap cap (gap 10.2%)
+2026-08-07|08:40:00.029878|DOCS|1|already scored earlier today
+2026-08-07|08:40:00.029878|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|08:40:00.029878|PUBM|3|score 36 < 50 (catalyst=routine)
+2026-08-07|08:40:00.029878|TEAM|4|score 40 < 50 (catalyst=routine)
+2026-08-07|08:40:00.029878|FRD|5|quality filter: filter:mcap_too_small: $
+2026-08-07|08:40:00.029878|QNST|6|score 30 < 50 (catalyst=routine)
+2026-08-07|08:40:00.029878|FIGS|7|score 40 < 50 (catalyst=routine)
+2026-08-07|08:40:00.029878|FNKO|8|quality filter: filter:mcap_too_small: $
+2026-08-07|08:40:00.029878|PSIX|9|pre-mkt volume 13,295 < 25,000 shares
+2026-08-07|08:40:00.029878|CRSR|10|score 12 < 50 (catalyst=routine)
+2026-08-07|08:40:00.029878|TWLO|11|score 24 < 50 (catalyst=routine)
+2026-08-07|08:40:00.029878|NET|12|score 18 < 50 (catalyst=routine)
+2026-08-07|08:40:00.029878|NTRA|13|pre-mkt volume 4,038 < 25,000 shares
+2026-08-07|08:40:00.029878|SPT|14|quality filter: filter:mcap_too_small: $
+2026-08-07|08:40:00.029878|FROG|15|score 24 < 50 (catalyst=routine)
+2026-08-07|08:40:00.029878|CART|16|score 24 < 50 (catalyst=routine)
+2026-08-07|08:40:00.029878|ACMR|17|score 16 < 50 (catalyst=routine)
+2026-08-07|08:40:00.029878|INOD|18|score 34 < 50 (catalyst=routine)
+2026-08-07|08:40:00.029878|WLDN|19|score 34 < 50 (catalyst=routine)
+2026-08-07|08:40:00.029878|DV|20|M&A/buyout catalyst — no momentum trade
+2026-08-07|08:40:00.029878|ULBI|21|outside top-20 gap cap (gap 12.4%)
+2026-08-07|08:40:00.029878|AAOI|22|outside top-20 gap cap (gap 11.9%)
+2026-08-07|08:40:00.029878|ONTO|23|outside top-20 gap cap (gap 11.5%)
+2026-08-07|08:40:00.029878|PCLA|24|outside top-20 gap cap (gap 10.7%)
+2026-08-07|08:45:00.033353|DOCS|1|already scored earlier today
+2026-08-07|08:45:00.033353|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|08:45:00.033353|PUBM|3|score 36 < 50 (catalyst=routine)
+2026-08-07|08:45:00.033353|TEAM|4|score 40 < 50 (catalyst=routine)
+2026-08-07|08:45:00.033353|QNST|5|score 30 < 50 (catalyst=routine)
+2026-08-07|08:45:00.033353|FRD|6|quality filter: filter:mcap_too_small: $
+2026-08-07|08:45:00.033353|FIGS|7|score 40 < 50 (catalyst=routine)
+2026-08-07|08:45:00.033353|FNKO|8|quality filter: filter:mcap_too_small: $
+2026-08-07|08:45:00.033353|PSIX|9|pre-mkt volume 13,402 < 25,000 shares
+2026-08-07|08:45:00.033353|TWLO|10|score 24 < 50 (catalyst=routine)
+2026-08-07|08:45:00.033353|CRSR|11|score 12 < 50 (catalyst=routine)
+2026-08-07|08:45:00.033353|NTRA|12|pre-mkt volume 4,038 < 25,000 shares
+2026-08-07|08:45:00.033353|SPT|13|quality filter: filter:mcap_too_small: $
+2026-08-07|08:45:00.033353|NET|14|score 18 < 50 (catalyst=routine)
+2026-08-07|08:45:00.033353|CART|15|score 18 < 50 (catalyst=routine)
+2026-08-07|08:45:00.033353|WLDN|16|score 34 < 50 (catalyst=routine)
+2026-08-07|08:45:00.033353|ACMR|17|score 10 < 50 (catalyst=routine)
+2026-08-07|08:45:00.033353|INOD|18|score 34 < 50 (catalyst=routine)
+2026-08-07|08:45:00.033353|FROG|19|score 18 < 50 (catalyst=routine)
+2026-08-07|08:45:00.033353|DV|20|M&A/buyout catalyst — no momentum trade
+2026-08-07|08:45:00.033353|ULBI|21|outside top-20 gap cap (gap 12.4%)
+2026-08-07|08:45:00.033353|AAOI|22|outside top-20 gap cap (gap 12.3%)
+2026-08-07|08:45:00.033353|CLRO|23|outside top-20 gap cap (gap 12.2%)
+2026-08-07|08:45:00.033353|ONTO|24|outside top-20 gap cap (gap 11.5%)
+2026-08-07|08:50:00.281727|DOCS|1|already scored earlier today
+2026-08-07|08:50:00.281727|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|08:50:00.281727|PUBM|3|
+2026-08-07|08:50:00.281727|TEAM|4|
+2026-08-07|08:50:00.281727|QNST|5|
+2026-08-07|08:50:00.281727|FRD|6|quality filter: filter:mcap_too_small: $
+2026-08-07|08:50:00.281727|FIGS|7|
+2026-08-07|08:50:00.281727|MTW|8|pre-mkt volume 1,445 < 25,000 shares
+2026-08-07|08:50:00.281727|TWLO|9|
+2026-08-07|08:50:00.281727|FROG|10|
+2026-08-07|08:50:00.281727|CRSR|11|
+2026-08-07|08:50:00.281727|FNKO|12|quality filter: filter:mcap_too_small: $
+2026-08-07|08:50:00.281727|PSIX|13|pre-mkt volume 13,832 < 25,000 shares
+2026-08-07|08:50:00.281727|NTRA|14|pre-mkt volume 4,038 < 25,000 shares
+2026-08-07|08:50:00.281727|SPT|15|quality filter: filter:mcap_too_small: $
+2026-08-07|08:50:00.281727|NET|16|
+2026-08-07|08:50:00.281727|ACMR|17|score 33 < 50 (catalyst=strong)
+2026-08-07|08:50:00.281727|INOD|18|
+2026-08-07|08:50:00.281727|WLDN|19|
+2026-08-07|08:50:00.281727|CART|20|score 36 < 50 (catalyst=strong)
+2026-08-07|08:50:00.281727|AAOI|21|outside top-20 gap cap (gap 13.2%)
+2026-08-07|08:50:00.281727|DV|22|outside top-20 gap cap (gap 13.1%)
+2026-08-07|08:50:00.281727|ULBI|23|outside top-20 gap cap (gap 12.4%)
+2026-08-07|08:50:00.281727|CLRO|24|outside top-20 gap cap (gap 12.2%)
+2026-08-07|08:50:00.281727|ONTO|25|outside top-20 gap cap (gap 11.5%)
+2026-08-07|08:55:00.069252|DOCS|1|already scored earlier today
+2026-08-07|08:55:00.069252|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|08:55:00.069252|PUBM|3|already scored earlier today
+2026-08-07|08:55:00.069252|TEAM|4|already scored earlier today
+2026-08-07|08:55:00.069252|QNST|5|already scored earlier today
+2026-08-07|08:55:00.069252|FRD|6|quality filter: filter:mcap_too_small: $
+2026-08-07|08:55:00.069252|FIGS|7|already scored earlier today
+2026-08-07|08:55:00.069252|CRSR|8|already scored earlier today
+2026-08-07|08:55:00.069252|MTW|9|pre-mkt volume 1,554 < 25,000 shares
+2026-08-07|08:55:00.069252|FROG|10|already scored earlier today
+2026-08-07|08:55:00.069252|TWLO|11|already scored earlier today
+2026-08-07|08:55:00.069252|PSIX|12|pre-mkt volume 14,172 < 25,000 shares
+2026-08-07|08:55:00.069252|FNKO|13|quality filter: filter:mcap_too_small: $
+2026-08-07|08:55:00.069252|NTRA|14|pre-mkt volume 4,038 < 25,000 shares
+2026-08-07|08:55:00.069252|SPT|15|quality filter: filter:mcap_too_small: $
+2026-08-07|08:55:00.069252|INOD|16|already scored earlier today
+2026-08-07|08:55:00.069252|NET|17|already scored earlier today
+2026-08-07|08:55:00.069252|WLDN|18|already scored earlier today
+2026-08-07|08:55:00.069252|ACMR|19|score 33 < 50 (catalyst=strong)
+2026-08-07|08:55:00.069252|CART|20|score 36 < 50 (catalyst=strong)
+2026-08-07|08:55:00.069252|AAOI|21|outside top-20 gap cap (gap 13.1%)
+2026-08-07|08:55:00.069252|DV|22|outside top-20 gap cap (gap 13.1%)
+2026-08-07|08:55:00.069252|ONTO|23|outside top-20 gap cap (gap 12.6%)
+2026-08-07|08:55:00.069252|ULBI|24|outside top-20 gap cap (gap 12.4%)
+2026-08-07|08:55:00.069252|CLRO|25|outside top-20 gap cap (gap 12.2%)
+2026-08-07|08:55:00.069252|PCLA|26|outside top-20 gap cap (gap 10.8%)
+2026-08-07|08:55:00.069252|MCHP|27|outside top-20 gap cap (gap 10.3%)
+2026-08-07|09:00:00.160274|DOCS|1|already scored earlier today
+2026-08-07|09:00:00.160274|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|09:00:00.160274|PUBM|3|already scored earlier today
+2026-08-07|09:00:00.160274|TEAM|4|already scored earlier today
+2026-08-07|09:00:00.160274|FIGS|5|already scored earlier today
+2026-08-07|09:00:00.160274|QNST|6|already scored earlier today
+2026-08-07|09:00:00.160274|FRD|7|quality filter: filter:mcap_too_small: $
+2026-08-07|09:00:00.160274|MTW|8|pre-mkt volume 1,554 < 25,000 shares
+2026-08-07|09:00:00.160274|CRSR|9|already scored earlier today
+2026-08-07|09:00:00.160274|FROG|10|already scored earlier today
+2026-08-07|09:00:00.160274|TWLO|11|already scored earlier today
+2026-08-07|09:00:00.160274|PSIX|12|pre-mkt volume 14,172 < 25,000 shares
+2026-08-07|09:00:00.160274|FNKO|13|quality filter: filter:mcap_too_small: $
+2026-08-07|09:00:00.160274|MITK|14|filter:pm_rvol_too_low: pm_rvol=0.15x (t
+2026-08-07|09:00:00.160274|NTRA|15|pre-mkt volume 4,038 < 25,000 shares
+2026-08-07|09:00:00.160274|INOD|16|already scored earlier today
+2026-08-07|09:00:00.160274|NET|17|already scored earlier today
+2026-08-07|09:00:00.160274|SPT|18|quality filter: filter:mcap_too_small: $
+2026-08-07|09:00:00.160274|ACMR|19|
+2026-08-07|09:00:00.160274|WLDN|20|already scored earlier today
+2026-08-07|09:00:00.160274|CART|21|outside top-20 gap cap (gap 13.9%)
+2026-08-07|09:00:00.160274|AAOI|22|outside top-20 gap cap (gap 13.9%)
+2026-08-07|09:00:00.160274|CLRO|23|outside top-20 gap cap (gap 13.7%)
+2026-08-07|09:00:00.160274|DV|24|outside top-20 gap cap (gap 13.2%)
+2026-08-07|09:00:00.160274|ONTO|25|outside top-20 gap cap (gap 12.6%)
+2026-08-07|09:00:00.160274|ULBI|26|outside top-20 gap cap (gap 12.4%)
+2026-08-07|09:00:00.160274|HMY|27|outside top-20 gap cap (gap 10.9%)
+2026-08-07|09:00:00.160274|PCLA|28|outside top-20 gap cap (gap 10.8%)
+2026-08-07|09:00:00.160274|MCHP|29|outside top-20 gap cap (gap 10.8%)
+2026-08-07|09:00:00.160932|DOCS|1|already scored earlier today
+2026-08-07|09:00:00.160932|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|09:00:00.160932|PUBM|3|already scored earlier today
+2026-08-07|09:00:00.160932|TEAM|4|already scored earlier today
+2026-08-07|09:00:00.160932|FIGS|5|already scored earlier today
+2026-08-07|09:00:00.160932|QNST|6|already scored earlier today
+2026-08-07|09:00:00.160932|FRD|7|quality filter: filter:mcap_too_small: $
+2026-08-07|09:00:00.160932|MTW|8|pre-mkt volume 1,554 < 25,000 shares
+2026-08-07|09:00:00.160932|CRSR|9|already scored earlier today
+2026-08-07|09:00:00.160932|FROG|10|already scored earlier today
+2026-08-07|09:00:00.160932|TWLO|11|already scored earlier today
+2026-08-07|09:00:00.160932|PSIX|12|pre-mkt volume 14,172 < 25,000 shares
+2026-08-07|09:00:00.160932|FNKO|13|quality filter: filter:mcap_too_small: $
+2026-08-07|09:00:00.160932|MITK|14|filter:pm_rvol_too_low: pm_rvol=0.15x (t
+2026-08-07|09:00:00.160932|NTRA|15|pre-mkt volume 4,038 < 25,000 shares
+2026-08-07|09:00:00.160932|INOD|16|already scored earlier today
+2026-08-07|09:00:00.160932|NET|17|already scored earlier today
+2026-08-07|09:00:00.160932|SPT|18|quality filter: filter:mcap_too_small: $
+2026-08-07|09:00:00.160932|ACMR|19|
+2026-08-07|09:00:00.160932|WLDN|20|already scored earlier today
+2026-08-07|09:00:00.160932|AAOI|21|outside top-20 gap cap (gap 14.1%)
+2026-08-07|09:00:00.160932|CART|22|outside top-20 gap cap (gap 13.7%)
+2026-08-07|09:00:00.160932|DV|23|outside top-20 gap cap (gap 13.2%)
+2026-08-07|09:00:00.160932|CLRO|24|outside top-20 gap cap (gap 12.7%)
+2026-08-07|09:00:00.160932|ONTO|25|outside top-20 gap cap (gap 12.6%)
+2026-08-07|09:00:00.160932|ULBI|26|outside top-20 gap cap (gap 12.4%)
+2026-08-07|09:00:00.160932|HMY|27|outside top-20 gap cap (gap 10.9%)
+2026-08-07|09:00:00.160932|PCLA|28|outside top-20 gap cap (gap 10.8%)
+2026-08-07|09:00:00.160932|MCHP|29|outside top-20 gap cap (gap 10.8%)
+2026-08-07|09:05:00.051595|DOCS|1|already scored earlier today
+2026-08-07|09:05:00.051595|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|09:05:00.051595|PUBM|3|already scored earlier today
+2026-08-07|09:05:00.051595|TEAM|4|already scored earlier today
+2026-08-07|09:05:00.051595|FIGS|5|already scored earlier today
+2026-08-07|09:05:00.051595|QNST|6|already scored earlier today
+2026-08-07|09:05:00.051595|FRD|7|quality filter: filter:mcap_too_small: $
+2026-08-07|09:05:00.051595|TWLO|8|already scored earlier today
+2026-08-07|09:05:00.051595|FNKO|9|quality filter: filter:mcap_too_small: $
+2026-08-07|09:05:00.051595|CRSR|10|already scored earlier today
+2026-08-07|09:05:00.051595|MTW|11|pre-mkt volume 1,554 < 25,000 shares
+2026-08-07|09:05:00.051595|PSIX|12|score 48 < 50 (catalyst=routine)
+2026-08-07|09:05:00.051595|FROG|13|already scored earlier today
+2026-08-07|09:05:00.051595|MITK|14|filter:pm_rvol_too_low: pm_rvol=0.14x (t
+2026-08-07|09:05:00.051595|NTRA|15|pre-mkt volume 4,038 < 25,000 shares
+2026-08-07|09:05:00.051595|SPT|16|quality filter: filter:mcap_too_small: $
+2026-08-07|09:05:00.051595|NET|17|already scored earlier today
+2026-08-07|09:05:00.051595|INOD|18|already scored earlier today
+2026-08-07|09:05:00.051595|ACMR|19|already scored earlier today
+2026-08-07|09:05:00.051595|WLDN|20|already scored earlier today
+2026-08-07|09:05:00.051595|CART|21|outside top-20 gap cap (gap 14.4%)
+2026-08-07|09:05:00.051595|AAOI|22|outside top-20 gap cap (gap 14.3%)
+2026-08-07|09:05:00.051595|DV|23|outside top-20 gap cap (gap 12.9%)
+2026-08-07|09:05:00.051595|ONTO|24|outside top-20 gap cap (gap 12.8%)
+2026-08-07|09:05:00.051595|ULBI|25|outside top-20 gap cap (gap 12.4%)
+2026-08-07|09:05:00.051595|HMY|26|outside top-20 gap cap (gap 11.4%)
+2026-08-07|09:05:00.051595|PCLA|27|outside top-20 gap cap (gap 10.8%)
+2026-08-07|09:05:00.051595|MCHP|28|outside top-20 gap cap (gap 10.7%)
+2026-08-07|09:05:00.051595|AU|29|outside top-20 gap cap (gap 10.6%)
+2026-08-07|09:10:00.087196|DOCS|1|already scored earlier today
+2026-08-07|09:10:00.087196|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|09:10:00.087196|PUBM|3|already scored earlier today
+2026-08-07|09:10:00.087196|TEAM|4|already scored earlier today
+2026-08-07|09:10:00.087196|FIGS|5|already scored earlier today
+2026-08-07|09:10:00.087196|QNST|6|already scored earlier today
+2026-08-07|09:10:00.087196|FRD|7|quality filter: filter:mcap_too_small: $
+2026-08-07|09:10:00.087196|FNKO|8|quality filter: filter:mcap_too_small: $
+2026-08-07|09:10:00.087196|CRSR|9|already scored earlier today
+2026-08-07|09:10:00.087196|TWLO|10|already scored earlier today
+2026-08-07|09:10:00.087196|MTW|11|pre-mkt volume 1,554 < 25,000 shares
+2026-08-07|09:10:00.087196|MITK|12|filter:pm_rvol_too_low: pm_rvol=0.31x (t
+2026-08-07|09:10:00.087196|PSIX|13|score 48 < 50 (catalyst=routine)
+2026-08-07|09:10:00.087196|FROG|14|already scored earlier today
+2026-08-07|09:10:00.087196|NTRA|15|score 6 < 50 (catalyst=routine)
+2026-08-07|09:10:00.087196|INOD|16|already scored earlier today
+2026-08-07|09:10:00.087196|SPT|17|quality filter: filter:mcap_too_small: $
+2026-08-07|09:10:00.087196|NET|18|already scored earlier today
+2026-08-07|09:10:00.087196|ACMR|19|already scored earlier today
+2026-08-07|09:10:00.087196|WLDN|20|already scored earlier today
+2026-08-07|09:10:00.087196|CART|21|outside top-20 gap cap (gap 14.6%)
+2026-08-07|09:10:00.087196|AAOI|22|outside top-20 gap cap (gap 13.8%)
+2026-08-07|09:10:00.087196|DV|23|outside top-20 gap cap (gap 13.0%)
+2026-08-07|09:10:00.087196|CLRO|24|outside top-20 gap cap (gap 13.0%)
+2026-08-07|09:10:00.087196|ULBI|25|outside top-20 gap cap (gap 12.4%)
+2026-08-07|09:10:00.087196|ONTO|26|outside top-20 gap cap (gap 12.0%)
+2026-08-07|09:10:00.087196|MCHP|27|outside top-20 gap cap (gap 11.6%)
+2026-08-07|09:10:00.087196|HMY|28|outside top-20 gap cap (gap 11.2%)
+2026-08-07|09:10:00.087196|AU|29|outside top-20 gap cap (gap 10.8%)
+2026-08-07|09:10:00.087196|PCLA|30|outside top-20 gap cap (gap 10.8%)
+2026-08-07|09:10:00.087196|FLR|31|outside top-20 gap cap (gap 10.8%)
+2026-08-07|09:10:00.087196|GFI|32|outside top-20 gap cap (gap 10.5%)
+2026-08-07|09:15:00.049618|DOCS|1|already scored earlier today
+2026-08-07|09:15:00.049618|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|09:15:00.049618|PUBM|3|already scored earlier today
+2026-08-07|09:15:00.049618|TEAM|4|already scored earlier today
+2026-08-07|09:15:00.049618|FIGS|5|already scored earlier today
+2026-08-07|09:15:00.049618|QNST|6|already scored earlier today
+2026-08-07|09:15:00.049618|FRD|7|quality filter: filter:mcap_too_small: $
+2026-08-07|09:15:00.049618|FNKO|8|quality filter: filter:mcap_too_small: $
+2026-08-07|09:15:00.049618|TWLO|9|already scored earlier today
+2026-08-07|09:15:00.049618|CRSR|10|already scored earlier today
+2026-08-07|09:15:00.049618|MTW|11|pre-mkt volume 1,554 < 25,000 shares
+2026-08-07|09:15:00.049618|PSIX|12|score 48 < 50 (catalyst=routine)
+2026-08-07|09:15:00.049618|MITK|13|filter:pm_rvol_too_low: pm_rvol=0.44x (t
+2026-08-07|09:15:00.049618|FROG|14|already scored earlier today
+2026-08-07|09:15:00.049618|NTRA|15|score 6 < 50 (catalyst=routine)
+2026-08-07|09:15:00.049618|INOD|16|already scored earlier today
+2026-08-07|09:15:00.049618|SPT|17|quality filter: filter:mcap_too_small: $
+2026-08-07|09:15:00.049618|NET|18|already scored earlier today
+2026-08-07|09:15:00.049618|WLDN|19|already scored earlier today
+2026-08-07|09:15:00.049618|ACMR|20|already scored earlier today
+2026-08-07|09:15:00.049618|CART|21|outside top-20 gap cap (gap 14.6%)
+2026-08-07|09:15:00.049618|AAOI|22|outside top-20 gap cap (gap 13.6%)
+2026-08-07|09:15:00.049618|DV|23|outside top-20 gap cap (gap 13.2%)
+2026-08-07|09:15:00.049618|ULBI|24|outside top-20 gap cap (gap 12.4%)
+2026-08-07|09:15:00.049618|MCHP|25|outside top-20 gap cap (gap 10.9%)
+2026-08-07|09:15:00.049618|ONTO|26|outside top-20 gap cap (gap 10.7%)
+2026-08-07|09:15:00.049618|HMY|27|outside top-20 gap cap (gap 10.4%)
+2026-08-07|09:20:00.158947|DOCS|1|already scored earlier today
+2026-08-07|09:20:00.158947|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|09:20:00.158947|TEAM|3|already scored earlier today
+2026-08-07|09:20:00.158947|PUBM|4|already scored earlier today
+2026-08-07|09:20:00.158947|QNST|5|already scored earlier today
+2026-08-07|09:20:00.158947|FIGS|6|already scored earlier today
+2026-08-07|09:20:00.158947|FRD|7|quality filter: filter:mcap_too_small: $
+2026-08-07|09:20:00.158947|FNKO|8|quality filter: filter:mcap_too_small: $
+2026-08-07|09:20:00.158947|CRSR|9|already scored earlier today
+2026-08-07|09:20:00.158947|MTW|10|pre-mkt volume 1,554 < 25,000 shares
+2026-08-07|09:20:00.158947|TWLO|11|already scored earlier today
+2026-08-07|09:20:00.158947|PSIX|12|score 48 < 50 (catalyst=routine)
+2026-08-07|09:20:00.158947|MITK|13|filter:pm_rvol_too_low: pm_rvol=0.41x (t
+2026-08-07|09:20:00.158947|FROG|14|already scored earlier today
+2026-08-07|09:20:00.158947|NTRA|15|score 6 < 50 (catalyst=routine)
+2026-08-07|09:20:00.158947|ACMR|16|already scored earlier today
+2026-08-07|09:20:00.158947|WLDN|17|already scored earlier today
+2026-08-07|09:20:00.158947|SPT|18|quality filter: filter:mcap_too_small: $
+2026-08-07|09:20:00.158947|NET|19|already scored earlier today
+2026-08-07|09:20:00.158947|INOD|20|already scored earlier today
+2026-08-07|09:20:00.158947|CART|21|outside top-20 gap cap (gap 14.2%)
+2026-08-07|09:20:00.158947|DV|22|outside top-20 gap cap (gap 13.2%)
+2026-08-07|09:20:00.158947|AAOI|23|outside top-20 gap cap (gap 12.7%)
+2026-08-07|09:20:00.158947|ULBI|24|outside top-20 gap cap (gap 12.4%)
+2026-08-07|09:20:00.158947|ONTO|25|outside top-20 gap cap (gap 10.7%)
+2026-08-07|09:25:00.061556|DOCS|1|already scored earlier today
+2026-08-07|09:25:00.061556|VATE|2|quality filter: filter:adv_too_low: $745
+2026-08-07|09:25:00.061556|PUBM|3|already scored earlier today
+2026-08-07|09:25:00.061556|TEAM|4|already scored earlier today
+2026-08-07|09:25:00.061556|QNST|5|already scored earlier today
+2026-08-07|09:25:00.061556|FIGS|6|already scored earlier today
+2026-08-07|09:25:00.061556|FRD|7|quality filter: filter:mcap_too_small: $
+2026-08-07|09:25:00.061556|TWLO|8|already scored earlier today
+2026-08-07|09:25:00.061556|MTW|9|pre-mkt volume 1,554 < 25,000 shares
+2026-08-07|09:25:00.061556|CRSR|10|already scored earlier today
+2026-08-07|09:25:00.061556|FNKO|11|quality filter: filter:mcap_too_small: $
+2026-08-07|09:25:00.061556|MITK|12|filter:pm_rvol_too_low: pm_rvol=0.67x (t
+2026-08-07|09:25:00.061556|FROG|13|already scored earlier today
+2026-08-07|09:25:00.061556|PSIX|14|score 48 < 50 (catalyst=routine)
+2026-08-07|09:25:00.061556|NTRA|15|score 6 < 50 (catalyst=routine)
+2026-08-07|09:25:00.061556|ACMR|16|already scored earlier today
+2026-08-07|09:25:00.061556|WLDN|17|already scored earlier today
+2026-08-07|09:25:00.061556|SPT|18|quality filter: filter:mcap_too_small: $
+2026-08-07|09:25:00.061556|INOD|19|already scored earlier today
+2026-08-07|09:25:00.061556|NET|20|already scored earlier today
+2026-08-07|09:25:00.061556|CART|21|outside top-20 gap cap (gap 14.1%)
+2026-08-07|09:25:00.061556|AAOI|22|outside top-20 gap cap (gap 13.5%)
+2026-08-07|09:25:00.061556|DV|23|outside top-20 gap cap (gap 12.9%)
+2026-08-07|09:25:00.061556|ONTO|24|outside top-20 gap cap (gap 12.0%)
+2026-08-07|09:25:00.061556|FLR|25|outside top-20 gap cap (gap 11.8%)
+2026-08-07|09:25:00.061556|ULBI|26|outside top-20 gap cap (gap 11.1%)
+2026-08-07|09:25:00.061556|HMY|27|outside top-20 gap cap (gap 10.9%)
+2026-08-07|09:25:00.061556|MCHP|28|outside top-20 gap cap (gap 10.3%)
+(2276 rows)

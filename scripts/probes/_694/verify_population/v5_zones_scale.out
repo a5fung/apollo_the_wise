@@ -1,0 +1,11 @@
+2026-05-06 ELPW scale 0.0222 zones as built 0 rescaled 0 NEVER_BREACHED None
+2026-05-08 AXTU scale 0.1 zones as built - rescaled None None history_too_thin(3d)
+2026-05-11 AIXI scale 0.1429 zones as built 0 rescaled 0 NEVER_BREACHED None
+2026-05-29 VWAV scale 0.05 zones as built 0 rescaled 3 CLEARED_DECISIVE_NOHOLDDATA None
+2026-05-06 T:zones cut as built ['YOU', 'HYMC', 'PENG', 'AVTX', 'NVAX', 'MASS', 'VCYT', 'HNGE', 'TWIN', 'KMT', 'FLYW', 'AMWL', 'SBSW', 'DBVT', 'GEO', 'NG', 'USNA', 'ADPT', 'DRD', 'LFVN', 'NBTX', 'ARTV', 'CVKD', 'CXDO', 'DGXX', 'ELPW', 'GIG', 'PN', 'SCZM', 'SKK', 'VCX'] | rescaled ['YOU', 'HYMC', 'PENG', 'AVTX', 'NVAX', 'MASS', 'VCYT', 'HNGE', 'TWIN', 'KMT', 'FLYW', 'AMWL', 'SBSW', 'DBVT', 'GEO', 'NG', 'USNA', 'ADPT', 'DRD', 'LFVN', 'NBTX', 'ARTV', 'CVKD', 'CXDO', 'DGXX', 'ELPW', 'GIG', 'PN', 'SCZM', 'SKK', 'VCX'] | SAME
+2026-05-06 S:zones cut as built ['GEO', 'HMY', 'MT', 'NG', 'USNA', 'ADPT', 'AMD', 'ARM', 'DRD', 'HUT', 'IAG', 'LFVN', 'NBTX', 'POET', 'STLA', 'VECO', 'YOU', 'ARTV', 'CVKD', 'CXDO', 'DGXX', 'ELPW', 'FLEX', 'GIG', 'HYMC', 'PENG', 'PN', 'SCZM', 'SKK', 'UMC', 'VCX'] | rescaled ['GEO', 'HMY', 'MT', 'NG', 'USNA', 'ADPT', 'AMD', 'ARM', 'DRD', 'HUT', 'IAG', 'LFVN', 'NBTX', 'POET', 'STLA', 'VECO', 'YOU', 'ARTV', 'CVKD', 'CXDO', 'DGXX', 'ELPW', 'FLEX', 'GIG', 'HYMC', 'PENG', 'PN', 'SCZM', 'SKK', 'UMC', 'VCX'] | SAME
+2026-05-08 T:zones cut as built ['ARTV', 'PGNY', 'PHOE'] | rescaled ['ARTV', 'PGNY', 'PHOE'] | SAME
+2026-05-08 S:zones cut as built ['AXTU', 'REA', 'XNDX'] | rescaled ['AXTU', 'REA', 'XNDX'] | SAME
+2026-05-11 T:zones cut as built ['WYFI', 'DGXX', 'ATRA', 'BNAI', 'CEVA', 'GLIBK', 'HTCO', 'NVEC', 'WYY'] | rescaled ['WYFI', 'DGXX', 'ATRA', 'BNAI', 'CEVA', 'GLIBK', 'HTCO', 'NVEC', 'WYY'] | SAME
+2026-05-11 S:zones cut as built ['HTCO', 'MNTS', 'MRAM', 'NVEC', 'P', 'POET', 'QCOM', 'VCX', 'WYY'] | rescaled ['HTCO', 'MNTS', 'MRAM', 'NVEC', 'P', 'POET', 'QCOM', 'VCX', 'WYY'] | SAME
+2026-05-29 pool 16 not crowded

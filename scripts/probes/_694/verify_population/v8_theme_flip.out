@@ -1,0 +1,19 @@
+2026-05-11 pool 29
+  A         SAME
+  B         SAME
+  T:adv$    SAME
+  T:pm$     SAME
+  T:pm_rvol SAME
+  T:rs_comp CHANGED as built ['ATRA', 'BNAI', 'BZH', 'DRTS', 'GLIBK', 'GSIT', 'HTCO', 'IX', 'RDNT'] -> flipped ['ATRA', 'BNAI', 'BW', 'BZH', 'GLIBK', 'GSIT', 'HTCO', 'IX', 'RDNT']
+  T:zones   SAME
+  T:gap     SAME
+2026-05-14 pool 23
+  A         SAME
+  B         SAME
+  T:adv$    SAME
+  T:pm$     SAME
+  T:pm_rvol SAME
+  T:rs_comp SAME
+  T:zones   SAME
+  T:gap     SAME
+2026-05-21 pool 6

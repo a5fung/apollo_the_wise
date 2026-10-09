@@ -1,0 +1,992 @@
+ticker|d|tick_et|created_et|rank_by_gap|rank_by_prescore|gap_pct|pm_rvol|reject_stage|filter_reason|ep_score|score_tier
+UMC|2026-04-17||07:00:17|||11.68|||low volume rel_vol 0.1x < 2.0x (post-open)||
+CAR|2026-04-21||07:00:01|||8.41|||low volume rel_vol 0.1x < 2.0x (post-open)||
+CAR|2026-04-22||07:00:10|||8.13|||already up 92% in prior 5 days (extended)||
+AMD|2026-04-24||07:00:44|||11.8|||score 32 < 50 (catalyst=routine)|32.4|
+INTC|2026-04-24||07:00:44|||23.6|||low volume rel_vol 0.3x < 2.0x (post-open)||
+QCOM|2026-04-24||09:30:10|||10.27|||score 32 < 50 (catalyst=routine)|32.4|
+ARM|2026-05-06|07:00:00|07:01:38|23||11.65|||outside top-20 gap cap (gap 11.7%)||
+ARM|2026-05-06|07:05:00|07:05:28|18||12.21|4.459||score -12 < 50 (catalyst=routine)|-12|
+ARM|2026-05-06|07:10:00|07:10:18|25||11.67|||outside top-20 gap cap (gap 11.7%)||
+ARM|2026-05-06|09:30:00|09:30:46|41||9.17|||outside top-20 gap cap (gap 9.2%)||
+ARM|2026-05-06|09:31:00|09:31:48|42||9.17|||outside top-20 gap cap (gap 9.2%)||
+ARM|2026-05-06|09:35:00|09:35:29|35||10.29|||outside top-20 gap cap (gap 10.3%)||
+ARM|2026-05-06|09:40:00|09:40:36|29||10.61|||outside top-20 gap cap (gap 10.6%)||
+ARM|2026-05-06|09:50:00|09:52:46|59||8.67|||outside top-20 gap cap (gap 8.7%)||
+ARM|2026-05-06|09:55:00|09:56:02|79||8.7|||outside top-20 gap cap (gap 8.7%)||
+GDC|2026-05-06|09:30:00|09:30:46|13||14.19|||already up 77% in prior 5 days (extended)||
+GDC|2026-05-06|09:31:00|09:31:48|16||13.86|||already up 77% in prior 5 days (extended)||
+GDC|2026-05-06|09:35:00|09:35:29|25||11.85|||outside top-20 gap cap (gap 11.8%)||
+GDC|2026-05-06|09:40:00|09:40:36|38||9.52|||outside top-20 gap cap (gap 9.5%)||
+GDC|2026-05-06|09:50:00|09:52:46|6||27.63|||already up 77% in prior 5 days (extended)||
+GDC|2026-05-06|09:55:00|09:56:02|6||25.88|||already up 77% in prior 5 days (extended)||
+UMC|2026-05-06|07:00:00|07:01:38|14||12.78|3.604||score 22 < 50 (catalyst=strong)|21.6|
+UMC|2026-05-06|07:05:00|07:05:28|15||12.78|3.501||score 22 < 50 (catalyst=strong)|21.6|
+UMC|2026-05-06|07:10:00|07:10:18|14||13.13|3.421||score 22 < 50 (catalyst=strong)|21.6|
+UMC|2026-05-06|09:30:00|09:30:46|29||10.64|||outside top-20 gap cap (gap 10.6%)||
+UMC|2026-05-06|09:31:00|09:31:48|29||10.95|||outside top-20 gap cap (gap 10.9%)||
+UMC|2026-05-06|09:35:00|09:35:29|30||10.99|||outside top-20 gap cap (gap 11.0%)||
+UMC|2026-05-06|09:40:00|09:40:36|24||11.71|||outside top-20 gap cap (gap 11.7%)||
+UMC|2026-05-06|09:50:00|09:52:46|63||8.6|||outside top-20 gap cap (gap 8.6%)||
+SNOW|2026-05-07|07:25:00|07:25:15|22||10.49|||outside top-20 gap cap (gap 10.5%)||
+SNOW|2026-05-07|07:30:00|07:30:09|33||8.37|||outside top-20 gap cap (gap 8.4%)||
+SNOW|2026-05-07|07:35:00|07:35:10|33||8.73|||outside top-20 gap cap (gap 8.7%)||
+SNOW|2026-05-07|07:40:00|07:40:14|35||8.63|||outside top-20 gap cap (gap 8.6%)||
+SNOW|2026-05-07|07:45:00|07:45:16|39||8.19|||outside top-20 gap cap (gap 8.2%)||
+SNOW|2026-05-07|08:20:00|08:20:36|40||8.44|||outside top-20 gap cap (gap 8.4%)||
+SNOW|2026-05-07|08:25:00|08:25:19|42||8.38|||outside top-20 gap cap (gap 8.4%)||
+SNOW|2026-05-07|09:15:00|09:15:27|29||10.22|||outside top-20 gap cap (gap 10.2%)||
+SNOW|2026-05-07|09:20:00|09:20:14|30||10.42|||outside top-20 gap cap (gap 10.4%)||
+SNOW|2026-05-07|09:25:00|09:25:14|29||10.23|||outside top-20 gap cap (gap 10.2%)||
+SNOW|2026-05-07|09:30:00|09:30:33|35||9.85|||outside top-20 gap cap (gap 9.8%)||
+SNOW|2026-05-07|09:31:00|09:31:24|34||9.85|||outside top-20 gap cap (gap 9.8%)||
+SNOW|2026-05-07|09:35:00|09:35:17|34||9.89|||outside top-20 gap cap (gap 9.9%)||
+SNOW|2026-05-07|09:40:00|09:40:30|38||10.28|||outside top-20 gap cap (gap 10.3%)||
+SNOW|2026-05-07|09:45:00|09:46:03|42||9.56|||outside top-20 gap cap (gap 9.6%)||
+TDIC|2026-05-12||||||||||
+MRAM|2026-05-13|07:00:00|07:00:50|11||11.47|1.904||EP cooldown — alerted within last 60 days||
+MRAM|2026-05-13|07:05:00|07:05:16|11||10.93|1.758||EP cooldown — alerted within last 60 days||
+MRAM|2026-05-13|07:10:00|07:10:18|12||10.43|1.64||EP cooldown — alerted within last 60 days||
+MRAM|2026-05-13|07:15:00|07:15:16|11||10.83|1.57||EP cooldown — alerted within last 60 days||
+MRAM|2026-05-13|07:20:00|07:20:32|5||17.82|1.889||EP cooldown — alerted within last 60 days||
+MRAM|2026-05-13|07:25:00|07:25:21|7||15.81|2.147||EP cooldown — alerted within last 60 days||
+MRAM|2026-05-13|07:30:00|07:30:22|12||12.77|2.282||EP cooldown — alerted within last 60 days||
+MRAM|2026-05-13|07:35:00|07:35:23|12||12.67|2.341||EP cooldown — alerted within last 60 days||
+MRAM|2026-05-13|07:55:00|07:55:27|10||13.61|3.115||EP cooldown — alerted within last 60 days||
+QURE|2026-05-29|07:55:00|07:55:16|9||13.24|4.203||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|08:00:00|08:00:12|12||10.66|4.68||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|08:05:00|08:05:13|9||13.76|6.346||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|08:10:00|08:10:13|5||16.7|12.739||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|08:15:00|08:15:15|2||19.68|20.766||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|08:20:00|08:20:14|2||20.56|28.085||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|08:25:00|08:25:36|2||20.64|31.522||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|08:30:00|08:30:37|3||20.64|37.384||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|08:35:00|08:35:20|5||18.71|36.836||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|08:40:00|08:40:34|7||16.7|36.967||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|08:45:00|08:45:33|7||16.5|37.879||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|08:50:00|08:50:20|7||14.69|38.083||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|08:55:00|08:55:16|7||15.81|37.648||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|09:00:00|09:00:23|8||15.13|37.19||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|09:00:00|09:00:33|7||16.54|37.387||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|09:05:00|09:05:31|6||16.62|36.138||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|09:10:00|09:10:34|6||16.5|35.911||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|09:15:00|09:15:37|7||15.69|34.726||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|09:20:00|09:20:33|7||16.5|35.547||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|09:25:00|09:25:34|7||16.22|33.795||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|09:30:00|09:30:44|6||16.62|21.498||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|09:31:00|09:31:39|6||16.62|17.386||M&A/buyout catalyst — no momentum trade||
+QURE|2026-05-29|09:35:00|09:36:10|7||16.1|9.047||score 14 < 50 (catalyst=routine)|14.4|
+QURE|2026-05-29|09:40:00|09:40:27|8||15.69|6.181||score 14 < 50 (catalyst=routine)|14.4|
+QURE|2026-05-29|09:45:00|09:45:58|8||16.26|4.66||score 32 < 50 (catalyst=routine)|31.7|
+QURE|2026-05-29|09:50:00|09:50:48|10||14.94|5.412||score 24 < 50 (catalyst=routine)|24.5|
+QURE|2026-05-29|09:55:00|09:55:48|10||14.61|6.591||score 24 < 50 (catalyst=routine)|24.5|
+CRWG|2026-06-01||||||||||
+AVGU|2026-06-02||||||||||
+HPE|2026-06-02|07:00:00|07:00:48|1||25.28|74.854|||115.2|HIGH
+HPE|2026-06-02|07:05:00|07:05:12|1||25.53|72.82||already scored earlier today||
+HPE|2026-06-02|07:10:00|07:10:16|2||25.04|70.144||already scored earlier today||
+HPE|2026-06-02|07:15:00|07:15:01|1||25.45|64.997||already scored earlier today||
+HPE|2026-06-02|07:20:00|07:20:15|1||24.47|77.122||already scored earlier today||
+HPE|2026-06-02|07:25:00|07:25:02|1||23.91|78.252||already scored earlier today||
+HPE|2026-06-02|07:30:00|07:30:02|1||25.02|78.528||already scored earlier today||
+HPE|2026-06-02|07:35:00|07:35:02|1||25.11|80.45||already scored earlier today||
+HPE|2026-06-02|07:40:00|07:40:02|1||24.98|81.349||already scored earlier today||
+HPE|2026-06-02|07:45:00|07:45:02|1||25.55|82.068||already scored earlier today||
+HPE|2026-06-02|07:50:00|07:50:16|1||27.08|85.959||already scored earlier today||
+HPE|2026-06-02|07:55:00|07:55:29|1||26.7|86.092||already scored earlier today||
+HPE|2026-06-02|08:00:00|08:00:03|1||25.43|84.024||already scored earlier today||
+HPE|2026-06-02|08:05:00|08:05:02|1||25.96|80.078||already scored earlier today||
+HPE|2026-06-02|08:10:00|08:10:02|1||26.49|61.099||already scored earlier today||
+HPE|2026-06-02|08:15:00|08:15:17|1||26.62|60.057||already scored earlier today||
+HPE|2026-06-02|08:20:00|08:20:16|1||30.11|65.541||already scored earlier today||
+HPE|2026-06-02|08:25:00|08:25:31|1||30.32|70.266||already scored earlier today||
+HPE|2026-06-02|08:30:00|08:30:15|1||27.66|72.022||already scored earlier today||
+HPE|2026-06-02|08:35:00|08:35:09|1||27.85|72.251||already scored earlier today||
+HPE|2026-06-02|08:40:00|08:40:40|1||27.13|72.875||already scored earlier today||
+HPE|2026-06-02|08:45:00|08:45:03|1||27.23|73.063||already scored earlier today||
+HPE|2026-06-02|08:50:00|08:50:03|1||29.43|75.144||already scored earlier today||
+HPE|2026-06-02|08:55:00|08:55:03|1||29.41|75.41||already scored earlier today||
+HPE|2026-06-02|09:00:00|09:00:20|1||28.4|76.885||already scored earlier today||
+HPE|2026-06-02|09:00:00|09:00:16|1||28.4|76.885||already scored earlier today||
+HPE|2026-06-02|09:05:00|09:05:04|1||29.32|75.43||already scored earlier today||
+HPE|2026-06-02|09:10:00|09:10:05|1||29.79|74.993||already scored earlier today||
+HPE|2026-06-02|09:15:00|09:15:05|1||27.87|73.455||already scored earlier today||
+HPE|2026-06-02|09:20:00|09:20:23|1||28.09|74.379||already scored earlier today||
+HPE|2026-06-02|09:25:00|09:25:04|1||26.62|74.687||already scored earlier today||
+HPE|2026-06-02|09:30:00|09:30:22|1||28.38|30.301||already scored earlier today||
+HPE|2026-06-02|09:31:00|09:31:34|1||28.38|24.253||already scored earlier today||
+HPE|2026-06-02|09:35:00|09:35:16|1||29.13|14.525||already scored earlier today||
+HPE|2026-06-02|09:40:00|09:40:10|1||31.53|10.79||already scored earlier today||
+HPE|2026-06-02|09:45:00|09:45:14|1||34.36|9.029||already scored earlier today||
+HPE|2026-06-02|09:50:00|09:50:28|1||32.62|17.544||already scored earlier today||
+HPE|2026-06-02|09:55:00|09:55:54|2||27.24|20.119||already scored earlier today||
+ABVX|2026-06-03|07:40:00|07:40:12|4||10.34|13.318||routine catalyst, gap 10.3%||
+ABVX|2026-06-03|07:45:00|07:45:12|4||10.69|13.568||routine catalyst, gap 10.7%||
+ABVX|2026-06-03|07:50:00|07:50:08|2||13.1|14.526||score 43 < 50 (catalyst=routine)|43.2|
+ABVX|2026-06-03|07:55:00|07:55:28|1||13.1|15.206||score 43 < 50 (catalyst=routine)|43.2|
+ABVX|2026-06-03|08:00:00|08:00:02|3||12.41|15.751||score 43 < 50 (catalyst=routine)|43.2|
+ABVX|2026-06-03|08:05:00|08:05:02|1||14.32|16.396||score 43 < 50 (catalyst=routine)|43.2|
+ABVX|2026-06-03|08:10:00|08:10:02|1||13.83|16.716||score 43 < 50 (catalyst=routine)|43.2|
+ABVX|2026-06-03|08:15:00|08:15:02|2||14.1|17.031||score 43 < 50 (catalyst=routine)|43.2|
+ABVX|2026-06-03|08:20:00|08:20:02|2||15.14|14.65|||50.4|MODERATE
+ABVX|2026-06-03|08:25:00|08:25:02|1||16.11|15.11||already scored earlier today||
+ABVX|2026-06-03|08:30:00|08:30:02|2||16.34|15.714||already scored earlier today||
+ABVX|2026-06-03|08:35:00|08:35:01|2||14.42|16.932||already scored earlier today||
+ABVX|2026-06-03|08:40:00|08:40:01|2||13.93|17.267||already scored earlier today||
+ABVX|2026-06-03|08:45:00|08:45:01|3||14.29|17.772||already scored earlier today||
+ABVX|2026-06-03|08:50:00|08:50:02|3||13.59|17.64||already scored earlier today||
+ABVX|2026-06-03|08:55:00|08:55:36|3||13.42|18.135||already scored earlier today||
+ABVX|2026-06-03|09:00:00|09:00:07|3||12.22|18.244||already scored earlier today||
+ABVX|2026-06-03|09:00:00|09:00:09|3||12.22|18.244||already scored earlier today||
+ABVX|2026-06-03|09:05:00|09:05:03|3||12.48|18.221||already scored earlier today||
+ABVX|2026-06-03|09:10:00|09:10:02|3||12.04|18.127||already scored earlier today||
+ABVX|2026-06-03|09:15:00|09:15:04|3||12.55|18.61||already scored earlier today||
+ABVX|2026-06-03|09:20:00|09:20:03|3||12.37|18.938||already scored earlier today||
+ABVX|2026-06-03|09:25:00|09:25:02|4||11.81|18.978||already scored earlier today||
+ABVX|2026-06-03|09:30:00|09:30:16|4||12|68.746||already scored earlier today||
+ABVX|2026-06-03|09:31:00|09:31:02|4||12.07|47.84||already scored earlier today||
+ABVX|2026-06-03|09:35:00|09:35:14|3||12.46|22.325||already scored earlier today||
+ABVX|2026-06-03|09:40:00|09:40:27|4||12.75|14.738||already scored earlier today||
+ABVX|2026-06-03|09:45:00|09:45:09|3||12.33|11.944||already scored earlier today||
+ABVX|2026-06-03|09:55:00|09:56:35|2||16.94|15.435||already scored earlier today||
+NVTS|2026-06-03|08:55:00|08:55:36|4||12.14|2.168||score 18 < 50 (catalyst=strong)|18|
+NVTS|2026-06-03|09:00:00|09:00:07|1||15.39|3.27|||84|HIGH
+NVTS|2026-06-03|09:00:00|09:00:09|1||16.09|3.714||already scored earlier today||
+NVTS|2026-06-03|09:05:00|09:05:03|1||21.27|4.838||already scored earlier today||
+NVTS|2026-06-03|09:10:00|09:10:02|1||22.74|7.486||already scored earlier today||
+NVTS|2026-06-03|09:15:00|09:15:04|1||20.26|9.174||already scored earlier today||
+NVTS|2026-06-03|09:20:00|09:20:03|1||24.13|10.109||already scored earlier today||
+NVTS|2026-06-03|09:25:00|09:25:02|1||22.54|11.088||already scored earlier today||
+NVTS|2026-06-03|09:30:00|09:30:16|1||20.43|13.297||already scored earlier today||
+NVTS|2026-06-03|09:31:00|09:31:02|1||20.43|10.1||already scored earlier today||
+NVTS|2026-06-03|09:35:00|09:35:14|1||21.35|5.608||already scored earlier today||
+NVTS|2026-06-03|09:40:00|09:40:27|1||21.23|3.882||already scored earlier today||
+NVTS|2026-06-03|09:45:00|09:45:09|1||18.33|3.046||already scored earlier today||
+NVTS|2026-06-03|09:55:00|09:56:35|1||26.66|4.393||already scored earlier today||
+NVTX|2026-06-03||||||||||
+RUM|2026-06-04|09:30:00|09:30:16|6||12.36|4.465||score 6 < 50 (catalyst=strong)|6|
+RUM|2026-06-04|09:31:00|09:31:03|6||12.36|3.491||score 6 < 50 (catalyst=strong)|6|
+RUM|2026-06-04|09:35:00|09:35:07|5||14.65|3.859||score 6 < 50 (catalyst=strong)|6|
+RUM|2026-06-04|09:40:00|09:40:09|5||15.49|2.983|||84|HIGH
+RUM|2026-06-04|09:45:00|09:45:53|7||12.85|2.541||already scored earlier today||
+RUM|2026-06-04|09:50:00|09:50:41|5||21.87|8.906||already scored earlier today||
+RUM|2026-06-04|09:55:00|09:56:07|3||24.85|9.134||already scored earlier today||
+MRLN|2026-06-05|07:00:00|07:00:47|2||27.99|481.449|||60|MODERATE
+MRLN|2026-06-05|07:05:00|07:05:18|2||27.02|434.168||already scored earlier today||
+MRLN|2026-06-05|07:10:00|07:10:01|2||29.53|384.963||already scored earlier today||
+MRLN|2026-06-05|07:15:00|07:15:01|2||28.72|365.377||already scored earlier today||
+MRLN|2026-06-05|07:20:00|07:20:01|2||32.45|361.164||already scored earlier today||
+MRLN|2026-06-05|07:25:00|07:25:01|2||33.43|398.943||already scored earlier today||
+MRLN|2026-06-05|07:30:00|07:30:02|2||32.03|394.918||already scored earlier today||
+MRLN|2026-06-05|07:35:00|07:35:01|2||30.08|394.821||already scored earlier today||
+MRLN|2026-06-05|07:40:00|07:40:01|2||31.34|386.102||already scored earlier today||
+MRLN|2026-06-05|07:45:00|07:45:01|2||30.32|385.826||already scored earlier today||
+MRLN|2026-06-05|07:50:00|07:50:15|3||29.53|370.111||already scored earlier today||
+MRLN|2026-06-05|07:55:00|07:55:01|2||27.44|374.877||already scored earlier today||
+MRLN|2026-06-05|08:00:00|08:00:01|2||28.05|354.869||already scored earlier today||
+MRLN|2026-06-05|08:05:00|08:05:01|2||28.83|343.736||already scored earlier today||
+MRLN|2026-06-05|08:10:00|08:10:01|2||28.83|307.852||already scored earlier today||
+MRLN|2026-06-05|08:15:00|08:15:14|2||30.59|293.029||already scored earlier today||
+MRLN|2026-06-05|08:20:00|08:20:16|2||32.45|288.89||already scored earlier today||
+MRLN|2026-06-05|08:25:00|08:25:08|2||38.16|295.567||already scored earlier today||
+MRLN|2026-06-05|08:30:00|08:30:17|2||30.64|297.769||already scored earlier today||
+MRLN|2026-06-05|08:35:00|08:35:10|2||34.12|295.308||already scored earlier today||
+MRLN|2026-06-05|08:40:00|08:40:14|2||34.96|293.072||already scored earlier today||
+MRLN|2026-06-05|08:45:00|08:45:14|2||36.49|295.725||already scored earlier today||
+MRLN|2026-06-05|08:50:00|08:50:12|2||33.98|303.352||already scored earlier today||
+MRLN|2026-06-05|08:55:00|08:55:18|2||31.62|302.411||already scored earlier today||
+MRLN|2026-06-05|09:00:00|09:00:19|2||33.01|297.393||already scored earlier today||
+MRLN|2026-06-05|09:00:00|09:00:17|2||32.17|298.299||already scored earlier today||
+MRLN|2026-06-05|09:05:00|09:05:15|3||32.45|292.075||already scored earlier today||
+MRLN|2026-06-05|09:10:00|09:10:02|3||32.17|281.063||already scored earlier today||
+MRLN|2026-06-05|09:15:00|09:15:02|3||28.83|273.419||already scored earlier today||
+MRLN|2026-06-05|09:20:00|09:20:02|3||30.08|275.828||already scored earlier today||
+MRLN|2026-06-05|09:25:00|09:25:03|3||30.36|266.84||already scored earlier today||
+MRLN|2026-06-05|09:30:00|09:30:07|3||28.69|175.948||already scored earlier today||
+MRLN|2026-06-05|09:31:00|09:31:02|3||28.69|130.718||already scored earlier today||
+MRLN|2026-06-05|09:35:00|09:35:05|3||28.69|63.688||already scored earlier today||
+MRLN|2026-06-05|09:40:00|09:40:12|3||28.69|44.217||already scored earlier today||
+MRLN|2026-06-05|09:45:00|09:46:23|3||27.44|33.708||already scored earlier today||
+MRLN|2026-06-05|09:50:00|09:50:12|3||35.17|37.721||already scored earlier today||
+MRLN|2026-06-05|09:55:00|09:55:10|3||30.64|36.341||already scored earlier today||
+JLHL|2026-06-08|09:45:00|09:45:19|9||11.61|||already up 137% in prior 5 days (extended)||
+JLHL|2026-06-08|09:50:00|09:50:12|4||22.77|||already up 137% in prior 5 days (extended)||
+JLHL|2026-06-08|09:55:00|09:55:13|4||22.77|||already up 137% in prior 5 days (extended)||
+BFLY|2026-06-18|07:00:00|07:01:23|4||13.49|56.086||score 0 < 50 (catalyst=routine)|0|
+BFLY|2026-06-18|07:05:00|07:05:20|6||13.21|52.757||score 0 < 50 (catalyst=routine)|0|
+BFLY|2026-06-18|07:10:00|07:10:10|6||13.21|51.673||score 0 < 50 (catalyst=routine)|0|
+BFLY|2026-06-18|07:15:00|07:15:20|6||13.21|41.437||score 0 < 50 (catalyst=routine)|0|
+BFLY|2026-06-18|07:20:00|07:20:21|5||12.96|53.732||score 0 < 50 (catalyst=routine)|0|
+BFLY|2026-06-18|07:25:00|07:25:02|5||14.36|35.84||score 0 < 50 (catalyst=routine)|0|
+BFLY|2026-06-18|07:30:00|07:30:02|2||16.79|48.489||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|07:35:00|07:35:02|2||17.16|49.749||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|07:40:00|07:40:16|2||17.34|49.247||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|07:45:00|07:45:08|2||16.99|49.725||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|07:50:00|07:50:18|3||16.29|50.387||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|07:55:00|07:55:10|3||16.46|52.27||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|08:00:00|08:00:26|4||15.59|52.485||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|08:05:00|08:05:10|5||15.33|53.804||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|08:10:00|08:10:16|4||15.59|51.956||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|08:15:00|08:15:16|4||15.59|49.672||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|08:20:00|08:20:17|4||16.81|50.336||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|08:25:00|08:25:15|4||16.64|48.836||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|08:30:00|08:30:16|2||17.86|50.043||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|08:35:00|08:35:18|2||21.54|57.222||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|08:40:00|08:40:15|2||17.86|54.378||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|08:45:00|08:45:10|2||19.79|53.091||score 5 < 50 (catalyst=routine)|5|
+BFLY|2026-06-18|08:50:00|08:50:10|2||21.37|55.274||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|08:55:00|08:55:20|2||23.83|56.61||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|09:00:00|09:00:19|2||25.51|71.196||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|09:00:00|09:00:17|2||25.51|71.196||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|09:05:00|09:05:18|2||26.27|77.435||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|09:10:00|09:10:19|2||24.61|81.389||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|09:15:00|09:15:28|2||21.19|83.614||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|09:20:00|09:20:22|2||21.54|77.379||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|09:25:00|09:25:14|2||25.22|85.188||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|09:30:00|09:30:40|2||23.85|21.234||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|09:31:00|09:31:25|2||23.85|16.211||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|09:35:00|09:35:25|2||22.42|9.614||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|09:40:00|09:40:07|2||24.67|7.122||score 10 < 50 (catalyst=routine)|10|
+BFLY|2026-06-18|09:45:00|09:45:12|2||25.22|5.551||score 22 < 50 (catalyst=routine)|22|
+BFLY|2026-06-18|09:50:00|09:51:26|2||32.92|13.097||score 25 < 50 (catalyst=routine)|25|
+BFLY|2026-06-18|09:55:00|09:56:06|2||30.12|14.851||score 25 < 50 (catalyst=routine)|25|
+QH|2026-06-18|07:20:00|07:20:21|6||11.6|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|07:25:00|07:25:02|6||11.69|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|07:30:00|07:30:02|7||12.93|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|07:35:00|07:35:02|7||12.26|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|07:40:00|07:40:16|6||11.69|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|07:45:00|07:45:08|6||12.26|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|07:50:00|07:50:18|6||12.07|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|07:55:00|07:55:10|6||11.03|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|08:00:00|08:00:26|6||12.77|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|08:05:00|08:05:10|7||12.83|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|08:10:00|08:10:16|7||11.31|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|08:15:00|08:15:16|8||10.65|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|08:35:00|08:35:18|8||13.78|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|08:40:00|08:40:15|10||10.55|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|09:00:00|09:00:19|8||12.07|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|09:00:00|09:00:17|8||12.07|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|09:05:00|09:05:18|10||11.69|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|09:10:00|09:10:19|9||12.17|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|09:15:00|09:15:28|8||12.45|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|09:50:00|09:51:26|4||15.49|||already up 224% in prior 5 days (extended)||
+QH|2026-06-18|09:55:00|09:56:06|5||12.17|||already up 224% in prior 5 days (extended)||
+QTTB|2026-07-13|07:00:00|07:00:01|1||35.15|124.403||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|07:05:00|07:05:00|1||36.66|137.174||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|07:10:00|07:10:00|1||38.89|152.858||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|07:15:00|07:15:00|1||35.75|163.498||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|07:20:00|07:20:00|1||54.64|339.893||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|07:25:00|07:25:00|1||58.48|432.574||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|07:30:00|07:30:00|1||77.25|546.281||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|07:35:00|07:35:00|1||78.68|659.162||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|07:40:00|07:40:00|1||78.41|710.754||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|07:45:00|07:45:00|1||84.39|761.876||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|07:50:00|07:50:00|1||73.25|796.356||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|07:55:00|07:55:00|1||76.18|870.855||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|08:00:00|08:00:00|1||73.95|675.084||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|08:05:00|08:05:00|1||73.95|133.907||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|08:10:00|08:10:00|1||75.83|49.376||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|08:15:00|08:15:00|1||74.49|40.223||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|08:20:00|08:20:00|1||65.92|38.268||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|08:25:00|08:25:00|1||69.22|37.181||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|08:30:00|08:30:00|1||73.95|30.755||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|08:35:00|08:35:00|1||67.31|28.853||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|08:40:00|08:40:00|1||71.28|28.628||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|08:45:00|08:45:00|1||69.58|28.487||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|08:50:00|08:50:00|1||72.44|28.221||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|08:55:00|08:55:00|1||71.82|28.086||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:00:00|09:00:03|1||71.45|28.146||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:00:00|09:00:03|1||71.63|28.168||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:05:00|09:05:00|1||72.27|29.555||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:10:00|09:10:00|1||71.36|29.136||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:15:00|09:15:01|1||72.97|29.23||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:20:00|09:20:01|1||71.28|29.155||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:25:00|09:25:01|1||65.97|30.768||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:30:00|09:30:06|1||63.07|306.661||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:31:00|09:31:00|1||63.07|194.443||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:35:00|09:35:04|1||62.18|161.286||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:40:00|09:40:04|1||62.98|50.271||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:45:00|09:45:10|1||63.43|38.588||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:50:00|09:50:10|1||68.33|31.194||quality filter: filter:mcap_too_small: $190M < $500M||
+QTTB|2026-07-13|09:55:00|09:55:08|1||66.37|29.106||quality filter: filter:mcap_too_small: $190M < $500M||
+CDNA|2026-07-16|08:25:00|08:25:19|4||11.87|47.539||routine catalyst, gap 11.9%||
+CDNA|2026-07-16|08:30:00|08:30:03|4||15.29|52.574||score 10 < 50 (catalyst=routine)|10|
+CDNA|2026-07-16|08:35:00|08:35:02|4||13.78|52.751||score 5 < 50 (catalyst=routine)|5|
+CDNA|2026-07-16|08:40:00|08:40:22|3||17.65|66.631||score 10 < 50 (catalyst=routine)|10|
+CDNA|2026-07-16|08:45:00|08:45:02|3||17.65|86.764||score 10 < 50 (catalyst=routine)|10|
+CDNA|2026-07-16|08:50:00|08:50:02|3||17.85|89.763||score 10 < 50 (catalyst=routine)|10|
+CDNA|2026-07-16|08:55:00|08:55:02|3||18.08|84.422||score 10 < 50 (catalyst=routine)|10|
+CDNA|2026-07-16|09:00:00|09:00:06|3||17.65|86.965||score 10 < 50 (catalyst=routine)|10|
+CDNA|2026-07-16|09:00:00|09:00:07|3||17.65|86.965||score 10 < 50 (catalyst=routine)|10|
+CDNA|2026-07-16|09:05:00|09:05:03|3||20|70.371||score 15 < 50 (catalyst=routine)|15|
+CDNA|2026-07-16|09:10:00|09:10:03|3||18.09|70.64||score 10 < 50 (catalyst=routine)|10|
+CDNA|2026-07-16|09:15:00|09:15:04|3||19.33|71.408||score 10 < 50 (catalyst=routine)|10|
+CDNA|2026-07-16|09:20:00|09:20:02|3||17.78|70.565||score 10 < 50 (catalyst=routine)|10|
+CDNA|2026-07-16|09:25:00|09:25:02|3||18.18|71.048||score 10 < 50 (catalyst=routine)|10|
+CDNA|2026-07-16|09:30:00|09:30:10|3||17.71|9.436||score 10 < 50 (catalyst=routine)|10|
+CDNA|2026-07-16|09:31:00|09:31:04|3||18.59|8.781||score 10 < 50 (catalyst=routine)|10|
+CDNA|2026-07-16|09:35:00|09:35:06|3||21.04|6.814||score 15 < 50 (catalyst=routine)|15|
+CDNA|2026-07-16|09:40:00|09:40:06|3||21.01|5.782||score 15 < 50 (catalyst=routine)|15|
+CDNA|2026-07-16|09:45:00|09:45:10|4||19.5|4.936||score 22 < 50 (catalyst=routine)|22|
+CDNA|2026-07-16|09:50:00|09:50:37|4||23.36|13.554||score 30 < 50 (catalyst=routine)|30|
+CDNA|2026-07-16|09:55:00|09:55:12|4||22.99|13.949||score 30 < 50 (catalyst=routine)|30|
+MAN|2026-07-16|08:00:00|08:00:24|7||10.46|13.94||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|08:15:00|08:15:46|5||11.81|20.322||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|08:20:00|08:20:02|7||10.23|35.491||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|08:25:00|08:25:19|7||10.23|35.491||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|08:35:00|08:35:02|5||12.76|46.72||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|08:40:00|08:40:22|5||14.04|44.168||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|08:45:00|08:45:02|5||12.51|49.635||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|08:50:00|08:50:02|5||12.51|49.635||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|08:55:00|08:55:02|5||12.51|52.884||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|09:00:00|09:00:06|5||12.05|54.69||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|09:00:00|09:00:07|5||12.05|54.69||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|09:05:00|09:05:03|5||12.76|56.18||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|09:10:00|09:10:03|5||13.77|57.295||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|09:15:00|09:15:04|5||13.77|57.295||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|09:20:00|09:20:02|4||14.56|60.711||score 20 < 50 (catalyst=routine)|20|
+MAN|2026-07-16|09:25:00|09:25:02|4||17.12|66.805||score 25 < 50 (catalyst=routine)|25|
+MAN|2026-07-16|09:30:00|09:30:10|4||17.17|2.297||score 25 < 50 (catalyst=routine)|25|
+MAN|2026-07-16|09:31:00|09:31:04|4||17.17|2.11||score 25 < 50 (catalyst=routine)|25|
+MAN|2026-07-16|09:35:00|09:35:06|4||17.17|1.686||score 25 < 50 (catalyst=routine)|25|
+MAN|2026-07-16|09:40:00|09:40:06|4||19.17|1.619||score 25 < 50 (catalyst=routine)|25|
+MAN|2026-07-16|09:45:00|09:45:10|3||19.68|1.419||score 25 < 50 (catalyst=routine)|25|
+MAN|2026-07-16|09:50:00|09:50:37|3||28.08|7.417||score 40 < 50 (catalyst=routine)|40|
+MAN|2026-07-16|09:55:00|09:55:12|3||26.52|11.248||score 42 < 50 (catalyst=routine)|42|
+ADVB|2026-07-24|07:00:00|07:00:42|1||45.83|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|07:05:00|07:05:10|1||45.29|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|07:10:00|07:10:01|2||36.23|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|07:15:00|07:15:02|2||33.82|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|07:20:00|07:20:01|2||36.05|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|07:25:00|07:25:01|2||35.76|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|07:30:00|07:30:02|2||33.47|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|07:35:00|07:35:02|2||30.15|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|07:40:00|07:40:02|2||29.32|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|07:45:00|07:45:02|2||26.66|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|07:50:00|07:50:02|2||28.13|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|07:55:00|07:55:01|3||23.24|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|08:00:00|08:00:01|3||26.24|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|08:05:00|08:05:01|3||24.65|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|08:10:00|08:10:01|2||28.01|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|08:15:00|08:15:24|2||34.39|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|08:20:00|08:20:01|2||28.33|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|08:25:00|08:25:02|2||29|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|08:30:00|08:30:02|2||26.94|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|08:35:00|08:35:02|2||26.75|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|08:40:00|08:40:02|2||26.96|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|08:45:00|08:45:02|2||31.96|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|08:50:00|08:50:02|2||36.47|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|08:55:00|08:55:02|2||40.29|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:00:00|09:00:04|2||34.74|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:00:00|09:00:06|2||34.39|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:05:00|09:05:02|2||32.24|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:10:00|09:10:02|2||38.92|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:15:00|09:15:02|2||38.35|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:20:00|09:20:02|1||45.95|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:25:00|09:25:02|2||33.55|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:30:00|09:30:06|2||37.72|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:31:00|09:31:03|2||37.72|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:35:00|09:35:08|2||39.45|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:40:00|09:40:06|2||37.07|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:45:00|09:45:11|2||37.9|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:50:00|09:50:36|2||25.74|||already up 242% in prior 5 days (extended)||
+ADVB|2026-07-24|09:55:00|09:56:00|2||33.53|||already up 242% in prior 5 days (extended)||
+RNG|2026-07-24|09:50:00|09:50:36|6||14.79|6.965||score 27 < 50 (catalyst=routine)|27|
+RNG|2026-07-24|09:55:00|09:56:00|5||20.72|10.278||score 37 < 50 (catalyst=routine)|37|
+OMER|2026-07-27|07:10:00|07:10:14|5||12.36|4.351||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|07:15:00|07:15:02|5||12.36|3.899||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|07:20:00|07:20:53|4||12.36|3.291||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|07:25:00|07:25:03|4||12.97|2.771||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|07:30:00|07:30:02|4||12.36|2.306||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|07:35:00|07:35:02|4||14.1|2.148||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|07:40:00|07:40:02|4||12.36|2.149||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|07:45:00|07:45:03|4||12.36|1.928||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|07:50:00|07:50:03|5||12.46|1.919||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|07:55:00|07:55:03|5||12.77|1.888||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|08:00:00|08:00:04|5||12.53|1.832||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|08:05:00|08:05:03|5||12.56|2.035||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|08:10:00|08:10:03|5||13.96|2.158||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|08:15:00|08:15:03|5||12.67|1.968||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|08:20:00|08:20:03|5||12.67|1.857||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|08:25:00|08:25:03|5||12.87|1.914||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|08:30:00|08:30:03|6||13.02|1.932||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|08:35:00|08:35:03|6||13.07|1.777||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|08:40:00|08:40:02|5||12.46|1.932||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|08:45:00|08:45:03|6||12.39|1.856||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|08:50:00|08:50:03|6||12.36|1.874||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|08:55:00|08:55:51|6||13.89|1.863||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|09:00:00|09:00:06|6||13.89|2.032||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|09:00:00|09:00:08|6||14.1|2.114||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|09:05:00|09:05:04|6||14.1|2.052||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|09:10:00|09:10:04|5||13.99|1.969||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|09:15:00|09:15:23|6||14.3|2.002||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|09:20:00|09:20:04|6||13.89|2.014||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|09:25:00|09:25:04|6||14.4|2.128||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|09:30:00|09:30:12|4||18.93|5.305||score 28 < 50 (catalyst=routine)|28|
+OMER|2026-07-27|09:31:00|09:31:04|4||19.58|4.246||score 28 < 50 (catalyst=routine)|28|
+OMER|2026-07-27|09:35:00|09:35:06|3||19.51|2.521||score 28 < 50 (catalyst=routine)|28|
+OMER|2026-07-27|09:40:00|09:40:10|6||14.51|1.703||score 23 < 50 (catalyst=routine)|23|
+OMER|2026-07-27|09:45:00|09:45:15|5||15.93|1.978||score 38 < 50 (catalyst=routine)|38|
+OMER|2026-07-27|09:50:00|09:50:14|4||16.75|2.44||score 38 < 50 (catalyst=routine)|38|
+OMER|2026-07-27|09:55:00|09:56:47|7||15.47|2.512||score 38 < 50 (catalyst=routine)|38|
+HURN|2026-07-29|09:50:00|09:51:29|4||16.97|0.78||filter:session_rvol_too_low: session_rvol=0.78x (today 18,516 / baseline 23,742 n=20) < 1.0x||
+HURN|2026-07-29|09:55:00|09:56:24|4||21.92|1.43||score 37 < 50 (catalyst=routine)|37|
+IPCX|2026-07-29|09:45:00|09:45:14|11||11.98|||quality filter: filter:adv_too_low: $522,205||
+IPCX|2026-07-29|09:50:00|09:51:29|19||10.35|||quality filter: filter:adv_too_low: $522,205||
+IPCX|2026-07-29|09:55:00|09:56:24|20||10.35|||quality filter: filter:adv_too_low: $522,205||
+BLZE|2026-08-04|07:00:00|07:04:27|3||19.14|12.735|||80|HIGH
+BLZE|2026-08-04|07:05:00|07:05:29|3||19.14|11.871||already scored earlier today||
+BLZE|2026-08-04|07:10:00|07:10:34|2||20.91|10.883||already scored earlier today||
+BLZE|2026-08-04|07:15:00|07:15:37|2||19.24|11.037||already scored earlier today||
+BLZE|2026-08-04|07:20:00|07:20:34|3||18.02|11.249||already scored earlier today||
+BLZE|2026-08-04|07:25:00|07:25:07|2||18.02|11.267||already scored earlier today||
+BLZE|2026-08-04|07:30:00|07:30:07|5||16.23|10.953||already scored earlier today||
+BLZE|2026-08-04|07:35:00|07:35:25|2||17.7|10.395||already scored earlier today||
+BLZE|2026-08-04|07:40:00|07:40:07|2||17.86|9.231||already scored earlier today||
+BLZE|2026-08-04|07:45:00|07:45:09|4||17.86|8.911||already scored earlier today||
+BLZE|2026-08-04|07:50:00|07:50:20|4||17.13|9.033||already scored earlier today||
+BLZE|2026-08-04|07:55:00|07:55:08|2||18.67|9.058||already scored earlier today||
+BLZE|2026-08-04|08:00:00|08:01:06|3||18.6|8.999||already scored earlier today||
+BLZE|2026-08-04|08:05:00|08:05:26|4||18.02|8.887||already scored earlier today||
+BLZE|2026-08-04|08:10:00|08:10:44|4||18.52|9.077||already scored earlier today||
+BLZE|2026-08-04|08:15:00|08:15:21|4||19.37|9.007||already scored earlier today||
+BLZE|2026-08-04|08:20:00|08:20:24|5||20.27|9.407||already scored earlier today||
+BLZE|2026-08-04|08:25:00|08:25:08|3||20.18|9.552||already scored earlier today||
+BLZE|2026-08-04|08:30:00|08:30:09|4||19.07|9.333||already scored earlier today||
+BLZE|2026-08-04|08:35:00|08:35:51|7||17.28|9.217||already scored earlier today||
+BLZE|2026-08-04|08:40:00|08:40:30|3||19.69|9.248||already scored earlier today||
+BLZE|2026-08-04|08:45:00|08:45:54|5||19.31|9.266||already scored earlier today||
+BLZE|2026-08-04|08:50:00|08:50:09|3||21.87|10.818||already scored earlier today||
+BLZE|2026-08-04|08:55:00|08:55:10|3||23.49|11.609||already scored earlier today||
+BLZE|2026-08-04|09:00:00|09:00:20|4||22.31|11.462||already scored earlier today||
+BLZE|2026-08-04|09:00:00|09:00:22|4||22.31|11.462||already scored earlier today||
+BLZE|2026-08-04|09:05:00|09:05:11|4||23.03|11.762||already scored earlier today||
+BLZE|2026-08-04|09:10:00|09:10:11|4||22.83|11.886||already scored earlier today||
+BLZE|2026-08-04|09:15:00|09:15:12|4||22.71|11.693||already scored earlier today||
+BLZE|2026-08-04|09:20:00|09:20:12|4||21.87|12.032||already scored earlier today||
+BLZE|2026-08-04|09:25:00|09:25:12|4||22.19|12.372||already scored earlier today||
+BLZE|2026-08-04|09:30:00|09:30:25|4||23.35|2.101||already scored earlier today||
+BLZE|2026-08-04|09:31:00|09:31:19|4||23.35|1.848||already scored earlier today||
+BLZE|2026-08-04|09:35:00|09:35:18|2||26.26|1.386||already scored earlier today||
+BLZE|2026-08-04|09:40:00|09:40:18|3||25.91|1.032||already scored earlier today||
+BLZE|2026-08-04|09:45:00|09:45:46|2||29.51|1.161||already scored earlier today||
+BLZE|2026-08-04|09:50:00|09:51:52|1||44.48|6.628||already scored earlier today||
+BLZE|2026-08-04|09:55:00|09:56:28|2||45.09|7.815||already scored earlier today||
+IBTA|2026-08-04|07:00:00|07:04:27|7||15.83|||score 33 < 50 (catalyst=routine)|33|
+IBTA|2026-08-04|07:05:00|07:05:29|7||15.83|||score 33 < 50 (catalyst=routine)|33|
+IBTA|2026-08-04|07:10:00|07:10:34|5||15.83|||score 33 < 50 (catalyst=routine)|33|
+IBTA|2026-08-04|07:15:00|07:15:37|6||15.83|||score 33 < 50 (catalyst=routine)|33|
+IBTA|2026-08-04|07:20:00|07:20:34|6||16.15|||score 33 < 50 (catalyst=routine)|33|
+IBTA|2026-08-04|07:25:00|07:25:07|5||16.35|||score 33 < 50 (catalyst=routine)|33|
+IBTA|2026-08-04|07:30:00|07:30:07|4||16.35|||score 33 < 50 (catalyst=routine)|33|
+IBTA|2026-08-04|07:35:00|07:35:25|5||16.35|||score 33 < 50 (catalyst=routine)|33|
+IBTA|2026-08-04|07:40:00|07:40:07|5||16.35|||score 33 < 50 (catalyst=routine)|33|
+IBTA|2026-08-04|07:45:00|07:45:09|5||16.35|||score 33 < 50 (catalyst=routine)|33|
+IBTA|2026-08-04|07:50:00|07:50:20|5||16.35|||score 33 < 50 (catalyst=routine)|33|
+IBTA|2026-08-04|07:55:00|07:55:08|5||16.35|||score 33 < 50 (catalyst=routine)|33|
+IBTA|2026-08-04|08:00:00|08:01:06|2||24|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|08:05:00|08:05:26|2||21.72|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|08:10:00|08:10:44|2||21.72|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|08:15:00|08:15:21|2||21.72|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|08:20:00|08:20:24|3||21.72|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|08:25:00|08:25:08|2||21.72|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|08:30:00|08:30:09|2||21.72|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|08:35:00|08:35:51|2||21.72|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|08:40:00|08:40:30|2||25.87|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|08:45:00|08:45:54|2||26.12|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|08:50:00|08:50:09|2||26.12|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|08:55:00|08:55:10|2||26.12|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|09:00:00|09:00:20|2||26.12|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|09:00:00|09:00:22|2||26.12|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|09:05:00|09:05:11|2||26.12|||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|09:10:00|09:10:11|2||26.12|31.189||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|09:15:00|09:15:12|2||26.12|31.189||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|09:20:00|09:20:12|2||26.12|26.276||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|09:25:00|09:25:12|2||24.86|27.363||score 38 < 50 (catalyst=routine)|38|
+IBTA|2026-08-04|09:30:00|09:30:25|2||26.08|2.553||score 30 < 50 (catalyst=routine)|30|
+IBTA|2026-08-04|09:31:00|09:31:19|2||26.08|2.452||score 30 < 50 (catalyst=routine)|30|
+IBTA|2026-08-04|09:35:00|09:35:18|3||26.08|2.217||score 30 < 50 (catalyst=routine)|30|
+IBTA|2026-08-04|09:40:00|09:40:18|2||26.08|1.915||score 30 < 50 (catalyst=routine)|30|
+IBTA|2026-08-04|09:45:00|09:45:46|3||26.12|1.718||score 30 < 50 (catalyst=routine)|30|
+IBTA|2026-08-04|09:50:00|09:51:52|2||42.39|4.771||score 42 < 50 (catalyst=routine)|42|
+IBTA|2026-08-04|09:55:00|09:56:28|1||48.43|7.317||score 42 < 50 (catalyst=routine)|42|
+PLTR|2026-08-04|07:00:00|07:04:27|6||15.96|9.342|||96|HIGH
+PLTR|2026-08-04|07:05:00|07:05:29|6||16.04|8.699||already scored earlier today||
+PLTR|2026-08-04|07:10:00|07:10:34|6||15.81|8.491||already scored earlier today||
+PLTR|2026-08-04|07:15:00|07:15:37|5||16.47|8.144||already scored earlier today||
+PLTR|2026-08-04|07:20:00|07:20:34|7||15.4|8.731||already scored earlier today||
+PLTR|2026-08-04|07:25:00|07:25:07|7||15.27|8.927||already scored earlier today||
+PLTR|2026-08-04|07:30:00|07:30:07|9||14.72|9.115||already scored earlier today||
+PLTR|2026-08-04|07:35:00|07:35:25|10||14.52|9.301||already scored earlier today||
+PLTR|2026-08-04|07:40:00|07:40:07|7||14.84|9.434||already scored earlier today||
+PLTR|2026-08-04|07:45:00|07:45:09|8||14.86|9.437||already scored earlier today||
+PLTR|2026-08-04|07:50:00|07:50:20|8||15.09|9.431||already scored earlier today||
+PLTR|2026-08-04|07:55:00|07:55:08|9||14.95|9.47||already scored earlier today||
+PLTR|2026-08-04|08:00:00|08:01:06|10||15.13|9.446||already scored earlier today||
+PLTR|2026-08-04|08:05:00|08:05:26|12||14.83|9.318||already scored earlier today||
+PLTR|2026-08-04|08:10:00|08:10:44|12||14.76|9.243||already scored earlier today||
+PLTR|2026-08-04|08:15:00|08:15:21|12||15.16|9.068||already scored earlier today||
+PLTR|2026-08-04|08:20:00|08:20:24|13||14.85|9.256||already scored earlier today||
+PLTR|2026-08-04|08:25:00|08:25:08|13||14.88|9.12||already scored earlier today||
+PLTR|2026-08-04|08:30:00|08:30:09|10||15.77|9.097||already scored earlier today||
+PLTR|2026-08-04|08:35:00|08:35:51|9||15.64|9.062||already scored earlier today||
+PLTR|2026-08-04|08:40:00|08:40:30|8||15.8|8.919||already scored earlier today||
+PLTR|2026-08-04|08:45:00|08:45:54|10||15.56|8.629||already scored earlier today||
+PLTR|2026-08-04|08:50:00|08:50:09|10||15.17|8.505||already scored earlier today||
+PLTR|2026-08-04|08:55:00|08:55:10|9||15.64|8.374||already scored earlier today||
+PLTR|2026-08-04|09:00:00|09:00:20|10||15.38|8.307||already scored earlier today||
+PLTR|2026-08-04|09:00:00|09:00:22|10||15.38|8.307||already scored earlier today||
+PLTR|2026-08-04|09:05:00|09:05:11|8||15.32|8.286||already scored earlier today||
+PLTR|2026-08-04|09:10:00|09:10:11|9||15.82|8.38||already scored earlier today||
+PLTR|2026-08-04|09:15:00|09:15:12|8||15.99|8.222||already scored earlier today||
+PLTR|2026-08-04|09:20:00|09:20:12|8||15.95|8.224||already scored earlier today||
+PLTR|2026-08-04|09:25:00|09:25:12|9||16.49|8.281||already scored earlier today||
+PLTR|2026-08-04|09:30:00|09:30:25|11||15.78|8.623||already scored earlier today||
+PLTR|2026-08-04|09:31:00|09:31:19|11||15.78|6.393||already scored earlier today||
+PLTR|2026-08-04|09:35:00|09:35:18|12||15.5|3.436||already scored earlier today||
+PLTR|2026-08-04|09:40:00|09:40:18|13||15|2.45||already scored earlier today||
+PLTR|2026-08-04|09:45:00|09:45:46|13||15.4|2.049||already scored earlier today||
+PLTR|2026-08-04|09:50:00|09:51:52|11||19.23|4.263||already scored earlier today||
+PLTR|2026-08-04|09:55:00|09:56:28|9||20.21|5.021||already scored earlier today||
+YOU|2026-08-05|08:40:00|08:40:19|18||11.82|16.825||routine catalyst, gap 11.8%||
+YOU|2026-08-05|08:45:00|08:45:08|22||10.23|||outside top-20 gap cap (gap 10.2%)||
+YOU|2026-08-05|08:50:00|08:50:08|23||10.23|||outside top-20 gap cap (gap 10.2%)||
+YOU|2026-08-05|08:55:00|08:55:18|14||13.1|20.998||score 36 < 50 (catalyst=strong)|36|
+YOU|2026-08-05|09:00:00|09:00:35|13||13.1|21.399||score 36 < 50 (catalyst=strong)|36|
+YOU|2026-08-05|09:00:00|09:00:33|13||13.1|21.399||score 36 < 50 (catalyst=strong)|36|
+YOU|2026-08-05|09:05:00|09:05:09|13||13.1|21.105||score 36 < 50 (catalyst=strong)|36|
+YOU|2026-08-05|09:10:00|09:10:08|14||13.31|21.982||score 36 < 50 (catalyst=strong)|36|
+YOU|2026-08-05|09:15:00|09:15:08|15||13.31|21.432||score 36 < 50 (catalyst=strong)|36|
+YOU|2026-08-05|09:20:00|09:20:09|18||11.25|25.569||score 36 < 50 (catalyst=strong)|36|
+YOU|2026-08-05|09:25:00|09:25:09|14||14.57|26.531||score 36 < 50 (catalyst=strong)|36|
+YOU|2026-08-05|09:30:00|09:30:13|14||14.48|2.385||score 36 < 50 (catalyst=strong)|36|
+YOU|2026-08-05|09:31:00|09:31:11|12||14.48|2.097||score 36 < 50 (catalyst=strong)|36|
+YOU|2026-08-05|09:35:00|09:35:16|13||13.69|1.423||score 36 < 50 (catalyst=strong)|36|
+AEVA|2026-08-06|07:00:00|07:04:17|4||22.28|12.101|||96|HIGH
+AEVA|2026-08-06|07:05:00|07:05:06|5||22.59|11.011||already scored earlier today||
+AEVA|2026-08-06|07:10:00|07:10:04|4||20.81|8.283||already scored earlier today||
+AEVA|2026-08-06|07:15:00|07:15:33|4||24.12|8.524||already scored earlier today||
+AEVA|2026-08-06|07:20:00|07:20:38|2||26.21|10.021||already scored earlier today||
+AEVA|2026-08-06|07:25:00|07:25:48|4||24.27|10.943||already scored earlier today||
+AEVA|2026-08-06|07:30:00|07:30:05|1||26.98|12.164||already scored earlier today||
+AEVA|2026-08-06|07:35:00|07:35:05|1||27.18|12.395||already scored earlier today||
+AEVA|2026-08-06|07:40:00|07:40:05|4||23.52|12.662||already scored earlier today||
+AEVA|2026-08-06|07:45:00|07:45:05|2||27.49|13.453||already scored earlier today||
+AEVA|2026-08-06|07:50:00|07:50:44|2||27.18|15.282||already scored earlier today||
+AEVA|2026-08-06|07:55:00|07:55:05|1||29.63|16.097||already scored earlier today||
+AEVA|2026-08-06|08:00:00|08:00:05|2||29.33|16.376||already scored earlier today||
+AEVA|2026-08-06|08:05:00|08:05:05|2||28.92|16.568||already scored earlier today||
+AEVA|2026-08-06|08:10:00|08:10:05|1||31.26|17.842||already scored earlier today||
+AEVA|2026-08-06|08:15:00|08:15:04|1||32.53|19.404||already scored earlier today||
+AEVA|2026-08-06|08:20:00|08:20:05|1||31.26|21.088||already scored earlier today||
+AEVA|2026-08-06|08:25:00|08:25:05|2||31.06|24.292||already scored earlier today||
+AEVA|2026-08-06|08:30:00|08:30:05|2||28.88|25.575||already scored earlier today||
+AEVA|2026-08-06|08:35:00|08:35:04|2||28.15|25.539||already scored earlier today||
+AEVA|2026-08-06|08:40:00|08:40:04|2||27.69|26.163||already scored earlier today||
+AEVA|2026-08-06|08:45:00|08:45:05|1||29.27|27.206||already scored earlier today||
+AEVA|2026-08-06|08:50:00|08:50:04|1||30.95|30.718||already scored earlier today||
+AEVA|2026-08-06|08:55:00|08:55:04|1||31.31|30.521||already scored earlier today||
+AEVA|2026-08-06|09:00:00|09:00:09|1||32.48|31.586||already scored earlier today||
+AEVA|2026-08-06|09:00:00|09:00:09|2||32.4|32.113||already scored earlier today||
+AEVA|2026-08-06|09:05:00|09:05:05|1||33.86|34.379||already scored earlier today||
+AEVA|2026-08-06|09:10:00|09:10:05|2||34.63|36.586||already scored earlier today||
+AEVA|2026-08-06|09:15:00|09:15:06|1||34.12|37.875||already scored earlier today||
+AEVA|2026-08-06|09:20:00|09:20:45|2||34.83|38.588||already scored earlier today||
+AEVA|2026-08-06|09:25:00|09:25:06|2||34.53|35.548||already scored earlier today||
+AEVA|2026-08-06|09:30:00|09:30:10|1||34.17|15.219||already scored earlier today||
+AEVA|2026-08-06|09:35:00|09:37:30|2||32.59|8.226||already scored earlier today||
+AEVA|2026-08-06|09:40:00|09:41:21|3||32.59|5.766||already scored earlier today||
+AEVA|2026-08-06|09:45:00|09:47:34|3||30.7|4.664||already scored earlier today||
+AEVA|2026-08-06|09:50:00|09:53:15|15||17.34|5.223||already scored earlier today||
+AEVA|2026-08-06|09:55:00|09:56:15|14||16.93|7.068||already scored earlier today||
+KRO|2026-08-06|09:45:00|09:47:34|13||12.72|||pre-mkt volume 4,195 < 25,000 shares||
+KRO|2026-08-06|09:50:00|09:53:15|6||21.26|||score 44 < 50 (catalyst=routine)|44.4|
+KRO|2026-08-06|09:55:00|09:56:15|15||16.91|||score 42 < 50 (catalyst=routine)|42|
+ABNB|2026-08-07|09:50:00|09:51:53|25||12.64|||outside top-20 gap cap (gap 12.6%)||
+ABNB|2026-08-07|09:55:00|09:55:31|22||14.15|||outside top-20 gap cap (gap 14.2%)||
+TEAM|2026-08-07|07:00:00|07:09:25|4||31.92|20.658||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|07:10:00|07:10:47|5||31.71|18.488||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|07:15:00|07:15:09|5||31.61|18.519||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|07:20:00|07:21:33|6||27.66|21.417||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|07:25:00|07:25:18|6||26.85|23.699||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|07:30:00|07:30:23|5||28.87|25.326||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|07:35:00|07:35:09|4||27.8|25.698||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|07:40:00|07:40:09|4||27.53|24.96||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|07:45:00|07:45:17|4||27.89|24.196||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|07:50:00|07:50:09|4||27.98|24.139||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|07:55:00|07:55:08|4||28.51|24.13||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|08:00:00|08:00:10|4||29.44|24.019||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|08:05:00|08:05:09|4||30.36|23.88||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|08:10:00|08:10:09|4||30.25|23.674||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|08:15:00|08:15:10|4||31.12|23.853||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|08:20:00|08:20:10|4||30.99|24.629||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|08:25:00|08:25:09|3||32.07|24.755||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|08:30:00|08:30:46|3||33.7|24.302||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|08:35:00|08:35:09|3||33.64|22.872||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|08:40:00|08:40:10|4||32.89|22.467||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|08:45:00|08:45:09|4||31.32|25.498||score 40 < 50 (catalyst=routine)|39.6|
+TEAM|2026-08-07|08:50:00|08:53:37|4||31.66|25.543|||115.2|HIGH
+TEAM|2026-08-07|08:55:00|08:55:09|4||32.16|24.739||already scored earlier today||
+TEAM|2026-08-07|09:00:00|09:00:51|4||32.3|24.836||already scored earlier today||
+TEAM|2026-08-07|09:00:00|09:00:51|4||32.3|24.836||already scored earlier today||
+TEAM|2026-08-07|09:05:00|09:05:10|4||32.52|24.338||already scored earlier today||
+TEAM|2026-08-07|09:10:00|09:11:07|4||33.88|24.458||already scored earlier today||
+TEAM|2026-08-07|09:15:00|09:15:09|4||33.57|23.904||already scored earlier today||
+TEAM|2026-08-07|09:20:00|09:20:08|3||33.88|23.931||already scored earlier today||
+TEAM|2026-08-07|09:25:00|09:25:09|4||34.34|24.167||already scored earlier today||
+TEAM|2026-08-07|09:30:00|09:30:36|3||35.21|10.761||already scored earlier today||
+TEAM|2026-08-07|09:31:00|09:31:21|3||34.87|8.632||already scored earlier today||
+TEAM|2026-08-07|09:35:00|09:35:12|3||34.86|5.507||already scored earlier today||
+TEAM|2026-08-07|09:40:00|09:40:44|3||35.56|4.008||already scored earlier today||
+TEAM|2026-08-07|09:45:00|09:45:21|4||32.56|3.596||already scored earlier today||
+TEAM|2026-08-07|09:50:00|09:51:53|4||36.64|8.068||already scored earlier today||
+TEAM|2026-08-07|09:55:00|09:55:31|6||32.22|8.559||already scored earlier today||
+BW|2026-08-11|07:00:00|07:01:59|2||34.91|64.301|||96|HIGH
+BW|2026-08-11|07:05:00|07:05:25|2||34.12|62.804||already scored earlier today||
+BW|2026-08-11|07:10:00|07:10:04|2||33.59|62.523||already scored earlier today||
+BW|2026-08-11|07:15:00|07:15:04|2||34.57|54.714||already scored earlier today||
+BW|2026-08-11|07:20:00|07:20:03|2||34.57|64.078||already scored earlier today||
+BW|2026-08-11|07:25:00|07:25:20|2||34.01|66.37||already scored earlier today||
+BW|2026-08-11|07:30:00|07:30:04|2||35.14|68.117||already scored earlier today||
+BW|2026-08-11|07:35:00|07:35:04|1||35.06|66.597||already scored earlier today||
+BW|2026-08-11|07:40:00|07:40:27|1||35.14|69.306||already scored earlier today||
+BW|2026-08-11|07:45:00|07:45:04|1||35.03|68.291||already scored earlier today||
+BW|2026-08-11|07:50:00|07:50:04|1||35.14|68.185||already scored earlier today||
+BW|2026-08-11|07:55:00|07:55:04|1||37.84|69.507||already scored earlier today||
+BW|2026-08-11|08:00:00|08:00:04|1||36.26|71.528||already scored earlier today||
+BW|2026-08-11|08:05:00|08:05:03|1||36.82|64.122||already scored earlier today||
+BW|2026-08-11|08:10:00|08:10:04|1||36.26|62.808||already scored earlier today||
+BW|2026-08-11|08:15:00|08:15:03|1||36.37|65.108||already scored earlier today||
+BW|2026-08-11|08:20:00|08:20:13|1||36.49|64.574||already scored earlier today||
+BW|2026-08-11|08:25:00|08:25:03|1||36.62|64.503||already scored earlier today||
+BW|2026-08-11|08:30:00|08:30:04|1||37.14|63.855||already scored earlier today||
+BW|2026-08-11|08:35:00|08:35:03|1||36.82|65.14||already scored earlier today||
+BW|2026-08-11|08:40:00|08:40:04|1||36.82|64.67||already scored earlier today||
+BW|2026-08-11|08:45:00|08:45:04|2||36.26|63.094||already scored earlier today||
+BW|2026-08-11|08:50:00|08:50:04|1||37.16|61.649||already scored earlier today||
+BW|2026-08-11|08:55:00|08:55:15|1||37.95|59.82||already scored earlier today||
+BW|2026-08-11|09:00:00|09:00:08|1||36.15|60.87||already scored earlier today||
+BW|2026-08-11|09:00:00|09:00:09|1||35.14|61.235||already scored earlier today||
+BW|2026-08-11|09:05:00|09:05:05|1||35.13|63.483||already scored earlier today||
+BW|2026-08-11|09:10:00|09:10:04|1||35.14|62.578||already scored earlier today||
+BW|2026-08-11|09:15:00|09:15:04|2||33.53|63.087||already scored earlier today||
+BW|2026-08-11|09:20:00|09:20:05|1||35.14|63.854||already scored earlier today||
+BW|2026-08-11|09:25:00|09:25:16|1||36.72|65.071||already scored earlier today||
+BW|2026-08-11|09:30:00|09:30:10|1||34.91|15.554||already scored earlier today||
+BW|2026-08-11|09:31:00|09:31:05|1||36.02|12.788||already scored earlier today||
+BW|2026-08-11|09:35:00|09:35:07|1||35.81|7.704||already scored earlier today||
+BW|2026-08-11|09:40:00|09:40:07|1||34.91|5.846||already scored earlier today||
+BW|2026-08-11|09:45:00|09:45:12|2||33.9|4.899||already scored earlier today||
+BW|2026-08-11|09:50:00|09:50:58|5||20.05|10.71||already scored earlier today||
+BW|2026-08-11|09:55:00|09:55:12|6||16.72|12.43||already scored earlier today||
+FRMI|2026-08-11|07:00:00|07:01:59|6||17.01|6.83|||96|HIGH
+FRMI|2026-08-11|07:05:00|07:05:25|6||17.69|6.857||already scored earlier today||
+FRMI|2026-08-11|07:10:00|07:10:04|5||17.18|6.275||already scored earlier today||
+FRMI|2026-08-11|07:15:00|07:15:04|5||17.69|6.186||already scored earlier today||
+FRMI|2026-08-11|07:20:00|07:20:03|5||18.53|6.969||already scored earlier today||
+FRMI|2026-08-11|07:25:00|07:25:20|5||15.82|7.916||already scored earlier today||
+FRMI|2026-08-11|07:30:00|07:30:04|5||15.54|8.861||already scored earlier today||
+FRMI|2026-08-11|07:35:00|07:35:04|5||17.01|8.895||already scored earlier today||
+FRMI|2026-08-11|07:40:00|07:40:27|5||16.33|8.825||already scored earlier today||
+FRMI|2026-08-11|07:45:00|07:45:04|5||15.99|8.907||already scored earlier today||
+FRMI|2026-08-11|07:50:00|07:50:04|5||15.82|8.817||already scored earlier today||
+FRMI|2026-08-11|07:55:00|07:55:04|6||15.82|9.036||already scored earlier today||
+FRMI|2026-08-11|08:00:00|08:00:04|6||15.99|9.026||already scored earlier today||
+FRMI|2026-08-11|08:05:00|08:05:03|7||15.65|8.688||already scored earlier today||
+FRMI|2026-08-11|08:10:00|08:10:04|7||15.57|8.441||already scored earlier today||
+FRMI|2026-08-11|08:15:00|08:15:03|7||14.29|8.925||already scored earlier today||
+FRMI|2026-08-11|08:20:00|08:20:13|6||15.36|8.911||already scored earlier today||
+FRMI|2026-08-11|08:25:00|08:25:03|5||16.5|9.611||already scored earlier today||
+FRMI|2026-08-11|08:30:00|08:30:04|5||15.65|9.99||already scored earlier today||
+FRMI|2026-08-11|08:35:00|08:35:03|4||17.18|10.834||already scored earlier today||
+FRMI|2026-08-11|08:40:00|08:40:04|4||18.03|6.825||already scored earlier today||
+FRMI|2026-08-11|08:45:00|08:45:04|4||18.03|5.151||already scored earlier today||
+FRMI|2026-08-11|08:50:00|08:50:04|4||17.52|5.146||already scored earlier today||
+FRMI|2026-08-11|08:55:00|08:55:15|4||17.4|5.505||already scored earlier today||
+FRMI|2026-08-11|09:00:00|09:00:08|3||19.72|6.15||already scored earlier today||
+FRMI|2026-08-11|09:00:00|09:00:09|3||19.72|6.15||already scored earlier today||
+FRMI|2026-08-11|09:05:00|09:05:05|3||21.93|6.995||already scored earlier today||
+FRMI|2026-08-11|09:10:00|09:10:04|3||21.94|7.379||already scored earlier today||
+FRMI|2026-08-11|09:15:00|09:15:04|3||21.09|7.17||already scored earlier today||
+FRMI|2026-08-11|09:20:00|09:20:05|3||22.79|7.066||already scored earlier today||
+FRMI|2026-08-11|09:25:00|09:25:16|3||21.94|6.56||already scored earlier today||
+FRMI|2026-08-11|09:30:00|09:30:10|4||21.87|13.523||already scored earlier today||
+FRMI|2026-08-11|09:31:00|09:31:05|3||22.23|9.773||already scored earlier today||
+FRMI|2026-08-11|09:35:00|09:35:07|3||23.81|4.227||already scored earlier today||
+FRMI|2026-08-11|09:40:00|09:40:07|4||22.07|3.142||already scored earlier today||
+FRMI|2026-08-11|09:45:00|09:45:12|6||20.75|2.759||already scored earlier today||
+FRMI|2026-08-11|09:50:00|09:50:58|4||20.92|3.897||already scored earlier today||
+FRMI|2026-08-11|09:55:00|09:55:12|5||16.92|4.402||already scored earlier today||
+NIQ|2026-08-11|07:00:00|07:01:59|7||13.78|1.307||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|07:05:00|07:05:25|8||13.78|1.307||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|07:10:00|07:10:04|7||13.78|1.307||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|07:15:00|07:15:04|7||13.78|1.307||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|07:20:00|07:20:03|6||13.1|7.956||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|07:25:00|07:25:20|7||13.1|7.956||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|07:30:00|07:30:04|8||12.59|8.26||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|07:35:00|07:35:04|8||12.59|8.26||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|07:40:00|07:40:27|9||12.59|8.26||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|07:45:00|07:45:04|9||12.59|8.26||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|07:50:00|07:50:04|9||12.59|8.26||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|07:55:00|07:55:04|9||12.59|8.26||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|08:00:00|08:00:04|9||12.59|8.502||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|08:05:00|08:05:03|9||12.59|7.949||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|08:10:00|08:10:04|9||12.59|7.035||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|08:15:00|08:15:03|9||12.59|6.745||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|08:20:00|08:20:13|9||12.59|6.392||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|08:25:00|08:25:03|9||12.59|6.229||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|08:30:00|08:30:04|9||12.59|6.229||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|08:35:00|08:35:03|9||12.59|6.229||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|08:40:00|08:40:04|9||12.59|5.507||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|08:45:00|08:45:04|9||12.59|4.923||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|08:50:00|08:50:04|9||12.59|4.643||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|08:55:00|08:55:15|9||12.59|4.643||score 28 < 50 (catalyst=routine)|27.6|
+NIQ|2026-08-11|09:00:00|09:00:08|8||15.07|5.096||score 34 < 50 (catalyst=routine)|33.6|
+NIQ|2026-08-11|09:00:00|09:00:09|8||15.07|5.096||score 34 < 50 (catalyst=routine)|33.6|
+NIQ|2026-08-11|09:05:00|09:05:05|7||15.07|4.646||score 34 < 50 (catalyst=routine)|33.6|
+NIQ|2026-08-11|09:10:00|09:10:04|7||15.07|4.052||score 34 < 50 (catalyst=routine)|33.6|
+NIQ|2026-08-11|09:15:00|09:15:04|7||15.07|3.959||score 34 < 50 (catalyst=routine)|33.6|
+NIQ|2026-08-11|09:20:00|09:20:05|7||15.07|3.926||score 34 < 50 (catalyst=routine)|33.6|
+NIQ|2026-08-11|09:25:00|09:25:16|7||15.07|4.063||score 34 < 50 (catalyst=routine)|33.6|
+NIQ|2026-08-11|09:30:00|09:30:10|7||15.07|0.745||filter:session_rvol_too_low: session_rvol=0.74x (today 9,514 / baseline 12,771 n=21) < 1.0x||
+NIQ|2026-08-11|09:31:00|09:31:05|7||15.07|0.697||filter:session_rvol_too_low: session_rvol=0.70x (today 9,514 / baseline 13,654 n=21) < 1.0x||
+NIQ|2026-08-11|09:35:00|09:35:07|7||15.07|0.57||filter:session_rvol_too_low: session_rvol=0.57x (today 11,932 / baseline 20,923 n=21) < 1.0x||
+NIQ|2026-08-11|09:40:00|09:40:07|7||15.07|0.406||filter:session_rvol_too_low: session_rvol=0.41x (today 11,932 / baseline 29,378 n=21) < 1.0x||
+NIQ|2026-08-11|09:45:00|09:45:12|7||17.12|0.696||filter:session_rvol_too_low: session_rvol=0.70x (today 29,179 / baseline 41,916 n=21) < 1.0x||
+NIQ|2026-08-11|09:50:00|09:50:58|6||19.22|5.866||score 36 < 50 (catalyst=routine)|36|
+NIQ|2026-08-11|09:55:00|09:55:12|4||21.87|7.58||score 42 < 50 (catalyst=routine)|42|
+WYFI|2026-08-12|07:20:00|07:21:06|3||17.34|6.347|||84|HIGH
+WYFI|2026-08-12|07:25:00|07:25:03|5||13.54|9.551||already scored earlier today||
+WYFI|2026-08-12|07:30:00|07:30:14|4||13.79|10.114||already scored earlier today||
+WYFI|2026-08-12|07:35:00|07:35:03|4||12.8|10.214||already scored earlier today||
+WYFI|2026-08-12|07:40:00|07:40:04|4||13.01|10.044||already scored earlier today||
+WYFI|2026-08-12|07:45:00|07:45:03|6||12.51|9.975||already scored earlier today||
+WYFI|2026-08-12|07:50:00|07:50:03|4||13.13|9.951||already scored earlier today||
+WYFI|2026-08-12|07:55:00|07:55:05|7||12.48|10.226||already scored earlier today||
+WYFI|2026-08-12|08:00:00|08:01:17|5||14.7|10.451||already scored earlier today||
+WYFI|2026-08-12|08:05:00|08:05:05|5||14.2|10.229||already scored earlier today||
+WYFI|2026-08-12|08:10:00|08:10:05|8||12.57|9.914||already scored earlier today||
+WYFI|2026-08-12|08:15:00|08:15:05|8||12.72|9.792||already scored earlier today||
+WYFI|2026-08-12|08:20:00|08:20:05|9||12.92|9.631||already scored earlier today||
+WYFI|2026-08-12|08:25:00|08:25:04|8||13.46|9.48||already scored earlier today||
+WYFI|2026-08-12|08:30:00|08:30:04|10||11.89|9.266||already scored earlier today||
+WYFI|2026-08-12|08:35:00|08:35:05|10||11.73|8.796||already scored earlier today||
+WYFI|2026-08-12|08:40:00|08:40:04|10||11.27|8.378||already scored earlier today||
+WYFI|2026-08-12|08:45:00|08:45:04|10||12.22|8.116||already scored earlier today||
+WYFI|2026-08-12|08:50:00|08:50:04|9||13.34|7.931||already scored earlier today||
+WYFI|2026-08-12|08:55:00|08:55:28|8||14.37|8.019||already scored earlier today||
+WYFI|2026-08-12|09:00:00|09:00:09|11||12.57|7.81||already scored earlier today||
+WYFI|2026-08-12|09:00:00|09:00:10|11||12.57|7.81||already scored earlier today||
+WYFI|2026-08-12|09:05:00|09:05:06|11||12.26|7.854||already scored earlier today||
+WYFI|2026-08-12|09:10:00|09:10:06|9||13.34|7.726||already scored earlier today||
+WYFI|2026-08-12|09:15:00|09:15:06|10||13.37|7.555||already scored earlier today||
+WYFI|2026-08-12|09:20:00|09:20:25|11||12.87|7.34||already scored earlier today||
+WYFI|2026-08-12|09:25:00|09:25:06|9||14.37|7.213||already scored earlier today||
+WYFI|2026-08-12|09:30:00|09:30:42|10||12.88|9.508||already scored earlier today||
+WYFI|2026-08-12|09:31:00|09:31:10|11||12.51|7.358||already scored earlier today||
+WYFI|2026-08-12|09:35:00|09:35:10|9||13.58|3.645||already scored earlier today||
+WYFI|2026-08-12|09:40:00|09:40:11|9||12.51|2.354||already scored earlier today||
+WYFI|2026-08-12|09:45:00|09:45:13|11||13.13|1.853||already scored earlier today||
+WYFI|2026-08-12|09:50:00|09:50:14|17||12.1|2.262||already scored earlier today||
+WYFI|2026-08-12|09:55:00|09:55:37|9||15.83|2.391||already scored earlier today||
+AVAH|2026-08-13|07:45:00|07:45:31|10||11.49|12.058||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|07:50:00|07:50:04|9||13.26|13.615||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|07:55:00|07:55:15|8||13.04|13.975||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|08:00:00|08:00:06|9||13.04|12.473||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|08:15:00|08:15:30|9||12.49|12.649||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|08:30:00|08:30:26|10||11.5|13.014||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|08:35:00|08:35:05|12||11.5|12.99||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|08:40:00|08:40:07|11||11.5|12.476||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|08:45:00|08:45:06|9||11.5|12.476||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|08:50:00|08:50:06|12||11.07|12.371||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|08:55:00|08:55:06|14||10.5|12.26||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|09:00:00|09:00:08|13||10.5|11.843||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|09:00:00|09:00:11|11||11.6|12.187||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|09:05:00|09:05:06|10||11.6|12.105||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|09:10:00|09:10:05|10||11.82|12.38||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|09:15:00|09:15:06|11||12.15|12.626||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|09:20:00|09:20:06|11||10.5|14.029||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|09:25:00|09:25:06|11||11.05|14.461||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|09:30:00|09:30:10|11||10.5|1.616||score 18 < 50 (catalyst=routine)|18|
+AVAH|2026-08-13|09:35:00|09:35:10|11||10.5|0.991||filter:session_rvol_too_low: session_rvol=0.99x (today 56,310 / baseline 56,812 n=22) < 1.0x||
+AVAH|2026-08-13|09:40:00|09:40:09|10||10.5|0.886||filter:session_rvol_too_low: session_rvol=0.89x (today 67,588 / baseline 76,262 n=22) < 1.0x||
+AVAH|2026-08-13|09:45:00|09:45:12|10||12.82|0.854||filter:session_rvol_too_low: session_rvol=0.85x (today 81,223 / baseline 95,119 n=22) < 1.0x||
+AVAH|2026-08-13|09:50:00|09:51:19|14||10.5|2.917||score 30 < 50 (catalyst=routine)|30|
+AVAH|2026-08-13|09:55:00|09:56:14|12||14.48|4.435||score 30 < 50 (catalyst=routine)|30|
+TBBB|2026-08-13|09:50:00|09:51:19|13||11.11|9.163||score 30 < 50 (catalyst=routine)|30|
+TBBB|2026-08-13|09:55:00|09:56:14|9||16.67|9.901||score 36 < 50 (catalyst=routine)|36|
+AEHR|2026-08-14|09:50:00|09:50:33|11||14.52|1.432||EP cooldown — alerted within last 60 days||
+AEHR|2026-08-14|09:55:00|09:55:27|13||11.32|1.679||EP cooldown — alerted within last 60 days||
+HTFL|2026-08-14|07:00:00|07:01:32|4||25.12|8.53|||96|HIGH
+HTFL|2026-08-14|07:05:00|07:05:05|4||25.12|8.53||already scored earlier today||
+HTFL|2026-08-14|07:10:00|07:10:04|4||25.12|8.438||already scored earlier today||
+HTFL|2026-08-14|07:15:00|07:15:04|5||25.44|12.22||already scored earlier today||
+HTFL|2026-08-14|07:20:00|07:20:20|4||24.15|13.828||already scored earlier today||
+HTFL|2026-08-14|07:25:00|07:25:13|4||24.7|18.113||already scored earlier today||
+HTFL|2026-08-14|07:30:00|07:30:04|5||24.7|19.631||already scored earlier today||
+HTFL|2026-08-14|07:35:00|07:35:04|6||22.86|20.574||already scored earlier today||
+HTFL|2026-08-14|07:40:00|07:40:03|6||22.86|22.864||already scored earlier today||
+HTFL|2026-08-14|07:45:00|07:45:04|7||23.06|23.698||already scored earlier today||
+HTFL|2026-08-14|07:50:00|07:50:04|6||23.06|23.698||already scored earlier today||
+HTFL|2026-08-14|07:55:00|07:55:28|4||23.83|24.84||already scored earlier today||
+HTFL|2026-08-14|08:00:00|08:00:15|5||23.83|24.84||already scored earlier today||
+HTFL|2026-08-14|08:05:00|08:05:06|4||23.83|24.84||already scored earlier today||
+HTFL|2026-08-14|08:10:00|08:10:04|3||25.07|26.189||already scored earlier today||
+HTFL|2026-08-14|08:15:00|08:15:04|3||25.38|21.559||already scored earlier today||
+HTFL|2026-08-14|08:20:00|08:20:04|4||25.38|22.035||already scored earlier today||
+HTFL|2026-08-14|08:25:00|08:25:04|4||27.38|25.753||already scored earlier today||
+HTFL|2026-08-14|08:30:00|08:30:23|4||27.7|30.609||already scored earlier today||
+HTFL|2026-08-14|08:35:00|08:35:04|4||28.99|44.767||already scored earlier today||
+HTFL|2026-08-14|08:40:00|08:40:05|3||28.32|38.716||already scored earlier today||
+HTFL|2026-08-14|08:45:00|08:45:06|4||27.41|40.394||already scored earlier today||
+HTFL|2026-08-14|08:50:00|08:50:05|3||27.38|32.236||already scored earlier today||
+HTFL|2026-08-14|08:55:00|08:55:05|3||27.38|34.525||already scored earlier today||
+HTFL|2026-08-14|09:00:00|09:00:07|5||26.41|30.429||already scored earlier today||
+HTFL|2026-08-14|09:00:00|09:00:11|5||26.41|30.429||already scored earlier today||
+HTFL|2026-08-14|09:05:00|09:05:06|5||26.25|30.771||already scored earlier today||
+HTFL|2026-08-14|09:10:00|09:10:18|5||25.09|33.328||already scored earlier today||
+HTFL|2026-08-14|09:15:00|09:15:07|5||24.02|32.06||already scored earlier today||
+HTFL|2026-08-14|09:20:00|09:20:08|4||25.8|32.523||already scored earlier today||
+HTFL|2026-08-14|09:25:00|09:25:06|5||23.67|30.93||already scored earlier today||
+HTFL|2026-08-14|09:30:00|09:30:14|5||23.86|15.44||already scored earlier today||
+HTFL|2026-08-14|09:31:00|09:31:10|5||23.86|14.395||already scored earlier today||
+HTFL|2026-08-14|09:35:00|09:35:08|6||23.35|10.9||already scored earlier today||
+HTFL|2026-08-14|09:40:00|09:40:09|6||24.15|9.557||already scored earlier today||
+HTFL|2026-08-14|09:45:00|09:45:12|6||24.54|15.709||already scored earlier today||
+HTFL|2026-08-14|09:50:00|09:50:33|6||26.93|28.734||already scored earlier today||
+HTFL|2026-08-14|09:55:00|09:55:27|5||24.67|29.79||already scored earlier today||
+LPTH|2026-08-14|09:10:00|09:10:18|16||10.03|4.94|||54.7|MODERATE
+LPTH|2026-08-14|09:15:00|09:15:07|16||10.21|4.934||already scored earlier today||
+LPTH|2026-08-14|09:20:00|09:20:08|16||10.38|5.507||already scored earlier today||
+LPTH|2026-08-14|09:25:00|09:25:06|15||10.44|5.323||already scored earlier today||
+LPTH|2026-08-14|09:30:00|09:30:14|12||10.44|5.742||already scored earlier today||
+LPTH|2026-08-14|09:31:00|09:31:10|13||10.14|4.493||already scored earlier today||
+LPTH|2026-08-14|09:45:00|09:45:12|11||10.14|1.324||already scored earlier today||
+LPTH|2026-08-14|09:50:00|09:50:33|14||13.11|2.898||already scored earlier today||
+HAE|2026-08-18|09:00:00|09:00:14|4||10.78|30.662||routine catalyst, gap 10.8%||
+HAE|2026-08-18|09:00:00|09:00:15|4||10.78|30.662||routine catalyst, gap 10.8%||
+HAE|2026-08-18|09:05:00|09:05:04|3||12|32.038||score -6 < 50 (catalyst=routine)|-6|
+HAE|2026-08-18|09:10:00|09:10:02|3||12|32.038||score -6 < 50 (catalyst=routine)|-6|
+HAE|2026-08-18|09:15:00|09:15:03|3||12|32.038||score -6 < 50 (catalyst=routine)|-6|
+HAE|2026-08-18|09:20:00|09:20:03|3||11.89|32.507||score -6 < 50 (catalyst=routine)|-6|
+HAE|2026-08-18|09:25:00|09:25:03|3||12.99|35.694||score -6 < 50 (catalyst=routine)|-6|
+HAE|2026-08-18|09:30:00|09:30:17|5||12.99|6.141||score -6 < 50 (catalyst=routine)|-6|
+HAE|2026-08-18|09:31:00|09:31:07|5||12.99|5.862||score -6 < 50 (catalyst=routine)|-6|
+HAE|2026-08-18|09:35:00|09:35:06|5||12.99|3.918||score -6 < 50 (catalyst=routine)|-6|
+HAE|2026-08-18|09:40:00|09:40:08|4||15.93|3.113||score 0 < 50 (catalyst=routine)|0|
+HAE|2026-08-18|09:45:00|09:45:09|4||14.21|2.401||score -6 < 50 (catalyst=routine)|-6|
+HAE|2026-08-18|09:50:00|09:50:08|6||15.39|9.799||score 12 < 50 (catalyst=routine)|12|
+HAE|2026-08-18|09:55:00|09:55:06|6||16.45|10.734||score 12 < 50 (catalyst=routine)|12|
+MRNA|2026-08-19|07:05:00|07:05:17|3||10.04|4.471||score 22 < 50 (catalyst=strong)|21.6|
+MRNA|2026-08-19|07:10:00|07:10:01|2||33.1|13.953|||115.2|HIGH
+MRNA|2026-08-19|07:15:00|07:15:01|2||51.81|33.016||already scored earlier today||
+MRNA|2026-08-19|07:20:00|07:20:02|2||76.22|66.032||already scored earlier today||
+MRNA|2026-08-19|07:25:00|07:25:13|2||61.53|87.47||already scored earlier today||
+MRNA|2026-08-19|07:30:00|07:30:02|2||53.8|108.394||already scored earlier today||
+MRNA|2026-08-19|07:35:00|07:35:02|2||59.55|120.56||already scored earlier today||
+MRNA|2026-08-19|07:40:00|07:40:02|2||57.61|130.066||already scored earlier today||
+MRNA|2026-08-19|07:45:00|07:45:18|2||62.04|142.959||already scored earlier today||
+MRNA|2026-08-19|07:50:00|07:50:02|2||63.6|150.197||already scored earlier today||
+MRNA|2026-08-19|07:55:00|07:55:02|2||61.79|153.553||already scored earlier today||
+MRNA|2026-08-19|08:00:00|08:00:02|2||75.13|168.111||already scored earlier today||
+MRNA|2026-08-19|08:05:00|08:05:02|2||87.26|199.065||already scored earlier today||
+MRNA|2026-08-19|08:10:00|08:10:03|2||103.14|226.167||already scored earlier today||
+MRNA|2026-08-19|08:15:00|08:15:27|2||101.38|243.961||already scored earlier today||
+MRNA|2026-08-19|08:20:00|08:20:02|2||106.18|258.37||already scored earlier today||
+MRNA|2026-08-19|08:25:00|08:25:05|2||92.74|275.343||already scored earlier today||
+MRNA|2026-08-19|08:30:00|08:30:03|2||90.41|283.432||already scored earlier today||
+MRNA|2026-08-19|08:35:00|08:35:03|2||81.24|295.147||already scored earlier today||
+MRNA|2026-08-19|08:40:00|08:40:03|2||87.73|298.914||already scored earlier today||
+MRNA|2026-08-19|08:45:00|08:45:03|2||88.41|292.477||already scored earlier today||
+MRNA|2026-08-19|08:50:00|08:50:18|2||87.99|293.155||already scored earlier today||
+MRNA|2026-08-19|08:55:00|08:55:03|2||91.53|298.311||already scored earlier today||
+MRNA|2026-08-19|09:00:00|09:00:44|2||94|294.468||already scored earlier today||
+MRNA|2026-08-19|09:00:00|09:01:00|1||96.92|296.19||already scored earlier today||
+MRNA|2026-08-19|09:05:00|09:05:27|2||95.12|291.379||already scored earlier today||
+MRNA|2026-08-19|09:10:00|09:10:06|2||95.55|289.994||already scored earlier today||
+MRNA|2026-08-19|09:15:00|09:15:05|2||93.77|289.762||already scored earlier today||
+MRNA|2026-08-19|09:20:00|09:20:05|2||86.59|282.072||already scored earlier today||
+MRNA|2026-08-19|09:25:00|09:25:05|2||92.19|275.137||already scored earlier today||
+MRNA|2026-08-19|09:30:00|09:31:08|2||94.41|227.003||already scored earlier today||
+MRNA|2026-08-19|09:31:00|09:31:09|2||96.03|179.881||already scored earlier today||
+MRNA|2026-08-19|09:35:00|09:35:20|2||91.71|104.228||already scored earlier today||
+MRNA|2026-08-19|09:40:00|09:40:18|2||90.66|69.596||already scored earlier today||
+MRNA|2026-08-19|09:45:00|09:46:14|2||84.37|59.693||already scored earlier today||
+MRNA|2026-08-19|09:50:00|09:50:55|2||86.44|59.018||already scored earlier today||
+MRNA|2026-08-19|09:55:00|09:55:31|2||100.67|57.381||already scored earlier today||
+MRVI|2026-08-19|08:15:00|08:15:27|6||13.24|33.545||score 18 < 50 (catalyst=routine)|18|
+MRVI|2026-08-19|08:25:00|08:25:05|6||13.59|38.948||score 18 < 50 (catalyst=routine)|18|
+MRVI|2026-08-19|08:30:00|08:30:03|6||14.81|69.776||score 18 < 50 (catalyst=routine)|18|
+MRVI|2026-08-19|08:35:00|08:35:03|4||18.47|75.147||score 24 < 50 (catalyst=routine)|24|
+MRVI|2026-08-19|08:40:00|08:40:03|4||22.82|66.315||score 30 < 50 (catalyst=routine)|30|
+MRVI|2026-08-19|08:45:00|08:45:03|4||23.34|74.016||score 30 < 50 (catalyst=routine)|30|
+MRVI|2026-08-19|08:50:00|08:50:18|4||23.87|85.186||score 30 < 50 (catalyst=routine)|30|
+MRVI|2026-08-19|08:55:00|08:55:03|4||26.31|94||score 30 < 50 (catalyst=routine)|30|
+MRVI|2026-08-19|09:00:00|09:00:44|3||26.31|102.118||score 30 < 50 (catalyst=routine)|30|
+MRVI|2026-08-19|09:00:00|09:01:00|3||26.31|102.118||score 30 < 50 (catalyst=routine)|30|
+MRVI|2026-08-19|09:05:00|09:05:27|3||25.61|111.012||score 30 < 50 (catalyst=routine)|30|
+MRVI|2026-08-19|09:10:00|09:10:06|3||23.34|112.803||score 30 < 50 (catalyst=routine)|30|
+MRVI|2026-08-19|09:15:00|09:15:05|3||23.26|129.127||score 30 < 50 (catalyst=routine)|30|
+MRVI|2026-08-19|09:20:00|09:20:05|3||21.98|123.862||score 30 < 50 (catalyst=routine)|30|
+MRVI|2026-08-19|09:25:00|09:25:05|3||21.26|128.678||score 30 < 50 (catalyst=routine)|30|
+MRVI|2026-08-19|09:30:00|09:31:08|3||23.34|9.915||score 30 < 50 (catalyst=routine)|30|
+MRVI|2026-08-19|09:31:00|09:31:09|3||23.34|8.173||score 30 < 50 (catalyst=routine)|30|
+MRVI|2026-08-19|09:35:00|09:35:20|4||19.19|5.023||score 24 < 50 (catalyst=routine)|24|
+MRVI|2026-08-19|09:40:00|09:40:18|4||16.9|4.014||score 24 < 50 (catalyst=routine)|24|
+MRVI|2026-08-19|09:45:00|09:46:14|3||18.47|4.205||score 36 < 50 (catalyst=routine)|36|
+MRVI|2026-08-19|09:50:00|09:50:55|4||26.38|7.581||score 44 < 50 (catalyst=routine)|44.4|
+MRVI|2026-08-19|09:55:00|09:55:31|4||25.44|12.261||score 48 < 50 (catalyst=routine)|48|
+RARE|2026-08-20|07:00:00|07:01:28|5||11.39|30.834|||72|HIGH
+CHPT|2026-09-03|07:00:00|07:01:16|3|4|19.27||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|07:05:00|07:05:02|3|4|18.5||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|07:10:00|07:10:02|3|4|18.88||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|07:15:00|07:15:03|3|5|18.11||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|07:20:00|07:20:18|3|5|18.3||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|07:25:00|07:25:03|3|4|17.53||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|07:30:00|07:30:03|3|5|17.92||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|07:35:00|07:35:03|3|5|18.88||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|07:40:00|07:40:03|3|5|18.69||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|07:45:00|07:45:03|4|5|17.53||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|07:50:00|07:50:03|4|5|17.53||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|07:55:00|07:55:03|4|5|17.53||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|08:00:00|08:00:03|4|5|17.34||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|08:05:00|08:05:03|4|5|17.34||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|08:10:00|08:10:03|4|5|17.34||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|08:15:00|08:15:03|4|5|17.34||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|08:20:00|08:20:03|4|5|17.92||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|08:25:00|08:25:03|4|5|17.73||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|08:30:00|08:30:03|4|5|19.46||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|08:35:00|08:35:03|4|5|19.27||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|08:40:00|08:40:03|4|5|20.04||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|08:45:00|08:45:03|4|5|21.82||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|08:50:00|08:50:03|3|5|25.24||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|08:55:00|08:55:03|3|5|26.2||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:00:00|09:00:05|3|5|28.71||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:00:00|09:00:06|3|5|28.32||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:05:00|09:05:03|3|5|29.67||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:10:00|09:10:03|3|5|27.55||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:15:00|09:15:35|3|6|28.52||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:20:00|09:20:04|3|6|27.55||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:25:00|09:25:04|3|6|29.09||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:30:00|09:30:21|3|5|32.95||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:31:00|09:31:07|2|5|34.68||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:35:00|09:35:42|1|5|42.5||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:40:00|09:40:07|1|5|46.53||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:45:00|09:45:29|1|6|49.81||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:50:00|09:50:07|1|6|49.52||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+CHPT|2026-09-03|09:55:00|09:55:08|1|6|36.42||quality_filter|quality filter: filter:mcap_too_small: $134M < $500M||
+PENG|2026-10-07|07:00:01|07:00:02|||5.81||gap_floor|filter:universe_below_gap_floor: decided gap 5.8% < 9.0% after real-time confirm (recorded only)||
+PENG|2026-10-07|07:05:00|07:05:01|||4.65||gap_floor|filter:universe_below_gap_floor: decided gap 4.7% < 9.0% after real-time confirm (recorded only)||
+PENG|2026-10-07|07:10:00|07:10:01|||4.28||gap_floor|filter:universe_below_gap_floor: decided gap 4.3% < 9.0% after real-time confirm (recorded only)||
+PENG|2026-10-07|07:15:00|07:15:01|||4.28||gap_floor|filter:universe_below_gap_floor: decided gap 4.3% < 9.0% after real-time confirm (recorded only)||
+PENG|2026-10-07|08:15:00|08:15:01|||4.51||gap_floor|filter:universe_below_gap_floor: decided gap 4.5% < 9.0% after real-time confirm (recorded only)||
+PENG|2026-10-07|08:20:00|08:20:01|||4.49||gap_floor|filter:universe_below_gap_floor: decided gap 4.5% < 9.0% after real-time confirm (recorded only)||
+PENG|2026-10-07|08:25:00|08:25:01|||4.5||gap_floor|filter:universe_below_gap_floor: decided gap 4.5% < 9.0% after real-time confirm (recorded only)||
+PENG|2026-10-07|09:30:00|09:30:02|||3.35||gap_floor|filter:universe_below_gap_floor: decided gap 3.4% < 9.0% after real-time confirm (recorded only)||
+PENG|2026-10-07|09:31:00|09:31:02|||4.3||gap_floor|filter:universe_below_gap_floor: decided gap 4.3% < 9.0% after real-time confirm (recorded only)||
+PENG|2026-10-07|09:35:00|09:35:25|2|1|13.08|40.017|||73.8|HIGH
+PENG|2026-10-07|09:40:00|09:40:04|2|1|13.4|42.916|duplicate|already scored earlier today||
+PENG|2026-10-07|09:45:00|09:45:07|2|1|14.7|43.798|duplicate|already scored earlier today||
+PENG|2026-10-07|09:50:00|09:50:05|1|1|16.73|42.304|duplicate|already scored earlier today||
+PENG|2026-10-07|09:55:00|09:55:05|2|1|17|42.86|duplicate|already scored earlier today||
+(990 rows)

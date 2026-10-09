@@ -1,0 +1,4 @@
+derived rows 956; derived to exactly 0: 86; labelled among them: []
+real EPs                     pairs  257  as built 0.821   bounds from rounding: worst 0.805 .. best 0.840
+GOOD/OKISH                   pairs   94  as built 0.436   bounds from rounding: worst 0.415 .. best 0.479
+BAD (lower better => 1-x)    pairs  126  as built 0.563   bounds from rounding: worst 0.540 .. best 0.571

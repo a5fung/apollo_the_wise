@@ -1,0 +1,8 @@
+2026-05-06 UMC alpha: inside top 20 at 0 of 3 checks, last check 46 of 51 | gap: inside top 20 at 3 of 3 checks, last check 14 of 51 | rs_comp: inside top 20 at 3 of 3 checks, last check 8 of 51
+2026-05-06 ARM alpha: inside top 20 at 3 of 3 checks, last check 4 of 51 | gap: inside top 20 at 1 of 3 checks, last check 25 of 51 | rs_comp: inside top 20 at 3 of 3 checks, last check 7 of 51
+2026-05-07 SNOW alpha: inside top 20 at 0 of 10 checks, last check 49 of 54 | gap: inside top 20 at 0 of 10 checks, last check 29 of 54 | rs_comp: inside top 20 at 0 of 10 checks, last check 51 of 54
+2026-08-04 PLTR alpha: inside top 20 at 30 of 31 checks, last check 22 of 29 | gap: inside top 20 at 31 of 31 checks, last check 9 of 29 | rs_comp: inside top 20 at 31 of 31 checks, last check 18 of 29
+2026-08-07 TEAM alpha: inside top 20 at 9 of 30 checks, last check 24 of 28 | gap: inside top 20 at 30 of 30 checks, last check 4 of 28 | rs_comp: inside top 20 at 30 of 30 checks, last check 1 of 28
+S:alpha: real EPs kept over the whole morning 3 of 5; at the last check only 1 of 5
+S:gap: real EPs kept over the whole morning 4 of 5; at the last check only 3 of 5
+S:rs_comp: real EPs kept over the whole morning 4 of 5; at the last check only 4 of 5

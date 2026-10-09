@@ -1,0 +1,79 @@
+table_name|column_name|data_type
+mi_ep_scan_log|id|integer
+mi_ep_scan_log|scan_date|date
+mi_ep_scan_log|ticker|text
+mi_ep_scan_log|gap_pct|double precision
+mi_ep_scan_log|prev_close|double precision
+mi_ep_scan_log|rel_volume|double precision
+mi_ep_scan_log|filter_reason|text
+mi_ep_scan_log|ep_score|double precision
+mi_ep_scan_log|score_tier|text
+mi_ep_scan_log|catalyst_quality|text
+mi_ep_scan_log|created_at|timestamp with time zone
+mi_ep_scan_log|scan_time_et|timestamp with time zone
+mi_ep_scan_log|rank_by_gap|integer
+mi_ep_scan_log|projected_vol_multiple|double precision
+mi_ep_scan_log|pm_rvol|double precision
+mi_ep_scan_log|adv|double precision
+mi_ep_scan_log|adv_source|text
+mi_ep_scan_log|minutes_since_open|integer
+mi_ep_scan_log|gap_pct_rt|double precision
+mi_ep_scan_log|gap_pct_delayed|double precision
+mi_ep_scan_log|price_source|text
+mi_ep_scan_log|rt_price_age_s|double precision
+mi_ep_scan_log|prev_close_alpaca|double precision
+mi_ep_scan_log|reject_stage|text
+mi_ep_scan_log|current_price|double precision
+mi_ep_scan_log|prev_day_volume|bigint
+mi_ep_scan_log|today_volume|bigint
+mi_ep_scan_log|pm_rvol_baseline_n|integer
+mi_ep_scan_log|days_since_prior_alert|integer
+mi_ep_scan_log|extension_pct|double precision
+mi_ep_scan_log|quality_adv_dollar|double precision
+mi_ep_scan_log|atr_pct|double precision
+mi_ep_scan_log|market_cap|double precision
+mi_ep_scan_log|vol_percentile|double precision
+mi_ep_scan_log|prior_3m_change|double precision
+mi_ep_scan_log|float_shares|double precision
+mi_ep_scan_log|in_active_theme|boolean
+mi_ep_scan_log|llm_catalyst_quality|text
+mi_ep_scan_log|score_breakdown|jsonb
+mi_ep_scan_log|ep_bar|double precision
+mi_ep_scan_log|score_side|text
+mi_ep_scan_log|rank_by_prescore|integer
+mi_ep_shortlist_shadow|id|integer
+mi_ep_shortlist_shadow|scan_date|date
+mi_ep_shortlist_shadow|ticker|text
+mi_ep_shortlist_shadow|scan_time_et|timestamp with time zone
+mi_ep_shortlist_shadow|minutes_since_open|integer
+mi_ep_shortlist_shadow|gap_pct|double precision
+mi_ep_shortlist_shadow|prev_close|double precision
+mi_ep_shortlist_shadow|adv|double precision
+mi_ep_shortlist_shadow|adv_source|text
+mi_ep_shortlist_shadow|in_active_theme|boolean
+mi_ep_shortlist_shadow|rank_by_prescore|integer
+mi_ep_shortlist_shadow|rank_by_gap|integer
+mi_ep_shortlist_shadow|shortlisted_by_prescore|boolean
+mi_ep_shortlist_shadow|shortlisted_by_gap|boolean
+mi_ep_shortlist_shadow|acting_key|text
+mi_ep_shortlist_shadow|board_n|integer
+mi_ep_shortlist_shadow|created_at|timestamp with time zone
+mi_stock_scores|ticker|text
+mi_stock_scores|score_date|date
+mi_stock_scores|rs_1m|double precision
+mi_stock_scores|rs_3m|double precision
+mi_stock_scores|rs_6m|double precision
+mi_stock_scores|rs_composite|double precision
+mi_stock_scores|rs_rank|integer
+mi_stock_scores|sector|text
+mi_stock_scores|adv_20|double precision
+mi_stock_scores|market_cap|double precision
+mi_stock_scores|sma_10|double precision
+mi_stock_scores|sma_20|double precision
+mi_stock_scores|sma_50|double precision
+mi_stock_scores|close|double precision
+mi_stock_scores|raw_1m|double precision
+mi_stock_scores|raw_3m|double precision
+mi_stock_scores|raw_6m|double precision
+mi_stock_scores|sma_40|double precision
+(77 rows)

@@ -1,0 +1,12 @@
+### V6a score_breakdown keys present on graded pool-day rows before 2026-08-29 (sample counts)
+k|count
+(0 rows)
+### V6b theme-ish fields in score_breakdown on 2026-05-05..2026-08-07 crowded-day graded rows, one per ticker-day
+scan_date|ticker|tb|iat|r4|th
+(0 rows)
+### V6c mi_ep_alerts in_active_theme on those days (alerts carry the flag)
+column_name
+theme_gated_score
+in_active_theme
+theme_gated_tier
+(3 rows)

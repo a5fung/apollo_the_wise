@@ -1,0 +1,72 @@
+pool rows 1147 days 111  ticks: {'09:25:00': 107, '07:55:00': 3, '07:10:00': 1}
+P<scan_date on all days: True
+theme rebuild [d-7,d-1] agrees with logged 191/191;  [d-7,d] agrees 188/191
+adv present 810; pm_rvol present 668
+baseline A reproduces logged rank_by_prescore 191/191
+
+== crowded days (pool > 20) ==
+2026-05-05 2026-05-06 2026-05-07 2026-05-08 2026-05-11 2026-05-13 2026-05-14 2026-05-26 2026-05-28 2026-07-30 2026-08-04 2026-08-05 2026-08-07 2026-10-05
+
+2026-09-17: pool 11 at 09:25:00
+
+2026-10-05: pool 25 at 09:25:00
+  A          cut: SBS SDEV STNE TIMB VIV
+  B          cut: SBS PAGS INTR GRML VIV
+  T:pm_rvol  cut: CRML GRML SBS STNE VIV
+  T:adv      cut: SBS PAGS INTR GRML VIV
+  T:gap      cut: STNE PAGS VIV GRML CRML
+  B detail: 1:PBR c=56.0 adv=454.5 pmr=23.231; 2:NU c=55.0 adv=980.3 pmr=21.509; 3:XP c=50.0 adv=163.6 pmr=88.468; 4:PTC c=40.0 adv=198.4 pmr=3241.33; 5:ITUB c=40.0 adv=188.9 pmr=31.356; 6:AFYA c=32.5 adv=- pmr=None; 7:AGBK c=32.5 adv=- pmr=None; 8:ARCO c=32.5 adv=- pmr=59.703; 9:ELPC c=32.5 adv=- pmr=None; 10:INTT c=32.5 adv=- pmr=4.442; 11:PBM c=32.5 adv=- pmr=None; 12:PICS c=32.5 adv=- pmr=None; 13:PLRZ c=32.5 adv=- pmr=None; 14:SDEV c=32.5 adv=- pmr=None; 15:TIMB c=32.5 adv=- pmr=None; 16:PCVX c=31.0 adv=72.2 pmr=271.295; 17:CMC c=31.0 adv=64.0 pmr=0.106; 18:STNE c=10.0 adv=42.6 pmr=None; 19:RXO c=10.0 adv=39.4 pmr=166.514; 20:CRML c=10.0 adv=38.5 pmr=4.442; 21:SBS c=10.0 adv=37.3 pmr=None; 22:PAGS c=10.0 adv=25.0 pmr=56.378; 23:INTR c=10.0 adv=21.4 pmr=37.906; 24:GRML c=10.0 adv=19.2 pmr=0.216; 25:VIV c=10.0 adv=11.9 pmr=None
+
+labelled names on crowded days (rank under A, B, T:adv, T:pm_rvol, T:gap):
+  2026-05-06 UMC REAL_EP pool 51: A=46 B=9 T:adv=9 T:pmr=8 T:gap=8
+  2026-05-06 ARM REAL_EP pool 51: A=2 B=2 T:adv=2 T:pmr=2 T:gap=2
+  2026-05-07 SNOW REAL_EP pool 54: A=49 B=3 T:adv=3 T:pmr=4 T:gap=3
+  2026-05-13 MRAM BAD_CHART pool 26: A=3 B=17 T:adv=17 T:pmr=17 T:gap=17
+  2026-08-04 IBTA BAD_CHART pool 29: A=12 B=12 T:adv=12 T:pmr=10 T:gap=10
+  2026-08-04 BLZE GOOD_CHART pool 29: A=1 B=21 T:adv=21 T:pmr=20 T:gap=20
+  2026-08-04 PLTR REAL_EP pool 29: A=22 B=1 T:adv=1 T:pmr=3 T:gap=2
+  2026-08-05 YOU BAD_CHART pool 21: A=21 B=16 T:adv=16 T:pmr=15 T:gap=16
+  2026-08-07 TEAM REAL_EP pool 28: A=24 B=4 T:adv=4 T:pmr=5 T:gap=4
+
+== within-day pairwise separation (positive vs unlabelled pool-mate; missing ranks last; ties .5) ==
+adv      negs=unlab   REAL all: auc=0.874 eps=10 pairs=257 per-EP=0.776 | present-only: 0.876 eps=9 pairs=217 | GOOD (0.574, 5, 47) OKISH (0.681, 5, 47) BAD(higher=ranked first) (0.516, 11, 126)
+adv      negs=nolean  REAL all: auc=0.874 eps=10 pairs=257 per-EP=0.776 | present-only: 0.876 eps=9 pairs=217 | GOOD (0.574, 5, 47) OKISH (0.681, 5, 47) BAD(higher=ranked first) (0.516, 11, 126)
+pm_rvol  negs=unlab   REAL all: auc=0.619 eps=10 pairs=257 per-EP=0.7 | present-only: 0.644 eps=7 pairs=73 | GOOD (0.702, 5, 47) OKISH (0.66, 5, 47) BAD(higher=ranked first) (0.675, 11, 126)
+pm_rvol  negs=nolean  REAL all: auc=0.619 eps=10 pairs=257 per-EP=0.7 | present-only: 0.644 eps=7 pairs=73 | GOOD (0.702, 5, 47) OKISH (0.66, 5, 47) BAD(higher=ranked first) (0.675, 11, 126)
+gap      negs=unlab   REAL all: auc=0.661 eps=10 pairs=257 per-EP=0.72 | present-only: 0.661 eps=10 pairs=257 | GOOD (0.617, 5, 47) OKISH (0.617, 5, 47) BAD(higher=ranked first) (0.659, 11, 126)
+gap      negs=nolean  REAL all: auc=0.661 eps=10 pairs=257 per-EP=0.72 | present-only: 0.661 eps=10 pairs=257 | GOOD (0.617, 5, 47) OKISH (0.617, 5, 47) BAD(higher=ranked first) (0.659, 11, 126)
+adv      GOOD/OKISH pooled (0.628, 94)  BAD pooled share-ranked-above (0.516, 126) -> 'lower better' = 0.484
+pm_rvol  GOOD/OKISH pooled (0.681, 94)  BAD pooled share-ranked-above (0.675, 126) -> 'lower better' = 0.325
+gap      GOOD/OKISH pooled (0.617, 94)  BAD pooled share-ranked-above (0.659, 126) -> 'lower better' = 0.341
+
+full-order separation: A (0.358, 257)  B (0.821, 257)  T:pm_rvol (0.805, 257)  T:gap (0.817, 257)
+
+per real EP (rank in day's pool under standalone adv / pm_rvol / gap; pool size):
+  2026-05-06 UMC: adv=9 pmr=11 gap=14 B=9 A=46 / 51  adv$=157.6M pm_rvol=3.421 theme=False comp=40.0
+  2026-05-06 ARM: adv=2 pmr=19 gap=25 B=2 A=2 / 51  adv$=1366.9M pm_rvol=None theme=True comp=65.0
+  2026-05-07 SNOW: adv=1 pmr=50 gap=29 B=3 A=49 / 54  adv$=956.1M pm_rvol=None theme=False comp=55.0
+  2026-05-29 QURE: adv=9 pmr=2 gap=7 B=9 A=12 / 16  adv$=38.1M pm_rvol=33.795 theme=False comp=10.0
+  2026-06-18 BFLY: adv=3 pmr=1 gap=2 B=8 A=1 / 9  adv$=25.4M pm_rvol=85.188 theme=False comp=10.0
+  2026-08-04 PLTR: adv=1 pmr=10 gap=9 B=1 A=22 / 29  adv$=3972.6M pm_rvol=8.281 theme=False comp=55.0
+  2026-08-07 TEAM: adv=4 pmr=6 gap=4 B=4 A=24 / 28  adv$=409.2M pm_rvol=24.167 theme=False comp=46.0
+  2026-08-14 HTFL: adv=7 pmr=4 gap=5 B=15 A=8 / 15  adv$=28.4M pm_rvol=30.93 theme=False comp=10.0
+  2026-08-19 MRNA: adv=2 pmr=1 gap=2 B=2 A=8 / 11  adv$=314.2M pm_rvol=275.137 theme=False comp=46.0
+  2026-09-03 CHPT: adv=6 pmr=7 gap=3 B=5 A=6 / 9  adv$=NoneM pm_rvol=None theme=False comp=32.5
+  2026-05-05 pool 26 rank20 comp 10.0 rank21 comp 10.0 above 9 slots 11 no-ADV names 0
+  2026-05-06 pool 51 rank20 comp 31.0 rank21 comp 31.0 above 14 slots 6 no-ADV names 0
+  2026-05-07 pool 54 rank20 comp 31.0 rank21 comp 31.0 above 14 slots 6 no-ADV names 0
+  2026-05-08 pool 23 rank20 comp 10.0 rank21 comp 10.0 above 9 slots 11 no-ADV names 3
+  2026-05-11 pool 29 rank20 comp 10.0 rank21 comp 10.0 above 15 slots 5 no-ADV names 1
+  2026-05-13 pool 26 rank20 comp 10.0 rank21 comp 10.0 above 17 slots 3 no-ADV names 4
+  2026-05-14 pool 23 rank20 comp 10.0 rank21 comp 10.0 above 10 slots 10 no-ADV names 0
+  2026-05-26 pool 21 rank20 comp 10.0 rank21 comp 10.0 above 6 slots 14 no-ADV names 0
+  2026-05-28 pool 21 rank20 comp 10.0 rank21 comp 10.0 above 10 slots 10 no-ADV names 1
+  2026-07-30 pool 30 rank20 comp 32.5 rank21 comp 32.5 above 17 slots 3 no-ADV names 6
+  2026-08-04 pool 29 rank20 comp 20.0 rank21 comp 20.0 above 19 slots 1 no-ADV names 8
+  2026-08-05 pool 21 rank20 comp 10.0 rank21 comp 10.0 above 17 slots 3 no-ADV names 9
+  2026-08-07 pool 28 rank20 comp 31.0 rank21 comp 31.0 above 19 slots 1 no-ADV names 9
+  2026-10-05 pool 25 rank20 comp 10.0 rank21 comp 10.0 above 17 slots 3 no-ADV names 10
+total slots decided by tie-breaker: 87
+  08-04 BLZE: comp 20.0 adv 32892202.93 pm_rvol 12.372 gap 22.19
+  08-04 INSP: comp 20.0 adv 43419206.74 pm_rvol 1.996 gap 15.86
+full-order lean: B GOOD/OKISH (0.255, 94) B BAD(share above) (0.365, 126) A GOOD/OKISH (0.553, 94) A BAD (0.627, 126)

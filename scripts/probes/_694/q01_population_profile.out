@@ -1,0 +1,100 @@
+pre_open|reject_stage|reason_shape|has_rank_gap|has_rank_prescore|n|first_d|last_d
+f|universe_floor|filter:universe_prev_close_too_low: prior clo|f|f|13007|2026-08-31|2026-10-08
+f|gap_floor|filter:universe_below_gap_floor: decided gap |f|f|3758|2026-08-31|2026-10-08
+f||filter:universe_prev_close_too_low: prior clo|f|f|2020|2026-08-24|2026-08-28
+f||outside top-# gap cap (gap #)|t|f|1127|2026-05-01|2026-08-07
+f||already scored earlier today|t|f|938|2026-05-01|2026-08-28
+f|universe_floor|filter:universe_prev_day_illiquid: prior-day |f|f|758|2026-08-31|2026-10-08
+f||score # < # (catalyst=routine)|t|f|753|2026-05-01|2026-08-21
+f||filter:session_rvol_too_low: session_rvol=# (|t|f|601|2026-05-07|2026-08-27
+f||quality filter: filter:mcap_too_small: $#M < |t|f|565|2026-05-01|2026-08-28
+f||already up # in prior # days (extended)|t|f|518|2026-05-01|2026-08-28
+f||quality filter: filter:adv_too_low: $#|t|f|513|2026-05-01|2026-08-26
+f||quality filter: filter:atr_too_high: # > #|t|f|290|2026-05-11|2026-08-25
+f||EP cooldown — alerted within last # days|t|f|277|2026-05-05|2026-08-25
+f||M&A/buyout catalyst — no momentum trade|t|f|252|2026-05-05|2026-08-25
+f||filter:universe_prev_day_illiquid: prior-day |f|f|239|2026-08-24|2026-08-28
+f|quality_filter|quality filter: filter:adv_too_low: $#|t|t|209|2026-08-31|2026-10-08
+f|score_bar|score # < bar # (catalyst=routine)|t|t|194|2026-08-31|2026-10-08
+f||low volume rel_vol # < # (post-open)|t|f|194|2026-05-01|2026-05-06
+f|quality_filter|quality filter: filter:mcap_too_small: $#M < |t|t|184|2026-08-31|2026-10-05
+f|extension|already up # in prior # days (extended)|t|t|174|2026-08-31|2026-10-07
+f|score_bar|score # < bar # (catalyst=strong)|t|t|171|2026-08-31|2026-10-08
+f||routine catalyst, gap #|t|f|117|2026-05-01|2026-08-27
+f||pre-mkt volume # < # shares|t|f|114|2026-05-01|2026-08-19
+f||score # < # (catalyst=strong)|t|f|111|2026-05-06|2026-08-19
+f||<null>|t|f|103|2026-05-01|2026-08-27
+f|duplicate|already scored earlier today|t|t|98|2026-09-03|2026-10-08
+f|post_grade_filter|routine catalyst, gap #|t|t|96|2026-09-02|2026-10-06
+f|quality_filter|quality filter: filter:atr_too_high: # > #|t|t|77|2026-08-31|2026-10-08
+f||quality filter: filter:adv_no_data|t|f|72|2026-05-08|2026-08-10
+f|post_grade_filter|M&A/buyout catalyst — no momentum trade|t|t|70|2026-09-03|2026-10-08
+f|cooldown|EP cooldown — alerted within last # days|t|t|66|2026-09-03|2026-10-06
+f||score # < bar # (catalyst=routine)|t|f|46|2026-08-24|2026-08-28
+f||score -# < # (catalyst=routine)|t|f|36|2026-05-05|2026-08-18
+f|rvol_gate|filter:session_rvol_too_low: session_rvol=# (|t|t|31|2026-08-31|2026-10-07
+f|shortlist_cap|outside top-# shortlist (prescore rank # gap |t|t|24|2026-09-17|2026-10-05
+f||<null>|t|t|15|2026-09-03|2026-10-07
+f||low volume projected # < # (post-open)|t|f|13|2026-05-01|2026-05-06
+f||score # < bar # (catalyst=strong)|t|f|6|2026-08-24|2026-08-26
+f|post_grade_filter|pre-mkt volume # < # shares|t|t|3|2026-09-17|2026-10-05
+t|universe_floor|filter:universe_prev_close_too_low: prior clo|f|f|48935|2026-08-31|2026-10-08
+t|gap_floor|filter:universe_below_gap_floor: decided gap |f|f|10625|2026-08-31|2026-10-08
+t||filter:universe_prev_close_too_low: prior clo|f|f|7684|2026-08-24|2026-08-28
+t||already scored earlier today|t|f|3423|2026-05-01|2026-08-28
+t||score # < # (catalyst=routine)|t|f|3107|2026-05-01|2026-08-19
+t||quality filter: filter:adv_too_low: $#|t|f|2197|2026-05-04|2026-08-28
+t||quality filter: filter:mcap_too_small: $#M < |t|f|2140|2026-05-01|2026-08-27
+t|universe_floor|filter:universe_prev_day_illiquid: prior-day |f|f|1898|2026-08-31|2026-10-08
+t||already up # in prior # days (extended)|t|f|1850|2026-05-01|2026-08-28
+t||pre-mkt volume # < # shares|t|f|1807|2026-05-01|2026-08-25
+t||M&A/buyout catalyst — no momentum trade|t|f|1237|2026-05-01|2026-08-20
+t||outside top-# gap cap (gap #)|t|f|1222|2026-05-05|2026-08-07
+t||quality filter: filter:atr_too_high: # > #|t|f|1168|2026-05-01|2026-08-25
+t||EP cooldown — alerted within last # days|t|f|1074|2026-05-04|2026-08-25
+t||routine catalyst, gap #|t|f|854|2026-05-01|2026-08-28
+t||filter:universe_prev_day_illiquid: prior-day |f|f|853|2026-08-24|2026-08-28
+t||filter:pm_rvol_too_low: pm_rvol=# (today # / |t|f|844|2026-05-06|2026-08-28
+t||score # < # (catalyst=strong)|t|f|755|2026-05-01|2026-08-20
+t|quality_filter|quality filter: filter:adv_too_low: $#|t|t|751|2026-08-31|2026-10-08
+t|extension|already up # in prior # days (extended)|t|t|697|2026-09-03|2026-10-08
+t|score_bar|score # < bar # (catalyst=routine)|t|t|649|2026-08-31|2026-10-08
+t|quality_filter|quality filter: filter:mcap_too_small: $#M < |t|t|570|2026-08-31|2026-10-08
+t|score_bar|score # < bar # (catalyst=strong)|t|t|560|2026-09-01|2026-10-08
+t|post_grade_filter|routine catalyst, gap #|t|t|345|2026-08-31|2026-10-08
+t|duplicate|already scored earlier today|t|t|286|2026-09-03|2026-10-08
+t||score -# < # (catalyst=routine)|t|f|243|2026-05-04|2026-08-18
+t||quality filter: filter:adv_no_data|t|f|240|2026-05-13|2026-08-14
+t|post_grade_filter|M&A/buyout catalyst — no momentum trade|t|t|236|2026-09-09|2026-10-08
+t|quality_filter|quality filter: filter:atr_too_high: # > #|t|t|221|2026-08-31|2026-10-08
+t|rvol_gate|filter:pm_rvol_too_low: pm_rvol=# (today # / |t|t|206|2026-08-31|2026-10-07
+t||<null>|t|f|204|2026-05-01|2026-08-28
+t||score # < bar # (catalyst=routine)|t|f|186|2026-08-26|2026-08-28
+t|cooldown|EP cooldown — alerted within last # days|t|t|176|2026-09-15|2026-10-06
+t|post_grade_filter|pre-mkt volume # < # shares|t|t|104|2026-09-01|2026-10-05
+t||score # < bar # (catalyst=strong)|t|f|82|2026-08-24|2026-08-28
+t|shortlist_cap|outside top-# shortlist (prescore rank # gap |t|t|74|2026-10-05|2026-10-05
+t|quality_filter|quality filter: filter:adv_no_data|t|t|29|2026-09-01|2026-09-30
+t||<null>|t|t|15|2026-09-03|2026-10-08
+||outside top-# gap cap (gap #)|f|f|243|2026-04-14|2026-04-30
+||low volume rel_vol # < # (post-open)|f|f|57|2026-04-17|2026-04-30
+||low rel volume # < #|f|f|55|2026-04-13|2026-04-14
+||pre-mkt volume # < # shares|f|f|55|2026-04-16|2026-04-30
+||<null>|f|f|42|2026-04-13|2026-04-30
+||already up # in prior # days (extended)|f|f|38|2026-04-16|2026-04-30
+||low rel volume # < # (post-open)|f|f|28|2026-04-16|2026-04-16
+||low volume projected # < # (post-open)|f|f|27|2026-04-20|2026-04-30
+||score # < # (catalyst=routine)|f|f|18|2026-04-20|2026-04-30
+||routine catalyst, gap #|f|f|17|2026-04-21|2026-04-29
+||quality filter: filter:mcap_too_small: $#M < |f|f|16|2026-04-23|2026-04-30
+||M&A/buyout catalyst — no momentum trade|f|f|13|2026-04-20|2026-04-30
+||quality filter: ADV too low ($#)|f|f|12|2026-04-14|2026-04-22
+||score # < # (catalyst=strong)|f|f|9|2026-04-20|2026-04-30
+||quality filter: Market cap too low ($#M)|f|f|9|2026-04-13|2026-04-22
+||quality filter: filter:adv_too_low: $#|f|f|8|2026-04-23|2026-04-29
+||EP cooldown — alerted within last # days|f|f|7|2026-04-20|2026-04-28
+||quality filter: filter:atr_too_high: # > #|f|f|3|2026-04-24|2026-04-28
+||quality filter: ATR too high (#)|f|f|2|2026-04-20|2026-04-20
+||score -# < # (catalyst=routine)|f|f|1|2026-04-20|2026-04-20
+||quality filter: filter:adv_no_data|f|f|1|2026-04-24|2026-04-24
+(98 rows)
