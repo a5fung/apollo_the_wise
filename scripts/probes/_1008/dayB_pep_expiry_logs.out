@@ -1,0 +1,5 @@
+== apollo-execution
+13:30:57 [agents.market_intelligence.broker.trade_stream] INFO: WS [paper] event: expired | PEP | order=5f38a844-7acf-4f5e-a841-ae7847b71707 | status=OrderStatus.EXPIRED
+13:30:57 [agents.market_intelligence.broker.order_manager] INFO: trade_stream.full_exit_cancel_restore: PEP re-protect at $120.16 (floor base_not_below_broker, pointer=None)
+13:30:57 [agents.market_intelligence.broker.trade_stream] WARNING: WS [paper]: full exit expired for PEP, no free shares to re-protect (live resting orders hold them)
+== apollo-market
