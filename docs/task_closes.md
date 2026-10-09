@@ -2061,3 +2061,12 @@ EVIDENCE:
 - **His call, 2026-10-08:** *"yes, leave it recording"* to "nothing goes live: close #327 and leave the lane recording in shadow".
 - **Not lost:** the pre-registered mid-November re-read (§7 of the hypotheses doc) + H6's ERA B 40-session read are a cadence review, `delayed_entry_mid_november_reread` (due 2026-11-16); the live tail rate keeps accruing under `delayed_entry_shadow_first_read` (20 of 30 settled fires on 10-08).
 - **#635 addendum verify (Thu 10-08):** 0 `ep_candidate_parse_error` rows on an ordinary scan day while the EP scan ran (2,359 scan-log rows) — the baselined F8 floor holds. (The per-tick INFO drop-count line ships Fri noon with b00386a7.)
+
+## #696 — /trades shows each closed trade's R and no attempts count (2026-10-09)
+
+BAR: "`/trades` renders each closed line with its realized R (e.g. 'VICR $+76 · +7.5R (19d) · Oct 07') and no attempts suffix, verified on the real rendered reply in Telegram (orchestrator path), with a test pinning VICR #400's R to the sell-discipline value."
+
+EVIDENCE:
+- **The real rendered reply in Telegram (his /trades, pasted 2026-10-09 ~15:15 PT):** every Last-5-Closed line carries its R and no attempts suffix — `❌ CEG $-59 · -1.0R (1d) · Oct 08`, `✅ VICR $+76 · +7.3R (19d) · Oct 07`, `✅ OKTA $+47 · +1.4R (29d) · Sep 28`, `✅ SEI $+4 · +0.4R (13d) · Sep 22`, `❌ HOOD $-27 · -0.8R (11d) · Sep 15`.
+- **VICR reads +7.3R, the DoD's "≈ +7.5R" example:** 7.3029 is the stored sell-discipline value for trade #400 (one formula, `sell_discipline.trade_realized_r`, now used by both surfaces).
+- **The test:** `tests/test_696_trades_closed_r.py` pins VICR #400 to 7.3029 (prod-sourced fixture) and the rendered line; fails on the pre-change code (shipped 6cc36c7b, deployed noon 10-09).
