@@ -163,4 +163,4 @@ BAR (pre-set): new first on >=5 of 9 AND never lower than today. STRICT: new 4/9
      today: Enterprise HR & Workforce Management SaaS (industry 1.00)
      new:   Marketing & Digital Presence SaaS Platforms (industry 1.00, words 0.105)
 
-scorers: probe closeness.py (pre-build)
+scorers: engine

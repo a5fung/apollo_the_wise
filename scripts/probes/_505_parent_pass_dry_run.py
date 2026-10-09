@@ -86,6 +86,11 @@ Q_SECT = (
     "WHERE score_date=(SELECT MAX(score_date) FROM mi_stock_scores) "
     "AND sector IS NOT NULL AND sector <> 'Unknown'"
 )
+# #505 closeness pick: the same industries the armed night reads (mi_ticker_overrides).
+Q_IND = (
+    "SELECT ticker, industry FROM mi_ticker_overrides "
+    "WHERE industry IS NOT NULL AND industry <> ''"
+)
 
 
 def _psql_direct(query: str) -> list[list[str]]:
@@ -174,13 +179,19 @@ def main() -> int:
     cooldown_rows = psql(Q_COOL)
     cooldown_pairs = {pair_key(a, b) for a, b, _v in cooldown_rows}
     sectors = {t: s for t, s in psql(Q_SECT)}
+    try:
+        industries = {t: i for t, i in psql(Q_IND)} or None
+    except Exception as e:  # same fail-safe as the armed night: unreadable -> size-based ranking
+        print(f"industries unreadable ({e}) - dry run uses the size-based ranking", file=sys.stderr)
+        industries = None
 
     live = [t for t in board if t["stage"] != "Retired" and t["tickers"]]
     arm_b = propose_merge_pairs(live, cooldown_pairs=cooldown_pairs,
                                 sectors_by_ticker=sectors, max_pairs=None)
     arm_b_pairs = {pair_key(a["name"], o["name"]) for a, o in arm_b}
     queue = te.propose_parent_candidates(board, eco_map, cooldown_pairs=cooldown_pairs,
-                                         arm_b_pairs=arm_b_pairs, cap=None)
+                                         arm_b_pairs=arm_b_pairs, cap=None,
+                                         industry_by_ticker=industries)
     tonight = queue[:te.PARENT_PASS_CAP_PER_NIGHT]
     would_ask = {c["child"]: c for c in queue}
 

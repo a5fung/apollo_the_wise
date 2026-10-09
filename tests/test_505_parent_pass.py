@@ -64,6 +64,16 @@ def _board():
 ECO = {BROAD: "E-INS", NARROW: "E-INS", OTHER_ECO: "E-BANKFIN"}
 
 
+@pytest.fixture(autouse=True)
+def _no_industry_read(monkeypatch):
+    """The armed night reads industries from the DB (#505 closeness pick); these tests pin
+    the pre-closeness ranking and must not touch a pool -> 'industries unreadable' (None).
+    The closeness pick itself is pinned in tests/test_505_closeness_pick.py."""
+    async def _none(themes):
+        return None
+    monkeypatch.setattr(te, "_read_parent_pass_industries", _none)
+
+
 def _wire(monkeypatch, verdict_by_child: dict, *, raise_for: set[str] = frozenset()):
     """Fake CONTAINMENT adjudicator keyed by the CHILD's name; captured audits +
     cooldowns; no DB (cooldown read + Arm-B territory are injected as empty).

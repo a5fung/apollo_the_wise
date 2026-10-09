@@ -70,7 +70,7 @@ from agents.market_intelligence.db import (
     get_operator_protected_set, get_ticker_breadth_above_sma20, breadth_above_sma20,
     add_merge_distinct_cooldown, get_merge_distinct_pairs,
     get_theme_subtheme_arm_enabled, get_theme_birth_gate_mode,
-    get_theme_parent_pass_enabled,
+    get_theme_parent_pass_enabled, get_industries_for_tickers,
     get_seeded_assignment_tickers, latest_complete_score_date_sql,
     record_theme_rename, THEME_RENAME_MECHANISM_MASS_FLAG,
     get_recent_rehome_judged_tickers, REHOME_JUDGED_EVENT,
@@ -365,6 +365,35 @@ PARENT_PASS_INVERTED_COOLDOWN_DAYS = 7  # INVERTED → recorded, no link — a s
     # backwards from what was asked, so membership drift re-broadening one side is worth
     # re-checking sooner than a genuine no-relationship (PEERS/UNRELATED) pair — never zero,
     # so a stable-membership pair isn't re-asked every night for free.
+
+# ── #505 CLOSENESS parent pick (operator 2026-10-09: "Yes") ──────────────────
+# The old fallback asked the BIGGEST same-ecosystem theme when nothing was shared
+# (Class I Railroads -> tanker shipping: 31 PEERS / 12 UNRELATED of 54 asks). The
+# candidate parent is now ranked by closeness of meaning. Rank key, lowest first:
+#   (-shared member stocks, -industry overlap, -word similarity, -parent size, name)
+# Offline replay: docs/analysis/505_picker_replay_2026-10-09.md; rule fixed before any
+# result was seen, ported unchanged from scripts/probes/_505_picker/closeness.py.
+# THE MINIMUM (his 10-09 yes): a candidate whose industry overlap is below this AND that
+# shares no member stock with the child is never asked.
+PARENT_PASS_MIN_INDUSTRY_OVERLAP = 0.5
+_CLOSENESS_STOP_WORDS = frozenset("""
+a an and are as at be been being but by can could did do does for from had has have he her his how i if in
+into is it its itself may might more most much no nor not of off on once only or other our out over own same
+she should so some such than that the their them then there these they this those through to too under until
+up very was we were what when where which while who whom why will with would you your also just about across
+after again against all any because before below between both down during each few further here many new
+one two three us via vs per amid around still yet ever even well
+""".split())
+# Words that appear across theme names/descriptions whatever the subject - they say nothing about closeness.
+_CLOSENESS_THEME_COMMON_WORDS = frozenset("""
+stock stocks company companies theme themes group groups sector sectors name names play plays basket baskets
+catalyst catalysts shared share driven drive driving rally rallies rallying move moves moving trade trading
+investor investors broad broader broadly market markets demand expectation expectations appear appears seem
+seems single clear common recent recently strong stronger higher rise rising gain gains boost boosted lift
+lifted renewed optimism headline headlines news report reports result results quarter quarterly outlook
+analyst analysts rating ratings target targets price prices tailwind momentum rotation rebound recovery
+upgrade upgrades sentiment continued continue spending fresh specific
+""".split())
 
 # Semaphore: max concurrent Perplexity search calls (5 = ~2 rounds for 10 themes vs 4 at 3)
 _SEARCH_SEM = asyncio.Semaphore(5)
@@ -9062,6 +9091,50 @@ def _containment_ancestors(name: str, parent_of: dict[str, str]) -> set[str]:
     return seen
 
 
+def _closeness_stem(tok: str) -> str:
+    if len(tok) > 4 and tok.endswith("ies"):
+        return tok[:-3] + "y"
+    if len(tok) > 5 and tok.endswith("ing"):
+        return tok[:-3]
+    if len(tok) > 3 and tok.endswith("s") and not tok.endswith("ss"):
+        return tok[:-1]
+    return tok
+
+
+def _closeness_tokens(theme: dict) -> set[str]:
+    """Subject words of a theme's name + description (stop words, common theme words,
+    numbers and <3-letter words dropped; light stemming). #505 closeness pick."""
+    text = f"{theme.get('name') or ''} {theme.get('description') or ''}".lower()
+    out: set[str] = set()
+    for tok in re.split(r"[^a-z0-9]+", text):
+        if len(tok) < 3 or tok.isdigit() or tok in _CLOSENESS_STOP_WORDS or tok in _CLOSENESS_THEME_COMMON_WORDS:
+            continue
+        stem = _closeness_stem(tok)
+        if stem in _CLOSENESS_STOP_WORDS or stem in _CLOSENESS_THEME_COMMON_WORDS:
+            continue
+        out.add(stem)
+    return out
+
+
+def parent_word_similarity(child: dict, parent: dict) -> float:
+    """Jaccard of the two themes' subject-word sets; 0.0 if either set is empty."""
+    a, b = _closeness_tokens(child), _closeness_tokens(parent)
+    if not a or not b:
+        return 0.0
+    return len(a & b) / len(a | b)
+
+
+def parent_industry_overlap(child: dict, parent: dict, industry_by_ticker: dict) -> float:
+    """Share of the child's members (those WITH an industry) whose industry appears among
+    the candidate parent's members' industries. 0.0 when no child member has an industry."""
+    c_ind = [industry_by_ticker.get(tk) for tk in (child.get("tickers") or [])]
+    c_ind = [i for i in c_ind if i]
+    if not c_ind:
+        return 0.0
+    p_ind = {industry_by_ticker.get(tk) for tk in (parent.get("tickers") or [])} - {None, ""}
+    return sum(1 for i in c_ind if i in p_ind) / len(c_ind)
+
+
 def propose_parent_candidates(
     themes: list[dict],
     eco_map: dict[str, str],
@@ -9069,6 +9142,7 @@ def propose_parent_candidates(
     cooldown_pairs: "set[tuple[str, str]] | frozenset" = frozenset(),
     arm_b_pairs: "set[tuple[str, str]] | frozenset" = frozenset(),
     cap: "int | None" = PARENT_PASS_CAP_PER_NIGHT,
+    industry_by_ticker: "dict[str, str] | None" = None,
 ) -> list[dict]:
     """PURE, deterministic, no DB, no LLM — the ONE definition of "what the
     parent pass would ask tonight". `scripts/probes/_505_parent_pass_dry_run.py`
@@ -9099,11 +9173,18 @@ def propose_parent_candidates(
     both sides: a struck-through parent nests nothing useful and the theme is
     on its way out.
 
-    Priority (why THIS parent): shared tickers desc — measured 2026-09-26 as
-    the rarest and strongest signal (1 pair on the whole board) — then shared
-    name tokens, then parent breadth, then name. Children are ordered by the
-    same signal so the nightly cap spends adjudications on the surest pairs
-    first. Returns [{child, parent, e_code, shared_tickers, shared_tokens,
+    Priority (why THIS parent), #505 CLOSENESS pick (his yes 2026-10-09), when
+    `industry_by_ticker` is supplied: shared tickers desc — measured 2026-09-26 as
+    the rarest and strongest signal (1 pair on the whole board) — then industry
+    overlap of the member stocks, then name+description word similarity, then
+    parent breadth, then name. THE MINIMUM: a candidate with industry overlap
+    < PARENT_PASS_MIN_INDUSTRY_OVERLAP that shares NO member stock is never asked;
+    a child left with no candidate is simply not asked tonight (no cooldown).
+    `industry_by_ticker` None/empty (industries unreadable) -> the pre-closeness
+    ranking (shared tickers, shared name tokens, breadth, name) and NO minimum,
+    exactly as before. Children are ordered by shared tickers / shared name tokens
+    / child size so the nightly cap spends adjudications on the surest pairs
+    first (unchanged). Returns [{child, parent, e_code, shared_tickers, shared_tokens,
     child_members, parent_members, child_source, why}] capped at `cap`
     (None = uncapped, the probe's whole-board view).
     """
@@ -9115,6 +9196,7 @@ def propose_parent_candidates(
     ]
     parent_of = {t["name"]: t["parent_theme"] for t in live if t.get("parent_theme")}
     out: list[dict] = []
+    closeness = bool(industry_by_ticker)
     for c in live:
         if c.get("parent_theme"):
             continue
@@ -9136,12 +9218,20 @@ def propose_parent_candidates(
                 continue  # would close a cycle
             shared_tk = len(c_tk & set(p["tickers"]))
             shared_tok = len(c_tok & _name_tokens(p["name"]))
-            rank = (-shared_tk, -shared_tok, -len(p["tickers"]), p["name"])
+            if closeness:
+                ind = round(parent_industry_overlap(c, p, industry_by_ticker), 6)
+                if shared_tk == 0 and ind < PARENT_PASS_MIN_INDUSTRY_OVERLAP:
+                    continue  # THE MINIMUM (his 10-09 yes): nothing shared, industries don't line up
+                wsim = round(parent_word_similarity(c, p), 6)
+                rank = (-shared_tk, -ind, -wsim, -len(p["tickers"]), p["name"])
+            else:
+                ind = wsim = None
+                rank = (-shared_tk, -shared_tok, -len(p["tickers"]), p["name"])
             if best is None or rank < best[0]:
-                best = (rank, p, shared_tk, shared_tok, key)
+                best = (rank, p, shared_tk, shared_tok, key, ind, wsim)
         if best is None:
             continue
-        _, p, shared_tk, shared_tok, key = best
+        _, p, shared_tk, shared_tok, key, ind, wsim = best
         if key in arm_b_pairs:
             continue  # Arm B's pair, Arm B's call — the child waits, see docstring
         out.append({
@@ -9149,13 +9239,33 @@ def propose_parent_candidates(
             "shared_tickers": shared_tk, "shared_tokens": shared_tok,
             "child_members": len(c_tk), "parent_members": len(p["tickers"]),
             "child_source": c.get("source") or "live",
+            "industry_overlap": ind, "word_similarity": wsim,
             "why": (f"same ecosystem {code}; parent {len(p['tickers'])} vs child "
                     f"{len(c_tk)} members; shared tickers {shared_tk}; "
-                    f"shared name tokens {shared_tok}"),
+                    f"shared name tokens {shared_tok}"
+                    + (f"; industry overlap {ind:.2f}; word similarity {wsim:.3f}" if closeness else "")),
         })
     out.sort(key=lambda r: (-r["shared_tickers"], -r["shared_tokens"],
                             -r["child_members"], r["child"]))
     return out if cap is None else out[:cap]
+
+
+async def _read_parent_pass_industries(themes: list[dict]) -> "dict[str, str] | None":
+    """ONE batched read of `mi_ticker_overrides.industry` for every member of every live
+    theme (the engine's existing batch lookup - no per-ticker query). None when it cannot
+    be read or comes back empty -> the caller falls back to the pre-closeness ranking for the
+    night (fail safe, never crashes the pass)."""
+    try:
+        tickers = sorted({tk for t in themes if t.get("stage") != "Retired" for tk in (t.get("tickers") or [])})
+        if not tickers:
+            return None
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            industries = await get_industries_for_tickers(conn, tickers)
+        return industries or None
+    except Exception as e:  # loud-ok: one warning line, tonight falls back to the size/name ranking
+        logger.warning(f"[parent pass] industries unreadable ({e}) - closeness pick off tonight, using the size-based ranking")
+        return None
 
 
 async def _parent_pass_cooldown(child: dict, parent: dict, reason: str, days: int, verdict: str) -> None:
@@ -9245,8 +9355,10 @@ async def _run_parent_pass(
                 max_pairs=None,
             )
         }
+        industry_by_ticker = await _read_parent_pass_industries(all_themes)
         cands = propose_parent_candidates(
             all_themes, eco_map, cooldown_pairs=cooldown_pairs, arm_b_pairs=arm_b_pairs, cap=cap,
+            industry_by_ticker=industry_by_ticker,
         )
         by_name = {t["name"]: t for t in all_themes}
         client = _get_anthropic_client() if cands else None
