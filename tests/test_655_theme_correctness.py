@@ -127,12 +127,17 @@ def test_anchor_g1_g2_g3_reproduce_the_probes_signed_numbers():
         "G3 must reproduce the probe's signed 103 of 118 (RNG-stream-sensitive — see module docstring)"
 
 
-def test_g1_bar_pinned_to_the_engines_own_admission_bar():
-    """G1_BAR is kept as a literal (theme_engine.py pulls in anthropic at import time — these are
-    pure functions that must stay light) — pin it so it can never silently drift from the live
-    engine's ASSIGN_COMOVE_BAR."""
-    from agents.market_intelligence import theme_engine
+def test_literals_pinned_to_the_engine():
+    """theme_correctness keeps the engine's numbers as literals (theme_engine.py pulls in anthropic
+    at import time — these are pure functions that must stay light) — pin them so they can never
+    silently drift: G1_BAR = the admission bar; G4's "under 3" = rule B's line; the wait's window =
+    get_active_themes' default, which rule B's previous-night snapshot reads."""
+    import inspect
+    from agents.market_intelligence import db, theme_engine
     assert tc.G1_BAR == theme_engine.ASSIGN_COMOVE_BAR
+    assert tc.G4_SMALL_MIN_MEMBERS == theme_engine.SMALL_FADING_RETIRE_MIN_MEMBERS
+    assert tc.WAIT_PRIOR_WINDOW_DAYS == (
+        inspect.signature(db.get_active_themes).parameters["stale_after_days"].default)
 
 
 # ── (b) hand-built RED-proof fixtures ────────────────────────────────────────────────────────────
@@ -185,7 +190,6 @@ def test_g4_passes_at_zero_small_themes_and_fails_on_one_two_member_theme():
     assert bad["pass_bar"] is False and bad["list"] == ["Tiny"]
 
 
-
 # ── G4 settled (operator 2026-10-08: keep rule B's wait, report G4 two ways) ─────────────────────
 _TONIGHT = date(2026, 10, 8)
 
@@ -195,8 +199,8 @@ def _row(name, n, *, stage="Fading", rs_avg=None, d=_TONIGHT):
             "tickers": [f"{name}{i}" for i in range(n)]}
 
 
-def _hist(name, n, d):
-    return {"date": d, "name": name, "tickers": [f"{name}{i}" for i in range(n)]}
+def _hist(name, n, d, stage="Fading"):
+    return {"date": d, "name": name, "stage": stage, "tickers": [f"{name}{i}" for i in range(n)]}
 
 
 def test_waiting_night_holds_only_a_newly_shrunk_weak_fading_theme():
@@ -204,6 +208,7 @@ def test_waiting_night_holds_only_a_newly_shrunk_weak_fading_theme():
         _row("Shrunk", 2),                              # 4 last night -> held tonight
         _row("New", 1),                                 # no previous night -> held
         _row("StaleOnly", 2),                           # previous row 9 days back -> no prior -> held
+        _row("Revived", 2),                             # last night a Retired tombstone -> no prior -> held
         _row("AlreadySmall", 2),                        # 2 last night -> retire-eligible, not waiting
         _row("Scored", 2, rs_avg=71.0),                 # numeric rs_avg -> the scored path, never held
         _row("Live", 2, stage="Nascent"),               # not Fading
@@ -213,10 +218,11 @@ def test_waiting_night_holds_only_a_newly_shrunk_weak_fading_theme():
     history = [
         _hist("Shrunk", 4, yday), _hist("Shrunk", 2, _TONIGHT),   # tonight's own row is not "prior"
         _hist("StaleOnly", 2, _TONIGHT - timedelta(days=9)),
+        _hist("Revived", 2, _TONIGHT - timedelta(days=2)), _hist("Revived", 0, yday, stage="Retired"),
         _hist("AlreadySmall", 5, _TONIGHT - timedelta(days=3)), _hist("AlreadySmall", 2, yday),
         _hist("Scored", 5, yday), _hist("Live", 5, yday), _hist("Big", 5, yday),
     ]
-    assert tc.waiting_night_names(board, history) == {"Shrunk", "New", "StaleOnly"}
+    assert tc.waiting_night_names(board, history) == {"Shrunk", "New", "StaleOnly", "Revived"}
 
 
 def test_waiting_night_agrees_with_rule_b_itself():
@@ -245,15 +251,6 @@ def test_g4_settled_drops_the_held_themes_and_leaves_the_signed_bar_alone():
     assert (st["small"], st["n_board"], st["rate_pct"], st["pass_bar"]) == (1, 9, 11.1, False)
     assert st["list"] == ["Tiny"] and st["waiting"] == ["Held"]
     assert tc.compute_g4(board)["settled"]["small"] == 2      # nothing held -> same as the bar
-
-
-def test_wait_literals_match_the_engine():
-    import inspect
-    import agents.market_intelligence.db as db
-    import agents.market_intelligence.theme_engine as te
-    assert tc.WAIT_SMALL_MIN_MEMBERS == te.SMALL_FADING_RETIRE_MIN_MEMBERS
-    assert tc.WAIT_PRIOR_WINDOW_DAYS == (
-        inspect.signature(db.get_active_themes).parameters["stale_after_days"].default)
 
 
 def test_g3_passes_a_real_group_and_fails_an_unstructured_one(factor_excess):

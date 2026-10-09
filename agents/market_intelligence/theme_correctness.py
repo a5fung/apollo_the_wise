@@ -48,6 +48,7 @@ import asyncio
 import random
 import statistics
 from collections import defaultdict
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
@@ -71,12 +72,11 @@ G3_PASS_PCT = 90.0            # >= 90% of themes beat the matched control's p95
 G3_N_DRAWS = 500
 G3_SEED = 655
 G4_SMALL_MAX_PCT = 10.0       # <= 10% of the board may be under 3 members
+G4_SMALL_MIN_MEMBERS = 3      # "under 3 members" — also rule B's line (theme_engine
+#                               SMALL_FADING_RETIRE_MIN_MEMBERS, pinned equal in the tests)
 # G4 "settled" (operator 2026-10-08, "Ok"): rule B's one-night wait holds a newly shrunk theme on
-# the board for a night before retiring it, so G4 is ALSO reported without those held themes. The
-# wait's own definition, kept as literals for the G1_BAR reason above; tests pin them to
-# theme_engine.SMALL_FADING_RETIRE_MIN_MEMBERS and get_active_themes' default window (which is
-# what rule B's previous-night snapshot reads).
-WAIT_SMALL_MIN_MEMBERS = 3
+# the board for a night before retiring it, so G4 is ALSO reported without those held themes.
+# get_active_themes' default window, which rule B's previous-night snapshot reads (pinned).
 WAIT_PRIOR_WINDOW_DAYS = 7
 
 LATENCY_LOOKBACK_SESSIONS = 40     # cluster lookback before a birth night (critic_latency.py)
@@ -345,12 +345,12 @@ def compute_g3(themes: list[dict], excess: dict[str, np.ndarray], usable: set[st
 # ── G4 (shape) ────────────────────────────────────────────────────────────────────────────────────
 def _g4_share(themes: list[dict], small_max_pct: float) -> dict[str, Any]:
     n = len(themes)
-    small = [th["name"] for th in themes if len(th.get("tickers") or []) < 3]
+    small = [th["name"] for th in themes if len(th.get("tickers") or []) < G4_SMALL_MIN_MEMBERS]
     rate = 100.0 * len(small) / n if n else None
     return {"n_board": n, "small": len(small), **_bar(rate, small_max_pct, at_most=True), "list": small}
 
 
-def compute_g4(themes: list[dict], *, waiting: frozenset[str] | set[str] = frozenset(),
+def compute_g4(themes: list[dict], *, waiting: AbstractSet[str] = frozenset(),
                small_max_pct: float = G4_SMALL_MAX_PCT) -> dict[str, Any]:
     """Themes under 3 members, share of the board. Ported from grouping_test.py's G4 shape read
     (the only bar of its several G4 reads that was signed 2026-09-27 — shard/dual-homed/homeless
@@ -358,35 +358,35 @@ def compute_g4(themes: list[dict], *, waiting: frozenset[str] | set[str] = froze
     signed bar, unchanged; `settled` is the same read with the themes in `waiting` (rule B's held
     themes, `waiting_night_names`) dropped from the board, reported beside it — never instead."""
     out = _g4_share(themes, small_max_pct)
-    settled = _g4_share([th for th in themes if th["name"] not in waiting], small_max_pct)
-    out["settled"] = {**settled, "waiting": sorted(set(waiting) & {th["name"] for th in themes})}
+    out["settled"] = _g4_share([th for th in themes if th["name"] not in waiting], small_max_pct)
+    out["settled"]["waiting"] = sorted(th["name"] for th in themes if th["name"] in waiting)
     return out
 
 
 def waiting_night_names(board: list[dict], history: list[dict]) -> set[str]:
     """PURE: board themes rule B is holding tonight — weak Fading (stage 'Fading', rs_avg None)
-    under WAIT_SMALL_MIN_MEMBERS, but NOT under it on the previous persisted night (or with no such
+    under G4_SMALL_MIN_MEMBERS, but NOT under it on the previous persisted night (or with no such
     night), so the engine keeps them one more night instead of retiring them. `board`: rows with
-    name/stage/rs_avg/tickers/theme_date; `history`: mi_themes rows {"date","name","tickers"}. The
-    previous night is the latest row dated before the board row and within WAIT_PRIOR_WINDOW_DAYS
-    of it — the same snapshot rule B reads (theme_engine._prior_member_counts)."""
-    prior_rows: dict[str, list[tuple[date, int]]] = defaultdict(list)
+    name/stage/rs_avg/tickers/theme_date; `history`: mi_themes rows {"date","name","stage",
+    "tickers"}. The previous night mirrors rule B's snapshot (`get_active_themes` read by
+    theme_engine._prior_member_counts): the latest row dated before the board row within
+    WAIT_PRIOR_WINDOW_DAYS of it, and none at all when that row is a Retired tombstone (the
+    snapshot drops such names). Not mirrored: a same-day manual engine rerun, where the engine
+    sees tonight's first-pass row and holds every candidate."""
+    window = timedelta(days=WAIT_PRIOR_WINDOW_DAYS)
+    weak = {th["name"]: th["theme_date"] for th in board
+            if th.get("stage") == "Fading" and th.get("rs_avg") is None
+            and len(th.get("tickers") or []) < G4_SMALL_MIN_MEMBERS
+            and type(th.get("theme_date")) is date}
+    latest: dict[str, dict] = {}
     for r in history:
-        prior_rows[r["name"]].append((r["date"], len(r.get("tickers") or [])))
-    held: set[str] = set()
-    for th in board:
-        n = len(th.get("tickers") or [])
-        if th.get("stage") != "Fading" or th.get("rs_avg") is not None or n >= WAIT_SMALL_MIN_MEMBERS:
-            continue
-        td = th.get("theme_date")
-        if type(td) is not date:
-            continue
-        earlier = [(d, k) for d, k in prior_rows.get(th["name"], ())
-                   if td - timedelta(days=WAIT_PRIOR_WINDOW_DAYS) <= d < td]
-        prior = max(earlier)[1] if earlier else None
-        if prior is None or prior >= WAIT_SMALL_MIN_MEMBERS:
-            held.add(th["name"])
-    return held
+        td = weak.get(r["name"])
+        if td is not None and td - window <= r["date"] < td and (
+                r["name"] not in latest or r["date"] > latest[r["name"]]["date"]):
+            latest[r["name"]] = r
+    return {name for name in weak
+            if name not in latest or latest[name].get("stage") == "Retired"
+            or len(latest[name].get("tickers") or []) >= G4_SMALL_MIN_MEMBERS}
 
 
 # ── Step-2 naming latency (re-mint exclusion per critic_latency.py) ────────────────────────────────
@@ -570,7 +570,7 @@ def compute_theme_latency(
 def build_correctness_report(
     themes: list[dict], excess: dict[str, np.ndarray], scores: dict[str, dict[str, Any]],
     sector: dict[str, str], *, history: dict[str, dict[date, set[str]]] | None = None,
-    latency: dict[str, Any] | None = None, waiting: frozenset[str] | set[str] = frozenset(),
+    latency: dict[str, Any] | None = None, waiting: AbstractSet[str] = frozenset(),
 ) -> dict[str, Any]:
     """Runs G1-G4 and folds in an already-computed `latency` dict (kept separate because latency
     needs different inputs — full theme/cluster history, not just tonight's board/excess). Never
@@ -673,10 +673,7 @@ async def run_theme_correctness_check(conn: Any = None) -> dict[str, Any]:
             for r in history:
                 theme_history_by_name[r["name"]][r["date"]] = set(r["tickers"])
 
-            waiting = waiting_night_names(
-                [{"name": r["name"], "stage": r["stage"], "rs_avg": r.get("rs_avg"),
-                  "tickers": list(r["tickers"] or []), "theme_date": r.get("theme_date")}
-                 for r in board_rows], history)
+            waiting = waiting_night_names(board_rows, history)
 
             def _compute() -> dict[str, Any]:
                 latency = compute_theme_latency(history, renames, cluster_by_date, all_spy_sessions, today)

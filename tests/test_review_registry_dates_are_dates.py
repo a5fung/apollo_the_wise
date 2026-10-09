@@ -77,3 +77,19 @@ def test_a_regated_review_actually_moves_its_gate():
             stale.append(f"{r['review_id']}: regate_kind=predicate but predicate_sql is empty — "
                          f"nothing gates it at all")
     assert not stale, "\n  ".join(stale)
+
+
+def test_a_deferral_also_moves_the_date_the_checker_reads():
+    """The checker and every reader of the registry (`check_pending_reviews`, operator_asks.py,
+    system_review.py) gate on `earliest_review_date` and never read `deferred_until`. On 2026-10-05
+    two reviews were re-parked by moving `deferred_until` alone; they kept escalating as overdue
+    until 10-08. Convention (data_gated_reviews.py): copy the deferral date into
+    `earliest_review_date`. An open review whose deferral runs past its date gate is that bug."""
+    stale = [f"{r['review_id']}: deferred_until {r['deferred_until']} > earliest_review_date "
+             f"{r.get('earliest_review_date')}"
+             for r in REG
+             if r.get("status") in ("pending", "deferred")
+             and isinstance(r.get("deferred_until"), date)
+             and (not isinstance(r.get("earliest_review_date"), date)
+                  or r["deferred_until"] > r["earliest_review_date"])]
+    assert not stale, "\n  ".join(stale)
