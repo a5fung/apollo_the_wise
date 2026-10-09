@@ -9180,9 +9180,14 @@ def propose_parent_candidates(
     parent breadth, then name. THE MINIMUM: a candidate with industry overlap
     < PARENT_PASS_MIN_INDUSTRY_OVERLAP that shares NO member stock is never asked;
     a child left with no candidate is simply not asked tonight (no cooldown).
-    `industry_by_ticker` None/empty (industries unreadable) -> the pre-closeness
-    ranking (shared tickers, shared name tokens, breadth, name) and NO minimum,
-    exactly as before. Children are ordered by shared tickers / shared name tokens
+    `industry_by_ticker` None (NOT SUPPLIED — the offline probes and legacy callers) -> the
+    pre-closeness ranking (shared tickers, shared name tokens, breadth, name), no minimum.
+    An EMPTY dict (the armed night when industries could not be read, `_run_parent_pass`)
+    keeps the closeness rules with every overlap 0, so only pairs that share a member stock
+    are asked — the minimum he ruled still holds on a bad night (review 2026-10-09).
+    The minimum is applied BEFORE Arm B's deferral below: a child whose best pair is Arm B's
+    but falls under the minimum is asked its next pair instead of waiting (not seen on the
+    10-08 board). Children are ordered by shared tickers / shared name tokens
     / child size so the nightly cap spends adjudications on the surest pairs
     first (unchanged). Returns [{child, parent, e_code, shared_tickers, shared_tokens,
     child_members, parent_members, child_source, why}] capped at `cap`
@@ -9196,7 +9201,7 @@ def propose_parent_candidates(
     ]
     parent_of = {t["name"]: t["parent_theme"] for t in live if t.get("parent_theme")}
     out: list[dict] = []
-    closeness = bool(industry_by_ticker)
+    closeness = industry_by_ticker is not None
     for c in live:
         if c.get("parent_theme"):
             continue
@@ -9262,9 +9267,13 @@ async def _read_parent_pass_industries(themes: list[dict]) -> "dict[str, str] | 
         pool = await get_pool()
         async with pool.acquire() as conn:
             industries = await get_industries_for_tickers(conn, tickers)
+        if not industries:
+            logger.warning("[parent pass] industries came back empty - tonight only pairs that share "
+                           "a member stock are asked")
         return industries or None
-    except Exception as e:  # loud-ok: one warning line, tonight falls back to the size/name ranking
-        logger.warning(f"[parent pass] industries unreadable ({e}) - closeness pick off tonight, using the size-based ranking")
+    except Exception as e:  # loud-ok: one warning line, tonight only shared-stock pairs are asked
+        logger.warning(f"[parent pass] industries unreadable ({e}) - tonight only pairs that share "
+                       f"a member stock are asked")
         return None
 
 
@@ -9356,6 +9365,9 @@ async def _run_parent_pass(
             )
         }
         industry_by_ticker = await _read_parent_pass_industries(all_themes)
+        industries_unreadable = industry_by_ticker is None
+        if industries_unreadable:
+            industry_by_ticker = {}   # every overlap 0 -> only shared-stock pairs pass the minimum
         cands = propose_parent_candidates(
             all_themes, eco_map, cooldown_pairs=cooldown_pairs, arm_b_pairs=arm_b_pairs, cap=cap,
             industry_by_ticker=industry_by_ticker,
@@ -9419,7 +9431,9 @@ async def _run_parent_pass(
             THEME_PARENT_PASS_RAN,
             summary=(f"Parent pass: {len(cands)} candidate(s) adjudicated — {counts['linked']} linked, "
                      f"{counts['no_containment']} no containment (peers/unrelated), "
-                     f"{counts['inverted']} inverted, {counts['error']} error"),
+                     f"{counts['inverted']} inverted, {counts['error']} error"
+                     + (" · industries unreadable: only shared-stock pairs asked"
+                        if industries_unreadable else "")),
             detail="\n".join(
                 f"'{c['child']}' → '{c['parent']}' [{c.get('verdict')}] {c['why']}" for c in cands
             ) or "no childless theme had an eligible same-ecosystem candidate tonight",

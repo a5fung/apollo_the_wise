@@ -3,7 +3,8 @@ nightly parent pass asks, and who is never asked.
 
 Rank key: (-shared member stocks, -industry overlap, -word similarity, -parent size, name).
 THE MINIMUM: industry overlap < 0.5 AND no shared member stock -> the pair is never asked
-(no cooldown written). Industries unreadable -> the pre-closeness ranking, no minimum.
+(no cooldown written). industry_by_ticker not supplied (probes) -> the pre-closeness ranking;
+the armed night with industries unreadable -> only pairs that share a member stock are asked.
 
 Every test here is RED on the pre-closeness engine (`propose_parent_candidates` had no
 `industry_by_ticker`, `_read_parent_pass_industries` / `parent_industry_overlap` /
@@ -219,18 +220,28 @@ def test_nightly_cap_unchanged_with_closeness_on():
     assert len(te.propose_parent_candidates(themes, eco, cap=2, industry_by_ticker=industry)) == 2
 
 
-@pytest.mark.parametrize("unreadable", [None, {}])
-def test_industries_unreadable_gives_todays_ranking_and_no_minimum(unreadable):
+def test_industries_not_supplied_gives_the_pre_closeness_ranking():
+    """The offline probes call the picker without industries: they keep the old ranking."""
     child = _t("Railroads", ["R1", "R2"])
     big = _t("Tankers", ["T1", "T2", "T3", "T4"])
     small = _t("Rail leasing", ["L1", "L2", "L3"], description="railroads")
     themes = [child, big, small]
-    eco = _eco(*themes)
-    legacy = te.propose_parent_candidates(themes, eco, cap=None)
-    got = te.propose_parent_candidates(themes, eco, cap=None, industry_by_ticker=unreadable)
-    assert [(r["child"], r["parent"]) for r in got] == [(r["child"], r["parent"]) for r in legacy]
+    got = te.propose_parent_candidates(themes, _eco(*themes), cap=None)
     assert next(r for r in got if r["child"] == "Railroads")["parent"] == "Tankers"  # the old size pick
     assert next(r for r in got if r["child"] == "Railroads")["industry_overlap"] is None
+
+
+def test_industries_empty_keeps_the_minimum_so_only_shared_stock_pairs_are_asked():
+    """Review 2026-10-09: an unreadable night must not bring back the asks he ruled against —
+    with every overlap 0, only a pair that shares a member stock passes the minimum."""
+    child = _t("Railroads", ["R1", "R2"])
+    big = _t("Tankers", ["T1", "T2", "T3", "T4"])
+    sharer = _t("Freight rail", ["R1", "F2", "F3"])
+    themes = [child, big, sharer]
+    got = {r["child"]: r["parent"] for r in te.propose_parent_candidates(
+        themes, _eco(*themes), cap=None, industry_by_ticker={})}
+    assert got.get("Railroads") == "Freight rail"
+    assert "Tankers" not in got.values()
 
 
 # ── the armed night: I/O wiring ──────────────────────────────────────────────
@@ -285,12 +296,18 @@ async def test_pass_hands_the_batched_industries_to_the_picker(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_pass_with_unreadable_industries_asks_todays_pick_and_does_not_crash(monkeypatch):
+async def test_pass_with_unreadable_industries_asks_only_shared_stock_pairs_and_says_so(monkeypatch):
     child = _t("Railroads", ["R1", "R2"])
     tanker = _t("Tankers", ["T1", "T2", "T3"])
-    asked, _ = _wire(monkeypatch, industries=None)
+    asked, cooldowns = _wire(monkeypatch, industries=None)
+    summaries: list[str] = []
+
+    async def capture_audit(event, summary="", detail="", **kw):
+        summaries.append(summary)
+    monkeypatch.setattr(te, "log_audit_event", capture_audit)
     await te._run_parent_pass([child, tanker], {}, enabled=True, eco_map=_eco(child, tanker))
-    assert asked == [("Railroads", "Tankers")]
+    assert asked == [] and cooldowns == []
+    assert any("industries unreadable" in s for s in summaries)
 
 
 @pytest.mark.asyncio
@@ -351,3 +368,47 @@ def test_scorers_match_the_replay_probe_copies():
     assert te.parent_industry_overlap(a, b, ind) == probe.parent_industry_overlap(a, b, ind) == 1.0
     assert te.parent_word_similarity({"name": "", "description": ""}, b) == 0.0
     assert te.parent_industry_overlap({"tickers": ["Q"]}, b, {}) == 0.0
+
+
+def test_the_full_queue_matches_the_replayed_rule_on_the_real_board(real):
+    """Review 2026-10-09: no single-link test pins the ORDER of the ranking (swapping industry and
+    word similarity, or ranking size before words, left every other test green). This compares the
+    engine's whole tonight-queue on the captured 10-08 board (live cooldowns, no Arm B deferral)
+    with an independent re-statement of the ruled rule over the replay's own scorers
+    (scripts/probes/_505_picker/closeness.py): child for child, same parent, same 26 asks."""
+    import importlib.util
+    from agents.market_intelligence.theme_ecosystems import E_UNASSIGNED
+    spec = importlib.util.spec_from_file_location(
+        "closeness_probe", ROOT / "scripts" / "probes" / "_505_picker" / "closeness.py")
+    cl = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cl)
+    board, eco, industry, cool = real
+    live = [t for t in board if t.get("stage") not in ("Retired", "Fading") and t["tickers"]]
+
+    def eligible(c):
+        parent_of = {t["name"]: t["parent_theme"] for t in live
+                     if t.get("parent_theme") and t["name"] != c["name"]}
+        return [p for p in live
+                if p["name"] != c["name"] and eco.get(p["name"]) == eco.get(c["name"])
+                and len(p["tickers"]) > len(c["tickers"])
+                and pair_key(c["name"], p["name"]) not in cool
+                and c["name"] not in te._containment_ancestors(p["name"], parent_of)]
+
+    def key(c, p):
+        shared = len(set(c["tickers"]) & set(p["tickers"]))
+        return (-shared, -round(cl.parent_industry_overlap(c, p, industry), 6),
+                -round(cl.parent_word_similarity(c, p), 6), -len(p["tickers"]), p["name"])
+
+    expected = {}
+    for c in live:
+        if c.get("parent_theme") or eco.get(c["name"]) in (None, E_UNASSIGNED):
+            continue
+        ok = [p for p in eligible(c)
+              if set(c["tickers"]) & set(p["tickers"])
+              or cl.parent_industry_overlap(c, p, industry) >= 0.5]
+        if ok:
+            expected[c["name"]] = min(ok, key=lambda p: key(c, p))["name"]
+    got = {r["child"]: r["parent"] for r in te.propose_parent_candidates(
+        board, eco, cooldown_pairs=cool, cap=None, industry_by_ticker=industry)}
+    assert got == expected
+    assert len(got) == 26
