@@ -1,0 +1,31 @@
+theme_name|e_code|method
+Alternative Asset Managers & Private Markets Platforms|E-SAAS|keyword
+Electronics Manufacturing & Semiconductor Packaging Supply Chain|E-AISEMI|haiku
+Electronics Manufacturing Services (EMS) Providers|E-HLTH|keyword
+Enterprise Unstructured Data Storage Infrastructure|E-INDL|keyword
+IT Consulting & Business Process Outsourcing Services|E-HLTH|keyword
+Private Equity & Alternative Asset Management Platforms|E-SAAS|keyword
+(6 rows)
+e_code|count
+E-AIINFRA|42
+E-AISEMI|34
+E-BANKFIN|39
+E-BIO|37
+E-COMM|16
+E-CONS|41
+E-CRYPTO|16
+E-CYBR|5
+E-DEF|25
+E-ENER|67
+E-HLTH|16
+E-INDL|47
+E-INS|19
+E-MEDTECH|22
+E-METAL|38
+E-QUANTUM|10
+E-REIT|33
+E-ROBOT|2
+E-SAAS|41
+E-TRANS|21
+E-UNASSIGNED|16
+(21 rows)

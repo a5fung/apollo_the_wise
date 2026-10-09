@@ -1103,3 +1103,23 @@ class TestComputeScoredThemes580:
         without, _ = _compute_scored_themes(self._themes(), self._rs())   # prior optional now
         assert with_prior == without
         assert all("delta" not in s for s in with_prior)
+
+
+@pytest.mark.parametrize("name, wrong", [
+    ("IT Consulting & Business Process Outsourcing Services", "E-HLTH"),
+    ("Electronics Manufacturing Services (EMS) Providers", "E-HLTH"),
+    ("Management Consulting & Research Advisory Services", "E-HLTH"),
+    ("Enterprise Unstructured Data Storage Infrastructure", "E-INDL"),
+    ("Alternative Asset Managers & Private Markets Platforms", "E-SAAS"),
+])
+def test_a_generic_word_no_longer_files_a_theme_in_the_wrong_bucket(name, wrong):
+    """#505 read 2026-10-09: generic substrings ('services', 'provider', 'infrastructure',
+    'platform') filed consulting / IT-services / storage / asset-manager themes into healthcare,
+    industrials and software — sticky, so for good. With the real taxonomy they no longer do."""
+    code, _ = keyword_fallback_ecosystem(name, "", [])
+    assert code != wrong
+
+
+def test_a_real_healthcare_services_name_still_files_as_healthcare():
+    assert keyword_fallback_ecosystem("Hospital & Managed Care Operators", "", [])[0] == "E-HLTH"
+    assert keyword_fallback_ecosystem("EMS Contract Manufacturing", "", [])[0] == "E-INDL"

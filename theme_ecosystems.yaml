@@ -13,6 +13,12 @@
 # keyword_stems = lowercase substrings for the deterministic fallback classifier
 # (used only when the Haiku assignment abstains). exemplars = anchor tickers.
 # Edit freely — no code change needed; the loader reads this file at runtime.
+#
+# ⚠ NO GENERIC STEMS (2026-10-09, #505 read): a stem is a SUBSTRING match and mappings are sticky, so a word
+# every industry uses files themes in the wrong bucket for good. "services"/"provider" sent ~10 consulting,
+# IT-services and business-services themes to E-HLTH; "infrastructure" sent data storage to E-INDL; "platform"
+# sent alternative asset managers to E-SAAS. Removed. With no specific stem a theme lands in E-UNASSIGNED
+# (the triage lane), which is the honest answer when Haiku abstains.
 
 version: 1
 
@@ -38,7 +44,7 @@ ecosystems:
   - e_code: E-SAAS
     name: Enterprise software
     description: Application & platform software (non-security) — observability/AIOps, data/analytics, database, dev tools, workflow SaaS.
-    keyword_stems: [software, saas, application, platform, observability, aiops, monitoring, analytics, database, developer, workflow]
+    keyword_stems: [software, saas, application, observability, aiops, monitoring, analytics, database, developer, workflow]
     exemplars: [DDOG, SNOW, CRM, MDB, NOW, TEAM]
 
   - e_code: E-BIO
@@ -104,7 +110,7 @@ ecosystems:
   - e_code: E-INDL
     name: Industrials / power
     description: Industrials & electrification — machinery, electrical, grid, power/utilities, infrastructure, manufacturing.
-    keyword_stems: [industrial, machinery, electrical, grid, power, utility, infrastructure, manufacturing, engineering]
+    keyword_stems: [industrial, machinery, electrical, grid, power, utility, manufacturing, engineering]
     exemplars: [ETN, GEV, PWR]
 
   - e_code: E-CRYPTO
@@ -122,7 +128,7 @@ ecosystems:
   - e_code: E-HLTH
     name: Healthcare services
     description: Healthcare delivery & services — providers, hospitals, managed care, staffing, pharmacy services.
-    keyword_stems: [healthcare, provider, hospital, managed care, staffing, pharmacy, clinic, services]
+    keyword_stems: [healthcare, hospital, managed care, staffing, pharmacy, clinic]
     exemplars: [UNH, HCA, THC]
 
   - e_code: E-QUANTUM
