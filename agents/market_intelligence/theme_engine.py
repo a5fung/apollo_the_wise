@@ -2977,10 +2977,10 @@ async def _validate_theme_membership(
                     resp = await client.messages.create(
                         model=THEME_MODEL,
                         max_tokens=max_tokens_for("theme_validation"),
-                        # thinking disabled (#575): schema is {"remove": [...]}, no
-                        # scratchpad — thinking has nowhere useful to go and can eat
-                        # the whole (shared) ceiling. See shared/llm_thinking.py.
-                        thinking=llm_thinking.DISABLED,
+                        # thinking ON since 2026-10-09 (#693): cut, the verdicts were
+                        # noisy run to run; the ceiling carries thinking headroom so a
+                        # thinking pass cannot eat the whole budget (the #575 failure).
+                        # See shared/llm_thinking.py.
                         system="You are a JSON API. Respond with valid JSON only. No prose, no markdown, no explanation.",
                         messages=[{"role": "user", "content": prompt}],
                     )

@@ -247,14 +247,17 @@ CEILINGS: dict[str, OutputCeiling] = {
         "one cut at 500 (a 15-ticker JSON map cut mid-object loses that whole chunk's descriptions); raised to "
         "2000 like description_backfill, billed only on use."),
     "theme_validation": OutputCeiling(
-        1000, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
+        2024, "THEME_MODEL", "claude-sonnet-5-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "RAISED 2026-08-13 from 400 (#479): near-ceiling fired at 385/400. Verified in "
         "api_usage: 508 sonnet-5 calls, ZERO truncations, max completed 385 (96% of "
         "cap), p50 just 9 — schema-bounded JSON ({\"remove\": [...]} <= input tickers), "
         "~1.0x model growth, so a straight raise is right: 2.5x the 385 max ~ 1000. "
         "#575 2026-08-21: this WAS the decisive truncation row (1000/1000 tokens, "
         "ZERO text, blocks=['thinking']) — thinking=DISABLED now (no scratchpad at "
-        "all, plain JSON), this number is a text-only budget again."),
+        "all, plain JSON), this number is a text-only budget again. 2026-10-09 (#693): THINKING ON "
+        "again — a replay of 10-05's 151 calls found the cut setting noisy (26 removed live, 33 on a re-run "
+        "agreeing on 16; 5 with thinking on); 1000 -> 2024 = llm_client.thinking_headroom(1000). Replay "
+        "with thinking on: max completed 455, mean 59."),
     "theme_assignment": OutputCeiling(
         16000, "THEME_MODEL", "claude-sonnet-5",  # model-ok: provenance only — records which model this ceiling was MEASURED on, never selects one
         "2026-08-07 raise after 10 days dead at 4000 (#543 — every call censored). "

@@ -54,11 +54,16 @@ DISABLED = {"type": "disabled"}
 # refuses to write reasoning out, so thinking is now the only place they reason; their ceilings
 # carry thinking headroom (output_ceilings.py).
 #
+# 2026-10-09: theme_validation LEFT this list (#693, his "yes"). A replay of Monday 10-05's 151 calls
+# (docs/analysis/693_validator_thinking_replay_2026-10-09.md, $0.49): with thinking cut it removed 26
+# members live and 33 on a re-run that agreed with live on only 16; with thinking on, 5 — all also
+# removed live. The cut setting was the noisy one, for $0.07 a night less. Its ceiling carries
+# thinking headroom (output_ceilings.py).
+#
 # Callers where thinking is explicitly DISABLED (pass `thinking=DISABLED` at the
 # call site). Every name here must also be a key in shared/output_ceilings.py —
 # pinned by tests/test_llm_thinking.py.
 THINKING_DISABLED = frozenset({
-    "theme_validation",           # plain JSON {"remove": [...]}, no scratchpad at all
     "narrative_theme_discovery",   # forced tool from turn 1 (report_narrative_themes), no advisor branch
     "theme_synthesis",             # forced tool from turn 1 (propose_emerging_cohorts), single-shot, no advisor branch
     "theme_parent_adjudication",   # #505 containment adjudicator (Sonnet): forced tool, terse

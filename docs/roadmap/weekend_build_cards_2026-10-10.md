@@ -154,6 +154,11 @@ a crowded morning, or the fail-open line appears on a day with a complete prior 
 
 ---
 
+## Also riding Saturday's deploy (already on main, built Fri 10-09)
+
+- #693: the theme validator thinks again (`theme_validation` out of THINKING_DISABLED, ceiling 2024).
+- #505: generic ecosystem keyword stems removed from `theme_ecosystems.yaml`.
+
 ## 3–4. Not carded (capacity)
 
 #505 (closest-theme pick — criteria recorded on its PLAN line), #655 sector cap, #624 / #692 wait for the

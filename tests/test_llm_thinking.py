@@ -72,9 +72,8 @@ def test_expected_schema_bounded_callers():
     was removed (claude-sonnet-5-5 refuses to write reasoning out), so thinking is now the only
     place they reason — see test_scratchpad_less_callers_think below."""
     assert llm_thinking.THINKING_DISABLED == {
-        "theme_validation", "narrative_theme_discovery", "theme_synthesis",
-        "theme_parent_adjudication",
-    }
+        "narrative_theme_discovery", "theme_synthesis", "theme_parent_adjudication",
+    }   # theme_validation LEFT 2026-10-09 (#693 replay: the cut setting was the noisy one)
 
 
 # ── 2. call-site pins (source scan — catches a silent revert) ───────────────
@@ -83,11 +82,11 @@ def test_always_disabled_call_sites_pinned_in_theme_engine():
     # source-pin-ok: a census of unconditional DISABLED call sites — it catches a NEW caller
     # silently joining the list, which no behaviour test of an existing caller can see.
     src = _TE.read_text(encoding="utf-8")
-    # theme_validation, narrative_theme_discovery x2. theme_assignment, theme_split and
-    # theme_rename turned thinking ON 2026-09-29 (their scratchpad is gone).
-    assert src.count("thinking=llm_thinking.DISABLED") == 3, (
-        "expected exactly 3 unconditional thinking=llm_thinking.DISABLED call sites "
-        "in theme_engine.py (theme_validation, narrative_theme_discovery x2 lane1/lane2)")
+    # narrative_theme_discovery x2. theme_assignment, theme_split and theme_rename turned
+    # thinking ON 2026-09-29 (their scratchpad is gone); theme_validation 2026-10-09 (#693).
+    assert src.count("thinking=llm_thinking.DISABLED") == 2, (
+        "expected exactly 2 unconditional thinking=llm_thinking.DISABLED call sites "
+        "in theme_engine.py (narrative_theme_discovery x2 lane1/lane2)")
 
 
 def test_theme_synthesis_call_site_pinned():
@@ -124,7 +123,9 @@ def test_call_advisor_truncation_honesty_pinned():
 # ── 3. behavior: the five always-disabled callers ────────────────────────────
 
 @pytest.mark.asyncio
-async def test_theme_validation_disables_thinking(monkeypatch):
+async def test_theme_validation_thinks_with_headroom(monkeypatch):
+    """#693 (his yes 2026-10-09): the validator sends NO thinking field (adaptive on sonnet-5-5) and
+    its ceiling carries thinking headroom, so a thinking pass cannot eat the whole budget (#575)."""
     from agents.market_intelligence import theme_engine
 
     class _Block:
@@ -154,7 +155,10 @@ async def test_theme_validation_disables_thinking(monkeypatch):
     await theme_engine._validate_theme_membership(
         "Test Theme", ["AAA", "BBB", "CCC", "DDD", "EEE"], changelog=[])
 
-    assert captured.get("thinking") == llm_thinking.DISABLED
+    from shared.llm_client import thinking_headroom
+    from shared.output_ceilings import max_tokens_for
+    assert "thinking" not in captured
+    assert captured["max_tokens"] == max_tokens_for("theme_validation") == thinking_headroom(1000)
 
 
 @pytest.mark.asyncio

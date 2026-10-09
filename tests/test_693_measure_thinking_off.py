@@ -44,6 +44,11 @@ def samples(tmp_path, monkeypatch):
     d = tmp_path / "samples"
     d.mkdir()
     monkeypatch.setenv("APOLLO_LLM_SAMPLE_DIR", str(d))
+    # theme_validation left the registry 2026-10-09 (#693 replay); this probe's behaviour is pinned on
+    # the two-job registry it measured on 10-02, so the fixture restores that membership.
+    from shared import llm_thinking
+    monkeypatch.setattr(llm_thinking, "THINKING_DISABLED",
+                        frozenset(llm_thinking.THINKING_DISABLED | {"theme_validation"}))
     _write(d, PARENT_KEY, "THEME_PARENT_ADJUDICATION_MODEL", {
         "model": M55, "max_tokens": 1000, "thinking": DISABLED,
         "tools": [CONTAINMENT_ADJUDICATION_TOOL],
