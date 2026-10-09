@@ -1,0 +1,1 @@
+SELECT theme_date, COUNT(*), COUNT(*) FILTER (WHERE stage NOT IN ('Retired','Fading')), COUNT(*) FILTER (WHERE parent_theme IS NOT NULL AND stage NOT IN ('Retired')) FROM mi_themes WHERE theme_date >= '2026-09-24' GROUP BY 1 ORDER BY 1;

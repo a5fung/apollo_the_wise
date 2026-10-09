@@ -1,0 +1,67 @@
+prospective rows 131
+by maturity/settled: Counter({(False, True, 'stop'): 76, (True, True, 'stop'): 30, (False, False, 'OPEN'): 21, (True, True, 'time_exit'): 3, (False, True, 'time_exit'): 1})
+MATURE settled 33
+mature all (incl unsettled): Counter({'stop': 30, 'time_exit': 3})
+fire_date range 2026-08-31 2026-09-09
+ep_date range 2026-08-27 2026-09-08
+campaigns (ticker,ep_date): 14
+rung {'ep_close_reclaim': 7, 'ep_close_620_prox': 14, 'ep_low_reclaim': 10, 'ep_high_break': 2}
+pattern_version {'v2': 33}
+screen_version {'screen_v1': 33}
+screen_member {'': 25, 't': 8}
+reentry_shape {'first': 24, 'same_pattern': 8, 'new_high_break': 1}
+outcome {'stop': 30, 'time_exit': 3}
+settle_version {'settle_v3': 28, 'settle_v2': 5}
+resolution {'minute_5': 30, 'daily': 3}
+catalyst_grade {'': 16, 'strong': 12, 'game_changer': 5}
+
+rung x screen x outcome
+ep_close_620_prox      raw    n= 14 tail(realized>=4)=0 reached_4r=0 stops=14 other=Counter() sumR=-14.00 maxR=-1.0
+ep_close_620_prox      screen n=  4 tail(realized>=4)=0 reached_4r=0 stops=4 other=Counter() sumR=-4.00 maxR=-1.0
+ep_close_reclaim       raw    n=  7 tail(realized>=4)=0 reached_4r=0 stops=7 other=Counter() sumR=-7.00 maxR=-1.0
+ep_close_reclaim       screen n=  2 tail(realized>=4)=0 reached_4r=0 stops=2 other=Counter() sumR=-2.00 maxR=-1.0
+ep_high_break          raw    n=  2 tail(realized>=4)=0 reached_4r=0 stops=1 other=Counter({'time_exit': 1}) sumR=1.26 maxR=2.2581
+ep_high_break          screen n=  1 tail(realized>=4)=0 reached_4r=0 stops=0 other=Counter({'time_exit': 1}) sumR=2.26 maxR=2.2581
+ep_low_reclaim         raw    n= 10 tail(realized>=4)=1 reached_4r=1 stops=8 other=Counter({'time_exit': 2}) sumR=13.97 maxR=22.4048
+ep_low_reclaim         screen n=  1 tail(realized>=4)=0 reached_4r=0 stops=1 other=Counter() sumR=-1.00 maxR=-1.0
+
+ALL rungs raw/screen
+raw 33 tails 1 reached4 1 first-only 24
+screen 8 tails 0 reached4 0 first-only 8
+
+CRWD 2026-08-27 ep_low_reclaim 2026-09-03 same_pattern  time_exit 22.4048 trail 1.2105 mfe 23.639 r4 t 075 8.5109 t 100 6.3832 t
+SEI 2026-09-08 ep_high_break 2026-09-09 first t time_exit 2.2581 trail 0.0827 mfe 3.0282 r4 f 075 -1 f 100 -1 f
+CHRN 2026-08-27 ep_low_reclaim 2026-09-08 same_pattern  time_exit -0.4327 trail -0.7479 mfe 0.5137 r4 f 075 -1 f 100 -1 f
+CRWD 2026-08-27 ep_close_reclaim 2026-08-31 first  stop -1 trail -1 mfe 0.0266 r4 f 075   100  
+DG 2026-08-27 ep_close_620_prox 2026-08-31 first  stop -1 trail -0.4788 mfe 2.2203 r4 f 075   100  
+DG 2026-08-27 ep_low_reclaim 2026-08-31 first  stop -1 trail -0.1387 mfe 2.4093 r4 f 075   100  
+OKTA 2026-08-27 ep_close_620_prox 2026-08-31 same_pattern  stop -1 trail -1 mfe 0.6251 r4 f 075   100  
+OKTA 2026-08-27 ep_close_reclaim 2026-08-31 first  stop -1 trail -1 mfe 0.1062 r4 f 075   100  
+SOLS 2026-08-28 ep_close_620_prox 2026-08-31 first  stop -1 trail -1 mfe 0.08 r4 f 075   100  
+SOLS 2026-08-28 ep_close_reclaim 2026-08-31 first  stop -1 trail -1 mfe 0.3586 r4 f 075   100  
+SOLS 2026-08-28 ep_low_reclaim 2026-08-31 first  stop -1 trail -1 mfe 0.6098 r4 f 075   100  
+VEEV 2026-08-27 ep_close_620_prox 2026-08-31 same_pattern  stop -1 trail -1 mfe 2.7447 r4 f 075   100  
+VEEV 2026-08-27 ep_low_reclaim 2026-08-31 first  stop -1 trail -1 mfe 2.7447 r4 f 075   100  
+SOLS 2026-08-28 ep_low_reclaim 2026-09-01 same_pattern  stop -1 trail -1 mfe 0.0242 r4 f 075   100  
+CRWD 2026-08-27 ep_low_reclaim 2026-09-02 first  stop -1 trail -1 mfe 0.6572 r4 f 075 7.9934 t 100 5.995 t
+AGX 2026-09-03 ep_close_620_prox 2026-09-04 first  stop -1 trail -1 mfe -0.0635 r4 f 075 -1 f 100 -1 f
+CHRN 2026-08-27 ep_close_620_prox 2026-09-04 same_pattern  stop -1 trail -1 mfe 0.1299 r4 f 075 -1 f 100 -1 f
+HOOD 2026-09-03 ep_close_620_prox 2026-09-04 first t stop -1 trail -1 mfe 0.6555 r4 f 075 -1 f 100 -1 f
+SOLS 2026-08-28 ep_close_620_prox 2026-09-04 same_pattern  stop -1 trail -1 mfe 0.8205 r4 f 075 -1 f 100 -1 f
+AGX 2026-09-03 ep_close_620_prox 2026-09-08 new_high_break  stop -1 trail 0.1321 mfe 0.4977 r4 f 075 -1 f 100 -1 f
+AGX 2026-09-03 ep_high_break 2026-09-08 first  stop -1 trail 0.1321 mfe 0.4977 r4 f 075 -1 f 100 -1 f
+AGX 2026-09-03 ep_close_620_prox 2026-09-09 same_pattern  stop -1 trail -1 mfe 0.207 r4 f 075 -1 f 100 -1 f
+AGX 2026-09-03 ep_close_reclaim 2026-09-09 first  stop -1 trail -1 mfe 0.9852 r4 f 075 -1 f 100 -1 f
+AGX 2026-09-03 ep_low_reclaim 2026-09-09 first  stop -1 trail -1 mfe 1.2186 r4 f 075 -1 f 100 -1 f
+ERO 2026-09-08 ep_close_620_prox 2026-09-09 first t stop -1 trail -1 mfe 0.0612 r4 f 075 -1 f 100 -1 f
+ERO 2026-09-08 ep_close_reclaim 2026-09-09 first t stop -1 trail -1 mfe 3.3772 r4 f 075 -1 f 100 -1 f
+IONQ 2026-09-08 ep_low_reclaim 2026-09-09 first  stop -1 trail -1 mfe 0.4264 r4 f 075 -1 f 100 -1 f
+PHVS 2026-09-08 ep_close_620_prox 2026-09-09 first t stop -1 trail -1 mfe 1.4 r4 f 075 -1 f 100 -1 f
+PHVS 2026-09-08 ep_low_reclaim 2026-09-09 first t stop -1 trail -1 mfe 0.0484 r4 f 075 -1 f 100 -1 f
+QCOM 2026-09-08 ep_close_620_prox 2026-09-09 first  stop -1 trail -1 mfe 2.047 r4 f 075 -1 f 100 -1 f
+QCOM 2026-09-08 ep_close_reclaim 2026-09-09 first  stop -1 trail -1 mfe 0.1863 r4 f 075 0.7801 t 100 0.5851 t
+ROIV 2026-09-08 ep_close_620_prox 2026-09-09 first t stop -1 trail -1 mfe 0.4153 r4 f 075 -1 f 100 -1 f
+ROIV 2026-09-08 ep_close_reclaim 2026-09-09 first t stop -1 trail -1 mfe 0.4894 r4 f 075 -1 f 100 -1 f
+
+created lag days (created - fire): Counter({0: 33})
+non-mature rows by fire_date month: Counter({('2026-09', 'stop'): 57, ('2026-10', 'stop'): 19, ('2026-09', 'OPEN'): 13, ('2026-10', 'OPEN'): 8, ('2026-09', 'time_exit'): 1})

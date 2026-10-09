@@ -1,0 +1,61 @@
+board 2026-10-08: 136 rows, 122 non-Retired with members; stages Counter({'Mainstream': 50, 'Fading': 37, 'Nascent': 34, 'Retired': 14, 'Accelerating': 1})
+live cooldown pairs 183 (all rows 426); arm-B territory pairs 45
+TONIGHT'S UNCAPPED QUEUE (one candidate per child): 42
+  'Travel & Hospitality Lodging Brand Franchisors Rotation' -> 'Leisure & Recreation Discretionary Rebound'  same ecosystem E-CONS; parent 5 vs child 3 members; shared tickers 1; shared name tokens 0
+  'Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)' -> 'Gene Editing & Specialty Biopharma Breakouts'  same ecosystem E-BIO; parent 4 vs child 3 members; shared tickers 0; shared name tokens 3
+  'Discrete, Passive & Low-Power Programmable Semiconductor Components Recovery' -> 'Semiconductor Equipment & Materials Velocity Surge'  same ecosystem E-AISEMI; parent 6 vs child 4 members; shared tickers 0; shared name tokens 1
+  'Semiconductor Design, Test & Assembly Enablement Tools' -> 'Semiconductor Foundry & Advanced Packaging Manufacturing'  same ecosystem E-AISEMI; parent 7 vs child 4 members; shared tickers 0; shared name tokens 1
+  'Vertical Commerce & Tax/Payments Software-Fintech Platforms' -> 'Customer Engagement & Marketing/CX SaaS Platforms'  same ecosystem E-SAAS; parent 5 vs child 4 members; shared tickers 0; shared name tokens 1
+  'Branded Footwear & Hotel Consumer Discretionary Turnaround' -> 'Defensive Consumer Rotation & Trade-Down'  same ecosystem E-CONS; parent 9 vs child 3 members; shared tickers 0; shared name tokens 1
+  'Cloud Application Software Rotation (Oversold Turning Up)' -> 'Cloud Contact Center & CCaaS Communication Platforms'  same ecosystem E-SAAS; parent 4 vs child 3 members; shared tickers 0; shared name tokens 1
+  'Cloud Financial Automation & Insurance Core Platform Software' -> 'Cloud Application Delivery & Observability Infrastructure'  same ecosystem E-SAAS; parent 4 vs child 3 members; shared tickers 0; shared name tokens 1
+  'Cloud Supply Chain & Warehouse Management Software' -> 'Enterprise HR & Workforce Management SaaS'  same ecosystem E-SAAS; parent 5 vs child 3 members; shared tickers 0; shared name tokens 1
+  'Fabless Semiconductor IP Licensing' -> 'Front-End Semiconductor Fabrication Equipment Makers'  same ecosystem E-AISEMI; parent 7 vs child 3 members; shared tickers 0; shared name tokens 1
+  'Life Sciences & Healthcare Data/CRM Platforms' -> 'Customer Engagement & Marketing/CX SaaS Platforms'  same ecosystem E-SAAS; parent 5 vs child 3 members; shared tickers 0; shared name tokens 1
+  'Software Development & DevOps Collaboration Platforms' -> 'Customer Engagement & Marketing/CX SaaS Platforms'  same ecosystem E-SAAS; parent 5 vs child 3 members; shared tickers 0; shared name tokens 1
+  'Work Management & Collaborative Design SaaS' -> 'Enterprise HR & Workforce Management SaaS'  same ecosystem E-SAAS; parent 5 vs child 3 members; shared tickers 0; shared name tokens 1
+  'Alternative Asset Managers & Private Markets Platforms' -> 'Customer Engagement & Marketing/CX SaaS Platforms'  same ecosystem E-SAAS; parent 5 vs child 2 members; shared tickers 0; shared name tokens 1
+  'CAD/PLM & 3D Design Engineering Software' -> 'Cross-Industry Test, Measurement & Design-Verification Tools'  same ecosystem E-SAAS; parent 4 vs child 2 members; shared tickers 0; shared name tokens 1
+  'Online Consumer Lending & Fintech Credit' -> 'Brazil Fintech & Digital Banking Rally'  same ecosystem E-BANKFIN; parent 6 vs child 2 members; shared tickers 0; shared name tokens 1
+  'Industrial Construction Execution & On-Site Supply Chain' -> 'Regulated Electric Utilities Defensive Rotation'  same ecosystem E-INDL; parent 14 vs child 10 members; shared tickers 0; shared name tokens 0
+  'Defensive Consumer Rotation & Trade-Down' -> 'U.S. Apparel & Fashion Recovery'  same ecosystem E-CONS; parent 16 vs child 9 members; shared tickers 0; shared name tokens 0
+  'Enterprise Server, Storage & Data Infrastructure Hardware' -> 'On-Site Power Generation & Distribution Equipment for Data Centers'  same ecosystem E-AIINFRA; parent 11 vs child 8 members; shared tickers 0; shared name tokens 0
+  'Restaurant Chain Recovery' -> 'Defensive Consumer Rotation & Trade-Down'  same ecosystem E-CONS; parent 9 vs child 8 members; shared tickers 0; shared name tokens 0
+  'AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers' -> 'Enterprise Server, Storage & Data Infrastructure Hardware'  same ecosystem E-AIINFRA; parent 8 vs child 7 members; shared tickers 0; shared name tokens 0
+  'AI data-center power buildout' -> 'Enterprise Server, Storage & Data Infrastructure Hardware'  same ecosystem E-AIINFRA; parent 8 vs child 7 members; shared tickers 0; shared name tokens 0
+  'AI-Driven Memory & Storage Supply Shortage' -> 'Front-End Semiconductor Fabrication Equipment Makers'  same ecosystem E-AISEMI; parent 7 vs child 6 members; shared tickers 0; shared name tokens 0
+  'Optical Laser & Photonic Materials for AI Transceivers' -> 'On-Site Power Generation & Distribution Equipment for Data Centers'  same ecosystem E-AIINFRA; parent 11 vs child 6 members; shared tickers 0; shared name tokens 0
+  'U.S. Oil Refiners & Refining Margin Expansion' -> 'Energy Supply Disruption: Middle East Geopolitical Risk'  same ecosystem E-ENER; parent 18 vs child 6 members; shared tickers 0; shared name tokens 0
+  'Commercial, Office & Home Furniture Retailers and Manufacturers' -> 'Defensive Consumer Rotation & Trade-Down'  same ecosystem E-CONS; parent 9 vs child 5 members; shared tickers 0; shared name tokens 0
+  'Leisure & Recreation Discretionary Rebound' -> 'Defensive Consumer Rotation & Trade-Down'  same ecosystem E-CONS; parent 9 vs child 5 members; shared tickers 0; shared name tokens 0
+  'Management & Business Process Consulting Services' -> 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS'  same ecosystem E-SAAS; parent 14 vs child 5 members; shared tickers 0; shared name tokens 0
+  'Non-Alcoholic Beverages & Energy Drinks' -> 'U.S. Apparel & Fashion Recovery'  same ecosystem E-CONS; parent 16 vs child 5 members; shared tickers 0; shared name tokens 0
+  'AI Server Power & Signal-Integrity Analog ICs' -> 'Front-End Semiconductor Fabrication Equipment Makers'  same ecosystem E-AISEMI; parent 7 vs child 4 members; shared tickers 0; shared name tokens 0
+  'Building Products & Home Improvement Materials Makers' -> 'Copper Mining & Production'  same ecosystem E-METAL; parent 6 vs child 4 members; shared tickers 0; shared name tokens 0
+  'Class I Railroad Freight Carriers' -> 'Crude & Product Tanker Shipping'  same ecosystem E-TRANS; parent 6 vs child 4 members; shared tickers 0; shared name tokens 0
+  'Emerging AI Compute & Cloud Infrastructure Platforms' -> 'On-Site Power Generation & Distribution Equipment for Data Centers'  same ecosystem E-AIINFRA; parent 11 vs child 4 members; shared tickers 0; shared name tokens 0
+  'Hospital & Behavioral Health Facility Procedure Volume Recovery' -> 'IT Consulting & Business Process Outsourcing Services'  same ecosystem E-HLTH; parent 7 vs child 4 members; shared tickers 0; shared name tokens 0
+  'Insurance Brokerage & Employee Benefits Advisory' -> 'Fintech & Digital Finance Sector Re-rating on Fed Easing'  same ecosystem E-BANKFIN; parent 19 vs child 4 members; shared tickers 0; shared name tokens 0
+  'Small Modular Reactor & Advanced Nuclear Fission Technology' -> 'Energy Supply Disruption: Middle East Geopolitical Risk'  same ecosystem E-ENER; parent 18 vs child 4 members; shared tickers 0; shared name tokens 0
+  'Emerging Medical Device Innovators Breakout' -> 'Genomics & DNA Sequencing Tools'  same ecosystem E-MEDTECH; parent 9 vs child 3 members; shared tickers 0; shared name tokens 0
+  'Enterprise Unstructured Data Storage Infrastructure' -> 'Regulated Electric Utilities Defensive Rotation'  same ecosystem E-INDL; parent 14 vs child 3 members; shared tickers 0; shared name tokens 0
+  'Fintech Payments, Prepaid & Consumer Digital Banking Apps' -> 'Insurance Brokerage & Employee Benefits Advisory'  same ecosystem E-BANKFIN; parent 4 vs child 3 members; shared tickers 0; shared name tokens 0
+  'Gold & Silver Miners Not Yet Classified (Mid-Tier & South African PGM/Gold Producers)' -> 'Copper Mining & Production'  same ecosystem E-METAL; parent 6 vs child 3 members; shared tickers 0; shared name tokens 0
+  'Platinum Group & South African/Junior Precious Metals Miners' -> 'Copper Mining & Production'  same ecosystem E-METAL; parent 6 vs child 3 members; shared tickers 0; shared name tokens 0
+  'Vaccine Developers Bacterial & Respiratory' -> 'Gene Editing & Specialty Biopharma Breakouts'  same ecosystem E-BIO; parent 4 vs child 3 members; shared tickers 0; shared name tokens 0
+
+childless non-Fading themes in a real ecosystem: 78
+ALL candidate pairs (child x every broader same-ecosystem theme): 243; under live cooldown 37; NOT yet adjudicated 206 (of which Arm-B territory 16)
+  un-adjudicated pairs sharing >=1 ticker: 1
+  nights at cap 6 to ask them all (ignoring new births/cooldown expiry): 35
+  per-child remaining depth: [17, 17, 9, 9, 9, 9, 9, 8, 8, 8, 8, 6, 6, 5, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+E-UNASSIGNED / unmapped non-Retired themes: 2
+  'For-Profit Postsecondary & Vocational Education' stage=Mainstream parent=None mapped=True members=5 ['CVSA', 'LOPE', 'LAUR', 'STRA', 'PRDO']
+  'Global Agriculture Value Chain Recovery' stage=Fading parent=None mapped=True members=3 ['CNH', 'AGCO', 'DE']
+
+parented non-Retired on board: [('Liquid Biopsy & Molecular Cancer Diagnostics Testing', 'Genomics & DNA Sequencing Tools', 'Mainstream'), ('Product Tanker Shipping', 'Crude & Product Tanker Shipping', 'Nascent'), ('Customer Engagement & Marketing/CX SaaS Platforms', 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS', 'Mainstream'), ('Data Backup & Cyber Resiliency Software', 'Network Security & Zero-Trust Edge', 'Nascent'), ('Annuity-Focused Insurers', 'Life Insurance & Annuity Providers', 'Mainstream'), ('HBM & AI-Driven Memory Chip Makers', 'AI-Driven Memory & Storage Supply Shortage', 'Fading'), ('Semiconductor Equipment & Materials Velocity Surge', 'Semiconductor Test, Yield & Assembly Supply Chain', 'Nascent'), ('Diabetes Management Devices (CGM, Insulin Pumps & Delivery)', 'Medical Device Mean-Reversion & Rotation Recovery', 'Fading'), ('Orthopedic Surgical Devices & Instruments', 'Medical Device Mean-Reversion & Rotation Recovery', 'Fading')]
+
+ecosystem sizes among eligible: [('E-SAAS', 19), ('E-AISEMI', 10), ('E-CONS', 8), ('E-AIINFRA', 6), ('E-ENER', 5), ('E-BANKFIN', 5), ('E-MEDTECH', 4), ('E-INDL', 4), ('E-HLTH', 4), ('E-METAL', 4), ('E-COMM', 3), ('E-BIO', 3), ('E-TRANS', 3), ('E-CYBR', 2), ('E-INS', 2), ('E-CRYPTO', 1), ('E-UNASSIGNED', 1), ('E-REIT', 1)]
+
+un-adjudicated pairs by (shared tickers, shared name tokens capped at 2): [(('tk=0', 0), 147), (('tk=0', 1), 56), (('tk=0', 2), 2), (('tk>0', 0), 1)]

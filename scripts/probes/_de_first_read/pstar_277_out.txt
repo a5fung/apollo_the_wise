@@ -1,0 +1,24 @@
+FIRST ATTEMPTS, M-none, incumbent stop (fires.tsv)
+  ('A', 'ep_close_620_prox')                 n= 203 tails= 10 obs_rate=  4.9% mean_all=-0.482 mean_tail=7.26 mean_nontail=-0.884 p*=10.8%
+  ('A', 'ep_close_reclaim')                  n= 141 tails=  4 obs_rate=  2.8% mean_all=-0.500 mean_tail=11.16 mean_nontail=-0.84 p*=7.0%
+  ('A', 'ep_high_break')                     n=  48 tails=  2 obs_rate=  4.2% mean_all=-0.378 mean_tail=5.31 mean_nontail=-0.625 p*=10.5%
+  ('A', 'ep_low_reclaim')                    n= 201 tails=  9 obs_rate=  4.5% mean_all=-0.437 mean_tail=8.08 mean_nontail=-0.837 p*=9.4%
+  ('A+B', 'ALL')                             n= 628 tails= 25 obs_rate=  4.0% mean_all=-0.493 mean_tail=8.03 mean_nontail=-0.846 p*=9.5%
+  ('A+B', 'ep_close_620_prox')               n= 216 tails= 10 obs_rate=  4.6% mean_all=-0.514 mean_tail=7.26 mean_nontail=-0.891 p*=10.9%
+  ('A+B', 'ep_close_reclaim')                n= 150 tails=  4 obs_rate=  2.7% mean_all=-0.530 mean_tail=11.16 mean_nontail=-0.85 p*=7.1%
+  ('A+B', 'ep_high_break')                   n=  49 tails=  2 obs_rate=  4.1% mean_all=-0.391 mean_tail=5.31 mean_nontail=-0.633 p*=10.7%
+  ('A+B', 'ep_low_reclaim')                  n= 213 tails=  9 obs_rate=  4.2% mean_all=-0.469 mean_tail=8.08 mean_nontail=-0.846 p*=9.5%
+  ('B', 'ep_close_620_prox')                 n=  13 tails=  0 obs_rate=  0.0% mean_all=-1.000 mean_tail=None mean_nontail=None p*=n/a
+  ('B', 'ep_close_reclaim')                  n=   9 tails=  0 obs_rate=  0.0% mean_all=-1.000 mean_tail=None mean_nontail=None p*=n/a
+  ('B', 'ep_high_break')                     n=   1 tails=  0 obs_rate=  0.0% mean_all=-1.000 mean_tail=None mean_nontail=None p*=n/a
+  ('B', 'ep_low_reclaim')                    n=  12 tails=  0 obs_rate=  0.0% mean_all=-1.000 mean_tail=None mean_nontail=None p*=n/a
+ALL ATTEMPTS incl. re-entries, M-none, incumbent (reentry_rows.tsv, settled only)
+  ('all_attempts', 'ALL')                    n=1266 tails= 51 obs_rate=  4.0% mean_all=-0.381 mean_tail=9.09 mean_nontail=-0.779 p*=7.9%
+  ('all_attempts', 'ep_close_620_prox')      n= 475 tails= 22 obs_rate=  4.6% mean_all=-0.371 mean_tail=9.66 mean_nontail=-0.858 p*=8.2%
+  ('all_attempts', 'ep_close_reclaim')       n= 266 tails=  7 obs_rate=  2.6% mean_all=-0.497 mean_tail=8.6 mean_nontail=-0.743 p*=8.0%
+  ('all_attempts', 'ep_high_break')          n=  78 tails=  2 obs_rate=  2.6% mean_all=-0.373 mean_tail=5.31 mean_nontail=-0.522 p*=9.0%
+  ('all_attempts', 'ep_low_reclaim')         n= 447 tails= 20 obs_rate=  4.5% mean_all=-0.324 mean_tail=9.01 mean_nontail=-0.762 p*=7.8%
+  ('shape', 'first')                         n= 621 tails= 25 obs_rate=  4.0% mean_all=-0.487 mean_tail=8.03 mean_nontail=-0.844 p*=9.5%
+  ('shape', 'new_high_break')                n= 107 tails=  0 obs_rate=  0.0% mean_all=-0.358 mean_tail=None mean_nontail=None p*=n/a
+  ('shape', 'same_pattern')                  n= 538 tails= 26 obs_rate=  4.8% mean_all=-0.264 mean_tail=10.11 mean_nontail=-0.79 p*=7.3%
+first-attempt mismatches fires.tsv vs reentry_rows: 0 []

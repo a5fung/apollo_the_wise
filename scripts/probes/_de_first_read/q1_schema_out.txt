@@ -1,0 +1,100 @@
+column_name|data_type
+id|integer
+ticker|text
+ep_date|date
+rung|text
+pattern_version|text
+fire_date|date
+fire_minute_et|integer
+resolution|text
+sessions_since_ep|integer
+entry_price|double precision
+stop_price|double precision
+stop_width_pct|double precision
+gap_day_low|double precision
+gap_day_close|double precision
+gap_day_high|double precision
+gap_day_volume|bigint
+prior_session_low|double precision
+day_open|double precision
+day_high|double precision
+day_low|double precision
+day_close|double precision
+day_volume|bigint
+adr20_pct|double precision
+adr20_n|integer
+gap_high_exceeded_before|boolean
+in_active_theme|boolean
+ep_score|double precision
+catalyst_grade|text
+screen_member|boolean
+screen_version|text
+prior_missing_sessions|integer
+outcome|text
+realized_r|double precision
+outcome_trail|text
+realized_r_trail|double precision
+r_none_s1|double precision
+r_none_s5|double precision
+r_none_s10|double precision
+r_none_s20|double precision
+r_trail_s1|double precision
+r_trail_s5|double precision
+r_trail_s10|double precision
+r_trail_s20|double precision
+mfe_r|double precision
+mae_r|double precision
+reached_4r|boolean
+settle_version|text
+settled_at|timestamp with time zone
+created_at|timestamp with time zone
+reentry_shape|text
+prior_attempt_id|integer
+near_definition|text
+band_adr_dollar|double precision
+stop_hit_date|date
+ep_adr20_dollar|double precision
+ep_adr20_n|integer
+stop_price_075|double precision
+stop_width_pct_075|double precision
+stop_price_100|double precision
+stop_width_pct_100|double precision
+day0_resolved|boolean
+day0_post_low|double precision
+day0_post_high|double precision
+outcome_075|text
+realized_r_075|double precision
+outcome_trail_075|text
+realized_r_trail_075|double precision
+mfe_r_075|double precision
+mae_r_075|double precision
+reached_4r_075|boolean
+settle_version_075|text
+settled_at_075|timestamp with time zone
+outcome_100|text
+realized_r_100|double precision
+outcome_trail_100|text
+realized_r_trail_100|double precision
+mfe_r_100|double precision
+mae_r_100|double precision
+reached_4r_100|boolean
+settle_version_100|text
+settled_at_100|timestamp with time zone
+stop_price_025|double precision
+stop_width_pct_025|double precision
+outcome_025|text
+realized_r_025|double precision
+outcome_trail_025|text
+realized_r_trail_025|double precision
+mfe_r_025|double precision
+mae_r_025|double precision
+reached_4r_025|boolean
+settle_version_025|text
+settled_at_025|timestamp with time zone
+(92 rows)
+current_date|timezone
+2026-10-09|2026-10-09 09:48:59.735442
+(1 row)
+count
+33
+(1 row)

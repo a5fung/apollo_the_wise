@@ -1,0 +1,1 @@
+SELECT theme_date, name, stage, parent_theme FROM mi_themes WHERE name IN ('Pure-Play NAND/DRAM Memory Chip Makers','Identity & Access Management Security Software','Low-Cost & Regional Passenger Airline Rebound','Liquid Biopsy & Molecular Cancer Diagnostics Testing') AND theme_date >= '2026-09-28' ORDER BY name, theme_date;

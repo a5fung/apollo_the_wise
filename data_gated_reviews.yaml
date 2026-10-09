@@ -13832,8 +13832,24 @@ reviews:
         compute_settlement from stored daily bars (the same path #616's variants use). No fill
         is simulated - the rung fire price is the recorded entry - and the settle writes NULL
         rather than a substitute on a data gap. Verified populated through 2026-09-17."
-    earliest_review_date: 2026-09-29
+    earliest_review_date: 2026-11-16
+    regated_on: 2026-10-09
+    regate_kind: date
     status: pending
+    resolution_2026_10_09: >-
+      RAN 2026-10-09 (Opus read + adversarial verifier; docs/analysis/delayed_entry_first_read_2026-10-09.md,
+      scripts/probes/_de_first_read/): 33 mature settled live fires from 14 campaigns (08-31..09-09), 30 stops
+      at -1R, 3 held to the window close, 0 open (the 09-27 maturity fix works). Genuine tails (harvested R
+      >= 4, the plan's ">= 4R campaign"): 1 of 33 (CRWD EP-low reclaim re-entry, +22.4R); 0 of 24 first
+      attempts; 0 of 8 screened. EVERY rung cell is under 30 -> the plan's own "too few settled fires ->
+      report the count and extend" branch: NO band applied, nothing concluded. Restated break-even p* on the
+      277 real-EP campaigns: 7-11% per rung (EP-close reclaim 7.1%, not the published "positive at 0%"),
+      above the 277's own 2.7-4.6% tail rate — the pre-registered bands need re-registering on the real-EP
+      p* BEFORE the next read (his sign-off then; ERA-A-only, since ERA B is this review's own fires
+      captured immature). Re-gated to 2026-11-16 to read WITH delayed_entry_mid_november_reread (raw cells
+      reach 30 mature fires ~10-22 / 10-23 / 11-06; screened ~11-09..12-03; EP-high break not before
+      spring 2027). That read reports pooled and split at 08-29 and 09-14 (admission changes inside the
+      sample).
     kind: accrual
     added_on: 2026-08-30
     action_when_ready: >-

@@ -1,0 +1,12 @@
+all prospective by rung x screen: Counter({('ep_close_620_prox', True): 28, ('ep_low_reclaim', False): 25, ('ep_close_620_prox', False): 22, ('ep_close_reclaim', True): 19, ('ep_low_reclaim', True): 18, ('ep_close_reclaim', False): 13, ('ep_high_break', True): 5, ('ep_high_break', False): 1})
+first-attempt only: Counter({('ep_low_reclaim', 'first'): 23, ('ep_close_620_prox', 'first'): 21, ('ep_close_620_prox', 'same_pattern'): 20, ('ep_close_reclaim', 'first'): 19, ('ep_low_reclaim', 'same_pattern'): 14, ('ep_close_620_prox', 'new_high_break'): 9, ('ep_close_reclaim', 'new_high_break'): 7, ('ep_high_break', 'first'): 6, ('ep_close_reclaim', 'same_pattern'): 6, ('ep_low_reclaim', 'new_high_break'): 6})
+ep_close_620_prox    raw    recorded= 50 mature_now=14 rate/wk= 9.0 30th mature ~2026-10-22 (already fired)
+ep_close_620_prox    screen recorded= 28 mature_now= 4 rate/wk= 5.0 30th mature ~2026-11-09 (projected)
+ep_close_reclaim     raw    recorded= 32 mature_now= 7 rate/wk= 5.7 30th mature ~2026-11-06 (already fired)
+ep_close_reclaim     screen recorded= 19 mature_now= 2 rate/wk= 3.4 30th mature ~2026-11-29 (projected)
+ep_high_break        raw    recorded=  6 mature_now= 2 rate/wk= 1.1 30th mature ~2027-04-12 (projected)
+ep_high_break        screen recorded=  5 mature_now= 1 rate/wk= 0.9 30th mature ~2027-05-21 (projected)
+ep_low_reclaim       raw    recorded= 43 mature_now=10 rate/wk= 7.7 30th mature ~2026-10-23 (already fired)
+ep_low_reclaim       screen recorded= 18 mature_now= 1 rate/wk= 3.2 30th mature ~2026-12-03 (projected)
+weeks 5.57 total rate/wk 23.5
+fires per week: [(36, 17), (37, 29), (38, 21), (39, 28), (40, 12), (41, 24)]

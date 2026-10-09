@@ -1,0 +1,4 @@
+SELECT id,ticker,ep_date,rung,pattern_version,fire_date,fire_minute_et,resolution,sessions_since_ep,entry_price,stop_price,stop_width_pct,adr20_pct,screen_member,screen_version,catalyst_grade,ep_score,reentry_shape,prior_attempt_id,outcome,realized_r,outcome_trail,realized_r_trail,r_none_s20,mfe_r,mae_r,reached_4r,stop_hit_date,settle_version,(settled_at AT TIME ZONE 'America/New_York') settled_et,(created_at AT TIME ZONE 'America/New_York') created_et,stop_width_pct_075,outcome_075,realized_r_075,reached_4r_075,outcome_100,realized_r_100,reached_4r_100,outcome_025,realized_r_025,reached_4r_025
+FROM mi_delayed_entry_trigger WHERE fire_date >= DATE '2026-08-31' ORDER BY fire_date,ticker,rung,id;
+SELECT 'all_rows', COUNT(*), MIN(fire_date), MAX(fire_date) FROM mi_delayed_entry_trigger;
+SELECT 'pre_0831', COUNT(*) FROM mi_delayed_entry_trigger WHERE fire_date < DATE '2026-08-31';
