@@ -1,0 +1,166 @@
+board 10-08: 136 rows; live parent links: 9
+board members: 694; with an industry in mi_ticker_overrides: 689; without: 5 ['AIG', 'KRP', 'MCY', 'TDC', 'WING']
+
+=== VIEW: STRICT — the engine's own eligibility on the 10-08 board (the pre-set bar) ===
+
+  Liquid Biopsy & Molecular Cancer Diagnostics Testing -> Genomics & DNA Sequencing Tools  (eligible candidates 2)
+    real parent: industry overlap 1.00, word sim 0.176
+    today top-3: ['Genomics & DNA Sequencing Tools', 'Life Science Tools & Analytical Instruments']
+    new top-3:   [('Genomics & DNA Sequencing Tools', 1.0, 0.176), ('Life Science Tools & Analytical Instruments', 1.0, 0.017)]
+
+  Product Tanker Shipping -> Crude & Product Tanker Shipping  (eligible candidates 1)
+    real parent: industry overlap 1.00, word sim 0.341
+    today top-3: ['Crude & Product Tanker Shipping']
+    new top-3:   [('Crude & Product Tanker Shipping', 1.0, 0.341)]
+
+  Customer Engagement & Marketing/CX SaaS Platforms -> AI-Powered Enterprise Analytics & Intelligent Workflow SaaS  (eligible candidates 1)
+    real parent: industry overlap 1.00, word sim 0.018
+    today top-3: ['AI-Powered Enterprise Analytics & Intelligent Workflow SaaS']
+    new top-3:   [('AI-Powered Enterprise Analytics & Intelligent Workflow SaaS', 1.0, 0.018)]
+
+  Data Backup & Cyber Resiliency Software -> Network Security & Zero-Trust Edge  (eligible candidates 1)
+    real parent: industry overlap 0.75, word sim 0.028
+    today top-3: ['Network Security & Zero-Trust Edge']
+    new top-3:   [('Network Security & Zero-Trust Edge', 0.75, 0.028)]
+
+  child                                                      real parent                                               n today new  note
+  Liquid Biopsy & Molecular Cancer Diagnostics Testing       Genomics & DNA Sequencing Tools                           2     1   1  
+  Product Tanker Shipping                                    Crude & Product Tanker Shipping                           1     1   1  
+  Customer Engagement & Marketing/CX SaaS Platforms          AI-Powered Enterprise Analytics & Intelligent Workflow    1     1   1  
+  Data Backup & Cyber Resiliency Software                    Network Security & Zero-Trust Edge                        1     1   1  
+  Annuity-Focused Insurers                                   Life Insurance & Annuity Providers                        1     -   -  parent Fading
+  HBM & AI-Driven Memory Chip Makers                         AI-Driven Memory & Storage Supply Shortage                9     -   -  child Fading
+  Semiconductor Equipment & Materials Velocity Surge         Semiconductor Test, Yield & Assembly Supply Chain         1     -   -  parent not broader (6 vs 6)
+  Diabetes Management Devices (CGM, Insulin Pumps & Delivery Medical Device Mean-Reversion & Rotation Recovery         2     -   -  child Fading; parent Fading
+  Orthopedic Surgical Devices & Instruments                  Medical Device Mean-Reversion & Rotation Recovery         2     -   -  child Fading; parent Fading
+  real parent ranked FIRST: today 4/9, new 4/9; links where new ranks it LOWER than today: 0
+
+=== VIEW: STAGE IGNORED — Fading treated as live (stages at link time differ); all other rules kept ===
+
+  Liquid Biopsy & Molecular Cancer Diagnostics Testing -> Genomics & DNA Sequencing Tools  (eligible candidates 4)
+    real parent: industry overlap 1.00, word sim 0.176
+    today top-3: ['Genomics & DNA Sequencing Tools', 'AI-Driven Diagnostics & Imaging Re-Rating', 'Medical Device Mean-Reversion & Rotation Recovery']
+    new top-3:   [('Genomics & DNA Sequencing Tools', 1.0, 0.176), ('AI-Driven Diagnostics & Imaging Re-Rating', 1.0, 0.182), ('Life Science Tools & Analytical Instruments', 1.0, 0.017)]
+
+  Product Tanker Shipping -> Crude & Product Tanker Shipping  (eligible candidates 1)
+    real parent: industry overlap 1.00, word sim 0.341
+    today top-3: ['Crude & Product Tanker Shipping']
+    new top-3:   [('Crude & Product Tanker Shipping', 1.0, 0.341)]
+
+  Customer Engagement & Marketing/CX SaaS Platforms -> AI-Powered Enterprise Analytics & Intelligent Workflow SaaS  (eligible candidates 1)
+    real parent: industry overlap 1.00, word sim 0.018
+    today top-3: ['AI-Powered Enterprise Analytics & Intelligent Workflow SaaS']
+    new top-3:   [('AI-Powered Enterprise Analytics & Intelligent Workflow SaaS', 1.0, 0.018)]
+
+  Data Backup & Cyber Resiliency Software -> Network Security & Zero-Trust Edge  (eligible candidates 1)
+    real parent: industry overlap 0.75, word sim 0.028
+    today top-3: ['Network Security & Zero-Trust Edge']
+    new top-3:   [('Network Security & Zero-Trust Edge', 0.75, 0.028)]
+
+  Annuity-Focused Insurers -> Life Insurance & Annuity Providers  (eligible candidates 2)
+    real parent: industry overlap 1.00, word sim 0.321
+    today top-3: ['Life Insurance & Annuity Providers', 'Specialty P&C Insurance Underwriters Rotation Reversal']
+    new top-3:   [('Life Insurance & Annuity Providers', 1.0, 0.321), ('Specialty P&C Insurance Underwriters Rotation Reversal', 0.0, 0.081)]
+
+  HBM & AI-Driven Memory Chip Makers -> AI-Driven Memory & Storage Supply Shortage  (eligible candidates 9)
+    real parent: industry overlap 0.67, word sim 0.077
+    today top-3: ['AI-Driven Memory & Storage Supply Shortage', 'Front-End Semiconductor Fabrication Equipment Makers', 'Semiconductor Foundry & Advanced Packaging Manufacturing']
+    new top-3:   [('AI-Driven Memory & Storage Supply Shortage', 0.67, 0.077), ('AI Server Power & Signal-Integrity Analog ICs', 0.67, 0.091), ('Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery', 0.67, 0.055)]
+
+  Diabetes Management Devices (CGM, Insulin Pumps & Delivery) -> Medical Device Mean-Reversion & Rotation Recovery  (eligible candidates 4)
+    real parent: industry overlap 1.00, word sim 0.089
+    today top-3: ['Medical Device Mean-Reversion & Rotation Recovery', 'AI-Driven Diagnostics & Imaging Re-Rating', 'Genomics & DNA Sequencing Tools']
+    new top-3:   [('Medical Device Mean-Reversion & Rotation Recovery', 1.0, 0.089), ('Genomics & DNA Sequencing Tools', 0.67, 0.0), ('Liquid Biopsy & Molecular Cancer Diagnostics Testing', 0.0, 0.063)]
+
+  Orthopedic Surgical Devices & Instruments -> Medical Device Mean-Reversion & Rotation Recovery  (eligible candidates 4)
+    real parent: industry overlap 1.00, word sim 0.036
+    today top-3: ['Medical Device Mean-Reversion & Rotation Recovery', 'AI-Driven Diagnostics & Imaging Re-Rating', 'Genomics & DNA Sequencing Tools']
+    new top-3:   [('Medical Device Mean-Reversion & Rotation Recovery', 1.0, 0.036), ('Genomics & DNA Sequencing Tools', 1.0, 0.019), ('AI-Driven Diagnostics & Imaging Re-Rating', 0.0, 0.054)]
+
+  child                                                      real parent                                               n today new  note
+  Liquid Biopsy & Molecular Cancer Diagnostics Testing       Genomics & DNA Sequencing Tools                           4     1   1  
+  Product Tanker Shipping                                    Crude & Product Tanker Shipping                           1     1   1  
+  Customer Engagement & Marketing/CX SaaS Platforms          AI-Powered Enterprise Analytics & Intelligent Workflow    1     1   1  
+  Data Backup & Cyber Resiliency Software                    Network Security & Zero-Trust Edge                        1     1   1  
+  Annuity-Focused Insurers                                   Life Insurance & Annuity Providers                        2     1   1  
+  HBM & AI-Driven Memory Chip Makers                         AI-Driven Memory & Storage Supply Shortage                9     1   1  
+  Semiconductor Equipment & Materials Velocity Surge         Semiconductor Test, Yield & Assembly Supply Chain         1     -   -  parent not broader (6 vs 6)
+  Diabetes Management Devices (CGM, Insulin Pumps & Delivery Medical Device Mean-Reversion & Rotation Recovery         4     1   1  
+  Orthopedic Surgical Devices & Instruments                  Medical Device Mean-Reversion & Rotation Recovery         4     1   1  
+  real parent ranked FIRST: today 8/9, new 8/9; links where new ranks it LOWER than today: 0
+
+BAR (pre-set): new first on >=5 of 9 AND never lower than today. STRICT: new 4/9, lower-than-today 0 -> NOT MET
+
+=== SUPPLEMENTARY: first pick per childless theme on the 10-08 board, today vs new (Arm-B deferral not applied) ===
+  childless themes with >=1 eligible candidate: 51; first pick unchanged 28, changed 23
+  CAD/PLM & 3D Design Engineering Software  [17 cands]
+     today: Cross-Industry Test, Measurement & Design-Verification Tools (industry 1.00)
+     new:   Cloud Application Software Rotation (Oversold Turning Up) (industry 1.00, words 0.130)
+  Life Sciences & Healthcare Data/CRM Platforms  [9 cands]
+     today: Customer Engagement & Marketing/CX SaaS Platforms (industry 0.00)
+     new:   Cloud Contact Center & CCaaS Communication Platforms (industry 0.00, words 0.055)
+  Software Development & DevOps Collaboration Platforms  [8 cands]
+     today: Customer Engagement & Marketing/CX SaaS Platforms (industry 0.67)
+     new:   AI-Powered Enterprise Analytics & Intelligent Workflow SaaS (industry 1.00, words 0.073)
+  Enterprise Unstructured Data Storage Infrastructure  [3 cands]
+     today: Regulated Electric Utilities Defensive Rotation (industry 0.00)
+     new:   Industrial Construction Execution & On-Site Supply Chain (industry 0.00, words 0.033)
+  Alternative Asset Managers & Private Markets Platforms  [17 cands]
+     today: Customer Engagement & Marketing/CX SaaS Platforms (industry 0.00)
+     new:   Cloud Contact Center & CCaaS Communication Platforms (industry 0.00, words 0.097)
+  Vertical Commerce & Tax/Payments Software-Fintech Platforms  [4 cands]
+     today: Customer Engagement & Marketing/CX SaaS Platforms (industry 0.50)
+     new:   AI-Powered Enterprise Analytics & Intelligent Workflow SaaS (industry 0.50, words 0.020)
+  Cloud Application Software Rotation (Oversold Turning Up)  [8 cands]
+     today: Cloud Contact Center & CCaaS Communication Platforms (industry 1.00)
+     new:   Marketing & Digital Presence SaaS Platforms (industry 1.00, words 0.100)
+  Cloud Supply Chain & Warehouse Management Software  [9 cands]
+     today: Enterprise HR & Workforce Management SaaS (industry 1.00)
+     new:   Marketing & Digital Presence SaaS Platforms (industry 1.00, words 0.080)
+  Semiconductor Design, Test & Assembly Enablement Tools  [4 cands]
+     today: Semiconductor Foundry & Advanced Packaging Manufacturing (industry 0.25)
+     new:   Semiconductor Equipment & Materials Velocity Surge (industry 0.50, words 0.104)
+  Cross-Industry Test, Measurement & Design-Verification Tools  [4 cands]
+     today: AI-Powered Enterprise Analytics & Intelligent Workflow SaaS (industry 0.25)
+     new:   Customer Engagement & Marketing/CX SaaS Platforms (industry 0.25, words 0.079)
+  Hospital & Behavioral Health Facility Procedure Volume Recovery  [2 cands]
+     today: IT Consulting & Business Process Outsourcing Services (industry 0.00)
+     new:   Post-Acute & Home-Based Healthcare Services (industry 1.00, words 0.040)
+  Cloud Financial Automation & Insurance Core Platform Software  [9 cands]
+     today: Cloud Application Delivery & Observability Infrastructure (industry 1.00)
+     new:   Vertical Commerce & Tax/Payments Software-Fintech Platforms (industry 1.00, words 0.093)
+  AI Server Power & Signal-Integrity Analog ICs  [5 cands]
+     today: Front-End Semiconductor Fabrication Equipment Makers (industry 0.00)
+     new:   AI-Driven Memory & Storage Supply Shortage (industry 1.00, words 0.038)
+  Optical Laser & Photonic Materials for AI Transceivers  [3 cands]
+     today: On-Site Power Generation & Distribution Equipment for Data Centers (industry 0.17)
+     new:   Enterprise Server, Storage & Data Infrastructure Hardware (industry 0.50, words 0.062)
+  Discrete, Passive & Low-Power Programmable Semiconductor Components Recovery  [3 cands]
+     today: Semiconductor Equipment & Materials Velocity Surge (industry 0.00)
+     new:   AI-Driven Memory & Storage Supply Shortage (industry 0.75, words 0.000)
+  Fabless Semiconductor IP Licensing  [8 cands]
+     today: Front-End Semiconductor Fabrication Equipment Makers (industry 0.00)
+     new:   Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery (industry 1.00, words 0.093)
+  Class I Railroad Freight Carriers  [2 cands]
+     today: Crude & Product Tanker Shipping (industry 0.00)
+     new:   Product Tanker Shipping (industry 0.00, words 0.019)
+  Small Modular Reactor & Advanced Nuclear Fission Technology  [4 cands]
+     today: Energy Supply Disruption: Middle East Geopolitical Risk (industry 0.00)
+     new:   U.S. Oil Refiners & Refining Margin Expansion (industry 0.00, words 0.055)
+  Branded Footwear & Hotel Consumer Discretionary Turnaround  [6 cands]
+     today: Defensive Consumer Rotation & Trade-Down (industry 0.00)
+     new:   U.S. Apparel & Fashion Recovery (industry 0.67, words 0.053)
+  Data Analytics, AI Platform & Digital Transformation IT Services  [9 cands]
+     today: AI-Powered Enterprise Analytics & Intelligent Workflow SaaS (industry 0.50)
+     new:   Vertical Commerce & Tax/Payments Software-Fintech Platforms (industry 1.00, words 0.049)
+  Gold & Silver Miners Not Yet Classified (Mid-Tier & South African PGM/Gold Producers)  [2 cands]
+     today: Copper Mining & Production (industry 0.00)
+     new:   Building Products & Home Improvement Materials Makers (industry 0.00, words 0.019)
+  Platinum Group & South African/Junior Precious Metals Miners  [2 cands]
+     today: Copper Mining & Production (industry 0.00)
+     new:   Building Products & Home Improvement Materials Makers (industry 0.00, words 0.022)
+  Work Management & Collaborative Design SaaS  [9 cands]
+     today: Enterprise HR & Workforce Management SaaS (industry 1.00)
+     new:   Marketing & Digital Presence SaaS Platforms (industry 1.00, words 0.105)
+
+scorers: probe closeness.py (pre-build)
