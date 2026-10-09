@@ -438,7 +438,6 @@ async def run_rs_engine(trade_date: date | None = None) -> dict:
             "rs_rank": rank_position[i],
             "sector": None,
             "adv_20": adv_map.get(s["ticker"]),
-            "market_cap": None,
             "sma_10": s.get("sma_10"),
             "sma_20": s.get("sma_20"),
             "sma_40": s.get("sma_40"),
@@ -588,7 +587,7 @@ async def score_single_ticker(ticker: str, trade_date: date | None = None) -> di
     #564: an ad-hoc lookup on a non-trading day (weekend, or an explicit
     `trade_date` that lands on one) does NOT persist a row — see the guard
     around `upsert_stock_score` below for why (writing onto the last real
-    session's row would OVERWRITE its sector/adv_20/market_cap with None via
+    session's row would OVERWRITE its sector/adv_20 with None via
     the full-column upsert, corrupting the legitimate nightly-run row; that
     is worse than the stray-day bug this replaces). The score is still
     computed and returned so callers (e.g. `/setup TICKER`) keep working —
@@ -706,7 +705,6 @@ async def score_single_ticker(ticker: str, trade_date: date | None = None) -> di
         "rs_rank": rank_pos,
         "sector": None,
         "adv_20": None,
-        "market_cap": None,
         "sma_10": sma_10,
         "sma_20": sma_20,
         "sma_40": sma_40,

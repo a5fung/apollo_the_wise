@@ -1,0 +1,45 @@
+== mi_stock_scores
+rows|nonnull_market_cap|last_score_date
+559023|0|2026-10-08
+(1 row)
+== mi_live_fill_counterfactuals
+ERROR:  column "created_at" does not exist
+LINE 1: ...(*) AS rows, count(mark_r) AS nonnull_mark_r, max(created_at...
+                                                             ^
+outcome|count
+settled|133
+unscoreable|7
+(2 rows)
+== mi_gap_near_miss_replays
+rows|nonnull_mark_r
+452|1
+(1 row)
+outcome|count|with_mark
+no_trade|74|0
+open|1|1
+settled|143|0
+unscoreable|234|0
+(4 rows)
+== tables with a mark_r column
+ERROR:  column "session_date" does not exist
+LINE 1: SELECT min(session_date), max(session_date) FROM mi_live_fil...
+                   ^
+table_name|column_name
+mi_gap_near_miss_replays|mark_r
+mi_live_fill_counterfactuals|mark_r
+mi_lowcap_lane_replays|mark_r
+mi_sustain_reject_replays|mark_r
+(4 rows)
+== sustain replays
+outcome|count|count
+no_trade|89|0
+open|2|2
+settled|22|0
+unscoreable|38|0
+(4 rows)
+== dead column audit rows
+event_type|summary|min
+dead_column_detected|mi_gap_near_miss_replays.mark_r|2026-09-07 21:30:11.844515+00
+dead_column_detected|mi_live_fill_counterfactuals.mark_r|2026-09-07 21:30:37.374085+00
+dead_column_detected|mi_stock_scores.market_cap|2026-08-08 18:32:19.678649+00
+(3 rows)

@@ -3991,7 +3991,7 @@ async def _post_nightly_audit_job():
         logger.info(
             f"Dead-column sweep: {dc['tables_scanned']} tables, {len(dc['dead'])} dead "
             f"({sum(1 for d in dc['dead'] if d['new'])} new), {len(dc['suspect'])} suspect, "
-            f"{len(dc['errors'])} error(s)")
+            f"{len(dc['event_gated'])} event-gated, {len(dc['errors'])} error(s)")
     except Exception as e:
         logger.error(f"Dead-column sweep failed: {e}", exc_info=True)
         await notify_job_failure("dead_column_sweep", str(e))

@@ -12,8 +12,8 @@ in the evening brief and silently blanked a signal line.
 THE FIX: compute the score and return it either way (so `/setup TICKER` etc. keep working),
 but only call `upsert_stock_score` / `upsert_tracked_stock` when `today == last_trading_day
 (today)`. Anchoring the write to the last real session instead was considered and rejected:
-`upsert_stock_score`'s ON CONFLICT clause overwrites EVERY column (including sector/adv_20/
-market_cap) from `EXCLUDED`, and this on-demand path always sets those three to None — writing
+`upsert_stock_score`'s ON CONFLICT clause overwrites EVERY column (including sector/adv_20)
+from `EXCLUDED`, and this on-demand path always sets those two to None — writing
 onto the real session's existing row would silently blank fields a legitimate nightly run
 populated. Not persisting is strictly safer.
 

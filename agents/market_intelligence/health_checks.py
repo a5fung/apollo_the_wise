@@ -3851,6 +3851,28 @@ async def get_theme_hierarchy_evening_line() -> str | None:
 # `dead_column_suspect` and `dead_column_detected` are DISTINCT event types on purpose: the
 # `already` set reads only the latter, so a suspect row can never be mistaken for an announcement.
 _DEAD_COL_MIN_ROWS = 30          # below this the table is too young to judge
+# EVENT-GATED columns (#695, 2026-10-10): a column that IS wired but only holds a value while a
+# rare/transient event is live is all-NULL on every night the event is absent — which this sweep
+# cannot tell from "never wired". Each `mark_r` below is a mark-to-market on a still-open replay
+# walk: the writer fills it while the walk is open (or at its 40-session horizon) and the guarded
+# UPSERT clears it when the walk settles. key → (SQL predicate selecting the rows the event is live
+# on, why). The column is exempt ONLY while ZERO rows are in that state; the moment one is and the
+# column is still all-NULL, the writer is broken and the column counts dead like any other. This
+# is not a mute: a dropped/never-wired column is not on this list, and an entry needs a writer test.
+_DEAD_COL_EVENT_GATED: dict[str, tuple[str, str]] = {
+    "mi_live_fill_counterfactuals.mark_r": (
+        "outcome = 'horizon'",
+        "filled only when an arm is still open after 40 forward sessions"),
+    "mi_gap_near_miss_replays.mark_r": (
+        "outcome IN ('open', 'horizon')",
+        "filled while a walk is open; cleared when it settles"),
+    "mi_sustain_reject_replays.mark_r": (
+        "outcome IN ('open', 'horizon')",
+        "filled while a walk is open; cleared when it settles"),
+    "mi_lowcap_lane_replays.mark_r": (
+        "outcome IN ('open', 'horizon')",
+        "filled while a walk is open; cleared when it settles"),
+}
 _DEAD_COL_TABLE_PREFIXES = ("mi_", "crypto_")
 # Row-write timestamps (a row stamped after the first sighting in ANY of them counts). Deliberately small
 # and timestamp-typed only: a business-date column (score_date, alert_date) says which day a row
@@ -3890,12 +3912,14 @@ async def run_dead_column_sweep(conn=None) -> dict[str, Any]:
          `dead_column_detected` row + Telegram.
       3. Column filled in between → never alerts. Nothing written since → re-checked tomorrow.
 
-    Returns {"tables_scanned", "dead" [announced, ever], "suspect" [on probation], "errors" [list]}.
+    Returns {"tables_scanned", "dead" [announced, ever], "suspect" [on probation],
+    "event_gated" [wired, event not live — `_DEAD_COL_EVENT_GATED`], "errors" [list]}.
     """
     from agents.market_intelligence.db import get_pool, log_audit_event
 
     async def _run(c) -> dict[str, Any]:
-        out: dict[str, Any] = {"tables_scanned": 0, "dead": [], "suspect": [], "errors": []}
+        out: dict[str, Any] = {"tables_scanned": 0, "dead": [], "suspect": [], "event_gated": [],
+                               "errors": []}
         tables = [r["table_name"] for r in await c.fetch(
             """
             SELECT table_name FROM information_schema.tables
@@ -3928,6 +3952,11 @@ async def run_dead_column_sweep(conn=None) -> dict[str, Any]:
                         continue
                     key = f"{table}.{col}"
                     entry = {"table": table, "column": col, "rows": n}
+                    gated = _DEAD_COL_EVENT_GATED.get(key)
+                    if gated is not None and not await c.fetchval(
+                            f'SELECT count(*) FROM "{table}" WHERE {gated[0]}'):
+                        out["event_gated"].append({**entry, "why": gated[1]})
+                        continue   # wired; its event is not live — nothing to suspect or announce
                     detail = json.dumps(entry)
                     if key in already:   # announced on an earlier night — never again
                         out["dead"].append({**entry, "new": False})

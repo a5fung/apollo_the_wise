@@ -401,7 +401,6 @@ async def initialize_schema() -> None:
                 rs_rank INT,
                 sector TEXT,
                 adv_20 FLOAT,
-                market_cap FLOAT,
                 sma_10 FLOAT,
                 sma_20 FLOAT,
                 sma_40 FLOAT,
@@ -420,6 +419,9 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS raw_1m FLOAT;
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS raw_3m FLOAT;
             ALTER TABLE mi_stock_scores ADD COLUMN IF NOT EXISTS raw_6m FLOAT;
+            -- #695 (2026-10-10): market_cap DROPPED — 0 of 559,023 rows ever written (both writers hardcoded
+            -- None since the POC), no reader. A size lookup joins mi_market_caps instead. Idempotent.
+            ALTER TABLE mi_stock_scores DROP COLUMN IF EXISTS market_cap;
 
             -- P3 Management Judge (ADR 0014) — SHADOW telemetry: one bounded-enum verdict per
             -- open position per daily pass. NO execution authority; observe/opine only.
@@ -5299,20 +5301,20 @@ async def upsert_stock_score(record: dict[str, Any]) -> None:
         await conn.execute("""
             INSERT INTO mi_stock_scores
                 (ticker, score_date, rs_1m, rs_3m, rs_6m, rs_composite, rs_rank,
-                 sector, adv_20, market_cap, sma_10, sma_20, sma_40, sma_50, close,
+                 sector, adv_20, sma_10, sma_20, sma_40, sma_50, close,
                  raw_1m, raw_3m, raw_6m)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
             ON CONFLICT (ticker, score_date) DO UPDATE SET
                 rs_1m=EXCLUDED.rs_1m, rs_3m=EXCLUDED.rs_3m, rs_6m=EXCLUDED.rs_6m,
                 rs_composite=EXCLUDED.rs_composite, rs_rank=EXCLUDED.rs_rank,
-                sector=EXCLUDED.sector, adv_20=EXCLUDED.adv_20, market_cap=EXCLUDED.market_cap,
+                sector=EXCLUDED.sector, adv_20=EXCLUDED.adv_20,
                 sma_10=EXCLUDED.sma_10, sma_20=EXCLUDED.sma_20, sma_40=EXCLUDED.sma_40,
                 sma_50=EXCLUDED.sma_50, close=EXCLUDED.close, raw_1m=EXCLUDED.raw_1m,
                 raw_3m=EXCLUDED.raw_3m, raw_6m=EXCLUDED.raw_6m
         """,
             record["ticker"], record["score_date"], record.get("rs_1m"), record.get("rs_3m"),
             record.get("rs_6m"), record.get("rs_composite"), record.get("rs_rank"),
-            record.get("sector"), record.get("adv_20"), record.get("market_cap"),
+            record.get("sector"), record.get("adv_20"),
             record.get("sma_10"), record.get("sma_20"), record.get("sma_40"), record.get("sma_50"),
             record.get("close"), record.get("raw_1m"), record.get("raw_3m"), record.get("raw_6m"),
         )
@@ -5327,20 +5329,20 @@ async def upsert_stock_scores_batch(records: list[dict[str, Any]]) -> None:
         await conn.executemany("""
             INSERT INTO mi_stock_scores
                 (ticker, score_date, rs_1m, rs_3m, rs_6m, rs_composite, rs_rank,
-                 sector, adv_20, market_cap, sma_10, sma_20, sma_40, sma_50, close,
+                 sector, adv_20, sma_10, sma_20, sma_40, sma_50, close,
                  raw_1m, raw_3m, raw_6m)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
             ON CONFLICT (ticker, score_date) DO UPDATE SET
                 rs_1m=EXCLUDED.rs_1m, rs_3m=EXCLUDED.rs_3m, rs_6m=EXCLUDED.rs_6m,
                 rs_composite=EXCLUDED.rs_composite, rs_rank=EXCLUDED.rs_rank,
-                sector=EXCLUDED.sector, adv_20=EXCLUDED.adv_20, market_cap=EXCLUDED.market_cap,
+                sector=EXCLUDED.sector, adv_20=EXCLUDED.adv_20,
                 sma_10=EXCLUDED.sma_10, sma_20=EXCLUDED.sma_20, sma_40=EXCLUDED.sma_40,
                 sma_50=EXCLUDED.sma_50, close=EXCLUDED.close, raw_1m=EXCLUDED.raw_1m,
                 raw_3m=EXCLUDED.raw_3m, raw_6m=EXCLUDED.raw_6m
         """, [
             (r["ticker"], r["score_date"], r.get("rs_1m"), r.get("rs_3m"),
              r.get("rs_6m"), r.get("rs_composite"), r.get("rs_rank"),
-             r.get("sector"), r.get("adv_20"), r.get("market_cap"),
+             r.get("sector"), r.get("adv_20"),
              r.get("sma_10"), r.get("sma_20"), r.get("sma_40"), r.get("sma_50"),
              r.get("close"), r.get("raw_1m"), r.get("raw_3m"), r.get("raw_6m"))
             for r in records

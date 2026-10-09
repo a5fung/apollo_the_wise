@@ -1,3 +1,10 @@
+### 2026-10-10 — #695: `mi_stock_scores.market_cap` dropped; the three `mark_r` columns are wired and event-gated, so the dead-column sweep stops counting them
+
+- **`mi_stock_scores.market_cap` DROPPED** (0 of 559,023 rows ever written: both writers hardcoded `None` since the POC; no reader; size lookups join `mi_market_caps`). `initialize_schema` runs `ALTER TABLE ... DROP COLUMN IF EXISTS`; both upserts and the two `rs_engine` records lose the field.
+- **`mark_r` x3 are WIRED, not dead:** `mi_gap_near_miss_replays` / `mi_sustain_reject_replays` / `mi_lowcap_lane_replays` fill it while a replay walk is open (cleared on settle); `mi_live_fill_counterfactuals` only at the 40-session `horizon` (0 horizon arms in 140 rows yet). All-NULL is their healthy state between events.
+- **Sweep:** `_DEAD_COL_EVENT_GATED` exempts a column ONLY while zero rows are in its event state; an event row with `mark_r` still NULL counts dead as before. The nightly log gains `N event-gated`.
+- **Deploy scope: `market-agent` AND `execution`** (`db.py`, `rs_engine.py`, `scheduler.py` are in `scripts/exec_loaded_modules.txt`); deploy both together, away from the nightly RS run, so no old-code upsert meets the dropped column.
+
 ### 2026-10-03 — #394 C2: the coil board shows how gappy each base is (display only); the tune changed no knob
 
 - **Operator "Sign" on the C1 tune tables:** keep the 50% hold cap, keep the board order (pooled verdict), no orderliness demotion → Phase 1 only. ADR 0013 change log 2026-10-03 "#394 C2" carries the signed verdict lines verbatim; the methodology doc's status line is flipped.

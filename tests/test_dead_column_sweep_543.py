@@ -138,6 +138,8 @@ class _FakeDB:
         raise AssertionError(f"unexpected fetch: {sql[:90]}")
 
     async def fetchval(self, sql, *args):
+        if sql.startswith("SELECT count(*)") and " WHERE " in sql:   # event-gated: rows in the event state
+            return self.tables[sql.split('"')[1]].get("gate_rows", 0)
         if sql.startswith("SELECT count(*)"):
             t = self.tables[sql.split('"')[1]]
             if t.get("boom"):
@@ -289,3 +291,64 @@ async def test_one_bad_table_does_not_stop_the_others_being_checked(telegram, mo
     out = await _run(db, monkeypatch)
     assert len(out["errors"]) == 1 and "mi_aaa_broken" in out["errors"][0]
     assert db.events() == [("dead_column_suspect", _KEY)]
+
+
+# ── #695: EVENT-GATED columns (wired, but only filled while a rare event is live) ──────────────
+_GATED = "mi_live_fill_counterfactuals"
+_GATED_KEY = f"{_GATED}.mark_r"
+
+
+def _gated_table(**over):
+    t = {"rows": 140, "nonnull": {"mark_r": 0}, "ts_col": "created_at", "last_write": None,
+         "gate_rows": 0}
+    t.update(over)
+    return {_GATED: t}
+
+
+@pytest.mark.asyncio
+async def test_an_event_gated_column_is_neither_suspect_nor_dead_while_its_event_is_absent(
+        telegram, monkeypatch):
+    """`mark_r` is wired (filled only on a 40-session `horizon` arm). With no horizon row, an
+    all-NULL column is exactly what a healthy system holds: no audit row, no page, not dead — on
+    every night, however many the table has been written since."""
+    db = _FakeDB(_gated_table())
+    for _ in range(3):
+        db.tables[_GATED]["last_write"] = db.now + timedelta(minutes=5)
+        out = await _run(db, monkeypatch)
+        db.advance(days=1)
+        assert out["dead"] == [] and out["suspect"] == []
+        assert [(g["table"], g["column"]) for g in out["event_gated"]] == [(_GATED, "mark_r")]
+    assert db.audit == [] and telegram == []
+
+
+@pytest.mark.asyncio
+async def test_an_event_gated_column_with_its_event_live_and_still_null_is_a_broken_writer(
+        telegram, monkeypatch):
+    """The exemption is not a mute: once a `horizon` row exists and `mark_r` is STILL all-NULL,
+    the writer is broken — the column goes through the normal two-step and is announced."""
+    db = _FakeDB(_gated_table(gate_rows=2))
+    out = await _run(db, monkeypatch)
+    assert out["event_gated"] == [] and db.events() == [("dead_column_suspect", _GATED_KEY)]
+    db.tables[_GATED]["last_write"] = db.now + timedelta(minutes=5)
+    db.advance(days=1)
+    await _run(db, monkeypatch)
+    assert db.events("dead_column_detected") == [("dead_column_detected", _GATED_KEY)]
+    assert len(telegram) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("key", sorted(health_checks._DEAD_COL_EVENT_GATED))
+async def test_every_event_gated_entry_is_exempt_only_while_its_event_is_absent(
+        key, telegram, monkeypatch):
+    """Each registered column behaves the same way: exempt with no event rows, counted the moment an
+    event row exists and the column is still NULL. An entry cannot become a blanket mute."""
+    table, col = key.split(".")
+    quiet = _FakeDB({table: {"rows": 100, "nonnull": {col: 0}, "ts_col": None, "last_write": None,
+                             "gate_rows": 0}})
+    out = await _run(quiet, monkeypatch)
+    assert [(g["table"], g["column"]) for g in out["event_gated"]] == [(table, col)]
+    assert quiet.audit == [] and out["suspect"] == []
+    live = _FakeDB({table: {"rows": 100, "nonnull": {col: 0}, "ts_col": None, "last_write": None,
+                            "gate_rows": 1}})
+    out = await _run(live, monkeypatch)
+    assert out["event_gated"] == [] and live.events() == [("dead_column_suspect", key)]

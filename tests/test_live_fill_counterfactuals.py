@@ -311,6 +311,25 @@ def test_horizon_writes_a_mark_never_a_return():
     assert res["mark_pnl_per_share"] == pytest.approx(10.7 - 10.0)   # open remainder at the last close
 
 
+def test_horizon_arm_persists_mark_r_in_R_units_and_nothing_else_does():
+    """#695: `mark_r` is wired but EVENT-GATED — the sweep reads it all-NULL until an arm survives
+    40 sessions. This pins the writer so that day it fills: a horizon walk's mark becomes
+    mark_pnl_per_share / risk_per_share in the persisted fields (and `mark_r` is a persisted
+    column); a settled arm and a pending/abstain one leave it NULL (a mark is never a return)."""
+    day0 = [DAY0_A[0], DAY0_A[1], DAY0_A[4]]
+    sess = [(SESSIONS[0], _bar(10.6, 10.8, 10.2, 10.4)), (SESSIONS[1], _bar(10.5, 10.9, 10.3, 10.7))]
+    res = _walk("live_ladder", day0=day0, sessions=sess, horizon=2)
+    assert res["status"] == "horizon"
+    f = lfc._outcome_fields(res, entry=10.0, stop=9.0, adr_dollar=0.5, outcome="horizon",
+                            day0_bar_count=3)
+    assert f["mark_r"] == pytest.approx((10.7 - 10.0) / 1.0)
+    assert f["realized_r"] is None and f["outcome"] == "horizon"
+    assert "mark_r" in db.LIVE_FILL_CF_COLS
+    settled = lfc._outcome_fields({"pnl_per_share": 1.5, "mark_pnl_per_share": 9.9}, entry=10.0,
+                                  stop=9.0, adr_dollar=0.5, outcome="settled", day0_bar_count=3)
+    assert settled["mark_r"] is None and settled["realized_r"] == pytest.approx(1.5)
+
+
 def test_missing_session_blocks_the_walk_instead_of_leaping_it():
     """S2's bar is missing: the walk stops AT S2 (pending_at = S2) — it does not read S3's
     gap-down as if S2 never existed (the #616 abstain rule; a deliberate deviation from
