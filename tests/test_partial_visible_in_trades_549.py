@@ -121,17 +121,18 @@ def test_an_open_trade_still_reads_open():
 
 
 def test_the_closed_list_also_shows_every_leg():
-    """`/trades`' closed list rendered `exits[-1]` only. Pinned at source because the handler
-    is a 7000-line module and this formatter is a nested closure."""
-    src = pathlib.Path(
-        "agents/market_intelligence/agent.py").read_text(encoding="utf-8")
-    i = src.find("def _fmt_closed_line(")
-    assert i > 0, "the closed-trade formatter moved — re-point this test"
-    seg = src[i:i + 3000]
-    assert "if len(exits) > 1:" in seg, (
+    """`/trades`' closed list rendered `exits[-1]` only. Exercised on the real formatter
+    (extracted from the handler closure by #696), fed the FIGS 08-07 legs."""
+    from agents.market_intelligence.closed_trade_line import fmt_closed_line
+    lines = fmt_closed_line(
+        {"ticker": "FIGS", "total_pnl": -6.84, "hold_days": 0, "exits": _FIGS_EXITS,
+         "entry_price": 15.0, "ep_score": 70, "closed_at": None},
+        parse_exits=lambda raw: raw)
+    legs = [l for l in lines if "↳" in l]
+    assert legs, (
         "/trades' closed list is back to rendering only the final exit — a trade that took "
         "profit and was then stopped shows as a plain loss")
-    assert re.search(r'legs\.append', seg), "the per-leg breakdown is gone"
+    assert "partial profit" in legs[0] and "stop hit" in legs[0], "a leg is missing"
 
 
 # ── the times were UTC (operator 2026-08-08: "we need to fix the timezone") ────────────────

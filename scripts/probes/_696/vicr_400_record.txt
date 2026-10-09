@@ -1,0 +1,3 @@
+trade_id|ticker|realized_pnl|realized_r|peak_r
+400|VICR|75.73000000000002|7.3029|11.5237
+(1 row)

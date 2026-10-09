@@ -71,6 +71,19 @@ def trade_risk_per_share(trade: dict) -> Optional[float]:
     return None
 
 
+def trade_realized_r(trade: dict) -> Optional[float]:
+    """THE realized-R formula: total_pnl / (original entry risk x entry shares), 4dp.
+    One definition for every surface (the sell-discipline record, its provisional rows,
+    the /trades closed list) so they can never disagree. None when there is no valid R
+    frame (no risk unit / no shares) or no pnl — never a fabricated number."""
+    risk = trade_risk_per_share(trade)
+    shares = _f(trade.get("entry_shares")) or 0.0
+    pnl = _f(trade.get("total_pnl"))
+    if risk is None or shares <= 0 or pnl is None:
+        return None
+    return round(pnl / (risk * shares), 4)
+
+
 def _judge_context(decisions: Iterable[dict]) -> dict:
     """Aggregate the position's mi_position_mgmt_decisions rows (may be empty): how many
     verdicts, the last one, and the FIRST non-HOLD (did the judge warn before the round
@@ -130,9 +143,8 @@ def compute_sell_record(
 
     fill_day = filled_at.astimezone(_ET).date()
     close_day = closed_at.astimezone(_ET).date()
-    risk_dollars = risk * shares
     realized_pnl = _f(trade.get("total_pnl"))
-    realized_r = round(realized_pnl / risk_dollars, 4) if realized_pnl is not None else None
+    realized_r = trade_realized_r(trade)
 
     daily = [dict(r) for r in daily_rows
              if r.get("trade_date") and fill_day <= r["trade_date"] <= close_day]
@@ -941,7 +953,7 @@ async def build_sell_discipline_section(
         prov.append({
             "ticker": t["ticker"],
             "peak_r": (hps - entry) / risk if hps is not None else None,
-            "realized_r": pnl / (risk * shares) if pnl is not None else None,
+            "realized_r": trade_realized_r(t),
         })
 
     data = {

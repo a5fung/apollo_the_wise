@@ -7064,6 +7064,7 @@ class MarketIntelligenceAgent(BaseAgent):
         """Inline keyboard detail: /trades_detail {view} [{date}]"""
         import json as _json
         from agents.market_intelligence.collector import last_trading_day
+        from agents.market_intelligence.closed_trade_line import fmt_closed_line
 
         parts = request.task.strip().split()
         view = parts[1].lower() if len(parts) > 1 else "summary"
@@ -7086,52 +7087,8 @@ class MarketIntelligenceAgent(BaseAgent):
                 logger.debug(f"/trades {view}: malformed exits JSON on a row, showing empty: {e}")
                 return []
 
-        def _fmt_closed_line(r: dict, attempts: int = 0) -> list[str]:
-            pnl = float(r.get("total_pnl") or 0)
-            emoji = "✅" if pnl > 0 else "❌"
-            exits = _parse_exits(r.get("exits"))
-            last = exits[-1] if exits else {}
-            exit_price = last.get("price")
-            # Underscores in reason (stop_hit, partial_profit, sma_trail_stop) break
-            # Telegram Markdown V1 italic parsing — swap to spaces for display.
-            reason = (last.get("reason") or "?").replace("_", " ")
-            entry = r.get("entry_price")
-            hold = r.get("hold_days") or 0
-            score = r.get("ep_score") or 0
-            entry_str = f"${entry:.2f}" if entry else "?"
-            exit_str = f"${exit_price:.2f}" if exit_price else "?"
-            closed_at = r.get("closed_at")
-            date_suffix = f" · {closed_at.strftime('%b %d')}" if closed_at else ""
-            # Always show attempt count — even '1 attempt' tells the reader
-            # this is a fresh name and not a multi-try grind.
-            attempts_label = "attempt" if attempts == 1 else "attempts"
-            attempts_suffix = f" · {attempts} {attempts_label}" if attempts else ""
-            out = [
-                f"  {emoji} *{r['ticker']}* ${pnl:+,.0f} ({hold}d){date_suffix}{attempts_suffix}",
-                f"      {entry_str} → {exit_str} · {reason} · score {score:.0f}",
-            ]
-            # ⚠ EVERY LEG, not just the last one (operator 2026-08-08). The two lines above
-            # render `exits[-1]`, so a trade that TOOK PROFIT and was then stopped out showed
-            # only the stop — the profit-take was invisible. His words: *"I completely missed
-            # this and never saw the telegram, and in /trades it just shows the total realized
-            # loss… at the very least /trades should show the partial profit taken for closed
-            # trades."*
-            # The live case: FIGS 08-07 banked +$6.90 on a +2R partial, then lost $13.74 on the
-            # remainder. /trades rendered "❌ FIGS -$7 · stop hit" and nothing else — the system
-            # had done the right thing first and the surface hid it.
-            if len(exits) > 1:
-                legs = []
-                for e in exits:
-                    px, sh = e.get("price"), e.get("shares")
-                    epnl = e.get("pnl")
-                    why = (e.get("reason") or "?").replace("_", " ")
-                    if px is None or sh is None:
-                        continue
-                    pnl_part = f" ${float(epnl):+,.2f}" if epnl is not None else ""
-                    legs.append(f"{float(sh):g}sh @${float(px):.2f}{pnl_part} ({why})")
-                if legs:
-                    out.append("      ↳ " + " → ".join(legs))
-            return out
+        def _fmt_closed_line(r: dict) -> list[str]:
+            return fmt_closed_line(r, parse_exits=_parse_exits)
 
         async def _build_summary() -> str:
             """Open positions (with live Alpaca prices) + last 5 closed + totals."""
@@ -7162,7 +7119,8 @@ class MarketIntelligenceAgent(BaseAgent):
                 """)
                 closed_rows = await conn.fetch("""
                     SELECT ticker, entry_price, total_pnl, hold_days,
-                           exits, ep_score, closed_at
+                           exits, ep_score, closed_at,
+                           hard_stop, orb_low, entry_shares  -- #696: the R frame
                     FROM mi_live_trades
                     WHERE status = 'closed'
                       AND account_mode = 'live'  -- mode-ok: #447 real-money book only
@@ -7177,11 +7135,10 @@ class MarketIntelligenceAgent(BaseAgent):
                     FROM mi_live_trades
                     WHERE account_mode = 'live'  -- mode-ok: #447 real-money book only
                 """)
-                # Per-ticker closed-attempt history — feeds open-row "prior
-                # P&L" and closed-row "N attempts" suffixes. Bounded query
-                # over the union of currently-relevant tickers.
-                relevant_tickers = list({r["ticker"] for r in open_rows} |
-                                         {r["ticker"] for r in closed_rows})
+                # Per-ticker closed-attempt history — feeds the open-row "prior
+                # P&L" suffix (closed rows no longer show attempts, #696). Bounded
+                # query over the open tickers.
+                relevant_tickers = list({r["ticker"] for r in open_rows})
                 ticker_history: dict[str, dict] = {}
                 if relevant_tickers:
                     hist_rows = await conn.fetch("""
@@ -7316,10 +7273,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append("")
                 lines.append(f"*Last {len(closed_rows)} Closed*")
                 for r in closed_rows:
-                    rd = dict(r)
-                    hist = ticker_history.get(rd["ticker"])
-                    attempts = int(hist["attempts"]) if hist else 0
-                    lines += _fmt_closed_line(rd, attempts=attempts)
+                    lines += _fmt_closed_line(dict(r))
 
             winners = stats["winners"] or 0
             losers = stats["losers"] or 0
@@ -7397,7 +7351,8 @@ class MarketIntelligenceAgent(BaseAgent):
             async with pool.acquire() as conn:
                 rows = await conn.fetch("""
                     SELECT ticker, entry_price, total_pnl, hold_days,
-                           exits, ep_score, closed_at
+                           exits, ep_score, closed_at,
+                           hard_stop, orb_low, entry_shares  -- #696: the R frame
                     FROM mi_live_trades
                     WHERE status = 'closed'
                       AND account_mode = 'live'   -- mode-ok: #447 live book (consistent w/ the main summary)
