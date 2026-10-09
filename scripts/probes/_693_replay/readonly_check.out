@@ -1,0 +1,5 @@
+api_usage theme_validation rows in window: 0
+api_usage claude-sonnet-5-5 rows in window (any caller): 0
+audit rows in window (validation/rewrite/cooldown types): 0
+cooldown rows written 10-09: 0
+validator sample file mtime (UTC): 2026-10-08 21:03:21.585428

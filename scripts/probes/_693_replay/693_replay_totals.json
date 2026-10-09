@@ -1,0 +1,36 @@
+{
+ "totals": {
+  "on": {
+   "in": 96494,
+   "out": 8941,
+   "usd": 0.282398,
+   "n": 151,
+   "errors": 0
+  },
+  "cut": {
+   "in": 96343,
+   "out": 1678,
+   "usd": 0.20946599999999996,
+   "n": 151,
+   "errors": 0
+  }
+ },
+ "price_per_mtok": {
+  "input": 2.0,
+  "output": 10.0
+ },
+ "model": "claude-sonnet-5-5",
+ "arms": {
+  "on": {
+   "max_tokens": 2024
+  },
+  "cut": {
+   "max_tokens": 1000,
+   "thinking": {
+    "type": "between_tools"
+   }
+  }
+ },
+ "n_calls": 151,
+ "finished": "2026-10-09 18:01:56 UTC"
+}

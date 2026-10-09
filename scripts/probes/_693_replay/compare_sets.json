@@ -1,0 +1,304 @@
+{
+ "live": [
+  [
+   "AI-Driven Memory & Storage Supply Shortage",
+   "SMTC"
+  ],
+  [
+   "Commercial, Office & Home Furniture Retailers and Manufacturers",
+   "MHK"
+  ],
+  [
+   "Commercial, Office & Home Furniture Retailers and Manufacturers",
+   "TILE"
+  ],
+  [
+   "Crude & Product Tanker Shipping",
+   "CMBT"
+  ],
+  [
+   "Data Storage & Data Management Software/Hardware Leaders",
+   "P"
+  ],
+  [
+   "Defense Intelligence & Cybersecurity IT Contractors",
+   "EFOR"
+  ],
+  [
+   "Defense Intelligence & Cybersecurity IT Contractors",
+   "ICFI"
+  ],
+  [
+   "Digital Advertising & Ad-Tech Monetization Platforms",
+   "ZD"
+  ],
+  [
+   "Discrete, Passive & Low-Power Programmable Semiconductor Components Recovery",
+   "VPG"
+  ],
+  [
+   "Energy Supply Disruption: Middle East Geopolitical Risk",
+   "DEC"
+  ],
+  [
+   "Financial Data & Advisory/Capital Markets Platforms",
+   "PS"
+  ],
+  [
+   "Fintech & Digital Finance Sector Re-rating on Fed Easing",
+   "ITUB"
+  ],
+  [
+   "Fintech & Digital Finance Sector Re-rating on Fed Easing",
+   "SSNC"
+  ],
+  [
+   "Hospital & Behavioral Health Facility Procedure Volume Recovery",
+   "MD"
+  ],
+  [
+   "Identity & Access Management Security Software",
+   "RDVT"
+  ],
+  [
+   "Industrial Construction Execution & On-Site Supply Chain",
+   "ACA"
+  ],
+  [
+   "Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound",
+   "TDS"
+  ],
+  [
+   "Life Science Tools & Analytical Instruments",
+   "FTRE"
+  ],
+  [
+   "Marketing & Customer Data SaaS Rotation",
+   "TTAN"
+  ],
+  [
+   "Mortgage REITs (Agency & Residential MBS)",
+   "STWD"
+  ],
+  [
+   "Network Security & Zero-Trust Edge",
+   "SAIL"
+  ],
+  [
+   "Offshore IT Services & Digital Engineering Outsourcers",
+   "DOX"
+  ],
+  [
+   "Oil & Gas E&P Crude-Weighted Producers Momentum",
+   "IMO"
+  ],
+  [
+   "On-Site Power Generation & Distribution Equipment for Data Centers",
+   "SEI"
+  ],
+  [
+   "Skilled Nursing & Senior Housing Healthcare REITs",
+   "JAN"
+  ],
+  [
+   "Specialty Retail Short-Squeeze Momentum Basket",
+   "SIG"
+  ]
+ ],
+ "on": [
+  [
+   "Commercial, Office & Home Furniture Retailers and Manufacturers",
+   "MHK"
+  ],
+  [
+   "Digital Advertising & Ad-Tech Monetization Platforms",
+   "ZD"
+  ],
+  [
+   "Discrete, Passive & Low-Power Programmable Semiconductor Components Recovery",
+   "VPG"
+  ],
+  [
+   "Fintech & Digital Finance Sector Re-rating on Fed Easing",
+   "ITUB"
+  ],
+  [
+   "Offshore IT Services & Digital Engineering Outsourcers",
+   "DOX"
+  ]
+ ],
+ "cut": [
+  [
+   "AI-Powered Enterprise Analytics & Intelligent Workflow SaaS",
+   "AVPT"
+  ],
+  [
+   "Aerospace Engine, Airframe Components & Defense Subsystem Suppliers",
+   "PH"
+  ],
+  [
+   "Bank Stocks: Rising-Rate NIM Expansion",
+   "BBVA"
+  ],
+  [
+   "Bank Stocks: Rising-Rate NIM Expansion",
+   "C"
+  ],
+  [
+   "Bank Stocks: Rising-Rate NIM Expansion",
+   "DB"
+  ],
+  [
+   "Bank Stocks: Rising-Rate NIM Expansion",
+   "ING"
+  ],
+  [
+   "Bank Stocks: Rising-Rate NIM Expansion",
+   "JPM"
+  ],
+  [
+   "Bank Stocks: Rising-Rate NIM Expansion",
+   "MFG"
+  ],
+  [
+   "Bank Stocks: Rising-Rate NIM Expansion",
+   "MUFG"
+  ],
+  [
+   "Bank Stocks: Rising-Rate NIM Expansion",
+   "NWG"
+  ],
+  [
+   "Bank Stocks: Rising-Rate NIM Expansion",
+   "SAN"
+  ],
+  [
+   "Bank Stocks: Rising-Rate NIM Expansion",
+   "SMFG"
+  ],
+  [
+   "Bank Stocks: Rising-Rate NIM Expansion",
+   "WFC"
+  ],
+  [
+   "Cross-Industry Test, Measurement & Design-Verification Tools",
+   "RAL"
+  ],
+  [
+   "Crude & Product Tanker Shipping",
+   "CMBT"
+  ],
+  [
+   "Defense Intelligence & Cybersecurity IT Contractors",
+   "EFOR"
+  ],
+  [
+   "Defense Intelligence & Cybersecurity IT Contractors",
+   "ICFI"
+  ],
+  [
+   "Digital Advertising & Ad-Tech Monetization Platforms",
+   "ZD"
+  ],
+  [
+   "Discrete, Passive & Low-Power Programmable Semiconductor Components Recovery",
+   "VPG"
+  ],
+  [
+   "Energy Infrastructure & Services Complex",
+   "FET"
+  ],
+  [
+   "Energy Infrastructure & Services Complex",
+   "WKC"
+  ],
+  [
+   "Financial Data & Advisory/Capital Markets Platforms",
+   "PS"
+  ],
+  [
+   "Fintech & Digital Finance Sector Re-rating on Fed Easing",
+   "ITUB"
+  ],
+  [
+   "Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound",
+   "TDS"
+  ],
+  [
+   "Life Science Tools & Analytical Instruments",
+   "FTRE"
+  ],
+  [
+   "Marketing & Customer Data SaaS Rotation",
+   "TTAN"
+  ],
+  [
+   "Mortgage REITs (Agency & Residential MBS)",
+   "STWD"
+  ],
+  [
+   "Network Security & Zero-Trust Edge",
+   "SAIL"
+  ],
+  [
+   "Offshore IT Services & Digital Engineering Outsourcers",
+   "DOX"
+  ],
+  [
+   "On-Site Power Generation & Distribution Equipment for Data Centers",
+   "SEI"
+  ],
+  [
+   "Skilled Nursing & Senior Housing Healthcare REITs",
+   "JAN"
+  ],
+  [
+   "Specialty Retail Short-Squeeze Momentum Basket",
+   "SIG"
+  ]
+ ],
+ "desc": {
+  "BBVA": "Financial Services / Banks - Diversified \u2014 Diversified banking, retail & corporate financial services",
+  "PH": "Industrials / Specialty Industrial Machinery \u2014 Aerospace hydraulics, industrial motion control systems",
+  "TDS": "Communication Services / Telecom Services \u2014 Residential & commercial telecom services",
+  "FTRE": "Healthcare / Biotechnology \u2014 Contract research organization, drug & device development",
+  "ZD": "Communication Services / Advertising Agencies \u2014 Digital media, reviews & advertising network",
+  "TTAN": "Field service management software, contractor operations",
+  "P": "Data storage, management software & hardware",
+  "SAIL": "Identity & access management software, enterprise security",
+  "SIG": "Diamond & jewelry retail, consumer luxury",
+  "MUFG": "Financial Services / Banks - Diversified \u2014 Diversified banking, lending & financial services",
+  "RAL": "Precision instruments, engineered industrial products",
+  "SMFG": "Diversified banking, Japan & global markets",
+  "C": "Global bank, institutional clients",
+  "ACA": "Infrastructure products & engineered structures",
+  "VPG": "Precision sensors, measurement technology",
+  "FET": "Oil & gas equipment, manufacturing & supplies",
+  "AVPT": "Cloud-native data management, backup & recovery",
+  "SMTC": "IoT semiconductors, cloud connectivity",
+  "STWD": "Real Estate / REIT - Mortgage \u2014 Commercial & residential mortgage lending, real estate debt",
+  "ICFI": "Management consulting, government & commercial services",
+  "NWG": "Financial Services / Banks - Regional \u2014 Retail banking, private banking, investment services",
+  "SSNC": "Technology / Software - Application \u2014 Financial & healthcare software & services",
+  "ITUB": "Financial Services / Banks - Regional \u2014 Brazilian retail & corporate banking, financial services",
+  "DOX": "Technology / Software - Infrastructure \u2014 Telecom software, billing, customer management systems",
+  "JAN": "Real Estate / REIT - Residential \u2014 Senior housing real estate investment trust",
+  "JPM": "Largest US bank, investment banking, trading",
+  "MFG": "Regional & diversified banking, Japan-focused",
+  "ING": "Financial Services / Banks - Diversified \u2014 Diversified banking, retail & wholesale",
+  "IMO": "Oil & gas exploration, production & refining Canada",
+  "CMBT": "Marine transportation, hydrogen infrastructure & vessels",
+  "SAN": "Financial Services / Banks - Diversified \u2014 Diversified banking, lending & financial services",
+  "DEC": "Natural gas & oil production, Appalachia",
+  "WFC": "Major US bank, consumer & commercial banking",
+  "TILE": "Modular carpet, commercial flooring",
+  "EFOR": "Technology / Information Technology Services \u2014 IT services & solutions for government, commercial",
+  "SEI": "Modular power generation, oilfield equipment",
+  "DB": "Financial Services / Banks - Regional \u2014 Corporate & investment banking, asset management",
+  "WKC": "Energy management, fuel supply operations",
+  "PS": "Financial Services / Asset Management \u2014 Alternative asset management, hedge fund",
+  "MD": "Healthcare / Medical Care Facilities \u2014 Newborn, maternal-fetal, pediatric medical services",
+  "RDVT": "Identity intelligence, analytics software",
+  "MHK": "Consumer Cyclical / Furnishings, Fixtures & Appliances \u2014 Residential & commercial flooring products"
+ }
+}

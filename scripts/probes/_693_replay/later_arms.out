@@ -1,0 +1,64 @@
+17:05:09 theme_carryforward_filter_stripped | Digital Advertising & Ad-Tech Monetization Platforms: stripped 1 ticker(s) (sector_outlier) | theme=Digital Advertising & Ad-Tech Monetization Platforms
+pre_size=3 post_size=2
+sector_outlier=['PUBM']
+
+17:05:09 theme_carryforward_filter_stripped | Small Modular Reactor & Advanced Nuclear Fission Technology: stripped 3 ticker(s) (sector_outlier) | theme=Small Modular Reactor & Advanced Nuclear Fission Technology
+pre_size=3 post_size=0
+sector_outlier=['LEU', 'NNE', 'OKLO']
+
+17:05:35 theme_member_rehomed | Rehome: 'Bitcoin Balance Sheet Proxies' -> 'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket' MSTR moved on the tape (0.89 vs own unreadable; own_unjudgeable:thin_basket) — a paying theme: +10 on its next EP | {"ticker": "MSTR", "from": "Bitcoin Balance Sheet Proxies", "to": "Bitcoin Treasury & Crypto Proxy Equities Correlation Basket", "target_stage": "Mainstream", "paying": true, "target_corr": 0.8896, "own_corr": null, "arm": "own_unjudgeable:thin_basket", "rationale": "MSTR is the archetypal Bitcoin treasury company and trades with this basket at 0.89 correlation."}
+
+17:05:35 theme_member_rehomed | Rehome: 'Global IT Services Outsourcing & Digital Transformation Consulting' -> 'IT Consulting & Business Process Outsourcing Services' GIB moved on the tape (0.87 vs own unreadable; own_unjudgeable:thin_basket) | {"ticker": "GIB", "from": "Global IT Services Outsourcing & Digital Transformation Consulting", "to": "IT Consulting & Business Process Outsourcing Services", "target_stage": "Nascent", "paying": false, "target_corr": 0.8728, "own_corr": null, "arm": "own_unjudgeable:thin_basket", "rationale": "GIB is an IT consulting, systems integration and BPO provider, matching peers like ACN, EPAM and CTSH."}
+
+17:05:35 theme_member_rehomed | Rehome: 'Global IT Services Outsourcing & Digital Transformation Consulting' -> 'IT Consulting & Business Process Outsourcing Services' G moved on the tape (0.86 vs own unreadable; own_unjudgeable:thin_basket) | {"ticker": "G", "from": "Global IT Services Outsourcing & Digital Transformation Consulting", "to": "IT Consulting & Business Process Outsourcing Services", "target_stage": "Nascent", "paying": false, "target_corr": 0.8575, "own_corr": null, "arm": "own_unjudgeable:thin_basket", "rationale": "Genpact is a business process outsourcing and IT services firm, a direct match for this theme."}
+
+17:08:29 theme_member_rehomed | Rehome: INTR joined 'Fintech & Digital Finance Sector Re-rating on Fed Easing' from a suppressed newborn (tape 0.44) — a paying theme: +10 on its next EP | {"ticker": "INTR", "from": null, "to": "Fintech & Digital Finance Sector Re-rating on Fed Easing", "target_stage": "Mainstream", "paying": true, "target_corr": 0.4374, "arm": "join_carry", "rationale": "Inter&Co is a Brazilian digital bank and payments platform, directly comparable to existing members like XP, PAGS, STNE and ITUB, and it moves with the theme at 0.44 correlation."}
+
+17:08:29 theme_rehome_join_carry_ran | Re-homing join-carry: 4 novel member(s) from 2 suppressed newborn(s); 1 on the tape, 1 joined, 0 stayed | {"join_carry": {"Fintech & Digital Finance Sector Re-rating on Fed Easing": ["INTR"], "Private Mortgage & Title Insurance Underwriters": ["ESNT", "NMIH", "MTG"]}, "candidates": 1, "offered": 1, "joined": 1, "stayed": 0}
+
+17:08:30 theme_birth_validated | Birth-validation stripped 1 from new theme 'Offshore IT Services & Digital Engineering Outsourcers' | Removed: DOX | kept: INFY, GLOB, KD, EPAM
+
+17:08:31 theme_birth_validated | Birth-validation stripped 1 from new theme 'Mortgage REITs (Agency & Residential MBS)' | Removed: STWD | kept: AGNC, NLY, ORC
+
+17:08:36 theme_discovered | New theme: Offshore IT Services & Digital Engineering Outsourcers (4 stocks) | Tickers: INFY, GLOB, KD, EPAM
+Thesis: The main catalyst is Accenture’s better-than-expected quarterly results and upbeat outlook, sparking a read-through that enterprise IT and AI-services demand is holding up better than feared. Kyndryl also had a company-specific lift from opening its first U.S. AI Innovation Lab; gains across all five aren’t necessarily explained by one catalyst.
+
+17:08:36 theme_discovered | New theme: Mortgage REITs (Agency & Residential MBS) (3 stocks) | Tickers: AGNC, NLY, ORC
+Thesis: I’m not seeing evidence of a shared positive catalyst: the latest available data indicate mortgage REITs were pressured by rising Treasury and mortgage rates, with NLY notably lower. If these tickers are up in your quote window, it may be a short-term bounce or rate reversal rather than company-specific news.
+
+17:08:36 theme_discovered | New theme: Coal Mining Producers (4 stocks) | Tickers: CNR, HCC, BTU, AMR
+Thesis: There’s no clear single fresh headline tying all four together. The likely common driver is a rebound in metallurgical-coal sentiment, with CNR potentially benefiting from optimism around rail volumes; recent company-specific reports don’t indicate a new catalyst shared by the group.
+
+17:08:36 theme_discovered | New theme: Home Improvement Retail & Building Products (4 stocks) | Tickers: MAS, FND, HD, LOW
+Thesis: I don’t see a single confirmed news catalyst in the available coverage; the move looks like a broad home-improvement sector bounce rather than company-specific news. A possible tailwind is optimism around housing and remodeling demand, but the evidence here doesn’t establish that as the driver.
+
+17:08:36 theme_discovered | New theme: Regulated Utilities Wildfire & Rate-Case Exposure (4 stocks) | Tickers: EIX, PCG, SRE, AVA
+Thesis: The move looks like a relief bounce and bargain hunting after heavy selloffs—not a fresh, clear-cut headline catalyst. California wildfire-liability concerns remain unresolved; PG&E’s undergrounding plan may be helping sentiment at the margin, but it hasn’t yet been approved.
+
+17:08:36 theme_merge_pairs_proposed | Arm B Stage A: 8 candidate pair(s) for adjudication | 'Fintech Payments, Prepaid & Consumer Digital Banking Apps' × 'Fintech & Digital Finance Sector Re-rating on Fed Easing'
+'Copper Mining & Production' × 'Precious Metals Rebound on Easier Fed Outlook'
+'Precious Metals Royalty & Streaming Companies' × 'Precious Metals Rebound on Easier Fed Outlook'
+'Mid-Tier Gold Producers & Developers Breakout' × 'Precious Metals Rebound on Easier Fed Outlook'
+'Precious Metals Miners Velocity Breakout' × 'Precious Metals Rebound on Easier Fed Outlook'
+'Primary Silver Miners' × 'Precious Metals Rebound on Easier Fed Outlook'
+'Cardiac & Bioelectric Ablation Device Innovators' × 'Life Science Tools & Analytical Instruments'
+'Industrial Construction Execution & O
+
+17:08:51 theme_thesis_merged | Arm B: 'Precious Metals Royalty & Streaming Companies' merged into 'Precious Metals Miners, Royalties & Streamers—Fed Easing Tailwind' (24 members) | driver_a='Gold price rally from Fed rate-hike timing pushed out by weak jobs data' driver_b='Gold price rally from Fed rate-hike timing pushed out by weak jobs data' reason='Identical macro driver: eased Fed hike expectations lifting gold. Royalty/streaming is a business-model slice, not a distinct catalyst. Same gold-price thesis, two different structural exposures. Merge to avoid fragmentation.' merged_name='Precious Metals Miners, Royalties & Streamers—Fed Easing Tailwind' scratchpad='THEME A driver: Gold price appreciation from eased Fed rate-hike expectations and bullish macro environment supporting broad precious metals miners.\n\nTHEME B driver: Gold price appreciation from eased Fed 
+
+17:08:57 theme_thesis_merged | Arm B: 'Mid-Tier Gold Producers & Developers Breakout' merged into 'Precious Metals Miners & Producers—Gold Rally & Fed Easing' (27 members) | driver_a='Gold price rally + Fed easing expectations benefiting all precious metals miners' driver_b='Gold price rally + Fed easing driving mid-tier gold producers (tier slice only)' reason='Identical demand driver (gold price + Fed policy). THEME B is a pure tier/size slice with no independent catalyst. Same trade in two names; fragmentation by company size adds no strategic distinction.' merged_name='Precious Metals Miners & Producers—Gold Rally & Fed Easing' scratchpad='THEME A driver: Gold price rally + Fed easing tailwind lifting precious metals miners broadly (all tiers, all modalities).\n\nTHEME B driver: Gold price rally + easier Fed expectations driving mid-tier gold producers speci
+
+17:09:04 theme_thesis_merged | Arm B: 'Precious Metals Miners & Producers—Gold Rally & Fed Easing' merged into 'Precious Metals Miners—Gold Rally & Fed Easing' (28 members) | driver_a='Gold rally and Fed easing cycle supporting bullion and miner margins' driver_b='Gold/silver rebound from Fed rate-hike reduction, same macro catalyst' reason='Identical directional driver: Fed easing → higher precious metals prices → miner equity appreciation. Theme B is a narrower member slice of Theme A with no distinct sub-catalyst; company-specific updates are noise, not a structural driver. Merge to eliminate fragmentation.' merged_name='Precious Metals Miners—Gold Rally & Fed Easing' scratchpad='THEME A driver: Gold rally + Fed easing cycle (lower rates support bullion and miner profitability). Broad-based precious metals miner exposure to the macro gold/silver price tailwind
+
+17:09:14 theme_auto_retired | Auto-retired 28 theme(s) dropped during merge passes (2 with successor pointer) | 'AI Data Services & GPU Cloud Platforms' -> parent='(unknown)'
+'Appalachian Natural Gas Producers' -> parent='(unknown)'
+'Auto & Truck Dealership Retail Chains' -> parent='(unknown)'
+'Bitcoin Balance Sheet Proxies' -> parent='(unknown)'
+'Bitcoin Miners Pivoting to AI/HPC Data Center Hosting' -> parent='(unknown)'
+'Consumer PC & Gaming Hardware Refresh Cycle' -> parent='(unknown)'
+'Corporate Spend, Expense Management & Financial Operations Software' -> parent='(unknown)'
+'Cruise & Expedition Travel Operators' -> parent='(unknown)'
+'Data Storage & Data Management Software/Hardware Leaders' -> parent='(unknown)'
+'Defense & Space Systems Satellite Solutions' -> parent='(unknown)'
+'Direct-to-Cons
+

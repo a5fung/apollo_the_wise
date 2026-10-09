@@ -1,0 +1,79 @@
+mi_theme_axis_shadow
+mi_theme_birth_candidates
+mi_theme_candidates_shadow
+mi_theme_ecosystems
+mi_theme_ecosystems_dynamic
+mi_theme_exclusions
+mi_theme_merge_cooldowns
+mi_theme_relevance_cohort
+mi_theme_renames
+mi_theme_resilience_weekly
+mi_themes
+mi_ticker_overrides
+[('id', 'integer'), ('theme_date', 'date'), ('score', 'double precision'), ('created_at', 'timestamp with time zone'), ('rs_avg', 'double precision'), ('days_active', 'integer'), ('consecutive_accelerating', 'integer'), ('pct_above_20sma', 'real'), ('name', 'text'), ('stage', 'text'), ('source', 'text'), ('description', 'text'), ('tickers', 'ARRAY'), ('parent_theme', 'text')]
+[('updated_at', 'timestamp with time zone'), ('description', 'text'), ('notes', 'text'), ('ticker', 'text'), ('sector', 'text'), ('industry', 'text'), ('company_name', 'text')]
+mi_themes rows by theme_date recent: [{'theme_date': datetime.date(2026, 10, 1), 'n': 143, 'max': datetime.datetime(2026, 10, 1, 21, 7, 30, 721765, tzinfo=datetime.timezone.utc)}, {'theme_date': datetime.date(2026, 10, 2), 'n': 142, 'max': datetime.datetime(2026, 10, 2, 21, 9, 27, 966921, tzinfo=datetime.timezone.utc)}, {'theme_date': datetime.date(2026, 10, 5), 'n': 147, 'max': datetime.datetime(2026, 10, 5, 21, 10, 54, 440533, tzinfo=datetime.timezone.utc)}, {'theme_date': datetime.date(2026, 10, 6), 'n': 130, 'max': datetime.datetime(2026, 10, 6, 21, 12, 4, 141024, tzinfo=datetime.timezone.utc)}, {'theme_date': datetime.date(2026, 10, 7), 'n': 137, 'max': datetime.datetime(2026, 10, 7, 21, 13, 49, 890111, tzinfo=datetime.timezone.utc)}, {'theme_date': datetime.date(2026, 10, 8), 'n': 136, 'max': datetime.datetime(2026, 10, 8, 21, 9, 12, 25181, tzinfo=datetime.timezone.utc)}]
+
+== 10-05 audit events between 17:00 and 17:15 by type
+   {'event_type': 'coverage_checked_post_close', 'n': 1, 't0': '17:00:00.041012'}
+   {'event_type': 'split_detected', 'n': 6, 't0': '17:00:00.203769'}
+   {'event_type': 'splits_ingest_fractional_skipped', 'n': 1, 't0': '17:00:00.233268'}
+   {'event_type': 'split_apply_skipped_no_data', 'n': 2, 't0': '17:00:00.703316'}
+   {'event_type': 'split_applied', 'n': 7, 't0': '17:00:01.021125'}
+   {'event_type': 'splits_ingest_summary', 'n': 1, 't0': '17:00:03.033788'}
+   {'event_type': 'rs_extreme_return', 'n': 1, 't0': '17:00:22.174957'}
+   {'event_type': 'regime_transition', 'n': 1, 't0': '17:00:24.766322'}
+   {'event_type': '9m_sugar_babies_confirmed', 'n': 1, 't0': '17:00:37.264315'}
+   {'event_type': 'description_generated', 'n': 3, 't0': '17:02:14.408271'}
+   {'event_type': 'theme_load_state', 'n': 1, 't0': '17:02:14.416066'}
+   {'event_type': 'llm_request_rewrite_adopted', 'n': 2, 't0': '17:02:14.977187'}
+   {'event_type': 'ticker_revalidated_out', 'n': 26, 't0': '17:02:18.612877'}
+   {'event_type': 'validation_cooldown_triggered', 'n': 26, 't0': '17:02:18.629669'}
+   {'event_type': 'theme_low_quality_description', 'n': 5, 't0': '17:02:22.484205'}
+   {'event_type': 'theme_breadth_fade', 'n': 19, 't0': '17:02:29.56632'}
+   {'event_type': 'theme_dissolved_flagged_pair', 'n': 3, 't0': '17:02:45.102015'}
+   {'event_type': 'theme_stage_flip_held', 'n': 3, 't0': '17:03:27.189727'}
+   {'event_type': 'sdk_pool_rollup', 'n': 1, 't0': '17:05:00.001825'}
+   {'event_type': 'theme_carryforward_filter_stripped', 'n': 2, 't0': '17:05:09.990782'}
+   {'event_type': 'assignment_llm_proposed', 'n': 18, 't0': '17:05:32.886793'}
+   {'event_type': 'assignment_comove_admitted_over_sector', 'n': 2, 't0': '17:05:32.888693'}
+   {'event_type': 'assignment_comove_summary', 'n': 3, 't0': '17:05:32.89143'}
+   {'event_type': 'theme_member_rehomed', 'n': 4, 't0': '17:05:35.309609'}
+   {'event_type': 'theme_rehome_judged', 'n': 19, 't0': '17:05:35.310727'}
+   {'event_type': 'theme_rehome_pass_ran', 'n': 1, 't0': '17:05:35.332447'}
+   {'event_type': 'theme_retired_small_fading', 'n': 20, 't0': '17:05:35.333987'}
+   {'event_type': 'assignment_skipped_comove_below_bar', 'n': 14, 't0': '17:07:45.440992'}
+   {'event_type': 'assignment_skipped_sector_outlier', 'n': 1, 't0': '17:07:45.489014'}
+   {'event_type': 'theme_discovery_llm_call', 'n': 12, 't0': '17:07:56.591628'}
+   {'event_type': 'theme_discovery_shown_declined', 'n': 2, 't0': '17:08:17.45202'}
+   {'event_type': 'theme_rehome_join_carry_ran', 'n': 1, 't0': '17:08:29.541498'}
+   {'event_type': 'theme_birth_gate', 'n': 2, 't0': '17:08:29.544694'}
+   {'event_type': 'theme_birth_validated', 'n': 2, 't0': '17:08:30.706627'}
+   {'event_type': 'theme_engine_funnel', 'n': 1, 't0': '17:08:36.266514'}
+   {'event_type': 'theme_discovered', 'n': 5, 't0': '17:08:36.267777'}
+   {'event_type': 'theme_retired', 'n': 26, 't0': '17:08:36.273075'}
+   {'event_type': 'stage_change', 'n': 29, 't0': '17:08:36.29786'}
+   {'event_type': 'theme_pass1_5_skip', 'n': 3, 't0': '17:08:36.338578'}
+   {'event_type': 'theme_pass1_5_absorption', 'n': 1, 't0': '17:08:36.343043'}
+   {'event_type': 'theme_sector_cap_not_absorbed', 'n': 2, 't0': '17:08:36.347229'}
+   {'event_type': 'theme_score_ties', 'n': 2, 't0': '17:08:36.352397'}
+   {'event_type': 'theme_cap_strip', 'n': 1, 't0': '17:08:36.354857'}
+   {'event_type': 'theme_merge_pairs_proposed', 'n': 1, 't0': '17:08:36.372681'}
+   {'event_type': 'theme_merge_distinct', 'n': 4, 't0': '17:08:41.173537'}
+   {'event_type': 'theme_thesis_merged', 'n': 3, 't0': '17:08:51.567332'}
+   {'event_type': 'theme_auto_retired', 'n': 1, 't0': '17:09:14.829003'}
+   {'event_type': 'theme_parent_pass_distinct', 'n': 6, 't0': '17:09:23.29783'}
+   {'event_type': 'theme_parent_pass_ran', 'n': 1, 't0': '17:09:41.812961'}
+   {'event_type': 'theme_renamed_for_continuity', 'n': 2, 't0': '17:09:41.856829'}
+   {'event_type': 'theme_ecosystem_assigned', 'n': 13, 't0': '17:09:45.064209'}
+   {'event_type': 'theme_constituent_churn', 'n': 1, 't0': '17:09:56.065395'}
+   {'event_type': 'theme_discovery_shadow_ran', 'n': 1, 't0': '17:10:47.660646'}
+   {'event_type': 'lane2_decision_record', 'n': 1, 't0': '17:10:51.548573'}
+   {'event_type': 'narrative_theme_discovery_ran', 'n': 1, 't0': '17:10:51.549941'}
+   {'event_type': 'shadow_themes_promoted', 'n': 1, 't0': '17:10:54.668204'}
+   {'event_type': 'missed_outcomes_refreshed', 'n': 1, 't0': '17:12:03.724574'}
+   {'event_type': 'missed_outcomes_reconciled', 'n': 1, 't0': '17:12:04.300516'}
+   {'event_type': 'cap_plus_one_shadow_recorded', 'n': 1, 't0': '17:12:04.307103'}
+   {'event_type': 'rs_deterioration', 'n': 1, 't0': '17:12:04.886772'}
+   {'event_type': 'ma_break', 'n': 1, 't0': '17:12:04.889248'}
+   {'event_type': 'theme_composition_churn', 'n': 1, 't0': '17:12:04.891589'}

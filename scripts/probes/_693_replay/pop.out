@@ -1,0 +1,53 @@
+api_usage cols ['id', 'created_at', 'cache_creation', 'cache_read', 'cost_usd', 'input_tokens', 'output_tokens', 'model', 'caller', 'stop_reason']
+
+== theme_validation calls by ET day (since 09-25)
+   {'d': datetime.date(2026, 9, 25), 'model': 'claude-sonnet-5', 'n': 124, 'i': 80131, 'o': 1182, 'ao': Decimal('10'), 'ai': Decimal('646'), 'cost': 0.1720820000000001, 'sr': 'end_turn', 't0': '17:01:21.780168', 't1': '17:11:21.131579'}
+   {'d': datetime.date(2026, 9, 28), 'model': 'claude-sonnet-5', 'n': 137, 'i': 87743, 'o': 1309, 'ao': Decimal('10'), 'ai': Decimal('640'), 'cost': 0.18857600000000008, 'sr': 'end_turn', 't0': '17:01:16.485783', 't1': '17:11:17.759051'}
+   {'d': datetime.date(2026, 9, 29), 'model': 'claude-sonnet-5-5', 'n': 5, 'i': 3016, 'o': 45, 'ao': Decimal('9'), 'ai': Decimal('603'), 'cost': 0.006482, 'sr': 'end_turn', 't0': '17:02:23.5497', 't1': '17:02:26.765893'}
+   {'d': datetime.date(2026, 9, 30), 'model': 'claude-sonnet-5-5', 'n': 136, 'i': 83544, 'o': 10646, 'ao': Decimal('78'), 'ai': Decimal('614'), 'cost': 0.273548, 'sr': 'end_turn', 't0': '17:01:27.802925', 't1': '17:07:45.749735'}
+   {'d': datetime.date(2026, 10, 1), 'model': 'claude-sonnet-5-5', 'n': 13, 'i': 7568, 'o': 965, 'ao': Decimal('74'), 'ai': Decimal('582'), 'cost': 0.024785999999999996, 'sr': 'end_turn', 't0': '17:04:13.338598', 't1': '17:05:20.729905'}
+   {'d': datetime.date(2026, 10, 2), 'model': 'claude-sonnet-5-5', 'n': 146, 'i': 89866, 'o': 8691, 'ao': Decimal('60'), 'ai': Decimal('616'), 'cost': 0.26664199999999993, 'sr': 'end_turn', 't0': '17:01:24.029226', 't1': '17:07:47.530333'}
+   {'d': datetime.date(2026, 10, 5), 'model': 'claude-sonnet-5-5', 'n': 151, 'i': 96477, 'o': 2113, 'ao': Decimal('14'), 'ai': Decimal('639'), 'cost': 0.21408399999999989, 'sr': 'end_turn', 't0': '17:02:16.441563', 't1': '17:09:04.534456'}
+   {'d': datetime.date(2026, 10, 6), 'model': 'claude-sonnet-5-5', 'n': 26, 'i': 19079, 'o': 487, 'ao': Decimal('19'), 'ai': Decimal('734'), 'cost': 0.04302799999999999, 'sr': 'end_turn', 't0': '17:05:09.615095', 't1': '17:09:22.556878'}
+   {'d': datetime.date(2026, 10, 7), 'model': 'claude-sonnet-5-5', 'n': 142, 'i': 91315, 'o': 1591, 'ao': Decimal('11'), 'ai': Decimal('643'), 'cost': 0.19854, 'sr': 'end_turn', 't0': '17:03:00.829935', 't1': '17:10:34.911324'}
+   {'d': datetime.date(2026, 10, 8), 'model': 'claude-sonnet-5-5', 'n': 27, 'i': 19811, 'o': 260, 'ao': Decimal('10'), 'ai': Decimal('734'), 'cost': 0.042222, 'sr': 'end_turn', 't0': '17:03:21.58736', 't1': '17:07:23.856997'}
+
+== audit events on 10-05 ET related to validation
+   {'event_type': 'llm_request_rewrite_adopted', 'n': 5}
+   {'event_type': 'theme_birth_validated', 'n': 2}
+   {'event_type': 'theme_dissolved_flagged_pair', 'n': 3}
+   {'event_type': 'ticker_revalidated_out', 'n': 26}
+   {'event_type': 'validation_cooldown_triggered', 'n': 26}
+
+== ticker_revalidated_out 10-05
+   17:02:18 SMTC removed from 'AI-Driven Memory & Storage Supply Shortage' by validation || Description: 'IoT semiconductors, cloud connectivity' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:02:39 CMBT removed from 'Crude & Product Tanker Shipping' by validation || Description: 'Marine transportation, hydrogen infrastructure & vessels' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:02:45 P removed from 'Data Storage & Data Management Software/Hardware Leaders' by validation || Description: 'Data storage, management software & hardware' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:02:48 ZD removed from 'Digital Advertising & Ad-Tech Monetization Platforms' by validation || Description: 'Communication Services / Advertising Agencies — Digital media, reviews & advertising network' — validation (claude-sonnet-5-5)
+   17:02:52 VPG removed from 'Discrete, Passive & Low-Power Programmable Semiconductor Components Recovery' by validation || Description: 'Precision sensors, measurement technology' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:03:02 PS removed from 'Financial Data & Advisory/Capital Markets Platforms' by validation || Description: 'Financial Services / Asset Management — Alternative asset management, hedge fund' — validation (claude-sonnet-5-5) flagged as 
+   17:03:12 MD removed from 'Hospital & Behavioral Health Facility Procedure Volume Recovery' by validation || Description: 'Healthcare / Medical Care Facilities — Newborn, maternal-fetal, pediatric medical services' — validation (claude-sonnet-5-5) f
+   17:03:15 TDS removed from 'Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound' by validation || Description: 'Communication Services / Telecom Services — Residential & commercial telecom services' — validation (claude-sonnet-5-5) flagge
+   17:03:19 FTRE removed from 'Life Science Tools & Analytical Instruments' by validation || Description: 'Healthcare / Biotechnology — Contract research organization, drug & device development' — validation (claude-sonnet-5-5) flagg
+   17:03:26 SAIL removed from 'Network Security & Zero-Trust Edge' by validation || Description: 'Identity & access management software, enterprise security' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:03:28 SEI removed from 'On-Site Power Generation & Distribution Equipment for Data Centers' by validation || Description: 'Modular power generation, oilfield equipment' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:03:48 JAN removed from 'Skilled Nursing & Senior Housing Healthcare REITs' by validation || Description: 'Real Estate / REIT - Residential — Senior housing real estate investment trust' — validation (claude-sonnet-5-5) flagged as no
+   17:03:53 SIG removed from 'Specialty Retail Short-Squeeze Momentum Basket' by validation || Description: 'Diamond & jewelry retail, consumer luxury' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:04:10 EFOR removed from 'Defense Intelligence & Cybersecurity IT Contractors' by validation || Description: 'Technology / Information Technology Services — IT services & solutions for government, commercial' — validation (claude-sonnet
+   17:04:10 ICFI removed from 'Defense Intelligence & Cybersecurity IT Contractors' by validation || Description: 'Management consulting, government & commercial services' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:04:13 RDVT removed from 'Identity & Access Management Security Software' by validation || Description: 'Identity intelligence, analytics software' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:04:21 TTAN removed from 'Marketing & Customer Data SaaS Rotation' by validation || Description: 'Field service management software, contractor operations' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:04:31 IMO removed from 'Oil & Gas E&P Crude-Weighted Producers Momentum' by validation || Description: 'Oil & gas exploration, production & refining Canada' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:04:35 DEC removed from 'Energy Supply Disruption: Middle East Geopolitical Risk' by validation || Description: 'Natural gas & oil production, Appalachia' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:07:47 TILE removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation || Description: 'Modular carpet, commercial flooring' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:07:47 MHK removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation || Description: 'Consumer Cyclical / Furnishings, Fixtures & Appliances — Residential & commercial flooring products' — validation (claude-sonn
+   17:07:49 SSNC removed from 'Fintech & Digital Finance Sector Re-rating on Fed Easing' by validation || Description: 'Technology / Software - Application — Financial & healthcare software & services' — validation (claude-sonnet-5-5) flagged as 
+   17:07:51 ACA removed from 'Industrial Construction Execution & On-Site Supply Chain' by validation || Description: 'Infrastructure products & engineered structures' — validation (claude-sonnet-5-5) flagged as not matching theme
+   17:08:29 ITUB removed from 'Fintech & Digital Finance Sector Re-rating on Fed Easing' by validation || Description: 'Financial Services / Banks - Regional — Brazilian retail & corporate banking, financial services' — validation (claude-sonnet-
+   17:08:30 DOX removed from 'Offshore IT Services & Digital Engineering Outsourcers' by validation || Description: 'Technology / Software - Infrastructure — Telecom software, billing, customer management systems' — validation (claude-sonnet-5
+   17:08:31 STWD removed from 'Mortgage REITs (Agency & Residential MBS)' by validation || Description: 'Real Estate / REIT - Mortgage — Commercial & residential mortgage lending, real estate debt' — validation (claude-sonnet-5-5) 
+
+== validation_removal_shielded / mass / error 10-05
+
+== cooldowns 10-05
+  n= 28  description-reason n= 25
