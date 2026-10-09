@@ -12824,6 +12824,11 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_10_09: >-
+      RAN 2026-10-09 15:05 PDT (after the 17:53 ET rank job): one new session, 2026-10-09, a pool of 2 HIGH
+      alerts — AAOI (rank 0.42 EOD, not filled) and HUM (0.58, bought); neither top quartile, each with one
+      session behind it, so the read cannot move on them. n = 23 sessions. Conclusion unchanged: THIN,
+      directional only, against the rule. Next movement: the 10-05/10-06 pools mature ~10-13/10-14.
     resolution_2026_10_08: >-
       RAN 2026-10-08 16:45 PDT, same SQL (scripts/probes/_rank_shadow/verify_rank_shadow_2026-10-08.out): n = 22
       sessions, 47 rows, 39 with a matured 5-day outcome. Two new sessions, both a pool of ONE (outside the

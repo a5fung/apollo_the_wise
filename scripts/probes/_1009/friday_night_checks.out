@@ -1,0 +1,26 @@
+== theme correctness row
+t|summary|waiting
+17:31|G1 568/603 (94.2% bar 90.0%) · G2 16/603 (2.7% bar<= 5.0%) · G3 106/123 (86.2% bar 90.0%) · G4 14/123 small (11.4% bar<= 10.0%; settled 7/116 6.0%) · latency median 16.5 sessions (n=8)|["Branded Footwear & Hotel Consumer Discretionary Turnaround", "Building Products & Home Improvement Materials Makers", "Data Analytics, AI Platform & Digital Transformation IT Services", "Global Agriculture Value Chain Recovery", "Orthopedic Surgical Devices & Instruments", "Small Modular Reactor & Advanced Nuclear Fission Technology", "Work Management & Collaborative Design SaaS"]
+(1 row)
+== truncation / near-ceiling rows today
+t|event_type|left
+(0 rows)
+== RS run rows
+score_date|count
+2026-10-08|2388
+2026-10-09|2392
+(2 rows)
+== dead column rows today
+t|event_type|summary
+(0 rows)
+== rank shadow rows for 10-09
+ticker|alert_date|composite_rank_eod|pool_size_eod
+HUM|2026-10-09|0.5833333333333334|2
+AAOI|2026-10-09|0.4166666666666667|2
+(2 rows)
+== upsert / RS errors today
+t|event_type|left
+(0 rows)
+21:05:09 [agents.market_intelligence.theme_engine] INFO: Small-Fading retire (#655 B): 11 weak-Fading theme(s) under 3 members kept tonight — not under 3 the night before (one-night wait): 'Bitcoin Miners Pivoting to AI Data Center Hosting' 3 -> 2, 'Branded Footwear & Hotel Consumer Discretionary Turnaround' 3 -> 2, 'Building Products & Home Improvement Materials Makers' 4 -> 2, 'Data Analytics,
+21:30:49 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 88 tables, 0 dead (0 new), 0 suspect, 1 event-gated, 0 error(s)
+21:31:11 [agents.market_intelligence.scheduler] INFO: Theme correctness check: 0 error(s)
