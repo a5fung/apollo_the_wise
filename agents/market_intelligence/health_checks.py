@@ -3953,10 +3953,15 @@ async def run_dead_column_sweep(conn=None) -> dict[str, Any]:
                     key = f"{table}.{col}"
                     entry = {"table": table, "column": col, "rows": n}
                     gated = _DEAD_COL_EVENT_GATED.get(key)
-                    if gated is not None and not await c.fetchval(
-                            f'SELECT count(*) FROM "{table}" WHERE {gated[0]}'):
-                        out["event_gated"].append({**entry, "why": gated[1]})
-                        continue   # wired; its event is not live — nothing to suspect or announce
+                    if gated is not None:
+                        if not await c.fetchval(
+                                f'SELECT count(*) FROM "{table}" WHERE {gated[0]}'):
+                            out["event_gated"].append({**entry, "why": gated[1]})
+                            continue   # wired; its event is not live — nothing to suspect or announce
+                        # Its event IS live and it is still all-NULL: a broken writer. Judged under
+                        # its own key, so an announcement from before the event existed (both
+                        # mark_r columns were announced 09-07) cannot silence it now.
+                        key = f"{key}@event_live"
                     detail = json.dumps(entry)
                     if key in already:   # announced on an earlier night — never again
                         out["dead"].append({**entry, "new": False})

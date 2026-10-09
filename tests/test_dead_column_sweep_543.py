@@ -328,12 +328,29 @@ async def test_an_event_gated_column_with_its_event_live_and_still_null_is_a_bro
     the writer is broken — the column goes through the normal two-step and is announced."""
     db = _FakeDB(_gated_table(gate_rows=2))
     out = await _run(db, monkeypatch)
-    assert out["event_gated"] == [] and db.events() == [("dead_column_suspect", _GATED_KEY)]
+    assert out["event_gated"] == [] and db.events() == [("dead_column_suspect", _GATED_KEY + "@event_live")]
     db.tables[_GATED]["last_write"] = db.now + timedelta(minutes=5)
     db.advance(days=1)
     await _run(db, monkeypatch)
-    assert db.events("dead_column_detected") == [("dead_column_detected", _GATED_KEY)]
+    assert db.events("dead_column_detected") == [("dead_column_detected", _GATED_KEY + "@event_live")]
     assert len(telegram) == 1
+
+
+@pytest.mark.asyncio
+async def test_an_announcement_from_before_the_event_does_not_silence_a_broken_writer(
+        telegram, monkeypatch):
+    """Both mark_r columns were announced dead on 09-07, before any event row existed. Once the
+    event is live and the column is still NULL, that old row must not mute it: the sweep judges it
+    afresh under its own key and pages on the second look."""
+    db = _FakeDB(_gated_table(gate_rows=2))
+    db.audit.append(("dead_column_detected", _GATED_KEY, "{}", _NIGHT_1 - timedelta(days=30)))
+    out = await _run(db, monkeypatch)
+    assert out["dead"] == [] and db.events("dead_column_suspect") == [
+        ("dead_column_suspect", _GATED_KEY + "@event_live")]
+    db.tables[_GATED]["last_write"] = db.now + timedelta(minutes=5)
+    db.advance(days=1)
+    out = await _run(db, monkeypatch)
+    assert [d["new"] for d in out["dead"]] == [True] and len(telegram) == 1
 
 
 @pytest.mark.asyncio
@@ -351,4 +368,4 @@ async def test_every_event_gated_entry_is_exempt_only_while_its_event_is_absent(
     live = _FakeDB({table: {"rows": 100, "nonnull": {col: 0}, "ts_col": None, "last_write": None,
                             "gate_rows": 1}})
     out = await _run(live, monkeypatch)
-    assert out["event_gated"] == [] and live.events() == [("dead_column_suspect", key)]
+    assert out["event_gated"] == [] and live.events() == [("dead_column_suspect", f"{key}@event_live")]
