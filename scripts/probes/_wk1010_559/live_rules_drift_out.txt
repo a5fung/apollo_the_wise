@@ -1,0 +1,8 @@
+APOLLO LIVE RULES — generated from code + prod state, never from hand-written prose
+generated 2026-10-10 13:25 PDT · prod: reachable (server checkout 94bde0c6)
+
+== ⚠ DRIFT — where the prose contradicts code or prod (1 finding(s)) ==
+  [UNVERIFIED] docs/setups/magna53_ep.md:675  (stale-claim)
+      doc says : **Status**: built on a worktree branch, NOT DEPLOYED. Sign-off: his option 2 on 2026-10-08. Deploys
+      actual   : historical entry, unsuperseded — no later dated entry re-states this subject, and no checkable flag is named
+      → A status claim in a dated entry that is still the doc's most recent word on its subject, and nothing can verify it — the exact shape that rotted on 2026-08-23. Re-check by hand; tie it to a flag or add a superseding entry.

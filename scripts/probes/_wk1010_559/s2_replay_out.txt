@@ -1,0 +1,214 @@
+bars loaded: minute pairs 423, daily tickers 328, last settled 2026-10-09, rule-set era_d (stop entry_minus_2r, partial +8R, breakeven +3R, trail sma)
+rule eras over the event population (exit, admission): {('era_d', 'adm_2026-08-31_extension_cap_50_slot_rank_rs'): 424}
+trade rows by (signal_type, account_mode): {('magna53', 'live'): 20}
+
+==========================================================================================
+V. VALIDATE — real magna53 live trades in the window, replayed under `current` with the
+   stored ORB / ATR / shares (harness contract: no quoted number without this)
+==========================================================================================
+  2026-09-08 IONQ  live=cancelled entry=   42.95 R(plan)=   -   partial=n | replay=settled         entry=   43.16 R=-1.00 partial=n final=stop_hit 
+  2026-09-08 PHVS  live=closed    entry=      42 R(plan)=-0.87 partial=n | replay=settled         entry=   41.88 R=-0.82 partial=n final=stop_hit   dR=+0.05
+  2026-09-08 QCOM  live=skipped   entry=       - R(plan)=   -   partial=n | replay=n/a             entry=       - R=- partial=n final= 
+  2026-09-08 ROIV  live=skipped   entry=       - R(plan)=   -   partial=n | replay=n/a             entry=       - R=- partial=n final= 
+  2026-09-08 SEI   live=closed    entry= 62.8078 R(plan)=+0.33 partial=n | replay=settled         entry=   62.78 R=+0.00 partial=n final=stop_hit   dR=-0.33
+  2026-09-14 DFTX  live=closed    entry=   43.76 R(plan)=-0.97 partial=n | replay=settled         entry=   43.61 R=-0.91 partial=n final=stop_hit   dR=+0.05
+  2026-09-14 SRRK  live=skipped   entry=       - R(plan)=   -   partial=n | replay=n/a             entry=       - R=- partial=n final= 
+  2026-09-17 GNRC  live=skipped   entry=       - R(plan)=   -   partial=n | replay=n/a             entry=       - R=- partial=n final= 
+  2026-09-17 VICR  live=closed    entry=   211.5 R(plan)=+6.18 partial=n | replay=settled         entry=  211.97 R=+6.20 partial=n final=stop_hit   dR=+0.02
+  2026-09-22 ONON  live=skipped   entry=       - R(plan)=   -   partial=n | replay=n/a             entry=       - R=- partial=n final= 
+  2026-09-25 AKAM  live=cancelled entry=  128.46 R(plan)=   -   partial=n | replay=no_entry        entry=       - R=- partial=n final=None never_crossed_orb_high
+  2026-09-28 KOD   live=filled    entry=   63.15 R(plan)=  open  partial=Y | replay=open_at_horizon entry=   62.90 R=mark +6.94 partial=Y final=None 
+  2026-10-01 ACN   live=skipped   entry=       - R(plan)=   -   partial=n | replay=n/a             entry=       - R=- partial=n final= 
+  2026-10-01 SNPS  live=skipped   entry=       - R(plan)=   -   partial=n | replay=n/a             entry=       - R=- partial=n final= 
+  2026-10-06 CEG   live=closed    entry=  300.94 R(plan)=-0.76 partial=n | replay=settled         entry=  300.71 R=-0.75 partial=n final=stop_hit   dR=+0.01
+  2026-10-06 TLN   live=skipped   entry=       - R(plan)=   -   partial=n | replay=n/a             entry=       - R=- partial=n final= 
+  2026-10-06 VST   live=skipped   entry=       - R(plan)=   -   partial=n | replay=n/a             entry=       - R=- partial=n final= 
+  2026-10-07 PENG  live=filled    entry=   72.21 R(plan)=  open  partial=n | replay=no_entry        entry=       - R=- partial=n final=None triggered_above_limit_never_filled
+  2026-10-08 WOLF  live=skipped   entry=       - R(plan)=   -   partial=n | replay=n/a             entry=       - R=- partial=n final= 
+  2026-10-09 HUM   live=filled    entry=     452 R(plan)=  open  partial=n | replay=open_at_horizon entry=  450.70 R=mark -0.61 partial=n final=None 
+  closed live trades: 5; replay within 0.25R on 4 of 5 settled replays
+
+==========================================================================================
+R. THE REAL ERA-D BOOK — magna53 live rows, alert days 09-08..10-09
+==========================================================================================
+  rows by status: {'cancelled': 2, 'closed': 5, 'skipped': 10, 'filled': 3}
+  skip reasons: {'setup:gap_below_floor': 3, 'setup:stop_too_wide': 1, 'setup:size_too_small': 1, 'window:out_of_orb': 5}
+    closed PHVS  2026-09-08 pnl $-10.74 on planned $12.35 = -0.87 stop-R (actual-risk R -1.06); exit 2026-09-08 
+    closed SEI   2026-09-08 pnl $+4.10 on planned $12.35 = +0.33 stop-R (actual-risk R +0.41); exit 2026-09-22 
+    closed DFTX  2026-09-14 pnl $-23.73 on planned $24.52 = -0.97 stop-R (actual-risk R -1.06); exit 2026-09-14 
+    closed VICR  2026-09-17 pnl $+75.73 on planned $12.26 = +6.18 stop-R (actual-risk R +6.99); exit 2026-10-07 
+    closed CEG   2026-10-06 pnl $-58.95 on planned $77.22 = -0.76 stop-R (actual-risk R -1.01); exit 2026-10-08 
+  closed: n=5 mean +0.78 stop-R, sum +3.9R, winners 2
+    open   KOD   2026-09-28 entry 63.15 remaining 4/5 booked $+21.98 last 99.87 -> mark +6.78 stop-R (not a return); highest seen 104.0 = +15.4 ORB-R; partial=Y breakeven=armed
+    open   PENG  2026-10-07 entry 72.21 remaining 10/10 booked $+0.00 last 76.28 -> mark +0.53 stop-R (not a return); highest seen 78.75 = +1.0 ORB-R; partial=n breakeven=no
+    open   HUM   2026-10-09 entry 452.00 remaining 1/1 booked $+0.00 last 431.87 -> mark -0.39 stop-R (not a return); highest seen 456.5 = +0.3 ORB-R; partial=n breakeven=no
+  +8R PARTIAL FILLS in the window: 1 of 8 filled trades (['KOD'])
+  breakeven ARMED (+3R) events in the window: 3 -> ['SEI', 'VICR', 'KOD']
+
+==========================================================================================
+A/B. IN-WINDOW REAL-TIME CROSSERS (first rt read >= 9% at 09:31-09:44 ET), replayed under
+     `current` from the tick they crossed (ORB = the 09:30 bar; stop-buy at ORB high)
+==========================================================================================
+  n=70 ticker-days over 24 trading days (2026-09-08..2026-10-09) = 2.9/day | by first event: {'ep_rt_floor_flip_up': 39, 'ep_rt_universe_catch': 28, 'ep_rt_live_miss': 3}
+  live scan fate: {'mechanical_kill': 37, 'alerted': 5, 'graded_below_bar': 25, 'floor_only': 3}
+  rt-only admits (the class the switches ADD; delayed feed had not cleared the floor): 70 | delayed-agreed (ep_rt_admit first): 0
+
+[(a) ALL in-window crossers] n=70: entered 39 (settled 37, open 1), no-entry 18, not-tradeable 10, abstain 4
+   settled mean -0.30 stop-R over n=37 (sum -11.0R; 9 winners; 17 stopped day-0)
+   open marks (not returns): [0.01]
+   +8R partial fired: 2 of 39 entered | tail reached: >=3 ORB-R 10, >=8 ORB-R 3 | >=3 stop-R 4, >=8 stop-R 2
+   non-entries: {'triggered_above_limit_never_filled': 16, 'setup:zero_range': 5, 'never_crossed_orb_high': 2, 'setup:stop_too_wide: 1.65 > 1.5x ATR 1.07': 1, 'no_930_bar_for_orb': 1, 'fwd_stop_and_breakeven_same_day:2026-09-18': 1, 'entry_window_gaps:13_of_29': 1, 'entry_window_gaps:22_of_29': 1}
+
+[(a') rt-only subset of (a)] n=70: entered 39 (settled 37, open 1), no-entry 18, not-tradeable 10, abstain 4
+   settled mean -0.30 stop-R over n=37 (sum -11.0R; 9 winners; 17 stopped day-0)
+   open marks (not returns): [0.01]
+   +8R partial fired: 2 of 39 entered | tail reached: >=3 ORB-R 10, >=8 ORB-R 3 | >=3 stop-R 4, >=8 stop-R 2
+   non-entries: {'triggered_above_limit_never_filled': 16, 'setup:zero_range': 5, 'never_crossed_orb_high': 2, 'setup:stop_too_wide: 1.65 > 1.5x ATR 1.07': 1, 'no_930_bar_for_orb': 1, 'fwd_stop_and_breakeven_same_day:2026-09-18': 1, 'entry_window_gaps:13_of_29': 1, 'entry_window_gaps:22_of_29': 1}
+
+[(b) gate-passing subset of (a): reached grading or alerted] n=30: entered 18 (settled 17, open 0), no-entry 9, not-tradeable 3, abstain 1
+   settled mean -0.64 stop-R over n=17 (sum -10.9R; 2 winners; 9 stopped day-0)
+   +8R partial fired: 0 of 18 entered | tail reached: >=3 ORB-R 2, >=8 ORB-R 1 | >=3 stop-R 1, >=8 stop-R 1
+   non-entries: {'triggered_above_limit_never_filled': 9, 'setup:stop_too_wide: 1.65 > 1.5x ATR 1.07': 1, 'fwd_stop_and_breakeven_same_day:2026-09-18': 1, 'setup:stop_too_wide: 6.47 > 1.5x ATR 3.67': 1, 'setup:stop_too_wide: 0.39 > 1.5x ATR 0.22': 1}
+
+[(b') alerted subset of (a)] n=5: entered 4 (settled 4, open 0), no-entry 1, not-tradeable 0, abstain 0
+   settled mean -0.75 stop-R over n=4 (sum -3.0R; 0 winners; 2 stopped day-0)
+   +8R partial fired: 0 of 4 entered | tail reached: >=3 ORB-R 0, >=8 ORB-R 0 | >=3 stop-R 0, >=8 stop-R 0
+   non-entries: {'triggered_above_limit_never_filled': 1}
+
+  (a) entered campaigns, one line each (stop-R; MFE in ORB-R):
+     2026-09-08 IONQ  @09:35 floor_flip_up  fate=alerted           entry 43.16 stop 41.11 ->       -1.00 stop_hit                         MFE  +1.1 ORB-R partial=n
+     2026-09-08 QBTS  @09:31 floor_flip_up  fate=mechanical_kill   entry 18.35 stop 16.98 ->       -1.00 stop_hit                         MFE  +0.2 ORB-R partial=n
+     2026-09-08 RGTI  @09:31 floor_flip_up  fate=mechanical_kill   entry 16.66 stop 15.84 ->       -1.00 stop_hit                         MFE  +1.0 ORB-R partial=n
+     2026-09-10 DBI   @09:40 floor_flip_up  fate=mechanical_kill   entry 5.62 stop 5.45 ->       -1.00 stop_hit                         MFE  +3.7 ORB-R partial=n
+     2026-09-11 ALMR  @09:35 universe_catch fate=graded_below_bar  entry 29.11 stop 27.63 ->       -1.00 stop_hit                         MFE  +0.1 ORB-R partial=n
+     2026-09-11 BW    @09:35 floor_flip_up  fate=mechanical_kill   entry 7.76 stop 7.17 ->       -1.00 stop_hit                         MFE  +0.8 ORB-R partial=n
+     2026-09-11 RSVR  @09:31 floor_flip_up  fate=mechanical_kill   entry 9.62 stop 9.20 ->       -1.00 stop_hit                         MFE  +0.0 ORB-R partial=n
+     2026-09-14 BLSH  @09:35 universe_catch fate=mechanical_kill   entry 37.69 stop 35.69 ->       -1.00 stop_hit                         MFE  +0.8 ORB-R partial=n
+     2026-09-17 RDCM  @09:35 floor_flip_up  fate=mechanical_kill   entry 11.02 stop 10.58 ->       -1.00 stop_hit                         MFE  +1.1 ORB-R partial=n
+     2026-09-17 WULF  @09:31 floor_flip_up  fate=graded_below_bar  entry 16.83 stop 16.11 ->       -1.00 stop_hit                         MFE  +0.0 ORB-R partial=n
+     2026-09-21 MSTR  @09:35 floor_flip_up  fate=alerted           entry 167.23 stop 162.54 ->       -1.00 stop_hit                         MFE  +1.4 ORB-R partial=n
+     2026-09-22 SKIL  @09:40 floor_flip_up  fate=floor_only        entry 6.51 stop 6.00 ->       -1.00 stop_hit                         MFE  +0.6 ORB-R partial=n
+     2026-09-23 QNT   @09:31 floor_flip_up  fate=graded_below_bar  entry 56.87 stop 53.79 ->       -1.00 stop_hit                         MFE  +0.0 ORB-R partial=n
+     2026-09-24 SECZ  @09:35 universe_catch fate=mechanical_kill   entry 15.58 stop 13.46 ->       -1.00 stop_hit                         MFE  +1.3 ORB-R partial=n
+     2026-09-29 KMX   @09:31 floor_flip_up  fate=graded_below_bar  entry 61.75 stop 58.27 ->       -1.00 stop_hit                         MFE  +1.1 ORB-R partial=n
+     2026-10-01 BSET  @09:35 floor_flip_up  fate=mechanical_kill   entry 18.69 stop 17.87 ->       -1.00 stop_hit                         MFE  +1.5 ORB-R partial=n
+     2026-10-01 CTSH  @09:31 floor_flip_up  fate=graded_below_bar  entry 63.70 stop 59.48 ->       -1.00 stop_hit                         MFE  +0.5 ORB-R partial=n
+     2026-10-01 INFY  @09:35 floor_flip_up  fate=graded_below_bar  entry 11.59 stop 11.11 ->       -1.00 stop_hit                         MFE  +1.1 ORB-R partial=n
+     2026-10-02 ABTC  @09:35 floor_flip_up  fate=graded_below_bar  entry 8.79 stop 8.41 ->       -1.00 stop_hit                         MFE  +1.7 ORB-R partial=n
+     2026-10-02 FWDI  @09:40 floor_flip_up  fate=graded_below_bar  entry 8.56 stop 8.22 ->       -1.00 stop_hit                         MFE  +0.1 ORB-R partial=n
+     2026-10-09 AAOI  @09:35 floor_flip_up  fate=alerted           entry 115.42 stop 109.49 ->       -1.00 stop_hit                         MFE  +0.3 ORB-R partial=n
+     2026-09-09 AVO   @09:40 floor_flip_up  fate=graded_below_bar  entry 13.30 stop 12.77 ->       -0.69 stop_hit                         MFE  +2.8 ORB-R partial=n
+     2026-10-05 CBRS  @09:35 floor_flip_up  fate=mechanical_kill   entry 180.85 stop 169.05 ->       -0.32 sma_trail_stop                   MFE  +0.7 ORB-R partial=n
+     2026-09-30 SYRE  @09:40 universe_catch fate=graded_below_bar  entry 91.47 stop 84.99 ->       -0.28 stop_hit                         MFE  +1.1 ORB-R partial=n
+     2026-09-21 INTC  @09:31 floor_flip_up  fate=alerted           entry 119.34 stop 113.42 ->       -0.00 sma_trail_stop                   MFE  +2.7 ORB-R partial=n
+     2026-09-17 NUAI  @09:35 floor_flip_up  fate=graded_below_bar  entry 5.84 stop 5.63 ->     abstain fwd_stop_and_breakeven_same_day:2026-09-18 MFE +17.5 ORB-R partial=n
+     2026-09-17 QXL   @09:40 floor_flip_up  fate=mechanical_kill   entry 5.63 stop 5.40 ->       +0.00 stop_hit                         MFE  +3.6 ORB-R partial=n
+     2026-09-22 USDE  @09:40 universe_catch fate=mechanical_kill   entry 14.07 stop 11.98 ->       +0.00 stop_hit                         MFE  +3.2 ORB-R partial=n
+     2026-10-01 EPAM  @09:31 floor_flip_up  fate=graded_below_bar  entry 118.42 stop 116.36 ->       +0.00 stop_hit                         MFE  +3.4 ORB-R partial=n
+     2026-10-08 GFUZ  @09:31 floor_flip_up  fate=mechanical_kill   entry 8.65 stop 7.69 ->  mark +0.01 open_at_horizon                  MFE  +1.9 ORB-R partial=n
+     2026-09-22 CUE   @09:35 universe_catch fate=mechanical_kill   entry 31.50 stop 24.91 ->       +0.03 sma_trail_stop                   MFE  +1.1 ORB-R partial=n
+     2026-09-30 OPTX  @09:35 universe_catch fate=mechanical_kill   entry 8.23 stop 7.57 ->       +0.04 stop_hit                         MFE  +5.3 ORB-R partial=n
+     2026-09-21 USAR  @09:40 floor_flip_up  fate=graded_below_bar  entry 16.77 stop 16.11 ->       +0.33 sma_trail_stop                   MFE  +1.0 ORB-R partial=n
+     2026-09-14 TYRA  @09:31 universe_catch fate=graded_below_bar  entry 24.12 stop 22.28 ->       +0.71 sma_trail_stop                   MFE  +2.4 ORB-R partial=n
+     2026-09-17 PSIX  @09:31 floor_flip_up  fate=mechanical_kill   entry 44.40 stop 42.58 ->       +0.71 stop_hit                         MFE  +4.3 ORB-R partial=n
+     2026-09-15 RTB   @09:31 universe_catch fate=mechanical_kill   entry 7.79 stop 6.39 ->       +0.79 sma_trail_stop                   MFE  +1.9 ORB-R partial=n
+     2026-09-14 VNCE  @09:31 universe_catch fate=mechanical_kill   entry 6.29 stop 4.59 ->       +2.27 stop_hit                         MFE  +7.9 ORB-R partial=n
+     2026-09-09 FTK   @09:31 universe_catch fate=mechanical_kill   entry 26.93 stop 26.78 ->       +2.49 stop_hit                         MFE +12.9 ORB-R partial=Y
+     2026-09-18 FWDI  @09:35 floor_flip_up  fate=mechanical_kill   entry 6.76 stop 6.49 ->       +3.87 stop_hit                         MFE +14.3 ORB-R partial=Y
+
+==========================================================================================
+P. PRE-OPEN CROSSERS (first rt read >= 9% before 09:30), replayed from 09:31 — the 08-10
+   doc's 'pre-open catches' class, for continuity only
+==========================================================================================
+  n=255 | fates {'mechanical_kill': 146, 'alerted': 18, 'graded_below_bar': 80, 'floor_only': 11}
+
+[(p) ALL pre-open crossers] n=255: entered 144 (settled 120, open 16), no-entry 41, not-tradeable 36, abstain 42
+   settled mean -0.19 stop-R over n=120 (sum -22.6R; 18 winners; 73 stopped day-0)
+   open marks (not returns): [2.35, 6.45, 1.95, 3.29, 1.02, -0.28, 2.45, 2.55, 0.99, 2.56, 2.74, 1.64, 5.44, 2.35, 0.55, -0.61]
+   +8R partial fired: 14 of 144 entered | tail reached: >=3 ORB-R 68, >=8 ORB-R 21 | >=3 stop-R 34, >=8 stop-R 12
+   non-entries: {'never_crossed_orb_high': 40, 'setup:zero_range': 19, 'entry_window_gaps:2_of_29': 4, 'entry_window_gaps:10_of_29': 4, 'entry_window_gaps:8_of_29': 4, 'entry_window_gaps:17_of_29': 3, 'entry_window_gaps:1_of_29': 3, 'entry_window_gaps:11_of_29': 2}
+
+[(p') pre-open crossers that reached grading or alerted] n=98: entered 59 (settled 45, open 13), no-entry 17, not-tradeable 11, abstain 12
+   settled mean +0.00 stop-R over n=45 (sum +0.2R; 8 winners; 24 stopped day-0)
+   open marks (not returns): [2.35, 6.45, 1.95, -0.28, 2.45, 2.55, 0.99, 2.56, 2.74, 1.64, 2.35, 0.55, -0.61]
+   +8R partial fired: 6 of 59 entered | tail reached: >=3 ORB-R 27, >=8 ORB-R 7 | >=3 stop-R 10, >=8 stop-R 6
+   non-entries: {'never_crossed_orb_high': 17, 'setup:zero_range': 4, 'entry_window_gaps:3_of_29': 2, 'entry_window_gaps:10_of_29': 2, 'entry_window_gaps:19_of_29': 2, 'entry_window_gaps:11_of_29': 1, 'setup:stop_too_wide: 1.90 > 1.5x ATR 1.21': 1, 'setup:stop_too_wide: 0.66 > 1.5x ATR 0.33': 1}
+
+  (late) crossers first seen at/after 09:45: n=94 — cannot be entered under the ORB window; not replayed
+
+==========================================================================================
+C. PRE-OPEN HIGH ALERTS (score_tier HIGH, detected before 09:30 ET) — real rows + replay
+==========================================================================================
+  HIGH alerts: 12 pre-open, 3 in-window (09:31-09:44), 5 at/after 09:45 (['ONON', 'ACN', 'SNPS', 'TLN', 'VST'] -> window:out_of_orb)
+    2026-09-08 PHVS  det 07:10:00 live=closed    R -0.87   block:r3_reentry_disabled                     | replay settled         R       -1.00 MFE   +0.8 ORB-R
+    2026-09-08 QCOM  det 09:10:00 live=skipped             setup:gap_below_floor: rt 5.8% < 9% floor (al | replay settled         R       -1.00 MFE   +0.7 ORB-R
+    2026-09-08 ROIV  det 07:00:00 live=skipped             setup:stop_too_wide: ORB range $1.90 (4.9%) > | replay no_trade        R           - MFE      - ORB-R
+    2026-09-08 SEI   det 08:00:00 live=closed    R +0.33                                                 | replay settled         R       +0.00 MFE   +3.0 ORB-R
+    2026-09-14 DFTX  det 07:30:00 live=closed    R -0.97   block:r3_reentry_disabled                     | replay settled         R       -1.00 MFE   +0.0 ORB-R
+    2026-09-14 SRRK  det 07:00:00 live=skipped             setup:gap_below_floor: rt 0.2% < 9% floor (al | replay no_entry        R           - MFE      - ORB-R
+    2026-09-17 VICR  det 07:00:01 live=closed    R +6.18                                                 | replay settled         R       +6.01 MFE  +22.0 ORB-R
+    2026-09-25 AKAM  det 07:00:01 live=cancelled           ORB window unfilled                           | replay no_entry        R           - MFE      - ORB-R
+    2026-09-28 KOD   det 07:00:00 live=filled                                                            | replay open_at_horizon R  mark +6.45 MFE  +17.1 ORB-R
+    2026-10-06 CEG   det 08:25:00 live=closed    R -0.76                                                 | replay settled         R       -1.00 MFE   +0.9 ORB-R
+    2026-10-08 WOLF  det 07:00:01 live=skipped             setup:gap_below_floor: rt 8.8% < 9% floor (al | replay no_entry        R           - MFE      - ORB-R
+    2026-10-09 HUM   det 07:00:01 live=filled                                                            | replay open_at_horizon R  mark -0.61 MFE   +0.4 ORB-R
+
+[(c) pre-open HIGH, replayed under current] n=12: entered 8 (settled 6, open 2), no-entry 3, not-tradeable 1, abstain 0
+   settled mean +0.33 stop-R over n=6 (sum +2.0R; 1 winners; 3 stopped day-0)
+   open marks (not returns): [6.45, -0.61]
+   +8R partial fired: 2 of 8 entered | tail reached: >=3 ORB-R 3, >=8 ORB-R 2 | >=3 stop-R 2, >=8 stop-R 2
+   non-entries: {'never_crossed_orb_high': 3, 'setup:stop_too_wide: 1.90 > 1.5x ATR 1.21': 1}
+   REAL closed trades from pre-open HIGH: n=5 mean +0.78 stop-R, winners 2, best +6.18, without the best -2.3R over 4
+
+==========================================================================================
+G. ENTRY-TIME REAL-TIME GAP-FLOOR BLOCKS (setup:gap_below_floor) — correct save vs
+   blocked-then-reclaimed (any 09:31-09:44 minute high back at/above the 9% floor price)
+==========================================================================================
+  2026-09-08 QCOM  blocked at 09:31 rt 5.8% (alert 9.6%, prev close $168.74); floor px $183.93; window high $183.49 (+8.7%) -> CORRECT SAVE (never regained the floor in the window)
+      after: day-0 close +3.2% vs prev close; 5-session max high +12.6% vs prev close
+  2026-09-14 SRRK  blocked at 09:31 rt 0.2% (alert 11.0%, prev close $55.41); floor px $60.40; window high $56.42 (+1.8%) -> CORRECT SAVE (never regained the floor in the window)
+      after: day-0 close -6.4% vs prev close; 5-session max high -7.8% vs prev close
+  2026-10-08 WOLF  blocked at 09:31 rt 8.8% (alert 18.0%, prev close $31.37); floor px $34.19; window high $34.6 (+10.3%) -> BLOCKED-THEN-RECLAIMED (candidate false block)
+      after: day-0 close -1.1% vs prev close; 5-session max high +0.8% vs prev close
+      as-if entered at the reclaim minute 09:31:00: replay no_entry R - never_crossed_orb_high MFE - ORB-R
+  total blocks 3: 1 reclaimed
+
+==========================================================================================
+L. (a) AGAIN under the LIVE in-window mechanic (#500 limit-chase with the 1.5x cap) —
+   the path IONQ (cancelled) and PENG (filled) actually took
+==========================================================================================
+  entry path taken: {'limit_capped': 26, 'stop_limit': 19, None: 11, 'limit_chase': 14}
+
+[(a-live) ALL in-window crossers, live mechanic] n=70: entered 29 (settled 27, open 2), no-entry 2, not-tradeable 36, abstain 3
+   settled mean -0.21 stop-R over n=27 (sum -5.8R; 8 winners; 11 stopped day-0)
+   open marks (not returns): [0.22, 0.01]
+   +8R partial fired: 1 of 29 entered | tail reached: >=3 ORB-R 6, >=8 ORB-R 1 | >=3 stop-R 2, >=8 stop-R 0
+   non-entries: {'setup:chase_cap_exceeded': 26, 'setup:zero_range': 5, 'never_crossed_orb_high': 2, 'setup:stop_too_wide: 1.65 > 1.5x ATR 1.07': 1, 'no_930_bar_for_orb': 1, 'entry_window_gaps:13_of_29': 1, 'entry_window_gaps:22_of_29': 1, 'setup:stop_too_wide: 6.47 > 1.5x ATR 3.67': 1}
+
+[(b-live) gate-passing subset, live mechanic] n=30: entered 11 (settled 11, open 0), no-entry 0, not-tradeable 19, abstain 0
+   settled mean -0.54 stop-R over n=11 (sum -6.0R; 2 winners; 7 stopped day-0)
+   +8R partial fired: 0 of 11 entered | tail reached: >=3 ORB-R 1, >=8 ORB-R 0 | >=3 stop-R 0, >=8 stop-R 0
+   non-entries: {'setup:chase_cap_exceeded': 16, 'setup:stop_too_wide: 1.65 > 1.5x ATR 1.07': 1, 'setup:stop_too_wide: 6.47 > 1.5x ATR 3.67': 1, 'setup:stop_too_wide: 0.39 > 1.5x ATR 0.22': 1}
+
+[(b'-live) alerted subset, live mechanic] n=5: entered 2 (settled 2, open 0), no-entry 0, not-tradeable 3, abstain 0
+   settled mean -0.50 stop-R over n=2 (sum -1.0R; 0 winners; 1 stopped day-0)
+   +8R partial fired: 0 of 2 entered | tail reached: >=3 ORB-R 0, >=8 ORB-R 0 | >=3 stop-R 0, >=8 stop-R 0
+   non-entries: {'setup:chase_cap_exceeded': 3}
+
+  (a-live) limit-chase entries (the ones the stop-limit replay could not fill):
+     2026-09-11 ALMR  @09:35 fate=graded_below_bar  entry 29.17 stop 27.63 ->       -1.00 stop_hit                       MFE  +0.0 ORB-R
+     2026-09-11 BW    @09:35 fate=mechanical_kill   entry 7.90 stop 7.17 ->       -1.00 stop_hit                       MFE  +0.2 ORB-R
+     2026-09-17 RDCM  @09:35 fate=mechanical_kill   entry 11.02 stop 10.58 ->       -1.00 stop_hit                       MFE  +1.1 ORB-R
+     2026-09-18 FWDI  @09:35 fate=mechanical_kill   entry 6.76 stop 6.49 ->       +3.87 stop_hit                       MFE +14.3 ORB-R
+     2026-09-21 USAR  @09:40 fate=graded_below_bar  entry 16.77 stop 16.11 ->       +0.33 sma_trail_stop                 MFE  +1.0 ORB-R
+     2026-09-22 SKIL  @09:40 fate=floor_only        entry 6.51 stop 6.00 ->       -1.00 stop_hit                       MFE  +0.6 ORB-R
+     2026-09-22 USDE  @09:40 fate=mechanical_kill   entry 14.09 stop 11.98 ->       +0.00 stop_hit                       MFE  +3.1 ORB-R
+     2026-09-24 SECZ  @09:35 fate=mechanical_kill   entry 16.01 stop 13.46 ->       -1.00 stop_hit                       MFE  +0.7 ORB-R
+     2026-09-30 OPTX  @09:35 fate=mechanical_kill   entry 8.23 stop 7.57 ->       +0.04 stop_hit                       MFE  +5.3 ORB-R
+     2026-10-02 CABO  @09:35 fate=mechanical_kill   entry 11.38 stop 10.10 ->       -0.10 sma_trail_stop                 MFE  +2.5 ORB-R
+     2026-10-02 FWDI  @09:40 fate=graded_below_bar  entry 8.60 stop 8.22 ->       -1.00 stop_hit                       MFE  +0.0 ORB-R
+     2026-10-05 CBRS  @09:35 fate=mechanical_kill   entry 182.78 stop 169.05 ->       -0.41 sma_trail_stop                 MFE  +0.3 ORB-R
+     2026-10-05 SOTK  @09:40 fate=mechanical_kill   entry 6.85 stop 5.80 ->  mark +0.22 open_at_horizon                MFE  +1.0 ORB-R
+     2026-10-09 AAOI  @09:35 fate=alerted           entry 115.62 stop 109.49 ->       -1.00 stop_hit                       MFE  +0.3 ORB-R
+
+rows written: s2_rows.tsv

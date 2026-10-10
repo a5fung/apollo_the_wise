@@ -2234,6 +2234,19 @@ well inside budget, but this is the number that would invalidate the decision; (
 the extra 2.5 dilute the 5 entry slots on a ranker not validated out-of-sample — the P9
 concern raised 2026-08-19, which the pricing analysis does NOT answer.
 
+**Re-cut under the era-D exits, 2026-10-10** (`docs/analysis/559_era_recut_2026-10-10.md`,
+alert days 2026-09-08 → 10-09, stored bars only, recommendation only). ESTABLISHED: with both
+switches acting, 70 names first crossed the 9% floor in real time inside the 09:31–09:44
+window over 24 trading days (2.9/day); the live scan killed 37 on mechanical gates, graded 25
+below the bar, alerted 5 (2 HIGH) and entered 1. Replayed wholesale under the current exits
+the class still loses (−0.30R mean over n=37; the gate-passing 30 at −0.64R over n=17); its
+three ≥8 ORB-R names (NUAI, FTK, FWDI) died on grade, cooldown and M&A, not on timing. The
+entry-time gap gate's 3 blocks were 2 correct saves and 1 reclaim that cost nothing. The +8R
+partial filled once in 8 fills (KOD); VICR reached the level on 1 share and the partial
+cannot size below 3 shares (`int(remaining // 3)`). Recommendation on the page: keep both
+switches ON, no flip proposal in either direction — n is one trade deep and the season is at
+its trough. Nothing flipped.
+
 ### 2026-08-27 — #602: the judge's two decisions get two separate vocabularies, and each states its own one-line reason (OPERATOR-SIGNED, rubric v3 → v4)
 
 **Trigger**: an operator triage of the OKTA 2026-08-27 alert, which said *"demoted from
