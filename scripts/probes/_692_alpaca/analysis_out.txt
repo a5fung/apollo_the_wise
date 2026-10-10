@@ -1,0 +1,89 @@
+RAW PULL: 151 ticker-day cells, 80 weekly cells
+  Polygon items 353, Alpaca items 1127
+
+====================================================================================================
+A. COVERAGE — ticker-days on/before 2026-06-17: Benzinga candidates Polygon gave vs Alpaca's
+  ticker-days in this slice: 58; with >=1 Benzinga candidate in Polygon: 11
+  Benzinga candidate articles (Polygon, publisher=Benzinga): 15; also a candidate from Alpaca (same headline): 5
+   MISS ('CGCT', '2026-05-29', 'Factorial and Cartesian Growth Corporation III Announce Approval of Business Combination by Cartesian Growth S', 'description+insights', 'merger', 'not in Alpaca at all')
+   MISS ('D', '2026-05-18', 'NextEra Energy, Dominion In Talks To Create $400 Billion Utility Giant As Electricity Demand Surges Amid AI Bo', 'description+insights', 'merger', 'in Alpaca raw but not a candidate')
+   MISS ('FRMI', '2026-06-17', 'Why Is Fermi (FRMI) Stock Moving Today?', 'description+insights', 'merger', 'in Alpaca raw but not a candidate')
+   MISS ('MGM', '2026-06-01', 'S&P 500 Halts Gains As Oil Jumps 8% On Iran Ceasefire Standoff: Stock Market Today', 'description+insights', 'takeover', 'in Alpaca raw but not a candidate')
+   MISS ('MYRG', '2026-05-27', 'MYR Group Enters Definitive Agreement to Acquire Valley Electric and Comet Electric', 'title', 'definitive agreement', 'not in Alpaca at all')
+   MISS ('OLN', '2026-06-16', 'Dow Jones Hit Record Highs As Oil Drops To $77: Stock Market Today', 'description+insights', 'merger', 'in Alpaca raw but not a candidate')
+   MISS ('PZZA', '2026-05-15', 'Deal Dispatch: GoPro Retains Houlihan Lokey In Strategic Review, Brookfield Buys World Freight Company, YesCar', 'description+insights', 'take-private', 'in Alpaca raw but not a candidate')
+   MISS ('QURE', '2026-05-29', 'Numero AI and Royu Merge to Redefine How Finance Teams Operate', 'description+insights', 'merger', 'not in Alpaca at all')
+   MISS ('SUNE', '2026-06-08', "Clean Energy Stocks Are Trending — Here's Why", 'description+insights', 'merger', 'in Alpaca raw but not a candidate')
+   MISS ('SUNE', '2026-06-08', 'SUNation Energy and Suniva Enter Definitive Merger Agreement, Creating a Platform for American Solar Manufactu', 'title', 'merger', 'not in Alpaca at all')
+
+====================================================================================================
+B. ADDITIONS — ticker-days 2026-06-17+1 .. 10-02 (Polygon carries no Benzinga)
+  ticker-days: 93; Polygon-only candidates: 40; Alpaca-ADDED candidates (headline not already in Polygon): 45; ticker-days that gain >=1: 30
+  (the model question on each ADDED candidate was NOT replayed — no stored answer unless noted)
+   ARX    2026-08-13 [title       ] kw='going private'      'Accelerant Is Going Private in $4 Billion Thoma Bravo Deal' label=''
+   ARX    2026-08-13 [title       ] kw='definitive agreement' 'Accelerant Enters Into Definitive Agreement With Thoma Bravo To Become Privately Held Comp' label=''
+   ATAI   2026-07-16 [title       ] kw='to be acquired'     'Watching AtaiBeckley; Shares See A Spike In Volume To The Upside, Traders Circulate Unconf' label=''
+   ATKR   2026-08-03 [title       ] kw='to be acquired'     'Atkore Agrees To Be Acquired By Prysmian For $95.00 Per Share In All-Cash Deal, $3.8B Ente' label=''
+   BOW    2026-08-03 [title       ] kw='to be acquired'     'Bowhead Specialty Holdings To Be Acquired By American Family Mutual Insurance Company For ' label=''
+   BRSL   2026-09-21 [title       ] kw='tender offer'       'Brightstar Lottery Announced A Tender Offer For Any And All Of The Regulation S Interests ' label=''
+   DFH    2026-08-14 [title       ] kw='merger'             'Beazer Discloses Fee Payable To Dream Finder Homes In Event Of Merger Termination Of $31.M' label=''
+   DV     2026-08-07 [title       ] kw='merger'             "DoubleVerify Says It Is Suspending Earnings Calls, Including Today's, And Withdrawing All " label=''
+   EPC    2026-06-23 [title       ] kw='takeover'           "'Schick Razor Maker Is Said to Reject Unsolicited Takeover Offer'- Bloomberg" label=''
+   ESI    2026-07-06 [title       ] kw='merger'             "Jim Cramer Says Solstice-Element Merger Would Create a 'Chemical Tech Powerhouse': Stocks " label=''
+   FBRX   2026-07-27 [title       ] kw='takeover'           'Argenx Secures Promising Autoimmune Drug In Forte Biosciences Takeover' label=''
+   FBRX   2026-08-04 [title       ] kw='takeover'           'Argenx Secures Promising Autoimmune Drug In Forte Biosciences Takeover' label=''
+   FBRX   2026-08-05 [title       ] kw='takeover'           'Argenx Secures Promising Autoimmune Drug In Forte Biosciences Takeover' label=''
+   FBRX   2026-08-10 [title       ] kw='merger'             'argenx Commences $77/Shr Cash Tender Offer Through Subsidiary Avena Merger Sub To Acquire ' label=''
+   FBRX   2026-08-10 [title       ] kw='takeover'           'Argenx Secures Promising Autoimmune Drug In Forte Biosciences Takeover' label=''
+   FBRX   2026-08-11 [title       ] kw='merger'             'argenx Commences $77/Shr Cash Tender Offer Through Subsidiary Avena Merger Sub To Acquire ' label=''
+   FBRX   2026-08-12 [title       ] kw='merger'             'argenx Commences $77/Shr Cash Tender Offer Through Subsidiary Avena Merger Sub To Acquire ' label=''
+   HZO    2026-08-10 [title       ] kw='buyout'             'Marinemax Stock Surges to New 52-Week High Toward Safe Harbor Buyout Price' label=''
+   HZO    2026-08-10 [title       ] kw='to be acquired'     "MarineMax To Be Acquired By Blackrock Infrastructure's Safe Harbor For $53.00 Per Share In" label=''
+   INMD   2026-06-24 [title       ] kw='buyout'             'InMode Forms Special Committee After CEO-Led Group Offers $16.20 Per Share Buyout' label=''
+   LCID   2026-07-17 [description+] kw='going private'      "Lucid Stock Rebounds After EV Maker Denies Bankruptcy Report: 'Completely False'" label='operator 2026-08-08: FP'
+   LCID   2026-07-17 [description+] kw='going private'      'Lucid Stock Dives After Report Claims EV Company Is Weighing Strategic Options' label='operator 2026-08-08: FP'
+   LCID   2026-07-17 [title       ] kw='going private'      'Watching Lucid Motors; X Post Circulating Claiming That Company Spokesperson Denies Rumors' label='operator 2026-08-08: FP'
+   LCID   2026-07-17 [title       ] kw='going private'      "'Lucid Weighs Going Private or Chapter 11 as Adviser Reports to Board' - EV" label='operator 2026-08-08: FP'
+   LION   2026-07-15 [title       ] kw='takeover'           "'Lionsgate Studios attracts takeover interest from Bollore, Banijay, sources say'- Reuters" label=''
+   PYPL   2026-07-15 [title       ] kw='takeover'           "'Stripe, Advent make $53 billion takeover offer for PayPal, sending stock soaring' - CNBC" label=''
+   PYPL   2026-07-15 [description+] kw='takeover'           'PayPal Stock Surges Nearly 15% in Premarket as Stripe and Advent International Reportedly ' label=''
+   PYPL   2026-07-28 [description+] kw='takeover'           'PayPal Prediction Market Earnings Preview: Will Management Talk About Stripe?' label=''
+   PYPL   2026-07-28 [title       ] kw='buyout'             'PayPal Stock Braces for Volatility as Earnings, Buyout Decision Loom' label=''
+   PYPL   2026-07-28 [title       ] kw='buyout'             "'Flaccid' Digital Names Like Ebay, PayPal Are Targets for AI-Era Buyouts, Friedberg Says o" label=''
+   RGTI   2026-09-08 [title       ] kw='definitive agreement' 'Rigetti Computing Announces Definitive Agreement With Commerce Department For $100M CHIPS ' label='operator 2026-10-01: wrongly block'
+   RNW    2026-08-11 [title       ] kw='taken private'      'ReNew Energy Global To Be Taken Private By Its CEO And CPP Investments At $7.02 Per Share ' label=''
+   ROKU   2026-06-24 [title       ] kw='merger'             'Cathie Wood Dumps Millions Worth Of Tesla, Palantir, Roku, AMD And More Even As TSLA Stock' label=''
+   SAFT   2026-07-24 [description+] kw='definitive agreement' "Safety Insurance Group (SAFT) Stock Soars Over 37% After Hours: Here's Why" label=''
+   SOLS   2026-08-28 [title       ] kw='merger'             'Solstice Stock Is Surging After Terminating Element Merger' label=''
+   SOLS   2026-08-28 [title       ] kw='merger'             'Element Solutions Reveals Mutual Termination of Merger Agreement with Solstice Advanced Ma' label=''
+   SWKS   2026-09-15 [title       ] kw='merger'             'Reported Friday, Skyworks Extends Withdrawal Deadline For Qorvo Note Exchange Offers To Se' label='operator 2026-10-01: wrongly block'
+   SWKS   2026-09-15 [title       ] kw='merger'             'Reported Earlier, Skyworks Pushes Qorvo Bond Exchange Deadline To Sept. 11 As Merger Closi' label='operator 2026-10-01: wrongly block'
+   SYNA   2026-10-02 [title       ] kw='merger'             'ON Semiconductor Shares Jump After Revised Synaptics Merger Deal' label=''
+   SYNA   2026-10-02 [title       ] kw='merger'             'Synaptics Stock is Trending: SYNA Jumps 15% After Hours on Amended Merger Deal With ON Sem' label=''
+   SYNA   2026-10-02 [title       ] kw='merger'             'Onsemi To Acquire Synaptics For $123 Per Share In Cash Under Amended Merger Deal' label=''
+   UTZ    2026-07-21 [title       ] kw='take-private'       'Utz Brands Stock Surges 90% After $2.9 Billion Take-Private Deal' label=''
+   UTZ    2026-07-21 [title       ] kw='to be acquired'     'Utz Brands Strikes Agreement To Be Acquired By Intersnack For $14.25/Share In Cash' label=''
+   WEAV   2026-08-18 [title       ] kw='buyout'             'Weave Is Going Private: Francisco Partners Offers 34% Premium in $650 Million Buyout' label=''
+   WEAV   2026-08-18 [title       ] kw='definitive agreement' 'Weave Communications Says Francisco Partners Enters Into Definitive Agreement To Acquire W' label=''
+
+====================================================================================================
+C. DISPLACEMENT — does an added Alpaca candidate push an asked-and-acting Polygon candidate out of the 3 newest?
+  stored acting headlines not in this pull's Polygon candidates (excluded): 5
+  ticker-days where the stored Polygon-era answers include an ACTING headline still in the Polygon pull: 22; pushed out under ONE shared 3-cap: 1 [('PYPL', '2026-07-28')]; pushed out under the SHIPPED per-feed cap: 0
+
+====================================================================================================
+D. WEEKLY 06-19 .. 10-09 — keyword candidates by feed for ARX, BWIN, CBZ, DV, ITGR
+  ARX: 2 title-keyword headlines in 06-19..10-09
+     2026-08-13 feeds=alpaca         'Accelerant Enters Into Definitive Agreement With Thoma Bravo To Become Privately Held Company In All'
+     2026-08-13 feeds=alpaca         'Accelerant Is Going Private in $4 Billion Thoma Bravo Deal'
+  BWIN: 2 title-keyword headlines in 06-19..10-09
+     2026-09-14 feeds=alpaca         'Baldwin Group To Be Taken Private By Sequence Holdings And The Dell Family Office At $32.50 Per Shar'
+     2026-10-04 feeds=polygon        'Halper Sadeh LLC is Investigating Whether BWIN, LSTA, ACVA are Obtaining Fair Deals for their Shareh'
+  CBZ: 0 title-keyword headlines in 06-19..10-09
+  DV: 2 title-keyword headlines in 06-19..10-09
+     2026-08-06 feeds=alpaca         "DoubleVerify Says It Is Suspending Earnings Calls, Including Today's, And Withdrawing All Previously"
+     2026-08-29 feeds=polygon        'Halper Sadeh LLC is Investigating Whether BWMN, SUNS, DV, SYBX are Obtaining Fair Deals for their Sh'
+  ITGR: 3 title-keyword headlines in 06-19..10-09
+     2026-08-03 feeds=alpaca         'Integer Holdings To Be Acquired By KKR For $127 Per Share Cash In Transaction Valued At EV Of ~$5.7B'
+     2026-08-03 feeds=polygon        'Halper Sadeh LLC is Investigating Whether SUPN, ITGR, BOW are Obtaining Fair Deals for their Shareho'
+     2026-09-30 feeds=polygon        'Halper Sadeh LLC is Investigating Whether ITGR, FHB, INDV, LNTH are Obtaining Fair Deals for their S'

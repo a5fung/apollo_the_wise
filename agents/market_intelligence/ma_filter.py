@@ -23,10 +23,18 @@ TWO ANSWERING PATHS, same question, same `DealAnswer`, same verdict:
   1. The EP catalyst grader's own deal fields (ep_detector `_CATALYST_TOOL` — passed in by the
      caller as `deal_answer`). The grader reads the full grounded corpus (SEC 8-K body, Benzinga
      wires, web synthesis), so on the EP path this is the primary answer.
-  2. The Polygon headline question (`ask_deal_question`): a cheap $0 keyword pre-filter picks
+  2. The headline question (`ask_deal_question`): a cheap $0 keyword pre-filter picks
      candidate articles (`_MNA_KEYWORDS` — its job now is ONLY to choose what gets asked), and
      a small forced-tool call answers the same three facts from that article. Every detector
-     gets it through `is_likely_ma(check_polygon=True)`.
+     gets it through `is_likely_ma(check_polygon=True)`. The articles come from TWO feeds
+     (2026-10-10, his yes 2026-10-06): Polygon news AND Benzinga via Alpaca news
+     (`collector.get_alpaca_news`, the grader's own source, $0 extra). Polygon stopped carrying
+     Benzinga between 06-17 and 06-23, so the Polygon-only scan was blind to Benzinga deal
+     headlines. The same headline in both feeds is asked once (title dedupe, Polygon copy kept);
+     every hit / release / unanswered row carries its `news_source`, and an Alpaca-sourced hit
+     reads `source = alpaca_headline_model` beside Polygon's `polygon_headline_model`. The
+     DECISION RULE is unchanged. Runtime toggle `mna_headline_alpaca_source` (default ON) turns
+     the second feed off with no redeploy.
 The deal-pin PRICE-signature paths (flag_detector: deal_pin_signature / deal_pin_fresh / sticky)
 are price evidence of a pinned tape, live outside this module and are untouched.
 
@@ -94,7 +102,7 @@ import asyncio
 import hashlib
 import json
 import logging
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Awaitable, Callable, Iterable, NamedTuple, Optional
 from zoneinfo import ZoneInfo
 
@@ -531,6 +539,10 @@ _HEADLINE_TIMEOUT_S = 20.0
 #: Candidate articles asked per ticker per check (newest first). Older candidates are recorded
 #: as UNANSWERED (why='article_cap') — never dropped without a trace.
 _HEADLINE_MAX_ARTICLES = 3
+#: The second news feed (Benzinga via Alpaca): wall-clock bound on the read (a slow or dead feed
+#: must leave the Polygon-only result untouched) and the item cap (the same 20 the Polygon read uses).
+_ALPACA_FETCH_TIMEOUT_S = 10.0
+_ALPACA_NEWS_LIMIT = 20
 
 # (ticker, article key, ET day) -> answer; attempts per key; the day's call counter + which
 # budget pools already wrote their cap-hit audit row today.
@@ -702,17 +714,37 @@ class HeadlineScan(NamedTuple):
 
 def _candidate_articles(
     ticker: str, items: list[dict], insights_missing: Optional[list] = None,
+    company_name: Optional[str] = None,
 ) -> list[tuple[dict, str, str, Optional[str]]]:
     """$0 candidate selection: (item, match_path, keyword, this ticker's insight reasoning).
     A title keyword → 'title'; a description / insight-reasoning keyword → 'description+insights'
     ONLY when this ticker is in the article's `insights` (the #88 multi-ticker bleed guard — a
     roundup that only insights another company is never asked about). Litigation notices skip.
     `insights_missing`, when given, collects the titles skipped because Polygon had not graded
-    the article at all (the #88 false-negative telemetry `_b88_mna_filter_path_b_fp_rate` counts)."""
+    the article at all (the #88 false-negative telemetry `_b88_mna_filter_path_b_fp_rate` counts).
+    An ALPACA item (`news_source == "alpaca"`, Benzinga) carries no per-ticker `insights`, so the
+    #88 guard is replaced by the same intent from the feed's own data: a title keyword -> candidate
+    (as for Polygon); a summary keyword -> candidate ONLY when the article is about THIS ticker
+    (`collector.is_primary_subject_news`: single-symbol-tagged, or the title names the ticker or the
+    company, and not a roundup) — `match_path` 'description+symbols'. It never writes an
+    insights-missing row (that counter is Polygon's)."""
     out = []
     for item in items:
         title = item.get("title") or ""
         if is_shareholder_litigation_notice(title):
+            continue
+        if item.get("news_source") == "alpaca":
+            title_kw = matches_mna_keywords(title)
+            if title_kw:
+                out.append((item, "title", title_kw, None))
+                continue
+            body_kw = matches_mna_keywords(item.get("description"))
+            if body_kw:
+                from agents.market_intelligence.collector import is_primary_subject_news
+                if is_primary_subject_news(
+                        {"title": title, "symbols": item.get("tickers") or []}, ticker,
+                        company_name or ""):
+                    out.append((item, "description+symbols", body_kw, None))
             continue
         insights = item.get("insights") or []
         ticker_insight = next((i for i in insights if i.get("ticker") == ticker), None)
@@ -742,6 +774,104 @@ async def _company_name(ticker: str) -> Optional[str]:
     return _COMPANY_NAME_MEMO[ticker]
 
 
+async def _alpaca_source_enabled() -> bool:
+    """His yes 2026-10-06 — the scan also reads Benzinga via Alpaca news. The toggle exists so the
+    second feed can be turned off with no redeploy; default ON IS the ruling. Literal name + env
+    so scripts/live_rules.py discovers it. A failed read keeps the ruled default (ON)."""
+    try:
+        from agents.market_intelligence.db import get_runtime_toggle
+        return bool(await get_runtime_toggle("mna_headline_alpaca_source",
+                                             "MNA_HEADLINE_ALPACA_SOURCE", default=True))
+    except Exception as e:  # loud-ok: fail direction = the ruled default (on), logged
+        logger.warning(f"mna_headline_alpaca_source read failed → default ON: {e}")
+        return True
+
+
+def _norm_title(title: Optional[str]) -> str:
+    """Casefolded, whitespace-collapsed headline — the dedupe key across the two feeds (identical
+    headlines only; no fuzzy matching)."""
+    return " ".join((title or "").casefold().split())
+
+
+def _alpaca_published_utc(created_at: Any) -> str:
+    """Alpaca's `created_at` ('2026-10-01T10:00:00+00:00') in Polygon's 'YYYY-MM-DDTHH:MM:SSZ'
+    shape, so the newest-first sort and the logged string read the same for both feeds. A value
+    that does not parse is kept as given."""
+    raw = str(created_at or "")
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        dt = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return raw
+
+
+def _alpaca_to_scan_items(raw: Iterable[dict], ticker: str) -> list[dict]:
+    """Reshape `collector.get_alpaca_news` items onto the Polygon item shape the scan reads
+    (title / description / published_utc / publisher / tickers / insights), tagged
+    `news_source = "alpaca"`. Alpaca has no per-ticker insights -> []. Items without a title drop."""
+    out = []
+    for n in raw or []:
+        title = (n.get("title") or "").strip()
+        if not title:
+            continue
+        out.append({
+            "title": title,
+            "description": n.get("summary") or "",
+            "published_utc": _alpaca_published_utc(n.get("created_at")),
+            "publisher": n.get("source") or "",
+            "tickers": list(n.get("symbols") or []),
+            "insights": [],
+            "news_source": "alpaca",
+            "news_sources": ["alpaca"],
+        })
+    return out
+
+
+def _merge_headline_sources(polygon_items: Iterable[dict], alpaca_items: Iterable[dict]) -> list[dict]:
+    """Polygon first, then the Alpaca items whose headline Polygon does not already carry. A
+    headline in both feeds keeps the POLYGON copy (it carries `insights`) and records both in
+    `news_sources`. Inputs are not mutated."""
+    merged: list[dict] = []
+    seen: dict[str, dict] = {}
+    for it in polygon_items or []:
+        c = {**it, "news_source": it.get("news_source") or "polygon",
+             "news_sources": list(it.get("news_sources") or ["polygon"])}
+        merged.append(c)
+        seen.setdefault(_norm_title(c.get("title")), c)
+    for it in alpaca_items or []:
+        key = _norm_title(it.get("title"))
+        prior = seen.get(key)
+        if prior is not None:
+            if "alpaca" not in prior["news_sources"]:
+                prior["news_sources"].append("alpaca")
+            continue
+        c = {**it, "news_sources": list(it.get("news_sources") or ["alpaca"])}
+        merged.append(c)
+        seen[key] = c
+    return merged
+
+
+async def _fetch_alpaca_headlines(
+    ticker: str, *, lookback_days: int, on_or_before: Optional[date],
+) -> list[dict]:
+    """The second feed: Benzinga via Alpaca news, reshaped. EVERY failure — toggle off, no
+    credentials, an API error, a timeout — returns [] so the scan is exactly the Polygon-only
+    scan (`get_alpaca_news` itself never raises). Bounded by `_ALPACA_FETCH_TIMEOUT_S`."""
+    if not await _alpaca_source_enabled():
+        return []
+    from agents.market_intelligence.collector import get_alpaca_news
+    try:
+        raw = await asyncio.wait_for(
+            get_alpaca_news(ticker, to_date=on_or_before, lookback_days=lookback_days,
+                            limit=_ALPACA_NEWS_LIMIT, include_content=False),
+            timeout=_ALPACA_FETCH_TIMEOUT_S)
+    except Exception as e:  # loud-ok: the Polygon-only scan is the fallback; logged
+        logger.warning(f"{ticker}: Alpaca headline read failed — {type(e).__name__}: {e}")
+        return []
+    return _alpaca_to_scan_items(raw, ticker)
+
+
 async def headline_deal_scan(
     ticker: str,
     *,
@@ -759,10 +889,18 @@ async def headline_deal_scan(
     / 'deadline') — never dropped."""
     from agents.market_intelligence.collector import get_polygon_news
 
-    items = await get_polygon_news(
-        ticker, lookback_days=lookback_days, on_or_before=on_or_before, limit=20)
+    polygon_items, alpaca_items = await asyncio.gather(
+        get_polygon_news(ticker, lookback_days=lookback_days, on_or_before=on_or_before, limit=20),
+        _fetch_alpaca_headlines(ticker, lookback_days=lookback_days, on_or_before=on_or_before))
+    items = _merge_headline_sources(polygon_items or [], alpaca_items)
+    # The company name feeds the Alpaca summary-keyword guard only; looked up (memoized) when
+    # an Alpaca item actually has a summary keyword and no title keyword.
+    company = None
+    if any(i.get("news_source") == "alpaca" and not matches_mna_keywords(i.get("title"))
+           and matches_mna_keywords(i.get("description")) for i in items):
+        company = await _company_name(ticker)
     missing: list = []
-    candidates = _candidate_articles(ticker, items or [], insights_missing=missing)
+    candidates = _candidate_articles(ticker, items, insights_missing=missing, company_name=company)
     for title in missing:   # unchanged #88 telemetry (one row per skipped article, as before)
         try:
             from agents.market_intelligence.db import log_audit_event
@@ -784,9 +922,20 @@ async def headline_deal_scan(
             "title": (item.get("title") or "")[:200],
             "published_utc": item.get("published_utc", ""),
             "publisher": item.get("publisher", ""),
+            "news_source": item.get("news_source") or "polygon",
+            "news_sources": list(item.get("news_sources") or ["polygon"]),
         }
 
-    asked = candidates[:_HEADLINE_MAX_ARTICLES]
+    # The cap is PER FEED: the `_HEADLINE_MAX_ARTICLES` newest Polygon candidates (exactly what the
+    # Polygon-only scan asked) plus the same number of Alpaca-only ones — so the second feed can only
+    # ADD questions and never push a Polygon candidate out (the 10-10 replay found 1 of 22 acting
+    # ticker-days — PYPL 07-28 — would have lost theirs to a shared cap).
+    _by_feed: dict[bool, list] = {False: [], True: []}
+    for c in candidates:
+        _by_feed[c[0].get("news_source") == "alpaca"].append(c)
+    _kept = {id(c[0]) for feed in _by_feed.values() for c in feed[:_HEADLINE_MAX_ARTICLES]}
+    asked = [c for c in candidates if id(c[0]) in _kept]          # still newest first
+    over_cap = [c for c in candidates if id(c[0]) not in _kept]
     tasks = [asyncio.ensure_future(ask_deal_question(
         ticker, item, company_name=company, reasoning=reasoning, now_et=now_et,
         skip_in_orb=skip_in_orb, budget_pool=budget_pool)) for item, _mp, _kw, reasoning in asked]
@@ -806,11 +955,11 @@ async def headline_deal_scan(
             unanswered.append({**meta, "why": how})
         elif _headline_acts(answer):
             if hit is None:   # newest acting candidate (asked newest first)
-                hit = {"source": "polygon_headline_model", "ticker": ticker, **meta,
+                hit = {"source": f"{meta['news_source']}_headline_model", "ticker": ticker, **meta,
                        **deal_fields(answer)}
         else:
             released.append({**meta, **deal_fields(answer)})
-    for item, match_path, kw, _reasoning in candidates[_HEADLINE_MAX_ARTICLES:]:
+    for item, match_path, kw, _reasoning in over_cap:
         unanswered.append({**_meta(item, match_path, kw), "why": "article_cap"})
     return HeadlineScan(hit, released, unanswered, len(candidates))
 

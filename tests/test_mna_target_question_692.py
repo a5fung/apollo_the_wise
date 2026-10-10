@@ -476,6 +476,7 @@ def test_the_articles_are_asked_concurrently_under_one_deadline():
         audits.append((event_type, detail))
     with patch.object(mf, "_HEADLINE_TIMEOUT_S", 0.2), \
          patch("agents.market_intelligence.collector.get_polygon_news", new=AsyncMock(return_value=items)), \
+         patch("agents.market_intelligence.collector.get_alpaca_news", new=AsyncMock(return_value=[])), \
          patch("agents.market_intelligence.collector.get_ticker_details", new=AsyncMock(return_value={})), \
          patch.object(mf, "_get_headline_client", return_value=model), \
          patch.object(mf, "_audit_once", new=_cap), \
