@@ -6515,15 +6515,8 @@ class MarketIntelligenceAgent(BaseAgent):
                 ORDER BY created_at ASC
             """, trade["alert_date"], window_end, ticker)
 
-        def _parse_exits(raw):
-            if isinstance(raw, list):
-                return raw
-            try:
-                return _json.loads(raw or "[]")
-            except Exception as e:
-                logger.debug(f"/trade {ticker}: malformed exits JSON, showing empty: {e}")
-                return []
-        exits = _parse_exits(trade.get("exits"))
+        from agents.market_intelligence.closed_trade_line import parse_exits
+        exits = parse_exits(trade.get("exits"))
 
         entry_date = trade["alert_date"]
         closed_at = trade.get("closed_at")
@@ -7062,9 +7055,8 @@ class MarketIntelligenceAgent(BaseAgent):
 
     async def _handle_trades_detail(self, request: AgentRequest) -> AgentResponse:
         """Inline keyboard detail: /trades_detail {view} [{date}]"""
-        import json as _json
         from agents.market_intelligence.collector import last_trading_day
-        from agents.market_intelligence.closed_trade_line import fmt_closed_line
+        from agents.market_intelligence.closed_trade_line import fmt_closed_line, parse_exits
 
         parts = request.task.strip().split()
         view = parts[1].lower() if len(parts) > 1 else "summary"
@@ -7078,17 +7070,6 @@ class MarketIntelligenceAgent(BaseAgent):
 
         pool = await get_pool()
 
-        def _parse_exits(raw) -> list:
-            if isinstance(raw, list):
-                return raw
-            try:
-                return _json.loads(raw or "[]")
-            except Exception as e:
-                logger.debug(f"/trades {view}: malformed exits JSON on a row, showing empty: {e}")
-                return []
-
-        def _fmt_closed_line(r: dict) -> list[str]:
-            return fmt_closed_line(r, parse_exits=_parse_exits)
 
         async def _build_summary() -> str:
             """Open positions (with live Alpaca prices) + last 5 closed + totals."""
@@ -7217,7 +7198,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     # this row's `exits` JSONB (same trade_id), not as separate
                     # closed rows. Sum stop_hit exits — those belong to closed
                     # prior attempts since the current attempt is still open.
-                    in_row_exits = _parse_exits(p.get("exits"))
+                    in_row_exits = parse_exits(p.get("exits"))
                     in_row_prior_pnl = sum(
                         float(e.get("pnl") or 0)
                         for e in in_row_exits
@@ -7273,7 +7254,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 lines.append("")
                 lines.append(f"*Last {len(closed_rows)} Closed*")
                 for r in closed_rows:
-                    lines += _fmt_closed_line(dict(r))
+                    lines += fmt_closed_line(dict(r))
 
             winners = stats["winners"] or 0
             losers = stats["losers"] or 0
@@ -7371,7 +7352,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 "",
             ]
             for r in rows:
-                lines += _fmt_closed_line(dict(r))
+                lines += fmt_closed_line(dict(r))
 
             return self._ok(request, result="\n".join(lines))
 

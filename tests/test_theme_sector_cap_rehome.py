@@ -259,11 +259,11 @@ async def test_sector_cap_empty_source_is_not_a_rejection(audit, monkeypatch):
     audit.reset_mock()
     target = {"name": TANKER, "tickers": list(TANKER_MEMBERS)}
     source = {"name": GAS_UTILITIES, "tickers": ["TNK", "FRO"]}
-    admitted = await te._admit_rehomed_members(
+    rehome = await te._admit_rehomed_members(
         target, source, "oil_gas", comove_ctx=_synthetic_ctx(), changelog=None, protected=None,
         cooldown_set=None, theme_exclusions=None,
     )
-    assert admitted == [] and target["tickers"] == list(TANKER_MEMBERS)
+    assert rehome.admitted == [] and not rehome.kept_distinct and target["tickers"] == list(TANKER_MEMBERS)
     rows = [c for c in audit.await_args_list if c.args and c.args[0] == "theme_sector_cap_absorbed"]
     assert len(rows) == 1
     summary = rows[0].kwargs.get("summary") or rows[0].args[1]

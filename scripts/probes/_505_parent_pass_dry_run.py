@@ -181,9 +181,12 @@ def main() -> int:
     sectors = {t: s for t, s in psql(Q_SECT)}
     try:
         industries = {t: i for t, i in psql(Q_IND)} or None
-    except Exception as e:  # same fail-safe as the armed night: unreadable -> size-based ranking
-        print(f"industries unreadable ({e}) - dry run uses the size-based ranking", file=sys.stderr)
+    except Exception as e:  # same fail-safe as the armed night: unreadable -> {} (shared-stock pairs only)
+        print(f"industries unreadable ({e}) - dry run asks only shared-stock pairs, as the armed night does",
+              file=sys.stderr)
         industries = None
+    if industries is None:
+        industries = {}   # mirror _run_parent_pass: never the pre-closeness ranking
 
     live = [t for t in board if t["stage"] != "Retired" and t["tickers"]]
     arm_b = propose_merge_pairs(live, cooldown_pairs=cooldown_pairs,

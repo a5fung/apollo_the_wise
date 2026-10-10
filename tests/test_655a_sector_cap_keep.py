@@ -108,7 +108,7 @@ async def test_kept_when_three_judged_and_none_passed(audit):
     kept = _rows(audit, KEPT_EVENT)
     assert len(kept) == 1, [c.args[0] for c in audit.await_args_list]
     d = _detail(kept[0])
-    assert (d["theme"], d["group"], d["top_theme"]) == (UTILITIES, "oil_gas", TANKER)
+    assert (d["source"], d["group"], d["target"]) == (UTILITIES, "oil_gas", TANKER)
     assert d["judged"] == 3 and d["passed"] == 0
     assert "kept" in _summary(kept[0]) and "->" not in _summary(kept[0])   # never read as a successor pointer
     assert _rows(audit, "theme_sector_cap_not_absorbed") == []
@@ -200,7 +200,7 @@ async def test_kept_theme_takes_no_cap_slot_and_other_themes_are_unchanged(audit
     assert len(kept) == 1 and len(dropped) == 1
     # the later capped theme was tested against the group's real top, not the kept theme
     assert _detail(dropped[0])["target"] == TANKER
-    assert _detail(kept[0])["top_theme"] == TANKER
+    assert _detail(kept[0])["target"] == TANKER
     assert set(next(t for t in out if t["name"] == TANKER)["tickers"]) == set(TANKER_MEMBERS)
 
 
@@ -248,8 +248,7 @@ async def test_oct7_shape_a_capped_theme_is_never_tested_against_itself(audit):
     assert cap_rows, "the fixture must reach the cap (Appalachian is the third non-empty group theme)"
     for c in cap_rows:
         d = _detail(c)
-        target = d.get("target") or d.get("top_theme")
-        source = d.get("source") or d.get("theme")
+        target, source = d["target"], d["source"]
         assert source != target, d
         assert target == FUEL, d
 
@@ -266,7 +265,7 @@ async def test_an_empty_shell_is_never_a_target_and_takes_no_slot(audit):
     names = [t["name"] for t in out]
     assert TANKER in names and REFINERS in names and UTILITIES in names, names
     d = _detail(_rows(audit, KEPT_EVENT)[0])
-    assert d["top_theme"] == TANKER
+    assert d["target"] == TANKER
 
 
 @pytest.mark.asyncio
@@ -298,5 +297,5 @@ async def test_a_same_named_theme_with_members_is_never_the_target(audit):
     assert cap_rows, "the fixture must reach the cap (the second Tanker-named theme is the third)"
     for c in cap_rows:
         d = _detail(c)
-        target = d.get("target") or d.get("top_theme")
+        target = d["target"]
         assert target == REFINERS, d

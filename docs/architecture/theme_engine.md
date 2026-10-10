@@ -1446,7 +1446,7 @@ unjudgeable / cooldown / exclusion member does not) **and none reached the 0.35 
 in the top theme**, the theme is KEPT as its own theme that night. It takes no slot in the group's count
 (appended after the top theme, so it is never a later capped theme's target), keeps its own roster, and
 nothing is moved into the top theme. ONE audit row `theme_sector_cap_kept_distinct` per merge pass (two on a night a theme split re-runs the merge, so count DISTINCT themes per night, not rows) replaces the
-`not_absorbed` row (`THEME_SECTOR_CAP_KEPT_DISTINCT`; detail: `theme`, `group`, `top_theme`, `judged`,
+`not_absorbed` row (`THEME_SECTOR_CAP_KEPT_DISTINCT`; detail: `source`, `group`, `target` (the same keys as the sibling cap rows), `judged`,
 `passed` = 0, per-member verdicts; the summary has no `'a' -> 'b'` arrow, so no retire path reads it as a
 successor). Anything else is unchanged: a theme with a passing member keeps the absorb path, **< 3 judged
 or unjudgeable keeps today's drop**, no context fails closed as before, per-family biotech and the cap-0

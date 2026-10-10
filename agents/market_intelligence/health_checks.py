@@ -3859,19 +3859,14 @@ _DEAD_COL_MIN_ROWS = 30          # below this the table is too young to judge
 # on, why). The column is exempt ONLY while ZERO rows are in that state; the moment one is and the
 # column is still all-NULL, the writer is broken and the column counts dead like any other. This
 # is not a mute: a dropped/never-wired column is not on this list, and an entry needs a writer test.
+_WALK_OPEN = ("outcome IN ('open', 'horizon')", "filled while a walk is open; cleared when it settles")
 _DEAD_COL_EVENT_GATED: dict[str, tuple[str, str]] = {
     "mi_live_fill_counterfactuals.mark_r": (
         "outcome = 'horizon'",
         "filled only when an arm is still open after 40 forward sessions"),
-    "mi_gap_near_miss_replays.mark_r": (
-        "outcome IN ('open', 'horizon')",
-        "filled while a walk is open; cleared when it settles"),
-    "mi_sustain_reject_replays.mark_r": (
-        "outcome IN ('open', 'horizon')",
-        "filled while a walk is open; cleared when it settles"),
-    "mi_lowcap_lane_replays.mark_r": (
-        "outcome IN ('open', 'horizon')",
-        "filled while a walk is open; cleared when it settles"),
+    "mi_gap_near_miss_replays.mark_r": _WALK_OPEN,
+    "mi_sustain_reject_replays.mark_r": _WALK_OPEN,
+    "mi_lowcap_lane_replays.mark_r": _WALK_OPEN,
 }
 _DEAD_COL_TABLE_PREFIXES = ("mi_", "crypto_")
 # Row-write timestamps (a row stamped after the first sighting in ANY of them counts). Deliberately small
@@ -3954,9 +3949,10 @@ async def run_dead_column_sweep(conn=None) -> dict[str, Any]:
                     entry = {"table": table, "column": col, "rows": n}
                     gated = _DEAD_COL_EVENT_GATED.get(key)
                     if gated is not None:
+                        gated_pred, gated_why = gated
                         if not await c.fetchval(
-                                f'SELECT count(*) FROM "{table}" WHERE {gated[0]}'):
-                            out["event_gated"].append({**entry, "why": gated[1]})
+                                f'SELECT count(*) FROM "{table}" WHERE {gated_pred}'):
+                            out["event_gated"].append({**entry, "why": gated_why})
                             continue   # wired; its event is not live — nothing to suspect or announce
                         # Its event IS live and it is still all-NULL: a broken writer. Judged under
                         # its own key, so an announcement from before the event existed (both

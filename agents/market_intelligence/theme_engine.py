@@ -23,7 +23,7 @@ import re
 import os
 from datetime import date, timedelta
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, NamedTuple
 
 import anthropic
 from shared.llm_client import make_async_anthropic
@@ -395,6 +395,7 @@ lifted renewed optimism headline headlines news report reports result results qu
 analyst analysts rating ratings target targets price prices tailwind momentum rotation rebound recovery
 upgrade upgrades sentiment continued continue spending fresh specific
 """.split())
+_CLOSENESS_SKIP = _CLOSENESS_STOP_WORDS | _CLOSENESS_THEME_COMMON_WORDS
 
 # Semaphore: max concurrent Perplexity search calls (5 = ~2 rounds for 10 themes vs 4 at 3)
 _SEARCH_SEM = asyncio.Semaphore(5)
@@ -8005,17 +8006,23 @@ async def _route_a_subtheme(
 SECTOR_CAP_KEEP_MIN_JUDGED = 3
 
 
-class _RehomeResult(list):
-    """The members `_admit_rehomed_members` admitted (a plain list to every existing caller), plus
-    `kept_distinct`: the source theme provably does not move with the target and the cap keeps it."""
+class _RehomeResult(NamedTuple):
+    """What `_admit_rehomed_members` decided: the members admitted into the target, and
+    `kept_distinct` — the source provably does not move with the target and the cap keeps it."""
+    admitted: list[str]
     kept_distinct: bool = False
 
 
-def _cap_keep_distinct(verdicts: dict[str, dict], admitted: list[str], already: list[str]) -> bool:
+def _tape_judged(verdicts: dict[str, dict]) -> int:
+    """Members the co-movement tape actually JUDGED (path "tape" — a reject counts; an
+    unjudgeable / cooldown / exclusion member does not)."""
+    return sum(1 for v in verdicts.values() if v.get("path") == "tape")
+
+
+def _cap_keep_distinct(judged: int, admitted: list[str], already: list[str]) -> bool:
     """#655 (a) — pure. The replay's keep rule, ported exactly: at least `SECTOR_CAP_KEEP_MIN_JUDGED`
-    members JUDGED by the tape (path "tape" — a reject counts; an unjudgeable / cooldown / exclusion
-    member does not), NONE admitted, and none already sitting in the target."""
-    judged = sum(1 for v in verdicts.values() if v.get("path") == "tape")
+    members judged by the tape (`_tape_judged`), NONE admitted, and none already sitting in the
+    target."""
     return judged >= SECTOR_CAP_KEEP_MIN_JUDGED and not admitted and not already
 
 
@@ -8091,7 +8098,7 @@ async def _admit_rehomed_members(
                                    "already_in_target": [], "admitted": [], "rejected": [],
                                    "members": {}}),
             )
-        return _RehomeResult()
+        return _RehomeResult([])
 
     verdicts: dict[str, dict] = {}
     admitted: list[str] = []
@@ -8119,26 +8126,24 @@ async def _admit_rehomed_members(
         "rejected": [tk for tk in candidates if tk not in admitted],
         "members": verdicts,
     })
-    result = _RehomeResult(admitted)
-    if _cap_keep_distinct(verdicts, admitted, already):
+    judged_n = _tape_judged(verdicts)
+    if _cap_keep_distinct(judged_n, admitted, already):
         # #655 (a): the tape judged enough of this theme's members and not one moves with the
         # group's top theme — the cap's "same sector" premise is a keyword coincidence, so the
         # theme is KEPT (the caller leaves it out of the group's slot count). ONE row per merge pass
         # (two on a split night, when the merge re-runs — count distinct themes), replacing
         # the not_absorbed row; no "'a' -> 'b'" arrow, so no retire path reads it as a successor.
-        judged_n = sum(1 for v in verdicts.values() if v.get("path") == "tape")
-        result.kept_distinct = True
         await log_audit_event(
             THEME_SECTOR_CAP_KEPT_DISTINCT,
             summary=(f"Pass2: '{source_name}' kept distinct from '{target_name}' — {judged_n} of "
                      f"{len(candidates)} member(s) judged, none co-moves (sector group '{group}')"),
             detail=json.dumps({
-                "theme": source_name, "group": group, "top_theme": target_name,
+                "source": source_name, "target": target_name, "group": group,
                 "judged": judged_n, "passed": 0, "bar": ASSIGN_COMOVE_BAR,
                 "members": verdicts,
             }),
         )
-        return result
+        return _RehomeResult([], kept_distinct=True)
     if admitted or already:
         # A source some of whose members already sit in the target has the target as its
         # successor whether or not any NEW member passed — the same pointer the all-already
@@ -8156,7 +8161,7 @@ async def _admit_rehomed_members(
                      f"membership test for '{target_name}' (sector group '{group}')"),
             detail=detail,
         )
-    return result
+    return _RehomeResult(admitted)
 
 
 _SUCCESSOR_RE = re.compile(r"'([^']+)' -> '([^']+)'")
@@ -8557,14 +8562,15 @@ async def _merge_overlapping_themes(
                 # again within a day and re-absorbed the next night), and the mass-flag
                 # rename then generalised the target's NAME to fit the mush.
                 extra = [tk for tk in (t.get("tickers") or [])]
-                admitted = await _admit_rehomed_members(
+                rehome = await _admit_rehomed_members(
                     top_theme, t, group,
                     comove_ctx=comove_ctx, changelog=changelog, protected=protected,
                     cooldown_set=cooldown_set, theme_exclusions=theme_exclusions,
                 )
+                admitted = rehome.admitted
                 current = list(top_theme.get("tickers") or [])
                 top_theme["tickers"] = current + [tk for tk in admitted if tk not in current]
-                if admitted.kept_distinct:
+                if rehome.kept_distinct:
                     # #655 (a): kept as its own theme, outside the group's slot count (appended
                     # after the top theme, so it is never a later capped theme's target).
                     final.append(t)
@@ -9172,10 +9178,10 @@ def _closeness_tokens(theme: dict) -> set[str]:
     text = f"{theme.get('name') or ''} {theme.get('description') or ''}".lower()
     out: set[str] = set()
     for tok in re.split(r"[^a-z0-9]+", text):
-        if len(tok) < 3 or tok.isdigit() or tok in _CLOSENESS_STOP_WORDS or tok in _CLOSENESS_THEME_COMMON_WORDS:
+        if len(tok) < 3 or tok.isdigit() or tok in _CLOSENESS_SKIP:
             continue
         stem = _closeness_stem(tok)
-        if stem in _CLOSENESS_STOP_WORDS or stem in _CLOSENESS_THEME_COMMON_WORDS:
+        if stem in _CLOSENESS_SKIP:
             continue
         out.add(stem)
     return out
@@ -9321,10 +9327,10 @@ def propose_parent_candidates(
 
 
 async def _read_parent_pass_industries(themes: list[dict]) -> "dict[str, str] | None":
-    """ONE batched read of `mi_ticker_overrides.industry` for every member of every live
-    theme (the engine's existing batch lookup - no per-ticker query). None when it cannot
-    be read or comes back empty -> the caller falls back to the pre-closeness ranking for the
-    night (fail safe, never crashes the pass)."""
+    """ONE batched read of `mi_ticker_overrides.industry` for every member of `themes` (the
+    engine's existing batch lookup - no per-ticker query). None when it cannot be read or comes
+    back empty -> `_run_parent_pass` passes {} instead, so every overlap reads 0 and only pairs
+    that share a member stock are asked that night (fail safe, never crashes the pass)."""
     try:
         tickers = sorted({tk for t in themes if t.get("stage") != "Retired" for tk in (t.get("tickers") or [])})
         if not tickers:
@@ -9429,7 +9435,7 @@ async def _run_parent_pass(
                 max_pairs=None,
             )
         }
-        industry_by_ticker = await _read_parent_pass_industries(all_themes)
+        industry_by_ticker = await _read_parent_pass_industries(live)
         industries_unreadable = industry_by_ticker is None
         if industries_unreadable:
             industry_by_ticker = {}   # every overlap 0 -> only shared-stock pairs pass the minimum

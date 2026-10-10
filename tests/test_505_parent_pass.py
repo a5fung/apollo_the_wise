@@ -66,9 +66,11 @@ ECO = {BROAD: "E-INS", NARROW: "E-INS", OTHER_ECO: "E-BANKFIN"}
 
 @pytest.fixture(autouse=True)
 def _no_industry_read(monkeypatch):
-    """The armed night reads industries from the DB (#505 closeness pick); these tests pin
-    the pre-closeness ranking and must not touch a pool -> 'industries unreadable' (None).
-    The closeness pick itself is pinned in tests/test_505_closeness_pick.py."""
+    """The armed night reads industries from the DB (#505 closeness pick); these tests must not
+    touch a pool -> 'industries unreadable' (None), so a test that goes through `_run_parent_pass`
+    runs the unreadable-night rule (only shared-stock pairs asked), and a DIRECT
+    `propose_parent_candidates` call without industries pins the pre-closeness ranking. The
+    closeness pick itself is pinned in tests/test_505_closeness_pick.py."""
     async def _none(themes):
         return None
     monkeypatch.setattr(te, "_read_parent_pass_industries", _none)

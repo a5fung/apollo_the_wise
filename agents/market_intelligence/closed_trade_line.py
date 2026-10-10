@@ -8,12 +8,28 @@ made-up one. The old '· N attempt(s)' suffix is gone (operator 2026-10-07: it a
 """
 from __future__ import annotations
 
+import json
+import logging
 from typing import Callable
 
 from agents.market_intelligence.sell_discipline import trade_realized_r
 
+logger = logging.getLogger(__name__)
 
-def fmt_closed_line(r: dict, *, parse_exits: Callable) -> list[str]:
+
+def parse_exits(raw) -> list:
+    """An mi_live_trades row's `exits` (a list, or its JSON text) as a list; malformed JSON shows
+    empty (logged at debug). The ONE parser /trade and /trades share (was two closures in agent.py)."""
+    if isinstance(raw, list):
+        return raw
+    try:
+        return json.loads(raw or "[]")
+    except Exception as e:  # loud-ok: display only — a malformed row shows no exits, logged
+        logger.debug(f"/trades: malformed exits JSON on a row, showing empty: {e}")
+        return []
+
+
+def fmt_closed_line(r: dict, *, parse_exits: Callable = parse_exits) -> list[str]:
     """`r` is an mi_live_trades row dict; it must carry entry_price, hard_stop, orb_low and
     entry_shares for the R (sell_discipline's R frame) plus the display columns."""
     pnl = float(r.get("total_pnl") or 0)

@@ -73,8 +73,9 @@ def trade_risk_per_share(trade: dict) -> Optional[float]:
 
 def trade_realized_r(trade: dict) -> Optional[float]:
     """THE realized-R formula: total_pnl / (original entry risk x entry shares), 4dp.
-    One definition for every surface (the sell-discipline record, its provisional rows,
-    the /trades closed list) so they can never disagree. None when there is no valid R
+    Shared by the sell-discipline record, its provisional rows and the /trades closed list so
+    those three can never disagree (exit_path_shadow and live_fill_counterfactuals keep their
+    own frames on purpose). None when there is no valid R
     frame (no risk unit / no shares) or no pnl — never a fabricated number."""
     risk = trade_risk_per_share(trade)
     shares = _f(trade.get("entry_shares")) or 0.0
@@ -949,7 +950,7 @@ async def build_sell_discipline_section(
         entry, shares = _f(t.get("entry_price")), _f(t.get("entry_shares")) or 0.0
         if risk is None or entry is None or shares <= 0:
             continue
-        hps, pnl = _f(t.get("highest_price_seen")), _f(t.get("total_pnl"))
+        hps = _f(t.get("highest_price_seen"))
         prov.append({
             "ticker": t["ticker"],
             "peak_r": (hps - entry) / risk if hps is not None else None,
