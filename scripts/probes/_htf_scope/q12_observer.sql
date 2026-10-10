@@ -1,0 +1,4 @@
+SELECT 'depth_pair_rows' k, COUNT(*)::text v, COUNT(DISTINCT scan_date)::text d FROM mi_flag_candidates WHERE depth_on_low IS NOT NULL AND scan_date >= '2026-09-22'
+UNION ALL SELECT 'low_fails_close_passes', COUNT(*)::text, string_agg(DISTINCT ticker, ',') FROM mi_flag_candidates WHERE scan_date >= '2026-09-22' AND depth_on_low < 0.75 AND depth_on_close >= 0.75 AND reason LIKE 'flag_low_%'
+UNION ALL SELECT 'sma20_kill_within_0.5pct', COUNT(*)::text, string_agg(DISTINCT ticker, ',') FROM mi_flag_candidates WHERE scan_date >= '2026-09-22' AND stage='INVALIDATED' AND reason LIKE 'close_%_below_sma20_%' AND sma20_margin > -0.005
+UNION ALL SELECT 'sma20_kills_total', COUNT(*)::text, '' FROM mi_flag_candidates WHERE scan_date >= '2026-09-22' AND stage='INVALIDATED' AND reason LIKE 'close_%_below_sma20_%';

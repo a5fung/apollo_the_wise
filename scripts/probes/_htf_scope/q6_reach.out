@@ -1,0 +1,76 @@
+q|k|k2|v
+A|2026-05|flag_ma_pullbacks_reconciled|4
+A|2026-05|flag_stage_flip_held|236
+A|2026-05|flag_support_tests_reconciled|4
+A|2026-05|intraday_flag_break|61
+A|2026-06|flag_low_vol_rests_reconciled|8
+A|2026-06|flag_ma_pullbacks_reconciled|17
+A|2026-06|flag_stage_flip_held|238
+A|2026-06|flag_support_tests_reconciled|11
+A|2026-06|flag_undercut_rally_reconciled|3
+A|2026-06|intraday_flag_break|91
+A|2026-07|flag_ma_pullbacks_reconciled|4
+A|2026-07|flag_stage_flip_held|19
+A|2026-07|flag_support_tests_reconciled|4
+A|2026-07|health_job_liveness_flagged|1
+A|2026-07|intraday_flag_break|7
+A|2026-07|theme_dissolved_flagged_pair|15
+A|2026-08|flag_low_vol_rests_reconciled|1
+A|2026-08|flag_ma_pullbacks_reconciled|5
+A|2026-08|flag_stage_flip_held|22
+A|2026-08|flag_support_tests_reconciled|4
+A|2026-08|flag_undercut_rally_reconciled|1
+A|2026-08|health_job_liveness_flagged|1
+A|2026-08|intraday_flag_break|4
+A|2026-08|theme_dissolved_flagged_pair|12
+A|2026-08|theme_renamed_on_mass_flag|2
+A|2026-09|flag_low_vol_rests_reconciled|3
+A|2026-09|flag_ma_pullbacks_reconciled|7
+A|2026-09|flag_stage_flip_held|17
+A|2026-09|flag_support_tests_reconciled|3
+A|2026-09|flag_undercut_rally_reconciled|2
+A|2026-09|health_job_liveness_flagged|3
+A|2026-09|intraday_flag_break|10
+A|2026-09|theme_dissolved_flagged_pair|2
+A|2026-09|theme_renamed_on_mass_flag|9
+A|2026-10|flag_breaks_reconciled|1
+A|2026-10|flag_low_vol_rests_reconciled|1
+A|2026-10|flag_ma_pullbacks_reconciled|3
+A|2026-10|flag_stage_flip_held|2
+A|2026-10|flag_stage_transition|2
+A|2026-10|intraday_flag_break|5
+A|2026-10|theme_dissolved_flagged_pair|4
+A|2026-10|theme_renamed_on_mass_flag|1
+B|2026-10-05|PURR entered TIGHTENING 2026-10-05|{"ticker": "PURR", "stage": "TIGHTENING", "prev_stage": "INVALIDATED", "scan_date": "2026-10-05", "run_up_pct": 1.4948275862068967, "pivot_high_price": 14.47, "range_contraction_ratio": 0.6611449209418726, "vol_contraction_ratio": 0.5897246644895551, "base_age": 10, "telegram": "sent"}
+B|2026-10-08|KOD entered COILED 2026-10-08|{"ticker": "KOD", "stage": "COILED", "prev_stage": "INVALIDATED", "scan_date": "2026-10-08", "run_up_pct": 2.4887504570598558, "pivot_high_price": 104.0, "range_contraction_ratio": 1.0, "vol_contraction_ratio": 1.0, "base_age": 4, "telegram": "sent"}
+C|2026-08-18 17:18:32.116716|advisor_call | [discovery] Do either of these two correlation clusters contain a genuine, specific business-driver sub-theme (as opposed to spuriou|Q: Do either of these two correlation clusters contain a genuine, specific business-driver sub-theme (as opposed to spurious statistical co-movement), and if so which subset of tickers should be kept?
+C|2026-08-18 17:25:05.100836|flag_stage_flip_held | CHYM TIGHTENING→held@COILED|range_0.51 vol_0.71
+C|2026-08-18 17:25:16.233473|flag_stage_flip_held | NWL TIGHTENING→held@COILED|range_0.60 vol_0.54 fresh
+C|2026-08-18 17:25:43.990725|flag_support_tests_reconciled | 1 intraday support-tests marked parent_invalidated_eod=TRUE for 2026-08-18|
+C|2026-08-19 09:50:05.058834|intraday_ma_pullback | CDNA stage=TIGHTENING ma=SMA10 tag=+0.26% bounce=+1.58% vol_pct_adv=4%|
+C|2026-08-19 10:15:01.878825|intraday_flag_break | CHYM stage=COILED pct_above=+0.2% vol_pct_adv=12%|
+C|2026-08-25 09:55:08.505362|intraday_ma_pullback | CDNA stage=TIGHTENING ma=SMA10 tag=+0.38% bounce=+2.43% vol_pct_adv=3%|
+C|2026-08-25 10:50:02.652582|intraday_flag_break | CDNA stage=TIGHTENING pct_above=+0.4% vol_pct_adv=36%|
+C|2026-08-25 17:01:04.171896|assignment_llm_proposed | Sonnet proposed 4 assignment(s) (batch 1/13, advisor_calls=0)|{"advisor_calls": 0, "proposals": [{"ticker": "P", "theme": "Enterprise Server, Storage & Data Infrastructure Hardware"}, {"ticker": "GO", "theme": "Defensive Consumer Staples Rotation"}, {"ticker": "
+C|2026-08-25 17:25:04.867217|flag_stage_flip_held | CHYM WATCH→held@TRIGGERED|runup_110% base_12d close_vs_pivot_-0.9%
+C|2026-08-25 17:25:07.758414|flag_stage_flip_held | WDAY TIGHTENING→held@COILED|range_0.58 vol_0.73 fresh
+C|2026-08-25 17:25:08.14076|flag_stage_flip_held | CDNA WATCH→held@TIGHTENING|runup_130% base_15d close_vs_pivot_+2.1%
+C|2026-08-25 17:25:43.384786|flag_ma_pullbacks_reconciled | 1 intraday ma-pullbacks marked parent_invalidated_eod=TRUE for 2026-08-25|
+E|2026-05-29|HNGE TIGHTENING|bh=56.5 px=56.7599 inv=false
+E|2026-06-01|HNGE TRIGGERED|bh=56.5 px=57.48 inv=false
+E|2026-07-31|CDNA TIGHTENING|bh=40.47 px=41.53 inv=false
+E|2026-08-25|CDNA TIGHTENING|bh=48.72 px=48.93 inv=false
+E|2026-09-17|CDNA TIGHTENING|bh=53.74 px=54.83 inv=false
+F|event_types_cmd|partial_exit_stop_telegram_pending|2
+F|event_types_cmd|telegram_markdown_fallback|300
+F|event_types_cmd|telegram_poll_stale|1
+F|event_types_cmd|telegram_send_failed|3
+F|event_types_cmd|trade_lifecycle_telegram_attempted|72
+G|flag_breaks_by_month|2026-05|61
+G|flag_breaks_by_month|2026-06|91
+G|flag_breaks_by_month|2026-07|7
+G|flag_breaks_by_month|2026-08|4
+G|flag_breaks_by_month|2026-09|10
+G|flag_breaks_by_month|2026-10|5
+H|job_runs_cols|id,expected_min_rows,created_at,scheduled_for,started_at,finished_at,duration_s,rows_written,job_id,error_message,status|
+(74 rows)

@@ -1,0 +1,3 @@
+SELECT 'hnge_bar' q, trade_date::text k, 'h='||high_price||' c='||close||' v='||volume v FROM mi_daily_closes WHERE ticker='HNGE' AND trade_date BETWEEN '2026-08-05' AND '2026-08-27'
+UNION ALL SELECT 'close_digest_run', scheduled_for::text, status||' rows='||COALESCE(rows_written::text,'?')||' '||COALESCE(left(error_message,60),'') FROM mi_job_runs WHERE job_id='close_digest' AND scheduled_for::date IN ('2026-08-25','2026-09-17','2026-08-19')
+UNION ALL SELECT 'friday_run', scheduled_for::text, status||' rows='||COALESCE(rows_written::text,'?') FROM mi_job_runs WHERE job_id='friday_watchlist' ORDER BY 1,2;

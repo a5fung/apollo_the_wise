@@ -1,0 +1,14 @@
+k|v
+daily_closes_min|2021-09-27
+daily_closes_max|2026-10-09
+flag_min|2026-05-04
+flag_max|2026-10-09
+flag_distinct_days|114
+strategy_flag|deprecated/false
+strategy_cols|breakeven_arm_r,enabled,promotion_thresholds,created_at,updated_at,live_real_enabled,position_size_multiplier,max_concurrent_positions,profit_trigger_r,name,family,phase,notes,signal_type,outcomes_table,promotion_model,strategy_id
+stock_scores_cols|sma_40,score_date,rs_1m,rs_3m,rs_6m,rs_composite,rs_rank,raw_3m,raw_6m,adv_20,sma_10,sma_20,sma_50,close,raw_1m,sector,ticker
+audit_cols|id,created_at,event_type,summary,detail
+flag_breaks_cols|created_at,invalidated_at,id,break_date,break_time,minutes_since_open,parent_scan_date,base_high,base_low,base_age,break_price,pct_above_base_high,today_volume,adv_20,volume_pct_of_adv,projected_full_day_volume,in_sugar_baby_cohort,cohort_count_180d,parent_invalidated_eod,ticker,parent_stage
+flag_cand_cols|ma_stack_margin,low_after_breakout,undercut_after_breakout,depth_on_low,depth_on_close,sma20_margin,id,scan_date,pivot_high_date,pivot_high_price,base_age,base_high,base_low,runup_pct,runup_start_date,range_contraction_ratio,vol_contraction_ratio,last_body_pct,prev_body_pct,atr_14,sma_10,sma_20,breakout_close,breakout_volume_ratio,rs_rank,rs_composite,score,created_at,fresh_tight_fires,fresh_2bar_tr_pct,atr14_pct,rmv_5d,rmv_15d,flagpole_ratio,flag_depth_pct,failed_at,ticker,stage,reason,universe_sources,held_from_stage,sector
+job_tables|mi_job_log,mi_job_runs
+(12 rows)

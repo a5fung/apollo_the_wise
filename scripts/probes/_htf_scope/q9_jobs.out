@@ -1,0 +1,35 @@
+q|job_id|scheduled_for|status|rows_written|left
+hpe_scores|HPE|2026-06-15|45|97.8|
+hpe_scores|HPE|2026-06-16|23|98.2|
+hpe_scores|HPE|2026-06-17|21|98.6|
+hpe_scores|HPE|2026-06-18|33|97.2|
+hpe_scores|HPE|2026-06-22|290|57.9|
+hpe_scores|HPE|2026-06-23|703|13.8|
+hpe_scores|HPE|2026-06-24|714|14.2|
+hpe_scores|HPE|2026-06-25|752|13.6|
+hpe_scores|HPE|2026-06-26|824|9.1|
+hpe_scores|HPE|2026-06-29|835|9.8|
+hpe_scores|HPE|2026-06-30|768|15.2|
+hpe_scores|HPE|2026-07-01|715|19.3|
+hpe_scores|HPE|2026-07-02|846|9.5|
+hpe_scores|HPE|2026-07-06|843|9.9|
+hpe_scores|HPE|2026-07-07|779|13.9|
+hpe_scores|HPE|2026-07-08|693|16.7|
+hpe_scores|HPE|2026-07-09|283|54.9|
+hpe_scores|HPE|2026-07-10|319|48|
+hpe_scores|HPE|2026-07-13|502|29.3|
+hpe_scores|HPE|2026-07-14|343|44.2|
+hpe_scores|HPE|2026-07-15|546|26.3|
+hpe_scores|HPE|2026-07-16|589|26.5|
+hpe_scores|HPE|2026-07-17|134|70.1|
+jobrun_ids|close_digest|||61|
+jobrun_ids|flag_break_scan|||8384|
+jobrun_ids|flag_continuation_scan|2026-09-18 21:25:00+00|2026-09-18 21:25:00+00|115|
+jobrun_ids|friday_watchlist|2026-09-18 22:00:00+00|2026-09-18 22:00:00+00|24|
+stage_0817|CHYM|COILED|fresh_2bar 2.7%/atr 5.4% bodies_0.25/0.12||
+stage_0817|NWL|COILED|range_0.64 vol_0.56 fresh||
+stage_0817|PAY|TIGHTENING|range_0.68 vol_0.62 fresh||
+stage_0818|CDNA|TIGHTENING|range_0.95 vol_0.65||
+stage_0818|CHYM|COILED|range_0.51 vol_0.71||
+stage_0818|NWL|COILED|range_0.60 vol_0.54 fresh||
+(33 rows)

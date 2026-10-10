@@ -1,0 +1,107 @@
+==============================================================================
+A. DAILY BOARD (q1) — 60 scan dates; medians exclude the 09-07 partial scan
+  total   median  545.0  mean 547.22  min 487 max 636
+  watch   median    5.0  mean  5.22  min 1 max 14
+  tight   median    1.0  mean  1.68  min 0 max 4
+  coiled  median    0.0  mean  0.64  min 0 max 3
+  trig    median    0.0  mean  0.27  min 0 max 2
+  days tight==0: 10  of 59
+  days coiled>0: 22  of 59
+  days trig>0: 15   TRIGGERED rows: 16
+  scan dates: 2026-07-17 -> 2026-10-09 n = 60
+==============================================================================
+B. STATE ROWS (q2) — distinct names, holds
+  WATCH       rows  310  held   0  distinct names 66
+  TIGHTENING  rows  102  held  11  distinct names 29
+  COILED      rows   40  held  21  distinct names 12
+  TRIGGERED   rows   16  held  12  distinct names 4
+  INVALIDATED rows  559  held   0  distinct names 131
+  names with a RAW (un-held) read: {'INVALIDATED': 131, 'WATCH': 67, 'TIGHTENING': 31, 'COILED': 12, 'TRIGGERED': 4}
+  TIGHTENING names that ever stored COILED: 5   COILED names that ever stored TRIGGERED: 4
+  real (un-held) TRIGGERED reads: [('CHYM', '2026-08-19'), ('IOVA', '2026-09-14'), ('WDAY', '2026-08-28'), ('XHLD', '2026-09-09')]
+  TIGHTENING rows that are holds: 11 of 102; names 7
+==============================================================================
+C. WATCH -> next scan day (q14 vs the 09-07-aware recount in v1)
+  q14 total WATCH rows with a next scan day: 304
+  drops as counted: 26 rows / 24 names
+  of which 09-04 WATCH whose 'next scan' was the 87-name 09-07 partial and which HAD a 09-08 row: 7 ['ABCL', 'CDNA', 'HELP', 'IMMX', 'LIFE', 'TEAM', 'XHLD']
+  drops excluding that artifact: 19 rows / 18 names
+==============================================================================
+D. NEXT ROW AFTER A PUSHABLE ROW (q11)
+  after TIGHTENING rows (n=102): {'TIGHTENING': 61, 'INVALIDATED': 25, 'base_age_0 pivot UP': 7, 'COILED': 4, 'unq:adr': 2, 'unq:base': 2, 'unq:mna': 1}
+  pushable rows whose next row is base_age_0 with a higher pivot: 11
+     ('CDNA', '2026-07-31', 'TIGHTENING', 40.38, 49.76)
+     ('CDNA', '2026-08-25', 'TIGHTENING', 49.76, 51.125)
+     ('CHPT', '2026-09-18', 'TIGHTENING', 10.28, 10.72)
+     ('EFOR', '2026-10-01', 'TIGHTENING', 34.37, 37.66)
+     ('HELP', '2026-08-04', 'TIGHTENING', 8.45, 9.4)
+     ('IOVA', '2026-09-16', 'TRIGGERED', 9.36, 9.925)
+     ('PBF', '2026-09-02', 'TIGHTENING', 74.74, 77.94)
+     ('QMCO', '2026-09-23', 'TIGHTENING', 26.28, 29.15)
+     ('REPL', '2026-09-02', 'COILED', 15.68, 16.33)
+     ('TJGC', '2026-09-11', 'COILED', 10.6099, 11.5)
+     ('XHLD', '2026-09-09', 'TRIGGERED', 10.4799, 12.155)
+==============================================================================
+E. TIGHTENING EPISODES — doc's 'broke out' vs the TRIGGERED gate's own conditions
+  TIGHTENING episodes in window: 41
+  episodes with a close > first-day base_high within 10 sessions: 15
+  CDNA  ep 2026-07-30 (2d) first close>bh0 2026-07-31 -> COILED prerequisite was the ONLY missing leg
+         gate days (date, vol ratio, stored stage, held_from): [('2026-07-31', 3.08, 'TIGHTENING', 'WATCH')]
+  CDNA  ep 2026-08-18 (6d) first close>bh0 2026-08-21 -> COILED prerequisite was the ONLY missing leg
+         gate days (date, vol ratio, stored stage, held_from): [('2026-08-25', 1.61, 'TIGHTENING', 'WATCH')]
+  CDNA  ep 2026-09-14 (4d) first close>bh0 2026-09-15 -> price leg met, VOLUME leg failed every same-base day
+         price-only days (date, vol ratio): [('2026-09-15', 0.91), ('2026-09-16', 0.81), ('2026-09-17', 0.83)]
+         after-reset gate days: [('2026-09-22', 1.94, 'unqualified', '2026-09-18'), ('2026-09-24', 1.86, 'unqualified', '2026-09-22')]
+  EFOR  ep 2026-09-28 (4d) first close>bh0 2026-10-01 -> COILED prerequisite was the ONLY missing leg
+         gate days (date, vol ratio, stored stage, held_from): [('2026-10-01', 2.48, 'TIGHTENING', '')]
+  GSHD  ep 2026-08-12 (1d) first close>bh0 2026-08-20 -> gate legs met only AFTER the base re-anchored / name off board (G3/G1)
+         after-reset gate days: [('2026-08-20', 1.51, 'unqualified', '')]
+  HELP  ep 2026-08-04 (1d) first close>bh0 2026-08-05 -> gate legs met only AFTER the base re-anchored / name off board (G3/G1)
+         after-reset gate days: [('2026-08-05', 1.71, 'unqualified', '2026-08-04'), ('2026-08-06', 1.97, 'unqualified', '2026-08-05')]
+  IOVA  ep 2026-09-01 (1d) first close>bh0 2026-09-15 -> registered TRIGGERED
+         gate days (date, vol ratio, stored stage, held_from): [('2026-09-14', 2.01, 'TRIGGERED', '')]
+  MBX   ep 2026-07-23 (3d) first close>bh0 2026-07-30 -> price leg met, VOLUME leg failed every same-base day
+         price-only days (date, vol ratio): [('2026-07-29', 0.98), ('2026-07-30', 1.1)]
+  MBX   ep 2026-07-29 (3d) first close>bh0 2026-08-04 -> price leg met, VOLUME leg failed every same-base day
+         price-only days (date, vol ratio): [('2026-07-30', 1.1)]
+  NEO   ep 2026-07-17 (3d) first close>bh0 2026-07-30 -> full price+volume met, but another gate rejected the row that day
+         other-gate days: [('2026-07-29', 4.3, 'unqualified', 'ma_stack_not_stage2_14.2/14.4/12.3')]
+         after-reset gate days: [('2026-07-30', 1.59, 'unqualified', '2026-07-29')]
+  PBF   ep 2026-08-26 (1d) first close>bh0 2026-09-08 -> price leg met, VOLUME leg failed every same-base day
+         price-only days (date, vol ratio): [('2026-09-02', 0.95)]
+         after-reset gate days: [('2026-09-10', 1.5, 'unqualified', '2026-09-02')]
+  PBF   ep 2026-08-28 (4d) first close>bh0 2026-09-08 -> price leg met, VOLUME leg failed every same-base day
+         price-only days (date, vol ratio): [('2026-09-02', 0.95)]
+         after-reset gate days: [('2026-09-10', 1.5, 'unqualified', '2026-09-02')]
+  PURR  ep 2026-09-14 (1d) first close>bh0 2026-09-18 -> full price+volume met, but another gate rejected the row that day
+         other-gate days: [('2026-09-17', 1.55, 'unqualified', 'flag_low_10.54_below_75%_of_pole_14.14'), ('2026-09-18', 2.91, 'unqualified', 'flag_low_10.54_below_75%_of_pole_14.14')]
+  QMCO  ep 2026-09-22 (2d) first close>bh0 2026-09-24 -> gate legs met only AFTER the base re-anchored / name off board (G3/G1)
+         after-reset gate days: [('2026-09-24', 2.86, 'unqualified', '2026-09-23'), ('2026-09-25', 1.56, 'unqualified', '2026-09-24'), ('2026-10-02', 1.67, 'unqualified', '2026-09-29')]
+  REPL  ep 2026-08-19 (1d) first close>bh0 2026-08-25 -> price leg met, VOLUME leg failed every same-base day
+         price-only days (date, vol ratio): [('2026-08-25', 1.05), ('2026-08-26', 0.75), ('2026-09-02', 1.0)]
+  BUCKETS: {'COILED prerequisite was the ONLY missing leg': 3, 'price leg met, VOLUME leg failed every same-base day': 6, 'gate legs met only AFTER the base re-anchored / name off board (G3/G1)': 3, 'registered TRIGGERED': 1, 'full price+volume met, but another gate rejected the row that day': 2}
+==============================================================================
+F. CDNA by hand (q8-equivalent bars from v1)
+  2026-08-25 on pivot 2026-08-03: close 50.8 > base_high_close 48.61? True  vol ratio 1.61 (>=1.5? True)  stored row: {'stage': 'TIGHTENING', 'held': 'WATCH', 'pivot': '2026-08-03', 'age': '15', 'bh': 48.72, 'reason': 'runup_130% base_15d close_vs_pivot_+2.1%'}
+  2026-09-17 on pivot 2026-08-27: close 54.28 > base_high_close 53.55? True  vol ratio 0.83 (>=1.5? False)  stored row: {'stage': 'TIGHTENING', 'held': '', 'pivot': '2026-08-27', 'age': '13', 'bh': 54.488, 'reason': 'range_0.68 vol_0.90'}
+  2026-09-22 on pivot 2026-08-27: close 56.49 > base_high_close 54.33? True  vol ratio 1.94 (>=1.5? True)  stored row: {'stage': 'unqualified', 'held': '', 'pivot': '2026-09-18', 'age': '1', 'bh': None, 'reason': 'base_age_1_below_3'}
+==============================================================================
+G. HIT RATE on labelled HTFs (q4 rows) — pushable = stored TIGHTENING/COILED on label date or 5 prior scan days
+  CDNA 2026-08-19: window 2026-08-12..2026-08-19 pushable rows 2 (un-held 2) [('2026-08-18', 'TIGHTENING', ''), ('2026-08-19', 'TIGHTENING', '')]
+  CDNA 2026-09-24: window 2026-09-17..2026-09-24 pushable rows 1 (un-held 1) [('2026-09-17', 'TIGHTENING', '')]
+  HNGE 2026-08-24: window 2026-08-17..2026-08-24 pushable rows 0 (un-held 0) []
+  MRNA 2026-09-17: window 2026-09-10..2026-09-17 pushable rows 0 (un-held 0) []
+  MRNA 2026-09-24: window 2026-09-17..2026-09-24 pushable rows 0 (un-held 0) []
+==============================================================================
+H. G4 coupling: does each real TRIGGERED read have an UN-HELD COILED inside its 5-calendar-day window?
+  CHYM 2026-08-19: COILED rows in window [('2026-08-17', ''), ('2026-08-18', 'TIGHTENING')] -> un-held present: True
+  IOVA 2026-09-14: COILED rows in window [('2026-09-09', ''), ('2026-09-10', 'TIGHTENING'), ('2026-09-11', 'TIGHTENING')] -> un-held present: True
+  WDAY 2026-08-28: COILED rows in window [('2026-08-24', ''), ('2026-08-25', 'TIGHTENING'), ('2026-08-26', 'TIGHTENING'), ('2026-08-27', 'TIGHTENING')] -> un-held present: True
+  XHLD 2026-09-09: COILED rows in window [('2026-09-08', '')] -> un-held present: True
+==============================================================================
+I. WDAY range% (q14 single-day (H-L)/C) — 20-session mean ending 09-08 and 09-11
+  ending 2026-09-08: n=20 mean 5.24%
+  ending 2026-09-11: n=20 mean 3.98%
+==============================================================================
+J. COILED blockers on the LAST TIGHTENING day of each episode (q2 metrics + MA alignment from bars)
+   {'range': 9, 'last day is a HOLD (raw not TIGHTENING)': 7, 'vol+bodies': 5, 'vol+ma': 3, 'range+bodies': 3, 'bodies': 3, 'range+ma': 2, 'vol': 2, 'bodies+ma': 2, 'range+vol+ma+age<6': 1, 'ma': 1, 'range+bodies+ma': 1, 'range+vol+bodies+age<6': 1, 'vol+bodies+ma': 1}  n = 41
