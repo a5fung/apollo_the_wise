@@ -12090,6 +12090,35 @@ async def get_engine_vs_judge_theme_rows(window_start: date, window_end: date) -
     return [dict(r) for r in rows]
 
 
+async def get_judge_graded_alert_flags(window_start: date, window_end: date) -> list[dict[str, Any]]:
+    """#486 - one row per judge-adjudicated EP alert in [window_start, window_end], with NO shadow
+    filter: `{ticker, alert_date, judge_theme}`. The weekly review's engine-vs-judge section counts
+    only the rows `get_engine_vs_judge_theme_rows` returns (shadow read clean); this is the
+    denominator beside it, so the section can state how many judge-graded alerts the clean-read
+    filter LEFT OUT and how many of those the judge themed (a left-out alert is invisible to the
+    2x2, and the 10-11 review found the judge lit 'theme' on several of them).
+
+    The alerts side is the SAME de-duplicated CTE as the clean-row query (DISTINCT ON, newest id,
+    `fire_axes IS NOT NULL`) so `graded - clean` is exact; the left-out set is computed by the
+    caller as a key difference, never a second shadow join (which could duplicate on a multi-row
+    shadow). Read-only, zero-authority (THE LINE): telemetry for a Telegram appendix."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT DISTINCT ON (ticker, alert_date)
+                   ticker, alert_date,
+                   COALESCE('theme' = ANY(fire_axes), FALSE) AS judge_theme
+              FROM mi_ep_alerts
+             WHERE alert_date BETWEEN $1::date AND $2::date
+               AND fire_axes IS NOT NULL
+             ORDER BY ticker, alert_date, id DESC
+            """,
+            window_start, window_end,
+        )
+    return [dict(r) for r in rows]
+
+
 async def get_closed_pnl_by_account_mode(window_start: date, window_end: date) -> list[dict[str, Any]]:
     """#313 part 2 — realised P&L of trades CLOSED in [window_start, window_end] (ET close date),
     one row per book: `{account_mode, n, wins, total_pnl}`. Feeds the weekly review's "LLM spend vs

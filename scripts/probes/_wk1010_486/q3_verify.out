@@ -14,6 +14,36 @@ rows	INTC	2026-09-21	true	true	Semiconductor Foundry & Advanced Packaging Manufa
 rows	CIFR	2026-09-16	false	false	Bitcoin Miners Pivoting to AI/HPC Data Center Hosting	Fading
 rows	DFTX	2026-09-14	false	false		
 (14 rows)
+tag	ticker	alert_date	judge_theme
+graded	AAOI	2026-10-09	true
+graded	ACN	2026-10-01	true
+graded	AKAM	2026-09-25	true
+graded	CEG	2026-10-06	true
+graded	CIFR	2026-09-16	false
+graded	DFTX	2026-09-14	false
+graded	GNRC	2026-09-17	true
+graded	HUM	2026-10-09	false
+graded	INTC	2026-09-21	true
+graded	ITUB	2026-10-05	false
+graded	KOD	2026-09-28	false
+graded	MSTR	2026-09-21	false
+graded	NU	2026-10-05	false
+graded	ONON	2026-09-22	false
+graded	PBR	2026-10-05	false
+graded	PENG	2026-10-07	true
+graded	SNPS	2026-10-01	false
+graded	SRRK	2026-09-14	false
+graded	TLN	2026-10-06	false
+graded	VICR	2026-09-17	true
+graded	VST	2026-10-06	true
+graded	WOLF	2026-10-08	true
+(22 rows)
+tag	n	judge_themed
+direct_left_out_week	4	2
+(1 row)
+tag	n	judge_themed
+direct_left_out_trail	8	4
+(1 row)
 tag	n	engine_themed	judge_themed
 direct_week	6	3	3
 (1 row)

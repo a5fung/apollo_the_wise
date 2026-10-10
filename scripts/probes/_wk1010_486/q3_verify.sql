@@ -20,6 +20,47 @@ WITH alerts AS (
              WHERE s.bounded_matches_unbounded IS TRUE
              ORDER BY a.alert_date DESC, a.ticker
 ) r;
+SELECT 'graded' AS tag, g.ticker, g.alert_date::text, g.judge_theme::text FROM (
+SELECT DISTINCT ON (ticker, alert_date)
+                   ticker, alert_date,
+                   COALESCE('theme' = ANY(fire_axes), FALSE) AS judge_theme
+              FROM mi_ep_alerts
+             WHERE alert_date BETWEEN '2026-09-12'::date AND '2026-10-11'::date
+               AND fire_axes IS NOT NULL
+             ORDER BY ticker, alert_date, id DESC
+) g;
+
+SELECT 'direct_left_out_week' AS tag,
+       count(*)::text AS n,
+       count(*) FILTER (WHERE x.judge)::text AS judge_themed
+  FROM (
+    SELECT a.ticker, a.alert_date,
+           bool_or(COALESCE('theme' = ANY(a.fire_axes), FALSE)) AS judge
+      FROM mi_ep_alerts a
+     WHERE a.alert_date BETWEEN '2026-10-04'::date AND '2026-10-11'::date
+       AND a.fire_axes IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM mi_theme_axis_shadow s
+                        WHERE s.ticker = a.ticker AND s.alert_date = a.alert_date
+                          AND s.bounded_matches_unbounded IS TRUE)
+     GROUP BY a.ticker, a.alert_date
+  ) x;
+
+
+SELECT 'direct_left_out_trail' AS tag,
+       count(*)::text AS n,
+       count(*) FILTER (WHERE x.judge)::text AS judge_themed
+  FROM (
+    SELECT a.ticker, a.alert_date,
+           bool_or(COALESCE('theme' = ANY(a.fire_axes), FALSE)) AS judge
+      FROM mi_ep_alerts a
+     WHERE a.alert_date BETWEEN '2026-09-12'::date AND '2026-10-11'::date
+       AND a.fire_axes IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM mi_theme_axis_shadow s
+                        WHERE s.ticker = a.ticker AND s.alert_date = a.alert_date
+                          AND s.bounded_matches_unbounded IS TRUE)
+     GROUP BY a.ticker, a.alert_date
+  ) x;
+
 
 SELECT 'direct_week' AS tag,
        count(*)::text AS n,

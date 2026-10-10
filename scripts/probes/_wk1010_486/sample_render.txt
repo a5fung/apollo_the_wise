@@ -11,7 +11,7 @@ Judge saw a theme the engine did not — 2 in the last 30 days: no theme row at 
 Engine-improvement queue (judge only; coverage gaps first):
 • AKAM 09-25 — no theme row at all
 • AAOI 10-09 — theme known, excluded (stage Nascent)
-_Telemetry only, never a grade input. Engine = the theme flag on the alert; judge = it lit its theme axis. Counts only alerts where the engine's 7-day and unbounded theme reads agree._
+_Telemetry only, never a grade input. Engine = the theme flag on the alert; judge = it lit its 'theme' axis (the 'narrative' axis is not counted). Counts 14 of 22 judge-graded alerts in the last 30 days; 8 left out where the engine's 7-day and unbounded theme reads disagree or none was captured, 4 of them judge-themed._
 
 ──── 'Also checked' phrase ────
 themes: 30d n=14, 79% engine-judge agree
@@ -20,6 +20,10 @@ themes: 30d n=14, 79% engine-judge agree
 window   | agg n  engine-themed  judge-themed | direct n  engine-themed  judge-themed | match
 week     |     6              3             3 |        6              3             3 | OK
 trail30  |    14              5             6 |       14              5             6 | OK
+
+window   | graded  left-out  left-out judge-themed | direct left-out  judge-themed | match
+week     |     10         4                      2 |                4             2 | OK
+trail30  |     22         8                      4 |                8             4 | OK
 
 adding source='live_scan' to the shadow side changes the 30d n from 14 to 14 (equal = the join to alerts alone already excludes the unscored rows)
 context 30d: adjudicated alerts 22 · with any shadow row 21 · with a CLEAN (bounded=unbounded) shadow row 14

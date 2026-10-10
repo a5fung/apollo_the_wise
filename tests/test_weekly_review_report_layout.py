@@ -297,6 +297,7 @@ def _assemble(monkeypatch, **overrides):
     closed_pnl = overrides.pop("closed_pnl", [])
     metrics.update(overrides)
     monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", AsyncMock(return_value=theme_rows))
+    monkeypatch.setattr(sr, "get_judge_graded_alert_flags", AsyncMock(return_value=_flags(theme_rows)))
     monkeypatch.setattr("agents.market_intelligence.cost_board.compute_caller_spend_window",
                         AsyncMock(return_value=spend_callers))
     monkeypatch.setattr(sr, "get_closed_pnl_by_account_mode", AsyncMock(return_value=closed_pnl))
@@ -409,6 +410,28 @@ def _tr(ticker, d, engine, judge, name=None, stage=None):
             "theme_name_7d": name, "theme_stage_7d": stage}
 
 
+def _flags(rows, *extra):
+    """`db.get_judge_graded_alert_flags` rows for the same alerts as `rows` (every clean row is
+    also judge-graded), plus any `extra` left-out alerts. Defaults a fixture to 'nothing left
+    out', so the pre-existing tests are unaffected by the coverage clause."""
+    return [{"ticker": r["ticker"], "alert_date": r["alert_date"], "judge_theme": r["judge_theme"]}
+            for r in rows] + list(extra)
+
+
+def _left_out(ticker, d, judge):
+    """A judge-graded alert the clean-read filter did NOT return (disagreeing / absent shadow)."""
+    return {"ticker": ticker, "alert_date": d, "judge_theme": judge}
+
+
+def _patch_theme_reads(monkeypatch, rows, graded=None):
+    """Both #486 reads, the clean rows and the judge-graded denominator; returns the two mocks."""
+    clean, denom = AsyncMock(return_value=rows), AsyncMock(
+        return_value=_flags(rows) if graded is None else graded)
+    monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", clean)
+    monkeypatch.setattr(sr, "get_judge_graded_alert_flags", denom)
+    return clean, denom
+
+
 D = TODAY - timedelta(days=2)      # inside the 7-day window
 
 
@@ -467,22 +490,37 @@ def test_theme_agreement_a_small_week_also_shows_the_trailing_30_days_with_both_
     rows = [_tr("A", D, True, True, "Cloud", "Mainstream"), _tr("B", ws, False, False),
             _tr("C", D, False, True),
             _tr("OLD1", ws - timedelta(days=1), False, False), _tr("OLD2", ws - timedelta(days=9), False, True)]
-    fetch = AsyncMock(return_value=rows)
-    monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", fetch)
+    fetch, denom = _patch_theme_reads(monkeypatch, rows)
     text, phrase = asyncio.run(sr._theme_agreement_section(ws, TODAY))
     assert "This week (n=3)" in text and "Last 30 days to Sep 20 (n=5)" in text
     assert phrase == "themes: 30d n=5, 60% engine-judge agree"
     # one fetch spanning the trailing window, split in Python
     assert fetch.await_args.args == (TODAY - timedelta(days=29), TODAY)
+    assert denom.await_args.args == (TODAY - timedelta(days=29), TODAY)     # same window, both reads
     assert "OLD2" in text                      # the 30-day cohort feeds the queue, not the week alone
+    assert "in the last 30 days:" in text      # the trailing basis keeps its article
 
 
 def test_theme_agreement_a_full_week_stands_alone(monkeypatch):
     """The other direction, so the trailing line is not printed unconditionally."""
     rows = [_tr(f"T{i}", D, False, False) for i in range(sr._THEME_AGREEMENT_MIN_N)]
-    monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", AsyncMock(return_value=rows))
+    _patch_theme_reads(monkeypatch, rows)
     text, phrase = asyncio.run(sr._theme_agreement_section(TODAY - timedelta(days=7), TODAY))
     assert "Last 30 days" not in text and phrase == "themes: 7d n=10, 100% engine-judge agree"
+
+
+def test_theme_agreement_a_full_week_with_a_judge_only_miss_reads_in_this_week(monkeypatch):
+    """A weekly n of 10 skips the 30-day block, so the miss line's basis is 'this week'. It used to
+    print 'in the this week:' (basis_label carried no article but the f-string added one).
+    MUTATION: the f-string's `in {basis_label}` put back to `in the {basis_label}` - the 'in the this
+    week' form returned and this reddened. RED, restored."""
+    rows = [_tr(f"T{i}", D, False, False) for i in range(sr._THEME_AGREEMENT_MIN_N - 1)]
+    rows.append(_tr("MISS", D, False, True))                       # the one judge-only row
+    _patch_theme_reads(monkeypatch, rows)
+    text, _phrase = asyncio.run(sr._theme_agreement_section(TODAY - timedelta(days=7), TODAY))
+    assert "Last 30 days" not in text                              # the weekly n is 10: stands alone
+    assert "did not — 1 in this week: no theme row at all 1" in text
+    assert "the this week" not in text
 
 
 def test_theme_agreement_failed_read_says_unavailable_and_the_review_still_assembles(monkeypatch):
@@ -538,8 +576,92 @@ def test_the_engine_vs_judge_query_filters_to_clean_deduplicated_judge_graded_ro
     assert "s.bounded_matches_unbounded IS TRUE" in sql
     assert "fire_axes IS NOT NULL" in sql
     assert "DISTINCT ON (ticker, alert_date)" in sql
+    # which duplicate survives is part of the contract: the NEWEST row (the scan's last word)
+    assert "ORDER BY ticker, alert_date, id DESC" in sql
     assert "in_active_theme IS TRUE" in sql and "'theme' = ANY(a.fire_axes)" in sql
     assert conn.fetch.await_args.args[1:] == (date(2026, 9, 1), date(2026, 9, 20))
+
+
+def test_the_judge_graded_denominator_query_has_no_shadow_filter_and_the_same_dedupe():
+    """The coverage clause is `graded - clean`, so the denominator must be the SAME alerts side as
+    the clean-row query (same DISTINCT ON, same newest-id survivor, same fire_axes IS NOT NULL)
+    and must NOT join or filter on the shadow (that would make it the clean set again).
+    MUTATION: each of the three alert-side clauses deleted in turn, and a shadow join added -
+    this test reddened on each."""
+    import agents.market_intelligence.db as dbmod
+    from tests.conftest import make_mock_pool
+    from unittest.mock import patch
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=[{"ticker": "A", "alert_date": date(2026, 9, 2), "judge_theme": True}])
+    with patch.object(dbmod, "get_pool", new=AsyncMock(return_value=pool)):
+        out = asyncio.run(dbmod.get_judge_graded_alert_flags(date(2026, 9, 1), date(2026, 9, 20)))
+    sql = " ".join(conn.fetch.await_args.args[0].split())
+    assert out == [{"ticker": "A", "alert_date": date(2026, 9, 2), "judge_theme": True}]
+    assert "FROM mi_ep_alerts" in sql and "fire_axes IS NOT NULL" in sql
+    assert "DISTINCT ON (ticker, alert_date)" in sql and "ORDER BY ticker, alert_date, id DESC" in sql
+    assert "COALESCE('theme' = ANY(fire_axes), FALSE) AS judge_theme" in sql
+    assert "mi_theme_axis_shadow" not in sql and "bounded_matches_unbounded" not in sql
+    assert conn.fetch.await_args.args[1:] == (date(2026, 9, 1), date(2026, 9, 20))
+
+
+def test_theme_agreement_discloses_the_judge_graded_alerts_the_clean_read_filter_left_out():
+    """The clean-read filter drops judge-graded alerts (a disagreeing or absent shadow read) and
+    several of them are alerts the judge themed. The 2x2's n stays the CLEAN count, but the footer
+    states how many alerts it covers out of how many judge-graded and how many of the left-out
+    ones the judge themed. The query returns date-desc/ticker order, so left-out alerts are
+    INTERLEAVED with clean ones - the difference is by (ticker, date) key, never by position.
+    MUTATION: `excluded_judge` counted over every graded alert instead of the left-out ones (3
+    instead of 2), and the key difference replaced by `graded[len(rows):]` (picked the wrong
+    alerts out of the interleaved list) - both reddened. RED, restored."""
+    rows = [_tr("AAA", D, True, True, "Cloud", "Mainstream"), _tr("BBB", D, False, False)]
+    graded = [_left_out("CEG", D, True), *_flags(rows[:1]), _left_out("MSTR", D, False),
+              *_flags(rows[1:]), _left_out("VST", D, True)]
+    a = sr._aggregate_theme_agreement(rows, graded)
+    assert a["n"] == 2                                   # the 2x2 is unchanged by the left-out rows
+    assert (a["graded_n"], a["excluded"], a["excluded_judge"]) == (5, 3, 2)
+    text = sr._format_theme_agreement(a, None, today=TODAY)
+    assert ("Counts 2 of 5 judge-graded alerts in this week; 3 left out where the engine's 7-day and "
+            "unbounded theme reads disagree or none was captured, 2 of them judge-themed.") in text
+    # nothing left out -> says so, no stray "0 left out"
+    clean = sr._aggregate_theme_agreement(rows, _flags(rows))
+    assert "Counts all 2 judge-graded alerts in this week." in sr._format_theme_agreement(
+        clean, None, today=TODAY)
+    # no denominator supplied -> the old, count-free sentence, never a wrong count
+    assert "Counts only alerts where the engine's 7-day and unbounded theme reads agree." in \
+        sr._format_theme_agreement(sr._aggregate_theme_agreement(rows), None, today=TODAY)
+
+
+def test_theme_agreement_footer_states_the_judge_definition_and_the_basis_window(monkeypatch):
+    """The footer names what 'judge saw a theme' means ('theme' axis only; the live blind-spot
+    classifier also counts 'narrative', so the difference is stated rather than left implicit) and
+    the coverage clause follows the window the queue is read from (the trailing 30 days when the
+    week is small). Left-out alerts are split by the same window cut as the clean rows.
+    MUTATION: the coverage clause read off `weekly` instead of the trailing basis - '1 left out'
+    appeared instead of '2'. RED, restored."""
+    ws = TODAY - timedelta(days=7)
+    rows = [_tr("A", D, True, True, "Cloud", "Mainstream")]
+    old = ws - timedelta(days=5)
+    graded = _flags(rows, _left_out("NEW", D, True), _left_out("OLDX", old, True))
+    _patch_theme_reads(monkeypatch, rows, graded)
+    text, _phrase = asyncio.run(sr._theme_agreement_section(ws, TODAY))
+    assert "judge = it lit its 'theme' axis (the 'narrative' axis is not counted)" in text
+    assert ("Counts 1 of 3 judge-graded alerts in the last 30 days; 2 left out where the engine's "
+            "7-day and unbounded theme reads disagree or none was captured, 2 of them "
+            "judge-themed.") in text
+
+
+def test_theme_agreement_a_failed_denominator_read_says_unavailable(monkeypatch):
+    """Fail-open covers the SECOND read too: the clean rows fetched fine but the judge-graded
+    denominator died - the block prints `unavailable:` rather than a 2x2 with a wrong coverage
+    line, and the review still assembles. MUTATION: the denominator call moved outside the
+    section's try - the RuntimeError escaped. RED, restored."""
+    async def boom(*_a, **_k):
+        raise RuntimeError("denominator read died")
+    monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", AsyncMock(return_value=[]))
+    monkeypatch.setattr(sr, "get_judge_graded_alert_flags", boom)
+    text, phrase = asyncio.run(sr._theme_agreement_section(TODAY - timedelta(days=7), TODAY))
+    assert "unavailable: RuntimeError: denominator read died" in text
+    assert phrase == "themes: unavailable"
 
 
 # ── #313 part 2 — LLM spend by caller vs realised P&L (2026-10-10) ────────────────────────────
@@ -637,7 +759,7 @@ def test_spend_vs_pnl_failed_read_says_unavailable_and_the_review_still_assemble
 def _assemble_with_current_patches(monkeypatch):
     """Run the whole assembly WITHOUT `_assemble`'s defaults overwriting the failing patches the
     caller just installed (the other sections are quiet-week stubs, as in `_assemble`)."""
-    monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", AsyncMock(return_value=[]))
+    _patch_theme_reads(monkeypatch, [])
     monkeypatch.setattr(sr, "_setup_performance_review", AsyncMock(return_value=("", [])))
     monkeypatch.setattr(sr, "_spend_envelope", AsyncMock(return_value=("💵 *Cost envelope (MTD)*", 1.0, 150.0, False)))
     monkeypatch.setattr(sr, "_judge_divergence_section", AsyncMock(return_value=""))

@@ -42,6 +42,7 @@ from agents.market_intelligence.db import (
     get_engine_vs_judge_theme_rows,
     get_ep_outcomes,
     get_job_runs_for,
+    get_judge_graded_alert_flags,
     get_latest_regime,
     get_latest_system_review,
     get_paper_trade_stats,
@@ -2427,10 +2428,14 @@ def _theme_miss_reason(r: dict) -> str:
     return "other_stage"
 
 
-def _aggregate_theme_agreement(rows: list[dict]) -> dict:
+def _aggregate_theme_agreement(rows: list[dict], graded: list[dict] | None = None) -> dict:
     """Pure: the 2x2 (engine themed? x judge themed?), the judge-only mismatch cohorts by reason,
     and the judge-only QUEUE (the engine-improvement candidates, coverage gaps first, then
-    newest). `rows` are `db.get_engine_vs_judge_theme_rows` rows."""
+    newest). `rows` are `db.get_engine_vs_judge_theme_rows` rows (the CLEAN-read alerts - the only
+    ones counted in `n`). `graded` is `db.get_judge_graded_alert_flags` for the same window: every
+    judge-graded alert, so `graded_n - n` is how many the clean-read filter LEFT OUT and
+    `excluded_judge` how many of those the judge themed (None = the caller did not supply it, and
+    the footer then states no coverage count rather than a wrong one)."""
     both = engine_only = judge_only = neither = 0
     reasons: Counter = Counter()
     queue: list[dict] = []
@@ -2448,6 +2453,12 @@ def _aggregate_theme_agreement(rows: list[dict]) -> dict:
         else:
             neither += 1
     n = both + engine_only + judge_only + neither
+    graded_n = excluded = excluded_judge = None
+    if graded is not None:
+        clean_keys = {(r.get("ticker"), r.get("alert_date")) for r in rows}
+        left_out = [g for g in graded if (g.get("ticker"), g.get("alert_date")) not in clean_keys]
+        graded_n, excluded = n + len(left_out), len(left_out)
+        excluded_judge = sum(1 for g in left_out if g.get("judge_theme"))
     # newest first, then a stable sort on reason rank = coverage gaps lead, each tier newest-first
     queue.sort(key=lambda q: q["alert_date"], reverse=True)
     queue.sort(key=lambda q: _THEME_MISS_RANK[q["reason"]])
@@ -2456,6 +2467,7 @@ def _aggregate_theme_agreement(rows: list[dict]) -> dict:
         "neither": neither,
         "agree_pct": round(100 * (both + neither) / n) if n else None,
         "reasons": dict(reasons), "queue": queue,
+        "graded_n": graded_n, "excluded": excluded, "excluded_judge": excluded_judge,
     }
 
 
@@ -2477,7 +2489,7 @@ def _format_theme_agreement(weekly: dict, trailing: dict | None, *, today: date)
     otherwise BOTH windows print with their n, and the mismatch cohorts + queue are read off the
     wider one (the week alone would be a handful of names). Pure."""
     basis = trailing if trailing is not None else weekly
-    basis_label = (f"last {_THEME_AGREEMENT_TRAIL_DAYS} days" if trailing is not None else "this week")
+    basis_label = (f"the last {_THEME_AGREEMENT_TRAIL_DAYS} days" if trailing is not None else "this week")
     lines = ["\U0001F9E9 *Theme read, engine vs judge (#486)*"]
     lines += _theme_agreement_line("This week", weekly)
     if trailing is not None:
@@ -2486,7 +2498,7 @@ def _format_theme_agreement(weekly: dict, trailing: dict | None, *, today: date)
     if basis["judge_only"]:
         parts = [f"{_THEME_MISS_WORDS[k]} {basis['reasons'][k]}"
                  for k, _ in _THEME_MISS_REASONS if basis["reasons"].get(k)]
-        lines.append(f"Judge saw a theme the engine did not — {basis['judge_only']} in the "
+        lines.append(f"Judge saw a theme the engine did not — {basis['judge_only']} in "
                      f"{basis_label}: " + " · ".join(parts))
         lines.append("Engine-improvement queue (judge only; coverage gaps first):")
         for q in basis["queue"][:_THEME_QUEUE_CAP]:
@@ -2496,9 +2508,25 @@ def _format_theme_agreement(weekly: dict, trailing: dict | None, *, today: date)
         if len(basis["queue"]) > _THEME_QUEUE_CAP:
             lines.append(f"  +{len(basis['queue']) - _THEME_QUEUE_CAP} more")
     lines.append("_Telemetry only, never a grade input. Engine = the theme flag on the alert; "
-                 "judge = it lit its theme axis. Counts only alerts where the engine's 7-day and "
-                 "unbounded theme reads agree._")
+                 "judge = it lit its 'theme' axis (the 'narrative' axis is not counted). "
+                 + _theme_coverage_clause(basis, basis_label) + "_")
     return "\n".join(lines)
+
+
+def _theme_coverage_clause(basis: dict, basis_label: str) -> str:
+    """How much of the judge-graded population the 2x2 covers. The filter (only alerts whose
+    7-day and unbounded theme reads agree) drops alerts the judge may have themed - state the
+    count so the reader knows what the table cannot see. Pure."""
+    graded, excluded = basis.get("graded_n"), basis.get("excluded")
+    if graded is None:
+        return "Counts only alerts where the engine's 7-day and unbounded theme reads agree."
+    if not graded:
+        return "No judge-graded alerts in the window."
+    if not excluded:
+        return f"Counts all {graded} judge-graded alerts in {basis_label}."
+    return (f"Counts {basis['n']} of {graded} judge-graded alerts in {basis_label}; {excluded} left "
+            f"out where the engine's 7-day and unbounded theme reads disagree or none was "
+            f"captured, {basis['excluded_judge']} of them judge-themed.")
 
 
 def _short_reason(e: BaseException, cap: int = 80) -> str:
@@ -2517,9 +2545,15 @@ async def _theme_agreement_section(window_start: date, today: date) -> tuple[str
     review) so a dead section stays distinguishable from a quiet one."""
     try:
         trail_start = today - timedelta(days=_THEME_AGREEMENT_TRAIL_DAYS - 1)
-        rows = await get_engine_vs_judge_theme_rows(min(window_start, trail_start), today)
-        weekly = _aggregate_theme_agreement([r for r in rows if r["alert_date"] >= window_start])
-        trailing = (_aggregate_theme_agreement([r for r in rows if r["alert_date"] >= trail_start])
+        fetch_start = min(window_start, trail_start)
+        rows = await get_engine_vs_judge_theme_rows(fetch_start, today)
+        graded = await get_judge_graded_alert_flags(fetch_start, today)
+
+        def since(lo: date) -> tuple[list[dict], list[dict]]:
+            return ([r for r in rows if r["alert_date"] >= lo],
+                    [g for g in graded if g["alert_date"] >= lo])
+        weekly = _aggregate_theme_agreement(*since(window_start))
+        trailing = (_aggregate_theme_agreement(*since(trail_start))
                     if weekly["n"] < _THEME_AGREEMENT_MIN_N else None)
         shown = trailing if trailing is not None else weekly
         span = f"{_THEME_AGREEMENT_TRAIL_DAYS}d" if trailing is not None else "7d"
