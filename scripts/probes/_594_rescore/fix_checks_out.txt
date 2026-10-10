@@ -1,0 +1,220 @@
+====================================================================================================
+1. WINDOW FORK — only the lookback moves; the basis is the live gate's own (lowest CLOSE)
+====================================================================================================
+   live gate as coded  = extension_live_pct (lowest close over the prior 10 CALENDAR days, ~5 sessions)
+   20-session version  = ext_close_pct_20  (lowest close over the prior 20 SESSIONS; same formula, longer reach)
+   (the low-based run-up used by the committed ANCHOR75 scorer is a DIFFERENT basis; shown last, for reference)
+
+[live gate, cap 50 (today)]  field=extension_live_pct >= 50
+   real_eps(31)   rejected  0 of 31 -> none
+   approved(14)   rejected  0 of 14 -> none
+   bad(25)        rejected  7 of 25 -> GDC 05-06, CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, QH 06-18, MRAM 05-13   | of the 10 alerted HIGH: 0 (none)
+   other(6)       rejected  0 of  6 -> none
+   pointed-at(4)  rejected  2 of  4 -> MXL 04-24, RXT 05-07
+
+[live gate, cap 75 (08-22..08-28 value)]  field=extension_live_pct >= 75
+   real_eps(31)   rejected  0 of 31 -> none
+   approved(14)   rejected  0 of 14 -> none
+   bad(25)        rejected  6 of 25 -> GDC 05-06, CAR 04-22, ADVB 07-24, JLHL 06-08, QH 06-18, MRAM 05-13   | of the 10 alerted HIGH: 0 (none)
+   other(6)       rejected  0 of  6 -> none
+   pointed-at(4)  rejected  0 of  4 -> none
+
+[20-session close version, cap 50]  field=ext_close_pct_20 >= 50
+   real_eps(31)   rejected  2 of 31 -> AMD 04-24, INTC 04-24
+   approved(14)   rejected  2 of 14 -> CAR 04-01, HPE 06-02
+   bad(25)        rejected 10 of 25 -> NVTX 06-03, NVTS 06-03, GDC 05-06, CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, QH 06-18, MRAM 05-13, AEHR 08-14   | of the 10 alerted HIGH: 2 (NVTX 06-03, NVTS 06-03)
+   other(6)       rejected  1 of  6 -> MXL 04-21
+   pointed-at(4)  rejected  2 of  4 -> MXL 04-24, RXT 05-07
+
+[20-session close version, cap 75]  field=ext_close_pct_20 >= 75
+   real_eps(31)   rejected  0 of 31 -> none
+   approved(14)   rejected  0 of 14 -> none
+   bad(25)        rejected  9 of 25 -> NVTX 06-03, GDC 05-06, CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, QH 06-18, MRAM 05-13, AEHR 08-14   | of the 10 alerted HIGH: 1 (NVTX 06-03)
+   other(6)       rejected  1 of  6 -> MXL 04-21
+   pointed-at(4)  rejected  2 of  4 -> MXL 04-24, RXT 05-07
+
+[20-session LOW-based run-up, cap 75 (=ANCHOR75)]  field=runup_low_pct_20 >= 75
+   real_eps(31)   rejected  0 of 31 -> none
+   approved(14)   rejected  0 of 14 -> none
+   bad(25)        rejected  9 of 25 -> NVTX 06-03, GDC 05-06, CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, QH 06-18, MRAM 05-13, AEHR 08-14   | of the 10 alerted HIGH: 1 (NVTX 06-03)
+   other(6)       rejected  1 of  6 -> MXL 04-21
+   pointed-at(4)  rejected  2 of  4 -> MXL 04-24, RXT 05-07
+
+window-only change at cap 50: bad charts it adds beyond the live gate: AEHR 08-14, NVTS 06-03, NVTX 06-03 | live-gate catches it would drop: none
+   alert tier of each added bad chart: AEHR 08-14 = no alert row, NVTS 06-03 = HIGH, NVTX 06-03 = HIGH
+   real_eps(31)   rejected ONLY by the 20-session version at cap 50 (not by the live gate): AMD 04-24, INTC 04-24
+   approved(14)   rejected ONLY by the 20-session version at cap 50 (not by the live gate): CAR 04-01, HPE 06-02
+   other(6)       rejected ONLY by the 20-session version at cap 50 (not by the live gate): MXL 04-21
+   pointed-at(4)  rejected ONLY by the 20-session version at cap 50 (not by the live gate): none
+
+   values behind the window-only rejections at cap 50 (ext_close_pct_20 vs extension_live_pct):
+     real_eps(31)   AMD   2026-04-24  20-session 55.7%   live 19.7%
+     real_eps(31)   INTC  2026-04-24  20-session 62.1%   live 4.7%
+     approved(14)   CAR   2026-04-01  20-session 52.1%   live 35.8%
+     approved(14)   HPE   2026-06-02  20-session 63.7%   live 26.3%
+     other(6)       MXL   2026-04-21  20-session 97.3%   live 48.9%
+     pointed-at(4)  MXL   2026-04-24  20-session 113.0%   live 58.9%
+     pointed-at(4)  RXT   2026-05-07  20-session 156.9%   live 55.5%
+     bad(25)        NVTX  2026-06-03  20-session 116.5%   live 8.2%
+     bad(25)        NVTS  2026-06-03  20-session 63.8%   live 4.0%
+     bad(25)        GDC   2026-05-06  20-session 99.0%   live 76.7%
+     bad(25)        CAR   2026-04-22  20-session 507.7%   live 92.4%
+     bad(25)        CAR   2026-04-21  20-session 467.5%   live 64.1%
+     bad(25)        ADVB  2026-07-24  20-session 273.7%   live 242.4%
+     bad(25)        JLHL  2026-06-08  20-session 173.2%   live 137.0%
+     bad(25)        QH    2026-06-18  20-session 11091.5%   live 223.7%
+     bad(25)        MRAM  2026-05-13  20-session 272.7%   live 134.7%
+     bad(25)        AEHR  2026-08-14  20-session 88.5%   live 24.8%
+
+   at cap 75, the 20-session LOW-based run-up (ANCHOR75) vs the live gate at 50:
+     bad: 9 of 25  real EPs lost 0 of 31  approved lost 0 of 14
+   at cap 75, the 20-session CLOSE version: bad 9 of 25  real EPs lost 0 of 31  approved lost 0 of 14  (vs live gate at 75: bad 6 of 25)
+
+====================================================================================================
+2. DATA SEAMS — a series that holds another company's bars, or an unadjusted split
+====================================================================================================
+   scan: every consecutive pair of stored bars per ticker where open/prev close is >2.5 or <0.4, or the calendar gap exceeds 10 days
+   ABVX  2025-07-22 -> 2025-07-23  prev close 10  next open 63.1  ratio 6.310  calendar gap 1 days
+   IBTA  2021-11-30 -> 2024-04-18  prev close 25.35  next open 117  ratio 4.615  calendar gap 870 days
+   MRLN  2022-01-19 -> 2026-03-17  prev close 23.49  next open 7.16  ratio 0.305  calendar gap 1518 days
+   NIQ   2023-06-23 -> 2025-07-23  prev close 12.87  next open 20.25  ratio 1.573  calendar gap 761 days
+   NVTS  2025-05-21 -> 2025-05-22  prev close 1.91  next open 4.905  ratio 2.568  calendar gap 1 days
+   OMER  2025-10-14 -> 2025-10-15  prev close 4.1  next open 11.59  ratio 2.827  calendar gap 1 days
+   QH    2026-04-02 -> 2026-05-29  prev close 0.094  next open 7.8  ratio 82.979  calendar gap 57 days
+   QTTB  2024-12-10 -> 2024-12-11  prev close 24.41  next open 8  ratio 0.328  calendar gap 1 days
+   QURE  2025-09-23 -> 2025-09-24  prev close 13.66  next open 39.36  ratio 2.881  calendar gap 1 days
+   QURE  2025-10-31 -> 2025-11-03  prev close 67.69  next open 23.05  ratio 0.341  calendar gap 3 days
+   VEEE  2026-07-10 -> 2026-07-13  prev close 4.82  next open 12.24  ratio 2.539  calendar gap 3 days
+   (single-day ratios on ABVX, NVTS, OMER, QTTB, QURE, VEEE are one-day moves/gaps with a 1-3 day gap, not seams)
+
+   IBTA  seam at 2024-04-18: 24 bars before (2021-09-27 -> 2021-11-30), 622 bars from the seam on (2024-04-18 -> 2026-10-09)
+   MRLN  seam at 2026-03-17: 80 bars before (2021-09-27 -> 2022-01-19), 144 bars from the seam on (2026-03-17 -> 2026-10-09)
+   NIQ   seam at 2025-07-23: 438 bars before (2021-09-27 -> 2023-06-23), 307 bars from the seam on (2025-07-23 -> 2026-10-09)
+   QH    seam at 2026-05-29: 1134 bars before (2021-09-27 -> 2026-04-02), 92 bars from the seam on (2026-05-29 -> 2026-10-09)
+
+   ruled-date prior-bar counts for those four, as stored vs counting only bars from the seam on:
+     MRLN  2026-06-05 (BAD_CHART): stored prior bars 136, from the seam on 56
+     QH    2026-06-18 (BAD_CHART): stored prior bars 1148, from the seam on 14
+     NIQ   2026-08-11 (OKISH_CHART): stored prior bars 702, from the seam on 264
+     IBTA  2026-08-04 (BAD_CHART): stored prior bars 598, from the seam on 574
+
+   the 'min 136 prior bars' date: (136, 'MRLN', '2026-06-05')   next lowest: (184, 'NVTX', '2026-06-03'), (202, 'CRWG', '2026-06-01')
+
+   QH 2026-06-18 — the stored series straddles an unadjusted split (0.094 -> 7.8 across a 57-day gap):
+     as stored: runup_low_pct_20 = 15791.2%   extension_live_pct = 223.7%   ext_close_pct_20 = 11091.5%
+     post-split bars only (14 bars, 2026-05-29 -> 2026-06-17): lowest low 3, prior close 10.52 -> run-up from lowest low = 250.7%   (>= 75: True)
+     bars missing inside the gap (weekdays 2026-04-03 .. 2026-05-28 with no stored row): 40
+
+   SENSITIVITY — remove every bar before each seam, then re-score with the committed arms:
+
+   >>> variant: IBTA + MRLN + NIQ other-company bars removed
+   arm / population          as stored      variant
+   EXT50 real_eps            0 of 31      0 of 31   unread 0/0
+   EXT50 approved            0 of 14      0 of 14   unread 0/0
+   EXT50 bad                 7 of 25      7 of 25   unread 0/0
+   EXT75 real_eps            0 of 31      0 of 31   unread 0/0
+   EXT75 approved            0 of 14      0 of 14   unread 0/0
+   EXT75 bad                 6 of 25      6 of 25   unread 0/0
+   ANCHOR75 real_eps         0 of 31      0 of 31   unread 0/0
+   ANCHOR75 approved         0 of 14      0 of 14   unread 0/0
+   ANCHOR75 bad              9 of 25      9 of 25   unread 0/0
+   V3READ real_eps           0 of 31      0 of 31   unread 0/0
+   V3READ approved           0 of 14      0 of 14   unread 0/0
+   V3READ bad                5 of 25      5 of 25   unread 0/0
+   V3READ-full real_eps      0 of 31      0 of 31   unread 0/0
+   V3READ-full approved      0 of 14      0 of 14   unread 0/0
+   V3READ-full bad           5 of 25      5 of 25   unread 0/0
+   V3READ-13m real_eps       0 of 31      0 of 31   unread 0/0
+   V3READ-13m approved       0 of 14      0 of 14   unread 0/0
+   V3READ-13m bad            6 of 25      6 of 25   unread 0/0
+   supply label (bad, approved, real EPs) as stored : {'CLEARED_NOTHING': (1, 0, 1), 'CLEAR_AIR': (8, 3, 5), 'IFFY_AT_FIRST_ZONE': (7, 7, 12), 'INTO_SUPPLY': (9, 1, 9), 'LADDER_CLIMBING': (0, 3, 4)}
+   supply label (bad, approved, real EPs) variant   : {'CLEARED_NOTHING': (1, 0, 1), 'CLEAR_AIR': (8, 3, 5), 'IFFY_AT_FIRST_ZONE': (6, 6, 12), 'INTO_SUPPLY': (9, 2, 9), 'LADDER_CLIMBING': (1, 3, 4)}
+   AUC runup_low_pct_20     as stored 0.651 (se 0.089)   variant 0.651 (se 0.089)
+   AUC extension_live_pct   as stored 0.583 (se 0.094)   variant 0.583 (se 0.094)
+   AUC overhead_vol_frac    as stored 0.433 (se 0.098)   variant 0.433 (se 0.098)
+   AUC zones_remaining      as stored 0.380 (se 0.096)   variant 0.383 (se 0.096)
+   dates (45 rulings + 31 real EPs) where any verdict, label or supply field differs: 3
+     MRLN  2026-06-05  stored (EXT50,ANCHOR75,V3READ,label,ovh,zones,n_bars,run20)=(False, False, False, 'IFFY_AT_FIRST_ZONE', 0.425, 4, 136, 24.2)  variant=(False, False, False, 'LADDER_CLIMBING', 0.398, 3, 56, 24.2)
+     NIQ   2026-08-11  stored (EXT50,ANCHOR75,V3READ,label,ovh,zones,n_bars,run20)=(False, False, False, 'IFFY_AT_FIRST_ZONE', 0.475, 14, 702, 14.2)  variant=(False, False, False, 'INTO_SUPPLY', 0.486, 10, 264, 14.2)
+     IBTA  2026-08-04  stored (EXT50,ANCHOR75,V3READ,label,ovh,zones,n_bars,run20)=(False, False, False, 'INTO_SUPPLY', 0.666, 37, 598, 3.1)  variant=(False, False, False, 'INTO_SUPPLY', 0.666, 37, 574, 3.1)
+   label changes: [('MRLN 06-05', 'IFFY_AT_FIRST_ZONE', 'LADDER_CLIMBING'), ('NIQ 08-11', 'IFFY_AT_FIRST_ZONE', 'INTO_SUPPLY')]
+
+   >>> variant: all four seams (QH pre-split bars removed too)
+   arm / population          as stored      variant
+   EXT50 real_eps            0 of 31      0 of 31   unread 0/0
+   EXT50 approved            0 of 14      0 of 14   unread 0/0
+   EXT50 bad                 7 of 25      7 of 25   unread 0/0
+   EXT75 real_eps            0 of 31      0 of 31   unread 0/0
+   EXT75 approved            0 of 14      0 of 14   unread 0/0
+   EXT75 bad                 6 of 25      6 of 25   unread 0/0
+   ANCHOR75 real_eps         0 of 31      0 of 31   unread 0/0
+   ANCHOR75 approved         0 of 14      0 of 14   unread 0/0
+   ANCHOR75 bad              9 of 25      9 of 25   unread 0/0
+   V3READ real_eps           0 of 31      0 of 31   unread 0/0
+   V3READ approved           0 of 14      0 of 14   unread 0/0
+   V3READ bad                5 of 25      6 of 25   unread 0/0   <-- differs   stored: CAR 04-22, CAR 04-21, JLHL 06-08, MRAM 05-13, AEHR 08-14 | variant: CAR 04-22, CAR 04-21, JLHL 06-08, QH 06-18, MRAM 05-13, AEHR 08-14
+   V3READ-full real_eps      0 of 31      0 of 31   unread 0/0
+   V3READ-full approved      0 of 14      0 of 14   unread 0/0
+   V3READ-full bad           5 of 25      6 of 25   unread 0/0   <-- differs   stored: CAR 04-22, CAR 04-21, JLHL 06-08, MRAM 05-13, AEHR 08-14 | variant: CAR 04-22, CAR 04-21, JLHL 06-08, QH 06-18, MRAM 05-13, AEHR 08-14
+   V3READ-13m real_eps       0 of 31      0 of 31   unread 0/0
+   V3READ-13m approved       0 of 14      0 of 14   unread 0/0
+   V3READ-13m bad            6 of 25      7 of 25   unread 0/0   <-- differs   stored: CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, MRAM 05-13, AEHR 08-14 | variant: CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, QH 06-18, MRAM 05-13, AEHR 08-14
+   supply label (bad, approved, real EPs) as stored : {'CLEARED_NOTHING': (1, 0, 1), 'CLEAR_AIR': (8, 3, 5), 'IFFY_AT_FIRST_ZONE': (7, 7, 12), 'INTO_SUPPLY': (9, 1, 9), 'LADDER_CLIMBING': (0, 3, 4)}
+   supply label (bad, approved, real EPs) variant   : {'CLEARED_NOTHING': (1, 0, 1), 'CLEAR_AIR': (9, 3, 5), 'IFFY_AT_FIRST_ZONE': (5, 6, 12), 'INTO_SUPPLY': (9, 2, 9), 'LADDER_CLIMBING': (1, 3, 4)}
+   AUC runup_low_pct_20     as stored 0.651 (se 0.089)   variant 0.651 (se 0.089)
+   AUC extension_live_pct   as stored 0.583 (se 0.094)   variant 0.583 (se 0.094)
+   AUC overhead_vol_frac    as stored 0.433 (se 0.098)   variant 0.426 (se 0.098)
+   AUC zones_remaining      as stored 0.380 (se 0.096)   variant 0.354 (se 0.095)
+   dates (45 rulings + 31 real EPs) where any verdict, label or supply field differs: 4
+     MRLN  2026-06-05  stored (EXT50,ANCHOR75,V3READ,label,ovh,zones,n_bars,run20)=(False, False, False, 'IFFY_AT_FIRST_ZONE', 0.425, 4, 136, 24.2)  variant=(False, False, False, 'LADDER_CLIMBING', 0.398, 3, 56, 24.2)
+     QH    2026-06-18  stored (EXT50,ANCHOR75,V3READ,label,ovh,zones,n_bars,run20)=(True, True, False, 'IFFY_AT_FIRST_ZONE', 0.019, 45, 1148, 15791.2)  variant=(True, True, True, 'CLEAR_AIR', 0.0, 0, 14, 250.7)
+     NIQ   2026-08-11  stored (EXT50,ANCHOR75,V3READ,label,ovh,zones,n_bars,run20)=(False, False, False, 'IFFY_AT_FIRST_ZONE', 0.475, 14, 702, 14.2)  variant=(False, False, False, 'INTO_SUPPLY', 0.486, 10, 264, 14.2)
+     IBTA  2026-08-04  stored (EXT50,ANCHOR75,V3READ,label,ovh,zones,n_bars,run20)=(False, False, False, 'INTO_SUPPLY', 0.666, 37, 598, 3.1)  variant=(False, False, False, 'INTO_SUPPLY', 0.666, 37, 574, 3.1)
+   label changes: [('MRLN 06-05', 'IFFY_AT_FIRST_ZONE', 'LADDER_CLIMBING'), ('QH 06-18', 'IFFY_AT_FIRST_ZONE', 'CLEAR_AIR'), ('NIQ 08-11', 'IFFY_AT_FIRST_ZONE', 'INTO_SUPPLY')]
+
+====================================================================================================
+3. ERA — the live extension gate's FORMULA (commit 38e86996, committed 2026-04-16 20:40 PT)
+====================================================================================================
+   OLD (before the commit): extension_map = the close of the LATEST stored bar with trade_date <= today-8 days (looking back 7 more days); ext = (prev close - that close) / that close
+   NEW (from the commit, and replayed everywhere in this study): lowest close over [today-10 days, today)
+   dated on or before 2026-04-16: rulings 1 [('CAR', '04-01', 'OKISH_EARLIER')]; real EPs 17 (earliest 2026-03-12, latest 2026-04-08); excluded EPs 0; pointed-at 0
+   first real EP dated after the commit: UMC 2026-04-17
+   first ruling dated after the commit: CAR 2026-04-21
+   rulings before the earliest real EP / all dates: earliest ruled date 2026-04-01; earliest real EP 2026-03-12
+
+   OLD vs NEW formula on every date that predates the commit (cap 50 on both):
+     CAR   2026-04-01  old formula   24.0% -> keep   new formula   35.8% -> keep
+     MU    2026-04-08  old formula   11.8% -> keep   new formula   17.3% -> keep
+     STRL  2026-04-08  old formula   -6.2% -> keep   new formula    0.0% -> keep
+     MRVL  2026-03-31  old formula   -2.6% -> keep   new formula    0.0% -> keep
+     ASX   2026-04-08  old formula    2.4% -> keep   new formula    6.2% -> keep
+     SNDK  2026-04-08  old formula   11.9% -> keep   new formula   24.2% -> keep
+     ALGM  2026-04-08  old formula    5.6% -> keep   new formula   18.7% -> keep
+     NBIS  2026-04-08  old formula   13.1% -> keep   new formula   27.2% -> keep
+     AMKR  2026-04-08  old formula    5.8% -> keep   new formula   15.4% -> keep
+     AEHR  2026-03-31  old formula  -18.9% -> keep   new formula    0.0% -> keep
+     FLY   2026-03-12  old formula   -3.7% -> keep   new formula    6.2% -> keep
+     BE    2026-04-08  old formula    0.3% -> keep   new formula   13.7% -> keep
+     USAR  2026-04-08  old formula   -3.3% -> keep   new formula    2.9% -> keep
+     QBTS  2026-04-08  old formula   -4.8% -> keep   new formula    5.9% -> keep
+     HUT   2026-04-08  old formula   12.3% -> keep   new formula   23.3% -> keep
+     SMTC  2026-03-30  old formula   -2.0% -> keep   new formula    0.0% -> keep
+     IREN  2026-04-08  old formula    4.3% -> keep   new formula   13.0% -> keep
+     APLD  2026-04-08  old formula    6.1% -> keep   new formula   22.6% -> keep
+   dates where the old and new formula give a different cap-50 verdict: 0
+
+====================================================================================================
+4. OUTCOME ON SCREEN — his verdict vs the 20-session result, by session; and the lean of each field in standard errors
+====================================================================================================
+   session 2026-08-25: verdict agrees with the later move on 11, goes against it on 0, no 20-session result on 1
+   session 2026-09-06: verdict agrees with the later move on 7, goes against it on 1
+   session 2026-09-23: verdict agrees with the later move on 9, goes against it on 1
+   session 2026-10-05: verdict agrees with the later move on 5, goes against it on 4
+   all sessions: agrees 32, against 6  (n = 38; the doc's 32 of 38)
+   verdicts that went AGAINST the later move: [('2026-09-06', 'ABVX', '2026-06-03', 'BAD_CHART', '+78%'), ('2026-10-05', 'IBTA', '2026-08-04', 'BAD_CHART', '+22%'), ('2026-10-05', 'HURN', '2026-07-29', 'BAD_CHART', '+17%'), ('2026-09-23', 'WYFI', '2026-08-12', 'OKISH_CHART', '-32%'), ('2026-10-05', 'BLZE', '2026-08-04', 'GOOD_CHART', '-33%'), ('2026-10-05', 'HPE', '2026-06-02', 'OKISH_CHART', '-30%')]
+
+   lean in standard errors, bad vs approved, all 45 (AUC - 0.5) / se:
+     runup_low_pct_20     AUC 0.651  se 0.089  (AUC-0.5)/se = +1.69   n_bad 25 n_app 14
+     extension_live_pct   AUC 0.583  se 0.094  (AUC-0.5)/se = +0.88   n_bad 25 n_app 14
+     overhead_vol_frac    AUC 0.433  se 0.098  (AUC-0.5)/se = -0.69   n_bad 25 n_app 14
+     zones_remaining      AUC 0.380  se 0.096  (AUC-0.5)/se = -1.25   n_bad 25 n_app 14
