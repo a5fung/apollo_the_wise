@@ -1,0 +1,28 @@
+== names under $500M gapping >=15% at $5+, per day (scan log, any tick)
+scan_date|n|string_agg
+2026-09-29|2|QMLS,XRPN
+2026-09-30|3|CAPR,QTTB,XRPN
+2026-10-02|1|BETR
+2026-10-05|1|INTT
+2026-10-08|1|RNA
+(5 rows)
+== filter reasons for those names 10-06..10-09
+scan_date|ticker|gap|cap_m|volpct|string_agg
+2026-10-08|RNA|16|135.64776||quality_filter:quality filter: filter:mcap_too_small: $136M < $500M
+(1 row)
+== lane signal rows per day, 30 days
+d|count
+2026-09-09|1
+2026-09-10|1
+2026-09-11|4
+2026-09-14|1
+2026-09-15|1
+2026-09-17|2
+2026-09-21|1
+2026-09-22|2
+2026-09-23|1
+2026-09-24|2
+2026-09-25|1
+2026-09-30|1
+2026-10-05|1
+(13 rows)
