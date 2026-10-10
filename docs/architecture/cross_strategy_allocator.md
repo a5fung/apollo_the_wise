@@ -81,7 +81,9 @@ module; the cap safeguard counts through `live_tracker.count_open_positions` (it
   rows were open (KOD, PENG, and HUM itself, filled at 09:31). The other 2 were the #687 paper
   rehearsal's KO and PEP rows, deleted at 09:41. On the pre-entry live book (KOD, PENG) the same
   morning has `open_positions=2, slots=3` and HUM wins. The live safeguard was unaffected — it
-  counts per account.
+  counts per account. **Baseline for the new reading:** of the 20 non-empty-queue mornings since
+  08-12, the old 09:35 row's `open_positions` read ABOVE the rebuilt pre-entry book on 11 (worst:
+  10-09, 5 vs 2), equal on 9, below on none.
 
 ## The ruling, and the bar for Step B (written before the data)
 
