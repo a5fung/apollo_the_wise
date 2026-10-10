@@ -1,0 +1,10 @@
+Polygon-side candidates (unique ticker, headline) under ORIGINAL list: 57; with the 7 phrases: 66; ADDED: 9
+   ATAI   2026-07-16 [descr] kw='to acquire'           'Why AtaiBeckley Stock Soared Today'
+   CMCSA  2026-06-29 [descr] kw='to acquire'           'Roku For Sale? JPMorgan Sees Comcast As The Most Logical Buyer'
+   EL     2026-05-22 [descr] kw='business combination' 'Stock Market Today: Dow, S&P 500, Nasdaq Futures Rise As Investors Eye U.S.-Iran Peace Talks— Estee Lauder, Wo'
+   IMAX   2026-05-22 [descr] kw='to acquire'           'Deal Dispatch: IMAX Mulls Potential Sale, Shein Buys Everlane, West Marine Bankruptcy'
+   NUVL   2026-06-09 [descr] kw='to acquire'           'GSK Makes Its Biggest Bet In More Than A Decade, Paying $10.6 Billion For Cancer Drug Developer Nuvalent'
+   NUVL   2026-06-09 [descr] kw='to acquire'           'Nasdaq 100 Tumbles Over 3%, Marvell Crashes 12%: Stock Market Today'
+   PYPL   2026-07-28 [descr] kw='to acquire'           'Does PayPal Have a Buyer?'
+   PYPL   2026-07-15 [descr] kw='to acquire'           "Stripe and Advent Reportedly Bid $60.50 a Share for PayPal. Here's the Real Prize: Venmo."
+   ROKU   2026-06-24 [descr] kw='to acquire'           'Netflix Stock Is Trading Near a 52-Week Low. Is It Finally a Buy?'
