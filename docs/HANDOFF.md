@@ -1429,6 +1429,12 @@ stagger cards, one at a time.
 
 **Sat 10-10 (build slot):** Alpaca maintenance 07:00–08:00 ET. Build #687 (cards §1, narrowed per the review: keep the stream branch, exclude the dead sale, background-only retry, no new lock) and #694 (cards §2), then ONE deploy (both + execution) with the post-deploy checks. Scope the #655 churn / 2–3-member themes (parked findings on its line). Arm Monday's #687 paper test as a server-side nohup loop on Sunday night.
 
+**Also due Sat 10-10:** #215 (theme-validator over-pruning; ETA a projection at [b6] — check whether today's #693 thinking-on change settles it, then put it to him) and #491 (theme thesis-drift verify).
+
+**Sun 10-11 (his "bring more work to sunday"):** #624 small-cap PAPER lane (price the grading slots → design → build; his spec "everything the same as current EP except market cap"), #692 deal filter reads Benzinga via Alpaca news ($0), #359 the $500M EP floor read (pulled from 10-17; the floor stays his call), and arm Monday's #687 test as a server-side nohup loop.
+
+**Tue 10-13:** bring him an HTF scope — detection first (stage board + its reach, #598; his HTF trades as the tuning corpus); builds the weekend of 10-17/18 (his 10-09: "if we're close to complete on our EP work after this weekend, I'd like to next bring up HTF"; recorded on #397).
+
 **Mon 10-12:** #687 paper test at the open → his go-live yes → switch-on noon ET. Verifies: #505 (asks carry overlap ≥ 0.5 or a shared stock), #655 (a kept-distinct row; the settled G4), #693 (validator removals < 15/night, no truncation), #695 (sweep still 0 dead), #694 (shortlist ranks by volume on a crowded morning).
 
 ## 2026-10-07 (Wed) CLOSE — 🔴 RESUME HERE. Supersedes the 10-06 close above.
