@@ -47,7 +47,7 @@ async def invoke_forced_tool(
     model: str,
     max_tokens: int = 500,
     image_png: Optional[bytes] = None,
-    log_caller: Optional[str] = None,
+    log_caller: str,
 ) -> Optional[dict]:
     """One forced-tool judge call. Returns `normalize(tool_input)`, or None on any error/timeout
     (FAIL-OPEN — the caller falls back to its floor / writes nothing, never raises). `semaphore`
@@ -59,11 +59,22 @@ async def invoke_forced_tool(
     image block; None keeps the call byte-identical to the text-only path. The judge model must
     support vision (Opus does).
 
-    `log_caller` (optional, #377 cost meter): when set, the call's token cost is logged to
-    api_usage under this caller label. None = no logging (byte-identical to the pre-#377 path).
+    `log_caller` (REQUIRED, #377 cost meter / #313): the `api_usage` bucket this call's token
+    cost is logged to. It has NO default and NO "None = don't log" mode (2026-10-10): this is the
+    one function that actually writes the cost row, so a judge built straight on the transport
+    that forgot to name itself used to log NOTHING — no bucket at all, a worse hole than the
+    wrong-bucket one `grade_holistic` closed on 2026-08-02. A missing argument is a TypeError at
+    call time; an empty / non-string one is a ValueError, raised BEFORE the `client is None`
+    short-circuit so an offline path cannot hide it. Every production caller already passes a
+    literal (`ep_grade_judge` via `grade_holistic`, `mgmt_judge`), so this changes no live call.
     The logging is isolated in its own try/except AFTER the verdict is extracted — a DB/logging
     failure can NEVER alter the verdict nor get misclassified as credit exhaustion by the
     fail-open except below (that would change grading behavior, which the cost meter must not)."""
+    if not isinstance(log_caller, str) or not log_caller.strip():
+        raise ValueError(
+            f"invoke_forced_tool({label!r}): log_caller must be a non-empty str naming the "
+            f"api_usage bucket this lane bills (got {log_caller!r}) — an unnamed judge call "
+            "logs no cost at all (#313)")
     if client is None:
         return None
 
@@ -119,6 +130,11 @@ async def invoke_forced_tool(
         # is_credit_error and return None, i.e. turn a good grade into a
         # fail-open — a behavior change the cost meter must never cause).
         # S2/F9: safe wrapper — see spend_tracker.log_anthropic_call_safe
+        # `log_caller` is validated non-empty at the top of the function (#313), so this branch is
+        # always taken. It is KEPT rather than flattened because this try/except is hashed by
+        # scripts/preflight_judge_eval_gate.py's envelope baseline (`fail_open_hash`): flattening
+        # it would move that hash with zero change in behaviour and light the envelope-changed
+        # banner on the next deploy.
         if log_caller:
             from agents.market_intelligence.spend_tracker import log_anthropic_call_safe
             await log_anthropic_call_safe(model=model, caller=log_caller, response=resp)

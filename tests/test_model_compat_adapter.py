@@ -233,12 +233,17 @@ def test_no_text_block_survives_synthesis_even_with_several():
     assert first_text(resp) == ""
 
 
-def test_judge_transport_works_unchanged_through_the_adapter():
+def test_judge_transport_works_unchanged_through_the_adapter(monkeypatch):
+    from agents.market_intelligence import spend_tracker
     from agents.market_intelligence.judge_transport import invoke_forced_tool
+    # The fake response carries usage, so a named lane reaches the cost logger -- stub it
+    # (this test is about the adapter, not the api_usage write; no DB in the unit suite).
+    monkeypatch.setattr(spend_tracker, "log_anthropic_call_safe", AsyncMock())
     fake = FakeOpus55()
     verdict = _run(invoke_forced_tool(
         _client(fake), "grade this", tool=GRADE_TOOL, tool_name="grade_ep",
-        normalize=lambda d: d, label="test judge", timeout=5.0, model="claude-opus-5-5"))
+        normalize=lambda d: d, label="test judge", timeout=5.0, model="claude-opus-5-5",
+        log_caller="test_judge"))
     assert verdict == {"grade": 80, "tier": "HIGH", "rationale": "x"}
 
 
@@ -365,7 +370,8 @@ def test_unparseable_structured_output_raises_valueerror_family_and_judge_fails_
     assert not is_credit_error(ei.value)
     verdict = _run(invoke_forced_tool(
         _client(FakeOpus55(text_override="nope")), "p", tool=GRADE_TOOL, tool_name="grade_ep",
-        normalize=lambda d: d, label="t", timeout=5.0, model="claude-opus-5-5"))
+        normalize=lambda d: d, label="t", timeout=5.0, model="claude-opus-5-5",
+        log_caller="test_judge"))
     assert verdict is None
 
 

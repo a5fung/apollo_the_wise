@@ -170,3 +170,69 @@ def test_the_judge_entry_points_all_require_the_label(fn_name):
         else:
             i = [a.arg for a in fn.args.kwonlyargs].index("log_caller")
             assert fn.args.kw_defaults[i] is None, f"{fn_name} gives log_caller a default"
+
+
+# ── the TRANSPORT itself (#313, 2026-10-10) ──────────────────────────────────────────────────
+# The fixes above stopped at `grade_holistic`, one layer too high: the function that actually
+# writes the api_usage row is `judge_transport.invoke_forced_tool`, and it still took
+# `log_caller=None` ("None = no logging"). A judge built straight on the transport -- not via
+# grade_holistic -- would have logged NOTHING, and `_JUDGE_CALLS` above (which hardcodes the
+# three entry-point names) could not see it. These tests close that.
+
+_TRANSPORT_MOD = "agents/market_intelligence/judge_transport.py"
+_TRANSPORT_FN = "invoke_forced_tool"
+# Members of the population, NAMED (a count floor is not a population test): the grade judge
+# and the management judge are the transport's two production callers today.
+_TRANSPORT_CALLERS = {"agents/market_intelligence/ep_grade_judge.py",
+                      "agents/market_intelligence/mgmt_judge.py"}
+
+
+def _transport_call_sites():
+    for d in _SCAN_DIRS:
+        for path in sorted((_ROOT / d).rglob("*.py")):
+            rel = path.relative_to(_ROOT).as_posix()
+            try:
+                tree = ast.parse(path.read_text())
+            except SyntaxError:
+                continue
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                fn = (node.func.id if isinstance(node.func, ast.Name)
+                      else node.func.attr if isinstance(node.func, ast.Attribute) else None)
+                if fn == _TRANSPORT_FN:
+                    yield rel, node.lineno, node
+
+
+def test_the_transports_log_caller_is_required_and_a_plain_str():
+    """Root cause, one layer lower than `test_the_default_is_GONE_from_the_judge_signature`: if
+    `log_caller` regains a default (or Optional), a new lane built on the transport can ship
+    spending real money with no api_usage row. Read off the live function object, not its text."""
+    import inspect
+
+    from agents.market_intelligence.judge_transport import invoke_forced_tool
+    p = inspect.signature(invoke_forced_tool).parameters["log_caller"]
+    assert p.kind is inspect.Parameter.KEYWORD_ONLY
+    assert p.default is inspect.Parameter.empty, \
+        "log_caller must stay REQUIRED on the transport -- a default means a lane can log nothing"
+    assert p.annotation is str, \
+        "log_caller is a str, not Optional[str] -- there is no 'don't log' mode"
+
+
+def test_every_transport_call_site_names_its_caller():
+    """Derive the population (every `invoke_forced_tool(` call in product + script code), check
+    each passes `log_caller`, and check the two known members were actually seen -- so the scan
+    cannot go blind and pass vacuously."""
+    sites = list(_transport_call_sites())
+    seen = {rel for rel, _ln, _c in sites}
+    assert _TRANSPORT_CALLERS <= seen, (
+        f"scan no longer sees the transport's known callers: missing {_TRANSPORT_CALLERS - seen}")
+    missing = [f"{rel}:{ln}" for rel, ln, call in sites
+               if not any(kw.arg == "log_caller" for kw in call.keywords)]
+    assert not missing, f"invoke_forced_tool call(s) with no log_caller: {missing}"
+    for rel, ln, call in sites:
+        kw = next(k for k in call.keywords if k.arg == "log_caller")
+        v = kw.value
+        ok = ((isinstance(v, ast.Constant) and isinstance(v.value, str) and v.value.strip())
+              or (isinstance(v, ast.Name) and v.id == "log_caller"))   # grade_holistic forwarding
+        assert ok, f"{rel}:{ln} log_caller must be a non-empty literal or the forwarded argument"

@@ -623,7 +623,8 @@ def test_a_truncated_judge_verdict_fails_open(monkeypatch):
     from agents.market_intelligence import judge_transport as jt
     result = asyncio.run(jt.invoke_forced_tool(
         client, "prompt", tool={}, tool_name="t", normalize=_normalize,
-        label="ep_grade_judge", subject="AMRC", timeout=5, model="m"))
+        label="ep_grade_judge", subject="AMRC", timeout=5, model="m",
+        log_caller="test_judge"))
 
     assert result is None, "a truncated response must fail open, never a partial verdict"
     assert normalize_calls == [], (
@@ -727,7 +728,8 @@ def test_both_truncation_guards_share_ONE_definition_of_truncated(monkeypatch):
     result = asyncio.run(jt.invoke_forced_tool(
         _FakeJudgeClient(resp), "prompt", tool={}, tool_name="t",
         normalize=lambda i: (normalize_calls.append(i), {"grade": i.get("grade")})[1],
-        label="ep_grade_judge", subject="AMRC", timeout=5, model="m"))
+        label="ep_grade_judge", subject="AMRC", timeout=5, model="m",
+        log_caller="test_judge"))
     assert result is None and normalize_calls == [], (
         "judge_transport did not consult the shared is_truncated — it read the raw "
         "response's own stop_reason instead of the patched predicate")

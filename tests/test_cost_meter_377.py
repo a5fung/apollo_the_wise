@@ -2,8 +2,9 @@
 
 Pins the two PoC wirings:
   1. The forced-tool JUDGE transport (judge_transport.invoke_forced_tool) logs a
-     row with a NONZERO cost_usd when given a log_caller, and logs NOTHING when
-     log_caller is None (byte-identical to the pre-#377 path).
+     row with a NONZERO cost_usd when given a log_caller, and REFUSES to run
+     without one (#313, 2026-10-10: log_caller is required -- "None = log nothing" let
+     a judge spend money with no api_usage row at all).
   2. The HARD CONSTRAINT: a logging/DB failure must NEVER change the verdict — a
      broken cost logger still returns the good grade (does not fall into the
      fail-open and become None).
@@ -58,7 +59,7 @@ def _ok_client():
 
 def _kw(**over):
     base = dict(tool=_TOOL, tool_name="t", normalize=lambda d: d, label="test judge",
-                timeout=5.0, model="claude-opus-4-8")
+                timeout=5.0, model="claude-opus-4-8", log_caller="test_lane")
     base.update(over)
     return base
 
@@ -107,11 +108,45 @@ def test_judge_logs_row_with_nonzero_cost(captured_inserts):
     assert cost == pytest.approx(0.016, abs=1e-6)
 
 
-def test_judge_logs_nothing_when_log_caller_none(captured_inserts):
-    # Byte-identical to the pre-#377 path: no log_caller => no api_usage write.
-    verdict = _run(invoke_forced_tool(_ok_client(), "p", **_kw()))
-    assert verdict == {"verdict": "HOLD"}
+def test_judge_without_log_caller_raises_and_spends_nothing(captured_inserts):
+    # #313 (2026-10-10): log_caller is REQUIRED. The old contract ("None = no logging,
+    # byte-identical to the pre-#377 path") let a judge built straight on the transport spend
+    # money and write NO api_usage row at all. A missing argument must fail at CALL time -- before
+    # the API is touched -- so the lane cannot ship.
+    calls = []
+
+    class _Messages:
+        async def create(self, **kw):
+            calls.append(kw)
+            return _Resp({"verdict": "HOLD"})
+
+    client = type("C", (), {"messages": _Messages()})()
+    kw = _kw()
+    del kw["log_caller"]
+    with pytest.raises(TypeError, match="log_caller"):
+        _run(invoke_forced_tool(client, "p", **kw))
+    assert calls == [], "the Anthropic call must not have been made"
     assert captured_inserts == []
+
+
+@pytest.mark.parametrize("bad", [None, "", "   ", 7])
+def test_judge_rejects_an_empty_or_non_string_log_caller(captured_inserts, bad):
+    # The explicit-None escape hatch is gone too: passing log_caller=None used to mean "log
+    # nothing", i.e. the same silent hole one keystroke away from the missing argument. It
+    # raises BEFORE the `client is None` short-circuit, so an offline path cannot hide it.
+    with pytest.raises(ValueError, match="log_caller"):
+        _run(invoke_forced_tool(_ok_client(), "p", **_kw(log_caller=bad)))
+    with pytest.raises(ValueError, match="log_caller"):
+        _run(invoke_forced_tool(None, "p", **_kw(log_caller=bad)))
+    assert captured_inserts == []
+
+
+def test_judge_with_a_named_caller_still_logs_exactly_one_row(captured_inserts):
+    # Existing-caller behaviour is unchanged: a named lane gets its verdict and exactly one
+    # api_usage row under that name.
+    verdict = _run(invoke_forced_tool(_ok_client(), "p", **_kw(log_caller="mgmt_judge")))
+    assert verdict == {"verdict": "HOLD"}
+    assert [a[1] for a in captured_inserts] == ["mgmt_judge"]
 
 
 def test_logging_failure_does_not_change_verdict(monkeypatch):

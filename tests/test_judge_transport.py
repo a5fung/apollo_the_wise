@@ -47,7 +47,7 @@ def _identity(d):
 
 def _kw(**over):
     base = dict(tool=_TOOL, tool_name="t", normalize=_identity, label="test judge",
-                timeout=5.0, model="m")
+                timeout=5.0, model="m", log_caller="test_judge_transport")
     base.update(over)
     return base
 
