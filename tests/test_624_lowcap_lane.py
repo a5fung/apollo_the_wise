@@ -373,7 +373,8 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
                          cached_quality: str = "game_changer",
                          lowcap_admit: str | None = None,
                          paper_mode: str = "untouched",
-                         paper_sink: dict | None = None):
+                         paper_sink: dict | None = None,
+                         judge_verdict: dict | None = None):
     """One full run_ep_scan on a fixture board. 20 big-ADV fillers (top-20 by pre-score),
     all killed at the RVOL@T gate; 3 sub-shortlist names, two of which meet the lane rule.
     Returns (results, scan_log_rows, alert_inserts, lane_rows).
@@ -405,7 +406,8 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
     the PAPER LANE's own cache, never the live one); `paper_mode` is 'on' / 'off' (the
     `lowcap_paper_lane` toggle) / 'raising' (the dispatch itself explodes) / 'untouched' (the
     default — nothing patched, every existing caller unchanged); `paper_sink` (a dict) receives
-    the lane's table writes: 'rows', 'judge', 'triggers'."""
+    the lane's table writes: 'rows', 'judge', 'triggers'. `judge_verdict` (admit=True only): the
+    holistic judge is AUTHORITATIVE (as on prod) and returns this verdict for every name."""
     from agents.market_intelligence import minute_volume as mv
     fillers = {f"BIG{i:02d}": _snap(50.0, 60.0, 5_000_000) for i in range(20)}
     smalls = {"CHPT": _snap(5.19, 6.90, 969_501), "WETO": _snap(6.00, 7.20, 2_000_000),
@@ -538,7 +540,10 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
         # real, common outcome (timeout/malformed → fail-open to the floor tier), and with
         # get_holistic_judge_enabled() mocked False below the judge has no authority anyway
         # — this only proves the shadow call itself can't break byte-identity.
-        monkeypatch.setattr(ep_grade_judge, "grade_holistic", AsyncMock(return_value=None))
+        monkeypatch.setattr(ep_grade_judge, "grade_holistic",
+                            AsyncMock(return_value=(dict(judge_verdict) if judge_verdict else None)))
+        if judge_verdict:
+            monkeypatch.setattr(db, "get_holistic_judge_enabled", AsyncMock(return_value=True))
         # Seed the "already graded today" fast path — the SAME cache a real second scan
         # tick reads, so no Claude/Perplexity/SEC/Benzinga fetch is needed to reach a
         # verdict. game_changer + gap>=10 hits the conviction floor (ep_rubric

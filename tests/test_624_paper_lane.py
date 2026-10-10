@@ -100,6 +100,35 @@ async def test_lane_grades_a_cap_only_name_with_the_live_code_and_live_is_byte_i
     assert sinks["off"]["rows"] == [] and sinks["raising"].get("rows", []) == []
 
 
+@pytest.mark.asyncio
+async def test_an_authoritative_judge_moves_the_lane_tier_through_the_lanes_own_writer(monkeypatch):
+    """Prod runs the holistic judge AUTHORITATIVE. The lane's names must get the SAME judge
+    decision, written to the LANE's table — never to mi_ep_alerts. MUTATION TARGET: a kwarg
+    mismatch between `_judge_shadow`'s writer call and `update_lowcap_paper_lane_judge_result`
+    (the except would quietly leave the lane on floor tiers while live ran judge tiers)."""
+    from tests.test_624_lowcap_lane import _run_scan_once, ADMIT_TICKER
+    verdict = {"tier": "MODERATE", "direction_vs_floor": "demote", "rationale": "thin",
+               "materiality_tier": None, "grade": "strong", "grade_reason": "g",
+               "tier_reason": "t", "fire_axes": ["catalyst"], "confidence": 0.7}
+    live_writes = []
+
+    async def _live_writer(ticker, alert_date, **kw):
+        live_writes.append((ticker, kw))
+    monkeypatch.setattr(db, "update_ep_alert_judge_result", _live_writer)
+    sink: dict = {}
+    results, _, _, _ = await _run_scan_once(monkeypatch, lane_mode="off", admit=True,
+                                            lowcap_admit="BIG05", paper_mode="on",
+                                            paper_sink=sink, judge_verdict=verdict)
+    # live: BIG00 demoted by the judge, written to the live table only
+    assert [t for t, _ in live_writes] == [ADMIT_TICKER]
+    assert next(r for r in results if r["ticker"] == ADMIT_TICKER)["score_tier"] == "MODERATE"
+    # lane: the SAME decision, through the lane's writer
+    assert [t for t, _ in sink["judge"]] == ["BIG05"]
+    kw = sink["judge"][0][1]
+    assert kw["score_tier"] == "MODERATE" and kw["grade_engine_authority"] == "judge"
+    assert kw["judge_tier"] == "MODERATE" and kw["fire_axes"] == ["catalyst"]
+
+
 def test_dispatch_is_last_wrapped_and_lazily_imported():
     """The lane is scheduled AFTER every live decision of the tick (judge + tape annotation) and
     can never raise into the scan; ep_detector is execution-loaded, the lane module stays lazy."""

@@ -470,7 +470,10 @@ MAGNA53's exits; live MAGNA53's "already traded today" check made account-aware.
 - **When.** Dispatched LAST in `run_ep_scan` (after the judge and tape annotation) as a detached
   task; one lane tick at a time; a tick cut at 240 s. From 09:31 to 10:00 ET, with any lane HIGH
   today, it hands off to the paper order step via `execution_client.trigger_lowcap_paper_entry`
-  (its own cross-function — never `trigger_orb_entry`).
+  (its own cross-function — never `trigger_orb_entry`). ⚠ A slow lane tick can still be grading
+  when the NEXT tick's live grading starts (a 09:31 lane tick may run past 09:35); they share
+  the process-wide model-call semaphores (`_ANTHROPIC_SEMAPHORE` 5, `_JUDGE_SEMAPHORE` 3) —
+  bounded by the 240 s cut and ~2 lane names a day, not eliminated.
 - **Order step** (`broker/lowcap_paper_entry.py`): today's HIGH rows from the lane table only →
   `submit_trade_entry(signal_type='magna53_smallcap')` with MAGNA53's builder (`prepare_orb_order`:
   ORB-high stop-buy, `entry − 2R` stop), MAGNA53's submission-time gap re-check, the 09:31–09:45
@@ -488,6 +491,9 @@ MAGNA53's exits; live MAGNA53's "already traded today" check made account-aware.
 - **Strategy row** `magna53_smallcap`: phase 'paper', `live_real_enabled` false, size 1.0,
   `profit_trigger_r` 8.0, `breakeven_arm_r` 3.0 (MAGNA53's row; NULL would fall back to the global
   +2R / no arm), `min_median_r` null (a tail lane). Seeded once, `ON CONFLICT DO NOTHING`.
+  Expected after the deploy: the nightly graduation sweep Telegrams `magna53_smallcap: (new) →
+  paper` once (a new row, not a graduation), and the deploy preflight now walks this paper row
+  through `_check_safeguards`, so a stale PAPER credential fails the deploy early.
 - ⚖ **PENDING HIS CONFIRMATION (built parametrized):** the lane's own position cap
   `max_concurrent_positions = 5` (one-row `UPDATE mi_strategies` to change; NULL = share the paper
   account's 5) and the stop switch, runtime toggle **`lowcap_paper_lane`** (`mi_safeguard_state`,
