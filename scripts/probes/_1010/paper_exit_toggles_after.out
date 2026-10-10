@@ -1,0 +1,10 @@
+safeguard|account_mode|state|to_char
+breakeven_at_broker|live|on|08-10 08:22
+breakeven_at_broker|paper|on|10-10 15:15
+entry_ask_aware|live|on|08-07 10:55
+entry_ask_aware|paper|on|10-10 15:15
+profit_take_oco|live|on|08-17 11:03
+profit_take_oco|paper|on|10-10 15:15
+profit_take_resting_limit|live|on|08-10 17:15
+profit_take_resting_limit|paper|on|10-10 15:15
+(8 rows)
