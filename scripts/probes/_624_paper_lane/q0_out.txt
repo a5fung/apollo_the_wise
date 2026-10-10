@@ -1,0 +1,137 @@
+table_name|column_name
+mi_ep_scan_log|market_cap
+mi_lowcap_lane_signals|market_cap
+mi_market_caps|market_cap
+mi_parabolic_candidates|market_cap
+(4 rows)
+column_name|data_type
+id|integer
+scan_date|date
+ticker|text
+gap_pct|double precision
+prev_close|double precision
+rel_volume|double precision
+filter_reason|text
+ep_score|double precision
+score_tier|text
+catalyst_quality|text
+created_at|timestamp with time zone
+scan_time_et|timestamp with time zone
+rank_by_gap|integer
+projected_vol_multiple|double precision
+pm_rvol|double precision
+adv|double precision
+adv_source|text
+minutes_since_open|integer
+gap_pct_rt|double precision
+gap_pct_delayed|double precision
+price_source|text
+rt_price_age_s|double precision
+prev_close_alpaca|double precision
+reject_stage|text
+current_price|double precision
+prev_day_volume|bigint
+today_volume|bigint
+pm_rvol_baseline_n|integer
+days_since_prior_alert|integer
+extension_pct|double precision
+quality_adv_dollar|double precision
+atr_pct|double precision
+market_cap|double precision
+vol_percentile|double precision
+prior_3m_change|double precision
+float_shares|double precision
+in_active_theme|boolean
+llm_catalyst_quality|text
+score_breakdown|jsonb
+ep_bar|double precision
+score_side|text
+rank_by_prescore|integer
+(42 rows)
+column_name
+strategy_id
+name
+family
+phase
+enabled
+signal_type
+outcomes_table
+promotion_model
+promotion_thresholds
+notes
+created_at
+updated_at
+live_real_enabled
+position_size_multiplier
+max_concurrent_positions
+profit_trigger_r
+breakeven_arm_r
+(17 rows)
+strategy_id|name|family|phase|enabled|signal_type|outcomes_table|promotion_model|promotion_thresholds|notes|created_at|updated_at|live_real_enabled|position_size_multiplier|max_concurrent_positions|profit_trigger_r|breakeven_arm_r
+magna53_lowcap|MAGNA53 low-cap lane (shadow)|orb_long|shadow|t|magna53_lowcap|mi_lowcap_lane_replays|unpaired_r|{"paper_to_live": {"min_closed": 30, "min_median_r": null}, "shadow_to_paper": {"min_closed": 30, "min_median_r": null}}||2026-09-05 01:26:32.837123+00|2026-09-05 01:26:32.837123+00|f|1.0|||
+magna53|MAGNA53 EP|orb_long|live|t|magna53|mi_live_trades|unpaired_r|{"paper_to_live": {"min_closed": 30, "min_median_r": 0.5, "min_win_rate": 0.4, "max_drawdown_dollars": 5000}, "shadow_to_paper": {"min_closed": 30, "min_median_r": 0.0, "max_drawdown_pct": 0.3}}||2026-04-29 05:44:44.152925+00|2026-09-07 01:41:24.691695+00|t|1.0||8.0|3.0
+(2 rows)
+caller|model|count|cost|in_t|out_t|cr
+theme_discovery|claude-sonnet-5|299|12.96|5785|2906|3616
+perplexity_news_search|openai/gpt-5.6-luna|1308|11.07|7483|209|0
+eval_519_option_a|claude-opus-5-5|384|9.22|2218|268|43304
+theme_assignment|claude-sonnet-5|274|7.48|3234|1735|10540
+theme_assignment|claude-sonnet-5-5|133|3.13|3994|1077|10669
+perplexity_news_search|openai/gpt-6-luna|920|3.10|10025|177|0
+ep_catalyst_grade|claude-sonnet-5|271|2.75|3662|284|0
+theme_validation|claude-sonnet-5|1977|2.73|639|10|0
+chart_axis_pilot|claude-opus-5-5|64|2.12|5663|520|0
+theme_discovery|claude-sonnet-5-5|117|1.80|2772|534|6593
+judge_robustness_eval|claude-opus-5|36|1.39|3221|896|0
+perplexity_news_search|sonar-pro|112|1.34|81|115|0
+theme_validation|claude-sonnet-5-5|787|1.27|639|33|0
+theme_ecosystem_assignment|claude-haiku-4-5-20251001|275|1.12|1871|439|0
+catalyst_metrics_extractor|claude-sonnet-5|44|1.02|4028|1508|0
+theme_merge_adjudication|claude-haiku-4-5-20251001|252|0.94|1692|407|0
+ep_catalyst_grade|claude-sonnet-5-5|90|0.92|4050|208|0
+ep_grade_judge|claude-opus-5|23|0.90|4981|578|0
+judge_robustness_eval|claude-opus-5-5|36|0.90|3101|626|0
+theme_synthesis|claude-sonnet-5|22|0.89|6801|2686|0
+system_review_weekly|claude-sonnet-5|5|0.59|38852|4053|0
+mgmt_judge|claude-opus-5|52|0.54|1405|136|0
+model_replay|claude-sonnet-5|30|0.52|3299|854|1405
+theme_split|claude-sonnet-5|33|0.41|2873|675|0
+ep_grade_judge|claude-opus-5-5|14|0.41|4629|533|0
+judge_divergence|claude-sonnet-5|23|0.35|5108|483|0
+theme_parent_adjudication|claude-sonnet-5-5|48|0.27|1483|259|0
+judge_named_themes|claude-haiku-4-5-20251001|163|0.27|1329|63|0
+perplexity_health|sonar-pro|22|0.22|0|0|0
+mgmt_judge|claude-opus-5-5|31|0.22|1097|129|0
+crwd_promote_counterfactual|claude-opus-5|6|0.21|4613|452|0
+catalyst_metrics_extractor|claude-sonnet-5-5|11|0.19|3456|1038|0
+narrative_theme_discovery|claude-sonnet-5|12|0.17|6030|213|0
+theme_rename|claude-sonnet-5|13|0.16|2430|735|0
+theme_synthesis|claude-sonnet-5-5|8|0.15|6691|510|0
+judge_divergence|claude-sonnet-5-5|11|0.14|4745|347|0
+mna_headline_question|claude-sonnet-5-5|32|0.13|1548|111|0
+ep_theme_fit|claude-sonnet-5|21|0.13|737|294|0
+system_review_weekly|claude-sonnet-5-5|1|0.10|38635|2197|0
+perplexity_catalyst_validate|sonar|12|0.10|175|2|0
+theme_ecosystem_assignment|claude-haiku-5-5|23|0.09|2326|294|0
+narrative_theme_discovery|claude-sonnet-5-5|6|0.08|5455|189|0
+perplexity_catalyst_validate|openai/gpt-6-luna|100|0.08|2423|42|0
+theme_advisor_discovery|claude-opus-5|4|0.08|593|689|0
+catalyst_type_classifier|claude-haiku-4-5-20251001|35|0.08|1610|126|0
+description_backfill|claude-haiku-4-5-20251001|30|0.07|1120|235|0
+theme_parent_adjudication|claude-sonnet-5|7|0.06|1895|526|0
+theme_descriptions|claude-haiku-4-5-20251001|63|0.05|497|65|0
+ep_theme_fit|claude-sonnet-5-5|12|0.04|285|67|0
+perplexity_catalyst_validate|openai/gpt-5.6-luna|130|0.04|706|6|0
+postmortem|claude-sonnet-5|3|0.04|2311|934|0
+orchestrator|claude-sonnet-5|2|0.03|4444|457|4073
+theme_split|claude-sonnet-5-5|3|0.03|2533|418|0
+model_replay|claude-haiku-5-5|15|0.03|1359|150|0
+context_compression|claude-haiku-4-5-20251001|1|0.02|11789|783|0
+theme_advisor_discovery|claude-opus-5-5|2|0.02|475|488|0
+judge_named_themes|claude-haiku-5-5|3|0.01|1308|118|0
+perplexity_health|openai/gpt-6-luna|10|0.01|4248|8|0
+description_backfill|claude-haiku-5-5|2|0.01|1243|331|0
+theme_descriptions|claude-haiku-5-5|6|0.01|629|254|0
+catalyst_type_classifier|claude-haiku-5-5|3|0.01|1860|149|0
+theme_rename|claude-sonnet-5-5|1|0.00|1376|205|0
+(62 rows)

@@ -1,0 +1,16 @@
+SELECT 30
+=== ADV$ of mcap-rejected ticker-days (median ADV$ used by the score ladder)
+b|count
+(0 rows)
+bucket|count
+a <5M|49
+b 5-10M|14
+c 10-50M|5
+(3 rows)
+=== same for live graded names
+bucket|count|high
+a <5M|26|0
+b 5-10M|28|0
+c 10-50M|77|2
+d >=50M|94|30
+(4 rows)

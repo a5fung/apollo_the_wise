@@ -1,0 +1,26 @@
+=== lane signals + replays (live shadow, all to date)
+scan_date|ticker|cap_m|gap|spread_bps|adv_m|blocking_filters|entry_status|outcome|r|mark|replay_exit_era|target_r
+2026-09-09|BIAF|5|21.7|18|0.41|[{"gate": "extended", "value": 95.83, "threshold": 50.0}, {"gate": "adv_too_low", "value": 410664.0, "threshold": 1000000}]|filled|settled|-1.00||era_d|8
+2026-09-10|PCLA|71|23.3|110|0.39|[{"gate": "adv_too_low", "value": 388284.76, "threshold": 1000000}]|filled|unscoreable|||era_d|8
+2026-09-11|COLA|48|28.6|28|0.09|[{"gate": "adv_too_low", "value": 93011.035, "threshold": 1000000}]|abstain|unscoreable|||era_d|8
+2026-09-11|MKDW|201|15.1|556|0.02|[{"gate": "adv_too_low", "value": 20358.4935, "threshold": 1000000}]|no_entry|no_trade|||era_d|8
+2026-09-11|PCLA|93|29.2|95|0.39|[{"gate": "extended", "value": 53.8, "threshold": 50.0}, {"gate": "adv_too_low", "value": 388284.76, "threshold": 1000000}]|filled|settled|-1.00||era_d|8
+2026-09-11|TNON|5|54.7|160|0.87|[{"gate": "extended", "value": 117.21, "threshold": 50.0}, {"gate": "adv_too_low", "value": 869762.4400000001, "threshold": 1000000}]|filled|settled|-1.00||era_d|8
+2026-09-14|VNCE|84|24.1|154|0.57|[{"gate": "adv_too_low", "value": 571091.04, "threshold": 1000000}]|window_out_of_orb|no_trade|||era_d|8
+2026-09-15|RLGT|384|15.1|85|0.98|[{"gate": "adv_too_low", "value": 984175.15, "threshold": 1000000}]|filled|settled|0.00||era_d|8
+2026-09-17|MKDW|266|19.9|196|0.04|[{"gate": "extended", "value": 52.75, "threshold": 50.0}, {"gate": "adv_too_low", "value": 39904.130000000005, "threshold": 1000000}]|filled|settled|-1.00||era_d|8
+2026-09-17|VEEA|25|31.2|211|0.07|[{"gate": "extended", "value": 291.03, "threshold": 50.0}, {"gate": "adv_too_low", "value": 72725.74, "threshold": 1000000}, {"gate": "mna", "value": true, "threshold": null}]|filled|settled|-1.65||era_d|8
+2026-09-21|SVRN|49|29.5|528|0.49|[{"gate": "extended", "value": 83.06, "threshold": 50.0}, {"gate": "adv_too_low", "value": 485572.30000000005, "threshold": 1000000}]|window_out_of_orb|no_trade|||era_d|8
+2026-09-22|GRML|44|46.0|42|2.22|[{"gate": "extended", "value": 230.53, "threshold": 50.0}]|orb_invalid|no_trade|||era_d|8
+2026-09-22|NCT|6|19.1|470|4.33|[{"gate": "atr_too_high", "value": 252.73496240601503, "threshold": 15.0}]|filled|settled|-1.00||era_d|8
+2026-09-23|GRML|55|22.8|160|2.42|[{"gate": "extended", "value": 396.49, "threshold": 50.0}]|no_entry|no_trade|||era_d|8
+2026-09-24|GRML|41|15.6|23|2.70|[{"gate": "extended", "value": 292.63, "threshold": 50.0}, {"gate": "atr_too_high", "value": 18.924039320822164, "threshold": 15.0}]|filled|settled|0.00||era_d|8
+2026-09-24|SRZN|361|88.6|205|3.42|[]|orb_invalid|no_trade|||era_d|8
+2026-09-25|JAGX|4|28.3|11|0.24|[{"gate": "extended", "value": 164.42, "threshold": 50.0}, {"gate": "adv_too_low", "value": 242173.635, "threshold": 1000000}]|filled|settled|0.00||era_d|8
+2026-09-30|XRPN|471|15.6|337|1.20|[]|filled|settled|2.65||era_d|8
+2026-10-05|SDEV|494|30.6|11|1.40|[{"gate": "extended", "value": 402.01, "threshold": 50.0}]|abstain|unscoreable|||era_d|8
+(19 rows)
+=== tables carrying a spread / bid-ask column
+table_name|string_agg
+mi_lowcap_lane_signals|bid_px,ask_px,quoted_spread_bps
+(1 row)

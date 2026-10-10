@@ -1,0 +1,3 @@
+screen counts (ceiling lifted): {'never_passed_free_terms': 12524, 'signal': 1335, 'non_common': 6, 'no_minute_bars': 55, 'tick_capped_rolls': 5, 'tick_capped_ticks': 3, 'cap_unavailable': 1}; signals in window 1335
+   below $500M 768 (the #624 P population was 768 — must match)
+rows written

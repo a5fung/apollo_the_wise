@@ -1,0 +1,30 @@
+strategy_id|signal_type|phase|enabled|live_real_enabled|position_size_multiplier|max_concurrent_positions
+9m_day2|9m_day2|deprecated|f|f|1.0|
+fishhook_v3|fishhook_v3|deprecated|f|f|1.0|
+flag_continuation|flag_continuation|deprecated|f|f|1.0|
+magna53|magna53|live|t|t|1.0|
+magna53_lowcap|magna53_lowcap|shadow|t|f|1.0|
+parabolic_short|parabolic_short|shadow|t|f|1.0|
+shadow_orb_5m|shadow_orb_5m|shadow|t|f|1.0|
+wick_fill|wick_fill|shadow|t|f|1.0|
+(8 rows)
+=== paper-account trades last 60d by signal_type
+signal_type|status|count
+(0 rows)
+=== live magna53 trades last 30 scan days
+count
+24
+(1 row)
+=== HIGH alerts per day (live) 30 days
+high|all_alerts
+24|33
+(1 row)
+=== safeguard state paper
+safeguard|account_mode|left
+drawdown_breaker|paper|OK
+holistic_judge_enabled|paper|on
+lane2_grouping_v2|paper|on
+theme_birth_gate|paper|dedup_only
+theme_parent_pass|paper|on
+theme_subtheme_arm|paper|on
+(6 rows)

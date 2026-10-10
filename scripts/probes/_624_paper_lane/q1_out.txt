@@ -1,0 +1,123 @@
+=== days
+min|max|count
+2026-08-28|2026-10-09|30
+(1 row)
+=== stage x per-day (distinct ticker-days where that stage appears)
+reject_stage|td|rows
+universe_floor|5629|66919
+gap_floor|1787|15216
+|195|2089
+quality_filter|171|2112
+score_bar|118|1607
+post_grade_filter|97|858
+rvol_gate|45|239
+extension|43|906
+cooldown|30|242
+duplicate|25|423
+shortlist_cap|12|98
+(11 rows)
+=== mcap filter reason sample
+r|count
+quality filter: filter:mcap_too_small: $121M < $500M|2
+quality filter: filter:adv_too_low: $86,595|2
+quality filter: filter:adv_too_low: $650,641|2
+quality filter: filter:atr_too_high: 15.4% > 15.0%|2
+quality filter: filter:mcap_too_small: $456M < $500M|2
+quality filter: filter:mcap_too_small: $334M < $500M|2
+quality filter: filter:adv_no_data|2
+quality filter: filter:adv_too_low: $375,629|2
+quality filter: filter:adv_too_low: $775,994|2
+quality filter: filter:adv_too_low: $161,898|1
+quality filter: filter:adv_too_low: $216,643|1
+quality filter: filter:adv_too_low: $20,358|1
+quality filter: filter:adv_too_low: $232,409|1
+quality filter: filter:adv_too_low: $234,761|1
+quality filter: filter:adv_too_low: $155,587|1
+(15 rows)
+=== graded ticker-days per day (llm_catalyst_quality not null)
+scan_date|graded|mcap_rej|all_names
+2026-08-28|0|0|163
+2026-08-31|4|3|251
+2026-09-01|4|1|160
+2026-09-02|9|5|286
+2026-09-03|9|2|298
+2026-09-04|6|2|196
+2026-09-08|14|3|267
+2026-09-09|13|4|205
+2026-09-10|0|2|200
+2026-09-11|7|0|260
+2026-09-14|8|6|258
+2026-09-15|3|3|193
+2026-09-16|2|1|236
+2026-09-17|14|3|542
+2026-09-18|7|2|280
+2026-09-21|16|7|370
+2026-09-22|7|1|263
+2026-09-23|3|1|238
+2026-09-24|5|3|173
+2026-09-25|6|0|230
+2026-09-28|4|0|230
+2026-09-29|10|4|267
+2026-09-30|6|7|286
+2026-10-01|12|1|244
+2026-10-02|7|2|316
+2026-10-05|22|2|309
+2026-10-06|11|0|337
+2026-10-07|2|1|190
+2026-10-08|8|2|193
+2026-10-09|6|0|272
+(30 rows)
+=== mi_market_caps coverage
+count|count|min|max
+386|380|2026-04-25 03:40:53.990218+00|2026-10-09 21:15:06.770374+00
+(1 row)
+=== lowcap lane signals
+ERROR:  column "signal_date" does not exist
+LINE 1: SELECT count(*), count(DISTINCT signal_date) FROM mi_lowcap_...
+                                        ^
+column_name
+id
+ticker
+scan_date
+tick_wallclock_et
+minutes_since_open
+gap_pct
+gap_pct_rt
+gap_pct_delayed
+price_source
+prev_close
+current_price
+market_cap
+market_cap_source
+today_volume_delayed
+today_volume_rt
+rt_pm_bars
+rt_session_bars
+acting_volume_source
+vol_percentile
+vol_history_n
+extension_pct
+quality_adv_dollar
+atr_pct
+blocking_filters
+rank_by_prescore
+rank_by_gap
+in_shortlist
+days_since_prior_alert
+days_since_prior_lane_signal
+bid_px
+ask_px
+bid_size
+ask_size
+quoted_spread_bps
+quote_ts
+ma_flag
+ma_source
+admission_era
+regime
+lane_gap_floor_pct
+lane_vol_percentile_floor
+lane_max_market_cap
+lane_rule_version
+recorded_at
+(44 rows)

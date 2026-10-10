@@ -1,0 +1,16 @@
+SELECT 30
+=== score-ladder ADV$ (adv x prev_close) : sub-500M mcap-rejected
+bucket|count
+50-100M|1
+under 50M (0 liquidity pts)|67
+(2 rows)
+=== score-ladder ADV$ : live graded, with HIGH count and score stats
+bucket|count|high|avg_best_score|max_score
+>=100M|77|27|60.5|90
+50-100M|34|3|53.4|90
+under 50M (0 liquidity pts)|114|2|43.0|90
+(3 rows)
+=== live HIGH alerts (90d) whose prior-day market cap < 1B, for context
+count
+0
+(1 row)

@@ -1,0 +1,74 @@
+SELECT 30
+=== E caller x window (ET) on the 30 scan dates
+caller|win|n|cost|avg_cost|in_t|out_t|models
+catalyst_metrics_extractor|scan_0700_1005|47|1.044|0.0222|3866|1448|claude-sonnet-5,claude-sonnet-5-5
+catalyst_type_classifier|scan_0700_1005|33|0.075|0.0023|1631|127|claude-haiku-4-5-20251001,claude-haiku-5-5
+description_backfill|other|30|0.071|0.0024|1146|245|claude-haiku-4-5-20251001,claude-haiku-5-5
+ep_catalyst_grade|other|110|1.003|0.0091|3309|250|claude-sonnet-5,claude-sonnet-5-5
+ep_catalyst_grade|scan_0700_1005|239|2.535|0.0106|3948|271|claude-sonnet-5,claude-sonnet-5-5
+ep_grade_judge|scan_0700_1005|32|1.134|0.0354|4862|573|claude-opus-5,claude-opus-5-5
+ep_theme_fit|other|1|0.004|0.0036|275|129|claude-sonnet-5-5
+ep_theme_fit|scan_0700_1005|32|0.169|0.0053|582|214|claude-sonnet-5,claude-sonnet-5-5
+eval_519_option_a|other|384|9.223|0.0240|2218|268|claude-opus-5-5
+judge_divergence|scan_0700_1005|29|0.422|0.0145|5020|450|claude-sonnet-5,claude-sonnet-5-5
+judge_named_themes|other|22|0.037|0.0017|1298|72|claude-haiku-4-5-20251001,claude-haiku-5-5
+mgmt_judge|other|77|0.696|0.0090|1281|133|claude-opus-5,claude-opus-5-5
+mna_headline_question|other|32|0.135|0.0042|1548|111|claude-sonnet-5-5
+model_replay|other|45|0.556|0.0123|2652|620|claude-haiku-5-5,claude-sonnet-5
+narrative_theme_discovery|other|17|0.220|0.0129|5476|198|claude-sonnet-5,claude-sonnet-5-5
+perplexity_catalyst_validate|scan_0700_1005|230|0.120|0.0005|1452|22|openai/gpt-5.6-luna,openai/gpt-6-luna
+perplexity_health|other|30|0.214|0.0071|1416|3|openai/gpt-6-luna,sonar-pro
+perplexity_news_search|other|1921|12.276|0.0064|8574|181|openai/gpt-5.6-luna,openai/gpt-6-luna
+perplexity_news_search|scan_0700_1005|301|1.876|0.0062|8346|290|openai/gpt-5.6-luna,openai/gpt-6-luna
+theme_advisor_discovery|other|5|0.086|0.0172|561|622|claude-opus-5,claude-opus-5-5
+theme_assignment|other|383|10.135|0.0265|3512|1516|claude-sonnet-5,claude-sonnet-5-5
+theme_descriptions|other|66|0.061|0.0009|510|82|claude-haiku-4-5-20251001,claude-haiku-5-5
+theme_discovery|other|391|13.507|0.0345|4632|2185|claude-sonnet-5,claude-sonnet-5-5
+theme_ecosystem_assignment|other|282|1.137|0.0040|1908|425|claude-haiku-4-5-20251001,claude-haiku-5-5
+theme_merge_adjudication|other|239|0.892|0.0037|1693|408|claude-haiku-4-5-20251001
+theme_parent_adjudication|other|55|0.330|0.0060|1535|293|claude-sonnet-5,claude-sonnet-5-5
+theme_rename|other|14|0.164|0.0117|2355|697|claude-sonnet-5,claude-sonnet-5-5
+theme_split|other|34|0.417|0.0123|2841|659|claude-sonnet-5,claude-sonnet-5-5
+theme_synthesis|other|28|0.942|0.0336|6771|2010|claude-sonnet-5,claude-sonnet-5-5
+theme_validation|other|2619|3.805|0.0015|640|17|claude-sonnet-5,claude-sonnet-5-5
+(30 rows)
+=== F hourly perplexity_news_search on scan dates
+h|count|round
+7|101|0.662
+8|27|0.170
+9|173|1.045
+17|1921|12.276
+(4 rows)
+=== G per-day: graded names vs ep_catalyst_grade calls in window
+scan_date|graded|grade_calls|ep_window_cost
+2026-08-28|0|7|0.341
+2026-08-31|4|4|0.145
+2026-09-01|4|4|0.113
+2026-09-02|9|9|0.295
+2026-09-03|9|9|0.431
+2026-09-04|6|115|0.349
+2026-09-08|14|14|0.669
+2026-09-09|13|14|0.435
+2026-09-10|0|0|0.011
+2026-09-11|7|7|0.180
+2026-09-14|8|9|0.295
+2026-09-15|3|3|0.108
+2026-09-16|2|2|0.095
+2026-09-17|14|14|0.486
+2026-09-18|7|7|0.168
+2026-09-21|16|16|0.432
+2026-09-22|7|7|0.215
+2026-09-23|3|3|0.150
+2026-09-24|5|5|0.097
+2026-09-25|6|6|0.194
+2026-09-28|4|5|0.112
+2026-09-29|10|11|0.198
+2026-09-30|6|6|0.080
+2026-10-01|12|14|0.297
+2026-10-02|7|7|0.083
+2026-10-05|22|23|0.536
+2026-10-06|11|12|0.307
+2026-10-07|2|2|0.144
+2026-10-08|8|8|0.218
+2026-10-09|6|6|0.193
+(30 rows)
