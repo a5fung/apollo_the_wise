@@ -166,7 +166,9 @@ async def test_a_dead_queued_sale_whose_restore_is_through_the_price_sells_at_ma
 
 @pytest.mark.asyncio
 async def test_a_dead_queued_sale_with_any_other_restore_failure_keeps_mains_page(monkeypatch):
-    ts, h, close, _, data = _stream(monkeypatch, place_exc=Exception("insufficient qty"))
+    # not a held-shares refusal ("insufficient qty" is one since 2026-10-10: that refusal is retried
+    # in the background - tests/test_687_stream_dead_sale_restore_retry.py)
+    ts, h, close, _, data = _stream(monkeypatch, place_exc=Exception("account is restricted"))
     await ts._handle_cancel_or_reject(data, "canceled", "live")
     close.assert_not_awaited()
     assert any("STOP RESTORE FAILED" in m for m in h["sent"]), h["sent"]

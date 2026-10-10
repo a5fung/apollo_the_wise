@@ -5193,7 +5193,9 @@ def _is_shares_held_refusal(exc: BaseException) -> bool:
 
 
 class _RestoreRetry(NamedTuple):
-    """How `_retry_restore_while_shares_held` ended. `outcome` None = it placed `placed`."""
+    """How `_retry_restore_while_shares_held` ended. `outcome` None = it placed `placed`;
+    RESTORE_SOLD = the price was through the stop and `placed` is the market SALE's order (the
+    stream's page names it)."""
     outcome: "str | None"
     placed: "dict | None"
     attempts: int          # placement attempts, the first (refused) one included
@@ -5233,7 +5235,7 @@ async def _audit_restore_retry(
 async def _retry_restore_while_shares_held(
     trade_id: int, ticker: str, shares: float, stop_price: float, account_mode: str, *,
     qty: int, first_error: BaseException, cancelled_stop_id: "str | None", reason: str,
-    signal_type: "str | None",
+    signal_type: "str | None", also_exclude_ids: tuple = (),
 ) -> _RestoreRetry:
     """The broker refused the restore because the cancelled stop's shares are still HELD (#687,
     ruling 2026-10-06). Poll the position every `_RESTORE_RETRY_SLEEP_S`, at most
@@ -5253,7 +5255,12 @@ async def _retry_restore_while_shares_held(
     slow broker reads cannot stretch 30 polls into minutes (a hung read is up to ~90 s) while
     the caller holds the per-trade lock and a pool connection — the 16:45 and 19:01 loops are
     serial. No new poll starts once the window is spent; the one in flight finishes.
-    The caller holds the per-trade lock throughout (≤ ~15 s more than before)."""
+    The caller holds the per-trade lock throughout (≤ ~15 s more than before).
+
+    `also_exclude_ids` (#687, 2026-10-10) — orders besides `cancelled_stop_id` that are DEAD but may
+    still be listed live for a moment, excluded from this retry's own free-share read. The stream's
+    full-exit cancel/expire branch passes the dead sale's id (it has no per-trade lock and runs this
+    in a background task); the failed-exit restore passes nothing and reads exactly as before."""
     started = time.monotonic()
     attempts, polls, last_error = 1, 0, str(first_error)
 
@@ -5275,7 +5282,7 @@ async def _retry_restore_while_shares_held(
             pos = None
         if pos is None:
             free, source = await _broker_free_qty_for_restore(
-                ticker, account_mode, shares, exclude_ids=(cancelled_stop_id,))
+                ticker, account_mode, shares, exclude_ids=(cancelled_stop_id, *also_exclude_ids))
             if source == BROKER_FLAT_SOURCE:
                 await _audit_restore_skipped_broker_flat(
                     trade_id, ticker, account_mode, stop_price=stop_price, site=_RESTORE_SITE,
@@ -5302,7 +5309,7 @@ async def _retry_restore_while_shares_held(
                 sold = await _sell_free_shares_after_stop_breach(
                     trade_id, ticker, qty, reason, account_mode, stop_price=stop_price,
                     site=_RESTORE_SITE, error=str(e))
-                return _end(RESTORE_SOLD if sold else RESTORE_FAILED)
+                return _end(RESTORE_SOLD if sold else RESTORE_FAILED, sold or None)
             if _is_shares_held_refusal(e):
                 continue
             return _end(RESTORE_FAILED)

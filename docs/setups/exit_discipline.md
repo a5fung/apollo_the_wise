@@ -349,6 +349,45 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-10-10 — #687: an EXPIRED / cancelled full-exit sale re-places its stop (the stream's dead-sale branch counts the dead sale as free, and waits out a held-shares refusal in the background) (TRADE STATE — no exit rule, stop level, target or size changed)
+
+**Trigger**: paper Day B, Fri 2026-10-09 (`scripts/probes/_1008/dayB_pep_expiry_*.out`) and his ruling the same day
+(*"we keep delaying, what's the ultimate fix and launch"* → *"ok, monday"*).
+
+**The gap**: PEP's opening-auction sale EXPIRED unfilled at 09:30:57. `trade_stream._handle_cancel_or_reject` §3
+(`purpose == 'full_exit'`) sized the restore with `_broker_free_qty_for_restore(..., exclude_ids=(stop_order_id,))`,
+which still counted the JUST-EXPIRED sale as holding all 3 shares → "no free shares" → paged *"No stop re-placed"*
+and returned. PEP had no stop 09:30:57 → 09:35:00 (the morning refresh).
+
+**The change (the branch STAYS — its pages, pointer reason `cancel_or_reject_restored`, audit site and the
+convergence cases s14/s15/s40 are unchanged)**: (1) the event's own sale id joins `exclude_ids`; (2) a placement
+refused because the broker still HOLDS the shares (`_is_shares_held_refusal`) hands off to
+`order_manager._retry_restore_while_shares_held` (0.5 s polls, ≤ 15 s; new `also_exclude_ids` keeps the dead sale out
+of its own free-share reads) in a BACKGROUND task — alpaca-py awaits stream handlers one at a time, so an inline wait
+would stall every other fill at the open — held by a module-level strong-ref set (`_RESTORE_RETRY_BG_TASKS`); its
+outcomes map to the branch's existing pages (placed / sold at market / covered / broker-flat / FAILED) and the
+`stop_restore_retried` / `stop_restore_retry_ended` rows; (3) `signal_type` joins the branch's SELECT so the retry's
+mode-bound order id names the strategy. The first attempt and every other refusal stay inline and unchanged. No lock
+is taken (unchanged from today; an unbounded `_trade_advisory_lock` from the stream is the #621 bound question).
+`_RestoreRetry.placed` now carries the market SALE's order on `RESTORE_SOLD` (the existing caller returns on the
+outcome before reading it) so the stream's sold page can name the order.
+**Known gap**: the retry's audit rows carry `site = order_manager.restore_after_failed_exit` (the helper hardcodes it),
+including when the stream spawned the retry.
+
+**Tests**: `tests/test_687_stream_dead_sale_restore_retry.py` (the dead sale listed live no longer hides the stop;
+a held refusal retried in the background with the handler returning first; the strategy on the retry's order id; the
+poll read excluding the dead sale; window spent → existing FAILED page + ended row; breach during the retry → the
+sold page; flat → the flat text; another refusal stays inline; an exception in the task → the FAILED page); the
+convergence harness is NOT edited (its sha256 is pinned) and s14/s15/s40 pass unchanged. One existing test's premise
+moved: `test_687_ruling3_stop_through_price_sells.py::..._keeps_mains_page` used `"insufficient qty"` as "any other
+failure", which IS a held-shares refusal — it now uses a refusal waiting cannot cure.
+
+**Monday paper test** (ruled: one test of this path at Monday's open, then the switch-on):
+`scripts/probes/_687/expiry_path_test.py` — 3 KO bought pre-market on PAPER with no stop, a sale that cannot fill
+queued for the open, expires ~09:30:57; PASS = a 3-sh stop at the row's price ≤ 15 s after the expiry, on the row,
+with the restore's pointer row (and whether `stop_restore_retried` appeared is recorded). Runs from the SERVER; the
+pure parts are unit-checked in `tests/test_687_expiry_path_probe.py`.
+
 ### 2026-10-06 — #687: the failed-exit stop restore WAITS for the broker to release the cancelled stop's shares (TRADE STATE — no exit rule, stop level, target or size changed)
 
 **Trigger**: his ruling of 2026-10-06 (*"aligned with rec"*, then *"Ok, move it to Wednesday"*) on the paper
