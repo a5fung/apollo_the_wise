@@ -1,0 +1,19 @@
+model=claude-sonnet-5-5 pricing={'input': 2.0, 'output': 10.0} headlines=88 est_in=113667 est_out=11440 est_usd=0.342
+llm_client: adopted request rewrite for claude-sonnet-5-5 — forced_tool_to_structured_output (API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011CftwDH5aC2hYkGFn1R5hf'})
+Ticker details failed for APGE: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/APGE?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Ticker details failed for ASRT: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/ASRT?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Ticker details failed for ATAI: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/ATAI?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Ticker details failed for CGCT: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/CGCT?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Ticker details failed for CRNX: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/CRNX?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Ticker details failed for FBRX: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/FBRX?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Ticker details failed for NUVL: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/NUVL?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+Ticker details failed for TMHC: Client error '404 Not Found' for url 'https://api.polygon.io/v3/reference/tickers/TMHC?apiKey=REDACTED'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404
+DONE rows=88 in_tok=118873 out_tok=9919 actual_usd=0.3369 -> /tmp/paid_check_out.jsonl
