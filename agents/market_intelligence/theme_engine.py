@@ -8123,7 +8123,8 @@ async def _admit_rehomed_members(
     if _cap_keep_distinct(verdicts, admitted, already):
         # #655 (a): the tape judged enough of this theme's members and not one moves with the
         # group's top theme — the cap's "same sector" premise is a keyword coincidence, so the
-        # theme is KEPT (the caller leaves it out of the group's slot count). ONE row, replacing
+        # theme is KEPT (the caller leaves it out of the group's slot count). ONE row per merge pass
+        # (two on a split night, when the merge re-runs — count distinct themes), replacing
         # the not_absorbed row; no "'a' -> 'b'" arrow, so no retire path reads it as a successor.
         judged_n = sum(1 for v in verdicts.values() if v.get("path") == "tape")
         result.kept_distinct = True

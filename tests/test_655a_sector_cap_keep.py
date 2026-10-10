@@ -279,3 +279,24 @@ async def test_an_empty_shell_past_the_cap_is_capped_as_today(audit):
     assert {t["name"] for t in out} == {TANKER, REFINERS}
     rows = _rows(audit, "theme_sector_cap_not_absorbed")
     assert len(rows) == 1 and "empty at the cap" in _summary(rows[0])
+
+
+@pytest.mark.asyncio
+async def test_a_same_named_theme_with_members_is_never_the_target(audit):
+    """Review 2026-10-09: the empty-roster guard covers the 10-07 / 10-08 re-mints, but a same-named
+    theme that still HAS members after Pass 1 (disjoint rosters, nothing protected) must not become
+    its namesake's target either — the capped theme is judged against the group's other kept top."""
+    themes = [
+        {"name": TANKER, "tickers": list(TANKER_MEMBERS), "score": 95.0, "stage": "Mainstream"},
+        {"name": REFINERS, "tickers": ["VLO", "MPC", "PSX", "DINO"], "score": 90.0, "stage": "Nascent"},
+        {"name": TANKER, "tickers": ["QA", "QB", "QC"], "score": 60.0, "stage": "Nascent"},
+    ]
+    await _run(themes, _ctx(noise=["QA", "QB", "QC"]))
+    cap_rows = [c for c in audit.await_args_list
+                if c.args and c.args[0] in ("theme_sector_cap_absorbed", "theme_sector_cap_not_absorbed",
+                                            KEPT_EVENT)]
+    assert cap_rows, "the fixture must reach the cap (the second Tanker-named theme is the third)"
+    for c in cap_rows:
+        d = _detail(c)
+        target = d.get("target") or d.get("top_theme")
+        assert target == REFINERS, d

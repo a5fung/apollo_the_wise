@@ -360,7 +360,8 @@ THEME_RETIRED_SMALL_FADING = "theme_retired_small_fading"
 THEME_SMALL_FADING_RETIRE_ERROR = "theme_small_fading_retire_error"
 
 # ── #655 (a): the Pass-2 sector cap KEEPS a theme that provably does not move with the group's top
-# theme (2026-10-09, operator "yes"). ONE row per kept theme per night: theme, group, top theme, how many
+# theme (2026-10-09, operator "yes"). ONE row per kept theme per MERGE PASS (two on a night a theme split
+# re-runs the merge — count distinct themes per night, not rows): theme, group, top theme, how many
 # members the co-movement test judged, and that none passed. Replaces the `theme_sector_cap_not_absorbed`
 # row for that theme (a kept theme is not dropped, so it has no cap-rejection to record).
 THEME_SECTOR_CAP_KEPT_DISTINCT = "theme_sector_cap_kept_distinct"
