@@ -1431,6 +1431,56 @@ running). Tests:
 `_discover_new_themes`/`_discover_new_themes_single`; the two context-present tests go red on the
 pre-2026-09-25 wiring, the two no-context tests pin the unchanged path; 17 total in the file).
 
+### 2026-10-09 — #655 (a): the sector cap KEEPS a theme that provably does not move with the group's top theme + BUG FIX: a capped theme was tested against itself
+
+**Why.** The Pass-2 cap (`_SECTOR_KEYWORD_GROUPS`) groups by NAME keyword: 'gas' / 'crude' put E&P
+producers and gas/electric utilities in the same `oil_gas` group as tanker shipping and refiners, then
+absorbed or dropped everything past 2 themes — nightly churn (drop, re-mint, drop). Operator 2026-10-05
+ruled "(a)" (a theme whose members the tape has judged and none co-moves with the top theme is its own
+theme); **"yes" 2026-10-09 to build it plus the bug below.**
+
+**Keep rule** (`_cap_keep_distinct`, called from `_admit_rehomed_members`; ported literally from the
+replay `scripts/probes/_655a/replay.py`): when the cap would move a theme's members into the group's top
+theme and **≥ 3 members were JUDGED** by the co-movement test (path `tape` — a reject counts; an
+unjudgeable / cooldown / exclusion member does not) **and none reached the 0.35 bar and none already sits
+in the top theme**, the theme is KEPT as its own theme that night. It takes no slot in the group's count
+(appended after the top theme, so it is never a later capped theme's target), keeps its own roster, and
+nothing is moved into the top theme. ONE audit row `theme_sector_cap_kept_distinct` replaces the
+`not_absorbed` row (`THEME_SECTOR_CAP_KEPT_DISTINCT`; detail: `theme`, `group`, `top_theme`, `judged`,
+`passed` = 0, per-member verdicts; the summary has no `'a' -> 'b'` arrow, so no retire path reads it as a
+successor). Anything else is unchanged: a theme with a passing member keeps the absorb path, **< 3 judged
+or unjudgeable keeps today's drop**, no context fails closed as before, per-family biotech and the cap-0
+drop are untouched, the group's kept themes and the cap order are unchanged.
+
+**Replay (10 replayable nights 09-28..10-09; per-member results are recorded only since 09-25).** Of the
+29 Pass-2 cap rows, the rule keeps **19** and keeps **0** with a passing member. (The pre-set bar —
+"keep the three named churners on their churn nights" — was NOT met by the cap alone: their churn has two
+more causes outside this rule, the earlier Pass-1.5 merge step and themes reaching the cap with only 2
+members; both go to the 2–3-member scope.)
+
+**Stated effect.** A keyword group (e.g. `oil_gas`, cap 2) can now hold MORE than its cap when the extra
+themes provably do not move with its top theme (tape-judged, ≥ 3 members, none at the bar). The cap number
+still limits themes that DO co-move; it no longer limits keyword coincidences.
+
+**Bug (2026-10-07, `replay.out` § 2026-10-07).** 'Global Oil & Gas Producers and Refiners' was "absorbed"
+into itself: all 19 members `thin_basket`, source == target. Root cause: discovery re-minted an existing
+protected theme's NAME (`theme_discovered … (8 stocks)`); Pass 1's protect-strip (name-based) emptied the
+newcomer (8 < 19 members) but left the empty shell in the list. The shell out-scored the group, took a cap
+slot, and became the group's "top theme" (`next(f for f in final if group matches)` had no roster or
+own-name guard), so the real 19-member namesake was capped and tested against an empty basket — and the
+three themes capped after it were judged against the same empty shell. **Fix (Pass 2 only):** an
+empty-roster theme holds NO slot (it is still passed through as before; the downstream below-minimum drop
+removes it; one that lands past the cap is capped as today), and the top theme is the first kept group
+member with a roster and a different name, so a capped theme is never its own target and the target is the
+group's real kept top.
+
+**Tests.** `tests/test_655a_sector_cap_keep.py`: kept at ≥ 3 judged / 0 passed (+ the audit row, no
+`not_absorbed` row); guard members neither count nor block; one passer → absorb path; < 3 judged,
+unjudgeable and no-context → dropped as today; a member already in the top → not kept; a kept theme takes
+no slot and later themes / cap order are unchanged; the 10-07 shape through the real Pass 1; an empty
+shell is no target and no slot; a shell past the cap is capped as today. The kept and 10-07 tests are RED
+on the pre-change branch; the "today's path" tests are regression guards (they pass before and after).
+
 ### 2026-09-25 — BUG FIX: the sector cap moved members into a theme they never passed the membership test for (SR / ATO in a tanker theme)
 
 **Symptom (verified on prod).** 'Regulated Natural Gas Distribution Utilities' (SR, ATO) was retired on

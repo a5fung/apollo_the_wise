@@ -89,6 +89,7 @@ from agents.market_intelligence.audit_events import (
     THEME_PARENT_PASS_RAN, THEME_PARENT_PASS_LINKED, THEME_PARENT_PASS_DISTINCT,
     THEME_PARENT_PASS_INVERTED, THEME_PARENT_PASS_ERROR,
     THEME_RETIRED_SMALL_FADING, THEME_SMALL_FADING_RETIRE_ERROR,
+    THEME_SECTOR_CAP_KEPT_DISTINCT,
 )
 from shared.llm_response import content_block_types, first_text, is_truncated, stop_reason
 from shared.output_ceilings import max_tokens_for
@@ -7998,6 +7999,26 @@ async def _route_a_subtheme(
         return None
 
 
+# #655 (a) (operator ruling 2026-10-05, "yes" 2026-10-09; replay scripts/probes/_655a/replay.py): how
+# many members the co-movement test must have JUDGED before "none of them moves with the top theme" is
+# evidence rather than silence.
+SECTOR_CAP_KEEP_MIN_JUDGED = 3
+
+
+class _RehomeResult(list):
+    """The members `_admit_rehomed_members` admitted (a plain list to every existing caller), plus
+    `kept_distinct`: the source theme provably does not move with the target and the cap keeps it."""
+    kept_distinct: bool = False
+
+
+def _cap_keep_distinct(verdicts: dict[str, dict], admitted: list[str], already: list[str]) -> bool:
+    """#655 (a) — pure. The replay's keep rule, ported exactly: at least `SECTOR_CAP_KEEP_MIN_JUDGED`
+    members JUDGED by the tape (path "tape" — a reject counts; an unjudgeable / cooldown / exclusion
+    member does not), NONE admitted, and none already sitting in the target."""
+    judged = sum(1 for v in verdicts.values() if v.get("path") == "tape")
+    return judged >= SECTOR_CAP_KEEP_MIN_JUDGED and not admitted and not already
+
+
 async def _admit_rehomed_members(
     target: dict,
     source: dict,
@@ -8007,7 +8028,7 @@ async def _admit_rehomed_members(
     protected: set[tuple[str, str]] | None,
     cooldown_set: set[tuple[str, str]] | None,
     theme_exclusions: dict[str, set[str]] | None,
-) -> list[str]:
+) -> _RehomeResult:
     """The membership test for a member the SECTOR CAP would move from `source` into `target`
     (2026-09-25 bug fix — SR/ATO). Returns the members admitted; `target["tickers"]` is NOT
     mutated here except when the validator removes an EXISTING member (see below).
@@ -8030,7 +8051,10 @@ async def _admit_rehomed_members(
     later night, through the full test. With no context at all, nothing moves.
 
     Writes ONE audit row per absorb: `theme_sector_cap_absorbed` (>= 1 member admitted; the
-    summary carries the `'source' -> 'target'` pointer the engine-drop retire path reads) or
+    summary carries the `'source' -> 'target'` pointer the engine-drop retire path reads),
+    `theme_sector_cap_kept_distinct` (#655 (a): >= 3 members judged, none passed, none already in
+    the target — the result's `kept_distinct` is True and the CALLER keeps the source as its own
+    theme; no successor pointer) or
     `theme_sector_cap_not_absorbed` (no member admitted and none already in the target — the
     source was absorbed BY nothing, so it gets no successor). The detail carries every member's verdict, reading and path, so a
     re-homing is a SQL query, not a grep over rotating container logs.
@@ -8067,7 +8091,7 @@ async def _admit_rehomed_members(
                                    "already_in_target": [], "admitted": [], "rejected": [],
                                    "members": {}}),
             )
-        return []
+        return _RehomeResult()
 
     verdicts: dict[str, dict] = {}
     admitted: list[str] = []
@@ -8095,6 +8119,25 @@ async def _admit_rehomed_members(
         "rejected": [tk for tk in candidates if tk not in admitted],
         "members": verdicts,
     })
+    result = _RehomeResult(admitted)
+    if _cap_keep_distinct(verdicts, admitted, already):
+        # #655 (a): the tape judged enough of this theme's members and not one moves with the
+        # group's top theme — the cap's "same sector" premise is a keyword coincidence, so the
+        # theme is KEPT (the caller leaves it out of the group's slot count). ONE row, replacing
+        # the not_absorbed row; no "'a' -> 'b'" arrow, so no retire path reads it as a successor.
+        judged_n = sum(1 for v in verdicts.values() if v.get("path") == "tape")
+        result.kept_distinct = True
+        await log_audit_event(
+            THEME_SECTOR_CAP_KEPT_DISTINCT,
+            summary=(f"Pass2: '{source_name}' kept distinct from '{target_name}' — {judged_n} of "
+                     f"{len(candidates)} member(s) judged, none co-moves (sector group '{group}')"),
+            detail=json.dumps({
+                "theme": source_name, "group": group, "top_theme": target_name,
+                "judged": judged_n, "passed": 0, "bar": ASSIGN_COMOVE_BAR,
+                "members": verdicts,
+            }),
+        )
+        return result
     if admitted or already:
         # A source some of whose members already sit in the target has the target as its
         # successor whether or not any NEW member passed — the same pointer the all-already
@@ -8112,7 +8155,7 @@ async def _admit_rehomed_members(
                      f"membership test for '{target_name}' (sector group '{group}')"),
             detail=detail,
         )
-    return admitted
+    return result
 
 
 _SUCCESSOR_RE = re.compile(r"'([^']+)' -> '([^']+)'")
@@ -8485,12 +8528,23 @@ async def _merge_overlapping_themes(
         count = sector_counts.get(group, 0)
         if count < max_for_group:
             final.append(t)
-            sector_counts[group] = count + 1
+            # #655 (a) bug fix (2026-10-09): an EMPTY roster holds no slot. On 2026-10-07 Pass 1's
+            # protect-strip emptied a re-minted namesake of a protected theme and left the shell in
+            # the list; it out-scored the group, took a cap slot and became the "top theme", and the
+            # real 19-member namesake was capped and tested against an empty basket (19 of 19
+            # thin_basket, source == target). The shell is still passed through exactly as before
+            # (the downstream empty-roster / below-minimum drop removes it); it just no longer
+            # displaces a real theme. A shell that lands PAST the cap is capped as today.
+            if t.get("tickers"):
+                sector_counts[group] = count + 1
         else:
-            # Absorb into the top theme of this sector group (if any kept)
+            # Absorb into the top theme of this sector group (if any kept): the first kept group
+            # member that HAS a roster and is not this theme's own name — a capped theme is never
+            # its own target, and an empty shell is no basket to be judged against.
             top_theme = next(
                 (f for f in final
-                 if (sg := _sector_group(f["name"])) is not None and sg[0] == group),
+                 if f.get("tickers") and f["name"] != t["name"]
+                 and (sg := _sector_group(f["name"])) is not None and sg[0] == group),
                 None,
             )
             if top_theme:
@@ -8509,6 +8563,16 @@ async def _merge_overlapping_themes(
                 )
                 current = list(top_theme.get("tickers") or [])
                 top_theme["tickers"] = current + [tk for tk in admitted if tk not in current]
+                if admitted.kept_distinct:
+                    # #655 (a): kept as its own theme, outside the group's slot count (appended
+                    # after the top theme, so it is never a later capped theme's target).
+                    final.append(t)
+                    logger.info(
+                        f"Theme merge (sector cap): '{t['name']}' KEPT distinct from "
+                        f"'{top_theme['name']}' (sector group '{group}', {len(extra)} tickers, none "
+                        f"co-moves with the top theme)"
+                    )
+                    continue
                 logger.info(
                     f"Theme merge (sector cap): '{t['name']}' → '{top_theme['name']}' "
                     f"(sector group '{group}', {len(admitted)} of {len(extra)} tickers admitted "
