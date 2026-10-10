@@ -1421,6 +1421,16 @@ stagger cards, one at a time.
 
 **Standing:** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
+## 2026-10-09 (Fri) CLOSE — 🔴 RESUME HERE. Supersedes the 10-07 close below.
+
+**Board 40 → 39** — closed #696 (/trades shows R; his Telegram reply 10-09). No new tasks. Server = 1bbce533 (Fri noon: both + execution); main = 7e49b6ab — **Saturday's deploy ships the whole delta** listed in `docs/roadmap/weekend_build_cards_2026-10-10.md` § "Also riding Saturday's deploy" (#693 validator thinking on, #505 keyword stems + closeness parent pick, #655 (a) sector-cap keep + empty-shell fix, the simplify edits to /trades + the dead-column sweep — re-check both after deploy).
+
+**His rulings today:** #687 go-live → **Monday** (Sat fix of the expired-sale restore, Mon-open paper test from the SERVER, live switch-on Mon noon ET on his yes) · #655 → Mon 10-12 · #694 option 2 · #505 closeness pick + 0.5 industry minimum · #693 validator thinking ON · #655 (a) cap keep-rule + self-comparison bug · weekend order: #687 → #694 → (#505/#655 already built) → #624/#692 next free slot.
+
+**Sat 10-10 (build slot):** Alpaca maintenance 07:00–08:00 ET. Build #687 (cards §1, narrowed per the review: keep the stream branch, exclude the dead sale, background-only retry, no new lock) and #694 (cards §2), then ONE deploy (both + execution) with the post-deploy checks. Scope the #655 churn / 2–3-member themes (parked findings on its line). Arm Monday's #687 paper test as a server-side nohup loop on Sunday night.
+
+**Mon 10-12:** #687 paper test at the open → his go-live yes → switch-on noon ET. Verifies: #505 (asks carry overlap ≥ 0.5 or a shared stock), #655 (a kept-distinct row; the settled G4), #693 (validator removals < 15/night, no truncation), #695 (sweep still 0 dead), #694 (shortlist ranks by volume on a crowded morning).
+
 ## 2026-10-07 (Wed) CLOSE — 🔴 RESUME HERE. Supersedes the 10-06 close above.
 
 **Board 40 → 41** — filed #696 (/trades shows R on closed trades, no attempts count; his ask, carryover 1 on his auth). No closes today. Server = dc040c7c (deployed 21:15 ET, both + execution, verified in both containers): acting EP-bar labels, live-only open trades, second-opinion ceiling, #635 F8 baseline, #687 restore-retry + rehearsal R1. ⚠ The NOON deploy was missed (fixed-duration sleeps drift while the laptop sleeps — wakes are wall-clock loops now). After the deploy, simplify commit b00386a7 touched ep_detector.py again (comments, the threshold fold, a per-tick INFO drop-count log) — ships Fri noon (rehearsal freeze Thu 09:35 → Fri ~09:40).
