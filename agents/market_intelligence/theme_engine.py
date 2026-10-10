@@ -9193,8 +9193,7 @@ async def _fold_small_failing_themes(
 
     if protected is None:
         try:
-            from agents.market_intelligence.db import get_operator_protected_set
-            protected = await get_operator_protected_set()
+            protected = await get_operator_protected_set()   # the module-level import (no local re-import: deploy gate 5d)
         except Exception as e:  # loud-ok: his placements cannot be read -> nothing folds tonight, RAN row says so
             logger.warning(f"Small-theme fold (#655): operator-protected set unreadable ({e}) — nothing folds tonight")
             await _ran("skipped: operator-protected set unreadable")
