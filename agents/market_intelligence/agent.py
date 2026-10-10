@@ -2224,6 +2224,9 @@ class MarketIntelligenceAgent(BaseAgent):
         from agents.market_intelligence.db import (
             get_flag_candidates_window, get_ticker_flag_history, get_pool,
         )
+        # Function-local ON PURPOSE: agent.py is loaded by apollo-execution, flag_detector is not —
+        # a module-level import would make the execution container load it (preflight [5n/7]).
+        from agents.market_intelligence.flag_detector import is_short_base, short_base_tightness
 
         task = request.task.lower()
         # Single-ticker history mode: `/flags XNDU` or `flags XNDU`
@@ -2241,10 +2244,12 @@ class MarketIntelligenceAgent(BaseAgent):
                 vr = r.get("vol_contraction_ratio")
                 rr_s = f"r{rr:.2f}" if rr is not None else "r—"
                 vr_s = f"v{vr:.2f}" if vr is not None else "v—"
+                # A base of 5 days or fewer compares its own bars with themselves (r1.00 v1.00).
+                tight_s = short_base_tightness(r) if is_short_base(r.get("base_age")) else f"{rr_s} {vr_s}"
                 held = f" (held from {r['held_from_stage']})" if r.get("held_from_stage") else ""
                 lines.append(
                     f"  {r['scan_date']}  `{r['stage']:<11}` "
-                    f"age {r.get('base_age') or '—':<3}  {rr_s} {vr_s}{held}"
+                    f"age {r.get('base_age') or '—':<3}  {tight_s}{held}"
                 )
             return self._ok(request, result="\n".join(lines))
 
@@ -2321,9 +2326,9 @@ class MarketIntelligenceAgent(BaseAgent):
                 vr = r.get("vol_contraction_ratio")
                 rr_s = f"{float(rr):.2f}" if rr is not None else "—"
                 vr_s = f"{float(vr):.2f}" if vr is not None else "—"
-                lines.append(
-                    f"  • `{r['ticker']}` — base {age}d · range {rr_s} · vol {vr_s}"
-                )
+                tight_s = (short_base_tightness(r) if is_short_base(age)
+                           else f"range {rr_s} · vol {vr_s}")
+                lines.append(f"  • `{r['ticker']}` — base {age}d · {tight_s}")
             if len(coiled) > 15:
                 lines.append(f"  …{len(coiled) - 15} more")
 
@@ -2336,7 +2341,9 @@ class MarketIntelligenceAgent(BaseAgent):
                 vr = r.get("vol_contraction_ratio")
                 rr_s = f"{float(rr):.2f}" if rr is not None else "—"
                 vr_s = f"{float(vr):.2f}" if vr is not None else "—"
-                lines.append(f"  • `{r['ticker']}` age {age}d · range {rr_s} · vol {vr_s}")
+                tight_s = (short_base_tightness(r) if is_short_base(age)
+                           else f"range {rr_s} · vol {vr_s}")
+                lines.append(f"  • `{r['ticker']}` age {age}d · {tight_s}")
             if len(tightening) > 15:
                 lines.append(f"  …{len(tightening) - 15} more")
 

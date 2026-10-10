@@ -428,3 +428,93 @@ async def test_run_flag_scan_pushes_only_the_real_new_entries(world, monkeypatch
     assert "<code>AAA</code>" in new_today
     assert "BBB" not in text and "CCC" not in text
     assert [r[1] for r in _transition_rows(world)] == ["AAA entered TIGHTENING 2026-08-18"]
+
+
+# ── a base of 5 days or fewer: the 1.00 ratios are meaningless, show the fresh-tight measure ──────
+# wk1010 (2026-10-10). Live 2026-10-09: KOD, base 5d, stored range 1 / volume 1 while the last two
+# bars read 6.64% against a 10.53% ATR (0.63x). The detector compares the base's last 5 days with
+# its first 5 over min(5, base_age) rows, so at base_age <= 5 both are the same bars. DISPLAY ONLY.
+
+def _short(age, *, ticker="KOD", fires=True, tr=5.74, atr=10.76, **kw):
+    return _row(ticker, "COILED", rr=1.0, vr=1.0, age=age, fresh=fires,
+                fresh_2bar_tr_pct=tr, atr14_pct=atr, **kw)
+
+
+def test_short_base_boundary_matches_the_detectors_window():
+    assert [fd.is_short_base(a) for a in (3, 4, 5)] == [True, True, True]
+    assert [fd.is_short_base(a) for a in (6, 12, None)] == [False, False, False]
+
+
+def test_fresh_tight_ratio_is_two_bar_range_over_atr_or_none():
+    assert fd.fresh_tight_ratio({"fresh_2bar_tr_pct": 5.74, "atr14_pct": 10.76}) == pytest.approx(0.5335, abs=1e-3)
+    assert fd.fresh_tight_ratio({"fresh_2bar_tr_pct": "3.0", "atr14_pct": 6}) == pytest.approx(0.5)
+    for bad in ({}, {"fresh_2bar_tr_pct": 5.7}, {"atr14_pct": 10.0},
+                {"fresh_2bar_tr_pct": 5.7, "atr14_pct": 0}, {"fresh_2bar_tr_pct": "x", "atr14_pct": 9}):
+        assert fd.fresh_tight_ratio(bad) is None
+
+
+@pytest.mark.parametrize("age", [3, 4, 5])
+def test_short_base_new_today_line_shows_the_measure_not_1_00(age):
+    t = {"ticker": "KOD", "stage": "COILED", "prev": "WATCH", "row": _short(age)}
+    line = fd._fmt_transition(t)
+    assert "last 2 bars tight (0.53× usual range)" in line
+    assert "1.00" not in line and "range 1" not in line and "volume 1" not in line
+    assert f"base {age}d" in line
+
+
+def test_short_base_without_a_computable_measure_says_n_a():
+    # base 3: the fresh-tight path needs >= 4, so nothing is persisted -> 'n/a', never 1.00
+    t = {"ticker": "KOD", "stage": "TIGHTENING", "prev": None,
+         "row": _short(3, fires=False, tr=None, atr=None)}
+    line = fd._fmt_transition(t)
+    assert "tightness n/a" in line and "1.00" not in line
+
+
+def test_short_base_not_firing_shows_the_plain_ratio_without_the_tight_label():
+    # KOD 2026-10-09 as stored: held COILED from WATCH, fresh path NOT firing, 6.64 / 10.53
+    t = {"ticker": "KOD", "stage": "COILED", "prev": None,
+         "row": _short(5, fires=False, tr=6.638630, atr=10.532943)}
+    line = fd._fmt_transition(t)
+    assert "last 2 bars 0.63× usual range" in line and "tight (" not in line
+
+
+@pytest.mark.parametrize("age", [6, 12])
+def test_longer_bases_render_exactly_as_before(age):
+    r = _row("AAA", "TIGHTENING", rr=0.68, vr=0.90, age=age, fresh=False,
+             fresh_2bar_tr_pct=5.0, atr14_pct=10.0)
+    assert fd._fmt_tightness(r) == "range 0.68×, volume 0.90×"
+    r["fresh_tight_fires"] = True
+    assert fd._fmt_tightness(r) == "range 0.68×, volume 0.90×, last 2 bars tight"
+
+
+def test_standing_coiled_roster_line_follows_the_same_rule():
+    short = fd._fmt_coiled(_short(5, fires=False, tr=6.638630, atr=10.532943))
+    assert "last 2 bars 0.63× usual range" in short and "1.00" not in short
+    long_ = fd._fmt_coiled(_row("OLDC", "COILED", rr=0.7, vr=0.6, age=14))
+    assert long_.endswith("range 0.70 · volume 0.60") and "base 14d" in long_
+
+
+def _digest_for(*rows):
+    board = _board(*rows)
+    return fd.build_flag_digest(board, D1, fd.stage_transitions(board, {}))
+
+
+def test_legend_explains_the_short_base_measure_only_when_one_is_shown():
+    both = _digest_for(_short(4), _row("LONG", "TIGHTENING"))
+    assert f"{fd._SHORT_BASE_MAX} days or fewer" in both
+    assert f"tight = under {fd._FRESH_TIGHT_RATIO_MAX:.2f}" in both
+    only_long = _digest_for(_row("LONG", "TIGHTENING"))
+    assert "days or fewer" not in only_long
+    # the original sentence is untouched either way
+    for text in (both, only_long):
+        assert f"range under {fd._RANGE_CONTRACTION_MAX:.2f}" in text
+
+
+def test_short_base_digest_is_still_clean_html():
+    text = _digest_for(_short(4), _short(3, ticker="ZZZ", fires=False, tr=None, atr=None))
+    p = _TagCheck()
+    p.feed(text)
+    p.close()
+    assert p.bad == [] and p.stack == []
+    for stray in ("*", "`", "\\", "_"):
+        assert stray not in text, f"stray {stray!r} in {text!r}"

@@ -281,3 +281,34 @@ def test_bare_htf_routes_to_board_not_single_ticker(monkeypatch):
     assert called["ticker_history"] is False        # single-ticker path never reached
     assert "HTF History" not in (res.result or "")  # not the single-ticker header
     assert "No flags in any stage" in (res.result or "")  # the board's empty-state message
+
+
+# ── 10. the display cutoff for short bases matches what the detector really stores (wk1010) ────────
+# The renders (digest NEW TODAY, /flags) stop printing range/volume contraction for a base of
+# `_SHORT_BASE_MAX` sessions or fewer, because `compute_flag_metrics` compares the base's last 5 days
+# with its first 5 over min(5, base_age) rows - the SAME bars when base_age <= 5 - so both ratios are
+# exactly 1.00 whatever the bars did. This pins that fact against the real detector so the display
+# constant cannot drift from it: a bar-by-bar contracting flag still stores 1.00 at base_age <= 5 and
+# a real ratio from 6 up.
+
+def _contracting_flag_rows(n_flag):
+    rows = _htf_rows(runup_ratio=2.0, flag_depth=0.10, n_flag=n_flag)
+    for r in rows[-4:-1]:                  # the last 3 BASE bars (today, rows[-1], is not in the base)
+        r["volume"] = 300_000
+        r["high_price"] = r["close"] * 1.005
+        r["low_price"] = r["close"] * 0.995
+    return rows
+
+
+def test_stored_contraction_ratios_are_exactly_one_up_to_the_display_cutoff():
+    seen = {}
+    for n_flag in range(4, 10):
+        out = fd.compute_flag_metrics(_contracting_flag_rows(n_flag), ticker="X", recent_stages=[])
+        seen[out["base_age"]] = (out["range_contraction_ratio"], out["vol_contraction_ratio"])
+    assert set(seen) == {3, 4, 5, 6, 7, 8}, f"fixture no longer spans the cutoff: {sorted(seen)}"
+    for age, (rr, vr) in seen.items():
+        assert fd.is_short_base(age) == (age <= 5)
+        if fd.is_short_base(age):
+            assert abs(rr - 1.0) < 1e-12 and abs(vr - 1.0) < 1e-12, (age, rr, vr)
+        else:
+            assert rr < 0.99 and vr < 0.99, (age, rr, vr)

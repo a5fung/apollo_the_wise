@@ -1800,6 +1800,51 @@ def _fmt_ratio(v: Optional[float]) -> str:
     return f"{v:.2f}" if v is not None else "—"
 
 
+# ── Short-base tightness (DISPLAY ONLY — wk1010, 2026-10-10) ─────────────────────────────────
+# `compute_flag_metrics` compares the base's last 5 days with its first 5 over
+# `win = min(5, base_age)` rows. For a base of 5 sessions or fewer both windows are the SAME bars,
+# so `range_contraction_ratio` and `vol_contraction_ratio` are exactly 1.00 BY CONSTRUCTION — a
+# number that says nothing about the base. (Live 2026-10-09: KOD, base 5d, stored 1 / 1 while the
+# two-bar reading was 0.63.) The stage math already routes around it — the fresh-tight path
+# (`_compute_fresh_tightening`, base_age >= `_FRESH_TIGHT_BASE_AGE_MIN`) is what can fire on a
+# short base — but the renders still printed the 1.00s. They now print the measure that path
+# actually gates on: the last two bars' range against the usual (ATR-14) daily range, tight when
+# under `_FRESH_TIGHT_RATIO_MAX`. Nothing here touches a stage, threshold or detection.
+# The cutoff mirrors the detector's own `min(5, ...)`; tests/test_htf_criteria.py pins that the
+# stored ratios really are 1.00 at base_age <= 5 and are not at 6, so the two cannot drift apart.
+_SHORT_BASE_MAX = 5
+
+
+def is_short_base(base_age) -> bool:
+    """True when the base is too young for the first-5 vs last-5 ratios to mean anything."""
+    return isinstance(base_age, (int, float)) and base_age <= _SHORT_BASE_MAX
+
+
+def fresh_tight_ratio(r: dict) -> Optional[float]:
+    """The fresh-tight measure: max TR% of the last 2 bars ÷ ATR-14% (`_FRESH_TIGHT_RATIO_MAX`
+    is the bar; under it = clearly tight). From the persisted `fresh_2bar_tr_pct` / `atr14_pct`.
+    None when not computable (base under `_FRESH_TIGHT_BASE_AGE_MIN`, short history, no ATR)."""
+    tr, atr = r.get("fresh_2bar_tr_pct"), r.get("atr14_pct")
+    if tr is None or atr is None:
+        return None
+    try:
+        tr, atr = float(tr), float(atr)
+    except (TypeError, ValueError):
+        return None
+    return tr / atr if atr > 0 else None
+
+
+def short_base_tightness(r: dict) -> str:
+    """Plain-words tightness for a base of `_SHORT_BASE_MAX` sessions or fewer. Safe in both the
+    HTML digest (no markup characters) and the Markdown /flags board (no underscores)."""
+    ratio = fresh_tight_ratio(r)
+    if ratio is None:
+        return "tightness n/a"
+    if r.get("fresh_tight_fires"):
+        return f"last 2 bars tight ({ratio:.2f}× usual range)"
+    return f"last 2 bars {ratio:.2f}× usual range"
+
+
 # The digest is built as HTML with the shared helpers (#121 / #598) and sent with
 # parse_mode="HTML" — every dynamic value goes through tf.esc()/tf.code()/tf.b(), so a ticker
 # or a number can never 400 the message. Only the markup is hand-written.
@@ -1809,10 +1854,12 @@ def _fmt_coiled(r: dict) -> str:
     vr = r.get("vol_contraction_ratio")
     runup = r.get("runup_pct")
     age = r.get("base_age")
-    return (
+    head = (
         f"  • {tf.code(r['ticker'])} — base {tf.esc(age)}d · run-up {tf.esc(_fmt_pct(runup, 0, sign=True))} · "
-        f"range {tf.esc(_fmt_ratio(rr))} · volume {tf.esc(_fmt_ratio(vr))}"
     )
+    if is_short_base(age):       # the 1.00 / 1.00 ratios are the same bars compared with themselves
+        return head + tf.esc(short_base_tightness(r))
+    return head + f"range {tf.esc(_fmt_ratio(rr))} · volume {tf.esc(_fmt_ratio(vr))}"
 
 
 def _fmt_triggered(r: dict) -> str:
@@ -1903,7 +1950,11 @@ def _transition_key(ticker: str, stage: str, scan_date) -> str:
 
 def _fmt_tightness(r: dict) -> str:
     """Base tightness in plain numbers: the base's last 5 days against its first 5 (1.00 = no
-    tightening yet; the stage bars are `_RANGE_CONTRACTION_MAX` / `_VOL_CONTRACTION_MAX`)."""
+    tightening yet; the stage bars are `_RANGE_CONTRACTION_MAX` / `_VOL_CONTRACTION_MAX`). A base of
+    `_SHORT_BASE_MAX` sessions or fewer compares those 5 days with themselves — both read 1.00 — so
+    it shows the last-two-bars measure instead (`short_base_tightness`)."""
+    if is_short_base(r.get("base_age")):
+        return short_base_tightness(r)
     parts = []
     rr, vr = r.get("range_contraction_ratio"), r.get("vol_contraction_ratio")
     if rr is not None:
@@ -1963,11 +2014,18 @@ def build_flag_digest(
         lines.append("")
         lines.append(f"🆕 {tf.b(f'NEW TODAY — entered TIGHTENING or COILED ({len(transitions)})')}")
         lines.extend(_fmt_transition(t) for t in transitions)
-        lines.append(tf.i(
+        legend = (
             "A watch list, not a trade signal — no buy point or stop is set. Range and volume are "
             "the base's last 5 days against its first 5 "
             f"(tight = range under {_RANGE_CONTRACTION_MAX:.2f}, volume under {_VOL_CONTRACTION_MAX:.2f})."
-        ))
+        )
+        if any(is_short_base(t["row"].get("base_age")) for t in transitions):
+            legend += (
+                f" A base of {_SHORT_BASE_MAX} days or fewer has no separate first and last 5 days, "
+                "so it shows the last 2 bars' range against the usual daily range instead "
+                f"(tight = under {_FRESH_TIGHT_RATIO_MAX:.2f})."
+            )
+        lines.append(tf.i(legend))
 
     if triggered:
         lines.append("")

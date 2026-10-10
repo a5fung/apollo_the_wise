@@ -1,0 +1,101 @@
+Sample render, #598 short-base tightness (wk1010, 2026-10-10). READ-ONLY, offline: rows are the
+prod SELECT in q1_short_base_candidates.out. Current candidate = KOD (the only TIGHTENING/COILED name
+on the latest scan, 2026-10-09): COILED, base 5d, stored range 1.0 / volume 1.0, fresh path NOT firing
+(held COILED from WATCH), last two bars 6.64% vs ATR 10.53%. Its 2026-10-08 row (base 4d, fresh path
+firing) is the day it entered COILED - the row the NEW TODAY block rendered. Plain text below is the
+digest HTML run through tf.to_plain; /flags is the raw Markdown the handler returns.
+
+====================================================================================================
+1. 17:25 digest, NEW TODAY block - KOD entered COILED 2026-10-08 (base 4d, fresh path firing)
+====================================================================================================
+--- BEFORE (HEAD) ---
+🚩 HTF Scanner — Oct 8
+1 tickers scanned · 0 watch · 0 tightening · 1 coiled · 0 triggered
+
+🆕 NEW TODAY — entered TIGHTENING or COILED (1)
+  • KOD — COILED · run-up +249% · pivot $104.00 · range 1.00×, volume 1.00×, last 2 bars tight · base 4d
+A watch list, not a trade signal — no buy point or stop is set. Range and volume are the base's last 5 days against its first 5 (tight = range under 0.75, volume under 0.70).
+--- AFTER (this change) ---
+🚩 HTF Scanner — Oct 8
+1 tickers scanned · 0 watch · 0 tightening · 1 coiled · 0 triggered
+
+🆕 NEW TODAY — entered TIGHTENING or COILED (1)
+  • KOD — COILED · run-up +249% · pivot $104.00 · last 2 bars tight (0.53× usual range) · base 4d
+A watch list, not a trade signal — no buy point or stop is set. Range and volume are the base's last 5 days against its first 5 (tight = range under 0.75, volume under 0.70). A base of 5 days or fewer has no separate first and last 5 days, so it shows the last 2 bars' range against the usual daily range instead (tight = under 0.60).
+
+====================================================================================================
+2. 17:25 digest, standing COILED roster - KOD still coiled 2026-10-09 (base 5d, fresh path not firing)
+====================================================================================================
+--- BEFORE (HEAD) ---
+  • <code>KOD</code> — base 5d · run-up +249% · range 1.00 · volume 1.00
+--- AFTER (this change) ---
+  • <code>KOD</code> — base 5d · run-up +249% · last 2 bars 0.63× usual range
+
+====================================================================================================
+3. /flags board - latest scan 2026-10-09 (1 TIGHTENING/COILED row)
+====================================================================================================
+--- BEFORE (HEAD) ---
+🚩 *Flag Scanner — 2026-10-09*  _(data: 2026-10-09)_
+
+
+🌀 *COILED — tightest bases, watch only (1)*
+  • `KOD` — base 5d · range 1.00 · vol 1.00
+
+_Drill-down: `/flags TICKER` for 14-day history_
+--- AFTER (this change) ---
+🚩 *Flag Scanner — 2026-10-09*  _(data: 2026-10-09)_
+
+
+🌀 *COILED — tightest bases, watch only (1)*
+  • `KOD` — base 5d · last 2 bars 0.63× usual range
+
+_Drill-down: `/flags TICKER` for 14-day history_
+
+====================================================================================================
+4. /flags KOD - 14-day stage history (rows available from the capture: its TIGHTENING/COILED days)
+====================================================================================================
+--- BEFORE (HEAD) ---
+🚩 *KOD — HTF History (14d)*
+
+  2026-10-09  `COILED     ` age 5    r1.00 v1.00 (held from WATCH)
+  2026-10-08  `COILED     ` age 4    r1.00 v1.00
+--- AFTER (this change) ---
+🚩 *KOD — HTF History (14d)*
+
+  2026-10-09  `COILED     ` age 5    last 2 bars 0.63× usual range (held from WATCH)
+  2026-10-08  `COILED     ` age 4    last 2 bars tight (0.53× usual range)
+
+====================================================================================================
+5. UNCHANGED reference - HTFL 2026-10-06 base 11d (longer than 5 sessions, ratios mean something)
+====================================================================================================
+--- BEFORE (HEAD) ---
+🚩 HTF Scanner — Oct 6
+1 tickers scanned · 0 watch · 1 tightening · 0 coiled · 0 triggered
+
+🆕 NEW TODAY — entered TIGHTENING or COILED (1)
+  • HTFL — TIGHTENING · run-up +117% · pivot $52.22 · range 1.24×, volume 1.11× · base 11d
+A watch list, not a trade signal — no buy point or stop is set. Range and volume are the base's last 5 days against its first 5 (tight = range under 0.75, volume under 0.70).
+🚩 *Flag Scanner — 2026-10-06*  _(data: 2026-10-06)_
+
+
+🔧 *TIGHTENING (1)*
+  • `HTFL` age 11d · range 1.24 · vol 1.11
+
+_Drill-down: `/flags TICKER` for 14-day history_
+--- AFTER (this change) ---
+🚩 HTF Scanner — Oct 6
+1 tickers scanned · 0 watch · 1 tightening · 0 coiled · 0 triggered
+
+🆕 NEW TODAY — entered TIGHTENING or COILED (1)
+  • HTFL — TIGHTENING · run-up +117% · pivot $52.22 · range 1.24×, volume 1.11× · base 11d
+A watch list, not a trade signal — no buy point or stop is set. Range and volume are the base's last 5 days against its first 5 (tight = range under 0.75, volume under 0.70).
+🚩 *Flag Scanner — 2026-10-06*  _(data: 2026-10-06)_
+
+
+🔧 *TIGHTENING (1)*
+  • `HTFL` age 11d · range 1.24 · vol 1.11
+
+_Drill-down: `/flags TICKER` for 14-day history_
+
+Section 5 byte-identical before/after: True
+Capture facts: 39 TIGHTENING/COILED rows in 30 days; 3 with base_age <= 5 (KOD 2026-10-08, KOD 2026-10-09, TJGC 2026-09-10); min base_age = 4 - no base <= 3 row, so 'n/a' is test-covered only.

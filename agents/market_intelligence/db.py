@@ -8322,7 +8322,8 @@ async def get_ticker_flag_history(ticker: str, days: int = 14) -> list[dict[str,
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
             SELECT scan_date, stage, base_age, range_contraction_ratio,
-                   vol_contraction_ratio, reason, held_from_stage
+                   vol_contraction_ratio, reason, held_from_stage,
+                   fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct
             FROM mi_flag_candidates
             WHERE ticker = $1
               AND scan_date >= CURRENT_DATE - ($2::int || ' days')::interval

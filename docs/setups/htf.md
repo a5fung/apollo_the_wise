@@ -107,7 +107,14 @@ Suppressed entirely on a day with no TRIGGERED, no COILED and no new transition.
    `pivot_high_price` (the pole top); `range` / `volume` are `range_contraction_ratio` /
    `vol_contraction_ratio` (the base's last 5 days against its first 5 — 1.00 is no tightening; the stage bars
    are `_RANGE_CONTRACTION_MAX=0.75` / `_VOL_CONTRACTION_MAX=0.70`, quoted live in the message footer). A
-   fresh-tightening entry adds `last 2 bars tight`. The footer says in so many words that it is **a watch
+   fresh-tightening entry adds `last 2 bars tight`. **A base of 5 sessions or fewer (`_SHORT_BASE_MAX`)
+   prints neither ratio** — the detector's last-5 and first-5 windows are the same bars there, so both are
+   exactly 1.00 by construction (pinned against the real detector in `tests/test_htf_criteria.py`). It prints
+   the last-2-bars measure instead (`fresh_2bar_tr_pct ÷ atr14_pct`, tight under `_FRESH_TIGHT_RATIO_MAX=0.60`):
+   `last 2 bars tight (0.53× usual range)` / `last 2 bars 0.63× usual range` / `tightness n/a` when it cannot be
+   computed (base under 4 days, no ATR). The same rule applies to the `COILED — still coiled` roster and to the
+   `/flags` board and `/flags TICKER` history. Display only — no stage, threshold or detection reads it
+   (wk1010, 2026-10-10). The footer says in so many words that it is **a watch
    list, not a trade signal — no buy point or stop is set** (a stage is a state, not a setup; CLAUDE.md).
 2. `TRIGGERED`, 3. `COILED — still coiled` (names already coiled, not the ones listed in `NEW TODAY`),
    4. a one-line `N dropped out` count (#479).
