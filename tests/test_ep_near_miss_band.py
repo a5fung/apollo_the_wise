@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import inspect
 import pathlib
+import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
@@ -103,6 +104,10 @@ def test_skip_continue_precedes_tier_assignment_precedes_earnings_override():
     """Structural ordering pin: the skip-continue block, the tier assignment, and the
     earnings-day override must appear in exactly this order in run_ep_scan's source — a
     refactor that reorders them could re-open the trap silently."""
+    # source-pin-ok: ORDER of three blocks inside run_ep_scan's nested graded tail — a closure
+    # with no independently-callable seam; the behavioural near-miss tests in this file prove
+    # outcomes, this pins that no refactor reorders the gates (edited 2026-10-10 only to accept
+    # the extracted tail's bare `return`).
     src = _scan_src()
     skip_idx = src.index(
         "if ep_score < ep_threshold and (_mod_cut is None or ep_score < _mod_cut):"
@@ -116,7 +121,9 @@ def test_skip_continue_precedes_tier_assignment_precedes_earnings_override():
     # The skip block must actually `continue` (not just log) — otherwise scored-but-
     # skipped candidates would fall through into tier assignment anyway.
     between = src[skip_idx:tier_idx]
-    assert "continue" in between
+    # `return` since 2026-10-10: the graded tail is the nested `_grade_admitted` (#624 paper
+    # lane extraction), where the loop's old `continue` is a bare `return`.
+    assert re.search(r"^\s+(continue|return)\s*$", between, re.M)
 
 
 def test_earnings_override_still_only_guards_on_tier_moderate():

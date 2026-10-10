@@ -119,7 +119,11 @@ GATE_VECTOR: dict[str, "tuple[str, ...]"] = {
 
 # ── 5. tripwires (see module docstring §4 — update ONLY with a conscious review) ───
 # `continue` statements inside run_ep_scan (a new one = a possible silent kill).
-EXPECTED_SCAN_CONTINUE_COUNT = 17
+EXPECTED_SCAN_CONTINUE_COUNT = 14
+# Bare `return` statements inside run_ep_scan's nested `_grade_admitted` (the graded tail,
+# extracted 2026-10-10 for the #624 paper lane — its three kill points were `continue`s of the
+# loop; 14 + 3 = the pre-extraction 17). A new one = a possible silent kill, same as above.
+EXPECTED_GRADE_TAIL_RETURN_COUNT = 3
 # `_log_filtered(` call sites inside run_ep_scan (a new one = a new logged gate —
 # register its stage + inputs above).
 EXPECTED_LOG_FILTERED_CALLS = 9

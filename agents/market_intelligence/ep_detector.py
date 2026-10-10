@@ -2186,6 +2186,11 @@ async def _post_grade_filters(
     # #692b: the grader's merit grade for THIS name (None = not given). A release of a 'mna'
     # name WITHOUT a usable merit grade stays BLOCKED here (his wording: "stays 'mna' / blocked").
     quality_if_no_deal: "str | None" = None,
+    # #624 paper lane (2026-10-10): which M&A headline-question budget pool this check spends.
+    # "ep" (the default — the live scan, byte-identical) may spend the whole daily budget; the
+    # paper lane passes "shared", which stops short of the EP reserve, so a lane question can
+    # never take one the live scan needs later that day.
+    ma_budget_pool: str = "ep",
 ) -> str | None:
     """The three post-grade hard filters — M&A/buyout, routine-catalyst-low-gap,
     pm-shares floor (R6 carve-out) — extracted (S6/#405, 2026-07-03) so BOTH the
@@ -2275,7 +2280,7 @@ async def _post_grade_filters(
         catalyst_quality=catalyst_quality,
         catalyst_texts=catalyst_texts_for_filter,
         skip_in_orb=True,
-        budget_pool="ep",
+        budget_pool=ma_budget_pool,
         pin_reader=lambda: read_open_window_pin(ticker, today),
         gap_pct=gap_pct,
     )
@@ -4557,250 +4562,35 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         return resolve_theme_bonus_input(
             _tk in _in_active_theme_set, _belonging.get((_tk or "").upper()), _belonging_live)
 
-    for c in candidates[:SHORTLIST_SIZE]:  # graded cap — the LLM/FMP call budget
-        ticker = c["ticker"]
-        rel_volume = c.get("rel_volume") or 0
+    # #624 paper lane: names the loop below turns away ONLY on the market-cap floor (filled in
+    # the FILTER_MCAP_TOO_SMALL branch; read by the detached lane dispatch at the end).
+    _lowcap_paper_candidates: list = []
 
-        # ── Volume gate (RVOL@T) ──────────────────────────────────────────
-        # ONE primitive, two anchors. Pre-9:30 → pm anchor (cumulative from
-        # 4:00 ET vs 22-day pre-market baseline). 9:30 onward → session
-        # anchor (cumulative from 9:30 vs 22-day session baseline). RVOL@T
-        # answers: "is today's pace at this clock-minute above this ticker's
-        # normal pace at this clock-minute." Replaces the structurally broken
-        # `today_5min_vol / 390min_ADV` ratio that mathematically rejected
-        # every name in the first 15 min unless they had outsized pre-market
-        # volume (HUT/BLMN/GLW false-rejects 5/6).
-        #
-        # Silent fallback: if the ticker has no baseline (outside dollar-vol
-        # universe, or curves not yet refreshed), the gate passes — the
-        # absolute-share floor below catches micro-float noise.
-        try:
-            if _minutes_since_open is None:
-                premkt_vol, session_vol = c["today_volume"], 0
-            else:
-                premkt_vol, session_vol = 0, c["today_volume"]
-            _rt_vols = _rt_vol_map.get(ticker)
-            if _rt_vol_authoritative:
-                # #490 §6.1 AUTHORITATIVE (RT-5, operator-flipped): the rt cumulatives replace
-                # the delayed single-bucket split as the RVOL@T anchor inputs, and the
-                # candidate's today-volume-derived figures follow (§6.2 — rel_volume /
-                # today's $-vol / open-intensity projection all derive from today_volume).
-                # `_apply_rt_volume` returns None when the ACTING anchor's bucket was never
-                # measured (no bars yet — the 09:30-tick shape) or the symbol is absent: the
-                # whole §6.2 cascade then stays off and the delayed values decide, exactly as
-                # they do today. NOT-YET-AVAILABLE is never a zero. See `_rt_anchor_measured`.
-                _rt_applied = _apply_rt_volume(c, _rt_vols, now_et, _minutes_since_open)
-                if _rt_applied is not None:
-                    premkt_vol, session_vol = _rt_applied
-                    rel_volume = c.get("rel_volume") or 0
-            rvol_info = await compute_rvol_at_time(
-                ticker=ticker,
-                now_et=now_et,
-                today_premkt_vol=premkt_vol,
-                today_session_vol=session_vol,
-            )
-        except Exception as e:
-            logger.warning(f"RVOL@T lookup failed for {ticker}: {e}")
-            rvol_info = None
-        if rvol_info:
-            anchor = rvol_info["anchor"]
-            threshold = MIN_PM_RVOL if anchor == "pm" else MIN_SESSION_RVOL
-            reason_const = (
-                FILTER_PM_RVOL_TOO_LOW if anchor == "pm" else FILTER_SESSION_RVOL_TOO_LOW
-            )
-            audit_event = "ep_filter_pm_rvol" if anchor == "pm" else "ep_filter_session_rvol"
-            phase_label = "pre-open" if anchor == "pm" else "session"
-            c["pm_rvol"] = rvol_info["rvol_at_time"]  # column reused for both anchors
-            c["pm_rvol_baseline_n"] = rvol_info["baseline_n"]
-            # #490 §6.1 SHADOW (toggle off): would the RVOL@T gate decide differently on the rt
-            # cumulatives? Logged BEFORE the gate-skip below so false-rejected names still
-            # accrue evidence. ep_rt_rvol_gate_flip = the NAMED flip list (CHANGE_PROCESS rule 3
-            # — reviewed by the operator at RT-2, never self-classified). Once per ticker/day.
-            _rt_vols = _rt_vol_map.get(ticker)
-            if _rt_vols is not None and not _rt_vol_authoritative:
-                try:
-                    _rt_rvol_info = await compute_rvol_at_time(
-                        ticker=ticker, now_et=now_et,
-                        today_premkt_vol=_rt_vols["pm_vol"],
-                        today_session_vol=_rt_vols["session_vol"],
-                    )
-                    if _rt_rvol_info:
-                        _gate_fail_delayed = (
-                            rvol_info["baseline_n"] >= MIN_BASELINE_N_FOR_GATE
-                            and rvol_info["rvol_at_time"] < threshold)
-                        _gate_fail_rt = (
-                            _rt_rvol_info["baseline_n"] >= MIN_BASELINE_N_FOR_GATE
-                            and _rt_rvol_info["rvol_at_time"] < threshold)
-                        _would_flip = _gate_fail_delayed != _gate_fail_rt
-                        # #490 §6.1 no-data fallback — ADDITIVE ONLY. `_would_flip`, the event
-                        # type and the message stay byte-identical: reclassifying a recorded
-                        # flip is the OPERATOR's call (CHANGE_PROCESS rule 3, never
-                        # self-classified). What the row gains is the second reading —
-                        # `rt_vol_state` says whether the ACTING anchor was measured at all, and
-                        # `would_rvol_gate_flip_measured` is the verdict once the fallback is
-                        # honoured (an unmeasured anchor cannot act, so it cannot flip). Both
-                        # readings now sit in the same row; the operator picks which one counts.
-                        _rt_measured = _rt_anchor_measured(_rt_vols, now_et)
-                        _would_flip_measured = _would_flip and _rt_measured
-                        _vol_ev = "ep_rt_rvol_gate_flip" if _would_flip else "ep_rt_volume_shadow"
-                        if _audit_dedupe_check(ticker, today, _vol_ev):
-                            await log_audit_event(
-                                _vol_ev,
-                                f"{ticker} {anchor}_rvol delayed={rvol_info['rvol_at_time']:.2f}x "
-                                f"rt={_rt_rvol_info['rvol_at_time']:.2f}x"
-                                + (" — GATE WOULD FLIP (SHADOW)" if _would_flip else ""),
-                                json.dumps({
-                                    "ticker": ticker, "alert_date": today.isoformat(),
-                                    "anchor": anchor,
-                                    "vol_delayed": c["today_volume"],
-                                    "vol_rt_pm": _rt_vols["pm_vol"],
-                                    "vol_rt_session": _rt_vols["session_vol"],
-                                    "rvol_delayed": rvol_info["rvol_at_time"],
-                                    "rvol_rt": _rt_rvol_info["rvol_at_time"],
-                                    "would_rvol_gate_flip": _would_flip,
-                                    "rt_vol_state": (
-                                        "measured" if _rt_measured else "no_bars_for_anchor"),
-                                    "would_rvol_gate_flip_measured": _would_flip_measured,
-                                    "tick_et": now_et.strftime("%H:%M"),  # recovery-clock-ok: a wall-clock TIME-OF-DAY label — when the tick actually happened, which is about NOW by definition. Leave it unpinned. What keeps a stale re-run off the ORB path is the FRESHNESS rule, not this: classify_slot calls sessions_opened_between and marks a slot unrecoverable once any session has opened since it, so a 09:00 slot dies at 09:30 and the only live recovery window is roughly [09:00, 09:30) — where the slot and the real clock both satisfy `hour==9 and minute<45` anyway (ORB_QUIET 09:25-10:05 is belt-and-braces). Pinning would make the text claim a time the scan never ran at, and would drop the safe default if that freshness rule ever loosened. (#672, corrected 2026-09-20.)
-                                }),
-                            )
-                except Exception as _vse:  # loud-ok: shadow-only — never touches the live gate
-                    logger.debug(f"{ticker}: rt volume shadow skipped — {_vse}")
-            if (
-                rvol_info["baseline_n"] >= MIN_BASELINE_N_FOR_GATE
-                and rvol_info["rvol_at_time"] < threshold
-            ):
-                detail = (
-                    f"{anchor}_rvol={rvol_info['rvol_at_time']:.2f}x "
-                    f"(today {rvol_info['today_cum_vol']:,} / "
-                    f"baseline {rvol_info['baseline_mean']:,.0f} "
-                    f"n={rvol_info['baseline_n']}) < {threshold}x"
-                )
-                reason = f"{reason_const}: {detail}"
-                logger.info(f"Skip {ticker}: {detail} (gap={c['gap_pct']:.1f}%)")
-                _log_filtered(c, reason, stage="rvol_gate")
-                await log_audit_event(
-                    audit_event,
-                    f"{ticker} {phase_label} pace below normal",
-                    f"{detail} | gap={c['gap_pct']:.1f}%",
-                )
-                continue
+    async def _grade_admitted(c: dict, ticker: str, rel_volume, *, lane=None,
+                              _log_filtered=_log_filtered, scan_log=scan_log, results=results,
+                              _tier_shadow_inputs=_tier_shadow_inputs,
+                              _score_shadow_inputs=_score_shadow_inputs,
+                              _belonging_shadow_inputs=_belonging_shadow_inputs,
+                              _fit_budget=_fit_budget) -> None:
+        """The graded tail of the per-candidate loop below — volume-conviction percentile,
+        catalyst grade, post-grade filters, score, earnings override, result + alert insert —
+        extracted VERBATIM (2026-10-10, #624 paper lane) so the small-cap PAPER lane grades its
+        names with THIS code, never a restatement of it. `return` here is the loop's old
+        `continue`.
 
-        # NOTE: pm-shares absolute-floor gate moved post-catalyst (R6 ship,
-        # 2026-05-17) so we can carve out high-conviction names. The new
-        # location is after catalyst classification — search for "R6 pm-shares".
+        LIVE (`lane is None`, the only way the loop below calls it): every default above IS the
+        object the loop used before the extraction, so the live path is byte-identical
+        (tests/test_624_lowcap_lane.py runs the scan end to end on/off/raising).
 
-        # Hard filter: EP cooldown — don't re-alert same ticker within 60 days,
-        # UNLESS a fresh earnings catalyst is firing (HIMX 5/07 incident class:
-        # ticker on cooldown from prior alert, but fresh earnings + qualifying
-        # gap is structurally a new event — earnings are quarterly, the prior
-        # alert was a different catalyst). Bypass requires both gap >= 15%
-        # AND is_earnings_day to avoid bypassing on routine post-news bumps.
-        if ticker in cooldown_tickers:
-            cooldown_bypass = False
-            if c["gap_pct"] >= 15.0:
-                # Fail-soft direction (advisor alignment 2026-05-08): on
-                # yfinance error, treat as earnings day → cooldown BYPASSED.
-                # Defensive: rather over-allow on data outage than block a
-                # real fresh-earnings EP.
-                try:
-                    earnings_match_cd, _ = await is_earnings_day(ticker, today)
-                except Exception as _earn_err:
-                    logger.warning("cooldown: is_earnings_day failed for %s - treating as earnings day (cooldown bypassed, fail-soft): %s", ticker, _earn_err)
-                    earnings_match_cd = True
-                if earnings_match_cd:
-                    cooldown_bypass = True
-                    await log_audit_event(
-                        "ep_cooldown_bypassed_earnings",
-                        f"{ticker}: cooldown bypassed — fresh earnings + gap {c['gap_pct']:.1f}%",
-                        json.dumps({
-                            "ticker": ticker,
-                            "alert_date": today.isoformat(),
-                            "gap_pct": c["gap_pct"],
-                            "cooldown_days": EP_COOLDOWN_DAYS,
-                        }),
-                    )
-            if not cooldown_bypass:
-                # #170 SHADOW (telemetry-only, fail-open): if this suppressed
-                # candidate looks like a RE-SETUP (hard gap, weeks since the
-                # prior alert), record it — it is STILL suppressed live; this
-                # only accrues the cohort for the realized-R review. Wrapped so
-                # a shadow failure can never affect the suppression below.
-                try:
-                    _last = cooldown_last_alert.get(ticker)
-                    _dsince = (today - _last).days if _last else None
-                    if _is_cooldown_resetup(c["gap_pct"], _dsince):
-                        await log_audit_event(
-                            "cooldown_resetup_admit_shadow",
-                            f"{ticker}: SHADOW re-setup — gap {c['gap_pct']:.1f}%, "
-                            f"{_dsince}d since prior alert (suppressed by "
-                            f"{EP_COOLDOWN_DAYS}d cooldown; #170)",
-                            json.dumps({
-                                "ticker": ticker, "alert_date": today.isoformat(),
-                                "gap_pct": c["gap_pct"],
-                                "days_since_prior_alert": _dsince,
-                                "prev_close": c.get("prev_close"),
-                            }),
-                        )
-                except Exception as _e:
-                    logger.warning(f"#170 shadow emit failed for {ticker}: {_e}")
-                reason = f"EP cooldown — alerted within last {EP_COOLDOWN_DAYS} days"
-                logger.info(f"Skip {ticker}: {reason}")
-                _log_filtered(c, reason, stage="cooldown")
-                continue
-
-        # Skip if already scored in an earlier scan run today
-        if ticker in already_today:
-            logger.debug(f"Skip {ticker}: already scored today")
-            _log_filtered(c, "already scored earlier today", stage="duplicate")
-            continue
-
-        # Hard filter: extension — skip if already up 50%+ before today's gap
-        close_5d_ago = extension_map.get(ticker)
-        if close_5d_ago and close_5d_ago > 0 and c["prev_close"]:
-            extension_pct = (c["prev_close"] - close_5d_ago) / close_5d_ago * 100
-            if extension_pct >= MAX_EXTENSION_PCT:
-                reason = f"already up {extension_pct:.0f}% in prior 5 days (extended)"
-                logger.info(f"Skip {ticker}: {reason}")
-                _log_filtered(c, reason, stage="extension")
-                continue
-
-        # Hard filter: pre-trade quality (ADV $1M, ATR%, market cap)
-        # Single source of truth — same filters used by backtester and live tracker
-        # #605: `metrics` deposits the COMPARED values (30d median $ADV / ATR% / mcap)
-        # onto the candidate so the scan_log row carries the inputs, not just the verdict
-        # — zero extra queries (check_filters already computed them).
-        _qf_metrics: dict = {}
-        passed, skip_reason = await check_filters(ticker, today, metrics=_qf_metrics)
-        c["quality_adv_dollar"] = _qf_metrics.get("quality_adv_dollar")
-        c["atr_pct"] = _qf_metrics.get("atr_pct")
-        c["market_cap"] = _qf_metrics.get("market_cap")
-        if not passed:
-            reason = f"quality filter: {skip_reason}"
-            logger.info(f"Skip {ticker}: pre-trade filter — {skip_reason}")
-            _log_filtered(c, reason, stage="quality_filter")
-            # OBSERVE LANE (operator-approved 2026-06-11, the MNTS case): a
-            # sub-$500M mover that passed every gap/RVOL gate is the tiny-cap
-            # fast-runner class — auto-trade stays EXCLUDED (this skip stands),
-            # but it becomes VISIBLE: one audit row per ticker per day, read by
-            # the morning briefing. Themes/9M/flag lanes already see these.
-            if skip_reason and skip_reason.startswith(FILTER_MCAP_TOO_SMALL):
-                global _tinycap_seen_date, _tinycap_seen
-                if _tinycap_seen_date != today:
-                    _tinycap_seen = set()
-                    _tinycap_seen_date = today
-                if ticker not in _tinycap_seen:
-                    _tinycap_seen.add(ticker)
-                    await log_audit_event(
-                        "ep_tinycap_observed",
-                        f"{ticker} gap={c.get('gap_pct') or 0:.1f}% — {skip_reason} (observe-only)",
-                        json.dumps({"ticker": ticker, "gap_pct": c.get("gap_pct"),
-                                    "rel_volume": c.get("rel_volume"),
-                                    "price": c.get("price"),
-                                    "skip_reason": skip_reason}, default=str),
-                    )
-            continue
-
+        LANE (`lowcap_paper_lane`, after live grading has finished, detached): the caller passes
+        its own sinks — scan rows, results, a `_log_filtered` that writes lane rows, throwaway
+        shadow lists, no theme-fit budget (the per-day fit counter is the live scan's) — and
+        `lane` swaps exactly five things: the grade cache + re-poll state (the lane's own), the
+        alert writer (the lane's own table — NEVER mi_ep_alerts, which the live order step reads),
+        the allocator enqueue (skipped), the two catalyst Telegrams (skipped — the lane pages
+        only on failures) and the M&A question budget pool ('shared' — the EP reserve stays the
+        live scan's). Gates, grader, score and order are the live ones."""
+        nonlocal _magna53_mode_fetched, _magna53_account_mode
         # Volume conviction percentile — only valid pre-open (compares cumulative
         # to full-day ADV history). Post-open the partial-day cumulative would
         # falsely rank near 0 against full-day distributions, so return neutral.
@@ -4885,12 +4675,18 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # routine/pm-volume state changes through the morning (BFLY class).
         global _catalyst_cache, _catalyst_cache_date
         global _repoll_shadow_state, _repoll_shadow_date  # #344 re-poll shadow dedup
-        if _catalyst_cache_date != today:
-            _catalyst_cache.clear()
-            _catalyst_cache_date = today
-        if _repoll_shadow_date != today:
-            _repoll_shadow_state.clear()
-            _repoll_shadow_date = today
+        if lane is None:
+            if _catalyst_cache_date != today:
+                _catalyst_cache.clear()
+                _catalyst_cache_date = today
+            if _repoll_shadow_date != today:
+                _repoll_shadow_state.clear()
+                _repoll_shadow_date = today
+            _grade_cache, _repoll_state = _catalyst_cache, _repoll_shadow_state
+        else:
+            # #624 paper lane: its OWN grade cache + re-poll state (per ET day, held by the
+            # lane) — a lane grade never sits in, reads or clears the live cache.
+            _grade_cache, _repoll_state = lane.grade_cache(today), lane.repoll_state(today)
 
         _has_direct_source = None  # Wave C shadow (#233): set on the uncached grade tick
         grounded_text = None       # #240 judge shadow: the cached path skips the grounded build
@@ -4909,7 +4705,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # and would blank the label on every tick after the first. Cleared again if a
         # downgrade ultimately DID fire — "kept" must never survive an applied downgrade.
         _floor_grade_kept: "dict | None" = None
-        cached = _catalyst_cache.get(ticker)
+        cached = _grade_cache.get(ticker)
         if cached:
             # filters_cleared: True = this grade already passed the M&A/routine/
             # pm-volume filters (pre-#405 cache semantics: only survivors were
@@ -4955,6 +4751,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     ticker, catalyst_quality, claude_analysis, news_summary,
                     c["gap_pct"], c["today_volume"], c.get("pm_rvol"), today,
                     lattice_acting=(_live_side == "lattice"),
+                    ma_budget_pool=("ep" if lane is None else "shared"),
                     deal_answer=deal_answer,
                     release_sink=_mna_release,
                     quality_if_no_deal=quality_if_no_deal,
@@ -4972,7 +4769,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         llm_catalyst_quality, catalyst_quality, _lattice_verdict, _live_side = _rel
                         cached = cached._replace(catalyst_quality=llm_catalyst_quality,
                                                  mna_released_on_price=True)
-                        _catalyst_cache[ticker] = cached
+                        _grade_cache[ticker] = cached
                         skip_reason = _grade_floor_filters(
                             ticker, catalyst_quality, c["gap_pct"], c["today_volume"],
                             c.get("pm_rvol"), lattice_acting=(_live_side == "lattice"))
@@ -4989,12 +4786,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         deal_answer=deal_answer)
                     if _kill_row:
                         _tier_shadow_inputs.append(_kill_row)
-                    continue
+                    return
                 # A time-sensitive filter input cleared since the grade tick
                 # (pm-volume grew, M&A stopped matching, gap moved) — flip the
                 # flag and fall through EXACTLY as a fresh survivor would.
                 filters_cleared = True
-                _catalyst_cache[ticker] = cached._replace(filters_cleared=True)
+                _grade_cache[ticker] = cached._replace(filters_cleared=True)
                 logger.info(f"{ticker}: cached grade ({catalyst_quality}) now clears filters — proceeding")
 
             profile = await get_fmp_profile(ticker)  # still need profile for neglect/float scoring
@@ -5011,7 +4808,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # PREMARKET-ONLY (advisor 6/19): same guard as the enrichment shadow — keep the
             # re-poll's SEC GET + Sonnet call OFF the ORB entry window. BFLY's PR (8:12 ET)
             # is premarket, so the late-source class is still covered.
-            _st = _repoll_shadow_state.get(ticker)
+            _st = _repoll_state.get(ticker)
             _in_window = _is_premarket(now_et)
             # NB: ENRICH_SHADOW_ENABLED is the MASTER enrichment switch — despite the
             # "shadow" name it now also gates this LIVE-acting re-poll (#347). A rename
@@ -5067,7 +4864,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             # re-filter (an upgraded 'mna' would dodge the M&A
                             # filter this tick) — the deferred-tick delay IS the
                             # designed safety semantic.
-                            _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
+                            _grade_cache[ticker] = _grade_cache[ticker]._replace(
                                 catalyst_quality=_rq,
                                 claude_analysis=_ran,
                                 confidence_multiplier=1.0,
@@ -5260,7 +5057,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 1 for n in (alpaca_news or [])
                 if is_primary_subject_news(n, ticker, profile.get("companyName", ""))
             )
-            _repoll_shadow_state[ticker] = {
+            _repoll_state[ticker] = {
                 "count": _grade_src_count, "quality": catalyst_quality, "logged": False,
                 # reuse the live-enriched fetches when they ran (no second EDGAR hit)
                 "ext_filings": _enr_sink.get("ext_filings"),
@@ -5286,7 +5083,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         sec_filing_fallback=sec_filing,
                         perplexity_answer=perplexity_answer,
                         news_for_classify=all_news,
-                        state_sink=_repoll_shadow_state[ticker],
+                        state_sink=_repoll_state[ticker],
                     )
                     await log_audit_event(
                         "ep_grade_enrich_shadow",
@@ -5385,6 +5182,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 ticker, catalyst_quality, claude_analysis, news_summary,
                 c["gap_pct"], c["today_volume"], c.get("pm_rvol"), today,
                 lattice_acting=(_live_side == "lattice"),
+                ma_budget_pool=("ep" if lane is None else "shared"),
                 deal_answer=deal_answer,
                 release_sink=_mna_release,
                 quality_if_no_deal=quality_if_no_deal,
@@ -5406,7 +5204,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # this trading day, whether it cleared or not. ⚠ The cache stores the
             # RAW grade (llm_catalyst_quality), never the acting one — the lattice
             # re-resolves it every tick; caching the verdict would double-apply it.
-            _catalyst_cache[ticker] = CachedGrade(
+            _grade_cache[ticker] = CachedGrade(
                 llm_catalyst_quality, confidence_multiplier, news_summary, claude_analysis,
                 pplx_quality, skip_reason is None,
                 grounded_text=grounded_text,
@@ -5426,7 +5224,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     deal_answer=deal_answer)
                 if _kill_row:
                     _tier_shadow_inputs.append(_kill_row)
-                continue
+                return
 
         # Earnings-day pre-score catalyst boost (DDOG/AAON 5/07 incident class).
         # Existing earnings-day override (below) only fires for MODERATE→HIGH
@@ -5501,7 +5299,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             llm_catalyst_quality = "strong"
             catalyst_quality = "strong"
             # Per-trading-day-per-ticker dedup. Without this, 3 container
-            # restarts today wiped _catalyst_cache 3x; each restart's first
+            # restarts today wiped _grade_cache 3x; each restart's first
             # scan tick re-fired the boost for JOYY/MOD/ESLT = 57 events
             # for what should be 3. Same shape as #89 M&A filter dedup.
             if await _should_log_catalyst_earnings_event_today(
@@ -5523,7 +5321,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # filters_cleared stays True — only reachable post-filter (S6/#405).
             # The cache stores the RAW grade (one-grade rule: the lattice re-resolves
             # it every tick, so caching the verdict would double-apply it).
-            _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
+            _grade_cache[ticker] = _grade_cache[ticker]._replace(
                 catalyst_quality=llm_catalyst_quality,
             )
             # Raw grade changed → re-resolve the acting grade so every consumer
@@ -5639,7 +5437,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         logger.warning("extraction_error audit row NOT written for %s: %s", ticker, _audit_err)
                     # Only Telegram on HIGH-tier catalysts — extraction failures
                     # on MODERATE are noise (rubric doesn't gate MODERATE anyway).
-                    if catalyst_quality in ("strong", "game_changer"):
+                    if lane is None and catalyst_quality in ("strong", "game_changer"):
                         try:
                             from agents.market_intelligence.briefing import send_telegram_message
                             await send_telegram_message(
@@ -5832,7 +5630,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # the GOOD names that needed to submit. Earnings names classify pre-market, so the fetch runs
             # pre-9:30.
             # ⚠ 2026-09-04 (NSSC 8/24): the 6/28 comment here used to claim "the rescued grade caches in
-            # _catalyst_cache for the in-window scans". It did not, on this path: this block re-runs
+            # _grade_cache for the in-window scans". It did not, on this path: this block re-runs
             # every 5-min tick from the DB-cached extraction (which never had the YoY), the recovered
             # number was written nowhere a later tick could see, and a name recovered +10.1% at 07:25
             # was re-derived "missing" at 09:30:07 — in-window, fetch off — and DOWNGRADED. The recovery
@@ -6077,7 +5875,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             "gap_pct": c["gap_pct"],
                         }),
                     )
-                _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
+                _grade_cache[ticker] = _grade_cache[ticker]._replace(
                     catalyst_quality=llm_catalyst_quality,
                     confidence_multiplier=confidence_multiplier,
                 )
@@ -6145,7 +5943,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         "gap_pct": c["gap_pct"],
                     }),
                 )
-                _catalyst_cache[ticker] = _catalyst_cache[ticker]._replace(
+                _grade_cache[ticker] = _grade_cache[ticker]._replace(
                     catalyst_quality=llm_catalyst_quality,
                     confidence_multiplier=confidence_multiplier,
                 )
@@ -6197,7 +5995,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # re-fire the pre-Finding-5 send would already have hit (it ran on the same
         # per-tick condition); moving the send did not change this cadence, only its
         # accuracy.
-        if _prose_downgrade_marker:
+        if lane is None and _prose_downgrade_marker:
             try:
                 from agents.market_intelligence.briefing import send_telegram_message
                 from agents.market_intelligence.constants import mode_prefix
@@ -6412,7 +6210,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 c, reason=reason, ep_score=ep_score, tier=None,
                 catalyst_quality=catalyst_quality, stage="score_bar",
             ))
-            continue
+            return
 
         tier = "HIGH" if ep_score >= ep_threshold else "MODERATE"
         earnings_override_fired = False  # set True if the earnings-day MOD→HIGH fires below
@@ -6689,7 +6487,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         ))
 
         # Store in DB
-        await insert_ep_alert({
+        await (insert_ep_alert if lane is None else lane.insert_alert)({
             "ticker": ticker,
             "alert_date": today,
             "gap_pct": c["gap_pct"],
@@ -6719,7 +6517,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # writes shadow_rank for offline comparison vs actual fills. UPSERT —
         # later-tick re-scores update in place. Failure here MUST NOT block
         # the alert path; wrap defensively.
-        if tier in ("HIGH", "MODERATE"):
+        if lane is None and tier in ("HIGH", "MODERATE"):
             try:
                 from agents.market_intelligence.cross_strategy_allocator import score_magna53
                 cand = score_magna53(
@@ -6773,6 +6571,258 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             vol_parts.append(f"pm_rvol@t={pm_rvol_val:.2f}x")
         vol_str = " ".join(vol_parts)
         logger.info(f"EP alert: {ticker} gap={c['gap_pct']:.1f}% {vol_str} score={ep_score} tier={tier}")
+
+    for c in candidates[:SHORTLIST_SIZE]:  # graded cap — the LLM/FMP call budget
+        ticker = c["ticker"]
+        rel_volume = c.get("rel_volume") or 0
+
+        # ── Volume gate (RVOL@T) ──────────────────────────────────────────
+        # ONE primitive, two anchors. Pre-9:30 → pm anchor (cumulative from
+        # 4:00 ET vs 22-day pre-market baseline). 9:30 onward → session
+        # anchor (cumulative from 9:30 vs 22-day session baseline). RVOL@T
+        # answers: "is today's pace at this clock-minute above this ticker's
+        # normal pace at this clock-minute." Replaces the structurally broken
+        # `today_5min_vol / 390min_ADV` ratio that mathematically rejected
+        # every name in the first 15 min unless they had outsized pre-market
+        # volume (HUT/BLMN/GLW false-rejects 5/6).
+        #
+        # Silent fallback: if the ticker has no baseline (outside dollar-vol
+        # universe, or curves not yet refreshed), the gate passes — the
+        # absolute-share floor below catches micro-float noise.
+        try:
+            if _minutes_since_open is None:
+                premkt_vol, session_vol = c["today_volume"], 0
+            else:
+                premkt_vol, session_vol = 0, c["today_volume"]
+            _rt_vols = _rt_vol_map.get(ticker)
+            if _rt_vol_authoritative:
+                # #490 §6.1 AUTHORITATIVE (RT-5, operator-flipped): the rt cumulatives replace
+                # the delayed single-bucket split as the RVOL@T anchor inputs, and the
+                # candidate's today-volume-derived figures follow (§6.2 — rel_volume /
+                # today's $-vol / open-intensity projection all derive from today_volume).
+                # `_apply_rt_volume` returns None when the ACTING anchor's bucket was never
+                # measured (no bars yet — the 09:30-tick shape) or the symbol is absent: the
+                # whole §6.2 cascade then stays off and the delayed values decide, exactly as
+                # they do today. NOT-YET-AVAILABLE is never a zero. See `_rt_anchor_measured`.
+                _rt_applied = _apply_rt_volume(c, _rt_vols, now_et, _minutes_since_open)
+                if _rt_applied is not None:
+                    premkt_vol, session_vol = _rt_applied
+                    rel_volume = c.get("rel_volume") or 0
+            rvol_info = await compute_rvol_at_time(
+                ticker=ticker,
+                now_et=now_et,
+                today_premkt_vol=premkt_vol,
+                today_session_vol=session_vol,
+            )
+        except Exception as e:
+            logger.warning(f"RVOL@T lookup failed for {ticker}: {e}")
+            rvol_info = None
+        if rvol_info:
+            anchor = rvol_info["anchor"]
+            threshold = MIN_PM_RVOL if anchor == "pm" else MIN_SESSION_RVOL
+            reason_const = (
+                FILTER_PM_RVOL_TOO_LOW if anchor == "pm" else FILTER_SESSION_RVOL_TOO_LOW
+            )
+            audit_event = "ep_filter_pm_rvol" if anchor == "pm" else "ep_filter_session_rvol"
+            phase_label = "pre-open" if anchor == "pm" else "session"
+            c["pm_rvol"] = rvol_info["rvol_at_time"]  # column reused for both anchors
+            c["pm_rvol_baseline_n"] = rvol_info["baseline_n"]
+            # #490 §6.1 SHADOW (toggle off): would the RVOL@T gate decide differently on the rt
+            # cumulatives? Logged BEFORE the gate-skip below so false-rejected names still
+            # accrue evidence. ep_rt_rvol_gate_flip = the NAMED flip list (CHANGE_PROCESS rule 3
+            # — reviewed by the operator at RT-2, never self-classified). Once per ticker/day.
+            _rt_vols = _rt_vol_map.get(ticker)
+            if _rt_vols is not None and not _rt_vol_authoritative:
+                try:
+                    _rt_rvol_info = await compute_rvol_at_time(
+                        ticker=ticker, now_et=now_et,
+                        today_premkt_vol=_rt_vols["pm_vol"],
+                        today_session_vol=_rt_vols["session_vol"],
+                    )
+                    if _rt_rvol_info:
+                        _gate_fail_delayed = (
+                            rvol_info["baseline_n"] >= MIN_BASELINE_N_FOR_GATE
+                            and rvol_info["rvol_at_time"] < threshold)
+                        _gate_fail_rt = (
+                            _rt_rvol_info["baseline_n"] >= MIN_BASELINE_N_FOR_GATE
+                            and _rt_rvol_info["rvol_at_time"] < threshold)
+                        _would_flip = _gate_fail_delayed != _gate_fail_rt
+                        # #490 §6.1 no-data fallback — ADDITIVE ONLY. `_would_flip`, the event
+                        # type and the message stay byte-identical: reclassifying a recorded
+                        # flip is the OPERATOR's call (CHANGE_PROCESS rule 3, never
+                        # self-classified). What the row gains is the second reading —
+                        # `rt_vol_state` says whether the ACTING anchor was measured at all, and
+                        # `would_rvol_gate_flip_measured` is the verdict once the fallback is
+                        # honoured (an unmeasured anchor cannot act, so it cannot flip). Both
+                        # readings now sit in the same row; the operator picks which one counts.
+                        _rt_measured = _rt_anchor_measured(_rt_vols, now_et)
+                        _would_flip_measured = _would_flip and _rt_measured
+                        _vol_ev = "ep_rt_rvol_gate_flip" if _would_flip else "ep_rt_volume_shadow"
+                        if _audit_dedupe_check(ticker, today, _vol_ev):
+                            await log_audit_event(
+                                _vol_ev,
+                                f"{ticker} {anchor}_rvol delayed={rvol_info['rvol_at_time']:.2f}x "
+                                f"rt={_rt_rvol_info['rvol_at_time']:.2f}x"
+                                + (" — GATE WOULD FLIP (SHADOW)" if _would_flip else ""),
+                                json.dumps({
+                                    "ticker": ticker, "alert_date": today.isoformat(),
+                                    "anchor": anchor,
+                                    "vol_delayed": c["today_volume"],
+                                    "vol_rt_pm": _rt_vols["pm_vol"],
+                                    "vol_rt_session": _rt_vols["session_vol"],
+                                    "rvol_delayed": rvol_info["rvol_at_time"],
+                                    "rvol_rt": _rt_rvol_info["rvol_at_time"],
+                                    "would_rvol_gate_flip": _would_flip,
+                                    "rt_vol_state": (
+                                        "measured" if _rt_measured else "no_bars_for_anchor"),
+                                    "would_rvol_gate_flip_measured": _would_flip_measured,
+                                    "tick_et": now_et.strftime("%H:%M"),  # recovery-clock-ok: a wall-clock TIME-OF-DAY label — when the tick actually happened, which is about NOW by definition. Leave it unpinned. What keeps a stale re-run off the ORB path is the FRESHNESS rule, not this: classify_slot calls sessions_opened_between and marks a slot unrecoverable once any session has opened since it, so a 09:00 slot dies at 09:30 and the only live recovery window is roughly [09:00, 09:30) — where the slot and the real clock both satisfy `hour==9 and minute<45` anyway (ORB_QUIET 09:25-10:05 is belt-and-braces). Pinning would make the text claim a time the scan never ran at, and would drop the safe default if that freshness rule ever loosened. (#672, corrected 2026-09-20.)
+                                }),
+                            )
+                except Exception as _vse:  # loud-ok: shadow-only — never touches the live gate
+                    logger.debug(f"{ticker}: rt volume shadow skipped — {_vse}")
+            if (
+                rvol_info["baseline_n"] >= MIN_BASELINE_N_FOR_GATE
+                and rvol_info["rvol_at_time"] < threshold
+            ):
+                detail = (
+                    f"{anchor}_rvol={rvol_info['rvol_at_time']:.2f}x "
+                    f"(today {rvol_info['today_cum_vol']:,} / "
+                    f"baseline {rvol_info['baseline_mean']:,.0f} "
+                    f"n={rvol_info['baseline_n']}) < {threshold}x"
+                )
+                reason = f"{reason_const}: {detail}"
+                logger.info(f"Skip {ticker}: {detail} (gap={c['gap_pct']:.1f}%)")
+                _log_filtered(c, reason, stage="rvol_gate")
+                await log_audit_event(
+                    audit_event,
+                    f"{ticker} {phase_label} pace below normal",
+                    f"{detail} | gap={c['gap_pct']:.1f}%",
+                )
+                continue
+
+        # NOTE: pm-shares absolute-floor gate moved post-catalyst (R6 ship,
+        # 2026-05-17) so we can carve out high-conviction names. The new
+        # location is after catalyst classification — search for "R6 pm-shares".
+
+        # Hard filter: EP cooldown — don't re-alert same ticker within 60 days,
+        # UNLESS a fresh earnings catalyst is firing (HIMX 5/07 incident class:
+        # ticker on cooldown from prior alert, but fresh earnings + qualifying
+        # gap is structurally a new event — earnings are quarterly, the prior
+        # alert was a different catalyst). Bypass requires both gap >= 15%
+        # AND is_earnings_day to avoid bypassing on routine post-news bumps.
+        if ticker in cooldown_tickers:
+            cooldown_bypass = False
+            if c["gap_pct"] >= 15.0:
+                # Fail-soft direction (advisor alignment 2026-05-08): on
+                # yfinance error, treat as earnings day → cooldown BYPASSED.
+                # Defensive: rather over-allow on data outage than block a
+                # real fresh-earnings EP.
+                try:
+                    earnings_match_cd, _ = await is_earnings_day(ticker, today)
+                except Exception as _earn_err:
+                    logger.warning("cooldown: is_earnings_day failed for %s - treating as earnings day (cooldown bypassed, fail-soft): %s", ticker, _earn_err)
+                    earnings_match_cd = True
+                if earnings_match_cd:
+                    cooldown_bypass = True
+                    await log_audit_event(
+                        "ep_cooldown_bypassed_earnings",
+                        f"{ticker}: cooldown bypassed — fresh earnings + gap {c['gap_pct']:.1f}%",
+                        json.dumps({
+                            "ticker": ticker,
+                            "alert_date": today.isoformat(),
+                            "gap_pct": c["gap_pct"],
+                            "cooldown_days": EP_COOLDOWN_DAYS,
+                        }),
+                    )
+            if not cooldown_bypass:
+                # #170 SHADOW (telemetry-only, fail-open): if this suppressed
+                # candidate looks like a RE-SETUP (hard gap, weeks since the
+                # prior alert), record it — it is STILL suppressed live; this
+                # only accrues the cohort for the realized-R review. Wrapped so
+                # a shadow failure can never affect the suppression below.
+                try:
+                    _last = cooldown_last_alert.get(ticker)
+                    _dsince = (today - _last).days if _last else None
+                    if _is_cooldown_resetup(c["gap_pct"], _dsince):
+                        await log_audit_event(
+                            "cooldown_resetup_admit_shadow",
+                            f"{ticker}: SHADOW re-setup — gap {c['gap_pct']:.1f}%, "
+                            f"{_dsince}d since prior alert (suppressed by "
+                            f"{EP_COOLDOWN_DAYS}d cooldown; #170)",
+                            json.dumps({
+                                "ticker": ticker, "alert_date": today.isoformat(),
+                                "gap_pct": c["gap_pct"],
+                                "days_since_prior_alert": _dsince,
+                                "prev_close": c.get("prev_close"),
+                            }),
+                        )
+                except Exception as _e:
+                    logger.warning(f"#170 shadow emit failed for {ticker}: {_e}")
+                reason = f"EP cooldown — alerted within last {EP_COOLDOWN_DAYS} days"
+                logger.info(f"Skip {ticker}: {reason}")
+                _log_filtered(c, reason, stage="cooldown")
+                continue
+
+        # Skip if already scored in an earlier scan run today
+        if ticker in already_today:
+            logger.debug(f"Skip {ticker}: already scored today")
+            _log_filtered(c, "already scored earlier today", stage="duplicate")
+            continue
+
+        # Hard filter: extension — skip if already up 50%+ before today's gap
+        close_5d_ago = extension_map.get(ticker)
+        if close_5d_ago and close_5d_ago > 0 and c["prev_close"]:
+            extension_pct = (c["prev_close"] - close_5d_ago) / close_5d_ago * 100
+            if extension_pct >= MAX_EXTENSION_PCT:
+                reason = f"already up {extension_pct:.0f}% in prior 5 days (extended)"
+                logger.info(f"Skip {ticker}: {reason}")
+                _log_filtered(c, reason, stage="extension")
+                continue
+
+        # Hard filter: pre-trade quality (ADV $1M, ATR%, market cap)
+        # Single source of truth — same filters used by backtester and live tracker
+        # #605: `metrics` deposits the COMPARED values (30d median $ADV / ATR% / mcap)
+        # onto the candidate so the scan_log row carries the inputs, not just the verdict
+        # — zero extra queries (check_filters already computed them).
+        _qf_metrics: dict = {}
+        passed, skip_reason = await check_filters(ticker, today, metrics=_qf_metrics)
+        c["quality_adv_dollar"] = _qf_metrics.get("quality_adv_dollar")
+        c["atr_pct"] = _qf_metrics.get("atr_pct")
+        c["market_cap"] = _qf_metrics.get("market_cap")
+        if not passed:
+            reason = f"quality filter: {skip_reason}"
+            logger.info(f"Skip {ticker}: pre-trade filter — {skip_reason}")
+            _log_filtered(c, reason, stage="quality_filter")
+            # OBSERVE LANE (operator-approved 2026-06-11, the MNTS case): a
+            # sub-$500M mover that passed every gap/RVOL gate is the tiny-cap
+            # fast-runner class — auto-trade stays EXCLUDED (this skip stands),
+            # but it becomes VISIBLE: one audit row per ticker per day, read by
+            # the morning briefing. Themes/9M/flag lanes already see these.
+            if skip_reason and skip_reason.startswith(FILTER_MCAP_TOO_SMALL):
+                global _tinycap_seen_date, _tinycap_seen
+                if _tinycap_seen_date != today:
+                    _tinycap_seen = set()
+                    _tinycap_seen_date = today
+                if ticker not in _tinycap_seen:
+                    _tinycap_seen.add(ticker)
+                    await log_audit_event(
+                        "ep_tinycap_observed",
+                        f"{ticker} gap={c.get('gap_pct') or 0:.1f}% — {skip_reason} (observe-only)",
+                        json.dumps({"ticker": ticker, "gap_pct": c.get("gap_pct"),
+                                    "rel_volume": c.get("rel_volume"),
+                                    "price": c.get("price"),
+                                    "skip_reason": skip_reason}, default=str),
+                    )
+                # #624 PAPER LANE (2026-10-10, operator 'Ok to recs'): a name turned away ONLY
+                # by the market-cap floor (check_filters reads the cap LAST — volume pace,
+                # cooldown, already-scored, extension, $1M ADV$ and ATR all passed) is graded
+                # by the SAME code AFTER live grading finishes, detached (see the dispatch at
+                # the end of this function). One append of a COPY — no gate, no log row.
+                _lowcap_paper_candidates.append((dict(c), ticker, rel_volume))
+            continue
+
+        await _grade_admitted(c, ticker, rel_volume)
 
     results.sort(key=lambda r: r["ep_score"], reverse=True)
 

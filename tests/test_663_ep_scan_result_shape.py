@@ -37,6 +37,7 @@ import ast
 import asyncio
 import inspect
 import logging
+import re
 import textwrap
 
 import pytest
@@ -231,6 +232,15 @@ _ABSENT_UNTIL_WRITTEN = {
 
 _RESULT_NAMES = {"r", "result", "_r"}
 
+#: Nested defs whose body IS the plain result builder, not a cancellable side-coroutine: each is
+#: awaited INLINE by the graded loop (never under a gather / wait_for), so its writes run in the
+#: scan's own control flow and are walked as plain body. Named, with the reason, and pinned below.
+_INLINE_AWAITED_DEFS = {
+    "_grade_admitted": "the graded tail of the per-candidate loop, extracted 2026-10-10 for the "
+                       "#624 paper lane; the live loop does `await _grade_admitted(c, ticker, "
+                       "rel_volume)` directly — the result dict literal is built here",
+}
+
 
 def _result_key_writes(fn: ast.AsyncFunctionDef) -> dict:
     """{key: [(lineno, how, context)]} for every write to the result dict inside `fn`.
@@ -273,7 +283,10 @@ def _result_key_writes(fn: ast.AsyncFunctionDef) -> dict:
         executes in. `r[k] = v`, `r.setdefault(k, v)` and `result = {...}` are all statements."""
         for stmt in stmts:
             if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                walk(stmt.body, in_try, nested + [stmt.name])
+                if stmt.name in _INLINE_AWAITED_DEFS:
+                    walk(stmt.body, in_try, nested)
+                else:
+                    walk(stmt.body, in_try, nested + [stmt.name])
                 continue
             if isinstance(stmt, try_nodes):
                 walk(stmt.body, True, nested)
@@ -317,6 +330,12 @@ def test_every_result_key_written_under_a_try_or_in_a_coroutine_is_seeded_outsid
     # source-pin-ok: WHERE a key is written (inside a try / a cancellable coroutine) is a property of
     # the source, not of any one run — a behavioural test sees one failure mode at a time; the
     # RED-proof above exercises the ceiling path itself, this gate covers every key at once.
+    # the inline-awaited exemption is real: each named def is awaited directly by the graded
+    # loop, never handed to a gather / wait_for / create_task
+    _src = inspect.getsource(ep_detector.run_ep_scan)
+    for _name in _INLINE_AWAITED_DEFS:
+        assert f"        await {_name}(c, ticker, rel_volume)" in _src, _name
+        assert not re.search(rf"(gather|wait_for|create_task)\([^)]*{_name}\(", _src), _name
     writes = _result_key_writes(_run_ep_scan_ast())
     assert "ep_score" in writes and any(ctx == "seed" for _, _, ctx in writes["ep_score"]), (
         "the walker no longer sees the result dict literal — fix the gate before trusting it")

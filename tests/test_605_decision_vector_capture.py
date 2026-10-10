@@ -296,6 +296,20 @@ def test_no_unregistered_continue_in_run_ep_scan():
     )
 
 
+def test_no_unregistered_return_in_the_graded_tail():
+    # source-pin-ok: same structural tripwire as the continue count above, for the graded
+    # tail extracted into the nested `_grade_admitted` (#624 paper lane, 2026-10-10) — its
+    # kill points are bare `return`s now, so a new silent kill there would dodge the
+    # continue count without this.
+    a = _RUN_SRC.index("    async def _grade_admitted(")
+    b = _RUN_SRC.index("    for c in candidates[:SHORTLIST_SIZE]:")
+    n = len(re.findall(r"^\s+return\s*(#.*)?$", _RUN_SRC[a:b], re.M))
+    assert n == dv.EXPECTED_GRADE_TAIL_RETURN_COUNT, (
+        f"_grade_admitted has {n} bare `return` statements (registry expects "
+        f"{dv.EXPECTED_GRADE_TAIL_RETURN_COUNT}) — log the kill (_log_filtered with a stage) "
+        f"and update the constant in the same commit.")
+
+
 def test_log_filtered_call_count_matches_registry():
     # source-pin-ok: same structural-tripwire reasoning as the continue-count test above --
     # a whole-function call-site count, not a per-site behavioral claim.
