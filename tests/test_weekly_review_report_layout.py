@@ -699,9 +699,34 @@ def test_spend_vs_pnl_block_reads_as_what_the_judge_cost_against_what_we_made():
     assert "last 30 days, Sep 22 – Oct 21" in text
     assert "LLM spend: $60.00 across 930 calls" in text
     assert "• ep_grade_judge $40.00 (900 calls)" in text
-    assert "Callers with 'judge' in the name: $40.00 (67% of spend)" in text
+    assert "Callers with 'judge' in the name: $40.00 (67% of spend)\n  ep_grade_judge $40.00\n" in text
     assert "• live book (real money): $+1,234 over 9 closed trades (6 winners)" in text
     assert "• paper lane: $-45 over 1 closed trade (0 winners)" in text
+
+
+def test_spend_vs_pnl_names_each_judge_caller_even_when_it_is_outside_the_top_six():
+    """#313 asks 'what did the judge cost last month'. The live grader is not always a top-six
+    caller (30 days to 10-11: it was not), so the subtotal alone hid it inside a number that also
+    held an offline eval. The block names every judge-named caller with its dollars, largest first,
+    capped like the caller list. MUTATION: the named line deleted (the old subtotal-only block) -
+    'ep_grade_judge $3.00' was missing; the sort removed - the order followed the input. RED,
+    restored."""
+    callers = ([_caller(f"lane_{i}", 10.0 - i, 10) for i in range(6)]            # the six top callers
+               + [_caller("judge_robustness_eval", 4.0, 3), _caller("ep_grade_judge", 3.0, 22)])
+    text = sr._format_spend_vs_pnl(sr._aggregate_spend_vs_pnl(callers, []),
+                                   window_start=date(2026, 9, 22), today=date(2026, 10, 21))
+    assert "• ep_grade_judge" not in text and "• +2 other callers $7.00" in text      # both are in the tail
+    assert "Callers with 'judge' in the name: $7.00 (13% of spend)\n" \
+           "  judge_robustness_eval $4.00 · ep_grade_judge $3.00\n" in text
+    # input order must not decide the order: the cheaper caller handed in first still prints second
+    shuffled = sr._aggregate_spend_vs_pnl([_caller("ep_grade_judge", 3.0, 22),
+                                           _caller("judge_robustness_eval", 4.0, 3)], [])
+    assert [c["caller"] for c in shuffled["judge_callers"]] == ["judge_robustness_eval", "ep_grade_judge"]
+    # more judge-named callers than the cap: the tail folds into "+N more"
+    many = sr._format_spend_vs_pnl(
+        sr._aggregate_spend_vs_pnl([_caller(f"judge_{i}", 9.0 - i, 1) for i in range(8)], []),
+        window_start=date(2026, 9, 22), today=date(2026, 10, 21))
+    assert many.count(" · judge_") == sr._SPEND_CALLER_CAP - 1 and " · +2 more\n" in many
 
 
 def test_spend_vs_pnl_caps_the_caller_list_and_folds_the_tail():
@@ -727,16 +752,22 @@ def test_spend_vs_pnl_the_live_book_always_prints_even_with_nothing_closed():
 def test_spend_vs_pnl_section_reads_the_same_30_days_on_both_sides(monkeypatch):
     """The spend window and the P&L window are the same ET dates (today-29 .. today).
     MUTATION: the P&L window start changed to `today - _SPEND_PNL_DAYS` (31 days) - the args
-    assertion reddened. RED, restored."""
-    spend = AsyncMock(return_value=[_caller("ep_grade_judge", 40.0, 900)])
+    assertion reddened. RED, restored.
+
+    The fixture carries a caller WITHOUT 'judge' in its name, so the head phrase's total ($50) is
+    not equal to the judge subtotal ($40) - with a judge-only fixture the two were the same number
+    and building the phrase from `judge_spend` instead of `total_spend` stayed green. MUTATION:
+    `agg['total_spend']` -> `agg['judge_spend']` in the phrase - '$40' appeared. RED, restored."""
+    spend = AsyncMock(return_value=[_caller("ep_grade_judge", 40.0, 900), _caller("theme_discovery", 10.0, 5)])
     pnl = AsyncMock(return_value=[_book("live", 3, 2, 150.0)])
     monkeypatch.setattr("agents.market_intelligence.cost_board.compute_caller_spend_window", spend)
     monkeypatch.setattr(sr, "get_closed_pnl_by_account_mode", pnl)
     text, phrase = asyncio.run(sr._spend_vs_pnl_section(TODAY))
     assert spend.await_args.args == (TODAY, 30)
     assert pnl.await_args.args == (TODAY - timedelta(days=29), TODAY)
-    assert phrase == "30d LLM $40 vs live P&L $+150 on 3"
-    assert "LLM spend: $40.00" in text and "$+150 over 3 closed trades" in text
+    assert phrase == "30d LLM $50 vs live P&L $+150 on 3"
+    assert "LLM spend: $50.00" in text and "$+150 over 3 closed trades" in text
+    assert "Callers with 'judge' in the name: $40.00 (80% of spend)" in text
 
 
 @pytest.mark.parametrize("which", ["spend", "pnl"])
@@ -786,7 +817,10 @@ def test_spend_vs_pnl_is_fold_only_and_never_a_budget_or_an_ask(monkeypatch):
 def test_the_closed_pnl_query_windows_on_the_et_close_date_and_pins_no_book():
     """The query counts what CLOSED in the window, in account accounting. MUTATION: each clause
     changed in turn (the ET cast, `status = 'closed'`, an added `pnl_attribution IS NULL`, a
-    hard-coded `account_mode = 'live'`) - this reddened on each."""
+    hard-coded `account_mode = 'live'`) - this reddened on each. The winner test is strict
+    `total_pnl > 0`: a break-even ($0) close is not a winner (the Python aggregate only passes
+    `wins` through, so the SQL fragment is where this is pinned). MUTATION: `> 0` -> `>= 0`
+    reddened."""
     import agents.market_intelligence.db as dbmod
     from tests.conftest import make_mock_pool
     from unittest.mock import patch
@@ -797,6 +831,8 @@ def test_the_closed_pnl_query_windows_on_the_et_close_date_and_pins_no_book():
     sql = " ".join(conn.fetch.await_args.args[0].split())
     assert out == [{"account_mode": "live", "n": 1, "wins": 1, "total_pnl": 5.0}]
     assert "status = 'closed'" in sql
+    assert "COUNT(*) FILTER (WHERE total_pnl > 0) AS wins" in sql
+    assert "COALESCE(SUM(total_pnl), 0) AS total_pnl" in sql
     assert "(closed_at AT TIME ZONE 'America/New_York')::date BETWEEN $1::date AND $2::date" in sql
     assert "GROUP BY account_mode" in sql
     assert "pnl_attribution" not in sql and "account_mode = '" not in sql

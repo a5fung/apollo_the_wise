@@ -12,6 +12,7 @@ LLM spend: $45.33 across 5,623 calls
 • chart_axis_pilot $2.12 (64 calls)
 • +25 other callers $8.91
 Callers with 'judge' in the name: $2.59 (6% of spend)
+  judge_robustness_eval $0.90 · ep_grade_judge $0.71 · mgmt_judge $0.42 · judge_divergence $0.29 · judge_named_themes $0.27
 Realised P&L, trades closed in the same days:
 • live book (real money): $+17 over 6 closed trades (3 winners)
 _Telemetry only. Spend is every metered caller (Claude + Perplexity, live and shadow lanes); P&L is every closed trade, bug-attributed ones included._

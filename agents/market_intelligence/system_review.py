@@ -2586,10 +2586,15 @@ def _aggregate_spend_vs_pnl(callers: list[dict], pnl_rows: list[dict]) -> dict:
     the rest alphabetically; zero-spend callers are dropped. 'judge' spend is a NAME match
     (every caller whose log_caller contains "judge": the live grader, the management judge, the
     2nd-opinion shadow and the offline judge evals) - a spend LABEL, not a claim about which of
-    those drove a decision."""
+    those drove a decision. `judge_callers` lists each such caller, largest first, so the block
+    names what is inside the subtotal - the live grader is not always among the top callers, and
+    an offline eval is otherwise indistinguishable from it."""
     spenders = [c for c in callers if (c.get("spend") or 0) > 0]
     total = sum(float(c["spend"]) for c in spenders)
-    judge = sum(float(c["spend"]) for c in spenders if "judge" in (c.get("caller") or ""))
+    judge_callers = sorted(({"caller": c["caller"], "spend": float(c["spend"])}
+                            for c in spenders if "judge" in (c.get("caller") or "")),
+                           key=lambda c: (-c["spend"], c["caller"]))
+    judge = sum(c["spend"] for c in judge_callers)
     books = sorted(
         ({"account_mode": r["account_mode"], "n": int(r["n"]), "wins": int(r["wins"]),
           "pnl": float(r["total_pnl"])} for r in pnl_rows),
@@ -2598,7 +2603,7 @@ def _aggregate_spend_vs_pnl(callers: list[dict], pnl_rows: list[dict]) -> dict:
         "callers": [{"caller": c["caller"], "spend": float(c["spend"]), "calls": int(c["calls"])}
                     for c in spenders],
         "total_spend": total, "total_calls": sum(int(c["calls"]) for c in spenders),
-        "judge_spend": judge, "books": books,
+        "judge_spend": judge, "judge_callers": judge_callers, "books": books,
     }
 
 
@@ -2621,6 +2626,10 @@ def _format_spend_vs_pnl(agg: dict, *, window_start: date, today: date) -> str:
         if agg["judge_spend"]:
             lines.append(f"Callers with 'judge' in the name: ${agg['judge_spend']:,.2f} "
                          f"({round(100 * agg['judge_spend'] / agg['total_spend'])}% of spend)")
+            named = agg["judge_callers"][:_SPEND_CALLER_CAP]
+            tail = len(agg["judge_callers"]) - len(named)
+            lines.append("  " + " · ".join(f"{c['caller']} ${c['spend']:,.2f}" for c in named)
+                         + (f" · +{tail} more" if tail else ""))
     lines.append("Realised P&L, trades closed in the same days:")
     by_mode = {b["account_mode"]: b for b in agg["books"]}
     ordered = [by_mode.get("live") or {"account_mode": "live", "n": 0, "wins": 0, "pnl": 0.0}]
