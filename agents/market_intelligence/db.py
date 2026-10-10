@@ -12090,6 +12090,44 @@ async def get_engine_vs_judge_theme_rows(window_start: date, window_end: date) -
     return [dict(r) for r in rows]
 
 
+async def get_closed_pnl_by_account_mode(window_start: date, window_end: date) -> list[dict[str, Any]]:
+    """#313 part 2 — realised P&L of trades CLOSED in [window_start, window_end] (ET close date),
+    one row per book: `{account_mode, n, wins, total_pnl}`. Feeds the weekly review's "LLM spend vs
+    realised P&L" block, which pairs it with `cost_board.compute_caller_spend_window` over the
+    SAME dates.
+
+    Why this is its own query rather than a reuse: `get_setup_performance_review` windows on
+    `alert_date`, `get_live_trading_summary` is all-time, `get_setup_era_trades` has no sums, and
+    `kill_scale_bands.assemble_band_inputs` yields R not dollars - none answers "what did the
+    trades that CLOSED in these 30 days make". The window is the ET date of `closed_at` (the
+    `_aggregate_mfe_capture` idiom) so it lines up with the spend window's ET days.
+
+    ACCOUNT ACCOUNTING, not the methodology KPI: `pnl_attribution IS NULL` is deliberately NOT
+    filtered - a bug-attributed loss still left the account, and "what we made" is the account's
+    number. GROUP BY account_mode (no book-pin literal, so it cannot rot when a strategy
+    graduates) returns both books; the caller renders them SEPARATELY - never blended (#447).
+
+    Read-only, zero-authority (THE LINE): telemetry for a Telegram appendix, never a grade,
+    entry, stop or size."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT account_mode,
+                   COUNT(*)                               AS n,
+                   COUNT(*) FILTER (WHERE total_pnl > 0)  AS wins,
+                   COALESCE(SUM(total_pnl), 0)            AS total_pnl
+              FROM mi_live_trades
+             WHERE status = 'closed'
+               AND total_pnl IS NOT NULL
+               AND (closed_at AT TIME ZONE 'America/New_York')::date BETWEEN $1::date AND $2::date
+             GROUP BY account_mode
+            """,
+            window_start, window_end,
+        )
+    return [dict(r) for r in rows]
+
+
 async def get_judge_divergence_stats(window_start: date) -> dict[str, Any]:
     """#301 — weekly aggregate over `mi_judge_divergence` for the system_review digest
     line. Read-only, zero-authority (THE LINE — this feeds a Telegram appendix, never a

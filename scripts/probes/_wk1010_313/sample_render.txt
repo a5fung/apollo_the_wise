@@ -1,0 +1,42 @@
+#313 part 2 sample render - as the Sun 2026-10-11 08:00 ET review would print it (data through Fri 10-09)
+spend fetch args (today, lookback): (datetime.date(2026, 10, 11), 29) · P&L window: 2026-09-12 .. 2026-10-11
+
+---- fold block ----
+💸 *LLM spend vs realised P&L (#313) — last 30 days, Sep 12 – Oct 11*
+LLM spend: $45.33 across 5,623 calls
+• eval_519_option_a $9.22 (384 calls)
+• perplexity_news_search $8.09 (1,545 calls)
+• theme_assignment $7.21 (273 calls)
+• theme_discovery $7.11 (250 calls)
+• theme_validation $2.66 (1,803 calls)
+• chart_axis_pilot $2.12 (64 calls)
+• +25 other callers $8.91
+Callers with 'judge' in the name: $2.59 (6% of spend)
+Realised P&L, trades closed in the same days:
+• live book (real money): $+17 over 6 closed trades (3 winners)
+_Telemetry only. Spend is every metered caller (Claude + Perplexity, live and shadow lanes); P&L is every closed trade, bug-attributed ones included._
+
+---- 'Also checked' phrase ----
+30d LLM $45 vs live P&L $+17 on 6
+
+---- cross-check: shipped read vs independent direct SELECT (same 30 ET days, different formulation) ----
+OK       total spend                        shipped=45.325304  direct=45.325304
+OK       total calls                        shipped=5623  direct=5623
+OK       callers                            shipped=31  direct=31
+OK       top1 eval_519_option_a             shipped=eval_519_option_a 9.2228/384  direct=eval_519_option_a 9.2228/384
+OK       top2 perplexity_news_search        shipped=perplexity_news_search 8.0901/1545  direct=perplexity_news_search 8.0901/1545
+OK       top3 theme_assignment              shipped=theme_assignment 7.2098/273  direct=theme_assignment 7.2098/273
+OK       top4 theme_discovery               shipped=theme_discovery 7.1119/250  direct=theme_discovery 7.1119/250
+OK       top5 theme_validation              shipped=theme_validation 2.6607/1803  direct=theme_validation 2.6607/1803
+OK       top6 chart_axis_pilot              shipped=chart_axis_pilot 2.1152/64  direct=chart_axis_pilot 2.1152/64
+OK       P&L live                           shipped=n=6 wins=3 pnl=17.0  direct=n=6 wins=3 pnl=17.0
+
+---- the closed trades in the window (context for the P&L line) ----
+  live DFTX 2026-09-14 -23.73
+  live HOOD 2026-09-15 -27.40
+  live SEI 2026-09-22 4.10
+  live OKTA 2026-09-28 47.24
+  live VICR 2026-10-07 75.73
+  live CEG 2026-10-08 -58.95
+
+ALL MATCH: True

@@ -1,0 +1,19 @@
+q	account_mode	n_closed	no_closed_at	no_pnl	bug_attributed	first_close	last_close
+closed_gaps	live	34	0	0	0	2026-07-06	2026-10-08
+closed_gaps	paper	34	0	0	1	2026-04-21	2026-07-02
+(2 rows)
+q	n	null_cost	null_caller	n_callers	first_row	last_row
+usage_shape	6494	0	0	31	2026-09-06 12:00:58.189914+00	2026-10-09 22:20:01.262528+00
+(1 row)
+q	column_name	data_type
+cols	id	integer
+cols	created_at	timestamp with time zone
+cols	model	text
+cols	caller	text
+cols	input_tokens	integer
+cols	output_tokens	integer
+cols	cache_creation	integer
+cols	cache_read	integer
+cols	cost_usd	double precision
+cols	stop_reason	text
+(10 rows)

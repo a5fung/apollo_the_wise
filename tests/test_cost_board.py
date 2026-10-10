@@ -240,3 +240,31 @@ def test_the_labor_day_weekend_stops_diluting_a_recent_window():
     assert calendar.count(0.0) == 4, "calendar view carries the shut-market zeros"
     assert 0.0 not in sessions, "the session view carries only days we could have spent"
     assert sum(sessions) / len(sessions) > sum(calendar) / len(calendar)
+
+
+# ── #313 part 2 (2026-10-10): the weekly review's spend-by-caller read ────────────────────────
+# `compute_caller_spend_window` COMPOSES the detectors' own fetch + window totals, so the review's
+# spend can never be a second copy of the pricing math or of the window arithmetic.
+
+@pytest.mark.asyncio
+async def test_caller_spend_window_is_exactly_30_et_days_summed_across_models_largest_first(monkeypatch):
+    """Window = today-29 .. today INCLUSIVE (the fetch's BETWEEN is inclusive, so the lookback
+    passed is 29). A row on today-30 is outside; a caller's models are summed; the order is
+    spend descending. MUTATION: `window_days=window_days` -> `window_days + 1` in the totals call
+    - the today-30 row leaked in and judge_a's sum moved. RED, restored."""
+    from datetime import date as _d, timedelta as _td
+    today = _d(2026, 10, 11)
+
+    def row(caller, model, days_ago, spend, calls):
+        return {"caller": caller, "model": model, "d": today - _td(days=days_ago), "spend": spend,
+                "calls": calls, "in_tok": 100, "out_tok": 10}
+    rows = [row("judge_a", "opus", 0, 1.0, 2), row("judge_a", "sonnet", 29, 2.0, 3),
+            row("judge_a", "opus", 30, 99.0, 99),                     # outside the window
+            row("big_lane", "opus", 5, 10.0, 7), row("tiny", "sonnet", 1, 0.25, 1)]
+    fetch = AsyncMock(return_value=rows)
+    monkeypatch.setattr(cb, "_fetch_caller_window", fetch)
+    out = await cb.compute_caller_spend_window(today, 30)
+    assert fetch.await_args.args == (today, 29)
+    assert out == [{"caller": "big_lane", "spend": 10.0, "calls": 7},
+                   {"caller": "judge_a", "spend": 3.0, "calls": 5},
+                   {"caller": "tiny", "spend": 0.25, "calls": 1}]

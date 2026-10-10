@@ -293,8 +293,13 @@ def _assemble(monkeypatch, **overrides):
         "missed_opportunities": {},
     }
     theme_rows = overrides.pop("theme_rows", [])
+    spend_callers = overrides.pop("spend_callers", [])
+    closed_pnl = overrides.pop("closed_pnl", [])
     metrics.update(overrides)
     monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", AsyncMock(return_value=theme_rows))
+    monkeypatch.setattr("agents.market_intelligence.cost_board.compute_caller_spend_window",
+                        AsyncMock(return_value=spend_callers))
+    monkeypatch.setattr(sr, "get_closed_pnl_by_account_mode", AsyncMock(return_value=closed_pnl))
     monkeypatch.setattr(sr, "_setup_performance_review", AsyncMock(return_value=("", [])))
     monkeypatch.setattr(sr, "_spend_envelope", AsyncMock(return_value=("💵 *Cost envelope (MTD)*\nLLM: $25.65 / $150 (17%) ✓ · 3093 calls", 25.65, 150.0, False)))
     monkeypatch.setattr(sr, "_judge_divergence_section", AsyncMock(return_value=""))
@@ -319,7 +324,8 @@ def test_a_quiet_week_says_so_and_names_what_was_checked(monkeypatch):
     checked = lines[2]
     for phrase in ("reviews: 0 ripe, 56 still accruing", "errors: none",
                    "promotions: 0 ready, 0 accruing, 1 held by ruling", "bands: HOLD",
-                   "crypto: live, gates clean", "spend: $25.65 of $150", "themes: 30d n=0"):
+                   "crypto: live, gates clean", "spend: $25.65 of $150", "themes: 30d n=0",
+                   "30d LLM $0 vs no live close"):
         assert phrase in checked, phrase
     assert len(lines) == 3
     assert "the narrator's bullets" in fold                # UNVERIFIED narrative: fold, not head
@@ -534,3 +540,142 @@ def test_the_engine_vs_judge_query_filters_to_clean_deduplicated_judge_graded_ro
     assert "DISTINCT ON (ticker, alert_date)" in sql
     assert "in_active_theme IS TRUE" in sql and "'theme' = ANY(a.fire_axes)" in sql
     assert conn.fetch.await_args.args[1:] == (date(2026, 9, 1), date(2026, 9, 20))
+
+
+# ── #313 part 2 — LLM spend by caller vs realised P&L (2026-10-10) ────────────────────────────
+
+def _caller(name, spend, calls):
+    return {"caller": name, "spend": spend, "calls": calls}
+
+
+def _book(mode, n, wins, pnl):
+    return {"account_mode": mode, "n": n, "wins": wins, "total_pnl": pnl}
+
+
+def test_spend_vs_pnl_aggregate_totals_the_judge_callers_and_puts_live_first():
+    """Totals, the 'judge' name-match subtotal, zero-spend callers dropped, and the live book
+    ahead of paper whatever order the query returned. MUTATION: the `"judge" in` filter deleted
+    (every caller counted as judge) - judge_spend equalled total_spend. RED, restored."""
+    agg = sr._aggregate_spend_vs_pnl(
+        [_caller("ep_grade_judge", 40.0, 900), _caller("theme_discovery", 12.5, 30),
+         _caller("judge_divergence", 7.5, 400), _caller("idle_lane", 0.0, 0)],
+        [_book("paper", 12, 5, -45.0), _book("live", 9, 6, 1234.5)])
+    assert agg["total_spend"] == 60.0 and agg["total_calls"] == 1330
+    assert agg["judge_spend"] == 47.5
+    assert [c["caller"] for c in agg["callers"]] == ["ep_grade_judge", "theme_discovery", "judge_divergence"]
+    assert [b["account_mode"] for b in agg["books"]] == ["live", "paper"]
+
+
+def test_spend_vs_pnl_block_reads_as_what_the_judge_cost_against_what_we_made():
+    """The rendered block: spend, top callers, the judge subtotal and share, then P&L per book,
+    never blended. MUTATION: the books loop collapsed to one summed line - the paper line (and its
+    own count) vanished. RED, restored."""
+    agg = sr._aggregate_spend_vs_pnl(
+        [_caller("ep_grade_judge", 40.0, 900), _caller("theme_discovery", 20.0, 30)],
+        [_book("live", 9, 6, 1234.5), _book("paper", 1, 0, -45.0)])
+    text = sr._format_spend_vs_pnl(agg, window_start=date(2026, 9, 22), today=date(2026, 10, 21))
+    assert "last 30 days, Sep 22 – Oct 21" in text
+    assert "LLM spend: $60.00 across 930 calls" in text
+    assert "• ep_grade_judge $40.00 (900 calls)" in text
+    assert "Callers with 'judge' in the name: $40.00 (67% of spend)" in text
+    assert "• live book (real money): $+1,234 over 9 closed trades (6 winners)" in text
+    assert "• paper lane: $-45 over 1 closed trade (0 winners)" in text
+
+
+def test_spend_vs_pnl_caps_the_caller_list_and_folds_the_tail():
+    """MUTATION: slice `[:_SPEND_CALLER_CAP]` removed - all 9 callers listed, no tail line. RED,
+    restored."""
+    callers = [_caller(f"lane_{i}", 10.0 - i, 10) for i in range(9)]       # 10,9,8,7,6,5 | 4,3,2
+    text = sr._format_spend_vs_pnl(sr._aggregate_spend_vs_pnl(callers, []),
+                                   window_start=date(2026, 9, 22), today=date(2026, 10, 21))
+    assert text.count("\n• lane_") == sr._SPEND_CALLER_CAP
+    assert "• +3 other callers $9.00" in text
+
+
+def test_spend_vs_pnl_the_live_book_always_prints_even_with_nothing_closed():
+    """A month with no live close SAYS so instead of the line vanishing; a paper lane that closed
+    nothing stays silent. MUTATION: the synthesized empty-live row removed - the live line was
+    missing. RED, restored."""
+    text = sr._format_spend_vs_pnl(sr._aggregate_spend_vs_pnl([_caller("a", 1.0, 1)], []),
+                                   window_start=date(2026, 9, 22), today=date(2026, 10, 21))
+    assert "• live book (real money): no trade closed" in text
+    assert "paper lane" not in text
+
+
+def test_spend_vs_pnl_section_reads_the_same_30_days_on_both_sides(monkeypatch):
+    """The spend window and the P&L window are the same ET dates (today-29 .. today).
+    MUTATION: the P&L window start changed to `today - _SPEND_PNL_DAYS` (31 days) - the args
+    assertion reddened. RED, restored."""
+    spend = AsyncMock(return_value=[_caller("ep_grade_judge", 40.0, 900)])
+    pnl = AsyncMock(return_value=[_book("live", 3, 2, 150.0)])
+    monkeypatch.setattr("agents.market_intelligence.cost_board.compute_caller_spend_window", spend)
+    monkeypatch.setattr(sr, "get_closed_pnl_by_account_mode", pnl)
+    text, phrase = asyncio.run(sr._spend_vs_pnl_section(TODAY))
+    assert spend.await_args.args == (TODAY, 30)
+    assert pnl.await_args.args == (TODAY - timedelta(days=29), TODAY)
+    assert phrase == "30d LLM $40 vs live P&L $+150 on 3"
+    assert "LLM spend: $40.00" in text and "$+150 over 3 closed trades" in text
+
+
+@pytest.mark.parametrize("which", ["spend", "pnl"])
+def test_spend_vs_pnl_failed_read_says_unavailable_and_the_review_still_assembles(monkeypatch, which):
+    """Fail-open on EITHER side. MUTATION: `except` narrowed to `ValueError` - the RuntimeError
+    escaped `_spend_vs_pnl_section`. RED, restored."""
+    async def boom(*_a, **_k):
+        raise RuntimeError("pool closed *abruptly*")
+    ok = AsyncMock(return_value=[])
+    monkeypatch.setattr("agents.market_intelligence.cost_board.compute_caller_spend_window",
+                        boom if which == "spend" else ok)
+    monkeypatch.setattr(sr, "get_closed_pnl_by_account_mode", boom if which == "pnl" else ok)
+    text, phrase = asyncio.run(sr._spend_vs_pnl_section(TODAY))
+    assert "unavailable: RuntimeError: pool closed abruptly" in text and "*abruptly*" not in text
+    assert phrase == "spend vs P&L: unavailable"
+    head, fold, _m = _assemble_with_current_patches(monkeypatch)
+    assert "(#313):* unavailable:" in fold and "spend vs P&L: unavailable" in head
+
+
+def _assemble_with_current_patches(monkeypatch):
+    """Run the whole assembly WITHOUT `_assemble`'s defaults overwriting the failing patches the
+    caller just installed (the other sections are quiet-week stubs, as in `_assemble`)."""
+    monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", AsyncMock(return_value=[]))
+    monkeypatch.setattr(sr, "_setup_performance_review", AsyncMock(return_value=("", [])))
+    monkeypatch.setattr(sr, "_spend_envelope", AsyncMock(return_value=("💵 *Cost envelope (MTD)*", 1.0, 150.0, False)))
+    monkeypatch.setattr(sr, "_judge_divergence_section", AsyncMock(return_value=""))
+    verdict = ksb.BandVerdict(band="HOLD", action="No change", reasons=["within bands"], n_trades=5)
+    monkeypatch.setattr(ksb, "assess_bands", AsyncMock(return_value=(_inputs([-1.0] * 5, _meta(5)), verdict, None)))
+    monkeypatch.setattr(ksb, "assemble_band_inputs", AsyncMock(return_value=_inputs([-1.0] * 5, _meta(5))))
+    monkeypatch.setattr(rr, "run_replay_regression", AsyncMock(return_value={"lines": []}))
+    return asyncio.run(sr._assemble_report({"regime": {"current": "Up"}}, "narrative",
+                                           TODAY - timedelta(days=7), TODAY))
+
+
+def test_spend_vs_pnl_is_fold_only_and_never_a_budget_or_an_ask(monkeypatch):
+    """ZERO AUTHORITY: a spend far over any budget and a deep loss still raise nothing in the head's
+    action lists (the over-budget ask belongs to the MTD envelope alone). MUTATION: a
+    `needs_you.append(...)` added beside the fold append - needs_you went to 1. RED, restored."""
+    head, fold, meta = _assemble(
+        monkeypatch, spend_callers=[_caller("ep_grade_judge", 9999.0, 10)],
+        closed_pnl=[_book("live", 4, 0, -5000.0)])
+    assert meta["needs_you"] == 0 and meta["needs_me"] == 0
+    assert "LLM spend vs realised P&L (#313)" in fold and "LLM spend vs realised" not in head
+    assert "30d LLM $9,999 vs live P&L $-5,000 on 4" in head
+
+
+def test_the_closed_pnl_query_windows_on_the_et_close_date_and_pins_no_book():
+    """The query counts what CLOSED in the window, in account accounting. MUTATION: each clause
+    changed in turn (the ET cast, `status = 'closed'`, an added `pnl_attribution IS NULL`, a
+    hard-coded `account_mode = 'live'`) - this reddened on each."""
+    import agents.market_intelligence.db as dbmod
+    from tests.conftest import make_mock_pool
+    from unittest.mock import patch
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=[{"account_mode": "live", "n": 1, "wins": 1, "total_pnl": 5.0}])
+    with patch.object(dbmod, "get_pool", new=AsyncMock(return_value=pool)):
+        out = asyncio.run(dbmod.get_closed_pnl_by_account_mode(date(2026, 9, 22), date(2026, 10, 21)))
+    sql = " ".join(conn.fetch.await_args.args[0].split())
+    assert out == [{"account_mode": "live", "n": 1, "wins": 1, "total_pnl": 5.0}]
+    assert "status = 'closed'" in sql
+    assert "(closed_at AT TIME ZONE 'America/New_York')::date BETWEEN $1::date AND $2::date" in sql
+    assert "GROUP BY account_mode" in sql
+    assert "pnl_attribution" not in sql and "account_mode = '" not in sql
+    assert conn.fetch.await_args.args[1:] == (date(2026, 9, 22), date(2026, 10, 21))

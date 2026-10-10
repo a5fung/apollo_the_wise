@@ -37,6 +37,7 @@ from agents.market_intelligence.db import (
     get_setup_performance_review,
     get_active_cooldowns,
     get_audit_log,
+    get_closed_pnl_by_account_mode,
     get_correlation_clusters,
     get_engine_vs_judge_theme_rows,
     get_ep_outcomes,
@@ -395,6 +396,15 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
         checked.append(f"spend: ${cost:.2f}" + (f" of ${budget:.0f}" if budget > 0 else " (no budget set)"))
     except Exception:
         logger.exception("spend-envelope section render failed")
+    # #313 part 2: the trailing-30-day spend by caller beside the P&L of trades closed in the same
+    # days. TELEMETRY ONLY - fold + "also checked" phrase, never an action line, never a budget.
+    try:
+        s, phrase = await _spend_vs_pnl_section(today)
+        if s:
+            fold.append(s)
+        checked.append(phrase)
+    except Exception:
+        logger.exception("spend-vs-pnl section render failed")
 
     head_md, fold_md, meta = compose_report(header, needs_you, needs_me, checked, fold, suppressed)
     return head_md, fold_md, meta
@@ -2520,6 +2530,97 @@ async def _theme_agreement_section(window_start: date, today: date) -> tuple[str
         logger.warning("theme-agreement section failed: %s", e, exc_info=True)
         return (f"\U0001F9E9 *Theme read, engine vs judge (#486):* unavailable: {_short_reason(e)}",
                 "themes: unavailable")
+
+
+# ── #313 part 2: LLM spend by caller vs realised P&L (2026-10-10) ─────────────────────────────
+# TELEMETRY ONLY. The roadmap container's DoD says per-role LLM spend is reported against P&L on a
+# fixed cadence, and its WOULD-FAIL-IF is "nobody can answer 'what did the judge cost us last
+# month' without a manual query". This is that answer, printed every Sunday: the trailing 30 ET
+# days of metered spend by caller beside the realised P&L of the trades that CLOSED in the same
+# 30 days. It changes no grade, entry, stop, size or budget.
+_SPEND_PNL_DAYS = 30
+_SPEND_CALLER_CAP = 6       # callers listed by name; the tail folds into "+N other callers"
+
+# How a book is named for him. Keyed by what `mi_live_trades.account_mode` holds; an unknown
+# mode still prints (under its own name) rather than being dropped - never blend, never hide.
+_BOOK_LABELS = {"live": "live book (real money)", "paper": "paper lane"}
+
+
+def _aggregate_spend_vs_pnl(callers: list[dict], pnl_rows: list[dict]) -> dict:
+    """Pure: totals + the per-caller list from `cost_board.compute_caller_spend_window` rows, and
+    per-book P&L from `db.get_closed_pnl_by_account_mode` rows. Books come out live first, then
+    the rest alphabetically; zero-spend callers are dropped. 'judge' spend is a NAME match
+    (every caller whose log_caller contains "judge": the live grader, the management judge, the
+    2nd-opinion shadow and the offline judge evals) - a spend LABEL, not a claim about which of
+    those drove a decision."""
+    spenders = [c for c in callers if (c.get("spend") or 0) > 0]
+    total = sum(float(c["spend"]) for c in spenders)
+    judge = sum(float(c["spend"]) for c in spenders if "judge" in (c.get("caller") or ""))
+    books = sorted(
+        ({"account_mode": r["account_mode"], "n": int(r["n"]), "wins": int(r["wins"]),
+          "pnl": float(r["total_pnl"])} for r in pnl_rows),
+        key=lambda b: (b["account_mode"] != "live", b["account_mode"] or ""))
+    return {
+        "callers": [{"caller": c["caller"], "spend": float(c["spend"]), "calls": int(c["calls"])}
+                    for c in spenders],
+        "total_spend": total, "total_calls": sum(int(c["calls"]) for c in spenders),
+        "judge_spend": judge, "books": books,
+    }
+
+
+def _format_spend_vs_pnl(agg: dict, *, window_start: date, today: date) -> str:
+    """The #313 block. The live book ALWAYS prints (a month with no live close says so, rather
+    than the line vanishing); another book prints only when it closed something. Pure."""
+    span = (f"{window_start.strftime('%b')} {window_start.day} – "
+            f"{today.strftime('%b')} {today.day}")
+    lines = [f"\U0001F4B8 *LLM spend vs realised P&L (#313) — last {_SPEND_PNL_DAYS} days, {span}*"]
+    if not agg["callers"]:
+        lines.append("LLM spend: $0.00 (no metered calls in the window)")
+    else:
+        lines.append(f"LLM spend: ${agg['total_spend']:,.2f} across {agg['total_calls']:,} calls")
+        shown = agg["callers"][:_SPEND_CALLER_CAP]
+        for c in shown:
+            lines.append(f"• {c['caller']} ${c['spend']:,.2f} ({c['calls']:,} calls)")
+        rest = agg["callers"][_SPEND_CALLER_CAP:]
+        if rest:
+            lines.append(f"• +{len(rest)} other callers ${sum(c['spend'] for c in rest):,.2f}")
+        if agg["judge_spend"]:
+            lines.append(f"Callers with 'judge' in the name: ${agg['judge_spend']:,.2f} "
+                         f"({round(100 * agg['judge_spend'] / agg['total_spend'])}% of spend)")
+    lines.append("Realised P&L, trades closed in the same days:")
+    by_mode = {b["account_mode"]: b for b in agg["books"]}
+    ordered = [by_mode.get("live") or {"account_mode": "live", "n": 0, "wins": 0, "pnl": 0.0}]
+    ordered += [b for b in agg["books"] if b["account_mode"] != "live"]
+    for b in ordered:
+        label = _BOOK_LABELS.get(b["account_mode"], str(b["account_mode"]))
+        if not b["n"]:
+            lines.append(f"• {label}: no trade closed")
+        else:
+            lines.append(f"• {label}: ${b['pnl']:+,.0f} over {b['n']} closed trade"
+                         f"{'s' if b['n'] != 1 else ''} ({b['wins']} winner{'s' if b['wins'] != 1 else ''})")
+    lines.append("_Telemetry only. Spend is every metered caller (Claude + Perplexity, live and "
+                 "shadow lanes); P&L is every closed trade, bug-attributed ones included._")
+    return "\n".join(lines)
+
+
+async def _spend_vs_pnl_section(today: date) -> tuple[str, str]:
+    """#313 part 2 - returns (fold block, the "Also checked" phrase). FAIL-OPEN: a failed read of
+    EITHER side prints `unavailable: <reason>` for the block and the review still goes out."""
+    title = "\U0001F4B8 *LLM spend vs realised P&L (#313):*"
+    try:
+        from agents.market_intelligence.cost_board import compute_caller_spend_window
+        window_start = today - timedelta(days=_SPEND_PNL_DAYS - 1)
+        callers = await compute_caller_spend_window(today, _SPEND_PNL_DAYS)
+        pnl_rows = await get_closed_pnl_by_account_mode(window_start, today)
+        agg = _aggregate_spend_vs_pnl(callers, pnl_rows)
+        live = next((b for b in agg["books"] if b["account_mode"] == "live"), None)
+        pnl_phrase = (f"live P&L ${live['pnl']:+,.0f} on {live['n']}" if live and live["n"]
+                      else "no live close")
+        return (_format_spend_vs_pnl(agg, window_start=window_start, today=today),
+                f"{_SPEND_PNL_DAYS}d LLM ${agg['total_spend']:,.0f} vs {pnl_phrase}")
+    except Exception as e:  # noqa: BLE001 — advisory section; the review must still go out
+        logger.warning("spend-vs-pnl section failed: %s", e, exc_info=True)
+        return f"{title} unavailable: {_short_reason(e)}", "spend vs P&L: unavailable"
 
 
 _SETUP_REVIEW_MIN_N = 10   # below this the row REPORTS but asks nothing — see the docstring

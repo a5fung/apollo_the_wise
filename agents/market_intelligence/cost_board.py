@@ -330,6 +330,23 @@ def _caller_window_totals(rows, today: date, window_days: int = 7) -> dict[str, 
     return out
 
 
+async def compute_caller_spend_window(today: date, window_days: int = 30) -> list[dict]:
+    """Per-caller metered spend over the trailing `window_days` ET days ending `today` INCLUSIVE,
+    largest first: `[{"caller", "spend", "calls"}]`. #313 part 2 - the weekly review's "LLM spend
+    vs realised P&L" block reads this beside `db.get_closed_pnl_by_account_mode` over the same
+    dates.
+
+    It is the composition of the two helpers the anomaly and reduction detectors already use
+    (`_fetch_caller_window` + `_caller_window_totals`, the same raw-timestamp-prefiltered read),
+    NOT a new query, and `api_usage.cost_usd` is priced by `spend_tracker` at write time - so this
+    is a SUM, never a second copy of the pricing math. `window_days - 1` as the lookback because
+    the fetch's BETWEEN is inclusive on both ends: 29 + today = 30 days."""
+    rows = await _fetch_caller_window(today, window_days - 1)
+    totals = _caller_window_totals(rows, today, window_days=window_days)
+    return sorted(({"caller": c, "spend": t["spend"], "calls": t["calls"]} for c, t in totals.items()),
+                  key=lambda x: (-x["spend"], x["caller"]))
+
+
 def _classify_caller_band(today_spend: float, history: list[float]) -> tuple[int, float, float, float]:
     """Reuses system_audit's z/ratio/_band_for routing (band 3 = z>=3 or
     ratio>=5x, the same threshold that gates its L2 Telegram tier). Returns
