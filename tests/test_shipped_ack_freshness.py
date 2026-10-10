@@ -143,9 +143,14 @@ def test_the_live_board_markers_are_fresh():
     # Assert the INVARIANT (every marker on the board is fresh), not a COUNT. A hardcoded count
     # fails the moment anyone legitimately acknowledges another task — which happened within
     # minutes of this test being written, on #331 — and a test that fails on correct behaviour
-    # gets deleted rather than fixed. `hits > 0` still proves the loop actually ran against real
-    # board content rather than silently matching nothing.
-    assert hits > 0, "no shipped-ack markers found on the board — the matcher has probably rotted"
+    # gets deleted rather than fixed. Nor `hits > 0`: a board with NO markers is legitimate (the
+    # last one, on #331, closed 2026-10-10, and that floor then failed on correct behaviour). The
+    # rot it guarded against is the board matcher silently matching nothing, so prove THAT
+    # directly: the same `_TASK` match must see a marker on a real-shaped task line.
+    probe = f"- #999 | {today.isoformat()} | pending | NOTHING SHIPPED [shipped-ack:{today.isoformat()}]"
+    m = _TASK.match(probe)
+    assert m and m.group(1) == "999" and "shipped-ack:" in m.group(4).lower(), (
+        "the board matcher no longer recognises a task line — the loop above would pass vacuously")
 
 
 def test_stale_blocker_reads_the_CURRENT_tag_not_the_whole_history():
