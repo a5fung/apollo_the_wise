@@ -10068,7 +10068,17 @@ reviews:
       three +0.33R scratches were artifacts of the old +2R partial. PCLA 09-10 abstains
       (stop and breakeven arm on the same daily bar, unorderable without minutes). Found alongside: the two MAGNA53 near-miss lanes were walking era_c by
       mistake — fixed 2026-09-22 (magna53_ep.md change log). No operator action.
-    status: pending
+    status: done
+    closed_on: 2026-10-10
+    outcome: >-
+      ANSWERED AND CLOSED WITH #359 on his "Ok to recs" 2026-10-10: KEEP $500M.
+      docs/analysis/359_floor_read_2026-10-10.md: 38 walked trades in the $250-500M band and
+      59 settled scan-log names blocked by the floor alone, both past N>=15; names just under
+      the floor reach >=3R at the same rate as names just over it (3 of 38 vs 3 of 39) and
+      trade about half the dollars, so lowering the floor adds no net winners. No more timed
+      re-reads: the floor is re-read from #624's paper lane once it has trades in the
+      $250-500M band (carried onto #624). minute_pull_620's 10-17 check-in still runs on its
+      own and no longer needs this review alongside it.
     added_on: 2026-06-23
 
   - review_id: htf_adr_threshold_tune

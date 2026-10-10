@@ -2080,3 +2080,13 @@ EVIDENCE:
 - **Why it is superseded:** the over-pruning #215 targeted is the theme description validator (`theme_engine._validate_theme_membership`) removing members that fit. #693's replay of Monday 10-05's 151 calls (`docs/analysis/693_validator_thinking_replay_2026-10-09.md`, $0.49) found the thinking-cut setting removing 26 live and 33 on a re-run that agreed on only 16, against 5 with thinking ON (all 5 also removed live); 5 of the live removals were plainly wrong by the stock's own description. Thinking was turned back ON (his yes 10-09) and deployed Sat 10-10.
 - **What still catches a residual:** #693's own check — the first two live nights (from Mon 10-12) must show validation removals below 15 with no truncation; a borderline name wrongly removed then is raised there.
 - **The gated review** `prompt_debias_clean_cohort_215` is marked done with the same reason.
+
+## #359 — EP market-cap floor ($500M): answered, keep it (2026-10-10)
+
+BAR: "DoD: at **N≥~15** near-miss samples with forward returns (anti-overfit, batch-not-single-case; ~Q3 2026), evaluate whether lowering `MIN_MARKET_CAP` (`backtester/filters.py:23`, the shared live+backtest gate) adds net winners → **OPERATOR decision** (detection/safeguard criterion → CHANGE_PROCESS + sign-off + filter-list judgment, NEVER the agent's). Registry: `ep_mcap_floor_500m_review` (data_gated_reviews.yaml, weekly auto-surface, earliest 2026-09-22)."
+
+EVIDENCE:
+- **Sample bar met:** `docs/analysis/359_floor_read_2026-10-10.md` — 38 walked trades in the $250-500M band (read A, 2024-01 to 2026-09) and 59 settled names blocked by the floor alone (read B, the real scan log); both well over 15.
+- **The evaluation:** names just under the floor reach big winners at the same rate as names just over it (3 of 38 vs 3 of 39; 7 of 59 vs 5 of 62) and trade about half the dollars — lowering the floor adds no net winners.
+- **The operator decision:** his "Ok to recs" 2026-10-10 to keep $500M (commit 2036ec6c). Code unchanged: `backtester/filters.py:23`.
+- **Not lost:** the remaining re-read (from the paper lane once it has trades in the $250-500M band) is carried onto #624; registry review `ep_mcap_floor_500m_review` marked done with the same reason.
