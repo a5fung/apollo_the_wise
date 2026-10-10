@@ -1,0 +1,1 @@
+model=claude-sonnet-5-5 pricing={'input': 2.0, 'output': 10.0} headlines=88 est_in=113667 est_out=11440 est_usd=0.342

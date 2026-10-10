@@ -279,3 +279,79 @@ def test_a_polygon_nomination_survives_five_newer_alpaca_candidates():
     answers = {old: _TARGET} | {a["title"]: _NONE for a in alp}
     scan, *_ = _scan(polygon=poly, alpaca=alp, answers=answers)
     assert scan.hit is not None and scan.hit["title"] == old and scan.hit["source"] == "polygon_headline_model"
+
+
+# ── 7. his "Ok to recs" 2026-10-10: the deal-wire phrases widen CANDIDATES only ───────────────────
+
+def test_the_seven_deal_wire_phrases_make_a_wire_headline_a_candidate():
+    assert mf._MNA_DEAL_WIRE_PHRASES == (
+        "to merge", "merge with", "business combination", "agreement to acquire", "to acquire",
+        "agrees to buy", "inks agreement")
+    for title, kw in (
+            ("Copart To Acquire All Outstanding Shares Of ACV For $10.50 Per Share In Cash", "to acquire"),
+            ("Independence Realty Trust To Merge With Centerspace", "to merge"),
+            ("Shareholders Approve Business Combination", "business combination"),
+            ("GSK Enters Agreement To Acquire Nuvalent For $10.6B", "agreement to acquire"),
+            ("Acme Corp Agrees To Buy Widget Co", "agrees to buy")):
+        assert mf.matches_mna_keywords(title) == kw, title
+    # the ORIGINAL list still wins first, so an old match keeps its old keyword attribution
+    assert mf.matches_mna_keywords("Acme to be acquired; agreement to acquire signed") == "to be acquired"
+
+
+def test_the_phrases_never_reach_the_pre_692_comparator():
+    """`mna_filter_released` says "the OLD rule would have blocked" — a buyer's 'proposal to acquire'
+    must not be logged as an old-rule block (FWDI)."""
+    assert mf.matches_mna_in_any(["FWDI renewed its proposal to acquire SkyAI"]) is None
+    assert mf.matches_mna_in_any(["XYZ definitive agreement"]) == ("definitive agreement", 0)
+    assert "to acquire" not in mf._MNA_KEYWORDS
+
+
+def test_a_wire_headline_from_alpaca_is_now_asked_and_a_buyer_answer_releases_it():
+    buyer = "Acme Corp To Acquire Widget Co For $20 Per Share In Cash"
+    scan, model, _, _ = _scan(alpaca=[_alp(buyer)], answers={buyer: H.Ans("buyer", "signed", "cash", "Widget")})
+    assert model.calls == [buyer] and scan.hit is None and len(scan.released) == 1
+    target = "BigCo To Acquire Acme Corp For $20 Per Share In Cash"
+    scan, *_ = _scan(alpaca=[_alp(target)], answers={target: _TARGET})
+    assert scan.hit and scan.hit["source"] == "alpaca_headline_model" and scan.hit["matched_keyword"] == "to acquire"
+
+
+# ── 8. newest first ACROSS the two feeds (review fix) ─────────────────────────────────────────────
+
+def test_the_newest_acting_headline_wins_across_both_feeds():
+    old_p = "Acme Corp to be acquired by BigCo for cash (polygon, older)"
+    new_a = "Acme Corp agrees to be acquired by OtherCo for cash (alpaca, newer)"
+    scan, *_ = _scan(polygon=[_poly(old_p, published="2026-10-01T08:00:00Z")],
+                     alpaca=[_alp(new_a, created="2026-10-01T10:00:00+00:00")],
+                     answers={old_p: _TARGET, new_a: _TARGET})
+    assert scan.hit["title"] == new_a and scan.hit["source"] == "alpaca_headline_model"
+    new_p = "Acme Corp to be acquired by BigCo for cash (polygon, newer)"
+    old_a = "Acme Corp agrees to be acquired by OtherCo for cash (alpaca, older)"
+    scan, *_ = _scan(polygon=[_poly(new_p, published="2026-10-01T10:00:00Z")],
+                     alpaca=[_alp(old_a, created="2026-10-01T08:00:00+00:00")],
+                     answers={new_p: _TARGET, old_a: _TARGET})
+    assert scan.hit["title"] == new_p and scan.hit["source"] == "polygon_headline_model"
+
+
+# ── 9. the comparator tags the feed (review fix) — the pre-#692 rule never read Alpaca ───────────
+
+def _released_row(out):
+    rel = [a for a in out.audits if a[0] == "mna_filter_released"]
+    assert rel, out.audits
+    return rel[0]
+
+
+def test_an_alpaca_only_release_is_tagged_alpaca_and_is_not_an_old_rule_block():
+    title = "Acme Corp rejects takeover bid from BigCo"
+    row = _released_row(_case(alpaca=[_alp(title)], answers={title: _NONE}))
+    assert row[2]["old_reasons"] == ["headline_keyword_alpaca"]
+    assert row[2]["old_rule_would_block"] is False
+    assert "old rule would have blocked" not in row[1] and "Alpaca" in row[1]
+
+
+def test_a_polygon_release_keeps_the_old_headline_keyword_reason():
+    title = "Acme Corp rejects takeover bid from BigCo"
+    row = _released_row(_case(polygon=[_poly(title)], answers={title: _NONE}))
+    assert row[2]["old_reasons"] == ["headline_keyword"] and row[2]["old_rule_would_block"] is True
+    both = _released_row(_case(polygon=[_poly(title)], alpaca=[_alp("Acme Corp takeover talk denied")],
+                               answers={title: _NONE, "Acme Corp takeover talk denied": _NONE}))
+    assert both[2]["old_reasons"] == ["headline_keyword", "headline_keyword_alpaca"]

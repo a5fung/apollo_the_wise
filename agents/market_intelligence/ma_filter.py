@@ -115,8 +115,9 @@ _ET = ZoneInfo("America/New_York")
 # question ($0, so a quiet name costs nothing) and (b) powers the `mna_filter_released`
 # comparator ("the OLD rule would have blocked here; the answer said no") — without (b) the
 # change has no positive observable. Bare "acquire"/"acquisition" stay OUT (removed 2026-05-13
-# for direction-blindness); widening the list is a separate, one-variable-at-a-time question
-# filed in docs/setups/magna53_ep.md "Known limitations".
+# for direction-blindness). This tuple is the ORIGINAL list = the comparator's "old rule"; the
+# 2026-10-10 deal-wire phrases (his "Ok to recs") live in `_MNA_DEAL_WIRE_PHRASES` below and widen
+# candidate selection only (docs/setups/magna53_ep.md "Known limitations" 8).
 _MNA_KEYWORDS: tuple[str, ...] = (
     "buyout", "takeover", "merger", "bought by",
     "being acquired", "definitive agreement", "tender offer", "going private",
@@ -124,6 +125,19 @@ _MNA_KEYWORDS: tuple[str, ...] = (
     "to be acquired", "all-cash buyout", "halper sadeh",  # shareholder-investigation firm; always follows M&A
     "take-private", "private deal for",
 )
+
+#: 2026-10-10 (his "Ok to recs"): the Benzinga DEAL-WIRE headline forms — "X To Acquire Y For $N Per
+#: Share", "X To Merge With Y", "...Business Combination". These widen CANDIDATE SELECTION only (what
+#: gets ASKED; the model still answers who is the target). Kept in a SEPARATE tuple so the
+#: `mna_filter_released` comparator ("the pre-#692 rule would have blocked") keeps reading the ORIGINAL
+#: list — otherwise a buyer's "proposal to acquire" text would be logged as an old-rule block it never
+#: was. Measured on the 151 replayed ticker-days: +34 distinct headlines (+41 ticker-headline rows
+#: incl. 6 summary matches).
+_MNA_DEAL_WIRE_PHRASES: tuple[str, ...] = (
+    "to merge", "merge with", "business combination", "agreement to acquire", "to acquire",
+    "agrees to buy", "inks agreement",
+)
+_MNA_CANDIDATE_KEYWORDS: tuple[str, ...] = _MNA_KEYWORDS + _MNA_DEAL_WIRE_PHRASES
 
 # Shareholder-investigation firms — their press releases list multiple tickers (class-action
 # notices on already-announced deals, NOT new M&A events). Title-prefix match → never a
@@ -141,21 +155,27 @@ _SHAREHOLDER_LITIGATION_PREFIXES: tuple[str, ...] = (
 )
 
 
-def matches_mna_keywords(text: Optional[str]) -> Optional[str]:
-    """Return the first M&A keyword found in `text` (lowercased), else None."""
+def _first_keyword(text: Optional[str], keywords: tuple[str, ...]) -> Optional[str]:
     if not text:
         return None
     low = text.lower()
-    for kw in _MNA_KEYWORDS:
+    for kw in keywords:
         if kw in low:
             return kw
     return None
 
 
+def matches_mna_keywords(text: Optional[str]) -> Optional[str]:
+    """CANDIDATE selection: the first M&A keyword found in `text` (lowercased) — the original list
+    plus the deal-wire phrases — else None."""
+    return _first_keyword(text, _MNA_CANDIDATE_KEYWORDS)
+
+
 def matches_mna_in_any(texts: Iterable[Optional[str]]) -> Optional[tuple[str, int]]:
-    """Scan multiple text blobs; return (keyword, index_of_first_hit) or None."""
+    """COMPARATOR only (the pre-#692 rule): scan multiple text blobs against the ORIGINAL list;
+    return (keyword, index_of_first_hit) or None."""
     for i, t in enumerate(texts):
-        kw = matches_mna_keywords(t)
+        kw = _first_keyword(t, _MNA_KEYWORDS)
         if kw:
             return kw, i
     return None
@@ -901,6 +921,10 @@ async def headline_deal_scan(
         company = await _company_name(ticker)
     missing: list = []
     candidates = _candidate_articles(ticker, items, insights_missing=missing, company_name=company)
+    # NEWEST FIRST ACROSS BOTH FEEDS: the merge puts Polygon first then Alpaca, and the first acting
+    # answer in this order is the headline that acts — so order by publish time (stable: equal or
+    # blank stamps keep the merge order), never by feed.
+    candidates.sort(key=lambda c: c[0].get("published_utc") or "", reverse=True)
     for title in missing:   # unchanged #88 telemetry (one row per skipped article, as before)
         try:
             from agents.market_intelligence.db import log_audit_event
@@ -934,7 +958,7 @@ async def headline_deal_scan(
     for c in candidates:
         _by_feed[c[0].get("news_source") == "alpaca"].append(c)
     _kept = {id(c[0]) for feed in _by_feed.values() for c in feed[:_HEADLINE_MAX_ARTICLES]}
-    asked = [c for c in candidates if id(c[0]) in _kept]          # still newest first
+    asked = [c for c in candidates if id(c[0]) in _kept]          # newest first (sorted below)
     over_cap = [c for c in candidates if id(c[0]) not in _kept]
     tasks = [asyncio.ensure_future(ask_deal_question(
         ticker, item, company_name=company, reasoning=reasoning, now_et=now_et,
@@ -1233,9 +1257,16 @@ async def is_likely_ma(
     kw_hit = matches_mna_in_any(catalyst_texts or [])
     if kw_hit:
         old_rule.append(f"keyword_in_text_{kw_hit[1]}:{kw_hit[0]}")
-    if scan.released or scan.hit:
+    # The pre-#692 rule read ONLY Polygon news, so only a Polygon-sourced headline is "the old rule
+    # would have blocked". An Alpaca-sourced one (a feed the old rule never read) is recorded as
+    # `headline_keyword_alpaca` in old_reasons but is NOT counted in old_rule / old_rule_would_block.
+    _answered = list(scan.released) + ([scan.hit] if scan.hit else [])
+    _feeds = {a.get("news_source") or "polygon" for a in _answered}
+    if "polygon" in _feeds:
         old_rule.append("headline_keyword")
     old_reasons = list(old_rule)
+    if "alpaca" in _feeds:
+        old_reasons.append("headline_keyword_alpaca")
     if grader_found_deal:
         old_reasons.append("grader_deal_no_pin")
     pin_release = reading_box.get("released")
@@ -1244,7 +1275,9 @@ async def is_likely_ma(
         old_reasons.append("pin_free")
     if old_reasons:
         lead = ("old rule would have blocked (" + ", ".join(old_rule) + ")" if old_rule
-                else "released for review (the grader answered a deal that does not pin)")
+                else ("released for review (a Benzinga-via-Alpaca headline was answered as not pinning; "
+                      "the pre-#692 rule never read that feed)" if "alpaca" in _feeds and not grader_found_deal
+                      else "released for review (the grader answered a deal that does not pin)"))
         if pin_release:
             pr = pin_release["pin"]
             lead = (f"deal-nominated ({pin_release['answer'].get('role')}/"
