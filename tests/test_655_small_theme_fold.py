@@ -101,9 +101,15 @@ def test_the_home_is_the_closest_by_the_505_key_not_the_biggest():
 
 
 def test_a_shared_member_outranks_size_and_industry():
+    """Review 10-10: the other home must clear #505's minimum on industry (overlap 1.0 here) so the
+    RANKING is what decides — a shared stock must still beat a full industry match and a bigger home."""
     small = {"name": "Gas Pair", "stage": "Nascent", "tickers": ["H1", "NOIS"]}   # H1 sits in HOME
+    # Gas Producers: shares H1, industry overlap 0.5 (H1 'gas' matches, NOIS 'oil' does not).
+    # Broad Energy Basket: shares nothing, overlap 1.0 ('gas' via O1, 'oil' via the rest).
+    ind = {"H1": "gas", "NOIS": "oil", "O1": "gas", **{o: "oil" for o in OTHER[1:]},
+           **{h: "gas" for h in HOME[1:]}}
     folds, _ = _plan([_home("Broad Energy Basket", OTHER), _home(), small], {small["name"]},
-                     _excess([], ["NOIS"]), industries={})
+                     _excess([], ["NOIS"]), industries=ind)
     assert [f.home for f in folds] == ["Gas Producers"]
     assert folds[0].moved == [] and folds[0].already_in_home == ["H1"] and folds[0].released == ["NOIS"]
 

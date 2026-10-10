@@ -1001,9 +1001,16 @@ map / industries), the planner makes the replay's **77 of 77** folds and no othe
 at least one stock (63 of 77); G3 above 90% every night; the under-3-member share falls with them. Overlaps rule B: the fold acts on
 the same small themes one or more nights earlier, so rule B's nightly retirements should fall (not measured). Cost: ~1 in 3 themes
 taken was a co-moving group on another night (7 of 21) — their stocks land in their closest co-moving theme instead of leaving the
-board. No money path change: a member moved into an Accelerating/Mainstream home becomes LISTED there (+10 EP theme bonus, the same
-as any assignment); a released member loses its listing until re-assigned; and because a home may be at any stage (the
-replay's rule), a member of an Accelerating/Mainstream small theme moved into a FADING home loses its listing the same way.
+board. **No new money-path mechanism, but the existing +10 EP theme bonus MOVES with membership** (his "ok" 10-10, with
+these numbers): on the 10 replay nights about 52 stock-nights GAIN the bonus (moved into an Accelerating/Mainstream home)
+and 39 LOSE it — ~25 released from a small Accelerating/Mainstream theme, 8 moved into a FADING home (a home may be at any
+stage, the replay's rule; 9 of the 77 folds were Mainstream → Fading). **Gaps, stated:** the nightly funnel row's
+`retired=` count is taken before the fold step, and the "retired while healthy" health check reads only
+`theme_retired` rows — a fold writes `theme_small_folded`, so neither sees a fold (32 of the 77 replay folds dissolved a
+small Mainstream theme; feeding folds into that check would fire it on every intended fold — his call if wanted). A
+fold can push a home past the 20-member split trigger (the Fintech home reached 21–22 on 4 of 10 nights), so the split
+call fires on it the next night, as assignment can already do. The nightly `theme_small_fold_ran` row records
+`industries_read` (False = that night ranked homes on shared stocks only).
 
 **Reversion-flag**: new rule (no prior decision reversed). Toggle `theme_small_fold` OFF = nothing folds and no extra read.
 

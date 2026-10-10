@@ -9266,7 +9266,8 @@ async def _fold_small_failing_themes(
                           "via": "small_fold", "into": f.home, "moved": f.moved, "released": f.released})
         logger.info(f"Theme '{f.theme}' folded into '{f.home}' (#655): moved {f.moved}, released {f.released}")
     counts["folded"] = len(removed)
-    await _ran("ran", counts, g3_rate_pct=g3.get("rate_pct"), folded=sorted(removed))
+    await _ran("ran", counts, g3_rate_pct=g3.get("rate_pct"), folded=sorted(removed),
+               industries_read=bool(industries))   # False = shared stocks only tonight (review 10-10)
     if not removed:
         return all_themes
     return [t for t in all_themes if t["name"] not in removed] + retired_rows
