@@ -1,0 +1,95 @@
+=== Q1 mi_pending_allocations: per alert_date arrival (created_at ET) vs 09:28 / 09:35, last 45 calendar days ===
+NOTE created_at is refreshed to NOW() on every UPSERT re-score, so it is the LAST write, not first arrival
+alert_date	rows_total	last_write_before_0928	last_write_0928_0935	last_write_after_0935	earliest_et	latest_et	ranked_rows
+2026-08-27	5	3	0	2	07:01:23.378161	09:50:43.961047	3
+2026-08-28	1	1	0	0	07:01:57.980195	07:01:57.980195	1
+2026-09-03	3	2	0	1	07:01:02.706787	09:35:19.712244	2
+2026-09-04	1	0	0	1	09:45:21.05972	09:45:21.05972	0
+2026-09-08	6	4	0	2	07:00:12.511878	09:55:31.277403	4
+2026-09-14	2	2	0	0	07:00:36.860277	07:30:13.976013	2
+2026-09-16	1	0	0	1	09:45:30.882345	09:45:30.882345	0
+2026-09-17	2	1	0	1	07:00:37.907183	09:40:19.851847	1
+2026-09-21	2	0	1	1	09:31:17.922917	09:35:17.722237	1
+2026-09-22	1	0	0	1	09:45:08.377518	09:45:08.377518	0
+2026-09-25	1	1	0	0	07:00:40.511756	07:00:40.511756	1
+2026-09-28	1	1	0	0	07:00:20.913555	07:00:20.913555	1
+2026-10-01	2	0	0	2	09:45:28.446855	09:50:08.777142	0
+2026-10-05	3	2	0	1	07:00:50.1857	09:45:17.322451	2
+2026-10-06	3	1	0	2	08:25:16.063565	09:55:34.396871	1
+2026-10-07	1	0	0	1	09:35:25.357839	09:35:25.357839	0
+2026-10-08	1	1	0	0	07:00:14.229542	07:00:14.229542	1
+2026-10-09	2	1	0	1	07:00:14.417121	09:35:15.173079	1
+(18 rows)
+=== Q2 open positions NOW by account_mode x status (the allocator counts ALL modes; the safeguard counts per mode) ===
+account_mode	status	n	oldest_alert	newest_alert
+live	filled	3	2026-09-28	2026-10-09
+(1 row)
+=== Q3 allocator audit rows, last 45 days: run time ET + summary (baseline: every row at 09:35) ===
+et	summary
+2026-08-27 09:35:00.041285	slots=1 winners=['OKTA'] n=3 (2 lower-ranked)
+2026-08-28 09:35:00.043147	slots=0 winners=[] n=1 (1 lower-ranked)
+2026-08-31 09:35:00.413922	empty queue for 2026-08-31
+2026-09-01 09:35:00.030059	empty queue for 2026-09-01
+2026-09-02 09:35:00.035379	empty queue for 2026-09-02
+2026-09-03 09:35:00.04882	slots=3 winners=['SNOW', 'AGX'] n=2 (0 lower-ranked)
+2026-09-04 09:35:00.027862	empty queue for 2026-09-04
+2026-09-08 09:35:00.038992	slots=1 winners=['PHVS'] n=4 (3 lower-ranked)
+2026-09-09 09:35:00.025553	empty queue for 2026-09-09
+2026-09-10 09:35:00.039391	empty queue for 2026-09-10
+2026-09-11 09:35:00.044334	empty queue for 2026-09-11
+2026-09-14 09:35:00.542308	slots=1 winners=['DFTX'] n=2 (1 lower-ranked)
+2026-09-15 09:35:00.037623	empty queue for 2026-09-15
+2026-09-16 09:35:00.022821	empty queue for 2026-09-16
+2026-09-17 09:35:00.054453	slots=2 winners=['VICR'] n=1 (0 lower-ranked)
+2026-09-18 09:35:00.06233	empty queue for 2026-09-18
+2026-09-21 09:35:00.041284	slots=2 winners=['INTC'] n=1 (0 lower-ranked)
+2026-09-22 09:35:00.030483	empty queue for 2026-09-22
+2026-09-23 09:35:00.047459	empty queue for 2026-09-23
+2026-09-24 09:35:00.042839	empty queue for 2026-09-24
+2026-09-25 09:35:00.058372	slots=2 winners=['AKAM'] n=1 (0 lower-ranked)
+2026-09-28 09:35:00.042441	slots=3 winners=['KOD'] n=1 (0 lower-ranked)
+2026-09-29 09:35:00.050395	empty queue for 2026-09-29
+2026-09-30 09:35:00.045782	empty queue for 2026-09-30
+2026-10-01 09:35:00.044146	empty queue for 2026-10-01
+2026-10-02 09:35:00.050576	empty queue for 2026-10-02
+2026-10-05 09:35:00.554264	slots=3 winners=['PBR', 'NU'] n=2 (0 lower-ranked)
+2026-10-06 09:35:00.041758	slots=2 winners=['CEG'] n=1 (0 lower-ranked)
+2026-10-07 09:35:00.042811	empty queue for 2026-10-07
+2026-10-08 09:35:00.041488	slots=2 winners=['WOLF'] n=1 (0 lower-ranked)
+2026-10-09 09:35:00.049102	slots=0 winners=[] n=1 (1 lower-ranked)
+(31 rows)
+=== Q4 entries that became OPEN (confirmed_at) in the last 45 days: confirmed/filled times ET per row, by account_mode ===
+alert_date	ticker	account_mode	status	confirmed_et	filled_et	created_et	confirmed_on_alert_date
+2026-08-27	OKTA	live	closed	09:31:10.808072	09:49:50.777226	09:31:10.808072	t
+2026-08-27	CRWD	live	closed	09:31:11.70977	09:31:11.80965	09:31:11.70977	t
+2026-08-28	SOLS	live	closed	09:31:00.862421	09:34:41.796552	09:31:00.862421	t
+2026-09-03	SNOW	live	cancelled	09:31:00.978411		09:31:00.978411	t
+2026-09-03	HOOD	live	closed	09:36:09.843429	09:36:09.960473	09:36:09.843429	t
+2026-09-08	PHVS	live	closed	09:31:01.470921	09:31:14.905677	09:31:01.470921	t
+2026-09-08	SEI	live	closed	09:31:11.888893	09:35:28.101426	09:31:11.888893	t
+2026-09-08	IONQ	live	cancelled	09:35:26.028147		09:35:26.028147	t
+2026-09-14	DFTX	live	closed	09:31:11.004287	09:33:18.110617	09:31:11.004287	t
+2026-09-17	VICR	live	closed	09:31:00.909654	09:31:01.01886	09:31:00.909654	t
+2026-09-25	AKAM	live	cancelled	09:31:00.892617		09:31:00.892617	t
+2026-09-28	KOD	live	filled	09:31:00.80085	09:31:16.562476	09:31:00.80085	t
+2026-10-06	CEG	live	closed	09:31:01.111814	09:31:01.196997	09:31:01.111814	t
+2026-10-07	PENG	live	filled	09:35:46.679288	09:35:53.476364	09:35:46.679288	t
+2026-10-09	HUM	live	filled	09:31:00.458095	09:31:33.511684	09:31:00.458095	t
+(15 rows)
+=== Q5 columns of mi_ep_scan_log / mi_ep_alerts (to find a FIRST-arrival timestamp) ===
+table_name	column_name	data_type
+mi_ep_alerts	ticker	text
+mi_ep_alerts	alert_date	date
+mi_ep_alerts	score_tier	text
+mi_ep_alerts	created_at	timestamp with time zone
+mi_ep_alerts	detected_at	timestamp with time zone
+mi_ep_scan_log	scan_date	date
+mi_ep_scan_log	ticker	text
+mi_ep_scan_log	score_tier	text
+mi_ep_scan_log	created_at	timestamp with time zone
+mi_ep_scan_log	scan_time_et	timestamp with time zone
+(10 rows)
+=== Q6 open-position count the allocator would compute today vs per-mode ===
+all_modes	live_only	paper_only
+3	3	0
+(1 row)

@@ -6460,14 +6460,20 @@ async def _9m_scan_job() -> None:
 async def _unified_allocator_shadow_job() -> None:
     """Cross-strategy allocator (#31) Phase 1A — shadow.
 
-    Runs at 9:35 ET after MAGNA53 ORB monitor (9:30) and 9M Day 2 cron (9:31)
-    have populated mi_pending_allocations. Drains today's queue, scores each
-    candidate via cross_strategy_allocator.run_shadow_allocation, marks
+    Runs at 09:28 ET (#312 Step A, 2026-10-10 — operator-signed 2026-09-14),
+    BEFORE the 09:31 ORB submits, so the ranking is taken against the
+    pre-entry book. The queue (`mi_pending_allocations`) is filled by the EP
+    scan that runs every 5 min from 07:00 ET (`enqueue_pending_allocation`,
+    HIGH + MODERATE tiers); the 09:31 `ep_scan_open` upgrades land AFTER this
+    ranking by design — that is the cost he signed ("A, then B if this becomes
+    necessary"; the Step B bar is in the SSoT). Drains today's queue, scores
+    each candidate via cross_strategy_allocator.run_shadow_allocation, marks
     shadow_rank + shadow_allocated, emits `unified_allocation_decided` audit.
 
-    Does NOT submit. Phase 1B (active) will move this to 9:28 ET pre-market
-    and replace the legacy submission paths. Compare actual fills today's
-    morning vs the audit event's `winners` field to validate the design.
+    Does NOT submit. It ran at 09:35 from 2026-05-08 to 2026-10-10, four
+    minutes AFTER the entries it was ranking, which double-counted 6 of the 7
+    winners that ever filled (docs/analysis/unified_allocator_phase_1b_2026-09-14.md
+    §2). SSoT: docs/architecture/cross_strategy_allocator.md.
     """
     from agents.market_intelligence.collector import et_today
     today = et_today()
@@ -8419,16 +8425,26 @@ def start_scheduler() -> AsyncIOScheduler:
     )
 
     # Cross-strategy unified allocator (#31) Phase 1A — SHADOW.
-    # Runs at 9:35 ET (after MAGNA53 ORB monitor + 9M Day 2 cron have populated
-    # mi_pending_allocations). Scores every queued candidate, marks shadow_rank
-    # + shadow_allocated, emits `unified_allocation_decided` audit event with
-    # full ranking. Does NOT submit. Phase 1B (active) will move this to 9:28
-    # ET pre-market and replace the legacy submission paths.
+    # 09:28 ET (#312 Step A, 2026-10-10): BEFORE the 09:31 ORB submits, so the
+    # ranking is taken against the pre-entry book (it ran at 09:35 for five
+    # months and double-counted the morning's fills — see the job docstring).
+    # Scores every queued candidate, marks shadow_rank + shadow_allocated, emits
+    # `unified_allocation_decided` with the full ranking. Does NOT submit.
+    # Contention: nothing else fires at :28 (ep_scan is */5, the ORB bar stream
+    # wakes at 09:30, ep_scan_open at 09:31); the job is a handful of DB reads
+    # and row stamps (~50 ms on the 09:35 audit timestamps). misfire_grace_time
+    # = 90 s is the pre-open bound: a stalled loop may start it as late as
+    # 09:29:30 but never at or after 09:30, so a late run still reads a book
+    # with no same-day fills in it. Past the grace it is SKIPPED and paged
+    # (#672), and the recovery sweep never re-runs it — it excludes every
+    # execution-owned id — so a miss can never re-run after the fills.
+    # Fail-open stays: the job's own try/except pages and returns.
     _scheduler.add_job(
         audit_wrap(_unified_allocator_shadow_job, "unified_allocator_shadow"),
-        CronTrigger(hour=9, minute=35, day_of_week="mon-fri", timezone="America/New_York"),
+        CronTrigger(hour=9, minute=28, day_of_week="mon-fri", timezone="America/New_York"),
         id="unified_allocator_shadow",
         replace_existing=True,
+        misfire_grace_time=90,
     )
 
     # HUD auto-refresh: hourly during market hours — edits the pinned message in-place.

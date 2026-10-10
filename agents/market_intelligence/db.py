@@ -8096,18 +8096,37 @@ async def mark_pending_allocations_evaluated(
 OPEN_POSITION_STATUSES = ("filled", "order_placed", "confirmed")
 
 
-async def get_open_position_count() -> int:
-    """Count of currently-open live positions (filled or in-flight orders).
+async def get_open_position_count(
+    *,
+    account_mode: "str | None" = None,
+    before_alert_date: "date | None" = None,
+) -> int:
+    """Count of currently-open positions (filled or in-flight orders).
     Mirrors the count `_check_safeguards` uses for MAX_CONCURRENT_LIVE_POSITIONS,
     so the cross-strategy allocator's slot math matches the live safeguard.
     Uses OPEN_POSITION_STATUSES (excludes inert pending_confirmation proposals, #436).
+
+    #312 Step A (2026-10-10) — two narrowing filters, both optional so the
+    unfiltered count is unchanged for any other caller:
+    - `account_mode`: the safeguard counts PER BOOK (`live_tracker.count_open_positions`
+      binds `account_mode = $1`); this function did not, so the lowcap paper lane's
+      `account_mode='paper'` rows (same table, #624) would have consumed LIVE slots in the
+      allocator's arithmetic. Bound as a parameter, never a SQL literal (mode-literal gate).
+    - `before_alert_date`: the PRE-ENTRY book. A row whose `alert_date` is the target day
+      IS one of that day's entries (the ORB submit flips it `confirmed` at 09:31, #461),
+      so counting it as "occupying a slot" while also ranking it for a slot counts it
+      twice — the double count the 2026-09-14 read measured on 6 of 7 winners. Keyed on
+      `alert_date`, not the clock, so the answer is the same whether the job runs at
+      09:28 or late.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow("""
             SELECT COUNT(*) AS n FROM mi_live_trades
             WHERE status = ANY($1)
-        """, list(OPEN_POSITION_STATUSES))
+              AND ($2::text IS NULL OR account_mode = $2)
+              AND ($3::date IS NULL OR alert_date < $3)
+        """, list(OPEN_POSITION_STATUSES), account_mode, before_alert_date)
     return int(row["n"] or 0) if row else 0
 
 

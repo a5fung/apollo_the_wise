@@ -469,6 +469,10 @@ not impossible.
 
 ## Change log (newest first)
 
+### 2026-10-10 — `get_open_position_count` (the allocator's reader of the cap vocabulary) now counts the PRE-ENTRY LIVE book (#312 Step A, operator-signed 2026-09-14 — NO safeguard behaviour change)
+
+**What changed**: `db.get_open_position_count` gained two optional, parameter-bound filters — `account_mode` and `before_alert_date` — and the shadow allocator passes `("live", target_date)`; the unfiltered call is unchanged. **What did NOT change (THE LINE)**: the cap VALUE (5), the open-status vocabulary `db.OPEN_POSITION_STATUSES`, and the safeguard's own count — `_check_safeguards` and the #461 insert-time recheck count through `live_tracker.count_open_positions`, which this function never fed. **Why**: the allocator ranked at 09:35 against a live count that already held the 09:31 fills, so a filled candidate consumed a slot AND won one (6 of 7 winners, 2026-09-14 read); the ranking now runs at 09:28 against positions whose `alert_date` precedes the day, live book only (the lowcap paper lane's `account_mode='paper'` rows share `mi_live_trades`, #624). Owner of the rest: `docs/architecture/cross_strategy_allocator.md`.
+
 ### 2026-10-03 — Stop-ACK watchdog: a fallback stop refused because the price is already through it → the free shares are SOLD AT MARKET (#687 ruling (iii), operator-signed 2026-10-02)
 
 **Trigger**: his ruling (iii) of 2026-10-02 (PLAN.md #687) — extend ruling (3) (*"a stop that cannot be placed

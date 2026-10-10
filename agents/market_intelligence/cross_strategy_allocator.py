@@ -11,6 +11,18 @@ submission paths run unchanged. The shadow row records `shadow_rank` +
 full ranking. Compare actual fills vs allocator picks over N days before
 flipping Phase 1B (active submission).
 
+**#312 Step A (2026-10-10, operator-signed 2026-09-14 "aligned, A, then B if
+this becomes necessary"): the ranking is computed at 09:28 ET against the
+PRE-ENTRY book.** It used to run at 09:35, four minutes after the 09:31 ORB
+submits, reading the live open count — so 6 of the 7 winners that ever filled
+were counted twice (once as an open position consuming a slot, once as the
+winner of a slot that remained; `docs/analysis/unified_allocator_phase_1b_2026-09-14.md`
+§2). Slots are now `cap − live positions with alert_date < target_date`
+(`db.get_open_position_count(account_mode="live", before_alert_date=...)`), and
+the audit row carries `ranked_at_et` + `ranked_ids` so a name that arrives after
+the ranking is identifiable from the two tables alone (the Step B bar).
+SSoT: `docs/architecture/cross_strategy_allocator.md`.
+
 **Scoring (per memo 2026-05-08, Z-norm DROPPED post-spike)**:
 - setup_quality (40%): MAGNA53 = ep_score; 9M Day 2 = blend(close_in_range,
   gap%); future strategies bring their own setup→0-100 mapping.
@@ -32,10 +44,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field, asdict
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Optional
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
+
+_ET = ZoneInfo("America/New_York")
 
 # Phase 1 weights — see module docstring for rationale
 W_SETUP = 0.40
@@ -231,18 +246,29 @@ async def run_shadow_allocation(target_date: date) -> dict:
     """Phase 1A entry point — drains queue, scores, marks shadow ranks,
     emits audit event. Does NOT submit orders.
 
+    #312 Step A: slots are read from the PRE-ENTRY LIVE book — positions whose
+    `alert_date` precedes `target_date` — never from a live count that already
+    holds the morning's 09:31 fills (the double count the 09:35 timing produced).
+    The audit row records when the ranking was taken (`ranked_at_et`) and which
+    queue rows it saw (`ranked_ids`), so the Step B question — do names arriving
+    AFTER the ranking outrank its winners? — is answerable by joining
+    `mi_pending_allocations` rows for the day that are NOT in `ranked_ids`
+    against the frozen winner composites in the same row.
+
     Returns summary dict: {n_candidates, n_winners, top_picks, lower_ranked}.
     """
     from agents.market_intelligence import db
     from agents.market_intelligence.regime import get_current_regime
     from agents.market_intelligence.constants import MAX_CONCURRENT_LIVE_POSITIONS
 
+    ranked_at = datetime.now(_ET)
     rows = await db.get_pending_allocations_for_date(target_date)
     if not rows:
         await db.log_audit_event(
             "unified_allocation_decided",
             f"empty queue for {target_date}",
-            detail='{"target_date":"' + target_date.isoformat() + '","n_candidates":0}',
+            detail='{"target_date":"' + target_date.isoformat() + '","n_candidates":0'
+                   + ',"ranked_at_et":"' + ranked_at.isoformat() + '"}',
         )
         return {"n_candidates": 0, "n_winners": 0, "top_picks": [], "lower_ranked": []}
 
@@ -252,8 +278,13 @@ async def run_shadow_allocation(target_date: date) -> dict:
     candidates = candidates_from_pending_rows(rows, regime_label=regime.get("regime", "Bull"))
     ranked = rank_candidates(candidates)
 
-    # Slots: MAX - currently_open. Live trades only — paper has no slot pressure.
-    open_count = await db.get_open_position_count()
+    # Slots: MAX - positions open BEFORE today's entries, on the LIVE book only (paper
+    # has no slot pressure; the lowcap lane's paper rows share this table, #624). A
+    # row with alert_date == target_date is one of today's entries — it is being
+    # RANKED here, so it must not also be COUNTED as occupying a slot (#312 Step A).
+    open_count = await db.get_open_position_count(
+        account_mode="live", before_alert_date=target_date,
+    )
     slots = max(0, MAX_CONCURRENT_LIVE_POSITIONS - (open_count or 0))
     winners = ranked[:slots]
     losers = ranked[slots:]
@@ -268,8 +299,12 @@ async def run_shadow_allocation(target_date: date) -> dict:
     detail = _json.dumps({
         "target_date": target_date.isoformat(),
         "regime": regime.get("regime", "Bull"),
+        # #312 Step A: the book is `alert_date < target_date`, live only — the
+        # pre-entry book, not whatever is open at the tick.
         "open_positions": open_count,
         "slots_available": slots,
+        "ranked_at_et": ranked_at.isoformat(),
+        "ranked_ids": rank_ordered_ids,  # the queue rows this ranking SAW (Step B: late arrivals = day's rows not in here)
         "n_candidates": len(candidates),
         "n_winners": len(winners),
         "winners": [
