@@ -1,0 +1,1025 @@
+{
+ "population": {
+  "rulings": 45,
+  "bad": 25,
+  "approved": 14,
+  "other": 6,
+  "pointed": 4,
+  "real_eps": 31,
+  "excluded": 3,
+  "bars": {
+   "rows": 74295,
+   "dropped_null_ohlc": 0,
+   "tickers": 74
+  }
+ },
+ "outcomes": {
+  "bad": {
+   "n": 24,
+   "median": -0.434767760793054
+  },
+  "approved": {
+   "n": 14,
+   "median": 0.2074280689560355
+  },
+  "real_eps": {
+   "n": 30,
+   "median": 0.5540863461925715
+  }
+ },
+ "scorer": {
+  "parameter": {
+   "metric": "runup_low_pct_20",
+   "cutline": 75.0,
+   "basis": "HIS signed 75%, unfitted, pre-dates this study"
+  },
+  "real_eps_wrongly_rejected": 0,
+  "real_eps_n": 31,
+  "real_eps_wrongly_rejected_names": [],
+  "excluded_from_bar": [
+   [
+    "ABNB",
+    "2026-08-07"
+   ],
+   [
+    "CHPT",
+    "2026-09-03"
+   ],
+   [
+    "TDIC",
+    "2026-05-12"
+   ]
+  ],
+  "excluded_rejected": 1,
+  "must_not_reject_wrongly_rejected": 0,
+  "must_not_reject_n": 14,
+  "must_not_reject_wrongly_rejected_names": [],
+  "bad_charts_rejected": 9,
+  "bad_charts_n": 25,
+  "unreadable": {
+   "real_eps": 0,
+   "must_not_reject": 0,
+   "bad_charts": 0
+  },
+  "pointed_at_rejected": 2,
+  "pointed_at_n": 4,
+  "pointed_at_rejected_names": [
+   [
+    "MXL",
+    "2026-04-24",
+    "WRONG_DAY"
+   ],
+   [
+    "RXT",
+    "2026-05-07",
+    "WRONG_DAY"
+   ]
+  ]
+ },
+ "arms": {
+  "EXT50": {
+   "real_eps(31)": {
+    "rejected": 0,
+    "n": 31,
+    "unreadable": 0,
+    "rejected_names": []
+   },
+   "approved(14)": {
+    "rejected": 0,
+    "n": 14,
+    "unreadable": 0,
+    "rejected_names": []
+   },
+   "bad(25)": {
+    "rejected": 7,
+    "n": 25,
+    "unreadable": 0,
+    "rejected_names": [
+     "GDC 2026-05-06",
+     "CAR 2026-04-22",
+     "CAR 2026-04-21",
+     "ADVB 2026-07-24",
+     "JLHL 2026-06-08",
+     "QH 2026-06-18",
+     "MRAM 2026-05-13"
+    ]
+   }
+  },
+  "EXT75": {
+   "real_eps(31)": {
+    "rejected": 0,
+    "n": 31,
+    "unreadable": 0,
+    "rejected_names": []
+   },
+   "approved(14)": {
+    "rejected": 0,
+    "n": 14,
+    "unreadable": 0,
+    "rejected_names": []
+   },
+   "bad(25)": {
+    "rejected": 6,
+    "n": 25,
+    "unreadable": 0,
+    "rejected_names": [
+     "GDC 2026-05-06",
+     "CAR 2026-04-22",
+     "ADVB 2026-07-24",
+     "JLHL 2026-06-08",
+     "QH 2026-06-18",
+     "MRAM 2026-05-13"
+    ]
+   }
+  },
+  "ANCHOR75": {
+   "real_eps(31)": {
+    "rejected": 0,
+    "n": 31,
+    "unreadable": 0,
+    "rejected_names": []
+   },
+   "approved(14)": {
+    "rejected": 0,
+    "n": 14,
+    "unreadable": 0,
+    "rejected_names": []
+   },
+   "bad(25)": {
+    "rejected": 9,
+    "n": 25,
+    "unreadable": 0,
+    "rejected_names": [
+     "NVTX 2026-06-03",
+     "GDC 2026-05-06",
+     "CAR 2026-04-22",
+     "CAR 2026-04-21",
+     "ADVB 2026-07-24",
+     "JLHL 2026-06-08",
+     "QH 2026-06-18",
+     "MRAM 2026-05-13",
+     "AEHR 2026-08-14"
+    ]
+   }
+  },
+  "V3READ": {
+   "real_eps(31)": {
+    "rejected": 0,
+    "n": 31,
+    "unreadable": 0,
+    "rejected_names": []
+   },
+   "approved(14)": {
+    "rejected": 0,
+    "n": 14,
+    "unreadable": 0,
+    "rejected_names": []
+   },
+   "bad(25)": {
+    "rejected": 5,
+    "n": 25,
+    "unreadable": 0,
+    "rejected_names": [
+     "CAR 2026-04-22",
+     "CAR 2026-04-21",
+     "JLHL 2026-06-08",
+     "MRAM 2026-05-13",
+     "AEHR 2026-08-14"
+    ]
+   }
+  }
+ },
+ "v3read_13m": {
+  "real_eps(31)": {
+   "rejected": 0,
+   "n": 31,
+   "unreadable": 0
+  },
+  "approved(14)": {
+   "rejected": 0,
+   "n": 14,
+   "unreadable": 0
+  },
+  "bad(25)": {
+   "rejected": 6,
+   "n": 25,
+   "unreadable": 0
+  }
+ },
+ "split": {
+  "ANCHOR75|35 (old)": {
+   "bad_caught": 9,
+   "bad_n": 21,
+   "approved_lost": 0,
+   "approved_n": 9
+  },
+  "ANCHOR75|10 (new)": {
+   "bad_caught": 0,
+   "bad_n": 4,
+   "approved_lost": 0,
+   "approved_n": 5
+  },
+  "ANCHOR75|45 (all)": {
+   "bad_caught": 9,
+   "bad_n": 25,
+   "approved_lost": 0,
+   "approved_n": 14
+  },
+  "EXT50|35 (old)": {
+   "bad_caught": 7,
+   "bad_n": 21,
+   "approved_lost": 0,
+   "approved_n": 9
+  },
+  "EXT50|10 (new)": {
+   "bad_caught": 0,
+   "bad_n": 4,
+   "approved_lost": 0,
+   "approved_n": 5
+  },
+  "EXT50|45 (all)": {
+   "bad_caught": 7,
+   "bad_n": 25,
+   "approved_lost": 0,
+   "approved_n": 14
+  },
+  "V3READ|35 (old)": {
+   "bad_caught": 5,
+   "bad_n": 21,
+   "approved_lost": 0,
+   "approved_n": 9
+  },
+  "V3READ|10 (new)": {
+   "bad_caught": 0,
+   "bad_n": 4,
+   "approved_lost": 0,
+   "approved_n": 5
+  },
+  "V3READ|45 (all)": {
+   "bad_caught": 5,
+   "bad_n": 25,
+   "approved_lost": 0,
+   "approved_n": 14
+  }
+ },
+ "regression": [
+  [
+   "bad caught",
+   "9/21",
+   "9/21",
+   true
+  ],
+  [
+   "approved lost",
+   "0/9",
+   "0/9",
+   true
+  ],
+  [
+   "real EPs lost (30, ex-PENG)",
+   "0/30",
+   "0/30",
+   true
+  ],
+  [
+   "pointed-at rejected (ex-RXT)",
+   "1/3",
+   "1/3",
+   true
+  ]
+ ],
+ "auc": {
+  "runup_low_pct_20|35 (old)": {
+   "auc": 0.708994708994709,
+   "se": 0.0981634068060897,
+   "n_bad": 21,
+   "n_app": 9,
+   "median_bad": 41.37931034482759,
+   "median_app": 14.151681000781865
+  },
+  "extension_live_pct|35 (old)": {
+   "auc": 0.6507936507936508,
+   "se": 0.10592049723550763,
+   "n_bad": 21,
+   "n_app": 9,
+   "median_bad": 9.424520433694736,
+   "median_app": 2.5491237387148193
+  },
+  "overhead_vol_frac|35 (old)": {
+   "auc": 0.4074074074074074,
+   "se": 0.11722503514918697,
+   "n_bad": 21,
+   "n_app": 9,
+   "median_bad": 0.020535443800950116,
+   "median_app": 0.27785637013072395
+  },
+  "zones_remaining|35 (old)": {
+   "auc": 0.3253968253968254,
+   "se": 0.1131382194876553,
+   "n_bad": 21,
+   "n_app": 9,
+   "median_bad": 4,
+   "median_app": 14
+  },
+  "runup_low_pct_20|10 (new)": {
+   "auc": 0.4,
+   "se": 0.1980259723225358,
+   "n_bad": 4,
+   "n_app": 5,
+   "median_bad": 28.685980117465427,
+   "median_app": 29.347826086956523
+  },
+  "extension_live_pct|10 (new)": {
+   "auc": 0.4,
+   "se": 0.1980259723225358,
+   "n_bad": 4,
+   "n_app": 5,
+   "median_bad": 6.785767164270233,
+   "median_app": 7.985480943738654
+  },
+  "overhead_vol_frac|10 (new)": {
+   "auc": 0.7,
+   "se": 0.1872520985631125,
+   "n_bad": 4,
+   "n_app": 5,
+   "median_bad": 0.2480670048615216,
+   "median_app": 0.08000886410663531
+  },
+  "zones_remaining|10 (new)": {
+   "auc": 0.6,
+   "se": 0.20071301473923978,
+   "n_bad": 4,
+   "n_app": 5,
+   "median_bad": 20.5,
+   "median_app": 14
+  },
+  "runup_low_pct_20|45 (all)": {
+   "auc": 0.6514285714285715,
+   "se": 0.08944411542794821,
+   "n_bad": 25,
+   "n_app": 14,
+   "median_bad": 35.231197771587745,
+   "median_app": 19.670318585815508
+  },
+  "extension_live_pct|45 (all)": {
+   "auc": 0.5828571428571429,
+   "se": 0.09448583140400689,
+   "n_bad": 25,
+   "n_app": 14,
+   "median_bad": 9.424520433694736,
+   "median_app": 3.60759338490395
+  },
+  "overhead_vol_frac|45 (all)": {
+   "auc": 0.4328571428571429,
+   "se": 0.09771405344251327,
+   "n_bad": 25,
+   "n_app": 14,
+   "median_bad": 0.12885620510181392,
+   "median_app": 0.2257153437290901
+  },
+  "zones_remaining|45 (all)": {
+   "auc": 0.38,
+   "se": 0.09625871893384229,
+   "n_bad": 25,
+   "n_app": 14,
+   "median_bad": 4,
+   "median_app": 14.0
+  }
+ },
+ "label_xtab": {
+  "INTO_SUPPLY": {
+   "bad": 9,
+   "approved": 1
+  },
+  "IFFY_AT_FIRST_ZONE": {
+   "bad": 7,
+   "approved": 7
+  },
+  "CLEAR_AIR": {
+   "bad": 8,
+   "approved": 3
+  },
+  "CLEARED_NOTHING": {
+   "bad": 1
+  },
+  "LADDER_CLIMBING": {
+   "approved": 3
+  }
+ },
+ "beyond_ext50": {
+  "ANCHOR75": {
+   "both": 7,
+   "only_read": [
+    "NVTX 2026-06-03",
+    "AEHR 2026-08-14"
+   ],
+   "only_ext": [],
+   "neither": 16
+  },
+  "V3READ": {
+   "both": 4,
+   "only_read": [
+    "AEHR 2026-08-14"
+   ],
+   "only_ext": [
+    "GDC 2026-05-06",
+    "ADVB 2026-07-24",
+    "QH 2026-06-18"
+   ],
+   "neither": 17
+  }
+ },
+ "alert_state": {
+  "bad(25)": {
+   "HIGH": [
+    "NVTX 2026-06-03",
+    "NVTS 2026-06-03",
+    "MRLN 2026-06-05",
+    "AVGU 2026-06-02",
+    "CRWG 2026-06-01",
+    "RARE 2026-08-20",
+    "BW 2026-08-11",
+    "FRMI 2026-08-11",
+    "AEVA 2026-08-06",
+    "RUM 2026-06-04"
+   ],
+   "MODERATE": [
+    "ABVX 2026-06-03",
+    "LPTH 2026-08-14"
+   ],
+   "none": [
+    "GDC 2026-05-06",
+    "CAR 2026-04-22",
+    "CAR 2026-04-21",
+    "ADVB 2026-07-24",
+    "JLHL 2026-06-08",
+    "IPCX 2026-07-29",
+    "QH 2026-06-18",
+    "MRAM 2026-05-13",
+    "YOU 2026-08-05",
+    "AEHR 2026-08-14",
+    "QTTB 2026-07-13",
+    "IBTA 2026-08-04",
+    "HURN 2026-07-29"
+   ]
+  },
+  "approved(14)": {
+   "none": [
+    "OMER 2026-07-27",
+    "RNG 2026-07-24",
+    "CAR 2026-04-01",
+    "AVAH 2026-08-13",
+    "NIQ 2026-08-11",
+    "TBBB 2026-08-13",
+    "MRVI 2026-08-19",
+    "HAE 2026-08-18",
+    "CDNA 2026-07-16",
+    "MAN 2026-07-16",
+    "KRO 2026-08-06"
+   ],
+   "MODERATE": [
+    "WYFI 2026-08-12"
+   ],
+   "HIGH": [
+    "BLZE 2026-08-04",
+    "HPE 2026-06-02"
+   ]
+  },
+  "real_eps(31)": {
+   "HIGH": [
+    "HTFL 2026-08-14",
+    "PLTR 2026-08-04",
+    "TEAM 2026-08-07",
+    "MRNA 2026-08-19",
+    "QURE 2026-05-29",
+    "PENG 2026-10-07"
+   ],
+   "none": [
+    "BFLY 2026-06-18",
+    "MU 2026-04-08",
+    "UMC 2026-04-17",
+    "STRL 2026-04-08",
+    "MRVL 2026-03-31",
+    "ASX 2026-04-08",
+    "SNDK 2026-04-08",
+    "SNOW 2026-05-07",
+    "ALGM 2026-04-08",
+    "NBIS 2026-04-08",
+    "AMKR 2026-04-08",
+    "AEHR 2026-03-31",
+    "UMC 2026-05-06",
+    "FLY 2026-03-12",
+    "BE 2026-04-08",
+    "USAR 2026-04-08",
+    "QCOM 2026-04-24",
+    "QBTS 2026-04-08",
+    "AMD 2026-04-24",
+    "HUT 2026-04-08",
+    "ARM 2026-05-06",
+    "SMTC 2026-03-30",
+    "IREN 2026-04-08",
+    "APLD 2026-04-08",
+    "INTC 2026-04-24"
+   ],
+   "MODERATE": []
+  }
+ },
+ "rows": [
+  {
+   "ticker": "ADVB",
+   "date": "2026-07-24",
+   "verdict": "BAD_CHART",
+   "session": "2026-08-25",
+   "ext": 242.44897959183675,
+   "run20": 308.27250608272504,
+   "label": "INTO_SUPPLY",
+   "fwd20": -0.6474664356864444
+  },
+  {
+   "ticker": "AEHR",
+   "date": "2026-08-14",
+   "verdict": "BAD_CHART",
+   "session": "2026-08-25",
+   "ext": 24.822838631301877,
+   "run20": 93.2299012693935,
+   "label": "CLEAR_AIR",
+   "fwd20": -0.3760197590000749
+  },
+  {
+   "ticker": "CAR",
+   "date": "2026-04-22",
+   "verdict": "BAD_CHART",
+   "session": "2026-08-25",
+   "ext": 92.43955688525917,
+   "run20": 574.0971533777085,
+   "label": "CLEAR_AIR",
+   "fwd20": -0.8028361656279436
+  },
+  {
+   "ticker": "CAR",
+   "date": "2026-04-21",
+   "verdict": "BAD_CHART",
+   "session": "2026-08-25",
+   "ext": 64.09261205897414,
+   "run20": 498.91785538612885,
+   "label": "CLEAR_AIR",
+   "fwd20": -0.7578846153846154
+  },
+  {
+   "ticker": "GDC",
+   "date": "2026-05-06",
+   "verdict": "BAD_CHART",
+   "session": "2026-08-25",
+   "ext": 76.69616519174042,
+   "run20": 105.13698630136987,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": -0.984
+  },
+  {
+   "ticker": "IPCX",
+   "date": "2026-07-29",
+   "verdict": "BAD_CHART",
+   "session": "2026-08-25",
+   "ext": 0.0,
+   "run20": 4.079254079254075,
+   "label": "CLEAR_AIR",
+   "fwd20": null
+  },
+  {
+   "ticker": "JLHL",
+   "date": "2026-06-08",
+   "verdict": "BAD_CHART",
+   "session": "2026-08-25",
+   "ext": 137.03703703703704,
+   "run20": 244.61538461538458,
+   "label": "CLEAR_AIR",
+   "fwd20": -0.944914491449145
+  },
+  {
+   "ticker": "MRAM",
+   "date": "2026-05-13",
+   "verdict": "BAD_CHART",
+   "session": "2026-08-25",
+   "ext": 134.72,
+   "run20": 287.4119718309859,
+   "label": "CLEAR_AIR",
+   "fwd20": -0.5180242979486158
+  },
+  {
+   "ticker": "QH",
+   "date": "2026-06-18",
+   "verdict": "BAD_CHART",
+   "session": "2026-08-25",
+   "ext": 223.69230769230768,
+   "run20": 15791.238670694864,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": -0.4810126582278481
+  },
+  {
+   "ticker": "QTTB",
+   "date": "2026-07-13",
+   "verdict": "BAD_CHART",
+   "session": "2026-08-25",
+   "ext": 0.0,
+   "run20": 6.255924170616114,
+   "label": "INTO_SUPPLY",
+   "fwd20": -0.14418350628072085
+  },
+  {
+   "ticker": "YOU",
+   "date": "2026-08-05",
+   "verdict": "BAD_CHART",
+   "session": "2026-08-25",
+   "ext": 4.696599661844825,
+   "run20": 8.762685402029655,
+   "label": "CLEAR_AIR",
+   "fwd20": -0.32020997375328075
+  },
+  {
+   "ticker": "VEEE",
+   "date": "2026-07-08",
+   "verdict": "NO_SETUP_ON_THIS_DATE",
+   "session": "2026-08-25",
+   "ext": 13.052208835341354,
+   "run20": 35.33653846153845,
+   "label": "INTO_SUPPLY",
+   "fwd20": 0.6706484641638224
+  },
+  {
+   "ticker": "CAR",
+   "date": "2026-04-01",
+   "verdict": "OKISH_EARLIER",
+   "session": "2026-08-25",
+   "ext": 35.784862043251294,
+   "run20": 57.959227933203195,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": 0.22471529284164848
+  },
+  {
+   "ticker": "MXL",
+   "date": "2026-04-21",
+   "verdict": "WRONG_DAY",
+   "session": "2026-08-25",
+   "ext": 48.89723134678556,
+   "run20": 100.12614317250079,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": 1.8299522673031023
+  },
+  {
+   "ticker": "ARQQ",
+   "date": "2026-06-15",
+   "verdict": "WRONG_STAGE",
+   "session": "2026-08-25",
+   "ext": 12.026359143327833,
+   "run20": 15.254237288135583,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": 0.2700069589422409
+  },
+  {
+   "ticker": "ABVX",
+   "date": "2026-06-03",
+   "verdict": "BAD_CHART",
+   "session": "2026-09-06",
+   "ext": 0.0,
+   "run20": 3.8533161438189336,
+   "label": "CLEARED_NOTHING",
+   "fwd20": 0.7800886044794486
+  },
+  {
+   "ticker": "AVGU",
+   "date": "2026-06-02",
+   "verdict": "BAD_CHART",
+   "session": "2026-09-06",
+   "ext": 18.62288341898838,
+   "run20": 27.086419581359877,
+   "label": "CLEAR_AIR",
+   "fwd20": -0.4610083898031623
+  },
+  {
+   "ticker": "CRWG",
+   "date": "2026-06-01",
+   "verdict": "BAD_CHART",
+   "session": "2026-09-06",
+   "ext": 9.889240506329115,
+   "run20": 32.496025437201915,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": -0.30576713819368884
+  },
+  {
+   "ticker": "MRLN",
+   "date": "2026-06-05",
+   "verdict": "BAD_CHART",
+   "session": "2026-09-06",
+   "ext": 0.0,
+   "run20": 24.22145328719722,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": -0.5255712731229597
+  },
+  {
+   "ticker": "NVTS",
+   "date": "2026-06-03",
+   "verdict": "BAD_CHART",
+   "session": "2026-09-06",
+   "ext": 4.022526146419952,
+   "run20": 72.97658862876256,
+   "label": "INTO_SUPPLY",
+   "fwd20": -0.5281448849730788
+  },
+  {
+   "ticker": "NVTX",
+   "date": "2026-06-03",
+   "verdict": "BAD_CHART",
+   "session": "2026-09-06",
+   "ext": 8.19584410951574,
+   "run20": 145.53734061930783,
+   "label": "INTO_SUPPLY",
+   "fwd20": -0.8145354406130267
+  },
+  {
+   "ticker": "RNG",
+   "date": "2026-07-24",
+   "verdict": "GOOD_CHART",
+   "session": "2026-09-06",
+   "ext": 2.5491237387148193,
+   "run20": 11.877172653534165,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": 0.654567901234568
+  },
+  {
+   "ticker": "OMER",
+   "date": "2026-07-27",
+   "verdict": "OKISH_CHART",
+   "session": "2026-09-06",
+   "ext": 2.728226652675759,
+   "run20": 32.47631935047361,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": 0.7173333333333334
+  },
+  {
+   "ticker": "AVAH",
+   "date": "2026-06-02",
+   "verdict": "WRONG_DAY",
+   "session": "2026-09-06",
+   "ext": 0.0,
+   "run20": 3.9750584567420097,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": 0.23743016759776525
+  },
+  {
+   "ticker": "CGEM",
+   "date": "2026-06-08",
+   "verdict": "WRONG_DAY",
+   "session": "2026-09-06",
+   "ext": 0.0,
+   "run20": 1.274362818590704,
+   "label": "INTO_SUPPLY",
+   "fwd20": 0.34329446064139924
+  },
+  {
+   "ticker": "BW",
+   "date": "2026-08-11",
+   "verdict": "BAD_CHART",
+   "session": "2026-09-23",
+   "ext": 0.0,
+   "run20": 11.979823455233305,
+   "label": "INTO_SUPPLY",
+   "fwd20": -0.37352445193929174
+  },
+  {
+   "ticker": "FRMI",
+   "date": "2026-08-11",
+   "verdict": "BAD_CHART",
+   "session": "2026-09-23",
+   "ext": 0.0,
+   "run20": 8.888888888888879,
+   "label": "INTO_SUPPLY",
+   "fwd20": -0.2178217821782178
+  },
+  {
+   "ticker": "LPTH",
+   "date": "2026-08-14",
+   "verdict": "BAD_CHART",
+   "session": "2026-09-23",
+   "ext": 9.424520433694736,
+   "run20": 41.37931034482759,
+   "label": "INTO_SUPPLY",
+   "fwd20": -0.37172413793103454
+  },
+  {
+   "ticker": "RARE",
+   "date": "2026-08-20",
+   "verdict": "BAD_CHART",
+   "session": "2026-09-23",
+   "ext": 2.9423303256178897,
+   "run20": 9.28779675135359,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": -0.4889045438534696
+  },
+  {
+   "ticker": "AVAH",
+   "date": "2026-08-13",
+   "verdict": "GOOD_CHART",
+   "session": "2026-09-23",
+   "ext": 1.1173184357542059,
+   "run20": 3.369503141062249,
+   "label": "INTO_SUPPLY",
+   "fwd20": 0.3954410307234886
+  },
+  {
+   "ticker": "HAE",
+   "date": "2026-08-18",
+   "verdict": "GOOD_CHART",
+   "session": "2026-09-23",
+   "ext": 4.22583997228957,
+   "run20": 20.44029352901934,
+   "label": "CLEAR_AIR",
+   "fwd20": 0.03648780487804881
+  },
+  {
+   "ticker": "TBBB",
+   "date": "2026-08-13",
+   "verdict": "GOOD_CHART",
+   "session": "2026-09-23",
+   "ext": 4.059040590405901,
+   "run20": 10.041623309053069,
+   "label": "CLEAR_AIR",
+   "fwd20": 0.10295081967213116
+  },
+  {
+   "ticker": "MRVI",
+   "date": "2026-08-19",
+   "verdict": "OKISH_CHART",
+   "session": "2026-09-23",
+   "ext": 1.056338028169023,
+   "run20": 6.099815157116452,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": 0.08232842042578525
+  },
+  {
+   "ticker": "NIQ",
+   "date": "2026-08-11",
+   "verdict": "OKISH_CHART",
+   "session": "2026-09-23",
+   "ext": 1.0380622837370175,
+   "run20": 14.151681000781865,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": 0.3209336250911743
+  },
+  {
+   "ticker": "WYFI",
+   "date": "2026-08-12",
+   "verdict": "OKISH_CHART",
+   "session": "2026-09-23",
+   "ext": 2.5402201524132,
+   "run20": 18.900343642611674,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": -0.32446226759022967
+  },
+  {
+   "ticker": "AEVA",
+   "date": "2026-08-06",
+   "verdict": "BAD_CHART",
+   "session": "2026-10-05",
+   "ext": 40.171551107934235,
+   "run20": 45.15173945225758,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": -0.40852713178294575
+  },
+  {
+   "ticker": "HURN",
+   "date": "2026-07-29",
+   "verdict": "BAD_CHART",
+   "session": "2026-10-05",
+   "ext": 11.154867661873805,
+   "run20": 35.231197771587745,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": 0.16764859422775746
+  },
+  {
+   "ticker": "IBTA",
+   "date": "2026-08-04",
+   "verdict": "BAD_CHART",
+   "session": "2026-10-05",
+   "ext": 2.41666666666666,
+   "run20": 3.0824072132522518,
+   "label": "INTO_SUPPLY",
+   "fwd20": 0.21757595557007536
+  },
+  {
+   "ticker": "RUM",
+   "date": "2026-06-04",
+   "verdict": "BAD_CHART",
+   "session": "2026-10-05",
+   "ext": 0.0,
+   "run20": 22.140762463343105,
+   "label": "INTO_SUPPLY",
+   "fwd20": -0.30965005302226933
+  },
+  {
+   "ticker": "BLZE",
+   "date": "2026-08-04",
+   "verdict": "GOOD_CHART",
+   "session": "2026-10-05",
+   "ext": 36.994727592267125,
+   "run20": 41.98542805100182,
+   "label": "LADDER_CLIMBING",
+   "fwd20": -0.32886904761904767
+  },
+  {
+   "ticker": "CDNA",
+   "date": "2026-07-16",
+   "verdict": "GOOD_CHART",
+   "session": "2026-10-05",
+   "ext": 7.985480943738654,
+   "run20": 29.347826086956523,
+   "label": "LADDER_CLIMBING",
+   "fwd20": 0.3016483516483517
+  },
+  {
+   "ticker": "KRO",
+   "date": "2026-08-06",
+   "verdict": "GOOD_CHART",
+   "session": "2026-10-05",
+   "ext": 3.156146179402,
+   "run20": 6.8846815834767705,
+   "label": "IFFY_AT_FIRST_ZONE",
+   "fwd20": 0.1901408450704225
+  },
+  {
+   "ticker": "MAN",
+   "date": "2026-07-16",
+   "verdict": "GOOD_CHART",
+   "session": "2026-10-05",
+   "ext": 4.136642647451306,
+   "run20": 25.567176186645224,
+   "label": "LADDER_CLIMBING",
+   "fwd20": 0.2631466438648995
+  },
+  {
+   "ticker": "HPE",
+   "date": "2026-06-02",
+   "verdict": "OKISH_CHART",
+   "session": "2026-10-05",
+   "ext": 26.344086021505365,
+   "run20": 65.60958421423538,
+   "label": "CLEAR_AIR",
+   "fwd20": -0.30304471931493815
+  },
+  {
+   "ticker": "RXT",
+   "date": "2026-06-16",
+   "verdict": "WRONG_DAY",
+   "session": "2026-10-05",
+   "ext": 31.152993348115306,
+   "run20": 60.7336956521739,
+   "label": "INTO_SUPPLY",
+   "fwd20": -0.37767923133776793
+  }
+ ],
+ "verdict_vs_outcome": {
+  "bad_fell": 21,
+  "bad_rose": 3,
+  "app_fell": 3,
+  "app_rose": 11,
+  "fisher_p": 7.88235933237087e-05
+ },
+ "parity": {
+  "full history (2021-09 ->)": {
+   "label": [
+    10,
+    15
+   ],
+   "ext": [
+    15,
+    15
+   ],
+   "ovh": [
+    8,
+    15
+   ],
+   "zones": [
+    7,
+    15
+   ]
+  },
+  "13-month window (2025-08 ->, what 09-23 had)": {
+   "label": [
+    13,
+    15
+   ],
+   "ext": [
+    15,
+    15
+   ],
+   "ovh": [
+    11,
+    15
+   ],
+   "zones": [
+    12,
+    15
+   ]
+  }
+ },
+ "headline_window_invariant": true
+}

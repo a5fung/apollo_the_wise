@@ -1,0 +1,6 @@
+t	mn	mx	n
+daily_closes	2021-09-27	2026-10-09	13767840
+(1 row)
+?column?	coalesce	?column?	?column?
+intraday_exists	mi_intraday_bars		
+(1 row)

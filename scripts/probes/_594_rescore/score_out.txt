@@ -1,0 +1,276 @@
+====================================================================================================
+0. POPULATION (derived from the fixtures)
+====================================================================================================
+rulings: 45  by verdict: {'BAD_CHART': 25, 'WRONG_DAY': 4, 'OKISH_CHART': 5, 'GOOD_CHART': 8, 'OKISH_EARLIER': 1, 'WRONG_STAGE': 1, 'NO_SETUP_ON_THIS_DATE': 1}
+by session: {'2026-08-25': 15, '2026-09-06': 10, '2026-09-23': 10, '2026-10-05': 10}
+ruled-date range: 2026-04-01 -> 2026-08-20
+  bad 25 | approved 14 | other 6 | pointed-at 4  (sum of first three = 45)
+  approved split: {'OKISH_CHART': 5, 'GOOD_CHART': 8, 'OKISH_EARLIER': 1}
+  other: [('CGEM', '06-08', 'WRONG_DAY'), ('AVAH', '06-02', 'WRONG_DAY'), ('ARQQ', '06-15', 'WRONG_STAGE'), ('MXL', '04-21', 'WRONG_DAY'), ('VEEE', '07-08', 'NO_SETUP_ON_THIS_DATE'), ('RXT', '06-16', 'WRONG_DAY')]
+  pointed-at: [('CGEM', '06-22', 'WRONG_DAY'), ('MXL', '04-24', 'WRONG_DAY'), ('VEEE', '07-13', 'NO_SETUP_ON_THIS_DATE'), ('RXT', '05-07', 'WRONG_DAY')]
+  OLD (35): 35  bad 21 approved 9   NEW (10): 10  bad 4 approved 5 other 1
+real EPs (RULE 0 bar): 31 assertable + 3 excluded [('ABNB', '2026-08-07'), ('CHPT', '2026-09-03'), ('TDIC', '2026-05-12')]; dates 2026-03-12 -> 2026-10-07; label source {'operator': 6, 'evidence-selected': 25}
+bars: {'rows': 74295, 'dropped_null_ohlc': 0, 'tickers': 74}; tickers in populations: 74
+bar date range: 2021-09-27 -> 2026-10-09
+prior bars per ruled date: min 136, median 1161, thin(<30): 0, no alert-day row: 0
+admission era of the 45 ruled dates: {'adm_pre_2026-08-20': 44, 'adm_2026-08-20_gap_floor_9': 1}
+dates (rulings + real EPs) inside the cap-75 window [2026-08-22, 2026-08-29): none
+exit eras: NOT APPLICABLE — no trade row, fill or exit is read anywhere in this run (bars only).
+
+0b. WHAT HAPPENED NEXT (20 sessions after the day, close vs the day's open; from stored bars)
+  bad       n=24/25  median -43%  fell>20%: 20  rose>20%: 2
+  approved  n=14/14  median +21%  fell>20%: 3  rose>20%: 7
+  real_eps  n=30/31  median +55%  fell>20%: 0  rose>20%: 29
+
+====================================================================================================
+1. HEADLINE — committed `score_against_operator_rulings` (ANCHOR75), all rulings
+====================================================================================================
+  parameter: {'metric': 'runup_low_pct_20', 'cutline': 75.0, 'basis': 'HIS signed 75%, unfitted, pre-dates this study'}
+  real_eps_wrongly_rejected: 0
+  real_eps_n: 31
+  real_eps_wrongly_rejected_names: []
+  excluded_from_bar: [('ABNB', '2026-08-07'), ('CHPT', '2026-09-03'), ('TDIC', '2026-05-12')]
+  excluded_rejected: 1
+  must_not_reject_wrongly_rejected: 0
+  must_not_reject_n: 14
+  must_not_reject_wrongly_rejected_names: []
+  bad_charts_rejected: 9
+  bad_charts_n: 25
+  unreadable: {'real_eps': 0, 'must_not_reject': 0, 'bad_charts': 0}
+  pointed_at_rejected: 2
+  pointed_at_n: 4
+  pointed_at_rejected_names: [('MXL', '2026-04-24', 'WRONG_DAY'), ('RXT', '2026-05-07', 'WRONG_DAY')]
+
+====================================================================================================
+2. FOUR ARMS x EVERY POPULATION (rejected / n; unreadable in its own column)
+====================================================================================================
+[EXT50]
+   real_eps(31)   rejected  0 of 31   unreadable 0   -> none
+   approved(14)   rejected  0 of 14   unreadable 0   -> none
+   bad(25)        rejected  7 of 25   unreadable 0   -> GDC 05-06, CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, QH 06-18, MRAM 05-13
+   excluded EPs   rejected 0 of 3 (not part of the bar)  -> none
+   other rulings  rejected 0 of 6 (scanned date; neutral)  -> none
+   pointed-at     rejected 2 of 4 (a flag, not a label)  -> MXL 04-24, RXT 05-07
+[EXT75]
+   real_eps(31)   rejected  0 of 31   unreadable 0   -> none
+   approved(14)   rejected  0 of 14   unreadable 0   -> none
+   bad(25)        rejected  6 of 25   unreadable 0   -> GDC 05-06, CAR 04-22, ADVB 07-24, JLHL 06-08, QH 06-18, MRAM 05-13
+   excluded EPs   rejected 0 of 3 (not part of the bar)  -> none
+   other rulings  rejected 0 of 6 (scanned date; neutral)  -> none
+   pointed-at     rejected 0 of 4 (a flag, not a label)  -> none
+[ANCHOR75]
+   real_eps(31)   rejected  0 of 31   unreadable 0   -> none
+   approved(14)   rejected  0 of 14   unreadable 0   -> none
+   bad(25)        rejected  9 of 25   unreadable 0   -> NVTX 06-03, GDC 05-06, CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, QH 06-18, MRAM 05-13, AEHR 08-14
+   excluded EPs   rejected 1 of 3 (not part of the bar)  -> TDIC 05-12
+   other rulings  rejected 1 of 6 (scanned date; neutral)  -> MXL 04-21
+   pointed-at     rejected 2 of 4 (a flag, not a label)  -> MXL 04-24, RXT 05-07
+[V3READ]
+   real_eps(31)   rejected  0 of 31   unreadable 0   -> none
+   approved(14)   rejected  0 of 14   unreadable 0   -> none
+   bad(25)        rejected  5 of 25   unreadable 0   -> CAR 04-22, CAR 04-21, JLHL 06-08, MRAM 05-13, AEHR 08-14
+   excluded EPs   rejected 0 of 3 (not part of the bar)  -> none
+   other rulings  rejected 0 of 6 (scanned date; neutral)  -> none
+   pointed-at     rejected 0 of 4 (a flag, not a label)  -> none
+
+[V3READ on the 13-month window (2025-08 ->), reported beside the full-history row above]
+   real_eps(31)   rejected  0 of 31   unreadable 0   -> none
+   approved(14)   rejected  0 of 14   unreadable 0   -> none
+   bad(25)        rejected  6 of 25   unreadable 0   -> CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, MRAM 05-13, AEHR 08-14
+   bad 35 (old): caught 6 of 21
+   bad 10 (new): caught 0 of 4
+   AUC (45, 13-month window) overhead_vol_frac    0.55 (se 0.10)
+   AUC (45, 13-month window) zones_remaining      0.48 (se 0.10)
+
+   approved dates lost, by his label:
+     EXT50     none
+     EXT75     none
+     ANCHOR75  none
+     V3READ    none
+
+====================================================================================================
+3. THE 35-vs-45 CHANGE — same bars, same rule; only the label set differs
+====================================================================================================
+  ANCHOR75  35 (old)  bad caught  9/21 ( 43%)   approved lost 0/9   unreadable 0   caught: NVTX 06-03, GDC 05-06, CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, QH 06-18, MRAM 05-13, AEHR 08-14   lost: none
+  ANCHOR75  10 (new)  bad caught  0/ 4 (  0%)   approved lost 0/5   unreadable 0   caught: none   lost: none
+  ANCHOR75  45 (all)  bad caught  9/25 ( 36%)   approved lost 0/14   unreadable 0   caught: NVTX 06-03, GDC 05-06, CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, QH 06-18, MRAM 05-13, AEHR 08-14   lost: none
+  EXT50     35 (old)  bad caught  7/21 ( 33%)   approved lost 0/9   unreadable 0   caught: GDC 05-06, CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, QH 06-18, MRAM 05-13   lost: none
+  EXT50     10 (new)  bad caught  0/ 4 (  0%)   approved lost 0/5   unreadable 0   caught: none   lost: none
+  EXT50     45 (all)  bad caught  7/25 ( 28%)   approved lost 0/14   unreadable 0   caught: GDC 05-06, CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, QH 06-18, MRAM 05-13   lost: none
+  V3READ    35 (old)  bad caught  5/21 ( 24%)   approved lost 0/9   unreadable 0   caught: CAR 04-22, CAR 04-21, JLHL 06-08, MRAM 05-13, AEHR 08-14   lost: none
+  V3READ    10 (new)  bad caught  0/ 4 (  0%)   approved lost 0/5   unreadable 0   caught: none   lost: none
+  V3READ    45 (all)  bad caught  5/25 ( 20%)   approved lost 0/14   unreadable 0   caught: CAR 04-22, CAR 04-21, JLHL 06-08, MRAM 05-13, AEHR 08-14   lost: none
+
+  REGRESSION vs docs/analysis/594_rulings_encoded_2026-09-23.md (ANCHOR75 on the 35, real EPs w/o PENG):
+    bad caught                       got 9/21   expected 9/21   MATCH
+    approved lost                    got 0/9    expected 0/9    MATCH
+    real EPs lost (30, ex-PENG)      got 0/30   expected 0/30   MATCH
+    pointed-at rejected (ex-RXT)     got 1/3    expected 1/3    MATCH
+
+====================================================================================================
+4. CUTLINE-FREE SEPARATION — AUC, bad vs approved, 4 pre-declared fields, bigger = worse
+====================================================================================================
+  35 (old)  runup_low_pct_20     AUC 0.71 (se 0.10)  n_bad 21 n_app 9  median bad 41.4 vs approved 14.2
+  35 (old)  extension_live_pct   AUC 0.65 (se 0.11)  n_bad 21 n_app 9  median bad 9.42 vs approved 2.55
+  35 (old)  overhead_vol_frac    AUC 0.41 (se 0.12)  n_bad 21 n_app 9  median bad 0.0205 vs approved 0.278
+  35 (old)  zones_remaining      AUC 0.33 (se 0.11)  n_bad 21 n_app 9  median bad 4 vs approved 14
+  10 (new)  runup_low_pct_20     AUC 0.40 (se 0.20)  n_bad 4 n_app 5  median bad 28.7 vs approved 29.3
+  10 (new)  extension_live_pct   AUC 0.40 (se 0.20)  n_bad 4 n_app 5  median bad 6.79 vs approved 7.99
+  10 (new)  overhead_vol_frac    AUC 0.70 (se 0.19)  n_bad 4 n_app 5  median bad 0.248 vs approved 0.08
+  10 (new)  zones_remaining      AUC 0.60 (se 0.20)  n_bad 4 n_app 5  median bad 20.5 vs approved 14
+  45 (all)  runup_low_pct_20     AUC 0.65 (se 0.09)  n_bad 25 n_app 14  median bad 35.2 vs approved 19.7
+  45 (all)  extension_live_pct   AUC 0.58 (se 0.09)  n_bad 25 n_app 14  median bad 9.42 vs approved 3.61
+  45 (all)  overhead_vol_frac    AUC 0.43 (se 0.10)  n_bad 25 n_app 14  median bad 0.129 vs approved 0.226
+  45 (all)  zones_remaining      AUC 0.38 (se 0.10)  n_bad 25 n_app 14  median bad 4 vs approved 14
+
+  v2 supply label x verdict (descriptive, no threshold):
+    CLEARED_NOTHING      bad  1   approved  0
+    CLEAR_AIR            bad  8   approved  3
+    IFFY_AT_FIRST_ZONE   bad  7   approved  7
+    INTO_SUPPLY          bad  9   approved  1
+    LADDER_CLIMBING      bad  0   approved  3
+  same cross-tab on the 13-month window, with the 31 real EPs alongside:
+    CLEARED_NOTHING      bad  1   approved  0   real_eps  2
+    CLEAR_AIR            bad 10   approved  6   real_eps  7
+    IFFY_AT_FIRST_ZONE   bad  5   approved  4   real_eps 10
+    INTO_SUPPLY          bad  8   approved  3   real_eps  7
+    LADDER_CLIMBING      bad  1   approved  1   real_eps  5
+  real-EP label spread on the FULL history: CLEARED_NOTHING 1, CLEAR_AIR 5, IFFY_AT_FIRST_ZONE 12, INTO_SUPPLY 9, LADDER_CLIMBING 4
+
+====================================================================================================
+5. WHAT THE READ ADDS BEYOND THE EXTENSION GATE (per-date)
+====================================================================================================
+  bad charts, EXT50 vs ANCHOR75: both 7 | only ANCHOR75 2 [NVTX 06-03, AEHR 08-14] | only EXT50 0 [none] | neither 16
+  bad charts, EXT50 vs V3READ: both 4 | only V3READ 1 [AEHR 08-14] | only EXT50 3 [GDC 05-06, ADVB 07-24, QH 06-18] | neither 17
+  bad charts neither extension arm touches: NVTS 06-03, MRLN 06-05, AVGU 06-02, CRWG 06-01, ABVX 06-03, IPCX 07-29, YOU 08-05, QTTB 07-13, RARE 08-20, BW 08-11, LPTH 08-14, FRMI 08-11, AEVA 08-06, RUM 06-04, IBTA 08-04, HURN 07-29
+
+====================================================================================================
+5b. AGAINST WHAT THE LIVE SYSTEM ALREADY DID — mi_ep_alerts rows on the ruled dates (alerts.tsv)
+====================================================================================================
+  bad(25): HIGH 10  MODERATE 2  none 13
+    HIGH      n=10  EXT50 rejects  0   ANCHOR75 rejects  1   V3READ rejects  0   | NVTX 06-03, NVTS 06-03, MRLN 06-05, AVGU 06-02, CRWG 06-01, RARE 08-20, BW 08-11, FRMI 08-11, AEVA 08-06, RUM 06-04
+    MODERATE  n= 2  EXT50 rejects  0   ANCHOR75 rejects  0   V3READ rejects  0   | ABVX 06-03, LPTH 08-14
+    none      n=13  EXT50 rejects  7   ANCHOR75 rejects  8   V3READ rejects  5   | GDC 05-06, CAR 04-22, CAR 04-21, ADVB 07-24, JLHL 06-08, IPCX 07-29, QH 06-18, MRAM 05-13, YOU 08-05, AEHR 08-14, QTTB 07-13, IBTA 08-04, HURN 07-29
+  approved(14): HIGH 2  MODERATE 1  none 11
+    HIGH      n= 2  EXT50 rejects  0   ANCHOR75 rejects  0   V3READ rejects  0   | BLZE 08-04, HPE 06-02
+    MODERATE  n= 1  EXT50 rejects  0   ANCHOR75 rejects  0   V3READ rejects  0   | WYFI 08-12
+    none      n=11  EXT50 rejects  0   ANCHOR75 rejects  0   V3READ rejects  0   | OMER 07-27, RNG 07-24, CAR 04-01, AVAH 08-13, NIQ 08-11, TBBB 08-13, MRVI 08-19, HAE 08-18, CDNA 07-16, MAN 07-16, KRO 08-06
+  real_eps(31): HIGH 6  MODERATE 0  none 25
+    HIGH      n= 6  EXT50 rejects  0   ANCHOR75 rejects  0   V3READ rejects  0   | HTFL 08-14, PLTR 08-04, TEAM 08-07, MRNA 08-19, QURE 05-29, PENG 10-07
+    none      n=25  EXT50 rejects  0   ANCHOR75 rejects  0   V3READ rejects  0   | BFLY 06-18, MU 04-08, UMC 04-17, STRL 04-08, MRVL 03-31, ASX 04-08, SNDK 04-08, SNOW 05-07, ALGM 04-08, NBIS 04-08, AMKR 04-08, AEHR 03-31, UMC 05-06, FLY 03-12, BE 04-08, USAR 04-08, QCOM 04-24, QBTS 04-08, AMD 04-24, HUT 04-08, ARM 05-06, SMTC 03-30, IREN 04-08, APLD 04-08, INTC 04-24
+  HIGH-tier bad charts and which arm catches each:
+    NVTX  2026-06-03  EXT50 False ANCHOR75 True  V3READ False
+    NVTS  2026-06-03  EXT50 False ANCHOR75 False V3READ False
+    MRLN  2026-06-05  EXT50 False ANCHOR75 False V3READ False
+    AVGU  2026-06-02  EXT50 False ANCHOR75 False V3READ False
+    CRWG  2026-06-01  EXT50 False ANCHOR75 False V3READ False
+    RARE  2026-08-20  EXT50 False ANCHOR75 False V3READ False
+    BW    2026-08-11  EXT50 False ANCHOR75 False V3READ False
+    FRMI  2026-08-11  EXT50 False ANCHOR75 False V3READ False
+    AEVA  2026-08-06  EXT50 False ANCHOR75 False V3READ False
+    RUM   2026-06-04  EXT50 False ANCHOR75 False V3READ False
+  fixture free-text vs the table disagree on 2 of 45 rulings: ['LPTH 2026-08-14: note says HIGH, table says MODERATE', 'WYFI 2026-08-12: note says HIGH, table says MODERATE']
+
+====================================================================================================
+6. PER-RULING TABLE (all 45)
+====================================================================================================
+ticker date       verdict        sess         ext%  run20% EXT50  A75   V3 label                 ovhd% zones  fwd20 era
+ADVB   2026-07-24 BAD_CHART      2026-08-25  242.4   308.3   REJ  REJ keep INTO_SUPPLY               0     9   -65% adm_pre_2026-08-20
+AEHR   2026-08-14 BAD_CHART      2026-08-25   24.8    93.2  keep  REJ  REJ CLEAR_AIR                 0     0   -38% adm_pre_2026-08-20
+CAR    2026-04-22 BAD_CHART      2026-08-25   92.4   574.1   REJ  REJ  REJ CLEAR_AIR                 0     0   -80% adm_pre_2026-08-20
+CAR    2026-04-21 BAD_CHART      2026-08-25   64.1   498.9   REJ  REJ  REJ CLEAR_AIR                 0     0   -76% adm_pre_2026-08-20
+GDC    2026-05-06 BAD_CHART      2026-08-25   76.7   105.1   REJ  REJ keep IFFY_AT_FIRST_ZONE       18     4   -98% adm_pre_2026-08-20
+IPCX   2026-07-29 BAD_CHART      2026-08-25    0.0     4.1  keep keep keep CLEAR_AIR               100     0    n/a adm_pre_2026-08-20
+JLHL   2026-06-08 BAD_CHART      2026-08-25  137.0   244.6   REJ  REJ  REJ CLEAR_AIR                 0     0   -94% adm_pre_2026-08-20
+MRAM   2026-05-13 BAD_CHART      2026-08-25  134.7   287.4   REJ  REJ  REJ CLEAR_AIR                 0     0   -52% adm_pre_2026-08-20
+QH     2026-06-18 BAD_CHART      2026-08-25  223.7 15791.2   REJ  REJ keep IFFY_AT_FIRST_ZONE        2    45   -48% adm_pre_2026-08-20
+QTTB   2026-07-13 BAD_CHART      2026-08-25    0.0     6.3  keep keep keep INTO_SUPPLY               4    16   -14% adm_pre_2026-08-20
+YOU    2026-08-05 BAD_CHART      2026-08-25    4.7     8.8  keep keep keep CLEAR_AIR                 0     0   -32% adm_pre_2026-08-20
+VEEE   2026-07-08 NO_SETUP_ON_THIS_DATE 2026-08-25   13.1    35.3  keep keep keep INTO_SUPPLY              88   107   +67% adm_pre_2026-08-20
+CAR    2026-04-01 OKISH_EARLIER  2026-08-25   35.8    58.0  keep keep keep IFFY_AT_FIRST_ZONE       58    33   +22% adm_pre_2026-08-20
+MXL    2026-04-21 WRONG_DAY      2026-08-25   48.9   100.1  keep  REJ keep IFFY_AT_FIRST_ZONE       19    33  +183% adm_pre_2026-08-20
+ARQQ   2026-06-15 WRONG_STAGE    2026-08-25   12.0    15.3  keep keep keep IFFY_AT_FIRST_ZONE       87    89   +27% adm_pre_2026-08-20
+ABVX   2026-06-03 BAD_CHART      2026-09-06    0.0     3.9  keep keep keep CLEARED_NOTHING          58     4   +78% adm_pre_2026-08-20
+AVGU   2026-06-02 BAD_CHART      2026-09-06   18.6    27.1  keep keep keep CLEAR_AIR                 0     0   -46% adm_pre_2026-08-20
+CRWG   2026-06-01 BAD_CHART      2026-09-06    9.9    32.5  keep keep keep IFFY_AT_FIRST_ZONE       29    13   -31% adm_pre_2026-08-20
+MRLN   2026-06-05 BAD_CHART      2026-09-06    0.0    24.2  keep keep keep IFFY_AT_FIRST_ZONE       43     4   -53% adm_pre_2026-08-20
+NVTS   2026-06-03 BAD_CHART      2026-09-06    4.0    73.0  keep keep keep INTO_SUPPLY               1     1   -53% adm_pre_2026-08-20
+NVTX   2026-06-03 BAD_CHART      2026-09-06    8.2   145.5  keep  REJ keep INTO_SUPPLY               2     2   -81% adm_pre_2026-08-20
+RNG    2026-07-24 GOOD_CHART     2026-09-06    2.5    11.9  keep keep keep IFFY_AT_FIRST_ZONE       28    44   +65% adm_pre_2026-08-20
+OMER   2026-07-27 OKISH_CHART    2026-09-06    2.7    32.5  keep keep keep IFFY_AT_FIRST_ZONE       17    19   +72% adm_pre_2026-08-20
+AVAH   2026-06-02 WRONG_DAY      2026-09-06    0.0     4.0  keep keep keep IFFY_AT_FIRST_ZONE       37    22   +24% adm_pre_2026-08-20
+CGEM   2026-06-08 WRONG_DAY      2026-09-06    0.0     1.3  keep keep keep INTO_SUPPLY              40    34   +34% adm_pre_2026-08-20
+BW     2026-08-11 BAD_CHART      2026-09-23    0.0    12.0  keep keep keep INTO_SUPPLY              18     9   -37% adm_pre_2026-08-20
+FRMI   2026-08-11 BAD_CHART      2026-09-23    0.0     8.9  keep keep keep INTO_SUPPLY              47    16   -22% adm_pre_2026-08-20
+LPTH   2026-08-14 BAD_CHART      2026-09-23    9.4    41.4  keep keep keep INTO_SUPPLY              14     6   -37% adm_pre_2026-08-20
+RARE   2026-08-20 BAD_CHART      2026-09-23    2.9     9.3  keep keep keep IFFY_AT_FIRST_ZONE       71    67   -49% adm_2026-08-20_gap_floor_9
+AVAH   2026-08-13 GOOD_CHART     2026-09-23    1.1     3.4  keep keep keep INTO_SUPPLY               0     1   +40% adm_pre_2026-08-20
+HAE    2026-08-18 GOOD_CHART     2026-09-23    4.2    20.4  keep keep keep CLEAR_AIR                 0     0    +4% adm_pre_2026-08-20
+TBBB   2026-08-13 GOOD_CHART     2026-09-23    4.1    10.0  keep keep keep CLEAR_AIR                 0     0   +10% adm_pre_2026-08-20
+MRVI   2026-08-19 OKISH_CHART    2026-09-23    1.1     6.1  keep keep keep IFFY_AT_FIRST_ZONE       58    76    +8% adm_pre_2026-08-20
+NIQ    2026-08-11 OKISH_CHART    2026-09-23    1.0    14.2  keep keep keep IFFY_AT_FIRST_ZONE       47    14   +32% adm_pre_2026-08-20
+WYFI   2026-08-12 OKISH_CHART    2026-09-23    2.5    18.9  keep keep keep IFFY_AT_FIRST_ZONE       36    11   -32% adm_pre_2026-08-20
+AEVA   2026-08-06 BAD_CHART      2026-10-05   40.2    45.2  keep keep keep IFFY_AT_FIRST_ZONE       13    21   -41% adm_pre_2026-08-20
+HURN   2026-07-29 BAD_CHART      2026-10-05   11.2    35.2  keep keep keep IFFY_AT_FIRST_ZONE       25    19   +17% adm_pre_2026-08-20
+IBTA   2026-08-04 BAD_CHART      2026-10-05    2.4     3.1  keep keep keep INTO_SUPPLY              67    37   +22% adm_pre_2026-08-20
+RUM    2026-06-04 BAD_CHART      2026-10-05    0.0    22.1  keep keep keep INTO_SUPPLY              25    20   -31% adm_pre_2026-08-20
+BLZE   2026-08-04 GOOD_CHART     2026-10-05   37.0    42.0  keep keep keep LADDER_CLIMBING           4     2   -33% adm_pre_2026-08-20
+CDNA   2026-07-16 GOOD_CHART     2026-10-05    8.0    29.3  keep keep keep LADDER_CLIMBING           8    14   +30% adm_pre_2026-08-20
+KRO    2026-08-06 GOOD_CHART     2026-10-05    3.2     6.9  keep keep keep IFFY_AT_FIRST_ZONE       66    64   +19% adm_pre_2026-08-20
+MAN    2026-07-16 GOOD_CHART     2026-10-05    4.1    25.6  keep keep keep LADDER_CLIMBING          53    45   +26% adm_pre_2026-08-20
+HPE    2026-06-02 OKISH_CHART    2026-10-05   26.3    65.6  keep keep keep CLEAR_AIR                 0     0   -30% adm_pre_2026-08-20
+RXT    2026-06-16 WRONG_DAY      2026-10-05   31.2    60.7  keep keep keep INTO_SUPPLY               5    20   -38% adm_pre_2026-08-20
+
+  POINTED-AT dates (flags, not labels) — the values behind them:
+    CGEM  2026-06-22 (WRONG_DAY) ext 10.922%  run20 28.736%  EXT50 False  EXT75 False  ANCHOR75 False  V3READ False  label INTO_SUPPLY
+    MXL   2026-04-24 (WRONG_DAY) ext 58.858%  run20 116.02%  EXT50 True  EXT75 False  ANCHOR75 True  V3READ False  label LADDER_CLIMBING
+    VEEE  2026-07-13 (NO_SETUP_ON_THIS_DATE) ext 5.0108%  run20 15.865%  EXT50 False  EXT75 False  ANCHOR75 False  V3READ False  label LADDER_CLIMBING
+    RXT   2026-05-07 (WRONG_DAY) ext 55.479%  run20 159.60%  EXT50 True  EXT75 False  ANCHOR75 True  V3READ False  label LADDER_CLIMBING
+
+====================================================================================================
+6b. HIS VERDICT vs THE NEXT 20 SESSIONS (bad -> fell? approved -> rose?) — descriptive, selected sample
+====================================================================================================
+  bad: fell 21, rose 3   approved: fell 3, rose 11   -> verdict direction matches outcome in 32 of 38
+  Fisher exact, one-sided P(>= 21 bad-and-fell | margins) = 0.00008
+  NB the samples were built from names that collapsed or ran, so labelling at random would match about half;
+  this is NOT a hit rate in the wild.
+  EXT50     rejects among the labelled: names that fell 7, names that rose 0
+  ANCHOR75  rejects among the labelled: names that fell 9, names that rose 0
+  V3READ    rejects among the labelled: names that fell 5, names that rose 0
+
+====================================================================================================
+7. PARITY — this driver against v2_* / extension_live_pct stored in the fixture at label time
+====================================================================================================
+  members carrying stored values: 15
+  [full history (2021-09 ->)] label 10/15 | extension 15/15 | overhead_vol_frac 8/15 | zones 7/15
+      drift: GDC 05-06 LABEL IFFY_AT_FIRST_ZONE vs stored CLEAR_AIR
+      drift: GDC 05-06 ovh 0.181 vs 0.000
+      drift: GDC 05-06 zones 4 vs 0
+      drift: ADVB 07-24 LABEL INTO_SUPPLY vs stored CLEAR_AIR
+      drift: ADVB 07-24 zones 9 vs 0
+      drift: QH 06-18 LABEL IFFY_AT_FIRST_ZONE vs stored CLEAR_AIR
+      drift: QH 06-18 ovh 0.019 vs 0.000
+      drift: QH 06-18 zones 45 vs 0
+      drift: QTTB 07-13 LABEL INTO_SUPPLY vs stored CLEAR_AIR
+      drift: QTTB 07-13 ovh 0.037 vs 0.000
+      drift: QTTB 07-13 zones 16 vs 0
+      drift: CAR 04-01 ovh 0.577 vs 0.429
+      drift: CAR 04-01 zones 33 vs 13
+      drift: ARQQ 06-15 ovh 0.873 vs 0.892
+      drift: ARQQ 06-15 zones 89 vs 21
+      drift: MXL 04-21 LABEL IFFY_AT_FIRST_ZONE vs stored CLEAR_AIR
+      drift: MXL 04-21 ovh 0.191 vs 0.000
+      drift: MXL 04-21 zones 33 vs 0
+      drift: VEEE 07-08 ovh 0.882 vs 0.923
+      drift: VEEE 07-08 zones 107 vs 30
+  [13-month window (2025-08 ->, what 09-23 had)] label 13/15 | extension 15/15 | overhead_vol_frac 11/15 | zones 12/15
+      drift: GDC 05-06 LABEL IFFY_AT_FIRST_ZONE vs stored CLEAR_AIR
+      drift: GDC 05-06 ovh 0.132 vs 0.000
+      drift: GDC 05-06 zones 2 vs 0
+      drift: QH 06-18 LABEL IFFY_AT_FIRST_ZONE vs stored CLEAR_AIR
+      drift: QH 06-18 zones 1 vs 0
+      drift: CAR 04-01 ovh 0.376 vs 0.429
+      drift: CAR 04-01 zones 11 vs 13
+      drift: ARQQ 06-15 ovh 0.886 vs 0.892
+      drift: VEEE 07-08 ovh 0.866 vs 0.923
+  EXT50/EXT75/ANCHOR75 verdicts identical on full vs 13-month history for every ruled date and real EP: True

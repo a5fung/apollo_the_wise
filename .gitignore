@@ -135,3 +135,6 @@ scripts/probes/_624_backfill/news_alert_raw.jsonl
 scripts/probes/_327_real_ep/h6_fire_rows.tsv
 scripts/probes/_694/q10_daily.out
 scripts/probes/_655_scope/_capture.pkl
+
+# #594 re-score: 3.4 MB bar pull (reproducible via fetch_bars.py; capture-once)
+scripts/probes/_594_rescore/bars.tsv
