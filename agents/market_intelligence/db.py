@@ -4359,7 +4359,7 @@ async def initialize_schema() -> None:
                 gap_pct                 DOUBLE PRECISION,  -- raw input (flat credit; size never scored)
                 prev_close              DOUBLE PRECISION,  -- raw input (ADV$ = adv × prev_close)
                 adv                     DOUBLE PRECISION,  -- raw input: 20d ADV shares (or placeholder — see adv_source)
-                adv_source              TEXT,              -- rs_universe|polygon_20d = real; pending = placeholder, liquidity axis MISSING
+                adv_source              TEXT,              -- rs_universe|polygon_20d|rs_prev_complete (#694: last night's completed adv_20) = real; pending = placeholder, liquidity axis MISSING
                 in_active_theme         BOOLEAN,           -- raw input: Accelerating/Mainstream membership at this tick
                 rank_by_prescore        INT,
                 rank_by_gap             INT,

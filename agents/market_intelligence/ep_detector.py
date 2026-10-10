@@ -59,7 +59,7 @@ from agents.market_intelligence.collector import (
     get_sec_recent_filings,
 )
 from agents.market_intelligence.constants import SKIP_TICKERS
-from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_volume_history_daily_closes, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation, get_runtime_toggle, LIVE_SOURCE_SQL
+from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_volume_history_daily_closes, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation, get_runtime_toggle, LIVE_SOURCE_SQL, latest_complete_score_date
 from agents.market_intelligence.backtester.filters import check_filters
 from agents.market_intelligence.minute_volume import (
     compute_rvol_at_time,
@@ -4160,12 +4160,38 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         logger.warning(f"ep_shortlist_prescore toggle read failed — prescore stays ON: {_pse}")
     rank_by_prescore: dict[str, int] = {}
     _shortlist_shadow_rows: list[dict] = []
+    # #694 (2026-10-10, his option 2): the SHORTLIST RANKING reads LAST NIGHT'S completed
+    # volume on EVERY tick. `adv_map` above is `get_adv_map(prev_date)` and both callers pass
+    # no date, so prev_date == today and it reads today's mi_stock_scores rows, which the RS
+    # run writes only at ~17:00 -- empty ALL DAY, the volume term of the signed pre-score
+    # collapsed and every tie fell to ticker A->Z. This map feeds the RANKING ONLY (grading,
+    # the liquidity gates and the candidate build keep `adv_map` untouched -- a separate
+    # change he has not ruled). Fail-open: no complete prior date / an empty map / ANY error
+    # -> today's behaviour (the ranking runs without it), one log line.
+    _last_night_adv: dict[str, float] = {}
+    if candidates:
+        try:
+            _pool = await get_pool()
+            async with _pool.acquire() as _conn:
+                _ln_date = await latest_complete_score_date(
+                    _conn, on_or_before=today - timedelta(days=1),
+                    on_or_after=today - timedelta(days=7))
+            if _ln_date is not None:
+                _last_night_adv = await get_adv_map(_ln_date)
+            if not _last_night_adv:
+                logger.info(
+                    "shortlist: no complete prior mi_stock_scores date with volume "
+                    "(date=%s) -- ranking without last-night volume", _ln_date)
+        except Exception as _lne:  # loud-ok: fail direction = today's ranking (no last-night volume)
+            logger.warning(
+                f"shortlist: last-night volume lookup failed -- ranking without it: {_lne}")
+            _last_night_adv = {}
     if candidates:
         try:
             from agents.market_intelligence.ep_shortlist_shadow import (
                 build_shortlist_shadow_rows, compute_shortlist_ranking)
             _sl_entries, rank_by_prescore = compute_shortlist_ranking(
-                candidates, _in_active_theme_set)
+                candidates, _in_active_theme_set, last_night_adv=_last_night_adv)
             # Sorted COPY first, assign second — any exception lands BEFORE the
             # list mutates, so the fail direction (gap ordering) is airtight.
             _pre_order = sorted(candidates, key=lambda c: rank_by_prescore[c["ticker"]])

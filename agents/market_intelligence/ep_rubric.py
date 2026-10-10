@@ -468,6 +468,14 @@ def resolve_moderate_cutline(separation_enabled: bool) -> int | None:
 # the other two are wholly unmeasured. Adding them would re-import noise. A term
 # enters this table only with a measured direction against the real-EP set.
 # Excluded because they cost money per name: float, market cap, pm_rvol, catalyst.
+#
+# #694 (2026-10-10, his option 2 on 2026-10-08): term 1's volume is LAST NIGHT'S
+# completed 20-day average (`db.latest_complete_score_date`, passed to the ranking as
+# `last_night_adv` — grading's own `adv_map` is untouched), so "fixed the night before"
+# below is now literally true on every tick; before it the lookup was empty all day and
+# every liquidity point collapsed. Names with NO record at all (new listings, thin
+# names) still tie at 32.5 (65 in a theme); `shortlist_sort_key` orders THOSE by
+# pre-market dollar volume (15-minute-delayed — see its docstring).
 
 SHORTLIST_WEIGHTS = {
     # component:   (max_points, weight)
@@ -516,8 +524,12 @@ def shortlist_prescore(
 
     - `adv_dollar` = 20-day ADV shares × prev_close, or None when no REAL ADV
       exists at sort time (`adv_source == "pending"` — the prevDay.v placeholder
-      must NOT be scored as liquidity evidence). None → the liquidity axis is
-      missing and the composite rescales from gap + theme.
+      must NOT be scored as liquidity evidence). Since #694 (2026-10-10) "real"
+      includes LAST NIGHT'S completed `mi_stock_scores.adv_20`
+      (`adv_source='rs_prev_complete'`) — before it, both callers passed no
+      date, the volume lookup read today's not-yet-written rows and was empty
+      ALL DAY. None → the liquidity axis is missing and the composite
+      rescales from gap + theme.
     - `gap_pct` — FLAT: any qualifying gap earns full points (every candidate at
       the sort has already passed the acting gap floor). Presence, not
       magnitude. None → axis missing (defensive; cannot happen live).
@@ -546,6 +558,7 @@ def shortlist_prescore(
 
 def shortlist_sort_key(
     ticker: str, composite: float, adv_dollar: "float | None",
+    pm_dollar: "float | None" = None,
 ) -> tuple:
     """The TOTAL ORDER the shortlist ranks by — composite desc, then the
     TIE-BREAK. Stage 0 measured a 9-way tie at the rank-20 cut on the 04-08
@@ -560,7 +573,21 @@ def shortlist_sort_key(
        ADV$ is fixed the night before, so the boundary cannot churn between
        ticks. Unknown-ADV names (None → 0 here) lose ties to names whose
        liquidity is verified — within a tie, evidence beats absence.
-    3. ticker ASC — final determinism guarantee: identical runs produce
-       identical ranks, replays reproduce the live order exactly.
+    3. pre-market dollar volume DESC — ONLY among the names with NO volume
+       record (`adv_dollar is None`); a name WITH a record gets 0.0 here, so
+       `pm_dollar` can never reorder two known-ADV names (#694, his option 2 on
+       2026-10-08). Without it the no-record names all tie at 32.5 (65 in a
+       theme) and fall to ticker A→Z. ⚠ `pm_dollar` is `today_volume ×
+       current_price` AS THE SORT SEES THEM: the sort runs before the
+       real-time volume swap (`_apply_rt_volume`, in the grading loop), so the
+       volume is the 15-MINUTE-DELAYED snapshot (the same value the #694
+       tie-breaker test measured), not real-time volume. None / missing → 0.
+    4. ticker ASC — final determinism guarantee: identical inputs produce
+       identical ranks. ⚠ A replay reproduces the live order exactly ONLY if
+       it feeds the same `pm_dollar` (the logged `today_volume` ×
+       `current_price` from `mi_ep_scan_log`); the shortlist shadow row stores
+       neither, so a replay from it alone reproduces everything except the
+       no-record tie-break (those names fall to ticker A→Z there).
     """
-    return (-composite, -(adv_dollar or 0.0), ticker)
+    return (-composite, -(adv_dollar or 0.0),
+            -(pm_dollar or 0.0) if adv_dollar is None else 0.0, ticker)

@@ -55,7 +55,7 @@ from tests.fixtures.must_not_miss_eps import MUST_NOT_MISS  # noqa: E402
 _PROBES = _REPO / "scripts" / "probes"
 # bars_20d = the q6/q4 reconstruction basis (mean volume over the prior <=20
 # bars) — a real 20-day basis, flagged separately in the day lines.
-_REAL_ADV = ("rs_universe", "polygon_20d", "bars_20d")
+_REAL_ADV = ("rs_universe", "polygon_20d", "bars_20d", "rs_prev_complete")
 
 
 def _f(x: str) -> "float | None":

@@ -117,8 +117,11 @@ after all this work").
   everything that costs money per name (float, mcap, pm_rvol, catalyst).
 - **Tie-break** (required — Stage 0 measured a 9-way tie at the rank-20 cut on the 04-08 flood
   board): composite desc → **continuous ADV$ desc** (the same measured axis at full
-  resolution, tick-stable, never gap) → ticker asc (total-order determinism).
-  `ep_rubric.shortlist_sort_key`.
+  resolution, tick-stable, never gap) → **pre-market dollar volume desc, among names with NO
+  volume record only** (#694, 2026-10-10 — 15-minute-delayed, see the change log) → ticker asc
+  (total-order determinism). `ep_rubric.shortlist_sort_key`. **The volume in the pre-score is
+  LAST NIGHT'S completed 20-day average on every tick** (`db.latest_complete_score_date`,
+  `adv_source='rs_prev_complete'` on the ranking entry) — grading's own `adv_map` is untouched.
 - **Revert flag**: `ep_shortlist_prescore` runtime toggle / `EP_SHORTLIST_PRESCORE_ENABLED`
   env, default ON — OFF restores gap-descending ordering **exactly** (~60s, no redeploy;
   pinned by `tests/test_ep_shortlist_prescore.py`).
@@ -462,6 +465,68 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 9. **Seven of the 10-02 replay's released rows are real buyouts by price that the replayed grader called "none" — a corpus artifact the pin backtest surfaced; CLOSED the same evening by his ruling 3 (the price-only arm, built — see the 2026-10-03 entry); kept here as the record of the finding** (2026-10-03, `scripts/probes/_692/pin_backtest.py`). TMHC 06-01, APGE 06-22, SAFT 07-24, FBRX 07-27, VREX 08-10, ARX 08-13, WEAV 08-18 gapped +22% to +48% and sat in a 0.1–0.9% band all day; every one was an old `claude_classifier` / `mna` block whose replayed text was the 200-char audit excerpt (`corpus_source=audit_excerpt_200_chars_only`, a vague summary — "Berkshire stake", "pre-earnings positioning"), so the replay's grader answered `none` and the 10-02 rule released them; they were not in MUST-SHOW and his 10-03 approval of the list did not see them. Live, the grader reads the full corpus (the OLD grader graded all seven `mna` from it), so live recall is probably intact — but it is UNMEASURED, and the price layer cannot act on a name the news never nominates. The price alone separates them (gap ≥ 20% with an open window ≤ 0.5%: 7 of 7, and 0 of the 47 proven-free gappers) — a price-only EP pin arm is a separate decision for him, not built here (one variable at a time; the 10-03 rule changes the KEEP pile he asked about).
 
 ## Change log (newest first)
+
+### 2026-10-10 — #694: the shortlist RANKING reads last night's volume on every tick, and pre-market dollar volume orders the names with no volume record (REFINEMENT of 2026-08-22 + BUG FIX; his option 2; BUILT, NOT DEPLOYED)
+
+**Trigger**: found 2026-10-05 (#694). `run_ep_scan()` is called with no date (`scheduler.py` ~1200,
+`agent.py` ~783), so `prev_date` falls back to TODAY and `get_adv_map(prev_date)` reads
+`mi_stock_scores` rows the RS run writes only at ~17:00. The lookup is empty ALL DAY, not only
+pre-open. The 08-22 signed pre-score puts 45 of its 65 points on 20-day average dollar volume, so
+with it empty every candidate scored 65 (in a theme) or 32.5 (not) and `shortlist_sort_key` broke
+every tie A→Z. It bites only past 20 names: on 10-05 SDEV, STNE and TIMB were cut at 09:20 for
+GRML, INTR and PAGS (no alert lost; `scripts/probes/_1005/adv_verify_counterfactual.out`). His
+2026-10-05 *"I want to test a few ideas for tie breaker before just selecting one"* → the $0 test
+below; his 2026-10-08 *"seems like option 2 is the choice?"* → option 2.
+
+**The change** (shortlist RANKING only; GRADING untouched):
+1. `run_ep_scan` resolves `db.latest_complete_score_date(conn, on_or_before=today-1, on_or_after=today-7)`
+   and reads that date's `adv_20` map ONCE per tick, passed to the ranking as `last_night_adv`.
+   `adv_map` (candidate build, liquidity gates, grading score) is NOT changed — a separate change
+   he has not ruled. None / empty map / any error → today's ranking, one log line (fail-open).
+2. `ep_shortlist_shadow.compute_shortlist_ranking(..., last_night_adv=)`: a candidate whose own
+   `adv_source` is not real, and which the map has, gets `adv` = last night's `adv_20` (shares) and
+   `adv_source='rs_prev_complete'` on its ranking ENTRY (the candidate dict is not touched), so the
+   shadow row stores what acted. `rs_prev_complete` joins `_REAL_ADV_SOURCES`.
+3. `ep_rubric.shortlist_sort_key(ticker, composite, adv_dollar, pm_dollar=None)` →
+   `(-composite, -(adv_dollar or 0), -(pm_dollar or 0) if adv_dollar is None else 0, ticker)`:
+   pre-market dollar volume (`today_volume × current_price`) orders ONLY the no-record names; a
+   name WITH a record ignores it, so known-ADV order is exactly as before.
+
+**Evidence**: `docs/analysis/694_tiebreaker_2026-10-08.md` (+ `scripts/probes/_694/`, Opus build, two
+adversarial verifiers, one re-verify): 14 crowded pre-open mornings on record; on every one the
+fixed score already puts all 5 in-pool real EPs above the tied group, so every tie-breaker keeps 5
+of 5 (today's live order would cut UMC and SNOW). Alone, 20-day dollar volume ranks his real EPs
+highest (87% of 257 same-morning pairs, n=10 real EPs; pre-market dollar volume 82%). Regression
+replays (pinned in `tests/test_694_shortlist_last_night_volume.py` from `_694/dataset.csv`): 10-05 →
+cuts SBS, PAGS, INTR, GRML, VIV (that tie sits among names WITH a record); 07-30 → cuts STGW, CMCO,
+SMHI and keeps PN, SMTI, BOOM (the signed key alone, option 1, cuts the alphabetically last
+three instead: SMHI, SMTI, STGW; today's empty-volume order cuts the alphabetical tail of the
+whole board, PN included). The no-record group is growing
+(score universe shrank ~3,900 → ~2,400 on 06-16; 10 of 25 on 10-05).
+
+**Anticipated effect**: first weekday scan — shadow rows carry `adv_source='rs_prev_complete'` on
+most rows and `rank_by_prescore` no longer follows A→Z within a score; graded set stays 20. On a
+crowded morning a DIFFERENT 20 are graded (expected — record which). Alert volume should not move
+(the score bar is unchanged). Unintended to watch: a scan error or the fail-open log line every tick
+(`shortlist: no complete prior mi_stock_scores date…` on a day with a complete prior date = broken).
+
+**Reversion-flag**: **REFINEMENT of the 2026-08-22 shortlist pre-score + a BUG FIX** (the lookup was
+meant to be populated; it never was) — NOT a reversal. ⚠ No switch restores the pre-fix state:
+`ep_shortlist_prescore` OFF returns to GAP ordering (the pre-08-22 order), NOT to today's A→Z.
+
+**Status**: built on a worktree branch, NOT DEPLOYED. Sign-off: his option 2 on 2026-10-08. Deploys
+Saturday as `market-agent` then `execution` (the scan runs on the market agent; `ep_detector`,
+`ep_rubric`, `db` are execution-loaded). Verify-live = the first weekday with more than 20 gap names
+shows ranks ordered by volume, not A→Z.
+
+**Known limitation — delayed pre-market volume**: the sort runs BEFORE the real-time volume swap
+(`_apply_rt_volume`, in the grading loop), so `pm_dollar` uses the 15-minute-delayed snapshot volume
+(the same value the 694 test measured) × the current price (set by the real-time overlay before the
+sort). His option-2 text left "read real-time volume before the sort, or order on delayed" open;
+this build picks DELAYED (no new data call). Also unchanged and named in the test doc: a real EP
+trading under $50M a day scores 10/65 and ranks below a name with no record (32.5); none of the
+three on record was on a crowded morning. The shadow row stores neither `today_volume` nor
+`current_price`, so a replay from it alone reproduces everything except the no-record tie-break.
 
 ### 2026-10-03 (night) — #692b: ruling 2 REVERTED — `mna` is again the grade for a price-fixing buyout (S19 of the judge-eval corpus passes as authored); the grader adds `quality_if_no_deal`, and a name the 09:35 open window RELEASES is scored with that merit grade instead of `mna` (BUILT on `692b-mna-merit-grade`, NOT DEPLOYED)
 

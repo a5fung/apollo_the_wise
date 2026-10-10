@@ -56,16 +56,27 @@ from agents.market_intelligence.db import get_pool  # noqa: E402
 # the prevDay.v placeholder (_snap_candidate) — one day's volume is not
 # liquidity evidence, so the liquidity axis is treated as MISSING and the
 # composite rescales (P1: a data gap must never silently sink a candidate).
-_REAL_ADV_SOURCES = ("rs_universe", "polygon_20d")
+# "rs_prev_complete" (#694, 2026-10-10) = last night's COMPLETED `mi_stock_scores.adv_20`,
+# stamped on the ENTRY (never on the candidate dict — grading's adv/adv_source are untouched)
+# by `compute_shortlist_ranking(last_night_adv=...)`.
+_REAL_ADV_SOURCES = ("rs_universe", "polygon_20d", "rs_prev_complete")
 
 
 def compute_shortlist_ranking(
     candidates: list[dict], in_active_theme_set: set[str],
+    *, last_night_adv: "dict[str, float] | None" = None,
 ) -> tuple[list[dict], dict[str, int]]:
     """Pre-score EVERY candidate and rank by `shortlist_sort_key` (composite
-    desc → continuous ADV$ desc → ticker asc; the tie-break policy and its
-    justification live on that function). Pure — no I/O, no mutation of
-    `candidates`.
+    desc → continuous ADV$ desc → pre-market $ vol desc for no-record names
+    only → ticker asc; the tie-break policy and its justification live on that
+    function). Pure — no I/O, no mutation of `candidates`.
+
+    `last_night_adv` (#694): ticker → last night's completed 20-day ADV in
+    SHARES (`mi_stock_scores.adv_20`). For a candidate whose OWN `adv_source`
+    is not real, and which this map has, the ENTRY (not the candidate dict)
+    carries `adv` = that value and `adv_source='rs_prev_complete'`, so the
+    shadow row records what ACTED. A candidate with a real source keeps its
+    own; None / empty map / a ticker not in it → today's behaviour exactly.
 
     Returns `(entries, rank_by_prescore)`:
     - `entries`: one dict per candidate, RAW INPUTS snapshotted at this moment
@@ -79,12 +90,21 @@ def compute_shortlist_ranking(
         prev_close = c.get("prev_close")
         adv = c.get("adv")
         adv_source = c.get("adv_source")
+        if adv_source not in _REAL_ADV_SOURCES and last_night_adv:
+            _prev_adv = last_night_adv.get(c["ticker"])
+            if _prev_adv:
+                adv, adv_source = _prev_adv, "rs_prev_complete"
         adv_dollar = (
             float(adv) * float(prev_close)
             if adv and prev_close and adv_source in _REAL_ADV_SOURCES
             else None
         )
         in_theme = c["ticker"] in in_active_theme_set
+        # pre-market dollar volume as the sort sees it: the delayed snapshot's
+        # volume x the current price (see shortlist_sort_key). Orders ONLY the
+        # no-record names; sort artifact, not persisted.
+        _tv, _cp = c.get("today_volume"), c.get("current_price")
+        pm_dollar = float(_tv) * float(_cp) if _tv and _cp else None
         pre = shortlist_prescore(
             adv_dollar=adv_dollar, gap_pct=c.get("gap_pct"),
             in_active_theme=in_theme)
@@ -99,9 +119,10 @@ def compute_shortlist_ranking(
             # sort artifacts (composite is NOT persisted — #583 class):
             "composite": pre["composite"],
             "adv_dollar": adv_dollar,
+            "pm_dollar": pm_dollar,
         })
     entries.sort(key=lambda e: shortlist_sort_key(
-        e["ticker"], e["composite"], e["adv_dollar"]))
+        e["ticker"], e["composite"], e["adv_dollar"], e["pm_dollar"]))
     rank_by_prescore = {e["ticker"]: i + 1 for i, e in enumerate(entries)}
     return entries, rank_by_prescore
 
