@@ -80,6 +80,9 @@ class Case(NamedTuple):
     # his ruling 3 (2026-10-03): the EP scan's gap at decision time arms the price-only arm
     # (gap >= 20% AND open window <= 0.5% blocks regardless of the news). None = not the EP path.
     gap_pct: Optional[float] = None
+    # 2026-10-10 (#692 Alpaca source) — the Benzinga-via-Alpaca items the headline scan ALSO reads,
+    # in `collector.get_alpaca_news`'s raw shape ({title, summary, source, symbols, created_at}).
+    alpaca_articles: tuple = ()
 
 
 def _item(title: str, *, description: str = "", ticker: str = "", reasoning: Optional[str] = None,
@@ -452,7 +455,7 @@ def pin_reader_for(case: Case):
 
 async def run_new(case: Case, *, unanswered_blocks: bool = False, now_et: datetime = _OUTSIDE_ORB,
                   skip_in_orb: bool = False, budget_pool: str = "shared",
-                  pin_reader=None, use_case_pin: bool = True) -> Outcome:
+                  pin_reader=None, use_case_pin: bool = True, alpaca_on: bool = True) -> Outcome:
     """The NEW `is_likely_ma` on this case, with Polygon + the model replaced by fixtures and the
     price reading replaced by the case's RECORDED reading (`pin_reader_for`; pass `pin_reader`
     to override, `use_case_pin=False` for no reader at all).
@@ -472,6 +475,11 @@ async def run_new(case: Case, *, unanswered_blocks: bool = False, now_et: dateti
     with ExitStack() as st:
         st.enter_context(patch("agents.market_intelligence.collector.get_polygon_news",
                                new=AsyncMock(return_value=[dict(a) for a in case.articles])))
+        st.enter_context(patch("agents.market_intelligence.collector.get_alpaca_news",
+                               new=AsyncMock(return_value=[dict(a) for a in case.alpaca_articles])))
+        if hasattr(mf, "_alpaca_source_enabled"):
+            st.enter_context(patch.object(mf, "_alpaca_source_enabled",
+                                          new=AsyncMock(return_value=alpaca_on)))
         st.enter_context(patch("agents.market_intelligence.collector.get_ticker_details",
                                new=AsyncMock(return_value={"name": case.company} if case.company else {})))
         st.enter_context(patch.object(mf, "_get_headline_client", return_value=model))

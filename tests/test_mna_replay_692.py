@@ -256,6 +256,7 @@ def test_replay_dry_run_end_to_end_makes_no_model_call_and_no_write(capsys):
     conn.execute = AsyncMock(side_effect=AssertionError("the replay must never write"))
     with patch("agents.market_intelligence.db.get_pool", new=AsyncMock(return_value=pool)), \
          patch("agents.market_intelligence.collector.get_polygon_news", new=AsyncMock(return_value=[])), \
+         patch("agents.market_intelligence.collector.get_alpaca_news", new=AsyncMock(return_value=[])), \
          patch("agents.market_intelligence.collector.get_ticker_details", new=AsyncMock(return_value={})), \
          patch("agents.market_intelligence.collector.get_fmp_profile", new=AsyncMock(return_value={})), \
          patch("agents.market_intelligence.collector.get_sec_recent_filings", new=AsyncMock(return_value=[])), \
@@ -361,6 +362,7 @@ def test_replay_paid_path_with_a_fake_model_asks_both_questions_and_decides_live
     fake_client = SimpleNamespace(messages=SimpleNamespace(create=create))
     with patch("agents.market_intelligence.db.get_pool", new=AsyncMock(return_value=pool)), \
          patch("agents.market_intelligence.collector.get_polygon_news", new=_news), \
+         patch("agents.market_intelligence.collector.get_alpaca_news", new=AsyncMock(return_value=[])), \
          patch("agents.market_intelligence.collector.get_ticker_details", new=AsyncMock(return_value={})), \
          patch("agents.market_intelligence.collector.get_fmp_profile", new=AsyncMock(return_value={})), \
          patch("agents.market_intelligence.collector.get_sec_recent_filings", new=AsyncMock(return_value=[])), \
@@ -417,6 +419,7 @@ def test_replay_aborts_before_any_call_above_the_ceiling(capsys):
     conn.transaction = lambda **kw: _Tx()
     with patch("agents.market_intelligence.db.get_pool", new=AsyncMock(return_value=pool)), \
          patch("agents.market_intelligence.collector.get_polygon_news", new=AsyncMock(return_value=[])), \
+         patch("agents.market_intelligence.collector.get_alpaca_news", new=AsyncMock(return_value=[])), \
          patch("agents.market_intelligence.collector.get_ticker_details", new=AsyncMock(return_value={})), \
          patch("agents.market_intelligence.collector.get_fmp_profile", new=AsyncMock(return_value={})), \
          patch("agents.market_intelligence.collector.get_sec_recent_filings", new=AsyncMock(return_value=[])), \

@@ -1,0 +1,62 @@
+1. the five names — Alpaca titles with a deal word, 06-19 .. 10-09 (weekly pull)
+  ARX: 3 deal-word titles
+     2026-07-13 current-keyword=None                   'Accelerant Collaborates With WoodStar Reciprocal Exchange Over To Offer Specialty Commercial Insurance Ri'
+     2026-08-13 current-keyword='definitive agreement' 'Accelerant Enters Into Definitive Agreement With Thoma Bravo To Become Privately Held Company In All-Cash'
+     2026-08-13 current-keyword='going private'        'Accelerant Is Going Private in $4 Billion Thoma Bravo Deal'
+  BWIN: 4 deal-word titles
+     2026-08-03 current-keyword=None                   'UBS Maintains Buy on Baldwin Insurance, Raises Price Target to $37'
+     2026-09-14 current-keyword=None                   "'Michael Dell’s Family Office Leads $7.7bn Deal To Take Insurance Broker Private' - FT"
+     2026-09-14 current-keyword='taken private'        'Baldwin Group To Be Taken Private By Sequence Holdings And The Dell Family Office At $32.50 Per Share In '
+     2026-09-18 current-keyword=None                   'Deal Dispatch: Egg Maker Vital Farms Considers Sale, Blackstone Buys Flow Control, Kennedy Center Trouble'
+  CBZ: 2 deal-word titles
+     2026-07-29 current-keyword=None                   'Grant Thornton To Acquire CBIZ In $5B Deal; CBIZ Shareholders To Receive $55.00 Per Share In Cash'
+     2026-07-31 current-keyword=None                   'Deal Dispatch: Pitney Bowes Considers Strategic Alternatives, Grant Thornton Buys CBIZ, Storj Labs Bankru'
+  DV: 3 deal-word titles
+     2026-08-06 current-keyword=None                   'Nielsen Announces $2.15B Deal To Acquire DoubleVerify For $13.60 Per Share In All-Cash Transaction'
+     2026-08-06 current-keyword='merger'               "DoubleVerify Says It Is Suspending Earnings Calls, Including Today's, And Withdrawing All Previously Issu"
+     2026-08-07 current-keyword=None                   'Deal Dispatch: Bending Spoons Acquires Airtable, Bain Capital Buys Gong Cha Global, Salad and Go Bankrupt'
+  ITGR: 4 deal-word titles
+     2026-07-16 current-keyword=None                   'Truist Securities Maintains Buy on Integer Holdings, Raises Price Target to $110'
+     2026-07-31 current-keyword=None                   "'KKR Near Deal To Buy Integer Holdings; Deal For Medical-Device Company Could Be Finalized Soon' - WSJ Ex"
+     2026-08-03 current-keyword='to be acquired'       'Integer Holdings To Be Acquired By KKR For $127 Per Share Cash In Transaction Valued At EV Of ~$5.7B'
+     2026-08-03 current-keyword=None                   'Integer Shares Rally On $127 Per Share KKR Offer'
+
+2. MEASURE of one proposed widening (not shipped): titles that match ('to merge', 'merge with', 'merges with', 'business combination', 'agreement to acquire', 'to acquire', 'agrees to buy', 'inks agreement')
+  distinct Alpaca titles over the 151 ticker-day cells: 826
+  already candidates under the CURRENT list: 46
+  ADDED by the widening: 35
+     ACA    2026-06-22 'CRH Agrees To Acquire 100% Of Arcosa In All-Cash Transaction For $150/Shr'
+     ACVA   2026-09-11 'Copart To Acquire All Outstanding Shares Of ACV Common Stock For $10.50 Per Share In Cash; Transaction Expecte'
+     APGE   2026-06-22 'AbbVie To Acquire Apogee And Its Diverse Pipeline Of Multiple Clinical-Stage Candidates In Development Across '
+     ATAI   2026-07-16 'Lilly To Acquire AtaiBeckley For $6.75 Per Share In Cash Plus Up To $2.50 Per Share In A Contingent Value Righ'
+     CECO   2026-06-09 'CECO Environmental And Thermon Group Shareholders Approve Business Combination'
+     CGCT   2026-05-29 'Reported Earlier, Cartesian Growth Corporation III Shareholders Green-Light Business Combination With Factoria'
+     CHYM   2026-09-09 'Chime Stock Rises on Raised Guidance, Plans to Acquire Its Bank Partner'
+     CHYM   2026-09-09 'CORRECTION: Chime To Acquire Stride Bank For $590M in Cash, Creating Wholly Owned Chime Bank, N.A.'
+     CHYM   2026-09-09 'Chime Inks Deal To Acquire Stride Bank For $950M'
+     CLRO   2026-07-02 'ClearOne To Acquire Vivani Medical Subsidiary Cortigent For 12.5M Shares Of CLRO Worth ~$40.4M; ClearOne To Fi'
+     CRNX   2026-07-07 'Vertex Pharmaceuticals Agrees To Acquire Crinetics Pharmaceuticals For $85/Share In Cash'
+     CSR    2026-09-09 'Independence Realty Trust To Merge With Centerspace, With Centerspace Holders To Receive 3.8 IRT Shares Per CS'
+     DFH    2026-08-14 'Dream Finders Homes To Acquire Beazer Homes For $33.50 Per Share In Cash At EV Of ~$2.2B; Expected To Generate'
+     DV     2026-08-07 'Nielsen Announces $2.15B Deal To Acquire DoubleVerify For $13.60 Per Share In All-Cash Transaction'
+     EL     2026-05-22 'Estée Lauder Shares Rally After Ending Business Combination Talks With Puig'
+     ESI    2026-07-06 'Solstice To Acquire Element For $10 Per Share In Cash Plus 0.5 SOLS Share At An EV Of ~$14.5B Including The As'
+     FBRX   2026-07-27 'Argenx To Acquire Forte Biosciences For $77 Per Share Cash, Valuing Deal At ~$2.2B, Adding CD122-Targeting FB1'
+     FHB    2026-07-27 'First Hawaiian To Acquire TriCo Bancshares For 2.095 FHB Shares Per TCBK Share In All-Stock Deal Valuing TCBK '
+     FUL    2026-06-29 'H.B. Fuller Makes Recommended Cash Offer To Acquire Advanced Medical Solutions At £2.85 Per Share, Implying £7'
+     FWDI   2026-09-18 'Forward Industries Announces Non-Binding Proposal To Acquire SkyAI At 0.306 Forward Shares Per Share, Implying'
+     HLMN   2026-08-04 'Hillman Solutions To Acquire Industrial Fastener Distributor Kanebridge For $315M'
+     IRDM   2026-06-29 'Rocket Lab To Acquire Iridium For ~$54 Per In Cash And Stock At EV Of ~$8B; IRDM Holders To Receive $27 Per Sh'
+     MAIR   2026-08-25 'Deal Dispatch: MunichRe Buys At-Bay, Mavis Tire Closes Pep Boys Purchase, Werewolf Merges With Ambros'
+     MAIR   2026-08-25 'Madison Air Solutions To Acquire ebm-pabst At EV Of $5.4B; Deal Expected To Be Adjusted EPS Accretive In The F'
+     MYRG   2026-05-27 'MYR Group Inks Agreement To Acquire Valley Holdings For ~$328M'
+     NUVL   2026-06-09 'GSK Enters Agreement To Acquire Nuvalent For $10.6B At $124 Per Share, A 40% Premium To Last Closing Price'
+     NXTC   2026-07-14 'NextCure To Merge With Avere Therapuetics In All-Stock Deal; NXTC Holders To Receive A Contingent Value Right '
+     OLN    2026-06-16 'Huntsman And Olin To Merge, With Huntsman Shareholders Receiving 0.5476 Shares OLN Per Share Of HUN; Upon Clos'
+     SAFT   2026-07-24 'Mapfre To Acquire Safety Insurance In All-Cash Transaction Valued At ~$1.54B'
+     SUNE   2026-06-08 'SUNation To Merge With Suniva, Forming Combined Company With Implied Value Of ~$2.26 Per Share; Will Retain SU'
+     SUPN   2026-08-03 'Supernus Pharmaceuticals To Merge With Indivior Pharmaceuticals; SUPN Stockholders Will Receive 1.5401 Shares '
+     TECH   2026-06-25 "CORRECTION: Germany's Merck KGaA To Acquire Bio-Techne At $73 Per Share In Cash At EV $11.3B; Deal Expected To"
+     TECH   2026-06-25 'Merck To Acquire Bio-Techne For $73 Per Share In Cash At EV Of $11.3B; Deal Expected To Be Immediately Accreti'
+     VREX   2026-08-10 'Teledyne To Acquire Varex Imaging At $18.90 Per Share Cash In Deal Valued At ~$1.1B'
+     ZSQR   2026-06-26 'Z Squared To Acquire Majority Stake In Paradox Data, A Digital Infrastructure Company Specializing In High-Den'
