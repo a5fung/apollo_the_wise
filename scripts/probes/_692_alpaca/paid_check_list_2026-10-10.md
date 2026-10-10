@@ -3,7 +3,7 @@
 Model `claude-sonnet-5-5`, production prompt and tool (`ma_filter.ask_deal_question`), no table written. Raw answers: `paid_check_2026-10-10.jsonl`.
 
 - Set = every headline the Alpaca feed adds that the scan would ask about: the 47 the ORIGINAL keywords nominate plus 41 the seven deal-wire phrases add, over the 151 replayed ticker-days (unique ticker + headline).
-- Result: **49 BLOCK as target**, 28 RELEASE (a deal, not the target-on-price-fixing-terms), 11 NO DEAL, 0 unanswered.
+- Result: **49 BLOCK (45 targets + 4 signed shells)**, 28 RELEASE (a deal, not the target-on-price-fixing-terms), 11 NO DEAL, 0 unanswered.
 - Names he labelled a buyer (FWDI, CHYM, SWKS; JBS has no headline in the set): 7 headlines in the set, **0 answered as a blocking target**.
 - Names he called real buyouts (ACVA, SUNE, CLRO, HZO, RNW, UTZ, DV, SYNA): ACVA BLOCK, SUNE BLOCK, CLRO NOT blocked, HZO BLOCK, RNW BLOCK, UTZ BLOCK, DV BLOCK, SYNA BLOCK (any headline in the set).
 - BLOCK is the pre-market verdict; at 09:35 the open-window price can still RELEASE a name that moves (ruling 2026-10-03).
@@ -99,3 +99,21 @@ Model `claude-sonnet-5-5`, production prompt and tool (`ma_filter.ask_deal_quest
 | WEAV | 2026-08-18 | Weave Communications Says Francisco Partners Enters Into Definitive Agreement To Acquire Weave At Aggregate Equity Valua | Alpaca (Benzinga), title match 'definitive agreement' | target / signed / unknown (Francisco Partners) | **BLOCK** |  |
 | WEAV | 2026-08-18 | Weave Is Going Private: Francisco Partners Offers 34% Premium in $650 Million Buyout | Alpaca (Benzinga), title match 'buyout' | target / signed / cash (Francisco Partners) | **BLOCK** |  |
 | ZSQR | 2026-06-25 | Z Squared To Acquire Majority Stake In Paradox Data, A Digital Infrastructure Company Specializing In High-Density, Imme | Alpaca (Benzinga), title match 'to acquire' | buyer / signed / stock (Paradox Data) | **RELEASE** |  |
+
+## Unasked: 9 Polygon-side candidates the seven phrases add (NOT in the paid check)
+
+The paid check covered only Alpaca-sourced headlines. The phrases also widen the POLYGON candidate pick: over the same 151 ticker-days the Polygon-side set goes from 57 to 66 unique (ticker, headline), and these 9 were never put to the model (reproduce: `polygon_phrase_adds.py`, output `polygon_phrase_adds_out.txt`). All 9 are summary-only matches (the title carries no phrase); all are articles about a deal in the news, not a wire headline. Two of them (PYPL 07-15, PYPL 07-28) are newer than PayPal's older acting Polygon headlines and so displace them in the per-feed cap of three.
+
+| Ticker | Day | Headline | Phrase matched |
+|---|---|---|---|
+| ATAI | 2026-07-16 | Why AtaiBeckley Stock Soared Today | to acquire |
+| CMCSA | 2026-06-29 | Roku For Sale? JPMorgan Sees Comcast As The Most Logical Buyer | to acquire |
+| EL | 2026-05-22 | Stock Market Today: Dow, S&P 500, Nasdaq Futures Rise As Investors Eye U.S.-Iran Peace Talks (Estee Lauder, Wo...) | business combination |
+| IMAX | 2026-05-22 | Deal Dispatch: IMAX Mulls Potential Sale, Shein Buys Everlane, West Marine Bankruptcy | to acquire |
+| NUVL | 2026-06-09 | GSK Makes Its Biggest Bet In More Than A Decade, Paying $10.6 Billion For Cancer Drug Developer Nuvalent | to acquire |
+| NUVL | 2026-06-09 | Nasdaq 100 Tumbles Over 3%, Marvell Crashes 12%: Stock Market Today | to acquire |
+| PYPL | 2026-07-28 | Does PayPal Have a Buyer? | to acquire |
+| PYPL | 2026-07-15 | Stripe and Advent Reportedly Bid $60.50 a Share for PayPal. Here's the Real Prize: Venmo. | to acquire |
+| ROKU | 2026-06-24 | Netflix Stock Is Trading Near a 52-Week Low. Is It Finally a Buy? | to acquire |
+
+Not asked, so no BLOCK / RELEASE verdict exists for them. The ones to look at first: ROKU and CMCSA (the two names in the Roku-for-sale story; the model must say which is the target), and NUVL (a real target, whose wire headline is already in the 88).

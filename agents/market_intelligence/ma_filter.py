@@ -102,6 +102,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import re
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Awaitable, Callable, Iterable, NamedTuple, Optional
 from zoneinfo import ZoneInfo
@@ -138,6 +139,8 @@ _MNA_DEAL_WIRE_PHRASES: tuple[str, ...] = (
     "agrees to buy", "inks agreement",
 )
 _MNA_CANDIDATE_KEYWORDS: tuple[str, ...] = _MNA_KEYWORDS + _MNA_DEAL_WIRE_PHRASES
+_DEAL_WIRE_RE: dict[str, "re.Pattern[str]"] = {
+    kw: re.compile(r"(?<![a-z0-9])" + re.escape(kw)) for kw in _MNA_DEAL_WIRE_PHRASES}
 
 # Shareholder-investigation firms — their press releases list multiple tickers (class-action
 # notices on already-announced deals, NOT new M&A events). Title-prefix match → never a
@@ -160,7 +163,12 @@ def _first_keyword(text: Optional[str], keywords: tuple[str, ...]) -> Optional[s
         return None
     low = text.lower()
     for kw in keywords:
-        if kw in low:
+        if kw in _MNA_DEAL_WIRE_PHRASES:
+            # a deal-wire phrase must START at a word boundary: "merge with" sits inside "emerge
+            # with" ("Acme to emerge with a new product"), which a plain substring would nominate.
+            if _DEAL_WIRE_RE[kw].search(low):
+                return kw
+        elif kw in low:
             return kw
     return None
 
@@ -921,10 +929,8 @@ async def headline_deal_scan(
         company = await _company_name(ticker)
     missing: list = []
     candidates = _candidate_articles(ticker, items, insights_missing=missing, company_name=company)
-    # NEWEST FIRST ACROSS BOTH FEEDS: the merge puts Polygon first then Alpaca, and the first acting
-    # answer in this order is the headline that acts — so order by publish time (stable: equal or
-    # blank stamps keep the merge order), never by feed.
-    candidates.sort(key=lambda c: c[0].get("published_utc") or "", reverse=True)
+    # `_candidate_articles` already returns the candidates newest-first across BOTH feeds (it sorts
+    # the merged list by publish time); the first acting answer in that order is the headline that acts.
     for title in missing:   # unchanged #88 telemetry (one row per skipped article, as before)
         try:
             from agents.market_intelligence.db import log_audit_event
@@ -958,7 +964,7 @@ async def headline_deal_scan(
     for c in candidates:
         _by_feed[c[0].get("news_source") == "alpaca"].append(c)
     _kept = {id(c[0]) for feed in _by_feed.values() for c in feed[:_HEADLINE_MAX_ARTICLES]}
-    asked = [c for c in candidates if id(c[0]) in _kept]          # newest first (sorted below)
+    asked = [c for c in candidates if id(c[0]) in _kept]          # still newest first
     over_cap = [c for c in candidates if id(c[0]) not in _kept]
     tasks = [asyncio.ensure_future(ask_deal_question(
         ticker, item, company_name=company, reasoning=reasoning, now_et=now_et,
@@ -1257,16 +1263,24 @@ async def is_likely_ma(
     kw_hit = matches_mna_in_any(catalyst_texts or [])
     if kw_hit:
         old_rule.append(f"keyword_in_text_{kw_hit[1]}:{kw_hit[0]}")
-    # The pre-#692 rule read ONLY Polygon news, so only a Polygon-sourced headline is "the old rule
-    # would have blocked". An Alpaca-sourced one (a feed the old rule never read) is recorded as
-    # `headline_keyword_alpaca` in old_reasons but is NOT counted in old_rule / old_rule_would_block.
+    # The pre-#692 rule read ONLY Polygon news AND only the ORIGINAL keyword list, so only a
+    # Polygon-sourced headline matched by an ORIGINAL keyword is "the old rule would have blocked".
+    # An Alpaca-sourced one (a feed the old rule never read) is `headline_keyword_alpaca`; a Polygon
+    # one matched ONLY by a new deal-wire phrase (the old list never asked it) is
+    # `headline_keyword_dealwire`. Both are recorded in old_reasons, NEITHER counts in old_rule /
+    # old_rule_would_block.
     _answered = list(scan.released) + ([scan.hit] if scan.hit else [])
-    _feeds = {a.get("news_source") or "polygon" for a in _answered}
-    if "polygon" in _feeds:
+    _poly = [a for a in _answered if (a.get("news_source") or "polygon") == "polygon"]
+    _old_poly = [a for a in _poly if a.get("matched_keyword") in _MNA_KEYWORDS]
+    _wire_poly = [a for a in _poly if a.get("matched_keyword") not in _MNA_KEYWORDS]
+    _alpaca = any(a.get("news_source") == "alpaca" for a in _answered)
+    if _old_poly:
         old_rule.append("headline_keyword")
     old_reasons = list(old_rule)
-    if "alpaca" in _feeds:
+    if _alpaca:
         old_reasons.append("headline_keyword_alpaca")
+    if _wire_poly:
+        old_reasons.append("headline_keyword_dealwire")
     if grader_found_deal:
         old_reasons.append("grader_deal_no_pin")
     pin_release = reading_box.get("released")
@@ -1276,7 +1290,9 @@ async def is_likely_ma(
     if old_reasons:
         lead = ("old rule would have blocked (" + ", ".join(old_rule) + ")" if old_rule
                 else ("released for review (a Benzinga-via-Alpaca headline was answered as not pinning; "
-                      "the pre-#692 rule never read that feed)" if "alpaca" in _feeds and not grader_found_deal
+                      "the pre-#692 rule never read that feed)" if _alpaca and not grader_found_deal
+                      else "released for review (a deal-wire headline the pre-#692 keyword list did not "
+                           "ask was answered as not pinning)" if _wire_poly and not grader_found_deal
                       else "released for review (the grader answered a deal that does not pin)"))
         if pin_release:
             pr = pin_release["pin"]

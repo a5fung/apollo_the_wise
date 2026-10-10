@@ -315,7 +315,7 @@ def test_a_wire_headline_from_alpaca_is_now_asked_and_a_buyer_answer_releases_it
     assert scan.hit and scan.hit["source"] == "alpaca_headline_model" and scan.hit["matched_keyword"] == "to acquire"
 
 
-# ── 8. newest first ACROSS the two feeds (review fix) ─────────────────────────────────────────────
+# ── 8. newest first ACROSS the two feeds — `_candidate_articles` already sorts the merged list; this is a GUARD ──
 
 def test_the_newest_acting_headline_wins_across_both_feeds():
     old_p = "Acme Corp to be acquired by BigCo for cash (polygon, older)"
@@ -355,3 +355,27 @@ def test_a_polygon_release_keeps_the_old_headline_keyword_reason():
     both = _released_row(_case(polygon=[_poly(title)], alpaca=[_alp("Acme Corp takeover talk denied")],
                                answers={title: _NONE, "Acme Corp takeover talk denied": _NONE}))
     assert both[2]["old_reasons"] == ["headline_keyword", "headline_keyword_alpaca"]
+
+
+def test_a_polygon_deal_wire_only_release_is_not_an_old_rule_block():
+    """10-10 review: a Polygon headline matched ONLY by a new deal-wire phrase ("To Acquire") was never
+    asked by the pre-#692 list, so it must not read "old rule would have blocked"."""
+    title = "Acme Corp To Acquire Widget Co For $20 Per Share In Cash"
+    row = _released_row(_case(polygon=[_poly(title)], answers={title: _NONE}))
+    assert row[2]["old_reasons"] == ["headline_keyword_dealwire"]
+    assert row[2]["old_rule_would_block"] is False
+    assert "old rule would have blocked" not in row[1]
+    # a Polygon headline matched by an ORIGINAL keyword is still an old-rule block, beside a wire one
+    old = "Acme Corp rejects takeover bid from BigCo"
+    both = _released_row(_case(polygon=[_poly(old), _poly(title, published="2026-10-01T09:00:00Z")],
+                               answers={old: _NONE, title: _NONE}))
+    assert both[2]["old_rule_would_block"] is True
+    assert both[2]["old_reasons"] == ["headline_keyword", "headline_keyword_dealwire"]
+
+
+def test_merge_with_is_a_word_not_a_substring_of_emerge_with():
+    assert mf.matches_mna_keywords("Acme Corp to emerge with a new product line") is None
+    assert mf.matches_mna_keywords("Re-emerge with a bang") is None
+    assert mf.matches_mna_keywords("Acme and Widget will merge with BigCo") == "merge with"
+    assert mf.matches_mna_keywords("Independence Realty Trust To Merge With Centerspace") == "to merge"
+    assert mf.matches_mna_keywords("Acme (merge with Widget)") == "merge with"
