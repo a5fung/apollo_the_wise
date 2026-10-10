@@ -1,0 +1,54 @@
+Pass-2 cap rows: 29 (absorbed/not_absorbed) over 10 nights; biotech per-family drops (not this path): 7
+first cap row 2026-09-28  last 2026-10-09
+
+== 2026-09-28
+  drop as today (0 judged < 3)                 members=0  judged=0  passed=0 unjudgeable=0 guard=0  'Small Satellite & Space Services Rotation' -> 'Space Economy: Satellite Communications '
+  KEEP                                         members=7  judged=7  passed=0 unjudgeable=0 guard=0  'Appalachian Natural Gas E&P' -> 'Crude & Product Tanker Shipping'
+  drop as today (2 judged < 3)                 members=2  judged=2  passed=0 unjudgeable=0 guard=0  'Regulated Natural Gas Distribution Utilities' -> 'Crude & Product Tanker Shipping'
+
+== 2026-09-29
+  KEEP                                         members=8  judged=8  passed=0 unjudgeable=0 guard=0  'U.S. Shale Oil & Gas Exploration & Production' -> 'Crude & Product Tanker Shipping'
+  KEEP                                         members=5  judged=5  passed=0 unjudgeable=0 guard=0  'Appalachian Natural Gas Producers' -> 'Crude & Product Tanker Shipping'
+
+== 2026-09-30
+  KEEP                                         members=9  judged=8  passed=0 unjudgeable=0 guard=1  'Oil & Gas Exploration & Production Crude Price Leverage (Sha' -> 'Crude & Product Tanker Shipping'
+  KEEP                                         members=7  judged=7  passed=0 unjudgeable=0 guard=0  'Appalachian & Natural Gas-Weighted E&P Producers' -> 'Crude & Product Tanker Shipping'
+  KEEP                                         members=4  judged=4  passed=0 unjudgeable=0 guard=0  'Offshore Drilling Rig Contractors' -> 'Crude & Product Tanker Shipping'
+
+== 2026-10-01
+  KEEP                                         members=9  judged=8  passed=0 unjudgeable=0 guard=1  'Oil & Gas E&P Crude-Weighted Producers Momentum' -> 'Crude & Product Tanker Shipping'
+  absorbed (a member passed / already in top)  members=3  judged=2  passed=1 unjudgeable=0 guard=1  'Defense Electronics & Aerospace Subsystem Suppliers' -> 'Space Economy: Satellite Communications '
+  KEEP                                         members=3  judged=3  passed=0 unjudgeable=0 guard=0  'Oil & Gas Royalty and Mineral-Interest and E&P Producers (Un' -> 'Crude & Product Tanker Shipping'
+  drop as today (2 judged < 3)                 members=2  judged=2  passed=0 unjudgeable=0 guard=0  'Appalachian Natural Gas Producers' -> 'Crude & Product Tanker Shipping'
+
+== 2026-10-02
+  KEEP                                         members=9  judged=8  passed=0 unjudgeable=0 guard=1  'Oil & Gas Exploration & Production Crude Price Leverage (Sha' -> 'Crude & Product Tanker Shipping'
+  drop as today (0 judged < 3)                 members=0  judged=0  passed=0 unjudgeable=0 guard=0  'Upstream Oil & Gas E&P Producers (Shale and Canadian Oil San' -> 'Crude & Product Tanker Shipping'
+  KEEP                                         members=5  judged=5  passed=0 unjudgeable=0 guard=0  'Regulated Electric & Gas Multi-Utilities Defensive Rotation' -> 'Crude & Product Tanker Shipping'
+
+== 2026-10-05
+  KEEP                                         members=7  judged=6  passed=0 unjudgeable=0 guard=1  'Oil & Gas E&P Crude-Weighted Producers Momentum' -> 'Crude & Product Tanker Shipping'
+  KEEP                                         members=6  judged=6  passed=0 unjudgeable=0 guard=0  'Appalachian Natural Gas Producers' -> 'Crude & Product Tanker Shipping'
+
+== 2026-10-06
+  KEEP                                         members=3  judged=3  passed=0 unjudgeable=0 guard=0  'Oilfield Services & Offshore Energy Equipment' -> 'Crude & Product Tanker Shipping'
+  KEEP                                         members=7  judged=7  passed=0 unjudgeable=0 guard=0  'Appalachian & Natural Gas-Weighted E&P Producers' -> 'Crude & Product Tanker Shipping'
+  KEEP                                         members=8  judged=8  passed=0 unjudgeable=0 guard=0  'Oil-Weighted US Shale & Independent E&P Producers' -> 'Crude & Product Tanker Shipping'
+
+== 2026-10-07
+  drop as today (0 judged < 3)                 members=19 judged=0  passed=0 unjudgeable=19 guard=0  'Global Oil & Gas Producers and Refiners' -> 'Global Oil & Gas Producers and Refiners'
+  drop as today (0 judged < 3)                 members=7  judged=0  passed=0 unjudgeable=7 guard=0  'Appalachian Natural Gas Producers' -> 'Global Oil & Gas Producers and Refiners'
+  drop as today (0 judged < 3)                 members=12 judged=0  passed=0 unjudgeable=12 guard=0  'U.S. Shale Oil E&P Producers (Crude-Price Driven)' -> 'Global Oil & Gas Producers and Refiners'
+  drop as today (0 judged < 3)                 members=9  judged=0  passed=0 unjudgeable=9 guard=0  'Regulated Electric & Gas Utilities Broad Defensive Rotation ' -> 'Global Oil & Gas Producers and Refiners'
+
+== 2026-10-08
+  KEEP                                         members=8  judged=8  passed=0 unjudgeable=0 guard=0  'Natural Gas-Weighted Appalachian & Shale E&P Producers' -> 'U.S. Oil Refiners & Refining Margin Expa'
+  KEEP                                         members=4  judged=4  passed=0 unjudgeable=0 guard=0  'Oilfield Services & Offshore Energy Equipment' -> 'U.S. Oil Refiners & Refining Margin Expa'
+
+== 2026-10-09
+  KEEP                                         members=7  judged=7  passed=0 unjudgeable=0 guard=0  'Appalachian Natural Gas Producers' -> 'U.S. Oil Refiners & Refining Margin Expa'
+  KEEP                                         members=8  judged=8  passed=0 unjudgeable=0 guard=0  'Regulated Electric & Gas Utilities Broad Defensive Rotation ' -> 'U.S. Oil Refiners & Refining Margin Expa'
+  absorbed (a member passed / already in top)  members=7  judged=7  passed=7 unjudgeable=0 guard=0  'Integrated Oil & Gas Majors' -> 'U.S. Oil Refiners & Refining Margin Expa'
+
+KEPT under the rule: 19 of 29
+kept themes with any passing member (must be 0): 0

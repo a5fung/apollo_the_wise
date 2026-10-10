@@ -1,0 +1,27 @@
+theme_date | stage | n | tickers | name
+2026-09-28 | Nascent | 7 | RRC,AR,EQT,CRK,GPOR,EXE,CNX | Appalachian Natural Gas Producers
+2026-09-29 | Retired | 0 |  | Appalachian Natural Gas Producers
+2026-09-30 | Nascent | 7 | RRC,AR,EQT,CRK,GPOR,EXE,CNX | Appalachian Natural Gas Producers
+2026-10-01 | Retired | 0 |  | Appalachian Natural Gas Producers
+2026-10-02 | Nascent | 7 | RRC,AR,CRK,GPOR,EQT,EXE,CNX | Appalachian Natural Gas Producers
+2026-10-05 | Retired | 0 |  | Appalachian Natural Gas Producers
+2026-10-06 | Nascent | 7 | EQT,CRK,RRC,GPOR,AR,CNX,EXE | Appalachian Natural Gas Producers
+2026-10-07 | Retired | 0 |  | Appalachian Natural Gas Producers
+2026-10-08 | Nascent | 7 | EQT,CRK,RRC,GPOR,AR,CNX,EXE | Appalachian Natural Gas Producers
+2026-10-09 | Retired | 0 |  | Appalachian Natural Gas Producers
+2026-09-30 | Nascent | 7 | RRC,AR,CRK,GPOR,EQT,EXE,CNX | Appalachian & Natural Gas-Weighted E&P Laggards
+2026-10-01 | Retired | 0 |  | Appalachian & Natural Gas-Weighted E&P Laggards
+2026-10-07 | Nascent | 6 | BKV,CRK,CNX,AR,EXE,EQT | Natural Gas-Weighted Appalachian & Shale E&P Producers
+2026-10-08 | Retired | 0 |  | Natural Gas-Weighted Appalachian & Shale E&P Producers
+2026-10-09 | Nascent | 6 | BKV,CRK,CNX,AR,EXE,EQT | Natural Gas-Weighted Appalachian & Shale E&P Producers
+2026-09-25 | Nascent | 4 | SDRL,VAL,NE,RIG | Offshore Drilling Rig Contractors
+2026-09-28 | Retired | 0 |  | Offshore Drilling Rig Contractors
+2026-09-29 | Nascent | 4 | SDRL,NE,VAL,RIG | Offshore Drilling Rig Contractors
+2026-09-30 | Retired | 0 |  | Offshore Drilling Rig Contractors
+2026-10-01 | Nascent | 4 | SDRL,VAL,NE,RIG | Offshore Drilling Rig Contractors
+2026-10-02 | Retired | 0 |  | Offshore Drilling Rig Contractors
+2026-09-23 | Nascent | 5 | SR,ATO,OGS,NI,CNP | Regulated Natural Gas Distribution Utilities
+2026-09-24 | Retired | 0 |  | Regulated Natural Gas Distribution Utilities
+2026-09-25 | Nascent | 5 | SR,ATO,OGS,NI,CNP | Regulated Natural Gas Distribution Utilities
+2026-09-28 | Retired | 0 |  | Regulated Natural Gas Distribution Utilities
+(25 rows)
