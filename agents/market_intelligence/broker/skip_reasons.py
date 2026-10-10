@@ -58,6 +58,9 @@ BLOCK_STRATEGY_DISABLED          = "block:strategy_disabled"
 BLOCK_STRATEGY_IN_SHADOW         = "block:strategy_in_shadow"
 BLOCK_STRATEGY_DEPRECATED        = "block:strategy_deprecated"  # #424: terminal phase, never enters
 BLOCK_PAPER_STRATEGY_ON_LIVE     = "block:paper_strategy_on_live"
+# #624 (2026-10-10): a caller that may submit to ONE account only (the small-cap PAPER lane)
+# was handed a strategy row that resolves elsewhere — blocked before any row or order.
+BLOCK_ACCOUNT_MODE_MISMATCH      = "block:account_mode_mismatch"
 BLOCK_TICKER_OPEN_POSITION       = "block:ticker_open_position"
 # PDT lockout guards RETIRED 2026-06-04 (#181) — FINRA Rule 4210 eliminated the
 # PDT designation; the guard no longer fires. Constants + labels kept (not removed)
@@ -122,6 +125,7 @@ _HUMAN_LABELS: dict[str, str] = {
     BLOCK_STRATEGY_IN_SHADOW:      "Strategy in shadow phase (no live entries)",
     BLOCK_STRATEGY_DEPRECATED:     "Strategy deprecated — retired, no new entries",
     BLOCK_PAPER_STRATEGY_ON_LIVE:  "Paper-phase strategy can't run on live account",
+    BLOCK_ACCOUNT_MODE_MISMATCH:   "Strategy routes to a different account than this entry path allows",
     BLOCK_TICKER_OPEN_POSITION:    "Already have open position in ticker",
     BLOCK_PDT_LOCKOUT_IMMINENT:    "PDT lockout imminent (3 day-trades used)",
     BLOCK_PDT_LOCKOUT_ACTIVE:      "PDT lockout active (account flagged)",

@@ -73,7 +73,10 @@ BREAKEVEN_ARM_R_DATE = date(2026, 9, 6)
 BREAKEVEN_ARM_R_VALUE = 3.0
 # The strategies the 2026-09-06 flip actually touched. Adding one here is the same
 # same-commit duty as the change-log entry (see MAINTENANCE RULE above).
-PARTIAL_8R_SIGNAL_TYPES = frozenset({"magna53"})
+# #624 (2026-10-10): the small-cap PAPER lane carries MAGNA53's exit LEVELS from its first day
+# (its mi_strategies row is seeded with profit_trigger_r 8.0 / breakeven_arm_r 3.0), so its rows
+# label era_d like MAGNA53's — never pooled with the unflipped era_c stack.
+PARTIAL_8R_SIGNAL_TYPES = frozenset({"magna53", "magna53_smallcap"})
 
 
 def _flipped_8r(d: date, signal_type: str | None) -> bool:
@@ -171,6 +174,10 @@ ADMISSION_SWITCHES: tuple[tuple[date, str, str, date], ...] = (
 # admission_era_as_of(session_date) so they segment on MAGNA53's real switches. The row
 # LANDS WITH THE PAPER FLIP (`/strategy magna53_lowcap promote`) — that IS a change to who
 # gets admitted, and needs its own dated change-log entry + a row on the same commit.
+# ⚠ #624 PAPER LANE (2026-10-10) — also NO row here, checked by eye: the small-cap paper lane
+# admits names into its OWN strategy (`magna53_smallcap`, paper book, own alerts table); who
+# MAGNA53 admits is byte-identical with it on or off (tests/test_624_lowcap_lane.py runs the
+# scan end to end). Its rows stamp admission_era_as_of(session_date) like the shadow lane's.
 PRE_SWITCH_ADMISSION_ERA = "adm_pre_2026-08-20"
 
 

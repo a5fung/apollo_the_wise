@@ -339,6 +339,9 @@ _ADAPTERS: dict[str, Callable[[int], Awaitable[list[OutcomeRow]]]] = {
     "9m_day2":            partial(_adapter_live_trades, signal_type="9m_day2"),
     "shadow_orb_5m":      _adapter_shadow_orb_5m,
     "magna53_lowcap":     _adapter_magna53_lowcap,
+    # #624 small-cap PAPER lane (2026-10-10): its paper fills. Its TAIL RATE is read from the
+    # replays (mi_lowcap_paper_lane_replays), not from here — this feeds the registry's counts.
+    "magna53_smallcap":   partial(_adapter_live_trades, signal_type="magna53_smallcap"),
     "parabolic_short":    _adapter_parabolic,
     "wick_fill":          _adapter_wick_fill,
     "flag_continuation":  _adapter_flag_continuation,

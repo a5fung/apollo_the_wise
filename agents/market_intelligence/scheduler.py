@@ -5516,6 +5516,24 @@ async def _lowcap_lane_replay_job():
     except Exception as e:
         logger.error(f"low-cap lane replay job failed: {e}", exc_info=True)
         await notify_job_failure("lowcap_lane_replay", str(e))
+    # #624 small-cap PAPER lane (2026-10-10): the SAME walker over every name the paper lane
+    # graded (mi_lowcap_paper_lane_alerts) — the lane's tail rate is read from these replays,
+    # not from its ~1-a-month paper fills. Its own try: one walker failing never stops the other.
+    try:
+        from agents.market_intelligence.lowcap_lane_replay import run_paper_lane_replay
+        from agents.market_intelligence.collector import et_today
+        from agents.market_intelligence.health_checks import check_recorder_failure_rate
+        pout = await run_paper_lane_replay(et_today())
+        logger.info(
+            f"small-cap paper lane replay: {pout['written']} row(s) written across "
+            f"{pout['population']} graded name(s) — {pout['settled']} settled, "
+            f"{pout['no_trade']} no_trade, {pout['unscoreable']} unscoreable, {pout['open']} open, "
+            f"{pout['errors']} error(s)")
+        await check_recorder_failure_rate(
+            "lowcap_paper_lane_replay", pout, attempted_key="candidates")
+    except Exception as e:
+        logger.error(f"small-cap paper lane replay failed: {e}", exc_info=True)
+        await notify_job_failure("lowcap_paper_lane_replay", str(e))
 
 
 async def _alert_rank_shadow_job():

@@ -649,10 +649,23 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         ticker = alert["ticker"]
         async with sem:
             async with pool.acquire() as conn:
-                exists = await conn.fetchval(
-                    "SELECT EXISTS(SELECT 1 FROM mi_live_trades WHERE ticker = $1 AND alert_date = $2)",
-                    ticker, today,
-                )
+                # #624 (operator-approved 2026-10-10, review correction 3): "already traded
+                # today" is asked of MAGNA53's OWN account only (dual-account invariant 3) — a
+                # small-cap PAPER-lane trade on the same ticker/day must never make live MAGNA53
+                # skip it. Fail direction: when the mode resolve above failed (None), today's
+                # UNFILTERED check runs — never `account_mode = NULL`, which matches nothing and
+                # would let a name live already holds be processed again.
+                if _magna53_mode is not None:
+                    exists = await conn.fetchval(
+                        "SELECT EXISTS(SELECT 1 FROM mi_live_trades WHERE ticker = $1 "
+                        "AND alert_date = $2 AND account_mode = $3)",
+                        ticker, today, _magna53_mode,
+                    )
+                else:
+                    exists = await conn.fetchval(
+                        "SELECT EXISTS(SELECT 1 FROM mi_live_trades WHERE ticker = $1 AND alert_date = $2)",
+                        ticker, today,
+                    )
             if exists:
                 logger.debug(f"Live trade already exists for {ticker} on {today}")
                 return None

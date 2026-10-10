@@ -9517,7 +9517,10 @@ async def persist_forward_alert_paths(target_date=None) -> dict:
 # approved. Strategies NOT listed here (9M Day 2: stop = prior day low) keep
 # entry − stop, which IS their R — listing them would rewrite THEIR target
 # (the #490 latent-defect class: one strategy's rule leaking into shared code).
-_ORB_R_FRAME_SIGNAL_TYPES = frozenset({"magna53"})
+# #624 (2026-10-10): the small-cap PAPER lane uses MAGNA53's bracket (ORB stop-buy, entry − 2R
+# stop), so its R is MAGNA53's ORB R — without this its +8R partial would be framed off the 2R
+# stop distance and land at +16 ORB-R.
+_ORB_R_FRAME_SIGNAL_TYPES = frozenset({"magna53", "magna53_smallcap"})
 
 
 def profit_target_r_per_share(

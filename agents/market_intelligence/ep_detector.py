@@ -6930,6 +6930,11 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         _r.setdefault("setup_class", None)
         _r.setdefault("catalyst_type", None)
         _r.setdefault("catalyst_type_rationale", None)
+    # #624 paper lane: bound BEFORE the try so the lane dispatch below can tell "the judge block
+    # never got as far as defining its closure" (None → the lane keeps its floor tiers, exactly
+    # what live keeps when this block fails) from a real judge. Both are rebound in the try.
+    _judge_shadow = None
+    _judge_authority = False
     try:
         from agents.market_intelligence.catalyst_type_classifier import classify_catalyst_type
         from agents.market_intelligence.db import (
@@ -6950,7 +6955,13 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         # is preserved as baseline_floor_tier. FAIL-CLOSED inside the helper (error → floor).
         _judge_authority = await get_holistic_judge_enabled()
 
-        async def _judge_shadow(r: dict) -> None:
+        async def _judge_shadow(r: dict, lane=None) -> None:
+            # `lane` (#624 paper lane, 2026-10-10): None on the live path (byte-identical).
+            # The lane calls THIS judge on its own graded names after live grading has
+            # finished; with a lane, the setup-class write and the judge-result write go to
+            # the LANE'S table, the call is billed as 'lowcap_paper_lane_judge', and the
+            # live-book telemetry (theme-gap feed, divergence check, decision trace, axis
+            # shadows) is skipped — the same verdict, authority and tier resolution acts.
             # Holistic Grade Judge (#240 / ADR 0011) — Wave 1 SHADOW: records the
             # judge's bidirectional verdict (judge_tier/direction/rationale) alongside
             # the floor's baseline_floor_tier; drives NOTHING. FAIL-OPEN: a None verdict
@@ -6976,7 +6987,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 async with _sc_pool.acquire() as _sc_conn:
                     _sc_fields = await compute_setup_class_fields(_sc_conn, r)
                 _setup_class = classify_setup_class(_sc_fields)
-                await update_ep_alert_setup_class(r["ticker"], r["alert_date"], _setup_class)
+                if lane is None:
+                    await update_ep_alert_setup_class(r["ticker"], r["alert_date"], _setup_class)
             except Exception as _sce:
                 logger.warning(f"setup-class classify failed for {r.get('ticker')}: {_sce}")
             # SET UNCONDITIONALLY, OUTSIDE the try — display-only, mirrors catalyst_type /
@@ -7036,17 +7048,26 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     # agreement carries no measured information.
                     second_opinion=r.get("gemini_validation"),
                 )
-                verdict = await grade_holistic(
-                    _get_claude(), payload,
-                    # THE LIVE grade path — the one caller entitled to this bucket. Passed
-                    # explicitly since 2026-08-02 (the default was removed); same string, so
-                    # attribution is byte-identical to every historical row.
-                    log_caller="ep_grade_judge",
-                    # 15→25s with the 2026-06-10 JUDGE_MODEL=OPUS flip — Opus
-                    # is slower; the eval's only ERR row was an Opus timeout.
-                    # A tight ceiling converts model quality into fail-open.
-                    semaphore=_JUDGE_SEMAPHORE, timeout=25,
-                )
+                if lane is None:
+                    verdict = await grade_holistic(
+                        _get_claude(), payload,
+                        # THE LIVE grade path — the one caller entitled to this bucket. Passed
+                        # explicitly since 2026-08-02 (the default was removed); same string, so
+                        # attribution is byte-identical to every historical row.
+                        log_caller="ep_grade_judge",
+                        # 15→25s with the 2026-06-10 JUDGE_MODEL=OPUS flip — Opus
+                        # is slower; the eval's only ERR row was an Opus timeout.
+                        # A tight ceiling converts model quality into fail-open.
+                        semaphore=_JUDGE_SEMAPHORE, timeout=25,
+                    )
+                else:
+                    # #624 paper lane: the SAME judge call, billed to its own bucket so the live
+                    # judge's spend line stays the live judge's.
+                    verdict = await grade_holistic(
+                        _get_claude(), payload,
+                        log_caller="lowcap_paper_lane_judge",
+                        semaphore=_JUDGE_SEMAPHORE, timeout=25,
+                    )
                 # W2c (#243): LOAD-BEARING override — only when the toggle is ON. The judge
                 # tier overwrites the authoritative score_tier (the field the caller reads for
                 # alert+entry, and downstream reads from the DB row). 'none' → suppression
@@ -7081,7 +7102,8 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     # tier (the caller reads r, the entry job reads the row —
                     # they must agree).
                     try:
-                        await update_ep_alert_judge_result(
+                        await (update_ep_alert_judge_result if lane is None
+                               else lane.update_judge_result)(
                             r["ticker"], r["alert_date"],
                             judge_tier=v.get("tier"),
                             judge_direction=v.get("direction_vs_floor"),
@@ -7155,23 +7177,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             # mechanism + the anti-circularity walls). OWN
                             # try/except: a feed failure must never disturb the
                             # judge write or the alert path (SHADOW invariant).
-                            try:
-                                from agents.market_intelligence.judge_theme_gap import (
-                                    feed_judge_theme_gap,
-                                )
-                                _jtg_pool = await get_pool()
-                                async with _jtg_pool.acquire() as _jtg_conn:
-                                    await feed_judge_theme_gap(
-                                        _jtg_conn, r["ticker"], r["alert_date"],
-                                        sector=r.get("sector"),
-                                        fire_axes=v.get("fire_axes"),
-                                        in_active_theme=bool(r.get("in_active_theme")),
-                                        in_narrative_cohort=bool(r.get("in_narrative_cohort")),
-                                        rationale=v.get("rationale"),
+                            if lane is None:
+                                try:
+                                    from agents.market_intelligence.judge_theme_gap import (
+                                        feed_judge_theme_gap,
                                     )
-                            except Exception as _jtge:
-                                logger.warning(
-                                    f"judge theme-gap feed failed for {r.get('ticker')}: {_jtge}")
+                                    _jtg_pool = await get_pool()
+                                    async with _jtg_pool.acquire() as _jtg_conn:
+                                        await feed_judge_theme_gap(
+                                            _jtg_conn, r["ticker"], r["alert_date"],
+                                            sector=r.get("sector"),
+                                            fire_axes=v.get("fire_axes"),
+                                            in_active_theme=bool(r.get("in_active_theme")),
+                                            in_narrative_cohort=bool(r.get("in_narrative_cohort")),
+                                            rationale=v.get("rationale"),
+                                        )
+                                except Exception as _jtge:
+                                    logger.warning(
+                                        f"judge theme-gap feed failed for {r.get('ticker')}: {_jtge}")
                             # ── #301 ensemble-divergence SHADOW ─────────────────────
                             # ZERO AUTHORITY (THE LINE): fire-and-forget 2nd-model
                             # (Sonnet) independent grade on the primary judge's
@@ -7205,7 +7228,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                             # 97/97 coverage on HIGH. Same trigger, same dedupe key/guard,
                             # same call — a demotion is just a second population that now
                             # satisfies the same `if`, not a new code path.
-                            if (
+                            if lane is None and (
                                 v.get("tier") == "HIGH"
                                 or _is_judge_demotion(v.get("tier"), floor_tier)
                             ) and _audit_dedupe_check(
@@ -7224,6 +7247,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 if do_override:
                     r["score_tier"] = new_tier
                     r["grade_engine_authority"] = authority
+                if lane is not None:
+                    # #624 paper lane: the settled tier is all the lane needs; the decision
+                    # trace and the axis shadows below are LIVE-book telemetry.
+                    return
                 # Comprehensive decision trace (W2a #243, OPERATOR REQUIREMENT). ONE
                 # ep_grade_decision per graded candidate — verdict, hold, OR null — so a
                 # grade is never a black box: review/debug/tune read this. judge_outcome
@@ -7388,5 +7415,24 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         await asyncio.wait_for(annotate_ep_alerts_tape_quality(results), timeout=20)
     except Exception as _tqe:
         logger.warning(f"tape-quality annotation failed (non-critical): {_tqe}")
+
+    # ── #624 SMALL-CAP PAPER LANE — dispatch (2026-10-10, operator "Ok to recs") ────────────
+    # LAST, after every live decision of this tick has settled (grading, judge, tape): the names
+    # the loop turned away ONLY on the $500M floor are graded by the SAME `_grade_admitted` and
+    # `_judge_shadow`, in a DETACHED task (strong ref in _WATCHDOG_BG_TASKS) — the scan never
+    # awaits it, so the ORB-window tick is not slowed. The lane writes its OWN table and orders
+    # only through its own PAPER-only step (lowcap_paper_lane.py); nothing here touches
+    # `results`, mi_ep_alerts or the live order step. Lazy import: ep_detector is
+    # execution-loaded and the lane module must stay off that list. Fail-open, loudly.
+    try:
+        from agents.market_intelligence.lowcap_paper_lane import schedule_paper_lane_tick
+        schedule_paper_lane_tick(
+            _lowcap_paper_candidates, grade=_grade_admitted, judge=_judge_shadow,
+            scan_row=_scan_row, today=today, now_et=now_et, regime_label=regime_label,
+            judge_timeout_s=(_POST_SCAN_CEILING_AUTHORITY_S if _judge_authority
+                             else _POST_SCAN_CEILING_SHADOW_S),
+            bg_tasks=_WATCHDOG_BG_TASKS)
+    except Exception as _ple:  # loud-ok: paper-only lane — the live scan never depends on it
+        logger.warning(f"#624 paper lane dispatch failed (paper-only, non-fatal): {_ple}")
 
     return results

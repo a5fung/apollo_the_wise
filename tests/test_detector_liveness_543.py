@@ -214,6 +214,10 @@ def test_module_constant_covers_the_required_tables():
         # only watchdog.
         "mi_lowcap_lane_signals",
         "mi_lowcap_lane_replays",
+        # 2026-10-10 (#624): the small-cap PAPER lane's alerts table (detached writer off the
+        # scan tick, no Telegram on an alert) and its nightly replays.
+        "mi_lowcap_paper_lane_alerts",
+        "mi_lowcap_paper_lane_replays",
         # 2026-09-06 (#210): the TradingView news cross-reference shadow — SILENT by the
         # data-capture contract (Telegram only on a sustained, run-level endpoint
         # degradation via a different mechanism, llm_health.alert_endpoint_shape_anomaly);
@@ -256,6 +260,8 @@ def test_new_tables_key_off_a_date_column_not_a_timestamp():
     # silently never be checked.
     assert by_table["mi_lowcap_lane_signals"] == "scan_date"
     assert by_table["mi_lowcap_lane_replays"] == "settled_session"
+    assert by_table["mi_lowcap_paper_lane_alerts"] == "alert_date"
+    assert by_table["mi_lowcap_paper_lane_replays"] == "settled_session"
 
 
 # ── run_detector_liveness_check: orchestration + wiring ───────────────────────

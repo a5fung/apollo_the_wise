@@ -1754,6 +1754,11 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # and would silently never be checked — the name-based `created_at` rule).
     ("mi_lowcap_lane_signals", "low-cap lane signals (#624)", "scan_date", None),
     ("mi_lowcap_lane_replays", "low-cap lane replay (#624)", "settled_session", None),
+    # #624 small-cap PAPER lane (2026-10-10): its alerts table (~2.3 graded names a session on
+    # the 08-28 → 10-09 measurement, written by a DETACHED task off the scan tick and SILENT —
+    # no Telegram on an alert) and its nightly replays. This registry is their watchdog.
+    ("mi_lowcap_paper_lane_alerts", "small-cap paper lane (#624)", "alert_date", None),
+    ("mi_lowcap_paper_lane_replays", "small-cap paper lane replay (#624)", "settled_session", None),
     # #606 D-1 universe floor shadow (2026-08-31): written every scan tick with
     # >=1 real candidate on EITHER side of the D-1 floor — a fire-and-forget writer
     # read by nothing on the scan path, the same can-fail-100%-silently class as the
@@ -3867,6 +3872,7 @@ _DEAD_COL_EVENT_GATED: dict[str, tuple[str, str]] = {
     "mi_gap_near_miss_replays.mark_r": _WALK_OPEN,
     "mi_sustain_reject_replays.mark_r": _WALK_OPEN,
     "mi_lowcap_lane_replays.mark_r": _WALK_OPEN,
+    "mi_lowcap_paper_lane_replays.mark_r": _WALK_OPEN,
 }
 _DEAD_COL_TABLE_PREFIXES = ("mi_", "crypto_")
 # Row-write timestamps (a row stamped after the first sighting in ANY of them counts). Deliberately small

@@ -370,7 +370,10 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
                          catalyst_type_raises: bool = False,
                          audit_sink: list | None = None,
                          extra_snapshots: dict | None = None,
-                         cached_quality: str = "game_changer"):
+                         cached_quality: str = "game_changer",
+                         lowcap_admit: str | None = None,
+                         paper_mode: str = "untouched",
+                         paper_sink: dict | None = None):
     """One full run_ep_scan on a fixture board. 20 big-ADV fillers (top-20 by pre-score),
     all killed at the RVOL@T gate; 3 sub-shortlist names, two of which meet the lane rule.
     Returns (results, scan_log_rows, alert_inserts, lane_rows).
@@ -394,7 +397,15 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
     #635 (2026-09-30) - two optional, default-off hooks so the silent-failure surfaces that sit
     INSIDE run_ep_scan can be driven through the real scan: `audit_sink` (a list that receives
     every `(event, summary, detail)` the scan audits) and `extra_snapshots` (extra tickers merged
-    into the Polygon snapshot - e.g. malformed rows). Neither changes the fixture when omitted."""
+    into the Polygon snapshot - e.g. malformed rows). Neither changes the fixture when omitted.
+
+    #624 PAPER LANE (2026-10-10) — three more default-off hooks: `lowcap_admit` names a filler
+    (inside the top-20) that clears RVOL@T and is then turned away by the live `check_filters`
+    ONLY on the $500M floor (requires admit=True for the LLM stubs; its lane grade is seeded in
+    the PAPER LANE's own cache, never the live one); `paper_mode` is 'on' / 'off' (the
+    `lowcap_paper_lane` toggle) / 'raising' (the dispatch itself explodes) / 'untouched' (the
+    default — nothing patched, every existing caller unchanged); `paper_sink` (a dict) receives
+    the lane's table writes: 'rows', 'judge', 'triggers'."""
     from agents.market_intelligence import minute_volume as mv
     fillers = {f"BIG{i:02d}": _snap(50.0, 60.0, 5_000_000) for i in range(20)}
     smalls = {"CHPT": _snap(5.19, 6.90, 969_501), "WETO": _snap(6.00, 7.20, 2_000_000),
@@ -419,7 +430,8 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
         return default
 
     async def _rvol(ticker, now_et, today_premkt_vol, today_session_vol):
-        rvol_at_time = 10.0 if (admit and ticker == ADMIT_TICKER) else 0.0
+        rvol_at_time = 10.0 if ((admit and ticker == ADMIT_TICKER)
+                                or (lowcap_admit and ticker == lowcap_admit)) else 0.0
         return {"anchor": "session", "rvol_at_time": rvol_at_time, "baseline_n": mv.MIN_BASELINE_N_FOR_GATE,
                 "today_cum_vol": int(today_session_vol), "baseline_mean": 1.0}
 
@@ -498,7 +510,15 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
     ep_detector._catalyst_cache_date = None
     ep_detector._catalyst_cache = {}
     if admit:
-        monkeypatch.setattr(ep_detector, "check_filters", AsyncMock(return_value=(True, None)))
+        async def _cf_live(ticker, d, skip_mcap=False, metrics=None):
+            if lowcap_admit and ticker == lowcap_admit:
+                # the live quality filter's REAL kill shape for a sub-floor cap (cap read LAST)
+                if metrics is not None:
+                    metrics.update({"quality_adv_dollar": 9_000_000.0, "atr_pct": 6.0,
+                                    "market_cap": 134_000_000.0})
+                return False, "filter:mcap_too_small: $134M < $500M"
+            return True, None
+        monkeypatch.setattr(ep_detector, "check_filters", _cf_live)
         monkeypatch.setattr(ep_detector, "is_earnings_day", AsyncMock(return_value=(False, "yfinance")))
         monkeypatch.setattr(ep_detector, "get_fmp_profile", AsyncMock(return_value={
             "marketCap": 3_000_000_000.0, "floatShares": 60_000_000,
@@ -560,6 +580,51 @@ async def _run_scan_once(monkeypatch, *, lane_mode: str, admit: bool = False,
             lane_rows.extend(rows)
             return len(rows)
         monkeypatch.setattr(lane, "insert_lowcap_lane_signals", _ins)
+
+    # the #624 PAPER lane side (only when a test asks — 'untouched' patches nothing)
+    if paper_mode != "untouched":
+        from agents.market_intelligence import lowcap_paper_lane as plane
+        sink = paper_sink if paper_sink is not None else {}
+        sink.setdefault("rows", [])
+        sink.setdefault("judge", [])
+        sink.setdefault("triggers", [])
+        plane._grade_cache_date, plane._grade_cache = None, {}
+        plane._repoll_date, plane._repoll_state = None, {}
+        plane._lock = None
+        if paper_mode == "raising":
+            monkeypatch.setattr(plane, "schedule_paper_lane_tick",
+                                lambda *a, **k: (_ for _ in ()).throw(RuntimeError("paper lane exploded")))
+        else:
+            async def _ptoggle(name, env, default=True, **kw):
+                return paper_mode == "on"
+
+            async def _prow(fields):
+                sink["rows"].append(copy.deepcopy(fields))
+                return True
+
+            async def _pjudge(ticker, alert_date, **kw):
+                sink["judge"].append((ticker, kw))
+
+            monkeypatch.setattr(plane, "get_runtime_toggle", _ptoggle)
+            monkeypatch.setattr(plane, "should_run", AsyncMock(return_value=True))
+            monkeypatch.setattr(plane, "get_lowcap_paper_lane_tiered", AsyncMock(return_value={}))
+            monkeypatch.setattr(plane, "get_lowcap_paper_lane_highs", AsyncMock(return_value=[]))
+            monkeypatch.setattr(plane, "upsert_lowcap_paper_lane_row", _prow)
+            monkeypatch.setattr(plane, "update_lowcap_paper_lane_judge_result", _pjudge)
+            monkeypatch.setattr(plane, "log_audit_event", _audit)
+            if lowcap_admit:
+                # the lane's OWN grade cache (never the live one) — the same "already graded
+                # today" fast path, so the lane's grade needs no LLM/news fetch either
+                plane._grade_cache_date = SESSION_DATE
+                plane._grade_cache = {lowcap_admit: ep_detector.CachedGrade(
+                    "game_changer", 1.0,
+                    "Small Co wins landmark FDA approval for its flagship therapy.",
+                    "Small Co announced FDA approval for its flagship therapy — a major, "
+                    "label-expanding regulatory win with immediate commercial impact.",
+                    None, True,
+                    grounded_text="Small Co received FDA approval — a concrete, material company event.",
+                    has_direct_source=True,
+                )}
 
     results = await ep_detector.run_ep_scan(SESSION_DATE.isoformat())
     # drain every fire-and-forget task the scan spawned (scan_log batch write, the lane task)
@@ -987,7 +1052,9 @@ async def test_run_skips_terminal_rows_revisits_open_ones_and_isolates_failures(
     existing = {("AAAA", SESSION_DATE): "settled", ("BBBB", SESSION_DATE): "open"}
     seen = []
 
-    async def _rec(conn, sig, last_session, run_date, out):
+    async def _rec(conn, sig, last_session, run_date, out, **kw):
+        # kw since 2026-10-10: the walker threads the population's writer + error event
+        # (the #624 paper lane walks a second population through the same function)
         seen.append(sig["ticker"])
         if sig["ticker"] == "CCCC":
             raise RuntimeError("boom")

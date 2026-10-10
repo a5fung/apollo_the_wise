@@ -29,6 +29,8 @@ from agents.market_intelligence.db import (
     EP_ALERT_JUDGE_RESULT_UPDATE_SQL,
     GAP_NEAR_MISS_REPLAY_UPSERT_SQL, JUDGE_NAMED_THEME_INSERT_SQL,
     LOWCAP_LANE_REPLAY_UPSERT_SQL, LOWCAP_LANE_SIGNAL_INSERT_SQL,
+    LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL, LOWCAP_PAPER_LANE_REPLAY_UPSERT_SQL,
+    LOWCAP_PAPER_LANE_UPSERT_SQL,
     THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL, THEME_RESILIENCE_WEEKLY_INSERT_SQL,
     ECOSYSTEM_PROPOSAL_INSERT_SQL, ECOSYSTEM_DYNAMIC_INSERT_SQL,
     LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
@@ -326,6 +328,23 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # outcome='open') with THREE jsonb params (exits, offering_forms, replay_exit_rules).
         "db.upsert_lowcap_lane_replay: #624 low-cap lane CURRENT-era bracket replay",
         LOWCAP_LANE_REPLAY_UPSERT_SQL,
+    ),
+    (
+        # #624 small-cap PAPER lane (2026-10-10): its alerts-table upsert — written from a
+        # DETACHED task off the scan tick (one jsonb param, score_breakdown). A type-deduction
+        # failure here would leave the lane's table empty and its order step with nothing to read.
+        "db.upsert_lowcap_paper_lane_row: #624 small-cap paper lane alerts",
+        LOWCAP_PAPER_LANE_UPSERT_SQL,
+    ),
+    (
+        # the lane's judge-result UPDATE (COALESCE shape of EP_ALERT_JUDGE_RESULT_UPDATE_SQL +
+        # setup_class; fire_axes TEXT[]) — a dead write would leave every lane tier on the floor.
+        "db.update_lowcap_paper_lane_judge_result: #624 small-cap paper lane judge result",
+        LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL,
+    ),
+    (
+        "db.upsert_lowcap_paper_lane_replay: #624 small-cap paper lane replay",
+        LOWCAP_PAPER_LANE_REPLAY_UPSERT_SQL,
     ),
     (
         # #321 write-back (2026-09-04): the recovered prior-year YoY beside the extraction row.

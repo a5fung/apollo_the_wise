@@ -47,7 +47,9 @@ RE-WALKED from stored bars ($0) before it counts toward graduation (P8: 37% of t
 evidence outcomes ARE the current harvest's +0.33R scratch).
 
 THE LINE — a passive OBSERVER:
-  - ONE write target: `mi_lowcap_lane_replays` (plus `mi_audit_log` via `log_audit_event`
+  - ONE write target per population: `mi_lowcap_lane_replays` (the shadow lane) and, since
+    2026-10-10, `mi_lowcap_paper_lane_replays` (every name the #624 small-cap PAPER lane graded —
+    `run_paper_lane_replay`, the same walker over a second population) (plus `mi_audit_log` via `log_audit_event`
     and the `mi_intraday_bars` write-through of the canonical `persist_intraday_bars`,
     ON CONFLICT DO NOTHING — a price cache, read by nothing that decides).
   - NEVER writes mi_live_trades / mi_live_orders / mi_ep_alerts / mi_ep_scan_log / any column
@@ -177,11 +179,12 @@ def _fresh_fields(sig: dict, admission_era: str, replay_exit_era: str, replay_ex
     }
 
 
-async def _write(fields: dict, out: dict, label: str) -> bool:
+async def _write(fields: dict, out: dict, label: str, upsert=None,
+                 error_event: str = "lowcap_lane_replay_error") -> bool:
     return await lfc.write_replay_row(
         fields, out, label,
-        upsert=upsert_lowcap_lane_replay,
-        error_event="lowcap_lane_replay_error",
+        upsert=upsert or upsert_lowcap_lane_replay,
+        error_event=error_event,
     )
 
 
@@ -227,7 +230,8 @@ async def _offering(ticker: str, session_date: date, through: date,
 
 
 async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date,
-                             out: dict) -> None:
+                             out: dict, *, upsert=None,
+                             error_event: str = "lowcap_lane_replay_error") -> None:
     ticker, session_date = sig["ticker"], sig["scan_date"]
     label = f"{ticker} {session_date.isoformat()}"
     out["candidates"] += 1
@@ -247,14 +251,14 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
         if not isinstance(tick, datetime):
             fields.update(entry_status="no_tick_wallclock", outcome="unscoreable",
                           final_reason="no_tick_wallclock")
-            await _write(fields, out, label)
+            await _write(fields, out, label, upsert, error_event)
             return
         submit, out_of_orb = srr.submit_time_and_window(tick.astimezone(_ET))
         fields.update(submit_time_et=submit, window_out_of_orb=out_of_orb)
         if out_of_orb:
             fields.update(entry_status="window_out_of_orb", outcome="no_trade",
                           final_reason="window_out_of_orb")
-            await _write(fields, out, label)
+            await _write(fields, out, label, upsert, error_event)
             return
 
         sessions = await lfc._assemble_sessions(conn, ticker, session_date, last_session)
@@ -282,14 +286,14 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
                 return
             fields.update(entry_status="no_day0_minute_bars", outcome="unscoreable",
                           final_reason="no_day0_minute_bars")
-            await _write(fields, out, label)
+            await _write(fields, out, label, upsert, error_event)
             return
 
         orb = next((b for b in bars0 if b["m"].time() == time(9, 30)), None)
         if orb is None:
             fields.update(entry_status="no_930_bar_for_orb", outcome="unscoreable",
                           final_reason="no_930_bar_for_orb")
-            await _write(fields, out, label)
+            await _write(fields, out, label, upsert, error_event)
             return
         orb_high, orb_low = orb["h"], orb["l"]
         fields.update(orb_high=orb_high, orb_low=orb_low)
@@ -302,14 +306,14 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
         if daily_open and orb["o"] and abs(daily_open / orb["o"] - 1) > SPLIT_DIVERGENCE_ABS_PCT:
             fields.update(entry_status="daily_row_split_adjusted", outcome="unscoreable",
                           final_reason="daily_row_split_adjusted")
-            await _write(fields, out, label)
+            await _write(fields, out, label, upsert, error_event)
             return
 
         ok, skip = validate_orb_entry(orb_high, orb_low, atr14)
         fields.update(orb_valid=ok, orb_skip_reason=skip)
         if not ok:
             fields.update(entry_status="orb_invalid", outcome="no_trade", final_reason=skip)
-            await _write(fields, out, label)
+            await _write(fields, out, label, upsert, error_event)
             return
 
         cancel = srr.entry_cancel_asof(run_date)
@@ -318,7 +322,7 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
         if fill["status"] != "filled":
             fields.update(outcome="unscoreable" if fill["status"] == "abstain" else "no_trade",
                           final_reason=fill.get("reason"))
-            await _write(fields, out, label)
+            await _write(fields, out, label, upsert, error_event)
             return
 
         entry_px = fill["px"]
@@ -327,7 +331,7 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
         risk = entry_px - stop
         if risk <= 0:
             fields.update(outcome="unscoreable", final_reason="nonpositive_risk_per_share")
-            await _write(fields, out, label)
+            await _write(fields, out, label, upsert, error_event)
             return
         fields["stop_price"] = stop
         fields["stop_pct_of_entry"] = stop_pct_of_entry(entry_px, stop)
@@ -353,7 +357,7 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
                     out["pending"] += 1
                     return
                 fields.update(outcome="unscoreable", final_reason=res.get("reason"))
-                await _write(fields, out, label)
+                await _write(fields, out, label, upsert, error_event)
                 return
             # genuinely still OPEN — written now (survivorship), refreshed until it settles.
             mark = srr.mark_pnl_per_share(res, bars0, sessions, entry_px)
@@ -367,7 +371,7 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
             flag, forms = await _offering(ticker, session_date, last_session, run_date)
             fields.update(offering_flag=flag, offering_forms=forms,
                           offering_checked_through=last_session)
-            await _write(fields, out, label)
+            await _write(fields, out, label, upsert, error_event)
             return
 
         fields.update(
@@ -394,16 +398,27 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
             through = sessions[exit_idx - 1][0] if 0 < exit_idx <= len(sessions) else last_session
             flag, forms = await _offering(ticker, session_date, through, run_date)
             fields.update(offering_flag=flag, offering_forms=forms, offering_checked_through=through)
-        await _write(fields, out, label)
+        await _write(fields, out, label, upsert, error_event)
     except Exception as e:  # loud-ok: one signal's failure is counted; the others proceed
         out["errors"] += 1
-        await log_audit_event("lowcap_lane_replay_error", f"{label}: {type(e).__name__}: {e}")
+        await log_audit_event(error_event, f"{label}: {type(e).__name__}: {e}")
 
 
 async def run_lowcap_lane_replay(today: Optional[date] = None, *,
-                                 now_et: Optional[datetime] = None) -> dict[str, int]:
+                                 now_et: Optional[datetime] = None,
+                                 population_reader=None, existing_reader=None, upsert=None,
+                                 event_prefix: str = "lowcap_lane_replay") -> dict[str, int]:
     """Nightly entry point. NEVER raises: every failure is a counted error + an mi_audit_log
-    row. Returns the run's counters."""
+    row. Returns the run's counters.
+
+    `population_reader` / `existing_reader` / `upsert` / `event_prefix` (2026-10-10, #624 paper
+    lane): the SAME walker scores a second population — every name the small-cap PAPER lane
+    graded — into its own table (`run_paper_lane_replay` below). Defaults = the shadow lane,
+    byte-identical."""
+    population_reader = population_reader or get_lowcap_lane_population
+    existing_reader = existing_reader or get_lowcap_lane_replay_existing
+    upsert = upsert or upsert_lowcap_lane_replay
+    error_event = f"{event_prefix}_error"
     now = now_et or datetime.now(_ET)
     today = today or now.date()
     out: dict[str, int] = {"population": 0, "candidates": 0, "written": 0, "settled": 0,
@@ -412,11 +427,11 @@ async def run_lowcap_lane_replay(today: Optional[date] = None, *,
     try:
         last_session = lfc.last_settled_session(today, now)
         window_start = n_trading_days_back(last_session, WINDOW_TRADING_DAYS)
-        rows = await get_lowcap_lane_population(window_start, last_session)
-        existing = await get_lowcap_lane_replay_existing(window_start)
+        rows = await population_reader(window_start, last_session)
+        existing = await existing_reader(window_start)
     except Exception as e:  # loud-ok: the run reports and ends; nothing live depends on it
         out["errors"] += 1
-        await log_audit_event("lowcap_lane_replay_error", f"population query failed: {e}")
+        await log_audit_event(error_event, f"population query failed: {e}")
         return out
     out["population"] = len(rows)
     todo = [r for r in rows
@@ -427,20 +442,42 @@ async def run_lowcap_lane_replay(today: Optional[date] = None, *,
             async with pool.acquire() as conn:
                 for row in todo:
                     try:
-                        await _record_one_signal(conn, row, last_session, today, out)
+                        await _record_one_signal(conn, row, last_session, today, out,
+                                                 upsert=upsert, error_event=error_event)
                     except Exception as e:  # loud-ok: per-name isolation; counted + audited
                         out["errors"] += 1
                         await log_audit_event(
-                            "lowcap_lane_replay_error",
+                            error_event,
                             f"{row.get('ticker')} {row.get('scan_date')}: "
                             f"{type(e).__name__}: {e}")
         except Exception as e:  # loud-ok: pool-level failure; counted + audited
             out["errors"] += 1
-            await log_audit_event("lowcap_lane_replay_error", f"run failed: {e}")
+            await log_audit_event(error_event, f"run failed: {e}")
     await log_audit_event(
-        "lowcap_lane_replay_recorded",
+        f"{event_prefix}_recorded",
         f"{out['population']} lane signal(s) in window, {len(todo)} candidate(s) processed: "
         f"{out['written']} written ({out['settled']} settled, {out['no_trade']} no_trade, "
         f"{out['unscoreable']} unscoreable, {out['open']} open, {out['horizon']} at horizon), "
         f"{out['pending']} pending, {out['errors']} error(s)")
     return out
+
+
+async def run_paper_lane_replay(today: Optional[date] = None, *,
+                                now_et: Optional[datetime] = None) -> dict[str, int]:
+    """#624 small-cap PAPER lane (2026-10-10): walk EVERY name the paper lane graded
+    (mi_lowcap_paper_lane_alerts — HIGH or not) under MAGNA53's current bracket from the tick it
+    reached its tier (else its first graded tick), into mi_lowcap_paper_lane_replays. This is
+    where the lane's tail rate is read: ~48 graded names a month against about one paper fill,
+    so the reading comes from replays, not fills (review correction 4). Same walker, same
+    columns, same guarded UPSERT as the shadow lane. NEVER raises."""
+    from agents.market_intelligence.db import (
+        get_lowcap_paper_lane_population,
+        get_lowcap_paper_lane_replay_existing,
+        upsert_lowcap_paper_lane_replay,
+    )
+    return await run_lowcap_lane_replay(
+        today, now_et=now_et,
+        population_reader=get_lowcap_paper_lane_population,
+        existing_reader=get_lowcap_paper_lane_replay_existing,
+        upsert=upsert_lowcap_paper_lane_replay,
+        event_prefix="lowcap_paper_lane_replay")

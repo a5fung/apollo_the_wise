@@ -577,7 +577,8 @@ async def _exit_counterfactual_running_read(conn, exit_era: str) -> Optional[dic
 # "9M Day 2 ORB") — a lookup for DISPLAY only, no new data source. Unknown signal_types
 # (a future strategy) fall back to a title-cased version of the code rather than the raw
 # underscored id, so a new strategy can't reintroduce the same lingo this cleanup removes.
-_SIGNAL_DISPLAY = {"magna53": "MAGNA53 EP", "9m_day2": "9M Day 2"}
+_SIGNAL_DISPLAY = {"magna53": "MAGNA53 EP", "9m_day2": "9M Day 2",
+                   "magna53_smallcap": "MAGNA53 small-cap (paper)"}  # #624 paper lane
 
 # entry_mode values on mi_consolidation_entry_shadow — display words only.
 _CONSOL_MODE_DISPLAY = {"anticipate": "early entry", "confirm": "confirmed entry"}

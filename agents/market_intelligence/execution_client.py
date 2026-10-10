@@ -63,7 +63,7 @@ _CROSS_FNS = frozenset({
     "get_account", "get_position", "get_all_positions", "get_open_orders",
     "get_stream_status", "get_first_bar",
     "subscribe_orb_candidate", "reset_bar_stream_daily_state",
-    "record_skipped_trade", "trigger_orb_entry",
+    "record_skipped_trade", "trigger_orb_entry", "trigger_lowcap_paper_entry",
     "execute_partial_exit", "sync_positions",
     "sync_positions_for_mode", "place_timestop_sell", "cancel_unfilled_entries",
 })
@@ -87,7 +87,7 @@ _HTTP_COMMAND_TIMEOUT_SECONDS = 180.0
 # Cross-fns that run heavy synchronous execution-side work → command (long) read
 # budget. Everything else in _CROSS_FNS is a fast read/registration → read budget.
 _SLOW_COMMAND_FNS = frozenset({
-    "trigger_orb_entry", "execute_partial_exit",
+    "trigger_orb_entry", "trigger_lowcap_paper_entry", "execute_partial_exit",
     "sync_positions", "sync_positions_for_mode", "place_timestop_sell",
     "cancel_unfilled_entries",
 })
@@ -325,6 +325,20 @@ async def trigger_orb_entry(trigger: str = "cron"):
     apollo-execution, whose route runs `_orb_monitor_job` THERE (creds + broker
     live in execution)."""
     return await _dispatch("trigger_orb_entry", _trigger_orb_entry_inprocess,
+                           (), {"trigger": trigger})
+
+
+async def _trigger_lowcap_paper_entry_inprocess(trigger: str = "lane_tick"):
+    from agents.market_intelligence.broker.lowcap_paper_entry import process_lowcap_paper_alerts
+    return await process_lowcap_paper_alerts(trigger=trigger)
+
+
+async def trigger_lowcap_paper_entry(trigger: str = "lane_tick"):
+    """#624 small-cap PAPER lane — run the lane's PAPER-ONLY order step (today's lane HIGHs from
+    mi_lowcap_paper_lane_alerts → the entry funnel, bound to the paper account). A SEPARATE
+    handoff from `trigger_orb_entry` on purpose: the live order step never sees a lane alert and
+    this one never sees a live alert. Called by the lane's detached task, after live grading."""
+    return await _dispatch("trigger_lowcap_paper_entry", _trigger_lowcap_paper_entry_inprocess,
                            (), {"trigger": trigger})
 
 

@@ -20,6 +20,7 @@ from typing import Any, Awaitable, Callable
 
 from agents.market_intelligence.broker import alpaca_client as alpaca
 from agents.market_intelligence.broker.skip_reasons import (
+    BLOCK_ACCOUNT_MODE_MISMATCH,
     BLOCK_PAPER_STRATEGY_ON_LIVE,
     BLOCK_STRATEGY_DISABLED,
     BLOCK_STRATEGY_IN_SHADOW,
@@ -352,6 +353,15 @@ async def submit_trade_entry(
     # discipline. Same idiom as fade_midpoint_ratio.
     rt_gap_floor_pct: float | None = None,
     aggregate_skips: bool = False,
+    # #624 small-cap PAPER lane (2026-10-10): the ONE account this caller may submit to. When
+    # set, the entry is BLOCKED (fail closed, before any bar fetch, sizing, row or order) unless
+    # the strategy row resolves to exactly this mode — so a lane strategy whose phase was
+    # changed can never reach the live account through this funnel. None (every existing
+    # caller) = no check, byte-identical.
+    require_account_mode: str | None = None,
+    # #624: the #197 "CAP+1 CANDIDATE — consider acting manually" page is about the LIVE book;
+    # the paper lane passes False so a paper small-cap never prompts a manual real-money trade.
+    page_cap_plus_one: bool = True,
 ) -> dict:
     """Single entry-submission pipeline.
 
@@ -448,7 +458,7 @@ async def submit_trade_entry(
         try:
             _cq = (alert_context.get("catalyst_quality") or "")
             _is_cap = isinstance(reason, str) and reason.startswith(BLOCK_MAX_POSITIONS)
-            if _is_cap and _cq == "game_changer":
+            if page_cap_plus_one and _is_cap and _cq == "game_changer":
                 await send_telegram_message(
                     f"{mode_prefix(_skip_mode)}🌟🚫 *CAP+1 CANDIDATE — {ticker}*\n"
                     f"game\\_changer · score {alert_context.get('ep_score', '?')} · "
@@ -548,6 +558,27 @@ async def submit_trade_entry(
                 BLOCK_PAPER_STRATEGY_ON_LIVE, icon="🚫",
                 audit_event="orb_blocked", action=ACTION_BLOCKED,
             )
+
+    # 1c. #624 — a caller bound to ONE account (the small-cap PAPER lane) refuses any strategy
+    # row that does not resolve to it, BEFORE safeguards / bar fetch / sizing / row / order.
+    # Deliberately NOT through `_skip`: that would write a skipped-trade row into whatever book
+    # the (wrong) phase resolves to — the very book this guard keeps the lane out of. Audit row
+    # here; the caller pages (it knows which lane it is).
+    if require_account_mode is not None:
+        try:
+            _bound_mode = (resolve_account_mode_for_strategy(strategy)
+                           if strategy is not None else None)
+        except Exception:  # loud-ok: an unresolvable phase IS a mismatch — fail closed below
+            _bound_mode = None
+        if _bound_mode != require_account_mode:
+            _mm_reason = (f"{BLOCK_ACCOUNT_MODE_MISMATCH}: {signal_type} resolves to "
+                          f"{_bound_mode!r}, this entry path submits only to "
+                          f"{require_account_mode!r}")
+            try:
+                await log_audit_event("orb_blocked", f"{strategy_label} {ticker} — {_mm_reason}")
+            except Exception:  # loud-ok: log_audit_event() self-catches; the caller pages on ACTION_BLOCKED
+                pass
+            return {"ticker": ticker, "action": ACTION_BLOCKED, "reason": _mm_reason}
 
     # 2. Safeguards — position cap / daily loss / circuit breaker.
     # Resolve account_mode from strategy here (pre-spec-builder) so safeguards

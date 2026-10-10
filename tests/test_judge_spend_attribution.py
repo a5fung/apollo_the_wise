@@ -104,7 +104,10 @@ def test_the_live_path_still_bills_the_same_bucket_as_every_historical_row():
     """Removing the default must not re-label production spend — the history would break."""
     live = [_log_caller_of(c, fn) for rel, _ln, fn, c in _call_sites()
             if rel == _LIVE_PATH and fn == "grade_holistic"]
-    assert live == [_LIVE_LABEL], f"live grade path labels: {live}"
+    # 2026-10-10: ep_detector's `_judge_shadow` also judges the #624 small-cap PAPER lane's
+    # names — the SAME call, its own literal bucket, so the live bucket keeps exactly one site.
+    assert sorted(live) == sorted([_LIVE_LABEL, "lowcap_paper_lane_judge"]), (
+        f"live grade path labels: {live}")
 
 
 def test_labels_are_literals_not_variables():

@@ -160,6 +160,14 @@ async def get_pool() -> asyncpg.Pool:
     return _pool
 
 
+# #624 small-cap PAPER lane (2026-10-10): its strategy row id (= its signal_type on every
+# mi_live_trades row it opens) and its own position cap. The cap is PENDING THE OPERATOR'S
+# CONFIRMATION — 5 is the build's parameter, seeded once; he changes it with a one-row
+# `UPDATE mi_strategies SET max_concurrent_positions = N WHERE strategy_id = 'magna53_smallcap'`.
+LOWCAP_PAPER_LANE_STRATEGY_ID = "magna53_smallcap"
+LOWCAP_PAPER_LANE_POSITION_CAP = 5
+
+
 async def _seed_strategies_registry(conn) -> None:
     """Insert one row per strategy if not already present.
 
@@ -383,6 +391,34 @@ async def _seed_strategies_registry(conn) -> None:
         WHERE strategy_id IN ('9m_day2', 'flag_continuation')
           AND phase != 'deprecated'  -- mode-ok: idempotence guard on the same migration
         """
+    )
+
+    # #624 SMALL-CAP PAPER LANE (operator "Ok to recs" 2026-10-10 — PLAN.md #624, his rulings):
+    # a NEW strategy row routed to PAPER (phase 'paper' -> resolve_account_mode_for_strategy ->
+    # 'paper'), size 1.0 (his 2026-09-04 sizing ruling), carrying MAGNA53's exit LEVELS (+8R
+    # partial, breakeven armed at +3R — the values on the magna53 row; a row left NULL would
+    # fall back to the global +2R / no arm, review correction 2). Its own position cap is
+    # LOWCAP_PAPER_LANE_POSITION_CAP — PENDING HIS CONFIRMATION, so it is a seed value he changes
+    # with a one-row UPDATE (docs/setups/magna53_ep.md "Small-cap paper lane"). Seeded ONCE:
+    # ON CONFLICT DO NOTHING, so a later operator edit of any of these columns is never re-stomped.
+    # live_real_enabled stays FALSE (column default): the lane can never auto-submit real money,
+    # and the lane's own order step refuses any phase but 'paper' (broker/lowcap_paper_entry.py).
+    # `min_median_r` null on its paper_to_live rung for the reason the shadow row above gives
+    # (a tail lane: the registry's median gate is wrong in both directions here).
+    await conn.execute(
+        """
+        INSERT INTO mi_strategies
+            (strategy_id, name, family, phase, signal_type, outcomes_table,
+             promotion_model, promotion_thresholds, position_size_multiplier,
+             max_concurrent_positions, profit_trigger_r, breakeven_arm_r)
+        VALUES ($1, 'MAGNA53 small-cap lane (paper)', 'orb_long',
+                'paper',  -- mode-ok: the seed phase of the operator-ruled PAPER lane (#624); a seed, never a filter
+                $1, 'mi_live_trades', 'unpaired_r', $2::jsonb, 1.0, $3, 8.0, 3.0)
+        ON CONFLICT (strategy_id) DO NOTHING
+        """,
+        LOWCAP_PAPER_LANE_STRATEGY_ID,
+        _jsonb_param({"paper_to_live": {"min_closed": 30, "min_median_r": None}}),
+        LOWCAP_PAPER_LANE_POSITION_CAP,
     )
 
 
@@ -4004,6 +4040,79 @@ async def initialize_schema() -> None:
                 ON mi_lowcap_lane_replays(session_date);
             CREATE INDEX IF NOT EXISTS idx_lowcap_lane_replays_outcome
                 ON mi_lowcap_lane_replays(outcome);
+
+            -- #624 SMALL-CAP PAPER LANE (2026-10-10, operator "Ok to recs"): names the live EP
+            -- scan turned away ONLY on the $500M market-cap floor, graded by the SAME live code
+            -- (ep_detector._grade_admitted + _judge_shadow) after live grading finishes. THIS is
+            -- the lane's OWN alerts table — deliberately NOT mi_ep_alerts: the live order step
+            -- (live_tracker._HIGH_ALERT_SELECT_SQL) reads every HIGH there, so a lane row in it
+            -- could become a live order. The paper-only order step
+            -- (broker/lowcap_paper_entry.py) reads ONLY this table. ONE row per (ticker,
+            -- alert_date): every graded name, whether or not it reached a tier — the replay
+            -- walker scores them all, so the tail rate is read from replays, not fills.
+            -- A row that reached HIGH/MODERATE is frozen (the upsert's WHERE score_tier IS NULL);
+            -- only the judge update writes it after that, as on the live table.
+            -- RETENTION: kept forever (evidence class of mi_lowcap_lane_signals).
+            CREATE TABLE IF NOT EXISTS mi_lowcap_paper_lane_alerts (
+                id                      SERIAL PRIMARY KEY,
+                ticker                  TEXT NOT NULL,
+                alert_date              DATE NOT NULL,
+                strategy_id             TEXT NOT NULL,          -- 'magna53_smallcap' (mi_strategies)
+                first_graded_at         TIMESTAMPTZ NOT NULL,   -- the first scan tick the lane graded this name (the walker submits from it when no tier was reached)
+                last_graded_at          TIMESTAMPTZ NOT NULL,
+                detected_at             TIMESTAMPTZ,            -- the tick the name reached HIGH/MODERATE (the walker submits from it when set)
+                score_tier              TEXT,                   -- HIGH | MODERATE | NULL (never reached a tier)
+                ep_score                DOUBLE PRECISION,
+                baseline_floor_tier     TEXT,
+                grade_engine_authority  TEXT,
+                reject_stage            TEXT,                   -- the live funnel stage that killed it (post_grade_filter / score_bar / lane_cooldown / grade_error), NULL when it reached a tier
+                reject_reason           TEXT,
+                catalyst_quality        TEXT,                   -- the ACTING grade (lattice-resolved), as on mi_ep_alerts
+                llm_catalyst_quality    TEXT,
+                catalyst                TEXT,
+                claude_analysis         TEXT,
+                gemini_validation       TEXT,
+                gap_pct                 DOUBLE PRECISION,
+                rel_volume              DOUBLE PRECISION,
+                vol_percentile          DOUBLE PRECISION,
+                pm_rvol                 DOUBLE PRECISION,
+                pm_rvol_baseline_n      INT,
+                prev_close              DOUBLE PRECISION,
+                current_price           DOUBLE PRECISION,
+                market_cap              DOUBLE PRECISION,       -- the live check_filters read that turned it away (< $500M)
+                quality_adv_dollar      DOUBLE PRECISION,
+                atr_pct                 DOUBLE PRECISION,
+                score_breakdown         JSONB,
+                in_active_theme         BOOLEAN,
+                setup_class             TEXT,
+                judge_tier              TEXT,
+                judge_direction         TEXT,
+                judge_rationale         TEXT,
+                judge_materiality_tier  TEXT,
+                judge_grade             TEXT,
+                judge_grade_reason      TEXT,
+                judge_tier_reason       TEXT,
+                fire_axes               TEXT[],
+                rubric_version          TEXT,
+                regime                  TEXT,
+                lane_rule_version       TEXT NOT NULL,
+                recorded_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (ticker, alert_date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_lowcap_paper_lane_alerts_date
+                ON mi_lowcap_paper_lane_alerts(alert_date);
+
+            -- #624 paper lane replays: the SAME walker (lowcap_lane_replay.py) and the SAME
+            -- columns as mi_lowcap_lane_replays, over every graded paper-lane name. A separate
+            -- table because the shadow table's key is (ticker, session_date) and a name can be
+            -- in both lanes on one day. RETENTION: kept forever.
+            CREATE TABLE IF NOT EXISTS mi_lowcap_paper_lane_replays (
+                LIKE mi_lowcap_lane_replays INCLUDING DEFAULTS INCLUDING CONSTRAINTS
+            );
+            ALTER TABLE mi_lowcap_paper_lane_replays DROP COLUMN IF EXISTS id;
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_lowcap_paper_lane_replays_key
+                ON mi_lowcap_paper_lane_replays(ticker, session_date);
 
             -- 2026-08-16 — ALERT-RANK SHADOW (alert_rank_shadow.py). docs/roadmap/
             -- ep_profitability_program.md §0d found a three-feature ranking rule (smaller
@@ -18046,6 +18155,12 @@ async def upsert_lowcap_lane_replay(fields: dict) -> bool:
     is written once and never rewritten — the WHERE guard on the EXISTING row's outcome
     makes the UPDATE a no-op once terminal. Only a row still 'open' is refreshed as later
     sessions accrue. Returns True iff this call inserted or updated a row."""
+    return await _upsert_lowcap_replay_row(LOWCAP_LANE_REPLAY_UPSERT_SQL, fields)
+
+
+async def _upsert_lowcap_replay_row(sql: str, fields: dict) -> bool:
+    """The shared body of the two low-cap replay upserts (shadow lane + paper lane) — same
+    columns, same guarded-UPSERT semantics, different table."""
     vals = []
     for c in LOWCAP_LANE_REPLAY_COLS:
         v = fields.get(c)
@@ -18058,8 +18173,194 @@ async def upsert_lowcap_lane_replay(fields: dict) -> bool:
         vals.append(v)
     pool = await get_pool()
     async with pool.acquire() as conn:
-        res = await conn.execute(LOWCAP_LANE_REPLAY_UPSERT_SQL, *vals)
+        res = await conn.execute(sql, *vals)
     return not res.endswith(" 0")
+
+
+# ── #624 SMALL-CAP PAPER LANE (2026-10-10) — its own alerts table + replays ─────────────────
+# Writers: lowcap_paper_lane.py (the alerts rows, through the SAME live grading code) and
+# lowcap_lane_replay.py (the replays). Reader on the order path: broker/lowcap_paper_entry.py
+# (HIGH rows only). NOTHING here touches mi_ep_alerts — the live order step reads every HIGH
+# there, which is exactly why the lane has its own table.
+
+LOWCAP_PAPER_LANE_COLS: tuple[str, ...] = (
+    "ticker", "alert_date", "strategy_id", "first_graded_at", "last_graded_at", "detected_at",
+    "score_tier", "ep_score", "baseline_floor_tier", "grade_engine_authority",
+    "reject_stage", "reject_reason",
+    "catalyst_quality", "llm_catalyst_quality", "catalyst", "claude_analysis", "gemini_validation",
+    "gap_pct", "rel_volume", "vol_percentile", "pm_rvol", "pm_rvol_baseline_n",
+    "prev_close", "current_price", "market_cap", "quality_adv_dollar", "atr_pct",
+    "score_breakdown", "in_active_theme", "regime", "lane_rule_version",
+)
+_LOWCAP_PAPER_LANE_JSONB = frozenset({"score_breakdown"})
+# Refreshed on a later tick ONLY while the row has no tier (a tiered row is frozen, like a live
+# alert row the scan never re-scores); first_graded_at is never refreshed — it is the first tick.
+_LOWCAP_PAPER_LANE_MUTABLE = tuple(
+    c for c in LOWCAP_PAPER_LANE_COLS
+    if c not in ("ticker", "alert_date", "strategy_id", "first_graded_at"))
+
+LOWCAP_PAPER_LANE_UPSERT_SQL = (
+    f"INSERT INTO mi_lowcap_paper_lane_alerts ({', '.join(LOWCAP_PAPER_LANE_COLS)}) VALUES ("
+    + _jsonb_value_list(LOWCAP_PAPER_LANE_COLS, _LOWCAP_PAPER_LANE_JSONB)
+    + ") ON CONFLICT (ticker, alert_date) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in _LOWCAP_PAPER_LANE_MUTABLE)
+    + ", updated_at = NOW()"
+    " WHERE mi_lowcap_paper_lane_alerts.score_tier IS NULL"
+)
+
+
+async def upsert_lowcap_paper_lane_row(fields: dict) -> bool:
+    """Write or refresh ONE (ticker, alert_date) paper-lane row. A row that already reached a
+    tier is never rewritten here (the WHERE guard) — only `update_lowcap_paper_lane_judge_result`
+    touches it after that. Returns True iff a row was inserted or updated. RAISES on a DB error:
+    the lane's caller counts + audits it (a lost tier row must be loud, never a quiet 0)."""
+    vals = []
+    for c in LOWCAP_PAPER_LANE_COLS:
+        v = fields.get(c)
+        if c in _LOWCAP_PAPER_LANE_JSONB:
+            v = _jsonb_param(v) if v is not None else None
+        elif c == "alert_date":
+            v = _coerce_date(v)
+        vals.append(v)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        res = await conn.execute(LOWCAP_PAPER_LANE_UPSERT_SQL, *vals)
+    return not res.endswith(" 0")
+
+
+# Same statement shape as EP_ALERT_JUDGE_RESULT_UPDATE_SQL (COALESCE: None = leave untouched),
+# on the lane's table, plus setup_class (the live path writes that with its own UPDATE).
+LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL = """
+    UPDATE mi_lowcap_paper_lane_alerts SET
+        judge_tier = COALESCE($3, judge_tier),
+        judge_direction = COALESCE($4, judge_direction),
+        judge_rationale = COALESCE($5, judge_rationale),
+        judge_materiality_tier = COALESCE($6, judge_materiality_tier),
+        fire_axes = COALESCE($7, fire_axes),
+        score_tier = COALESCE($8, score_tier),
+        grade_engine_authority = COALESCE($9, grade_engine_authority),
+        rubric_version = COALESCE($10, rubric_version),
+        judge_grade = COALESCE($11, judge_grade),
+        judge_grade_reason = COALESCE($12, judge_grade_reason),
+        judge_tier_reason = COALESCE($13, judge_tier_reason),
+        setup_class = COALESCE($14, setup_class),
+        updated_at = NOW()
+    WHERE ticker = $1 AND alert_date = $2
+"""
+
+
+async def update_lowcap_paper_lane_judge_result(
+    ticker: str, alert_date: "date", *, judge_tier: str | None,
+    judge_direction: str | None, judge_rationale: str | None,
+    judge_materiality_tier: str | None,
+    fire_axes: "list[str] | None" = None,
+    score_tier: str | None = None,
+    grade_engine_authority: str | None = None,
+    rubric_version: str | None = None,
+    judge_grade: str | None = None,
+    judge_grade_reason: str | None = None,
+    judge_tier_reason: str | None = None,
+    setup_class: str | None = None,
+) -> None:
+    """The lane twin of `update_ep_alert_judge_result` — SAME keyword signature (the shared
+    `_judge_shadow` calls whichever writer it was handed), the lane's table only."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL,
+            ticker, _coerce_date(alert_date), judge_tier, judge_direction, judge_rationale,
+            judge_materiality_tier, fire_axes, score_tier, grade_engine_authority,
+            rubric_version, judge_grade, judge_grade_reason, judge_tier_reason, setup_class)
+
+
+_LOWCAP_PAPER_LANE_TIERED_SQL = """
+    SELECT ticker, alert_date FROM mi_lowcap_paper_lane_alerts
+    WHERE score_tier IS NOT NULL AND alert_date > $1::date - $2::int AND alert_date <= $1::date
+"""
+
+
+async def get_lowcap_paper_lane_tiered(today: "date", days: int) -> dict[str, "date"]:
+    """READ-ONLY. ticker -> most recent alert_date on which the lane gave it a tier, within the
+    last `days` calendar days up to and including `today` — the lane's own "already scored
+    today" set (alert_date == today) and its own cooldown (earlier dates), the twins of the
+    live scan's already_today / cooldown reads of mi_ep_alerts."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_LOWCAP_PAPER_LANE_TIERED_SQL, _coerce_date(today), int(days))
+    out: dict[str, "date"] = {}
+    for r in rows:
+        if r["ticker"] not in out or r["alert_date"] > out[r["ticker"]]:
+            out[r["ticker"]] = r["alert_date"]
+    return out
+
+
+_LOWCAP_PAPER_LANE_HIGHS_SQL = """
+    SELECT ticker, alert_date, gap_pct, rel_volume, ep_score, score_tier, catalyst,
+           catalyst_quality, vol_percentile, detected_at
+    FROM mi_lowcap_paper_lane_alerts
+    WHERE alert_date = $1::date AND score_tier = 'HIGH'
+    ORDER BY ep_score DESC, ticker
+"""
+
+
+async def get_lowcap_paper_lane_highs(today: "date") -> list[dict]:
+    """READ-ONLY. Today's paper-lane HIGH rows — the ONLY rows the paper-only order step
+    (broker/lowcap_paper_entry.py) ever submits. Never reads mi_ep_alerts."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_LOWCAP_PAPER_LANE_HIGHS_SQL, _coerce_date(today))
+    return [dict(r) for r in rows]
+
+
+_LOWCAP_PAPER_LANE_POPULATION_SQL = """
+    SELECT id AS signal_id, ticker, alert_date AS scan_date,
+           COALESCE(detected_at, first_graded_at) AS tick_wallclock_et
+    FROM mi_lowcap_paper_lane_alerts
+    WHERE alert_date >= $1::date AND alert_date <= $2::date
+    ORDER BY alert_date, ticker
+"""
+
+
+async def get_lowcap_paper_lane_population(window_start: "date", window_end: "date") -> list[dict]:
+    """READ-ONLY. Every graded paper-lane name in the window, shaped like the shadow lane's
+    population rows so the SAME walker scores them. The walk submits from the tick the name
+    reached its tier when it did (what the paper order saw), else from its first graded tick."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_LOWCAP_PAPER_LANE_POPULATION_SQL,
+                                _coerce_date(window_start), _coerce_date(window_end))
+    return [dict(r) for r in rows]
+
+
+_LOWCAP_PAPER_LANE_REPLAY_EXISTING_SQL = """
+    SELECT ticker, session_date, outcome FROM mi_lowcap_paper_lane_replays
+    WHERE session_date >= $1::date
+"""
+
+
+async def get_lowcap_paper_lane_replay_existing(window_start: "date") -> dict[tuple[str, "date"], str]:
+    """READ-ONLY. (ticker, session_date) -> outcome for the paper lane's replay rows."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_LOWCAP_PAPER_LANE_REPLAY_EXISTING_SQL, _coerce_date(window_start))
+    return {(r["ticker"], r["session_date"]): r["outcome"] for r in rows}
+
+
+LOWCAP_PAPER_LANE_REPLAY_UPSERT_SQL = (
+    f"INSERT INTO mi_lowcap_paper_lane_replays ({', '.join(LOWCAP_LANE_REPLAY_COLS)}, updated_at) VALUES ("
+    + _jsonb_value_list(LOWCAP_LANE_REPLAY_COLS,
+                        (_LOWCAP_LANE_REPLAY_JSONB_LIST, _LOWCAP_LANE_REPLAY_JSONB_DICT))
+    + ", NOW())"
+    " ON CONFLICT (ticker, session_date) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in _LOWCAP_LANE_REPLAY_MUTABLE_COLS)
+    + ", updated_at = NOW()"
+    " WHERE mi_lowcap_paper_lane_replays.outcome = 'open'"
+)
+
+
+async def upsert_lowcap_paper_lane_replay(fields: dict) -> bool:
+    """The paper lane's replay row — same guarded UPSERT as `upsert_lowcap_lane_replay`."""
+    return await _upsert_lowcap_replay_row(LOWCAP_PAPER_LANE_REPLAY_UPSERT_SQL, fields)
 
 
 _EP_ALERT_ADMISSION_STAMP_SQL = f"""

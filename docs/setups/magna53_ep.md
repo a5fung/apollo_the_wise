@@ -441,6 +441,101 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
   the paper flip. Supersedes nothing yet: the `ep_tinycap_observed` briefing surface (2026-06-11)
   keeps its population until the operator chooses the lane's narrower one.
 
+## Small-cap paper lane — PAPER ORDERS (#624, operator "Ok to recs" 2026-10-10)
+
+A second lane of MAGNA53, separate from the P15 shadow recorder above (which keeps recording —
+its forward rows are the check on the history replay). **His rulings, verbatim in PLAN.md #624:**
+names turned away ONLY by the $500M market-cap floor are graded by the **same live EP score,
+unchanged**, after live grading has finished; a lane HIGH goes to the lane's **own alerts table**
+and a **paper-only order step**; a **new strategy row** routed to PAPER at size 1.0 carrying
+MAGNA53's exits; live MAGNA53's "already traded today" check made account-aware. Design + price:
+`docs/analysis/624_paper_lane_price_design_2026-10-10.md` (its "Review corrections" supersede it).
+
+- **Population.** Inside the live graded loop, the `FILTER_MCAP_TOO_SMALL` branch of the quality
+  filter appends a COPY of the candidate (`check_filters` reads the cap LAST, so volume pace,
+  cooldown, already-scored, extension, $1M ADV$ and ATR have all passed). Names cut at the top-20
+  shortlist are NOT in it (turned away by the shortlist, not only by the cap).
+- **Same score by construction.** The loop's graded tail (volume conviction → catalyst grade →
+  post-grade filters → score → earnings override → alert) is ONE nested coroutine,
+  `ep_detector._grade_admitted`, that the live loop awaits inline and the lane calls with its own
+  sinks; the post-scan judge is the same `_judge_shadow`. Nothing is restated. The lane differs
+  only in WHERE things go: its own grade cache, its own table (`mi_lowcap_paper_lane_alerts`),
+  no allocator enqueue, no catalyst Telegrams, the 'shared' M&A headline-question pool (the EP
+  reserve stays the live scan's), the judge billed as `lowcap_paper_lane_judge`. **One stated
+  difference:** the theme-fit judgement (stage 2 of theme belonging, pre-market, per-day budget)
+  is not spent on lane names — a lane name pending a fit keeps list membership.
+- **The lane's own gates (added, the live ones are untouched):** a 60-day cooldown on the lane's
+  OWN tiered alerts (live's `EP_COOLDOWN_DAYS`, live's fresh-earnings bypass) and "already scored
+  today" on its own table.
+- **When.** Dispatched LAST in `run_ep_scan` (after the judge and tape annotation) as a detached
+  task; one lane tick at a time; a tick cut at 240 s. From 09:31 to 10:00 ET, with any lane HIGH
+  today, it hands off to the paper order step via `execution_client.trigger_lowcap_paper_entry`
+  (its own cross-function — never `trigger_orb_entry`).
+- **Order step** (`broker/lowcap_paper_entry.py`): today's HIGH rows from the lane table only →
+  `submit_trade_entry(signal_type='magna53_smallcap')` with MAGNA53's builder (`prepare_orb_order`:
+  ORB-high stop-buy, `entry − 2R` stop), MAGNA53's submission-time gap re-check, the 09:31–09:45
+  window (after 09:45 a durable `window:out_of_orb` paper skip row), the 10:00 cancel, and the
+  order-time ADV$/ATR re-check without the cap (`check_filters(skip_mcap=True)`).
+- **Why it cannot reach real money — four walls, each tested (`tests/test_624_paper_lane.py`):**
+  (1) it reads only its own table, and the live step reads only `mi_ep_alerts`; (2) it refuses the
+  whole run unless the strategy row is phase 'paper' and resolves to 'paper' (pages otherwise);
+  (3) the funnel itself refuses (`require_account_mode='paper'`, step 1c) a row resolving
+  anywhere else — before any skip row, trade row or order; (4) every order id is
+  `make_client_order_id('paper', 'magna53_smallcap', ticker)`.
+- **Pre-flight.** Before the first lane order of an ET day the paper account must answer
+  (`get_account('paper')`, not blocked); otherwise nothing is submitted, an audit row + a
+  📄 PAPER page go out, and the next call retries.
+- **Strategy row** `magna53_smallcap`: phase 'paper', `live_real_enabled` false, size 1.0,
+  `profit_trigger_r` 8.0, `breakeven_arm_r` 3.0 (MAGNA53's row; NULL would fall back to the global
+  +2R / no arm), `min_median_r` null (a tail lane). Seeded once, `ON CONFLICT DO NOTHING`.
+- ⚖ **PENDING HIS CONFIRMATION (built parametrized):** the lane's own position cap
+  `max_concurrent_positions = 5` (one-row `UPDATE mi_strategies` to change; NULL = share the paper
+  account's 5) and the stop switch, runtime toggle **`lowcap_paper_lane`** (`mi_safeguard_state`,
+  account_mode 'global', default ON; `mi_strategies.enabled` also stops it; `/pause` covers the
+  live path only).
+- **Telegram (decided for the lane, paper only):** an alert, a grade, a skip or a placed order
+  sends NOTHING — audit rows `lowcap_paper_lane_alert` / `_tick` / `_order`. A failure pages,
+  📄 PAPER-prefixed: the pre-flight, a refused phase, a crashed order task, a failed tick (once
+  per kind per day), and the funnel's own infra/auto-enter-failed pages. The live CAP+1
+  manual-trade prompt is switched off for the lane (`page_cap_plus_one=False`). The broker's
+  fill/exit Telegrams (trade_stream) still fire for paper fills (~1 a month expected).
+- **Tail rate is read from replays, not fills** (review correction 4): the nightly walker
+  (`lowcap_lane_replay.run_paper_lane_replay`, inside the 18:15 job) scores EVERY graded lane
+  name into `mi_lowcap_paper_lane_replays`, from the tick it reached its tier, else its first
+  graded tick, under MAGNA53's current bracket.
+- **Live-path edits (approved):** `live_tracker.process_new_alerts_live`'s "already traded today"
+  EXISTS now carries `account_mode = <MAGNA53's mode>`; if that resolve fails it runs the old
+  unfiltered check (never `= NULL`).
+- **Studies of the live population:** the graded path's audit rows are written exactly as live
+  writes them (decisions read some back); exclude lane names by joining (ticker, alert_date) to
+  `mi_lowcap_paper_lane_alerts`.
+
+**`"magna53"` literal rulings for the lane (review correction 2):**
+
+| Site | In / out | Why |
+|---|---|---|
+| `order_manager._ORB_R_FRAME_SIGNAL_TYPES` | IN | MAGNA53's bracket → R = entry − ORB low; out, the +8R partial lands at +16 ORB-R |
+| `rule_eras.PARTIAL_8R_SIGNAL_TYPES` | IN | the row carries 8.0 / 3.0 from day one → era_d labels |
+| `strategies/adapters._ADAPTERS` | IN (new key) | the registry reads its paper fills; tail rate comes from replays |
+| `agent.py` filtered-trades labels, `sell_discipline._SIGNAL_DISPLAY` | IN | display name, no raw underscore in Markdown |
+| `lowcap_lane_replay` exit rules `"magna53"` | IN (by construction) | the walk prices MAGNA53's current bracket |
+| `order_manager._DEPTH_EXIT_STRATEGY` | OUT | depth exit is OFF for MAGNA53 (no toggle row in prod); the lane runs the rule MAGNA53 runs; turning depth on for the lane is his call |
+| `cross_strategy_allocator` (×4), `ep_detector` allocator enqueue | OUT | live-slot shadow; the lane has its own cap |
+| `ep_detector` downgrade-Telegram mode resolve | OUT | the lane sends no catalyst Telegram |
+| `live_tracker` (`resolve`/skip rows/`signal_type="magna53"`), `scheduler` out-of-window skip | OUT | the live order step is MAGNA53's |
+| `db._COUNTERFACTUAL_FILLS_SQL`, `live_fill_counterfactuals`, `sell_discipline` cf era | OUT | MAGNA53 fill counterfactuals — never pooled with paper small caps |
+| `sustain_reject_replay`, `gap_near_miss_replay` | OUT | other recorders |
+| `shadow_orb_tracker` | OUT | reads `mi_ep_alerts` only |
+| `giveback_shadow`, `pivot_stop_shadow` defaults | OUT | unregistered (#631) |
+| `db` seed of `magna53`, NULL `signal_type` backfill | OUT | MAGNA53's own row / one-shot historic backfill |
+| `channels/telegram.py` `/eps` button | OUT | MAGNA53's command |
+
+**Not mirrored yet (paper-account toggles, his call — a prod DB write):** the per-mode exit and
+entry mechanics MAGNA53 runs live — `profit_take_oco`, `profit_take_resting_limit`,
+`breakeven_at_broker`, `entry_ask_aware` — have rows for 'live' only, so paper lane trades use the
+fallback mechanics (polled partial, software breakeven, last-trade entry check) until a 'paper'
+row is set for each.
+
 ## Known limitations / open questions
 
 1. ~~`is_earnings_day` fail-soft direction inconsistent~~ — **resolved 2026-05-08 (session 2)**. All four call sites (parabolic, EP boost, EP cooldown bypass, EP MODERATE→HIGH override) now treat yfinance error as `True` (earnings day). Defensive at each site: rather over-boost / over-bypass / over-promote on data outage than miss a real earnings EP.
@@ -465,6 +560,27 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 9. **Seven of the 10-02 replay's released rows are real buyouts by price that the replayed grader called "none" — a corpus artifact the pin backtest surfaced; CLOSED the same evening by his ruling 3 (the price-only arm, built — see the 2026-10-03 entry); kept here as the record of the finding** (2026-10-03, `scripts/probes/_692/pin_backtest.py`). TMHC 06-01, APGE 06-22, SAFT 07-24, FBRX 07-27, VREX 08-10, ARX 08-13, WEAV 08-18 gapped +22% to +48% and sat in a 0.1–0.9% band all day; every one was an old `claude_classifier` / `mna` block whose replayed text was the 200-char audit excerpt (`corpus_source=audit_excerpt_200_chars_only`, a vague summary — "Berkshire stake", "pre-earnings positioning"), so the replay's grader answered `none` and the 10-02 rule released them; they were not in MUST-SHOW and his 10-03 approval of the list did not see them. Live, the grader reads the full corpus (the OLD grader graded all seven `mna` from it), so live recall is probably intact — but it is UNMEASURED, and the price layer cannot act on a name the news never nominates. The price alone separates them (gap ≥ 20% with an open window ≤ 0.5%: 7 of 7, and 0 of the 47 proven-free gappers) — a price-only EP pin arm is a separate decision for him, not built here (one variable at a time; the 10-03 rule changes the KEEP pile he asked about).
 
 ## Change log (newest first)
+
+### 2026-10-10 — #624: the small-cap PAPER lane — names turned away only by the $500M floor are graded by the same score and traded on the PAPER account (OPERATOR-SIGNED "Ok to recs"; BUILT, NOT DEPLOYED)
+
+- **What changed:** see "Small-cap paper lane" above. MAGNA53's own criteria, score, tiers,
+  alerts, stop, target, size and slots are unchanged — the live scan is byte-identical with the
+  lane on / off / raising (`tests/test_624_lowcap_lane.py` + `tests/test_624_paper_lane.py`, the
+  real `run_ep_scan` end to end with a lane name admitted).
+- **Live-path edits, all approved or behaviour-preserving:** (a) the graded tail extracted into
+  `_grade_admitted` (pure refactor; tripwire registry 17 continues → 14 + 3 returns); (b)
+  `live_tracker` "already traded today" filtered by account (approved 10-10, RED test);
+  (c) `submit_trade_entry` gains `require_account_mode` / `page_cap_plus_one` (defaults = today).
+- **Operator quote:** *"Ok to recs"* (2026-10-10) on the price/design page; his 10-06 spec
+  *"Everything should be same as current EP setup except market cap, so we can piggy back on it"*.
+- **Evidence:** none required for the lane itself (paper only, no live criterion moved); its
+  tail rate is what it exists to measure. **Pending his confirmation:** lane cap 5, toggle
+  `lowcap_paper_lane` default ON. **Decided for the lane:** no Telegram on alerts.
+- **Reversion flag:** `lowcap_paper_lane` off (or `mi_strategies.enabled = false` on
+  `magna53_smallcap`) stops grading and orders; the account filter in (b) has no flag (a bug fix).
+- **Deploy scope:** `both` + `execution` — `ep_detector`, `db`, `live_tracker`, `entry_pipeline`,
+  `order_manager`, `execution_client` are execution-loaded; the new `broker/lowcap_paper_entry.py`
+  loads lazily on execution (re-run `preflight_exec_deploy_scope --emit` after deploy).
 
 ### 2026-10-10 — #694: the shortlist RANKING reads last night's volume on every tick, and pre-market dollar volume orders the names with no volume record (REFINEMENT of 2026-08-22 + BUG FIX; his option 2; DEPLOYED 2026-10-10)
 

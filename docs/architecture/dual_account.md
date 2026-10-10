@@ -14,6 +14,25 @@
 | live | False | live | 🟡 STAGED-PAPER Telegram proposal; no auto-submit |
 | live | True | live | Alpaca live account (real fills, real $) |
 
+**Strategies that can submit, and where (2026-10-10):**
+
+| strategy_id | phase | account | order step | reads alerts from |
+|---|---|---|---|---|
+| `magna53` | live (`live_real_enabled`) | live | `live_tracker.process_new_alerts_live` (via `trigger_orb_entry`) | `mi_ep_alerts` |
+| `magna53_smallcap` (#624 small-cap paper lane) | paper | paper — and ONLY paper | `broker/lowcap_paper_entry.process_lowcap_paper_alerts` (via `trigger_lowcap_paper_entry`) | `mi_lowcap_paper_lane_alerts` |
+
+The two order steps never read each other's table. The lane is bound to paper three ways: its
+order step refuses any phase but 'paper'; it calls `submit_trade_entry(require_account_mode=
+'paper')`, which blocks (step 1c, before any skip row, trade row or order) a strategy row that
+resolves to any other mode; and its client order ids are `apollo_paper_magna53_smallcap_*`. Its own
+slot cap is `max_concurrent_positions` on its row (5 — pending the operator's confirmation),
+inside the paper account's 5. Live MAGNA53's "already traded today" check filters by MAGNA53's
+own `account_mode` (2026-10-10) so a paper lane trade never makes it skip a name. The per-mode
+exit/entry toggles (`profit_take_oco`, `profit_take_resting_limit`, `breakeven_at_broker`,
+`entry_ask_aware`) have 'live' rows only — paper trades run the fallback mechanics until a
+'paper' row is set (operator's call). Shadow rows (`magna53_lowcap`, `shadow_orb_5m`, …) never
+submit.
+
 **Key components:**
 - `constants.resolve_account_mode_for_strategy(strategy)` — SSoT mode resolver. Pre-dual-account global `current_account_mode()` kept for non-trade contexts (`/status`, boot audit).
 - `alpaca_client.get_trading_client(account_mode)` — per-mode TradingClient singletons, independent HTTP sessions (no shared pool). Every wrapper accepts optional `account_mode`.
