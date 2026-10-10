@@ -5892,12 +5892,16 @@ async def _read_assign_comove_toggle() -> bool:
                                          default=ASSIGN_COMOVE_DEFAULT_ON))
 
 
-async def _load_comove_context(tickers: "set[str] | list[str]", before_date: date) -> ComoveContext | None:
+async def _load_comove_context(tickers: "set[str] | list[str]", before_date: date, *,
+                               raise_on_failure: bool = False) -> ComoveContext | None:
     """ONE mi_daily_closes read for the run: `tickers` + SPY over the calendar window that
     covers BELONGING_LOOKBACK_SESSIONS sessions, all STRICTLY before `before_date` (the fetch
     asks for `< before_date` AND `session_index` re-applies it — the no-lookahead guarantee
     never rests on a WHERE clause alone). Returns None on ANY failure — the callers then run
-    today's sector test (fail SAFE), loudly: an audit row records why."""
+    today's sector test (fail SAFE), loudly: an audit row records why.
+    `raise_on_failure=True` (the #655 fold's own second read only): the error propagates with no
+    `theme_comove_context_failed` row — that row means "the membership-test sites fell back to the
+    sector test", which a failed fold read does not cause; the fold records its own skip."""
     try:
         syms = {(t or "").upper() for t in tickers if t} | {mac.MARKET_TICKER}
         closes, n_rows = await etb.fetch_closes(
@@ -5915,6 +5919,8 @@ async def _load_comove_context(tickers: "set[str] | list[str]", before_date: dat
             f"over {ctx.n_sessions} sessions before {before_date} ({n_rows} close rows)")
         return ctx
     except Exception as e:  # loud-ok: the membership test fails SAFE to the sector test, and says so
+        if raise_on_failure:
+            raise
         logger.warning(f"Theme membership test: co-movement context FAILED ({type(e).__name__}: {e}) "
                        f"— every site runs the sector test tonight")
         await log_audit_event(
@@ -9142,8 +9148,11 @@ async def _load_small_fold_g3_context(board: list[dict], today: date):
         return None
     sector = {t: v["sector"] for t, v in scores.items() if v["sector"]}
     universe = set(scores) | {tk for t in board for tk in (t.get("tickers") or [])}
-    ctx = await _load_comove_context(universe, today)
-    if ctx is None:
+    try:
+        ctx = await _load_comove_context(universe, today, raise_on_failure=True)
+    except Exception as e:  # loud-ok: only the fold skips tonight; the caller's RAN row records it
+        logger.warning(f"Small-theme fold (#655): price context FAILED ({type(e).__name__}: {e}) — "
+                       f"no fold tonight; the membership-test sites are unaffected")
         return None
     return ctx, scores, sector
 

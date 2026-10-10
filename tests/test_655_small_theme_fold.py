@@ -302,3 +302,26 @@ async def test_through_the_real_engine_the_fold_tombstones_once_and_the_home_is_
     assert [r for r in rows if r[0] == "Gas Pair"] == [("Gas Pair", "Retired", "Gas Producers", [])]
     assert [r[3] for r in rows if r[0] == "Gas Producers"] == [HOME + ["RIDE"]]
     assert len([c for c in audits.await_args_list if c.args and c.args[0] == THEME_SMALL_FOLDED]) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_failed_fold_read_skips_the_fold_and_never_claims_the_membership_test_fell_back(monkeypatch, audit):
+    """The fold's own second read failing must not write `theme_comove_context_failed` ("sector test
+    used tonight") — the membership-test sites loaded their own context and did not fall back."""
+    from tests.conftest import make_mock_pool
+    from agents.market_intelligence import ep_theme_belonging as etb
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=[{"ticker": "H1", "rs_composite": 80.0, "sector": "Energy"}])
+    monkeypatch.setattr(te, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(etb, "fetch_closes", AsyncMock(side_effect=RuntimeError("closes read timed out")))
+    monkeypatch.setattr(te, "_read_small_fold_toggle", AsyncMock(return_value=True))
+    from agents.market_intelligence import theme_ecosystems
+    monkeypatch.setattr(theme_ecosystems, "load_ecosystem_assignments",
+                        AsyncMock(return_value={"Gas Producers": ECO, "Gas Pair": ECO}))
+    themes = [_home(), {"name": "Gas Pair", "stage": "Nascent", "tickers": ["RIDE", "NOIS"]}]
+    out = await te._fold_small_failing_themes(themes, {"Gas Pair"}, [], TODAY, theme_exclusions=None,
+                                              cooldown_set=None, protected=set())
+    assert out is themes
+    assert [c.args[0] for c in audit.await_args_list] == [THEME_SMALL_FOLD_RAN]
+    assert json.loads(audit.await_args_list[0].kwargs["detail"])["status"] == \
+        "skipped: price/score context unavailable"
