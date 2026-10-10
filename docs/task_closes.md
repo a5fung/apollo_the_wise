@@ -2070,3 +2070,13 @@ EVIDENCE:
 - **The real rendered reply in Telegram (his /trades, pasted 2026-10-09 ~15:15 PT):** every Last-5-Closed line carries its R and no attempts suffix — `❌ CEG $-59 · -1.0R (1d) · Oct 08`, `✅ VICR $+76 · +7.3R (19d) · Oct 07`, `✅ OKTA $+47 · +1.4R (29d) · Sep 28`, `✅ SEI $+4 · +0.4R (13d) · Sep 22`, `❌ HOOD $-27 · -0.8R (11d) · Sep 15`.
 - **VICR reads +7.3R, the DoD's "≈ +7.5R" example:** 7.3029 is the stored sell-discipline value for trade #400 (one formula, `sell_discipline.trade_realized_r`, now used by both surfaces).
 - **The test:** `tests/test_696_trades_closed_r.py` pins VICR #400 to 7.3029 (prod-sourced fixture) and the rendered line; fails on the pre-change code (shipped 6cc36c7b, deployed noon 10-09).
+
+## #215 — theme-validator prompt de-bias (OPTX residual): closed on his ruling, superseded by #693 (2026-10-10)
+
+BAR: "the de-bias is measured against a CLEAN grade cohort — one accrued after the grade-quality cluster settled — and the OPTX residual is stated as a number before and after."
+
+EVIDENCE:
+- **NOT met as written — closed on his word.** Put to him 2026-10-10 (A: close on your word; B: re-date to 10-14): his answer *"a"*.
+- **Why it is superseded:** the over-pruning #215 targeted is the theme description validator (`theme_engine._validate_theme_membership`) removing members that fit. #693's replay of Monday 10-05's 151 calls (`docs/analysis/693_validator_thinking_replay_2026-10-09.md`, $0.49) found the thinking-cut setting removing 26 live and 33 on a re-run that agreed on only 16, against 5 with thinking ON (all 5 also removed live); 5 of the live removals were plainly wrong by the stock's own description. Thinking was turned back ON (his yes 10-09) and deployed Sat 10-10.
+- **What still catches a residual:** #693's own check — the first two live nights (from Mon 10-12) must show validation removals below 15 with no truncation; a borderline name wrongly removed then is raised there.
+- **The gated review** `prompt_debias_clean_cohort_215` is marked done with the same reason.

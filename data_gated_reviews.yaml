@@ -10937,7 +10937,13 @@ reviews:
       ⚠ The DoD's own WOULD-FAIL-IF: applying it to a contaminated cohort measures the
       contamination, not the bias. ⚖ A prompt change to theme-membership validation is a detection
       criterion — CHANGE_PROCESS and his sign-off before it ships (THE LINE).
-    status: pending
+    status: done
+    closed_on: 2026-10-10
+    resolution_2026_10_10: >-
+      CLOSED with #215 on his ruling 2026-10-10 ("a"), superseded by #693: the theme validator's
+      over-pruning was the thinking-cut setting (10-05 replay: 26 removed live, 33 on a re-run agreeing
+      on 16, 5 with thinking on); thinking is back ON since the 10-10 deploy, and #693's two-night check
+      (removals < 15, from Mon 10-12) is where a remaining wrong removal surfaces.
     added_on: 2026-09-15
   - review_id: b6_gate_inversion_post_rescale
     # FILED 2026-09-15 on closing b6_gate_inversion_recheck. That entry answered its question
