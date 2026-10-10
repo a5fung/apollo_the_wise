@@ -1,0 +1,152 @@
+==============================================================================================================
+ACN 2026-10-01  extracted_at=2026-10-01 07:10 ET  ours=19 items  tv_missed=25 items  pplx_len=412
+--------------------------------------------------------------------------------------------------------------
+OUR CORPUS (as stored at grade time):
+  [polygon] 09-25 02:30 ET  GlobeNewswire  | AI Automation Market to Reach USD 2,041.82 Billion by 2035, Expanding at 31.62% CAGR as 
+  [alpaca ] 09-25 07:23 ET  benzinga       | Wall Street's Most Accurate Analysts Spotlight On 3 Tech Stocks Delivering High-Dividend
+  [alpaca ] 09-25 10:57 ET  benzinga       | We Asked 3 AI Chatbots for Next Week's Top Stock Picks. They All Said Micron.
+  [alpaca ] 09-27 08:30 ET  benzinga       | Earnings Volatility Watch: Micron Sets The Week, But Six Other Stocks Are Priced To Swin
+  [alpaca ] 09-27 13:10 ET  benzinga       | Top Three S&P 500 Stocks to Watch This Week: Micron, Accenture, Tesla
+  [alpaca ] 09-28 03:33 ET  benzinga       | Accenture, Osapiens Give DS Smith EUDR-Ready Supply Chain Traceability Across 250+ Plant
+  [alpaca ] 09-28 08:29 ET  benzinga       | Susquehanna Maintains Neutral on Accenture, Raises Price Target to $153
+  [alpaca ] 09-28 12:39 ET  benzinga       | What's Going On With Accenture Stock Monday?
+  [polygon] 09-29 09:17 ET  Zacks Investme | ACN Set to Report Q4 Earnings: Here's What Investors Should Know
+  [polygon] 09-29 11:54 ET  GlobeNewswire  | IT BFSI Market Report 2026: Capitalize on the $171.25 Billion Revenue Surge to $359.2 Bi
+  [polygon] 09-29 11:57 ET  GlobeNewswire  | Digital Transformation Market Report 2026: Capitalize on the $2.47 Trillion Revenue Surg
+  [alpaca ] 09-30 07:54 ET  benzinga       | How To Earn $500 A Month From Accenture Stock Ahead Of Q4 Earnings
+  [polygon] 09-30 08:59 ET  Zacks Investme | CDW's Buyback Pace Jumps: Can Stronger Cash Flow Sustain Returns?
+  [alpaca ] 10-01 01:35 ET  benzinga       | Acuity, Accenture and 3 Stocks to Watch Heading Into Thursday
+  [alpaca ] 10-01 01:39 ET  benzinga       | Stock Market: Will S&P 500 Open Up or Down Today?
+  [alpaca ] 10-01 02:09 ET  benzinga       | Dow Dips Over 400 Points Following PCE Data: Investor Sentiment Improves, Greed Index Re
+  [alpaca ] 10-01 06:39 ET  benzinga       | Accenture Q4 EPS $3.29 Beats $3.18 Estimate, Sales $18.700B Beat $18.030B Estimate
+  [alpaca ] 10-01 06:40 ET  benzinga       | Accenture Sees Q1 Sales $18.950B-$19.600B vs $19.357B Est
+  [alpaca ] 10-01 06:45 ET  benzinga       | Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 Est; Sees Sales $76.426B-$78.652B 
+--------------------------------------------------------------------------------------------------------------
+TV ITEMS WE 'MISSED' (same-day rule) — after_our_extraction? / best match on our side:
+  10-01 09:31 ET AFTER  reuters      j=0.13       | Accenture PLC reports results for the quarter ended August 31 - Earnin
+        ~ ours [alpaca]: How To Earn $500 A Month From Accenture Stock Ahead Of Q4 Earnings
+  10-01 10:04 ET AFTER  dow-jones    j=0.09       | Accenture Shares Jump 20% as AI Drives Client Spending — WSJ
+        ~ ours [alpaca]: What's Going On With Accenture Stock Monday?
+  10-01 10:18 ET AFTER  zacks        j=0.25       | Accenture's Q4 Earnings Beat Estimates, Revenues Increase 6% Y/Y
+        ~ ours [alpaca]: How To Earn $500 A Month From Accenture Stock Ahead Of Q4 Earnings
+  10-01 10:34 ET AFTER  quartr       j=0.09       | ACN: Q4 revenue up 7% in local currency, FY 2026 revenue $74B, strong 
+        ~ ours [polygon]: Digital Transformation Market Report 2026: Capitalize on the $2.47 Trillion Reve
+  10-01 10:40 ET AFTER  stockstory   j=0.14       | Accenture (ACN) Stock Trades Up, Here Is Why
+        ~ ours [polygon]: ACN Set to Report Q4 Earnings: Here's What Investors Should Know
+  10-01 10:51 ET AFTER  sharecast    j=0.20       |  Accenture shares jump as Q4 results beat own guidance 
+        ~ ours [alpaca]: Accenture Q4 EPS $3.29 Beats $3.18 Estimate, Sales $18.700B Beat $18.030B Estima
+  10-01 11:06 ET AFTER  dow-jones    j=0.16       | Accenture Counters AI Disruption Worries — Market Talk
+        ~ ours [polygon]: Digital Transformation Market Report 2026: Capitalize on the $2.47 Trillion Reve
+  10-01 11:09 ET AFTER  dow-jones    j=0.09       | Accenture Stock Climbs as AI Demand Boosts 4Q Results — Update
+        ~ ours [alpaca]: What's Going On With Accenture Stock Monday?
+  10-01 11:22 ET AFTER  mint         j=0.19       | Accenture shares jump 20% in pre-market as Q4 earnings, 2027 outlook b
+        ~ ours [alpaca]: How To Earn $500 A Month From Accenture Stock Ahead Of Q4 Earnings
+  10-01 11:28 ET AFTER  dow-jones    j=0.11       | Accenture Says Its Embracing AI Alongside Clients — Market Talk
+        ~ ours [polygon]: Digital Transformation Market Report 2026: Capitalize on the $2.47 Trillion Reve
+  10-01 11:49 ET AFTER  gurufocus    j=0.09       | Accenture Jumps 20% and IBM Climbs on Strong Outlook for 2027
+        ~ ours [alpaca]: What's Going On With Accenture Stock Monday?
+  10-01 12:05 ET AFTER  seekingalpha j=0.08       | Midday Need to Know: Accenture surges, Treasury yields jump & more
+        ~ ours [alpaca]: What's Going On With Accenture Stock Monday?
+  10-01 12:08 ET AFTER  mint         j=0.14       | Infosys, Wipro ADRs jump up to 10% after Accenture Q4 results beat Wal
+        ~ ours [alpaca]: Accenture Q4 EPS $3.29 Beats $3.18 Estimate, Sales $18.700B Beat $18.030B Estima
+  10-01 12:29 ET AFTER  benzinga     j=0.19       | Stock Market Today: S&P 500 Slips as Micron Fails to Impress, 10-Year 
+        ~ ours [alpaca]: Stock Market: Will S&P 500 Open Up or Down Today?
+  10-01 12:52 ET AFTER  dow-jones    j=0.10       | Accenture CEO Says Focus on Big Deals, AI Drove Strong Bookings — Mark
+        ~ ours [polygon]: Digital Transformation Market Report 2026: Capitalize on the $2.47 Trillion Reve
+  10-01 12:55 ET AFTER  stockstory   j=0.10       | EPAM, DXC, Everforth, EXL, and Grid Dynamics Stocks Trade Up, What You
+        ~ ours [polygon]: ACN Set to Report Q4 Earnings: Here's What Investors Should Know
+  10-01 12:55 ET AFTER  stockstory   j=0.12       | Concentrix, Huron, and TaskUs Shares Skyrocket, What You Need To Know
+        ~ ours [polygon]: ACN Set to Report Q4 Earnings: Here's What Investors Should Know
+  10-01 13:44 ET AFTER  benzinga     j=0.17       | ServiceNow Rallies as Accenture Earnings Lift Software Stocks
+        ~ ours [alpaca]: How To Earn $500 A Month From Accenture Stock Ahead Of Q4 Earnings
+  10-01 14:38 ET AFTER  dow-jones    j=0.07       | Accenture Stock Is Having Its Best Day Ever. AI Isn't the Threat Every
+        ~ ours [alpaca]: What's Going On With Accenture Stock Monday?
+  10-01 14:45 ET AFTER  benzinga     j=0.17       | Unity Stock Rises in Sympathy with Accenture's Strong Q4
+        ~ ours [alpaca]: How To Earn $500 A Month From Accenture Stock Ahead Of Q4 Earnings
+  10-01 14:55 ET AFTER  benzinga     j=0.12       | Innodata Stock Surges Thursday: What's Happening?
+        ~ ours [alpaca]: What's Going On With Accenture Stock Monday?
+  10-01 15:19 ET AFTER  mint         j=0.08       | Accenture expects higher AI spending by clients as token costs fall
+        ~ ours [alpaca]: What's Going On With Accenture Stock Monday?
+  10-01 16:15 ET AFTER  dow-jones    j=0.13       | Micron, Accenture, Google, IBM, Fair Isaac, Synopsys, and More Stocks 
+        ~ ours [polygon]: Digital Transformation Market Report 2026: Capitalize on the $2.47 Trillion Reve
+  10-01 18:11 ET AFTER  zacks        j=0.29       | Should Investors Chase Accenture (ACN) Stock After Its Post-Earnings S
+        ~ ours [polygon]: ACN Set to Report Q4 Earnings: Here's What Investors Should Know
+  10-01 18:20 ET AFTER  tradingview  j=0.19       | Accenture plc Stock 12‑Month Price Target Raised to $203.16, Implies 1
+        ~ ours [alpaca]: Susquehanna Maintains Neutral on Accenture, Raises Price Target to $153
+--------------------------------------------------------------------------------------------------------------
+SUMMARY ACN: tv_missed=25; published AFTER our extraction=25; before-or-at=0; fuzzy story match to something we held=0
+==============================================================================================================
+PENG 2026-10-07  extracted_at=2026-10-07 09:35 ET  ours=17 items  tv_missed=25 items  pplx_len=212
+--------------------------------------------------------------------------------------------------------------
+OUR CORPUS (as stored at grade time):
+  [polygon] 10-01 10:07 ET  Zacks Investme | Penguin Solutions' AI Backlog Grows: Is Future Sales Taking Shape?
+  [alpaca ] 10-02 10:47 ET  benzinga       | Applied Digital, Bitdeer Technologies, ON Semiconductor And Other Big Stocks Moving High
+  [alpaca ] 10-06 07:11 ET  benzinga       | Earnings Scheduled For October 6, 2026
+  [alpaca ] 10-06 16:06 ET  benzinga       | Penguin Solutions Q4 Adj. EPS $1.00 Beats $0.78 Estimate, Sales $566.685M Beat $516.115M
+  [alpaca ] 10-06 16:06 ET  benzinga       | Penguin Solutions Appoints Stephen Cumming As CFO, Effective Immediately
+  [alpaca ] 10-06 16:10 ET  benzinga       | Penguin Solutions Sees FY2027 Adj EPS $3.75-$5.15 vs $3.25 Est; Sees Sales $2.182B-$2.66
+  [alpaca ] 10-06 16:11 ET  benzinga       | Penguin Solutions Sees FY2027 GAAP EPS $2.80-$4.20 vs $2.13 Est
+  [alpaca ] 10-06 16:28 ET  benzinga       | CORRECTION: Penguin Solutions Sees FY2027 Adj EPS $3.75-$5.15 vs $3.25 Est; Sees Sales $
+  [polygon] 10-06 16:30 ET  Zacks Investme | Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues Beat Estimates
+  [alpaca ] 10-06 16:39 ET  benzinga       | Penguin Solutions Stock Pops on Q4 Earnings Beat, Strong Guidance
+  [alpaca ] 10-06 17:05 ET  benzinga       | 12 Information Technology Stocks Moving In Tuesday's After-Market Session
+  [alpaca ] 10-06 17:35 ET  benzinga       | Penguin Solutions Reports Q4 2026 Results: Full Earnings Call Transcript
+  [alpaca ] 10-07 04:38 ET  benzinga       | Why Penguin Solutions Shares Are Trading Higher By Around 8%; Here Are 20 Stocks Moving 
+  [alpaca ] 10-07 07:16 ET  benzinga       | Needham Maintains Buy on Penguin Solutions, Raises Price Target to $85
+  [alpaca ] 10-07 08:36 ET  benzinga       | Stock Market Today: S&P 500, Dow, Nasdaq Futures Fall as 30-Year Treasury Yield Hits 200
+  [alpaca ] 10-07 09:25 ET  benzinga       | Stifel Maintains Buy on Penguin Solutions, Raises Price Target to $85
+  [alpaca ] 10-07 09:31 ET  benzinga       | These Analysts Increase Their Forecasts On Penguin Solutions Following Upbeat Q4 Results
+--------------------------------------------------------------------------------------------------------------
+TV ITEMS WE 'MISSED' (same-day rule) — after_our_extraction? / best match on our side:
+  10-06 16:07 ET before dow-jones    j=0.50 MATCH | Penguin Solutions Cumming Appiontment Effective Immediately >PENG
+        ~ ours [alpaca]: Penguin Solutions Appoints Stephen Cumming As CFO, Effective Immediately
+  10-06 16:19 ET before reuters      j=0.24       | Penguin Solutions Q4 revenue jumps 68%; raises FY27 guidance as AI inf
+        ~ ours [alpaca]: Penguin Solutions Stock Pops on Q4 Earnings Beat, Strong Guidance
+  10-06 16:23 ET before seekingalpha j=0.56 MATCH | Penguin Solutions names Stephen Cumming as CFO
+        ~ ours [alpaca]: Penguin Solutions Appoints Stephen Cumming As CFO, Effective Immediately
+  10-06 16:32 ET before seekingalpha j=0.23       | Penguin Solutions Non-GAAP EPS of $1.00 beats by $0.23, revenue of $56
+        ~ ours [alpaca]: Penguin Solutions Q4 Adj. EPS $1.00 Beats $0.78 Estimate, Sales $566.685M Beat $
+  10-06 16:33 ET before tradingview  j=0.19       | Penguin Solutions posts record Q4 revenue $567M, raises FY27 outlook t
+        ~ ours [polygon]: Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues Beat Estimates
+  10-06 16:35 ET before dow-jones    j=0.27       | Penguin Solutions Names Cumming CFO, Reports Surging 4Q Profit on AI D
+        ~ ours [alpaca]: Penguin Solutions Appoints Stephen Cumming As CFO, Effective Immediately
+  10-06 16:43 ET before stockstory   j=0.20       | Penguin Solutions (NASDAQ:PENG) Reports Strong Q3 But Inventory Levels
+        ~ ours [polygon]: Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues Beat Estimates
+  10-06 17:01 ET before reuters      j=0.33       | Penguin Solutions Inc reports results for the quarter ended August 31 
+        ~ ours [alpaca]: Penguin Solutions Reports Q4 2026 Results: Full Earnings Call Transcript
+  10-06 20:02 ET before marketbeat   j=0.45 MATCH | Penguin Solutions Q4 Earnings Call Highlights
+        ~ ours [alpaca]: Penguin Solutions Reports Q4 2026 Results: Full Earnings Call Transcript
+  10-06 23:25 ET before stocktwits   j=0.08       | Why Is PENG Stock Rising More Than 7% Overnight?
+        ~ ours [polygon]: Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues Beat Estimates
+  10-07 03:49 ET before invezz       j=0.18       | Penguin Solutions profit jumps 888% on AI demand: can PENG justify a 2
+        ~ ours [polygon]: Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues Beat Estimates
+  10-07 05:15 ET before seekingalpha j=0.33       | Penguin Solutions jumps premarket following strong Q4 beat, upbeat out
+        ~ ours [alpaca]: Penguin Solutions Stock Pops on Q4 Earnings Beat, Strong Guidance
+  10-07 06:43 ET before dow-jones    j=0.17       | Penguin Solutions' Memory Business Soars on AI Demand. Can Its Stock R
+        ~ ours [polygon]: Penguin Solutions' AI Backlog Grows: Is Future Sales Taking Shape?
+  10-07 07:16 ET before tradingview_ j=0.80 MATCH | Needham maintains Buy rating on Penguin Solutions, $85 price target
+        ~ ours [alpaca]: Needham Maintains Buy on Penguin Solutions, Raises Price Target to $85
+  10-07 07:26 ET before dow-jones    j=0.40 MATCH | Penguin Solutions Is Maintained at Buy by Needham
+        ~ ours [alpaca]: Needham Maintains Buy on Penguin Solutions, Raises Price Target to $85
+  10-07 09:00 ET before zacks        j=0.21       | PENG Q4 Earnings Call Signals Faster AI Infrastructure Growth
+        ~ ours [polygon]: Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues Beat Estimates
+  10-07 09:35 ET before dow-jones    j=0.46 MATCH | Penguin Solutions Price Target Raised to $85.00/Share From $75.00 by S
+        ~ ours [alpaca]: Stifel Maintains Buy on Penguin Solutions, Raises Price Target to $85
+  10-07 09:43 ET AFTER  tradingview_ j=0.80 MATCH | Stifel maintains Buy rating on Penguin Solutions, $85 price target
+        ~ ours [alpaca]: Stifel Maintains Buy on Penguin Solutions, Raises Price Target to $85
+  10-07 10:00 ET AFTER  stockstory   j=0.31       | Penguin Solutions (PENG) Stock Trades Up, Here Is Why
+        ~ ours [alpaca]: Why Penguin Solutions Shares Are Trading Higher By Around 8%; Here Are 20 Stocks
+  10-07 10:11 ET AFTER  benzinga     j=0.20       | Penguin Solutions Says Agentic AI Is Creating New Memory Boom
+        ~ ours [polygon]: Penguin Solutions' AI Backlog Grows: Is Future Sales Taking Shape?
+  10-07 11:21 ET AFTER  dow-jones    j=0.27       | Penguin Solutions Price Target Raised to $60.00/Share From $40.00 by B
+        ~ ours [alpaca]: Stifel Maintains Buy on Penguin Solutions, Raises Price Target to $85
+  10-07 12:20 ET AFTER  tradingview  j=0.24       | Penguin Solutions, Inc. Stock 12‑Month Price Target Raised to $83.57, 
+        ~ ours [alpaca]: Stifel Maintains Buy on Penguin Solutions, Raises Price Target to $85
+  10-07 12:27 ET AFTER  tradingview_ j=0.50 MATCH | Rosenblatt maintains Buy rating on Penguin Solutions, $100 price targe
+        ~ ours [alpaca]: Stifel Maintains Buy on Penguin Solutions, Raises Price Target to $85
+  10-07 12:37 ET AFTER  dow-jones    j=0.27       | Penguin Solutions Is Maintained at Buy by Rosenblatt
+        ~ ours [alpaca]: Stifel Maintains Buy on Penguin Solutions, Raises Price Target to $85
+  10-07 13:48 ET AFTER  stocktwits   j=0.16       | PENG Stock Rallies To Over 2-Month High After Wall Street Hikes Price 
+        ~ ours [polygon]: Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues Beat Estimates
+--------------------------------------------------------------------------------------------------------------
+SUMMARY PENG: tv_missed=25; published AFTER our extraction=8; before-or-at=17; fuzzy story match to something we held=8

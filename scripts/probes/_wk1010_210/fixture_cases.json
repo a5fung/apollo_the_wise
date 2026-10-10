@@ -1,0 +1,551 @@
+{
+ "generated": "2026-10-10",
+ "source": "scripts/probes/_wk1010_210/{q1_read,q2_anchor}.out",
+ "cases": {
+  "ACN": {
+   "ticker": "ACN",
+   "alert_date": "2026-10-01",
+   "our_captured_at": "2026-10-01T07:10:15.521038-04:00",
+   "our_corpus": {
+    "polygon": [
+     {
+      "title": "CDW's Buyback Pace Jumps: Can Stronger Cash Flow Sustain Returns?",
+      "published": "2026-09-30T12:59:00Z"
+     },
+     {
+      "title": "Digital Transformation Market Report 2026: Capitalize on the $2.47 Trillion Revenue Surge to $5.01 Trillion by 2030 as Microsoft, Google, IBM, Accenture and Oracle Accelerate AI, Cloud and Automation Disruption",
+      "published": "2026-09-29T15:57:00Z"
+     },
+     {
+      "title": "IT BFSI Market Report 2026: Capitalize on the $171.25 Billion Revenue Surge to $359.2 Billion by 2030 as AI, Cloud and Cybersecurity Disrupt Competition Across Microsoft, AWS, Accenture, IBM and Oracle",
+      "published": "2026-09-29T15:54:00Z"
+     },
+     {
+      "title": "ACN Set to Report Q4 Earnings: Here's What Investors Should Know",
+      "published": "2026-09-29T13:17:00Z"
+     },
+     {
+      "title": "AI Automation Market to Reach USD 2,041.82 Billion by 2035, Expanding at 31.62% CAGR as Enterprises Accelerate Intelligent Automation",
+      "published": "2026-09-25T06:30:00Z"
+     }
+    ],
+    "alpaca": [
+     {
+      "title": "Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 Est; Sees Sales $76.426B-$78.652B vs $76.414B Est",
+      "published": "2026-10-01T10:45:35+00:00"
+     },
+     {
+      "title": "Accenture Sees Q1 Sales $18.950B-$19.600B vs $19.357B Est",
+      "published": "2026-10-01T10:40:09+00:00"
+     },
+     {
+      "title": "Accenture Q4 EPS $3.29 Beats $3.18 Estimate, Sales $18.700B Beat $18.030B Estimate",
+      "published": "2026-10-01T10:39:56+00:00"
+     },
+     {
+      "title": "Dow Dips Over 400 Points Following PCE Data: Investor Sentiment Improves, Greed Index Remains in ‘Fear’ Zone",
+      "published": "2026-10-01T06:09:57+00:00"
+     },
+     {
+      "title": "Stock Market: Will S&P 500 Open Up or Down Today?",
+      "published": "2026-10-01T05:39:57+00:00"
+     },
+     {
+      "title": "Acuity, Accenture and 3 Stocks to Watch Heading Into Thursday",
+      "published": "2026-10-01T05:35:27+00:00"
+     },
+     {
+      "title": "How To Earn $500 A Month From Accenture Stock Ahead Of Q4 Earnings",
+      "published": "2026-09-30T11:54:09+00:00"
+     },
+     {
+      "title": "What's Going On With Accenture Stock Monday?",
+      "published": "2026-09-28T16:39:00+00:00"
+     },
+     {
+      "title": "Susquehanna Maintains Neutral on Accenture, Raises Price Target to $153",
+      "published": "2026-09-28T12:29:04+00:00"
+     },
+     {
+      "title": "Accenture, Osapiens Give DS Smith EUDR-Ready Supply Chain Traceability Across 250+ Plants In 30+ Countries, Integrating Systems Onto Single Osapiens HUB Platform",
+      "published": "2026-09-28T07:33:21+00:00"
+     },
+     {
+      "title": "Top Three S&P 500 Stocks to Watch This Week: Micron, Accenture, Tesla",
+      "published": "2026-09-27T17:10:47+00:00"
+     },
+     {
+      "title": "Earnings Volatility Watch: Micron Sets The Week, But Six Other Stocks Are Priced To Swing More",
+      "published": "2026-09-27T12:30:23+00:00"
+     },
+     {
+      "title": "We Asked 3 AI Chatbots for Next Week's Top Stock Picks. They All Said Micron.",
+      "published": "2026-09-25T14:57:03+00:00"
+     },
+     {
+      "title": "Wall Street's Most Accurate Analysts Spotlight On 3 Tech Stocks Delivering High-Dividend Yields",
+      "published": "2026-09-25T11:23:07+00:00"
+     }
+    ],
+    "fmp": []
+   },
+   "our_perplexity_present": true,
+   "tv_items": [
+    {
+     "title": "Accenture plc Stock 12‑Month Price Target Raised to $203.16, Implies 11% Upside",
+     "provider": "tradingview",
+     "published": 1790893209
+    },
+    {
+     "title": "Should Investors Chase Accenture (ACN) Stock After Its Post-Earnings Surge?",
+     "provider": "zacks",
+     "published": 1790892660
+    },
+    {
+     "title": "Micron, Accenture, Google, IBM, Fair Isaac, Synopsys, and More Stocks That Explain Today's Market — Barrons.com",
+     "provider": "dow-jones",
+     "published": 1790885700
+    },
+    {
+     "title": "Accenture expects higher AI spending by clients as token costs fall",
+     "provider": "mint",
+     "published": 1790882388
+    },
+    {
+     "title": "Innodata Stock Surges Thursday: What's Happening?",
+     "provider": "benzinga",
+     "published": 1790880932
+    },
+    {
+     "title": "Unity Stock Rises in Sympathy with Accenture's Strong Q4",
+     "provider": "benzinga",
+     "published": 1790880346
+    },
+    {
+     "title": "Accenture Stock Is Having Its Best Day Ever. AI Isn't the Threat Everyone Thought. — Barrons.com",
+     "provider": "dow-jones",
+     "published": 1790879880
+    },
+    {
+     "title": "ServiceNow Rallies as Accenture Earnings Lift Software Stocks",
+     "provider": "benzinga",
+     "published": 1790876644
+    },
+    {
+     "title": "Concentrix, Huron, and TaskUs Shares Skyrocket, What You Need To Know",
+     "provider": "stockstory",
+     "published": 1790873747
+    },
+    {
+     "title": "EPAM, DXC, Everforth, EXL, and Grid Dynamics Stocks Trade Up, What You Need To Know",
+     "provider": "stockstory",
+     "published": 1790873746
+    },
+    {
+     "title": "Accenture CEO Says Focus on Big Deals, AI Drove Strong Bookings — Market Talk",
+     "provider": "dow-jones",
+     "published": 1790873520
+    },
+    {
+     "title": "Stock Market Today: S&P 500 Slips as Micron Fails to Impress, 10-Year Yields Ease to 5.25%",
+     "provider": "benzinga",
+     "published": 1790872146
+    },
+    {
+     "title": "Infosys, Wipro ADRs jump up to 10% after Accenture Q4 results beat Wall Street estimates",
+     "provider": "mint",
+     "published": 1790870883
+    },
+    {
+     "title": "Midday Need to Know: Accenture surges, Treasury yields jump & more",
+     "provider": "seekingalpha",
+     "published": 1790870737
+    },
+    {
+     "title": "Accenture Jumps 20% and IBM Climbs on Strong Outlook for 2027",
+     "provider": "gurufocus",
+     "published": 1790869797
+    },
+    {
+     "title": "Accenture Says Its Embracing AI Alongside Clients — Market Talk",
+     "provider": "dow-jones",
+     "published": 1790868480
+    },
+    {
+     "title": "Accenture shares jump 20% in pre-market as Q4 earnings, 2027 outlook beat estimates",
+     "provider": "mint",
+     "published": 1790868135
+    },
+    {
+     "title": "Accenture Stock Climbs as AI Demand Boosts 4Q Results — Update",
+     "provider": "dow-jones",
+     "published": 1790867340
+    },
+    {
+     "title": "Accenture Counters AI Disruption Worries — Market Talk",
+     "provider": "dow-jones",
+     "published": 1790867160
+    },
+    {
+     "title": " Accenture shares jump as Q4 results beat own guidance ",
+     "provider": "sharecast",
+     "published": 1790866288
+    },
+    {
+     "title": "Accenture (ACN) Stock Trades Up, Here Is Why",
+     "provider": "stockstory",
+     "published": 1790865644
+    },
+    {
+     "title": "ACN: Q4 revenue up 7% in local currency, FY 2026 revenue $74B, strong AI-driven growth, robust FY 2027 outlook",
+     "provider": "quartr",
+     "published": 1790865266
+    },
+    {
+     "title": "Accenture's Q4 Earnings Beat Estimates, Revenues Increase 6% Y/Y",
+     "provider": "zacks",
+     "published": 1790864280
+    },
+    {
+     "title": "Accenture Shares Jump 20% as AI Drives Client Spending — WSJ",
+     "provider": "dow-jones",
+     "published": 1790863440
+    },
+    {
+     "title": "Accenture PLC reports results for the quarter ended August 31 - Earnings Summary",
+     "provider": "reuters",
+     "published": 1790861507
+    }
+   ],
+   "tv_items_note": "the 25 same-day items the LIVE shadow recorded as tv_items_we_missed (real titles, providers and unix `published`); tv_item_count was 25 so this is the whole window"
+  },
+  "PENG": {
+   "ticker": "PENG",
+   "alert_date": "2026-10-07",
+   "our_captured_at": "2026-10-07T09:35:25.062528-04:00",
+   "our_corpus": {
+    "polygon": [
+     {
+      "title": "Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues Beat Estimates",
+      "published": "2026-10-06T20:30:02Z"
+     },
+     {
+      "title": "Penguin Solutions' AI Backlog Grows: Is Future Sales Taking Shape?",
+      "published": "2026-10-01T14:07:00Z"
+     }
+    ],
+    "alpaca": [
+     {
+      "title": "These Analysts Increase Their Forecasts On Penguin Solutions Following Upbeat Q4 Results",
+      "published": "2026-10-07T13:31:02+00:00"
+     },
+     {
+      "title": "Stifel Maintains Buy on Penguin Solutions, Raises Price Target to $85",
+      "published": "2026-10-07T13:25:40+00:00"
+     },
+     {
+      "title": "Stock Market Today: S&P 500, Dow, Nasdaq Futures Fall as 30-Year Treasury Yield Hits 2002 High; Iran Mocks US Economy — STZ, PENG, LEVI in Focus (UPDATED)",
+      "published": "2026-10-07T12:36:45+00:00"
+     },
+     {
+      "title": "Needham Maintains Buy on Penguin Solutions, Raises Price Target to $85",
+      "published": "2026-10-07T11:16:58+00:00"
+     },
+     {
+      "title": "Why Penguin Solutions Shares Are Trading Higher By Around 8%; Here Are 20 Stocks Moving Premarket",
+      "published": "2026-10-07T08:38:47+00:00"
+     },
+     {
+      "title": "Penguin Solutions Reports Q4 2026 Results: Full Earnings Call Transcript",
+      "published": "2026-10-06T21:35:34+00:00"
+     },
+     {
+      "title": "12 Information Technology Stocks Moving In Tuesday's After-Market Session",
+      "published": "2026-10-06T21:05:52+00:00"
+     },
+     {
+      "title": "Penguin Solutions Stock Pops on Q4 Earnings Beat, Strong Guidance",
+      "published": "2026-10-06T20:39:53+00:00"
+     },
+     {
+      "title": "CORRECTION: Penguin Solutions Sees FY2027 Adj EPS $3.75-$5.15 vs $3.25 Est; Sees Sales $2.250B-$2.596B vs $2.201B Est",
+      "published": "2026-10-06T20:28:41+00:00"
+     },
+     {
+      "title": "Penguin Solutions Sees FY2027 GAAP EPS $2.80-$4.20 vs $2.13 Est",
+      "published": "2026-10-06T20:11:26+00:00"
+     },
+     {
+      "title": "Penguin Solutions Sees FY2027 Adj EPS $3.75-$5.15 vs $3.25 Est; Sees Sales $2.182B-$2.666B vs $2.201B Est",
+      "published": "2026-10-06T20:10:26+00:00"
+     },
+     {
+      "title": "Penguin Solutions Appoints Stephen Cumming As CFO, Effective Immediately",
+      "published": "2026-10-06T20:06:49+00:00"
+     },
+     {
+      "title": "Penguin Solutions Q4 Adj. EPS $1.00 Beats $0.78 Estimate, Sales $566.685M Beat $516.115M Estimate",
+      "published": "2026-10-06T20:06:05+00:00"
+     },
+     {
+      "title": "Earnings Scheduled For October 6, 2026",
+      "published": "2026-10-06T11:11:04+00:00"
+     },
+     {
+      "title": "Applied Digital, Bitdeer Technologies, ON Semiconductor And Other Big Stocks Moving Higher On Friday",
+      "published": "2026-10-02T14:47:44+00:00"
+     }
+    ],
+    "fmp": []
+   },
+   "our_perplexity_present": true,
+   "tv_items": [
+    {
+     "title": "PENG Stock Rallies To Over 2-Month High After Wall Street Hikes Price Targets On Q4 Beat, Guidance Raise",
+     "provider": "stocktwits",
+     "published": 1791395305
+    },
+    {
+     "title": "Penguin Solutions Is Maintained at Buy by Rosenblatt",
+     "provider": "dow-jones",
+     "published": 1791391020
+    },
+    {
+     "title": "Rosenblatt maintains Buy rating on Penguin Solutions, $100 price target",
+     "provider": "tradingview_analyst_updates",
+     "published": 1791390475
+    },
+    {
+     "title": "Penguin Solutions, Inc. Stock 12‑Month Price Target Raised to $83.57, Implies 30% Upside",
+     "provider": "tradingview",
+     "published": 1791390004
+    },
+    {
+     "title": "Penguin Solutions Price Target Raised to $60.00/Share From $40.00 by Barclays",
+     "provider": "dow-jones",
+     "published": 1791386460
+    },
+    {
+     "title": "Penguin Solutions Says Agentic AI Is Creating New Memory Boom",
+     "provider": "benzinga",
+     "published": 1791382283
+    },
+    {
+     "title": "Penguin Solutions (PENG) Stock Trades Up, Here Is Why",
+     "provider": "stockstory",
+     "published": 1791381643
+    },
+    {
+     "title": "Stifel maintains Buy rating on Penguin Solutions, $85 price target",
+     "provider": "tradingview_analyst_updates",
+     "published": 1791380619
+    },
+    {
+     "title": "Penguin Solutions Price Target Raised to $85.00/Share From $75.00 by Stifel",
+     "provider": "dow-jones",
+     "published": 1791380100
+    },
+    {
+     "title": "PENG Q4 Earnings Call Signals Faster AI Infrastructure Growth",
+     "provider": "zacks",
+     "published": 1791378000
+    },
+    {
+     "title": "Penguin Solutions Is Maintained at Buy by Needham",
+     "provider": "dow-jones",
+     "published": 1791372360
+    },
+    {
+     "title": "Needham maintains Buy rating on Penguin Solutions, $85 price target",
+     "provider": "tradingview_analyst_updates",
+     "published": 1791371813
+    },
+    {
+     "title": "Penguin Solutions' Memory Business Soars on AI Demand. Can Its Stock Rally Again? — Barrons.com",
+     "provider": "dow-jones",
+     "published": 1791369780
+    },
+    {
+     "title": "Penguin Solutions jumps premarket following strong Q4 beat, upbeat outlook, and CFO appointment",
+     "provider": "seekingalpha",
+     "published": 1791364534
+    },
+    {
+     "title": "Penguin Solutions profit jumps 888% on AI demand: can PENG justify a 228% rally?",
+     "provider": "invezz",
+     "published": 1791359391
+    },
+    {
+     "title": "Why Is PENG Stock Rising More Than 7% Overnight?",
+     "provider": "stocktwits",
+     "published": 1791343531
+    },
+    {
+     "title": "Penguin Solutions Q4 Earnings Call Highlights",
+     "provider": "marketbeat",
+     "published": 1791331330
+    },
+    {
+     "title": "Penguin Solutions Inc reports results for the quarter ended August 31 - Earnings Summary",
+     "provider": "reuters",
+     "published": 1791320469
+    },
+    {
+     "title": "Penguin Solutions (NASDAQ:PENG) Reports Strong Q3 But Inventory Levels Increase",
+     "provider": "stockstory",
+     "published": 1791319406
+    },
+    {
+     "title": "Penguin Solutions Names Cumming CFO, Reports Surging 4Q Profit on AI Demand",
+     "provider": "dow-jones",
+     "published": 1791318900
+    },
+    {
+     "title": "Penguin Solutions posts record Q4 revenue $567M, raises FY27 outlook to ~$2.43B",
+     "provider": "tradingview",
+     "published": 1791318782
+    },
+    {
+     "title": "Penguin Solutions Non-GAAP EPS of $1.00 beats by $0.23, revenue of $567M beats by $46.01M",
+     "provider": "seekingalpha",
+     "published": 1791318779
+    },
+    {
+     "title": "Penguin Solutions names Stephen Cumming as CFO",
+     "provider": "seekingalpha",
+     "published": 1791318204
+    },
+    {
+     "title": "Penguin Solutions Q4 revenue jumps 68%; raises FY27 guidance as AI infrastructure demand accelerates ",
+     "provider": "reuters",
+     "published": 1791317941
+    },
+    {
+     "title": "Penguin Solutions Cumming Appiontment Effective Immediately >PENG",
+     "provider": "dow-jones",
+     "published": 1791317220
+    }
+   ],
+   "tv_items_note": "the 25 same-day items the LIVE shadow recorded as tv_items_we_missed (real titles, providers and unix `published`); tv_item_count was 25 so this is the whole window"
+  },
+  "BFLY": {
+   "ticker": "BFLY",
+   "alert_date": "2026-06-18",
+   "our_captured_at": "2026-06-18T07:01:02.408885-04:00",
+   "our_corpus": {
+    "polygon": [
+     {
+      "title": "16 Million People, One Underserved Disease: The AI Imaging Push to Close the Congenital Heart Gap",
+      "published": "2026-06-16T13:11:00Z"
+     }
+    ],
+    "alpaca": [
+     {
+      "title": "Why Smith & Wesson Brands Shares Are Trading Higher By Around 17%; Here Are 20 Stocks Moving Premarket",
+      "published": "2026-06-18T10:10:28+00:00"
+     }
+    ],
+    "fmp": [
+     {
+      "title": "Butterfly Network TD Cowen Call Puts Volatile Growth Story In Focus",
+      "published": null
+     },
+     {
+      "title": "Is American Well (AMWL) Stock Outpacing Its Medical Peers This Year?",
+      "published": null
+     },
+     {
+      "title": "Is Butterfly Network (BFLY) Outperforming Other Medical Stocks This Year?",
+      "published": null
+     },
+     {
+      "title": "Undervalued Opportunities: Top Penny Stocks To Watch In May 2026",
+      "published": null
+     },
+     {
+      "title": "Assessing Butterfly Network (BFLY) Valuation After Mixed Trading And Strong One Year Shareholder Return",
+      "published": null
+     }
+    ]
+   },
+   "our_perplexity_present": true,
+   "tv_items": [
+    {
+     "title": "16 Million People, One Underserved Disease: The AI Imaging Push to Close the Congenital Heart Gap",
+     "provider": "benzinga",
+     "published": 1781615460,
+     "published_is_synthetic": true,
+     "published_note": "placed window filler; the real Polygon published_utc is 2026-06-16T13:11Z"
+    },
+    {
+     "title": "Butterfly Network Provides Commentary on Midjourney Medical's Full Body Ultrasound Scanner Announcement",
+     "provider": "business_wire",
+     "published": 1781784300,
+     "published_is_synthetic": true
+    },
+    {
+     "title": "BFLY Stock Hits Four-Year High — What Is Butterfly Network's Connection With AI Startup Midjourney?",
+     "provider": "stocktwits",
+     "published": 1781798160,
+     "published_is_synthetic": false,
+     "published_note": "11:56 ET is the documented Stocktwits timestamp (08:56 PDT)"
+    }
+   ],
+   "tv_items_note": "NOT a live capture — the window rolled past June. Titles are the two documented TradingView-carried pieces; the Business Wire time is a placed assumption (premarket), the Stocktwits time is documented."
+  }
+ },
+ "expected": {
+  "ACN": {
+   "tv_items_before_grade": 0,
+   "tv_items_in_repoll_window": 1,
+   "tv_items_after_cutoff": 24,
+   "tv_coverage_reaches_grade_time": false,
+   "tv_items_we_missed": null,
+   "why": "every TV item is after our 07:10 ET capture; oldest window item 09:31 ET, so the window cannot speak to grade time -> NULL, never a list"
+  },
+  "PENG": {
+   "tv_items_before_grade": 17,
+   "tv_items_in_repoll_window": 1,
+   "tv_items_after_cutoff": 7,
+   "tv_coverage_reaches_grade_time": true,
+   "tv_items_we_missed": [],
+   "must_match_as_story": [
+    [
+     "Penguin Solutions names Stephen Cumming as CFO",
+     "Penguin Solutions Appoints Stephen Cumming As CFO, Effective Immediately"
+    ],
+    [
+     "Needham maintains Buy rating on Penguin Solutions, $85 price target",
+     "Needham Maintains Buy on Penguin Solutions, Raises Price Target to $85"
+    ],
+    [
+     "Penguin Solutions Price Target Raised to $85.00/Share From $75.00 by Stifel",
+     "Stifel Maintains Buy on Penguin Solutions, Raises Price Target to $85"
+    ],
+    [
+     "Penguin Solutions Q4 Earnings Call Highlights",
+     "Penguin Solutions Reports Q4 2026 Results: Full Earnings Call Transcript"
+    ]
+   ],
+   "must_match_as_class_not_story": [
+    [
+     "Rosenblatt maintains Buy rating on Penguin Solutions, $100 price target",
+     "Stifel Maintains Buy on Penguin Solutions, Raises Price Target to $85"
+    ]
+   ],
+   "why": "17 items before our 09:35 ET capture: 11 retitles + 6 commentary on stories we held (hand-read); the one re-poll-window item (Stifel via TradingView's analyst feed, 09:43) is a retitle of our 09:25 Stifel item; 0 stories we lacked"
+  },
+  "BFLY": {
+   "tv_items_before_grade": 0,
+   "tv_items_in_repoll_window": 1,
+   "tv_items_after_cutoff": 1,
+   "tv_coverage_reaches_grade_time": true,
+   "filler_note": "the 06-16 filler is OUTSIDE the same-day window (06-18, or 06-17 >= 16:00 ET) so it falls in no bucket; it exists only so the oldest item of the window is <= our capture, as a real 25-item window would be",
+   "tv_items_we_missed_titles": [
+    "Butterfly Network Provides Commentary on Midjourney Medical's Full Body Ultrasound Scanner Announcement"
+   ],
+   "tv_items_we_missed_bucket": "repoll_window",
+   "why": "a true miss must survive: the release arrived after our 07:01 grade but inside the actionable window (the #344 re-poll class); our 7 items hold no catalyst-class story, so neither class nor move absorbs it. The Stocktwits piece (11:56) is after the cutoff -> counted, not missed. The filler item is one we held -> matched as title."
+  }
+ }
+}
