@@ -8430,9 +8430,12 @@ def start_scheduler() -> AsyncIOScheduler:
     # months and double-counted the morning's fills — see the job docstring).
     # Scores every queued candidate, marks shadow_rank + shadow_allocated, emits
     # `unified_allocation_decided` with the full ranking. Does NOT submit.
-    # Contention: nothing else fires at :28 (ep_scan is */5, the ORB bar stream
-    # wakes at 09:30, ep_scan_open at 09:31); the job is a handful of DB reads
-    # and row stamps (~50 ms on the 09:35 audit timestamps). misfire_grace_time
+    # Contention: no other once-a-day job fires at :28 (ep_scan is */5, the ORB
+    # bar stream wakes at 09:30, ep_scan_open at 09:31). The every-minute
+    # execution watchdogs (stuck_fill_watchdog, stop_ack_timeout_watchdog) DO fire
+    # at 09:28:00 — exactly as they did at 09:35:00, so the move adds no new
+    # contention; the job is a handful of DB reads and row stamps (43 runs in
+    # mi_job_runs over 60 days, all success, 20-543 ms each). misfire_grace_time
     # = 90 s is the pre-open bound: a stalled loop may start it as late as
     # 09:29:30 but never at or after 09:30, so a late run still reads a book
     # with no same-day fills in it. Past the grace it is SKIPPED and paged

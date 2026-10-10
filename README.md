@@ -90,7 +90,7 @@ Apollo runs semi-automated paper trading via Alpaca. Two independent systems sha
 | Morning stops | 9:35 AM — GTC stop orders refreshed for Day 2+ positions; stale `stop_order_id` nulled on update failure for orphan reconciliation |
 | EOD cleanup | 4:05 PM — cancel unfilled entries (preserves prior fill history); 9:00 PM evening backstop catches late EXPIRED events |
 | Position limit config | `MAX_CONCURRENT_LIVE_POSITIONS=5` in `constants.py` |
-| **Cross-strategy allocator** | Shadow phase (#43, 5/8) — strategies enqueue to `mi_pending_allocations`; 9:35 AM allocator scores composite (40/30/20/10), emits `unified_allocation_decided` audit. Phase 1B activation gated on ≥5 days shadow telemetry. See `cross_strategy_allocator.py` |
+| **Cross-strategy allocator** | Shadow phase (#43, 5/8) — strategies enqueue to `mi_pending_allocations`; 9:28 AM ET allocator (before the 9:31 ORB submits, #312) scores composite (40/30/20/10) against the pre-entry live book, emits `unified_allocation_decided` audit. Phase 1B activation gated on ≥5 days shadow telemetry. See `cross_strategy_allocator.py` |
 
 **Status:** Paper trading live on Alpaca paper account ($100K). Collecting data to validate before real money.
 
@@ -358,11 +358,11 @@ No Z-norm — multi-day spike (5/8) showed it systemically penalizes MAGNA53's c
 
 **Phase 1A (shadow, current):**
 - Strategies enqueue to `mi_pending_allocations`
-- 9:35 AM ET cron drains, scores, marks `shadow_rank` + `shadow_allocated`
+- 9:28 AM ET cron (moved from 9:35 on 2026-10-10, #312) drains, scores, marks `shadow_rank` + `shadow_allocated`
 - Emits `unified_allocation_decided` audit event with full ranking
 - Legacy submission paths run unchanged
 
-**Phase 1B activation** (gated on ≥5 days shadow telemetry, earliest 5/15): move cron to 9:28 ET pre-market, add price-freshness HARD gate (>1.5% past trigger → drop), refactor strategies to drain queue (winners only), intraday re-sweep on stop/exit events, FCFS fallback.
+**Phase 1B activation** (gated on ≥5 days shadow telemetry, earliest 5/15): (the shadow cron already runs at 9:28 ET as of #312 Step A, 2026-10-10) add price-freshness HARD gate (>1.5% past trigger → drop), refactor strategies to drain queue (winners only), intraday re-sweep on stop/exit events, FCFS fallback.
 
 Spec: `~/.claude/plans/cross-strategy-ranking-spike.md`. Spike harness: `scripts/probes/spike_unified_allocator.py`.
 
@@ -548,9 +548,10 @@ Show logs excluded → exclusion events
 |---|---|---|
 | 7:00 AM | 4:00 AM | MAGNA53 EP scan starts; HIGH alerts fire in real-time + bar stream subscriptions; allocator queue starts filling |
 | 9:00 AM | 6:00 AM | Morning briefing → Telegram |
+| 9:28 AM | 6:28 AM | **Cross-strategy allocator shadow** (#312, moved from 9:35 on 2026-10-10) — ranks the queue against the pre-entry live book BEFORE the 9:31 ORB submits, emits `unified_allocation_decided`; submits nothing |
 | 9:30 AM | 6:30 AM | 9M EP intraday scan starts (every 5 min) |
 | 9:31 AM | 6:31 AM | Post-open EP scan; ORB orders placed for new HIGHs (MAGNA53). *(9M Day-2 ORB entries also fired here until 2026-08-02, when that strategy was deleted — #515.)* |
-| 9:35 AM | 6:35 AM | Bar stream cleanup; morning stop refresh for Day 2+ positions; **cross-strategy allocator shadow** — scores queue, emits `unified_allocation_decided` |
+| 9:35 AM | 6:35 AM | Bar stream cleanup; morning stop refresh for Day 2+ positions |
 | 9:35–10:00 AM | 6:35–7:00 AM | Fill checker — poll Alpaca for order fills |
 | 10:00 AM | 7:00 AM | MAGNA53 EP scan stops; ORB unfilled-entry cleanup |
 | 4:00 PM | 1:00 PM | 9M EP intraday scan stops |
@@ -805,7 +806,7 @@ OAuth token recovery (if the gdrive upload itself starts failing): see [`docs/op
 - ✅ **Track 1 trade-state ownership refactor (5/17)** — T1.1 dropped stop_price/hard_stop from entry-fill UPDATE (KLAR/ARM bug source); T1.2 dropped stop_price from partial-fired wrapping UPDATE; T1.4 dropped redundant writes from no-partial branch (BW class + LOST UPDATE hazard). Cuts stop_price writers 7→4, partial_taken writers 2→1. SSoT: `docs/architecture/trade-state-ownership.md`
 - ✅ **P&L attribution column (5/14)** — `mi_live_trades.pnl_attribution` excludes incident damage from methodology evaluation metrics. NULL = methodology (default); non-NULL names the incident. Account equity still reflects actual hit; only Gate 3 paper R-expectancy + system review aggregations filter on this column
 - ✅ **Preflight smoke test (#84, 5/13)** — `scripts/preflight_check.py` walks every enabled non-shadow strategy through `_check_safeguards`. Run as final deploy step. The 2026-05-13 outage (seed × dual-account mismatch — `phase='live'` rows but `ENABLE_LIVE_MODE=false`) would have been caught here
-- ✅ **Cross-strategy unified allocator Phase 1A (#31, shadow ship 5/8)** — `mi_pending_allocations` queue + `cross_strategy_allocator.py` module + 9:35 AM shadow cron. MAGNA53 + 9M Day 2 strategies enqueue; allocator scores 40/30/20/10 (setup/catalyst/volume/regime), emits `unified_allocation_decided` audit. Z-norm DROPPED post-spike (8-day simulation showed it systemically penalizes MAGNA53's cap-saturated top-tier scores). Phase 1B activation gated on ≥5 days shadow telemetry (earliest 5/15)
+- ✅ **Cross-strategy unified allocator Phase 1A (#31, shadow ship 5/8)** — `mi_pending_allocations` queue + `cross_strategy_allocator.py` module + 9:35 AM shadow cron (moved to 9:28 AM ET 2026-10-10, #312 — `docs/architecture/cross_strategy_allocator.md`). MAGNA53 + 9M Day 2 strategies enqueue; allocator scores 40/30/20/10 (setup/catalyst/volume/regime), emits `unified_allocation_decided` audit. Z-norm DROPPED post-spike (8-day simulation showed it systemically penalizes MAGNA53's cap-saturated top-tier scores). Phase 1B activation gated on ≥5 days shadow telemetry (earliest 5/15)
 - ✅ **Drawdown circuit breaker (#39, shadow ship 5/8)** — methodology-aware state machine replacing count-based breaker. Daily 4:12 PM ET cron snapshots Alpaca equity (includes unrealized — open winners lift), recomputes state with asymmetric hysteresis (-5% trip / -2.5% release). State-aware threshold check eliminates flap-spam; stale-data fail-open prevents silent cron-failure lockout. Promotion gated on ≥14d post-live-cutover
 - ✅ **Stable-anchor pivot for flag detector (#37, 5/8)** — pivot only walks forward when current lookback's max_high beats prior pivot by ≥1%. Fixes marginal-walk-forward where slow higher-highs in tight increments kept `base_age` stuck at zero. Replay-verified on XNDU/VECO/OKLO calibration cases
 - ✅ **5/7 paper-session triage (5/8)** — five additive fixes: parabolic earnings-day exclusion + `days_up_streak ≥ 3` hard gate (AGL/XMTR class); EP earnings-day catalyst boost (DDOG/AAON class); EP cooldown bypass on fresh earnings (HIMX class); pm-shares floor relative-anomaly carveout (`pm_rvol ≥ 5×`); phantom split sanity check via post-apply ratio

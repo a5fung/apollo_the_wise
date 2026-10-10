@@ -1,0 +1,77 @@
+=== A. status vocabulary of mi_live_trades by account_mode (which statuses can a closed row carry?) ===
+account_mode	status	n	with_closed_at	with_confirmed_at
+live	cancelled	21	4	17
+live	closed	34	34	34
+live	filled	3	0	3
+live	skipped	75	0	0
+paper	cancelled	36	0	36
+paper	closed	34	34	34
+paper	skipped	149	0	0
+(7 rows)
+=== B. 2026-10-09: the allocator audit row the 09:35 run wrote (finding 3 baseline) ===
+et	summary	detail
+2026-10-09 09:35:00.049102	slots=0 winners=[] n=1 (1 lower-ranked)	{"target_date": "2026-10-09", "regime": "Correcting", "open_positions": 5, "slots_available": 0, "n_candidates": 1, "n_winners": 0, "winners": [], "lower_ranked": [{"rank": 1, "ticker": "HUM", "strategy": "magna53", "composite": 77.82, "legacy_eligible": "eligible"}], "first_cascade_candidate": {"rank": 1, "ticker": "HUM", "strategy": "magna53", "composite": 77.82, "legacy_eligible": "eligible"}}
+(1 row)
+=== C. 2026-10-09: the #687 paper rehearsal events (rows deleted 09:41) ===
+et	event_type	summary
+2026-10-09 09:40:00.920718	paper_rehearsal_687_state	#687 paper rehearsal state
+2026-10-09 09:41:03.382993	planned_sale_stop_cancel	KO: cancelling stop 5a09fb83 on purpose — a planned sale (paper_rehearsal_687_cleanup) replaces it
+2026-10-09 09:41:03.400128	planned_sale_stop_cancel	PEP: cancelling stop d5d321c4 on purpose — a planned sale (paper_rehearsal_687_cleanup) replaces it
+2026-10-09 09:41:10.958158	paper_rehearsal_687_end	#687 paper rehearsal cleanup: deleted 2 row(s); residue 0
+(4 rows)
+=== D. live rows that were open at 2026-10-09 09:35 ET (alert_date, mode, status, confirmed/closed ET) ===
+id	ticker	account_mode	status	alert_date	confirmed_et	closed_et
+404	KOD	live	filled	2026-09-28	2026-09-28 09:31:00.80085	
+414	PENG	live	filled	2026-10-07	2026-10-07 09:35:46.679288	
+419	HUM	live	filled	2026-10-09	2026-10-09 09:31:00.458095	
+(3 rows)
+=== E. paper rows that exist at all with id 417/418 (deleted -> expect 0 rows) ===
+id	ticker	account_mode	status	alert_date
+(0 rows)
+=== F. the two check queries per allocator-audit day: CHECK-TIME status count vs the 09:28 book rebuilt from timestamps ===
+naive = status IN open AND live AND alert_date < D, evaluated NOW (the flawed cross-check)
+rebuilt = live AND alert_date < D AND confirmed_at < D 09:28 ET AND (closed_at IS NULL OR closed_at >= D 09:28 ET) AND status NOT IN (cancelled, skipped)
+d	naive_status_now	rebuilt_0928	audit_open_positions
+2026-08-12	0	2	2
+2026-08-13	0	2	2
+2026-08-14	0	2	3
+2026-08-17	0	2	2
+2026-08-18	0	2	3
+2026-08-19	0	3	5
+2026-08-20	0	3	3
+2026-08-21	0	3	
+2026-08-24	0	3	
+2026-08-25	0	2	
+2026-08-26	0	2	
+2026-08-27	0	2	4
+2026-08-28	0	4	5
+2026-08-31	0	4	
+2026-09-01	0	2	
+2026-09-02	0	2	
+2026-09-03	0	2	2
+2026-09-04	0	2	
+2026-09-08	0	2	4
+2026-09-09	0	3	
+2026-09-10	0	3	
+2026-09-11	0	3	
+2026-09-14	0	3	4
+2026-09-15	0	3	
+2026-09-16	0	2	
+2026-09-17	0	2	3
+2026-09-18	0	3	
+2026-09-21	0	3	3
+2026-09-22	0	3	
+2026-09-23	0	2	
+2026-09-24	0	2	
+2026-09-25	0	2	3
+2026-09-28	0	2	2
+2026-09-29	1	2	
+2026-09-30	1	2	
+2026-10-01	1	2	
+2026-10-02	1	2	
+2026-10-05	1	2	2
+2026-10-06	1	2	3
+2026-10-07	1	3	
+2026-10-08	2	3	3
+2026-10-09	2	2	5
+(42 rows)

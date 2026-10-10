@@ -267,8 +267,10 @@ async def run_shadow_allocation(target_date: date) -> dict:
         await db.log_audit_event(
             "unified_allocation_decided",
             f"empty queue for {target_date}",
+            # Same keys as the full row (ranked_ids = []) so the Step B join
+            # `id NOT IN ranked_ids` never meets a NULL on a quiet morning.
             detail='{"target_date":"' + target_date.isoformat() + '","n_candidates":0'
-                   + ',"ranked_at_et":"' + ranked_at.isoformat() + '"}',
+                   + ',"ranked_at_et":"' + ranked_at.isoformat() + '","ranked_ids":[]}',
         )
         return {"n_candidates": 0, "n_winners": 0, "top_picks": [], "lower_ranked": []}
 

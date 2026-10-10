@@ -1,0 +1,12 @@
+column_name	data_type
+alert_date	date
+status	text
+proposed_at	timestamp with time zone
+confirmed_at	timestamp with time zone
+skip_reason	text
+created_at	timestamp with time zone
+filled_at	timestamp with time zone
+closed_at	timestamp with time zone
+account_mode	text
+dead_stop_recorded_at	timestamp with time zone
+(10 rows)

@@ -42,7 +42,9 @@ row ids this ranking saw, in rank order), `n_candidates`, `n_winners`, `winners[
 `lower_ranked[]` (≤10) each with `rank / ticker / strategy / composite / legacy_eligible` (#415:
 `eligible` = ep_score ≥ the regime HIGH bar; a deprecated strategy = `ineligible`; anything
 else `unclassified`), `first_cascade_candidate` (#415, data only — cascade BEHAVIOUR is an open
-operator fork). An empty queue writes `{target_date, n_candidates: 0, ranked_at_et}`.
+operator fork). An empty queue writes `{target_date, n_candidates: 0, ranked_at_et, ranked_ids: []}`
+— the same two stamps as a full row (18 of the last 31 mornings had an empty queue, so a row
+without `ranked_ids` would read NULL to the Step B join and to the day-one check).
 `ranked_at_et` + `ranked_ids` were added 2026-10-10 for the Step B bar below.
 
 ### Who reads it (verified 2026-10-10 — nothing on the money path)
@@ -73,6 +75,13 @@ module; the cap safeguard counts through `live_tracker.count_open_positions` (it
   (INTC 09-21); after 09:35: 17 rows that NO run has ever ranked. The queue is non-empty at
   09:28 on 12 of 32 days vs 13 of 31 at 09:35, so the move costs one row in 45 days; every one
   of the 15 live entries in the window was confirmed on its own `alert_date` at 09:31–09:36 ET.
+- **The live-account filter fixes contamination that already happened** (prod read 2026-10-10,
+  `scripts/probes/_wk1010_312/q4_fix_round.out`): the 2026-10-09 09:35 row read
+  `open_positions=5, slots=0` with HUM (the only candidate) ranked below the cut — but only 3 live
+  rows were open (KOD, PENG, and HUM itself, filled at 09:31). The other 2 were the #687 paper
+  rehearsal's KO and PEP rows, deleted at 09:41. On the pre-entry live book (KOD, PENG) the same
+  morning has `open_positions=2, slots=3` and HUM wins. The live safeguard was unaffected — it
+  counts per account.
 
 ## The ruling, and the bar for Step B (written before the data)
 
@@ -90,6 +99,32 @@ arrival "outranks" when its `composite_score` beats the lowest `composite` in `w
 (ties by the tie-break key). `created_at` is last-write and must not be used for arrival;
 `mi_ep_scan_log.scan_time_et` (first HIGH/MODERATE row) is the cross-check.
 
+## Checking a morning live (`scripts/probes/_wk1010_312/q4_fix_round.sql` §F runs this over 60 days)
+
+Rebuild the 09:28 book from timestamps and compare it to the audit row's `open_positions` for the
+same `D` (the ET date). **Never** count by status at check time — a position that closed after
+09:28 is no longer `filled`, so that count reads low (on the 42 audit days since 08-12 it read
+below the rebuilt book on 41, and 0 against a true 2–4 on 33).
+
+```sql
+SELECT COUNT(*) FROM mi_live_trades
+WHERE account_mode = 'live' AND alert_date < D
+  AND confirmed_at < (D + TIME '09:28') AT TIME ZONE 'America/New_York'
+  AND (closed_at IS NULL OR closed_at >= (D + TIME '09:28') AT TIME ZONE 'America/New_York')
+  AND status NOT IN ('cancelled', 'skipped');
+```
+
+- **Proves:** the count is the live pre-entry book — a paper row open at 09:28 is not in it
+  (the old code read it +N), and a position that closed after 09:28 still is.
+- **Does NOT prove the `alert_date <` cutoff.** At 09:28 no same-day row exists yet (all 15 live
+  rows of the last 45 days were created 09:31–09:36), so the cutoff changes nothing on a normal
+  morning (the 90 s grace keeps even a late run before 09:30);
+  a build that dropped it would read the same here. Only
+  `test_slots_come_from_the_pre_entry_live_book_not_the_live_count` pins it — it bites on a run
+  after the 09:31 entries (a manual re-run, a widened grace).
+- **The stamp proves ordering:** `ranked_at_et` earlier than the day's first live `confirmed_at`
+  (09:31) is the check that the job ran before the entries.
+
 ## Change log (newest first)
 
 ### 2026-10-10 — #312 Step A: 09:35 → 09:28 ET, and the book is the PRE-ENTRY live book (operator-signed 2026-09-14)
@@ -100,7 +135,7 @@ unchanged) and the allocator passes `("live", target_date)`; the audit row gaine
 **Unchanged (THE LINE):** cap value, open-status vocabulary, every entry/skip/fill path; the job
 still submits nothing. **Tests:** `tests/test_allocator_legacy_eligibility.py` (slot math with
 the morning's fills present — fails on the 09:35 code; the registered cron + grace bound; the
-bound query parameters; the audit fields). **Known cost, signed:** rows first enqueued after
+bound query parameters; the audit fields incl. `ranked_ids: []` on an empty queue). **Known cost, signed:** rows first enqueued after
 09:28 (the 09:31 `ep_scan_open` upgrades) are not ranked — the Step B bar above decides whether
 that matters. Probe files: `scripts/probes/_wk1010_312/`.
 
