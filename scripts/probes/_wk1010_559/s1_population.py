@@ -13,11 +13,11 @@ CLS = ["ep_rt_universe_catch", "ep_rt_floor_flip_up", "ep_rt_admit", "ep_rt_live
 
 
 def win(t: str) -> str:
-    if "09:31" <= t <= "09:44":
+    """The 09:30 tick is FOLDED INTO the in-window class (entered from 09:31, like 09:31-09:44). The
+    first cut gave it its own '0930' bucket that no table read, so 5 ticker-days fell out of every class."""
+    if "09:30" <= t <= "09:44":
         return "inwin"
-    if t < "09:30":
-        return "preopen"
-    return "0930" if t == "09:30" else "late"
+    return "preopen" if t < "09:30" else "late"
 
 
 first: dict[tuple, dict] = {}

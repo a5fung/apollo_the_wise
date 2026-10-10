@@ -1,0 +1,23 @@
+event rows 1447 | deduped (day,ticker,class) 684
+   ('ep_rt_admit', 'inwin', 'true') 9
+   ('ep_rt_admit', 'late', 'true') 51
+   ('ep_rt_admit', 'preopen', 'true') 213
+   ('ep_rt_floor_flip_up', 'inwin', 'true') 47
+   ('ep_rt_floor_flip_up', 'late', 'true') 89
+   ('ep_rt_floor_flip_up', 'preopen', 'true') 129
+   ('ep_rt_live_miss', 'inwin', '') 3
+   ('ep_rt_universe_catch', 'inwin', 'true') 30
+   ('ep_rt_universe_catch', 'late', 'true') 40
+   ('ep_rt_universe_catch', 'preopen', 'true') 73
+UNION ticker-days 424 {'preopen': 255, 'inwin': 75, 'late': 94} | days 24 2026-09-08 2026-10-09
+coverage pairs 424
+  union-inwin: n=75 has_0930=74 orb_bars>=10: 63 rth_bars>=300: 52
+  union-preopen: n=255 has_0930=254 orb_bars>=10: 207 rth_bars>=300: 159
+  union-all: n=424 has_0930=421 orb_bars>=10: 352 rth_bars>=300: 272
+alerts 28 HIGH 20 pre-open HIGH 12 alert days 14
+alert pair minute coverage (rth bars): [('ERO', '2026-09-08', '384'), ('IONQ', '2026-09-08', '390'), ('PHVS', '2026-09-08', '390'), ('QCOM', '2026-09-08', '390'), ('ROIV', '2026-09-08', '390'), ('SEI', '2026-09-08', '389'), ('DFTX', '2026-09-14', '387'), ('SRRK', '2026-09-14', '365'), ('CIFR', '2026-09-16', '390'), ('GNRC', '2026-09-17', '390'), ('VICR', '2026-09-17', '375'), ('INTC', '2026-09-21', '390'), ('MSTR', '2026-09-21', '390'), ('ONON', '2026-09-22', '390'), ('AKAM', '2026-09-25', '390'), ('KOD', '2026-09-28', '390'), ('ACN', '2026-10-01', '390'), ('SNPS', '2026-10-01', '390'), ('ITUB', '2026-10-05', '390'), ('NU', '2026-10-05', '390'), ('PBR', '2026-10-05', '390'), ('CEG', '2026-10-06', '390'), ('TLN', '2026-10-06', '390'), ('VST', '2026-10-06', '390'), ('PENG', '2026-10-07', '390'), ('WOLF', '2026-10-08', '390'), ('AAOI', '2026-10-09', '390'), ('HUM', '2026-10-09', '390')]
+alerts inside the event union: 28 of 28
+in-window crossers that alerted: [('2026-09-08', 'IONQ', 'ep_rt_floor_flip_up', '09:35'), ('2026-09-21', 'INTC', 'ep_rt_floor_flip_up', '09:31'), ('2026-09-21', 'MSTR', 'ep_rt_floor_flip_up', '09:35'), ('2026-10-07', 'PENG', 'ep_rt_floor_flip_up', '09:35'), ('2026-10-09', 'AAOI', 'ep_rt_floor_flip_up', '09:35')]
+scanlog pairs 450 | union pairs with scan-log rows 424
+in-window crossers with NO scan-log row: 0 []
+capture-2 pairs: 424 tickers: 328

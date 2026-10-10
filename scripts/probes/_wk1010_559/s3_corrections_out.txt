@@ -1,0 +1,91 @@
+====================================================================================================
+1. THE 'GRADE KEEPS THEM OUT' CLAIM — names behind the tail, by recorded stage
+====================================================================================================
+  2026-09-17 NUAI: 15 scan rows, 3 past the gap floor
+     09:35:00 stage=post_grade_filter score=    - tier=-         cat=routine  | routine catalyst, gap 11.1%
+     09:40:00 stage=post_grade_filter score=    - tier=-         cat=routine  | routine catalyst, gap 10.6%
+     09:45:00 stage=post_grade_filter score=    - tier=-         cat=routine  | routine catalyst, gap 9.2%
+  2026-10-01 TDAY: 18 scan rows, 5 past the gap floor
+     09:35:00 stage=post_grade_filter score=    - tier=-         cat=routine  | routine catalyst, gap 10.9%
+     09:40:00 stage=score_bar         score= 27.5 tier=-         cat=routine  | score 28 < bar 65 (catalyst=routine)
+     09:45:00 stage=score_bar         score= 27.5 tier=-         cat=routine  | score 28 < bar 65 (catalyst=routine)
+     09:50:00 stage=score_bar         score= 27.5 tier=-         cat=routine  | score 28 < bar 65 (catalyst=routine)
+     09:55:00 stage=score_bar         score= 27.5 tier=-         cat=routine  | score 28 < bar 65 (catalyst=routine)
+  2026-09-09 FTK: 11 scan rows, 6 past the gap floor
+     09:31:00 stage=rvol_gate         score=    - tier=-         cat=-        | filter:session_rvol_too_low: session_rvol=0.02x (today 330 / baseline 17,743 n
+     09:35:00 stage=cooldown          score=    - tier=-         cat=-        | EP cooldown — alerted within last 60 days
+     09:40:00 stage=cooldown          score=    - tier=-         cat=-        | EP cooldown — alerted within last 60 days
+     09:45:00 stage=cooldown          score=    - tier=-         cat=-        | EP cooldown — alerted within last 60 days
+     09:50:00 stage=cooldown          score=    - tier=-         cat=-        | EP cooldown — alerted within last 60 days
+     09:55:00 stage=cooldown          score=    - tier=-         cat=-        | EP cooldown — alerted within last 60 days
+  2026-09-18 FWDI: 32 scan rows, 5 past the gap floor
+     09:35:00 stage=post_grade_filter score=    - tier=-         cat=mna      | M&A/buyout catalyst — no momentum trade
+     09:40:00 stage=post_grade_filter score=    - tier=-         cat=mna      | M&A/buyout catalyst — no momentum trade
+     09:45:00 stage=post_grade_filter score=    - tier=-         cat=mna      | M&A/buyout catalyst — no momentum trade
+     09:50:00 stage=post_grade_filter score=    - tier=-         cat=mna      | M&A/buyout catalyst — no momentum trade
+     09:55:00 stage=post_grade_filter score=    - tier=-         cat=mna      | M&A/buyout catalyst — no momentum trade
+  2026-09-08 RGTI: 30 scan rows, 5 past the gap floor
+     09:31:00 stage=post_grade_filter score=    - tier=-         cat=strong   | M&A/buyout catalyst — no momentum trade
+     09:35:00 stage=post_grade_filter score=    - tier=-         cat=strong   | M&A/buyout catalyst — no momentum trade
+     09:40:00 stage=post_grade_filter score=    - tier=-         cat=strong   | M&A/buyout catalyst — no momentum trade
+     09:45:00 stage=post_grade_filter score=    - tier=-         cat=strong   | M&A/buyout catalyst — no momentum trade
+     09:50:00 stage=post_grade_filter score=    - tier=-         cat=strong   | M&A/buyout catalyst — no momentum trade
+  2026-09-17 ATTO: 2 scan rows, 1 past the gap floor
+     09:35:00 stage=post_grade_filter score=    - tier=-         cat=strong   | pre-mkt volume 777 < 25,000 shares
+  BGSI (the one in-window name that never held the floor at a scan tick):
+     ('2026-09-11', 'BGSI'): stages {'gap_floor': 2}; first event [('live_miss', '09:35', '10.21')]
+  FTK 2026-09-09 first minute bars (et_min open high low close volume):
+     2026-09-09 09:30 26.79 26.8 26.79 26.8 vol 330
+     2026-09-09 09:32 26.93 26.93 26.8 26.8 vol 818
+     2026-09-09 09:33 27.5 28.23 27.36 27.61 vol 5315
+     2026-09-09 09:34 27.62 28.6301 27 27.79 vol 36858
+
+====================================================================================================
+2. TRADES THE SWITCHES ADDED — CEG 10-06 and PENG 10-07: real-time vs delayed feed through the morning
+====================================================================================================
+  2026-10-06 CEG alert: {'detected_et': '08:25:00', 'gap_pct': '9.18', 'ep_score': '65', 'score_tier': 'HIGH'}
+     event 08:25 floor_flip_up    rt 9.18% delayed 7.47%  CEG rt 9.2% ≥9 > delayed 7.5% @ 08:25 ET
+     event 08:40 floor_flip_down  rt 8.65% delayed 9.3%  CEG delayed 9.3% >=9 > rt 8.7% (stale false-admit REMOVED)
+     event 09:50 admit            rt 13.28% delayed 12.91%  CEG rt 13.3% and delayed 12.9% BOTH >=9 @ 09:50 ET — real-time AGREES with the admit
+     scan ticks where the DELAYED feed read >= 9% (scan_et, rt, delayed): [('08:40:00', '8.65', '9.3'), ('08:45:00', '8.36', '9.21'), ('09:50:00', '13.28', '12.91'), ('09:55:00', '15.53', '12.38')]
+     scan ticks <= 09:44 where rt >= 9%: [('08:25:00', '9.18'), ('08:30:00', '9.46'), ('09:30:00', '9.27'), ('09:31:00', '12.32')]
+  2026-10-07 PENG alert: {'detected_et': '09:35:00', 'gap_pct': '13.08', 'ep_score': '73.8', 'score_tier': 'HIGH'}
+     event 09:35 floor_flip_up    rt 13.08% delayed 6.36%  PENG rt 13.1% ≥9 > delayed 6.4% @ 09:35 ET
+     event 09:45 universe_catch   rt 14.7% delayed 4.7%  PENG rt 14.7% ≥9 vs delayed 4.7% @ 09:45 ET
+     event 09:50 admit            rt 16.73% delayed 13.02%  PENG rt 16.7% and delayed 13.0% BOTH >=9 @ 09:50 ET — real-time AGREES with the admit
+     scan ticks where the DELAYED feed read >= 9% (scan_et, rt, delayed): [('09:50:00', '16.73', '13.02'), ('09:55:00', '17', '13.38')]
+     scan ticks <= 09:44 where rt >= 9%: [('09:35:00', '13.08'), ('09:40:00', '13.4')]
+  in-window HIGH alerts (09:31-09:44) and what the live book did with each:
+     2026-09-08 IONQ  det 09:35:00 live=cancelled setup:chase_cap_exceeded: limit $43.99 risk $2.88/
+     2026-09-17 GNRC  det 09:40:00 live=skipped setup:size_too_small: $12 risk / $17.77 per-share 
+     2026-10-07 PENG  det 09:35:00 live=filled 
+
+====================================================================================================
+3. THE FIVE HIGH ALERTS LOST TO THE 09:45 WINDOW — admission or feed timing?
+====================================================================================================
+  2026-09-22 ONON  alert det 09:45:00 score 65 HIGH | first real-time read 08:40 (floor_flip_up, rt 9.81% / delayed 6.73%) | live=skipped window:out_of_orb: detected 09
+        graded scan rows (scan_et, score, tier, stage): [('08:40:00', '58.8', '', 'score_bar'), ('08:45:00', '58.8', '', 'score_bar'), ('08:50:00', '58.8', '', 'score_bar'), ('08:55:00', '58.8', '', 'score_bar'), ('09:00:00', '58.8', '', 'score_bar'), ('09:00:00', '58.8', '', 'score_bar'), ('09:05:00', '58.8', '', 'score_bar'), ('09:10:00', '58.8', '', 'score_bar'), ('09:15:00', '58.8', '', 'score_bar')]
+  2026-10-01 ACN   alert det 09:50:00 score 65 HIGH | first real-time read 07:00 (universe_catch, rt 10.65% / delayed 4.71%) | live=skipped window:out_of_orb: detected 09
+        graded scan rows (scan_et, score, tier, stage): [('07:00:01', '', '', 'post_grade_filter'), ('07:05:00', '', '', 'post_grade_filter'), ('07:10:00', '58.8', '', 'score_bar'), ('07:15:00', '58.8', '', 'score_bar'), ('07:20:00', '58.8', '', 'score_bar'), ('07:25:00', '58.8', '', 'score_bar'), ('07:30:00', '58.8', '', 'score_bar'), ('07:35:00', '58.8', '', 'score_bar'), ('07:40:00', '58.8', '', 'score_bar')]
+  2026-10-01 SNPS  alert det 09:45:00 score 65 HIGH | first real-time read 09:45 (floor_flip_up, rt 9.73% / delayed 6.8%) | live=skipped window:out_of_orb: detected 09
+        graded scan rows (scan_et, score, tier, stage): [('09:45:00', '65', 'HIGH', ''), ('09:50:00', '', '', 'duplicate'), ('09:55:00', '', '', 'duplicate')]
+  2026-10-06 TLN   alert det 09:55:00 score 67.5 HIGH | first real-time read 09:55 (floor_flip_up, rt 9.73% / delayed 7.31%) | live=skipped window:out_of_orb: detected 09
+        graded scan rows (scan_et, score, tier, stage): [('09:55:00', '67.5', 'HIGH', '')]
+  2026-10-06 VST   alert det 09:55:00 score 71.2 HIGH | first real-time read 09:55 (floor_flip_up, rt 10.66% / delayed 8.35%) | live=skipped window:out_of_orb: detected 09
+        graded scan rows (scan_et, score, tier, stage): [('09:55:00', '71.2', 'HIGH', '')]
+  scan-tick vs one-minute view of the three that first read >= 9% at/after 09:45 (SNPS, TLN, VST):
+     SNPS 2026-10-01: prev close 434.94, 9% floor price 474.08; scan ticks 09:30-09:59 (time, rt gap%): [('09:30', '7.57'), ('09:31', '8.09'), ('09:35', '8.99'), ('09:40', '8.82'), ('09:45', '9.73'), ('09:50', '10.35'), ('09:55', '12.57')]
+        one-minute bars 09:31-09:44 whose HIGH was >= the floor price: ['09:31', '09:32', '09:33', '09:34', '09:35', '09:36', '09:40', '09:41', '09:42', '09:43', '09:44']
+     TLN 2026-10-06: prev close 331.87, 9% floor price 361.74; scan ticks 09:30-09:59 (time, rt gap%): [('09:31', '6.95'), ('09:35', '8.13'), ('09:45', '7.05'), ('09:50', '8.54'), ('09:55', '9.73')]
+        one-minute bars 09:31-09:44 whose HIGH was >= the floor price: ['09:32', '09:33', '09:34']
+     VST 2026-10-06: prev close 144.89, 9% floor price 157.93; scan ticks 09:30-09:59 (time, rt gap%): [('09:50', '8.92'), ('09:55', '10.66')]
+        one-minute bars 09:31-09:44 whose HIGH was >= the floor price: ['09:42', '09:43']
+
+====================================================================================================
+4. RAW REAL-TIME EVENT RATE — 08-10 baseline window vs this window (the four admit classes)
+====================================================================================================
+  baseline 2026-07-21..2026-08-10: weekdays 15 (no market holiday in range); counts {'ep_rt_admit': 314, 'ep_rt_floor_flip_up': 492, 'ep_rt_live_miss': 76, 'ep_rt_universe_catch': 206}; total 1088 -> 72.5/day
+  this window 2026-09-08..2026-10-09: weekdays 24 (Columbus Day 10-12 is outside); counts {'ep_rt_admit': 273, 'ep_rt_floor_flip_up': 265, 'ep_rt_universe_catch': 143, 'ep_rt_live_miss': 3}; total 684 -> 28.5/day
+  ratio of raw events/day: 2.55x
+  ep_rt_admit per day in this window: min 4, max 31, days with any 24; baseline ep_rt_admit 314 over 15 days = 20.9/day
+  ep_rt_admit per day sorted: [4, 4, 5, 6, 7, 7, 8, 9, 9, 10, 10, 11, 11, 11, 11, 12, 12, 12, 13, 13, 15, 19, 23, 31]

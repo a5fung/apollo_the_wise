@@ -1,0 +1,115 @@
+filter_reason prefixes over in-window crossers' scan-log rows:
+  1050  filter
+    83  quality filter
+    25  EP cooldown — alerted within last 60 days
+    10  M&A/buyout catalyst — no momentum trade
+     9  already scored earlier today
+     8  score 46 < bar 65 (catalyst=strong)
+     7  score 59 < bar 65 (catalyst=strong)
+     7  score 61 < bar 65 (catalyst=strong)
+     6  routine catalyst, gap 9.5%
+     5  (none)
+     4  already up 107% in prior 5 days (extended)
+     4  score 28 < bar 65 (catalyst=routine)
+     3  routine catalyst, gap 11.1%
+     3  already up 85% in prior 5 days (extended)
+     3  routine catalyst, gap 11.7%
+     3  score 40 < bar 65 (catalyst=routine)
+     2  routine catalyst, gap 9.9%
+     2  routine catalyst, gap 9.6%
+     2  routine catalyst, gap 10.6%
+     2  routine catalyst, gap 9.2%
+     2  routine catalyst, gap 9.4%
+     2  routine catalyst, gap 10.7%
+     2  routine catalyst, gap 10.9%
+     2  routine catalyst, gap 9.8%
+     1  score 34 < bar 65 (catalyst=routine)
+     1  score 52 < bar 65 (catalyst=strong)
+     1  routine catalyst, gap 10.3%
+     1  pre-mkt volume 777 < 25,000 shares
+     1  outside top-20 shortlist (prescore rank 21, gap 9.
+     1  score 55 < bar 65 (catalyst=strong)
+     1  already up 106% in prior 5 days (extended)
+     1  routine catalyst, gap 11.3%
+     1  routine catalyst, gap 11.6%
+     1  routine catalyst, gap 9.7%
+     1  routine catalyst, gap 10.5%
+     1  routine catalyst, gap 10.1%
+     1  score 38 < bar 65 (catalyst=routine)
+
+per in-window crosser: class, tick, scan rows, last reason, max score, tier, alerted?
+  2026-09-08 IONQ   floor_flip_up      @09:35 rows=28 reasons=['', 'already scored earlier today', 'filter'] maxscore=65.0 tiers=['HIGH'] alert=YES HIGH
+  2026-09-08 QBTS   floor_flip_up      @09:31 rows=17 reasons=['EP cooldown — alerted within last 60 day', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-08 RGTI   floor_flip_up      @09:31 rows=30 reasons=['M&A/buyout catalyst — no momentum trade', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-09 AVO    floor_flip_up      @09:40 rows=30 reasons=['filter', 'score 34 < bar 65 (catalyst=routine)'] maxscore=33.8 tiers=[] alert=-
+  2026-09-09 CAL    floor_flip_up      @09:35 rows=31 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-09 FTK    universe_catch     @09:31 rows=11 reasons=['EP cooldown — alerted within last 60 day', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-09 JMKE   live_miss          @09:31 rows= 3 reasons=['filter', 'routine catalyst, gap 11.1%'] maxscore=None tiers=[] alert=-
+  2026-09-09 SUNB   live_miss          @09:40 rows= 8 reasons=['filter', 'score 59 < bar 65 (catalyst=strong)'] maxscore=58.8 tiers=[] alert=-
+  2026-09-09 XHLD   universe_catch     @09:40 rows= 3 reasons=['quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-10 DBI    floor_flip_up      @09:40 rows= 4 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-10 LEXX   universe_catch     @09:40 rows= 3 reasons=['quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-11 ALMR   universe_catch     @09:35 rows= 3 reasons=['filter', 'score 52 < bar 65 (catalyst=strong)'] maxscore=52.5 tiers=[] alert=-
+  2026-09-11 ATEC   floor_flip_up      @09:35 rows=38 reasons=['filter', 'score 46 < bar 65 (catalyst=strong)'] maxscore=46.2 tiers=[] alert=-
+  2026-09-11 BGSI   live_miss          @09:35 rows= 2 reasons=['filter'] maxscore=None tiers=[] alert=-
+  2026-09-11 BW     floor_flip_up      @09:35 rows=10 reasons=['EP cooldown — alerted within last 60 day', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-11 GTBP   floor_flip_up      @09:40 rows=15 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-11 RSVR   floor_flip_up      @09:31 rows=26 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-11 TANH   universe_catch     @09:30 rows= 5 reasons=['already up 107% in prior 5 days (extende', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-14 BLSH   universe_catch     @09:35 rows= 3 reasons=['EP cooldown — alerted within last 60 day', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-14 TYRA   universe_catch     @09:31 rows= 5 reasons=['routine catalyst, gap 10.3%', 'routine catalyst, gap 9.5%', 'routine catalyst, gap 9.6%', 'routine catalyst, gap 9.9%'] maxscore=None tiers=[] alert=-
+  2026-09-14 VNCE   universe_catch     @09:31 rows= 6 reasons=['quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-15 OESX   floor_flip_up      @09:30 rows=17 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-15 RTB    universe_catch     @09:31 rows= 1 reasons=['quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-16 EAF    universe_catch     @09:40 rows= 4 reasons=['quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-17 ATTO   universe_catch     @09:35 rows= 2 reasons=['filter', 'pre-mkt volume 777 < 25,000 shares'] maxscore=None tiers=[] alert=-
+  2026-09-17 CIFR   floor_flip_up      @09:31 rows=36 reasons=['EP cooldown — alerted within last 60 day', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-17 FCEL   floor_flip_up      @09:40 rows=20 reasons=['filter', 'score 59 < bar 65 (catalyst=strong)'] maxscore=58.8 tiers=[] alert=-
+  2026-09-17 HUT    floor_flip_up      @09:31 rows=18 reasons=['EP cooldown — alerted within last 60 day', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-17 NUAI   floor_flip_up      @09:35 rows=15 reasons=['filter', 'routine catalyst, gap 10.6%', 'routine catalyst, gap 11.1%', 'routine catalyst, gap 9.2%'] maxscore=None tiers=[] alert=-
+  2026-09-17 PSIX   floor_flip_up      @09:31 rows=34 reasons=['EP cooldown — alerted within last 60 day', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-17 PUBM   floor_flip_up      @09:30 rows=16 reasons=['EP cooldown — alerted within last 60 day', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-17 QXL    floor_flip_up      @09:40 rows=23 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-17 RDCM   floor_flip_up      @09:35 rows=33 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-17 VELO   universe_catch     @09:40 rows= 4 reasons=['outside top-20 shortlist (prescore rank ', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-17 WULF   floor_flip_up      @09:31 rows=22 reasons=['filter', 'score 61 < bar 65 (catalyst=strong)'] maxscore=61.2 tiers=[] alert=-
+  2026-09-18 FWDI   floor_flip_up      @09:35 rows=32 reasons=['M&A/buyout catalyst — no momentum trade', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-18 SKIL   universe_catch     @09:31 rows=32 reasons=['filter'] maxscore=None tiers=[] alert=-
+  2026-09-21 ALM    universe_catch     @09:40 rows= 4 reasons=['filter', 'score 55 < bar 65 (catalyst=strong)'] maxscore=55.0 tiers=[] alert=-
+  2026-09-21 CADL   floor_flip_up      @09:30 rows=38 reasons=['filter'] maxscore=None tiers=[] alert=-
+  2026-09-21 INTC   floor_flip_up      @09:31 rows=37 reasons=['', 'filter'] maxscore=77.5 tiers=['HIGH'] alert=YES MODERATE
+  2026-09-21 MSTR   floor_flip_up      @09:35 rows=38 reasons=['', 'filter'] maxscore=65.0 tiers=['HIGH'] alert=YES none
+  2026-09-21 USAR   floor_flip_up      @09:40 rows=35 reasons=['filter', 'score 59 < bar 65 (catalyst=strong)'] maxscore=58.8 tiers=[] alert=-
+  2026-09-21 WSHP   universe_catch     @09:31 rows= 3 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-22 CUE    universe_catch     @09:35 rows= 4 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-22 OMER   universe_catch     @09:40 rows= 4 reasons=['EP cooldown — alerted within last 60 day', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-22 SKIL   floor_flip_up      @09:40 rows=24 reasons=['filter'] maxscore=None tiers=[] alert=-
+  2026-09-22 USDE   universe_catch     @09:40 rows=13 reasons=['already up 106% in prior 5 days (extende', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-23 IPEX   universe_catch     @09:40 rows= 3 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-23 QNT    floor_flip_up      @09:31 rows=36 reasons=['filter', 'score 61 < bar 65 (catalyst=strong)'] maxscore=61.2 tiers=[] alert=-
+  2026-09-24 P      floor_flip_up      @09:35 rows=30 reasons=['filter', 'score 61 < bar 65 (catalyst=strong)'] maxscore=61.2 tiers=[] alert=-
+  2026-09-24 SECZ   universe_catch     @09:35 rows= 5 reasons=['already up 85% in prior 5 days (extended', 'filter'] maxscore=None tiers=[] alert=-
+  2026-09-29 KMX    floor_flip_up      @09:31 rows=29 reasons=['filter', 'score 59 < bar 65 (catalyst=strong)'] maxscore=58.8 tiers=[] alert=-
+  2026-09-30 CELC   universe_catch     @09:35 rows= 5 reasons=['filter', 'routine catalyst, gap 9.5%'] maxscore=None tiers=[] alert=-
+  2026-09-30 OPTX   universe_catch     @09:35 rows=13 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-09-30 SYRE   universe_catch     @09:40 rows= 9 reasons=['filter', 'routine catalyst, gap 11.3%', 'routine catalyst, gap 9.4%', 'routine catalyst, gap 9.5%'] maxscore=None tiers=[] alert=-
+  2026-10-01 BSET   floor_flip_up      @09:35 rows=25 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-10-01 CTSH   floor_flip_up      @09:31 rows=34 reasons=['filter', 'routine catalyst, gap 11.1%', 'routine catalyst, gap 11.6%', 'routine catalyst, gap 11.7%', 'routine catalyst, gap 9.7%', 'routine catalyst, gap 9.9%'] maxscore=None tiers=[] alert=-
+  2026-10-01 EPAM   floor_flip_up      @09:31 rows=31 reasons=['filter', 'routine catalyst, gap 10.5%', 'routine catalyst, gap 10.6%', 'routine catalyst, gap 10.7%', 'routine catalyst, gap 9.2%'] maxscore=None tiers=[] alert=-
+  2026-10-01 INFY   floor_flip_up      @09:35 rows=32 reasons=['filter', 'routine catalyst, gap 10.1%'] maxscore=None tiers=[] alert=-
+  2026-10-01 INGN   floor_flip_up      @09:31 rows=21 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-10-01 NVNO   universe_catch     @09:31 rows= 5 reasons=['quality filter'] maxscore=None tiers=[] alert=-
+  2026-10-01 TDAY   floor_flip_up      @09:35 rows=18 reasons=['filter', 'routine catalyst, gap 10.9%', 'score 28 < bar 65 (catalyst=routine)'] maxscore=27.5 tiers=[] alert=-
+  2026-10-02 ABTC   floor_flip_up      @09:35 rows=14 reasons=['filter', 'routine catalyst, gap 10.9%', 'routine catalyst, gap 11.7%', 'routine catalyst, gap 9.5%', 'routine catalyst, gap 9.8%'] maxscore=None tiers=[] alert=-
+  2026-10-02 BETR   floor_flip_up      @09:30 rows=25 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-10-02 CABO   floor_flip_up      @09:35 rows= 7 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-10-02 FWDI   floor_flip_up      @09:40 rows=38 reasons=['filter', 'routine catalyst, gap 9.8%'] maxscore=None tiers=[] alert=-
+  2026-10-02 RNAC   universe_catch     @09:31 rows= 1 reasons=['quality filter'] maxscore=None tiers=[] alert=-
+  2026-10-02 VECO   universe_catch     @09:40 rows= 4 reasons=['routine catalyst, gap 10.7%', 'routine catalyst, gap 9.4%', 'routine catalyst, gap 9.5%', 'routine catalyst, gap 9.6%'] maxscore=None tiers=[] alert=-
+  2026-10-05 CBRS   floor_flip_up      @09:35 rows=18 reasons=['EP cooldown — alerted within last 60 day', 'filter'] maxscore=None tiers=[] alert=-
+  2026-10-05 SOTK   universe_catch     @09:40 rows= 4 reasons=['quality filter'] maxscore=None tiers=[] alert=-
+  2026-10-06 DNA    universe_catch     @09:40 rows= 4 reasons=['score 38 < bar 65 (catalyst=routine)', 'score 40 < bar 65 (catalyst=routine)'] maxscore=40.0 tiers=[] alert=-
+  2026-10-06 FTRE   universe_catch     @09:40 rows= 4 reasons=['filter', 'score 46 < bar 65 (catalyst=strong)'] maxscore=46.2 tiers=[] alert=-
+  2026-10-07 PENG   floor_flip_up      @09:35 rows=14 reasons=['', 'already scored earlier today', 'filter'] maxscore=73.8 tiers=['HIGH'] alert=YES HIGH
+  2026-10-08 GFUZ   floor_flip_up      @09:31 rows= 7 reasons=['filter', 'quality filter'] maxscore=None tiers=[] alert=-
+  2026-10-09 AAOI   floor_flip_up      @09:35 rows=33 reasons=['', 'already scored earlier today', 'filter'] maxscore=65.0 tiers=['HIGH'] alert=YES MODERATE

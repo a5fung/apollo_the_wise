@@ -12,9 +12,10 @@ CLS = ["ep_rt_universe_catch", "ep_rt_floor_flip_up", "ep_rt_admit", "ep_rt_live
 
 
 def win(t):
-    if "09:31" <= t <= "09:44":
+    """09:30 tick folded into the in-window class (see s1_population.py)."""
+    if "09:30" <= t <= "09:44":
         return "inwin"
-    return "preopen" if t < "09:30" else ("0930" if t == "09:30" else "late")
+    return "preopen" if t < "09:30" else "late"
 
 
 first = {}

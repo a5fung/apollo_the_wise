@@ -2234,18 +2234,21 @@ well inside budget, but this is the number that would invalidate the decision; (
 the extra 2.5 dilute the 5 entry slots on a ranker not validated out-of-sample — the P9
 concern raised 2026-08-19, which the pricing analysis does NOT answer.
 
-**Re-cut under the era-D exits, 2026-10-10** (`docs/analysis/559_era_recut_2026-10-10.md`,
+**Re-cut under the era-D exits, 2026-10-10 (corrected after independent verification)** (`docs/analysis/559_era_recut_2026-10-10.md`,
 alert days 2026-09-08 → 10-09, stored bars only, recommendation only). ESTABLISHED: with both
-switches acting, 70 names first crossed the 9% floor in real time inside the 09:31–09:44
-window over 24 trading days (2.9/day); the live scan killed 37 on mechanical gates, graded 25
-below the bar, alerted 5 (2 HIGH) and entered 1. Replayed wholesale under the current exits
-the class still loses (−0.30R mean over n=37; the gate-passing 30 at −0.64R over n=17); its
-three ≥8 ORB-R names (NUAI, FTK, FWDI) died on grade, cooldown and M&A, not on timing. The
-entry-time gap gate's 3 blocks were 2 correct saves and 1 reclaim that cost nothing. The +8R
-partial filled once in 8 fills (KOD); VICR reached the level on 1 share and the partial
-cannot size below 3 shares (`int(remaining // 3)`). Recommendation on the page: keep both
-switches ON, no flip proposal in either direction — n is one trade deep and the season is at
-its trough. Nothing flipped.
+switches acting, 75 names first crossed the 9% floor in real time at 09:30–09:44 over 24 trading
+days (3.1/day); the live scan turned 41 away at mechanical gates and 28 at the grade, alerted 5
+(2 HIGH) and 1 never held the floor. Replayed wholesale under the current exits the class still
+loses (−0.33R mean over n=39; the 33 that reached the grade or alerted at −0.42R over n=19); the
+two ≥8 ORB-R names the grade saw (NUAI, FWDI) were turned away there, and FTK, the third, died at
+the volume gate and cooldown before it. The entry-time gap gate's 3 blocks were 2 correct saves
+and 1 reclaim that cost nothing. None of the 5 HIGH alerts lost to the 09:45 window was lost to
+admission or the feed's delay (SNPS/TLN/VST were below 9% at every earlier 5-minute tick; ONON/ACN
+were admitted pre-open and scored under the bar). The switches added PENG for certain and at most
+one more live trade (CEG, which the delayed feed read at 9.3% fifteen minutes later). The +8R
+partial filled once in 8 fills (KOD); VICR reached the level on 1 share and the partial sizes
+`int(remaining // 3)` = 0 below 3 shares (execution fact, no recommendation). Recommendation on the
+page: keep both switches ON, no flip proposal in either direction. Nothing flipped.
 
 ### 2026-08-27 — #602: the judge's two decisions get two separate vocabularies, and each states its own one-line reason (OPERATOR-SIGNED, rubric v3 → v4)
 

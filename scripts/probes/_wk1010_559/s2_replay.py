@@ -4,10 +4,27 @@ stack (ep_replay RULESETS['current'] = era D: entry−2R stop, +8R partial, brea
 blocks and the tail. $0, no network, no DB: reads c1_scope.out + c2_bars.out only.
 
 R FRAMES (stated once, used everywhere):
-  stop-R  = pnl / (entry − placed stop)  — the risk he sizes on; mi_live_trades.risk_dollars is
-            this × shares. Every "mean R" below is stop-R.
+  stop-R  = pnl / (shares × (entry − placed stop)). Every "mean R" below is stop-R.
+            REAL trades: the placed stop is mi_live_trades.hard_stop (the stop at entry).
+            `stop_price` is the LIVE, TRAILED stop for names that armed breakeven or trailed
+            (SEI 64.95, VICR 292.83, KOD 88.25 vs hard_stop 57.82 / 201.13 / 58.08), so it is
+            NOT the placed stop. ⚠ `risk_dollars` is NOT shares × (entry − placed stop): it is the
+            sizing-time plan and differs from it (PHVS: planned 12.35 vs 3 × (42 − 38.5) = 10.50;
+            VICR: 12.26 vs 10.37). The first cut of this script divided by risk_dollars and
+            called that stop-R; it is a different R (it read PHVS/DFTX/CEG as −0.87/−0.97/−0.76
+            and VICR as +6.18; stop-R is −1.02/−1.01/−1.00 and +7.30). Corrected 2026-10-10.
+            REPLAYS: the replay's own entry and stop (`realized_r` / `mark_r`).
   ORB-R   = (price − entry) / (entry − orb_low) — the frame the +8R partial and +3R breakeven are
             set in (order_manager.profit_target_r_per_share). Tail counts are given in BOTH.
+FATE (live scan) is classified by mi_ep_scan_log.reject_stage, never by filter_reason text:
+  gap_floor            -> the real-time cross never held at a scan tick (floor only)
+  quality_filter / cooldown / extension / rvol_gate / shortlist_cap
+                       -> turned away BEFORE the grade (mechanical)
+  score_bar / post_grade_filter / duplicate / ''
+                       -> reached the grade (post_grade_filter covers 'M&A/buyout', 'pre-mkt
+                          volume', 'routine catalyst'; duplicate = scored earlier the same day)
+  a row in mi_ep_alerts -> alerted
+MFE (tail) is bounded to the exit: highs after the final exit do not count.
 Run: python3 scripts/probes/_wk1010_559/s2_replay.py > scripts/probes/_wk1010_559/s2_replay_out.txt
 """
 from __future__ import annotations
@@ -66,9 +83,13 @@ print(f"bars loaded: minute pairs {len(minutes)}, daily tickers {len(daily)}, "
 
 # ── populations ──────────────────────────────────────────────────────────────────────
 def win(t: str) -> str:
-    if "09:31" <= t <= "09:44":
+    """Class of a ticker-day by the time of its first real-time >=9% read. The 09:30 tick is
+    FOLDED INTO the in-window class (it can only be entered from 09:31, exactly like 09:31-09:44).
+    The first cut sent it to a '0930' bucket that no table read, so 5 ticker-days (TANH 09-11,
+    OESX 09-15, PUBM 09-17, CADL 09-21, BETR 10-02) fell out of every class (424 = 255 + 70 + 94 + 5)."""
+    if "09:30" <= t <= "09:44":
         return "inwin"
-    return "preopen" if t < "09:30" else ("0930" if t == "09:30" else "late")
+    return "preopen" if t < "09:30" else "late"
 
 
 first: dict[tuple, dict] = {}
@@ -84,14 +105,17 @@ sl = defaultdict(list)
 for r in S1["SCANLOG"]:
     sl[(r["scan_date"], r["ticker"])].append(r)
 
+PRE_GRADE = {"quality_filter", "cooldown", "extension", "rvol_gate", "shortlist_cap"}
+GRADE = {"score_bar", "post_grade_filter", "duplicate", ""}
 MECH = ("quality filter", "EP cooldown", "M&A/buyout", "already up", "pre-mkt volume", "outside top-")
 
 
-def fate(k) -> str:
-    """The live scan's recorded fate for a ticker-day, from mi_ep_scan_log — furthest stage.
-    'alerted' > 'graded_below_bar' (reached the LLM grade / score, i.e. PASSED every mechanical
-    gate) > 'mechanical_kill' > 'floor_only' (every row is a gap-floor rejection: the real-time
-    floor cross never held at a scan tick)."""
+def fate_old(k) -> str:
+    """FIRST-CUT classifier (filter_reason text), kept ONLY to print which names flipped.
+    It counted 'M&A/buyout' and 'pre-mkt volume' as mechanical kills, but mi_ep_scan_log stamps
+    both reject_stage = post_grade_filter (they are applied AFTER the grade), and it let
+    'filter:pm_rvol_too_low' / 'filter:session_rvol_too_low' (reject_stage rvol_gate) fall
+    through to 'floor_only'."""
     if k in alerts:
         return "alerted"
     rows = sl.get(k, [])
@@ -104,6 +128,26 @@ def fate(k) -> str:
     return "floor_only" if rows else "no_scan_row"
 
 
+def fate(k) -> str:
+    """The live scan's recorded fate for a ticker-day, from mi_ep_scan_log.reject_stage — the
+    furthest stage any of its rows reached. 'alerted' (a mi_ep_alerts row) > 'graded_below_bar'
+    (reached the LLM grade: reject_stage score_bar / post_grade_filter / duplicate-of-a-scored-
+    name) > 'mechanical_kill' (turned away BEFORE the grade: quality_filter / cooldown /
+    extension / rvol_gate / shortlist_cap) > 'floor_only' (every row is gap_floor: the real-time
+    floor cross never held at a scan tick)."""
+    if k in alerts:
+        return "alerted"
+    rows = sl.get(k, [])
+    stages = {r["reject_stage"] for r in rows}
+    unknown = stages - GRADE - PRE_GRADE - {"gap_floor"}
+    assert not unknown, f"unclassified reject_stage {unknown} for {k}"
+    if stages & GRADE:
+        return "graded_below_bar"
+    if stages & PRE_GRADE:
+        return "mechanical_kill"
+    return "floor_only" if rows else "no_scan_row"
+
+
 # era check on every row we will quote (both axes)
 eras = Counter((exit_era_label(D(d), "magna53"), admission_era_as_of(D(d))) for d, _ in first)
 print("rule eras over the event population (exit, admission):", dict(eras))
@@ -112,16 +156,35 @@ print("trade rows by (signal_type, account_mode):", dict(sig))
 
 
 # ── replay helpers ───────────────────────────────────────────────────────────────────
-def mfe_orb_r(ticker: str, d: date, entry: float, orb_low: float, fill_minute, until: date):
-    """Max favourable excursion in ORB-R and stop-R-equivalent from the fill minute (day 0 bars
-    after the fill) plus forward daily highs through `until` (inclusive)."""
+def exit_bound(res: dict):
+    """(cut_minute, until_date) bounding the MFE window to the EXIT. An open campaign runs to the
+    last settled session. A settled one stops at its FINAL exit: a day-0 exit carries a minute
+    timestamp (bars after it are dropped), a forward-day exit carries a date (daily highs through
+    that session). The first cut let a day-0 stop-out keep counting the rest of the day's highs,
+    and a forward stop-out keep counting highs after the exit."""
+    if res["status"] != "settled" or not res["exits"]:
+        return None, LAST_SETTLED
+    t = res["exits"][-1]["time"]
+    if len(t) > 10:
+        cut = datetime.fromisoformat(t)
+        if cut.tzinfo is not None:      # a day-0 minute-walk exit: str(aware minute bar)
+            return cut, cut.date()
+        return None, cut.date()          # a forward-day EOD stamp (naive T16:00:00)
+    return None, date.fromisoformat(t)
+
+
+def mfe_orb_r(ticker: str, d: date, entry: float, orb_low: float, fill_minute, cut, until: date):
+    """Max favourable excursion in ORB-R from the fill minute (day-0 bars after the fill, up to the
+    exit minute `cut` when the exit was on day 0) plus forward daily highs through `until`."""
     r_orb = entry - orb_low
     if r_orb <= 0:
         return None
     hi = entry
     for b in minutes.get((ticker, d), []):
-        if fill_minute is not None and b["m"] <= fill_minute:
-            continue
+        if fill_minute is not None and b["m"] < fill_minute:
+            continue            # the FILL bar's own high counts: a stop-buy fills at/after the cross
+        if cut is not None and b["m"] > cut:
+            continue            # bars after the day-0 exit minute do not
         hi = max(hi, b["h"])
     dd = d
     while dd < until:
@@ -158,11 +221,8 @@ def replay(ticker: str, d: date, submit: time, *, orb_high=None, orb_low=None, a
             fill_min = next((b["m"] for b in bars if b["h"] >= oh), None)
         except StopIteration:
             fill_min = None
-        until = LAST_SETTLED
-        if res["status"] == "settled" and res["exits"]:
-            last = res["exits"][-1]["time"]
-            until = date.fromisoformat(last[:10])
-        res["mfe_orb_r"] = mfe_orb_r(ticker, d, res["entry_px"], ol, fill_min, until)
+        cut, until = exit_bound(res)
+        res["mfe_orb_r"] = mfe_orb_r(ticker, d, res["entry_px"], ol, fill_min, cut, until)
         res["r_orb_per_stop_r"] = (res["entry_px"] - res["stop"]) / (res["entry_px"] - ol) if ol else None
     return res
 
@@ -197,13 +257,18 @@ def summarize(label: str, rows: list[dict]) -> dict:
     if rs:
         print(f"   settled mean {mean:+.2f} stop-R over n={len(rs)} (sum {sum(rs):+.1f}R; "
               f"{win_n} winners; {day0_stop} stopped day-0)")
+        if len(rs) > 1:
+            print(f"   without the single best settled trade ({max(rs):+.2f}): "
+                  f"{(sum(rs) - max(rs)) / (len(rs) - 1):+.2f} over n={len(rs) - 1} (sum {sum(rs) - max(rs):+.1f}R)")
     if marks:
         print(f"   open marks (not returns): {[round(m, 2) for m in marks]}")
     print(f"   +8R partial fired: {partial} of {len(ent)} entered | tail reached: "
           f">=3 ORB-R {t3}, >=8 ORB-R {t8} | >=3 stop-R {t3s}, >=8 stop-R {t8s}")
-    reasons = Counter(r["reason"] for r in rows if r["status"] in ("abstain", "no_trade", "no_entry"))
-    if reasons:
-        print("   non-entries:", dict(reasons.most_common(8)))
+    for st_, lab_ in (("no_entry", "no entry"), ("no_trade", "not tradeable"), ("abstain", "abstain")):
+        rs_ = Counter(":".join((r["reason"] or "").split(":")[:2 if (r["reason"] or "").startswith("setup") else 1])
+                       for r in rows if r["status"] == st_)
+        if rs_:
+            print(f"   {lab_} ({sum(rs_.values())}):", dict(rs_.most_common()))
     return out
 
 
@@ -232,18 +297,30 @@ for t in trades:
     res = replay(t["ticker"], d, submit, orb_high=f(t["orb_high"]), orb_low=f(t["orb_low"]),
                  atr=f(t["atr_14"]), shares=f(t["entry_shares"]))
     real.append({**t, "_rep": res, "_submit": submit})
+
+
+def live_risk(t) -> float | None:
+    """Dollars at risk at the PLACED stop: shares × (entry − hard_stop). `hard_stop` is the stop
+    the position was opened with; `stop_price` is the trailed live stop and `risk_dollars` the
+    sizing-time plan — neither is this (see the docstring)."""
+    sh, e, hs = f(t["entry_shares"]), f(t["entry_price"]), f(t["hard_stop"])
+    return sh * (e - hs) if (sh and e and hs) else None
+
+
+def live_stop_r(t) -> float | None:
+    """stop-R of a CLOSED real trade."""
+    rk = live_risk(t)
+    return f(t["total_pnl"]) / rk if (t["status"] == "closed" and rk) else None
+
+
 agree = 0
 for t in real:
     res = t["_rep"]
-    risk = f(t["risk_dollars"])
-    pnl = f(t["total_pnl"])
-    live_r = (pnl / risk) if (risk and t["status"] == "closed") else None
+    live_r = live_stop_r(t)
     live_partial = "partial_profit" in (t["exits_json"] or "")
-    rr = None
-    if res and res["status"] == "settled" and risk:
-        rr = res["realized_pnl_per_unit"] / risk
+    rr = res["realized_r"] if (res and res["status"] == "settled") else None
     line = (f"  {t['alert_date']} {t['ticker']:5s} live={t['status']:9s} entry={t['entry_price'] or '-':>8s} "
-            f"R(plan)={'%+.2f' % live_r if live_r is not None else '  open ' if t['status']=='filled' else '   -  '} "
+            f"stop-R={'%+.2f' % live_r if live_r is not None else '  open ' if t['status']=='filled' else '   -  '} "
             f"partial={'Y' if live_partial else 'n'} | replay={res['status'] if res else 'n/a':15s} "
             f"entry={('%.2f' % res['entry_px']) if res and res['entry_px'] else '-':>8s} "
             f"R={('%+.2f' % rr) if rr is not None else ('mark %+.2f' % (res['mark_r'] / 1.0) if res and res.get('mark_r') is not None else '-')} "
@@ -258,7 +335,7 @@ closed_live = [t for t in real if t["status"] == "closed"]
 print(f"  closed live trades: {len(closed_live)}; replay within 0.25R on {agree} of "
       f"{sum(1 for t in real if t['status']=='closed' and t['_rep'] and t['_rep']['status']=='settled')} settled replays")
 
-# ── (R) the REAL era-D book (what actually happened, stop-R on PLANNED risk) ──
+# ── (R) the REAL era-D book (what actually happened; stop-R on the PLACED stop) ──
 print("\n" + "=" * 90)
 print("R. THE REAL ERA-D BOOK — magna53 live rows, alert days 09-08..10-09")
 print("=" * 90)
@@ -269,28 +346,41 @@ skips = Counter((t["skip_reason"] or "").split(":")[0] + ":" + ((t["skip_reason"
 print("  skip reasons:", dict(skips))
 rs_live = []
 for t in closed_live:
-    r = f(t["total_pnl"]) / f(t["risk_dollars"])
+    r = live_stop_r(t)
     rs_live.append(r)
-    print(f"    closed {t['ticker']:5s} {t['alert_date']} pnl ${f(t['total_pnl']):+.2f} on planned ${f(t['risk_dollars']):.2f} "
-          f"= {r:+.2f} stop-R (actual-risk R {f(t['total_pnl'])/f(t['risk_dollars_actual']):+.2f}); "
-          f"exit {t['closed_et'][:10]} {t['exits_json'][:0]}")
+    print(f"    closed {t['ticker']:5s} {t['alert_date']} pnl ${f(t['total_pnl']):+.2f} on placed-stop risk ${live_risk(t):.2f} "
+          f"= {r:+.2f} stop-R  [old frame: planned risk_dollars ${f(t['risk_dollars']):.2f} -> "
+          f"{f(t['total_pnl'])/f(t['risk_dollars']):+.2f}]; exit {t['closed_et'][:10]}")
 print(f"  closed: n={len(rs_live)} mean {sum(rs_live)/len(rs_live):+.2f} stop-R, sum {sum(rs_live):+.1f}R, "
-      f"winners {sum(1 for x in rs_live if x>0)}")
+      f"winners {sum(1 for x in rs_live if x>0)}; without the best: {sum(rs_live) - max(rs_live):+.1f}R over {len(rs_live)-1}")
 openrows = [t for t in real if t["status"] == "filled"]
 for t in openrows:
     last = daily.get(t["ticker"], {}).get(LAST_SETTLED, {}).get("c")
-    e, risk, sh, rem = f(t["entry_price"]), f(t["risk_dollars"]), f(t["entry_shares"]), f(t["remaining_shares"])
+    e, risk, sh, rem = f(t["entry_price"]), live_risk(t), f(t["entry_shares"]), f(t["remaining_shares"])
     booked = f(t["total_pnl"]) or 0.0
     mark = (booked + (last - e) * rem) / risk if (last and risk) else None
     hi = f(t["highest_price_seen"]); ol = f(t["orb_low"])
     mfe_orb = (hi - e) / (e - ol) if (hi and ol) else None
     print(f"    open   {t['ticker']:5s} {t['alert_date']} entry {e:.2f} remaining {rem:.0f}/{sh:.0f} "
-          f"booked ${booked:+.2f} last {last} -> mark {mark:+.2f} stop-R (not a return); "
+          f"booked ${booked:+.2f} last {last} -> mark {mark:+.2f} stop-R (not a return) "
+          f"[old frame: {(booked + (last - e) * rem) / f(t['risk_dollars']):+.2f}]; "
           f"highest seen {hi} = +{mfe_orb:.1f} ORB-R; partial={'Y' if t['partial_taken']=='t' else 'n'} "
           f"breakeven={'armed' if t['breakeven_active']=='t' else 'no'}")
 n8 = sum(1 for t in real if "partial_profit" in (t["exits_json"] or ""))
 print(f"  +8R PARTIAL FILLS in the window: {n8} of {len(closed_live)+len(openrows)} filled trades "
       f"({[t['ticker'] for t in real if 'partial_profit' in (t['exits_json'] or '')]})")
+# the real fills' tail: peak (highest_price_seen) in BOTH frames, from the placed stop
+print("  REAL FILLS' TAIL (peak highest_price_seen; stop-R from the placed stop):")
+tail3o = tail8o = tail3s = tail8s = 0
+for t in closed_live + openrows:
+    e, hi, ol = f(t["entry_price"]), f(t["highest_price_seen"]), f(t["orb_low"])
+    rk_ps = e - f(t["hard_stop"])
+    o_r = (hi - e) / (e - ol)
+    s_r = (hi - e) / rk_ps
+    tail3o += o_r >= 3; tail8o += o_r >= 8; tail3s += s_r >= 3; tail8s += s_r >= 8
+    print(f"    {t['ticker']:5s} peak {hi:.2f}: +{o_r:.1f} ORB-R, +{s_r:.1f} stop-R")
+print(f"  real fills (n={len(closed_live)+len(openrows)}) reaching >=3 ORB-R {tail3o}, >=8 ORB-R {tail8o}, "
+      f">=3 stop-R {tail3s}, >=8 stop-R {tail8s}")
 # breakeven arms from the audit trail
 be = [r for r in S1["ORBEVENTS"] if r["event_type"] == "breakeven_armed"]
 print(f"  breakeven ARMED (+3R) events in the window: {len(be)} -> {[r['summary'].split(':')[0] for r in be]}")
@@ -306,7 +396,24 @@ print(f"  n={len(inwin)} ticker-days over {len(days)} trading days ({days[0]}..{
       f"{len(inwin)/len(days):.1f}/day | by first event: "
       f"{dict(Counter(r['event_type'] for r in inwin.values()))}")
 fates = Counter(fate(k) for k in inwin)
-print(f"  live scan fate: {dict(fates)}")
+print(f"  live scan fate (by reject_stage): {dict(fates)}")
+at0930 = sorted(k for k, r in inwin.items() if r["tick_et"] == "09:30")
+in3144 = [k for k in inwin if k not in set(at0930)]
+print(f"  of which first read at the 09:30 tick (folded in; entered from 09:31): n={len(at0930)} "
+      f"{[(d, t, inwin[(d, t)]['event_type'][6:], inwin[(d, t)]['rt_gap'] + '%') for d, t in at0930]}")
+print(f"  FATE TABLE by reject_stage — 09:31-09:44 (n={len(in3144)}): {dict(Counter(fate(k) for k in in3144))} | "
+      f"09:30 (n={len(at0930)}): {dict(Counter(fate(k) for k in at0930))} | all (n={len(inwin)}): {dict(fates)}")
+print(f"  first-cut classifier (filter_reason text) on the same 09:31-09:44 {len(in3144)}: "
+      f"{dict(Counter(fate_old(k) for k in in3144))}")
+flips = sorted((k, fate_old(k), fate(k)) for k in inwin if fate_old(k) != fate(k))
+print(f"  names whose fate changed vs the first-cut classifier: {len(flips)}")
+for k, o, n_ in flips:
+    reasons = sorted({(r['reject_stage'] + ':' + (r['filter_reason'] or '')[:34]) for r in sl.get(k, []) if r['reject_stage'] != 'gap_floor'})
+    print(f"     {k[0]} {k[1]:5s} {o:17s} -> {n_:17s} {reasons}")
+cov = {(r["ticker"], r["d"]): r for r in S1["COVERAGE"]}
+thin = [k for k in inwin if int(cov.get((k[1], k[0]), {}).get("rth_bars", 0) or 0) < 300]
+print(f"  minute-bar coverage: {len(thin)} of {len(inwin)} in-window names are missing >= 90 of the 390 RTH minute "
+      f"bars (rth_bars < 300); no 09:30 bar: {sum(1 for k in inwin if cov.get((k[1], k[0]), {}).get('has_930') != 't')}")
 rt_only = {k: r for k, r in inwin.items() if r["event_type"] != "ep_rt_admit"}
 print(f"  rt-only admits (the class the switches ADD; delayed feed had not cleared the floor): "
       f"{len(rt_only)} | delayed-agreed (ep_rt_admit first): {len(inwin) - len(rt_only)}")
@@ -335,7 +442,8 @@ print("P. PRE-OPEN CROSSERS (first rt read >= 9% before 09:30), replayed from 09
 print("   doc's 'pre-open catches' class, for continuity only")
 print("=" * 90)
 pre = {k: r for k, r in first.items() if win(r["tick_et"]) == "preopen"}
-print(f"  n={len(pre)} | fates {dict(Counter(fate(k) for k in pre))}")
+print(f"  n={len(pre)} | fates (by reject_stage) {dict(Counter(fate(k) for k in pre))} | "
+      f"first-cut classifier {dict(Counter(fate_old(k) for k in pre))}")
 rows_p = []
 for (d, t), r in sorted(pre.items()):
     res = replay(t, D(d), time(9, 31))
@@ -370,15 +478,28 @@ for a in sorted(pre_high, key=lambda x: (x["alert_date"], x["ticker"])):
     res.update(fate="alerted", live_status=t0["status"] if t0 else "no_row",
                live_skip=(t0["skip_reason"] or "")[:60] if t0 else "")
     rows_c.append(res)
-    lr = (f(t0["total_pnl"]) / f(t0["risk_dollars"])) if (t0 and t0["status"] == "closed") else None
+    lr = live_stop_r(t0) if t0 else None
     rr = f"{res['realized_r']:+.2f}" if res["realized_r"] is not None else (f"mark {res['mark_r']:+.2f}" if res.get("mark_r") is not None else "-")
     print(f"    {a['alert_date']} {a['ticker']:5s} det {a['detected_et']} live={res['live_status']:9s} "
-          f"{('R %+.2f' % lr) if lr is not None else '':9s} {res['live_skip'][:45]:45s} | replay {res['status']:15s} R {rr:>11s} "
+          f"{('stop-R %+.2f' % lr) if lr is not None else '':12s} {res['live_skip'][:45]:45s} | replay {res['status']:15s} R {rr:>11s} "
           f"MFE {('%+.1f' % res['mfe_orb_r']) if res.get('mfe_orb_r') is not None else '-':>6s} ORB-R")
 C = summarize("(c) pre-open HIGH, replayed under current", rows_c)
+print("  FIRST real-time event of each HIGH alert's ticker-day (ep_rt_admit = the delayed feed AGREED, i.e. it")
+print("  would have been admitted with both switches OFF; anything else = real-time-only first read):")
+for grp, lst in (("pre-open", pre_high), ("in-window", inwin_high), ("at/after 09:45", late_high)):
+    firsts = []
+    for a in sorted(lst, key=lambda x: (x["alert_date"], x["ticker"])):
+        fr = first.get((a["alert_date"], a["ticker"]))
+        firsts.append((a["ticker"], a["alert_date"][5:], fr["event_type"][6:] if fr else "NO-EVENT", fr["tick_et"] if fr else "-",
+                       (fr["rt_gap"] + "/" + fr["delayed_gap"]) if fr else "-"))
+    adm = [x[0] for x in firsts if x[2] == "admit"]
+    rto = [x[0] for x in firsts if x[2] != "admit"]
+    print(f"   {grp} HIGH n={len(lst)}: first event ep_rt_admit {len(adm)} {adm} | real-time-only {len(rto)} {rto}")
+    for x in firsts:
+        print(f"      {x[0]:5s} {x[1]} first={x[2]:15s} @{x[3]} rt/delayed gap {x[4]}")
 pre_high_closed = [t for t in closed_live if (t["alert_date"], t["ticker"]) in {(a["alert_date"], a["ticker"]) for a in pre_high}]
 if pre_high_closed:
-    rr = [f(t["total_pnl"]) / f(t["risk_dollars"]) for t in pre_high_closed]
+    rr = [live_stop_r(t) for t in pre_high_closed]
     print(f"   REAL closed trades from pre-open HIGH: n={len(rr)} mean {sum(rr)/len(rr):+.2f} stop-R, "
           f"winners {sum(1 for x in rr if x > 0)}, best {max(rr):+.2f}, without the best {sum(rr) - max(rr):+.1f}R over {len(rr)-1}")
 
@@ -409,6 +530,12 @@ for t in blocks:
     print(f"  {t['alert_date']} {t['ticker']:5s} blocked at 09:31 rt {rt_gap:.1f}% (alert {alert_gap:.1f}%, prev close ${pc:.2f}"
           f"{'' if pc_daily is None or abs(pc_daily-pc)<0.011 else ' ⚠ daily says %.2f' % pc_daily}); floor px ${floor_px:.2f}; "
           f"window high ${hi if hi is not None else 'n/a'} ({((hi-pc)/pc*100) if hi else float('nan'):+.1f}%) -> {verdict}")
+    b931 = next((b for b in bars if b["m"].time() == time(9, 31)), None)
+    hb = max(bars, key=lambda b: b["h"]) if bars else None
+    if b931 and hb:
+        print(f"      09:31 bar high ${b931['h']} = {((b931['h']-pc)/pc*100):+.1f}% vs prev close (floor px ${floor_px:.2f}: "
+              f"{'AT/ABOVE' if b931['h'] >= floor_px else 'below'}); window high ${hb['h']} = {((hb['h']-pc)/pc*100):+.1f}% "
+              f"at {hb['m'].time()}")
     print(f"      after: day-0 close {('%+.1f%%' % close_gap) if close_gap is not None else 'n/a'} vs prev close; "
           f"5-session max high {('%+.1f%%' % ((max5-pc)/pc*100)) if max5 else 'n/a'} vs prev close")
     if reclaim:
@@ -468,10 +595,8 @@ def replay_live_inwin(ticker: str, d: date, submit: time) -> dict:
     out.update(entered=True, entry_px=entry, stop=stop, path="limit_chase", status=leg["status"],
                reason=leg["reason"], exits=leg["exits"], final_reason=leg["final_reason"],
                partial_fired=leg["partial_fired"], realized_r=leg["realized_r"], mark_r=leg["mark_r"])
-    until = LAST_SETTLED
-    if leg["status"] == "settled" and leg["exits"]:
-        until = date.fromisoformat(leg["exits"][-1]["time"][:10])
-    out["mfe_orb_r"] = mfe_orb_r(ticker, d, entry, ol, sb["m"], until)
+    cut, until = exit_bound(leg)
+    out["mfe_orb_r"] = mfe_orb_r(ticker, d, entry, ol, sb["m"], cut, until)
     out["r_orb_per_stop_r"] = (entry - stop) / r_ps
     return out
 
