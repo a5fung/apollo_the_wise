@@ -1,0 +1,28 @@
+== rehome heartbeats
+d|left
+2026-10-05|Re-homing pass: 139 candidate(s) on the tape, 18 offered, 3 moved, 15 stayed ⚠ 139 candidates exceeds the 18-per-night offer cap
+2026-10-06|Re-homing pass: 108 candidate(s) on the tape, 18 offered, 3 moved, 8 stayed, skipped {'unjudgeable': 7} ⚠ 108 candidates exceeds the 18-per-night offer cap
+2026-10-07|Re-homing pass: 86 candidate(s) on the tape, 18 offered, 1 moved, 17 stayed ⚠ 86 candidates exceeds the 18-per-night offer cap
+2026-10-08|Re-homing pass: 93 candidate(s) on the tape, 18 offered, 2 moved, 16 stayed ⚠ 93 candidates exceeds the 18-per-night offer cap
+2026-10-09|Re-homing pass: 75 candidate(s) on the tape, 18 offered, 1 moved, 11 stayed, skipped {'unjudgeable': 6} ⚠ 75 candidates exceeds the 18-per-night offer cap
+(5 rows)
+== moves
+d|count
+2026-10-05|4
+2026-10-06|4
+2026-10-07|1
+2026-10-08|5
+2026-10-09|1
+(5 rows)
+== G2 misfiled per night
+d|g2
+2026-10-05|4.2
+2026-10-06|3.6
+2026-10-07|2.8
+2026-10-08|3.0
+2026-10-09|2.7
+(5 rows)
+== HUT / CIFR theme now
+name|stage|theme_date
+Bitcoin Miners Pivoting to AI Data Center Hosting|Fading|2026-10-09
+(1 row)
