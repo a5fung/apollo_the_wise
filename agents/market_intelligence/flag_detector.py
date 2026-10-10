@@ -1834,6 +1834,16 @@ def fresh_tight_ratio(r: dict) -> Optional[float]:
     return tr / atr if atr > 0 else None
 
 
+def _short_base_legend() -> str:
+    """The one sentence that explains the short-base measure. Printed wherever the digest renders a
+    short-base row (NEW TODAY or the standing COILED roster)."""
+    return (
+        f"A base of {_SHORT_BASE_MAX} days or fewer has no separate first and last 5 days, "
+        "so it shows the last 2 bars' range against the usual daily range instead "
+        f"(tight = under {_FRESH_TIGHT_RATIO_MAX:.2f} with volume dry)."
+    )
+
+
 def short_base_tightness(r: dict) -> str:
     """Plain-words tightness for a base of `_SHORT_BASE_MAX` sessions or fewer. Safe in both the
     HTML digest (no markup characters) and the Markdown /flags board (no underscores)."""
@@ -1842,6 +1852,11 @@ def short_base_tightness(r: dict) -> str:
         return "tightness n/a"
     if r.get("fresh_tight_fires"):
         return f"last 2 bars tight ({ratio:.2f}× usual range)"
+    if ratio <= _FRESH_TIGHT_RATIO_MAX:
+        # `fresh_tight_fires` needs the range test AND dry volume (`_compute_fresh_tightening`): a
+        # reading under the bar that did not fire failed on volume — say so rather than print a
+        # sub-0.60 number the legend defines as 'tight' with no label on it.
+        return f"last 2 bars {ratio:.2f}× usual range (tight on range, volume not dry)"
     return f"last 2 bars {ratio:.2f}× usual range"
 
 
@@ -2010,6 +2025,7 @@ def build_flag_digest(
         ),
     ]
 
+    legend_has_short = False
     if transitions:
         lines.append("")
         lines.append(f"🆕 {tf.b(f'NEW TODAY — entered TIGHTENING or COILED ({len(transitions)})')}")
@@ -2019,12 +2035,9 @@ def build_flag_digest(
             "the base's last 5 days against its first 5 "
             f"(tight = range under {_RANGE_CONTRACTION_MAX:.2f}, volume under {_VOL_CONTRACTION_MAX:.2f})."
         )
-        if any(is_short_base(t["row"].get("base_age")) for t in transitions):
-            legend += (
-                f" A base of {_SHORT_BASE_MAX} days or fewer has no separate first and last 5 days, "
-                "so it shows the last 2 bars' range against the usual daily range instead "
-                f"(tight = under {_FRESH_TIGHT_RATIO_MAX:.2f})."
-            )
+        legend_has_short = any(is_short_base(t["row"].get("base_age")) for t in transitions)
+        if legend_has_short:
+            legend += " " + _short_base_legend()
         lines.append(tf.i(legend))
 
     if triggered:
@@ -2036,10 +2049,15 @@ def build_flag_digest(
     if standing:
         lines.append("")
         lines.append(f"🌀 {tf.b(f'COILED — still coiled ({len(standing)})')}")
-        for r in sorted(standing, key=lambda x: x.get("range_contraction_ratio") or 1)[:8]:
+        shown = sorted(standing, key=lambda x: x.get("range_contraction_ratio") or 1)[:8]
+        for r in shown:
             lines.append(_fmt_coiled(r))
         if len(standing) > 8:
             lines.append(f"  …{len(standing) - 8} more")
+        # A short-base name that has been coiled for days is in THIS roster, not in NEW TODAY, so
+        # the NEW TODAY legend never reaches it (or is absent altogether): explain it here, once.
+        if not legend_has_short and any(is_short_base(r.get("base_age")) for r in shown):
+            lines.append(tf.i(_short_base_legend()))
 
     # #479 (2026-07-17): the DROPPED-OUT roster (18 names on 7/17) was pure
     # scan-churn noise — a ticker leaving the watchlist isn't actionable. Keep

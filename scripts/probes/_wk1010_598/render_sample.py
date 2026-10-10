@@ -132,8 +132,14 @@ def main(head_fd_path, head_agent_path):
 
     section(f"1. 17:25 digest, NEW TODAY block - KOD entered COILED {kod_entered['scan_date']} (base {kod_entered['base_age']}d, fresh path firing)",
             digest(old_fd, kod_entered), digest(new_fd, kod_entered))
+    def standing_digest(mod, row):
+        # the name was already COILED yesterday: it is in the standing roster, with no NEW TODAY block
+        b = board(row)
+        return tf.to_plain(mod.build_flag_digest(
+            b, row["scan_date"], mod.stage_transitions(b, {row["ticker"]: row["stage"]})) or "(no digest)")
+
     section(f"2. 17:25 digest, standing COILED roster - KOD still coiled {kod_now['scan_date']} (base {kod_now['base_age']}d, fresh path not firing)",
-            old_fd._fmt_coiled(kod_now), new_fd._fmt_coiled(kod_now))
+            standing_digest(old_fd, kod_now), standing_digest(new_fd, kod_now))
     section(f"3. /flags board - latest scan {latest} ({len(cur)} TIGHTENING/COILED row)",
             flags_reply(old_agent, cur), flags_reply(new_agent, cur))
     hist = sorted(kod, key=lambda r: r["scan_date"], reverse=True)

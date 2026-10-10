@@ -21,15 +21,24 @@ A watch list, not a trade signal — no buy point or stop is set. Range and volu
 
 🆕 NEW TODAY — entered TIGHTENING or COILED (1)
   • KOD — COILED · run-up +249% · pivot $104.00 · last 2 bars tight (0.53× usual range) · base 4d
-A watch list, not a trade signal — no buy point or stop is set. Range and volume are the base's last 5 days against its first 5 (tight = range under 0.75, volume under 0.70). A base of 5 days or fewer has no separate first and last 5 days, so it shows the last 2 bars' range against the usual daily range instead (tight = under 0.60).
+A watch list, not a trade signal — no buy point or stop is set. Range and volume are the base's last 5 days against its first 5 (tight = range under 0.75, volume under 0.70). A base of 5 days or fewer has no separate first and last 5 days, so it shows the last 2 bars' range against the usual daily range instead (tight = under 0.60 with volume dry).
 
 ====================================================================================================
 2. 17:25 digest, standing COILED roster - KOD still coiled 2026-10-09 (base 5d, fresh path not firing)
 ====================================================================================================
 --- BEFORE (HEAD) ---
-  • <code>KOD</code> — base 5d · run-up +249% · range 1.00 · volume 1.00
+🚩 HTF Scanner — Oct 9
+1 tickers scanned · 0 watch · 0 tightening · 1 coiled · 0 triggered
+
+🌀 COILED — still coiled (1)
+  • KOD — base 5d · run-up +249% · range 1.00 · volume 1.00
 --- AFTER (this change) ---
-  • <code>KOD</code> — base 5d · run-up +249% · last 2 bars 0.63× usual range
+🚩 HTF Scanner — Oct 9
+1 tickers scanned · 0 watch · 0 tightening · 1 coiled · 0 triggered
+
+🌀 COILED — still coiled (1)
+  • KOD — base 5d · run-up +249% · last 2 bars 0.63× usual range
+A base of 5 days or fewer has no separate first and last 5 days, so it shows the last 2 bars' range against the usual daily range instead (tight = under 0.60 with volume dry).
 
 ====================================================================================================
 3. /flags board - latest scan 2026-10-09 (1 TIGHTENING/COILED row)

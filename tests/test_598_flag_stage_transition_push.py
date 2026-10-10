@@ -518,3 +518,75 @@ def test_short_base_digest_is_still_clean_html():
     assert p.bad == [] and p.stack == []
     for stray in ("*", "`", "\\", "_"):
         assert stray not in text, f"stray {stray!r} in {text!r}"
+
+
+# ── review fixes (wk1010 review, 2026-10-10) ──────────────────────────────────────────────────────
+
+def test_short_base_under_the_bar_but_not_firing_says_why_it_is_not_tight():
+    """`fresh_tight_fires` needs the range test AND dry volume. A reading under the bar that did not
+    fire (heavy volume) must not print as an unlabelled number the legend calls 'tight'."""
+    s = fd.short_base_tightness(_short(5, fires=False, tr=5.9, atr=10.7))   # 0.55 <= 0.60, vol not dry
+    assert s == "last 2 bars 0.55× usual range (tight on range, volume not dry)"
+    # exactly at the bar: the detector's range test is `ratio > MAX -> not tight`, so 0.60 passes it
+    at_bar = fd.short_base_tightness(_short(5, fires=False, tr=6.0, atr=10.0))
+    assert "tight on range, volume not dry" in at_bar
+    # firing keeps its own label; a reading over the bar stays plain
+    assert fd.short_base_tightness(_short(5, fires=True, tr=5.9, atr=10.7)).startswith("last 2 bars tight (")
+    assert fd.short_base_tightness(
+        _short(5, fires=False, tr=6.64, atr=10.53)) == "last 2 bars 0.63× usual range"
+
+
+def _standing_digest(*rows):
+    """Rows already in their stage yesterday: they sit in the standing roster, never in NEW TODAY."""
+    board = _board(*rows)
+    ymap = {r["ticker"]: r["stage"] for r in rows}
+    assert fd.stage_transitions(board, ymap) == []
+    return fd.build_flag_digest(board, D1, [])
+
+
+def test_standing_short_base_name_gets_the_legend_too():
+    """KOD 2026-10-09 is the live case: a short-base name already coiled renders in 'COILED — still
+    coiled' with no NEW TODAY block, so the measure used to print with no explanation at all."""
+    text = _standing_digest(_short(5, fires=False, tr=6.638630, atr=10.532943))
+    assert "NEW TODAY" not in text and "still coiled" in text
+    assert "last 2 bars 0.63× usual range" in text
+    assert f"{fd._SHORT_BASE_MAX} days or fewer" in text and "volume dry" in text
+    # the sentence sits AFTER the roster line it explains
+    assert text.index("days or fewer") > text.index("0.63× usual range")
+
+
+def test_standing_long_base_gets_no_short_base_legend():
+    text = _standing_digest(_row("OLDC", "COILED", rr=0.7, vr=0.6, age=14))
+    assert "still coiled" in text and "days or fewer" not in text
+
+
+def test_legend_is_printed_once_when_new_today_and_standing_both_have_a_short_base():
+    board = _board(_short(4, ticker="NEWW"), _short(5, ticker="OLDD", fires=False, tr=6.6, atr=10.5))
+    text = fd.build_flag_digest(board, D1, fd.stage_transitions(board, {"OLDD": "COILED"}))
+    before, after = text.split("still coiled")
+    assert "NEWW" in before and "OLDD" in after
+    assert text.count("days or fewer") == 1
+
+
+def test_standing_short_base_cut_by_the_eight_row_cap_does_not_trigger_the_legend():
+    """Only a RENDERED short-base row needs the explanation; the '…N more' tail is not rendered."""
+    rows = [_row(f"L{i:02d}", "COILED", rr=0.5 + i * 0.01, vr=0.5, age=14) for i in range(8)]
+    rows.append(_short(5, ticker="HIDD"))            # stored ratio 1.0 sorts last -> 9th, cut by [:8]
+    text = _standing_digest(*rows)
+    assert "HIDD" not in text and "1 more" in text and "days or fewer" not in text
+
+
+@pytest.mark.asyncio
+async def test_history_select_carries_the_columns_the_short_base_render_needs(monkeypatch):
+    """`/flags TICKER` prints `tightness n/a` on EVERY short-base row if the widened SELECT loses
+    fresh_tight_fires / fresh_2bar_tr_pct / atr14_pct. The history render tests monkeypatch the
+    fetch, so this is the one test that reads the SQL itself."""
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=[])
+    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+    await db.get_ticker_flag_history("kod", 14)
+    sql = conn.fetch.await_args.args[0]
+    for col in ("fresh_tight_fires", "fresh_2bar_tr_pct", "atr14_pct", "base_age",
+                "range_contraction_ratio", "vol_contraction_ratio"):
+        assert col in sql, f"history SELECT dropped {col}"
+    assert conn.fetch.await_args.args[1] == "KOD"
