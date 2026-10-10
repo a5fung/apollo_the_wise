@@ -2090,3 +2090,60 @@ EVIDENCE:
 - **The evaluation:** names just under the floor reach big winners at the same rate as names just over it (3 of 38 vs 3 of 39; 7 of 59 vs 5 of 62) and trade about half the dollars — lowering the floor adds no net winners.
 - **The operator decision:** his "Ok to recs" 2026-10-10 to keep $500M (commit 2036ec6c). Code unchanged: `backtester/filters.py:23`.
 - **Not lost:** the remaining re-read (from the paper lane once it has trades in the $250-500M band) is carried onto #624; registry review `ep_mcap_floor_500m_review` marked done with the same reason.
+
+## #331 — gap-vs-structure scored axis: closed on his ok (2026-10-10)
+
+BAR: "the alignment axis is scored, calibrated and traceable — and its score demonstrably MOVES a grade on a real alert, versus the judge's existing qualitative reasoning. WOULD-FAIL-IF: it is added and changes no grade, i.e. it is decorative like the theme boost was measured to be."
+MOVED: #519 — the axis was coupled into #519 (chart vision) by him on 2026-09-09 ("shelve this, i think this need to be coupled with chart vision"); its one measured result (on tradeable EPs, fades-into-congestion gaps 13.0% avg / 76% win vs punch-through 7.7% / 60%, n=171) already sits in #519's chain as the pre-scored test any chart read must pass.
+
+EVIDENCE:
+- **Not met as written — closed as a duplicate on his "Ok" 2026-10-10 to the recommendation table** (rec: fold into #519).
+- Nothing was built; the work that remains is #519's, gated on ~60 closed live trades (event-gated, 11-15).
+- Registry review `gap_alignment_331_accrual` was already done.
+
+## #529 — crypto↔AI theme merge family: closed on his ok (2026-10-10)
+
+BAR: "after #471 Phase 2 lands, re-run `scripts/probes/_368_crypto_ai_consolidation_replay.py --adjudicate` (3 Haiku calls, ~$0.02) and ship the family ONLY if a verdict now consolidates in practice. 💡 **The gate's real lesson, worth more than the fix:** the adjudicator consolidates only when the theme's THESIS TEXT names the conversion — the 08-04 thesis said *"not bitcoin price"* and got PARENT_CHILD; the 07-21 one read as a crypto theme with a lease headline and got DISTINCT. **Thesis quality, not stem families, is the live lever.** Full record: `docs/analysis/368_crypto_ai_consolidation_2026-08-04.md` §correction + SSoT `docs/architecture/theme_engine.md`."
+MOVED: #491 — his 2026-08-04 ruling on the line itself: this is member migration, not a theme merge ("this is a theme change for the stocks, not a similar theme merge"); the line said any work belongs on #491 (crypto miners moving into AI compute), which is open and deployed (ETA 10-23).
+
+EVIDENCE:
+- **Not met — dropped on his "Ok" 2026-10-10 to the recommendation table** (rec: drop, replaced by #491).
+- The persistence path its DoD waits on (ADR 0032 Phase 2) was never built and has no task id; the full record stays at `docs/analysis/368_crypto_ai_consolidation_2026-08-04.md`.
+
+## #307 — weekly labelling ritual: closed on his ok (2026-10-10)
+
+BAR: "every named component ships and the weekly labeling cadence has RUN at least four consecutive weeks with the operator's labels landing in the corpus — a cadence that has never completed a cycle is a plan, not a ritual. WOULD-FAIL-IF: the shadow exists but no week produced labels.**"
+MOVED: #594 — the weekly labelling cadence is what #594 (chart reading: label and evaluate until an edge) already runs; the precedent-retrieval half was ruled out when #255 closed 2026-09-02 (the corpus never existed, commit 8f95c68e).
+
+EVIDENCE:
+- **Not met — folded into #594 on his "Ok" 2026-10-10 to the recommendation table** (rec: fold as a duplicate).
+- Labels landed 09-05/06/07, 09-23/24 and 10-05/07 (`tests/fixtures/must_not_trade_charts.py`, `docs/methodology/operator_labelled_eps.md`) — never four consecutive weeks; #594 owns the loop from here.
+
+## #308 — precedent-library judge (roadmap container): closed on his ok (2026-10-10)
+
+BAR: "the precedent corpus is populated at scale AND a judge run demonstrably RETRIEVES from it (a precedent id appears in a real judge rationale), plus the distillation loop has produced at least one rubric change that survived review. WOULD-FAIL-IF: the corpus exists but no judge output ever cites it — a store nothing reads.**"
+ACCEPTED-PARTIAL: its base, the precedent corpus (#255), closed 2026-09-02 as never having existed, so 'a judge run retrieves from it' is unreachable; rubric changes now come from his labels via #594 / #692 instead of a distillation loop.
+
+EVIDENCE:
+- **Not met — dropped as superseded on his "Ok" 2026-10-10 to the recommendation table** (rec: drop).
+- Nothing in the container was started; no corpus code, no self-review loop.
+
+## #309 — full-sight axes (roadmap container): closed on his ok (2026-10-10)
+
+BAR: "each named sight axis (multimodal #267, intraday narrative radar, tape features #299, negative-catalyst #238) is either LIVE in the grade path or explicitly ruled out with a reason. WOULD-FAIL-IF: an axis sits in shadow indefinitely with no ruling — that is the state this container exists to prevent.**"
+MOVED: #594 — the multimodal axis (#267): chart reading is not in the grade path and continues as #594 under his 'keep reviewing until we find an edge' ruling.
+
+EVIDENCE:
+- **Each axis now has a ruling** — closed on his "Ok" 2026-10-10 to the recommendation table (rec: rule out the radar, close into #594).
+- Negative-catalyst #238: LIVE in the grade path (closed 06-19, dilution filings fed to the grader, commit 6c187d1c).
+- Tape features #299: ruled NO by him 2026-09-19 (`docs/task_closes.md` #299 entry).
+- Intraday narrative radar: RULED OUT 2026-10-10 by the same ok (the nightly radar and the #322 judge-to-radar feed stay as they are; the intraday upgrade in `docs/roadmap/apollo-v1.1-v2.0.md` is not built).
+
+## #414 — stop-limit entry tuning: closed on his ok (2026-10-10)
+
+BAR: "a backtested proposal presented for operator sign-off (no unilateral ship). [b6]  "
+ACCEPTED-PARTIAL: he shelved the entry-mechanics proposal on 2026-09-06 ("got it, let's shelve this"; do not pick it up again without him), so no backtested proposal will be presented; reopening it is an entry-mechanics change under CHANGE_PROCESS, his call.
+
+EVIDENCE:
+- **Not met — closed as shelved on his "Ok" 2026-10-10 to the recommendation table**.
+- The one live sub-item, the morning stop refresh, is verified: the 10-09 09:35 `stop_refresh_ran` row reads 'same-day excluded 1 (HUM)' and 'placed 1 (PEP)' (`scripts/probes/_sweep_1010/q5_1009.out`); the code is in the running execution image (`q7_images.out`).

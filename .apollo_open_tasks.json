@@ -8,18 +8,6 @@
   "status": "pending"
  },
  {
-  "id": 307,
-  "status": "pending"
- },
- {
-  "id": 308,
-  "status": "pending"
- },
- {
-  "id": 309,
-  "status": "pending"
- },
- {
   "id": 311,
   "status": "pending"
  },
@@ -29,15 +17,11 @@
  },
  {
   "id": 313,
-  "status": "pending"
+  "status": "in_progress"
  },
  {
   "id": 314,
   "status": "pending"
- },
- {
-  "id": 331,
-  "status": "blocked"
  },
  {
   "id": 333,
@@ -46,10 +30,6 @@
  {
   "id": 397,
   "status": "blocked"
- },
- {
-  "id": 414,
-  "status": "deployed"
  },
  {
   "id": 482,
@@ -70,10 +50,6 @@
  {
   "id": 519,
   "status": "in_progress"
- },
- {
-  "id": 529,
-  "status": "blocked"
  },
  {
   "id": 540,
