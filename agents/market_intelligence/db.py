@@ -18273,15 +18273,18 @@ async def update_lowcap_paper_lane_judge_result(
             rubric_version, judge_grade, judge_grade_reason, judge_tier_reason, setup_class)
 
 
+# Window = [today - days, today], BOTH ends inclusive — the live cooldown's own bound
+# (`alert_date >= today - EP_COOLDOWN_DAYS` in run_ep_scan), so a name the lane alerted exactly
+# 60 days ago is still on the lane's cooldown, as it would be on live's (10-10 review fix: was `>`).
 _LOWCAP_PAPER_LANE_TIERED_SQL = """
     SELECT ticker, alert_date FROM mi_lowcap_paper_lane_alerts
-    WHERE score_tier IS NOT NULL AND alert_date > $1::date - $2::int AND alert_date <= $1::date
+    WHERE score_tier IS NOT NULL AND alert_date >= $1::date - $2::int AND alert_date <= $1::date
 """
 
 
 async def get_lowcap_paper_lane_tiered(today: "date", days: int) -> dict[str, "date"]:
     """READ-ONLY. ticker -> most recent alert_date on which the lane gave it a tier, within the
-    last `days` calendar days up to and including `today` — the lane's own "already scored
+    window [today - days, today], both ends inclusive (live's bound) — the lane's own "already scored
     today" set (alert_date == today) and its own cooldown (earlier dates), the twins of the
     live scan's already_today / cooldown reads of mi_ep_alerts."""
     pool = await get_pool()
@@ -18310,6 +18313,56 @@ async def get_lowcap_paper_lane_highs(today: "date") -> list[dict]:
     async with pool.acquire() as conn:
         rows = await conn.fetch(_LOWCAP_PAPER_LANE_HIGHS_SQL, _coerce_date(today))
     return [dict(r) for r in rows]
+
+
+# #624 paper lane DAILY HEARTBEAT (10-10 silent-lane check): the day read from BOTH sides, so a
+# quiet day and a broken lane differ — the live scan's own log says how many names it screened and
+# which it turned away ONLY on the $500M floor (check_filters reads the cap LAST, so that reason
+# means every earlier gate passed: exactly the lane's candidates); the lane's table says which of
+# them reached the lane; mi_live_trades says how many paper orders it placed.
+_LOWCAP_PAPER_LANE_DAY_SCREENED_SQL = """
+    SELECT COUNT(DISTINCT ticker) AS screened,
+           COALESCE(array_agg(DISTINCT ticker) FILTER (
+               WHERE reject_stage = 'quality_filter' AND strpos(filter_reason, $2) > 0),
+               ARRAY[]::text[]) AS cap_only
+    FROM mi_ep_scan_log
+    WHERE scan_date = $1::date
+"""
+_LOWCAP_PAPER_LANE_DAY_ROWS_SQL = """
+    SELECT ticker, score_tier, reject_stage FROM mi_lowcap_paper_lane_alerts
+    WHERE alert_date = $1::date
+"""
+_LOWCAP_PAPER_LANE_DAY_ORDERED_SQL = """
+    SELECT COUNT(*) FROM mi_live_trades
+    WHERE alert_date = $1::date AND signal_type = $2 AND account_mode = $3
+      AND entry_order_id IS NOT NULL
+"""
+_LOWCAP_PAPER_LANE_DAY_WRITTEN_SQL = """
+    SELECT EXISTS(SELECT 1 FROM mi_audit_log WHERE event_type = $1 AND summary LIKE $2 || '%')
+"""
+
+
+async def get_lowcap_paper_lane_day(today: "date", *, mcap_reason: str, strategy_id: str,
+                                    account_mode: str, heartbeat_event: str) -> dict:
+    """READ-ONLY. One ET day of the #624 paper lane, read from both sides (see the SQL above):
+    {screened, cap_only: sorted tickers, lane_rows: [{ticker, score_tier, reject_stage}],
+    ordered, already_written}. Raises on a DB error (the heartbeat pages on it)."""
+    d = _coerce_date(today)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        scr = await conn.fetchrow(_LOWCAP_PAPER_LANE_DAY_SCREENED_SQL, d, mcap_reason)
+        rows = await conn.fetch(_LOWCAP_PAPER_LANE_DAY_ROWS_SQL, d)
+        ordered = await conn.fetchval(_LOWCAP_PAPER_LANE_DAY_ORDERED_SQL, d, strategy_id,
+                                      account_mode)
+        written = await conn.fetchval(_LOWCAP_PAPER_LANE_DAY_WRITTEN_SQL, heartbeat_event,
+                                      d.isoformat())
+    return {
+        "screened": int((scr["screened"] if scr else 0) or 0),
+        "cap_only": sorted((scr["cap_only"] if scr else None) or []),
+        "lane_rows": [dict(r) for r in rows],
+        "ordered": int(ordered or 0),
+        "already_written": bool(written),
+    }
 
 
 _LOWCAP_PAPER_LANE_POPULATION_SQL = """

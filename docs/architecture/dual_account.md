@@ -23,7 +23,8 @@
 
 The two order steps never read each other's table. The lane is bound to paper three ways: its
 order step refuses any phase but 'paper'; it calls `submit_trade_entry(require_account_mode=
-'paper')`, which blocks (step 1c, before any skip row, trade row or order) a strategy row that
+'paper')`, which blocks (step 1c, before safeguards, the trade row or any order — after steps
+1 / 1b / 1a, which can write a skipped row into the book the phase resolves to) a strategy row that
 resolves to any other mode; and its client order ids are `apollo_paper_magna53_smallcap_*`. Its own
 slot cap is `max_concurrent_positions` on its row (5 — pending the operator's confirmation),
 inside the paper account's 5. Live MAGNA53's "already traded today" check filters by MAGNA53's

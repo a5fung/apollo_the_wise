@@ -311,9 +311,11 @@ async def _funnel(**extra):
 
 
 @pytest.mark.asyncio
-async def test_funnel_refuses_a_lane_row_that_resolves_to_live_before_any_row_or_order(monkeypatch):
+async def test_funnel_refuses_a_lane_row_that_resolves_to_live_before_the_trade_row_or_order(monkeypatch):
     """Wall 3. A lane strategy whose phase became 'live' (live_real_enabled True — the worst
-    case) must not insert a trade row, a skip row or an order. MUTATION TARGET: remove step 1c."""
+    case) must not insert a trade row or place an order, and 1c itself writes no skip row.
+    (Steps 1 / 1b / 1a run BEFORE 1c and can write a skip row of their own — this fixture has no
+    duplicate and no open position, so they pass; 10-10 review.) MUTATION TARGET: remove 1c."""
     from tests.test_461_cap_toctou_race import FakeDB, _wire
     import agents.market_intelligence.broker.order_manager as om
     fdb = FakeDB()

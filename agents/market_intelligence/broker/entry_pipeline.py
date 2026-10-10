@@ -560,10 +560,12 @@ async def submit_trade_entry(
             )
 
     # 1c. #624 — a caller bound to ONE account (the small-cap PAPER lane) refuses any strategy
-    # row that does not resolve to it, BEFORE safeguards / bar fetch / sizing / row / order.
-    # Deliberately NOT through `_skip`: that would write a skipped-trade row into whatever book
-    # the (wrong) phase resolves to — the very book this guard keeps the lane out of. Audit row
-    # here; the caller pages (it knows which lane it is).
+    # row that does not resolve to it, BEFORE safeguards / bar fetch / sizing / the trade row /
+    # any order. It runs AFTER steps 1, 1b and 1a above, and 1b / 1a can already have written a
+    # skipped-trade row (through `_skip`) into the book the phase resolves to — 1c's guarantee is
+    # no ORDER and no placed-trade row in the wrong book, not "no row at all". 1c itself is
+    # deliberately NOT through `_skip`, which would add one more skipped row to that book. Audit
+    # row here; the caller pages (it knows which lane it is).
     if require_account_mode is not None:
         try:
             _bound_mode = (resolve_account_mode_for_strategy(strategy)

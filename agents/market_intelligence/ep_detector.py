@@ -40,6 +40,7 @@ import os
 import random
 import re
 import time
+from contextvars import ContextVar
 from datetime import date, datetime, timedelta
 from typing import Any, NamedTuple, Optional
 
@@ -620,6 +621,24 @@ _ANTHROPIC_SEMAPHORE = asyncio.Semaphore(5)
 # advisory). A separate semaphore keeps the larger 6000-char judge call concurrent with —
 # not starving — the catalyst grader under the 9:45 ORB cutoff.
 _JUDGE_SEMAPHORE = asyncio.Semaphore(3)
+# #624 small-cap PAPER lane (10-10 review fix): the lane grades AFTER live grading, detached — but
+# a lane tick can still be in flight when the NEXT live tick grades (09:35), and on the shared
+# semaphores above it could hold a slot a live grader/judge call is waiting for. The lane gets its
+# OWN slots (1 grader, 1 judge), so a lane call can never take a live slot. Paper-only names run
+# slower at 1 slot each; that is the ruling ("never slowing the 09:30–09:45 entry window").
+_LANE_GRADER_SEMAPHORE = asyncio.Semaphore(1)
+_LANE_JUDGE_SEMAPHORE = asyncio.Semaphore(1)
+# The grader is reached through _build_enriched_corpus and the legacy fallback, neither of which
+# carries `lane`. The lane TASK sets this (asyncio copies the context into a task at creation, so
+# the value lives only in the lane task and the tasks it spawns — never in the live scan's), and
+# `_classify_catalyst_claude` reads it. Unset → `_ANTHROPIC_SEMAPHORE`: live is unchanged.
+_GRADER_SEMAPHORE_OVERRIDE: "ContextVar[Optional[asyncio.Semaphore]]" = ContextVar(
+    "ep_grader_semaphore_override", default=None)
+
+
+def _grader_semaphore() -> asyncio.Semaphore:
+    sem = _GRADER_SEMAPHORE_OVERRIDE.get()
+    return _ANTHROPIC_SEMAPHORE if sem is None else sem
 
 
 def _get_claude():
@@ -1559,7 +1578,7 @@ In your analysis, state the SPECIFIC catalyst clearly. If you cannot identify a 
 catalyst, say so explicitly."""
 
     try:
-        async with _ANTHROPIC_SEMAPHORE:
+        async with _grader_semaphore():   # live: _ANTHROPIC_SEMAPHORE; the #624 paper lane: its own
             for attempt in range(2):
                 try:
                     response = await _get_claude().messages.create(
@@ -7066,7 +7085,9 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     verdict = await grade_holistic(
                         _get_claude(), payload,
                         log_caller="lowcap_paper_lane_judge",
-                        semaphore=_JUDGE_SEMAPHORE, timeout=25,
+                        # its OWN slot — a lane judge call can never hold one of the live
+                        # judge's three (10-10 review)
+                        semaphore=_LANE_JUDGE_SEMAPHORE, timeout=25,
                     )
                 # W2c (#243): LOAD-BEARING override — only when the toggle is ON. The judge
                 # tier overwrites the authoritative score_tier (the field the caller reads for

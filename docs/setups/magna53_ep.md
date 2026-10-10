@@ -461,12 +461,16 @@ MAGNA53's exits; live MAGNA53's "already traded today" check made account-aware.
   sinks; the post-scan judge is the same `_judge_shadow`. Nothing is restated. The lane differs
   only in WHERE things go: its own grade cache, its own table (`mi_lowcap_paper_lane_alerts`),
   no allocator enqueue, no catalyst Telegrams, the 'shared' M&A headline-question pool (the EP
-  reserve stays the live scan's), the judge billed as `lowcap_paper_lane_judge`. **One stated
+  reserve stays the live scan's), the judge billed as `lowcap_paper_lane_judge`, and its OWN
+  model-call slots — 1 grader, 1 judge (`ep_detector._LANE_GRADER_SEMAPHORE` /
+  `_LANE_JUDGE_SEMAPHORE`), never the live scan's 5 / 3, so a lane call still in flight at the
+  next live tick can never hold a slot a live call waits for (10-10 review). **One stated
   difference:** the theme-fit judgement (stage 2 of theme belonging, pre-market, per-day budget)
   is not spent on lane names — a lane name pending a fit keeps list membership.
 - **The lane's own gates (added, the live ones are untouched):** a 60-day cooldown on the lane's
-  OWN tiered alerts (live's `EP_COOLDOWN_DAYS`, live's fresh-earnings bypass) and "already scored
-  today" on its own table.
+  OWN tiered alerts (live's `EP_COOLDOWN_DAYS`, both ends inclusive like live's
+  `alert_date >= today − 60`; live's fresh-earnings bypass) and "already scored today" on its own
+  table.
 - **When.** Dispatched LAST in `run_ep_scan` (after the judge and tape annotation) as a detached
   task; one lane tick at a time; a tick cut at 240 s. From 09:31 to 10:00 ET, with any lane HIGH
   today, it hands off to the paper order step via `execution_client.trigger_lowcap_paper_entry`
@@ -483,7 +487,8 @@ MAGNA53's exits; live MAGNA53's "already traded today" check made account-aware.
   (1) it reads only its own table, and the live step reads only `mi_ep_alerts`; (2) it refuses the
   whole run unless the strategy row is phase 'paper' and resolves to 'paper' (pages otherwise);
   (3) the funnel itself refuses (`require_account_mode='paper'`, step 1c) a row resolving
-  anywhere else — before any skip row, trade row or order; (4) every order id is
+  anywhere else — before the trade row or any order (1c runs after the funnel's steps 1 / 1b / 1a,
+  which can write a skipped row into the book the phase resolves to, never an order); (4) every order id is
   `make_client_order_id('paper', 'magna53_smallcap', ticker)`.
 - **Pre-flight.** Before the first lane order of an ET day the paper account must answer
   (`get_account('paper')`, not blocked); otherwise nothing is submitted, an audit row + a
@@ -502,7 +507,14 @@ MAGNA53's exits; live MAGNA53's "already traded today" check made account-aware.
 - **Telegram (decided for the lane, paper only):** an alert, a grade, a skip or a placed order
   sends NOTHING — audit rows `lowcap_paper_lane_alert` / `_tick` / `_order`. A failure pages,
   📄 PAPER-prefixed: the pre-flight, a refused phase, a crashed order task, a failed tick (once
-  per kind per day), and the funnel's own infra/auto-enter-failed pages. The live CAP+1
+  per kind per day), a BROKEN heartbeat (below), and the funnel's own infra/auto-enter-failed pages.
+- **Daily heartbeat** (10-10 silent-lane check; `lowcap_paper_lane.write_paper_lane_heartbeat`,
+  run by the 18:15 ET replay job): ONE `lowcap_paper_lane_heartbeat` audit row per scan day —
+  names the live scan screened, names it turned away ONLY on the $500M floor, how many the lane
+  graded, HIGH, paper orders — and a verdict: `quiet` (no cap-only name), `ran` (every cap-only
+  name reached the lane), `broken` (a cap-only name never reached it — PAGES), `off` (toggle or
+  strategy disabled), `scan_silent` (the live scan logged nothing). Before it, a quiet market and a
+  broken lane both left no rows. The live CAP+1
   manual-trade prompt is switched off for the lane (`page_cap_plus_one=False`). The broker's
   fill/exit Telegrams (trade_stream) still fire for paper fills (~1 a month expected).
 - **Tail rate is read from replays, not fills** (review correction 4): the nightly walker

@@ -5534,6 +5534,18 @@ async def _lowcap_lane_replay_job():
     except Exception as e:
         logger.error(f"small-cap paper lane replay failed: {e}", exc_info=True)
         await notify_job_failure("lowcap_paper_lane_replay", str(e))
+    # #624 paper lane DAILY HEARTBEAT (10-10 silent-lane check): one audit row per scan day —
+    # screened / turned away only on the cap / graded / HIGH / ordered — so a quiet day and a broken
+    # lane read differently (a cap-only name that never reached the lane pages). Never raises; its
+    # own try regardless, so it can never stop the walkers above from having run.
+    try:
+        from agents.market_intelligence.lowcap_paper_lane import write_paper_lane_heartbeat
+        from agents.market_intelligence.collector import et_today
+        hb = await write_paper_lane_heartbeat(et_today())
+        logger.info(f"small-cap paper lane heartbeat: {hb.get('verdict')} — {hb}")
+    except Exception as e:
+        logger.error(f"small-cap paper lane heartbeat failed: {e}", exc_info=True)
+        await notify_job_failure("lowcap_paper_lane_heartbeat", str(e))
 
 
 async def _alert_rank_shadow_job():

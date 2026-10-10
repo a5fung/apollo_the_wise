@@ -18,8 +18,10 @@ WHY IT CANNOT REACH REAL MONEY — four independent walls, each test-pinned
      (`resolve_account_mode_for_strategy`) to 'paper'; any other answer refuses the whole run and
      pages. `live_real_enabled` is never consulted.
   3. It calls `submit_trade_entry(require_account_mode='paper')` — the funnel itself refuses a
-     strategy that resolves anywhere else, before any row or order (defense in depth for a phase
-     change between 2 and 3).
+     strategy that resolves anywhere else at step 1c, before safeguards, sizing, the trade row and
+     any order (defense in depth for a phase change between 2 and 3). 1c runs AFTER the funnel's
+     steps 1 / 1b / 1a (duplicate, open position, phase gate), and 1b / 1a can write a SKIPPED row
+     into the book the phase resolves to — a record, never an order.
   4. Every order the funnel places for it carries `make_client_order_id('paper',
      'magna53_smallcap', ticker)` (order_manager.submit_entry builds it from the row's
      account_mode + signal_type), so a fill event can only ever match the paper book
@@ -37,8 +39,11 @@ could not place (the funnel's own infra:* skip and auto-enter-failed pages, whic
 the 📄 PAPER prefix). The live #197 CAP+1 page is switched off for this caller.
 
 STOP SWITCH. The runtime toggle `lowcap_paper_lane` (mi_safeguard_state, account_mode='global';
-default ON — PENDING HIS CONFIRMATION) and `mi_strategies.enabled` both stop it; `/pause` and
-LIVE_TRADING_ENABLED (the live kill switches) stop it too because they stop every order path.
+default ON — PENDING HIS CONFIRMATION) and `mi_strategies.enabled` both stop it. `/pause` does
+NOT: the manual halt is checked on the LIVE path only (`live_tracker._check_safeguards`,
+`order_manager.submit_entry`), so this paper-only step keeps running under it — the lane's stop
+switch is the toggle (docs/setups/magna53_ep.md). LIVE_TRADING_ENABLED=false does stop it (read
+first in `process_lowcap_paper_alerts`, and again by every submit).
 """
 from __future__ import annotations
 

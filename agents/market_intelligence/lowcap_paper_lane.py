@@ -35,6 +35,11 @@ facade (`execution_client.trigger_lowcap_paper_entry` → broker/lowcap_paper_en
 
 TELEGRAM: none for an alert, a grade, a skip or an order (audit rows only — "an alert that says no
 action is noise"). A lane FAILURE pages, paper-prefixed, once per failure kind per ET day.
+HEARTBEAT: one `lowcap_paper_lane_heartbeat` audit row per scan day (the 18:15 ET job) — screened /
+cap-only / graded / HIGH / ordered + a verdict — so a quiet day and a broken lane read differently;
+a cap-only name that never reached the lane pages (`write_paper_lane_heartbeat`, below).
+MODEL-CALL SLOTS: the lane's own (1 grader, 1 judge — ep_detector._LANE_*_SEMAPHORE), never the
+live scan's 5 / 3, so a lane call can never hold a slot a live call waits for.
 STOP SWITCH: runtime toggle `lowcap_paper_lane` (default ON, PENDING HIS CONFIRMATION) or
 `mi_strategies.enabled` on `magna53_smallcap`.
 """
@@ -284,6 +289,11 @@ async def run_paper_lane_tick(cands: list, *, grade: Callable, judge: Optional[C
     """The detached task body. NEVER raises."""
     out: dict[str, Any] = {"candidates": len(cands), "graded": 0, "tiered": 0, "cooldown": 0,
                            "already_today": 0, "errors": 0, "order_step": None}
+    # The lane's OWN model-call slots (10-10 review): every catalyst-grader call made from this
+    # task — and from the tasks it spawns — takes the lane's single grader slot, never one of the
+    # live scan's five; the judge call takes the lane's own slot (`_judge_shadow(lane=...)`).
+    from agents.market_intelligence import ep_detector as _epd
+    _slot_token = _epd._GRADER_SEMAPHORE_OVERRIDE.set(_epd._LANE_GRADER_SEMAPHORE)
     try:
         async with _get_lock():
             if not await get_runtime_toggle(TOGGLE, TOGGLE_ENV, default=True):
@@ -322,6 +332,8 @@ async def run_paper_lane_tick(cands: list, *, grade: Callable, judge: Optional[C
         await _page_once("tick_failed", today,
                          f"🚨 Small-cap paper lane tick failed — {type(e).__name__}: {str(e)[:160]} "
                          f"(paper only; the live scan is unaffected)")
+    finally:
+        _epd._GRADER_SEMAPHORE_OVERRIDE.reset(_slot_token)
     return out
 
 
@@ -339,3 +351,84 @@ def schedule_paper_lane_tick(cands: list, *, grade: Callable, judge: Optional[Ca
     bg_tasks.add(task)
     task.add_done_callback(bg_tasks.discard)
     return task
+
+
+# ── DAILY HEARTBEAT (10-10 silent-lane check) ───────────────────────────────────────────────
+# The tick writes nothing on a day with no cap-only names, so before this a quiet market and a
+# broken lane read the same (no rows). ONE audit row per scan day, read from BOTH sides — the live
+# scan's own log (screened / turned away ONLY on the $500M floor) against the lane's own table and
+# the paper book — so the two cases differ:
+#   quiet       the live scan screened names, none was turned away only on the cap
+#   ran         every cap-only name reached the lane (graded, on lane cooldown or a grade error)
+#   broken      a cap-only name the live scan turned away NEVER reached the lane → PAGES (paper)
+#   off         the toggle / mi_strategies.enabled is off (the lane is meant to be silent)
+#   scan_silent the live scan logged nothing today (holiday, or the scan itself) — not the lane's
+# Run by the 18:15 ET replay job (scheduler._lowcap_lane_replay_job). A failed read pages.
+HEARTBEAT_EVENT = "lowcap_paper_lane_heartbeat"
+_LANE_BOOK = "paper"   # mode-ok: the lane's one book — the heartbeat counts its paper orders only
+_NOT_GRADED_STAGES = ("cooldown", "grade_error")
+
+
+async def write_paper_lane_heartbeat(today: date) -> dict:
+    """Write today's heartbeat row (once per day — a re-run finds it and writes nothing). Returns
+    the counts + verdict. NEVER raises."""
+    from agents.market_intelligence.broker.skip_reasons import FILTER_MCAP_TOO_SMALL
+    from agents.market_intelligence.db import get_lowcap_paper_lane_day
+    out: dict[str, Any] = {"date": today.isoformat(), "verdict": None}
+    try:
+        day = await get_lowcap_paper_lane_day(
+            today, mcap_reason=FILTER_MCAP_TOO_SMALL, strategy_id=STRATEGY_ID,
+            account_mode=_LANE_BOOK, heartbeat_event=HEARTBEAT_EVENT)
+        if day["already_written"]:
+            out["verdict"] = "already_written"
+            return out
+        enabled = (await get_runtime_toggle(TOGGLE, TOGGLE_ENV, default=True)
+                   and await should_run(STRATEGY_ID))
+        rows = day["lane_rows"]
+        reached = {r["ticker"] for r in rows}
+        missing = [t for t in day["cap_only"] if t not in reached]
+        out.update({
+            "screened": day["screened"],
+            "cap_only_eligible": len(day["cap_only"]),
+            "reached_lane": len(reached),
+            "graded": len({r["ticker"] for r in rows
+                           if r.get("reject_stage") not in _NOT_GRADED_STAGES}),
+            "high": len({r["ticker"] for r in rows if r.get("score_tier") == "HIGH"}),
+            "ordered": day["ordered"],
+            "missing": missing,
+            "lane_enabled": bool(enabled),
+        })
+        if day["screened"] == 0:
+            out["verdict"] = "scan_silent"
+        elif not enabled:
+            out["verdict"] = "off"
+        elif missing:
+            out["verdict"] = "broken"
+        elif not day["cap_only"]:
+            out["verdict"] = "quiet"
+        else:
+            out["verdict"] = "ran"
+        summary = (f"{today.isoformat()} {out['verdict']}: {out['screened']} screened by the live "
+                   f"scan, {out['cap_only_eligible']} turned away only by the $500M floor, "
+                   f"{out['graded']} graded by the lane, {out['high']} HIGH, "
+                   f"{out['ordered']} paper order(s)"
+                   + (f"; NEVER reached the lane: {', '.join(missing)}" if missing else ""))
+        await log_audit_event(HEARTBEAT_EVENT, summary, json.dumps(out, default=str))
+        if out["verdict"] == "broken":
+            await _page_once("heartbeat_broken", today,
+                             f"🚨 Small-cap paper lane looked BROKEN today: {len(missing)} name(s) "
+                             f"the live scan turned away only on the $500M floor never reached the "
+                             f"lane ({', '.join(missing[:8])}). Paper only; the live scan is "
+                             f"unaffected.")
+    except Exception as e:  # loud-ok: audited + paged once a day; the heartbeat never raises into the job
+        out["verdict"] = "read_failed"
+        logger.warning(f"#624 paper lane heartbeat failed: {e}")
+        try:
+            await log_audit_event("lowcap_paper_lane_error",
+                                  f"heartbeat {today.isoformat()}: {type(e).__name__}: {e}")
+        except Exception:  # loud-ok: the warning above already spoke
+            pass
+        await _page_once("heartbeat_failed", today,
+                         f"🚨 Small-cap paper lane heartbeat could not read the day — "
+                         f"{type(e).__name__}: {str(e)[:160]} (paper only)")
+    return out
