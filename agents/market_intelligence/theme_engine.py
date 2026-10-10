@@ -90,6 +90,7 @@ from agents.market_intelligence.audit_events import (
     THEME_PARENT_PASS_INVERTED, THEME_PARENT_PASS_ERROR,
     THEME_RETIRED_SMALL_FADING, THEME_SMALL_FADING_RETIRE_ERROR,
     THEME_SECTOR_CAP_KEPT_DISTINCT,
+    THEME_SMALL_FOLDED, THEME_SMALL_FOLD_RAN, THEME_SMALL_FOLD_ERROR,
 )
 from shared.llm_response import content_block_types, first_text, is_truncated, stop_reason
 from shared.output_ceilings import max_tokens_for
@@ -8934,6 +8935,334 @@ def _synthetic_retired_row(name: str, today: date, successor: str | None, note: 
     }
 
 
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+# #655 FAIL-ONLY FOLD OF SMALL THEMES (2026-10-10, operator "ok" — option (iii) with #505's
+# minimum, docs/analysis/655_scope_small_themes_churn_2026-10-10.md incl. its verifier corrections).
+#
+# THE RULE. A theme with 2-3 members that FAILS G3 tonight (theme_correctness.compute_g3: its
+# cohesion does not beat a size-matched random basket's p95) is dissolved. Its members are tested
+# against every OTHER live theme in the SAME ecosystem (mi_theme_ecosystems e_code, never
+# E-UNASSIGNED) that has >= 4 members, >= 3 of them with price history; any stage. A member passes
+# a candidate home when it already sits in it, or co-moves with the home's basket at
+# >= ASSIGN_COMOVE_BAR (the membership test `_admit_rehomed_members` uses, `_comove_verdict`), and
+# is not barred from the home by an operator exclusion or a live validation cooldown (the two hard
+# guards every admission honours). A home qualifies when at least HALF the members pass — for a
+# 2-member theme that is ONE of the two — and it clears #505's minimum (shares a member, or
+# industry overlap >= PARENT_PASS_MIN_INDUSTRY_OVERLAP). Among qualifying homes the CLOSEST wins,
+# by #505's closeness key (-shared members, -industry overlap, -word similarity, -size, name) —
+# never the biggest by default. Passing members move into the home; the rest are RELEASED (they
+# leave this theme and come back through assignment/discovery like any uncovered name). No
+# qualifying home -> the theme is left as it is tonight. Themes with >= 4 members never fold;
+# a 2-3-member theme that PASSES G3 (or cannot be judged) is never touched.
+#
+# Every decision is taken against the board as it stood BEFORE any fold tonight (the replay's
+# per-night shape — `scripts/probes/_655_scope/a4_fold.py --min505`): two small themes folding
+# into one home are each judged against the home's pre-fold members.
+#
+# SITING (run_theme_engine Step 4d): right after Arm B (Step 4c), before the engine-drop retire
+# block. Membership is final there — merge passes, the sector cap, splits and Arm B have all run
+# (Arm B gets first call on its pairs) — so G3 is computed on the board the 17:30 correctness
+# check will read, minus what the shadow-promote lane adds after the engine. A folded INCUMBENT
+# gets its own Retired row here (`parent_theme` = the home), so the engine-drop block never
+# double-retires it (Arm B's contract); a theme born tonight that folds gets no row (it never
+# existed). Before #505's parent pass (a folded theme is on neither side of it; a home's new
+# members count) and before `_restore_sub_theme_links` (an orphaned child is cleared).
+#
+# G3 INSIDE THE ENGINE. `compute_g3` draws its controls from the WHOLE scored universe
+# (mi_stock_scores at its latest date <= tonight, ~2,400 names), so the engine's assignment-pool
+# price context (a few hundred strength-selected names) cannot serve it — controls drawn from
+# leaders co-move more and would fail far more small themes than the replay. The fold therefore
+# makes ONE more read through the engine's own loader (`_load_comove_context`, same date, same
+# strictly-before-tonight sessions) over that universe plus the board — the read the 17:30 check
+# already pays — and uses that one context for both G3 and the members' membership test. The other
+# membership-test sites keep their own context untouched; if this read fails only the fold skips.
+# G3 runs over the live board sorted by name (get_active_themes' order); each verdict is the
+# engine's own draw, not the 17:30 row's — a theme sitting right at its p95 can read differently.
+#
+# NOT IN THE REPLAY (each can only reduce folds): the two hard guards above; a theme holding an
+# operator-protected member (`get_operator_protected_set`) is never folded, and with no readable
+# protected set nothing folds tonight; a theme renamed this run is skipped for a night (rule B's
+# idiom); a theme born tonight has no ecosystem row until after save, so it is judged next night
+# unless its name was already mapped.
+#
+# TOGGLE `theme_small_fold` (mi_safeguard_state / env THEME_SMALL_FOLD_ENABLED), DEFAULT ON —
+# rule B's convention (operator standing rule: themes = no money -> ship full). Read only on a
+# night with a 2-3-member theme. OFF = nothing folds, no extra read: byte-identical engine.
+#     INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
+#     VALUES ('theme_small_fold', 'global', 'off', NOW(), NOW())
+#     ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();
+# Audit: ONE `theme_small_folded` row per fold (theme, home, moved, released, the theme's G3),
+# ONE `theme_small_fold_ran` row per night with a small theme (the counts — what tells a quiet
+# night from a pass that never ran), `theme_small_fold_error` when the pass raises (nothing folds).
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+SMALL_FOLD_TOGGLE: tuple[str, str] = ("theme_small_fold", "THEME_SMALL_FOLD_ENABLED")
+SMALL_FOLD_MIN_MEMBERS = 2        # the population: themes of 2-3 members (#655 scope Q-A — 144 of
+SMALL_FOLD_MAX_MEMBERS = 3        # the 152 G3 fails over 10 nights were 2-3-member themes)
+SMALL_FOLD_HOME_MIN_MEMBERS = 4   # a home holds >= 4 members ...
+SMALL_FOLD_HOME_MIN_HISTORY = 3   # ... >= 3 of them with price history (the membership test's own basket minimum)
+
+
+async def _read_small_fold_toggle() -> bool:
+    """The reversion toggle, DEFAULT ON (operator 2026-10-10, "ok"). DB row > env > default; a DB
+    error -> env/default (a grade-quality toggle, not capital). Literal strings on purpose:
+    scripts/live_rules.py discovers runtime toggles by regex over `get_runtime_toggle("<name>", "<ENV>")`."""
+    from agents.market_intelligence.db import get_runtime_toggle
+    return bool(await get_runtime_toggle("theme_small_fold", "THEME_SMALL_FOLD_ENABLED", default=True))
+
+
+@dataclass
+class SmallFold:
+    """One fold decision (pure output of `plan_small_theme_folds`)."""
+    theme: str
+    home: str
+    e_code: str
+    members: list[str]
+    moved: list[str]              # passed AND not already in the home -> appended to the home
+    already_in_home: list[str]    # passed by already sitting in the home
+    released: list[str]           # did not pass -> leave the theme, go back to the pool
+    verdicts: dict[str, dict]
+    shared: int
+    industry_overlap: float
+    word_similarity: float
+    home_members: int
+
+
+def _small_fold_member_verdict(tk: str, home: dict, ctx: "ComoveContext",
+                               excluded: set[str], cooldown_set) -> dict:
+    """PURE: one member against one candidate home. Already a member -> pass, untested (the
+    replay's rule). Otherwise the two hard guards, then the tape; an unjudgeable pair never passes."""
+    home_tk = list(home.get("tickers") or [])
+    if tk in home_tk:
+        return {"path": "already_in_home", "pass": True}
+    if tk in excluded:
+        return {"path": "exclusion", "pass": False}
+    if cooldown_set and (tk, home["name"]) in cooldown_set:
+        return {"path": "cooldown", "pass": False}
+    cv = _comove_verdict(tk, home_tk, ctx)
+    if cv is None or cv.admit is None:
+        return {"path": "unjudgeable", "reason": cv.reason if cv else "no_context", "pass": False}
+    return {"path": "tape", "corr": cv.corr, "basket_n": cv.basket_n, "pass": bool(cv.admit)}
+
+
+def plan_small_theme_folds(
+    board: list[dict],
+    g3_fail: "set[str] | frozenset",
+    ctx: "ComoveContext",
+    usable: "set[str] | frozenset",
+    eco_map: dict[str, str],
+    industry_by_ticker: dict[str, str],
+    *,
+    theme_exclusions: "dict[str, set[str]] | None" = None,
+    cooldown_set: "set[tuple[str, str]] | None" = None,
+    protected: "set[tuple[str, str]] | frozenset" = frozenset(),
+    skip_names: "set[str] | frozenset" = frozenset(),
+) -> tuple[list[SmallFold], dict[str, int]]:
+    """PURE, deterministic, no DB: the #655 fail-only fold decision (section header above), ported
+    from `scripts/probes/_655_scope/a4_fold.py` (`--min505`, scope 'fail', mode 'majority').
+    `board` = tonight's live themes (non-Retired, with members) in a fixed order; `g3_fail` = the
+    names whose G3 verdict tonight is a FAIL (an unjudgeable theme is not in it); `usable` = tickers
+    with a real price reading (theme_correctness.usable_set). Every decision reads the PRE-fold
+    board. Returns (folds, counts) — counts by outcome over the 2-3-member population."""
+    from agents.market_intelligence.theme_ecosystems import E_UNASSIGNED  # cycle: function-level
+    counts = {"small": 0, "g3_fail": 0, "folded": 0, "skipped_renamed": 0,
+              "skipped_protected": 0, "no_ecosystem": 0, "no_home": 0, "members_fail_test": 0}
+    folds: list[SmallFold] = []
+    for s in board:
+        s_tk = list(s.get("tickers") or [])
+        if not (SMALL_FOLD_MIN_MEMBERS <= len(s_tk) <= SMALL_FOLD_MAX_MEMBERS):
+            continue
+        counts["small"] += 1
+        if s["name"] not in g3_fail:
+            continue
+        counts["g3_fail"] += 1
+        if s["name"] in skip_names:
+            counts["skipped_renamed"] += 1
+            continue
+        if protected and any((tk, s["name"]) in protected for tk in s_tk):
+            counts["skipped_protected"] += 1
+            continue
+        code = eco_map.get(s["name"])
+        if not code or code == E_UNASSIGNED:
+            counts["no_ecosystem"] += 1
+            continue
+        homes = [h for h in board
+                 if h["name"] != s["name"] and eco_map.get(h["name"]) == code
+                 and len(h.get("tickers") or []) >= SMALL_FOLD_HOME_MIN_MEMBERS
+                 and sum(1 for m in h["tickers"] if m in usable) >= SMALL_FOLD_HOME_MIN_HISTORY]
+        if not homes:
+            counts["no_home"] += 1
+            continue
+        need = (len(s_tk) + 1) // 2   # at least half: 1 of 2, 2 of 3
+        best = None
+        for h in homes:
+            excluded = (_get_excluded_tickers_for_theme(h["name"], theme_exclusions)
+                        if theme_exclusions else set())
+            verdicts = {tk: _small_fold_member_verdict(tk, h, ctx, excluded, cooldown_set) for tk in s_tk}
+            passed = [tk for tk in s_tk if verdicts[tk]["pass"]]
+            if len(passed) < need:
+                continue
+            shared = len(set(s_tk) & set(h["tickers"]))
+            ind = round(parent_industry_overlap(s, h, industry_by_ticker), 6)
+            if shared == 0 and ind < PARENT_PASS_MIN_INDUSTRY_OVERLAP:
+                continue  # #505's minimum (his 10-09 yes): nothing shared, industries do not line up
+            wsim = round(parent_word_similarity(s, h), 6)
+            key = (-shared, -ind, -wsim, -len(h["tickers"]), h["name"])
+            if best is None or key < best[0]:
+                best = (key, h, passed, verdicts, shared, ind, wsim)
+        if best is None:
+            counts["members_fail_test"] += 1
+            continue
+        _, h, passed, verdicts, shared, ind, wsim = best
+        home_set = set(h["tickers"])
+        folds.append(SmallFold(
+            theme=s["name"], home=h["name"], e_code=code, members=s_tk,
+            moved=[tk for tk in passed if tk not in home_set],
+            already_in_home=[tk for tk in passed if tk in home_set],
+            released=[tk for tk in s_tk if tk not in passed],
+            verdicts=verdicts, shared=shared, industry_overlap=ind, word_similarity=wsim,
+            home_members=len(h["tickers"]),
+        ))
+        counts["folded"] += 1
+    return folds, counts
+
+
+async def _load_small_fold_g3_context(board: list[dict], today: date):
+    """The fold's ONE extra read: the scored universe (mi_stock_scores at its latest date <= tonight:
+    rs_composite + sector — exactly what the 17:30 check loads) and, through the engine's own
+    `_load_comove_context`, the price context over that universe + the board. Returns
+    (ctx, scores, sector) or None when either read fails (the fold then skips tonight)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, rs_composite, sector FROM mi_stock_scores WHERE score_date = "
+            "(SELECT MAX(score_date) FROM mi_stock_scores WHERE score_date <= $1)", today)
+    scores = {r["ticker"]: {"rs": r["rs_composite"], "sector": r["sector"]} for r in rows}
+    if not scores:
+        logger.warning("Small-theme fold (#655): no mi_stock_scores rows on or before tonight — no G3 tonight")
+        return None
+    sector = {t: v["sector"] for t, v in scores.items() if v["sector"]}
+    universe = set(scores) | {tk for t in board for tk in (t.get("tickers") or [])}
+    ctx = await _load_comove_context(universe, today)
+    if ctx is None:
+        return None
+    return ctx, scores, sector
+
+
+async def _fold_small_failing_themes(
+    all_themes: list[dict],
+    persisted_names: set[str],
+    changelog: list[dict],
+    today: date,
+    *,
+    theme_exclusions: "dict[str, set[str]] | None",
+    cooldown_set: "set[tuple[str, str]] | None",
+    protected: "set[tuple[str, str]] | None",
+) -> list[dict]:
+    """#655 fail-only fold (section header above). Returns `all_themes` with each folded theme
+    removed, its moved members appended to its home, and — for an incumbent — a synthetic Retired
+    row pointing at the home. No 2-3-member theme on the board, or toggle OFF -> the list is
+    returned untouched with no read. Any unreadable input -> nothing folds, said in the RAN row."""
+    from agents.market_intelligence import theme_correctness as tc
+
+    live = [t for t in all_themes if t.get("stage") != "Retired" and (t.get("tickers") or [])]
+    small = [t for t in live
+             if SMALL_FOLD_MIN_MEMBERS <= len(t["tickers"]) <= SMALL_FOLD_MAX_MEMBERS]
+    if not small:
+        return all_themes
+    if not await _read_small_fold_toggle():
+        logger.info(f"Small-theme fold (#655): toggle OFF — {len(small)} theme(s) of 2-3 members untouched")
+        return all_themes
+
+    async def _ran(status: str, counts: dict | None = None, **extra) -> None:
+        await log_audit_event(
+            THEME_SMALL_FOLD_RAN,
+            summary=(f"Small-theme fold: {status} — {len(small)} theme(s) of 2-3 members"
+                     + (f", {counts['g3_fail']} failed G3, {counts['folded']} folded" if counts else "")),
+            detail=json.dumps({"status": status, "small": len(small), "counts": counts, **extra},
+                              default=str),
+        )
+
+    if protected is None:
+        try:
+            from agents.market_intelligence.db import get_operator_protected_set
+            protected = await get_operator_protected_set()
+        except Exception as e:  # loud-ok: his placements cannot be read -> nothing folds tonight, RAN row says so
+            logger.warning(f"Small-theme fold (#655): operator-protected set unreadable ({e}) — nothing folds tonight")
+            await _ran("skipped: operator-protected set unreadable")
+            return all_themes
+
+    from agents.market_intelligence.theme_ecosystems import load_ecosystem_assignments
+    eco_map = await load_ecosystem_assignments()
+    if not eco_map:
+        await _ran("skipped: ecosystem mapping unavailable")
+        return all_themes
+
+    board = sorted(live, key=lambda t: t["name"])   # get_active_themes' order (ORDER BY name)
+    loaded = await _load_small_fold_g3_context(board, today)
+    if loaded is None:
+        await _ran("skipped: price/score context unavailable")
+        return all_themes
+    ctx, scores, sector = loaded
+    usable = tc.usable_set(ctx.excess)
+    g3 = await asyncio.to_thread(
+        tc.compute_g3,
+        [{"name": t["name"], "stage": t.get("stage"), "tickers": list(t["tickers"])} for t in board],
+        ctx.excess, usable, scores, sector)
+    g3_by_name = {r["name"]: r for r in g3["themes"]}
+    g3_fail = {n for n, r in g3_by_name.items() if r["pass_g3"] is False}
+
+    industries = await _read_parent_pass_industries(board)
+    folds, counts = plan_small_theme_folds(
+        board, g3_fail, ctx, usable, eco_map, industries or {},
+        theme_exclusions=theme_exclusions, cooldown_set=cooldown_set, protected=protected,
+        skip_names={t["name"] for t in board if t.get("renamed_from")},
+    )
+
+    by_name = {t["name"]: t for t in live}
+    removed: set[str] = set()
+    retired_rows: list[dict] = []
+    for f in folds:
+        g = g3_by_name.get(f.theme) or {}
+        try:
+            await log_audit_event(
+                THEME_SMALL_FOLDED,
+                summary=(f"'{f.theme}' -> '{f.home}': moved {len(f.moved)}, released {len(f.released)} "
+                         f"of {len(f.members)} (G3 fail, cohesion {g.get('cohesion')} vs random "
+                         f"p95 {g.get('c1_p95')}), #655 fold"),
+                detail=json.dumps({
+                    "theme": f.theme, "home": f.home, "e_code": f.e_code, "members": f.members,
+                    "moved": f.moved, "already_in_home": f.already_in_home, "released": f.released,
+                    "g3": {"cohesion": g.get("cohesion"), "c1_p95": g.get("c1_p95"),
+                           "pass_g3": g.get("pass_g3")},
+                    "home_pick": {"shared": f.shared, "industry_overlap": f.industry_overlap,
+                                  "word_similarity": f.word_similarity, "home_members": f.home_members},
+                    "bar": ASSIGN_COMOVE_BAR, "verdicts": f.verdicts,
+                }, default=str),
+            )
+        except Exception as e:  # loud-ok: the row IS the fold's evidence — a fold that cannot be recorded does not happen tonight
+            logger.warning(f"Small-theme fold (#655): audit row failed for '{f.theme}' — not folded "
+                           f"tonight: {type(e).__name__}: {e}")
+            continue
+        home = by_name[f.home]
+        home["tickers"] = list(home["tickers"]) + [tk for tk in f.moved if tk not in home["tickers"]]
+        removed.add(f.theme)
+        if f.theme in persisted_names:
+            retired_rows.append(_synthetic_retired_row(
+                f.theme, today, successor=f.home,
+                note=(f"Auto-retired {today}: folded into '{f.home}' — {len(f.members)} members "
+                      f"failing the random-basket test (G3); moved {', '.join(f.moved) or 'none'}"
+                      f"{' (already there: ' + ', '.join(f.already_in_home) + ')' if f.already_in_home else ''}"
+                      f"; released {', '.join(f.released) or 'none'} (#655 fold).")))
+        changelog.append({"type": "theme_retired", "theme": f.theme, "tickers": f.members,
+                          "via": "small_fold", "into": f.home, "moved": f.moved, "released": f.released})
+        logger.info(f"Theme '{f.theme}' folded into '{f.home}' (#655): moved {f.moved}, released {f.released}")
+    counts["folded"] = len(removed)
+    await _ran("ran", counts, g3_rate_pct=g3.get("rate_pct"), folded=sorted(removed))
+    if not removed:
+        return all_themes
+    return [t for t in all_themes if t["name"] not in removed] + retired_rows
+
+
 async def _run_thesis_merge_pass(
     all_themes: list[dict],
     persisted_names: set[str],
@@ -10398,6 +10727,26 @@ async def run_theme_engine(
         all_themes, {t["name"] for t in existing}, changelog, protected_set, today,
         stocks_by_ticker=stocks_by_ticker,
     )
+
+    # --- Step 4d (#655, 2026-10-10, operator "ok"): FAIL-ONLY FOLD of 2-3-member themes ---
+    # Here because membership is final (merges, cap, splits, Arm B done) and nothing is saved yet:
+    # G3 is judged on the board the 17:30 check reads; a folded incumbent's own Retired row (successor
+    # = its home) lands in `final_names` below so the engine-drop block never double-retires it; and
+    # #505's parent pass + `_restore_sub_theme_links` then see the folded board. The rule, the G3
+    # context and the toggle are in the section header above `_fold_small_failing_themes`.
+    try:
+        all_themes = await _fold_small_failing_themes(
+            all_themes, {t["name"] for t in existing if t.get("stage") != "Retired"}, changelog, today,
+            theme_exclusions=theme_exclusions, cooldown_set=cooldown_set, protected=protected_set,
+        )
+    except Exception as e:  # loud-ok: a failed pass must not take the nightly down; audited + logged, nothing folded
+        logger.error(f"Small-theme fold pass FAILED — nothing folded tonight: {type(e).__name__}: {e}",
+                     exc_info=True)
+        await log_audit_event(
+            THEME_SMALL_FOLD_ERROR,
+            summary=f"Small-theme fold pass raised — nothing folded tonight ({type(e).__name__})",
+            detail=f"{type(e).__name__}: {e}",
+        )
 
     # Synthesize Retired rows for previously-active themes that were dropped
     # during merge passes (Pass1 protect_strip → cap_drop, or Pass1.5

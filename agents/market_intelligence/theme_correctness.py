@@ -5,8 +5,12 @@ docs/analysis/655_theme_correctness_test_2026-09-27.md's CORRECTED section (top 
 it wins over the draft below it). THE LINE: this module only READS mi_themes / mi_correlation_clusters
 / mi_stock_scores / mi_daily_closes and writes ONE mi_audit_log row a night. It never touches
 mi_themes or any membership table, never Telegrams (only `notify_job_failure` on a load error,
-same as every other nightly health check), and never calls an LLM. Nothing here is a gate —
-raising a bar, lowering one, or acting on a flag is the operator's call (THE LINE).
+same as every other nightly health check), and never calls an LLM. Nothing in THIS module acts —
+raising a bar, lowering one, or acting on a flag is the operator's call (THE LINE). ONE ruled
+consumer acts on a reading: the engine's #655 fail-only fold (operator "ok" 2026-10-10,
+`theme_engine._fold_small_failing_themes`) calls `compute_g3` inside the nightly run and folds a
+2-3-member theme that fails it. The engine imports this module; this module never imports the
+engine (it pulls in `anthropic`).
 
 FOUR SIGNED CHECKS (operator, 2026-09-27) — are the right stocks together:
   G1 MEMBER FIT   — >= 90% of judgeable member-pairs tie >= 0.35 to their own theme

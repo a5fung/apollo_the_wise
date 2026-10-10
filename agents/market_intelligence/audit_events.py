@@ -365,3 +365,11 @@ THEME_SMALL_FADING_RETIRE_ERROR = "theme_small_fading_retire_error"
 # members the co-movement test judged, and that none passed. Replaces the `theme_sector_cap_not_absorbed`
 # row for that theme (a kept theme is not dropped, so it has no cap-rejection to record).
 THEME_SECTOR_CAP_KEPT_DISTINCT = "theme_sector_cap_kept_distinct"
+
+# ── #655 fail-only fold of small themes (2026-10-10, operator "ok"; behind `theme_small_fold`, DEFAULT
+# ON). FOLDED: one row per folded theme (theme, home, moved, released, the theme's G3 reading). RAN: one
+# row per night that had a 2-3-member theme — the counts, so a zero-fold night is distinguishable from a
+# pass that never ran. ERROR: the pass raised, nothing folded that night (only that name says "error").
+THEME_SMALL_FOLDED = "theme_small_folded"
+THEME_SMALL_FOLD_RAN = "theme_small_fold_ran"
+THEME_SMALL_FOLD_ERROR = "theme_small_fold_error"

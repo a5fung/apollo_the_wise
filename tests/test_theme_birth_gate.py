@@ -803,6 +803,10 @@ def _drive_engine(monkeypatch, *, mode, discovered, accel=(), recov=(),
     monkeypatch.setattr(te, "_nominate_dominant_split_themes", AsyncMock(return_value=[]))
     monkeypatch.setattr(te, "_run_thesis_merge_pass",
                         AsyncMock(side_effect=lambda themes, *a, **k: themes))
+    # #655 fold (Step 4d) reads its own toggle / ecosystem map / prices — stubbed like Arm B;
+    # tests/test_655_small_theme_fold.py drives the real pass.
+    monkeypatch.setattr(te, "_fold_small_failing_themes",
+                        AsyncMock(side_effect=lambda themes, *a, **k: themes))
     saved: list = []
 
     async def _save(themes):

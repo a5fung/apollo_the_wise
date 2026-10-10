@@ -1,0 +1,13 @@
+2026-09-28 {'small': 43, 'g3_fail': 11, 'folded': 5, 'skipped_renamed': 0, 'skipped_protected': 0, 'no_ecosystem': 0, 'no_home': 0, 'members_fail_test': 6}
+2026-09-29 {'small': 49, 'g3_fail': 12, 'folded': 6, 'skipped_renamed': 0, 'skipped_protected': 0, 'no_ecosystem': 0, 'no_home': 0, 'members_fail_test': 6}
+2026-09-30 {'small': 53, 'g3_fail': 11, 'folded': 7, 'skipped_renamed': 0, 'skipped_protected': 0, 'no_ecosystem': 0, 'no_home': 0, 'members_fail_test': 4}
+2026-10-01 {'small': 56, 'g3_fail': 13, 'folded': 4, 'skipped_renamed': 0, 'skipped_protected': 0, 'no_ecosystem': 0, 'no_home': 2, 'members_fail_test': 7}
+2026-10-02 {'small': 59, 'g3_fail': 15, 'folded': 7, 'skipped_renamed': 0, 'skipped_protected': 0, 'no_ecosystem': 0, 'no_home': 1, 'members_fail_test': 7}
+2026-10-05 {'small': 46, 'g3_fail': 15, 'folded': 9, 'skipped_renamed': 0, 'skipped_protected': 0, 'no_ecosystem': 1, 'no_home': 3, 'members_fail_test': 2}
+2026-10-06 {'small': 43, 'g3_fail': 14, 'folded': 7, 'skipped_renamed': 0, 'skipped_protected': 0, 'no_ecosystem': 0, 'no_home': 1, 'members_fail_test': 6}
+2026-10-07 {'small': 48, 'g3_fail': 18, 'folded': 11, 'skipped_renamed': 0, 'skipped_protected': 0, 'no_ecosystem': 0, 'no_home': 4, 'members_fail_test': 3}
+2026-10-08 {'small': 45, 'g3_fail': 18, 'folded': 11, 'skipped_renamed': 0, 'skipped_protected': 0, 'no_ecosystem': 0, 'no_home': 5, 'members_fail_test': 2}
+2026-10-09 {'small': 47, 'g3_fail': 17, 'folded': 10, 'skipped_renamed': 0, 'skipped_protected': 0, 'no_ecosystem': 0, 'no_home': 2, 'members_fail_test': 5}
+replay folds 77 | planner folds 77 | identical 77
+only replay: []
+only planner: []
