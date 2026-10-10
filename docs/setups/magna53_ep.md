@@ -466,7 +466,7 @@ is a lane candidate; every other MAGNA53 gate it failed is stamped on its row.*
 
 ## Change log (newest first)
 
-### 2026-10-10 — #694: the shortlist RANKING reads last night's volume on every tick, and pre-market dollar volume orders the names with no volume record (REFINEMENT of 2026-08-22 + BUG FIX; his option 2; BUILT, NOT DEPLOYED)
+### 2026-10-10 — #694: the shortlist RANKING reads last night's volume on every tick, and pre-market dollar volume orders the names with no volume record (REFINEMENT of 2026-08-22 + BUG FIX; his option 2; DEPLOYED 2026-10-10)
 
 **Trigger**: found 2026-10-05 (#694). `run_ep_scan()` is called with no date (`scheduler.py` ~1200,
 `agent.py` ~783), so `prev_date` falls back to TODAY and `get_adv_map(prev_date)` reads
@@ -521,8 +521,9 @@ shows ranks ordered by volume, not A→Z.
 
 **Known limitation — delayed pre-market volume**: the sort runs BEFORE the real-time volume swap
 (`_apply_rt_volume`, in the grading loop), so `pm_dollar` uses the 15-minute-delayed snapshot volume
-(the same value the 694 test measured) × the current price (set by the real-time overlay before the
-sort). His option-2 text left "read real-time volume before the sort, or order on delayed" open;
+× the current price (set by the real-time overlay before the sort). The 694 test read the logged
+`today_volume`, which is that delayed value only for names that were CUT (graded names log the
+real-time value written after the sort), so no replay reproduces the no-record tie-break exactly. His option-2 text left "read real-time volume before the sort, or order on delayed" open;
 this build picks DELAYED (no new data call). Also unchanged and named in the test doc: a real EP
 trading under $50M a day scores 10/65 and ranks below a name with no record (32.5); none of the
 three on record was on a crowded morning. The shadow row stores neither `today_volume` nor

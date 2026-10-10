@@ -121,7 +121,7 @@ def test_the_schedule_is_ordered_and_matches_the_card():
 def test_the_extended_hours_buy_is_a_day_limit_with_extended_hours_set():
     f = E.ext_hours_buy_fields("KO", 3, 88.123, "apollo_paper_integration_test_KO_1")
     assert f == {"symbol": "KO", "qty": 3, "side": "buy", "time_in_force": "day",
-                 "limit_price": 88.12, "extended_hours": True,
+                 "limit_price": round(88.123 * (1 + E.BUY_LIMIT_BUFFER), 2), "extended_hours": True,
                  "client_order_id": "apollo_paper_integration_test_KO_1"}
     E.build_ext_hours_buy("KO", 3, 88.123, "x")       # builds against whatever alpaca-py (or its stub) is there
 

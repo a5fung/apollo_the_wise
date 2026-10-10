@@ -580,14 +580,16 @@ def shortlist_sort_key(
        theme) and fall to ticker A→Z. ⚠ `pm_dollar` is `today_volume ×
        current_price` AS THE SORT SEES THEM: the sort runs before the
        real-time volume swap (`_apply_rt_volume`, in the grading loop), so the
-       volume is the 15-MINUTE-DELAYED snapshot (the same value the #694
-       tie-breaker test measured), not real-time volume. None / missing → 0.
+       volume is the 15-MINUTE-DELAYED snapshot, not real-time volume. None /
+       missing → 0. (The #694 test's pre-market figures came from the logged
+       `today_volume`, which is the delayed value for names that were CUT but
+       the real-time value written after the sort for names that were graded.)
     4. ticker ASC — final determinism guarantee: identical inputs produce
-       identical ranks. ⚠ A replay reproduces the live order exactly ONLY if
-       it feeds the same `pm_dollar` (the logged `today_volume` ×
-       `current_price` from `mi_ep_scan_log`); the shortlist shadow row stores
-       neither, so a replay from it alone reproduces everything except the
-       no-record tie-break (those names fall to ticker A→Z there).
+       identical ranks. ⚠ No replay reproduces the no-record tie-break exactly:
+       the delayed pre-market volume the sort used is never stored (the logged
+       `today_volume` in `mi_ep_scan_log` is delayed for names that were cut,
+       real-time for names that were graded), and the shortlist shadow row
+       stores neither, so a replay from it alone orders those names A→Z.
     """
     return (-composite, -(adv_dollar or 0.0),
             -(pm_dollar or 0.0) if adv_dollar is None else 0.0, ticker)

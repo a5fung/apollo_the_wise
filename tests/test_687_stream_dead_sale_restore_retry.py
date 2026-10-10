@@ -159,12 +159,26 @@ async def test_held_refusal_is_retried_in_the_background_and_the_handler_returns
 
 
 @pytest.mark.asyncio
-async def test_the_retry_names_the_strategy_on_its_client_order_id():
+async def test_the_retry_names_the_strategy_on_its_client_order_id(monkeypatch):
+    """The fake connection returns the whole row whatever the SELECT asks for, so the order id alone
+    cannot show the column is fetched (review 10-10: dropping `signal_type` from the SELECT stayed
+    green, and in prod `trade_row["signal_type"]` would then raise inside the except, with no page).
+    The SELECT the branch sends is recorded and must name the column."""
+    seen_sql: list[str] = []
+    real = H.FakeConn._trades_query
+
+    def _spy(self, kind, s, args):
+        seen_sql.append(s)
+        return real(self, kind, s, args)
+
+    monkeypatch.setattr(H.FakeConn, "_trades_query", _spy)
     w = _day_b_world()
     w.place_errors = [Exception(HELD)]
     await _drive(w, _free_after(w, 1), _event("cancelled"), _drain)
     retry = _placed(w)[1]
     assert str(retry["client_order_id"]).startswith("apollo_live_magna53_KOD_"), retry
+    branch = [q for q in seen_sql if "remaining_shares, stop_price, stop_order_id" in q]
+    assert branch and all("signal_type" in q for q in branch), seen_sql
 
 
 @pytest.mark.asyncio

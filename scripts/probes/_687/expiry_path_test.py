@@ -62,7 +62,7 @@ import json
 import logging
 import os
 import sys
-from datetime import date, datetime, time as dtime
+from datetime import date, datetime, time as dtime, timedelta
 from zoneinfo import ZoneInfo
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -76,6 +76,8 @@ TICKER = "KO"
 QTY = 3
 STOP_BELOW_FILL = 0.85            # the row's stop: 15% under the fill — far below any pre-open price
 SALE_LIMIT_MULT = 2.0             # an opg LIMIT sell at 2x the last price cannot fill
+BUY_LIMIT_BUFFER = 0.003          # the 08:30 paper buy pays up to 0.3% over the ask (review 10-10: a
+                                  # stale pre-market ask must not cost Monday's only run; paper only)
 RESULT_EVENT = "expiry_path_test_687_result"
 
 T_LAUNCH_FROM = dtime(8, 20)
@@ -119,10 +121,10 @@ def sale_limit_for(last: float) -> float:
 
 
 def ext_hours_buy_fields(ticker: str, qty: int, ask: float, client_order_id: str) -> dict:
-    """The extended-hours buy, as plain fields (pure): a LIMIT at the ask, DAY (alpaca-py rejects
-    anything but DAY with `extended_hours=True`), extended_hours set."""
+    """The extended-hours buy, as plain fields (pure): a LIMIT at the ask plus BUY_LIMIT_BUFFER, DAY
+    (alpaca-py rejects anything but DAY with `extended_hours=True`), extended_hours set."""
     return {"symbol": ticker, "qty": qty, "side": "buy", "time_in_force": "day",
-            "limit_price": round(float(ask), 2), "extended_hours": True,
+            "limit_price": round(float(ask) * (1 + BUY_LIMIT_BUFFER), 2), "extended_hours": True,
             "client_order_id": client_order_id}
 
 
@@ -254,7 +256,8 @@ async def _buy(env, log, reh, ticker: str, today: date) -> tuple[int, float]:
     order = env.alpaca._order_to_dict(await asyncio.to_thread(client.submit_order, req))
     reh.state["order_ids"].append(order["id"])
     await reh._save()
-    log.note(f"extended-hours LIMIT buy {QTY} {ticker} @ ask ${quote['ask']:.2f} sent "
+    log.note(f"extended-hours LIMIT buy {QTY} {ticker} @ ${req.limit_price:.2f} (ask ${quote['ask']:.2f} "
+             f"+ {BUY_LIMIT_BUFFER:.1%}) sent "
              f"(order {order['id'][:8]}); its fill pages 'Untracked fill' — expected")
     st = await reh._wait_status(order["id"], {"filled"}, budget_s=max(
         (_at(today, T_BUY_FILL_DEADLINE) - env.now()).total_seconds(), 1.0))
@@ -326,8 +329,9 @@ async def _watch(env, log, reh, ticker: str, tid: int, sale_id: str, today: date
                 obs["retry_row"] = any(r["event_type"] == "stop_restore_retried" for r in mine)
                 if obs["pointer_row"] and obs["row_stop_id"] == stop["id"]:
                     break
-            elif env.now() >= _at(today, T_FAIL_DEADLINE):
-                break
+            elif env.now() >= max(_at(today, T_FAIL_DEADLINE),
+                                  PR._ts(obs["expiry_at"]) + timedelta(seconds=PASS_WITHIN_S + 2)):
+                break   # a late expiry still gets its full retry window (review 10-10)
         await env.sleep(1.0)
     return obs
 
