@@ -70,6 +70,10 @@ so the branch STAYS):**
   'Stop re-placed' page — and RECORD whether a `stop_restore_retried` row appeared (a first-attempt stop passes
   but leaves the retry unit-tested only, as on Day A). FAIL = no stop by 09:31:30, or the 'No stop re-placed'
   / UNPROTECTED page. INCONCLUSIVE = no expiry by 09:32, or the opg order rejected. VOID = the sell filled.
+- **WHERE IT RUNS: from the SERVER, never the laptop** — arm it Sunday night as a `nohup` wall-clock loop on the host
+  that `docker exec -d apollo-execution python scripts/probes/_687/expiry_path_test.py` at 08:25 ET Mon, logging to
+  `/home/apollo/expiry_test_launch_2026-10-12.log` (`LAUNCHED`), the same shape as Friday's `dayb_launch` (a laptop
+  wake can miss 08:30). The laptop wake only checks.
 - **09:46 cleanup:** write the planned-sale cancel row for the restored stop BEFORE cancelling it, wait for the
   shares to free, sell 3 KO at market, delete the rows.
 - Then his yes → `magna53_depth_exit` ON at noon ET.
@@ -154,10 +158,17 @@ a crowded morning, or the fail-open line appears on a day with a complete prior 
 
 ---
 
-## Also riding Saturday's deploy (already on main, built Fri 10-09)
+## Also riding Saturday's deploy — the FULL delta already on main (server at 1bbce533; a deploy ships the branch)
 
-- #693: the theme validator thinks again (`theme_validation` out of THINKING_DISABLED, ceiling 2024).
-- #505: generic ecosystem keyword stems removed from `theme_ecosystems.yaml`.
+`git diff --stat 1bbce533..origin/main -- agents shared core channels theme_ecosystems.yaml` on 10-09 night:
+- **#693** — the theme validator thinks again (`shared/llm_thinking.py`, `shared/output_ceilings.py`, the validator call in `theme_engine.py`).
+- **#505 keywords** — generic ecosystem stems removed (`theme_ecosystems.yaml`).
+- **#505 parent pick** — closeness ranking + the 0.5 industry minimum (`theme_engine.py`).
+- **#655 (a)** — the sector-cap keep rule + the empty-shell top-theme fix (`theme_engine.py`, `audit_events.py`).
+- **Simplify 10-09 (b8f8b1db)** — touches two surfaces ALREADY VERIFIED LIVE: the /trades handler (`agent.py`, `closed_trade_line.py`; #696 closed on it) and the dead-column sweep (`health_checks.py`; #695 verified on it), plus `sell_discipline.py`.
+
+**Deploy:** `bash scripts/deploy.sh both`, then `bash scripts/deploy.sh execution` (theme_engine, audit_events, agent, health_checks are execution-loaded), with #687/#694 if they are ready, after 08:00 ET.
+**Post-deploy checks for the two moved-after-verify surfaces:** (1) one /trades render through the market agent's `/task` endpoint (the 10-09 probe `scripts/probes/_696/trades_render_after_deploy.out` shows how) still reads `VICR $+76 · +7.3R (19d) · Oct 07` with no 'attempt'; (2) the first dead-column sweep log after deploy (Sat or Mon 17:30 ET) still reads `0 dead (0 new) … ≥ 1 event-gated, 0 error(s)`.
 
 ## 3–4. Not carded (capacity)
 
