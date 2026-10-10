@@ -1,0 +1,74 @@
+window 2026-09-22..2026-10-09 (14 engine nights); exits 154; same-name flips 31 (27 names); new-name re-mints within 7 days 20
+
+cause | same-name flips | new-name re-mints | all exits
+cap: < 3 members/judged at the cap | 3 | 1 | 8
+cap: >= 3 judged, none passed (ruling (a) keeps these) | 7 | 3 | 13
+cap: a member passed (absorbed) | 0 | 0 | 1
+cap: biotech family slot taken | 0 | 0 | 2
+Pass-1.5 small-theme absorption | 6 | 3 | 20
+empty shell (re-minted namesake stripped) | 1 | 0 | 8
+rule B (small weak Fading) | 4 | 2 | 38
+Arm-B thesis merge | 2 | 3 | 12
+rename | 2 | 2 | 6
+Arm-A dissolve | 0 | 0 | 5
+5-night Fading retire | 2 | 2 | 29
+merge-pass drop, no row of its own | 4 | 0 | 5
+none found | 0 | 4 | 7
+
+== same-name flips (name | off night | cause | back on)
+  Home Improvement Retail & Building Products | 2026-10-02 | 5-night Fading retire | 2026-10-05
+  Trucking & Freight Carrier Rebound | 2026-09-29 | 5-night Fading retire | 2026-09-30
+  Emerging Small-Cap Silver, Gold & Critical Mineral Miners | 2026-09-22 | Arm-B thesis merge | 2026-09-23
+  Gold & Silver Miners Not Yet Classified (Mid-Tier & South African PGM/ | 2026-10-07 | Arm-B thesis merge | 2026-10-08
+  AI Data Services & GPU Cloud Platforms | 2026-10-01 | Pass-1.5 small-theme absorption | 2026-10-02
+  AI data-center power buildout | 2026-10-01 | Pass-1.5 small-theme absorption | 2026-10-06
+  Defense & Space Systems Satellite Solutions | 2026-10-01 | Pass-1.5 small-theme absorption | 2026-10-02
+  Enterprise Data Backup & Cyber Resilience Software | 2026-09-22 | Pass-1.5 small-theme absorption | 2026-10-05
+  Offshore Drilling Rig Contractors | 2026-09-28 | Pass-1.5 small-theme absorption | 2026-09-29
+  Semiconductor Process Instruments & RF/PCB Electronic Components | 2026-10-06 | Pass-1.5 small-theme absorption | 2026-10-07
+  Appalachian Natural Gas Producers | 2026-10-01 | cap: < 3 members/judged at the cap | 2026-10-02
+  Appalachian Natural Gas Producers | 2026-10-07 | cap: < 3 members/judged at the cap | 2026-10-08
+  Regulated Electric & Gas Utilities Broad Defensive Rotation Extension | 2026-10-07 | cap: < 3 members/judged at the cap | 2026-10-08
+  Appalachian Natural Gas Producers | 2026-09-29 | cap: >= 3 judged, none passed (ruling (a) keeps these) | 2026-09-30
+  Appalachian Natural Gas Producers | 2026-10-05 | cap: >= 3 judged, none passed (ruling (a) keeps these) | 2026-10-06
+  Natural Gas-Weighted Appalachian & Shale E&P Producers | 2026-10-08 | cap: >= 3 judged, none passed (ruling (a) keeps these) | 2026-10-09
+  Offshore Drilling Rig Contractors | 2026-09-30 | cap: >= 3 judged, none passed (ruling (a) keeps these) | 2026-10-01
+  Oil & Gas E&P Crude-Weighted Producers Momentum | 2026-10-01 | cap: >= 3 judged, none passed (ruling (a) keeps these) | 2026-10-02
+  Oil & Gas Exploration & Production Crude Price Leverage (Shale & Canad | 2026-09-30 | cap: >= 3 judged, none passed (ruling (a) keeps these) | 2026-10-01
+  Oilfield Services & Offshore Energy Equipment | 2026-10-06 | cap: >= 3 judged, none passed (ruling (a) keeps these) | 2026-10-07
+  RF & Analog Wireless Connectivity Semiconductor Makers | 2026-09-28 | empty shell (re-minted namesake stripped) | 2026-10-09
+  Gas-Fired Backup Generator & On-Site Power Equipment Makers | 2026-09-22 | merge-pass drop, no row of its own | 2026-09-23
+  Regulated Natural Gas Distribution Utilities | 2026-09-24 | merge-pass drop, no row of its own | 2026-09-25
+  Small Launch Vehicle & Space Platform Manufacturers | 2026-09-22 | merge-pass drop, no row of its own | 2026-09-23
+  Small Satellite & Space Services Rotation | 2026-09-24 | merge-pass drop, no row of its own | 2026-09-25
+  Data Backup & Cyber Resiliency Software | 2026-10-05 | rename | 2026-10-06
+  Mobile SoC & Wireless Connectivity Semiconductors | 2026-09-25 | rename | 2026-09-28
+  Auto & Truck Dealership Retail Chains | 2026-10-05 | rule B (small weak Fading) | 2026-10-06
+  Automotive Thermal & Powertrain Components Suppliers | 2026-10-08 | rule B (small weak Fading) | 2026-10-09
+  Coal Mining Producers | 2026-10-08 | rule B (small weak Fading) | 2026-10-09
+  Small Modular Reactor & Advanced Nuclear Fission Technology | 2026-10-05 | rule B (small weak Fading) | 2026-10-08
+
+== new-name re-mints (old | off | cause | new name | first night | jaccard)
+  Brazilian Fintech & Digital Payments | 2026-10-02 | 5-night Fading retire | Brazil Fintech & Digital Banking Rally | 2026-10-06 | 0.5
+  Insurance Brokerage & Risk Advisory Firms | 2026-10-07 | 5-night Fading retire | Insurance Brokerage & Employee Benefits Advisory | 2026-10-07 | 0.5
+  Front-End Semiconductor Fabrication Equipment Makers | 2026-10-09 | Arm-B thesis merge | Semiconductor Equipment Capex Cycle: AI-Driven Fab & Ad | 2026-10-09 | 0.64
+  Gold & Silver Miners Not Yet Classified (Mid-Tier & Sou | 2026-10-09 | Arm-B thesis merge | Gold & Silver Miners Not Yet Classified (South African  | 2026-10-09 | 0.5
+  Trucking & Freight Carrier Rebound | 2026-10-01 | Arm-B thesis merge | Asset-Light Trucking & Freight Logistics Carriers | 2026-10-07 | 0.71
+  Appalachian & Natural Gas-Weighted E&P Laggards | 2026-10-01 | Pass-1.5 small-theme absorption | Natural Gas-Weighted Appalachian & Shale E&P Producers | 2026-10-07 | 0.62
+  Enterprise Data Backup & Cyber Resilience Software | 2026-09-22 | Pass-1.5 small-theme absorption | Data Backup & Cyber Resiliency Software | 2026-09-25 | 1.0
+  Platinum Group & South African/Junior Precious Metals M | 2026-10-09 | Pass-1.5 small-theme absorption | Gold & Silver Miners Not Yet Classified (South African  | 2026-10-09 | 0.5
+  Upstream Oil & Gas E&P Producers (Shale and Canadian Oi | 2026-10-02 | cap: < 3 members/judged at the cap | U.S. Shale Oil E&P Producers (Crude-Price Driven) | 2026-10-06 | 0.62
+  Oil & Gas E&P Crude-Weighted Producers Momentum | 2026-10-05 | cap: >= 3 judged, none passed (ruling (a) keeps these) | U.S. Shale Oil E&P Producers (Crude-Price Driven) | 2026-10-06 | 0.57
+  Oil & Gas Exploration & Production Crude Price Leverage | 2026-10-02 | cap: >= 3 judged, none passed (ruling (a) keeps these) | U.S. Shale Oil E&P Producers (Crude-Price Driven) | 2026-10-06 | 0.57
+  Regulated Electric & Gas Multi-Utilities Defensive Rota | 2026-10-02 | cap: >= 3 judged, none passed (ruling (a) keeps these) | Regulated Electric & Gas Utilities Broad Defensive Rota | 2026-10-06 | 0.71
+  Precious Metals Complex Rebound | 2026-10-02 | none found | Precious Metals Rebound on Easier Fed Outlook | 2026-10-02 | 0.77
+  Precious Metals Miners—Gold & Silver Rally on Fed Easin | 2026-10-09 | none found | Precious Metals Miners — Fed Easing & Rate Tailwind | 2026-10-09 | 0.88
+  Precious Metals Miners—Gold Rally & Fed Easing | 2026-10-06 | none found | Precious Metals Miners—Gold & Silver Rally on Fed Easin | 2026-10-06 | 0.85
+  Precious Metals Rebound on Easier Fed Outlook | 2026-10-05 | none found | Precious Metals Miners—Gold Rally & Fed Easing | 2026-10-05 | 0.63
+  Cruise Lines & Leisure Travel Rebound | 2026-10-07 | rename | Leisure & Recreation Discretionary Rebound | 2026-10-07 | 1.0
+  Petroleum Refiners & Marketers | 2026-09-25 | rename | Global Oil & Gas Producers and Refiners | 2026-09-25 | 0.85
+  Branded Footwear & Apparel Brand Turnaround | 2026-10-08 | rule B (small weak Fading) | Branded Footwear & Hotel Consumer Discretionary Turnaro | 2026-10-08 | 0.67
+  US Regional Bank Laggards Rate-Curve Basket | 2026-10-05 | rule B (small weak Fading) | U.S. Super-Regional & Midcap Commercial Banks | 2026-10-07 | 0.9
+
+source of the row on the return night: {'live': 5, 'shadow_promoted': 26}
+{'return made by a continuity rename': 11}

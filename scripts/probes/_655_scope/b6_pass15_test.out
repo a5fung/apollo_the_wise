@@ -1,0 +1,21 @@
+2026-09-22 | Enterprise Data Backup & Cyber Resilience Software (3, roster-row t_size 3) -> Network Security & Zero-Trust Edge | not already in target {} | absorb FLIPPED
+2026-09-23 | Molecular & Genomic Diagnostic Testing (3, roster-row t_size 2) -> AI-Driven Diagnostics & Imaging Re-Rating | not already in target {'BLLN': 0.13} | absorb 
+2026-09-24 | Corporate Digital Asset Treasury Vehicles (4, roster-row t_size 3) -> Bitcoin Treasury & Crypto Proxy Equities Corr | not already in target {'MSTR': 0.9} | absorb 
+2026-09-24 | Optical Networking & Photonics Components for AI D (3, roster-row t_size 3) -> AI Data Center High-Speed Interconnect & Sign | not already in target {} | absorb 
+2026-09-24 | Gas-Fired Backup Generator & On-Site Power Equipme (3, roster-row t_size 2) -> On-Site Power Generation & Distribution Equip | not already in target {'INIO': 0.82} | absorb 
+2026-09-24 | Global Reinsurance Underwriters (3, roster-row t_size 3) -> Specialty P&C Insurance Underwriters Rotation | not already in target {} | absorb 
+2026-09-28 | Offshore Drilling Rig Contractors (4, roster-row t_size 2) -> Energy Infrastructure & Services Complex | not already in target {'VAL': 0.84, 'RIG': 0.84} | absorb FLIPPED
+2026-09-30 | Farm Economy Value Chain Re-Rating (4, roster-row t_size 2) -> Global Agriculture Value Chain Recovery | not already in target {'NTR': 0.34, 'MOS': 0.46} | absorb 
+2026-10-01 | AI data-center power buildout (2, roster-row t_size 2) -> AI Data Center High-Speed Interconnect & Sign | not already in target {} | absorb FLIPPED
+2026-10-01 | AI Data Services & GPU Cloud Platforms (3, roster-row t_size 2) -> Emerging AI Compute & Cloud Infrastructure Pl | not already in target {'SHAZ': 0.78} | absorb FLIPPED
+2026-10-01 | Defense & Space Systems Satellite Solutions (3, roster-row t_size 3) -> Aerospace Engine, Airframe Components & Defen | not already in target {} | absorb FLIPPED
+2026-10-01 | Appalachian & Natural Gas-Weighted E&P Laggards (7, roster-row t_size 2) -> Appalachian Natural Gas Producers | not already in target {} | absorb FLIPPED
+2026-10-02 | Offshore Drilling Rig Contractors (4, roster-row t_size 2) -> Energy Infrastructure & Services Complex | not already in target {'NE': 0.84, 'RIG': 0.88} | absorb 
+2026-10-05 | Optical Networking & Optical Component Manufacturi (3, roster-row t_size 3) -> Optical Laser & Photonic Materials for AI Tra | not already in target {} | absorb 
+2026-10-06 | Semiconductor Process Instruments & RF/PCB Electro (3, roster-row t_size 2) -> Programmatic Advertising & Cloud Communicatio | not already in target {'MKSI': 0.76} | absorb FLIPPED
+2026-10-06 | Crypto Exchange & Stablecoin Infrastructure Equiti (3, roster-row t_size 2) -> Bitcoin Holding & Trading Proxy Equities | not already in target {'BLSH': 0.71} | absorb 
+2026-10-06 | Offshore IT Services & Digital Engineering Outsour (4, roster-row t_size 1) -> IT Consulting & Business Process Outsourcing  | not already in target {'INFY': 0.88, 'KD': 0.78} | absorb 
+2026-10-08 | Brazil election relief rally (2, roster-row t_size 2) -> Brazil Fintech & Digital Banking Rally | not already in target {} | absorb 
+2026-10-08 | Fuel Cell & Gas Power Generation Equipment (3, roster-row t_size 2) -> On-Site Power Generation & Distribution Equip | not already in target {'INIO': 0.82} | absorb 
+2026-10-09 | Platinum Group & South African/Junior Precious Met (3, roster-row t_size 2) -> Gold & Silver Miners Not Yet Classified (Mid- | not already in target {'NG': 0.84} | absorb 
+Pass-1.5 rows in window: kept 0, absorbed 20, roster unknown 0

@@ -1,0 +1,6 @@
+(2) sector-cap groups: 242 names live in the window; 40 fall in a cap group today; 3 change group under word-start matching
+    Aerospace Engine, Airframe Components & Defense Subsystem Suppliers | satellite -> None | substring hit ['space']
+    Defense Electronics & Aerospace Subsystem Suppliers | satellite -> None | substring hit ['space']
+    Specialty & Rare-Disease Biopharma Turnarounds | biotech -> None | substring hit ['pharma']
+
+(1) ecosystem keyword fallback: 14 of the 242 live names were MAPPED by the fallback (method=keyword); 0 of those would map differently under word-start. If every live name went through the fallback, 0 would change.

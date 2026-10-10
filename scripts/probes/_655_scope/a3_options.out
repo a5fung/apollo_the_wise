@@ -1,0 +1,130 @@
+night | baseline G3 | G4 | (i) G3 | G4 | removed | (i-b) G3 | G4 | removed | (ii) G3 on 4+ | small reported apart | (iv) G3 | G4 | retired so far
+2026-09-28 | 105/117 89.7% | 12/117 10.3% | 90/95 94.7% | 6/95 6.3% | 22 | 101/106 95.3% | 6/106 5.7% | 11 | 73/74 98.6% | 32/43 74.4% | 105/117 89.7% | 12/117 10.3% | 0
+2026-09-29 | 109/122 89.3% | 13/122 10.7% | 91/98 92.9% | 6/98 6.1% | 24 | 104/111 93.7% | 6/111 5.4% | 11 | 72/73 98.6% | 37/49 75.5% | 109/122 89.3% | 13/122 10.7% | 0
+2026-09-30 | 117/129 90.7% | 15/129 11.6% | 99/104 95.2% | 6/104 5.8% | 25 | 113/118 95.8% | 7/118 5.9% | 11 | 75/76 98.7% | 42/53 79.2% | 117/120 97.5% | 11/120 9.2% | 9
+2026-10-01 | 117/131 89.3% | 16/131 12.2% | 98/103 95.1% | 7/103 6.8% | 28 | 113/120 94.2% | 9/120 7.5% | 11 | 74/75 98.7% | 43/56 76.8% | 117/123 95.1% | 13/123 10.6% | 9
+2026-10-02 | 117/133 88.0% | 15/133 11.3% | 96/101 95.0% | 5/101 5.0% | 32 | 115/122 94.3% | 10/122 8.2% | 11 | 73/74 98.6% | 44/59 74.6% | 117/125 93.6% | 12/125 9.6% | 9
+2026-10-05 | 100/116 86.2% | 4/116 3.4% | 84/89 94.4% | 1/89 1.1% | 27 | 100/105 95.2% | 2/105 1.9% | 11 | 69/70 98.6% | 31/46 67.4% | 100/110 90.9% | 2/110 1.8% | 10
+2026-10-06 | 105/120 87.5% | 7/120 5.8% | 92/98 93.9% | 3/98 3.1% | 22 | 104/112 92.9% | 5/112 4.5% | 8 | 76/77 98.7% | 29/43 67.4% | 104/113 92.0% | 6/113 5.3% | 12
+2026-10-07 | 106/124 85.5% | 15/124 12.1% | 90/95 94.7% | 7/95 7.4% | 29 | 104/109 95.4% | 7/109 6.4% | 15 | 76/76 100.0% | 30/48 62.5% | 104/114 91.2% | 11/114 9.6% | 15
+2026-10-08 | 103/122 84.4% | 15/122 12.3% | 88/95 92.6% | 6/95 6.3% | 27 | 102/110 92.7% | 10/110 9.1% | 12 | 76/77 98.7% | 27/45 60.0% | 102/113 90.3% | 12/113 10.6% | 16
+2026-10-09 | 106/123 86.2% | 14/123 11.4% | 88/93 94.6% | 6/93 6.5% | 30 | 104/109 95.4% | 7/109 6.4% | 14 | 76/76 100.0% | 30/47 63.8% | 105/112 93.8% | 10/112 8.9% | 19
+
+(i) themes removed on >= 1 night: 75
+  AI Data Services & GPU Cloud Platforms | first 2026-09-30 at 3 | max 3 | last 2026-10-02 Nascent n=3 rs=60
+  Alternative Asset Managers & Private Markets Platforms | first 2026-10-07 at 2 | max 2 | last 2026-10-09 Nascent n=2 rs=92
+  Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery | first 2026-09-29 at 3 | max 6 | last 2026-10-09 Mainstream n=6 rs=76
+  Automotive Thermal & Powertrain Components Suppliers | first 2026-10-06 at 3 | max 3 | last 2026-10-09 Nascent n=3 rs=44
+  Autonomous Vehicle & ADAS Technology Enablers | first 2026-09-24 at 3 | max 3 | last 2026-10-08 Fading n=2 rs=None
+  Branded Footwear & Apparel Brand Turnaround | first 2026-10-06 at 3 | max 3 | last 2026-10-07 Fading n=2 rs=None
+  Branded Footwear & Hotel Consumer Discretionary Turnaround | first 2026-10-08 at 3 | max 3 | last 2026-10-09 Fading n=2 rs=None
+  Brazil election relief rally | first 2026-10-05 at 3 | max 3 | last 2026-10-07 Nascent n=2 rs=96
+  Brazilian Fintech & Digital Payments | first 2026-09-24 at 2 | max 2 | last 2026-10-01 Fading n=2 rs=None
+  Building Products Distribution & Supply | first 2026-09-22 at 2 | max 2 | last 2026-09-29 Fading n=2 rs=None
+  CAD/PLM & 3D Design Engineering Software | first 2026-10-07 at 2 | max 2 | last 2026-10-09 Nascent n=2 rs=87
+  Cardiac & Bioelectric Ablation Device Innovators | first 2026-09-10 at 2 | max 2 | last 2026-10-05 Fading n=2 rs=85
+  Cloud Financial Automation & Insurance Core Platform Software | first 2026-10-07 at 3 | max 3 | last 2026-10-09 Nascent n=2 rs=86
+  Cloud Supply Chain & Warehouse Management Software | first 2026-07-16 at 2 | max 3 | last 2026-10-09 Mainstream n=3 rs=91
+  Consumer PC & Gaming Hardware Refresh Cycle | first 2026-09-09 at 2 | max 3 | last 2026-10-02 Fading n=2 rs=None
+  Cruise & Expedition Travel Operators | first 2026-09-29 at 2 | max 2 | last 2026-10-02 Fading n=2 rs=81
+  Cruise Lines & Leisure Travel Rebound | first 2026-10-05 at 3 | max 5 | last 2026-10-06 Nascent n=5 rs=87
+  Crypto Exchange & Stablecoin Infrastructure Equities | first 2026-10-05 at 3 | max 3 | last 2026-10-05 Nascent n=3 rs=56
+  Data Analytics, AI Platform & Digital Transformation IT Services | first 2026-10-08 at 3 | max 3 | last 2026-10-09 Fading n=2 rs=None
+  Data Backup & Cyber Resiliency Software | first 2026-09-25 at 3 | max 4 | last 2026-10-09 Nascent n=4 rs=97
+  Data Storage & Data Management Software/Hardware Leaders | first 2026-09-30 at 3 | max 3 | last 2026-10-02 Nascent n=2 rs=100
+  Defense & Space Systems Satellite Solutions | first 2026-09-30 at 3 | max 3 | last 2026-10-02 Nascent n=3 rs=46
+  Digital Dollar & Crypto Payments Infrastructure | first 2026-09-28 at 3 | max 3 | last 2026-10-09 Mainstream n=2 rs=92
+  Direct-to-Consumer Health & Wellness Subscription Brands | first 2026-09-25 at 3 | max 3 | last 2026-10-02 Mainstream n=2 rs=86
+  Electric & Unmanned Aircraft Innovators | first 2026-09-23 at 2 | max 2 | last 2026-09-30 Fading n=2 rs=None
+  Electronics Manufacturing & IT Hardware Distribution Supply Chain | first 2026-10-09 at 3 | max 3 | last 2026-10-09 Nascent n=3 rs=63
+  Emerging Medical Device Innovators Breakout | first 2026-09-14 at 3 | max 3 | last 2026-10-09 Mainstream n=3 rs=87
+  Enterprise Data Backup & Cyber Resilience Software | first 2026-09-18 at 2 | max 3 | last 2026-10-05 Mainstream n=3 rs=96
+  Exchange, Options Trading & Alternative Consumer Credit Financials | first 2026-10-09 at 3 | max 3 | last 2026-10-09 Nascent n=3 rs=94
+  Fabless Semiconductor IP Licensing | first 2026-09-25 at 3 | max 3 | last 2026-10-09 Fading n=3 rs=None
+  Financial Data & Advisory/Capital Markets Platforms | first 2026-10-01 at 3 | max 3 | last 2026-10-02 Nascent n=3 rs=89
+  Fintech Payments, Prepaid & Consumer Digital Banking Apps | first 2026-10-02 at 3 | max 3 | last 2026-10-09 Mainstream n=3 rs=97
+  Fuel Cell & Gas Power Generation Equipment | first 2026-10-07 at 3 | max 3 | last 2026-10-07 Nascent n=3 rs=72
+  Functional Beverage & Energy Drink Brands | first 2026-10-09 at 3 | max 3 | last 2026-10-09 Nascent n=3 rs=73
+  Gold & Silver Miners Not Yet Classified (Mid-Tier & South African PGM/Gold Producers) | first 2026-10-06 at 3 | max 3 | last 2026-10-08 Nascent n=3 rs=18
+  Gold & Silver Miners Not Yet Classified (South African & Developer Gold Producers) | first 2026-10-09 at 3 | max 3 | last 2026-10-09 Nascent n=3 rs=16
+  HBM & AI-Driven Memory Chip Makers | first 2026-08-31 at 3 | max 3 | last 2026-10-09 Fading n=3 rs=None
+  Identity & Access Management Security Software | first 2026-09-14 at 2 | max 3 | last 2026-10-02 Mainstream n=3 rs=96
+  Independent Power Producers & Nuclear Fleet Generators | first 2026-10-06 at 3 | max 3 | last 2026-10-06 Nascent n=3 rs=90
+  International Telecom & Cross-Border Communications Services | first 2026-10-07 at 2 | max 2 | last 2026-10-09 Nascent n=2 rs=98
+  Laser & RF/Photonic Component Suppliers for AI and Optical Build-Out | first 2026-10-02 at 3 | max 3 | last 2026-10-05 Nascent n=2 rs=83
+  Latin America Telecom & Pay-TV Services | first 2026-10-05 at 3 | max 3 | last 2026-10-07 Fading n=2 rs=None
+  Legal, Tax & Professional Information Analytics | first 2026-09-28 at 2 | max 2 | last 2026-10-02 Fading n=2 rs=None
+  Life Sciences & Healthcare Data/CRM Platforms | first 2026-08-13 at 3 | max 3 | last 2026-10-09 Mainstream n=3 rs=98
+  Liquid Biopsy & Molecular Cancer Diagnostics Testing | first 2026-09-24 at 3 | max 4 | last 2026-10-09 Mainstream n=4 rs=99
+  Marketing & Customer Data SaaS Rotation | first 2026-10-01 at 3 | max 3 | last 2026-10-02 Fading n=3 rs=None
+  Mobile SoC & Wireless Connectivity Semiconductors | first 2026-09-10 at 3 | max 3 | last 2026-10-08 Fading n=3 rs=None
+  Mortgage REITs (Agency & Residential MBS) | first 2026-10-05 at 3 | max 3 | last 2026-10-09 Nascent n=3 rs=6
+  Oilfield Services & Offshore Energy Equipment | first 2026-10-05 at 3 | max 3 | last 2026-10-07 Nascent n=3 rs=45
+  Online Consumer Lending & Fintech Credit | first 2026-10-07 at 3 | max 3 | last 2026-10-08 Nascent n=2 rs=84
+  Optical Networking & Optical Component Manufacturing | first 2026-10-01 at 2 | max 3 | last 2026-10-02 Fading n=3 rs=None
+  Platinum Group & South African/Junior Precious Metals Miners | first 2026-10-08 at 3 | max 3 | last 2026-10-08 Nascent n=3 rs=12
+  Power Semiconductors (GaN, SiC & Discrete Power ICs) | first 2026-10-01 at 3 | max 3 | last 2026-10-06 Fading n=2 rs=None
+  Precision Timing & Motion Control Component Makers | first 2026-09-21 at 2 | max 3 | last 2026-10-09 Fading n=3 rs=None
+  Private Mortgage Insurance Underwriters | first 2026-10-07 at 3 | max 3 | last 2026-10-09 Fading n=3 rs=None
+  Programmatic Advertising & Cloud Communications API Platforms | first 2026-10-05 at 3 | max 4 | last 2026-10-08 Nascent n=2 rs=83
+  Quick-Service & Fast-Casual Restaurant Franchisors | first 2026-10-09 at 3 | max 3 | last 2026-10-09 Nascent n=3 rs=58
+  RF & Analog Wireless Connectivity Semiconductor Makers | first 2026-09-10 at 2 | max 3 | last 2026-10-09 Fading n=3 rs=None
+  Renewable & Specialty Fuels Chemical Producers | first 2026-09-02 at 3 | max 3 | last 2026-10-02 Fading n=2 rs=None
+  Semiconductor Equipment & Materials Velocity Surge | first 2026-09-21 at 3 | max 6 | last 2026-10-08 Nascent n=6 rs=76
+  Semiconductor Equipment Subsystem & Fluid Delivery Suppliers | first 2026-10-09 at 3 | max 3 | last 2026-10-09 Nascent n=3 rs=41
+  Semiconductor Photomask & Ultra-Low-Power Chip Enablers | first 2026-10-01 at 3 | max 3 | last 2026-10-08 Fading n=2 rs=None
+  Semiconductor Process Instruments & RF/PCB Electronic Components | first 2026-10-05 at 3 | max 3 | last 2026-10-08 Fading n=2 rs=None
+  Silver Producers & Streaming Momentum (SVM, AGI, MUX) | first 2026-10-02 at 3 | max 3 | last 2026-10-02 Nascent n=3 rs=30
+  Specialty & Rare-Disease Biopharma Turnarounds | first 2026-10-09 at 3 | max 3 | last 2026-10-09 Nascent n=3 rs=86
+  Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology) | first 2026-10-01 at 3 | max 3 | last 2026-10-09 Mainstream n=3 rs=99
+  Specialty Retail Short-Squeeze Momentum Basket | first 2026-09-10 at 3 | max 3 | last 2026-10-02 Mainstream n=2 rs=88
+  Steel & Aluminum Mill Producers | first 2026-10-05 at 3 | max 4 | last 2026-10-08 Fading n=2 rs=None
+  Travel & Hospitality Lodging Brand Franchisors Rotation | first 2026-10-08 at 3 | max 5 | last 2026-10-09 Fading n=5 rs=None
+  Uranium Mining & Extraction | first 2026-09-23 at 2 | max 2 | last 2026-09-30 Fading n=2 rs=None
+  Vaccine Developers Bacterial & Respiratory | first 2026-10-06 at 3 | max 3 | last 2026-10-09 Nascent n=3 rs=99
+  Vertical Commerce & Tax/Payments Software-Fintech Platforms | first 2026-10-07 at 3 | max 4 | last 2026-10-09 Nascent n=4 rs=89
+  Vertical Industry Infrastructure & Insurance Software | first 2026-10-01 at 3 | max 3 | last 2026-10-02 Fading n=2 rs=None
+  Vertical Software for Field Services, Restaurants & Retail Operations | first 2026-10-09 at 3 | max 3 | last 2026-10-09 Nascent n=3 rs=66
+  Work Management & Collaborative Design SaaS | first 2026-10-08 at 3 | max 3 | last 2026-10-09 Fading n=2 rs=None
+
+(i-b) themes removed on >= 1 night: 36
+
+(iv) themes retired by the 3-night small-only streak: 19
+  Alternative Asset Managers & Private Markets Platforms | first 2026-10-07 at 2 | max 2 | last 2026-10-09 Nascent n=2 rs=92
+  Automotive Thermal & Powertrain Components Suppliers | first 2026-10-06 at 3 | max 3 | last 2026-10-09 Nascent n=3 rs=44
+  Bitcoin Mining Stocks Rotation Reversal | first 2026-09-11 at 3 | max 10 | last 2026-10-07 Fading n=2 rs=None
+  Cardiac & Bioelectric Ablation Device Innovators | first 2026-09-10 at 2 | max 2 | last 2026-10-05 Fading n=2 rs=85
+  Diabetes Management Devices (CGM, Insulin Pumps & Delivery) | first 2026-08-21 at 3 | max 4 | last 2026-10-09 Fading n=3 rs=55
+  Digital Advertising & Ad-Tech Monetization Platforms | first 2026-09-11 at 3 | max 5 | last 2026-10-09 Mainstream n=2 rs=84
+  Digital Dollar & Crypto Payments Infrastructure | first 2026-09-28 at 3 | max 3 | last 2026-10-09 Mainstream n=2 rs=92
+  Direct-to-Consumer Health & Wellness Subscription Brands | first 2026-09-25 at 3 | max 3 | last 2026-10-02 Mainstream n=2 rs=86
+  Electric & Unmanned Aircraft Innovators | first 2026-09-23 at 2 | max 2 | last 2026-09-30 Fading n=2 rs=None
+  Emerging Medical Device Innovators Breakout | first 2026-09-14 at 3 | max 3 | last 2026-10-09 Mainstream n=3 rs=87
+  Enterprise Unstructured Data Storage Infrastructure | first 2026-08-11 at 2 | max 4 | last 2026-10-09 Mainstream n=3 rs=97
+  Fintech Payments, Prepaid & Consumer Digital Banking Apps | first 2026-10-02 at 3 | max 3 | last 2026-10-09 Mainstream n=3 rs=97
+  Inflammatory Disease & Immunology Biologics | first 2026-06-15 at 2 | max 13 | last 2026-10-08 Fading n=2 rs=None
+  International Telecom & Cross-Border Communications Services | first 2026-10-07 at 2 | max 2 | last 2026-10-09 Nascent n=2 rs=98
+  Latin America Telecom & Pay-TV Services | first 2026-10-05 at 3 | max 3 | last 2026-10-07 Fading n=2 rs=None
+  Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound | first 2026-09-11 at 4 | max 4 | last 2026-10-02 Fading n=3 rs=None
+  Liquid Biopsy & Molecular Cancer Diagnostics Testing | first 2026-09-24 at 3 | max 4 | last 2026-10-09 Mainstream n=4 rs=99
+  Media Streaming & Entertainment Content Turnaround | first 2026-09-01 at 2 | max 4 | last 2026-10-02 Fading n=3 rs=None
+  Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology) | first 2026-10-01 at 3 | max 3 | last 2026-10-09 Mainstream n=3 rs=99
+    Alternative Asset Managers & Private Markets Platforms | nights passing G3 in window: []
+    Automotive Thermal & Powertrain Components Suppliers | nights passing G3 in window: []
+    Bitcoin Mining Stocks Rotation Reversal | nights passing G3 in window: ['09-28', '09-29', '09-30', '10-02']
+    Cardiac & Bioelectric Ablation Device Innovators | nights passing G3 in window: []
+    Diabetes Management Devices (CGM, Insulin Pumps & Delivery) | nights passing G3 in window: ['09-28', '10-01', '10-07']
+    Digital Advertising & Ad-Tech Monetization Platforms | nights passing G3 in window: ['09-28', '09-29', '09-30', '10-01', '10-02']
+    Digital Dollar & Crypto Payments Infrastructure | nights passing G3 in window: []
+    Direct-to-Consumer Health & Wellness Subscription Brands | nights passing G3 in window: []
+    Electric & Unmanned Aircraft Innovators | nights passing G3 in window: []
+    Emerging Medical Device Innovators Breakout | nights passing G3 in window: []
+    Enterprise Unstructured Data Storage Infrastructure | nights passing G3 in window: []
+    Fintech Payments, Prepaid & Consumer Digital Banking Apps | nights passing G3 in window: []
+    Inflammatory Disease & Immunology Biologics | nights passing G3 in window: ['09-28', '09-29', '09-30', '10-01', '10-02', '10-05']
+    International Telecom & Cross-Border Communications Services | nights passing G3 in window: []
+    Latin America Telecom & Pay-TV Services | nights passing G3 in window: []
+    Legacy Telecom & Pay-TV/Broadcasting Distribution Rebound | nights passing G3 in window: []
+    Liquid Biopsy & Molecular Cancer Diagnostics Testing | nights passing G3 in window: ['10-06', '10-07', '10-08', '10-09']
+    Media Streaming & Entertainment Content Turnaround | nights passing G3 in window: []
+    Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonar | nights passing G3 in window: []

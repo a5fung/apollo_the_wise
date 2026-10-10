@@ -1,0 +1,41 @@
+5-night Fading retire | {'flips': 2, 'back via promote lane': 1, 'back with MORE members': 2, 'back passing G3': 2, 'back failing G3': 0}
+Arm-B thesis merge | {'flips': 2, 'back via promote lane': 2, 'back with MORE members': 0, 'back passing G3': 1, 'back failing G3': 0}
+Pass-1.5 small-theme absorption | {'flips': 6, 'back via promote lane': 5, 'back with MORE members': 1, 'back passing G3': 5, 'back failing G3': 1}
+cap: < 3 members/judged at the cap | {'flips': 3, 'back via promote lane': 3, 'back with MORE members': 0, 'back passing G3': 3, 'back failing G3': 0}
+cap >= 3 judged (ruling (a)) | {'flips': 7, 'back via promote lane': 7, 'back with MORE members': 0, 'back passing G3': 6, 'back failing G3': 1}
+empty shell (re-minted namesake stripped) | {'flips': 1, 'back via promote lane': 0, 'back with MORE members': 0, 'back passing G3': 1, 'back failing G3': 0}
+merge-pass drop, no row of its own | {'flips': 4, 'back via promote lane': 4, 'back with MORE members': 0, 'back passing G3': 0, 'back failing G3': 0}
+rename | {'flips': 2, 'back via promote lane': 0, 'back with MORE members': 0, 'back passing G3': 2, 'back failing G3': 0}
+rule B (small weak Fading) | {'flips': 4, 'back via promote lane': 4, 'back with MORE members': 3, 'back passing G3': 3, 'back failing G3': 1}
+
+   5-night Fading retire | Home Improvement Retail & Building Products | 2 -> 4 | live | G3 on return True | Nascent 0
+   5-night Fading retire | Trucking & Freight Carrier Rebound | 2 -> 6 | shadow_promoted | G3 on return True | Nascent 23
+   Arm-B thesis merge | Emerging Small-Cap Silver, Gold & Critical Mineral Mine | 4 -> 4 | shadow_promoted | G3 on return None | Nascent 44
+   Arm-B thesis merge | Gold & Silver Miners Not Yet Classified (Mid-Tier & Sou | 3 -> 3 | shadow_promoted | G3 on return True | Nascent 18
+   Pass-1.5 small-theme absorpt | AI Data Services & GPU Cloud Platforms | 3 -> 3 | shadow_promoted | G3 on return True | Nascent 60
+   Pass-1.5 small-theme absorpt | AI data-center power buildout | 2 -> 10 | shadow_promoted | G3 on return True | Nascent 70
+   Pass-1.5 small-theme absorpt | Defense & Space Systems Satellite Solutions | 3 -> 3 | shadow_promoted | G3 on return False | Nascent 46
+   Pass-1.5 small-theme absorpt | Enterprise Data Backup & Cyber Resilience Software | 3 -> 3 | live | G3 on return True | Mainstream 96
+   Pass-1.5 small-theme absorpt | Offshore Drilling Rig Contractors | 4 -> 4 | shadow_promoted | G3 on return True | Nascent 37
+   Pass-1.5 small-theme absorpt | Semiconductor Process Instruments & RF/PCB Electronic C | 3 -> 3 | shadow_promoted | G3 on return True | Nascent 71
+   cap: < 3 members/judged at t | Appalachian Natural Gas Producers | 7 -> 7 | shadow_promoted | G3 on return True | Nascent 24
+   cap: < 3 members/judged at t | Appalachian Natural Gas Producers | 7 -> 7 | shadow_promoted | G3 on return True | Nascent 75
+   cap: < 3 members/judged at t | Regulated Electric & Gas Utilities Broad Defensive Rota | 7 -> 7 | shadow_promoted | G3 on return True | Nascent 47
+   cap: >= 3 judged, none passe | Appalachian Natural Gas Producers | 7 -> 7 | shadow_promoted | G3 on return True | Nascent 20
+   cap: >= 3 judged, none passe | Appalachian Natural Gas Producers | 7 -> 7 | shadow_promoted | G3 on return True | Nascent 44
+   cap: >= 3 judged, none passe | Natural Gas-Weighted Appalachian & Shale E&P Producers | 6 -> 6 | shadow_promoted | G3 on return True | Nascent 73
+   cap: >= 3 judged, none passe | Offshore Drilling Rig Contractors | 4 -> 4 | shadow_promoted | G3 on return True | Nascent 37
+   cap: >= 3 judged, none passe | Oil & Gas E&P Crude-Weighted Producers Momentum | 11 -> 11 | shadow_promoted | G3 on return True | Nascent 44
+   cap: >= 3 judged, none passe | Oil & Gas Exploration & Production Crude Price Leverage | 11 -> 11 | shadow_promoted | G3 on return True | Nascent 44
+   cap: >= 3 judged, none passe | Oilfield Services & Offshore Energy Equipment | 3 -> 3 | shadow_promoted | G3 on return False | Nascent 45
+   empty shell (re-minted names | RF & Analog Wireless Connectivity Semiconductor Makers | 3 -> 3 | live | G3 on return True | Fading None
+   merge-pass drop, no row of i | Gas-Fired Backup Generator & On-Site Power Equipment Ma | 3 -> 3 | shadow_promoted | G3 on return None | Nascent 68
+   merge-pass drop, no row of i | Regulated Natural Gas Distribution Utilities | 5 -> 5 | shadow_promoted | G3 on return None | Nascent 20
+   merge-pass drop, no row of i | Small Launch Vehicle & Space Platform Manufacturers | 3 -> 3 | shadow_promoted | G3 on return None | Nascent 61
+   merge-pass drop, no row of i | Small Satellite & Space Services Rotation | 5 -> 5 | shadow_promoted | G3 on return None | Nascent 69
+   rename | Data Backup & Cyber Resiliency Software | 3 -> 3 | live | G3 on return True | Mainstream 97
+   rename | Mobile SoC & Wireless Connectivity Semiconductors | 3 -> 3 | live | G3 on return True | Mainstream 93
+   rule B (small weak Fading) | Auto & Truck Dealership Retail Chains | 2 -> 4 | shadow_promoted | G3 on return True | Nascent 5
+   rule B (small weak Fading) | Automotive Thermal & Powertrain Components Suppliers | 2 -> 3 | shadow_promoted | G3 on return False | Nascent 44
+   rule B (small weak Fading) | Coal Mining Producers | 2 -> 4 | shadow_promoted | G3 on return True | Nascent 63
+   rule B (small weak Fading) | Small Modular Reactor & Advanced Nuclear Fission Techno | 4 -> 4 | shadow_promoted | G3 on return True | Nascent 7

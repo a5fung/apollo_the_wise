@@ -1,0 +1,3 @@
+2026-10-07 | Global Oil & Gas Producers and Refiners | empty shell | name left the board that night: True | stripped='Global Oil & Gas Producers and Refiners' 8->0 EMPT
+2026-10-08 | Brazil Fintech & Digital Banking Rally | empty shell | name left the board that night: False | stripped='Brazil Fintech & Digital Banking Rally' 4->0 EMPTY
+same-name strips 2, of which empty shells 2; name left the board on 1 of them: [(datetime.date(2026, 10, 7), 'Global Oil & Gas Producers and Refiners')]

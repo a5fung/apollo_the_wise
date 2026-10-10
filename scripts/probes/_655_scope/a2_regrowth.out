@@ -1,0 +1,69 @@
+1 {}
+2 {'births': 99, 'nascent_at_birth': 98, 'grew_same_name': 16, 'cohort_in_4plus_theme_30d': 34, 'cohort_in_4plus_OTHER_name': 21, 'lived_10plus_nights': 46}
+3 {'births': 147, 'nascent_at_birth': 146, 'grew_same_name': 43, 'cohort_in_4plus_theme_30d': 105, 'cohort_in_4plus_OTHER_name': 68, 'lived_10plus_nights': 57}
+4+ {'births': 232, 'nascent_at_birth': 219, 'grew_same_name': 0, 'cohort_in_4plus_theme_30d': 0, 'cohort_in_4plus_OTHER_name': 0, 'lived_10plus_nights': 77}
+
+== born with 2 members and later reached >= 4 under the SAME name (16)
+   AI Server Power & Signal-Integrity Analog ICs | born 2026-09-22 Nascent 2 -> max 4 on 2026-09-28 (Fading, rs 77) | nights live 14
+   Casual Dining & Full-Service Restaurant Chain Recovery | born 2026-07-29 Nascent 2 -> max 5 on 2026-08-11 (Mainstream, rs 96) | nights live 10
+   Cloud Contact Center & CCaaS Communication Platforms | born 2026-07-30 Nascent 2 -> max 5 on 2026-08-18 (Mainstream, rs 97) | nights live 51
+   Cloud Data Storage & Analytics Infrastructure | born 2026-07-14 Nascent 2 -> max 6 on 2026-09-17 (Mainstream, rs 97) | nights live 63
+   Consumer Fintech & Digital Credit Platforms | born 2026-07-01 Nascent 2 -> max 16 on 2026-09-15 (Mainstream, rs 75) | nights live 53
+   Digital Insurance Distribution & InsurTech Platforms | born 2026-08-03 Nascent 2 -> max 4 on 2026-08-18 (Mainstream, rs 87) | nights live 41
+   Enterprise Unstructured Data Storage Infrastructure | born 2026-08-11 Nascent 2 -> max 4 on 2026-08-13 (Nascent, rs 100) | nights live 43
+   Live Music & Concert Promotion | born 2026-09-16 Nascent 2 -> max 4 on 2026-09-24 (Fading, rs 76) | nights live 16
+   Media Streaming & Entertainment Content Turnaround | born 2026-09-01 Nascent 2 -> max 4 on 2026-09-21 (Fading, rs None) | nights live 23
+   Metallurgical & Thermal Coal Mining Rebound | born 2026-08-21 Nascent 2 -> max 4 on 2026-08-27 (Nascent, rs 92) | nights live 19
+   Post-Acute & Home-Based Healthcare Services | born 2026-09-16 Nascent 2 -> max 8 on 2026-10-02 (Mainstream, rs 72) | nights live 18
+   Private Equity & Alternative Asset Management Platforms | born 2026-08-04 Nascent 2 -> max 13 on 2026-08-20 (Mainstream, rs 77) | nights live 35
+   Rare Disease & Specialty Drug Delivery Pharmaceuticals | born 2026-08-24 Nascent 2 -> max 7 on 2026-08-26 (Nascent, rs 94) | nights live 3
+   Software Development & DevOps Collaboration Platforms | born 2026-08-11 Nascent 2 -> max 4 on 2026-09-15 (Mainstream, rs 100) | nights live 43
+   Specialty Pharmaceutical Commercialization & Rare Disease Drugs | born 2026-08-03 Nascent 2 -> max 12 on 2026-08-14 (Mainstream, rs 86) | nights live 10
+   U.S. Apparel & Fashion Recovery | born 2026-07-14 Nascent 2 -> max 16 on 2026-10-08 (Mainstream, rs 87) | nights live 63
+
+== born with 3 members and later reached >= 4 under the SAME name (43)
+   AI data center infrastructure buildout | born 2026-07-31 Nascent 3 -> max 8 on 2026-08-12 (Nascent, rs 67) | nights live 7
+   AI data-center power buildout | born 2026-09-04 Nascent 3 -> max 10 on 2026-10-06 (Nascent, rs 70) | nights live 10
+   AI-Powered Enterprise Analytics & Intelligent Workflow SaaS | born 2026-07-20 Nascent 3 -> max 20 on 2026-09-01 (Mainstream, rs 96) | nights live 59
+   Bitcoin Holding & Trading Proxy Equities | born 2026-09-17 Nascent 3 -> max 5 on 2026-10-07 (Fading, rs 94) | nights live 17
+   Bitcoin Mining Stocks Rotation Reversal | born 2026-09-11 Nascent 3 -> max 10 on 2026-09-22 (Accelerating, rs 90) | nights live 19
+   Cloud Application Delivery & Observability Infrastructure | born 2026-09-15 Nascent 3 -> max 5 on 2026-09-30 (Mainstream, rs 96) | nights live 19
+   Commercial, Office & Home Furniture Retailers and Manufacturers | born 2026-08-03 Nascent 3 -> max 7 on 2026-08-18 (Mainstream, rs 86) | nights live 49
+   Containerboard & Corrugated Packaging Producers | born 2026-07-22 Nascent 3 -> max 4 on 2026-08-11 (Mainstream, rs 86) | nights live 31
+   Corporate Spend, Expense Management & Financial Operations Software | born 2026-07-09 Nascent 3 -> max 6 on 2026-08-20 (Mainstream, rs 89) | nights live 61
+   Data Backup & Cyber Resiliency Software | born 2026-09-25 Nascent 3 -> max 4 on 2026-10-08 (Nascent, rs 95) | nights live 10
+   Defense Intelligence & Cybersecurity IT Contractors | born 2026-08-19 Nascent 3 -> max 7 on 2026-09-23 (Mainstream, rs 90) | nights live 34
+   Defensive Consumer Staples Rotation | born 2026-08-19 Nascent 3 -> max 19 on 2026-08-26 (Accelerating, rs 75) | nights live 27
+   Diabetes Management Devices (CGM, Insulin Pumps & Delivery) | born 2026-08-21 Nascent 3 -> max 4 on 2026-08-25 (Nascent, rs 92) | nights live 35
+   Digital Advertising & Ad-Tech Monetization Platforms | born 2026-09-11 Nascent 3 -> max 5 on 2026-09-15 (Nascent, rs 94) | nights live 21
+   Electronics Manufacturing Services (EMS) Providers | born 2026-09-21 Nascent 3 -> max 4 on 2026-09-22 (Nascent, rs 78) | nights live 15
+   Emerging AI Compute & Cloud Infrastructure Platforms | born 2026-09-22 Nascent 3 -> max 5 on 2026-09-25 (Nascent, rs 76) | nights live 14
+   Emerging Cloud GPU Rental & AI Infrastructure Hardware Providers | born 2026-08-13 Nascent 3 -> max 5 on 2026-08-18 (Nascent, rs 89) | nights live 10
+   Emerging Immunotherapy & Cell Therapy Biotech | born 2026-08-17 Nascent 3 -> max 6 on 2026-08-20 (Nascent, rs 80) | nights live 9
+   Enterprise HR & Workforce Management SaaS | born 2026-07-16 Nascent 3 -> max 7 on 2026-09-22 (Mainstream, rs 73) | nights live 61
+   Enterprise Server, Storage & Data Infrastructure Hardware | born 2026-07-22 Nascent 3 -> max 8 on 2026-08-27 (Mainstream, rs 88) | nights live 57
+   Front-End Semiconductor Fabrication Equipment Makers | born 2026-09-21 Nascent 3 -> max 7 on 2026-09-30 (Mainstream, rs 90) | nights live 14
+   Genomics & DNA Sequencing Tools | born 2026-08-10 Nascent 3 -> max 12 on 2026-09-24 (Mainstream, rs 96) | nights live 44
+   IT Consulting & Business Process Outsourcing Services | born 2026-08-11 Nascent 3 -> max 10 on 2026-09-15 (Mainstream, rs 94) | nights live 43
+   Industrial Equipment Rental & Material Handling | born 2026-08-04 Nascent 3 -> max 4 on 2026-08-12 (Accelerating, rs 91) | nights live 12
+   Industrial Process Equipment, Automation & Flow Control | born 2026-08-05 Nascent 3 -> max 5 on 2026-08-11 (Nascent, rs 80) | nights live 5
+   Liquid Biopsy & Molecular Cancer Diagnostics Testing | born 2026-09-24 Nascent 3 -> max 4 on 2026-10-06 (Mainstream, rs 100) | nights live 12
+   Low-Cost & Regional Passenger Airline Rebound | born 2026-09-17 Nascent 3 -> max 4 on 2026-09-24 (Mainstream, rs 81) | nights live 15
+   Marketing & Digital Presence SaaS Platforms | born 2026-08-20 Nascent 3 -> max 5 on 2026-08-27 (Mainstream, rs 97) | nights live 36
+   Molecular & Genomic Diagnostic Testing | born 2026-09-02 Nascent 3 -> max 4 on 2026-09-10 (Fading, rs None) | nights live 14
+   Office REIT Recovery & Re-Rating | born 2026-07-06 Nascent 3 -> max 4 on 2026-07-22 (Nascent, rs 87) | nights live 50
+   Offshore Drilling Rig Contractors | born 2026-08-21 Nascent 3 -> max 4 on 2026-09-25 (Nascent, rs 32) | nights live 4
+   Oilfield Services & Drilling Rigs | born 2026-08-10 Nascent 3 -> max 30 on 2026-08-11 (Nascent, rs 91) | nights live 4
+   On-Site Power Generation & Distribution Equipment for Data Centers | born 2026-09-17 Nascent 3 -> max 11 on 2026-10-08 (Mainstream, rs 80) | nights live 17
+   Orthopedic Surgical Devices & Instruments | born 2026-09-01 Nascent 3 -> max 4 on 2026-09-14 (Fading, rs 72) | nights live 28
+   Pure-Play Agricultural Tractor & Farm Machinery Manufacturers | born 2026-08-28 Nascent 3 -> max 10 on 2026-09-02 (Nascent, rs 94) | nights live 5
+   Rare Earth & Critical Minerals Mining | born 2026-08-19 Nascent 3 -> max 4 on 2026-08-27 (Fading, rs None) | nights live 8
+   Semiconductor Design, Test & Assembly Enablement Tools | born 2026-09-25 Nascent 3 -> max 4 on 2026-09-28 (Nascent, rs 77) | nights live 11
+   Semiconductor Equipment & Materials Velocity Surge | born 2026-09-21 Nascent 3 -> max 6 on 2026-10-06 (Mainstream, rs 90) | nights live 14
+   Semiconductor Foundry & Advanced Packaging Manufacturing | born 2026-09-08 Nascent 3 -> max 7 on 2026-10-08 (Mainstream, rs 80) | nights live 24
+   Semiconductor Test, Yield & Assembly Supply Chain | born 2026-09-09 Nascent 3 -> max 7 on 2026-09-22 (Accelerating, rs 92) | nights live 23
+   Space Economy: Satellite Communications & Launch Services | born 2026-09-10 Nascent 3 -> max 9 on 2026-09-24 (Mainstream, rs 81) | nights live 21
+   Vaccine & Antiviral Therapeutics Rebound | born 2026-09-04 Nascent 3 -> max 4 on 2026-09-08 (Nascent, rs 96) | nights live 19
+   mRNA Vaccine & Personalized Cancer Therapy Platforms | born 2026-09-15 Nascent 3 -> max 4 on 2026-09-24 (Mainstream, rs 92) | nights live 19
+
+source at birth by size: Counter({(4, 'shadow_promoted'): 127, (3, 'shadow_promoted'): 111, (4, 'live'): 105, (2, 'live'): 99, (3, 'live'): 36})

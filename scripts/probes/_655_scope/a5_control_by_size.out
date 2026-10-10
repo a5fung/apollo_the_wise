@@ -1,0 +1,6 @@
+size | theme-nights | fail | median random p95 (the bar) | median cohesion all | median cohesion of fails
+2 | 126 | 50 | 0.406 | 0.530 | 0.158
+3 | 363 | 94 | 0.268 | 0.497 | 0.145
+4 | 253 | 2 | 0.206 | 0.626 | 0.136
+5 | 94 | 0 | 0.179 | 0.576 | nan
+6+ | 401 | 6 | 0.124 | 0.572 | 0.076

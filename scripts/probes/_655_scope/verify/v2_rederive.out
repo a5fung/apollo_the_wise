@@ -1,0 +1,72 @@
+== A. population + G3 share (stored 17:31 rows)
+nights: ['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09']
+theme-nights judged 1237; small 489; G3 fails 152, of them 2-3-member 144
+small pass 345/489; 4+ pass 740/748
+themes under 2 members on the board: 0
+  baseline: G3 1/10 (84.4-90.7) | G4 2/10 (3.4-12.3)
+
+== B. births 07-01..09-25 at 2-3 members: 246 (99 at 2); grew to 4+ same name: 59
+
+== C. options from stored verdicts
+  (i) birth min 4: G3 10/10 (92.6-95.2) | G4 10/10 (1.1-7.4)
+  (i-b) min 3 + co-move (in-window reads only): G3 10/10 (92.7-95.8) | G4 10/10 (1.9-9.1)
+  (ii) G3 on 4+: 10/10 (98.6-100.0)
+  (iv) 3-night small probation, cold start 09-28: G3 8/10 (89.3-97.5) | G4 6/10 (1.8-10.7)
+  ordering check on 2026-09-28: approx-collation order reproduces 117/117 stored verdicts
+  seed night 2026-09-24: board 109 G3 96/109
+  seed night 2026-09-25: board 118 G3 102/118
+  (iv) seeded with 09-24/09-25: G3 10/10 (90.3-97.5) | G4 8/10 (1.8-10.6)
+
+== D. fold (iii) re-implemented
+  (iii) fail-only, #505 min: G3 10/10 (91.9-95.9) | G4 7/10 (1.9-11.8)
+     folds 77 theme-nights, 21 distinct; folds moving NO new stock into the home 14; home flipped to fail 0
+  (iii) fold every small, #505 min: G3 9/10 (89.0-95.0) | G4 7/10 (1.1-12.0)
+     folds 263 theme-nights, 69 distinct; folds moving NO new stock into the home 16; home flipped to fail 0
+  (iii) fold every small, no min: G3 10/10 (90.0-94.4) | G4 10/10 (1.2-7.8)
+     folds 352 theme-nights, 91 distinct; folds moving NO new stock into the home 16; home flipped to fail 0
+  (iii) acting on LAST night's fail, #505 min: G3 8/10 (89.1-95.1) | G4 6/10 (1.8-11.9)
+
+== E. themes taken per option
+  (i): taken 75 | co-moving on >=1 night 53 | strong early 18 | born small 07-01..09-25 23, of them grew to 4+ 3 | ever 4+ (any date) 9
+  (i-b): taken 36 | co-moving on >=1 night 14 | strong early 12 | born small 07-01..09-25 9, of them grew to 4+ 1 | ever 4+ (any date) 5
+  (iv): taken 19 | co-moving on >=1 night 5 | strong early 7 | born small 07-01..09-25 10, of them grew to 4+ 6 | ever 4+ (any date) 8
+  (iv) seeded: taken 20 | co-moving on >=1 night 5 | strong early 7 | born small 07-01..09-25 11, of them grew to 4+ 7 | ever 4+ (any date) 9
+  (iii) fail-only, #505 min: taken 21 | co-moving on >=1 night 7 | strong early 2 | born small 07-01..09-25 8, of them grew to 4+ 5 | ever 4+ (any date) 7
+     strong early: ['Liquid Biopsy & Molecular Cancer Diagnostics Testing', 'Alternative Asset Managers & Private Markets Platforms']
+  (iii) fold every small, #505 min: taken 69 | co-moving on >=1 night 55 | strong early 8 | born small 07-01..09-25 22, of them grew to 4+ 13 | ever 4+ (any date) 29
+  (iii) fold every small, no min: taken 91 | co-moving on >=1 night 76 | strong early 10 | born small 07-01..09-25 25, of them grew to 4+ 13 | ever 4+ (any date) 41
+  (iii) prev-night: taken 18 | co-moving on >=1 night 7 | strong early 5 | born small 07-01..09-25 8, of them grew to 4+ 5 | ever 4+ (any date) 7
+
+== F. churn, 14 engine nights
+  window 2026-09-22..2026-10-09: exits 154, same-name returns 31 (27 names)
+  board-based: exits 151, same-name returns 29
+  return-night source: {'live': 5, 'shadow_promoted': 26}
+  same-name returns by event types naming them on the off night:
+     (('theme_auto_retired', 'theme_sector_cap_not_absorbed'), 6)
+     (('theme_auto_retired', 'theme_pass1_5_absorption'), 3)
+     (('theme_auto_retired',), 2)
+     (('theme_renamed_for_continuity',), 2)
+     (('theme_auto_retired', 'theme_birth_gate', 'theme_pass1_5_absorption'), 2)
+     (('theme_auto_retired', 'theme_birth_gate', 'theme_renamed_for_continuity', 'theme_retired', 'theme_retired_small_fading'), 2)
+     (('theme_birth_gate', 'theme_thesis_merged'), 1)
+     (('theme_auto_retired', 'theme_birth_gate'), 1)
+     (('theme_auto_retired', 'theme_pass1_protect_strip'), 1)
+     (('theme_auto_retired', 'theme_cap_drop', 'theme_empty_tickers', 'theme_pass1_protect_strip'), 1)
+     (('theme_auto_retired', 'theme_birth_gate', 'theme_renamed_for_continuity', 'theme_retired'), 1)
+     (('theme_auto_retired', 'theme_birth_gate', 'theme_renamed_for_continuity', 'theme_sector_cap_not_absorbed'), 1)
+     (('theme_auto_retired', 'theme_pass1_5_absorption', 'theme_sector_cap_not_absorbed'), 1)
+     (('theme_auto_retired', 'theme_retired'), 1)
+     (('theme_auto_retired', 'theme_retired', 'theme_retired_small_fading'), 1)
+     (('theme_auto_retired', 'theme_birth_gate', 'theme_sector_cap_not_absorbed'), 1)
+     (('theme_auto_retired', 'theme_birth_gate', 'theme_member_rehomed', 'theme_pass1_5_absorption'), 1)
+     (('theme_auto_retired', 'theme_renamed_for_continuity', 'theme_sector_cap_not_absorbed'), 1)
+     (('theme_thesis_merged',), 1)
+     (('theme_auto_retired', 'theme_birth_gate', 'theme_retired', 'theme_retired_small_fading'), 1)
+  cap row 2026-10-01: source='Oil & Gas E&P Crude-Weighted Producers Moment' target='Crude & Product Tanker Shipping' members_in_row=9 paths={'tape': 8, 'cooldown': 1} verdicts={'reject': 9}
+  cap row 2026-10-01: source='Oil & Gas Royalty and Mineral-Interest and E&' target='Crude & Product Tanker Shipping' members_in_row=3 paths={'tape': 3} verdicts={'reject': 3}
+  cap row 2026-10-01: source='Appalachian Natural Gas Producers' target='Crude & Product Tanker Shipping' members_in_row=2 paths={'tape': 2} verdicts={'reject': 2}
+  cap row 2026-10-07: source='Global Oil & Gas Producers and Refiners' target='Global Oil & Gas Producers and Refiners' members_in_row=19 paths={'unjudgeable': 19} verdicts={'reject': 19}
+  cap row 2026-10-07: source='Appalachian Natural Gas Producers' target='Global Oil & Gas Producers and Refiners' members_in_row=7 paths={'unjudgeable': 7} verdicts={'reject': 7}
+  cap row 2026-10-07: source='U.S. Shale Oil E&P Producers (Crude-Price Dri' target='Global Oil & Gas Producers and Refiners' members_in_row=12 paths={'unjudgeable': 12} verdicts={'reject': 12}
+  cap row 2026-10-07: source='Regulated Electric & Gas Utilities Broad Defe' target='Global Oil & Gas Producers and Refiners' members_in_row=9 paths={'unjudgeable': 9} verdicts={'reject': 9}
+  Pass-1.5 exits (event names the theme that night): 22
