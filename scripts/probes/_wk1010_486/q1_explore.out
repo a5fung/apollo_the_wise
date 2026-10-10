@@ -1,0 +1,42 @@
+q	n	n_distinct
+a_uniq	452	406
+(1 row)
+q	shape	count	min	max
+b_fire_axes	empty	39	2026-06-15	2026-10-05
+b_fire_axes	has_theme	65	2026-06-12	2026-10-09
+b_fire_axes	null	3	2026-08-05	2026-09-03
+b_fire_axes	other_axes	99	2026-06-12	2026-10-09
+(4 rows)
+q	in_active_theme	count
+c_in_active	false	182
+c_in_active	true	24
+(2 rows)
+q	source	bmu	shape	count
+d_join	eod_unscored	false	no_alert	152
+d_join	eod_unscored	true	no_alert	1173
+d_join	live_scan	false	fa_empty	2
+d_join	live_scan	false	fa_null	1
+d_join	live_scan	false	fa_present	35
+d_join	live_scan	true	fa_empty	18
+d_join	live_scan	true	fa_null	2
+d_join	live_scan	true	fa_present	125
+(8 rows)
+q	st	st7	count
+e_stage	<null>	<null>	488
+e_stage	Mainstream	Mainstream	32
+e_stage	Fading	Fading	23
+e_stage	Nascent	Nascent	18
+e_stage	Accelerating	Accelerating	14
+(5 rows)
+q	wk	n
+f_weekly	2026-08-03	41
+f_weekly	2026-08-10	23
+f_weekly	2026-08-17	5
+f_weekly	2026-08-24	6
+f_weekly	2026-08-31	3
+f_weekly	2026-09-07	5
+f_weekly	2026-09-14	2
+f_weekly	2026-09-21	3
+f_weekly	2026-09-28	3
+f_weekly	2026-10-05	6
+(10 rows)

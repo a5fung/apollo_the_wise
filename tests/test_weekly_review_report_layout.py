@@ -292,7 +292,9 @@ def _assemble(monkeypatch, **overrides):
         "judge_weekly": {"total": 0}, "loser_breakdown": {}, "mfe_capture": {},
         "missed_opportunities": {},
     }
+    theme_rows = overrides.pop("theme_rows", [])
     metrics.update(overrides)
+    monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", AsyncMock(return_value=theme_rows))
     monkeypatch.setattr(sr, "_setup_performance_review", AsyncMock(return_value=("", [])))
     monkeypatch.setattr(sr, "_spend_envelope", AsyncMock(return_value=("💵 *Cost envelope (MTD)*\nLLM: $25.65 / $150 (17%) ✓ · 3093 calls", 25.65, 150.0, False)))
     monkeypatch.setattr(sr, "_judge_divergence_section", AsyncMock(return_value=""))
@@ -317,7 +319,7 @@ def test_a_quiet_week_says_so_and_names_what_was_checked(monkeypatch):
     checked = lines[2]
     for phrase in ("reviews: 0 ripe, 56 still accruing", "errors: none",
                    "promotions: 0 ready, 0 accruing, 1 held by ruling", "bands: HOLD",
-                   "crypto: live, gates clean", "spend: $25.65 of $150"):
+                   "crypto: live, gates clean", "spend: $25.65 of $150", "themes: 30d n=0"):
         assert phrase in checked, phrase
     assert len(lines) == 3
     assert "the narrator's bullets" in fold                # UNVERIFIED narrative: fold, not head
@@ -390,3 +392,145 @@ def test_ripe_reviews_are_my_work_not_his_and_their_list_leads_the_fold(monkeypa
     assert "Needs you" not in head
     assert "*Needs me (1):*" in head and "1 data-gated review(s) ripe" in head
     assert fold.startswith("📅 *Reviews ready* (1)") and "Steady-state cost of theme assignment" in fold
+
+
+# ── #486 — engine vs judge theme agreement (2026-10-10) ──────────────────────────────────────
+# Telemetry only. Each test names the mutation that reddened it.
+
+def _tr(ticker, d, engine, judge, name=None, stage=None):
+    """One `db.get_engine_vs_judge_theme_rows` row."""
+    return {"ticker": ticker, "alert_date": d, "engine_theme": engine, "judge_theme": judge,
+            "theme_name_7d": name, "theme_stage_7d": stage}
+
+
+D = TODAY - timedelta(days=2)      # inside the 7-day window
+
+
+def test_theme_agreement_counts_the_2x2_and_buckets_every_judge_only_row():
+    """The 2x2 and the mismatch cohorts. Judge-only rows are bucketed from the shadow's BOUNDED
+    read, and the buckets must sum to the judge-only count (exhaustive by construction).
+    MUTATION: `stage == "Fading"` branch deleted from `_theme_miss_reason` — Fading rows fell
+    into `artifact` and the Fading count went to 0. RED, restored."""
+    rows = [
+        _tr("AAA", D, True, True, "Cloud", "Mainstream"),                      # both
+        _tr("BBB", D, True, False, "Cloud", "Mainstream"),                     # engine only
+        _tr("CCC", D, False, True),                                            # judge only: no row
+        _tr("DDD", D, False, True, "Quantum", "Fading"),                       # judge only: Fading
+        _tr("EEE", D, False, True, "Space", "Nascent"),                        # judge only: Nascent
+        _tr("FFF", D, False, True, "Cloud", "Mainstream"),                     # judge only: artifact
+        _tr("GGG", D, False, True, "Odd", "Weird"),                            # judge only: other
+        _tr("HHH", D, False, False),                                           # neither
+        _tr("III", D, False, False, "Cloud", "Mainstream"),                    # neither
+    ]
+    a = sr._aggregate_theme_agreement(rows)
+    assert (a["n"], a["both"], a["engine_only"], a["judge_only"], a["neither"]) == (9, 1, 1, 5, 2)
+    assert a["reasons"] == {"no_theme_row": 1, "excluded_fading": 1, "excluded_nascent": 1,
+                            "artifact": 1, "other_stage": 1}
+    assert sum(a["reasons"].values()) == a["judge_only"]
+    assert a["agree_pct"] == round(100 * 3 / 9)
+
+
+def test_theme_agreement_queue_leads_with_coverage_gaps_then_newest():
+    """The engine-improvement queue: genuine coverage gaps (no theme row) before deliberate
+    exclusions, newest first inside a tier. MUTATION: the second (rank) sort deleted — the queue
+    came out purely date-ordered with a Fading row ahead of an older no-row gap. RED, restored."""
+    rows = [
+        _tr("NEWFAD", D, False, True, "Q", "Fading"),
+        _tr("OLDGAP", D - timedelta(days=3), False, True),
+        _tr("NEWGAP", D - timedelta(days=1), False, True),
+    ]
+    q = sr._aggregate_theme_agreement(rows)["queue"]
+    assert [x["ticker"] for x in q] == ["NEWGAP", "OLDGAP", "NEWFAD"]
+
+
+def test_theme_agreement_queue_is_capped_with_a_plus_n_more():
+    """MUTATION: slice `[:_THEME_QUEUE_CAP]` removed — all 11 names printed and the "+3 more"
+    line vanished. RED, restored."""
+    rows = [_tr(f"T{i:02d}", D - timedelta(days=i % 3), False, True) for i in range(11)]
+    text = sr._format_theme_agreement(sr._aggregate_theme_agreement(rows), None, today=TODAY)
+    assert text.count("\n• ") == sr._THEME_QUEUE_CAP
+    assert "+3 more" in text
+
+
+def test_theme_agreement_a_small_week_also_shows_the_trailing_30_days_with_both_ns(monkeypatch):
+    """A weekly n of 3 is a handful of names, so the trailing 30 days prints beside it and BOTH
+    n are stated. The boundary day (window_start itself) belongs to the week; the day before it
+    does not. MUTATION: `weekly["n"] < _THEME_AGREEMENT_MIN_N` flipped to `False` — the trailing
+    line vanished. RED, restored."""
+    ws = TODAY - timedelta(days=7)
+    rows = [_tr("A", D, True, True, "Cloud", "Mainstream"), _tr("B", ws, False, False),
+            _tr("C", D, False, True),
+            _tr("OLD1", ws - timedelta(days=1), False, False), _tr("OLD2", ws - timedelta(days=9), False, True)]
+    fetch = AsyncMock(return_value=rows)
+    monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", fetch)
+    text, phrase = asyncio.run(sr._theme_agreement_section(ws, TODAY))
+    assert "This week (n=3)" in text and "Last 30 days to Sep 20 (n=5)" in text
+    assert phrase == "themes: 30d n=5, 60% engine-judge agree"
+    # one fetch spanning the trailing window, split in Python
+    assert fetch.await_args.args == (TODAY - timedelta(days=29), TODAY)
+    assert "OLD2" in text                      # the 30-day cohort feeds the queue, not the week alone
+
+
+def test_theme_agreement_a_full_week_stands_alone(monkeypatch):
+    """The other direction, so the trailing line is not printed unconditionally."""
+    rows = [_tr(f"T{i}", D, False, False) for i in range(sr._THEME_AGREEMENT_MIN_N)]
+    monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", AsyncMock(return_value=rows))
+    text, phrase = asyncio.run(sr._theme_agreement_section(TODAY - timedelta(days=7), TODAY))
+    assert "Last 30 days" not in text and phrase == "themes: 7d n=10, 100% engine-judge agree"
+
+
+def test_theme_agreement_failed_read_says_unavailable_and_the_review_still_assembles(monkeypatch):
+    """Fail-open: a dead read prints a short `unavailable:` line (not silence, not a crash), the
+    message cannot carry markup that breaks the send, and the REST of the review still builds.
+    MUTATION: `except` in `_theme_agreement_section` narrowed to `ValueError` — the RuntimeError
+    escaped and the section vanished from the fold. RED, restored."""
+    async def boom(*_a, **_k):
+        raise RuntimeError("relation `mi_theme_axis_shadow` *gone* " + "x" * 200)
+    text, phrase = asyncio.run(_run_section_with(monkeypatch, boom))
+    assert "unavailable: RuntimeError: relation mi_theme_axis_shadow gone" in text
+    assert "*gone*" not in text and "`" not in text and len(text) < 220
+    assert phrase == "themes: unavailable"
+    head, fold, _meta_ = _assemble(monkeypatch)
+    assert "unavailable" not in fold                       # the quiet fixture is NOT unavailable
+    monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", boom)
+    head, fold, _meta_ = asyncio.run(sr._assemble_report(
+        {"regime": {"current": "Up"}}, "narrative", TODAY - timedelta(days=7), TODAY))
+    assert "Theme read, engine vs judge (#486):* unavailable:" in fold
+    assert "themes: unavailable" in head and "Weekly review" in head
+
+
+async def _run_section_with(monkeypatch, fetch):
+    monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", fetch)
+    return await sr._theme_agreement_section(TODAY - timedelta(days=7), TODAY)
+
+
+def test_theme_agreement_is_fold_only_and_never_asks_anything_of_him(monkeypatch):
+    """ZERO AUTHORITY: even with every alert a judge-only miss, nothing reaches the head's
+    action lists. MUTATION: a `needs_me.append(...)` added beside the fold append — needs_me
+    went to 1. RED, restored."""
+    rows = [_tr(f"T{i}", D, False, True) for i in range(6)]
+    head, fold, meta = _assemble(monkeypatch, theme_rows=rows)
+    assert meta["needs_you"] == 0 and meta["needs_me"] == 0
+    assert "Theme read" not in head and "Theme read, engine vs judge (#486)" in fold
+    assert "themes: 30d n=6, 0% engine-judge agree" in head
+
+
+def test_the_engine_vs_judge_query_filters_to_clean_deduplicated_judge_graded_rows():
+    """The population is the whole point of #486 (the 08-29 instrument defect): only rows where
+    the bounded and unbounded theme reads agree, only alerts the judge adjudicated, and the
+    alerts side de-duplicated (mi_ep_alerts has no unique (ticker, alert_date)).
+    MUTATION: each of the three clauses deleted in turn — this test reddened on each."""
+    import agents.market_intelligence.db as dbmod
+    from tests.conftest import make_mock_pool
+    from unittest.mock import patch
+    pool, conn = make_mock_pool()
+    conn.fetch = AsyncMock(return_value=[{"ticker": "A"}])
+    with patch.object(dbmod, "get_pool", new=AsyncMock(return_value=pool)):
+        out = asyncio.run(dbmod.get_engine_vs_judge_theme_rows(date(2026, 9, 1), date(2026, 9, 20)))
+    sql = " ".join(conn.fetch.await_args.args[0].split())
+    assert out == [{"ticker": "A"}]
+    assert "s.bounded_matches_unbounded IS TRUE" in sql
+    assert "fire_axes IS NOT NULL" in sql
+    assert "DISTINCT ON (ticker, alert_date)" in sql
+    assert "in_active_theme IS TRUE" in sql and "'theme' = ANY(a.fire_axes)" in sql
+    assert conn.fetch.await_args.args[1:] == (date(2026, 9, 1), date(2026, 9, 20))

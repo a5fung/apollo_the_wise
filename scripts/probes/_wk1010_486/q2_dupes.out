@@ -1,0 +1,15 @@
+id	ticker	alert_date	source	score_tier	iat	fa	detected_at	created_at	grade_engine_authority
+12419	ACMR	2026-08-07	live	HIGH	false	catalyst,theme	2026-08-07 13:00:00.160932+00	2026-08-07 13:00:51.481439+00	judge
+12420	ACMR	2026-08-07	live	HIGH	false	catalyst,theme	2026-08-07 13:00:00.160274+00	2026-08-07 13:00:51.610392+00	judge
+12392	KMT	2026-08-05	live	HIGH	false	catalyst	2026-08-05 13:00:00.20144+00	2026-08-05 13:00:31.627096+00	judge
+12393	KMT	2026-08-05	live	HIGH	false	catalyst	2026-08-05 13:00:00.201264+00	2026-08-05 13:00:33.925729+00	judge
+12343	MANE	2026-07-15	live	HIGH	false	catalyst,narrative	2026-07-15 13:00:00.140246+00	2026-07-15 13:00:29.103666+00	judge
+12344	MANE	2026-07-15	live	HIGH	false	catalyst,narrative	2026-07-15 13:00:00.156182+00	2026-07-15 13:00:32.78698+00	judge
+(6 rows)
+q	groups	differ_in_active_theme	differ_fire_axes
+dup_summary	46	0	0
+(1 row)
+q	source	count	min	max
+src	historical_scan	150	2026-05-11	2026-06-05
+src	live	302	2026-05-11	2026-10-09
+(2 rows)

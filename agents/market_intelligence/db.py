@@ -12040,6 +12040,56 @@ async def get_setup_performance_review(lookback_days: int = 90) -> list[dict[str
     return [dict(r) for r in rows]
 
 
+async def get_engine_vs_judge_theme_rows(window_start: date, window_end: date) -> list[dict[str, Any]]:
+    """#486 — one row per judge-adjudicated EP alert in [window_start, window_end], carrying BOTH
+    sides of the theme question: the ENGINE's read (`mi_ep_alerts.in_active_theme`) and the
+    JUDGE's (`'theme'` in `fire_axes`), plus the shadow's 7d-bounded theme read that explains a
+    disagreement. Feeds the weekly review's engine-vs-judge agreement section
+    (`system_review._theme_agreement_section`); the method is
+    docs/analysis/486_judge_vs_theme_engine_2026-08-29.md and the definitions are its exact ones.
+
+    Population, each clause load-bearing:
+      * `bounded_matches_unbounded IS TRUE` — the shadow's unbounded theme read walks back to a
+        snapshot of any age, the live credit path is 7d-bounded; only rows where the two reads
+        agree compare like with like (the 08-29 finding: a third of attributions were staler than
+        the engine would credit, which manufactured "engine misses"). NULL (= not captured) and
+        FALSE are both excluded — the section must never measure the instrument's own artifact.
+      * `fire_axes IS NOT NULL` — the judge adjudicated this alert. An EMPTY array counts (the
+        judge ran and lit nothing = "judge: no theme"); NULL means it never ran and is not a vote.
+      * `mi_ep_alerts` carries NO unique (ticker, alert_date) (46 duplicate groups on 2026-10-10,
+        scan races, none disagreeing on either field read here), so the alerts side is
+        de-duplicated with DISTINCT ON before the join or a doubled alert would double-count.
+        The join to alerts is also what drops the `eod_unscored` shadow rows (candidates that
+        never alerted — they have no engine/judge read to compare).
+
+    Read-only, zero-authority (THE LINE): telemetry for a Telegram appendix, never a grade input."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            WITH alerts AS (
+                SELECT DISTINCT ON (ticker, alert_date)
+                       ticker, alert_date, in_active_theme, fire_axes
+                  FROM mi_ep_alerts
+                 WHERE alert_date BETWEEN $1::date AND $2::date
+                   AND fire_axes IS NOT NULL
+                 ORDER BY ticker, alert_date, id DESC
+            )
+            SELECT a.ticker, a.alert_date,
+                   (a.in_active_theme IS TRUE)                 AS engine_theme,
+                   COALESCE('theme' = ANY(a.fire_axes), FALSE) AS judge_theme,
+                   s.theme_name_7d, s.theme_stage_7d
+              FROM alerts a
+              JOIN mi_theme_axis_shadow s
+                ON s.ticker = a.ticker AND s.alert_date = a.alert_date
+             WHERE s.bounded_matches_unbounded IS TRUE
+             ORDER BY a.alert_date DESC, a.ticker
+            """,
+            window_start, window_end,
+        )
+    return [dict(r) for r in rows]
+
+
 async def get_judge_divergence_stats(window_start: date) -> dict[str, Any]:
     """#301 — weekly aggregate over `mi_judge_divergence` for the system_review digest
     line. Read-only, zero-authority (THE LINE — this feeds a Telegram appendix, never a

@@ -38,6 +38,7 @@ from agents.market_intelligence.db import (
     get_active_cooldowns,
     get_audit_log,
     get_correlation_clusters,
+    get_engine_vs_judge_theme_rows,
     get_ep_outcomes,
     get_job_runs_for,
     get_latest_regime,
@@ -374,6 +375,16 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
                                 "week — I run the grounding check (#301)")
     except Exception:
         logger.exception("judge-divergence section render failed")
+    # #486: does the judge see themes the engine misses? TELEMETRY ONLY, zero authority — fold
+    # only, never needs_you / needs_me; the "also checked" phrase is the positive observable
+    # that the section ran (a failed read prints `unavailable:` there and in the fold).
+    try:
+        s, phrase = await _theme_agreement_section(window_start, today)
+        if s:
+            fold.append(s)
+        checked.append(phrase)
+    except Exception:
+        logger.exception("theme-agreement section render failed")
     try:
         s, cost, budget, over = await _spend_envelope()
         if s:
@@ -2361,6 +2372,154 @@ async def _judge_divergence_section(window_start: date) -> str:
         f"{n_disagree}/{n} disagreed ({pct}%) with the HIGH-tier judge verdict this week{flag}"
         f"{direction}{demoted_clause}"
     )
+
+
+# ── #486: engine vs judge THEME agreement (2026-10-10) ───────────────────────────────────────
+# TELEMETRY ONLY — nothing here feeds a grade, an entry, a stop or a size (THE LINE). It turns the
+# 08-29 hand analysis (docs/analysis/486_judge_vs_theme_engine_2026-08-29.md) into a recurring
+# readout so "where does the judge see a theme our engine missed" needs no manual query. The
+# definitions are that doc's exact ones: engine = `mi_ep_alerts.in_active_theme`, judge =
+# 'theme' in `fire_axes`, over the shadow rows whose 7d-bounded and unbounded theme reads agree.
+_THEME_AGREEMENT_MIN_N = 10         # a weekly n below this ALSO shows the trailing window
+_THEME_AGREEMENT_TRAIL_DAYS = 30
+_THEME_QUEUE_CAP = 8                # an un-scannable wall is WHY lists get ignored
+
+# Why the engine missed a name the judge called themed — the 08-29 doc §3's buckets. The ORDER is
+# the queue's priority too: a genuine coverage gap leads, an instrument-timing artifact trails.
+_THEME_MISS_REASONS = (
+    ("no_theme_row", "no theme row at all"),
+    ("excluded_fading", "theme known, excluded (stage Fading)"),
+    ("excluded_nascent", "theme known, excluded (stage Nascent)"),
+    ("artifact", "shadow shows an active theme, live flag says none"),
+    ("other_stage", "theme known, other stage"),
+)
+_THEME_MISS_RANK = {k: i for i, (k, _) in enumerate(_THEME_MISS_REASONS)}
+_THEME_MISS_WORDS = dict(_THEME_MISS_REASONS)
+
+
+def _theme_miss_reason(r: dict) -> str:
+    """Bucket one JUDGE-ONLY row (judge lit the theme axis, engine flag false) by what the
+    shadow's 7d-bounded read — the SAME bounded question the live credit path asks — says.
+    EXHAUSTIVE by construction (`other_stage` is the catch-all) so the buckets always sum to
+    the judge-only count. `in_active_theme` credits only Accelerating/Mainstream, so a known
+    theme in Fading/Nascent is a deliberate exclusion, not a coverage failure; an ACTIVE stage
+    with the flag still false is the timing artifact the PLAN line documents (the snapshot the
+    shadow read postdates the one the live scan saw)."""
+    if not r.get("theme_name_7d"):
+        return "no_theme_row"
+    stage = r.get("theme_stage_7d")
+    if stage == "Fading":
+        return "excluded_fading"
+    if stage == "Nascent":
+        return "excluded_nascent"
+    if stage in ("Accelerating", "Mainstream"):
+        return "artifact"
+    return "other_stage"
+
+
+def _aggregate_theme_agreement(rows: list[dict]) -> dict:
+    """Pure: the 2x2 (engine themed? x judge themed?), the judge-only mismatch cohorts by reason,
+    and the judge-only QUEUE (the engine-improvement candidates, coverage gaps first, then
+    newest). `rows` are `db.get_engine_vs_judge_theme_rows` rows."""
+    both = engine_only = judge_only = neither = 0
+    reasons: Counter = Counter()
+    queue: list[dict] = []
+    for r in rows:
+        engine, judge = bool(r.get("engine_theme")), bool(r.get("judge_theme"))
+        if engine and judge:
+            both += 1
+        elif engine:
+            engine_only += 1
+        elif judge:
+            judge_only += 1
+            why = _theme_miss_reason(r)
+            reasons[why] += 1
+            queue.append({"ticker": r.get("ticker"), "alert_date": r.get("alert_date"), "reason": why})
+        else:
+            neither += 1
+    n = both + engine_only + judge_only + neither
+    # newest first, then a stable sort on reason rank = coverage gaps lead, each tier newest-first
+    queue.sort(key=lambda q: q["alert_date"], reverse=True)
+    queue.sort(key=lambda q: _THEME_MISS_RANK[q["reason"]])
+    return {
+        "n": n, "both": both, "engine_only": engine_only, "judge_only": judge_only,
+        "neither": neither,
+        "agree_pct": round(100 * (both + neither) / n) if n else None,
+        "reasons": dict(reasons), "queue": queue,
+    }
+
+
+def _theme_agreement_line(label: str, agg: dict) -> list[str]:
+    """The 2x2 for one window as two labelled lines (the fold is code-markup-free, so a spaced
+    grid would lose its alignment): the headline agreement, then the four cells."""
+    if not agg["n"]:
+        return [f"{label} (n=0): no judge-graded alert had a clean theme read"]
+    return [
+        f"{label} (n={agg['n']}): engine and judge agree on {agg['both'] + agg['neither']} of "
+        f"{agg['n']} ({agg['agree_pct']}%)",
+        f"  both saw a theme {agg['both']} · judge only {agg['judge_only']} · "
+        f"engine only {agg['engine_only']} · neither {agg['neither']}",
+    ]
+
+
+def _format_theme_agreement(weekly: dict, trailing: dict | None, *, today: date) -> str:
+    """Render the #486 section. `trailing` is None when the weekly n is big enough to stand alone;
+    otherwise BOTH windows print with their n, and the mismatch cohorts + queue are read off the
+    wider one (the week alone would be a handful of names). Pure."""
+    basis = trailing if trailing is not None else weekly
+    basis_label = (f"last {_THEME_AGREEMENT_TRAIL_DAYS} days" if trailing is not None else "this week")
+    lines = ["\U0001F9E9 *Theme read, engine vs judge (#486)*"]
+    lines += _theme_agreement_line("This week", weekly)
+    if trailing is not None:
+        lines += _theme_agreement_line(
+            f"Last {_THEME_AGREEMENT_TRAIL_DAYS} days to {today.strftime('%b')} {today.day}", trailing)
+    if basis["judge_only"]:
+        parts = [f"{_THEME_MISS_WORDS[k]} {basis['reasons'][k]}"
+                 for k, _ in _THEME_MISS_REASONS if basis["reasons"].get(k)]
+        lines.append(f"Judge saw a theme the engine did not — {basis['judge_only']} in the "
+                     f"{basis_label}: " + " · ".join(parts))
+        lines.append("Engine-improvement queue (judge only; coverage gaps first):")
+        for q in basis["queue"][:_THEME_QUEUE_CAP]:
+            d = q["alert_date"]
+            lines.append(f"• {q['ticker']} {d.strftime('%m-%d') if d else '?'} — "
+                         f"{_THEME_MISS_WORDS[q['reason']]}")
+        if len(basis["queue"]) > _THEME_QUEUE_CAP:
+            lines.append(f"  +{len(basis['queue']) - _THEME_QUEUE_CAP} more")
+    lines.append("_Telemetry only, never a grade input. Engine = the theme flag on the alert; "
+                 "judge = it lit its theme axis. Counts only alerts where the engine's 7-day and "
+                 "unbounded theme reads agree._")
+    return "\n".join(lines)
+
+
+def _short_reason(e: BaseException, cap: int = 80) -> str:
+    """One-line, markup-safe reason for an `unavailable:` line — the exception class and a
+    clipped message, with the characters the legacy-Markdown layer reads as markup removed
+    so a failure message cannot itself break the send."""
+    msg = " ".join(str(e).split())
+    for ch in "*`\\[]":
+        msg = msg.replace(ch, "")
+    return f"{type(e).__name__}: {msg[:cap]}".rstrip(": ")
+
+
+async def _theme_agreement_section(window_start: date, today: date) -> tuple[str, str]:
+    """#486 — returns (fold block, the "Also checked" phrase). FAIL-OPEN like every other section:
+    a failed read prints a one-line `unavailable: <reason>` (never raises, never blanks the
+    review) so a dead section stays distinguishable from a quiet one."""
+    try:
+        trail_start = today - timedelta(days=_THEME_AGREEMENT_TRAIL_DAYS - 1)
+        rows = await get_engine_vs_judge_theme_rows(min(window_start, trail_start), today)
+        weekly = _aggregate_theme_agreement([r for r in rows if r["alert_date"] >= window_start])
+        trailing = (_aggregate_theme_agreement([r for r in rows if r["alert_date"] >= trail_start])
+                    if weekly["n"] < _THEME_AGREEMENT_MIN_N else None)
+        shown = trailing if trailing is not None else weekly
+        span = f"{_THEME_AGREEMENT_TRAIL_DAYS}d" if trailing is not None else "7d"
+        phrase = (f"themes: {span} n={shown['n']}, {shown['agree_pct']}% engine-judge agree"
+                  if shown["n"] else f"themes: {span} n=0")
+        return _format_theme_agreement(weekly, trailing, today=today), phrase
+    except Exception as e:  # noqa: BLE001 — advisory section; the review must still go out
+        logger.warning("theme-agreement section failed: %s", e, exc_info=True)
+        return (f"\U0001F9E9 *Theme read, engine vs judge (#486):* unavailable: {_short_reason(e)}",
+                "themes: unavailable")
 
 
 _SETUP_REVIEW_MIN_N = 10   # below this the row REPORTS but asks nothing — see the docstring

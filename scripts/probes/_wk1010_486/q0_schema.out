@@ -1,0 +1,46 @@
+t	column_name	data_type
+shadow	id	integer
+shadow	ticker	text
+shadow	alert_date	date
+shadow	grade	text
+shadow	theme_name	text
+shadow	theme_stage	text
+shadow	theme_score	double precision
+shadow	themeless_flag	boolean
+shadow	structural_attribution_score	integer
+shadow	structural_attributable	boolean
+shadow	matched_terms	ARRAY
+shadow	created_at	timestamp with time zone
+shadow	name_attribution_score	integer
+shadow	name_attributable	boolean
+shadow	matched_names	ARRAY
+shadow	cohort_move	double precision
+shadow	ticker_move	double precision
+shadow	co_moving	boolean
+shadow	theme_name_7d	text
+shadow	theme_stage_7d	text
+shadow	bounded_matches_unbounded	boolean
+shadow	bounded_backfilled_at	timestamp with time zone
+shadow	source	text
+shadow	reject_stage	text
+shadow	ep_score	double precision
+shadow	attribution_computable	boolean
+(26 rows)
+t	column_name	data_type
+alerts	ticker	text
+alerts	alert_date	date
+alerts	score_tier	text
+alerts	created_at	timestamp with time zone
+alerts	in_active_theme	boolean
+alerts	fire_axes	ARRAY
+alerts	judge_tier	text
+alerts	grade_engine_authority	text
+(8 rows)
+t	source	count	min	max
+shadow_source	live_scan	619	2026-03-24	2026-10-09
+shadow_source	eod_unscored	2730	2026-04-13	2026-10-09
+(2 rows)
+t	bounded_matches_unbounded	count
+bounded	true	3114
+bounded	false	235
+(2 rows)

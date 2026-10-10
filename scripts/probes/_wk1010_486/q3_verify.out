@@ -1,0 +1,31 @@
+tag	ticker	alert_date	engine_theme	judge_theme	theme_name_7d	theme_stage_7d
+rows	AAOI	2026-10-09	false	true	Optical Laser & Photonic Materials for AI Transceivers	Nascent
+rows	HUM	2026-10-09	false	false		
+rows	WOLF	2026-10-08	true	true	Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery	Mainstream
+rows	PENG	2026-10-07	true	true	Emerging AI Compute & Cloud Infrastructure Platforms	Mainstream
+rows	ITUB	2026-10-05	false	false	Fintech & Digital Finance Sector Re-rating on Fed Easing	Fading
+rows	PBR	2026-10-05	true	false	Global Oil & Gas Producers and Refiners	Mainstream
+rows	ACN	2026-10-01	true	true	IT Consulting & Business Process Outsourcing Services	Mainstream
+rows	SNPS	2026-10-01	false	false	Semiconductor Design, Test & Assembly Enablement Tools	Nascent
+rows	KOD	2026-09-28	false	false		
+rows	AKAM	2026-09-25	false	true		
+rows	ONON	2026-09-22	false	false		
+rows	INTC	2026-09-21	true	true	Semiconductor Foundry & Advanced Packaging Manufacturing	Accelerating
+rows	CIFR	2026-09-16	false	false	Bitcoin Miners Pivoting to AI/HPC Data Center Hosting	Fading
+rows	DFTX	2026-09-14	false	false		
+(14 rows)
+tag	n	engine_themed	judge_themed
+direct_week	6	3	3
+(1 row)
+tag	n	engine_themed	judge_themed
+direct_trail	14	5	6
+(1 row)
+tag	n	engine_themed	judge_themed
+direct_trail_live_scan_only	14	5	6
+(1 row)
+tag	n
+ctx_all_adjudicated_trail	22
+(1 row)
+tag	n
+ctx_adjudicated_with_shadow_row_trail	21
+(1 row)

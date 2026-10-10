@@ -1,0 +1,27 @@
+#486 sample render — as the Sun 2026-10-11 08:00 ET review would print it (data through Fri 10-09)
+fetch window passed to the shipped query: 2026-09-12 .. 2026-10-11
+
+──── fold block ────
+🧩 *Theme read, engine vs judge (#486)*
+This week (n=6): engine and judge agree on 4 of 6 (67%)
+  both saw a theme 2 · judge only 1 · engine only 1 · neither 2
+Last 30 days to Oct 11 (n=14): engine and judge agree on 11 of 14 (79%)
+  both saw a theme 4 · judge only 2 · engine only 1 · neither 7
+Judge saw a theme the engine did not — 2 in the last 30 days: no theme row at all 1 · theme known, excluded (stage Nascent) 1
+Engine-improvement queue (judge only; coverage gaps first):
+• AKAM 09-25 — no theme row at all
+• AAOI 10-09 — theme known, excluded (stage Nascent)
+_Telemetry only, never a grade input. Engine = the theme flag on the alert; judge = it lit its theme axis. Counts only alerts where the engine's 7-day and unbounded theme reads agree._
+
+──── 'Also checked' phrase ────
+themes: 30d n=14, 79% engine-judge agree
+
+──── cross-check: shipped aggregate vs independent direct SELECT (same windows) ────
+window   | agg n  engine-themed  judge-themed | direct n  engine-themed  judge-themed | match
+week     |     6              3             3 |        6              3             3 | OK
+trail30  |    14              5             6 |       14              5             6 | OK
+
+adding source='live_scan' to the shadow side changes the 30d n from 14 to 14 (equal = the join to alerts alone already excludes the unscored rows)
+context 30d: adjudicated alerts 22 · with any shadow row 21 · with a CLEAN (bounded=unbounded) shadow row 14
+
+ALL MATCH: True
