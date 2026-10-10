@@ -188,20 +188,43 @@ _TRANSPORT_CALLERS = {"agents/market_intelligence/ep_grade_judge.py",
 
 
 def _transport_call_sites():
+    """(relpath, lineno, ast.Call, enclosing function node or None) for every transport call."""
     for d in _SCAN_DIRS:
         for path in sorted((_ROOT / d).rglob("*.py")):
             rel = path.relative_to(_ROOT).as_posix()
+            text = path.read_text()
+            if _TRANSPORT_FN not in text:        # cheap pre-filter: most files never mention it
+                continue
             try:
-                tree = ast.parse(path.read_text())
+                tree = ast.parse(text)
             except SyntaxError:
                 continue
+            parent = {c: p for p in ast.walk(tree) for c in ast.iter_child_nodes(p)}
             for node in ast.walk(tree):
                 if not isinstance(node, ast.Call):
                     continue
                 fn = (node.func.id if isinstance(node.func, ast.Name)
                       else node.func.attr if isinstance(node.func, ast.Attribute) else None)
                 if fn == _TRANSPORT_FN:
-                    yield rel, node.lineno, node
+                    enclosing = node
+                    while enclosing is not None and not isinstance(
+                            enclosing, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        enclosing = parent.get(enclosing)
+                    yield rel, node.lineno, node, enclosing
+
+
+def _declares_required_log_caller(fn) -> bool:
+    """True when `fn` takes a `log_caller` argument with NO default (positional or keyword-only) —
+    the same check `test_the_judge_entry_points_all_require_the_label` applies to grade_holistic."""
+    if fn is None:
+        return False
+    pos = [a.arg for a in fn.args.args]
+    if "log_caller" in pos:
+        return pos.index("log_caller") < len(pos) - len(fn.args.defaults)
+    kwonly = [a.arg for a in fn.args.kwonlyargs]
+    if "log_caller" in kwonly:
+        return fn.args.kw_defaults[kwonly.index("log_caller")] is None
+    return False
 
 
 def test_the_transports_log_caller_is_required_and_a_plain_str():
@@ -224,15 +247,45 @@ def test_every_transport_call_site_names_its_caller():
     each passes `log_caller`, and check the two known members were actually seen -- so the scan
     cannot go blind and pass vacuously."""
     sites = list(_transport_call_sites())
-    seen = {rel for rel, _ln, _c in sites}
+    seen = {rel for rel, _ln, _c, _f in sites}
     assert _TRANSPORT_CALLERS <= seen, (
         f"scan no longer sees the transport's known callers: missing {_TRANSPORT_CALLERS - seen}")
-    missing = [f"{rel}:{ln}" for rel, ln, call in sites
+    missing = [f"{rel}:{ln}" for rel, ln, call, _f in sites
                if not any(kw.arg == "log_caller" for kw in call.keywords)]
     assert not missing, f"invoke_forced_tool call(s) with no log_caller: {missing}"
-    for rel, ln, call in sites:
+    for rel, ln, call, enclosing in sites:
         kw = next(k for k in call.keywords if k.arg == "log_caller")
         v = kw.value
-        ok = ((isinstance(v, ast.Constant) and isinstance(v.value, str) and v.value.strip())
-              or (isinstance(v, ast.Name) and v.id == "log_caller"))   # grade_holistic forwarding
-        assert ok, f"{rel}:{ln} log_caller must be a non-empty literal or the forwarded argument"
+        if isinstance(v, ast.Constant):
+            assert isinstance(v.value, str) and v.value.strip(), \
+                f"{rel}:{ln} log_caller must be a non-empty str literal"
+            continue
+        # Forwarding a variable is allowed ONLY from a function that itself REQUIRES `log_caller`
+        # (grade_holistic today). A wrapper that gave it a default (`log_caller=None`) would pass
+        # a bare name check and then die with a ValueError the first time it is called without one.
+        assert isinstance(v, ast.Name) and v.id == "log_caller", \
+            f"{rel}:{ln} log_caller must be a non-empty literal or the forwarded argument"
+        assert _declares_required_log_caller(enclosing), (
+            f"{rel}:{ln} forwards log_caller from "
+            f"{getattr(enclosing, 'name', '<module>')}(), which does not declare it as a "
+            "required argument (no default)")
+
+
+def test_a_forwarding_wrapper_with_a_defaulted_log_caller_is_rejected():
+    """The population test must FAIL for the shape it exists to stop: a wrapper that forwards a
+    `log_caller` it defaults. Checked on parsed snippets, not on the repo."""
+    def enclosing_of(src):
+        return next(n for n in ast.walk(ast.parse(src))
+                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)))
+
+    assert _declares_required_log_caller(enclosing_of(
+        "async def j(p, *, log_caller): return await invoke_forced_tool(p, log_caller=log_caller)"))
+    assert _declares_required_log_caller(enclosing_of(
+        "async def j(p, log_caller): return await invoke_forced_tool(p, log_caller=log_caller)"))
+    assert not _declares_required_log_caller(enclosing_of(
+        "async def j(p, *, log_caller=None): return await invoke_forced_tool(p, log_caller=log_caller)"))
+    assert not _declares_required_log_caller(enclosing_of(
+        "async def j(p, log_caller='x'): return await invoke_forced_tool(p, log_caller=log_caller)"))
+    assert not _declares_required_log_caller(enclosing_of(
+        "async def j(p): return await invoke_forced_tool(p, log_caller=log_caller)"))
+    assert not _declares_required_log_caller(None)

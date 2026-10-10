@@ -50,10 +50,11 @@ async def invoke_forced_tool(
     log_caller: str,
 ) -> Optional[dict]:
     """One forced-tool judge call. Returns `normalize(tool_input)`, or None on any error/timeout
-    (FAIL-OPEN — the caller falls back to its floor / writes nothing, never raises). `semaphore`
-    bounds total Anthropic concurrency; `wait_for` bounds total time. `label`/`subject` name the
-    judge + ticker in logs/alerts. Credit exhaustion ALERTS (terminal + actionable), never vanishes
-    into the fail-open (#273).
+    (FAIL-OPEN — the caller falls back to its floor / writes nothing, and this never raises on an
+    API / model failure; a missing or invalid `log_caller` is a programming error and DOES raise,
+    see below). `semaphore` bounds total Anthropic concurrency; `wait_for` bounds total time.
+    `label`/`subject` name the judge + ticker in logs/alerts. Credit exhaustion ALERTS (terminal +
+    actionable), never vanishes into the fail-open (#273).
 
     `image_png` (optional, #267 chart-vision) attaches a rendered daily chart as a multimodal
     image block; None keeps the call byte-identical to the text-only path. The judge model must
