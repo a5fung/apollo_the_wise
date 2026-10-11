@@ -352,6 +352,20 @@ def test_the_sizing_scope_matches_the_exit_era_table():
     assert om._PLUS8R_PARTIAL_SIGNAL_TYPES == rule_eras.PARTIAL_8R_SIGNAL_TYPES
 
 
+def test_the_orb_r_frame_scope_matches_the_sizing_scope():
+    """The third hand-kept literal: the strategies whose R is the ORB's, so the +8R target is
+    priced off entry - orb_low (`_ORB_R_FRAME_SIGNAL_TYPES`), are today exactly the ones that
+    size the +8R third by the signed rule - both are "the lanes cloning MAGNA53's bracket and exit
+    stack". A lane added to one and missed in the other is framed off the 2R stop distance
+    (+16 ORB-R) or sized by the wrong rule, silently. Diverging them can be right (a lane with
+    its own R, or a size rule the operator extends on its own): then change THIS assertion in
+    the same commit, on purpose, naming the ruling. They stay three separate names -
+    merging them would let a frame change widen a sizing scope, which is his call alone."""
+    assert om._ORB_R_FRAME_SIGNAL_TYPES == om._PLUS8R_PARTIAL_SIGNAL_TYPES, (
+        "the ORB-R frame set and the +8R size set diverged - if deliberate, update this test with "
+        "the ruling; if not, add the lane to both (and rule_eras.PARTIAL_8R_SIGNAL_TYPES)")
+
+
 @pytest.mark.asyncio
 async def test_poll_sells_one_of_two_shares_at_the_8r_target():
     """THE behaviour: a 2-share MAGNA53 position whose in-hold high reaches +8R now sells ONE
