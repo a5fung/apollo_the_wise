@@ -18788,12 +18788,16 @@ async def write_grade_corpus(ticker: str, alert_date: "date", captured_at: "date
     """
     try:
         pool = await get_pool()
-        async with pool.acquire() as conn:
+        # Timeout-bounded at 5 s on BOTH the acquire and the INSERT, exactly like the audit INSERT
+        # beside it in ep_detector (log_audit_event, #621): this runs on the scan path, so a
+        # saturated pool or a stuck Postgres must cost a bounded warning, never an open-ended wait.
+        async with pool.acquire(timeout=5.0) as conn:
             await conn.execute(
                 GRADE_CORPUS_INSERT_SQL, ticker, alert_date, captured_at, company_name,
                 _jsonb_list_param(alpaca_json) if alpaca_json is not None else None,
                 _jsonb_list_param(fmp_json) if fmp_json is not None else None,
                 perplexity_text, sec_title, raw_grade,
+                timeout=5.0,
             )
         return True
     except Exception as e:

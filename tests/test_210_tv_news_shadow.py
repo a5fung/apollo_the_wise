@@ -785,7 +785,13 @@ async def test_grade_corpus_write_binds_json_once_and_never_overwrites(monkeypat
     ctx.__aenter__ = AsyncMock(return_value=conn)
     ctx.__aexit__ = AsyncMock(return_value=False)
     pool = MagicMock()
-    pool.acquire = lambda *a, **k: ctx
+    acquire_kwargs = {}
+
+    def _acquire(*a, **k):
+        acquire_kwargs.update(k)
+        return ctx
+
+    pool.acquire = _acquire
     monkeypatch.setattr(dbmod, "get_pool", AsyncMock(return_value=pool))
     alpaca = [{"title": "PR", "created_at": "2026-10-01T10:00:00+00:00", "symbols": ["ACN"]}]
     ok = await dbmod.write_grade_corpus(
@@ -797,6 +803,10 @@ async def test_grade_corpus_write_binds_json_once_and_never_overwrites(monkeypat
     assert "$5::jsonb" in sql and "$6::jsonb" in sql
     assert args[4] == alpaca and isinstance(args[4], list)   # a list, not a json string
     assert args[5] is None                                    # None stays NULL
+    # scan-path write: bounded like the audit INSERT beside it (log_audit_event, #621) - a stuck
+    # pool or Postgres costs a 5 s warning, never an open-ended wait inside the scan
+    assert acquire_kwargs.get("timeout") == 5.0
+    assert conn.execute.await_args.kwargs.get("timeout") == 5.0
 
 
 @pytest.mark.asyncio
