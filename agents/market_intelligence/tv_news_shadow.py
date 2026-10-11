@@ -10,30 +10,55 @@ BFLY, business_wire among them). The operator uses TradingView personally and ha
 directed it be used as a backup / cross-reference source, with safeguards — that
 decision is taken; this module builds it.
 
-THE QUESTION THIS ANSWERS IN A MONTH: "on the days we found no catalyst, did
-TradingView have one?" Single SQL, self-contained (no join needed):
+THE QUESTION THIS ANSWERS (#210 build, 2026-10-10 - docs/analysis/210_tv_miss_read_2026-10-10.md
+§10): "of the stories TradingView carried for an alert, which did we NOT hold - and does the
+window even reach back far enough to say?" One row per alert ticker-day (EVERY alert, not only
+the thin ones - the no-catalyst cut is made at READ time off the RAW grade, with the acting
+grade carried beside it). The readable rows:
 
-    SELECT ticker, alert_date, tv_items_on_alert_date, tv_providers_on_alert_date,
-           tv_items_we_missed
+    SELECT ticker, alert_date, our_acting_grade, catalyst_quality AS raw_grade,
+           tv_items_before_grade, tv_items_in_repoll_window, tv_items_we_missed
     FROM mi_tv_news_shadow
-    WHERE tv_status = 'ok'
-      AND tv_coverage_reaches_alert_date = true
-      AND tv_items_on_alert_date > 0
+    WHERE tv_status = 'ok' AND tv_items_we_missed IS NOT NULL
     ORDER BY alert_date DESC;
 
-🛑 THE LINE — DATA CAPTURE ONLY. Writes exactly ONE table (`mi_tv_news_shadow`) plus
+THE COMPARISON FRAME. `captured_at` = when the GRADE read its corpus (`mi_ep_grade_corpus`, one
+row per graded candidate; the older `mi_ep_catalyst_metrics` row is the fallback and lags the
+grade by minutes). Every TradingView item inside the alert's news day is put in ONE of three
+buckets by publish time: before the grade (`<= captured_at`), the re-poll window (after the
+grade, at/before 10:00 ET - still actionable: the #344 class) or after the cutoff
+(informational). The news day starts 16:00 ET on the prior NYSE TRADING day (holiday-aware).
+
+TWO LISTS, ONE RULE.
+  - `tv_items_unmatched_seen`: the `none` and `class` items of the first two buckets, each
+    tagged with its bucket and verdict. Written whenever a diff is possible (a corpus and its
+    `captured_at`), whatever the window's reach - a miss we SAW is a miss even if the window
+    rolled.
+  - `tv_items_we_missed` (the DoD column): that same list when the window REACHES the period
+    start (`oldest item of the WHOLE window <= period start` - NOT `<= captured_at`, which
+    leaves 16:00-to-oldest unseen and would store `[]` over it), else NULL = "cannot tell".
+    An empty list is an honest zero; it may never appear on a window that did not reach.
+`tv_unseen_minutes_at_period_start` says by how much a window fell short. The story matcher
+(`match_tv_item`) decides WHAT is shared, not HOW MUCH: title / story / event / move / class /
+none - rules and proof in the ported block below.
+
+🛑 THE LINE - DATA CAPTURE ONLY. This module writes exactly ONE table (`mi_tv_news_shadow`) plus
 `mi_audit_log` via the shared `log_audit_event`/`alert_endpoint_shape_anomaly`
-telemetry helpers — never a grade, score, admission, or trade-state table. Read by NO
+telemetry helpers - never a grade, score, admission, or trade-state table. (The grade corpus the
+frame diffs against, `mi_ep_grade_corpus`, is written by ep_detector through
+`db.write_grade_corpus` - a fail-open INSERT beside the provenance audit INSERT.) Read by NO
 grading / entry / sizing / ordering / safeguard path. Acting on this later (feeding a
 TradingView-sourced item into a live grade) is a separate CHANGE_PROCESS step with
-operator sign-off — nothing here does that.
+operator sign-off - nothing here does that.
 
-NEVER ON THE LIVE SCAN PATH. This is a POST-HOC NIGHTLY job (20:45 ET, mon-fri —
-after every 18:xx EOD recorder and the 21:00 evening position backstop, before the
-21:30 ET `#625` late silent-error sweep, and clear of the 21:15-22:15 ET after-hours
-deploy window so a mid-run market-agent restart can't clip it). It never runs during
-07:00-10:00 ET (the scan) or 09:31-09:44 ET (the ORB submission window) — there is no
-latency budget question because it structurally cannot collide with either.
+NEVER ON THE LIVE SCAN PATH. This is a POST-HOC job: 10:10 ET, mon-fri - after the scan's last
+tick (10:00 ET), the 10:00 unfilled-order cancel and the 10:05 scan watchdog, so the
+before-grade and re-poll buckets are complete, and clear of the 12:00-13:00 ET market-hours
+deploy window. (It was 20:45 ET until 2026-10-10: 3 of 10 captured windows had already rolled
+past the period start by then, and a heavily covered name's 25-slot window spends most of its
+slots on the day's later items.) It never runs during 07:00-10:00 ET (the scan) or
+09:31-09:44 ET (the ORB submission window) - there is no latency budget question because it
+structurally cannot collide with either.
 
 FAIL OPEN, ALWAYS. Every branch below — a non-200, a timeout, an unresolved exchange,
 a malformed/absent `items` key, a JSON decode failure — degrades to a RECORDED reason
@@ -147,29 +172,31 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import re
 import statistics
-from datetime import date, datetime, time as dt_time, timedelta
+from datetime import date, datetime, time as dt_time, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.audit_events import TV_NEWS_ENDPOINT_ERROR, TV_NEWS_SHADOW_RUN
 from agents.market_intelligence.db import (
-    get_catalyst_metrics_raw_corpus,
-    get_no_catalyst_alert_population,
+    get_grade_corpus,
     get_security_exchange_map,
     get_tv_news_shadow_trailing_item_counts,
+    get_tv_shadow_population,
     log_audit_event,
     upsert_tv_news_shadow_rows,
 )
-from shared.dates import last_trading_day
 
 logger = logging.getLogger(__name__)
 
 _ET = ZoneInfo("America/New_York")
 
 # ── population ─────────────────────────────────────────────────────────────────────
-# How far back to look for un-recorded "thin/no-catalyst" alerts. Small on purpose:
+# How far back to look for un-recorded alerts (EVERY alert since #210's 2026-10-10 build —
+# no raw-grade predicate; the no-catalyst cut is made at READ time). Small on purpose:
 # the endpoint is a ROLLING most-recent-N window (see module docstring), so an OLDER
 # alert is LESS likely to still be reachable through it — freshness matters more than
 # catching every possible miss. 3 covers a single missed run (weekend + a Monday
@@ -190,8 +217,7 @@ _TV_FETCH_TIMEOUT_SECONDS = 10.0
 _TV_MAX_FETCHES_PER_RUN = 20
 # Politeness pacing between SEQUENTIAL fetches (never concurrent) — a courtesy, not a
 # documented rate limit (TradingView publishes none for this endpoint). At the cap,
-# worst case is 20 * (10s timeout + 0.5s pace) = 210s, comfortably inside the 45-minute
-# 20:45-21:30 ET window this job runs in.
+# worst case is 20 * (10s timeout + 0.5s pace) = 210s — a few minutes from the 10:10 ET start.
 _TV_PACE_SECONDS = 0.5
 # One identifying UA, matching the identity string this repo already uses for SEC
 # EDGAR (collector._SEC_UA) — kept as its OWN constant rather than a shared import:
@@ -223,6 +249,11 @@ _TV_COLLAPSE_RATIO = 0.3
 # own same-day rule (docs/design/210_ir_newsroom_fallback_2026-09-05.md §2.3), reused
 # rather than re-derived so both sources agree on what "the alert's news day" means.
 _TV_SAME_DAY_PRIOR_CLOSE_HOUR = 16
+# The scan's last tick (10:00 ET) and the 10:00 ET unfilled-cancel: a TradingView item published
+# after our grade (`captured_at`) but at/before this instant was still ACTIONABLE — the #344
+# re-poll class — and is its own bucket (`tv_items_in_repoll_window`). Later items are
+# informational only (`tv_items_after_cutoff`).
+_TV_ACTIONABLE_CUTOFF_ET = dt_time(10, 0)
 
 
 # ── pure core (mock-free, the house idiom) ────────────────────────────────────────
@@ -307,6 +338,427 @@ def is_same_day_item(item_et: datetime, alert_date: date, prior_trading_day: dat
     return d == prior_trading_day and item_et.time() >= dt_time(_TV_SAME_DAY_PRIOR_CLOSE_HOUR, 0)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════════
+# THE STORY MATCHER + COMPARISON FRAME (#210, 2026-10-10 build card).
+# PORTED VERBATIM from scripts/probes/_wk1010_210/tv_story_matcher.py (names kept) and
+# PROVEN against tests/fixtures/tv_shadow_210_cases_2026-10-10.json by
+# tests/test_210_tv_news_shadow.py (the same 50 assertions run_fixture_proof.py makes).
+# NEVER TUNE IN PLACE: a change here goes through the fixture first (add a case, re-run
+# the proof, THEN change code). `normalize_title` and `is_same_day_item` above are the
+# module's own and are not duplicated.
+# ═══════════════════════════════════════════════════════════════════════════════════
+
+# ── vocabularies (closed lists; the card may EXTEND, never remove) ─────────────────
+STOPWORDS = frozenset("""
+the a an of to in on for and is at by as with its it from this that are be or vs after before
+into over up down out here there what why how who when which more than their his her our your
+has have had will can does do did not no but also about amid says said say stock stocks share
+shares inc corp ltd plc co nyse nasdaq update updated correction summary today tonight
+monday tuesday wednesday thursday friday saturday sunday week month year years ago per via
+""".split())
+
+# Words that name a CLASS or a rating/target vocabulary — never an anchor.
+CLASS_WORDS = frozenset("""
+q1 q2 q3 q4 1q 2q 3q 4q quarter quarterly fiscal earnings eps revenue revenues sales results
+result guidance outlook profit profits beat beats miss misses estimate estimates transcript
+gaap non-gaap nongaap call highlights
+price target targets pt maintains maintain maintained reiterates reiterate reiterated upgrades
+upgrade upgraded downgrades downgrade downgraded initiates initiate initiated rating ratings
+overweight underweight outperform underperform buy sell hold neutral raised raises raise lowers
+lower lowered cut cuts keeps keep rates rated boosts boost hikes hike lifts lift trims trim
+sees see starts start resumes resume reinstates reinstate assumes assume
+appoints appoint appointed appointment names name named hires hire hired resigns resign
+resigned resignation steps step stepped retires retire retiring retirement departure succeeds
+succeed succeeded cfo ceo coo cto chief officer president chairman director effective immediately
+acquires acquire acquired acquiring acquisition merger merge buyout takeover definitive
+partnership partners partner collaborates collaborate collaboration agreement contract awarded
+award selected signs sign teams team
+offering priced private placement convertible notes due at-the-market warrants warrant dilution
+dilutive shelf direct
+fda approval approves approved clearance 510(k) phase trial topline pdufa breakthrough
+lawsuit class action investigation settles settle settled settlement probe subpoena
+launch launches launched unveils unveil unveiled introduces introduce introduced debuts debut
+scheduled set report reports reported reporting ahead preview expect expected watch deck
+volatility primer
+market talk trades trade trading higher jumps jump jumped surges surge surged soars soar
+soared rally rallies rallied pops pop climbs climb rising rises rise falls fall slips slip
+drops drop plunges plunge best worst day 52-week high low premarket pre-market overnight
+midday skyrocket skyrockets sympathy gaps gap gapped gapping movers mover moving focus
+happening need know explain
+""".split())
+
+# Generic headline words that carry no story identity — never an anchor.
+GENERIC_WORDS = frozenset("""
+strong strongly record records growth demand business businesses company companies group
+global market markets investors investor analysts analyst wall street report reports new
+news big major key top first latest update higher lower after ahead following amid upbeat
+surging signals faster future shape taking stake stakes deal deals client clients spending
+costs cost shares stock stocks inc corp plc ltd
+""".split())
+
+# Catalyst classes, in PRIMARY-class precedence order (first hit wins for `class` storage).
+CATALYST_CLASS_PATTERNS: tuple[tuple[str, re.Pattern], ...] = (
+    ("earnings", re.compile(
+        r"\bq[1-4]\b|\b[1-4]q\b|\bquarter\b|\bfy ?\d{2,4}\b|\bfiscal\b|\bearnings\b|\beps\b|"
+        r"\brevenues?\b|\bsales\b|\bresults\b|\bguidance\b|\boutlook\b|\bprofits?\b|\bbeats?\b|"
+        r"\bmiss(es)?\b|\bestimates?\b|\btranscript\b|\bnon-gaap\b|\bgaap\b", re.I)),
+    ("analyst", re.compile(
+        r"\bprice targets?\b|\bpt\b|\bmaintains?\b|\bmaintained\b|\breiterates?\b|\breiterated\b|"
+        r"\bupgrades?\b|\bupgraded\b|\bdowngrades?\b|\bdowngraded\b|\binitiates?\b|\binitiated\b|"
+        r"\brating\b|\boverweight\b|\bunderweight\b|\boutperform\b|\bunderperform\b", re.I)),
+    ("exec_change", re.compile(
+        r"\bappoint(s|ed|ment)?\b|\bnames?\b.{0,40}\b(cfo|ceo|coo|cto|chief|president|chairman|"
+        r"director)\b|\bhires?\b|\bhired\b|\bresign(s|ed|ation)?\b|\bsteps? down\b|\bstepped down\b|"
+        r"\bretir(es|ing|ement)\b|\bdeparture\b|\bsucceed(s|ed)?\b|\bnew (cfo|ceo|coo|cto)\b|"
+        r"\bas (cfo|ceo|coo|cto)\b|\bchief [a-z]+ officer\b|\beffective immediately\b", re.I)),
+    ("mna", re.compile(
+        r"\bacquir(es?|ed|ing)\b|\bacquisition\b|\bmerger\b|\bmerge\b|\bbuyout\b|\btakeover\b|"
+        r"\bto buy\b|\bdefinitive agreement\b|\bbid for\b", re.I)),
+    ("deal", re.compile(
+        r"\bpartnership\b|\bpartners? with\b|\bcollaborat(es?|ion)\b|\bagreement\b|\bcontract\b|"
+        r"\bawarded?\b|\bselected by\b|\bsigns?\b|\bteams? up\b", re.I)),
+    ("financing", re.compile(
+        r"\boffering\b|\bpriced\b|\bprivate placement\b|\bconvertible\b|\bnotes due\b|"
+        r"\bat-the-market\b|\bwarrants?\b|\bdilut(ion|ive)\b|\bshelf\b", re.I)),
+    ("regulatory", re.compile(
+        r"\bfda\b|\bapprov(al|es|ed)\b|\bclearance\b|\b510\(k\)|\bphase [1-3]\b|\btrial\b|"
+        r"\btopline\b|\bpdufa\b|\bbreakthrough\b", re.I)),
+    ("legal", re.compile(
+        r"\blawsuit\b|\bclass action\b|\binvestigation\b|\bsettle(s|d|ment)?\b|\bprobe\b|"
+        r"\bsubpoena\b", re.I)),
+    ("product", re.compile(
+        r"\blaunch(es|ed)?\b|\bunveils?\b|\bunveiled\b|\bintroduces?\b|\bintroduced\b|\bdebuts?\b",
+        re.I)),
+)
+CATALYST_CLASSES = frozenset(c for c, _ in CATALYST_CLASS_PATTERNS)
+
+# STRONG commentary markers = a FORMAT (a roundup, a "why" explainer, a Market Talk blurb).
+# They win over any catalyst keyword in the same title ("CEO Says Focus on Big Deals — Market
+# Talk" is commentary, not a deal). WEAK markers (jumps, surges, premarket) make a title
+# commentary only when it carries no catalyst class ("jumps premarket following strong Q4
+# beat" stays earnings).
+COMMENTARY_STRONG_RE = re.compile(
+    r"market talk|here is why|here's why|what's going on|what you need to know|need to know|"
+    r"stock market today|stocks to watch|\bmovers?\b|moving (premarket|pre-market|higher|lower|in)|"
+    r"and more stocks|stocks that explain|what's happening|\bin focus\b|\bbig stocks\b", re.I)
+COMMENTARY_WEAK_RE = re.compile(
+    r"\bwhy\b|trades? up|trading (higher|lower)|\bjumps?\b|\bjumped\b|\bsurges?\b|\bsurged\b|"
+    r"\bsoars?\b|\bsoared\b|\brall(y|ies|ied)\b|\bpops?\b|\bclimbs?\b|\brising\b|\brises?\b|"
+    r"\bfalls?\b|\bslips?\b|\bdrops?\b|\bplunges?\b|\bbest day\b|\bworst day\b|52-week|"
+    r"(month|year) high|(month|year) low|\bpremarket\b|\bpre-market\b|\bovernight\b|\bmidday\b|"
+    r"\bskyrockets?\b|\bsympathy\b|\bgap(s|ped|ping)? (up|down)\b", re.I)
+# An earnings PREVIEW is not a results item: it cannot anchor an `event` match and is not
+# "a reason for the move" (correction 6: actual results vs our preview must stay visible).
+PREVIEW_RE = re.compile(
+    r"\bscheduled\b|\bset to report\b|\bahead of\b|\bpreview\b|\bwhat to expect\b|\bto watch\b|"
+    r"\bto report\b|\bexpected to report\b|\bearnings week\b|\bearnings volatility\b|"
+    r"\bwill report\b|\bon deck\b|\breports? (on|after|before|this|next)\b|\bshould know\b|"
+    r"\bearnings (preview|watch)\b|\bprimer\b", re.I)
+
+# Analyst-firm extraction: the capitalised run BEFORE an analyst verb at the start of the
+# title, or AFTER "by/at/from" at its end. Company/class/stop words are stripped from the
+# candidate; an empty remainder means "no firm here" (so "Penguin Solutions Price Target
+# Raised ... by Stifel" yields Stifel from the tail, not the company from the head).
+_ANALYST_VERBS = (r"maintains?|maintained|reiterates?|reiterated|upgrades?|upgraded|downgrades?|"
+                  r"downgraded|initiates?|initiated|raises?|raised|lowers?|lowered|cuts?|keeps?|"
+                  r"rates?|rated|boosts?|hikes?|lifts?|trims?|sees?|starts?|resumes?|reinstates?|"
+                  r"assumes?")
+_CAP = r"[A-Z][\w&.'’-]*"
+_FIRM_HEAD_RE = re.compile(
+    rf"^\s*(?P<firm>{_CAP}(?:\s+(?:(?:of|&|and|de)\s+)?{_CAP}){{0,3}})\s+(?i:{_ANALYST_VERBS})\b")
+_FIRM_TAIL_RE = re.compile(
+    rf"\b(?:by|at|from)\s+(?P<firm>{_CAP}(?:\s+(?:(?:of|&|and)\s+)?{_CAP}){{0,3}})\s*[.)]?\s*$")
+
+# Numeric anchors: dollar amounts (with unit), percentages, fiscal years. Bare numbers and
+# calendar years are deliberately NOT anchors (they are everywhere).
+_USD_RE = re.compile(r"\$\s?(\d[\d,]*(?:\.\d+)?)\s*(k|m|b|t|million|billion|trillion|thousand)?\b", re.I)
+_PCT_RE = re.compile(r"(\d+(?:\.\d+)?)\s?%")
+_FY_RE = re.compile(r"\bfy\s?(\d{2}|\d{4})\b|\bfiscal (\d{4})\b", re.I)
+_UNIT = {"million": "m", "billion": "b", "trillion": "t", "thousand": "k"}
+
+
+# ── classification ─────────────────────────────────────────────────────────────────
+
+def catalyst_classes(title: str) -> set[str]:
+    """Catalyst classes a title carries (possibly several). A STRONG commentary marker
+    empties the set — the title is a format, not a catalyst."""
+    if COMMENTARY_STRONG_RE.search(title):
+        return set()
+    return {c for c, rx in CATALYST_CLASS_PATTERNS if rx.search(title)}
+
+
+def is_commentary(title: str) -> bool:
+    if COMMENTARY_STRONG_RE.search(title):
+        return True
+    return bool(COMMENTARY_WEAK_RE.search(title)) and not catalyst_classes(title)
+
+
+def is_preview(title: str) -> bool:
+    return "earnings" in catalyst_classes(title) and bool(PREVIEW_RE.search(title))
+
+
+def primary_class(title: str) -> str:
+    """ONE label for storage on a `none`/`class` item: the first catalyst class in precedence
+    order, else `commentary`, else `other`."""
+    cats = catalyst_classes(title)
+    for c, _ in CATALYST_CLASS_PATTERNS:
+        if c in cats:
+            return c
+    return "commentary" if is_commentary(title) else "other"
+
+
+def holds_a_catalyst(title: str) -> bool:
+    """Our item is 'a reason for the move' when it carries a catalyst class and is not
+    merely an earnings preview."""
+    cats = catalyst_classes(title)
+    if not cats:
+        return False
+    return not (cats == {"earnings"} and is_preview(title))
+
+
+# ── anchors ────────────────────────────────────────────────────────────────────────
+
+def company_tokens(company_name: Optional[str], ticker: str, our_titles: list[str]) -> set[str]:
+    """Tokens that name the company — never anchors. From the stored company name when the
+    grade-corpus row carries one (Part 3 stores profile['companyName']); otherwise the
+    frequency fallback: a token present in >= 3 of our titles (>= 2 when we hold fewer than
+    6). The fallback is what the metrics-only rows (ACN/PENG/ERO) get."""
+    toks = {ticker.lower()}
+    if company_name:
+        toks |= {t for t in normalize_title(company_name).split() if t not in STOPWORDS}
+        return toks
+    n = len(our_titles)
+    thr = 3 if n >= 6 else 2
+    counts: dict[str, int] = {}
+    for t in our_titles:
+        for w in set(normalize_title(t).split()):
+            if w.isalpha() and len(w) >= 3 and w not in STOPWORDS:
+                counts[w] = counts.get(w, 0) + 1
+    toks |= {w for w, c in counts.items() if c >= thr}
+    return toks
+
+
+def _num(s: str) -> str:
+    try:
+        return format(Decimal(s.replace(",", "")).normalize(), "f")
+    except InvalidOperation:
+        return s
+
+
+def numeric_anchors(title: str) -> set[str]:
+    out: set[str] = set()
+    for m in _USD_RE.finditer(title):
+        unit = (m.group(2) or "").lower()
+        out.add(f"usd:{_num(m.group(1))}{_UNIT.get(unit, unit)}")
+    for m in _PCT_RE.finditer(title):
+        out.add(f"pct:{_num(m.group(1))}")
+    for m in _FY_RE.finditer(title):
+        y = m.group(1) or m.group(2)
+        out.add(f"fy:{('20' + y) if len(y) == 2 else y}")
+    return out
+
+
+def alpha_anchors(title: str, company: set[str]) -> set[str]:
+    return {w for w in normalize_title(title).split()
+            if w.isalpha() and len(w) >= 4
+            and w not in STOPWORDS and w not in CLASS_WORDS and w not in GENERIC_WORDS
+            and w not in company}
+
+
+def analyst_firm(title: str, company: set[str]) -> Optional[str]:
+    for rx in (_FIRM_HEAD_RE, _FIRM_TAIL_RE):
+        m = rx.search(title)
+        if not m:
+            continue
+        toks = [w for w in normalize_title(m.group("firm")).split()
+                if w not in STOPWORDS and w not in CLASS_WORDS and w not in GENERIC_WORDS
+                and w not in company]
+        if toks:
+            return " ".join(toks)
+    return None
+
+
+# ── same-day frame (is_same_day_item above) ─────────────────────────────────────────
+
+
+def period_start(alert_date: date, prior_trading_day: date) -> datetime:
+    """The first instant of the alert's news day: 16:00:00 ET on the prior TRADING day
+    (the same-day rule's own boundary, _TV_SAME_DAY_PRIOR_CLOSE_HOUR). The frame's
+    window-reach test is `oldest item <= period_start`, never `oldest <= captured_at`:
+    the latter leaves the stretch between 16:00 and the oldest item unseen and reads an
+    empty list over it (ACN: oldest 09:31 vs capture 07:10 would have read "reaches")."""
+    return datetime.combine(prior_trading_day, dt_time(_TV_SAME_DAY_PRIOR_CLOSE_HOUR, 0), tzinfo=_ET)
+
+
+def prior_weekday(d: date) -> date:
+    """Weekend-only step back — what `shared.dates.last_trading_day(d - 1 day)` does today.
+    HOLIDAY-BLIND: for ERO 2026-09-08 (the Tuesday after Labor Day) it returns Monday
+    09-07, so the period would start 16:00 on a day the market was shut. Kept only as
+    the fallback when exchange_calendars is unavailable; production uses the function
+    below."""
+    p = d - timedelta(days=1)
+    while p.weekday() >= 5:
+        p -= timedelta(days=1)
+    return p
+
+
+def prior_trading_day_holiday_aware(d: date) -> tuple[date, str]:
+    """(prior NYSE trading day strictly before d, which calendar decided it). Steps back
+    one calendar day at a time until `trading_calendar.get_market_status(x).is_trading_day`
+    (exchange_calendars XNYS: weekends + NYSE holidays; it logs one INFO line per call,
+    which at one call per candidate is fine). Falls back to the weekend-only rule,
+    saying so, when the calendar cannot be imported — the card ports the first branch."""
+    try:
+        from agents.market_intelligence.trading_calendar import get_market_status
+    except Exception:  # loud-ok: in-band report - returns the "weekday_fallback" label and build_shadow_row logs a warning for any basis that is not "nyse_calendar"
+        return prior_weekday(d), "weekday_fallback"
+    p = d - timedelta(days=1)
+    for _ in range(10):  # never more than a long weekend + holiday away
+        if get_market_status(p).is_trading_day:
+            return p, "nyse_calendar"
+        p -= timedelta(days=1)
+    return prior_weekday(d), "weekday_fallback"
+
+
+# ── the matcher ────────────────────────────────────────────────────────────────────
+
+def match_tv_item(tv_title: str, our_items: list[dict], *, alert_date: date,
+                  prior_trading_day: date, company: set[str]) -> tuple[str, Optional[str]]:
+    """(verdict, the title of ours it matched or None). `our_items` = [{title, published}]
+    where `published` is an ET-aware datetime or None (undated FMP items count as same-day:
+    they came from the grade-time fetch)."""
+    tv_norm = normalize_title(tv_title)
+    for o in our_items:
+        if normalize_title(o["title"]) == tv_norm:
+            return "title", o["title"]
+
+    tv_cats = catalyst_classes(tv_title)
+    tv_alpha = alpha_anchors(tv_title, company)
+    tv_num = numeric_anchors(tv_title)
+    tv_usd = {a for a in tv_num if a.startswith("usd:")}
+    tv_firm = analyst_firm(tv_title, company) if "analyst" in tv_cats else None
+
+    # story — same catalyst class + a shared anchor; analyst notes need the FIRM; two items
+    # that both carry dollar figures and share none are not the same story.
+    best: tuple[int, str] | None = None
+    for o in our_items:
+        shared_cls = (tv_cats & catalyst_classes(o["title"])) - {"earnings"}
+        if not shared_cls:
+            continue
+        o_alpha = alpha_anchors(o["title"], company)
+        o_num = numeric_anchors(o["title"])
+        shared_alpha, shared_num = tv_alpha & o_alpha, tv_num & o_num
+        if "analyst" in shared_cls:
+            ok = tv_firm is not None and tv_firm == analyst_firm(o["title"], company)
+        else:
+            ok = bool(shared_alpha or shared_num)
+        o_usd = {a for a in o_num if a.startswith("usd:")}
+        if ok and tv_usd and o_usd and not (tv_usd & o_usd):
+            ok = False
+        if ok:
+            score = len(shared_alpha) + len(shared_num) + (1 if "analyst" in shared_cls else 0)
+            if best is None or score > best[0]:
+                best = (score, o["title"])
+    if best:
+        return "story", best[1]
+
+    same_day = [o for o in our_items
+                if o.get("published") is None
+                or is_same_day_item(o["published"], alert_date, prior_trading_day)]
+
+    # event — one company, one results event per day; a preview on our side does not count.
+    if "earnings" in tv_cats:
+        for o in same_day:
+            if "earnings" in catalyst_classes(o["title"]) and not is_preview(o["title"]):
+                return "event", o["title"]
+
+    # move — commentary on a day we held a reason for the move.
+    if not tv_cats and is_commentary(tv_title):
+        for o in same_day:
+            if holds_a_catalyst(o["title"]):
+                return "move", o["title"]
+
+    # class — same class held today, but nothing proves the same story.
+    for o in same_day:
+        if tv_cats & catalyst_classes(o["title"]):
+            return "class", o["title"]
+
+    return "none", None
+
+
+# ── the row frame (what build_shadow_row computes from these pieces) ───────────────
+
+def build_frame(*, alert_date: date, prior_trading_day: date, captured_at: Optional[datetime],
+                our_items: Optional[list[dict]], tv_items: list[dict], company: set[str]) -> dict:
+    """tv_items = [{title, provider, published(unix s)}] — the whole returned window.
+    our_items = None when no corpus exists. Returns the new columns of the shadow row.
+    Column semantics: module docstring, "TWO STORED LISTS, ONE RULE"."""
+    ps = period_start(alert_date, prior_trading_day)
+    cutoff = datetime.combine(alert_date, _TV_ACTIONABLE_CUTOFF_ET, tzinfo=_ET)
+    out: dict[str, Any] = {
+        "our_captured_at": captured_at,
+        "tv_coverage_reaches_period_start": None, "tv_unseen_minutes_at_period_start": None,
+        "tv_items_before_grade": None, "tv_items_in_repoll_window": None,
+        "tv_items_after_cutoff": None, "tv_match_summary": None,
+        "tv_items_unmatched_seen": None, "tv_items_we_missed": None,
+    }
+    if tv_items:
+        oldest = datetime.fromtimestamp(min(it["published"] for it in tv_items), tz=_ET)
+        out["tv_coverage_reaches_period_start"] = oldest <= ps
+        out["tv_unseen_minutes_at_period_start"] = (
+            0 if oldest <= ps else math.ceil((oldest - ps).total_seconds() / 60))
+    else:
+        out["tv_coverage_reaches_period_start"] = False
+
+    def bucket(it: dict) -> Optional[str]:
+        t = datetime.fromtimestamp(it["published"], tz=_ET)
+        if not is_same_day_item(t, alert_date, prior_trading_day):
+            return None
+        if captured_at is not None and t <= captured_at:
+            return "before_grade"
+        if t <= cutoff:
+            return "repoll_window" if captured_at is not None else None
+        return "after_cutoff"
+
+    if captured_at is not None:
+        counts = {"before_grade": 0, "repoll_window": 0, "after_cutoff": 0}
+        for it in tv_items:
+            b = bucket(it)
+            if b:
+                counts[b] += 1
+        out["tv_items_before_grade"] = counts["before_grade"]
+        out["tv_items_in_repoll_window"] = counts["repoll_window"]
+        out["tv_items_after_cutoff"] = counts["after_cutoff"]
+
+    if our_items is None or captured_at is None:
+        return out  # cannot bucket or cannot diff: every diff column stays NULL
+
+    summary = {b: {} for b in ("before_grade", "repoll_window", "after_cutoff")}
+    unmatched_seen: list[dict] = []
+    verdicts: dict[str, tuple[str, str, Optional[str]]] = {}
+    for it in tv_items:
+        b = bucket(it)
+        if not b:
+            continue
+        v, matched = match_tv_item(it["title"], our_items, alert_date=alert_date,
+                                   prior_trading_day=prior_trading_day, company=company)
+        verdicts[it["title"]] = (b, v, matched)
+        summary[b][v] = summary[b].get(v, 0) + 1
+        if v in ("none", "class") and b in ("before_grade", "repoll_window"):
+            unmatched_seen.append({"title": it["title"], "provider": it["provider"],
+                                   "published": it["published"], "bucket": b,
+                                   "class": primary_class(it["title"]), "match": v})
+    out["tv_match_summary"] = summary
+    out["_verdicts"] = verdicts  # proof-only; not a column
+    out["tv_items_unmatched_seen"] = unmatched_seen
+    # The DoD column: a list ONLY when the window reaches the period start. A rolled window
+    # keeps NULL here even when unmatched_seen is non-empty — the reader takes confirmed
+    # misses on rolled windows from tv_items_unmatched_seen, reported separately.
+    out["tv_items_we_missed"] = (unmatched_seen if out["tv_coverage_reaches_period_start"]
+                                 else None)
+    return out
+
+
 def resolve_tv_symbol(ticker: str, mic: str) -> "tuple[Optional[str], Optional[str]]":
     """(symbol, skip_reason) — exactly one is None. Resolves the MIC code (read from
     what we already store, `mi_security_types` via `db.get_security_exchange_map` —
@@ -333,14 +785,38 @@ def resolve_tv_symbol(ticker: str, mic: str) -> "tuple[Optional[str], Optional[s
     return f"{prefix}:{ticker}", None
 
 
-def _titles_from_raw(raw: Any) -> list[str]:
-    """One of mi_ep_catalyst_metrics' raw_{polygon,alpaca,fmp}_news_json columns ->
-    the titles it holds. All three are stored VERBATIM from collector.get_polygon_news
-    / get_alpaca_news / get_fmp_news (catalyst_metrics_extractor.py), which already
-    normalize every source to a `title` key — one extraction shape suffices for all
-    three. Defensive against every shape surprise (NULL column, a JSON-encoded string
-    the codec didn't auto-decode, a non-list, a non-dict item, a missing/blank title):
-    each degrades to being skipped, never a guess."""
+# Which key carries the publish time in each source's stored item (collector.py):
+# get_polygon_news -> `published_utc`, get_alpaca_news -> `created_at` (both ISO strings),
+# get_fmp_news (a yfinance wrapper; FMP itself is paywalled) -> NO date at all. An item with no
+# usable date is `published=None`, and the matcher treats an undated item as same-day (it came
+# from the grade-time fetch) - see match_tv_item.
+_RAW_PUBLISHED_KEY = {"polygon": "published_utc", "alpaca": "created_at", "fmp": None}
+
+
+def _published_et(v: Any) -> Optional[datetime]:
+    """An ISO-8601 string off a stored news item -> ET-aware datetime, or None when it is
+    absent / not a string / unparseable. A naive value is read as UTC (every stored source
+    writes UTC). Never raises."""
+    if not isinstance(v, str) or not v.strip():
+        return None
+    try:
+        dt = datetime.fromisoformat(v.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(_ET)
+
+
+def _items_from_raw(raw: Any, published_key: Optional[str]) -> list[dict]:
+    """One of the stored raw_{polygon,alpaca,fmp}_news_json columns (mi_ep_catalyst_metrics, or
+    mi_ep_grade_corpus's alpaca_json / fmp_json) -> [{"title", "published"}], `published` an
+    ET-aware datetime or None. All three are stored VERBATIM from collector.get_polygon_news /
+    get_alpaca_news / get_fmp_news, which already normalize every source to a `title` key.
+    Defensive against every shape surprise (NULL column, a JSON-encoded string the codec didn't
+    auto-decode, a non-list, a non-dict item, a missing/blank title): each degrades to being
+    skipped, never a guess. `published_key` is the source's date key (`_RAW_PUBLISHED_KEY`), or
+    None for a source that carries no dates."""
     if isinstance(raw, str):
         try:
             raw = json.loads(raw)
@@ -348,12 +824,13 @@ def _titles_from_raw(raw: Any) -> list[str]:
             return []
     if not isinstance(raw, list):
         return []
-    out = []
+    out: list[dict] = []
     for r in raw:
         if isinstance(r, dict):
             t = r.get("title")
             if isinstance(t, str) and t.strip():
-                out.append(t)
+                out.append({"title": t,
+                            "published": _published_et(r.get(published_key)) if published_key else None})
     return out
 
 
@@ -364,6 +841,15 @@ def _provider_counts(items: list[dict]) -> dict[str, int]:
     return counts
 
 
+# The columns `build_frame` computes (besides `our_captured_at`, which comes straight from the
+# corpus). All NULL whenever no frame can be computed.
+_FRAME_COLS = (
+    "tv_coverage_reaches_period_start", "tv_unseen_minutes_at_period_start",
+    "tv_items_before_grade", "tv_items_in_repoll_window", "tv_items_after_cutoff",
+    "tv_match_summary", "tv_items_unmatched_seen", "tv_items_we_missed",
+)
+
+
 def build_shadow_row(
     alert: dict, corpus: Optional[dict], mic: str, symbol: Optional[str],
     skip_reason: Optional[str], fetch_result: "tuple[Any, Optional[Exception]] | None",
@@ -372,7 +858,17 @@ def build_shadow_row(
     separate from the I/O (snapshot_ticker) so the whole comparison/classification
     logic is unit-testable without a network or a DB. `fetch_result` is
     `(payload, None)` on a successful GET, `(None, exc)` on a raised exception, or
-    `None` when no fetch was attempted at all (the exchange never resolved)."""
+    `None` when no fetch was attempted at all (the exchange never resolved).
+
+    `alert` = a `db.get_tv_shadow_population` row: `catalyst_quality` is the RAW grade (None
+    when the provenance row is absent); `acting_grade` / `acting_rule` are the grade that
+    acted and the lattice rule behind it. `corpus` = a `db.get_grade_corpus` dict (or None):
+    besides the raw news columns it carries `captured_at` (when the grade read this corpus),
+    `company_name`, `polygon_available` and `source` ('grade_corpus' | 'metrics').
+
+    The comparison frame (module docstring, "TWO LISTS, ONE RULE") is computed only when a
+    corpus AND its `captured_at` exist. Without them every frame column is NULL ("cannot
+    tell"), never a zero."""
     ticker, alert_date = alert["ticker"], alert["alert_date"]
     row: dict[str, Any] = {
         "ticker": ticker,
@@ -380,11 +876,19 @@ def build_shadow_row(
         "catalyst_quality": alert.get("catalyst_quality"),
         "our_has_direct_source": alert.get("has_direct_source"),
         "our_source_class_count": alert.get("source_class_count"),
+        # The grade that ACTED and the lattice rule behind it are properties of the ALERT, not
+        # of the diff - carried whether or not a corpus exists.
+        "our_acting_grade": alert.get("acting_grade"),
+        "our_acting_rule": alert.get("acting_rule"),
+        "our_captured_at": None,
+        "our_corpus_source": None,
         "exchange_mic": mic,
         "tv_symbol": symbol,
     }
 
-    our_titles_norm: set = set()
+    our_items: Optional[list[dict]] = None
+    captured_at: Optional[datetime] = None
+    company: set[str] = set()
     if corpus is None:
         row["our_corpus_available"] = False
         row["our_polygon_count"] = None
@@ -393,21 +897,40 @@ def build_shadow_row(
         row["our_perplexity_present"] = None
         row["our_total_item_count"] = None
     else:
-        polygon_titles = _titles_from_raw(corpus.get("raw_polygon_news_json"))
-        alpaca_titles = _titles_from_raw(corpus.get("raw_alpaca_news_json"))
-        fmp_titles = _titles_from_raw(corpus.get("raw_fmp_news_json"))
+        polygon_items = _items_from_raw(corpus.get("raw_polygon_news_json"),
+                                        _RAW_PUBLISHED_KEY["polygon"])
+        alpaca_items = _items_from_raw(corpus.get("raw_alpaca_news_json"),
+                                       _RAW_PUBLISHED_KEY["alpaca"])
+        fmp_items = _items_from_raw(corpus.get("raw_fmp_news_json"), _RAW_PUBLISHED_KEY["fmp"])
+        # A grade-corpus row has NO Polygon side (Polygon is fetched only inside
+        # extract_earnings_metrics): "not captured" is NULL, never 0 - a 0 would read as
+        # "Polygon was checked and held nothing". Metrics-only rows keep today's behaviour.
+        polygon_available = bool(corpus.get("polygon_available", True))
         row["our_corpus_available"] = True
-        row["our_polygon_count"] = len(polygon_titles)
-        row["our_alpaca_count"] = len(alpaca_titles)
-        row["our_fmp_count"] = len(fmp_titles)
+        row["our_polygon_count"] = len(polygon_items) if polygon_available else None
+        row["our_alpaca_count"] = len(alpaca_items)
+        row["our_fmp_count"] = len(fmp_items)
         row["our_perplexity_present"] = bool((corpus.get("raw_perplexity_text") or "").strip())
-        row["our_total_item_count"] = len(polygon_titles) + len(alpaca_titles) + len(fmp_titles)
-        our_titles_norm = {normalize_title(t) for t in (*polygon_titles, *alpaca_titles, *fmp_titles)}
+        row["our_total_item_count"] = (
+            (len(polygon_items) if polygon_available else 0) + len(alpaca_items) + len(fmp_items))
+        row["our_corpus_source"] = corpus.get("source")
+        captured_at = corpus.get("captured_at")
+        row["our_captured_at"] = captured_at
+        if captured_at is None:
+            logger.warning(f"tv_news_shadow: corpus for {ticker}/{alert_date} carries no "
+                           f"captured_at - the comparison frame is left NULL")
+        else:
+            our_items = (polygon_items if polygon_available else []) + alpaca_items + fmp_items
+            company = company_tokens(corpus.get("company_name"), ticker,
+                                     [o["title"] for o in our_items])
 
     _empty_tv = dict(
         tv_item_count=None, tv_providers=None, tv_oldest_item_published=None,
         tv_coverage_reaches_alert_date=None, tv_items_on_alert_date=None,
         tv_providers_on_alert_date=None, tv_items_we_missed=None,
+        tv_coverage_reaches_period_start=None, tv_unseen_minutes_at_period_start=None,
+        tv_items_before_grade=None, tv_items_in_repoll_window=None,
+        tv_items_after_cutoff=None, tv_match_summary=None, tv_items_unmatched_seen=None,
     )
 
     if symbol is None:
@@ -443,19 +966,30 @@ def build_shadow_row(
         row["tv_oldest_item_published"] = None
         row["tv_coverage_reaches_alert_date"] = False
 
-    prior_day = last_trading_day(alert_date - timedelta(days=1))
+    # HOLIDAY-AWARE prior trading day - NOT shared.dates.last_trading_day, which is weekend-only
+    # (for the Tuesday after Labor Day it returns the closed Monday). ONE rule for the same-day
+    # count, the period start and the three buckets, so the buckets always sum to
+    # tv_items_on_alert_date.
+    prior_day, prior_how = prior_trading_day_holiday_aware(alert_date)
+    if prior_how != "nyse_calendar":
+        logger.warning(f"tv_news_shadow: {ticker}/{alert_date} prior trading day came from the "
+                       f"{prior_how} rule, not the NYSE calendar")
     same_day = [it for it in items
                 if is_same_day_item(tv_item_et_datetime(it["published"]), alert_date, prior_day)]
     row["tv_items_on_alert_date"] = len(same_day)
     row["tv_providers_on_alert_date"] = _provider_counts(same_day)
 
-    if row["our_corpus_available"]:
-        row["tv_items_we_missed"] = [
-            {"title": it["title"], "provider": it["provider"], "published": it["published"]}
-            for it in same_day if normalize_title(it["title"]) not in our_titles_norm
-        ]
+    if our_items is not None and captured_at is not None:
+        frame = build_frame(alert_date=alert_date, prior_trading_day=prior_day,
+                            captured_at=captured_at, our_items=our_items, tv_items=items,
+                            company=company)
+        frame.pop("_verdicts", None)        # proof-only, not a column
+        frame.pop("our_captured_at", None)  # already set from the corpus above
+        row.update(frame)
     else:
-        row["tv_items_we_missed"] = None  # nothing stored to diff against — see module docstring
+        # Nothing stored to diff against: every frame column is NULL ("cannot tell"). An empty
+        # list here would read as "we checked and missed nothing" (the 2026-09-08 false zero).
+        row.update({k: None for k in _FRAME_COLS})
 
     return row
 
@@ -531,7 +1065,7 @@ async def snapshot_ticker(alert: dict, mic: str, symbol: Optional[str],
     per-item-isolation idiom)."""
     ticker, alert_date = alert["ticker"], alert["alert_date"]
     try:
-        corpus = await get_catalyst_metrics_raw_corpus(ticker, alert_date)
+        corpus = await get_grade_corpus(ticker, alert_date)
     except Exception as e:
         logger.warning(f"tv_news_shadow: corpus read failed for {ticker}/{alert_date}: {e}")
         corpus = None
@@ -616,13 +1150,13 @@ async def _run_over_population(population: list[dict], exchange_map: dict[str, s
 
 
 async def run_tv_news_shadow(today: date) -> dict:
-    """The 20:45 ET nightly entry point. Never raises — every stage is wrapped; a
+    """The 10:10 ET mon-fri entry point. Never raises — every stage is wrapped; a
     failure at any stage degrades to a recorded reason and an empty/partial result,
     never an exception into the scheduler (see `_tv_news_shadow_job` in scheduler.py,
     which is belt-and-braces on top of this)."""
     since = today - timedelta(days=_TV_LOOKBACK_DAYS)
     try:
-        population = await get_no_catalyst_alert_population(since, today)
+        population = await get_tv_shadow_population(since, today)
     except Exception as e:
         logger.error(f"tv_news_shadow: population query failed: {e}", exc_info=True)
         try:

@@ -60,7 +60,7 @@ from agents.market_intelligence.collector import (
     get_sec_recent_filings,
 )
 from agents.market_intelligence.constants import SKIP_TICKERS
-from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_volume_history_daily_closes, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation, get_runtime_toggle, LIVE_SOURCE_SQL, latest_complete_score_date
+from agents.market_intelligence.db import insert_ep_alert, get_adv_map, get_latest_regime, get_volume_history, get_volume_history_daily_closes, get_pool, log_ep_scan_candidates, log_audit_event, enqueue_pending_allocation, get_runtime_toggle, LIVE_SOURCE_SQL, latest_complete_score_date, write_grade_corpus
 from agents.market_intelligence.backtester.filters import check_filters
 from agents.market_intelligence.minute_volume import (
     compute_rvol_at_time,
@@ -5063,6 +5063,26 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 )
             except Exception as _e:
                 logger.debug(f"{ticker}: provenance log skipped — {_e}")
+
+            # #210 build (2026-10-10) - keep the corpus THIS grade read, for EVERY graded
+            # candidate (mi_ep_grade_corpus). The TradingView shadow diffs against it; before
+            # this, the news a grade saw was stored only on the earnings-path metrics row (5 of
+            # 32 alerts since 09-01). TELEMETRY ONLY: no grade/admission/entry/sizing path reads
+            # the table, and nothing below depends on this call. Every input is already in scope
+            # from the gather above - NO new fetch (Polygon is not in that gather, so a
+            # grade-corpus row has no Polygon side). One INSERT of the same class as the audit
+            # INSERT beside it, in its own try/except (db.write_grade_corpus is fail-open too):
+            # it can never break or slow-fail the scan. `catalyst_quality` here is the RAW grade.
+            try:
+                await write_grade_corpus(
+                    ticker, today, datetime.now(_ET), profile.get("companyName"),
+                    alpaca_news, fmp_news, perplexity_answer,
+                    (f"{sec_filing['form']} filed {sec_filing['filed']}, items {sec_filing['items']}"
+                     if sec_filing else None),
+                    catalyst_quality,
+                )
+            except Exception as _e:
+                logger.warning(f"{ticker}: grade-corpus write skipped - {_e}")
 
             # #344 enrichment SHADOW (once/ticker/day, uncached path) — web-INCLUSIVE
             # net-correctness telemetry: re-grade with prior material-agreement context

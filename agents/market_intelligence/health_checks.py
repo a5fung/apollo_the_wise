@@ -1788,13 +1788,13 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # writer went unnoticed from April to September." Keyed on `settled_session` (same
     # name-based-timestamp rule as its two siblings above).
     ("mi_gap_near_miss_replays", "gap-floor near-miss replay (#617 Step 2)", "settled_session", None),
-    # #210 (2026-09-06): the TradingView news cross-reference shadow. Written nightly
-    # (20:45 ET) ONLY when the trailing few days produced at least one thin/no-catalyst
-    # alert not yet recorded — the case doc's own measurement put that population at
-    # ~5-7% of alerts, so long silent stretches during a quiet catalyst-rich tape are
-    # EXPECTED, not a defect (the "sparse" branch below, same shape as
-    # mi_live_fill_counterfactuals, derives its own threshold rather than assuming a
-    # daily cadence). SILENT by the data-capture contract (no Telegram on a dead
+    # #210 (2026-09-06): the TradingView news cross-reference shadow. Written at 10:10 ET
+    # mon-fri (it was nightly 20:45 ET until 2026-10-10) whenever the trailing few days
+    # hold an alert not yet recorded. Since 2026-10-10 the population is EVERY alert (it was
+    # only the thin/no-catalyst ~5-7% of them), but alerts themselves come in bursts — long
+    # silent stretches on a quiet tape are still EXPECTED, not a defect (the "sparse" branch
+    # below, same shape as mi_live_fill_counterfactuals, derives its own threshold rather
+    # than assuming a daily cadence). SILENT by the data-capture contract (no Telegram on a dead
     # writer, only on a sustained live-endpoint degradation — a different mechanism,
     # llm_health.alert_endpoint_shape_anomaly) — this registry is its only watchdog
     # for the writer itself. Keyed on the plain-DATE business column `alert_date`

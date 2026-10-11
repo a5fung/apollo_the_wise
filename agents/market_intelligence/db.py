@@ -795,7 +795,7 @@ async def initialize_schema() -> None:
                 alert_date                  DATE NOT NULL,
                 checked_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 -- population context, denormalized off the ep_catalyst_provenance audit row
-                -- (see db.get_no_catalyst_alert_population) so this table answers its own
+                -- (see db.get_tv_shadow_population) so this table answers its own
                 -- question with no join required.
                 catalyst_quality            TEXT,
                 our_has_direct_source       BOOLEAN,
@@ -828,6 +828,58 @@ async def initialize_schema() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_tv_news_shadow_alert_date
                 ON mi_tv_news_shadow(alert_date DESC);
+
+            -- #210 build (2026-10-10): the comparison frame. Columns added to the SAME table, one
+            -- ADD COLUMN IF NOT EXISTS each (idempotent; the 10 pre-existing rows keep NULL in
+            -- every one — "not computed", never a zero). Semantics: tv_news_shadow.py module
+            -- docstring ("THE COMPARISON FRAME", "TWO LISTS, ONE RULE"). Telemetry only — read by
+            -- NO grade/admission/entry/sizing/safeguard path (THE LINE).
+            --   our_captured_at / our_corpus_source — when the GRADE read the corpus we diff
+            --     against, and which table it came from ('grade_corpus' | 'metrics').
+            --   our_acting_grade / our_acting_rule — mi_ep_alerts.catalyst_quality (the grade that
+            --     acted) and mi_catalyst_tier_shadow.rule_last. `catalyst_quality` above stays
+            --     the RAW grade, which is what the "no-catalyst days" cut reads.
+            --   tv_coverage_reaches_period_start — oldest item of the WHOLE window <= 16:00 ET on
+            --     the prior NYSE trading day; tv_unseen_minutes_at_period_start — how short it fell.
+            --   tv_items_before_grade / _in_repoll_window / _after_cutoff — the same-day items
+            --     bucketed by publish time; they sum to tv_items_on_alert_date.
+            --   tv_match_summary {bucket: {verdict: n}}; tv_items_unmatched_seen — the none/class
+            --     items of the first two buckets; tv_items_we_missed (above) — that same list ONLY
+            --     when the window reaches the period start, else NULL ("cannot tell").
+            ALTER TABLE mi_tv_news_shadow ADD COLUMN IF NOT EXISTS our_captured_at TIMESTAMPTZ;
+            ALTER TABLE mi_tv_news_shadow ADD COLUMN IF NOT EXISTS our_corpus_source TEXT;
+            ALTER TABLE mi_tv_news_shadow ADD COLUMN IF NOT EXISTS our_acting_grade TEXT;
+            ALTER TABLE mi_tv_news_shadow ADD COLUMN IF NOT EXISTS our_acting_rule TEXT;
+            ALTER TABLE mi_tv_news_shadow ADD COLUMN IF NOT EXISTS tv_coverage_reaches_period_start BOOLEAN;
+            ALTER TABLE mi_tv_news_shadow ADD COLUMN IF NOT EXISTS tv_unseen_minutes_at_period_start INT;
+            ALTER TABLE mi_tv_news_shadow ADD COLUMN IF NOT EXISTS tv_items_before_grade INT;
+            ALTER TABLE mi_tv_news_shadow ADD COLUMN IF NOT EXISTS tv_items_in_repoll_window INT;
+            ALTER TABLE mi_tv_news_shadow ADD COLUMN IF NOT EXISTS tv_items_after_cutoff INT;
+            ALTER TABLE mi_tv_news_shadow ADD COLUMN IF NOT EXISTS tv_match_summary JSONB;
+            ALTER TABLE mi_tv_news_shadow ADD COLUMN IF NOT EXISTS tv_items_unmatched_seen JSONB;
+
+            -- #210 build (2026-10-10): the corpus a grade READ, for EVERY graded candidate (28-49
+            -- ticker-days a week, ~40 small rows). Before this, the news a grade saw was kept only
+            -- on the earnings-path metrics row (5 of 32 alerts since 09-01), so 7 of 10 shadow rows
+            -- had nothing to diff against. Written once per ticker-day by ep_detector's uncached
+            -- grade branch, beside the ep_catalyst_provenance audit INSERT — fail-open, DO NOTHING
+            -- on conflict (the FIRST grade's corpus is the one the grade saw). Telemetry only: NO
+            -- grade/admission/entry/sizing/safeguard path reads it; mi_tv_news_shadow's reader
+            -- (db.get_grade_corpus) is the only consumer. NOT mi_ep_catalyst_metrics: that table
+            -- means "extraction ran" (lookup_cached_metrics), so corpus-only rows must not go there.
+            -- No Polygon side: Polygon is fetched only inside extract_earnings_metrics.
+            CREATE TABLE IF NOT EXISTS mi_ep_grade_corpus (
+                ticker          TEXT NOT NULL,
+                alert_date      DATE NOT NULL,
+                captured_at     TIMESTAMPTZ NOT NULL,   -- when the grade read this corpus (= the provenance row's time)
+                company_name    TEXT,                   -- profile.get("companyName") — the matcher's company tokens
+                alpaca_json     JSONB,                  -- alpaca_news verbatim (<= 20 items, 7-day)
+                fmp_json        JSONB,                  -- fmp_news verbatim
+                perplexity_text TEXT,
+                sec_title       TEXT,                   -- form + filed + items ONLY, never the body
+                raw_grade       TEXT,                   -- catalyst_quality at this point: the RAW LLM grade
+                PRIMARY KEY (ticker, alert_date)
+            );
 
             CREATE TABLE IF NOT EXISTS mi_ticker_overrides (
                 ticker TEXT PRIMARY KEY,
@@ -18604,97 +18656,192 @@ async def get_daily_ohlc_range(conn: Any, ticker: str, start: "date", end: "date
     return await _daily_closes_range(conn, ticker, start, end, with_volume=True)
 
 
-# ── #210 TradingView news cross-reference SHADOW queries (2026-09-06) ────────────────
-# Single writer: tv_news_shadow.py (nightly 20:45 ET job). DATA CAPTURE ONLY — read by
-# no grade/score/admission/trade-state path (THE LINE). Schema + the honesty contract
-# (our_corpus_available, tv_coverage_reaches_alert_date): the mi_tv_news_shadow DDL
-# block above (search "TradingView news cross-reference SHADOW").
+# ── #210 TradingView news cross-reference SHADOW queries (2026-09-06; rebuilt 2026-10-10) ──
+# Single writer of mi_tv_news_shadow: tv_news_shadow.py (10:10 ET mon-fri job). DATA CAPTURE
+# ONLY - read by no grade/score/admission/trade-state path (THE LINE). Schema + the honesty
+# contract (the comparison frame; tv_items_we_missed is NULL unless the window reaches the
+# period start): the mi_tv_news_shadow DDL block above (search "TradingView news cross-reference
+# SHADOW") and the tv_news_shadow.py module docstring.
 
-async def get_no_catalyst_alert_population(since_date: "date", today: "date") -> list[dict]:
-    """Alerts in [since_date, today] we ourselves called thin or catalyst-less, per the
-    SAME structural predicate `docs/design/210_ir_newsroom_fallback_2026-09-05.md` §2.1
-    already established (`catalyst_quality == 'routine'` OR no direct source in the
-    graded corpus) — reused rather than re-derived so this shadow and that design agree
-    on what "no catalyst" means. Excludes tickers already recorded in mi_tv_news_shadow
-    for that date (this is a run-once-per-alert shadow, not a re-check).
+async def get_tv_shadow_population(since_date: "date", today: "date") -> list[dict]:
+    """EVERY mi_ep_alerts ticker-day in [since_date, today] not yet recorded in
+    mi_tv_news_shadow (a run-once-per-alert shadow, not a re-check). 2026-10-10: the raw-grade
+    predicate is GONE - the DoD asks for a share of ALERTS, this is telemetry, and the
+    "no-catalyst days" cut is made at read time off the RAW grade (the acting grade is carried
+    beside it, so a second cut is one WHERE clause).
 
-    Source: the `ep_catalyst_provenance` audit row every graded ticker/day already gets
-    (ep_detector.py, Wave B, 2026-08-xx) — `detail` is a JSON blob with `catalyst_quality`,
-    `sources` ({class: count}) and `has_direct_source`. Parsed defensively in Python
-    (never cast in SQL): `detail` is a free-text column shared by every audit event type,
-    and a cast that aborts the whole query on one malformed row is worse than skipping it.
+    Per row: `catalyst_quality` = the RAW grade from the `ep_catalyst_provenance` audit row every
+    graded ticker/day gets (ep_detector.py) - None when that row is absent (the row is KEPT, never
+    dropped), with `has_direct_source` / `source_class_count` from the same row (None when absent);
+    `acting_grade` = mi_ep_alerts.catalyst_quality (the grade that acted - on several rows the
+    lattice's routine_promoted_demotion_corrective promotion, not a company catalyst);
+    `acting_rule` = mi_catalyst_tier_shadow.rule_last via LEFT JOIN (None when absent). One row
+    per ticker-day; if mi_ep_alerts holds several for the same ticker-day the latest id wins.
+
+    The provenance `detail` is a JSON blob parsed defensively in Python (never cast in SQL):
+    it is a free-text column shared by every audit event type, and a cast that aborts the whole
+    query on one malformed row is worse than skipping it.
 
     Returns [{"ticker", "alert_date", "catalyst_quality", "source_class_count",
-    "has_direct_source"}], newest alert first. A ticker/date with NO provenance row
-    (pre-dates Wave B, or the log call itself failed) is excluded — this population
-    errs toward SMALLER and CONFIRMED, never toward guessing a name is thin.
-    """
+    "has_direct_source", "acting_grade", "acting_rule"}], newest alert first."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         alert_rows = await conn.fetch("""
-            SELECT a.ticker, a.alert_date
+            SELECT a.ticker, a.alert_date, a.catalyst_quality AS acting_grade,
+                   t.rule_last AS acting_rule
             FROM mi_ep_alerts a
             LEFT JOIN mi_tv_news_shadow s
                 ON s.ticker = a.ticker AND s.alert_date = a.alert_date
+            LEFT JOIN mi_catalyst_tier_shadow t
+                ON t.ticker = a.ticker AND t.scan_date = a.alert_date
             WHERE a.alert_date >= $1 AND a.alert_date <= $2 AND s.ticker IS NULL
+            ORDER BY a.alert_date DESC, a.id DESC
         """, since_date, today)
         if not alert_rows:
             return []
-        wanted = {(r["ticker"], r["alert_date"]) for r in alert_rows}
         prov_rows = await conn.fetch("""
             SELECT detail FROM mi_audit_log
             WHERE event_type = 'ep_catalyst_provenance'
               AND created_at >= $1::date
         """, since_date)
 
-    best: dict[tuple[str, "date"], dict] = {}
+    alerts: dict[tuple[str, "date"], dict] = {}
+    for r in alert_rows:
+        key = (r["ticker"], r["alert_date"])
+        if key not in alerts:  # ORDER BY a.id DESC: the first row per ticker-day is the latest
+            alerts[key] = {"acting_grade": r["acting_grade"], "acting_rule": r["acting_rule"]}
+
+    prov: dict[tuple[str, "date"], dict] = {}
     for r in prov_rows:
         try:
             d = json.loads(r["detail"])
             key = (str(d["ticker"]), date.fromisoformat(d["alert_date"]))
         except (TypeError, ValueError, KeyError, json.JSONDecodeError):
-            continue  # malformed/truncated detail — skip this row, never guess its content
-        if key not in wanted or key in best:
+            continue  # malformed/truncated detail - skip this row, never guess its content
+        if key not in alerts or key in prov:
             continue  # not in our alert window, or already have this ticker/date's row
         sources = d.get("sources") or {}
         try:
             source_count = sum(int(v) for v in sources.values())
         except (TypeError, ValueError):
             source_count = 0
-        best[key] = {
-            "ticker": key[0],
-            "alert_date": key[1],
+        prov[key] = {
             "catalyst_quality": d.get("catalyst_quality"),
             "source_class_count": source_count,
             "has_direct_source": bool(d.get("has_direct_source")),
         }
 
-    out = [
-        v for v in best.values()
-        if v["catalyst_quality"] == "routine" or not v["has_direct_source"]
-    ]
+    out = []
+    for (ticker, alert_date), a in alerts.items():
+        p = prov.get((ticker, alert_date))
+        out.append({
+            "ticker": ticker,
+            "alert_date": alert_date,
+            "catalyst_quality": p["catalyst_quality"] if p else None,
+            "source_class_count": p["source_class_count"] if p else None,
+            "has_direct_source": p["has_direct_source"] if p else None,
+            "acting_grade": a["acting_grade"],
+            "acting_rule": a["acting_rule"],
+        })
     out.sort(key=lambda v: v["alert_date"], reverse=True)
     return out
 
 
-async def get_catalyst_metrics_raw_corpus(ticker: str, alert_date: "date") -> "dict | None":
-    """The raw per-source news corpus captured at grade time, if any — see the
-    mi_tv_news_shadow DDL's our_corpus_available note: this row exists ONLY when
-    catalyst_metrics_extractor's earnings-path (strong/game_changer) branch ran for
-    this ticker/date. Returns None (not a dict of Nones) when no row exists at all,
-    so the caller can distinguish "we checked and it's empty" from "we never captured
-    a snapshot to check." raw_*_news_json may itself be NULL even when the row exists
-    (a source that returned nothing that day) — asyncpg deserializes JSONB to a Python
-    list already; no json.loads needed here."""
+GRADE_CORPUS_INSERT_SQL = """
+    INSERT INTO mi_ep_grade_corpus (ticker, alert_date, captured_at, company_name,
+                                    alpaca_json, fmp_json, perplexity_text, sec_title, raw_grade)
+    VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9)
+    ON CONFLICT (ticker, alert_date) DO NOTHING
+"""
+
+
+async def write_grade_corpus(ticker: str, alert_date: "date", captured_at: "datetime",
+                             company_name: "str | None", alpaca_json: "list | None",
+                             fmp_json: "list | None", perplexity_text: "str | None",
+                             sec_title: "str | None", raw_grade: "str | None") -> bool:
+    """Record the corpus a GRADE read, once per graded ticker-day (#210, 2026-10-10).
+
+    Called from ep_detector's uncached grade branch, beside the ep_catalyst_provenance audit
+    INSERT; every input is already in scope there, so NO new fetch. ON CONFLICT DO NOTHING: the
+    FIRST grade's corpus is the one the grade saw. `sec_title` = form + filed + items ONLY, never
+    the filing body. `raw_grade` = catalyst_quality at that point (the RAW LLM grade).
+
+    FAIL OPEN, ALWAYS: the whole body is one try/except that logs a warning and returns False -
+    telemetry that cannot change a grade must never raise into the scan (a dead pool, a NUL byte
+    in a title, an asyncpg type error). Returns True when the statement ran (a conflict is still
+    True: nothing was lost). The two JSON columns bind `$N::jsonb` through `_jsonb_list_param`
+    (the #216 class: never pre-json.dumps); None stays NULL, [] stays [].
+    """
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                GRADE_CORPUS_INSERT_SQL, ticker, alert_date, captured_at, company_name,
+                _jsonb_list_param(alpaca_json) if alpaca_json is not None else None,
+                _jsonb_list_param(fmp_json) if fmp_json is not None else None,
+                perplexity_text, sec_title, raw_grade,
+            )
+        return True
+    except Exception as e:
+        logger.warning(f"write_grade_corpus: {ticker}/{alert_date} not recorded - "
+                       f"{type(e).__name__}: {e}")
+        return False
+
+
+async def get_grade_corpus(ticker: str, alert_date: "date") -> "dict | None":
+    """The news corpus our grade read for this ticker-day, for the TradingView shadow's diff.
+
+    Reads BOTH sources (#210, 2026-10-10):
+      - `mi_ep_grade_corpus` (every graded candidate; no Polygon side) -> source='grade_corpus',
+        `captured_at` = the grade time. Alpaca / FMP / Perplexity come from THIS row (the corpus
+        the grade saw); `raw_polygon_news_json` comes from the metrics row when one exists
+        (`polygon_available=True`), else None (`polygon_available=False`: the caller records
+        our_polygon_count as NULL, never 0 - Polygon was not captured, not "held nothing").
+      - `mi_ep_catalyst_metrics` alone (the earnings-path extraction row - the only corpus before
+        2026-10-12) -> source='metrics', `captured_at` = extracted_at (which LAGS the grade by
+        minutes: ACN extracted 07:10:15 for a 07:00:20 grade), `polygon_available=True`.
+    Returns None - not a dict of Nones - when neither row exists, so the caller can tell "we
+    checked and it is empty" from "we never captured a snapshot". JSONB columns come back
+    already deserialized by the registered codec.
+
+    Returns {raw_polygon_news_json, raw_alpaca_news_json, raw_fmp_news_json, raw_perplexity_text,
+    captured_at, company_name, polygon_available, source}."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        row = await conn.fetchrow("""
+        gc = await conn.fetchrow("""
+            SELECT captured_at, company_name, alpaca_json, fmp_json, perplexity_text
+            FROM mi_ep_grade_corpus
+            WHERE ticker = $1 AND alert_date = $2
+        """, ticker, alert_date)
+        mm = await conn.fetchrow("""
             SELECT raw_polygon_news_json, raw_alpaca_news_json, raw_fmp_news_json,
-                   raw_perplexity_text
+                   raw_perplexity_text, extracted_at
             FROM mi_ep_catalyst_metrics
             WHERE ticker = $1 AND alert_date = $2
         """, ticker, alert_date)
-    return dict(row) if row else None
+    if gc is not None:
+        return {
+            "raw_polygon_news_json": mm["raw_polygon_news_json"] if mm is not None else None,
+            "raw_alpaca_news_json": gc["alpaca_json"],
+            "raw_fmp_news_json": gc["fmp_json"],
+            "raw_perplexity_text": gc["perplexity_text"],
+            "captured_at": gc["captured_at"],
+            "company_name": gc["company_name"],
+            "polygon_available": mm is not None,
+            "source": "grade_corpus",
+        }
+    if mm is not None:
+        return {
+            "raw_polygon_news_json": mm["raw_polygon_news_json"],
+            "raw_alpaca_news_json": mm["raw_alpaca_news_json"],
+            "raw_fmp_news_json": mm["raw_fmp_news_json"],
+            "raw_perplexity_text": mm["raw_perplexity_text"],
+            "captured_at": mm["extracted_at"],
+            "company_name": None,
+            "polygon_available": True,
+            "source": "metrics",
+        }
+    return None
 
 
 _TV_NEWS_SHADOW_COLS = (
@@ -18706,14 +18853,24 @@ _TV_NEWS_SHADOW_COLS = (
     "tv_item_count", "tv_providers", "tv_oldest_item_published",
     "tv_coverage_reaches_alert_date", "tv_items_on_alert_date",
     "tv_providers_on_alert_date", "tv_items_we_missed",
+    # #210 build (2026-10-10): the comparison frame - see the DDL's ALTER block.
+    "our_captured_at", "our_corpus_source", "our_acting_grade", "our_acting_rule",
+    "tv_coverage_reaches_period_start", "tv_unseen_minutes_at_period_start",
+    "tv_items_before_grade", "tv_items_in_repoll_window", "tv_items_after_cutoff",
+    "tv_match_summary", "tv_items_unmatched_seen",
 )
 _TV_NEWS_SHADOW_JSONB_DICT_COLS = frozenset({"tv_providers", "tv_providers_on_alert_date"})
-_TV_NEWS_SHADOW_JSONB_LIST_COLS = frozenset({"tv_items_we_missed"})
+# Both lists keep their NULL (see the PRESERVE NULL branch in upsert_tv_news_shadow_rows).
+_TV_NEWS_SHADOW_JSONB_LIST_COLS = frozenset({"tv_items_we_missed", "tv_items_unmatched_seen"})
+# A dict column whose NULL must survive. NOT in _TV_NEWS_SHADOW_JSONB_DICT_COLS: that branch
+# coerces None -> {}, which would store "not computed" as "computed, empty" (the 09-08 class).
+_TV_NEWS_SHADOW_JSONB_NULLABLE_DICT_COLS = frozenset({"tv_match_summary"})
 _TV_NEWS_SHADOW_KEY_COLS = frozenset({"ticker", "alert_date"})
 _TV_NEWS_SHADOW_UPSERT_SQL = (
     "INSERT INTO mi_tv_news_shadow (" + ", ".join(_TV_NEWS_SHADOW_COLS) + ") VALUES ("
     + _jsonb_value_list(_TV_NEWS_SHADOW_COLS,
-                        (_TV_NEWS_SHADOW_JSONB_DICT_COLS, _TV_NEWS_SHADOW_JSONB_LIST_COLS))
+                        (_TV_NEWS_SHADOW_JSONB_DICT_COLS, _TV_NEWS_SHADOW_JSONB_LIST_COLS,
+                         _TV_NEWS_SHADOW_JSONB_NULLABLE_DICT_COLS))
     + ") ON CONFLICT (ticker, alert_date) DO UPDATE SET "
     + ", ".join(f"{c} = EXCLUDED.{c}" for c in _TV_NEWS_SHADOW_COLS
                 if c not in _TV_NEWS_SHADOW_KEY_COLS)
@@ -18746,6 +18903,9 @@ async def upsert_tv_news_shadow_rows(rows: list[dict]) -> int:
                 # written (ALAB 2026-09-04) had no corpus and TradingView had 25 items,
                 # and it stored []. Same false-zero class as #452/#414/#540 this week.
                 v = _jsonb_list_param(v) if v is not None else None
+            elif c in _TV_NEWS_SHADOW_JSONB_NULLABLE_DICT_COLS:
+                # Same PRESERVE-NULL rule for the match summary: NULL = no frame was computed.
+                v = _jsonb_param(v) if v is not None else None
             tup.append(v)
         vals.append(tuple(tup))
     pool = await get_pool()

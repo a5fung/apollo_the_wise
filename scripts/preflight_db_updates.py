@@ -34,7 +34,7 @@ from agents.market_intelligence.db import (
     THEME_AXIS_SHADOW_BOUNDED_BACKFILL_UPDATE_SQL, THEME_RESILIENCE_WEEKLY_INSERT_SQL,
     ECOSYSTEM_PROPOSAL_INSERT_SQL, ECOSYSTEM_DYNAMIC_INSERT_SQL,
     LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
-    UNIVERSE_FLOOR_SHADOW_INSERT_SQL, _TV_NEWS_SHADOW_UPSERT_SQL,
+    GRADE_CORPUS_INSERT_SQL, UNIVERSE_FLOOR_SHADOW_INSERT_SQL, _TV_NEWS_SHADOW_UPSERT_SQL,
     get_pool)
 
 logger = logging.getLogger(__name__)
@@ -260,6 +260,15 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         "db.upsert_tv_news_shadow_rows: #210 TradingView news cross-reference shadow "
         "(executemany since 2026-09-06)",
         _TV_NEWS_SHADOW_UPSERT_SQL,
+    ),
+    (
+        # #210 build (2026-10-10): the grade-corpus writer runs INSIDE the 07:00-10:00 ET scan, one
+        # INSERT per graded candidate, and is fail-open - so a type-deduction bug here would not
+        # raise anywhere: it would leave the table EMPTY (a logged warning per grade) and the
+        # TradingView comparison with nothing to diff against. Exactly the silent-recorder case.
+        "db.write_grade_corpus: #210 corpus the grade read, one row per graded candidate "
+        "(fail-open INSERT in the scan)",
+        GRADE_CORPUS_INSERT_SQL,
     ),
     (
         "db.upsert_analyst_estimates_divergence: #333 v4 Finnhub-vs-yfinance divergence "

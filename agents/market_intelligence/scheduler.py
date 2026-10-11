@@ -177,7 +177,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "gap_near_miss_replay",  # #617 Step 2 2026-09-03 — standing CURRENT-era bracket replay on every 7-9% open-gap name universe admission excluded that day (4R+/positive); pure compute + DB/audit, no broker calls, no admission change, SILENT (no Telegram)
     "lowcap_lane_replay",  # #624 2026-09-04 — CURRENT-era bracket replay on every low-cap lane signal, from the row's OWN tick wall-clock (tail rate >=3R, next-open gap, offering flag); pure compute + market-data read + DB/audit, no order path, no admission change, SILENT (no Telegram)
     "analyst_estimates_snapshot",  # #333 2026-08-31 — EOD FMP consensus-estimate capture for the alert population; pure fetch + DB/audit, no broker calls, no rule, SILENT (no Telegram)
-    "tv_news_shadow",  # #210 2026-09-06 — nightly TradingView news cross-reference for thin/no-catalyst alerts; pure fetch + DB/audit, no broker calls, no grade/admission change, Telegram only on a sustained run-level endpoint degradation (never a single blip)
+    "tv_news_shadow",  # #210 2026-09-06 — TradingView news cross-reference for every alert, now 10:10 ET mon-fri (was nightly 20:45; 2026-10-10); pure fetch + DB/audit, no broker calls, no grade/admission change, Telegram only on a sustained run-level endpoint degradation (never a single blip)
     "theme_axis_co_move_refresh",  # #329 STEP-0 — EOD co-movement backfill for the theme-axis shadow; pure compute + DB/audit, no broker calls
     "theme_axis_eod_unscored",  # theme-correctness Step 4 (THE INSTRUMENT) 2026-09-07 — EOD null-control population write for the theme-axis shadow; pure compute + DB/audit, no broker calls, no grade/admission change, SILENT (no Telegram)
     # #471 ADR 0032 Phase 3 (2026-09-12) — the ecosystem auto-discovery lane.
@@ -5658,15 +5658,18 @@ async def _analyst_estimates_snapshot_job():
 
 
 async def _tv_news_shadow_job():
-    """Run at 20:45 ET mon-fri — after every 18:xx EOD recorder and the 21:00 evening
-    position backstop, before the 21:30 ET #625 late silent-error sweep, and clear of
-    the 21:15-22:15 ET after-hours deploy window (a mid-run market-agent restart could
-    otherwise clip it).
+    """Run at 10:10 ET mon-fri (was 20:45 until 2026-10-10) — after the scan's last tick
+    (10:00 ET), the 10:00 unfilled-order cancel and the 10:05 scan watchdog, so the
+    before-grade and re-poll buckets are complete (the latest grade seen is 09:55 and the
+    worst grade-to-metrics-row lag seen is ~10 min); clear of the 12:00-13:00 ET
+    market-hours deploy window. The catalyst-downgrade digest also fires at 10:10 — two
+    independent jobs, no shared state.
 
     #210 2026-09-06 — TradingView news CROSS-REFERENCE SHADOW (the BFLY 2026-06-18
     case: our four feeds never carried the Midjourney catalyst; TradingView's did).
-    Fetches TradingView headlines for alerts we ourselves called thin/catalyst-less
-    in the trailing few days and records the comparison. DATA CAPTURE ONLY — no
+    Fetches TradingView headlines for EVERY alert in the trailing few days that is not yet
+    recorded and stores the comparison frame against the corpus the grade read
+    (mi_ep_grade_corpus). DATA CAPTURE ONLY — no
     grade/score/admission/trade-state path reads this (THE LINE; see
     tv_news_shadow.py module docstring). NEVER on the live scan path (07:00-10:00 ET)
     or the 09:31-09:44 ET ORB window.
@@ -7724,16 +7727,22 @@ def start_scheduler() -> AsyncIOScheduler:
         misfire_grace_time=1800,
     )
 
-    # #210 TV-NEWS SHADOW: 8:45 PM ET — after every 18:xx EOD recorder, before the
-    # 21:00 evening position backstop and the 21:30 late-error sweep, and clear of the
-    # 21:15-22:15 ET after-hours deploy window (a mid-run market-agent restart could
-    # otherwise clip it). DATA CAPTURE ONLY, no broker calls, no grade/admission
+    # #210 TV-NEWS SHADOW: 10:10 AM ET mon-fri (moved from 8:45 PM ET on 2026-10-10). Why 10:10:
+    # (a) at 20:45, 3 of 10 captured windows had already rolled past the period start (the
+    # three most heavily covered names) and a busy name's 25-slot window had spent most of its
+    # slots on items published AFTER 10:10; (b) it is the earliest slot after which the
+    # before-grade and re-poll buckets are complete - the scan's last tick is 10:00, the latest
+    # grade seen is 09:55, the worst grade-to-metrics-row lag seen is ~10 min; (c) it is clear
+    # of the 10:00 jobs (ep_scan_stop, rt_miss_digest, orb_window_cleanup, shadow_orb_entry), the
+    # 10:05 ep_scan_watchdog and the 12:00-13:00 ET deploy window. The catalyst-downgrade digest
+    # shares the minute (independent jobs). It never overlaps the scan (07:00-10:00) or the ORB
+    # window (09:31-09:44). DATA CAPTURE ONLY, no broker calls, no grade/admission
     # change (THE LINE; see tv_news_shadow.py module docstring). SILENT except for a
     # sustained, run-level endpoint-degradation Telegram (llm_health.
     # alert_endpoint_shape_anomaly) — never on a single blip.
     _scheduler.add_job(
         audit_wrap(_tv_news_shadow_job, "tv_news_shadow"),
-        CronTrigger(hour=20, minute=45, day_of_week="mon-fri", timezone="America/New_York"),
+        CronTrigger(hour=10, minute=10, day_of_week="mon-fri", timezone="America/New_York"),
         id="tv_news_shadow",
         replace_existing=True,
         misfire_grace_time=1800,
