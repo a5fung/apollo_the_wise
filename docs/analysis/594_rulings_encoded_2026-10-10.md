@@ -108,9 +108,9 @@ His 45 verdicts agree with the next 20 sessions in 32 of 38 cases (21 condemned 
 | session (rulings) | what the evidence says he saw | verdict agrees with the later move |
 |---|---|---|
 | 08-25 (15) | the fixture records he was shown name-days "the read scored as clean that then fell 18-98%" and name-days it scored as buried "that then ran"; the review file he was shown (`scripts/probes/_srbt_review_sample.psv`) carries `ret_5d`, the **5-session** return, not the 20-session one | 11 of 11 (1 has no result) |
-| 09-06 (10) | the 09-06 sample file lists `pct_20d` for each name, grouped "we said HIGH and it failed" / "we scored it below the bar and it ran"; the fixture's note on his reading of the set is organised by outcome and lists each later move (RNG +39%, OMER +70%, ABVX +60%, CGEM +39%, AVAH +37%) | 7 of 8 (ABVX went the other way) |
-| 09-23 (10) | the 09-21 sample file lists `pct_20d` under the same two headings; the fixture note on RARE carries "20 sessions later -49%" | 9 of 10 (WYFI went the other way) |
-| 10-05 (10) | the review page itself prints "20 sessions later" with "-41%" (AEVA) under "We alerted HIGH and it fell", and "+30%" (CDNA) under "We skipped it and it ran" | 5 of 9 (IBTA, HURN, BLZE, HPE went the other way) |
+| 09-06 (10) | the 09-06 sample file (`docs/analysis/594_chart_review_sample_2026-09-06.txt`) lists `pct_20d` for each name, grouped "we said HIGH and it failed" / "we scored it below the bar and it ran"; the fixture's note on his reading of the set is organised by outcome and lists each later move (RNG +39%, OMER +70%, ABVX +60%, CGEM +39%, AVAH +37%) | 7 of 8 (ABVX went the other way) |
+| 09-23 (10) | the 09-21 sample file (`docs/analysis/594_chart_review_sample_2026-09-21.txt`) lists `pct_20d` under the same two headings; the fixture note on RARE carries "20 sessions later -49%" | 9 of 10 (WYFI went the other way) |
+| 10-05 (10) | the review page itself (read directly; the same figures are in `docs/analysis/594_chart_review_sample_2026-10-05.txt`) prints "20 sessions later" with "-41%" (AEVA) under "We alerted HIGH and it fell", and "+30%" (CDNA) under "We skipped it and it ran" | 5 of 9 (IBTA, HURN, BLZE, HPE went the other way) |
 
 The agreement column is always scored on the 20-session move, including for the first session, where the number he saw was the 5-session return.
 
