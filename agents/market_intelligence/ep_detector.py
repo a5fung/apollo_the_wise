@@ -996,6 +996,13 @@ async def _apply_release_merit_grade(
     return None
 
 
+def _sec_filing_label(sec_filing: dict) -> str:
+    """`8-K filed 2026-06-10, items 2.02` - the one-line description of the filing the grade read.
+    Wrapped as `[SEC <label>]` in the grounded corpus and the news summary, and stored bare as
+    `mi_ep_grade_corpus.sec_title` (#210); one function so the evidence cannot drift from the input."""
+    return f"{sec_filing['form']} filed {sec_filing['filed']}, items {sec_filing['items']}"
+
+
 def build_grounded_text(
     sec_filing: Optional[dict],
     benzinga_items: list[dict],
@@ -1010,8 +1017,7 @@ def build_grounded_text(
     """
     parts: list[str] = []
     if sec_filing:
-        parts.append(
-            f"[SEC {sec_filing['form']} filed {sec_filing['filed']}, items {sec_filing['items']}] {sec_filing['text']}")
+        parts.append(f"[SEC {_sec_filing_label(sec_filing)}] {sec_filing['text']}")
     for b in benzinga_items:
         created = (b.get("created_at") or "")[:10]
         body = (b.get("summary") or b.get("content") or "").strip()
@@ -4995,8 +5001,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 if is_primary_subject_news(n, ticker, profile.get("companyName", ""))
             ][:3]
             if sec_filing:
-                news_summary = (f"[SEC {sec_filing['form']} filed {sec_filing['filed']}, items {sec_filing['items']}] "
-                                + news_summary)[:600]
+                news_summary = (f"[SEC {_sec_filing_label(sec_filing)}] " + news_summary)[:600]
             grounded_text = build_grounded_text(sec_filing, benzinga_items, perplexity_answer)
 
             # Perplexity validation runs regardless of corpus branch (S6: both always
@@ -5096,8 +5101,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 await write_grade_corpus(
                     ticker, today, datetime.now(_ET), profile.get("companyName"),
                     alpaca_news, fmp_news, perplexity_answer,
-                    (f"{sec_filing['form']} filed {sec_filing['filed']}, items {sec_filing['items']}"
-                     if sec_filing else None),
+                    _sec_filing_label(sec_filing) if sec_filing else None,
                     catalyst_quality,
                 )
             except Exception as _e:

@@ -42,15 +42,15 @@ Tie-breaker hierarchy (per memo Q2): pm_rvol → gap_pct → strategy priority
 """
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, field, asdict
 from datetime import date, datetime
 from typing import Any, Optional
-from zoneinfo import ZoneInfo
+
+from shared.dates import _ET
 
 logger = logging.getLogger(__name__)
-
-_ET = ZoneInfo("America/New_York")
 
 # Phase 1 weights — see module docstring for rationale
 W_SETUP = 0.40
@@ -215,8 +215,7 @@ def candidates_from_pending_rows(
     for r in rows:
         raw = r.get("raw_dimensions") or {}
         if isinstance(raw, str):
-            import json as _json
-            raw = _json.loads(raw)
+            raw = json.loads(raw)
         strat = r["strategy"]
         try:
             if strat == "magna53":
@@ -268,9 +267,12 @@ async def run_shadow_allocation(target_date: date) -> dict:
             "unified_allocation_decided",
             f"empty queue for {target_date}",
             # Same keys as the full row (ranked_ids = []) so the Step B join
-            # `id NOT IN ranked_ids` never meets a NULL on a quiet morning.
-            detail='{"target_date":"' + target_date.isoformat() + '","n_candidates":0'
-                   + ',"ranked_at_et":"' + ranked_at.isoformat() + '","ranked_ids":[]}',
+            # `id NOT IN ranked_ids` never meets a NULL on a quiet morning. Compact separators
+            # keep the stored text what it has always been.
+            detail=json.dumps({
+                "target_date": target_date.isoformat(), "n_candidates": 0,
+                "ranked_at_et": ranked_at.isoformat(), "ranked_ids": [],
+            }, separators=(",", ":")),
         )
         return {"n_candidates": 0, "n_winners": 0, "top_picks": [], "lower_ranked": []}
 
@@ -297,8 +299,7 @@ async def run_shadow_allocation(target_date: date) -> dict:
     await db.mark_pending_allocations_evaluated(rank_ordered_ids, selected_ids)
 
     # Audit event payload — full ranking + winners
-    import json as _json
-    detail = _json.dumps({
+    detail = json.dumps({
         "target_date": target_date.isoformat(),
         "regime": regime.get("regime", "Bull"),
         # #312 Step A: the book is `alert_date < target_date`, live only — the

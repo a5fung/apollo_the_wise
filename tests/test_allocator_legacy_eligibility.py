@@ -164,17 +164,24 @@ async def test_audit_row_says_when_it_ranked_and_which_queue_rows_it_saw(monkeyp
 
 @pytest.mark.asyncio
 async def test_empty_queue_row_still_says_when_it_ranked(monkeypatch):
-    """The empty-queue row is hand-built JSON; it must stay parseable and carry the timestamp,
-    or a quiet day is indistinguishable from a job that never ran at its new time. It also
-    carries `ranked_ids` (empty): 18 of the last 31 mornings had an empty queue, and a row
-    without the key reads as NULL to the Step B join and to the day-one `ranked_ids` check."""
+    """The empty-queue row must stay parseable and carry the timestamp, or a quiet day is
+    indistinguishable from a job that never ran at its new time. It also carries `ranked_ids`
+    (empty): 18 of the last 31 mornings had an empty queue, and a row without the key reads as
+    NULL to the Step B join and to the day-one `ranked_ids` check. Its keys are a subset of the
+    full row's - the only link between the two branches, so it is pinned here."""
     target = date(2026, 10, 9)
     _, count_calls, audit = await _run_with_book(monkeypatch, target, queue=[])
     assert count_calls == []                          # nothing to rank -> no book read
-    detail = json.loads(audit.call_args.kwargs["detail"])
+    raw = audit.call_args.kwargs["detail"]
+    detail = json.loads(raw)
     assert detail["n_candidates"] == 0
     assert detail["ranked_ids"] == []                 # same keys as the full row, never absent
     assert datetime.fromisoformat(detail["ranked_at_et"]).utcoffset() in _ET_OFFSETS
+    # the stored text is the compact form it has always been (the same row, not a reformatting)
+    assert raw.startswith('{"target_date":"2026-10-09","n_candidates":0,"ranked_at_et":"')
+    assert raw.endswith('","ranked_ids":[]}')
+    _, _, full_audit = await _run_with_book(monkeypatch, target)
+    assert set(detail) <= set(json.loads(full_audit.call_args.kwargs["detail"]))
 
 
 @pytest.mark.asyncio
