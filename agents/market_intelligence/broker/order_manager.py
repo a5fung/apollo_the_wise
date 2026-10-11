@@ -9573,9 +9573,11 @@ def profit_target_r_per_share(
 #   3 or more shares                               -> int(remaining // 3), UNCHANGED
 # Scoped to the strategies carrying MAGNA53's exit stack (the +8R lane): scan_profit_triggers
 # runs for EVERY strategy and the signed rule names MAGNA53's profit-take, so a strategy on the
-# global +2R keeps the plain third until he extends the rule to it. This is the ONE live sizing
-# site for that third — `execute_partial_exit` (market, resting-limit and OCO branches) and the
-# stream's restores take the share count from this caller and never size one themselves.
+# global +2R keeps the plain third until he extends the rule to it. This sizes the POLL's third
+# (`scan_profit_triggers`): `execute_partial_exit` (market, resting-limit and OCO branches) and the
+# stream's restores take the share count from their caller and never size one themselves. The
+# operator command `/partialnow` (agent.py) sizes its own `remaining // 3` and refuses below 3
+# shares — it does not use this rule.
 _PLUS8R_PARTIAL_SIGNAL_TYPES = frozenset({"magna53", "magna53_smallcap"})
 
 
@@ -9760,8 +9762,9 @@ async def scan_profit_triggers() -> list[dict]:
         if hi is None or float(hi) < target:
             continue
         # 2026-10-10 (operator-signed): a MAGNA53 position holding 2 shares sells 1 (a third
-        # rounds to 0); holding 1 it still sells nothing. `profit_take_shares` is the one sizer —
-        # every branch of execute_partial_exit (market, resting limit, OCO) takes `shares` from here.
+        # rounds to 0); holding 1 it still sells nothing. `profit_take_shares` is the poll's sizer —
+        # every branch of execute_partial_exit (market, resting limit, OCO) takes `shares` from here
+        # (`/partialnow` sizes its own `remaining // 3`, agent.py).
         shares = profit_take_shares(t["remaining_shares"], t["signal_type"])
         if shares < 1:
             results.append({"ticker": t["ticker"], "action": "too_small_to_split"})

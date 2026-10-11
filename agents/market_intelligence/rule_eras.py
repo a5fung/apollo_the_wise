@@ -77,14 +77,9 @@ BREAKEVEN_ARM_R_VALUE = 3.0
 # (its mi_strategies row is seeded with profit_trigger_r 8.0 / breakeven_arm_r 3.0), so its rows
 # label era_d like MAGNA53's — never pooled with the unflipped era_c stack.
 PARTIAL_8R_SIGNAL_TYPES = frozenset({"magna53", "magna53_smallcap"})
-# 2026-10-10 (operator "go with rec"): the +8R third on a 2-share position sells 1 share instead
-# of 0 (`order_manager.plus8r_partial_shares`). DELIBERATELY NOT AN ERA SWITCH, so its date is NOT
-# a `*_DATE` here — every `*_DATE` in this module is read as "an exit-stack change that voids
-# prior reads" (`tests/test_exit_counterfactual_consolidation_631.py::_latest_exit_switch`
-# re-anchors three gated reviews to the newest one). This is sizing arithmetic: no stored row
-# changes meaning (no 2-share position has ever reached +8R) and the #482 recorders walk ONE
-# fractional unit, where the rule has no object. Its only date, the first acting session
-# (Mon 2026-10-12), lives with its only reader: `scripts/ep_replay.PARTIAL_MIN_ONE_SHARE_FROM`.
+# 2026-10-10: the 2-share +8R size rule (`order_manager.plus8r_partial_shares`) is DELIBERATELY NOT an
+# era switch, so it has no `*_DATE` here (each one re-anchors three gated reviews). Its date and the
+# reason live with its only reader: `scripts/ep_replay.PARTIAL_MIN_ONE_SHARE_FROM`.
 
 
 def _flipped_8r(d: date, signal_type: str | None) -> bool:

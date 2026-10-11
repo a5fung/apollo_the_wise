@@ -132,7 +132,8 @@ from agents.market_intelligence.rule_eras import (  # noqa: E402
 # weekend deploy. ⚠ If the deploy slips past that Monday, move this date in the same commit.
 # Deliberately HERE and not in rule_eras: every `*_DATE` there is read as an exit-ERA switch (it
 # re-anchors three gated reviews, test_exit_counterfactual_consolidation_631), and this is sizing
-# arithmetic — no stored row changes meaning, the #482 recorders walk one fractional unit.
+# arithmetic — no stored row changes meaning (no 2-share position has ever reached +8R), the #482
+# recorders walk one fractional unit.
 PARTIAL_MIN_ONE_SHARE_FROM = date(2026, 10, 12)
 
 
