@@ -2157,3 +2157,15 @@ EVIDENCE:
 - **The cut, exit era D only:** `docs/analysis/559_era_recut_2026-10-10.md` (Fable read, Opus adversarial verify, 11 corrections applied; harness re-run byte-identical). (a) in-window real-time crossers: -0.33R over 39 settled of 75; (b) the subset that reached the grade: -0.42R over 19; (c) pre-open HIGH: 12 (7 would have alerted with both switches off); real-time-only pre-open catches 5, 3 closed, -1.6R.
 - **Re-stated to him and ruled:** both switches were already ON (flipped 08-25 / 08-27 on his word), so the options were keep / revert / narrow; recommendation "keep both on, no change" — his "go with rec" 2026-10-10.
 - **Not lost:** the late-October reporting-season re-read of the latency and slot-dilution watch items is cadence review `rt_admission_reporting_season_reread` (due 2026-10-30); registry review `rt_admission_recut_post_2r_exits` marked done; the side finding (the +8R third sells nothing on 1–2 share positions) became #698 on his ruling the same day.
+
+## #486 — judge ↔ theme-engine agreement: a weekly readout now ships in the Sunday review (2026-10-11)
+
+BAR: "a periodic agreement readout (themed-per-engine vs themed-per-judge, the mismatch cohorts, an engine-improvement candidate queue). Non-money telemetry, NEVER a grade input (THE LINE). Evidence-gated on a stable theme-engine window + coverage accrual. Refs #335 (docs/analysis/335_theme_boost_keep_rationale_2026-07-19.md), #467, #322, #235. [b6] [The Real EP Plan (ep_profitability_program.md) — Selection/ranking surface]    "
+
+EVIDENCE:
+- **The readout is periodic:** a section of the Sunday 08:00 ET weekly review (`system_review._theme_agreement_section`, deployed Sat 2026-10-10 both + execution). Its first live run: `weekly_system_review` success 2026-10-11 08:00 ET, review sent (`mi_system_reviews` 2026-10-11, fold 12,257 chars vs 7,883 the week before).
+- **Themed-per-engine vs themed-per-judge:** this week n=6, agree 4 of 6; last 30 days n=14, agree 11 of 14 (both 4 · judge only 2 · engine only 1 · neither 7) — re-rendered in apollo-market for the 10-11 window (`scripts/probes/_wk1011_verify/`), identical to the numbers declared before the deploy.
+- **Mismatch cohorts:** "no theme row at all 1 · theme known, excluded (stage Nascent) 1"; the footer states the population cut (14 of 22 judge-graded alerts counted, 8 left out, 4 of them judge-themed).
+- **Engine-improvement candidate queue:** AKAM 09-25 (no theme row), AAOI 10-09 (excluded, stage Nascent).
+- **Independent cross-check:** the probe's direct SELECT re-run on prod 2026-10-11 (`q3_verify_1011.out`, captured once) → `run_probe.py render` ALL MATCH: True.
+- Telemetry only, never a grade input (THE LINE) — stated in the section footer.
