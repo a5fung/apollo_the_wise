@@ -1005,12 +1005,15 @@ def test_the_scan_path_write_sits_in_its_own_except_exception_after_the_provenan
     must (a) sit inside its own try whose handler catches Exception and does not re-raise, and
     (b) come AFTER the ep_catalyst_provenance audit call (so a failure cannot reorder or skip
     it) and BEFORE the enrichment shadow. Telemetry that can raise into the scan is a defect."""
-    # source-pin-ok: wiring check - run_ep_scan is one 1,400-line coroutine with no independently
-    # callable seam around the uncached grade branch (it needs a live LLM grade, six data feeds and
-    # the DB to run); the write's own fail-open behaviour is exercised for real in
-    # test_grade_corpus_write_is_fail_open. What only the source can say is that the call site is
-    # wrapped, and sits after the provenance audit row, so an exception here cannot reach the scan.
+    # source-pin-ok: wiring check - the call sits in `_grade_admitted`, a ~2,000-line closure nested
+    # inside run_ep_scan with no independently callable seam around the uncached grade branch (it
+    # needs a live LLM grade, six data feeds and the DB to run); the write's own fail-open behaviour
+    # is exercised for real in test_grade_corpus_write_is_fail_open. What only the source can say is
+    # that the call site is wrapped, sits after the provenance audit row, and that every name the
+    # call uses RESOLVES there - a NameError would be swallowed by the very except that makes the
+    # write fail-open, leaving the table silently empty.
     import ast
+    import symtable
     src = (Path(__file__).resolve().parent.parent / "agents" / "market_intelligence"
            / "ep_detector.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
@@ -1038,3 +1041,30 @@ def test_the_scan_path_write_sits_in_its_own_except_exception_after_the_provenan
                        and n.args and isinstance(n.args[0], ast.Constant)
                        and n.args[0].value == "ep_grade_enrich_shadow")
     assert prov_line < w.lineno < enrich_line
+
+    # every name in the call resolves at the write site: `_ET` is a FREE variable bound by
+    # run_ep_scan's own `from ... import _ET` (a function-local import, so a module-level move of
+    # `_grade_admitted` would turn it into an undefined global), `datetime`/`write_grade_corpus`
+    # are module-level imports.
+    fn = w
+    while not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        fn = parents[fn]
+    top = symtable.symtable(src, "ep_detector.py", "exec")
+
+    def find(tab, name):
+        for ch in tab.get_children():
+            if ch.get_name() == name and ch.get_type() == "function" and ch.get_lineno() == fn.lineno:
+                return ch
+            hit = find(ch, name)
+            if hit is not None:
+                return hit
+        return None
+
+    tab = find(top, fn.name)
+    assert tab is not None, f"could not locate {fn.name} in the symbol table"
+    assert tab.lookup("_ET").is_free(), "_ET is not a closure variable at the write site"
+    assert tab.lookup("datetime").is_global() and tab.lookup("write_grade_corpus").is_global()
+    for name in ("profile", "alpaca_news", "fmp_news", "perplexity_answer", "sec_filing",
+                 "catalyst_quality", "ticker"):
+        assert tab.lookup(name).is_local(), f"{name} is not bound in the grade function"
+    assert tab.lookup("today").is_free(), "today is not a closure variable at the write site"

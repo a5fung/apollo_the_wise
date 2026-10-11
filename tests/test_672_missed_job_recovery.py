@@ -45,6 +45,13 @@ def _fridays_misses_by_the_ledgers_own_word(rows_by_job: dict[str, list[dict]]) 
             if ran_evening(rows, wed) and ran_evening(rows, thu) and not ran_evening(rows, fri)}
 
 
+# Jobs whose slot was MOVED after the 09-18 incident, so the fixture ledger (their old evening slot)
+# and the real job list (the new one) no longer describe the same slot. {job_id: why}.
+_RETIMED_SINCE_LEDGER = {
+    "tv_news_shadow": "#210 build 2026-10-10: 20:45 ET -> 10:10 ET mon-fri",
+}
+
+
 # ── helpers ───────────────────────────────────────────────────────────────────────────────
 
 def _real_job_list(monkeypatch):
@@ -143,13 +150,22 @@ def test_the_derivation_reproduces_fridays_gap_set_from_the_real_ledger(monkeypa
     the gap set collapses — verified RED. Dropping the `scheduled_for is None` guard in
     classify_slot does not change THIS replay (the fixture predates the column) — the
     scheduled_for path is proven in test 5."""
-    scheduler, _ = _real_job_list(monkeypatch)
+    scheduler, registered = _real_job_list(monkeypatch)
     eligible, excluded = jr.eligible_jobs(scheduler, sched.EXECUTION_OWNED_JOB_IDS)
     rows_by_job = _fixture_rows()
     plan = jr.plan_recovery(eligible, rows_by_job, RESTART_PLUS_4)
 
     fri = {d.job_id for d in plan if d.kind == "gap" and d.slot.astimezone(ET).date() == datetime(2026, 9, 18).date()}
     oracle = _fridays_misses_by_the_ledgers_own_word(rows_by_job)
+    # A job whose slot was MOVED after the incident: the ledger holds its OLD evening slot, the real
+    # job list the new one, so the derivation rightly finds no Friday-EVENING gap for it. The
+    # exclusion is only honest while the job really has no evening slot any more - asserted, so it
+    # cannot quietly hide a job that still runs in the evening and still missed.
+    jobs_now = {j.id: j for j in registered}
+    for jid in _RETIMED_SINCE_LEDGER:
+        fire = jobs_now[jid].trigger.get_next_fire_time(None, datetime(2026, 9, 18, 0, 0, tzinfo=ET))
+        assert fire.astimezone(ET).hour < 17, f"{jid} still has an evening slot - it is not retimed"
+    oracle = oracle - set(_RETIMED_SINCE_LEDGER)
     assert len(oracle) >= 20, f"the fixture-derived oracle is only {len(oracle)} — the fixture is not the incident ledger"
     missing = oracle - fri
     assert not missing, f"the ledger says these missed Friday and the derivation did not find them: {sorted(missing)}"

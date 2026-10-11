@@ -1,6 +1,7 @@
 {
   "per_file": {
     "tests/test_184_terminal_without_reason.py": 4,
+    "tests/test_210_tv_news_shadow.py": 1,
     "tests/test_216_jsonb_encoding_guard.py": 2,
     "tests/test_216_jsonb_repair.py": 1,
     "tests/test_347_live_enriched_flip.py": 6,
@@ -145,6 +146,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 425,
+  "total": 426,
   "unescaped": 362
 }

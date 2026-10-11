@@ -823,6 +823,20 @@ async def initialize_schema() -> None:
                 -- paraphrase — all three fired for BFLY's own Q2 print) is not deduped across
                 -- providers, only matched title-for-title. NULL when our_corpus_available=false.
                 tv_items_we_missed          JSONB,
+                -- #210 build (2026-10-10): the comparison frame. Declared here AND added by the
+                -- ALTER block below (a fresh database gets them from this CREATE, an existing one
+                -- from the ALTERs - tests/test_schema_alter_create_parity.py pins the pair).
+                our_captured_at             TIMESTAMPTZ,
+                our_corpus_source           TEXT,
+                our_acting_grade            TEXT,
+                our_acting_rule             TEXT,
+                tv_coverage_reaches_period_start BOOLEAN,
+                tv_unseen_minutes_at_period_start INT,
+                tv_items_before_grade       INT,
+                tv_items_in_repoll_window   INT,
+                tv_items_after_cutoff       INT,
+                tv_match_summary            JSONB,
+                tv_items_unmatched_seen     JSONB,
                 PRIMARY KEY (ticker, alert_date),
                 CHECK (tv_status IN ('ok', 'skipped_exchange', 'fetch_error', 'unparseable'))
             );
