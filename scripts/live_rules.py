@@ -1100,8 +1100,24 @@ def build_exit_section(res: Resolver) -> list[str]:
     _eff = f"{float(_ptr_ovr):g}" if (_ptr_ovr and trigger_on) else _fmt(ptr)
     L.append(f"     sells 1/3 (whole shares, rounded down) the first time the in-hold minute HIGH reaches "
              f"entry + {_eff} × R, then moves the stop to breakeven.")
-    L.append("     size (operator-signed 2026-10-10, order_manager.profit_take_shares): MAGNA53 holding 2 "
-             "shares sells 1; holding 1 it sells nothing; 3+ unchanged. Other strategies: plain 1/3.")
+    # 2026-10-10 (operator "go with rec"): the SIZE rule is code SHAPE, so it carries fingerprints
+    # like its neighbours — a silent revert (the poll back on `int(remaining // 3)`, the helper
+    # un-wired, or the strategy set narrowed) must read ABSENT here, not keep asserting the rule.
+    _om = "agents/market_intelligence/broker/order_manager.py"
+    size_set_fp = code_fingerprint(
+        _om, r'_PLUS8R_PARTIAL_SIGNAL_TYPES = frozenset\(\{"magna53", "magna53_smallcap"\}\)')
+    size_rule_fp = code_fingerprint(_om, r"return max\(1, held // 3\)")
+    size_call_fp = code_fingerprint(
+        _om, r'shares = profit_take_shares\(t\["remaining_shares"\], t\["signal_type"\]\)')
+    if size_set_fp and size_rule_fp and size_call_fp:
+        L.append("     size (operator-signed 2026-10-10): MAGNA53 + the small-cap lane holding 2 shares "
+                 "sell 1; holding 1 they sell nothing; 3+ unchanged. Other strategies: plain 1/3 "
+                 f"[{size_call_fp}; {size_rule_fp}; {size_set_fp}]")
+    else:
+        L.append("     ⚠ the 2-share size-rule fingerprint is ABSENT (call site / rule / strategy set: "
+                 f"{size_call_fp or 'ABSENT'} / {size_rule_fp or 'ABSENT'} / {size_set_fp or 'ABSENT'}) "
+                 "— the signed rule 'a 2-share MAGNA53 position sells 1' may have been reverted; read "
+                 "order_manager.profit_take_shares and scan_profit_triggers before stating the size of the third")
     if _ptr_ovr and trigger_on:
         L.append(f"     ⚠ that {float(_ptr_ovr):g} is MAGNA53's OWN mi_strategies.profit_trigger_r, which "
                  f"OVERRIDES constants.PROFIT_TRIGGER_R = {_fmt(ptr)} (#545, operator-signed 2026-09-06). "

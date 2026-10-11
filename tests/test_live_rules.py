@@ -315,3 +315,45 @@ def test_an_override_is_never_reported_as_acting_while_the_global_switch_is_off(
         "the effective level no longer requires the global switch to be ON"
     assert "if _ptr_ovr and trigger_on:" in src, "the OVERRIDES banner is no longer switch-gated"
     assert "INERT" in src, "the switch-off-with-an-override case is no longer called out"
+
+
+# ── 5. the 2-share +8R size rule is guarded by code fingerprints (2026-10-10) ─────────────────
+
+def _size_lines(text: str) -> list[str]:
+    return [ln for ln in text.splitlines() if "2-share size-rule" in ln or ln.strip().startswith("size (operator-signed")]
+
+
+def test_two_share_size_rule_is_fingerprinted_and_names_the_small_cap_lane():
+    """The acting-rules text states 'a 2-share MAGNA53 position sells 1'. That is code SHAPE, so it
+    must carry a fingerprint on the call site, the rule and the strategy set — and must name the
+    small-cap lane the set also covers. MUTATION TARGET: the static L.append the first version had,
+    which kept printing the rule after the code was reverted."""
+    res = Resolver(collect_code_facts(), {}, ProdState(error="test: offline"))
+    lines = _size_lines("\n".join(build_exit_section(res)))
+    assert len(lines) == 1, lines
+    assert "small-cap lane" in lines[0]
+    assert lines[0].count("order_manager.py:") == 3, "call site, rule and strategy set are all fingerprinted"
+    assert "ABSENT" not in lines[0]
+
+
+@pytest.mark.parametrize("pattern_part", [
+    "profit_take_shares",          # the call site un-wired (poll back on int(remaining // 3))
+    "held // 3",                   # the rule changed (2 shares sells 0 again)
+    "_PLUS8R_PARTIAL_SIGNAL_TYPES",  # the strategy set narrowed / removed
+])
+def test_two_share_size_rule_reads_absent_after_a_silent_revert(monkeypatch, pattern_part):
+    import scripts.live_rules as lr
+    real = lr.code_fingerprint
+
+    def reverted(rel, pattern, repo=lr.REPO):
+        if pattern_part in pattern:
+            return None
+        return real(rel, pattern, repo)
+
+    monkeypatch.setattr(lr, "code_fingerprint", reverted)
+    res = Resolver(collect_code_facts(), {}, ProdState(error="test: offline"))
+    text = "\n".join(build_exit_section(res))
+    lines = _size_lines(text)
+    assert len(lines) == 1 and "size-rule fingerprint is ABSENT" in lines[0], lines
+    assert "may have been reverted" in lines[0]
+    assert "sell 1;" not in text, "the rule must not be asserted once its shape is gone"

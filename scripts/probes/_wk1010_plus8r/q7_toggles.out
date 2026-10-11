@@ -1,0 +1,8 @@
+safeguard	account_mode	state	last_transition_at
+breakeven_at_broker	live	on	
+breakeven_at_broker	paper	on	2026-10-10 19:15:20.454956+00
+profit_take_oco	live	on	2026-08-17 15:03:32.692265+00
+profit_take_oco	paper	on	2026-10-10 19:15:20.454956+00
+profit_take_resting_limit	live	on	2026-08-10 21:15:16.430312+00
+profit_take_resting_limit	paper	on	2026-10-10 19:15:20.454956+00
+(6 rows)

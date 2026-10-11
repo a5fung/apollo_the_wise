@@ -164,7 +164,8 @@ def _harness(om, shares=SHARES, full_remaining=FULL_REMAINING):
         patch.object(om.alpaca, "make_client_order_id",
                      lambda m, s, t: f"apollo_{m}_{s}_{t}_x"),
     ]
-    return {"patches": patches, "audited": audited, "telegram": telegram_mock, "conn": conn}
+    return {"patches": patches, "audited": audited, "telegram": telegram_mock, "conn": conn,
+            "replace_calls": calls}
 
 
 async def _run(om, h, trigger=None, shares=SHARES):
@@ -256,6 +257,13 @@ async def test_one_of_two_shares_rests_a_one_share_oco_and_says_one_of_two():
     started = next(d for e, s, d in h["audited"] if e == "partial_exit_started")
     detail = json.loads(started)
     assert (detail["shares"], detail["full_remaining"], detail["new_remaining"]) == (1, 2, 1)
+    # The docstring's other claim, asserted: Step 1 reduced the held share's stop to qty 1 (the
+    # broker-side replace carries the NEW remaining, not the old 2 and not None), and it is the
+    # FIRST replace (before any sale); the later price-only replace is the breakeven one.
+    reduce_calls = [c for c in h["replace_calls"] if c[1] is not None]
+    assert reduce_calls == [("old_stop_id", 1, STOP_PRICE)], (
+        f"the stop on the share that stays must be reduced to qty 1, got {h['replace_calls']}")
+    assert h["replace_calls"][0] == reduce_calls[0], "the stop reduce must come before the breakeven replace"
 
 
 @pytest.mark.asyncio
