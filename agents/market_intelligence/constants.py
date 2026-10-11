@@ -1,6 +1,7 @@
 """Shared constants and helpers for the Market Intelligence agent."""
 
 import os
+import re
 from shared.env_flags import env_is_true
 
 # ── Position sizing ──────────────────────────────────────────────────────────
@@ -311,6 +312,51 @@ def mode_prefix(account_mode: str | None = None) -> str:
     """
     mode = account_mode or current_account_mode()
     return "💰 LIVE-$ " if mode == "live" else "📄 PAPER "
+
+
+# ── Paper-alert chat routing (#699, 2026-10-11) ──────────────────────────────
+# Paper alerts go to their own Telegram group so paper trading adds no noise to the main
+# chat. ONE switch, in the single sender `briefing.send_telegram_message`: a message whose
+# text STARTS with the paper tag goes to this chat when the env var is set. Live-tagged and
+# untagged (system) messages never move, and an unset var is byte-identical to before.
+PAPER_CHAT_ENV = "TELEGRAM_PAPER_CHAT_ID"
+
+# What the sender may find in front of the tag: whitespace, an HTML open tag the caller built
+# (`<b>`), or a Markdown opener (`*`, `_`, backtick, `~`). `md_to_html` is applied AFTER the
+# chat is chosen, so the sender sees the caller's raw text — but a caller that pre-converted
+# (order_ingest._emit) hands over HTML, and both must route the same way.
+_PAPER_TAG_LEAD_RE = re.compile(r"(?:\s+|<[A-Za-z][^<>]{0,60}>|[*_`~])*")
+
+
+def is_paper_message(text: str | None) -> bool:
+    """True when `text` starts with the paper tag (`mode_prefix("paper")`).
+
+    The tag is DERIVED from `mode_prefix`, never re-typed, so a changed tag cannot silently
+    turn the routing off. An explicit `"paper"` never reads the environment."""
+    if not text:
+        return False
+    body = text[_PAPER_TAG_LEAD_RE.match(text).end():]
+    tag = mode_prefix("paper")
+    return body.startswith(tag) or body.startswith(tag.rstrip() + "\n")
+
+
+def paper_chat_id_for(text: str | None, explicit_chat_id: int | None = None) -> int | None:
+    """The paper chat to send `text` to, or None when it must go where it always went.
+
+    None when ANY of: the caller passed an explicit chat (honoured as-is — an interactive
+    reply stays where he asked), the env var is unset/blank/not a number (a malformed value
+    degrades to today's behaviour, never to a lost alert), or the text is not a paper message
+    (live-tagged and untagged system alerts stay in the main chat)."""
+    if explicit_chat_id:
+        return None
+    raw = (os.environ.get(PAPER_CHAT_ENV) or "").strip()
+    if not raw:
+        return None
+    try:
+        chat_id = int(raw)
+    except ValueError:
+        return None
+    return chat_id if is_paper_message(text) else None
 
 # ── Crypto RS shadow flag ────────────────────────────────────────────────────
 # false (default): nightly ingest runs, RS computed, audit-only on trigger fire,

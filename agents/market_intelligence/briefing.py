@@ -48,7 +48,9 @@ from agents.market_intelligence.db import (
     log_audit_event,
 )
 from agents.market_intelligence.data_quality import get_quality_warnings
-from agents.market_intelligence.constants import trimmed_mean as _trimmed_mean, REGIME_EMOJI, TIER_RANK
+from agents.market_intelligence.constants import (
+    trimmed_mean as _trimmed_mean, REGIME_EMOJI, TIER_RANK, paper_chat_id_for,
+)
 from agents.market_intelligence.ep_rubric import (
     SEPARATION_BAR as _NEAR_MISS_HI,
     LEGACY_MODERATE_CUTLINE as _NEAR_MISS_LO,
@@ -2720,6 +2722,17 @@ async def send_telegram_message(
 ) -> bool:
     """Send a message directly via Telegram Bot API. Splits if over 4000 chars.
 
+    THE ONE PLACE a message picks its chat (#699, 2026-10-11): paper alerts get their own group
+    so paper trading adds no noise to the main chat. When NO explicit `chat_id` was passed AND
+    the text starts with the paper tag (`constants.mode_prefix("paper")`) AND env
+    `TELEGRAM_PAPER_CHAT_ID` is set, the message goes to that chat; if that send fails it falls
+    back to the main chat (logged at WARNING, never dropped). Live-tagged and untagged system
+    alerts, an explicit `chat_id`, and an unset env var all send exactly as before. Implemented
+    as a single re-entry with the paper chat passed EXPLICITLY (an explicit chat never re-routes,
+    so it cannot loop); the body below is otherwise unchanged. A multi-chunk message that fails
+    part-way in the paper chat is re-sent from its first chunk to the main chat, so the main chat
+    can repeat chunks the paper chat already showed - a duplicate is accepted over a lost alert.
+
     THE DEFAULT IS SAFE (#652, 2026-09-19). A caller that passes no `parse_mode` writes
     legacy Markdown as it always did, and this function converts it ONCE at the send
     boundary (`shared.telegram_format.md_to_html`) and sends it as HTML — so a bare `_`
@@ -2760,6 +2773,13 @@ async def send_telegram_message(
     key at all, so every pre-existing caller's payload is byte-identical to before
     this param existed. Attached to exactly ONE chunk — the LAST — when a long
     message splits; earlier chunks never carry it (never duplicated)."""
+    paper_chat = paper_chat_id_for(text, chat_id)
+    if paper_chat is not None:
+        if await send_telegram_message(text, paper_chat, parse_mode, reply_markup):
+            return True
+        logger.warning(
+            f"Telegram paper chat {paper_chat} send failed — falling back to the main chat "
+            f"(#699): {text[:80]!r}")
     import json as _json
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     if not chat_id:
