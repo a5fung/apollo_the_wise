@@ -1775,3 +1775,26 @@ confirmation from other traders."* → added to the labelled EP list (`operator_
   - Two short minor pivots (~$53.5, ~$57) inside the base, cleared on the way up in late September.
   Why it matters for us: these are the supply-ladder levels of `structure_model.md` drawn explicitly — "which
   pivot did the gap clear, and how far is the next one" — with the base's length and depth attached.
+
+## 2026-10-11 — Pradeep Bonde (stockbee): "Growth stocks EP" — sudden acceleration on a neglected stock (operator-shared reference)
+
+Shared with "we know this already, but here's bonde teaching about neglected stocks in EP concept". Source: @PradeepBonde
+post, 2026-10-11 9:16 AM, "Sudden acceleration in revenue, profit, and margins on neglected stock — from my presentation to
+members just a few minutes ago." Image kept: `docs/methodology/images/bonde_growth_stocks_ep_neglected_2026-10-11.png`.
+**Reference, not a ruling** — nothing here changes a live rule until he says so (THE LINE).
+
+The slide, transcribed ("Growth stocks EP"):
+- **growing** — "significantly higher than average stock in mkt", on **profits, margins, sales, roe, roi**.
+- In red: **"sudden acceleration in sales or profitability or margins"** — the trigger.
+- In red: **"neglected"** — the stock it happens to.
+
+How it maps to what we already run (no change proposed):
+- **Acceleration** is already a scored input: the catalyst rubric scores trailing acceleration (revenue YoY + decel/accel);
+  the forward/projected leg is #333 (catalyst durability). Our standing read is that the edge is SURPRISE versus
+  expectation, not magnitude (memory `ep-edge-is-surprise-not-magnitude`) — the slide's "sudden" is the same idea.
+- **Neglected** is NOT a scored axis today, on evidence: the old component (≥30% below the 52-week high) was deleted
+  2026-08-22 on his sign-off because it measured BEATEN-DOWN, not quiet; a quiet-base measure calibrated to his MRNA
+  annotations scored AUC 0.42 (real EPs had SHORTER quiet bases than their rivals) — `ep_detector.py` ~2094. Qullamaggie's
+  version (2026-10-06 entry above: "sideways for months or years, then ~10× volume") is the same thesis. Neglect as
+  ATTENTION (thin analyst coverage, low prior volume) rather than price shape is untested here — `analyst_estimates_recorder`
+  carries a read-side thin-coverage rule; it is a candidate if he wants it measured.
