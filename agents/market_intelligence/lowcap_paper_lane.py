@@ -18,8 +18,9 @@ authority). This module never restates a gate or a weight; it supplies only SINK
   - its own grade cache + re-poll state (never the live `_catalyst_cache`),
   - its own scan rows / results / alert writer → mi_lowcap_paper_lane_alerts,
   - a judge-result writer on the same table,
-  - throwaway lists for the live shadow-table inputs, and NO theme-fit budget (the per-day fit
-    counter is the live scan's — a name pending a fit judgement keeps list membership),
+  - (`_grade_admitted` itself gives a `lane=` call throwaway lists for the live shadow-table
+    inputs and NO theme-fit budget — the per-day fit counter is the live scan's, so a name
+    pending a fit judgement keeps list membership; the lane passes only its sink),
   - the 'shared' M&A headline-question budget pool (the EP reserve stays the live scan's).
 Audit rows the graded path writes stay EXACTLY as live writes them (decisions downstream read some
 of them back, e.g. the revenue-weak downgrade the earnings override respects); a study of the
