@@ -5802,6 +5802,9 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
 # for life; trades entered before the toggle was on (KOD, VICR) keep today's stop forever. The
 # small-cap lane joined on 2026-10-10 (operator "Ok": the lane's exits mirror live MAGNA53) — its
 # rows follow the PAPER toggle row, MAGNA53's live rows the LIVE one (docs/setups/magna53_ep.md).
+# ⚖ #687 (c), 2026-10-10 (his "got it, c"): the opening-auction order is LIVE's vehicle only — on the
+# PAPER account the 19:01 sale is a regular DAY market sell (`depth_sale_vehicle`, below), because
+# paper's simulator never fills an opg order.
 
 DEPTH_EXIT_RULE = "depth"
 # The strategies whose NEW trade rows can be stamped. Everything that ACTS on a depth row (the
@@ -5845,6 +5848,60 @@ async def resolve_exit_rule_stamp(signal_type: str, account_mode: str) -> str | 
     return DEPTH_EXIT_RULE if await _magna53_depth_exit_enabled(account_mode) else None
 
 
+# ── #687 (c), 2026-10-10 (his ruling "got it, c"): the VEHICLE of the 19:01 sale, per account ───
+#
+# LIVE sends the opening-auction order (TIF opg / market-on-open) — unchanged. PAPER sends a regular
+# DAY market sell queued overnight, because Alpaca's paper simulator never fills an opening-auction
+# order: the only paper opg ever sent (PEP, 3 sh, queued 2026-10-08 19:01 ET) EXPIRED 2026-10-09
+# 09:30:57 ET with 0 filled, while KO's DAY market sale queued at 16:45 ET filled at 09:32:04 ET
+# (scripts/probes/_1008/dayB_opg_order.out). The vehicle is chosen by the TRADE ROW'S account_mode
+# and nothing else; only the literal 'paper' leaves the auction order, so any other value (live,
+# unset) keeps the live vehicle. Everything around the order — the lock, the sizing, the stop cancel,
+# the wait for the shares, the mode-bound client order id, the full_exit row, the restore — is shared
+# and identical; a DAY order that does not fill by 16:00 ET EXPIRES and reaches the same trade_stream
+# §3 restore an expired opg reaches (that path keys on the full_exit row, never on the TIF).
+
+DEPTH_SALE_VEHICLE_OPG = "opg"
+DEPTH_SALE_VEHICLE_DAY_MARKET = "day_market"
+
+
+def depth_sale_vehicle(account_mode: str | None) -> str:
+    """'day_market' on the PAPER account, 'opg' everywhere else (see the block above)."""
+    return DEPTH_SALE_VEHICLE_DAY_MARKET if account_mode == "paper" else DEPTH_SALE_VEHICLE_OPG
+
+
+# The words that name the sale in logs, audit summaries and pages. The OPG column is the text the
+# live path has always sent and is kept byte-for-byte; the PAPER column never says "opening
+# auction", because that is not what happens there.
+_DEPTH_SALE_WORDS = {
+    DEPTH_SALE_VEHICLE_OPG: {
+        "tag": "opening auction",
+        "sale": "opening-auction sale",
+        "Sale": "Opening-auction sale",
+        "queued": "opening-auction sell {qty} sh queued",
+        "when": "in the next opening auction",
+        "never_sent": "to the opening auction",
+        "order_goes_in": "the opening-auction order goes in at 7:01 PM ET",
+        "selling": "selling in the next opening auction",
+    },
+    DEPTH_SALE_VEHICLE_DAY_MARKET: {
+        "tag": "at the open",
+        "sale": "sale at the open",
+        "Sale": "Sale at the open",
+        "queued": "day-market sell {qty} sh queued for the open",
+        "when": "at the next open as a day market order",
+        "never_sent": "for the open",
+        "order_goes_in": "the sale order goes in at 7:01 PM ET and fills at the open",
+        "selling": "selling at the next open",
+    },
+}
+
+
+def depth_sale_words(account_mode: str | None) -> dict:
+    """The wording for the account's depth-sale vehicle (live: opening auction; paper: at the open)."""
+    return _DEPTH_SALE_WORDS[depth_sale_vehicle(account_mode)]
+
+
 async def _clear_depth_sell_mark(trade_id: int) -> None:
     """Clear the 16:45 'sell at the next open' mark — the 19:01 attempt has run to an outcome
     (sale queued, rejected-and-restored, or skipped). A trade still held is re-decided on the
@@ -5861,14 +5918,20 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
     Under the per-trade #151 lock (the same lock `execute_full_exit` holds; the re-protect paths
     try-lock and defer): re-read the row → size the sale from the broker (position minus shares
     held by a resting profit-take OCO third, which keeps its own target and breakeven stop —
-    ruled) → cancel the depth stop → wait for the shares to be released (#646) → market-on-open
-    AUCTION sell (TIF opg, mode-bound client order id) → `full_exit` row → clear the mark. On a
-    rejection: restore the stop at its price, sized from the broker (#646 + #687 c), and page.
-    An unfilled opg order is cancelled by the broker after the open; the stream's full-exit
-    cancel path restores the stop and pages (`trade_stream._handle_cancel_or_reject` §3).
+    ruled) → cancel the depth stop → wait for the shares to be released (#646) → the SALE ORDER
+    (mode-bound client order id; the vehicle is `depth_sale_vehicle(row's account_mode)`) →
+    `full_exit` row → clear the mark. On a rejection: restore the stop at its price, sized from the
+    broker (#646 + #687 c), and page. An unfilled order dies at the broker and the stream's
+    full-exit cancel path restores the stop and pages (`trade_stream._handle_cancel_or_reject` §3).
+
+    THE VEHICLE (#687 option (c), his ruling 2026-10-10): LIVE → market-on-open AUCTION sell (TIF
+    opg), unchanged. PAPER → a regular DAY market sell (`alpaca.place_market_sell`) queued
+    overnight, because Alpaca's paper simulator never fills an opg order (PEP expired unfilled
+    2026-10-09 09:30:57 ET; KO's DAY market sale filled 09:32:04 ET). A DAY order that does not
+    fill by 16:00 ET EXPIRES — the same event, the same restore, as an expired opg.
 
     `reason` stays 'sma_trail_stop' — the decision IS the trail's close test; the row's
-    `exit_rule` says which rule placed the stop. Returns True when the auction sell was accepted.
+    `exit_rule` says which rule placed the stop. Returns True when the sale order was accepted.
     """
     async with _trade_advisory_lock(trade_id):
         pool = await get_pool()
@@ -5880,6 +5943,8 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
         trade = dict(trade)
         ticker = trade["ticker"]
         account_mode = trade.get("account_mode") or current_account_mode()
+        vehicle = depth_sale_vehicle(account_mode)
+        words = depth_sale_words(account_mode)
         if (trade.get("status") != "filled" or float(trade.get("remaining_shares") or 0) <= 0
                 or trade.get("exit_rule") != DEPTH_EXIT_RULE
                 or trade.get("depth_sell_pending_on") is None):
@@ -5906,7 +5971,7 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
             await _clear_depth_sell_mark(trade_id)
             await send_telegram_message(md_to_html(
                 f"{mode_prefix(account_mode)}⚠️ {ticker}: the close-below-the-line decision from "
-                f"{decided_on} was never sent to the opening auction. Nothing was cancelled or "
+                f"{decided_on} was never sent {words['never_sent']}. Nothing was cancelled or "
                 f"sold — the depth stop stays on and the next close decides."
             ), parse_mode="HTML")
             return False
@@ -5926,7 +5991,7 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
         stop_id = trade.get("stop_order_id")
         stop_price = trade.get("stop_price")
         logger.info(f"Depth sale: {ticker} reason={reason} shares={sell_qty} "
-                    f"(trade_id={trade_id}, opening auction)")
+                    f"(trade_id={trade_id}, {words['tag']})")
         if stop_id:
             await _record_planned_sale_stop_cancel(
                 trade_id, ticker, stop_id, reason, account_mode,
@@ -5940,17 +6005,22 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
         try:
             coid = alpaca.make_client_order_id(
                 account_mode, trade.get("signal_type") or _DEPTH_EXIT_STRATEGY, ticker)
-            order = await alpaca.place_market_on_open_sell(
-                ticker, sell_qty, account_mode=account_mode, client_order_id=coid)
+            if vehicle == DEPTH_SALE_VEHICLE_OPG:
+                order = await alpaca.place_market_on_open_sell(
+                    ticker, sell_qty, account_mode=account_mode, client_order_id=coid)
+            else:
+                # #687 (c): PAPER — a regular DAY market sell, queued overnight; fills at the open.
+                order = await alpaca.place_market_sell(
+                    ticker, sell_qty, account_mode=account_mode, client_order_id=coid)
         except Exception as e:
-            logger.error(f"Depth sale (opening auction) failed for {ticker}: {e}")
+            logger.error(f"Depth sale ({words['tag']}) failed for {ticker}: {e}")
             try:
                 await log_audit_event(
                     "full_exit_rejected",
-                    f"{ticker} opening-auction sale REJECTED ({reason}) — {sell_qty} sh still open",
+                    f"{ticker} {words['sale']} REJECTED ({reason}) — {sell_qty} sh still open",
                     json.dumps({"trade_id": trade_id, "ticker": ticker, "reason": reason,
                                 "shares": sell_qty, "account_mode": account_mode,
-                                "vehicle": "opg", "exit_rule": DEPTH_EXIT_RULE,
+                                "vehicle": vehicle, "exit_rule": DEPTH_EXIT_RULE,
                                 "stop_price": stop_price, "error": str(e)[:400]}),
                 )
             except Exception as _ae:   # loud-ok: the page and the restore matter more than the row
@@ -5960,7 +6030,7 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
                 cancelled_stop_id=stop_id, reason=reason, signal_type=trade.get("signal_type"))
             await _clear_depth_sell_mark(trade_id)
             await send_telegram_message(md_to_html(
-                f"{mode_prefix(account_mode)}⚠️ Opening-auction sale FAILED for {ticker}: {e}"
+                f"{mode_prefix(account_mode)}⚠️ {words['Sale']} FAILED for {ticker}: {e}"
                 + _restore_outcome_line(restored, stop_price)
                 + ("" if restored in (RESTORE_SOLD, RESTORE_FLAT) else
                    "\nThe position stays open; the next close below the line decides again.")
@@ -5971,9 +6041,10 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
         await _clear_depth_sell_mark(trade_id)
         await log_audit_event(
             "depth_open_sale_placed",
-            f"{ticker}: opening-auction sell {sell_qty} sh queued ({reason}); depth stop "
+            f"{ticker}: {words['queued'].format(qty=sell_qty)} ({reason}); depth stop "
             f"{stop_id or 'none'} cancelled",
             json.dumps({"trade_id": trade_id, "ticker": ticker, "account_mode": account_mode,
+                        "vehicle": vehicle,
                         "order_id": order["id"], "qty": sell_qty, "reason": reason,
                         "cancelled_stop_id": stop_id, "stop_price": stop_price,
                         "held_by_resting": held_by_resting,
@@ -5983,9 +6054,9 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
             f"\n{held_by_resting:.0f} sh stay under the resting profit-take "
             f"({_resting_cover_words(size.plain_limit_qty)})." if held_by_resting > 0 else "")
         await send_telegram_message(
-            f"{mode_prefix(account_mode)}📋 *Closing order placed (opening auction):* {ticker} — "
+            f"{mode_prefix(account_mode)}📋 *Closing order placed ({words['tag']}):* {ticker} — "
             f"{reason}\n"
-            f"Sells {sell_qty} sh in the next opening auction (Order {order['id'][:8]}). "
+            f"Sells {sell_qty} sh {words['when']} (Order {order['id'][:8]}). "
             f"The depth stop was cancelled; the queued sale is the exit.\n"
             f"_Confirms with real P&L on fill._{_third_line}"
         )
@@ -5996,7 +6067,8 @@ async def run_depth_open_sales() -> list[dict]:
     """19:01 ET: send the opening-auction sale for every depth-rule trade the 16:45 job marked.
 
     Alpaca rejects OPG orders submitted after 09:28 and before 19:00 ET, and queues those sent
-    after 19:00 for the next session's opening auction — hence 19:01. Each trade is independent:
+    after 19:00 for the next session's opening auction — hence 19:01. (A PAPER row's sale is a DAY
+    market order instead, #687 (c); it is sent at the same moment.) Each trade is independent:
     one failure is audited + paged inside `execute_depth_open_sale` and never stops the next.
     """
     pool = await get_pool()
@@ -6014,16 +6086,17 @@ async def run_depth_open_sales() -> list[dict]:
             results.append({"trade_id": r["id"], "ticker": r["ticker"], "placed": ok})
         except Exception as e:   # loud-ok: audited + paged; the next trade still runs
             logger.error(f"run_depth_open_sales: {r['ticker']} #{r['id']} raised — {e}")
+            _words = depth_sale_words(r["account_mode"])
             await log_audit_event(
                 "depth_open_sale_error",
-                f"{r['ticker']} #{r['id']}: opening-auction sale raised — {e}",
+                f"{r['ticker']} #{r['id']}: {_words['sale']} raised — {e}",
                 json.dumps({"trade_id": r["id"], "ticker": r["ticker"],
                             "account_mode": r["account_mode"], "error": str(e)[:400]}),
             )
             # The row's OWN book labels the page: the small-cap paper lane (2026-10-10) makes a
             # PAPER depth row an expected population, and a paper failure must not read as a live one.
             await send_telegram_message(md_to_html(
-                f"{mode_prefix(r['account_mode'])}🚨 Opening-auction sale for {r['ticker']} "
+                f"{mode_prefix(r['account_mode'])}🚨 {_words['Sale']} for {r['ticker']} "
                 f"raised before it finished: {e}\n"
                 f"Check the broker: the stop may have been cancelled."
             ), parse_mode="HTML")

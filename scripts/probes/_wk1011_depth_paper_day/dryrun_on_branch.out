@@ -1,0 +1,10 @@
+Depth sale (at the open) failed for KOD: insufficient qty available
+_restore_stop_after_failed_exit: KOD stop RESTORED at $67.58 for 6 sh (stop-restored, sized from broker) after a failed full exit
+Depth sale (opening auction) failed for KOD: opg rejected
+_restore_stop_after_failed_exit: KOD stop RESTORED at $67.58 for 6 sh (stop-restored, sized from broker) after a failed full exit
+  ok  paper smallcap -> sale ['day']
+  ok  paper magna53  -> sale ['day']
+  ok  live  magna53  -> sale ['opg']
+  ok  paper rejected -> sale ['day']
+  ok  live  rejected -> sale ['opg']
+DRYRUN PASS

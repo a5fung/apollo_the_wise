@@ -412,11 +412,26 @@ def _sale_wire(monkeypatch, *, row=None, position_qty=6, open_orders=None, pendi
         open_orders = [{"id": "stop-1", "side": "sell", "type": "stop", "qty": 6,
                         "filled_qty": 0, "status": "new", "order_class": "simple"}]
 
+    opg_calls: list = []
+    day_calls: list = []
+
     async def _opg(ticker, qty, account_mode=None, client_order_id=None):
         events.append(("opg", qty, client_order_id))
+        opg_calls.append({"ticker": ticker, "qty": qty, "mode": account_mode,
+                          "coid": client_order_id})
         if opg_raises:
             raise opg_raises
         return {"id": "opg-1", "status": "accepted"}
+
+    async def _day(ticker, qty, account_mode=None, client_order_id=None):
+        # #687 (c): the PAPER sale's vehicle, a DAY market order. `opg_raises` makes whichever
+        # sale order the row's book sends raise, so one fixture serves both vehicles.
+        events.append(("day_market", qty, client_order_id))
+        day_calls.append({"ticker": ticker, "qty": qty, "mode": account_mode,
+                          "coid": client_order_id})
+        if opg_raises:
+            raise opg_raises
+        return {"id": "day-1", "status": "accepted"}
 
     sent: list = []
     m = {
@@ -432,6 +447,7 @@ def _sale_wire(monkeypatch, *, row=None, position_qty=6, open_orders=None, pendi
     monkeypatch.setattr(om.alpaca, "get_position", m["pos"])
     monkeypatch.setattr(om.alpaca, "get_open_orders", m["orders"])
     monkeypatch.setattr(om.alpaca, "place_market_on_open_sell", _opg)
+    monkeypatch.setattr(om.alpaca, "place_market_sell", _day)
     monkeypatch.setattr(om.alpaca, "place_stop_order", m["place_stop"])
     monkeypatch.setattr(om, "log_audit_event", m["audit"])
     monkeypatch.setattr(om, "set_stop_order_id", AsyncMock(return_value=True))
@@ -441,7 +457,8 @@ def _sale_wire(monkeypatch, *, row=None, position_qty=6, open_orders=None, pendi
     monkeypatch.setattr(om, "_EXIT_RELEASE_SLEEP_S", 0)
     from agents.market_intelligence import collector
     monkeypatch.setattr(collector, "et_today", lambda: TODAY)
-    return {"events": events, "executed": executed, "sent": sent, **m}
+    return {"events": events, "executed": executed, "sent": sent,
+            "opg_calls": opg_calls, "day_calls": day_calls, **m}
 
 
 def _audited(h, event):

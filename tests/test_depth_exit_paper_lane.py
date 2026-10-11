@@ -251,25 +251,13 @@ async def test_1645_a_smallcap_paper_row_with_no_stamp_keeps_todays_sale(monkeyp
 # ══════════════════════════════════════════════════════════════════════════════════════════
 
 def _paper_sale_wire(monkeypatch, **kw):
-    """`_sale_wire` over a smallcap PAPER depth row, with two additions: the opg fake records the
-    account_mode it was called with, and the Telegram prefix is made to name the mode."""
+    """`_sale_wire` over a smallcap PAPER depth row, with the Telegram prefix made to name the
+    mode. #687 (c), 2026-10-10: the PAPER sale is a DAY market order (`place_market_sell`), so the
+    recorder that matters is `h["day_calls"]`; `h["opg_calls"]` must stay empty."""
     row = kw.pop("row", None) or _paper_row(
         remaining_shares=6, stop_price=DEPTH_STOP, status="filled", depth_sell_pending_on=TODAY)
     h = _sale_wire(monkeypatch, row=row, **kw)
-    opg_calls: list = []
-    opg_raises = kw.get("opg_raises")
-
-    async def _opg(ticker, qty, account_mode=None, client_order_id=None):
-        opg_calls.append({"ticker": ticker, "qty": qty, "mode": account_mode,
-                          "coid": client_order_id})
-        h["events"].append(("opg", qty, client_order_id))
-        if opg_raises:
-            raise opg_raises
-        return {"id": "opg-1", "status": "accepted"}
-
-    monkeypatch.setattr(om.alpaca, "place_market_on_open_sell", _opg)
     monkeypatch.setattr(om, "mode_prefix", lambda m: f"[{m}] ")
-    h["opg_calls"] = opg_calls
     return h
 
 
@@ -279,14 +267,17 @@ def _modes_of(mock) -> set:
 
 @pytest.mark.asyncio
 async def test_1901_a_smallcap_paper_depth_sale_routes_to_the_paper_account(monkeypatch):
+    """Routing of every broker call. The SALE ORDER on paper is a DAY market order (#687 (c)); its
+    vehicle is pinned in tests/test_687c_paper_depth_day_market.py."""
     h = _paper_sale_wire(monkeypatch)
 
     ok = await om.execute_depth_open_sale(501)
 
     assert ok is True
-    [opg] = h["opg_calls"]
-    assert opg["mode"] == "paper" and opg["qty"] == 6
-    assert opg["coid"].startswith("apollo_paper_magna53_smallcap_KOD_"), (
+    assert h["opg_calls"] == [], "paper never sends an opening-auction order (#687 c)"
+    [sale] = h["day_calls"]
+    assert sale["mode"] == "paper" and sale["qty"] == 6
+    assert sale["coid"].startswith("apollo_paper_magna53_smallcap_KOD_"), (
         "invariant 1: the mode-bound id names the REAL signal_type and the PAPER mode")
     assert _modes_of(h["cancel"]) == {"paper"}, "the depth stop is cancelled on the paper account"
     assert _modes_of(h["pos"]) == {"paper"} and _modes_of(h["orders"]) == {"paper"}
@@ -296,8 +287,8 @@ async def test_1901_a_smallcap_paper_depth_sale_routes_to_the_paper_account(monk
 
 
 @pytest.mark.asyncio
-async def test_1901_a_rejected_smallcap_paper_auction_order_restores_the_paper_stop(monkeypatch):
-    h = _paper_sale_wire(monkeypatch, opg_raises=Exception("opg rejected: market closed"))
+async def test_1901_a_rejected_smallcap_paper_sale_restores_the_paper_stop(monkeypatch):
+    h = _paper_sale_wire(monkeypatch, opg_raises=Exception("sale rejected: insufficient qty"))
     h["orders"].return_value = []            # the stop is gone by the restore's read
 
     ok = await om.execute_depth_open_sale(501)

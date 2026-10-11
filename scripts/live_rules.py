@@ -1182,10 +1182,23 @@ def build_exit_section(res: Resolver) -> list[str]:
     _depth_test_fp = code_fingerprint(
         "agents/market_intelligence/broker/order_manager.py",
         r"if signal_type not in _DEPTH_EXIT_STRATEGIES:")
+    # 2026-10-10 (his "got it, c"): the 19:01 sale's VEHICLE is per account — LIVE sends the
+    # opening-auction (opg) order, PAPER a regular DAY market sell, because paper's simulator never
+    # fills an opg order. Code SHAPE, so it carries a fingerprint: a silent revert reads ABSENT.
+    _depth_vehicle_fp = code_fingerprint(
+        "agents/market_intelligence/broker/order_manager.py",
+        r'return DEPTH_SALE_VEHICLE_DAY_MARKET if account_mode == "paper" else DEPTH_SALE_VEHICLE_OPG')
     L.append(f"  depth rule for NEW MAGNA53 trades (live row) and NEW small-cap paper lane trades (paper "
-             f"row) — stop rests one ADR20 under the line; a close below the line sells in the next "
-             f"opening auction, order sent 7:01 PM ET — "
+             f"row) — stop rests one ADR20 under the line; a close below the line sells at the next "
+             f"open, order sent 7:01 PM ET (live: opening-auction order; paper: DAY market order) — "
              f"`magna53_depth_exit`: {_toggle_line(res, 'magna53_depth_exit')}")
+    if _depth_vehicle_fp:
+        L.append(f"    sale vehicle by the row's account: paper = DAY market sell, live = opg "
+                 f"[{_depth_vehicle_fp}]")
+    else:
+        L.append("    ⚠ the depth sale-vehicle fingerprint is ABSENT — the 2026-10-10 ruling 'paper sells "
+                 "with a DAY market order, live keeps the opening auction' (#687 c) may have been "
+                 "reverted; read order_manager.depth_sale_vehicle before stating how the 19:01 sale is sent")
     if _depth_set_fp and _depth_test_fp:
         L.append(f"    each row follows ITS OWN account mode's toggle (no row = off; the live row alone "
                  f"does not stamp the paper lane) [{_depth_test_fp}; {_depth_set_fp}]")

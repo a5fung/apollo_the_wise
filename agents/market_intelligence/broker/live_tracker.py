@@ -47,6 +47,7 @@ from agents.market_intelligence.broker.exit_logic import (
 )
 from agents.market_intelligence.broker.order_manager import (
     DEPTH_EXIT_RULE,
+    depth_sale_words,
     prepare_orb_order,
     execute_partial_exit,
     execute_full_exit,
@@ -1039,6 +1040,9 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
             # in the NEXT MORNING'S OPENING AUCTION (ruled 2026-09-29): mark it, leave the depth
             # stop on, and let the 19:01 ET job send the market-on-open order (Alpaca rejects
             # OPG orders before 19:00). Nothing is cancelled or sold here.
+            # #687 (c): the sale's VEHICLE differs by book (live: opening auction; paper: a DAY
+            # market order that fills at the open) — the words must say which.
+            _words = depth_sale_words(trade.get("account_mode"))
             async with pool.acquire() as conn:
                 await conn.execute("""
                     UPDATE mi_live_trades SET
@@ -1050,7 +1054,7 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
             await log_audit_event(
                 "depth_close_below_line",
                 f"{ticker}: closed ${step.bar_close:.2f} below the trailing line "
-                f"${step.effective_stop:.2f} — selling in the next opening auction",
+                f"${step.effective_stop:.2f} — {_words['selling']}",
                 json.dumps({"trade_id": trade["id"], "ticker": ticker,
                             "account_mode": trade.get("account_mode"),
                             "close": step.bar_close, "line": step.effective_stop,
@@ -1060,7 +1064,7 @@ async def update_open_positions_live(today: date | None = None) -> list[dict]:
             await send_telegram_message(
                 f"{mode_prefix(trade.get('account_mode'))}📉 *{ticker} closed below "
                 f"its trailing line* (${step.bar_close:.2f} < ${step.effective_stop:.2f}).\n"
-                f"Selling at the next open: the opening-auction order goes in at 7:01 PM ET. "
+                f"Selling at the next open: {_words['order_goes_in']}. "
                 f"The stop stays on until then."
             )
             results.append({"ticker": ticker, "action": "depth_sell_pending",

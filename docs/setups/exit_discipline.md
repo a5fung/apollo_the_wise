@@ -41,8 +41,10 @@ the exit path sees intraday price", which stopped being true on 2026-08-01):**
   2026-10-10, his "Ok"): toggle `magna53_depth_exit` (per mode, no row = OFF; the ROW'S own mode —
   MAGNA53 follows the 'live' row, the lane the 'paper' row) stamps `mi_live_trades.exit_rule
   = 'depth'` at entry; a stamped trade's stop rests one ADR20 under the line and a close below the
-  line sells in the next opening auction (order sent 19:01 ET). No row is stamped today, so every
-  trade runs the trail described here. Change log 2026-10-01 and 2026-10-10.
+  line sells at the next open (order sent 19:01 ET): LIVE sends an opening-auction order, PAPER a
+  regular DAY market order (#687 (c), his "got it, c" 2026-10-10 — paper's simulator never fills an
+  opening-auction order). No row is stamped today, so every trade runs the trail described here.
+  Change log 2026-10-01 and 2026-10-10 / 2026-10-11.
 
 **Jobs:** `track_position_extremes` every 5 min (bars + the #508 profit trigger);
 `run_partial_exits` 3:45 PM ET (the time-gated partial — standing down while the intraday
@@ -366,10 +368,13 @@ MAGNA53 rule: `magna53_ep.md` change log 2026-10-10. In this file's terms: **the
 for the ROW'S own account mode; the resting stop, the 16:45 decision/mark, the 19:01 opening-auction
 sale and the restore after an expired or rejected sale are unchanged and already strategy-free (they
 read `exit_rule` + `account_mode` from the row). The mechanism below ("Stamp at entry", the 2026-10-01
-part B entry) reads "MAGNA53" as "MAGNA53 and the small-cap lane". ⚠ **Paper's opening auction is
-unproven:** the only opg sale ever sent on the paper account (PEP, 10-09) EXPIRED unfilled, so the lane's
-depth sale is expected to expire and be re-decided daily; the PAPER toggle row waits on his decision
-(`magna53_ep.md` 2026-10-10, the ⚖ block).
+part B entry) reads "MAGNA53" as "MAGNA53 and the small-cap lane". ⚠ **Paper's opening auction does not
+fill:** the only opg sale ever sent on the paper account (PEP, 10-09) EXPIRED unfilled while KO's DAY
+market sale filled — **RULED (c) 2026-10-10 (his "got it, c"), BUILT 2026-10-11:** on the PAPER account the
+19:01 sale is a regular DAY market order (`order_manager.depth_sale_vehicle`); LIVE keeps the
+opening-auction order. Everywhere below, "sells in the opening auction" is the LIVE vehicle; the paper
+lane's sale is a DAY market order queued the same minute and filled at the open (`magna53_ep.md` change
+log 2026-10-11 — what was built, the EXPECT and the verify).
 
 ### 2026-10-10 — the +8R profit-take on a 2-share MAGNA53 position sells 1 share (OPERATOR-SIGNED "go with rec"; DEPLOYED 2026-10-10)
 

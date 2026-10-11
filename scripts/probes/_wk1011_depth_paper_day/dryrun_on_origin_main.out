@@ -1,0 +1,10 @@
+Depth sale (opening auction) failed for KOD: insufficient qty available
+_restore_stop_after_failed_exit: KOD stop RESTORED at $67.58 for 6 sh (stop-restored, sized from broker) after a failed full exit
+Depth sale (opening auction) failed for KOD: opg rejected
+_restore_stop_after_failed_exit: KOD stop RESTORED at $67.58 for 6 sh (stop-restored, sized from broker) after a failed full exit
+  BAD paper smallcap -> sale ['opg']  sale calls ['opg'] (want ['day']); placed audit vehicle None (want 'day_market'); the sale was not recorded as the trade's full_exit order; no page/audit text says 'at the open'; a page says 'opening auction'
+  BAD paper magna53  -> sale ['opg']  sale calls ['opg'] (want ['day']); placed audit vehicle None (want 'day_market'); the sale was not recorded as the trade's full_exit order; no page/audit text says 'at the open'; a page says 'opening auction'
+  BAD live  magna53  -> sale ['opg']  placed audit vehicle None (want 'opg')
+  BAD paper rejected -> sale ['opg']  sale calls ['opg'] (want ['day']); rejected audit vehicle 'opg' (want 'day_market'); no page/audit text says 'Sale at the open FAILED'; a page says 'Opening-auction'
+  ok  live  rejected -> sale ['opg']
+DRYRUN FAIL — 4 case(s) wrong: [('paper smallcap', ["sale calls ['opg'] (want ['day'])", "placed audit vehicle None (want 'day_market')", "the sale was not recorded as the trade's full_exit order", "no page/audit text says 'at the open'", "a page says 'opening auction'"]), ('paper magna53 ', ["sale calls ['opg'] (want ['day'])", "placed audit vehicle None (want 'day_market')", "the sale was not recorded as the trade's full_exit order", "no page/audit text says 'at the open'", "a page says 'opening auction'"]), ('live  magna53 ', ["placed audit vehicle None (want 'opg')"]), ('paper rejected', ["sale calls ['opg'] (want ['day'])", "rejected audit vehicle 'opg' (want 'day_market')", "no page/audit text says 'Sale at the open FAILED'", "a page says 'Opening-auction'"])]

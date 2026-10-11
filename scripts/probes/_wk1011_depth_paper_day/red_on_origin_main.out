@@ -1,0 +1,25 @@
+FFF.FFFFF.FF.FFFF..F..F...............F................................. [ 96%]
+...                                                                      [100%]
+
+[#577 must-not-miss] 4 of 31 labelled real EPs are currently EXCLUDED by the live selection stack (all MIN_GAP_PCT) — recorded debt against P1 (docs/roadmap/ep_profitability_program.md § THE PRINCIPLES), recorded 2026-09-03. See tests/fixtures/must_not_miss_eps.py::BASELINE_DEBT.
+[#577 must-not-miss] ⚠ ABNB 2026-08-07 is OPERATOR-NAMED, is excluded by the live stack, and is NOT being asserted. This is a declared abstention, not an accepted state — its reason: DECLARED ABSTENTION — not an accepted state, and not a data artifact. ABNB is a REAL EP (operator-labelled 2026-09-06) and the live stack excludes it correctly under the rules as written. Whether it is still waiting on anyone is that reason's job to say, not this banner's. See must_not_miss_eps.py.
+[#577 must-not-miss] ⚠ CHPT 2026-09-03 is OPERATOR-NAMED, is excluded by the live stack, and is NOT being asserted. This is a declared abstention, not an accepted state — its reason: SETTLED EXCLUSION, not a data artifact and no longer a wait. Whether it is still waiting on anyone is that reason's job to say, not this banner's. See must_not_miss_eps.py.
+=========================== short test summary info ============================
+FAILED tests/test_687c_paper_depth_day_market.py::test_the_vehicle_is_a_day_market_order_on_paper_and_the_auction_everywhere_else
+FAILED tests/test_687c_paper_depth_day_market.py::test_a_paper_row_sells_with_a_day_market_order_never_an_opg[magna53_smallcap]
+FAILED tests/test_687c_paper_depth_day_market.py::test_a_paper_row_sells_with_a_day_market_order_never_an_opg[magna53]
+FAILED tests/test_687c_paper_depth_day_market.py::test_a_paper_sale_still_waits_for_the_broker_to_release_the_shares
+FAILED tests/test_687c_paper_depth_day_market.py::test_a_paper_resting_profit_take_third_keeps_its_shares_on_the_day_vehicle
+FAILED tests/test_687c_paper_depth_day_market.py::test_the_placed_audit_names_the_vehicle[_paper_row-day_market]
+FAILED tests/test_687c_paper_depth_day_market.py::test_the_placed_audit_names_the_vehicle[_live_row-opg]
+FAILED tests/test_687c_paper_depth_day_market.py::test_the_rejected_audit_names_the_vehicle_that_was_rejected[_paper_row-day_market]
+FAILED tests/test_687c_paper_depth_day_market.py::test_a_rejected_paper_day_sale_restores_the_stop_on_the_paper_account_and_pages
+FAILED tests/test_687c_paper_depth_day_market.py::test_the_paper_placed_page_says_at_the_open_not_opening_auction
+FAILED tests/test_687c_paper_depth_day_market.py::test_the_rejected_page_wording_follows_the_vehicle
+FAILED tests/test_687c_paper_depth_day_market.py::test_the_stale_mark_page_wording_follows_the_vehicle
+FAILED tests/test_687c_paper_depth_day_market.py::test_the_runner_failure_page_and_audit_wording_follow_the_rows_book
+FAILED tests/test_687c_paper_depth_day_market.py::test_the_1645_page_and_audit_say_at_the_open_for_paper_and_stay_the_same_for_live
+FAILED tests/test_687c_paper_depth_day_market.py::test_the_full_exit_row_a_paper_day_sale_writes_is_what_the_stream_routes_on
+FAILED tests/test_687c_paper_depth_day_market.py::test_the_dry_run_prints_pass_for_the_real_function
+FAILED tests/test_depth_exit_paper_lane.py::test_1901_a_smallcap_paper_depth_sale_routes_to_the_paper_account
+17 failed, 58 passed in 0.97s
