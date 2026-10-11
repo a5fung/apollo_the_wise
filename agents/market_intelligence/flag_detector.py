@@ -2008,6 +2008,31 @@ def _fmt_transition(t: dict) -> str:
     )
 
 
+_DIGEST_ROSTER_SHOWN = 8       # standing COILED names printed; the rest are a "…N more" line
+
+
+def digest_sections(by_stage: dict[str, list[dict]], transitions: list[dict]) -> dict:
+    """PURE. What the digest LISTS, by section — the ONE place that decides it, so the message
+    (`build_flag_digest`) and its send record (`_record_digest_sent`) cannot drift apart.
+
+    `new_today` = the transitions; `triggered` = TRIGGERED rows, run-up descending; `standing` = the
+    COILED rows that are not announced under NEW TODAY the same night (a name is not listed twice);
+    `roster_shown` / `roster_hidden` = the first `_DIGEST_ROSTER_SHOWN` standing names by tightest range
+    (the printed roster) and the rest (the "…N more" line); `dropped_out` = the INVALIDATED count.
+    """
+    new_coiled = {t["ticker"] for t in transitions if t["stage"] == "COILED"}
+    standing = [r for r in by_stage.get("COILED", []) if r["ticker"] not in new_coiled]
+    ranked = sorted(standing, key=lambda x: x.get("range_contraction_ratio") or 1)
+    return {
+        "new_today": transitions,
+        "triggered": sorted(by_stage.get("TRIGGERED", []), key=lambda x: x.get("runup_pct") or 0, reverse=True),
+        "standing": standing,
+        "roster_shown": ranked[:_DIGEST_ROSTER_SHOWN],
+        "roster_hidden": ranked[_DIGEST_ROSTER_SHOWN:],
+        "dropped_out": len(by_stage.get("INVALIDATED", [])),
+    }
+
+
 def build_flag_digest(
     by_stage: dict[str, list[dict]],
     scan_date,
@@ -2016,15 +2041,14 @@ def build_flag_digest(
     """PURE. The daily HTF digest as Telegram HTML, or None on a quiet day (no TRIGGERED, no
     COILED, no new transition). Section order: NEW TODAY (the transitions) · TRIGGERED · COILED
     that were already coiled · dropped-out count."""
-    triggered   = by_stage.get("TRIGGERED", [])
     coiled      = by_stage.get("COILED", [])
     tightening  = by_stage.get("TIGHTENING", [])
     watch       = by_stage.get("WATCH", [])
     invalidated = by_stage.get("INVALIDATED", [])
+    triggered   = by_stage.get("TRIGGERED", [])
 
-    # A name listed under NEW TODAY is not listed a second time in the COILED roster.
-    new_coiled = {t["ticker"] for t in transitions if t["stage"] == "COILED"}
-    standing = [r for r in coiled if r["ticker"] not in new_coiled]
+    sections = digest_sections(by_stage, transitions)
+    standing = sections["standing"]
 
     if not (triggered or standing or transitions):
         return None
@@ -2057,17 +2081,17 @@ def build_flag_digest(
     if triggered:
         lines.append("")
         lines.append(f"🎯 {tf.b(f'TRIGGERED ({len(triggered)})')}")
-        for r in sorted(triggered, key=lambda x: x.get("runup_pct") or 0, reverse=True):
+        for r in sections["triggered"]:
             lines.append(_fmt_triggered(r))
 
     if standing:
         lines.append("")
         lines.append(f"🌀 {tf.b(f'COILED — still coiled ({len(standing)})')}")
-        shown = sorted(standing, key=lambda x: x.get("range_contraction_ratio") or 1)[:8]
+        shown = sections["roster_shown"]
         for r in shown:
             lines.append(_fmt_coiled(r))
-        if len(standing) > 8:
-            lines.append(f"  …{len(standing) - 8} more")
+        if sections["roster_hidden"]:
+            lines.append(f"  …{len(sections['roster_hidden'])} more")
         # A short-base name that has been coiled for days is in THIS roster, not in NEW TODAY, so
         # the NEW TODAY legend never reaches it (or is absent altogether): explain it here, once.
         if not legend_has_short and any(is_short_base(r.get("base_age")) for r in shown):
@@ -2131,6 +2155,53 @@ async def _record_transitions(transitions: list[dict], scan_date, outcome: str) 
         await db.log_audit_event(_TRANSITION_EVENT, summary, detail)
 
 
+# One row per digest SEND (#697 item 1b, 2026-10-11). Before this a send left no trace anywhere — only a
+# stage TRANSITION wrote a row (`flag_stage_transition`: 2 since deploy, 5 scan days), so "did we tell him
+# about X?" could not be answered from prod (CDNA 2026-08-18 is still unprovable). Ends in neither `_error`
+# nor a transition key: it is a send log, not a dedupe key — a #672 recovery re-run of the same scan sends a
+# second message and writes a second row (the summary carries the SCAN date; the audit row its own clock).
+_DIGEST_SENT_EVENT = "flag_digest_sent"
+_DIGEST_SENT_ERROR_EVENT = "flag_digest_sent_error"
+
+
+def _digest_record(sections: dict, scan_date, outcome: str) -> tuple[str, str]:
+    """PURE. (summary, detail-JSON) for the send record: the tickers each section LISTED, taken from the
+    same `digest_sections` the message was built from, plus which of the standing COILED names the
+    8-name roster did not print (`coiled_not_shown`) — truncation must be visible, or "did we tell him
+    about X" is unanswerable for the ninth name."""
+    d = scan_date.isoformat() if hasattr(scan_date, "isoformat") else str(scan_date)
+    detail = json.dumps({
+        "scan_date": d,
+        "telegram": outcome,
+        "new_today": [t["ticker"] for t in sections["new_today"]],
+        "triggered": [r["ticker"] for r in sections["triggered"]],
+        "coiled": [r["ticker"] for r in sections["roster_shown"]],
+        "coiled_not_shown": [r["ticker"] for r in sections["roster_hidden"]],
+        "dropped_out": sections["dropped_out"],
+    })
+    return f"flag digest {d} ({outcome})", detail
+
+
+async def _record_digest_sent(sections: dict, scan_date, outcome: str) -> None:
+    """Write the send record. NEVER raises: the digest has already reached (or failed to reach) the
+    operator, and a broken record must not break the scan. A failure is named by `flag_digest_sent_error`
+    (ends `_error`, so the nightly `%error%` sweep lists it)."""
+    from agents.market_intelligence import db
+    try:
+        summary, detail = _digest_record(sections, scan_date, outcome)
+        await db.log_audit_event(_DIGEST_SENT_EVENT, summary, detail)
+    except Exception as e:
+        logger.exception(f"flag digest send record failed: {e}")
+        try:
+            await db.log_audit_event(
+                _DIGEST_SENT_ERROR_EVENT,
+                f"flag digest send record failed for {scan_date}: {type(e).__name__}",
+                detail=str(e)[:500],
+            )
+        except Exception as e2:
+            logger.warning(f"flag digest send record: the error row could not be written either: {e2}")
+
+
 async def send_flag_digest(
     by_stage: dict[str, list[dict]],
     scan_date: date,
@@ -2182,8 +2253,15 @@ async def send_flag_digest(
         return
 
     ok = await send_telegram_message(msg, parse_mode="HTML")
-    if transitions:
-        await _record_transitions(transitions, scan_date, "sent" if ok else "not delivered")
+    outcome = "sent" if ok else "not delivered"
+    # The send record is written OUTSIDE the transition try/except above (and in a `finally`): a broken
+    # transition step must not lose the record that a digest went out. One row per send, delivered or
+    # not; a suppressed day (msg is None, returned above) sent nothing and writes nothing.
+    try:
+        if transitions:
+            await _record_transitions(transitions, scan_date, outcome)
+    finally:
+        await _record_digest_sent(digest_sections(by_stage, transitions), scan_date, outcome)
 
 
 # ────────────────────────────────────────────────────────────────────────

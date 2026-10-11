@@ -1,0 +1,68 @@
+FF.FFFFFFFFF.FFF..                                                       [100%]
+=================================== FAILURES ===================================
+E   AssertionError: the Friday flag section consulted the strategy registry - a disabled flag_continuation row would blank it again, as it did from 2026-08-02
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:60: AssertionError: the Friday flag section consulted the strategy registry - a disabled flag_continuation row would blank it again, as it did from 2026-08-02
+E   AssertionError: assert [] == [('AAA', 'FLA...CCC', 'FLAG')]
+      
+      Right contains 3 more items, first extra item: ('AAA', 'FLAG')
+      Use -v to get more diff
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:92: AssertionError: assert [] == [('AAA', 'FLA...CCC', 'FLAG')]
+E   AssertionError: assert [] == ['C0', 'C1', ...4', 'T0', ...]
+      
+      Right contains 8 more items, first extra item: 'C0'
+      Use -v to get more diff
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:111: AssertionError: assert [] == ['C0', 'C1', ...4', 'T0', ...]
+E   AttributeError: 'NoneType' object has no attribute 'args'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:120: AttributeError: 'NoneType' object has no attribute 'args'
+E   ValueError: not enough values to unpack (expected 1, got 0)
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:129: ValueError: not enough values to unpack (expected 1, got 0)
+E   ValueError: not enough values to unpack (expected 1, got 0)
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:137: ValueError: not enough values to unpack (expected 1, got 0)
+E   ValueError: not enough values to unpack (expected 1, got 0)
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:144: ValueError: not enough values to unpack (expected 1, got 0)
+E   ValueError: not enough values to unpack (expected 2, got 0)
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:156: ValueError: not enough values to unpack (expected 2, got 0)
+E   ValueError: not enough values to unpack (expected 1, got 0)
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:224: ValueError: not enough values to unpack (expected 1, got 0)
+E   IndexError: list index out of range
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:243: IndexError: list index out of range
+E   ValueError: not enough values to unpack (expected 1, got 0)
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:252: ValueError: not enough values to unpack (expected 1, got 0)
+E   IndexError: list index out of range
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:273: IndexError: list index out of range
+E   ValueError: not enough values to unpack (expected 1, got 0)
+------------------------------ Captured log call -------------------------------
+ERROR    agents.market_intelligence.flag_detector:flag_detector.py:2170 flag transition detection failed: transition step broke
+Traceback (most recent call last):
+  File "/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/agents/market_intelligence/flag_detector.py", line 2159, in send_flag_digest
+    transitions = stage_transitions(by_stage, yesterday_map)
+  File "/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py", line 282, in _boom
+    raise RuntimeError("transition step broke")
+RuntimeError: transition step broke
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:286: ValueError: not enough values to unpack (expected 1, got 0)
+E   AssertionError: assert (2 == 2 and 0 == 2)
+     +  where 2 = len([('🚩 <b>HTF Scanner — Aug 18</b>\n<i>1 tickers scanned · 0 watch · 0 tightening · 1 coiled · 0 triggered</i>\n\n🌀 <b>C...<b>COILED — still coiled (1)</b>\n  • <code>OLD1</code> — base 10d · run-up +130% · range 0.50 · volume 0.50', 'HTML')])
+     +    where [('🚩 <b>HTF Scanner — Aug 18</b>\n<i>1 tickers scanned · 0 watch · 0 tightening · 1 coiled · 0 triggered</i>\n\n🌀 <b>C...<b>COILED — still coiled (1)</b>\n  • <code>OLD1</code> — base 10d · run-up +130% · range 0.50 · volume 0.50', 'HTML')] = <test_697_htf_reach_repairs._World object at 0x10d6048d0>.sent
+     +  and   0 = len([])
+     +    where [] = _digest_rows(<test_697_htf_reach_repairs._World object at 0x10d6048d0>)
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_htf_reach_repairs.py:298: AssertionError: assert (2 == 2 and 0 == 2)
+
+[#577 must-not-miss] 4 of 31 labelled real EPs are currently EXCLUDED by the live selection stack (all MIN_GAP_PCT) — recorded debt against P1 (docs/roadmap/ep_profitability_program.md § THE PRINCIPLES), recorded 2026-09-03. See tests/fixtures/must_not_miss_eps.py::BASELINE_DEBT.
+[#577 must-not-miss] ⚠ ABNB 2026-08-07 is OPERATOR-NAMED, is excluded by the live stack, and is NOT being asserted. This is a declared abstention, not an accepted state — its reason: DECLARED ABSTENTION — not an accepted state, and not a data artifact. ABNB is a REAL EP (operator-labelled 2026-09-06) and the live stack excludes it correctly under the rules as written. Whether it is still waiting on anyone is that reason's job to say, not this banner's. See must_not_miss_eps.py.
+[#577 must-not-miss] ⚠ CHPT 2026-09-03 is OPERATOR-NAMED, is excluded by the live stack, and is NOT being asserted. This is a declared abstention, not an accepted state — its reason: SETTLED EXCLUSION, not a data artifact and no longer a wait. Whether it is still waiting on anyone is that reason's job to say, not this banner's. See must_not_miss_eps.py.
+=========================== short test summary info ============================
+FAILED tests/test_697_htf_reach_repairs.py::test_fetch_flag_never_consults_the_strategy_registry
+FAILED tests/test_697_htf_reach_repairs.py::test_section_renders_with_the_strategy_row_disabled
+FAILED tests/test_697_htf_reach_repairs.py::test_five_coiled_three_tightening_cap_is_unchanged
+FAILED tests/test_697_htf_reach_repairs.py::test_select_pulls_the_three_columns_the_short_base_measure_needs
+FAILED tests/test_697_htf_reach_repairs.py::test_friday_2026_10_09_kod_renders_the_two_bar_measure_not_r_1_00
+FAILED tests/test_697_htf_reach_repairs.py::test_short_base_with_a_firing_fresh_path_says_tight
+FAILED tests/test_697_htf_reach_repairs.py::test_short_base_with_no_atr_says_n_a_rather_than_1_00
+FAILED tests/test_697_htf_reach_repairs.py::test_a_base_of_six_or_more_keeps_the_real_ratios
+FAILED tests/test_697_htf_reach_repairs.py::test_a_send_writes_one_row_listing_the_tickers_per_section
+FAILED tests/test_697_htf_reach_repairs.py::test_the_record_matches_the_message_ticker_for_ticker
+FAILED tests/test_697_htf_reach_repairs.py::test_a_failed_telegram_still_writes_the_row_marked_not_delivered
+FAILED tests/test_697_htf_reach_repairs.py::test_roster_truncation_is_visible_in_the_record
+FAILED tests/test_697_htf_reach_repairs.py::test_a_broken_transition_step_does_not_lose_the_send_record
+FAILED tests/test_697_htf_reach_repairs.py::test_a_rerun_of_the_same_scan_is_a_second_row_not_a_dedupe
+14 failed, 4 passed in 0.12s

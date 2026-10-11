@@ -1,0 +1,50 @@
+k	a	b	c	d	e	f	g	h	i
+board	2026-10-09	KOD	COILED	5	1.000	1.000	false	6.639	10.533
+board_count	2026-10-02	INVALIDATED	8						
+board_count	2026-10-02	TIGHTENING	1						
+board_count	2026-10-02	unqualified	477						
+board_count	2026-10-02	WATCH	6						
+board_count	2026-10-05	INVALIDATED	6						
+board_count	2026-10-05	TIGHTENING	2						
+board_count	2026-10-05	unqualified	477						
+board_count	2026-10-05	WATCH	11						
+board_count	2026-10-06	INVALIDATED	10						
+board_count	2026-10-06	TIGHTENING	1						
+board_count	2026-10-06	unqualified	494						
+board_count	2026-10-06	WATCH	2						
+board_count	2026-10-07	INVALIDATED	15						
+board_count	2026-10-07	unqualified	489						
+board_count	2026-10-07	WATCH	1						
+board_count	2026-10-08	COILED	1						
+board_count	2026-10-08	INVALIDATED	9						
+board_count	2026-10-08	unqualified	491						
+board_count	2026-10-08	WATCH	3						
+board_count	2026-10-09	COILED	1						
+board_count	2026-10-09	INVALIDATED	3						
+board_count	2026-10-09	unqualified	482						
+board_count	2026-10-09	WATCH	6						
+flag_weeks	2026-06-05	8	ATRA CAR DGII FUN GO IMVT SNAP WSC						
+flag_weeks	2026-06-12	8	ALMU ANET ATLC BJDX QTTB SPHL VSA WSC						
+flag_weeks	2026-06-19	8	BJDX BTDR FPS NCT QTTB RDVT STM VSA						
+flag_weeks	2026-06-26	6	ACVA JRSH MEC PAYO SG VERU						
+flag_weeks	2026-07-03	3	DDOG OKTA RBRK						
+flag_weeks	2026-07-10	2	TWLO VCYT						
+flag_weeks	2026-07-17	3	ABVX GH NEO						
+flag_weeks	2026-07-24	2	ATAI MBX						
+flag_weeks	2026-07-31	3	ATAI CDNA MBX						
+strategy	flag_continuation	deprecated	false						
+weeks_all	2026-07-10	21							
+weeks_all	2026-07-17	23							
+weeks_all	2026-07-24	22							
+weeks_all	2026-07-31	24							
+weeks_all	2026-08-07	24							
+weeks_all	2026-08-14	22							
+weeks_all	2026-08-21	22							
+weeks_all	2026-08-28	20							
+weeks_all	2026-09-04	15							
+weeks_all	2026-09-11	18							
+weeks_all	2026-09-18	22							
+weeks_all	2026-09-25	16							
+weeks_all	2026-10-02	19							
+weeks_all	2026-10-09	20							
+(48 rows)

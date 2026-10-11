@@ -26,6 +26,7 @@ from agents.market_intelligence.db import (
     get_latest_regime,
     insert_weekly_watchlist,
 )
+from agents.market_intelligence.flag_detector import board_tightness
 from agents.market_intelligence.strategies.registry import should_run
 
 logger = logging.getLogger(__name__)
@@ -297,19 +298,24 @@ async def _fetch_flag(window_days: int) -> list[dict]:
     Pulls latest scan date with data (handles pre-EOD Friday before the
     5:25 PM scan completes — falls back to previous day) and surfaces up
     to 5 COILED + 3 TIGHTENING. Excludes mna_filter:* hits since those
-    are deal-pinned and unenterable.
+    are deal-pinned and unenterable (the scan rewrites them to `unqualified`).
+
+    ⚠ NO STRATEGY GATE HERE — removed 2026-10-11 (#697, htf_scope G7). This used to return [] when
+    `should_run("flag_continuation")` was false. That strategy row was correctly retired on 2026-08-02
+    (`deprecated`, `enabled=false` — it can never place an order), and the same switch silently blanked
+    this section: the last Friday watchlist carrying a FLAG row was 2026-07-31. This section reads
+    `mi_flag_candidates` — the DETECTOR's output, which has no strategy row of its own — exactly the
+    distinction `run_flag_scan` drew on 08-02/03 ("flag detector is on, that can just be detecting flags
+    in general"). Retiring a strategy must never retire the detector's watch surfaces. Pinned by
+    tests/test_697_htf_reach_repairs.py (an AST check that no registry call returns, and a render with the
+    strategy disabled). Display only: no order, entry, sizing or safeguard path is read or written here.
     """
-    if not await should_run("flag_continuation"):
-        return []
-    from agents.market_intelligence.db import get_pool
     pool = await get_pool()
     async with pool.acquire() as conn:
         # Latest scan date within last 7d. Mirrors the /flags resolver
         # so weekend / pre-scan timing doesn't return empty.
-        from datetime import timedelta as _td
-        from agents.market_intelligence.collector import et_today
         today = et_today()
-        cutoff = today - _td(days=7)
+        cutoff = today - timedelta(days=7)
         scan_date = await conn.fetchval(
             """
             SELECT MAX(scan_date) FROM mi_flag_candidates
@@ -323,7 +329,8 @@ async def _fetch_flag(window_days: int) -> list[dict]:
             """
             SELECT ticker, stage, base_age, runup_pct,
                    range_contraction_ratio, vol_contraction_ratio,
-                   breakout_close, base_high
+                   breakout_close, base_high,
+                   fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct
             FROM mi_flag_candidates
             WHERE scan_date = $1
               AND stage IN ('COILED', 'TIGHTENING')
@@ -337,25 +344,26 @@ async def _fetch_flag(window_days: int) -> list[dict]:
     coiled = [r for r in rows if r["stage"] == "COILED"][:5]
     tightening = [r for r in rows if r["stage"] == "TIGHTENING"][:3]
     out: list[dict] = []
+    # Tightness text comes from `flag_detector.board_tightness` — the ONE place that decides whether a
+    # base is too young (<= 5 sessions) for the first-5 vs last-5 ratios to mean anything. Both ratios
+    # are exactly 1.00 there by construction, which this chip used to print as `r1.00` (KOD, base 5d,
+    # Friday 2026-10-09: stored 1.000 / 1.000, the real last-two-bars reading 0.63). #697 item 1(c).
     for i, r in enumerate(coiled):
-        rr = r.get("range_contraction_ratio")
         runup = r.get("runup_pct")
-        rr_s = f"r{float(rr):.2f}" if rr is not None else "r—"
         runup_s = f"{float(runup) * 100:+.0f}%" if runup is not None else "—"
         out.append({
             "ticker": r["ticker"],
             "source_tag": "FLAG",
-            "reason": f"COILED · base {r.get('base_age')}d · runup {runup_s} · {rr_s}",
+            "reason": (f"COILED · base {r.get('base_age')}d · runup {runup_s} · "
+                       f"{board_tightness(r, compact=True)}"),
             "priority": _PRIORITY["FLAG"],
             "rank_within": i,
         })
     for i, r in enumerate(tightening):
-        rr = r.get("range_contraction_ratio")
-        rr_s = f"r{float(rr):.2f}" if rr is not None else "r—"
         out.append({
             "ticker": r["ticker"],
             "source_tag": "FLAG",
-            "reason": f"TIGHTENING · base {r.get('base_age')}d · {rr_s}",
+            "reason": f"TIGHTENING · base {r.get('base_age')}d · {board_tightness(r, compact=True)}",
             "priority": _PRIORITY["FLAG"] + 0.5,  # rank below COILED
             "rank_within": 100 + i,
         })

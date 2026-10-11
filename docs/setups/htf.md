@@ -152,6 +152,32 @@ only.** The dedupe query is inline for that reason (`db.py` is execution-loaded)
 constants, not `audit_events.py` (also execution-loaded). `channels/telegram.py` is untouched — no new
 command. Tests: `tests/test_598_flag_stage_transition_push.py`.
 
+**Send record — one `flag_digest_sent` audit row per digest SEND (#697 item 1b, 2026-10-11).** Before this a
+send left no trace: only a stage *transition* wrote a row, so "did we tell him about X" was unanswerable from
+prod. Summary `flag digest <scan_date> (sent|not delivered)`; detail JSON `{scan_date, telegram, new_today,
+triggered, coiled, coiled_not_shown, dropped_out}` — the tickers each section LISTED, taken from the same
+`digest_sections()` the message is built from (so the record cannot drift from the text), with the standing
+COILED names the 8-name roster did not print named in `coiled_not_shown`. Written after the send, outside the
+transition step (a broken transition step cannot lose it), delivered or not. **A quiet day sends nothing and
+writes nothing** — a missing row is "no digest that night", never "digest sent, unlogged". NOT a dedupe key: a
+#672 recovery re-run of the same scan sends a second message and writes a second row. A broken write is named
+by `flag_digest_sent_error` and never breaks the scan. Query: `SELECT created_at, summary FROM mi_audit_log
+WHERE event_type='flag_digest_sent' AND detail LIKE '%"CDNA"%'`.
+
+**Friday watchlist — the "Flag Bases — COILED / TIGHTENING (watch only)" section (#697 item 1a/1c, 2026-10-11).**
+`friday_watchlist._fetch_flag` reads the latest `mi_flag_candidates` scan (within 7 days) and prints up to 5
+COILED + 3 TIGHTENING (M&A-screened names are `unqualified`, so absent). **It has NO strategy gate.** It used
+to return `[]` when `should_run("flag_continuation")` was false; that retired strategy row went
+`deprecated / enabled=false` on 2026-08-02 and the section rendered EMPTY from then on (the last stored Friday
+list carrying a FLAG name is the week ending 2026-07-31 — prod `mi_weekly_watchlists`). The detector has no
+strategy row of its own (`run_flag_scan`'s own gate was removed the same week), so a watch surface of the
+detector must not read one. The tightness text is `flag_detector.board_tightness(r, compact=True)` — `r0.45
+v0.80` on a base of 6 sessions or more, the last-2-bars measure on 5 or fewer — never the raw `r1.00` (which is 1.00
+by construction on a short base; KOD, base 5d, Friday 2026-10-09: stored 1.000 / 1.000, real reading 0.63). Its
+SELECT therefore also pulls `fresh_tight_fires`, `fresh_2bar_tr_pct`, `atr14_pct`. Priority is unchanged
+(`FLAG` ranks 2nd, behind EP HIGH): when the 25-ticker cap binds, up to 8 flag names displace the lowest-priority
+ambient rows, as they did before 08-02. Tests: `tests/test_697_htf_reach_repairs.py`.
+
 ## Known limitations / open questions (CHANGE_PROCESS rule 7 — the canonical surface)
 
 Measured 2026-09-04 from raw bars over the stored candidate history (27,446 pairs, 06-29 → 09-04;
@@ -248,6 +274,34 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
   pushing on consecutive days, the lever is a re-entry cool-off (a policy, not a bug fix) — measure first.
 
 ## Change log
+- **2026-10-11 — #697 item 1: the Friday "Flag Bases" section renders again, a digest send now leaves a record, and the
+  Friday chip stops printing `r1.00` on a short base. A REACH / display change: no stage, threshold, pole window, depth,
+  ADR/ADV floor, order, entry, sizing or safeguard path moved.** Branch `wk1011/697-items-1-2`, not yet deployed.
+  **What**: (a) `friday_watchlist._fetch_flag` no longer calls `should_run("flag_continuation")` (the detector has no
+  strategy row; mirrors `run_flag_scan`'s 08-02 change) — the section had been `[]` since 08-02; (b) one `flag_digest_sent`
+  audit row per digest send (tickers per section, delivered or not); (c) the Friday chip prints
+  `flag_detector.board_tightness` instead of the raw range ratio. **Trigger**: `docs/analysis/htf_scope_2026-10-10.md`
+  §4/G7 + the #598 review's carried note; operator "Htf" 2026-10-11 pulled it from 10-17/18. **Evidence**: prod, read-only
+  (`scripts/probes/_697/q3_friday_flag.out`): `mi_strategies.flag_continuation` = `deprecated / enabled=false`; the last
+  stored Friday list with a FLAG name is the week ending 2026-07-31 (none in the 10 lists since, 08-07 → 10-09); Friday
+  2026-10-09's only board name, KOD (COILED, base 5d), is stored 1.000 / 1.000 with a last-2-bars reading of 0.63.
+  A detection-criterion change this is NOT (CHANGE_PROCESS does not apply): no value any stage reads was touched.
+  **Anticipated effect**: a non-empty "Flag Bases" section on every Friday whose latest scan holds COILED / TIGHTENING
+  names; a `flag_digest_sent` row for every digest message. **Reversion-flag**: none (restores the pre-08-02 section; adds a
+  record). **EXPECT** (baseline: section empty every Friday since 08-07; digest sends unrecorded): Friday 10-16 18:00 ET —
+  IF the latest scan on or before 10-16 holds ≥1 COILED / TIGHTENING name, `mi_weekly_watchlists` week ending 10-16 has ≥1
+  row whose `sources` contains `FLAG` and the message carries the section (FLAG ranks 2nd, behind ≤5 EP HIGH, so the 25-name
+  cap cannot cut it); a name of base ≤5 shows `last 2 bars …`, never `r1.00`. Every night a digest message goes out, one
+  `flag_digest_sent` row for that scan date whose `new_today` / `triggered` / `coiled` tickers equal the tickers the
+  message names. **UNINTENDED to watch**: up to 8 flag names displace the lowest-priority ambient (RS / parabolic) rows
+  when the cap binds, as before 08-02; the Friday message is up to 8 lines longer. **WOULD-FAIL-IF** (positive): a scan
+  date whose stored board holds ≥1 COILED or TRIGGERED row (so the digest cannot have been suppressed) has NO
+  `flag_digest_sent` row; or a Friday whose latest scan holds a COILED / TIGHTENING name has no `FLAG`-sourced row in
+  `mi_weekly_watchlists` for that week. A quiet night (no COILED, TRIGGERED or new transition) or an empty Friday board
+  is **inconclusive**, not a pass. **DONE-WHEN**: one non-quiet digest night AND one Friday with a non-empty board have
+  each been read against the above (if the 10-16 board is empty, the next Friday with a non-empty board closes it).
+  **Deploy scope**: `flag_detector.py` and `friday_watchlist.py` are NOT on `scripts/exec_loaded_modules.txt` →
+  `deploy.sh market-agent` only. Tests: `tests/test_697_htf_reach_repairs.py` (14 of 18 fail on origin/main).
 - **2026-10-04 — #598 follow-up: the M&A / deal-pin screen now covers TIGHTENING, and the stage board stops calling
   a state a setup. Closes the known limit above. No stage rule, threshold or trade path moved.**
   **What**: `flag_scan` screened only COILED + TRIGGERED, so a buyout-pinned name (price welded to the offer) read as a
