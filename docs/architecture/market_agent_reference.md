@@ -235,8 +235,10 @@ remove noise as much as possible."* Presentation only - every metric is computed
   phrase on the head's checked line (`unchanged since last week: bands HOLD · winner capture 19%`), the block goes to
   the full text. (3) REPEATED rows become one line per type and disposition. (4) UNVERIFIED is never a finding: the
   job checks the narrator's "anomalies to verify" against the record (`verify_narrative_anomalies`: names an audit
-  type with no live row, every identifier resolves in the record, no ticker from the week) - settled ones are one
-  line, the rest are MINE ("To verify (mine, Monday)" + a head count under Needs me).
+  type with no live row, every identifier resolves in the AUDIT-ERROR record, no ticker from the week) - settled
+  ones are one line, the rest are MINE ("To verify (mine, Monday)" + a head count under Needs me). Only
+  `silent_audit_error_window` may settle from the L1/L2 footprint; any other L1 invariant / L2 anomaly keeps the
+  bullet mine, and "settled" never covers an impact claim written in prose.
 - **Where the full text lives.** `mi_system_reviews.metrics.report` = `full_md` (every section uncompacted),
   `head_md` / `fold_md` (as sent), `snapshot` (what next week compares against - categorical states and event keys
   only, never a windowed count), `changes` (one `{section, shown, why}` per change-only section), `suppressed`.
@@ -244,7 +246,9 @@ remove noise as much as possible."* Presentation only - every metric is computed
 - **"Last week" is the row dated at or before `window_start`** (`get_latest_system_review(..., on_or_before=)`), not
   the newest row - an on-demand `weekly review` upserts a row dated that day. A missing or unreadable prior makes
   every change-only section PRINT (`why: "no prior"`); it never hides one.
-- **Event-keyed sections** (setup review, replay-regression) print only the week a trade closed; the early-window
+- **Event-keyed sections** (setup review, replay-regression) print only the week a trade closed - a loser or
+  post-mortem in the window, a partial-taken winner closed in it, or the live closed-trade count
+  (`snapshot.live_closed_n`) differing from last week's (no stored count: print); the early-window
   drift line is dropped once the cohort reaches the band floor (the bands own the number). A compaction that raises
   falls back to the section's full text.
 - **Adding a section:** give it a full renderer (stored) and, if it repeats, a `_<section>_message` sibling and a

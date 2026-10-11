@@ -249,25 +249,43 @@ def test_promotion_rows_print_only_when_new_or_changed():
 
 # -- 7-8. the narrative's "anomalies to verify" ---------------------------------------------------
 
+# The 10-11 bullet 1 with its L2 citation (`l2_anomalies` = 1 (`cooldowns_per_day`)) dropped: what is left
+# speaks only for the audit-error ledger and the one L1 invariant that ledger can speak to.
+CLEAN_BULLET = (
+    "`audit_errors.total` = 40, of which 38 are `ep_candidate_parse_error`. Those ran every 5 min on 10-07 "
+    "from 07:00 to 09:55 ET, each with about 139-150 of ~13.2k snapshot rows dropped (`prev_close` 0/missing), "
+    "and none have recurred. `l1_invariants` = 1 (`silent_audit_error_window`). They may be already-resolved "
+    "or designed, so check them against audit ground truth.")
+
+
 def test_narrative_anomalies_settled_by_the_record_become_a_count_and_say_why():
-    """The three stored 10-11 bullets: #1 names only ep_candidate_parse_error (38 rows, all quiet, no
-    live row), no ticker, every backticked identifier resolves in the record -> settled. #2 names no
-    audit type -> mine. #3 names stop_coverage_repair_failed but also CEG (a traded name) and a
-    `stop_order_id` nothing in the record holds -> mine. The head carries ONE count line; the fold keeps
-    #2 and #3 under a "To verify (mine)" heading, never as findings. MUTATION M1: `settled` forced True in
-    `verify_narrative_anomalies` - #2 and #3 vanished into the settled count."""
+    """The three stored 10-11 bullets. #1 names ep_candidate_parse_error (38 rows, all quiet, no live row)
+    but ALSO cites the L2 anomaly `cooldowns_per_day` - which the audit-error ledger cannot speak to - so it
+    stays MINE: 3 observations, 0 settled (the review's finding: a settled bullet must never carry an L1/L2
+    anomaly off the page). #2 names no audit type -> mine. #3 names stop_coverage_repair_failed but also CEG
+    (a traded name) and a `stop_order_id` nothing in the record holds -> mine. The positive control is the
+    same bullet 1 with the L2 citation dropped: it settles and the head says so. MUTATION M1: `settled`
+    forced True in `verify_narrative_anomalies` - #2 and #3 vanished into the settled count."""
     head, fold, meta = _render()
+    me = [l for l in meta["needs_me_lines"] if "observation" in l]
+    assert len(me) == 1 and me[0].startswith("3 observations from this week's narrative to verify Monday")
+    assert "already settled" not in me[0]
+    assert meta["needs_me"] == 2                                        # the ripe review + this one line
+    assert "⚠️ *To verify (mine" in fold
+    assert all(b[:60] in fold for b in BULLETS)                         # all three stay in front of him
+    assert "settled by the record" not in fold
+    assert "Anomalies to verify" not in fold and "UNVERIFIED" not in fold   # no unverified claim as a finding
+    assert sr._extract_anomalies(SUMMARY) == BULLETS                    # next week's 🔁 check is unchanged
+    assert not any(s["what"].startswith("narrative anomaly:") for s in meta["suppressed"])
+    # positive control: the settle path still works on a bullet the ledger CAN speak for
+    head, fold, meta = _render(summary=SUMMARY.replace(BULLETS[0], CLEAN_BULLET))
     me = [l for l in meta["needs_me_lines"] if "observation" in l]
     assert len(me) == 1 and me[0].startswith("2 observations from this week's narrative to verify Monday")
     assert "1 more already settled by the record" in me[0]
-    assert meta["needs_me"] == 2                                        # the ripe review + this one line
-    assert "⚠️ *To verify (mine" in fold
     assert BULLETS[1][:60] in fold and BULLETS[2][:60] in fold
-    assert BULLETS[0][:40] not in fold                                  # the settled bullet is not re-printed
+    assert CLEAN_BULLET[:40] not in fold                                # the settled bullet is not re-printed
     settled = [l for l in _lines(fold) if "settled by the record: ep_candidate_parse_error ×38" in l]
     assert len(settled) == 1 and "every row quiet since Wed 10-07" in settled[0]
-    assert "Anomalies to verify" not in fold and "UNVERIFIED" not in fold   # no unverified claim as a finding
-    assert sr._extract_anomalies(SUMMARY) == BULLETS                    # next week's 🔁 check is unchanged
     assert any(s["what"].startswith("narrative anomaly:") and "settled by the record" in s["rule"]
                for s in meta["suppressed"])
 
@@ -278,8 +296,10 @@ def test_a_bullet_naming_a_live_error_or_a_traded_ticker_is_never_settled():
     above, which is the positive control."""
     metrics = _metrics()
     verdicts = sr.verify_narrative_anomalies(BULLETS, metrics)
-    assert [v["settled"] for v in verdicts] == [True, False, False]
-    assert verdicts[0]["why"].startswith("ep_candidate_parse_error ×38")
+    assert [v["settled"] for v in verdicts] == [False, False, False]
+    assert "`l2_anomalies`" in verdicts[0]["why"] and "anomaly" in verdicts[0]["why"]   # the L2 citation keeps #1 mine
+    clean = sr.verify_narrative_anomalies([CLEAN_BULLET], metrics)[0]
+    assert clean["settled"] and clean["why"].startswith("ep_candidate_parse_error ×38")
     live = {"audit_errors": {"top_types": [
         {"event_type": "foo_failed", "count": 2, "disposition": "live", "rows": [
             {"disposition": "quiet", "when": "Mon 10-05 07:00 ET", "why": "it has not recurred in 6d", "summary": "s"},
@@ -303,6 +323,63 @@ def test_a_bullet_naming_a_live_error_or_a_traded_ticker_is_never_settled():
     no_time = sr.verify_narrative_anomalies(["`ep_candidate_parse_error` also hit CDT."], with_cdt)
     assert not no_time[0]["settled"]
     assert not sr.verify_narrative_anomalies(["not a list"], None)[0]["settled"]    # any parse doubt: mine
+
+
+def test_an_l1_or_l2_anomaly_in_a_bullet_keeps_it_mine_next_to_a_quiet_error_type():
+    """The review's BLOCKING finding: the narrator is told to cite the week's L1/L2 footprint, and a bullet
+    that cites a live-money breach beside a quiet audit type used to settle - the breach left the message
+    and the Needs-me count. Only `silent_audit_error_window` (an invariant whose source is the audit-error
+    window itself) may settle; any other L1/L2 key with count > 0 - named, or hidden behind a bare
+    section count - keeps the bullet mine. MUTATION M16: `_settleable_anomaly_names` admitting every
+    section (`if True:`) - the first three cases settled."""
+    quiet = "`stop_coverage_repair_failed` count 1, quiet since 10-06"
+
+    def verdict(text, anomalies):
+        m = _metrics()
+        m["anomalies"] = anomalies
+        return sr.verify_narrative_anomalies([text], m)[0]
+
+    breach = {"l1_invariants": {"count": 2, "by_key": [{"key": "open_position_without_stop", "count": 2}]}}
+    v = verdict(f"Footprint: `l1_invariants` = 2 (`open_position_without_stop`), and {quiet}.", breach)
+    assert not v["settled"] and "`l1_invariants`" in v["why"] and "anomaly" in v["why"]
+    # the breach hidden behind a bare section count (the key itself never named) is still not settled
+    assert not verdict(f"Footprint: `l1_invariants` = 2, and {quiet}.", breach)["settled"]
+    # the section count with no keys listed at all: unknown, so mine
+    assert not verdict(f"Footprint: `l1_invariants` = 2, and {quiet}.",
+                       {"l1_invariants": {"count": 2, "by_key": []}})["settled"]
+    # an L2 anomaly is not an audit-error claim either
+    l2 = {"l2_anomalies": {"count": 1, "by_key": [{"key": "cooldowns_per_day", "count": 1}]}}
+    assert not verdict(f"`l2_anomalies` = 1 (`cooldowns_per_day`); {quiet}.", l2)["settled"]
+    # an L3 drift metric is a different claim from "the error type stopped"
+    l3 = {"l3_drifts": {"count": 1, "transitions": [{"key": "theme_count_active", "p50": 1, "current": 2}]}}
+    assert not verdict(f"`theme_count_active` moved band; {quiet}.", l3)["settled"]
+    # ... and the allowlisted invariant, alone or beside a count-0 breach key, still settles
+    ok = {"l1_invariants": {"count": 1, "by_key": [{"key": "silent_audit_error_window", "count": 1},
+                                                   {"key": "open_position_without_stop", "count": 0}]}}
+    assert verdict(f"`l1_invariants` = 1 (`silent_audit_error_window`); {quiet}.", ok)["settled"]
+    # ... but the same allowlisted key beside a FIRING breach: the section count is no longer the audit
+    # window's alone, so citing the bare section is mine; citing only the allowlisted key stays settled
+    both = {"l1_invariants": {"count": 3, "by_key": [{"key": "silent_audit_error_window", "count": 1},
+                                                     {"key": "open_position_without_stop", "count": 2}]}}
+    assert not verdict(f"`l1_invariants` = 3; {quiet}.", both)["settled"]
+    assert verdict(f"`silent_audit_error_window` fired once; {quiet}.", both)["settled"]
+    # What "settled" does NOT cover: an impact claim written in prose names no identifier the lookup can
+    # test. It is documented (design doc section 4), not detected.
+    prose = verdict(f"{quiet}; the EP scan may have missed real candidates that morning.", {})
+    assert prose["settled"]
+
+
+def test_an_all_settled_narrative_block_has_its_own_header():
+    """When every ⚠️ bullet settles there is no 'To verify' heading, so the bare 'settled by the record'
+    lines used to read as part of the ✅ Working block above them. MUTATION M18: the `elif settled:` header
+    branch removed - the lines came back headerless."""
+    only = "\n".join(["⚠️ *Anomalies to verify* — UNVERIFIED; do NOT act before checking ground truth",
+                      "• " + CLEAN_BULLET])
+    block, me_line, sup = sr._anomaly_block(only, _metrics())
+    lines = _lines(block)
+    assert lines[0] == "⚠️ *Narrative warnings — all settled by the record*"
+    assert lines[1].startswith("• settled by the record: ep_candidate_parse_error ×38")
+    assert me_line is None and len(sup) == 1
 
 
 # -- 9. drift and docs drift re-rendered from metrics ---------------------------------------------
@@ -406,28 +483,70 @@ def test_gaps_print_new_rows_only_and_count_the_carried():
 
 # -- 14. setup review and replay-regression are event-keyed ----------------------------------------
 
+def _change(meta: dict, section: str) -> dict:
+    return next(c for c in meta["changes"] if c["section"] == section)
+
+
 def test_replay_and_setup_rows_print_only_when_a_trade_closed_this_week():
     """Both are 90-day / all-time views over the closed-trade cohort: they only change when a trade
-    closes. No loser and no post-mortem this week -> neither is in the message (both are in the full
-    text); a closed trade brings both back, with the replay's calibration card and caveat cut.
-    MUTATION M3 / M7: the closed-this-week key forced True - both printed on the empty week."""
+    closes. The key is NOT just "an alerted-this-week trade lost / has a post-mortem" - those lists are
+    keyed on the ALERT date and miss a trade alerted earlier and held across the boundary that closes now
+    (the 10-11 open book is KOD 11d and PENG 2d). So a close is any of: a loser or post-mortem in the
+    window, a partial-taken winner closed in the window, or the live closed-trade count (all-time, stored
+    in last week's snapshot) having moved. Nothing to compare against -> PRINT, never hide.
+    MUTATION M3 / M7: the alert-window key forced True - both printed on the quiet week; M17: the count
+    comparison dropped - the held-trade case stayed silent."""
     quiet = {"loser_breakdown": {}, "postmortem_best": None, "postmortem_worst": None}
-    head, fold, meta = _render(metrics_update=quiet)
+    same = {"band": BAND_SNAP, "theme_queue_keys": [], "live_closed_n": 34}
+    head, fold, meta = _render(_prior(snapshot=same), metrics_update=quiet)     # 34 last week, 34 now
     assert "Setup review" not in fold and "Replay-regression" not in fold
     assert "Setup review" in meta["full_md"] and "Replay-regression" in meta["full_md"]
-    assert next(c for c in meta["changes"] if c["section"] == "closed_this_week")["shown"] is False
+    c = _change(meta, "closed_this_week")
+    assert c["shown"] is False and "no close: 34 live closed trades" in c["why"]
     head, fold, meta = _render()                                         # CEG closed this week
     assert "🧪 *Setup review — entry/stop geometry (90d)* — a trade closed this week" in fold
     assert "Replay-regression" in fold and "live (n=34)" in fold and "rule eras:" in fold
     assert "calibration (" not in fold and "ⓘ" not in fold
+    assert "eras: era_" not in fold and "eras: era_" in meta["full_md"]   # bare era letters need the legend; full text keeps them
     assert sr._replay_message_lines(["", "*🔁 Replay-regression* (live R-dist vs c)", "  live (n=5): x",
                                      "  rule eras: y", "  calibration (c): z", "  ⓘ caveat"]) \
         == ["", "*🔁 Replay-regression* (live R-dist vs c)", "  live (n=5): x", "  rule eras: y"]
     # the audit snapshot the replay writes is not a rendering choice: it still runs on the quiet week
     mocks: dict = {}
-    _render(metrics_update=quiet, mocks=mocks)
+    _render(_prior(snapshot=same), metrics_update=quiet, mocks=mocks)
     assert mocks["audit"].await_count == 1
     assert mocks["audit"].await_args.args[0] == "replay_regression_snapshot"
+    # THE review's case: a trade alerted before the window and held across it closes now - no loser, no
+    # post-mortem, no partial-taken winner, but the live closed-trade count moved 33 -> 34
+    held = {"band": BAND_SNAP, "theme_queue_keys": [], "live_closed_n": 33}
+    head, fold, meta = _render(_prior(snapshot=held), metrics_update=quiet)
+    assert "🧪 *Setup review — entry/stop geometry (90d)* — a trade closed this week" in fold
+    assert "Replay-regression" in fold and "live (n=34)" in fold
+    c = _change(meta, "closed_this_week")
+    assert c["shown"] is True and "moved 33 -> 34" in c["why"]
+    assert meta["full_md"].count("live (n=34)") == 1                     # printed once, not twice
+    # a partial-taken winner that closed in the window is a close too
+    mfe = copy.deepcopy(_metrics()["mfe_capture"])
+    mfe["window_closes"] = [{"ticker": "KOD", "account_mode": "live", "capture_pct": 40, "kept": 20, "mfe": 50}]
+    head, fold, meta = _render(_prior(snapshot=same), metrics_update={**quiet, "mfe_capture": mfe})
+    assert "Setup review" in fold and "Replay-regression" in fold
+    # nothing stored from last week (the first run after this ships) -> print, but claim no close
+    head, fold, meta = _render(metrics_update=quiet)
+    assert "Setup review" in fold and "Replay-regression" in fold
+    assert "a trade closed this week" not in fold
+    c = _change(meta, "closed_this_week")
+    assert c["shown"] is True and "no stored closed-trade count" in c["why"]
+    # the count unreadable (the replay run failed) -> print, and the failure line stays visible
+    from contextlib import ExitStack
+    with ExitStack() as stack:
+        stack.enter_context(patch("agents.market_intelligence.replay_regression.run_replay_regression",
+                                  AsyncMock(return_value={"lines": ["", "_replay-regression unavailable: x_"],
+                                                          "error": "x"})))
+        head, fold, meta = _render(_prior(snapshot=same), metrics_update=quiet)
+    assert "replay-regression unavailable: x" in fold and "Setup review" in fold
+    c = _change(meta, "closed_this_week")
+    assert c["shown"] is True and "unavailable" in c["why"]
+    assert "live_closed_n" not in meta["snapshot"]                       # no number to store, none invented
 
 
 # -- 15. judge roll-up and the losers' flags ------------------------------------------------------
@@ -467,9 +586,15 @@ def test_theme_and_spend_sections_are_compact():
     assert bl[1].startswith("This week (n=6): engine and judge agree on 4 of 6 (67%) — both saw a theme 2")
     assert "judge only 1 · engine only 1 · neither 2" in bl[1]
     assert bl[2].startswith("Last 30 days to Oct 11 (n=14): engine and judge agree on 11 of 14 (79%)")
-    assert "Judge saw a theme the engine did not — 2 in the last 30 days, both new to this list:" in block
+    # no earlier review to compare: every name lists and NO novelty is claimed (AKAM 09-25 also sat in last
+    # week's 30-day window, so "new to this list" would have been unfounded)
+    assert "Judge saw a theme the engine did not — 2 in the last 30 days (no earlier review to compare):" in block
+    assert "new to this list" not in block
     assert "• AKAM 09-25 — no theme row at all" in block and "• AAOI 10-09 — theme known, excluded (stage Nascent)" in block
     assert bl[-1] == ("_Counts 14 of 22 judge-graded alerts; definitions and the 8 left out: full text._")
+    # a snapshot that holds an EMPTY queue is something to compare against: both are genuinely new
+    head, fold, meta = _render(_prior(snapshot={"band": BAND_SNAP, "theme_queue_keys": []}))
+    assert "2 in the last 30 days, both new to this list:" in fold
     # with last week's queue known, only the NEW name lists and the carried one is counted
     snap = {"band": BAND_SNAP, "theme_queue_keys": ["AAOI|2026-10-09"]}
     head, fold, meta = _render(_prior(snapshot=snap))
@@ -510,7 +635,8 @@ def test_report_meta_persists_snapshot_full_and_sent_text():
     report = inserted[0]["metrics"]["report"]
     assert report["snapshot"]["band"] == BAND_SNAP
     assert sorted(report["snapshot"]["theme_queue_keys"]) == ["AAOI|2026-10-09", "AKAM|2026-09-25"]
-    assert set(report["snapshot"]) == {"band", "theme_queue_keys"}
+    assert set(report["snapshot"]) == {"band", "theme_queue_keys", "live_closed_n"}
+    assert report["snapshot"]["live_closed_n"] == 34                    # the all-time live closed-trade count
     assert report["full_md"].count("has not recurred") >= 38 and "ep_candidate_parse_error ×38" in report["head_md"] + report["fold_md"]
     assert len(report["full_md"]) > len(report["fold_md"]) > 0 and report["head_md"].startswith("🧠 *Weekly review")
     assert report["fold_chars"] == len(report["fold_md"])
@@ -688,3 +814,49 @@ def test_the_preview_probes_read_only_pool_refuses_anything_but_a_read():
             await ro.fetchrow("DELETE FROM t RETURNING 1")
         return conn.ran
     assert asyncio.run(go()) == ["SELECT 1"]
+
+
+def test_the_preview_probes_pool_guard_reaches_modules_that_bound_get_pool_by_name():
+    """`cost_board` and `missed_outcomes` do `from ...db import get_pool` at import, so patching `db.get_pool`
+    alone left them on the real, unguarded pool. The guard now patches every loaded module whose `get_pool`
+    IS the original (derived from `sys.modules`) and restores them when the stack closes. MUTATION M19:
+    `_patch_name_bound_pools` made a no-op - the two modules kept the real function."""
+    from contextlib import ExitStack
+    import agents.market_intelligence.cost_board as cost_board
+    import agents.market_intelligence.missed_outcomes as missed_outcomes
+    from scripts.probes._700_review_noise import preview as pv
+
+    original = dbmod.get_pool
+    assert cost_board.get_pool is original and missed_outcomes.get_pool is original   # the premise
+    sentinel = object()
+    with ExitStack() as stack:
+        patched = pv._patch_name_bound_pools(stack, original, sentinel)
+        assert cost_board.get_pool is sentinel and missed_outcomes.get_pool is sentinel
+        assert "agents.market_intelligence.cost_board" in patched
+        assert "agents.market_intelligence.missed_outcomes" in patched
+    assert cost_board.get_pool is original and missed_outcomes.get_pool is original    # and put back
+
+
+def test_spend_near_the_ceiling_is_flagged_on_the_checked_line():
+    """Cutting the cost-envelope block from the message also cut its 🟠 flag at 80% of the budget, so spend
+    nearing the ceiling read like spend far below it. The checked phrase now carries the percentage and the
+    words once it is at 80% or more; an over-budget month is the head's Needs-you line instead.
+    MUTATION M21: `near` forced False - the 80% case lost its flag."""
+    from contextlib import ExitStack
+
+    def run(cost, budget, over):
+        with ExitStack() as stack:
+            h.patch_render_inputs(stack, FX["render_inputs"])
+            stack.enter_context(patch.object(sr, "_spend_envelope",
+                                             AsyncMock(return_value=("t", cost, budget, over))))
+            return asyncio.run(sr._assemble_report(_metrics(), SUMMARY, WS, TODAY,
+                                                   prior=copy.deepcopy(FX["prior"])))
+
+    head, _fold, _meta = run(120.0, 150.0, False)
+    assert "spend: $120.00 of $150 (80%, near the ceiling)" in head
+    head, _fold, _meta = run(119.0, 150.0, False)
+    assert "spend: $119.00 of $150 ·" in head and "near the ceiling" not in head
+    head, _fold, meta = run(160.0, 150.0, True)                          # over: the head's action line owns it
+    assert "near the ceiling" not in head and "LLM spend $160.00 is OVER the $150 monthly budget" in head
+    head, _fold, _meta = run(10.0, 0.0, False)
+    assert "spend: $10.00 (no budget set)" in head

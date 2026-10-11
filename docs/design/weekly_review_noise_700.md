@@ -6,7 +6,8 @@ in `mi_system_reviews` exactly as today; only what the Telegram message renders 
 
 **The answer:** the 10-11 fold (12,257 chars, 38 identical "quiet" fragments, three "anomalies" that
 were all false alarms) renders under this spec at **~5,450 chars steady state (45%) / ~5,800 on the
-first run (48%)** with every surface still named on the head's one "Also checked" line, and nothing
+first run (48%) by hand; the built renderer measures 6,315 chars with last week's row to compare (51%)
+and 6,968 with none (57%)** - the review-fix round (§10) put the L2 bullet back in front of him with every surface still named on the head's one "Also checked" line, and nothing
 dropped from the data. Hand render: §8 and `scripts/probes/_700_review_noise/preview_1011_by_hand.md`.
 
 His ask (2026-10-11): *"given the sunday review wrote so much text and none of it is actionable, is
@@ -77,15 +78,15 @@ Order = today's fold order. "Max" = lines in the message. `full_md` always gets 
 | 2 | 🔴 Silent failures (`_format_silent_failures_section`) | COMPACT (dedupe, §5) | header `⚪ *Errors logged (7d)* — 40 rows, 0 open` (🔴 only when open > 0). ONE line per type, max 5 types (top5 as today): `• <type> ×<count> — <disposition>: <first–last when>, none since (<N>d) · <cause stem>`. Live rows: one line each, as today. |
 | 3 | 📈 Strategy promotion (`_format_promotion_section`) | CHANGE-ONLY per row | header always `📈 *Strategy promotion* — none ready` + ` · changed since last week:` when any row prints. A row prints when it is NEW on the ladder, or its `eligible` / `current_phase` / `next_phase` flipped, or its first blocking reason's text changed **ignoring digits** (`re.sub(r"\d+", "", reason)`), or it became eligible (head, as today). Unchanged rows → full_md only; phrase `promotions: 0 ready, 5 accruing, 1 held by ruling` as today. Prior source: `prior.metrics.strategy_promotions.checks`. |
 | 4 | LLM narrative — ✅ Working | KEEP | verbatim, as today (prompt caps it at 3 bullets). |
-| 4 | LLM — ⚠️ Anomalies to verify | VERIFY → head count + *To verify (mine)* block (§4) | head: `• <k> observations from this week's narrative to verify Monday, <s> more already settled by the record — ⚠️ block below` (one Needs-me line; omitted when k = 0 and then only the settled line prints in the fold). Fold: `⚠️ *To verify (mine, Monday)* — observations from the narrative, not findings` + the k unsettled bullets verbatim + one line per settled bullet: `• settled by the record: <type> ×<n> — every row <disposition> since <when> (errors above)`. |
+| 4 | LLM — ⚠️ Anomalies to verify | VERIFY → head count + *To verify (mine)* block (§4) | head: `• <k> observations from this week's narrative to verify Monday, <s> more already settled by the record — ⚠️ block below` (one Needs-me line; omitted when k = 0 and then only the settled line prints in the fold). Fold: `⚠️ *To verify (mine, Monday)* — observations from the narrative, not findings` + the k unsettled bullets verbatim + one line per settled bullet: `• settled by the record: <type> ×<n> — every row <disposition> since <when> (errors above)`. When EVERY bullet settles there is no 'To verify' heading, so the block opens with `⚠️ *Narrative warnings — all settled by the record*` (§10). |
 | 4 | LLM — 🔁 Last week | KEEP | verbatim (one sentence). |
 | 4 | LLM — 📉 Drift | CUT the LLM's; re-render from `metrics.anomalies.l3_drifts` | `📉 *Drift — band moves this week*` then ONE line per metric key (latest transition first in list order): `• <key in words>: band <from>→<to> — <current> vs a typical <p50> (<n> moves this week)`; `recent_change_hint` appends ` — may be intentional (<hint>)`. Key words: `cooldowns_per_day` → "cooldowns per day", `theme_count_active` → "active theme count", else `key.replace("_", " ")`. Omitted when count = 0. |
 | 4 | LLM — 📄 Docs drift | CUT the LLM's; one line from `metrics.drift_check` | `📄 Docs: <n> dated claim(s) nothing can verify — <where> (mine to re-check)`; lists up to 3 `where`, then `+N more`. Omitted when `unverified_n` = 0. |
 | 4 | LLM — any other header | KEEP verbatim | fail-open: an unrecognised block is appended to the fold unchanged (never dropped). |
-| 5 | 🧪 Setup review (`_setup_performance_review`) | CHANGE-ONLY (event key) + COMPACT | prints when a trade CLOSED this week (`loser_breakdown.losers` non-empty OR `postmortem_best/worst` non-empty) OR an ask exists (asks still go to the head). Message keeps: header (+ ` — a trade closed this week`), the row line, its bits line, the `eras:` line, the `⚠ peaks unreadable` line. CUT from message: `_Runs win or lose…_`, every "(… — not enough to ask …)" / "(n<10 — monitoring only…)" parenthetical, the `EXIT_ERA_KEY` legend. ⚠ never key on `n` — the 90-day window slides every week. |
+| 5 | 🧪 Setup review (`_setup_performance_review`) | CHANGE-ONLY (event key) + COMPACT | prints when a trade CLOSED this week OR an ask exists (asks still go to the head). "Closed" is any of: a loser or post-mortem in the window, a partial-taken winner closed in the window (`mfe_capture.window_closes`), or the live closed-trade count (`snapshot.live_closed_n`, all-time) differing from last week's - the first two are keyed on the ALERT date and miss a trade alerted earlier and held across the boundary (§10). No stored count to compare -> print (header without the 'a trade closed' claim). Message keeps: header (+ ` — a trade closed this week` only when a close is established), the row line, its bits line, the `⚠ peaks unreadable` line. CUT from message: `_Runs win or lose…_`, every "(… — not enough to ask …)" / "(n<10 — monitoring only…)" parenthetical, the `EXIT_ERA_KEY` legend, and the `eras: era_a n=..` line (bare era letters mean nothing without the legend; the replay `rule eras:` sentence says it in words). ⚠ never key on a windowed `n` - the 90-day window slides every week. |
 | 6 | 🎚️ Kill/scale bands (`_band_section`) | CHANGE-ONLY | prints when `band` ≠ prior, or `override_active` ≠ prior, or `n_trades ≥ _SAMPLE_FLOOR` flipped, or a band other than HOLD (head, as today). Prior source: `prior.metrics.report.snapshot.band` (absent → print). Phrase `bands: HOLD` → *unchanged* group when suppressed. Block text unchanged when it prints. |
 | 7 | 📉 Early-window drift (`_early_window_drift_review`) | CUT once the floor is reached | its own purpose is pre-floor visibility; at `n ≥ _SAMPLE_FLOOR` (20) the bands own the number → full_md only. Below the floor: as today. |
-| 7 | 🔁 Replay-regression (`run_replay_regression` lines) | CHANGE-ONLY (event key) + COMPACT | prints when a trade closed this week (same key as #5). Message keeps the header, the `live (n=…)` line and the `rule eras:` line; CUT the `calibration (…)` line and the `ⓘ` caveat (full_md). The `suppressed` record and the audit snapshot write are untouched. |
+| 7 | 🔁 Replay-regression (`run_replay_regression` lines) | CHANGE-ONLY (event key) + COMPACT | prints when a trade closed this week (same key as #5; the run is hoisted ahead of #5 because its fingerprint `n` is half of that key, the text still lands here). Message keeps the header, the `live (n=…)` line and the `rule eras:` line; CUT the `calibration (…)` line and the `ⓘ` caveat (full_md). The `suppressed` record and the audit snapshot write are untouched. |
 | 8 | ❌ Losers post-mortem (`_format_loser_section`) | KEEP + COMPACT | header + one line per loser (max 10 as today) with flags in WORDS: `the 5-min ORB would have blocked it (<orb5_skip_reason after "setup:stop_too_wide: ">)` / `5-min ORB stop would sit at $X` / `stopped in Nm` / `second attempt, compound loss` / `filled $X past the stop` / `earnings backstop fired` / `catalyst grade vs prose mismatch`. CUT: the 2-line 5m explainer, the legend line, the aggregate line when `n_losers < 5` (at ≥ 5 keep it, `_agg` percentages as today). |
 | 8 | 🎯 MFE capture (`_format_mfe_capture_section`) | CHANGE-ONLY | prints when `(n, capture_pct, len(era_split.current))` ≠ prior's or `window_closes` non-empty. Prior source: `prior.metrics.mfe_capture`. Phrase `winner capture 19%` → *unchanged* group when suppressed. |
 | 8 | ⚖️ Holistic judge (`_format_judge_section`) | COMPACT to 1 line, KEEP | `⚖️ *Holistic judge:* graded <judged> of <total> alerts — <promotes> up, <demotes> down, <holds> held · <total-judged> fell back to our score · fire axes seen on <fire_seen>, none on <no_fire>`. CUT the code block and the "Per-delta review" pointer. n = 0 → as today. |
@@ -94,8 +95,8 @@ Order = today's fold order. "Max" = lines in the message. `full_md` always gets 
 | 9 | 🔍 by-skip-reason table | MOVE (full_md) | counts with no conclusion. |
 | 10 | 🪙 Crypto RS (`_format_crypto_section`) | CHANGE-ONLY + COMPACT | prints when `verdict` ≠ `prior.metrics.crypto.verdict` (or ready-to-flip → head, as today): `🪙 *Crypto RS — <LIVE/shadow>*: <verdict words> (last week: <prior verdict words>) · <attempts>/7 ingests, <errors> errors · <universe> coins, <wl> watchlist <marker>` + the pre-arm clause when > 0. 2 lines max. Phrase as today → *unchanged* group when suppressed. |
 | 11 | 🔍 Judge 2nd-opinion (`_judge_divergence_section`) | KEEP | one line, n > 0 only, as today. |
-| 12 | 🧩 Theme read #486 (`_format_theme_agreement`) | COMPACT, KEEP | header; ONE line per window: `This week (n=6): engine and judge agree on 4 of 6 (67%) — both saw a theme 2 · judge only 1 · engine only 1 · neither 2`; queue line `Judge saw a theme the engine did not — <k> in <basis>, <new> new to this list:` then NEW queue entries only (key `TICKER\|date` vs `prior.metrics.report.snapshot.theme_queue_keys`; absent → all), carried ones counted; footer → `_Counts <n> of <graded> judge-graded alerts; definitions and the <excluded> left out: full text._`. ≤ 7 lines + queue. |
-| 13 | 💵 Cost envelope MTD (`_spend_envelope`) | CUT from message | the head phrase `spend: $X of $150` already carries it; over-budget → head as today. Block → full_md. |
+| 12 | 🧩 Theme read #486 (`_format_theme_agreement`) | COMPACT, KEEP | header; ONE line per window: `This week (n=6): engine and judge agree on 4 of 6 (67%) — both saw a theme 2 · judge only 1 · engine only 1 · neither 2`; queue line `Judge saw a theme the engine did not — <k> in <basis>, <new> new to this list:` then NEW queue entries only (key `TICKER\|date` vs `prior.metrics.report.snapshot.theme_queue_keys`; absent → all listed with NO novelty claim: `— <k> in <basis> (no earlier review to compare):`), carried ones counted; footer → `_Counts <n> of <graded> judge-graded alerts; definitions and the <excluded> left out: full text._`. ≤ 7 lines + queue. |
+| 13 | 💵 Cost envelope MTD (`_spend_envelope`) | CUT from message | the head phrase `spend: $X of $150` already carries it; over-budget → head as today; at ≥ 80% of the budget the phrase also says `(NN%, near the ceiling)` (the block's 🟠 flag moved there). Block → full_md. |
 | 14 | 💸 LLM spend vs P&L #313 (`_format_spend_vs_pnl`) | COMPACT, KEEP | 4 lines: header; `LLM spend $X across N calls · top: a $ · b $ · c $` (top 3); `Judge-named callers $X (Y% of spend): <top 3 judge callers>`; one line per book as today. CUT the footer and the `+N other callers` line (full_md). |
 | — | 🧭 Source-gap finder | OUT OF SCOPE | a separate 08:45 ET job and message (`source_gap_finder.py`, scheduler ~7478), pasted into the baseline by hand. Not part of `run_weekly_review`. |
 
@@ -117,9 +118,15 @@ next week's 🔁 check is unchanged.
    named type is in `audit_errors.top_types` with zero rows whose `disposition == "live"`
    (a type not in `top_types` at all → not settled: the record does not hold it);
 2. every other backticked identifier in the bullet resolves to one of: a key/path under
-   `audit_errors.*` or `anomalies.*` (incl. the L1/L2 `by_key` keys — a footprint reference the
-   prompt asks for, which already paged during the week), OR a token that appears in the
-   `summary`/`why`/`detail` text of those dispositioned rows (e.g. `prev_close`). A backticked
+   `audit_errors.*`, OR a token that appears in the `summary`/`why`/`detail` text of those
+   dispositioned rows (e.g. `prev_close`), OR - from `anomalies.*` - ONLY `silent_audit_error_window`
+   (the L1 invariant that fires when an `*_error` row lands in the audit window, so the ledger IS its
+   record) and the L1/L2 section names (`l1_invariants`, `l2_anomalies`) while the section holds
+   nothing else. Any other L1 invariant or L2 anomaly with count > 0 (a live position with no stop, a
+   cooldown spike), a section count with no keys listed, and every L3 drift metric keep the bullet
+   MINE (§10: the narrator's prompt tells it to cite the L1/L2 footprint, and an earlier draft that
+   let those names resolve could settle a bullet that carried a live-money breach out of the
+   message). A backticked
    number, price, dollar amount, percentage or date (after stripping backticks it matches
    `^[-+$\d.,:%/]+$`) is NOT an identifier and is ignored; an identifier that resolves to nothing
    (10-11 bullet 3's `stop_order_id`) blocks settling;
@@ -130,15 +137,21 @@ next week's 🔁 check is unchanged.
    directly follows a `HH:MM` time is a zone, never a ticker (`09:55 ET`; ET is a real ticker that
    can sit in a churn row any week).
 
-Anything else, any parse doubt, any exception → **not settled** (needs-me). **Run, not reasoned**
-(`scripts/probes/_700_review_noise/check_settle_rule.py` over the stored rows): 10-11 → bullet 1
-names only `ep_candidate_parse_error` (0 live rows), no ticker → settles; bullet 2 names no type →
-not settled; bullet 3 names `stop_coverage_repair_failed` (0 live) but CEG is in the week's ticker
-set (losers) and `stop_order_id` resolves to nothing → not settled. 10-04 → bullet 1 names
+Anything else, any parse doubt, any exception → **not settled** (needs-me). **"Settled" means the
+named error TYPE is no longer happening - it does not cover an impact claim written in prose** ("...the
+EP scan may have missed real candidates that morning" names no identifier a lookup can test); that is
+documented here, not detected. **Run, not reasoned**
+(`scripts/probes/_700_review_noise/check_settle_rule.py` calls the real `verify_narrative_anomalies`
+over the stored rows): 10-11 → bullet 1 names `ep_candidate_parse_error` (0 live rows) but ALSO cites
+`l2_anomalies` = 1 (`cooldowns_per_day`), an L2 anomaly the ledger cannot speak to → **not settled**
+(the first draft settled it; the review-fix round makes 10-11 read 3 observations, 0 settled); bullet 2
+names no type → not settled; bullet 3 names `stop_coverage_repair_failed` (0 live) but CEG is in the
+week's ticker set (losers) and `stop_order_id` resolves to nothing → not settled. 10-04 → bullet 1 names
 `theme_parent_pass_error`, `theme_synthesis_error`, `assignment_error`, all three present in that
 week's `top_types` by exactly those names with 0 live rows, no ticker → settles; bullets 2 and 3
-name no type (3 also names TJGC, a top-winner ticker) → not settled. One settles each week; that
-matches what I found by hand on both days.
+name no type (3 also names TJGC, a top-winner ticker) → not settled. 10-04 settles one bullet; 10-11
+settles none, because its only candidate also cites an L2 anomaly. The settle path stays tested on a
+constructed bullet (`CLEAN_BULLET`, the 10-11 bullet 1 without its L2 citation).
 
 Rendering: §3 row 4. The settled ones are also appended to `report.suppressed` as
 `{"what": "narrative anomaly: <first 60 chars>", "rule": "settled by the record: <why>"}`.
@@ -396,12 +409,14 @@ suite (`tests/test_weekly_review_report_layout.py`, `tests/test_weekly_review_ht
    45) absent from the fold, present in `full_md`. RED.
 7. `test_narrative_anomalies_settled_by_the_record_become_a_count_and_say_why` — the three stored
    10-11 bullets verbatim + the 10-11 `audit_errors` (zero live) + losers CEG → needs_me has ONE
-   line `2 observations … 1 more already settled`; fold has `⚠️ *To verify (mine` with bullets 2
-   and 3 and a `settled by the record: ep_candidate_parse_error ×38` line, and NOT bullet 1's text;
-   `review["suggestions"]` still has all 3; suppressed carries the settled one. RED.
+   line `3 observations …` (as built: bullet 1 cites an L2 anomaly, §4/§10); fold has `⚠️ *To verify (mine`
+   with all three; the positive control is `CLEAN_BULLET` → `2 observations … 1 more already settled`
+   and a `settled by the record: ep_candidate_parse_error ×38` line; `review["suggestions"]` still has
+   all 3. RED.
 8. `test_a_bullet_naming_a_live_error_or_a_traded_ticker_is_never_settled` — the direction guard:
    bullet 3 (quiet type + CEG) not settled; a bullet naming a type with one live row not settled;
-   a bullet naming a type absent from `top_types` not settled. GREEN today by vacuity; RED against
+   a bullet naming a type absent from `top_types` not settled; (§10) an L1 breach beside a quiet type,
+   a bare `l1_invariants` count, an L2 key and an L3 key are never settled. GREEN today by vacuity; RED against
    `settled = True`. Keep it beside 7.
 9. `test_drift_and_docs_drift_are_rerendered_in_plain_words_from_metrics` — the 10-11
    `anomalies.l3_drifts` (6 transitions, 2 keys) + the LLM's own `📉 *Drift:*` lines → fold has
@@ -418,16 +433,19 @@ suite (`tests/test_weekly_review_report_layout.py`, `tests/test_weekly_review_ht
 13. `test_gaps_print_new_rows_only_and_count_the_carried` — 10-11 gaps vs 10-04 gaps → table has
     EROC and VST only; header `2 new this week, 6 carried from last week`; 0 new → header only. RED.
 14. `test_replay_and_setup_rows_print_only_when_a_trade_closed_this_week` — losers empty +
-    postmortems None → neither in fold, both in full_md; losers [CEG] → both print; replay message
-    lacks `calibration (` and `ⓘ`. RED.
+    postmortems None + a stored `live_closed_n` equal to now → neither in fold, both in full_md; losers
+    [CEG] → both print; stored 33 vs now 34 (a held trade closed) → both print; a partial-taken winner
+    in `window_closes` → both print; no stored count or an unreadable replay → both print without the
+    'a trade closed' claim; replay message lacks `calibration (` and `ⓘ`; no `eras: era_` in the fold. RED.
 15. `test_judge_rollup_is_one_line_and_losers_flags_are_words` — `⚖️ *Holistic judge:* graded 10 of
     10 alerts — 0 up, 4 down, 6 held`; loser line contains `the 5-min ORB would have blocked it
     (range 5.7% > 1.5x ATR)` and no `⛔`/`Legend`. RED.
 16. `test_theme_and_spend_sections_are_compact` — #486 ≤ 7 lines + queue, footer is the one-line
-    pointer, queue marks `both new to this list` with no prior and lists only new keys with a prior;
+    pointer, no prior → every name lists with `(no earlier review to compare)` and no novelty claim,
+    an empty stored queue → `both new to this list`, a stored queue → only new keys list;
     #313 is 4 lines with the top-3 inline and no footer. RED.
 17. `test_report_meta_persists_snapshot_full_and_sent_text` — the insert payload has
-    `report.snapshot == {"band": {...}, "theme_queue_keys": [...]}`, `full_md`, `head_md`,
+    `report.snapshot == {"band": {...}, "theme_queue_keys": [...], "live_closed_n": 34}`, `full_md`, `head_md`,
     `fold_md`, `changes`; `suppressed` as before. RED.
 18. `test_the_1011_fixture_renders_under_the_budget` — fixture
     `tests/fixtures/weekly_review_1011.json` (the stored 10-11 row trimmed to the keys the renderer
@@ -470,7 +488,11 @@ Acceptance for the card: `--date 2026-10-11` after deploy → `fold_chars` withi
   12,257; 7,883 the week before) — the band block and the #486 queue print once; no `quiet: it
   has not recurred` fragment appears more than once per error type; the narrative's ⚠️ bullets
   appear only under `To verify (mine` with a head count; the 10-18 row carries
-  `report.snapshot/full_md/fold_md/changes`; `suggestions` shape unchanged.
+  `report.snapshot/full_md/fold_md/changes` (the snapshot now also holds `live_closed_n`);
+  `suggestions` shape unchanged. On THAT first run the prior row has no `live_closed_n`, so the setup
+  review and replay-regression print once (without the 'a trade closed' claim) and the #486 queue lists
+  every name with `(no earlier review to compare)`, exactly like the band block; from 10-25 they print
+  only when the live closed-trade count moves.
 - **DONE-WHEN:** the 10-18 message matches EXPECT AND the 10-25 message shows the steady state
   (unchanged bands/winner capture absent from the fold, present on the checked line; fold ≤ 6,500).
 - **WOULD-FAIL-IF:** a section whose inputs changed is missing (worked example: crypto's verdict
@@ -482,3 +504,22 @@ Acceptance for the card: `--date 2026-10-11` after deploy → `fold_chars` withi
   file as its own line only if he asks after seeing 10-18.
 - The source-gap finder's own message (08:45 ET job) — a separate noise pass if he wants one.
 - Any change to `_SYSTEM_PROMPT`, the LLM model or ceilings.
+
+---
+
+## 10. Review-fix round (2026-10-11, branch `wk1011/700-build-fix`)
+
+Seven findings from the build review, all applied (none contradicts his rule: informative stays, noise
+goes, and an unverified claim is never printed as a finding).
+
+| finding | change | result on the real 10-11 content |
+|---|---|---|
+| BLOCKING: an L1/L2 name settled a bullet | `_settleable_anomaly_names`: only `silent_audit_error_window` (+ the section names while the section holds nothing else) may resolve from `anomalies.*`; other L1/L2 keys with count > 0, a section count with no keys, and L3 metrics keep the bullet mine. Outcome (b) of the review, implemented as written. | Bullet 1 ALSO cites the L2 `cooldowns_per_day`, so it is mine too: 3 observations, 0 settled (the review expected 10-11 unchanged under (b); it is not). Fold 6,315 chars, still under the 6,500 budget. |
+| BLOCKING: "a trade closed" ignored held trades | the key is now any of: loser / post-mortem in the window, a partial-taken winner closed in the window, or `snapshot.live_closed_n` differing from last week's. Replay-regression runs ahead of the setup review so its fingerprint `n` is known. No stored count → print. | the held KOD (11d) / PENG (2d) closing next week brings back the setup review and the live expectancy / win rate. |
+| minor: first-run theme novelty | no prior → `— N in the last 30 days (no earlier review to compare):`, no 'new to this list' claim. | |
+| minor: bare era letters | the `eras: era_a n=..` line leaves the message (full text keeps it). | |
+| minor: headerless settled lines | all-settled block opens with `⚠️ *Narrative warnings — all settled by the record*`. | |
+| minor: lost 🟠 spend flag | `(NN%, near the ceiling)` on the checked phrase at ≥ 80%. | |
+| minor: probe pool guard | `_patch_name_bound_pools` patches every loaded module whose `get_pool` is the original (cost_board, missed_outcomes), derived from `sys.modules`. | still a backstop, not a proof: a connection obtained some other way is not covered. |
+
+Mutation sweep: M1..M24, every one killed (M16-M24 are this round's).

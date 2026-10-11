@@ -1,12 +1,17 @@
-"""#700 — run the §4 settle rule's FIRST condition over the stored 10-11 and 10-04 bullets: does every
-audit event type an anomaly bullet names exist in that week's `audit_errors.top_types` with zero live
-rows? Also lists the promotion ladder ids both weeks (for the §8 'only magna53_smallcap is new' line).
-Read-only over the local capture."""
+"""#700 — run the §4 settle rule over the stored 10-11 and 10-04 bullets: first its FIRST condition (does
+every audit event type a bullet names exist in that week's `audit_errors.top_types` with zero live rows?),
+then the REAL `verify_narrative_anomalies` (all three conditions + the L1/L2 guard of the review-fix round)
+with its verdict and reason. Also lists the promotion ladder ids both weeks (for the §8 'only
+magna53_smallcap is new' line). Read-only over the local capture."""
 import json
 import re
+import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parents[2]))
+from agents.market_intelligence.system_review import verify_narrative_anomalies  # noqa: E402
+
 rows = [json.loads(l) for l in (HERE / "q1_reviews.out").read_text(encoding="utf-8").splitlines()
         if l.strip().startswith("{")]
 by = {r["review_date"]: r for r in rows}
@@ -37,4 +42,6 @@ for d in ("2026-10-11", "2026-10-04"):
         tick = sorted(t for t in TICKER_RE.findall(b) if t in tickers and t not in NOT_TICKERS)
         print(f"  bullet {i}: names {named} -> cond1 {'PASS' if ok else 'FAIL'}; "
               f"tickers in week's set: {tick}; raw caps tokens: {sorted(set(TICKER_RE.findall(b)))}")
+    for i, v in enumerate(verify_narrative_anomalies(by[d]["suggestions"], m), 1):
+        print(f"  REAL rule, bullet {i}: {'SETTLED' if v['settled'] else 'mine'} - {v['why']}")
     print(f"  promotions ids: {[c['strategy_id'] for c in m['strategy_promotions']['checks']]}")

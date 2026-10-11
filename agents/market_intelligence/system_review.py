@@ -266,9 +266,14 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
     header = (f"🧠 *Weekly review — {window_start.strftime('%b')} {window_start.day}–{today.day}* "
               f"· regime {regime}")
     # the event key several sections share: did a trade CLOSE this week? (a 90-day / all-time view over
-    # the closed-trade cohort cannot change otherwise - and never key on a windowed count, it slides)
-    closed_this_week = bool((metrics.get("loser_breakdown") or {}).get("losers")
-                            or metrics.get("postmortem_best") or metrics.get("postmortem_worst"))
+    # the closed-trade cohort cannot change otherwise - and never key on a windowed count, it slides).
+    # ⚠ The loser / post-mortem lists are keyed on the ALERT date, so they miss a trade alerted earlier
+    # and held across the week boundary that closes now; the live closed-trade count (all-time, compared
+    # with the one stored in last week's snapshot) and the partial-taken winners that closed in the
+    # window are the other two signals. It is settled below, once the replay run has the count.
+    alert_window_close = bool((metrics.get("loser_breakdown") or {}).get("losers")
+                              or metrics.get("postmortem_best") or metrics.get("postmortem_worst")
+                              or (metrics.get("mfe_capture") or {}).get("window_closes"))
 
     # 1. Data-gated reviews whose threshold flipped. A ripe review is MY work first - I run it and
     #    he hears only its result (scripts/operator_asks.py, the SoT for what waits on him: "GATED
@@ -364,6 +369,36 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
         logger.exception("narrative compaction failed - the narrative folds verbatim")
         fold.append(summary)
 
+    # 4b. Replay-regression RUNS here, ahead of the setup review: its live closed-trade count is half of
+    #     the "did a trade close this week" key. Its text is appended at section 7, where it always sat.
+    rr: dict = {}
+    try:
+        from agents.market_intelligence.replay_regression import run_replay_regression
+        rr = await run_replay_regression("live", persist=True)
+    except Exception:
+        logger.exception("replay-regression run failed")
+    live_closed_n = (rr.get("fingerprint") or {}).get("n") if isinstance(rr, dict) else None
+    live_closed_n = live_closed_n if isinstance(live_closed_n, int) else None
+    found_n, prev_n = _prior_value(prior, "metrics", "report", "snapshot", "live_closed_n")
+    closed_known = True                       # a close is ESTABLISHED (vs printed because we cannot tell)
+    if alert_window_close:
+        closed_this_week, closed_why = True, ("a trade alerted this week closed, or a partial-taken "
+                                              "winner closed in the window")
+    elif live_closed_n is None:
+        closed_this_week, closed_known, closed_why = True, False, (
+            "live closed-trade count unavailable - printed, never hidden")
+    elif not found_n or not isinstance(prev_n, int):
+        closed_this_week, closed_known, closed_why = True, False, (
+            "no stored closed-trade count from last week to compare - printed, never hidden")
+    elif live_closed_n != prev_n:
+        closed_this_week, closed_why = True, (
+            f"the live closed-trade count moved {prev_n} -> {live_closed_n} (a trade alerted earlier closed)")
+    else:
+        closed_this_week, closed_why = False, (
+            f"no close: {live_closed_n} live closed trades, same as last week")
+    if live_closed_n is not None:
+        snapshot["live_closed_n"] = live_closed_n
+
     # 5. STANDING setup review (operator 2026-08-02) - its QUESTIONS are his; the table folds, and
     #    (#700) prints only the week a trade closed or a question exists - it is a 90-day view over
     #    the closed-trade cohort and cannot move otherwise.
@@ -375,12 +410,12 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
             full.append(table)
             if closed_this_week or asks:
                 fold.append(compact("setup review", table,
-                                    lambda: _setup_review_message(table, closed_this_week)))
+                                    lambda: _setup_review_message(table, closed_known and closed_this_week)))
     except Exception:
         logger.exception("setup-performance section render failed")
     log("closed_this_week", closed_this_week,
-        "a trade closed this week - setup review and replay-regression print" if closed_this_week
-        else "no trade closed this week - setup review and replay-regression stay in the full text")
+        f"{closed_why} - setup review and replay-regression print" if closed_this_week
+        else f"{closed_why} - setup review and replay-regression stay in the full text")
 
     # 6. Kill/scale bands (#275, safeguards.md) - the verdict is the signed safeguard's own
     #    line, untouched; #662 adds the rule-era clause beside its trailing windows. A band
@@ -435,8 +470,6 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
     except Exception:
         logger.exception("early-window drift section render failed")
     try:
-        from agents.market_intelligence.replay_regression import run_replay_regression
-        rr = await run_replay_regression("live", persist=True)
         if rr.get("lines"):
             replay_full = "\n".join(rr["lines"]).strip("\n")
             full.append(replay_full)
@@ -564,7 +597,11 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
         if over:
             needs_you.append((1, f"• LLM spend ${cost:.2f} is OVER the ${budget:.0f} monthly "
                                  f"budget — your call on the ceiling"))
-        checked.append(f"spend: ${cost:.2f}" + (f" of ${budget:.0f}" if budget > 0 else " (no budget set)"))
+        # the full block's 🟠 flag (>= 80% of the budget) goes with it from the message, so the checked
+        # phrase carries the warning: spend nearing the ceiling must not read like spend far below it
+        near = budget > 0 and not over and cost / budget * 100 >= 80
+        checked.append(f"spend: ${cost:.2f}" + (f" of ${budget:.0f}" if budget > 0 else " (no budget set)")
+                       + (f" ({cost / budget * 100:.0f}%, near the ceiling)" if near else ""))
     except Exception:
         logger.exception("spend-envelope section render failed")
     # #313 part 2: the trailing-30-day spend by caller beside the P&L of trades closed in the same
@@ -758,8 +795,9 @@ _NO_ANOMALY_RE = re.compile(r"^(none|nothing|n/a|no anomal)", re.IGNORECASE)
 
 
 def _collect_record_keys(o: Any, out: set[str]) -> None:
-    """Every dict key under `o`, plus the values of the fields that NAME something (`key` on the
-    L1/L2/L3 entries, `event_type`, `disposition`) - the vocabulary a footprint reference may use."""
+    """Every dict key under `o`, plus the values of the fields that NAME something (`key`,
+    `event_type`, `disposition`) - the vocabulary a settled bullet may cite from the AUDIT-ERROR record
+    (`audit_errors.*`). Never walked over `anomalies.*`: that is `_settleable_anomaly_names`' job."""
     if isinstance(o, dict):
         for k, v in o.items():
             out.add(str(k))
@@ -769,6 +807,37 @@ def _collect_record_keys(o: Any, out: set[str]) -> None:
     elif isinstance(o, list):
         for v in o:
             _collect_record_keys(v, out)
+
+
+# The ONLY L1/L2 name the audit-error ledger can speak to: this invariant fires when an `*_error` row
+# lands in the recent-error window (audit_invariants.INV_AUDIT_ERROR_WINDOW), so when every error type a
+# bullet names is dispositioned with no live row, the invariant's footprint is that same record. Every
+# other L1 invariant (a live position with no stop, ...) and every L2 anomaly is a claim about the
+# system, not about an error type's recurrence - a settled bullet must never carry one off the page.
+_SETTLEABLE_INVARIANTS = frozenset({"silent_audit_error_window"})
+
+
+def _settleable_anomaly_names(anomalies: dict) -> set[str]:
+    """The `anomalies.*` names a SETTLED bullet may cite. The L1/L2 section names (`l1_invariants`,
+    `l2_anomalies`) and their structural fields (`count`, `by_key`, `key`) only while the section holds
+    nothing beyond `_SETTLEABLE_INVARIANTS` (an entry with count > 0 and any other key, or a count > 0
+    with no keys listed, blocks the section - a bare `l1_invariants = 2` must not hide a breach); the
+    allowlisted invariant by name. An L1/L2 key with count > 0 outside the allowlist and every L3 drift
+    metric are NOT in the set: a bullet citing one keeps its place in the "mine" pile."""
+    ok: set[str] = {"anomalies"}
+    anomalies = anomalies if isinstance(anomalies, dict) else {}
+    for section in ("l1_invariants", "l2_anomalies"):
+        sec = anomalies.get(section)
+        if not isinstance(sec, dict):
+            continue
+        entries = [e for e in sec.get("by_key") or [] if isinstance(e, dict)]
+        firing = [e for e in entries if not (isinstance(e.get("count"), (int, float)) and e["count"] <= 0)]
+        beyond = [e for e in firing if e.get("key") not in _SETTLEABLE_INVARIANTS]
+        unlisted = bool(sec.get("count")) and not entries
+        if not beyond and not unlisted:
+            ok |= {section, "count", "by_key", "key"}
+        ok |= {e["key"] for e in firing if e.get("key") in _SETTLEABLE_INVARIANTS}
+    return ok
 
 
 def _week_tickers(metrics: dict) -> set[str]:
@@ -792,15 +861,17 @@ def _week_tickers(metrics: dict) -> set[str]:
     return out
 
 
-def _identifier_resolves(ident: str, record_keys: set[str], row_text: str) -> bool:
+def _identifier_resolves(ident: str, record_keys: set[str], anomaly_ok: set[str], row_text: str) -> bool:
     """A backticked identifier in a narrative bullet 'resolves' when the record holds it: a key or path
-    under `audit_errors.*` / `anomalies.*` (incl. the L1/L2 `by_key` keys a footprint line cites), or a
-    token that appears in a dispositioned row's own summary / why / detail."""
+    under `audit_errors.*` (`record_keys`), a name `_settleable_anomaly_names` allows under `anomalies.*`
+    (`anomaly_ok`), or a token that appears in a dispositioned row's own summary / why / detail."""
     if "." in ident:
         root, *rest = ident.split(".")
-        if root in ("audit_errors", "anomalies") and all(seg in record_keys for seg in rest):
+        if root == "audit_errors" and all(seg in record_keys for seg in rest):
             return True
-    elif ident in record_keys:
+        if root == "anomalies" and all(seg in anomaly_ok for seg in rest):
+            return True
+    elif ident in record_keys or ident in anomaly_ok:
         return True
     return bool(row_text) and re.search(r"(?<![\w])" + re.escape(ident) + r"(?![\w])", row_text) is not None
 
@@ -825,17 +896,21 @@ def _verify_one_anomaly(text: str, metrics: dict) -> dict:
         if any(r.get("disposition") == "live" for r in rows):
             return mine(f"{n} has a live row")
     # 2. every other backticked identifier resolves in the record
-    record_keys: set[str] = {"audit_errors", "anomalies"}
+    record_keys: set[str] = {"audit_errors"}
     _collect_record_keys(ae, record_keys)
-    _collect_record_keys(metrics.get("anomalies") or {}, record_keys)
+    anomaly_ok = _settleable_anomaly_names(metrics.get("anomalies") or {})
+    anomaly_names: set[str] = set()                     # every name under anomalies.*, for the `why` only
+    _collect_record_keys(metrics.get("anomalies") or {}, anomaly_names)
     row_text = " ".join(str(r.get(f) or "") for t in types.values() for r in t.get("rows") or []
                         for f in ("summary", "why", "detail"))
     for ident in _BACKTICK_RE.findall(text):
         ident = ident.strip()
         if ident in named or _NUMBERISH_RE.match(ident):
             continue
-        if not _identifier_resolves(ident, record_keys, row_text):
-            return mine(f"`{ident}` is not in the record")
+        if not _identifier_resolves(ident, record_keys, anomaly_ok, row_text):
+            if any(seg in anomaly_names for seg in ident.split(".")):
+                return mine(f"`{ident}` is an L1/L2/L3 anomaly entry - the audit-error record cannot settle it")
+            return mine(f"`{ident}` is not in the audit-error record")
     # 3. it names no ticker from the week's metrics (a zone after a clock time is not a ticker)
     tickers = _week_tickers(metrics)
     for m in _TICKER_TOKEN_RE.finditer(text):
@@ -857,8 +932,12 @@ def verify_narrative_anomalies(bullets: list[str], metrics: dict) -> list[dict]:
     """The job checks the narrator's 'anomalies to verify' against the record it already holds. A bullet
     is SETTLED only when ALL hold: (1) it names at least one audit event type and EVERY named type is in
     `audit_errors.top_types` with zero `live` rows; (2) every other backticked identifier resolves in
-    the record (`audit_errors.*`, `anomalies.*` keys, or a token in a dispositioned row's own text -
-    numbers, prices and dates are not identifiers); (3) it names no ticker from the week's metrics.
+    the AUDIT-ERROR record (`audit_errors.*`, a token in a dispositioned row's own text, or - from
+    `anomalies.*` - only `silent_audit_error_window` and the L1/L2 section names while the section holds
+    nothing else; numbers, prices and dates are not identifiers); (3) it names no ticker from the week's
+    metrics. "Settled" means the named error TYPE is no longer happening - it does not cover an impact
+    claim written in prose ("...may have missed real candidates"), which no record lookup can see.
+    An L1 invariant or L2 anomaly other than the allowlisted one keeps the bullet MINE.
     Anything else - no type named, a live row, an identifier the record does not hold, a ticker, ANY
     parse doubt or exception - is NOT settled: the bullet stays mine to verify. Returns one
     `{"text", "settled", "why"}` per bullet. The fail direction is "mine", never "settled"."""
@@ -886,6 +965,9 @@ def _anomaly_block(text: str, metrics: dict) -> tuple[str, str | None, list[dict
     if mine:
         lines.append("⚠️ *To verify (mine, Monday)* — observations from the narrative, not findings")
         lines += [f"• {v['text']}" for v in mine]
+    elif settled:
+        # without a header the settled lines would read as part of the ✅ Working block above them
+        lines.append("⚠️ *Narrative warnings — all settled by the record*")
     lines += [f"• settled by the record: {v['why']} (errors above)" for v in settled]
     me_line = None
     if mine:
@@ -1228,12 +1310,15 @@ def _missed_message(missed: dict, prior: dict | None) -> tuple[str, list[dict]]:
 
 def _setup_review_message(table: str, closed: bool) -> str:
     """The setup review's table for the message: the header (+ ' — a trade closed this week'), each
-    setup's row, bits, eras and unreadable-peaks lines. Cut: the 'Runs win or lose' tagline, every
-    parenthetical 'not enough to ask' / 'monitoring only' note, and the era-key legend (full text)."""
+    setup's row, bits and unreadable-peaks lines. Cut: the 'Runs win or lose' tagline, every
+    parenthetical 'not enough to ask' / 'monitoring only' note, the era-key legend AND the `eras: era_a
+    n=.. · era_b n=..` count line - bare era letters mean nothing without the legend, and the replay
+    section's `rule eras:` sentence (printed in the same weeks) gives the same split in words. The full
+    text keeps all of them."""
     out = []
     for i, line in enumerate(table.splitlines()):
         s = line.strip()
-        if s.startswith("_Runs win or lose") or s == f"_{EXIT_ERA_KEY}_":
+        if s.startswith("_Runs win or lose") or s == f"_{EXIT_ERA_KEY}_" or s.startswith("eras:"):
             continue
         if s.startswith("(") and s.endswith(")"):
             continue
@@ -3437,9 +3522,10 @@ def _theme_queue_key(q: dict) -> str:
 def _theme_agreement_message(weekly: dict, trailing: dict | None, *, today: date,
                              prior_queue_keys: list[str] | None = None) -> str:
     """#700: the #486 readout for the message - one line per window; the judge-only queue lists only the
-    names NEW to the list since last week (`prior_queue_keys`, from the stored snapshot; None = no
-    snapshot, so every name is new) and counts the carried ones; the footer is a one-line pointer to the
-    definitions in the full text. The numbers are the full section's, unchanged."""
+    names NEW to the list since last week (`prior_queue_keys`, from the stored snapshot) and counts the
+    carried ones; None = no snapshot to compare, so every name lists and no novelty is claimed. The
+    footer is a one-line pointer to the definitions in the full text. The numbers are the full
+    section's, unchanged."""
     basis = trailing if trailing is not None else weekly
     basis_label = (f"the last {_THEME_AGREEMENT_TRAIL_DAYS} days" if trailing is not None else "this week")
     lines = ["\U0001F9E9 *Theme read, engine vs judge (#486)*", _theme_window_line("This week", weekly)]
@@ -3450,13 +3536,19 @@ def _theme_agreement_message(weekly: dict, trailing: dict | None, *, today: date
     if k:
         seen = None if prior_queue_keys is None else set(prior_queue_keys)
         new = [q for q in basis["queue"] if seen is None or _theme_queue_key(q) not in seen]
-        if len(new) == k:
-            novelty = ("new to this list" if k == 1 else "both new to this list" if k == 2
-                       else f"all {k} new to this list")
+        if seen is None:
+            # nothing to compare against (the first run, or last week's snapshot is unreadable): every
+            # name lists, and NO novelty claim is made - "new to this list" would be unfounded
+            lines.append(f"Judge saw a theme the engine did not — {k} in {basis_label} "
+                         f"(no earlier review to compare):")
         else:
-            novelty = f"{len(new)} new to this list" if new else "none new to this list"
-        lines.append(f"Judge saw a theme the engine did not — {k} in {basis_label}, {novelty}"
-                     + (":" if new else "."))
+            if len(new) == k:
+                novelty = ("new to this list" if k == 1 else "both new to this list" if k == 2
+                           else f"all {k} new to this list")
+            else:
+                novelty = f"{len(new)} new to this list" if new else "none new to this list"
+            lines.append(f"Judge saw a theme the engine did not — {k} in {basis_label}, {novelty}"
+                         + (":" if new else "."))
         for q in new[:_THEME_QUEUE_CAP]:
             d = q["alert_date"]
             lines.append(f"• {q['ticker']} {d.strftime('%m-%d') if d else '?'} — {_THEME_MISS_WORDS[q['reason']]}")

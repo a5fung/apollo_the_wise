@@ -11,7 +11,10 @@ could leave the process is captured instead of performed, and a captured action 
     review tried to send through its own sender (expected 1 - the one message).
   * `mi_system_reviews`: `sr.insert_system_review` is replaced by a capture (raises with --strict).
     The replay-regression snapshot (`log_audit_event`) is captured too. In DB mode the pool is also
-    wrapped so any statement that is not a plain SELECT/WITH read raises.
+    wrapped so any statement that is not a plain SELECT/WITH read raises. The wrapper reaches modules
+    that bound `get_pool` by name at import (cost_board, missed_outcomes) too - found from
+    `sys.modules`, not hand-listed - but it cannot reach a connection obtained some other way, so it is
+    a backstop: the review's own queries are SELECT-only and every write it makes is captured above.
 
 Three modes:
   --date YYYY-MM-DD   DB mode. Run INSIDE the market-agent container (the DB is reachable there):
@@ -118,6 +121,22 @@ def rows_from_capture(path: Path) -> list[dict]:
             if l.strip().startswith("{")]
 
 
+def _patch_name_bound_pools(stack: ExitStack, original, replacement) -> list[str]:
+    """Patch `get_pool` in every ALREADY-LOADED module that did `from agents.market_intelligence.db import
+    get_pool` (cost_board and missed_outcomes do, at module level) - patching `db.get_pool` alone leaves
+    those modules holding the real, unguarded function. Derived from `sys.modules`, never a hand list: a
+    module is patched when its `get_pool` IS `original`. A module first imported AFTER this runs, inside
+    the same ExitStack, binds the already-patched `db.get_pool`. Returns the module names it patched."""
+    patched = []
+    for name, mod in list(sys.modules.items()):
+        if mod is None or not name.startswith(("agents.", "shared.", "core.", "broker.", "channels.")):
+            continue
+        if getattr(mod, "get_pool", None) is original:
+            stack.enter_context(patch.object(mod, "get_pool", replacement))
+            patched.append(name)
+    return patched
+
+
 def newest_at_or_before(rows: list[dict], d: date) -> dict | None:
     ok = [r for r in rows if date.fromisoformat(str(r["review_date"])) <= d]
     return max(ok, key=lambda r: r["review_date"]) if ok else None
@@ -187,16 +206,17 @@ async def run_preview(stored: dict, *, today: date, prior_fn=None, strict: bool 
             stack.enter_context(patch.object(target, name, value))
         if prior_fn is not None:
             stack.enter_context(patch.object(sr, "get_latest_system_review", prior_fn))
+        real_get_pool = dbmod.get_pool
         if no_database:
             async def no_pool():
                 raise RuntimeError("offline: no database")
             stack.enter_context(patch.object(dbmod, "get_pool", no_pool))
+            _patch_name_bound_pools(stack, real_get_pool, no_pool)
         elif read_only_pool:
-            real_get_pool = dbmod.get_pool
-
             async def ro_pool():
                 return ReadOnlyPool(await real_get_pool())
             stack.enter_context(patch.object(dbmod, "get_pool", ro_pool))
+            _patch_name_bound_pools(stack, real_get_pool, ro_pool)
         review = await sr.run_weekly_review(7)
     report = review["metrics"]["report"]
     return {"review": review, "report": report, "sent": sent, "inserted": inserted, "audit": audit}
