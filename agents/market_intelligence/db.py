@@ -5899,37 +5899,25 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         )
 
 
-# The judge-result columns, in the order every judge-result UPDATE binds them ($3..$13; $1/$2
-# are ticker / alert_date). ONE list: the live statement below and the #624 paper lane's twin
-# (`LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL`) are both built from it, so a judge column added here
-# reaches both tables — the lane's copy used to be written out by hand and could go stale.
-_JUDGE_RESULT_COLS: tuple[str, ...] = (
-    "judge_tier", "judge_direction", "judge_rationale", "judge_materiality_tier", "fire_axes",
-    "score_tier", "grade_engine_authority", "rubric_version", "judge_grade", "judge_grade_reason",
-    "judge_tier_reason",
-)
-
-
-def _judge_result_update_sql(table: str, extra_set: tuple[str, ...] = ()) -> str:
-    """The COALESCE judge-result UPDATE for `table` (None parameter = leave the column
-    untouched), plus any `extra_set` clauses appended after the shared columns. For
-    `mi_ep_alerts` the text is BYTE-IDENTICAL to the statement that used to be written out here
-    (pinned in tests/test_624_paper_lane_cleanup.py)."""
-    sets = [f"{c} = COALESCE(${i}, {c})" for i, c in enumerate(_JUDGE_RESULT_COLS, start=3)]
-    sets.extend(extra_set)
-    body = ",\n        ".join(sets)
-    return f"""
-    UPDATE {table} SET
-        {body}
-    WHERE ticker = $1 AND alert_date = $2
-"""
-
-
 # SSoT for the judge-result statement (#265): executed by
 # update_ep_alert_judge_result below AND prepared verbatim by the [5b/7]
 # deploy gate (scripts/preflight_db_updates.py imports THIS constant), so the
 # gate provably validates the SQL production runs — a copy can't go stale.
-EP_ALERT_JUDGE_RESULT_UPDATE_SQL = _judge_result_update_sql("mi_ep_alerts")
+EP_ALERT_JUDGE_RESULT_UPDATE_SQL = """
+    UPDATE mi_ep_alerts SET
+        judge_tier = COALESCE($3, judge_tier),
+        judge_direction = COALESCE($4, judge_direction),
+        judge_rationale = COALESCE($5, judge_rationale),
+        judge_materiality_tier = COALESCE($6, judge_materiality_tier),
+        fire_axes = COALESCE($7, fire_axes),
+        score_tier = COALESCE($8, score_tier),
+        grade_engine_authority = COALESCE($9, grade_engine_authority),
+        rubric_version = COALESCE($10, rubric_version),
+        judge_grade = COALESCE($11, judge_grade),
+        judge_grade_reason = COALESCE($12, judge_grade_reason),
+        judge_tier_reason = COALESCE($13, judge_tier_reason)
+    WHERE ticker = $1 AND alert_date = $2
+"""
 
 
 async def update_ep_alert_judge_result(
@@ -18467,12 +18455,30 @@ async def upsert_lowcap_paper_lane_row(fields: dict) -> bool:
     return not res.endswith(" 0")
 
 
-# Same statement as EP_ALERT_JUDGE_RESULT_UPDATE_SQL (built from the same column list; COALESCE:
-# None = leave untouched), on the lane's table, plus setup_class (the live path writes that with
-# its own UPDATE) and updated_at.
-LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL = _judge_result_update_sql(
-    "mi_lowcap_paper_lane_alerts",
-    extra_set=("setup_class = COALESCE($14, setup_class)", "updated_at = NOW()"))
+def _lane_judge_update_sql(live_sql: str) -> str:
+    """The #624 paper lane's judge-result UPDATE, DERIVED from the live statement: the same
+    columns in the same COALESCE shape (None = leave untouched), on the lane's table, plus
+    `setup_class` (the live path writes that with its own UPDATE) and `updated_at`. Derived rather
+    than copied so a judge column added to the live statement reaches the lane. RAISES when the
+    live statement no longer has the shape this derives from, or when the result would still name
+    the live table — loud at import and in tests, never a silent UPDATE of the live alert row."""
+    head = "UPDATE mi_ep_alerts SET\n"
+    last = "        judge_tier_reason = COALESCE($13, judge_tier_reason)\n    WHERE"
+    if live_sql.count(head) != 1 or live_sql.count(last) != 1:
+        raise RuntimeError("EP_ALERT_JUDGE_RESULT_UPDATE_SQL changed shape - re-derive the paper "
+                           "lane's judge UPDATE (see _lane_judge_update_sql)")
+    lane_sql = (
+        live_sql
+        .replace(head, "UPDATE mi_lowcap_paper_lane_alerts SET\n")
+        .replace(last, "        judge_tier_reason = COALESCE($13, judge_tier_reason),\n"
+                       "        setup_class = COALESCE($14, setup_class),\n"
+                       "        updated_at = NOW()\n    WHERE"))
+    if "mi_ep_alerts" in lane_sql:
+        raise RuntimeError("the paper lane's judge UPDATE must never name mi_ep_alerts")
+    return lane_sql
+
+
+LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL = _lane_judge_update_sql(EP_ALERT_JUDGE_RESULT_UPDATE_SQL)
 
 
 async def update_lowcap_paper_lane_judge_result(

@@ -87,23 +87,9 @@ async def test_the_refusal_page_matches_the_funnels_constant_not_a_copy_of_its_t
 
 # ── SQL built from one definition == the statements that were written out by hand ─────────
 
-# The live statement exactly as it was written out in db.py before it was built from the shared
-# column list. Frozen here: a drift in the builder (or a column added to one table only) fails.
-_LIVE_JUDGE_SQL_AS_WRITTEN = """
-    UPDATE mi_ep_alerts SET
-        judge_tier = COALESCE($3, judge_tier),
-        judge_direction = COALESCE($4, judge_direction),
-        judge_rationale = COALESCE($5, judge_rationale),
-        judge_materiality_tier = COALESCE($6, judge_materiality_tier),
-        fire_axes = COALESCE($7, fire_axes),
-        score_tier = COALESCE($8, score_tier),
-        grade_engine_authority = COALESCE($9, grade_engine_authority),
-        rubric_version = COALESCE($10, rubric_version),
-        judge_grade = COALESCE($11, judge_grade),
-        judge_grade_reason = COALESCE($12, judge_grade_reason),
-        judge_tier_reason = COALESCE($13, judge_tier_reason)
-    WHERE ticker = $1 AND alert_date = $2
-"""
+# The lane's judge-result statement exactly as it was written out by hand in db.py before it was
+# derived from the live one. Frozen here: if the live statement gains a column, the derived lane
+# statement changes and this fails — a human then decides the lane's parameter numbering.
 _LANE_JUDGE_SQL_AS_WRITTEN = """
     UPDATE mi_lowcap_paper_lane_alerts SET
         judge_tier = COALESCE($3, judge_tier),
@@ -123,29 +109,36 @@ _LANE_JUDGE_SQL_AS_WRITTEN = """
 """
 
 
-def test_the_live_judge_statement_is_byte_identical_to_the_hand_written_one():
-    """The deploy gate prepares THIS constant and production executes it — it must not move."""
-    assert db.EP_ALERT_JUDGE_RESULT_UPDATE_SQL == _LIVE_JUDGE_SQL_AS_WRITTEN
-
-
 def test_the_lane_judge_statement_is_the_live_one_on_the_lanes_table_plus_two_clauses():
     assert db.LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL == _LANE_JUDGE_SQL_AS_WRITTEN
     # the lane's statement can only ever name its own table (wall 1: never the live alert row)
     assert "mi_ep_alerts" not in db.LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL
-    # one column list: every judge column the live statement writes, the lane writes too
+    # every judge column the live statement writes, the lane writes too (+ setup_class, updated_at)
     live_sets = {ln.split("=")[0].strip() for ln in db.EP_ALERT_JUDGE_RESULT_UPDATE_SQL.splitlines()
                  if "COALESCE" in ln}
     lane_sets = {ln.split("=")[0].strip() for ln in db.LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL.splitlines()
                  if "COALESCE" in ln or "NOW()" in ln}
     assert lane_sets == live_sets | {"setup_class", "updated_at"}
-    assert live_sets == set(db._JUDGE_RESULT_COLS)
 
 
-def test_a_new_judge_column_reaches_both_tables_by_construction(monkeypatch):
-    monkeypatch.setattr(db, "_JUDGE_RESULT_COLS", db._JUDGE_RESULT_COLS + ("judge_new_axis",))
-    live = db._judge_result_update_sql("mi_ep_alerts")
-    lane = db._judge_result_update_sql("mi_lowcap_paper_lane_alerts")
-    assert "judge_new_axis = COALESCE($14, judge_new_axis)" in live and "judge_new_axis" in lane
+def test_a_judge_column_added_to_the_live_statement_reaches_the_lane_by_construction():
+    live = db.EP_ALERT_JUDGE_RESULT_UPDATE_SQL.replace(
+        "        judge_tier_reason = COALESCE($13",
+        "        judge_new_axis = COALESCE($99, judge_new_axis),\n"
+        "        judge_tier_reason = COALESCE($13")
+    lane = db._lane_judge_update_sql(live)
+    assert "judge_new_axis = COALESCE($99, judge_new_axis)" in lane
+    assert lane.startswith("\n    UPDATE mi_lowcap_paper_lane_alerts SET\n") and "mi_ep_alerts" not in lane
+    assert lane.rstrip().endswith("WHERE ticker = $1 AND alert_date = $2")
+
+
+@pytest.mark.parametrize("live", [
+    "UPDATE mi_ep_alerts SET judge_tier = $3 WHERE ticker = $1",                   # reshaped
+    db.EP_ALERT_JUDGE_RESULT_UPDATE_SQL + "    -- still names mi_ep_alerts\n",       # would leave the live table named
+])
+def test_a_live_statement_the_lane_cannot_be_derived_from_fails_loudly_never_targets_the_live_table(live):
+    with pytest.raises(RuntimeError):
+        db._lane_judge_update_sql(live)
 
 
 def test_the_two_replay_tables_share_one_upsert_and_one_existing_read():
