@@ -1,0 +1,29 @@
+id	ticker	break_date	parent_scan_date	parent_stage	parent_row_stage	parent_row_held	eod_stage	eod_held	eod_reason	would_reject_reason	outcome	realized_r	settle_abstain_reason
+1	XMTR	2026-06-29	2026-06-26	TIGHTENING	TIGHTENING		TIGHTENING		range_0.69 vol_0.49		stop	-1	
+3	CRWD	2026-07-01	2026-06-30	TIGHTENING	TIGHTENING		TIGHTENING		range_0.90 vol_0.61	stop_distance_gt_8pct			split_1:4_on_2026-07-02_between_break_and_settle [one-off repair #667]
+2	OKTA	2026-07-01	2026-06-30	TIGHTENING	TIGHTENING		TIGHTENING		range_1.00 vol_0.67	stop_distance_gt_8pct	open	0.72	
+5	OKTA	2026-07-06	2026-07-03	TIGHTENING	TIGHTENING	WATCH	unqualified		base_age_0_below_3	stop_distance_gt_8pct	open	-0.38	
+4	RBRK	2026-07-06	2026-07-03	TIGHTENING	TIGHTENING		TIGHTENING		range_0.83 vol_0.59	stop_distance_gt_8pct	stop	-1	
+6	SNOW	2026-07-07	2026-07-06	TIGHTENING	TIGHTENING		TIGHTENING		range_0.67 vol_0.65	stop_distance_gt_8pct	open	-0.19	
+7	CDNA	2026-07-31	2026-07-30	TIGHTENING	TIGHTENING		TIGHTENING	WATCH	runup_102% base_10d close_vs_pivot_+8.2%				unfillable_entry_40.47_below_break_low_40.67 [one-off repair #667]
+8	MBX	2026-07-31	2026-07-30	TIGHTENING	TIGHTENING		TIGHTENING		range_0.76 vol_0.53		open	-0.03	
+9	MBX	2026-08-04	2026-07-31	TIGHTENING	TIGHTENING		unqualified		base_age_1_below_3		open	-0.07	
+10	CHYM	2026-08-19	2026-08-18	COILED	COILED	TIGHTENING	TRIGGERED		close_33.07>base_high_close_32.18 vol_2.08x		open	0.69	
+11	CDNA	2026-08-25	2026-08-24	TIGHTENING	TIGHTENING	WATCH	TIGHTENING	WATCH	runup_130% base_15d close_vs_pivot_+2.1%		stop	-1	
+12	CHYM	2026-08-28	2026-08-27	TRIGGERED	TRIGGERED	COILED	TRIGGERED	COILED	range_0.60 vol_0.46 bodies_0.20/0.04		stop	-1	
+13	PBF	2026-09-01	2026-08-31	TIGHTENING	TIGHTENING		TIGHTENING		range_0.99 vol_0.58		stop	-1	
+14	PBF	2026-09-02	2026-09-01	TIGHTENING	TIGHTENING		TIGHTENING	WATCH	runup_105% base_23d close_vs_pivot_+1.0%		stop	-1	
+15	WDAY	2026-09-03	2026-09-02	TRIGGERED	TRIGGERED	WATCH					stop	-1	
+16	XHLD	2026-09-09	2026-09-08	COILED	COILED		TRIGGERED		close_10.51>base_high_close_9.42 vol_1.72x	stop_distance_gt_8pct	capture	3	
+17	IOVA	2026-09-14	2026-09-11	COILED	COILED	TIGHTENING	TRIGGERED		close_9.26>base_high_close_8.79 vol_2.01x	stop_distance_gt_8pct	capture	3	
+18	IOVA	2026-09-16	2026-09-15	TRIGGERED	TRIGGERED	WATCH	TRIGGERED	TIGHTENING	range_0.74 vol_0.92				unfillable_entry_9.41_below_break_low_9.44 [one-off repair #667]
+19	CDNA	2026-09-17	2026-09-16	TIGHTENING	TIGHTENING		TIGHTENING		range_0.68 vol_0.90				
+20	CHPT	2026-09-18	2026-09-17	TIGHTENING	TIGHTENING		TIGHTENING		range_0.80 vol_0.51	stop_distance_gt_8pct			
+21	QMCO	2026-09-23	2026-09-22	TIGHTENING	TIGHTENING		TIGHTENING		range_0.61 vol_0.93	stop_distance_gt_8pct			
+22	QMCO	2026-09-24	2026-09-23	TIGHTENING	TIGHTENING		unqualified		base_age_0_below_3				
+23	EFOR	2026-10-01	2026-09-30	TIGHTENING	TIGHTENING		TIGHTENING		range_0.73 vol_0.53				
+24	CHPT	2026-10-02	2026-10-01	TIGHTENING	TIGHTENING		INVALIDATED		close_9.29_below_sma20_9.36	stop_distance_gt_8pct			
+25	HTFL	2026-10-05	2026-10-02	TIGHTENING	TIGHTENING		TIGHTENING		range_0.98 vol_0.66				
+26	HTFL	2026-10-06	2026-10-05	TIGHTENING	TIGHTENING		TIGHTENING	WATCH	runup_117% base_11d close_vs_pivot_-2.9%				
+27	KOD	2026-10-09	2026-10-08	COILED	COILED		COILED	WATCH	runup_249% base_5d close_vs_pivot_-4.0%	stop_distance_gt_8pct			
+(27 rows)

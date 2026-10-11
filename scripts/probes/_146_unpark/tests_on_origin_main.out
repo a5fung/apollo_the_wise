@@ -1,0 +1,808 @@
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.FF.                            [100%]
+=================================== FAILURES ===================================
+_________ test_a_tightening_label_in_the_window_licenses_the_breakout __________
+
+    def test_a_tightening_label_in_the_window_licenses_the_breakout():
+        out = _score(["TIGHTENING"])
+>       assert out["stage"] == "TRIGGERED" and out["held_from_stage"] is None
+E       AssertionError: assert ('WATCH' == 'TRIGGERED'
+E         
+E         - TRIGGERED
+E         + WATCH)
+
+tests/test_146_unpark_triggered_licence.py:54: AssertionError
+___________ test_a_prior_triggered_label_alone_licenses_a_retrigger ____________
+
+    def test_a_prior_triggered_label_alone_licenses_a_retrigger():
+        out = _score(["TRIGGERED"])
+>       assert (out["stage"], out["triggered_from"]) == ("TRIGGERED", "retrigger")
+                              ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:61: KeyError
+_______ test_the_licence_is_membership_in_the_window_not_the_last_label ________
+
+    def test_the_licence_is_membership_in_the_window_not_the_last_label():
+        # the page's arm B: 9 of the 101 extras had a real TIGHTENING 2-4 sessions back followed by WATCH /
+        # INVALIDATED days. The stored window is a LIST of every row, so this is `in`, not `[-1] ==`.
+        for window in (["TIGHTENING", "WATCH"], ["TIGHTENING", "INVALIDATED", "WATCH"],
+                       ["WATCH", "TIGHTENING", "unqualified"], ["TIGHTENING", "WATCH", "WATCH", "WATCH", "WATCH"]):
+            out = _score(window)
+>           assert (out["stage"], out["triggered_from"]) == ("TRIGGERED", "tightening"), window
+                                  ^^^^^^^^^^^^^^^^^^^^^
+E           KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:70: KeyError
+_________________ test_only_the_last_five_stored_labels_count __________________
+
+    def test_only_the_last_five_stored_labels_count():
+        out = _score(["TIGHTENING"] + ["WATCH"] * 5)
+>       assert out["stage"] == "WATCH" and out["triggered_from"] is None
+                                           ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:75: KeyError
+____ test_the_bucket_is_the_strongest_licence_in_the_window[window0-coiled] ____
+
+window = ['COILED'], bucket = 'coiled'
+
+    @pytest.mark.parametrize("window,bucket", [
+        (["COILED"], "coiled"),
+        (["TIGHTENING", "COILED"], "coiled"),
+        (["COILED", "TIGHTENING"], "coiled"),
+        (["TRIGGERED", "COILED"], "coiled"),
+        (["TIGHTENING"], "tightening"),
+        (["TIGHTENING", "TRIGGERED"], "tightening"),      # 'only a prior TRIGGERED' means NO tightening label either
+        (["TRIGGERED", "TIGHTENING"], "tightening"),
+        (["TRIGGERED"], "retrigger"),
+        (["WATCH", "TRIGGERED", "WATCH"], "retrigger"),
+    ])
+    def test_the_bucket_is_the_strongest_licence_in_the_window(window, bucket):
+>       assert fd.trigger_licence(False, window) == bucket
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'trigger_licence'
+
+tests/test_146_unpark_triggered_licence.py:92: AttributeError
+____ test_the_bucket_is_the_strongest_licence_in_the_window[window1-coiled] ____
+
+window = ['TIGHTENING', 'COILED'], bucket = 'coiled'
+
+    @pytest.mark.parametrize("window,bucket", [
+        (["COILED"], "coiled"),
+        (["TIGHTENING", "COILED"], "coiled"),
+        (["COILED", "TIGHTENING"], "coiled"),
+        (["TRIGGERED", "COILED"], "coiled"),
+        (["TIGHTENING"], "tightening"),
+        (["TIGHTENING", "TRIGGERED"], "tightening"),      # 'only a prior TRIGGERED' means NO tightening label either
+        (["TRIGGERED", "TIGHTENING"], "tightening"),
+        (["TRIGGERED"], "retrigger"),
+        (["WATCH", "TRIGGERED", "WATCH"], "retrigger"),
+    ])
+    def test_the_bucket_is_the_strongest_licence_in_the_window(window, bucket):
+>       assert fd.trigger_licence(False, window) == bucket
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'trigger_licence'
+
+tests/test_146_unpark_triggered_licence.py:92: AttributeError
+____ test_the_bucket_is_the_strongest_licence_in_the_window[window2-coiled] ____
+
+window = ['COILED', 'TIGHTENING'], bucket = 'coiled'
+
+    @pytest.mark.parametrize("window,bucket", [
+        (["COILED"], "coiled"),
+        (["TIGHTENING", "COILED"], "coiled"),
+        (["COILED", "TIGHTENING"], "coiled"),
+        (["TRIGGERED", "COILED"], "coiled"),
+        (["TIGHTENING"], "tightening"),
+        (["TIGHTENING", "TRIGGERED"], "tightening"),      # 'only a prior TRIGGERED' means NO tightening label either
+        (["TRIGGERED", "TIGHTENING"], "tightening"),
+        (["TRIGGERED"], "retrigger"),
+        (["WATCH", "TRIGGERED", "WATCH"], "retrigger"),
+    ])
+    def test_the_bucket_is_the_strongest_licence_in_the_window(window, bucket):
+>       assert fd.trigger_licence(False, window) == bucket
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'trigger_licence'
+
+tests/test_146_unpark_triggered_licence.py:92: AttributeError
+____ test_the_bucket_is_the_strongest_licence_in_the_window[window3-coiled] ____
+
+window = ['TRIGGERED', 'COILED'], bucket = 'coiled'
+
+    @pytest.mark.parametrize("window,bucket", [
+        (["COILED"], "coiled"),
+        (["TIGHTENING", "COILED"], "coiled"),
+        (["COILED", "TIGHTENING"], "coiled"),
+        (["TRIGGERED", "COILED"], "coiled"),
+        (["TIGHTENING"], "tightening"),
+        (["TIGHTENING", "TRIGGERED"], "tightening"),      # 'only a prior TRIGGERED' means NO tightening label either
+        (["TRIGGERED", "TIGHTENING"], "tightening"),
+        (["TRIGGERED"], "retrigger"),
+        (["WATCH", "TRIGGERED", "WATCH"], "retrigger"),
+    ])
+    def test_the_bucket_is_the_strongest_licence_in_the_window(window, bucket):
+>       assert fd.trigger_licence(False, window) == bucket
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'trigger_licence'
+
+tests/test_146_unpark_triggered_licence.py:92: AttributeError
+__ test_the_bucket_is_the_strongest_licence_in_the_window[window4-tightening] __
+
+window = ['TIGHTENING'], bucket = 'tightening'
+
+    @pytest.mark.parametrize("window,bucket", [
+        (["COILED"], "coiled"),
+        (["TIGHTENING", "COILED"], "coiled"),
+        (["COILED", "TIGHTENING"], "coiled"),
+        (["TRIGGERED", "COILED"], "coiled"),
+        (["TIGHTENING"], "tightening"),
+        (["TIGHTENING", "TRIGGERED"], "tightening"),      # 'only a prior TRIGGERED' means NO tightening label either
+        (["TRIGGERED", "TIGHTENING"], "tightening"),
+        (["TRIGGERED"], "retrigger"),
+        (["WATCH", "TRIGGERED", "WATCH"], "retrigger"),
+    ])
+    def test_the_bucket_is_the_strongest_licence_in_the_window(window, bucket):
+>       assert fd.trigger_licence(False, window) == bucket
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'trigger_licence'
+
+tests/test_146_unpark_triggered_licence.py:92: AttributeError
+__ test_the_bucket_is_the_strongest_licence_in_the_window[window5-tightening] __
+
+window = ['TIGHTENING', 'TRIGGERED'], bucket = 'tightening'
+
+    @pytest.mark.parametrize("window,bucket", [
+        (["COILED"], "coiled"),
+        (["TIGHTENING", "COILED"], "coiled"),
+        (["COILED", "TIGHTENING"], "coiled"),
+        (["TRIGGERED", "COILED"], "coiled"),
+        (["TIGHTENING"], "tightening"),
+        (["TIGHTENING", "TRIGGERED"], "tightening"),      # 'only a prior TRIGGERED' means NO tightening label either
+        (["TRIGGERED", "TIGHTENING"], "tightening"),
+        (["TRIGGERED"], "retrigger"),
+        (["WATCH", "TRIGGERED", "WATCH"], "retrigger"),
+    ])
+    def test_the_bucket_is_the_strongest_licence_in_the_window(window, bucket):
+>       assert fd.trigger_licence(False, window) == bucket
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'trigger_licence'
+
+tests/test_146_unpark_triggered_licence.py:92: AttributeError
+__ test_the_bucket_is_the_strongest_licence_in_the_window[window6-tightening] __
+
+window = ['TRIGGERED', 'TIGHTENING'], bucket = 'tightening'
+
+    @pytest.mark.parametrize("window,bucket", [
+        (["COILED"], "coiled"),
+        (["TIGHTENING", "COILED"], "coiled"),
+        (["COILED", "TIGHTENING"], "coiled"),
+        (["TRIGGERED", "COILED"], "coiled"),
+        (["TIGHTENING"], "tightening"),
+        (["TIGHTENING", "TRIGGERED"], "tightening"),      # 'only a prior TRIGGERED' means NO tightening label either
+        (["TRIGGERED", "TIGHTENING"], "tightening"),
+        (["TRIGGERED"], "retrigger"),
+        (["WATCH", "TRIGGERED", "WATCH"], "retrigger"),
+    ])
+    def test_the_bucket_is_the_strongest_licence_in_the_window(window, bucket):
+>       assert fd.trigger_licence(False, window) == bucket
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'trigger_licence'
+
+tests/test_146_unpark_triggered_licence.py:92: AttributeError
+__ test_the_bucket_is_the_strongest_licence_in_the_window[window7-retrigger] ___
+
+window = ['TRIGGERED'], bucket = 'retrigger'
+
+    @pytest.mark.parametrize("window,bucket", [
+        (["COILED"], "coiled"),
+        (["TIGHTENING", "COILED"], "coiled"),
+        (["COILED", "TIGHTENING"], "coiled"),
+        (["TRIGGERED", "COILED"], "coiled"),
+        (["TIGHTENING"], "tightening"),
+        (["TIGHTENING", "TRIGGERED"], "tightening"),      # 'only a prior TRIGGERED' means NO tightening label either
+        (["TRIGGERED", "TIGHTENING"], "tightening"),
+        (["TRIGGERED"], "retrigger"),
+        (["WATCH", "TRIGGERED", "WATCH"], "retrigger"),
+    ])
+    def test_the_bucket_is_the_strongest_licence_in_the_window(window, bucket):
+>       assert fd.trigger_licence(False, window) == bucket
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'trigger_licence'
+
+tests/test_146_unpark_triggered_licence.py:92: AttributeError
+__ test_the_bucket_is_the_strongest_licence_in_the_window[window8-retrigger] ___
+
+window = ['WATCH', 'TRIGGERED', 'WATCH'], bucket = 'retrigger'
+
+    @pytest.mark.parametrize("window,bucket", [
+        (["COILED"], "coiled"),
+        (["TIGHTENING", "COILED"], "coiled"),
+        (["COILED", "TIGHTENING"], "coiled"),
+        (["TRIGGERED", "COILED"], "coiled"),
+        (["TIGHTENING"], "tightening"),
+        (["TIGHTENING", "TRIGGERED"], "tightening"),      # 'only a prior TRIGGERED' means NO tightening label either
+        (["TRIGGERED", "TIGHTENING"], "tightening"),
+        (["TRIGGERED"], "retrigger"),
+        (["WATCH", "TRIGGERED", "WATCH"], "retrigger"),
+    ])
+    def test_the_bucket_is_the_strongest_licence_in_the_window(window, bucket):
+>       assert fd.trigger_licence(False, window) == bucket
+               ^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'trigger_licence'
+
+tests/test_146_unpark_triggered_licence.py:92: AttributeError
+_______ test_coiled_today_is_the_coiled_bucket_whatever_the_window_holds _______
+
+    def test_coiled_today_is_the_coiled_bucket_whatever_the_window_holds():
+        for window in (None, [], ["WATCH"], ["TIGHTENING"], ["TRIGGERED"], ["TIGHTENING", "COILED"]):
+>           assert fd.trigger_licence(True, window) == "coiled", window
+                   ^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'trigger_licence'
+
+tests/test_146_unpark_triggered_licence.py:98: AttributeError
+__________________ test_the_shipped_coiled_path_is_unchanged ___________________
+
+    def test_the_shipped_coiled_path_is_unchanged():
+        out = _score(["COILED"])
+>       assert (out["stage"], out["triggered_from"]) == ("TRIGGERED", "coiled")
+                              ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:105: KeyError
+___ test_a_window_with_no_tightening_or_better_label_licenses_nothing[None] ____
+
+window = None
+
+    @pytest.mark.parametrize("window", [None, [], ["WATCH"], ["unqualified"], ["INVALIDATED"], ["WATCH", "INVALIDATED"]])
+    def test_a_window_with_no_tightening_or_better_label_licenses_nothing(window):
+        out = _score(window)
+>       assert out["stage"] == "WATCH" and out["triggered_from"] is None
+                                           ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:112: KeyError
+__ test_a_window_with_no_tightening_or_better_label_licenses_nothing[window1] __
+
+window = []
+
+    @pytest.mark.parametrize("window", [None, [], ["WATCH"], ["unqualified"], ["INVALIDATED"], ["WATCH", "INVALIDATED"]])
+    def test_a_window_with_no_tightening_or_better_label_licenses_nothing(window):
+        out = _score(window)
+>       assert out["stage"] == "WATCH" and out["triggered_from"] is None
+                                           ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:112: KeyError
+__ test_a_window_with_no_tightening_or_better_label_licenses_nothing[window2] __
+
+window = ['WATCH']
+
+    @pytest.mark.parametrize("window", [None, [], ["WATCH"], ["unqualified"], ["INVALIDATED"], ["WATCH", "INVALIDATED"]])
+    def test_a_window_with_no_tightening_or_better_label_licenses_nothing(window):
+        out = _score(window)
+>       assert out["stage"] == "WATCH" and out["triggered_from"] is None
+                                           ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:112: KeyError
+__ test_a_window_with_no_tightening_or_better_label_licenses_nothing[window3] __
+
+window = ['unqualified']
+
+    @pytest.mark.parametrize("window", [None, [], ["WATCH"], ["unqualified"], ["INVALIDATED"], ["WATCH", "INVALIDATED"]])
+    def test_a_window_with_no_tightening_or_better_label_licenses_nothing(window):
+        out = _score(window)
+>       assert out["stage"] == "WATCH" and out["triggered_from"] is None
+                                           ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:112: KeyError
+__ test_a_window_with_no_tightening_or_better_label_licenses_nothing[window4] __
+
+window = ['INVALIDATED']
+
+    @pytest.mark.parametrize("window", [None, [], ["WATCH"], ["unqualified"], ["INVALIDATED"], ["WATCH", "INVALIDATED"]])
+    def test_a_window_with_no_tightening_or_better_label_licenses_nothing(window):
+        out = _score(window)
+>       assert out["stage"] == "WATCH" and out["triggered_from"] is None
+                                           ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:112: KeyError
+__ test_a_window_with_no_tightening_or_better_label_licenses_nothing[window5] __
+
+window = ['WATCH', 'INVALIDATED']
+
+    @pytest.mark.parametrize("window", [None, [], ["WATCH"], ["unqualified"], ["INVALIDATED"], ["WATCH", "INVALIDATED"]])
+    def test_a_window_with_no_tightening_or_better_label_licenses_nothing(window):
+        out = _score(window)
+>       assert out["stage"] == "WATCH" and out["triggered_from"] is None
+                                           ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:112: KeyError
+_______________________ test_the_volume_leg_is_untouched _______________________
+
+    def test_the_volume_leg_is_untouched():
+        out = _score(["TIGHTENING"], rows=_breakout_rows(vol=900_000))          # 1.13x, under the 1.5x leg
+>       assert out["stage"] != "TRIGGERED" and out["triggered_from"] is None
+                                               ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:119: KeyError
+________________ test_the_close_over_the_base_leg_is_untouched _________________
+
+    def test_the_close_over_the_base_leg_is_untouched():
+        rows = _breakout_rows(bump=0.99)                                          # closes inside the base
+        out = _score(["TIGHTENING"], rows=rows)
+>       assert out["stage"] != "TRIGGERED" and out["triggered_from"] is None
+                                               ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:125: KeyError
+________ test_a_non_breakout_bar_is_never_triggered_whatever_the_window ________
+
+    def test_a_non_breakout_bar_is_never_triggered_whatever_the_window():
+        rows = _htf_rows(runup_ratio=2.0, flag_depth=0.10, n_flag=8)             # today is an ordinary flag bar
+        for window in (["TIGHTENING"], ["TRIGGERED"], ["COILED"]):
+            out = fd.compute_flag_metrics(rows, ticker="TST", recent_stages=window)
+>           assert out["stage"] != "TRIGGERED" and out["triggered_from"] is None, window
+                                                   ^^^^^^^^^^^^^^^^^^^^^
+E           KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:132: KeyError
+_ test_a_held_triggered_row_carries_no_licence_because_nothing_licensed_it_today _
+
+    def test_a_held_triggered_row_carries_no_licence_because_nothing_licensed_it_today():
+        out = _score([], yesterday_stage="TRIGGERED")                            # raw read WATCH, yesterday's TRIGGERED held
+        assert (out["stage"], out["held_from_stage"]) == ("TRIGGERED", "WATCH")
+>       assert out["triggered_from"] is None
+               ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:138: KeyError
+________ test_a_raw_triggered_read_is_never_held_and_carries_a_licence _________
+
+    def test_a_raw_triggered_read_is_never_held_and_carries_a_licence():
+        out = _score(["TIGHTENING"], yesterday_stage="COILED", yesterday_was_held=False)
+>       assert (out["stage"], out["held_from_stage"], out["triggered_from"]) == ("TRIGGERED", None, "tightening")
+                                                      ^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'triggered_from'
+
+tests/test_146_unpark_triggered_licence.py:144: KeyError
+_________ test_dropping_the_two_new_entries_restores_the_shipped_rule __________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1091963f0>
+
+    def test_dropping_the_two_new_entries_restores_the_shipped_rule(monkeypatch):
+>       monkeypatch.setattr(fd, "_TRIGGER_LICENCE", (("COILED", "coiled"),))
+E       AttributeError: <module 'agents.market_intelligence.flag_detector' from '/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_8bd70274-43c-1/agents/market_intelligence/flag_detector.py'> has no attribute '_TRIGGER_LICENCE'
+
+tests/test_146_unpark_triggered_licence.py:150: AttributeError
+____ test_the_vocabulary_is_closed_and_the_precedence_is_the_declared_order ____
+
+    def test_the_vocabulary_is_closed_and_the_precedence_is_the_declared_order():
+>       assert fd._TRIGGER_LICENCE == (("COILED", "coiled"), ("TIGHTENING", "tightening"), ("TRIGGERED", "retrigger"))
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute '_TRIGGER_LICENCE'
+
+tests/test_146_unpark_triggered_licence.py:160: AttributeError
+________ test_insert_flag_candidate_writes_the_stamp_in_its_own_column _________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1098e43e0>
+
+    @pytest.mark.asyncio
+    async def test_insert_flag_candidate_writes_the_stamp_in_its_own_column(monkeypatch):
+        pool, conn = make_mock_pool()
+        monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+        metrics = _score(["TIGHTENING"])
+>       await db.insert_flag_candidate(metrics)
+
+tests/test_146_unpark_triggered_licence.py:174: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+record = {'ticker': 'TST', 'scan_date': datetime.date(2026, 3, 12), 'rs_rank': None, 'rs_composite': None, ...}
+
+    async def insert_flag_candidate(record: dict[str, Any]) -> None:
+        """Upsert a continuation-flag scan result. Persists every metric
+        (including unqualified rows) so thresholds re-tune offline against
+        historical scans without re-running."""
+        pool = await get_pool()
+        scan_date = record["scan_date"]
+        if isinstance(scan_date, str):
+            scan_date = date.fromisoformat(scan_date)
+        async with pool.acquire() as conn:
+>           await conn.execute("""
+                INSERT INTO mi_flag_candidates
+                    (ticker, scan_date, pivot_high_date, pivot_high_price, base_age,
+                     base_high, base_low, runup_pct, runup_start_date,
+                     flagpole_ratio, flag_depth_pct,
+                     range_contraction_ratio, vol_contraction_ratio,
+                     last_body_pct, prev_body_pct, atr_14, sma_10, sma_20,
+                     breakout_close, breakout_volume_ratio,
+                     rs_rank, rs_composite, sector,
+                     stage, reason, score, held_from_stage,
+                     fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct,
+                     rmv_5d, rmv_15d, universe_sources,
+                     failed_at, low_after_breakout, undercut_after_breakout,
+                     depth_on_low, depth_on_close, sma20_margin, ma_stack_margin)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+                        $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
+                        $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
+                        $34, $35, $36, $37, $38, $39, $40)
+                ON CONFLICT (ticker, scan_date) DO UPDATE SET
+                    pivot_high_date         = EXCLUDED.pivot_high_date,
+                    pivot_high_price        = EXCLUDED.pivot_high_price,
+                    base_age                = EXCLUDED.base_age,
+                    base_high               = EXCLUDED.base_high,
+                    base_low                = EXCLUDED.base_low,
+                    runup_pct               = EXCLUDED.runup_pct,
+                    runup_start_date        = EXCLUDED.runup_start_date,
+                    flagpole_ratio          = EXCLUDED.flagpole_ratio,
+                    flag_depth_pct          = EXCLUDED.flag_depth_pct,
+                    range_contraction_ratio = EXCLUDED.range_contraction_ratio,
+                    vol_contraction_ratio   = EXCLUDED.vol_contraction_ratio,
+                    last_body_pct           = EXCLUDED.last_body_pct,
+                    prev_body_pct           = EXCLUDED.prev_body_pct,
+                    atr_14                  = EXCLUDED.atr_14,
+                    sma_10                  = EXCLUDED.sma_10,
+                    sma_20                  = EXCLUDED.sma_20,
+                    breakout_close          = EXCLUDED.breakout_close,
+                    breakout_volume_ratio   = EXCLUDED.breakout_volume_ratio,
+                    rs_rank                 = EXCLUDED.rs_rank,
+                    rs_composite            = EXCLUDED.rs_composite,
+                    sector                  = EXCLUDED.sector,
+                    stage                   = EXCLUDED.stage,
+                    reason                  = EXCLUDED.reason,
+                    score                   = EXCLUDED.score,
+                    held_from_stage         = EXCLUDED.held_from_stage,
+                    fresh_tight_fires       = EXCLUDED.fresh_tight_fires,
+                    fresh_2bar_tr_pct       = EXCLUDED.fresh_2bar_tr_pct,
+                    atr14_pct               = EXCLUDED.atr14_pct,
+                    rmv_5d                  = EXCLUDED.rmv_5d,
+                    rmv_15d                 = EXCLUDED.rmv_15d,
+                    universe_sources        = EXCLUDED.universe_sources,
+                    failed_at               = EXCLUDED.failed_at,
+                    low_after_breakout      = EXCLUDED.low_after_breakout,
+                    undercut_after_breakout = EXCLUDED.undercut_after_breakout,
+                    depth_on_low            = EXCLUDED.depth_on_low,
+                    depth_on_close          = EXCLUDED.depth_on_close,
+                    sma20_margin            = EXCLUDED.sma20_margin,
+                    ma_stack_margin         = EXCLUDED.ma_stack_margin
+            """,
+                record["ticker"],
+                scan_date,
+                record.get("pivot_high_date"),
+                record.get("pivot_high_price"),
+                record.get("base_age"),
+                record.get("base_high"),
+                record.get("base_low"),
+                record.get("runup_pct"),
+                record.get("runup_start_date"),
+                record.get("flagpole_ratio"),
+                record.get("flag_depth_pct"),
+                record.get("range_contraction_ratio"),
+                record.get("vol_contraction_ratio"),
+                record.get("last_body_pct"),
+                record.get("prev_body_pct"),
+                record.get("atr_14"),
+                record.get("sma_10"),
+                record.get("sma_20"),
+                record.get("breakout_close"),
+                record.get("breakout_volume_ratio"),
+                record.get("rs_rank"),
+                record.get("rs_composite"),
+                record.get("sector"),
+                record["stage"],
+                record.get("reason"),
+                record.get("score"),
+                record.get("held_from_stage"),
+                record.get("fresh_tight_fires"),
+                record.get("fresh_2bar_tr_pct"),
+                record.get("atr14_pct"),
+                record.get("rmv_5d"),
+                record.get("rmv_15d"),
+                record.get("universe_sources") or [],
+                record.get("failed_at"),
+                record.get("low_after_breakout"),
+                record.get("undercut_after_breakout"),
+                record.get("depth_on_low"),
+                record.get("depth_on_close"),
+                record.get("sma20_margin"),
+                record.get("ma_stack_margin"),
+            )
+E           TypeError: 'MagicMock' object can't be awaited
+
+agents/market_intelligence/db.py:8058: TypeError
+___ test_the_column_is_declared_in_create_alter_and_backfilled_exactly_once ____
+
+    def test_the_column_is_declared_in_create_alter_and_backfilled_exactly_once():
+        src = (MI / "db.py").read_text()
+        create = src[src.index("CREATE TABLE IF NOT EXISTS mi_flag_candidates ("):]
+        create = create[:create.index(");")]
+>       assert re.search(r"^\s+triggered_from\s+TEXT,", create, re.M), "declared in CREATE TABLE (parity)"
+E       AssertionError: declared in CREATE TABLE (parity)
+E       assert None
+E        +  where None = <function search at 0x102320040>('^\\s+triggered_from\\s+TEXT,', 'CREATE TABLE IF NOT EXISTS mi_flag_candidates (\n                id                          SERIAL PRIMARY KEY,\n   ...ated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n                UNIQUE (ticker, scan_date)\n            ', re.MULTILINE)
+E        +    where <function search at 0x102320040> = re.search
+E        +    and   re.MULTILINE = re.M
+
+tests/test_146_unpark_triggered_licence.py:189: AssertionError
+__________________ test_the_history_reader_selects_the_stamp ___________________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109b458c0>
+
+    @pytest.mark.asyncio
+    async def test_the_history_reader_selects_the_stamp(monkeypatch):
+        pool, conn = make_mock_pool()
+        conn.fetch = AsyncMock(return_value=[])
+        monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+        await db.get_ticker_flag_history("TST", 14)
+>       assert "triggered_from" in conn.fetch.call_args.args[0]
+E       assert 'triggered_from' in "\n            SELECT scan_date, stage, base_age, range_contraction_ratio,\n                   vol_contraction_ratio, ...         AND scan_date >= CURRENT_DATE - ($2::int || ' days')::interval\n            ORDER BY scan_date DESC\n        "
+
+tests/test_146_unpark_triggered_licence.py:206: AssertionError
+_____ test_every_unqualified_demotion_clears_the_stamp_derived_not_listed ______
+
+    def test_every_unqualified_demotion_clears_the_stamp_derived_not_listed():
+        src = (MI / "flag_detector.py").read_text().splitlines()
+        sites = [i for i, ln in enumerate(src) if re.search(r'\["stage"\]\s*=\s*"unqualified"', ln)
+                 and not ln.lstrip().startswith("#")]
+        # compute_flag_metrics' own early returns assign via `base["stage"] = ...`; the scan's M&A / deal-pin
+        # demotions assign on `r[...]` AFTER the row was persisted as TRIGGERED
+        demotions = [i for i in sites if re.search(r'\br\["stage"\]', src[i])]
+        assert len(demotions) >= 2, "the M&A and the deal-pin demotion sites"
+        for i in demotions:
+>           assert any('triggered_from' in src[j] for j in range(i, i + 6)), f"line {i + 1} demotes without clearing"
+E           AssertionError: line 1496 demotes without clearing
+E           assert False
+E            +  where False = any(<generator object test_every_unqualified_demotion_clears_the_stamp_derived_not_listed.<locals>.<genexpr> at 0x1099aaf80>)
+
+tests/test_146_unpark_triggered_licence.py:220: AssertionError
+_ test_a_deal_pinned_triggered_name_is_demoted_with_no_licence_on_the_persisted_row _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10922ec50>
+
+    @pytest.mark.asyncio
+    async def test_a_deal_pinned_triggered_name_is_demoted_with_no_licence_on_the_persisted_row(monkeypatch):
+        from datetime import date
+        from agents.market_intelligence import briefing, ma_filter
+        w = _World()
+    
+        async def _insert(r):
+            w.inserted.append(dict(r))
+    
+        pool, conn = make_mock_pool()
+        conn.fetch = AsyncMock(return_value=[])
+        monkeypatch.setattr(briefing, "send_telegram_message", AsyncMock(return_value=True))
+        monkeypatch.setattr(db, "log_audit_event", AsyncMock())
+        monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+        monkeypatch.setattr(db, "insert_flag_candidate", _insert)
+        monkeypatch.setattr(db, "get_yesterday_flag_state", AsyncMock(return_value=({}, set())))
+        monkeypatch.setattr(db, "get_recent_flag_stages", AsyncMock(return_value={}))
+        monkeypatch.setattr(db, "get_rs_for_tickers", AsyncMock(return_value={}))
+        monkeypatch.setattr(db, "get_sectors_batch", AsyncMock(return_value={}))
+        monkeypatch.setattr(db, "get_yesterday_flag_pivots", AsyncMock(return_value={}))
+        monkeypatch.setattr(db, "get_flag_failure_carry", AsyncMock(return_value={}))
+        monkeypatch.setattr(db, "get_flag_universe", AsyncMock(return_value={"DEAL": ["rs_top200"], "FREE": ["rs_top200"]}))
+        monkeypatch.setattr(db, "get_recent_daily_history", AsyncMock(return_value=[{}] * 80))
+        monkeypatch.setattr(fd, "compute_flag_metrics", lambda history, ticker=None, **kw: _triggered_row(ticker))
+        monkeypatch.setattr(fd, "reconcile_flag_state_post_eod", AsyncMock())
+        monkeypatch.setattr(ma_filter, "is_likely_ma", AsyncMock(return_value=(False, {})))
+        monkeypatch.setattr(ma_filter, "should_log_mna_filter_fired", AsyncMock(return_value=True))
+        sig = {"is_pin": True, "is_fresh_pin": False, "median_range_pct": 0.002, "sub_threshold_days": 8, "total_days": 9}
+        monkeypatch.setattr(fd, "_check_deal_pin_signatures_batch", AsyncMock(return_value={"DEAL": sig}))
+    
+        by_stage = await fd.run_flag_scan(date(2026, 10, 12))
+        last = {r["ticker"]: r for r in w.inserted}                  # the later upsert wins on (ticker, scan_date)
+>       assert last["DEAL"]["stage"] == "unqualified" and last["DEAL"]["triggered_from"] is None
+E       AssertionError: assert ('unqualified' == 'unqualified'
+E         
+E           unqualified and 'tightening' is None)
+
+tests/test_146_unpark_triggered_licence.py:267: AssertionError
+________________ test_the_label_per_bucket[coiled-from COILED] _________________
+
+bucket = 'coiled', text = 'from COILED'
+
+    @pytest.mark.parametrize("bucket,text", [("coiled", "from COILED"), ("tightening", "from TIGHTENING"),
+                                             ("retrigger", "re-trigger"), (None, ""), ("", ""), ("bogus", "")])
+    def test_the_label_per_bucket(bucket, text):
+>       assert fd.triggered_from_label({"triggered_from": bucket}) == text
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'triggered_from_label'
+
+tests/test_146_unpark_triggered_licence.py:277: AttributeError
+____________ test_the_label_per_bucket[tightening-from TIGHTENING] _____________
+
+bucket = 'tightening', text = 'from TIGHTENING'
+
+    @pytest.mark.parametrize("bucket,text", [("coiled", "from COILED"), ("tightening", "from TIGHTENING"),
+                                             ("retrigger", "re-trigger"), (None, ""), ("", ""), ("bogus", "")])
+    def test_the_label_per_bucket(bucket, text):
+>       assert fd.triggered_from_label({"triggered_from": bucket}) == text
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'triggered_from_label'
+
+tests/test_146_unpark_triggered_licence.py:277: AttributeError
+_______________ test_the_label_per_bucket[retrigger-re-trigger] ________________
+
+bucket = 'retrigger', text = 're-trigger'
+
+    @pytest.mark.parametrize("bucket,text", [("coiled", "from COILED"), ("tightening", "from TIGHTENING"),
+                                             ("retrigger", "re-trigger"), (None, ""), ("", ""), ("bogus", "")])
+    def test_the_label_per_bucket(bucket, text):
+>       assert fd.triggered_from_label({"triggered_from": bucket}) == text
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'triggered_from_label'
+
+tests/test_146_unpark_triggered_licence.py:277: AttributeError
+_______________________ test_the_label_per_bucket[None-] _______________________
+
+bucket = None, text = ''
+
+    @pytest.mark.parametrize("bucket,text", [("coiled", "from COILED"), ("tightening", "from TIGHTENING"),
+                                             ("retrigger", "re-trigger"), (None, ""), ("", ""), ("bogus", "")])
+    def test_the_label_per_bucket(bucket, text):
+>       assert fd.triggered_from_label({"triggered_from": bucket}) == text
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'triggered_from_label'
+
+tests/test_146_unpark_triggered_licence.py:277: AttributeError
+_________________________ test_the_label_per_bucket[-] _________________________
+
+bucket = '', text = ''
+
+    @pytest.mark.parametrize("bucket,text", [("coiled", "from COILED"), ("tightening", "from TIGHTENING"),
+                                             ("retrigger", "re-trigger"), (None, ""), ("", ""), ("bogus", "")])
+    def test_the_label_per_bucket(bucket, text):
+>       assert fd.triggered_from_label({"triggered_from": bucket}) == text
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'triggered_from_label'
+
+tests/test_146_unpark_triggered_licence.py:277: AttributeError
+______________________ test_the_label_per_bucket[bogus-] _______________________
+
+bucket = 'bogus', text = ''
+
+    @pytest.mark.parametrize("bucket,text", [("coiled", "from COILED"), ("tightening", "from TIGHTENING"),
+                                             ("retrigger", "re-trigger"), (None, ""), ("", ""), ("bogus", "")])
+    def test_the_label_per_bucket(bucket, text):
+>       assert fd.triggered_from_label({"triggered_from": bucket}) == text
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'triggered_from_label'
+
+tests/test_146_unpark_triggered_licence.py:277: AttributeError
+___ test_the_bucket_summary_counts_each_path_and_stays_silent_on_legacy_rows ___
+
+    def test_the_bucket_summary_counts_each_path_and_stays_silent_on_legacy_rows():
+        rows = [{"triggered_from": "coiled"}, {"triggered_from": "tightening"}, {"triggered_from": "tightening"},
+                {"triggered_from": "retrigger"}, {"triggered_from": None}]
+>       assert fd.triggered_bucket_summary(rows) == "1 from COILED · 2 from TIGHTENING · 1 re-trigger"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'triggered_bucket_summary'
+
+tests/test_146_unpark_triggered_licence.py:284: AttributeError
+_________________ test_the_digest_row_and_header_name_the_path _________________
+
+    def test_the_digest_row_and_header_name_the_path():
+        from datetime import date
+        text = fd.build_flag_digest(_board(_trig("AAA", "tightening"), _trig("BBB", "coiled")), date(2026, 10, 12), [])
+>       assert "<code>AAA</code> — from TIGHTENING" in text
+E       AssertionError: assert '<code>AAA</code> — from TIGHTENING' in '🚩 <b>HTF Scanner — Oct 12</b>\n<i>2 tickers scanned · 0 watch · 0 tightening · 0 coiled · 2 triggered</i>\n\n🎯 <b>TRI...· close $52.00 above $50.00\n  • <code>BBB</code> — base 10d · run-up +130% · volume 2.00× · close $52.00 above $50.00'
+
+tests/test_146_unpark_triggered_licence.py:305: AssertionError
+__________ test_the_flags_board_names_the_path_on_each_triggered_row ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a5947d0>
+
+    @pytest.mark.asyncio
+    async def test_the_flags_board_names_the_path_on_each_triggered_row(monkeypatch):
+        rows = [dict(_trig("AAA", "tightening"), runup_pct=1.3), dict(_trig("BBB", "retrigger"), runup_pct=1.1),
+                dict(_trig("CCC", None), runup_pct=1.0)]
+        agent, Req = _agent_board(monkeypatch, rows)
+        res = await agent._handle_flag_query(Req(task="/flags", user_id=1, conversation_id="t"))
+        text = res.result
+>       assert "`AAA` — from TIGHTENING" in text and "`BBB` — re-trigger" in text
+E       AssertionError: assert ('`AAA` — from TIGHTENING' in '🚩 *Flag Scanner — 2026-10-11*\n\n🎯 *TRIGGERED (3)*\n  • `AAA` — base 10d · runup +130% · vol 2.00× · close $52.00 > $...`CCC` — base 10d · runup +100% · vol 2.00× · close $52.00 > $50.00\n\n_Drill-down: `/flags TICKER` for 14-day history_')
+
+tests/test_146_unpark_triggered_licence.py:344: AssertionError
+__________ test_the_ticker_history_names_the_path_and_never_on_a_hold __________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a509b70>
+
+    @pytest.mark.asyncio
+    async def test_the_ticker_history_names_the_path_and_never_on_a_hold(monkeypatch):
+        from agents.market_intelligence.agent import MarketIntelligenceAgent
+        from shared.models import AgentRequest
+        hist = [
+            {"scan_date": "2026-10-09", "stage": "TRIGGERED", "base_age": 8, "range_contraction_ratio": 0.5,
+             "vol_contraction_ratio": 0.4, "held_from_stage": "WATCH", "triggered_from": None,
+             "fresh_tight_fires": False, "fresh_2bar_tr_pct": None, "atr14_pct": None},
+            {"scan_date": "2026-10-08", "stage": "TRIGGERED", "base_age": 7, "range_contraction_ratio": 0.5,
+             "vol_contraction_ratio": 0.4, "held_from_stage": None, "triggered_from": "tightening",
+             "fresh_tight_fires": False, "fresh_2bar_tr_pct": None, "atr14_pct": None},
+        ]
+        monkeypatch.setattr(db, "get_ticker_flag_history", AsyncMock(return_value=hist))
+        res = await MarketIntelligenceAgent()._handle_flag_query(AgentRequest(task="/flags TST", user_id=1, conversation_id="t"))
+        lines = {ln.split()[0]: ln for ln in res.result.splitlines() if ln.strip().startswith("2026-")}
+>       assert "from TIGHTENING" in lines["2026-10-08"]
+E       AssertionError: assert 'from TIGHTENING' in '  2026-10-08  `TRIGGERED  ` age 7    r0.50 v0.40'
+
+tests/test_146_unpark_triggered_licence.py:365: AssertionError
+=============================== warnings summary ===============================
+tests/test_146_unpark_triggered_licence.py::test_the_flags_board_names_the_path_on_each_triggered_row
+  /Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_8bd70274-43c-1/agents/market_intelligence/agent.py:7580: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+tests/test_146_unpark_triggered_licence.py::test_the_flags_board_names_the_path_on_each_triggered_row
+tests/test_146_unpark_triggered_licence.py::test_the_flags_board_names_the_path_on_each_triggered_row
+  /Users/alvinfung/Library/Python/3.14/lib/python/site-packages/fastapi/applications.py:4675: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)  # ty: ignore[deprecated]
+
+tests/test_146_unpark_triggered_licence.py::test_the_flags_board_names_the_path_on_each_triggered_row
+  /Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_8bd70274-43c-1/agents/market_intelligence/agent.py:7765: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+=========================== short test summary info ============================
+FAILED tests/test_146_unpark_triggered_licence.py::test_a_tightening_label_in_the_window_licenses_the_breakout
+FAILED tests/test_146_unpark_triggered_licence.py::test_a_prior_triggered_label_alone_licenses_a_retrigger
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_licence_is_membership_in_the_window_not_the_last_label
+FAILED tests/test_146_unpark_triggered_licence.py::test_only_the_last_five_stored_labels_count
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_bucket_is_the_strongest_licence_in_the_window[window0-coiled]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_bucket_is_the_strongest_licence_in_the_window[window1-coiled]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_bucket_is_the_strongest_licence_in_the_window[window2-coiled]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_bucket_is_the_strongest_licence_in_the_window[window3-coiled]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_bucket_is_the_strongest_licence_in_the_window[window4-tightening]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_bucket_is_the_strongest_licence_in_the_window[window5-tightening]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_bucket_is_the_strongest_licence_in_the_window[window6-tightening]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_bucket_is_the_strongest_licence_in_the_window[window7-retrigger]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_bucket_is_the_strongest_licence_in_the_window[window8-retrigger]
+FAILED tests/test_146_unpark_triggered_licence.py::test_coiled_today_is_the_coiled_bucket_whatever_the_window_holds
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_shipped_coiled_path_is_unchanged
+FAILED tests/test_146_unpark_triggered_licence.py::test_a_window_with_no_tightening_or_better_label_licenses_nothing[None]
+FAILED tests/test_146_unpark_triggered_licence.py::test_a_window_with_no_tightening_or_better_label_licenses_nothing[window1]
+FAILED tests/test_146_unpark_triggered_licence.py::test_a_window_with_no_tightening_or_better_label_licenses_nothing[window2]
+FAILED tests/test_146_unpark_triggered_licence.py::test_a_window_with_no_tightening_or_better_label_licenses_nothing[window3]
+FAILED tests/test_146_unpark_triggered_licence.py::test_a_window_with_no_tightening_or_better_label_licenses_nothing[window4]
+FAILED tests/test_146_unpark_triggered_licence.py::test_a_window_with_no_tightening_or_better_label_licenses_nothing[window5]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_volume_leg_is_untouched
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_close_over_the_base_leg_is_untouched
+FAILED tests/test_146_unpark_triggered_licence.py::test_a_non_breakout_bar_is_never_triggered_whatever_the_window
+FAILED tests/test_146_unpark_triggered_licence.py::test_a_held_triggered_row_carries_no_licence_because_nothing_licensed_it_today
+FAILED tests/test_146_unpark_triggered_licence.py::test_a_raw_triggered_read_is_never_held_and_carries_a_licence
+FAILED tests/test_146_unpark_triggered_licence.py::test_dropping_the_two_new_entries_restores_the_shipped_rule
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_vocabulary_is_closed_and_the_precedence_is_the_declared_order
+FAILED tests/test_146_unpark_triggered_licence.py::test_insert_flag_candidate_writes_the_stamp_in_its_own_column
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_column_is_declared_in_create_alter_and_backfilled_exactly_once
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_history_reader_selects_the_stamp
+FAILED tests/test_146_unpark_triggered_licence.py::test_every_unqualified_demotion_clears_the_stamp_derived_not_listed
+FAILED tests/test_146_unpark_triggered_licence.py::test_a_deal_pinned_triggered_name_is_demoted_with_no_licence_on_the_persisted_row
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_label_per_bucket[coiled-from COILED]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_label_per_bucket[tightening-from TIGHTENING]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_label_per_bucket[retrigger-re-trigger]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_label_per_bucket[None-]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_label_per_bucket[-]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_label_per_bucket[bogus-]
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_bucket_summary_counts_each_path_and_stays_silent_on_legacy_rows
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_digest_row_and_header_name_the_path
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_flags_board_names_the_path_on_each_triggered_row
+FAILED tests/test_146_unpark_triggered_licence.py::test_the_ticker_history_names_the_path_and_never_on_a_hold
+43 failed, 2 passed, 4 warnings in 0.74s

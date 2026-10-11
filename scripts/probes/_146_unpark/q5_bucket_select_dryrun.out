@@ -1,0 +1,7 @@
+q	bucket	parent_stage	n	first_seen	last_seen	settled	capture	med_realized_r
+A	coiled		30	2026-05-06	2026-09-14			
+B	coiled	COILED	3	2026-08-19	2026-09-14	3	2	3
+B	no EOD TRIGGERED read	COILED	1	2026-10-09	2026-10-09	0	0	
+B	no EOD TRIGGERED read	TIGHTENING	20	2026-06-29	2026-10-06	10	0	-0.69
+B	no EOD TRIGGERED read	TRIGGERED	3	2026-08-28	2026-09-16	2	0	-1
+(5 rows)

@@ -1,0 +1,51 @@
+agents/market_intelligence/tape_features.py:13:Reuses `flag_detector._atr_14` (the tightness ATR reference) and the output shape of
+agents/market_intelligence/tape_features.py:22:from agents.market_intelligence.flag_detector import _atr_14
+agents/market_intelligence/pivot_analysis.py:16:from agents.market_intelligence.broker.exit_logic import ema as _ema  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — reusing its tested ema() instead of a 4th copy (F11 discipline), same pattern as flag_detector/giveback_shadow
+agents/market_intelligence/constants.py:88:    (flag_detector.py's HTF breakout shadow) as well as the real broker sizing
+agents/market_intelligence/ma_filter.py:38:The deal-pin PRICE-signature paths (flag_detector: deal_pin_signature / deal_pin_fresh / sticky)
+agents/market_intelligence/ma_filter.py:259:#: range = (high − low) / close in % (flag_detector._evaluate_deal_pin's convention; the bar is
+agents/market_intelligence/splits_ingest.py:45:# reload of 2026-09-24 made it cover a fifth of the table, and flag_detector already reads
+agents/market_intelligence/giveback_shadow.py:21:from agents.market_intelligence.broker.exit_logic import iter_exit_ladder, seed_exit_state  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — the ADR 0023 F1 giveback SHADOW reuses the tested ladder for the counterfactual rather than re-implementing it (same F11 pattern as flag_detector's #396 mgmt shadow); pure compute, no live execution
+agents/market_intelligence/data_gated_reviews.py:105:    "flag_detector_post_breakout_label",
+agents/market_intelligence/data_gated_reviews.py:124:    "flag_detector_graduation_evidence_n30",
+agents/market_intelligence/structure_axis_shadow.py:11:      trailing high. Mirrors `flag_detector.py`'s #356 HTF Stage-2 gate predicate EXACTLY
+agents/market_intelligence/structure_axis_shadow.py:15:      mirrors how flag_detector.py's OWN live gate actually computes it, and is also what the
+agents/market_intelligence/structure_axis_shadow.py:19:  (b) Base tightness — RMV-15 (`flag_detector._compute_rmv`, the SSoT tightness primitive)
+agents/market_intelligence/structure_axis_shadow.py:64:from agents.market_intelligence.flag_detector import _compute_rmv
+agents/market_intelligence/structure_axis_shadow.py:70:_SMA200_WINDOW = 200          # flag_detector.py's #356 Stage-2 long-term trend window
+agents/market_intelligence/structure_axis_shadow.py:72:_STAGE2_NEAR_HIGH_MIN = 0.75  # flag_detector.py's #356 Stage-2 gate — pole/prior_close >= 75% of the trailing high
+agents/market_intelligence/anticipation.py:18:from `flag_detector._compute_rmv` (telemetry only — #54 verdict + STEP 0: NOT a gate;
+agents/market_intelligence/anticipation.py:25:from agents.market_intelligence.flag_detector import (
+agents/market_intelligence/anticipation.py:52:#    mirror flag_detector's shape constants (search-before-build — its annotator is
+agents/market_intelligence/anticipation.py:54:_MA_NEAR_PCT = 2.0            # close within 2% of a moving average = "pulled into the MA" (flag_detector._MA_PULLBACK_NEAR_PCT)
+agents/market_intelligence/anticipation.py:200:# asserts `compute_rmv` == flag_detector._compute_rmv on the same series (the
+agents/market_intelligence/anticipation.py:233:    flag_detector._compute_rmv — recorded telemetry on the lifecycle row, NOT a gate."""
+agents/market_intelligence/anticipation.py:241:    flag_detector in tests/test_anticipation_tightening.py (same silent-corruption guard as RMV)."""
+agents/market_intelligence/anticipation.py:249:    flag_detector._compute_fresh_tightening — the 2-bar range/vol contraction primitive (reused,
+agents/market_intelligence/anticipation.py:262:    Daily-bar EOD analog of flag_detector.compute_entry_technique_annotations (that one is
+agents/market_intelligence/anticipation.py:758:# coverage-gap deal-pin still gets caught. REUSES flag_detector's proven deal-pin primitive
+agents/market_intelligence/anticipation.py:1053:ENTRY_CONFIRM_VOL_MIN = 1.5   # breakout volume ≥ this × ADV20 (flag_detector's confirmed-break vol gate)
+agents/market_intelligence/anticipation.py:1176:    `entry_price` / `include_entry_bar` (F11, #356 dedup — flag_detector._htf_settle_from_bars'
+agents/market_intelligence/dead_data_guard_shadow.py:6:call site below still resolves. One drift note: `flag_detector._HISTORY_DAYS` was recalibrated
+agents/market_intelligence/dead_data_guard_shadow.py:12:The RMV halt-floor (`flag_detector._RMV_DEAD_NTR_FLOOR`, commit 20c9c06) INFERS "halted /
+agents/market_intelligence/dead_data_guard_shadow.py:32:count is derivable from mi_flag_candidates row counts, so no rows are written for it.
+agents/market_intelligence/dead_data_guard_shadow.py:62:        from agents.market_intelligence.flag_detector import (
+agents/market_intelligence/backtester/filters.py:100:        ATR-14 = simple mean of the last 14 TRs (SSoT with flag_detector._atr_14).
+agents/market_intelligence/backtester/filters.py:111:    Kept as-is (matches flag_detector SSoT); revisit if 30d skip replay
+agents/market_intelligence/ninem_detector.py:371:                from agents.market_intelligence.db import check_sugar_baby_convergence
+agents/market_intelligence/ninem_detector.py:372:                conv = await check_sugar_baby_convergence(ticker)
+agents/market_intelligence/ninem_detector.py:532:        # M&A pin filter (same SSoT as ep_detector + flag_detector). A
+agents/market_intelligence/scheduler.py:3302:        from agents.market_intelligence.flag_detector import run_intraday_flag_break_scan
+agents/market_intelligence/scheduler.py:3324:        from agents.market_intelligence.flag_detector import run_intraday_support_test_scan
+agents/market_intelligence/scheduler.py:3345:        from agents.market_intelligence.flag_detector import run_intraday_ma_pullback_scan
+agents/market_intelligence/scheduler.py:3364:    from agents.market_intelligence.flag_detector import run_intraday_signals_eod_digest
+agents/market_intelligence/scheduler.py:3380:        from agents.market_intelligence.flag_detector import run_intraday_low_vol_rest_scan
+agents/market_intelligence/scheduler.py:3401:        from agents.market_intelligence.flag_detector import run_intraday_undercut_rally_scan
+agents/market_intelligence/scheduler.py:3866:    every scored ticker (incl. `unqualified`) to mi_flag_candidates so
+agents/market_intelligence/scheduler.py:3874:        from agents.market_intelligence.flag_detector import run_flag_scan
+agents/market_intelligence/scheduler.py:4794:    anticipation.evaluate_coil_consolidation (coil_pin_reject_reason — reuses flag_detector's
+agents/market_intelligence/scheduler.py:5152:    uses flag_detector._htf_settle_from_bars (entry=base_high, break-day-inclusive). SHADOW telemetry;
+agents/market_intelligence/scheduler.py:5156:    from agents.market_intelligence.flag_detector import _htf_settle_from_bars
+agents/market_intelligence/scheduler.py:5213:    daily bars via flag_detector._htf_management_replay, and UPSERTs the current full lifecycle
+agents/market_intelligence/scheduler.py:5223:    from agents.market_intelligence.flag_detector import (
+agents/market_intelligence/scheduler.py:6436:    (same lever flag_detector uses) and it fails OPEN for an unregistered strategy, so

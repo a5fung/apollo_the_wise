@@ -1,0 +1,60 @@
+# #146 unpark - gate replay on prod's stored rows, scan dates >= 2026-09-29
+# scan dates covered: 2026-09-29 .. 2026-10-09
+comparable	4465
+new_raw_triggered	2
+no_bars	970
+replayed	4465
+shipped_reproduces_stored_stage_and_raw	4465
+stored_rows_replayed_scope	4465
+
+# shipped rule vs stored: rows where the shipped-rule replay does NOT reproduce prod's stored stage + raw read
+# mismatches: 0 of 4465 comparable rows
+
+# GAINS: raw TRIGGERED reads the new licence adds on the stored rows (date, ticker, bucket, volume, ...)
+date	ticker	triggered_from	vol_x	close	base_high	base_age	stored_stage	stored_held_from	old_replayed	stored_window	mna_demoted
+2026-10-01	EFOR	tightening	2.48	36.19	34.42	12	TIGHTENING		TIGHTENING	TIGHTENING,TIGHTENING,TIGHTENING	False
+2026-10-05	HTFL	tightening	1.96	52.21	52.22	23	TIGHTENING		TIGHTENING	TIGHTENING,INVALIDATED,TIGHTENING	False
+# gains: 2  by bucket: {'tightening': 2}  on 2 distinct scan dates
+
+# per scan date: raw TRIGGERED reads (shipped -> new)
+2026-09-29	0	0
+2026-09-30	0	0
+2026-10-01	0	1
+2026-10-02	0	0
+2026-10-05	0	1
+2026-10-06	0	0
+2026-10-07	0	0
+2026-10-08	0	0
+2026-10-09	0	0
+
+# POSITIVE CONTROL - CHYM, IOVA, WDAY, XHLD, every stored row from 2026-08-14 (q6_bars_triggered)
+comparable	101
+mismatch_old_rearming_hold(#697-item5)	14
+mismatch_pre_592_anchor_era	1
+new_raw_triggered	4
+no_bar_on_scan_date	1
+replayed	101
+shipped_raw_triggered	4
+shipped_reproduces_stored_stage_and_raw	86
+stored_raw_triggered	4
+stored_raw_triggered_reproduced	4
+stored_rows_replayed_scope	102
+MISMATCH 2026-08-21 CHYM TRIGGERED TIGHTENING TIGHTENING None old_rearming_hold(#697-item5)
+MISMATCH 2026-08-24 CHYM TRIGGERED TIGHTENING TIGHTENING None old_rearming_hold(#697-item5)
+MISMATCH 2026-08-25 CHYM TRIGGERED WATCH WATCH None old_rearming_hold(#697-item5)
+MISMATCH 2026-08-26 CHYM TRIGGERED COILED COILED None old_rearming_hold(#697-item5)
+MISMATCH 2026-08-27 CHYM TRIGGERED COILED COILED None old_rearming_hold(#697-item5)
+MISMATCH 2026-08-28 CHYM TRIGGERED COILED COILED None old_rearming_hold(#697-item5)
+MISMATCH 2026-08-31 CHYM unqualified None COILED None pre_592_anchor_era
+MISMATCH 2026-09-04 IOVA COILED TIGHTENING TIGHTENING None old_rearming_hold(#697-item5)
+MISMATCH 2026-09-08 IOVA COILED TIGHTENING TIGHTENING None old_rearming_hold(#697-item5)
+MISMATCH 2026-09-11 IOVA COILED TIGHTENING TIGHTENING None old_rearming_hold(#697-item5)
+MISMATCH 2026-09-16 IOVA TRIGGERED TIGHTENING TIGHTENING None old_rearming_hold(#697-item5)
+MISMATCH 2026-08-26 WDAY COILED TIGHTENING TIGHTENING None old_rearming_hold(#697-item5)
+MISMATCH 2026-08-27 WDAY COILED TIGHTENING TIGHTENING None old_rearming_hold(#697-item5)
+MISMATCH 2026-09-01 WDAY TRIGGERED WATCH WATCH None old_rearming_hold(#697-item5)
+MISMATCH 2026-09-02 WDAY TRIGGERED WATCH WATCH None old_rearming_hold(#697-item5)
+# mismatches: 15 of 101 comparable rows
+# stored raw TRIGGERED reads: CHYM 2026-08-19, WDAY 2026-08-28, XHLD 2026-09-09, IOVA 2026-09-14
+# shipped rule reproduces 4 of 4 of them
+# new-rule gains inside the control names: none

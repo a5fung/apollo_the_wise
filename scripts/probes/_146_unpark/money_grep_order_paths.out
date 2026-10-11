@@ -1,0 +1,3 @@
+agents/market_intelligence/broker/halt_status_shadow.py:7:WHY: the RMV dead-data guard (`flag_detector._RMV_DEAD_NTR_FLOOR`, halt-floor commit
+agents/market_intelligence/broker/exit_logic.py:537:# _306_harvest_sweep.replay · flag_detector._htf_management_replay ·
+agents/market_intelligence/strategies/adapters.py:300:            FROM mi_flag_candidates
