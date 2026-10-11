@@ -61,7 +61,7 @@ nothing here is tuned, so the readout - not the matcher - must carry them):
 `our_polygon_count` is NULL exactly when the ticker-day has no `mi_ep_catalyst_metrics` row
 (Polygon was never fetched); with a metrics row it is that row's Polygon item count, and 0 is an
 honest zero (the row's Polygon list was NULL or empty). `our_acting_rule` is NULL whenever there
-is no `mi_catalyst_tier_shadow` row for the ticker-day.
+is no lattice tier-shadow row for the ticker-day (a LEFT JOIN in `db.get_tv_shadow_population`).
 
 🛑 THE LINE - DATA CAPTURE ONLY. This module writes exactly ONE table (`mi_tv_news_shadow`) plus
 `mi_audit_log` via the shared `log_audit_event`/`alert_endpoint_shape_anomaly`
@@ -74,8 +74,8 @@ operator sign-off - nothing here does that.
 
 NEVER ON THE LIVE SCAN PATH. This is a POST-HOC job: 10:10 ET, mon-fri - after the scan's last
 tick (09:55 ET; the cron is */5 over hours 7-9), its 10:00 stop, the 10:00 unfilled-order cancel
-and the 10:05 scan watchdog, so the before-grade and re-poll buckets are complete, and clear of the 12:00-13:00 ET market-hours
-deploy window. (It was 20:45 ET until 2026-10-10: 3 of 10 captured windows had already rolled
+and the 10:05 scan watchdog, so the before-grade and re-poll buckets are complete, and clear of
+the 12:00-13:00 ET market-hours deploy window. (It was 20:45 ET until 2026-10-10: 3 of 10 captured windows had already rolled
 past the period start by then, and a heavily covered name's 25-slot window spends most of its
 slots on the day's later items.) It never runs during 07:00-10:00 ET (the scan) or
 09:31-09:44 ET (the ORB submission window) - there is no latency budget question because it
