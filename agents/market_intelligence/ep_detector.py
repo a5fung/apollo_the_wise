@@ -5073,6 +5073,10 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             # grade-corpus row has no Polygon side). One INSERT of the same class as the audit
             # INSERT beside it, in its own try/except (db.write_grade_corpus is fail-open too):
             # it can never break or slow-fail the scan. `catalyst_quality` here is the RAW grade.
+            # `captured_at` = datetime.now(_ET) HERE = the provenance row's time (the #210 card's
+            # rule), which is AFTER the grade call returned, not when the corpus was fetched: a
+            # TradingView item published in that gap reads as 'before the grade'. Known and carried
+            # as a caveat in tv_news_shadow's docstring ("READ THE none SHARE AS AN UPPER BOUND").
             try:
                 await write_grade_corpus(
                     ticker, today, datetime.now(_ET), profile.get("companyName"),

@@ -5659,7 +5659,8 @@ async def _analyst_estimates_snapshot_job():
 
 async def _tv_news_shadow_job():
     """Run at 10:10 ET mon-fri (was 20:45 until 2026-10-10) — after the scan's last tick
-    (10:00 ET), the 10:00 unfilled-order cancel and the 10:05 scan watchdog, so the
+    (09:55 ET; the ep_scan cron is */5 over hours 7-9), its 10:00 stop, the 10:00
+    unfilled-order cancel and the 10:05 scan watchdog, so the
     before-grade and re-poll buckets are complete (the latest grade seen is 09:55 and the
     worst grade-to-metrics-row lag seen is ~10 min); clear of the 12:00-13:00 ET
     market-hours deploy window. The catalyst-downgrade digest also fires at 10:10 — two
@@ -7731,15 +7732,22 @@ def start_scheduler() -> AsyncIOScheduler:
     # (a) at 20:45, 3 of 10 captured windows had already rolled past the period start (the
     # three most heavily covered names) and a busy name's 25-slot window had spent most of its
     # slots on items published AFTER 10:10; (b) it is the earliest slot after which the
-    # before-grade and re-poll buckets are complete - the scan's last tick is 10:00, the latest
-    # grade seen is 09:55, the worst grade-to-metrics-row lag seen is ~10 min; (c) it is clear
-    # of the 10:00 jobs (ep_scan_stop, rt_miss_digest, orb_window_cleanup, shadow_orb_entry), the
+    # before-grade and re-poll buckets are complete - the scan's last tick is 09:55 (ep_scan is
+    # */5 over hours 7-9; ep_scan_stop fires at 10:00), the latest grade seen is 09:55, the
+    # worst grade-to-metrics-row lag seen is ~10 min; (c) it is clear of the 10:00 jobs
+    # (ep_scan_stop, rt_miss_digest, orb_window_cleanup, shadow_orb_entry), the
     # 10:05 ep_scan_watchdog and the 12:00-13:00 ET deploy window. The catalyst-downgrade digest
     # shares the minute (independent jobs). It never overlaps the scan (07:00-10:00) or the ORB
     # window (09:31-09:44). DATA CAPTURE ONLY, no broker calls, no grade/admission
     # change (THE LINE; see tv_news_shadow.py module docstring). SILENT except for a
     # sustained, run-level endpoint-degradation Telegram (llm_health.
     # alert_endpoint_shape_anomaly) — never on a single blip.
+    # KNOWN, ACCEPTED (#672): the slot is now INSIDE market hours, so a restart that crosses 10:10
+    # gets the job recorded 'unrecoverable: slot is inside market hours' and a loud (non-silent)
+    # 're-run by hand' page - even though the shadow needs no re-run, because its 3-day lookback
+    # (_TV_LOOKBACK_DAYS) picks up every unrecorded alert on the next run. A replay of
+    # job_recovery.plan_recovery on boots Sat 14:00, Sun 20:00 and Mon 09:00 read every 10:10 slot
+    # as 'done' off the ordinary 20:45 ledger rows, so the weekend deploy itself pages nothing.
     _scheduler.add_job(
         audit_wrap(_tv_news_shadow_job, "tv_news_shadow"),
         CronTrigger(hour=10, minute=10, day_of_week="mon-fri", timezone="America/New_York"),

@@ -937,6 +937,58 @@ def test_a_metrics_only_corpus_keeps_its_polygon_count_and_says_so():
     assert row["our_corpus_source"] == "metrics"
 
 
+@pytest.mark.parametrize("polygon_list", [None, []])
+def test_polygon_count_is_zero_not_null_when_a_metrics_row_exists_with_no_polygon_items(polygon_list):
+    """Review fix (wk1010/210-build): `our_polygon_count` is NULL EXACTLY when the ticker-day has
+    no mi_ep_catalyst_metrics row (polygon_available=False). With a metrics row it is that row's
+    Polygon item count, and 0 is an honest zero (its Polygon list was NULL or empty) - so a
+    'grade_corpus' row reading 0 is correct data, and the live readout must not call it a
+    failure. Pins the contract the #210 PLAN line is written against."""
+    c = _fx()["cases"]["BFLY"]
+    corpus = _corpus_dict(c) | {"polygon_available": True, "raw_polygon_news_json": polygon_list,
+                                "source": "grade_corpus"}
+    row = tv.build_shadow_row(_alert(ticker="BFLY", alert_date=date(2026, 6, 18)), corpus,
+                              "XNYS", "NYSE:BFLY", None, ({"items": c["tv_items"]}, None))
+    assert row["our_corpus_source"] == "grade_corpus"
+    assert row["our_polygon_count"] == 0 and row["our_polygon_count"] is not None
+    assert row["our_total_item_count"] == row["our_alpaca_count"] + row["our_fmp_count"]
+    assert row["tv_status"] == "ok" and row["tv_items_before_grade"] is not None   # frame computed
+
+
+def test_a_skipped_exchange_row_with_a_corpus_has_our_side_but_a_null_tv_frame():
+    """Review fix: the NULL-frame-by-design case. A candidate whose exchange never resolved still
+    has a grade corpus, so the 'our' columns are written - but there is no TradingView side, so
+    every frame column is NULL. Any live check on the frame columns must therefore be scoped to
+    tv_status = 'ok'."""
+    c = _fx()["cases"]["BFLY"]
+    alert = _alert(ticker="BFLY", alert_date=date(2026, 6, 18)) | {
+        "acting_grade": "strong", "acting_rule": None}
+    row = tv.build_shadow_row(alert, _corpus_dict(c), "", None, "no_exchange_on_file", None)
+    assert row["tv_status"] == "skipped_exchange"
+    assert row["our_corpus_available"] is True and row["our_corpus_source"] == "grade_corpus"
+    assert row["our_polygon_count"] == len(c["our_corpus"]["polygon"])
+    assert row["our_captured_at"] is not None
+    for col in ("tv_coverage_reaches_period_start", "tv_unseen_minutes_at_period_start",
+                "tv_items_before_grade", "tv_items_in_repoll_window", "tv_items_after_cutoff",
+                "tv_match_summary", "tv_items_unmatched_seen", "tv_items_we_missed"):
+        assert row[col] is None, f"{col} must be NULL with no TradingView side, got {row[col]!r}"
+
+
+def test_acting_rule_is_null_when_there_is_no_tier_shadow_row_but_the_frame_still_computes():
+    """Review fix: `our_acting_rule` comes from a LEFT JOIN on mi_catalyst_tier_shadow, so it is
+    NULL whenever that ticker-day has no row - NULL is not a failure of the eleven new columns,
+    and it must not blank the comparison frame."""
+    c = _fx()["cases"]["BFLY"]
+    alert = _alert(ticker="BFLY", alert_date=date(2026, 6, 18)) | {
+        "acting_grade": "strong", "acting_rule": None}
+    row = tv.build_shadow_row(alert, _corpus_dict(c), "XNYS", "NYSE:BFLY", None,
+                              ({"items": c["tv_items"]}, None))
+    assert row["our_acting_rule"] is None
+    assert row["our_acting_grade"] == "strong"
+    assert row["our_captured_at"] is not None and row["tv_items_before_grade"] is not None
+    assert row["tv_match_summary"] is not None
+
+
 def test_a_corpus_without_a_capture_time_leaves_the_frame_null_and_warns(monkeypatch):
     """Cannot happen through get_grade_corpus (both sources carry a timestamp), but if a corpus
     ever arrives without one the frame must be NULL - never bucketed against 'now' or zero."""

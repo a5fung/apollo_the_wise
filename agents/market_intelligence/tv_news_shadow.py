@@ -42,6 +42,27 @@ TWO LISTS, ONE RULE.
 (`match_tv_item`) decides WHAT is shared, not HOW MUCH: title / story / event / move / class /
 none - rules and proof in the ported block below.
 
+READ THE `none` SHARE AS AN UPPER BOUND (three known biases, all by design of the verbatim port;
+nothing here is tuned, so the readout - not the matcher - must carry them):
+  1. The matcher compares TradingView only against our Polygon, Alpaca and FMP HEADLINES. The SEC
+     filing title and the Perplexity text the grade ALSO read (`mi_ep_grade_corpus.sec_title`,
+     `.perplexity_text`) are never shown to `match_tv_item`, so a `none` can be a story we held
+     through those two. Before quoting the strict share, read each before-grade `none` item
+     against that row's sec_title / perplexity_text and report how many were held that way.
+  2. `captured_at` on a grade-corpus row is stamped when `write_grade_corpus` runs - AFTER the
+     grade call returns (typically tens of seconds after the corpus was fetched). A TradingView item
+     published in that gap lands in `tv_items_before_grade` and can read as a miss. Small, but it
+     sits in the 07:00-09:35 press-release window.
+  3. When a grade-corpus row and a metrics row both exist, the Polygon side comes from the metrics
+     row's fetch (made up to ~10 min AFTER the grade) while `captured_at` is the grade time. A
+     re-poll-window item can then match 'title'/'story' against a Polygon item the grade never
+     had, which UNDERSTATES the re-poll bucket's misses. Report that bucket's Polygon-side
+     matches separately, or drop Polygon items published after `captured_at`, before quoting it.
+`our_polygon_count` is NULL exactly when the ticker-day has no `mi_ep_catalyst_metrics` row
+(Polygon was never fetched); with a metrics row it is that row's Polygon item count, and 0 is an
+honest zero (the row's Polygon list was NULL or empty). `our_acting_rule` is NULL whenever there
+is no `mi_catalyst_tier_shadow` row for the ticker-day.
+
 🛑 THE LINE - DATA CAPTURE ONLY. This module writes exactly ONE table (`mi_tv_news_shadow`) plus
 `mi_audit_log` via the shared `log_audit_event`/`alert_endpoint_shape_anomaly`
 telemetry helpers - never a grade, score, admission, or trade-state table. (The grade corpus the
@@ -52,8 +73,8 @@ TradingView-sourced item into a live grade) is a separate CHANGE_PROCESS step wi
 operator sign-off - nothing here does that.
 
 NEVER ON THE LIVE SCAN PATH. This is a POST-HOC job: 10:10 ET, mon-fri - after the scan's last
-tick (10:00 ET), the 10:00 unfilled-order cancel and the 10:05 scan watchdog, so the
-before-grade and re-poll buckets are complete, and clear of the 12:00-13:00 ET market-hours
+tick (09:55 ET; the cron is */5 over hours 7-9), its 10:00 stop, the 10:00 unfilled-order cancel
+and the 10:05 scan watchdog, so the before-grade and re-poll buckets are complete, and clear of the 12:00-13:00 ET market-hours
 deploy window. (It was 20:45 ET until 2026-10-10: 3 of 10 captured windows had already rolled
 past the period start by then, and a heavily covered name's 25-slot window spends most of its
 slots on the day's later items.) It never runs during 07:00-10:00 ET (the scan) or
@@ -122,10 +143,10 @@ ALL FIVE route through ONE shared, already-reviewed mechanism —
 comment invites ("a future FIXED-URL provider can reuse this ... only a new
 audit_events constant"). It writes ONE audit row per run (`TV_NEWS_ENDPOINT_ERROR`,
 which is deliberately RUN-scoped: at most one call per run here, with every reason
-found this run joined into one string, so its lookback genuinely counts BAD NIGHTS,
+found this run joined into one string, so its lookback genuinely counts BAD RUNS,
 not bad fetches) and Telegrams the operator only once the SAME (provider, event_type)
-has fired >= 3 times within a 72h window — for a once-nightly job this reads as
-"3 consecutive nightly runs, tolerant of one skipped night," which is a real state
+has fired >= 3 times within a 72h window — for a once-per-weekday job this reads as
+"3 consecutive weekday runs, tolerant of one skipped day," which is a real state
 CHANGE (healthy -> broken), never a single blip. `maybe_alert_api_failure`
 (llm_health's OTHER canary) is deliberately NOT used here: its sustained-window
 (6h) and time-spread requirement are sized for scan-cadence traffic (many calls an
@@ -205,14 +226,14 @@ _ET = ZoneInfo("America/New_York")
 _TV_LOOKBACK_DAYS = 3
 
 # ── network / safeguards ───────────────────────────────────────────────────────────
-# Per-fetch timeout. This runs once nightly with no latency budget to protect, so the
-# bound is generous (the #210 IR-newsroom design's worst measured host, GRRR, took
+# Per-fetch timeout. This runs once per weekday (10:10 ET) with no latency budget to protect,
+# so the bound is generous (the #210 IR-newsroom design's worst measured host, GRRR, took
 # 8.6s under a similar honest-UA fetch) rather than tight.
 _TV_FETCH_TIMEOUT_SECONDS = 10.0
-# Hard cap on network fetches in one run. The nightly population is small (a handful
-# of alerts a night, per the case doc's ~5-7% catalyst-less rate), but this bounds a
-# pathological night (a sector-wide gap morning) from turning into an unbounded fetch
-# storm. A ticker deferred past the cap is simply left unrecorded — the population
+# Hard cap on network fetches in one run. The population is small (EVERY alert not yet
+# recorded: 1-3 a day over the three weeks to 2026-10-09, so at most ~9 inside the 3-day
+# lookback), but this bounds a pathological day (a sector-wide gap morning) from turning
+# into an unbounded fetch storm. A ticker deferred past the cap is simply left unrecorded — the population
 # query only excludes ALREADY-WRITTEN keys, so it is picked up again next run.
 _TV_MAX_FETCHES_PER_RUN = 20
 # Politeness pacing between SEQUENTIAL fetches (never concurrent) — a courtesy, not a
@@ -240,7 +261,7 @@ _TV_NORM_LOOKBACK_DAYS = 30
 _TV_NORM_MIN_SAMPLES = 20
 # Today's median item count must fall below 30% of the trailing median to count as a
 # collapse — mirrors the self-audit L2 anomaly convention (an outside-baseline trigger,
-# not any deviation); loose enough that ordinary night-to-night population churn
+# not any deviation); loose enough that ordinary day-to-day population churn
 # (different tickers, different natural news volume) does not false-positive.
 _TV_COLLAPSE_RATIO = 0.3
 
@@ -249,10 +270,10 @@ _TV_COLLAPSE_RATIO = 0.3
 # own same-day rule (docs/design/210_ir_newsroom_fallback_2026-09-05.md §2.3), reused
 # rather than re-derived so both sources agree on what "the alert's news day" means.
 _TV_SAME_DAY_PRIOR_CLOSE_HOUR = 16
-# The scan's last tick (10:00 ET) and the 10:00 ET unfilled-cancel: a TradingView item published
-# after our grade (`captured_at`) but at/before this instant was still ACTIONABLE — the #344
-# re-poll class — and is its own bucket (`tv_items_in_repoll_window`). Later items are
-# informational only (`tv_items_after_cutoff`).
+# The scan's stop (10:00 ET; its last tick is 09:55) and the 10:00 ET unfilled-cancel: a
+# TradingView item published after our grade (`captured_at`) but at/before this instant was
+# still ACTIONABLE — the #344 re-poll class — and is its own bucket
+# (`tv_items_in_repoll_window`). Later items are informational only (`tv_items_after_cutoff`).
 _TV_ACTIONABLE_CUTOFF_ET = dt_time(10, 0)
 
 
@@ -902,9 +923,12 @@ def build_shadow_row(
         alpaca_items = _items_from_raw(corpus.get("raw_alpaca_news_json"),
                                        _RAW_PUBLISHED_KEY["alpaca"])
         fmp_items = _items_from_raw(corpus.get("raw_fmp_news_json"), _RAW_PUBLISHED_KEY["fmp"])
-        # A grade-corpus row has NO Polygon side (Polygon is fetched only inside
-        # extract_earnings_metrics): "not captured" is NULL, never 0 - a 0 would read as
-        # "Polygon was checked and held nothing". Metrics-only rows keep today's behaviour.
+        # A grade-corpus row has NO Polygon side of its own (Polygon is fetched only inside
+        # extract_earnings_metrics): its Polygon list is borrowed from that ticker-day's
+        # mi_ep_catalyst_metrics row, and `polygon_available` is False exactly when there is no such
+        # row. "Not captured" is NULL, never 0 - a 0 would read as "Polygon was checked and held
+        # nothing". WITH a metrics row the count is that row's Polygon item count and 0 is an
+        # honest zero (its list was NULL or empty). Metrics-only rows keep today's behaviour.
         polygon_available = bool(corpus.get("polygon_available", True))
         row["our_corpus_available"] = True
         row["our_polygon_count"] = len(polygon_items) if polygon_available else None
@@ -1002,7 +1026,7 @@ def classify_run_degradation(summary: dict, trailing_item_counts: list[int]) -> 
     reasons: list[str] = []
 
     # A skip is a COVERAGE fact, never a degradation on its own (see
-    # `exchange_skip_reasons`'s comment in _run_over_population) — a night where every
+    # `exchange_skip_reasons`'s comment in _run_over_population) — a run where every
     # candidate happens to be off an exchange we resolve is plausible. But a run where
     # population > 0 and NOTHING was even ATTEMPTED (every candidate skipped) means
     # this shadow produced ZERO evidence while looking "healthy" (no failures, no
