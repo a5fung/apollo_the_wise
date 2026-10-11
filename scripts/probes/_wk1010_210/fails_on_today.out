@@ -1,0 +1,23 @@
+1) the story matcher is not importable:
+   ImportError: cannot import name 'match_tv_item' from 'agents.market_intelligence.tv_news_shadow' (/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c64987f5-cd5-3/agents/market_intelligence/tv_news_shadow.py)
+2) the frame columns do not exist on build_shadow_row's row (ACN-shaped input):
+   KeyError: our_captured_at
+   KeyError: tv_coverage_reaches_period_start
+   KeyError: tv_unseen_minutes_at_period_start
+   KeyError: tv_items_before_grade
+   KeyError: tv_items_in_repoll_window
+   KeyError: tv_items_after_cutoff
+   KeyError: tv_match_summary
+   KeyError: tv_items_unmatched_seen
+   today's tv_coverage_reaches_alert_date = True <- a 09:31 oldest item on the alert DATE passes the date-granular guard
+   today's tv_items_we_missed = ['Accenture PLC reports results for the quarte'] <- a list where the corrected rule says NULL (window oldest 09:31 > period start 16:00)
+3) the period start is not holiday-aware:
+   last_trading_day(2026-09-08 minus 1 day) = 2026-09-07 <- Labor Day; the prior NYSE trading day is 2026-09-04
+   ImportError: cannot import name 'prior_trading_day_holiday_aware' from 'agents.market_intelligence.tv_news_shadow' (/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c64987f5-cd5-3/agents/market_intelligence/tv_news_shadow.py)
+4) the population and corpus functions do not exist:
+   db.get_tv_shadow_population: absent (AttributeError)
+   db.get_grade_corpus: absent (AttributeError)
+   db.write_grade_corpus: absent (AttributeError)
+   db.get_no_catalyst_alert_population (to be replaced): True
+5) the job slot is 20:45 ET:
+    CronTrigger(hour=20, minute=45, day_of_week="mon-fri", timezone="America/New_York")

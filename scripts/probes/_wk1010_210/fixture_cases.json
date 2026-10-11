@@ -492,6 +492,213 @@
     }
    ],
    "tv_items_note": "NOT a live capture — the window rolled past June. Titles are the two documented TradingView-carried pieces; the Business Wire time is a placed assumption (premarket), the Stocktwits time is documented."
+  },
+  "ACN_PREVIEW": {
+   "ticker": "ACN",
+   "alert_date": "2026-10-01",
+   "our_captured_at": "2026-10-01T07:10:15.521038-04:00",
+   "our_corpus": {
+    "polygon": [
+     {
+      "title": "CDW's Buyback Pace Jumps: Can Stronger Cash Flow Sustain Returns?",
+      "published": "2026-09-30T12:59:00Z"
+     },
+     {
+      "title": "Digital Transformation Market Report 2026: Capitalize on the $2.47 Trillion Revenue Surge to $5.01 Trillion by 2030 as Microsoft, Google, IBM, Accenture and Oracle Accelerate AI, Cloud and Automation Disruption",
+      "published": "2026-09-29T15:57:00Z"
+     },
+     {
+      "title": "IT BFSI Market Report 2026: Capitalize on the $171.25 Billion Revenue Surge to $359.2 Billion by 2030 as AI, Cloud and Cybersecurity Disrupt Competition Across Microsoft, AWS, Accenture, IBM and Oracle",
+      "published": "2026-09-29T15:54:00Z"
+     },
+     {
+      "title": "ACN Set to Report Q4 Earnings: Here's What Investors Should Know",
+      "published": "2026-10-01T09:00:00Z",
+      "published_is_synthetic": true,
+      "published_note": "re-dated into the same-day window; the real Polygon published_utc is 2026-09-29T13:17:00Z"
+     },
+     {
+      "title": "AI Automation Market to Reach USD 2,041.82 Billion by 2035, Expanding at 31.62% CAGR as Enterprises Accelerate Intelligent Automation",
+      "published": "2026-09-25T06:30:00Z"
+     }
+    ],
+    "alpaca": [
+     {
+      "title": "Dow Dips Over 400 Points Following PCE Data: Investor Sentiment Improves, Greed Index Remains in ‘Fear’ Zone",
+      "published": "2026-10-01T06:09:57+00:00"
+     },
+     {
+      "title": "Stock Market: Will S&P 500 Open Up or Down Today?",
+      "published": "2026-10-01T05:39:57+00:00"
+     },
+     {
+      "title": "Acuity, Accenture and 3 Stocks to Watch Heading Into Thursday",
+      "published": "2026-10-01T05:35:27+00:00"
+     },
+     {
+      "title": "How To Earn $500 A Month From Accenture Stock Ahead Of Q4 Earnings",
+      "published": "2026-09-30T11:54:09+00:00"
+     },
+     {
+      "title": "What's Going On With Accenture Stock Monday?",
+      "published": "2026-09-28T16:39:00+00:00"
+     },
+     {
+      "title": "Susquehanna Maintains Neutral on Accenture, Raises Price Target to $153",
+      "published": "2026-09-28T12:29:04+00:00"
+     },
+     {
+      "title": "Accenture, Osapiens Give DS Smith EUDR-Ready Supply Chain Traceability Across 250+ Plants In 30+ Countries, Integrating Systems Onto Single Osapiens HUB Platform",
+      "published": "2026-09-28T07:33:21+00:00"
+     },
+     {
+      "title": "Top Three S&P 500 Stocks to Watch This Week: Micron, Accenture, Tesla",
+      "published": "2026-09-27T17:10:47+00:00"
+     },
+     {
+      "title": "Earnings Volatility Watch: Micron Sets The Week, But Six Other Stocks Are Priced To Swing More",
+      "published": "2026-09-27T12:30:23+00:00"
+     },
+     {
+      "title": "We Asked 3 AI Chatbots for Next Week's Top Stock Picks. They All Said Micron.",
+      "published": "2026-09-25T14:57:03+00:00"
+     },
+     {
+      "title": "Wall Street's Most Accurate Analysts Spotlight On 3 Tech Stocks Delivering High-Dividend Yields",
+      "published": "2026-09-25T11:23:07+00:00"
+     }
+    ],
+    "fmp": []
+   },
+   "our_perplexity_present": true,
+   "tv_items": [
+    {
+     "title": "Accenture plc Stock 12‑Month Price Target Raised to $203.16, Implies 11% Upside",
+     "provider": "tradingview",
+     "published": 1790893209
+    },
+    {
+     "title": "Should Investors Chase Accenture (ACN) Stock After Its Post-Earnings Surge?",
+     "provider": "zacks",
+     "published": 1790892660
+    },
+    {
+     "title": "Micron, Accenture, Google, IBM, Fair Isaac, Synopsys, and More Stocks That Explain Today's Market — Barrons.com",
+     "provider": "dow-jones",
+     "published": 1790885700
+    },
+    {
+     "title": "Accenture expects higher AI spending by clients as token costs fall",
+     "provider": "mint",
+     "published": 1790882388
+    },
+    {
+     "title": "Innodata Stock Surges Thursday: What's Happening?",
+     "provider": "benzinga",
+     "published": 1790880932
+    },
+    {
+     "title": "Unity Stock Rises in Sympathy with Accenture's Strong Q4",
+     "provider": "benzinga",
+     "published": 1790880346
+    },
+    {
+     "title": "Accenture Stock Is Having Its Best Day Ever. AI Isn't the Threat Everyone Thought. — Barrons.com",
+     "provider": "dow-jones",
+     "published": 1790879880
+    },
+    {
+     "title": "ServiceNow Rallies as Accenture Earnings Lift Software Stocks",
+     "provider": "benzinga",
+     "published": 1790876644
+    },
+    {
+     "title": "Concentrix, Huron, and TaskUs Shares Skyrocket, What You Need To Know",
+     "provider": "stockstory",
+     "published": 1790873747
+    },
+    {
+     "title": "EPAM, DXC, Everforth, EXL, and Grid Dynamics Stocks Trade Up, What You Need To Know",
+     "provider": "stockstory",
+     "published": 1790873746
+    },
+    {
+     "title": "Accenture CEO Says Focus on Big Deals, AI Drove Strong Bookings — Market Talk",
+     "provider": "dow-jones",
+     "published": 1790873520
+    },
+    {
+     "title": "Stock Market Today: S&P 500 Slips as Micron Fails to Impress, 10-Year Yields Ease to 5.25%",
+     "provider": "benzinga",
+     "published": 1790872146
+    },
+    {
+     "title": "Infosys, Wipro ADRs jump up to 10% after Accenture Q4 results beat Wall Street estimates",
+     "provider": "mint",
+     "published": 1790870883
+    },
+    {
+     "title": "Midday Need to Know: Accenture surges, Treasury yields jump & more",
+     "provider": "seekingalpha",
+     "published": 1790870737
+    },
+    {
+     "title": "Accenture Jumps 20% and IBM Climbs on Strong Outlook for 2027",
+     "provider": "gurufocus",
+     "published": 1790869797
+    },
+    {
+     "title": "Accenture Says Its Embracing AI Alongside Clients — Market Talk",
+     "provider": "dow-jones",
+     "published": 1790868480
+    },
+    {
+     "title": "Accenture shares jump 20% in pre-market as Q4 earnings, 2027 outlook beat estimates",
+     "provider": "mint",
+     "published": 1790868135
+    },
+    {
+     "title": "Accenture Stock Climbs as AI Demand Boosts 4Q Results — Update",
+     "provider": "dow-jones",
+     "published": 1790867340
+    },
+    {
+     "title": "Accenture Counters AI Disruption Worries — Market Talk",
+     "provider": "dow-jones",
+     "published": 1790867160
+    },
+    {
+     "title": " Accenture shares jump as Q4 results beat own guidance ",
+     "provider": "sharecast",
+     "published": 1790866288
+    },
+    {
+     "title": "Accenture (ACN) Stock Trades Up, Here Is Why",
+     "provider": "stockstory",
+     "published": 1790865644
+    },
+    {
+     "title": "ACN: Q4 revenue up 7% in local currency, FY 2026 revenue $74B, strong AI-driven growth, robust FY 2027 outlook",
+     "provider": "quartr",
+     "published": 1790865266
+    },
+    {
+     "title": "Accenture's Q4 Earnings Beat Estimates, Revenues Increase 6% Y/Y",
+     "provider": "zacks",
+     "published": 1790864280
+    },
+    {
+     "title": "Accenture Shares Jump 20% as AI Drives Client Spending — WSJ",
+     "provider": "dow-jones",
+     "published": 1790863440
+    },
+    {
+     "title": "Accenture PLC reports results for the quarter ended August 31 - Earnings Summary",
+     "provider": "reuters",
+     "published": 1790861507
+    }
+   ],
+   "tv_items_note": "CONSTRUCTED, not a live row: ACN 10-01's real TradingView window and real corpus with the three results wires removed and the Zacks preview re-dated into the same-day window (synthetic, labelled on the item). Exists to pin correction 6: a preview on our side must not absorb the actual results."
   }
  },
  "expected": {
@@ -499,17 +706,44 @@
    "tv_items_before_grade": 0,
    "tv_items_in_repoll_window": 1,
    "tv_items_after_cutoff": 24,
-   "tv_coverage_reaches_grade_time": false,
+   "tv_coverage_reaches_period_start": false,
+   "tv_unseen_minutes_at_period_start": 1052,
    "tv_items_we_missed": null,
-   "why": "every TV item is after our 07:10 ET capture; oldest window item 09:31 ET, so the window cannot speak to grade time -> NULL, never a list"
+   "tv_items_unmatched_seen": [],
+   "seen_verdicts_all_held": true,
+   "control_must_match_as_event": [
+    "Accenture PLC reports results for the quarter ended August 31 - Earnings Summary",
+    "Accenture Q4 EPS $3.29 Beats $3.18 Estimate, Sales $18.700B Beat $18.030B Estimate"
+   ],
+   "why": "every TV item is after our 07:10 ET capture; oldest window item 09:31:47 ET vs period start 09-30 16:00 ET = 1052 unseen minutes -> the DoD column is NULL, never a list. The one re-poll item (Reuters results summary, 09:31) is the results event we held -> `event`; unmatched_seen is empty."
+  },
+  "ACN_PREVIEW": {
+   "tv_items_before_grade": 0,
+   "tv_items_in_repoll_window": 1,
+   "tv_items_after_cutoff": 24,
+   "tv_coverage_reaches_period_start": false,
+   "tv_unseen_minutes_at_period_start": 1052,
+   "tv_items_we_missed": null,
+   "tv_items_unmatched_seen_titles": [
+    "Accenture PLC reports results for the quarter ended August 31 - Earnings Summary"
+   ],
+   "tv_items_unmatched_seen_match": "class",
+   "must_match_as_class_not_event": [
+    "Accenture PLC reports results for the quarter ended August 31 - Earnings Summary",
+    "ACN Set to Report Q4 Earnings: Here's What Investors Should Know"
+   ],
+   "why": "our only same-day earnings item is a PREVIEW, so the actual results on TradingView's side are NOT the event we held -> `class`, visible in unmatched_seen (loose readout), never absorbed as `event`."
   },
   "PENG": {
    "tv_items_before_grade": 17,
    "tv_items_in_repoll_window": 1,
    "tv_items_after_cutoff": 7,
-   "tv_coverage_reaches_grade_time": true,
-   "tv_items_we_missed": [],
-   "must_match_as_story": [
+   "tv_coverage_reaches_period_start": false,
+   "tv_unseen_minutes_at_period_start": 7,
+   "tv_items_we_missed": null,
+   "tv_items_unmatched_seen": [],
+   "seen_verdicts_all_held": true,
+   "must_match_as_held": [
     [
      "Penguin Solutions names Stephen Cumming as CFO",
      "Penguin Solutions Appoints Stephen Cumming As CFO, Effective Immediately"
@@ -533,19 +767,21 @@
      "Stifel Maintains Buy on Penguin Solutions, Raises Price Target to $85"
     ]
    ],
-   "why": "17 items before our 09:35 ET capture: 11 retitles + 6 commentary on stories we held (hand-read); the one re-poll-window item (Stifel via TradingView's analyst feed, 09:43) is a retitle of our 09:25 Stifel item; 0 stories we lacked"
+   "why": "17 items before our 09:35 ET capture (11 retitles + 6 commentary on stories we held, hand-read) and 1 re-poll-window item (Stifel via TradingView's analyst feed, 09:43, a retitle of our 09:25 Stifel item): all 18 seen items read as held, unmatched_seen is empty. The window's oldest item is 16:07 ET vs period start 16:00 -> 7 unseen minutes -> the DoD column is NULL (a LOWER BOUND by hand, not a zero the instrument may claim)."
   },
   "BFLY": {
    "tv_items_before_grade": 0,
    "tv_items_in_repoll_window": 1,
    "tv_items_after_cutoff": 1,
-   "tv_coverage_reaches_grade_time": true,
-   "filler_note": "the 06-16 filler is OUTSIDE the same-day window (06-18, or 06-17 >= 16:00 ET) so it falls in no bucket; it exists only so the oldest item of the window is <= our capture, as a real 25-item window would be",
+   "tv_coverage_reaches_period_start": true,
+   "tv_unseen_minutes_at_period_start": 0,
+   "filler_note": "the 06-16 filler is OUTSIDE the same-day window (06-18, or 06-17 >= 16:00 ET) so it falls in no bucket; it exists only so the oldest item of the window is <= the period start, as a real 25-item window would be",
    "tv_items_we_missed_titles": [
     "Butterfly Network Provides Commentary on Midjourney Medical's Full Body Ultrasound Scanner Announcement"
    ],
    "tv_items_we_missed_bucket": "repoll_window",
-   "why": "a true miss must survive: the release arrived after our 07:01 grade but inside the actionable window (the #344 re-poll class); our 7 items hold no catalyst-class story, so neither class nor move absorbs it. The Stocktwits piece (11:56) is after the cutoff -> counted, not missed. The filler item is one we held -> matched as title."
+   "tv_items_we_missed_match": "none",
+   "why": "an unmatched item must survive: the release arrived after our 07:01 grade but inside the actionable window (the #344 re-poll class; per docs/analysis/missed_ep_bfly_2026-06-18.md our own Alpaca/Benzinga feed carried it at 08:12 ET, so this is a re-poll-window item, NOT proof TradingView had a story our feeds never carried); our 7 items hold no catalyst-class story, so neither class nor move absorbs it. The Stocktwits piece (11:56) is after the cutoff -> counted, not missed. The filler item is one we held -> `title`."
   }
  }
 }

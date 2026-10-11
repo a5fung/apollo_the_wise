@@ -1,0 +1,159 @@
+==============================================================================================================
+ACN  alert_date=2026-10-01  prior_trading_day=2026-09-30 (nyse_calendar)  captured_at=10-01 07:10:15 ET  ours=19  tv_window=25  company_tokens=['accenture', 'acn', 'earnings', 'market', 'micron', 'report', 'sales', 'watch']
+  reach_period_start=False  unseen_min=1052  buckets before/repoll/after=0/1/24
+  tv_match_summary={"before_grade": {}, "repoll_window": {"event": 1}, "after_cutoff": {"none": 1, "event": 10, "move": 13}}
+  tv_items_unmatched_seen=[]
+  tv_items_we_missed=NULL
+  -- every same-day item the window showed (bucket | verdict | TV title -> ours):
+     10-01 09:31 repoll_window event  | Accenture PLC reports results for the quarter ended August 31  -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 10:04 after_cutoff  move   | Accenture Shares Jump 20% as AI Drives Client Spending — WSJ   -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 10:18 after_cutoff  event  | Accenture's Q4 Earnings Beat Estimates, Revenues Increase 6% Y -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 10:34 after_cutoff  event  | ACN: Q4 revenue up 7% in local currency, FY 2026 revenue $74B, -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 10:40 after_cutoff  move   | Accenture (ACN) Stock Trades Up, Here Is Why                   -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 10:51 after_cutoff  event  |  Accenture shares jump as Q4 results beat own guidance         -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 11:06 after_cutoff  move   | Accenture Counters AI Disruption Worries — Market Talk         -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 11:09 after_cutoff  event  | Accenture Stock Climbs as AI Demand Boosts 4Q Results — Update -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 11:22 after_cutoff  event  | Accenture shares jump 20% in pre-market as Q4 earnings, 2027 o -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 11:28 after_cutoff  move   | Accenture Says Its Embracing AI Alongside Clients — Market Tal -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 11:49 after_cutoff  event  | Accenture Jumps 20% and IBM Climbs on Strong Outlook for 2027  -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 12:05 after_cutoff  move   | Midday Need to Know: Accenture surges, Treasury yields jump &  -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 12:08 after_cutoff  event  | Infosys, Wipro ADRs jump up to 10% after Accenture Q4 results  -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 12:29 after_cutoff  move   | Stock Market Today: S&P 500 Slips as Micron Fails to Impress,  -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 12:52 after_cutoff  move   | Accenture CEO Says Focus on Big Deals, AI Drove Strong Booking -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 12:55 after_cutoff  move   | EPAM, DXC, Everforth, EXL, and Grid Dynamics Stocks Trade Up,  -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 12:55 after_cutoff  move   | Concentrix, Huron, and TaskUs Shares Skyrocket, What You Need  -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 13:44 after_cutoff  event  | ServiceNow Rallies as Accenture Earnings Lift Software Stocks  -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 14:38 after_cutoff  move   | Accenture Stock Is Having Its Best Day Ever. AI Isn't the Thre -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 14:45 after_cutoff  event  | Unity Stock Rises in Sympathy with Accenture's Strong Q4       -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 14:55 after_cutoff  move   | Innodata Stock Surges Thursday: What's Happening?              -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 15:19 after_cutoff  move   | Accenture expects higher AI spending by clients as token costs -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 16:15 after_cutoff  move   | Micron, Accenture, Google, IBM, Fair Isaac, Synopsys, and More -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 18:11 after_cutoff  event  | Should Investors Chase Accenture (ACN) Stock After Its Post-Ea -> Accenture Sees FY2027 Adj EPS $14.39-$14.81 vs $14.63 E
+     10-01 18:20 after_cutoff  none   | Accenture plc Stock 12‑Month Price Target Raised to $203.16, I -> -
+==============================================================================================================
+PENG  alert_date=2026-10-07  prior_trading_day=2026-10-06 (nyse_calendar)  captured_at=10-07 09:35:25 ET  ours=17  tv_window=25  company_tokens=['adj', 'beat', 'earnings', 'eps', 'est', 'moving', 'peng', 'penguin', 'sales', 'sees', 'solutions']
+  reach_period_start=False  unseen_min=7  buckets before/repoll/after=17/1/7
+  tv_match_summary={"before_grade": {"story": 6, "event": 9, "move": 2}, "repoll_window": {"story": 1}, "after_cutoff": {"event": 1, "class": 4, "none": 1, "move": 1}}
+  tv_items_unmatched_seen=[]
+  tv_items_we_missed=NULL
+  -- every same-day item the window showed (bucket | verdict | TV title -> ours):
+     10-06 16:07 before_grade  story  | Penguin Solutions Cumming Appiontment Effective Immediately >P -> Penguin Solutions Appoints Stephen Cumming As CFO, Effe
+     10-06 16:19 before_grade  event  | Penguin Solutions Q4 revenue jumps 68%; raises FY27 guidance a -> Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues
+     10-06 16:23 before_grade  story  | Penguin Solutions names Stephen Cumming as CFO                 -> Penguin Solutions Appoints Stephen Cumming As CFO, Effe
+     10-06 16:32 before_grade  event  | Penguin Solutions Non-GAAP EPS of $1.00 beats by $0.23, revenu -> Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues
+     10-06 16:33 before_grade  event  | Penguin Solutions posts record Q4 revenue $567M, raises FY27 o -> Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues
+     10-06 16:35 before_grade  story  | Penguin Solutions Names Cumming CFO, Reports Surging 4Q Profit -> Penguin Solutions Appoints Stephen Cumming As CFO, Effe
+     10-06 16:43 before_grade  event  | Penguin Solutions (NASDAQ:PENG) Reports Strong Q3 But Inventor -> Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues
+     10-06 17:01 before_grade  event  | Penguin Solutions Inc reports results for the quarter ended Au -> Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues
+     10-06 20:02 before_grade  event  | Penguin Solutions Q4 Earnings Call Highlights                  -> Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues
+     10-06 23:25 before_grade  move   | Why Is PENG Stock Rising More Than 7% Overnight?               -> Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues
+     10-07 03:49 before_grade  event  | Penguin Solutions profit jumps 888% on AI demand: can PENG jus -> Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues
+     10-07 05:15 before_grade  event  | Penguin Solutions jumps premarket following strong Q4 beat, up -> Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues
+     10-07 06:43 before_grade  move   | Penguin Solutions' Memory Business Soars on AI Demand. Can Its -> Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues
+     10-07 07:16 before_grade  story  | Needham maintains Buy rating on Penguin Solutions, $85 price t -> Needham Maintains Buy on Penguin Solutions, Raises Pric
+     10-07 07:26 before_grade  story  | Penguin Solutions Is Maintained at Buy by Needham              -> Needham Maintains Buy on Penguin Solutions, Raises Pric
+     10-07 09:00 before_grade  event  | PENG Q4 Earnings Call Signals Faster AI Infrastructure Growth  -> Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues
+     10-07 09:35 before_grade  story  | Penguin Solutions Price Target Raised to $85.00/Share From $75 -> Stifel Maintains Buy on Penguin Solutions, Raises Price
+     10-07 09:43 repoll_window story  | Stifel maintains Buy rating on Penguin Solutions, $85 price ta -> Stifel Maintains Buy on Penguin Solutions, Raises Price
+     10-07 10:00 after_cutoff  move   | Penguin Solutions (PENG) Stock Trades Up, Here Is Why          -> Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues
+     10-07 10:11 after_cutoff  none   | Penguin Solutions Says Agentic AI Is Creating New Memory Boom  -> -
+     10-07 11:21 after_cutoff  class  | Penguin Solutions Price Target Raised to $60.00/Share From $40 -> Stifel Maintains Buy on Penguin Solutions, Raises Price
+     10-07 12:20 after_cutoff  class  | Penguin Solutions, Inc. Stock 12‑Month Price Target Raised to  -> Stifel Maintains Buy on Penguin Solutions, Raises Price
+     10-07 12:27 after_cutoff  class  | Rosenblatt maintains Buy rating on Penguin Solutions, $100 pri -> Stifel Maintains Buy on Penguin Solutions, Raises Price
+     10-07 12:37 after_cutoff  class  | Penguin Solutions Is Maintained at Buy by Rosenblatt           -> Stifel Maintains Buy on Penguin Solutions, Raises Price
+     10-07 13:48 after_cutoff  event  | PENG Stock Rallies To Over 2-Month High After Wall Street Hike -> Penguin Solutions, Inc. (PENG) Q4 Earnings and Revenues
+==============================================================================================================
+BFLY  alert_date=2026-06-18  prior_trading_day=2026-06-17 (nyse_calendar)  captured_at=06-18 07:01:02 ET  ours=7  tv_window=3  company_tokens=['bfly', 'butterfly', 'network']
+  reach_period_start=True  unseen_min=0  buckets before/repoll/after=0/1/1
+  tv_match_summary={"before_grade": {}, "repoll_window": {"none": 1}, "after_cutoff": {"none": 1}}
+  tv_items_unmatched_seen=[('Butterfly Network Provides Commentary on Midjourne', 'none', 'repoll_window')]
+  tv_items_we_missed=['Butterfly Network Provides Commentary on Midjourne']
+  -- every same-day item the window showed (bucket | verdict | TV title -> ours):
+     06-18 08:05 repoll_window none   | Butterfly Network Provides Commentary on Midjourney Medical's  -> -
+     06-18 11:56 after_cutoff  none   | BFLY Stock Hits Four-Year High — What Is Butterfly Network's C -> -
+==============================================================================================================
+ACN_PREVIEW  alert_date=2026-10-01  prior_trading_day=2026-09-30 (nyse_calendar)  captured_at=10-01 07:10:15 ET  ours=16  tv_window=25  company_tokens=['accenture', 'acn', 'earnings', 'market', 'micron', 'report', 'watch']
+  reach_period_start=False  unseen_min=1052  buckets before/repoll/after=0/1/24
+  tv_match_summary={"before_grade": {}, "repoll_window": {"class": 1}, "after_cutoff": {"none": 14, "class": 10}}
+  tv_items_unmatched_seen=[('Accenture PLC reports results for the quarter ende', 'class', 'repoll_window')]
+  tv_items_we_missed=NULL
+  -- every same-day item the window showed (bucket | verdict | TV title -> ours):
+     10-01 09:31 repoll_window class  | Accenture PLC reports results for the quarter ended August 31  -> ACN Set to Report Q4 Earnings: Here's What Investors Sh
+     10-01 10:04 after_cutoff  none   | Accenture Shares Jump 20% as AI Drives Client Spending — WSJ   -> -
+     10-01 10:18 after_cutoff  class  | Accenture's Q4 Earnings Beat Estimates, Revenues Increase 6% Y -> ACN Set to Report Q4 Earnings: Here's What Investors Sh
+     10-01 10:34 after_cutoff  class  | ACN: Q4 revenue up 7% in local currency, FY 2026 revenue $74B, -> ACN Set to Report Q4 Earnings: Here's What Investors Sh
+     10-01 10:40 after_cutoff  none   | Accenture (ACN) Stock Trades Up, Here Is Why                   -> -
+     10-01 10:51 after_cutoff  class  |  Accenture shares jump as Q4 results beat own guidance         -> ACN Set to Report Q4 Earnings: Here's What Investors Sh
+     10-01 11:06 after_cutoff  none   | Accenture Counters AI Disruption Worries — Market Talk         -> -
+     10-01 11:09 after_cutoff  class  | Accenture Stock Climbs as AI Demand Boosts 4Q Results — Update -> ACN Set to Report Q4 Earnings: Here's What Investors Sh
+     10-01 11:22 after_cutoff  class  | Accenture shares jump 20% in pre-market as Q4 earnings, 2027 o -> ACN Set to Report Q4 Earnings: Here's What Investors Sh
+     10-01 11:28 after_cutoff  none   | Accenture Says Its Embracing AI Alongside Clients — Market Tal -> -
+     10-01 11:49 after_cutoff  class  | Accenture Jumps 20% and IBM Climbs on Strong Outlook for 2027  -> ACN Set to Report Q4 Earnings: Here's What Investors Sh
+     10-01 12:05 after_cutoff  none   | Midday Need to Know: Accenture surges, Treasury yields jump &  -> -
+     10-01 12:08 after_cutoff  class  | Infosys, Wipro ADRs jump up to 10% after Accenture Q4 results  -> ACN Set to Report Q4 Earnings: Here's What Investors Sh
+     10-01 12:29 after_cutoff  none   | Stock Market Today: S&P 500 Slips as Micron Fails to Impress,  -> -
+     10-01 12:52 after_cutoff  none   | Accenture CEO Says Focus on Big Deals, AI Drove Strong Booking -> -
+     10-01 12:55 after_cutoff  none   | EPAM, DXC, Everforth, EXL, and Grid Dynamics Stocks Trade Up,  -> -
+     10-01 12:55 after_cutoff  none   | Concentrix, Huron, and TaskUs Shares Skyrocket, What You Need  -> -
+     10-01 13:44 after_cutoff  class  | ServiceNow Rallies as Accenture Earnings Lift Software Stocks  -> ACN Set to Report Q4 Earnings: Here's What Investors Sh
+     10-01 14:38 after_cutoff  none   | Accenture Stock Is Having Its Best Day Ever. AI Isn't the Thre -> -
+     10-01 14:45 after_cutoff  class  | Unity Stock Rises in Sympathy with Accenture's Strong Q4       -> ACN Set to Report Q4 Earnings: Here's What Investors Sh
+     10-01 14:55 after_cutoff  none   | Innodata Stock Surges Thursday: What's Happening?              -> -
+     10-01 15:19 after_cutoff  none   | Accenture expects higher AI spending by clients as token costs -> -
+     10-01 16:15 after_cutoff  none   | Micron, Accenture, Google, IBM, Fair Isaac, Synopsys, and More -> -
+     10-01 18:11 after_cutoff  class  | Should Investors Chase Accenture (ACN) Stock After Its Post-Ea -> ACN Set to Report Q4 Earnings: Here's What Investors Sh
+     10-01 18:20 after_cutoff  none   | Accenture plc Stock 12‑Month Price Target Raised to $203.16, I -> -
+==============================================================================================================
+case         check                                                          result  detail
+ACN          tv_items_before_grade                                          PASS    
+ACN          tv_items_in_repoll_window                                      PASS    
+ACN          tv_items_after_cutoff                                          PASS    
+ACN          tv_coverage_reaches_period_start                               PASS    
+ACN          tv_unseen_minutes_at_period_start                              PASS    
+ACN          tv_items_we_missed                                             PASS    
+ACN          tv_items_unmatched_seen                                        PASS    
+ACN          all 1 seen items read as held                                  PASS    
+ACN          tv_match_summary sums to the three buckets                     PASS    
+ACN          control event: Accenture PLC reports results for the qu        PASS    
+PENG         tv_items_before_grade                                          PASS    
+PENG         tv_items_in_repoll_window                                      PASS    
+PENG         tv_items_after_cutoff                                          PASS    
+PENG         tv_coverage_reaches_period_start                               PASS    
+PENG         tv_unseen_minutes_at_period_start                              PASS    
+PENG         tv_items_we_missed                                             PASS    
+PENG         tv_items_unmatched_seen                                        PASS    
+PENG         all 18 seen items read as held                                 PASS    
+PENG         tv_match_summary sums to the three buckets                     PASS    
+PENG         held: Penguin Solutions names Stephen Cumming as CFO           PASS    
+PENG         held: Needham maintains Buy rating on Penguin Solution         PASS    
+PENG         held: Penguin Solutions Price Target Raised to $85.00/         PASS    
+PENG         held: Penguin Solutions Q4 Earnings Call Highlights            PASS    
+PENG         class-not-story: Rosenblatt maintains Buy rating on Pengu      PASS    
+BFLY         tv_items_before_grade                                          PASS    
+BFLY         tv_items_in_repoll_window                                      PASS    
+BFLY         tv_items_after_cutoff                                          PASS    
+BFLY         tv_coverage_reaches_period_start                               PASS    
+BFLY         tv_unseen_minutes_at_period_start                              PASS    
+BFLY         tv_items_we_missed_titles                                      PASS    
+BFLY         tv_items_we_missed_bucket                                      PASS    
+BFLY         tv_items_we_missed_match                                       PASS    
+BFLY         tv_match_summary sums to the three buckets                     PASS    
+ACN_PREVIEW  tv_items_before_grade                                          PASS    
+ACN_PREVIEW  tv_items_in_repoll_window                                      PASS    
+ACN_PREVIEW  tv_items_after_cutoff                                          PASS    
+ACN_PREVIEW  tv_coverage_reaches_period_start                               PASS    
+ACN_PREVIEW  tv_unseen_minutes_at_period_start                              PASS    
+ACN_PREVIEW  tv_items_we_missed                                             PASS    
+ACN_PREVIEW  tv_items_unmatched_seen_titles                                 PASS    
+ACN_PREVIEW  tv_items_unmatched_seen_match                                  PASS    
+ACN_PREVIEW  tv_match_summary sums to the three buckets                     PASS    
+ACN_PREVIEW  preview is class: Accenture PLC reports results for the qu     PASS    
+RULES        firm from Benzinga head template                               PASS    
+RULES        firm from Dow Jones tail template                              PASS    
+RULES        firm from TradingView analyst-feed template                    PASS    
+RULES        same $85 target, different firm -> class not story             PASS    
+RULES        preview detection                                              PASS    
+RULES        Market Talk is commentary even with a deal word                PASS    
+RULES        numeric anchors normalise $85.00 == $85                        PASS    
+==============================================================================================================
+50 PASS, 0 FAIL out of 50 assertions over 4 cases
