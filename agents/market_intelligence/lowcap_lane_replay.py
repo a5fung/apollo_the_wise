@@ -63,6 +63,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime, time, timedelta
+from functools import partial
 from typing import Any, Optional
 
 from shared.dates import _ET
@@ -179,13 +180,9 @@ def _fresh_fields(sig: dict, admission_era: str, replay_exit_era: str, replay_ex
     }
 
 
-async def _write(fields: dict, out: dict, label: str, upsert=None,
-                 error_event: str = "lowcap_lane_replay_error") -> bool:
+async def _write(fields: dict, out: dict, label: str, *, upsert, error_event: str) -> bool:
     return await lfc.write_replay_row(
-        fields, out, label,
-        upsert=upsert or upsert_lowcap_lane_replay,
-        error_event=error_event,
-    )
+        fields, out, label, upsert=upsert, error_event=error_event)
 
 
 async def _day0_bars(conn, ticker: str, session_date: date) -> tuple[list[dict], Optional[str]]:
@@ -235,6 +232,10 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
     ticker, session_date = sig["ticker"], sig["scan_date"]
     label = f"{ticker} {session_date.isoformat()}"
     out["candidates"] += 1
+    # The population's writer is bound ONCE here (shadow lane by default; the paper lane passes
+    # its own). Every write below goes through `write`, so no call site can forget it and land a
+    # paper-lane row in the shadow table.
+    write = partial(_write, upsert=upsert or upsert_lowcap_lane_replay, error_event=error_event)
 
     admission_era = rule_eras.admission_era_as_of(session_date)
     # The lane prices under MAGNA53's CURRENT bracket, not its own registry row's: it is "a lane
@@ -251,14 +252,14 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
         if not isinstance(tick, datetime):
             fields.update(entry_status="no_tick_wallclock", outcome="unscoreable",
                           final_reason="no_tick_wallclock")
-            await _write(fields, out, label, upsert, error_event)
+            await write(fields, out, label)
             return
         submit, out_of_orb = srr.submit_time_and_window(tick.astimezone(_ET))
         fields.update(submit_time_et=submit, window_out_of_orb=out_of_orb)
         if out_of_orb:
             fields.update(entry_status="window_out_of_orb", outcome="no_trade",
                           final_reason="window_out_of_orb")
-            await _write(fields, out, label, upsert, error_event)
+            await write(fields, out, label)
             return
 
         sessions = await lfc._assemble_sessions(conn, ticker, session_date, last_session)
@@ -286,14 +287,14 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
                 return
             fields.update(entry_status="no_day0_minute_bars", outcome="unscoreable",
                           final_reason="no_day0_minute_bars")
-            await _write(fields, out, label, upsert, error_event)
+            await write(fields, out, label)
             return
 
         orb = next((b for b in bars0 if b["m"].time() == time(9, 30)), None)
         if orb is None:
             fields.update(entry_status="no_930_bar_for_orb", outcome="unscoreable",
                           final_reason="no_930_bar_for_orb")
-            await _write(fields, out, label, upsert, error_event)
+            await write(fields, out, label)
             return
         orb_high, orb_low = orb["h"], orb["l"]
         fields.update(orb_high=orb_high, orb_low=orb_low)
@@ -306,14 +307,14 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
         if daily_open and orb["o"] and abs(daily_open / orb["o"] - 1) > SPLIT_DIVERGENCE_ABS_PCT:
             fields.update(entry_status="daily_row_split_adjusted", outcome="unscoreable",
                           final_reason="daily_row_split_adjusted")
-            await _write(fields, out, label, upsert, error_event)
+            await write(fields, out, label)
             return
 
         ok, skip = validate_orb_entry(orb_high, orb_low, atr14)
         fields.update(orb_valid=ok, orb_skip_reason=skip)
         if not ok:
             fields.update(entry_status="orb_invalid", outcome="no_trade", final_reason=skip)
-            await _write(fields, out, label, upsert, error_event)
+            await write(fields, out, label)
             return
 
         cancel = srr.entry_cancel_asof(run_date)
@@ -322,7 +323,7 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
         if fill["status"] != "filled":
             fields.update(outcome="unscoreable" if fill["status"] == "abstain" else "no_trade",
                           final_reason=fill.get("reason"))
-            await _write(fields, out, label, upsert, error_event)
+            await write(fields, out, label)
             return
 
         entry_px = fill["px"]
@@ -331,7 +332,7 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
         risk = entry_px - stop
         if risk <= 0:
             fields.update(outcome="unscoreable", final_reason="nonpositive_risk_per_share")
-            await _write(fields, out, label, upsert, error_event)
+            await write(fields, out, label)
             return
         fields["stop_price"] = stop
         fields["stop_pct_of_entry"] = stop_pct_of_entry(entry_px, stop)
@@ -357,7 +358,7 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
                     out["pending"] += 1
                     return
                 fields.update(outcome="unscoreable", final_reason=res.get("reason"))
-                await _write(fields, out, label, upsert, error_event)
+                await write(fields, out, label)
                 return
             # genuinely still OPEN — written now (survivorship), refreshed until it settles.
             mark = srr.mark_pnl_per_share(res, bars0, sessions, entry_px)
@@ -371,7 +372,7 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
             flag, forms = await _offering(ticker, session_date, last_session, run_date)
             fields.update(offering_flag=flag, offering_forms=forms,
                           offering_checked_through=last_session)
-            await _write(fields, out, label, upsert, error_event)
+            await write(fields, out, label)
             return
 
         fields.update(
@@ -398,7 +399,7 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
             through = sessions[exit_idx - 1][0] if 0 < exit_idx <= len(sessions) else last_session
             flag, forms = await _offering(ticker, session_date, through, run_date)
             fields.update(offering_flag=flag, offering_forms=forms, offering_checked_through=through)
-        await _write(fields, out, label, upsert, error_event)
+        await write(fields, out, label)
     except Exception as e:  # loud-ok: one signal's failure is counted; the others proceed
         out["errors"] += 1
         await log_audit_event(error_event, f"{label}: {type(e).__name__}: {e}")
@@ -417,7 +418,6 @@ async def run_lowcap_lane_replay(today: Optional[date] = None, *,
     byte-identical."""
     population_reader = population_reader or get_lowcap_lane_population
     existing_reader = existing_reader or get_lowcap_lane_replay_existing
-    upsert = upsert or upsert_lowcap_lane_replay
     error_event = f"{event_prefix}_error"
     now = now_et or datetime.now(_ET)
     today = today or now.date()

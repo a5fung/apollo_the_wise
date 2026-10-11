@@ -204,3 +204,79 @@ async def test_the_tiered_read_returns_each_tickers_latest_alert_date(monkeypatc
     monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
     got = await db.get_lowcap_paper_lane_tiered(today, 60)
     assert got == {"AAA": date(2026, 9, 20), "BBB": date(2026, 10, 12)}
+
+
+# ── the replay walker binds its writer ONCE per signal ────────────────────────────────────
+
+_NO_TICK_SIGNAL = {"signal_id": 7, "ticker": "SMLL", "scan_date": date(2026, 10, 9),
+                   "tick_wallclock_et": None}      # the walker's first, no-IO write path
+
+
+def _tally() -> dict:
+    return {"population": 0, "candidates": 0, "written": 0, "settled": 0, "no_trade": 0,
+            "unscoreable": 0, "open": 0, "horizon": 0, "pending": 0, "errors": 0}
+
+
+@pytest.mark.asyncio
+async def test_the_walker_writes_through_the_shadow_upsert_by_default(monkeypatch):
+    from agents.market_intelligence import lowcap_lane_replay as lcl
+    shadow = AsyncMock(return_value=True)
+    paper = AsyncMock(return_value=True)
+    monkeypatch.setattr(lcl, "upsert_lowcap_lane_replay", shadow)
+    monkeypatch.setattr(db, "upsert_lowcap_paper_lane_replay", paper)
+    out = _tally()
+    await lcl._record_one_signal(None, dict(_NO_TICK_SIGNAL), date(2026, 10, 9), date(2026, 10, 12), out)
+    assert shadow.await_count == 1 and not paper.await_count
+    assert shadow.await_args.args[0]["entry_status"] == "no_tick_wallclock"
+    assert out["written"] == 1 and out["unscoreable"] == 1
+
+
+@pytest.mark.asyncio
+async def test_a_paper_population_writes_only_to_its_own_upsert_and_audits_its_own_event(monkeypatch):
+    from agents.market_intelligence import lowcap_lane_replay as lcl
+    from agents.market_intelligence import live_fill_counterfactuals as lfc
+    shadow = AsyncMock(return_value=True)
+    monkeypatch.setattr(lcl, "upsert_lowcap_lane_replay", shadow)
+    paper = AsyncMock(return_value=True)
+    out = _tally()
+    await lcl._record_one_signal(None, dict(_NO_TICK_SIGNAL), date(2026, 10, 9), date(2026, 10, 12), out,
+                                 upsert=paper, error_event="lowcap_paper_lane_replay_error")
+    assert paper.await_count == 1 and not shadow.await_count and out["written"] == 1
+    # a failing write is tallied and audited under the PAPER lane's event name, not the shadow's
+    audits = []
+
+    async def _audit(ev, summary, *a, **k):
+        audits.append(ev)
+    monkeypatch.setattr(lfc, "log_audit_event", _audit)
+    boom = AsyncMock(side_effect=RuntimeError("db down"))
+    out = _tally()
+    await lcl._record_one_signal(None, dict(_NO_TICK_SIGNAL), date(2026, 10, 9), date(2026, 10, 12), out,
+                                 upsert=boom, error_event="lowcap_paper_lane_replay_error")
+    assert out["errors"] == 1 and audits == ["lowcap_paper_lane_replay_error"]
+    assert not shadow.await_count
+
+
+@pytest.mark.asyncio
+async def test_run_paper_lane_replay_end_to_end_never_touches_the_shadow_table_writer(monkeypatch):
+    from datetime import datetime
+    from agents.market_intelligence import lowcap_lane_replay as lcl
+    from shared.dates import _ET
+    pop = [dict(_NO_TICK_SIGNAL)]
+    monkeypatch.setattr(db, "get_lowcap_paper_lane_population", AsyncMock(return_value=pop))
+    monkeypatch.setattr(db, "get_lowcap_paper_lane_replay_existing", AsyncMock(return_value={}))
+    paper = AsyncMock(return_value=True)
+    monkeypatch.setattr(db, "upsert_lowcap_paper_lane_replay", paper)
+    shadow = AsyncMock(return_value=True)
+    monkeypatch.setattr(lcl, "upsert_lowcap_lane_replay", shadow)
+    pool, _ = make_mock_pool()
+    monkeypatch.setattr(lcl, "get_pool", AsyncMock(return_value=pool))
+    audits = []
+
+    async def _audit(ev, summary, *a, **k):
+        audits.append(ev)
+    monkeypatch.setattr(lcl, "log_audit_event", _audit)
+    out = await lcl.run_paper_lane_replay(date(2026, 10, 12),
+                                          now_et=datetime(2026, 10, 12, 18, 15, tzinfo=_ET))
+    assert out["population"] == 1 and out["written"] == 1 and out["errors"] == 0
+    assert paper.await_count == 1 and not shadow.await_count
+    assert audits == ["lowcap_paper_lane_replay_recorded"]
