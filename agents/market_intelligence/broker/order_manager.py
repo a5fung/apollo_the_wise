@@ -5797,11 +5797,20 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
 # (`apply_daily_exit_step`, unchanged), and a close below the line sells in the NEXT MORNING'S
 # OPENING AUCTION: the 16:45 job only MARKS the trade (`depth_sell_pending_on`), the depth stop
 # stays on, and at 19:01 ET `run_depth_open_sales` cancels the stop and sends a market-on-open
-# (TIF opg) sell. Applies to NEW MAGNA53 trades only: the choice is stamped on the row at entry
-# (`mi_live_trades.exit_rule = 'depth'`) and kept for life; trades entered before the toggle was
-# on (KOD, VICR) keep today's stop forever.
+# (TIF opg) sell. Applies to NEW MAGNA53 and NEW small-cap paper lane (`magna53_smallcap`) trades
+# only: the choice is stamped on the row at entry (`mi_live_trades.exit_rule = 'depth'`) and kept
+# for life; trades entered before the toggle was on (KOD, VICR) keep today's stop forever. The
+# small-cap lane joined on 2026-10-10 (operator "Ok": the lane's exits mirror live MAGNA53) — its
+# rows follow the PAPER toggle row, MAGNA53's live rows the LIVE one (docs/setups/magna53_ep.md).
 
 DEPTH_EXIT_RULE = "depth"
+# The strategies whose NEW trade rows can be stamped. Everything that ACTS on a depth row (the
+# 16:45 mark / stop raise, the 19:01 sale, the restore after an expired or rejected sale) reads
+# `exit_rule` + `account_mode` from the ROW and never tests the strategy, so this set is the ONLY
+# place the strategy list lives.
+_DEPTH_EXIT_STRATEGIES = frozenset({"magna53", "magna53_smallcap"})
+# A single STRING name, NOT the set: the 19:01 sale's client-order-id fallback for a row with no
+# signal_type (an f-string — a set here would build `apollo_live_frozenset({...})_KOD_...`).
 _DEPTH_EXIT_STRATEGY = "magna53"
 
 
@@ -5810,8 +5819,10 @@ async def _magna53_depth_exit_enabled(account_mode: str) -> bool:
 
     One `mi_safeguard_state('magna53_depth_exit', <mode>)` row, the same money-path idiom as
     `profit_take_oco` / `breakeven_at_broker` — no redeploy to flip, reversible the same way.
-    It is read ONLY when a new MAGNA53 trade row is created (the stamp); it never changes the
-    rule of a trade already open.
+    It is read ONLY when a new MAGNA53 / small-cap-lane trade row is created (the stamp); it
+    never changes the rule of a trade already open. `account_mode` is the ROW'S own mode: a
+    'paper' row governs paper trades, a 'live' row live trades, and the two never cross (the
+    lookup is the table's (safeguard, account_mode) primary key — no 'global' fallback).
 
     Fails CLOSED. An unreadable flag must leave a new trade on today's rule.
     """
@@ -5825,9 +5836,11 @@ async def _magna53_depth_exit_enabled(account_mode: str) -> bool:
 
 
 async def resolve_exit_rule_stamp(signal_type: str, account_mode: str) -> str | None:
-    """The exit rule a NEW trade row is stamped with: 'depth' for a MAGNA53 entry while the
-    toggle is on for its account mode, else None (today's rule). Read once, at row creation."""
-    if signal_type != _DEPTH_EXIT_STRATEGY:
+    """The exit rule a NEW trade row is stamped with: 'depth' for a MAGNA53 or small-cap-lane
+    (`magna53_smallcap`) entry while the toggle is on for THAT ROW'S account mode, else None
+    (today's rule). Read once, at row creation. The strategy test comes first, so a strategy
+    outside the set (9M, the shadow low-cap lane) never reads the toggle at all."""
+    if signal_type not in _DEPTH_EXIT_STRATEGIES:
         return None
     return DEPTH_EXIT_RULE if await _magna53_depth_exit_enabled(account_mode) else None
 

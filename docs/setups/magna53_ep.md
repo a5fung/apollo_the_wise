@@ -500,6 +500,13 @@ MAGNA53's exits; live MAGNA53's "already traded today" check made account-aware.
   Expected after the deploy: the nightly graduation sweep Telegrams `magna53_smallcap: (new) →
   paper` once (a new row, not a graduation), and the deploy preflight now walks this paper row
   through `_check_safeguards`, so a stale PAPER credential fails the deploy early.
+- **Depth exit (2026-10-10, his "Ok"; BUILT, inert until the 'paper' toggle row exists).** A NEW lane
+  row is stamped `exit_rule='depth'` — the stop rests one ADR20 under the trailing line and a close
+  below the line sells in the next opening auction (order 19:01 ET; mechanism `exit_discipline.md`
+  2026-10-01) — while `mi_safeguard_state('magna53_depth_exit', 'paper')` is on. The toggle is per
+  account mode: the lane follows the PAPER row, live MAGNA53 the LIVE row; a live row alone does not
+  stamp the lane. Default OFF, fails closed, stamped once at row creation and kept for life. Change
+  log 2026-10-10.
 - ⚖ **PENDING HIS CONFIRMATION (built parametrized):** the lane's own position cap
   `max_concurrent_positions = 5` (one-row `UPDATE mi_strategies` to change; NULL = share the paper
   account's 5) and the stop switch, runtime toggle **`lowcap_paper_lane`** (`mi_safeguard_state`,
@@ -538,7 +545,7 @@ MAGNA53's exits; live MAGNA53's "already traded today" check made account-aware.
 | `strategies/adapters._ADAPTERS` | IN (new key) | the registry reads its paper fills; tail rate comes from replays |
 | `agent.py` filtered-trades labels, `sell_discipline._SIGNAL_DISPLAY` | IN | display name, no raw underscore in Markdown |
 | `lowcap_lane_replay` exit rules `"magna53"` | IN (by construction) | the walk prices MAGNA53's current bracket |
-| `order_manager._DEPTH_EXIT_STRATEGY` | OUT | depth exit is OFF for MAGNA53 (no toggle row in prod); the lane runs the rule MAGNA53 runs; turning depth on for the lane is his call |
+| `order_manager._DEPTH_EXIT_STRATEGIES` (the set; `_DEPTH_EXIT_STRATEGY` stays the string `"magna53"`, the 19:01 sale's client-order-id default) | **IN since 2026-10-10 (his "Ok")** — was OUT while depth was OFF and "turning depth on for the lane is his call"; that was the call | the lane's exits mirror MAGNA53's, so a NEW lane row is stamped `exit_rule='depth'` while `mi_safeguard_state('magna53_depth_exit', 'paper')` is on — the toggle is read for the ROW'S own account mode, so MAGNA53's live row never stamps the lane; change log 2026-10-10 |
 | `cross_strategy_allocator` (×4), `ep_detector` allocator enqueue | OUT | live-slot shadow; the lane has its own cap |
 | `ep_detector` downgrade-Telegram mode resolve | OUT | the lane sends no catalyst Telegram |
 | `live_tracker` (`resolve`/skip rows/`signal_type="magna53"`), `scheduler` out-of-window skip | OUT | the live order step is MAGNA53's |
@@ -549,11 +556,13 @@ MAGNA53's exits; live MAGNA53's "already traded today" check made account-aware.
 | `db` seed of `magna53`, NULL `signal_type` backfill | OUT | MAGNA53's own row / one-shot historic backfill |
 | `channels/telegram.py` `/eps` button | OUT | MAGNA53's command |
 
-**Not mirrored yet (paper-account toggles, his call — a prod DB write):** the per-mode exit and
-entry mechanics MAGNA53 runs live — `profit_take_oco`, `profit_take_resting_limit`,
-`breakeven_at_broker`, `entry_ask_aware` — have rows for 'live' only, so paper lane trades use the
-fallback mechanics (polled partial, software breakeven, last-trade entry check) until a 'paper'
-row is set for each.
+**Paper-account toggles (read from prod 2026-10-10, `scripts/probes/_wk1010_depth_paper/q1_toggles.out`):**
+the per-mode exit and entry mechanics MAGNA53 runs live — `profit_take_oco`,
+`profit_take_resting_limit`, `breakeven_at_broker`, `entry_ask_aware` — now each have a 'paper'
+row = `on` (all four written together, 2026-10-10 19:15 UTC; this paragraph said "live rows only"
+before that), so lane trades run MAGNA53's per-mode mechanics. **`magna53_depth_exit` has NO row in
+either mode** — it is the one still to set (both rows together, Mon 2026-10-12 noon ET; the two
+statements are in the change log entry 2026-10-10 "the DEPTH exit also covers the small-cap PAPER lane").
 
 ## Known limitations / open questions
 
@@ -581,6 +590,47 @@ row is set for each.
 10. **The +8R profit-take sells 1 share of a 2-share position, but a 1-share reach is still a silent no-op and the new branch has no historical event** (2026-10-10, his "go with rec" — change log 2026-10-10 below). VICR, the trigger, held ONE share and is not covered; 0 of 4 two-share live fills ever reached +8R; `too_small_to_split` is never written to `mi_audit_log`; `/partialnow` still refuses 2-share positions. Filed here per CHANGE_PROCESS r7 — the entry carries the numbers and the verify list.
 
 ## Change log (newest first)
+
+### 2026-10-10 — #687 / #624: the DEPTH exit also covers the small-cap PAPER lane — a NEW `magna53_smallcap` paper row is stamped `depth` while the PAPER toggle row is on (OPERATOR-SIGNED "Ok"; BUILT on branch `wk1010/depth-paper-lane`, NOT DEPLOYED; INERT until the 'paper' row exists)
+
+- **Trigger:** his ruling 2026-10-10, **"Ok"**: the small-cap paper lane's exits mirror live MAGNA53 (his earlier #624 rulings: the lane carries *"MAGNA53's exits"*; his 10-06 spec *"Everything should be same as current EP setup except market cap, so we can piggy back on it"*). The #624 literal table above had `_DEPTH_EXIT_STRATEGY` **OUT** — depth was OFF and *"turning depth on for the lane is his call"*; this is that call. The #687 depth exit goes live **Mon 2026-10-12 at noon ET** (`mi_safeguard_state('magna53_depth_exit', 'live')` = on). Before this change the stamp fired for `signal_type == 'magna53'` only, so a lane trade could never have received it.
+- **What changed — the stamp, nothing else:** `order_manager._DEPTH_EXIT_STRATEGIES = frozenset({"magna53", "magna53_smallcap"})`; `resolve_exit_rule_stamp(signal_type, account_mode)` returns `'depth'` for a signal_type in the set while the toggle is on **for that row's account mode**. Unchanged and pinned: the toggle stays **per account mode**, **default OFF**, **fails closed**; the rule is stamped **once at row creation inside the insert's transaction and kept for life** (trades already open keep theirs; nothing re-stamps); **9M, `magna53_lowcap` and every other strategy never get it** (membership is tested BEFORE the toggle read, so they cost no DB read); `_DEPTH_EXIT_STRATEGY` stays the STRING `"magna53"` (the 19:01 sale's client-order-id default for a row with no signal_type — a set there would build `apollo_live_frozenset(...)`). The lane's own gates, entry, sizing, stop (`entry − 2R`) and +8R / +3R exits are untouched.
+- **Evidence:** none required for the stamp — paper only, no live criterion moved, live MAGNA53 stamped byte-identically (pinned). The depth RULE's evidence is MAGNA53's (2026-10-01 entry: 1,505 rebuilt EPs +29R vs today's stop, p 0.33; 79 real EPs −1.8R, noise) and says nothing about small caps: **0 `magna53_smallcap` trades exist** (`scripts/probes/_wk1010_depth_paper/q1_toggles.out`), so the lane's depth fills are the FIRST small-cap evidence, which is what the lane exists to collect. Not a tuned threshold; the N≥10 backtest rule does not apply to a stamp scope.
+- **Anticipated effect:** nothing until the 'paper' row is set (Mon). After it: the first NEW lane row that is not a skip carries `exit_rule='depth'`; its evening stop rests one ADR20 under the line (a thin-history name with < 10 prior sessions rests at the hard / breakeven floor — the documented design default); a close below the line is marked at 16:45 and sold in the next opening auction (order 19:01 ET), all on the PAPER account. The lane produces ~1 fill a month, so the first stamped row may be weeks away.
+- **Reversion-flag:** REFINEMENT of the 2026-10-10 #624 ruling above (its table row said OUT) and of the 2026-10-01 #687 entry (MAGNA53 only). **Revert = the 'paper' row set `off`** (new lane rows stop being stamped; ~instant, no redeploy; the live row is untouched). Rows already stamped keep depth for life — re-stamping is a deliberate one-off SQL, his call.
+- **Status:** BUILT, not deployed, not merged. Tests: `tests/test_depth_exit_paper_lane.py` (21; 5 are RED on origin/main — the set, the string default, smallcap+paper-on → `depth`, the funnel stamp, and the per-mode read — the other 16 PIN unchanged behaviour: live MAGNA53, 9M, no-paper-row, only-live-row, and the whole downstream population below on a PAPER row).
+- **DOWNSTREAM POPULATION — DERIVED, not hand-listed** (every `exit_rule` / `DEPTH_EXIT_RULE` / `depth_sell_pending_on` / `'depth'` reference in `agents/ core/ shared/ channels/ backtester/ scripts/*.py`, then each read for a strategy test or an account-mode default; SQL filtering `signal_type` near `exit_rule` = none exists). Every acting path reads `exit_rule` and `account_mode` from the **ROW**, never `signal_type == 'magna53'`:
+
+  | site | what it does for a depth row | smallcap on PAPER | changed? |
+  |---|---|---|---|
+  | `entry_pipeline.py:750` / `:844` | reads the stamp before the cap lock; writes `exit_rule` in the insert's transaction | `account_mode` = the strategy's resolved mode (`'paper'` for the lane) → reads the PAPER row | no (comment only) |
+  | `order_manager.py:5838` `resolve_exit_rule_stamp` | THE decision | — | **YES — the one code change** |
+  | `live_tracker.py:1034` / `:1037` / `:1084` / `:1090` (16:45 job, `update_open_positions_live`) | `is_depth` from the row; mark on a close below the line; `depth_stop_price(...)` → `update_stop(stop_source='depth_trail')` | loop is over ALL filled rows, any strategy, any mode; the depth stop takes `line / hard_stop / entry / breakeven / ADR20` — **no R frame**; `hard_stop` = `entry − 2R` from MAGNA53's builder | no |
+  | `order_manager.py:6007` `run_depth_open_sales` (19:01 job; `scheduler.py:2515` / `:7781`, same `LIVE_TRADING_ENABLED` gate as the 16:45 job `scheduler.py:1864`) | selects `exit_rule = 'depth' AND depth_sell_pending_on IS NOT NULL` — no strategy, no mode | picked up | no |
+  | `order_manager.py:5858` `execute_depth_open_sale` (`:5882` mode from the row; `:5934` cancel, `:5938` release wait, `:5943` opg sell, `:5958` restore — all carry the row's `account_mode`; `:5941` client order id `make_client_order_id(account_mode, signal_type or "magna53", ticker)`) | the opening-auction sale | `apollo_paper_magna53_smallcap_<T>_<ms>` on the PAPER client (invariant 1) | no |
+  | `order_manager.py:5236` `_retry_restore_while_shares_held`, `:5324` `_restore_stop_after_failed_exit` | restore the stop after a refused / failed sale | `account_mode` + `signal_type` threaded from the caller; the retry's id is mode-bound | no |
+  | `trade_stream.py:2480`–`2640` (§3 full-exit cancel / expiry), `:1451` `_restore_stop_after_dead_sale_in_background`, `:413` `_planned_sale_cancelled_this_stop`, `:700`–`:705` / `:809`–`:814` (fill → `finalize_full_exit`) | restore the stop after an expired opg; commit the auction fill; mute the planned-cancel page | the event's own stream `account_mode`; `signal_type` read from the trade row for the id only | no |
+  | `exit_logic.py:169` `depth_stop_price`, `adr20_pct_from_bars` | pure arithmetic | strategy-free | no |
+  | `order_manager.py:9524` `_ORB_R_FRAME_SIGNAL_TYPES`, `:9563` `_PLUS8R_PARTIAL_SIGNAL_TYPES` | the +8R / +3R arms (not depth) | already contain `magna53_smallcap` | no |
+  | `lowcap_lane_replay.py:244`, `gap_near_miss_replay.py:247`, `sustain_reject_replay.py:314`, `live_fill_counterfactuals.py:931` (all via `rule_eras.exit_rules_as_of`) | replay / counterfactual walkers | **none reads `exit_rule`; `rule_eras` has no depth era — they price the NON-depth bracket for EVERY strategy** | no — see the known gap |
+
+- **KNOWN GAP (not fixed here — it is #687's own flip-day duty, `exit_discipline.md` 2026-10-01 "Flip-day duties", and fixing it moves live MAGNA53 replays):** no walker models a `depth` row. From the first stamped lane row, that row's fill and the nightly lane replay (`lowcap_lane_replay`, MAGNA53's current non-depth bracket) are no longer like-for-like — the same break lands on live MAGNA53 Mon. Read lane fills and lane replays as two different exits until `rule_eras` gets its depth era (with `tests/test_exit_counterfactual_consolidation_631`'s era literal).
+- **MONDAY NOON ET — THE TWO STATEMENTS HE RUNS (OPERATOR-ONLY, THE LINE; both rows together; the rows act on the NEXT entry, never an open trade; no cache, no restart):**
+  ```sql
+  INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
+  VALUES ('magna53_depth_exit', 'live', 'on', NOW(), NOW())
+  ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();
+
+  INSERT INTO mi_safeguard_state (safeguard, account_mode, state, last_transition_at, updated_at)
+  VALUES ('magna53_depth_exit', 'paper', 'on', NOW(), NOW())
+  ON CONFLICT (safeguard, account_mode) DO UPDATE SET state = EXCLUDED.state, updated_at = NOW();
+  ```
+  Either row alone is a half-flip: the live row alone stamps MAGNA53 and leaves the lane on today's rule; the paper row alone stamps the lane (and any `magna53` row that lands on the paper account) and leaves live MAGNA53 on today's rule. Revert either with the same statement and `'off'`.
+- **EXPECT (written BEFORE the deploy; BASELINE = prod read 2026-10-10 PT, `q1_toggles.out`):** `mi_safeguard_state` rows for `magna53_depth_exit`: **0 in both modes**; `mi_live_trades` stamped rows: **0 of 352 rows of any status** (`magna53` live 133, `magna53` paper 149, `9m_day2` paper 70); `magna53_smallcap` trades: **0 ever** (strategy row: phase `paper`, enabled, cap 5). **AFTER the deploy, BEFORE any row: the toggle-row count stays 0 and the stamped-row count stays 0** (new trade rows may appear; none is stamped) — no stamp, no new audit event, no change to any live or paper trade's exit rule. **AFTER Monday's two rows:** 2 rows `state='on'`; every NEW `magna53` live row (non-skip) stamped `depth`; every NEW `magna53_smallcap` paper row (non-skip) stamped `depth`; 9M and `magna53_lowcap` rows never. **UNINTENDED, watched with it:** a `magna53` row landing on the PAPER account while MAGNA53 is not phase `paper` (none expected; it would be stamped by the paper row, as before this change for any paper row); a lane opening-auction sale REJECTED by the paper broker (small caps are untested for opg on paper — only KO is; the path restores the stop and pages, pinned); a first lane close-below sale putting a paper loss into the paper 2% / circuit-breaker counters (ruled-accepted for MAGNA53).
+- **DONE-WHEN:** the first NEW `magna53_smallcap` paper row created after the paper row's `updated_at` (skips excluded) shows `exit_rule='depth'` — read from `mi_live_trades` by the query below; that proves the stamp. **No calendar close** — the lane fills ~1 a month, so a quiet fortnight is not evidence (the same rule as the 2-share +8R entry). The lane's first close-below event, when it comes, is read against `exit_discipline.md` 2026-10-01's EXPECT with the paper prefix.
+- **WOULD-FAIL-IF:** (positive check — the broken system is SILENT, so silence proves nothing) a `magna53_smallcap` / `paper` row with `skip_reason IS NULL` and `created_at` after the paper toggle row's `updated_at` has `exit_rule IS NULL` — exactly what the old code writes; or ANY stamped row exists before the paper/live rows do (`count(*) FILTER (WHERE exit_rule IS NOT NULL)` ≠ 0 between deploy and Monday); or a `9m_day2` / `magna53_lowcap` row is stamped; or a live `magna53` row is stamped after only the paper row was set.
+- **VERIFY-LIVE:** (1) **same weekend, after the execution deploy, no market and no row needed:** `docker exec -i apollo-execution python - < scripts/probes/_wk1010_depth_paper/dryrun_stamp.py` must print `DRYRUN PASS` (12 cases over a fabricated in-memory toggle table: real `resolve_exit_rule_stamp` + real toggle read, only `db.get_safeguard_state` faked; on the old image it prints `DRYRUN FAIL`), plus `docker exec apollo-execution python -c "from agents.market_intelligence.broker.order_manager import _DEPTH_EXIT_STRATEGIES as s; print(sorted(s))"` → `['magna53', 'magna53_smallcap']` (old image: ImportError). (2) **after the deploy, before Monday:** `SELECT * FROM mi_safeguard_state WHERE safeguard='magna53_depth_exit'` → 0 rows; `SELECT signal_type, account_mode, count(*), count(*) FILTER (WHERE exit_rule IS NOT NULL) FROM mi_live_trades GROUP BY 1,2` → the stamped column all 0. (3) **event-gated, after Monday's rows:** `SELECT id, ticker, signal_type, account_mode, status, skip_reason, exit_rule, created_at FROM mi_live_trades WHERE signal_type='magna53_smallcap' AND skip_reason IS NULL AND created_at > (SELECT updated_at FROM mi_safeguard_state WHERE safeguard='magna53_depth_exit' AND account_mode='paper') ORDER BY id` → the first row shows `exit_rule='depth'`.
+- **Deploy scope:** `order_manager.py`, `entry_pipeline.py` and `db.py` (a comment) are `broker/` / execution-loaded (`scripts/exec_loaded_modules.txt`) → `bash scripts/deploy.sh both` THEN `bash scripts/deploy.sh execution`; `scripts/live_rules.py` is not execution-loaded (rides the build). Diff the running image against origin/main first — a deploy ships the BRANCH. Weekend = unrestricted windows (avoid the Sun 02:00 / 08:00 / 08:45 / 19:00 / 19:30 ET jobs); the change is inert, so it may also go in Monday's 12:00–13:00 ET window **before** the two statements — the order that matters is deploy FIRST, rows second (rows set against the OLD image would stamp live MAGNA53 and silently leave the lane unstamped).
 
 ### 2026-10-10 — the +8R profit-take on a 2-SHARE position sells 1 share (OPERATOR-SIGNED "go with rec"; SINGLE-CASE-TRIGGERED — no backtest possible at N≥10; DEPLOYED 2026-10-10)
 
@@ -667,6 +717,8 @@ row is set for each.
   `_grade_admitted` (pure refactor; tripwire registry 17 continues → 14 + 3 returns); (b)
   `live_tracker` "already traded today" filtered by account (approved 10-10, RED test);
   (c) `submit_trade_entry` gains `require_account_mode` / `page_cap_plus_one` (defaults = today).
+- **Amended later 2026-10-10 (his "Ok"):** the lane's exits now include the #687 DEPTH exit — a NEW lane row
+  is stamped `depth` while the PAPER `magna53_depth_exit` toggle row is on. Change log entry at the top of this log.
 - **Operator quote:** *"Ok to recs"* (2026-10-10) on the price/design page; his 10-06 spec
   *"Everything should be same as current EP setup except market cap, so we can piggy back on it"*.
 - **Evidence:** none required for the lane itself (paper only, no live criterion moved); its
@@ -1436,6 +1488,10 @@ breaker as normal (ruled — watch it).
 
 **Reversion-flag**: REFINEMENT of the 2026-09-06 era-D exit (same line and close test; the stop rests lower and the
 sale moves to the opening auction). Revert = toggle row 'off' (stops stamping new trades).
+
+**⚖ AMENDED 2026-10-10 (his "Ok"):** the stamp ALSO covers NEW `magna53_smallcap` (small-cap paper lane) rows,
+read against the PAPER toggle row — see the change log entry of 2026-10-10 at the top of this log. Everywhere this
+entry says "MAGNA53 trades", read "MAGNA53 and the small-cap paper lane".
 
 **Status**: BUILT behind `magna53_depth_exit` (OFF, no row), paper rehearsal pending, not deployed. Flip-day duties
 (a dated line here, the `rule_eras` exit-era boundary, the live watch's EXPECT / DONE-WHEN / WOULD-FAIL-IF) are in

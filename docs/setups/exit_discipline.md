@@ -36,11 +36,13 @@ the exit path sees intraday price", which stopped being true on 2026-08-01):**
 - **The TRAIL is DAILY**: `exit_logic.py` is *"pure daily-exit-step decision logic"*;
   `apply_daily_exit_step(state, daily_bar, …)` consumes **one daily bar** — the SMA-trail /
   stop-update decisions are evaluated once, against the close, not on the touch.
-- **A DEPTH variant of the trail exists for NEW MAGNA53 trades but is OFF** (#687 B, operator-ruled
-  2026-09-29): toggle `magna53_depth_exit` (per mode, no row = OFF) stamps `mi_live_trades.exit_rule
+- **A DEPTH variant of the trail exists for NEW MAGNA53 trades and NEW small-cap paper lane
+  (`magna53_smallcap`) trades but is OFF** (#687 B, operator-ruled 2026-09-29; the lane joined
+  2026-10-10, his "Ok"): toggle `magna53_depth_exit` (per mode, no row = OFF; the ROW'S own mode —
+  MAGNA53 follows the 'live' row, the lane the 'paper' row) stamps `mi_live_trades.exit_rule
   = 'depth'` at entry; a stamped trade's stop rests one ADR20 under the line and a close below the
   line sells in the next opening auction (order sent 19:01 ET). No row is stamped today, so every
-  trade runs the trail described here. Change log 2026-10-01.
+  trade runs the trail described here. Change log 2026-10-01 and 2026-10-10.
 
 **Jobs:** `track_position_extremes` every 5 min (bars + the #508 profit trigger);
 `run_partial_exits` 3:45 PM ET (the time-gated partial — standing down while the intraday
@@ -353,6 +355,18 @@ what any live position does.
 ---
 
 ## Change log (newest first)
+
+### 2026-10-10 — #687 / #624: the DEPTH exit's stamp also covers the small-cap PAPER lane (OPERATOR-SIGNED "Ok"; BUILT, NOT DEPLOYED, INERT until the 'paper' toggle row exists)
+
+The rule, its derived downstream population (every path that acts on a `depth` row, file:line), the
+known gap (no replay walker models a depth row yet), the live expectations, and the two statements he
+runs Monday noon ET (the 'live' and 'paper' `magna53_depth_exit` rows) live in the owner of the
+MAGNA53 rule: `magna53_ep.md` change log 2026-10-10. In this file's terms: **the stamp scope only** —
+`order_manager.resolve_exit_rule_stamp` tests a SET {`magna53`, `magna53_smallcap`} and reads the toggle
+for the ROW'S own account mode; the resting stop, the 16:45 decision/mark, the 19:01 opening-auction
+sale and the restore after an expired or rejected sale are unchanged and already strategy-free (they
+read `exit_rule` + `account_mode` from the row). The mechanism below ("Stamp at entry", the 2026-10-01
+part B entry) reads "MAGNA53" as "MAGNA53 and the small-cap lane".
 
 ### 2026-10-10 — the +8R profit-take on a 2-share MAGNA53 position sells 1 share (OPERATOR-SIGNED "go with rec"; DEPLOYED 2026-10-10)
 
@@ -951,7 +965,7 @@ own lines (418 cases, 0 mismatches — `scripts/probes/_687/depth_stop_golden.py
 
 **What it does (mechanism):**
 - **Stamp at entry.** `entry_pipeline.submit_trade_entry` reads `mi_safeguard_state('magna53_depth_exit',
-  <mode>)` before the cap-lock transaction (`order_manager.resolve_exit_rule_stamp`, MAGNA53 only, fails CLOSED)
+  <mode>)` before the cap-lock transaction (`order_manager.resolve_exit_rule_stamp`, MAGNA53 and — since 2026-10-10 — the small-cap lane `magna53_smallcap` only, each against its own row's mode; fails CLOSED)
   and, inside the insert's own transaction, writes `mi_live_trades.exit_rule = 'depth'`. NULL = today's rule. The
   16:45 job and the 19:01 sale read the ROW, never the toggle — flipping it cannot change an open trade's rule.
 - **Resting stop, day 1 on.** 16:45 job: `exit_logic.depth_stop_price` = max(hard stop, entry once breakeven is

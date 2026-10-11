@@ -742,10 +742,11 @@ async def submit_trade_entry(
     auto_enter = _should_auto_enter(account_mode, live_real_enabled)
 
     # #687 B (2026-10-01): the EXIT RULE this trade is entered under, stamped on the row inside
-    # the same transaction as the insert and kept for life. 'depth' only for a MAGNA53 entry
-    # while `mi_safeguard_state('magna53_depth_exit', <mode>)` is on (fails CLOSED → today's
-    # rule). Read here, OUTSIDE the cap lock (no I/O inside it beyond the row writes); a toggle
-    # flip after this moment never touches this trade.
+    # the same transaction as the insert and kept for life. 'depth' only for a MAGNA53 or
+    # small-cap-lane (`magna53_smallcap`, 2026-10-10) entry while
+    # `mi_safeguard_state('magna53_depth_exit', <THIS ROW'S account_mode>)` is on (fails CLOSED →
+    # today's rule). Read here, OUTSIDE the cap lock (no I/O inside it beyond the row writes); a
+    # toggle flip after this moment never touches this trade.
     from agents.market_intelligence.broker.order_manager import resolve_exit_rule_stamp
     exit_rule_stamp = await resolve_exit_rule_stamp(signal_type, account_mode)
 

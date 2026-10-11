@@ -1,0 +1,40 @@
+safeguard	account_mode	state	last_transition_at	updated_at
+breakeven_at_broker	live	on		2026-08-10 12:22:26.209152+00
+breakeven_at_broker	paper	on	2026-10-10 19:15:20.454956+00	2026-10-10 19:15:20.454956+00
+entry_ask_aware	live	on	2026-08-07 14:55:32.320813+00	2026-08-07 14:55:32.320813+00
+entry_ask_aware	paper	on	2026-10-10 19:15:20.454956+00	2026-10-10 19:15:20.454956+00
+profit_take_oco	live	on	2026-08-17 15:03:32.692265+00	2026-08-17 15:03:32.692265+00
+profit_take_oco	paper	on	2026-10-10 19:15:20.454956+00	2026-10-10 19:15:20.454956+00
+profit_take_resting_limit	live	on	2026-08-10 21:15:16.430312+00	2026-08-10 21:15:16.430312+00
+profit_take_resting_limit	paper	on	2026-10-10 19:15:20.454956+00	2026-10-10 19:15:20.454956+00
+(8 rows)
+?column?
+---
+(1 row)
+signal_type	account_mode	n	stamped
+9m_day2	paper	70	0
+magna53	live	133	0
+magna53	paper	149	0
+(3 rows)
+?column?
+---
+(1 row)
+strategy_id	phase	enabled	live_real_enabled	max_concurrent_positions
+magna53	live	t	t	
+magna53_lowcap	shadow	t	f	
+magna53_smallcap	paper	t	f	5
+(3 rows)
+?column?
+---
+(1 row)
+column_name	data_type
+safeguard	text
+account_mode	text
+state	text
+last_transition_at	timestamp with time zone
+last_evaluation_at	timestamp with time zone
+last_drawdown_pct	numeric
+last_peak	numeric
+last_peak_date	date
+updated_at	timestamp with time zone
+(9 rows)

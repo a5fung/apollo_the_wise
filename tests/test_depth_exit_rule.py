@@ -139,9 +139,12 @@ async def test_an_unreadable_toggle_fails_closed(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_only_magna53_is_stamped(monkeypatch):
+async def test_only_magna53_and_the_smallcap_lane_are_stamped(monkeypatch):
+    """The small-cap paper lane joined 2026-10-10 (his "Ok"); the per-mode routing and the
+    inert-until-the-paper-row pins live in tests/test_depth_exit_paper_lane.py."""
     monkeypatch.setattr(om, "_magna53_depth_exit_enabled", AsyncMock(return_value=True))
     assert await om.resolve_exit_rule_stamp("magna53", "live") == "depth"
+    assert await om.resolve_exit_rule_stamp("magna53_smallcap", "paper") == "depth"
     assert await om.resolve_exit_rule_stamp("magna53_lowcap", "live") is None
     assert await om.resolve_exit_rule_stamp("9m_day2", "live") is None
     monkeypatch.setattr(om, "_magna53_depth_exit_enabled", AsyncMock(return_value=False))
