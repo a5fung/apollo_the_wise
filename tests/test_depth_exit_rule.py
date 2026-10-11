@@ -555,7 +555,8 @@ async def test_one_failing_sale_does_not_stop_the_next(monkeypatch):
     class _C:
         async def fetch(self, q, *a, **k):
             assert a == ("depth",), "the job selects depth-stamped rows only"
-            return [{"id": 1, "ticker": "AAA"}, {"id": 2, "ticker": "BBB"}]
+            return [{"id": 1, "ticker": "AAA", "account_mode": "live"},
+                    {"id": 2, "ticker": "BBB", "account_mode": "paper"}]
 
         async def execute(self, *a, **k):
             return "UPDATE 1"

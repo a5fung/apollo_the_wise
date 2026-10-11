@@ -6002,7 +6002,7 @@ async def run_depth_open_sales() -> list[dict]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
-            SELECT id, ticker FROM mi_live_trades
+            SELECT id, ticker, account_mode FROM mi_live_trades
             WHERE status = 'filled' AND remaining_shares > 0
               AND exit_rule = $1 AND depth_sell_pending_on IS NOT NULL
             ORDER BY id
@@ -6018,10 +6018,13 @@ async def run_depth_open_sales() -> list[dict]:
                 "depth_open_sale_error",
                 f"{r['ticker']} #{r['id']}: opening-auction sale raised — {e}",
                 json.dumps({"trade_id": r["id"], "ticker": r["ticker"],
-                            "error": str(e)[:400]}),
+                            "account_mode": r["account_mode"], "error": str(e)[:400]}),
             )
+            # The row's OWN book labels the page: the small-cap paper lane (2026-10-10) makes a
+            # PAPER depth row an expected population, and a paper failure must not read as a live one.
             await send_telegram_message(md_to_html(
-                f"🚨 Opening-auction sale for {r['ticker']} raised before it finished: {e}\n"
+                f"{mode_prefix(r['account_mode'])}🚨 Opening-auction sale for {r['ticker']} "
+                f"raised before it finished: {e}\n"
                 f"Check the broker: the stop may have been cancelled."
             ), parse_mode="HTML")
             try:

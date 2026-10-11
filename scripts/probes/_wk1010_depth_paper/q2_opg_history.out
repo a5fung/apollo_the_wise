@@ -1,0 +1,15 @@
+event_type	n	paper_n	first_at	last_at
+depth_open_sale_placed	1	1	2026-10-08 23:01:00.158074+00	2026-10-08 23:01:00.158074+00
+(1 row)
+?column?
+---
+(1 row)
+orders_mentioning_opg
+0
+(1 row)
+?column?
+---
+(1 row)
+stamped_trades
+0
+(1 row)

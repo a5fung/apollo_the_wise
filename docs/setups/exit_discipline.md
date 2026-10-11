@@ -366,7 +366,10 @@ MAGNA53 rule: `magna53_ep.md` change log 2026-10-10. In this file's terms: **the
 for the ROW'S own account mode; the resting stop, the 16:45 decision/mark, the 19:01 opening-auction
 sale and the restore after an expired or rejected sale are unchanged and already strategy-free (they
 read `exit_rule` + `account_mode` from the row). The mechanism below ("Stamp at entry", the 2026-10-01
-part B entry) reads "MAGNA53" as "MAGNA53 and the small-cap lane".
+part B entry) reads "MAGNA53" as "MAGNA53 and the small-cap lane". ⚠ **Paper's opening auction is
+unproven:** the only opg sale ever sent on the paper account (PEP, 10-09) EXPIRED unfilled, so the lane's
+depth sale is expected to expire and be re-decided daily; the PAPER toggle row waits on his decision
+(`magna53_ep.md` 2026-10-10, the ⚖ block).
 
 ### 2026-10-10 — the +8R profit-take on a 2-share MAGNA53 position sells 1 share (OPERATOR-SIGNED "go with rec"; DEPLOYED 2026-10-10)
 
@@ -1024,8 +1027,15 @@ pending, NOT deployed. Before any live flip: Mon–Tue PAPER rehearsal of the ex
 (mechanics doc §8, corrected by its CHECKED section). Deploy: `execution` (broker + scheduler) AND `market-agent`
 (the `ADD COLUMN IF NOT EXISTS exit_rule / depth_sell_pending_on` migration lands on boot).
 
-**Flip (OPERATOR-ONLY, THE LINE — per mode; acts on the NEXT MAGNA53 entry, never an open trade):**
+**⚠ SUPERSEDED 2026-10-10 — DO NOT RUN THE BLOCK BELOW.** The rehearsal it waits on ran (paper Day A/B, 10-08/10-09) and he ruled the
+go-live: the depth exit goes live Mon 2026-10-12 noon ET, and the small-cap paper lane follows it ("Ok"). The statements to run
+are the TWO in `magna53_ep.md` change log 2026-10-10 (live row and paper row, `last_transition_at` bumped) — and the PAPER one
+waits on his answer to that entry's ⚖ block (paper's only opg sale expired). Run as written, this block sets the paper row
+ALONE: it would stamp the lane (and any `magna53` row on the paper account) and leave live MAGNA53 on today's rule.
+
+**Flip (OPERATOR-ONLY, THE LINE — per mode; acts on the NEXT MAGNA53 entry, never an open trade) — SUPERSEDED, kept as history:**
 ```sql
+-- SUPERSEDED 2026-10-10 — DO NOT RUN: sets the PAPER row alone (a half-flip). Use magna53_ep.md change log 2026-10-10.
 INSERT INTO mi_safeguard_state (safeguard, account_mode, state, updated_at)
 VALUES ('magna53_depth_exit', 'paper', 'on', now())          -- 'live' only after the rehearsal + his yes
 ON CONFLICT (safeguard, account_mode) DO UPDATE SET state='on', updated_at=now();

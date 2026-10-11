@@ -314,13 +314,14 @@ async def test_1901_a_rejected_smallcap_paper_auction_order_restores_the_paper_s
 @pytest.mark.asyncio
 async def test_1901_the_runner_selects_by_the_stamp_alone_not_by_strategy(monkeypatch):
     """`run_depth_open_sales` finds every marked depth row in either book. Its SQL must carry no
-    `signal_type` (a smallcap row would silently drop out) and no `account_mode` (it serves both)."""
+    `signal_type` (a smallcap row would silently drop out) and no `account_mode` FILTER (it serves
+    both books). `account_mode` IS selected — only to label the failure page with the row's own book."""
     seen: dict = {}
 
     class _C:
         async def fetch(self, q, *a, **k):
             seen["q"], seen["args"] = " ".join(q.split()), a
-            return [{"id": 501, "ticker": "KOD"}]
+            return [{"id": 501, "ticker": "KOD", "account_mode": "paper"}]
 
     class _A:
         async def __aenter__(self):
@@ -342,8 +343,62 @@ async def test_1901_the_runner_selects_by_the_stamp_alone_not_by_strategy(monkey
     assert out == [{"trade_id": 501, "ticker": "KOD", "placed": True}]
     assert seen["args"] == ("depth",)
     assert "exit_rule = $1" in seen["q"] and "depth_sell_pending_on IS NOT NULL" in seen["q"]
-    assert "signal_type" not in seen["q"] and "account_mode" not in seen["q"], seen["q"]
+    where = seen["q"].split("WHERE", 1)[1]
+    assert "signal_type" not in seen["q"], seen["q"]
+    assert "account_mode" not in where, f"no account_mode FILTER: {where}"
+    assert "SELECT id, ticker, account_mode FROM" in seen["q"], seen["q"]
     sale.assert_awaited_once_with(501)
+
+
+def _raising_runner_wire(monkeypatch, rows):
+    """`run_depth_open_sales` over `rows`, every sale RAISING; capture the audit rows + pages.
+    The prefix is made to name the book so a page can be told apart by its mode."""
+    class _C:
+        async def fetch(self, q, *a, **k):
+            return rows
+
+    class _A:
+        async def __aenter__(self):
+            return _C()
+
+        async def __aexit__(self, *e):
+            return False
+
+    class _P:
+        def acquire(self, *a, **k):
+            return _A()
+
+    monkeypatch.setattr(om, "get_pool", AsyncMock(return_value=_P()))
+    monkeypatch.setattr(om, "execute_depth_open_sale", AsyncMock(side_effect=RuntimeError("boom")))
+    monkeypatch.setattr(om, "_clear_depth_sell_mark", AsyncMock())
+    audit, sent = AsyncMock(), AsyncMock()
+    monkeypatch.setattr(om, "log_audit_event", audit)
+    monkeypatch.setattr(om, "send_telegram_message", sent)
+    monkeypatch.setattr(om, "mode_prefix", lambda m: f"[{m}] ")
+    return audit, sent
+
+
+@pytest.mark.asyncio
+async def test_1901_a_raising_paper_lane_sale_pages_and_audits_as_paper_not_as_live(monkeypatch):
+    """The runner's outer page used to carry no book at all, so a paper-lane failure read like a
+    live one (the lane makes a PAPER depth row an expected population). The row's own
+    `account_mode` now prefixes the page and rides in the `depth_open_sale_error` detail — and a
+    LIVE row in the same run is labelled live, so the label comes from the ROW, not a default."""
+    audit, sent = _raising_runner_wire(monkeypatch, [
+        {"id": 501, "ticker": "KOD", "account_mode": "paper"},
+        {"id": 502, "ticker": "VICR", "account_mode": "live"},
+    ])
+
+    out = await om.run_depth_open_sales()
+
+    assert [r["placed"] for r in out] == [False, False]
+    pages = [c.args[0] for c in sent.await_args_list]
+    assert len(pages) == 2
+    assert pages[0].startswith("[paper] ") and "KOD" in pages[0], pages[0]
+    assert pages[1].startswith("[live] ") and "VICR" in pages[1], pages[1]
+    errs = [c for c in audit.await_args_list if c.args[0] == "depth_open_sale_error"]
+    assert [json.loads(c.args[2])["account_mode"] for c in errs] == ["paper", "live"]
+    assert [json.loads(c.args[2])["trade_id"] for c in errs] == [501, 502]
 
 
 # ══════════════════════════════════════════════════════════════════════════════════════════
