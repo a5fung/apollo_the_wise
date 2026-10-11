@@ -1,0 +1,23 @@
+== mi_audit_log columns
+string_agg
+id,created_at,event_type,summary,detail
+(1 row)
+== rows mentioning too_small (any column)
+rows_mentioning_too_small
+223
+(1 row)
+== profit_trigger / partial rows since era D (2026-09-06), per event
+event_type	n	first	last
+partial_exit_aborted	1	2026-10-06	2026-10-06
+partial_exit_committed	1	2026-09-28	2026-09-28
+partial_exit_started	4	2026-09-28	2026-10-08
+profit_trigger_fired	1	2026-09-28	2026-09-28
+(4 rows)
+== era-D profit_trigger_fired rows
+created_at	event_type	summary	detail
+2026-09-28 14:10:01.085405+00	profit_trigger_fired	KOD: high $85.88 >= 8R target $84.43	{"trade_id": 404, "shares": 1, "entry": 63.15, "target": 84.42999999999998, "high": 85.88, "r_multiple": 8.0}
+(1 row)
+== era-D partial_exit_committed rows
+created_at	event_type	summary
+2026-09-28 14:10:03.699015+00	partial_exit_committed	KOD: DB committed on WS fill — sold 1 @$85.12, pnl $+21.98, remaining 4
+(1 row)

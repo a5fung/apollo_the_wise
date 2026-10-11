@@ -23,6 +23,11 @@ the exit path sees intraday price", which stopped being true on 2026-08-01):**
   (2026-08-01). The day-3/5 time gate below stands down while it is on (§1). Since
   2026-09-06 (#545) the MULTIPLE resolves per strategy from `mi_strategies.profit_trigger_r`
   (NULL on every row today → the global 2.0 for everyone); the switch stays global.
+  **SIZE (2026-10-10, operator-signed): a third, rounded down to whole shares — except that a
+  MAGNA53 (or small-cap-lane) position holding exactly 2 shares sells 1; holding 1 it sells nothing.**
+  One sizer, `order_manager.profit_take_shares` (→ `plus8r_partial_shares`); every order shape
+  (market, resting limit, OCO) takes the count from it. Entry: `magna53_ep.md` change log
+  2026-10-10 (+8R on a 2-share position).
 - **A PRICE-ARMED breakeven exists but is OFF**: `order_manager.scan_breakeven_arms` (same
   5-minute poll, after the partial) moves the full-position stop to entry at
   `entry + mi_strategies.breakeven_arm_r × R` — NULL on every row today → it returns `[]`
@@ -348,6 +353,16 @@ what any live position does.
 ---
 
 ## Change log (newest first)
+
+### 2026-10-10 — the +8R profit-take on a 2-share MAGNA53 position sells 1 share (OPERATOR-SIGNED "go with rec"; BUILT, NOT DEPLOYED)
+
+The rule, its population (every sizing site, file:line), the thin evidence, the reversion and the
+live expectations live in the owner of the MAGNA53 rule: `magna53_ep.md` change log 2026-10-10. In
+this file's terms: **sizing only** — `order_manager.profit_take_shares` replaces the poll's inline
+`int(remaining // 3)`; the level (+8 ORB-R), the breakeven arm (+3R), the trail and every stop are
+untouched. 2 shares → 1 sold; 1 share → nothing (trail/breakeven handle it); 3+ unchanged (KOD's
+5 shares still sell 1, PENG's 10 would sell 3). The day-3/5 ladder (§1) and `/partialnow` size
+their own thirds and are NOT part of this change.
 
 ### 2026-10-10 — #687: an EXPIRED / cancelled full-exit sale re-places its stop (the stream's dead-sale branch counts the dead sale as free, and waits out a held-shares refusal in the background) (TRADE STATE — no exit rule, stop level, target or size changed)
 

@@ -1,0 +1,21 @@
+== which events mention too_small
+event_type	n	first	last	exact_split_skip
+ep_tinycap_observed	207	2026-06-12	2026-10-08	0
+advisor_call	8	2026-04-15	2026-07-29	0
+orb_skipped	7	2026-07-30	2026-09-17	0
+backward_check_output	1	2026-10-03	2026-10-03	0
+(4 rows)
+== sample of one
+created_at	event_type	summary
+2026-10-08 11:30:03.519092+00	ep_tinycap_observed	NAKA gap=9.5% — filter:mcap_too_small: $167M < $500M (observe-only)
+2026-10-08 11:15:02.959789+00	ep_tinycap_observed	RNA gap=13.5% — filter:mcap_too_small: $136M < $500M (observe-only)
+2026-10-07 11:50:02.164703+00	ep_tinycap_observed	LWAY gap=9.4% — filter:mcap_too_small: $309M < $500M (observe-only)
+(3 rows)
+== era-D profit_trigger_failed + partial_exit_aborted/started rows
+created_at	event_type	summary
+2026-09-28 14:10:00.172025+00	partial_exit_started	KOD: sell 1 of 5 (new_remaining=4)
+2026-10-05 14:33:58.105679+00	partial_exit_started	KO: sell 1 of 3 (new_remaining=2)
+2026-10-06 13:35:26.653839+00	partial_exit_started	KO: sell 1 of 3 (new_remaining=2)
+2026-10-06 13:35:28.200839+00	partial_exit_aborted	KO: replacement stop failed AND old stop not live — under-covered, re-protecting in-process (APIError)
+2026-10-08 14:05:00.114515+00	partial_exit_started	KO: sell 1 of 3 (new_remaining=2)
+(5 rows)

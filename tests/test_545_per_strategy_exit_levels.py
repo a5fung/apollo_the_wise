@@ -25,6 +25,7 @@ import json
 import pathlib
 from contextlib import ExitStack
 from datetime import datetime, timezone
+from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -316,6 +317,116 @@ async def test_global_off_switch_still_wins_over_a_per_strategy_override():
     fake_exec, results = await _run_partial_scan(h, global_r=None)
     fake_exec.assert_not_awaited()
     assert results == [] and h.fetches == [], "OFF must short-circuit before any DB read"
+
+
+# ── 2026-10-10 (operator-signed "go with rec"): the +8R third on a 2-share position ─────────
+# VICR 09-17 reached +8R holding one share; a third of 1 or 2 shares is 0, so nothing could ever
+# sell. Signed rule: 2+ shares held and a third rounds to 0 -> sell 1; exactly 1 share -> sell
+# nothing (unchanged); 3+ -> int(remaining // 3), unchanged. Scoped to MAGNA53's profit-take.
+
+def test_plus8r_partial_shares_table():
+    """MUTATION TARGET: the helper reverting to `int(remaining // 3)` (2 -> 0), or the 2-share
+    floor leaking to 1 share (1 -> 1: selling the whole position's only share), or the 3+
+    arithmetic moving (6 -> 2 is the first count where a third exceeds 1)."""
+    assert [om.plus8r_partial_shares(n) for n in range(7)] == [0, 0, 1, 1, 1, 1, 2]
+    assert [om.plus8r_partial_shares(n) for n in (7, 8, 9, 10, 11, 30)] == [2, 2, 3, 3, 3, 10]
+    # the DB hands back floats / Decimals — same answers
+    assert om.plus8r_partial_shares(2.0) == 1 and om.plus8r_partial_shares(Decimal("5")) == 1
+    assert om.plus8r_partial_shares(1.0) == 0 and om.plus8r_partial_shares(0) == 0
+
+
+def test_profit_take_shares_changes_only_the_signed_strategies():
+    """MUTATION TARGET: dropping the signal_type scope (every strategy on the global +2R would
+    silently inherit a sell-discipline change nobody signed) or scoping it to magna53 alone
+    (the paper lane mirrors MAGNA53's exits and must size the same)."""
+    for st in ("magna53", "magna53_smallcap"):
+        assert [om.profit_take_shares(n, st) for n in range(7)] == [0, 0, 1, 1, 1, 1, 2], st
+    for st in ("9m_day2", "wick_fill", "", None):
+        assert [om.profit_take_shares(n, st) for n in range(7)] == [0, 0, 0, 1, 1, 1, 2], st
+
+
+def test_the_sizing_scope_matches_the_exit_era_table():
+    """The strategies whose partial sits at +8R in rule_eras are the ones that size by the
+    signed rule — one list in two files must not drift (P15)."""
+    from agents.market_intelligence import rule_eras
+    assert om._PLUS8R_PARTIAL_SIGNAL_TYPES == rule_eras.PARTIAL_8R_SIGNAL_TYPES
+
+
+@pytest.mark.asyncio
+async def test_poll_sells_one_of_two_shares_at_the_8r_target():
+    """THE behaviour: a 2-share MAGNA53 position whose in-hold high reaches +8R now sells ONE
+    share (execute_partial_exit(41, 1, ...)) and records `partial_submitted` with shares 1.
+    On the prior code this row was `too_small_to_split` and execute_partial_exit never ran.
+    MUTATION TARGET: `shares = int(float(remaining) // 3)` back in the poll."""
+    ov = [_override("magna53", profit_trigger_r=8.0)]
+    h = Harness(trade_rows=[_trade(remaining_shares=2.0)], override_rows=ov, hi=140.0)
+    fake_exec, results = await _run_partial_scan(h)
+    fake_exec.assert_awaited_once_with(41, 1, limit_price=140.0, trigger=None)
+    assert results == [{"ticker": "TSTX", "action": "partial_submitted", "shares": 1}]
+    fired = [a for a in h.audits if a[0] == "profit_trigger_fired"]
+    assert len(fired) == 1 and json.loads(fired[0][2])["shares"] == 1
+
+
+@pytest.mark.asyncio
+async def test_poll_still_sells_nothing_on_a_one_share_position():
+    """The signed carve-out: a single share is left to the trail / breakeven. The action name
+    is unchanged (`too_small_to_split`) and execute_partial_exit is never reached.
+    MUTATION TARGET: a floor of `max(1, ...)` with no `held < 2` guard (VICR's case)."""
+    ov = [_override("magna53", profit_trigger_r=8.0)]
+    h = Harness(trade_rows=[_trade(remaining_shares=1.0)], override_rows=ov, hi=140.0)
+    fake_exec, results = await _run_partial_scan(h)
+    fake_exec.assert_not_awaited()
+    assert results == [{"ticker": "TSTX", "action": "too_small_to_split"}]
+    assert not [a for a in h.audits if a[0].startswith("profit_trigger")]
+
+
+@pytest.mark.asyncio
+async def test_poll_sizes_three_or_more_shares_exactly_as_before():
+    """3-5 shares -> 1 (KOD 09-28: 5 shares sold 1), 6 -> 2, 30 -> 10. MUTATION TARGET: any
+    change to the 3+ arithmetic (the ruling says everything else is UNCHANGED)."""
+    ov = [_override("magna53", profit_trigger_r=8.0)]
+    for held, want in ((3.0, 1), (4.0, 1), (5.0, 1), (6.0, 2), (30.0, 10)):
+        h = Harness(trade_rows=[_trade(remaining_shares=held)], override_rows=ov, hi=140.0)
+        fake_exec, results = await _run_partial_scan(h)
+        fake_exec.assert_awaited_once_with(41, want, limit_price=140.0, trigger=None)
+        assert results[0]["shares"] == want, held
+
+
+@pytest.mark.asyncio
+async def test_poll_two_shares_on_the_paper_lane_sells_one_too():
+    """magna53_smallcap carries MAGNA53's exits (8R / 3R row) and shares this one sizer.
+    MUTATION TARGET: scoping the rule to the literal 'magna53'."""
+    ov = [_override("magna53_smallcap", profit_trigger_r=8.0)]
+    row = _trade(signal_type="magna53_smallcap", remaining_shares=2.0, account_mode="paper")
+    h = Harness(trade_rows=[row], override_rows=ov, hi=140.0)
+    fake_exec, results = await _run_partial_scan(h)
+    fake_exec.assert_awaited_once_with(41, 1, limit_price=140.0, trigger=None)
+    assert results == [{"ticker": "TSTX", "action": "partial_submitted", "shares": 1}]
+
+
+@pytest.mark.asyncio
+async def test_poll_two_shares_on_another_strategy_is_not_changed():
+    """The ruling names MAGNA53's profit-take. A strategy on the global +2R (here 9m_day2,
+    R=3 off its own stop) holding 2 shares at its +2R still sells nothing.
+    MUTATION TARGET: applying the 2-share floor to every strategy the poll serves."""
+    nine = _trade(id=42, ticker="NINE", signal_type="9m_day2", hard_stop=97.0, stop_price=97.0,
+                  remaining_shares=2.0)
+    h = Harness(trade_rows=[nine], override_rows=[], hi=106.0)
+    fake_exec, results = await _run_partial_scan(h)
+    fake_exec.assert_not_awaited()
+    assert results == [{"ticker": "NINE", "action": "too_small_to_split"}]
+
+
+@pytest.mark.asyncio
+async def test_poll_two_share_announcement_says_one_of_two_not_a_third():
+    """Telegram stays truthful when 1 of 2 is sold: the poll's own notice reads 'sell 1 of 2 sh'
+    (resting mode) — never 'a third'. MUTATION TARGET: a hard-coded fraction in the text."""
+    ov = [_override("magna53", profit_trigger_r=8.0)]
+    h = Harness(trade_rows=[_trade(remaining_shares=2.0)], override_rows=ov, hi=140.0)
+    await _run_partial_scan(h, announced=False)
+    assert len(h.sent) == 1
+    assert "sell 1 of 2 sh" in h.sent[0] and "third" not in h.sent[0].lower()
+    assert "|" not in h.sent[0], "no pipe tables in Telegram"
 
 
 def test_the_stand_down_in_live_tracker_stays_a_global_read():

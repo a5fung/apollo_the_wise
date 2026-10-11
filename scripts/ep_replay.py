@@ -85,6 +85,7 @@ from agents.market_intelligence.broker.exit_logic import (  # noqa: E402
     seed_exit_state,
 )
 from agents.market_intelligence.broker.order_manager import (  # noqa: E402
+    plus8r_partial_shares,
     profit_target_r_per_share,
     stop_limit_buy_price,
 )
@@ -121,6 +122,7 @@ from agents.market_intelligence.rule_eras import (  # noqa: E402
     STOP_2R_DATE,
     TRAIL_PRIOR_CLOSES_DATE,
     PARTIAL_8R_DATE,
+    PARTIAL_8R_MIN_ONE_DATE,
     PARTIAL_8R_VALUE,
     BREAKEVEN_ARM_R_DATE,
     BREAKEVEN_ARM_R_VALUE,
@@ -193,6 +195,13 @@ class RuleSet:
     # this harness's fidelity contract (see module docstring) — walk_campaign raises rather
     # than silently ignoring the field in either case.
     second_partial_r: float | None = None
+    # 2026-10-10 (operator "go with rec"): the INTEGER-share partial on a 2-share position sells
+    # 1 (`order_manager.plus8r_partial_shares`, the same function live sizes with) instead of
+    # `int(2 // 3)` = 0. Affects ONLY `integer_shares=True` walks (a real position's own share
+    # count); the fractional default sizes remaining / 3 and has nothing to round. False
+    # (default) keeps every era before 2026-10-12 byte-identical — OKTA 08-27 held 2 shares
+    # past its +2R rung and live sold nothing, and the real-book calibration must still say so.
+    partial_min_one_share: bool = False
 
     def stop_price(self, orb_high: float, orb_low: float,
                    adr_dollar: float | None = None) -> float:
@@ -229,8 +238,12 @@ RULESETS: dict[str, RuleSet] = {
 # so BOTH paths exist (exit_discipline.md 2026-09-06 evening). With the arm at +3R it is a
 # no-op — the stop is already at entry long before an +8R partial — but modelling it False
 # would make this rule-set describe a system we do not run.
+#
+# 2026-10-10: `partial_min_one_share` is ON here (and in `ruleset_as_of` from
+# PARTIAL_8R_MIN_ONE_DATE) because `current` must model what the poll does TODAY — a 2-share
+# position sells 1 at +8R. This changes only integer-share replays of 2-share positions.
 RULESETS["era_d"] = replace(RULESETS["era_c"], name="era_d", intraday_partial_r=8.0,
-                            breakeven_at_r=3.0)
+                            breakeven_at_r=3.0, partial_min_one_share=True)
 RULESETS["current"] = RULESETS["era_d"]
 
 # ── 2026-09-05, operator-approved A/B: "yes, test it" ──────────────────────────────────
@@ -360,6 +373,7 @@ def ruleset_as_of(d: date) -> RuleSet:
         breakeven_at_partial=d >= BREAKEVEN_AT_PARTIAL_DATE,
         breakeven_at_r=BREAKEVEN_ARM_R_VALUE if d >= BREAKEVEN_ARM_R_DATE else None,
         ladder_partial=d < PARTIAL_LIVE_DATE,
+        partial_min_one_share=d >= PARTIAL_8R_MIN_ONE_DATE,
     )
 
 
@@ -850,7 +864,12 @@ def _walk_leg(*, ticker, leg_date, entry_px, stop, target, bars, fill_idx, rs, d
 
     def take_partial(px: float, when) -> float:
         nonlocal remaining, partial_taken
-        qty = float(int(remaining) // 3) if integer_shares else remaining / 3
+        if not integer_shares:
+            qty = remaining / 3
+        elif rs.partial_min_one_share:
+            qty = float(plus8r_partial_shares(remaining))   # live's sizer, 2 shares -> 1
+        else:
+            qty = float(int(remaining) // 3)
         if qty <= 0:
             return 0.0
         book(px, qty, "partial_profit", when)

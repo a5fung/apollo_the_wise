@@ -1098,8 +1098,10 @@ def build_exit_section(res: Resolver) -> list[str]:
     # override's number under an [OFF] header would print exactly the docs-vs-prod lie this tool
     # exists to catch (found in the 2026-09-06 simplify pass, hours after the line was written).
     _eff = f"{float(_ptr_ovr):g}" if (_ptr_ovr and trigger_on) else _fmt(ptr)
-    L.append(f"     sells 1/3 the first time the in-hold minute HIGH reaches entry + {_eff} × R, "
-             f"then moves the stop to breakeven.")
+    L.append(f"     sells 1/3 (whole shares, rounded down) the first time the in-hold minute HIGH reaches "
+             f"entry + {_eff} × R, then moves the stop to breakeven.")
+    L.append("     size (operator-signed 2026-10-10, order_manager.profit_take_shares): MAGNA53 holding 2 "
+             "shares sells 1; holding 1 it sells nothing; 3+ unchanged. Other strategies: plain 1/3.")
     if _ptr_ovr and trigger_on:
         L.append(f"     ⚠ that {float(_ptr_ovr):g} is MAGNA53's OWN mi_strategies.profit_trigger_r, which "
                  f"OVERRIDES constants.PROFIT_TRIGGER_R = {_fmt(ptr)} (#545, operator-signed 2026-09-06). "

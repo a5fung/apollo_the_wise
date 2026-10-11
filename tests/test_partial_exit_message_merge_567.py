@@ -116,18 +116,18 @@ async def _get_order_all_live(order_id, account_mode=None):
     return {"id": order_id, "status": "accepted", "order_class": "simple"}
 
 
-def _oco_parent_response():
+def _oco_parent_response(shares=SHARES):
     return {
         "id": "oco_parent_1", "status": "new", "order_class": "oco",
-        "type": "limit", "side": "sell", "qty": float(SHARES),
+        "type": "limit", "side": "sell", "qty": float(shares),
         "limit_price": LIMIT_PRICE,
         "legs": [{"id": "oco_leg_1", "type": "stop", "status": "held",
-                  "qty": float(SHARES), "stop_price": BREAKEVEN_PRICE}],
+                  "qty": float(shares), "stop_price": BREAKEVEN_PRICE}],
     }
 
 
-def _harness(om):
-    trade = _trade()
+def _harness(om, shares=SHARES, full_remaining=FULL_REMAINING):
+    trade = _trade(remaining_shares=full_remaining)
     pool, conn = _make_pool(trade)
     calls: list = []
     audited: list = []
@@ -154,8 +154,9 @@ def _harness(om):
         patch.object(om.alpaca, "replace_order", AsyncMock(side_effect=_replace_order_fake(calls))),
         patch.object(om.alpaca, "get_order", _get_order_all_live),
         patch.object(om.alpaca, "get_position", AsyncMock(
-            return_value={"qty": float(FULL_REMAINING), "qty_available": float(FULL_REMAINING)})),
-        patch.object(om.alpaca, "place_oco_sell", AsyncMock(return_value=_oco_parent_response())),
+            return_value={"qty": float(full_remaining), "qty_available": float(full_remaining)})),
+        patch.object(om.alpaca, "place_oco_sell", AsyncMock(
+            return_value=_oco_parent_response(shares))),
         patch.object(om.alpaca, "place_limit_sell", AsyncMock(
             return_value={"id": "limit_sell_id", "status": "new"})),
         patch.object(om.alpaca, "place_market_sell", AsyncMock(
@@ -166,12 +167,12 @@ def _harness(om):
     return {"patches": patches, "audited": audited, "telegram": telegram_mock, "conn": conn}
 
 
-async def _run(om, h, trigger=None):
+async def _run(om, h, trigger=None, shares=SHARES):
     with ExitStack() as stack:
         for p in h["patches"]:
             stack.enter_context(p)
         return await om.execute_partial_exit(
-            TRADE_ID, SHARES, force=True, limit_price=LIMIT_PRICE, trigger=trigger)
+            TRADE_ID, shares, force=True, limit_price=LIMIT_PRICE, trigger=trigger)
 
 
 @pytest.mark.asyncio
@@ -225,6 +226,36 @@ async def test_merged_message_carries_all_five_facts_and_marks_delivered():
         "('new_stop_id' the broker order, not the trigger dict) would never "
         "match what the WS event actually sees cancelled")
     assert detail["new_stop_price"] == BREAKEVEN_PRICE
+
+
+@pytest.mark.asyncio
+async def test_one_of_two_shares_rests_a_one_share_oco_and_says_one_of_two():
+    """2026-10-10 (operator-signed): the +8R poll now hands execute_partial_exit shares=1 for a
+    2-share MAGNA53 position. Resting mode inherits that count — it never sizes a third itself —
+    so the OCO is placed for ONE share (limit at the target + breakeven stop), the other share's
+    stop is reduced to qty 1, and the ONE Telegram reads '1 of 2 sh', never 'a third'.
+    MUTATION TARGET: execute_partial_exit re-deriving its own `full_remaining // 3` (0 -> a
+    zero-quantity order) or a message built from a fixed fraction."""
+    from agents.market_intelligence.broker import order_manager as om
+
+    h = _harness(om, shares=1, full_remaining=2)
+    trigger = {"delivered": False, "high": TRIGGER_HIGH, "target": LIMIT_PRICE,
+               "entry": ENTRY_PRICE, "r_multiple": 8}
+    ok = await _run(om, h, trigger=trigger, shares=1)
+
+    assert ok is True
+    oco = next(p for p in h["patches"] if getattr(p, "attribute", "") == "place_oco_sell")
+    oco_mock = oco.new
+    oco_mock.assert_awaited_once()
+    assert oco_mock.call_args.args[:2] == (TICKER, 1)      # (ticker, qty, limit, stop)
+    h["telegram"].assert_awaited_once()
+    msg = h["telegram"].call_args.args[0]
+    assert "Limit sell 1 of 2 sh" in msg
+    assert "Remaining 1 sh" in msg
+    assert "third" not in msg.lower() and "|" not in msg
+    started = next(d for e, s, d in h["audited"] if e == "partial_exit_started")
+    detail = json.loads(started)
+    assert (detail["shares"], detail["full_remaining"], detail["new_remaining"]) == (1, 2, 1)
 
 
 @pytest.mark.asyncio

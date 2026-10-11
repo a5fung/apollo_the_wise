@@ -1,0 +1,16 @@
+== KO partial rows (detail)
+created_at	event_type	left
+2026-10-05 14:33:58.105679+00	partial_exit_started	{"trade_id": 407, "ticker": "KO", "shares": 1, "full_remaining": 3, "new_remaining": 2, "stop_price": 81.64, "old_stop_id": "ecf62a2b-bc3f-4bd0-a15b-1a78d6b2dee0"}
+2026-10-06 13:35:26.653839+00	partial_exit_started	{"trade_id": 410, "ticker": "KO", "shares": 1, "full_remaining": 3, "new_remaining": 2, "stop_price": 82.33, "old_stop_id": "8e050a56-e5b4-4999-990e-ae087d1864a1"}
+2026-10-06 13:35:28.200839+00	partial_exit_aborted	{"trade_id": 410, "ticker": "KO", "old_stop_id": "8e050a56-e5b4-4999-990e-ae087d1864a1", "new_remaining": 2, "stop_price": 82.33, "stage": "place_new_stop", "stale_stop_id_cleared": "8e050a56-e5b4-4999-990e-ae087d1864a1", "error": "{\"code\":42210000,\"message\":\"cannot replace order in pending_new status\"}"}
+2026-10-08 14:05:00.114515+00	partial_exit_started	{"trade_id": 417, "ticker": "KO", "shares": 1, "full_remaining": 3, "new_remaining": 2, "stop_price": 82.43, "old_stop_id": "315ba82c-55f9-40b4-a805-e82f930072a9"}
+(4 rows)
+== KO trade rows
+id	ticker	signal_type	account_mode	status	entry_shares	remaining_shares	filled_at	partial_taken
+(0 rows)
+== all open trades now
+id	ticker	signal_type	account_mode	status	entry_shares	remaining_shares	partial_taken
+404	KOD	magna53	live	filled	5	4	t
+414	PENG	magna53	live	filled	10	10	f
+419	HUM	magna53	live	filled	1	1	f
+(3 rows)

@@ -704,6 +704,73 @@ def test_current_ruleset_is_era_d_and_matches_what_is_live():
     assert (b.intraday_partial_r, b.breakeven_at_r) == (2.0, None)
 
 
+# ── 2026-10-10: the +8R third on a 2-share position (operator "go with rec") ─────────────────
+
+def _eight_r_bars():
+    """entry 10.0 (ORB 9.0-10.0, R=1) -> the +8R price is 18.0; the second bar trades through it
+    without touching entry, so the target is the only thing that happens."""
+    return [_bar("09:31", 9.8, 10.05, 9.7, 10.0),
+            _bar("09:32", 11.0, 18.2, 10.9, 18.1)]
+
+
+def test_integer_walk_of_a_two_share_position_sells_one_at_8r_under_current():
+    """The replay must size the rung with live's own function. `current` + 2 real shares ->
+    1 share booked at 18.0. MUTATION TARGET: take_partial reverting to `int(remaining) // 3`
+    (qty 0 -> partial_fired False — the pre-ruling answer)."""
+    res = _walk(_eight_r_bars(), rs=RULESETS["current"], shares=2.0, integer_shares=True)
+    assert res["partial_fired"] is True
+    partials = [e for e in res["exits"] if e["reason"] == "partial_profit"]
+    assert len(partials) == 1
+    assert partials[0]["shares"] == pytest.approx(1.0)
+    assert partials[0]["price"] == pytest.approx(18.0)
+
+
+def test_integer_walk_matches_live_for_every_small_share_count():
+    """0/1/2/3/6 shares -> 0/0/1/1/2 booked — the SAME table as order_manager's sizer, so a
+    replay of a real position cannot disagree with what the poll would sell."""
+    from agents.market_intelligence.broker.order_manager import plus8r_partial_shares
+    for held, want in ((1, 0), (2, 1), (3, 1), (6, 2)):
+        res = _walk(_eight_r_bars(), rs=RULESETS["current"], shares=float(held), integer_shares=True)
+        got = sum(e["shares"] for e in res["exits"] if e["reason"] == "partial_profit")
+        assert got == pytest.approx(want), held
+        assert want == plus8r_partial_shares(held)
+    assert _walk(_eight_r_bars(), rs=RULESETS["current"], shares=1.0,
+                 integer_shares=True)["partial_fired"] is False
+
+
+def test_fractional_walks_are_untouched_by_the_two_share_rule():
+    """The default (fractional) replay sizes remaining / 3 — there is nothing to round, and
+    every published replay number uses it. MUTATION TARGET: the helper leaking into the
+    fractional branch (2 shares would book 1.0, not 0.667)."""
+    res = _walk(_eight_r_bars(), rs=RULESETS["current"], shares=2.0, integer_shares=False)
+    booked = sum(e["shares"] for e in res["exits"] if e["reason"] == "partial_profit")
+    assert booked == pytest.approx(2.0 / 3)
+
+
+def test_older_eras_keep_the_old_two_share_answer():
+    """OKTA 08-27: 2 shares, past its +2R rung, and live sold NOTHING. The real-book calibration
+    (`validate`, via ruleset_as_of) must keep saying so. MUTATION TARGET: the flag defaulting
+    True, or ruleset_as_of ignoring the date."""
+    assert RULESETS["era_c"].partial_min_one_share is False
+    assert RULESETS["era_d"].partial_min_one_share is True and RULESETS["current"].partial_min_one_share is True
+    bars = [_bar("09:31", 9.8, 10.05, 9.7, 10.0), _bar("09:32", 11.0, 12.1, 10.9, 11.9)]   # +2R = 12.0
+    res = _walk(bars, rs=RULESETS["era_c"], shares=2.0, integer_shares=True)
+    assert res["partial_fired"] is False
+    for d, want in ((date(2026, 9, 8), False), (date(2026, 10, 9), False),
+                    (date(2026, 10, 12), True), (date(2026, 11, 2), True)):
+        assert ruleset_as_of(d).partial_min_one_share is want, d
+
+
+def test_the_two_share_switch_date_is_the_first_acting_session():
+    """Sat 10-10 / Sun 10-11 deploys act on Mon 10-12, never earlier (the rule_eras convention).
+    MUTATION TARGET: dating the switch to the commit day."""
+    from agents.market_intelligence import rule_eras
+    assert rule_eras.PARTIAL_8R_MIN_ONE_DATE == date(2026, 10, 12)
+    assert rule_eras.PARTIAL_8R_MIN_ONE_DATE.weekday() == 0     # a Monday
+    # not a key of the stamped stack: no stored #482 row changes meaning
+    assert "partial_min_one_share" not in rule_eras.exit_rules_as_of(date(2026, 10, 13), "magna53")
+
+
 def test_no_new_silently_aliased_rulesets():
     """MUTATION TARGET (2026-09-06 simplify pass): four independently written sweep grids each
     re-derived the SAME recommended cell (partial 8R + breakeven 3R) under its own name, so one

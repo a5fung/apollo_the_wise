@@ -3199,9 +3199,10 @@ async def execute_partial_exit(
     trigger: dict | None = None,
 ) -> bool:
     """
-    Partial exit (1/3 sell). Replaces stop for remaining 2/3 first so the
-    position is always protected. On sell failure, rolls the stop back to
-    the full original qty.
+    Partial exit (1/3 sell; `shares` is chosen by the caller — the +8R poll's
+    `profit_take_shares` sells 1 of 2 on a 2-share MAGNA53 position). Replaces
+    stop for the remaining shares first so the position is always protected.
+    On sell failure, rolls the stop back to the full original qty.
 
     force=True bypasses the outcome-history circuit breaker (#151 c) — used by
     the operator-confirmed /partialnow command (an attended action). The
@@ -9547,6 +9548,41 @@ def profit_target_r_per_share(
     return entry - stop
 
 
+# ── Profit-take SIZE (2026-10-10, operator-signed "go with rec", docs/setups/magna53_ep.md) ──────
+# The intraday profit-take sells a third of what the position holds, rounded down to whole
+# shares. On a 2-share position that is 0, so the rung could never fire (VICR 09-17 reached +8R
+# holding ONE share; SEI held two). His ruling, and nothing beyond it:
+#   2 or more shares held and a third rounds to 0  -> sell 1 share
+#   exactly 1 share held                           -> sell nothing (trail / breakeven handle it)
+#   3 or more shares                               -> int(remaining // 3), UNCHANGED
+# Scoped to the strategies carrying MAGNA53's exit stack (the +8R lane): scan_profit_triggers
+# runs for EVERY strategy and the signed rule names MAGNA53's profit-take, so a strategy on the
+# global +2R keeps the plain third until he extends the rule to it. This is the ONE live sizing
+# site for that third — `execute_partial_exit` (market, resting-limit and OCO branches) and the
+# stream's restores take the share count from this caller and never size one themselves.
+_PLUS8R_PARTIAL_SIGNAL_TYPES = frozenset({"magna53", "magna53_smallcap"})
+
+
+def plus8r_partial_shares(remaining) -> int:
+    """Whole shares MAGNA53's profit-take sells from a position holding `remaining`.
+
+    0 -> 0, 1 -> 0, 2 -> 1, 3-5 -> 1, 6 -> 2, ... PURE; the replay walker
+    (`scripts/ep_replay.py`) uses the same function so a replay cannot size the rung
+    differently from live."""
+    held = int(float(remaining))
+    if held < 2:
+        return 0
+    return max(1, held // 3)
+
+
+def profit_take_shares(remaining, signal_type: str | None) -> int:
+    """Shares the intraday profit-take sells: `plus8r_partial_shares` for the strategies in
+    `_PLUS8R_PARTIAL_SIGNAL_TYPES`, the unchanged `int(remaining // 3)` for every other one."""
+    if (signal_type or "") in _PLUS8R_PARTIAL_SIGNAL_TYPES:
+        return plus8r_partial_shares(remaining)
+    return int(float(remaining) // 3)
+
+
 # ── #545 (2026-09-06): per-strategy exit LEVELS — the multiple, not the switch ────────
 # `constants.PROFIT_TRIGGER_R` was one global number, and scan_profit_triggers selects
 # EVERY filled position with no signal_type predicate — only the R FRAME varied per
@@ -9618,6 +9654,9 @@ async def _load_strategy_exit_overrides(conn=None) -> dict[str, dict]:
 
 async def scan_profit_triggers() -> list[dict]:
     """#508 — take 1/3 when the position first trades at entry + PROFIT_TRIGGER_R x risk.
+
+    SIZE: `profit_take_shares` — a third rounded down, except that a MAGNA53 position holding
+    exactly 2 shares sells 1 (2026-10-10, operator-signed); 1 share still sells nothing.
 
     Runs on the 5-minute cadence, immediately AFTER track_open_position_extremes has
     persisted this poll's minute bars, and reads those bars back from mi_intraday_bars.
@@ -9704,7 +9743,10 @@ async def scan_profit_triggers() -> list[dict]:
             )
         if hi is None or float(hi) < target:
             continue
-        shares = int(float(t["remaining_shares"]) // 3)
+        # 2026-10-10 (operator-signed): a MAGNA53 position holding 2 shares sells 1 (a third
+        # rounds to 0); holding 1 it still sells nothing. `profit_take_shares` is the one sizer —
+        # every branch of execute_partial_exit (market, resting limit, OCO) takes `shares` from here.
+        shares = profit_take_shares(t["remaining_shares"], t["signal_type"])
         if shares < 1:
             results.append({"ticker": t["ticker"], "action": "too_small_to_split"})
             continue

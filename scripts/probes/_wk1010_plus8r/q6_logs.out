@@ -1,0 +1,12 @@
+apollo-execution
+apollo-market
+apollo-orchestrator
+apollo-redis
+apollo-postgres
+apollo-uptime
+== apollo-execution
+0
+INFO:     Started server process [1]
+== apollo-market
+0
+INFO:     Started server process [1]
