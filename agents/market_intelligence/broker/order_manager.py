@@ -5050,7 +5050,7 @@ async def _sell_free_shares_after_stop_breach(
     already through it → SELL AT MARKET, as the triggered stop would have.
 
     Reached ONLY where a PLANNED SALE's cancelled stop is being put back — the sale failed
-    (`_restore_stop_after_failed_exit`: the 16:45 close-below sale, the 19:01 opening-auction
+    (`_restore_stop_after_failed_exit`: the 16:45 close-below sale, the 19:01 depth
     sale) or its queued order died unfilled (`trade_stream` §3) — and the broker rejected the
     restore as above the market (`_is_stop_above_market`). The exit rule had already decided to
     sell. Sells `qty` = the restore's own count (the broker's free shares — a resting +8R
@@ -5796,8 +5796,8 @@ async def execute_full_exit(trade_id: int, reason: str) -> bool:
 # 16:45 job through `update_stop`, raise-only), the close test is today's
 # (`apply_daily_exit_step`, unchanged), and a close below the line sells in the NEXT MORNING'S
 # OPENING AUCTION: the 16:45 job only MARKS the trade (`depth_sell_pending_on`), the depth stop
-# stays on, and at 19:01 ET `run_depth_open_sales` cancels the stop and sends a market-on-open
-# (TIF opg) sell. Applies to NEW MAGNA53 and NEW small-cap paper lane (`magna53_smallcap`) trades
+# stays on, and at 19:01 ET `run_depth_open_sales` cancels the stop and sends the sale order — LIVE a
+# market-on-open (TIF opg) sell, PAPER a DAY market sell (#687 c, below). Applies to NEW MAGNA53 and NEW small-cap paper lane (`magna53_smallcap`) trades
 # only: the choice is stamped on the row at entry (`mi_live_trades.exit_rule = 'depth'`) and kept
 # for life; trades entered before the toggle was on (KOD, VICR) keep today's stop forever. The
 # small-cap lane joined on 2026-10-10 (operator "Ok": the lane's exits mirror live MAGNA53) — its
@@ -6064,7 +6064,8 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
 
 
 async def run_depth_open_sales() -> list[dict]:
-    """19:01 ET: send the opening-auction sale for every depth-rule trade the 16:45 job marked.
+    """19:01 ET: send the depth sale (live: opening-auction order; paper: DAY market order, #687 c)
+    for every depth-rule trade the 16:45 job marked.
 
     Alpaca rejects OPG orders submitted after 09:28 and before 19:00 ET, and queues those sent
     after 19:00 for the next session's opening auction — hence 19:01. (A PAPER row's sale is a DAY

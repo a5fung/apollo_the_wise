@@ -1176,13 +1176,14 @@ async def initialize_schema() -> None:
                 -- #687 B (2026-10-01): the exit rule this trade was ENTERED under, stamped once
                 -- at row creation and kept for life. NULL = today's rule (the stop rests ON the
                 -- trailing line); 'depth' = the depth rule (the stop rests one ADR20 under the
-                -- line, a close below the line sells in the next opening auction) — stamped only
+                -- line, a close below the line sells at the next open: live via an opening-auction
+                -- order, paper via a DAY market order, #687 c) — stamped only
                 -- on a MAGNA53 or small-cap paper lane (`magna53_smallcap`) entry while
                 -- `mi_safeguard_state('magna53_depth_exit', <this row account_mode>)` is 'on'.
                 -- Flipping that toggle never changes an open trade's rule.
                 exit_rule TEXT,
                 -- #687 B: the ET date a depth-rule trade CLOSED below its line (set by the 16:45
-                -- job); the 19:01 job sends the opening-auction sale and clears it. NULL = no
+                -- job); the 19:01 job sends the depth sale (see exit_rule above) and clears it. NULL = no
                 -- sale decided.
                 depth_sell_pending_on DATE,
                 created_at TIMESTAMPTZ DEFAULT NOW(),

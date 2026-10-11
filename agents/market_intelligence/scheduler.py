@@ -120,7 +120,7 @@ EXECUTION_OWNED_JOB_IDS = frozenset({
     "stop_coverage_repair_retry",  # #596 — re-drives a FAILED coverage repair (touches the broker)
     "live_position_update",
     "partial_exit_scan",  # #361 — 3:45 PM market-hours partial-profit (split from 4:45)
-    "depth_open_auction_sale",  # #687 B — 7:01 PM ET opening-auction sale (broker writes)
+    "depth_open_auction_sale",  # #687 B — 7:01 PM ET depth sale (broker writes; live opg / paper DAY market, #687 c)
     "evening_position_backstop",
     # #646 (a1) — MUST be execution-owned: it reads broker truth, and an intelligence
     # container holds no Alpaca credentials, where an empty read is indistinguishable
@@ -2513,11 +2513,13 @@ async def _forward_alert_path_persist_job():
 
 
 async def _depth_open_auction_sale_job():
-    """Run at 7:01 PM ET (#687 B). Sends the depth rule's next-open sale — a market-on-open
-    AUCTION sell (TIF opg) — for every depth-rule trade the 16:45 job marked as closed below its
-    trailing line. Alpaca rejects OPG orders submitted after 9:28 AM and before 7:00 PM ET and
-    queues those sent after 7:00 PM for the next session's opening auction, hence 19:01 — after
-    the 19:00 coverage slot, which therefore still sees the depth stop resting.
+    """Run at 7:01 PM ET (#687 B). Sends the depth rule's next-open sale for every depth-rule
+    trade the 16:45 job marked as closed below its trailing line: on a LIVE row a market-on-open
+    AUCTION sell (TIF opg), on a PAPER row a regular DAY market sell (#687 c, 2026-10-10 — paper's
+    simulator never fills an opg order); `run_depth_open_sales` picks the vehicle per row. Alpaca
+    rejects OPG orders submitted after 9:28 AM and before 7:00 PM ET and queues those sent after
+    7:00 PM for the next session's opening auction, hence 19:01 — after the 19:00 coverage slot,
+    which therefore still sees the depth stop resting.
 
     Inert unless a trade row carries `exit_rule = 'depth'`, which only the
     `magna53_depth_exit` toggle stamps (default OFF)."""
@@ -7770,7 +7772,8 @@ def start_scheduler() -> AsyncIOScheduler:
     # so a gap there is real; 19:00 is mid-window with extended hours still trading; 21:10
     # is ten minutes after the 21:00 backstop and reports on a repair that already failed.
     # #687 B: the depth rule's next-open sale — 7:01 PM ET, the first minute Alpaca accepts an
-    # OPG (market-on-open) order for the next session, and after the 19:00 coverage slot.
+    # OPG (market-on-open) order for the next session (live's vehicle), and after the 19:00 coverage
+    # slot. A PAPER row's sale is a DAY market order sent at the same minute (#687 c).
     # Inert while no row carries exit_rule='depth' (toggle `magna53_depth_exit`, default OFF).
     _scheduler.add_job(
         audit_wrap(_depth_open_auction_sale_job, "depth_open_auction_sale"),

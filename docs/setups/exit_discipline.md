@@ -358,6 +358,25 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-10-11 — #687 (c): the PAPER lane's 19:01 depth sale is a regular DAY market order; LIVE keeps the opening-auction order (OPERATOR-RULED "got it, c" 2026-10-10; BUILT, NOT DEPLOYED)
+
+The rule, the derived call-site population, the EXPECT / DONE-WHEN / WOULD-FAIL-IF / VERIFY-LIVE and the
+deploy scope live in the owner of the MAGNA53 rule: `magna53_ep.md` change log 2026-10-11. In this
+file's terms: **the vehicle of the 19:01 sale only** — `order_manager.depth_sale_vehicle(account_mode)`
+returns `day_market` iff the trade row's account mode is exactly `paper`, else `opg`;
+`execute_depth_open_sale` sends `alpaca.place_market_sell` (TIF DAY) for paper and
+`alpaca.place_market_on_open_sell` (TIF opg) for live. Why: Alpaca's paper simulator never fills an
+opening-auction order (PEP, queued 10-08 19:01 ET, EXPIRED 10-09 09:30:57 ET unfilled; KO's DAY market
+sale queued 16:45 ET filled 09:32:04 ET). Unchanged and shared by both vehicles: the 16:45 decision and
+mark, the per-trade lock, the broker-truth sizing, cancel-the-stop-first, the wait for the shares, the
+mode-bound client order id, the `full_exit` row, and the restore after a rejected, expired or cancelled
+sale (the stream keys on the `full_exit` row, never on the TIF). Everywhere in this file "sells in the
+next opening auction" for a depth row is the LIVE vehicle. Read-only prod evidence that the orders
+endpoint queues an after-hours DAY market sell on paper and fills it at the next open: six
+`execute_partial_exit` sales (SMCI, FTRE, BW, PURR submitted 16:45 ET; TEAM, GOOGL submitted 22:33 ET)
+all filled 09:31-09:37 ET the next session (`scripts/probes/_wk1011_depth_paper_day/q3_afterhours_market_sells.out`);
+the 19:01 minute itself is first observed on the first real paper depth sale.
+
 ### 2026-10-10 — #687 / #624: the DEPTH exit's stamp also covers the small-cap PAPER lane (OPERATOR-SIGNED "Ok"; BUILT, NOT DEPLOYED, INERT until the 'paper' toggle row exists)
 
 The rule, its derived downstream population (every path that acts on a `depth` row, file:line), the
@@ -368,13 +387,12 @@ MAGNA53 rule: `magna53_ep.md` change log 2026-10-10. In this file's terms: **the
 for the ROW'S own account mode; the resting stop, the 16:45 decision/mark, the 19:01 opening-auction
 sale and the restore after an expired or rejected sale are unchanged and already strategy-free (they
 read `exit_rule` + `account_mode` from the row). The mechanism below ("Stamp at entry", the 2026-10-01
-part B entry) reads "MAGNA53" as "MAGNA53 and the small-cap lane". ⚠ **Paper's opening auction does not
-fill:** the only opg sale ever sent on the paper account (PEP, 10-09) EXPIRED unfilled while KO's DAY
-market sale filled — **RULED (c) 2026-10-10 (his "got it, c"), BUILT 2026-10-11:** on the PAPER account the
-19:01 sale is a regular DAY market order (`order_manager.depth_sale_vehicle`); LIVE keeps the
-opening-auction order. Everywhere below, "sells in the opening auction" is the LIVE vehicle; the paper
-lane's sale is a DAY market order queued the same minute and filled at the open (`magna53_ep.md` change
-log 2026-10-11 — what was built, the EXPECT and the verify).
+part B entry) reads "MAGNA53" as "MAGNA53 and the small-cap lane". ⚠ **Paper's opening auction is
+unproven:** the only opg sale ever sent on the paper account (PEP, 10-09) EXPIRED unfilled, so the lane's
+depth sale is expected to expire and be re-decided daily; the PAPER toggle row waits on his decision
+(`magna53_ep.md` 2026-10-10, the ⚖ block).
+**Superseded on the sale vehicle by the 2026-10-11 entry above** (his ruling (c): the paper sale is a DAY
+market order); the paragraph is kept as written on 2026-10-10.
 
 ### 2026-10-10 — the +8R profit-take on a 2-share MAGNA53 position sells 1 share (OPERATOR-SIGNED "go with rec"; DEPLOYED 2026-10-10)
 

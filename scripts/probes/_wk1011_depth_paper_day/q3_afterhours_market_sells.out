@@ -1,0 +1,13 @@
+id	alpaca_order_id	ticker	account_mode	order_type	purpose	exit_reason	status	qty	filled_qty	submitted_et	filled_et	tif
+154	d945b09d-62d1-44b6-96b6-f0bc9cdd8ff2	IBM	paper	market	full_exit	sma_trail_stop	filled	18	18	2026-06-09 Tue 16:45:00	2026-06-10 Wed 09:33:41	
+102	b119c622-f227-459d-82bd-a55f042d5cca	PURR	paper	market	partial_exit	partial_profit	filled	316	316	2026-05-26 Tue 16:45:00	2026-05-27 Wed 09:37:42	
+100	db11453b-4196-4150-898d-4945e16e6257	BW	paper	market	full_exit	sma_trail_stop	filled	776	776	2026-05-26 Tue 16:45:00	2026-05-27 Wed 09:37:08	
+75	9bfeff93-eb57-4109-8fed-256c9451c891	BW	paper	market	partial_exit	partial_profit	filled	387	387	2026-05-14 Thu 16:45:00	2026-05-15 Fri 09:33:38	
+64	4baad913-cee0-44b7-90a2-d70eb7812df4	SMCI	paper	market	partial_exit	partial_profit	filled	204	204	2026-05-11 Mon 16:45:00	2026-05-12 Tue 09:34:43	
+51	fc255617-7209-471c-8110-b8da223d0980	FTRE	paper	market	partial_exit	partial_profit	filled	461	461	2026-05-08 Fri 16:45:00	2026-05-11 Mon 09:32:45	
+37	9c2d2250-4d77-4910-b888-71730efcc267	TEAM	paper	market	partial_exit	partial_profit	filled	76	76	2026-05-05 Tue 22:33:29	2026-05-06 Wed 09:32:20	
+35	5073291f-4522-4d6c-91d5-37156457dffc	GOOGL	paper	market	partial_exit	partial_profit	filled	17	17	2026-05-05 Tue 22:33:29	2026-05-06 Wed 09:31:18	
+32	ce35d7a8-3ff7-486a-b72f-2c2d3d12ca95	TEAM	paper	market			canceled	76	0	2026-05-05 Tue 16:45:00		
+29	82ebdc29-5783-4455-9012-25f99f79b5c2	GOOGL	paper	market			canceled	17	0	2026-05-05 Tue 16:45:00		
+24	65ff697d-e2bc-4ba3-b3ff-fb20040c185e	GOOGL	paper	market			canceled	17	0	2026-05-04 Mon 16:45:00		
+(11 rows)
