@@ -4210,7 +4210,6 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
             logger.warning(
                 f"shortlist: last-night volume lookup failed -- ranking without it: {_lne}")
             _last_night_adv = {}
-    if candidates:
         try:
             from agents.market_intelligence.ep_shortlist_shadow import (
                 build_shortlist_shadow_rows, compute_shortlist_ranking)
@@ -4602,14 +4601,21 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         (tests/test_624_lowcap_lane.py runs the scan end to end on/off/raising).
 
         LANE (`lowcap_paper_lane`, after live grading has finished, detached): the caller passes
-        its own sinks — scan rows, results, a `_log_filtered` that writes lane rows, throwaway
-        shadow lists, no theme-fit budget (the per-day fit counter is the live scan's) — and
-        `lane` swaps exactly five things: the grade cache + re-poll state (the lane's own), the
-        alert writer (the lane's own table — NEVER mi_ep_alerts, which the live order step reads),
-        the allocator enqueue (skipped), the two catalyst Telegrams (skipped — the lane pages
-        only on failures) and the M&A question budget pool ('shared' — the EP reserve stays the
-        live scan's). Gates, grader, score and order are the live ones."""
+        ONLY `lane=` (its LaneSink). The prologue below points the sinks at the lane's — scan
+        rows, results, a `_log_filtered` that writes lane rows, throwaway shadow lists, no
+        theme-fit budget (the per-day fit counter is the live scan's) — so a lane call can never
+        fall through to the live objects bound above as defaults. In the body `lane` swaps
+        exactly five things: the grade cache + re-poll state (the lane's own), the alert writer
+        (the lane's own table — NEVER mi_ep_alerts, which the live order step reads), the
+        allocator enqueue (skipped), the two catalyst Telegrams (skipped — the lane pages only on
+        failures) and the M&A question budget pool ('shared' — the EP reserve stays the live
+        scan's). Gates, grader, score and order are the live ones."""
         nonlocal _magna53_mode_fetched, _magna53_account_mode
+        if lane is not None:
+            _log_filtered, scan_log, results = lane.log_filtered, lane.scan_rows, lane.results
+            _tier_shadow_inputs, _score_shadow_inputs, _belonging_shadow_inputs = [], [], []
+            _fit_budget = None
+        _ma_pool = "ep" if lane is None else "shared"   # which M&A headline-question budget this grade spends
         # Volume conviction percentile — only valid pre-open (compares cumulative
         # to full-day ADV history). Post-open the partial-day cumulative would
         # falsely rank near 0 against full-day distributions, so return neutral.
@@ -4770,7 +4776,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                     ticker, catalyst_quality, claude_analysis, news_summary,
                     c["gap_pct"], c["today_volume"], c.get("pm_rvol"), today,
                     lattice_acting=(_live_side == "lattice"),
-                    ma_budget_pool=("ep" if lane is None else "shared"),
+                    ma_budget_pool=_ma_pool,
                     deal_answer=deal_answer,
                     release_sink=_mna_release,
                     quality_if_no_deal=quality_if_no_deal,
@@ -5225,7 +5231,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 ticker, catalyst_quality, claude_analysis, news_summary,
                 c["gap_pct"], c["today_volume"], c.get("pm_rvol"), today,
                 lattice_acting=(_live_side == "lattice"),
-                ma_budget_pool=("ep" if lane is None else "shared"),
+                ma_budget_pool=_ma_pool,
                 deal_answer=deal_answer,
                 release_sink=_mna_release,
                 quality_if_no_deal=quality_if_no_deal,

@@ -240,10 +240,7 @@ async def _grade_tick(cands: list, *, grade: Callable, judge: Optional[Callable]
         sink.candidates[ticker] = c
         n_rows, n_res = len(sink.scan_rows), len(sink.results)
         try:
-            await grade(c, ticker, rel_volume, lane=sink,
-                        _log_filtered=sink.log_filtered, scan_log=sink.scan_rows,
-                        results=sink.results, _tier_shadow_inputs=[], _score_shadow_inputs=[],
-                        _belonging_shadow_inputs=[], _fit_budget=None)
+            await grade(c, ticker, rel_volume, lane=sink)
             out["graded"] += 1
         except Exception as e:  # loud-ok: one name's failure is counted, audited and recorded; the rest proceed
             out["errors"] += 1

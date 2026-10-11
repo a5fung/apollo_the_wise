@@ -206,6 +206,33 @@ async def test_the_tiered_read_returns_each_tickers_latest_alert_date(monkeypatc
     assert got == {"AAA": date(2026, 9, 20), "BBB": date(2026, 10, 12)}
 
 
+# ── the lane hands the grader ONE thing: its sink ─────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_the_lane_hands_the_grader_only_its_sink_and_the_sink_owns_the_outputs(monkeypatch):
+    """`_grade_admitted` points its scan rows / results / filtered-logger / throwaway shadow lists
+    at the lane's from `lane=` alone (it used to be passed seven more kwargs by the lane, and a
+    caller that forgot one would have appended lane names to the LIVE scan's results list).
+    The real function's lane path is exercised end to end by test_624_lowcap_lane /
+    test_624_paper_lane (they drive the real run_ep_scan); this pins the call shape."""
+    from datetime import datetime
+    from shared.dates import _ET
+    from tests.test_624_paper_lane import _cand, _wire_lane
+    _wire_lane(monkeypatch)
+    calls = []
+
+    async def _grade(*a, **kw):
+        calls.append((a, kw))
+    out = await plane.run_paper_lane_tick(
+        [_cand()], grade=_grade, judge=None, scan_row=lambda *a, **k: {},
+        today=date(2026, 10, 12), now_et=datetime(2026, 10, 12, 9, 20, tzinfo=_ET),
+        regime_label=None, judge_timeout_s=5)
+    (args, kw), = calls
+    assert out["graded"] == 1 and args[1] == "SMLL"
+    assert set(kw) == {"lane"} and isinstance(kw["lane"], plane.LaneSink)
+
+
 # ── the replay walker binds its writer ONCE per signal ────────────────────────────────────
 
 _NO_TICK_SIGNAL = {"signal_id": 7, "ticker": "SMLL", "scan_date": date(2026, 10, 9),

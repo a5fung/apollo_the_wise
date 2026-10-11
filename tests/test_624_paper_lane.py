@@ -540,12 +540,13 @@ def _cand(t="SMLL", gap=22.0):
     return ({"ticker": t, "gap_pct": gap, "prev_close": 8.0, "market_cap": 134e6}, t, 3.0)
 
 
-async def _grade_high(c, ticker, rel_volume, *, lane, results, scan_log, **kw):
-    """Stands in for ep_detector._grade_admitted — writes what the real one writes on a HIGH."""
+async def _grade_high(c, ticker, rel_volume, *, lane):
+    """Stands in for ep_detector._grade_admitted — writes what the real one writes on a HIGH.
+    The lane passes ONLY `lane=`; the real function points its sinks at the lane's own."""
     r = {**c, "ticker": ticker, "score_tier": "HIGH", "ep_score": 90.0,
          "catalyst_quality": "game_changer"}
-    results.append(r)
-    scan_log.append({"ticker": ticker, "score_tier": "HIGH", "ep_score": 90.0})
+    lane.results.append(r)
+    lane.scan_rows.append({"ticker": ticker, "score_tier": "HIGH", "ep_score": 90.0})
     await lane.insert_alert({"ticker": ticker, "alert_date": lane.today, "score_tier": "HIGH",
                              "ep_score": 90.0, "catalyst_quality": "game_changer",
                              "detected_at": lane.now_et, "baseline_floor_tier": "HIGH",
