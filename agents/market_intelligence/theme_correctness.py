@@ -611,6 +611,21 @@ def _json_default(o: Any) -> Any:
 
 
 # ── the nightly I/O runner ──────────────────────────────────────────────────────────────────────
+async def load_scored_universe(conn: Any, today: date) -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
+    """The scored universe G1-G3 are judged against: `mi_stock_scores` at its latest `score_date`
+    <= `today`, as ({ticker: {"rs": rs_composite, "sector": sector}}, {ticker: sector} for the
+    tickers that HAVE a sector). ONE definition for the 17:30 check (`run_theme_correctness_check`)
+    and the engine's #655 fold (`theme_engine._load_small_fold_g3_context`), so the fold's G3
+    controls are the check's by construction. Empty dicts when no scores exist on or before
+    `today`; a failed read raises to the caller."""
+    rows = await conn.fetch(
+        "SELECT ticker, rs_composite, sector FROM mi_stock_scores WHERE score_date = "
+        "(SELECT MAX(score_date) FROM mi_stock_scores WHERE score_date <= $1)", today)
+    scores = {r["ticker"]: {"rs": r["rs_composite"], "sector": r["sector"]} for r in rows}
+    sector = {t: v["sector"] for t, v in scores.items() if v["sector"]}
+    return scores, sector
+
+
 async def run_theme_correctness_check(conn: Any = None) -> dict[str, Any]:
     """Nightly (#655): loads the live board exactly as the engine defines it, the closes and
     scored-universe rows G1-G3 need, and the theme/cluster history the latency read needs;
@@ -634,16 +649,7 @@ async def run_theme_correctness_check(conn: Any = None) -> dict[str, Any]:
 
             closes_lookback_days = max(mac.CALENDAR_DAYS_FOR_LOOKBACK,
                                        LATENCY_WINDOW_DAYS + LATENCY_LOOKBACK_SESSIONS + 30)
-            scores_row = await c.fetchrow(
-                "SELECT MAX(score_date) AS d FROM mi_stock_scores WHERE score_date <= $1", today)
-            score_date = scores_row["d"] if scores_row else None
-            scores_rows = []
-            if score_date is not None:
-                scores_rows = await c.fetch(
-                    "SELECT ticker, rs_composite, sector FROM mi_stock_scores WHERE score_date = $1",
-                    score_date)
-            scores = {r["ticker"]: {"rs": r["rs_composite"], "sector": r["sector"]} for r in scores_rows}
-            sector = {t: v["sector"] for t, v in scores.items() if v["sector"]}
+            scores, sector = await load_scored_universe(c, today)
             universe_tickers = set(scores.keys())
 
             all_tickers = board_tickers | universe_tickers | {mac.MARKET_TICKER}

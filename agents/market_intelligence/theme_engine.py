@@ -63,6 +63,7 @@ from agents.market_intelligence.collector import (
 )
 from agents.market_intelligence.constants import trimmed_mean
 from agents.market_intelligence import market_adjusted_correlation as mac
+from agents.market_intelligence import theme_correctness as tc   # imports only mac + numpy: no cycle
 from agents.market_intelligence.db import (
     get_pool, get_rs_leaders, get_active_themes, get_rs_velocity, get_rs_turners,
     get_recent_rs_batch, add_theme_exclusion, get_all_theme_exclusions, log_audit_event,
@@ -164,10 +165,10 @@ def _themes_are_related(name_a: str, name_b: str, threshold: float = 0.35) -> bo
 
 def _get_excluded_tickers_for_theme(
     theme_name: str,
-    all_exclusions: dict[str, set[str]],
+    all_exclusions: dict[str, set[str]] | None,
 ) -> set[str]:
     """
-    Return the set of tickers excluded from a given theme.
+    Return the set of tickers excluded from a given theme (empty when there are no exclusions).
     Matches by exact name AND by fuzzy word-overlap, so exclusions survive renames.
 
     Example: CAR excluded from "Data Center Infrastructure" also blocks it from
@@ -180,7 +181,7 @@ def _get_excluded_tickers_for_theme(
     is what carries those.
     """
     result: set[str] = set()
-    for exc_theme, exc_tickers in all_exclusions.items():
+    for exc_theme, exc_tickers in (all_exclusions or {}).items():
         if exc_theme == theme_name or _themes_are_related(exc_theme, theme_name):
             result |= exc_tickers
     return result
@@ -5892,35 +5893,38 @@ async def _read_assign_comove_toggle() -> bool:
                                          default=ASSIGN_COMOVE_DEFAULT_ON))
 
 
-async def _load_comove_context(tickers: "set[str] | list[str]", before_date: date, *,
-                               raise_on_failure: bool = False) -> ComoveContext | None:
-    """ONE mi_daily_closes read for the run: `tickers` + SPY over the calendar window that
-    covers BELONGING_LOOKBACK_SESSIONS sessions, all STRICTLY before `before_date` (the fetch
-    asks for `< before_date` AND `session_index` re-applies it — the no-lookahead guarantee
-    never rests on a WHERE clause alone). Returns None on ANY failure — the callers then run
-    today's sector test (fail SAFE), loudly: an audit row records why.
-    `raise_on_failure=True` (the #655 fold's own second read only): the error propagates with no
-    `theme_comove_context_failed` row — that row means "the membership-test sites fell back to the
-    sector test", which a failed fold read does not cause; the fold records its own skip."""
+async def _build_comove_context(tickers: "set[str] | list[str]", before_date: date) -> ComoveContext:
+    """ONE mi_daily_closes read: `tickers` + SPY over the calendar window that covers
+    BELONGING_LOOKBACK_SESSIONS sessions, all STRICTLY before `before_date` (the fetch asks for
+    `< before_date` AND `session_index` re-applies it — the no-lookahead guarantee never rests on a
+    WHERE clause alone). RAISES on any failure and writes nothing: `_load_comove_context` is the
+    fail-safe wrapper the membership-test sites use; the #655 fold calls this directly because its
+    failed read must not write `theme_comove_context_failed` ("the membership-test sites fell back
+    to the sector test" — which a failed fold read does not cause); the fold records its own skip."""
+    syms = {(t or "").upper() for t in tickers if t} | {mac.MARKET_TICKER}
+    closes, n_rows = await etb.fetch_closes(
+        syms, before_date - timedelta(days=mac.CALENDAR_DAYS_FOR_LOOKBACK), before_date)
+    sessions = mac.session_index(closes.get(mac.MARKET_TICKER, {}), before_date,
+                                 mac.BELONGING_LOOKBACK_SESSIONS)
+    if len(sessions) < 2:
+        raise RuntimeError(f"no {mac.MARKET_TICKER} closes before {before_date} — nothing to adjust against")
+    market = mac.log_returns(closes.get(mac.MARKET_TICKER, {}), sessions)
+    excess = mac.excess_returns(closes, sessions, market)
+    ctx = ComoveContext(before_date=before_date, excess=excess,
+                        n_sessions=len(sessions) - 1, n_rows=n_rows)
+    logger.info(
+        f"Theme membership test: co-movement context ready — {len(excess)} tickers with returns "
+        f"over {ctx.n_sessions} sessions before {before_date} ({n_rows} close rows)")
+    return ctx
+
+
+async def _load_comove_context(tickers: "set[str] | list[str]", before_date: date) -> ComoveContext | None:
+    """The nightly run's price context, built ONCE per run by `_build_comove_context`. Returns None
+    on ANY failure — the callers then run today's sector test (fail SAFE), loudly: an audit row
+    records why."""
     try:
-        syms = {(t or "").upper() for t in tickers if t} | {mac.MARKET_TICKER}
-        closes, n_rows = await etb.fetch_closes(
-            syms, before_date - timedelta(days=mac.CALENDAR_DAYS_FOR_LOOKBACK), before_date)
-        sessions = mac.session_index(closes.get(mac.MARKET_TICKER, {}), before_date,
-                                     mac.BELONGING_LOOKBACK_SESSIONS)
-        if len(sessions) < 2:
-            raise RuntimeError(f"no {mac.MARKET_TICKER} closes before {before_date} — nothing to adjust against")
-        market = mac.log_returns(closes.get(mac.MARKET_TICKER, {}), sessions)
-        excess = mac.excess_returns(closes, sessions, market)
-        ctx = ComoveContext(before_date=before_date, excess=excess,
-                            n_sessions=len(sessions) - 1, n_rows=n_rows)
-        logger.info(
-            f"Theme membership test: co-movement context ready — {len(excess)} tickers with returns "
-            f"over {ctx.n_sessions} sessions before {before_date} ({n_rows} close rows)")
-        return ctx
+        return await _build_comove_context(tickers, before_date)
     except Exception as e:  # loud-ok: the membership test fails SAFE to the sector test, and says so
-        if raise_on_failure:
-            raise
         logger.warning(f"Theme membership test: co-movement context FAILED ({type(e).__name__}: {e}) "
                        f"— every site runs the sector test tonight")
         await log_audit_event(
@@ -5968,6 +5972,26 @@ def _comove_reason(corr: float | None, used: int) -> str:
     if corr is None:
         return "thin_basket" if used < mac.BELONGING_MIN_BASKET_MEMBERS else "no_history"
     return "comoves" if corr >= ASSIGN_COMOVE_BAR else "below_bar"
+
+
+def _membership_path(ticker: str, target_name: str, target_tickers: "list[str]",
+                     ctx: ComoveContext | None, excluded: "set[str]",
+                     cooldown_set: "set[tuple[str, str]] | None") -> "tuple[str, ComoveVerdict | None]":
+    """PURE: the ONE 'may this ticker join that theme' rule the sector cap's re-homing
+    (`_admit_rehomed_members`) and the #655 fold (`_small_fold_member_verdict`) both apply: the two
+    hard guards first (an operator exclusion; a live validation cooldown from the target), then the
+    tape (`_comove_verdict`). A pair the tape cannot judge never passes. Returns (path, verdict):
+    "exclusion" / "cooldown" with no verdict, "tape" with the judged `ComoveVerdict` (admit or
+    reject), "unjudgeable" with the unjudged verdict (None = no context at all). Each caller builds
+    its OWN audit-row shape from this — those rows are operator-queried and stay byte-identical."""
+    if ticker in excluded:
+        return "exclusion", None
+    if cooldown_set and (ticker, target_name) in cooldown_set:
+        return "cooldown", None
+    cv = _comove_verdict(ticker, target_tickers, ctx)
+    if cv is not None and cv.admit is not None:
+        return "tape", cv
+    return "unjudgeable", cv
 
 
 def _sector_identity_counterfactual(stock_sector: str | None, known_sectors: list[str]) -> str:
@@ -6099,9 +6123,10 @@ def _strip_sector_outliers(theme: dict, stocks_by_ticker: dict[str, dict],
 # ═══════════════════════════════════════════════════════════════════════════════════════════
 REHOME_TOGGLE: tuple[str, str] = ("theme_rehome_pass", "THEME_REHOME_PASS_ENABLED")
 REHOME_DEFAULT_ON: bool = True
-# = theme_correctness.G2_MARGIN, the operator-signed "misfiled" margin (#655, 2026-09-27). Kept a
-# LITERAL for the same reason theme_correctness keeps G1_BAR a literal (no cross-import between
-# the nightly scorer and this 9k-line module); tests/test_theme_rehome_pass.py pins the two equal.
+# = theme_correctness.G2_MARGIN, the operator-signed "misfiled" margin (#655, 2026-09-27).
+# theme_correctness never imports this module (it keeps G1_BAR a literal for that reason), so
+# only the engine side could import the value; it stays a literal because
+# tests/test_theme_rehome_pass.py pins the two equal.
 REHOME_G2_MARGIN = 0.20
 REHOME_PER_TARGET_CAP = 3        # admissions INTO one theme per night (moves + join carries)
 REHOME_MAX_CANDIDATES = 18       # one assignment batch (_ASSIGN_LLM_BATCH_SIZE) a night; pre-cap count audited
@@ -8080,8 +8105,7 @@ async def _admit_rehomed_members(
     existing_set = set(existing)
     candidates = [tk for tk in (source.get("tickers") or []) if tk not in existing_set]
     already = [tk for tk in (source.get("tickers") or []) if tk in existing_set]
-    excluded = (_get_excluded_tickers_for_theme(target_name, theme_exclusions)
-                if theme_exclusions else set())
+    excluded = _get_excluded_tickers_for_theme(target_name, theme_exclusions)
 
     if not candidates:
         # Nothing to judge. Either the source was stripped empty upstream (Pass 1 protect
@@ -8110,21 +8134,17 @@ async def _admit_rehomed_members(
     verdicts: dict[str, dict] = {}
     admitted: list[str] = []
     for tk in candidates:
-        if tk in excluded:
-            verdicts[tk] = {"path": "exclusion", "verdict": "reject"}
-            continue
-        if cooldown_set and (tk, target_name) in cooldown_set:
-            verdicts[tk] = {"path": "cooldown", "verdict": "reject"}
-            continue
-        cv = _comove_verdict(tk, existing, comove_ctx)
-        if cv is not None and cv.admit is not None:
+        path, cv = _membership_path(tk, target_name, existing, comove_ctx, excluded, cooldown_set)
+        if path == "tape":
             verdicts[tk] = {"path": "tape", "corr": cv.corr, "overlap": cv.overlap,
                             "basket_n": cv.basket_n, "verdict": "admit" if cv.admit else "reject"}
             if cv.admit:
                 admitted.append(tk)
-        else:
+        elif path == "unjudgeable":
             verdicts[tk] = {"path": "unjudgeable", "reason": cv.reason if cv else "no_context",
                             "verdict": "reject"}
+        else:   # exclusion / cooldown
+            verdicts[tk] = {"path": path, "verdict": "reject"}
 
     detail = json.dumps({
         "source": source_name, "target": target_name, "group": group,
@@ -8811,8 +8831,8 @@ async def _retro_sweep_flagged_pairs(
 SMALL_FADING_RETIRE_TOGGLE: tuple[str, str] = (
     "theme_small_fading_retire", "THEME_SMALL_FADING_RETIRE_ENABLED")
 # = theme_correctness.G4's "under 3 members" (the operator-signed shape bar, 2026-09-27). A
-# literal, not an import, for the same reason the other #655 constants here are literals;
-# tests/test_theme_small_fading_retire.py pins it to THEME_COVERAGE_MIN and to G4's wording.
+# literal because tests/test_theme_small_fading_retire.py pins it to THEME_COVERAGE_MIN and to
+# G4's wording (theme_correctness never imports this module, so the pin is the only link).
 SMALL_FADING_RETIRE_MIN_MEMBERS = 3
 
 
@@ -8955,10 +8975,11 @@ def _synthetic_retired_row(name: str, today: date, successor: str | None, note: 
 # guards every admission honours). A home qualifies when at least HALF the members pass — for a
 # 2-member theme that is ONE of the two — and it clears #505's minimum (shares a member, or
 # industry overlap >= PARENT_PASS_MIN_INDUSTRY_OVERLAP). Among qualifying homes the CLOSEST wins,
-# by #505's closeness key (-shared members, -industry overlap, -word similarity, -size, name) —
-# never the biggest by default. Passing members move into the home; the rest are RELEASED (they
-# leave this theme and come back through assignment/discovery like any uncovered name). No
-# qualifying home -> the theme is left as it is tonight. Themes with >= 4 members never fold;
+# by #505's closeness key (-shared members, -industry overlap, -word similarity, -size, name;
+# `_closeness_rank`, the ONE definition the parent pass ranks by too) — never the biggest by
+# default. Passing members move into the home; the rest are RELEASED (they leave this theme and
+# come back through assignment/discovery like any uncovered name). No qualifying home -> the
+# theme is left as it is tonight. Themes with >= 4 members never fold;
 # a 2-3-member theme that PASSES G3 (or cannot be judged) is never touched.
 #
 # Every decision is taken against the board as it stood BEFORE any fold tonight (the replay's
@@ -8978,10 +8999,12 @@ def _synthetic_retired_row(name: str, today: date, successor: str | None, note: 
 # (mi_stock_scores at its latest date <= tonight, ~2,400 names), so the engine's assignment-pool
 # price context (a few hundred strength-selected names) cannot serve it — controls drawn from
 # leaders co-move more and would fail far more small themes than the replay. The fold therefore
-# makes ONE more read through the engine's own loader (`_load_comove_context`, same date, same
-# strictly-before-tonight sessions) over that universe plus the board — the read the 17:30 check
-# already pays — and uses that one context for both G3 and the members' membership test. The other
-# membership-test sites keep their own context untouched; if this read fails only the fold skips.
+# makes ONE more read through the engine's own loader (`_build_comove_context`, the raising core
+# of `_load_comove_context`: same date, same strictly-before-tonight sessions) over that universe
+# plus the board — the read the 17:30 check already pays; the scored universe itself comes from
+# `theme_correctness.load_scored_universe`, the check's own loader — and uses that one context for
+# both G3 and the members' membership test. The other membership-test sites keep their own
+# context untouched; if this read fails only the fold skips.
 # G3 runs over the live board sorted by name (get_active_themes' order); each verdict is the
 # engine's own draw, not the 17:30 row's — a theme sitting right at its p95 can read differently.
 #
@@ -9005,7 +9028,13 @@ SMALL_FOLD_TOGGLE: tuple[str, str] = ("theme_small_fold", "THEME_SMALL_FOLD_ENAB
 SMALL_FOLD_MIN_MEMBERS = 2        # the population: themes of 2-3 members (#655 scope Q-A — 144 of
 SMALL_FOLD_MAX_MEMBERS = 3        # the 152 G3 fails over 10 nights were 2-3-member themes)
 SMALL_FOLD_HOME_MIN_MEMBERS = 4   # a home holds >= 4 members ...
-SMALL_FOLD_HOME_MIN_HISTORY = 3   # ... >= 3 of them with price history (the membership test's own basket minimum)
+SMALL_FOLD_HOME_MIN_HISTORY = mac.BELONGING_MIN_BASKET_MEMBERS   # ... >= 3 of them with price history (the membership test's own basket minimum)
+
+
+def _is_small_fold_candidate(theme: dict) -> bool:
+    """The fold's population: a theme of SMALL_FOLD_MIN_MEMBERS..SMALL_FOLD_MAX_MEMBERS members.
+    ONE test for the runner (does tonight need the toggle read?) and the planner (what folds)."""
+    return SMALL_FOLD_MIN_MEMBERS <= len(theme.get("tickers") or []) <= SMALL_FOLD_MAX_MEMBERS
 
 
 async def _read_small_fold_toggle() -> bool:
@@ -9040,14 +9069,12 @@ def _small_fold_member_verdict(tk: str, home: dict, ctx: "ComoveContext",
     home_tk = list(home.get("tickers") or [])
     if tk in home_tk:
         return {"path": "already_in_home", "pass": True}
-    if tk in excluded:
-        return {"path": "exclusion", "pass": False}
-    if cooldown_set and (tk, home["name"]) in cooldown_set:
-        return {"path": "cooldown", "pass": False}
-    cv = _comove_verdict(tk, home_tk, ctx)
-    if cv is None or cv.admit is None:
+    path, cv = _membership_path(tk, home["name"], home_tk, ctx, excluded, cooldown_set)
+    if path == "tape":
+        return {"path": "tape", "corr": cv.corr, "basket_n": cv.basket_n, "pass": bool(cv.admit)}
+    if path == "unjudgeable":
         return {"path": "unjudgeable", "reason": cv.reason if cv else "no_context", "pass": False}
-    return {"path": "tape", "corr": cv.corr, "basket_n": cv.basket_n, "pass": bool(cv.admit)}
+    return {"path": path, "pass": False}   # exclusion / cooldown
 
 
 def plan_small_theme_folds(
@@ -9074,9 +9101,9 @@ def plan_small_theme_folds(
               "skipped_protected": 0, "no_ecosystem": 0, "no_home": 0, "members_fail_test": 0}
     folds: list[SmallFold] = []
     for s in board:
-        s_tk = list(s.get("tickers") or [])
-        if not (SMALL_FOLD_MIN_MEMBERS <= len(s_tk) <= SMALL_FOLD_MAX_MEMBERS):
+        if not _is_small_fold_candidate(s):
             continue
+        s_tk = list(s["tickers"])
         counts["small"] += 1
         if s["name"] not in g3_fail:
             continue
@@ -9101,18 +9128,16 @@ def plan_small_theme_folds(
         need = (len(s_tk) + 1) // 2   # at least half: 1 of 2, 2 of 3
         best = None
         for h in homes:
-            excluded = (_get_excluded_tickers_for_theme(h["name"], theme_exclusions)
-                        if theme_exclusions else set())
+            excluded = _get_excluded_tickers_for_theme(h["name"], theme_exclusions)
             verdicts = {tk: _small_fold_member_verdict(tk, h, ctx, excluded, cooldown_set) for tk in s_tk}
             passed = [tk for tk in s_tk if verdicts[tk]["pass"]]
             if len(passed) < need:
                 continue
             shared = len(set(s_tk) & set(h["tickers"]))
-            ind = round(parent_industry_overlap(s, h, industry_by_ticker), 6)
-            if shared == 0 and ind < PARENT_PASS_MIN_INDUSTRY_OVERLAP:
+            picked = _closeness_rank(s, h, industry_by_ticker, shared)
+            if picked is None:
                 continue  # #505's minimum (his 10-09 yes): nothing shared, industries do not line up
-            wsim = round(parent_word_similarity(s, h), 6)
-            key = (-shared, -ind, -wsim, -len(h["tickers"]), h["name"])
+            key, ind, wsim = picked
             if best is None or key < best[0]:
                 best = (key, h, passed, verdicts, shared, ind, wsim)
         if best is None:
@@ -9133,23 +9158,20 @@ def plan_small_theme_folds(
 
 
 async def _load_small_fold_g3_context(board: list[dict], today: date):
-    """The fold's ONE extra read: the scored universe (mi_stock_scores at its latest date <= tonight:
-    rs_composite + sector — exactly what the 17:30 check loads) and, through the engine's own
-    `_load_comove_context`, the price context over that universe + the board. Returns
-    (ctx, scores, sector) or None when either read fails (the fold then skips tonight)."""
+    """The fold's ONE extra read: the scored universe (`tc.load_scored_universe` — the very loader
+    the 17:30 check uses) and, through the engine's own `_build_comove_context`, the price context
+    over that universe + the board. Returns (ctx, scores, sector), or None when there are no
+    scores or the price read fails (the fold then skips tonight). A failed SCORES read raises —
+    to the caller's `theme_small_fold_error` row."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT ticker, rs_composite, sector FROM mi_stock_scores WHERE score_date = "
-            "(SELECT MAX(score_date) FROM mi_stock_scores WHERE score_date <= $1)", today)
-    scores = {r["ticker"]: {"rs": r["rs_composite"], "sector": r["sector"]} for r in rows}
+        scores, sector = await tc.load_scored_universe(conn, today)
     if not scores:
         logger.warning("Small-theme fold (#655): no mi_stock_scores rows on or before tonight — no G3 tonight")
         return None
-    sector = {t: v["sector"] for t, v in scores.items() if v["sector"]}
     universe = set(scores) | {tk for t in board for tk in (t.get("tickers") or [])}
     try:
-        ctx = await _load_comove_context(universe, today, raise_on_failure=True)
+        ctx = await _build_comove_context(universe, today)
     except Exception as e:  # loud-ok: only the fold skips tonight; the caller's RAN row records it
         logger.warning(f"Small-theme fold (#655): price context FAILED ({type(e).__name__}: {e}) — "
                        f"no fold tonight; the membership-test sites are unaffected")
@@ -9171,11 +9193,8 @@ async def _fold_small_failing_themes(
     removed, its moved members appended to its home, and — for an incumbent — a synthetic Retired
     row pointing at the home. No 2-3-member theme on the board, or toggle OFF -> the list is
     returned untouched with no read. Any unreadable input -> nothing folds, said in the RAN row."""
-    from agents.market_intelligence import theme_correctness as tc
-
     live = [t for t in all_themes if t.get("stage") != "Retired" and (t.get("tickers") or [])]
-    small = [t for t in live
-             if SMALL_FOLD_MIN_MEMBERS <= len(t["tickers"]) <= SMALL_FOLD_MAX_MEMBERS]
+    small = [t for t in live if _is_small_fold_candidate(t)]
     if not small:
         return all_themes
     if not await _read_small_fold_toggle():
@@ -9212,12 +9231,9 @@ async def _fold_small_failing_themes(
         return all_themes
     ctx, scores, sector = loaded
     usable = tc.usable_set(ctx.excess)
-    g3 = await asyncio.to_thread(
-        tc.compute_g3,
-        [{"name": t["name"], "stage": t.get("stage"), "tickers": list(t["tickers"])} for t in board],
-        ctx.excess, usable, scores, sector)
-    g3_by_name = {r["name"]: r for r in g3["themes"]}
-    g3_fail = {n for n, r in g3_by_name.items() if r["pass_g3"] is False}
+    g3 = await asyncio.to_thread(tc.compute_g3, board, ctx.excess, usable, scores, sector)
+    g3_by_name = {r["name"]: r for r in g3["themes"]}   # the audit rows' cohesion / p95 lookups
+    g3_fail = set(g3["fail_list"])                      # the check's own definition of "fails G3"
 
     industries = await _read_parent_pass_industries(board)
     folds, counts = plan_small_theme_folds(
@@ -9544,6 +9560,21 @@ def parent_industry_overlap(child: dict, parent: dict, industry_by_ticker: dict)
     return sum(1 for i in c_ind if i in p_ind) / len(c_ind)
 
 
+def _closeness_rank(child: dict, cand: dict, industry_by_ticker: dict, shared: int
+                    ) -> "tuple[tuple, float, float] | None":
+    """THE #505 closeness pick for one (child, candidate home) pair — the ONE definition the parent
+    pass (`propose_parent_candidates`) and the #655 fold (`plan_small_theme_folds`) both rank by:
+    shared member stocks desc, industry overlap, word similarity, breadth, name (lower sorts
+    first). `shared` = member stocks the two themes have in common. None = under THE MINIMUM
+    (his 10-09 yes): nothing shared and industry overlap < PARENT_PASS_MIN_INDUSTRY_OVERLAP.
+    Otherwise (rank, industry_overlap, word_similarity), the last two rounded as ranked."""
+    ind = round(parent_industry_overlap(child, cand, industry_by_ticker), 6)
+    if shared == 0 and ind < PARENT_PASS_MIN_INDUSTRY_OVERLAP:
+        return None
+    wsim = round(parent_word_similarity(child, cand), 6)
+    return (-shared, -ind, -wsim, -len(cand["tickers"]), cand["name"]), ind, wsim
+
+
 def propose_parent_candidates(
     themes: list[dict],
     eco_map: dict[str, str],
@@ -9633,11 +9664,10 @@ def propose_parent_candidates(
             shared_tk = len(c_tk & set(p["tickers"]))
             shared_tok = len(c_tok & _name_tokens(p["name"]))
             if closeness:
-                ind = round(parent_industry_overlap(c, p, industry_by_ticker), 6)
-                if shared_tk == 0 and ind < PARENT_PASS_MIN_INDUSTRY_OVERLAP:
+                picked = _closeness_rank(c, p, industry_by_ticker, shared_tk)
+                if picked is None:
                     continue  # THE MINIMUM (his 10-09 yes): nothing shared, industries don't line up
-                wsim = round(parent_word_similarity(c, p), 6)
-                rank = (-shared_tk, -ind, -wsim, -len(p["tickers"]), p["name"])
+                rank, ind, wsim = picked
             else:
                 ind = wsim = None
                 rank = (-shared_tk, -shared_tok, -len(p["tickers"]), p["name"])
