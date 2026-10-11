@@ -215,6 +215,14 @@ reviews:
     threshold: 20   # RE-GATED 2026-09-19 from 40 (#669): see can_fire.threshold_vs_observed
     earliest_review_date: 2026-09-20
     action_when_ready: |
+      🛑 OUTCOME-BLIND FROM SAMPLE #4 (his ruling 2026-10-10, "go with rec"): select both sides by
+      outcome as below, but the PAGE he rules on shows NO forward return, NO "it fell / it ran" or
+      "alerted HIGH / skipped" grouping, and the cards are SHUFFLED into one list. Every earlier
+      verdict (sessions 1-4, 45 rulings) was given with a forward result on screen (5-day for session
+      1, 20-day after), so agreement with outcomes measured nothing about his eye
+      (docs/analysis/594_rulings_encoded_2026-10-10.md). Same day he ruled the $0 supply read a DEAD
+      END as a filter — do not re-score it after each sample; the labels now feed the three $0
+      measures he cited and the bar #519's paid vision test must beat.
       BUILD THE NEXT SAMPLE, balanced both ways — never a list of failures:
         A. names scored HIGH whose stock then collapsed (settled 20 sessions), and
         B. names scored BELOW the bar whose stock then ran.
