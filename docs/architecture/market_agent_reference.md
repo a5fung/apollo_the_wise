@@ -225,6 +225,32 @@ month 18:00 ET, scheduler.py) runs every script in `QUARTERLY_BACKWARD_CHECK_SCR
 - **Judge footer (monthly judge review):** states what it counts — graded rows whose stored evidence
   carried an SEC filing or Benzinga wire — and makes no claim about what the judge was shown.
 
+### Weekly review message — what prints and what only stores (#700, 2026-10-11)
+Owner of the rules: `agents/market_intelligence/system_review.py` (`_assemble_report`); decision table and
+rationale: `docs/design/weekly_review_noise_700.md` (a finding, not an owner). Operator 2026-10-11: *"even if
+something doesnt need me, if it's informative it can still include so don't need to remove everthing but
+remove noise as much as possible."* Presentation only - every metric is computed and stored as before.
+- **Four rules.** (1) INFORMATIVE prints, compact: a result with its conclusion, a number that moved, a first-ever
+  event, a new section's readout (#486, #313), a live-money P&L fact. (2) UNCHANGED since last week becomes one
+  phrase on the head's checked line (`unchanged since last week: bands HOLD · winner capture 19%`), the block goes to
+  the full text. (3) REPEATED rows become one line per type and disposition. (4) UNVERIFIED is never a finding: the
+  job checks the narrator's "anomalies to verify" against the record (`verify_narrative_anomalies`: names an audit
+  type with no live row, every identifier resolves in the record, no ticker from the week) - settled ones are one
+  line, the rest are MINE ("To verify (mine, Monday)" + a head count under Needs me).
+- **Where the full text lives.** `mi_system_reviews.metrics.report` = `full_md` (every section uncompacted),
+  `head_md` / `fold_md` (as sent), `snapshot` (what next week compares against - categorical states and event keys
+  only, never a windowed count), `changes` (one `{section, shown, why}` per change-only section), `suppressed`.
+  Print it with `scripts/probes/_700_review_noise/preview.py --full`. There is no Telegram command for it.
+- **"Last week" is the row dated at or before `window_start`** (`get_latest_system_review(..., on_or_before=)`), not
+  the newest row - an on-demand `weekly review` upserts a row dated that day. A missing or unreadable prior makes
+  every change-only section PRINT (`why: "no prior"`); it never hides one.
+- **Event-keyed sections** (setup review, replay-regression) print only the week a trade closed; the early-window
+  drift line is dropped once the cohort reaches the band floor (the bands own the number). A compaction that raises
+  falls back to the section's full text.
+- **Adding a section:** give it a full renderer (stored) and, if it repeats, a `_<section>_message` sibling and a
+  change predicate with a `report.changes` entry; a field it compares against next week goes in `snapshot` only if the
+  raw metrics do not already hold it.
+
 ### Error Alerting
 - Silent failures in theme engine write to `mi_audit_log`: `validation_error`, `assignment_error`, `discovery_error`, plus `validation_rate_limited` / `anthropic_rate_limited` for 429s.
 - After nightly run: if any `*_error` events in last 2h → immediate Telegram alert.

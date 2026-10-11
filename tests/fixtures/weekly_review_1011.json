@@ -1,0 +1,3028 @@
+{
+ "review": {
+  "review_date": "2026-10-11",
+  "summary": "✅ *Working*\n• The CEG loss stayed small and defined. It lost `-$58.95` on about `$58` of actual risk against `$77` planned, roughly -1R. The stop at `281.29` sat about 1.9 ATR away. The postmortem says the setup showed no momentum (day-1 close `299.59` was below the `300.94` entry). That is one trade, so it illustrates the loss cap and says nothing about expectancy.\n• The judge layer ran cleanly: `judged` 10 of 10, `fallbacks` 0, `judge_driven` 10 (4 demotes, 0 promotes).\n• `audit_errors.open_total` = 0 of 40 total. Every type is dispositioned `quiet`, and the last event was 10-07.\n\n⚠️ *Anomalies to verify* — UNVERIFIED; do NOT act before checking ground truth\n• Footprint this week: `l1_invariants` = 1 (`silent_audit_error_window`) and `l2_anomalies` = 1 (`cooldowns_per_day`). `audit_errors.total` = 40, of which 38 are `ep_candidate_parse_error`. Those ran every 5 min on 10-07 from 07:00 to 09:55 ET, each with about 139-150 of ~13.2k snapshot rows dropped (`prev_close` 0/missing), and none have recurred. They may be already-resolved or designed, so check them against audit ground truth.\n• `cooldowns.triggered_this_week` = 81 (active 117), versus 38 (active 71) last week. `theme_churn.total_high_churn_pairs` = 20, the same as prior weeks, and this week's top pairs are all Appalachian Natural Gas names at 2 adds / 2 removes. The cause is unknown. It may be a designed mechanism or a known-in-flight task.\n• Stop-coverage telemetry: `stop_coverage_repair_failed` count 1 (KO, 10-06, quiet). Separately, the CEG postmortem narrative says the broker-side stop shows `EXPIRED` with a null `stop_order_id`. That comes from the narrative, not from `audit_errors`. It may be designed behaviour, so check it against broker and audit ground truth.\n\n🔁 *Last week:* The `silent_audit_error_window` invariant persisted at 1, `theme_churn` stayed at 20 pairs, and `cooldowns.triggered_this_week` rose from 38 to 81. The 09-29 theme-pipeline error events did not recur, and the new `audit_errors` types are different ones.\n\n📉 *Drift:*\n• `cooldowns_per_day`: 1→2 (20.0 vs p50 5.0)\n• `cooldowns_per_day`: 3→2 (9.0 vs p50 2.0)\n• `theme_count_active`: 2→1 (123.0 vs p50 118.0)\n\n📄 *Docs drift (unverified):*\n• `docs/setups/magna53_ep.md:675`: a dated status claim that is still the doc's latest word and that nothing can verify. Re-check it by hand.",
+  "suggestions": [
+   "Footprint this week: `l1_invariants` = 1 (`silent_audit_error_window`) and `l2_anomalies` = 1 (`cooldowns_per_day`). `audit_errors.total` = 40, of which 38 are `ep_candidate_parse_error`. Those ran every 5 min on 10-07 from 07:00 to 09:55 ET, each with about 139-150 of ~13.2k snapshot rows dropped (`prev_close` 0/missing), and none have recurred. They may be already-resolved or designed, so check them against audit ground truth.",
+   "`cooldowns.triggered_this_week` = 81 (active 117), versus 38 (active 71) last week. `theme_churn.total_high_churn_pairs` = 20, the same as prior weeks, and this week's top pairs are all Appalachian Natural Gas names at 2 adds / 2 removes. The cause is unknown. It may be a designed mechanism or a known-in-flight task.",
+   "Stop-coverage telemetry: `stop_coverage_repair_failed` count 1 (KO, 10-06, quiet). Separately, the CEG postmortem narrative says the broker-side stop shows `EXPIRED` with a null `stop_order_id`. That comes from the narrative, not from `audit_errors`. It may be designed behaviour, so check it against broker and audit ground truth."
+  ],
+  "metrics": {
+   "regime": {
+    "current": "Choppy",
+    "ep_threshold": 70,
+    "transitions_this_week": 3
+   },
+   "pending_reviews": {
+    "ready": [
+     {
+      "kind": "accrual",
+      "title": "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)",
+      "added_on": "2026-08-16",
+      "review_id": "alert_rank_shadow_out_of_sample",
+      "threshold": 1,
+      "current_count": 23,
+      "last_run_note": null,
+      "evidence_flags": {
+       "date_fire": false,
+       "population_mismatch": [],
+       "population_undeclared": false
+      },
+      "action_when_ready": "RUNNING READ — fires again every session a new out-of-sample alert_date lands, from the first one. Every run: state n (COUNT(DISTINCT alert_date) WHERE alert_date > 2026-08-16) and its confidence label via `scripts/alert_rank_shadow_running_read.confidence_label` — n<25 is THIN/directional, NEVER presented as a verdict; n>=25 is DECISION-GRADE. Score catch-rate on the tail first (>=10R), medians second. Read the EOD version against the as-of-09:45 version separately (full-day tightness vs ORB-time-only — different questions). Report BOTH directions per quartile (winners admitted, losers admitted/excluded — see `score_both_directions`), never a winner count alone. Validates -> selection is actionable and the plan's sufficiency target stops depending entirely on conversion; does not -> the plan narrows to conversion alone.",
+      "earliest_review_date": null,
+      "last_resolution_date": "2026-10-09",
+      "last_run_inconclusive_on": null
+     }
+    ],
+    "errored": [],
+    "pending_count": 56
+   },
+   "audit_errors": {
+    "total": 40,
+    "top_types": [
+     {
+      "why": "it has not recurred in 4d (Wed 10-07 07:00 ET) · it has not recurred in 4d (Wed 10-07 07:05 ET) · it has not recurred in 4d (Wed 10-07 07:10 ET) · it has not recurred in 4d (Wed 10-07 07:15 ET) · it has not recurred in 4d (Wed 10-07 07:20 ET) · it has not recurred in 4d (Wed 10-07 07:25 ET) · it has not recurred in 4d (Wed 10-07 07:30 ET) · it has not recurred in 4d (Wed 10-07 07:35 ET) · it has not recurred in 4d (Wed 10-07 07:40 ET) · it has not recurred in 4d (Wed 10-07 07:45 ET) · it has not recurred in 4d (Wed 10-07 07:50 ET) · it has not recurred in 4d (Wed 10-07 07:55 ET) · it has not recurred in 3d (Wed 10-07 08:00 ET) · it has not recurred in 3d (Wed 10-07 08:05 ET) · it has not recurred in 3d (Wed 10-07 08:10 ET) · it has not recurred in 3d (Wed 10-07 08:15 ET) · it has not recurred in 3d (Wed 10-07 08:20 ET) · it has not recurred in 3d (Wed 10-07 08:25 ET) · it has not recurred in 3d (Wed 10-07 08:30 ET) · it has not recurred in 3d (Wed 10-07 08:35 ET) · it has not recurred in 3d (Wed 10-07 08:40 ET) · it has not recurred in 3d (Wed 10-07 08:45 ET) · it has not recurred in 3d (Wed 10-07 08:50 ET) · it has not recurred in 3d (Wed 10-07 08:55 ET) · it has not recurred in 3d (Wed 10-07 09:00 ET) · it has not recurred in 3d (Wed 10-07 09:05 ET) · it has not recurred in 3d (Wed 10-07 09:10 ET) · it has not recurred in 3d (Wed 10-07 09:15 ET) · it has not recurred in 3d (Wed 10-07 09:20 ET) · it has not recurred in 3d (Wed 10-07 09:25 ET) · it has not recurred in 3d (Wed 10-07 09:30 ET) · it has not recurred in 3d (Wed 10-07 09:31 ET) · it has not recurred in 3d (Wed 10-07 09:35 ET) · it has not recurred in 3d (Wed 10-07 09:40 ET) · it has not recurred in 3d (Wed 10-07 09:45 ET) · it has not recurred in 3d (Wed 10-07 09:50 ET) · it has not recurred in 3d (Wed 10-07 09:55 ET)",
+      "open": false,
+      "rows": [
+       {
+        "at": "2026-10-07T11:00:01.794848+00:00",
+        "why": "it has not recurred in 4d (Wed 10-07 07:00 ET)",
+        "when": "Wed 10-07 07:00 ET",
+        "job_id": null,
+        "summary": "150 of 13235 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['XSLL', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T11:05:00.337178+00:00",
+        "why": "it has not recurred in 4d (Wed 10-07 07:05 ET)",
+        "when": "Wed 10-07 07:05 ET",
+        "job_id": null,
+        "summary": "150 of 13235 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['WENC', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T11:10:00.367580+00:00",
+        "why": "it has not recurred in 4d (Wed 10-07 07:10 ET)",
+        "when": "Wed 10-07 07:10 ET",
+        "job_id": null,
+        "summary": "150 of 13235 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['NHIV', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T11:15:00.294595+00:00",
+        "why": "it has not recurred in 4d (Wed 10-07 07:15 ET)",
+        "when": "Wed 10-07 07:15 ET",
+        "job_id": null,
+        "summary": "150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['AESP', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T11:20:00.368262+00:00",
+        "why": "it has not recurred in 4d (Wed 10-07 07:20 ET)",
+        "when": "Wed 10-07 07:20 ET",
+        "job_id": null,
+        "summary": "150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['LCCC', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T11:25:00.272825+00:00",
+        "why": "it has not recurred in 4d (Wed 10-07 07:25 ET)",
+        "when": "Wed 10-07 07:25 ET",
+        "job_id": null,
+        "summary": "150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['TLAC', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T11:30:00.269599+00:00",
+        "why": "it has not recurred in 4d (Wed 10-07 07:30 ET)",
+        "when": "Wed 10-07 07:30 ET",
+        "job_id": null,
+        "summary": "150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['KELYB', ",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T11:35:00.339698+00:00",
+        "why": "it has not recurred in 4d (Wed 10-07 07:35 ET)",
+        "when": "Wed 10-07 07:35 ET",
+        "job_id": null,
+        "summary": "150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['OBA', 'A",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T11:40:00.278554+00:00",
+        "why": "it has not recurred in 4d (Wed 10-07 07:40 ET)",
+        "when": "Wed 10-07 07:40 ET",
+        "job_id": null,
+        "summary": "150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['WHLRL', ",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T11:45:00.330606+00:00",
+        "why": "it has not recurred in 4d (Wed 10-07 07:45 ET)",
+        "when": "Wed 10-07 07:45 ET",
+        "job_id": null,
+        "summary": "150 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 150 with prev_close 0/missing; first error: None); sample ['SORN', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T11:50:00.372571+00:00",
+        "why": "it has not recurred in 4d (Wed 10-07 07:50 ET)",
+        "when": "Wed 10-07 07:50 ET",
+        "job_id": null,
+        "summary": "149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['NBRG', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T11:55:00.276218+00:00",
+        "why": "it has not recurred in 4d (Wed 10-07 07:55 ET)",
+        "when": "Wed 10-07 07:55 ET",
+        "job_id": null,
+        "summary": "149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['RNGT', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T12:00:00.289121+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 08:00 ET)",
+        "when": "Wed 10-07 08:00 ET",
+        "job_id": null,
+        "summary": "149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['BACC', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T12:05:00.331109+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 08:05 ET)",
+        "when": "Wed 10-07 08:05 ET",
+        "job_id": null,
+        "summary": "149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['IDAC', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T12:10:00.331413+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 08:10 ET)",
+        "when": "Wed 10-07 08:10 ET",
+        "job_id": null,
+        "summary": "149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['SCPQ', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T12:15:00.342808+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 08:15 ET)",
+        "when": "Wed 10-07 08:15 ET",
+        "job_id": null,
+        "summary": "149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['ELLO', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T12:20:00.362974+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 08:20 ET)",
+        "when": "Wed 10-07 08:20 ET",
+        "job_id": null,
+        "summary": "149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['EURK', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T12:25:00.310429+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 08:25 ET)",
+        "when": "Wed 10-07 08:25 ET",
+        "job_id": null,
+        "summary": "149 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 149 with prev_close 0/missing; first error: None); sample ['WENC', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T12:30:00.305173+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 08:30 ET)",
+        "when": "Wed 10-07 08:30 ET",
+        "job_id": null,
+        "summary": "148 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 148 with prev_close 0/missing; first error: None); sample ['WHLRL', ",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T12:35:00.260878+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 08:35 ET)",
+        "when": "Wed 10-07 08:35 ET",
+        "job_id": null,
+        "summary": "147 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['IACO', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T12:40:00.263410+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 08:40 ET)",
+        "when": "Wed 10-07 08:40 ET",
+        "job_id": null,
+        "summary": "147 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['NBRG', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T12:45:00.604868+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 08:45 ET)",
+        "when": "Wed 10-07 08:45 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['GSRF', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T12:50:00.348251+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 08:50 ET)",
+        "when": "Wed 10-07 08:50 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['TLAC', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T12:55:00.314249+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 08:55 ET)",
+        "when": "Wed 10-07 08:55 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['CAQ', 'T",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:00:00.974828+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:00 ET)",
+        "when": "Wed 10-07 09:00 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['HCAC', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:00:01.374251+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:00 ET)",
+        "when": "Wed 10-07 09:00 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['LPAA', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:05:00.318919+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:05 ET)",
+        "when": "Wed 10-07 09:05 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['ALF', 'Q",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:10:00.329253+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:10 ET)",
+        "when": "Wed 10-07 09:10 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['OHAC', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:15:00.350724+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:15 ET)",
+        "when": "Wed 10-07 09:15 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['SORN', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:20:00.333757+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:20 ET)",
+        "when": "Wed 10-07 09:20 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['SORN', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:25:00.467821+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:25 ET)",
+        "when": "Wed 10-07 09:25 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['GIX', 'H",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:30:01.249693+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:30 ET)",
+        "when": "Wed 10-07 09:30 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['FDMM', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:31:01.095583+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:31 ET)",
+        "when": "Wed 10-07 09:31 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['RREV', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:35:03.167185+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:35 ET)",
+        "when": "Wed 10-07 09:35 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['LPCV', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:40:02.788473+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:40 ET)",
+        "when": "Wed 10-07 09:40 ET",
+        "job_id": null,
+        "summary": "147 of 13257 snapshot rows dropped in the EP candidate build (0 raised, 147 with prev_close 0/missing; first error: None); sample ['FGII', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:45:04.303648+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:45 ET)",
+        "when": "Wed 10-07 09:45 ET",
+        "job_id": null,
+        "summary": "144 of 13258 snapshot rows dropped in the EP candidate build (0 raised, 144 with prev_close 0/missing; first error: None); sample ['ELLO', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:50:02.718225+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:50 ET)",
+        "when": "Wed 10-07 09:50 ET",
+        "job_id": null,
+        "summary": "139 of 13263 snapshot rows dropped in the EP candidate build (0 raised, 139 with prev_close 0/missing; first error: None); sample ['PTAC', '",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-10-07T13:55:02.604912+00:00",
+        "why": "it has not recurred in 3d (Wed 10-07 09:55 ET)",
+        "when": "Wed 10-07 09:55 ET",
+        "job_id": null,
+        "summary": "139 of 13264 snapshot rows dropped in the EP candidate build (0 raised, 139 with prev_close 0/missing; first error: None); sample ['IMPPP', ",
+        "exception": null,
+        "disposition": "quiet"
+       }
+      ],
+      "count": 38,
+      "days_ago": 3,
+      "last_seen": "2026-10-07",
+      "event_type": "ep_candidate_parse_error",
+      "disposition": "quiet"
+     },
+     {
+      "why": "it has not recurred in 4d (Tue 10-06 09:55 ET)",
+      "open": false,
+      "rows": [
+       {
+        "at": "2026-10-06T13:55:53.486547+00:00",
+        "why": "it has not recurred in 4d (Tue 10-06 09:55 ET)",
+        "when": "Tue 10-06 09:55 ET",
+        "job_id": null,
+        "summary": "TLN 2026-10-06: 2nd-model call failed/timed out (model=claude-sonnet-5-5)",
+        "exception": null,
+        "disposition": "quiet"
+       }
+      ],
+      "count": 1,
+      "days_ago": 4,
+      "last_seen": "2026-10-06",
+      "event_type": "judge_divergence_check_failed",
+      "disposition": "quiet"
+     },
+     {
+      "why": "it has not recurred in 4d (Tue 10-06 09:35 ET)",
+      "open": false,
+      "rows": [
+       {
+        "at": "2026-10-06T13:35:28.275370+00:00",
+        "why": "it has not recurred in 4d (Tue 10-06 09:35 ET)",
+        "when": "Tue 10-06 09:35 ET",
+        "job_id": null,
+        "summary": "KO: place coverage stop (target 3) failed: {\"available\":\"0\",\"code\":40310000,\"existing_qty\":\"3\",\"held_for_orders\":\"3\",\"message\":\"insufficient",
+        "exception": null,
+        "disposition": "quiet"
+       }
+      ],
+      "count": 1,
+      "days_ago": 4,
+      "last_seen": "2026-10-06",
+      "event_type": "stop_coverage_repair_failed",
+      "disposition": "quiet"
+     }
+    ],
+    "open_total": 0,
+    "dispositioned": [
+     {
+      "rule": "quiet: it has not recurred in 4d (Wed 10-07 07:00 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T11:00:01.794848+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Wed 10-07 07:05 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T11:05:00.337178+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Wed 10-07 07:10 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T11:10:00.367580+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Wed 10-07 07:15 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T11:15:00.294595+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Wed 10-07 07:20 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T11:20:00.368262+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Wed 10-07 07:25 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T11:25:00.272825+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Wed 10-07 07:30 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T11:30:00.269599+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Wed 10-07 07:35 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T11:35:00.339698+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Wed 10-07 07:40 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T11:40:00.278554+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Wed 10-07 07:45 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T11:45:00.330606+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Wed 10-07 07:50 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T11:50:00.372571+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Wed 10-07 07:55 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T11:55:00.276218+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 08:00 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T12:00:00.289121+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 08:05 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T12:05:00.331109+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 08:10 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T12:10:00.331413+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 08:15 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T12:15:00.342808+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 08:20 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T12:20:00.362974+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 08:25 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T12:25:00.310429+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 08:30 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T12:30:00.305173+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 08:35 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T12:35:00.260878+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 08:40 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T12:40:00.263410+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 08:45 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T12:45:00.604868+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 08:50 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T12:50:00.348251+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 08:55 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T12:55:00.314249+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:00 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:00:00.974828+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:00 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:00:01.374251+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:05 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:05:00.318919+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:10 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:10:00.329253+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:15 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:15:00.350724+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:20 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:20:00.333757+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:25 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:25:00.467821+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:30 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:30:01.249693+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:31 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:31:01.095583+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:35 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:35:03.167185+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:40 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:40:02.788473+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:45 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:45:04.303648+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:50 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:50:02.718225+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 3d (Wed 10-07 09:55 ET)",
+      "what": "ep_candidate_parse_error at 2026-10-07T13:55:02.604912+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Tue 10-06 09:55 ET)",
+      "what": "judge_divergence_check_failed at 2026-10-06T13:55:53.486547+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Tue 10-06 09:35 ET)",
+      "what": "stop_coverage_repair_failed at 2026-10-06T13:35:28.275370+00:00"
+     }
+    ]
+   },
+   "strategy_promotions": {
+    "checks": [
+     {
+      "model": "telemetry_review",
+      "metrics": {
+       "fill_rate": 0.559,
+       "n_candidates": 59
+      },
+      "eligible": false,
+      "next_phase": "paper",
+      "strategy_id": "wick_fill",
+      "current_phase": "shadow",
+      "blocking_reasons": [
+       "manual review fields not yet captured — eligibility deferred"
+      ]
+     },
+     {
+      "model": "unpaired_r",
+      "metrics": {
+       "median_r": null,
+       "n_closed": 0,
+       "win_rate": null,
+       "total_pnl": 0.0
+      },
+      "eligible": false,
+      "next_phase": "live",
+      "strategy_id": "magna53_smallcap",
+      "current_phase": "paper",
+      "blocking_reasons": [
+       "need 30 closed (have 0)"
+      ]
+     },
+     {
+      "model": "unpaired_r",
+      "metrics": {},
+      "eligible": false,
+      "next_phase": null,
+      "strategy_id": "9m_day2",
+      "current_phase": "deprecated",
+      "blocking_reasons": [
+       "deprecated — excluded from promotion ladder"
+      ]
+     },
+     {
+      "model": "telemetry_review",
+      "metrics": {},
+      "eligible": false,
+      "next_phase": null,
+      "strategy_id": "flag_continuation",
+      "current_phase": "deprecated",
+      "blocking_reasons": [
+       "deprecated — excluded from promotion ladder"
+      ]
+     },
+     {
+      "model": "telemetry_review",
+      "metrics": {},
+      "eligible": false,
+      "next_phase": null,
+      "strategy_id": "fishhook_v3",
+      "current_phase": "deprecated",
+      "blocking_reasons": [
+       "deprecated — excluded from promotion ladder"
+      ]
+     },
+     {
+      "model": "unpaired_r",
+      "metrics": {
+       "median_r": -0.06,
+       "n_closed": 45,
+       "win_rate": 0.467,
+       "total_pnl": 4658.06
+      },
+      "eligible": false,
+      "next_phase": "paper",
+      "strategy_id": "shadow_orb_5m",
+      "current_phase": "shadow",
+      "blocking_reasons": [
+       "median R -0.05519444382610228 < 0.0"
+      ]
+     },
+     {
+      "model": "telemetry_review",
+      "metrics": {
+       "n_climax_alerts": 5
+      },
+      "eligible": false,
+      "next_phase": "paper",
+      "strategy_id": "parabolic_short",
+      "current_phase": "shadow",
+      "blocking_reasons": [
+       "need 20 climax_alerts (have 5)",
+       "manual review fields not yet captured — eligibility deferred"
+      ]
+     },
+     {
+      "model": "unpaired_r",
+      "metrics": {
+       "median_r": -1.0,
+       "n_closed": 10,
+       "win_rate": 0.1,
+       "total_pnl": 0.0
+      },
+      "eligible": false,
+      "next_phase": "paper",
+      "strategy_id": "magna53_lowcap",
+      "current_phase": "shadow",
+      "blocking_reasons": [
+       "need 30 closed (have 10)"
+      ]
+     },
+     {
+      "model": "unpaired_r",
+      "metrics": {},
+      "eligible": false,
+      "next_phase": null,
+      "strategy_id": "magna53",
+      "current_phase": "live",
+      "blocking_reasons": [
+       "already at top of ladder"
+      ]
+     }
+    ]
+   },
+   "loser_breakdown": {
+    "losers": [
+     {
+      "ticker": "CEG",
+      "ep_score": 65.0,
+      "orb1_low": 291.0,
+      "orb5_low": 291.0,
+      "orb1_high": 300.71,
+      "orb5_high": 307.58,
+      "total_pnl": -58.95,
+      "alert_date": "2026-10-06",
+      "stop_price": 281.29,
+      "entry_price": 300.94,
+      "signal_type": "magna53",
+      "account_mode": "live",
+      "orb5_verdict": "would_block",
+      "entry_attempt": 1,
+      "prose_mismatch": false,
+      "catalyst_quality": "strong",
+      "is_compound_loss": false,
+      "orb5_skip_reason": "setup:stop_too_wide: ORB range $16.58 (5.7%) > 1.5x ATR $15.70",
+      "time_to_stop_min": 3081.8,
+      "gap_through_dollars": 0.0,
+      "earnings_boost_fired": false,
+      "prose_negative_markers": []
+     }
+    ],
+    "aggregates": {
+     "n_losers": 1,
+     "total_loss": -58.95,
+     "n_5m_wider_stop": 0,
+     "n_5m_would_block": 1,
+     "n_prose_mismatch": 0,
+     "pct_5m_wider_stop": 0.0,
+     "pct_5m_would_block": 100.0,
+     "pct_prose_mismatch": 0.0,
+     "n_compound_attempt2": 0,
+     "n_fast_stop_lt_10min": 0,
+     "pct_fast_stop_lt_10min": 0.0,
+     "median_gap_through_dollars": null
+    }
+   },
+   "mfe_capture": {
+    "n": 17,
+    "bar_pct": 50,
+    "era_split": {
+     "older": [
+      [
+       90.79059999999998,
+       223.64
+      ],
+      [
+       62.92049600000003,
+       174.860496
+      ],
+      [
+       14.402600000000007,
+       47.32260000000002
+      ],
+      [
+       127.76979999999998,
+       271.15
+      ],
+      [
+       118.60200000000003,
+       186.7530000000001
+      ],
+      [
+       19.323599999999942,
+       78.00959999999998
+      ],
+      [
+       -6.838002000000003,
+       53.97999799999994
+      ],
+      [
+       215.6200000000007,
+       1262.0000000000005
+      ],
+      [
+       159.77693200000002,
+       2134.699997
+      ],
+      [
+       396.3399860000003,
+       2023.6199880000006
+      ],
+      [
+       1390.7991939999974,
+       9545.082893999997
+      ],
+      [
+       1165.5900000000004,
+       4923.379999999998
+      ],
+      [
+       3.2898759999992535,
+       1023.84
+      ],
+      [
+       2492.4803570000004,
+       6617.4699999999975
+      ],
+      [
+       618.9699999999984,
+       1326.0
+      ],
+      [
+       -639.339263999999,
+       2327.060231999999
+      ],
+      [
+       138.23999999999953,
+       1591.6000000000006
+      ]
+     ],
+     "by_era": {
+      "era_a": 10,
+      "era_b": 4,
+      "era_c": 3
+     },
+     "current": [],
+     "current_since": "2026-09-06"
+    },
+    "capture_pct": 19,
+    "mfe_dollars": 33810,
+    "kept_dollars": 6369,
+    "window_closes": []
+   },
+   "judge_weekly": {
+    "total": 10,
+    "judged": 10,
+    "demotes": 4,
+    "no_fire": 3,
+    "promotes": 0,
+    "fallbacks": 0,
+    "fire_seen": 7,
+    "window_days": 7,
+    "judge_driven": 10
+   },
+   "missed_opportunities": {
+    "gaps": [
+     {
+      "ret_5d": 0.15263819095477396,
+      "source": "moderate_alert",
+      "ticker": "CIFR",
+      "open_d0": 15.92,
+      "ep_score": 65.0,
+      "alert_date": "2026-09-16",
+      "max_high_5d": 0.24026381909547745,
+      "skip_reason": null,
+      "skip_category": "moderate_tier",
+      "catalyst_quality": "strong",
+      "has_direct_source": true
+     },
+     {
+      "ret_5d": 0.20594092266843683,
+      "source": "scan_filter",
+      "ticker": "VICR",
+      "open_d0": 241.04,
+      "ep_score": null,
+      "alert_date": "2026-09-22",
+      "max_high_5d": 0.23216063723863264,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "skip_category": "cooldown",
+      "catalyst_quality": null,
+      "has_direct_source": null
+     },
+     {
+      "ret_5d": 0.2152809879152083,
+      "source": "scan_filter",
+      "ticker": "TWST",
+      "open_d0": 151.43,
+      "ep_score": null,
+      "alert_date": "2026-09-17",
+      "max_high_5d": 0.22313940434524196,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "skip_category": "cooldown",
+      "catalyst_quality": null,
+      "has_direct_source": null
+     },
+     {
+      "ret_5d": 0.17419962335216588,
+      "source": "scan_filter",
+      "ticker": "RPD",
+      "open_d0": 10.62,
+      "ep_score": null,
+      "alert_date": "2026-09-14",
+      "max_high_5d": 0.2203295668549906,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "skip_category": "cooldown",
+      "catalyst_quality": null,
+      "has_direct_source": null
+     },
+     {
+      "ret_5d": -0.037471123793993845,
+      "source": "scan_filter",
+      "ticker": "ARM",
+      "open_d0": 294.36,
+      "ep_score": null,
+      "alert_date": "2026-09-21",
+      "max_high_5d": 0.1447886941160484,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "skip_category": "cooldown",
+      "catalyst_quality": null,
+      "has_direct_source": null
+     },
+     {
+      "ret_5d": null,
+      "source": "scan_filter",
+      "ticker": "EROC",
+      "open_d0": 12.6,
+      "ep_score": null,
+      "alert_date": "2026-10-06",
+      "max_high_5d": 0.14206349206349214,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "skip_category": "cooldown",
+      "catalyst_quality": null,
+      "has_direct_source": null
+     },
+     {
+      "ret_5d": 0.1312242090784043,
+      "source": "scan_filter",
+      "ticker": "TEM",
+      "open_d0": 72.7,
+      "ep_score": null,
+      "alert_date": "2026-09-17",
+      "max_high_5d": 0.1342503438789545,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "skip_category": "cooldown",
+      "catalyst_quality": null,
+      "has_direct_source": null
+     },
+     {
+      "ret_5d": null,
+      "source": "high_unentered",
+      "ticker": "VST",
+      "open_d0": 151.47,
+      "ep_score": 71.2,
+      "alert_date": "2026-10-06",
+      "max_high_5d": 0.114068792500165,
+      "skip_reason": "window:out_of_orb: detected 09:55 ET",
+      "skip_category": "window_missed",
+      "catalyst_quality": "strong",
+      "has_direct_source": true
+     }
+    ],
+    "by_category": [
+     {
+      "n": 1007,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "WFF",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "d1_universe_floor",
+      "avg_max_high_5d": 0.12618687451740843,
+      "top_max_high_5d": 8.346153846153845,
+      "n_peak_10pct_plus": 312
+     },
+     {
+      "n": 242,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "PMI",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "below_gap_floor",
+      "avg_max_high_5d": 0.05762008746088389,
+      "top_max_high_5d": 0.6574471544715448,
+      "n_peak_10pct_plus": 32
+     },
+     {
+      "n": 18,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "DNA",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "score_below_50",
+      "avg_max_high_5d": 0.12869093195436454,
+      "top_max_high_5d": 0.4575999999999999,
+      "n_peak_10pct_plus": 7
+     },
+     {
+      "n": 6,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "AIFA",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "adv_low",
+      "avg_max_high_5d": 0.18291048758847492,
+      "top_max_high_5d": 0.331841909023117,
+      "n_peak_10pct_plus": 6
+     },
+     {
+      "n": 3,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "TJGC",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "session_rvol_low",
+      "avg_max_high_5d": 0.19816417534295563,
+      "top_max_high_5d": 0.2867370007535795,
+      "n_peak_10pct_plus": 3
+     },
+     {
+      "n": 2,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "BIAF",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "atr_high",
+      "avg_max_high_5d": 0.2974511786944064,
+      "top_max_high_5d": 0.4771653543307089,
+      "n_peak_10pct_plus": 2
+     },
+     {
+      "n": 4,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "APUS",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "extension_gate",
+      "avg_max_high_5d": 0.12285893289912396,
+      "top_max_high_5d": 0.22999999999999998,
+      "n_peak_10pct_plus": 2
+     },
+     {
+      "n": 4,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "NTSK",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "catalyst_downgrade",
+      "avg_max_high_5d": 0.08797152547564188,
+      "top_max_high_5d": 0.10701009028146578,
+      "n_peak_10pct_plus": 2
+     },
+     {
+      "n": 1,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "INTT",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "mcap_low",
+      "avg_max_high_5d": 0.1783536585365855,
+      "top_max_high_5d": 0.1783536585365855,
+      "n_peak_10pct_plus": 1
+     },
+     {
+      "n": 3,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "SVRN",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "outside_top20",
+      "avg_max_high_5d": 0.10558009900461728,
+      "top_max_high_5d": 0.27712418300653596,
+      "n_peak_10pct_plus": 1
+     },
+     {
+      "n": 2,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "VST",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "window_missed",
+      "avg_max_high_5d": 0.10259504353634914,
+      "top_max_high_5d": 0.114068792500165,
+      "n_peak_10pct_plus": 1
+     },
+     {
+      "n": 2,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "EROC",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "cooldown",
+      "avg_max_high_5d": 0.09156362683917954,
+      "top_max_high_5d": 0.14206349206349214,
+      "n_peak_10pct_plus": 1
+     },
+     {
+      "n": 4,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "NU",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "moderate_tier",
+      "avg_max_high_5d": 0.05486172906008249,
+      "top_max_high_5d": 0.07743658210947932,
+      "n_peak_10pct_plus": 0
+     },
+     {
+      "n": 1,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "WOLF",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "setup_other",
+      "avg_max_high_5d": 0.026270702455739422,
+      "top_max_high_5d": 0.026270702455739422,
+      "n_peak_10pct_plus": 0
+     },
+     {
+      "n": 3,
+      "n_winners": 0,
+      "avg_ret_5d": null,
+      "max_ret_5d": null,
+      "top_ret_5d": null,
+      "top_ticker": "PCRX",
+      "n_10pct_plus": 0,
+      "n_20pct_plus": 0,
+      "skip_category": "ma_filter",
+      "avg_max_high_5d": 0.0023479690958386917,
+      "top_max_high_5d": 0.0037164487267721405,
+      "n_peak_10pct_plus": 0
+     }
+    ],
+    "top_winners": [
+     {
+      "rn": 1,
+      "ret_1d": -0.0071999999999999885,
+      "ret_5d": null,
+      "source": "scan_filter",
+      "ticker": "DNA",
+      "gap_pct": 9.68,
+      "open_d0": 12.5,
+      "ret_20d": null,
+      "ep_score": 33.8,
+      "alert_date": "2026-10-05",
+      "max_high_5d": 0.4575999999999999,
+      "skip_reason": "score 34 < bar 65 (catalyst=routine)",
+      "max_high_20d": 0.4575999999999999,
+      "skip_category": "score_below_50",
+      "cat_rank_metric": 0.4575999999999999,
+      "catalyst_quality": "routine"
+     },
+     {
+      "rn": 2,
+      "ret_1d": 0.22216772927905842,
+      "ret_5d": null,
+      "source": "scan_filter",
+      "ticker": "PICS",
+      "gap_pct": 18.48,
+      "open_d0": 10.195,
+      "ret_20d": null,
+      "ep_score": 33.8,
+      "alert_date": "2026-10-05",
+      "max_high_5d": 0.3536047081902894,
+      "skip_reason": "score 34 < bar 65 (catalyst=routine)",
+      "max_high_20d": 0.3536047081902894,
+      "skip_category": "score_below_50",
+      "cat_rank_metric": 0.4575999999999999,
+      "catalyst_quality": "routine"
+     },
+     {
+      "rn": 1,
+      "ret_1d": 0.24340617935192166,
+      "ret_5d": null,
+      "source": "scan_filter",
+      "ticker": "TJGC",
+      "gap_pct": 11.25,
+      "open_d0": 26.54,
+      "ret_20d": null,
+      "ep_score": null,
+      "alert_date": "2026-10-07",
+      "max_high_5d": 0.2867370007535795,
+      "skip_reason": "filter:session_rvol_too_low: session_rvol=0.09x (today 10,517 / baseline 111,451 n=20) < 1.0x",
+      "max_high_20d": 0.2867370007535795,
+      "skip_category": "session_rvol_low",
+      "cat_rank_metric": 0.2867370007535795,
+      "catalyst_quality": null
+     },
+     {
+      "rn": 2,
+      "ret_1d": null,
+      "ret_5d": null,
+      "source": "scan_filter",
+      "ticker": "SVRN",
+      "gap_pct": 9.05,
+      "open_d0": 41.01,
+      "ret_20d": null,
+      "ep_score": null,
+      "alert_date": "2026-10-09",
+      "max_high_5d": 0.1704462326261888,
+      "skip_reason": "filter:session_rvol_too_low: session_rvol=0.22x (today 9,512 / baseline 42,789 n=21) < 1.0x",
+      "max_high_20d": 0.1704462326261888,
+      "skip_category": "session_rvol_low",
+      "cat_rank_metric": 0.2867370007535795,
+      "catalyst_quality": null
+     },
+     {
+      "rn": 1,
+      "ret_1d": 0.1430065359477124,
+      "ret_5d": null,
+      "source": "scan_filter",
+      "ticker": "SVRN",
+      "gap_pct": 20.31,
+      "open_d0": 38.25,
+      "ret_20d": null,
+      "ep_score": null,
+      "alert_date": "2026-10-05",
+      "max_high_5d": 0.27712418300653596,
+      "skip_reason": "outside top-20 shortlist (prescore rank 21, gap 20.3%)",
+      "max_high_20d": 0.27712418300653596,
+      "skip_category": "outside_top20",
+      "cat_rank_metric": 0.27712418300653596,
+      "catalyst_quality": null
+     },
+     {
+      "rn": 2,
+      "ret_1d": -0.0070699135899450006,
+      "ret_5d": null,
+      "source": "scan_filter",
+      "ticker": "VIV",
+      "gap_pct": 10.49,
+      "open_d0": 12.73,
+      "ret_20d": null,
+      "ep_score": null,
+      "alert_date": "2026-10-05",
+      "max_high_5d": 0.020424194815396684,
+      "skip_reason": "outside top-20 shortlist (prescore rank 23, gap 10.5%)",
+      "max_high_20d": 0.020424194815396684,
+      "skip_category": "outside_top20",
+      "cat_rank_metric": 0.27712418300653596,
+      "catalyst_quality": null
+     },
+     {
+      "rn": 1,
+      "ret_1d": 0.03809523809523813,
+      "ret_5d": null,
+      "source": "scan_filter",
+      "ticker": "EROC",
+      "gap_pct": 9.93,
+      "open_d0": 12.6,
+      "ret_20d": null,
+      "ep_score": null,
+      "alert_date": "2026-10-06",
+      "max_high_5d": 0.14206349206349214,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "max_high_20d": 0.14206349206349214,
+      "skip_category": "cooldown",
+      "cat_rank_metric": 0.14206349206349214,
+      "catalyst_quality": null
+     },
+     {
+      "rn": 2,
+      "ret_1d": -0.11887215636014101,
+      "ret_5d": null,
+      "source": "scan_filter",
+      "ticker": "BRUN",
+      "gap_pct": 10.54,
+      "open_d0": 15.605,
+      "ret_20d": null,
+      "ep_score": null,
+      "alert_date": "2026-10-06",
+      "max_high_5d": 0.041063761614866946,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "max_high_20d": 0.041063761614866946,
+      "skip_category": "cooldown",
+      "cat_rank_metric": 0.14206349206349214,
+      "catalyst_quality": null
+     },
+     {
+      "rn": 1,
+      "ret_1d": 0.10068000264078696,
+      "ret_5d": null,
+      "source": "high_unentered",
+      "ticker": "VST",
+      "gap_pct": 10.66,
+      "open_d0": 151.47,
+      "ret_20d": null,
+      "ep_score": 71.2,
+      "alert_date": "2026-10-06",
+      "max_high_5d": 0.114068792500165,
+      "skip_reason": "window:out_of_orb: detected 09:55 ET",
+      "max_high_20d": 0.114068792500165,
+      "skip_category": "window_missed",
+      "cat_rank_metric": 0.114068792500165,
+      "catalyst_quality": "strong"
+     },
+     {
+      "rn": 2,
+      "ret_1d": 0.08354575397393675,
+      "ret_5d": null,
+      "source": "high_unentered",
+      "ticker": "TLN",
+      "gap_pct": 9.73,
+      "open_d0": 349.15,
+      "ret_20d": null,
+      "ep_score": 67.5,
+      "alert_date": "2026-10-06",
+      "max_high_5d": 0.09112129457253329,
+      "skip_reason": "window:out_of_orb: detected 09:55 ET",
+      "max_high_20d": 0.09112129457253329,
+      "skip_category": "window_missed",
+      "cat_rank_metric": 0.114068792500165,
+      "catalyst_quality": "strong"
+     },
+     {
+      "rn": 1,
+      "ret_1d": 0.02177376526818907,
+      "ret_5d": null,
+      "source": "scan_filter",
+      "ticker": "NTSK",
+      "gap_pct": 9.55,
+      "open_d0": 18.83,
+      "ret_20d": null,
+      "ep_score": null,
+      "alert_date": "2026-10-06",
+      "max_high_5d": 0.10701009028146578,
+      "skip_reason": "routine catalyst, gap 9.6%",
+      "max_high_20d": 0.10701009028146578,
+      "skip_category": "catalyst_downgrade",
+      "cat_rank_metric": 0.10701009028146578,
+      "catalyst_quality": "routine"
+     },
+     {
+      "rn": 2,
+      "ret_1d": null,
+      "ret_5d": null,
+      "source": "scan_filter",
+      "ticker": "KARD",
+      "gap_pct": 9.33,
+      "open_d0": 14.44,
+      "ret_20d": null,
+      "ep_score": null,
+      "alert_date": "2026-10-09",
+      "max_high_5d": 0.10318559556786705,
+      "skip_reason": "routine catalyst, gap 9.3%",
+      "max_high_20d": 0.10318559556786705,
+      "skip_category": "catalyst_downgrade",
+      "cat_rank_metric": 0.10701009028146578,
+      "catalyst_quality": "routine"
+     },
+     {
+      "rn": 1,
+      "ret_1d": 0.04539385847797061,
+      "ret_5d": null,
+      "source": "moderate_alert",
+      "ticker": "NU",
+      "gap_pct": 10.57,
+      "open_d0": 14.98,
+      "ret_20d": null,
+      "ep_score": 65.0,
+      "alert_date": "2026-10-05",
+      "max_high_5d": 0.07743658210947932,
+      "skip_reason": null,
+      "max_high_20d": 0.07743658210947932,
+      "skip_category": "moderate_tier",
+      "cat_rank_metric": 0.07743658210947932,
+      "catalyst_quality": "strong"
+     },
+     {
+      "rn": 2,
+      "ret_1d": -0.0075062552126772195,
+      "ret_5d": null,
+      "source": "moderate_alert",
+      "ticker": "PBR",
+      "gap_pct": 9.19,
+      "open_d0": 23.98,
+      "ret_20d": null,
+      "ep_score": 77.5,
+      "alert_date": "2026-10-05",
+      "max_high_5d": 0.06755629691409512,
+      "skip_reason": null,
+      "max_high_20d": 0.06755629691409512,
+      "skip_category": "moderate_tier",
+      "cat_rank_metric": 0.07743658210947932,
+      "catalyst_quality": "strong"
+     },
+     {
+      "rn": 1,
+      "ret_1d": -0.12592804111936046,
+      "ret_5d": null,
+      "source": "high_unentered",
+      "ticker": "WOLF",
+      "gap_pct": 17.97,
+      "open_d0": 35.02,
+      "ret_20d": null,
+      "ep_score": 73.8,
+      "alert_date": "2026-10-08",
+      "max_high_5d": 0.026270702455739422,
+      "skip_reason": "setup:gap_below_floor: rt 8.8% < 9% floor (alert said 18.0%, last $34.13 vs prev close $31.37)",
+      "max_high_20d": 0.026270702455739422,
+      "skip_category": "setup_other",
+      "cat_rank_metric": 0.026270702455739422,
+      "catalyst_quality": "strong"
+     }
+    ],
+    "window_days": 7,
+    "source_gap_summary": {
+     "denom": 14,
+     "sourced": 12,
+     "unsourced": 2,
+     "unassessed": 0,
+     "window_days": 60
+    }
+   },
+   "crypto": {
+    "is_live": true,
+    "verdict": "✅ live; gates clean",
+    "blockers": [],
+    "pre_arm_7d": 4,
+    "shadow_mode": false,
+    "ready_to_flip": false,
+    "universe_size": 342,
+    "last_trigger_at": null,
+    "rs_history_days": 156,
+    "watchlist_total": 27,
+    "categories_pairs": 2808,
+    "ingest_errors_7d": 0,
+    "ingest_attempts_7d": 7,
+    "macro_history_days": 156,
+    "watchlist_unresolved": 0,
+    "stablecoin_history_days": 156
+   },
+   "anomalies": {
+    "l3_drifts": {
+     "count": 6,
+     "transitions": [
+      {
+       "key": "theme_count_active",
+       "p50": 118.0,
+       "current": 123.0,
+       "to_band": 1,
+       "from_band": 2
+      },
+      {
+       "key": "cooldowns_per_day",
+       "p50": 5.0,
+       "current": 20.0,
+       "to_band": 2,
+       "from_band": 1
+      },
+      {
+       "key": "cooldowns_per_day",
+       "p50": 2.0,
+       "current": 5.0,
+       "to_band": 1,
+       "from_band": 2
+      },
+      {
+       "key": "theme_count_active",
+       "p50": 116.5,
+       "current": 124.0,
+       "to_band": 2,
+       "from_band": 1
+      },
+      {
+       "key": "theme_count_active",
+       "p50": 116.0,
+       "current": 120.0,
+       "to_band": 1,
+       "from_band": 2
+      },
+      {
+       "key": "cooldowns_per_day",
+       "p50": 2.0,
+       "current": 9.0,
+       "to_band": 2,
+       "from_band": 3
+      }
+     ]
+    },
+    "l2_anomalies": {
+     "count": 1,
+     "by_key": [
+      {
+       "key": "cooldowns_per_day",
+       "count": 1
+      }
+     ]
+    },
+    "l1_invariants": {
+     "count": 1,
+     "by_key": [
+      {
+       "key": "silent_audit_error_window",
+       "count": 1
+      }
+     ]
+    }
+   },
+   "drift_check": {
+    "drift_n": 0,
+    "checked_at": "2026-10-10 22:02:03.295468+00:00",
+    "unverified_n": 1,
+    "prod_reachable": true,
+    "unverified_claims": [
+     {
+      "where": "docs/setups/magna53_ep.md:675",
+      "words": "A status claim in a dated entry that is still the doc's most recent word on its subject, and nothing can verify it — the exact shape that rotted on 2026-08-23. Re-check by hand; tie it to a flag or add a superseding entry."
+     }
+    ]
+   },
+   "postmortem_best": {
+    "pnl": -58.95,
+    "ticker": "CEG",
+    "narrative": "📋 *Postmortem — CEG 2026-10-06*\n\n*Setup*\nThe alert was legitimate but marginal. The Google 890 MW offtake is a real, company-specific catalyst, but Gemini and Claude both graded it only \"strong\". The ",
+    "alert_date": "2026-10-06"
+   },
+   "postmortem_worst": null,
+   "cooldowns": {
+    "recent": [
+     {
+      "theme": "Mortgage REITs (Agency & Residential MBS)",
+      "reason": "Description 'Real Estate / REIT - Mortgage — Commercial & residential mortgage lending, real estate debt' does not match",
+      "ticker": "STWD"
+     },
+     {
+      "theme": "Commercial, Office & Home Furniture Retailers and Manufacturers",
+      "reason": "Description 'Consumer Cyclical / Furnishings, Fixtures & Appliances — Residential & commercial flooring products' does n",
+      "ticker": "MHK"
+     },
+     {
+      "theme": "AI data-center power buildout",
+      "reason": "Description 'Content delivery, web security, CDN' does not match theme",
+      "ticker": "AKAM"
+     }
+    ],
+    "active_count": 117,
+    "triggered_this_week": 81
+   },
+   "theme_churn": {
+    "top": [
+     {
+      "adds": 2,
+      "theme": "Appalachian Natural Gas Producers",
+      "events": 4,
+      "ticker": "AR",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Appalachian Natural Gas Producers",
+      "events": 4,
+      "ticker": "GPOR",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Appalachian Natural Gas Producers",
+      "events": 4,
+      "ticker": "RRC",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Appalachian Natural Gas Producers",
+      "events": 4,
+      "ticker": "CNX",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Appalachian Natural Gas Producers",
+      "events": 4,
+      "ticker": "CRK",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Appalachian Natural Gas Producers",
+      "events": 4,
+      "ticker": "EQT",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Appalachian Natural Gas Producers",
+      "events": 4,
+      "ticker": "EXE",
+      "removes": 2
+     },
+     {
+      "adds": 1,
+      "theme": "Regulated Electric & Gas Utilities Broad Defensive Rotation Extension",
+      "events": 3,
+      "ticker": "NI",
+      "removes": 2
+     },
+     {
+      "adds": 1,
+      "theme": "Semiconductor Process Instruments & RF/PCB Electronic Components",
+      "events": 3,
+      "ticker": "MKSI",
+      "removes": 2
+     },
+     {
+      "adds": 1,
+      "theme": "Oilfield Services & Offshore Energy Equipment",
+      "events": 3,
+      "ticker": "OII",
+      "removes": 2
+     }
+    ],
+    "total_high_churn_pairs": 20
+   },
+   "window": {
+    "end": "2026-10-11",
+    "days": 7,
+    "start": "2026-10-04"
+   }
+  }
+ },
+ "prior": {
+  "review_date": "2026-10-04",
+  "window_days": 7,
+  "metrics": {
+   "crypto": {
+    "is_live": true,
+    "verdict": "⚠️ not ready: 1 crypto_ingest_error events in last 7d",
+    "blockers": [
+     "1 crypto_ingest_error events in last 7d"
+    ],
+    "pre_arm_7d": 5,
+    "shadow_mode": false,
+    "ready_to_flip": false,
+    "universe_size": 340,
+    "last_trigger_at": null,
+    "rs_history_days": 149,
+    "watchlist_total": 27,
+    "categories_pairs": 2780,
+    "ingest_errors_7d": 1,
+    "ingest_attempts_7d": 7,
+    "macro_history_days": 149,
+    "watchlist_unresolved": 0,
+    "stablecoin_history_days": 149
+   },
+   "mfe_capture": {
+    "n": 17,
+    "bar_pct": 50,
+    "era_split": {
+     "older": [
+      [
+       90.79059999999998,
+       223.64
+      ],
+      [
+       62.92049600000003,
+       174.860496
+      ],
+      [
+       14.402600000000007,
+       47.32260000000002
+      ],
+      [
+       127.76979999999998,
+       271.15
+      ],
+      [
+       118.60200000000003,
+       186.7530000000001
+      ],
+      [
+       19.323599999999942,
+       78.00959999999998
+      ],
+      [
+       -6.838002000000003,
+       53.97999799999994
+      ],
+      [
+       215.6200000000007,
+       1262.0000000000005
+      ],
+      [
+       159.77693200000002,
+       2134.699997
+      ],
+      [
+       396.3399860000003,
+       2023.6199880000006
+      ],
+      [
+       1390.7991939999974,
+       9545.082893999997
+      ],
+      [
+       1165.5900000000004,
+       4923.379999999998
+      ],
+      [
+       3.2898759999992535,
+       1023.84
+      ],
+      [
+       2492.4803570000004,
+       6617.4699999999975
+      ],
+      [
+       618.9699999999984,
+       1326.0
+      ],
+      [
+       -639.339263999999,
+       2327.060231999999
+      ],
+      [
+       138.23999999999953,
+       1591.6000000000006
+      ]
+     ],
+     "by_era": {
+      "era_a": 10,
+      "era_b": 4,
+      "era_c": 3
+     },
+     "current": [],
+     "current_since": "2026-09-06"
+    },
+    "capture_pct": 19,
+    "mfe_dollars": 33810,
+    "kept_dollars": 6369,
+    "window_closes": []
+   },
+   "strategy_promotions": {
+    "checks": [
+     {
+      "model": "telemetry_review",
+      "metrics": {
+       "fill_rate": 0.635,
+       "n_candidates": 52
+      },
+      "eligible": false,
+      "next_phase": "paper",
+      "strategy_id": "wick_fill",
+      "current_phase": "shadow",
+      "blocking_reasons": [
+       "manual review fields not yet captured — eligibility deferred"
+      ]
+     },
+     {
+      "model": "unpaired_r",
+      "metrics": {},
+      "eligible": false,
+      "next_phase": null,
+      "strategy_id": "9m_day2",
+      "current_phase": "deprecated",
+      "blocking_reasons": [
+       "deprecated — excluded from promotion ladder"
+      ]
+     },
+     {
+      "model": "telemetry_review",
+      "metrics": {},
+      "eligible": false,
+      "next_phase": null,
+      "strategy_id": "flag_continuation",
+      "current_phase": "deprecated",
+      "blocking_reasons": [
+       "deprecated — excluded from promotion ladder"
+      ]
+     },
+     {
+      "model": "telemetry_review",
+      "metrics": {},
+      "eligible": false,
+      "next_phase": null,
+      "strategy_id": "fishhook_v3",
+      "current_phase": "deprecated",
+      "blocking_reasons": [
+       "deprecated — excluded from promotion ladder"
+      ]
+     },
+     {
+      "model": "unpaired_r",
+      "metrics": {
+       "median_r": -0.07,
+       "n_closed": 43,
+       "win_rate": 0.419,
+       "total_pnl": 2465.84
+      },
+      "eligible": false,
+      "next_phase": "paper",
+      "strategy_id": "shadow_orb_5m",
+      "current_phase": "shadow",
+      "blocking_reasons": [
+       "median R -0.07429185165387137 < 0.0"
+      ]
+     },
+     {
+      "model": "telemetry_review",
+      "metrics": {
+       "n_climax_alerts": 4
+      },
+      "eligible": false,
+      "next_phase": "paper",
+      "strategy_id": "parabolic_short",
+      "current_phase": "shadow",
+      "blocking_reasons": [
+       "need 20 climax_alerts (have 4)",
+       "manual review fields not yet captured — eligibility deferred"
+      ]
+     },
+     {
+      "model": "unpaired_r",
+      "metrics": {
+       "median_r": -1.0,
+       "n_closed": 9,
+       "win_rate": 0.0,
+       "total_pnl": 0.0
+      },
+      "eligible": false,
+      "next_phase": "paper",
+      "strategy_id": "magna53_lowcap",
+      "current_phase": "shadow",
+      "blocking_reasons": [
+       "need 30 closed (have 9)"
+      ]
+     },
+     {
+      "model": "unpaired_r",
+      "metrics": {},
+      "eligible": false,
+      "next_phase": null,
+      "strategy_id": "magna53",
+      "current_phase": "live",
+      "blocking_reasons": [
+       "already at top of ladder"
+      ]
+     }
+    ]
+   },
+   "missed_opportunities": {
+    "gaps": [
+     {
+      "ret_5d": 0.0685721609843631,
+      "source": "scan_filter",
+      "ticker": "AEHR",
+      "open_d0": 78.02,
+      "ep_score": null,
+      "alert_date": "2026-09-04",
+      "max_high_5d": 0.3174814150217894,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "skip_category": "cooldown",
+      "catalyst_quality": null,
+      "has_direct_source": null
+     },
+     {
+      "ret_5d": 0.15263819095477396,
+      "source": "moderate_alert",
+      "ticker": "CIFR",
+      "open_d0": 15.92,
+      "ep_score": 65.0,
+      "alert_date": "2026-09-16",
+      "max_high_5d": 0.24026381909547745,
+      "skip_reason": null,
+      "skip_category": "moderate_tier",
+      "catalyst_quality": "strong",
+      "has_direct_source": true
+     },
+     {
+      "ret_5d": 0.20594092266843683,
+      "source": "scan_filter",
+      "ticker": "VICR",
+      "open_d0": 241.04,
+      "ep_score": null,
+      "alert_date": "2026-09-22",
+      "max_high_5d": 0.23216063723863264,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "skip_category": "cooldown",
+      "catalyst_quality": null,
+      "has_direct_source": null
+     },
+     {
+      "ret_5d": 0.2152809879152083,
+      "source": "scan_filter",
+      "ticker": "TWST",
+      "open_d0": 151.43,
+      "ep_score": null,
+      "alert_date": "2026-09-17",
+      "max_high_5d": 0.22313940434524196,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "skip_category": "cooldown",
+      "catalyst_quality": null,
+      "has_direct_source": null
+     },
+     {
+      "ret_5d": 0.17419962335216588,
+      "source": "scan_filter",
+      "ticker": "RPD",
+      "open_d0": 10.62,
+      "ep_score": null,
+      "alert_date": "2026-09-14",
+      "max_high_5d": 0.2203295668549906,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "skip_category": "cooldown",
+      "catalyst_quality": null,
+      "has_direct_source": null
+     },
+     {
+      "ret_5d": -0.037471123793993845,
+      "source": "scan_filter",
+      "ticker": "ARM",
+      "open_d0": 294.36,
+      "ep_score": null,
+      "alert_date": "2026-09-21",
+      "max_high_5d": 0.1447886941160484,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "skip_category": "cooldown",
+      "catalyst_quality": null,
+      "has_direct_source": null
+     },
+     {
+      "ret_5d": 0.1312242090784043,
+      "source": "scan_filter",
+      "ticker": "TEM",
+      "open_d0": 72.7,
+      "ep_score": null,
+      "alert_date": "2026-09-17",
+      "max_high_5d": 0.1342503438789545,
+      "skip_reason": "EP cooldown — alerted within last 60 days",
+      "skip_category": "cooldown",
+      "catalyst_quality": null,
+      "has_direct_source": null
+     },
+     {
+      "ret_5d": -0.10125874125874118,
+      "source": "moderate_alert",
+      "ticker": "ALAB",
+      "open_d0": 286.0,
+      "ep_score": 65.0,
+      "alert_date": "2026-09-04",
+      "max_high_5d": 0.12465000000000001,
+      "skip_reason": null,
+      "skip_category": "moderate_tier",
+      "catalyst_quality": "strong",
+      "has_direct_source": false
+     }
+    ],
+    "source_gap_summary": {
+     "denom": 18,
+     "sourced": 15,
+     "unsourced": 3,
+     "unassessed": 0,
+     "window_days": 60
+    }
+   }
+  }
+ },
+ "review_1004": {
+  "summary": "✅ *Working*\n• `audit_errors.open_total` = 0 of 10 events this week. All 10 are dispositioned `quiet` and none has recurred in 4–6 days.\n• `judge_weekly`: 3 of 3 alerts judged, 0 fallbacks, 3 judge-driven. The pipeline ran without degradation.\n• Alpaca/Benzinga news attribution is 100% (3/3) with density median 14, up from 50% and 7 last week. n=3, so this is directional only.\n\n⚠️ *Anomalies to verify* — UNVERIFIED; do NOT act before checking ground truth\n• `anomalies.l1_invariants` = 1 (`silent_audit_error_window`), the same key as last week. `audit_errors.total` rose from 2 to 10, and 8 of the 10 are theme-pipeline events (6 `theme_parent_pass_error`, 1 `theme_synthesis_error`, 1 `assignment_error`). All 8 are on 09-29 and none has recurred since. This may be already-resolved or designed. Check it against audit ground truth.\n• `theme_churn.total_high_churn_pairs` = 20, the same as the prior two weeks. This week's pairs are all 2 adds / 2 removes in Offshore Drilling and Appalachian Gas themes. `cooldowns.triggered_this_week` = 38 (active 71) versus 33 (active 62) last week. The cause is unknown. It could be a designed mechanism or a known-in-flight task.\n• `ep_outcomes`: 3 alerts, 1 traded, 2 filtered. The 0% by-tier and by-catalyst rates are the alert cohort's fwd_1w hit rate, not trade outcomes, and the traded cohort is N=1, which is noise. Separately, TJGC (filtered on `session_rvol` 0.20x) had `max_high_5d` +35.8%. That may be a designed gate working as intended.\n\n🔁 *Last week:* All three prior anomalies persisted: the L1 invariant count is 1→1, the churn pairs 20→20, and the traded cohort moved 0→1 (still too small to read). None improved.\n\n📉 *Drift:*\ncooldowns_per_day: 1→2 (13.0 vs p50 2.0)\ncooldowns_per_day: 2→1 (0.0 vs p50 2.0)\ntheme_count_active: 1→2 (122.0 vs p50 115.0)\n\n📄 *Docs drift (unverified):*\n• `docs/setups/exit_discipline.md:665`: dated status claim, nothing can verify it; re-check by hand.\n• `docs/setups/magna53_ep.md:129`: deployment-status assertion nothing can verify; tie it to a flag or date.\n• `docs/setups/magna53_ep.md:565`: dated status claim, nothing can verify it; re-check by hand.",
+  "suggestions": [
+   "`anomalies.l1_invariants` = 1 (`silent_audit_error_window`), the same key as last week. `audit_errors.total` rose from 2 to 10, and 8 of the 10 are theme-pipeline events (6 `theme_parent_pass_error`, 1 `theme_synthesis_error`, 1 `assignment_error`). All 8 are on 09-29 and none has recurred since. This may be already-resolved or designed. Check it against audit ground truth.",
+   "`theme_churn.total_high_churn_pairs` = 20, the same as the prior two weeks. This week's pairs are all 2 adds / 2 removes in Offshore Drilling and Appalachian Gas themes. `cooldowns.triggered_this_week` = 38 (active 71) versus 33 (active 62) last week. The cause is unknown. It could be a designed mechanism or a known-in-flight task.",
+   "`ep_outcomes`: 3 alerts, 1 traded, 2 filtered. The 0% by-tier and by-catalyst rates are the alert cohort's fwd_1w hit rate, not trade outcomes, and the traded cohort is N=1, which is noise. Separately, TJGC (filtered on `session_rvol` 0.20x) had `max_high_5d` +35.8%. That may be a designed gate working as intended."
+  ],
+  "metrics": {
+   "audit_errors": {
+    "total": 10,
+    "top_types": [
+     {
+      "why": "it has not recurred in 4d (Tue 09-29 17:03 ET)",
+      "open": false,
+      "rows": [
+       {
+        "at": "2026-09-29T21:03:07.216418+00:00",
+        "why": "it has not recurred in 4d (Tue 09-29 17:03 ET)",
+        "when": "Tue 09-29 17:03 ET",
+        "job_id": null,
+        "summary": "Parent pass: adjudication failed for 'AI data-center power buildout' × 'AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-09-29T21:03:08.589432+00:00",
+        "why": "it has not recurred in 4d (Tue 09-29 17:03 ET)",
+        "when": "Tue 09-29 17:03 ET",
+        "job_id": null,
+        "summary": "Parent pass: adjudication failed for 'Semiconductor Foundry & Advanced Packaging Manufacturing' × 'AI-Driven Memory & Storage Supply Shortag",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-09-29T21:03:10.642377+00:00",
+        "why": "it has not recurred in 4d (Tue 09-29 17:03 ET)",
+        "when": "Tue 09-29 17:03 ET",
+        "job_id": null,
+        "summary": "Parent pass: adjudication failed for 'Fabless Semiconductor IP Licensing' × 'AI Server Power & Signal-Integrity Analog ICs'",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-09-29T21:03:12.066960+00:00",
+        "why": "it has not recurred in 4d (Tue 09-29 17:03 ET)",
+        "when": "Tue 09-29 17:03 ET",
+        "job_id": null,
+        "summary": "Parent pass: adjudication failed for 'Semiconductor Design, Test & Assembly Enablement Tools' × 'Semiconductor Test, Yield & Assembly Supply",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-09-29T21:03:14.620707+00:00",
+        "why": "it has not recurred in 4d (Tue 09-29 17:03 ET)",
+        "when": "Tue 09-29 17:03 ET",
+        "job_id": null,
+        "summary": "Parent pass: adjudication failed for 'Cloud Data Storage & Analytics Infrastructure' × 'Cloud Application Delivery & Observability Infrastru",
+        "exception": null,
+        "disposition": "quiet"
+       },
+       {
+        "at": "2026-09-29T21:03:18.287433+00:00",
+        "why": "it has not recurred in 4d (Tue 09-29 17:03 ET)",
+        "when": "Tue 09-29 17:03 ET",
+        "job_id": null,
+        "summary": "Parent pass: adjudication failed for 'Cardiac & Bioelectric Ablation Device Innovators' × 'Emerging Medical Device Innovators Breakout'",
+        "exception": null,
+        "disposition": "quiet"
+       }
+      ],
+      "count": 6,
+      "days_ago": 4,
+      "last_seen": "2026-09-29",
+      "event_type": "theme_parent_pass_error",
+      "disposition": "quiet"
+     },
+     {
+      "why": "it has not recurred in 4d (Tue 09-29 18:05 ET)",
+      "open": false,
+      "rows": [
+       {
+        "at": "2026-09-29T22:05:10.872051+00:00",
+        "why": "it has not recurred in 4d (Tue 09-29 18:05 ET)",
+        "when": "Tue 09-29 18:05 ET",
+        "job_id": null,
+        "summary": "LLM call failed: structured output is not JSON: Unterminated string starting at: line 1 column 24 (char 23): '{\"analysis_scratchpad\":\"Most c",
+        "exception": null,
+        "disposition": "quiet"
+       }
+      ],
+      "count": 1,
+      "days_ago": 4,
+      "last_seen": "2026-09-29",
+      "event_type": "theme_synthesis_error",
+      "disposition": "quiet"
+     },
+     {
+      "why": "it has not recurred in 4d (Tue 09-29 18:00 ET)",
+      "open": false,
+      "rows": [
+       {
+        "at": "2026-09-29T22:00:00.138254+00:00",
+        "why": "it has not recurred in 4d (Tue 09-29 18:00 ET)",
+        "when": "Tue 09-29 18:00 ET",
+        "job_id": null,
+        "summary": "universe fetch failed",
+        "exception": null,
+        "disposition": "quiet"
+       }
+      ],
+      "count": 1,
+      "days_ago": 4,
+      "last_seen": "2026-09-29",
+      "event_type": "crypto_ingest_error",
+      "disposition": "quiet"
+     },
+     {
+      "why": "StructuredOutputError has not recurred in 4d (Tue 09-29 17:01 ET)",
+      "open": false,
+      "rows": [
+       {
+        "at": "2026-09-29T21:01:46.469495+00:00",
+        "why": "StructuredOutputError has not recurred in 4d (Tue 09-29 17:01 ET)",
+        "when": "Tue 09-29 17:01 ET",
+        "job_id": null,
+        "summary": "Theme assignment error at batch 1/15 — remaining batches skipped",
+        "exception": "StructuredOutputError",
+        "disposition": "quiet"
+       }
+      ],
+      "count": 1,
+      "days_ago": 4,
+      "last_seen": "2026-09-29",
+      "event_type": "assignment_error",
+      "disposition": "quiet"
+     },
+     {
+      "why": "it has not recurred in 6d (Mon 09-28 07:00 ET)",
+      "open": false,
+      "rows": [
+       {
+        "at": "2026-09-28T11:00:33.019882+00:00",
+        "why": "it has not recurred in 6d (Mon 09-28 07:00 ET)",
+        "when": "Mon 09-28 07:00 ET",
+        "job_id": null,
+        "summary": "KOD 2026-09-28: 2nd-model call failed/timed out (model=claude-sonnet-5)",
+        "exception": null,
+        "disposition": "quiet"
+       }
+      ],
+      "count": 1,
+      "days_ago": 6,
+      "last_seen": "2026-09-28",
+      "event_type": "judge_divergence_check_failed",
+      "disposition": "quiet"
+     }
+    ],
+    "open_total": 0,
+    "dispositioned": [
+     {
+      "rule": "quiet: it has not recurred in 4d (Tue 09-29 17:03 ET)",
+      "what": "theme_parent_pass_error at 2026-09-29T21:03:07.216418+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Tue 09-29 17:03 ET)",
+      "what": "theme_parent_pass_error at 2026-09-29T21:03:08.589432+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Tue 09-29 17:03 ET)",
+      "what": "theme_parent_pass_error at 2026-09-29T21:03:10.642377+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Tue 09-29 17:03 ET)",
+      "what": "theme_parent_pass_error at 2026-09-29T21:03:12.066960+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Tue 09-29 17:03 ET)",
+      "what": "theme_parent_pass_error at 2026-09-29T21:03:14.620707+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Tue 09-29 17:03 ET)",
+      "what": "theme_parent_pass_error at 2026-09-29T21:03:18.287433+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Tue 09-29 18:05 ET)",
+      "what": "theme_synthesis_error at 2026-09-29T22:05:10.872051+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 4d (Tue 09-29 18:00 ET)",
+      "what": "crypto_ingest_error at 2026-09-29T22:00:00.138254+00:00"
+     },
+     {
+      "rule": "quiet: StructuredOutputError has not recurred in 4d (Tue 09-29 17:01 ET)",
+      "what": "assignment_error at 2026-09-29T21:01:46.469495+00:00"
+     },
+     {
+      "rule": "quiet: it has not recurred in 6d (Mon 09-28 07:00 ET)",
+      "what": "judge_divergence_check_failed at 2026-09-28T11:00:33.019882+00:00"
+     }
+    ]
+   },
+   "losers": {},
+   "top_winners": [
+    {
+     "rn": 1,
+     "ret_1d": 0.264918282022045,
+     "ret_5d": null,
+     "source": "scan_filter",
+     "ticker": "TJGC",
+     "gap_pct": 11.32,
+     "open_d0": 26.31,
+     "ret_20d": null,
+     "ep_score": null,
+     "alert_date": "2026-10-01",
+     "max_high_5d": 0.3578715317369822,
+     "skip_reason": "filter:session_rvol_too_low: session_rvol=0.20x (today 28,384 / baseline 140,201 n=21) < 1.0x",
+     "max_high_20d": 0.3578715317369822,
+     "skip_category": "session_rvol_low",
+     "cat_rank_metric": 0.3578715317369822,
+     "catalyst_quality": null
+    },
+    {
+     "rn": 1,
+     "ret_1d": 0.08589385474860338,
+     "ret_5d": null,
+     "source": "scan_filter",
+     "ticker": "ITG",
+     "gap_pct": 14.37,
+     "open_d0": 7.16,
+     "ret_20d": null,
+     "ep_score": 33.8,
+     "alert_date": "2026-09-29",
+     "max_high_5d": 0.21229050279329603,
+     "skip_reason": "score 34 < bar 65 (catalyst=routine)",
+     "max_high_20d": 0.21229050279329603,
+     "skip_category": "score_below_50",
+     "cat_rank_metric": 0.21229050279329603,
+     "catalyst_quality": "routine"
+    },
+    {
+     "rn": 2,
+     "ret_1d": null,
+     "ret_5d": null,
+     "source": "scan_filter",
+     "ticker": "MXL",
+     "gap_pct": 10.54,
+     "open_d0": 94.455,
+     "ret_20d": null,
+     "ep_score": 61.2,
+     "alert_date": "2026-10-02",
+     "max_high_5d": 0.1279445238473348,
+     "skip_reason": "score 61 < bar 65 (catalyst=strong)",
+     "max_high_20d": 0.1279445238473348,
+     "skip_category": "score_below_50",
+     "cat_rank_metric": 0.21229050279329603,
+     "catalyst_quality": "strong"
+    },
+    {
+     "rn": 1,
+     "ret_1d": 0.11483253588516731,
+     "ret_5d": null,
+     "source": "scan_filter",
+     "ticker": "PWP",
+     "gap_pct": 10.86,
+     "open_d0": 14.63,
+     "ret_20d": null,
+     "ep_score": null,
+     "alert_date": "2026-09-29",
+     "max_high_5d": 0.18112781954887222,
+     "skip_reason": "routine catalyst, gap 10.9%",
+     "max_high_20d": 0.18112781954887222,
+     "skip_category": "catalyst_downgrade",
+     "cat_rank_metric": 0.18112781954887222,
+     "catalyst_quality": "routine"
+    },
+    {
+     "rn": 2,
+     "ret_1d": 0.010046972860125208,
+     "ret_5d": null,
+     "source": "scan_filter",
+     "ticker": "AXTI",
+     "gap_pct": 9.5,
+     "open_d0": 76.64,
+     "ret_20d": null,
+     "ep_score": null,
+     "alert_date": "2026-09-29",
+     "max_high_5d": 0.14235386221294358,
+     "skip_reason": "routine catalyst, gap 9.5%",
+     "max_high_20d": 0.14235386221294358,
+     "skip_category": "catalyst_downgrade",
+     "cat_rank_metric": 0.18112781954887222,
+     "catalyst_quality": "routine"
+    },
+    {
+     "rn": 1,
+     "ret_1d": 0.015248148962686113,
+     "ret_5d": null,
+     "source": "scan_filter",
+     "ticker": "BE",
+     "gap_pct": 10.32,
+     "open_d0": 272.82,
+     "ret_20d": null,
+     "ep_score": null,
+     "alert_date": "2026-09-29",
+     "max_high_5d": 0.10825452679422327,
+     "skip_reason": "EP cooldown — alerted within last 60 days",
+     "max_high_20d": 0.10825452679422327,
+     "skip_category": "cooldown",
+     "cat_rank_metric": 0.10825452679422327,
+     "catalyst_quality": null
+    },
+    {
+     "rn": 2,
+     "ret_1d": -0.063939393939394,
+     "ret_5d": null,
+     "source": "scan_filter",
+     "ticker": "VICR",
+     "gap_pct": 11.33,
+     "open_d0": 330.0,
+     "ret_20d": null,
+     "ep_score": null,
+     "alert_date": "2026-10-01",
+     "max_high_5d": 0.0030303030303030303,
+     "skip_reason": "EP cooldown — alerted within last 60 days",
+     "max_high_20d": 0.0030303030303030303,
+     "skip_category": "cooldown",
+     "cat_rank_metric": 0.10825452679422327,
+     "catalyst_quality": null
+    },
+    {
+     "rn": 1,
+     "ret_1d": 0.047130490541840236,
+     "ret_5d": null,
+     "source": "high_unentered",
+     "ticker": "SNPS",
+     "gap_pct": 9.73,
+     "open_d0": 467.85,
+     "ret_20d": null,
+     "ep_score": 65.0,
+     "alert_date": "2026-10-01",
+     "max_high_5d": 0.06877204232125671,
+     "skip_reason": "window:out_of_orb: detected 09:45 ET",
+     "max_high_20d": 0.06877204232125671,
+     "skip_category": "window_missed",
+     "cat_rank_metric": 0.06877204232125671,
+     "catalyst_quality": "strong"
+    },
+    {
+     "rn": 2,
+     "ret_1d": -0.07908139642559489,
+     "ret_5d": null,
+     "source": "high_unentered",
+     "ticker": "ACN",
+     "gap_pct": 23.08,
+     "open_d0": 215.98,
+     "ret_20d": null,
+     "ep_score": 65.0,
+     "alert_date": "2026-10-01",
+     "max_high_5d": 0.053940179646263575,
+     "skip_reason": "window:out_of_orb: detected 09:50 ET",
+     "max_high_20d": 0.053940179646263575,
+     "skip_category": "window_missed",
+     "cat_rank_metric": 0.06877204232125671,
+     "catalyst_quality": "routine"
+    },
+    {
+     "rn": 1,
+     "ret_1d": -0.03368794326241136,
+     "ret_5d": null,
+     "source": "scan_filter",
+     "ticker": "FVR",
+     "gap_pct": 52.94,
+     "open_d0": 16.92,
+     "ret_20d": null,
+     "ep_score": null,
+     "alert_date": "2026-09-30",
+     "max_high_5d": 0.020094562647754128,
+     "skip_reason": "pre-mkt volume 7,279 < 25,000 shares",
+     "max_high_20d": 0.020094562647754128,
+     "skip_category": "pm_rvol_low",
+     "cat_rank_metric": 0.020094562647754128,
+     "catalyst_quality": "routine"
+    }
+   ],
+   "cooldowns": {
+    "recent": [
+     {
+      "theme": "Orthopedic Surgical Devices & Instruments",
+      "reason": "Description 'Medical device components, interventional products' does not match theme",
+      "ticker": "MMSI"
+     },
+     {
+      "theme": "AI data-center power buildout",
+      "reason": "Description 'Content delivery, web security, CDN' does not match theme",
+      "ticker": "AKAM"
+     },
+     {
+      "theme": "Enterprise HR & Workforce Management SaaS",
+      "reason": "Description 'Cloud HR software, payroll & HCM services' does not match theme",
+      "ticker": "PAYC"
+     }
+    ],
+    "active_count": 71,
+    "triggered_this_week": 38
+   },
+   "theme_churn": {
+    "top": [
+     {
+      "adds": 2,
+      "theme": "Offshore Drilling Rig Contractors",
+      "events": 4,
+      "ticker": "RIG",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Offshore Drilling Rig Contractors",
+      "events": 4,
+      "ticker": "NE",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Offshore Drilling Rig Contractors",
+      "events": 4,
+      "ticker": "VAL",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Appalachian Natural Gas Producers",
+      "events": 4,
+      "ticker": "GPOR",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Appalachian Natural Gas Producers",
+      "events": 4,
+      "ticker": "EXE",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Appalachian Natural Gas Producers",
+      "events": 4,
+      "ticker": "EQT",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Appalachian Natural Gas Producers",
+      "events": 4,
+      "ticker": "RRC",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Offshore Drilling Rig Contractors",
+      "events": 4,
+      "ticker": "SDRL",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Appalachian Natural Gas Producers",
+      "events": 4,
+      "ticker": "CNX",
+      "removes": 2
+     },
+     {
+      "adds": 2,
+      "theme": "Appalachian Natural Gas Producers",
+      "events": 4,
+      "ticker": "CRK",
+      "removes": 2
+     }
+    ],
+    "total_high_churn_pairs": 20
+   },
+   "anomalies": {
+    "l3_drifts": {
+     "count": 6,
+     "transitions": [
+      {
+       "key": "cooldowns_per_day",
+       "p50": 2.0,
+       "current": 13.0,
+       "to_band": 2,
+       "from_band": 1
+      },
+      {
+       "key": "cooldowns_per_day",
+       "p50": 2.0,
+       "current": 0.0,
+       "to_band": 1,
+       "from_band": 2
+      },
+      {
+       "key": "cooldowns_per_day",
+       "p50": 2.0,
+       "current": 11.0,
+       "to_band": 2,
+       "from_band": 1
+      },
+      {
+       "key": "theme_count_active",
+       "p50": 115.0,
+       "current": 122.0,
+       "to_band": 2,
+       "from_band": 1
+      },
+      {
+       "key": "cooldowns_per_day",
+       "p50": 2.0,
+       "current": 0.0,
+       "to_band": 1,
+       "from_band": 2
+      },
+      {
+       "key": "cooldowns_per_day",
+       "p50": 2.0,
+       "current": 14.0,
+       "to_band": 2,
+       "from_band": 1
+      }
+     ]
+    },
+    "l2_anomalies": {
+     "count": 0,
+     "by_key": []
+    },
+    "l1_invariants": {
+     "count": 1,
+     "by_key": [
+      {
+       "key": "silent_audit_error_window",
+       "count": 1
+      }
+     ]
+    }
+   },
+   "postmortem_best": null,
+   "window": {
+    "end": "2026-10-04",
+    "days": 7,
+    "start": "2026-09-27"
+   }
+  }
+ },
+ "render_inputs": {
+  "live_closed": [
+   {
+    "ticker": "WULF",
+    "alert_date": "2026-07-06",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0
+   },
+   {
+    "ticker": "CRCL",
+    "alert_date": "2026-07-10",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0073529411764743
+   },
+   {
+    "ticker": "WDFC",
+    "alert_date": "2026-07-10",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.037057220708444
+   },
+   {
+    "ticker": "TSEM",
+    "alert_date": "2026-07-14",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0013054830287194
+   },
+   {
+    "ticker": "MANE",
+    "alert_date": "2026-07-15",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -0.22727272727272385
+   },
+   {
+    "ticker": "HUT",
+    "alert_date": "2026-07-20",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0680185057584395
+   },
+   {
+    "ticker": "SMCI",
+    "alert_date": "2026-07-22",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -0.701030927835052
+   },
+   {
+    "ticker": "NVCR",
+    "alert_date": "2026-07-23",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -0.9993043478260855
+   },
+   {
+    "ticker": "THC",
+    "alert_date": "2026-07-24",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0061804697156997
+   },
+   {
+    "ticker": "WKC",
+    "alert_date": "2026-07-24",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0258620689655182
+   },
+   {
+    "ticker": "QBTS",
+    "alert_date": "2026-07-27",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0
+   },
+   {
+    "ticker": "FTNT",
+    "alert_date": "2026-07-30",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0255220417633397
+   },
+   {
+    "ticker": "BLZE",
+    "alert_date": "2026-08-04",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.023363121313009
+   },
+   {
+    "ticker": "BTDR",
+    "alert_date": "2026-08-04",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0270270270270265
+   },
+   {
+    "ticker": "PLTR",
+    "alert_date": "2026-08-04",
+    "signal_type": "magna53",
+    "exit_reason": "partial_profit",
+    "r": 3.42315351978527
+   },
+   {
+    "ticker": "NET",
+    "alert_date": "2026-08-07",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0
+   },
+   {
+    "ticker": "FIGS",
+    "alert_date": "2026-08-07",
+    "signal_type": "magna53",
+    "exit_reason": "partial_profit",
+    "r": -0.3674369298831882
+   },
+   {
+    "ticker": "TEAM",
+    "alert_date": "2026-08-07",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0178571428571483
+   },
+   {
+    "ticker": "ABCL",
+    "alert_date": "2026-08-10",
+    "signal_type": "magna53",
+    "exit_reason": "partial_profit",
+    "r": 2.6842394957983164
+   },
+   {
+    "ticker": "FRMI",
+    "alert_date": "2026-08-11",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -0.9791666666666673
+   },
+   {
+    "ticker": "BW",
+    "alert_date": "2026-08-11",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0877192982456152
+   },
+   {
+    "ticker": "ETON",
+    "alert_date": "2026-08-14",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": 0.5187487919592789
+   },
+   {
+    "ticker": "AMLX",
+    "alert_date": "2026-08-18",
+    "signal_type": "magna53",
+    "exit_reason": "partial_profit",
+    "r": 1.2599343397563572
+   },
+   {
+    "ticker": "MRVL",
+    "alert_date": "2026-08-19",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -0.9533039647577092
+   },
+   {
+    "ticker": "MRNA",
+    "alert_date": "2026-08-19",
+    "signal_type": "magna53",
+    "exit_reason": "partial_profit",
+    "r": 2.0823532110091727
+   },
+   {
+    "ticker": "OKTA",
+    "alert_date": "2026-08-27",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": 1.3606566820276504
+   },
+   {
+    "ticker": "CRWD",
+    "alert_date": "2026-08-27",
+    "signal_type": "magna53",
+    "exit_reason": "partial_profit",
+    "r": 0.4980152143845092
+   },
+   {
+    "ticker": "SOLS",
+    "alert_date": "2026-08-28",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0098522167487671
+   },
+   {
+    "ticker": "HOOD",
+    "alert_date": "2026-09-03",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.197552447552449
+   },
+   {
+    "ticker": "PHVS",
+    "alert_date": "2026-09-08",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0591715976331355
+   },
+   {
+    "ticker": "SEI",
+    "alert_date": "2026-09-08",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": 0.41374999999999984
+   },
+   {
+    "ticker": "DFTX",
+    "alert_date": "2026-09-14",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0593750000000002
+   },
+   {
+    "ticker": "VICR",
+    "alert_date": "2026-09-17",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": 6.986162361623618
+   },
+   {
+    "ticker": "CEG",
+    "alert_date": "2026-10-06",
+    "signal_type": "magna53",
+    "exit_reason": "stop_hit",
+    "r": -1.0118434603501534
+   }
+  ],
+  "open_live": [
+   {
+    "ticker": "KOD",
+    "hold_days": 11
+   },
+   {
+    "ticker": "PENG",
+    "hold_days": 2
+   },
+   {
+    "ticker": "HUM",
+    "hold_days": 0
+   }
+  ],
+  "setup_row": {
+   "signal_type": "magna53",
+   "account_mode": "live",
+   "n": 31,
+   "wins": 9,
+   "total_pnl": 2.41,
+   "top_exit": "stop_hit",
+   "n_stop_hit": 25,
+   "med_peak_r": 1.2721,
+   "med_realized_r": -0.9993,
+   "ran_then_lost": 5,
+   "med_stop_per_adr": 0.8466,
+   "blind_peaks": 5,
+   "phase": "live"
+  },
+  "second_opinion": "🔍 *Judge 2nd-opinion (#301, claude-sonnet-5-5):* 0/5 disagreed (0%) with the HIGH-tier judge verdict this week",
+  "spend_envelope": {
+   "text": "💵 *Cost envelope (MTD)*\nLLM: $13.66 / $150 (9%) ✓ · 2032 calls\n  theme assignment: $2.81\n  chart axis pilot: $2.12\n  perplexity news search: $1.83\n_+ fixed infra/data subs (server · Polygon · FMP) not metered here — see the cost-envelope doc._",
+   "cost": 13.662,
+   "budget": 150.0
+  },
+  "theme": {
+   "clean": [
+    {
+     "ticker": "AAOI",
+     "alert_date": "2026-10-09",
+     "engine_theme": false,
+     "judge_theme": true,
+     "theme_name_7d": "Optical",
+     "theme_stage_7d": "Nascent"
+    },
+    {
+     "ticker": "W1",
+     "alert_date": "2026-10-08",
+     "engine_theme": true,
+     "judge_theme": true,
+     "theme_name_7d": "Cloud",
+     "theme_stage_7d": "Mainstream"
+    },
+    {
+     "ticker": "W2",
+     "alert_date": "2026-10-07",
+     "engine_theme": true,
+     "judge_theme": true,
+     "theme_name_7d": "Cloud",
+     "theme_stage_7d": "Mainstream"
+    },
+    {
+     "ticker": "W3",
+     "alert_date": "2026-10-06",
+     "engine_theme": true,
+     "judge_theme": false,
+     "theme_name_7d": "Cloud",
+     "theme_stage_7d": "Mainstream"
+    },
+    {
+     "ticker": "W4",
+     "alert_date": "2026-10-05",
+     "engine_theme": false,
+     "judge_theme": false,
+     "theme_name_7d": null,
+     "theme_stage_7d": null
+    },
+    {
+     "ticker": "W5",
+     "alert_date": "2026-10-05",
+     "engine_theme": false,
+     "judge_theme": false,
+     "theme_name_7d": null,
+     "theme_stage_7d": null
+    },
+    {
+     "ticker": "AKAM",
+     "alert_date": "2026-09-25",
+     "engine_theme": false,
+     "judge_theme": true,
+     "theme_name_7d": null,
+     "theme_stage_7d": null
+    },
+    {
+     "ticker": "T1",
+     "alert_date": "2026-09-24",
+     "engine_theme": true,
+     "judge_theme": true,
+     "theme_name_7d": "Cloud",
+     "theme_stage_7d": "Mainstream"
+    },
+    {
+     "ticker": "T2",
+     "alert_date": "2026-09-23",
+     "engine_theme": true,
+     "judge_theme": true,
+     "theme_name_7d": "Cloud",
+     "theme_stage_7d": "Mainstream"
+    },
+    {
+     "ticker": "N0",
+     "alert_date": "2026-09-12",
+     "engine_theme": false,
+     "judge_theme": false,
+     "theme_name_7d": null,
+     "theme_stage_7d": null
+    },
+    {
+     "ticker": "N1",
+     "alert_date": "2026-09-13",
+     "engine_theme": false,
+     "judge_theme": false,
+     "theme_name_7d": null,
+     "theme_stage_7d": null
+    },
+    {
+     "ticker": "N2",
+     "alert_date": "2026-09-14",
+     "engine_theme": false,
+     "judge_theme": false,
+     "theme_name_7d": null,
+     "theme_stage_7d": null
+    },
+    {
+     "ticker": "N3",
+     "alert_date": "2026-09-15",
+     "engine_theme": false,
+     "judge_theme": false,
+     "theme_name_7d": null,
+     "theme_stage_7d": null
+    },
+    {
+     "ticker": "N4",
+     "alert_date": "2026-09-16",
+     "engine_theme": false,
+     "judge_theme": false,
+     "theme_name_7d": null,
+     "theme_stage_7d": null
+    }
+   ],
+   "left_out": 8,
+   "left_out_judge_themed": 1
+  },
+  "spend_callers": [
+   {
+    "caller": "eval_519_option_a",
+    "spend": 9.22,
+    "calls": 40
+   },
+   {
+    "caller": "perplexity_news_search",
+    "spend": 8.09,
+    "calls": 2400
+   },
+   {
+    "caller": "theme_assignment",
+    "spend": 7.21,
+    "calls": 800
+   },
+   {
+    "caller": "judge_robustness_eval",
+    "spend": 0.9,
+    "calls": 30
+   },
+   {
+    "caller": "ep_grade_judge",
+    "spend": 0.71,
+    "calls": 60
+   },
+   {
+    "caller": "mgmt_judge",
+    "spend": 0.42,
+    "calls": 20
+   },
+   {
+    "caller": "judge_divergence",
+    "spend": 0.56,
+    "calls": 40
+   },
+   {
+    "caller": "other_lane_a",
+    "spend": 6.07,
+    "calls": 800
+   },
+   {
+    "caller": "other_lane_b",
+    "spend": 6.07,
+    "calls": 700
+   },
+   {
+    "caller": "other_lane_c",
+    "spend": 6.08,
+    "calls": 733
+   }
+  ],
+  "live_book": {
+   "account_mode": "live",
+   "n": 6,
+   "wins": 3,
+   "total_pnl": 17.0
+  }
+ },
+ "before": {
+  "fold_chars": 12446,
+  "fold_lines": 158,
+  "head_lines": 4,
+  "checked_phrases": [
+   "reviews: 1 ripe (above), 56 still accruing",
+   "errors: 40 rows, 0 open",
+   "promotions: 0 ready, 4 accruing, 1 held by ruling",
+   "bands: HOLD",
+   "crypto: live, gates clean",
+   "themes: 30d n=14, 79% engine-judge agree",
+   "spend: $13.66 of $150",
+   "30d LLM $45 vs live P&L $+17 on 6"
+  ],
+  "needs_me": 1,
+  "needs_you": 0
+ }
+}

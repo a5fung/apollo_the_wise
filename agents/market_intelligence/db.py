@@ -16807,17 +16807,32 @@ async def insert_system_review(review: dict) -> bool:
     return True
 
 
-async def get_latest_system_review(window_days: int = 7) -> Optional[dict]:
-    """Return the most recent review for the given window, or None."""
+async def get_latest_system_review(window_days: int = 7,
+                                   on_or_before: Optional["date"] = None) -> Optional[dict]:
+    """Return the most recent review for the given window, or None.
+
+    `on_or_before` (#700): the newest row dated AT OR BEFORE that day. The weekly run passes its own
+    `window_start`, because an on-demand `weekly review` (agent.py) upserts a row dated THAT day, so
+    "the latest row" on a Sunday after a Wednesday run is Wednesday's - a "last week" that hides the
+    week. Omitted -> the newest row of all, exactly as before."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        row = await conn.fetchrow("""
-            SELECT review_date, window_days, regime, summary, metrics, suggestions, created_at
-            FROM mi_system_reviews
-            WHERE window_days = $1
-            ORDER BY review_date DESC
-            LIMIT 1
-        """, window_days)
+        if on_or_before is None:
+            row = await conn.fetchrow("""
+                SELECT review_date, window_days, regime, summary, metrics, suggestions, created_at
+                FROM mi_system_reviews
+                WHERE window_days = $1
+                ORDER BY review_date DESC
+                LIMIT 1
+            """, window_days)
+        else:
+            row = await conn.fetchrow("""
+                SELECT review_date, window_days, regime, summary, metrics, suggestions, created_at
+                FROM mi_system_reviews
+                WHERE window_days = $1 AND review_date <= $2
+                ORDER BY review_date DESC
+                LIMIT 1
+            """, window_days, _to_date(on_or_before))
     if not row:
         return None
     return {

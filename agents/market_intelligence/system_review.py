@@ -14,6 +14,13 @@ recorded as dealt with is never an open anomaly; a check that no data can change
 "pending"; a trailing-window number carries its rule era and n or is suppressed.
 `compose_report` / `render_review_html` are the pure pieces; `_assemble_report` sorts.
 
+#700 (operator 2026-10-11, *"even if something doesnt need me, if it's informative it can still include so
+don't need to remove everthing but remove noise as much as possible"*): the MESSAGE carries what informs and
+stops repeating what did not change. Every section still runs, every metric is still computed and stored
+in `mi_system_reviews` exactly as before; each section now yields its FULL text (stored as
+`report.full_md`) and a compact MESSAGE text (`fold`). Design + decision table:
+docs/design/weekly_review_noise_700.md.
+
 Entry points:
   run_weekly_review() — called by scheduler and on-demand route.
 """
@@ -22,9 +29,11 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import statistics
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import anthropic
@@ -165,7 +174,15 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     window_start = today - timedelta(days=window_days)
 
     metrics = await _gather_and_aggregate(window_start, today, window_days)
-    prior = await get_latest_system_review(window_days=window_days)
+    # #700: "last week" is the row dated at or before `window_start`, NOT the newest row - an on-demand
+    # `weekly review` upserts a row dated that day, and comparing a Sunday run against a Wednesday run
+    # would hide the week. A failed fetch fails toward PRINTING (change detection treats a missing prior
+    # as "everything is new"), never toward silence.
+    try:
+        prior = await get_latest_system_review(window_days, on_or_before=window_start)
+    except Exception:  # loud-ok: logged; the review prints every section when it has no prior
+        logger.exception("weekly review: prior-review fetch failed - every change-only section will print")
+        prior = None
 
     summary = await _synthesize(metrics, prior)
 
@@ -175,7 +192,7 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
     # (an expandable Telegram quote) holding every section the review used to open with. Every
     # section still runs and every number is still computed and persisted; only the order and
     # the labelling changed. What was suppressed, and by which rule, rides in metrics["report"].
-    head_md, fold_md, report = await _assemble_report(metrics, summary, window_start, today)
+    head_md, fold_md, report = await _assemble_report(metrics, summary, window_start, today, prior=prior)
     metrics["report"] = report
 
     review = {
@@ -207,23 +224,53 @@ async def run_weekly_review(window_days: int = _WINDOW_DAYS) -> dict:
 _HEAD_TITLE_CAP = 110     # a review title longer than this wraps a phone three times
 
 
-async def _assemble_report(metrics: dict, summary: str, window_start: date, today: date
-                           ) -> tuple[str, str, dict]:
+async def _assemble_report(metrics: dict, summary: str, window_start: date, today: date,
+                           prior: dict | None = None) -> tuple[str, str, dict]:
     """Run every section, sort each into the head (needs a decision or my work THIS week) or
     the fold (everything else), and record what was suppressed and why. Each section is
     error-wrapped exactly as before: one renderer failing costs its own lines, never the
-    digest. Returns (head_md, fold_md, report_meta)."""
-    needs_you: list[tuple[int, str]] = []    # (item count, block) — a block may be several lines
+    digest. Returns (head_md, fold_md, report_meta).
+
+    #700: every section yields up to three things - its FULL text (`full`, stored as
+    `report.full_md`), its MESSAGE text (`fold`: compact, or empty when nothing about it changed
+    since `prior`), and an "also checked" phrase. `prior` is last week's stored row (None = no
+    comparison possible: every change-only section PRINTS, never hides). A compaction that raises
+    falls back to the section's full text - the failure costs the compaction, never the content."""
+    needs_you: list[tuple[int, str]] = []    # (item count, block) - a block may be several lines
     needs_me: list[str] = []
-    checked: list[str] = []                   # the "also checked" clause — one phrase per surface
-    fold: list[str] = []
+    checked: list[str] = []                   # the "also checked" clause - one phrase per surface
+    unchanged: list[str] = []                 # phrases of change-only sections that did NOT print
+    fold: list[str] = []                      # the MESSAGE text (what the reader sees)
+    full: list[str] = []                      # the FULL text (stored whole as `report.full_md`)
     suppressed: list[dict] = []
+    changes: list[dict] = []                  # decision log: one entry per change-only section
+    snapshot: dict = {}                       # what NEXT week's run compares against (never a windowed count)
+
+    def log(section: str, shown: bool, why: str) -> None:
+        changes.append({"section": section, "shown": bool(shown), "why": str(why)[:200]})
+
+    def both(text: str) -> None:
+        if text and text.strip():
+            fold.append(text)
+            full.append(text)
+
+    def compact(name: str, full_text: str, make) -> str:
+        """The section's message text from `make()`; its full text if the compaction raises."""
+        try:
+            return make()
+        except Exception:
+            logger.exception(f"{name} compaction failed - the message carries the full text")
+            return full_text
 
     regime = metrics.get("regime", {}).get("current") or "Unknown"
     header = (f"🧠 *Weekly review — {window_start.strftime('%b')} {window_start.day}–{today.day}* "
               f"· regime {regime}")
+    # the event key several sections share: did a trade CLOSE this week? (a 90-day / all-time view over
+    # the closed-trade cohort cannot change otherwise - and never key on a windowed count, it slides)
+    closed_this_week = bool((metrics.get("loser_breakdown") or {}).get("losers")
+                            or metrics.get("postmortem_best") or metrics.get("postmortem_worst"))
 
-    # 1. Data-gated reviews whose threshold flipped. A ripe review is MY work first — I run it and
+    # 1. Data-gated reviews whose threshold flipped. A ripe review is MY work first - I run it and
     #    he hears only its result (scripts/operator_asks.py, the SoT for what waits on him: "GATED
     #    REVIEWS NOW READY: MY WORK IS DUE, NOT HIS ANSWER"; operator 2026-09-08, never ask what is
     #    not his). The head counts them under Needs me; the full list (#412, never truncated)
@@ -236,18 +283,21 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
             needs_me.append(f"{ready_n} data-gated review(s) ripe — I run each and bring you only "
                             f"its result (listed below)")
             fold.insert(0, block)
+            full.insert(0, block)
         checked.append(f"reviews: {ready_n} ripe" + (" (above)" if ready_n else "")
                        + f", {pr.get('pending_count') or 0} still accruing")
     except Exception:
         logger.exception("pending-reviews section render failed")
 
-    # 2. Silent failures — only a row the system has NOT recorded a disposition for is open.
+    # 2. Silent failures - only a row the system has NOT recorded a disposition for is open. The
+    #    message collapses repeated rows to one line per type (#700); `metrics` and `suppressed`
+    #    keep every row.
     try:
         ae = metrics.get("audit_errors") or {}
         types = ae.get("top_types") or []
         open_rows = [d for t in types for d in (t.get("rows") or []) if d.get("disposition") == "live"]
         if not any("rows" in t for t in types) and types:
-            # An older metrics shape (no dispositions) — fail toward surfacing, and say so.
+            # An older metrics shape (no dispositions) - fail toward surfacing, and say so.
             needs_me += [f"{t['event_type']} ×{t['count']} (last seen {t.get('last_seen')}) — "
                          f"disposition unknown, older metrics shape" for t in types]
         needs_me += [f"{d['why']} — no re-run or hand-close in the job ledger" if d.get("job_id")
@@ -261,12 +311,14 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
             checked.append("errors: none")
         sf = _format_silent_failures_section(ae)
         if sf:
-            fold.append(sf)
+            full.append(sf)
+            fold.append(compact("silent-failures", sf, lambda: _silent_failures_message(ae)))
     except Exception:
         logger.exception("silent-failures section render failed")
 
-    # 3. Strategy promotions — a strategy that IS eligible is his sign-off; a metric still
-    #    accruing is the fold; a hold-by-ruling is neither pending nor deferred.
+    # 3. Strategy promotions - a strategy that IS eligible is his sign-off; a metric still
+    #    accruing is the fold; a hold-by-ruling is neither pending nor deferred. The message
+    #    prints a ladder row only when it is new or moved since last week (#700).
     try:
         sp = metrics.get("strategy_promotions") or {}
         ready = [c for c in sp.get("checks") or [] if c.get("eligible") and c.get("next_phase")]
@@ -283,42 +335,101 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
         checked.append(f"promotions: {len(ready)} ready" + (" (above)" if ready else "")
                        + f", {n_accruing} accruing" + (f", {len(held)} held by ruling" if held else ""))
         if promo:
-            fold.append(promo)
+            found, prior_checks = _prior_value(prior, "metrics", "strategy_promotions", "checks")
+            prior_checks = prior_checks if found and isinstance(prior_checks, list) else None
+            full.append(promo)
+            msg, why = promo, "compaction failed"
+            try:
+                msg, why = _promotion_message(sp, prior_checks)
+            except Exception:
+                logger.exception("promotion compaction failed - the message carries the full text")
+            fold.append(msg)
+            log("promotions", any(l.startswith("•") for l in msg.splitlines()), why)
     except Exception:
         logger.exception("promotion section render failed")
 
-    # 4. The LLM narrative — UNVERIFIED by its own label, so it opens the fold, never the head.
-    fold.append(summary)
+    # 4. The LLM narrative - UNVERIFIED by its own label, so it opens the fold, never the head.
+    #    #700: the ⚠️ "anomalies to verify" bullets are checked by the job against the record it
+    #    already holds; what the record settles is said so in one line, the rest is MY work (a head
+    #    count + a "To verify (mine)" block, never a finding). The LLM's own Drift / Docs-drift
+    #    wording is re-rendered from the metrics. The prompt is untouched; the full summary is stored.
+    full.append(summary)
+    try:
+        blocks, me_line, narrative_suppressed = _narrative_message(summary, metrics)
+        fold += blocks
+        if me_line:
+            needs_me.append(me_line)
+        suppressed += narrative_suppressed
+    except Exception:
+        logger.exception("narrative compaction failed - the narrative folds verbatim")
+        fold.append(summary)
 
-    # 5. STANDING setup review (operator 2026-08-02) — its QUESTIONS are his; the table folds.
+    # 5. STANDING setup review (operator 2026-08-02) - its QUESTIONS are his; the table folds, and
+    #    (#700) prints only the week a trade closed or a question exists - it is a 90-day view over
+    #    the closed-trade cohort and cannot move otherwise.
     try:
         table, asks = await _setup_performance_review()
         for a in asks:
             needs_you.append((1, f"• setup question — {a}"))
         if table:
-            fold.append(table)
+            full.append(table)
+            if closed_this_week or asks:
+                fold.append(compact("setup review", table,
+                                    lambda: _setup_review_message(table, closed_this_week)))
     except Exception:
         logger.exception("setup-performance section render failed")
+    log("closed_this_week", closed_this_week,
+        "a trade closed this week - setup review and replay-regression print" if closed_this_week
+        else "no trade closed this week - setup review and replay-regression stay in the full text")
 
-    # 6. Kill/scale bands (#275, safeguards.md) — the verdict is the signed safeguard's own
+    # 6. Kill/scale bands (#275, safeguards.md) - the verdict is the signed safeguard's own
     #    line, untouched; #662 adds the rule-era clause beside its trailing windows. A band
-    #    other than HOLD is an action; HOLD is the fold.
+    #    other than HOLD is an action; an unchanged HOLD is one phrase on the checked line (#700).
+    snap = None
     try:
-        band_block, band, action_line = await _band_section(today)
+        band_block, band, action_line, snap = await _band_section(today)
+        found, prev_band = _prior_value(prior, "metrics", "report", "snapshot", "band")
+        if snap is None:
+            show_band, why = True, "band unavailable - printed"
+        elif band != "HOLD":
+            show_band, why = True, f"band {band} is an action"
+        else:
+            show_band, why = _changed(found, snap, prev_band)
+            if not show_band:
+                why = (f"unchanged: {band}, {'override active' if snap['override_active'] else 'no override'}, "
+                       f"{'at floor' if snap['at_floor'] else 'below the sample floor'}")
         if band_block:
-            fold.append(band_block)
+            full.append(band_block)
+            if show_band:
+                fold.append(band_block)
         if band and band != "HOLD":
             needs_you.append((1, f"• kill/scale band is {band} — {action_line}"))
-        checked.append(f"bands: {band or 'unavailable'}")
+        phrase = f"bands: {band or 'unavailable'}"
+        (checked if show_band else unchanged).append(phrase if show_band else _unchanged_form(phrase))
+        log("bands", show_band, why)
+        if snap is not None:
+            snapshot["band"] = snap
     except Exception:
         logger.exception("kill/scale band section render failed")
 
     # 7. Early-window drift (#454) and replay-regression (#302): trailing windows over the
-    #    same cohort — both carry the era clause or suppress their numbers. Fold only.
+    #    same cohort - both carry the era clause or suppress their numbers. #700: the early-window
+    #    line exists for the weeks BEFORE the bands have 20 trades, so at the floor the band section
+    #    owns the number; replay-regression is event-keyed (a trade closed this week).
     try:
-        drift_section, drift_suppressed = await _early_window_drift_review(today)
+        from agents.market_intelligence.kill_scale_bands import _SAMPLE_FLOOR as band_floor
+        drift_section, drift_suppressed, n_drift = await _early_window_drift_parts(today)
+        if n_drift is not None:
+            at_floor = n_drift >= band_floor
+        else:
+            at_floor = bool((snap or {}).get("at_floor"))
         if drift_section:
-            fold.append(drift_section)
+            full.append(drift_section)
+            if at_floor:
+                log("early_window_drift", False, f"n={n_drift} >= {band_floor}, at floor: bands own it")
+            else:
+                fold.append(drift_section)
+                log("early_window_drift", True, f"n={n_drift} is below the {band_floor}-trade band floor")
         if drift_suppressed:
             suppressed.append(drift_suppressed)
     except Exception:
@@ -327,70 +438,129 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
         from agents.market_intelligence.replay_regression import run_replay_regression
         rr = await run_replay_regression("live", persist=True)
         if rr.get("lines"):
-            fold.append("\n".join(rr["lines"]).strip("\n"))
+            replay_full = "\n".join(rr["lines"]).strip("\n")
+            full.append(replay_full)
+            # a failed replay run must stay visible whatever the week - silence has to mean "nothing wrong"
+            if closed_this_week or rr.get("error"):
+                fold.append(compact("replay-regression", replay_full,
+                                    lambda: "\n".join(_replay_message_lines(rr["lines"])).strip("\n")))
         if rr.get("suppressed"):
             suppressed.append(rr["suppressed"])
     except Exception:
         logger.exception("replay-regression section render failed")
 
-    # 8. The rest of the deterministic appendices — the week's losers, the W3 KPI, the judge
+    # 8. The rest of the deterministic appendices - the week's losers, the W3 KPI, the judge
     #    roll-up, missed opportunities, crypto, the 2nd-opinion line, the cost envelope. Each
     #    folds; the three that can carry an action (crypto ready to flip · spend over budget ·
     #    2nd-opinion disagreement over the review bar) surface it.
-    for name, fn in (("loser", lambda: _format_loser_section(metrics.get("loser_breakdown") or {})),
-                     ("mfe capture", lambda: _format_mfe_capture_section(metrics.get("mfe_capture") or {})),
-                     ("judge", lambda: _format_judge_section(metrics.get("judge_weekly") or {}))):
-        try:
-            s = fn()
-            if s:
+    try:
+        lb = metrics.get("loser_breakdown") or {}
+        s = _format_loser_section(lb)
+        if s:
+            full.append(s)
+            fold.append(compact("loser", s, lambda: _loser_message(lb)))
+    except Exception:
+        logger.exception("loser section render failed")
+    try:
+        mfe = metrics.get("mfe_capture") or {}
+        s = _format_mfe_capture_section(mfe)
+        if s:
+            full.append(s)
+            show_mfe, why = _mfe_changed(mfe, prior)
+            if show_mfe:
                 fold.append(s)
-        except Exception:
-            logger.exception(f"{name} section render failed")
+            else:
+                unchanged.append(f"winner capture {mfe.get('capture_pct')}%")
+            log("mfe_capture", show_mfe, why)
+    except Exception:
+        logger.exception("mfe capture section render failed")
+    try:
+        jw = metrics.get("judge_weekly") or {}
+        s = _format_judge_section(jw)
+        if s:
+            full.append(s)
+            fold.append(compact("judge", s, lambda: _judge_message(jw)))
+    except Exception:
+        logger.exception("judge section render failed")
     try:
         from agents.market_intelligence.missed_outcomes import format_missed_section_for_weekly
-        s = format_missed_section_for_weekly(metrics.get("missed_opportunities") or {})
+        missed = metrics.get("missed_opportunities") or {}
+        s = format_missed_section_for_weekly(missed)
         if s:
-            fold.append(s)
+            full.append(s)
+            msg, entries = s, []
+            try:
+                msg, entries = _missed_message(missed, prior)
+            except Exception:
+                logger.exception("missed-opportunities compaction failed - the message carries the full text")
+            if msg:
+                fold.append(msg)
+            changes.extend(entries)
     except Exception:
         logger.exception("missed_opportunities section render failed")
     try:
         crypto = metrics.get("crypto") or {}
         s = _format_crypto_section(crypto)
-        if s:
-            fold.append(s)
         verdict = crypto.get("verdict") or ""
+        show_crypto = True
+        if s:
+            full.append(s)
+            found, prev_verdict = _prior_value(prior, "metrics", "crypto", "verdict")
+            if crypto.get("ready_to_flip"):
+                show_crypto, why = True, "ready to flip"
+            else:
+                show_crypto, why = _changed(found, verdict, prev_verdict)
+            if show_crypto:
+                fold.append(compact("crypto", s, lambda: _crypto_message(
+                    crypto, prev_verdict if found and isinstance(prev_verdict, str) else None)))
+            log("crypto", show_crypto, why)
         if crypto.get("ready_to_flip"):
             needs_you.append((1, f"• crypto RS: {verdict} — your call"))
         if crypto:
-            checked.append("crypto: " + ("live, gates clean" if crypto.get("is_live")
-                                         else verdict.split(":")[0].strip("✅⚠️⏳ ") or "checked"))
+            phrase = "crypto: " + ("live, gates clean" if crypto.get("is_live")
+                                   else verdict.split(":")[0].strip("✅⚠️⏳ ") or "checked")
+            if show_crypto:
+                checked.append(phrase)
+            else:
+                unchanged.append(_unchanged_form(phrase))
     except Exception:
         logger.exception("crypto section render failed")
-    # Judge 2nd-opinion (#301): reads mi_judge_divergence and NOTHING else — ZERO AUTHORITY
+    # Judge 2nd-opinion (#301): reads mi_judge_divergence and NOTHING else - ZERO AUTHORITY
     # (THE LINE: never a grade path); its only action is a grounding check, which is mine.
     try:
         s = await _judge_divergence_section(window_start)
         if s:
-            fold.append(s)
+            both(s)
             if "⚠" in s:
                 needs_me.append("judge 2nd-opinion disagreement is over the 25% review bar this "
                                 "week — I run the grounding check (#301)")
     except Exception:
         logger.exception("judge-divergence section render failed")
-    # #486: does the judge see themes the engine misses? TELEMETRY ONLY, zero authority — fold
+    # #486: does the judge see themes the engine misses? TELEMETRY ONLY, zero authority - fold
     # only, never needs_you / needs_me; the "also checked" phrase is the positive observable
     # that the section ran (a failed read prints `unavailable:` there and in the fold).
     try:
-        s, phrase = await _theme_agreement_section(window_start, today)
-        if s:
-            fold.append(s)
+        found, prior_queue = _prior_value(prior, "metrics", "report", "snapshot", "theme_queue_keys")
+        prior_queue = list(prior_queue) if found and isinstance(prior_queue, list) else None
+        theme_full, theme_msg, phrase, queue_keys = await _theme_agreement_parts(
+            window_start, today, prior_queue)
+        if theme_full:
+            full.append(theme_full)
+        if theme_msg:
+            fold.append(theme_msg)
         checked.append(phrase)
+        if queue_keys is not None:
+            snapshot["theme_queue_keys"] = queue_keys
+            new_keys = [k for k in queue_keys if prior_queue is None or k not in set(prior_queue)]
+            log("theme_queue", bool(new_keys),
+                "no prior snapshot" if prior_queue is None
+                else f"{len(new_keys)} of {len(queue_keys)} judge-only names are new to the list")
     except Exception:
         logger.exception("theme-agreement section render failed")
     try:
         s, cost, budget, over = await _spend_envelope()
         if s:
-            fold.append(s)
+            full.append(s)             # the message drops it: the head's "spend: $X of $150" carries it
         if over:
             needs_you.append((1, f"• LLM spend ${cost:.2f} is OVER the ${budget:.0f} monthly "
                                  f"budget — your call on the ceiling"))
@@ -400,24 +570,34 @@ async def _assemble_report(metrics: dict, summary: str, window_start: date, toda
     # #313 part 2: the trailing-30-day spend by caller beside the P&L of trades closed in the same
     # days. TELEMETRY ONLY - fold + "also checked" phrase, never an action line, never a budget.
     try:
-        s, phrase = await _spend_vs_pnl_section(today)
-        if s:
-            fold.append(s)
+        spend_full, spend_msg, phrase = await _spend_vs_pnl_parts(today)
+        if spend_full:
+            full.append(spend_full)
+        if spend_msg:
+            fold.append(spend_msg)
         checked.append(phrase)
     except Exception:
         logger.exception("spend-vs-pnl section render failed")
 
-    head_md, fold_md, meta = compose_report(header, needs_you, needs_me, checked, fold, suppressed)
+    head_md, fold_md, meta = compose_report(header, needs_you, needs_me, checked, fold, suppressed,
+                                            full_sections=full, unchanged=unchanged, changes=changes)
+    meta["snapshot"] = snapshot
     return head_md, fold_md, meta
 
 
 def compose_report(header: str, needs_you: list[tuple[int, str]], needs_me: list[str],
-                   checked: list[str], fold_sections: list[str], suppressed: list[dict]
-                   ) -> tuple[str, str, dict]:
+                   checked: list[str], fold_sections: list[str], suppressed: list[dict],
+                   *, full_sections: list[str] | None = None, unchanged: list[str] | None = None,
+                   changes: list[dict] | None = None) -> tuple[str, str, dict]:
     """Pure: the head/fold split. The head is the header, then either ONE sentence saying
     nothing needs him or the action lists (his decisions first, my work second), then one
-    italic line naming every surface that was checked — the positive observable a broken
-    generator cannot print. Everything else is the fold."""
+    italic line naming every surface that was checked - the positive observable a broken
+    generator cannot print. Everything else is the fold.
+
+    #700: `unchanged` phrases (change-only sections that did not print because nothing moved since
+    last week) end the checked line as `unchanged since last week: a · b`, so a quiet section is
+    still named. `full_sections` is every section's FULL text (stored as `report.full_md` - the
+    message is a compaction of it); `changes` is the decision log, carried into the meta."""
     n_you = sum(n for n, _ in needs_you)
     n_me = len(needs_me)
     head = [header]
@@ -430,10 +610,15 @@ def compose_report(header: str, needs_you: list[tuple[int, str]], needs_me: list
         if n_me:
             head.append(f"*Needs me ({n_me}):*")
             head += [f"• {line}" for line in needs_me]
-    if checked:
-        head.append("_Also checked — " + " · ".join(checked) + "._")
+    checked_parts = list(checked)
+    if unchanged:
+        checked_parts.append("unchanged since last week: " + " · ".join(unchanged))
+    if checked_parts:
+        head.append("_Also checked — " + " · ".join(checked_parts) + "._")
     head_md = "\n".join(head)
     fold_md = "\n\n".join(s.strip("\n") for s in fold_sections if s and s.strip())
+    full_md = "\n\n".join(s.strip("\n") for s in (fold_sections if full_sections is None else full_sections)
+                          if s and s.strip())
     meta = {
         "needs_you": n_you, "needs_me": n_me,
         "needs_you_lines": [line for _, block in needs_you for line in block.splitlines()
@@ -442,6 +627,8 @@ def compose_report(header: str, needs_you: list[tuple[int, str]], needs_me: list
         "suppressed": [{"what": str(s.get("what")), "rule": str(s.get("rule"))} for s in suppressed],
         "head_lines": head_md.count("\n") + 1,
         "fold_chars": len(fold_md),
+        "head_md": head_md, "fold_md": fold_md, "full_md": full_md,
+        "changes": list(changes or []),
     }
     return head_md, fold_md, meta
 
@@ -472,6 +659,595 @@ def render_review_html(head_md: str, fold_md: str) -> str:
     return html
 
 
+# ── #700: the message carries what informs, not what repeats ───────────────────────────────────
+# Pure helpers (no I/O, no clock). The rule every one of them keeps: an input that is missing or
+# unreadable PRINTS (or stays in the "mine" pile) - it never hides. Presentation only (THE LINE):
+# nothing here feeds a grade, an entry, a stop, a size or a safeguard, and no metric is changed.
+
+def _unchanged_form(phrase: str) -> str:
+    """'bands: HOLD' -> 'bands HOLD': the form a phrase takes inside `unchanged since last week: ...`."""
+    return phrase.replace(": ", " ", 1)
+
+
+def _brief(v: Any, cap: int = 60) -> str:
+    t = repr(v)
+    return t if len(t) <= cap else t[:cap - 1] + "…"
+
+
+def _prior_value(prior: dict | None, *path: str) -> tuple[bool, Any]:
+    """`(found, value)` for `path` inside last week's stored row (`prior` is
+    `get_latest_system_review`'s return). Anything unreadable - no prior, a missing key, a metrics
+    column that came back as an undecoded JSON string that will not decode - is `(False, None)`:
+    the caller then PRINTS the section. Never raises."""
+    try:
+        cur: Any = prior
+        for key in path:
+            if isinstance(cur, str):
+                cur = json.loads(cur)
+            if not isinstance(cur, dict) or key not in cur:
+                return False, None
+            cur = cur[key]
+        return True, cur
+    except Exception:  # loud-ok: an unreadable prior is the "print everything" direction, by design
+        return False, None
+
+
+def _changed(found: bool, cur: Any, prev: Any) -> tuple[bool, str]:
+    """`(print?, reason)`. No prior value -> print ("no prior"); equal -> stay out; different -> print
+    and say what moved. The reason text is what `report.changes` records."""
+    if not found:
+        return True, "no prior"
+    if cur != prev:
+        return True, f"changed: {_brief(prev)} -> {_brief(cur)}"
+    return False, "unchanged"
+
+
+# -- the narrative: split it, settle what the record settles, re-render what the metrics hold ----
+
+_NARRATIVE_BULLET_LEADS = "•·▪◦‣–—…→"
+_NARRATIVE_KINDS = (          # (leading symbol, text the header must contain, kind)
+    ("✅", "working", "working"),
+    ("⚠", "anomalies to verify", "anomalies"),
+    ("🔁", "last week", "last_week"),
+    ("📉", "drift", "drift"),
+    ("📄", "docs drift", "docs_drift"),
+)
+
+
+def _is_narrative_header(line: str) -> bool:
+    """A header is an emoji-led line (the narrator's blocks all open with one). A bullet is not."""
+    s = line.strip()
+    return bool(s) and ord(s[0]) > 127 and s[0] not in _NARRATIVE_BULLET_LEADS
+
+
+def _narrative_kind(header: str) -> str:
+    h = header.strip()
+    low = h.lower()
+    for lead, needle, kind in _NARRATIVE_KINDS:
+        if h.startswith(lead) and needle in low:
+            return kind
+    return "other"
+
+
+def split_narrative_blocks(summary: str) -> list[tuple[str, str]]:
+    """The LLM narrative as `(kind, text)` blocks, cut at its emoji-led header lines. Kinds:
+    working | anomalies | last_week | drift | docs_drift | other. `other` is anything before the first
+    header and any block whose header is not one of the five - those are kept VERBATIM downstream
+    (fail-open: an unrecognised block is never dropped, and never swallowed by the block before it)."""
+    blocks: list[tuple[str, list[str]]] = []
+    kind, cur = "other", []
+    for line in (summary or "").splitlines():
+        if _is_narrative_header(line):
+            if "".join(cur).strip():
+                blocks.append((kind, cur))
+            kind, cur = _narrative_kind(line), [line]
+        else:
+            cur.append(line)
+    if "".join(cur).strip():
+        blocks.append((kind, cur))
+    return [(k, "\n".join(ls).strip("\n")) for k, ls in blocks]
+
+
+_ERR_TYPE_RE = re.compile(r"\b[a-z0-9]+(?:_[a-z0-9]+)*_(?:error|failed)\b")
+_TICKER_TOKEN_RE = re.compile(r"\b[A-Z]{2,5}\b")
+_NOT_TICKERS = frozenset({"ET", "PT", "UTC", "AM", "PM"})
+_BACKTICK_RE = re.compile(r"`([^`\n]+)`")
+_NUMBERISH_RE = re.compile(r"^[-+$\d.,:%/]+$")
+_AFTER_CLOCK_TIME_RE = re.compile(r"\d{1,2}:\d{2}\s*$")
+_NO_ANOMALY_RE = re.compile(r"^(none|nothing|n/a|no anomal)", re.IGNORECASE)
+
+
+def _collect_record_keys(o: Any, out: set[str]) -> None:
+    """Every dict key under `o`, plus the values of the fields that NAME something (`key` on the
+    L1/L2/L3 entries, `event_type`, `disposition`) - the vocabulary a footprint reference may use."""
+    if isinstance(o, dict):
+        for k, v in o.items():
+            out.add(str(k))
+            if k in ("key", "event_type", "disposition") and isinstance(v, str):
+                out.add(v)
+            _collect_record_keys(v, out)
+    elif isinstance(o, list):
+        for v in o:
+            _collect_record_keys(v, out)
+
+
+def _week_tickers(metrics: dict) -> set[str]:
+    """Every `ticker` value anywhere in the week's metrics (losers, post-mortems, gaps, top winners,
+    cooldowns, churn). The audit rows' own summaries are not walked: a ticker that occurs ONLY in a
+    dispositioned row's summary (KO in the stop-coverage row) is that row's, not the week's."""
+    out: set[str] = set()
+
+    def walk(o: Any) -> None:
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k in ("audit_errors", "report"):
+                    continue
+                if k == "ticker" and isinstance(v, str):
+                    out.add(v.upper())
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    walk(metrics)
+    return out
+
+
+def _identifier_resolves(ident: str, record_keys: set[str], row_text: str) -> bool:
+    """A backticked identifier in a narrative bullet 'resolves' when the record holds it: a key or path
+    under `audit_errors.*` / `anomalies.*` (incl. the L1/L2 `by_key` keys a footprint line cites), or a
+    token that appears in a dispositioned row's own summary / why / detail."""
+    if "." in ident:
+        root, *rest = ident.split(".")
+        if root in ("audit_errors", "anomalies") and all(seg in record_keys for seg in rest):
+            return True
+    elif ident in record_keys:
+        return True
+    return bool(row_text) and re.search(r"(?<![\w])" + re.escape(ident) + r"(?![\w])", row_text) is not None
+
+
+def _verify_one_anomaly(text: str, metrics: dict) -> dict:
+    def mine(why: str) -> dict:
+        return {"text": text, "settled": False, "why": why}
+
+    ae = metrics.get("audit_errors") or {}
+    types = {t.get("event_type"): t for t in ae.get("top_types") or [] if isinstance(t, dict)}
+    named = list(dict.fromkeys(_ERR_TYPE_RE.findall(text)))
+    if not named:
+        return mine("names no audit error type")
+    # 1. every named type is in this week's record with NO live row
+    for n in named:
+        t = types.get(n)
+        if t is None:
+            return mine(f"{n} is not in this week's record")
+        rows = t.get("rows")
+        if not rows:
+            return mine(f"{n} has no recorded dispositions")
+        if any(r.get("disposition") == "live" for r in rows):
+            return mine(f"{n} has a live row")
+    # 2. every other backticked identifier resolves in the record
+    record_keys: set[str] = {"audit_errors", "anomalies"}
+    _collect_record_keys(ae, record_keys)
+    _collect_record_keys(metrics.get("anomalies") or {}, record_keys)
+    row_text = " ".join(str(r.get(f) or "") for t in types.values() for r in t.get("rows") or []
+                        for f in ("summary", "why", "detail"))
+    for ident in _BACKTICK_RE.findall(text):
+        ident = ident.strip()
+        if ident in named or _NUMBERISH_RE.match(ident):
+            continue
+        if not _identifier_resolves(ident, record_keys, row_text):
+            return mine(f"`{ident}` is not in the record")
+    # 3. it names no ticker from the week's metrics (a zone after a clock time is not a ticker)
+    tickers = _week_tickers(metrics)
+    for m in _TICKER_TOKEN_RE.finditer(text):
+        tok = m.group(0)
+        if tok in _NOT_TICKERS or _AFTER_CLOCK_TIME_RE.search(text[:m.start()]):
+            continue
+        if tok in tickers:
+            return mine(f"names {tok}, a ticker from this week's metrics")
+    parts = []
+    for n in named:
+        t, rows = types[n], types[n]["rows"]
+        disps = sorted({r.get("disposition") or "?" for r in rows})
+        since = " ".join(str(rows[0].get("when") or "").split()[:2]) or str(t.get("last_seen") or "?")
+        parts.append(f"{n} ×{t.get('count', len(rows))} — every row {'/'.join(disps)} since {since}")
+    return {"text": text, "settled": True, "why": " · ".join(parts)}
+
+
+def verify_narrative_anomalies(bullets: list[str], metrics: dict) -> list[dict]:
+    """The job checks the narrator's 'anomalies to verify' against the record it already holds. A bullet
+    is SETTLED only when ALL hold: (1) it names at least one audit event type and EVERY named type is in
+    `audit_errors.top_types` with zero `live` rows; (2) every other backticked identifier resolves in
+    the record (`audit_errors.*`, `anomalies.*` keys, or a token in a dispositioned row's own text -
+    numbers, prices and dates are not identifiers); (3) it names no ticker from the week's metrics.
+    Anything else - no type named, a live row, an identifier the record does not hold, a ticker, ANY
+    parse doubt or exception - is NOT settled: the bullet stays mine to verify. Returns one
+    `{"text", "settled", "why"}` per bullet. The fail direction is "mine", never "settled"."""
+    out = []
+    for text in bullets or []:
+        try:
+            out.append(_verify_one_anomaly(text, metrics))
+        except Exception:  # loud-ok: logged; the bullet stays in the "mine" pile
+            logger.warning("narrative anomaly check failed - leaving the bullet as mine: %r", text[:80],
+                           exc_info=True)
+            out.append({"text": text, "settled": False, "why": "could not be checked"})
+    return out
+
+
+def _anomaly_block(text: str, metrics: dict) -> tuple[str, str | None, list[dict]]:
+    """The narrator's ⚠️ block -> (fold text, the head's Needs-me line or None, suppressed records)."""
+    body = [l for l in text.splitlines()[1:] if l.strip()]
+    items = [i for i in (l.strip().lstrip("0123456789.•- \t") for l in body) if i]
+    if not items or all(len(i) < 80 and _NO_ANOMALY_RE.match(i) for i in items):
+        return text, None, []                           # nothing to count: keep it as written
+    verdicts = verify_narrative_anomalies(items, metrics)
+    settled = [v for v in verdicts if v["settled"]]
+    mine = [v for v in verdicts if not v["settled"]]
+    lines: list[str] = []
+    if mine:
+        lines.append("⚠️ *To verify (mine, Monday)* — observations from the narrative, not findings")
+        lines += [f"• {v['text']}" for v in mine]
+    lines += [f"• settled by the record: {v['why']} (errors above)" for v in settled]
+    me_line = None
+    if mine:
+        me_line = (f"{len(mine)} observation{'s' if len(mine) != 1 else ''} from this week's narrative "
+                   f"to verify Monday"
+                   + (f", {len(settled)} more already settled by the record" if settled else "")
+                   + " — ⚠️ block below")
+    sup = [{"what": f"narrative anomaly: {v['text'][:60]}", "rule": f"settled by the record: {v['why']}"}
+           for v in settled]
+    return "\n".join(lines), me_line, sup
+
+
+def _narrative_message(summary: str, metrics: dict) -> tuple[list[str], str | None, list[dict]]:
+    """The narrative as fold blocks -> (blocks, the head's Needs-me line or None, suppressed records).
+    ✅ Working and 🔁 Last week pass verbatim; ⚠️ becomes the 'To verify (mine)' block + a head count;
+    📉 Drift and 📄 Docs drift are re-rendered from the metrics (plain words, one line per metric); any
+    other block passes verbatim. A section whose metric is absent from `metrics` keeps the narrator's
+    own block - the cut needs the number it re-renders from."""
+    blocks = split_narrative_blocks(summary)
+    have_anomalies = isinstance(metrics.get("anomalies"), dict)
+    have_drift_check = isinstance(metrics.get("drift_check"), dict)
+    drift_md = _render_drift(metrics["anomalies"]) if have_anomalies else ""
+    docs_md = _render_docs_drift(metrics["drift_check"]) if have_drift_check else ""
+    out: list[str] = []
+    me_line: str | None = None
+    supp: list[dict] = []
+    drift_done = docs_done = False
+    for kind, text in blocks:
+        if kind == "anomalies":
+            blk, line, sp = _anomaly_block(text, metrics)
+            if blk:
+                out.append(blk)
+            me_line = me_line or line
+            supp += sp
+        elif kind == "drift" and have_anomalies:
+            if drift_md and not drift_done:
+                out.append(drift_md)
+                drift_done = True
+        elif kind == "docs_drift" and have_drift_check:
+            if docs_md and not docs_done:
+                out.append(docs_md)
+                docs_done = True
+        else:
+            out.append(text)
+    if drift_md and not drift_done:
+        out.append(drift_md)
+    if docs_md and not docs_done:
+        out.append(docs_md)
+    return out, me_line, supp
+
+
+_DRIFT_WORDS = {"cooldowns_per_day": "cooldowns per day", "theme_count_active": "active theme count"}
+
+
+def _num(v: Any) -> str:
+    """A metric value in plain digits: 20.0 -> '20', 116.5 -> '116.5', None -> 'n/a'."""
+    if v is None:
+        return "n/a"
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return str(v)
+    return str(int(f)) if f.is_integer() else f"{f:.3f}".rstrip("0").rstrip(".")
+
+
+def _render_drift(anomalies: dict) -> str:
+    """The week's L3 band moves in plain words, one line per metric (the LATEST transition - the list is
+    newest-first - and how many moves there were). Empty when there are none."""
+    d = (anomalies or {}).get("l3_drifts") or {}
+    transitions = [t for t in d.get("transitions") or [] if isinstance(t, dict)]
+    if not transitions:
+        return ""
+    order: list[Any] = []
+    first: dict = {}
+    moves: Counter = Counter()
+    for t in transitions:
+        k = t.get("key")
+        moves[k] += 1
+        if k not in first:
+            first[k] = t
+            order.append(k)
+    lines = ["📉 *Drift — band moves this week*"]
+    for k in order:
+        t = first[k]
+        words = _DRIFT_WORDS.get(k) or str(k).replace("_", " ")
+        per_day = " a day" if str(k).endswith("_per_day") else ""
+        hint = f" — may be intentional ({t['recent_change_hint']})" if t.get("recent_change_hint") else ""
+        lines.append(f"• {words}: band {t.get('from_band')}→{t.get('to_band')} — {_num(t.get('current'))}"
+                     f"{per_day} vs a typical {_num(t.get('p50'))} "
+                     f"({moves[k]} move{'s' if moves[k] != 1 else ''} this week){hint}")
+    return "\n".join(lines)
+
+
+def _render_docs_drift(drift_check: dict) -> str:
+    """The nightly drift check's unverifiable dated claims as one line: how many and where (mine)."""
+    n = int((drift_check or {}).get("unverified_n") or 0)
+    if n <= 0:
+        return ""
+    wheres = [c.get("where") for c in drift_check.get("unverified_claims") or []
+              if isinstance(c, dict) and c.get("where")]
+    shown = wheres[:3]
+    more = n - len(shown) if n > len(shown) and shown else 0
+    return (f"📄 Docs: {n} dated claim{'s' if n != 1 else ''} nothing can verify — "
+            f"{', '.join(shown) if shown else 'see the full text'}"
+            f"{f' +{more} more' if more > 0 else ''} (mine to re-check)")
+
+
+# -- repeated audit-error rows: one line per type and disposition --------------------------------
+
+_STEM_CAP = 120
+_WHEN_RE = re.compile(r"^(\w{3} \d{2}-\d{2}) (\d{2}:\d{2}) ET$")
+
+
+def _tidy_summary(text: str) -> str:
+    """A row summary without the clauses that carry no cause: the '; sample [...' list of example
+    names, a '; first error: None' clause, and a JSON payload tail (' {"code": ...')."""
+    text = " ".join(text.split())
+    text = text.replace("; first error: None", "")
+    text = re.split(r";?\s*sample \[", text, maxsplit=1)[0]
+    if " {" in text:
+        text = text.split(" {", 1)[0].rstrip(": ")
+    return text.strip()
+
+
+def _clip_stem(text: str) -> str:
+    """A tidied row summary clipped to `_STEM_CAP` at a word boundary."""
+    text = _tidy_summary(text)
+    if len(text) <= _STEM_CAP:
+        return text
+    cut = text[:_STEM_CAP].rsplit(" ", 1)[0]
+    return cut.rstrip(" ,;:(") + "…"
+
+
+def _cause_stem(summaries: list[str]) -> str:
+    """The common cause of a group of rows: the FIRST row's summary with each digit run that differs
+    between the rows replaced by its min–max range (`139–150 of 13235 snapshot rows dropped`). When the
+    rows do not share one skeleton, the first row's summary alone."""
+    sums = [_tidy_summary(s) for s in summaries if s]
+    sums = [s for s in sums if s]
+    if not sums:
+        return ""
+    toks = [re.split(r"(\d+)", s) for s in sums]
+    skeleton = toks[0][0::2]
+    if not all(len(t) == len(toks[0]) and t[0::2] == skeleton for t in toks):
+        return _clip_stem(sums[0])
+    parts = []
+    for i, seg in enumerate(toks[0]):
+        if i % 2 == 0:
+            parts.append(seg)
+            continue
+        vals = [int(t[i]) for t in toks]
+        parts.append(seg if min(vals) == max(vals) else f"{min(vals)}–{max(vals)}")
+    return _clip_stem("".join(parts))
+
+
+def _when_span(whens: list[str]) -> str:
+    """'all Wed 10-07 07:00–09:55 ET' for several rows on one day, 'Wed 10-07 07:00 ET' for one,
+    first–last in full across days."""
+    whens = [w for w in whens if w]
+    if not whens:
+        return "?"
+    if len(whens) == 1:
+        return whens[0]
+    parsed = [_WHEN_RE.match(w) for w in whens]
+    if all(parsed) and len({m.group(1) for m in parsed}) == 1:
+        times = sorted(m.group(2) for m in parsed)
+        return f"all {parsed[0].group(1)} {times[0]}–{times[-1]} ET"
+    return f"{whens[0]}–{whens[-1]}"
+
+
+def collapse_error_rows(type_entry: dict) -> list[str]:
+    """One audit error type -> its message lines (no bullet): a LIVE row keeps its own line (the head
+    escalates those); every other disposition is ONE line per group - `quiet` with its span, 'none
+    since (Nd)' and the common cause, `recovered` / `closed` / `refused` with the `why` the code
+    recorded. `metrics["audit_errors"]` and `report.suppressed` are NOT collapsed - this is the
+    message only. A type with no recorded dispositions says so (older metrics shape)."""
+    t = type_entry.get("event_type") or "?"
+    rows = type_entry.get("rows") or []
+    if not rows:
+        return [f"{t} ×{type_entry.get('count')} (last seen {type_entry.get('last_seen')}, "
+                f"{type_entry.get('days_ago')}d ago) — disposition unknown"]
+
+    def strip(why: str) -> str:
+        prefix = f"{t} — "
+        return why[len(prefix):] if why.startswith(prefix) else why
+
+    groups: dict[str, list[dict]] = {}
+    for r in rows:
+        groups.setdefault(r.get("disposition") or "live", []).append(r)
+    lines: list[str] = []
+    for r in groups.pop("live", []):
+        lines.append(f"{t} — live: {strip(r.get('why') or '?')}")
+    for disp, grp in groups.items():
+        if disp == "quiet":
+            span = _when_span([r.get("when") for r in grp])
+            m = re.search(r"in (\d+)d", str(grp[-1].get("why") or ""))
+            age = m.group(1) if m else type_entry.get("days_ago")
+            stem = _cause_stem([str(r.get("summary") or "") for r in grp])
+            lines.append(f"{t} ×{len(grp)} — quiet: {span}"
+                         + (f", none since ({age}d)" if age is not None else "")
+                         + (f" · {stem}" if stem else ""))
+        else:
+            whys = list(dict.fromkeys(strip(str(r.get("why") or "?")) for r in grp))
+            lines.append(f"{t} ×{len(grp)} — {disp}: " + " · ".join(whys))
+    return lines
+
+
+def _silent_failures_message(ae: dict) -> str:
+    """The message form of `_format_silent_failures_section`: a header (🔴 only when something is open)
+    and one line per type and disposition instead of one fragment per row."""
+    types = ae.get("top_types") or []
+    if not types:
+        return ""
+    n_open = ae.get("open_total") or sum(1 for t in types for d in t.get("rows") or []
+                                          if d.get("disposition") == "live")
+    total = ae.get("total", 0)
+    lines = [f"{'🔴' if n_open else '⚪'} *Errors logged (7d)* — {total} row{'s' if total != 1 else ''}, "
+             f"{n_open} open"]
+    for t in types:
+        lines += [f"• {l}" for l in collapse_error_rows(t)]
+    return "\n".join(lines)
+
+
+# -- change-only sections: the comparison against last week --------------------------------------
+
+def _mfe_changed(mfe: dict, prior: dict | None) -> tuple[bool, str]:
+    """Print the winner-capture block when (n, capture %, current-rule trades) moved, a partial-taken
+    winner closed this week, or there is no prior to compare."""
+    def key(m: dict) -> list:
+        return [m.get("n"), m.get("capture_pct"), len(((m.get("era_split") or {}).get("current")) or [])]
+    if mfe.get("window_closes"):
+        return True, "a partial-taken winner closed this week"
+    found, pm = _prior_value(prior, "metrics", "mfe_capture")
+    if not found or not isinstance(pm, dict):
+        return True, "no prior"
+    show, why = _changed(True, key(mfe), key(pm))
+    if not show:
+        why = (f"unchanged: n={mfe.get('n')}, capture {mfe.get('capture_pct')}%, "
+               f"{key(mfe)[2]} current-rule trades")
+    return show, why
+
+
+def _gap_key(g: dict) -> str:
+    return f"{g.get('ticker')}|{g.get('alert_date')}"
+
+
+def _caps_pair(c: dict | None) -> tuple:
+    return ((c or {}).get("denom"), (c or {}).get("unsourced"))
+
+
+def _render_gaps_new(gaps: list[dict], prior_keys: set[str] | None, caps: dict | None,
+                     prior_caps: dict | None) -> str:
+    """The should've-entered gaps for the message: the table holds the rows NEW since last week and the
+    header counts the ones carried. With no prior to compare, every row prints. The strong-catalyst caps
+    line prints only when its (denominator, unsourced) pair moved. Empty when there are no gaps."""
+    from agents.market_intelligence.missed_outcomes import (
+        format_gaps_section_for_weekly, format_source_gap_summary)
+    if not gaps:
+        return ""
+    if prior_keys is None:
+        new, head = list(gaps), (f"🚨 *Should've-entered gaps (30d)* — {len(gaps)} on the list "
+                                 f"(no earlier review to compare; explainer: full text)")
+    else:
+        new = [g for g in gaps if _gap_key(g) not in prior_keys]
+        head = (f"🚨 *Should've-entered gaps (30d)* — {len(new)} new this week, "
+                f"{len(gaps) - len(new)} carried from last week (full table: full text)")
+    lines = [head]
+    if new:
+        full = format_gaps_section_for_weekly(new).splitlines()
+        lines += full[full.index("```"):] if "```" in full else full
+    caps_line = format_source_gap_summary(caps)
+    if caps_line and (prior_caps is None or _caps_pair(caps) != _caps_pair(prior_caps)):
+        lines.append(caps_line)
+    return "\n".join(lines)
+
+
+def _gaps_message(gaps: list[dict], caps: dict | None, prior_keys: set[str] | None,
+                  prior_caps: dict | None) -> tuple[str, str]:
+    """`(message text, decision-log reason)` for the gaps section."""
+    text = _render_gaps_new(gaps, prior_keys, caps, prior_caps)
+    if not gaps:
+        return "", "no gaps"
+    if prior_keys is None:
+        return text, "no prior"
+    n_new = sum(1 for g in gaps if _gap_key(g) not in prior_keys)
+    return text, f"{n_new} new, {len(gaps) - n_new} carried"
+
+
+_MOVER_FLOOR = 0.20          # a peak move of at least +20% inside 5 days is worth a line
+
+
+def _render_top_movers(top_winners: list[dict], window_days: int = 7) -> str:
+    """One line: the biggest movers we scored out - at most three, peak at least +20%, one entry per
+    ticker, the reason the system skipped each in words. Empty when none qualifies."""
+    from agents.market_intelligence.missed_outcomes import _humanize_category
+    best: dict[str, dict] = {}
+    for r in top_winners or []:
+        peak = r.get("max_high_5d")
+        if peak is None or peak < _MOVER_FLOOR:
+            continue
+        if r["ticker"] not in best or peak > best[r["ticker"]]["max_high_5d"]:
+            best[r["ticker"]] = r
+    rows = sorted(best.values(), key=lambda r: (-r["max_high_5d"], r["ticker"]))[:3]
+    if not rows:
+        return ""
+
+    def reason(cat) -> str:
+        # 'Volume below 2× (post-open)' -> 'volume below 2×, post-open' (no parentheses inside the parentheses)
+        return re.sub(r"\s*\(([^)]*)\)", r", \1", _humanize_category(cat).lower())
+
+    return (f"🔍 Biggest movers we scored out ({window_days}d, peak): "
+            + " · ".join(f"{r['ticker']} +{r['max_high_5d'] * 100:.0f}% ({reason(r.get('skip_category'))})"
+                         for r in rows))
+
+
+def _missed_message(missed: dict, prior: dict | None) -> tuple[str, list[dict]]:
+    """The 'missed opportunities' appendix for the message -> (text, decision-log entries): the new
+    should've-entered gaps and the biggest movers. The by-skip-reason table (counts with no
+    conclusion) stays in the full text."""
+    found_g, pg = _prior_value(prior, "metrics", "missed_opportunities", "gaps")
+    prior_keys = ({_gap_key(g) for g in pg if isinstance(g, dict)}
+                  if found_g and isinstance(pg, list) else None)
+    found_c, pc = _prior_value(prior, "metrics", "missed_opportunities", "source_gap_summary")
+    prior_caps = pc if found_c and isinstance(pc, dict) else None
+    gaps = missed.get("gaps") or []
+    text, why = _gaps_message(gaps, missed.get("source_gap_summary"), prior_keys, prior_caps)
+    entries = []
+    if gaps:
+        printed_rows = prior_keys is None or any(_gap_key(g) not in prior_keys for g in gaps)
+        entries.append({"section": "gaps", "shown": bool(printed_rows), "why": why})
+        caps_shown = "Strong-catalyst MODERATE caps" in text
+        entries.append({"section": "gaps_caps", "shown": caps_shown,
+                        "why": "(denominator, unsourced) moved or no prior" if caps_shown
+                        else "unchanged or none"})
+    movers = _render_top_movers(missed.get("top_winners") or [], missed.get("window_days", 7))
+    return "\n".join(part for part in (text, movers) if part), entries
+
+
+# -- setup review / replay-regression: event-keyed, boilerplate cut ------------------------------
+
+def _setup_review_message(table: str, closed: bool) -> str:
+    """The setup review's table for the message: the header (+ ' — a trade closed this week'), each
+    setup's row, bits, eras and unreadable-peaks lines. Cut: the 'Runs win or lose' tagline, every
+    parenthetical 'not enough to ask' / 'monitoring only' note, and the era-key legend (full text)."""
+    out = []
+    for i, line in enumerate(table.splitlines()):
+        s = line.strip()
+        if s.startswith("_Runs win or lose") or s == f"_{EXIT_ERA_KEY}_":
+            continue
+        if s.startswith("(") and s.endswith(")"):
+            continue
+        out.append(line + (" — a trade closed this week" if i == 0 and closed else ""))
+    return "\n".join(out)
+
+
+def _replay_message_lines(lines: list[str]) -> list[str]:
+    """Replay-regression lines for the message: the header, the live fingerprint and the rule-era line.
+    Cut: the calibration reference card and the 'ⓘ' caveat (both are in the full text). Anything else
+    (an `unavailable` note) stays."""
+    return [l for l in lines if not l.strip().startswith(("calibration (", "ⓘ"))]
+
+
 def _format_silent_failures_section(ae: dict) -> str:
     """Fold: every *_error/*_failed type in the window with the disposition the code decided,
     row by row — the reader sees WHY a row is not open, not just that it isn't."""
@@ -495,54 +1271,110 @@ def _format_silent_failures_section(ae: dict) -> str:
     return "\n".join(lines)
 
 
+def _promotion_row(c: dict) -> tuple[str, bool]:
+    """One ladder row's line and whether it is a hold-by-ruling. The single renderer both the full text
+    and the #700 message use, so a row can never read differently in the two."""
+    from agents.market_intelligence.strategies.promotion import MANUAL_REVIEW_HOLD_REASON
+    sid = c.get("strategy_id")
+    reasons = [r for r in c.get("blocking_reasons") or [] if r != MANUAL_REVIEW_HOLD_REASON]
+    if c.get("eligible"):
+        return f"• {sid}: ✓ ready for {c.get('next_phase')} (see above)", False
+    if reasons:
+        # the verdict text carries an unrounded float ("median R -0.10113402106503139");
+        # presentation only - the verdict is untouched
+        reason = re.sub(r"-?\d+\.\d{3,}", lambda m: f"{float(m.group()):.2f}", reasons[0])
+        n_closed = (c.get("metrics") or {}).get("n_closed")
+        if n_closed is not None and "have" not in reason:
+            reason += f" (have {n_closed} closed)"
+        return f"• {sid}: {reason}", False
+    if MANUAL_REVIEW_HOLD_REASON in (c.get("blocking_reasons") or []):
+        return (f"• {sid}: held in {c.get('current_phase')} by operator ruling — "
+                f"the metrics clear, and no data can promote it"), True
+    return f"• {sid}: not eligible (no reason recorded)", False
+
+
+def _promotion_header(checks: list[dict]) -> str:
+    n_ready = sum(1 for c in checks if c.get("eligible"))
+    return f"📈 *Strategy promotion* — {n_ready} ready" if n_ready else "📈 *Strategy promotion* — none ready"
+
+
 def _format_promotion_section(sp: dict) -> tuple[str, list[str]]:
     """Fold: one line per strategy still on the ladder. A blocker that no data can change
-    (`MANUAL_REVIEW_HOLD_REASON`, a standing operator hold) is printed as the hold it is —
-    never as 'deferred', which reads as data pending. Returns (text, held_strategy_ids)."""
-    from agents.market_intelligence.strategies.promotion import MANUAL_REVIEW_HOLD_REASON
+    (`MANUAL_REVIEW_HOLD_REASON`, a standing operator hold) is printed as the hold it is -
+    never as 'deferred', which reads as data pending. Returns (text, held_strategy_ids).
+    The FULL form (stored as `report.full_md`); the message prints `_promotion_message`."""
     checks = [c for c in sp.get("checks") or [] if c.get("next_phase")]
     if not checks:
         return "", []
     held: list[str] = []
     lines = []
-    n_ready = sum(1 for c in checks if c.get("eligible"))
-    import re as _re
     for c in checks:
-        sid = c.get("strategy_id")
-        reasons = [r for r in c.get("blocking_reasons") or [] if r != MANUAL_REVIEW_HOLD_REASON]
-        if c.get("eligible"):
-            lines.append(f"• {sid}: ✓ ready for {c.get('next_phase')} (see above)")
-        elif reasons:
-            # the verdict text carries an unrounded float ("median R -0.10113402106503139");
-            # presentation only — the verdict is untouched
-            reason = _re.sub(r"-?\d+\.\d{3,}", lambda m: f"{float(m.group()):.2f}", reasons[0])
-            n_closed = (c.get("metrics") or {}).get("n_closed")
-            if n_closed is not None and "have" not in reason:
-                reason += f" (have {n_closed} closed)"
-            lines.append(f"• {sid}: {reason}")
-        elif MANUAL_REVIEW_HOLD_REASON in (c.get("blocking_reasons") or []):
-            held.append(sid)
-            lines.append(f"• {sid}: held in {c.get('current_phase')} by operator ruling — "
-                         f"the metrics clear, and no data can promote it")
-        else:
-            lines.append(f"• {sid}: not eligible (no reason recorded)")
-    head = f"📈 *Strategy promotion* — {n_ready} ready" if n_ready else "📈 *Strategy promotion* — none ready"
-    return "\n".join([head] + lines), held
+        line, is_held = _promotion_row(c)
+        lines.append(line)
+        if is_held:
+            held.append(c.get("strategy_id"))
+    return "\n".join([_promotion_header(checks)] + lines), held
 
 
-async def _band_section(today: date) -> tuple[str, str | None, str]:
+def _promotion_state(c: dict) -> tuple:
+    """What counts as a ladder row MOVING: its phase, its next phase, its eligibility, and its first
+    blocking reason with the digits removed - a counter ticking (have 9 -> have 10, median R -0.07 ->
+    -0.06) is the same blocker, not news."""
+    reasons = c.get("blocking_reasons") or [""]
+    return (c.get("current_phase"), c.get("next_phase"), bool(c.get("eligible")),
+            re.sub(r"\d+", "", str(reasons[0])))
+
+
+def _promotion_message(sp: dict, prior_checks: list[dict] | None) -> tuple[str, str]:
+    """`(message text, decision-log reason)`. The header always prints; a ladder row prints only when it
+    is NEW on the ladder, moved (see `_promotion_state`), or is eligible (an action). `prior_checks` is
+    last week's `strategy_promotions.checks`; None = nothing to compare, so every row prints."""
+    checks = [c for c in sp.get("checks") or [] if c.get("next_phase")]
+    if not checks:
+        return "", "no ladder rows"
+    head = _promotion_header(checks)
+    if prior_checks is None:
+        return "\n".join([head] + [_promotion_row(c)[0] for c in checks]), "no prior"
+    prior_by_id = {c.get("strategy_id"): c for c in prior_checks if isinstance(c, dict)}
+    rows: list[str] = []
+    for c in checks:
+        line, _held = _promotion_row(c)
+        prev = prior_by_id.get(c.get("strategy_id"))
+        rest = line.split(": ", 1)[1] if ": " in line else line
+        if prev is None:
+            rows.append(f"• {c.get('strategy_id')}: new on the ladder "
+                        f"({c.get('current_phase')} → {c.get('next_phase')}) — {rest}")
+        elif _promotion_state(prev) != _promotion_state(c):
+            what = ("phase" if prev.get("current_phase") != c.get("current_phase")
+                    or prev.get("next_phase") != c.get("next_phase")
+                    else "eligibility" if bool(prev.get("eligible")) != bool(c.get("eligible")) else "blocker")
+            rows.append(f"{line} (changed: {what})")
+        elif c.get("eligible"):
+            rows.append(line)
+    if not rows:
+        return head, f"unchanged: all {len(checks)} ladder rows match last week's"
+    return ("\n".join([head + " · changed since last week:"] + rows),
+            f"{len(rows)} of {len(checks)} rows new or changed")
+
+
+async def _band_section(today: date) -> tuple[str, str | None, str, dict | None]:
     """Kill/scale bands for the fold + the band name for the head. The verdict line is the
     signed safeguard's own `format_band_line`, unchanged; #662 appends the rule-era clause for
     its trailing windows (all n, and the last-20 window t20 reads) or says the split is
-    unavailable — never a pooled number presented as one era."""
-    from agents.market_intelligence.kill_scale_bands import assess_bands, format_band_line
+    unavailable — never a pooled number presented as one era.
+
+    #700: the 4th element is the SNAPSHOT next week compares against - `{band, override_active,
+    at_floor}`, categorical states only (never a windowed count, which slides every week). None when
+    the evaluation failed: the caller then prints the block."""
+    from agents.market_intelligence.kill_scale_bands import assess_bands, format_band_line, _SAMPLE_FLOOR
     from agents.market_intelligence.replay_regression import era_split_for, era_split_line
     from agents.market_intelligence.rule_eras import era_split_sentence
     try:
         inputs, verdict, override = await assess_bands("live")
     except Exception as e:  # noqa: BLE001 — telemetry must never break the digest
         logger.warning("band section: assess_bands failed: %s", e)
-        return f"*🎚️ Kill/scale bands* (live-money, #268b):\n_kill/scale band eval unavailable: {e}_", None, ""
+        return (f"*🎚️ Kill/scale bands* (live-money, #268b):\n_kill/scale band eval unavailable: {e}_",
+                None, "", None)
     lines = ["*🎚️ Kill/scale bands* (live-money, #268b):",
              format_band_line(verdict, override, inputs.get("open_positions"))]
     split = era_split_for(inputs, today)
@@ -554,7 +1386,9 @@ async def _band_section(today: date) -> tuple[str, str | None, str]:
         t20 = (f" — the t20 window holds {len(last20['current'])} current, "
                f"{len(last20['older'])} older") if last20 and len(rs) > 20 else ""
         lines.append(f"  rule eras: {era_split_sentence(split)}{t20}")
-    return "\n".join(lines), verdict.band, verdict.action
+    snap = {"band": verdict.band, "override_active": bool(override),
+            "at_floor": (verdict.n_trades or 0) >= _SAMPLE_FLOOR}
+    return "\n".join(lines), verdict.band, verdict.action, snap
 
 
 # ── Gather + aggregate ────────────────────────────────────────────────────────
@@ -1960,6 +2794,92 @@ def _format_judge_section(data: dict) -> str:
     return "\n".join(lines)
 
 
+def _judge_message(data: dict) -> str:
+    """#700: the holistic judge's week as ONE line (the full block - a code fence of three lines and a
+    pointer - is in the stored full text). Zero alerts reads exactly as before: a heartbeat."""
+    total = data.get("total") or 0
+    if not total:
+        return _format_judge_section(data)
+    judged = data.get("judged") or 0
+    holds = max(judged - (data.get("promotes") or 0) - (data.get("demotes") or 0), 0)
+    return (f"⚖️ *Holistic judge:* graded {judged} of {total} alerts — {data.get('promotes', 0)} up, "
+            f"{data.get('demotes', 0)} down, {holds} held · {total - judged} fell back to our score · "
+            f"fire axes seen on {data.get('fire_seen', 0)}, none on {data.get('no_fire', 0)}")
+
+
+def _loser_agg_line(agg: dict) -> str:
+    """Week-over-week methodology signals across the losers. At N<5, single-trade "100%" is
+    misleading; show raw counts instead. Shared by the full section and the message."""
+    n = agg.get("n_losers", 0)
+    median_gt = agg.get("median_gap_through_dollars")
+
+    def _agg(label: str, count_key: str, pct_key: str) -> str:
+        cnt = agg.get(count_key, 0)
+        if n < 5:
+            return f"{label}: {cnt}/{n}"
+        return f"{label}: {agg.get(pct_key, 0):.0f}%"
+
+    agg_bits = [
+        _agg("5m-blocked",     "n_5m_would_block",     "pct_5m_would_block"),
+        _agg("5m-wider",       "n_5m_wider_stop",      "pct_5m_wider_stop"),
+        _agg("prose-mismatch", "n_prose_mismatch",     "pct_prose_mismatch"),
+        _agg("fast-stop<10m",  "n_fast_stop_lt_10min", "pct_fast_stop_lt_10min"),
+    ]
+    if median_gt is not None:
+        agg_bits.append(f"med gap-thru ${median_gt:.2f}")
+    if agg.get("n_compound_attempt2", 0):
+        agg_bits.append(f"compound att2: {agg['n_compound_attempt2']}")
+    return "_" + " · ".join(agg_bits) + "_"
+
+
+def _loser_flag_words(L: dict) -> list[str]:
+    """One losing trade's flags in WORDS (the full section uses emoji + a legend). The 5-minute-ORB
+    reason is shortened: 'setup:stop_too_wide: ORB range $16.58 (5.7%) > 1.5x ATR $15.70' reads
+    'range 5.7% > 1.5x ATR'."""
+    words: list[str] = []
+    if L.get("prose_mismatch"):
+        words.append("catalyst grade vs prose mismatch")
+    if L.get("orb5_verdict") == "would_block":
+        reason = re.sub(r"^setup:\w+:\s*", "", str(L.get("orb5_skip_reason") or "")).strip()
+        m = re.match(r"ORB range \$[\d.,]+ \(([\d.]+%)\) > ([\d.]+x) ATR", reason)
+        if m:
+            reason = f"range {m.group(1)} > {m.group(2)} ATR"
+        words.append("the 5-min ORB would have blocked it" + (f" ({reason})" if reason else ""))
+    elif L.get("orb5_verdict") == "wider_stop":
+        words.append(f"5-min ORB stop would sit at ${L['orb5_low']:.2f}")
+    if (L.get("time_to_stop_min") or 999) < 10:
+        words.append(f"stopped in {L['time_to_stop_min']:.1f}m")
+    if L.get("is_compound_loss"):
+        words.append("second attempt, compound loss")
+    if (L.get("gap_through_dollars") or 0) > 0.05:
+        words.append(f"filled ${L['gap_through_dollars']:.2f} past the stop")
+    if L.get("earnings_boost_fired"):
+        words.append("earnings backstop fired")
+    return words
+
+
+def _loser_message(loser_breakdown: dict) -> str:
+    """#700: the week's losers for the message - the header, one line per loser with its flags in words,
+    and the aggregate line only from five losers up (below that it is single-trade percentages). The
+    5-minute-ORB explainer and the emoji legend are in the full text."""
+    losers = (loser_breakdown or {}).get("losers") or []
+    agg = (loser_breakdown or {}).get("aggregates") or {}
+    if not losers:
+        return ""
+    n_l = agg.get("n_losers", 0)
+    lines = [f"❌ *Losers post-mortem ({n_l} trade{'s' if n_l != 1 else ''} · ${agg.get('total_loss', 0):+,.0f})*"]
+    for L in losers[:10]:
+        attempt_marker = f" att{L['entry_attempt']}" if L.get("entry_attempt", 1) > 1 else ""
+        words = _loser_flag_words(L)
+        lines.append(f"• `{L['ticker']}` {L['alert_date']}{attempt_marker} ${L['total_pnl']:+,.0f}"
+                     + (" · " + " · ".join(words) if words else ""))
+    if len(losers) > 10:
+        lines.append(f"_(+ {len(losers) - 10} more losers, see DB row)_")
+    if agg.get("n_losers", 0) >= 5:
+        lines.append(_loser_agg_line(agg))
+    return "\n".join(lines)
+
+
 def _format_loser_section(loser_breakdown: dict) -> str:
     """Deterministic per-loser breakdown for the weekly digest (#76).
 
@@ -2008,28 +2928,8 @@ def _format_loser_section(loser_breakdown: dict) -> str:
     if len(losers) > 10:
         lines.append(f"_(+ {len(losers) - 10} more losers, see DB row)_")
 
-    # Aggregate roll-up — week-over-week methodology signals.
-    # At N<5, single-trade "100%" is misleading; show raw counts instead.
-    n = agg.get("n_losers", 0)
-    median_gt = agg.get("median_gap_through_dollars")
-
-    def _agg(label: str, count_key: str, pct_key: str) -> str:
-        cnt = agg.get(count_key, 0)
-        if n < 5:
-            return f"{label}: {cnt}/{n}"
-        return f"{label}: {agg.get(pct_key, 0):.0f}%"
-
-    agg_bits = [
-        _agg("5m-blocked",     "n_5m_would_block",     "pct_5m_would_block"),
-        _agg("5m-wider",       "n_5m_wider_stop",      "pct_5m_wider_stop"),
-        _agg("prose-mismatch", "n_prose_mismatch",     "pct_prose_mismatch"),
-        _agg("fast-stop<10m",  "n_fast_stop_lt_10min", "pct_fast_stop_lt_10min"),
-    ]
-    if median_gt is not None:
-        agg_bits.append(f"med gap-thru ${median_gt:.2f}")
-    if agg.get("n_compound_attempt2", 0):
-        agg_bits.append(f"compound att2: {agg['n_compound_attempt2']}")
-    lines.append("_" + " · ".join(agg_bits) + "_")
+    # Aggregate roll-up — week-over-week methodology signals (shared with the #700 message).
+    lines.append(_loser_agg_line(agg))
     lines.append(
         f"_Legend: 📰=catalyst grade vs prose mismatch · ⛔=5m ORB would block · "
         f"🪜=5m ORB stop wider · ⏱=stopped <10m post-fill · 🔁=att2 loss within 15% "
@@ -2273,6 +3173,14 @@ async def _early_window_drift_review(today: date) -> tuple[str, dict | None]:
     trailing window over every closed live trade, so it carries the rule-era clause or its
     numbers are SUPPRESSED (with the reason recorded) — never printed pooled across the
     2026-09-06 exit-rule change. Returns (text, suppressed-record-or-None)."""
+    text, suppressed, _n = await _early_window_drift_parts(today)
+    return text, suppressed
+
+
+async def _early_window_drift_parts(today: date) -> tuple[str, dict | None, int | None]:
+    """`_early_window_drift_review` plus the cohort size it read (#700: the message drops this line
+    once the cohort reaches the band floor, and the size must come from the SAME read - one query,
+    two consumers). `n` is None only when the read produced no cohort count."""
     from agents.market_intelligence.kill_scale_bands import (
         assemble_band_inputs, CALIBRATION_ENVELOPE as env, _SAMPLE_FLOOR,
     )
@@ -2282,7 +3190,7 @@ async def _early_window_drift_review(today: date) -> tuple[str, dict | None]:
     rs = inputs["realized_rs"]
     n = len(rs)
     if n < 5:
-        return "", None
+        return "", None, n
     split = era_split_for(inputs, today)
     if split is None:
         return (f"\U0001F4C9 *Early-window drift* (live, #454): numbers suppressed — the "
@@ -2290,7 +3198,7 @@ async def _early_window_drift_review(today: date) -> tuple[str, dict | None]:
                 f"trades would pool rule changes (#662)",
                 {"what": "early-window drift numbers",
                  "rule": "era split unavailable — trailing-window numbers are suppressed "
-                         "rather than pooled across rule changes"})
+                         "rather than pooled across rule changes"}, n)
     mean_r = sum(rs) / n
     p5, floor_r = env["trailing20_p5_r"], env["trailing20_min_r"]
     if mean_r <= floor_r:
@@ -2309,7 +3217,7 @@ async def _early_window_drift_review(today: date) -> tuple[str, dict | None]:
         f"\U0001F4C9 *Early-window drift* (live, #454 vs {env['source']}): "
         f"rolling mean {mean_r:+.2f}R over {n} closed trades — {pos}; "
         f"{era_split_sentence(split)}. _{caveat}_"
-    ), None
+    ), None, n
 
 
 async def _judge_divergence_section(window_start: date) -> str:
@@ -2513,6 +3421,60 @@ def _format_theme_agreement(weekly: dict, trailing: dict | None, *, today: date)
     return "\n".join(lines)
 
 
+def _theme_window_line(label: str, agg: dict) -> str:
+    """One window of the #486 readout as a single line (the full section spends two on it)."""
+    if not agg["n"]:
+        return f"{label} (n=0): no judge-graded alert had a clean theme read"
+    return (f"{label} (n={agg['n']}): engine and judge agree on {agg['both'] + agg['neither']} of "
+            f"{agg['n']} ({agg['agree_pct']}%) — both saw a theme {agg['both']} · judge only "
+            f"{agg['judge_only']} · engine only {agg['engine_only']} · neither {agg['neither']}")
+
+
+def _theme_queue_key(q: dict) -> str:
+    return f"{q['ticker']}|{q['alert_date']}"
+
+
+def _theme_agreement_message(weekly: dict, trailing: dict | None, *, today: date,
+                             prior_queue_keys: list[str] | None = None) -> str:
+    """#700: the #486 readout for the message - one line per window; the judge-only queue lists only the
+    names NEW to the list since last week (`prior_queue_keys`, from the stored snapshot; None = no
+    snapshot, so every name is new) and counts the carried ones; the footer is a one-line pointer to the
+    definitions in the full text. The numbers are the full section's, unchanged."""
+    basis = trailing if trailing is not None else weekly
+    basis_label = (f"the last {_THEME_AGREEMENT_TRAIL_DAYS} days" if trailing is not None else "this week")
+    lines = ["\U0001F9E9 *Theme read, engine vs judge (#486)*", _theme_window_line("This week", weekly)]
+    if trailing is not None:
+        lines.append(_theme_window_line(
+            f"Last {_THEME_AGREEMENT_TRAIL_DAYS} days to {today.strftime('%b')} {today.day}", trailing))
+    k = basis["judge_only"]
+    if k:
+        seen = None if prior_queue_keys is None else set(prior_queue_keys)
+        new = [q for q in basis["queue"] if seen is None or _theme_queue_key(q) not in seen]
+        if len(new) == k:
+            novelty = ("new to this list" if k == 1 else "both new to this list" if k == 2
+                       else f"all {k} new to this list")
+        else:
+            novelty = f"{len(new)} new to this list" if new else "none new to this list"
+        lines.append(f"Judge saw a theme the engine did not — {k} in {basis_label}, {novelty}"
+                     + (":" if new else "."))
+        for q in new[:_THEME_QUEUE_CAP]:
+            d = q["alert_date"]
+            lines.append(f"• {q['ticker']} {d.strftime('%m-%d') if d else '?'} — {_THEME_MISS_WORDS[q['reason']]}")
+        if len(new) > _THEME_QUEUE_CAP:
+            lines.append(f"  +{len(new) - _THEME_QUEUE_CAP} more")
+    graded, excluded = basis.get("graded_n"), basis.get("excluded")
+    if graded is None:
+        lines.append("_Definitions: full text._")
+    elif not graded:
+        lines.append("_No judge-graded alerts in the window; definitions: full text._")
+    elif not excluded:
+        lines.append(f"_Counts all {graded} judge-graded alerts; definitions: full text._")
+    else:
+        lines.append(f"_Counts {basis['n']} of {graded} judge-graded alerts; definitions and the "
+                     f"{excluded} left out: full text._")
+    return "\n".join(lines)
+
+
 def _theme_coverage_clause(basis: dict, basis_label: str) -> str:
     """How much of the judge-graded population the 2x2 covers. The filter (only alerts whose
     7-day and unbounded theme reads agree) drops alerts the judge may have themed - state the
@@ -2542,7 +3504,19 @@ def _short_reason(e: BaseException, cap: int = 80) -> str:
 async def _theme_agreement_section(window_start: date, today: date) -> tuple[str, str]:
     """#486 — returns (fold block, the "Also checked" phrase). FAIL-OPEN like every other section:
     a failed read prints a one-line `unavailable: <reason>` (never raises, never blanks the
-    review) so a dead section stays distinguishable from a quiet one."""
+    review) so a dead section stays distinguishable from a quiet one. The FULL block; the #700
+    message uses `_theme_agreement_parts`."""
+    full, _msg, phrase, _keys = await _theme_agreement_parts(window_start, today)
+    return full, phrase
+
+
+async def _theme_agreement_parts(window_start: date, today: date,
+                                 prior_queue_keys: list[str] | None = None
+                                 ) -> tuple[str, str, str, list[str] | None]:
+    """`_theme_agreement_section` plus the #700 pieces, from ONE read: (full block, message block,
+    phrase, this week's judge-only queue keys `TICKER|date` - None when the section was unavailable,
+    so no snapshot is written for it). A failed read gives the SAME `unavailable:` line as the full
+    block and the message - a dead section must not turn into silence in the message."""
     try:
         trail_start = today - timedelta(days=_THEME_AGREEMENT_TRAIL_DAYS - 1)
         fetch_start = min(window_start, trail_start)
@@ -2559,11 +3533,18 @@ async def _theme_agreement_section(window_start: date, today: date) -> tuple[str
         span = f"{_THEME_AGREEMENT_TRAIL_DAYS}d" if trailing is not None else "7d"
         phrase = (f"themes: {span} n={shown['n']}, {shown['agree_pct']}% engine-judge agree"
                   if shown["n"] else f"themes: {span} n=0")
-        return _format_theme_agreement(weekly, trailing, today=today), phrase
+        full = _format_theme_agreement(weekly, trailing, today=today)
+        try:
+            msg = _theme_agreement_message(weekly, trailing, today=today,
+                                           prior_queue_keys=prior_queue_keys)
+        except Exception:
+            logger.exception("theme-agreement compaction failed - the message carries the full text")
+            msg = full
+        return full, msg, phrase, sorted(_theme_queue_key(q) for q in shown["queue"])
     except Exception as e:  # noqa: BLE001 — advisory section; the review must still go out
         logger.warning("theme-agreement section failed: %s", e, exc_info=True)
-        return (f"\U0001F9E9 *Theme read, engine vs judge (#486):* unavailable: {_short_reason(e)}",
-                "themes: unavailable")
+        text = f"\U0001F9E9 *Theme read, engine vs judge (#486):* unavailable: {_short_reason(e)}"
+        return text, text, "themes: unavailable", None
 
 
 # ── #313 part 2: LLM spend by caller vs realised P&L (2026-10-10) ─────────────────────────────
@@ -2646,9 +3627,48 @@ def _format_spend_vs_pnl(agg: dict, *, window_start: date, today: date) -> str:
     return "\n".join(lines)
 
 
+def _spend_vs_pnl_message(agg: dict, *, window_start: date, today: date) -> str:
+    """#700: the #313 block for the message in four lines - the header; total spend with the top three
+    callers inline; the judge-named callers' subtotal with its top three; one line per book. The
+    full caller list, the '+N other callers' tail and the footer are in the full text."""
+    span = f"{window_start.strftime('%b')} {window_start.day} – {today.strftime('%b')} {today.day}"
+    lines = [f"\U0001F4B8 *LLM spend vs realised P&L (#313) — last {_SPEND_PNL_DAYS} days, {span}*"]
+    if not agg["callers"]:
+        lines.append("LLM spend $0.00 (no metered calls in the window)")
+    else:
+        top = sorted(agg["callers"], key=lambda c: (-c["spend"], c["caller"]))[:3]
+        lines.append(f"LLM spend ${agg['total_spend']:,.2f} across {agg['total_calls']:,} calls · top: "
+                     + " · ".join(f"{c['caller']} ${c['spend']:,.2f}" for c in top))
+        if agg["judge_spend"]:
+            named = agg["judge_callers"][:3]
+            lines.append(f"Judge-named callers ${agg['judge_spend']:,.2f} "
+                         f"({round(100 * agg['judge_spend'] / agg['total_spend'])}% of spend): "
+                         + " · ".join(f"{c['caller']} ${c['spend']:,.2f}" for c in named))
+    by_mode = {b["account_mode"]: b for b in agg["books"]}
+    ordered = [by_mode.get("live") or {"account_mode": "live", "n": 0, "wins": 0, "pnl": 0.0}]
+    ordered += [b for b in agg["books"] if b["account_mode"] != "live"]
+    for b in ordered:
+        label = _BOOK_LABELS.get(b["account_mode"], str(b["account_mode"]))
+        label = label[:1].upper() + label[1:]
+        if not b["n"]:
+            lines.append(f"{label}: no trade closed")
+        else:
+            lines.append(f"{label}: ${b['pnl']:+,.0f} over {b['n']} closed trade"
+                         f"{'s' if b['n'] != 1 else ''} ({b['wins']} winner{'s' if b['wins'] != 1 else ''})")
+    return "\n".join(lines)
+
+
 async def _spend_vs_pnl_section(today: date) -> tuple[str, str]:
     """#313 part 2 - returns (fold block, the "Also checked" phrase). FAIL-OPEN: a failed read of
-    EITHER side prints `unavailable: <reason>` for the block and the review still goes out."""
+    EITHER side prints `unavailable: <reason>` for the block and the review still goes out. The FULL
+    block; the #700 message uses `_spend_vs_pnl_parts`."""
+    full, _msg, phrase = await _spend_vs_pnl_parts(today)
+    return full, phrase
+
+
+async def _spend_vs_pnl_parts(today: date) -> tuple[str, str, str]:
+    """`_spend_vs_pnl_section` plus the #700 message form, from ONE read: (full block, message block,
+    phrase). A failed read gives the same `unavailable:` line for both."""
     title = "\U0001F4B8 *LLM spend vs realised P&L (#313):*"
     try:
         from agents.market_intelligence.cost_board import compute_caller_spend_window
@@ -2659,11 +3679,17 @@ async def _spend_vs_pnl_section(today: date) -> tuple[str, str]:
         live = next((b for b in agg["books"] if b["account_mode"] == "live"), None)
         pnl_phrase = (f"live P&L ${live['pnl']:+,.0f} on {live['n']}" if live and live["n"]
                       else "no live close")
-        return (_format_spend_vs_pnl(agg, window_start=window_start, today=today),
-                f"{_SPEND_PNL_DAYS}d LLM ${agg['total_spend']:,.0f} vs {pnl_phrase}")
+        full = _format_spend_vs_pnl(agg, window_start=window_start, today=today)
+        try:
+            msg = _spend_vs_pnl_message(agg, window_start=window_start, today=today)
+        except Exception:
+            logger.exception("spend-vs-pnl compaction failed - the message carries the full text")
+            msg = full
+        return full, msg, f"{_SPEND_PNL_DAYS}d LLM ${agg['total_spend']:,.0f} vs {pnl_phrase}"
     except Exception as e:  # noqa: BLE001 — advisory section; the review must still go out
         logger.warning("spend-vs-pnl section failed: %s", e, exc_info=True)
-        return f"{title} unavailable: {_short_reason(e)}", "spend vs P&L: unavailable"
+        text = f"{title} unavailable: {_short_reason(e)}"
+        return text, text, "spend vs P&L: unavailable"
 
 
 _SETUP_REVIEW_MIN_N = 10   # below this the row REPORTS but asks nothing — see the docstring
@@ -2986,6 +4012,45 @@ def _format_crypto_section(crypto: dict) -> str:
     return "\n".join(lines)
 
 
+_LEADING_SYMBOLS_RE = re.compile(r"^[^\w]+")
+
+
+def _crypto_words(verdict: str | None, *, last_week: bool = False) -> str:
+    """The crypto verdict without its emoji, and without the words the header already says ('live;')
+    - or, for last week's reading, 'not ready:' (so 'last week: 1 crypto_ingest_error ...')."""
+    v = _LEADING_SYMBOLS_RE.sub("", verdict or "").strip()
+    v = re.sub(r"^live;\s*", "", v)
+    if last_week:
+        v = re.sub(r"^not ready:\s*", "", v)
+    return v or "(unknown)"
+
+
+def _crypto_message(crypto: dict, prior_verdict: str | None) -> str:
+    """#700: the message form of the crypto readiness block (the section's `_<section>_message` sibling);
+    the rendering lives in `_render_crypto_change`."""
+    return _render_crypto_change(crypto, prior_verdict)
+
+
+def _render_crypto_change(crypto: dict, prior_verdict: str | None) -> str:
+    """The crypto readiness block for the message, in one or two lines: the verdict in words with
+    last week's reading beside it (`prior_verdict`; None = no prior), the ingest health, the universe and
+    watchlist, and the pre-arm / last-trigger clauses when they exist. Printed only the week the verdict
+    moved (the caller decides); the History / Categories lines are in the full text."""
+    mode = "shadow mode" if crypto.get("shadow_mode") else "LIVE"
+    wl_unresolved = crypto.get("watchlist_unresolved") or 0
+    wl_marker = "all resolved" if wl_unresolved == 0 else f"{wl_unresolved} unresolved ⚠"
+    parts = [f"{crypto.get('ingest_attempts_7d') or 0}/7 ingests, {crypto.get('ingest_errors_7d') or 0} errors",
+             f"{crypto.get('universe_size') or 0} coins, {crypto.get('watchlist_total') or 0} watchlist {wl_marker}"]
+    if not (crypto.get("categories_pairs") or 0):
+        parts.append("no category pairs ⚠")
+    if (crypto.get("pre_arm_7d") or 0) > 0:
+        parts.append(f"stables in but alts not rotating {crypto['pre_arm_7d']} of the last 7 days")
+    if crypto.get("last_trigger_at"):
+        parts.append(f"last trigger fired {str(crypto['last_trigger_at'])[:10]}")
+    last = f" (last week: {_crypto_words(prior_verdict, last_week=True)})" if prior_verdict else ""
+    return f"🪙 *Crypto RS — {mode}*: {_crypto_words(crypto.get('verdict'))}{last} · " + " · ".join(parts)
+
+
 def _finalize_bucket(b: dict) -> dict:
     total = b["total"]
     out = {"total": total, "green": b["green"]}
@@ -3003,10 +4068,15 @@ async def _synthesize(metrics: dict, prior: dict | None) -> str:
     client = make_async_anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
     prior_block = ""
     if prior:
+        # #700: `metrics["report"]` is last week's RENDERED text (full_md / fold_md / head_md, ~15 KB) -
+        # it is not a metric, and this prompt has truncated three times. Everything else rides as before.
+        prior_metrics = prior.get("metrics")
+        if isinstance(prior_metrics, dict):
+            prior_metrics = {k: v for k, v in prior_metrics.items() if k != "report"}
         prior_block = (
             f"\n\nPREVIOUS REVIEW ({prior['review_date']}, window={prior['window_days']}d):\n"
             f"Anomalies flagged last week: {prior.get('suggestions')}\n"
-            f"Metrics last week: {prior.get('metrics')}\n"
+            f"Metrics last week: {prior_metrics}\n"
         )
     user_prompt = (
         f"THIS WEEK'S METRICS (window={metrics['window']['days']}d, "

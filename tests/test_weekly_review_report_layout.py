@@ -267,7 +267,7 @@ def test_early_window_drift_and_band_lines_carry_the_era_clause(monkeypatch):
     verdict = ksb.BandVerdict(band="HOLD", action="No change", reasons=["within bands"],
                               n_trades=6, trailing_20=-0.08, cum_r=-0.5)
     monkeypatch.setattr(ksb, "assess_bands", AsyncMock(return_value=(_inputs(rs, meta), verdict, None)))
-    block, band, action = asyncio.run(sr._band_section(TODAY))
+    block, band, action, _snap = asyncio.run(sr._band_section(TODAY))      # #700: a 4th element, the snapshot
     assert band == "HOLD" and "*Kill/scale band: HOLD*" in block
     assert "rule eras: under the current rules (since 2026-09-06): 2 trades · older rules: 4 trades" in block
 
@@ -295,6 +295,10 @@ def _assemble(monkeypatch, **overrides):
     theme_rows = overrides.pop("theme_rows", [])
     spend_callers = overrides.pop("spend_callers", [])
     closed_pnl = overrides.pop("closed_pnl", [])
+    # #700: the narrative and the prior review are inputs too (the noise tests drive them); the
+    # defaults are what every pre-#700 caller already got.
+    summary = overrides.pop("summary", "✅ *Working*\n• the narrator's bullets")
+    prior = overrides.pop("prior", None)
     metrics.update(overrides)
     monkeypatch.setattr(sr, "get_engine_vs_judge_theme_rows", AsyncMock(return_value=theme_rows))
     monkeypatch.setattr(sr, "get_judge_graded_alert_flags", AsyncMock(return_value=_flags(theme_rows)))
@@ -310,8 +314,8 @@ def _assemble(monkeypatch, **overrides):
     monkeypatch.setattr(ksb, "assemble_band_inputs", AsyncMock(return_value=_inputs([-1.0] * 5, _meta(5))))
     monkeypatch.setattr(rr, "run_replay_regression",
                         AsyncMock(return_value={"lines": ["", "*🔁 Replay-regression* (live R-dist)", "  live (n=5)"]}))
-    return asyncio.run(sr._assemble_report(metrics, "✅ *Working*\n• the narrator's bullets",
-                                           TODAY - timedelta(days=7), TODAY))
+    return asyncio.run(sr._assemble_report(metrics, summary, TODAY - timedelta(days=7), TODAY,
+                                           **({"prior": prior} if prior is not None else {})))
 
 
 def test_a_quiet_week_says_so_and_names_what_was_checked(monkeypatch):
