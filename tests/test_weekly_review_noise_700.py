@@ -268,11 +268,13 @@ def test_narrative_anomalies_settled_by_the_record_become_a_count_and_say_why():
     forced True in `verify_narrative_anomalies` - #2 and #3 vanished into the settled count."""
     head, fold, meta = _render()
     me = [l for l in meta["needs_me_lines"] if "observation" in l]
-    assert len(me) == 1 and me[0].startswith("3 observations from this week's narrative to verify Monday")
+    assert len(me) == 1 and me[0].startswith("3 observations from this week's narrative for me to check Monday")
     assert "already settled" not in me[0]
     assert meta["needs_me"] == 2                                        # the ripe review + this one line
-    assert "⚠️ *To verify (mine" in fold
-    assert all(b[:60] in fold for b in BULLETS)                         # all three stay in front of him
+    # #700 follow-up (his rule, 10-11): unverified observations are mine — only the count reaches him
+    assert "⚠️ *To verify (mine" not in fold
+    assert not any(b[:60] in fold for b in BULLETS)
+    assert "kept in the stored full text" in me[0]
     assert "settled by the record" not in fold
     assert "Anomalies to verify" not in fold and "UNVERIFIED" not in fold   # no unverified claim as a finding
     assert sr._extract_anomalies(SUMMARY) == BULLETS                    # next week's 🔁 check is unchanged
@@ -280,12 +282,10 @@ def test_narrative_anomalies_settled_by_the_record_become_a_count_and_say_why():
     # positive control: the settle path still works on a bullet the ledger CAN speak for
     head, fold, meta = _render(summary=SUMMARY.replace(BULLETS[0], CLEAN_BULLET))
     me = [l for l in meta["needs_me_lines"] if "observation" in l]
-    assert len(me) == 1 and me[0].startswith("2 observations from this week's narrative to verify Monday")
+    assert len(me) == 1 and me[0].startswith("2 observations from this week's narrative for me to check Monday")
     assert "1 more already settled by the record" in me[0]
-    assert BULLETS[1][:60] in fold and BULLETS[2][:60] in fold
+    assert BULLETS[1][:60] not in fold and BULLETS[2][:60] not in fold
     assert CLEAN_BULLET[:40] not in fold                                # the settled bullet is not re-printed
-    settled = [l for l in _lines(fold) if "settled by the record: ep_candidate_parse_error ×38" in l]
-    assert len(settled) == 1 and "every row quiet since Wed 10-07" in settled[0]
     assert any(s["what"].startswith("narrative anomaly:") and "settled by the record" in s["rule"]
                for s in meta["suppressed"])
 
@@ -369,17 +369,15 @@ def test_an_l1_or_l2_anomaly_in_a_bullet_keeps_it_mine_next_to_a_quiet_error_typ
     assert prose["settled"]
 
 
-def test_an_all_settled_narrative_block_has_its_own_header():
-    """When every ⚠️ bullet settles there is no 'To verify' heading, so the bare 'settled by the record'
-    lines used to read as part of the ✅ Working block above them. MUTATION M18: the `elif settled:` header
-    branch removed - the lines came back headerless."""
+def test_an_all_settled_narrative_block_prints_nothing_but_keeps_its_record():
+    """When every ⚠️ bullet settles, nothing reaches the message (no count, no block) — the settle is
+    recorded in `suppressed` with its reason, so the full text still shows what was dropped and why."""
     only = "\n".join(["⚠️ *Anomalies to verify* — UNVERIFIED; do NOT act before checking ground truth",
                       "• " + CLEAN_BULLET])
     block, me_line, sup = sr._anomaly_block(only, _metrics())
-    lines = _lines(block)
-    assert lines[0] == "⚠️ *Narrative warnings — all settled by the record*"
-    assert lines[1].startswith("• settled by the record: ep_candidate_parse_error ×38")
+    assert block == ""
     assert me_line is None and len(sup) == 1
+    assert "settled by the record" in sup[0]["rule"]
 
 
 # -- 9. drift and docs drift re-rendered from metrics ---------------------------------------------

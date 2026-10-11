@@ -961,23 +961,18 @@ def _anomaly_block(text: str, metrics: dict) -> tuple[str, str | None, list[dict
     verdicts = verify_narrative_anomalies(items, metrics)
     settled = [v for v in verdicts if v["settled"]]
     mine = [v for v in verdicts if not v["settled"]]
-    lines: list[str] = []
-    if mine:
-        lines.append("⚠️ *To verify (mine, Monday)* — observations from the narrative, not findings")
-        lines += [f"• {v['text']}" for v in mine]
-    elif settled:
-        # without a header the settled lines would read as part of the ✅ Working block above them
-        lines.append("⚠️ *Narrative warnings — all settled by the record*")
-    lines += [f"• settled by the record: {v['why']} (errors above)" for v in settled]
+    # #700 (his rule 2026-10-11, "remove noise as much as possible"): an unverified observation is MINE to
+    # check, not his to read — the message carries only the count; the bullets stay in the stored full text
+    # (`metrics.report.full_md`), which is where I read them before reporting a confirmed finding to him.
     me_line = None
     if mine:
         me_line = (f"{len(mine)} observation{'s' if len(mine) != 1 else ''} from this week's narrative "
-                   f"to verify Monday"
+                   f"for me to check Monday"
                    + (f", {len(settled)} more already settled by the record" if settled else "")
-                   + " — ⚠️ block below")
+                   + " — kept in the stored full text, not this message")
     sup = [{"what": f"narrative anomaly: {v['text'][:60]}", "rule": f"settled by the record: {v['why']}"}
            for v in settled]
-    return "\n".join(lines), me_line, sup
+    return "", me_line, sup
 
 
 def _narrative_message(summary: str, metrics: dict) -> tuple[list[str], str | None, list[dict]]:
