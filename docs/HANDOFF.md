@@ -1421,6 +1421,18 @@ stagger cards, one at a time.
 
 **Standing:** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
+## 2026-10-10 (Sat) CLOSE — 🔴 RESUME HERE. Supersedes the 10-09 close below.
+
+**Board 39 → 33.** Closed #359 (keep $500M), #331→#519, #529→#491, #307/#309→#594, #308 (superseded), #414 (shelved), #559 (keep both real-time switches on). Filed #697 (HTF detection fixes, 10-17/18), #698 (+8R sells 1 of 2 shares), #699 (paper alerts to their own chat). Server = main after the ~00:15 ET Sun deploy (both + execution, preflight green).
+
+**Shipped + deployed Sat:** #687 expired-sale restore fix + Monday paper test armed (host loop pid 1276060, 08:25 ET) · #694 · #624 paper lane (toggles mirror live) · #692 · #655 fold · #486 + #313 Sunday-review sections · #313 caller name required · #598 short-base display (✅ /flags KOD) · #312 Step A (09:28) · #698 (✅ live dry run) · #210 fix card (10:10 ET job, new mi_ep_grade_corpus) · simplify pass (37 fixes, 4 of 5 new source pins → behaviour tests) · depth-exit stamp now covers magna53_smallcap (inert: 0 toggle rows).
+
+**His rulings Sat:** #594 supply read = dead end as a filter, labelling outcome-blind from sample #4 · #698 sell 1 of 2 ("ship it") · #559 keep switches on · depth exit covers the paper lane · paper depth sale = **option (c)** (paper-only DAY market order queued 19:01 ET; paper never fills opg) — **build Sunday** · #699 paper alerts → group "Apollo Paper" (chat id -5382801675, bot confirmed in it) — **build Sunday**.
+
+**Sun 10-11:** 08:00 ET weekly review → verify #486 (30d n=14, 11 of 14) + #313 ($45.33+, "$+17 over 6 closed trades (3 winners)"), re-run `_wk1010_486/_313 run_probe.py render`, close #486 (verify-due 10-11). Build (c) + #699 (Sonnet + Opus review), set `TELEGRAM_PAPER_CHAT_ID` on the server, deploy both then execution, re-run #687 `expiry_path_test.py status` + `dryrun_two_share.py` + `dryrun_stamp.py`.
+
+**Mon 10-12:** 08:25 ET #687 paper test → its page should land in Apollo Paper → his go-live yes → noon ET he runs BOTH depth rows (live + paper; SQL in magna53_ep.md 2026-10-10). 09:28 #312 row; 10:10 #210 run; #313 judge rows; #694/#624/#692/#655/#505/#693/#695/#491 verifies. First suspects if the shortlist order or lane rows look off: the cleanup's `_last_night_adv_map` / `_grade_admitted` lane sink. After verifies: #312 → event-gated tag + dated ETA; #313's re-date to 10-27 goes to him as one line.
+
 ## 2026-10-09 (Fri) CLOSE — 🔴 RESUME HERE. Supersedes the 10-07 close below.
 
 **Board 40 → 39** — closed #696 (/trades shows R; his Telegram reply 10-09). No new tasks. Server = 1bbce533 (Fri noon: both + execution); main = 7e49b6ab — **Saturday's deploy ships the whole delta** listed in `docs/roadmap/weekend_build_cards_2026-10-10.md` § "Also riding Saturday's deploy" (#693 validator thinking on, #505 keyword stems + closeness parent pick, #655 (a) sector-cap keep + empty-shell fix, the simplify edits to /trades + the dead-column sweep — re-check both after deploy).
