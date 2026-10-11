@@ -2147,3 +2147,13 @@ ACCEPTED-PARTIAL: he shelved the entry-mechanics proposal on 2026-09-06 ("got it
 EVIDENCE:
 - **Not met — closed as shelved on his "Ok" 2026-10-10 to the recommendation table**.
 - The one live sub-item, the morning stop refresh, is verified: the 10-09 09:35 `stop_refresh_ran` row reads 'same-day excluded 1 (HUM)' and 'placed 1 (PEP)' (`scripts/probes/_sweep_1010/q5_1009.out`); the code is in the running execution image (`q7_images.out`).
+
+## #559 — real-time admission re-cut under the current exits: keep both switches on (2026-10-10)
+
+BAR: "re-run the same cut over the post-#548 window, report mean R for (a) all in-window crossers (b) the gate-passing subset (c) pre-open HIGH with its updated n, **plus how many times the 2R rule actually fired** — a zero-firing window is a valid answer meaning exits did not change and HOLD stands. Then re-state flip / hold / pre-open-only to the operator."
+ACCEPTED-PARTIAL: the "how many times the 2R rule actually fired" clause cannot be answered as written — the 2R intraday partial was retired on 2026-09-06 (exit era D: +8R partial, breakeven armed at +3R; `rule_eras.py`), so the re-cut reports the CURRENT exits' firings instead (+8R partial filled on 1 of 8 real fills, the +8R price reached by 2; breakeven armed 3 times). Measuring the retired rule would mix exit eras, which is what the 09-15 population check stopped.
+
+EVIDENCE:
+- **The cut, exit era D only:** `docs/analysis/559_era_recut_2026-10-10.md` (Fable read, Opus adversarial verify, 11 corrections applied; harness re-run byte-identical). (a) in-window real-time crossers: -0.33R over 39 settled of 75; (b) the subset that reached the grade: -0.42R over 19; (c) pre-open HIGH: 12 (7 would have alerted with both switches off); real-time-only pre-open catches 5, 3 closed, -1.6R.
+- **Re-stated to him and ruled:** both switches were already ON (flipped 08-25 / 08-27 on his word), so the options were keep / revert / narrow; recommendation "keep both on, no change" — his "go with rec" 2026-10-10.
+- **Not lost:** the late-October reporting-season re-read of the latency and slot-dilution watch items is cadence review `rt_admission_reporting_season_reread` (due 2026-10-30); registry review `rt_admission_recut_post_2r_exits` marked done; the side finding (the +8R third sells nothing on 1–2 share positions) became #698 on his ruling the same day.

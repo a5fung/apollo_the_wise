@@ -12714,7 +12714,17 @@ reviews:
       narrow pre-open-only admission option he declined on 2026-08-10 back with real n.
       ADMISSION IS ENTRY DISCIPLINE = THE LINE — this review produces a recommendation only,
       never a flip.
-    status: pending
+    status: done
+    closed_on: 2026-10-10
+    outcome: >-
+      RAN 2026-10-10 under exit era D only (docs/analysis/559_era_recut_2026-10-10.md, Fable read, Opus
+      verify, corrections applied): both switches were already ON (flipped 08-25 / 08-27 on his word), so
+      the question became keep or revert. In-window real-time crossers still lose bought wholesale
+      (-0.33R over 39 settled); the subset that reached the grade -0.42R over 19; the scan turns nearly
+      all away (41 of 75 at mechanical gates, 28 at the grade, 5 alerted); the switches added one live
+      trade for certain (PENG, open +0.4R) and at most two (CEG, closed -1.0R). His ruling 2026-10-10
+      ("go with rec"): KEEP BOTH ON, no change. #559 closed. The late-October reporting-season re-read
+      of the watch items is rt_admission_reporting_season_reread.
     resolution_2026_09_15: |
       RAN THE POPULATION DECLARATION FIRST, AND IT KILLED THE RUN. The predicate read 14/14 READY,
       so this was next in line. Before the first measuring query, three checks - all three failed.
@@ -12751,6 +12761,36 @@ reviews:
     added_on: 2026-08-10
     cross_refs: ["task #559", "task #548", "task #490 (closed 2026-08-03)"]
 
+  - review_id: rt_admission_reporting_season_reread
+    kind: cadence
+    title: "Real-time admission watch items at reporting-season volume (carried from #559, closed 2026-10-10)"
+    question: |
+      Both real-time admission switches stay ON (his ruling 2026-10-10). The 10-10 re-cut ran on a quiet
+      stretch (28.5 raw real-time events a day vs 72.5 in the 08-10 window). At late-October reporting-season
+      volume: does the 09:45 latency budget hold, and do the extra real-time names dilute the 5 entry slots
+      (the 08-19 P9 concern the re-cut did not answer)?
+    predicate_sql: null
+    threshold: 0
+    earliest_review_date: 2026-10-30
+    discriminates_on: [mi_audit_log.event_type, mi_ep_scan_log.reject_stage, mi_live_trades.skip_reason]
+    action_when_ready: |
+      Re-run scripts/probes/_wk1010_559/ (s1_population.py, s1b_gates.py, s2_replay.py — same method,
+      exit era D only, any later exit change is a new era and never pooled) over alert days 2026-10-12 ->
+      2026-10-30, against the PEAK reporting days. Report: real-time admits per day; scan-tick time from
+      first real-time read to grade (the 09:45 budget); entry slots taken by real-time-only names vs the
+      names they displaced (window:out_of_orb / max-positions skips); in-window class mean R and tail.
+      Keep/revert of either switch is admission = THE LINE: recommendation only, to him.
+    can_fire:
+      predicate_runs: "N/A by design - `kind: cadence`, predicate_sql is null; it becomes due 2026-10-30 and cannot read zero."
+      nonzero_possible: "Both switches are ON and write ep_rt_admit / ep_rt_floor_flip_up / universe-catch events every scan day (684 raw events over 24 days to 10-09)."
+      lane_live: "MAGNA53 EP is live; the switches act on its admission every scan tick."
+      threshold_vs_observed: "0 - cadence entry, the date is the gate."
+      era_scoped: "Exit era D (rule_eras.exit_era_label); if #687's depth exit goes live 10-12 the read reports era D and the depth-exit era separately, never pooled."
+      population_actionable: "Same population definition as the 10-10 re-cut (first real-time read, deduped ticker-days), so the two reads compare."
+      instrument_trusted: "The 10-10 harness reproduced byte-identically under Opus verification; 3 of 5 real closed trades replay within 0.25R."
+    status: pending
+    added_on: 2026-10-10
+    cross_refs: ["#559"]
   - review_id: theme_assignment_steady_state_cost
     resolution_2026_10_05: >-
       RAN 2026-10-05 (read-only, scripts/probes/_1005/theme_assignment_cost_review.py, output .out beside it).

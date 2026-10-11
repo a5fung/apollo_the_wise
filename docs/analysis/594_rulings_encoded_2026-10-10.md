@@ -11,7 +11,7 @@ New numbers come from `scripts/probes/_594_rescore/fix_checks_out.txt`.*
 
 ## The answer
 
-- **The ten new rulings added no catches (0 of 4 new bad charts), and the supply read still does not beat the extension rule: it catches 5 of his 25 condemned charts against the live gate's 7, and of the 10 bad charts the system alerted HIGH it catches 0. Recommendation: dead end as a filter; keep labelling, outcome-blind from sample #4 — his 45 verdicts were given with the 20-day result on screen.**
+- **The ten new rulings added no catches (0 of 4 new bad charts), and the supply read still does not beat the extension rule: it catches 5 of his 25 condemned charts against the live gate's 7, and of the 10 bad charts the system alerted HIGH it catches 0. Recommendation: dead end as a filter; keep labelling, outcome-blind from sample #4 — his 45 verdicts were given with a forward result on screen (5-day in session 1, 20-day after).**
 - **No rule scored here loses a real EP or a chart he approved** — not the live extension gate, not the 20-session run-up, not the supply read: 0 of 31 real EPs, 0 of 14 approved dates, under all four. (A fifth variant, the live gate's own formula read over 20 sessions at today's cap of 50, would lose 2 of 31 and 2 of 14 — facts in "The one fork the numbers touch".)
 - **They also catch little of what he condemned: 5 to 9 of 25** (supply read 5, live gate 7, 20-session run-up 9), so coverage fell again, 43% → 36% for the run-up rule the last two re-scores used.
 - **The chart read (the supply ladder) is worse than the extension rule, and adds nothing the run-up number alone does not already see.** Its count of 5 moves to 6 if one stored series (QH) is repaired, still under the live gate's 7 (see "Four stored series").

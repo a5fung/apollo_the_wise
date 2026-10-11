@@ -215,6 +215,10 @@ CHART_RULINGS: list[ChartRuling] = [
     # we scored BELOW the bar that then ran, he approves only RNG (+39%) and OMER (+70%)
     # and calls ABVX (+60%), CGEM (+39%) and AVAH (+37%) garbage. So his eye is strong at
     # refusing losers and mixed at catching winners — exactly the asymmetry RULE 0 assumes.
+    # ⚠ 2026-10-10 CAVEAT (docs/analysis/594_rulings_encoded_2026-10-10.md): every verdict in
+    # sessions 1-4 was given with a forward result ON SCREEN (5-day here, 20-day after), so
+    # "strong at refusing losers" is not evidence about his eye. Pages are outcome-blind from
+    # sample #4 (his ruling 2026-10-10).
     # ══════════════════════════════════════════════════════════════════════════════════
     ChartRuling(
         ticker="NVTX", alert_date="2026-06-03", verdict=BAD_CHART,
