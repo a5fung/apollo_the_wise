@@ -1407,7 +1407,7 @@ stagger cards, one at a time.
 
 **Tue 10-06 night checks:** #655 B rows all `prior_members` < 3 + G4 ≤ 10%; #543 sweep log 'K suspect', no page; #580 / #693 night 2; #598 PURR not re-announced. Evidence for all of today: `scripts/probes/_1005/`.
 
-**Standing:** Fable at 93% for the week — Opus/Sonnet only. Saturday 10-10 build slot: #694 test then build, #695, #693 replay, #655 option (a).
+**Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable at 93% for the week — Opus/Sonnet only. Saturday 10-10 build slot: #694 test then build, #695, #693 replay, #655 option (a).
 
 ## 2026-10-06 (Tue) CLOSE — 🔴 RESUME HERE. Supersedes the 10-05 close above.
 
@@ -1419,7 +1419,7 @@ stagger cards, one at a time.
 
 **Waiting on him:** #658 15-day read — P1b missed (tape removed 119 label-matched members vs added 45); keep, or sample 20 removals first.
 
-**Standing:** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
+**Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
 ## 2026-10-10 (Sat) CLOSE — 🔴 RESUME HERE. Supersedes the 10-09 close below.
 
@@ -1428,6 +1428,8 @@ stagger cards, one at a time.
 **Shipped + deployed Sat:** #687 expired-sale restore fix + Monday paper test armed (host loop pid 1276060, 08:25 ET) · #694 · #624 paper lane (toggles mirror live) · #692 · #655 fold · #486 + #313 Sunday-review sections · #313 caller name required · #598 short-base display (✅ /flags KOD) · #312 Step A (09:28) · #698 (✅ live dry run) · #210 fix card (10:10 ET job, new mi_ep_grade_corpus) · simplify pass (37 fixes, 4 of 5 new source pins → behaviour tests) · depth-exit stamp now covers magna53_smallcap (inert: 0 toggle rows).
 
 **His rulings Sat:** #594 supply read = dead end as a filter, labelling outcome-blind from sample #4 · #698 sell 1 of 2 ("ship it") · #559 keep switches on · depth exit covers the paper lane · paper depth sale = **option (c)** (paper-only DAY market order queued 19:01 ET; paper never fills opg) — **build Sunday** · #699 paper alerts → group "Apollo Paper" (chat id -5382801675, bot confirmed in it) — **build Sunday**.
+
+**Standing:** model capacity is back to full (his word 2026-10-10) — Fable available for hard design/analysis; explicit model on every spawn.
 
 **Sun 10-11:** 08:00 ET weekly review → verify #486 (30d n=14, 11 of 14) + #313 ($45.33+, "$+17 over 6 closed trades (3 winners)"), re-run `_wk1010_486/_313 run_probe.py render`, close #486 (verify-due 10-11). Build (c) + #699 (Sonnet + Opus review), set `TELEGRAM_PAPER_CHAT_ID` on the server, deploy both then execution, re-run #687 `expiry_path_test.py status` + `dryrun_two_share.py` + `dryrun_stamp.py`.
 
