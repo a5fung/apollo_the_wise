@@ -39,8 +39,11 @@ GH and HPE: bars pulled 2026-10-11 (#697 item 6), 2025-07-28 → 2026-09-04, sam
   - `pointer`      — he pointed a name at the HTF / delayed-entry family without calling a flag (HPE).
                      Recorded, never scored: its verdict is pinned as not-a-hit.
   - `negative`     — his "this is not an HTF" (NCI, ATAI, OUST, SHAZ, REPL). Never a hit. A negative whose
-                     raw function output is still actionable (ATAI) must name the layer above the
-                     function that closes it (`closed_by`).
+                     raw function output is actionable on an ASSERTED date (ATAI) must name the layer above
+                     the function that closes it (`closed_by`) — a recorded leak, not a must-not-miss.
+                     ATAI is not the only negative the raw function scores actionable: REPL replays
+                     TIGHTENING 09-01 / COILED 09-02, two sessions before his 09-04 sign-off, on dates its
+                     assertions do not cover — recorded in its note, flagged in the scope doc §2d.
 `quote_file` points at the repo doc that holds `trader_read` verbatim; it is REQUIRED for
 `consolidation` / `pointer` (the new kinds — "do not invent labels") and checked by the suite.
 `replay_from` overrides the default 2026-06-15 replay start for members whose window is earlier;
@@ -51,6 +54,9 @@ HOW TO ADD A MEMBER — one line: append an `HTFLabelledMember(...)`, and append
 ticker's bars to the .psv (same pull SQL as the grid replay; see
 `scripts/probes/_592_610_htf_grid_replay.py`). Check what the detector said on the label
 date FIRST (`mi_flag_candidates`) and record THAT as `expected` with the reason.
+⚠ The bars must run through the NYSE session BEFORE `label_date` (a htf / consolidation member is judged
+on the 5 sessions before it): a label past the last bar fails the suite with "append bars through <date>
+to htf_labelled_bars.psv" — it never silently judges an older window.
 """
 from __future__ import annotations
 
@@ -242,7 +248,14 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
               "the operator signed off on (his words were about the removed rows), so his \"not HTF "
               "at all\" verdict should NOT be read as covering it — it is a genuinely new admission "
               "the fix creates that no one has judged. Left unasserted deliberately; flagged for his "
-              "eyeball, not inferred either way."),
+              "eyeball, not inferred either way. "
+              "⚠ SAME CLASS, NEWER (replayed 2026-10-11, #697 item 6 review): the shipped detector also "
+              "reads REPL TIGHTENING on 09-01 and COILED on 09-02 (pivot 08-12 $15.68), two sessions BEFORE "
+              "his 09-04 sign-off, then `base_age_0` / `base_age_1` on 09-03 / 09-04 once the pivot "
+              "re-anchors to 09-02 $16.33. So REPL — like ATAI — is a negative whose raw function output is actionable on dates "
+              "this member does not assert; nothing here claims a layer above the function closes it. "
+              "Flagged for his eyeball in docs/analysis/htf_scope_2026-10-10.md §2d; not asserted, not "
+              "inferred either way."),
     ),
     # ── #697 item 6 (2026-10-11): the June consolidation examples + the HPE pointer ─────────────
     # Verdicts below are the SHIPPED detector's, replayed from stored bars 2026-10-11 — NOT the stored
@@ -318,9 +331,11 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
         expected="rejected:base_age_",
         replay_from=date(2026, 5, 18),
         note=("POINTER — RECORDED, NOT SCORED. He pointed an extended EP day at the HTF / delayed-entry "
-              "families; he did not say a flag existed on 06-02, and one cannot: the gap bar IS the pivot "
-              "(the pivot moves to 06-02's $64.25 high only on 06-03), so the replay reads `base_age_0` on "
-              "the day and the suite pins exactly that — a pointer is never asserted as a hit. What the "
+              "families; he did not say a flag existed on 06-02, and one cannot: a gap day is not yet a "
+              "base — the pivot re-anchors to each new high (the replay reads pivot 06-01 $47.97 on the gap "
+              "day itself, and the gap bar's own 06-02 $64.25 high only from 06-03), so it reads "
+              "`base_age_0` on the day and the suite pins exactly that — a pointer is never asserted as "
+              "a hit. What the "
               "shipped detector says afterwards (not asserted): WATCH 06-08 (169% run-up, 3-day base, close "
               "22% under the pivot — a gap that had already failed), INVALIDATED 06-09/06-10, `flag_low_` "
               "06-11 → 06-24 (low $44.74 under 75% of the $64.25 pole), INVALIDATED again 06-25/06-26. The "

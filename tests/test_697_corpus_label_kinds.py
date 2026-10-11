@@ -14,7 +14,8 @@ home at all (they were "stated by inspection of the bars, not replayed" — htf_
      each violation of the contract is constructed and must raise.
 
 What would make this file red on the pre-change tree: `label_kind` / `known_miss_gate` / `closed_by` /
-`quote_file` do not exist on origin/main's fixture (AttributeError at import), and GH / HPE have no bars.
+`quote_file` do not exist on origin/main's fixture (`ImportError: cannot import name 'LABEL_KINDS'` at
+import), and GH / HPE have no bars.
 """
 from __future__ import annotations
 
@@ -36,6 +37,7 @@ from tests.test_htf_labelled_corpus import (
     member_id,
     pushable_before,
     replay_member,
+    sessions_before,
 )
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -194,18 +196,55 @@ def test_the_pointer_is_never_scored_as_a_hit(replays):
     assert not pushable_before(hpe.label_date, res)
 
 
+# ── 3b. the pre-trade window is anchored to the NYSE calendar, not to "the last 5 rows we have" ──
+
+def test_sessions_before_skips_weekends_and_holidays():
+    # Fri 07-10: 07-03 is the observed Independence Day holiday, so the 5th session back is Thu 07-02
+    assert sessions_before(date(2026, 7, 10)) == [date(2026, 7, 2), date(2026, 7, 6), date(2026, 7, 7),
+                                                  date(2026, 7, 8), date(2026, 7, 9)]
+    # a Saturday label (GH / HNGE-June's worksheet-review date) rolls back to Friday
+    assert sessions_before(date(2026, 6, 27))[-1] == date(2026, 6, 26)
+    assert len(sessions_before(date(2026, 6, 27), 5)) == 5
+
+
+def test_a_label_past_the_real_bars_fails_loudly():
+    """The measured case: a member labelled 09-24 on bars that end 09-17 (MRNA) or 09-04 (CDNA) used to
+    be judged on 09-11 .. 09-17 / 08-31 .. 09-04 and PASS. The next fixture additions the scope doc names
+    are exactly these two; a stale declaration must ask for the bars, not read as a correct one.
+    The replay is the real one for the LATE member (`replay_member` runs through the label date, so it ends
+    at the last bar the fixture has)."""
+    bars = _load_bars()
+    for key in (("MRNA", date(2026, 9, 17)), ("CDNA", date(2026, 8, 19))):
+        late = dataclasses.replace(_m(*key), label_date=date(2026, 9, 24))
+        res = replay_member(late, bars)
+        assert max(res) == bars[late.ticker][-1]["trade_date"] < late.label_date
+        with pytest.raises(AssertionError, match=r"append bars through 2026-09-23 to htf_labelled_bars\.psv"):
+            check_member(late, res)
+        with pytest.raises(AssertionError, match="append bars through"):
+            pushable_before(late.label_date, res)
+
+
+def test_every_scored_member_has_a_complete_window(replays):
+    """Not only the positives (check_member already raises for those): the window before EVERY member's
+    label date is the 5 sessions immediately before it, so a pointer / negative promoted to a scored kind
+    later cannot start life on a stale window."""
+    for m in HTF_LABELLED:
+        got = sorted(d for d in replays[member_id(m)] if d < m.label_date)[-_PRE_TRADE_SESSIONS:]
+        assert got == sessions_before(m.label_date), (m.ticker, m.label_date, got)
+
+
 # ── 4. the checker bites — each contract violation is constructed and must raise ─────────────
 
 _LABEL = date(2026, 7, 10)
 
 
 def _synthetic(prior_stages, on_label=("unqualified", "runup_50%_below_90%")):
-    """res for a member labelled `_LABEL`: one scan row per calendar day before it (oldest first),
-    plus the label day itself."""
-    n = len(prior_stages)
+    """res for a member labelled `_LABEL`: one scan row per NYSE SESSION before it (oldest first),
+    plus the label day itself. Real sessions, not calendar days: the checker demands that the window be
+    exactly the sessions immediately before the label (07-10's are 07-02, 07-06 … 07-09 — 07-03 is the
+    observed holiday), so a weekend row would be a hole the checker rightly refuses."""
     res = {}
-    for i, stage in enumerate(prior_stages):
-        d = _LABEL - timedelta(days=n - i)
+    for d, stage in zip(sessions_before(_LABEL, len(prior_stages)), prior_stages):
         res[d] = {"stage": stage, "reason": f"{stage.lower()}_row", "runup_pct": 0.5}
     res[_LABEL] = {"stage": on_label[0], "reason": on_label[1], "runup_pct": 0.5}
     return res
@@ -213,6 +252,16 @@ def _synthetic(prior_stages, on_label=("unqualified", "runup_50%_below_90%")):
 
 def _member(base, **kw):
     return dataclasses.replace(base, label_date=_LABEL, assert_dates=(_LABEL,), replay_from=None, **kw)
+
+
+def _past_the_bars(member):
+    """The same member labelled 4 days AFTER the last row of its replay (07-10 → Tue 07-14, whose
+    previous session, Mon 07-13, has no row) with its assert date still inside the rows."""
+    return dataclasses.replace(member, label_date=_LABEL + timedelta(days=4))
+
+
+def _without(res, *days):
+    return {d: r for d, r in res.items() if d not in days}
 
 
 _CDNA = _m("CDNA", date(2026, 8, 19))
@@ -277,6 +326,22 @@ def test_the_checker_passes_a_well_formed_member_at_the_window_edge():
     ("a caught htf that still carries a miss declaration",
      _member(_CDNA, expected="actionable", known_miss_gate="runup_"),
      _synthetic(["TIGHTENING"] + ["unqualified"] * 4, on_label=("WATCH", "runup_95%")), "not both"),
+    # ── the window must reach the label date (review finding: a label past the last bar was judged on an
+    # OLDER window and read the same as the correct one) ──────────────────────────────────────────────
+    ("a declared miss whose label falls after the last bar would pass on an older window",
+     _past_the_bars(_member(_HNGE_AUG, expected="rejected:runup_", known_miss_gate="runup_")),
+     _synthetic(_QUIET), "append bars through 2026-07-13"),
+    ("an htf 'caught' only on a window that ended before its label",
+     _past_the_bars(_member(_CDNA, expected="actionable", known_miss_gate="")),
+     _synthetic(["unqualified"] * 4 + ["TIGHTENING"], on_label=("WATCH", "runup_95%")),
+     "append bars through 2026-07-13"),
+    ("a hole inside the 5-session window",
+     _member(_CDNA, expected="actionable", known_miss_gate=""),
+     _without(_synthetic(["TIGHTENING"] + ["unqualified"] * 4, on_label=("WATCH", "runup_95%")),
+              date(2026, 7, 7)), "not complete"),
+    ("a replay that starts too late to fill the window",
+     _member(_GH, expected="rejected:runup_", known_miss_gate="runup_"),
+     _synthetic(_QUIET[:3]), "not complete"),
 ])
 def test_the_checker_raises_on_a_wrong_member(label, member, res, fragment):
     with pytest.raises(AssertionError) as exc:

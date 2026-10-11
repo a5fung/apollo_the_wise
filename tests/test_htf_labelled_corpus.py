@@ -10,7 +10,9 @@ suite asserts BY KIND (`check_member`, applied to the replay of every member):
   - htf / consolidation (positives): a pushable stage (TIGHTENING or better) inside the
     `_PRE_TRADE_SESSIONS` scan sessions strictly before `label_date`, OR a declared KNOWN MISS that
     names the gate (`known_miss_gate` == the recorded rejection prefix) — and a declared miss the
-    detector now catches FAILS, so a closed miss cannot stay on the books.
+    detector now catches FAILS, so a closed miss cannot stay on the books. The window itself must be
+    COMPLETE (`pre_trade_window`): exactly the NYSE sessions immediately before `label_date`, so a label
+    past the last bar fails with "append bars through <date>" instead of judging an older window.
   - pointer: recorded, never scored — pinned as not-a-hit.
   - negative: never a hit; a negative whose raw function output is still actionable must name the
     layer above the function that closes it (`closed_by`).
@@ -22,6 +24,7 @@ from __future__ import annotations
 import bisect
 from collections import defaultdict
 from datetime import date, timedelta
+from functools import lru_cache
 from pathlib import Path
 
 import pytest
@@ -101,13 +104,60 @@ def bars():
     return b
 
 
+@lru_cache(maxsize=1)
+def _nyse():
+    # Imported directly (NOT via `trading_calendar.get_market_status`, which fails OPEN): a currency
+    # check that passes when the calendar is missing is the hole this guard exists to close.
+    # `exchange-calendars` is in requirements/base.txt, so a missing library should go red.
+    import exchange_calendars as xcals
+    return xcals.get_calendar("XNYS")
+
+
+def sessions_before(label_date: date, sessions: int = _PRE_TRADE_SESSIONS) -> list[date]:
+    """The `sessions` NYSE sessions STRICTLY before `label_date`, oldest first — i.e. the window
+    `pushable_before` is supposed to judge. A weekend / holiday label rolls back to the last session."""
+    import pandas as pd
+    cal, d, out = _nyse(), label_date - timedelta(days=1), []
+    while len(out) < sessions:
+        s = cal.date_to_session(pd.Timestamp(d), direction="previous").date()
+        out.append(s)
+        d = s - timedelta(days=1)
+    return out[::-1]
+
+
+def pre_trade_window(label_date: date, res: dict[date, dict],
+                     sessions: int = _PRE_TRADE_SESSIONS) -> list[date]:
+    """The scan sessions strictly before `label_date`, newest `sessions` of them — and a loud failure
+    unless that is EXACTLY the `sessions` trading sessions immediately before the label.
+
+    Why: `sorted(d for d in res if d < label_date)[-sessions:]` is silently the last 5 rows the
+    fixture has, so a label that falls AFTER the last bar (or a hole inside the window) judges an
+    older window and gives the same reading as the correct one — a declared miss then "passes" on
+    bars that never reached its date (MRNA 09-24 on bars ending 09-17 was judged on 09-11 → 09-17)."""
+    got = sorted(d for d in res if d < label_date)[-sessions:]
+    want = sessions_before(label_date, sessions)
+    if got == want:
+        return got
+    last = max((d for d in res if d < label_date), default=None)
+    if last != want[-1]:
+        raise AssertionError(
+            f"the bars do not reach {label_date}: the last replayed session before it is {last}, but the "
+            f"trading session before it is {want[-1]} — append bars through {want[-1]} to {_BARS.name} "
+            f"(window should be {want[0]}..{want[-1]}, got {got[0] if got else None}..{last})")
+    raise AssertionError(
+        f"the {sessions}-session window before {label_date} is not complete: want {want}, got {got} — "
+        f"missing bars inside the window, or `replay_from` starts too late; fix the data in "
+        f"{_BARS.name} (or the member's replay_from)")
+
+
 def pushable_before(label_date: date, res: dict[date, dict],
                     sessions: int = _PRE_TRADE_SESSIONS) -> list[tuple[date, str]]:
     """The (scan_date, stage) pairs that were TIGHTENING-or-better inside the `sessions` scan
     sessions STRICTLY before `label_date` (the label day itself and anything after do not count —
-    the point is whether the board had it before the trade)."""
-    prior = sorted(d for d in res if d < label_date)[-sessions:]
-    return [(d, res[d]["stage"]) for d in prior if res[d]["stage"] in _PUSHABLE]
+    the point is whether the board had it before the trade). Raises if the replay does not cover that
+    window completely (`pre_trade_window`): a stale fixture must not read the same as a correct one."""
+    return [(d, res[d]["stage"]) for d in pre_trade_window(label_date, res, sessions)
+            if res[d]["stage"] in _PUSHABLE]
 
 
 def check_member_static(member: HTFLabelledMember) -> None:

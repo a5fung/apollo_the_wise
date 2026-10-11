@@ -12,7 +12,7 @@ pole high ≥ 0.75). Four new keys on the metrics dict → four columns on `mi_f
   ma_stack_margin  min of the 10≥20 and 20≥50 legs   SIGNED: negative = the MA-stack gate fires
 
 OBSERVATION IS NOT ADMISSION. The tests below pin (1) the four hand-measured MRNA values from
-PLAN #610's EXPECT on the day they were measured, against the REAL fixture bars (N=8 corpus,
+PLAN #610's EXPECT on the day they were measured, against the REAL fixture bars (N=11-member corpus, 10 tickers,
 `tests/fixtures/htf_labelled.py`), (2) that each reading agrees with the gate it shadows on
 every replayed corpus row, (3) that a reading is NULL until its inputs exist, and (4) that
 `db.insert_flag_candidate` actually carries the four values to the row. The observer-is-not-a-

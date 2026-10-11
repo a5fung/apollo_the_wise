@@ -217,10 +217,15 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
    quote is checked verbatim against the cited doc. The contract: an htf / consolidation member reaches TIGHTENING-or-
    better inside the 5 scan sessions before its date OR declares the gate that stops it (`known_miss_gate`) — and a
    declared miss the detector later catches FAILS, so a closed miss cannot stay on the books; a pointer / negative is
-   never asserted as a hit (a negative the raw function still scores — ATAI — names the layer that closes it,
-   `closed_by`). Only the `htf` kind enters a hit rate. `tests/test_697_corpus_label_kinds.py` proves the checker
-   fails on deliberately wrong members and on a loosened pole floor. Every further trader-shared HTF is a one-line
-   addition.
+   never asserted as a hit (a negative the raw function scores actionable on an asserted date — ATAI — names the
+   layer that closes it, `closed_by`; ATAI is not the only negative the raw function scores actionable — REPL
+   replays TIGHTENING 09-01 / COILED 09-02, before his 09-04 sign-off, on dates the fixture does not assert; see
+   `docs/analysis/htf_scope_2026-10-10.md` §2d). Only the `htf` kind enters a hit rate. The pre-trade window is
+   anchored to the NYSE calendar — exactly the 5 sessions before the label — so a member whose label falls after
+   the last bar in `htf_labelled_bars.psv` FAILS with "append bars through <date>" instead of being judged on an
+   older window. `tests/test_697_corpus_label_kinds.py` proves the checker fails on deliberately wrong members, on
+   a stale window and on a loosened pole floor. Every further trader-shared HTF is a one-line fixture addition
+   plus its bars through the session before its label.
 7. **The shipped breakout bet has no replayed edge (#610, 2026-09-10 —
    `docs/analysis/610_htf_replay_2026-09-10.md`, harness `scripts/probes/_610_htf_replay.py`).**
    The live chain (detector → next-session break → `prepare_htf_breakout_order` →
@@ -294,6 +299,8 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
   through the shipped detector (the scope doc had them by inspection): GH `runup_79%` every session 06-03 → 06-24; HNGE-June
   `runup_67%` 06-23 → 06-25 (WATCH at 92% on an earlier pivot 06-11 → 06-15); HPE `base_age_0` on the gap day. Both June
   examples are stopped by the sourced 90% pole floor (Detection criteria above) — a recorded verdict, no criterion reopened.
+  Review fix, same day: the pre-trade window is now anchored to the NYSE calendar (a label past the last bar fails with
+  "append bars through <date>" rather than being judged on an older window) — still test-only.
 - **2026-10-11 — #697 item 5: the hysteresis holds a downgrade ONE night, as documented — a hold is never followed by a
   hold. A BUG FIX (the code held it night after night); no threshold, window, floor or stage rule moved, the flag strategy
   stays disabled, and no order / entry / sizing / safeguard path reads a stage. The per-night reading of WATCH / TIGHTENING /
