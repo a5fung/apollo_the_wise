@@ -2651,6 +2651,16 @@ async def initialize_schema() -> None:
                 failed_at                   DATE,
                 low_after_breakout          FLOAT,
                 undercut_after_breakout     BOOLEAN,
+                -- #146 UNPARKED (2026-10-11; his reason: "track performance from each and if we get too many
+                -- breakouts we can discern where they come from"): which path LICENSED a RAW TRIGGERED read.
+                --   'coiled'      COILED today, or a COILED label in the last 5 calendar days (the shipped path)
+                --   'tightening'  a TIGHTENING label in that window and no COILED (the #146 path)
+                --   'retrigger'   only an earlier TRIGGERED label in that window
+                -- Precedence coiled > tightening > retrigger (flag_detector.trigger_licence). NULL on every row that is
+                -- not a RAW TRIGGERED read - including a HELD TRIGGERED row (yesterday's TRIGGERED kept over a lower
+                -- raw read: nothing licensed it today), so a bucket SELECT filters `held_from_stage IS NULL`. Read by
+                -- NO gate and no order path; display + bucket SELECTs only (htf.md "Bucket the TRIGGERED reads").
+                triggered_from              TEXT,
                 created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 UNIQUE (ticker, scan_date)
             );
@@ -2695,6 +2705,26 @@ async def initialize_schema() -> None:
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS failed_at DATE;
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS low_after_breakout FLOAT;
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS undercut_after_breakout BOOLEAN;
+            -- #146 (2026-10-11) - see the CREATE TABLE comment above. Prod's table predates the column, so CREATE
+            -- TABLE IF NOT EXISTS will not add it. The guarded block below adds it AND, in that same exactly-once
+            -- step, labels every raw TRIGGERED row already stored: before this change the ONLY licence was the shipped
+            -- one, so each of them is 'coiled' by construction. From then on a raw TRIGGERED row with a NULL stamp
+            -- is a defect, not history (htf.md WOULD-FAIL-IF). On a fresh database the column already exists from
+            -- CREATE TABLE and the block is a no-op. The ALTER after it is the idempotent declaration the
+            -- schema-parity test reads.
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                                WHERE table_schema = current_schema()
+                                  AND table_name = 'mi_flag_candidates'
+                                  AND column_name = 'triggered_from') THEN
+                    ALTER TABLE mi_flag_candidates ADD COLUMN triggered_from TEXT;
+                    UPDATE mi_flag_candidates
+                       SET triggered_from = 'coiled'
+                     WHERE stage = 'TRIGGERED'
+                       AND held_from_stage IS NULL;
+                END IF;
+            END $$;
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS triggered_from TEXT;
 
             -- Intraday flag-break detections (#94, ADR 0005, 2026-05-23).
             -- EOD flag_candidates is the IDENTIFICATION layer (which stocks
@@ -8068,11 +8098,12 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                  fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct,
                  rmv_5d, rmv_15d, universe_sources,
                  failed_at, low_after_breakout, undercut_after_breakout,
-                 depth_on_low, depth_on_close, sma20_margin, ma_stack_margin)
+                 depth_on_low, depth_on_close, sma20_margin, ma_stack_margin,
+                 triggered_from)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
                     $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
                     $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
-                    $34, $35, $36, $37, $38, $39, $40)
+                    $34, $35, $36, $37, $38, $39, $40, $41)
             ON CONFLICT (ticker, scan_date) DO UPDATE SET
                 pivot_high_date         = EXCLUDED.pivot_high_date,
                 pivot_high_price        = EXCLUDED.pivot_high_price,
@@ -8111,7 +8142,8 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                 depth_on_low            = EXCLUDED.depth_on_low,
                 depth_on_close          = EXCLUDED.depth_on_close,
                 sma20_margin            = EXCLUDED.sma20_margin,
-                ma_stack_margin         = EXCLUDED.ma_stack_margin
+                ma_stack_margin         = EXCLUDED.ma_stack_margin,
+                triggered_from          = EXCLUDED.triggered_from
         """,
             record["ticker"],
             scan_date,
@@ -8153,6 +8185,7 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
             record.get("depth_on_close"),
             record.get("sma20_margin"),
             record.get("ma_stack_margin"),
+            record.get("triggered_from"),
         )
 
 
@@ -8491,9 +8524,11 @@ async def get_flag_failure_carry(
 
 async def get_recent_flag_stages(scan_date: "str | date", lookback_days: int = 5) -> dict[str, list[str]]:
     """Per-ticker stage history (most recent last) over the last
-    `lookback_days` scans before `scan_date`. Used for the TRIGGERED gate
-    ("was COILED in the last 5 days") so a 1-day relapse to TIGHTENING
-    doesn't disqualify a clean breakout."""
+    `lookback_days` scans before `scan_date`. Used for the TRIGGERED licence
+    (flag_detector.trigger_licence: a COILED, TIGHTENING or TRIGGERED label in the
+    last 5 days, #146 2026-10-11 - it was COILED only) so a 1-day relapse
+    doesn't disqualify a clean breakout. The labels are the STORED stages,
+    held ones included."""
     pool = await get_pool()
     if isinstance(scan_date, str):
         scan_date = date.fromisoformat(scan_date)
@@ -8544,7 +8579,8 @@ async def get_ticker_flag_history(ticker: str, days: int = 14) -> list[dict[str,
         rows = await conn.fetch("""
             SELECT scan_date, stage, base_age, range_contraction_ratio,
                    vol_contraction_ratio, reason, held_from_stage,
-                   fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct
+                   fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct,
+                   triggered_from
             FROM mi_flag_candidates
             WHERE ticker = $1
               AND scan_date >= CURRENT_DATE - ($2::int || ' days')::interval

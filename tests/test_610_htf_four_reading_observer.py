@@ -160,8 +160,8 @@ def test_readings_are_null_until_their_inputs_exist():
 async def test_insert_flag_candidate_carries_the_four_readings(monkeypatch):
     """Runs the ACTUAL `db.insert_flag_candidate` against a mocked asyncpg connection and reads
     back what it sent: the INSERT names all four columns, the ON CONFLICT clause updates all
-    four (a re-scan must not leave a stale reading), and the four sentinel values arrive as the
-    last four positional parameters ($37–$40), in column order."""
+    four (a re-scan must not leave a stale reading), and the four sentinel values arrive as
+    positional parameters $37–$40, in column order."""
     pool, conn = make_mock_pool()
     conn.execute = AsyncMock(return_value="INSERT 0 1")
     monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
@@ -179,6 +179,8 @@ async def test_insert_flag_candidate_carries_the_four_readings(monkeypatch):
     for col in _FOUR:
         assert col in insert_cols, col
         assert f"{col} = EXCLUDED.{col}".replace(" ", "") in on_conflict.replace(" ", ""), col
-    assert sql.count("$") == len(params) == 40
-    assert params[-4:] == [sentinel[k] for k in _FOUR]
+    # 41 since #146 (2026-10-11) appended `triggered_from` ($41); the four readings stay $37-$40, in column order
+    assert sql.count("$") == len(params) == 41
+    assert params[36:40] == [sentinel[k] for k in _FOUR]
+    assert params[40] is None                                  # an unqualified row carries no TRIGGERED licence
     assert params[0] == "MRNA" and params[1] == date(2026, 9, 17)

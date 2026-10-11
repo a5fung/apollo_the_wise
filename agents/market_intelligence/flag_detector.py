@@ -11,7 +11,9 @@ Five stages emitted per (ticker, scan_date):
   * WATCH        — runup present, currently consolidating near highs.
   * TIGHTENING   — at least one of {range, volume} contracting vs early-base.
   * COILED       — range AND volume contracted + small bodies + holding MAs.
-  * TRIGGERED    — broke base_high on volume, was COILED-eligible recently.
+  * TRIGGERED    — broke base_high on volume, from a TIGHTENING-or-better base (#146, 2026-10-11:
+                   COILED today / COILED, TIGHTENING or TRIGGERED stored in the last 5 days).
+                   `triggered_from` says which path licensed the read.
   * INVALIDATED  — lost base_low / SMA20 / aged out (>25 sessions).
 
 `failed_at` / `low_after_breakout` / `undercut_after_breakout` (#354 Sunday
@@ -413,7 +415,8 @@ _FRESH_TIGHT_BASE_AGE_MIN  = 4     # relaxed from _BASE_AGE_MIN_COILED (6)
 _BASE_AGE_MIN_WATCH   = 3
 _BASE_AGE_MIN_COILED  = 6
 _BASE_AGE_MAX         = 25      # > 25 sessions → INVALIDATED (stale base)
-_COILED_LOOKBACK_DAYS = 5       # TRIGGERED requires COILED in last N days
+_COILED_LOOKBACK_DAYS = 5       # the TRIGGERED licence window: stored labels of the last N CALENDAR days
+                                # (db.get_recent_flag_stages) - see `_TRIGGER_LICENCE`; the name predates #146
 _TIGHTNESS_WINDOW     = 5       # base's last N bars vs its first N (range / volume contraction ratios);
                                 # the short-base DISPLAY cutoff (`_SHORT_BASE_MAX`) follows it
 _ATR_WINDOW           = 14
@@ -455,6 +458,45 @@ def stage_after_hold(
     ):
         return yesterday_stage, proposed
     return proposed, None
+
+
+# ── #146 UNPARKED (operator ruling 2026-10-11): which stored label licenses a breakout to read TRIGGERED ─────────────
+#
+# A breakout (close over the base's highest close on >= 1.5x the base's recent volume) reads TRIGGERED when it is
+# LICENSED: COILED today, or a stored label in the last `_COILED_LOOKBACK_DAYS` calendar days from this table, strongest
+# first. The first entry that matches names the bucket stamped on the row (`mi_flag_candidates.triggered_from`), so the
+# operator can split performance per path (htf.md "Bucket the TRIGGERED reads"):
+#   'coiled'      the SHIPPED path - COILED today or a COILED label in the window
+#   'tightening'  a TIGHTENING label in the window and no COILED (the #146 path)
+#   'retrigger'   only an earlier TRIGGERED label in the window (page 146_detection_page section 2: 5 of the 101 extras)
+# Stored labels count whether or not the stored row was itself a hold - exactly arm B of the detection page.
+#
+# THE ONE-LINE REVERT: `_TRIGGER_LICENCE = (("COILED", "coiled"),)` restores the shipped rule bit for bit (the
+# same-day COILED half lives in `trigger_licence`, not here, and is never behind the flag). tests/test_146_unpark_*.
+_TRIGGER_LICENCE: tuple[tuple[str, str], ...] = (
+    ("COILED", "coiled"),
+    ("TIGHTENING", "tightening"),
+    ("TRIGGERED", "retrigger"),
+)
+# The closed vocabulary of the stamp, independent of the table above: after a revert the already-stored
+# 'tightening' / 'retrigger' rows still need their labels.
+TRIGGERED_FROM_BUCKETS: tuple[str, ...] = ("coiled", "tightening", "retrigger")
+
+
+def trigger_licence(coiled_today: bool, recent_stages: Optional[list[str]]) -> Optional[str]:
+    """PURE. The bucket that licenses a breakout to read TRIGGERED, or None when nothing does.
+
+    `recent_stages` = the stored labels of the last `_COILED_LOOKBACK_DAYS` calendar days, most recent last (every
+    stored row, so it also holds WATCH / INVALIDATED / unqualified days: the test is MEMBERSHIP, not "yesterday").
+    Precedence is `_TRIGGER_LICENCE` order, with COILED today first: coiled > tightening > retrigger.
+    """
+    if coiled_today:
+        return "coiled"
+    window = recent_stages[-_COILED_LOOKBACK_DAYS:] if recent_stages else ()
+    for label, bucket in _TRIGGER_LICENCE:
+        if label in window:
+            return bucket
+    return None
 
 
 # Recency window for "is this a fresh pullback / support test?" Replaces
@@ -849,9 +891,10 @@ def compute_flag_metrics(
     `trade_date`, `open_price`, `high_price`, `low_price`, `close`, `volume`.
     Caller passes enough history (at least ~60 sessions for runup math).
 
-    `recent_stages` = stages of the last 5 scan_dates (most recent last),
-    used for TRIGGERED gate ("was COILED-eligible in last 5 days"). Pass
-    empty list during fresh replay.
+    `recent_stages` = stored stages of the last 5 CALENDAR days (most recent last),
+    the TRIGGERED licence window (`trigger_licence`: a COILED, TIGHTENING or
+    TRIGGERED label licenses a breakout since #146, 2026-10-11; held labels
+    count). Pass empty list during fresh replay.
 
     `prior_failure` = db.get_flag_failure_carry()'s per-ticker dict (pivot_high_date,
     failed_at, low_after_breakout, undercut_after_breakout, anchor_base_high,
@@ -914,6 +957,9 @@ def compute_flag_metrics(
         "stage": "unqualified",
         "reason": None,
         "held_from_stage": None,
+        # #146 (2026-10-11): which licence registered a RAW TRIGGERED read - 'coiled' | 'tightening' | 'retrigger'
+        # (`trigger_licence`). NULL on every other row, including a HELD TRIGGERED one: nothing licensed it today.
+        "triggered_from": None,
         # #354 Sunday shadow sub-piece (2026-09-13) — see the CREATE TABLE
         # comment on mi_flag_candidates (db.py) for NULL semantics. Set below,
         # right after the pivot anchor, so none of the early-returns further
@@ -1289,17 +1335,18 @@ def compute_flag_metrics(
         (range_tight and vol_tight and base_age >= _BASE_AGE_MIN_COILED)
         or (fresh_fires and base_age >= _FRESH_TIGHT_BASE_AGE_MIN)
     )
-    was_coiled_recent = (recent_stages is not None) and (
-        "COILED" in recent_stages[-_COILED_LOOKBACK_DAYS:]
-    )
 
     breakout_now = (
         close_today > base_high_close
         and breakout_vol_ratio is not None and breakout_vol_ratio >= _BREAKOUT_VOL_RATIO
     )
+    # #146 (2026-10-11): licensed by COILED today / a COILED label in the window (shipped), or a TIGHTENING /
+    # TRIGGERED label in it (`_TRIGGER_LICENCE`). The breakout leg above is unchanged.
+    licence = trigger_licence(coiled_today, recent_stages) if breakout_now else None
 
-    if breakout_now and (coiled_today or was_coiled_recent):
+    if licence is not None:
         proposed = "TRIGGERED"
+        base["triggered_from"] = licence
         base["breakout_close"] = close_today
         base["breakout_volume_ratio"] = breakout_vol_ratio
         base["reason"] = (
@@ -1494,6 +1541,7 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                 if is_mna:
                     r["original_stage"] = r["stage"]
                     r["stage"] = "unqualified"
+                    r["triggered_from"] = None     # #146: a demoted row was not TRIGGERED, so no licence
                     r["reason"] = f"mna_filter:{(meta or {}).get('source', 'unknown')}"
                     # _score already inserted the row at its scored stage.
                     # Re-upsert so the persisted row reflects the flip.
@@ -1552,6 +1600,7 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                         sticky_from = 0 if mature else int(sig.get("sticky_from_session") or 0)
                         r["original_stage"] = r["stage"]
                         r["stage"] = "unqualified"
+                        r["triggered_from"] = None     # #146: a demoted row was not TRIGGERED, so no licence
                         if mature:
                             r["reason"] = "mna_filter:deal_pin_signature"
                         elif sticky_from:
@@ -1935,14 +1984,38 @@ def _fmt_coiled(r: dict) -> str:
     return head + f"range {tf.esc(_fmt_ratio(rr))} · volume {tf.esc(_fmt_ratio(vr))}"
 
 
+_TRIGGERED_FROM_LABELS = {"coiled": "from COILED", "tightening": "from TIGHTENING", "retrigger": "re-trigger"}
+
+
+def triggered_from_label(r: dict) -> str:
+    """PURE. Plain words for the path that licensed a TRIGGERED read (`mi_flag_candidates.triggered_from`), or
+    "" when the row carries none (a held TRIGGERED row, a legacy row, an unknown value). ONE place, so the digest,
+    `/flags` and the 14-day history cannot word it three ways. Display only - nothing gates on it (#146)."""
+    return _TRIGGERED_FROM_LABELS.get(r.get("triggered_from") or "", "")
+
+
+def triggered_bucket_summary(rows: list[dict]) -> str:
+    """PURE. `1 from COILED · 2 from TIGHTENING · 1 re-trigger` - how many TRIGGERED rows each path licensed, in
+    `TRIGGERED_FROM_BUCKETS` order, empty buckets and unstamped rows omitted; "" when no row carries a stamp.
+    The line that answers "we got more breakouts - where do they come from" without a query (#146)."""
+    counts = {b: 0 for b in TRIGGERED_FROM_BUCKETS}
+    for r in rows:
+        b = r.get("triggered_from")
+        if b in counts:
+            counts[b] += 1
+    return " · ".join(f"{n} {_TRIGGERED_FROM_LABELS[b]}" for b, n in counts.items() if n)
+
+
 def _fmt_triggered(r: dict) -> str:
     runup = r.get("runup_pct")
     age = r.get("base_age")
     bvr = r.get("breakout_volume_ratio")
     close = r.get("breakout_close")
     bh = r.get("base_high")
+    lab = triggered_from_label(r)
+    lead = f"{tf.esc(lab)} · " if lab else ""
     head = (
-        f"  • {tf.code(r['ticker'])} — base {tf.esc(age)}d · run-up {tf.esc(_fmt_pct(runup, 0, sign=True))} · "
+        f"  • {tf.code(r['ticker'])} — {lead}base {tf.esc(age)}d · run-up {tf.esc(_fmt_pct(runup, 0, sign=True))} · "
         f"volume {tf.esc(_fmt_ratio(bvr))}×"
     )
     if close is not None and bh is not None:
@@ -2124,7 +2197,8 @@ def build_flag_digest(
 
     if triggered:
         lines.append("")
-        lines.append(f"🎯 {tf.b(f'TRIGGERED ({len(triggered)})')}")
+        by_path = triggered_bucket_summary(triggered)          # #146: where today's breakouts came from
+        lines.append(f"🎯 {tf.b(f'TRIGGERED ({len(triggered)})')}" + (f" {tf.i(by_path)}" if by_path else ""))
         for r in sections["triggered"]:
             lines.append(_fmt_triggered(r))
 
@@ -2454,8 +2528,10 @@ async def run_intraday_flag_break_scan(scan_time):
         # Idempotency guard (#145, 2026-05-28): exclude candidates whose prior
         # bar already closed above base_high. ADTN/IREN 2026-05-27 broke from
         # TIGHTENING with no intervening COILED stage; flag_detector's TRIGGERED
-        # branch requires COILED prerequisite (line 635) so they stayed
-        # TIGHTENING despite close > base_high_close. Without this guard,
+        # branch then required a COILED prerequisite, so they stayed
+        # TIGHTENING despite close > base_high_close. (Since #146, 2026-10-11, a
+        # TIGHTENING label licenses the read, so that case now reads TRIGGERED;
+        # this guard is unchanged and is now belt-and-suspenders for it.) Without this guard,
         # the next day's intraday detector treats them as still-pre-break and
         # false-fires. Per user principle 2026-05-28: "if it breaks the range,
         # it's a flag break" — a break already realized yesterday isn't a

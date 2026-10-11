@@ -2226,7 +2226,9 @@ class MarketIntelligenceAgent(BaseAgent):
         )
         # Function-local ON PURPOSE: agent.py is loaded by apollo-execution, flag_detector is not —
         # a module-level import would make the execution container load it (preflight [5n/7]).
-        from agents.market_intelligence.flag_detector import board_tightness
+        from agents.market_intelligence.flag_detector import (
+            board_tightness, triggered_bucket_summary, triggered_from_label,
+        )
 
         task = request.task.lower()
         # Single-ticker history mode: `/flags XNDU` or `flags XNDU`
@@ -2243,9 +2245,12 @@ class MarketIntelligenceAgent(BaseAgent):
                 # A base of 5 days or fewer compares its own bars with themselves (r1.00 v1.00).
                 tight_s = board_tightness(r, compact=True)
                 held = f" (held from {r['held_from_stage']})" if r.get("held_from_stage") else ""
+                # #146: which path licensed a RAW TRIGGERED read (a held row carries none)
+                via = triggered_from_label(r)
+                via_s = f" · {via}" if via else ""
                 lines.append(
                     f"  {r['scan_date']}  `{r['stage']:<11}` "
-                    f"age {r.get('base_age') or '—':<3}  {tight_s}{held}"
+                    f"age {r.get('base_age') or '—':<3}  {tight_s}{held}{via_s}"
                 )
             return self._ok(request, result="\n".join(lines))
 
@@ -2297,7 +2302,9 @@ class MarketIntelligenceAgent(BaseAgent):
         lines = [f"🚩 *Flag Scanner — {query_date.isoformat()}*{date_note}\n"]
 
         if triggered:
-            lines.append(f"🎯 *TRIGGERED ({len(triggered)})*")
+            # #146: say which path licensed each breakout (COILED / TIGHTENING / re-trigger) and how many of each
+            by_path = triggered_bucket_summary(triggered)
+            lines.append(f"🎯 *TRIGGERED ({len(triggered)})*" + (f" _{by_path}_" if by_path else ""))
             for r in triggered:
                 age = r.get("base_age")
                 runup = r.get("runup_pct")
@@ -2305,13 +2312,15 @@ class MarketIntelligenceAgent(BaseAgent):
                 close = r.get("breakout_close")
                 bh = r.get("base_high")
                 ru_s = f"{float(runup)*100:+.0f}%" if runup is not None else "—"
+                via = triggered_from_label(r)
+                lead = f"{via} · " if via else ""
                 if close is not None and bh is not None:
                     lines.append(
-                        f"  • `{r['ticker']}` — base {age}d · runup {ru_s} · "
+                        f"  • `{r['ticker']}` — {lead}base {age}d · runup {ru_s} · "
                         f"vol {float(bvr):.2f}× · close ${float(close):.2f} > ${float(bh):.2f}"
                     )
                 else:
-                    lines.append(f"  • `{r['ticker']}` — base {age}d · runup {ru_s}")
+                    lines.append(f"  • `{r['ticker']}` — {lead}base {age}d · runup {ru_s}")
 
         def _tightness_block(header: str, block_rows: list, age_label: str) -> None:
             """COILED and TIGHTENING share one row shape (first 15, then '…N more'); only the

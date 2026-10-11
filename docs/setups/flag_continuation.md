@@ -105,12 +105,12 @@ Stages depend on:
 - `range_contraction_ratio` (recent 5-bar range vs base average)
 - `vol_contraction_ratio` (recent 5-bar volume vs ADV20 or recent base avg, whichever is lower per fresh-tightening hybrid)
 - `last_body_pct` and `prev_body_pct` (small bodies = tight days)
-- `breakout_close > base_high` (TRIGGERED)
+- `breakout_close > base_high` (TRIGGERED) — **licensed since 2026-10-11 (#146)**: close over the base's highest close on >= 1.5x the base's recent volume, AND COILED today, or a COILED / TIGHTENING / TRIGGERED stored label in the last 5 calendar days (held labels count). Before it, only COILED licensed. `mi_flag_candidates.triggered_from` records the path (`coiled` / `tightening` / `retrigger`). Rule + owner: `htf.md` ("TRIGGERED licence", "Bucket the TRIGGERED reads")
 - `close < pivot_low` (INVALIDATED)
 
 ### Hysteresis
 
-Single-day downward stage flips held **one night** (`held_from_stage` audit-reviewable). INVALIDATED never holds; upgrades fire immediately. **A hold is never followed by a hold (#697 item 5, 2026-10-11):** the downgrade is held only when yesterday's STORED row was not itself a hold (`held_from_stage IS NULL`); the next night the detector's own reading stands. Implemented by `flag_detector.stage_after_hold`, called from `compute_flag_metrics` with `yesterday_stage` + `yesterday_was_held` (`db.get_yesterday_flag_state` returns both from ONE statement, so the flag is read from the same row as the stage). Until 2026-10-11 the stored (already held) stage was fed back in as `yesterday_stage`, so the hold re-armed every night until INVALIDATED or a pivot reset — see the change log. A replay that threads its own output must pass `yesterday_was_held` too. ⚠ TRIGGERED reads STORED labels (`COILED` in the last 5 calendar days), so it sees a held COILED for one night, not indefinitely.
+Single-day downward stage flips held **one night** (`held_from_stage` audit-reviewable). INVALIDATED never holds; upgrades fire immediately. **A hold is never followed by a hold (#697 item 5, 2026-10-11):** the downgrade is held only when yesterday's STORED row was not itself a hold (`held_from_stage IS NULL`); the next night the detector's own reading stands. Implemented by `flag_detector.stage_after_hold`, called from `compute_flag_metrics` with `yesterday_stage` + `yesterday_was_held` (`db.get_yesterday_flag_state` returns both from ONE statement, so the flag is read from the same row as the stage). Until 2026-10-11 the stored (already held) stage was fed back in as `yesterday_stage`, so the hold re-armed every night until INVALIDATED or a pivot reset — see the change log. A replay that threads its own output must pass `yesterday_was_held` too. ⚠ TRIGGERED reads STORED labels (a `COILED`, `TIGHTENING` or `TRIGGERED` label in the last 5 calendar days since #146, 2026-10-11 — `COILED` only before), so it sees a held label for one night, not indefinitely.
 
 ### Fresh-tightening predicate (alternative COILED path)
 
@@ -186,6 +186,10 @@ the same 5-stage state machine unchanged; `/flags` routing (`test_execute_task_r
 none of these read the `mi_strategies` registry row or `anticipation.py`.
 
 ## Change log (newest first)
+
+### 2026-10-11 — #146 UNPARKED: a breakout reads TRIGGERED from a TIGHTENING-or-better label without first reaching COILED; each raw TRIGGERED row stamps its path (`triggered_from`)
+
+**Full entry (trigger / his sign-off quoted / what / evidence / reversion / EXPECT / WOULD-FAIL-IF / DONE-WHEN / deploy scope): `docs/setups/htf.md` change log 2026-10-11 (#146).** The "Fix A" the 2026-05-28 entry below filed as #146 (the COILED prerequisite) is shipped, on the operator's ruling of 2026-10-11 (*"track performance from each ... Now you can proceed to end park"*). Licence: COILED today, or a COILED / TIGHTENING / TRIGGERED stored label in the last 5 calendar days (held labels count) — `flag_detector._TRIGGER_LICENCE`; the volume leg, the close-over-the-base's-highest-close leg and every other threshold are unchanged. Reversion-flag: NEW (ends the 07-12 park). Revert: `_TRIGGER_LICENCE = (("COILED", "coiled"),)`. Evidence: `docs/analysis/146_detection_page_2026-10-11.md` (+101 reads over 444 sessions, 14% of 99 vs 14% of 42 closed under the base low; "no harm seen", not "proven good"). The flag STRATEGY stays disabled; no order / entry / sizing / safeguard path reads a stage or the stamp.
 
 ### 2026-10-11 — Hysteresis holds a downgrade ONE night, as documented — a hold is never followed by a hold (#697 item 5)
 
