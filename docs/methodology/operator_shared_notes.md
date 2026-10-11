@@ -1805,3 +1805,29 @@ How it maps to what we already run (no change proposed):
   attention, independent of size. Not scheduled ("no action yet"); if it is ever measured, the natural source is the
   rating-change headlines already flowing through the Benzinga/Alpaca news feed (upgrade / downgrade / initiation counts in
   the weeks before the gap), read against real EPs vs their board rivals, size held equal.
+
+## 2026-10-11 (later) — Pradeep Bonde: "What is neglect..." — five kinds (operator-shared reference)
+
+Shared with "Bonde just shared his definition of neglect". Image kept:
+`docs/methodology/images/bonde_what_is_neglect_2026-10-11.jpg`. **Reference, not a ruling** (THE LINE).
+
+Transcribed (his words):
+- **Financial neglect:** "A long period of time where stock had no growth. Longer the better. And then it suddenly starts growing."
+- **Price neglect:** "A long period of time where stock had no meaningful price rally. Years of neglect better."
+- **Volume/liquidity neglect:** "Long period of time where stock had below average daily volume."
+- **News/attention neglect:** "no analyst coverage. No major news for months /years."
+- **Ownership:** "funds ownership low because no reason to own stocks. Below 20 to 30 funds owning it."
+- Chart examples: **GRWG** (2020-08-12 EP; annotated "neglect · not rallying in to earnings · going sideways for few months", "100/123"),
+  **PDCO** (2020-12-14 EP; "63c exp 38c" — a beat against expectation), **UPWK** (2020-12-14, cut off in the image).
+
+How each maps to what we have (no change proposed):
+- **Financial** — the catalyst rubric scores recent acceleration (revenue YoY + decel/accel); "a LONG flat period before it" is not
+  measured. Lives with #333.
+- **Price** — note it is "no meaningful RALLY for a long time", which is NOT the same as a tight quiet base (the measure we built and
+  that read backwards, AUC 0.42) and NOT "far below the 52-week high" (the component deleted 2026-08-22). A "largest rally in the past
+  1–2 years stayed small" measure has never been tested.
+- **Volume/liquidity** — not measured as a long-run state (our volume checks are about the gap day and the ADV floor).
+- **News/attention** — Bonde names "no analyst coverage". **His 10-11 ruling stands: thin coverage alone mostly selects tiny caps**;
+  his own corollary (no / slowing analyst upgrades) is on #333. A size-matched comparison would be the way to test Bonde's version
+  without the tiny-cap confound. "No major news for months" is measurable from our stored headline feeds.
+- **Ownership** — fund counts (13F) are not in our data.
