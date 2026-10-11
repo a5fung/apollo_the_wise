@@ -1,0 +1,60 @@
+=== F1 trades 407 / 410 / 417 (partial_exit_sell_placed rows but no partial_exit order row in q1 Q4)
+id	ticker	account_mode	signal_type	status	entry_shares	remaining_shares	partial_taken	breakeven_active	entry_price	hard_stop	stop_price	filled_at	closed_at	skip_reason	exit_rule	exits
+(0 rows)
+=== F2 every order row for those trades
+trade_id	alpaca_order_id	side	order_type	qty	stop_price	limit_price	status	purpose	exit_reason	cls	submitted_at	filled_at	cancelled_at
+(0 rows)
+=== F3 every audit row for those trades (by detail trade_id or ticker in summary), 2026-10-01 onward
+created_at	event_type	summary
+(0 rows)
+=== F4 the two oco_parent_cancelled_unfilled rows, in full
+created_at	event_type	summary	detail
+2026-10-05 16:03:00.729892+00	oco_parent_cancelled_unfilled	KO [paper]: OCO parent 6876bfdd cancelled with sibling leg status=canceled — third uncovered, re-protecting from broker truth	{"trade_id": 407, "ticker": "KO", "account_mode": "paper", "parent_order_id": "6876bfdd-f17f-4bb3-a6e4-c688eb76d4ef", "leg_order_id": "c840511c-9120-4040-b0ba-756013415700", "leg_status": "canceled", "event_norm": "cancelled"}
+2026-10-09 13:41:01.18461+00	oco_parent_cancelled_unfilled	KO [paper]: OCO parent 39e09ba2 cancelled with sibling leg status=canceled — third uncovered, re-protecting from broker truth	{"trade_id": 417, "ticker": "KO", "account_mode": "paper", "parent_order_id": "39e09ba2-92ba-43c7-8548-5eb3bb079806", "leg_order_id": "e7e8cabe-419b-4642-aeff-1c5e7f884817", "leg_status": "canceled", "event_norm": "cancelled"}
+(2 rows)
+=== F5 GOOGL 56 / TEAM 57 — the FIRST sell orders (82ebdc29 / ce35d7a8) that q1 Q4 did not list: any order row? any audit row naming them?
+src	alpaca_order_id	status	purpose	qty	at_	summary
+order_row	82ebdc29-5783-4455-9012-25f99f79b5c2	canceled		17	2026-05-05 20:45:00.165239+00	
+audit		partial_exit_sell_placed			2026-05-05 20:45:00.16695+00	GOOGL: market sell 17 placed (82ebdc29-5783-4455-9012-25f99f79b5c2, status=OrderStatus.ACCEPTED)
+audit		partial_exit_committed			2026-05-05 20:45:00.169363+00	GOOGL: DB committed — sold 17 @$382.61, pnl $+0.00, remaining 34
+order_row	ce35d7a8-3ff7-486a-b72f-2c2d3d12ca95	canceled		76	2026-05-05 20:45:00.701324+00	
+audit		partial_exit_sell_placed			2026-05-05 20:45:00.702617+00	TEAM: market sell 76 placed (ce35d7a8-3ff7-486a-b72f-2c2d3d12ca95, status=OrderStatus.ACCEPTED)
+audit		partial_exit_committed			2026-05-05 20:45:00.705313+00	TEAM: DB committed — sold 76 @$85.19, pnl $+0.00, remaining 153
+audit		order_status_reconciled			2026-05-27 13:00:00.565584+00	TEAM order=ce35d7a8: accepted -> canceled (paper)
+audit		order_status_reconciled			2026-05-27 13:00:00.591423+00	GOOGL order=82ebdc29: accepted -> canceled (paper)
+(8 rows)
+=== F6 the 05-05/05-06 GOOGL + TEAM full audit timeline (what happened between the two sell placements)
+created_at	event_type	summary
+2026-05-05 20:45:00.112468+00	partial_exit_started	GOOGL: sell 17 of 51 (new_remaining=34)
+2026-05-05 20:45:00.150317+00	partial_exit_stop_replaced	GOOGL: stop reissued for 34 sh @$379.43 (fcf1a333-3a78-48b1-b82b-06d7ebe8c331)
+2026-05-05 20:45:00.16695+00	partial_exit_sell_placed	GOOGL: market sell 17 placed (82ebdc29-5783-4455-9012-25f99f79b5c2, status=OrderStatus.ACCEPTED)
+2026-05-05 20:45:00.169363+00	partial_exit_committed	GOOGL: DB committed — sold 17 @$382.61, pnl $+0.00, remaining 34
+2026-05-05 20:45:00.589105+00	stop_update_started	GOOGL: $379.43 → $382.61
+2026-05-05 20:45:00.616072+00	stop_updated	GOOGL: stop now $382.61 (537e5bb2-3a8f-4c1c-aaa2-14545bd4eb48)
+2026-05-05 20:45:00.665485+00	partial_exit_started	TEAM: sell 76 of 229 (new_remaining=153)
+2026-05-05 20:45:00.687264+00	partial_exit_stop_replaced	TEAM: stop reissued for 153 sh @$82.79 (1df4b97d-f219-43c0-bc21-043b98b50936)
+2026-05-05 20:45:00.702617+00	partial_exit_sell_placed	TEAM: market sell 76 placed (ce35d7a8-3ff7-486a-b72f-2c2d3d12ca95, status=OrderStatus.ACCEPTED)
+2026-05-05 20:45:00.705313+00	partial_exit_committed	TEAM: DB committed — sold 76 @$85.19, pnl $+0.00, remaining 153
+2026-05-05 20:45:01.136309+00	stop_update_started	TEAM: $82.79 → $85.19
+2026-05-05 20:45:01.158613+00	stop_updated	TEAM: stop now $85.19 (2de2d33f-5859-4dd4-9bb6-b09127a60833)
+2026-05-06 02:33:29.28319+00	partial_exit_started	GOOGL: sell 17 of 51 (new_remaining=34)
+2026-05-06 02:33:29.338157+00	partial_exit_stop_replaced	GOOGL: stop reissued for 34 sh @$382.61 (bd965746-dc77-4b67-85ed-a610814b5bc7)
+2026-05-06 02:33:29.35748+00	partial_exit_sell_placed	GOOGL: market sell 17 placed (5073291f-4522-4d6c-91d5-37156457dffc, status=OrderStatus.ACCEPTED)
+2026-05-06 02:33:29.813671+00	partial_exit_started	TEAM: sell 76 of 229 (new_remaining=153)
+2026-05-06 02:33:29.838803+00	partial_exit_stop_replaced	TEAM: stop reissued for 153 sh @$85.19 (3069e3fe-8283-4b42-b704-890bbfdf9720)
+2026-05-06 02:33:29.85294+00	partial_exit_sell_placed	TEAM: market sell 76 placed (9c2d2250-4d77-4910-b888-71730efcc267, status=OrderStatus.ACCEPTED)
+2026-05-06 13:31:18.570959+00	partial_exit_committed	GOOGL: DB committed on WS fill — sold 17 @$393.44, pnl $+184.11, remaining 34
+2026-05-06 13:32:20.30142+00	partial_exit_committed	TEAM: DB committed on WS fill — sold 76 @$89.51, pnl $+328.32, remaining 153
+2026-05-06 13:35:00.05766+00	stop_update_started	TEAM: $85.19 → $85.19
+2026-05-06 13:35:00.077784+00	stop_update_failed	TEAM: place_stop_order raised on first attempt — APIError
+2026-05-06 13:35:03.516983+00	stop_update_failed	TEAM: retry also failed — position naked, APIError
+2026-05-06 13:51:07.824282+00	entry_partial_fill	TEAM partial_fill 47/153 (cum 47) @ $85.18 side=sell
+(24 rows)
+=== F7 how many partials since resting mode went live (08-10) ran each order shape, and how each
+event_type	n
+breakeven_armed	3
+breakeven_arm_noop	1
+partial_exit_breakeven_armed	5
+partial_exit_sell_placed	8
+(4 rows)
+unterminated quoted string

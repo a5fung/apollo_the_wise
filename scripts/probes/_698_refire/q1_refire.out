@@ -1,0 +1,344 @@
+=== Q1 toggles (order shape + breakeven + depth + leg-safe)
+safeguard	account_mode	state	last_transition_at
+breakeven_at_broker	live	on	
+breakeven_at_broker	paper	on	2026-10-10 19:15:20.454956+00
+partial_exit_leg_safe	global	on	2026-08-04 22:52:16.225706+00
+profit_take_oco	live	on	2026-08-17 15:03:32.692265+00
+profit_take_oco	paper	on	2026-10-10 19:15:20.454956+00
+profit_take_resting_limit	live	on	2026-08-10 21:15:16.430312+00
+profit_take_resting_limit	paper	on	2026-10-10 19:15:20.454956+00
+(7 rows)
+=== Q2 strategies (level + arm)
+strategy_id	signal_type	phase	enabled	live_real_enabled	profit_trigger_r	breakeven_arm_r
+9m_day2	9m_day2	deprecated	f	f		
+fishhook_v3	fishhook_v3	deprecated	f	f		
+flag_continuation	flag_continuation	deprecated	f	f		
+magna53	magna53	live	t	t	8.0	3.0
+magna53_lowcap	magna53_lowcap	shadow	t	f		
+magna53_smallcap	magna53_smallcap	paper	t	f	8.0	3.0
+parabolic_short	parabolic_short	shadow	t	f		
+shadow_orb_5m	shadow_orb_5m	shadow	t	f		
+wick_fill	wick_fill	shadow	t	f		
+(9 rows)
+=== Q3 per-trade counts of the partial-exit events, ALL TIME (any count >1 on fired / sell_placed / committed = a candidate double sale)
+trade_id	fired	failed	started	sell_placed	committed	aborted	first	last
+56	0	0	2	2	2	0	2026-05-05	2026-05-06
+57	0	0	2	2	2	0	2026-05-05	2026-05-06
+72	0	0	1	1	1	0	2026-05-08	2026-05-11
+82	0	0	1	1	1	0	2026-05-11	2026-05-12
+119	0	0	1	1	1	0	2026-05-14	2026-05-15
+161	0	0	1	1	1	0	2026-05-26	2026-05-27
+167	0	0	5	1	1	2	2026-05-27	2026-05-29
+172	0	0	1	1	1	0	2026-06-01	2026-06-01
+177	0	0	2	1	1	1	2026-06-01	2026-06-01
+181	0	0	1	1	1	0	2026-05-29	2026-05-29
+182	0	0	1	1	1	0	2026-05-29	2026-05-29
+183	0	0	1	0	0	0	2026-06-04	2026-06-04
+186	0	0	1	1	1	0	2026-06-01	2026-06-01
+187	0	0	1	1	1	0	2026-06-01	2026-06-01
+198	0	0	1	1	1	0	2026-06-05	2026-06-05
+221	0	0	3	1	1	2	2026-06-22	2026-06-24
+230	0	0	1	1	1	0	2026-06-23	2026-06-23
+231	0	0	1	0	0	0	2026-06-23	2026-06-23
+307	1	48	7	1	1	6	2026-08-04	2026-08-05
+332	1	0	1	1	1	0	2026-08-07	2026-08-07
+337	1	0	1	1	1	0	2026-08-11	2026-08-11
+367	1	2	1	1	1	2	2026-08-14	2026-08-14
+372	1	0	1	1	1	0	2026-08-18	2026-08-18
+374	1	0	1	1	1	0	2026-08-19	2026-08-19
+383	1	0	1	1	1	0	2026-08-27	2026-08-27
+404	1	0	1	1	1	0	2026-09-28	2026-09-28
+407	0	0	1	1	0	0	2026-10-05	2026-10-05
+410	0	0	1	0	0	1	2026-10-06	2026-10-06
+417	0	0	1	1	0	0	2026-10-08	2026-10-08
+(29 rows)
+=== Q4 every partial_exit order ever (order class, status, timings) with its trade
+trade_id	ticker	account_mode	signal_type	entry_shares	entry_price	hard_stop	trade_stop_now	trade_status	partial_taken	remaining_shares	alpaca_order_id	order_type	qty	limit_price	ord_status	cls	submitted_at	filled_at	cancelled_at	filled_qty
+56	GOOGL	paper	9m_day2	51	382.61	379.43	395.87	closed	t	0	5073291f-4522-4d6c-91d5-37156457dffc	market	17		filled		2026-05-06 02:33:29.353594+00	2026-05-06 13:31:18.566912+00		17
+57	TEAM	paper	magna53	229	85.19	82.79	85.19	closed	t	0	9c2d2250-4d77-4910-b888-71730efcc267	market	76		filled		2026-05-06 02:33:29.850601+00	2026-05-06 13:32:20.296286+00		76
+72	FTRE	paper	magna53	1384	14.31	13.96	14.31	closed	t	0	fc255617-7209-471c-8110-b8da223d0980	market	461		filled		2026-05-08 20:45:00.418499+00	2026-05-11 13:32:45.187953+00		461
+82	SMCI	paper	magna53	612	32.567614	31.26	32.567614	closed	t	0	4baad913-cee0-44b7-90a2-d70eb7812df4	market	204		filled		2026-05-11 20:45:00.677071+00	2026-05-12 13:34:43.469795+00		204
+119	BW	paper	magna53	1163	17.05	16.49	17.05	closed	t	0	9bfeff93-eb57-4109-8fed-256c9451c891	market	387		filled		2026-05-14 20:45:00.4074+00	2026-05-15 13:33:38.027248+00		387
+161	PURR	paper	9m_day2	948	8.05	7.2	8.05	closed	t	0	b119c622-f227-459d-82bd-a55f042d5cca	market	316		filled		2026-05-26 20:45:00.645757+00	2026-05-27 13:37:42.545766+00		316
+167	IBM	paper	9m_day2	26	263.168462	230.94	263.17	closed	t	0	ca4f0c9c-94f7-4897-9f78-653ccdb0f1dc	market	8		filled		2026-05-29 15:59:31.721106+00	2026-05-29 15:59:33.470558+00		8
+172	CRSR	paper	magna53	2073	8.772422	8.4	8.77	closed	t	0	2af6d59f-77f6-4c56-b724-b726d7b4e10d	market	691		filled		2026-06-01 16:19:08.500079+00	2026-06-01 16:19:09.42382+00		691
+177	RCAT	paper	magna53	1529	12.57	11.955	12.57	closed	t	0	b533862e-b546-4d65-915c-2fed921e5bda	market	509		filled		2026-06-01 17:15:08.713735+00	2026-06-01 17:15:10.818268+00		509
+221	QURE	paper	magna53	200	44.69	42.5	44.69	closed	t	0	866365fb-f5af-4bd8-b39d-c08a35ebb954	market	66		filled		2026-06-24 19:45:01.381198+00	2026-06-24 19:45:02.992416+00		66
+307	PLTR	live	magna53	6	149.0545	143.28	170.47	closed	t	0	7e38d875-6438-4787-a1d6-fa5d75874e8b	market	2		filled	simple	2026-08-05 13:45:00.174393+00	2026-08-05 13:45:00.223523+00		2
+332	FIGS	live	magna53	61	15.495082	15.19	15.19	closed	t	0	676b9bad-2fc6-4567-bcb8-7f0c001181b6	market	20		filled	simple	2026-08-07 13:35:01.649292+00	2026-08-07 13:35:04.540913+00		20
+337	ABCL	live	magna53	85	8.96	8.4	10.66	closed	t	0	7ca81e06-52df-4cce-b469-7d657694ec2a	limit	28	10.08	filled	simple	2026-08-11 14:30:00.966868+00	2026-08-11 14:34:55.400112+00		28
+367	ETON	live	magna53	17	55.2012	53.01	55.2012	closed	t	0	ee925e6b-43eb-4db1-b040-7eae9568fb49	limit	5	59.58	filled	simple	2026-08-14 13:35:01.135412+00	2026-08-14 19:58:02.35852+00		5
+372	AMLX	live	magna53	16	30.211219	27.089999999999996	34.46	closed	t	0	c6a6354b-0b5f-4066-87f3-e48195318659	limit	5	33.47	filled	oco	2026-08-18 17:30:01.275156+00	2026-08-18 17:33:44.324644+00		5
+374	MRNA	live	magna53	4	120.75	109.85	145.2	closed	t	0	ecb9e3b9-a41d-4310-90a6-94f6c385b079	limit	1	132.25	filled	oco	2026-08-19 13:55:01.093324+00	2026-08-19 13:55:04.087378+00		1
+383	CRWD	live	magna53	3	213.3058	201.28	213.3058	closed	t	0	1cc82203-f94f-4ac0-874d-caac4b908b39	limit	1	227.72	filled	oco	2026-08-27 19:45:00.699492+00	2026-08-27 19:46:15.322697+00		1
+404	KOD	live	magna53	5	63.15	58.0818	88.25	filled	t	4	26f62c6e-48ce-4b63-96db-06d92538ba2c	limit	1	84.43	filled	oco	2026-09-28 14:10:00.654284+00	2026-09-28 14:10:03.693832+00		1
+(18 rows)
+=== Q5 OCO parents -> their sibling stop legs (leg row status = did the slice exit at its own stop?)
+trade_id	ticker	account_mode	parent_id	parent_status	parent_qty	limit_price	submitted_at	leg_id	leg_status	leg_qty	leg_stop	leg_filled_at	leg_purpose	entry_price	trade_stop_now	trade_status	partial_taken	remaining_shares
+372	AMLX	live	c6a6354b-0b5f-4066-87f3-e48195318659	filled	5	33.47	2026-08-18 17:30:01.275156+00	f0936c8d-3140-4491-97f2-2158f44a6948	cancelled	5	30.211219		stop_loss	30.211219	34.46	closed	t	0
+374	MRNA	live	ecb9e3b9-a41d-4310-90a6-94f6c385b079	filled	1	132.25	2026-08-19 13:55:01.093324+00	2918e279-c4ef-462e-94f7-ebc168bf8932	cancelled	1	120.75		stop_loss	120.75	145.2	closed	t	0
+383	CRWD	live	1cc82203-f94f-4ac0-874d-caac4b908b39	filled	1	227.72	2026-08-27 19:45:00.699492+00	f239a810-bf11-4aa0-b4ca-87b7ecebb0a2	cancelled	1	213.3058		stop_loss	213.3058	213.3058	closed	t	0
+404	KOD	live	26f62c6e-48ce-4b63-96db-06d92538ba2c	filled	1	84.43	2026-09-28 14:10:00.654284+00	7a7c604b-e7f4-46cb-9178-be6f8fd53402	cancelled	1	63.15		stop_loss	63.15	88.25	filled	t	4
+(4 rows)
+=== Q6 every FILLED stop_loss order whose qty < the
+unterminated quoted string
+trade_id	ticker	account_mode	alpaca_order_id	qty	stop_price	status	filled_at	filled_qty	filled_avg_price	entry_shares	entry_price	trade_status	partial_taken	remaining_shares	closed_at
+56	GOOGL	paper	a16b3bbe-b105-4524-8800-bec219ad7cb6	34	395.87	filled	2026-05-27 13:00:00.349919+00	34	395.4	51	382.61	closed	t	0	2026-05-19 13:30:15.667414+00
+82	SMCI	paper	13952e3b-b5d4-48eb-98e1-2f9f9c3454c4	408	32.57	filled	2026-05-27 13:00:00.468091+00	408	32.565882	612	32.567614	closed	t	0	2026-05-12 13:56:55.847281+00
+72	FTRE	paper	8e00918c-61a0-4a83-8796-718122dff284	923	14.31	filled	2026-05-27 13:00:00.521819+00	923	14.25	1384	14.31	closed	t	0	2026-05-12 13:41:55.999822+00
+161	PURR	paper	f9b8def5-5cb0-4772-b1a2-6c48eb3a21a3	632	8.05	filled	2026-05-28 13:45:00.395802+00	632	7.83	948	8.05	closed	t	0	2026-05-28 13:31:42.455372+00
+177	RCAT	paper	f1824d50-223e-4362-85e7-348c9a890675	1020	12.57	filled	2026-06-05 16:45:00.244712+00	1020	12.56	1529	12.57	closed	t	0	2026-06-05 16:42:53.983457+00
+172	CRSR	paper	57c0b44d-36af-43b7-8f16-5bcf4d615578	1382	8.77	filled	2026-06-08 19:30:00.164638+00	1382	8.77	2073	8.772422	closed	t	0	2026-06-08 19:22:50.746763+00
+183	FPS	paper	d8c31ece-0d6e-4812-9ed5-78e17558de54	28	59.69	filled	2026-06-25 13:45:00.069335+00	28	59.5	163	53.793681	closed	t	0	2026-06-25 13:43:28.150139+00
+221	QURE	paper	fb149ff7-750e-4253-bbc8-452f5ef738c2	134	44.69	filled	2026-07-02 13:45:00.030825+00	134	44.59	200	44.69	closed	t	0	2026-07-02 13:31:21.294445+00
+332	FIGS	live	86bfac4a-1613-4678-aa9a-c94691f1b58f	41	15.19	filled	2026-08-07 14:00:00.092128+00	41	15.16	61	15.495082	closed	t	0	2026-08-07 13:51:02.672915+00
+367	ETON	live	11b25e11-5b14-4b60-afd5-2a48db9ea783	12	55.2012	filled	2026-08-14 14:00:00.11923+00	12	55.05	17	55.2012	closed	t	0	2026-08-14 13:45:11.151019+00
+307	PLTR	live	383b52e5-2cdd-4cbd-a069-a045b25ccd2d	4	170.47	filled	2026-08-19 14:15:00.100174+00	4	170.3875	6	149.0545	closed	t	0	2026-08-19 14:03:18.965774+00
+337	ABCL	live	96dcae84-3d0b-409d-9c7c-ce601a9c463c	57	10.66	filled	2026-08-24 13:45:00.042208+00	57	10.6514	85	8.96	closed	t	0	2026-08-24 13:32:11.190839+00
+383	CRWD	live	8e02949f-ffc0-4812-9f14-a8481b16d8d4	2	213.3058	filled	2026-08-28 14:15:00.054947+00	2	213.3	3	213.3058	closed	t	0	2026-08-28 14:00:07.28177+00
+372	AMLX	live	32e1e352-40a2-43b4-b2e8-f1b8a618da09	11	34.46	filled	2026-08-31 13:45:00.041404+00	11	34.45	16	30.211219	closed	t	0	2026-08-31 13:32:51.994395+00
+374	MRNA	live	d9e23f60-db8e-4a4d-980f-0ceb542bb4b2	3	145.2	filled	2026-09-03 13:33:00.034798+00	3	145.1102	4	120.75	closed	t	0	2026-09-03 13:32:47.915582+00
+(15 rows)
+=== Q7 audit event counts, ALL TIME, for the OCO-unwind / breakeven-degrade / clamp paths
+event_type	n	first	last
+breakeven_armed	3	2026-09-18	2026-09-28
+breakeven_arm_noop	1	2026-09-22	2026-09-22
+oco_parent_cancelled_unfilled	2	2026-10-05	2026-10-09
+partial_exit_breakeven_armed	5	2026-08-11	2026-08-27
+partial_exit_committed	26	2026-05-05	2026-09-28
+partial_exit_sell_placed	28	2026-05-05	2026-10-08
+profit_trigger_fired	8	2026-08-05	2026-09-28
+stop_exit_committed	2	2026-05-14	2026-05-14
+(8 rows)
+=== Q8 stop_exit_committed rows that left shares OPEN (a partial-quantity stop fill), ALL TIME
+created_at	summary
+(0 rows)
+=== Q9 trades whose exits[] carry >= 2 partial_profit entries, or any partial_profit + stop_hit mix (ALL TIME)
+id	ticker	account_mode	signal_type	entry_shares	remaining_shares	partial_taken	status	filled	closed	n_partials	n_stops	exits_seq
+56	GOOGL	paper	9m_day2	51	0	t	closed	2026-05-01	2026-05-19	1	1	partial_profit:17@393.44 | stop_hit:34.0@395.4
+57	TEAM	paper	magna53	229	0	t	closed	2026-05-01	2026-05-06	1	2	stop_hit:229.0@82.55821 | partial_profit:76@89.51 | stop_hit:153@85.18
+72	FTRE	paper	magna53	1384	0	t	closed	2026-05-05	2026-05-12	1	1	partial_profit:461@14.73 | stop_hit:923.0@14.25
+82	SMCI	paper	magna53	612	0	t	closed	2026-05-06	2026-05-12	1	2	stop_hit:612.0@31.228448 | partial_profit:204@32.970246 | stop_hit:408.0@32.565882
+119	BW	paper	magna53	1163	0	t	closed	2026-05-11	2026-05-27	1	0	partial_profit:387@18.932791 | sma_trail_stop:776@19.32299
+161	PURR	paper	9m_day2	948	0	t	closed	2026-05-20	2026-05-28	1	1	partial_profit:316@8.500411 | stop_hit:632.0@7.83
+167	IBM	paper	9m_day2	26	0	t	closed	2026-05-22	2026-06-10	1	0	partial_profit:8@291.465 | sma_trail_stop:18@272.611111
+172	CRSR	paper	magna53	2073	0	t	closed	2026-05-27	2026-06-08	1	1	partial_profit:691@10.79 | stop_hit:1382.0@8.77
+177	RCAT	paper	magna53	1529	0	t	closed	2026-05-28	2026-06-05	1	1	partial_profit:509@14.88 | stop_hit:1020.0@12.56
+183	FPS	paper	9m_day2	163	0	t	closed	2026-06-01	2026-06-25	0	1	stop_hit:28.0@59.5
+221	QURE	paper	magna53	200	0	t	closed	2026-06-17	2026-07-02	1	1	partial_profit:66@48.16 | stop_hit:134.0@44.59
+307	PLTR	live	magna53	6	0	t	closed	2026-08-04	2026-08-19	1	1	partial_profit:2@165.6895 | stop_hit:4@170.3875
+332	FIGS	live	magna53	61	0	t	closed	2026-08-07	2026-08-07	1	1	partial_profit:20@15.8401 | stop_hit:41.0@15.16
+337	ABCL	live	magna53	85	0	t	closed	2026-08-10	2026-08-24	1	1	partial_profit:28@10.08 | stop_hit:57@10.6514
+367	ETON	live	magna53	17	0	t	closed	2026-08-14	2026-08-14	1	1	stop_hit:17.0@55.05 | partial_profit:5@59.58
+372	AMLX	live	magna53	16	0	t	closed	2026-08-18	2026-08-31	1	1	partial_profit:5@33.47 | stop_hit:11@34.45
+374	MRNA	live	magna53	4	0	t	closed	2026-08-19	2026-09-03	1	1	partial_profit:1@138.46 | stop_hit:3@145.1102
+383	CRWD	live	magna53	3	0	t	closed	2026-08-27	2026-08-28	1	1	partial_profit:1@227.72 | stop_hit:2@213.3
+404	KOD	live	magna53	5	4	t	filled	2026-09-28		1	0	partial_profit:1@85.125
+(19 rows)
+=== Q10 timeline for EVERY trade that ever had a partial_exit order (what the stops were, and what happened next)
+trade_id	created_at	event_type	summary	d_stop	d_oco_stop	d_new_rem	d_shares
+56	2026-05-05 13:35:03.583755+00	stop_updated	GOOGL: stop now $379.43 (9d55403b-cb85-4baa-afbb-cd2d0c860e35)				
+56	2026-05-05 20:45:00.112468+00	partial_exit_started	GOOGL: sell 17 of 51 (new_remaining=34)	379.43		34	17
+56	2026-05-05 20:45:00.16695+00	partial_exit_sell_placed	GOOGL: market sell 17 placed (82ebdc29-5783-4455-9012-25f99f79b5c2, status=OrderStatus.ACCEPTED)				17
+56	2026-05-05 20:45:00.169363+00	partial_exit_committed	GOOGL: DB committed — sold 17 @$382.61, pnl $+0.00, remaining 34			34	17
+56	2026-05-05 20:45:00.616072+00	stop_updated	GOOGL: stop now $382.61 (537e5bb2-3a8f-4c1c-aaa2-14545bd4eb48)				
+56	2026-05-06 02:33:29.28319+00	partial_exit_started	GOOGL: sell 17 of 51 (new_remaining=34)	382.61		34	17
+56	2026-05-06 02:33:29.35748+00	partial_exit_sell_placed	GOOGL: market sell 17 placed (5073291f-4522-4d6c-91d5-37156457dffc, status=OrderStatus.ACCEPTED)				17
+56	2026-05-06 13:31:18.570959+00	partial_exit_committed	GOOGL: DB committed on WS fill — sold 17 @$393.44, pnl $+184.11, remaining 34			34	17
+56	2026-05-15 20:45:00.150384+00	stop_updated	GOOGL: stop now $394.50 (d3b1850f-5b08-4036-ab63-6ce1adddfd53) for 34 sh				
+56	2026-05-18 20:45:00.147777+00	stop_updated	GOOGL: stop now $395.87 (a16b3bbe-b105-4524-8800-bec219ad7cb6) for 34 sh				
+57	2026-05-05 13:35:07.057821+00	stop_updated	TEAM: stop now $82.79 (4a3cc771-ac57-4953-8c39-0758b506bb15)				
+57	2026-05-05 20:45:00.665485+00	partial_exit_started	TEAM: sell 76 of 229 (new_remaining=153)	82.79		153	76
+57	2026-05-05 20:45:00.702617+00	partial_exit_sell_placed	TEAM: market sell 76 placed (ce35d7a8-3ff7-486a-b72f-2c2d3d12ca95, status=OrderStatus.ACCEPTED)				76
+57	2026-05-05 20:45:00.705313+00	partial_exit_committed	TEAM: DB committed — sold 76 @$85.19, pnl $+0.00, remaining 153			153	76
+57	2026-05-05 20:45:01.158613+00	stop_updated	TEAM: stop now $85.19 (2de2d33f-5859-4dd4-9bb6-b09127a60833)				
+57	2026-05-06 02:33:29.813671+00	partial_exit_started	TEAM: sell 76 of 229 (new_remaining=153)	85.19		153	76
+57	2026-05-06 02:33:29.85294+00	partial_exit_sell_placed	TEAM: market sell 76 placed (9c2d2250-4d77-4910-b888-71730efcc267, status=OrderStatus.ACCEPTED)				76
+57	2026-05-06 13:32:20.30142+00	partial_exit_committed	TEAM: DB committed on WS fill — sold 76 @$89.51, pnl $+328.32, remaining 153			153	76
+72	2026-05-08 20:45:00.371279+00	partial_exit_started	FTRE: sell 461 of 1384 (new_remaining=923)	13.96		923	461
+72	2026-05-08 20:45:00.420197+00	partial_exit_sell_placed	FTRE: market sell 461 placed (fc255617-7209-471c-8110-b8da223d0980, status=OrderStatus.ACCEPTED)				461
+72	2026-05-11 13:32:45.194868+00	partial_exit_committed	FTRE: DB committed on WS fill — sold 461 @$14.73, pnl $+193.62, remaining 923			923	461
+82	2026-05-11 20:45:00.623347+00	partial_exit_started	SMCI: sell 204 of 612 (new_remaining=408)	31.26		408	204
+82	2026-05-11 20:45:00.678274+00	partial_exit_sell_placed	SMCI: market sell 204 placed (4baad913-cee0-44b7-90a2-d70eb7812df4, status=OrderStatus.ACCEPTED)				204
+82	2026-05-11 20:45:01.135567+00	stop_updated	SMCI: stop now $32.57 (13952e3b-b5d4-48eb-98e1-2f9f9c3454c4) for 408 sh				
+82	2026-05-12 13:34:43.47439+00	partial_exit_committed	SMCI: DB committed on WS fill — sold 204 @$32.97, pnl $+82.14, remaining 408			408	204
+119	2026-05-14 20:45:00.351067+00	partial_exit_started	BW: sell 387 of 1163 (new_remaining=776)	16.49		776	387
+119	2026-05-14 20:45:00.409806+00	partial_exit_sell_placed	BW: market sell 387 placed (9bfeff93-eb57-4109-8fed-256c9451c891, status=OrderStatus.ACCEPTED)				387
+119	2026-05-14 20:45:00.858066+00	stop_updated	BW: stop now $17.05 (53a2f89b-ac21-4c76-89ad-d003d29ec2f3) for 776 sh				
+119	2026-05-15 13:33:38.032272+00	partial_exit_committed	BW: DB committed on WS fill — sold 387 @$18.93, pnl $+728.64, remaining 776			776	387
+119	2026-05-27 13:35:00.13069+00	stop_update_aborted	BW: pending exits (776) cover full remaining (776.0) — no stop sizing left				
+119	2026-05-27 13:37:08.29055+00	full_exit_committed	BW: DB committed on WS fill — closed 776 @$19.32, reason=sma_trail_stop, total_pnl $+2,492.48				776
+161	2026-05-26 20:45:00.608835+00	partial_exit_started	PURR: sell 316 of 948 (new_remaining=632)	7.2		632	316
+161	2026-05-26 20:45:00.647196+00	partial_exit_sell_placed	PURR: market sell 316 placed (b119c622-f227-459d-82bd-a55f042d5cca, status=OrderStatus.ACCEPTED)				316
+161	2026-05-26 20:45:01.101315+00	stop_updated	PURR: stop now $8.05 (f9b8def5-5cb0-4772-b1a2-6c48eb3a21a3) for 632 sh				
+161	2026-05-27 13:37:42.550473+00	partial_exit_committed	PURR: DB committed on WS fill — sold 316 @$8.50, pnl $+142.33, remaining 632			632	316
+167	2026-05-27 20:45:00.488128+00	partial_exit_started	IBM: sell 8 of 26 (new_remaining=18)	230.94		18	8
+167	2026-05-27 20:45:00.531632+00	partial_exit_aborted	IBM: replacement stop failed — position naked, APIError	230.94		18	
+167	2026-05-28 01:18:57.527983+00	partial_exit_started	IBM: sell 8 of 26 (new_remaining=18)	230.94		18	8
+167	2026-05-28 01:18:57.563424+00	partial_exit_sell_failed	IBM: market sell raised — APIError, attempting rollback	230.94			8
+167	2026-05-28 20:45:00.129171+00	partial_exit_started	IBM: sell 8 of 26 (new_remaining=18)	230.94		18	8
+167	2026-05-28 20:45:01.633587+00	partial_exit_aborted	IBM: replacement stop failed — position naked, TypeError	230.94		18	
+167	2026-05-29 14:39:56.190215+00	partial_exit_started	IBM: sell 8 of 26 (new_remaining=18)	230.94		18	8
+167	2026-05-29 14:39:56.248322+00	partial_exit_sell_failed	IBM: market sell raised — APIError, attempting rollback	230.94			8
+167	2026-05-29 15:59:31.654893+00	partial_exit_started	IBM: sell 8 of 26 (new_remaining=18)	230.94		18	8
+167	2026-05-29 15:59:31.722518+00	partial_exit_sell_placed	IBM: market sell 8 placed (ca4f0c9c-94f7-4897-9f78-653ccdb0f1dc, status=OrderStatus.PENDING_NEW)				8
+167	2026-05-29 15:59:33.47447+00	partial_exit_committed	IBM: DB committed on WS fill — sold 8 @$291.46, pnl $+226.37, remaining 18			18	8
+167	2026-06-01 20:45:00.250017+00	stop_updated	IBM: stop now $263.17 (19f6304c-01d0-4daa-9d68-c7188f19ac98) for 18 sh				
+167	2026-06-10 13:33:41.051992+00	full_exit_committed	IBM: DB committed on WS fill — closed 18 @$272.61, reason=sma_trail_stop, total_pnl $+396.34				18
+172	2026-06-01 16:19:08.44929+00	partial_exit_started	CRSR: sell 691 of 2073 (new_remaining=1382)	8.4		1382	691
+172	2026-06-01 16:19:08.501992+00	partial_exit_sell_placed	CRSR: market sell 691 placed (2af6d59f-77f6-4c56-b724-b726d7b4e10d, status=OrderStatus.PENDING_NEW)				691
+172	2026-06-01 16:19:09.42785+00	partial_exit_committed	CRSR: DB committed on WS fill — sold 691 @$10.79, pnl $+1,394.15, remaining 1382			1382	691
+172	2026-06-01 20:45:00.48434+00	stop_updated	CRSR: stop now $8.77 (57c0b44d-36af-43b7-8f16-5bcf4d615578) for 1382 sh				
+177	2026-06-01 16:36:51.619938+00	partial_exit_started	RCAT: sell 509 of 1529 (new_remaining=1020)	11.955		1020	509
+177	2026-06-01 16:36:53.155538+00	partial_exit_aborted	RCAT: replacement stop failed — position naked, APIError	11.955		1020	
+177	2026-06-01 17:15:08.627472+00	partial_exit_started	RCAT: sell 509 of 1529 (new_remaining=1020)	11.955		1020	509
+177	2026-06-01 17:15:08.716568+00	partial_exit_sell_placed	RCAT: market sell 509 placed (b533862e-b546-4d65-915c-2fed921e5bda, status=OrderStatus.PENDING_NEW)				509
+177	2026-06-01 17:15:10.82206+00	partial_exit_committed	RCAT: DB committed on WS fill — sold 509 @$14.88, pnl $+1,175.79, remaining 1020			1020	509
+177	2026-06-01 20:45:00.735333+00	stop_updated	RCAT: stop now $12.57 (f1824d50-223e-4362-85e7-348c9a890675) for 1020 sh				
+221	2026-06-22 20:45:00.424668+00	partial_exit_started	QURE: sell 66 of 200 (new_remaining=134)	42.5		134	66
+221	2026-06-22 20:45:03.779765+00	partial_exit_aborted	QURE: shares not free (qty_available=0.0 < 66) — sell skipped, position over-covered (safe), retry next window			134	66
+221	2026-06-23 20:45:00.749143+00	partial_exit_started	QURE: sell 66 of 200 (new_remaining=134)	42.5		134	66
+221	2026-06-23 20:45:02.28477+00	partial_exit_aborted	QURE: replacement stop rejected (APIError); original stop 5e0cd822-4075-44cd-bffd-e0f9aef251fe still LIVE — position protected, no action	42.5		134	
+221	2026-06-24 19:45:00.742941+00	partial_exit_started	QURE: sell 66 of 200 (new_remaining=134)	42.5		134	66
+221	2026-06-24 19:45:01.38627+00	partial_exit_sell_placed	QURE: market sell 66 placed (866365fb-f5af-4bd8-b39d-c08a35ebb954, status=OrderStatus.PENDING_NEW)				66
+221	2026-06-24 19:45:02.995892+00	partial_exit_committed	QURE: DB committed on WS fill — sold 66 @$48.16, pnl $+229.02, remaining 134			134	66
+221	2026-06-24 20:45:00.44353+00	stop_updated	QURE: stop now $44.69 (fb149ff7-750e-4253-bbc8-452f5ef738c2) for 134 sh				
+307	2026-08-04 16:15:00.763857+00	partial_exit_started	PLTR: sell 2 of 6 (new_remaining=4)	143.28		4	2
+307	2026-08-04 16:15:02.291095+00	partial_exit_aborted	PLTR: replacement stop rejected (APIError); original stop 512610fc-bee2-40d1-a129-ece67558d9ee still LIVE — position protected, no action	143.28		4	
+307	2026-08-04 16:15:02.71295+00	profit_trigger_failed	PLTR: high $160.68 >= 2R target $160.60				2
+307	2026-08-04 16:20:00.592876+00	partial_exit_started	PLTR: sell 2 of 6 (new_remaining=4)	143.28		4	2
+307	2026-08-04 16:20:02.124556+00	partial_exit_aborted	PLTR: replacement stop rejected (APIError); original stop 512610fc-bee2-40d1-a129-ece67558d9ee still LIVE — position protected, no action	143.28		4	
+307	2026-08-04 16:20:02.548427+00	profit_trigger_failed	PLTR: high $160.79 >= 2R target $160.60				2
+307	2026-08-04 16:25:00.67629+00	partial_exit_started	PLTR: sell 2 of 6 (new_remaining=4)	143.28		4	2
+307	2026-08-04 16:25:02.210199+00	partial_exit_aborted	PLTR: replacement stop rejected (APIError); original stop 512610fc-bee2-40d1-a129-ece67558d9ee still LIVE — position protected, no action	143.28		4	
+307	2026-08-04 16:25:02.633191+00	profit_trigger_failed	PLTR: high $161.37 >= 2R target $160.60				2
+307	2026-08-04 16:30:01.685401+00	profit_trigger_failed	PLTR: high $161.37 >= 2R target $160.60				2
+307	2026-08-04 16:35:01.048014+00	profit_trigger_failed	PLTR: high $161.37 >= 2R target $160.60				2
+307	2026-08-04 16:40:01.00064+00	profit_trigger_failed	PLTR: high $161.74 >= 2R target $160.60				2
+307	2026-08-04 16:45:01.012441+00	profit_trigger_failed	PLTR: high $162.30 >= 2R target $160.60				2
+307	2026-08-04 16:50:01.098124+00	profit_trigger_failed	PLTR: high $162.65 >= 2R target $160.60				2
+307	2026-08-04 16:55:01.063778+00	profit_trigger_failed	PLTR: high $162.77 >= 2R target $160.60				2
+307	2026-08-04 17:00:01.185364+00	profit_trigger_failed	PLTR: high $162.83 >= 2R target $160.60				2
+307	2026-08-04 17:05:01.382065+00	profit_trigger_failed	PLTR: high $162.83 >= 2R target $160.60				2
+307	2026-08-04 17:10:01.39311+00	profit_trigger_failed	PLTR: high $162.83 >= 2R target $160.60				2
+307	2026-08-04 17:15:01.27693+00	profit_trigger_failed	PLTR: high $162.83 >= 2R target $160.60				2
+307	2026-08-04 17:20:01.249947+00	profit_trigger_failed	PLTR: high $162.83 >= 2R target $160.60				2
+307	2026-08-04 17:25:01.305228+00	profit_trigger_failed	PLTR: high $162.83 >= 2R target $160.60				2
+307	2026-08-04 17:30:01.223195+00	profit_trigger_failed	PLTR: high $162.83 >= 2R target $160.60				2
+307	2026-08-04 17:35:01.423326+00	profit_trigger_failed	PLTR: high $162.83 >= 2R target $160.60				2
+307	2026-08-04 17:40:01.329682+00	profit_trigger_failed	PLTR: high $162.83 >= 2R target $160.60				2
+307	2026-08-04 17:45:01.140169+00	profit_trigger_failed	PLTR: high $162.96 >= 2R target $160.60				2
+307	2026-08-04 17:50:01.212738+00	profit_trigger_failed	PLTR: high $164.35 >= 2R target $160.60				2
+307	2026-08-04 17:55:01.000665+00	profit_trigger_failed	PLTR: high $164.35 >= 2R target $160.60				2
+307	2026-08-04 18:00:01.079661+00	profit_trigger_failed	PLTR: high $164.35 >= 2R target $160.60				2
+307	2026-08-04 18:05:01.28887+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 18:10:01.31541+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 18:15:01.252774+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 18:20:01.372859+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 18:25:01.208623+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 18:30:01.438556+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 18:35:01.2934+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 18:40:01.611194+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 18:45:01.376165+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 18:50:01.200851+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 18:55:01.023863+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 19:00:01.132045+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 19:05:01.283498+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 19:10:01.599733+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 19:15:01.237562+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 19:20:01.36269+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 19:25:01.168476+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 19:30:01.277489+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 19:35:01.169231+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 19:40:01.334408+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 19:45:01.190787+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 19:50:01.001441+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 19:55:01.111732+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-04 22:55:56.005575+00	stop_updated	PLTR: stop now $143.28 (10e3e974-b8a7-4d7b-a665-ea91b1ea6b5e) for 6 sh				
+307	2026-08-05 13:30:00.108855+00	partial_exit_started	PLTR: sell 2 of 6 (new_remaining=4)	143.28		4	2
+307	2026-08-05 13:30:03.659999+00	partial_exit_aborted	PLTR: shares not free (qty_available=0.0 < 2) — sell skipped, position over-covered (safe), retry next window			4	2
+307	2026-08-05 13:30:04.204427+00	profit_trigger_failed	PLTR: high $164.52 >= 2R target $160.60				2
+307	2026-08-05 13:35:00.078928+00	partial_exit_started	PLTR: sell 2 of 6 (new_remaining=4)	143.28		4	2
+307	2026-08-05 13:35:01.611743+00	partial_exit_aborted	PLTR: replacement stop rejected (APIError); original stop 596c134e-9dfc-4f08-aaa4-57ee0a665a26 still LIVE — position protected, no action	143.28		4	
+307	2026-08-05 13:35:02.028118+00	profit_trigger_failed	PLTR: high $165.92 >= 2R target $160.60				2
+307	2026-08-05 13:40:00.063122+00	partial_exit_started	PLTR: sell 2 of 6 (new_remaining=4)	143.28		4	2
+307	2026-08-05 13:40:01.607522+00	partial_exit_aborted	PLTR: replacement stop rejected (APIError); original stop 596c134e-9dfc-4f08-aaa4-57ee0a665a26 still LIVE — position protected, no action	143.28		4	
+307	2026-08-05 13:40:02.02832+00	profit_trigger_failed	PLTR: high $165.92 >= 2R target $160.60				2
+307	2026-08-05 13:45:00.108335+00	partial_exit_started	PLTR: sell 2 of 6 (new_remaining=4)	143.28		4	2
+307	2026-08-05 13:45:00.17714+00	partial_exit_sell_placed	PLTR: market sell 2 placed (7e38d875-6438-4787-a1d6-fa5d75874e8b, status=pending_new)				2
+307	2026-08-05 13:45:00.59113+00	profit_trigger_fired	PLTR: high $166.08 >= 2R target $160.60				2
+307	2026-08-05 13:45:00.595592+00	partial_exit_committed	PLTR: DB committed on WS fill — sold 2 @$165.69, pnl $+33.27, remaining 4			4	2
+307	2026-08-05 20:45:03.594942+00	stop_updated	PLTR: stop now $149.05 (4d7002ba-5e45-4b76-a3ad-a702794f1191) for 4 sh				
+307	2026-08-12 20:45:03.879163+00	stop_updated	PLTR: stop now $150.15 (dd9ed021-a657-473a-abec-0aeec464fa80) for 4 sh				
+307	2026-08-13 20:45:03.816823+00	stop_updated	PLTR: stop now $155.75 (b6bd0ce9-05c5-43c7-b974-46b299fd55a1) for 4 sh				
+307	2026-08-14 20:45:03.878683+00	stop_updated	PLTR: stop now $160.93 (3be9382f-e57e-4b3d-8fcb-d2e8d1bf5b19) for 4 sh				
+307	2026-08-17 20:45:03.850497+00	stop_updated	PLTR: stop now $165.88 (9ad8688c-1b5b-4a1e-a0f6-444164d8ecfb) for 4 sh				
+307	2026-08-18 20:45:03.83787+00	stop_updated	PLTR: stop now $170.47 (383b52e5-2cdd-4cbd-a069-a045b25ccd2d) for 4 sh				
+332	2026-08-07 13:35:01.037467+00	partial_exit_started	FIGS: sell 20 of 61 (new_remaining=41)	15.19		41	20
+332	2026-08-07 13:35:01.651048+00	partial_exit_sell_placed	FIGS: market sell 20 placed (676b9bad-2fc6-4567-bcb8-7f0c001181b6, status=pending_new)				20
+332	2026-08-07 13:35:02.069325+00	profit_trigger_fired	FIGS: high $16.38 >= 2R target $16.11				20
+332	2026-08-07 13:35:04.547242+00	partial_exit_committed	FIGS: DB committed on WS fill — sold 20 @$15.84, pnl $+6.90, remaining 41			41	20
+337	2026-08-10 20:20:00.054972+00	stop_updated	ABCL: stop now $8.40 (6f87abc1-a10a-4f44-bfdb-ea1a620382d8) for 85 sh				
+337	2026-08-11 14:30:00.865468+00	partial_exit_started	ABCL: sell 28 of 85 (new_remaining=57)	8.4		57	28
+337	2026-08-11 14:30:00.969177+00	partial_exit_sell_placed	ABCL: limit sell 28 @ $10.08 resting (7ca81e06-52df-4cce-b469-7d657694ec2a, status=pending_new)				28
+337	2026-08-11 14:30:00.992845+00	partial_exit_breakeven_armed	ABCL: stop moves to breakeven $8.96 (was $8.40, entry $8.96) via price-only replace on the reduced 57-share stop (422cf8d0→576e681a)	8.96			
+337	2026-08-11 14:30:01.394738+00	profit_trigger_fired	ABCL: high $10.13 >= 2R target $10.08				28
+337	2026-08-11 14:34:55.40451+00	partial_exit_committed	ABCL: DB committed on WS fill — sold 28 @$10.08, pnl $+31.36, remaining 57			57	28
+337	2026-08-18 20:45:07.601339+00	stop_updated	ABCL: stop now $9.03 (7f3234fd-16ae-41a4-9c42-c830fee32360) for 57 sh				
+337	2026-08-19 20:45:04.204556+00	stop_updated	ABCL: stop now $9.62 (81060d9d-a160-4ce6-85fb-2e3bda74ef7c) for 57 sh				
+337	2026-08-20 20:45:03.849447+00	stop_updated	ABCL: stop now $10.18 (d8a6a724-14db-418b-b238-40246a938f92) for 57 sh				
+337	2026-08-21 20:45:03.84011+00	stop_updated	ABCL: stop now $10.66 (96dcae84-3d0b-409d-9c7c-ce601a9c463c) for 57 sh				
+367	2026-08-14 13:35:00.634953+00	partial_exit_started	ETON: sell 5 of 17 (new_remaining=12)	53.01		12	5
+367	2026-08-14 13:35:01.13716+00	partial_exit_sell_placed	ETON: limit sell 5 @ $59.58 resting (ee925e6b-43eb-4db1-b040-7eae9568fb49, status=pending_new)				5
+367	2026-08-14 13:35:01.166054+00	partial_exit_breakeven_armed	ETON: stop moves to breakeven $55.20 (was $53.01, entry $55.20) via price-only replace on the reduced 12-share stop (414bffe6→11b25e11)	55.2012			
+367	2026-08-14 13:35:01.571832+00	profit_trigger_fired	ETON: high $59.79 >= 2R target $59.58				5
+367	2026-08-14 13:40:00.194981+00	partial_exit_aborted	ETON: pending partial_exit order already open (ee925e6b-43eb-4db1-b040-7eae9568fb49)				
+367	2026-08-14 13:40:00.197381+00	profit_trigger_failed	ETON: high $59.79 >= 2R target $59.58				5
+367	2026-08-14 13:45:00.263966+00	partial_exit_aborted	ETON: pending partial_exit order already open (ee925e6b-43eb-4db1-b040-7eae9568fb49)				
+367	2026-08-14 13:45:00.265719+00	profit_trigger_failed	ETON: high $59.79 >= 2R target $59.58				5
+367	2026-08-14 19:58:02.363418+00	partial_exit_committed	ETON: DB committed on WS fill — sold 5 @$59.58, pnl $+21.89, remaining -5			-5	5
+372	2026-08-18 17:30:00.695545+00	partial_exit_started	AMLX: sell 5 of 16 (new_remaining=11)	27.089999999999996		11	5
+372	2026-08-18 17:30:01.280536+00	partial_exit_sell_placed	AMLX: OCO resting for 5: limit @ $33.47 / stop @ $30.21 (c6a6354b-0b5f-4066-87f3-e48195318659, status=pending_new)		30.211219		5
+372	2026-08-18 17:30:01.31033+00	partial_exit_breakeven_armed	AMLX: stop moves to breakeven $30.21 (was $27.09, entry $30.21) via price-only replace on the reduced 11-share stop (babf88c4→9e8588cc)	30.211219			
+372	2026-08-18 17:30:01.719286+00	profit_trigger_fired	AMLX: high $33.49 >= 2R target $33.47				5
+372	2026-08-18 17:33:44.328597+00	partial_exit_committed	AMLX: DB committed on WS fill — sold 5 @$33.47, pnl $+16.29, remaining 11			11	5
+372	2026-08-25 20:45:04.19518+00	stop_updated	AMLX: stop now $30.51 (d2013c3d-18da-4025-a377-e3fe5200ed2b) for 11 sh				
+372	2026-08-26 20:45:03.853205+00	stop_updated	AMLX: stop now $31.85 (84c932f0-9108-4684-8bd8-b6bf8f39e740) for 11 sh				
+372	2026-08-27 20:45:03.831607+00	stop_updated	AMLX: stop now $33.23 (29cc8127-27d7-42e4-816b-468d7bbddc42) for 11 sh				
+372	2026-08-28 20:45:03.83358+00	stop_updated	AMLX: stop now $34.46 (32e1e352-40a2-43b4-b2e8-f1b8a618da09) for 11 sh				
+374	2026-08-19 13:55:00.598317+00	partial_exit_started	MRNA: sell 1 of 4 (new_remaining=3)	109.85		3	1
+374	2026-08-19 13:55:01.098024+00	partial_exit_sell_placed	MRNA: OCO resting for 1: limit @ $132.25 / stop @ $120.75 (ecb9e3b9-a41d-4310-90a6-94f6c385b079, status=pending_new)		120.75		1
+374	2026-08-19 13:55:01.127282+00	partial_exit_breakeven_armed	MRNA: stop moves to breakeven $120.75 (was $109.85, entry $120.75) via price-only replace on the reduced 3-share stop (8ef98fd7→b09cf0c5)	120.75			
+374	2026-08-19 13:55:01.542623+00	profit_trigger_fired	MRNA: high $136.88 >= 2R target $132.25				1
+374	2026-08-19 13:55:04.091092+00	partial_exit_committed	MRNA: DB committed on WS fill — sold 1 @$138.46, pnl $+17.71, remaining 3			3	1
+374	2026-08-31 20:45:03.856557+00	stop_updated	MRNA: stop now $127.43 (556242eb-45f8-4f81-bbba-1b367dbb7b1a) for 3 sh				
+374	2026-09-01 20:45:04.906085+00	stop_updated	MRNA: stop now $136.42 (8ffefc6f-ce93-4d08-abee-b24ef1fbf977) for 3 sh				
+374	2026-09-02 20:45:03.88069+00	stop_updated	MRNA: stop now $145.20 (d9e23f60-db8e-4a4d-980f-0ceb542bb4b2) for 3 sh				
+383	2026-08-27 19:45:00.246558+00	partial_exit_started	CRWD: sell 1 of 3 (new_remaining=2)	201.28		2	1
+383	2026-08-27 19:45:00.701925+00	partial_exit_sell_placed	CRWD: OCO resting for 1: limit @ $227.72 / stop @ $213.31 (1cc82203-f94f-4ac0-874d-caac4b908b39, status=pending_new)		213.3058		1
+383	2026-08-27 19:45:00.742033+00	partial_exit_breakeven_armed	CRWD: stop moves to breakeven $213.31 (was $201.28, entry $213.31) via price-only replace on the reduced 2-share stop (34e9ea99→8e02949f)	213.3058			
+383	2026-08-27 19:45:01.168708+00	profit_trigger_fired	CRWD: high $227.93 >= 2R target $227.72				1
+383	2026-08-27 19:46:15.326424+00	partial_exit_committed	CRWD: DB committed on WS fill — sold 1 @$227.72, pnl $+14.41, remaining 2			2	1
+404	2026-09-28 13:40:00.15038+00	breakeven_armed	KOD: traded $74.58 >= 3R level $71.13 — stop $58.08 → $63.15 (entry) on the full 5-share stop via price-only replace (a1b21d12→b105e02e)				
+404	2026-09-28 14:10:00.172025+00	partial_exit_started	KOD: sell 1 of 5 (new_remaining=4)	63.15		4	1
+404	2026-09-28 14:10:00.658612+00	partial_exit_sell_placed	KOD: OCO resting for 1: limit @ $84.43 / stop @ $63.15 (26f62c6e-48ce-4b63-96db-06d92538ba2c, status=pending_new)		63.15		1
+404	2026-09-28 14:10:01.085405+00	profit_trigger_fired	KOD: high $85.88 >= 8R target $84.43				1
+404	2026-09-28 14:10:03.699015+00	partial_exit_committed	KOD: DB committed on WS fill — sold 1 @$85.12, pnl $+21.98, remaining 4			4	1
+404	2026-10-05 20:45:07.735781+00	stop_updated	KOD: stop now $63.60 (1c7860fc-ecd7-46b3-b0dc-dc82430cd2b5) for 4 sh				
+404	2026-10-06 20:45:07.719782+00	stop_updated	KOD: stop now $69.59 (8d528031-9ce2-40f8-87d4-c16e964fbe34) for 4 sh				
+404	2026-10-07 20:45:03.853451+00	stop_updated	KOD: stop now $75.31 (e72a4a8b-8421-4c9c-8adc-0b7b92020d22) for 4 sh				
+404	2026-10-08 20:45:03.848757+00	stop_updated	KOD: stop now $81.59 (32a179ad-097a-4f8c-912a-649c78683a95) for 4 sh				
+404	2026-10-09 20:45:03.78723+00	stop_updated	KOD: stop now $88.25 (73cc60ee-3d69-4095-b659-2ed1b10674dc) for 4 sh				
+(192 rows)
+=== Q11 depth-rule trades (exit_rule stamped) and the current open book
+id	ticker	account_mode	signal_type	status	entry_shares	remaining_shares	partial_taken	breakeven_active	exit_rule	entry_price	hard_stop	stop_price	stop_order_id	highest_price_seen	filled
+404	KOD	live	magna53	filled	5	4	t	t		63.15	58.0818	88.25	73cc60ee-3d69-4095-b659-2ed1b10674dc	104	2026-09-28
+414	PENG	live	magna53	filled	10	10	f	f		72.21	62.2	62.2	846900d4-dc67-4ebd-b95f-8ddeac8dc0ae	78.75	2026-10-07
+419	HUM	live	magna53	filled	1	1	f	f		452	417.88000000000005	417.88000000000005	e440a379-1f87-4c93-9d63-7c794b7c6d55	456.5	2026-10-09
+(3 rows)
+=== Q12 for each OPEN trade: MAX(high) since fill vs the +8R target (would the poll select it right now?)
+id	ticker	account_mode	signal_type	remaining_shares	partial_taken	tgt8r	max_high_since_fill
+404	KOD	live	magna53	4	t	84.43	104
+414	PENG	live	magna53	10	f	124.29	78.75
+419	HUM	live	magna53	1	f	593.68	456.5
+(3 rows)
