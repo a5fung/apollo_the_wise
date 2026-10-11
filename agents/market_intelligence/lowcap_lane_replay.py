@@ -449,6 +449,8 @@ async def run_lowcap_lane_replay(today: Optional[date] = None, *,
     out["population"] = len(rows)
     todo = [r for r in rows
             if existing.get((r["ticker"], r["scan_date"])) in (None, "open")]
+    # The toggle is read only when there is something to walk (inside `if todo:`), so a night with no
+    # candidates reports "not read" — that summary is NOT a failure and says nothing about the rule.
     lane_why = "exit rule not read (no candidates)"
     if todo:
         try:

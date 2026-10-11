@@ -411,10 +411,13 @@ import test):**
 - **The dated record + the mechanical nag.** `rule_eras.DEPTH_EXIT_LIVE_DATE: date | None = None` is the
   ONE hand-set date, for the readers that hold neither a row nor a toggle (the weekly review's era counts
   and `split_current_vs_older`, `exit_era_start('era_e')`, `EXIT_SWITCHES` / `rule_switches_since`, the
-  #482 gated review's SQL literal). It is set AFTER his switch (never guessed today): `scripts/live_rules.py`
-  drift rule `depth-era-unpinned` (`scan_depth_era_pin`) reports DRIFT at every session open and in the
-  nightly drift check from the flip until the constant equals the toggle's first acting session, and again
-  if the constant is set while the toggle is off. `test_exit_counterfactual_consolidation_631` reads every
+  #482 gated review's SQL literal). It is set AFTER his switch, on the first acting session itself —
+  **TUESDAY 2026-10-13, not Monday** (never guessed today; the #631 pin asserts the pinned era equals TODAY's
+  era, so a Monday commit is red by construction) — and the readers that run inside `apollo-market` (the
+  nightly drift check, `sell_discipline`'s `cf_era`, the weekly review) see it only after a `market-agent`
+  deploy: `scripts/live_rules.py` drift rule `depth-era-unpinned` (`scan_depth_era_pin`) reports DRIFT at every
+  session open and in the nightly drift check from the flip until the constant equals the toggle's first
+  acting session, and again if the constant is set while the toggle is off. `test_exit_counterfactual_consolidation_631` reads every
   `*_DATE` in `rule_eras`, so setting the constant turns the ONE read's era literal RED until the YAML moves
   with it — by design.
 
@@ -428,22 +431,34 @@ open on today's rule.
 
 **Deliberate deviation (stated):** the next-open sale fills at the DAILY bar's open; live's opening-auction
 order fills at the official open, a paper DAY market order ~09:31–09:32 — `live_replay` mirrors the live
-book. **Not covered here (a follow-up, not a defect of the walkers):** `system_review`'s per-trade era
+book. **Second stated deviation (review 2026-10-11, pre-existing on both paths):** the walk's resting-stop
+ratchet raises on ANY higher stop, while live moves the broker's stop only when the new one is MORE than
+1 cent above the current one (`live_tracker`: `depth_stop > current_stop + 0.01`) — a 1-cent raise is applied
+in the replay and skipped live (1 of 5,000 random tapes differed, stop_hit 26.19 vs 26.18; 0 of 10,000 with
+live's threshold removed). Left alone: it would change the non-depth path too and break the byte-identity proof
+below; a later change may add the threshold to both paths together.
+**Not covered here (a follow-up, not a defect of the walkers):** `system_review`'s per-trade era
 fetch (`db.get_setup_era_trades`) does not select `exit_rule`, so its era counts use the dated record — an
 unstamped post-flip MAGNA53 trade (stamp failed closed) would be counted era E there once the constant is
 set; the recorder and the lanes are unaffected.
 
-**Tests**: `tests/test_depth_era_replays.py` (22; 21 RED on origin/main, the unstamped CONTROL green there by design — the row-stamped label,
+**Tests**: `tests/test_depth_era_replays.py` (23; 22 RED on origin/main, the unstamped CONTROL green there by design — the row-stamped label,
 the dated-record fallback, the first acting session incl. the Labor-Day skip, the depth walk's resting stop
 = `depth_stop_price` to the cent, the next-open sale / pending / horizon edge, the +3R floor, no-ADR floor,
-default-off byte-identity, the recorder's arm selection, the lanes' toggle rule and once-per-run read, the
-live_rules drift rule). The existing 96 recorder/era tests and 191 lane/depth tests pass unchanged except
+default-off byte-identity, the recorder's arm selection, the lanes' toggle rule and once-per-run read — and
+its fall-back to today's rule on a row of an unexpected shape (review fix: RED on the first commit with a
+KeyError) — the live_rules drift rule). The two label/stack tests set or bypass the dated record themselves
+(`monkeypatch` / an explicit `None`) so they stay green on and after flip day, and
+`test_weekly_review_report_layout` derives its rule-change count from the switch tables. The existing 96 recorder/era tests and 191 lane/depth tests pass unchanged except
 four runner-test fakes that now accept the `exit_rule` keyword and the recorder's source pin, which now
 also requires the row's `exit_rule` at the stamp site.
 
 **Deploy**: `market-agent` (the recorder, the lanes, `rule_eras`, the drift check run there) **then
 `execution`** — `db.py` is on `scripts/exec_loaded_modules.txt` (the added SELECT column), so the
-scope-drift guard demands the second step (the #482 precedent); execution's behaviour is unchanged.
+scope-drift guard demands the second step (the #482 precedent); execution's behaviour is unchanged. **A
+second, later deploy: the Tuesday constant commit (below) needs `bash scripts/deploy.sh market-agent` only —
+`rule_eras.py` is not on `scripts/exec_loaded_modules.txt` — in the Tue 12:00–13:00 ET window (fallback
+21:15–22:15 ET).**
 
 **EXPECT (written BEFORE the deploy; BASELINE 2026-10-11 = `q1_state.out`: 144 recorder rows, era_c 83 /
 era_d 61, 0 era_e; lane rows era_c / era_d only; 0 stamped trades; no toggle row):** nothing changes until
@@ -452,14 +467,21 @@ and its first settled night: its 12 recorder rows carry `exit_era='era_e'`, `exi
 'depth'`; its `live_replay` / `stop_*` legs on a close-below carry `"fill": "next_open"` and an
 `exit_session` one past the decision session, while `live_actual` closes on the next-open fill the broker
 reports (the fidelity pair agrees on R within the existing 0.25R gate); the three lanes' rows written from
-the Tue 2026-10-13 run on carry `replay_exit_era='era_e'` and their `_recorded` audit summary ends `exit
-rule: magna53_depth_exit[live] on since 2026-10-13 — depth` (paper lane: `[paper]`). Unintended, to watch:
-`live_rules --drift-only` reads one `depth-era-unpinned` DRIFT row from Monday noon until the constant is set
-(expected — the nag); era_d counts stop growing for MAGNA53 (every new live row is era_e).
+the Tue 2026-10-13 run on carry `replay_exit_era='era_e'`, and the `_recorded` audit summary of a run that
+processed AT LEAST ONE candidate ends `exit rule: magna53_depth_exit[live] on since 2026-10-13 — depth`
+(paper lane: `[paper]`; a night with no candidates ends `exit rule not read (no candidates)` — the toggle is
+read only when there is something to walk, so that line is NOT a failure; the paper lane had 0 rows at
+baseline and fills ~1 a month, so it will read that way for weeks). Unintended, to watch:
+`live_rules --drift-only` reads one `depth-era-unpinned` DRIFT row from Monday noon until the constant is
+deployed (expected — the nag); **the nightly 18:02 ET drift check Telegrams `🔴 DOCS-VS-REALITY DRIFT — 1
+NEW` on Monday night (the constant cannot ship before Tuesday) and again on Tuesday night only if the
+Tuesday deploy missed its noon window — expected, and it is the agent's task, not his: no action from him;
+a THIRD night's page means the constant did not ship**; era_d counts stop growing for MAGNA53 (every new
+live row is era_e).
 **DONE-WHEN**: the first depth-stamped MAGNA53 fill has its recorder rows era_e with a `next_open` fill on
-a settled close-below (or a `stop_hit` at the depth stop), AND one lane run after Tue 10-13 shows era_e rows
-with the audit evidence line — then `DEPTH_EXIT_LIVE_DATE` set, the YAML literal moved, the drift rule
-quiet. Event-gated (MAGNA53 fills ~1–3 a week); a quiet week is not evidence.
+a settled close-below (or a `stop_hit` at the depth stop), AND one lane run after Tue 10-13 THAT PROCESSED AT LEAST ONE
+candidate shows era_e rows with the audit evidence line — then `DEPTH_EXIT_LIVE_DATE` set and deployed, the
+YAML literal moved, the drift rule quiet (the 18:02 ET check sends no page). Event-gated (MAGNA53 fills ~1–3 a week); a quiet week is not evidence.
 **WOULD-FAIL-IF (positive signatures of the BROKEN system):** a recorder row with `exit_era='era_d'` on a
 trade whose `mi_live_trades.exit_rule='depth'`; a `live_replay` row on a depth trade whose close-below leg
 has no `fill` key / an `exit_session` equal to the decision session (sold at the close, today's rule); a
@@ -467,20 +489,33 @@ lane row written after Tue 10-13 with `replay_exit_era='era_d'` while the audit 
 (stamp and walk disagree); `exit_rules` of an era_d row carrying any depth key (the byte-pin broke).
 **VERIFY-LIVE**: (1) after the deploy, no market needed — `docker exec apollo-market python -c "from
 agents.market_intelligence.rule_eras import exit_era_label; from datetime import date;
-print(exit_era_label(date(2026,10,13),'magna53','depth'), exit_era_label(date(2026,10,13),'magna53'))"`
-prints `era_e era_d`; (2) `python scripts/live_rules.py --drift-only` on the first OPEN after his switch
+print(exit_era_label(date(2026,10,13),'magna53','depth'), exit_era_label(date(2026,10,13),'magna53',None))"`
+prints `era_e era_d` (the explicit `None` = "the row says today's rule", true before AND after the Tuesday
+constant ships; an unspecified call would read the dated record); (2) `python scripts/live_rules.py --drift-only` on the first OPEN after his switch
 shows exactly one `depth-era-unpinned` row naming Tue 2026-10-13 (the broken system shows none);
 (3) after the first stamped fill settles: `SELECT trade_id, arm, exit_era, exit_rules->>'exit_rule',
 final_reason, exit_session, exits FROM mi_live_fill_counterfactuals WHERE trade_id IN (SELECT id FROM
 mi_live_trades WHERE exit_rule='depth')` — every row era_e / depth.
 
-**The Monday step (after his switch, ONE commit):** set `DEPTH_EXIT_LIVE_DATE = date(2026, 10, 13)` in
-`rule_eras.py` (the drift rule prints the exact date from the live row's `last_transition_at`); then
-`pytest tests/test_exit_counterfactual_consolidation_631.py` names the YAML lines to move —
+**The TUESDAY step (2026-10-13, after his switch — ONE commit, then ONE deploy):** Tuesday, not Monday: the
+#631 test asserts the pinned era equals TODAY's era, so a Monday commit is red by construction (and the
+first acting session is Tuesday). (1) set `DEPTH_EXIT_LIVE_DATE = date(2026, 10, 13)` in `rule_eras.py` (the
+drift rule prints the exact date from the live row's `last_transition_at`). (2) Move the YAML literals the
+four `test_exit_counterfactual_consolidation_631` tests name (`test_the_one_read_predicate_is_scoped_to_the_
+current_exit_era` + the three `test_the_kept_exit_tune_predicates_track_the_latest_exit_switch`):
 `live_fill_counterfactuals_first_read_482.predicate_sql` → `exit_era = 'era_e' AND alert_date >= DATE
 '2026-10-13'`, `exit_tune_cohort_review.earliest_review_date`, the `runner_rule_sweep_recut` /
 `exit_tune_bull_regime_read` literals, and that test's own `assert latest == rule_eras.PARTIAL_8R_DATE`
-line (~178) — plus the #482 count note above (`cf_era` baseline). Until then the drift rule nags.
+line (~178). These four go red BY DESIGN. The review's scratch run (constant set, full suite) found three more
+— `test_depth_era_replays` ×2 and `test_weekly_review_report_layout` — which no longer depend on it (that
+fix was verified by reading and by running them with the constant unset, not by re-running the constant-set
+suite).
+(3) The PLAN.md `#482` line: add one sentence pointing to `magna53_ep.md` 2026-10-11 for the recorder's
+count (15 fills / 144 rows: 83 era C / 61 era D / 0 era E — the 55 already on that line is the 5-minute
+shadow lane's closed-trade count, a different number). (4) Commit, then `bash scripts/deploy.sh
+market-agent` in the Tue 12:00–13:00 ET window (fallback 21:15–22:15 ET): the nightly drift check, the
+weekly review and `sell_discipline` read the constant only inside `apollo-market`, so the commit alone does
+not quiet the 18:02 ET page. Until then the drift rule nags.
 
 ### 2026-10-11 — #687 (c): the PAPER lane's 19:01 depth sale is a regular DAY market order; LIVE keeps the opening-auction order (OPERATOR-RULED "got it, c" 2026-10-10; BUILT, NOT DEPLOYED)
 
@@ -1192,7 +1227,7 @@ add the exit-era boundary to `rule_eras.py` for depth-stamped trades so the #482
 stamp the new rule (`test_exit_counterfactual_consolidation_631` pins the era literal — move it with the flip);
 `scripts/live_rules.py` already prints the toggle's per-mode state. **→ DONE 2026-10-11 (the entry of that date
 above): era E is stamped from the ROW / the toggle, all four walkers model the depth exit, and the one dated
-constant is set the Monday after his switch under a `live_rules` drift nag.**
+constant is set on Tuesday 2026-10-13 (the first acting session) under a `live_rules` drift nag.**
 
 **Tests**: `tests/test_depth_exit_rule.py` (29: walker parity on the golden file, ADR parity with
 `ep_replay.adr20_pct`, the toggle and the in-transaction stamp, the 16:45 mark / stop raise / unstamped rows

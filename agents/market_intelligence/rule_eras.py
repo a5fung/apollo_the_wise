@@ -110,6 +110,11 @@ DEPTH_EXIT_SIGNAL_TYPES = frozenset({"magna53", "magna53_smallcap"})
 # the nightly drift check — the mechanical nag that replaces a prose "bump it the same day".
 # The #631 YAML pin (tests/test_exit_counterfactual_consolidation_631.py) reads every `*_DATE`
 # here, so setting this moves the ONE read's predicate literal in the same commit, by design.
+# WHEN: on the first acting session itself, not the flip day — for a Monday-noon flip that is
+# TUESDAY 2026-10-13 (the #631 pin asserts the pinned era equals TODAY's era, so an earlier commit is
+# red by construction) — and DEPLOY `market-agent` the same day: the nightly drift check, the weekly
+# review and `sell_discipline` read it only inside `apollo-market`. Steps: exit_discipline.md
+# 2026-10-11, "The TUESDAY step".
 DEPTH_EXIT_LIVE_DATE: date | None = None
 
 # Sentinel: "the caller did not say" — distinct from an explicit None ("the row says today's rule").

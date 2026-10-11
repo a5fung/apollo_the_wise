@@ -142,6 +142,13 @@ DELIBERATE DEVIATION (4): the next-open sale fills at the DAILY bar's open; live
 auction order fills at the official open, a paper DAY market order ~09:31–09:32 — live_replay
 mirrors the live book. A close-below decided on the last settled session is `pending` until the
 next session's bar is stored (never settled at the close, never leapt).
+DELIBERATE DEVIATION (5): the resting-stop ratchet raises on ANY higher stop, while live moves the
+broker's stop only when the new one is MORE than 1 cent above the current one (`live_tracker`:
+`depth_stop > current_stop + 0.01`; the non-depth path has the same threshold on `step.
+effective_stop`) — so a 1-cent raise is applied here and skipped live (1 of 5,000 random tapes
+differed: stop_hit 26.19 here vs 26.18 live; 0 of 10,000 with live's threshold removed from the
+simulation). Pre-existing on the non-depth path, and changing it would break the byte-identity
+proof against origin/main; a later change may add the threshold to both paths together.
 
 THE THREE LANES (gap_near_miss / sustain_reject / lowcap) hold no trade row: their era comes from
 the `magna53_depth_exit` toggle row for the account mode of the strategy they price, read ONCE
@@ -445,15 +452,17 @@ def lane_exit_rule(strategy_rows: list, toggle_rows: list, strategy_id: str,
 async def load_lane_exit_rule(conn, strategy_id: str, run_date: date) -> tuple[Optional[str], str]:
     """The DB half of `lane_exit_rule`, read ONCE per run on the lane's own connection (like
     `load_exit_overrides`; the two bulk readers the nightly drift check already uses). FAILS TO
-    TODAY: any read error → (None, why) — the lane stamps era D for this run and its recorded
-    summary says so; nothing live is touched."""
+    TODAY: any read error OR a row of an unexpected shape (the pure step is inside the same try —
+    review fix 2026-10-11: outside it, a malformed row raised into the runner's outer handler and
+    skipped every candidate that night) → (None, why) — the lane stamps era D for this run and its
+    recorded summary says so; nothing live is touched."""
     try:
         strategy_rows = await get_all_strategy_summaries(conn)
         toggle_rows = await get_all_safeguard_states(conn)
+        return lane_exit_rule(strategy_rows, toggle_rows, strategy_id, run_date)
     except Exception as e:  # loud-ok: the lane walks today's rule for this run and says why
         logger.warning(f"lane exit rule: toggle unreadable for {strategy_id}, era D this run: {e}")
         return None, f"{strategy_id}: toggle unreadable ({type(e).__name__}) — era D"
-    return lane_exit_rule(strategy_rows, toggle_rows, strategy_id, run_date)
 
 
 def arm_stop_price(stop_rule: str, *, entry: Optional[float], orb_low: Optional[float],

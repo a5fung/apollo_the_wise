@@ -21,6 +21,7 @@ import pytest
 
 import agents.market_intelligence.kill_scale_bands as ksb
 import agents.market_intelligence.replay_regression as rr
+import agents.market_intelligence.rule_eras as rule_eras
 import agents.market_intelligence.system_review as sr
 from agents.market_intelligence.rule_eras import split_current_vs_older
 from agents.market_intelligence.strategies.promotion import MANUAL_REVIEW_HOLD_REASON
@@ -222,7 +223,16 @@ def test_a_stale_ripe_review_leads_with_the_alarm_and_the_rule_changes_since_it_
     assert lines[0].startswith("📅 *Reviews ready* (2)")
     assert "1 have been ripe ≥30d" in lines[1]
     assert lines[2].startswith("🔴 *#354 ADR 0026 C5") and "_[ripe 56d]_" in lines[2]
-    assert "written 2026-07-19, 10 rule changes since (latest 2026-09-06)" in lines[2]
+    # The count and the latest date are re-derived from the two switch tables (not hard-coded: the
+    # Tuesday 2026-10-13 commit that sets rule_eras.DEPTH_EXIT_LIVE_DATE adds an eleventh switch,
+    # and a typed "10 ... 2026-09-06" went RED on it). The floor keeps this from passing on an
+    # empty list; the string keeps the LAYOUT pinned.
+    written = date(2026, 7, 19)
+    switch_dates = ([d for d, _ in rule_eras.EXIT_SWITCHES if d > written]
+                    + [row[0] for row in rule_eras.ADMISSION_SWITCHES if row[0] > written])
+    assert len(switch_dates) >= 10
+    assert (f"written 2026-07-19, {len(switch_dates)} rule changes since "
+            f"(latest {max(switch_dates)})") in lines[2]
     assert "re-check the question against the live rule" in lines[2]
     assert lines[3].startswith("• *Fresh question*") and "_[ripe 5d]_" in lines[3]
     assert "Read the forward outcomes over two lines." in lines[3]      # one line per item

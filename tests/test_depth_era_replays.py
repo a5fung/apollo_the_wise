@@ -91,9 +91,14 @@ def test_the_depth_constants_mirror_the_broker_without_importing_it():
     assert rule_eras.DEPTH_EXIT_SIGNAL_TYPES == om._DEPTH_EXIT_STRATEGIES
 
 
-def test_a_depth_stamped_row_is_era_e_and_an_unstamped_row_never_is():
+def test_a_depth_stamped_row_is_era_e_and_an_unstamped_row_never_is(monkeypatch):
     """The ROW decides. The same date, the same strategy: 'depth' -> era_e with the three depth
-    fields; None (today's rule) -> era D with the dict EXACTLY as before (#631's byte pin)."""
+    fields; None (today's rule) -> era D with the dict EXACTLY as before (#631's byte pin).
+
+    The dated record is patched to None HERE so this test states "no dated record" for itself and
+    keeps passing on and after flip day, when `DEPTH_EXIT_LIVE_DATE` is set (review fix 2026-10-11:
+    it asserted the live constant was None and went RED on the Tuesday commit)."""
+    monkeypatch.setattr(rule_eras, "DEPTH_EXIT_LIVE_DATE", None)
     for d in (date(2026, 9, 8), date(2026, 10, 13), date(2027, 1, 4)):
         assert rule_eras.exit_era_label(d, "magna53", "depth") == "era_e"
         assert rule_eras.exit_era_label(d, "magna53", None) == "era_d"
@@ -108,8 +113,7 @@ def test_a_depth_stamped_row_is_era_e_and_an_unstamped_row_never_is():
             ("depth", "one_adr20_under_line", "next_open")
     # the stamp is per-row, so even a strategy outside the stamp set is labelled by its row
     assert rule_eras.exit_era_label(date(2026, 10, 13), "magna53_smallcap", "depth") == "era_e"
-    assert rule_eras.DEPTH_EXIT_LIVE_DATE is None, "set this ONLY after his switch — see the Monday step"
-    assert rule_eras.exit_era_start("era_e") is None
+    assert rule_eras.exit_era_start("era_e") is None                  # no dated record -> no start
 
 
 def test_the_dated_record_drives_the_date_only_readers_once_set(monkeypatch):
@@ -238,7 +242,9 @@ def test_depth_off_is_byte_identical_and_depth_needs_the_live_sma_ladder():
     # stack_walk_inputs: a depth stack asks for the depth walk; an era D stack is unchanged
     _, kw = lfc.stack_walk_inputs(rule_eras.exit_rules_as_of(date(2026, 10, 13), "magna53", "depth"), 10.5, 9.5)
     assert kw["depth_exit"] is True
-    _, kw = lfc.stack_walk_inputs(rule_eras.exit_rules_as_of(date(2026, 10, 13), "magna53"), 10.5, 9.5)
+    # an explicit None = "the row says today's rule" — true on every date, whatever the dated
+    # record says (an UNSPECIFIED call would read the record and turn depth after flip day)
+    _, kw = lfc.stack_walk_inputs(rule_eras.exit_rules_as_of(date(2026, 10, 13), "magna53", None), 10.5, 9.5)
     assert "depth_exit" not in kw
 
 
@@ -354,6 +360,19 @@ async def test_load_lane_exit_rule_reads_once_on_the_lanes_connection_and_fails_
     broken.fetch = AsyncMock(side_effect=RuntimeError("db down"))
     rule, why = await lfc.load_lane_exit_rule(broken, "magna53", date(2026, 10, 13))
     assert rule is None and "unreadable" in why
+
+
+@pytest.mark.asyncio
+async def test_load_lane_exit_rule_fails_to_today_on_a_row_of_an_unexpected_shape():
+    """Review fix (2026-10-11): only the two DB reads sat inside the try; the pure step ran after
+    it, so a strategy row of an unexpected shape (here: no `strategy_id`) raised into the runner's
+    outer handler and EVERY candidate that night was skipped, instead of the promised fall-back
+    to today's rule for this run. The shape error must read as 'unreadable' and say era D."""
+    conn = AsyncMock()
+    conn.fetch = AsyncMock(side_effect=[[{"bogus": 1}], [_ON_LIVE]])
+    rule, why = await lfc.load_lane_exit_rule(conn, "magna53", date(2026, 10, 13))
+    assert rule is None and "unreadable" in why and "KeyError" in why and "era D" in why
+    assert conn.fetch.await_count == 2          # both reads still happen once, in order
 
 
 @pytest.mark.asyncio

@@ -872,7 +872,13 @@ def scan_depth_era_pin(res: Resolver) -> list[DriftRow]:
     this rule fires from the flip until the constant equals the flip's first acting session
     (`rule_eras.first_acting_session_after`: a flip at/after 09:30 ET stamps nothing until the
     next session's ORB), and again if the constant is set while the toggle is OFF. Prod
-    unreachable → nothing (the module's rule: never guess)."""
+    unreachable → nothing (the module's rule: never guess).
+
+    ⚠ This row is DRIFT, so `health_checks.run_drift_check` Telegrams it (18:02 ET nightly): the
+    operator gets one page on the flip night and one more per night until the constant is DEPLOYED
+    (the constant is committed on the first acting session — Tue 2026-10-13 for a Monday-noon flip —
+    and read only inside apollo-market). Pre-registered as expected in exit_discipline.md
+    2026-10-11 (EXPECT); it is the agent's task, not the operator's."""
     rows: list[DriftRow] = []
     if not res.prod.reachable:
         return rows
