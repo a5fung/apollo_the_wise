@@ -414,6 +414,8 @@ _BASE_AGE_MIN_WATCH   = 3
 _BASE_AGE_MIN_COILED  = 6
 _BASE_AGE_MAX         = 25      # > 25 sessions → INVALIDATED (stale base)
 _COILED_LOOKBACK_DAYS = 5       # TRIGGERED requires COILED in last N days
+_TIGHTNESS_WINDOW     = 5       # base's last N bars vs its first N (range / volume contraction ratios);
+                                # the short-base DISPLAY cutoff (`_SHORT_BASE_MAX`) follows it
 _ATR_WINDOW           = 14
 _SMA10_WINDOW         = 10
 _SMA20_WINDOW         = 20
@@ -1166,7 +1168,7 @@ def compute_flag_metrics(
 
     # ── Tightening metrics ──────────────────────────────────────────────
     # Use first 5 / last 5 of base; if base_age < 5, both windows = full base
-    win = min(5, base_age)
+    win = min(_TIGHTNESS_WINDOW, base_age)
     early = base_rows[:win]
     recent = base_rows[-win:]
 
@@ -1810,9 +1812,9 @@ def _fmt_ratio(v: Optional[float]) -> str:
 # short base — but the renders still printed the 1.00s. They now print the measure that path
 # actually gates on: the last two bars' range against the usual (ATR-14) daily range, tight when
 # under `_FRESH_TIGHT_RATIO_MAX`. Nothing here touches a stage, threshold or detection.
-# The cutoff mirrors the detector's own `min(5, ...)`; tests/test_htf_criteria.py pins that the
-# stored ratios really are 1.00 at base_age <= 5 and are not at 6, so the two cannot drift apart.
-_SHORT_BASE_MAX = 5
+# The cutoff IS the detector's own window (`_TIGHTNESS_WINDOW`, one constant); tests/test_htf_criteria.py
+# also pins that the stored ratios really are 1.00 at base_age <= 5 and are not at 6.
+_SHORT_BASE_MAX = _TIGHTNESS_WINDOW
 
 
 def is_short_base(base_age) -> bool:
@@ -1858,6 +1860,18 @@ def short_base_tightness(r: dict) -> str:
         # sub-0.60 number the legend defines as 'tight' with no label on it.
         return f"last 2 bars {ratio:.2f}× usual range (tight on range, volume not dry)"
     return f"last 2 bars {ratio:.2f}× usual range"
+
+
+def board_tightness(r: dict, *, compact: bool = False) -> str:
+    """The tightness text on a /flags row (Markdown): the short-base measure for a base of
+    `_SHORT_BASE_MAX` sessions or fewer, else the stored ratios - `range 0.45 · vol 0.80` on the
+    board, `r0.45 v0.80` (`compact`) in the 14-day history. ONE place decides 'is this base too
+    young for the ratios to mean anything', so the three /flags renders cannot drift apart. The
+    digest keeps its own wording (`_fmt_coiled`, `_fmt_tightness`)."""
+    if is_short_base(r.get("base_age")):
+        return short_base_tightness(r)
+    rr, vr = _fmt_ratio(r.get("range_contraction_ratio")), _fmt_ratio(r.get("vol_contraction_ratio"))
+    return f"r{rr} v{vr}" if compact else f"range {rr} · vol {vr}"
 
 
 # The digest is built as HTML with the shared helpers (#121 / #598) and sent with

@@ -2226,7 +2226,7 @@ class MarketIntelligenceAgent(BaseAgent):
         )
         # Function-local ON PURPOSE: agent.py is loaded by apollo-execution, flag_detector is not —
         # a module-level import would make the execution container load it (preflight [5n/7]).
-        from agents.market_intelligence.flag_detector import is_short_base, short_base_tightness
+        from agents.market_intelligence.flag_detector import board_tightness
 
         task = request.task.lower()
         # Single-ticker history mode: `/flags XNDU` or `flags XNDU`
@@ -2240,12 +2240,8 @@ class MarketIntelligenceAgent(BaseAgent):
                 return self._ok(request, result=f"No flag-detector rows for `{ticker}` in last 14d.")
             lines = [f"🚩 *{ticker} — HTF History (14d)*\n"]
             for r in rows:
-                rr = r.get("range_contraction_ratio")
-                vr = r.get("vol_contraction_ratio")
-                rr_s = f"r{rr:.2f}" if rr is not None else "r—"
-                vr_s = f"v{vr:.2f}" if vr is not None else "v—"
                 # A base of 5 days or fewer compares its own bars with themselves (r1.00 v1.00).
-                tight_s = short_base_tightness(r) if is_short_base(r.get("base_age")) else f"{rr_s} {vr_s}"
+                tight_s = board_tightness(r, compact=True)
                 held = f" (held from {r['held_from_stage']})" if r.get("held_from_stage") else ""
                 lines.append(
                     f"  {r['scan_date']}  `{r['stage']:<11}` "
@@ -2317,35 +2313,22 @@ class MarketIntelligenceAgent(BaseAgent):
                 else:
                     lines.append(f"  • `{r['ticker']}` — base {age}d · runup {ru_s}")
 
-        if coiled:
+        def _tightness_block(header: str, block_rows: list, age_label: str) -> None:
+            """COILED and TIGHTENING share one row shape (first 15, then '…N more'); only the
+            header and the age wording (`— base 5d ·` vs `age 5d ·`) differ."""
             lines.append("")
-            lines.append(f"🌀 *COILED — tightest bases, watch only ({len(coiled)})*")
-            for r in coiled[:15]:
-                age = r.get("base_age")
-                rr = r.get("range_contraction_ratio")
-                vr = r.get("vol_contraction_ratio")
-                rr_s = f"{float(rr):.2f}" if rr is not None else "—"
-                vr_s = f"{float(vr):.2f}" if vr is not None else "—"
-                tight_s = (short_base_tightness(r) if is_short_base(age)
-                           else f"range {rr_s} · vol {vr_s}")
-                lines.append(f"  • `{r['ticker']}` — base {age}d · {tight_s}")
-            if len(coiled) > 15:
-                lines.append(f"  …{len(coiled) - 15} more")
+            lines.append(header)
+            for r in block_rows[:15]:
+                lines.append(f"  • `{r['ticker']}` {age_label.format(age=r.get('base_age'))} "
+                             f"· {board_tightness(r)}")
+            if len(block_rows) > 15:
+                lines.append(f"  …{len(block_rows) - 15} more")
 
+        if coiled:
+            _tightness_block(f"🌀 *COILED — tightest bases, watch only ({len(coiled)})*",
+                             coiled, "— base {age}d")
         if tightening:
-            lines.append("")
-            lines.append(f"🔧 *TIGHTENING ({len(tightening)})*")
-            for r in tightening[:15]:
-                age = r.get("base_age")
-                rr = r.get("range_contraction_ratio")
-                vr = r.get("vol_contraction_ratio")
-                rr_s = f"{float(rr):.2f}" if rr is not None else "—"
-                vr_s = f"{float(vr):.2f}" if vr is not None else "—"
-                tight_s = (short_base_tightness(r) if is_short_base(age)
-                           else f"range {rr_s} · vol {vr_s}")
-                lines.append(f"  • `{r['ticker']}` age {age}d · {tight_s}")
-            if len(tightening) > 15:
-                lines.append(f"  …{len(tightening) - 15} more")
+            _tightness_block(f"🔧 *TIGHTENING ({len(tightening)})*", tightening, "age {age}d")
 
         if watch:
             lines.append("")
