@@ -752,7 +752,7 @@ GRML, INTR and PAGS (no alert lost; `scripts/probes/_1005/adv_verify_counterfact
 below; his 2026-10-08 *"seems like option 2 is the choice?"* → option 2.
 
 **The change** (shortlist RANKING only; GRADING untouched):
-1. `run_ep_scan` resolves `db.latest_complete_score_date(conn, on_or_before=today-1, on_or_after=today-7)`
+1. `run_ep_scan` (through `ep_detector._last_night_adv_map`) resolves `db.latest_complete_score_date(conn, on_or_before=today-1, on_or_after=today-7)`
    and reads that date's `adv_20` map ONCE per tick, passed to the ranking as `last_night_adv`.
    `adv_map` (candidate build, liquidity gates, grading score) is NOT changed — a separate change
    he has not ruled. None / empty map / any error → today's ranking, one log line (fail-open).

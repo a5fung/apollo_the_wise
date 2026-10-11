@@ -25,10 +25,11 @@ THE CONTRACT the test enforces (all decidable from source, no DB):
      pinned separately by test_schema_alter_create_parity.py).
   3. Every `stage=`/`reject_stage` literal in ep_detector equals a GATE_VECTOR
      key, and vice versa.
-  4. TRIPWIRES: the counts of `continue` statements and `_log_filtered(` calls
-     inside `run_ep_scan` match the EXPECTED_* constants below. A new gate is,
-     textually, a new `continue` (silent kill) or a new `_log_filtered` call —
-     either moves a count and goes red until this registry is consciously
+  4. TRIPWIRES: the counts of `continue` statements, `_log_filtered(` calls and the
+     graded tail's bare `return`s (nested `_grade_admitted`) inside `run_ep_scan`
+     match the EXPECTED_* constants below. A new gate is, textually, a new
+     `continue`/bare `return` (silent kill) or a new `_log_filtered` call —
+     any of them moves a count and goes red until this registry is consciously
      updated. A pure refactor that moves the counts updates the constants in the
      same commit; that forced touch IS the checkpoint (a tripwire, not a proof —
      stated honestly, same as gate provenance's semantic-fidelity limit).

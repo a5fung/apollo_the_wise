@@ -62,7 +62,7 @@ for c in cells:
         continue
     t, day = c["ticker"], c["day"]
     poly = upto(c["polygon"], day)
-    alp_raw = upto(mf._alpaca_to_scan_items(c["alpaca"], t), day)
+    alp_raw = upto(mf._alpaca_to_scan_items(c["alpaca"]), day)
     pb = [x for x in cands(t, [i for i in poly if (i.get("publisher") or "").lower() == "benzinga"])]
     if pb:
         poly_b_cells += 1
@@ -95,7 +95,7 @@ for c in cells:
     t, day = c["ticker"], c["day"]
     n_days += 1
     poly = upto(c["polygon"], day)
-    alp = upto(mf._alpaca_to_scan_items(c["alpaca"], t), day)
+    alp = upto(mf._alpaca_to_scan_items(c["alpaca"]), day)
     merged = mf._merge_headline_sources(poly, alp)
     cm = cands(t, merged, company=None)
     cp = cands(t, poly)
@@ -136,7 +136,7 @@ for c in cells:
     if not acting:
         continue
     poly = upto(c["polygon"], day)
-    alp = upto(mf._alpaca_to_scan_items(c["alpaca"], t), day)
+    alp = upto(mf._alpaca_to_scan_items(c["alpaca"]), day)
     merged = mf._merge_headline_sources(poly, alp)
     cm = cands(t, merged)
     n = mf._HEADLINE_MAX_ARTICLES
@@ -175,7 +175,7 @@ for p in pull:
         if mf.matches_mna_keywords(it.get("title")):
             seen[t].setdefault(mf._norm_title(it["title"]), {"title": it["title"], "pub": it["published_utc"],
                                                               "feeds": set(), "publisher": it.get("publisher")})["feeds"].add("polygon")
-    for it in mf._alpaca_to_scan_items(p["alpaca"], t):
+    for it in mf._alpaca_to_scan_items(p["alpaca"]):
         if mf.matches_mna_keywords(it.get("title")):
             seen[t].setdefault(mf._norm_title(it["title"]), {"title": it["title"], "pub": it["published_utc"],
                                                               "feeds": set(), "publisher": it.get("publisher")})["feeds"].add("alpaca")

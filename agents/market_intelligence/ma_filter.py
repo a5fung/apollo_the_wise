@@ -103,6 +103,7 @@ import hashlib
 import json
 import logging
 import re
+from collections import Counter
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Awaitable, Callable, Iterable, NamedTuple, Optional
 from zoneinfo import ZoneInfo
@@ -112,7 +113,7 @@ logger = logging.getLogger(__name__)
 _ET = ZoneInfo("America/New_York")
 
 # ── Candidate pre-filter + shadow comparator (NOT a blocking rule since #692) ─────────────────
-# This list no longer decides anything. It (a) picks which Polygon articles get the headline
+# This list no longer decides anything. It (a) picks which articles (either feed) get the headline
 # question ($0, so a quiet name costs nothing) and (b) powers the `mna_filter_released`
 # comparator ("the OLD rule would have blocked here; the answer said no") — without (b) the
 # change has no positive observable. Bare "acquire"/"acquisition" stay OUT (removed 2026-05-13
@@ -567,10 +568,11 @@ _HEADLINE_TIMEOUT_S = 20.0
 #: Candidate articles asked per ticker per check (newest first). Older candidates are recorded
 #: as UNANSWERED (why='article_cap') — never dropped without a trace.
 _HEADLINE_MAX_ARTICLES = 3
+#: Items read per feed per ticker (Polygon and Alpaca alike).
+_HEADLINE_NEWS_LIMIT = 20
 #: The second news feed (Benzinga via Alpaca): wall-clock bound on the read (a slow or dead feed
-#: must leave the Polygon-only result untouched) and the item cap (the same 20 the Polygon read uses).
+#: must leave the Polygon-only result untouched).
 _ALPACA_FETCH_TIMEOUT_S = 10.0
-_ALPACA_NEWS_LIMIT = 20
 
 # (ticker, article key, ET day) -> answer; attempts per key; the day's call counter + which
 # budget pools already wrote their cap-hit audit row today.
@@ -740,6 +742,15 @@ class HeadlineScan(NamedTuple):
     candidates_n: int
 
 
+def _alpaca_keywords(item: dict) -> tuple[Optional[str], Optional[str]]:
+    """(title keyword, summary-only keyword) of an ALPACA item. The summary keyword is reported only
+    when the title carries none — the one case that needs the primary-subject guard, and so the
+    company name. `_candidate_articles` and the company-name pre-scan in `headline_deal_scan` both
+    read it here, so the two cannot drift."""
+    title_kw = matches_mna_keywords(item.get("title"))
+    return title_kw, (None if title_kw else matches_mna_keywords(item.get("description")))
+
+
 def _candidate_articles(
     ticker: str, items: list[dict], insights_missing: Optional[list] = None,
     company_name: Optional[str] = None,
@@ -762,11 +773,10 @@ def _candidate_articles(
         if is_shareholder_litigation_notice(title):
             continue
         if item.get("news_source") == "alpaca":
-            title_kw = matches_mna_keywords(title)
+            title_kw, body_kw = _alpaca_keywords(item)
             if title_kw:
                 out.append((item, "title", title_kw, None))
                 continue
-            body_kw = matches_mna_keywords(item.get("description"))
             if body_kw:
                 from agents.market_intelligence.collector import is_primary_subject_news
                 if is_primary_subject_news(
@@ -834,7 +844,7 @@ def _alpaca_published_utc(created_at: Any) -> str:
         return raw
 
 
-def _alpaca_to_scan_items(raw: Iterable[dict], ticker: str) -> list[dict]:
+def _alpaca_to_scan_items(raw: Iterable[dict]) -> list[dict]:
     """Reshape `collector.get_alpaca_news` items onto the Polygon item shape the scan reads
     (title / description / published_utc / publisher / tickers / insights), tagged
     `news_source = "alpaca"`. Alpaca has no per-ticker insights -> []. Items without a title drop."""
@@ -892,12 +902,12 @@ async def _fetch_alpaca_headlines(
     try:
         raw = await asyncio.wait_for(
             get_alpaca_news(ticker, to_date=on_or_before, lookback_days=lookback_days,
-                            limit=_ALPACA_NEWS_LIMIT, include_content=False),
+                            limit=_HEADLINE_NEWS_LIMIT, include_content=False),
             timeout=_ALPACA_FETCH_TIMEOUT_S)
     except Exception as e:  # loud-ok: the Polygon-only scan is the fallback; logged
         logger.warning(f"{ticker}: Alpaca headline read failed — {type(e).__name__}: {e}")
         return []
-    return _alpaca_to_scan_items(raw, ticker)
+    return _alpaca_to_scan_items(raw)
 
 
 async def headline_deal_scan(
@@ -909,23 +919,24 @@ async def headline_deal_scan(
     skip_in_orb: bool = False,
     budget_pool: str = "shared",
 ) -> HeadlineScan:
-    """Fetch recent Polygon news, pick keyword candidates ($0), and ask the deal question on the
-    `_HEADLINE_MAX_ARTICLES` newest of them CONCURRENTLY under one overall deadline. The hit is
-    the newest candidate whose answer the filter must ACT on — a nomination (target, signed or
-    proposed, pinning terms: the price decides) or a signed shell (news alone). Candidates past
-    the cap, and asks still running at the deadline, are recorded UNANSWERED (why='article_cap'
-    / 'deadline') — never dropped."""
+    """Fetch recent news from BOTH feeds (Polygon + Benzinga via Alpaca), pick keyword candidates
+    ($0), and ask the deal question on the `_HEADLINE_MAX_ARTICLES` newest of them PER FEED
+    CONCURRENTLY under one overall deadline. The hit is the newest candidate whose answer the
+    filter must ACT on — a nomination (target, signed or proposed, pinning terms: the price
+    decides) or a signed shell (news alone). Candidates past the cap, and asks still running at
+    the deadline, are recorded UNANSWERED (why='article_cap' / 'deadline') — never dropped."""
     from agents.market_intelligence.collector import get_polygon_news
 
     polygon_items, alpaca_items = await asyncio.gather(
-        get_polygon_news(ticker, lookback_days=lookback_days, on_or_before=on_or_before, limit=20),
+        get_polygon_news(ticker, lookback_days=lookback_days, on_or_before=on_or_before,
+                         limit=_HEADLINE_NEWS_LIMIT),
         _fetch_alpaca_headlines(ticker, lookback_days=lookback_days, on_or_before=on_or_before))
     items = _merge_headline_sources(polygon_items or [], alpaca_items)
-    # The company name feeds the Alpaca summary-keyword guard only; looked up (memoized) when
-    # an Alpaca item actually has a summary keyword and no title keyword.
+    # The company name feeds the Alpaca summary-keyword guard (inside `_candidate_articles`) and the
+    # question prompt; the guard needs it BEFORE the candidates exist, so look it up (memoized) first
+    # when an Alpaca item has a summary keyword and no title keyword.
     company = None
-    if any(i.get("news_source") == "alpaca" and not matches_mna_keywords(i.get("title"))
-           and matches_mna_keywords(i.get("description")) for i in items):
+    if any(i.get("news_source") == "alpaca" and _alpaca_keywords(i)[1] for i in items):
         company = await _company_name(ticker)
     missing: list = []
     candidates = _candidate_articles(ticker, items, insights_missing=missing, company_name=company)
@@ -943,7 +954,7 @@ async def headline_deal_scan(
     unanswered: list = []
     if not candidates:
         return HeadlineScan(None, released, unanswered, 0)
-    company = await _company_name(ticker)
+    company = company or await _company_name(ticker)
 
     def _meta(item: dict, match_path: str, kw: str) -> dict:
         return {
@@ -960,12 +971,13 @@ async def headline_deal_scan(
     # Polygon-only scan asked) plus the same number of Alpaca-only ones — so the second feed can only
     # ADD questions and never push a Polygon candidate out (the 10-10 replay found 1 of 22 acting
     # ticker-days — PYPL 07-28 — would have lost theirs to a shared cap).
-    _by_feed: dict[bool, list] = {False: [], True: []}
+    seen_per_feed: Counter = Counter()
+    asked: list = []        # still newest first
+    over_cap: list = []
     for c in candidates:
-        _by_feed[c[0].get("news_source") == "alpaca"].append(c)
-    _kept = {id(c[0]) for feed in _by_feed.values() for c in feed[:_HEADLINE_MAX_ARTICLES]}
-    asked = [c for c in candidates if id(c[0]) in _kept]          # still newest first
-    over_cap = [c for c in candidates if id(c[0]) not in _kept]
+        is_alpaca = c[0].get("news_source") == "alpaca"
+        seen_per_feed[is_alpaca] += 1
+        (asked if seen_per_feed[is_alpaca] <= _HEADLINE_MAX_ARTICLES else over_cap).append(c)
     tasks = [asyncio.ensure_future(ask_deal_question(
         ticker, item, company_name=company, reasoning=reasoning, now_et=now_et,
         skip_in_orb=skip_in_orb, budget_pool=budget_pool)) for item, _mp, _kw, reasoning in asked]
@@ -1000,8 +1012,9 @@ async def polygon_news_has_mna_headline(
     lookback_days: int = 14,
     on_or_before: Optional[date] = None,
 ) -> Optional[dict]:
-    """The first Polygon article whose deal answer the filter must act on (a nomination or a
-    signed shell), or None."""
+    """The newest article (either feed) whose deal answer the filter must act on (a nomination or
+    a signed shell), or None. Callerless since #692 — `is_likely_ma` reads `headline_deal_scan`
+    directly; the name predates the second feed."""
     scan = await headline_deal_scan(ticker, lookback_days=lookback_days, on_or_before=on_or_before)
     return scan.hit
 
@@ -1103,7 +1116,8 @@ async def is_likely_ma(
        alone. No `pin_reader` → the news alone (a nominated name blocks).
     2. Ruling 5: the grader graded 'mna' but its deal fields are missing / out of vocabulary
        (`deal_answer is None`) → block, as before #692, source `claude_classifier_unanswered`.
-    3. The headline question (`check_polygon=True`, ≤3 newest keyword candidates), the same
+    3. The headline question (`check_polygon=True` — the name predates the second feed; it scans BOTH —
+       ≤3 newest keyword candidates PER FEED), the same
        verdict on its acting answer. Ruling 7: a headline acts ONLY when the grader found no deal
        (role 'none') or did not answer (None — a failed grade, or a non-EP caller). When the
        grader answered a deal that does not act, an acting headline is logged as a conflict and
@@ -1269,11 +1283,16 @@ async def is_likely_ma(
     # one matched ONLY by a new deal-wire phrase (the old list never asked it) is
     # `headline_keyword_dealwire`. Both are recorded in old_reasons, NEITHER counts in old_rule /
     # old_rule_would_block.
-    _answered = list(scan.released) + ([scan.hit] if scan.hit else [])
-    _poly = [a for a in _answered if (a.get("news_source") or "polygon") == "polygon"]
-    _old_poly = [a for a in _poly if a.get("matched_keyword") in _MNA_KEYWORDS]
-    _wire_poly = [a for a in _poly if a.get("matched_keyword") not in _MNA_KEYWORDS]
-    _alpaca = any(a.get("news_source") == "alpaca" for a in _answered)
+    _alpaca = _old_poly = _wire_poly = False
+    for a in list(scan.released) + ([scan.hit] if scan.hit else []):
+        feed = a.get("news_source") or "polygon"
+        if feed == "alpaca":
+            _alpaca = True
+        elif feed == "polygon":
+            if a.get("matched_keyword") in _MNA_KEYWORDS:
+                _old_poly = True
+            else:
+                _wire_poly = True
     if _old_poly:
         old_rule.append("headline_keyword")
     old_reasons = list(old_rule)
@@ -1288,12 +1307,16 @@ async def is_likely_ma(
         # 2026-10-03: a nominated name the PRICE released — the row names both readings.
         old_reasons.append("pin_free")
     if old_reasons:
-        lead = ("old rule would have blocked (" + ", ".join(old_rule) + ")" if old_rule
-                else ("released for review (a Benzinga-via-Alpaca headline was answered as not pinning; "
-                      "the pre-#692 rule never read that feed)" if _alpaca and not grader_found_deal
-                      else "released for review (a deal-wire headline the pre-#692 keyword list did not "
-                           "ask was answered as not pinning)" if _wire_poly and not grader_found_deal
-                      else "released for review (the grader answered a deal that does not pin)"))
+        if old_rule:
+            lead = "old rule would have blocked (" + ", ".join(old_rule) + ")"
+        elif _alpaca and not grader_found_deal:
+            lead = ("released for review (a Benzinga-via-Alpaca headline was answered as not pinning; "
+                    "the pre-#692 rule never read that feed)")
+        elif _wire_poly and not grader_found_deal:
+            lead = ("released for review (a deal-wire headline the pre-#692 keyword list did not "
+                    "ask was answered as not pinning)")
+        else:
+            lead = "released for review (the grader answered a deal that does not pin)"
         if pin_release:
             pr = pin_release["pin"]
             lead = (f"deal-nominated ({pin_release['answer'].get('role')}/"

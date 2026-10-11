@@ -195,7 +195,7 @@ def test_released_and_unanswered_rows_carry_news_source():
 def test_alpaca_timestamp_is_reshaped_to_the_polygon_format_so_the_newest_first_order_holds():
     old_p = "Acme Corp buyout rumour (polygon, older)"
     new_a = "Acme Corp buyout deal signed (alpaca, newer)"
-    items = mf._alpaca_to_scan_items([_alp(new_a, created="2026-10-01T10:00:00+00:00")], "ACME")
+    items = mf._alpaca_to_scan_items([_alp(new_a, created="2026-10-01T10:00:00+00:00")])
     assert items[0]["published_utc"] == "2026-10-01T10:00:00Z" and items[0]["news_source"] == "alpaca"
     assert items[0]["description"] == "" and items[0]["insights"] == []
     merged = mf._merge_headline_sources([_poly(old_p, published="2026-10-01T09:00:00Z")], items)

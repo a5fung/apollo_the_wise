@@ -27,7 +27,7 @@ for t in ("ARX", "BWIN", "CBZ", "DV", "ITGR"):
     seen = {}
     for p in pull:
         if p["kind"] == "weekly" and p["ticker"] == t:
-            for it in mf._alpaca_to_scan_items(p["alpaca"], t):
+            for it in mf._alpaca_to_scan_items(p["alpaca"]):
                 if DEALISH.search(it["title"]):
                     seen[mf._norm_title(it["title"])] = it
     print(f"  {t}: {len(seen)} deal-word titles")
@@ -39,7 +39,7 @@ print("\n2. MEASURE of one proposed widening (not shipped): titles that match", 
 cells = [p for p in pull if p["kind"] == "cell"]
 titles = {}
 for c in cells:
-    for it in mf._alpaca_to_scan_items(c["alpaca"], c["ticker"]):
+    for it in mf._alpaca_to_scan_items(c["alpaca"]):
         titles.setdefault(mf._norm_title(it["title"]), (c["ticker"], c["day"], it["title"]))
 cur = [v for v in titles.values() if mf.matches_mna_keywords(v[2])]
 new = [v for v in titles.values() if not mf.matches_mna_keywords(v[2])

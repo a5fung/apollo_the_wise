@@ -29,7 +29,7 @@ def alpaca_only(kwlist):
     for c in cells:
         t, day = c["ticker"], c["day"]
         poly = [i for i in c["polygon"] if (i.get("published_utc") or "") <= f"{day}T23:59:59Z"]
-        alp = [i for i in mf._alpaca_to_scan_items(c["alpaca"], t)
+        alp = [i for i in mf._alpaca_to_scan_items(c["alpaca"])
                if (i.get("published_utc") or "") <= f"{day}T23:59:59Z"]
         merged = mf._merge_headline_sources(poly, alp)
         for item, mp, kw, _r in mf._candidate_articles(t, merged, company_name=None):
