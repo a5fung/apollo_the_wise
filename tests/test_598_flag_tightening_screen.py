@@ -66,6 +66,7 @@ def world(monkeypatch):
     monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
     monkeypatch.setattr(db, "insert_flag_candidate", _insert)
     monkeypatch.setattr(db, "get_yesterday_flag_stages", AsyncMock(return_value={}))
+    monkeypatch.setattr(db, "get_yesterday_flag_holds", AsyncMock(return_value=set()))  # #697 item 5
     monkeypatch.setattr(db, "get_recent_flag_stages", AsyncMock(return_value={}))
     monkeypatch.setattr(db, "get_rs_for_tickers", AsyncMock(return_value={}))
     monkeypatch.setattr(db, "get_sectors_batch", AsyncMock(return_value={}))

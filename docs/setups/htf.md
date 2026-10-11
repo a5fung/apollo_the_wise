@@ -20,8 +20,9 @@ the #94 intraday break scan.
 ## Detection criteria (sourced — `compute_flag_metrics`)
 
 The 5-stage state machine (`unqualified → WATCH → TIGHTENING → COILED → TRIGGERED`/`INVALIDATED`), the
-hysteresis, and the volatility-relative tightness gates (range/vol contraction, fresh-tightening, RMV) are
-UNCHANGED (operator: "I like how it shows which stage a stock is at"). Only the runup + flag-depth + trend
+hysteresis (a downgrade held ONE night, then the reading stands — held night after night until #697 item 5,
+2026-10-11, made the code match this and `flag_continuation.md`), and the volatility-relative tightness gates (range/vol
+contraction, fresh-tightening, RMV) are UNCHANGED (operator: "I like how it shows which stage a stock is at"). Only the runup + flag-depth + trend
 criteria were swapped/added.
 
 | Gate | Sourced value | Source | Code |
@@ -276,6 +277,70 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
   pushing on consecutive days, the lever is a re-entry cool-off (a policy, not a bug fix) — measure first.
 
 ## Change log
+- **2026-10-11 — #697 item 5: the hysteresis holds a downgrade ONE night, as documented — a hold is never followed by a
+  hold. A BUG FIX (the code held it night after night); no threshold, window, floor or stage rule moved, the raw reading each
+  night is unchanged, the flag strategy stays disabled, and no order / entry / sizing / safeguard path reads a stage.** Branch
+  `wk1011/697-item-5` (on `wk1011/697-items-1-2-fix`), not yet deployed. Rule + owner: `flag_continuation.md` "Hysteresis";
+  code `flag_detector.stage_after_hold` + `db.get_yesterday_flag_holds`.
+  **What**: `compute_flag_metrics` gains `yesterday_was_held`; a downgrade against yesterday's STORED stage is held only
+  when yesterday's stored row was NOT itself a hold (`held_from_stage IS NULL`); the next night the detector's own reading
+  stands. `run_flag_scan` reads the flag from the same row as `yesterday_stage` (one shared query, `_yesterday_flag_rows`;
+  a failed read raises — an empty set would hold every downgrade again, silently) and logs `holds_carried=N` on the
+  `flag_scan <date>: scoring …` line. **Rejected variant**: compare against yesterday's RAW read — it re-holds a second-step
+  downgrade (held COILED from a raw TIGHTENING, raw WATCH today → held at TIGHTENING), i.e. a hold following a hold.
+  **Trigger**: `docs/analysis/htf_scope_2026-10-10.md` G4 / §6 item 5 — `flag_continuation.md` and the `compute_flag_metrics`
+  docstring say "held one day", this file says the stage machine is unchanged, and `yesterday_stage` was the STORED (already
+  held) stage, so the hold re-armed every night until INVALIDATED or a pivot reset (CHYM read TRIGGERED 7 scan days on raw
+  TIGHTENING / WATCH / COILED; WDAY held TRIGGERED 3 days at −12.8% under its pivot). **Evidence** (prod read-only,
+  `scripts/probes/_697/`: `item5_q1_hold_rows.sql/.out` = 92 names × 70 scan dates, one pull; `item5_replay_hold.py/.out`; test
+  `tests/test_697_one_day_hold.py` pins these numbers): each stored row's RAW reading is recoverable (`held_from_stage` when
+  held, else `stage`), so the chain is re-threaded per name through the SHIPPED `stage_after_hold`. **Validity**: the OLD rule
+  re-threaded from raw readings reproduces prod's stored stage + hold on **2707 of 2707 rows**, and its probe counts equal the
+  live SQL probe's (`verify_hold_live_baseline_2026-10-09.out`: 43 / 24 / 0 / 20). **Effect over the 60 scan dates to 10-09**:
+  held rows **44 → 21** (COILED 21 → 10, TRIGGERED 12 → 3, TIGHTENING 11 → 8); **24 rows change** — exactly the holds that
+  followed a hold (55% of holds were followed by another; 17 of 60 nights have ≥ 1 change, max 3, median 0); stage rows
+  TRIGGERED 16 → 7 (= the 4 real reads + 3 first-night holds: CHYM 08-20, WDAY 08-31, IOVA 09-15), COILED 40 → 32, TIGHTENING
+  102 → 113, WATCH 310 → 316. **The 4 real (un-held) TRIGGERED reads — CHYM 08-19, WDAY 08-28, IOVA 09-14, XHLD 09-09 — are
+  unchanged**: each is licensed by an UN-HELD COILED in its 5-day window, and an un-held COILED is a raw reading no re-threading
+  can remove (TRIGGERED needs `coiled_today or was_coiled_recent`). Not modelled: the universe carry (items 1+2) keys on stored
+  stages, so a name that leaves WATCH-or-better a day or two sooner is carried a few sessions less — second order. **Anticipated
+  effect**: a lower reading shows after ONE night instead of persisting; `/flags` and the digest's "COILED — still coiled" show
+  what the detector read, not a label held for days. **WDAY (item 2's replay)**: with item 5 WDAY leaves TRIGGERED on 09-01 (held
+  08-31 only), so a carried 09-03 / 09-04 row reads WATCH — the "held-TRIGGERED with no fresh breakout" print item 2 warned
+  about shrinks from 12 name-nights to 3 (one per hold, by design). **Reversion-flag**: REFINEMENT of the 2026-05-01
+  hysteresis — restores its documented rule, not a new one.
+  **EXPECT** (baseline = `verify_hold_live.sql -v d0=2026-07-17` on prod before deploy: after_hold 43, violators 24,
+  fingerprint 0, first_holds 20, over 60 scan dates), read from the first scan after deploy: (i) **every night**, the
+  container log line `flag_scan <date>: scoring N candidates | holds_carried=K` shows K equal to the number of tickers whose
+  latest prior row (≤ 5 days) has `held_from_stage` NOT NULL — `verify_hold_live.sql`'s second statement, column
+  `expected_holds_carried`, which is NOT `after_hold` (that counts only tickers that got a row that night); read BEFORE the
+  scan, it gives **K = 1 for 10-12** (`verify_hold_live_pre_deploy_for_2026-10-12.out`) — the wiring proof, not event-gated; (ii) **violators = 0** on every scan date ≥ deploy (a hold row whose yesterday row was a hold; the
+  old code wrote 24 in 60 dates); (iii) **fingerprint ≥ 1** within the first 20 scan sessions (10-12 → 11-06): a row whose
+  yesterday was a hold, whose stage FELL, and which is NOT itself a hold — the row the old code would have held again; the
+  replay predicts 11 in 60 dates (98% of 20-session windows hold ≥ 1; only 63% of 10-session windows and 48% of 5-session
+  ones, so a quiet fortnight proves nothing); `first_holds` keeps appearing (21 in 60) — the one-night hold still works.
+  **UNINTENDED to watch** (all measured on the replay): (a) a few more `NEW TODAY` pushes — a name that relapsed after a held
+  label and re-enters now pushes again (≈ +3 in 60 nights: 08-19, 08-26, 09-09; approximate, built from the replayed stages,
+  not the delivered-key dedupe); (b) the intraday break scan's watchlist is the latest TIGHTENING / COILED / TRIGGERED rows, so
+  it loses names whose label was a hold: of the 21 stored breaks with a parent row in the window, 17 unchanged, 2 keep their
+  place but with a lower parent stage (CHYM 08-28 TRIGGERED → COILED, IOVA 09-14 COILED → TIGHTENING), **2 would not have been
+  scanned for: CDNA 08-25 (parent 08-24 held TIGHTENING on a raw WATCH) and WDAY 09-03 (parent 09-02 held TRIGGERED on a raw
+  WATCH)** — shadow rows only (`mi_flag_breaks` → `mi_htf_breakout_shadow`, #397 evidence; no order); (c) `BREAKOUT
+  CONVERGENCE` tags on EP alerts read the stage within 5 calendar days (`db.py` ~7180): fewer `breakout`-class tags from a held
+  TRIGGERED label — display + audit row only. **Hand-off to #697 item 3 (#146 page)**: CDNA 08-24 is a raw WATCH, so under the
+  documented hold CDNA's 08-25 breakout is NOT "from TIGHTENING" at all; any replay harness that threads its own stages
+  (`scripts/probes/_146_faithful_harness.py`, `_610_*`) must pass `yesterday_was_held` or it re-creates the old behaviour.
+  **WOULD-FAIL-IF** (positive; `scripts/probes/_697/verify_hold_live.sql -v d0=<first scan date after deploy>`): (a) **violators
+  > 0** on any scan date ≥ deploy — the broken code writes ~0.4 a night, so one is a FAIL; (b) `holds_carried` missing from the
+  log line, or 0 on a night whose prior rows include a hold — the reader is not wired; (c) fingerprint still 0 after 20 sessions
+  — read as "the rule was never exercised by live data", NOT a pass. **DONE-WHEN**: (i) the logged `holds_carried` equals `expected_holds_carried` on
+  each of the first 3 scan sessions after deploy, AND (ii) the first fingerprint row is seen with violators still 0 on every
+  scan date to that day. If there is no fingerprint row by 2026-11-06 (20 sessions), the mechanism is wiring-confirmed only —
+  tell the operator that instead of closing on silence. **Deploy scope**: same as item 2 — `db.py` is on
+  `scripts/exec_loaded_modules.txt` (line 46); `deploy.sh market-agent` carries the behaviour (`flag_continuation_scan` is
+  INTELLIGENCE-owned), `deploy.sh execution` is drift hygiene so the running execution container's `db.py` matches the repo.
+  Weekends are unrestricted. This branch contains items 1+2, so it ships them with it.
+  Tests: `tests/test_697_one_day_hold.py` (22; all fail on the item-1+2 branch: `scripts/probes/_697/red_item5_on_base.txt`).
 - **2026-10-11 — #697 item 2: the flag board's universe CARRY now keeps a name while its base can still be alive —
   WATCH and stored-TRIGGERED names are carried, and "5 days" means 5 scan sessions, not 5 calendar days; a name that
   reached TIGHTENING-or-better stays scored for 25 sessions. No admission criterion, stage threshold, pole window,
@@ -344,7 +409,9 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
   INVALIDATED = the #654 stamp). The same held label also feeds `check_sugar_baby_convergence` (`db.py` ~7180: a COILED /
   TIGHTENING / TRIGGERED row within 5 CALENDAR days), which can put a `BREAKOUT CONVERGENCE` tag on an EP alert
   (`briefing.py` ~3330) — a display tag plus an audit row, read by no order, entry, sizing or safeguard path (THE LINE
-  holds). Item 5, the one-day hold, removes the re-arm. **WOULD-FAIL-IF** (positive; `verify_carry_live.sql`): on a scan date after deploy, (a) NO row holds
+  holds). Item 5, the one-day hold, removes the re-arm [**2026-10-11 update: item 5 is the entry above — a held label now lasts one
+  night, so the "expected until item 5 ships" caveat above ends the day item 5 deploys; with it on, WDAY's 09-03 / 09-04 carried
+  rows read WATCH**]. **WOULD-FAIL-IF** (positive; `verify_carry_live.sql`): on a scan date after deploy, (a) NO row holds
   `flag_pivot_window_carryforward` (the new carry is not running — the old code never wrote that tag; the replay predicts ~10;
   an alternative bar is carry-only rows ≥ 5, since the old code's max is 4 and the replay's min is 7); (b) the **violator
   set** is non-empty — a ticker with a stored WATCH / TIGHTENING / COILED / TRIGGERED row in the previous 5 scan sessions and

@@ -1,0 +1,3214 @@
+ticker	scan_date	stage	coalesce	coalesce	ndays
+ABCL	2026-07-06	WATCH		runup_114% base_3d close_vs_pivot_-6.5%	70
+ABCL	2026-07-07	WATCH		runup_114% base_4d close_vs_pivot_-8.7%	70
+ABCL	2026-07-08	INVALIDATED		close_7.10_below_base_low_close_7.60	70
+ABCL	2026-07-09	WATCH		runup_114% base_6d close_vs_pivot_-13.4%	70
+ABCL	2026-07-10	INVALIDATED		close_6.80_below_base_low_close_7.10	70
+ABCL	2026-07-13	INVALIDATED		close_6.52_below_base_low_close_6.80	70
+ABCL	2026-07-14	TIGHTENING		range_1.06 vol_0.84 fresh	70
+ABCL	2026-07-15	INVALIDATED		close_6.74_below_sma20_6.80	70
+ABCL	2026-07-16	INVALIDATED		close_6.16_below_base_low_close_6.52	70
+ABCL	2026-07-17	INVALIDATED		close_6.46_below_sma20_6.90	70
+ABCL	2026-08-07	unqualified		ma_stack_not_stage2_5.9/6.0/6.2	70
+ABCL	2026-08-10	unqualified		ma_stack_not_stage2_6.3/6.1/6.3	70
+ABCL	2026-08-11	unqualified		base_age_0_below_3	70
+ABCL	2026-08-12	unqualified		base_age_0_below_3	70
+ABCL	2026-08-13	unqualified		base_age_1_below_3	70
+ABCL	2026-08-14	unqualified		base_age_0_below_3	70
+ABCL	2026-08-17	unqualified		base_age_0_below_3	70
+ABCL	2026-08-18	unqualified		base_age_1_below_3	70
+ABCL	2026-08-19	unqualified		base_age_2_below_3	70
+ABCL	2026-08-20	unqualified		base_age_0_below_3	70
+ABCL	2026-08-21	unqualified		base_age_1_below_3	70
+ABCL	2026-08-24	unqualified		base_age_2_below_3	70
+ABCL	2026-08-25	WATCH		runup_144% base_3d close_vs_pivot_+2.9%	70
+ABCL	2026-08-26	unqualified		base_age_0_below_3	70
+ABCL	2026-08-27	unqualified		base_age_1_below_3	70
+ABCL	2026-08-28	unqualified		base_age_2_below_3	70
+ABCL	2026-08-31	WATCH		runup_151% base_3d close_vs_pivot_-8.2%	70
+ABCL	2026-09-01	INVALIDATED		close_11.28_below_base_low_close_11.35	70
+ABCL	2026-09-02	WATCH		runup_151% base_5d close_vs_pivot_-9.1%	70
+ABCL	2026-09-03	WATCH		runup_151% base_6d close_vs_pivot_-7.4%	70
+ABCL	2026-09-04	WATCH		runup_151% base_7d close_vs_pivot_-8.6%	70
+ABCL	2026-09-08	WATCH		runup_151% base_8d close_vs_pivot_-8.5%	70
+ABCL	2026-09-14	INVALIDATED		close_11.17_below_sma20_11.42	70
+ABCL	2026-09-17	unqualified		ma_stack_not_stage2_11.4/11.5/9.0	70
+ABCL	2026-09-18	unqualified		base_age_0_below_3	70
+ABCL	2026-09-21	unqualified		base_age_1_below_3	70
+ABCL	2026-09-22	unqualified		base_age_2_below_3	70
+ABCL	2026-09-23	INVALIDATED		close_12.31_below_base_low_close_12.63	70
+ABCL	2026-09-24	WATCH		runup_165% base_4d close_vs_pivot_-4.0%	70
+ABCL	2026-09-25	WATCH		runup_165% base_5d close_vs_pivot_-3.6%	70
+ABCL	2026-09-28	WATCH		runup_165% base_6d close_vs_pivot_+5.6%	70
+ABCL	2026-09-29	unqualified		base_age_0_below_3	70
+ABCL	2026-09-30	unqualified		base_age_0_below_3	70
+ABCL	2026-10-01	unqualified		base_age_1_below_3	70
+ABCL	2026-10-02	unqualified		base_age_2_below_3	70
+ABCL	2026-10-05	WATCH		runup_167% base_3d close_vs_pivot_-8.1%	70
+ABCL	2026-10-06	INVALIDATED		close_13.15_below_base_low_close_13.74	70
+ABCL	2026-10-07	INVALIDATED		close_12.83_below_base_low_close_13.15	70
+ABSI	2026-07-03	unqualified		base_age_2_below_3	70
+ABSI	2026-07-06	WATCH		runup_168% base_3d close_vs_pivot_-4.3%	70
+ABSI	2026-07-07	WATCH		runup_168% base_4d close_vs_pivot_-6.0%	70
+ABSI	2026-07-08	INVALIDATED		close_11.10_below_base_low_close_11.11	70
+ABSI	2026-07-09	WATCH		runup_168% base_6d close_vs_pivot_-4.9%	70
+ABSI	2026-07-10	INVALIDATED		close_10.60_below_base_low_close_11.10	70
+ABSI	2026-07-13	INVALIDATED		close_10.21_below_base_low_close_10.60	70
+ABSI	2026-07-14	TIGHTENING		range_1.22 vol_0.91 fresh	70
+ABSI	2026-07-15	INVALIDATED		close_9.76_below_base_low_close_10.21	70
+ABSI	2026-07-16	INVALIDATED		close_8.23_below_base_low_close_9.76	70
+ABSI	2026-07-17	INVALIDATED		close_8.29_below_sma20_10.14	70
+ABSI	2026-08-07	unqualified		ma_stack_not_stage2_7.9/8.3/8.4	70
+ABSI	2026-08-10	unqualified		ma_stack_not_stage2_8.1/8.2/8.5	70
+ABSI	2026-08-11	unqualified		ma_stack_not_stage2_8.3/8.2/8.6	70
+ABSI	2026-08-12	unqualified		ma_stack_not_stage2_8.5/8.2/8.6	70
+ABSI	2026-08-13	unqualified		ma_stack_not_stage2_8.7/8.3/8.7	70
+ABSI	2026-08-14	unqualified		ma_stack_not_stage2_8.9/8.3/8.7	70
+ABSI	2026-08-17	unqualified		ma_stack_not_stage2_9.0/8.4/8.8	70
+ABSI	2026-08-18	unqualified		ma_stack_not_stage2_9.0/8.4/8.8	70
+ABSI	2026-08-19	unqualified		ma_stack_not_stage2_9.2/8.5/8.9	70
+ABSI	2026-08-20	unqualified		base_age_0_below_3	70
+ABSI	2026-08-21	unqualified		base_age_1_below_3	70
+ABSI	2026-08-24	unqualified		base_age_2_below_3	70
+ABSI	2026-08-25	unqualified		runup_50%_below_90%	70
+ABSI	2026-08-26	unqualified		runup_50%_below_90%	70
+ABSI	2026-08-27	unqualified		runup_50%_below_90%	70
+ABSI	2026-09-18	unqualified		base_age_0_below_3	70
+ABSI	2026-09-21	unqualified		base_age_1_below_3	70
+ABSI	2026-09-22	unqualified		base_age_0_below_3	70
+ABSI	2026-09-23	unqualified		base_age_0_below_3	70
+ABSI	2026-09-24	unqualified		base_age_1_below_3	70
+ABSI	2026-09-25	unqualified		base_age_2_below_3	70
+ABSI	2026-09-28	unqualified		runup_68%_below_90%	70
+ABSI	2026-09-29	unqualified		runup_68%_below_90%	70
+ABSI	2026-09-30	unqualified		runup_68%_below_90%	70
+ABSI	2026-10-01	unqualified		runup_68%_below_90%	70
+ABSI	2026-10-02	unqualified		runup_68%_below_90%	70
+ABSI	2026-10-05	unqualified		runup_68%_below_90%	70
+ABSI	2026-10-06	unqualified		base_age_0_below_3	70
+ABSI	2026-10-07	unqualified		base_age_1_below_3	70
+ABSI	2026-10-09	unqualified		runup_51%_below_90%	70
+ABVX	2026-07-03	unqualified		base_age_1_below_3	70
+ABVX	2026-07-06	unqualified		base_age_0_below_3	70
+ABVX	2026-07-07	unqualified		base_age_1_below_3	70
+ABVX	2026-07-08	unqualified		base_age_2_below_3	70
+ABVX	2026-07-09	unqualified		ma_stack_not_stage2_126.2/112.3/114.5	70
+ABVX	2026-07-10	unqualified		ma_stack_not_stage2_130.9/114.3/115.1	70
+ABVX	2026-07-13	INVALIDATED		close_135.98_below_base_low_close_138.54	70
+ABVX	2026-07-14	INVALIDATED		close_134.91_below_base_low_close_135.98	70
+ABVX	2026-07-15	TIGHTENING		range_0.81 vol_0.85 fresh	70
+ABVX	2026-07-16	TIGHTENING	WATCH	runup_110% base_8d close_vs_pivot_-6.1%	70
+ABVX	2026-07-17	TIGHTENING	WATCH	runup_110% base_9d close_vs_pivot_-6.8%	70
+ABVX	2026-07-20	INVALIDATED		close_131.50_below_base_low_close_134.91	70
+ABVX	2026-07-21	WATCH		runup_110% base_11d close_vs_pivot_-8.6%	70
+ABVX	2026-07-22	INVALIDATED		close_129.73_below_base_low_close_131.50	70
+ABVX	2026-09-11	unqualified		adr_3.3pct_below_4pct	70
+AKTS	2026-07-06	unqualified		base_age_2_below_3	70
+AKTS	2026-07-07	WATCH		runup_91% base_3d close_vs_pivot_-19.3%	70
+AKTS	2026-07-08	WATCH		runup_91% base_4d close_vs_pivot_-16.1%	70
+AKTS	2026-07-09	WATCH		runup_91% base_5d close_vs_pivot_-16.9%	70
+AKTS	2026-07-10	WATCH		runup_91% base_6d close_vs_pivot_-18.5%	70
+AMBQ	2026-07-14	TIGHTENING		range_0.93 vol_0.41	70
+AMBQ	2026-07-15	INVALIDATED		close_82.22_below_sma20_83.53	70
+AMBQ	2026-07-16	INVALIDATED		close_74.46_below_base_low_close_75.48	70
+AMBQ	2026-07-17	INVALIDATED		close_72.43_below_base_low_close_74.46	70
+AMBQ	2026-09-09	unqualified		adv_402k_below_500k_shares	70
+AMBQ	2026-09-10	unqualified		adv_393k_below_500k_shares	70
+AMBQ	2026-09-11	unqualified		adv_401k_below_500k_shares	70
+AMBQ	2026-09-14	unqualified		adv_401k_below_500k_shares	70
+AMBQ	2026-09-16	unqualified		adv_374k_below_500k_shares	70
+AMBQ	2026-09-17	unqualified		adv_374k_below_500k_shares	70
+AMBQ	2026-09-18	unqualified		adv_374k_below_500k_shares	70
+AMBQ	2026-09-21	unqualified		adv_389k_below_500k_shares	70
+AMBQ	2026-09-22	unqualified		adv_410k_below_500k_shares	70
+AMBQ	2026-09-23	unqualified		adv_410k_below_500k_shares	70
+AMBQ	2026-09-24	unqualified		adv_410k_below_500k_shares	70
+AMBQ	2026-09-25	unqualified		adv_391k_below_500k_shares	70
+AMBQ	2026-09-28	unqualified		adv_391k_below_500k_shares	70
+AMBQ	2026-09-29	unqualified		adv_391k_below_500k_shares	70
+AMBQ	2026-09-30	unqualified		adv_391k_below_500k_shares	70
+AMBQ	2026-10-01	unqualified		adv_410k_below_500k_shares	70
+AMBQ	2026-10-02	unqualified		adv_423k_below_500k_shares	70
+AMBQ	2026-10-05	unqualified		adv_441k_below_500k_shares	70
+AMLX	2026-07-06	unqualified		base_age_2_below_3	70
+AMLX	2026-07-07	unqualified		runup_54%_below_90%	70
+AMLX	2026-07-08	unqualified		runup_54%_below_90%	70
+AMLX	2026-07-09	unqualified		runup_54%_below_90%	70
+AMLX	2026-07-10	unqualified		runup_54%_below_90%	70
+AMLX	2026-07-14	unqualified		runup_54%_below_90%	70
+AMLX	2026-07-27	unqualified		runup_49%_below_90%	70
+AMLX	2026-07-28	unqualified		base_age_0_below_3	70
+AMLX	2026-07-29	unqualified		base_age_0_below_3	70
+AMLX	2026-07-30	unqualified		base_age_1_below_3	70
+AMLX	2026-07-31	unqualified		base_age_0_below_3	70
+AMLX	2026-08-04	unqualified		base_age_2_below_3	70
+AMLX	2026-08-05	unqualified		base_age_0_below_3	70
+AMLX	2026-08-06	unqualified		base_age_1_below_3	70
+AMLX	2026-08-07	unqualified		base_age_0_below_3	70
+AMLX	2026-08-10	unqualified		base_age_1_below_3	70
+AMLX	2026-08-11	unqualified		base_age_2_below_3	70
+AMLX	2026-08-12	unqualified		runup_86%_below_90%	70
+AMLX	2026-08-13	unqualified		runup_86%_below_90%	70
+AMLX	2026-08-14	unqualified		runup_86%_below_90%	70
+AMLX	2026-08-18	unqualified		runup_86%_below_90%	70
+AMLX	2026-08-19	unqualified		base_age_0_below_3	70
+AMLX	2026-08-20	unqualified		base_age_0_below_3	70
+AMLX	2026-08-21	unqualified		base_age_0_below_3	70
+AMLX	2026-08-24	unqualified		base_age_1_below_3	70
+AMLX	2026-08-25	unqualified		base_age_2_below_3	70
+AMLX	2026-08-26	INVALIDATED		close_37.08_below_base_low_close_37.46	70
+AMLX	2026-08-27	WATCH		runup_145% base_4d close_vs_pivot_-8.1%	70
+AMLX	2026-08-28	INVALIDATED		close_34.74_below_base_low_close_37.08	70
+AMLX	2026-08-31	INVALIDATED		close_33.75_below_base_low_close_34.74	70
+AMLX	2026-09-01	WATCH		runup_145% base_7d close_vs_pivot_-16.4%	70
+AMLX	2026-09-02	TIGHTENING		range_1.00 vol_0.69 fresh	70
+AMLX	2026-09-03	TIGHTENING		range_0.94 vol_0.64 fresh	70
+AMLX	2026-09-04	TIGHTENING		range_0.94 vol_0.60 fresh	70
+AMLX	2026-09-07	TIGHTENING		range_0.94 vol_0.60 fresh	70
+AMLX	2026-09-08	TIGHTENING		range_0.91 vol_0.57	70
+AMLX	2026-09-09	INVALIDATED		close_32.40_below_base_low_close_33.75	70
+AMLX	2026-09-10	INVALIDATED		close_32.09_below_base_low_close_32.40	70
+AMLX	2026-09-11	INVALIDATED		close_31.62_below_base_low_close_32.09	70
+AMPL	2026-07-06	unqualified		base_age_1_below_3	70
+AMPL	2026-07-07	unqualified		base_age_2_below_3	70
+AMPL	2026-07-08	unqualified		runup_63%_below_90%	70
+AMPL	2026-07-09	unqualified		runup_63%_below_90%	70
+AMPL	2026-07-10	unqualified		base_age_0_below_3	70
+AMPL	2026-07-13	unqualified		base_age_0_below_3	70
+AMPL	2026-07-14	unqualified		base_age_1_below_3	70
+AMPL	2026-07-15	unqualified		base_age_0_below_3	70
+AMPL	2026-07-16	unqualified		base_age_1_below_3	70
+AMPL	2026-07-17	unqualified		base_age_2_below_3	70
+AMPL	2026-07-20	unqualified		runup_63%_below_90%	70
+AMPL	2026-07-21	unqualified		runup_63%_below_90%	70
+AMPL	2026-08-06	unqualified		base_age_0_below_3	70
+AMPL	2026-08-07	unqualified		base_age_0_below_3	70
+AMPL	2026-08-10	unqualified		base_age_0_below_3	70
+AMPL	2026-08-11	unqualified		base_age_0_below_3	70
+AMPL	2026-08-12	unqualified		base_age_0_below_3	70
+AMPL	2026-08-13	unqualified		base_age_1_below_3	70
+AMPL	2026-08-14	unqualified		base_age_0_below_3	70
+AMPL	2026-08-17	unqualified		base_age_1_below_3	70
+AMPL	2026-08-18	unqualified		base_age_2_below_3	70
+AMPL	2026-08-19	WATCH		runup_112% base_3d close_vs_pivot_-3.7%	70
+AMPL	2026-08-20	WATCH		runup_112% base_4d close_vs_pivot_-3.0%	70
+AMPL	2026-08-21	WATCH		runup_112% base_5d close_vs_pivot_-0.3%	70
+AMPL	2026-08-24	WATCH		runup_112% base_6d close_vs_pivot_-1.3%	70
+AMPL	2026-08-25	WATCH		runup_112% base_7d close_vs_pivot_-1.6%	70
+AMPL	2026-08-26	WATCH		runup_112% base_8d close_vs_pivot_-2.7%	70
+AMPL	2026-08-27	WATCH		runup_112% base_9d close_vs_pivot_+7.2%	70
+AMPL	2026-08-28	unqualified		base_age_0_below_3	70
+AMPL	2026-08-31	unqualified		base_age_0_below_3	70
+AMPL	2026-09-01	unqualified		base_age_1_below_3	70
+AMPL	2026-09-02	unqualified		base_age_2_below_3	70
+AMPL	2026-09-03	WATCH		runup_96% base_3d close_vs_pivot_-8.2%	70
+AMPL	2026-09-14	unqualified		ma_stack_not_stage2_13.1/13.2/11.2	70
+AMPL	2026-09-15	unqualified		ma_stack_not_stage2_13.1/13.2/11.3	70
+AMPL	2026-09-16	unqualified		ma_stack_not_stage2_13.0/13.3/11.4	70
+AMPL	2026-09-23	unqualified		ma_stack_not_stage2_13.3/13.4/11.8	70
+AMPL	2026-09-24	WATCH		runup_96% base_17d close_vs_pivot_-7.2%	70
+AMPL	2026-09-25	INVALIDATED		close_13.30_below_sma20_13.34	70
+AMPL	2026-09-28	WATCH		runup_96% base_19d close_vs_pivot_-9.9%	70
+AMPL	2026-09-29	WATCH		runup_96% base_20d close_vs_pivot_-7.6%	70
+AMPL	2026-09-30	WATCH		runup_96% base_21d close_vs_pivot_-6.2%	70
+AMPL	2026-10-01	WATCH		runup_96% base_22d close_vs_pivot_-3.1%	70
+AMPL	2026-10-02	WATCH		runup_96% base_23d close_vs_pivot_-1.6%	70
+AMPL	2026-10-05	WATCH		runup_96% base_24d close_vs_pivot_+0.8%	70
+AMPL	2026-10-06	unqualified		base_age_0_below_3	70
+AMPL	2026-10-07	unqualified		base_age_0_below_3	70
+AMPL	2026-10-08	unqualified		base_age_1_below_3	70
+AMPL	2026-10-09	unqualified		base_age_1_below_3	70
+APPN	2026-07-08	unqualified		runup_49%_below_90%	70
+APPN	2026-07-09	unqualified		runup_46%_below_90%	70
+APPN	2026-07-10	unqualified		runup_42%_below_90%	70
+APPN	2026-07-13	unqualified		base_age_0_below_3	70
+APPN	2026-07-14	unqualified		base_age_0_below_3	70
+APPN	2026-07-15	unqualified		base_age_1_below_3	70
+APPN	2026-07-16	unqualified		base_age_2_below_3	70
+APPN	2026-07-17	unqualified		runup_44%_below_90%	70
+APPN	2026-07-20	unqualified		runup_44%_below_90%	70
+APPN	2026-07-21	unqualified		runup_44%_below_90%	70
+APPN	2026-07-28	unqualified		runup_44%_below_90%	70
+APPN	2026-07-29	unqualified		base_age_0_below_3	70
+APPN	2026-08-04	unqualified		runup_50%_below_90%	70
+APPN	2026-08-05	unqualified		runup_50%_below_90%	70
+APPN	2026-08-06	unqualified		base_age_0_below_3	70
+APPN	2026-08-07	unqualified		base_age_1_below_3	70
+APPN	2026-08-10	unqualified		base_age_0_below_3	70
+APPN	2026-08-11	unqualified		base_age_1_below_3	70
+APPN	2026-08-12	unqualified		base_age_0_below_3	70
+APPN	2026-08-13	unqualified		base_age_1_below_3	70
+APPN	2026-08-14	unqualified		base_age_2_below_3	70
+APPN	2026-08-17	unqualified		base_age_1_below_3	70
+APPN	2026-08-18	unqualified		base_age_2_below_3	70
+APPN	2026-08-19	WATCH		runup_91% base_3d close_vs_pivot_+1.1%	70
+APPN	2026-08-20	WATCH		runup_93% base_3d close_vs_pivot_-1.0%	70
+APPN	2026-08-21	WATCH		runup_93% base_4d close_vs_pivot_+1.7%	70
+APPN	2026-08-24	unqualified		base_age_0_below_3	70
+APPN	2026-08-25	unqualified		base_age_0_below_3	70
+APPN	2026-08-26	unqualified		base_age_1_below_3	70
+APPN	2026-08-27	unqualified		base_age_2_below_3	70
+APPN	2026-08-28	unqualified		base_age_0_below_3	70
+APPN	2026-08-31	unqualified		base_age_0_below_3	70
+APPN	2026-09-01	unqualified		base_age_0_below_3	70
+APPN	2026-09-02	unqualified		base_age_1_below_3	70
+APPN	2026-09-03	unqualified		base_age_2_below_3	70
+APPN	2026-09-04	INVALIDATED		close_38.37_below_base_low_close_39.89	70
+APPN	2026-09-29	INVALIDATED		close_35.33_below_sma20_37.20	70
+APPN	2026-09-30	INVALIDATED		close_35.27_below_sma20_36.94	70
+APPN	2026-10-01	unqualified		ma_stack_not_stage2_36.8/36.8/35.1	70
+APPN	2026-10-02	WATCH		runup_101% base_22d close_vs_pivot_-16.7%	70
+APPN	2026-10-07	unqualified		ma_stack_not_stage2_36.7/36.9/36.1	70
+APPN	2026-10-08	unqualified		ma_stack_not_stage2_36.8/37.2/36.3	70
+APPN	2026-10-09	unqualified		ma_stack_not_stage2_37.2/37.4/36.6	70
+APPS	2026-07-06	unqualified		base_age_2_below_3	70
+APPS	2026-07-07	INVALIDATED		close_10.38_below_base_low_close_11.18	70
+APPS	2026-07-08	INVALIDATED		close_10.50_below_sma20_10.51	70
+APPS	2026-07-09	unqualified		flag_low_9.85_below_75%_of_pole_13.44	70
+APPS	2026-07-10	INVALIDATED		close_10.56_below_sma20_10.60	70
+APPS	2026-07-13	INVALIDATED		close_9.95_below_base_low_close_10.38	70
+APPS	2026-07-14	INVALIDATED		close_9.82_below_base_low_close_9.95	70
+APPS	2026-08-05	unqualified		ma_stack_not_stage2_9.0/9.2/9.5	70
+APPS	2026-08-06	unqualified		base_age_0_below_3	70
+APPS	2026-08-07	unqualified		base_age_1_below_3	70
+APPS	2026-08-10	unqualified		base_age_0_below_3	70
+APPS	2026-08-11	unqualified		base_age_1_below_3	70
+APPS	2026-08-12	unqualified		base_age_2_below_3	70
+APPS	2026-08-13	WATCH		runup_95% base_3d close_vs_pivot_-17.7%	70
+APPS	2026-08-14	TIGHTENING		range_1.00 vol_1.00 fresh	70
+APPS	2026-08-17	INVALIDATED		close_12.24_below_base_low_close_12.41	70
+APPS	2026-08-18	INVALIDATED		close_12.12_below_base_low_close_12.24	70
+APPS	2026-08-19	INVALIDATED		close_11.23_below_base_low_close_12.12	70
+APPS	2026-08-20	INVALIDATED		close_10.71_below_base_low_close_11.23	70
+APPS	2026-08-21	INVALIDATED		close_10.87_below_sma20_11.19	70
+APPS	2026-08-24	INVALIDATED		close_10.74_below_sma20_11.30	70
+APPS	2026-08-25	INVALIDATED		close_10.83_below_sma20_11.42	70
+APPS	2026-09-10	unqualified		ma_stack_not_stage2_10.9/11.2/10.7	70
+APPS	2026-09-11	unqualified		ma_stack_not_stage2_10.9/11.1/10.6	70
+APPS	2026-09-14	unqualified		ma_stack_not_stage2_11.0/11.1/10.6	70
+APPS	2026-09-15	unqualified		ma_stack_not_stage2_11.0/11.1/10.6	70
+APPS	2026-09-16	unqualified		runup_85%_below_90%	70
+APPS	2026-09-21	unqualified		runup_64%_below_90%	70
+APPS	2026-09-22	unqualified		runup_61%_below_90%	70
+APPS	2026-09-23	unqualified		runup_61%_below_90%	70
+APPS	2026-09-24	unqualified		base_age_2_below_3	70
+APPS	2026-09-25	unqualified		runup_56%_below_90%	70
+APPS	2026-09-28	unqualified		runup_56%_below_90%	70
+APPS	2026-09-29	unqualified		runup_56%_below_90%	70
+APPS	2026-09-30	unqualified		runup_56%_below_90%	70
+ATAI	2026-07-03	unqualified		base_age_1_below_3	70
+ATAI	2026-07-06	unqualified		base_age_2_below_3	70
+ATAI	2026-07-07	unqualified		runup_50%_below_90%	70
+ATAI	2026-07-08	unqualified		runup_50%_below_90%	70
+ATAI	2026-07-09	unqualified		runup_50%_below_90%	70
+ATAI	2026-07-10	unqualified		runup_50%_below_90%	70
+ATAI	2026-07-14	unqualified		runup_50%_below_90%	70
+ATAI	2026-07-15	unqualified		base_age_0_below_3	70
+ATAI	2026-07-16	unqualified		base_age_1_below_3	70
+ATAI	2026-07-17	unqualified		base_age_0_below_3	70
+ATAI	2026-07-20	unqualified		base_age_1_below_3	70
+ATAI	2026-07-21	unqualified		base_age_2_below_3	70
+ATAI	2026-07-22	WATCH		runup_97% base_3d close_vs_pivot_-0.6%	70
+ATAI	2026-07-23	unqualified		mna_filter:deal_pin_fresh	70
+ATAI	2026-07-24	unqualified		mna_filter:deal_pin_fresh	70
+ATAI	2026-07-27	unqualified		mna_filter:deal_pin_fresh	70
+ATAI	2026-07-28	unqualified		mna_filter:deal_pin_fresh	70
+ATAI	2026-07-29	unqualified		mna_filter:deal_pin_fresh	70
+ATAI	2026-07-30	COILED		range_0.44 vol_0.63 bodies_0.02/0.05	70
+ATAI	2026-07-31	COILED		range_0.44 vol_0.69 bodies_0.04/0.02	70
+ATAI	2026-08-04	unqualified		adr_3.0pct_below_4pct	70
+ATAI	2026-08-05	unqualified		adr_2.7pct_below_4pct	70
+ATAI	2026-09-01	unqualified		adr_0.8pct_below_4pct	70
+ATAI	2026-09-02	unqualified		adr_0.8pct_below_4pct	70
+ATAI	2026-09-03	unqualified		adr_0.9pct_below_4pct	70
+ATAI	2026-09-04	unqualified		adr_0.9pct_below_4pct	70
+ATAI	2026-09-09	unqualified		adr_1.0pct_below_4pct	70
+ATAI	2026-09-10	unqualified		adr_1.0pct_below_4pct	70
+ATEX	2026-07-06	unqualified		base_age_0_below_3	70
+ATEX	2026-07-07	unqualified		base_age_1_below_3	70
+ATEX	2026-07-08	unqualified		base_age_2_below_3	70
+ATEX	2026-07-09	WATCH		runup_124% base_3d close_vs_pivot_-4.5%	70
+ATEX	2026-07-10	WATCH		runup_124% base_4d close_vs_pivot_-9.8%	70
+ATEX	2026-07-13	WATCH		runup_124% base_5d close_vs_pivot_-7.6%	70
+ATEX	2026-07-14	WATCH		runup_124% base_6d close_vs_pivot_-5.5%	70
+ATEX	2026-07-15	WATCH		runup_124% base_7d close_vs_pivot_-5.9%	70
+ATEX	2026-07-16	INVALIDATED		close_93.97_below_base_low_close_100.90	70
+ATEX	2026-07-17	WATCH		runup_124% base_9d close_vs_pivot_-10.3%	70
+ATEX	2026-07-20	unqualified		adv_445k_below_500k_shares	70
+ATEX	2026-07-21	unqualified		adv_424k_below_500k_shares	70
+ATEX	2026-08-06	unqualified		adv_324k_below_500k_shares	70
+ATEX	2026-10-05	unqualified		adv_260k_below_500k_shares	70
+ATEX	2026-10-06	unqualified		adv_260k_below_500k_shares	70
+ATEX	2026-10-07	unqualified		adv_260k_below_500k_shares	70
+ATEX	2026-10-09	unqualified		adv_246k_below_500k_shares	70
+BB	2026-07-06	unqualified		base_age_1_below_3	70
+BB	2026-07-07	unqualified		base_age_2_below_3	70
+BB	2026-07-08	WATCH		runup_154% base_3d close_vs_pivot_-18.2%	70
+BB	2026-07-09	TIGHTENING		range_1.00 vol_1.00 fresh	70
+BB	2026-07-10	INVALIDATED		close_10.97_below_base_low_close_11.10	70
+BB	2026-07-13	INVALIDATED		close_10.71_below_base_low_close_10.97	70
+BB	2026-07-14	TIGHTENING		range_0.71 vol_0.81	70
+BB	2026-07-15	INVALIDATED		close_10.64_below_base_low_close_10.71	70
+BB	2026-07-16	INVALIDATED		close_9.16_below_base_low_close_10.64	70
+BB	2026-07-17	INVALIDATED		close_8.99_below_base_low_close_9.16	70
+BB	2026-09-21	unqualified		runup_16%_below_90%	70
+BB	2026-09-22	unqualified		runup_16%_below_90%	70
+BB	2026-09-23	unqualified		base_age_0_below_3	70
+BB	2026-09-24	unqualified		base_age_1_below_3	70
+BB	2026-09-25	unqualified		base_age_2_below_3	70
+BB	2026-09-28	unqualified		runup_24%_below_90%	70
+BB	2026-09-29	unqualified		runup_24%_below_90%	70
+BB	2026-09-30	unqualified		runup_24%_below_90%	70
+BB	2026-10-01	unqualified		runup_24%_below_90%	70
+BB	2026-10-02	unqualified		runup_24%_below_90%	70
+BB	2026-10-05	unqualified		runup_24%_below_90%	70
+BB	2026-10-06	unqualified		runup_24%_below_90%	70
+BB	2026-10-07	unqualified		base_age_0_below_3	70
+BB	2026-10-08	unqualified		base_age_1_below_3	70
+BB	2026-10-09	unqualified		base_age_2_below_3	70
+BFLY	2026-07-06	WATCH		runup_158% base_3d close_vs_pivot_-15.1%	70
+BFLY	2026-07-07	INVALIDATED		close_7.58_below_base_low_close_7.68	70
+BFLY	2026-07-08	INVALIDATED		close_7.34_below_base_low_close_7.58	70
+BFLY	2026-07-13	unqualified		flag_low_7.21_below_75%_of_pole_9.69	70
+BFLY	2026-08-04	unqualified		ma_stack_not_stage2_7.3/7.4/6.7	70
+BFLY	2026-08-05	unqualified		flag_low_6.35_below_75%_of_pole_9.20	70
+BFLY	2026-08-06	unqualified		flag_low_6.35_below_75%_of_pole_9.20	70
+BFLY	2026-08-07	unqualified		flag_low_6.35_below_75%_of_pole_9.20	70
+BFLY	2026-08-10	unqualified		flag_low_6.35_below_75%_of_pole_9.20	70
+BFLY	2026-08-11	unqualified		base_age_0_below_3	70
+BFLY	2026-08-12	unqualified		base_age_1_below_3	70
+BFLY	2026-08-13	unqualified		base_age_2_below_3	70
+BFLY	2026-08-14	INVALIDATED		close_8.84_below_base_low_close_8.86	70
+BFLY	2026-08-17	WATCH		runup_90% base_4d close_vs_pivot_-10.2%	70
+BFLY	2026-08-18	WATCH		runup_90% base_5d close_vs_pivot_-10.4%	70
+BFLY	2026-08-19	WATCH		runup_90% base_6d close_vs_pivot_-8.8%	70
+BFLY	2026-08-20	WATCH		runup_90% base_7d close_vs_pivot_-8.8%	70
+BFLY	2026-08-21	WATCH		runup_90% base_8d close_vs_pivot_-5.0%	70
+BFLY	2026-09-21	unqualified		runup_53%_below_90%	70
+BFLY	2026-09-22	unqualified		runup_53%_below_90%	70
+BFLY	2026-09-23	unqualified		base_age_0_below_3	70
+BFLY	2026-09-24	unqualified		base_age_1_below_3	70
+BFLY	2026-09-25	unqualified		base_age_2_below_3	70
+BFLY	2026-09-28	unqualified		runup_49%_below_90%	70
+BFLY	2026-09-29	unqualified		runup_49%_below_90%	70
+BFLY	2026-09-30	unqualified		runup_49%_below_90%	70
+BFLY	2026-10-01	unqualified		runup_49%_below_90%	70
+BFLY	2026-10-02	unqualified		runup_49%_below_90%	70
+BFLY	2026-10-05	unqualified		runup_49%_below_90%	70
+BFLY	2026-10-06	unqualified		runup_49%_below_90%	70
+BFLY	2026-10-07	unqualified		runup_49%_below_90%	70
+BFLY	2026-10-09	unqualified		runup_49%_below_90%	70
+BHVN	2026-07-06	WATCH		runup_104% base_4d close_vs_pivot_-4.1%	70
+BHVN	2026-07-07	WATCH		runup_104% base_5d close_vs_pivot_-7.1%	70
+BHVN	2026-07-08	WATCH		runup_104% base_6d close_vs_pivot_-0.6%	70
+BHVN	2026-07-09	WATCH		runup_104% base_7d close_vs_pivot_+0.3%	70
+BHVN	2026-07-10	unqualified		base_age_0_below_3	70
+BHVN	2026-07-21	unqualified		ma_stack_not_stage2_15.4/15.4/12.6	70
+BHVN	2026-08-26	unqualified		runup_64%_below_90%	70
+BHVN	2026-08-27	unqualified		base_age_0_below_3	70
+BHVN	2026-08-28	unqualified		base_age_1_below_3	70
+BHVN	2026-08-31	unqualified		base_age_2_below_3	70
+BHVN	2026-09-01	unqualified		runup_40%_below_90%	70
+BHVN	2026-09-02	unqualified		runup_40%_below_90%	70
+BHVN	2026-09-03	unqualified		runup_40%_below_90%	70
+BHVN	2026-09-04	unqualified		runup_40%_below_90%	70
+BHVN	2026-09-07	unqualified		runup_40%_below_90%	70
+BHVN	2026-09-08	unqualified		runup_40%_below_90%	70
+BHVN	2026-09-09	unqualified		runup_40%_below_90%	70
+BLZE	2026-07-03	unqualified		base_age_0_below_3	70
+BLZE	2026-07-06	unqualified		base_age_1_below_3	70
+BLZE	2026-07-07	unqualified		base_age_2_below_3	70
+BLZE	2026-07-08	WATCH		runup_148% base_3d close_vs_pivot_-1.0%	70
+BLZE	2026-07-09	WATCH		runup_148% base_4d close_vs_pivot_+7.5%	70
+BLZE	2026-07-10	unqualified		base_age_0_below_3	70
+BLZE	2026-07-13	unqualified		base_age_1_below_3	70
+BLZE	2026-07-14	unqualified		base_age_2_below_3	70
+BLZE	2026-07-15	INVALIDATED		close_14.98_below_base_low_close_16.19	70
+BLZE	2026-08-04	unqualified		ma_stack_not_stage2_13.5/14.4/11.9	70
+BLZE	2026-08-05	unqualified		base_age_0_below_3	70
+BLZE	2026-08-06	unqualified		base_age_1_below_3	70
+BLZE	2026-08-07	unqualified		base_age_2_below_3	70
+BLZE	2026-08-10	unqualified		flag_low_17.47_below_75%_of_pole_23.99	70
+BLZE	2026-08-11	unqualified		flag_low_17.47_below_75%_of_pole_23.99	70
+BLZE	2026-08-12	unqualified		flag_low_17.47_below_75%_of_pole_23.99	70
+BLZE	2026-08-13	unqualified		flag_low_17.47_below_75%_of_pole_23.99	70
+BLZE	2026-08-14	unqualified		flag_low_17.47_below_75%_of_pole_23.99	70
+BLZE	2026-08-17	unqualified		flag_low_17.47_below_75%_of_pole_23.99	70
+BLZE	2026-08-18	unqualified		flag_low_17.47_below_75%_of_pole_23.99	70
+BLZE	2026-08-19	INVALIDATED		close_16.88_below_base_low_close_18.11	70
+BLZE	2026-08-20	INVALIDATED		close_16.24_below_base_low_close_16.88	70
+BLZE	2026-08-21	INVALIDATED		close_15.80_below_base_low_close_16.24	70
+BLZE	2026-09-22	INVALIDATED		close_14.30_below_sma50_14.98	70
+BLZE	2026-09-23	INVALIDATED		close_14.06_below_sma50_14.93	70
+BLZE	2026-09-24	unqualified		runup_65%_below_90%	70
+BLZE	2026-09-30	unqualified		runup_45%_below_90%	70
+BLZE	2026-10-01	unqualified		runup_41%_below_90%	70
+BLZE	2026-10-02	unqualified		runup_43%_below_90%	70
+BLZE	2026-10-05	unqualified		runup_39%_below_90%	70
+BLZE	2026-10-06	unqualified		runup_31%_below_90%	70
+BLZE	2026-10-07	unqualified		runup_31%_below_90%	70
+BRKR	2026-07-06	WATCH		runup_91% base_19d close_vs_pivot_-5.0%	70
+BRKR	2026-07-14	unqualified		runup_56%_below_90%	70
+BRKR	2026-07-23	unqualified		runup_56%_below_90%	70
+BRKR	2026-07-28	unqualified		runup_56%_below_90%	70
+BRKR	2026-07-29	unqualified		runup_56%_below_90%	70
+BRKR	2026-07-30	unqualified		runup_73%_below_90%	70
+BRKR	2026-08-25	unqualified		runup_21%_below_90%	70
+BRKR	2026-08-26	unqualified		runup_21%_below_90%	70
+BRKR	2026-08-27	unqualified		runup_21%_below_90%	70
+BRKR	2026-08-28	unqualified		runup_21%_below_90%	70
+BRKR	2026-09-16	unqualified		runup_27%_below_90%	70
+BRKR	2026-09-17	unqualified		runup_27%_below_90%	70
+BRKR	2026-09-18	unqualified		base_age_0_below_3	70
+BRKR	2026-09-21	unqualified		base_age_1_below_3	70
+BRKR	2026-09-22	unqualified		base_age_2_below_3	70
+BRKR	2026-09-24	unqualified		runup_32%_below_90%	70
+BRKR	2026-09-25	unqualified		runup_32%_below_90%	70
+BRKR	2026-09-28	unqualified		runup_32%_below_90%	70
+BRKR	2026-09-29	unqualified		runup_32%_below_90%	70
+BRKR	2026-09-30	unqualified		runup_32%_below_90%	70
+BRKR	2026-10-01	unqualified		base_age_0_below_3	70
+BRKR	2026-10-02	unqualified		base_age_1_below_3	70
+BRKR	2026-10-05	unqualified		base_age_2_below_3	70
+BRKR	2026-10-06	unqualified		runup_38%_below_90%	70
+BWIN	2026-07-06	unqualified		base_age_0_below_3	70
+BWIN	2026-07-07	unqualified		base_age_1_below_3	70
+BWIN	2026-07-08	unqualified		base_age_2_below_3	70
+BWIN	2026-07-09	unqualified		runup_69%_below_90%	70
+BWIN	2026-07-10	unqualified		runup_69%_below_90%	70
+BWIN	2026-07-13	unqualified		runup_69%_below_90%	70
+BWIN	2026-07-16	unqualified		runup_69%_below_90%	70
+BWIN	2026-08-05	unqualified		base_age_1_below_3	70
+BWIN	2026-08-11	unqualified		runup_78%_below_90%	70
+BWIN	2026-08-12	unqualified		runup_78%_below_90%	70
+BWIN	2026-08-13	unqualified		base_age_0_below_3	70
+BWIN	2026-08-14	unqualified		base_age_1_below_3	70
+BWIN	2026-08-17	unqualified		base_age_0_below_3	70
+BWIN	2026-08-20	WATCH		runup_93% base_3d close_vs_pivot_-3.4%	70
+BWIN	2026-08-21	WATCH		runup_93% base_4d close_vs_pivot_-2.0%	70
+BWIN	2026-08-31	TIGHTENING		range_0.67 vol_1.00	70
+BWIN	2026-09-01	INVALIDATED		close_30.26_below_sma20_30.45	70
+BWIN	2026-09-02	TIGHTENING		range_0.73 vol_0.99	70
+BWIN	2026-09-03	TIGHTENING	WATCH	runup_93% base_13d close_vs_pivot_-4.1%	70
+BWIN	2026-09-04	unqualified		adr_3.9pct_below_4pct	70
+BWIN	2026-09-07	unqualified		adr_3.9pct_below_4pct	70
+BWIN	2026-09-08	unqualified		adr_4.0pct_below_4pct	70
+BWIN	2026-09-14	unqualified		adr_3.6pct_below_4pct	70
+BWIN	2026-09-15	unqualified		adr_3.5pct_below_4pct	70
+BWIN	2026-09-16	unqualified		adr_3.3pct_below_4pct	70
+BWIN	2026-09-17	unqualified		adr_3.1pct_below_4pct	70
+BWIN	2026-09-18	unqualified		adr_3.0pct_below_4pct	70
+BWIN	2026-09-21	unqualified		adr_2.9pct_below_4pct	70
+BWIN	2026-09-22	unqualified		adr_2.7pct_below_4pct	70
+BWIN	2026-09-23	unqualified		adr_2.6pct_below_4pct	70
+BWIN	2026-09-24	unqualified		adr_2.5pct_below_4pct	70
+BWIN	2026-09-25	unqualified		adr_2.4pct_below_4pct	70
+BWIN	2026-09-28	unqualified		adr_2.3pct_below_4pct	70
+BWIN	2026-09-29	unqualified		adr_2.1pct_below_4pct	70
+BWIN	2026-09-30	unqualified		adr_1.9pct_below_4pct	70
+BWIN	2026-10-01	unqualified		adr_1.7pct_below_4pct	70
+BWIN	2026-10-02	unqualified		adr_1.6pct_below_4pct	70
+CAI	2026-08-06	unqualified		runup_39%_below_90%	70
+CAI	2026-08-07	unqualified		base_age_0_below_3	70
+CAI	2026-08-10	unqualified		base_age_0_below_3	70
+CAI	2026-08-11	unqualified		base_age_0_below_3	70
+CAI	2026-08-12	unqualified		base_age_1_below_3	70
+CAI	2026-08-13	unqualified		base_age_2_below_3	70
+CAI	2026-08-14	unqualified		runup_55%_below_90%	70
+CAI	2026-08-17	unqualified		runup_55%_below_90%	70
+CAI	2026-08-18	unqualified		runup_55%_below_90%	70
+CAI	2026-08-19	unqualified		runup_55%_below_90%	70
+CAI	2026-08-20	unqualified		runup_55%_below_90%	70
+CAI	2026-08-21	unqualified		base_age_0_below_3	70
+CAI	2026-08-24	unqualified		base_age_0_below_3	70
+CAI	2026-08-25	unqualified		base_age_1_below_3	70
+CAI	2026-08-26	unqualified		base_age_0_below_3	70
+CAI	2026-08-27	unqualified		base_age_1_below_3	70
+CAI	2026-08-28	unqualified		base_age_2_below_3	70
+CAI	2026-08-31	unqualified		runup_87%_below_90%	70
+CAI	2026-09-01	unqualified		runup_87%_below_90%	70
+CAI	2026-09-02	unqualified		runup_87%_below_90%	70
+CAI	2026-09-03	unqualified		runup_87%_below_90%	70
+CAI	2026-09-04	unqualified		runup_87%_below_90%	70
+CAI	2026-09-08	unqualified		runup_87%_below_90%	70
+CAI	2026-09-09	unqualified		runup_87%_below_90%	70
+CAI	2026-09-14	unqualified		runup_87%_below_90%	70
+CAI	2026-09-15	unqualified		runup_87%_below_90%	70
+CAI	2026-09-16	unqualified		runup_87%_below_90%	70
+CAI	2026-09-17	unqualified		base_age_1_below_3	70
+CAI	2026-09-18	unqualified		base_age_0_below_3	70
+CAI	2026-09-21	unqualified		base_age_1_below_3	70
+CAI	2026-09-22	unqualified		base_age_2_below_3	70
+CAI	2026-09-23	unqualified		base_age_0_below_3	70
+CAI	2026-09-24	unqualified		base_age_1_below_3	70
+CAI	2026-09-25	unqualified		base_age_2_below_3	70
+CAI	2026-09-28	WATCH		runup_112% base_3d close_vs_pivot_-1.9%	70
+CAI	2026-09-29	INVALIDATED		close_31.55_below_base_low_close_31.65	70
+CAI	2026-09-30	INVALIDATED		close_30.63_below_base_low_close_31.55	70
+CAI	2026-10-01	INVALIDATED		close_28.35_below_base_low_close_30.63	70
+CAI	2026-10-02	INVALIDATED		close_28.30_below_base_low_close_28.35	70
+CAI	2026-10-05	WATCH		runup_112% base_8d close_vs_pivot_-6.1%	70
+CBRL	2026-07-06	unqualified		base_age_1_below_3	70
+CBRL	2026-07-07	unqualified		base_age_2_below_3	70
+CBRL	2026-07-08	INVALIDATED		close_48.58_below_base_low_close_49.50	70
+CBRL	2026-07-10	WATCH		runup_95% base_5d close_vs_pivot_-8.6%	70
+CBRL	2026-07-13	WATCH		runup_95% base_6d close_vs_pivot_-5.1%	70
+CBRL	2026-07-14	WATCH		runup_95% base_7d close_vs_pivot_-3.2%	70
+CBRL	2026-07-15	WATCH		runup_95% base_8d close_vs_pivot_-6.4%	70
+CBRL	2026-07-16	WATCH		runup_95% base_9d close_vs_pivot_-7.4%	70
+CBRL	2026-07-24	WATCH		runup_95% base_15d close_vs_pivot_-2.6%	70
+CBRL	2026-07-27	WATCH		runup_95% base_16d close_vs_pivot_-4.9%	70
+CBRL	2026-07-28	WATCH		runup_95% base_17d close_vs_pivot_-2.4%	70
+CBRL	2026-07-29	WATCH		runup_95% base_18d close_vs_pivot_+2.5%	70
+CBRL	2026-07-30	unqualified		base_age_0_below_3	70
+CBRL	2026-07-31	unqualified		base_age_1_below_3	70
+CBRL	2026-08-04	unqualified		base_age_0_below_3	70
+CBRL	2026-08-05	unqualified		base_age_1_below_3	70
+CBRL	2026-08-06	unqualified		base_age_2_below_3	70
+CBRL	2026-08-07	unqualified		runup_84%_below_90%	70
+CBRL	2026-08-17	unqualified		runup_84%_below_90%	70
+CBRL	2026-08-18	unqualified		runup_84%_below_90%	70
+CBRL	2026-09-30	unqualified		runup_23%_below_90%	70
+CBRL	2026-10-01	unqualified		runup_23%_below_90%	70
+CBRL	2026-10-02	unqualified		runup_23%_below_90%	70
+CBRL	2026-10-05	unqualified		runup_22%_below_90%	70
+CBRL	2026-10-06	unqualified		runup_22%_below_90%	70
+CBRL	2026-10-07	unqualified		base_age_1_below_3	70
+CBRL	2026-10-08	unqualified		base_age_2_below_3	70
+CBRL	2026-10-09	unqualified		runup_32%_below_90%	70
+CDNA	2026-07-06	unqualified		base_age_0_below_3	70
+CDNA	2026-07-07	unqualified		base_age_1_below_3	70
+CDNA	2026-07-08	unqualified		base_age_2_below_3	70
+CDNA	2026-07-09	unqualified		runup_53%_below_90%	70
+CDNA	2026-07-10	unqualified		runup_53%_below_90%	70
+CDNA	2026-07-13	unqualified		runup_53%_below_90%	70
+CDNA	2026-07-14	unqualified		runup_53%_below_90%	70
+CDNA	2026-07-15	unqualified		runup_53%_below_90%	70
+CDNA	2026-07-16	unqualified		runup_53%_below_90%	70
+CDNA	2026-07-17	unqualified		base_age_0_below_3	70
+CDNA	2026-07-20	unqualified		base_age_1_below_3	70
+CDNA	2026-07-21	unqualified		base_age_2_below_3	70
+CDNA	2026-07-22	INVALIDATED		close_37.78_below_base_low_close_38.37	70
+CDNA	2026-07-23	INVALIDATED		close_37.61_below_base_low_close_37.78	70
+CDNA	2026-07-24	INVALIDATED		close_37.14_below_base_low_close_37.61	70
+CDNA	2026-07-27	INVALIDATED		close_36.36_below_base_low_close_37.14	70
+CDNA	2026-07-28	INVALIDATED		close_35.75_below_base_low_close_36.36	70
+CDNA	2026-07-29	INVALIDATED		close_35.41_below_base_low_close_35.75	70
+CDNA	2026-07-30	TIGHTENING		range_0.82 vol_0.60	70
+CDNA	2026-07-31	TIGHTENING	WATCH	runup_102% base_10d close_vs_pivot_+8.2%	70
+CDNA	2026-08-04	unqualified		base_age_0_below_3	70
+CDNA	2026-08-05	unqualified		base_age_1_below_3	70
+CDNA	2026-08-06	unqualified		base_age_2_below_3	70
+CDNA	2026-08-07	WATCH		runup_130% base_3d close_vs_pivot_-6.2%	70
+CDNA	2026-08-10	WATCH		runup_130% base_4d close_vs_pivot_-5.4%	70
+CDNA	2026-08-11	WATCH		runup_130% base_5d close_vs_pivot_-5.1%	70
+CDNA	2026-08-12	WATCH		runup_130% base_6d close_vs_pivot_-4.9%	70
+CDNA	2026-08-13	WATCH		runup_130% base_7d close_vs_pivot_-4.8%	70
+CDNA	2026-08-14	WATCH		runup_130% base_8d close_vs_pivot_-8.9%	70
+CDNA	2026-08-17	WATCH		runup_130% base_9d close_vs_pivot_-6.8%	70
+CDNA	2026-08-18	TIGHTENING		range_0.95 vol_0.65	70
+CDNA	2026-08-19	TIGHTENING		range_1.00 vol_0.69	70
+CDNA	2026-08-20	TIGHTENING	WATCH	runup_130% base_12d close_vs_pivot_-5.6%	70
+CDNA	2026-08-21	TIGHTENING	WATCH	runup_130% base_13d close_vs_pivot_-2.3%	70
+CDNA	2026-08-24	TIGHTENING	WATCH	runup_130% base_14d close_vs_pivot_-4.5%	70
+CDNA	2026-08-25	TIGHTENING	WATCH	runup_130% base_15d close_vs_pivot_+2.1%	70
+CDNA	2026-08-26	unqualified		base_age_0_below_3	70
+CDNA	2026-08-27	unqualified		base_age_1_below_3	70
+CDNA	2026-08-28	unqualified		base_age_0_below_3	70
+CDNA	2026-08-31	unqualified		base_age_1_below_3	70
+CDNA	2026-09-01	unqualified		base_age_2_below_3	70
+CDNA	2026-09-02	WATCH		runup_96% base_3d close_vs_pivot_-7.6%	70
+CDNA	2026-09-03	WATCH		runup_96% base_4d close_vs_pivot_-7.1%	70
+CDNA	2026-09-04	WATCH		runup_96% base_5d close_vs_pivot_-5.2%	70
+CDNA	2026-09-08	WATCH		runup_96% base_6d close_vs_pivot_-6.3%	70
+CDNA	2026-09-09	WATCH		runup_96% base_7d close_vs_pivot_-6.8%	70
+CDNA	2026-09-10	WATCH		runup_96% base_8d close_vs_pivot_-6.8%	70
+CDNA	2026-09-11	WATCH		runup_96% base_9d close_vs_pivot_-6.4%	70
+CDNA	2026-09-14	TIGHTENING		range_0.60 vol_1.06	70
+CDNA	2026-09-15	TIGHTENING		range_0.60 vol_0.96	70
+CDNA	2026-09-16	TIGHTENING		range_0.68 vol_0.96	70
+CDNA	2026-09-17	TIGHTENING		range_0.68 vol_0.90	70
+CDNA	2026-09-18	unqualified		base_age_1_below_3	70
+CDNA	2026-09-21	unqualified		base_age_0_below_3	70
+CDNA	2026-09-22	unqualified		base_age_1_below_3	70
+CDNA	2026-09-23	unqualified		base_age_0_below_3	70
+CDNA	2026-09-24	unqualified		base_age_1_below_3	70
+CDNA	2026-09-25	unqualified		base_age_0_below_3	70
+CDNA	2026-09-28	unqualified		base_age_0_below_3	70
+CDNA	2026-09-29	unqualified		base_age_1_below_3	70
+CDNA	2026-09-30	unqualified		base_age_2_below_3	70
+CDNA	2026-10-01	unqualified		runup_60%_below_90%	70
+CDNA	2026-10-02	unqualified		base_age_0_below_3	70
+CDNA	2026-10-05	unqualified		base_age_0_below_3	70
+CDNA	2026-10-06	unqualified		base_age_0_below_3	70
+CDNA	2026-10-07	unqualified		base_age_0_below_3	70
+CDNA	2026-10-08	unqualified		base_age_1_below_3	70
+CDNA	2026-10-09	unqualified		base_age_2_below_3	70
+CDNL	2026-07-06	WATCH		runup_104% base_3d close_vs_pivot_-15.9%	70
+CDNL	2026-07-07	INVALIDATED		close_75.85_below_sma20_76.95	70
+CDNL	2026-08-18	unqualified		adv_454k_below_500k_shares	70
+CDNL	2026-08-19	unqualified		adv_497k_below_500k_shares	70
+CDNL	2026-08-21	unqualified		adv_497k_below_500k_shares	70
+CHPT	2026-09-03	unqualified		adv_355k_below_500k_shares	70
+CHPT	2026-09-04	unqualified		adv_358k_below_500k_shares	70
+CHPT	2026-09-07	unqualified		adv_358k_below_500k_shares	70
+CHPT	2026-09-08	unqualified		adv_401k_below_500k_shares	70
+CHPT	2026-09-09	unqualified		adv_419k_below_500k_shares	70
+CHPT	2026-09-10	unqualified		adv_419k_below_500k_shares	70
+CHPT	2026-09-11	unqualified		adv_426k_below_500k_shares	70
+CHPT	2026-09-14	unqualified		adv_437k_below_500k_shares	70
+CHPT	2026-09-15	INVALIDATED		close_8.82_below_base_low_close_8.84	70
+CHPT	2026-09-16	TIGHTENING		range_0.99 vol_0.63	70
+CHPT	2026-09-17	TIGHTENING		range_0.80 vol_0.52	70
+CHPT	2026-09-18	TIGHTENING		range_0.80 vol_0.51	70
+CHPT	2026-09-21	unqualified		base_age_0_below_3	70
+CHPT	2026-09-22	unqualified		base_age_1_below_3	70
+CHPT	2026-09-23	unqualified		base_age_2_below_3	70
+CHPT	2026-09-29	TIGHTENING		range_0.70 vol_0.86	70
+CHPT	2026-09-30	TIGHTENING		range_0.70 vol_0.77	70
+CHPT	2026-10-01	TIGHTENING		range_0.70 vol_0.77	70
+CHPT	2026-10-02	INVALIDATED		close_9.29_below_sma20_9.36	70
+CHPT	2026-10-05	INVALIDATED		close_8.93_below_sma20_9.31	70
+CHPT	2026-10-06	INVALIDATED		close_8.67_below_base_low_close_8.74	70
+CHYM	2026-07-06	unqualified		base_age_1_below_3	70
+CHYM	2026-07-07	unqualified		base_age_2_below_3	70
+CHYM	2026-07-08	unqualified		runup_35%_below_90%	70
+CHYM	2026-07-09	unqualified		runup_35%_below_90%	70
+CHYM	2026-07-10	unqualified		runup_35%_below_90%	70
+CHYM	2026-07-13	unqualified		runup_38%_below_90%	70
+CHYM	2026-07-14	unqualified		runup_38%_below_90%	70
+CHYM	2026-07-15	unqualified		runup_38%_below_90%	70
+CHYM	2026-07-16	unqualified		base_age_0_below_3	70
+CHYM	2026-07-17	unqualified		base_age_1_below_3	70
+CHYM	2026-07-21	unqualified		runup_43%_below_90%	70
+CHYM	2026-07-31	unqualified		runup_42%_below_90%	70
+CHYM	2026-08-04	unqualified		base_age_0_below_3	70
+CHYM	2026-08-05	unqualified		base_age_0_below_3	70
+CHYM	2026-08-06	unqualified		base_age_0_below_3	70
+CHYM	2026-08-07	unqualified		base_age_0_below_3	70
+CHYM	2026-08-10	unqualified		base_age_1_below_3	70
+CHYM	2026-08-11	unqualified		base_age_2_below_3	70
+CHYM	2026-08-12	WATCH		runup_110% base_3d close_vs_pivot_-5.4%	70
+CHYM	2026-08-13	WATCH		runup_110% base_4d close_vs_pivot_-3.7%	70
+CHYM	2026-08-14	WATCH		runup_110% base_5d close_vs_pivot_-4.2%	70
+CHYM	2026-08-17	COILED		fresh_2bar 2.7%/atr 5.4% bodies_0.25/0.12	70
+CHYM	2026-08-18	COILED	TIGHTENING	range_0.51 vol_0.71	70
+CHYM	2026-08-19	TRIGGERED		close_33.07>base_high_close_32.18 vol_2.08x	70
+CHYM	2026-08-20	TRIGGERED	TIGHTENING	range_0.51 vol_0.78	70
+CHYM	2026-08-21	TRIGGERED	TIGHTENING	range_0.85 vol_0.68	70
+CHYM	2026-08-24	TRIGGERED	TIGHTENING	range_0.85 vol_0.69	70
+CHYM	2026-08-25	TRIGGERED	WATCH	runup_110% base_12d close_vs_pivot_-0.9%	70
+CHYM	2026-08-26	TRIGGERED	COILED	range_0.66 vol_0.68 bodies_0.10/0.05	70
+CHYM	2026-08-27	TRIGGERED	COILED	range_0.60 vol_0.50 bodies_0.04/0.11	70
+CHYM	2026-08-28	TRIGGERED	COILED	range_0.60 vol_0.46 bodies_0.20/0.04	70
+CHYM	2026-08-31	unqualified		runup_71%_below_90%	70
+CHYM	2026-09-02	unqualified		runup_71%_below_90%	70
+CHYM	2026-09-03	unqualified		runup_71%_below_90%	70
+CHYM	2026-09-04	unqualified		adr_3.9pct_below_4pct	70
+CHYM	2026-09-08	unqualified		adr_3.9pct_below_4pct	70
+CHYM	2026-09-09	unqualified		adr_3.9pct_below_4pct	70
+CHYM	2026-09-10	unqualified		adr_3.9pct_below_4pct	70
+CHYM	2026-09-11	unqualified		adr_3.9pct_below_4pct	70
+CHYM	2026-09-14	unqualified		base_age_2_below_3	70
+CHYM	2026-09-15	unqualified		runup_76%_below_90%	70
+DDOG	2026-07-03	TIGHTENING	WATCH	runup_177% base_21d close_vs_pivot_-6.6%	70
+DDOG	2026-07-06	TIGHTENING	WATCH	runup_177% base_22d close_vs_pivot_-8.4%	70
+DDOG	2026-07-07	TIGHTENING		range_0.90 vol_0.60	70
+DDOG	2026-07-08	TIGHTENING		range_1.04 vol_0.60	70
+DDOG	2026-07-09	TIGHTENING		range_0.84 vol_0.63	70
+DDOG	2026-07-10	unqualified		base_age_0_below_3	70
+DDOG	2026-07-13	unqualified		base_age_1_below_3	70
+DDOG	2026-07-14	unqualified		base_age_2_below_3	70
+DDOG	2026-07-15	unqualified		runup_39%_below_90%	70
+DDOG	2026-07-16	unqualified		runup_39%_below_90%	70
+DDOG	2026-07-17	unqualified		runup_39%_below_90%	70
+DDOG	2026-07-20	unqualified		runup_39%_below_90%	70
+DDOG	2026-09-14	unqualified		runup_24%_below_90%	70
+DDOG	2026-09-15	unqualified		runup_24%_below_90%	70
+DDOG	2026-09-16	unqualified		runup_20%_below_90%	70
+DDOG	2026-09-21	unqualified		runup_21%_below_90%	70
+DDOG	2026-09-22	unqualified		runup_15%_below_90%	70
+DDOG	2026-09-23	unqualified		runup_15%_below_90%	70
+DDOG	2026-09-24	unqualified		runup_15%_below_90%	70
+DDOG	2026-09-25	unqualified		base_age_0_below_3	70
+DDOG	2026-09-28	unqualified		base_age_0_below_3	70
+DDOG	2026-09-29	unqualified		base_age_1_below_3	70
+DDOG	2026-09-30	unqualified		base_age_2_below_3	70
+DDOG	2026-10-01	unqualified		runup_38%_below_90%	70
+DDOG	2026-10-02	unqualified		runup_38%_below_90%	70
+DDOG	2026-10-05	unqualified		runup_38%_below_90%	70
+DDOG	2026-10-06	unqualified		runup_38%_below_90%	70
+DDOG	2026-10-07	unqualified		runup_38%_below_90%	70
+DDOG	2026-10-08	unqualified		runup_38%_below_90%	70
+DDOG	2026-10-09	unqualified		runup_38%_below_90%	70
+DELL	2026-07-03	INVALIDATED		close_394.32_below_sma20_407.65	70
+DELL	2026-07-06	TIGHTENING		range_0.87 vol_0.63	70
+DELL	2026-07-07	TIGHTENING		range_1.19 vol_0.57	70
+DELL	2026-07-08	TIGHTENING		range_0.99 vol_0.55	70
+DELL	2026-07-09	TIGHTENING		range_1.10 vol_0.65	70
+DELL	2026-07-10	unqualified		base_age_0_below_3	70
+DELL	2026-07-13	unqualified		base_age_1_below_3	70
+DELL	2026-07-14	unqualified		base_age_2_below_3	70
+DELL	2026-07-22	WATCH		runup_103% base_4d close_vs_pivot_-4.2%	70
+DELL	2026-07-23	WATCH		runup_103% base_5d close_vs_pivot_-4.7%	70
+DELL	2026-07-24	unqualified		ma_stack_not_stage2_419.0/420.1/383.2	70
+DELL	2026-07-27	unqualified		ma_stack_not_stage2_419.0/421.4/386.8	70
+DELL	2026-08-04	WATCH		runup_103% base_13d close_vs_pivot_+1.3%	70
+DELL	2026-08-05	unqualified		base_age_0_below_3	70
+DELL	2026-08-06	unqualified		base_age_1_below_3	70
+DELL	2026-08-07	unqualified		base_age_2_below_3	70
+DELL	2026-08-10	unqualified		runup_34%_below_90%	70
+DELL	2026-08-13	unqualified		runup_34%_below_90%	70
+DELL	2026-08-14	unqualified		base_age_0_below_3	70
+DELL	2026-08-17	unqualified		base_age_1_below_3	70
+DELL	2026-08-18	unqualified		base_age_2_below_3	70
+DELL	2026-08-19	unqualified		runup_43%_below_90%	70
+DELL	2026-08-20	unqualified		runup_43%_below_90%	70
+DELL	2026-08-21	unqualified		runup_43%_below_90%	70
+DELL	2026-08-24	unqualified		runup_43%_below_90%	70
+DELL	2026-08-25	unqualified		runup_43%_below_90%	70
+DELL	2026-08-26	unqualified		runup_43%_below_90%	70
+DELL	2026-08-27	unqualified		runup_43%_below_90%	70
+DELL	2026-09-02	unqualified		runup_43%_below_90%	70
+DELL	2026-09-03	unqualified		runup_43%_below_90%	70
+DELL	2026-09-04	unqualified		base_age_0_below_3	70
+DELL	2026-09-07	unqualified		base_age_0_below_3	70
+DELL	2026-09-08	unqualified		base_age_1_below_3	70
+DELL	2026-09-09	unqualified		base_age_2_below_3	70
+DELL	2026-09-10	unqualified		base_age_0_below_3	70
+DELL	2026-09-11	unqualified		base_age_1_below_3	70
+DELL	2026-09-14	unqualified		base_age_2_below_3	70
+DELL	2026-09-15	unqualified		runup_57%_below_90%	70
+DELL	2026-09-16	unqualified		runup_57%_below_90%	70
+DELL	2026-09-17	unqualified		runup_58%_below_90%	70
+DELL	2026-09-18	unqualified		base_age_0_below_3	70
+DELL	2026-09-21	unqualified		base_age_1_below_3	70
+DELL	2026-09-22	unqualified		base_age_2_below_3	70
+DELL	2026-09-23	unqualified		runup_66%_below_90%	70
+DELL	2026-09-24	unqualified		runup_66%_below_90%	70
+DELL	2026-09-25	unqualified		runup_66%_below_90%	70
+DELL	2026-09-28	unqualified		runup_66%_below_90%	70
+DELL	2026-09-29	unqualified		runup_66%_below_90%	70
+DELL	2026-09-30	unqualified		runup_66%_below_90%	70
+DELL	2026-10-01	unqualified		runup_66%_below_90%	70
+DELL	2026-10-06	unqualified		runup_66%_below_90%	70
+DELL	2026-10-07	unqualified		runup_66%_below_90%	70
+DELL	2026-10-09	unqualified		runup_66%_below_90%	70
+DFTX	2026-07-03	unqualified		base_age_1_below_3	70
+DFTX	2026-07-06	unqualified		base_age_2_below_3	70
+DFTX	2026-07-07	WATCH		runup_155% base_3d close_vs_pivot_-9.6%	70
+DFTX	2026-07-08	WATCH		runup_155% base_4d close_vs_pivot_-7.9%	70
+DFTX	2026-07-09	WATCH		runup_155% base_5d close_vs_pivot_-1.5%	70
+DFTX	2026-07-10	WATCH		runup_155% base_6d close_vs_pivot_-4.3%	70
+DFTX	2026-07-13	WATCH		runup_155% base_7d close_vs_pivot_-11.3%	70
+DFTX	2026-07-14	WATCH		runup_155% base_8d close_vs_pivot_-6.5%	70
+DFTX	2026-07-15	WATCH		runup_155% base_9d close_vs_pivot_-7.2%	70
+DFTX	2026-07-22	INVALIDATED		close_43.67_below_sma20_44.90	70
+DFTX	2026-08-06	unqualified		ma_stack_not_stage2_43.3/43.9/37.0	70
+DFTX	2026-08-12	unqualified		base_age_2_below_3	70
+DFTX	2026-08-13	WATCH		runup_117% base_3d close_vs_pivot_-11.7%	70
+DFTX	2026-08-14	INVALIDATED		close_42.63_below_sma20_43.43	70
+DFTX	2026-08-17	WATCH		runup_117% base_5d close_vs_pivot_-8.9%	70
+DFTX	2026-08-18	WATCH		runup_117% base_6d close_vs_pivot_-7.1%	70
+DFTX	2026-08-19	WATCH		runup_117% base_7d close_vs_pivot_-7.8%	70
+DFTX	2026-08-20	TIGHTENING		range_0.91 vol_0.59	70
+DFTX	2026-08-21	TIGHTENING		range_0.81 vol_0.53	70
+DFTX	2026-08-24	INVALIDATED		close_43.27_below_sma20_43.96	70
+DFTX	2026-08-25	TIGHTENING		range_0.81 vol_0.48	70
+DFTX	2026-08-26	INVALIDATED		close_43.77_below_sma20_44.18	70
+DFTX	2026-08-27	INVALIDATED		close_43.82_below_sma20_44.15	70
+DFTX	2026-08-28	INVALIDATED		close_40.98_below_sma20_44.02	70
+DFTX	2026-09-15	INVALIDATED		close_36.82_below_base_low_close_37.73	70
+DFTX	2026-09-16	INVALIDATED		close_37.85_below_sma20_40.69	70
+DFTX	2026-09-17	INVALIDATED		close_38.68_below_sma20_40.33	70
+DFTX	2026-09-18	unqualified		runup_32%_below_90%	70
+DFTX	2026-09-21	unqualified		runup_32%_below_90%	70
+DFTX	2026-09-22	unqualified		runup_32%_below_90%	70
+EFOR	2026-07-22	unqualified		runup_26%_below_90%	70
+EFOR	2026-07-23	unqualified		base_age_0_below_3	70
+EFOR	2026-07-24	unqualified		base_age_1_below_3	70
+EFOR	2026-07-27	unqualified		base_age_2_below_3	70
+EFOR	2026-07-28	unqualified		base_age_0_below_3	70
+EFOR	2026-07-29	unqualified		base_age_0_below_3	70
+EFOR	2026-07-30	unqualified		base_age_0_below_3	70
+EFOR	2026-07-31	unqualified		base_age_0_below_3	70
+EFOR	2026-08-04	unqualified		base_age_0_below_3	70
+EFOR	2026-08-05	unqualified		base_age_1_below_3	70
+EFOR	2026-08-06	unqualified		base_age_0_below_3	70
+EFOR	2026-08-07	unqualified		base_age_1_below_3	70
+EFOR	2026-08-10	unqualified		base_age_0_below_3	70
+EFOR	2026-08-11	unqualified		base_age_1_below_3	70
+EFOR	2026-08-12	unqualified		base_age_2_below_3	70
+EFOR	2026-08-13	WATCH		runup_96% base_3d close_vs_pivot_+1.2%	70
+EFOR	2026-08-14	INVALIDATED		close_31.67_below_base_low_close_32.72	70
+EFOR	2026-08-17	INVALIDATED		close_30.86_below_base_low_close_31.67	70
+EFOR	2026-08-18	INVALIDATED		close_30.79_below_base_low_close_30.86	70
+EFOR	2026-08-19	WATCH		runup_100% base_6d close_vs_pivot_-5.3%	70
+EFOR	2026-08-20	WATCH		runup_100% base_7d close_vs_pivot_-4.6%	70
+EFOR	2026-08-21	WATCH		runup_100% base_8d close_vs_pivot_-3.1%	70
+EFOR	2026-09-04	unqualified		ma_stack_not_stage2_31.7/31.9/25.7	70
+EFOR	2026-09-08	INVALIDATED		close_30.92_below_sma20_31.86	70
+EFOR	2026-09-14	unqualified		ma_stack_not_stage2_31.5/31.6/27.1	70
+EFOR	2026-09-15	unqualified		base_age_0_below_3	70
+EFOR	2026-09-16	unqualified		base_age_1_below_3	70
+EFOR	2026-09-17	unqualified		base_age_2_below_3	70
+EFOR	2026-09-18	WATCH		runup_95% base_3d close_vs_pivot_-4.7%	70
+EFOR	2026-09-21	WATCH		runup_95% base_4d close_vs_pivot_-4.3%	70
+EFOR	2026-09-22	INVALIDATED		close_32.28_below_base_low_close_32.43	70
+EFOR	2026-09-23	WATCH		runup_95% base_6d close_vs_pivot_-3.5%	70
+EFOR	2026-09-24	WATCH		runup_95% base_7d close_vs_pivot_-5.6%	70
+EFOR	2026-09-25	WATCH		runup_95% base_8d close_vs_pivot_-3.6%	70
+EFOR	2026-09-28	TIGHTENING		range_1.06 vol_0.57	70
+EFOR	2026-09-29	TIGHTENING		range_1.06 vol_0.55	70
+EFOR	2026-09-30	TIGHTENING		range_0.84 vol_0.54	70
+EFOR	2026-10-01	TIGHTENING		range_0.73 vol_0.53	70
+EFOR	2026-10-02	unqualified		base_age_0_below_3	70
+EFOR	2026-10-05	unqualified		base_age_1_below_3	70
+EFOR	2026-10-06	unqualified		base_age_2_below_3	70
+EFOR	2026-10-07	unqualified		runup_27%_below_90%	70
+EFOR	2026-10-08	unqualified		runup_27%_below_90%	70
+EFOR	2026-10-09	unqualified		runup_27%_below_90%	70
+ERAS	2026-07-06	unqualified		runup_88%_below_90%	70
+ERAS	2026-07-07	unqualified		base_age_0_below_3	70
+ERAS	2026-07-08	unqualified		base_age_1_below_3	70
+ERAS	2026-07-09	unqualified		base_age_0_below_3	70
+ERAS	2026-07-10	unqualified		base_age_0_below_3	70
+ERAS	2026-07-13	unqualified		base_age_1_below_3	70
+ERAS	2026-07-14	unqualified		base_age_2_below_3	70
+ERAS	2026-07-15	WATCH		runup_105% base_3d close_vs_pivot_+5.9%	70
+ERAS	2026-07-16	unqualified		base_age_0_below_3	70
+ERAS	2026-07-17	unqualified		base_age_1_below_3	70
+ERAS	2026-07-20	unqualified		base_age_2_below_3	70
+ERAS	2026-07-21	WATCH		runup_115% base_3d close_vs_pivot_-10.3%	70
+ERAS	2026-07-22	WATCH		runup_115% base_4d close_vs_pivot_-9.7%	70
+ERAS	2026-07-23	WATCH		runup_115% base_5d close_vs_pivot_-10.5%	70
+ERAS	2026-07-24	WATCH		runup_115% base_6d close_vs_pivot_-11.5%	70
+ERAS	2026-07-27	INVALIDATED		close_18.87_below_sma20_18.93	70
+ERAS	2026-07-28	INVALIDATED		close_18.16_below_base_low_close_18.82	70
+ERAS	2026-10-09	unqualified		runup_12%_below_90%	70
+ESTC	2026-07-16	unqualified		runup_43%_below_90%	70
+ESTC	2026-07-17	unqualified		runup_43%_below_90%	70
+ESTC	2026-07-20	unqualified		runup_43%_below_90%	70
+ESTC	2026-07-31	unqualified		base_age_1_below_3	70
+ESTC	2026-08-04	unqualified		base_age_0_below_3	70
+ESTC	2026-08-05	unqualified		base_age_0_below_3	70
+ESTC	2026-08-06	unqualified		base_age_0_below_3	70
+ESTC	2026-08-07	unqualified		base_age_1_below_3	70
+ESTC	2026-08-10	unqualified		base_age_0_below_3	70
+ESTC	2026-08-11	unqualified		base_age_0_below_3	70
+ESTC	2026-08-12	unqualified		base_age_1_below_3	70
+ESTC	2026-08-13	unqualified		base_age_2_below_3	70
+ESTC	2026-08-14	unqualified		base_age_0_below_3	70
+ESTC	2026-08-17	unqualified		base_age_1_below_3	70
+ESTC	2026-08-18	unqualified		base_age_2_below_3	70
+ESTC	2026-08-19	unqualified		runup_63%_below_90%	70
+ESTC	2026-08-20	unqualified		runup_63%_below_90%	70
+ESTC	2026-08-21	unqualified		runup_63%_below_90%	70
+ESTC	2026-08-24	unqualified		runup_63%_below_90%	70
+ESTC	2026-08-25	unqualified		runup_63%_below_90%	70
+ESTC	2026-08-26	unqualified		runup_63%_below_90%	70
+ESTC	2026-08-27	unqualified		runup_63%_below_90%	70
+ESTC	2026-08-28	unqualified		runup_63%_below_90%	70
+ESTC	2026-08-31	unqualified		base_age_0_below_3	70
+ESTC	2026-09-01	unqualified		base_age_1_below_3	70
+ESTC	2026-09-02	unqualified		base_age_2_below_3	70
+ESTC	2026-09-03	WATCH		runup_93% base_3d close_vs_pivot_-11.0%	70
+ESTC	2026-09-04	WATCH		runup_93% base_4d close_vs_pivot_-15.0%	70
+ESTC	2026-09-07	WATCH		runup_93% base_4d close_vs_pivot_-15.0%	70
+ESTC	2026-09-08	INVALIDATED		close_88.42_below_base_low_close_89.58	70
+ESTC	2026-09-09	INVALIDATED		close_86.58_below_base_low_close_88.42	70
+ESTC	2026-09-10	INVALIDATED		close_83.48_below_base_low_close_86.58	70
+ESTC	2026-09-11	INVALIDATED		close_83.39_below_base_low_close_83.48	70
+ESTC	2026-09-14	INVALIDATED		close_85.11_below_sma20_87.43	70
+ESTC	2026-09-15	INVALIDATED		close_85.16_below_sma20_87.52	70
+ESTC	2026-09-16	INVALIDATED		close_85.03_below_sma20_87.52	70
+ESTC	2026-09-17	unqualified		ma_stack_not_stage2_87.4/87.6/76.3	70
+ESTC	2026-09-23	unqualified		ma_stack_not_stage2_86.8/88.7/78.5	70
+ESTC	2026-09-29	TIGHTENING		range_0.68 vol_0.49	70
+ESTC	2026-09-30	TIGHTENING		range_0.51 vol_0.50	70
+ESTC	2026-10-01	TIGHTENING		range_0.72 vol_0.52	70
+ESTC	2026-10-02	unqualified		adr_3.9pct_below_4pct	70
+ESTC	2026-10-05	unqualified		adr_3.9pct_below_4pct	70
+ESTC	2026-10-06	unqualified		adr_3.9pct_below_4pct	70
+ESTC	2026-10-07	unqualified		adr_3.9pct_below_4pct	70
+ESTC	2026-10-08	unqualified		adr_3.7pct_below_4pct	70
+ESTC	2026-10-09	unqualified		adr_3.7pct_below_4pct	70
+ETON	2026-07-06	unqualified		adv_410k_below_500k_shares	70
+ETON	2026-07-07	unqualified		adv_418k_below_500k_shares	70
+ETON	2026-07-08	unqualified		adv_413k_below_500k_shares	70
+ETON	2026-07-09	unqualified		adv_419k_below_500k_shares	70
+ETON	2026-07-10	unqualified		adv_418k_below_500k_shares	70
+ETON	2026-07-13	unqualified		adv_418k_below_500k_shares	70
+ETON	2026-07-14	unqualified		adv_431k_below_500k_shares	70
+ETON	2026-07-15	unqualified		adv_448k_below_500k_shares	70
+ETON	2026-07-16	unqualified		adv_461k_below_500k_shares	70
+ETON	2026-07-17	unqualified		base_age_0_below_3	70
+ETON	2026-07-20	unqualified		adv_449k_below_500k_shares	70
+ETON	2026-07-21	unqualified		adv_452k_below_500k_shares	70
+ETON	2026-07-22	unqualified		adv_452k_below_500k_shares	70
+ETON	2026-07-23	unqualified		adv_455k_below_500k_shares	70
+ETON	2026-07-24	unqualified		adv_455k_below_500k_shares	70
+ETON	2026-07-27	unqualified		adv_452k_below_500k_shares	70
+ETON	2026-07-28	unqualified		adv_452k_below_500k_shares	70
+ETON	2026-07-29	unqualified		adv_455k_below_500k_shares	70
+ETON	2026-07-30	unqualified		adv_489k_below_500k_shares	70
+ETON	2026-07-31	unqualified		adv_469k_below_500k_shares	70
+ETON	2026-08-04	unqualified		adv_477k_below_500k_shares	70
+ETON	2026-08-05	unqualified		adv_477k_below_500k_shares	70
+ETON	2026-08-06	unqualified		runup_88%_below_90%	70
+ETON	2026-08-14	unqualified		runup_88%_below_90%	70
+ETON	2026-08-17	unqualified		base_age_0_below_3	70
+ETON	2026-08-18	unqualified		base_age_0_below_3	70
+ETON	2026-08-19	unqualified		base_age_1_below_3	70
+ETON	2026-08-20	unqualified		base_age_2_below_3	70
+ETON	2026-08-21	WATCH		runup_97% base_3d close_vs_pivot_+1.0%	70
+ETON	2026-08-24	WATCH		runup_97% base_4d close_vs_pivot_+2.5%	70
+ETON	2026-08-25	unqualified		base_age_0_below_3	70
+ETON	2026-08-26	unqualified		base_age_1_below_3	70
+ETON	2026-08-27	unqualified		base_age_2_below_3	70
+ETON	2026-08-28	INVALIDATED		close_59.78_below_base_low_close_62.62	70
+ETON	2026-08-31	WATCH		runup_90% base_4d close_vs_pivot_-8.9%	70
+ETON	2026-09-01	WATCH		runup_90% base_5d close_vs_pivot_-8.9%	70
+ETON	2026-09-02	WATCH		runup_90% base_6d close_vs_pivot_-6.6%	70
+ETON	2026-09-03	WATCH		runup_90% base_7d close_vs_pivot_-9.7%	70
+ETON	2026-09-24	unqualified		adv_426k_below_500k_shares	70
+ETON	2026-09-25	unqualified		adv_449k_below_500k_shares	70
+ETON	2026-09-28	unqualified		adv_426k_below_500k_shares	70
+ETON	2026-09-29	unqualified		adv_426k_below_500k_shares	70
+EVC	2026-07-06	INVALIDATED		close_12.58_below_base_low_close_13.04	70
+EVC	2026-07-07	INVALIDATED		close_11.90_below_base_low_close_12.58	70
+EVC	2026-07-08	INVALIDATED		close_11.71_below_base_low_close_11.90	70
+EVC	2026-07-09	WATCH		runup_259% base_6d close_vs_pivot_-10.6%	70
+EVC	2026-07-10	WATCH		runup_259% base_7d close_vs_pivot_-13.0%	70
+EVC	2026-07-13	INVALIDATED		close_11.14_below_base_low_close_11.71	70
+EVC	2026-07-14	WATCH		runup_259% base_9d close_vs_pivot_-14.5%	70
+EVC	2026-08-06	unqualified		flag_low_10.05_below_75%_of_pole_13.67	70
+EVC	2026-08-07	unqualified		flag_low_10.05_below_75%_of_pole_13.74	70
+FBRX	2026-07-10	unqualified		base_age_0_below_3	70
+FBRX	2026-07-13	unqualified		base_age_0_below_3	70
+FBRX	2026-07-14	unqualified		base_age_1_below_3	70
+FBRX	2026-07-15	unqualified		base_age_2_below_3	70
+FBRX	2026-07-16	unqualified		base_age_0_below_3	70
+FBRX	2026-07-17	unqualified		base_age_1_below_3	70
+FBRX	2026-07-20	unqualified		base_age_0_below_3	70
+FBRX	2026-07-21	unqualified		base_age_0_below_3	70
+FBRX	2026-07-22	unqualified		base_age_1_below_3	70
+FBRX	2026-07-23	unqualified		base_age_0_below_3	70
+FBRX	2026-07-24	unqualified		base_age_0_below_3	70
+FBRX	2026-07-27	unqualified		base_age_1_below_3	70
+FBRX	2026-07-28	unqualified		base_age_0_below_3	70
+FBRX	2026-07-29	unqualified		base_age_1_below_3	70
+FBRX	2026-07-30	unqualified		base_age_2_below_3	70
+FBRX	2026-07-31	WATCH		runup_394% base_3d close_vs_pivot_+0.0%	70
+FBRX	2026-08-04	unqualified		mna_filter:deal_pin_signature	70
+FBRX	2026-08-05	unqualified		mna_filter:deal_pin_signature	70
+FBRX	2026-08-06	TIGHTENING		range_1.07 vol_0.46	70
+FBRX	2026-08-07	TIGHTENING		range_1.00 vol_0.41	70
+FBRX	2026-08-10	unqualified		mna_filter:polygon_news	70
+FBRX	2026-08-11	unqualified		mna_filter:polygon_news	70
+FBRX	2026-08-12	unqualified		mna_filter:polygon_news	70
+FBRX	2026-08-13	unqualified		adr_3.8pct_below_4pct	70
+FBRX	2026-08-14	unqualified		adr_3.0pct_below_4pct	70
+FIVN	2026-07-06	unqualified		ma_stack_not_stage2_21.2/21.2/21.3	70
+FIVN	2026-07-07	unqualified		ma_stack_not_stage2_21.8/21.2/21.5	70
+FIVN	2026-07-08	unqualified		ma_stack_not_stage2_22.3/21.3/21.7	70
+FIVN	2026-07-09	unqualified		ma_stack_not_stage2_22.8/21.5/21.9	70
+FIVN	2026-07-10	unqualified		base_age_2_below_3	70
+FIVN	2026-07-13	unqualified		runup_42%_below_90%	70
+FIVN	2026-07-14	unqualified		base_age_0_below_3	70
+FIVN	2026-07-15	unqualified		base_age_1_below_3	70
+FIVN	2026-07-16	unqualified		base_age_2_below_3	70
+FIVN	2026-07-17	unqualified		runup_45%_below_90%	70
+FIVN	2026-07-20	unqualified		runup_45%_below_90%	70
+FIVN	2026-07-21	unqualified		runup_45%_below_90%	70
+FIVN	2026-07-27	unqualified		runup_46%_below_90%	70
+FIVN	2026-07-28	unqualified		runup_46%_below_90%	70
+FIVN	2026-07-29	unqualified		base_age_0_below_3	70
+FIVN	2026-07-30	unqualified		base_age_0_below_3	70
+FIVN	2026-07-31	unqualified		base_age_0_below_3	70
+FIVN	2026-08-04	unqualified		base_age_2_below_3	70
+FIVN	2026-08-05	unqualified		base_age_0_below_3	70
+FIVN	2026-08-06	unqualified		base_age_1_below_3	70
+FIVN	2026-08-07	unqualified		base_age_2_below_3	70
+FIVN	2026-08-10	unqualified		base_age_0_below_3	70
+FIVN	2026-08-11	unqualified		base_age_1_below_3	70
+FIVN	2026-08-12	unqualified		base_age_2_below_3	70
+FIVN	2026-08-13	unqualified		runup_88%_below_90%	70
+FIVN	2026-08-14	unqualified		runup_88%_below_90%	70
+FIVN	2026-08-17	unqualified		runup_88%_below_90%	70
+FIVN	2026-08-18	unqualified		runup_88%_below_90%	70
+FIVN	2026-08-19	unqualified		runup_88%_below_90%	70
+FIVN	2026-08-20	unqualified		runup_88%_below_90%	70
+FIVN	2026-08-21	unqualified		runup_88%_below_90%	70
+FIVN	2026-08-24	unqualified		runup_88%_below_90%	70
+FIVN	2026-08-25	unqualified		runup_88%_below_90%	70
+FIVN	2026-08-26	unqualified		runup_88%_below_90%	70
+FIVN	2026-08-27	unqualified		runup_88%_below_90%	70
+FIVN	2026-09-01	TIGHTENING		range_0.83 vol_0.67	70
+FIVN	2026-09-02	TIGHTENING		range_0.83 vol_0.67	70
+FIVN	2026-09-03	TIGHTENING		range_0.76 vol_0.65	70
+FIVN	2026-09-04	TIGHTENING		range_0.76 vol_0.63	70
+FIVN	2026-09-07	TIGHTENING		range_0.76 vol_0.63	70
+FIVN	2026-09-08	INVALIDATED		close_31.23_below_sma20_32.96	70
+FIVN	2026-09-09	INVALIDATED		close_30.37_below_base_low_close_31.20	70
+FIVN	2026-09-10	INVALIDATED		close_30.25_below_base_low_close_30.37	70
+FIVN	2026-09-11	INVALIDATED		close_30.66_below_sma20_32.64	70
+FIVN	2026-09-15	unqualified		ma_stack_not_stage2_32.2/32.6/29.6	70
+FIVN	2026-09-16	unqualified		ma_stack_not_stage2_32.2/32.7/29.8	70
+FIVN	2026-09-17	unqualified		base_age_0_below_3	70
+FIVN	2026-09-21	unqualified		base_age_0_below_3	70
+FIVN	2026-09-22	unqualified		base_age_0_below_3	70
+FIVN	2026-09-23	unqualified		base_age_0_below_3	70
+FIVN	2026-09-24	unqualified		base_age_1_below_3	70
+FIVN	2026-09-25	unqualified		base_age_2_below_3	70
+FIVN	2026-09-28	unqualified		runup_52%_below_90%	70
+FIVN	2026-09-29	unqualified		runup_52%_below_90%	70
+FIVN	2026-09-30	unqualified		runup_52%_below_90%	70
+FIVN	2026-10-01	unqualified		runup_52%_below_90%	70
+FIVN	2026-10-02	unqualified		runup_52%_below_90%	70
+FIVN	2026-10-05	unqualified		runup_52%_below_90%	70
+FIVN	2026-10-08	unqualified		runup_52%_below_90%	70
+FIVN	2026-10-09	unqualified		runup_52%_below_90%	70
+FWDI	2026-09-08	unqualified		runup_86%_below_90%	70
+FWDI	2026-09-10	unqualified		runup_86%_below_90%	70
+FWDI	2026-09-11	unqualified		runup_86%_below_90%	70
+FWDI	2026-09-14	unqualified		runup_86%_below_90%	70
+FWDI	2026-09-15	unqualified		runup_86%_below_90%	70
+FWDI	2026-09-16	unqualified		runup_86%_below_90%	70
+FWDI	2026-09-18	unqualified		runup_86%_below_90%	70
+FWDI	2026-09-21	unqualified		base_age_0_below_3	70
+FWDI	2026-09-22	unqualified		base_age_0_below_3	70
+FWDI	2026-09-23	unqualified		base_age_0_below_3	70
+FWDI	2026-09-24	unqualified		base_age_1_below_3	70
+FWDI	2026-09-25	unqualified		base_age_2_below_3	70
+FWDI	2026-09-28	INVALIDATED		close_8.05_below_base_low_close_8.06	70
+FWDI	2026-09-29	INVALIDATED		close_8.01_below_base_low_close_8.05	70
+FWDI	2026-09-30	INVALIDATED		close_7.80_below_base_low_close_8.01	70
+FWDI	2026-10-01	WATCH		runup_132% base_6d close_vs_pivot_-10.6%	70
+FWDI	2026-10-02	WATCH		runup_132% base_7d close_vs_pivot_-6.8%	70
+FWDI	2026-10-05	WATCH		runup_132% base_8d close_vs_pivot_-7.4%	70
+FWDI	2026-10-06	WATCH		runup_132% base_9d close_vs_pivot_-7.1%	70
+FWDI	2026-10-07	INVALIDATED		close_7.39_below_base_low_close_7.80	70
+FWDI	2026-10-08	INVALIDATED		close_7.18_below_base_low_close_7.39	70
+GH	2026-07-06	unqualified		base_age_1_below_3	70
+GH	2026-07-07	unqualified		base_age_2_below_3	70
+GH	2026-07-08	INVALIDATED		close_156.17_below_base_low_close_162.92	70
+GH	2026-07-09	WATCH		runup_97% base_4d close_vs_pivot_-4.9%	70
+GH	2026-07-10	WATCH		runup_97% base_5d close_vs_pivot_-7.3%	70
+GH	2026-07-13	WATCH		runup_97% base_6d close_vs_pivot_-8.2%	70
+GH	2026-07-14	TIGHTENING		range_0.98 vol_0.88 fresh	70
+GH	2026-07-15	TIGHTENING	WATCH	runup_97% base_8d close_vs_pivot_-5.6%	70
+GH	2026-07-16	INVALIDATED		close_155.00_below_base_low_close_156.17	70
+GH	2026-07-17	TIGHTENING		range_0.73 vol_0.62	70
+GH	2026-07-20	INVALIDATED		close_148.07_below_base_low_close_155.00	70
+GH	2026-07-21	INVALIDATED		close_152.29_below_sma20_155.36	70
+GH	2026-07-22	INVALIDATED		close_150.75_below_sma20_156.36	70
+GH	2026-08-10	unqualified		runup_44%_below_90%	70
+GH	2026-08-17	unqualified		runup_44%_below_90%	70
+GH	2026-08-18	unqualified		runup_44%_below_90%	70
+GH	2026-08-19	unqualified		runup_44%_below_90%	70
+GH	2026-08-20	unqualified		runup_44%_below_90%	70
+GH	2026-09-14	unqualified		runup_25%_below_90%	70
+GH	2026-09-15	unqualified		runup_25%_below_90%	70
+GH	2026-09-16	unqualified		base_age_0_below_3	70
+GH	2026-09-17	unqualified		base_age_1_below_3	70
+GH	2026-09-18	unqualified		base_age_0_below_3	70
+GH	2026-09-21	unqualified		base_age_1_below_3	70
+GH	2026-09-22	unqualified		base_age_2_below_3	70
+GH	2026-09-23	unqualified		runup_30%_below_90%	70
+GH	2026-09-24	unqualified		runup_30%_below_90%	70
+GH	2026-09-25	unqualified		runup_30%_below_90%	70
+GH	2026-09-28	unqualified		runup_30%_below_90%	70
+GH	2026-09-29	unqualified		runup_30%_below_90%	70
+GH	2026-09-30	unqualified		runup_30%_below_90%	70
+GH	2026-10-01	unqualified		runup_30%_below_90%	70
+GH	2026-10-02	unqualified		runup_30%_below_90%	70
+GH	2026-10-05	unqualified		runup_30%_below_90%	70
+GSHD	2026-07-06	unqualified		base_age_0_below_3	70
+GSHD	2026-07-07	unqualified		base_age_1_below_3	70
+GSHD	2026-07-08	unqualified		base_age_0_below_3	70
+GSHD	2026-07-09	unqualified		base_age_0_below_3	70
+GSHD	2026-07-10	unqualified		base_age_1_below_3	70
+GSHD	2026-07-13	unqualified		base_age_2_below_3	70
+GSHD	2026-07-14	unqualified		runup_71%_below_90%	70
+GSHD	2026-07-15	unqualified		runup_71%_below_90%	70
+GSHD	2026-07-16	unqualified		runup_71%_below_90%	70
+GSHD	2026-07-17	unqualified		runup_71%_below_90%	70
+GSHD	2026-07-20	unqualified		runup_71%_below_90%	70
+GSHD	2026-07-21	unqualified		runup_71%_below_90%	70
+GSHD	2026-07-24	unqualified		runup_71%_below_90%	70
+GSHD	2026-07-27	unqualified		base_age_0_below_3	70
+GSHD	2026-07-28	unqualified		base_age_0_below_3	70
+GSHD	2026-07-29	unqualified		base_age_0_below_3	70
+GSHD	2026-07-30	unqualified		base_age_0_below_3	70
+GSHD	2026-07-31	unqualified		base_age_1_below_3	70
+GSHD	2026-08-04	unqualified		pole_70.88_only_68%_of_52w_high_104.00_(not_stage2)	70
+GSHD	2026-08-05	unqualified		pole_70.88_only_68%_of_52w_high_104.00_(not_stage2)	70
+GSHD	2026-08-06	unqualified		pole_70.88_only_68%_of_52w_high_104.00_(not_stage2)	70
+GSHD	2026-08-07	unqualified		pole_70.88_only_69%_of_52w_high_103.46_(not_stage2)	70
+GSHD	2026-08-10	WATCH		runup_109% base_7d close_vs_pivot_-8.9%	70
+GSHD	2026-08-11	WATCH		runup_109% base_8d close_vs_pivot_-7.9%	70
+GSHD	2026-08-12	TIGHTENING		range_0.77 vol_0.56	70
+GSHD	2026-08-13	COILED		range_0.71 vol_0.47 bodies_0.29/0.40	70
+GSHD	2026-08-14	COILED	TIGHTENING	range_0.77 vol_0.52	70
+GSHD	2026-08-17	unqualified		adv_489k_below_500k_shares	70
+GSHD	2026-08-18	unqualified		adv_468k_below_500k_shares	70
+GSHD	2026-08-19	unqualified		adv_468k_below_500k_shares	70
+GSHD	2026-08-20	unqualified		adv_468k_below_500k_shares	70
+GSHD	2026-08-21	unqualified		adv_445k_below_500k_shares	70
+GSHD	2026-08-24	unqualified		adv_382k_below_500k_shares	70
+GSHD	2026-08-25	unqualified		adv_333k_below_500k_shares	70
+GSHD	2026-08-26	unqualified		adv_331k_below_500k_shares	70
+GSHD	2026-08-28	unqualified		adv_310k_below_500k_shares	70
+GSHD	2026-08-31	unqualified		adv_300k_below_500k_shares	70
+GSHD	2026-09-01	unqualified		adv_288k_below_500k_shares	70
+GSHD	2026-09-02	unqualified		adv_278k_below_500k_shares	70
+HELP	2026-07-21	unqualified		base_age_2_below_3	70
+HELP	2026-07-22	unqualified		base_age_0_below_3	70
+HELP	2026-07-23	unqualified		base_age_1_below_3	70
+HELP	2026-07-24	unqualified		base_age_2_below_3	70
+HELP	2026-08-04	TIGHTENING		range_0.75 vol_0.88	70
+HELP	2026-08-05	unqualified		base_age_0_below_3	70
+HELP	2026-08-06	unqualified		base_age_0_below_3	70
+HELP	2026-08-07	unqualified		base_age_0_below_3	70
+HELP	2026-08-10	unqualified		base_age_1_below_3	70
+HELP	2026-08-11	unqualified		base_age_2_below_3	70
+HELP	2026-08-12	WATCH		runup_198% base_3d close_vs_pivot_+0.1%	70
+HELP	2026-08-13	WATCH		runup_198% base_4d close_vs_pivot_-0.2%	70
+HELP	2026-08-14	unqualified		base_age_0_below_3	70
+HELP	2026-08-17	unqualified		base_age_1_below_3	70
+HELP	2026-08-18	unqualified		base_age_2_below_3	70
+HELP	2026-08-19	WATCH		runup_182% base_3d close_vs_pivot_-1.4%	70
+HELP	2026-08-20	WATCH		runup_182% base_4d close_vs_pivot_+4.4%	70
+HELP	2026-08-21	unqualified		base_age_0_below_3	70
+HELP	2026-08-24	unqualified		base_age_0_below_3	70
+HELP	2026-08-25	unqualified		base_age_0_below_3	70
+HELP	2026-08-26	unqualified		base_age_0_below_3	70
+HELP	2026-08-27	unqualified		base_age_1_below_3	70
+HELP	2026-08-28	unqualified		base_age_2_below_3	70
+HELP	2026-08-31	INVALIDATED		close_11.76_below_base_low_close_12.18	70
+HELP	2026-09-01	INVALIDATED		close_11.60_below_base_low_close_11.76	70
+HELP	2026-09-02	INVALIDATED		close_11.95_below_sma20_11.96	70
+HELP	2026-09-03	INVALIDATED		close_11.77_below_sma20_11.99	70
+HELP	2026-09-04	WATCH		runup_149% base_7d close_vs_pivot_-14.8%	70
+HELP	2026-09-08	WATCH		runup_149% base_8d close_vs_pivot_-13.7%	70
+HELP	2026-09-09	WATCH		runup_149% base_9d close_vs_pivot_-4.7%	70
+HELP	2026-09-10	unqualified		ma_stack_not_stage2_12.4/12.4/9.7	70
+HELP	2026-09-11	unqualified		ma_stack_not_stage2_12.3/12.5/9.9	70
+HELP	2026-09-14	unqualified		ma_stack_not_stage2_12.5/12.5/10.0	70
+HELP	2026-09-16	WATCH		runup_149% base_14d close_vs_pivot_-6.1%	70
+HELP	2026-09-17	WATCH		runup_149% base_15d close_vs_pivot_-2.3%	70
+HELP	2026-09-18	INVALIDATED		close_12.37_below_sma20_12.82	70
+HELP	2026-09-21	WATCH		runup_149% base_17d close_vs_pivot_-4.8%	70
+HELP	2026-09-22	WATCH		runup_149% base_18d close_vs_pivot_-4.5%	70
+HELP	2026-09-23	WATCH		runup_149% base_19d close_vs_pivot_-9.3%	70
+HELP	2026-09-24	INVALIDATED		close_12.59_below_sma20_12.81	70
+HELP	2026-09-25	INVALIDATED		close_12.61_below_sma20_12.78	70
+HELP	2026-09-28	INVALIDATED		close_12.59_below_sma20_12.80	70
+HELP	2026-09-29	INVALIDATED		close_12.70_below_sma20_12.84	70
+HTFL	2026-08-07	unqualified		runup_25%_below_90%	70
+HTFL	2026-08-10	unqualified		runup_19%_below_90%	70
+HTFL	2026-08-11	unqualified		base_age_0_below_3	70
+HTFL	2026-08-12	unqualified		base_age_1_below_3	70
+HTFL	2026-08-13	unqualified		base_age_2_below_3	70
+HTFL	2026-08-14	unqualified		base_age_0_below_3	70
+HTFL	2026-08-17	unqualified		base_age_0_below_3	70
+HTFL	2026-08-18	unqualified		base_age_1_below_3	70
+HTFL	2026-08-19	unqualified		base_age_0_below_3	70
+HTFL	2026-08-20	unqualified		base_age_0_below_3	70
+HTFL	2026-08-21	unqualified		base_age_1_below_3	70
+HTFL	2026-08-24	unqualified		base_age_0_below_3	70
+HTFL	2026-08-25	unqualified		base_age_1_below_3	70
+HTFL	2026-08-26	unqualified		base_age_2_below_3	70
+HTFL	2026-08-27	INVALIDATED		close_48.10_below_base_low_close_48.94	70
+HTFL	2026-08-28	INVALIDATED		close_47.78_below_base_low_close_48.10	70
+HTFL	2026-08-31	WATCH		runup_111% base_5d close_vs_pivot_-0.2%	70
+HTFL	2026-09-01	unqualified		base_age_0_below_3	70
+HTFL	2026-09-02	unqualified		base_age_1_below_3	70
+HTFL	2026-09-03	unqualified		base_age_2_below_3	70
+HTFL	2026-09-04	INVALIDATED		close_48.91_below_base_low_close_49.71	70
+HTFL	2026-09-08	INVALIDATED		close_47.75_below_base_low_close_48.91	70
+HTFL	2026-09-09	INVALIDATED		close_46.67_below_base_low_close_47.75	70
+HTFL	2026-09-11	WATCH		runup_114% base_7d close_vs_pivot_-2.2%	70
+HTFL	2026-09-16	INVALIDATED		close_48.30_below_sma20_48.62	70
+HTFL	2026-09-17	unqualified		ma_stack_not_stage2_48.4/48.8/36.8	70
+HTFL	2026-09-18	unqualified		ma_stack_not_stage2_48.5/49.0/37.3	70
+HTFL	2026-09-21	unqualified		ma_stack_not_stage2_48.7/49.0/37.8	70
+HTFL	2026-09-24	INVALIDATED		close_48.66_below_sma20_48.91	70
+HTFL	2026-09-25	WATCH		runup_114% base_17d close_vs_pivot_-3.6%	70
+HTFL	2026-09-28	WATCH		runup_114% base_18d close_vs_pivot_-2.1%	70
+HTFL	2026-09-29	TIGHTENING		range_0.78 vol_0.68	70
+HTFL	2026-09-30	TIGHTENING		range_0.81 vol_0.63	70
+HTFL	2026-10-01	INVALIDATED		close_48.91_below_sma20_48.95	70
+HTFL	2026-10-02	TIGHTENING		range_0.78 vol_0.58	70
+HTFL	2026-10-05	TIGHTENING		range_0.98 vol_0.66	70
+HTFL	2026-10-06	TIGHTENING	WATCH	runup_117% base_11d close_vs_pivot_-2.9%	70
+HTFL	2026-10-07	INVALIDATED		close_49.36_below_sma20_49.38	70
+HTFL	2026-10-08	INVALIDATED		close_47.63_below_sma20_49.49	70
+HTFL	2026-10-09	WATCH		runup_117% base_14d close_vs_pivot_-4.8%	70
+IMMX	2026-07-06	unqualified		base_age_2_below_3	70
+IMMX	2026-07-07	unqualified		base_age_0_below_3	70
+IMMX	2026-07-08	unqualified		base_age_0_below_3	70
+IMMX	2026-07-09	unqualified		base_age_1_below_3	70
+IMMX	2026-07-10	unqualified		base_age_2_below_3	70
+IMMX	2026-07-13	unqualified		runup_59%_below_90%	70
+IMMX	2026-08-10	unqualified		runup_59%_below_90%	70
+IMMX	2026-08-11	unqualified		runup_59%_below_90%	70
+IMMX	2026-08-12	unqualified		runup_57%_below_90%	70
+IMMX	2026-08-13	unqualified		base_age_1_below_3	70
+IMMX	2026-08-14	unqualified		base_age_2_below_3	70
+IMMX	2026-08-17	unqualified		runup_47%_below_90%	70
+IMMX	2026-08-18	unqualified		runup_47%_below_90%	70
+IMMX	2026-08-19	unqualified		runup_50%_below_90%	70
+IMMX	2026-08-20	unqualified		base_age_0_below_3	70
+IMMX	2026-08-21	unqualified		base_age_1_below_3	70
+IMMX	2026-08-24	unqualified		base_age_0_below_3	70
+IMMX	2026-08-25	unqualified		base_age_1_below_3	70
+IMMX	2026-08-26	unqualified		base_age_0_below_3	70
+IMMX	2026-08-27	unqualified		base_age_1_below_3	70
+IMMX	2026-08-28	unqualified		base_age_2_below_3	70
+IMMX	2026-08-31	WATCH		runup_93% base_3d close_vs_pivot_-7.1%	70
+IMMX	2026-09-01	WATCH		runup_93% base_4d close_vs_pivot_-7.2%	70
+IMMX	2026-09-02	WATCH		runup_93% base_5d close_vs_pivot_-7.5%	70
+IMMX	2026-09-03	INVALIDATED		close_13.83_below_base_low_close_13.94	70
+IMMX	2026-09-04	WATCH		runup_93% base_7d close_vs_pivot_-7.9%	70
+IMMX	2026-09-08	INVALIDATED		close_13.25_below_base_low_close_13.83	70
+INTA	2026-07-06	unqualified		base_age_0_below_3	70
+INTA	2026-07-07	unqualified		base_age_1_below_3	70
+INTA	2026-07-08	unqualified		base_age_0_below_3	70
+INTA	2026-07-09	unqualified		base_age_1_below_3	70
+INTA	2026-07-10	unqualified		base_age_2_below_3	70
+INTA	2026-07-13	unqualified		runup_54%_below_90%	70
+INTA	2026-07-14	unqualified		runup_54%_below_90%	70
+INTA	2026-07-15	unqualified		runup_54%_below_90%	70
+INTA	2026-07-16	unqualified		runup_54%_below_90%	70
+INTA	2026-07-17	unqualified		base_age_0_below_3	70
+INTA	2026-07-20	unqualified		base_age_1_below_3	70
+INTA	2026-07-21	unqualified		base_age_2_below_3	70
+INTA	2026-07-27	unqualified		runup_58%_below_90%	70
+INTA	2026-07-28	unqualified		runup_58%_below_90%	70
+INTA	2026-07-29	unqualified		base_age_0_below_3	70
+INTA	2026-07-30	unqualified		base_age_0_below_3	70
+INTA	2026-07-31	unqualified		base_age_1_below_3	70
+INTA	2026-08-04	unqualified		base_age_0_below_3	70
+INTA	2026-08-05	unqualified		base_age_1_below_3	70
+INTA	2026-08-06	unqualified		base_age_0_below_3	70
+INTA	2026-08-07	unqualified		base_age_1_below_3	70
+INTA	2026-08-10	unqualified		base_age_0_below_3	70
+INTA	2026-08-11	unqualified		base_age_0_below_3	70
+INTA	2026-08-12	unqualified		base_age_1_below_3	70
+INTA	2026-08-13	unqualified		base_age_2_below_3	70
+INTA	2026-08-14	unqualified		base_age_0_below_3	70
+INTA	2026-08-17	unqualified		base_age_1_below_3	70
+INTA	2026-08-18	unqualified		base_age_2_below_3	70
+INTA	2026-08-19	WATCH		runup_98% base_3d close_vs_pivot_-2.5%	70
+INTA	2026-08-20	WATCH		runup_98% base_4d close_vs_pivot_-2.3%	70
+INTA	2026-08-21	WATCH		runup_98% base_5d close_vs_pivot_+0.6%	70
+INTA	2026-08-24	WATCH		runup_98% base_6d close_vs_pivot_-0.5%	70
+INTA	2026-08-25	unqualified		base_age_1_below_3	70
+INTA	2026-08-26	unqualified		base_age_2_below_3	70
+INTA	2026-08-27	unqualified		runup_86%_below_90%	70
+INTA	2026-08-28	unqualified		base_age_0_below_3	70
+INTA	2026-08-31	unqualified		base_age_0_below_3	70
+INTA	2026-09-01	unqualified		base_age_1_below_3	70
+INTA	2026-09-02	unqualified		base_age_2_below_3	70
+INTA	2026-09-03	unqualified		runup_73%_below_90%	70
+INTA	2026-09-04	unqualified		runup_73%_below_90%	70
+INTA	2026-10-08	unqualified		adv_496k_below_500k_shares	70
+INTA	2026-10-09	unqualified		adv_491k_below_500k_shares	70
+IOVA	2026-07-16	unqualified		base_age_0_below_3	70
+IOVA	2026-07-17	unqualified		base_age_0_below_3	70
+IOVA	2026-07-20	unqualified		base_age_1_below_3	70
+IOVA	2026-07-21	unqualified		base_age_2_below_3	70
+IOVA	2026-07-22	unqualified		base_age_0_below_3	70
+IOVA	2026-07-23	unqualified		base_age_1_below_3	70
+IOVA	2026-07-24	unqualified		base_age_2_below_3	70
+IOVA	2026-07-27	unqualified		runup_50%_below_90%	70
+IOVA	2026-07-28	unqualified		runup_50%_below_90%	70
+IOVA	2026-07-29	unqualified		runup_50%_below_90%	70
+IOVA	2026-07-30	unqualified		runup_50%_below_90%	70
+IOVA	2026-08-06	unqualified		runup_50%_below_90%	70
+IOVA	2026-08-07	unqualified		base_age_0_below_3	70
+IOVA	2026-08-10	unqualified		base_age_0_below_3	70
+IOVA	2026-08-11	unqualified		base_age_1_below_3	70
+IOVA	2026-08-12	unqualified		base_age_2_below_3	70
+IOVA	2026-08-13	unqualified		runup_87%_below_90%	70
+IOVA	2026-08-14	unqualified		runup_87%_below_90%	70
+IOVA	2026-08-17	unqualified		runup_87%_below_90%	70
+IOVA	2026-08-18	unqualified		base_age_0_below_3	70
+IOVA	2026-08-19	unqualified		base_age_1_below_3	70
+IOVA	2026-08-20	unqualified		base_age_0_below_3	70
+IOVA	2026-08-21	unqualified		base_age_0_below_3	70
+IOVA	2026-08-24	unqualified		base_age_1_below_3	70
+IOVA	2026-08-25	unqualified		base_age_2_below_3	70
+IOVA	2026-08-26	WATCH		runup_149% base_3d close_vs_pivot_-13.7%	70
+IOVA	2026-08-27	WATCH		runup_149% base_4d close_vs_pivot_-11.8%	70
+IOVA	2026-08-28	INVALIDATED		close_8.01_below_base_low_close_8.06	70
+IOVA	2026-08-31	WATCH		runup_149% base_6d close_vs_pivot_-12.7%	70
+IOVA	2026-09-01	TIGHTENING		range_0.81 vol_0.68	70
+IOVA	2026-09-02	COILED		range_0.72 vol_0.60 bodies_0.50/0.42	70
+IOVA	2026-09-03	COILED	TIGHTENING	range_0.72 vol_0.64	70
+IOVA	2026-09-04	COILED	TIGHTENING	range_0.72 vol_0.71	70
+IOVA	2026-09-07	COILED	TIGHTENING	range_0.72 vol_0.71	70
+IOVA	2026-09-08	COILED	TIGHTENING	range_0.59 vol_0.72	70
+IOVA	2026-09-09	COILED		range_0.59 vol_0.68 bodies_0.42/0.02	70
+IOVA	2026-09-10	COILED	TIGHTENING	range_0.73 vol_0.75	70
+IOVA	2026-09-11	COILED	TIGHTENING	range_0.73 vol_0.73	70
+IOVA	2026-09-14	TRIGGERED		close_9.26>base_high_close_8.79 vol_2.01x	70
+IOVA	2026-09-15	TRIGGERED	WATCH	runup_149% base_16d close_vs_pivot_+0.0%	70
+IOVA	2026-09-16	TRIGGERED	TIGHTENING	range_0.74 vol_0.92	70
+IOVA	2026-09-17	unqualified		base_age_0_below_3	70
+IOVA	2026-09-18	unqualified		base_age_0_below_3	70
+IOVA	2026-09-21	unqualified		base_age_1_below_3	70
+IOVA	2026-09-22	unqualified		base_age_2_below_3	70
+IOVA	2026-09-23	WATCH		runup_177% base_3d close_vs_pivot_-7.2%	70
+IOVA	2026-09-24	WATCH		runup_177% base_4d close_vs_pivot_-1.6%	70
+IOVA	2026-09-25	WATCH		runup_177% base_5d close_vs_pivot_+0.2%	70
+IOVA	2026-09-28	WATCH		runup_177% base_6d close_vs_pivot_+0.1%	70
+IOVA	2026-09-29	unqualified		pole_10.98_only_72%_of_52w_high_15.30_(not_stage2)	70
+IOVA	2026-09-30	unqualified		base_age_0_below_3	70
+IOVA	2026-10-01	unqualified		base_age_1_below_3	70
+IOVA	2026-10-02	unqualified		base_age_2_below_3	70
+IOVA	2026-10-05	INVALIDATED		close_14.15_below_base_low_close_14.21	70
+IOVA	2026-10-06	INVALIDATED		close_12.96_below_base_low_close_14.15	70
+IOVA	2026-10-07	INVALIDATED		close_12.91_below_base_low_close_12.96	70
+IOVA	2026-10-08	WATCH		runup_257% base_6d close_vs_pivot_-13.0%	70
+IOVA	2026-10-09	WATCH		runup_257% base_7d close_vs_pivot_-4.4%	70
+KOD	2026-07-07	unqualified		runup_35%_below_90%	70
+KOD	2026-07-08	unqualified		runup_35%_below_90%	70
+KOD	2026-07-09	unqualified		runup_38%_below_90%	70
+KOD	2026-07-10	unqualified		base_age_1_below_3	70
+KOD	2026-07-13	unqualified		base_age_0_below_3	70
+KOD	2026-07-14	unqualified		base_age_1_below_3	70
+KOD	2026-07-15	unqualified		base_age_0_below_3	70
+KOD	2026-07-16	unqualified		base_age_1_below_3	70
+KOD	2026-07-17	unqualified		base_age_2_below_3	70
+KOD	2026-07-20	unqualified		runup_52%_below_90%	70
+KOD	2026-07-21	unqualified		runup_52%_below_90%	70
+KOD	2026-07-22	unqualified		runup_52%_below_90%	70
+KOD	2026-07-23	unqualified		runup_52%_below_90%	70
+KOD	2026-07-24	unqualified		runup_52%_below_90%	70
+KOD	2026-07-27	unqualified		runup_52%_below_90%	70
+KOD	2026-08-06	unqualified		runup_52%_below_90%	70
+KOD	2026-09-28	unqualified		runup_21%_below_90%	70
+KOD	2026-09-29	unqualified		base_age_0_below_3	70
+KOD	2026-09-30	unqualified		base_age_1_below_3	70
+KOD	2026-10-01	unqualified		base_age_0_below_3	70
+KOD	2026-10-02	unqualified		base_age_0_below_3	70
+KOD	2026-10-05	unqualified		base_age_1_below_3	70
+KOD	2026-10-06	unqualified		base_age_2_below_3	70
+KOD	2026-10-07	INVALIDATED		close_91.08_below_base_low_close_92.34	70
+KOD	2026-10-08	COILED		fresh_2bar 5.7%/atr 10.8% bodies_0.42/0.07	70
+KOD	2026-10-09	COILED	WATCH	runup_249% base_5d close_vs_pivot_-4.0%	70
+LIFE	2026-08-04	unqualified		base_age_0_below_3	70
+LIFE	2026-08-05	unqualified		base_age_0_below_3	70
+LIFE	2026-08-06	unqualified		base_age_1_below_3	70
+LIFE	2026-08-07	unqualified		base_age_0_below_3	70
+LIFE	2026-08-10	unqualified		base_age_1_below_3	70
+LIFE	2026-08-11	unqualified		base_age_0_below_3	70
+LIFE	2026-08-12	unqualified		base_age_0_below_3	70
+LIFE	2026-08-13	unqualified		base_age_1_below_3	70
+LIFE	2026-08-14	unqualified		base_age_0_below_3	70
+LIFE	2026-08-17	unqualified		base_age_1_below_3	70
+LIFE	2026-08-18	unqualified		base_age_2_below_3	70
+LIFE	2026-08-19	INVALIDATED		close_32.85_below_base_low_close_34.01	70
+LIFE	2026-08-20	WATCH		runup_134% base_4d close_vs_pivot_-5.0%	70
+LIFE	2026-08-21	WATCH		runup_134% base_5d close_vs_pivot_-3.2%	70
+LIFE	2026-08-24	WATCH		runup_134% base_6d close_vs_pivot_+4.0%	70
+LIFE	2026-08-25	unqualified		base_age_0_below_3	70
+LIFE	2026-08-26	unqualified		base_age_0_below_3	70
+LIFE	2026-08-27	unqualified		base_age_0_below_3	70
+LIFE	2026-08-28	unqualified		base_age_1_below_3	70
+LIFE	2026-08-31	unqualified		base_age_2_below_3	70
+LIFE	2026-09-01	INVALIDATED		close_35.00_below_base_low_close_36.33	70
+LIFE	2026-09-02	WATCH		runup_133% base_4d close_vs_pivot_-10.2%	70
+LIFE	2026-09-03	WATCH		runup_133% base_5d close_vs_pivot_-8.0%	70
+LIFE	2026-09-04	WATCH		runup_133% base_6d close_vs_pivot_-2.7%	70
+LIFE	2026-09-08	WATCH		runup_133% base_7d close_vs_pivot_+2.6%	70
+LIFE	2026-09-09	unqualified		base_age_0_below_3	70
+LIFE	2026-09-10	unqualified		base_age_1_below_3	70
+LIFE	2026-09-11	unqualified		base_age_2_below_3	70
+LIFE	2026-09-14	WATCH		runup_142% base_3d close_vs_pivot_-7.5%	70
+LIFE	2026-09-15	WATCH		runup_142% base_4d close_vs_pivot_-5.3%	70
+LIFE	2026-09-16	INVALIDATED		close_38.55_below_base_low_close_38.85	70
+LIFE	2026-09-21	INVALIDATED		close_36.49_below_sma20_38.30	70
+LIFE	2026-09-22	INVALIDATED		close_36.19_below_sma20_38.28	70
+LIFE	2026-10-09	unqualified		ma_stack_not_stage2_34.8/35.7/35.0	70
+LQDA	2026-07-06	WATCH		runup_112% base_4d close_vs_pivot_-0.2%	70
+LQDA	2026-07-07	WATCH		runup_112% base_5d close_vs_pivot_+2.3%	70
+LQDA	2026-07-08	unqualified		base_age_1_below_3	70
+LQDA	2026-07-09	unqualified		base_age_0_below_3	70
+LQDA	2026-07-10	unqualified		base_age_1_below_3	70
+LQDA	2026-07-20	INVALIDATED		close_77.08_below_sma20_77.51	70
+LQDA	2026-07-22	WATCH		runup_109% base_9d close_vs_pivot_+4.9%	70
+LQDA	2026-07-23	unqualified		base_age_0_below_3	70
+LQDA	2026-07-24	unqualified		base_age_1_below_3	70
+LQDA	2026-07-27	unqualified		base_age_2_below_3	70
+LQDA	2026-07-28	unqualified		runup_69%_below_90%	70
+LQDA	2026-07-29	unqualified		runup_69%_below_90%	70
+LQDA	2026-07-30	unqualified		runup_69%_below_90%	70
+LQDA	2026-07-31	unqualified		runup_69%_below_90%	70
+LQDA	2026-08-04	unqualified		runup_69%_below_90%	70
+LQDA	2026-08-05	unqualified		runup_69%_below_90%	70
+LQDA	2026-08-06	unqualified		runup_72%_below_90%	70
+LQDA	2026-08-07	unqualified		runup_72%_below_90%	70
+LQDA	2026-08-10	unqualified		runup_72%_below_90%	70
+LQDA	2026-08-11	unqualified		runup_72%_below_90%	70
+LQDA	2026-09-24	unqualified		adr_3.9pct_below_4pct	70
+LQDA	2026-09-28	unqualified		base_age_0_below_3	70
+LQDA	2026-09-29	unqualified		base_age_0_below_3	70
+MAN	2026-07-06	unqualified		base_age_0_below_3	70
+MAN	2026-07-07	unqualified		base_age_0_below_3	70
+MAN	2026-07-09	unqualified		base_age_0_below_3	70
+MAN	2026-07-10	unqualified		base_age_1_below_3	70
+MAN	2026-07-13	unqualified		base_age_2_below_3	70
+MAN	2026-07-14	unqualified		base_age_0_below_3	70
+MAN	2026-07-15	unqualified		base_age_1_below_3	70
+MAN	2026-07-16	unqualified		base_age_2_below_3	70
+MAN	2026-07-17	unqualified		base_age_0_below_3	70
+MAN	2026-07-20	unqualified		base_age_0_below_3	70
+MAN	2026-07-21	unqualified		base_age_1_below_3	70
+MAN	2026-07-22	unqualified		base_age_2_below_3	70
+MAN	2026-07-23	INVALIDATED		close_49.95_below_base_low_close_51.66	70
+MAN	2026-07-24	WATCH		runup_112% base_4d close_vs_pivot_-7.8%	70
+MAN	2026-07-27	WATCH		runup_112% base_5d close_vs_pivot_-3.6%	70
+MAN	2026-07-28	WATCH		runup_112% base_6d close_vs_pivot_-0.5%	70
+MAN	2026-07-29	WATCH		runup_112% base_7d close_vs_pivot_+0.3%	70
+MAN	2026-07-30	unqualified		base_age_1_below_3	70
+MAN	2026-07-31	unqualified		base_age_2_below_3	70
+MAN	2026-08-04	unqualified		runup_88%_below_90%	70
+MAN	2026-08-05	unqualified		runup_88%_below_90%	70
+MAN	2026-08-06	unqualified		runup_88%_below_90%	70
+MAN	2026-08-07	unqualified		runup_88%_below_90%	70
+MAN	2026-08-11	unqualified		runup_90%_below_90%	70
+MAN	2026-08-12	unqualified		runup_90%_below_90%	70
+MAN	2026-08-13	unqualified		runup_90%_below_90%	70
+MAN	2026-08-14	unqualified		base_age_0_below_3	70
+MAN	2026-08-18	unqualified		base_age_2_below_3	70
+MAN	2026-08-20	unqualified		adr_3.9pct_below_4pct	70
+MAN	2026-08-21	unqualified		adr_3.8pct_below_4pct	70
+MAN	2026-08-24	unqualified		adr_3.7pct_below_4pct	70
+MAN	2026-08-25	unqualified		adr_3.7pct_below_4pct	70
+MAN	2026-08-26	unqualified		adr_3.7pct_below_4pct	70
+MAN	2026-08-27	unqualified		adr_3.5pct_below_4pct	70
+MAN	2026-08-28	unqualified		adr_3.5pct_below_4pct	70
+MAN	2026-08-31	unqualified		adr_3.4pct_below_4pct	70
+MAN	2026-09-01	unqualified		adr_3.4pct_below_4pct	70
+MAN	2026-09-02	unqualified		adr_3.5pct_below_4pct	70
+MAN	2026-09-03	unqualified		adr_3.5pct_below_4pct	70
+MAN	2026-09-04	unqualified		adr_3.5pct_below_4pct	70
+MBX	2026-07-06	unqualified		base_age_2_below_3	70
+MBX	2026-07-07	unqualified		base_age_2_below_3	70
+MBX	2026-07-08	unqualified		base_age_0_below_3	70
+MBX	2026-07-09	unqualified		base_age_0_below_3	70
+MBX	2026-07-10	unqualified		base_age_0_below_3	70
+MBX	2026-07-13	unqualified		base_age_1_below_3	70
+MBX	2026-07-14	unqualified		base_age_2_below_3	70
+MBX	2026-07-15	WATCH		runup_138% base_3d close_vs_pivot_-8.8%	70
+MBX	2026-07-16	WATCH		runup_138% base_4d close_vs_pivot_-12.4%	70
+MBX	2026-07-17	WATCH		runup_138% base_5d close_vs_pivot_-5.5%	70
+MBX	2026-07-20	WATCH		runup_138% base_6d close_vs_pivot_-9.6%	70
+MBX	2026-07-21	WATCH		runup_138% base_7d close_vs_pivot_-9.4%	70
+MBX	2026-07-22	WATCH		runup_138% base_8d close_vs_pivot_-12.4%	70
+MBX	2026-07-23	TIGHTENING		range_0.71 vol_0.80	70
+MBX	2026-07-24	TIGHTENING	WATCH	runup_138% base_10d close_vs_pivot_-6.8%	70
+MBX	2026-07-27	TIGHTENING		range_0.75 vol_0.65	70
+MBX	2026-07-28	INVALIDATED		close_60.06_below_sma20_60.07	70
+MBX	2026-07-29	TIGHTENING		range_0.76 vol_0.56	70
+MBX	2026-07-30	TIGHTENING		range_0.99 vol_0.53	70
+MBX	2026-07-31	TIGHTENING		range_0.76 vol_0.53	70
+MBX	2026-08-04	unqualified		base_age_1_below_3	70
+MBX	2026-08-05	unqualified		base_age_0_below_3	70
+MBX	2026-08-06	unqualified		base_age_0_below_3	70
+MBX	2026-08-07	unqualified		base_age_1_below_3	70
+MBX	2026-08-10	unqualified		base_age_2_below_3	70
+MBX	2026-08-11	INVALIDATED		close_66.01_below_base_low_close_66.15	70
+MBX	2026-08-12	WATCH		runup_156% base_4d close_vs_pivot_-7.8%	70
+MBX	2026-08-14	WATCH		runup_156% base_6d close_vs_pivot_-5.6%	70
+MBX	2026-08-17	WATCH		runup_156% base_7d close_vs_pivot_-6.0%	70
+MBX	2026-08-18	WATCH		runup_156% base_8d close_vs_pivot_-8.4%	70
+MRNA	2026-07-06	unqualified		base_age_0_below_3	70
+MRNA	2026-07-07	unqualified		base_age_0_below_3	70
+MRNA	2026-07-08	unqualified		base_age_1_below_3	70
+MRNA	2026-07-09	unqualified		base_age_2_below_3	70
+MRNA	2026-07-13	INVALIDATED		close_67.01_below_base_low_close_68.27	70
+MRNA	2026-07-14	WATCH		runup_95% base_5d close_vs_pivot_-21.2%	70
+MRNA	2026-07-15	TIGHTENING		range_0.87 vol_0.96 fresh	70
+MRNA	2026-07-16	INVALIDATED		close_63.15_below_base_low_close_67.01	70
+MRNA	2026-07-17	INVALIDATED		close_61.82_below_base_low_close_63.15	70
+MRNA	2026-07-20	INVALIDATED		close_59.49_below_base_low_close_61.82	70
+MRNA	2026-08-14	unqualified		runup_75%_below_90%	70
+MRNA	2026-08-17	unqualified		runup_58%_below_90%	70
+MRNA	2026-08-18	unqualified		runup_54%_below_90%	70
+MRNA	2026-08-19	unqualified		runup_54%_below_90%	70
+MRNA	2026-08-20	unqualified		base_age_0_below_3	70
+MRNA	2026-08-21	unqualified		base_age_1_below_3	70
+MRNA	2026-08-24	unqualified		base_age_2_below_3	70
+MRNA	2026-08-25	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-08-26	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-08-27	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-08-28	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-08-31	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-01	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-02	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-03	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-04	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-07	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-08	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-09	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-10	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-11	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-14	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-15	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-16	INVALIDATED		close_145.62_below_sma20_145.67	70
+MRNA	2026-09-17	unqualified		ma_stack_not_stage2_144.5/144.9/96.6	70
+MRNA	2026-09-18	unqualified		ma_stack_not_stage2_145.0/145.9/98.2	70
+MRNA	2026-09-21	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-22	unqualified		flag_low_128.61_below_75%_of_pole_176.66	70
+MRNA	2026-09-23	unqualified		base_age_0_below_3	70
+MRNA	2026-09-24	unqualified		base_age_0_below_3	70
+MRNA	2026-09-25	unqualified		base_age_1_below_3	70
+MRNA	2026-09-28	unqualified		base_age_0_below_3	70
+MRNA	2026-09-29	unqualified		base_age_1_below_3	70
+MRNA	2026-09-30	unqualified		base_age_0_below_3	70
+MRNA	2026-10-01	unqualified		base_age_1_below_3	70
+MRNA	2026-10-02	unqualified		base_age_2_below_3	70
+MRNA	2026-10-05	WATCH		runup_289% base_3d close_vs_pivot_-2.7%	70
+MRNA	2026-10-06	INVALIDATED		close_187.46_below_base_low_close_188.94	70
+MRNA	2026-10-07	WATCH		runup_289% base_5d close_vs_pivot_-5.9%	70
+MRNA	2026-10-08	WATCH		runup_289% base_6d close_vs_pivot_-5.7%	70
+MRNA	2026-10-09	WATCH		runup_289% base_7d close_vs_pivot_+7.7%	70
+NEO	2026-07-06	unqualified		base_age_0_below_3	70
+NEO	2026-07-07	unqualified		base_age_1_below_3	70
+NEO	2026-07-08	unqualified		base_age_2_below_3	70
+NEO	2026-07-09	WATCH		runup_90% base_3d close_vs_pivot_-5.3%	70
+NEO	2026-07-10	INVALIDATED		close_14.11_below_base_low_close_14.24	70
+NEO	2026-07-13	WATCH		runup_90% base_5d close_vs_pivot_-9.3%	70
+NEO	2026-07-14	WATCH		runup_90% base_6d close_vs_pivot_-8.5%	70
+NEO	2026-07-15	WATCH		runup_90% base_7d close_vs_pivot_-6.8%	70
+NEO	2026-07-16	WATCH		runup_90% base_8d close_vs_pivot_-4.6%	70
+NEO	2026-07-17	TIGHTENING		range_0.67 vol_1.00	70
+NEO	2026-07-20	TIGHTENING		range_0.67 vol_1.82	70
+NEO	2026-07-21	TIGHTENING		range_0.70 vol_1.87	70
+NEO	2026-07-22	INVALIDATED		close_14.01_below_base_low_close_14.11	70
+NEO	2026-07-23	INVALIDATED		close_14.24_below_sma20_14.44	70
+NEO	2026-07-24	INVALIDATED		close_13.89_below_base_low_close_14.01	70
+NEO	2026-07-29	unqualified		ma_stack_not_stage2_14.2/14.4/12.3	70
+NEO	2026-07-30	unqualified		base_age_0_below_3	70
+NEO	2026-07-31	unqualified		base_age_1_below_3	70
+NEO	2026-08-04	unqualified		runup_63%_below_90%	70
+NEO	2026-08-05	unqualified		runup_63%_below_90%	70
+NEO	2026-08-06	unqualified		runup_63%_below_90%	70
+NEO	2026-08-07	unqualified		runup_63%_below_90%	70
+NEO	2026-08-10	unqualified		runup_63%_below_90%	70
+NEO	2026-08-11	unqualified		base_age_0_below_3	70
+NEO	2026-08-12	unqualified		base_age_1_below_3	70
+NEO	2026-08-13	unqualified		base_age_2_below_3	70
+NEO	2026-08-14	unqualified		runup_68%_below_90%	70
+NEO	2026-08-17	unqualified		runup_68%_below_90%	70
+NEO	2026-08-18	unqualified		runup_68%_below_90%	70
+NEO	2026-08-19	unqualified		runup_68%_below_90%	70
+NEO	2026-08-21	unqualified		runup_68%_below_90%	70
+NEO	2026-08-26	unqualified		runup_68%_below_90%	70
+NEO	2026-08-27	unqualified		base_age_0_below_3	70
+NEO	2026-08-28	unqualified		base_age_0_below_3	70
+NEO	2026-08-31	unqualified		base_age_1_below_3	70
+NEO	2026-09-01	unqualified		base_age_2_below_3	70
+NEO	2026-09-02	unqualified		runup_51%_below_90%	70
+NEO	2026-09-03	unqualified		runup_51%_below_90%	70
+NEO	2026-09-04	unqualified		runup_51%_below_90%	70
+NEO	2026-09-08	unqualified		runup_51%_below_90%	70
+NEO	2026-09-09	unqualified		runup_51%_below_90%	70
+NEO	2026-09-10	unqualified		runup_51%_below_90%	70
+NEO	2026-09-11	unqualified		runup_51%_below_90%	70
+NEO	2026-09-14	unqualified		runup_51%_below_90%	70
+NEO	2026-09-15	unqualified		runup_51%_below_90%	70
+NEO	2026-09-16	unqualified		runup_51%_below_90%	70
+NEO	2026-09-17	unqualified		runup_51%_below_90%	70
+NEO	2026-09-18	unqualified		runup_51%_below_90%	70
+NEO	2026-09-21	unqualified		runup_51%_below_90%	70
+NEO	2026-09-22	unqualified		runup_51%_below_90%	70
+NEO	2026-09-23	unqualified		runup_51%_below_90%	70
+NEO	2026-09-24	unqualified		runup_51%_below_90%	70
+NEO	2026-09-25	unqualified		runup_51%_below_90%	70
+NEO	2026-09-28	unqualified		runup_51%_below_90%	70
+NEO	2026-09-29	unqualified		runup_51%_below_90%	70
+NEO	2026-09-30	unqualified		runup_51%_below_90%	70
+NEO	2026-10-02	unqualified		runup_51%_below_90%	70
+NEO	2026-10-05	unqualified		runup_53%_below_90%	70
+NIQ	2026-07-06	unqualified		base_age_1_below_3	70
+NIQ	2026-07-07	unqualified		base_age_2_below_3	70
+NIQ	2026-07-08	unqualified		base_age_0_below_3	70
+NIQ	2026-07-09	unqualified		base_age_1_below_3	70
+NIQ	2026-07-10	unqualified		base_age_2_below_3	70
+NIQ	2026-07-13	unqualified		base_age_1_below_3	70
+NIQ	2026-07-14	unqualified		base_age_0_below_3	70
+NIQ	2026-07-15	unqualified		base_age_1_below_3	70
+NIQ	2026-07-16	unqualified		base_age_2_below_3	70
+NIQ	2026-07-17	unqualified		runup_49%_below_90%	70
+NIQ	2026-07-20	unqualified		runup_49%_below_90%	70
+NIQ	2026-07-21	unqualified		runup_49%_below_90%	70
+NIQ	2026-07-22	unqualified		runup_49%_below_90%	70
+NIQ	2026-07-23	unqualified		runup_49%_below_90%	70
+NIQ	2026-07-24	unqualified		runup_49%_below_90%	70
+NIQ	2026-07-27	unqualified		runup_49%_below_90%	70
+NIQ	2026-07-29	unqualified		runup_49%_below_90%	70
+NIQ	2026-08-11	unqualified		base_age_0_below_3	70
+NIQ	2026-08-12	unqualified		base_age_0_below_3	70
+NIQ	2026-08-13	unqualified		base_age_1_below_3	70
+NIQ	2026-08-14	unqualified		base_age_1_below_3	70
+NIQ	2026-08-17	unqualified		base_age_0_below_3	70
+NIQ	2026-08-18	unqualified		base_age_1_below_3	70
+NIQ	2026-08-19	unqualified		base_age_2_below_3	70
+NIQ	2026-08-20	unqualified		base_age_0_below_3	70
+NIQ	2026-08-21	unqualified		base_age_1_below_3	70
+NIQ	2026-08-24	unqualified		base_age_1_below_3	70
+NIQ	2026-08-25	unqualified		base_age_0_below_3	70
+NIQ	2026-08-26	unqualified		base_age_1_below_3	70
+NIQ	2026-08-27	unqualified		base_age_2_below_3	70
+NIQ	2026-08-28	WATCH		runup_135% base_3d close_vs_pivot_-0.3%	70
+NIQ	2026-08-31	WATCH		runup_136% base_3d close_vs_pivot_-1.6%	70
+NIQ	2026-09-01	INVALIDATED		close_18.72_below_base_low_close_18.74	70
+NIQ	2026-09-02	unqualified		base_age_0_below_3	70
+NIQ	2026-09-03	unqualified		base_age_1_below_3	70
+NIQ	2026-09-04	unqualified		base_age_2_below_3	70
+NIQ	2026-09-08	unqualified		runup_90%_below_90%	70
+NIQ	2026-09-09	unqualified		adr_3.7pct_below_4pct	70
+NIQ	2026-10-08	unqualified		adr_3.5pct_below_4pct	70
+NUAI	2026-07-03	INVALIDATED		close_4.78_below_base_low_close_5.20	70
+NUAI	2026-07-06	INVALIDATED		close_4.76_below_base_low_close_4.78	70
+NUAI	2026-07-20	unqualified		ma_stack_not_stage2_4.4/5.1/5.0	70
+NUAI	2026-07-21	unqualified		ma_stack_not_stage2_4.5/5.0/5.0	70
+NUAI	2026-07-22	unqualified		ma_stack_not_stage2_4.7/5.0/5.1	70
+NUAI	2026-07-23	unqualified		ma_stack_not_stage2_4.7/5.0/5.1	70
+NUAI	2026-07-24	INVALIDATED		close_4.78_below_sma20_4.93	70
+NUAI	2026-07-27	INVALIDATED		close_4.78_below_sma20_4.87	70
+NUAI	2026-07-28	INVALIDATED		close_4.39_below_sma20_4.78	70
+NUAI	2026-07-29	unqualified		runup_81%_below_90%	70
+NUAI	2026-07-30	unqualified		runup_81%_below_90%	70
+NUAI	2026-07-31	unqualified		runup_81%_below_90%	70
+NUAI	2026-08-04	unqualified		runup_81%_below_90%	70
+NUAI	2026-08-05	unqualified		runup_81%_below_90%	70
+NUAI	2026-08-06	unqualified		runup_72%_below_90%	70
+NUAI	2026-08-07	unqualified		runup_72%_below_90%	70
+NUAI	2026-08-10	unqualified		runup_72%_below_90%	70
+NUAI	2026-08-11	unqualified		runup_72%_below_90%	70
+NUAI	2026-08-17	unqualified		runup_72%_below_90%	70
+NUAI	2026-08-18	unqualified		runup_72%_below_90%	70
+NUAI	2026-08-19	unqualified		runup_72%_below_90%	70
+NUAI	2026-08-20	unqualified		runup_72%_below_90%	70
+NUAI	2026-09-03	unqualified		runup_56%_below_90%	70
+NUAI	2026-09-04	unqualified		runup_56%_below_90%	70
+NUAI	2026-09-08	unqualified		runup_56%_below_90%	70
+NUAI	2026-09-09	unqualified		base_age_0_below_3	70
+NUAI	2026-09-10	unqualified		base_age_0_below_3	70
+NUAI	2026-09-11	unqualified		base_age_1_below_3	70
+NUAI	2026-09-14	unqualified		base_age_2_below_3	70
+NUAI	2026-09-15	unqualified		runup_86%_below_90%	70
+NUAI	2026-09-16	unqualified		runup_86%_below_90%	70
+NUAI	2026-09-17	unqualified		runup_86%_below_90%	70
+NUAI	2026-09-18	unqualified		runup_86%_below_90%	70
+NUAI	2026-09-21	unqualified		runup_86%_below_90%	70
+NUAI	2026-09-22	unqualified		base_age_0_below_3	70
+NUAI	2026-09-23	unqualified		base_age_1_below_3	70
+NUAI	2026-09-24	unqualified		base_age_2_below_3	70
+NUAI	2026-09-25	WATCH		runup_97% base_3d close_vs_pivot_-11.1%	70
+NUAI	2026-09-28	WATCH		runup_97% base_4d close_vs_pivot_-12.3%	70
+NUAI	2026-09-29	INVALIDATED		close_6.76_below_base_low_close_6.94	70
+NUAI	2026-09-30	INVALIDATED		close_6.72_below_base_low_close_6.76	70
+NUAI	2026-10-01	INVALIDATED		close_6.37_below_base_low_close_6.72	70
+NUAI	2026-10-02	INVALIDATED		close_6.29_below_base_low_close_6.37	70
+NUAI	2026-10-05	INVALIDATED		close_6.05_below_base_low_close_6.29	70
+NUAI	2026-10-06	INVALIDATED		close_5.86_below_base_low_close_6.05	70
+NWL	2026-07-06	INVALIDATED		close_5.57_below_base_low_close_5.83	70
+NWL	2026-07-07	INVALIDATED		close_5.54_below_base_low_close_5.57	70
+NWL	2026-07-31	unqualified		ma_stack_not_stage2_5.2/5.2/4.8	70
+NWL	2026-08-04	unqualified		base_age_1_below_3	70
+NWL	2026-08-05	unqualified		base_age_2_below_3	70
+NWL	2026-08-06	INVALIDATED		close_6.02_below_base_low_close_6.13	70
+NWL	2026-08-07	INVALIDATED		close_6.01_below_base_low_close_6.02	70
+NWL	2026-08-10	INVALIDATED		close_5.90_below_base_low_close_6.01	70
+NWL	2026-08-11	TIGHTENING		range_0.67 vol_0.71	70
+NWL	2026-08-12	TIGHTENING		range_0.67 vol_0.71	70
+NWL	2026-08-13	COILED		range_0.67 vol_0.61 bodies_0.09/0.11	70
+NWL	2026-08-14	COILED		range_0.64 vol_0.59 bodies_0.27/0.09	70
+NWL	2026-08-17	COILED	TIGHTENING	range_0.64 vol_0.56 fresh	70
+NWL	2026-08-18	COILED	TIGHTENING	range_0.60 vol_0.54 fresh	70
+NWL	2026-08-19	COILED		range_0.47 vol_0.44 bodies_0.40/0.22	70
+NWL	2026-08-20	INVALIDATED		close_5.79_below_base_low_close_5.90	70
+NWL	2026-08-21	TIGHTENING		range_0.60 vol_0.43	70
+NWL	2026-08-24	TIGHTENING		range_0.73 vol_0.40	70
+NWL	2026-08-25	INVALIDATED		close_5.93_below_sma20_5.96	70
+NWL	2026-08-26	INVALIDATED		close_5.96_below_sma20_6.00	70
+NWL	2026-08-27	INVALIDATED		close_5.88_below_sma20_6.04	70
+NWL	2026-08-28	unqualified		ma_stack_not_stage2_6.0/6.1/5.6	70
+NWL	2026-08-31	unqualified		ma_stack_not_stage2_6.0/6.1/5.7	70
+NWL	2026-09-08	unqualified		runup_81%_below_90%	70
+NWL	2026-09-10	unqualified		runup_51%_below_90%	70
+OKTA	2026-07-03	TIGHTENING	WATCH	runup_127% base_21d close_vs_pivot_-0.7%	70
+OKTA	2026-07-06	unqualified		base_age_0_below_3	70
+OKTA	2026-07-07	unqualified		base_age_1_below_3	70
+OKTA	2026-07-08	unqualified		base_age_0_below_3	70
+OKTA	2026-07-09	unqualified		base_age_1_below_3	70
+OKTA	2026-07-10	unqualified		base_age_2_below_3	70
+OKTA	2026-07-13	WATCH		runup_98% base_3d close_vs_pivot_-8.9%	70
+OKTA	2026-07-14	WATCH		runup_98% base_4d close_vs_pivot_+0.9%	70
+OKTA	2026-07-15	unqualified		base_age_0_below_3	70
+OKTA	2026-07-16	unqualified		base_age_1_below_3	70
+OKTA	2026-07-17	unqualified		base_age_2_below_3	70
+OKTA	2026-07-20	WATCH		runup_94% base_3d close_vs_pivot_-4.6%	70
+OKTA	2026-07-21	INVALIDATED		close_141.71_below_base_low_close_147.74	70
+OKTA	2026-08-13	WATCH		runup_94% base_21d close_vs_pivot_-0.4%	70
+OKTA	2026-08-27	unqualified		runup_46%_below_90%	70
+OKTA	2026-08-28	unqualified		base_age_0_below_3	70
+OKTA	2026-08-31	unqualified		base_age_1_below_3	70
+OKTA	2026-09-01	unqualified		base_age_2_below_3	70
+OKTA	2026-09-02	unqualified		runup_37%_below_90%	70
+OKTA	2026-09-03	unqualified		runup_37%_below_90%	70
+OKTA	2026-09-04	unqualified		runup_37%_below_90%	70
+OKTA	2026-09-07	unqualified		runup_37%_below_90%	70
+OKTA	2026-09-08	unqualified		runup_37%_below_90%	70
+OKTA	2026-09-09	unqualified		runup_37%_below_90%	70
+OKTA	2026-09-10	unqualified		runup_37%_below_90%	70
+OKTA	2026-09-11	unqualified		runup_37%_below_90%	70
+OKTA	2026-09-14	unqualified		runup_37%_below_90%	70
+OKTA	2026-09-15	unqualified		base_age_0_below_3	70
+OKTA	2026-09-16	unqualified		base_age_1_below_3	70
+OKTA	2026-09-17	unqualified		base_age_2_below_3	70
+OKTA	2026-09-18	unqualified		runup_49%_below_90%	70
+OKTA	2026-09-21	unqualified		runup_49%_below_90%	70
+OKTA	2026-09-22	unqualified		runup_49%_below_90%	70
+OKTA	2026-09-23	unqualified		base_age_0_below_3	70
+OKTA	2026-09-24	unqualified		base_age_0_below_3	70
+OKTA	2026-09-25	unqualified		base_age_0_below_3	70
+OKTA	2026-09-28	unqualified		base_age_1_below_3	70
+OKTA	2026-09-29	unqualified		base_age_2_below_3	70
+OKTA	2026-09-30	unqualified		runup_67%_below_90%	70
+OKTA	2026-10-01	unqualified		runup_67%_below_90%	70
+OKTA	2026-10-02	unqualified		runup_67%_below_90%	70
+OKTA	2026-10-05	unqualified		runup_67%_below_90%	70
+OKTA	2026-10-06	unqualified		base_age_0_below_3	70
+OKTA	2026-10-07	unqualified		base_age_0_below_3	70
+OKTA	2026-10-08	unqualified		base_age_1_below_3	70
+OKTA	2026-10-09	unqualified		base_age_2_below_3	70
+OMER	2026-07-06	unqualified		runup_7%_below_90%	70
+OMER	2026-07-17	unqualified		runup_59%_below_90%	70
+OMER	2026-07-23	unqualified		runup_59%_below_90%	70
+OMER	2026-07-24	unqualified		runup_59%_below_90%	70
+OMER	2026-07-27	unqualified		runup_59%_below_90%	70
+OMER	2026-07-28	unqualified		base_age_0_below_3	70
+OMER	2026-07-29	unqualified		base_age_1_below_3	70
+OMER	2026-07-30	unqualified		base_age_0_below_3	70
+OMER	2026-07-31	unqualified		base_age_0_below_3	70
+OMER	2026-08-04	unqualified		base_age_0_below_3	70
+OMER	2026-08-05	unqualified		base_age_0_below_3	70
+OMER	2026-08-06	unqualified		base_age_1_below_3	70
+OMER	2026-08-07	unqualified		base_age_2_below_3	70
+OMER	2026-08-10	unqualified		base_age_0_below_3	70
+OMER	2026-08-11	unqualified		base_age_0_below_3	70
+OMER	2026-08-12	unqualified		base_age_0_below_3	70
+OMER	2026-08-13	unqualified		base_age_1_below_3	70
+OMER	2026-08-14	unqualified		base_age_0_below_3	70
+OMER	2026-08-17	unqualified		base_age_1_below_3	70
+OMER	2026-08-18	unqualified		base_age_2_below_3	70
+OMER	2026-08-19	WATCH		runup_145% base_3d close_vs_pivot_+1.4%	70
+OMER	2026-08-20	unqualified		base_age_0_below_3	70
+OMER	2026-08-21	unqualified		base_age_1_below_3	70
+OMER	2026-08-24	unqualified		base_age_0_below_3	70
+OMER	2026-08-25	unqualified		base_age_1_below_3	70
+OMER	2026-08-26	unqualified		base_age_2_below_3	70
+OMER	2026-08-27	WATCH		runup_165% base_3d close_vs_pivot_-1.7%	70
+OMER	2026-08-28	WATCH		runup_165% base_4d close_vs_pivot_-5.0%	70
+OMER	2026-08-31	WATCH		runup_165% base_5d close_vs_pivot_-4.0%	70
+OMER	2026-09-01	WATCH		runup_165% base_6d close_vs_pivot_-4.2%	70
+OMER	2026-09-02	WATCH		runup_165% base_7d close_vs_pivot_-3.7%	70
+OMER	2026-09-03	WATCH		runup_165% base_8d close_vs_pivot_-2.4%	70
+OMER	2026-09-04	COILED		fresh_2bar 2.5%/atr 4.7% bodies_0.06/0.14	70
+OMER	2026-09-07	COILED		fresh_2bar 2.5%/atr 4.7% bodies_0.06/0.14	70
+OMER	2026-09-08	COILED	TIGHTENING	range_0.60 vol_0.95	70
+OMER	2026-09-09	COILED	TIGHTENING	range_0.60 vol_0.91	70
+OMER	2026-09-10	COILED	TIGHTENING	range_0.64 vol_0.83	70
+OMER	2026-09-11	INVALIDATED		close_18.28_below_sma20_18.63	70
+OMER	2026-09-14	INVALIDATED		close_17.46_below_base_low_close_18.22	70
+OMER	2026-09-15	INVALIDATED		close_17.17_below_base_low_close_17.46	70
+OMER	2026-09-22	unqualified		ma_stack_not_stage2_18.4/18.7/15.4	70
+OMER	2026-09-23	unqualified		base_age_0_below_3	70
+OMER	2026-09-24	unqualified		base_age_1_below_3	70
+OMER	2026-09-25	unqualified		base_age_2_below_3	70
+OMER	2026-09-28	INVALIDATED		close_19.43_below_base_low_close_20.08	70
+OMER	2026-09-29	INVALIDATED		close_19.25_below_base_low_close_19.43	70
+OMER	2026-10-02	INVALIDATED		close_18.61_below_sma20_18.90	70
+OMER	2026-10-05	WATCH		runup_101% base_8d close_vs_pivot_-11.0%	70
+OMER	2026-10-06	INVALIDATED		close_18.51_below_sma20_18.86	70
+OMER	2026-10-07	INVALIDATED		close_18.75_below_sma20_18.83	70
+OMER	2026-10-08	WATCH		runup_101% base_11d close_vs_pivot_-10.0%	70
+OMER	2026-10-09	WATCH		runup_101% base_12d close_vs_pivot_-6.6%	70
+PANW	2026-07-06	unqualified		base_age_1_below_3	70
+PANW	2026-07-07	unqualified		base_age_0_below_3	70
+PANW	2026-07-08	unqualified		base_age_1_below_3	70
+PANW	2026-07-09	unqualified		base_age_2_below_3	70
+PANW	2026-07-10	WATCH		runup_93% base_3d close_vs_pivot_-11.5%	70
+PANW	2026-07-13	WATCH		runup_93% base_4d close_vs_pivot_-10.3%	70
+PANW	2026-07-14	WATCH		runup_93% base_5d close_vs_pivot_-4.2%	70
+PANW	2026-07-15	WATCH		runup_93% base_6d close_vs_pivot_-3.8%	70
+PANW	2026-07-16	WATCH		runup_93% base_7d close_vs_pivot_-3.9%	70
+PANW	2026-07-17	WATCH		runup_93% base_8d close_vs_pivot_-2.6%	70
+PANW	2026-07-20	WATCH		runup_93% base_9d close_vs_pivot_-5.3%	70
+PANW	2026-08-10	unqualified		base_age_2_below_3	70
+PANW	2026-08-11	unqualified		base_age_0_below_3	70
+PANW	2026-08-12	unqualified		base_age_1_below_3	70
+PANW	2026-08-13	unqualified		base_age_1_below_3	70
+PANW	2026-08-14	unqualified		base_age_0_below_3	70
+PANW	2026-08-17	unqualified		base_age_1_below_3	70
+PANW	2026-08-18	unqualified		adr_4.0pct_below_4pct	70
+PANW	2026-08-19	unqualified		runup_44%_below_90%	70
+PANW	2026-08-27	unqualified		runup_44%_below_90%	70
+PANW	2026-09-14	unqualified		runup_44%_below_90%	70
+PANW	2026-09-15	unqualified		runup_44%_below_90%	70
+PANW	2026-09-16	unqualified		runup_44%_below_90%	70
+PANW	2026-09-23	unqualified		runup_24%_below_90%	70
+PANW	2026-09-24	unqualified		runup_26%_below_90%	70
+PANW	2026-09-25	unqualified		base_age_1_below_3	70
+PANW	2026-09-28	unqualified		base_age_2_below_3	70
+PANW	2026-09-29	unqualified		runup_27%_below_90%	70
+PANW	2026-09-30	unqualified		runup_27%_below_90%	70
+PANW	2026-10-01	unqualified		base_age_0_below_3	70
+PANW	2026-10-02	unqualified		base_age_1_below_3	70
+PANW	2026-10-05	unqualified		base_age_2_below_3	70
+PANW	2026-10-06	unqualified		runup_26%_below_90%	70
+PANW	2026-10-07	unqualified		base_age_0_below_3	70
+PANW	2026-10-08	unqualified		base_age_1_below_3	70
+PANW	2026-10-09	unqualified		base_age_2_below_3	70
+PAY	2026-07-06	unqualified		base_age_0_below_3	70
+PAY	2026-07-07	unqualified		base_age_0_below_3	70
+PAY	2026-07-08	unqualified		base_age_0_below_3	70
+PAY	2026-07-09	unqualified		base_age_1_below_3	70
+PAY	2026-07-10	unqualified		base_age_2_below_3	70
+PAY	2026-07-13	unqualified		base_age_0_below_3	70
+PAY	2026-07-14	unqualified		base_age_1_below_3	70
+PAY	2026-07-15	unqualified		base_age_2_below_3	70
+PAY	2026-07-16	unqualified		runup_46%_below_90%	70
+PAY	2026-07-17	unqualified		base_age_0_below_3	70
+PAY	2026-07-20	unqualified		base_age_1_below_3	70
+PAY	2026-07-21	unqualified		base_age_2_below_3	70
+PAY	2026-07-22	unqualified		runup_49%_below_90%	70
+PAY	2026-07-23	unqualified		runup_49%_below_90%	70
+PAY	2026-07-24	unqualified		runup_49%_below_90%	70
+PAY	2026-07-27	unqualified		runup_49%_below_90%	70
+PAY	2026-07-28	unqualified		base_age_0_below_3	70
+PAY	2026-07-29	unqualified		base_age_0_below_3	70
+PAY	2026-07-30	unqualified		base_age_0_below_3	70
+PAY	2026-07-31	unqualified		base_age_1_below_3	70
+PAY	2026-08-04	unqualified		runup_83%_below_90%	70
+PAY	2026-08-05	unqualified		base_age_0_below_3	70
+PAY	2026-08-06	unqualified		base_age_1_below_3	70
+PAY	2026-08-07	unqualified		base_age_2_below_3	70
+PAY	2026-08-10	WATCH		runup_125% base_3d close_vs_pivot_-13.9%	70
+PAY	2026-08-11	WATCH		runup_125% base_4d close_vs_pivot_-10.4%	70
+PAY	2026-08-12	WATCH		runup_125% base_5d close_vs_pivot_-10.9%	70
+PAY	2026-08-13	TIGHTENING		range_0.85 vol_0.62	70
+PAY	2026-08-14	TIGHTENING		range_0.96 vol_0.64	70
+PAY	2026-08-17	TIGHTENING		range_0.68 vol_0.62 fresh	70
+PAY	2026-08-18	INVALIDATED		close_38.32_below_base_low_close_38.57	70
+PAY	2026-08-19	TIGHTENING		range_0.68 vol_0.81	70
+PAY	2026-08-20	TIGHTENING		range_0.68 vol_0.95	70
+PAY	2026-08-21	TIGHTENING		range_0.68 vol_0.97	70
+PAY	2026-08-24	TIGHTENING		range_0.68 vol_1.13	70
+PAY	2026-08-25	TIGHTENING		range_0.68 vol_1.21	70
+PAY	2026-08-26	TIGHTENING		range_0.68 vol_1.05	70
+PAY	2026-08-27	INVALIDATED		close_35.61_below_base_low_close_38.32	70
+PAY	2026-08-28	INVALIDATED		close_35.99_below_sma20_39.45	70
+PAY	2026-08-31	INVALIDATED		close_35.60_below_base_low_close_35.61	70
+PAY	2026-09-17	INVALIDATED		close_36.13_below_sma20_36.91	70
+PBF	2026-07-06	unqualified		base_age_0_below_3	70
+PBF	2026-07-07	unqualified		base_age_0_below_3	70
+PBF	2026-07-08	unqualified		base_age_1_below_3	70
+PBF	2026-07-09	unqualified		base_age_0_below_3	70
+PBF	2026-07-10	unqualified		base_age_1_below_3	70
+PBF	2026-07-13	unqualified		base_age_0_below_3	70
+PBF	2026-07-14	unqualified		base_age_0_below_3	70
+PBF	2026-07-15	unqualified		base_age_0_below_3	70
+PBF	2026-07-16	unqualified		base_age_1_below_3	70
+PBF	2026-07-17	unqualified		base_age_2_below_3	70
+PBF	2026-07-20	unqualified		base_age_0_below_3	70
+PBF	2026-07-21	unqualified		base_age_1_below_3	70
+PBF	2026-07-22	unqualified		base_age_0_below_3	70
+PBF	2026-07-23	unqualified		base_age_0_below_3	70
+PBF	2026-07-24	unqualified		base_age_1_below_3	70
+PBF	2026-07-27	unqualified		base_age_2_below_3	70
+PBF	2026-07-28	unqualified		runup_88%_below_90%	70
+PBF	2026-07-29	unqualified		runup_88%_below_90%	70
+PBF	2026-07-30	unqualified		runup_88%_below_90%	70
+PBF	2026-07-31	unqualified		base_age_0_below_3	70
+PBF	2026-08-04	unqualified		base_age_2_below_3	70
+PBF	2026-08-13	WATCH		runup_105% base_9d close_vs_pivot_-0.5%	70
+PBF	2026-08-14	WATCH		runup_105% base_10d close_vs_pivot_-3.9%	70
+PBF	2026-08-17	WATCH		runup_105% base_11d close_vs_pivot_+0.4%	70
+PBF	2026-08-18	WATCH		runup_105% base_12d close_vs_pivot_+0.6%	70
+PBF	2026-08-19	COILED		range_0.75 vol_0.66 bodies_0.24/0.07	70
+PBF	2026-08-20	COILED	TIGHTENING	range_0.75 vol_0.64	70
+PBF	2026-08-21	COILED	TIGHTENING	range_0.75 vol_0.63	70
+PBF	2026-08-24	COILED	TIGHTENING	range_0.85 vol_0.64	70
+PBF	2026-08-25	INVALIDATED		close_66.51_below_sma20_69.11	70
+PBF	2026-08-26	TIGHTENING		range_1.01 vol_0.62	70
+PBF	2026-08-27	INVALIDATED		close_68.59_below_sma20_69.20	70
+PBF	2026-08-28	TIGHTENING		range_1.01 vol_0.59	70
+PBF	2026-08-31	TIGHTENING		range_0.99 vol_0.53	70
+PBF	2026-09-01	TIGHTENING		range_0.99 vol_0.58	70
+PBF	2026-09-02	TIGHTENING	WATCH	runup_105% base_23d close_vs_pivot_+1.0%	70
+PBF	2026-09-03	unqualified		base_age_0_below_3	70
+PBF	2026-09-04	unqualified		base_age_1_below_3	70
+PBF	2026-09-07	unqualified		base_age_1_below_3	70
+PBF	2026-09-08	unqualified		base_age_2_below_3	70
+PBF	2026-09-09	unqualified		runup_51%_below_90%	70
+PBF	2026-09-10	unqualified		runup_51%_below_90%	70
+PBF	2026-09-11	unqualified		runup_51%_below_90%	70
+PBF	2026-09-14	unqualified		base_age_0_below_3	70
+PBF	2026-09-15	unqualified		base_age_1_below_3	70
+PBF	2026-09-16	unqualified		base_age_2_below_3	70
+PBF	2026-09-17	unqualified		runup_43%_below_90%	70
+PBF	2026-09-18	unqualified		runup_43%_below_90%	70
+PBF	2026-09-28	unqualified		runup_43%_below_90%	70
+PBF	2026-09-30	unqualified		runup_43%_below_90%	70
+PBF	2026-10-01	unqualified		runup_43%_below_90%	70
+PBF	2026-10-02	unqualified		runup_43%_below_90%	70
+PBF	2026-10-05	unqualified		runup_43%_below_90%	70
+PBF	2026-10-06	unqualified		base_age_0_below_3	70
+PBF	2026-10-07	unqualified		base_age_1_below_3	70
+PBF	2026-10-08	unqualified		base_age_2_below_3	70
+PBF	2026-10-09	unqualified		base_age_0_below_3	70
+PENG	2026-07-08	WATCH		runup_184% base_10d close_vs_pivot_+1.4%	70
+PENG	2026-07-09	unqualified		base_age_0_below_3	70
+PENG	2026-07-10	unqualified		base_age_0_below_3	70
+PENG	2026-07-13	unqualified		base_age_1_below_3	70
+PENG	2026-07-14	unqualified		base_age_2_below_3	70
+PENG	2026-07-15	INVALIDATED		close_72.85_below_base_low_close_77.21	70
+PENG	2026-07-16	INVALIDATED		close_65.97_below_base_low_close_72.85	70
+PENG	2026-07-17	INVALIDATED		close_60.41_below_base_low_close_65.97	70
+PENG	2026-07-20	INVALIDATED		close_53.23_below_base_low_close_60.41	70
+PENG	2026-07-21	INVALIDATED		close_58.10_below_sma20_68.46	70
+PENG	2026-07-22	INVALIDATED		close_59.20_below_sma20_68.07	70
+PENG	2026-07-23	INVALIDATED		close_58.41_below_sma20_67.75	70
+PENG	2026-07-24	INVALIDATED		close_53.85_below_sma20_67.11	70
+PENG	2026-07-27	INVALIDATED		close_52.49_below_base_low_close_53.23	70
+PENG	2026-07-28	INVALIDATED		close_48.13_below_base_low_close_52.49	70
+PENG	2026-07-29	INVALIDATED		close_43.70_below_base_low_close_48.13	70
+PENG	2026-08-04	INVALIDATED		close_57.84_below_sma20_61.70	70
+PENG	2026-08-05	INVALIDATED		close_55.72_below_sma20_60.57	70
+PENG	2026-08-06	INVALIDATED		close_56.26_below_sma20_59.31	70
+PENG	2026-08-07	INVALIDATED		close_58.43_below_sma50_62.90	70
+PENG	2026-08-10	INVALIDATED		close_55.18_below_sma20_57.21	70
+PENG	2026-08-11	INVALIDATED		close_57.33_below_sma50_62.95	70
+PENG	2026-08-14	unqualified		ma_stack_not_stage2_57.7/55.4/62.6	70
+PENG	2026-08-17	unqualified		ma_stack_not_stage2_58.7/55.9/62.4	70
+PENG	2026-08-18	INVALIDATED		close_58.36_below_sma50_62.39	70
+PENG	2026-08-19	INVALIDATED		close_52.95_below_sma20_55.59	70
+PENG	2026-09-18	unqualified		runup_51%_below_90%	70
+PENG	2026-09-21	unqualified		runup_51%_below_90%	70
+PENG	2026-09-22	unqualified		runup_51%_below_90%	70
+PENG	2026-09-23	unqualified		runup_40%_below_90%	70
+PENG	2026-09-24	unqualified		runup_34%_below_90%	70
+PENG	2026-09-25	unqualified		base_age_2_below_3	70
+PENG	2026-09-28	unqualified		runup_32%_below_90%	70
+PENG	2026-09-29	unqualified		runup_32%_below_90%	70
+PENG	2026-09-30	unqualified		runup_32%_below_90%	70
+PENG	2026-10-01	unqualified		runup_32%_below_90%	70
+PENG	2026-10-02	unqualified		runup_32%_below_90%	70
+PENG	2026-10-05	unqualified		base_age_0_below_3	70
+PENG	2026-10-06	unqualified		base_age_1_below_3	70
+PENG	2026-10-07	unqualified		base_age_0_below_3	70
+PENG	2026-10-08	unqualified		base_age_0_below_3	70
+PENG	2026-10-09	unqualified		base_age_1_below_3	70
+PGEN	2026-07-06	unqualified		runup_70%_below_90%	70
+PGEN	2026-07-07	unqualified		runup_70%_below_90%	70
+PGEN	2026-07-08	unqualified		runup_70%_below_90%	70
+PGEN	2026-07-09	unqualified		runup_70%_below_90%	70
+PGEN	2026-07-10	unqualified		runup_70%_below_90%	70
+PGEN	2026-07-30	unqualified		runup_70%_below_90%	70
+PGEN	2026-07-31	unqualified		runup_70%_below_90%	70
+PGEN	2026-08-04	unqualified		base_age_0_below_3	70
+PGEN	2026-08-05	unqualified		base_age_0_below_3	70
+PGEN	2026-08-06	unqualified		base_age_0_below_3	70
+PGEN	2026-08-07	unqualified		base_age_1_below_3	70
+PGEN	2026-08-10	unqualified		base_age_2_below_3	70
+PGEN	2026-08-11	INVALIDATED		close_6.86_below_base_low_close_6.91	70
+PGEN	2026-08-12	INVALIDATED		close_6.85_below_base_low_close_6.86	70
+PGEN	2026-08-13	INVALIDATED		close_6.49_below_base_low_close_6.85	70
+PGEN	2026-08-14	INVALIDATED		close_6.10_below_base_low_close_6.49	70
+PGEN	2026-08-17	WATCH		runup_103% base_7d close_vs_pivot_-9.4%	70
+PGEN	2026-08-18	WATCH		runup_103% base_8d close_vs_pivot_-6.6%	70
+PGEN	2026-08-19	WATCH		runup_103% base_9d close_vs_pivot_-1.0%	70
+PGEN	2026-08-20	WATCH		runup_103% base_10d close_vs_pivot_+2.9%	70
+PGEN	2026-08-21	unqualified		base_age_0_below_3	70
+PGEN	2026-08-24	unqualified		base_age_1_below_3	70
+PGEN	2026-08-25	unqualified		base_age_2_below_3	70
+PGEN	2026-08-26	unqualified		runup_56%_below_90%	70
+PGEN	2026-09-02	unqualified		runup_60%_below_90%	70
+PGEN	2026-09-03	unqualified		runup_60%_below_90%	70
+PGEN	2026-09-04	unqualified		runup_60%_below_90%	70
+PGEN	2026-09-08	unqualified		runup_60%_below_90%	70
+PGEN	2026-09-16	unqualified		runup_60%_below_90%	70
+PGEN	2026-09-17	unqualified		runup_60%_below_90%	70
+PGEN	2026-09-18	unqualified		base_age_0_below_3	70
+PGEN	2026-09-21	unqualified		base_age_1_below_3	70
+PGEN	2026-09-22	unqualified		base_age_2_below_3	70
+PGEN	2026-09-23	unqualified		runup_55%_below_90%	70
+PGEN	2026-09-24	unqualified		runup_55%_below_90%	70
+PGEN	2026-09-25	unqualified		runup_55%_below_90%	70
+PGEN	2026-09-28	unqualified		runup_55%_below_90%	70
+PGEN	2026-09-29	unqualified		runup_55%_below_90%	70
+PGEN	2026-09-30	unqualified		runup_55%_below_90%	70
+PGEN	2026-10-01	unqualified		base_age_0_below_3	70
+PGEN	2026-10-02	unqualified		base_age_1_below_3	70
+PGEN	2026-10-05	unqualified		base_age_2_below_3	70
+PGEN	2026-10-06	unqualified		runup_48%_below_90%	70
+PGEN	2026-10-07	unqualified		runup_48%_below_90%	70
+PLSE	2026-08-04	unqualified		adv_326k_below_500k_shares	70
+PLSE	2026-08-05	unqualified		adv_326k_below_500k_shares	70
+PLSE	2026-08-06	unqualified		adv_304k_below_500k_shares	70
+PLSE	2026-08-07	unqualified		adv_326k_below_500k_shares	70
+PLSE	2026-08-10	unqualified		adv_335k_below_500k_shares	70
+PLSE	2026-08-11	unqualified		adv_347k_below_500k_shares	70
+PLSE	2026-08-12	unqualified		adv_347k_below_500k_shares	70
+PLSE	2026-08-13	unqualified		adv_360k_below_500k_shares	70
+PLSE	2026-08-14	unqualified		adv_384k_below_500k_shares	70
+PLSE	2026-08-17	unqualified		adv_417k_below_500k_shares	70
+PLSE	2026-08-18	unqualified		adv_460k_below_500k_shares	70
+PLSE	2026-08-19	unqualified		adv_421k_below_500k_shares	70
+PLSE	2026-08-20	unqualified		adv_406k_below_500k_shares	70
+PLSE	2026-08-21	unqualified		adv_421k_below_500k_shares	70
+PLSE	2026-08-24	unqualified		adv_406k_below_500k_shares	70
+PLSE	2026-08-25	unqualified		adv_384k_below_500k_shares	70
+PLSE	2026-08-26	unqualified		adv_359k_below_500k_shares	70
+PLSE	2026-08-27	unqualified		adv_359k_below_500k_shares	70
+PLSE	2026-08-28	unqualified		adv_359k_below_500k_shares	70
+PLSE	2026-08-31	unqualified		adv_384k_below_500k_shares	70
+PLSE	2026-09-01	unqualified		adv_406k_below_500k_shares	70
+PLSE	2026-09-02	unqualified		adv_432k_below_500k_shares	70
+PLSE	2026-09-03	unqualified		adv_470k_below_500k_shares	70
+PLSE	2026-09-04	unqualified		adv_470k_below_500k_shares	70
+PLSE	2026-09-08	unqualified		adv_473k_below_500k_shares	70
+PLSE	2026-09-09	unqualified		adv_473k_below_500k_shares	70
+PLSE	2026-09-10	unqualified		base_age_0_below_3	70
+PLSE	2026-09-11	unqualified		base_age_1_below_3	70
+PLSE	2026-09-14	unqualified		base_age_2_below_3	70
+PLSE	2026-09-15	WATCH		runup_136% base_3d close_vs_pivot_-6.3%	70
+PLSE	2026-09-16	INVALIDATED		close_49.61_below_base_low_close_53.11	70
+PLSE	2026-09-17	INVALIDATED		close_50.61_below_sma20_51.13	70
+PLSE	2026-09-18	WATCH		runup_136% base_6d close_vs_pivot_-8.5%	70
+PLSE	2026-09-21	TIGHTENING		range_0.65 vol_0.95	70
+PLSE	2026-09-22	TIGHTENING		range_0.63 vol_0.92	70
+PLSE	2026-09-23	TIGHTENING		range_0.63 vol_0.89	70
+PLSE	2026-09-24	INVALIDATED		close_51.83_below_sma20_52.09	70
+PLSE	2026-09-25	INVALIDATED		close_51.63_below_sma20_52.24	70
+PLSE	2026-09-28	INVALIDATED		close_52.32_below_sma20_52.48	70
+PLSE	2026-09-29	INVALIDATED		close_50.89_below_sma20_52.51	70
+PSNL	2026-07-06	WATCH		runup_163% base_3d close_vs_pivot_+1.9%	70
+PSNL	2026-07-07	unqualified		base_age_0_below_3	70
+PSNL	2026-07-08	unqualified		base_age_1_below_3	70
+PSNL	2026-07-09	unqualified		base_age_2_below_3	70
+PSNL	2026-07-10	unqualified		base_age_0_below_3	70
+PSNL	2026-07-13	unqualified		base_age_1_below_3	70
+PSNL	2026-07-14	unqualified		base_age_0_below_3	70
+PSNL	2026-07-15	unqualified		base_age_1_below_3	70
+PSNL	2026-07-16	unqualified		base_age_2_below_3	70
+PSNL	2026-07-17	WATCH		runup_157% base_3d close_vs_pivot_-4.7%	70
+PSNL	2026-07-20	INVALIDATED		close_13.34_below_base_low_close_15.03	70
+PSNL	2026-07-21	INVALIDATED		close_13.44_below_sma20_13.82	70
+PSNL	2026-07-22	INVALIDATED		close_12.47_below_base_low_close_13.34	70
+PSNL	2026-07-23	INVALIDATED		close_12.22_below_base_low_close_12.47	70
+PSNL	2026-07-24	INVALIDATED		close_11.78_below_base_low_close_12.22	70
+PSNL	2026-07-27	INVALIDATED		close_11.98_below_sma20_13.89	70
+PSNL	2026-08-10	unqualified		ma_stack_not_stage2_13.0/13.4/12.4	70
+PSNL	2026-08-12	unqualified		flag_low_11.52_below_75%_of_pole_16.12	70
+PSNL	2026-08-13	unqualified		flag_low_11.52_below_75%_of_pole_16.12	70
+PSNL	2026-08-14	unqualified		flag_low_11.52_below_75%_of_pole_16.12	70
+PSNL	2026-08-17	unqualified		flag_low_11.52_below_75%_of_pole_16.12	70
+PSNL	2026-08-18	unqualified		flag_low_11.52_below_75%_of_pole_16.12	70
+PSNL	2026-08-19	unqualified		flag_low_11.52_below_75%_of_pole_16.12	70
+PSNL	2026-08-20	unqualified		flag_low_11.52_below_75%_of_pole_16.12	70
+PSNL	2026-08-21	unqualified		base_age_0_below_3	70
+PSNL	2026-08-24	unqualified		base_age_0_below_3	70
+PSNL	2026-08-25	unqualified		base_age_1_below_3	70
+PSNL	2026-08-26	unqualified		base_age_2_below_3	70
+PSNL	2026-08-27	unqualified		runup_64%_below_90%	70
+PSNL	2026-08-28	unqualified		runup_64%_below_90%	70
+PSNL	2026-08-31	unqualified		runup_64%_below_90%	70
+PSNL	2026-09-01	unqualified		runup_64%_below_90%	70
+PSNL	2026-09-02	unqualified		runup_64%_below_90%	70
+PSNL	2026-09-03	unqualified		runup_64%_below_90%	70
+PSNL	2026-09-04	unqualified		runup_64%_below_90%	70
+PSNL	2026-09-08	unqualified		runup_64%_below_90%	70
+PSNL	2026-09-09	unqualified		runup_64%_below_90%	70
+PSNL	2026-09-24	unqualified		adr_3.1pct_below_4pct	70
+PURR	2026-08-17	unqualified		runup_16%_below_90%	70
+PURR	2026-08-18	unqualified		runup_16%_below_90%	70
+PURR	2026-08-19	unqualified		runup_16%_below_90%	70
+PURR	2026-08-20	unqualified		base_age_0_below_3	70
+PURR	2026-08-21	unqualified		base_age_0_below_3	70
+PURR	2026-08-24	unqualified		base_age_0_below_3	70
+PURR	2026-08-25	unqualified		base_age_1_below_3	70
+PURR	2026-08-26	unqualified		base_age_0_below_3	70
+PURR	2026-08-27	unqualified		base_age_1_below_3	70
+PURR	2026-08-28	unqualified		base_age_0_below_3	70
+PURR	2026-08-31	unqualified		base_age_1_below_3	70
+PURR	2026-09-01	unqualified		base_age_2_below_3	70
+PURR	2026-09-02	INVALIDATED		close_11.32_below_base_low_close_11.36	70
+PURR	2026-09-03	WATCH		runup_144% base_4d close_vs_pivot_-9.7%	70
+PURR	2026-09-04	WATCH		runup_144% base_5d close_vs_pivot_-13.9%	70
+PURR	2026-09-07	WATCH		runup_144% base_5d close_vs_pivot_-13.9%	70
+PURR	2026-09-08	WATCH		runup_144% base_6d close_vs_pivot_-15.6%	70
+PURR	2026-09-09	WATCH		runup_144% base_7d close_vs_pivot_-14.9%	70
+PURR	2026-09-10	INVALIDATED		close_11.01_below_base_low_close_11.32	70
+PURR	2026-09-11	WATCH		runup_144% base_9d close_vs_pivot_-17.9%	70
+PURR	2026-09-14	TIGHTENING		range_0.85 vol_0.69	70
+PURR	2026-09-15	INVALIDATED		close_11.20_below_sma20_11.26	70
+PURR	2026-09-16	INVALIDATED		close_11.44_below_sma20_11.48	70
+PURR	2026-09-17	unqualified		flag_low_10.54_below_75%_of_pole_14.14	70
+PURR	2026-09-18	unqualified		flag_low_10.54_below_75%_of_pole_14.14	70
+PURR	2026-09-21	unqualified		flag_low_10.54_below_75%_of_pole_14.14	70
+PURR	2026-09-22	unqualified		flag_low_10.54_below_75%_of_pole_14.14	70
+PURR	2026-09-23	unqualified		flag_low_10.54_below_75%_of_pole_14.14	70
+PURR	2026-09-24	unqualified		flag_low_10.54_below_75%_of_pole_14.14	70
+PURR	2026-09-25	unqualified		flag_low_10.54_below_75%_of_pole_14.14	70
+PURR	2026-09-28	INVALIDATED		close_12.08_below_sma20_12.42	70
+PURR	2026-09-29	INVALIDATED		close_11.92_below_sma20_12.40	70
+PURR	2026-09-30	INVALIDATED		close_12.27_below_sma20_12.45	70
+PURR	2026-10-01	INVALIDATED		close_12.03_below_sma20_12.48	70
+PURR	2026-10-02	INVALIDATED		close_11.89_below_sma20_12.44	70
+PURR	2026-10-05	TIGHTENING		range_0.66 vol_0.59	70
+PURR	2026-10-06	INVALIDATED		close_12.50_below_sma20_12.50	70
+PURR	2026-10-07	INVALIDATED		close_11.73_below_base_low_close_11.89	70
+PURR	2026-10-08	INVALIDATED		close_11.30_below_base_low_close_11.73	70
+PURR	2026-10-09	INVALIDATED		close_11.11_below_base_low_close_11.30	70
+QLYS	2026-07-06	unqualified		base_age_1_below_3	70
+QLYS	2026-07-07	unqualified		base_age_0_below_3	70
+QLYS	2026-07-08	unqualified		base_age_0_below_3	70
+QLYS	2026-07-09	unqualified		base_age_1_below_3	70
+QLYS	2026-07-10	unqualified		base_age_2_below_3	70
+QLYS	2026-07-13	INVALIDATED		close_151.54_below_base_low_close_152.69	70
+QLYS	2026-07-14	WATCH		runup_94% base_4d close_vs_pivot_-0.0%	70
+QLYS	2026-07-15	WATCH		runup_94% base_5d close_vs_pivot_-3.0%	70
+QLYS	2026-07-16	unqualified		base_age_0_below_3	70
+QLYS	2026-07-17	unqualified		base_age_1_below_3	70
+QLYS	2026-07-20	unqualified		base_age_2_below_3	70
+QLYS	2026-07-21	unqualified		runup_88%_below_90%	70
+QLYS	2026-08-05	unqualified		runup_88%_below_90%	70
+QLYS	2026-08-06	unqualified		base_age_0_below_3	70
+QLYS	2026-08-07	unqualified		base_age_1_below_3	70
+QLYS	2026-08-10	unqualified		base_age_2_below_3	70
+QLYS	2026-08-11	unqualified		runup_89%_below_90%	70
+QLYS	2026-08-12	unqualified		runup_89%_below_90%	70
+QLYS	2026-08-13	unqualified		runup_89%_below_90%	70
+QLYS	2026-08-14	unqualified		runup_89%_below_90%	70
+QLYS	2026-08-17	unqualified		runup_89%_below_90%	70
+QLYS	2026-08-18	unqualified		runup_89%_below_90%	70
+QLYS	2026-08-19	unqualified		runup_89%_below_90%	70
+QLYS	2026-08-20	unqualified		runup_89%_below_90%	70
+QLYS	2026-08-21	unqualified		runup_89%_below_90%	70
+QLYS	2026-08-24	unqualified		runup_89%_below_90%	70
+QLYS	2026-08-25	unqualified		runup_89%_below_90%	70
+QLYS	2026-08-28	unqualified		runup_89%_below_90%	70
+QLYS	2026-09-15	unqualified		runup_84%_below_90%	70
+QLYS	2026-09-16	unqualified		runup_84%_below_90%	70
+QLYS	2026-09-22	unqualified		runup_46%_below_90%	70
+QLYS	2026-09-23	unqualified		runup_46%_below_90%	70
+QLYS	2026-09-24	unqualified		runup_46%_below_90%	70
+QLYS	2026-09-25	unqualified		runup_46%_below_90%	70
+QLYS	2026-09-28	unqualified		runup_46%_below_90%	70
+QLYS	2026-09-29	unqualified		runup_46%_below_90%	70
+QLYS	2026-09-30	unqualified		runup_46%_below_90%	70
+QLYS	2026-10-01	unqualified		runup_46%_below_90%	70
+QLYS	2026-10-02	unqualified		runup_46%_below_90%	70
+QLYS	2026-10-05	unqualified		base_age_0_below_3	70
+QLYS	2026-10-06	unqualified		base_age_0_below_3	70
+QLYS	2026-10-07	unqualified		base_age_0_below_3	70
+QLYS	2026-10-08	unqualified		base_age_1_below_3	70
+QLYS	2026-10-09	unqualified		base_age_2_below_3	70
+QMCO	2026-08-11	unqualified		runup_41%_below_90%	70
+QMCO	2026-08-12	unqualified		base_age_0_below_3	70
+QMCO	2026-08-13	unqualified		base_age_0_below_3	70
+QMCO	2026-08-14	unqualified		base_age_0_below_3	70
+QMCO	2026-08-17	unqualified		base_age_0_below_3	70
+QMCO	2026-08-18	unqualified		base_age_1_below_3	70
+QMCO	2026-08-19	unqualified		base_age_2_below_3	70
+QMCO	2026-08-20	INVALIDATED		close_20.49_below_base_low_close_21.79	70
+QMCO	2026-08-21	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-08-24	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-08-25	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-08-26	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-08-27	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-08-28	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-08-31	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-09-01	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-09-02	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-09-08	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-09-09	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-09-10	INVALIDATED		close_23.03_below_sma20_23.44	70
+QMCO	2026-09-11	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-09-14	INVALIDATED		close_22.82_below_sma20_23.22	70
+QMCO	2026-09-15	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-09-16	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-09-17	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-09-18	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-09-21	unqualified		flag_low_19.73_below_75%_of_pole_27.80	70
+QMCO	2026-09-22	TIGHTENING		range_0.61 vol_0.90	70
+QMCO	2026-09-23	TIGHTENING		range_0.61 vol_0.93	70
+QMCO	2026-09-24	unqualified		base_age_0_below_3	70
+QMCO	2026-09-25	unqualified		base_age_0_below_3	70
+QMCO	2026-09-28	unqualified		base_age_0_below_3	70
+QMCO	2026-09-29	unqualified		base_age_1_below_3	70
+QMCO	2026-09-30	unqualified		base_age_0_below_3	70
+QMCO	2026-10-01	unqualified		base_age_1_below_3	70
+QMCO	2026-10-02	unqualified		base_age_2_below_3	70
+QMCO	2026-10-05	WATCH		runup_222% base_3d close_vs_pivot_-1.9%	70
+QMCO	2026-10-06	WATCH		runup_222% base_4d close_vs_pivot_-3.5%	70
+QMCO	2026-10-07	INVALIDATED		close_31.07_below_base_low_close_31.72	70
+QMCO	2026-10-08	INVALIDATED		close_29.18_below_base_low_close_31.07	70
+QMCO	2026-10-09	WATCH		runup_222% base_7d close_vs_pivot_-12.3%	70
+RBRK	2026-07-03	TIGHTENING		range_1.23 vol_0.61	70
+RBRK	2026-07-06	TIGHTENING		range_0.83 vol_0.59	70
+RBRK	2026-07-07	unqualified		base_age_0_below_3	70
+RBRK	2026-07-08	unqualified		base_age_1_below_3	70
+RBRK	2026-07-09	unqualified		base_age_2_below_3	70
+RBRK	2026-07-10	unqualified		runup_54%_below_90%	70
+RBRK	2026-07-13	unqualified		runup_54%_below_90%	70
+RBRK	2026-07-14	unqualified		runup_54%_below_90%	70
+RBRK	2026-07-15	unqualified		runup_54%_below_90%	70
+RBRK	2026-07-16	unqualified		base_age_0_below_3	70
+RBRK	2026-07-17	unqualified		base_age_1_below_3	70
+RBRK	2026-08-07	unqualified		runup_44%_below_90%	70
+RBRK	2026-08-10	unqualified		runup_44%_below_90%	70
+RBRK	2026-08-11	unqualified		base_age_0_below_3	70
+RBRK	2026-08-12	unqualified		base_age_1_below_3	70
+RBRK	2026-08-13	unqualified		base_age_2_below_3	70
+RBRK	2026-08-14	unqualified		base_age_0_below_3	70
+RBRK	2026-08-17	unqualified		base_age_1_below_3	70
+RBRK	2026-08-18	unqualified		base_age_2_below_3	70
+RBRK	2026-08-19	unqualified		runup_59%_below_90%	70
+RBRK	2026-08-20	unqualified		runup_59%_below_90%	70
+RBRK	2026-08-21	unqualified		runup_59%_below_90%	70
+RBRK	2026-08-24	unqualified		runup_59%_below_90%	70
+RBRK	2026-08-25	unqualified		runup_59%_below_90%	70
+RBRK	2026-08-26	unqualified		runup_59%_below_90%	70
+RBRK	2026-08-27	unqualified		runup_59%_below_90%	70
+RBRK	2026-09-14	unqualified		runup_60%_below_90%	70
+RBRK	2026-09-15	unqualified		runup_60%_below_90%	70
+RBRK	2026-09-16	unqualified		runup_60%_below_90%	70
+RBRK	2026-09-17	unqualified		runup_60%_below_90%	70
+RBRK	2026-09-18	unqualified		runup_60%_below_90%	70
+RBRK	2026-09-21	unqualified		runup_60%_below_90%	70
+RBRK	2026-09-22	unqualified		base_age_0_below_3	70
+RBRK	2026-09-23	unqualified		base_age_1_below_3	70
+RBRK	2026-09-24	unqualified		base_age_1_below_3	70
+RBRK	2026-09-25	unqualified		base_age_2_below_3	70
+RBRK	2026-09-28	unqualified		runup_69%_below_90%	70
+RBRK	2026-09-29	unqualified		runup_69%_below_90%	70
+RBRK	2026-09-30	unqualified		runup_69%_below_90%	70
+RBRK	2026-10-01	unqualified		runup_66%_below_90%	70
+RBRK	2026-10-02	unqualified		runup_66%_below_90%	70
+RBRK	2026-10-05	unqualified		base_age_0_below_3	70
+RBRK	2026-10-06	unqualified		base_age_0_below_3	70
+RBRK	2026-10-07	unqualified		base_age_0_below_3	70
+RBRK	2026-10-08	unqualified		base_age_1_below_3	70
+RBRK	2026-10-09	unqualified		base_age_2_below_3	70
+REPL	2026-07-06	unqualified		base_age_2_below_3	70
+REPL	2026-07-07	WATCH		runup_396% base_3d close_vs_pivot_-7.9%	70
+REPL	2026-07-08	INVALIDATED		close_11.12_below_base_low_close_11.22	70
+REPL	2026-07-09	INVALIDATED		close_11.11_below_base_low_close_11.12	70
+REPL	2026-07-31	unqualified		ma_stack_not_stage2_9.3/10.0/9.2	70
+REPL	2026-08-04	unqualified		ma_stack_not_stage2_9.6/10.0/9.5	70
+REPL	2026-08-05	unqualified		base_age_0_below_3	70
+REPL	2026-08-06	unqualified		base_age_1_below_3	70
+REPL	2026-08-07	unqualified		base_age_2_below_3	70
+REPL	2026-08-10	WATCH		runup_191% base_3d close_vs_pivot_-1.4%	70
+REPL	2026-08-11	WATCH		runup_191% base_4d close_vs_pivot_-1.5%	70
+REPL	2026-08-12	WATCH		runup_191% base_5d close_vs_pivot_+10.0%	70
+REPL	2026-08-13	unqualified		base_age_0_below_3	70
+REPL	2026-08-14	unqualified		base_age_1_below_3	70
+REPL	2026-08-17	unqualified		base_age_2_below_3	70
+REPL	2026-08-18	WATCH		runup_229% base_3d close_vs_pivot_-0.6%	70
+REPL	2026-08-19	TIGHTENING		range_1.00 vol_1.00 fresh	70
+REPL	2026-08-20	INVALIDATED		close_14.05_below_base_low_close_14.63	70
+REPL	2026-08-21	WATCH		runup_229% base_6d close_vs_pivot_-5.8%	70
+REPL	2026-08-24	WATCH		runup_229% base_7d close_vs_pivot_-6.2%	70
+REPL	2026-08-25	WATCH		runup_229% base_8d close_vs_pivot_+0.8%	70
+REPL	2026-08-26	WATCH		runup_229% base_9d close_vs_pivot_+1.3%	70
+REPL	2026-08-27	WATCH		runup_229% base_10d close_vs_pivot_-0.5%	70
+REPL	2026-08-28	WATCH		runup_229% base_11d close_vs_pivot_-1.1%	70
+REPL	2026-08-31	WATCH		runup_229% base_12d close_vs_pivot_-2.4%	70
+REPL	2026-09-01	TIGHTENING		range_0.66 vol_0.75	70
+REPL	2026-09-02	COILED		range_0.66 vol_0.66 bodies_0.38/0.50	70
+REPL	2026-09-03	unqualified		base_age_0_below_3	70
+REPL	2026-09-04	unqualified		base_age_1_below_3	70
+REPL	2026-09-07	unqualified		base_age_1_below_3	70
+REPL	2026-10-01	unqualified		ma_stack_not_stage2_13.0/13.4/13.2	70
+RNG	2026-07-08	unqualified		runup_51%_below_90%	70
+RNG	2026-07-09	unqualified		runup_43%_below_90%	70
+RNG	2026-07-10	unqualified		runup_38%_below_90%	70
+RNG	2026-07-13	unqualified		runup_38%_below_90%	70
+RNG	2026-07-14	unqualified		runup_35%_below_90%	70
+RNG	2026-07-15	unqualified		runup_29%_below_90%	70
+RNG	2026-07-16	unqualified		runup_29%_below_90%	70
+RNG	2026-07-17	unqualified		runup_29%_below_90%	70
+RNG	2026-07-24	unqualified		runup_29%_below_90%	70
+RNG	2026-07-27	unqualified		base_age_0_below_3	70
+RNG	2026-07-28	unqualified		base_age_0_below_3	70
+RNG	2026-07-29	unqualified		base_age_0_below_3	70
+RNG	2026-07-30	unqualified		base_age_0_below_3	70
+RNG	2026-07-31	unqualified		base_age_1_below_3	70
+RNG	2026-08-04	unqualified		runup_76%_below_90%	70
+RNG	2026-08-05	unqualified		base_age_0_below_3	70
+RNG	2026-08-06	unqualified		base_age_0_below_3	70
+RNG	2026-08-07	unqualified		base_age_1_below_3	70
+RNG	2026-08-10	unqualified		base_age_0_below_3	70
+RNG	2026-08-11	unqualified		base_age_1_below_3	70
+RNG	2026-08-12	unqualified		base_age_2_below_3	70
+RNG	2026-08-13	WATCH		runup_94% base_3d close_vs_pivot_+4.8%	70
+RNG	2026-08-14	unqualified		base_age_0_below_3	70
+RNG	2026-08-17	unqualified		base_age_1_below_3	70
+RNG	2026-08-18	unqualified		base_age_2_below_3	70
+RNG	2026-08-19	WATCH		runup_105% base_3d close_vs_pivot_-3.7%	70
+RNG	2026-08-20	WATCH		runup_105% base_4d close_vs_pivot_-4.2%	70
+RNG	2026-08-21	WATCH		runup_105% base_5d close_vs_pivot_-2.1%	70
+RNG	2026-08-24	WATCH		runup_105% base_6d close_vs_pivot_-2.0%	70
+RNG	2026-08-25	WATCH		runup_105% base_7d close_vs_pivot_-4.1%	70
+RNG	2026-08-26	WATCH		runup_105% base_8d close_vs_pivot_-3.5%	70
+RNG	2026-08-27	WATCH		runup_105% base_9d close_vs_pivot_+0.1%	70
+RNG	2026-08-28	WATCH		runup_105% base_10d close_vs_pivot_+1.4%	70
+RNG	2026-08-31	unqualified		base_age_1_below_3	70
+RNG	2026-09-01	unqualified		base_age_2_below_3	70
+RNG	2026-09-02	unqualified		base_age_0_below_3	70
+RNG	2026-09-03	unqualified		base_age_0_below_3	70
+RNG	2026-09-04	unqualified		base_age_0_below_3	70
+RNG	2026-09-08	unqualified		base_age_1_below_3	70
+RNG	2026-09-09	unqualified		base_age_2_below_3	70
+RNG	2026-09-10	INVALIDATED		close_69.04_below_base_low_close_69.64	70
+RNG	2026-09-11	INVALIDATED		close_68.92_below_base_low_close_69.04	70
+RNG	2026-09-14	unqualified		adr_4.0pct_below_4pct	70
+RNG	2026-09-15	unqualified		adr_4.0pct_below_4pct	70
+RNG	2026-09-16	WATCH		runup_110% base_7d close_vs_pivot_-5.7%	70
+RNG	2026-09-17	WATCH		runup_110% base_8d close_vs_pivot_-4.1%	70
+RNG	2026-09-18	WATCH		runup_110% base_9d close_vs_pivot_-7.8%	70
+RNG	2026-09-21	WATCH		runup_110% base_10d close_vs_pivot_-0.8%	70
+RNG	2026-09-22	WATCH		runup_110% base_11d close_vs_pivot_+2.3%	70
+RNG	2026-09-23	unqualified		base_age_0_below_3	70
+RNG	2026-09-24	unqualified		base_age_0_below_3	70
+RNG	2026-09-25	unqualified		base_age_1_below_3	70
+RNG	2026-09-28	unqualified		base_age_2_below_3	70
+RNG	2026-09-29	unqualified		runup_56%_below_90%	70
+RNG	2026-09-30	unqualified		runup_56%_below_90%	70
+RNG	2026-10-01	unqualified		runup_56%_below_90%	70
+RNG	2026-10-02	unqualified		runup_56%_below_90%	70
+RNG	2026-10-05	unqualified		runup_56%_below_90%	70
+RNG	2026-10-06	unqualified		runup_56%_below_90%	70
+RNG	2026-10-07	unqualified		runup_56%_below_90%	70
+RNG	2026-10-08	unqualified		runup_56%_below_90%	70
+RNG	2026-10-09	unqualified		runup_56%_below_90%	70
+RUM	2026-08-12	unqualified		base_age_0_below_3	70
+RUM	2026-08-13	unqualified		base_age_0_below_3	70
+RUM	2026-08-14	unqualified		base_age_0_below_3	70
+RUM	2026-08-17	unqualified		base_age_1_below_3	70
+RUM	2026-08-18	unqualified		base_age_2_below_3	70
+RUM	2026-08-19	unqualified		runup_56%_below_90%	70
+RUM	2026-08-20	unqualified		runup_56%_below_90%	70
+RUM	2026-08-21	unqualified		runup_56%_below_90%	70
+RUM	2026-08-24	unqualified		base_age_0_below_3	70
+RUM	2026-08-25	unqualified		base_age_0_below_3	70
+RUM	2026-08-26	unqualified		base_age_0_below_3	70
+RUM	2026-08-27	unqualified		base_age_1_below_3	70
+RUM	2026-08-28	unqualified		base_age_2_below_3	70
+RUM	2026-08-31	INVALIDATED		close_8.96_below_base_low_close_8.98	70
+RUM	2026-09-01	INVALIDATED		close_8.53_below_base_low_close_8.96	70
+RUM	2026-09-02	WATCH		runup_94% base_5d close_vs_pivot_-16.9%	70
+RUM	2026-09-03	TIGHTENING		range_0.74 vol_0.91	70
+RUM	2026-09-04	TIGHTENING		range_0.69 vol_0.81	70
+RUM	2026-09-07	TIGHTENING		range_0.69 vol_0.81	70
+RUM	2026-09-08	INVALIDATED		close_8.39_below_base_low_close_8.53	70
+RUM	2026-09-09	INVALIDATED		close_7.52_below_base_low_close_8.39	70
+RUM	2026-09-10	INVALIDATED		close_7.37_below_base_low_close_7.52	70
+RUM	2026-09-11	INVALIDATED		close_7.17_below_base_low_close_7.37	70
+RUM	2026-09-18	unqualified		ma_stack_not_stage2_8.2/8.7/7.4	70
+RUM	2026-09-21	unqualified		ma_stack_not_stage2_8.2/8.7/7.4	70
+RUM	2026-09-22	unqualified		ma_stack_not_stage2_8.3/8.7/7.5	70
+RUM	2026-10-01	unqualified		runup_84%_below_90%	70
+RUM	2026-10-02	unqualified		runup_87%_below_90%	70
+SDGR	2026-07-06	unqualified		runup_54%_below_90%	70
+SDGR	2026-08-06	unqualified		runup_52%_below_90%	70
+SDGR	2026-08-07	unqualified		base_age_0_below_3	70
+SDGR	2026-08-10	unqualified		base_age_0_below_3	70
+SDGR	2026-08-11	unqualified		base_age_1_below_3	70
+SDGR	2026-08-12	unqualified		base_age_0_below_3	70
+SDGR	2026-08-13	unqualified		base_age_1_below_3	70
+SDGR	2026-08-14	unqualified		base_age_2_below_3	70
+SDGR	2026-08-17	unqualified		runup_33%_below_90%	70
+SDGR	2026-08-18	unqualified		runup_33%_below_90%	70
+SDGR	2026-08-19	unqualified		runup_33%_below_90%	70
+SDGR	2026-08-20	unqualified		base_age_0_below_3	70
+SDGR	2026-08-21	unqualified		base_age_1_below_3	70
+SDGR	2026-08-24	unqualified		base_age_0_below_3	70
+SDGR	2026-08-25	unqualified		base_age_1_below_3	70
+SDGR	2026-08-26	unqualified		base_age_2_below_3	70
+SDGR	2026-08-27	unqualified		runup_40%_below_90%	70
+SDGR	2026-08-28	unqualified		runup_40%_below_90%	70
+SDGR	2026-09-01	unqualified		runup_40%_below_90%	70
+SDGR	2026-09-02	unqualified		base_age_0_below_3	70
+SDGR	2026-09-03	unqualified		base_age_1_below_3	70
+SDGR	2026-09-04	unqualified		base_age_2_below_3	70
+SDGR	2026-09-08	unqualified		runup_44%_below_90%	70
+SDGR	2026-09-14	unqualified		runup_44%_below_90%	70
+SDGR	2026-09-15	unqualified		runup_44%_below_90%	70
+SDGR	2026-09-16	unqualified		base_age_0_below_3	70
+SDGR	2026-09-17	unqualified		base_age_0_below_3	70
+SDGR	2026-09-18	unqualified		base_age_0_below_3	70
+SDGR	2026-09-21	unqualified		base_age_1_below_3	70
+SDGR	2026-09-22	unqualified		base_age_2_below_3	70
+SDGR	2026-09-23	unqualified		base_age_1_below_3	70
+SDGR	2026-09-24	unqualified		base_age_0_below_3	70
+SDGR	2026-09-25	unqualified		base_age_1_below_3	70
+SDGR	2026-09-28	unqualified		base_age_2_below_3	70
+SDGR	2026-09-29	WATCH		runup_112% base_3d close_vs_pivot_-2.6%	70
+SDGR	2026-09-30	WATCH		runup_112% base_4d close_vs_pivot_-0.3%	70
+SDGR	2026-10-01	WATCH		runup_112% base_5d close_vs_pivot_-2.2%	70
+SDGR	2026-10-02	WATCH		runup_112% base_6d close_vs_pivot_-2.7%	70
+SDGR	2026-10-05	WATCH		runup_112% base_7d close_vs_pivot_+4.7%	70
+SDGR	2026-10-06	unqualified		base_age_0_below_3	70
+SDGR	2026-10-07	unqualified		base_age_0_below_3	70
+SEZL	2026-07-06	unqualified		base_age_0_below_3	70
+SEZL	2026-07-07	unqualified		base_age_1_below_3	70
+SEZL	2026-07-08	unqualified		base_age_2_below_3	70
+SEZL	2026-07-09	WATCH		runup_129% base_3d close_vs_pivot_-4.2%	70
+SEZL	2026-07-10	WATCH		runup_129% base_4d close_vs_pivot_-3.0%	70
+SEZL	2026-07-14	WATCH		runup_129% base_6d close_vs_pivot_-1.3%	70
+SEZL	2026-07-15	WATCH		runup_129% base_7d close_vs_pivot_+2.0%	70
+SEZL	2026-07-16	unqualified		base_age_0_below_3	70
+SEZL	2026-07-17	unqualified		base_age_1_below_3	70
+SEZL	2026-07-20	unqualified		base_age_2_below_3	70
+SEZL	2026-07-21	unqualified		flagpole_no_volume_confirmation_grinder	70
+SEZL	2026-09-14	unqualified		adv_376k_below_500k_shares	70
+SEZL	2026-10-08	unqualified		adv_462k_below_500k_shares	70
+SEZL	2026-10-09	unqualified		adv_475k_below_500k_shares	70
+SIMO	2026-07-06	WATCH		runup_153% base_8d close_vs_pivot_-10.2%	70
+SIMO	2026-08-04	unqualified		runup_61%_below_90%	70
+SIMO	2026-08-06	unqualified		runup_46%_below_90%	70
+SIMO	2026-08-18	unqualified		runup_37%_below_90%	70
+SIMO	2026-08-19	unqualified		runup_37%_below_90%	70
+SIMO	2026-08-31	unqualified		runup_39%_below_90%	70
+SIMO	2026-09-01	unqualified		runup_39%_below_90%	70
+SIMO	2026-09-08	unqualified		runup_35%_below_90%	70
+SIMO	2026-09-09	unqualified		runup_35%_below_90%	70
+SIMO	2026-09-10	unqualified		runup_35%_below_90%	70
+SIMO	2026-09-11	unqualified		runup_35%_below_90%	70
+SIMO	2026-09-18	unqualified		runup_42%_below_90%	70
+SIMO	2026-09-21	unqualified		runup_42%_below_90%	70
+SIMO	2026-09-22	unqualified		runup_42%_below_90%	70
+SIMO	2026-09-23	unqualified		runup_42%_below_90%	70
+SIMO	2026-09-24	unqualified		runup_42%_below_90%	70
+SIMO	2026-09-25	unqualified		runup_42%_below_90%	70
+SIMO	2026-09-28	unqualified		runup_42%_below_90%	70
+SIMO	2026-09-29	unqualified		runup_42%_below_90%	70
+SIMO	2026-10-01	unqualified		runup_42%_below_90%	70
+SIMO	2026-10-05	unqualified		runup_42%_below_90%	70
+SIMO	2026-10-08	unqualified		runup_42%_below_90%	70
+SLN	2026-08-10	unqualified		pole_12.17_only_69%_of_52w_high_17.58_(not_stage2)	70
+SLN	2026-08-11	unqualified		base_age_0_below_3	70
+SLN	2026-08-12	unqualified		base_age_1_below_3	70
+SLN	2026-08-13	unqualified		base_age_2_below_3	70
+SLN	2026-08-14	WATCH		runup_170% base_3d close_vs_pivot_-21.9%	70
+SLN	2026-08-17	WATCH		runup_170% base_4d close_vs_pivot_-18.4%	70
+SLN	2026-08-18	WATCH		runup_170% base_5d close_vs_pivot_-19.8%	70
+SLN	2026-08-19	WATCH		runup_170% base_6d close_vs_pivot_-22.6%	70
+SLN	2026-08-20	INVALIDATED		close_13.17_below_base_low_close_13.58	70
+SLN	2026-08-21	unqualified		flag_low_13.01_below_75%_of_pole_17.58	70
+SLN	2026-08-24	unqualified		flag_low_13.01_below_75%_of_pole_17.58	70
+SLN	2026-08-25	unqualified		flag_low_13.01_below_75%_of_pole_17.58	70
+SLS	2026-07-06	WATCH		runup_225% base_3d close_vs_pivot_-11.0%	70
+SLS	2026-07-07	WATCH		runup_225% base_4d close_vs_pivot_-13.8%	70
+SLS	2026-07-08	WATCH		runup_225% base_5d close_vs_pivot_-12.2%	70
+SLS	2026-07-09	WATCH		runup_225% base_6d close_vs_pivot_-13.8%	70
+SLS	2026-07-10	INVALIDATED		close_12.76_below_base_low_close_13.27	70
+SLS	2026-07-13	INVALIDATED		close_12.62_below_base_low_close_12.76	70
+SLS	2026-07-14	TIGHTENING		range_0.57 vol_0.61 fresh	70
+SLS	2026-07-15	TIGHTENING		range_0.57 vol_0.58	70
+SLS	2026-07-16	INVALIDATED		close_11.75_below_base_low_close_12.62	70
+SLS	2026-07-17	unqualified		flag_low_11.51_below_75%_of_pole_15.67	70
+SLS	2026-07-20	INVALIDATED		close_12.47_below_sma20_12.59	70
+SLS	2026-08-14	unqualified		flag_low_9.19_below_75%_of_pole_13.54	70
+SLS	2026-08-17	unqualified		flag_low_9.19_below_75%_of_pole_13.54	70
+SLS	2026-08-18	unqualified		flag_low_9.19_below_75%_of_pole_13.54	70
+SLS	2026-08-19	unqualified		flag_low_9.19_below_75%_of_pole_13.54	70
+SLS	2026-08-20	unqualified		base_age_0_below_3	70
+SLS	2026-08-21	unqualified		base_age_1_below_3	70
+SLS	2026-08-24	unqualified		base_age_0_below_3	70
+SLS	2026-08-25	unqualified		base_age_1_below_3	70
+SLS	2026-08-26	unqualified		base_age_2_below_3	70
+SLS	2026-08-27	unqualified		runup_71%_below_90%	70
+SLS	2026-08-28	unqualified		runup_71%_below_90%	70
+SLS	2026-08-31	unqualified		runup_71%_below_90%	70
+SLS	2026-09-01	unqualified		runup_71%_below_90%	70
+SLS	2026-09-02	unqualified		runup_71%_below_90%	70
+SLS	2026-09-03	unqualified		runup_71%_below_90%	70
+SLS	2026-09-04	unqualified		runup_71%_below_90%	70
+SLS	2026-09-07	unqualified		runup_71%_below_90%	70
+SLS	2026-09-08	unqualified		runup_71%_below_90%	70
+SLS	2026-09-09	unqualified		runup_71%_below_90%	70
+SLS	2026-09-10	unqualified		runup_71%_below_90%	70
+SMJF	2026-08-13	unqualified		base_age_0_below_3	70
+SMJF	2026-08-14	unqualified		base_age_0_below_3	70
+SMJF	2026-08-17	unqualified		base_age_1_below_3	70
+SMJF	2026-08-18	unqualified		base_age_0_below_3	70
+SMJF	2026-08-19	unqualified		base_age_0_below_3	70
+SMJF	2026-08-20	unqualified		base_age_1_below_3	70
+SMJF	2026-08-21	unqualified		base_age_0_below_3	70
+SMJF	2026-08-24	unqualified		base_age_1_below_3	70
+SMJF	2026-08-25	unqualified		base_age_2_below_3	70
+SMJF	2026-08-26	WATCH		runup_130% base_3d close_vs_pivot_-1.3%	70
+SNOW	2026-07-06	TIGHTENING		range_0.67 vol_1.11	70
+SNOW	2026-07-07	TIGHTENING		range_0.67 vol_0.65	70
+SNOW	2026-07-08	COILED		range_0.67 vol_0.59 bodies_0.22/0.29	70
+SNOW	2026-07-09	COILED	TIGHTENING	range_0.66 vol_0.71	70
+SNOW	2026-07-10	unqualified		base_age_2_below_3	70
+SNOW	2026-07-13	unqualified		runup_88%_below_90%	70
+SNOW	2026-07-14	unqualified		runup_88%_below_90%	70
+SNOW	2026-07-15	unqualified		base_age_0_below_3	70
+SNOW	2026-07-16	unqualified		base_age_1_below_3	70
+SNOW	2026-07-17	unqualified		base_age_2_below_3	70
+SNOW	2026-07-20	unqualified		runup_87%_below_90%	70
+SNOW	2026-07-21	unqualified		runup_87%_below_90%	70
+SNOW	2026-07-22	unqualified		runup_87%_below_90%	70
+SNOW	2026-07-23	unqualified		runup_87%_below_90%	70
+SNOW	2026-07-24	unqualified		runup_87%_below_90%	70
+SNOW	2026-07-27	unqualified		runup_87%_below_90%	70
+SNOW	2026-07-29	unqualified		runup_87%_below_90%	70
+SNOW	2026-07-30	unqualified		base_age_0_below_3	70
+SNOW	2026-07-31	unqualified		base_age_1_below_3	70
+SNOW	2026-08-04	unqualified		base_age_0_below_3	70
+SNOW	2026-08-05	unqualified		base_age_1_below_3	70
+SNOW	2026-08-06	unqualified		base_age_1_below_3	70
+SNOW	2026-08-07	unqualified		base_age_2_below_3	70
+SNOW	2026-08-10	unqualified		base_age_0_below_3	70
+SNOW	2026-08-11	unqualified		base_age_0_below_3	70
+SNOW	2026-08-12	unqualified		base_age_1_below_3	70
+SNOW	2026-08-13	unqualified		base_age_2_below_3	70
+SNOW	2026-08-14	unqualified		runup_57%_below_90%	70
+SNOW	2026-08-17	unqualified		runup_57%_below_90%	70
+SNOW	2026-08-18	unqualified		runup_57%_below_90%	70
+SNOW	2026-08-19	unqualified		runup_57%_below_90%	70
+SNOW	2026-08-20	unqualified		runup_57%_below_90%	70
+SNOW	2026-08-21	unqualified		runup_57%_below_90%	70
+SNOW	2026-09-03	unqualified		adr_3.8pct_below_4pct	70
+SNOW	2026-09-04	unqualified		adr_4.0pct_below_4pct	70
+SNOW	2026-09-07	unqualified		adr_4.0pct_below_4pct	70
+SNOW	2026-09-08	unqualified		adr_3.9pct_below_4pct	70
+SNOW	2026-09-09	unqualified		adr_3.9pct_below_4pct	70
+SNOW	2026-09-10	unqualified		adr_4.0pct_below_4pct	70
+SNOW	2026-09-11	unqualified		adr_4.0pct_below_4pct	70
+SNOW	2026-09-14	unqualified		runup_52%_below_90%	70
+SNOW	2026-09-15	unqualified		runup_52%_below_90%	70
+SNOW	2026-09-16	unqualified		runup_52%_below_90%	70
+SNOW	2026-09-17	unqualified		runup_52%_below_90%	70
+SNOW	2026-09-18	unqualified		runup_52%_below_90%	70
+SNOW	2026-09-21	unqualified		runup_52%_below_90%	70
+SNOW	2026-09-22	unqualified		runup_52%_below_90%	70
+SNOW	2026-09-23	unqualified		runup_52%_below_90%	70
+SNOW	2026-09-25	unqualified		runup_52%_below_90%	70
+SNOW	2026-09-30	unqualified		runup_52%_below_90%	70
+SNOW	2026-10-01	unqualified		runup_52%_below_90%	70
+SNOW	2026-10-02	unqualified		runup_52%_below_90%	70
+SNOW	2026-10-09	unqualified		adr_4.0pct_below_4pct	70
+STTK	2026-07-24	WATCH		runup_134% base_3d close_vs_pivot_-4.7%	70
+TEAM	2026-07-13	unqualified		runup_90%_below_90%	70
+TEAM	2026-07-14	unqualified		runup_85%_below_90%	70
+TEAM	2026-07-15	unqualified		runup_67%_below_90%	70
+TEAM	2026-07-16	unqualified		runup_67%_below_90%	70
+TEAM	2026-07-17	unqualified		runup_30%_below_90%	70
+TEAM	2026-07-20	unqualified		runup_30%_below_90%	70
+TEAM	2026-07-21	unqualified		runup_30%_below_90%	70
+TEAM	2026-07-27	unqualified		runup_30%_below_90%	70
+TEAM	2026-07-28	unqualified		runup_30%_below_90%	70
+TEAM	2026-07-29	unqualified		base_age_0_below_3	70
+TEAM	2026-07-30	unqualified		base_age_0_below_3	70
+TEAM	2026-07-31	unqualified		base_age_1_below_3	70
+TEAM	2026-08-04	unqualified		base_age_0_below_3	70
+TEAM	2026-08-05	unqualified		base_age_1_below_3	70
+TEAM	2026-08-06	unqualified		base_age_0_below_3	70
+TEAM	2026-08-07	unqualified		base_age_1_below_3	70
+TEAM	2026-08-10	unqualified		base_age_0_below_3	70
+TEAM	2026-08-11	unqualified		base_age_1_below_3	70
+TEAM	2026-08-12	unqualified		base_age_2_below_3	70
+TEAM	2026-08-13	unqualified		base_age_2_below_3	70
+TEAM	2026-08-14	unqualified		base_age_0_below_3	70
+TEAM	2026-08-17	unqualified		base_age_1_below_3	70
+TEAM	2026-08-18	unqualified		base_age_2_below_3	70
+TEAM	2026-08-19	WATCH		runup_125% base_3d close_vs_pivot_+4.3%	70
+TEAM	2026-08-20	unqualified		base_age_0_below_3	70
+TEAM	2026-08-21	unqualified		base_age_1_below_3	70
+TEAM	2026-08-24	unqualified		base_age_2_below_3	70
+TEAM	2026-08-25	INVALIDATED		close_166.49_below_base_low_close_171.33	70
+TEAM	2026-08-26	WATCH		runup_137% base_4d close_vs_pivot_-4.4%	70
+TEAM	2026-08-27	WATCH		runup_137% base_5d close_vs_pivot_+5.4%	70
+TEAM	2026-08-28	unqualified		base_age_0_below_3	70
+TEAM	2026-08-31	unqualified		base_age_0_below_3	70
+TEAM	2026-09-01	unqualified		base_age_1_below_3	70
+TEAM	2026-09-02	unqualified		base_age_2_below_3	70
+TEAM	2026-09-03	WATCH		runup_144% base_3d close_vs_pivot_-0.1%	70
+TEAM	2026-09-04	WATCH		runup_144% base_4d close_vs_pivot_-2.8%	70
+TEAM	2026-09-08	INVALIDATED		close_176.42_below_base_low_close_186.44	70
+TEAM	2026-09-09	WATCH		runup_144% base_6d close_vs_pivot_-8.8%	70
+TEAM	2026-09-10	WATCH		runup_144% base_7d close_vs_pivot_-7.9%	70
+TEAM	2026-09-11	WATCH		runup_144% base_8d close_vs_pivot_-7.8%	70
+TEAM	2026-09-14	WATCH		runup_144% base_9d close_vs_pivot_-1.1%	70
+TEAM	2026-09-15	WATCH		runup_144% base_10d close_vs_pivot_-2.6%	70
+TEAM	2026-09-16	WATCH		runup_144% base_11d close_vs_pivot_-2.4%	70
+TEAM	2026-09-17	WATCH		runup_144% base_12d close_vs_pivot_-1.2%	70
+TEAM	2026-09-18	WATCH		runup_144% base_13d close_vs_pivot_-1.5%	70
+TEAM	2026-09-21	WATCH		runup_144% base_14d close_vs_pivot_+0.4%	70
+TEAM	2026-09-22	TIGHTENING		range_0.71 vol_1.06	70
+TEAM	2026-09-23	TIGHTENING		range_0.71 vol_1.18	70
+TEAM	2026-09-24	TIGHTENING	WATCH	runup_147% base_16d close_vs_pivot_-2.4%	70
+TEAM	2026-09-25	INVALIDATED		close_187.74_below_sma20_188.65	70
+TEAM	2026-09-28	INVALIDATED		close_178.54_below_sma20_188.05	70
+TEAM	2026-09-29	INVALIDATED		close_175.96_below_base_low_close_176.42	70
+TEAM	2026-09-30	INVALIDATED		close_179.29_below_sma20_186.75	70
+TEAM	2026-10-01	WATCH		runup_147% base_21d close_vs_pivot_-3.7%	70
+TEAM	2026-10-02	WATCH		runup_147% base_22d close_vs_pivot_-4.8%	70
+TEAM	2026-10-05	WATCH		runup_147% base_23d close_vs_pivot_-0.3%	70
+TEAM	2026-10-06	unqualified		ma_stack_not_stage2_187.8/187.8/167.8	70
+TEAM	2026-10-07	unqualified		ma_stack_not_stage2_187.8/188.7/169.7	70
+TEAM	2026-10-08	unqualified		ma_stack_not_stage2_188.9/189.9/171.7	70
+TEAM	2026-10-09	unqualified		ma_stack_not_stage2_190.8/191.3/173.8	70
+TEM	2026-07-06	unqualified		base_age_1_below_3	70
+TEM	2026-07-07	unqualified		base_age_2_below_3	70
+TEM	2026-07-08	unqualified		runup_48%_below_90%	70
+TEM	2026-07-09	unqualified		runup_48%_below_90%	70
+TEM	2026-07-10	unqualified		runup_48%_below_90%	70
+TEM	2026-07-13	unqualified		runup_48%_below_90%	70
+TEM	2026-07-14	unqualified		runup_48%_below_90%	70
+TEM	2026-07-15	unqualified		runup_48%_below_90%	70
+TEM	2026-08-07	unqualified		runup_48%_below_90%	70
+TEM	2026-08-10	unqualified		runup_46%_below_90%	70
+TEM	2026-08-11	unqualified		runup_46%_below_90%	70
+TEM	2026-08-12	unqualified		runup_46%_below_90%	70
+TEM	2026-08-13	unqualified		runup_46%_below_90%	70
+TEM	2026-08-14	unqualified		runup_48%_below_90%	70
+TEM	2026-08-17	unqualified		runup_39%_below_90%	70
+TEM	2026-08-18	unqualified		runup_39%_below_90%	70
+TEM	2026-08-19	unqualified		runup_41%_below_90%	70
+TEM	2026-08-20	unqualified		base_age_0_below_3	70
+TEM	2026-08-21	unqualified		base_age_0_below_3	70
+TEM	2026-08-24	unqualified		base_age_0_below_3	70
+TEM	2026-08-25	unqualified		base_age_1_below_3	70
+TEM	2026-08-26	unqualified		base_age_2_below_3	70
+TEM	2026-08-27	unqualified		runup_79%_below_90%	70
+TEM	2026-08-28	unqualified		runup_79%_below_90%	70
+TEM	2026-08-31	unqualified		runup_79%_below_90%	70
+TEM	2026-09-01	unqualified		runup_79%_below_90%	70
+TEM	2026-09-02	unqualified		runup_79%_below_90%	70
+TEM	2026-09-03	unqualified		runup_79%_below_90%	70
+TEM	2026-09-04	unqualified		runup_79%_below_90%	70
+TEM	2026-09-07	unqualified		runup_79%_below_90%	70
+TEM	2026-09-08	unqualified		runup_79%_below_90%	70
+TEM	2026-09-16	unqualified		runup_79%_below_90%	70
+TEM	2026-09-17	unqualified		runup_79%_below_90%	70
+TEM	2026-09-18	unqualified		base_age_0_below_3	70
+TEM	2026-09-21	unqualified		base_age_1_below_3	70
+TEM	2026-09-22	unqualified		base_age_2_below_3	70
+TEM	2026-09-23	INVALIDATED		close_76.59_below_base_low_close_77.19	70
+TEM	2026-09-24	WATCH		runup_99% base_4d close_vs_pivot_+1.2%	70
+TEM	2026-09-25	WATCH		runup_99% base_5d close_vs_pivot_+4.6%	70
+TEM	2026-09-28	unqualified		base_age_0_below_3	70
+TEM	2026-09-29	unqualified		base_age_1_below_3	70
+TEM	2026-09-30	unqualified		base_age_0_below_3	70
+TEM	2026-10-01	unqualified		base_age_1_below_3	70
+TEM	2026-10-02	unqualified		base_age_2_below_3	70
+TEM	2026-10-05	WATCH		runup_99% base_3d close_vs_pivot_-6.2%	70
+TEM	2026-10-06	INVALIDATED		close_71.98_below_base_low_close_76.50	70
+TEM	2026-10-07	INVALIDATED		close_70.35_below_base_low_close_71.98	70
+TJGC	2026-08-28	unqualified		base_age_0_below_3	70
+TJGC	2026-08-31	unqualified		base_age_0_below_3	70
+TJGC	2026-09-01	unqualified		base_age_1_below_3	70
+TJGC	2026-09-02	unqualified		base_age_0_below_3	70
+TJGC	2026-09-03	unqualified		base_age_1_below_3	70
+TJGC	2026-09-04	unqualified		base_age_2_below_3	70
+TJGC	2026-09-08	WATCH		runup_234% base_3d close_vs_pivot_-0.9%	70
+TJGC	2026-09-09	COILED		fresh_2bar 3.4%/atr 9.5% bodies_0.18/0.05	70
+TJGC	2026-09-10	COILED		fresh_2bar 3.8%/atr 9.4% bodies_0.06/0.18	70
+TJGC	2026-09-11	COILED	WATCH	runup_234% base_6d close_vs_pivot_+5.5%	70
+TJGC	2026-09-14	unqualified		base_age_0_below_3	70
+TJGC	2026-09-15	unqualified		base_age_0_below_3	70
+TJGC	2026-09-16	unqualified		base_age_1_below_3	70
+TJGC	2026-09-17	unqualified		base_age_2_below_3	70
+TJGC	2026-09-18	unqualified		pole_12.38_only_65%_of_52w_high_19.18_(not_stage2)	70
+TJGC	2026-09-21	unqualified		base_age_0_below_3	70
+TJGC	2026-09-22	unqualified		base_age_1_below_3	70
+TJGC	2026-09-23	unqualified		base_age_2_below_3	70
+TJGC	2026-09-24	unqualified		base_age_0_below_3	70
+TJGC	2026-09-25	unqualified		base_age_0_below_3	70
+TJGC	2026-09-28	unqualified		base_age_0_below_3	70
+TJGC	2026-09-29	unqualified		base_age_1_below_3	70
+TJGC	2026-09-30	unqualified		base_age_0_below_3	70
+TJGC	2026-10-01	unqualified		base_age_1_below_3	70
+TJGC	2026-10-02	unqualified		base_age_2_below_3	70
+TJGC	2026-10-05	unqualified		adv_377k_below_500k_shares	70
+TJGC	2026-10-06	unqualified		adv_281k_below_500k_shares	70
+TRAX	2026-07-15	unqualified		base_age_2_below_3	70
+TRAX	2026-07-16	WATCH		runup_161% base_3d close_vs_pivot_-5.9%	70
+TRAX	2026-07-17	WATCH		runup_161% base_4d close_vs_pivot_-5.1%	70
+TRAX	2026-07-20	unqualified		base_age_0_below_3	70
+TRAX	2026-07-21	unqualified		base_age_1_below_3	70
+TRAX	2026-07-22	unqualified		base_age_0_below_3	70
+TRAX	2026-07-23	unqualified		base_age_1_below_3	70
+TRAX	2026-07-24	unqualified		base_age_2_below_3	70
+TRAX	2026-07-27	WATCH		runup_191% base_3d close_vs_pivot_-2.0%	70
+TRAX	2026-07-28	unqualified		base_age_0_below_3	70
+TRAX	2026-07-29	unqualified		base_age_1_below_3	70
+TRAX	2026-07-30	unqualified		base_age_2_below_3	70
+TRAX	2026-07-31	unqualified		base_age_0_below_3	70
+TRAX	2026-08-04	unqualified		base_age_2_below_3	70
+TRAX	2026-08-05	unqualified		base_age_0_below_3	70
+TRAX	2026-08-06	unqualified		base_age_1_below_3	70
+TRAX	2026-08-07	unqualified		base_age_2_below_3	70
+TRAX	2026-08-10	WATCH		runup_223% base_3d close_vs_pivot_-3.3%	70
+TRAX	2026-08-11	WATCH		runup_223% base_4d close_vs_pivot_-5.7%	70
+TRAX	2026-08-12	WATCH		runup_223% base_5d close_vs_pivot_-7.0%	70
+TRAX	2026-08-13	INVALIDATED		close_44.03_below_base_low_close_45.31	70
+TRAX	2026-08-14	WATCH		runup_223% base_7d close_vs_pivot_-11.2%	70
+TWLO	2026-07-08	TIGHTENING		range_0.59 vol_0.68	70
+TWLO	2026-07-09	TIGHTENING		range_0.59 vol_0.66	70
+TWLO	2026-07-10	TIGHTENING		range_0.75 vol_0.66	70
+TWLO	2026-07-13	TIGHTENING		range_0.83 vol_0.69	70
+TWLO	2026-07-14	TIGHTENING	WATCH	runup_110% base_24d close_vs_pivot_-8.2%	70
+TWLO	2026-07-15	TIGHTENING	WATCH	runup_96% base_24d close_vs_pivot_-7.0%	70
+TWLO	2026-07-16	unqualified		runup_28%_below_90%	70
+TWLO	2026-07-17	unqualified		runup_28%_below_90%	70
+TWLO	2026-07-20	unqualified		runup_28%_below_90%	70
+TWLO	2026-08-07	unqualified		runup_28%_below_90%	70
+TWLO	2026-08-10	unqualified		base_age_0_below_3	70
+TWLO	2026-08-11	unqualified		base_age_1_below_3	70
+TWLO	2026-08-12	unqualified		base_age_2_below_3	70
+TWLO	2026-08-13	unqualified		runup_42%_below_90%	70
+TWLO	2026-08-14	unqualified		runup_42%_below_90%	70
+TWLO	2026-08-17	unqualified		runup_42%_below_90%	70
+TWLO	2026-08-18	unqualified		runup_42%_below_90%	70
+TWLO	2026-08-19	unqualified		runup_42%_below_90%	70
+TWLO	2026-08-20	unqualified		runup_42%_below_90%	70
+TWLO	2026-08-21	unqualified		runup_42%_below_90%	70
+TWLO	2026-08-24	unqualified		runup_42%_below_90%	70
+TWLO	2026-08-25	unqualified		runup_42%_below_90%	70
+TWLO	2026-08-26	unqualified		runup_42%_below_90%	70
+TWLO	2026-08-27	unqualified		runup_42%_below_90%	70
+TWLO	2026-09-09	unqualified		runup_42%_below_90%	70
+TWLO	2026-09-10	unqualified		runup_42%_below_90%	70
+TWLO	2026-09-14	unqualified		adr_4.0pct_below_4pct	70
+TWLO	2026-09-15	unqualified		runup_43%_below_90%	70
+TWLO	2026-09-16	unqualified		runup_44%_below_90%	70
+TWLO	2026-09-17	unqualified		adr_4.0pct_below_4pct	70
+TWLO	2026-09-18	unqualified		runup_41%_below_90%	70
+TWLO	2026-09-21	unqualified		runup_41%_below_90%	70
+TWLO	2026-09-22	unqualified		base_age_0_below_3	70
+TWLO	2026-09-23	unqualified		base_age_0_below_3	70
+TWLO	2026-09-24	unqualified		base_age_0_below_3	70
+TWLO	2026-09-25	unqualified		base_age_0_below_3	70
+TWLO	2026-09-28	unqualified		base_age_1_below_3	70
+TWLO	2026-09-29	unqualified		base_age_2_below_3	70
+TWLO	2026-09-30	unqualified		runup_66%_below_90%	70
+TWLO	2026-10-01	unqualified		runup_66%_below_90%	70
+TWLO	2026-10-02	unqualified		runup_66%_below_90%	70
+TWLO	2026-10-05	unqualified		runup_66%_below_90%	70
+TWLO	2026-10-06	unqualified		runup_66%_below_90%	70
+TWLO	2026-10-07	unqualified		runup_66%_below_90%	70
+TWLO	2026-10-08	unqualified		runup_66%_below_90%	70
+TWLO	2026-10-09	unqualified		runup_66%_below_90%	70
+TWST	2026-07-06	WATCH		runup_117% base_4d close_vs_pivot_-4.1%	70
+TWST	2026-07-07	INVALIDATED		close_91.03_below_base_low_close_98.36	70
+TWST	2026-07-08	INVALIDATED		close_89.38_below_base_low_close_91.03	70
+TWST	2026-07-09	WATCH		runup_117% base_7d close_vs_pivot_-10.1%	70
+TWST	2026-07-13	INVALIDATED		close_90.35_below_sma20_91.40	70
+TWST	2026-07-14	WATCH		runup_117% base_10d close_vs_pivot_-11.2%	70
+TWST	2026-08-04	WATCH		runup_120% base_21d close_vs_pivot_-5.7%	70
+TWST	2026-08-05	WATCH		runup_120% base_22d close_vs_pivot_+9.0%	70
+TWST	2026-08-06	unqualified		base_age_0_below_3	70
+TWST	2026-08-07	unqualified		base_age_1_below_3	70
+TWST	2026-08-10	unqualified		base_age_0_below_3	70
+TWST	2026-08-11	unqualified		base_age_0_below_3	70
+TWST	2026-08-12	unqualified		base_age_1_below_3	70
+TWST	2026-08-13	unqualified		base_age_2_below_3	70
+TWST	2026-08-14	unqualified		runup_68%_below_90%	70
+TWST	2026-08-17	unqualified		runup_68%_below_90%	70
+TWST	2026-08-18	unqualified		runup_68%_below_90%	70
+TWST	2026-08-19	unqualified		runup_68%_below_90%	70
+TWST	2026-08-20	unqualified		base_age_0_below_3	70
+TWST	2026-08-21	unqualified		base_age_1_below_3	70
+TWST	2026-08-24	unqualified		base_age_1_below_3	70
+TWST	2026-08-25	unqualified		base_age_2_below_3	70
+TWST	2026-08-26	unqualified		base_age_0_below_3	70
+TWST	2026-08-27	unqualified		base_age_1_below_3	70
+TWST	2026-08-28	unqualified		base_age_2_below_3	70
+TWST	2026-08-31	INVALIDATED		close_139.00_below_base_low_close_141.38	70
+TWST	2026-09-01	INVALIDATED		close_132.06_below_base_low_close_139.00	70
+TWST	2026-09-02	INVALIDATED		close_131.00_below_base_low_close_132.06	70
+TWST	2026-09-03	INVALIDATED		close_128.71_below_base_low_close_131.00	70
+TWST	2026-09-04	INVALIDATED		close_124.72_below_base_low_close_128.71	70
+TWST	2026-09-08	INVALIDATED		close_128.06_below_sma20_133.87	70
+TWST	2026-09-17	unqualified		ma_stack_not_stage2_133.3/137.7/116.8	70
+TWST	2026-09-18	unqualified		base_age_0_below_3	70
+TWST	2026-09-21	unqualified		base_age_0_below_3	70
+TWST	2026-09-22	unqualified		base_age_1_below_3	70
+TWST	2026-09-23	unqualified		base_age_0_below_3	70
+TWST	2026-09-24	unqualified		base_age_1_below_3	70
+TWST	2026-09-25	unqualified		base_age_0_below_3	70
+TWST	2026-09-28	unqualified		base_age_1_below_3	70
+TWST	2026-09-29	unqualified		base_age_2_below_3	70
+TWST	2026-09-30	unqualified		base_age_0_below_3	70
+TWST	2026-10-01	unqualified		base_age_0_below_3	70
+TWST	2026-10-02	unqualified		base_age_1_below_3	70
+TWST	2026-10-05	unqualified		base_age_2_below_3	70
+TWST	2026-10-06	unqualified		base_age_0_below_3	70
+TWST	2026-10-07	unqualified		base_age_0_below_3	70
+TXG	2026-07-06	unqualified		base_age_1_below_3	70
+TXG	2026-07-07	unqualified		base_age_2_below_3	70
+TXG	2026-07-08	INVALIDATED		close_37.47_below_base_low_close_37.83	70
+TXG	2026-07-09	WATCH		runup_102% base_4d close_vs_pivot_+7.5%	70
+TXG	2026-07-10	unqualified		base_age_0_below_3	70
+TXG	2026-07-13	unqualified		base_age_1_below_3	70
+TXG	2026-07-14	unqualified		base_age_1_below_3	70
+TXG	2026-07-15	unqualified		base_age_0_below_3	70
+TXG	2026-07-16	unqualified		base_age_1_below_3	70
+TXG	2026-07-17	unqualified		base_age_2_below_3	70
+TXG	2026-07-20	INVALIDATED		close_43.22_below_base_low_close_43.74	70
+TXG	2026-07-21	WATCH		runup_120% base_4d close_vs_pivot_+3.0%	70
+TXG	2026-07-22	WATCH		runup_122% base_4d close_vs_pivot_+1.6%	70
+TXG	2026-07-23	unqualified		base_age_0_below_3	70
+TXG	2026-07-24	unqualified		base_age_0_below_3	70
+TXG	2026-07-27	unqualified		base_age_1_below_3	70
+TXG	2026-07-28	unqualified		base_age_2_below_3	70
+TXG	2026-07-29	WATCH		runup_109% base_3d close_vs_pivot_-6.4%	70
+TXG	2026-07-30	WATCH		runup_109% base_4d close_vs_pivot_-0.1%	70
+TXG	2026-07-31	WATCH		runup_109% base_5d close_vs_pivot_-4.5%	70
+TXG	2026-08-07	WATCH		runup_109% base_10d close_vs_pivot_+5.1%	70
+TXG	2026-08-10	unqualified		base_age_0_below_3	70
+TXG	2026-08-11	unqualified		base_age_0_below_3	70
+TXG	2026-08-12	unqualified		base_age_1_below_3	70
+TXG	2026-08-13	unqualified		base_age_2_below_3	70
+TXG	2026-08-14	INVALIDATED		close_56.09_below_base_low_close_57.75	70
+TXG	2026-08-17	WATCH		runup_111% base_4d close_vs_pivot_-3.1%	70
+TXG	2026-08-18	INVALIDATED		close_55.63_below_base_low_close_56.09	70
+TXG	2026-08-19	WATCH		runup_111% base_6d close_vs_pivot_+3.9%	70
+TXG	2026-08-20	unqualified		base_age_0_below_3	70
+TXG	2026-08-21	unqualified		base_age_0_below_3	70
+TXG	2026-08-24	unqualified		base_age_1_below_3	70
+TXG	2026-08-25	unqualified		base_age_2_below_3	70
+TXG	2026-08-26	unqualified		base_age_0_below_3	70
+TXG	2026-08-27	unqualified		base_age_1_below_3	70
+TXG	2026-08-28	unqualified		base_age_2_below_3	70
+TXG	2026-08-31	unqualified		flagpole_no_volume_confirmation_grinder	70
+TXG	2026-09-01	unqualified		flagpole_no_volume_confirmation_grinder	70
+TXG	2026-09-02	unqualified		flagpole_no_volume_confirmation_grinder	70
+TXG	2026-09-03	unqualified		flagpole_no_volume_confirmation_grinder	70
+TXG	2026-09-04	unqualified		flagpole_no_volume_confirmation_grinder	70
+TXG	2026-09-08	unqualified		flagpole_no_volume_confirmation_grinder	70
+TXG	2026-09-09	unqualified		flagpole_no_volume_confirmation_grinder	70
+TXG	2026-09-10	unqualified		flagpole_no_volume_confirmation_grinder	70
+TXG	2026-09-11	unqualified		flagpole_no_volume_confirmation_grinder	70
+TXG	2026-09-14	unqualified		base_age_0_below_3	70
+TXG	2026-09-15	unqualified		base_age_1_below_3	70
+TXG	2026-09-16	unqualified		base_age_0_below_3	70
+TXG	2026-09-17	unqualified		base_age_0_below_3	70
+TXG	2026-09-18	unqualified		base_age_0_below_3	70
+TXG	2026-09-21	unqualified		base_age_1_below_3	70
+TXG	2026-09-22	unqualified		base_age_2_below_3	70
+TXG	2026-09-23	unqualified		base_age_0_below_3	70
+TXG	2026-09-24	unqualified		base_age_1_below_3	70
+TXG	2026-09-25	unqualified		base_age_0_below_3	70
+TXG	2026-09-28	unqualified		base_age_1_below_3	70
+TXG	2026-09-29	unqualified		base_age_0_below_3	70
+TXG	2026-09-30	unqualified		base_age_0_below_3	70
+TXG	2026-10-01	unqualified		base_age_0_below_3	70
+TXG	2026-10-02	unqualified		base_age_1_below_3	70
+TXG	2026-10-05	unqualified		base_age_2_below_3	70
+TXG	2026-10-06	unqualified		base_age_0_below_3	70
+TXG	2026-10-07	unqualified		base_age_0_below_3	70
+TXG	2026-10-08	unqualified		base_age_1_below_3	70
+TXG	2026-10-09	unqualified		base_age_2_below_3	70
+ULCC	2026-07-06	WATCH		runup_137% base_5d close_vs_pivot_-7.1%	70
+ULCC	2026-07-07	INVALIDATED		close_7.36_below_base_low_close_7.50	70
+ULCC	2026-07-08	INVALIDATED		close_7.16_below_base_low_close_7.36	70
+ULCC	2026-07-30	unqualified		ma_stack_not_stage2_6.2/6.6/6.4	70
+ULCC	2026-08-04	unqualified		flagpole_no_volume_confirmation_grinder	70
+ULCC	2026-08-05	unqualified		base_age_0_below_3	70
+ULCC	2026-08-06	unqualified		base_age_1_below_3	70
+ULCC	2026-08-07	unqualified		base_age_2_below_3	70
+ULCC	2026-08-13	unqualified		runup_56%_below_90%	70
+ULCC	2026-08-14	unqualified		runup_56%_below_90%	70
+ULCC	2026-09-21	unqualified		runup_27%_below_90%	70
+ULCC	2026-09-22	unqualified		adr_3.9pct_below_4pct	70
+ULCC	2026-09-23	unqualified		base_age_0_below_3	70
+ULCC	2026-09-24	unqualified		base_age_1_below_3	70
+ULCC	2026-09-25	unqualified		base_age_2_below_3	70
+ULCC	2026-09-28	unqualified		runup_18%_below_90%	70
+ULCC	2026-09-29	unqualified		runup_18%_below_90%	70
+ULCC	2026-09-30	unqualified		runup_18%_below_90%	70
+ULCC	2026-10-01	unqualified		runup_18%_below_90%	70
+ULCC	2026-10-02	unqualified		runup_18%_below_90%	70
+ULCC	2026-10-05	unqualified		runup_18%_below_90%	70
+ULCC	2026-10-06	unqualified		runup_18%_below_90%	70
+ULCC	2026-10-07	unqualified		runup_18%_below_90%	70
+VCYT	2026-07-06	WATCH		runup_93% base_5d close_vs_pivot_-3.8%	70
+VCYT	2026-07-07	INVALIDATED		close_56.16_below_base_low_close_57.08	70
+VCYT	2026-07-08	INVALIDATED		close_56.12_below_base_low_close_56.16	70
+VCYT	2026-07-09	TIGHTENING		range_1.50 vol_0.68	70
+VCYT	2026-07-10	TIGHTENING		range_1.50 vol_0.61	70
+VCYT	2026-07-13	TIGHTENING		range_1.40 vol_0.57	70
+VCYT	2026-07-14	TIGHTENING		range_1.11 vol_0.56	70
+VCYT	2026-07-15	TIGHTENING		range_0.86 vol_0.54	70
+VCYT	2026-07-16	TIGHTENING		range_1.10 vol_0.49	70
+VCYT	2026-07-17	TIGHTENING		range_1.00 vol_0.51	70
+VCYT	2026-07-20	INVALIDATED		close_57.26_below_sma20_57.72	70
+VCYT	2026-07-21	WATCH		runup_93% base_16d close_vs_pivot_-1.2%	70
+VCYT	2026-07-22	INVALIDATED		close_58.01_below_sma20_58.25	70
+VCYT	2026-07-23	INVALIDATED		close_57.88_below_sma20_58.30	70
+VCYT	2026-09-03	unqualified		runup_30%_below_90%	70
+VCYT	2026-09-08	unqualified		runup_9%_below_90%	70
+VCYT	2026-09-09	unqualified		runup_11%_below_90%	70
+VCYT	2026-09-24	unqualified		runup_14%_below_90%	70
+VCYT	2026-09-25	unqualified		base_age_0_below_3	70
+VCYT	2026-09-28	unqualified		base_age_1_below_3	70
+VCYT	2026-09-29	unqualified		base_age_2_below_3	70
+VCYT	2026-09-30	unqualified		runup_28%_below_90%	70
+VCYT	2026-10-01	unqualified		runup_28%_below_90%	70
+VCYT	2026-10-02	unqualified		runup_28%_below_90%	70
+VCYT	2026-10-05	unqualified		runup_28%_below_90%	70
+VCYT	2026-10-06	unqualified		runup_28%_below_90%	70
+VCYT	2026-10-07	unqualified		runup_28%_below_90%	70
+VCYT	2026-10-08	unqualified		runup_28%_below_90%	70
+VCYT	2026-10-09	unqualified		runup_28%_below_90%	70
+VICR	2026-08-17	unqualified		runup_21%_below_90%	70
+VICR	2026-08-18	unqualified		runup_21%_below_90%	70
+VICR	2026-08-19	unqualified		runup_21%_below_90%	70
+VICR	2026-09-17	unqualified		runup_43%_below_90%	70
+VICR	2026-09-18	unqualified		runup_43%_below_90%	70
+VICR	2026-09-21	unqualified		runup_43%_below_90%	70
+VICR	2026-09-22	unqualified		runup_43%_below_90%	70
+VICR	2026-09-23	unqualified		base_age_0_below_3	70
+VICR	2026-09-24	unqualified		base_age_0_below_3	70
+VICR	2026-09-25	unqualified		base_age_1_below_3	70
+VICR	2026-09-28	unqualified		base_age_0_below_3	70
+VICR	2026-09-29	unqualified		base_age_1_below_3	70
+VICR	2026-09-30	unqualified		base_age_2_below_3	70
+VICR	2026-10-01	unqualified		runup_69%_below_90%	70
+VICR	2026-10-02	unqualified		base_age_0_below_3	70
+VICR	2026-10-05	unqualified		base_age_1_below_3	70
+VICR	2026-10-06	unqualified		base_age_2_below_3	70
+VICR	2026-10-07	INVALIDATED		close_282.78_below_base_low_close_299.29	70
+VICR	2026-10-08	INVALIDATED		close_262.32_below_base_low_close_282.78	70
+VICR	2026-10-09	WATCH		runup_92% base_5d close_vs_pivot_-19.6%	70
+VOYG	2026-08-04	unqualified		runup_47%_below_90%	70
+VOYG	2026-08-05	unqualified		runup_47%_below_90%	70
+VOYG	2026-08-06	unqualified		runup_47%_below_90%	70
+VOYG	2026-08-07	unqualified		base_age_0_below_3	70
+VOYG	2026-08-10	unqualified		base_age_0_below_3	70
+VOYG	2026-08-11	unqualified		base_age_0_below_3	70
+VOYG	2026-08-12	unqualified		base_age_1_below_3	70
+VOYG	2026-08-13	unqualified		base_age_2_below_3	70
+VOYG	2026-08-14	unqualified		base_age_0_below_3	70
+VOYG	2026-08-17	unqualified		base_age_1_below_3	70
+VOYG	2026-08-18	unqualified		base_age_2_below_3	70
+VOYG	2026-08-19	INVALIDATED		close_38.85_below_base_low_close_42.24	70
+VOYG	2026-08-20	INVALIDATED		close_37.92_below_base_low_close_38.85	70
+VOYG	2026-08-21	WATCH		runup_103% base_5d close_vs_pivot_-15.3%	70
+VOYG	2026-08-24	INVALIDATED		close_35.50_below_base_low_close_37.92	70
+VOYG	2026-09-16	unqualified		ma_stack_not_stage2_33.9/34.7/33.2	70
+VOYG	2026-09-17	unqualified		ma_stack_not_stage2_34.2/34.6/33.3	70
+VOYG	2026-09-18	unqualified		flag_low_31.96_below_75%_of_pole_45.40	70
+VOYG	2026-09-21	unqualified		flag_low_31.96_below_75%_of_pole_45.40	70
+VOYG	2026-09-22	unqualified		flag_low_31.96_below_75%_of_pole_43.49	70
+WDAY	2026-07-07	unqualified		runup_44%_below_90%	70
+WDAY	2026-07-08	unqualified		runup_44%_below_90%	70
+WDAY	2026-07-09	unqualified		runup_38%_below_90%	70
+WDAY	2026-07-10	unqualified		runup_37%_below_90%	70
+WDAY	2026-07-13	unqualified		runup_37%_below_90%	70
+WDAY	2026-07-14	unqualified		runup_37%_below_90%	70
+WDAY	2026-07-15	unqualified		runup_31%_below_90%	70
+WDAY	2026-07-16	unqualified		runup_31%_below_90%	70
+WDAY	2026-07-17	unqualified		runup_31%_below_90%	70
+WDAY	2026-07-20	unqualified		base_age_0_below_3	70
+WDAY	2026-07-21	unqualified		base_age_1_below_3	70
+WDAY	2026-07-27	unqualified		runup_34%_below_90%	70
+WDAY	2026-07-28	unqualified		runup_34%_below_90%	70
+WDAY	2026-07-29	unqualified		base_age_0_below_3	70
+WDAY	2026-07-30	unqualified		base_age_0_below_3	70
+WDAY	2026-07-31	unqualified		base_age_1_below_3	70
+WDAY	2026-08-04	unqualified		runup_53%_below_90%	70
+WDAY	2026-08-05	unqualified		runup_53%_below_90%	70
+WDAY	2026-08-06	unqualified		base_age_1_below_3	70
+WDAY	2026-08-07	unqualified		base_age_2_below_3	70
+WDAY	2026-08-10	unqualified		base_age_0_below_3	70
+WDAY	2026-08-11	unqualified		base_age_0_below_3	70
+WDAY	2026-08-12	unqualified		base_age_1_below_3	70
+WDAY	2026-08-13	unqualified		base_age_2_below_3	70
+WDAY	2026-08-14	unqualified		base_age_0_below_3	70
+WDAY	2026-08-17	unqualified		base_age_1_below_3	70
+WDAY	2026-08-18	unqualified		base_age_2_below_3	70
+WDAY	2026-08-19	WATCH		runup_104% base_3d close_vs_pivot_-12.8%	70
+WDAY	2026-08-20	WATCH		runup_104% base_4d close_vs_pivot_-13.3%	70
+WDAY	2026-08-21	COILED		fresh_2bar 3.4%/atr 5.8% bodies_0.20/0.03	70
+WDAY	2026-08-24	COILED		fresh_2bar 3.4%/atr 5.7% bodies_0.05/0.21	70
+WDAY	2026-08-25	COILED	TIGHTENING	range_0.58 vol_0.73 fresh	70
+WDAY	2026-08-26	COILED	TIGHTENING	range_0.58 vol_0.72 fresh	70
+WDAY	2026-08-27	COILED	TIGHTENING	range_0.58 vol_0.65	70
+WDAY	2026-08-28	TRIGGERED		close_204.72>base_high_close_200.01 vol_2.15x	70
+WDAY	2026-08-31	TRIGGERED	TIGHTENING	range_0.68 vol_1.04	70
+WDAY	2026-09-01	TRIGGERED	WATCH	runup_104% base_12d close_vs_pivot_-12.8%	70
+WDAY	2026-09-02	TRIGGERED	WATCH	runup_104% base_13d close_vs_pivot_-11.7%	70
+WDAY	2026-09-17	unqualified		adr_3.9pct_below_4pct	70
+WDAY	2026-09-29	unqualified		adr_3.6pct_below_4pct	70
+WDAY	2026-09-30	unqualified		adr_3.5pct_below_4pct	70
+WNC	2026-07-06	INVALIDATED		close_13.00_below_base_low_close_13.25	70
+WNC	2026-07-07	INVALIDATED		close_12.29_below_base_low_close_13.00	70
+WNC	2026-07-08	INVALIDATED		close_12.27_below_base_low_close_12.29	70
+WNC	2026-07-10	WATCH		runup_116% base_8d close_vs_pivot_-9.9%	70
+WNC	2026-07-13	WATCH		runup_116% base_9d close_vs_pivot_-9.0%	70
+WNC	2026-07-14	WATCH		runup_116% base_10d close_vs_pivot_-6.3%	70
+WNC	2026-07-22	unqualified		ma_stack_not_stage2_13.1/13.2/10.3	70
+WNC	2026-07-23	WATCH		runup_116% base_17d close_vs_pivot_-7.1%	70
+WNC	2026-07-24	WATCH		runup_116% base_18d close_vs_pivot_-6.8%	70
+WNC	2026-07-27	WATCH		runup_116% base_19d close_vs_pivot_-7.7%	70
+WNC	2026-07-28	WATCH		runup_116% base_20d close_vs_pivot_-7.1%	70
+WNC	2026-09-02	unqualified		runup_88%_below_90%	70
+WNC	2026-09-03	unqualified		base_age_0_below_3	70
+WNC	2026-09-04	unqualified		base_age_0_below_3	70
+WNC	2026-10-02	unqualified		runup_26%_below_90%	70
+WNC	2026-10-05	unqualified		runup_26%_below_90%	70
+WNC	2026-10-06	unqualified		runup_26%_below_90%	70
+XHLD	2026-08-25	unqualified		base_age_2_below_3	70
+XHLD	2026-08-26	unqualified		base_age_0_below_3	70
+XHLD	2026-08-27	unqualified		base_age_1_below_3	70
+XHLD	2026-08-28	unqualified		base_age_0_below_3	70
+XHLD	2026-08-31	unqualified		base_age_0_below_3	70
+XHLD	2026-09-01	unqualified		base_age_1_below_3	70
+XHLD	2026-09-02	unqualified		base_age_2_below_3	70
+XHLD	2026-09-03	WATCH		runup_1271% base_3d close_vs_pivot_-11.9%	70
+XHLD	2026-09-04	WATCH		runup_1271% base_4d close_vs_pivot_-11.8%	70
+XHLD	2026-09-08	COILED		fresh_2bar 3.5%/atr 10.4% bodies_0.13/0.03	70
+XHLD	2026-09-09	TRIGGERED		close_10.51>base_high_close_9.42 vol_1.72x	70
+XHLD	2026-09-10	unqualified		base_age_0_below_3	70
+XHLD	2026-09-11	unqualified		base_age_1_below_3	70
+XHLD	2026-09-14	unqualified		base_age_0_below_3	70
+XHLD	2026-09-15	unqualified		base_age_0_below_3	70
+XHLD	2026-09-16	unqualified		base_age_1_below_3	70
+XHLD	2026-09-17	unqualified		base_age_2_below_3	70
+XHLD	2026-09-18	unqualified		flag_low_8.35_below_75%_of_pole_15.43	70
+XHLD	2026-09-21	unqualified		flag_low_8.35_below_75%_of_pole_15.43	70
+XHLD	2026-09-22	unqualified		flag_low_8.35_below_75%_of_pole_15.43	70
+XHLD	2026-09-23	unqualified		flag_low_8.35_below_75%_of_pole_15.43	70
+XHLD	2026-09-24	unqualified		flag_low_8.35_below_75%_of_pole_15.43	70
+XHLD	2026-09-25	unqualified		flag_low_8.35_below_75%_of_pole_15.43	70
+XMTR	2026-07-03	TRIGGERED	TIGHTENING	range_0.62 vol_0.71	70
+XMTR	2026-07-06	TRIGGERED	TIGHTENING	range_0.65 vol_0.73	70
+XMTR	2026-07-07	TRIGGERED	TIGHTENING	range_0.85 vol_0.64	70
+XMTR	2026-07-20	unqualified		base_age_0_below_3	70
+XMTR	2026-07-21	unqualified		base_age_1_below_3	70
+XMTR	2026-08-27	unqualified		adv_500k_below_500k_shares	70
+XMTR	2026-09-08	unqualified		adv_418k_below_500k_shares	70
+XMTR	2026-09-10	unqualified		adv_468k_below_500k_shares	70
+XMTR	2026-09-11	unqualified		adv_468k_below_500k_shares	70
+XMTR	2026-09-16	unqualified		adv_485k_below_500k_shares	70
+XMTR	2026-09-18	unqualified		base_age_0_below_3	70
+XMTR	2026-09-21	unqualified		base_age_1_below_3	70
+XMTR	2026-09-22	unqualified		base_age_2_below_3	70
+XMTR	2026-09-23	unqualified		base_age_0_below_3	70
+XMTR	2026-09-24	unqualified		base_age_1_below_3	70
+XMTR	2026-09-25	unqualified		base_age_0_below_3	70
+XMTR	2026-09-28	unqualified		base_age_1_below_3	70
+XMTR	2026-09-29	unqualified		base_age_2_below_3	70
+XMTR	2026-09-30	unqualified		runup_33%_below_90%	70
+XMTR	2026-10-01	unqualified		runup_33%_below_90%	70
+XMTR	2026-10-02	unqualified		runup_33%_below_90%	70
+XMTR	2026-10-05	unqualified		runup_33%_below_90%	70
+XMTR	2026-10-06	unqualified		runup_33%_below_90%	70
+XMTR	2026-10-07	unqualified		base_age_0_below_3	70
+XMTR	2026-10-08	unqualified		base_age_1_below_3	70
+XMTR	2026-10-09	unqualified		base_age_2_below_3	70
+XNCR	2026-07-06	unqualified		base_age_2_below_3	70
+XNCR	2026-07-07	unqualified		runup_62%_below_90%	70
+XNCR	2026-07-08	unqualified		runup_62%_below_90%	70
+XNCR	2026-07-09	unqualified		runup_62%_below_90%	70
+XNCR	2026-07-10	unqualified		runup_62%_below_90%	70
+XNCR	2026-07-17	unqualified		runup_62%_below_90%	70
+XNCR	2026-07-20	unqualified		base_age_0_below_3	70
+XNCR	2026-07-21	unqualified		base_age_0_below_3	70
+XNCR	2026-07-22	unqualified		base_age_0_below_3	70
+XNCR	2026-07-23	unqualified		base_age_1_below_3	70
+XNCR	2026-07-24	unqualified		base_age_2_below_3	70
+XNCR	2026-07-27	WATCH		runup_92% base_3d close_vs_pivot_-6.6%	70
+XNCR	2026-07-28	WATCH		runup_92% base_4d close_vs_pivot_-6.1%	70
+XNCR	2026-07-29	WATCH		runup_92% base_5d close_vs_pivot_-8.1%	70
+XNCR	2026-07-30	WATCH		runup_92% base_6d close_vs_pivot_+1.1%	70
+XNCR	2026-07-31	unqualified		base_age_0_below_3	70
+XNCR	2026-08-04	unqualified		base_age_2_below_3	70
+XNCR	2026-08-05	WATCH		runup_94% base_3d close_vs_pivot_-8.8%	70
+XNCR	2026-08-06	WATCH		runup_94% base_4d close_vs_pivot_-8.1%	70
+XNCR	2026-08-07	WATCH		runup_94% base_5d close_vs_pivot_-4.4%	70
+XNCR	2026-08-10	WATCH		runup_94% base_6d close_vs_pivot_-0.8%	70
+XNCR	2026-08-11	WATCH		runup_94% base_7d close_vs_pivot_+1.6%	70
+XNCR	2026-08-12	unqualified		base_age_1_below_3	70
+XNCR	2026-08-13	unqualified		base_age_0_below_3	70
+XNCR	2026-08-14	unqualified		base_age_1_below_3	70
+XNCR	2026-08-17	unqualified		base_age_2_below_3	70
+XNCR	2026-08-18	WATCH		runup_96% base_3d close_vs_pivot_+8.9%	70
+XNCR	2026-08-19	unqualified		base_age_0_below_3	70
+XNCR	2026-08-20	unqualified		base_age_0_below_3	70
+XNCR	2026-08-21	unqualified		base_age_1_below_3	70
+XNCR	2026-08-24	unqualified		base_age_1_below_3	70
+XNCR	2026-08-25	unqualified		base_age_0_below_3	70
+XNCR	2026-08-26	unqualified		base_age_0_below_3	70
+XNCR	2026-08-27	unqualified		base_age_1_below_3	70
+XNCR	2026-08-28	unqualified		base_age_2_below_3	70
+XNCR	2026-08-31	WATCH		runup_113% base_3d close_vs_pivot_-10.9%	70
+XNCR	2026-09-01	WATCH		runup_113% base_4d close_vs_pivot_-8.8%	70
+XNCR	2026-09-02	WATCH		runup_113% base_5d close_vs_pivot_-12.1%	70
+XNCR	2026-09-03	WATCH		runup_113% base_6d close_vs_pivot_-13.0%	70
+XNCR	2026-09-04	WATCH		runup_113% base_7d close_vs_pivot_-13.1%	70
+XNCR	2026-09-30	unqualified		ma_stack_not_stage2_24.7/24.9/24.0	70
+XNCR	2026-10-01	INVALIDATED		close_24.77_below_sma20_24.80	70
+XNCR	2026-10-02	WATCH		runup_101% base_23d close_vs_pivot_-14.3%	70
+XNCR	2026-10-05	WATCH		runup_101% base_24d close_vs_pivot_-11.5%	70
+XNCR	2026-10-06	INVALIDATED		close_24.36_below_sma20_24.61	70
+XNCR	2026-10-07	INVALIDATED		close_24.26_below_sma20_24.58	70
+ZBIO	2026-07-06	unqualified		base_age_1_below_3	70
+ZBIO	2026-07-07	unqualified		base_age_2_below_3	70
+ZBIO	2026-07-08	unqualified		runup_77%_below_90%	70
+ZBIO	2026-07-09	unqualified		runup_77%_below_90%	70
+ZBIO	2026-07-10	unqualified		base_age_0_below_3	70
+ZBIO	2026-07-13	unqualified		base_age_1_below_3	70
+ZBIO	2026-07-14	unqualified		base_age_2_below_3	70
+ZBIO	2026-07-15	unqualified		runup_83%_below_90%	70
+ZBIO	2026-07-16	unqualified		runup_83%_below_90%	70
+ZBIO	2026-07-17	unqualified		runup_83%_below_90%	70
+ZBIO	2026-07-20	unqualified		runup_83%_below_90%	70
+ZBIO	2026-07-21	unqualified		base_age_0_below_3	70
+ZBIO	2026-07-22	unqualified		base_age_0_below_3	70
+ZBIO	2026-07-23	unqualified		base_age_1_below_3	70
+ZBIO	2026-07-24	unqualified		base_age_2_below_3	70
+ZBIO	2026-07-27	WATCH		runup_103% base_3d close_vs_pivot_-3.6%	70
+ZBIO	2026-07-28	WATCH		runup_103% base_4d close_vs_pivot_-5.2%	70
+ZBIO	2026-07-29	WATCH		runup_103% base_5d close_vs_pivot_-8.7%	70
+ZBIO	2026-07-30	WATCH		runup_103% base_6d close_vs_pivot_-5.2%	70
+ZBIO	2026-07-31	WATCH		runup_103% base_7d close_vs_pivot_-7.7%	70
+ZBIO	2026-08-04	WATCH		runup_103% base_9d close_vs_pivot_-7.7%	70
+ZBIO	2026-08-05	TIGHTENING		range_1.60 vol_0.64	70
+ZBIO	2026-08-06	TIGHTENING		range_1.39 vol_0.58	70
+ZBIO	2026-08-07	TIGHTENING		range_1.22 vol_0.56	70
+ZBIO	2026-08-10	TIGHTENING		range_1.03 vol_0.52	70
+ZBIO	2026-08-11	TIGHTENING		range_0.95 vol_0.51	70
+ZBIO	2026-08-12	INVALIDATED		close_31.29_below_sma20_31.42	70
+ZBIO	2026-08-13	INVALIDATED		close_29.20_below_base_low_close_30.39	70
+ZBIO	2026-08-14	INVALIDATED		close_29.51_below_sma20_31.46	70
+ZBIO	2026-08-25	unqualified		ma_stack_not_stage2_31.3/31.6/28.6	70
+ZBIO	2026-08-26	unqualified		ma_stack_not_stage2_31.5/31.7/28.9	70
+ZBIO	2026-09-02	unqualified		runup_30%_below_90%	70
+ZBIO	2026-09-03	unqualified		runup_30%_below_90%	70
+ZBIO	2026-09-04	unqualified		runup_30%_below_90%	70
+ZBIO	2026-09-08	unqualified		runup_30%_below_90%	70
+ZBIO	2026-09-09	unqualified		runup_30%_below_90%	70
+(3212 rows)

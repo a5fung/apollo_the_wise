@@ -57,6 +57,9 @@ def _replay(ticker: str, bars: list[dict], through: date) -> dict[date, dict]:
         m = fd.compute_flag_metrics(
             rows, ticker=ticker,
             yesterday_stage=window[-1]["stage"] if window else None,
+            # #697 item 5: prod hands the hysteresis whether yesterday's STORED row was itself a hold,
+            # so a hold is never followed by a hold — thread it exactly as run_flag_scan does.
+            yesterday_was_held=bool(window[-1].get("held_from_stage")) if window else False,
             recent_stages=[w["stage"] for w in window],
             prior_pivot_date=ppiv[0] if ppiv else None,
             prior_pivot_high=ppiv[1] if ppiv else None,

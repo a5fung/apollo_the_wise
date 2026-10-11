@@ -425,6 +425,38 @@ _STAGE2_NEAR_HIGH_MIN = 0.75    # pole top must be >= 75% of the 52w high (near 
 
 _STAGE_ORDER = ("unqualified", "WATCH", "TIGHTENING", "COILED", "TRIGGERED")
 
+
+def stage_after_hold(
+    proposed: str,
+    yesterday_stage: Optional[str],
+    yesterday_was_held: bool = False,
+) -> tuple[str, Optional[str]]:
+    """The hysteresis step, pure. Returns `(stage, held_from_stage)`.
+
+    A downgrade against YESTERDAY'S STORED stage is held ONE day — the documented rule
+    (`docs/setups/flag_continuation.md` "Hysteresis"). `yesterday_was_held` says yesterday's stored
+    row was itself a hold (`held_from_stage IS NOT NULL`): a hold is never followed by a hold, so
+    the reading the detector actually made today stands. Before #697 item 5 (2026-10-11) this flag
+    did not exist and the stored (already held) stage was fed back in as `yesterday_stage`, so the
+    hold re-armed every night until INVALIDATED or a pivot reset (htf_scope G4: 12 of 16 TRIGGERED,
+    21 of 40 COILED and 11 of 102 TIGHTENING rows in the 60-day window were holds).
+
+    Not a stricter or looser rule — a hold of exactly one night. Upgrades, equal stages, a
+    missing/unknown yesterday and INVALIDATED (never reaches here) are untouched. Deliberately NOT
+    "compare against yesterday's RAW read": that would re-hold a second-step downgrade (held COILED,
+    raw TIGHTENING yesterday, raw WATCH today -> held at TIGHTENING), which is a hold following a hold.
+    """
+    if (
+        not yesterday_was_held
+        and yesterday_stage
+        and yesterday_stage in _STAGE_ORDER
+        and proposed in _STAGE_ORDER
+        and _STAGE_ORDER.index(proposed) < _STAGE_ORDER.index(yesterday_stage)
+    ):
+        return yesterday_stage, proposed
+    return proposed, None
+
+
 # Recency window for "is this a fresh pullback / support test?" Replaces
 # day_low (cumulative high-water) with min(low) over last K minutes per
 # advisor 2026-05-26 review + #124 backward-check data. Distribution of
@@ -809,6 +841,7 @@ def compute_flag_metrics(
     prior_pivot_date: Optional[date] = None,
     prior_pivot_high: Optional[float] = None,
     prior_failure: Optional[dict] = None,
+    yesterday_was_held: bool = False,
 ) -> dict[str, Any]:
     """Score the LAST row in `rows` as a continuation-flag candidate.
 
@@ -826,9 +859,14 @@ def compute_flag_metrics(
     FROZEN breakout anchor across days. Pass None during fresh replay (the three
     output columns then stay None, same as "no breakout on record").
 
+    `yesterday_was_held` = yesterday's STORED row was itself a hold (`held_from_stage IS NOT
+    NULL`; `db.get_yesterday_flag_holds`). Pass it whenever `yesterday_stage` is a stored stage —
+    a replay that threads its own output must pass `prev["held_from_stage"] is not None` — or a
+    downgrade is held night after night (the pre-#697-item-5 behaviour).
+
     Returns a dict with every metric + final `stage`. Hysteresis applied at end:
-    a single-day downgrade vs `yesterday_stage` is held one day (except
-    INVALIDATED, which fires immediately).
+    a downgrade vs `yesterday_stage` is held ONE day (except INVALIDATED, which fires
+    immediately) — see `stage_after_hold`: a hold is never followed by a hold.
     """
     base = {
         "ticker": ticker,
@@ -1301,16 +1339,11 @@ def compute_flag_metrics(
         1 if bodies_tight else 0,
     ])
 
-    # ── Hysteresis: hold one-day downgrades except INVALIDATED ──────────
-    if yesterday_stage and yesterday_stage in _STAGE_ORDER and proposed in _STAGE_ORDER:
-        prev_rank = _STAGE_ORDER.index(yesterday_stage)
-        new_rank  = _STAGE_ORDER.index(proposed)
-        if new_rank < prev_rank:
-            base["stage"] = yesterday_stage
-            base["held_from_stage"] = proposed
-            return base
-
-    base["stage"] = proposed
+    # ── Hysteresis: hold a downgrade ONE night, except INVALIDATED ───────
+    # (a hold is never followed by a hold — see `stage_after_hold`, #697 item 5)
+    base["stage"], base["held_from_stage"] = stage_after_hold(
+        proposed, yesterday_stage, yesterday_was_held,
+    )
     return base
 
 
@@ -1368,8 +1401,11 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
         + " ".join(f"{src}={n}" for src, n in _source_counts.most_common())
     )
 
-    yesterday_map, recent_map, rs_map, sector_map, pivot_map, failure_map = await asyncio.gather(
+    (yesterday_map, held_yesterday, recent_map, rs_map, sector_map, pivot_map,
+     failure_map) = await asyncio.gather(
         db.get_yesterday_flag_stages(scan_date),
+        # #697 item 5: which of those stored stages were themselves a hold (a hold is never followed by one)
+        db.get_yesterday_flag_holds(scan_date),
         db.get_recent_flag_stages(scan_date, lookback_days=_COILED_LOOKBACK_DAYS),
         db.get_rs_for_tickers(scan_date, universe),
         db.get_sectors_batch(universe),
@@ -1377,7 +1413,11 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
         db.get_flag_failure_carry(scan_date),
     )
 
-    logger.info(f"flag_scan {scan_date}: scoring {len(universe)} candidates")
+    # holds_carried = how many tickers' yesterday-row was a hold, i.e. how many will NOT be held again (#697 item 5):
+    # the positive, every-night proof that the hold reader is wired into the scan.
+    logger.info(
+        f"flag_scan {scan_date}: scoring {len(universe)} candidates | holds_carried={len(held_yesterday)}"
+    )
     sem = asyncio.Semaphore(_SCAN_CONCURRENCY)
 
     async def _score(ticker: str) -> Optional[dict]:
@@ -1395,6 +1435,7 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                     rs_composite=float(rs["rs_composite"]) if rs.get("rs_composite") is not None else None,
                     sector=sector_map.get(ticker),
                     yesterday_stage=yesterday_map.get(ticker),
+                    yesterday_was_held=ticker in held_yesterday,
                     recent_stages=recent_map.get(ticker, []),
                     prior_pivot_date=prior_pivot[0] if prior_pivot else None,
                     prior_pivot_high=prior_pivot[1] if prior_pivot else None,

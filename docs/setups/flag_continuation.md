@@ -110,7 +110,7 @@ Stages depend on:
 
 ### Hysteresis
 
-Single-day downward stage flips held one day (`held_from_stage` audit-reviewable). INVALIDATED never holds; upgrades fire immediately. Implemented in `compute_flag_metrics` via `yesterday_stage` parameter.
+Single-day downward stage flips held **one night** (`held_from_stage` audit-reviewable). INVALIDATED never holds; upgrades fire immediately. **A hold is never followed by a hold (#697 item 5, 2026-10-11):** the downgrade is held only when yesterday's STORED row was not itself a hold (`held_from_stage IS NULL`); the next night the detector's own reading stands. Implemented by `flag_detector.stage_after_hold`, called from `compute_flag_metrics` with `yesterday_stage` + `yesterday_was_held` (`db.get_yesterday_flag_holds` reads the flag from the same row as `get_yesterday_flag_stages`). Until 2026-10-11 the stored (already held) stage was fed back in as `yesterday_stage`, so the hold re-armed every night until INVALIDATED or a pivot reset — see the change log. A replay that threads its own output must pass `yesterday_was_held` too.
 
 ### Fresh-tightening predicate (alternative COILED path)
 
@@ -186,6 +186,10 @@ the same 5-stage state machine unchanged; `/flags` routing (`test_execute_task_r
 none of these read the `mi_strategies` registry row or `anticipation.py`.
 
 ## Change log (newest first)
+
+### 2026-10-11 — Hysteresis holds a downgrade ONE night, as documented — a hold is never followed by a hold (#697 item 5)
+
+**Full entry (what / evidence / EXPECT / WOULD-FAIL-IF / DONE-WHEN / deploy scope): `docs/setups/htf.md` change log 2026-10-11 (item 5).** The code disagreed with the rule on this page: `yesterday_stage` was the STORED stage, so a held label was held again the next night (60 scan days to 10-09: 44 held rows, 24 of them a hold following a hold; 12 of 16 TRIGGERED, 21 of 40 COILED and 11 of 102 TIGHTENING rows were holds). Now a downgrade is held only when yesterday's stored row was not itself a hold. **No threshold, window, floor or stage rule moved** — the raw reading each night is unchanged; only how long a lower reading is masked. Reversion-flag: REFINEMENT of the 2026-05-01 hysteresis (restores its documented behaviour; not a new rule). The flag STRATEGY stays disabled; no order/entry path reads this.
 
 ### 2026-10-11 — Universe path (e) widened: scan sessions, + WATCH, + stored TRIGGERED, + a 25-session TIGHTENING-or-better memory (#697 item 2)
 

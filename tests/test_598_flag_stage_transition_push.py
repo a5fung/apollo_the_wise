@@ -400,6 +400,7 @@ async def test_run_flag_scan_pushes_only_the_real_new_entries(world, monkeypatch
 
     monkeypatch.setattr(db, "get_flag_universe", AsyncMock(return_value={t: ["rs_top200"] for t in today}))
     monkeypatch.setattr(db, "get_yesterday_flag_stages", AsyncMock(return_value=yesterday))
+    monkeypatch.setattr(db, "get_yesterday_flag_holds", AsyncMock(return_value=set()))  # #697 item 5
     monkeypatch.setattr(db, "get_recent_flag_stages", AsyncMock(return_value={}))
     monkeypatch.setattr(db, "get_rs_for_tickers", AsyncMock(return_value={}))
     monkeypatch.setattr(db, "get_sectors_batch", AsyncMock(return_value={}))

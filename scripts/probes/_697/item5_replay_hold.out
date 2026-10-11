@@ -1,0 +1,181 @@
+tickers: 92; scan dates in pull: 70 (2026-07-03 .. 2026-10-09); reported window: last 60 (2026-07-17 .. 2026-10-09)
+
+VALIDITY  old rule re-threaded from raw reads reproduces the stored (stage, held_from_stage): 2707 of 2707 rows
+
+HOLDS in the window (stored/old): 44 rows -> by held stage {'TIGHTENING': 11, 'COILED': 21, 'TRIGGERED': 12}
+HOLDS in the window (new rule)  : 21 rows -> by held stage {'TIGHTENING': 8, 'COILED': 10, 'TRIGGERED': 3}
+rows whose stage/held label changes under the new rule: 24
+held rows whose previous row (<=5d) was ALSO a hold: old 24 / new 0   (post-deploy invariant: new = 0)
+re-arm rate (old): of 42 held rows that have a next-night row, 23 were followed by another hold (55%)
+
+PER NIGHT  date  held_old held_new unheld(rows that stop being a hold) rows_changed
+  2026-07-17    1   0     1     1
+  2026-07-20    0   0     0     0
+  2026-07-21    0   0     0     0
+  2026-07-22    0   0     0     0
+  2026-07-23    0   0     0     0
+  2026-07-24    1   1     0     0
+  2026-07-27    0   0     0     0
+  2026-07-28    0   0     0     0
+  2026-07-29    0   0     0     0
+  2026-07-30    0   0     0     0
+  2026-07-31    1   1     0     0
+  2026-08-04    0   0     0     0
+  2026-08-05    0   0     0     0
+  2026-08-06    0   0     0     0
+  2026-08-07    0   0     0     0
+  2026-08-10    0   0     0     0
+  2026-08-11    0   0     0     0
+  2026-08-12    0   0     0     0
+  2026-08-13    0   0     0     0
+  2026-08-14    1   1     0     0
+  2026-08-17    1   1     0     0
+  2026-08-18    2   1     1     1
+  2026-08-19    0   0     0     0
+  2026-08-20    3   3     0     0
+  2026-08-21    3   0     3     3
+  2026-08-24    3   0     3     3
+  2026-08-25    3   2     1     2
+  2026-08-26    2   0     2     2
+  2026-08-27    2   0     2     2
+  2026-08-28    1   0     1     1
+  2026-08-31    1   1     0     0
+  2026-09-01    1   0     1     1
+  2026-09-02    2   1     1     1
+  2026-09-03    2   2     0     0
+  2026-09-04    1   0     1     1
+  2026-09-07    1   0     1     1
+  2026-09-08    2   1     1     1
+  2026-09-09    1   0     1     1
+  2026-09-10    2   1     1     1
+  2026-09-11    2   1     1     1
+  2026-09-14    0   0     0     0
+  2026-09-15    1   1     0     0
+  2026-09-16    1   0     1     1
+  2026-09-17    0   0     0     0
+  2026-09-18    0   0     0     0
+  2026-09-21    0   0     0     0
+  2026-09-22    0   0     0     0
+  2026-09-23    0   0     0     0
+  2026-09-24    1   1     0     0
+  2026-09-25    0   0     0     0
+  2026-09-28    0   0     0     0
+  2026-09-29    0   0     0     0
+  2026-09-30    0   0     0     0
+  2026-10-01    0   0     0     0
+  2026-10-02    0   0     0     0
+  2026-10-05    0   0     0     0
+  2026-10-06    1   1     0     0
+  2026-10-07    0   0     0     0
+  2026-10-08    0   0     0     0
+  2026-10-09    1   1     0     0
+nights with >=1 changed row: 17 of 60; median/night 0, max 3
+
+CHANGED ROWS  (ticker, date, stored stage -> new stage, raw read that night)
+  ABVX   2026-07-17  TIGHTENING -> WATCH       raw WATCH
+  NWL    2026-08-18  COILED     -> TIGHTENING  raw TIGHTENING
+  CDNA   2026-08-21  TIGHTENING -> WATCH       raw WATCH
+  CHYM   2026-08-21  TRIGGERED  -> TIGHTENING  raw TIGHTENING
+  PBF    2026-08-21  COILED     -> TIGHTENING  raw TIGHTENING
+  CDNA   2026-08-24  TIGHTENING -> WATCH       raw WATCH
+  CHYM   2026-08-24  TRIGGERED  -> TIGHTENING  raw TIGHTENING
+  PBF    2026-08-24  COILED     -> TIGHTENING  raw TIGHTENING
+  CDNA   2026-08-25  TIGHTENING -> WATCH       raw WATCH
+  CHYM   2026-08-25  TRIGGERED  -> TIGHTENING  raw WATCH
+  CHYM   2026-08-26  TRIGGERED  -> COILED      raw COILED
+  WDAY   2026-08-26  COILED     -> TIGHTENING  raw TIGHTENING
+  CHYM   2026-08-27  TRIGGERED  -> COILED      raw COILED
+  WDAY   2026-08-27  COILED     -> TIGHTENING  raw TIGHTENING
+  CHYM   2026-08-28  TRIGGERED  -> COILED      raw COILED
+  WDAY   2026-09-01  TRIGGERED  -> WATCH       raw WATCH
+  WDAY   2026-09-02  TRIGGERED  -> WATCH       raw WATCH
+  IOVA   2026-09-04  COILED     -> TIGHTENING  raw TIGHTENING
+  IOVA   2026-09-07  COILED     -> TIGHTENING  raw TIGHTENING
+  IOVA   2026-09-08  COILED     -> TIGHTENING  raw TIGHTENING
+  OMER   2026-09-09  COILED     -> TIGHTENING  raw TIGHTENING
+  OMER   2026-09-10  COILED     -> TIGHTENING  raw TIGHTENING
+  IOVA   2026-09-11  COILED     -> TIGHTENING  raw TIGHTENING
+  IOVA   2026-09-16  TRIGGERED  -> TIGHTENING  raw TIGHTENING
+changed rows by (stored -> new): {('TIGHTENING', 'WATCH'): 4, ('COILED', 'TIGHTENING'): 11, ('TRIGGERED', 'TIGHTENING'): 4, ('TRIGGERED', 'COILED'): 3, ('TRIGGERED', 'WATCH'): 2}
+
+BOARD EFFECT  nights x stage counts, old -> new (only nights that differ)
+  2026-07-17  TIGHTENING 4->3, WATCH 5->6
+  2026-08-18  COILED 2->1, TIGHTENING 1->2
+  2026-08-21  TRIGGERED 1->0, COILED 2->1, TIGHTENING 4->5, WATCH 11->12
+  2026-08-24  TRIGGERED 1->0, COILED 2->1, TIGHTENING 3->4, WATCH 6->7
+  2026-08-25  TRIGGERED 1->0, WATCH 4->5
+  2026-08-26  TRIGGERED 1->0, TIGHTENING 2->3
+  2026-08-27  TRIGGERED 1->0, TIGHTENING 0->1
+  2026-08-28  TRIGGERED 2->1, COILED 0->1
+  2026-09-01  TRIGGERED 1->0, WATCH 5->6
+  2026-09-02  TRIGGERED 1->0, WATCH 8->9
+  2026-09-04  COILED 2->1, TIGHTENING 3->4
+  2026-09-07  COILED 2->1, TIGHTENING 3->4
+  2026-09-08  COILED 3->2, TIGHTENING 1->2
+  2026-09-09  COILED 3->2, TIGHTENING 0->1
+  2026-09-10  COILED 3->2, TIGHTENING 0->1
+  2026-09-11  COILED 2->1, TIGHTENING 0->1
+  2026-09-16  TRIGGERED 1->0, TIGHTENING 2->3
+  total TRIGGERED  rows in window: 16 -> 7
+  total COILED     rows in window: 40 -> 32
+  total TIGHTENING rows in window: 102 -> 113
+  total WATCH      rows in window: 310 -> 316
+
+NEW TODAY pushes (approx: entered TIGHTENING/COILED from a lower stage), window total: old 47 -> new 50
+  2026-08-19  3 -> 4
+  2026-08-26  1 -> 2
+  2026-09-09  1 -> 2
+
+REAL TRIGGERED READS (stored stage TRIGGERED, no hold) and the COILED that licensed them
+  CHYM   2026-08-19  row unchanged: True | COILED in window, old [('2026-08-17', 'raw'), ('2026-08-18', 'held')] | new [('2026-08-17', 'raw'), ('2026-08-18', 'held')] | licensed by an UN-HELD COILED, cannot move
+  IOVA   2026-09-14  row unchanged: True | COILED in window, old [('2026-09-09', 'raw'), ('2026-09-10', 'held'), ('2026-09-11', 'held')] | new [('2026-09-09', 'raw'), ('2026-09-10', 'held')] | licensed by an UN-HELD COILED, cannot move
+  WDAY   2026-08-28  row unchanged: True | COILED in window, old [('2026-08-24', 'raw'), ('2026-08-25', 'held'), ('2026-08-26', 'held'), ('2026-08-27', 'held')] | new [('2026-08-24', 'raw'), ('2026-08-25', 'held')] | licensed by an UN-HELD COILED, cannot move
+  XHLD   2026-09-09  row unchanged: True | COILED in window, old [('2026-09-08', 'raw')] | new [('2026-09-08', 'raw')] | licensed by an UN-HELD COILED, cannot move
+real TRIGGERED reads: 4; unchanged and licensed by an un-held COILED: 4
+
+STORED BREAKS whose parent row is in the replay window (item5_q2_breaks.out): does the parent still sit on the watchlist?
+  CDNA   break 2026-07-31 parent 2026-07-30 stored TIGHTENING new TIGHTENING -> unchanged
+  MBX    break 2026-07-31 parent 2026-07-30 stored TIGHTENING new TIGHTENING -> unchanged
+  MBX    break 2026-08-04 parent 2026-07-31 stored TIGHTENING new TIGHTENING -> unchanged
+  CHYM   break 2026-08-19 parent 2026-08-18 stored COILED     new COILED     -> unchanged
+  CDNA   break 2026-08-25 parent 2026-08-24 stored TIGHTENING new WATCH      -> LEAVES the watchlist (the break would not have been scanned for)
+  CHYM   break 2026-08-28 parent 2026-08-27 stored TRIGGERED  new COILED     -> stays on the watchlist, parent_stage TRIGGERED -> COILED
+  PBF    break 2026-09-01 parent 2026-08-31 stored TIGHTENING new TIGHTENING -> unchanged
+  PBF    break 2026-09-02 parent 2026-09-01 stored TIGHTENING new TIGHTENING -> unchanged
+  WDAY   break 2026-09-03 parent 2026-09-02 stored TRIGGERED  new WATCH      -> LEAVES the watchlist (the break would not have been scanned for)
+  XHLD   break 2026-09-09 parent 2026-09-08 stored COILED     new COILED     -> unchanged
+  IOVA   break 2026-09-14 parent 2026-09-11 stored COILED     new TIGHTENING -> stays on the watchlist, parent_stage COILED -> TIGHTENING
+  IOVA   break 2026-09-16 parent 2026-09-15 stored TRIGGERED  new TRIGGERED  -> unchanged
+  CDNA   break 2026-09-17 parent 2026-09-16 stored TIGHTENING new TIGHTENING -> unchanged
+  CHPT   break 2026-09-18 parent 2026-09-17 stored TIGHTENING new TIGHTENING -> unchanged
+  QMCO   break 2026-09-23 parent 2026-09-22 stored TIGHTENING new TIGHTENING -> unchanged
+  QMCO   break 2026-09-24 parent 2026-09-23 stored TIGHTENING new TIGHTENING -> unchanged
+  EFOR   break 2026-10-01 parent 2026-09-30 stored TIGHTENING new TIGHTENING -> unchanged
+  CHPT   break 2026-10-02 parent 2026-10-01 stored TIGHTENING new TIGHTENING -> unchanged
+  HTFL   break 2026-10-05 parent 2026-10-02 stored TIGHTENING new TIGHTENING -> unchanged
+  HTFL   break 2026-10-06 parent 2026-10-05 stored TIGHTENING new TIGHTENING -> unchanged
+  KOD    break 2026-10-09 parent 2026-10-08 stored COILED     new COILED     -> unchanged
+breaks with a parent in the window: unchanged 17, relabelled 2, dropped from the watchlist 2
+
+EXPECTED verify_hold_live.sql over the same 60 scan dates (after_hold, violators, fingerprint, first_holds):
+  old rule (= prod, probe baseline 43/24/0/20): (43, 24, 0, 20)
+  new rule                                    : (21, 0, 11, 21)
+   1-session windows:  85% have NO fingerprint row under the new rule (check inconclusive);  72% have NO violator under the old rule (the broken code would pass)
+   3-session windows:  59% have NO fingerprint row under the new rule (check inconclusive);  57% have NO violator under the old rule (the broken code would pass)
+   5-session windows:  52% have NO fingerprint row under the new rule (check inconclusive);  52% have NO violator under the old rule (the broken code would pass)
+  10-session windows:  37% have NO fingerprint row under the new rule (check inconclusive);  37% have NO violator under the old rule (the broken code would pass)
+  20-session windows:   2% have NO fingerprint row under the new rule (check inconclusive);   2% have NO violator under the old rule (the broken code would pass)
+
+HELD TRIGGERED rows (stored): these are the rows printed in the digest's TRIGGERED section with no fresh breakout
+  CHYM   2026-08-20  held from TIGHTENING  -> new rule: TRIGGERED (held from TIGHTENING)
+  CHYM   2026-08-21  held from TIGHTENING  -> new rule: TIGHTENING
+  CHYM   2026-08-24  held from TIGHTENING  -> new rule: TIGHTENING
+  CHYM   2026-08-25  held from WATCH  -> new rule: TIGHTENING (held from WATCH)
+  CHYM   2026-08-26  held from COILED  -> new rule: COILED
+  CHYM   2026-08-27  held from COILED  -> new rule: COILED
+  CHYM   2026-08-28  held from COILED  -> new rule: COILED
+  IOVA   2026-09-15  held from WATCH  -> new rule: TRIGGERED (held from WATCH)
+  IOVA   2026-09-16  held from TIGHTENING  -> new rule: TIGHTENING
+  WDAY   2026-08-31  held from TIGHTENING  -> new rule: TRIGGERED (held from TIGHTENING)
+  WDAY   2026-09-01  held from WATCH  -> new rule: WATCH
+  WDAY   2026-09-02  held from WATCH  -> new rule: WATCH

@@ -7810,9 +7810,12 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
           as the organic path): a name with no bar that day is not scored on
           frozen history, and a market-holiday scan carries no flag-stage names
           (the R3 / 9M carries are separate paths).
-          ⚠ INTERACTION with the hold (htf_scope G4, item 5): the
-          hysteresis stores a held label, so a held stage re-arms this
-          carry each night until INVALIDATED or a pivot reset.
+          INTERACTION with the hold (htf_scope G4, #697 item 5): the
+          hysteresis stores a held label, and a carried name is scored from
+          that stored label. Since item 5 a hold lasts ONE night (a hold is
+          never followed by a hold), so a held stage re-arms this carry for at
+          most one extra night. Before it, it re-armed the carry every night
+          until INVALIDATED or a pivot reset.
 
     Common gates (organic paths a+b share):
       - CS/ADRC only (rejects ETFs/funds via mi_security_types)
@@ -8308,22 +8311,38 @@ async def get_open_position_count(
     return int(row["n"] or 0) if row else 0
 
 
-async def get_yesterday_flag_stages(scan_date: "str | date") -> dict[str, str]:
-    """Map ticker → most recent prior stage, for hysteresis carry-forward.
-    Looks back up to 5 sessions so weekend/holiday gaps don't reset stage
-    state. Returns {} if no prior rows."""
+async def _yesterday_flag_rows(scan_date: "str | date") -> list[Any]:
+    """Each ticker's most recent prior `mi_flag_candidates` row (stage + held_from_stage) within
+    5 CALENDAR days — the ONE query behind `get_yesterday_flag_stages` and
+    `get_yesterday_flag_holds`, so the stage the hysteresis compares against and the 'was that
+    row a hold' flag always come from the SAME row (#697 item 5)."""
     pool = await get_pool()
     if isinstance(scan_date, str):
         scan_date = date.fromisoformat(scan_date)
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT DISTINCT ON (ticker) ticker, stage
+        return await conn.fetch("""
+            SELECT DISTINCT ON (ticker) ticker, stage, held_from_stage
             FROM mi_flag_candidates
             WHERE scan_date < $1
               AND scan_date >= $1 - INTERVAL '5 days'
             ORDER BY ticker, scan_date DESC
         """, scan_date)
-    return {r["ticker"]: r["stage"] for r in rows}
+
+
+async def get_yesterday_flag_stages(scan_date: "str | date") -> dict[str, str]:
+    """Map ticker → most recent prior stage, for hysteresis carry-forward.
+    Looks back up to 5 sessions so weekend/holiday gaps don't reset stage
+    state. Returns {} if no prior rows."""
+    return {r["ticker"]: r["stage"] for r in await _yesterday_flag_rows(scan_date)}
+
+
+async def get_yesterday_flag_holds(scan_date: "str | date") -> set[str]:
+    """Tickers whose most recent prior row (the same row `get_yesterday_flag_stages` reads) was
+    itself a HOLD (`held_from_stage IS NOT NULL`). The hysteresis holds a downgrade only when
+    yesterday's stored row was NOT a hold — exactly one night, as documented (#697 item 5,
+    htf_scope G4). Raises like its sibling if the read fails: a silent {} would hold every
+    downgrade night after night again."""
+    return {r["ticker"] for r in await _yesterday_flag_rows(scan_date) if r["held_from_stage"]}
 
 
 async def get_yesterday_flag_pivots(

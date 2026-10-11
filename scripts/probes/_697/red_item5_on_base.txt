@@ -1,0 +1,467 @@
+FFFFFFFFFFFFFFFFFFFEEF                                                   [100%]
+==================================== ERRORS ====================================
+___ ERROR at setup of test_run_flag_scan_holds_exactly_one_night_end_to_end ____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d09a140>
+
+    @pytest.fixture
+    def table(monkeypatch):
+        t = _Table()
+    
+        async def _send(text, chat_id=None, parse_mode=None, reply_markup=None):
+            t.sent.append(text)
+            return True
+    
+        async def _insert(m):
+            t.rows.append({"ticker": m["ticker"], "scan_date": m["scan_date"], "stage": m["stage"],
+                           "held_from_stage": m.get("held_from_stage")})
+    
+        async def _stages(scan_date):
+            return {k: r["stage"] for k, r in t.prior(scan_date).items()}
+    
+        async def _holds(scan_date):
+            return {k for k, r in t.prior(scan_date).items() if r["held_from_stage"]}
+    
+        pool, conn = make_mock_pool()
+        conn.fetch = AsyncMock(return_value=[])
+        monkeypatch.setattr(briefing, "send_telegram_message", _send)
+        monkeypatch.setattr(db, "log_audit_event", AsyncMock())
+        monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+        monkeypatch.setattr(db, "insert_flag_candidate", _insert)
+        monkeypatch.setattr(db, "get_yesterday_flag_stages", _stages)
+>       monkeypatch.setattr(db, "get_yesterday_flag_holds", _holds)
+E       AttributeError: <module 'agents.market_intelligence.db' from '/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_d7ce2910-1ef-1/agents/market_intelligence/db.py'> has no attribute 'get_yesterday_flag_holds'
+
+tests/test_697_one_day_hold.py:214: AttributeError
+______ ERROR at setup of test_the_digest_still_gets_the_stored_stage_map _______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d770250>
+
+    @pytest.fixture
+    def table(monkeypatch):
+        t = _Table()
+    
+        async def _send(text, chat_id=None, parse_mode=None, reply_markup=None):
+            t.sent.append(text)
+            return True
+    
+        async def _insert(m):
+            t.rows.append({"ticker": m["ticker"], "scan_date": m["scan_date"], "stage": m["stage"],
+                           "held_from_stage": m.get("held_from_stage")})
+    
+        async def _stages(scan_date):
+            return {k: r["stage"] for k, r in t.prior(scan_date).items()}
+    
+        async def _holds(scan_date):
+            return {k for k, r in t.prior(scan_date).items() if r["held_from_stage"]}
+    
+        pool, conn = make_mock_pool()
+        conn.fetch = AsyncMock(return_value=[])
+        monkeypatch.setattr(briefing, "send_telegram_message", _send)
+        monkeypatch.setattr(db, "log_audit_event", AsyncMock())
+        monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+        monkeypatch.setattr(db, "insert_flag_candidate", _insert)
+        monkeypatch.setattr(db, "get_yesterday_flag_stages", _stages)
+>       monkeypatch.setattr(db, "get_yesterday_flag_holds", _holds)
+E       AttributeError: <module 'agents.market_intelligence.db' from '/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_d7ce2910-1ef-1/agents/market_intelligence/db.py'> has no attribute 'get_yesterday_flag_holds'
+
+tests/test_697_one_day_hold.py:214: AttributeError
+=================================== FAILURES ===================================
+____ test_a_downgrade_is_held_one_night_when_yesterday_was_a_normal_reading ____
+
+    def test_a_downgrade_is_held_one_night_when_yesterday_was_a_normal_reading():
+>       assert fd.stage_after_hold("TIGHTENING", "COILED", False) == ("COILED", "TIGHTENING")
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:33: AttributeError
+___________________ test_a_hold_is_never_followed_by_a_hold ____________________
+
+    def test_a_hold_is_never_followed_by_a_hold():
+        """The bug: yesterday's stored stage was itself a hold, and it was held again."""
+>       assert fd.stage_after_hold("TIGHTENING", "COILED", True) == ("TIGHTENING", None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:41: AttributeError
+_________________ test_the_rejected_variant_is_not_what_ships __________________
+
+    def test_the_rejected_variant_is_not_what_ships():
+        """Compare against yesterday's RAW read instead of yesterday's stored stage and a second-step
+        downgrade is held again: COILED stored, raw TIGHTENING (held COILED), then raw WATCH would hold at
+        TIGHTENING. The rule here is a hold of exactly one night — the reading stands."""
+>       assert fd.stage_after_hold("WATCH", "COILED", True) == ("WATCH", None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:49: AttributeError
+____ test_everything_but_a_downgrade_is_untouched[False-COILED-TIGHTENING] _____
+
+proposed = 'COILED', yesterday = 'TIGHTENING', was_held = False
+
+    @pytest.mark.parametrize("proposed,yesterday", [
+        ("COILED", "TIGHTENING"),        # upgrade
+        ("COILED", "COILED"),            # equal
+        ("TRIGGERED", "WATCH"),          # upgrade
+        ("WATCH", None),                 # no yesterday
+        ("WATCH", "INVALIDATED"),        # INVALIDATED is not in the stage order: never held against
+        ("TIGHTENING", "unqualified"),
+    ])
+    @pytest.mark.parametrize("was_held", [False, True])
+    def test_everything_but_a_downgrade_is_untouched(proposed, yesterday, was_held):
+>       assert fd.stage_after_hold(proposed, yesterday, was_held) == (proposed, None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:62: AttributeError
+______ test_everything_but_a_downgrade_is_untouched[False-COILED-COILED] _______
+
+proposed = 'COILED', yesterday = 'COILED', was_held = False
+
+    @pytest.mark.parametrize("proposed,yesterday", [
+        ("COILED", "TIGHTENING"),        # upgrade
+        ("COILED", "COILED"),            # equal
+        ("TRIGGERED", "WATCH"),          # upgrade
+        ("WATCH", None),                 # no yesterday
+        ("WATCH", "INVALIDATED"),        # INVALIDATED is not in the stage order: never held against
+        ("TIGHTENING", "unqualified"),
+    ])
+    @pytest.mark.parametrize("was_held", [False, True])
+    def test_everything_but_a_downgrade_is_untouched(proposed, yesterday, was_held):
+>       assert fd.stage_after_hold(proposed, yesterday, was_held) == (proposed, None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:62: AttributeError
+_____ test_everything_but_a_downgrade_is_untouched[False-TRIGGERED-WATCH] ______
+
+proposed = 'TRIGGERED', yesterday = 'WATCH', was_held = False
+
+    @pytest.mark.parametrize("proposed,yesterday", [
+        ("COILED", "TIGHTENING"),        # upgrade
+        ("COILED", "COILED"),            # equal
+        ("TRIGGERED", "WATCH"),          # upgrade
+        ("WATCH", None),                 # no yesterday
+        ("WATCH", "INVALIDATED"),        # INVALIDATED is not in the stage order: never held against
+        ("TIGHTENING", "unqualified"),
+    ])
+    @pytest.mark.parametrize("was_held", [False, True])
+    def test_everything_but_a_downgrade_is_untouched(proposed, yesterday, was_held):
+>       assert fd.stage_after_hold(proposed, yesterday, was_held) == (proposed, None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:62: AttributeError
+________ test_everything_but_a_downgrade_is_untouched[False-WATCH-None] ________
+
+proposed = 'WATCH', yesterday = None, was_held = False
+
+    @pytest.mark.parametrize("proposed,yesterday", [
+        ("COILED", "TIGHTENING"),        # upgrade
+        ("COILED", "COILED"),            # equal
+        ("TRIGGERED", "WATCH"),          # upgrade
+        ("WATCH", None),                 # no yesterday
+        ("WATCH", "INVALIDATED"),        # INVALIDATED is not in the stage order: never held against
+        ("TIGHTENING", "unqualified"),
+    ])
+    @pytest.mark.parametrize("was_held", [False, True])
+    def test_everything_but_a_downgrade_is_untouched(proposed, yesterday, was_held):
+>       assert fd.stage_after_hold(proposed, yesterday, was_held) == (proposed, None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:62: AttributeError
+____ test_everything_but_a_downgrade_is_untouched[False-WATCH-INVALIDATED] _____
+
+proposed = 'WATCH', yesterday = 'INVALIDATED', was_held = False
+
+    @pytest.mark.parametrize("proposed,yesterday", [
+        ("COILED", "TIGHTENING"),        # upgrade
+        ("COILED", "COILED"),            # equal
+        ("TRIGGERED", "WATCH"),          # upgrade
+        ("WATCH", None),                 # no yesterday
+        ("WATCH", "INVALIDATED"),        # INVALIDATED is not in the stage order: never held against
+        ("TIGHTENING", "unqualified"),
+    ])
+    @pytest.mark.parametrize("was_held", [False, True])
+    def test_everything_but_a_downgrade_is_untouched(proposed, yesterday, was_held):
+>       assert fd.stage_after_hold(proposed, yesterday, was_held) == (proposed, None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:62: AttributeError
+__ test_everything_but_a_downgrade_is_untouched[False-TIGHTENING-unqualified] __
+
+proposed = 'TIGHTENING', yesterday = 'unqualified', was_held = False
+
+    @pytest.mark.parametrize("proposed,yesterday", [
+        ("COILED", "TIGHTENING"),        # upgrade
+        ("COILED", "COILED"),            # equal
+        ("TRIGGERED", "WATCH"),          # upgrade
+        ("WATCH", None),                 # no yesterday
+        ("WATCH", "INVALIDATED"),        # INVALIDATED is not in the stage order: never held against
+        ("TIGHTENING", "unqualified"),
+    ])
+    @pytest.mark.parametrize("was_held", [False, True])
+    def test_everything_but_a_downgrade_is_untouched(proposed, yesterday, was_held):
+>       assert fd.stage_after_hold(proposed, yesterday, was_held) == (proposed, None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:62: AttributeError
+_____ test_everything_but_a_downgrade_is_untouched[True-COILED-TIGHTENING] _____
+
+proposed = 'COILED', yesterday = 'TIGHTENING', was_held = True
+
+    @pytest.mark.parametrize("proposed,yesterday", [
+        ("COILED", "TIGHTENING"),        # upgrade
+        ("COILED", "COILED"),            # equal
+        ("TRIGGERED", "WATCH"),          # upgrade
+        ("WATCH", None),                 # no yesterday
+        ("WATCH", "INVALIDATED"),        # INVALIDATED is not in the stage order: never held against
+        ("TIGHTENING", "unqualified"),
+    ])
+    @pytest.mark.parametrize("was_held", [False, True])
+    def test_everything_but_a_downgrade_is_untouched(proposed, yesterday, was_held):
+>       assert fd.stage_after_hold(proposed, yesterday, was_held) == (proposed, None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:62: AttributeError
+_______ test_everything_but_a_downgrade_is_untouched[True-COILED-COILED] _______
+
+proposed = 'COILED', yesterday = 'COILED', was_held = True
+
+    @pytest.mark.parametrize("proposed,yesterday", [
+        ("COILED", "TIGHTENING"),        # upgrade
+        ("COILED", "COILED"),            # equal
+        ("TRIGGERED", "WATCH"),          # upgrade
+        ("WATCH", None),                 # no yesterday
+        ("WATCH", "INVALIDATED"),        # INVALIDATED is not in the stage order: never held against
+        ("TIGHTENING", "unqualified"),
+    ])
+    @pytest.mark.parametrize("was_held", [False, True])
+    def test_everything_but_a_downgrade_is_untouched(proposed, yesterday, was_held):
+>       assert fd.stage_after_hold(proposed, yesterday, was_held) == (proposed, None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:62: AttributeError
+______ test_everything_but_a_downgrade_is_untouched[True-TRIGGERED-WATCH] ______
+
+proposed = 'TRIGGERED', yesterday = 'WATCH', was_held = True
+
+    @pytest.mark.parametrize("proposed,yesterday", [
+        ("COILED", "TIGHTENING"),        # upgrade
+        ("COILED", "COILED"),            # equal
+        ("TRIGGERED", "WATCH"),          # upgrade
+        ("WATCH", None),                 # no yesterday
+        ("WATCH", "INVALIDATED"),        # INVALIDATED is not in the stage order: never held against
+        ("TIGHTENING", "unqualified"),
+    ])
+    @pytest.mark.parametrize("was_held", [False, True])
+    def test_everything_but_a_downgrade_is_untouched(proposed, yesterday, was_held):
+>       assert fd.stage_after_hold(proposed, yesterday, was_held) == (proposed, None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:62: AttributeError
+________ test_everything_but_a_downgrade_is_untouched[True-WATCH-None] _________
+
+proposed = 'WATCH', yesterday = None, was_held = True
+
+    @pytest.mark.parametrize("proposed,yesterday", [
+        ("COILED", "TIGHTENING"),        # upgrade
+        ("COILED", "COILED"),            # equal
+        ("TRIGGERED", "WATCH"),          # upgrade
+        ("WATCH", None),                 # no yesterday
+        ("WATCH", "INVALIDATED"),        # INVALIDATED is not in the stage order: never held against
+        ("TIGHTENING", "unqualified"),
+    ])
+    @pytest.mark.parametrize("was_held", [False, True])
+    def test_everything_but_a_downgrade_is_untouched(proposed, yesterday, was_held):
+>       assert fd.stage_after_hold(proposed, yesterday, was_held) == (proposed, None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:62: AttributeError
+_____ test_everything_but_a_downgrade_is_untouched[True-WATCH-INVALIDATED] _____
+
+proposed = 'WATCH', yesterday = 'INVALIDATED', was_held = True
+
+    @pytest.mark.parametrize("proposed,yesterday", [
+        ("COILED", "TIGHTENING"),        # upgrade
+        ("COILED", "COILED"),            # equal
+        ("TRIGGERED", "WATCH"),          # upgrade
+        ("WATCH", None),                 # no yesterday
+        ("WATCH", "INVALIDATED"),        # INVALIDATED is not in the stage order: never held against
+        ("TIGHTENING", "unqualified"),
+    ])
+    @pytest.mark.parametrize("was_held", [False, True])
+    def test_everything_but_a_downgrade_is_untouched(proposed, yesterday, was_held):
+>       assert fd.stage_after_hold(proposed, yesterday, was_held) == (proposed, None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:62: AttributeError
+__ test_everything_but_a_downgrade_is_untouched[True-TIGHTENING-unqualified] ___
+
+proposed = 'TIGHTENING', yesterday = 'unqualified', was_held = True
+
+    @pytest.mark.parametrize("proposed,yesterday", [
+        ("COILED", "TIGHTENING"),        # upgrade
+        ("COILED", "COILED"),            # equal
+        ("TRIGGERED", "WATCH"),          # upgrade
+        ("WATCH", None),                 # no yesterday
+        ("WATCH", "INVALIDATED"),        # INVALIDATED is not in the stage order: never held against
+        ("TIGHTENING", "unqualified"),
+    ])
+    @pytest.mark.parametrize("was_held", [False, True])
+    def test_everything_but_a_downgrade_is_untouched(proposed, yesterday, was_held):
+>       assert fd.stage_after_hold(proposed, yesterday, was_held) == (proposed, None)
+               ^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:62: AttributeError
+_ test_exhaustive_chains_never_hold_twice_and_only_differ_after_a_double_hold __
+
+    def test_exhaustive_chains_never_hold_twice_and_only_differ_after_a_double_hold():
+        """Every raw-reading sequence of length 1..5 over the four stages (1,364 chains), threaded the way
+        prod stores them. New rule: no two consecutive holds; an un-held night shows the raw reading; a held
+        night shows yesterday's stage. Against the old rule the output differs ONLY from the first night a
+        second consecutive hold would have been written."""
+        n_chains = 0
+        for length in range(1, 6):
+            for raw in itertools.product(RAW_STAGES, repeat=length):
+                n_chains += 1
+                old, new = [], []
+                for i, r in enumerate(raw):
+                    if i == 0:
+                        old.append((r, None))
+                        new.append((r, None))
+                        continue
+>                   old.append(fd.stage_after_hold(r, old[-1][0], False))
+                               ^^^^^^^^^^^^^^^^^^^
+E                   AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+tests/test_697_one_day_hold.py:80: AttributeError
+___ test_compute_flag_metrics_holds_the_first_night_and_releases_the_second ____
+
+    def test_compute_flag_metrics_holds_the_first_night_and_releases_the_second():
+        rows = _rows()
+        raw = fd.compute_flag_metrics(rows, ticker="TST", recent_stages=[])
+        assert raw["stage"] == "WATCH" and raw["held_from_stage"] is None
+    
+        night1 = fd.compute_flag_metrics(rows, ticker="TST", recent_stages=[], yesterday_stage="COILED")
+        assert (night1["stage"], night1["held_from_stage"]) == ("COILED", "WATCH")        # the documented day
+    
+>       night2 = fd.compute_flag_metrics(rows, ticker="TST", recent_stages=[],
+                                         yesterday_stage=night1["stage"],
+                                         yesterday_was_held=night1["held_from_stage"] is not None)
+E       TypeError: compute_flag_metrics() got an unexpected keyword argument 'yesterday_was_held'
+
+tests/test_697_one_day_hold.py:128: TypeError
+___________ test_the_stage_and_the_hold_flag_come_from_the_same_row ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d08e520>
+
+    @pytest.mark.asyncio
+    async def test_the_stage_and_the_hold_flag_come_from_the_same_row(monkeypatch):
+        pool, conn = make_mock_pool()
+        conn.fetch = AsyncMock(return_value=[
+            {"ticker": "AAA", "stage": "COILED", "held_from_stage": "TIGHTENING"},
+            {"ticker": "BBB", "stage": "COILED", "held_from_stage": None},
+            {"ticker": "CCC", "stage": "WATCH", "held_from_stage": None},
+        ])
+        monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+    
+        stages = await db.get_yesterday_flag_stages(date(2026, 10, 12))
+>       holds = await db.get_yesterday_flag_holds(date(2026, 10, 12))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.db' has no attribute 'get_yesterday_flag_holds'. Did you mean: 'get_yesterday_flag_pivots'?
+
+tests/test_697_one_day_hold.py:150: AttributeError
+_______________ test_a_failed_hold_read_is_loud_not_an_empty_set _______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10d6d70b0>
+
+    @pytest.mark.asyncio
+    async def test_a_failed_hold_read_is_loud_not_an_empty_set(monkeypatch):
+        """An empty set on error would hold every downgrade night after night again — silently."""
+        monkeypatch.setattr(db, "get_pool", AsyncMock(side_effect=RuntimeError("pool down")))
+        with pytest.raises(RuntimeError):
+>           await db.get_yesterday_flag_holds(date(2026, 10, 12))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'agents.market_intelligence.db' has no attribute 'get_yesterday_flag_holds'. Did you mean: 'get_yesterday_flag_pivots'?
+
+tests/test_697_one_day_hold.py:166: AttributeError
+_ test_the_replay_on_prods_stored_rows_reproduces_the_old_chain_and_ends_every_double_hold _
+
+    def test_the_replay_on_prods_stored_rows_reproduces_the_old_chain_and_ends_every_double_hold():
+        """`item5_q1_hold_rows.out` is one read-only prod pull (92 tickers, 70 scan dates to 2026-10-09). The OLD
+        rule re-threaded from each row's raw reading must reproduce what prod stored (else the replay measures
+        nothing); the NEW rule must write no hold after a hold, change only rows downstream of one, and leave
+        every real (un-held) TRIGGERED read alone."""
+        m = _replay_module()
+        rows = m.load()
+        all_dates = sorted({r["d"] for rs in rows.values() for r in rs})
+        window = set(all_dates[-m.REPORT_DAYS:])
+    
+        n = ok = held_old = held_new = changed = consec_old = consec_new = real = real_same = 0
+        for rs in rows.values():
+>           old, new = m.thread(rs, False), m.thread(rs, True)
+                       ^^^^^^^^^^^^^^^^^^^
+
+tests/test_697_one_day_hold.py:322: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+rows_t = [{'d': datetime.date(2026, 7, 6), 'stage': 'WATCH', 'held': None, 'reason': 'runup_114% base_3d close_vs_pivot_-6.5%'}...tetime.date(2026, 7, 13), 'stage': 'INVALIDATED', 'held': None, 'reason': 'close_6.52_below_base_low_close_6.80'}, ...]
+new_rule = False
+
+    def thread(rows_t, new_rule):
+        """Re-thread one ticker's chain; returns [(stage, held_from)] aligned to rows_t."""
+        out = []
+        for i, r in enumerate(rows_t):
+            prev = None
+            if i > 0 and (r["d"] - rows_t[i - 1]["d"]).days <= LOOKBACK:
+                prev = out[i - 1]
+            if prev is None:
+                # first row of the pull / a gap beyond the 5-day window: no yesterday, nothing to hold against
+                out.append((r["stage"], r["held"]))
+                continue
+            pst, pheld = prev
+            raw = raw_read(r)
+            if raw in ("unqualified", "INVALIDATED"):
+                # these come from compute_flag_metrics' EARLY returns, which sit above the hysteresis: never held
+                out.append((raw, None))
+                continue
+>           out.append(fd.stage_after_hold(raw, pst, bool(pheld) if new_rule else False))
+                       ^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute 'stage_after_hold'
+
+scripts/probes/_697/item5_replay_hold.py:62: AttributeError
+
+=========================== short test summary info ============================
+FAILED tests/test_697_one_day_hold.py::test_a_downgrade_is_held_one_night_when_yesterday_was_a_normal_reading
+FAILED tests/test_697_one_day_hold.py::test_a_hold_is_never_followed_by_a_hold
+FAILED tests/test_697_one_day_hold.py::test_the_rejected_variant_is_not_what_ships
+FAILED tests/test_697_one_day_hold.py::test_everything_but_a_downgrade_is_untouched[False-COILED-TIGHTENING]
+FAILED tests/test_697_one_day_hold.py::test_everything_but_a_downgrade_is_untouched[False-COILED-COILED]
+FAILED tests/test_697_one_day_hold.py::test_everything_but_a_downgrade_is_untouched[False-TRIGGERED-WATCH]
+FAILED tests/test_697_one_day_hold.py::test_everything_but_a_downgrade_is_untouched[False-WATCH-None]
+FAILED tests/test_697_one_day_hold.py::test_everything_but_a_downgrade_is_untouched[False-WATCH-INVALIDATED]
+FAILED tests/test_697_one_day_hold.py::test_everything_but_a_downgrade_is_untouched[False-TIGHTENING-unqualified]
+FAILED tests/test_697_one_day_hold.py::test_everything_but_a_downgrade_is_untouched[True-COILED-TIGHTENING]
+FAILED tests/test_697_one_day_hold.py::test_everything_but_a_downgrade_is_untouched[True-COILED-COILED]
+FAILED tests/test_697_one_day_hold.py::test_everything_but_a_downgrade_is_untouched[True-TRIGGERED-WATCH]
+FAILED tests/test_697_one_day_hold.py::test_everything_but_a_downgrade_is_untouched[True-WATCH-None]
+FAILED tests/test_697_one_day_hold.py::test_everything_but_a_downgrade_is_untouched[True-WATCH-INVALIDATED]
+FAILED tests/test_697_one_day_hold.py::test_everything_but_a_downgrade_is_untouched[True-TIGHTENING-unqualified]
+FAILED tests/test_697_one_day_hold.py::test_exhaustive_chains_never_hold_twice_and_only_differ_after_a_double_hold
+FAILED tests/test_697_one_day_hold.py::test_compute_flag_metrics_holds_the_first_night_and_releases_the_second
+FAILED tests/test_697_one_day_hold.py::test_the_stage_and_the_hold_flag_come_from_the_same_row
+FAILED tests/test_697_one_day_hold.py::test_a_failed_hold_read_is_loud_not_an_empty_set
+FAILED tests/test_697_one_day_hold.py::test_the_replay_on_prods_stored_rows_reproduces_the_old_chain_and_ends_every_double_hold
+ERROR tests/test_697_one_day_hold.py::test_run_flag_scan_holds_exactly_one_night_end_to_end
+ERROR tests/test_697_one_day_hold.py::test_the_digest_still_gets_the_stored_stage_map
+20 failed, 2 errors in 0.24s
