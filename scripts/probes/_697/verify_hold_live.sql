@@ -1,7 +1,7 @@
 -- #697 item 5 (2026-10-11): VERIFY-LIVE for the one-day hysteresis hold. READ-ONLY.
 --   psql ... -v d0=2026-10-12 -f verify_hold_live.sql      (d0 = the first scan date written by the deployed code)
 -- For every row on or after d0, its "yesterday" is what the scan itself reads: the ticker's most recent prior row
--- within 5 calendar days (db._yesterday_flag_rows) — here LAG() over the ticker's rows. A hold is `held_from_stage IS NOT NULL`.
+-- within 5 calendar days (db.get_yesterday_flag_state) — here LAG() over the ticker's rows. A hold is `held_from_stage IS NOT NULL`.
 --   violators   own row is a hold AND yesterday was a hold            -> the BROKEN code writes these (24 in the 60 scan days to
 --                                                                        2026-10-09, ~0.4 a night); the fix writes 0. WOULD-FAIL-IF > 0.
 --   fingerprint own row is NOT a hold, yesterday WAS, and the stage fell -> a downgrade the old code would have held AGAIN. Only the
@@ -31,7 +31,7 @@ SELECT count(*) FILTER (WHERE pheld IS NOT NULL)                                
        count(DISTINCT scan_date)                                                          AS scan_dates
 FROM paired;
 
--- Statement 2: the number the scan LOGS as `holds_carried=K` (flag_detector.run_flag_scan: len(get_yesterday_flag_holds)) —
+-- Statement 2: the number the scan LOGS as `holds_carried=K` (flag_detector.run_flag_scan: len of the holds set from db.get_yesterday_flag_state) —
 -- EVERY ticker whose latest prior row (< scan_date, >= scan_date - 5) is a hold, whether or not it was scored that night, so it is
 -- NOT `after_hold` above (which only counts tickers that got a row on the date). Compare per date with
 --   docker logs <market-agent> | grep "flag_scan <date>: scoring"      -> `... | holds_carried=K`

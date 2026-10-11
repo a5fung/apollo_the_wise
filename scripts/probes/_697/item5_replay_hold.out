@@ -127,35 +127,47 @@ NEW TODAY pushes (approx: entered TIGHTENING/COILED from a lower stage), window 
   2026-09-09  1 -> 2
 
 REAL TRIGGERED READS (stored stage TRIGGERED, no hold) and the COILED that licensed them
-  CHYM   2026-08-19  row unchanged: True | COILED in window, old [('2026-08-17', 'raw'), ('2026-08-18', 'held')] | new [('2026-08-17', 'raw'), ('2026-08-18', 'held')] | licensed by an UN-HELD COILED, cannot move
-  IOVA   2026-09-14  row unchanged: True | COILED in window, old [('2026-09-09', 'raw'), ('2026-09-10', 'held'), ('2026-09-11', 'held')] | new [('2026-09-09', 'raw'), ('2026-09-10', 'held')] | licensed by an UN-HELD COILED, cannot move
-  WDAY   2026-08-28  row unchanged: True | COILED in window, old [('2026-08-24', 'raw'), ('2026-08-25', 'held'), ('2026-08-26', 'held'), ('2026-08-27', 'held')] | new [('2026-08-24', 'raw'), ('2026-08-25', 'held')] | licensed by an UN-HELD COILED, cannot move
-  XHLD   2026-09-09  row unchanged: True | COILED in window, old [('2026-09-08', 'raw')] | new [('2026-09-08', 'raw')] | licensed by an UN-HELD COILED, cannot move
+  CHYM   2026-08-19  row unchanged: True | COILED in window, old [('2026-08-17', 'raw'), ('2026-08-18', 'held')] | new [('2026-08-17', 'raw'), ('2026-08-18', 'held')] | licensed by an UN-HELD COILED, cannot move | nearest un-held COILED 2d before (the licence lasts 5d)
+  IOVA   2026-09-14  row unchanged: True | COILED in window, old [('2026-09-09', 'raw'), ('2026-09-10', 'held'), ('2026-09-11', 'held')] | new [('2026-09-09', 'raw'), ('2026-09-10', 'held')] | licensed by an UN-HELD COILED, cannot move | nearest un-held COILED 5d before (the licence lasts 5d)
+  WDAY   2026-08-28  row unchanged: True | COILED in window, old [('2026-08-24', 'raw'), ('2026-08-25', 'held'), ('2026-08-26', 'held'), ('2026-08-27', 'held')] | new [('2026-08-24', 'raw'), ('2026-08-25', 'held')] | licensed by an UN-HELD COILED, cannot move | nearest un-held COILED 4d before (the licence lasts 5d)
+  XHLD   2026-09-09  row unchanged: True | COILED in window, old [('2026-09-08', 'raw')] | new [('2026-09-08', 'raw')] | licensed by an UN-HELD COILED, cannot move | nearest un-held COILED 1d before (the licence lasts 5d)
 real TRIGGERED reads: 4; unchanged and licensed by an un-held COILED: 4
 
-STORED BREAKS whose parent row is in the replay window (item5_q2_breaks.out): does the parent still sit on the watchlist?
-  CDNA   break 2026-07-31 parent 2026-07-30 stored TIGHTENING new TIGHTENING -> unchanged
-  MBX    break 2026-07-31 parent 2026-07-30 stored TIGHTENING new TIGHTENING -> unchanged
-  MBX    break 2026-08-04 parent 2026-07-31 stored TIGHTENING new TIGHTENING -> unchanged
-  CHYM   break 2026-08-19 parent 2026-08-18 stored COILED     new COILED     -> unchanged
-  CDNA   break 2026-08-25 parent 2026-08-24 stored TIGHTENING new WATCH      -> LEAVES the watchlist (the break would not have been scanned for)
-  CHYM   break 2026-08-28 parent 2026-08-27 stored TRIGGERED  new COILED     -> stays on the watchlist, parent_stage TRIGGERED -> COILED
-  PBF    break 2026-09-01 parent 2026-08-31 stored TIGHTENING new TIGHTENING -> unchanged
-  PBF    break 2026-09-02 parent 2026-09-01 stored TIGHTENING new TIGHTENING -> unchanged
-  WDAY   break 2026-09-03 parent 2026-09-02 stored TRIGGERED  new WATCH      -> LEAVES the watchlist (the break would not have been scanned for)
-  XHLD   break 2026-09-09 parent 2026-09-08 stored COILED     new COILED     -> unchanged
-  IOVA   break 2026-09-14 parent 2026-09-11 stored COILED     new TIGHTENING -> stays on the watchlist, parent_stage COILED -> TIGHTENING
-  IOVA   break 2026-09-16 parent 2026-09-15 stored TRIGGERED  new TRIGGERED  -> unchanged
-  CDNA   break 2026-09-17 parent 2026-09-16 stored TIGHTENING new TIGHTENING -> unchanged
-  CHPT   break 2026-09-18 parent 2026-09-17 stored TIGHTENING new TIGHTENING -> unchanged
-  QMCO   break 2026-09-23 parent 2026-09-22 stored TIGHTENING new TIGHTENING -> unchanged
-  QMCO   break 2026-09-24 parent 2026-09-23 stored TIGHTENING new TIGHTENING -> unchanged
-  EFOR   break 2026-10-01 parent 2026-09-30 stored TIGHTENING new TIGHTENING -> unchanged
-  CHPT   break 2026-10-02 parent 2026-10-01 stored TIGHTENING new TIGHTENING -> unchanged
-  HTFL   break 2026-10-05 parent 2026-10-02 stored TIGHTENING new TIGHTENING -> unchanged
-  HTFL   break 2026-10-06 parent 2026-10-05 stored TIGHTENING new TIGHTENING -> unchanged
-  KOD    break 2026-10-09 parent 2026-10-08 stored COILED     new COILED     -> unchanged
-breaks with a parent in the window: unchanged 17, relabelled 2, dropped from the watchlist 2
+STORED INTRADAY SHADOW ROWS (item5_q3_shadow_parents.out): does the parent row still sit on the watchlist?
+  break           parent in window  21: unchanged  17, relabelled  2, LEAVES the watchlist  2, parent row differs from what the scan saw  0
+  support_test    parent in window  18: unchanged  15, relabelled  2, LEAVES the watchlist  1, parent row differs from what the scan saw  0
+  undercut_rally  parent in window   3: unchanged   3, relabelled  0, LEAVES the watchlist  0, parent row differs from what the scan saw  0
+  ma_pullback     parent in window  78: unchanged  66, relabelled 10, LEAVES the watchlist  2, parent row differs from what the scan saw  0
+  low_vol_rest    parent in window  49: unchanged  41, relabelled  7, LEAVES the watchlist  0, parent row differs from what the scan saw  1
+  relabelled  break           CHYM   2026-08-28 parent 2026-08-27 stored TRIGGERED  -> new COILED
+  relabelled  break           IOVA   2026-09-14 parent 2026-09-11 stored COILED     -> new TIGHTENING
+  relabelled  low_vol_rest    NWL    2026-08-19 parent 2026-08-18 stored COILED     -> new TIGHTENING
+  relabelled  low_vol_rest    CHYM   2026-08-25 parent 2026-08-24 stored TRIGGERED  -> new TIGHTENING
+  relabelled  low_vol_rest    CHYM   2026-08-26 parent 2026-08-25 stored TRIGGERED  -> new TIGHTENING
+  relabelled  low_vol_rest    CHYM   2026-08-27 parent 2026-08-26 stored TRIGGERED  -> new COILED
+  relabelled  low_vol_rest    CHYM   2026-08-28 parent 2026-08-27 stored TRIGGERED  -> new COILED
+  relabelled  low_vol_rest    IOVA   2026-09-09 parent 2026-09-08 stored COILED     -> new TIGHTENING
+  relabelled  low_vol_rest    OMER   2026-09-11 parent 2026-09-10 stored COILED     -> new TIGHTENING
+  relabelled  ma_pullback     NWL    2026-08-19 parent 2026-08-18 stored COILED     -> new TIGHTENING
+  relabelled  ma_pullback     CHYM   2026-08-24 parent 2026-08-21 stored TRIGGERED  -> new TIGHTENING
+  relabelled  ma_pullback     PBF    2026-08-24 parent 2026-08-21 stored COILED     -> new TIGHTENING
+  relabelled  ma_pullback     CHYM   2026-08-25 parent 2026-08-24 stored TRIGGERED  -> new TIGHTENING
+  relabelled  ma_pullback     PBF    2026-08-25 parent 2026-08-24 stored COILED     -> new TIGHTENING
+  relabelled  ma_pullback     CHYM   2026-08-27 parent 2026-08-26 stored TRIGGERED  -> new COILED
+  relabelled  ma_pullback     IOVA   2026-09-08 parent 2026-09-07 stored COILED     -> new TIGHTENING
+  relabelled  ma_pullback     OMER   2026-09-10 parent 2026-09-09 stored COILED     -> new TIGHTENING
+  relabelled  ma_pullback     OMER   2026-09-11 parent 2026-09-10 stored COILED     -> new TIGHTENING
+  relabelled  ma_pullback     IOVA   2026-09-14 parent 2026-09-11 stored COILED     -> new TIGHTENING
+  relabelled  support_test    WDAY   2026-08-27 parent 2026-08-26 stored COILED     -> new TIGHTENING
+  relabelled  support_test    WDAY   2026-08-28 parent 2026-08-27 stored COILED     -> new TIGHTENING
+  LOST        break           CDNA   2026-08-25 parent 2026-08-24 stored TIGHTENING -> new WATCH (this shadow row would not have been written)
+  LOST        break           WDAY   2026-09-03 parent 2026-09-02 stored TRIGGERED  -> new WATCH (this shadow row would not have been written)
+  LOST        ma_pullback     CDNA   2026-08-25 parent 2026-08-24 stored TIGHTENING -> new WATCH (this shadow row would not have been written)
+  LOST        ma_pullback     WDAY   2026-09-02 parent 2026-09-01 stored TRIGGERED  -> new WATCH (this shadow row would not have been written)
+  LOST        support_test    ABVX   2026-07-20 parent 2026-07-17 stored TIGHTENING -> new WATCH (this shadow row would not have been written)
+  NOT THE RULE low_vol_rest    ATAI   2026-07-24 parent 2026-07-23: the scan saw COILED, the stored row says unqualified (re-stamped after the scan; unrelated to the hold) - excluded from the counts
+shadow rows that would not have been written: 5 of 169 with a parent in the window (2 breaks + 3 in the other four tables)
+join check: the shadow row's recorded parent_stage equals the stored stage of that parent row on 168 of 169 rows (the rest are listed above and excluded)
 
 EXPECTED verify_hold_live.sql over the same 60 scan dates (after_hold, violators, fingerprint, first_holds):
   old rule (= prod, probe baseline 43/24/0/20): (43, 24, 0, 20)

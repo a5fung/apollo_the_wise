@@ -860,9 +860,10 @@ def compute_flag_metrics(
     output columns then stay None, same as "no breakout on record").
 
     `yesterday_was_held` = yesterday's STORED row was itself a hold (`held_from_stage IS NOT
-    NULL`; `db.get_yesterday_flag_holds`). Pass it whenever `yesterday_stage` is a stored stage —
-    a replay that threads its own output must pass `prev["held_from_stage"] is not None` — or a
-    downgrade is held night after night (the pre-#697-item-5 behaviour).
+    NULL`; `db.get_yesterday_flag_state` returns it with the stage, from the same row). Pass it
+    whenever `yesterday_stage` is a stored stage — a replay that threads its own output must pass
+    `prev["held_from_stage"] is not None` — or a downgrade is held night after night (the
+    pre-#697-item-5 behaviour).
 
     Returns a dict with every metric + final `stage`. Hysteresis applied at end:
     a downgrade vs `yesterday_stage` is held ONE day (except INVALIDATED, which fires
@@ -1401,11 +1402,11 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
         + " ".join(f"{src}={n}" for src, n in _source_counts.most_common())
     )
 
-    (yesterday_map, held_yesterday, recent_map, rs_map, sector_map, pivot_map,
+    ((yesterday_map, held_yesterday), recent_map, rs_map, sector_map, pivot_map,
      failure_map) = await asyncio.gather(
-        db.get_yesterday_flag_stages(scan_date),
-        # #697 item 5: which of those stored stages were themselves a hold (a hold is never followed by one)
-        db.get_yesterday_flag_holds(scan_date),
+        # #697 item 5: the stored stage AND which of those stored stages were themselves a hold (a hold is never
+        # followed by one) — one statement, so both come from the same row of the same snapshot
+        db.get_yesterday_flag_state(scan_date),
         db.get_recent_flag_stages(scan_date, lookback_days=_COILED_LOOKBACK_DAYS),
         db.get_rs_for_tickers(scan_date, universe),
         db.get_sectors_batch(universe),
@@ -1413,8 +1414,10 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
         db.get_flag_failure_carry(scan_date),
     )
 
-    # holds_carried = how many tickers' yesterday-row was a hold, i.e. how many will NOT be held again (#697 item 5):
-    # the positive, every-night proof that the hold reader is wired into the scan.
+    # holds_carried = how many tickers' yesterday-row was a hold, i.e. how many will NOT be held again (#697 item 5).
+    # It shows the hold READER is running every night; it does NOT show the hysteresis uses the flag (a call site that
+    # dropped `yesterday_was_held` would still log it). That proof is the violators=0 + fingerprint probe in
+    # scripts/probes/_697/verify_hold_live.sql.
     logger.info(
         f"flag_scan {scan_date}: scoring {len(universe)} candidates | holds_carried={len(held_yesterday)}"
     )

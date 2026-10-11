@@ -39,13 +39,16 @@ async def _live_inputs(conn, ticker, scan_date, forced_stages=None):
     history = await db.get_recent_daily_history(ticker, _HISTORY_DAYS, end_date=scan_date)
     if not history or len(history) < 60:
         return None
-    yesterday_map = await db.get_yesterday_flag_stages(scan_date)
+    # #697 item 5: the scan feeds the hysteresis the stored stage AND whether that stored row was itself a hold
+    # (a hold is never followed by a hold) - one reader, one row. Needs the post-item-5 db.py in the container.
+    yesterday_map, held_yesterday = await db.get_yesterday_flag_state(scan_date)
     recent_map = await db.get_recent_flag_stages(scan_date, lookback_days=_COILED_LOOKBACK_DAYS)
     pivot_map = await db.get_yesterday_flag_pivots(scan_date)
     prior_pivot = pivot_map.get(ticker)
     return {
         "history": history,
         "yesterday_stage": yesterday_map.get(ticker),
+        "yesterday_was_held": ticker in held_yesterday,
         "recent_stages": forced_stages if forced_stages is not None else recent_map.get(ticker, []),
         "prior_pivot_date": prior_pivot[0] if prior_pivot else None,
         "prior_pivot_high": prior_pivot[1] if prior_pivot else None,
@@ -56,6 +59,7 @@ def _replay(ticker, inputs):
     return compute_flag_metrics(
         inputs["history"], ticker=ticker,
         yesterday_stage=inputs["yesterday_stage"],
+        yesterday_was_held=inputs["yesterday_was_held"],
         recent_stages=inputs["recent_stages"],
         prior_pivot_date=inputs["prior_pivot_date"],
         prior_pivot_high=inputs["prior_pivot_high"],

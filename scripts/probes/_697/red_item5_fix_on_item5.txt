@@ -1,0 +1,306 @@
+.................FFEEE.FF........................................F...... [ 80%]
+............EEE...                                                       [100%]
+==================================== ERRORS ====================================
+___ ERROR at setup of test_run_flag_scan_holds_exactly_one_night_end_to_end ____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1092257b0>
+
+    @pytest.fixture
+    def table(monkeypatch):
+        t = _Table()
+    
+        async def _send(text, chat_id=None, parse_mode=None, reply_markup=None):
+            t.sent.append(text)
+            return True
+    
+        async def _insert(m):
+            t.rows.append({"ticker": m["ticker"], "scan_date": m["scan_date"], "stage": m["stage"],
+                           "held_from_stage": m.get("held_from_stage")})
+    
+        async def _state(scan_date):
+            prior = t.prior(scan_date)
+            return ({k: r["stage"] for k, r in prior.items()},
+                    {k for k, r in prior.items() if r["held_from_stage"]})
+    
+        pool, conn = make_mock_pool()
+        conn.fetch = AsyncMock(return_value=[])
+        t.conn = conn
+>       t.real_state = db.get_yesterday_flag_state          # the real reader, for the test that runs it against a mock pool
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.db' has no attribute 'get_yesterday_flag_state'. Did you mean: 'get_yesterday_flag_stages'?
+
+tests/test_697_one_day_hold.py:218: AttributeError
+______ ERROR at setup of test_the_digest_still_gets_the_stored_stage_map _______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109935150>
+
+    @pytest.fixture
+    def table(monkeypatch):
+        t = _Table()
+    
+        async def _send(text, chat_id=None, parse_mode=None, reply_markup=None):
+            t.sent.append(text)
+            return True
+    
+        async def _insert(m):
+            t.rows.append({"ticker": m["ticker"], "scan_date": m["scan_date"], "stage": m["stage"],
+                           "held_from_stage": m.get("held_from_stage")})
+    
+        async def _state(scan_date):
+            prior = t.prior(scan_date)
+            return ({k: r["stage"] for k, r in prior.items()},
+                    {k for k, r in prior.items() if r["held_from_stage"]})
+    
+        pool, conn = make_mock_pool()
+        conn.fetch = AsyncMock(return_value=[])
+        t.conn = conn
+>       t.real_state = db.get_yesterday_flag_state          # the real reader, for the test that runs it against a mock pool
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.db' has no attribute 'get_yesterday_flag_state'. Did you mean: 'get_yesterday_flag_stages'?
+
+tests/test_697_one_day_hold.py:218: AttributeError
+_ ERROR at setup of test_run_flag_scan_reads_yesterdays_stage_and_hold_with_one_statement _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109935d50>
+
+    @pytest.fixture
+    def table(monkeypatch):
+        t = _Table()
+    
+        async def _send(text, chat_id=None, parse_mode=None, reply_markup=None):
+            t.sent.append(text)
+            return True
+    
+        async def _insert(m):
+            t.rows.append({"ticker": m["ticker"], "scan_date": m["scan_date"], "stage": m["stage"],
+                           "held_from_stage": m.get("held_from_stage")})
+    
+        async def _state(scan_date):
+            prior = t.prior(scan_date)
+            return ({k: r["stage"] for k, r in prior.items()},
+                    {k for k, r in prior.items() if r["held_from_stage"]})
+    
+        pool, conn = make_mock_pool()
+        conn.fetch = AsyncMock(return_value=[])
+        t.conn = conn
+>       t.real_state = db.get_yesterday_flag_state          # the real reader, for the test that runs it against a mock pool
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.db' has no attribute 'get_yesterday_flag_state'. Did you mean: 'get_yesterday_flag_stages'?
+
+tests/test_697_one_day_hold.py:218: AttributeError
+_ ERROR at setup of test_a_nominated_and_pinned_tightening_name_is_downgraded_and_announced_nowhere _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10981c280>
+
+    @pytest.fixture
+    def world(monkeypatch):
+        w = _World()
+    
+        async def _send(text, chat_id=None, parse_mode=None, reply_markup=None):
+            w.sent.append(text)
+            return True
+    
+        async def _audit(event_type, summary, detail="", *, conn=None):
+            w.audit.append((event_type, summary, detail))
+    
+        async def _insert(r):
+            w.inserted.append((r["ticker"], r["stage"], r.get("reason")))
+    
+        pool, conn = make_mock_pool()
+        conn.fetch = AsyncMock(return_value=[])
+    
+        monkeypatch.setattr(briefing, "send_telegram_message", _send)
+        monkeypatch.setattr(db, "log_audit_event", _audit)
+        monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+        monkeypatch.setattr(db, "insert_flag_candidate", _insert)
+>       monkeypatch.setattr(db, "get_yesterday_flag_state", AsyncMock(return_value=({}, set())))  # (stages, holds), #697 item 5
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: <module 'agents.market_intelligence.db' from '/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_d7ce2910-1ef-3/agents/market_intelligence/db.py'> has no attribute 'get_yesterday_flag_state'
+
+tests/test_598_flag_tightening_screen.py:68: AttributeError
+_______ ERROR at setup of test_the_price_only_backstop_covers_tightening _______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10997eeb0>
+
+    @pytest.fixture
+    def world(monkeypatch):
+        w = _World()
+    
+        async def _send(text, chat_id=None, parse_mode=None, reply_markup=None):
+            w.sent.append(text)
+            return True
+    
+        async def _audit(event_type, summary, detail="", *, conn=None):
+            w.audit.append((event_type, summary, detail))
+    
+        async def _insert(r):
+            w.inserted.append((r["ticker"], r["stage"], r.get("reason")))
+    
+        pool, conn = make_mock_pool()
+        conn.fetch = AsyncMock(return_value=[])
+    
+        monkeypatch.setattr(briefing, "send_telegram_message", _send)
+        monkeypatch.setattr(db, "log_audit_event", _audit)
+        monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+        monkeypatch.setattr(db, "insert_flag_candidate", _insert)
+>       monkeypatch.setattr(db, "get_yesterday_flag_state", AsyncMock(return_value=({}, set())))  # (stages, holds), #697 item 5
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: <module 'agents.market_intelligence.db' from '/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_d7ce2910-1ef-3/agents/market_intelligence/db.py'> has no attribute 'get_yesterday_flag_state'
+
+tests/test_598_flag_tightening_screen.py:68: AttributeError
+______________ ERROR at setup of test_watch_is_still_not_screened ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10997f2a0>
+
+    @pytest.fixture
+    def world(monkeypatch):
+        w = _World()
+    
+        async def _send(text, chat_id=None, parse_mode=None, reply_markup=None):
+            w.sent.append(text)
+            return True
+    
+        async def _audit(event_type, summary, detail="", *, conn=None):
+            w.audit.append((event_type, summary, detail))
+    
+        async def _insert(r):
+            w.inserted.append((r["ticker"], r["stage"], r.get("reason")))
+    
+        pool, conn = make_mock_pool()
+        conn.fetch = AsyncMock(return_value=[])
+    
+        monkeypatch.setattr(briefing, "send_telegram_message", _send)
+        monkeypatch.setattr(db, "log_audit_event", _audit)
+        monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+        monkeypatch.setattr(db, "insert_flag_candidate", _insert)
+>       monkeypatch.setattr(db, "get_yesterday_flag_state", AsyncMock(return_value=({}, set())))  # (stages, holds), #697 item 5
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: <module 'agents.market_intelligence.db' from '/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_d7ce2910-1ef-3/agents/market_intelligence/db.py'> has no attribute 'get_yesterday_flag_state'
+
+tests/test_598_flag_tightening_screen.py:68: AttributeError
+=================================== FAILURES ===================================
+___________ test_the_stage_and_the_hold_flag_come_from_the_same_row ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x107a3da70>
+
+    @pytest.mark.asyncio
+    async def test_the_stage_and_the_hold_flag_come_from_the_same_row(monkeypatch):
+        pool, conn = make_mock_pool()
+        conn.fetch = AsyncMock(return_value=[
+            {"ticker": "AAA", "stage": "COILED", "held_from_stage": "TIGHTENING"},
+            {"ticker": "BBB", "stage": "COILED", "held_from_stage": None},
+            {"ticker": "CCC", "stage": "WATCH", "held_from_stage": None},
+        ])
+        monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+    
+>       stages, holds = await db.get_yesterday_flag_state(date(2026, 10, 12))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'agents.market_intelligence.db' has no attribute 'get_yesterday_flag_state'. Did you mean: 'get_yesterday_flag_stages'?
+
+tests/test_697_one_day_hold.py:153: AttributeError
+______________ test_a_failed_state_read_is_loud_not_an_empty_set _______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10986b650>
+
+    @pytest.mark.asyncio
+    async def test_a_failed_state_read_is_loud_not_an_empty_set(monkeypatch):
+        """An empty set on error would hold every downgrade night after night again — silently."""
+        monkeypatch.setattr(db, "get_pool", AsyncMock(side_effect=RuntimeError("pool down")))
+        with pytest.raises(RuntimeError):
+>           await db.get_yesterday_flag_state(date(2026, 10, 12))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: module 'agents.market_intelligence.db' has no attribute 'get_yesterday_flag_state'. Did you mean: 'get_yesterday_flag_stages'?
+
+tests/test_697_one_day_hold.py:173: AttributeError
+_ test_each_real_triggered_read_keeps_an_unheld_coiled_in_its_window_and_one_sits_on_the_edge _
+
+    def test_each_real_triggered_read_keeps_an_unheld_coiled_in_its_window_and_one_sits_on_the_edge():
+        """TRIGGERED needs `coiled_today or COILED in the stored labels of the last 5 calendar days`
+        (`get_recent_flag_stages`), so the per-night reading is NOT history-free for TRIGGERED. Of the 4 real reads in the
+        window each is licensed by an UN-HELD COILED (a raw reading no re-threading can remove): the margin in calendar days
+        to the nearest one. IOVA sits exactly on the 5-day edge - the replay cannot see a breakout only the bars would show."""
+        m = _replay_module()
+        rows = m.load()
+>       window = m.report_window(rows)
+                 ^^^^^^^^^^^^^^^
+E       AttributeError: module '_item5_replay_hold' has no attribute 'report_window'
+
+tests/test_697_one_day_hold.py:386: AttributeError
+_ test_the_five_intraday_scans_lose_five_shadow_rows_to_the_new_rule_two_breaks_and_three_others _
+
+    def test_the_five_intraday_scans_lose_five_shadow_rows_to_the_new_rule_two_breaks_and_three_others():
+        """All five intraday scans take their watchlist from the latest stored TIGHTENING / COILED / TRIGGERED rows
+        (`item5_q3_shadow_parents.out` = every stored shadow row since 2026-07-01 with its parent row, one read-only pull).
+        A parent whose label falls to WATCH is a row the scan would not have written: telemetry only, no order path."""
+        m = _replay_module()
+        rows = m.load()
+>       window = m.report_window(rows)
+                 ^^^^^^^^^^^^^^^
+E       AttributeError: module '_item5_replay_hold' has no attribute 'report_window'
+
+tests/test_697_one_day_hold.py:403: AttributeError
+_____________ test_run_flag_scan_pushes_only_the_real_new_entries ______________
+
+world = <test_598_flag_stage_transition_push._World object at 0x10982cbb0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1092171c0>
+
+    @pytest.mark.asyncio
+    async def test_run_flag_scan_pushes_only_the_real_new_entries(world, monkeypatch):
+        """AAA WATCH -> TIGHTENING (push) · BBB TIGHTENING -> COILED but the M&A layer rewrites it to
+        unqualified (silent) · CCC TIGHTENING -> TIGHTENING (silent)."""
+        yesterday = {"AAA": "WATCH", "BBB": "TIGHTENING", "CCC": "TIGHTENING"}
+        today = {"AAA": "TIGHTENING", "BBB": "COILED", "CCC": "TIGHTENING"}
+    
+        monkeypatch.setattr(db, "get_flag_universe", AsyncMock(return_value={t: ["rs_top200"] for t in today}))
+>       monkeypatch.setattr(db, "get_yesterday_flag_state", AsyncMock(return_value=(yesterday, set())))  # (stages, holds), #697 item 5
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: <module 'agents.market_intelligence.db' from '/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_d7ce2910-1ef-3/agents/market_intelligence/db.py'> has no attribute 'get_yesterday_flag_state'
+
+tests/test_598_flag_stage_transition_push.py:402: AttributeError
+=============================== warnings summary ===============================
+tests/test_598_flag_tightening_screen.py::test_the_flags_header_no_longer_calls_a_stage_a_setup
+  /Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_d7ce2910-1ef-3/agents/market_intelligence/agent.py:7580: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+tests/test_598_flag_tightening_screen.py::test_the_flags_header_no_longer_calls_a_stage_a_setup
+tests/test_598_flag_tightening_screen.py::test_the_flags_header_no_longer_calls_a_stage_a_setup
+  /Users/alvinfung/Library/Python/3.14/lib/python/site-packages/fastapi/applications.py:4675: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)  # ty: ignore[deprecated]
+
+tests/test_598_flag_tightening_screen.py::test_the_flags_header_no_longer_calls_a_stage_a_setup
+  /Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_d7ce2910-1ef-3/agents/market_intelligence/agent.py:7765: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+[#577 must-not-miss] 4 of 31 labelled real EPs are currently EXCLUDED by the live selection stack (all MIN_GAP_PCT) — recorded debt against P1 (docs/roadmap/ep_profitability_program.md § THE PRINCIPLES), recorded 2026-09-03. See tests/fixtures/must_not_miss_eps.py::BASELINE_DEBT.
+[#577 must-not-miss] ⚠ ABNB 2026-08-07 is OPERATOR-NAMED, is excluded by the live stack, and is NOT being asserted. This is a declared abstention, not an accepted state — its reason: DECLARED ABSTENTION — not an accepted state, and not a data artifact. ABNB is a REAL EP (operator-labelled 2026-09-06) and the live stack excludes it correctly under the rules as written. Whether it is still waiting on anyone is that reason's job to say, not this banner's. See must_not_miss_eps.py.
+[#577 must-not-miss] ⚠ CHPT 2026-09-03 is OPERATOR-NAMED, is excluded by the live stack, and is NOT being asserted. This is a declared abstention, not an accepted state — its reason: SETTLED EXCLUSION, not a data artifact and no longer a wait. Whether it is still waiting on anyone is that reason's job to say, not this banner's. See must_not_miss_eps.py.
+=========================== short test summary info ============================
+FAILED tests/test_697_one_day_hold.py::test_the_stage_and_the_hold_flag_come_from_the_same_row
+FAILED tests/test_697_one_day_hold.py::test_a_failed_state_read_is_loud_not_an_empty_set
+FAILED tests/test_697_one_day_hold.py::test_each_real_triggered_read_keeps_an_unheld_coiled_in_its_window_and_one_sits_on_the_edge
+FAILED tests/test_697_one_day_hold.py::test_the_five_intraday_scans_lose_five_shadow_rows_to_the_new_rule_two_breaks_and_three_others
+FAILED tests/test_598_flag_stage_transition_push.py::test_run_flag_scan_pushes_only_the_real_new_entries
+ERROR tests/test_697_one_day_hold.py::test_run_flag_scan_holds_exactly_one_night_end_to_end
+ERROR tests/test_697_one_day_hold.py::test_the_digest_still_gets_the_stored_stage_map
+ERROR tests/test_697_one_day_hold.py::test_run_flag_scan_reads_yesterdays_stage_and_hold_with_one_statement
+ERROR tests/test_598_flag_tightening_screen.py::test_a_nominated_and_pinned_tightening_name_is_downgraded_and_announced_nowhere
+ERROR tests/test_598_flag_tightening_screen.py::test_the_price_only_backstop_covers_tightening
+ERROR tests/test_598_flag_tightening_screen.py::test_watch_is_still_not_screened
+5 failed, 79 passed, 4 warnings, 6 errors in 0.45s

@@ -8,12 +8,16 @@ COILED rows, 12 of 16 TRIGGERED rows and 11 of 102 TIGHTENING rows were holds (h
 hold (`held_from_stage IS NULL`).
 
 Every test below fails on the pre-item-5 branch (no `stage_after_hold`, no `yesterday_was_held`, no
-`get_yesterday_flag_holds`). No threshold, window, floor or stage rule moves: the raw reading is unchanged.
+`get_yesterday_flag_state`). No threshold, window, floor or stage rule moves. (The raw reading of WATCH / TIGHTENING /
+COILED is history-free and unchanged; TRIGGERED's "COILED in the last 5 days" reads STORED labels, so it sees a held COILED
+for one night instead of indefinitely - measured in the replay test at the bottom, 0 of the 4 real reads move.)
 """
 from __future__ import annotations
 
+import importlib.util
 import itertools
 import logging
+import pathlib
 from datetime import date, timedelta
 from unittest.mock import AsyncMock
 
@@ -146,33 +150,38 @@ async def test_the_stage_and_the_hold_flag_come_from_the_same_row(monkeypatch):
     ])
     monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
 
-    stages = await db.get_yesterday_flag_stages(date(2026, 10, 12))
-    holds = await db.get_yesterday_flag_holds(date(2026, 10, 12))
+    stages, holds = await db.get_yesterday_flag_state(date(2026, 10, 12))
 
     assert stages == {"AAA": "COILED", "BBB": "COILED", "CCC": "WATCH"}
     assert holds == {"AAA"}
-    sqls = [c.args[0] for c in conn.fetch.await_args_list]
-    assert len(sqls) == 2 and sqls[0] == sqls[1]                                      # literally the same statement
-    sql = " ".join(sqls[0].split())
+    assert conn.fetch.await_count == 1                                                # ONE statement: one row, one snapshot
+    sql = " ".join(conn.fetch.await_args_list[0].args[0].split())
     assert "DISTINCT ON (ticker)" in sql and "held_from_stage" in sql
     assert "scan_date >= $1 - INTERVAL '5 days'" in sql and "ORDER BY ticker, scan_date DESC" in sql
 
+    # the stage-only reader other callers use (the digest fallback) is the stage half of the same read
+    conn.fetch.reset_mock()
+    assert await db.get_yesterday_flag_stages(date(2026, 10, 12)) == stages
+    assert conn.fetch.await_count == 1
+
 
 @pytest.mark.asyncio
-async def test_a_failed_hold_read_is_loud_not_an_empty_set(monkeypatch):
+async def test_a_failed_state_read_is_loud_not_an_empty_set(monkeypatch):
     """An empty set on error would hold every downgrade night after night again — silently."""
     monkeypatch.setattr(db, "get_pool", AsyncMock(side_effect=RuntimeError("pool down")))
     with pytest.raises(RuntimeError):
-        await db.get_yesterday_flag_holds(date(2026, 10, 12))
+        await db.get_yesterday_flag_state(date(2026, 10, 12))
 
 
 # ── the wiring: run_flag_scan, several nights, in-memory table ──────────────
 
 class _Table:
-    """mi_flag_candidates in memory: what insert_flag_candidate writes, read back the way the two db
-    readers do (most recent prior row within 5 calendar days)."""
+    """mi_flag_candidates in memory: what insert_flag_candidate writes, read back the way the db
+    reader does (most recent prior row within 5 calendar days: its stage and whether it was a hold)."""
 
     def __init__(self):
+        self.conn = None
+        self.real_state = None
         self.rows: list[dict] = []
         self.sent: list[str] = []
         self.kwargs: list[dict] = []
@@ -198,20 +207,20 @@ def table(monkeypatch):
         t.rows.append({"ticker": m["ticker"], "scan_date": m["scan_date"], "stage": m["stage"],
                        "held_from_stage": m.get("held_from_stage")})
 
-    async def _stages(scan_date):
-        return {k: r["stage"] for k, r in t.prior(scan_date).items()}
-
-    async def _holds(scan_date):
-        return {k for k, r in t.prior(scan_date).items() if r["held_from_stage"]}
+    async def _state(scan_date):
+        prior = t.prior(scan_date)
+        return ({k: r["stage"] for k, r in prior.items()},
+                {k for k, r in prior.items() if r["held_from_stage"]})
 
     pool, conn = make_mock_pool()
     conn.fetch = AsyncMock(return_value=[])
+    t.conn = conn
+    t.real_state = db.get_yesterday_flag_state          # the real reader, for the test that runs it against a mock pool
     monkeypatch.setattr(briefing, "send_telegram_message", _send)
     monkeypatch.setattr(db, "log_audit_event", AsyncMock())
     monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
     monkeypatch.setattr(db, "insert_flag_candidate", _insert)
-    monkeypatch.setattr(db, "get_yesterday_flag_stages", _stages)
-    monkeypatch.setattr(db, "get_yesterday_flag_holds", _holds)
+    monkeypatch.setattr(db, "get_yesterday_flag_state", _state)
     monkeypatch.setattr(db, "get_recent_flag_stages", AsyncMock(return_value={}))
     monkeypatch.setattr(db, "get_rs_for_tickers", AsyncMock(return_value={}))
     monkeypatch.setattr(db, "get_sectors_batch", AsyncMock(return_value={}))
@@ -258,7 +267,8 @@ async def test_run_flag_scan_holds_exactly_one_night_end_to_end(table, monkeypat
                             AsyncMock(return_value={t: ["rs_top200"] for t in raw[d]}))
         await fd.run_flag_scan(d)
 
-    # the every-night wiring proof the live verify reads: how many names' yesterday was a hold
+    # the line the live verify compares to `expected_holds_carried`: how many names' yesterday was a hold. It shows the hold
+    # READER is running, not that the hysteresis uses the flag - that is the kwargs + stored-row assertions below.
     carried = {r.getMessage().split(":")[0]: r.getMessage().rsplit("holds_carried=", 1)[1]
                for r in caplog.records if "holds_carried=" in r.getMessage()}
     assert carried == {f"flag_scan {nights[0]}": "0", f"flag_scan {nights[1]}": "0", f"flag_scan {nights[2]}": "2"}
@@ -295,11 +305,31 @@ async def test_the_digest_still_gets_the_stored_stage_map(table, monkeypatch):
     assert seen["map"] == {"AAA": "WATCH"}
 
 
+@pytest.mark.asyncio
+async def test_run_flag_scan_reads_yesterdays_stage_and_hold_with_one_statement(table, monkeypatch):
+    """The REAL reader against a mock pool: the scan issues ONE yesterday-row statement per night (not one per reader, run
+    concurrently), and the stage + hold flag it hands compute_flag_metrics come from that single result."""
+    d = date(2026, 10, 6)
+    monkeypatch.setattr(db, "get_yesterday_flag_state", table.real_state)
+
+    async def _fetch(sql, *args):
+        if "DISTINCT ON (ticker) ticker, stage, held_from_stage" in " ".join(sql.split()):
+            return [{"ticker": "AAA", "stage": "COILED", "held_from_stage": "TIGHTENING"}]
+        return []
+    table.conn.fetch = AsyncMock(side_effect=_fetch)
+    monkeypatch.setattr(db, "get_flag_universe", AsyncMock(return_value={"AAA": ["rs_top200"]}))
+    _install_raw(monkeypatch, table, {d: {"AAA": "TIGHTENING"}})
+    await fd.run_flag_scan(d)
+
+    yesterday_reads = [c for c in table.conn.fetch.await_args_list
+                       if "held_from_stage" in c.args[0] and "DISTINCT ON (ticker)" in c.args[0]]
+    assert len(yesterday_reads) == 1
+    assert table.kwargs[-1]["yesterday_stage"] == "COILED" and table.kwargs[-1]["yesterday_was_held"] is True
+
+
 # ── the stored-row replay behind the numbers in the SSoT ────────────────────
 
 def _replay_module():
-    import importlib.util
-    import pathlib
     path = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "probes" / "_697" / "item5_replay_hold.py"
     spec = importlib.util.spec_from_file_location("_item5_replay_hold", path)
     mod = importlib.util.module_from_spec(spec)
@@ -317,7 +347,7 @@ def test_the_replay_on_prods_stored_rows_reproduces_the_old_chain_and_ends_every
     all_dates = sorted({r["d"] for rs in rows.values() for r in rs})
     window = set(all_dates[-m.REPORT_DAYS:])
 
-    n = ok = held_old = held_new = changed = consec_old = consec_new = real = real_same = 0
+    n = ok = held_old = held_new = changed = consec_old = consec_new = real = real_same = trig_old = trig_new = 0
     for rs in rows.values():
         old, new = m.thread(rs, False), m.thread(rs, True)
         for i, r in enumerate(rs):
@@ -328,6 +358,8 @@ def test_the_replay_on_prods_stored_rows_reproduces_the_old_chain_and_ends_every
             held_old += bool(old[i][1])
             held_new += bool(new[i][1])
             changed += old[i] != new[i]
+            trig_old += old[i][0] == "TRIGGERED"
+            trig_new += new[i][0] == "TRIGGERED"
             if i and (r["d"] - rs[i - 1]["d"]).days <= m.LOOKBACK:
                 consec_old += bool(old[i][1] and old[i - 1][1])
                 consec_new += bool(new[i][1] and new[i - 1][1])
@@ -340,3 +372,51 @@ def test_the_replay_on_prods_stored_rows_reproduces_the_old_chain_and_ends_every
     assert held_new == 21 and changed == 24        # the first night of each hold stays; 24 rows stop being one
     assert consec_old == 24 and consec_new == 0    # every changed row is a hold that followed a hold
     assert real == 4 and real_same == 4            # CHYM, IOVA, WDAY, XHLD: no real TRIGGERED read moves
+    assert trig_old == 16 and trig_new == 7        # stored TRIGGERED rows (the flag_continuation adapter counts each as 'closed'):
+                                                   # the 4 real reads + 3 first-night holds survive; 9 held ones go
+
+
+def test_each_real_triggered_read_keeps_an_unheld_coiled_in_its_window_and_one_sits_on_the_edge():
+    """TRIGGERED needs `coiled_today or COILED in the stored labels of the last 5 calendar days`
+    (`get_recent_flag_stages`), so the per-night reading is NOT history-free for TRIGGERED. Of the 4 real reads in the
+    window each is licensed by an UN-HELD COILED (a raw reading no re-threading can remove): the margin in calendar days
+    to the nearest one. IOVA sits exactly on the 5-day edge - the replay cannot see a breakout only the bars would show."""
+    m = _replay_module()
+    rows = m.load()
+    window = m.report_window(rows)
+    margins = {}
+    for t, (rs, new) in m.new_chain(rows).items():
+        for i, r in enumerate(rs):
+            if r["d"] in window and r["stage"] == "TRIGGERED" and not r["held"]:
+                gaps = [(r["d"] - rs[j]["d"]).days for j in range(i)
+                        if 0 < (r["d"] - rs[j]["d"]).days <= m.LOOKBACK and new[j] == ("COILED", None)]
+                margins[(t, r["d"].isoformat())] = min(gaps, default=None)
+    assert margins == {("CHYM", "2026-08-19"): 2, ("IOVA", "2026-09-14"): 5, ("WDAY", "2026-08-28"): 4, ("XHLD", "2026-09-09"): 1}
+
+
+def test_the_five_intraday_scans_lose_five_shadow_rows_to_the_new_rule_two_breaks_and_three_others():
+    """All five intraday scans take their watchlist from the latest stored TIGHTENING / COILED / TRIGGERED rows
+    (`item5_q3_shadow_parents.out` = every stored shadow row since 2026-07-01 with its parent row, one read-only pull).
+    A parent whose label falls to WATCH is a row the scan would not have written: telemetry only, no order path."""
+    m = _replay_module()
+    rows = m.load()
+    window = m.report_window(rows)
+    chain = {t: {r["d"]: (r, new[i]) for i, r in enumerate(rs)} for t, (rs, new) in m.new_chain(rows).items()}
+    eff = m.shadow_effect(chain, window, m.load_shadow())
+
+    assert sorted((r["tbl"], r["ticker"], r["d"]) for r in eff["lost"]) == [
+        ("break", "CDNA", "2026-08-25"), ("break", "WDAY", "2026-09-03"),
+        ("ma_pullback", "CDNA", "2026-08-25"), ("ma_pullback", "WDAY", "2026-09-02"),
+        ("support_test", "ABVX", "2026-07-20"),
+    ]
+    got = {t: (c["in_window"], c["unchanged"], c["relabelled"], c["lost"], c["parent_differs"])
+           for t, c in eff["count"].items()}
+    assert got == {                                  # (parent in window, unchanged, relabelled, leaves the watchlist, differs)
+        "break": (21, 17, 2, 2, 0),                  # = the earlier break-only pull (item5_q2_breaks.out): 17 / 2 / 2
+        "support_test": (18, 15, 2, 1, 0),
+        "undercut_rally": (3, 3, 0, 0, 0),
+        "ma_pullback": (78, 66, 10, 2, 0),
+        "low_vol_rest": (49, 41, 7, 0, 1),           # ATAI 07-24: the scan saw COILED, the stored parent says unqualified
+    }
+    assert (eff["stage_match"], eff["stage_total"]) == (168, 169)
+    assert [(r["ticker"], r["d"]) for r in eff["differs"]] == [("ATAI", "2026-07-24")]

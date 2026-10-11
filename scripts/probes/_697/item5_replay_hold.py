@@ -8,9 +8,15 @@ Method: a stored row's RAW read is recoverable: `held_from_stage` when the row i
         (yesterday_was_held always False) and once with the new one (the flag threaded from the re-threaded chain).
         "Yesterday" mirrors `db.get_yesterday_flag_stages`: the ticker's most recent prior row within 5 CALENDAR days.
         A full re-thread, not a first-order count: un-holding night 2 changes night 3's comparison base.
-Not seen: a raw read that itself depends on stage history (TRIGGERED's "COILED in the last 5 days") and the universe
-        carry (items 1+2), which keys on stored stages. The TRIGGERED dependence is checked explicitly below; the
-        carry shift is second order and is named in the SSoT, not modelled here.
+Not seen: a raw read that itself depends on stage history (TRIGGERED's "COILED in the last 5 days" - it reads STORED
+        labels, so the per-night reading is NOT history-free for TRIGGERED) and the universe carry (items 1+2), which keys
+        on stored stages. The TRIGGERED dependence is checked explicitly below for every real TRIGGERED read (does an
+        UN-HELD COILED, i.e. a raw reading no re-threading can remove, sit in its 5-day window, and how close to the edge);
+        a breakout that only the BARS would show cannot be replayed from stored rows. The carry shift is second order and
+        is named in the SSoT, not modelled here.
+Shadow: item5_q3_shadow_parents.out = every stored row of the five intraday shadow tables since 2026-07-01 with the parent
+        row it was scanned from (one read-only prod SELECT). All five scans take their watchlist from the latest stored
+        TIGHTENING/COILED/TRIGGERED rows, so a parent whose label falls to WATCH is a row that would not have been written.
 
 Run from the repo root:  PYTHONPATH=. python scripts/probes/_697/item5_replay_hold.py > scripts/probes/_697/item5_replay_hold.out
 """
@@ -61,6 +67,63 @@ def thread(rows_t, new_rule):
             continue
         out.append(fd.stage_after_hold(raw, pst, bool(pheld) if new_rule else False))
     return out
+
+
+SHADOW_TABLES = ("break", "support_test", "undercut_rally", "ma_pullback", "low_vol_rest")
+WATCHLIST = ("TIGHTENING", "COILED", "TRIGGERED")   # the stages every intraday scan reads as its watchlist
+
+
+def load_shadow():
+    out = []
+    for ln in open(os.path.join(HERE, "item5_q3_shadow_parents.out")):
+        p = ln.rstrip("\n").split("\t")
+        if len(p) != 5 or p[0] not in SHADOW_TABLES:        # skips SET, the header and the "(N rows)" footer
+            continue
+        out.append({"tbl": p[0], "ticker": p[1], "d": p[2], "parent_date": date.fromisoformat(p[3]), "parent_stage": p[4]})
+    return out
+
+
+def new_chain(rows):
+    """{ticker: (rows, re-threaded NEW-rule [(stage, held_from)])}"""
+    return {t: (rs, thread(rs, True)) for t, rs in rows.items()}
+
+
+def report_window(rows):
+    all_dates = sorted({r["d"] for rs in rows.values() for r in rs})
+    return set(all_dates[-REPORT_DAYS:])
+
+
+def shadow_effect(chain, window, shadow):
+    """chain = {ticker: {scan_date: (stored row, new (stage, held))}}. For every shadow row whose parent row is in the
+    replay window: does the parent still sit on the watchlist under the new rule (unchanged / relabelled / lost)?
+    A shadow row whose recorded parent_stage differs from the STORED stage of its parent row says nothing about the hold
+    rule (the stored row is not a label the hysteresis produced - e.g. `unqualified` is never held; why the two differ is not
+    established here): counted apart as `parent_differs`, in no other bucket."""
+    count = {t: collections.Counter() for t in SHADOW_TABLES}
+    relabelled, lost, differs = [], [], []
+    stage_match = stage_total = 0
+    for sh in shadow:
+        pd_, t = sh["parent_date"], sh["ticker"]
+        if pd_ not in window or t not in chain or pd_ not in chain[t]:
+            continue
+        r, (nst, _nhf) = chain[t][pd_]
+        count[sh["tbl"]]["in_window"] += 1
+        stage_total += 1
+        stage_match += r["stage"] == sh["parent_stage"]
+        row = dict(sh, new_stage=nst, stored_stage=r["stage"])
+        if r["stage"] != sh["parent_stage"]:
+            count[sh["tbl"]]["parent_differs"] += 1
+            differs.append(row)
+        elif nst not in WATCHLIST:
+            count[sh["tbl"]]["lost"] += 1
+            lost.append(row)
+        elif nst != sh["parent_stage"]:
+            count[sh["tbl"]]["relabelled"] += 1
+            relabelled.append(row)
+        else:
+            count[sh["tbl"]]["unchanged"] += 1
+    return {"count": count, "relabelled": relabelled, "lost": lost, "differs": differs,
+            "stage_match": stage_match, "stage_total": stage_total}
 
 
 def main():
@@ -198,38 +261,39 @@ def main():
             old_coiled = [(rs[j]["d"].isoformat(), "held" if rs[j]["held"] else "raw") for j in idx if rs[j]["stage"] == "COILED"]
             new_coiled = [(rs[j]["d"].isoformat(), "held" if new[j][1] else "raw") for j in idx if new[j][0] == "COILED"]
             raw_coiled = [x for x in new_coiled if x[1] == "raw"]
+            # margin: calendar days from the read back to the NEAREST un-held COILED (the licence expires at LOOKBACK days)
+            margin = min(((r["d"] - date.fromisoformat(x[0])).days for x in raw_coiled), default=None)
             # row itself unchanged by the new rule (a raw TRIGGERED is never held)
             same_row = new[i] == (r["stage"], r["held"])
             ok = same_row and bool(raw_coiled)
             unchanged += ok
             print(f"  {t:6} {r['d']}  row unchanged: {same_row} | COILED in window, old {old_coiled} | new {new_coiled} | "
-                  f"{'licensed by an UN-HELD COILED, cannot move' if raw_coiled else 'NO un-held COILED in window -> needs bars for coiled_today'}")
+                  f"{'licensed by an UN-HELD COILED, cannot move' if raw_coiled else 'NO un-held COILED in window -> needs bars for coiled_today'}"
+                  f"{'' if margin is None else f' | nearest un-held COILED {margin}d before (the licence lasts {LOOKBACK}d)'}")
     print(f"real TRIGGERED reads: {real}; unchanged and licensed by an un-held COILED: {unchanged}")
 
-    # ── the intraday break scan's watchlist = latest TIGHTENING/COILED/TRIGGERED rows (flag_detector ~2455) ──
-    print("\nSTORED BREAKS whose parent row is in the replay window (item5_q2_breaks.out): does the parent still sit on the watchlist?")
+    # ── the five intraday scans' watchlist = latest TIGHTENING/COILED/TRIGGERED rows (flag_detector ~2462/2821/3077/3306/3673) ──
+    print("\nSTORED INTRADAY SHADOW ROWS (item5_q3_shadow_parents.out): does the parent row still sit on the watchlist?")
     chain = {t: {r["d"]: (r, new[i]) for i, r in enumerate(rs)} for t, (rs, new) in new_chain.items()}
-    watch = ("TIGHTENING", "COILED", "TRIGGERED")
-    lost = relabelled = same = 0
-    for ln in open(os.path.join(HERE, "item5_q2_breaks.out")):
-        p = ln.rstrip("\n").split("\t")
-        if len(p) < 4 or p[0] == "ticker" or not p[2]:
-            continue
-        t, bd, pd_, pst = p[0], p[1], date.fromisoformat(p[2]), p[3]
-        if pd_ not in window or t not in chain or pd_ not in chain[t]:
-            continue
-        r, (nst, nhf) = chain[t][pd_]
-        if nst not in watch:
-            lost += 1
-            verdict = "LEAVES the watchlist (the break would not have been scanned for)"
-        elif nst != pst:
-            relabelled += 1
-            verdict = f"stays on the watchlist, parent_stage {pst} -> {nst}"
-        else:
-            same += 1
-            verdict = "unchanged"
-        print(f"  {t:6} break {bd} parent {pd_} stored {pst:10} new {nst:10} -> {verdict}")
-    print(f"breaks with a parent in the window: unchanged {same}, relabelled {relabelled}, dropped from the watchlist {lost}")
+    eff = shadow_effect(chain, window, load_shadow())
+    for tbl in SHADOW_TABLES:
+        c = eff["count"][tbl]
+        print(f"  {tbl:15} parent in window {c['in_window']:>3}: unchanged {c['unchanged']:>3}, relabelled {c['relabelled']:>2}, "
+              f"LEAVES the watchlist {c['lost']:>2}, parent row differs from what the scan saw {c['parent_differs']:>2}")
+    for row in eff["relabelled"]:
+        print(f"  relabelled  {row['tbl']:15} {row['ticker']:6} {row['d']} parent {row['parent_date']} "
+              f"stored {row['parent_stage']:10} -> new {row['new_stage']}")
+    for row in eff["lost"]:
+        print(f"  LOST        {row['tbl']:15} {row['ticker']:6} {row['d']} parent {row['parent_date']} "
+              f"stored {row['parent_stage']:10} -> new {row['new_stage']} (this shadow row would not have been written)")
+    for row in eff["differs"]:
+        print(f"  NOT THE RULE {row['tbl']:15} {row['ticker']:6} {row['d']} parent {row['parent_date']}: the scan saw {row['parent_stage']}, "
+              f"the stored row says {row['stored_stage']} (not a hold-rule effect; cause not established) - excluded from the counts")
+    tot = sum(eff["count"][t]["lost"] for t in SHADOW_TABLES)
+    print(f"shadow rows that would not have been written: {tot} of {sum(eff['count'][t]['in_window'] for t in SHADOW_TABLES)} "
+          f"with a parent in the window ({eff['count']['break']['lost']} breaks + {tot - eff['count']['break']['lost']} in the other four tables)")
+    print(f"join check: the shadow row's recorded parent_stage equals the stored stage of that parent row on "
+          f"{eff['stage_match']} of {eff['stage_total']} rows (the rest are listed above and excluded)")
 
     # ── what `verify_hold_live.sql` should read, old vs new, over the same 60 scan dates ──
     def probe(chain_idx):
