@@ -20,21 +20,15 @@ from zoneinfo import ZoneInfo
 _ET = ZoneInfo("America/New_York")
 
 
-def et_hhmm(ts) -> str | None:
-    """`HH:MM` in ET for a stored timestamp — datetime OR ISO string. None if unparseable.
-
-    Lives HERE, beside `_ET`, because three separate surfaces in TWO containers were each
-    slicing `ts[11:16]` straight out of a stored ISO string — which is **UTC**. FIGS's 09:35 ET
-    profit-take and 09:51 ET stop rendered as 13:35 and 13:51 on the trade timeline the
-    operator uses to reconstruct the ORB window (his words, 2026-08-08: *"we need to fix the
-    timezone"*). Four hours off, in three places, none of which knew about the others.
-
-    Every site that already HAS a datetime uses the house idiom `.astimezone(_ET)` directly and
-    should keep doing so — this exists for the JSONB case, where the timestamp arrives as text
-    and the parse is the part people get wrong.
+def parse_iso_et(ts) -> datetime | None:
+    """A stored timestamp — datetime OR ISO string — as an ET-aware datetime. None if empty or
+    unparseable; never raises on a bad string.
 
     Naive input is treated as UTC: that is what the containers write. The zone is attached
-    explicitly rather than via a bare `.astimezone()`, which the deploy gate bans.
+    explicitly rather than via a bare `.astimezone()`, which the deploy gate bans. A trailing `Z`
+    is read as UTC (`fromisoformat` rejects it before Python 3.11). This is the ONE place the
+    "naive means UTC" rule lives — `et_hhmm` and the TradingView shadow's publish-time parse both
+    go through it, so a change to the rule is made once.
     """
     if ts is None:
         return None
@@ -50,7 +44,24 @@ def et_hhmm(ts) -> str | None:
             return None
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(_ET).strftime("%H:%M")
+    return dt.astimezone(_ET)
+
+
+def et_hhmm(ts) -> str | None:
+    """`HH:MM` in ET for a stored timestamp — datetime OR ISO string. None if unparseable.
+
+    Lives HERE, beside `_ET`, because three separate surfaces in TWO containers were each
+    slicing `ts[11:16]` straight out of a stored ISO string — which is **UTC**. FIGS's 09:35 ET
+    profit-take and 09:51 ET stop rendered as 13:35 and 13:51 on the trade timeline the
+    operator uses to reconstruct the ORB window (his words, 2026-08-08: *"we need to fix the
+    timezone"*). Four hours off, in three places, none of which knew about the others.
+
+    Every site that already HAS a datetime uses the house idiom `.astimezone(_ET)` directly and
+    should keep doing so — this exists for the JSONB case, where the timestamp arrives as text
+    and the parse is the part people get wrong (see `parse_iso_et` for the rules).
+    """
+    dt = parse_iso_et(ts)
+    return dt.strftime("%H:%M") if dt is not None else None
 
 
 # ── #672: a RECOVERY re-run pins the market date to the day the job was DUE ──────────────

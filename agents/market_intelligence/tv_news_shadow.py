@@ -196,7 +196,7 @@ import logging
 import math
 import re
 import statistics
-from datetime import date, datetime, time as dt_time, timedelta, timezone
+from datetime import date, datetime, time as dt_time, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
@@ -210,6 +210,7 @@ from agents.market_intelligence.db import (
     log_audit_event,
     upsert_tv_news_shadow_rows,
 )
+from shared.dates import parse_iso_et
 
 logger = logging.getLogger(__name__)
 
@@ -817,16 +818,9 @@ _RAW_PUBLISHED_KEY = {"polygon": "published_utc", "alpaca": "created_at", "fmp":
 def _published_et(v: Any) -> Optional[datetime]:
     """An ISO-8601 string off a stored news item -> ET-aware datetime, or None when it is
     absent / not a string / unparseable. A naive value is read as UTC (every stored source
-    writes UTC). Never raises."""
-    if not isinstance(v, str) or not v.strip():
-        return None
-    try:
-        dt = datetime.fromisoformat(v.strip().replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(_ET)
+    writes UTC). Never raises. The parse is `shared.dates.parse_iso_et`; only the string guard is
+    local (it also accepts a datetime, which a stored JSON item never holds)."""
+    return parse_iso_et(v) if isinstance(v, str) else None
 
 
 def _items_from_raw(raw: Any, published_key: Optional[str]) -> list[dict]:
@@ -869,6 +863,15 @@ _FRAME_COLS = (
     "tv_items_before_grade", "tv_items_in_repoll_window", "tv_items_after_cutoff",
     "tv_match_summary", "tv_items_unmatched_seen", "tv_items_we_missed",
 )
+
+# Every tv_* column a row without a successful fetch carries as NULL: the six columns set only
+# from a parsed response, plus the frame. Derived from `_FRAME_COLS` so a new frame column cannot
+# be missing from the skipped_exchange / fetch_error / unparseable rows.
+_EMPTY_TV = {k: None for k in (
+    "tv_item_count", "tv_providers", "tv_oldest_item_published",
+    "tv_coverage_reaches_alert_date", "tv_items_on_alert_date", "tv_providers_on_alert_date",
+    *_FRAME_COLS,
+)}
 
 
 def build_shadow_row(
@@ -948,30 +951,21 @@ def build_shadow_row(
             company = company_tokens(corpus.get("company_name"), ticker,
                                      [o["title"] for o in our_items])
 
-    _empty_tv = dict(
-        tv_item_count=None, tv_providers=None, tv_oldest_item_published=None,
-        tv_coverage_reaches_alert_date=None, tv_items_on_alert_date=None,
-        tv_providers_on_alert_date=None, tv_items_we_missed=None,
-        tv_coverage_reaches_period_start=None, tv_unseen_minutes_at_period_start=None,
-        tv_items_before_grade=None, tv_items_in_repoll_window=None,
-        tv_items_after_cutoff=None, tv_match_summary=None, tv_items_unmatched_seen=None,
-    )
-
     if symbol is None:
-        row.update(tv_status="skipped_exchange", tv_skip_reason=skip_reason, **_empty_tv)
+        row.update(tv_status="skipped_exchange", tv_skip_reason=skip_reason, **_EMPTY_TV)
         return row
 
     if fetch_result is None or fetch_result[1] is not None:
         exc = fetch_result[1] if fetch_result else RuntimeError("no fetch attempted")
         row.update(tv_status="fetch_error",
-                    tv_skip_reason=f"{type(exc).__name__}: {str(exc)[:150]}", **_empty_tv)
+                    tv_skip_reason=f"{type(exc).__name__}: {str(exc)[:150]}", **_EMPTY_TV)
         return row
 
     payload = fetch_result[0]
     items, malformed = parse_tv_response(payload)
     if malformed == -1:
         row.update(tv_status="unparseable", tv_skip_reason="missing_or_non_list_items_key",
-                    **_empty_tv)
+                    **_EMPTY_TV)
         return row
 
     row["tv_status"] = "ok"
