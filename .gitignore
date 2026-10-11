@@ -138,3 +138,9 @@ scripts/probes/_655_scope/_capture.pkl
 
 # #594 re-score: 3.4 MB bar pull (reproducible via fetch_bars.py; capture-once)
 scripts/probes/_594_rescore/bars.tsv
+
+# #146 detection page (2026-10-11) — raw prod bar pull (21 MB) + the four-arm replay rows (1.6 MB); both re-derivable:
+# gen_pull_sql.py -> q2_bars.sql (capture once) -> replay_146.py. The report, the TRIGGERED reads and every SQL are committed.
+scripts/probes/_146_page/q2_bars.tsv.gz
+scripts/probes/_146_page/arm_rows.tsv.gz
+scripts/probes/_146_page/*_smoke.*

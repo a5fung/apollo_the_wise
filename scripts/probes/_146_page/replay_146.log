@@ -1,0 +1,26 @@
+bars loaded: 2397 tickers, 1408108 rows in 1s
+last bar date 2026-10-09; window 2025-01-02 -> 2026-10-09; warm-up from 2024-11-01
+  100/2397 tickers, 6744 kept rows, 32 TRIGGERED reads, 1s
+  200/2397 tickers, 15028 kept rows, 67 TRIGGERED reads, 2s
+  300/2397 tickers, 24108 kept rows, 130 TRIGGERED reads, 2s
+  400/2397 tickers, 29152 kept rows, 150 TRIGGERED reads, 2s
+  500/2397 tickers, 36844 kept rows, 183 TRIGGERED reads, 2s
+  600/2397 tickers, 42652 kept rows, 241 TRIGGERED reads, 3s
+  700/2397 tickers, 48032 kept rows, 254 TRIGGERED reads, 3s
+  800/2397 tickers, 52960 kept rows, 275 TRIGGERED reads, 3s
+  900/2397 tickers, 57508 kept rows, 308 TRIGGERED reads, 3s
+  1000/2397 tickers, 69456 kept rows, 366 TRIGGERED reads, 3s
+  1100/2397 tickers, 75652 kept rows, 398 TRIGGERED reads, 4s
+  1200/2397 tickers, 80940 kept rows, 425 TRIGGERED reads, 4s
+  1300/2397 tickers, 87772 kept rows, 450 TRIGGERED reads, 4s
+  1400/2397 tickers, 96336 kept rows, 472 TRIGGERED reads, 4s
+  1500/2397 tickers, 103396 kept rows, 502 TRIGGERED reads, 4s
+  1600/2397 tickers, 112848 kept rows, 558 TRIGGERED reads, 5s
+  1700/2397 tickers, 120072 kept rows, 594 TRIGGERED reads, 5s
+  1800/2397 tickers, 128776 kept rows, 612 TRIGGERED reads, 5s
+  1900/2397 tickers, 139780 kept rows, 658 TRIGGERED reads, 6s
+  2000/2397 tickers, 146884 kept rows, 679 TRIGGERED reads, 6s
+  2100/2397 tickers, 152460 kept rows, 716 TRIGGERED reads, 6s
+  2200/2397 tickers, 160552 kept rows, 755 TRIGGERED reads, 6s
+  2300/2397 tickers, 167248 kept rows, 792 TRIGGERED reads, 6s
+done: 2397 tickers, 171972 kept rows -> arm_rows.tsv.gz, 823 TRIGGERED reads -> triggered_reads.tsv, 7s

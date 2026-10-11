@@ -1,0 +1,11 @@
+q1 candidates: 2397 tickers
+q3 stored rows since 2026-06-29: 1538 rows, 212 tickers, 74 scan dates (2026-06-29 .. 2026-10-09)
+stored rows by stage: {'INVALIDATED': 879, 'WATCH': 431, 'TIGHTENING': 154, 'unqualified': 10, 'COILED': 42, 'TRIGGERED': 22}
+stored rows by RAW read (held_from_stage when a hold): {'INVALIDATED': 879, 'WATCH': 458, 'TIGHTENING': 163, 'unqualified': 10, 'COILED': 23, 'TRIGGERED': 5}
+
+LEAK CHECK: stored WATCH-or-better tickers absent from q1: 0
+leaked WATCH+ rows: 0 of 649
+  WATCH      0 of 431 rows belong to a ticker the pre-filter lost
+  TIGHTENING 0 of 154 rows belong to a ticker the pre-filter lost
+  COILED     0 of 42 rows belong to a ticker the pre-filter lost
+  TRIGGERED  0 of 22 rows belong to a ticker the pre-filter lost

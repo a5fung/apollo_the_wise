@@ -1,0 +1,318 @@
+==========================================================================================
+A. POPULATION AND WINDOW
+  q1 candidates: 2397 tickers (pole superset; leak_check.out: 0 stored WATCH+ tickers lost)
+  replay scan days in window: 444 (2025-01-02 .. 2026-10-09); scope-doc sub-window 2026-07-17..2026-10-09: 60 days; 2026 sub-window from 2026-01-02: 194 days
+  arm A: rows WATCH 4570 TIGHTENING 1282 COILED 345 TRIGGERED 60 INVALIDATED 33278 | distinct names WATCH 556 TIGHTENING 301 COILED 115 TRIGGERED 34
+  arm B: rows WATCH 4541 TIGHTENING 1176 COILED 345 TRIGGERED 195 INVALIDATED 33278 | distinct names WATCH 556 TIGHTENING 300 COILED 115 TRIGGERED 106
+  arm C: rows WATCH 4545 TIGHTENING 1176 COILED 345 TRIGGERED 191 INVALIDATED 33278 | distinct names WATCH 556 TIGHTENING 300 COILED 115 TRIGGERED 105
+  arm D: rows WATCH 4123 TIGHTENING 1145 COILED 345 TRIGGERED 644 INVALIDATED 33278 | distinct names WATCH 547 TIGHTENING 291 COILED 115 TRIGGERED 288
+  per-day medians, arm A (stage counts over the replay population — wider than the live RS board):
+    full window      n=444 days: WATCH 8 TIGHTENING 2 COILED 0 TRIGGERED 0
+    scope sub-window n=60 days: WATCH 6 TIGHTENING 2 COILED 1 TRIGGERED 0
+==========================================================================================
+B. VALIDITY — arm A raw read vs prod's stored raw read, ticker-days both have, scan_date >= 2026-09-08
+  stored rows compared: 319; raw read reproduced: 319 (100.0%); mna_filter rows excluded: 0
+  (stored STAGE incl. prod's re-arming hold vs replay stage with the one-night hold: 314 of 319 — differs by design)
+  stored REAL (un-held) TRIGGERED reads since 06-29 and whether arm A reproduces them:
+    CHYM   2026-08-19  in arm A: True  (close_33.07>base_high_close_32.18 vol_2.08x)
+    IOVA   2026-09-14  in arm A: True  (close_9.26>base_high_close_8.79 vol_2.01x)
+    WDAY   2026-08-28  in arm A: True  (close_204.72>base_high_close_200.01 vol_2.15x)
+    XHLD   2026-09-09  in arm A: True  (close_10.51>base_high_close_9.42 vol_1.72x)
+    XMTR   2026-06-30  in arm A: True  (close_96.52>base_high_close_94.37 vol_1.85x)
+  replay WATCH+ rows (arm A) on those scan dates with NO stored row in q3 for the ticker: 20 rows / 9 names — q3 holds WATCH+/INVALIDATED/held/mna rows only, so these are EITHER not scanned OR scanned and scored plain `unqualified` (a pivot divergence); settled by q6_no_row_check.sql on exactly these pairs:
+    ETON	2026-09-08	replay WATCH	runup_90% base_9d close_vs_pivot_-10.6%	pivot 2026-08-24
+    SENS	2026-09-08	replay WATCH	runup_109% base_9d close_vs_pivot_-6.6%	pivot 2026-08-24
+    HTFL	2026-09-14	replay WATCH	runup_114% base_8d close_vs_pivot_-2.8%	pivot 2026-08-31
+    UROY	2026-09-16	replay WATCH	runup_93% base_5d close_vs_pivot_-11.3%	pivot 2026-09-08
+    UROY	2026-09-17	replay WATCH	runup_93% base_6d close_vs_pivot_-9.5%	pivot 2026-09-08
+    UROY	2026-09-18	replay WATCH	runup_93% base_7d close_vs_pivot_-7.9%	pivot 2026-09-08
+    STIM	2026-09-22	replay WATCH	runup_191% base_24d close_vs_pivot_-14.4%	pivot 2026-08-17
+    UROY	2026-09-22	replay TIGHTENING	range_0.69 vol_2.41	pivot 2026-09-08
+    UROY	2026-09-23	replay TIGHTENING	range_0.69 vol_2.43	pivot 2026-09-08
+    AGEN	2026-09-24	replay WATCH	runup_206% base_24d close_vs_pivot_-2.7%	pivot 2026-08-19
+    SENS	2026-09-24	replay WATCH	runup_109% base_21d close_vs_pivot_+3.5%	pivot 2026-08-24
+    CYPH	2026-09-25	replay WATCH	runup_590% base_3d close_vs_pivot_+2.5%	pivot 2026-09-21
+    CYPH	2026-09-30	replay WATCH	runup_610% base_3d close_vs_pivot_-19.6%	pivot 2026-09-24
+    SENS	2026-09-30	replay WATCH	runup_115% base_3d close_vs_pivot_-2.9%	pivot 2026-09-24
+    SENS	2026-10-01	replay WATCH	runup_115% base_4d close_vs_pivot_-4.9%	pivot 2026-09-24
+    SENS	2026-10-02	replay WATCH	runup_115% base_5d close_vs_pivot_-5.7%	pivot 2026-09-24
+    APPN	2026-10-05	replay WATCH	runup_101% base_23d close_vs_pivot_-13.3%	pivot 2026-08-31
+    SENS	2026-10-05	replay WATCH	runup_115% base_6d close_vs_pivot_-1.6%	pivot 2026-09-24
+    SENS	2026-10-06	replay WATCH	runup_115% base_7d close_vs_pivot_-4.9%	pivot 2026-09-24
+    OABI	2026-10-09	replay WATCH	runup_167% base_24d close_vs_pivot_-5.7%	pivot 2026-09-03
+==========================================================================================
+C. RAW TRIGGERED READS PER ARM (held_from_stage NULL), full window; flags = distinct (ticker, pivot date)
+  A shipped (COILED prerequisite)                            reads   42  flags   36  names   34 | 2026-only reads   14 | scope sub-window reads 4
+  B D2 from STORED TIGHTENING+ (held labels count)           reads  143  flags  118  names  106 | 2026-only reads   52 | scope sub-window reads 14
+  C D2 from RAW TIGHTENING+ (held labels do not count)       reads  140  flags  116  names  105 | 2026-only reads   50 | scope sub-window reads 13
+  D no licence at all (from WATCH too)                       reads  498  flags  428  names  288 | 2026-only reads  184 | scope sub-window reads 39
+  extras B minus A: 101 reads / 85 flags / 81 names;  A reads absent from B: 0 []
+  extras C minus A: 98 reads / 83 flags / 80 names;  A reads absent from C: 0 []
+  extras D minus A: 456 reads / 398 flags / 271 names;  A reads absent from D: 0 []
+  nesting checks: A reads absent from B 0, B reads absent from D 0, C reads absent from B 0, C reads absent from D 0  (0 everywhere = A ⊂ B ⊂ D and C ⊂ B)
+  STORED-vs-RAW split: in B not C (licensed only by a HELD label) 3: [('AVAV', '2025-07-17'), ('CDNA', '2026-08-25'), ('FLEX', '2026-05-29')]
+                       in C not B 0: []
+     AVAV 2025-07-17: stored window TRIGGERED*,WATCH,WATCH | raw window WATCH,WATCH,WATCH | vol 2.94x
+     CDNA 2026-08-25: stored window TIGHTENING*,WATCH,WATCH | raw window WATCH,WATCH,WATCH | vol 1.61x
+     FLEX 2026-05-29: stored window TIGHTENING*,WATCH,WATCH | raw window WATCH,WATCH,WATCH | vol 2.26x
+  B extras by WHICH label licensed them: yesterday's stored label is TIGHTENING+ 88; only an OLDER label in the 5-day window 13: [('AVAV', '2025-07-17', 'TRIGGERED*,WATCH,WATCH'), ('CDNA', '2026-08-25', 'TIGHTENING*,WATCH,WATCH'), ('CRDO', '2025-06-18', 'TIGHTENING,TIGHTENING*,WATCH'), ('CVAC', '2025-06-12', 'TIGHTENING,INVALIDATED,INVALIDATED'), ('CRMD', '2025-06-05', 'TIGHTENING,TIGHTENING*,WATCH'), ('COHR', '2026-06-02', 'TIGHTENING,INVALIDATED,INVALIDATED'), ('DNTH', '2025-09-29', 'TIGHTENING,INVALIDATED,WATCH'), ('FLEX', '2026-05-29', 'TIGHTENING*,WATCH,WATCH'), ('GEO', '2025-01-08', 'TIGHTENING,TIGHTENING*,WATCH'), ('GOGO', '2025-07-02', 'TRIGGERED,TRIGGERED*,WATCH'), ('HSAI', '2025-02-06', 'TIGHTENING,TIGHTENING,INVALIDATED'), ('MTSR', '2025-06-09', 'TIGHTENING,TIGHTENING,INVALIDATED'), ('URGN', '2025-09-08', 'TIGHTENING,INVALIDATED,INVALIDATED')]
+  C extras by WHICH label licensed them: yesterday's stored label is TIGHTENING+ 88; only an OLDER label in the 5-day window 10: [('CRDO', '2025-06-18', 'TIGHTENING,TIGHTENING*,WATCH'), ('CVAC', '2025-06-12', 'TIGHTENING,INVALIDATED,INVALIDATED'), ('CRMD', '2025-06-05', 'TIGHTENING,TIGHTENING*,WATCH'), ('COHR', '2026-06-02', 'TIGHTENING,INVALIDATED,INVALIDATED'), ('DNTH', '2025-09-29', 'TIGHTENING,INVALIDATED,WATCH'), ('GEO', '2025-01-08', 'TIGHTENING,TIGHTENING*,WATCH'), ('GOGO', '2025-07-02', 'TRIGGERED,TRIGGERED*,WATCH'), ('HSAI', '2025-02-06', 'TIGHTENING,TIGHTENING,INVALIDATED'), ('MTSR', '2025-06-09', 'TIGHTENING,TIGHTENING,INVALIDATED'), ('URGN', '2025-09-08', 'TIGHTENING,INVALIDATED,INVALIDATED')]
+  D minus (A|B|C) = breakouts from WATCH (no TIGHTENING-or-better label in the window, stored or raw): 355 reads
+==========================================================================================
+D. FORWARD READ — detection quality (a chart fact at +10 sessions, not a trade): held above the level vs fell back
+  A shipped reads                                    n= 42 (censored  0) | +10 close >= base_high:  24 ( 57%)  fell back under:  18 | never closed under base_high in 10:  12 ( 29%) | vs base_high_CLOSE: held  26 never-under  17 | +10 close > breakout close:  20 | closed under base_LOW within 10:   6
+  B extras (D2 stored licence)                       n= 99 (censored  2) | +10 close >= base_high:  54 ( 55%)  fell back under:  45 | never closed under base_high in 10:  33 ( 33%) | vs base_high_CLOSE: held  59 never-under  46 | +10 close > breakout close:  51 | closed under base_LOW within 10:  14
+  C extras (D2 raw licence)                          n= 96 (censored  2) | +10 close >= base_high:  52 ( 54%)  fell back under:  44 | never closed under base_high in 10:  32 ( 33%) | vs base_high_CLOSE: held  57 never-under  45 | +10 close > breakout close:  51 | closed under base_LOW within 10:  14
+  B extras licensed ONLY by a held label             n=  3 (censored  0) | +10 close >= base_high:   2 ( 67%)  fell back under:   1 | never closed under base_high in 10:   1 ( 33%) | vs base_high_CLOSE: held   2 never-under   1 | +10 close > breakout close:   0 | closed under base_LOW within 10:   0
+  D extras from WATCH (neither licence)              n=351 (censored  4) | +10 close >= base_high: 186 ( 53%)  fell back under: 165 | never closed under base_high in 10:  99 ( 28%) | vs base_high_CLOSE: held 220 never-under 146 | +10 close > breakout close: 162 | closed under base_LOW within 10:  85
+  D all reads (every qualifying breakout)            n=492 (censored  6) | +10 close >= base_high: 264 ( 54%)  fell back under: 228 | never closed under base_high in 10: 144 ( 29%) | vs base_high_CLOSE: held 305 never-under 209 | +10 close > breakout close: 233 | closed under base_LOW within 10: 105
+  — 2026-only sub-window (board membership taggable) —
+  A shipped reads [2026]                             n= 14 (censored  0) | +10 close >= base_high:   8 ( 57%)  fell back under:   6 | never closed under base_high in 10:   3 ( 21%) | vs base_high_CLOSE: held   9 never-under   4 | +10 close > breakout close:   6 | closed under base_LOW within 10:   4
+  B extras (D2 stored licence) [2026]                n= 36 (censored  2) | +10 close >= base_high:  22 ( 61%)  fell back under:  14 | never closed under base_high in 10:  11 ( 31%) | vs base_high_CLOSE: held  24 never-under  15 | +10 close > breakout close:  19 | closed under base_LOW within 10:   3
+  C extras (D2 raw licence) [2026]                   n= 34 (censored  2) | +10 close >= base_high:  20 ( 59%)  fell back under:  14 | never closed under base_high in 10:  10 ( 29%) | vs base_high_CLOSE: held  22 never-under  14 | +10 close > breakout close:  19 | closed under base_LOW within 10:   3
+  B extras licensed ONLY by a held label [2026]      n=  2 (censored  0) | +10 close >= base_high:   2 (100%)  fell back under:   0 | never closed under base_high in 10:   1 ( 50%) | vs base_high_CLOSE: held   2 never-under   1 | +10 close > breakout close:   0 | closed under base_LOW within 10:   0
+  D extras from WATCH (neither licence) [2026]       n=129 (censored  3) | +10 close >= base_high:  70 ( 54%)  fell back under:  59 | never closed under base_high in 10:  32 ( 25%) | vs base_high_CLOSE: held  82 never-under  51 | +10 close > breakout close:  60 | closed under base_LOW within 10:  25
+  D all reads (every qualifying breakout) [2026]     n=179 (censored  5) | +10 close >= base_high: 100 ( 56%)  fell back under:  79 | never closed under base_high in 10:  46 ( 26%) | vs base_high_CLOSE: held 115 never-under  70 | +10 close > breakout close:  85 | closed under base_LOW within 10:  32
+  — scope-doc sub-window 07-17 → 10-09 —
+  A shipped reads [scope]                            n=  4 (censored  0) | +10 close >= base_high:   3 ( 75%)  fell back under:   1 | never closed under base_high in 10:   1 ( 25%) | vs base_high_CLOSE: held   3 never-under   1 | +10 close > breakout close:   3 | closed under base_LOW within 10:   1
+  B extras (D2 stored licence) [scope]               n=  8 (censored  2) | +10 close >= base_high:   4 ( 50%)  fell back under:   4 | never closed under base_high in 10:   3 ( 38%) | vs base_high_CLOSE: held   4 never-under   3 | +10 close > breakout close:   2 | closed under base_LOW within 10:   0
+  C extras (D2 raw licence) [scope]                  n=  7 (censored  2) | +10 close >= base_high:   3 ( 43%)  fell back under:   4 | never closed under base_high in 10:   2 ( 29%) | vs base_high_CLOSE: held   3 never-under   2 | +10 close > breakout close:   2 | closed under base_LOW within 10:   0
+  B extras licensed ONLY by a held label [scope]     n=  1 (censored  0) | +10 close >= base_high:   1 (100%)  fell back under:   0 | never closed under base_high in 10:   1 (100%) | vs base_high_CLOSE: held   1 never-under   1 | +10 close > breakout close:   0 | closed under base_LOW within 10:   0
+  D extras from WATCH (neither licence) [scope]      n= 22 (censored  3) | +10 close >= base_high:  11 ( 50%)  fell back under:  11 | never closed under base_high in 10:   4 ( 18%) | vs base_high_CLOSE: held  12 never-under   8 | +10 close > breakout close:   9 | closed under base_LOW within 10:   5
+  D all reads (every qualifying breakout) [scope]    n= 34 (censored  5) | +10 close >= base_high:  18 ( 53%)  fell back under:  16 | never closed under base_high in 10:   8 ( 24%) | vs base_high_CLOSE: held  19 never-under  12 | +10 close > breakout close:  14 | closed under base_LOW within 10:   6
+==========================================================================================
+E. BOARD MEMBERSHIP TAG, 2026 reads only (mi_stock_scores starts 2025-12-26; 2025 reads cannot be tagged)
+  A shipped reads                                    n= 14 | organic universe on the read day:  11 | RS leader (rank<=200 or rs_1m>=80) on some day in the prior 25 sessions:  13 | price>=$5 & 20d $vol>=$5M on the day:  14
+  B extras (D2 stored licence)                       n= 38 | organic universe on the read day:  25 | RS leader (rank<=200 or rs_1m>=80) on some day in the prior 25 sessions:  32 | price>=$5 & 20d $vol>=$5M on the day:  35
+  C extras (D2 raw licence)                          n= 36 | organic universe on the read day:  24 | RS leader (rank<=200 or rs_1m>=80) on some day in the prior 25 sessions:  30 | price>=$5 & 20d $vol>=$5M on the day:  33
+  B extras licensed ONLY by a held label             n=  2 | organic universe on the read day:   1 | RS leader (rank<=200 or rs_1m>=80) on some day in the prior 25 sessions:   2 | price>=$5 & 20d $vol>=$5M on the day:   2
+  D extras from WATCH (neither licence)              n=132 | organic universe on the read day:  99 | RS leader (rank<=200 or rs_1m>=80) on some day in the prior 25 sessions: 111 | price>=$5 & 20d $vol>=$5M on the day: 118
+  EXACT board presence, reads since 2026-06-29 (prod stored a WATCH+/INVALIDATED row for the ticker that day):
+    A shipped reads                                    n=  5 | on the live board that day:   5 | not scanned / not stored:   0 []
+    B extras (D2 stored licence)                       n= 11 | on the live board that day:   7 | not scanned / not stored:   4 [('SMWB', '2026-08-26'), ('SMWB', '2026-08-27'), ('SLN', '2026-07-22'), ('STTK', '2026-08-04')]
+        B extras ON the live board that day [since 06-29] n=  5 (censored  2) | +10 close >= base_high:   3 ( 60%)  fell back under:   2 | never closed under base_high in 10:   3 ( 60%) | vs base_high_CLOSE: held   3 never-under   3 | +10 close > breakout close:   2 | closed under base_LOW within 10:   0
+    C extras (D2 raw licence)                          n= 10 | on the live board that day:   6 | not scanned / not stored:   4 [('SMWB', '2026-08-26'), ('SMWB', '2026-08-27'), ('SLN', '2026-07-22'), ('STTK', '2026-08-04')]
+    B extras licensed ONLY by a held label             n=  1 | on the live board that day:   1 | not scanned / not stored:   0 []
+        B extras ON the live board that day [since 06-29] n=  1 (censored  0) | +10 close >= base_high:   1 (100%)  fell back under:   0 | never closed under base_high in 10:   1 (100%) | vs base_high_CLOSE: held   1 never-under   1 | +10 close > breakout close:   0 | closed under base_LOW within 10:   0
+    D extras from WATCH (neither licence)              n= 30 | on the live board that day:  24 | not scanned / not stored:   6 [('OABI', '2026-09-02'), ('NWL', '2026-08-03'), ('SENS', '2026-09-02'), ('SENS', '2026-09-30'), ('STTK', '2026-07-17'), ('TRAX', '2026-07-21')]
+  forward read on the 2026 extras the board would plausibly have held (RS leader in the prior 25 sessions AND price/$vol gates):
+  B extras (D2 stored licence) [2026, board-plausible] n= 30 (censored  2) | +10 close >= base_high:  20 ( 67%)  fell back under:  10 | never closed under base_high in 10:  11 ( 37%) | vs base_high_CLOSE: held  22 never-under  14 | +10 close > breakout close:  17 | closed under base_LOW within 10:   3
+  C extras (D2 raw licence) [2026, board-plausible]  n= 28 (censored  2) | +10 close >= base_high:  18 ( 64%)  fell back under:  10 | never closed under base_high in 10:  10 ( 36%) | vs base_high_CLOSE: held  20 never-under  13 | +10 close > breakout close:  17 | closed under base_LOW within 10:   3
+==========================================================================================
+F. EVERY B EXTRA (D2 from stored TIGHTENING+), with its forward read.  cols: date ticker vol x | runup | base age | +10 close vs base_high (held/fell/cens) | never-under | stored window | raw window | organic(2026) | RS-leader-25
+  2025-01-02 SUPV    2.32x | runup  114% | base  9 | held     never-under  | S[TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-01-03 OPFI    2.54x | runup   95% | base 22 | held     dipped-under | S[WATCH,WATCH,TIGHTENING] R[WATCH,WATCH,TIGHTENING] | org None | rs25 None | in C: True
+  2025-01-06 CRNT    5.05x | runup  115% | base 17 | fell     dipped-under | S[TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-01-08 GEO     1.81x | runup  119% | base 22 | held     never-under  | S[TIGHTENING,TIGHTENING*,WATCH] R[TIGHTENING,WATCH,WATCH] | org None | rs25 None | in C: True
+  2025-01-21 BE      1.61x | runup  200% | base 21 | fell     dipped-under | S[INVALIDATED,TIGHTENING] R[INVALIDATED,TIGHTENING] | org None | rs25 None | in C: True
+  2025-01-23 BE      1.77x | runup  200% | base 23 | fell     dipped-under | S[TRIGGERED,TRIGGERED*] R[TRIGGERED,WATCH] | org None | rs25 None | in C: True
+  2025-01-30 HSAI    1.56x | runup  307% | base 17 | held     dipped-under | S[INVALIDATED,TIGHTENING,TIGHTENING] R[INVALIDATED,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-02-06 HSAI    3.20x | runup  307% | base 22 | held     never-under  | S[TIGHTENING,TIGHTENING,INVALIDATED] R[TIGHTENING,TIGHTENING,INVALIDATED] | org None | rs25 None | in C: True
+  2025-05-05 AEVA    1.89x | runup  222% | base 12 | held     never-under  | S[unqualified,unqualified,TIGHTENING] R[unqualified,unqualified,TIGHTENING] | org None | rs25 None | in C: True
+  2025-05-06 AEVA    3.99x | runup  222% | base 13 | held     never-under  | S[unqualified,TIGHTENING,TRIGGERED] R[unqualified,TIGHTENING,TRIGGERED] | org None | rs25 None | in C: True
+  2025-05-12 MVST    4.12x | runup  120% | base 12 | held     never-under  | S[INVALIDATED,TIGHTENING,TIGHTENING] R[INVALIDATED,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-05-22 ODD     1.52x | runup  107% | base  7 | held     never-under  | S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-05-27 CMP     3.57x | runup  132% | base  9 | fell     dipped-under | S[INVALIDATED,TIGHTENING] R[INVALIDATED,TIGHTENING] | org None | rs25 None | in C: True
+  2025-06-05 CRMD    2.38x | runup  130% | base 11 | held     never-under  | S[TIGHTENING,TIGHTENING*,WATCH] R[TIGHTENING,WATCH,WATCH] | org None | rs25 None | in C: True
+  2025-06-09 MTSR    5.93x | runup  149% | base 13 | fell     dipped-under | S[TIGHTENING,TIGHTENING,INVALIDATED] R[TIGHTENING,TIGHTENING,INVALIDATED] | org None | rs25 None | in C: True
+  2025-06-10 MTSR    2.83x | runup  149% | base 14 | fell     dipped-under | S[TIGHTENING,INVALIDATED,TRIGGERED] R[TIGHTENING,INVALIDATED,TRIGGERED] | org None | rs25 None | in C: True
+  2025-06-12 CVAC   54.00x | runup   94% | base  9 | held     never-under  | S[TIGHTENING,INVALIDATED,INVALIDATED] R[TIGHTENING,INVALIDATED,INVALIDATED] | org None | rs25 None | in C: True
+  2025-06-18 CRDO    1.57x | runup  178% | base 10 | held     never-under  | S[TIGHTENING,TIGHTENING*,WATCH] R[TIGHTENING,WATCH,WATCH] | org None | rs25 None | in C: True
+  2025-06-26 PL      1.95x | runup  121% | base 13 | fell     dipped-under | S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-06-27 PL      2.87x | runup  121% | base 14 | fell     dipped-under | S[TIGHTENING,TIGHTENING,TIGHTENING,TRIGGERED] R[TIGHTENING,TIGHTENING,TIGHTENING,TRIGGERED] | org None | rs25 None | in C: True
+  2025-07-01 PL      3.33x | runup  121% | base 16 | fell     dipped-under | S[TRIGGERED,TRIGGERED,TRIGGERED*] R[TRIGGERED,TRIGGERED,WATCH] | org None | rs25 None | in C: True
+  2025-07-02 GOGO    1.53x | runup  121% | base  8 | held     never-under  | S[TRIGGERED,TRIGGERED*,WATCH] R[TRIGGERED,WATCH,WATCH] | org None | rs25 None | in C: True
+  2025-07-09 EYPT    1.87x | runup  103% | base  8 | held     dipped-under | S[WATCH,TIGHTENING] R[WATCH,TIGHTENING] | org None | rs25 None | in C: True
+  2025-07-09 PCT     1.69x | runup  168% | base 13 | held     dipped-under | S[TIGHTENING,TIGHTENING*] R[TIGHTENING,WATCH] | org None | rs25 None | in C: True
+  2025-07-10 CAR     1.86x | runup  118% | base  8 | held     never-under  | S[WATCH,WATCH,TIGHTENING] R[WATCH,WATCH,TIGHTENING] | org None | rs25 None | in C: True
+  2025-07-11 AVAV    1.94x | runup   92% | base  7 | held     dipped-under | S[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING] R[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING] | org None | rs25 None | in C: True
+  2025-07-15 OUST    2.34x | runup  267% | base 11 | fell     dipped-under | S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-07-17 AVAV    2.94x | runup   92% | base 11 | fell     dipped-under | S[TRIGGERED*,WATCH,WATCH] R[WATCH,WATCH,WATCH] | org None | rs25 None | in C: False
+  2025-07-18 ATAI    4.98x | runup  129% | base 10 | held     never-under  | S[WATCH,WATCH,TIGHTENING,TIGHTENING] R[WATCH,WATCH,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-07-18 CDTX    1.57x | runup  207% | base 16 | held     never-under  | S[TRIGGERED,TRIGGERED*,TIGHTENING,TIGHTENING] R[TRIGGERED,TIGHTENING,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-07-21 AEHR    1.50x | runup   98% | base  8 | held     never-under  | S[WATCH,TIGHTENING,TIGHTENING] R[WATCH,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-07-21 IREN    2.60x | runup  192% | base 10 | fell     dipped-under | S[TIGHTENING,TIGHTENING,TIGHTENING*] R[TIGHTENING,TIGHTENING,WATCH] | org None | rs25 None | in C: True
+  2025-07-21 PL      1.79x | runup  128% | base 12 | fell     dipped-under | S[WATCH,TIGHTENING,TIGHTENING*] R[WATCH,TIGHTENING,WATCH] | org None | rs25 None | in C: True
+  2025-07-21 URGN    2.01x | runup  356% | base 19 | held     never-under  | S[TIGHTENING,TRIGGERED,TRIGGERED*] R[TIGHTENING,TRIGGERED,TIGHTENING] | org None | rs25 None | in C: True
+  2025-07-22 PAYS    1.57x | runup  211% | base  8 | fell     dipped-under | S[WATCH,WATCH,TIGHTENING] R[WATCH,WATCH,TIGHTENING] | org None | rs25 None | in C: True
+  2025-07-22 URGN    1.53x | runup  356% | base 20 | held     never-under  | S[TRIGGERED,TRIGGERED*,TRIGGERED] R[TRIGGERED,TIGHTENING,TRIGGERED] | org None | rs25 None | in C: True
+  2025-07-24 PAYS    1.53x | runup  211% | base 10 | fell     dipped-under | S[TIGHTENING,TRIGGERED,TRIGGERED*] R[TIGHTENING,TRIGGERED,WATCH] | org None | rs25 None | in C: True
+  2025-07-25 NNE     1.99x | runup   98% | base 23 | fell     dipped-under | S[INVALIDATED,INVALIDATED,TIGHTENING,TIGHTENING] R[INVALIDATED,INVALIDATED,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-07-31 PSIX    1.83x | runup  188% | base  7 | fell     dipped-under | S[WATCH,WATCH,TIGHTENING] R[WATCH,WATCH,TIGHTENING] | org None | rs25 None | in C: True
+  2025-08-04 JOBY    2.60x | runup  186% | base 10 | fell     dipped-under | S[TIGHTENING,TIGHTENING*,TIGHTENING] R[TIGHTENING,WATCH,TIGHTENING] | org None | rs25 None | in C: True
+  2025-08-08 PSIX    3.98x | runup  188% | base 13 | fell     dipped-under | S[WATCH,TIGHTENING,TIGHTENING,TIGHTENING*] R[WATCH,TIGHTENING,TIGHTENING,WATCH] | org None | rs25 None | in C: True
+  2025-08-29 ZEPP    1.71x | runup 1754% | base  8 | held     never-under  | S[WATCH,WATCH,INVALIDATED,TIGHTENING] R[WATCH,WATCH,INVALIDATED,TIGHTENING] | org None | rs25 None | in C: True
+  2025-09-02 ZEPP    1.61x | runup 1754% | base  9 | held     never-under  | S[TIGHTENING,TRIGGERED] R[TIGHTENING,TRIGGERED] | org None | rs25 None | in C: True
+  2025-09-08 URGN    1.80x | runup  216% | base 22 | fell     dipped-under | S[TIGHTENING,INVALIDATED,INVALIDATED] R[TIGHTENING,INVALIDATED,INVALIDATED] | org None | rs25 None | in C: True
+  2025-09-09 UUUU    2.87x | runup  139% | base  8 | held     dipped-under | S[INVALIDATED,WATCH,TIGHTENING] R[INVALIDATED,WATCH,TIGHTENING] | org None | rs25 None | in C: True
+  2025-09-09 WULF    2.10x | runup  215% | base 14 | held     never-under  | S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-09-10 WULF    1.62x | runup  215% | base 15 | held     never-under  | S[TIGHTENING,TIGHTENING,TRIGGERED] R[TIGHTENING,TIGHTENING,TRIGGERED] | org None | rs25 None | in C: True
+  2025-09-11 TLS     1.70x | runup  185% | base 12 | held     dipped-under | S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-09-12 RKLB    1.66x | runup   98% | base 23 | fell     dipped-under | S[TIGHTENING*,WATCH,TIGHTENING,TIGHTENING] R[WATCH,WATCH,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-09-15 UUUU    1.54x | runup  139% | base 12 | held     dipped-under | S[TRIGGERED*,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-09-22 FBIO    1.72x | runup  120% | base  9 | fell     dipped-under | S[WATCH,TIGHTENING,TIGHTENING] R[WATCH,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-09-29 DNTH    1.51x | runup  120% | base  7 | fell     dipped-under | S[TIGHTENING,INVALIDATED,WATCH] R[TIGHTENING,INVALIDATED,WATCH] | org None | rs25 None | in C: True
+  2025-10-06 IHRT    2.00x | runup  116% | base 13 | fell     dipped-under | S[TIGHTENING,INVALIDATED,TIGHTENING] R[TIGHTENING,INVALIDATED,TIGHTENING] | org None | rs25 None | in C: True
+  2025-10-10 MLYS    1.69x | runup  220% | base 15 | fell     dipped-under | S[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING] R[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING] | org None | rs25 None | in C: True
+  2025-10-10 OKLO    2.08x | runup  134% | base 13 | fell     dipped-under | S[TIGHTENING,TIGHTENING,TIGHTENING*,TIGHTENING] R[TIGHTENING,TIGHTENING,WATCH,TIGHTENING] | org None | rs25 None | in C: True
+  2025-10-13 NRGV    1.98x | runup  248% | base 13 | fell     dipped-under | S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-10-15 AMLX    2.05x | runup  100% | base 11 | fell     dipped-under | S[WATCH,WATCH,TIGHTENING] R[WATCH,WATCH,TIGHTENING] | org None | rs25 None | in C: True
+  2025-10-27 QURE    1.74x | runup  377% | base 11 | fell     dipped-under | S[WATCH,WATCH,TIGHTENING] R[WATCH,WATCH,TIGHTENING] | org None | rs25 None | in C: True
+  2025-11-20 RCUS    1.66x | runup  100% | base 15 | held     never-under  | S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-12-08 CGEM    2.62x | runup  135% | base  8 | fell     dipped-under | S[WATCH,TIGHTENING,TIGHTENING] R[WATCH,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-12-09 SGML    1.57x | runup  154% | base 11 | held     dipped-under | S[TIGHTENING,INVALIDATED,TIGHTENING] R[TIGHTENING,INVALIDATED,TIGHTENING] | org None | rs25 None | in C: True
+  2025-12-12 PACS    2.04x | runup  240% | base  8 | held     dipped-under | S[INVALIDATED,TIGHTENING,TIGHTENING,TIGHTENING] R[INVALIDATED,TIGHTENING,TIGHTENING,TIGHTENING] | org None | rs25 None | in C: True
+  2025-12-18 ALTO    3.78x | runup  195% | base  9 | fell     dipped-under | S[WATCH,WATCH,TIGHTENING] R[WATCH,WATCH,TIGHTENING] | org None | rs25 None | in C: True
+  2026-01-09 AXGN    1.53x | runup  124% | base 23 | held     dipped-under | S[TIGHTENING,INVALIDATED,TIGHTENING,TIGHTENING*] R[TIGHTENING,INVALIDATED,TIGHTENING,WATCH] | org False | rs25 True | in C: True
+  2026-02-04 TYGO    2.31x | runup  181% | base  9 | fell     dipped-under | S[INVALIDATED,WATCH,TIGHTENING] R[INVALIDATED,WATCH,TIGHTENING] | org False | rs25 False | in C: True
+  2026-02-20 AAOI    2.60x | runup   98% | base 12 | held     never-under  | S[WATCH,TIGHTENING,TIGHTENING] R[WATCH,TIGHTENING,TIGHTENING] | org True | rs25 True | in C: True
+  2026-02-20 AXTI    3.39x | runup  130% | base  7 | held     dipped-under | S[INVALIDATED,WATCH,TIGHTENING] R[INVALIDATED,WATCH,TIGHTENING] | org True | rs25 True | in C: True
+  2026-02-23 AUGO    1.72x | runup  100% | base 15 | held     never-under  | S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING] | org True | rs25 True | in C: True
+  2026-02-24 FTAI    1.66x | runup   97% | base 21 | fell     dipped-under | S[unqualified,TIGHTENING,TIGHTENING] R[unqualified,TIGHTENING,TIGHTENING] | org False | rs25 True | in C: True
+  2026-02-26 FTAI    2.93x | runup   97% | base 23 | fell     dipped-under | S[TIGHTENING,TRIGGERED,TRIGGERED*] R[TIGHTENING,TRIGGERED,TIGHTENING] | org False | rs25 True | in C: True
+  2026-03-31 RLMD    1.92x | runup  130% | base 15 | fell     dipped-under | S[WATCH,WATCH,TIGHTENING] R[WATCH,WATCH,TIGHTENING] | org True | rs25 True | in C: True
+  2026-04-06 BW      2.05x | runup  104% | base  9 | held     never-under  | S[TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING] | org True | rs25 True | in C: True
+  2026-04-08 ICHR    1.71x | runup   92% | base 12 | held     never-under  | S[WATCH,TIGHTENING] R[WATCH,TIGHTENING] | org True | rs25 True | in C: True
+  2026-05-06 AOSL    2.44x | runup  138% | base  9 | fell     dipped-under | S[WATCH,WATCH,TIGHTENING] R[WATCH,WATCH,TIGHTENING] | org True | rs25 True | in C: True
+  2026-05-11 VICR    2.44x | runup  114% | base 12 | held     dipped-under | S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING] | org True | rs25 True | in C: True
+  2026-05-13 TSEM    2.61x | runup  110% | base 17 | held     never-under  | S[INVALIDATED,TIGHTENING,TIGHTENING*] R[INVALIDATED,TIGHTENING,WATCH] | org True | rs25 True | in C: True
+  2026-05-15 NRXP    2.09x | runup  103% | base 17 | held     dipped-under | S[INVALIDATED,INVALIDATED,WATCH,TIGHTENING] R[INVALIDATED,INVALIDATED,WATCH,TIGHTENING] | org False | rs25 False | in C: True
+  2026-05-28 CLOV    3.79x | runup  131% | base  9 | held     dipped-under | S[TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING] | org False | rs25 False | in C: True
+  2026-05-28 NBIS    1.87x | runup  161% | base  8 | fell     dipped-under | S[WATCH,TIGHTENING] R[WATCH,TIGHTENING] | org True | rs25 True | in C: True
+  2026-05-29 FLEX    2.26x | runup  141% | base 12 | held     dipped-under | S[TIGHTENING*,WATCH,WATCH] R[WATCH,WATCH,WATCH] | org False | rs25 True | in C: False
+  2026-06-02 COHR    1.58x | runup   92% | base 12 | fell     dipped-under | S[TIGHTENING,INVALIDATED,INVALIDATED] R[TIGHTENING,INVALIDATED,INVALIDATED] | org True | rs25 True | in C: True
+  2026-06-04 VECO    2.70x | runup  118% | base 19 | held     dipped-under | S[INVALIDATED,TIGHTENING,TIGHTENING] R[INVALIDATED,TIGHTENING,TIGHTENING] | org False | rs25 True | in C: True
+  2026-06-09 VECO    3.07x | runup  118% | base 22 | held     never-under  | S[TRIGGERED,INVALIDATED,TIGHTENING] R[TRIGGERED,INVALIDATED,TIGHTENING] | org True | rs25 True | in C: True
+  2026-06-12 AIP     1.59x | runup  162% | base 19 | held     never-under  | S[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING] R[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING] | org True | rs25 True | in C: True
+  2026-06-17 REPL    1.98x | runup  624% | base  8 | held     dipped-under | S[WATCH,WATCH,TIGHTENING] R[WATCH,WATCH,TIGHTENING] | org True | rs25 True | in C: True
+  2026-06-18 AVR     1.53x | runup   96% | base 17 | held     dipped-under | S[WATCH,WATCH,TIGHTENING] R[WATCH,WATCH,TIGHTENING] | org True | rs25 True | in C: True
+  2026-06-18 CEVA    2.74x | runup  160% | base 10 | fell     dipped-under | S[WATCH,TIGHTENING,TIGHTENING] R[WATCH,TIGHTENING,TIGHTENING] | org True | rs25 True | in C: True
+  2026-06-23 EVC     1.85x | runup  244% | base 19 | held     never-under  | S[WATCH,TIGHTENING] R[WATCH,TIGHTENING] | org True | rs25 True | in C: True
+  2026-06-26 CLOV    2.12x | runup  151% | base 10 | fell     dipped-under | S[TIGHTENING,TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING,TIGHTENING] | org True | rs25 True | in C: True
+  2026-06-26 XMTR    2.26x | runup  154% | base 17 | held     dipped-under | S[unqualified,unqualified,TIGHTENING,TIGHTENING] R[unqualified,unqualified,TIGHTENING,TIGHTENING] | org True | rs25 True | in C: True
+  2026-07-09 DDOG    1.55x | runup  173% | base 24 | fell     dipped-under | S[WATCH,TIGHTENING,TIGHTENING] R[WATCH,TIGHTENING,TIGHTENING] | org True | rs25 True | in C: True
+  2026-07-22 SLN     1.96x | runup   91% | base 15 | held     dipped-under | S[TIGHTENING*,TIGHTENING,TIGHTENING*] R[WATCH,TIGHTENING,WATCH] | org False | rs25 True | in C: True
+  2026-07-31 CDNA    3.08x | runup  102% | base 10 | held     never-under  | S[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING] R[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING] | org True | rs25 True | in C: True
+  2026-08-04 HELP    3.35x | runup  125% | base  9 | held     never-under  | S[WATCH,WATCH,TIGHTENING] R[WATCH,WATCH,TIGHTENING] | org True | rs25 True | in C: True
+  2026-08-04 STTK    1.90x | runup  128% | base 20 | fell     dipped-under | S[WATCH,WATCH,TIGHTENING] R[WATCH,WATCH,TIGHTENING] | org False | rs25 True | in C: True
+  2026-08-25 CDNA    1.61x | runup  130% | base 15 | held     never-under  | S[TIGHTENING*,WATCH,WATCH] R[WATCH,WATCH,WATCH] | org True | rs25 True | in C: False
+  2026-08-26 SMWB    1.94x | runup   92% | base  9 | fell     dipped-under | S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING] | org False | rs25 False | in C: True
+  2026-08-27 SMWB    2.52x | runup   92% | base 10 | fell     dipped-under | S[TIGHTENING,TIGHTENING,TRIGGERED] R[TIGHTENING,TIGHTENING,TRIGGERED] | org False | rs25 False | in C: True
+  2026-09-18 CHPT    2.09x | runup  103% | base  8 | fell     dipped-under | S[unqualified,INVALIDATED,TIGHTENING,TIGHTENING] R[unqualified,INVALIDATED,TIGHTENING,TIGHTENING] | org False | rs25 False | in C: True
+  2026-10-01 EFOR    2.48x | runup   95% | base 12 | cens(6)  -            | S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING] | org True | rs25 True | in C: True
+  2026-10-05 HTFL    1.96x | runup  114% | base 23 | cens(4)  -            | S[TIGHTENING,INVALIDATED,TIGHTENING] R[TIGHTENING,INVALIDATED,TIGHTENING] | org True | rs25 True | in C: True
+
+  APPENDIX BLOCK for the page — the B extras as 'TICKER mm-dd', by year (a flag that read twice is listed on each read):
+    2025 (63 reads, 48 names): SUPV 01-02, OPFI 01-03, CRNT 01-06, GEO 01-08, BE 01-21, BE 01-23, HSAI 01-30, HSAI 02-06, AEVA 05-05, AEVA 05-06, MVST 05-12, ODD 05-22, CMP 05-27, CRMD 06-05, MTSR 06-09, MTSR 06-10, CVAC 06-12, CRDO 06-18, PL 06-26, PL 06-27, PL 07-01, GOGO 07-02, EYPT 07-09, PCT 07-09, CAR 07-10, AVAV 07-11, OUST 07-15, AVAV 07-17, ATAI 07-18, CDTX 07-18, AEHR 07-21, IREN 07-21, PL 07-21, URGN 07-21, PAYS 07-22, URGN 07-22, PAYS 07-24, NNE 07-25, PSIX 07-31, JOBY 08-04, PSIX 08-08, ZEPP 08-29, ZEPP 09-02, URGN 09-08, UUUU 09-09, WULF 09-09, WULF 09-10, TLS 09-11, RKLB 09-12, UUUU 09-15, FBIO 09-22, DNTH 09-29, IHRT 10-06, MLYS 10-10, OKLO 10-10, NRGV 10-13, AMLX 10-15, QURE 10-27, RCUS 11-20, CGEM 12-08, SGML 12-09, PACS 12-12, ALTO 12-18
+    2026 (38 reads, 33 names): AXGN 01-09, TYGO 02-04, AAOI 02-20, AXTI 02-20, AUGO 02-23, FTAI 02-24, FTAI 02-26, RLMD 03-31, BW 04-06, ICHR 04-08, AOSL 05-06, VICR 05-11, TSEM 05-13, NRXP 05-15, CLOV 05-28, NBIS 05-28, FLEX 05-29, COHR 06-02, VECO 06-04, VECO 06-09, AIP 06-12, REPL 06-17, AVR 06-18, CEVA 06-18, EVC 06-23, CLOV 06-26, XMTR 06-26, DDOG 07-09, SLN 07-22, CDNA 07-31, HELP 08-04, STTK 08-04, CDNA 08-25, SMWB 08-26, SMWB 08-27, CHPT 09-18, EFOR 10-01, HTFL 10-05
+  base age of the licensed vs unlicensed breakouts (the confound on the base_low column):
+    A shipped    n= 42 base age median 12  p25 8  p75 15  share with base age <= 6: 10%
+    B extras     n=101 base age median 12  p25 9  p75 17  share with base age <= 6: 0%
+    D from WATCH n=355 base age median 6  p25 4  p75 9  share with base age <= 6: 56%
+      A shipped [base age >= 7]                      n= 38 (censored  0) | +10 close >= base_high:  20 ( 53%)  fell back under:  18 | never closed under base_high in 10:  11 ( 29%) | vs base_high_CLOSE: held  22 never-under  16 | +10 close > breakout close:  17 | closed under base_LOW within 10:   6
+      B extras [base age >= 7]                       n= 99 (censored  2) | +10 close >= base_high:  54 ( 55%)  fell back under:  45 | never closed under base_high in 10:  33 ( 33%) | vs base_high_CLOSE: held  59 never-under  46 | +10 close > breakout close:  51 | closed under base_LOW within 10:  14
+      D from WATCH [base age >= 7]                   n=157 (censored  0) | +10 close >= base_high:  81 ( 52%)  fell back under:  76 | never closed under base_high in 10:  42 ( 27%) | vs base_high_CLOSE: held  94 never-under  60 | +10 close > breakout close:  73 | closed under base_LOW within 10:  33
+==========================================================================================
+G. CDNA — the three breakouts the task names, per arm (replay rows; stored prod rows from q3 alongside)
+  2026-07-31:
+    arm A: stage TIGHTENING raw WATCH      runup_102% base_10d close_vs_pivot_+8.2%                     S[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING] R[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING]
+    arm B: stage TRIGGERED  raw TRIGGERED  close_43.71>base_high_close_39.73 vol_3.08x                  S[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING] R[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING]
+    arm C: stage TRIGGERED  raw TRIGGERED  close_43.71>base_high_close_39.73 vol_3.08x                  S[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING] R[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING]
+    arm D: stage TRIGGERED  raw TRIGGERED  close_43.71>base_high_close_39.73 vol_3.08x                  S[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING] R[INVALIDATED,INVALIDATED,INVALIDATED,TIGHTENING]
+    prod  : stage TIGHTENING held_from WATCH      runup_102% base_10d close_vs_pivot_+8.2%
+  2026-08-25:
+    arm A: stage WATCH      raw WATCH      runup_130% base_15d close_vs_pivot_+2.1%                     S[TIGHTENING*,WATCH,WATCH] R[WATCH,WATCH,WATCH]
+    arm B: stage TRIGGERED  raw TRIGGERED  close_50.80>base_high_close_48.61 vol_1.61x                  S[TIGHTENING*,WATCH,WATCH] R[WATCH,WATCH,WATCH]
+    arm C: stage WATCH      raw WATCH      runup_130% base_15d close_vs_pivot_+2.1%                     S[TIGHTENING*,WATCH,WATCH] R[WATCH,WATCH,WATCH]
+    arm D: stage TRIGGERED  raw TRIGGERED  close_50.80>base_high_close_48.61 vol_1.61x                  S[TIGHTENING*,WATCH,WATCH] R[WATCH,WATCH,WATCH]
+    prod  : stage TIGHTENING held_from WATCH      runup_130% base_15d close_vs_pivot_+2.1%
+  2026-09-17:
+    arm A: stage TIGHTENING raw TIGHTENING range_0.68 vol_0.90                                          S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING]
+    arm B: stage TIGHTENING raw TIGHTENING range_0.68 vol_0.90                                          S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING]
+    arm C: stage TIGHTENING raw TIGHTENING range_0.68 vol_0.90                                          S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING]
+    arm D: stage TIGHTENING raw TIGHTENING range_0.68 vol_0.90                                          S[TIGHTENING,TIGHTENING,TIGHTENING] R[TIGHTENING,TIGHTENING,TIGHTENING]
+    prod  : stage TIGHTENING held_from -          range_0.68 vol_0.90
+  CDNA chains 07-27 → 08-01 and 08-17 → 08-27, arm A replay vs prod stored (stage/held):
+    2026-07-27 replay INVALIDATED/-          close_36.36_below_base_low_close_37.14     | prod INVALIDATED/-          close_36.36_below_base_low_close_37.14
+    2026-07-28 replay INVALIDATED/-          close_35.75_below_base_low_close_36.36     | prod INVALIDATED/-          close_35.75_below_base_low_close_36.36
+    2026-07-29 replay INVALIDATED/-          close_35.41_below_base_low_close_35.75     | prod INVALIDATED/-          close_35.41_below_base_low_close_35.75
+    2026-07-30 replay TIGHTENING/-          range_0.82 vol_0.60                        | prod TIGHTENING/-          range_0.82 vol_0.60
+    2026-07-31 replay TIGHTENING/WATCH      runup_102% base_10d close_vs_pivot_+8.2%   | prod TIGHTENING/WATCH      runup_102% base_10d close_vs_pivot_+8.2%
+    2026-08-17 replay WATCH     /-          runup_130% base_9d close_vs_pivot_-6.8%    | prod WATCH     /-          runup_130% base_9d close_vs_pivot_-6.8%
+    2026-08-18 replay TIGHTENING/-          range_0.95 vol_0.65                        | prod TIGHTENING/-          range_0.95 vol_0.65
+    2026-08-19 replay TIGHTENING/-          range_1.00 vol_0.69                        | prod TIGHTENING/-          range_1.00 vol_0.69
+    2026-08-20 replay TIGHTENING/WATCH      runup_130% base_12d close_vs_pivot_-5.6%   | prod TIGHTENING/WATCH      runup_130% base_12d close_vs_pivot_-5.6%
+    2026-08-21 replay WATCH     /-          runup_130% base_13d close_vs_pivot_-2.3%   | prod TIGHTENING/WATCH      runup_130% base_13d close_vs_pivot_-2.3%
+    2026-08-24 replay WATCH     /-          runup_130% base_14d close_vs_pivot_-4.5%   | prod TIGHTENING/WATCH      runup_130% base_14d close_vs_pivot_-4.5%
+    2026-08-25 replay WATCH     /-          runup_130% base_15d close_vs_pivot_+2.1%   | prod TIGHTENING/WATCH      runup_130% base_15d close_vs_pivot_+2.1%
+    2026-08-26 replay unqualified/-          base_age_0_below_3                         | prod no row    /-          
+    2026-08-27 replay unqualified/-          base_age_1_below_3                         | prod no row    /-          
+    2026-09-11 replay WATCH     /-          runup_96% base_9d close_vs_pivot_-6.4%     | prod WATCH     /-          runup_96% base_9d close_vs_pivot_-6.4%
+    2026-09-14 replay TIGHTENING/-          range_0.60 vol_1.06                        | prod TIGHTENING/-          range_0.60 vol_1.06
+    2026-09-15 replay TIGHTENING/-          range_0.60 vol_0.96                        | prod TIGHTENING/-          range_0.60 vol_0.96
+    2026-09-16 replay TIGHTENING/-          range_0.68 vol_0.96                        | prod TIGHTENING/-          range_0.68 vol_0.96
+    2026-09-17 replay TIGHTENING/-          range_0.68 vol_0.90                        | prod TIGHTENING/-          range_0.68 vol_0.90
+    2026-09-18 replay unqualified/-          base_age_1_below_3                         | prod no row    /-          
+==========================================================================================
+H. OVERLAP WITH THE SCOPE DOC (2026-07-17 → 2026-10-09): the doc named CDNA 07-31, CDNA 08-25, EFOR 10-01 as COILED-only breakouts; GSHD, HELP, QMCO passed both legs only after the base reset
+  arm A reads in the sub-window (4): [('CHYM', '2026-08-19'), ('WDAY', '2026-08-28'), ('XHLD', '2026-09-09'), ('IOVA', '2026-09-14')]
+  arm B reads in the sub-window (14): [('SLN', '2026-07-22'), ('CDNA', '2026-07-31'), ('HELP', '2026-08-04'), ('STTK', '2026-08-04'), ('CHYM', '2026-08-19'), ('CDNA', '2026-08-25'), ('SMWB', '2026-08-26'), ('SMWB', '2026-08-27'), ('WDAY', '2026-08-28'), ('XHLD', '2026-09-09'), ('IOVA', '2026-09-14'), ('CHPT', '2026-09-18'), ('EFOR', '2026-10-01'), ('HTFL', '2026-10-05')]
+  arm C reads in the sub-window (13): [('SLN', '2026-07-22'), ('CDNA', '2026-07-31'), ('HELP', '2026-08-04'), ('STTK', '2026-08-04'), ('CHYM', '2026-08-19'), ('SMWB', '2026-08-26'), ('SMWB', '2026-08-27'), ('WDAY', '2026-08-28'), ('XHLD', '2026-09-09'), ('IOVA', '2026-09-14'), ('CHPT', '2026-09-18'), ('EFOR', '2026-10-01'), ('HTFL', '2026-10-05')]
+  arm D reads in the sub-window (39): [('STTK', '2026-07-17'), ('TRAX', '2026-07-21'), ('LQDA', '2026-07-22'), ('SLN', '2026-07-22'), ('TRAX', '2026-07-27'), ('ZBIO', '2026-07-27'), ('XNCR', '2026-07-30'), ('CDNA', '2026-07-31'), ('NWL', '2026-08-03'), ('HELP', '2026-08-04'), ('STTK', '2026-08-04'), ('TWST', '2026-08-05'), ('TXG', '2026-08-07'), ('XNCR', '2026-08-18'), ('CHYM', '2026-08-19'), ('TEAM', '2026-08-19'), ('TXG', '2026-08-19'), ('HELP', '2026-08-20'), ('LIFE', '2026-08-24'), ('ABCL', '2026-08-25'), ('CDNA', '2026-08-25'), ('SMWB', '2026-08-26'), ('SMWB', '2026-08-27'), ('TEAM', '2026-08-27'), ('WDAY', '2026-08-28'), ('HTFL', '2026-08-31'), ('OABI', '2026-09-02'), ('SENS', '2026-09-02'), ('XHLD', '2026-09-09'), ('IOVA', '2026-09-14'), ('LIFE', '2026-09-15'), ('HELP', '2026-09-17'), ('CHPT', '2026-09-18'), ('TEM', '2026-09-24'), ('ABCL', '2026-09-28'), ('SDGR', '2026-09-30'), ('SENS', '2026-09-30'), ('EFOR', '2026-10-01'), ('HTFL', '2026-10-05')]
+==========================================================================================
+I. CORPUS CROSS-CHECK — what each arm said on each labelled date (stage / raw read / reason)
+  CDNA  2026-08-18  A:TIGHTENING B:TIGHTENING C:TIGHTENING D:TIGHTENING                    range_0.95 vol_0.65                                     — HTF positive (Soreide, bought 08-19; shared 08-25)
+  CDNA  2026-08-19  A:TIGHTENING B:TIGHTENING C:TIGHTENING D:TIGHTENING                    range_1.00 vol_0.69                                     — same
+  CDNA  2026-08-25  A:WATCH B:TRIGGERED C:WATCH D:TRIGGERED                                runup_130% base_15d close_vs_pivot_+2.1%                — the first flag's breakout day
+  CDNA  2026-09-16  A:TIGHTENING B:TIGHTENING C:TIGHTENING D:TIGHTENING                    range_0.68 vol_0.96                                     — second flag, day before the 09-17 break
+  CDNA  2026-09-17  A:TIGHTENING B:TIGHTENING C:TIGHTENING D:TIGHTENING                    range_0.68 vol_0.90                                     — second flag's breakout (0.83x volume)
+  CDNA  2026-09-24  A:unqualified B:unqualified C:unqualified D:unqualified                base_age_1_below_3                                      — Soreide follow-up label
+  HNGE  2026-08-21  A:unqualified B:unqualified C:unqualified D:unqualified                runup_41%_below_90%                                     — HTF positive (trader post 08-24)
+  HNGE  2026-08-24  A:unqualified B:unqualified C:unqualified D:unqualified                runup_41%_below_90%                                     — same
+  MRNA  2026-09-11  A:unqualified B:unqualified C:unqualified D:unqualified                flag_low_128.61_below_75%_of_pole_176.66                — HTF positive (Soreide 09-17, chart 09-16)
+  MRNA  2026-09-15  A:unqualified B:unqualified C:unqualified D:unqualified                flag_low_128.61_below_75%_of_pole_176.66                — same
+  MRNA  2026-09-16  A:INVALIDATED B:INVALIDATED C:INVALIDATED D:INVALIDATED                close_145.62_below_sma20_145.67                         — day before his breakout
+  MRNA  2026-09-17  A:unqualified B:unqualified C:unqualified D:unqualified                ma_stack_not_stage2_144.5/144.9/96.6                    — his breakout day
+  MRNA  2026-09-24  A:unqualified B:unqualified C:unqualified D:unqualified                base_age_0_below_3                                      — PBA 'model book HTF'
+  GH    2026-06-24  A:unqualified B:unqualified C:unqualified D:unqualified                runup_79%_below_90%                                     — consolidation positive (06-27 review: 'flat basing… broke out the past few days')
+  GH    2026-06-25  A:unqualified B:unqualified C:unqualified D:unqualified                base_age_0_below_3                                      — same
+  GH    2026-06-26  A:unqualified B:unqualified C:unqualified D:unqualified                base_age_0_below_3                                      — same
+  HNGE  2026-06-24  A:unqualified B:unqualified C:unqualified D:unqualified                runup_67%_below_90%                                     — consolidation positive (06-27 review)
+  HNGE  2026-06-25  A:unqualified B:unqualified C:unqualified D:unqualified                runup_67%_below_90%                                     — same
+  HNGE  2026-06-26  A:unqualified B:unqualified C:unqualified D:unqualified                base_age_0_below_3                                      — same
+  HPE   2026-06-02  A:unqualified B:unqualified C:unqualified D:unqualified                base_age_0_below_3                                      — pointer ('a good candidate for HTF or delayed entry')
+  NCI   2026-06-26  A:unqualified B:unqualified C:unqualified D:unqualified                adv_152k_below_500k_shares                              — NEGATIVE ('NCI is not valid')
+  ATAI  2026-07-24  A:COILED B:COILED C:COILED D:COILED                                    fresh_2bar 0.7%/atr 5.4% bodies_0.03/0.03               — NEGATIVE (buyout; M&A layer, not this function)
+  OUST  2026-06-29  A:unqualified B:unqualified C:unqualified D:unqualified                flag_low_35.30_below_75%_of_pole_49.39                  — NEGATIVE (removal-list sign-off)
+  SHAZ  2026-06-29  A:unqualified B:unqualified C:unqualified D:unqualified                flag_low_56.63_below_75%_of_pole_86.00                  — NEGATIVE
+  SHAZ  2026-06-30  A:unqualified B:unqualified C:unqualified D:unqualified                flag_low_56.63_below_75%_of_pole_86.00                  — NEGATIVE
+  REPL  2026-08-10  A:unqualified B:unqualified C:unqualified D:unqualified                base_age_1_below_3                                      — NEGATIVE
+  REPL  2026-08-11  A:unqualified B:unqualified C:unqualified D:unqualified                base_age_2_below_3                                      — NEGATIVE
+  TRIGGERED reads for corpus tickers in the window, per arm:
+    CDNA  A:- | B:['2026-07-31', '2026-08-25'] | C:['2026-07-31'] | D:['2026-07-31', '2026-08-25']
+    HNGE  A:- | B:- | C:- | D:-
+    MRNA  A:- | B:- | C:- | D:-
+    GH    A:- | B:- | C:- | D:-
+    HPE   A:- | B:- | C:- | D:-
+    NCI   A:- | B:- | C:- | D:-
+    ATAI  A:['2025-09-19', '2025-09-23'] | B:['2025-07-18', '2025-09-19', '2025-09-23'] | C:['2025-07-18', '2025-09-19', '2025-09-23'] | D:['2025-07-18', '2025-07-31', '2025-08-22', '2025-09-09', '2025-09-19', '2025-09-23']
+    OUST  A:- | B:['2025-07-15'] | C:['2025-07-15'] | D:['2025-01-03', '2025-06-20', '2025-07-15']
+    SHAZ  A:- | B:- | C:- | D:-
+    REPL  A:- | B:['2026-06-17'] | C:['2026-06-17'] | D:['2026-06-17']
+==========================================================================================
+J. G8 SIDE TABLE — his read is 'ATR(14) falling' across the flag; ours is first-5 vs last-5 range/volume ratios.
+   ATR at the label date vs ATR at the pivot (pole top) and at the first base day; our ratios from the code's row, or recomputed with the code's own formula when the code rejected before that step ('rc').
+  CDNA  2026-08-19 stage TIGHTENING  raw TIGHTENING  pivot 2026-08-03 base_age  11 | ATR14 label 2.463 / at pivot 3.1 -> 0.79x ; / first base day 3.155 -> 0.78x | range 1.0 vol 0.69 | rmv5 58.5761 rmv15 34.3033 | fresh2bar 4.83745 atr% 5.29643 | range_1.00 vol_0.69
+  CDNA  2026-08-25 stage WATCH       raw WATCH       pivot 2026-08-03 base_age  15 | ATR14 label 2.06 / at pivot 3.1 -> 0.66x ; / first base day 3.155 -> 0.65x | range 1.29 vol 0.97 | rmv5 57.7735 rmv15 81.0105 | fresh2bar 7.65945 atr% 4.05533 | runup_130% base_15d close_vs_pivot_+2.1%
+  CDNA  2026-09-17 stage TIGHTENING  raw TIGHTENING  pivot 2026-08-27 base_age  13 | ATR14 label 2.28 / at pivot 2.155 -> 1.06x ; / first base day 2.196 -> 1.04x | range 0.68 vol 0.9 | rmv5 54.3605 rmv15 36.1804 | fresh2bar 3.59985 atr% 4.20022 | range_0.68 vol_0.90
+  HNGE  2026-08-24 stage unqualified raw unqualified pivot 2026-08-11 base_age   8 | ATR14 label 5.021 / at pivot 4.847 -> 1.04x ; / first base day 4.864 -> 1.03x | range 1.41 vol 1.26 (rc) | rmv5 - rmv15 - | fresh2bar - atr% - | runup_41%_below_90%
+  MRNA  2026-09-16 stage INVALIDATED raw INVALIDATED pivot 2026-08-19 base_age  18 | ATR14 label 9.912 / at pivot 11.627 -> 0.85x ; / first base day 14.555 -> 0.68x | range 0.4 vol 0.18 (rc) | rmv5 - rmv15 - | fresh2bar - atr% - | close_145.62_below_sma20_145.67
+  GH    2026-06-25 stage unqualified raw unqualified pivot 2026-06-24 base_age   0 | ATR14 label 6.835 / at pivot 6.718 -> 1.02x ; / first base day 6.835 -> 1.00x | range None vol None (rc) | rmv5 - rmv15 - | fresh2bar - atr% - | base_age_0_below_3
+  HNGE  2026-06-25 stage unqualified raw unqualified pivot 2026-06-16 base_age   5 | ATR14 label 3.614 / at pivot 3.843 -> 0.94x ; / first base day 3.85 -> 0.94x | range 1.0 vol 1.0 (rc) | rmv5 - rmv15 - | fresh2bar - atr% - | runup_67%_below_90%
+  HPE   2026-06-02 stage unqualified raw unqualified pivot 2026-06-01 base_age   0 | ATR14 label 3.43 / at pivot 2.296 -> 1.49x ; / first base day 3.43 -> 1.00x | range None vol None (rc) | rmv5 - rmv15 - | fresh2bar - atr% - | base_age_0_below_3
+==========================================================================================
+K. CONTEXT — breakout volume of the arms' reads (the 1.5x leg is untouched in every arm; shows what the licence admits)
+  A shipped reads                                    n= 42 vol x: median 2.05  p25 1.71  p75 2.35  runup median 144%  base age median 12
+  B extras (D2 stored licence)                       n=101 vol x: median 1.98  p25 1.69  p75 2.60  runup median 130%  base age median 12
+  C extras (D2 raw licence)                          n= 98 vol x: median 1.98  p25 1.69  p75 2.60  runup median 130%  base age median 12
+  D extras from WATCH (neither licence)              n=355 vol x: median 1.88  p25 1.65  p75 2.35  runup median 120%  base age median 6
