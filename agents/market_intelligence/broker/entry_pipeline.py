@@ -393,6 +393,10 @@ async def submit_trade_entry(
     # later skip. Bound HERE, before `_skip`, so an early skip never reads a name that is not yet
     # assigned (the old closure read `strategy`, which only exists from the phase-gate line on).
     _skip_strategy = None
+    # True only while the dedup-mode registry lookup has FAILED and the phase-gate fetch has not yet
+    # recovered it: the early skip's ROW still lands (under the process-mode fallback, the same book
+    # the guard's own query used) but its PAGE says "mode unknown" (#699), never a guessed book.
+    _skip_mode_lookup_failed = False
 
     async def _skip(
         reason: str,
@@ -453,7 +457,7 @@ async def submit_trade_entry(
                     # #699 review: label with the OWNING strategy's account (`_skip_mode`, resolved above), never
                     # the bare default - that is `current_account_mode()` = paper in every prod container, so an
                     # infra:* page for a LIVE entry (INFRA_NO_BAR ...) would have moved to the paper chat.
-                    f"{strategy_mode_prefix(_skip_mode)}{icon} *{ticker}* {strategy_label} skipped — {humanize(reason)}"
+                    f"{strategy_mode_prefix(None if _skip_mode_lookup_failed else _skip_mode)}{icon} *{ticker}* {strategy_label} skipped — {humanize(reason)}"
                 )
             except Exception as e:
                 logger.error(f"{strategy_label} {ticker}: telegram skip alert failed — {e}")
@@ -470,7 +474,7 @@ async def submit_trade_entry(
             _is_cap = isinstance(reason, str) and reason.startswith(BLOCK_MAX_POSITIONS)
             if page_cap_plus_one and _is_cap and _cq == "game_changer":
                 await send_telegram_message(
-                    f"{strategy_mode_prefix(_skip_mode)}🌟🚫 *CAP+1 CANDIDATE — {ticker}*\n"
+                    f"{strategy_mode_prefix(None if _skip_mode_lookup_failed else _skip_mode)}🌟🚫 *CAP+1 CANDIDATE — {ticker}*\n"
                     f"game\\_changer · score {alert_context.get('ep_score', '?')} · "
                     f"blocked by full position cap.\n"
                     f"_Would auto-enter under the cap+1 rule (SHADOW — not live). "
@@ -507,6 +511,16 @@ async def submit_trade_entry(
         logger.warning(f"{strategy_label} {ticker}: dedup mode resolve failed ({e}) — "
                        f"falling back to process mode")
         _dedup_mode = current_account_mode()
+        _skip_mode_lookup_failed = True
+        # The one name the other label-resolve failures already use (constants.resolve_strategy_mode_nonfatal):
+        # its `_error` suffix lands it in the morning error banner. Without it an early skip saved under the
+        # fallback book would be the only trace of this failure, and a saved row is quiet.
+        await log_audit_event(
+            "strategy_mode_resolve_error",
+            f"{signal_type}: account-mode label resolve failed in the entry funnel for {ticker} - "
+            f"dedup/skip book falls back to the process mode, any page says mode unknown",
+            detail=str(e)[:400],
+        )
     # 1. Duplicate check — trade row already exists for this ticker+date.
     async with pool.acquire() as conn:
         exists = await conn.fetchval(
@@ -558,6 +572,7 @@ async def submit_trade_entry(
     from agents.market_intelligence.strategies.registry import get_strategy
     strategy = await get_strategy(signal_type)
     _skip_strategy = strategy
+    _skip_mode_lookup_failed = False    # a strategy row is in hand now: every later skip labels from it
     if strategy is not None:
         _phase_block = _phase_gate_skip_reason(strategy)
         if _phase_block is not None:
