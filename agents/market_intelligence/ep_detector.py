@@ -5085,18 +5085,15 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                 logger.debug(f"{ticker}: provenance log skipped — {_e}")
 
             # #210 build (2026-10-10) - keep the corpus THIS grade read, for EVERY graded
-            # candidate (mi_ep_grade_corpus). The TradingView shadow diffs against it; before
-            # this, the news a grade saw was stored only on the earnings-path metrics row (5 of
-            # 32 alerts since 09-01). TELEMETRY ONLY: no grade/admission/entry/sizing path reads
-            # the table, and nothing below depends on this call. Every input is already in scope
-            # from the gather above - NO new fetch (Polygon is not in that gather, so a
-            # grade-corpus row has no Polygon side). One INSERT of the same class as the audit
-            # INSERT beside it, in its own try/except (db.write_grade_corpus is fail-open too):
-            # it can never break or slow-fail the scan. `catalyst_quality` here is the RAW grade.
-            # `captured_at` = datetime.now(_ET) HERE = the provenance row's time (the #210 card's
-            # rule), which is AFTER the grade call returned, not when the corpus was fetched: a
-            # TradingView item published in that gap reads as 'before the grade'. Known and carried
-            # as a caveat in tv_news_shadow's docstring ("READ THE none SHARE AS AN UPPER BOUND").
+            # candidate (mi_ep_grade_corpus; contract in db.write_grade_corpus). TELEMETRY ONLY
+            # (THE LINE): no grade/admission/entry/sizing path reads the table and nothing below
+            # depends on this call. Every input is already in scope from the gather above - NO new
+            # fetch, so a grade-corpus row has no Polygon side. Its own try/except beside the audit
+            # INSERT (write_grade_corpus is fail-open too): it can never break or slow-fail the
+            # scan. `catalyst_quality` here is the RAW grade; `captured_at` is stamped HERE, after
+            # the grade returned (the provenance row's time), not when the corpus was fetched - a
+            # known caveat, carried in tv_news_shadow's docstring ("READ THE none SHARE AS AN
+            # UPPER BOUND").
             try:
                 await write_grade_corpus(
                     ticker, today, datetime.now(_ET), profile.get("companyName"),

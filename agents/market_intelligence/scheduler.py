@@ -5658,13 +5658,11 @@ async def _analyst_estimates_snapshot_job():
 
 
 async def _tv_news_shadow_job():
-    """Run at 10:10 ET mon-fri (was 20:45 until 2026-10-10) — after the scan's last tick
-    (09:55 ET; the ep_scan cron is */5 over hours 7-9), its 10:00 stop, the 10:00
-    unfilled-order cancel and the 10:05 scan watchdog, so the
-    before-grade and re-poll buckets are complete (the latest grade seen is 09:55 and the
-    worst grade-to-metrics-row lag seen is ~10 min); clear of the 12:00-13:00 ET
-    market-hours deploy window. The catalyst-downgrade digest also fires at 10:10 — two
-    independent jobs, no shared state.
+    """Run at 10:10 ET mon-fri (was 20:45 until 2026-10-10) — after the scan's last tick and the
+    10:00 stop / unfilled-order cancel / 10:05 watchdog, so the before-grade and re-poll buckets
+    are complete. Why that slot, in full: the `tv_news_shadow` add_job comment in
+    start_scheduler and the tv_news_shadow.py module docstring. The catalyst-downgrade digest
+    also fires at 10:10 — two independent jobs, no shared state.
 
     #210 2026-09-06 — TradingView news CROSS-REFERENCE SHADOW (the BFLY 2026-06-18
     case: our four feeds never carried the Midjourney catalyst; TradingView's did).
@@ -5675,7 +5673,7 @@ async def _tv_news_shadow_job():
     tv_news_shadow.py module docstring). NEVER on the live scan path (07:00-10:00 ET)
     or the 09:31-09:44 ET ORB window.
 
-    SILENT by the same data-capture contract as its EOD siblings: no
+    SILENT by the same data-capture contract as the other data-capture shadows: no
     notify_job_failure — failures land in mi_audit_log (+ a Telegram ONLY on a
     sustained, run-level endpoint degradation via llm_health.alert_endpoint_shape_
     anomaly, never on a single blip), and the detector-liveness registry
@@ -7737,11 +7735,8 @@ def start_scheduler() -> AsyncIOScheduler:
     # worst grade-to-metrics-row lag seen is ~10 min; (c) it is clear of the 10:00 jobs
     # (ep_scan_stop, rt_miss_digest, orb_window_cleanup, shadow_orb_entry), the
     # 10:05 ep_scan_watchdog and the 12:00-13:00 ET deploy window. The catalyst-downgrade digest
-    # shares the minute (independent jobs). It never overlaps the scan (07:00-10:00) or the ORB
-    # window (09:31-09:44). DATA CAPTURE ONLY, no broker calls, no grade/admission
-    # change (THE LINE; see tv_news_shadow.py module docstring). SILENT except for a
-    # sustained, run-level endpoint-degradation Telegram (llm_health.
-    # alert_endpoint_shape_anomaly) — never on a single blip.
+    # shares the minute (independent jobs). Data capture only, silent: see the job's docstring
+    # and the tv_news_shadow.py module docstring (THE LINE).
     # KNOWN, ACCEPTED (#672): the slot is now INSIDE market hours, so a restart that crosses 10:10
     # gets the job recorded 'unrecoverable: slot is inside market hours' and a loud (non-silent)
     # 're-run by hand' page - even though the shadow needs no re-run, because its 3-day lookback
@@ -8445,8 +8440,6 @@ def start_scheduler() -> AsyncIOScheduler:
     # 09:28 ET (#312 Step A, 2026-10-10): BEFORE the 09:31 ORB submits, so the
     # ranking is taken against the pre-entry book (it ran at 09:35 for five
     # months and double-counted the morning's fills — see the job docstring).
-    # Scores every queued candidate, marks shadow_rank + shadow_allocated, emits
-    # `unified_allocation_decided` with the full ranking. Does NOT submit.
     # Contention: no other once-a-day job fires at :28 (ep_scan is */5, the ORB
     # bar stream wakes at 09:30, ep_scan_open at 09:31). The every-minute
     # execution watchdogs (stuck_fill_watchdog, stop_ack_timeout_watchdog) DO fire

@@ -8175,10 +8175,11 @@ async def get_open_position_count(
     account_mode: "str | None" = None,
     before_alert_date: "date | None" = None,
 ) -> int:
-    """Count of currently-open positions (filled or in-flight orders).
-    Mirrors the count `_check_safeguards` uses for MAX_CONCURRENT_LIVE_POSITIONS,
-    so the cross-strategy allocator's slot math matches the live safeguard.
-    Uses OPEN_POSITION_STATUSES (excludes inert pending_confirmation proposals, #436).
+    """Count of currently-open positions (filled or in-flight orders), over
+    OPEN_POSITION_STATUSES (excludes inert pending_confirmation proposals, #436) - the same
+    vocabulary `_check_safeguards` counts MAX_CONCURRENT_LIVE_POSITIONS over. Unfiltered, or with
+    `account_mode` alone, this is the safeguard's count; `before_alert_date` deliberately is NOT
+    (it is the allocator's pre-entry book, below).
 
     #312 Step A (2026-10-10) — two narrowing filters, both optional so the
     unfiltered count is unchanged for any other caller:
