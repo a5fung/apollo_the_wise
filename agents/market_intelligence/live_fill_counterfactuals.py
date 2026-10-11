@@ -123,6 +123,32 @@ after 5 further sessions with the gap still open the arm is written `abstain` wi
 named; (3) walked arms use one fractional share (1/3 partials) rather than the row's
 integer share count — R and pct are size-free by construction.
 
+#687 (2026-10-11) — THE DEPTH EXIT, ROW-STAMPED (exit_discipline.md 2026-10-01 #687 B; live from
+his toggle flip). A trade whose row carries `mi_live_trades.exit_rule = 'depth'` runs a different
+exit for life: the resting stop sits one ADR20 under the 10/20-day line (`exit_logic.
+depth_stop_price`, raise-only at the broker) and a TRUE close below the line sells at the NEXT
+open (live: the opening auction; paper: a DAY market order at the open), the close test itself
+unchanged. `walk_arm(depth_exit=True, depth_adr20_pct=…)` walks exactly that, calling the SAME
+two pure functions the 16:45 job calls (`depth_stop_price`, `adr20_pct_from_bars` on the same
+≤20 pre-entry sessions — live reads 40 calendar days of bars, this recorder 60, both take the
+last 20), so a replay cannot diverge from live. Which arms: every follows-live arm on the live
+SMA line (live_replay and the four stop_* arms — they ARE "the live ladder", and for a depth
+row the live ladder is depth); the two trail_* arms keep resting ON their own line (the depth
+rule is defined on the SMA line; one ADR under a swing low or a character MA is a hypothesis
+nobody studied) and the four fixed harvest arms keep their declared rule. The era stamp comes
+from THE ROW (`exit_era_label(alert_date, sig, row["exit_rule"])` → era_e), never from a date:
+a trade entered the same morning before the flip, or one whose stamp failed closed, keeps era D.
+DELIBERATE DEVIATION (4): the next-open sale fills at the DAILY bar's open; live's opening-
+auction order fills at the official open, a paper DAY market order ~09:31–09:32 — live_replay
+mirrors the live book. A close-below decided on the last settled session is `pending` until the
+next session's bar is stored (never settled at the close, never leapt).
+
+THE THREE LANES (gap_near_miss / sustain_reject / lowcap) hold no trade row: their era comes from
+the `magna53_depth_exit` toggle row for the account mode of the strategy they price, read ONCE
+per run (`load_lane_exit_rule`), 'depth' from the FIRST ACTING SESSION after the flip
+(`rule_eras.first_acting_session_after` — a noon flip stamps nothing until the next ORB), else
+era D exactly as before. No toggle row → era D, byte-identical to today.
+
 THE LINE — read this before touching anything here. This module is a passive OBSERVER:
   - It has EXACTLY ONE write target: `mi_live_fill_counterfactuals` (plus `mi_audit_log`
     via the shared `log_audit_event` helper — never a trade-state table).
@@ -181,11 +207,14 @@ import logging
 from datetime import date, datetime, time, timedelta
 from typing import Any, Optional
 
-from shared.dates import _ET
+from shared.dates import _ET, parse_iso_et
 
-from agents.market_intelligence.broker.exit_logic import apply_daily_exit_step, seed_exit_state  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — the #482 recorder settles every counterfactual through the SAME ladder the live tracker calls instead of re-implementing it (the giveback / pivot-stop shadow precedent); pure compute, no live execution
+from agents.market_intelligence.broker.exit_logic import adr20_pct_from_bars, apply_daily_exit_step, depth_stop_price, seed_exit_state  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — the #482 recorder settles every counterfactual through the SAME ladder the live tracker calls instead of re-implementing it (the giveback / pivot-stop shadow precedent); #687: the depth rule's resting stop + ADR20 are the live 16:45 job's own pure functions, so the replay cannot diverge from live; pure compute, no live execution
+from agents.market_intelligence.constants import resolve_account_mode_for_strategy
 from agents.market_intelligence.db import (
     _f,
+    get_all_safeguard_states,
+    get_all_strategy_summaries,
     get_counterfactual_arms_written,
     get_counterfactual_fills,
     get_daily_bar_with_fallback,
@@ -202,9 +231,12 @@ from agents.market_intelligence.pivot_analysis import (  # pure: statistics + ex
     character_profile,
 )
 from agents.market_intelligence.rule_eras import (
+    DEPTH_EXIT_RULE,
+    DEPTH_EXIT_SIGNAL_TYPES,
     admission_era_as_of,
     exit_era_label,
     exit_rules_as_of,
+    first_acting_session_after,
 )
 from agents.market_intelligence.trading_calendar import get_market_status
 
@@ -346,7 +378,7 @@ def stack_walk_inputs(rules: dict, entry: float,
     passed the breakeven arm, so an era D stamp would have sat on an era C walk."""
     partial_r = rules["intraday_partial_r"]
     target = pinned_target(entry, orb_low, partial_r) if partial_r else None
-    return target, {
+    kw: dict[str, Any] = {
         "breakeven_at_partial": bool(rules["breakeven_at_partial"]),
         "trail_prior_closes": bool(rules["trail_prior_closes"]),
         "ladder_partial": bool(rules["ladder_partial"]),
@@ -354,6 +386,74 @@ def stack_walk_inputs(rules: dict, entry: float,
         # None -> walk_arm falls back to entry − stop for the breakeven arm's R
         "r_frame_ps": orb_r_frame(entry, orb_low),
     }
+    if rules.get("exit_rule") == DEPTH_EXIT_RULE:
+        # #687: a depth stack walks the depth exit — set ONLY on a depth stack so a stamped
+        # era D stack produces kwargs byte-identical to before (the caller supplies the ADR).
+        kw["depth_exit"] = True
+    return target, kw
+
+
+def depth_adr20_from_rows(pre_rows: list[dict]) -> Optional[float]:
+    """The depth rule's ADR20 as a FRACTION, from stored daily rows (high_price/low_price/close,
+    oldest first, ending the day before the alert) — through the live 16:45 job's OWN function
+    (`exit_logic.adr20_pct_from_bars`), never this module's percent-valued `compute_adr20_pct`:
+    `depth_stop_price` multiplies by the fraction, and a ×100 slip would rest the stop at zero."""
+    return adr20_pct_from_bars([{"h": _f(r.get("high_price")), "l": _f(r.get("low_price")),
+                                 "c": _f(r.get("close"))} for r in pre_rows])
+
+
+def depth_first_acting_session(last_transition_at: Any) -> Optional[date]:
+    """The first session a `magna53_depth_exit` toggle flipped at `last_transition_at` (a
+    datetime or an ISO string, as the row stores it) could stamp — the lanes' era boundary.
+    None when the timestamp is missing/unparseable (the caller treats that as 'not live')."""
+    at = parse_iso_et(last_transition_at)
+    if at is None:
+        return None
+    return first_acting_session_after(at.astimezone(_ET),
+                                      is_trading_day=lambda d: get_market_status(d).is_trading_day)
+
+
+def lane_exit_rule(strategy_rows: list, toggle_rows: list, strategy_id: str,
+                   run_date: date) -> tuple[Optional[str], str]:
+    """PURE: (the exit rule a counterfactual lane walks this run, plain-words evidence) from the
+    mi_strategies summaries and the mi_safeguard_state rows. 'depth' iff the `magna53_depth_exit`
+    row for the ACCOUNT MODE `strategy_id` trades in (its phase → `resolve_account_mode_for_
+    strategy`, never a typed 'live') is 'on' AND `run_date` is on/after the flip's first acting
+    session (`depth_first_acting_session`); else None = today's rule, era D. No strategy row, no
+    toggle row, an unparseable timestamp → None with the reason — fail TO TODAY."""
+    if strategy_id not in DEPTH_EXIT_SIGNAL_TYPES:
+        return None, f"{strategy_id}: not a depth-stamped strategy — era D"
+    strat = next((r for r in strategy_rows if r["strategy_id"] == strategy_id), None)
+    if strat is None:
+        return None, f"{strategy_id}: no mi_strategies row — era D"
+    try:
+        mode = resolve_account_mode_for_strategy(dict(strat))
+    except ValueError as e:
+        return None, f"{strategy_id}: {e} — era D"
+    row = next((r for r in toggle_rows
+                if r["safeguard"] == "magna53_depth_exit" and r["account_mode"] == mode), None)
+    if row is None or str(row["state"] or "").lower() != "on":
+        return None, f"magna53_depth_exit[{mode}] {'absent' if row is None else row['state']} — era D"
+    first = depth_first_acting_session(row["last_transition_at"])
+    if first is None:
+        return None, f"magna53_depth_exit[{mode}] on, last_transition_at unreadable — era D"
+    if run_date < first:
+        return None, f"magna53_depth_exit[{mode}] on, first acting session {first} is after {run_date} — era D"
+    return DEPTH_EXIT_RULE, f"magna53_depth_exit[{mode}] on since {first} — depth"
+
+
+async def load_lane_exit_rule(conn, strategy_id: str, run_date: date) -> tuple[Optional[str], str]:
+    """The DB half of `lane_exit_rule`, read ONCE per run on the lane's own connection (like
+    `load_exit_overrides`; the two bulk readers the nightly drift check already uses). FAILS TO
+    TODAY: any read error → (None, why) — the lane stamps era D for this run and its recorded
+    summary says so; nothing live is touched."""
+    try:
+        strategy_rows = await get_all_strategy_summaries(conn)
+        toggle_rows = await get_all_safeguard_states(conn)
+    except Exception as e:  # loud-ok: the lane walks today's rule for this run and says why
+        logger.warning(f"lane exit rule: toggle unreadable for {strategy_id}, era D this run: {e}")
+        return None, f"{strategy_id}: toggle unreadable ({type(e).__name__}) — era D"
+    return lane_exit_rule(strategy_rows, toggle_rows, strategy_id, run_date)
 
 
 def arm_stop_price(stop_rule: str, *, entry: Optional[float], orb_low: Optional[float],
@@ -418,8 +518,22 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
              r_frame_ps: Optional[float] = None,
              trail_mode: str = "sma",
              pivot_stops: Optional[list] = None,
-             character: Optional[dict] = None) -> dict:
+             character: Optional[dict] = None,
+             depth_exit: bool = False,
+             depth_adr20_pct: Optional[float] = None) -> dict:
     """Walk ONE arm from the fill bar to settlement, on one fractional share.
+
+    `depth_exit` (#687, 2026-10-11): walk the DEPTH exit a row stamped `exit_rule='depth'` runs
+    (module docstring, "#687"). Day 0 is unchanged (the 16:45 job skips the alert day). From
+    session 1: the resting stop becomes `exit_logic.depth_stop_price(line=today's effective
+    stop, hard_stop=this arm's stop, entry, breakeven_active, depth_adr20_pct)` under the same
+    raise-only ratchet (the broker's `update_stop`), so it sits one ADR20 under the line instead
+    of on it; a close below the line (the ladder's `sma_trail_stop`, unchanged) books the sale at
+    the NEXT session's OPEN — `pending` until that bar is stored. `depth_adr20_pct` is the
+    FRACTION from `adr20_pct_from_bars` (None = no ADR20 → the stop rests at the hard/breakeven
+    floor, as live does). Only the live ladder on the SMA line hosts it (ValueError otherwise —
+    a silent fall-back would record today's exit under a depth stamp). DEFAULT False =
+    byte-identical to before.
 
     `trail_mode` (#631): 'sma' (DEFAULT, byte-identical to before #631 — the live
     max(SMA10, SMA20)); 'pivot_swing' reads `pivot_stops[i]` for session i (from
@@ -459,6 +573,9 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
                          "record the arm unscoreable instead of walking it")
     if trail_mode == "pivot_swing" and pivot_stops is None:
         raise ValueError("trail_mode 'pivot_swing' needs pivot_stops (pivot_stops_for_sessions)")
+    if depth_exit and (harvest != "live_ladder" or trail_mode != "sma"):
+        raise ValueError(f"depth_exit needs the live ladder on the SMA line, got harvest "
+                         f"{harvest!r} / trail_mode {trail_mode!r}")
     out = _fresh_walk()
     if stop is None or entry is None or entry - stop <= 0:
         out.update(status="abstain", reason="nonpositive_risk_per_share")
@@ -566,6 +683,7 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
 
     # ── Sessions after day 0: the live ladder + the broker's raise-only resting stop ──
     last_close = day0_bars[-1]["c"] if day0_bars else entry
+    horizon_reason = "open_at_horizon"
     if not closed:
         state = seed_exit_state(
             alert_date=fill_day, entry_price=entry, hard_stop=stop,
@@ -650,7 +768,41 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
                          breakeven_active=step.new_breakeven_active,
                          exits=step.new_exits,
                          running_closes=step.new_running_closes)
-            if step.closed:
+            if step.closed and depth_exit and step.close_reason == "sma_trail_stop":
+                # #687: the depth rule decides on this TRUE close exactly as the ladder did, but the
+                # SALE is the next session's open (live: the 19:01 opening-auction order; paper: a
+                # DAY market order at the open) — `scripts/probes/_687/mechanics.py` `next_open`.
+                nxt = sessions[idx] if idx < len(sessions) else None
+                if nxt is None:
+                    if idx >= horizon:
+                        # decided on the last horizon session: the fill lies beyond the walk —
+                        # written `horizon` with the mark, like any arm still open there, and
+                        # the reason says the sale was decided (never settled at the close).
+                        horizon_reason = f"depth_sale_decided_at_horizon:{d.isoformat()}"
+                        break
+                    # the next session is not settled yet: retried nightly, never leapt.
+                    # `exits` / `remaining` are the legs and size BEFORE the ladder's close leg.
+                    out.update(status="pending", reason="depth_next_open_not_yet_settled",
+                               pending_at=d)
+                    out["exits"] = exits
+                    out["remaining"] = remaining
+                    return out
+                nd, nb = nxt
+                if nb is None or nb.get("o") is None:
+                    out.update(status="pending", reason=f"missing_session:{nd.isoformat()}",
+                               pending_at=nd)
+                    out["exits"] = exits
+                    out["remaining"] = remaining
+                    return out
+                exits = [dict(e) for e in step.new_exits]
+                exits[-1] = {**exits[-1], "time": str(nd), "price": nb["o"],
+                             "pnl": (nb["o"] - entry) * exits[-1]["shares"], "fill": "next_open"}
+                out["final_reason"] = step.close_reason
+                out["exit_session"] = idx + 1
+                out["sessions_walked"] = idx + 1
+                remaining = 0.0
+                closed = True
+            elif step.closed:
                 px, reason = step.close_price, step.close_reason
                 if reason == "stop_hit" and b["o"] is not None and b["o"] < px:
                     px = b["o"]           # gap-through honesty: the resting stop fills at the open
@@ -665,7 +817,17 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
             else:
                 exits = [dict(e) for e in step.new_exits]
                 remaining = step.new_remaining
-                resting = max(resting, step.effective_stop)
+                if depth_exit:
+                    # #687: the resting stop is the live 16:45 job's own `depth_stop_price` on the
+                    # same inputs it passes (today's effective stop = the line; this arm's hard
+                    # stop; the row's breakeven flag; ADR20), ratcheted like the broker's
+                    # raise-only `update_stop`. No ADR20 → the hard/breakeven floor, as live.
+                    resting = max(resting, depth_stop_price(
+                        line=step.effective_stop, hard_stop=stop, entry_price=entry,
+                        breakeven_active=bool(state["breakeven_active"]),
+                        adr20_pct=depth_adr20_pct))
+                else:
+                    resting = max(resting, step.effective_stop)
         out["partial_fired"] = any(e["reason"] == "partial_profit" for e in exits)
 
     out["exits"] = exits
@@ -674,7 +836,7 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
     if closed:
         out.update(status="settled", pnl_per_share=pnl)
     elif out["sessions_walked"] >= horizon:
-        out.update(status="horizon", reason="open_at_horizon", final_reason="horizon",
+        out.update(status="horizon", reason=horizon_reason, final_reason="horizon",
                    mark_pnl_per_share=pnl + (last_close - entry) * remaining)
     else:
         out.update(status="pending", reason="open_walk_not_definitive")
@@ -927,10 +1089,16 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict,
     # `intraday_partial_r: 2.0` and would silently JOIN the era_c cohort, pooling two
     # different exit rules in the one column that exists to keep them apart.
     _sig = trade.get("signal_type")
-    era = {"exit_era": exit_era_label(alert_date, _sig),
-           "exit_rules": exit_rules_as_of(alert_date, _sig),
+    # #687 (2026-10-11): the exit era is PER-ROW now — `mi_live_trades.exit_rule` ('depth' or
+    # NULL = today's rule), stamped at entry and kept for life. A date cannot tell a depth row
+    # from an unstamped one admitted the same morning, so the ROW decides and the date never
+    # overrides it (rule_eras.py, the block above DEPTH_EXIT_RULE).
+    _rule = trade.get("exit_rule")
+    era = {"exit_era": exit_era_label(alert_date, _sig, _rule),
+           "exit_rules": exit_rules_as_of(alert_date, _sig, _rule),
            "admission_era": admission_era_as_of(alert_date)}
     rules = era["exit_rules"]
+    is_depth = _rule == DEPTH_EXIT_RULE
     stamp = await get_ep_alert_admission_stamp(conn, ticker, alert_date)
 
     # #545: THIS fill's signal_type resolved against the overrides `overrides` (read ONCE,
@@ -963,6 +1131,9 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict,
                                      alert_date - timedelta(days=1))
     adr20_pct, adr20_n = compute_adr20_pct(pre)
     adr_dollar = (adr20_pct / 100.0 * entry) if (adr20_pct is not None and entry) else None
+    # #687: the depth rule's ADR20 — a FRACTION, through the live job's own function on the same
+    # ≤20 pre-entry sessions (module docstring); None (no depth row) is never passed to a walk.
+    depth_adr = depth_adr20_from_rows(pre) if is_depth else None
     prior_cut = alert_date - timedelta(days=PRIOR_CLOSES_CAL_DAYS)
     prior_closes = [float(r["close"]) for r in pre
                     if r.get("close") is not None and r["trade_date"] >= prior_cut]
@@ -1061,6 +1232,11 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict,
                 # window can exceed the 40-calendar-day SMA window the other arms use
                 arm_prior = character_prior or prior_closes
 
+            # #687: on a depth row, every follows-live arm on the live SMA ladder walks the depth
+            # exit (live_replay + the stop_* arms — "the live ladder" IS depth for this row); the
+            # trail_* arms rest on their own line and the fixed harvest arms keep their declared
+            # rule (module docstring, "#687"). Not a depth row → False/None, byte-identical.
+            depth_arm = is_depth and follows_live and trail_rule == "sma" and harvest == "live_ladder"
             res = walk_arm(entry=entry, stop=stop, target=target, day0_bars=day0_bars,
                            fill_idx=fill_idx, sessions=sessions, prior_closes=arm_prior,
                            harvest=harvest, fill_day=fill_day,
@@ -1069,7 +1245,9 @@ async def _record_one_fill(conn, trade: dict, last_session: date, out: dict,
                            ladder_partial=bool(rules["ladder_partial"]),
                            breakeven_at_r=breakeven_r, r_frame_ps=r_frame_ps,
                            trail_mode=trail_rule, pivot_stops=pivot_stops,
-                           character=character)
+                           character=character,
+                           depth_exit=depth_arm,
+                           depth_adr20_pct=depth_adr if depth_arm else None)
             status = res["status"]
             if status == "pending":
                 gap = res.get("pending_at")

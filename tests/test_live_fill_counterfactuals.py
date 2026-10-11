@@ -1081,9 +1081,16 @@ def test_era_d_labels_only_the_flipped_strategy_after_the_flip_date():
 def test_the_recorder_stamps_the_rows_signal_type_not_the_date_alone():
     """MUTATION TARGET: dropping signal_type at the stamp site. The era functions default to
     the GLOBAL stack, so omitting it fails SILENTLY — correct-looking rows, wrong cohort."""
+    # source-pin-ok: the stamp site's ARGUMENTS are the whole fix, and every omission degrades
+    # silently to a correct-looking row (the global stack / the dated record); the behaviour is
+    # exercised in test_every_row_carries_the_era_stamp and tests/test_depth_era_replays.py,
+    # this pins WHICH argument was dropped so the failure names the defect.
     import pathlib
     src = (pathlib.Path(__file__).resolve().parents[1] / "agents" / "market_intelligence"
            / "live_fill_counterfactuals.py").read_text()
-    assert 'exit_era_label(alert_date, _sig)' in src, "era label no longer per-strategy"
-    assert 'exit_rules_as_of(alert_date, _sig)' in src, "era rules no longer per-strategy"
+    # #687 (2026-10-11): the stamp also carries the ROW's exit_rule — a date cannot tell a depth
+    # row from an unstamped one admitted the same morning (tests/test_depth_era_replays.py).
+    assert 'exit_era_label(alert_date, _sig, _rule)' in src, "era label no longer per-strategy / per-row"
+    assert 'exit_rules_as_of(alert_date, _sig, _rule)' in src, "era rules no longer per-strategy / per-row"
     assert '_sig = trade.get("signal_type")' in src, "signal_type no longer read off the row"
+    assert '_rule = trade.get("exit_rule")' in src, "exit_rule no longer read off the row"

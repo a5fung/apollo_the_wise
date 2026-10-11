@@ -301,7 +301,7 @@ async def _write(fields: dict, out: dict, label: str) -> bool:
 
 
 async def _record_one_reject(conn, row: dict, last_session: date, run_date: date,
-                             out: dict) -> None:
+                             out: dict, *, exit_rule: Optional[str] = None) -> None:
     ticker, decline_date = row["ticker"], row["decline_date"]
     rt_gap = _f(row.get("rt_gap"))
     label = f"{ticker} {decline_date.isoformat()}"
@@ -311,8 +311,11 @@ async def _record_one_reject(conn, row: dict, last_session: date, run_date: date
     # The walk prices a declined MAGNA53 candidate under MAGNA53's OWN current bracket. Since the
     # 2026-09-06 per-strategy flip (#545) a date alone no longer names that bracket: without the
     # signal_type this silently walked the retired +2R-partial stack (era_c) for every row after it.
-    replay_exit_rules = rule_eras.exit_rules_as_of(run_date, "magna53")
-    replay_exit_era = rule_eras.exit_era_label(run_date, "magna53")
+    # #687 (2026-10-11): `exit_rule` is the run's toggle-derived rule ('depth' once the
+    # magna53_depth_exit row for MAGNA53's account is on and run_date reaches its first acting
+    # session — `lfc.load_lane_exit_rule`, read once per run); None = today's rule, era D.
+    replay_exit_rules = rule_eras.exit_rules_as_of(run_date, "magna53", exit_rule)
+    replay_exit_era = rule_eras.exit_era_label(run_date, "magna53", exit_rule)
     fields = _fresh_fields(ticker, decline_date, rt_gap, admission_era, replay_exit_era,
                            replay_exit_rules, run_date, last_session)
 
@@ -423,6 +426,10 @@ async def _record_one_reject(conn, row: dict, last_session: date, run_date: date
         fields["stop_price"] = stop
         target, walk_kw = stack_walk_inputs(replay_exit_rules, entry_px, orb_low)
         fields["target_price"] = target
+        if walk_kw.get("depth_exit"):
+            # #687: the depth stack's ADR20 (a fraction, the live job's own function) from the
+            # same pre-decline daily rows the ATR above used; only a depth stack ever sets it.
+            walk_kw["depth_adr20_pct"] = lfc.depth_adr20_from_rows(prior_rows)
 
         fill_idx = next(i for i, b in enumerate(bars0) if b["m"] == fill["minute"])
         # `sessions` was already fetched above (before the window/day0 checks) — reused here
@@ -507,13 +514,18 @@ async def run_sustain_reject_replay(today: Optional[date] = None, *,
     out["population"] = len(rows)
     todo = [r for r in rows
            if existing.get((r["ticker"], r["decline_date"])) in (None, "open")]
+    lane_why = "exit rule not read (no candidates)"
     if todo:
         try:
             pool = await get_pool()
             async with pool.acquire() as conn:
+                # #687: the exit rule this run walks (depth once MAGNA53's toggle row is on and
+                # acting; else today's), read ONCE per run — every row this run shares it.
+                lane_rule, lane_why = await lfc.load_lane_exit_rule(conn, "magna53", today)
                 for row in todo:
                     try:
-                        await _record_one_reject(conn, row, last_session, today, out)
+                        await _record_one_reject(conn, row, last_session, today, out,
+                                                 exit_rule=lane_rule)
                     except Exception as e:  # loud-ok: per-name isolation; counted + audited
                         out["errors"] += 1
                         await log_audit_event(
@@ -528,5 +540,6 @@ async def run_sustain_reject_replay(today: Optional[date] = None, *,
         f"{out['population']} net-declined ticker-day(s) in window, {len(todo)} candidate(s) "
         f"processed: {out['written']} written ({out['settled']} settled, "
         f"{out['no_trade']} no_trade, {out['unscoreable']} unscoreable, {out['open']} open, "
-        f"{out['horizon']} at horizon), {out['pending']} pending, {out['errors']} error(s)")
+        f"{out['horizon']} at horizon), {out['pending']} pending, {out['errors']} error(s); "
+        f"exit rule: {lane_why}")
     return out

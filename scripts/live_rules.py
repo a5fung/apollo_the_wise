@@ -863,6 +863,63 @@ def scan_unrecorded_flips(docs: list[DocFile], res: Resolver) -> list[DriftRow]:
     return rows
 
 
+def scan_depth_era_pin(res: Resolver) -> list[DriftRow]:
+    """Drift rule 5 (#687 / #482, 2026-10-11) — the depth exit's DATED RECORD must agree with the
+    prod toggle. `rule_eras.DEPTH_EXIT_LIVE_DATE` is the one hand-set date the date-only readers
+    (the #482 gated review's SQL literal, the weekly review's era counts) fall back to; the
+    walkers themselves read the toggle / the row and never this constant. It is set AFTER the
+    operator flips `mi_safeguard_state('magna53_depth_exit', <MAGNA53's account mode>)` — so
+    this rule fires from the flip until the constant equals the flip's first acting session
+    (`rule_eras.first_acting_session_after`: a flip at/after 09:30 ET stamps nothing until the
+    next session's ORB), and again if the constant is set while the toggle is OFF. Prod
+    unreachable → nothing (the module's rule: never guess)."""
+    rows: list[DriftRow] = []
+    if not res.prod.reachable:
+        return rows
+    if str(REPO) not in sys.path:
+        sys.path.insert(0, str(REPO))
+    from agents.market_intelligence import rule_eras  # stdlib-pure, safe offline
+    from agents.market_intelligence.trading_calendar import get_market_status
+    from shared.dates import _ET, parse_iso_et
+
+    pinned = rule_eras.DEPTH_EXIT_LIVE_DATE
+    where = "agents/market_intelligence/rule_eras.py:DEPTH_EXIT_LIVE_DATE"
+    strat = next((s for s in res.prod.strategies if s["strategy_id"] == "magna53"), None)
+    mode = {"live": "live", "paper": "paper"}.get((strat or {}).get("phase"))
+    on_rows = [r for r in res.prod.toggles
+               if r["safeguard"] == "magna53_depth_exit" and str(r["state"]).lower() == "on"]
+    anchor = next((r for r in on_rows if r["account_mode"] == mode), None) if mode else None
+    if anchor is not None:
+        at = parse_iso_et(anchor["last_transition_at"])
+        first = (rule_eras.first_acting_session_after(
+            at.astimezone(_ET), is_trading_day=lambda d: get_market_status(d).is_trading_day)
+            if at else None)
+        actual = (f"mi_safeguard_state: magna53_depth_exit[{mode}] = on since "
+                  f"{anchor['last_transition_at'][:16] or 'date unrecorded'} → first acting session "
+                  f"{first or 'unknown (timestamp unreadable)'}")
+        if pinned != first:
+            rows.append(DriftRow(
+                rule="depth-era-unpinned", severity="DRIFT", where=where,
+                claim=f"rule_eras.DEPTH_EXIT_LIVE_DATE = {pinned} (the dated record for era E)",
+                actual=actual,
+                words=(f"The depth exit is ON for MAGNA53's account but the dated record says "
+                       f"{'not live' if pinned is None else pinned}. Set DEPTH_EXIT_LIVE_DATE = "
+                       f"date({first.year}, {first.month}, {first.day}) and move the #482 review's "
+                       f"era literal with it (tests/test_exit_counterfactual_consolidation_631.py "
+                       f"names the lines)." if first else
+                       "The depth exit is ON for MAGNA53's account but its last_transition_at is "
+                       "unreadable — set DEPTH_EXIT_LIVE_DATE by hand from the flip time.")))
+    elif pinned is not None:
+        rows.append(DriftRow(
+            rule="depth-era-unpinned", severity="DRIFT", where=where,
+            claim=f"rule_eras.DEPTH_EXIT_LIVE_DATE = {pinned} (the dated record says era E is live)",
+            actual=(f"mi_safeguard_state: no ON magna53_depth_exit row for MAGNA53's account "
+                    f"({mode or 'phase unknown'})"),
+            words="The dated record says the depth exit went live but prod's toggle is off/absent "
+                  "for MAGNA53's account — date-only readers would label unstamped trades era E."))
+    return rows
+
+
 _DOC_VALUE_RE = re.compile(r"\b([A-Z][A-Z0-9_]{3,})`?\s*=\s*(-?\d[\d_]*(?:\.\d+)?)\b")
 
 
@@ -980,6 +1037,7 @@ def detect_drift(docs: list[DocFile], res: Resolver) -> list[DriftRow]:
     rows += scan_value_mismatches(docs, res)
     rows += scan_registry_drift()
     rows += scan_live_comments(docs)
+    rows += scan_depth_era_pin(res)
     return rows
 
 

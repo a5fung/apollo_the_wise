@@ -34,8 +34,8 @@ Pure: dates and string composition only. No DB, no I/O, no imports beyond the st
 """
 from __future__ import annotations
 
-from datetime import date
-from typing import Any
+from datetime import date, datetime, time
+from typing import Any, Callable
 
 # ── EXIT / GEOMETRY switches (moved verbatim from scripts/ep_replay.py, 2026-09-03) ──
 # Provenance for every line:
@@ -81,6 +81,73 @@ PARTIAL_8R_SIGNAL_TYPES = frozenset({"magna53", "magna53_smallcap"})
 # era switch, so it has no `*_DATE` here (each one re-anchors three gated reviews). Its date and the
 # reason live with its only reader: `scripts/ep_replay.PARTIAL_MIN_ONE_SHARE_FROM`.
 
+# ── #687 (2026-10-11) — era E, the DEPTH exit: ROW-STAMPED, not date-stamped ──────────────────
+# The depth rule (the stop rests one ADR20 under the 10/20-day line; a close below the line sells
+# at the NEXT open — exit_discipline.md 2026-10-01 #687 B) is the first exit switch that is NOT a
+# function of the date: it is a runtime toggle (`mi_safeguard_state('magna53_depth_exit', <mode>)`)
+# read ONCE per trade at entry and written on the row (`mi_live_trades.exit_rule = 'depth'`, kept for
+# life). Two trades admitted the same morning can run different exits (one entered before the flip,
+# one after; a stamp that failed CLOSED). So:
+#   * a REAL trade's era comes from ITS OWN ROW — every caller holding a trade row passes
+#     `exit_rule=row["exit_rule"]` (None = today's rule, era D) and the date never overrides it;
+#   * a COUNTERFACTUAL (no row — the three replay lanes) uses the toggle row for the account mode
+#     it prices: 'depth' from the FIRST ACTING SESSION after `last_transition_at`
+#     (`first_acting_session_after`, below — the same convention as ADMISSION_SWITCHES: a noon
+#     flip stamps nothing until the next ORB), else today's rule;
+#   * a reader with neither (the weekly review's era counts, the #482 gated review's SQL literal)
+#     falls back to the DATED RECORD below — set to that first acting session the day he flips.
+# `DEPTH_EXIT_RULE` / `DEPTH_EXIT_SIGNAL_TYPES` mirror `broker/order_manager.DEPTH_EXIT_RULE` /
+# `_DEPTH_EXIT_STRATEGIES` (this module may not import the broker — pinned equal by
+# tests/test_depth_era_replays.py).
+DEPTH_EXIT_RULE = "depth"
+DEPTH_ERA_LABEL = "era_e"
+DEPTH_EXIT_SIGNAL_TYPES = frozenset({"magna53", "magna53_smallcap"})
+# ⚠ THE ONE LINE TO SET ON FLIP DAY (after his switch, never before): the first session whose NEW
+# MAGNA53 fills were stamped 'depth' — `first_acting_session_after(<live row's last_transition_at>)`.
+# None = the dated record says "not live": every date-only reader keeps era D, byte-identical to
+# before #687. While the prod toggle is ON and this is None (or disagrees with the toggle),
+# `scripts/live_rules.py` reports DRIFT (rule `depth-era-unpinned`) at every session open and in
+# the nightly drift check — the mechanical nag that replaces a prose "bump it the same day".
+# The #631 YAML pin (tests/test_exit_counterfactual_consolidation_631.py) reads every `*_DATE`
+# here, so setting this moves the ONE read's predicate literal in the same commit, by design.
+DEPTH_EXIT_LIVE_DATE: date | None = None
+
+# Sentinel: "the caller did not say" — distinct from an explicit None ("the row says today's rule").
+_UNSPECIFIED: Any = object()
+
+
+def dated_exit_rule_as_of(d: date, signal_type: str | None) -> str | None:
+    """The exit rule the DATED RECORD says a NEW `signal_type` fill on `d` was stamped with:
+    'depth' on/after DEPTH_EXIT_LIVE_DATE for a strategy the stamp covers, else None (today's
+    rule). The fallback for readers that hold neither a trade row nor a toggle row."""
+    if (DEPTH_EXIT_LIVE_DATE is not None and d >= DEPTH_EXIT_LIVE_DATE
+            and signal_type in DEPTH_EXIT_SIGNAL_TYPES):
+        return DEPTH_EXIT_RULE
+    return None
+
+
+def _resolve_exit_rule(d: date, signal_type: str | None, exit_rule: Any) -> str | None:
+    return dated_exit_rule_as_of(d, signal_type) if exit_rule is _UNSPECIFIED else exit_rule
+
+
+# The ORB window's first fill minute: a toggle flipped at or after 09:30 ET stamps nothing that
+# day (fills run 09:31–09:45), so its first acting session is the NEXT trading day.
+_ORB_OPEN_ET = time(9, 30)
+
+
+def first_acting_session_after(transition_at_et: datetime, *,
+                               is_trading_day: Callable[[date], bool]) -> date:
+    """The first session whose ORB fills a toggle flipped at `transition_at_et` (an ET-aware
+    datetime) could stamp: the same day only when the flip preceded the 09:30 open, else the next
+    trading day; weekends/holidays skipped via the injected calendar (this module stays
+    stdlib-pure — callers pass `trading_calendar.get_market_status(d).is_trading_day`)."""
+    d = transition_at_et.date()
+    if transition_at_et.timetz().replace(tzinfo=None) >= _ORB_OPEN_ET:
+        d = date.fromordinal(d.toordinal() + 1)
+    while not is_trading_day(d):
+        d = date.fromordinal(d.toordinal() + 1)
+    return d
+
 
 def _flipped_8r(d: date, signal_type: str | None) -> bool:
     """True when the 2026-09-06 per-strategy flip governs (d, signal_type). `signal_type`
@@ -89,7 +156,8 @@ def _flipped_8r(d: date, signal_type: str | None) -> bool:
     return d >= PARTIAL_8R_DATE and signal_type in PARTIAL_8R_SIGNAL_TYPES
 
 
-def exit_rules_as_of(d: date, signal_type: str | None = None) -> dict[str, Any]:
+def exit_rules_as_of(d: date, signal_type: str | None = None,
+                     exit_rule: Any = _UNSPECIFIED) -> dict[str, Any]:
     """The exit/geometry stack live on date d for `signal_type`, as plain fields (the same
     composition `scripts/ep_replay.ruleset_as_of` builds its RuleSet from). Stored verbatim
     on every #482 row so a reader never has to re-derive the acting rule from a date.
@@ -97,9 +165,14 @@ def exit_rules_as_of(d: date, signal_type: str | None = None) -> dict[str, Any]:
     `signal_type` (2026-09-06, #545): the partial multiple and the breakeven arm became
     PER-STRATEGY, so a date alone no longer answers the question. Omitting it returns the
     global stack — correct for every strategy the flip did not touch, and byte-identical to
-    this function's pre-2026-09-06 output for ALL dates."""
+    this function's pre-2026-09-06 output for ALL dates.
+
+    `exit_rule` (2026-10-11, #687): the ROW's stamp (`mi_live_trades.exit_rule`) or the
+    toggle-derived rule for a counterfactual — 'depth' adds the three depth fields below;
+    None (today's rule) or omitted-and-not-dated returns the dict EXACTLY as before, so every
+    stored era A–D row and every pre-#687 reader is byte-identical."""
     flipped = _flipped_8r(d, signal_type)
-    return {
+    out = {
         "stop_mode": "entry_minus_2r" if d >= STOP_2R_DATE else "orb_low",
         "intraday_partial_r": (PARTIAL_8R_VALUE if flipped
                                else (2.0 if d >= PARTIAL_LIVE_DATE else None)),
@@ -111,20 +184,35 @@ def exit_rules_as_of(d: date, signal_type: str | None = None) -> dict[str, Any]:
         "ladder_partial": d < PARTIAL_LIVE_DATE,
         "score_separation": d >= SEP_SCORE_DATE,
     }
+    if _resolve_exit_rule(d, signal_type, exit_rule) == DEPTH_EXIT_RULE:
+        # Added ONLY on a depth row (never a False/None placeholder): the stop rests one ADR20
+        # under the line (`exit_logic.depth_stop_price`) and a close below the line sells at the
+        # next open (live: the opening auction; paper: a DAY market order at the open).
+        out.update({"exit_rule": DEPTH_EXIT_RULE, "stop_rest": "one_adr20_under_line",
+                    "close_below_sale": "next_open"})
+    return out
 
 
-def exit_era_label(d: date, signal_type: str | None = None) -> str:
+def exit_era_label(d: date, signal_type: str | None = None,
+                   exit_rule: Any = _UNSPECIFIED) -> str:
     """Coarse exit era: A = no executable partial (< 2026-08-01) · B = partial live, ORB-low
     stop (< 2026-08-16) · C = partial live at +2R, entry−2R stop · D = the 2026-09-06 flip
-    (+8R partial, breakeven armed on price at +3R). The same taxonomy
-    docs/analysis/exit_tune_cohort_review_2026-08-22.md and system_review's era-scoped setup
-    review use.
+    (+8R partial, breakeven armed on price at +3R) · E = the depth exit (#687: stop one ADR20
+    under the line, close-below sale at the next open) — ROW-STAMPED, see the block above
+    DEPTH_EXIT_RULE. The same taxonomy docs/analysis/exit_tune_cohort_review_2026-08-22.md
+    and system_review's era-scoped setup review use.
 
     ⚠ era D is PER-STRATEGY. Without `signal_type` this returns era_c for any post-flip date,
     which is correct for every strategy the flip did not touch and is what every pre-existing
     caller already assumed. A caller stamping MAGNA53 rows MUST pass it — otherwise post-flip
     fills join the era_c cohort and pool two different exit rules, the exact defect this
-    module exists to prevent."""
+    module exists to prevent.
+
+    ⚠ era E is PER-ROW. A caller holding a trade row MUST pass `exit_rule=row["exit_rule"]`
+    (None = today's rule → era D, whatever the date); a counterfactual passes the toggle-derived
+    rule; only a reader with neither leaves it unspecified and gets the dated record."""
+    if _resolve_exit_rule(d, signal_type, exit_rule) == DEPTH_EXIT_RULE:
+        return DEPTH_ERA_LABEL
     if d < PARTIAL_LIVE_DATE:
         return "era_a"
     if d < STOP_2R_DATE:
@@ -209,15 +297,23 @@ EXIT_SWITCHES: tuple[tuple[date, str], ...] = (
     (STOP_2R_DATE, "the protective stop moved to entry−2R"),
     (SEP_SCORE_DATE, "score separation + rescale (#533)"),
     (PARTIAL_8R_DATE, "the partial moved +2R→+8R and breakeven arms at +3R, magna53 only (#545)"),
+) + (
+    # #687: appears in the switch list only once the dated record is set (flip day).
+    ((DEPTH_EXIT_LIVE_DATE, "the depth exit: stop one ADR20 under the line, close-below sale at "
+                            "the next open — new magna53 / small-cap-lane trades only (#687)"),)
+    if DEPTH_EXIT_LIVE_DATE is not None else ()
 )
 
-# One line the weekly review's fold prints once, so the A/B/C/D letters the setup review uses
+# One line the weekly review's fold prints once, so the A/B/C/D/E letters the setup review uses
 # are readable without opening this file.
 EXIT_ERA_KEY = (
     f"era key — A: before {PARTIAL_LIVE_DATE} (no executable partial) · "
     f"B: before {STOP_2R_DATE} (partial live, ORB-low stop) · "
     f"C: partial +2R, entry−2R stop · "
-    f"D: since {PARTIAL_8R_DATE} (magna53: partial +8R, breakeven at +3R)"
+    f"D: since {PARTIAL_8R_DATE} (magna53: partial +8R, breakeven at +3R) · "
+    f"E: trades stamped exit_rule='depth'"
+    + (f" since {DEPTH_EXIT_LIVE_DATE}" if DEPTH_EXIT_LIVE_DATE is not None else "")
+    + " (stop one ADR20 under the line, close-below sale at the next open)"
 )
 
 
@@ -232,17 +328,21 @@ def rule_switches_since(d: date) -> list[tuple[date, str]]:
 
 
 def exit_era_start(label: str) -> date | None:
-    """First date of an exit-era label; None for era_a (nothing precedes it)."""
-    return {"era_b": PARTIAL_LIVE_DATE, "era_c": STOP_2R_DATE, "era_d": PARTIAL_8R_DATE}.get(label)
+    """First date of an exit-era label; None for era_a (nothing precedes it) and for era_e
+    until the dated record (DEPTH_EXIT_LIVE_DATE) is set on flip day."""
+    return {"era_b": PARTIAL_LIVE_DATE, "era_c": STOP_2R_DATE, "era_d": PARTIAL_8R_DATE,
+            DEPTH_ERA_LABEL: DEPTH_EXIT_LIVE_DATE}.get(label)
 
 
 def split_current_vs_older(values: list, meta: list[dict], today: date) -> dict[str, Any]:
     """Partition `values` (one per trade, parallel to `meta`) into the trades that ran under the
     rules live TODAY for their own strategy and those that ran under an older rule.
 
-    `meta[i]` = {"alert_date": date, "signal_type": str | None}. "Current" is decided per trade
-    as `exit_era_label(alert_date, signal_type) == exit_era_label(today, signal_type)`, so a
-    strategy still on the global +2R stack is judged against ITS current rule, not magna53's.
+    `meta[i]` = {"alert_date": date, "signal_type": str | None, optional "exit_rule": the row's
+    stamp}. "Current" is decided per trade as `exit_era_label(alert_date, signal_type) ==
+    exit_era_label(today, signal_type)`, so a strategy still on the global +2R stack is judged
+    against ITS current rule, not magna53's. A meta row carrying "exit_rule" is labelled by its
+    own stamp (#687, row-stamped era E); one without falls back to the dated record.
     Returns {"current": [...], "older": [...], "current_since": date | None, "by_era": {label:
     n}}; `current_since` is the start of today's era for the strategy the cohort is mostly made
     of (None while that strategy is still on era_a)."""
@@ -251,7 +351,7 @@ def split_current_vs_older(values: list, meta: list[dict], today: date) -> dict[
     sig_counts: dict[str | None, int] = {}
     for v, m in zip(values, meta):
         d, sig = m.get("alert_date"), m.get("signal_type")
-        label = exit_era_label(d, sig)
+        label = exit_era_label(d, sig, m["exit_rule"]) if "exit_rule" in m else exit_era_label(d, sig)
         by_era[label] = by_era.get(label, 0) + 1
         sig_counts[sig] = sig_counts.get(sig, 0) + 1
         (current if label == exit_era_label(today, sig) else older).append(v)

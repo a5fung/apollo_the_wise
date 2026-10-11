@@ -17919,7 +17919,8 @@ _COUNTERFACTUAL_FILLS_SQL = """
     SELECT t.id, t.ticker, t.alert_date, t.account_mode, t.signal_type, t.entry_attempt,
            t.status, t.entry_price, t.entry_shares, t.orb_high, t.orb_low, t.hard_stop,
            t.regime, t.exits, t.partial_taken, t.total_pnl, t.pnl_attribution,
-           t.filled_at, t.closed_at
+           t.filled_at, t.closed_at,
+           t.exit_rule   -- #687 (2026-10-11): the row's exit stamp ('depth' / NULL) decides its era
     FROM mi_live_trades t
     WHERE t.signal_type = 'magna53'
       AND t.filled_at IS NOT NULL

@@ -1,0 +1,3 @@
+ERROR:  column a.alert_source does not exist
+LINE 2: ..._authority, a.setup_class, a.baseline_floor_tier, a.alert_so...
+                                                             ^

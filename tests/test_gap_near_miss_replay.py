@@ -362,7 +362,7 @@ async def test_run_skips_terminal_rows_and_revisits_open_ones():
     existing = {("OPENX", SESSION_DATE): "open", ("DONEX", SESSION_DATE): "settled"}
     processed = []
 
-    async def _fake_record(conn, row, last_session, run_date, out):
+    async def _fake_record(conn, row, last_session, run_date, out, **kw):   # kw: #687 exit_rule
         processed.append(row["ticker"])
 
     with patch.object(gnm, "get_gap_near_miss_population", AsyncMock(return_value=rows)), \
@@ -380,7 +380,7 @@ async def test_run_skips_terminal_rows_and_revisits_open_ones():
 async def test_one_candidates_failure_is_isolated_and_counted():
     rows = [_pop_row("BAD"), _pop_row("GOOD")]
 
-    async def _fake_record(conn, row, last_session, run_date, out):
+    async def _fake_record(conn, row, last_session, run_date, out, **kw):   # kw: #687 exit_rule
         if row["ticker"] == "BAD":
             raise RuntimeError("boom")
         out["settled"] += 1

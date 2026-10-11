@@ -228,7 +228,8 @@ async def _offering(ticker: str, session_date: date, through: date,
 
 async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date,
                              out: dict, *, upsert=None,
-                             error_event: str = "lowcap_lane_replay_error") -> None:
+                             error_event: str = "lowcap_lane_replay_error",
+                             exit_rule: Optional[str] = None) -> None:
     ticker, session_date = sig["ticker"], sig["scan_date"]
     label = f"{ticker} {session_date.isoformat()}"
     out["candidates"] += 1
@@ -242,8 +243,11 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
     # of MAGNA53, not a setup", and the question it answers (should the floor admit these names)
     # is about names that would trade MAGNA53's exit. Operator ruling 2026-09-22. Until then it
     # walked the unflipped global stack, because the 09-06 flip was scoped to magna53 only.
-    replay_exit_rules = rule_eras.exit_rules_as_of(run_date, "magna53")
-    replay_exit_era = rule_eras.exit_era_label(run_date, "magna53")
+    # #687 (2026-10-11): `exit_rule` is the run's toggle-derived rule ('depth' once the
+    # magna53_depth_exit row for the lane's account is on and run_date reaches its first acting
+    # session — `lfc.load_lane_exit_rule`, read once per run); None = today's rule, era D.
+    replay_exit_rules = rule_eras.exit_rules_as_of(run_date, "magna53", exit_rule)
+    replay_exit_era = rule_eras.exit_era_label(run_date, "magna53", exit_rule)
     fields = _fresh_fields(sig, admission_era, replay_exit_era, replay_exit_rules,
                            run_date, last_session)
 
@@ -338,6 +342,10 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
         fields["stop_pct_of_entry"] = stop_pct_of_entry(entry_px, stop)
         target, walk_kw = stack_walk_inputs(replay_exit_rules, entry_px, orb_low)
         fields["target_price"] = target
+        if walk_kw.get("depth_exit"):
+            # #687: the depth stack's ADR20 (a fraction, the live job's own function) from the
+            # same pre-session daily rows the ATR above used; only a depth stack ever sets it.
+            walk_kw["depth_adr20_pct"] = lfc.depth_adr20_from_rows(prior_daily)
 
         fill_idx = next(i for i, b in enumerate(bars0) if b["m"] == fill["minute"])
 
@@ -408,14 +416,19 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
 async def run_lowcap_lane_replay(today: Optional[date] = None, *,
                                  now_et: Optional[datetime] = None,
                                  population_reader=None, existing_reader=None, upsert=None,
-                                 event_prefix: str = "lowcap_lane_replay") -> dict[str, int]:
+                                 event_prefix: str = "lowcap_lane_replay",
+                                 depth_strategy_id: str = "magna53") -> dict[str, int]:
     """Nightly entry point. NEVER raises: every failure is a counted error + an mi_audit_log
     row. Returns the run's counters.
 
     `population_reader` / `existing_reader` / `upsert` / `event_prefix` (2026-10-10, #624 paper
     lane): the SAME walker scores a second population — every name the small-cap PAPER lane
     graded — into its own table (`run_paper_lane_replay` below). Defaults = the shadow lane,
-    byte-identical."""
+    byte-identical.
+
+    `depth_strategy_id` (#687, 2026-10-11): whose `magna53_depth_exit` toggle row decides this
+    run's exit era — the shadow lane prices MAGNA53's bracket (MAGNA53's account); the paper lane
+    passes its own strategy, whose real rows are stamped from the PAPER row."""
     population_reader = population_reader or get_lowcap_lane_population
     existing_reader = existing_reader or get_lowcap_lane_replay_existing
     error_event = f"{event_prefix}_error"
@@ -436,14 +449,19 @@ async def run_lowcap_lane_replay(today: Optional[date] = None, *,
     out["population"] = len(rows)
     todo = [r for r in rows
             if existing.get((r["ticker"], r["scan_date"])) in (None, "open")]
+    lane_why = "exit rule not read (no candidates)"
     if todo:
         try:
             pool = await get_pool()
             async with pool.acquire() as conn:
+                # #687: the exit rule this run walks (depth once the lane's toggle row is on and
+                # acting; else today's), read ONCE per run — every row this run shares it.
+                lane_rule, lane_why = await lfc.load_lane_exit_rule(conn, depth_strategy_id, today)
                 for row in todo:
                     try:
                         await _record_one_signal(conn, row, last_session, today, out,
-                                                 upsert=upsert, error_event=error_event)
+                                                 upsert=upsert, error_event=error_event,
+                                                 exit_rule=lane_rule)
                     except Exception as e:  # loud-ok: per-name isolation; counted + audited
                         out["errors"] += 1
                         await log_audit_event(
@@ -458,7 +476,7 @@ async def run_lowcap_lane_replay(today: Optional[date] = None, *,
         f"{out['population']} lane signal(s) in window, {len(todo)} candidate(s) processed: "
         f"{out['written']} written ({out['settled']} settled, {out['no_trade']} no_trade, "
         f"{out['unscoreable']} unscoreable, {out['open']} open, {out['horizon']} at horizon), "
-        f"{out['pending']} pending, {out['errors']} error(s)")
+        f"{out['pending']} pending, {out['errors']} error(s); exit rule: {lane_why}")
     return out
 
 
@@ -480,4 +498,6 @@ async def run_paper_lane_replay(today: Optional[date] = None, *,
         population_reader=get_lowcap_paper_lane_population,
         existing_reader=get_lowcap_paper_lane_replay_existing,
         upsert=upsert_lowcap_paper_lane_replay,
-        event_prefix="lowcap_paper_lane_replay")
+        event_prefix="lowcap_paper_lane_replay",
+        # #687: the lane's own rows are stamped from the PAPER toggle row (its strategy's phase)
+        depth_strategy_id="magna53_smallcap")

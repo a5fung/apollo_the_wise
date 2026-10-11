@@ -85,7 +85,12 @@ usually right; it is right about the wrong set of rows.
 - **Era.** The system changes weekly. In August 2026 alone: the gap floor 10→9, the 2R stop, the
   catalyst lattice, separation scoring, the shortlist, real-time admission, real-time volume and
   gap authority, rubric v4. **A window spanning a rule change measures a system that never
-  existed.** Say which era every cut covers, and split when a rule moved inside it.
+  existed.** Say which era every cut covers, and split when a rule moved inside it. ⚠ Since
+  2026-10-11 one exit era is NOT a function of the date: the depth exit (era E, #687) is stamped on
+  the trade row (`mi_live_trades.exit_rule`) at entry — two trades from the same morning can run
+  different exits. Label a real trade by its row (`rule_eras.exit_era_label(d, signal_type,
+  exit_rule)`), a counterfactual by the toggle's first acting session; a date alone is the fallback
+  for readers with neither, and it is only right once `rule_eras.DEPTH_EXIT_LIVE_DATE` is set.
 - **Admission is part of the era.** This is the one I missed and had to retract. It is not enough
   for the *outcomes* to be current — every historical trade was **admitted by whatever filter ran
   that day**. Varying anything downstream across such a set measures your variable *given a mixed

@@ -1,0 +1,56 @@
+k	safeguard	account_mode	state	last_transition_at	updated_at
+(0 rows)
+k	exit_rule	account_mode	signal_type	count
+(0 rows)
+k	strategy_id	phase	enabled	live_real_enabled	profit_trigger_r	breakeven_arm_r
+strategy	magna53_smallcap	paper	t	f	8.0	3.0
+strategy	magna53_lowcap	shadow	t	f		
+strategy	magna53	live	t	t	8.0	3.0
+(3 rows)
+k	account_mode	trades	rows	min	max
+cf_fills	live	15	144	2026-08-18	2026-10-09
+(1 row)
+k	exit_era	count
+cf_era	era_c	83
+cf_era	era_d	61
+(2 rows)
+k	lane	replay_exit_era	outcome	count
+lane_rows	sustain	era_d	unscoreable	7
+lane_rows	sustain	era_d	no_trade	12
+lane_rows	sustain	era_c	unscoreable	32
+lane_rows	sustain	era_c	no_trade	77
+lane_rows	sustain	era_c	settled	18
+lane_rows	sustain	era_d	open	2
+lane_rows	sustain	era_d	settled	5
+lane_rows	gap_near_miss	era_d	no_trade	7
+lane_rows	gap_near_miss	era_d	unscoreable	13
+lane_rows	gap_near_miss	era_d	settled	22
+lane_rows	gap_near_miss	era_c	unscoreable	221
+lane_rows	gap_near_miss	era_c	no_trade	68
+lane_rows	gap_near_miss	era_c	settled	123
+lane_rows	lowcap	era_d	no_trade	6
+lane_rows	lowcap	era_d	unscoreable	3
+lane_rows	lowcap	era_d	settled	10
+(16 rows)
+k	id	ticker	signal_type	account_mode	alert_date	exit_rule	status	remaining_shares
+open_trades	404	KOD	magna53	live	2026-09-28		filled	4
+open_trades	414	PENG	magna53	live	2026-10-07		filled	10
+open_trades	419	HUM	magna53	live	2026-10-09		filled	1
+(3 rows)
+k	id	ticker	account_mode	alert_date	filled_at	status	exit_rule	arms
+cf_population	372	AMLX	live	2026-08-18	2026-08-18 13:32:03.313327+00	closed		12
+cf_population	373	MRVL	live	2026-08-19	2026-08-19 13:32:06.145346+00	closed		12
+cf_population	374	MRNA	live	2026-08-19	2026-08-19 13:33:11.246896+00	closed		12
+cf_population	383	CRWD	live	2026-08-27	2026-08-27 13:31:11.80965+00	closed		12
+cf_population	382	OKTA	live	2026-08-27	2026-08-27 13:49:50.777226+00	closed		11
+cf_population	388	SOLS	live	2026-08-28	2026-08-28 13:34:41.796552+00	closed		12
+cf_population	392	HOOD	live	2026-09-03	2026-09-03 13:36:09.960473+00	closed		12
+cf_population	394	PHVS	live	2026-09-08	2026-09-08 13:31:14.905677+00	closed		12
+cf_population	396	SEI	live	2026-09-08	2026-09-08 13:35:28.101426+00	closed		10
+cf_population	399	DFTX	live	2026-09-14	2026-09-14 13:33:18.110617+00	closed		12
+cf_population	400	VICR	live	2026-09-17	2026-09-17 13:31:01.01886+00	closed		10
+cf_population	404	KOD	live	2026-09-28	2026-09-28 13:31:16.562476+00	filled		1
+cf_population	409	CEG	live	2026-10-06	2026-10-06 13:31:01.196997+00	closed		11
+cf_population	414	PENG	live	2026-10-07	2026-10-07 13:35:53.476364+00	filled		1
+cf_population	419	HUM	live	2026-10-09	2026-10-09 13:31:33.511684+00	filled		4
+(15 rows)

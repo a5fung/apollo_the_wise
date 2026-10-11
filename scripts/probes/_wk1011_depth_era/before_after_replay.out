@@ -1,0 +1,20 @@
+# inputs: 15 trades, 5845 minute bars, 4287 daily rows, 2 overrides, 144 stored rows
+# rule_eras sweep 2026-07-01..2026-12-31 x 5 signal types: 0 difference(s) (EXIT_SWITCHES main=5 branch=5; DEPTH_EXIT_LIVE_DATE=None)
+# origin/main: 144 rows written, counters {'population': 0, 'fills_considered': 15, 'arms_considered': 180, 'written': 144, 'settled': 134, 'abstained': 2, 'unscoreable': 8, 'horizon': 0, 'pending': 36, 'errors': 0}
+# branch     : 144 rows written, counters {'population': 0, 'fills_considered': 15, 'arms_considered': 180, 'written': 144, 'settled': 134, 'abstained': 2, 'unscoreable': 8, 'horizon': 0, 'pending': 36, 'errors': 0}
+# recorder before/after: 144 (trade, arm) rows compared field-by-field (54 fields each): 0 difference(s); audit rows main=0 branch=0
+STORED-vs-REWALK (372, 'live_replay'): stored r=1.255705970434413 stop_hit s9 | rewalk r=1.3609365443437296 stop_hit s9
+STORED-vs-REWALK (372, 'stop_orb_3r'): stored r=0.8009007033662817 stop_hit s9 | rewalk r=0.8680177217160893 stop_hit s9
+STORED-vs-REWALK (372, 'trail_pivot_swing'): stored r=0.939803754024735 stop_hit s15 | rewalk r=0.8870832197292128 stop_hit s15
+STORED-vs-REWALK (374, 'live_replay'): stored r=1.847155963302751 stop_hit s11 | rewalk r=2.9022018348623835 stop_hit s11
+STORED-vs-REWALK (374, 'stop_orb_low'): stored r=3.501565217391304 stop_hit s11 | rewalk r=5.501565217391303 stop_hit s11
+STORED-vs-REWALK (374, 'stop_adr_075'): stored r=3.8849547118709156 stop_hit s11 | rewalk r=6.103936493261377 stop_hit s11
+STORED-vs-REWALK (374, 'stop_orb_3r'): stored r=1.1671884057971014 stop_hit s11 | rewalk r=1.8338550724637679 stop_hit s11
+STORED-vs-REWALK (374, 'trail_pivot_swing'): stored r=1.121100917431193 stop_hit s15 | rewalk r=2.1761467889908253 stop_hit s15
+STORED-vs-REWALK (383, 'live_replay'): stored r=0.39946337596390025 stop_hit s1 | rewalk r=-0.29709457998636263 stop_hit s4
+STORED-vs-REWALK (383, 'stop_orb_low'): stored r=0.6666666666666666 stop_hit s1 | rewalk r=-0.4958228094035354 stop_hit s4
+STORED-vs-REWALK (383, 'stop_adr_050'): stored r=1.0329842936045925 stop_hit s1 | rewalk r=-0.7682657617871333 stop_hit s4
+STORED-vs-REWALK (383, 'stop_adr_075'): stored r=0.6886561957363964 stop_hit s1 | rewalk r=-0.5121771745247566 stop_hit s4
+STORED-vs-REWALK (383, 'stop_orb_3r'): stored r=0.22222222222222218 stop_hit s1 | rewalk r=-0.16527426980117849 stop_hit s4
+STORED-vs-REWALK (383, 'trail_pivot_swing'): stored r=0.39946337596390025 stop_hit s1 | rewalk r=-1.0 stop_hit s4
+# informational: settled stored rows re-walked identically 120, differently 14
