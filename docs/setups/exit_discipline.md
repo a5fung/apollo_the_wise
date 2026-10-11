@@ -354,7 +354,7 @@ what any live position does.
 
 ## Change log (newest first)
 
-### 2026-10-10 — the +8R profit-take on a 2-share MAGNA53 position sells 1 share (OPERATOR-SIGNED "go with rec"; BUILT, NOT DEPLOYED)
+### 2026-10-10 — the +8R profit-take on a 2-share MAGNA53 position sells 1 share (OPERATOR-SIGNED "go with rec"; DEPLOYED 2026-10-10)
 
 The rule, its population (every sizing site, file:line), the thin evidence, the reversion and the
 live expectations live in the owner of the MAGNA53 rule: `magna53_ep.md` change log 2026-10-10. In
