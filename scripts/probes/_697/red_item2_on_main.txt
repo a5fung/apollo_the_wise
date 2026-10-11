@@ -1,0 +1,95 @@
+FFFFFFFFFFFFFFFFFFFFFFFFFF.                                              [100%]
+=================================== FAILURES ===================================
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:37: AttributeError: module 'agents.market_intelligence.db' has no attribute 'flag_carry_sources'
+E   AssertionError: the carry query does not select stored WATCH
+    assert "'WATCH'" in "\n                SELECT DISTINCT ticker\n                FROM mi_flag_candidates\n                WHERE scan_date < ...AND scan_date >= ($1::date - INTERVAL '5 days')\n                  AND stage IN ('COILED', 'TIGHTENING')\n            "
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:110: AssertionError: the carry query does not select stored WATCH
+E   AssertionError: the carry window must not be 5 CALENDAR days
+    assert "INTERVAL '5 days'" not in '\n         ...            '
+      
+      "INTERVAL '5 days'" is contained here:
+        1::date - INTERVAL '5 days')
+                          AND stage IN ('COILED', 'TIGHTENING')
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:117: AssertionError: the carry window must not be 5 CALENDAR days
+E   AttributeError: module 'agents.market_intelligence.db' has no attribute '_FLAG_CARRY_PIVOT_SESSIONS'
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:126: AttributeError: module 'agents.market_intelligence.db' has no attribute '_FLAG_CARRY_PIVOT_SESSIONS'
+E   AssertionError: assert ['flag_stage_carryforward'] == ['flag_pivot_...carryforward']
+      
+      At index 0 diff: 'flag_stage_carryforward' != 'flag_pivot_window_carryforward'
+      Use -v to get more diff
+/Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_c62f5f62-102-1/tests/test_697_universe_carry.py:150: AssertionError: assert ['flag_stage_carryforward'] == ['flag_pivot_...carryforward']
+
+[#577 must-not-miss] 4 of 31 labelled real EPs are currently EXCLUDED by the live selection stack (all MIN_GAP_PCT) — recorded debt against P1 (docs/roadmap/ep_profitability_program.md § THE PRINCIPLES), recorded 2026-09-03. See tests/fixtures/must_not_miss_eps.py::BASELINE_DEBT.
+[#577 must-not-miss] ⚠ ABNB 2026-08-07 is OPERATOR-NAMED, is excluded by the live stack, and is NOT being asserted. This is a declared abstention, not an accepted state — its reason: DECLARED ABSTENTION — not an accepted state, and not a data artifact. ABNB is a REAL EP (operator-labelled 2026-09-06) and the live stack excludes it correctly under the rules as written. Whether it is still waiting on anyone is that reason's job to say, not this banner's. See must_not_miss_eps.py.
+[#577 must-not-miss] ⚠ CHPT 2026-09-03 is OPERATOR-NAMED, is excluded by the live stack, and is NOT being asserted. This is a declared abstention, not an accepted state — its reason: SETTLED EXCLUSION, not a data artifact and no longer a wait. Whether it is still waiting on anyone is that reason's job to say, not this banner's. See must_not_miss_eps.py.
+=========================== short test summary info ============================
+FAILED tests/test_697_universe_carry.py::test_every_active_stage_is_carried_for_five_scan_sessions[1-WATCH]
+FAILED tests/test_697_universe_carry.py::test_every_active_stage_is_carried_for_five_scan_sessions[1-TIGHTENING]
+FAILED tests/test_697_universe_carry.py::test_every_active_stage_is_carried_for_five_scan_sessions[1-COILED]
+FAILED tests/test_697_universe_carry.py::test_every_active_stage_is_carried_for_five_scan_sessions[1-TRIGGERED]
+FAILED tests/test_697_universe_carry.py::test_every_active_stage_is_carried_for_five_scan_sessions[3-WATCH]
+FAILED tests/test_697_universe_carry.py::test_every_active_stage_is_carried_for_five_scan_sessions[3-TIGHTENING]
+FAILED tests/test_697_universe_carry.py::test_every_active_stage_is_carried_for_five_scan_sessions[3-COILED]
+FAILED tests/test_697_universe_carry.py::test_every_active_stage_is_carried_for_five_scan_sessions[3-TRIGGERED]
+FAILED tests/test_697_universe_carry.py::test_every_active_stage_is_carried_for_five_scan_sessions[5-WATCH]
+FAILED tests/test_697_universe_carry.py::test_every_active_stage_is_carried_for_five_scan_sessions[5-TIGHTENING]
+FAILED tests/test_697_universe_carry.py::test_every_active_stage_is_carried_for_five_scan_sessions[5-COILED]
+FAILED tests/test_697_universe_carry.py::test_every_active_stage_is_carried_for_five_scan_sessions[5-TRIGGERED]
+FAILED tests/test_697_universe_carry.py::test_a_watch_name_is_not_carried_past_five_sessions
+FAILED tests/test_697_universe_carry.py::test_tightening_or_better_is_remembered_for_the_pivot_lookback[TIGHTENING]
+FAILED tests/test_697_universe_carry.py::test_tightening_or_better_is_remembered_for_the_pivot_lookback[COILED]
+FAILED tests/test_697_universe_carry.py::test_tightening_or_better_is_remembered_for_the_pivot_lookback[TRIGGERED]
+FAILED tests/test_697_universe_carry.py::test_a_dead_or_unqualified_row_never_carries[INVALIDATED]
+FAILED tests/test_697_universe_carry.py::test_a_dead_or_unqualified_row_never_carries[unqualified]
+FAILED tests/test_697_universe_carry.py::test_a_dead_or_unqualified_row_never_carries[]
+FAILED tests/test_697_universe_carry.py::test_a_dead_or_unqualified_row_never_carries[None]
+FAILED tests/test_697_universe_carry.py::test_the_short_tag_wins_and_the_long_tag_means_only_the_long_memory_kept_it
+FAILED tests/test_697_universe_carry.py::test_wday_the_triggered_name_that_never_stamped_is_now_carried
+FAILED tests/test_697_universe_carry.py::test_the_carry_is_one_query_and_it_asks_for_all_four_active_stages
+FAILED tests/test_697_universe_carry.py::test_the_window_is_scan_sessions_not_calendar_days
+FAILED tests/test_697_universe_carry.py::test_the_long_memory_is_the_detectors_own_pivot_lookback
+FAILED tests/test_697_universe_carry.py::test_carried_names_get_their_tag_alongside_any_organic_tag
+26 failed, 1 passed in 0.08s

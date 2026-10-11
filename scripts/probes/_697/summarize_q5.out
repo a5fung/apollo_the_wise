@@ -1,0 +1,25 @@
+2026-09-03: 239 stored rows -> 31 carried names {'flag_stage_carryforward': 21, 'flag_pivot_window_carryforward': 10} == replay
+    WDAY: ['flag_stage_carryforward']
+    CDNA: ['flag_stage_carryforward']
+    CHYM: ['flag_stage_carryforward']
+2026-09-04: 249 stored rows -> 34 carried names {'flag_stage_carryforward': 24, 'flag_pivot_window_carryforward': 10} == replay
+    WDAY: ['flag_stage_carryforward']
+    CDNA: ['flag_stage_carryforward']
+    CHYM: ['flag_stage_carryforward']
+2026-09-08: 258 stored rows -> 33 carried names {'flag_stage_carryforward': 23, 'flag_pivot_window_carryforward': 10} == replay
+    WDAY: ['flag_stage_carryforward']
+    CDNA: ['flag_stage_carryforward']
+    CHYM: ['flag_pivot_window_carryforward']
+2026-09-09: 262 stored rows -> 30 carried names {'flag_stage_carryforward': 22, 'flag_pivot_window_carryforward': 8} == replay
+    WDAY: ['flag_stage_carryforward']
+    CDNA: ['flag_stage_carryforward']
+    CHYM: ['flag_pivot_window_carryforward']
+2026-09-16: 269 stored rows -> 25 carried names {'flag_stage_carryforward': 11, 'flag_pivot_window_carryforward': 14} == replay
+    WDAY: ['flag_pivot_window_carryforward']
+    CDNA: ['flag_stage_carryforward']
+    CHYM: ['flag_pivot_window_carryforward']
+2026-10-09: 168 stored rows -> 27 carried names {'flag_stage_carryforward': 16, 'flag_pivot_window_carryforward': 11} == replay
+    CDNA: ['flag_pivot_window_carryforward']
+2026-10-12: 159 stored rows -> 26 carried names {'flag_stage_carryforward': 16, 'flag_pivot_window_carryforward': 10}
+    CDNA: ['flag_pivot_window_carryforward']
+PARITY: OK

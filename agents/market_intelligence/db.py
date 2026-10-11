@@ -7697,6 +7697,51 @@ async def insert_parabolic_candidate(record: dict[str, Any]) -> None:
         )
 
 
+# ── Flag-stage carryforward (universe path (e)) — what the board REMEMBERS (#697 item 2, 2026-10-11) ──
+# A name stays in the flag scan's universe, however its RS percentile moved, for as long as its base can
+# still be alive. Windows are SCAN SESSIONS (scan dates that were market sessions), never calendar days:
+#   * stored WATCH / TIGHTENING / COILED / TRIGGERED within the last 5 sessions -> `flag_stage_carryforward`
+#   * else stored TIGHTENING / COILED / TRIGGERED within the last 25 sessions    -> `flag_pivot_window_carryforward`
+# 25 is flag_detector._PIVOT_LOOKBACK_DAYS (pinned equal by tests/test_697_universe_carry.py): the horizon after
+# which the pivot anchor itself re-chooses, so a name that reached TIGHTENING-or-better keeps getting a row —
+# post-breakout rows keep being written and #654's `failed_at` can stamp a failure that lands days later.
+# Admission criteria are untouched: this decides which already-vetted names the scan SCORES; every stage still
+# comes out of compute_flag_metrics (liquidity floors, pole, depth, trend and M&A screens all still apply).
+_FLAG_CARRY_SCAN_SESSIONS = 5
+_FLAG_CARRY_PIVOT_SESSIONS = 25
+_FLAG_CARRY_CALENDAR_CAP_DAYS = 60          # bound on the scan-date lookup; 25 sessions is ~35 calendar days
+_FLAG_CARRY_SHORT_STAGES = frozenset({"WATCH", "TIGHTENING", "COILED", "TRIGGERED"})
+_FLAG_CARRY_LONG_STAGES = frozenset({"TIGHTENING", "COILED", "TRIGGERED"})
+_FLAG_CARRY_SHORT_TAG = "flag_stage_carryforward"
+_FLAG_CARRY_LONG_TAG = "flag_pivot_window_carryforward"
+
+
+def flag_carry_sources(rows) -> dict[str, list[str]]:
+    """PURE. {ticker: [carry tag]} from the stored rows `get_flag_universe` reads.
+
+    `rows` = [{ticker, stage, lag}] where `lag` is how many scan SESSIONS back the row is (1 = the previous
+    session). A ticker gets `flag_stage_carryforward` when any row is WATCH-or-better within
+    `_FLAG_CARRY_SCAN_SESSIONS`; otherwise `flag_pivot_window_carryforward` when any row is TIGHTENING-or-better
+    within `_FLAG_CARRY_PIVOT_SESSIONS`. The long tag is EXCLUSIVE of the short one: its presence means only the
+    long window admits the name. Neither tag says the carry was what kept it in — the caller APPENDS to any
+    organic tag (`rs_top200` ...) — so "kept ONLY by the carry" is a carry tag AND no organic tag in
+    `universe_sources` (the verify-live observable). INVALIDATED / unqualified rows never carry."""
+    short: set[str] = set()
+    long_: set[str] = set()
+    for r in rows:
+        stage, lag = r.get("stage"), r.get("lag")
+        if lag is None:
+            continue
+        if stage in _FLAG_CARRY_SHORT_STAGES and lag <= _FLAG_CARRY_SCAN_SESSIONS:
+            short.add(r["ticker"])
+        elif stage in _FLAG_CARRY_LONG_STAGES and lag <= _FLAG_CARRY_PIVOT_SESSIONS:
+            long_.add(r["ticker"])
+    out: dict[str, list[str]] = {t: [_FLAG_CARRY_SHORT_TAG] for t in short}
+    for t in long_ - short:
+        out[t] = [_FLAG_CARRY_LONG_TAG]
+    return out
+
+
 async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
     """Pre-filter for the continuation-flag scan: top-RS common stock OR
     burst-class names, with usable liquidity and ≥60 sessions of history.
@@ -7737,18 +7782,33 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
           domain). Tag: `ninem_universe_watch`. Env flag
           `NINEM_FLAG_CARRYFORWARD_ENABLED`. 14-day window for multi-
           week tightness observation.
-      (e) **Flag-stage carryforward** (2026-05-19 RVMD-class fix) —
-          tickers in active setup stages (COILED, TIGHTENING) in last
-          5 trading days stay in universe even if RS gates fail today.
-          The flag detector's purpose is catching consolidating leaders
-          BEFORE breakout; knocking out RVMD-class names (3 consecutive
-          COILED days, rs_3m=94 elite) on a one-day rs_1m percentile
-          dip (85.6→70.3 from rotation) is structurally inverted. Tag:
-          `flag_stage_carryforward`. Env flag
-          `FLAG_STAGE_CARRYFORWARD_ENABLED`. 5-day window bridges
-          multi-day RS dips while aging out genuinely-broken setups
-          (state machine handles correctness — carryforward either
-          re-establishes COILED/TIGHTENING or progresses to INVALIDATED).
+      (e) **Flag-stage carryforward** (2026-05-19 RVMD-class fix; widened
+          2026-10-11, #697 item 2) — a name stays in the universe even if
+          RS gates fail today, while its base can still be alive. The flag
+          detector's purpose is catching consolidating leaders BEFORE
+          breakout; knocking out RVMD-class names (3 consecutive COILED
+          days, rs_3m=94 elite) on a one-day rs_1m percentile dip
+          (85.6→70.3 from rotation) is structurally inverted. Env flag
+          `FLAG_STAGE_CARRYFORWARD_ENABLED`. Two windows, in SCAN SESSIONS
+          (scan dates that were market sessions — a `mi_daily_closes` row
+          exists; the 09-07 Labor Day partial scan is not one), not calendar
+          days (see `flag_carry_sources` + the constants above it):
+            * stored WATCH / TIGHTENING / COILED / TRIGGERED in the last 5
+              sessions — tag `flag_stage_carryforward`. Before 10-11 this
+              was 5 CALENDAR days and COILED/TIGHTENING only, so a WATCH
+              name fell off mid-base (19 of 304 WATCH rows in 60 days) and
+              a stored-TRIGGERED name was skipped outright (WDAY: no row
+              09-03 → 09-16, so its 09-08 failure never stamped, #654).
+            * else stored TIGHTENING / COILED / TRIGGERED in the last 25
+              sessions (`flag_detector._PIVOT_LOOKBACK_DAYS`) — tag
+              `flag_pivot_window_carryforward`, so post-breakout rows keep
+              being written and #654 can stamp a failure days later.
+          The state machine still decides every stage (a carried name
+          re-establishes its stage or progresses to INVALIDATED); the
+          liquidity floors, pole, depth, trend and M&A screens all still
+          apply. ⚠ INTERACTION with the hold (htf_scope G4, item 5): the
+          hysteresis stores a held label, so a held stage re-arms this
+          carry each night until INVALIDATED or a pivot reset.
 
     Common gates (organic paths a+b share):
       - CS/ADRC only (rejects ETFs/funds via mi_security_types)
@@ -7916,8 +7976,22 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
         # elite) out of the universe when their rs_1m percentile dipped
         # below 80 on a one-day rotation is structurally inverted.
         #
-        # 5-day window: long enough to bridge multi-day RS dips, short
-        # enough to age out stale setups that genuinely broke down.
+        # ⚠ WIDENED 2026-10-11 (#697 item 2, htf_scope G1). The paragraph
+        # above and the "5-day window" below describe the ORIGINAL rule;
+        # the live rule is the one in the block comment above
+        # `flag_carry_sources` (scan SESSIONS, WATCH + TRIGGERED added, plus a
+        # 25-session TIGHTENING-or-better memory). The same inversion hit a
+        # WATCH name mid-base and a stored-TRIGGERED name (WDAY: no row
+        # 09-03 -> 09-16, so its 09-08 breakout failure never stamped, #654).
+        # This query only RANKS the stored rows by scan session (a scan
+        # session = a scan date with bars in mi_daily_closes, so the 09-07
+        # Labor Day partial scan uses up no slot); `lag` = 1 for the previous
+        # session. Rows older than 25 sessions are dropped here, the 5-vs-25
+        # split is `flag_carry_sources` (pure, tested).
+        #
+        # (Original rationale, still the reason for the short window:) long
+        # enough to bridge multi-day RS dips, short enough to age out stale
+        # setups that genuinely broke down.
         # State machine handles correctness — carried-forward tickers
         # either re-establish COILED/TIGHTENING (consolidation continued)
         # or progress to INVALIDATED (base broke). Universe expansion
@@ -7929,14 +8003,27 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
         flag_carry_enabled = env_is_true("FLAG_STAGE_CARRYFORWARD_ENABLED", default=True)
         if flag_carry_enabled:
             stage_carry_rows = await conn.fetch("""
-                SELECT DISTINCT ticker
-                FROM mi_flag_candidates
-                WHERE scan_date < $1::date
-                  AND scan_date >= ($1::date - INTERVAL '5 days')
-                  AND stage IN ('COILED', 'TIGHTENING')
-            """, scan_date)
-            for r in stage_carry_rows:
-                source_map.setdefault(r["ticker"], []).append("flag_stage_carryforward")
+                WITH scan_days AS (
+                    SELECT s.scan_date,
+                           ROW_NUMBER() OVER (ORDER BY s.scan_date DESC) AS lag
+                    FROM (
+                        SELECT DISTINCT scan_date
+                        FROM mi_flag_candidates
+                        WHERE scan_date < $1::date
+                          AND scan_date >= $1::date - make_interval(days => $2::int)
+                    ) s
+                    WHERE EXISTS (
+                        SELECT 1 FROM mi_daily_closes d WHERE d.trade_date = s.scan_date
+                    )
+                )
+                SELECT c.ticker, c.stage, sd.lag::int AS lag
+                FROM mi_flag_candidates c
+                JOIN scan_days sd ON sd.scan_date = c.scan_date
+                WHERE sd.lag <= $3::int
+                  AND c.stage IN ('WATCH', 'TIGHTENING', 'COILED', 'TRIGGERED')
+            """, scan_date, _FLAG_CARRY_CALENDAR_CAP_DAYS, _FLAG_CARRY_PIVOT_SESSIONS)
+            for ticker, tags in flag_carry_sources(stage_carry_rows).items():
+                source_map.setdefault(ticker, []).extend(tags)
 
     return source_map
 

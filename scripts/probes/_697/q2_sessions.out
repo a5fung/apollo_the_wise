@@ -1,0 +1,49 @@
+k	a	b	c
+scan_date	2026-08-20	572	12403
+scan_date	2026-08-21	575	12530
+scan_date	2026-08-24	566	12506
+scan_date	2026-08-25	561	12516
+scan_date	2026-08-26	561	12473
+scan_date	2026-08-27	542	12482
+scan_date	2026-08-28	554	12435
+scan_date	2026-08-31	544	12564
+scan_date	2026-09-01	543	12508
+scan_date	2026-09-02	545	12517
+scan_date	2026-09-03	545	12471
+scan_date	2026-09-04	539	12492
+scan_date	2026-09-07	87	0
+scan_date	2026-09-08	540	12510
+scan_date	2026-09-09	535	12450
+scan_date	2026-09-10	530	12549
+scan_date	2026-09-11	532	12472
+scan_date	2026-09-14	519	12514
+scan_date	2026-09-15	523	12557
+scan_date	2026-09-16	507	12535
+scan_date	2026-09-17	509	12529
+scan_date	2026-09-18	505	12559
+scan_date	2026-09-21	504	12587
+scan_date	2026-09-22	499	12575
+scan_date	2026-09-23	495	12578
+scan_date	2026-09-24	505	12549
+scan_date	2026-09-25	494	12442
+scan_date	2026-09-28	487	12433
+scan_date	2026-09-29	493	12439
+scan_date	2026-09-30	487	12460
+scan_date	2026-10-01	489	12448
+scan_date	2026-10-02	492	12453
+scan_date	2026-10-05	496	12484
+scan_date	2026-10-06	507	12403
+scan_date	2026-10-07	505	12455
+scan_date	2026-10-08	504	12430
+scan_date	2026-10-09	492	12384
+wday	2026-08-25	COILED	TIGHTENING range_0.58 vol_0.73 fresh
+wday	2026-08-26	COILED	TIGHTENING range_0.58 vol_0.72 fresh
+wday	2026-08-27	COILED	TIGHTENING range_0.58 vol_0.65
+wday	2026-08-28	TRIGGERED	 close_204.72>base_high_close_200.01 vol_2.15x
+wday	2026-08-31	TRIGGERED	TIGHTENING range_0.68 vol_1.04
+wday	2026-09-01	TRIGGERED	WATCH runup_104% base_12d close_vs_pivot_-12.8%
+wday	2026-09-02	TRIGGERED	WATCH runup_104% base_13d close_vs_pivot_-11.7%
+wday	2026-09-17	unqualified	 adr_3.9pct_below_4pct
+wday	2026-09-29	unqualified	 adr_3.6pct_below_4pct
+wday	2026-09-30	unqualified	 adr_3.5pct_below_4pct
+(47 rows)

@@ -1,0 +1,27 @@
+VALIDATION: offline raw stage reproduces the stored un-held stage on 1538 of 1590 pairs (96.7%)
+   stored WATCH -> offline unqualified: 23
+   stored INVALIDATED -> offline unqualified: 10
+   stored unqualified -> offline COILED: 5
+   stored TIGHTENING -> offline WATCH: 5
+   stored unqualified -> offline WATCH: 4
+   stored TRIGGERED -> offline TIGHTENING: 3
+   stored WATCH -> offline INVALIDATED: 1
+   stored COILED -> offline WATCH: 1
+
+EXTRAS replayed: 493 name-nights (12 skipped: <60 bars or no bar on D) over 48 nights
+   TRIGGERED        0  (0.0%)
+   COILED           0  (0.0%)
+   TIGHTENING       2  (0.4%)
+   WATCH           20  (4.1%)
+   INVALIDATED    208  (42.2%)
+   unqualified    263  (53.3%)
+   by admit class:
+     trig5    TRIGGERED=0  COILED=0  TIGHTENING=0  WATCH=2  INVALIDATED=3  unqualified=1
+     tight5   TRIGGERED=0  COILED=0  TIGHTENING=0  WATCH=0  INVALIDATED=19  unqualified=7
+     watch5   TRIGGERED=0  COILED=0  TIGHTENING=2  WATCH=18  INVALIDATED=55  unqualified=17
+     tight25  TRIGGERED=0  COILED=0  TIGHTENING=0  WATCH=0  INVALIDATED=131  unqualified=238
+   why 'unqualified': {'runup': 120, 'adr': 59, 'adv': 41, 'ma': 22, 'base': 18, 'pole': 2, 'flag': 1}
+   extras reading WATCH-or-better per night: median=0 max=3 (these are the rows that EXTEND the carry and appear on the board)
+   nights with >=1 extra reading TIGHTENING / COILED / TRIGGERED (raw): 2 of 48
+     2026-08-26: BWIN:TIGHTENING
+     2026-08-28: BWIN:TIGHTENING

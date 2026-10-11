@@ -274,6 +274,64 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
   pushing on consecutive days, the lever is a re-entry cool-off (a policy, not a bug fix) — measure first.
 
 ## Change log
+- **2026-10-11 — #697 item 2: the flag board's universe CARRY now keeps a name while its base can still be alive —
+  WATCH and stored-TRIGGERED names are carried, and "5 days" means 5 scan sessions, not 5 calendar days; a name that
+  reached TIGHTENING-or-better stays scored for 25 sessions. No admission criterion, stage threshold, pole window,
+  depth, ADR/ADV floor or trade path moved: it decides only which already-vetted names the scan SCORES.** Branch
+  `wk1011/697-items-1-2`, not yet deployed. Rule + owner: `flag_continuation.md` "Universe / eligibility"; code
+  `db.flag_carry_sources` + `get_flag_universe` path (e).
+  **What**: stored WATCH / TIGHTENING / COILED / TRIGGERED in the last 5 scan sessions → tag `flag_stage_carryforward`;
+  else stored TIGHTENING / COILED / TRIGGERED in the last 25 sessions (`_PIVOT_LOOKBACK_DAYS`) → tag
+  `flag_pivot_window_carryforward` (exclusive of the first). A scan *session* = a scan date with bars in
+  `mi_daily_closes` (drops the 09-07 Labor Day partial scan: 87 names, 0 bars). `INVALIDATED` / `unqualified` rows never
+  carry; `FLAG_STAGE_CARRYFORWARD_ENABLED=false` still turns the whole path off. **Trigger**: htf_scope G1 — 19 of 304
+  WATCH rows (18 names) in 60 days had no row the next scan day; the old query skipped stored TRIGGERED (WDAY, held
+  TRIGGERED to 09-02, then NO row 09-03 → 09-16 — `q2_sessions.out` — so its 09-08 close under the base low never stamped
+  `failed_at`: `q7_failed_at.out` — `failed_at` is non-null on 0 rows in the whole table, and the breakout anchor that
+  arms it exists on 2 rows of 1 ticker) and counted 5 CALENDAR days. **Evidence** (all prod
+  read-only, `scripts/probes/_697/`): (1) *admit replay on stored rows* (`q1_admit_replay.sql/.out`, summary
+  `summarize_q1.out`): in the clean era (nights 08-04 → 10-09, n = 48, where the 25-session lookback sits wholly inside the
+  06-27 rule) the new rule adds a **median 10 names a night** to a ~540-name scan (range 6–19, ~2%): ≈8 from the 25-session
+  memory, ≈1–2 WATCH, 0.5 TIGHTENING/COILED, <0.1 TRIGGERED (6 name-nights in 60 sessions: CHYM, WDAY). The 07-16 → 07-31
+  nights show 40–125 only because the 25-session window reaches back into the retired pre-06-27 rule's rows — excluded. First
+  order: stored rows are the OLD run's, so an added name that reads WATCH-or-better would extend its own window (bounded by
+  the extras' own WATCH-or-better count, below). (2) *what the shipped detector says about the added names*
+  (`replay_extras.py/.out`; bars + stored rows in `q6_extra_bars.out`): validated first — the offline call reproduces the
+  stored un-held stage on **1538 of 1590 pairs (96.7%)**; then of the **493 added name-nights**, 42.2% read INVALIDATED and
+  53.3% unqualified (runup, ADR, ADV the commonest reasons), **4.1% WATCH (20), 0.4% TIGHTENING (2: BWIN 08-26, 08-28), 0
+  COILED, 0 TRIGGERED**; extras reading WATCH-or-better: median 0 a night, max 3. Approximation stated: no stored prior pivot
+  and no hysteresis for a name that had no row. (3) *the shipped query vs the independent replay* (`emit_carry_sql.py` captures
+  the query text from the real function; `q5_carry_prod.out`, `summarize_q5.out`): identical carried-name counts on all 6
+  dates compared (31 / 34 / 33 / 30 / 25 / 27); 7.4 ms.
+  **Anticipated effect**: the scan scores ~10 more names a night (almost all of which write INVALIDATED / unqualified rows —
+  the telemetry #654 needs); a WATCH name that dips out of the organic set keeps getting rows; a TRIGGERED name keeps getting
+  rows until its base ages out. **Reversion-flag**: REFINEMENT of the 2026-05-19 path (e). **EXPECT** (baseline: the old
+  carry admitted a median 4 names a night; 6% of WATCH rows had no next-scan row; `failed_at` never stamped): from the first
+  scan after deploy (Mon 10-12 17:25 ET, read Tue 10-13) (i) `mi_flag_candidates` rows for that scan date whose
+  `universe_sources` holds a carry tag and no organic / other-carry tag (`rs_top200`, `rs_1m_80`, `momentum_25pct`,
+  `magna53_failed_r3`, `ninem_universe_watch`): **≥ 1, expected ~10, alarm above 30** (replay max 19); (ii) a stored
+  WATCH-or-better name from the last 5 sessions has a row on that date — the violator set (below) is empty; (iii) a few
+  carry-only rows with stage INVALIDATED. **UNINTENDED to watch**: the digest header's "tickers scanned" up ~10 and its
+  "📉 N dropped out" count up ~4 a night (carried names that read INVALIDATED are now counted — they used to vanish silently);
+  the `/htf` INVALIDATED roster and the deprecated `flag_continuation` outcome-adapter's `no_entry` rows grow the same ~4;
+  a `NEW TODAY` push can now name a ticker with no organic tag (a leader that dipped out of the RS set and re-tightened — 1
+  name in 48 nights on the replay; read it against the chart, it is the carry doing its job); ⚠ G4 INTERACTION — the
+  hysteresis stores a HELD label, so a held stage re-arms this carry each night until INVALIDATED or a pivot reset: a carried
+  held-TRIGGERED name can sit in the digest's TRIGGERED section with no fresh breakout (0 such cases in the replay; item 5,
+  the one-day hold, removes the re-arm). **WOULD-FAIL-IF** (positive): on a scan date after deploy, (a) NO row carries a
+  carry tag without an organic tag (the carry is not running — the replay predicts ~10); (b) the **violator set** is
+  non-empty — a ticker with a stored WATCH / TIGHTENING / COILED / TRIGGERED row in the previous 5 scan sessions and NO row
+  on the date (excluding a logged `flag_scan: <T> failed` or < 60 bars); on origin/main this set is non-empty on most
+  nights; (c) more than 30 carry-only rows (ballooning). A night with an empty violator set but zero carry-only rows
+  is a FAIL for (a), not a pass; a night where nothing was due to carry is not expected (26 names qualified on 10-12 in
+  the parity run). **DONE-WHEN**: the first 3 scan sessions after deploy (10-12 → 10-14) each satisfy (a)–(c), and any
+  `NEW TODAY` push on a ticker without an organic tag has been read against its chart. #654's first real `failed_at` stamp
+  stays event-gated under #654 (it needs a TRIGGERED name to close back under its base — WDAY was the first in 60 days) and
+  does not gate this item. **Deploy scope**: `db.py` IS on `scripts/exec_loaded_modules.txt` (line 46) — NOT the single
+  market-agent deploy the 10-10 scope assumed. `deploy.sh market-agent` carries the behaviour (`flag_continuation_scan` is
+  INTELLIGENCE-owned: the execution container never runs `get_flag_universe`); `deploy.sh execution` is drift hygiene so the
+  running execution container's `db.py` matches the repo. Tests: `tests/test_697_universe_carry.py` (26 of 27 fail on
+  origin/main — the 27th pins the unchanged kill switch).
 - **2026-10-11 — #697 item 1: the Friday "Flag Bases" section renders again, a digest send now leaves a record, and the
   Friday chip stops printing `r1.00` on a short base. A REACH / display change: no stage, threshold, pole window, depth,
   ADR/ADV floor, order, entry, sizing or safeguard path moved.** Branch `wk1011/697-items-1-2`, not yet deployed.
