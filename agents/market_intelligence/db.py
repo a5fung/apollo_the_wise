@@ -5899,25 +5899,37 @@ async def insert_ep_alert(record: dict[str, Any]) -> None:
         )
 
 
+# The judge-result columns, in the order every judge-result UPDATE binds them ($3..$13; $1/$2
+# are ticker / alert_date). ONE list: the live statement below and the #624 paper lane's twin
+# (`LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL`) are both built from it, so a judge column added here
+# reaches both tables — the lane's copy used to be written out by hand and could go stale.
+_JUDGE_RESULT_COLS: tuple[str, ...] = (
+    "judge_tier", "judge_direction", "judge_rationale", "judge_materiality_tier", "fire_axes",
+    "score_tier", "grade_engine_authority", "rubric_version", "judge_grade", "judge_grade_reason",
+    "judge_tier_reason",
+)
+
+
+def _judge_result_update_sql(table: str, extra_set: tuple[str, ...] = ()) -> str:
+    """The COALESCE judge-result UPDATE for `table` (None parameter = leave the column
+    untouched), plus any `extra_set` clauses appended after the shared columns. For
+    `mi_ep_alerts` the text is BYTE-IDENTICAL to the statement that used to be written out here
+    (pinned in tests/test_624_paper_lane_cleanup.py)."""
+    sets = [f"{c} = COALESCE(${i}, {c})" for i, c in enumerate(_JUDGE_RESULT_COLS, start=3)]
+    sets.extend(extra_set)
+    body = ",\n        ".join(sets)
+    return f"""
+    UPDATE {table} SET
+        {body}
+    WHERE ticker = $1 AND alert_date = $2
+"""
+
+
 # SSoT for the judge-result statement (#265): executed by
 # update_ep_alert_judge_result below AND prepared verbatim by the [5b/7]
 # deploy gate (scripts/preflight_db_updates.py imports THIS constant), so the
 # gate provably validates the SQL production runs — a copy can't go stale.
-EP_ALERT_JUDGE_RESULT_UPDATE_SQL = """
-    UPDATE mi_ep_alerts SET
-        judge_tier = COALESCE($3, judge_tier),
-        judge_direction = COALESCE($4, judge_direction),
-        judge_rationale = COALESCE($5, judge_rationale),
-        judge_materiality_tier = COALESCE($6, judge_materiality_tier),
-        fire_axes = COALESCE($7, fire_axes),
-        score_tier = COALESCE($8, score_tier),
-        grade_engine_authority = COALESCE($9, grade_engine_authority),
-        rubric_version = COALESCE($10, rubric_version),
-        judge_grade = COALESCE($11, judge_grade),
-        judge_grade_reason = COALESCE($12, judge_grade_reason),
-        judge_tier_reason = COALESCE($13, judge_tier_reason)
-    WHERE ticker = $1 AND alert_date = $2
-"""
+EP_ALERT_JUDGE_RESULT_UPDATE_SQL = _judge_result_update_sql("mi_ep_alerts")
 
 
 async def update_ep_alert_judge_result(
@@ -18312,19 +18324,28 @@ async def get_lowcap_lane_population(window_start: "date", window_end: "date") -
     return [dict(r) for r in rows]
 
 
-_LOWCAP_LANE_REPLAY_EXISTING_SQL = """
-    SELECT ticker, session_date, outcome FROM mi_lowcap_lane_replays
+def _lowcap_replay_existing_sql(table: str) -> str:
+    """The walker's existing-row read for a replay table (shadow lane and paper lane share it)."""
+    return f"""
+    SELECT ticker, session_date, outcome FROM {table}
     WHERE session_date >= $1::date
 """
+
+
+_LOWCAP_LANE_REPLAY_EXISTING_SQL = _lowcap_replay_existing_sql("mi_lowcap_lane_replays")
+
+
+async def _lowcap_replay_existing(sql: str, window_start: "date") -> dict[tuple[str, "date"], str]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(sql, _coerce_date(window_start))
+    return {(r["ticker"], r["session_date"]): r["outcome"] for r in rows}
 
 
 async def get_lowcap_lane_replay_existing(window_start: "date") -> dict[tuple[str, "date"], str]:
     """READ-ONLY. (ticker, session_date) -> outcome for every replay row on/after
     window_start — lets the walker skip a TERMINAL row and only revisit one still 'open'."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(_LOWCAP_LANE_REPLAY_EXISTING_SQL, _coerce_date(window_start))
-    return {(r["ticker"], r["session_date"]): r["outcome"] for r in rows}
+    return await _lowcap_replay_existing(_LOWCAP_LANE_REPLAY_EXISTING_SQL, window_start)
 
 
 LOWCAP_LANE_REPLAY_COLS: tuple[str, ...] = (
@@ -18348,16 +18369,23 @@ _LOWCAP_LANE_REPLAY_JSONB_DICT = frozenset({"replay_exit_rules"})
 _LOWCAP_LANE_REPLAY_MUTABLE_COLS = tuple(
     c for c in LOWCAP_LANE_REPLAY_COLS if c not in ("ticker", "session_date"))
 
-LOWCAP_LANE_REPLAY_UPSERT_SQL = (
-    f"INSERT INTO mi_lowcap_lane_replays ({', '.join(LOWCAP_LANE_REPLAY_COLS)}, updated_at) VALUES ("
-    + _jsonb_value_list(LOWCAP_LANE_REPLAY_COLS,
-                        (_LOWCAP_LANE_REPLAY_JSONB_LIST, _LOWCAP_LANE_REPLAY_JSONB_DICT))
-    + ", NOW())"
-    " ON CONFLICT (ticker, session_date) DO UPDATE SET "
-    + ", ".join(f"{c} = EXCLUDED.{c}" for c in _LOWCAP_LANE_REPLAY_MUTABLE_COLS)
-    + ", updated_at = NOW()"
-    " WHERE mi_lowcap_lane_replays.outcome = 'open'"
-)
+def _lowcap_replay_upsert_sql(table: str) -> str:
+    """The guarded replay UPSERT for `table` — the shadow lane's table and the #624 paper lane's
+    twin take the SAME columns and the SAME `WHERE outcome = 'open'` guard, so they are one
+    definition (they used to be two hand-copied statements differing only by table name)."""
+    return (
+        f"INSERT INTO {table} ({', '.join(LOWCAP_LANE_REPLAY_COLS)}, updated_at) VALUES ("
+        + _jsonb_value_list(LOWCAP_LANE_REPLAY_COLS,
+                            (_LOWCAP_LANE_REPLAY_JSONB_LIST, _LOWCAP_LANE_REPLAY_JSONB_DICT))
+        + ", NOW())"
+        " ON CONFLICT (ticker, session_date) DO UPDATE SET "
+        + ", ".join(f"{c} = EXCLUDED.{c}" for c in _LOWCAP_LANE_REPLAY_MUTABLE_COLS)
+        + ", updated_at = NOW()"
+        f" WHERE {table}.outcome = 'open'"
+    )
+
+
+LOWCAP_LANE_REPLAY_UPSERT_SQL = _lowcap_replay_upsert_sql("mi_lowcap_lane_replays")
 
 
 async def upsert_lowcap_lane_replay(fields: dict) -> bool:
@@ -18439,25 +18467,12 @@ async def upsert_lowcap_paper_lane_row(fields: dict) -> bool:
     return not res.endswith(" 0")
 
 
-# Same statement shape as EP_ALERT_JUDGE_RESULT_UPDATE_SQL (COALESCE: None = leave untouched),
-# on the lane's table, plus setup_class (the live path writes that with its own UPDATE).
-LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL = """
-    UPDATE mi_lowcap_paper_lane_alerts SET
-        judge_tier = COALESCE($3, judge_tier),
-        judge_direction = COALESCE($4, judge_direction),
-        judge_rationale = COALESCE($5, judge_rationale),
-        judge_materiality_tier = COALESCE($6, judge_materiality_tier),
-        fire_axes = COALESCE($7, fire_axes),
-        score_tier = COALESCE($8, score_tier),
-        grade_engine_authority = COALESCE($9, grade_engine_authority),
-        rubric_version = COALESCE($10, rubric_version),
-        judge_grade = COALESCE($11, judge_grade),
-        judge_grade_reason = COALESCE($12, judge_grade_reason),
-        judge_tier_reason = COALESCE($13, judge_tier_reason),
-        setup_class = COALESCE($14, setup_class),
-        updated_at = NOW()
-    WHERE ticker = $1 AND alert_date = $2
-"""
+# Same statement as EP_ALERT_JUDGE_RESULT_UPDATE_SQL (built from the same column list; COALESCE:
+# None = leave untouched), on the lane's table, plus setup_class (the live path writes that with
+# its own UPDATE) and updated_at.
+LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL = _judge_result_update_sql(
+    "mi_lowcap_paper_lane_alerts",
+    extra_set=("setup_class = COALESCE($14, setup_class)", "updated_at = NOW()"))
 
 
 async def update_lowcap_paper_lane_judge_result(
@@ -18488,8 +18503,9 @@ async def update_lowcap_paper_lane_judge_result(
 # (`alert_date >= today - EP_COOLDOWN_DAYS` in run_ep_scan), so a name the lane alerted exactly
 # 60 days ago is still on the lane's cooldown, as it would be on live's (10-10 review fix: was `>`).
 _LOWCAP_PAPER_LANE_TIERED_SQL = """
-    SELECT ticker, alert_date FROM mi_lowcap_paper_lane_alerts
+    SELECT ticker, MAX(alert_date) AS alert_date FROM mi_lowcap_paper_lane_alerts
     WHERE score_tier IS NOT NULL AND alert_date >= $1::date - $2::int AND alert_date <= $1::date
+    GROUP BY ticker
 """
 
 
@@ -18501,11 +18517,7 @@ async def get_lowcap_paper_lane_tiered(today: "date", days: int) -> dict[str, "d
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(_LOWCAP_PAPER_LANE_TIERED_SQL, _coerce_date(today), int(days))
-    out: dict[str, "date"] = {}
-    for r in rows:
-        if r["ticker"] not in out or r["alert_date"] > out[r["ticker"]]:
-            out[r["ticker"]] = r["alert_date"]
-    return out
+    return {r["ticker"]: r["alert_date"] for r in rows}
 
 
 _LOWCAP_PAPER_LANE_HIGHS_SQL = """
@@ -18596,30 +18608,15 @@ async def get_lowcap_paper_lane_population(window_start: "date", window_end: "da
     return [dict(r) for r in rows]
 
 
-_LOWCAP_PAPER_LANE_REPLAY_EXISTING_SQL = """
-    SELECT ticker, session_date, outcome FROM mi_lowcap_paper_lane_replays
-    WHERE session_date >= $1::date
-"""
+_LOWCAP_PAPER_LANE_REPLAY_EXISTING_SQL = _lowcap_replay_existing_sql("mi_lowcap_paper_lane_replays")
 
 
 async def get_lowcap_paper_lane_replay_existing(window_start: "date") -> dict[tuple[str, "date"], str]:
     """READ-ONLY. (ticker, session_date) -> outcome for the paper lane's replay rows."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(_LOWCAP_PAPER_LANE_REPLAY_EXISTING_SQL, _coerce_date(window_start))
-    return {(r["ticker"], r["session_date"]): r["outcome"] for r in rows}
+    return await _lowcap_replay_existing(_LOWCAP_PAPER_LANE_REPLAY_EXISTING_SQL, window_start)
 
 
-LOWCAP_PAPER_LANE_REPLAY_UPSERT_SQL = (
-    f"INSERT INTO mi_lowcap_paper_lane_replays ({', '.join(LOWCAP_LANE_REPLAY_COLS)}, updated_at) VALUES ("
-    + _jsonb_value_list(LOWCAP_LANE_REPLAY_COLS,
-                        (_LOWCAP_LANE_REPLAY_JSONB_LIST, _LOWCAP_LANE_REPLAY_JSONB_DICT))
-    + ", NOW())"
-    " ON CONFLICT (ticker, session_date) DO UPDATE SET "
-    + ", ".join(f"{c} = EXCLUDED.{c}" for c in _LOWCAP_LANE_REPLAY_MUTABLE_COLS)
-    + ", updated_at = NOW()"
-    " WHERE mi_lowcap_paper_lane_replays.outcome = 'open'"
-)
+LOWCAP_PAPER_LANE_REPLAY_UPSERT_SQL = _lowcap_replay_upsert_sql("mi_lowcap_paper_lane_replays")
 
 
 async def upsert_lowcap_paper_lane_replay(fields: dict) -> bool:

@@ -83,3 +83,124 @@ async def test_the_refusal_page_matches_the_funnels_constant_not_a_copy_of_its_t
     await lpe.process_lowcap_paper_alerts(today=date(2026, 10, 12))
     assert len(w.pages) == 1 and "REFUSED" in w.pages[0]
     assert skip_reasons.BLOCK_ACCOUNT_MODE_MISMATCH == "block:account_mode_mismatch"   # the wire value did not move
+
+
+# ── SQL built from one definition == the statements that were written out by hand ─────────
+
+# The live statement exactly as it was written out in db.py before it was built from the shared
+# column list. Frozen here: a drift in the builder (or a column added to one table only) fails.
+_LIVE_JUDGE_SQL_AS_WRITTEN = """
+    UPDATE mi_ep_alerts SET
+        judge_tier = COALESCE($3, judge_tier),
+        judge_direction = COALESCE($4, judge_direction),
+        judge_rationale = COALESCE($5, judge_rationale),
+        judge_materiality_tier = COALESCE($6, judge_materiality_tier),
+        fire_axes = COALESCE($7, fire_axes),
+        score_tier = COALESCE($8, score_tier),
+        grade_engine_authority = COALESCE($9, grade_engine_authority),
+        rubric_version = COALESCE($10, rubric_version),
+        judge_grade = COALESCE($11, judge_grade),
+        judge_grade_reason = COALESCE($12, judge_grade_reason),
+        judge_tier_reason = COALESCE($13, judge_tier_reason)
+    WHERE ticker = $1 AND alert_date = $2
+"""
+_LANE_JUDGE_SQL_AS_WRITTEN = """
+    UPDATE mi_lowcap_paper_lane_alerts SET
+        judge_tier = COALESCE($3, judge_tier),
+        judge_direction = COALESCE($4, judge_direction),
+        judge_rationale = COALESCE($5, judge_rationale),
+        judge_materiality_tier = COALESCE($6, judge_materiality_tier),
+        fire_axes = COALESCE($7, fire_axes),
+        score_tier = COALESCE($8, score_tier),
+        grade_engine_authority = COALESCE($9, grade_engine_authority),
+        rubric_version = COALESCE($10, rubric_version),
+        judge_grade = COALESCE($11, judge_grade),
+        judge_grade_reason = COALESCE($12, judge_grade_reason),
+        judge_tier_reason = COALESCE($13, judge_tier_reason),
+        setup_class = COALESCE($14, setup_class),
+        updated_at = NOW()
+    WHERE ticker = $1 AND alert_date = $2
+"""
+
+
+def test_the_live_judge_statement_is_byte_identical_to_the_hand_written_one():
+    """The deploy gate prepares THIS constant and production executes it — it must not move."""
+    assert db.EP_ALERT_JUDGE_RESULT_UPDATE_SQL == _LIVE_JUDGE_SQL_AS_WRITTEN
+
+
+def test_the_lane_judge_statement_is_the_live_one_on_the_lanes_table_plus_two_clauses():
+    assert db.LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL == _LANE_JUDGE_SQL_AS_WRITTEN
+    # the lane's statement can only ever name its own table (wall 1: never the live alert row)
+    assert "mi_ep_alerts" not in db.LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL
+    # one column list: every judge column the live statement writes, the lane writes too
+    live_sets = {ln.split("=")[0].strip() for ln in db.EP_ALERT_JUDGE_RESULT_UPDATE_SQL.splitlines()
+                 if "COALESCE" in ln}
+    lane_sets = {ln.split("=")[0].strip() for ln in db.LOWCAP_PAPER_LANE_JUDGE_UPDATE_SQL.splitlines()
+                 if "COALESCE" in ln or "NOW()" in ln}
+    assert lane_sets == live_sets | {"setup_class", "updated_at"}
+    assert live_sets == set(db._JUDGE_RESULT_COLS)
+
+
+def test_a_new_judge_column_reaches_both_tables_by_construction(monkeypatch):
+    monkeypatch.setattr(db, "_JUDGE_RESULT_COLS", db._JUDGE_RESULT_COLS + ("judge_new_axis",))
+    live = db._judge_result_update_sql("mi_ep_alerts")
+    lane = db._judge_result_update_sql("mi_lowcap_paper_lane_alerts")
+    assert "judge_new_axis = COALESCE($14, judge_new_axis)" in live and "judge_new_axis" in lane
+
+
+def test_the_two_replay_tables_share_one_upsert_and_one_existing_read():
+    shadow, paper = db.LOWCAP_LANE_REPLAY_UPSERT_SQL, db.LOWCAP_PAPER_LANE_REPLAY_UPSERT_SQL
+    assert paper == shadow.replace("mi_lowcap_lane_replays", "mi_lowcap_paper_lane_replays")
+    assert shadow.startswith("INSERT INTO mi_lowcap_lane_replays (ticker, session_date, ")
+    assert shadow.endswith("WHERE mi_lowcap_lane_replays.outcome = 'open'")
+    assert db._LOWCAP_PAPER_LANE_REPLAY_EXISTING_SQL == db._LOWCAP_LANE_REPLAY_EXISTING_SQL.replace(
+        "mi_lowcap_lane_replays", "mi_lowcap_paper_lane_replays")
+    assert "FROM mi_lowcap_lane_replays" in db._LOWCAP_LANE_REPLAY_EXISTING_SQL
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reader,table", [
+    (db.get_lowcap_lane_replay_existing, "mi_lowcap_lane_replays"),
+    (db.get_lowcap_paper_lane_replay_existing, "mi_lowcap_paper_lane_replays"),
+])
+async def test_each_existing_row_reader_reads_its_own_table_and_keys_by_ticker_and_session(
+        monkeypatch, reader, table):
+    pool, conn = make_mock_pool()
+    seen = []
+
+    async def _fetch(sql, window_start):
+        seen.append((sql, window_start))
+        return [{"ticker": "AAA", "session_date": date(2026, 10, 9), "outcome": "open"},
+                {"ticker": "BBB", "session_date": date(2026, 10, 9), "outcome": "settled"}]
+    conn.fetch = _fetch
+    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+    got = await reader("2026-09-01")
+    assert got == {("AAA", date(2026, 10, 9)): "open", ("BBB", date(2026, 10, 9)): "settled"}
+    (sql, ws), = seen
+    assert f"FROM {table}\n" in sql and ws == date(2026, 9, 1)     # ISO string coerced to a date
+
+
+@pytest.mark.asyncio
+async def test_the_tiered_read_returns_each_tickers_latest_alert_date(monkeypatch):
+    """The database now takes the per-ticker MAX (the old code shipped every tiered row in the
+    cooldown window and reduced in Python). Same answer: ticker -> its latest tiered date."""
+    from tests.test_624_paper_lane_review_fixes import _run_window
+    today = date(2026, 10, 12)
+    stored = [{"ticker": "AAA", "alert_date": date(2026, 9, 1), "score_tier": "HIGH"},
+              {"ticker": "AAA", "alert_date": date(2026, 9, 20), "score_tier": "MODERATE"},
+              {"ticker": "AAA", "alert_date": date(2026, 9, 10), "score_tier": "HIGH"},
+              {"ticker": "BBB", "alert_date": date(2026, 10, 12), "score_tier": "HIGH"},
+              {"ticker": "CCC", "alert_date": date(2026, 9, 15), "score_tier": None}]
+    pool, conn = make_mock_pool()
+
+    async def _fetch(sql, t, n):
+        # evaluate what the statement says: WHERE as written, then GROUP BY ticker / MAX(alert_date)
+        assert "GROUP BY ticker" in sql and "MAX(alert_date) AS alert_date" in sql
+        best: dict = {}
+        for r in _run_window(sql, stored, t, n):
+            best[r["ticker"]] = max(best.get(r["ticker"], r["alert_date"]), r["alert_date"])
+        return [{"ticker": k, "alert_date": v} for k, v in best.items()]
+    conn.fetch = _fetch
+    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+    got = await db.get_lowcap_paper_lane_tiered(today, 60)
+    assert got == {"AAA": date(2026, 9, 20), "BBB": date(2026, 10, 12)}
