@@ -22,7 +22,7 @@ from datetime import date, datetime
 from functools import partial
 from typing import Awaitable, Callable
 
-from agents.market_intelligence.db import get_pool
+from agents.market_intelligence.db import LOWCAP_PAPER_LANE_STRATEGY_ID, get_pool
 
 logger = logging.getLogger(__name__)
 
@@ -341,7 +341,7 @@ _ADAPTERS: dict[str, Callable[[int], Awaitable[list[OutcomeRow]]]] = {
     "magna53_lowcap":     _adapter_magna53_lowcap,
     # #624 small-cap PAPER lane (2026-10-10): its paper fills. Its TAIL RATE is read from the
     # replays (mi_lowcap_paper_lane_replays), not from here — this feeds the registry's counts.
-    "magna53_smallcap":   partial(_adapter_live_trades, signal_type="magna53_smallcap"),
+    LOWCAP_PAPER_LANE_STRATEGY_ID: partial(_adapter_live_trades, signal_type=LOWCAP_PAPER_LANE_STRATEGY_ID),
     "parabolic_short":    _adapter_parabolic,
     "wick_fill":          _adapter_wick_fill,
     "flag_continuation":  _adapter_flag_continuation,

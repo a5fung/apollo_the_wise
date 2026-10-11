@@ -54,7 +54,12 @@ from typing import Any, Callable, Optional
 from shared.dates import _ET
 
 from agents.market_intelligence.db import (
+    LOWCAP_PAPER_LANE_ACCOUNT_MODE,
     LOWCAP_PAPER_LANE_STRATEGY_ID,
+    LOWCAP_PAPER_LANE_TOGGLE,
+    LOWCAP_PAPER_LANE_TOGGLE_ENV,
+    _f,
+    get_lowcap_paper_lane_day,
     get_lowcap_paper_lane_highs,
     get_lowcap_paper_lane_tiered,
     get_runtime_toggle,
@@ -67,12 +72,16 @@ from agents.market_intelligence.strategies.registry import should_run
 logger = logging.getLogger(__name__)
 
 STRATEGY_ID = LOWCAP_PAPER_LANE_STRATEGY_ID
-TOGGLE = "lowcap_paper_lane"
-TOGGLE_ENV = "LOWCAP_PAPER_LANE_ENABLED"
+TOGGLE = LOWCAP_PAPER_LANE_TOGGLE
+TOGGLE_ENV = LOWCAP_PAPER_LANE_TOGGLE_ENV
 LANE_RULE_VERSION = "paper_v1"
 LANE_TICK_TIMEOUT_S = 240          # a lane tick that has not finished grading in 4 minutes is cut
                                    # (the next scan tick is 5 minutes away)
 _TIERS = ("HIGH", "MODERATE")
+# The two reject_stage values the LANE itself writes (every other stage is a live-funnel stage
+# `_grade_admitted` passes through). The heartbeat's "graded" count excludes exactly these.
+STAGE_COOLDOWN = "cooldown"
+STAGE_GRADE_ERROR = "grade_error"
 
 # Lane-owned per-day state (never the live scan's module state).
 _grade_cache_date: Optional[date] = None
@@ -90,13 +99,6 @@ def _get_lock() -> asyncio.Lock:
     return _lock
 
 
-def _f(v) -> Optional[float]:
-    try:
-        return float(v) if v is not None else None
-    except (TypeError, ValueError):
-        return None
-
-
 class LaneSink:
     """What `_grade_admitted(..., lane=sink)` and `_judge_shadow(r, lane=sink)` write into."""
 
@@ -108,7 +110,6 @@ class LaneSink:
         self.results: list[dict] = []          # the live result shape, one per tiered name
         self.alert_records: dict[str, dict] = {}
         self.candidates: dict[str, dict] = {}  # ticker -> the candidate copy being graded
-        self.errors = 0
 
     # ── the five lane seams `_grade_admitted` reads ──
     def grade_cache(self, today: date) -> dict:
@@ -191,7 +192,7 @@ async def _page_once(kind: str, today: date, text: str) -> None:
     try:
         from agents.market_intelligence.briefing import send_telegram_message
         from agents.market_intelligence.constants import mode_prefix
-        await send_telegram_message(f"{mode_prefix('paper')}{text}")  # mode-ok: the paper lane's own failure page prefix
+        await send_telegram_message(f"{mode_prefix(LOWCAP_PAPER_LANE_ACCOUNT_MODE)}{text}")
     except Exception as e:  # loud-ok: the audit row the caller wrote is the durable record
         logger.error(f"#624 paper lane page failed: {e}")
 
@@ -232,7 +233,7 @@ async def _grade_tick(cands: list, *, grade: Callable, judge: Optional[Callable]
         if last is not None and not await _lane_cooldown_bypass(c, ticker, today):
             out["cooldown"] += 1
             await upsert_lowcap_paper_lane_row(sink.row_for(
-                c, stage="cooldown",
+                c, stage=STAGE_COOLDOWN,
                 reason=f"lane cooldown — the lane alerted it {last.isoformat()}, within "
                        f"{EP_COOLDOWN_DAYS} days"))
             continue
@@ -251,7 +252,7 @@ async def _grade_tick(cands: list, *, grade: Callable, judge: Optional[Callable]
             await log_audit_event("lowcap_paper_lane_error",
                                   f"{ticker} {today.isoformat()}: grade failed — {type(e).__name__}: {e}")
             await upsert_lowcap_paper_lane_row(sink.row_for(
-                c, stage="grade_error", reason=f"{type(e).__name__}: {str(e)[:200]}"))
+                c, stage=STAGE_GRADE_ERROR, reason=f"{type(e).__name__}: {str(e)[:200]}"))
 
     alerted = [r for r in sink.results if r.get("score_tier") in _TIERS]
     if judge is not None and alerted:
@@ -365,15 +366,14 @@ def schedule_paper_lane_tick(cands: list, *, grade: Callable, judge: Optional[Ca
 #   scan_silent the live scan logged nothing today (holiday, or the scan itself) — not the lane's
 # Run by the 18:15 ET replay job (scheduler._lowcap_lane_replay_job). A failed read pages.
 HEARTBEAT_EVENT = "lowcap_paper_lane_heartbeat"
-_LANE_BOOK = "paper"   # mode-ok: the lane's one book — the heartbeat counts its paper orders only
-_NOT_GRADED_STAGES = ("cooldown", "grade_error")
+_LANE_BOOK = LOWCAP_PAPER_LANE_ACCOUNT_MODE   # the lane's one book — the heartbeat counts its paper orders only
+_NOT_GRADED_STAGES = (STAGE_COOLDOWN, STAGE_GRADE_ERROR)
 
 
 async def write_paper_lane_heartbeat(today: date) -> dict:
     """Write today's heartbeat row (once per day — a re-run finds it and writes nothing). Returns
     the counts + verdict. NEVER raises."""
     from agents.market_intelligence.broker.skip_reasons import FILTER_MCAP_TOO_SMALL
-    from agents.market_intelligence.db import get_lowcap_paper_lane_day
     out: dict[str, Any] = {"date": today.isoformat(), "verdict": None}
     try:
         day = await get_lowcap_paper_lane_day(

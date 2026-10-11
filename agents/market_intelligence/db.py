@@ -166,6 +166,13 @@ async def get_pool() -> asyncpg.Pool:
 # `UPDATE mi_strategies SET max_concurrent_positions = N WHERE strategy_id = 'magna53_smallcap'`.
 LOWCAP_PAPER_LANE_STRATEGY_ID = "magna53_smallcap"
 LOWCAP_PAPER_LANE_POSITION_CAP = 5
+# The lane's one stop switch (runtime toggle, mi_safeguard_state) and the ONE account it may order
+# on. Defined once HERE because the grading module (lowcap_paper_lane.py) and the order step
+# (broker/lowcap_paper_entry.py) are separate services that cannot import each other: a typo in
+# either copy would stop half the lane (grading with no orders, or orders with no grading).
+LOWCAP_PAPER_LANE_TOGGLE = "lowcap_paper_lane"
+LOWCAP_PAPER_LANE_TOGGLE_ENV = "LOWCAP_PAPER_LANE_ENABLED"
+LOWCAP_PAPER_LANE_ACCOUNT_MODE = "paper"   # mode-ok: the lane's ONE permitted account — compared / passed, never a filter literal
 
 
 async def _seed_strategies_registry(conn) -> None:
@@ -4132,7 +4139,7 @@ async def initialize_schema() -> None:
                 ep_score                DOUBLE PRECISION,
                 baseline_floor_tier     TEXT,
                 grade_engine_authority  TEXT,
-                reject_stage            TEXT,                   -- the live funnel stage that killed it (post_grade_filter / score_bar / lane_cooldown / grade_error), NULL when it reached a tier
+                reject_stage            TEXT,                   -- the live funnel stage that killed it (post_grade_filter / score_bar / cooldown / grade_error), NULL when it reached a tier
                 reject_reason           TEXT,
                 catalyst_quality        TEXT,                   -- the ACTING grade (lattice-resolved), as on mi_ep_alerts
                 llm_catalyst_quality    TEXT,

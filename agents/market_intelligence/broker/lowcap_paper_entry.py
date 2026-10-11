@@ -58,7 +58,11 @@ from agents.market_intelligence.broker.entry_pipeline import (
     ACTION_BLOCKED,
     submit_trade_entry,
 )
-from agents.market_intelligence.broker.skip_reasons import WINDOW_DUPLICATE, WINDOW_OUT_OF_ORB
+from agents.market_intelligence.broker.skip_reasons import (
+    BLOCK_ACCOUNT_MODE_MISMATCH,
+    WINDOW_DUPLICATE,
+    WINDOW_OUT_OF_ORB,
+)
 from agents.market_intelligence.backtester.filters import check_filters, compute_atr_14
 from shared.dates import _ET, et_today
 from agents.market_intelligence.constants import (
@@ -67,7 +71,10 @@ from agents.market_intelligence.constants import (
     resolve_account_mode_for_strategy,
 )
 from agents.market_intelligence.db import (
+    LOWCAP_PAPER_LANE_ACCOUNT_MODE,
     LOWCAP_PAPER_LANE_STRATEGY_ID,
+    LOWCAP_PAPER_LANE_TOGGLE,
+    LOWCAP_PAPER_LANE_TOGGLE_ENV,
     get_lowcap_paper_lane_highs,
     get_pool,
     get_runtime_toggle,
@@ -78,10 +85,10 @@ from agents.market_intelligence.ep_detector import MIN_GAP_PCT as _MAGNA53_MIN_G
 
 logger = logging.getLogger(__name__)
 
-LANE_ACCOUNT_MODE = "paper"   # mode-ok: the lane's ONE permitted account — compared, never used to filter
+LANE_ACCOUNT_MODE = LOWCAP_PAPER_LANE_ACCOUNT_MODE   # the lane's ONE permitted account — compared, never used to filter
 STRATEGY_ID = LOWCAP_PAPER_LANE_STRATEGY_ID
-TOGGLE = "lowcap_paper_lane"
-TOGGLE_ENV = "LOWCAP_PAPER_LANE_ENABLED"
+TOGGLE = LOWCAP_PAPER_LANE_TOGGLE
+TOGGLE_ENV = LOWCAP_PAPER_LANE_TOGGLE_ENV
 STRATEGY_LABEL = "ORB small-cap lane (paper)"
 
 # The ET day the paper account last answered the pre-flight (None = not yet today).
@@ -248,7 +255,7 @@ async def process_lowcap_paper_alerts(today: date | None = None,
             await _page(f"🚨 *{tkr}* small-cap lane paper order crashed — {type(r).__name__}: {str(r)[:160]}")
             results.append({"ticker": tkr, "action": "crashed", "reason": str(r)})
             continue
-        if r.get("action") == ACTION_BLOCKED and str(r.get("reason", "")).startswith("block:account_mode_mismatch"):
+        if r.get("action") == ACTION_BLOCKED and str(r.get("reason", "")).startswith(BLOCK_ACCOUNT_MODE_MISMATCH):
             await _page(f"🚨 *{tkr}* small-cap lane order REFUSED by the entry funnel — {r.get('reason')}")
         if r.get("reason") != WINDOW_DUPLICATE:
             await log_audit_event(
