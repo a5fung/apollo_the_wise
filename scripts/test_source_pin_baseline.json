@@ -1,7 +1,6 @@
 {
   "per_file": {
     "tests/test_184_terminal_without_reason.py": 4,
-    "tests/test_210_tv_news_shadow.py": 1,
     "tests/test_216_jsonb_encoding_guard.py": 2,
     "tests/test_216_jsonb_repair.py": 1,
     "tests/test_347_live_enriched_flip.py": 6,
@@ -27,7 +26,6 @@
     "tests/test_606_universe_floor_dv_shadow.py": 6,
     "tests/test_611_supply_reconciliation.py": 1,
     "tests/test_624_lowcap_lane.py": 8,
-    "tests/test_624_paper_lane.py": 2,
     "tests/test_625_late_job_error_sweep.py": 1,
     "tests/test_631_era_framing_fallback.py": 2,
     "tests/test_643_declined_is_not_missed.py": 1,
@@ -40,7 +38,6 @@
     "tests/test_663_ep_scan_result_shape.py": 1,
     "tests/test_667_unbookable_htf_fills.py": 2,
     "tests/test_678_single_job_runs_reader.py": 1,
-    "tests/test_687_paper_rehearsal.py": 1,
     "tests/test_account_mode_literal_gate.py": 4,
     "tests/test_alert_rank_shadow.py": 2,
     "tests/test_anticipation_graduation_predicate.py": 1,
@@ -146,6 +143,6 @@
     "tests/test_yoy_prior_year_fallback.py": 2,
     "tests/test_yoy_writeback_and_window.py": 11
   },
-  "total": 426,
+  "total": 422,
   "unescaped": 362
 }

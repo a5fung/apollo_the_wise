@@ -20,8 +20,8 @@ guard, the literal rulings and the live_tracker filter did not exist). Parts:
 """
 from __future__ import annotations
 
-import inspect
-import re
+import subprocess
+import sys
 from datetime import date, datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -129,19 +129,50 @@ async def test_an_authoritative_judge_moves_the_lane_tier_through_the_lanes_own_
     assert kw["judge_tier"] == "MODERATE" and kw["fire_axes"] == ["catalyst"]
 
 
-def test_dispatch_is_last_wrapped_and_lazily_imported():
-    """The lane is scheduled AFTER every live decision of the tick (judge + tape annotation) and
-    can never raise into the scan; ep_detector is execution-loaded, the lane module stays lazy."""
-    # source-pin-ok: WHERE the dispatch textually sits inside run_ep_scan (after the post-scan
-    # judge block, before `return results`) is the "after live grading has finished" ruling —
-    # the end-to-end test above proves the outcomes, this pins the placement.
-    src = inspect.getsource(ep_detector.run_ep_scan)
-    dispatch = src.index("schedule_paper_lane_tick(")
-    assert dispatch > src.index("annotate_ep_alerts_tape_quality(results)")
-    assert dispatch > src.index("_alerted = high + moderate")
-    assert src.rindex("return results") > dispatch
-    head = (_REPO / "agents/market_intelligence/ep_detector.py").read_text().split("async def run_ep_scan")[0]
-    assert "lowcap_paper_lane" not in head
+@pytest.mark.asyncio
+async def test_the_lane_is_dispatched_after_every_live_decision_of_the_tick(monkeypatch):
+    """The lane is scheduled AFTER the live judge's verdict is written and the tape annotation is
+    done ("after live grading has finished" is the ruling), and it is handed the cap-only name. One
+    ordered timeline across the real scan, read straight off the three hand-offs.
+
+    A dispatch that raises can never reach the scan's result: the byte-identity run above covers
+    `paper_mode="raising"`. MUTATION TARGETS: move the dispatch block above the tape-quality
+    block; above the post-scan judge block."""
+    from tests.test_624_lowcap_lane import _run_scan_once, ADMIT_TICKER
+    from agents.market_intelligence import tape_quality
+    verdict = {"tier": "MODERATE", "direction_vs_floor": "demote", "rationale": "thin",
+               "materiality_tier": None, "grade": "strong", "grade_reason": "g",
+               "tier_reason": "t", "fire_axes": ["catalyst"], "confidence": 0.7}
+    timeline: list = []
+
+    async def _judge_written(ticker, alert_date, **kw):
+        timeline.append(("judge_written", ticker))
+
+    async def _tape(results):
+        timeline.append(("tape", [r["ticker"] for r in results]))
+
+    def _dispatch(cands, **kw):
+        timeline.append(("dispatch", [t for _, t, _ in cands]))
+    monkeypatch.setattr(db, "update_ep_alert_judge_result", _judge_written)
+    monkeypatch.setattr(tape_quality, "annotate_ep_alerts_tape_quality", _tape)
+    monkeypatch.setattr(plane, "schedule_paper_lane_tick", _dispatch)
+
+    await _run_scan_once(monkeypatch, lane_mode="off", admit=True, lowcap_admit="BIG05",
+                         judge_verdict=verdict)
+    assert timeline == [("judge_written", ADMIT_TICKER), ("tape", [ADMIT_TICKER]),
+                        ("dispatch", ["BIG05"])]
+
+
+def test_importing_the_detector_does_not_load_the_paper_lane():
+    """ep_detector is loaded on the execution image, which the lane module stays off — so the scan
+    imports the lane lazily, at the dispatch. A fresh interpreter, because this process has
+    already imported it. MUTATION TARGET: a top-level import of the lane in ep_detector."""
+    probe = ("import sys; import agents.market_intelligence.ep_detector; "
+             "print(sorted(m for m in sys.modules if 'lowcap_paper_lane' in m))")
+    out = subprocess.run([sys.executable, "-c", probe], cwd=_REPO, capture_output=True, text=True,
+                         timeout=120)
+    assert out.returncode == 0, out.stderr[-500:]
+    assert out.stdout.strip().splitlines()[-1] == "[]", out.stdout[-300:]
 
 
 # ── 2. the paper-only order step ────────────────────────────────────────────────────────
@@ -285,17 +316,50 @@ async def test_toggle_off_stops_the_order_step(monkeypatch):
     assert not w.submit.await_count
 
 
-def test_order_step_never_reads_the_live_alert_table():
-    # source-pin-ok: ABSENCE of the live alert table from the paper order step's code is the
-    # wall-1 claim itself (what it never reads); the behavioural tests above drive it only
-    # through stubs, which cannot show a read that is not there.
-    code = re.sub(r'"""(.*?)"""', "", (_REPO / "agents/market_intelligence/broker/lowcap_paper_entry.py").read_text(), flags=re.S)
-    code = "\n".join(l.split("#")[0] for l in code.splitlines())
-    assert "mi_ep_alerts" not in code and "_HIGH_ALERT_SELECT_SQL" not in code
-    assert "process_new_alerts_live" not in code
-    assert "FROM mi_lowcap_paper_lane_alerts" in db._LOWCAP_PAPER_LANE_HIGHS_SQL
-    assert "mi_ep_alerts" not in db.LOWCAP_PAPER_LANE_UPSERT_SQL
-    assert "FROM mi_ep_alerts" in lt._HIGH_ALERT_SELECT_SQL      # the live step reads only its own
+@pytest.mark.asyncio
+async def test_the_order_step_orders_the_lane_table_and_never_reads_the_live_alert_table(monkeypatch):
+    """Wall 1, driven: the database answers by TABLE. The lane table holds one HIGH (SMLL); the
+    live alert table holds another (LIVE1) that must stay invisible. The step orders SMLL only,
+    no statement it issues names the live alert table, and the live order step is never entered.
+
+    MUTATION TARGETS: read the live alert table in `process_lowcap_paper_alerts` (its own SELECT
+    or `live_tracker._HIGH_ALERT_SELECT_SQL`); call `process_new_alerts_live` from it."""
+    w = _wire_order_step(monkeypatch)
+    pool = await lpe.get_pool()
+    monkeypatch.setattr(lpe, "get_lowcap_paper_lane_highs", db.get_lowcap_paper_lane_highs)  # the REAL reader
+    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(lt, "process_new_alerts_live",
+                        AsyncMock(side_effect=AssertionError("the live order step was entered")))
+    seen: list = []
+
+    async def _fetch(sql, *a, **k):
+        seen.append(sql)
+        if "mi_lowcap_paper_lane_alerts" in sql:
+            return [dict(_HIGH)]
+        if "mi_ep_alerts" in sql:
+            return [dict(_HIGH, ticker="LIVE1")]
+        return []
+
+    async def _other(sql, *a, **k):
+        seen.append(sql)
+        return None
+    w.conn.fetch = AsyncMock(side_effect=_fetch)
+    w.conn.fetchrow = AsyncMock(side_effect=_other)
+    w.conn.fetchval = AsyncMock(side_effect=_other)
+    w.conn.execute = AsyncMock(side_effect=_other)
+
+    out = await lpe.process_lowcap_paper_alerts(today=date(2026, 10, 12))
+
+    assert [r["ticker"] for r in out] == ["SMLL"]
+    assert [c.kwargs["alert_context"]["ticker"] for c in w.submit.await_args_list] == ["SMLL"]
+    assert any("mi_lowcap_paper_lane_alerts" in s for s in seen)       # it did read the lane table ...
+    assert not [s for s in seen if "mi_ep_alerts" in s]                  # ... and never the live one
+    assert not lt.process_new_alerts_live.await_count
+
+    # control: the same database DOES serve the live row when the live step's own query runs, so
+    # the absence above is the step's doing, not a blind fake.
+    live_rows = await w.conn.fetch(lt._HIGH_ALERT_SELECT_SQL, date(2026, 10, 12))
+    assert [r["ticker"] for r in live_rows] == ["LIVE1"]
 
 
 # ── 3. the entry funnel's account binding ─────────────────────────────────────────────

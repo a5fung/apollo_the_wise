@@ -1062,71 +1062,90 @@ async def test_get_grade_corpus_prefers_the_grade_row_and_falls_back_to_metrics(
     assert await run(None, None) is None
 
 
-def test_the_scan_path_write_sits_in_its_own_except_exception_after_the_provenance_row():
-    """THE LINE, structurally: the write_grade_corpus call in ep_detector's uncached grade branch
-    must (a) sit inside its own try whose handler catches Exception and does not re-raise, and
-    (b) come AFTER the ep_catalyst_provenance audit call (so a failure cannot reorder or skip
-    it) and BEFORE the enrichment shadow. Telemetry that can raise into the scan is a defect."""
-    # source-pin-ok: wiring check - the call sits in `_grade_admitted`, a ~2,000-line closure nested
-    # inside run_ep_scan with no independently callable seam around the uncached grade branch (it
-    # needs a live LLM grade, six data feeds and the DB to run); the write's own fail-open behaviour
-    # is exercised for real in test_grade_corpus_write_is_fail_open. What only the source can say is
-    # that the call site is wrapped, sits after the provenance audit row, and that every name the
-    # call uses RESOLVES there - a NameError would be swallowed by the very except that makes the
-    # write fail-open, leaving the table silently empty.
-    import ast
-    import symtable
-    src = (Path(__file__).resolve().parent.parent / "agents" / "market_intelligence"
-           / "ep_detector.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
-    parents = {}
-    for node in ast.walk(tree):
-        for child in ast.iter_child_nodes(node):
-            parents[child] = node
+_ALPACA_NEWS = [{"title": "Big Cap Co wins landmark FDA approval", "summary": "Press release."}]
+_FMP_NEWS = [{"title": "Big Cap Co gaps up on approval", "text": "Shares jumped."}]
+_SEC_FILINGS = [{"form": "8-K", "filed": "2026-09-03", "items": "8.01", "text": "Big Cap Co announced."}]
+_PPLX_ANSWER = "Big Cap Co gapped up on FDA approval."
 
-    def is_call(node, fn_name):
-        return (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
-                and node.func.id == fn_name)
 
-    writes = [n for n in ast.walk(tree) if is_call(n, "write_grade_corpus")]
-    assert len(writes) == 1, "exactly one write_grade_corpus call site in ep_detector"
-    w = writes[0]
-    p = parents[w]
-    while not isinstance(p, ast.Try):
-        p = parents[p]   # an unwrapped call would reach the function def and KeyError here
-    assert any(isinstance(h.type, ast.Name) and h.type.id == "Exception" for h in p.handlers)
-    assert not any(isinstance(n, ast.Raise) for h in p.handlers for n in ast.walk(h))
-    prov_line = next(n.lineno for n in ast.walk(tree) if is_call(n, "log_audit_event")
-                     and n.args and isinstance(n.args[0], ast.Constant)
-                     and n.args[0].value == "ep_catalyst_provenance")
-    enrich_line = next(n.lineno for n in ast.walk(tree) if is_call(n, "log_audit_event")
-                       and n.args and isinstance(n.args[0], ast.Constant)
-                       and n.args[0].value == "ep_grade_enrich_shadow")
-    assert prov_line < w.lineno < enrich_line
+async def _grade_an_uncached_name(monkeypatch, *, write_raises: bool):
+    """Grade one UNCACHED name through the REAL `_grade_admitted` and record what it wrote.
 
-    # every name in the call resolves at the write site: `_ET` is a FREE variable bound by
-    # run_ep_scan's own `from ... import _ET` (a function-local import, so a module-level move of
-    # `_grade_admitted` would turn it into an undefined global), `datetime`/`write_grade_corpus`
-    # are module-level imports.
-    fn = w
-    while not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
-        fn = parents[fn]
-    top = symtable.symtable(src, "ep_detector.py", "exec")
+    `_grade_admitted` is a closure inside run_ep_scan, but the scan hands it out: the #624 paper
+    lane's dispatch receives it (`grade=`) with the candidates the live gates turned away only on
+    the $500M floor. So: run the real scan once on the shared fixture board with that dispatch
+    recorded, then grade BIG05 (never graded live, so no cached grade) through the closure with
+    the news feeds and the grader faked. The scan's audit rows and the corpus write land in ONE
+    ordered list, so "what came before what" is read off it.
+    Returns (timeline, writes, the cached grade the name ended with).
+    """
+    from unittest.mock import AsyncMock
+    from agents.market_intelligence import ep_detector
+    from agents.market_intelligence import lowcap_paper_lane as plane
+    from tests.test_624_lowcap_lane import _run_scan_once
 
-    def find(tab, name):
-        for ch in tab.get_children():
-            if ch.get_name() == name and ch.get_type() == "function" and ch.get_lineno() == fn.lineno:
-                return ch
-            hit = find(ch, name)
-            if hit is not None:
-                return hit
-        return None
+    # restored at teardown: the harness assigns these module globals directly
+    monkeypatch.setattr(ep_detector, "_catalyst_cache", {})
+    monkeypatch.setattr(ep_detector, "_catalyst_cache_date", None)
+    handed: dict = {}
+    monkeypatch.setattr(plane, "schedule_paper_lane_tick",
+                        lambda cands, **kw: handed.update(cands=cands, grade=kw["grade"]))
+    timeline: list = []
+    await _run_scan_once(monkeypatch, lane_mode="off", admit=True, lowcap_admit="BIG05",
+                         audit_sink=timeline)
+    c, ticker, rel_volume = handed["cands"][0]
+    assert ticker == "BIG05" and ticker not in ep_detector._catalyst_cache   # truly uncached
+    timeline.clear()
 
-    tab = find(top, fn.name)
-    assert tab is not None, f"could not locate {fn.name} in the symbol table"
-    assert tab.lookup("_ET").is_free(), "_ET is not a closure variable at the write site"
-    assert tab.lookup("datetime").is_global() and tab.lookup("write_grade_corpus").is_global()
-    for name in ("profile", "alpaca_news", "fmp_news", "perplexity_answer", "sec_filing",
-                 "catalyst_quality", "ticker"):
-        assert tab.lookup(name).is_local(), f"{name} is not bound in the grade function"
-    assert tab.lookup("today").is_free(), "today is not a closure variable at the write site"
+    monkeypatch.setattr(ep_detector, "get_fmp_news", AsyncMock(return_value=_FMP_NEWS))
+    monkeypatch.setattr(ep_detector, "get_alpaca_news", AsyncMock(return_value=_ALPACA_NEWS))
+    monkeypatch.setattr(ep_detector, "get_sec_recent_filings", AsyncMock(return_value=_SEC_FILINGS))
+    monkeypatch.setattr(ep_detector, "search_news_perplexity", AsyncMock(return_value=_PPLX_ANSWER))
+    monkeypatch.setattr(ep_detector, "_validate_catalyst_perplexity", AsyncMock(return_value=None))
+    monkeypatch.setattr(ep_detector, "_classify_catalyst_claude",
+                        AsyncMock(return_value=("routine", "A routine item.")))
+    writes: list = []
+
+    async def _write(*args):
+        timeline.append(("write_grade_corpus", "", ""))
+        writes.append(args)
+        if write_raises:
+            raise RuntimeError("grade-corpus table down")
+    monkeypatch.setattr(ep_detector, "write_grade_corpus", _write)
+
+    await handed["grade"](c, ticker, rel_volume)
+    return timeline, writes, ep_detector._catalyst_cache.get(ticker)
+
+
+@pytest.mark.asyncio
+async def test_an_uncached_grade_records_the_corpus_it_read_straight_after_the_provenance_row(monkeypatch):
+    """The scan-path write of mi_ep_grade_corpus, driven through the real grade closure: it fires
+    ONCE per uncached grade, carries the corpus the grade read (every name in the call resolves
+    where it sits, the ET clock included), and lands after the provenance audit row.
+
+    MUTATION TARGETS: misspell any name in the write call (the failure is swallowed by its own
+    except, so the table would silently stay empty); move the write above the provenance audit."""
+    from tests.test_624_lowcap_lane import TICK, SESSION_DATE
+    timeline, writes, _ = await _grade_an_uncached_name(monkeypatch, write_raises=False)
+    assert len(writes) == 1
+    ticker, day, captured_at, company, alpaca, fmp, perplexity, sec, quality = writes[0]
+    assert (ticker, day, company, quality) == ("BIG05", SESSION_DATE, "Big Cap Co", "routine")
+    assert captured_at == TICK and captured_at.tzinfo is not None
+    assert (alpaca, fmp, perplexity) == (_ALPACA_NEWS, _FMP_NEWS, _PPLX_ANSWER)
+    assert sec == "8-K filed 2026-09-03, items 8.01"
+    events = [e[0] for e in timeline]
+    assert events.index("ep_catalyst_provenance") < events.index("write_grade_corpus")
+
+
+@pytest.mark.asyncio
+async def test_a_failing_corpus_write_leaves_the_grade_exactly_as_it_was(monkeypatch):
+    """THE LINE: telemetry that can raise into the scan is a defect. With the write raising, the
+    grade still completes, still writes its provenance row, and the name ends with the SAME cached
+    grade as when the write works.
+
+    MUTATION TARGET: take the try/except off the write call."""
+    ok_timeline, _, ok_grade = await _grade_an_uncached_name(monkeypatch, write_raises=False)
+    timeline, writes, grade = await _grade_an_uncached_name(monkeypatch, write_raises=True)
+    assert len(writes) == 1                                  # it WAS attempted ...
+    assert grade is not None and grade == ok_grade            # ... and changed nothing
+    assert [e[0] for e in timeline] == [e[0] for e in ok_timeline]

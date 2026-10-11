@@ -14,10 +14,14 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import sqlite3
 import sys
 import types
+from unittest.mock import AsyncMock
 
 import pytest
+
+from tests.conftest import make_mock_pool
 
 _PATH = os.path.join(os.path.dirname(__file__), "..", "scripts", "probes", "_687", "paper_rehearsal.py")
 
@@ -359,13 +363,41 @@ async def test_no_rehearsal_row_is_eligible_for_the_production_profit_trigger(tm
     rc, env, log = await _dry(tmp_path, cmd="day-a")
     assert rc == 0, log.failed()
     assert env.trades and not [r for r in env.trades.values() if _selected_by_scan_profit_triggers(r)]
-    # ...and the REAL insert writes TRUE (the fake above only mirrors it).
-    # source-pin-ok: the real INSERT runs only against Postgres (no DB in unit tests); A1/B1 read the
-    # column back from the DB at run time, which is the behavioural check on the real path.
-    import inspect
-    import re
-    src = inspect.getsource(pr.RealEnv.insert_trade)
-    assert re.search(r"partial_taken, filled_at\)\s*VALUES \(.*, 0, TRUE, NOW\(\)\)", src, re.S), src
+
+
+@pytest.mark.asyncio
+async def test_the_real_insert_writes_a_row_the_production_profit_trigger_cannot_select():
+    """The fake above only MIRRORS the insert. This runs the REAL `RealEnv.insert_trade` statements
+    (the INSERT and the account-mode read-back, as written for Postgres) on an in-memory SQLite
+    stand-in for mi_live_trades whose `partial_taken` defaults FALSE as production's does, then
+    asks production's own selection predicate about the row that landed.
+
+    MUTATION TARGETS: write FALSE for partial_taken; drop the column from the INSERT."""
+    db = sqlite3.connect(":memory:")
+    db.create_function("NOW", 0, lambda: "2026-10-06T10:00:00")
+    db.execute("""CREATE TABLE mi_live_trades (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, ticker TEXT, alert_date TEXT, status TEXT,
+        account_mode TEXT, signal_type TEXT, entry_shares REAL, remaining_shares REAL,
+        entry_price REAL, stop_price REAL, hard_stop REAL, orb_low REAL, stop_order_id TEXT,
+        hold_days INTEGER, partial_taken INTEGER NOT NULL DEFAULT 0, filled_at TEXT)""")
+
+    async def fetchval(sql, *args):
+        row = db.execute(sql, {str(i + 1): a for i, a in enumerate(args)}).fetchone()
+        return row[0] if row else None
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(side_effect=fetchval)
+    env = pr.RealEnv()
+    env.db = types.SimpleNamespace(get_pool=AsyncMock(return_value=pool))
+
+    tid = await env.insert_trade(ticker="KO", shares=10, entry=60.0, stop=57.0, stop_id="stop-1",
+                                 alert_date="2026-10-06")
+
+    status, remaining, partial_taken, mode = db.execute(
+        "SELECT status, remaining_shares, partial_taken, account_mode FROM mi_live_trades WHERE id = ?",
+        (tid,)).fetchone()
+    assert mode == pr.ACCOUNT_MODE and status == "filled" and remaining == 10.0
+    assert not _selected_by_scan_profit_triggers(
+        {"status": status, "remaining_shares": remaining, "partial_taken": bool(partial_taken)})
 
 
 @pytest.mark.asyncio
