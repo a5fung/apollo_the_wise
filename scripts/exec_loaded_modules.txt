@@ -28,6 +28,7 @@ agents/market_intelligence/broker/gap_through_telemetry.py
 agents/market_intelligence/broker/halt_status_shadow.py
 agents/market_intelligence/broker/intraday_drawdown.py
 agents/market_intelligence/broker/live_tracker.py
+agents/market_intelligence/broker/lowcap_paper_entry.py
 agents/market_intelligence/broker/orb_extension_shadow.py
 agents/market_intelligence/broker/order_ingest.py
 agents/market_intelligence/broker/order_manager.py
@@ -62,6 +63,7 @@ agents/market_intelligence/regime.py
 agents/market_intelligence/rs_engine.py
 agents/market_intelligence/scheduler.py
 agents/market_intelligence/state_alerts.py
+agents/market_intelligence/theme_correctness.py
 agents/market_intelligence/theme_engine.py
 agents/market_intelligence/theme_merge_arm.py
 agents/market_intelligence/trading_calendar.py
