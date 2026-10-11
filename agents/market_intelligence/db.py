@@ -2723,6 +2723,10 @@ async def initialize_schema() -> None:
                      WHERE stage = 'TRIGGERED'
                        AND held_from_stage IS NULL;
                 END IF;
+            EXCEPTION WHEN duplicate_column THEN
+                -- two containers booting at once: the loser's ALTER waits on the winner's lock, then finds the column
+                -- there. Its whole block rolls back (including the UPDATE) and the winner's one-time label stands.
+                NULL;
             END $$;
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS triggered_from TEXT;
 

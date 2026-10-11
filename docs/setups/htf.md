@@ -411,7 +411,8 @@ all 2,397 names, 5 of the 10 extras in the 60-session scope window on the live b
   09-29 → 10-09); a positive control on the 4 names that carry every stored raw TRIGGERED read since 08-14 (CHYM, WDAY, XHLD, IOVA) reproduces **4 of 4** (the 15 rows that differ
   are the pre-10-11 re-arming hold, 14, and the pre-09-08 anchor, 1 — both older code, neither the licence); the new licence adds exactly **2** raw TRIGGERED reads in the 9 sessions —
   **EFOR 2026-10-01** (2.48× volume, stored window TIGHTENING ×3) and **HTFL 2026-10-05** (1.96×, stored window TIGHTENING, INVALIDATED, TIGHTENING), both bucket `tightening`, the same two
-  the page found in that window from raw bars — and changes no other field of any row (0 unexpected differences). Day-one SELECT dry-runs on prod with the column simulated: `q8_ssot_selects_dryrun.out` (Q0–Q2 exactly as written in this file) and `verify_live_dryrun.out` (all 30 stored raw reads judged `ok`, 27 of 27 shadow parents match).
+  the page found in that window from raw bars — and changes no other field of any row (0 unexpected differences). Both gains are also intraday breaks already in the shadow with a TIGHTENING parent
+  (`q4_agree.out`: EFOR 10-01 id 23, HTFL 10-05 id 25), so Q1 would have moved those two rows from `no EOD TRIGGERED read / TIGHTENING` to `tightening / TIGHTENING` — the two tables describing the same events. Day-one SELECT dry-runs on prod with the column simulated: `q8_ssot_selects_dryrun.out` (Q0–Q2 exactly as written in this file) and `verify_live_dryrun.out` (all 30 stored raw reads judged `ok`, 27 of 27 shadow parents match).
   **Anticipated effect**: stored baseline = 4 raw TRIGGERED reads in the last 60 scan dates (`q2_baseline.out`: CHYM 08-19, WDAY 08-28, XHLD 09-09, IOVA 09-14). The page's 60-session
   window (07-17 → 10-09) reads 14 instead of 4 on its wider population; on the live board 5 of the 10 extras would have registered (CDNA 07-31 and 08-25, CHPT 09-18, EFOR 10-01, HTFL 10-05
   — page §3), i.e. roughly one extra raw read per 12 sessions live, up to the page's whole-population rate of one per 4–5. The 17:25 digest therefore carries a TRIGGERED section on
@@ -438,13 +439,14 @@ all 2,397 names, 5 of the 10 extras in the 60-session scope window on the live b
   `closed` rows (no R, strategy disabled); (e) the monthly #92 graduation evidence's TRIGGERED cohort is now a mix of paths — split it by `triggered_from` before reading it.
   **WOULD-FAIL-IF** (positive; every one prints from `verify_live.sql`): statement 2 prints any `VIOLATION` — a raw TRIGGERED read with a NULL stamp; a `tightening` row with a COILED label in its own
   window (precedence wrong) or with no TIGHTENING label (the gate widened to WATCH / INVALIDATED); a `retrigger` row with a COILED or TIGHTENING label in its window or none TRIGGERED; a stamped hold; a stamp on a
-  non-TRIGGERED row; or statement 4's `parent_stage_mismatches` > 0. A zero-row day is NOT a pass (statement 1 can be empty) — the proof is a row judged `ok` against its own window.
+  non-TRIGGERED row; or statement 4's `parent_stage_mismatches` > 0. A zero-row day is NOT a pass (statement 1 can be empty) — the proof is a row judged `ok` against its own window. Statement 2 CANNOT discriminate a `coiled` row whose window holds no COILED label (it prints `ok (COILED the same day)` whatever the stamp): for the shipped path the proof is the offline replay's 4-of-4 control plus the code path, and the live check bites on the `tightening` / `retrigger` rows.
   **DONE-WHEN**: (i) the first raw TRIGGERED row after `d0` is stamped and `ok`, AND (ii) the first non-`coiled` row is `ok` with its window cited in the close note, AND (iii) statement 4 reads 0
   mismatches on the days the shadow wrote a row. If no `tightening` / `retrigger` row exists by scan session 20 (**2026-11-06** if `d0` = 2026-10-12), tell the operator the rule was never exercised by live data —
   do not close on silence.
   **Deploy scope** (derive: `scripts/exec_loaded_modules.txt` lines 10 and 46): `db.py` and `agent.py` are execution-loaded, `flag_detector.py` is market-agent only. The flag scan is INTELLIGENCE-owned
   (`flag_continuation_scan`), so `bash scripts/deploy.sh market-agent` carries the behaviour and `bash scripts/deploy.sh execution` is drift hygiene so the running execution container's `db.py` / `agent.py`
-  match the repo (the new column and its one-time label are added by whichever container runs `initialize_schema` first — idempotent and guarded). No orchestrator change. Weekends are unrestricted. Read the delta
+  match the repo — **sequentially: market-agent first, execution after it has booted** (the new column and its one-time label are added by whichever container runs `initialize_schema` first;
+  guarded, idempotent, and if two ever boot together the loser's whole block rolls back on `duplicate_column`, so the label is still written exactly once). No orchestrator change. Weekends are unrestricted. Read the delta
   first (a deploy ships the BRANCH): diff the running image against `origin/main` before deploying.
 - **2026-10-11 — #697 item 6: corpus mechanics — TEST FIXTURE ONLY, no detector, threshold or surfacing change.**
   `tests/fixtures/htf_labelled.py` gains `label_kind` (htf / consolidation / pointer / negative) and the suite asserts by

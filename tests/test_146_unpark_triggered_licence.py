@@ -208,6 +208,8 @@ async def test_the_schema_step_declares_the_column_and_backfills_it_exactly_once
     assert guard.index("ADD COLUMN triggered_from TEXT") < guard.index("UPDATE mi_flag_candidates")
     assert re.search(r"SET triggered_from = 'coiled'\s+WHERE stage = 'TRIGGERED'\s+AND held_from_stage IS NULL", guard)
     assert guard.index("UPDATE mi_flag_candidates") < guard.index("END IF;"), "the backfill is INSIDE the guard"
+    # two containers booting at once: the loser's ALTER finds the column and its whole block (UPDATE included) rolls back
+    assert "EXCEPTION WHEN duplicate_column THEN" in guard and guard.index("END IF;") < guard.index("EXCEPTION")
     assert "ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS triggered_from TEXT;" in ddl
 
 
