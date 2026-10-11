@@ -1448,6 +1448,58 @@ def _next_repair_sentence(now) -> str:
 _RESTORE_RETRY_BG_TASKS: set = set()
 
 
+def _full_exit_restore_page(
+    outcome: str, *, account_mode: str, event_norm: str, symbol: str, restore_price: float,
+    restore_qty: int, sold_order_id=None, error=None,
+) -> str:
+    """The operator page for how a dead full-exit sale's stop restore ended — ONE place for the words
+    both of `_handle_cancel_or_reject` §3's paths send (the inline first attempt and
+    `_restore_stop_after_dead_sale_in_background`), keyed on `order_manager`'s RESTORE_* outcomes
+    like its `_restore_outcome_line`. `sold_order_id` names the market sale (RESTORE_SOLD);
+    `error` is the refusal text (any other outcome is the STOP RESTORE FAILED page). Frozen
+    word for word by tests/test_687_stream_restore_pages_frozen.py."""
+    from agents.market_intelligence.broker.order_manager import (
+        FLAT_RESTORE_PAGE_BODY,
+        RESTORE_COVERED,
+        RESTORE_FLAT,
+        RESTORE_PLACED,
+        RESTORE_SOLD,
+    )
+    prefix = mode_prefix(account_mode)
+    if outcome == RESTORE_PLACED:
+        return (f"{prefix}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
+                f"Position still open. Stop re-placed @${restore_price:.2f} for {restore_qty} sh.")
+    if outcome == RESTORE_SOLD:
+        return (f"{prefix}🚨 *Close order {event_norm.upper()}:* {symbol}\nThe price is already "
+                f"below the stop ${restore_price:.2f}, so no stop could be re-placed — selling "
+                f"{restore_qty} sh at market now (Order {str(sold_order_id)[:8]}), as the "
+                f"triggered stop would have. _Confirms with real P&L on fill._")
+    if outcome == RESTORE_FLAT:
+        return f"{prefix}⚠️ *Close order {event_norm.upper()}:* {symbol}\n{FLAT_RESTORE_PAGE_BODY}"
+    if outcome == RESTORE_COVERED:
+        return (f"{prefix}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
+                f"Position still open. No stop re-placed: orders still resting at the "
+                f"broker hold every remaining share — check that one of them is a stop.")
+    return (f"{prefix}🚨 *CLOSE {event_norm.upper()} + STOP RESTORE FAILED* for {symbol}!\n"
+            f"{error}\n*Position may be unprotected — manual intervention required.*")
+
+
+async def _dead_sale_exit_reason(pool, order_id: str, symbol: str, account_mode: str,
+                                 sale: str) -> str:
+    """The `exit_reason` the dead sale was queued with — it labels the breach sale that stands in
+    for it (`sale` words the log line: "the market sale" / "a breach sale"). `stop_hit` when the
+    row has none or cannot be read: the label only, the sale goes ahead either way."""
+    try:
+        async with pool.acquire() as conn:
+            reason = await conn.fetchval(
+                "SELECT exit_reason FROM mi_live_orders WHERE alpaca_order_id = $1", order_id)
+    except Exception as _re:  # loud-ok: the label only — the sale goes ahead
+        logger.warning(f"WS [{account_mode}]: exit_reason read failed for {symbol} ({_re}) — "
+                       f"{sale} is labelled stop_hit")
+        reason = None
+    return reason or "stop_hit"
+
+
 async def _restore_stop_after_dead_sale_in_background(
     *, trade_id: int, ticker: str, symbol: str, account_mode: str, event_norm: str,
     order_id: str, signal_type, fallback_qty: float, restore_qty: int, restore_price: float,
@@ -1456,13 +1508,13 @@ async def _restore_stop_after_dead_sale_in_background(
     """#687 — the held-shares retry of `_handle_cancel_or_reject` §3 (a full-exit sale that died
     unfilled while the broker still holds its shares). Hands off to
     `order_manager._retry_restore_while_shares_held` (0.5 s polls, ≤ ~15 s; the dead sale's id is
-    excluded from its free-share reads) and maps every outcome to the branch's EXISTING page — the
-    same words the inline path sends — plus the audit rows the failed-exit restore writes
+    excluded from its free-share reads) and maps every outcome to the branch's EXISTING page — built
+    by `_full_exit_restore_page`, the same builder the inline path sends through — plus the audit
+    rows the failed-exit restore writes
     (`stop_restore_retried` / `stop_restore_retry_ended`). The pointer reason is the branch's own,
     `cancel_or_reject_restored`. Takes NO lock (unchanged from the inline branch). Any exception ends
     in the existing STOP RESTORE FAILED page: a background task must never fail silently."""
     from agents.market_intelligence.broker.order_manager import (
-        FLAT_RESTORE_PAGE_BODY,
         RESTORE_COVERED,
         RESTORE_FAILED,
         RESTORE_FLAT,
@@ -1474,23 +1526,16 @@ async def _restore_stop_after_dead_sale_in_background(
         _retry_restore_while_shares_held,
         set_stop_order_id,
     )
-    prefix = mode_prefix(account_mode)
-    head = f"{prefix}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
+    page = dict(account_mode=account_mode, event_norm=event_norm, symbol=symbol,
+                restore_price=restore_price, restore_qty=restore_qty)
     try:
         pool = await get_pool()
-        try:
-            async with pool.acquire() as conn:
-                _exit_reason = await conn.fetchval(
-                    "SELECT exit_reason FROM mi_live_orders WHERE alpaca_order_id = $1", order_id)
-        except Exception as _re:  # loud-ok: the label only — the retry goes ahead
-            logger.warning(f"WS [{account_mode}]: exit_reason read failed for {symbol} ({_re}) — "
-                           f"a breach sale is labelled stop_hit")
-            _exit_reason = None
+        _exit_reason = await _dead_sale_exit_reason(pool, order_id, symbol, account_mode,
+                                                    "a breach sale")
         retry = await _retry_restore_while_shares_held(
             trade_id, ticker, fallback_qty, restore_price, account_mode, qty=restore_qty,
             first_error=first_error, cancelled_stop_id=cancelled_stop_id,
-            reason=_exit_reason or "stop_hit", signal_type=signal_type,
-            also_exclude_ids=(order_id,))
+            reason=_exit_reason, signal_type=signal_type, also_exclude_ids=(order_id,))
         audit = dict(stop_price=restore_price, qty=restore_qty, retry=retry,
                      cancelled_stop_id=cancelled_stop_id)
         if retry.outcome is None and (retry.placed or {}).get("id"):
@@ -1501,9 +1546,7 @@ async def _restore_stop_after_dead_sale_in_background(
             except Exception as _pe:  # loud-ok: the ORDER is live, which is what protects the money
                 logger.error(f"WS [{account_mode}]: {symbol} stop {new_id} placed by the retry but "
                              f"the pointer write failed — {_pe}")
-            await send_telegram_message(
-                f"{head}Position still open. Stop re-placed @${restore_price:.2f} "
-                f"for {restore_qty} sh.")
+            await send_telegram_message(_full_exit_restore_page(RESTORE_PLACED, **page))
             await _audit_restore_retry(
                 STOP_RESTORE_RETRIED_EVENT, trade_id, ticker, account_mode, outcome=RESTORE_PLACED,
                 order_id=new_id, **audit)
@@ -1514,30 +1557,21 @@ async def _restore_stop_after_dead_sale_in_background(
         await _audit_restore_retry(
             STOP_RESTORE_RETRY_ENDED_EVENT, trade_id, ticker, account_mode, outcome=outcome, **audit)
         if outcome == RESTORE_SOLD and (retry.placed or {}).get("id"):
-            await send_telegram_message(
-                f"{prefix}🚨 *Close order {event_norm.upper()}:* {symbol}\nThe price is already "
-                f"below the stop ${restore_price:.2f}, so no stop could be re-placed — selling "
-                f"{restore_qty} sh at market now (Order {str(retry.placed['id'])[:8]}), as the "
-                f"triggered stop would have. _Confirms with real P&L on fill._")
+            await send_telegram_message(_full_exit_restore_page(
+                RESTORE_SOLD, sold_order_id=retry.placed["id"], **page))
         elif outcome == RESTORE_FLAT:
-            await send_telegram_message(f"{head}{FLAT_RESTORE_PAGE_BODY}")
+            await send_telegram_message(_full_exit_restore_page(RESTORE_FLAT, **page))
         elif outcome == RESTORE_COVERED:
-            await send_telegram_message(
-                f"{head}Position still open. No stop re-placed: orders still resting at the "
-                f"broker hold every remaining share — check that one of them is a stop.")
+            await send_telegram_message(_full_exit_restore_page(RESTORE_COVERED, **page))
         else:
             await send_telegram_message(
-                f"{prefix}🚨 *CLOSE {event_norm.upper()} + STOP RESTORE FAILED* for {symbol}!\n"
-                f"{retry.last_error}\n"
-                f"*Position may be unprotected — manual intervention required.*")
+                _full_exit_restore_page(RESTORE_FAILED, error=retry.last_error, **page))
             logger.error(f"WS [{account_mode}]: full exit {event_norm} stop-restore failed for "
                          f"{symbol} after the held-shares retry: {retry.last_error}")
     except Exception as e:  # loud-ok: the page below IS the report
         logger.error(f"WS [{account_mode}]: held-shares stop retry for {symbol} raised — {e}")
         try:
-            await send_telegram_message(
-                f"{prefix}🚨 *CLOSE {event_norm.upper()} + STOP RESTORE FAILED* for {symbol}!\n{e}\n"
-                f"*Position may be unprotected — manual intervention required.*")
+            await send_telegram_message(_full_exit_restore_page(RESTORE_FAILED, error=e, **page))
         except Exception as _se:  # loud-ok: nothing further can be done; logged
             logger.error(f"WS [{account_mode}]: could not page the failed retry for {symbol}: {_se}")
 
@@ -2512,7 +2546,11 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             # no longer counts it.
             from agents.market_intelligence.broker.order_manager import (
                 BROKER_FLAT_SOURCE,
-                FLAT_RESTORE_PAGE_BODY,
+                RESTORE_COVERED,
+                RESTORE_FAILED,
+                RESTORE_FLAT,
+                RESTORE_PLACED,
+                RESTORE_SOLD,
                 _audit_restore_skipped_broker_flat,
                 _broker_free_qty_for_restore,
                 get_pending_exit_qty,
@@ -2531,6 +2569,8 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
             restore_qty, _qty_source = await _broker_free_qty_for_restore(
                 trade_row["ticker"], account_mode, _fallback_qty,
                 exclude_ids=(trade_row["stop_order_id"], order_id))
+            _page = dict(account_mode=account_mode, event_norm=event_norm, symbol=symbol,
+                         restore_price=restore_price, restore_qty=restore_qty)
             if _qty_source == BROKER_FLAT_SOURCE:
                 # ⚖ #687 ruling (i): the broker shows NO position → nothing placed (see
                 # `_broker_free_qty_for_restore`); an UNREADABLE broker takes the books below.
@@ -2538,20 +2578,13 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     trade_row["id"], trade_row["ticker"], account_mode,
                     stop_price=restore_price, site="trade_stream.full_exit_cancel_restore",
                     fallback_qty=_fallback_qty)
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
-                    f"{FLAT_RESTORE_PAGE_BODY}"
-                )
+                await send_telegram_message(_full_exit_restore_page(RESTORE_FLAT, **_page))
                 logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, "
                                f"broker flat — no stop placed (the books said "
                                f"{float(_fallback_qty):.0f} sh)")
                 return
             if restore_qty <= 0 and _qty_source == "broker":
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
-                    f"Position still open. No stop re-placed: orders still resting at the "
-                    f"broker hold every remaining share — check that one of them is a stop."
-                )
+                await send_telegram_message(_full_exit_restore_page(RESTORE_COVERED, **_page))
                 logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, "
                                f"no free shares to re-protect (live resting orders hold them)")
                 return
@@ -2570,11 +2603,7 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                     reason="cancel_or_reject_restored",
                     account_mode=account_mode,
                 )
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}⚠️ *Close order {event_norm.upper()}:* {symbol}\n"
-                    f"Position still open. Stop re-placed @${restore_price:.2f} "
-                    f"for {restore_qty} sh."
-                )
+                await send_telegram_message(_full_exit_restore_page(RESTORE_PLACED, **_page))
                 logger.warning(f"WS [{account_mode}]: full exit {event_norm} for {symbol}, stop re-placed")
             except Exception as e:
                 # ⚖ #687 RULING (3), operator 2026-10-01: the broker refused the restore because
@@ -2604,35 +2633,19 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
                                    f"the background")
                     return
                 if restore_qty > 0 and _is_stop_above_market(e):
-                    try:
-                        async with pool.acquire() as conn:
-                            _exit_reason = await conn.fetchval(
-                                "SELECT exit_reason FROM mi_live_orders WHERE alpaca_order_id = $1",
-                                order_id)
-                    except Exception as _re:  # loud-ok: the label only — the sale goes ahead
-                        logger.warning(f"WS [{account_mode}]: exit_reason read failed for "
-                                       f"{symbol} ({_re}) — the market sale is labelled stop_hit")
-                        _exit_reason = None
+                    _exit_reason = await _dead_sale_exit_reason(
+                        pool, order_id, symbol, account_mode, "the market sale")
                     sold = await _sell_free_shares_after_stop_breach(
-                        trade_row["id"], trade_row["ticker"], restore_qty,
-                        _exit_reason or "stop_hit", account_mode, stop_price=restore_price,
+                        trade_row["id"], trade_row["ticker"], restore_qty, _exit_reason,
+                        account_mode, stop_price=restore_price,
                         site="trade_stream.full_exit_cancel_restore", error=str(e))
                     if sold:
-                        await send_telegram_message(
-                            f"{mode_prefix(account_mode)}🚨 *Close order {event_norm.upper()}:* "
-                            f"{symbol}\nThe price is already below the stop "
-                            f"${restore_price:.2f}, so no stop could be re-placed — selling "
-                            f"{restore_qty} sh at market now (Order {str(sold['id'])[:8]}), as "
-                            f"the triggered stop would have. _Confirms with real P&L on fill._"
-                        )
+                        await send_telegram_message(_full_exit_restore_page(
+                            RESTORE_SOLD, sold_order_id=sold["id"], **_page))
                         logger.warning(f"WS [{account_mode}]: full exit {event_norm} for "
                                        f"{symbol}, stop breached — market sale placed")
                         return
-                await send_telegram_message(
-                    f"{mode_prefix(account_mode)}🚨 *CLOSE {event_norm.upper()} + "
-                    f"STOP RESTORE FAILED* for {symbol}!\n{e}\n"
-                    f"*Position may be unprotected — manual intervention required.*"
-                )
+                await send_telegram_message(_full_exit_restore_page(RESTORE_FAILED, error=e, **_page))
                 logger.error(
                     f"WS [{account_mode}]: full exit {event_norm} stop-restore "
                     f"failed for {symbol}: {e}"
