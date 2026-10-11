@@ -291,16 +291,22 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
   bounce out and back; the rule pushes every genuine re-entry, as asked. If live data shows the same ticker
   pushing on consecutive days, the lever is a re-entry cool-off (a policy, not a bug fix) — measure first.
 
-**#146 — TRIGGERED from TIGHTENING without COILED (PARKED by him 2026-07-12; detection page 2026-10-11, #697 item 3):**
+**#146 — TRIGGERED from TIGHTENING without COILED (PARKED by him 2026-07-12 behind the faithful harness; detection page 2026-10-11, #697 item 3):**
 `docs/analysis/146_detection_page_2026-10-11.md` — the shipped `compute_flag_metrics` replayed over raw bars for 444
 sessions (2025-01-02 → 2026-10-09, 2,397 tickers, four arms differing in the one `recent_stages` conjunct). ESTABLISHED:
-the shipped rule registered 42 TRIGGERED reads; dropping the COILED prerequisite adds 101 (85 flags) that hold the base
-high at +10 sessions as often as the shipped reads (55% of 99 vs 57% of 42) and fail under the base low as rarely (14% vs
-14%), while breakouts from WATCH fail 24% (n = 351; 21% with base age matched — the WATCH set's bases are younger, 6 vs
-12) — on this measure the TIGHTENING licence separates and the COILED prerequisite does not, at 10 sessions. "From TIGHTENING" read on stored labels (held count) vs raw reads differs on 3 names (CDNA 08-25 among
-them, by a held night on the 5-day window's edge); CDNA 07-31 registers under either, 09-17 under none (0.83× volume).
-Detection only, no R; his 07-12 reopen condition (0031 structural stops) is not measurable there. **D1 is his; nothing
-moved.**
+the shipped rule registered 42 TRIGGERED reads; letting a breakout register from a TIGHTENING-or-better label without
+COILED turns them into 143 — +101 reads on 82 flags and 72 names the shipped rule never registered — and the added
+breakouts closed back under the base low within 10 sessions as rarely as the shipped ones (14% of 99 vs 14% of 42). The
+"above the base high at +10 sessions" check (55% vs 57%) separates nothing: breakouts with no tightening label hold 53%
+(n = 351), so the evidence is "no harm seen", not "proven as good". Breakouts from WATCH fail under the base low 24%
+(n = 351), 21% with base age matched (n = 157; the WATCH set's bases are younger, 6 vs 12): a lean, not a significant
+gap. "From TIGHTENING" read on stored labels (held count) vs raw reads differs on 3 names (CDNA 08-25 among them, by a
+held night on the 5-day window's edge); CDNA 07-31 registers under either, 09-17 under none (0.83× volume).
+"TIGHTENING-or-better" includes re-triggers off an earlier TRIGGERED label (5 of the 101), and the replayed licence reads
+the 5 days before the breakout, not the breakout day's own tightness (the shipped licence's same-day half; 24 of the 355
+from-WATCH breakouts, an independent count). Detection only, no R; he parked it 07-12 behind the faithful harness, and
+the harness then set the reopen condition (0031 structural stops) — a returns question the page cannot meet. **D1 is
+his; nothing moved.**
 
 ## Change log
 - **2026-10-11 — #697 item 6: corpus mechanics — TEST FIXTURE ONLY, no detector, threshold or surfacing change.**
