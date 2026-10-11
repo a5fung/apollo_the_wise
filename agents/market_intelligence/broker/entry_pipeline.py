@@ -387,6 +387,13 @@ async def submit_trade_entry(
     ticker = alert_context["ticker"]
     pool = await get_pool()
 
+    # The strategy row `_skip` attributes a skipped signal to (its account_mode picks the skip row's
+    # book AND the page's tag/chat). Set at each point a strategy row is first in hand: the
+    # dedup-mode resolve below for the early open-position guard, then the phase-gate fetch for every
+    # later skip. Bound HERE, before `_skip`, so an early skip never reads a name that is not yet
+    # assigned (the old closure read `strategy`, which only exists from the phase-gate line on).
+    _skip_strategy = None
+
     async def _skip(
         reason: str,
         icon: str = "⏭️",
@@ -398,9 +405,7 @@ async def submit_trade_entry(
                 await on_skip(reason)
             except Exception as e:
                 logger.warning(f"{strategy_label} {ticker}: on_skip hook raised — {e}")
-        # #444: bound BEFORE the try so a resolve failure (or `strategy` not yet
-        # assigned in the enclosing scope — _skip can fire ahead of the phase-gate
-        # line for the open-position guard) leaves this None rather than unbound.
+        # #444: bound BEFORE the try so a resolve failure leaves this None rather than unbound.
         # strategy_mode_prefix(None) says "mode unknown" (main chat) — the skip and CAP+1 alerts
         # below degrade to that instead of silently vanishing into the except below them (a NameError
         # here would have been swallowed). Pre-#699 the fallback was the legacy-global PAPER tag, which
@@ -411,7 +416,7 @@ async def submit_trade_entry(
             # shows a live-strategy skip under LIVE, not paper (operator 7/8). Resolved here
             # (skip path only) to avoid touching the main flow; the helper phase-guards + falls
             # back to the global mode, so no silent except.
-            _skip_mode = get_strategy_account_mode(strategy)
+            _skip_mode = get_strategy_account_mode(_skip_strategy)
             await _insert_skipped_trade(
                 ticker, today, alert_context, regime_record, reason,
                 signal_type=signal_type, account_mode=_skip_mode,
@@ -495,6 +500,7 @@ async def submit_trade_entry(
     try:
         from agents.market_intelligence.strategies.registry import get_strategy as _get_strategy
         _dedup_strategy = await _get_strategy(signal_type)
+        _skip_strategy = _dedup_strategy    # the early open-position guard's skip resolves from this
         _dedup_mode = (get_strategy_account_mode(_dedup_strategy)
                        if _dedup_strategy is not None else current_account_mode())
     except Exception as e:  # loud-ok: falls back to the pre-#465 behaviour; logged, never silent
@@ -551,6 +557,7 @@ async def submit_trade_entry(
     # single per-strategy enable/disable surface.
     from agents.market_intelligence.strategies.registry import get_strategy
     strategy = await get_strategy(signal_type)
+    _skip_strategy = strategy
     if strategy is not None:
         _phase_block = _phase_gate_skip_reason(strategy)
         if _phase_block is not None:
