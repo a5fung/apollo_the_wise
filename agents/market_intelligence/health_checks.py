@@ -2302,6 +2302,16 @@ _NOT_SWEEP_PARAMS: dict[str, str] = {
                     "on every row; not an experimental arm assignment.",
     "legacy_tier_last": "mi_ep_score_shadow: the counterfactual tier at the latest tick — same "
                     "as legacy_tier_first; a comparison record, nothing is varied per row.",
+    # #210 build (2026-10-10) — mi_tv_news_shadow's comparison-frame columns: OBSERVATIONS about
+    # one alert, not settings varied over it. One matcher, one 10:00 ET cutoff, for every row.
+    "our_acting_rule": "mi_tv_news_shadow: the lattice rule behind the grade that ACTED on the "
+                    "alert (mi_catalyst_tier_shadow.rule_last, mirrored for the second read-time "
+                    "cut) — provenance of an output, same shape as rule_last above; nothing is "
+                    "varied per row.",
+    "tv_items_after_cutoff": "mi_tv_news_shadow: COUNT of TradingView items published after the "
+                    "fixed 10:00 ET actionable cutoff - an observation about the window, bucketed "
+                    "by one constant for every row; not a swept parameter (the 'cutoff' substring "
+                    "is the only resemblance to mi_orb_extension_shadow.cutoff_minute).",
 }
 
 
