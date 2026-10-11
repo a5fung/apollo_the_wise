@@ -77,15 +77,14 @@ BREAKEVEN_ARM_R_VALUE = 3.0
 # (its mi_strategies row is seeded with profit_trigger_r 8.0 / breakeven_arm_r 3.0), so its rows
 # label era_d like MAGNA53's — never pooled with the unflipped era_c stack.
 PARTIAL_8R_SIGNAL_TYPES = frozenset({"magna53", "magna53_smallcap"})
-# 2026-10-10 (operator "go with rec"; magna53_ep.md change log): the +8R third on a 2-share
-# position sells 1 share instead of 0 (`order_manager.plus8r_partial_shares`). FIRST ACTING
-# SESSION = Mon 2026-10-12 — the build is a weekend deploy (Sat 10-10 / Sun 10-11) and no fill can
-# tell the two days apart; if the deploy slips past that Monday, move this date in the same
-# commit as the deploy-day line. Read ONLY by `scripts/ep_replay.ruleset_as_of` (integer-share
-# replays of real positions); deliberately NOT a key in `exit_rules_as_of` and NOT a new era
-# label: no stored row changes meaning (no 2-share position has ever reached +8R), and the
-# #482 recorders walk ONE fractional unit, where the rule has no object.
-PARTIAL_8R_MIN_ONE_DATE = date(2026, 10, 12)
+# 2026-10-10 (operator "go with rec"): the +8R third on a 2-share position sells 1 share instead
+# of 0 (`order_manager.plus8r_partial_shares`). DELIBERATELY NOT AN ERA SWITCH, so its date is NOT
+# a `*_DATE` here — every `*_DATE` in this module is read as "an exit-stack change that voids
+# prior reads" (`tests/test_exit_counterfactual_consolidation_631.py::_latest_exit_switch`
+# re-anchors three gated reviews to the newest one). This is sizing arithmetic: no stored row
+# changes meaning (no 2-share position has ever reached +8R) and the #482 recorders walk ONE
+# fractional unit, where the rule has no object. Its only date, the first acting session
+# (Mon 2026-10-12), lives with its only reader: `scripts/ep_replay.PARTIAL_MIN_ONE_SHARE_FROM`.
 
 
 def _flipped_8r(d: date, signal_type: str | None) -> bool:

@@ -122,11 +122,18 @@ from agents.market_intelligence.rule_eras import (  # noqa: E402
     STOP_2R_DATE,
     TRAIL_PRIOR_CLOSES_DATE,
     PARTIAL_8R_DATE,
-    PARTIAL_8R_MIN_ONE_DATE,
     PARTIAL_8R_VALUE,
     BREAKEVEN_ARM_R_DATE,
     BREAKEVEN_ARM_R_VALUE,
 )
+
+# 2026-10-10 (operator "go with rec"): first session on which a 2-share position's +8R third sells
+# 1 share (`order_manager.plus8r_partial_shares`) — Mon 2026-10-12, the first acting session of a
+# weekend deploy. ⚠ If the deploy slips past that Monday, move this date in the same commit.
+# Deliberately HERE and not in rule_eras: every `*_DATE` there is read as an exit-ERA switch (it
+# re-anchors three gated reviews, test_exit_counterfactual_consolidation_631), and this is sizing
+# arithmetic — no stored row changes meaning, the #482 recorders walk one fractional unit.
+PARTIAL_MIN_ONE_SHARE_FROM = date(2026, 10, 12)
 
 
 @dataclass(frozen=True)
@@ -240,7 +247,7 @@ RULESETS: dict[str, RuleSet] = {
 # would make this rule-set describe a system we do not run.
 #
 # 2026-10-10: `partial_min_one_share` is ON here (and in `ruleset_as_of` from
-# PARTIAL_8R_MIN_ONE_DATE) because `current` must model what the poll does TODAY — a 2-share
+# PARTIAL_MIN_ONE_SHARE_FROM) because `current` must model what the poll does TODAY — a 2-share
 # position sells 1 at +8R. This changes only integer-share replays of 2-share positions.
 RULESETS["era_d"] = replace(RULESETS["era_c"], name="era_d", intraday_partial_r=8.0,
                             breakeven_at_r=3.0, partial_min_one_share=True)
@@ -373,7 +380,7 @@ def ruleset_as_of(d: date) -> RuleSet:
         breakeven_at_partial=d >= BREAKEVEN_AT_PARTIAL_DATE,
         breakeven_at_r=BREAKEVEN_ARM_R_VALUE if d >= BREAKEVEN_ARM_R_DATE else None,
         ladder_partial=d < PARTIAL_LIVE_DATE,
-        partial_min_one_share=d >= PARTIAL_8R_MIN_ONE_DATE,
+        partial_min_one_share=d >= PARTIAL_MIN_ONE_SHARE_FROM,
     )
 
 

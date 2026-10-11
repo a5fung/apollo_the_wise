@@ -762,11 +762,12 @@ def test_older_eras_keep_the_old_two_share_answer():
 
 
 def test_the_two_share_switch_date_is_the_first_acting_session():
-    """Sat 10-10 / Sun 10-11 deploys act on Mon 10-12, never earlier (the rule_eras convention).
-    MUTATION TARGET: dating the switch to the commit day."""
+    """Sat 10-10 / Sun 10-11 deploys act on Mon 10-12, never earlier (the first-acting-session
+    convention rule_eras uses). Kept OUT of rule_eras: every `*_DATE` there re-anchors the
+    exit-era reviews. MUTATION TARGET: dating the switch to the commit day."""
     from agents.market_intelligence import rule_eras
-    assert rule_eras.PARTIAL_8R_MIN_ONE_DATE == date(2026, 10, 12)
-    assert rule_eras.PARTIAL_8R_MIN_ONE_DATE.weekday() == 0     # a Monday
+    assert ep_replay_mod.PARTIAL_MIN_ONE_SHARE_FROM == date(2026, 10, 12)
+    assert ep_replay_mod.PARTIAL_MIN_ONE_SHARE_FROM.weekday() == 0     # a Monday
     # not a key of the stamped stack: no stored #482 row changes meaning
     assert "partial_min_one_share" not in rule_eras.exit_rules_as_of(date(2026, 10, 13), "magna53")
 
