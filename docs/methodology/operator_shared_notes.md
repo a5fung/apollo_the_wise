@@ -1798,3 +1798,10 @@ How it maps to what we already run (no change proposed):
   version (2026-10-06 entry above: "sideways for months or years, then ~10× volume") is the same thesis. Neglect as
   ATTENTION (thin analyst coverage, low prior volume) rather than price shape is untested here — `analyst_estimates_recorder`
   carries a read-side thin-coverage rule; it is a candidate if he wants it measured.
+- **His reply, same day (verbatim):** *"No action yet, on your idea about low analyst coverage I don't think it's good, if
+  might just include thin stocks that's are tiny caps. A corollary to that may be the lack of or deceleration of analyst
+  upgrades, just a thought."* → Thin COVERAGE is ruled out as the neglect measure (it would mostly select tiny caps).
+  His candidate instead: **no analyst upgrades, or a slowing pace of upgrades, before the EP** — neglect as fading
+  attention, independent of size. Not scheduled ("no action yet"); if it is ever measured, the natural source is the
+  rating-change headlines already flowing through the Benzinga/Alpaca news feed (upgrade / downgrade / initiation counts in
+  the weeks before the gap), read against real EPs vs their board rivals, size held equal.
