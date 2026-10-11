@@ -1429,7 +1429,7 @@ stagger cards, one at a time.
 
 **His rulings Sat:** #594 supply read = dead end as a filter, labelling outcome-blind from sample #4 · #698 sell 1 of 2 ("ship it") · #559 keep switches on · depth exit covers the paper lane · paper depth sale = **option (c)** (paper-only DAY market order queued 19:01 ET; paper never fills opg) — **build Sunday** · #699 paper alerts → group "Apollo Paper" (chat id -5382801675, bot confirmed in it) — **build Sunday**.
 
-**Standing:** model capacity is back to full (his word 2026-10-10) — Fable available for hard design/analysis; explicit model on every spawn.
+**Capacity (as of 2026-10-10; capacity resets weekly — never carry a low-capacity note forward):** back to full (his word) — Fable available for hard design/analysis; explicit model on every spawn.
 
 **Sun 10-11:** 08:00 ET weekly review → verify #486 (30d n=14, 11 of 14) + #313 ($45.33+, "$+17 over 6 closed trades (3 winners)"), re-run `_wk1010_486/_313 run_probe.py render`, close #486 (verify-due 10-11). Build (c) + #699 (Sonnet + Opus review), set `TELEGRAM_PAPER_CHAT_ID` on the server, deploy both then execution, re-run #687 `expiry_path_test.py status` + `dryrun_two_share.py` + `dryrun_stamp.py`.
 
