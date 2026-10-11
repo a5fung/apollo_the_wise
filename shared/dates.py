@@ -26,9 +26,10 @@ def parse_iso_et(ts) -> datetime | None:
 
     Naive input is treated as UTC: that is what the containers write. The zone is attached
     explicitly rather than via a bare `.astimezone()`, which the deploy gate bans. A trailing `Z`
-    is read as UTC (`fromisoformat` rejects it before Python 3.11). This is the ONE place the
-    "naive means UTC" rule lives — `et_hhmm` and the TradingView shadow's publish-time parse both
-    go through it, so a change to the rule is made once.
+    is read as UTC (`fromisoformat` rejects it before Python 3.11). The shared parse of the
+    "naive means UTC" rule: `et_hhmm` and the TradingView shadow's publish-time parse route here.
+    Older inline copies remain (`ma_filter._alpaca_published_utc`, two sites in `system_review`)
+    - migrate them here when next touched.
     """
     if ts is None:
         return None
