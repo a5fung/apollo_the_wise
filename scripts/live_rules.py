@@ -1078,7 +1078,7 @@ def build_exit_section(res: Resolver) -> list[str]:
 
     ptr = res.const("PROFIT_TRIGGER_R")
     frame_fp = code_fingerprint("agents/market_intelligence/broker/order_manager.py",
-                                r'_ORB_R_FRAME_SIGNAL_TYPES = frozenset\(\{"magna53"\}\)')
+                                r'_ORB_R_FRAME_SIGNAL_TYPES = frozenset\(\{"magna53", "magna53_smallcap"\}\)')
     standdown_fp = code_fingerprint("agents/market_intelligence/broker/live_tracker.py",
                                     r"skip_partial_decision=bool\(PROFIT_TRIGGER_R\)")
     # #545 (2026-09-06): mi_strategies.profit_trigger_r OVERRIDES the constant per strategy.
@@ -1129,7 +1129,7 @@ def build_exit_section(res: Resolver) -> list[str]:
     elif res.prod.reachable and res.prod.strategies:
         L.append("     no per-strategy override set — MAGNA53 acts on the constant above.")
     if frame_fp:
-        L.append(f"     R here = entry − ORB low for MAGNA53 (NOT the placed 2R stop distance — that would "
+        L.append(f"     R here = entry − ORB low for MAGNA53 and the small-cap lane (NOT the placed 2R stop distance — that would "
                  f"silently make the target +4R) [{frame_fp}]")
     else:
         L.append("     ⚠ the ORB-R target-frame fingerprint is ABSENT — re-read profit_target_r_per_share")
