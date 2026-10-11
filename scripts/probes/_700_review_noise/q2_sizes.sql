@@ -1,0 +1,15 @@
+SELECT review_date, length(summary) AS summary_chars,
+       metrics->'report'->>'fold_chars' AS fold_chars,
+       metrics->'report'->>'head_lines' AS head_lines,
+       metrics->'report'->>'needs_you' AS needs_you,
+       metrics->'report'->>'needs_me' AS needs_me,
+       jsonb_array_length(COALESCE(metrics->'report'->'suppressed','[]'::jsonb)) AS suppressed_n,
+       metrics->'audit_errors'->>'total' AS err_rows,
+       metrics->'audit_errors'->>'open_total' AS err_open,
+       metrics->'cooldowns'->>'active_count' AS cooldowns_active,
+       metrics->'cooldowns'->>'triggered_this_week' AS cooldowns_week,
+       metrics->'crypto'->>'verdict' AS crypto_verdict,
+       metrics->'mfe_capture'->>'capture_pct' AS mfe_pct,
+       metrics->'judge_weekly'->>'total' AS judge_total,
+       metrics->'judge_weekly'->>'judged' AS judge_judged
+FROM mi_system_reviews ORDER BY review_date DESC LIMIT 8;

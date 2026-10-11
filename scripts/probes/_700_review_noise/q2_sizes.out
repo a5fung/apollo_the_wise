@@ -1,0 +1,10 @@
+review_date	summary_chars	fold_chars	head_lines	needs_you	needs_me	suppressed_n	err_rows	err_open	cooldowns_active	cooldowns_week	crypto_verdict	mfe_pct	judge_total	judge_judged
+2026-10-11	2350	12257	4	0	1	41	40	0	117	81	✅ live; gates clean	19	10	10
+2026-10-04	2147	7883	12	4	1	11	10	0	71	38	⚠️ not ready: 1 crypto_ingest_error events in last 7d	19	3	3
+2026-09-27	1699	6683	7	2	0	3	2	0	62	33	✅ live; gates clean	19	4	4
+2026-09-20	2222					0	3		73	29	✅ live; gates clean	19	5	5
+2026-09-13	2006					0	1		86	44	✅ live; gates clean	19	6	6
+2026-09-06	2122					0	291		75	42	✅ live; gates clean	19	4	3
+2026-08-30	1992					0	4		63	33	✅ live; gates clean	19	6	6
+2026-08-23	2430					0	20		43	30	✅ live; gates clean	18	11	11
+(8 rows)
