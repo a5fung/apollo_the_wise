@@ -6057,12 +6057,12 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
         if lane is None and _prose_downgrade_marker:
             try:
                 from agents.market_intelligence.briefing import send_telegram_message
-                from agents.market_intelligence.constants import mode_prefix
+                from agents.market_intelligence.constants import strategy_mode_prefix
                 if not _magna53_mode_fetched:
                     # Shared fail-open resolver (review 7/17 dedup): loud
                     # via strategy_mode_resolve_error on failure, never
-                    # raises; mode_prefix(None) falls back to the legacy
-                    # global default.
+                    # raises; strategy_mode_prefix(None) says "mode unknown"
+                    # (main chat, #699) rather than guessing the legacy paper default.
                     from agents.market_intelligence.constants import (
                         resolve_strategy_mode_nonfatal,
                     )
@@ -6089,7 +6089,7 @@ async def run_ep_scan(prev_close_date: str | None = None) -> list[dict]:
                         f"Acting grade now: {catalyst_quality}._"
                     )
                 await send_telegram_message(
-                    f"{mode_prefix(_magna53_account_mode)}📰 *Catalyst downgrade:* `{ticker}` "
+                    f"{strategy_mode_prefix(_magna53_account_mode)}📰 *Catalyst downgrade:* `{ticker}` "
                     f"gap +{c['gap_pct']:.1f}%\n" + _downgrade_outcome
                 )
             except Exception as e:

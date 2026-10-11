@@ -314,6 +314,25 @@ def mode_prefix(account_mode: str | None = None) -> str:
     return "💰 LIVE-$ " if mode == "live" else "📄 PAPER "
 
 
+# The two labels that are deliberately NEITHER book's tag (#699 review, 2026-10-11). Since the sender
+# routes on the paper tag, "which tag" now decides WHICH CHAT, so a message that is not about one known
+# paper book must not wear it. Neither starts with the paper tag, so both stay in the main chat.
+BOTH_BOOKS_TAG = "⚠️ MIXED live+paper "     # a message that genuinely spans both books (stream down, mixed cancel digest)
+UNRESOLVED_MODE_TAG = "⚠️ MODE UNKNOWN "    # the strategy-mode lookup failed: say so, do not guess a book
+
+
+def strategy_mode_prefix(account_mode: str | None) -> str:
+    """Tag for an alert about ONE strategy whose account mode the caller LOOKED UP and which may have
+    failed (`resolve_strategy_mode_nonfatal` is fail-open: None on a registry error).
+
+    `mode_prefix(None)` answers from `current_account_mode()` - "paper" in every prod container - so a
+    failed lookup used to label a LIVE strategy's alert PAPER; since #699 that tag also picks the chat,
+    which would send (for example) the live "ORB pipeline crashed" page to the paper group. A failed
+    lookup is now said out loud (`UNRESOLVED_MODE_TAG`, main chat); the `strategy_mode_resolve_error`
+    audit row the resolver already writes is the matching morning-banner signal."""
+    return mode_prefix(account_mode) if account_mode else UNRESOLVED_MODE_TAG
+
+
 # ── Paper-alert chat routing (#699, 2026-10-11) ──────────────────────────────
 # Paper alerts go to their own Telegram group so paper trading adds no noise to the main
 # chat. ONE switch, in the single sender `briefing.send_telegram_message`: a message whose

@@ -363,8 +363,10 @@ async def test_cap_plus_one_alert_survives_mode_resolve_failure(monkeypatch):
         "CAP+1 alert was DROPPED when strategy-mode resolution failed — "
         f"_skip_mode must default to None, not stay unbound. sent={sent}"
     )
-    # Legacy-global fallback (mode_prefix(None) == mode_prefix()) — "paper" here.
-    assert "📄 PAPER" in cap_msgs[0]
+    # #699: the fallback used to be the legacy-global PAPER tag (mode_prefix(None) == mode_prefix()); that tag
+    # now also picks the chat, so a failed lookup is said out loud and the page stays in the main chat.
+    assert constants.UNRESOLVED_MODE_TAG.strip() in cap_msgs[0]
+    assert "📄 PAPER" not in cap_msgs[0] and constants.paper_chat_id_for(cap_msgs[0]) is None
 
 
 # ─── live_tracker.process_new_alerts_live — crash + skip digest ─────────────
@@ -442,8 +444,10 @@ async def test_orb_skip_digest_uses_resolved_magna53_mode(monkeypatch):
 @pytest.mark.asyncio
 async def test_orb_skip_digest_falls_back_when_resolve_fails(monkeypatch):
     """resolve_strategy_mode_nonfatal is fail-open (returns None on error) — the
-    digest must degrade to the exact legacy behavior (mode_prefix(None) ==
-    mode_prefix()), never raise or drop the digest."""
+    digest must degrade (never raise or drop the digest) to a "mode unknown" label.
+    #699: it used to degrade to the legacy-global PAPER tag (mode_prefix(None) ==
+    mode_prefix()); that tag now also picks the chat, so a magna53 (live) digest
+    would have gone to the paper group on exactly the mornings the registry hiccups."""
     sent = _wire_orb_monitor(monkeypatch, magna53_mode=None)
     monkeypatch.setattr(lt, "check_filters", AsyncMock(return_value=(False, "filter:test_reason")))
     monkeypatch.setattr(lt, "_insert_skipped_trade", AsyncMock())
@@ -452,4 +456,20 @@ async def test_orb_skip_digest_falls_back_when_resolve_fails(monkeypatch):
 
     skip_msgs = [m for m in sent if "ORB skips" in m]
     assert len(skip_msgs) == 1
-    assert "📄 PAPER" in skip_msgs[0]  # legacy fallback ("paper" global) preserved
+    assert constants.UNRESOLVED_MODE_TAG.strip() in skip_msgs[0]
+    assert "📄 PAPER" not in skip_msgs[0] and constants.paper_chat_id_for(skip_msgs[0]) is None
+
+
+@pytest.mark.asyncio
+async def test_orb_crash_page_falls_back_to_mode_unknown_in_the_main_chat(monkeypatch):
+    """#699 review (minor): the live "ORB pipeline crashed" PAGE must not become a paper-chat message
+    when the magna53 mode lookup fails - the same morning the DB is flaky is the one it matters on."""
+    sent = _wire_orb_monitor(monkeypatch, magna53_mode=None)
+    monkeypatch.setattr(lt, "check_filters", AsyncMock(side_effect=RuntimeError("boom")))
+
+    await lt.process_new_alerts_live(today=_TODAY)
+
+    crash_msgs = [m for m in sent if "ORB pipeline crashed" in m]
+    assert len(crash_msgs) == 1, f"expected one crash alert, got {sent}"
+    assert constants.UNRESOLVED_MODE_TAG.strip() in crash_msgs[0]
+    assert "📄 PAPER" not in crash_msgs[0] and constants.paper_chat_id_for(crash_msgs[0]) is None

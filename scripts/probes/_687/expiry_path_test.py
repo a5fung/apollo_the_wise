@@ -41,7 +41,9 @@ VERDICTS (`classify`, pure, unit-checked):
   ⚠ The pages themselves are sent by the STREAM process, not this one, so they are not observable
   here: the probe uses the pointer row as the page's marker and prints "CHECK TELEGRAM" — the laptop
   wake looks for exactly one 'Stop re-placed' paper page and none of 'No stop re-placed' /
-  'UNPROTECTED' / 'STOP RESTORE FAILED'.
+  'UNPROTECTED' / 'STOP RESTORE FAILED'. ⚠ #699 (2026-10-11): paper pages now go to the 'Apollo Paper'
+  Telegram group, NOT the main chat - look there (the main chat only when TELEGRAM_PAPER_CHAT_ID is
+  unset). A page seen in the main chat means #699's switch is off; a page seen nowhere fails BOTH tasks.
 
 WHERE IT RUNS — the SERVER, never the laptop (a laptop wake can miss 08:30). Armed Sunday night as a
 `nohup` wall-clock loop on the host that, at 08:25 ET Monday, runs
@@ -212,7 +214,8 @@ def classify(obs: dict) -> tuple[str, str]:
             "unit-tested only, as on Day A; a pass, not a fail")
     return PASS, (f"stop for {stop.get('qty'):g} sh @ ${float(stop['price']):.2f} created "
                   f"{delta:.1f}s after the expiry, on the row; {path}. "
-                  f"CHECK TELEGRAM: one 'Stop re-placed' paper page, none of {list(BAD_PAGES)}")
+                  f"CHECK TELEGRAM in the 'Apollo Paper' group (#699 - NOT the main chat; the main chat only if "
+                  f"TELEGRAM_PAPER_CHAT_ID is unset): one 'Stop re-placed' paper page, none of {list(BAD_PAGES)}")
 
 
 # ── the real run (apollo-execution, paper) ────────────────────────────────────────────────────────

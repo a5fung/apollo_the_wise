@@ -149,14 +149,17 @@ async def _run_stream() -> None:
                 await asyncio.sleep(min(5 * retries, 30))
 
     from agents.market_intelligence.briefing import send_telegram_message
-    from agents.market_intelligence.constants import mode_prefix
+    from agents.market_intelligence.constants import BOTH_BOOKS_TAG
     # mode-ok: this is the STREAM-level failure (the shared WebSocket died after
-    # MAX_RETRIES) — it serves every subscribed ticker across every strategy, not
-    # one owning strategy's account. No single account_mode is correct here, so
-    # the legacy global default is the right label (#444 mode-label sweep judged
-    # this site, per-ticker subscribe failures below ARE strategy-attributed).
+    # MAX_RETRIES) — it serves every subscribed ticker across every strategy, live ORB
+    # entries included, not one owning strategy's account. No single account_mode is
+    # correct here (#444 mode-label sweep judged this site; per-ticker subscribe failures
+    # below ARE strategy-attributed). It used to wear the bare-default tag, which is
+    # `current_account_mode()` = PAPER in every prod container; since #699 that tag also
+    # picks the chat, so a live-relevant system alert would have moved to the paper group.
+    # Say what it is - a both-books alert - so it stays in the main chat.
     await send_telegram_message(
-        f"{mode_prefix()}⚠️ *Bar stream failed {MAX_RETRIES} times* — ORB entry falling back to 9:31 cron"
+        f"{BOTH_BOOKS_TAG}*Bar stream failed {MAX_RETRIES} times* — ORB entry falling back to 9:31 cron"
     )
 
 
@@ -215,9 +218,11 @@ async def _record_subscribe_failure(ticker: str, reason: str, account_mode: str 
     try:
         from agents.market_intelligence.briefing import send_telegram_message
         from agents.market_intelligence.broker.skip_reasons import humanize
-        from agents.market_intelligence.constants import mode_prefix
+        from agents.market_intelligence.constants import strategy_mode_prefix
+        # #699: the only caller (the pre-market EP scan) passes magna53's FAIL-OPEN resolved mode, so None
+        # here means the registry lookup failed - say so, do not guess PAPER (that tag now picks the chat).
         await send_telegram_message(
-            f"{mode_prefix(account_mode)}⚠️ *{ticker}* — {humanize(reason)}. 9:31 cron fallback will run."
+            f"{strategy_mode_prefix(account_mode)}⚠️ *{ticker}* — {humanize(reason)}. 9:31 cron fallback will run."
         )
     except Exception:
         # Audit row above is already written; log the alert-channel failure

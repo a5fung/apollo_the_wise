@@ -89,6 +89,7 @@ from agents.market_intelligence.constants import (
     current_account_mode,
     mode_prefix,
     resolve_strategy_mode_nonfatal,
+    strategy_mode_prefix,
 )
 
 logger = logging.getLogger(__name__)
@@ -624,7 +625,8 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
     # the two digest surfaces (crash + skip-digest) instead of falling back to
     # the legacy global per message. Fail-open, never raises (mirrors the
     # ep_detector downgrade-ping precedent) — a resolve miss degrades to the
-    # exact prior behavior (mode_prefix(None) == mode_prefix()), never blocks entry.
+    # "mode unknown" label (strategy_mode_prefix(None) - main chat, #699; it used to be the
+    # legacy-global PAPER guess, which now would also pick the paper chat), never blocks entry.
     _magna53_mode = await resolve_strategy_mode_nonfatal("magna53")
 
     logger.info(f"ORB monitor [{trigger}]: {len(alerts)} HIGH EP alerts: {[a['ticker'] for a in alerts]}")
@@ -758,7 +760,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
                 logger.exception(f"ORB crash audit_log write also failed for {tkr}")
             try:
                 await send_telegram_message(
-                    f"{mode_prefix(_magna53_mode)}🚨 *{tkr}* ORB pipeline crashed — {type(r).__name__}: {r}"
+                    f"{strategy_mode_prefix(_magna53_mode)}🚨 *{tkr}* ORB pipeline crashed — {type(r).__name__}: {r}"
                 )
             except Exception:
                 logger.exception(
@@ -791,7 +793,7 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         )
         try:
             await send_telegram_message(
-                f"{mode_prefix(_magna53_mode)}⏭️ *ORB skips ({today}, {len(digest_results)})*\n{bullets}"
+                f"{strategy_mode_prefix(_magna53_mode)}⏭️ *ORB skips ({today}, {len(digest_results)})*\n{bullets}"
             )
         except Exception as e:
             logger.error(f"ORB grouped-skip Telegram failed — {e}")

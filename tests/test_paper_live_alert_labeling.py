@@ -171,7 +171,10 @@ async def test_record_subscribe_failure_defaults_without_account_mode(monkeypatc
     await bar_stream._record_subscribe_failure("ABCD", f"{INFRA_SUBSCRIBE_FAILED}: boom")
 
     assert len(sent) == 1
-    assert "📄 PAPER" in sent[0]  # legacy fallback preserved for callers with no strategy context
+    # #699: the only caller passes the FAIL-OPEN resolved mode of magna53, so None means the lookup failed
+    # (the legacy-global PAPER guess now also picks the chat) - say "mode unknown", never PAPER.
+    assert constants.UNRESOLVED_MODE_TAG.strip() in sent[0]
+    assert "📄 PAPER" not in sent[0]
 
 
 @pytest.mark.asyncio

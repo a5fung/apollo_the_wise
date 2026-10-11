@@ -45,6 +45,7 @@ from agents.market_intelligence.constants import (
     get_strategy_account_mode,
     mode_prefix,
     resolve_account_mode_for_strategy,
+    strategy_mode_prefix,
 )
 from agents.market_intelligence.db import get_pool, log_audit_event
 import math
@@ -400,9 +401,10 @@ async def submit_trade_entry(
         # #444: bound BEFORE the try so a resolve failure (or `strategy` not yet
         # assigned in the enclosing scope — _skip can fire ahead of the phase-gate
         # line for the open-position guard) leaves this None rather than unbound.
-        # mode_prefix(None) == mode_prefix() — the CAP+1 alert below degrades to
-        # today's exact legacy-global behavior instead of silently vanishing into
-        # the except below it (a NameError here would have been swallowed).
+        # strategy_mode_prefix(None) says "mode unknown" (main chat) — the skip and CAP+1 alerts
+        # below degrade to that instead of silently vanishing into the except below them (a NameError
+        # here would have been swallowed). Pre-#699 the fallback was the legacy-global PAPER tag, which
+        # now also picks the chat, so a failed lookup would have sent a LIVE entry's page to Apollo Paper.
         _skip_mode = None
         try:
             # Attribute the filtered trade to the OWNING strategy's account so the EOD summary
@@ -443,7 +445,10 @@ async def submit_trade_entry(
         if not aggregate_skips or is_infra:
             try:
                 await send_telegram_message(
-                    f"{mode_prefix()}{icon} *{ticker}* {strategy_label} skipped — {humanize(reason)}"  # mode_prefix() ok here — pre-account-routing skip
+                    # #699 review: label with the OWNING strategy's account (`_skip_mode`, resolved above), never
+                    # the bare default - that is `current_account_mode()` = paper in every prod container, so an
+                    # infra:* page for a LIVE entry (INFRA_NO_BAR ...) would have moved to the paper chat.
+                    f"{strategy_mode_prefix(_skip_mode)}{icon} *{ticker}* {strategy_label} skipped — {humanize(reason)}"
                 )
             except Exception as e:
                 logger.error(f"{strategy_label} {ticker}: telegram skip alert failed — {e}")
@@ -460,7 +465,7 @@ async def submit_trade_entry(
             _is_cap = isinstance(reason, str) and reason.startswith(BLOCK_MAX_POSITIONS)
             if page_cap_plus_one and _is_cap and _cq == "game_changer":
                 await send_telegram_message(
-                    f"{mode_prefix(_skip_mode)}🌟🚫 *CAP+1 CANDIDATE — {ticker}*\n"
+                    f"{strategy_mode_prefix(_skip_mode)}🌟🚫 *CAP+1 CANDIDATE — {ticker}*\n"
                     f"game\\_changer · score {alert_context.get('ep_score', '?')} · "
                     f"blocked by full position cap.\n"
                     f"_Would auto-enter under the cap+1 rule (SHADOW — not live). "

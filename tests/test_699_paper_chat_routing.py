@@ -15,15 +15,20 @@ the OUTPUT of that derivation and a new member fails the build until someone dec
 from __future__ import annotations
 
 import ast
+import asyncio
+import importlib.util
 import json
 import logging
+from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from agents.market_intelligence import briefing, constants
 from shared.telegram_format import md_to_html
+from tests.conftest import make_mock_pool
 
 REPO = Path(__file__).resolve().parents[1]
 ROOTS = ("agents", "core", "channels", "shared")
@@ -301,9 +306,15 @@ def _callname(n: ast.Call) -> str | None:
     return f.id if isinstance(f, ast.Name) else (f.attr if isinstance(f, ast.Attribute) else None)
 
 
+# Both build the account tag at the front of an alert: `mode_prefix` (caller knows the mode) and
+# `strategy_mode_prefix` (caller looked the mode up and the lookup may have failed - #699 review fix).
+_TAG_BUILDERS = {"mode_prefix", "strategy_mode_prefix"}
+
+
 def _functions_calling_mode_prefix() -> list[tuple[str, str, ast.AST, bool]]:
     """(relative path, innermost enclosing function name, that function's node, bare_call) for
-    every `mode_prefix(` call in production code. `bare_call` = no args or a literal None."""
+    every `mode_prefix(` / `strategy_mode_prefix(` call in production code. `bare_call` = no args or
+    a literal None."""
     out = []
     for root in ROOTS:
         for p in sorted((REPO / root).rglob("*.py")):
@@ -321,7 +332,7 @@ def _functions_calling_mode_prefix() -> list[tuple[str, str, ast.AST, bool]]:
                 return None
 
             for n in ast.walk(tree):
-                if isinstance(n, ast.Call) and _callname(n) == "mode_prefix":
+                if isinstance(n, ast.Call) and _callname(n) in _TAG_BUILDERS:
                     fn = enclosing(n)
                     bare = (not n.args and not n.keywords) or (
                         len(n.args) == 1 and isinstance(n.args[0], ast.Constant) and n.args[0].value is None)
@@ -378,7 +389,7 @@ def test_every_function_that_builds_a_mode_tagged_text_reaches_the_sender_or_is_
         "set in tests/test_699_paper_chat_routing.py (routed via the sender / deliberately not routed).")
     stale = (_BUILDERS_VIA_SENDER | _BUILDERS_NOT_ROUTED | _RAW_BYPASS) - no_sender
     assert not stale, f"pinned but no longer a no-sender builder (moved or now sends directly): {sorted(stale)}"
-    assert len(direct) >= 40                              # 50 today — a sanity floor, not the proof
+    assert len(direct) >= 40                              # 49 today — a sanity floor, not the proof
 
 
 def test_builders_marked_routed_via_the_sender_live_in_a_file_that_calls_it():
@@ -432,16 +443,213 @@ async def test_a_staged_live_proposal_stays_in_the_main_chat_with_the_env_set(mo
 
 def test_bare_default_label_sites_are_pinned():
     """A bare mode_prefix() / mode_prefix(None) takes its tag from current_account_mode(), which is
-    'paper' in EVERY prod container (ALPACA_PAPER=true — the account_mode_active boot rows of
-    2026-10-11). Such an alert therefore carries the PAPER tag whatever it is about, and after #699
-    it lands in the paper chat. These are the places that can happen on purpose; the operator was
-    told (#699 report). A new one fails the build so it is a decision, not an accident."""
+    'paper' in EVERY prod container (ALPACA_PAPER=true - the account_mode_active boot rows of
+    2026-10-11). Such an alert carries the PAPER tag whatever it is about, so after #699 it lands in
+    the paper chat. The review of #699 found two of the three that mattered - bar_stream's stream
+    failure and entry_pipeline's un-aggregated skip (an infra: page for a LIVE entry) - and both now
+    resolve their own label; what is left is an interactive reply, which never goes through the switch
+    (explicit chat). A NEW one fails the build so it is a decision, not an accident."""
     bare = {(rel, name) for rel, name, _fn, b in _functions_calling_mode_prefix() if b}
     assert bare == {
         ("agents/market_intelligence/agent.py", "_handle_dryrun"),                  # interactive reply
-        ("agents/market_intelligence/broker/bar_stream.py", "_run_stream"),         # stream failure, serves both books
-        ("agents/market_intelligence/broker/entry_pipeline.py", "_skip"),           # un-aggregated skip alert
     }, f"bare-label sites changed: {sorted(bare)}"
+
+
+# ── review fixes (2026-10-11): an alert about a LIVE book must never wear the paper tag ──────────
+#
+# The first cut of #699 left two live-relevant alerts on a bare `mode_prefix()` (whose answer is
+# `current_account_mode()` = "paper" in every prod container) and four more that fall back to it when
+# the strategy-mode lookup fails. Each of those would have moved from "right chat, wrong label" to
+# "WRONG CHAT" the moment the switch went live. The tests below drive the real sender.
+
+def test_strategy_mode_prefix_never_guesses_a_failed_lookup(monkeypatch):
+    monkeypatch.setattr(constants, "current_account_mode", lambda: "paper")   # the prod default
+    f = constants.strategy_mode_prefix
+    assert f("live") == constants.mode_prefix("live")
+    assert f("paper") == constants.mode_prefix("paper")
+    unknown = f(None)
+    assert unknown == constants.UNRESOLVED_MODE_TAG and unknown != constants.mode_prefix("paper")
+    assert constants.paper_chat_id_for(unknown + "x") is None                 # stays in the main chat
+    assert constants.BOTH_BOOKS_TAG not in (unknown, constants.mode_prefix("live"), constants.mode_prefix("paper"))
+    assert constants.paper_chat_id_for(constants.BOTH_BOOKS_TAG + "x") is None
+
+
+def _wire_infra_skip(monkeypatch, router, *, phase, resolver_raises=False):
+    """Drive the REAL entry funnel to an `infra:` skip for a magna53 whose phase is `phase`, with the
+    REAL sender writing into `router`. `current_account_mode()` is paper, as in every prod container."""
+    from agents.market_intelligence.broker import entry_pipeline as ep
+    from agents.market_intelligence.broker import live_tracker as lt
+    from agents.market_intelligence.broker.skip_reasons import INFRA_NO_BAR
+    import agents.market_intelligence.strategies.registry as registry
+
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(side_effect=[False, None])        # not a duplicate, not already open
+    monkeypatch.setattr(ep, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(ep, "log_audit_event", AsyncMock())
+    monkeypatch.setattr(constants, "current_account_mode", lambda: "paper")
+    strategy = SimpleNamespace(enabled=True, phase=phase, live_real_enabled=True,
+                               position_size_multiplier=1.0, strategy_id="magna53")
+    monkeypatch.setattr(registry, "get_strategy", AsyncMock(return_value=strategy))
+    monkeypatch.setattr(lt, "_check_safeguards",
+                        AsyncMock(return_value=(False, f"{INFRA_NO_BAR}: 3 retries exhausted", 0.0)))
+    monkeypatch.setattr(lt, "_insert_skipped_trade", AsyncMock())
+    if resolver_raises:
+        monkeypatch.setattr(ep, "get_strategy_account_mode",
+                            lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("resolver boom")))
+    monkeypatch.setattr(briefing.httpx, "AsyncClient", router)
+    monkeypatch.setattr(briefing, "log_audit_event", AsyncMock())
+    return ep
+
+
+async def _run_infra_skip(ep):
+    async def _never(*_a, **_k):
+        raise AssertionError("the safeguard block must stop the entry before the spec is built")
+
+    return await ep.submit_trade_entry(
+        alert_context={"ticker": "SNX", "ep_score": 80, "catalyst_quality": "strong", "gap_pct": 12.0},
+        spec_builder=_never, regime_record=None, strategy_label="ORB", signal_type="magna53",
+        today=date(2026, 10, 12), atr_14=1.0, aggregate_skips=True)   # infra:* pings even when aggregating
+
+
+def _skip_posts(router):
+    return [p for p in router.posts if "skipped" in p["text"]]
+
+
+@pytest.mark.asyncio
+async def test_an_infra_skip_for_a_live_entry_reaches_the_main_chat(monkeypatch):
+    """The reviewer's blocking case: INFRA_NO_BAR on a LIVE magna53 entry. Pre-fix the page opened with
+    the bare-default PAPER tag and (with the switch on) went to Apollo Paper."""
+    router = _Router()
+    ep = _wire_infra_skip(monkeypatch, router, phase="live")
+    await _run_infra_skip(ep)
+    posts = _skip_posts(router)
+    assert len(posts) == 1, router.posts
+    assert posts[0]["chat_id"] == MAIN
+    assert "💰 LIVE-$" in posts[0]["text"] and "📄 PAPER" not in posts[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_an_infra_skip_for_a_paper_entry_still_goes_to_the_paper_chat(monkeypatch):
+    """Control: the fix must not pull a PAPER strategy's own skip out of the paper chat."""
+    router = _Router()
+    ep = _wire_infra_skip(monkeypatch, router, phase="paper")
+    await _run_infra_skip(ep)
+    posts = _skip_posts(router)
+    assert len(posts) == 1, router.posts
+    assert posts[0]["chat_id"] == PAPER and "📄 PAPER" in posts[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_an_infra_skip_whose_mode_lookup_failed_is_not_guessed_paper(monkeypatch):
+    router = _Router()
+    ep = _wire_infra_skip(monkeypatch, router, phase="live", resolver_raises=True)
+    await _run_infra_skip(ep)
+    posts = _skip_posts(router)
+    assert len(posts) == 1, router.posts
+    assert posts[0]["chat_id"] == MAIN
+    assert constants.UNRESOLVED_MODE_TAG.strip() in posts[0]["text"] and "📄 PAPER" not in posts[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_the_bar_stream_failure_page_is_a_both_books_alert_in_the_main_chat(monkeypatch):
+    """`_run_stream` serves every subscribed ticker across every strategy, live ORB entries included.
+    Pre-fix it wore the bare-default PAPER tag and would have moved to Apollo Paper."""
+    from agents.market_intelligence.broker import bar_stream
+    import agents.market_intelligence.db as db
+
+    class _DeadSocket:
+        async def _run_forever(self):
+            raise RuntimeError("socket closed")
+
+    real_sleep = asyncio.sleep
+
+    async def _no_wait(_seconds, *a, **k):
+        await real_sleep(0)
+
+    router = _Router()
+    monkeypatch.setattr(bar_stream, "_data_stream", _DeadSocket())
+    monkeypatch.setattr(bar_stream, "_subscribed", set())
+    monkeypatch.setattr(bar_stream, "_stream_healthy", False)
+    monkeypatch.setattr(bar_stream.asyncio, "sleep", _no_wait)
+    monkeypatch.setattr(db, "log_audit_event", AsyncMock())
+    monkeypatch.setattr(constants, "current_account_mode", lambda: "paper")   # the prod default
+    monkeypatch.setattr(briefing.httpx, "AsyncClient", router)
+    monkeypatch.setattr(briefing, "log_audit_event", AsyncMock())
+
+    await bar_stream._run_stream()
+
+    assert router.chats() == [MAIN], router.posts
+    text = router.posts[0]["text"]
+    assert "Bar stream failed" in text and "📄 PAPER" not in text
+    assert constants.BOTH_BOOKS_TAG.strip() in text and not constants.is_paper_message(text)
+
+
+_RESOLVER_CALLS = {"resolve_strategy_mode_nonfatal", "_magna53_account_mode"}
+
+
+def test_a_function_that_looks_a_strategy_mode_up_never_uses_the_guessing_prefix():
+    """DERIVED, not listed: every function in production code that calls the fail-open resolver
+    (`resolve_strategy_mode_nonfatal`, or the scheduler's `_magna53_account_mode` closure over it) gets
+    None back when the registry hiccups. `mode_prefix(None)` then guesses "paper" - and with #699 a
+    guessed paper tag sends a LIVE strategy's alert (ORB pipeline crashed, skip digest, catalyst
+    downgrade, out-of-window HIGH) to Apollo Paper. They must use `strategy_mode_prefix`."""
+    offenders, resolvers_seen = [], 0
+    for root in ROOTS:
+        for p in sorted((REPO / root).rglob("*.py")):
+            src = p.read_text(encoding="utf-8")
+            if "resolve_strategy_mode_nonfatal" not in src:
+                continue
+            for fn in ast.walk(ast.parse(src)):
+                if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    continue
+                names = [nm for n in ast.walk(fn) if isinstance(n, ast.Call) and (nm := _callname(n))]
+                if _RESOLVER_CALLS & set(names):
+                    resolvers_seen += 1
+                    if "mode_prefix" in names:
+                        offenders.append(f"{p.relative_to(REPO)}::{fn.name}")
+    assert resolvers_seen >= 3                     # live_tracker, ep_detector, scheduler (+ the closure's owner)
+    assert not offenders, (
+        f"{offenders} look up a strategy's mode (fail-open: None on error) and then label with the bare "
+        "mode_prefix, which guesses paper. Use constants.strategy_mode_prefix.")
+
+
+# ── the probes that ship with #699 ──────────────────────────────────────────
+
+def _load_probe(name: str):
+    path = REPO / "scripts" / "probes" / "_699_paper_chat" / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(f"_probe_{name}", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_dryrun_precheck_reads_the_real_env_and_names_a_wrong_id(monkeypatch):
+    """Pre-check (i) used to print only whether the variable was PRESENT, so a mistyped id still
+    passed. It must resolve the id the container really holds and demand the signed one."""
+    dry = _load_probe("dryrun_routing")
+    monkeypatch.setenv("TELEGRAM_PAPER_CHAT_ID", str(PAPER))
+    assert dry.check_real_env(require=True) == (True, f"real env routes a paper message to {PAPER}")
+    monkeypatch.setenv("TELEGRAM_PAPER_CHAT_ID", "-100123")
+    ok, why = dry.check_real_env(require=True)
+    assert ok is False and "-100123" in why and str(PAPER) in why
+    monkeypatch.setenv("TELEGRAM_PAPER_CHAT_ID", "'-5382801675'")      # a quoted value: malformed -> silently main
+    ok, why = dry.check_real_env(require=True)
+    assert ok is False and "malformed" in why
+    monkeypatch.delenv("TELEGRAM_PAPER_CHAT_ID")
+    assert dry.check_real_env(require=False)[0] is True                 # a laptop run is allowed to be unset
+    assert dry.check_real_env(require=True)[0] is False                 # a container check is not
+
+
+def test_live_routing_probe_sends_exactly_one_paper_message():
+    """One test message, into Apollo Paper only: a LIVE-$ / untagged line in the main chat would be the
+    very noise #699 removes, and the env var cannot change where those go (the dry run proves it)."""
+    probe = _load_probe("live_routing_check")
+    probes = probe.probe_texts()
+    assert [kind for kind, _ in probes] == ["paper"]
+    text = probes[0][1]
+    assert constants.is_paper_message(text) and "#699" in text and "no trade" in text   # tag derived from mode_prefix
+    # the probe refuses to send anything unless the real env resolves a paper message to the signed id
+    assert probe.EXPECTED_PAPER_CHAT == PAPER
 
 
 # ── env wiring ───────────────────────────────────────────────────────────────

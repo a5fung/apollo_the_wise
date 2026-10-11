@@ -49,7 +49,7 @@ from agents.market_intelligence.briefing import (
     send_telegram_message,
 )
 from agents.market_intelligence import close_digest
-from agents.market_intelligence.constants import mode_prefix, active_account_modes
+from agents.market_intelligence.constants import mode_prefix, active_account_modes, strategy_mode_prefix
 from agents.market_intelligence.backtester.tracker import (
     run_paper_trade_tracker,
     format_tracker_telegram,
@@ -1225,8 +1225,8 @@ async def _ep_scan_job():
                 # Shared fail-open resolver (review 7/17 dedup): never aborts
                 # the subscribe/skip paths; a failure emits
                 # strategy_mode_resolve_error (morning error banner) instead of
-                # a silent container-log line — mode_prefix(None) then falls
-                # back to the legacy global default.
+                # a silent container-log line — strategy_mode_prefix(None) then says
+                # "mode unknown" (main chat, #699) instead of guessing the paper default.
                 from agents.market_intelligence.constants import resolve_strategy_mode_nonfatal
                 _ep_account_mode = await resolve_strategy_mode_nonfatal("magna53")
                 _ep_mode_fetched = True
@@ -1295,7 +1295,7 @@ async def _ep_scan_job():
                         except Exception as _audit_err:
                             logger.warning("skip_row_write_error audit row NOT written for %s: %s", ep['ticker'], _audit_err)
                         await send_telegram_message(
-                            f"{mode_prefix(ep_mode)}🚨 *{ep['ticker']}* skip-row write FAILED "
+                            f"{strategy_mode_prefix(ep_mode)}🚨 *{ep['ticker']}* skip-row write FAILED "
                             f"({type(ins_e).__name__}) — HIGH alert has no terminal "
                             f"state; check execution service"
                         )
@@ -1308,7 +1308,7 @@ async def _ep_scan_job():
                     except Exception as _audit_err:
                         logger.warning("orb_out_of_window audit row NOT written for %s: %s", ep['ticker'], _audit_err)
                     await send_telegram_message(
-                        f"{mode_prefix(ep_mode)}⏰ *{ep['ticker']}* HIGH EP arrived {now_et.strftime('%H:%M')} ET — "  # recovery-clock-ok: a wall-clock TIME-OF-DAY label — when the tick actually happened, which is about NOW by definition. Leave it unpinned. What keeps a stale re-run off the ORB path is the FRESHNESS rule, not this: classify_slot calls sessions_opened_between and marks a slot unrecoverable once any session has opened since it, so a 09:00 slot dies at 09:30 and the only live recovery window is roughly [09:00, 09:30) — where the slot and the real clock both satisfy `hour==9 and minute<45` anyway (ORB_QUIET 09:25-10:05 is belt-and-braces). Pinning would make the text claim a time the scan never ran at, and would drop the safe default if that freshness rule ever loosened. (#672, corrected 2026-09-20.)
+                        f"{strategy_mode_prefix(ep_mode)}⏰ *{ep['ticker']}* HIGH EP arrived {now_et.strftime('%H:%M')} ET — "  # recovery-clock-ok: a wall-clock TIME-OF-DAY label — when the tick actually happened, which is about NOW by definition. Leave it unpinned. What keeps a stale re-run off the ORB path is the FRESHNESS rule, not this: classify_slot calls sessions_opened_between and marks a slot unrecoverable once any session has opened since it, so a 09:00 slot dies at 09:30 and the only live recovery window is roughly [09:00, 09:30) — where the slot and the real clock both satisfy `hour==9 and minute<45` anyway (ORB_QUIET 09:25-10:05 is belt-and-braces). Pinning would make the text claim a time the scan never ran at, and would drop the safe default if that freshness rule ever loosened. (#672, corrected 2026-09-20.)
                         f"ORB window closed, no order"
                     )
                     logger.info(f"EP {ep['ticker']}: outside ORB window ({now_et.strftime('%H:%M')} ET) — alert sent, no order")  # recovery-clock-ok: a wall-clock TIME-OF-DAY label — when the tick actually happened, which is about NOW by definition. Leave it unpinned. What keeps a stale re-run off the ORB path is the FRESHNESS rule, not this: classify_slot calls sessions_opened_between and marks a slot unrecoverable once any session has opened since it, so a 09:00 slot dies at 09:30 and the only live recovery window is roughly [09:00, 09:30) — where the slot and the real clock both satisfy `hour==9 and minute<45` anyway (ORB_QUIET 09:25-10:05 is belt-and-braces). Pinning would make the text claim a time the scan never ran at, and would drop the safe default if that freshness rule ever loosened. (#672, corrected 2026-09-20.)

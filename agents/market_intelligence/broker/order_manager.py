@@ -36,6 +36,7 @@ from agents.market_intelligence.broker.skip_reasons import (
 from agents.market_intelligence.briefing import send_telegram_message
 from shared.telegram_format import md_to_html   # #647: money-path pages go out on the HTML layer
 from agents.market_intelligence.constants import (
+    BOTH_BOOKS_TAG,
     current_account_mode,
     mode_prefix,
     active_account_modes,
@@ -6470,7 +6471,7 @@ def _cleanup_cancel_label(explicit_mode: str | None, touched_modes: set[str]) ->
         return mode_prefix(explicit_mode)
     if len(touched_modes) == 1:
         return mode_prefix(next(iter(touched_modes)))
-    return "⚠️ MIXED live+paper "
+    return BOTH_BOOKS_TAG    # #699: one source - the paper-chat switch must never see this as a paper tag
 
 
 async def cancel_unfilled_entries(reason: str = "EOD unfilled", account_mode: str | None = None) -> int:

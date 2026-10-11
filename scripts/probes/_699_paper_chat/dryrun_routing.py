@@ -8,12 +8,21 @@ container actually runs routes by the signed rule. It drives the REAL `briefing.
 recorder that answers a scripted status per chat id) and `log_audit_event` (so the failure path opens
 no database connection).
 
-  docker exec -i apollo-market    python - < scripts/probes/_699_paper_chat/dryrun_routing.py
-  docker exec -i apollo-execution python - < scripts/probes/_699_paper_chat/dryrun_routing.py
+  docker exec -i apollo-market    python - --require-env < scripts/probes/_699_paper_chat/dryrun_routing.py
+  docker exec -i apollo-execution python - --require-env < scripts/probes/_699_paper_chat/dryrun_routing.py
 
-It sets its OWN fake bot token, main chat (42) and paper chat (-5382801675) for the run and restores
-the environment afterwards, so it proves the CODE and says nothing about whether the container's real
-`TELEGRAM_PAPER_CHAT_ID` is set — that is the verify-live step (the container prints it below).
+Two halves, both must pass:
+  (i)  PRE-CHECK ON THE REAL ENVIRONMENT (runs first, before the env is replaced): resolves what the
+       container's real `TELEGRAM_PAPER_CHAT_ID` routes a paper message to and demands the signed id
+       (-5382801675). A quoted value, a value with a trailing comment or a mistyped id used to print
+       "set = True" and still pass; now each is named. `--require-env` makes an UNSET variable a failure
+       (use it in the containers; without it an unset variable only prints a notice, for laptop runs).
+  (ii) THE CODE: it sets its OWN fake bot token, main chat (42) and paper chat (-5382801675) for the
+       run and restores the environment afterwards, so this half proves the CODE routes by the signed
+       rule and says nothing about the container's env - that is half (i).
+
+Neither half sends anything. To see a message actually arrive in each chat, run
+`live_routing_check.py` (it DOES send, once, deliberately).
 
 PASS prints `DRYRUN PASS` and exits 0. On the PRIOR code (no routing) the paper cases land in the main
 chat, so it prints `DRYRUN FAIL` and exits 1 — the broken system cannot print PASS.
@@ -30,6 +39,7 @@ from agents.market_intelligence import briefing, constants
 from shared.telegram_format import md_to_html
 
 MAIN, PAPER = 42, -5382801675
+EXPECTED_PAPER_CHAT = PAPER          # the signed "Apollo Paper" chat id (#699, confirmed by the bot's getChat)
 PAPER_TEXT = "📄 PAPER ✅ *FILLED:* ABCD (attempt 1)\nEntry $10.00"
 LIVE_TEXT = "💰 LIVE-$ ✅ *FILLED:* ABCD (attempt 1)\nEntry $10.00"
 SYSTEM_TEXT = "🚨 *Job FAILED:* `ep_scan` — timeout"
@@ -85,9 +95,32 @@ async def _drive(text, plan=None, **kw):
     return ok, rec
 
 
-async def main() -> int:
+def check_real_env(require: bool) -> tuple[bool, str]:
+    """Pre-check (i): what the REAL environment routes a paper message to, and is it the signed id?
+
+    Must run BEFORE `main` replaces the environment with the dry run's own values. `require=False`
+    tolerates an unset variable (a laptop); `require=True` (the container check) does not."""
+    raw = os.environ.get("TELEGRAM_PAPER_CHAT_ID")
+    if raw is None or not raw.strip():
+        return (not require, "TELEGRAM_PAPER_CHAT_ID is unset/blank here - the switch is OFF in this environment")
+    routed = getattr(constants, "paper_chat_id_for", None)
+    if routed is None:
+        return False, "constants.paper_chat_id_for missing - pre-#699 code"
+    got = routed(constants.mode_prefix("paper") + "x")
+    if got is None:
+        return False, (f"TELEGRAM_PAPER_CHAT_ID={raw!r} is malformed (not a plain number) - the sender would "
+                       "silently send every paper alert to the main chat")
+    if got != EXPECTED_PAPER_CHAT:
+        return False, f"real env routes a paper message to {got}, but the signed Apollo Paper id is {EXPECTED_PAPER_CHAT}"
+    return True, f"real env routes a paper message to {got}"
+
+
+async def main(require_env: bool = False) -> int:
     bad: list = []
-    print(f"container env: TELEGRAM_PAPER_CHAT_ID set = {bool(os.environ.get('TELEGRAM_PAPER_CHAT_ID'))}")
+    env_ok, env_why = check_real_env(require_env)
+    print(f"  {'ok  ' if env_ok else 'BAD '}pre-check (i), the container's REAL env: {env_why}")
+    if not env_ok:
+        bad.append(("real env", env_why))
     saved = {k: os.environ.get(k) for k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_ALLOWED_USER_IDS", "TELEGRAM_PAPER_CHAT_ID")}
     os.environ.update({"TELEGRAM_BOT_TOKEN": "dryrun-token", "TELEGRAM_ALLOWED_USER_IDS": str(MAIN),
                        "TELEGRAM_PAPER_CHAT_ID": str(PAPER)})
@@ -138,4 +171,4 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+    sys.exit(asyncio.run(main(require_env="--require-env" in sys.argv[1:])))
