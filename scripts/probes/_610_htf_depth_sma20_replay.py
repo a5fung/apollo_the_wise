@@ -379,26 +379,28 @@ def ceilings(base_res, bars, dates_index):
     print(f"    ...and how far that one bar breached (points of the pole below 75%): {dict(sorted(one_bar_breach.items()))}")
 
 
-# ── corpus (N=8) under every variant ─────────────────────────────────────────
+# ── corpus (every member, by label_kind) under every variant ─────────────────
 
-def corpus_replay(fn, ticker, tb, through):
+def corpus_replay(fn, ticker, tb, through, start=None):
     dates = [r["trade_date"] for r in tb]
-    out, _, _ = replay_ticker(fn, ticker, tb, [d for d in dates if CORPUS_REPLAY_FROM <= d <= through])
+    lo = start or CORPUS_REPLAY_FROM       # a member with an earlier window carries its own replay_from
+    out, _, _ = replay_ticker(fn, ticker, tb, [d for d in dates if lo <= d <= through])
     return {m["scan_date"]: m for m in out}
 
 
 def corpus_block(variant_fns, corpus_bars):
     from tests.fixtures.htf_labelled import HTF_LABELLED
-    print("\n== LABELLED CORPUS (N=8, one contested; direction only, never a rate) — verdict on each member's assert dates ==")
-    print(f"  {'member':6} {'label':10} {'date':10} " + " ".join(f"{n:>12}" for n, *_ in VARIANTS))
+    print(f"\n== LABELLED CORPUS (N={len(HTF_LABELLED)}, one contested; direction only, never a rate) — verdict on each member's assert dates ==")
+    print(f"  {'member':6} {'label':13} {'date':10} " + " ".join(f"{n:>12}" for n, *_ in VARIANTS))
     flips = []
     for mem in HTF_LABELLED:
         tb = corpus_bars.get(mem.ticker)
         if not tb:
             print(f"  {mem.ticker}: no fixture bars")
             continue
-        per = {name: corpus_replay(fn, mem.ticker, tb, max(mem.assert_dates)) for name, fn in variant_fns.items()}
-        kind = "POSITIVE" if mem.ticker in ("CDNA", "HNGE", "MRNA") else "negative"
+        per = {name: corpus_replay(fn, mem.ticker, tb, max(mem.assert_dates), start=mem.replay_from)
+               for name, fn in variant_fns.items()}
+        kind = mem.label_kind      # htf / consolidation / pointer / negative (#697 item 6) — HNGE appears twice, GH is not an HTF
         for d in mem.assert_dates:
             cells = []
             for name, *_ in VARIANTS:
@@ -409,7 +411,7 @@ def corpus_block(variant_fns, corpus_bars):
                     b = per["BASE"].get(d)
                     if b is not None and (b["stage"] in ACTIONABLE) != (m["stage"] in ACTIONABLE):
                         flips.append((mem.ticker, kind, d, name, b["stage"], b["reason"], m["stage"], m["reason"]))
-            print(f"  {mem.ticker:6} {kind:10} {d.isoformat():10} " + " ".join(cells))
+            print(f"  {mem.ticker:6} {kind:13} {d.isoformat():10} " + " ".join(cells))
     print("  FLIPS vs BASE (actionable <-> not) on assert dates:")
     if not flips:
         print("    none")

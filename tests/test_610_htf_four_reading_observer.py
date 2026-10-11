@@ -63,7 +63,9 @@ _THROUGH = date(2026, 9, 17)     # MRNA's breakout day — the last bar in the f
 def corpus() -> dict[str, dict[date, dict]]:
     """Every labelled member replayed through the SHIPPED detector, prod-style state threading."""
     bars = _load_bars()
-    return {m.ticker: _replay(m.ticker, bars[m.ticker], through=_THROUGH) for m in HTF_LABELLED}
+    # one replay per TICKER (HNGE holds two members: the August HTF call and the June consolidation example)
+    tickers = dict.fromkeys(m.ticker for m in HTF_LABELLED)
+    return {tk: _replay(tk, bars[tk], through=_THROUGH) for tk in tickers}
 
 
 # ── 1. The day-one check: MRNA's four hand-measured values (PLAN #610 EXPECT) ────────────────

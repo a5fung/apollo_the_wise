@@ -208,9 +208,19 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
    a criterion question; recorded so the money gate is not built on an assumed edge.
 5. `close_below_base_low_close` INVALIDATED re-arms as the base's lowest close creeps down, so a
    name can flip INVALIDATED → TIGHTENING (CDNA 07-22→07-29, then 07-30). Cosmetic; unfixed.
-6. **Labelled corpus is N=8** (CDNA, HNGE, **MRNA**, NCI, ATAI, OUST, SHAZ, REPL — grown from 2 on 2026-09-04,
-   every member a VERBATIM operator label, never an inference — `tests/fixtures/htf_labelled.py`, replayed every suite
-   run through the shipped detector). Every further trader-shared HTF is a one-line addition.
+6. **Labelled corpus is N=11, pinned BY KIND** (`label_kind`, #697 item 6, 2026-10-11) — **htf** ×3 (CDNA — caught;
+   HNGE-August and MRNA — declared known misses at `runup_` / `flag_low_`), **consolidation** ×2 (GH, HNGE-June — his
+   06-27 family positives, NOT HTF labels; both stopped by the 90% pole floor on replay: 79% / 67%), **pointer** ×1
+   (HPE 06-02, recorded and never scored), **negative** ×5 (NCI, ATAI, OUST, SHAZ, REPL). Every member a VERBATIM
+   operator label, never an inference — `tests/fixtures/htf_labelled.py`, replayed every suite run through the
+   shipped detector by `tests/test_htf_labelled_corpus.py::check_member`; the new kinds must quote his words and the
+   quote is checked verbatim against the cited doc. The contract: an htf / consolidation member reaches TIGHTENING-or-
+   better inside the 5 scan sessions before its date OR declares the gate that stops it (`known_miss_gate`) — and a
+   declared miss the detector later catches FAILS, so a closed miss cannot stay on the books; a pointer / negative is
+   never asserted as a hit (a negative the raw function still scores — ATAI — names the layer that closes it,
+   `closed_by`). Only the `htf` kind enters a hit rate. `tests/test_697_corpus_label_kinds.py` proves the checker
+   fails on deliberately wrong members and on a loosened pole floor. Every further trader-shared HTF is a one-line
+   addition.
 7. **The shipped breakout bet has no replayed edge (#610, 2026-09-10 —
    `docs/analysis/610_htf_replay_2026-09-10.md`, harness `scripts/probes/_610_htf_replay.py`).**
    The live chain (detector → next-session break → `prepare_htf_breakout_order` →
@@ -277,6 +287,13 @@ Nothing below was changed; each is the operator's ruling and stays here until ru
   pushing on consecutive days, the lever is a re-entry cool-off (a policy, not a bug fix) — measure first.
 
 ## Change log
+- **2026-10-11 — #697 item 6: corpus mechanics — TEST FIXTURE ONLY, no detector, threshold or surfacing change.**
+  `tests/fixtures/htf_labelled.py` gains `label_kind` (htf / consolidation / pointer / negative) and the suite asserts by
+  kind (known limitation 6). Added GH 06-27 and HNGE 06-27 as CONSOLIDATION members and HPE 06-02 as a POINTER, from his own
+  words in `operator_shared_notes.md`, bars pulled from `mi_daily_closes` 2026-10-11. First replay of the June examples
+  through the shipped detector (the scope doc had them by inspection): GH `runup_79%` every session 06-03 → 06-24; HNGE-June
+  `runup_67%` 06-23 → 06-25 (WATCH at 92% on an earlier pivot 06-11 → 06-15); HPE `base_age_0` on the gap day. Both June
+  examples are stopped by the sourced 90% pole floor (Detection criteria above) — a recorded verdict, no criterion reopened.
 - **2026-10-11 — #697 item 5: the hysteresis holds a downgrade ONE night, as documented — a hold is never followed by a
   hold. A BUG FIX (the code held it night after night); no threshold, window, floor or stage rule moved, the flag strategy
   stays disabled, and no order / entry / sizing / safeguard path reads a stage. The per-night reading of WATCH / TIGHTENING /

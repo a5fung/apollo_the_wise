@@ -25,6 +25,28 @@ positive that the SOURCED 4–8-week pole definition rejects (pole 10–13 weeks
 mismatch is the operator's methodology fork (docs/setups/htf.md § Known limitations), and
 the test pins the current verdict rather than pretending the fork is settled.
 
+GH and HPE: bars pulled 2026-10-11 (#697 item 6), 2025-07-28 → 2026-09-04, same
+`mi_daily_closes` columns as the grid replay (HNGE's June bars were already here).
+
+⚠ **`label_kind` (#697 item 6, 2026-10-11) — four kinds, because "his example" is not one thing:**
+  - `htf`           — a trader-called high tight flag (CDNA, HNGE-Aug, MRNA). The ONLY kind that counts
+                     in a hit rate. Must reach a pushable stage (TIGHTENING or better) inside the 5 scan
+                     sessions before `label_date`, OR declare itself a KNOWN MISS naming the gate
+                     (`known_miss_gate` = the reason prefix) — and the declaration is two-sided: a
+                     declared miss that the detector now catches fails loudly so the label gets retired.
+  - `consolidation`— a family positive he labelled (clear run-up, flat base, break-out) that is NOT an
+                     HTF label (GH, HNGE-June). Same reach-or-declare rule, never counted as an HTF hit.
+  - `pointer`      — he pointed a name at the HTF / delayed-entry family without calling a flag (HPE).
+                     Recorded, never scored: its verdict is pinned as not-a-hit.
+  - `negative`     — his "this is not an HTF" (NCI, ATAI, OUST, SHAZ, REPL). Never a hit. A negative whose
+                     raw function output is still actionable (ATAI) must name the layer above the
+                     function that closes it (`closed_by`).
+`quote_file` points at the repo doc that holds `trader_read` verbatim; it is REQUIRED for
+`consolidation` / `pointer` (the new kinds — "do not invent labels") and checked by the suite.
+`replay_from` overrides the default 2026-06-15 replay start for members whose window is earlier;
+existing members keep 06-15 on purpose — moving it would re-thread their recorded pivots (OUST's
+reads $49.39, not the recorded $48.83, from a 05-18 start).
+
 HOW TO ADD A MEMBER — one line: append an `HTFLabelledMember(...)`, and append that
 ticker's bars to the .psv (same pull SQL as the grid replay; see
 `scripts/probes/_592_610_htf_grid_replay.py`). Check what the detector said on the label
@@ -35,23 +57,38 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
+LABEL_KINDS = ("htf", "consolidation", "pointer", "negative")
+# Kinds that claim "the detector should have flagged this": they must reach a pushable stage or
+# declare the gate that stops them. Pointer / negative never assert a hit.
+POSITIVE_KINDS = ("htf", "consolidation")
+
 
 @dataclass(frozen=True)
 class HTFLabelledMember:
     ticker: str
-    label_date: date                 # the day the trader acted / called it
-    label_source: str                # where the "this is an HTF" label comes from
+    label_date: date                 # the day the trader acted / called it (may be a weekend review date)
+    label_kind: str                  # one of LABEL_KINDS
+    label_source: str                # where the label comes from
     trader_read: str
     # what the SHIPPED detector is expected to say on `assert_dates` — RECORDED, not wished
     assert_dates: tuple[date, ...]
-    expected: str                    # "actionable" | "rejected:runup"
+    expected: str                    # "actionable" | "rejected:<reason prefix>"
     note: str
+    # positive kinds that do NOT reach a pushable stage: the reason prefix of the gate that stops them
+    known_miss_gate: str = ""
+    # a negative whose raw function output is actionable: the layer above the function that closes it
+    closed_by: str = ""
+    # repo doc holding `trader_read` verbatim (required for consolidation / pointer)
+    quote_file: str = ""
+    # replay start override (default: the corpus test's 2026-06-15)
+    replay_from: date | None = None
 
 
 HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
     HTFLabelledMember(
         ticker="CDNA",
         label_date=date(2026, 8, 19),
+        label_kind="htf",
         label_source=("operator-shared trader post 2026-08-25 (bought 08-19); recorded in "
                       "docs/analysis/htf_surfacing_gap_2026-08-25.md"),
         trader_read="one of the more textbook High Tight Flags I've seen",
@@ -63,11 +100,13 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
     HTFLabelledMember(
         ticker="HNGE",
         label_date=date(2026, 8, 24),
+        label_kind="htf",
         label_source=("operator-shared trader post 2026-08-24/25; recorded in "
                       "docs/analysis/htf_surfacing_gap_2026-08-25.md and PLAN #592"),
         trader_read="high tight flag",
         assert_dates=(date(2026, 8, 21), date(2026, 8, 24)),
         expected="rejected:runup_",
+        known_miss_gate="runup_",
         note=("RECORDED GAP, not an accepted state. Pole 05-04 $45.01 → 07-13 $91.50 = +103% over 49 "
               "sessions (10 weeks); the sourced spec is 90%+ in 4–8 weeks and its own scanner forms "
               "reject it on 08-24 (C/C40 1.14, High40/Low40 1.30 vs 1.90). Admitting it on the trader's "
@@ -77,6 +116,7 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
     HTFLabelledMember(
         ticker="MRNA",
         label_date=date(2026, 9, 17),
+        label_kind="htf",
         label_source=("operator-shared trader post 2026-09-17 07:53 (Leif Soreide, @LeifSoreide); "
                       "his chart is dated 2026-09-16 10:38, i.e. BEFORE the move he called. "
                       "Transcribed in docs/methodology/operator_shared_notes.md § 2026-09-17; charts stored at "
@@ -86,6 +126,7 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
                      "= the flag's upper rail; he says it triggered 09-17."),
         assert_dates=(date(2026, 9, 11), date(2026, 9, 15)),
         expected="rejected:flag_low_",
+        known_miss_gate="flag_low_",
         note=("RECORDED GAP, and a DIFFERENT gate from HNGE's — which is the point of adding it. "
               "The pole is never the issue here: runup reads 2.4 (240%) against a 90% floor. We "
               "reject on FLAG DEPTH, the same reason for 15 consecutive sessions 08-25 → 09-15: "
@@ -101,6 +142,7 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
     HTFLabelledMember(
         ticker="NCI",
         label_date=date(2026, 6, 27),
+        label_kind="negative",
         label_source=("operator /flags eyeball 2026-06-27, verbatim in commit e91f8f74 and "
                       "docs/setups/htf.md change-log (2026-06-27 entry): \"NCI is not valid\""),
         trader_read="NCI is not valid",
@@ -125,11 +167,13 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
     HTFLabelledMember(
         ticker="ATAI",
         label_date=date(2026, 7, 24),
+        label_kind="negative",
         label_source=("operator, 2026-07-24, verbatim in docs/analysis/htf_deal_pin_fresh_2026-07-24.md: "
                       "\"ATAI is a buyout so the HTF is invalid.\""),
         trader_read="ATAI is a buyout so the HTF is invalid.",
         assert_dates=(date(2026, 7, 24),),
         expected="actionable",
+        closed_by="flag_scan's M&A suppression layer 3 (`mna_filter:deal_pin_fresh`, shipped 2026-07-24, `tests/test_flag_fresh_deal_pin_502.py`) rewrites this COILED to `unqualified` before it can message; `compute_flag_metrics` alone cannot see a cash-deal weld",
         note=("NEGATIVE label, recorded the HNGE way: `compute_flag_metrics` ALONE reproduces the "
               "exact incident — COILED on 07-24 (`fresh_2bar 0.7%/atr 5.4% bodies_0.03/0.03`), the "
               "same row the operator was shown. Pure flag geometry cannot distinguish a cash-deal "
@@ -144,6 +188,7 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
     HTFLabelledMember(
         ticker="OUST",
         label_date=date(2026, 9, 4),
+        label_kind="negative",
         label_source=("operator sign-off 2026-09-04 on the #592 anchor-fix's removed-names ledger "
                       "(docs/analysis/htf_pole_window_grid_2026-09-04.md), verbatim in commit "
                       "451c477d: \"i don't see HTF in those 3 names at all\" (OUST, SHAZ, REPL)"),
@@ -161,6 +206,7 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
     HTFLabelledMember(
         ticker="SHAZ",
         label_date=date(2026, 9, 4),
+        label_kind="negative",
         label_source=("operator sign-off 2026-09-04 on the #592 anchor-fix's removed-names ledger "
                       "(docs/analysis/htf_pole_window_grid_2026-09-04.md), verbatim in commit "
                       "451c477d: \"i don't see HTF in those 3 names at all\" (OUST, SHAZ, REPL)"),
@@ -176,6 +222,7 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
     HTFLabelledMember(
         ticker="REPL",
         label_date=date(2026, 9, 4),
+        label_kind="negative",
         label_source=("operator sign-off 2026-09-04 on the #592 anchor-fix's removed-names ledger "
                       "(docs/analysis/htf_pole_window_grid_2026-09-04.md), verbatim in commit "
                       "451c477d: \"i don't see HTF in those 3 names at all\" (OUST, SHAZ, REPL)"),
@@ -196,5 +243,88 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
               "at all\" verdict should NOT be read as covering it — it is a genuinely new admission "
               "the fix creates that no one has judged. Left unasserted deliberately; flagged for his "
               "eyeball, not inferred either way."),
+    ),
+    # ── #697 item 6 (2026-10-11): the June consolidation examples + the HPE pointer ─────────────
+    # Verdicts below are the SHIPPED detector's, replayed from stored bars 2026-10-11 — NOT the stored
+    # June `mi_flag_candidates` rows (those ran under the RETIRED 50%/60-day rule and a pre-#592 pivot
+    # walk: GH read WATCH 06-09 → 06-15 there, `runup_79%` is a reject today).
+    HTFLabelledMember(
+        ticker="GH",
+        label_date=date(2026, 6, 27),            # a Saturday: the worksheet-review date
+        label_kind="consolidation",
+        label_source=("operator, 2026-06-27 anticipation-worksheet review, verbatim in "
+                      "docs/methodology/operator_shared_notes.md § 2026-06-27 (\"GH... clear run up and a "
+                      "clear flat basing structure, and the past few days broke out from it\"); classed a "
+                      "CONSOLIDATION (family) positive, not an HTF label, in "
+                      "docs/analysis/htf_scope_2026-10-10.md §2b"),
+        trader_read=("clear run up and a clear flat basing structure, and the past few days broke out "
+                     "from it"),
+        quote_file="docs/methodology/operator_shared_notes.md",
+        assert_dates=(date(2026, 6, 23), date(2026, 6, 24)),
+        expected="rejected:runup_",
+        known_miss_gate="runup_",
+        replay_from=date(2026, 5, 18),
+        note=("KNOWN MISS on the replayable gate: `runup_79%_below_90%` on every session 06-03 → 06-24 "
+              "(pivot 05-28 $133.71, the flat base is closes $127–132), i.e. the 90% pole floor, not the "
+              "40-session window — the same 'under today's 90% pole it would also reject' the scope doc "
+              "stated by inspection (§2b/§8), now replayed. On 06-25/06-26 the break-out bars re-anchor the "
+              "pivot (`base_age_0`) — the post-breakout reset #697 item 4 is about, not asserted here. "
+              "⚠ The PRODUCTION miss was a different gate the bars cannot exercise: GH fell off the "
+              "UNIVERSE mid-base (no `mi_flag_candidates` rows 06-16 → 06-25: `rs_rank` 255 → 591, "
+              "`rs_1m` 74 → 41) — that is #697 items 1/2's universe carry, tested in "
+              "tests/test_697_universe_carry.py, outside `compute_flag_metrics`. Not an HTF label: a "
+              "hit-rate that counted GH would tune the HTF pole on a name he never called one."),
+    ),
+    HTFLabelledMember(
+        ticker="HNGE",
+        label_date=date(2026, 6, 27),            # a Saturday: the same worksheet review as GH
+        label_kind="consolidation",
+        label_source=("operator, 2026-06-27 anticipation-worksheet review, verbatim in "
+                      "docs/methodology/operator_shared_notes.md § 2026-06-27 (\"HNGE is another one that "
+                      "looks great on the chart, clear run up, clear tight basing, clear break out\"); "
+                      "classed a CONSOLIDATION (family) positive, not an HTF label, in "
+                      "docs/analysis/htf_scope_2026-10-10.md §2b. The August HTF call on the same ticker is "
+                      "the separate `htf` member above"),
+        trader_read=("HNGE is another one that looks great on the chart, clear run up, clear tight "
+                     "basing, clear break out"),
+        quote_file="docs/methodology/operator_shared_notes.md",
+        assert_dates=(date(2026, 6, 24), date(2026, 6, 25)),
+        expected="rejected:runup_",
+        known_miss_gate="runup_",
+        replay_from=date(2026, 5, 18),
+        note=("KNOWN MISS on the pole floor: `runup_67%_below_90%` 06-23 → 06-25 — the pole is measured "
+              "from the 04-23 low $42.31 to the 06-16 pivot $70.72 (70.72/42.31 = 1.67), matching the "
+              "scope doc's by-inspection 67%, now replayed. Today's code does NOT walk the pivot on 06-22 "
+              "(high $71.44 closed $68.85, under the prior top) — the pre-#592 walk the scope doc names. "
+              "A DIFFERENT, earlier pivot did pass the floor: WATCH 06-11 → 06-15 at 92% (pivot 06-05 "
+              "$66.55, a 3–5 day base); the 06-15 close above it re-anchored the pivot "
+              "(`base_age_0..2` 06-16 → 06-22) — WATCH only, never TIGHTENING, and outside the 5 sessions "
+              "before the review, so it does not make this a hit. 06-26 reads `base_age_0` (break-out "
+              "re-anchor, item 4's subject). Family positive, not an HTF by the sourced spec."),
+    ),
+    HTFLabelledMember(
+        ticker="HPE",
+        label_date=date(2026, 6, 2),             # the EP gap day he ruled on (ruling made 2026-10-05)
+        label_kind="pointer",
+        label_source=("operator chart ruling 2026-10-05 on review sample #3 (a real EP day), verbatim in "
+                      "docs/methodology/operator_shared_notes.md § 2026-10-05: \"HPE 06-02 — ok, it's "
+                      "already quite extended on the run up to the gap with previous gap up as well, this "
+                      "is a good candidate for HTF or delayed entry\"; recorded as a POINTER (not a label) "
+                      "in docs/analysis/htf_scope_2026-10-10.md §2c"),
+        trader_read=("it's already quite extended on the run up to the gap with previous gap up as well, "
+                     "this is a good candidate for HTF or delayed entry"),
+        quote_file="docs/methodology/operator_shared_notes.md",
+        assert_dates=(date(2026, 6, 2),),
+        expected="rejected:base_age_",
+        replay_from=date(2026, 5, 18),
+        note=("POINTER — RECORDED, NOT SCORED. He pointed an extended EP day at the HTF / delayed-entry "
+              "families; he did not say a flag existed on 06-02, and one cannot: the gap bar IS the pivot "
+              "(the pivot moves to 06-02's $64.25 high only on 06-03), so the replay reads `base_age_0` on "
+              "the day and the suite pins exactly that — a pointer is never asserted as a hit. What the "
+              "shipped detector says afterwards (not asserted): WATCH 06-08 (169% run-up, 3-day base, close "
+              "22% under the pivot — a gap that had already failed), INVALIDATED 06-09/06-10, `flag_low_` "
+              "06-11 → 06-24 (low $44.74 under 75% of the $64.25 pole), INVALIDATED again 06-25/06-26. The "
+              "stored June rows (old rule) read WATCH 06-11 → 06-18 and then NO ROW 06-22 → 07-16 — the "
+              "same universe drop as GH, after the base had already failed."),
     ),
 )
