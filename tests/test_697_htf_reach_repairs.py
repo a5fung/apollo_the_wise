@@ -308,6 +308,21 @@ async def test_a_failing_audit_write_never_breaks_the_scan(world, monkeypatch):
     assert len(world.sent) == 1
 
 
+@pytest.mark.asyncio
+async def test_a_record_build_failure_is_named_by_the_error_event_and_never_breaks_the_scan(world, monkeypatch):
+    """What `flag_digest_sent_error` actually means (review fix 2026-10-11): the record could not be BUILT (the detail
+    JSON), not that the audit INSERT failed - `db.log_audit_event` swallows its own errors and never raises, so a
+    failed write leaves only a logged warning and the MISSING `flag_digest_sent` row is the signal."""
+    def _boom(*a, **k):
+        raise TypeError("detail JSON could not be built")
+    monkeypatch.setattr(fd, "_digest_record", _boom)
+    await fd.send_flag_digest(_board(_row("OLD1", "COILED", rr=0.5, vr=0.5)), D1, yesterday_map={"OLD1": "COILED"})
+    assert len(world.sent) == 1                       # the digest still went out
+    assert _digest_rows(world) == []                  # no send record...
+    (err,) = [a for a in world.audit if a[0] == "flag_digest_sent_error"]
+    assert "TypeError" in err[1]                      # ...and the error row names why
+
+
 def test_build_flag_digest_is_still_pure_and_unchanged_in_signature():
     """test_598 calls it directly; the record helper is additive."""
     msg = fd.build_flag_digest(_board(_row("OLD1", "COILED", rr=0.5, vr=0.5)), D1, [])

@@ -1,0 +1,13 @@
+# red: tests/test_697_universe_carry.py::test_a_carried_name_must_have_a_bar_on_the_scan_date on the UNFIXED branch head 0c301dff
+        sql = " ".join(conn.fetch.await_args_list[3].args[0].split())
+>       assert "EXISTS (SELECT 1 FROM mi_daily_closes dc WHERE dc.ticker = c.ticker AND dc.trade_date = $1::date)" in sql, (
+            "the carry query does not require the carried ticker to have a bar on the scan date")
+E       AssertionError: the carry query does not require the carried ticker to have a bar on the scan date
+E       assert 'EXISTS (SELECT 1 FROM mi_daily_closes dc WHERE dc.ticker = c.ticker AND dc.trade_date = $1::date)' in "WITH scan_days AS ( SELECT s.scan_date, ROW_NUMBER() OVER (ORDER BY s.scan_date DESC) AS lag FROM ( SELECT DISTINCT s...sd ON sd.scan_date = c.scan_date WHERE sd.lag <= $3::int AND c.stage IN ('WATCH', 'TIGHTENING', 'COILED', 'TRIGGERED')"
+
+tests/test_697_universe_carry.py:133: AssertionError
+
+=========================== short test summary info ============================
+FAILED tests/test_697_universe_carry.py::test_a_carried_name_must_have_a_bar_on_the_scan_date
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 24 passed in 0.11s

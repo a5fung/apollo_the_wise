@@ -307,8 +307,8 @@ async def _fetch_flag(window_days: int) -> list[dict]:
     `mi_flag_candidates` — the DETECTOR's output, which has no strategy row of its own — exactly the
     distinction `run_flag_scan` drew on 08-02/03 ("flag detector is on, that can just be detecting flags
     in general"). Retiring a strategy must never retire the detector's watch surfaces. Pinned by
-    tests/test_697_htf_reach_repairs.py (an AST check that no registry call returns, and a render with the
-    strategy disabled). Display only: no order, entry, sizing or safeguard path is read or written here.
+    tests/test_697_htf_reach_repairs.py (behavioural: every registry entry point raises if touched, and a
+    render with the strategy disabled still lists the names). Display only: no order, entry, sizing or safeguard path is read or written here.
     """
     pool = await get_pool()
     async with pool.acquire() as conn:

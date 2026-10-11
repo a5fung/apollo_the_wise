@@ -1,0 +1,7 @@
+2026-09-01 CHYM last stored TRIGGERED@2026-08-28 | raw unqualified runup_71%_below_90% | with yesterday=TRIGGERED -> unqualified held_from None 
+2026-09-03 WDAY last stored TRIGGERED@2026-09-02 | raw WATCH runup_104% base_14d close_vs_pivot_-9.0% | with yesterday=TRIGGERED -> TRIGGERED held_from WATCH <-- LISTED in the digest's TRIGGERED section
+2026-09-04 WDAY last stored TRIGGERED@2026-09-02 | raw WATCH runup_104% base_15d close_vs_pivot_-13.9% | with yesterday=TRIGGERED -> TRIGGERED held_from WATCH <-- LISTED in the digest's TRIGGERED section
+2026-09-08 WDAY last stored TRIGGERED@2026-09-02 | raw INVALIDATED close_186.28_below_base_low_close_190.63 | with yesterday=TRIGGERED -> INVALIDATED held_from None 
+2026-09-09 WDAY last stored TRIGGERED@2026-09-02 | raw INVALIDATED close_186.05_below_base_low_close_186.28 | with yesterday=TRIGGERED -> INVALIDATED held_from None 
+2026-09-10 WDAY last stored TRIGGERED@2026-09-02 | raw INVALIDATED close_185.09_below_base_low_close_186.05 | with yesterday=TRIGGERED -> INVALIDATED held_from None 
+name-nights replayed: 6; held-TRIGGERED (listed with no fresh breakout): 2

@@ -7806,7 +7806,11 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
           The state machine still decides every stage (a carried name
           re-establishes its stage or progresses to INVALIDATED); the
           liquidity floors, pole, depth, trend and M&A screens all still
-          apply. ⚠ INTERACTION with the hold (htf_scope G4, item 5): the
+          apply. A carried name must also have a bar ON THE SCAN DATE (same
+          as the organic path): a name with no bar that day is not scored on
+          frozen history, and a market-holiday scan carries no flag-stage names
+          (the R3 / 9M carries are separate paths).
+          ⚠ INTERACTION with the hold (htf_scope G4, item 5): the
           hysteresis stores a held label, so a held stage re-arms this
           carry each night until INVALIDATED or a pivot reset.
 
@@ -7989,6 +7993,16 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
         # session. Rows older than 25 sessions are dropped here, the 5-vs-25
         # split is `flag_carry_sources` (pure, tested).
         #
+        # A carried name must also have a BAR ON THE SCAN DATE ($1) - the same
+        # requirement the organic path states (`INNER JOIN mi_daily_closes d ...
+        # d.trade_date = $1`). Without it `_score` rates a name on FROZEN history:
+        # FBRX (last bar 08-26, the deal closed) was carried on 12 scans 08-27 ->
+        # 09-14, and a frozen WATCH-or-better read re-arms its own carry (with the
+        # G4 hold, indefinitely). It also keeps a market-holiday scan (06-19, 07-03,
+        # 09-07: 0 bars each) from re-scoring ~26-30 carried names on the prior
+        # day's bars. A halted name resumes the carry the day its bar returns; the
+        # window counts scan SESSIONS, not this name's missing bars.
+        #
         # (Original rationale, still the reason for the short window:) long
         # enough to bridge multi-day RS dips, short enough to age out stale
         # setups that genuinely broke down.
@@ -8021,6 +8035,7 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
                 JOIN scan_days sd ON sd.scan_date = c.scan_date
                 WHERE sd.lag <= $3::int
                   AND c.stage IN ('WATCH', 'TIGHTENING', 'COILED', 'TRIGGERED')
+                  AND EXISTS (SELECT 1 FROM mi_daily_closes dc WHERE dc.ticker = c.ticker AND dc.trade_date = $1::date)
             """, scan_date, _FLAG_CARRY_CALENDAR_CAP_DAYS, _FLAG_CARRY_PIVOT_SESSIONS)
             for ticker, tags in flag_carry_sources(stage_carry_rows).items():
                 source_map.setdefault(ticker, []).extend(tags)

@@ -10,7 +10,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from agents.market_intelligence import db as db_mod
 
-DATES = ["2026-09-03", "2026-09-04", "2026-09-08", "2026-09-09", "2026-09-16", "2026-10-09", "2026-10-12"]
+# 2026-10-11 review fix: the carry now requires a BAR ON THE SCAN DATE, so a date with no bars yet returns nothing -
+# 10-12 can no longer be pre-run (its prediction lives in q1_admit_replay.out), and 09-07 (Labor Day partial scan,
+# 0 bars) must carry NOTHING. 09-14 is the last night FBRX (last bar 08-26) was carried on frozen history.
+DATES = ["2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-14", "2026-09-16", "2026-10-09"]
 
 
 async def capture() -> tuple[str, tuple]:
@@ -34,3 +37,5 @@ print(f"PREPARE carry(date, int, int) AS {sql.strip()};")
 for d in DATES:
     print(f"\\echo ## {d}")
     print(f"EXECUTE carry('{d}', {params[1]}, {params[2]});")
+print("\\echo ## EXPLAIN 2026-10-09")
+print(f"EXPLAIN (ANALYZE, BUFFERS) EXECUTE carry('2026-10-09', {params[1]}, {params[2]});")

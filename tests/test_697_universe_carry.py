@@ -21,6 +21,7 @@ Admit-count replay on stored rows: scripts/probes/_697/q1_admit_replay.out (summ
 """
 from __future__ import annotations
 
+from datetime import date
 from unittest.mock import AsyncMock
 
 import pytest
@@ -118,6 +119,21 @@ async def test_the_window_is_scan_sessions_not_calendar_days():
     assert "INTERVAL '5 days'" not in sql, "the carry window must not be 5 CALENDAR days"
     # a scan SESSION = a scan date that was a market session (bars exist), ranked newest-first
     assert "mi_daily_closes" in sql and "ROW_NUMBER()" in sql
+
+
+@pytest.mark.asyncio
+async def test_a_carried_name_must_have_a_bar_on_the_scan_date():
+    """Review fix (2026-10-11): the carry used to admit a name with NO bar on the scan date, and `_score` then
+    rated it on frozen history (FBRX: last bar 08-26, carried on 12 scans 08-27 -> 09-14; the next market
+    holiday would have re-scored ~26-30 carried names on the prior day's bars). The organic path already
+    requires `INNER JOIN mi_daily_closes d ... d.trade_date = $1`; the carry now asks the same, per ticker,
+    on the SCAN date ($1) - not on the session dates the lag ranking uses."""
+    _, conn = await _universe([])
+    sql = " ".join(conn.fetch.await_args_list[3].args[0].split())
+    assert "EXISTS (SELECT 1 FROM mi_daily_closes dc WHERE dc.ticker = c.ticker AND dc.trade_date = $1::date)" in sql, (
+        "the carry query does not require the carried ticker to have a bar on the scan date")
+    # ...and the query still binds the scan date as $1 (the guard is on D, not on a stored session date)
+    assert conn.fetch.await_args_list[3].args[1] == date(2026, 9, 3)
 
 
 @pytest.mark.asyncio

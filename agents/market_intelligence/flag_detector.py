@@ -2184,8 +2184,13 @@ def _digest_record(sections: dict, scan_date, outcome: str) -> tuple[str, str]:
 
 async def _record_digest_sent(sections: dict, scan_date, outcome: str) -> None:
     """Write the send record. NEVER raises: the digest has already reached (or failed to reach) the
-    operator, and a broken record must not break the scan. A failure is named by `flag_digest_sent_error`
-    (ends `_error`, so the nightly `%error%` sweep lists it)."""
+    operator, and a broken record must not break the scan.
+
+    Two different failures, two different signals. A failed audit WRITE is only a logged warning:
+    `db.log_audit_event` swallows its own errors and never raises, so no `_error` row can follow it - a night
+    that sent a digest but has no `flag_digest_sent` row IS the signal. `flag_digest_sent_error` names a
+    record-BUILD failure (`_digest_record`, e.g. the detail JSON could not be encoded); it ends `_error`, so
+    the nightly `%error%` sweep lists it."""
     from agents.market_intelligence import db
     try:
         summary, detail = _digest_record(sections, scan_date, outcome)

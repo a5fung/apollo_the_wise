@@ -1,0 +1,24 @@
+SET
+k	scan_date	ticker	stage	src	reason
+rows_no_bar	2026-06-29	SATS	unqualified	ninem_universe_watch	runup_40%_below_90%
+rows_no_bar	2026-06-30	SATS	unqualified	ninem_universe_watch	runup_40%_below_90%
+rows_no_bar	2026-07-20	UBXG	INVALIDATED	ninem_universe_watch	close_5.03_below_sma20_5.96
+rows_no_bar	2026-07-21	UBXG	INVALIDATED	ninem_universe_watch	close_5.03_below_sma20_5.96
+rows_no_bar	2026-07-22	UBXG	INVALIDATED	ninem_universe_watch	close_5.03_below_sma20_5.96
+rows_no_bar	2026-07-23	UBXG	INVALIDATED	ninem_universe_watch	close_5.03_below_sma20_5.96
+rows_no_bar	2026-07-24	UBXG	INVALIDATED	ninem_universe_watch	close_5.03_below_sma20_5.96
+rows_no_bar	2026-07-27	UBXG	INVALIDATED	ninem_universe_watch	close_5.03_below_sma20_5.96
+rows_no_bar	2026-07-28	UBXG	INVALIDATED	ninem_universe_watch	close_5.03_below_sma20_5.96
+k	d	ticker	last_stage	case	last_bar
+carried_no_bar	2026-08-27	FBRX	TIGHTENING@2026-08-07	long	2026-08-26
+carried_no_bar	2026-08-28	FBRX	TIGHTENING@2026-08-07	long	2026-08-26
+carried_no_bar	2026-08-31	FBRX	TIGHTENING@2026-08-07	long	2026-08-26
+carried_no_bar	2026-09-01	FBRX	TIGHTENING@2026-08-07	long	2026-08-26
+carried_no_bar	2026-09-02	FBRX	TIGHTENING@2026-08-07	long	2026-08-26
+carried_no_bar	2026-09-03	FBRX	TIGHTENING@2026-08-07	long	2026-08-26
+carried_no_bar	2026-09-04	FBRX	TIGHTENING@2026-08-07	long	2026-08-26
+carried_no_bar	2026-09-08	FBRX	TIGHTENING@2026-08-07	long	2026-08-26
+carried_no_bar	2026-09-09	FBRX	TIGHTENING@2026-08-07	long	2026-08-26
+carried_no_bar	2026-09-10	FBRX	TIGHTENING@2026-08-07	long	2026-08-26
+carried_no_bar	2026-09-11	FBRX	TIGHTENING@2026-08-07	long	2026-08-26
+carried_no_bar	2026-09-14	FBRX	TIGHTENING@2026-08-07	long	2026-08-26

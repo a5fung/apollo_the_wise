@@ -1,0 +1,13 @@
+SET
+k	a	b	c
+a_long_tag_rows	0		
+b_violator	ABCL	WATCH@2026-10-05	1265
+b_violator	CAI	WATCH@2026-10-05	371
+b_violator	FWDI	WATCH@2026-10-06	225
+b_violator	SDGR	WATCH@2026-10-05	1265
+b_violator	TEM	WATCH@2026-10-05	582
+b_violator	XNCR	WATCH@2026-10-05	1265
+c_carry_only_rows	2		
+c_carry_only_stage	INVALIDATED	1	
+c_carry_only_stage	WATCH	1	
+rows_on_d	492		
