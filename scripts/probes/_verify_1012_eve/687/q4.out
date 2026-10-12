@@ -1,0 +1,34 @@
+=== Q10 ep alerts alert_date 2026-10-12
+id	ticker	alert_date	gap_pct	ep_score	score_tier	source	fire_status	judge_tier	setup_class	created_et	det_et
+(0 rows)
+=== Q11 live_trades skipped/cancelled last 10 days for context
+id	ticker	signal_type	account_mode	status	alert_date	skip_reason	created_et	exit_rule
+419	HUM	magna53	live	filled	2026-10-09		2026-10-09 09:31:00.458095	
+415	WOLF	magna53	live	skipped	2026-10-08	setup:gap_below_floor: rt 8.8% < 9% floor (alert said 18.0%, last $34.13 vs prev close $31.37)	2026-10-08 09:31:00.960611	
+414	PENG	magna53	live	filled	2026-10-07		2026-10-07 09:35:46.679288	
+413	TLN	magna53	live	skipped	2026-10-06	window:out_of_orb: detected 09:55 ET	2026-10-06 09:55:42.99517	
+412	VST	magna53	live	skipped	2026-10-06	window:out_of_orb: detected 09:55 ET	2026-10-06 09:55:42.124702	
+409	CEG	magna53	live	closed	2026-10-06		2026-10-06 09:31:01.111814	
+(6 rows)
+=== Q12 all-mode trade rows today incl paper (account_mode paper)
+account_mode	signal_type	count	count
+(0 rows)
+=== Q13 depth_open_auction_sale job runs recent (any day)
+job_id	started_et	status	rows_written	err
+depth_open_auction_sale	2026-10-09 19:01:00.000999	success		
+depth_open_auction_sale	2026-10-08 19:01:00.001204	success		
+depth_open_auction_sale	2026-10-07 19:01:00.001639	success		
+depth_open_auction_sale	2026-10-06 19:01:00.001561	success		
+depth_open_auction_sale	2026-10-05 19:01:00.001203	success		
+(5 rows)
+=== Q14 audit rows containing depth ever last 8 days (event_type)
+event_type	count	last_et
+lowcap_paper_lane_replay_recorded	1	2026-10-12 18:15:00.041382
+gap_near_miss_replay_recorded	1	2026-10-12 18:14:01.940635
+sustain_reject_replay_recorded	1	2026-10-12 18:13:00.182196
+sdk_pool_rollup	273	2026-10-12 17:05:00.001557
+depth_open_sale_placed	1	2026-10-08 19:01:00.158074
+(5 rows)
+=== Q15 jobs scheduled 17:00-18:30 today run status (all jobs, non-success only)
+job_id	started_et	status	err
+(0 rows)

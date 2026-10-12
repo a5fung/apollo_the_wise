@@ -1,0 +1,78 @@
+SET
+SET
+== 1. scan sessions before D (lag, date, rows, stages)
+lag	scan_date	n
+1	2026-10-09	492
+2	2026-10-08	504
+3	2026-10-07	505
+4	2026-10-06	507
+5	2026-10-05	496
+6	2026-10-02	492
+7	2026-10-01	489
+8	2026-09-30	487
+(8 rows)
+== 2. expected carry set vs what was written on D (every expected name must have a row on D)
+expect_tag	expected_names	have_row_on_d	missing_row	tagged_short	tagged_long	wrong_tag
+long	10	10	0	0	10	0
+short	16	16	0	16	0	0
+(2 rows)
+== 2b. rows on D carrying a carry tag that the independent derivation does NOT expect (should be 0)
+ticker	stage	universe_sources
+(0 rows)
+== 3. the 10 long-tag rows on D (ticker, stage today, organic tags)
+ticker	stage	universe_sources	base_age	failed_at	reason
+AMLX	INVALIDATED	{flag_pivot_window_carryforward}	15		close_27.48_below_sma20_29.90
+CHPT	INVALIDATED	{flag_pivot_window_carryforward}	15		close_7.22_below_base_low_close_7.92
+XHLD	INVALIDATED	{flag_pivot_window_carryforward}	19		close_0.44_below_sma20_5.25
+CDNA	unqualified	{rs_top200,rs_1m_80,flag_pivot_window_carryforward}	3		runup_62%_below_90%
+EFOR	unqualified	{rs_top200,rs_1m_80,flag_pivot_window_carryforward}	6		runup_27%_below_90%
+ESTC	unqualified	{rs_top200,rs_1m_80,flag_pivot_window_carryforward}			adr_3.9pct_below_4pct
+FIVN	unqualified	{flag_pivot_window_carryforward}	13		runup_52%_below_90%
+PLSE	unqualified	{flag_pivot_window_carryforward}			adv_459k_below_500k_shares
+RUM	unqualified	{flag_pivot_window_carryforward}	15		runup_65%_below_90%
+TJGC	unqualified	{flag_pivot_window_carryforward}			adv_116k_below_500k_shares
+(10 rows)
+== 4. carry-only rows on D by stored latest stage (who is only here because of the carry)
+ticker	stage_today	universe_sources
+ABCL	INVALIDATED	{flag_stage_carryforward}
+AMLX	INVALIDATED	{flag_pivot_window_carryforward}
+CAI	INVALIDATED	{flag_stage_carryforward}
+CHPT	INVALIDATED	{flag_pivot_window_carryforward}
+FWDI	INVALIDATED	{flag_stage_carryforward}
+PURR	INVALIDATED	{flag_stage_carryforward}
+SDGR	INVALIDATED	{flag_stage_carryforward}
+TEM	INVALIDATED	{flag_stage_carryforward}
+XHLD	INVALIDATED	{flag_pivot_window_carryforward}
+FIVN	unqualified	{flag_pivot_window_carryforward}
+PLSE	unqualified	{flag_pivot_window_carryforward}
+RUM	unqualified	{flag_pivot_window_carryforward}
+TJGC	unqualified	{flag_pivot_window_carryforward}
+XNCR	unqualified	{flag_stage_carryforward}
+HTFL	WATCH	{flag_stage_carryforward}
+(15 rows)
+== 5. stage mix on D
+stage	count	holds
+INVALIDATED	12	0
+unqualified	491	0
+WATCH	4	0
+(3 rows)
+== 6. the hold history: every row with held_from_stage in the last 3 sessions (10-08..10-12)
+ticker	scan_date	stage	held_from_stage
+KOD	2026-10-09	COILED	WATCH
+(1 row)
+== 7. fingerprint row(s): ticker with a hold on its prior row and a fallen stage on D
+ticker	prior_date	prior_stage	prior_held_from	stage_d	held_d
+KOD	2026-10-09	COILED	WATCH	WATCH	
+(1 row)
+== 8. audit rows since 2026-10-12 00:00 PT for flag digest / transitions / errors
+created_at	event_type	summary
+2026-10-12 21:04:50.352954+00	theme_dissolved_flagged_pair	Arm A dissolve: 'Automotive Thermal & Powertrain Components Suppliers' — validation flagged HOG at 2 members
+(1 row)
+== 8b. any flag_digest_sent ever (to show the event type exists/works on any prior digest)
+n	first_at	last_at
+0		
+(1 row)
+== 9. stored WATCH-or-better names in the last 5 sessions that have NO bar on D (excused by design) and with <60 bars
+stored_watch_plus_names_last5	with_bar_on_d	with_row_on_d
+16	16	16
+(1 row)

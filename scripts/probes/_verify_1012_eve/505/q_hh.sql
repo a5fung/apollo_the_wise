@@ -1,0 +1,1 @@
+SELECT id,(created_at AT TIME ZONE 'America/New_York')::text ts, left(summary,300) s, left(detail,600) d FROM mi_audit_log WHERE event_type='theme_hierarchy_health' AND created_at > '2026-10-12 17:00:00-04';

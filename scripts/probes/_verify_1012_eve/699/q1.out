@@ -1,0 +1,49 @@
+== A. stop-update retry audit rows today (16:30-17:15 ET)
+et	event_type	summary	detail
+2026-10-12 16:45:00.322644	stop_update_started	KOD: $88.25 → $94.95 (4 of 4 after 0 held)	{"trade_id": 404, "ticker": "KOD", "old_stop_id": "73cc60ee-3d69-4095-b659-2ed1b10674dc", "old_stop_price": 88.25, "new_stop_price": 94.95, "remaining_shares": 4.0, "pending_exit_qty": 0, "effective_qty": 4}
+2026-10-12 16:45:00.347565	stop_update_retry_triggered	KOD: place_stop_order raised on first attempt — APIError — retrying in 3s	{"trade_id": 404, "ticker": "KOD", "new_stop_price": 94.95, "attempt": 1, "old_cancel_ok": true, "error": "{\"available\":\"0\",\"code\":40310000,\"existing_qty\":\"4\",\"held_for_orders\":\"4\",\"message\":\"insufficient qty available for order (requested: 4, available: 0)\",\"related_orders\":[\"73cc60ee-3d69-4095-b659-2ed1b10674dc\"],\"symbol\":\"KOD\"}"}
+2026-10-12 16:45:00.402087	stop_order_id_changed	trade #404 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)	{"trade_id": 404, "account_mode": "live", "new_id": null, "reason": "cancel_or_reject_null"}
+2026-10-12 16:45:03.363003	stop_update_retry_succeeded	KOD: retry placed stop @$94.95	{"trade_id": 404, "ticker": "KOD", "new_stop_price": 94.95, "new_stop_id": "b26e8ca2-09f3-4140-9729-97c74f6cccf9"}
+2026-10-12 16:45:03.425874	stop_order_id_changed	trade #404 [live]: stop_order_id=b26e8ca2-09f3-4140-9729-97c74f6cccf9 (reason=cancel_or_reject_restored)	{"trade_id": 404, "account_mode": "live", "new_id": "b26e8ca2-09f3-4140-9729-97c74f6cccf9", "reason": "cancel_or_reject_restored"}
+2026-10-12 16:45:03.807066	stop_updated	KOD: stop now $94.95 (b26e8ca2-09f3-4140-9729-97c74f6cccf9) for 4 sh	{"trade_id": 404, "ticker": "KOD", "old_stop_id": "73cc60ee-3d69-4095-b659-2ed1b10674dc", "old_stop_price": 88.25, "new_stop_id": "b26e8ca2-09f3-4140-9729-97c74f6cccf9", "new_stop_price": 94.95, "remaining_shares": 4.0, "pending_exit_qty": 0, "effective_qty": 4, "old_cancel_ok": true}
+2026-10-12 16:45:04.140595	stop_update_started	PENG: $62.2 → $63.37 (10 of 10 after 0 held)	{"trade_id": 414, "ticker": "PENG", "old_stop_id": "846900d4-dc67-4ebd-b95f-8ddeac8dc0ae", "old_stop_price": 62.2, "new_stop_price": 63.37, "remaining_shares": 10.0, "pending_exit_qty": 0, "effective_qty": 10}
+2026-10-12 16:45:04.162202	stop_update_retry_triggered	PENG: place_stop_order raised on first attempt — APIError — retrying in 3s	{"trade_id": 414, "ticker": "PENG", "new_stop_price": 63.37, "attempt": 1, "old_cancel_ok": true, "error": "{\"available\":\"0\",\"code\":40310000,\"existing_qty\":\"10\",\"held_for_orders\":\"10\",\"message\":\"insufficient qty available for order (requested: 10, available: 0)\",\"related_orders\":[\"846900d4-dc67-4ebd-b95f-8ddeac8dc0ae\"],\"symbol\":\"PENG\"}"}
+2026-10-12 16:45:04.185794	stop_order_id_changed	trade #414 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)	{"trade_id": 414, "account_mode": "live", "new_id": null, "reason": "cancel_or_reject_null"}
+2026-10-12 16:45:07.177173	stop_update_retry_succeeded	PENG: retry placed stop @$63.37	{"trade_id": 414, "ticker": "PENG", "new_stop_price": 63.37, "new_stop_id": "6b74a7e5-5ea7-4208-a262-116b9045165b"}
+2026-10-12 16:45:07.208184	stop_order_id_changed	trade #414 [live]: stop_order_id=6b74a7e5-5ea7-4208-a262-116b9045165b (reason=cancel_or_reject_restored)	{"trade_id": 414, "account_mode": "live", "new_id": "6b74a7e5-5ea7-4208-a262-116b9045165b", "reason": "cancel_or_reject_restored"}
+2026-10-12 16:45:07.609885	stop_updated	PENG: stop now $63.37 (6b74a7e5-5ea7-4208-a262-116b9045165b) for 10 sh	{"trade_id": 414, "ticker": "PENG", "old_stop_id": "846900d4-dc67-4ebd-b95f-8ddeac8dc0ae", "old_stop_price": 62.2, "new_stop_id": "6b74a7e5-5ea7-4208-a262-116b9045165b", "new_stop_price": 63.37, "remaining_shares": 10.0, "pending_exit_qty": 0, "effective_qty": 10, "old_cancel_ok": true}
+(12 rows)
+== B. trades 404 / 414 / 419 mode + status
+id	ticker	account_mode	status	stop_price	entry_price	remaining_shares
+404	KOD	live	filled	94.95	63.15	4
+414	PENG	live	filled	63.37	72.21	10
+419	HUM	live	filled	417.88000000000005	452	1
+(3 rows)
+== C. ANY telegram_* audit rows since deploy 10-11 21:50 ET
+event_type	count	first_et	last_et
+(0 rows)
+== D. market_close_digest_sent per day, last 21 days
+d	count	max
+2026-09-22	1	{"sections": ["EP", "SIGNALS"], "contributions": 2, "sent": true, "chars": 551}
+2026-09-23	1	{"sections": ["SIGNALS"], "contributions": 1, "sent": true, "chars": 290}
+2026-09-24	1	{"sections": ["SIGNALS"], "contributions": 1, "sent": true, "chars": 290}
+2026-09-25	1	{"sections": ["EP", "SIGNALS"], "contributions": 2, "sent": true, "chars": 604}
+2026-09-28	1	{"sections": ["EP"], "contributions": 1, "sent": true, "chars": 335}
+2026-09-29	1	{"sections": ["SIGNALS"], "contributions": 1, "sent": true, "chars": 285}
+2026-09-30	1	{"sections": ["SIGNALS"], "contributions": 1, "sent": true, "chars": 306}
+2026-10-01	1	{"sections": ["EP", "SIGNALS"], "contributions": 2, "sent": true, "chars": 644}
+2026-10-02	1	{"sections": ["SIGNALS"], "contributions": 1, "sent": true, "chars": 284}
+2026-10-05	1	{"sections": ["EP", "JUDGE", "SIGNALS"], "contributions": 3, "sent": true, "chars": 1807}
+2026-10-06	1	{"sections": ["EP", "SIGNALS"], "contributions": 2, "sent": true, "chars": 811}
+2026-10-07	1	{"sections": ["EP", "SIGNALS"], "contributions": 2, "sent": true, "chars": 569}
+2026-10-08	1	{"sections": ["EP"], "contributions": 1, "sent": true, "chars": 363}
+2026-10-09	1	{"sections": ["EP", "JUDGE", "SIGNALS"], "contributions": 3, "sent": true, "chars": 1044}
+(14 rows)
+== E. live_position_update audit_wrap rows last 10 days (which job rows exist)
+d	event_type	count
+2026-10-05	market_close_digest_sent	1
+2026-10-06	market_close_digest_sent	1
+2026-10-07	market_close_digest_sent	1
+2026-10-08	market_close_digest_sent	1
+2026-10-09	market_close_digest_sent	1
+(5 rows)

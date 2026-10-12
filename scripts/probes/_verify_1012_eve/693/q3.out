@@ -1,0 +1,14 @@
+== tables like mi_theme
+table_name
+mi_theme_axis_shadow
+mi_theme_birth_candidates
+mi_theme_candidates_shadow
+mi_theme_ecosystems
+mi_theme_ecosystems_dynamic
+mi_theme_exclusions
+mi_theme_merge_cooldowns
+mi_theme_relevance_cohort
+mi_theme_renames
+mi_theme_resilience_weekly
+mi_themes
+(11 rows)

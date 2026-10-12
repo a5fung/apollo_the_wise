@@ -1,0 +1,24 @@
+=== COLS mi_live_trades
+string_agg
+id,ticker,alert_date,ep_score,catalyst_quality,gap_pct,regime,status,orb_high,orb_low,atr_14,entry_price,entry_shares,stop_price,hard_stop,position_size,risk_dollars,entry_order_id,stop_order_id,exits,remaining_shares,total_pnl,hold_days,partial_taken,breakeven_active,running_closes,proposed_at,confirmed_at,skip_reason,created_at,filled_at,closed_at,entry_attempt,signal_type,account_mode,lowest_price_seen,highest_price_seen,pnl_attribution,risk_dollars_actual,dead_stop_price,dead_stop_order_id,dead_stop_status,dead_stop_recorded_at,exit_rule,depth_sell_pending_on
+(1 row)
+=== COLS mi_safeguard_state
+string_agg
+safeguard,account_mode,state,last_transition_at,last_evaluation_at,last_drawdown_pct,last_peak,last_peak_date,updated_at
+(1 row)
+=== COLS mi_audit_log
+string_agg
+id,created_at,event_type,summary,detail
+(1 row)
+=== COLS mi_job_runs
+string_agg
+id,job_id,started_at,finished_at,duration_s,status,rows_written,expected_min_rows,error_message,created_at,scheduled_for
+(1 row)
+=== COLS mi_live_orders
+string_agg
+id,trade_id,alpaca_order_id,ticker,side,order_type,qty,stop_price,limit_price,status,filled_qty,filled_avg_price,submitted_at,filled_at,cancelled_at,raw_response,purpose,exit_reason
+(1 row)
+=== NOW
+timezone
+2026-10-12 18:24:12.090638
+(1 row)

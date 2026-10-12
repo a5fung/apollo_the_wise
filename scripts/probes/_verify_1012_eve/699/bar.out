@@ -1,0 +1,2 @@
+- #699 | 2026-10-13 | deployed | [b0] 📵 
+('DoD', "deployed with the env var set, and the first real paper alert after the deploy (Monday's 08:25 ET #687 paper test page is the first expected) arrives in the paper chat and NOT the main chat, while a live alert still arrives in the main chat. WOULD-FAIL-IF: a 📄 PAPER message lands in the main chat after the deploy, or the paper test's page appears nowhere.")

@@ -1,0 +1,9 @@
+heartbeat rows: 1
+Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+OK  distinct | child='Vertical Commerce & Tax/Payments Software-Fintech Platforms' parent='Cloud Contact Center & CCaaS Communication Platforms' same ecosystem E-SAAS; parent 6 vs child
+OK  distinct | child='Cloud Data Storage & Analytics Infrastructure' parent='Cloud Contact Center & CCaaS Communication Platforms' same ecosystem E-SAAS; parent 6 vs child 3 members; sh
+OK  distinct | child='Cloud Supply Chain & Warehouse Management Software' parent='Cloud Application Delivery & Observability Infrastructure' same ecosystem E-SAAS; parent 4 vs child 3 m
+OK  distinct | child='Cloud Financial Automation & Insurance Core Platform Software' parent='Cloud Data Storage & Analytics Infrastructure' same ecosystem E-SAAS; parent 3 vs child 2 me
+OK  distinct | child='AI Server Power & Signal-Integrity Analog ICs' parent='AI-Driven Memory & Storage Supply Shortage' same ecosystem E-AISEMI; parent 6 vs child 5 members; shared tic
+OK  distinct | child='Exchange, Options Trading & Alternative Consumer Credit Financials' parent='Fintech & Digital Finance Sector Re-rating on Fed Easing' same ecosystem E-BANKFIN; par
+errors: 0 | unreadable flag: False | BAD asks: 0

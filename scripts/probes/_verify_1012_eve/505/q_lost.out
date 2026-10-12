@@ -1,0 +1,77 @@
+theme_date	name	stage	source	parent_theme	nt	days_active
+2026-10-07	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Fading	live	Medical Device Mean-Reversion & Rotation Recovery	3	17
+2026-10-08	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Fading	live	Medical Device Mean-Reversion & Rotation Recovery	3	17
+2026-10-09	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Fading	live	Medical Device Mean-Reversion & Rotation Recovery	3	17
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Retired	live	Medical Device Mean-Reversion & Rotation Recovery		18
+2026-10-07	Orthopedic Surgical Devices & Instruments	Fading	live	Medical Device Mean-Reversion & Rotation Recovery	3	12
+2026-10-08	Orthopedic Surgical Devices & Instruments	Fading	live	Medical Device Mean-Reversion & Rotation Recovery	3	12
+2026-10-09	Orthopedic Surgical Devices & Instruments	Fading	live	Medical Device Mean-Reversion & Rotation Recovery	2	12
+2026-10-12	Orthopedic Surgical Devices & Instruments	Retired	live	Medical Device Mean-Reversion & Rotation Recovery		13
+2026-10-09	Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand	Mainstream	live	Semiconductor Test, Yield & Assembly Supply Chain	11	1
+2026-10-12	Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand	Retired	live	AI-Driven Semiconductor Manufacturing Ecosystem (Capex & Foundry)		2
+2026-10-07	Semiconductor Test, Yield & Assembly Supply Chain	Mainstream	live		6	15
+2026-10-08	Semiconductor Test, Yield & Assembly Supply Chain	Mainstream	live		6	16
+2026-10-09	Semiconductor Test, Yield & Assembly Supply Chain	Mainstream	live		6	17
+2026-10-12	Semiconductor Test, Yield & Assembly Supply Chain	Mainstream	live		5	18
+(14 rows)
+== audit rows around retire/fold of these
+id	ts	event_type	s
+55599	2026-10-12 17:04:23.678031	theme_stage_flip_held	Orthopedic Surgical Devices & Instruments: Fading→Accelerating held; y_Δ=-29.1
+55618	2026-10-12 17:05:29.358201	theme_stage_flip_held	Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand: Mainstream→Fading held; y_Δ=+0.0
+55619	2026-10-12 17:05:29.362425	theme_low_quality_description	Theme 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand': capped Mainstream → Nascent (no_member_ticker_mentioned)
+55636	2026-10-12 17:06:48.451646	theme_member_rehomed	Rehome: 'Semiconductor Equipment Subsystem & Fluid Delivery Suppliers' -> 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand' ICHR moved on the tape (0.78 vs own unreadable; own_unjudgeable:thin_basket)
+55637	2026-10-12 17:06:48.452942	theme_rehome_judged	ICHR moved -> 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand' (tape 0.78, own_unjudgeable:thin_basket)
+55639	2026-10-12 17:06:48.455402	theme_rehome_judged	PENG stays — the judgement did not place it (offered on tape 0.70 to 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand', own_unjudgeable:thin_basket)
+55725	2026-10-12 17:10:07.517874	stage_change	Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand: Mainstream → Nascent
+55745	2026-10-12 17:10:24.320085	theme_merge_distinct	Arm B: 'Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery' vs 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand' DISTINCT — 30d pair cooldown
+55746	2026-10-12 17:10:30.063645	theme_merge_distinct	Arm B: 'Semiconductor Design, Test & Assembly Enablement Tools' vs 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand' DISTINCT — 30d pair cooldown
+55747	2026-10-12 17:10:36.613534	theme_thesis_merged	Arm B: 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand' merged into 'AI-Driven Semiconductor Manufacturing Ecosystem (Capex & Foundry)' (15 members)
+55749	2026-10-12 17:10:45.29919	theme_small_folded	'Diabetes Management Devices (CGM, Insulin Pumps & Delivery)' -> 'Medical Device Mean-Reversion & Rotation Recovery': moved 2, released 1 of 3 (G3 fail, cohesion 0.21031028196630638 vs random p95 0.24898517604528186), #655 fold
+55753	2026-10-12 17:10:45.303948	theme_small_folded	'Orthopedic Surgical Devices & Instruments' -> 'Medical Device Mean-Reversion & Rotation Recovery': moved 2, released 0 of 2 (G3 fail, cohesion 0.26076402988936875 vs random p95 0.42751132499351485), #655 fold
+(12 rows)
+== event types tonight 17:00-18:15 ET containing theme
+event_type	count
+theme_auto_retired	1
+theme_axis_bounded_sweep	1
+theme_axis_eod_unscored_logged	1
+theme_birth_gate	2
+theme_birth_validated	1
+theme_breadth_fade	4
+theme_cap_drop	1
+theme_carryforward_filter_stripped	2
+theme_composition_churn	1
+theme_constituent_churn	1
+theme_correctness_check	1
+theme_discovered	6
+theme_discovery_llm_call	12
+theme_discovery_shadow_ran	1
+theme_discovery_shown_declined	2
+theme_dissolved_flagged_pair	1
+theme_ecosystem_assigned	11
+theme_empty_tickers	1
+theme_engine_funnel	1
+theme_hierarchy_health	1
+theme_load_state	1
+theme_low_quality_description	9
+theme_member_rehomed	5
+theme_merge_distinct	3
+theme_merge_pairs_proposed	1
+theme_parent_pass_distinct	6
+theme_parent_pass_ran	1
+theme_pass1_5_absorption	5
+theme_pass1_protect_strip	4
+theme_quality_clean	1
+theme_rehome_judged	18
+theme_rehome_pass_ran	1
+theme_renamed_for_continuity	1
+theme_retired	9
+theme_retired_small_fading	7
+theme_score_ties	2
+theme_sector_cap_dropped	1
+theme_sector_cap_kept_distinct	1
+theme_small_folded	6
+theme_small_fold_ran	1
+theme_stage_flip_held	8
+theme_synthesis_run	1
+theme_thesis_merged	2
+(43 rows)

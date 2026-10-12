@@ -1,0 +1,41 @@
+== ecosystem assignment time for the 3 replay-only children and their parents
+theme_name	e_code	method	assigned_at
+AI-Driven Memory & Storage Supply Shortage	E-AISEMI	haiku	2026-09-02 21:10:33.396242+00
+AI-Driven Semiconductor Manufacturing Ecosystem (Capex & Foundry)	E-AISEMI	haiku	2026-10-12 21:11:11.455405+00
+Enterprise HR & Workforce Management SaaS	E-SAAS	haiku	2026-07-16 21:03:11.715456+00
+Enterprise Information Management & Infrastructure Engineering Software	E-SAAS	haiku	2026-10-12 21:12:25.834684+00
+Gold Miners Not Yet Classified: Mid-Tier Gold Producers (AGI, NG, HYMC, MUX)	E-METAL	haiku	2026-10-12 21:12:30.545251+00
+Primary Silver Miners	E-METAL	haiku	2026-09-30 21:08:50.032889+00
+(6 rows)
+== tonight ecosystem assignments (all)
+id	ts	s
+55764	2026-10-12 17:11:09.462266	'Digital-First Beauty & Cosmetics Brands' → E-CONS (haiku)
+55765	2026-10-12 17:11:11.457779	'AI-Driven Semiconductor Manufacturing Ecosystem (Capex & Foundry)' → E-AISEMI (haiku)
+55766	2026-10-12 17:11:12.911844	'Trucking & Freight Carriers (Capacity-Driven Pricing Recovery)' → E-TRANS (haiku)
+55781	2026-10-12 17:12:22.304032	'Building Products & HVAC/Industrial Motion Rotation' → E-INDL (haiku)
+55782	2026-10-12 17:12:24.047407	'Diagnostic Testing & Lab Equipment Re-Rating' → E-MEDTECH (haiku)
+55783	2026-10-12 17:12:25.83644	'Enterprise Information Management & Infrastructure Engineering Software' → E-SAAS (haiku)
+55784	2026-10-12 17:12:27.17516	'Footwear & Branded Apparel Consumer Turnaround' → E-CONS (haiku)
+55785	2026-10-12 17:12:28.989907	'Functional Energy Drink Brands' → E-CONS (haiku)
+55786	2026-10-12 17:12:30.546276	'Gold Miners Not Yet Classified: Mid-Tier Gold Producers (AGI, NG, HYMC, MUX)' → E-METAL (haiku)
+55787	2026-10-12 17:12:32.312996	'Steel Producers & Flat-Rolled Steel Processors' → E-METAL (haiku)
+55788	2026-10-12 17:12:33.828331	'Wireless Tower & Cell Site Infrastructure REITs' → E-REIT (haiku)
+(11 rows)
+== Arm B proposed pairs tonight
+id	ts	s	d
+55742	2026-10-12 17:10:07.574319	Arm B Stage A: 8 candidate pair(s) for adjudication	'Asset-Light Trucking & Freight Logistics Carriers' × 'Asset-Based Trucking & Intermodal Freight Carriers'
+'Class I Railroad Freight Carriers' × 'Asset-Based Trucking & Intermodal Freight Carriers'
+'Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery' × 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand'
+'Semiconductor Design, Test & Assembly Enablement Tools' × 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand'
+'Semiconductor Foundry & Advanced Packaging Manufacturing' × 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand'
+'AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers' × 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand'
+'RF, Microwave & Power Semiconductor Specialists' × 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand'
+'HBM & AI-Driven Memory Chip Makers' × 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand'
+(1 row)
+== the 3 themes birth/first-seen
+name	first_seen	last_seen	src
+AI-Driven Memory & Storage Supply Shortage	2026-09-02	2026-10-12	live
+AI-Driven Semiconductor Manufacturing Ecosystem (Capex & Foundry)	2026-10-12	2026-10-12	live
+Enterprise Information Management & Infrastructure Engineering Software	2026-10-12	2026-10-12	shadow_promoted
+Gold Miners Not Yet Classified: Mid-Tier Gold Producers (AGI, NG, HYMC, MUX)	2026-10-12	2026-10-12	shadow_promoted
+(4 rows)

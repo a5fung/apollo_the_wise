@@ -1,0 +1,34 @@
+board rows 136 | live non-Retired with members 109 | non-Retired non-Fading 79
+cooldown pairs (pre-pass) 176 | arm_b pairs (approx, override-table sectors) 55
+
+== NEW closeness pick, cap 6 (compare with the 6 actual asks): 6 ask(s)
+ 1. [live] 'AI-Driven Memory & Storage Supply Shortage' (6) -> 'AI-Driven Semiconductor Manufacturing Ecosystem (Capex & Foundry)' (15) E-AISEMI sh_tk=1 ind=1.0 wsim=0.057692
+ 2. [shadow_promoted] 'Enterprise Information Management & Infrastructure Engineering Software' (3) -> 'Enterprise HR & Workforce Management SaaS' (6) E-SAAS sh_tk=0 ind=0.5 wsim=0.176471
+ 3. [shadow_promoted] 'Gold Miners Not Yet Classified: Mid-Tier Gold Producers (AGI, NG, HYMC, MUX)' (4) -> 'Primary Silver Miners' (5) E-METAL sh_tk=0 ind=1.0 wsim=0.069767
+ 4. [live] 'Vertical Commerce & Tax/Payments Software-Fintech Platforms' (4) -> 'Cloud Contact Center & CCaaS Communication Platforms' (6) E-SAAS sh_tk=0 ind=0.5 wsim=0.08
+ 5. [live] 'Cloud Data Storage & Analytics Infrastructure' (3) -> 'Cloud Contact Center & CCaaS Communication Platforms' (6) E-SAAS sh_tk=0 ind=1.0 wsim=0.106383
+ 6. [live] 'Cloud Supply Chain & Warehouse Management Software' (3) -> 'Cloud Application Delivery & Observability Infrastructure' (4) E-SAAS sh_tk=0 ind=1.0 wsim=0.09434
+
+NEW pick whole queue (uncapped): 16 childless themes with an eligible parent tonight; by child source: {'live': 13, 'shadow_promoted': 3}
+   ask-able overlap/shared distribution: shared>=1: 1 | overlap>=0.5 and no shared: 15 | BELOW minimum (must be 0): 0
+   asks by ecosystem: {'E-AIINFRA': 1, 'E-AISEMI': 2, 'E-BANKFIN': 1, 'E-BIO': 1, 'E-CONS': 1, 'E-HLTH': 1, 'E-MEDTECH': 1, 'E-METAL': 1, 'E-SAAS': 7}
+
+== OLD size-ordered pick (pre-10-09 behaviour), cap 6: 6 ask(s)
+ 1. [live] 'AI-Driven Memory & Storage Supply Shortage' (6) -> 'AI-Driven Semiconductor Manufacturing Ecosystem (Capex & Foundry)' (15) E-AISEMI sh_tk=1 ind=None wsim=None
+ 2. [shadow_promoted] 'Enterprise Information Management & Infrastructure Engineering Software' (3) -> 'Enterprise HR & Workforce Management SaaS' (6) E-SAAS sh_tk=0 ind=None wsim=None
+ 3. [live] 'Cloud Financial Automation & Insurance Core Platform Software' (2) -> 'Cloud Supply Chain & Warehouse Management Software' (3) E-SAAS sh_tk=0 ind=None wsim=None
+ 4. [live] 'Management & Business Process Consulting Services' (5) -> 'Enterprise HR & Workforce Management SaaS' (6) E-SAAS sh_tk=0 ind=None wsim=None
+ 5. [shadow_promoted] 'Building Products & HVAC/Industrial Motion Rotation' (4) -> 'Regulated Electric Utilities Defensive Rotation' (16) E-INDL sh_tk=0 ind=None wsim=None
+ 6. [live] 'Exchange, Options Trading & Alternative Consumer Credit Financials' (4) -> 'Fintech Payments, Prepaid & Consumer Digital Banking Apps' (5) E-BANKFIN sh_tk=0 ind=None wsim=None
+
+OLD pick whole queue: 40; asks that would sit under the minimum (no shared stock, overlap<0.5):
+    27 of 40
+children asked under both: 15 | different first parent: 8 | children only the old pick would ask (new pick: under the minimum / none): 25
+
+tonight's 6 children - old pick vs new pick:
+ - 'Vertical Commerce & Tax/Payments Software-Fintech Platforms': old -> 'Cloud Contact Center & CCaaS Communication Platforms' | new -> 'Cloud Contact Center & CCaaS Communication Platforms'
+ - 'Cloud Data Storage & Analytics Infrastructure': old -> None | new -> 'Cloud Contact Center & CCaaS Communication Platforms'
+ - 'Cloud Supply Chain & Warehouse Management Software': old -> 'Cloud Contact Center & CCaaS Communication Platforms' | new -> 'Cloud Application Delivery & Observability Infrastructure'
+ - 'Cloud Financial Automation & Insurance Core Platform Softwar': old -> 'Cloud Supply Chain & Warehouse Management Software' | new -> 'Cloud Data Storage & Analytics Infrastructure'
+ - 'AI Server Power & Signal-Integrity Analog ICs': old -> 'AI-Driven Semiconductor Manufacturing Ecosystem (Capex & Foundry)' | new -> 'AI-Driven Memory & Storage Supply Shortage'
+ - 'Exchange, Options Trading & Alternative Consumer Credit Fina': old -> 'Fintech Payments, Prepaid & Consumer Digital Banking Apps' | new -> 'Fintech & Digital Finance Sector Re-rating on Fed Easing'

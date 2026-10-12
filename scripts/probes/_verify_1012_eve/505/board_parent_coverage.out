@@ -1,0 +1,13 @@
+live non-Retired: 109
+with a containment parent (parent_theme set): 6 | parent is itself a live theme: 6
+no containment parent: 103 | of those with NO ecosystem row either (no parent at all): 0 []
+catch-all E-UNASSIGNED members: 1 ['For-Profit Postsecondary & Vocational Education']
+roots by ecosystem (top): [('E-SAAS', 16), ('E-CONS', 11), ('E-BANKFIN', 10), ('E-AISEMI', 9), ('E-AIINFRA', 8), ('E-METAL', 6)]
+live themes by source: Counter({'live': 101, 'shadow_promoted': 8})
+parents of the 6 links that are Fading/Retired: 0
+  link: Annuity-Focused Insurers -> Life Insurance & Annuity Providers
+  link: Customer Engagement & Marketing/CX SaaS Platforms -> AI-Powered Enterprise Analytics & Intelligent Workflow 
+  link: Data Backup & Cyber Resiliency Software -> Network Security & Zero-Trust Edge
+  link: HBM & AI-Driven Memory Chip Makers -> AI-Driven Memory & Storage Supply Shortage
+  link: Liquid Biopsy & Molecular Cancer Diagnostics Testing -> Genomics & DNA Sequencing Tools
+  link: Product Tanker Shipping -> Crude & Product Tanker Shipping

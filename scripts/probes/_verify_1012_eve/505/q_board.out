@@ -1,0 +1,66 @@
+== board counts by date
+theme_date	n	live	active_nonfading	with_parent	shadow_live
+2026-10-07	137	124	87	11	10
+2026-10-08	136	122	85	9	11
+2026-10-09	140	123	89	9	15
+2026-10-12	136	109	79	6	8
+(4 rows)
+== themes of interest on 10-09 and 10-12
+theme_date	name	stage	source	parent_theme	nt
+2026-10-09	AI Server Power & Signal-Integrity Analog ICs	Mainstream	live		4
+2026-10-12	AI Server Power & Signal-Integrity Analog ICs	Mainstream	live		5
+2026-10-09	Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery	Mainstream	live		6
+2026-10-12	Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery	Fading	live		5
+2026-10-09	Brazil Fintech & Digital Banking Rally	Nascent	live		6
+2026-10-12	Brazil Fintech & Digital Banking Rally	Nascent	live		6
+2026-10-09	Cloud Data Storage & Analytics Infrastructure	Mainstream	live		3
+2026-10-12	Cloud Data Storage & Analytics Infrastructure	Mainstream	live		3
+2026-10-09	Cloud Financial Automation & Insurance Core Platform Software	Nascent	live		2
+2026-10-12	Cloud Financial Automation & Insurance Core Platform Software	Nascent	live		2
+2026-10-09	Cloud Supply Chain & Warehouse Management Software	Mainstream	live		3
+2026-10-12	Cloud Supply Chain & Warehouse Management Software	Mainstream	live		3
+2026-10-09	Cross-Border Remittance & Money Transfer Fintech	Nascent	shadow_promoted		4
+2026-10-12	Cross-Border Remittance & Money Transfer Fintech	Retired	live	Fintech Payments, Prepaid & Consumer Digital Banking Apps	
+2026-10-09	Exchange, Options Trading & Alternative Consumer Credit Financials	Nascent	shadow_promoted		3
+2026-10-12	Exchange, Options Trading & Alternative Consumer Credit Financials	Nascent	live		4
+2026-10-09	Fintech Payments, Prepaid & Consumer Digital Banking Apps	Mainstream	live		3
+2026-10-12	Fintech Payments, Prepaid & Consumer Digital Banking Apps	Mainstream	live		5
+2026-10-09	Functional Beverage & Energy Drink Brands	Nascent	shadow_promoted		3
+2026-10-12	Functional Beverage & Energy Drink Brands	Retired	live	Non-Alcoholic Beverages & Energy Drinks	
+2026-10-09	Non-Alcoholic Beverages & Energy Drinks	Mainstream	live		5
+2026-10-12	Non-Alcoholic Beverages & Energy Drinks	Accelerating	live		6
+2026-10-09	Quick-Service & Fast-Casual Restaurant Franchisors	Nascent	shadow_promoted		3
+2026-10-12	Quick-Service & Fast-Casual Restaurant Franchisors	Retired	live	Restaurant Chain Recovery	
+2026-10-09	Restaurant Chain Recovery	Mainstream	live		8
+2026-10-12	Restaurant Chain Recovery	Mainstream	live		9
+2026-10-09	RF, Microwave & Power Semiconductor Specialists	Nascent	shadow_promoted		4
+2026-10-12	RF, Microwave & Power Semiconductor Specialists	Nascent	live		4
+2026-10-09	Vertical Commerce & Tax/Payments Software-Fintech Platforms	Nascent	live		4
+2026-10-12	Vertical Commerce & Tax/Payments Software-Fintech Platforms	Nascent	live		4
+(30 rows)
+== audit rows for these since 10-09 (all event types mentioning parent pass or merge)
+id	ts	event_type	s
+55042	2026-10-09 17:08:07.668163	theme_parent_pass_distinct	Parent pass: 'Management & Business Process Consulting Services' vs 'IT Consulting & Business Process Outsourcing Services' PEERS — no containment, 30d pair cooldown
+55043	2026-10-09 17:08:11.07453	theme_parent_pass_distinct	Parent pass: 'Cloud Financial Automation & Insurance Core Platform Software' vs 'Cloud Application Software Rotation (Oversold Turning Up)' PEERS — no containment, 30d pa
+55044	2026-10-09 17:08:14.152505	theme_parent_pass_distinct	Parent pass: 'Discrete, Passive & Low-Power Programmable Semiconductor Components Recovery' vs 'Semiconductor Test, Yield & Assembly Supply Chain' UNRELATED — no containm
+55045	2026-10-09 17:08:17.89516	theme_parent_pass_distinct	Parent pass: 'Semiconductor Design, Test & Assembly Enablement Tools' vs 'Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery' UNRELATED — no containment, 30d pa
+55046	2026-10-09 17:08:21.669913	theme_parent_pass_distinct	Parent pass: 'Vertical Commerce & Tax/Payments Software-Fintech Platforms' vs 'Customer Engagement & Marketing/CX SaaS Platforms' UNRELATED — no containment, 30d pair coo
+55047	2026-10-09 17:08:26.252081	theme_parent_pass_distinct	Parent pass: 'Cloud Application Software Rotation (Oversold Turning Up)' vs 'Cloud Contact Center & CCaaS Communication Platforms' UNRELATED — no containment, 30d pair co
+55048	2026-10-09 17:08:26.253416	theme_parent_pass_ran	Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+55757	2026-10-12 17:10:49.824264	theme_parent_pass_distinct	Parent pass: 'Vertical Commerce & Tax/Payments Software-Fintech Platforms' vs 'Cloud Contact Center & CCaaS Communication Platforms' UNRELATED — no containment, 30d pair 
+55758	2026-10-12 17:10:53.382862	theme_parent_pass_distinct	Parent pass: 'Cloud Data Storage & Analytics Infrastructure' vs 'Cloud Contact Center & CCaaS Communication Platforms' UNRELATED — no containment, 30d pair cooldown
+55759	2026-10-12 17:10:56.51159	theme_parent_pass_distinct	Parent pass: 'Cloud Supply Chain & Warehouse Management Software' vs 'Cloud Application Delivery & Observability Infrastructure' UNRELATED — no containment, 30d pair cool
+55760	2026-10-12 17:10:59.489634	theme_parent_pass_distinct	Parent pass: 'Cloud Financial Automation & Insurance Core Platform Software' vs 'Cloud Data Storage & Analytics Infrastructure' UNRELATED — no containment, 30d pair coold
+55761	2026-10-12 17:11:02.977894	theme_parent_pass_distinct	Parent pass: 'AI Server Power & Signal-Integrity Analog ICs' vs 'AI-Driven Memory & Storage Supply Shortage' PEERS — no containment, 30d pair cooldown
+55762	2026-10-12 17:11:07.414275	theme_parent_pass_distinct	Parent pass: 'Exchange, Options Trading & Alternative Consumer Credit Financials' vs 'Fintech & Digital Finance Sector Re-rating on Fed Easing' UNRELATED — no containment
+55763	2026-10-12 17:11:07.415676	theme_parent_pass_ran	Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+(14 rows)
+== cooldowns touching the dry-run top asks
+theme_a	theme_b	verdict	adjudicated_at	cooldown_until
+Containerboard & Corrugated Packaging Producers	Family Dining & Quick-Service Restaurant Chain Recovery	DISTINCT	2026-07-31 21:05:34.233894+00	2026-08-30 21:05:34.233894+00
+Commercial, Office & Home Furniture Retailers and Manufacturers	Family Dining & Quick-Service Restaurant Chain Recovery	DISTINCT	2026-08-04 21:11:08.470008+00	2026-09-03 21:11:08.470008+00
+Quick-Service & Fast-Casual Restaurant Chains	Restaurant Chain Recovery	DISTINCT	2026-08-25 21:08:47.910835+00	2026-09-24 21:08:47.910835+00
+Fintech & Digital Finance Sector Re-rating on Fed Easing	Fintech Payments, Prepaid & Consumer Digital Banking Apps	DISTINCT	2026-10-05 21:08:41.170406+00	2026-11-04 21:08:41.170406+00
+Brazil Fintech & Digital Banking Rally	Fintech Payments, Prepaid & Consumer Digital Banking Apps	UNRELATED	2026-10-07 21:11:09.303585+00	2026-11-06 21:11:09.303585+00
+Fintech Payments, Prepaid & Consumer Digital Banking Apps	Online Consumer Lending & Fintech Credit	PEERS	2026-10-08 21:07:39.065018+00	2026-11-07 21:07:39.065018+00
+(6 rows)

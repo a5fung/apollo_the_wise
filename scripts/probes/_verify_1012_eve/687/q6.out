@@ -1,0 +1,48 @@
+=== Q20 stop_update_retry_* / stop_order_id_changed(cancel_or_reject) around 16:45 on prior days (last 8 days)
+d	event_type	summary
+2026-10-05	stop_update_retry_triggered	VICR: place_stop_order raised on first attempt — APIError — retrying in 3s
+2026-10-05	stop_update_retry_succeeded	VICR: retry placed stop @$289.73
+2026-10-05	stop_updated	VICR: stop now $289.73 (3ad7aff9-8cf5-483a-be07-73c469676be3) for 1 sh
+2026-10-05	stop_update_retry_triggered	KOD: place_stop_order raised on first attempt — APIError — retrying in 3s
+2026-10-05	stop_update_retry_succeeded	KOD: retry placed stop @$63.60
+2026-10-05	stop_updated	KOD: stop now $63.60 (1c7860fc-ecd7-46b3-b0dc-dc82430cd2b5) for 4 sh
+2026-10-06	stop_update_retry_triggered	VICR: place_stop_order raised on first attempt — APIError — retrying in 3s
+2026-10-06	stop_update_retry_succeeded	VICR: retry placed stop @$292.83
+2026-10-06	stop_updated	VICR: stop now $292.83 (68a622a6-36e7-4573-bb87-46720344d6fb) for 1 sh
+2026-10-06	stop_update_retry_triggered	KOD: place_stop_order raised on first attempt — APIError — retrying in 3s
+2026-10-06	stop_update_retry_succeeded	KOD: retry placed stop @$69.59
+2026-10-06	stop_updated	KOD: stop now $69.59 (8d528031-9ce2-40f8-87d4-c16e964fbe34) for 4 sh
+2026-10-07	stop_update_retry_triggered	KOD: place_stop_order raised on first attempt — APIError — retrying in 3s
+2026-10-07	stop_update_retry_succeeded	KOD: retry placed stop @$75.31
+2026-10-07	stop_updated	KOD: stop now $75.31 (e72a4a8b-8421-4c9c-8adc-0b7b92020d22) for 4 sh
+2026-10-08	stop_update_retry_triggered	KOD: place_stop_order raised on first attempt — APIError — retrying in 3s
+2026-10-08	stop_update_retry_succeeded	KOD: retry placed stop @$81.59
+2026-10-08	stop_updated	KOD: stop now $81.59 (32a179ad-097a-4f8c-912a-649c78683a95) for 4 sh
+2026-10-09	stop_update_retry_triggered	KOD: place_stop_order raised on first attempt — APIError — retrying in 3s
+2026-10-09	stop_update_retry_succeeded	KOD: retry placed stop @$88.25
+2026-10-09	stop_updated	KOD: stop now $88.25 (73cc60ee-3d69-4095-b659-2ed1b10674dc) for 4 sh
+2026-10-12	stop_update_retry_triggered	KOD: place_stop_order raised on first attempt — APIError — retrying in 3s
+2026-10-12	stop_update_retry_succeeded	KOD: retry placed stop @$94.95
+2026-10-12	stop_updated	KOD: stop now $94.95 (b26e8ca2-09f3-4140-9729-97c74f6cccf9) for 4 sh
+2026-10-12	stop_update_retry_triggered	PENG: place_stop_order raised on first attempt — APIError — retrying in 3s
+2026-10-12	stop_update_retry_succeeded	PENG: retry placed stop @$63.37
+2026-10-12	stop_updated	PENG: stop now $63.37 (6b74a7e5-5ea7-4208-a262-116b9045165b) for 10 sh
+(27 rows)
+=== Q21 mi_live_orders statuses of replaced (old) stop rows for open trades 404,414,419
+id	trade_id	ticker	stop_price	status	sub_et	canc_et	oid
+381	404	KOD	60.49	replaced	2026-09-28 09:31:00.844984		a1b21d12
+382	404	KOD	63.15	canceled	2026-09-28 09:40:00.147764	2026-09-28 10:15:00.053681	b105e02e
+383	404	KOD	63.15	canceled	2026-09-28 10:10:00.361448	2026-10-06 09:00:00.198037	fada5284
+385	404	KOD	63.15	cancelled	2026-09-28 10:10:00.656572	2026-09-28 10:10:04.145181	7a7c604b
+395	404	KOD	63.6	canceled	2026-10-05 16:45:07.733913	2026-10-07 09:00:00.204805	1c7860fc
+400	404	KOD	69.59	canceled	2026-10-06 16:45:07.717752	2026-10-08 09:00:00.112511	8d528031
+404	404	KOD	75.31	canceled	2026-10-07 16:45:03.851544	2026-10-09 09:00:00.165597	e72a4a8b
+409	404	KOD	81.59	canceled	2026-10-08 16:45:03.846482	2026-10-12 09:00:00.113754	32a179ad
+415	404	KOD	88.25	new	2026-10-09 16:45:03.785203		73cc60ee
+416	404	KOD	94.95	accepted	2026-10-12 16:45:03.8016		b26e8ca2
+402	414	PENG	65.7	expired	2026-10-07 09:35:46.723927	2026-10-07 16:15:00.029106	e69409e6
+403	414	PENG	62.2	new	2026-10-07 16:20:00.060739		846900d4
+417	414	PENG	63.37	accepted	2026-10-12 16:45:07.608065		6b74a7e5
+412	419	HUM	434.29	expired	2026-10-09 09:31:00.519745	2026-10-09 16:15:00.034919	75dc2f70
+414	419	HUM	417.88000000000005	new	2026-10-09 16:20:00.046155		e440a379
+(15 rows)

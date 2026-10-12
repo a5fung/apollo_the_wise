@@ -1,0 +1,67 @@
+=== mi_audit_log cols
+column_name
+id
+created_at
+event_type
+summary
+detail
+(5 rows)
+=== mi_ep_alerts cols (strategy-ish)
+column_name
+(0 rows)
+=== mi_live_trades cols (account-ish)
+column_name
+account_mode
+alert_date
+dead_stop_order_id
+entry_order_id
+signal_type
+stop_order_id
+(6 rows)
+=== lane table cols
+column_name
+id
+ticker
+alert_date
+strategy_id
+first_graded_at
+last_graded_at
+detected_at
+score_tier
+ep_score
+baseline_floor_tier
+grade_engine_authority
+reject_stage
+reject_reason
+catalyst_quality
+llm_catalyst_quality
+catalyst
+claude_analysis
+gemini_validation
+gap_pct
+rel_volume
+vol_percentile
+pm_rvol
+pm_rvol_baseline_n
+prev_close
+current_price
+market_cap
+quality_adv_dollar
+atr_pct
+score_breakdown
+in_active_theme
+setup_class
+judge_tier
+judge_direction
+judge_rationale
+judge_materiality_tier
+judge_grade
+judge_grade_reason
+judge_tier_reason
+fire_axes
+rubric_version
+regime
+lane_rule_version
+recorded_at
+updated_at
+(44 rows)

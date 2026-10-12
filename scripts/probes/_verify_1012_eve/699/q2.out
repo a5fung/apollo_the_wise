@@ -1,0 +1,21 @@
+== A. stop_update_retry_succeeded by day + mode (last 14d)
+d	account_mode	n	tickers
+2026-09-29	live	1	VICR
+2026-09-30	live	1	VICR
+2026-10-01	live	1	VICR
+2026-10-02	live	1	VICR
+2026-10-05	live	2	KOD,VICR
+2026-10-06	live	2	KOD,VICR
+2026-10-07	live	1	KOD
+2026-10-08	live	1	KOD
+2026-10-09	live	1	KOD
+2026-10-12	live	2	KOD,PENG
+(10 rows)
+== B. digests that ever carried BOOK
+digests_with_book	first_et	last_et
+0		
+(1 row)
+== C. earliest and total digests
+count	min
+58	2026-07-17
+(1 row)

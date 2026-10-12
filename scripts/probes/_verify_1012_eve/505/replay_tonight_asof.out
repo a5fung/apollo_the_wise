@@ -1,0 +1,42 @@
+board rows 136 | live non-Retired with members 109 | non-Retired non-Fading 79
+cooldown pairs (pre-pass) 176 | arm_b pairs (approx, override-table sectors) 55
+
+== NEW closeness pick, cap 6 (compare with the 6 actual asks): 6 ask(s)
+ 1. [live] 'Vertical Commerce & Tax/Payments Software-Fintech Platforms' (4) -> 'Cloud Contact Center & CCaaS Communication Platforms' (6) E-SAAS sh_tk=0 ind=0.5 wsim=0.08
+ 2. [live] 'Cloud Data Storage & Analytics Infrastructure' (3) -> 'Cloud Contact Center & CCaaS Communication Platforms' (6) E-SAAS sh_tk=0 ind=1.0 wsim=0.106383
+ 3. [live] 'Cloud Supply Chain & Warehouse Management Software' (3) -> 'Cloud Application Delivery & Observability Infrastructure' (4) E-SAAS sh_tk=0 ind=1.0 wsim=0.09434
+ 4. [live] 'Cloud Financial Automation & Insurance Core Platform Software' (2) -> 'Cloud Data Storage & Analytics Infrastructure' (3) E-SAAS sh_tk=0 ind=1.0 wsim=0.067797
+ 5. [live] 'AI Server Power & Signal-Integrity Analog ICs' (5) -> 'AI-Driven Memory & Storage Supply Shortage' (6) E-AISEMI sh_tk=0 ind=1.0 wsim=0.075472
+ 6. [live] 'Exchange, Options Trading & Alternative Consumer Credit Financials' (4) -> 'Fintech & Digital Finance Sector Re-rating on Fed Easing' (19) E-BANKFIN sh_tk=0 ind=0.5 wsim=0.02
+
+NEW pick whole queue (uncapped): 12 childless themes with an eligible parent tonight; by child source: {'live': 12}
+   ask-able overlap/shared distribution: shared>=1: 0 | overlap>=0.5 and no shared: 12 | BELOW minimum (must be 0): 0
+   asks by ecosystem: {'E-AIINFRA': 1, 'E-AISEMI': 2, 'E-BANKFIN': 1, 'E-BIO': 1, 'E-HLTH': 1, 'E-SAAS': 6}
+
+== OLD size-ordered pick (pre-10-09 behaviour), cap 6: 6 ask(s)
+ 1. [live] 'Cloud Financial Automation & Insurance Core Platform Software' (2) -> 'Cloud Supply Chain & Warehouse Management Software' (3) E-SAAS sh_tk=0 ind=None wsim=None
+ 2. [live] 'Management & Business Process Consulting Services' (5) -> 'Enterprise HR & Workforce Management SaaS' (6) E-SAAS sh_tk=0 ind=None wsim=None
+ 3. [live] 'Exchange, Options Trading & Alternative Consumer Credit Financials' (4) -> 'Fintech Payments, Prepaid & Consumer Digital Banking Apps' (5) E-BANKFIN sh_tk=0 ind=None wsim=None
+ 4. [live] 'Marketing & Digital Presence SaaS Platforms' (4) -> 'Cloud Contact Center & CCaaS Communication Platforms' (6) E-SAAS sh_tk=0 ind=None wsim=None
+ 5. [live] 'RF, Microwave & Power Semiconductor Specialists' (4) -> 'AI Server Power & Signal-Integrity Analog ICs' (5) E-AISEMI sh_tk=0 ind=None wsim=None
+ 6. [live] 'Vertical Commerce & Tax/Payments Software-Fintech Platforms' (4) -> 'Cloud Contact Center & CCaaS Communication Platforms' (6) E-SAAS sh_tk=0 ind=None wsim=None
+
+OLD pick whole queue: 32; asks that would sit under the minimum (no shared stock, overlap<0.5):
+    22 of 32
+children asked under both: 11 | different first parent: 7 | children only the old pick would ask (new pick: under the minimum / none): 21
+
+tonight's 6 children - old pick vs new pick:
+ - 'Vertical Commerce & Tax/Payments Software-Fintech Platforms': old -> 'Cloud Contact Center & CCaaS Communication Platforms' | new -> 'Cloud Contact Center & CCaaS Communication Platforms'
+ - 'Cloud Data Storage & Analytics Infrastructure': old -> None | new -> 'Cloud Contact Center & CCaaS Communication Platforms'
+ - 'Cloud Supply Chain & Warehouse Management Software': old -> 'Cloud Contact Center & CCaaS Communication Platforms' | new -> 'Cloud Application Delivery & Observability Infrastructure'
+ - 'Cloud Financial Automation & Insurance Core Platform Softwar': old -> 'Cloud Supply Chain & Warehouse Management Software' | new -> 'Cloud Data Storage & Analytics Infrastructure'
+ - 'AI Server Power & Signal-Integrity Analog ICs': old -> 'AI-Driven Memory & Storage Supply Shortage' | new -> 'AI-Driven Memory & Storage Supply Shortage'
+ - 'Exchange, Options Trading & Alternative Consumer Credit Fina': old -> 'Fintech Payments, Prepaid & Consumer Digital Banking Apps' | new -> 'Fintech & Digital Finance Sector Re-rating on Fed Easing'
+
+OLD pick's own top 6 - industry overlap of each (minimum is 0.50 unless a stock is shared):
+   overlap 1.00 shared 0 | 'Cloud Financial Automation & Insurance Core Platform So' -> 'Cloud Supply Chain & Warehouse Management Sof' 
+   overlap 0.00 shared 0 | 'Management & Business Process Consulting Services' -> 'Enterprise HR & Workforce Management SaaS'   <-- BELOW MINIMUM
+   overlap 0.00 shared 0 | 'Exchange, Options Trading & Alternative Consumer Credit' -> 'Fintech Payments, Prepaid & Consumer Digital '   <-- BELOW MINIMUM
+   overlap 1.00 shared 0 | 'Marketing & Digital Presence SaaS Platforms' -> 'Cloud Contact Center & CCaaS Communication Pl' 
+   overlap 1.00 shared 0 | 'RF, Microwave & Power Semiconductor Specialists' -> 'AI Server Power & Signal-Integrity Analog ICs' 
+   overlap 0.50 shared 0 | 'Vertical Commerce & Tax/Payments Software-Fintech Platf' -> 'Cloud Contact Center & CCaaS Communication Pl' 

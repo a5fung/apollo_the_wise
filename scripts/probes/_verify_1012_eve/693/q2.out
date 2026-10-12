@@ -1,0 +1,55 @@
+== removals detail
+at_et	summary	det
+2026-10-12 17:03:42.975128	STNE removed from 'Cross-Border Remittance & Money Transfer Fintech' by validation	Description: 'Technology / Software - Infrastructure — Payment processing, merchant financial software Brazil' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-12 17:03:42.996226	INTR removed from 'Cross-Border Remittance & Money Transfer Fintech' by validation	Description: 'Financial Services / Banks - Regional — Digital banking, payments, fintech services Brazil' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-12 17:03:54.621485	ON removed from 'Electronics Manufacturing & IT Hardware Distribution Supply Chain' by validation	Description: 'Power semiconductors, auto/industrial' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-12 17:03:58.39081	SVRN removed from 'Exchange, Options Trading & Alternative Consumer Credit Financials' by validation	Description: 'AI agent infrastructure, decentralized asset control' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-12 17:04:04.586682	HLF removed from 'Functional Beverage & Energy Drink Brands' by validation	Description: 'Consumer Defensive / Packaged Foods — Nutritional supplements & wellness products, direct-to-consumer' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-12 17:04:45.79144	CALX removed from 'Vertical Software for Field Services, Restaurants & Retail Operations' by validation	Description: 'Technology / Software - Infrastructure — Cloud software platforms for telecom service providers' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-12 17:04:50.350142	HOG removed from 'Automotive Thermal & Powertrain Components Suppliers' by validation	Description: 'Consumer Cyclical / Recreational Vehicles — Motorcycle manufacturing & sales' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-12 17:05:09.936723	BRKR removed from 'Genomics & DNA Sequencing Tools' by validation	Description: 'Scientific instruments, analytical diagnostic solutions' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-12 17:05:23.294795	VVV removed from 'Quick-Service & Fast-Casual Restaurant Franchisors' by validation	Description: 'Consumer Cyclical / Auto & Truck Dealerships — Automotive oil changes & preventive maintenance retail' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-12 17:06:47.500653	VPG removed from 'RF, Microwave & Power Semiconductor Specialists' by validation	Description: 'Precision sensors, measurement technology' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-12 17:09:07.597726	EXPO removed from 'Management & Business Process Consulting Services' by validation	Description: 'Industrials / Engineering & Construction — Engineering & scientific consulting services' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-12 17:10:02.622395	MELI removed from 'Brazil Fintech & Digital Banking Rally' by validation	Description: 'Consumer Cyclical / Internet Retail — Online marketplace e-commerce Latin America' — validation (claude-sonnet-5-5) flagged as not matching theme
+(12 rows)
+== rewrite adopted rows
+at_et	summary	det
+2026-10-12 07:00:09.51666	claude-sonnet-5-5: forced_tool_to_structured_output	API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011CfxE7y3iHJFP5zRPSuC3W'}
+2026-10-12 16:02:00.862437	claude-opus-5-5: forced_tool_to_structured_output	API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011CfxwSXAXSjk31iY6FLe2v'}
+2026-10-12 17:10:45.569629	claude-sonnet-5-5: thinking_disabled_to_between_tools	API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'To turn thinking off on this model, send "thinking": {"type": "between_tools"} instead of {"type": "disabled"}. The model does not think before responding. The short updates it writes between tool calls come b
+(3 rows)
+== cooldown triggered
+at_et	summary
+2026-10-12 17:03:42.994326	STNE → 'Cross-Border Remittance & Money Transfer Fintech' cooldown 14d (removal #1)
+2026-10-12 17:03:42.99883	INTR → 'Cross-Border Remittance & Money Transfer Fintech' cooldown 14d (removal #1)
+2026-10-12 17:03:54.623981	ON → 'Electronics Manufacturing & IT Hardware Distribution Supply Chain' cooldown 14d (removal #1)
+2026-10-12 17:03:58.393493	SVRN → 'Exchange, Options Trading & Alternative Consumer Credit Financials' cooldown 14d (removal #1)
+2026-10-12 17:04:04.591195	HLF → 'Functional Beverage & Energy Drink Brands' cooldown 14d (removal #1)
+2026-10-12 17:04:45.794712	CALX → 'Vertical Software for Field Services, Restaurants & Retail Operations' cooldown 14d (removal #1)
+2026-10-12 17:04:50.352107	HOG → 'Automotive Thermal & Powertrain Components Suppliers' cooldown 14d (removal #2)
+2026-10-12 17:05:09.939078	BRKR → 'Genomics & DNA Sequencing Tools' cooldown 14d (removal #1)
+2026-10-12 17:05:23.296708	VVV → 'Quick-Service & Fast-Casual Restaurant Franchisors' cooldown 14d (removal #1)
+2026-10-12 17:06:47.506005	VPG → 'RF, Microwave & Power Semiconductor Specialists' cooldown 14d (removal #1)
+2026-10-12 17:09:07.60102	EXPO → 'Management & Business Process Consulting Services' cooldown 14d (removal #1)
+2026-10-12 17:10:02.625259	MELI → 'Brazil Fintech & Digital Banking Rally' cooldown 14d (removal #2)
+(12 rows)
+== any error/truncation/refusal events 10-12 17:00-18:30 ET
+event_type	count
+api_failure_fmp	22
+(1 row)
+== other callers truncated/max_tokens tonight
+caller	stop_reason	count
+description_backfill	end_turn	1
+mna_headline_question	tool_use	12
+perplexity_health	completed	1
+perplexity_news_search	completed	90
+theme_assignment	tool_use	17
+theme_descriptions	end_turn	2
+theme_discovery	tool_use	12
+theme_ecosystem_assignment	tool_use	11
+theme_merge_adjudication	tool_use	5
+theme_parent_adjudication	tool_use	6
+theme_synthesis	tool_use	1
+theme_validation	end_turn	154
+(12 rows)

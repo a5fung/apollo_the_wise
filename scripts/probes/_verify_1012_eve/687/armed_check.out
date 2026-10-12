@@ -1,0 +1,9 @@
+Mon Oct 12 10:26:21 PM UTC 2026
+    PID     ELAPSED CMD
+2260800    07:49:26 bash /home/apollo/expiry_launch_2026-10-13.sh
+ls: cannot access '/home/apollo/apollo_the_wise/logs/expiry_test_2026-10-13*': No such file or directory
+-rw-rw-r-- 1 apollo apollo 821 Oct 12 14:36 /home/apollo/expiry_launch_2026-10-13.sh
+---
+cat: /home/apollo/expiry_test_launch_2026-10-13.log: No such file or directory
+--- md5
+35a0a1df5372e7236e332b0d2d4a50bd  /home/apollo/apollo_the_wise/scripts/probes/_687/expiry_path_test.py

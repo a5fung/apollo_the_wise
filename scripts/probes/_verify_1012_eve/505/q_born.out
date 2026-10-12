@@ -1,0 +1,8 @@
+name	first_seen	shadow_promoted_days	recent
+AI Server Power & Signal-Integrity Analog ICs	2026-09-22		2026-10-05:live 2026-10-06:live 2026-10-07:live 2026-10-08:live 2026-10-09:live 2026-10-12:live
+Cloud Data Storage & Analytics Infrastructure	2026-07-14		2026-10-05:live 2026-10-06:live 2026-10-07:live 2026-10-08:live 2026-10-09:live 2026-10-12:live
+Cloud Financial Automation & Insurance Core Platform Software	2026-10-07	2026-10-07	2026-10-07:shadow_promoted 2026-10-08:live 2026-10-09:live 2026-10-12:live
+Cloud Supply Chain & Warehouse Management Software	2026-07-16		2026-10-05:live 2026-10-06:live 2026-10-07:live 2026-10-08:live 2026-10-09:live 2026-10-12:live
+Exchange, Options Trading & Alternative Consumer Credit Financials	2026-10-09	2026-10-09	2026-10-09:shadow_promoted 2026-10-12:live
+Vertical Commerce & Tax/Payments Software-Fintech Platforms	2026-10-07	2026-10-07	2026-10-07:shadow_promoted 2026-10-08:live 2026-10-09:live 2026-10-12:live
+(6 rows)

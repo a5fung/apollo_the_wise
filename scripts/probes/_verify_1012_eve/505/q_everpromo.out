@@ -1,0 +1,55 @@
+d	event_type	child	sources_ever	near
+2026-09-28	theme_parent_pass_inverted	AI data-center power buildout	live,shadow_promoted	2026-09-25:shadow_promoted 2026-09-28:live 2026-09-29:live
+2026-09-28	theme_parent_pass_linked	Pure-Play NAND/DRAM Memory Chip Makers	live,shadow_promoted	2026-09-25:live 2026-09-28:live 2026-09-29:live
+2026-09-28	theme_parent_pass_distinct	Emerging Medical Device Innovators Breakout	live,shadow_promoted	2026-09-25:live 2026-09-28:live 2026-09-29:live
+2026-09-30	theme_parent_pass_distinct	AI data-center power buildout	live,shadow_promoted	2026-09-28:live 2026-09-29:live 2026-09-30:live 2026-10-01:live
+2026-09-30	theme_parent_pass_distinct	Semiconductor Foundry & Advanced Packaging Manufacturing	live,shadow_promoted	2026-09-28:live 2026-09-29:live 2026-09-30:live 2026-10-01:live
+2026-09-30	theme_parent_pass_distinct	Fabless Semiconductor IP Licensing	live,shadow_promoted	2026-09-28:live 2026-09-29:live 2026-09-30:live 2026-10-01:live
+2026-09-30	theme_parent_pass_distinct	Semiconductor Design, Test & Assembly Enablement Tools	live,shadow_promoted	2026-09-28:live 2026-09-29:live 2026-09-30:live 2026-10-01:live
+2026-10-01	theme_parent_pass_linked	Low-Cost & Regional Passenger Airline Rebound	live,shadow_promoted	2026-09-28:live 2026-09-29:live 2026-09-30:live 2026-10-01:live 2026-10-02:live
+2026-10-01	theme_parent_pass_distinct	AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers	live,shadow_promoted	2026-09-28:live 2026-09-29:live 2026-09-30:live 2026-10-01:live 2026-10-02:live
+2026-10-01	theme_parent_pass_distinct	Semiconductor Process Control, Foundry & Specialty Optics/Materials Br	live,shadow_promoted	2026-09-30:shadow_promoted 2026-10-01:live 2026-10-02:live
+2026-10-01	theme_parent_pass_distinct	Cloud Application Software Rotation (Oversold Turning Up)	live,shadow_promoted	2026-09-28:live 2026-09-29:live 2026-09-30:live 2026-10-01:live 2026-10-02:live
+2026-10-01	theme_parent_pass_distinct	Genomics & DNA Sequencing Tools	live,shadow_promoted	2026-09-28:live 2026-09-29:live 2026-09-30:live 2026-10-01:live 2026-10-02:live
+2026-10-01	theme_parent_pass_distinct	Semiconductor Test, Yield & Assembly Supply Chain	live,shadow_promoted	2026-09-28:live 2026-09-29:live 2026-09-30:live 2026-10-01:live 2026-10-02:live
+2026-10-02	theme_parent_pass_distinct	Semiconductor Process Control, Foundry & Specialty Optics/Materials Br	live,shadow_promoted	2026-09-30:shadow_promoted 2026-10-01:live 2026-10-02:live
+2026-10-02	theme_parent_pass_distinct	Power Semiconductors (GaN, SiC & Discrete Power ICs)	live,shadow_promoted	2026-10-01:shadow_promoted 2026-10-02:live
+2026-10-02	theme_parent_pass_distinct	Semiconductor Photomask & Ultra-Low-Power Chip Enablers	live,shadow_promoted	2026-10-01:shadow_promoted 2026-10-02:live
+2026-10-02	theme_parent_pass_distinct	Data Storage & Data Management Software/Hardware Leaders	live,shadow_promoted	2026-09-30:shadow_promoted 2026-10-01:live 2026-10-02:live
+2026-10-02	theme_parent_pass_distinct	Semiconductor Foundry & Advanced Packaging Manufacturing	live,shadow_promoted	2026-09-29:live 2026-09-30:live 2026-10-01:live 2026-10-02:live
+2026-10-05	theme_parent_pass_distinct	Laser & RF/Photonic Component Suppliers for AI and Optical Build-Out	live,shadow_promoted	2026-10-02:shadow_promoted 2026-10-05:live 2026-10-06:live
+2026-10-05	theme_parent_pass_distinct	Semiconductor Photomask & Ultra-Low-Power Chip Enablers	live,shadow_promoted	2026-10-02:live 2026-10-05:live 2026-10-06:live
+2026-10-05	theme_parent_pass_distinct	IT Consulting & Business Process Outsourcing Services	live,shadow_promoted	2026-10-02:live 2026-10-05:live 2026-10-06:live
+2026-10-06	theme_parent_pass_distinct	Discrete, Passive & Low-Power Programmable Semiconductor Components Re	live,shadow_promoted	2026-10-05:live 2026-10-06:live 2026-10-07:live
+2026-10-06	theme_parent_pass_distinct	Digital Advertising & Ad-Tech Monetization Platforms	live,shadow_promoted	2026-10-05:live 2026-10-06:live 2026-10-07:live
+2026-10-06	theme_parent_pass_distinct	Electronics Manufacturing Services (EMS) Providers	live,shadow_promoted	2026-10-05:live 2026-10-06:live 2026-10-07:live
+2026-10-06	theme_parent_pass_distinct	Emerging AI Compute & Cloud Infrastructure Platforms	live,shadow_promoted	2026-10-05:live 2026-10-06:live 2026-10-07:live
+2026-10-06	theme_parent_pass_distinct	Semiconductor Design, Test & Assembly Enablement Tools	live,shadow_promoted	2026-10-05:live 2026-10-06:live 2026-10-07:live
+2026-10-07	theme_parent_pass_distinct	AI data-center power buildout	live,shadow_promoted	2026-10-06:shadow_promoted 2026-10-07:live 2026-10-08:live
+2026-10-07	theme_parent_pass_distinct	Fintech Payments, Prepaid & Consumer Digital Banking Apps	live,shadow_promoted	2026-10-05:live 2026-10-06:live 2026-10-07:live 2026-10-08:live
+2026-10-07	theme_parent_pass_distinct	Coal Mining Producers	live,shadow_promoted	2026-10-05:live 2026-10-06:live 2026-10-07:live 2026-10-08:live
+2026-10-07	theme_parent_pass_distinct	Discrete, Passive & Low-Power Programmable Semiconductor Components Re	live,shadow_promoted	2026-10-05:live 2026-10-06:live 2026-10-07:live 2026-10-08:live
+2026-10-07	theme_parent_pass_distinct	Electronics Manufacturing Services (EMS) Providers	live,shadow_promoted	2026-10-05:live 2026-10-06:live 2026-10-07:live 2026-10-08:live
+2026-10-08	theme_parent_pass_distinct	Online Consumer Lending & Fintech Credit	live,shadow_promoted	2026-10-07:shadow_promoted 2026-10-08:live 2026-10-09:live
+2026-10-08	theme_parent_pass_distinct	Discrete, Passive & Low-Power Programmable Semiconductor Components Re	live,shadow_promoted	2026-10-05:live 2026-10-06:live 2026-10-07:live 2026-10-08:live 2026-10-09:live
+2026-10-09	theme_parent_pass_distinct	Management & Business Process Consulting Services	live,shadow_promoted	2026-10-06:live 2026-10-07:live 2026-10-08:live 2026-10-09:live
+2026-10-09	theme_parent_pass_distinct	Cloud Financial Automation & Insurance Core Platform Software	live,shadow_promoted	2026-10-07:shadow_promoted 2026-10-08:live 2026-10-09:live
+2026-10-09	theme_parent_pass_distinct	Discrete, Passive & Low-Power Programmable Semiconductor Components Re	live,shadow_promoted	2026-10-06:live 2026-10-07:live 2026-10-08:live 2026-10-09:live
+2026-10-09	theme_parent_pass_distinct	Semiconductor Design, Test & Assembly Enablement Tools	live,shadow_promoted	2026-10-06:live 2026-10-07:live 2026-10-08:live 2026-10-09:live
+2026-10-09	theme_parent_pass_distinct	Vertical Commerce & Tax/Payments Software-Fintech Platforms	live,shadow_promoted	2026-10-07:shadow_promoted 2026-10-08:live 2026-10-09:live
+2026-10-09	theme_parent_pass_distinct	Cloud Application Software Rotation (Oversold Turning Up)	live,shadow_promoted	2026-10-06:live 2026-10-07:live 2026-10-08:live 2026-10-09:live
+2026-10-12	theme_parent_pass_distinct	Vertical Commerce & Tax/Payments Software-Fintech Platforms	live,shadow_promoted	2026-10-09:live 2026-10-12:live
+2026-10-12	theme_parent_pass_distinct	Cloud Financial Automation & Insurance Core Platform Software	live,shadow_promoted	2026-10-09:live 2026-10-12:live
+2026-10-12	theme_parent_pass_distinct	Exchange, Options Trading & Alternative Consumer Credit Financials	live,shadow_promoted	2026-10-09:shadow_promoted 2026-10-12:live
+(42 rows)
+== how the tonight-board shadow_promoted themes look (8)
+name	stage	n	parent_theme	first_seen
+Building Products & HVAC/Industrial Motion Rotation	Nascent	4		2026-10-12
+Diagnostic Testing & Lab Equipment Re-Rating	Nascent	3		2026-10-12
+Enterprise Information Management & Infrastructure Engineering Software	Nascent	3		2026-10-12
+Footwear & Branded Apparel Consumer Turnaround	Nascent	3		2026-10-12
+Functional Energy Drink Brands	Nascent	3		2026-10-12
+Gold Miners Not Yet Classified: Mid-Tier Gold Producers (AGI, NG, HYMC, MUX)	Nascent	4		2026-10-12
+Steel Producers & Flat-Rolled Steel Processors	Nascent	3		2026-10-12
+Wireless Tower & Cell Site Infrastructure REITs	Nascent	3		2026-10-12
+(8 rows)

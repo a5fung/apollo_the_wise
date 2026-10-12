@@ -1,0 +1,167 @@
+== 1. latest board 10-12 rows for the six folded themes + homes (stage, n, tickers)
+theme_date	name	stage	n	rs_avg	source	tk
+2026-10-12	Alternative Asset Managers & Private Markets Platforms	Retired			live	
+2026-10-12	Cloud Contact Center & CCaaS Communication Platforms	Mainstream	6	90.3	live	FIVN,NICE,RNG,TWLO,DBX,BOX
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Retired			live	
+2026-10-12	Emerging Medical Device Innovators Breakout	Retired			live	
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Retired			live	
+2026-10-12	Functional Beverage & Energy Drink Brands	Retired			live	
+2026-10-12	Functional Energy Drink Brands	Nascent	3	77.86666666666667	shadow_promoted	CELH,HELE,JBS
+2026-10-12	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	22	83.4	live	INSP,BAX,LIVN,RMD,BDX,EW,MMSI,GEHC,ICUI,ZBH,HAE,MDT,ISRG,ATRC,GKOS,TMDX,ABT,MMED,DXCM,ATEC,CNMD,SIBN
+2026-10-12	Non-Alcoholic Beverages & Energy Drinks	Accelerating	6	85.2	live	KDP,KO,COKE,CCEP,KOF,COCO
+2026-10-12	Orthopedic Surgical Devices & Instruments	Retired			live	
+2026-10-12	Wealth Management & Retail Brokerage Platforms	Mainstream	15	78	live	XP,AMG,VCTR,HOOD,OPY,BEN,AAMI,SCHW,BLK,IBKR,WT,SEIC,FUTU,IVZ,PAX
+(11 rows)
+== 2. where are the released members on 10-12 board (active themes only)
+name	stage	n	tk
+Medical Device Mean-Reversion & Rotation Recovery	Mainstream	22	ATEC
+Cloud Contact Center & CCaaS Communication Platforms	Mainstream	6	BOX
+Functional Energy Drink Brands	Nascent	3	CELH
+Medical Device Mean-Reversion & Rotation Recovery	Mainstream	22	CNMD
+Non-Alcoholic Beverages & Energy Drinks	Accelerating	6	COCO
+Cloud Contact Center & CCaaS Communication Platforms	Mainstream	6	DBX
+Medical Device Mean-Reversion & Rotation Recovery	Mainstream	22	DXCM
+Medical Device Mean-Reversion & Rotation Recovery	Mainstream	22	INSP
+Medical Device Mean-Reversion & Rotation Recovery	Mainstream	22	MMED
+Wealth Management & Retail Brokerage Platforms	Mainstream	15	PAX
+Medical Device Mean-Reversion & Rotation Recovery	Mainstream	22	SIBN
+(11 rows)
+== 3. Appalachian theme history (mi_themes)
+theme_date	stage	n	rs_avg	source	tk
+2026-10-07	Nascent	6	71.8	shadow_promoted	BKV,CRK,CNX,AR,EXE,EQT
+2026-10-08	Retired			live	
+2026-10-09	Nascent	6	72.58333333333333	shadow_promoted	BKV,CRK,CNX,AR,EXE,EQT
+2026-10-12	Accelerating	8	76.3	live	EQT,AR,EXE,BKV,CRK,CNX,RRC,GPOR
+(4 rows)
+== 4. audit rows naming the Appalachian theme since 10-02
+id	t	event_type	s
+52480	2026-10-05 17:08:36.350571	theme_sector_cap_not_absorbed	Pass2: 'Appalachian Natural Gas Producers' dropped — 0 of 6 member(s) passed the membership test for 'Crude & Product Tanker Shipping' (sector group 'oil_gas')
+53121	2026-10-06 17:08:55.244118	theme_discovered	New theme: Appalachian & Natural Gas-Weighted E&P Producers (7 stocks)
+53142	2026-10-06 17:08:55.287809	theme_sector_cap_not_absorbed	Pass2: 'Appalachian & Natural Gas-Weighted E&P Producers' dropped — 0 of 7 member(s) passed the membership test for 'Crude & Product Tanker Shipping' (sector group 'oil_gas')
+53169	2026-10-06 17:10:21.87518	theme_constituent_churn	11 high-churn (theme,ticker) pair(s) in last 10d — sample: EQH↔Annuity-Focused Insu(2), AR↔Appalachian Natural (2), CNX↔Appalachian Natural (2), CRK↔Appalachian Natural (2), EQT↔Appalachian Natural (2)
+53770	2026-10-07 17:10:15.200076	stage_change	Appalachian Natural Gas Producers: Nascent → Accelerating
+53794	2026-10-07 17:10:15.24338	theme_sector_cap_not_absorbed	Pass2: 'Appalachian Natural Gas Producers' dropped — 0 of 7 member(s) passed the membership test for 'Global Oil & Gas Producers and Refiners' (sector group 'oil_gas')
+53825	2026-10-07 17:11:51.347419	theme_constituent_churn	11 high-churn (theme,ticker) pair(s) in last 10d — sample: RRC↔Appalachian Natural (3), AR↔Appalachian Natural (3), CNX↔Appalachian Natural (3), CRK↔Appalachian Natural (3), EQT↔Appalachian Natural (3)
+53834	2026-10-07 17:13:41.95338	theme_discovery_shown_declined	shown=63 declined=26 proposed=21 clusters shown=13 declined=0 already_named=3 partial=5 taken=5 recall_mode=True
+53839	2026-10-07 17:13:49.891656	shadow_themes_promoted	Graduated 10 shadow cohort(s) into live mi_themes (8 new) — 17 held at the birth gate
+53840	2026-10-07 17:13:49.896023	theme_birth_gate	2026-10-07 [promote/dedup_only] birth-gate: 4 birth / 27 join / 4 awaiting-2nd-sighting / 2 held-floor · ⚠ 43 previously-held later PASSED
+53844	2026-10-07 17:14:05.710843	theme_ecosystem_assigned	'Natural Gas-Weighted Appalachian & Shale E&P Producers' → E-ENER (haiku)
+53871	2026-10-07 17:31:12.740608	theme_correctness_check	G1 536/573 (93.5% bar 90.0%) · G2 16/573 (2.8% bar<= 5.0%) · G3 106/124 (85.5% bar 90.0%) · G4 15/124 small (12.1% bar<= 10.0%) · latency median 17.5 sessions (n=8)
+54337	2026-10-08 17:04:38.919275	assignment_llm_proposed	Sonnet proposed 1 assignment(s) (batch 9/17, advisor_calls=0)
+54343	2026-10-08 17:05:18.530855	assignment_llm_proposed	Sonnet proposed 4 assignment(s) (batch 14/17, advisor_calls=0)
+54406	2026-10-08 17:06:46.351889	theme_sector_cap_not_absorbed	Pass2: 'Natural Gas-Weighted Appalachian & Shale E&P Producers' dropped — 0 of 8 member(s) passed the membership test for 'U.S. Oil Refiners & Refining Margin Expansion' (sector group 'oil_gas')
+54422	2026-10-08 17:07:28.08307	theme_auto_retired	Auto-retired 13 theme(s) dropped during merge passes (3 with successor pointer)
+54431	2026-10-08 17:07:51.224966	theme_constituent_churn	11 high-churn (theme,ticker) pair(s) in last 10d — sample: RRC↔Appalachian Natural (3), AR↔Appalachian Natural (3), CNX↔Appalachian Natural (3), CRK↔Appalachian Natural (3), EQT↔Appalachian Natural (3)
+54444	2026-10-08 17:09:12.026923	shadow_themes_promoted	Graduated 11 shadow cohort(s) into live mi_themes (7 new) — 25 held at the birth gate
+55002	2026-10-09 17:07:29.769366	stage_change	Appalachian Natural Gas Producers: Nascent → Accelerating
+55024	2026-10-09 17:07:29.810893	theme_sector_cap_not_absorbed	Pass2: 'Appalachian Natural Gas Producers' dropped — 0 of 7 member(s) passed the membership test for 'U.S. Oil Refiners & Refining Margin Expansion' (sector group 'oil_gas')
+55053	2026-10-09 17:08:31.359165	theme_constituent_churn	11 high-churn (theme,ticker) pair(s) in last 10d — sample: AR↔Appalachian Natural (3), CNX↔Appalachian Natural (3), CRK↔Appalachian Natural (3), EQT↔Appalachian Natural (3), EXE↔Appalachian Natural (3)
+55067	2026-10-09 17:09:40.428603	shadow_themes_promoted	Graduated 14 shadow cohort(s) into live mi_themes (11 new) — 25 held at the birth gate
+55068	2026-10-09 17:09:40.433683	theme_birth_gate	2026-10-09 [promote/dedup_only] birth-gate: 8 birth / 32 join / 6 awaiting-2nd-sighting / 3 held-floor · ⚠ 47 previously-held later PASSED
+55101	2026-10-09 17:31:11.64705	theme_correctness_check	G1 568/603 (94.2% bar 90.0%) · G2 16/603 (2.7% bar<= 5.0%) · G3 106/123 (86.2% bar 90.0%) · G4 14/123 small (11.4% bar<= 10.0%; settled 7/116 6.0%) · latency median 16.5 sessions (n=8)
+55664	2026-10-12 17:07:29.511017	assignment_llm_proposed	Sonnet proposed 1 assignment(s) (batch 5/16, advisor_calls=0)
+55673	2026-10-12 17:08:41.41445	assignment_llm_proposed	Sonnet proposed 3 assignment(s) (batch 14/16, advisor_calls=0)
+55722	2026-10-12 17:10:07.5154	stage_change	Natural Gas-Weighted Appalachian & Shale E&P Producers: Nascent → Accelerating
+55737	2026-10-12 17:10:07.54893	theme_sector_cap_kept_distinct	Pass2: 'Natural Gas-Weighted Appalachian & Shale E&P Producers' kept distinct from 'Crude & Product Tanker Shipping' — 8 of 8 member(s) judged, none co-moves (sector group 'oil_gas')
+55813	2026-10-12 17:31:15.351386	theme_correctness_check	G1 570/609 (93.6% bar 90.0%) · G2 18/609 (3.0% bar<= 5.0%) · G3 100/109 (91.7% bar 90.0%) · G4 10/109 small (9.2% bar<= 10.0%; settled 5/104 4.8%) · latency median 5.5 sessions (n=6)
+(29 rows)
+== 5. oil_gas group on 10-09 and 10-12 boards (names, stage, n)
+theme_date	name	stage	n
+2026-10-09	Appalachian Natural Gas Producers	Retired	
+2026-10-09	Crude & Product Tanker Shipping	Mainstream	6
+2026-10-09	Energy Infrastructure & Services Complex	Mainstream	12
+2026-10-09	Energy Supply Disruption: Middle East Geopolitical Risk	Accelerating	15
+2026-10-09	Functional Beverage & Energy Drink Brands	Nascent	3
+2026-10-09	Natural Gas-Weighted Appalachian & Shale E&P Producers	Nascent	6
+2026-10-09	Non-Alcoholic Beverages & Energy Drinks	Mainstream	5
+2026-10-09	Product Tanker Shipping	Nascent	5
+2026-10-09	Regulated Electric & Gas Utilities Broad Defensive Rotation Extension	Retired	
+2026-10-09	U.S. Oil Refiners & Refining Margin Expansion	Nascent	15
+2026-10-12	Crude & Product Tanker Shipping	Mainstream	7
+2026-10-12	Energy Infrastructure & Services Complex	Mainstream	14
+2026-10-12	Energy Supply Disruption: Middle East Geopolitical Risk	Accelerating	18
+2026-10-12	Functional Beverage & Energy Drink Brands	Retired	
+2026-10-12	Functional Energy Drink Brands	Nascent	3
+2026-10-12	Natural Gas-Weighted Appalachian & Shale E&P Producers	Accelerating	8
+2026-10-12	Non-Alcoholic Beverages & Energy Drinks	Accelerating	6
+2026-10-12	Product Tanker Shipping	Nascent	5
+2026-10-12	U.S. Oil Refiners & Refining Margin Expansion	Nascent	17
+(19 rows)
+== 6. G3 fail list sizes on 10-12 board
+name	stage	n	tk	source
+Diagnostic Testing & Lab Equipment Re-Rating	Nascent	3	QDEL,OMCL,MDLN	shadow_promoted
+Digital Advertising & Ad-Tech Monetization Platforms	Mainstream	2	MGNI,DV	live
+Digital-First Beauty & Cosmetics Brands	Nascent	2	ODD,ELF	live
+Enterprise Information Management & Infrastructure Engineering Software	Nascent	3	OTEX,BSY,P	shadow_promoted
+Functional Energy Drink Brands	Nascent	3	CELH,HELE,JBS	shadow_promoted
+International Telecom & Cross-Border Communications Services	Nascent	2	IDT,VEON	live
+Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	2	PTGX,CORT	live
+Precision Timing & Motion Control Component Makers	Fading	2	FEIM,ALNT	live
+Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)	Mainstream	3	UTHR,KOD,MANE	live
+(9 rows)
+== 7. tonight retire rows (theme_retired, theme_auto_retired) summaries
+id	event_type	s
+55709	theme_retired	Retired: Automotive Thermal & Powertrain Components Suppliers
+55710	theme_retired	Retired: Skilled Nursing & Senior Housing Healthcare REITs
+55711	theme_retired	Retired: Branded Footwear & Hotel Consumer Discretionary Turnaround
+55712	theme_retired	Retired: Building Products & Home Improvement Materials Makers
+55713	theme_retired	Retired: CAD/PLM & 3D Design Engineering Software
+55714	theme_retired	Retired: Data Analytics, AI Platform & Digital Transformation IT Services
+55715	theme_retired	Retired: Global Agriculture Value Chain Recovery
+55716	theme_retired	Retired: Small Modular Reactor & Advanced Nuclear Fission Technology
+55717	theme_retired	Retired: Work Management & Collaborative Design SaaS
+55755	theme_auto_retired	Auto-retired 18 theme(s) dropped during merge passes (9 with successor pointer)
+(10 rows)
+== 8. tonight births (theme_discovered / birth_gate)
+id	event_type	s
+55698	theme_birth_gate	2026-10-12 [lane1/dedup_only] birth-gate: 1 birth / 0 join / 1 awaiting-2nd-sighting / 2 held-floor · ⚠ 48 previously-held later PASSED
+55703	theme_discovered	New theme: Digital-First Beauty & Cosmetics Brands (2 stocks)
+55704	theme_discovered	New theme: Brazil Fintech & Digital Banking Rally (3 stocks)
+55705	theme_discovered	New theme: Primary Silver Miners (5 stocks)
+55706	theme_discovered	New theme: Asset-Based Trucking & Intermodal Freight Carriers (5 stocks)
+55707	theme_discovered	New theme: Canadian Big Banks (7 stocks)
+55708	theme_discovered	New theme: Small Modular Reactor & Advanced Nuclear Fission Technology (4 stocks)
+55780	theme_birth_gate	2026-10-12 [promote/dedup_only] birth-gate: 4 birth / 12 join / 6 awaiting-2nd-sighting / 1 held-floor · ⚠ 51 previously-held later PASSED
+(8 rows)
+== 9. G3 history 10-12 vs prior: fold_ran earlier nights? (should be none before 10-12)
+d	event_type	count
+2026-10-12	theme_small_folded	6
+2026-10-12	theme_small_fold_ran	1
+(2 rows)
+== 10. stage of 2-3 member themes tonight and count g3 failing small (board of 10-12)
+stage	n	n23
+Accelerating	4	0
+Fading	30	15
+Mainstream	44	9
+Nascent	31	11
+(4 rows)
+== 11. retired tombstones 10-12 for folded themes
+name	stage	n	d
+Alternative Asset Managers & Private Markets Platforms	Retired		Auto-retired 2026-10-12: folded into 'Wealth Management & Retail Brokerage Platf
+Asset-Light Trucking & Freight Logistics Carriers	Retired		Auto-retired 2026-10-12: thesis-merged into 'Trucking & Freight Carriers (Capaci
+Automotive Thermal & Powertrain Components Suppliers	Retired		Auto-retired 2026-10-12: dropped during merge/absorption (no successor found) (p
+Branded Footwear & Hotel Consumer Discretionary Turnaround	Retired		Auto-retired 2026-10-12: retired — weak Fading at 2 members (< 3), #655 rule B —
+Building Products & Home Improvement Materials Makers	Retired		Auto-retired 2026-10-12: retired — weak Fading at 2 members (< 3), #655 rule B —
+CAD/PLM & 3D Design Engineering Software	Retired		Auto-retired 2026-10-12: retired — weak Fading at 2 members (< 3), #655 rule B —
+Cross-Border Remittance & Money Transfer Fintech	Retired		Auto-retired 2026-10-12: absorbed/superseded by 'Fintech Payments, Prepaid & Con
+Cross-Industry Test, Measurement & Design-Verification Tools	Retired		Auto-retired 2026-10-12: absorbed/superseded by 'Semiconductor Design, Test & As
+Data Analytics, AI Platform & Digital Transformation IT Services	Retired		Auto-retired 2026-10-12: retired — weak Fading at 2 members (< 3), #655 rule B —
+Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Retired		Auto-retired 2026-10-12: folded into 'Medical Device Mean-Reversion & Rotation R
+Digital Dollar & Crypto Payments Infrastructure	Retired		Auto-retired 2026-10-12: absorbed/superseded by 'Fintech & Digital Finance Secto
+Emerging Medical Device Innovators Breakout	Retired		Auto-retired 2026-10-12: folded into 'Medical Device Mean-Reversion & Rotation R
+Enterprise Unstructured Data Storage Infrastructure	Retired		Auto-retired 2026-10-12: folded into 'Cloud Contact Center & CCaaS Communication
+Fabless Semiconductor IP Licensing	Retired		Auto-retired 2026-10-12: absorbed/superseded by 'AI Server Power & Signal-Integr
+Functional Beverage & Energy Drink Brands	Retired		Auto-retired 2026-10-12: folded into 'Non-Alcoholic Beverages & Energy Drinks' —
+Global Agriculture Value Chain Recovery	Retired		Auto-retired 2026-10-12: retired — weak Fading at 2 members (< 3), #655 rule B —
+Gold & Silver Miners Not Yet Classified (South African & Developer Gold Producers)	Retired		Auto-retired 2026-10-12: absorbed/superseded by 'Precious Metals Miners — Fed Ea
+Homebuilders Weak-Tape Correlated Basket	Retired		Auto-retired 2026-10-12: absorbed/superseded by 'Homebuilders & Residential Cons
+Orthopedic Surgical Devices & Instruments	Retired		Auto-retired 2026-10-12: folded into 'Medical Device Mean-Reversion & Rotation R
+Quick-Service & Fast-Casual Restaurant Franchisors	Retired		Auto-retired 2026-10-12: absorbed/superseded by 'Restaurant Chain Recovery' (pri
+RF & Analog Wireless Connectivity Semiconductor Makers	Retired		Auto-retired 2026-10-12: absorbed/superseded by 'Mobile SoC & Wireless Connectiv
+Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand	Retired		Auto-retired 2026-10-12: thesis-merged into 'AI-Driven Semiconductor Manufacturi
+Semiconductor Equipment Subsystem & Fluid Delivery Suppliers	Retired		Auto-retired 2026-10-12: absorbed/superseded by 'Semiconductor Equipment Capex C
+Semiconductor Foundry & Advanced Packaging Manufacturing	Retired		Auto-retired 2026-10-12: renamed to 'AI-Driven Semiconductor Manufacturing Ecosy
+Skilled Nursing & Senior Housing Healthcare REITs	Retired		Auto-retired 2026-10-12: dropped during merge/absorption (no successor found) (p
+Specialty & Rare-Disease Biopharma Turnarounds	Retired		Auto-retired 2026-10-12: dropped during merge/absorption (no successor found) (p
+Work Management & Collaborative Design SaaS	Retired		Auto-retired 2026-10-12: retired — weak Fading at 2 members (< 3), #655 rule B —
+(27 rows)

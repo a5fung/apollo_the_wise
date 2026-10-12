@@ -1,0 +1,35 @@
+== mi_theme_ecosystems columns
+column_name
+theme_name
+e_code
+method
+assigned_at
+(4 rows)
+== parent links on 10-09 (non-Retired)
+name	stage	parent_theme
+Annuity-Focused Insurers	Mainstream	Life Insurance & Annuity Providers
+Customer Engagement & Marketing/CX SaaS Platforms	Mainstream	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS
+Data Backup & Cyber Resiliency Software	Nascent	Network Security & Zero-Trust Edge
+Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Fading	Medical Device Mean-Reversion & Rotation Recovery
+HBM & AI-Driven Memory Chip Makers	Fading	AI-Driven Memory & Storage Supply Shortage
+Liquid Biopsy & Molecular Cancer Diagnostics Testing	Mainstream	Genomics & DNA Sequencing Tools
+Orthopedic Surgical Devices & Instruments	Fading	Medical Device Mean-Reversion & Rotation Recovery
+Product Tanker Shipping	Nascent	Crude & Product Tanker Shipping
+Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand	Mainstream	Semiconductor Test, Yield & Assembly Supply Chain
+(9 rows)
+== parent links on 10-12 (non-Retired)
+name	stage	parent_theme
+Annuity-Focused Insurers	Mainstream	Life Insurance & Annuity Providers
+Customer Engagement & Marketing/CX SaaS Platforms	Mainstream	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS
+Data Backup & Cyber Resiliency Software	Nascent	Network Security & Zero-Trust Edge
+HBM & AI-Driven Memory Chip Makers	Fading	AI-Driven Memory & Storage Supply Shortage
+Liquid Biopsy & Molecular Cancer Diagnostics Testing	Mainstream	Genomics & DNA Sequencing Tools
+Product Tanker Shipping	Nascent	Crude & Product Tanker Shipping
+(6 rows)
+== 10-12 retired rows with a parent pointer, count and whether the 10-09 row was one of the 9 links
+count
+27
+(1 row)
+count
+18
+(1 row)

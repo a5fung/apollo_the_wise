@@ -1,0 +1,48 @@
+=== Q5 audit rows 16:45 window (live_position_update) detail
+id	et	event_type	summary	detail
+55542	2026-10-12 16:45:00.322644	stop_update_started	KOD: $88.25 → $94.95 (4 of 4 after 0 held)	{"trade_id": 404, "ticker": "KOD", "old_stop_id": "73cc60ee-3d69-4095-b659-2ed1b10674dc", "old_stop_price": 88.25, "new_stop_price": 94.95, "remaining_shares": 4.0, "pending_exit_qty": 0, "effective_qty": 4}
+55543	2026-10-12 16:45:00.347565	stop_update_retry_triggered	KOD: place_stop_order raised on first attempt — APIError — retrying in 3s	{"trade_id": 404, "ticker": "KOD", "new_stop_price": 94.95, "attempt": 1, "old_cancel_ok": true, "error": "{\"available\":\"0\",\"code\":40310000,\"existing_qty\":\"4\",\"held_for_orders\":\"4\",\"message\":\"insufficient qty available for order (requested: 4, available: 0)\",\"related_orders\":[\"73cc60ee-3d69-4095-b659-2ed1b10674dc\"],\"symbol\":\"KOD\"}"}
+55544	2026-10-12 16:45:00.399901	dead_stop_price_preserved	trade #404 [live]: dead stop 73cc60ee (status=OrderStatus.CANCELED) preserved at $88.25 for the #600 floor	{"trade_id": 404, "account_mode": "live", "order_id": "73cc60ee-3d69-4095-b659-2ed1b10674dc", "status": "OrderStatus.CANCELED", "price": 88.25}
+55545	2026-10-12 16:45:00.402087	stop_order_id_changed	trade #404 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)	{"trade_id": 404, "account_mode": "live", "new_id": null, "reason": "cancel_or_reject_null"}
+55546	2026-10-12 16:45:03.363003	stop_update_retry_succeeded	KOD: retry placed stop @$94.95	{"trade_id": 404, "ticker": "KOD", "new_stop_price": 94.95, "new_stop_id": "b26e8ca2-09f3-4140-9729-97c74f6cccf9"}
+55547	2026-10-12 16:45:03.425874	stop_order_id_changed	trade #404 [live]: stop_order_id=b26e8ca2-09f3-4140-9729-97c74f6cccf9 (reason=cancel_or_reject_restored)	{"trade_id": 404, "account_mode": "live", "new_id": "b26e8ca2-09f3-4140-9729-97c74f6cccf9", "reason": "cancel_or_reject_restored"}
+55548	2026-10-12 16:45:03.428694	stop_replacement_confirmed_silent	KOD: WS safety-net agrees with order_manager's own recorded evidence ($94.95, b26e8ca2-09f3-4140-9729-97c74f6cccf9) via audit_price_only — Telegram suppressed, operator already notified via order_manager	{"trade_id": 404, "ticker": "KOD", "account_mode": "live", "replacement_order_id": "b26e8ca2-09f3-4140-9729-97c74f6cccf9", "replacement_stop_price": 94.95, "event_norm": "cancelled", "rechecked": true, "db_matched": false, "audit_price_matched": true}
+55549	2026-10-12 16:45:03.807066	stop_updated	KOD: stop now $94.95 (b26e8ca2-09f3-4140-9729-97c74f6cccf9) for 4 sh	{"trade_id": 404, "ticker": "KOD", "old_stop_id": "73cc60ee-3d69-4095-b659-2ed1b10674dc", "old_stop_price": 88.25, "new_stop_id": "b26e8ca2-09f3-4140-9729-97c74f6cccf9", "new_stop_price": 94.95, "remaining_shares": 4.0, "pending_exit_qty": 0, "effective_qty": 4, "old_cancel_ok": true}
+55550	2026-10-12 16:45:04.140595	stop_update_started	PENG: $62.2 → $63.37 (10 of 10 after 0 held)	{"trade_id": 414, "ticker": "PENG", "old_stop_id": "846900d4-dc67-4ebd-b95f-8ddeac8dc0ae", "old_stop_price": 62.2, "new_stop_price": 63.37, "remaining_shares": 10.0, "pending_exit_qty": 0, "effective_qty": 10}
+55551	2026-10-12 16:45:04.162202	stop_update_retry_triggered	PENG: place_stop_order raised on first attempt — APIError — retrying in 3s	{"trade_id": 414, "ticker": "PENG", "new_stop_price": 63.37, "attempt": 1, "old_cancel_ok": true, "error": "{\"available\":\"0\",\"code\":40310000,\"existing_qty\":\"10\",\"held_for_orders\":\"10\",\"message\":\"insufficient qty available for order (requested: 10, available: 0)\",\"related_orders\":[\"846900d4-dc67-4ebd-b95f-8ddeac8dc0ae\"],\"symbol\":\"PENG\"}"}
+55552	2026-10-12 16:45:04.185794	stop_order_id_changed	trade #414 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)	{"trade_id": 414, "account_mode": "live", "new_id": null, "reason": "cancel_or_reject_null"}
+55553	2026-10-12 16:45:07.177173	stop_update_retry_succeeded	PENG: retry placed stop @$63.37	{"trade_id": 414, "ticker": "PENG", "new_stop_price": 63.37, "new_stop_id": "6b74a7e5-5ea7-4208-a262-116b9045165b"}
+55554	2026-10-12 16:45:07.208184	stop_order_id_changed	trade #414 [live]: stop_order_id=6b74a7e5-5ea7-4208-a262-116b9045165b (reason=cancel_or_reject_restored)	{"trade_id": 414, "account_mode": "live", "new_id": "6b74a7e5-5ea7-4208-a262-116b9045165b", "reason": "cancel_or_reject_restored"}
+55555	2026-10-12 16:45:07.210665	stop_replacement_confirmed_silent	PENG: WS safety-net agrees with order_manager's own recorded evidence ($63.37, 6b74a7e5-5ea7-4208-a262-116b9045165b) via audit_price_only — Telegram suppressed, operator already notified via order_manager	{"trade_id": 414, "ticker": "PENG", "account_mode": "live", "replacement_order_id": "6b74a7e5-5ea7-4208-a262-116b9045165b", "replacement_stop_price": 63.37, "event_norm": "cancelled", "rechecked": true, "db_matched": false, "audit_price_matched": true}
+55556	2026-10-12 16:45:07.609885	stop_updated	PENG: stop now $63.37 (6b74a7e5-5ea7-4208-a262-116b9045165b) for 10 sh	{"trade_id": 414, "ticker": "PENG", "old_stop_id": "846900d4-dc67-4ebd-b95f-8ddeac8dc0ae", "old_stop_price": 62.2, "new_stop_id": "6b74a7e5-5ea7-4208-a262-116b9045165b", "new_stop_price": 63.37, "remaining_shares": 10.0, "pending_exit_qty": 0, "effective_qty": 10, "old_cancel_ok": true}
+(15 rows)
+=== Q6 drift_check_snapshot 18:02
+id	et	summary	detail
+55845	2026-10-12 18:02:04.334332	1 DRIFT (1 new), 0 UNVERIFIED	{"drift_n": 1, "unverified_n": 0, "new_drift_n": 1, "prod_reachable": true, "spoke": true, "drift_fingerprints": ["depth-era-unpinned|DRIFT|agents/market_intelligence/rule_eras.py|rule_eras.DEPTH_EXIT_LIVE_DATE = None (the dated record for era E)|mi_safeguard_state: magna53_depth_exit[live] = on since 2026-10-12T13:39 \u2192 first acting session 2026-10-13"], "drift_claims": [{"where": "agents/market_intelligence/rule_eras.py:DEPTH_EXIT_LIVE_DATE", "words": "The depth exit is ON for MAGNA53's account but the dated record says not live. Set DEPTH_EXIT_LIVE_DATE = date(2026, 10, 13) and move the #482 review's era literal with it (tests/test_exit_counterfactual_consolidation_631.py names the lines)."}], "unverified_claims": []}
+(1 row)
+=== Q7 entry_partial_fill + coverage_drift_detected + depth/exit-related today
+id	et	event_type	summary	detail
+55387	2026-10-12 09:15:00.087015	coverage_drift_detected	D1 untracked position KO (paper)	{"class": "D1_untracked_position", "severity": "HIGH", "mode": "paper", "ticker": "KO", "qty": 3.0, "avg_entry_price": 88.4}
+55389	2026-10-12 09:15:00.540572	coverage_drift_detected	D2_untracked_order_info KO order=6a54a590 (paper)	{"class": "D2_untracked_order_info", "severity": "INFO", "mode": "paper", "ticker": "KO", "order_id": "6a54a590-1081-4290-ab95-c71aca6147c4", "client_order_id": "apollo_paper_integration_test_KO_1791810303226", "side": "sell", "type": "market"}
+55402	2026-10-12 09:30:00.10746	coverage_drift_detected	D1 untracked position KO (paper)	{"class": "D1_untracked_position", "severity": "HIGH", "mode": "paper", "ticker": "KO", "qty": 3.0, "avg_entry_price": 88.4}
+55403	2026-10-12 09:30:00.110444	coverage_drift_detected	D2_untracked_order_info KO order=6a54a590 (paper)	{"class": "D2_untracked_order_info", "severity": "INFO", "mode": "paper", "ticker": "KO", "order_id": "6a54a590-1081-4290-ab95-c71aca6147c4", "client_order_id": "apollo_paper_integration_test_KO_1791810303226", "side": "sell", "type": "market"}
+55407	2026-10-12 09:30:03.380942	ep_rt_admit	WFF rt 20.3% and delayed 11.4% BOTH >=9 @ 09:30 ET — real-time AGREES with the admit	{"ticker": "WFF", "rt_gap": 20.34, "delayed_gap": 11.37, "tick_et": "09:30", "authoritative": true}
+55412	2026-10-12 09:31:26.40689	entry_partial_fill	[paper] KO partial_fill 1/3 (cum 1) @ $88.58 side=sell	{"trade_id": null, "order_id": "6a54a590-1081-4290-ab95-c71aca6147c4", "ticker": "KO", "side": "sell", "event_qty": 1.0, "cum_filled": 1.0, "total_qty": 3.0, "avg_price": 88.58, "account_mode": "paper"}
+55413	2026-10-12 09:32:01.682687	entry_partial_fill	[paper] KO partial_fill 1/3 (cum 2) @ $88.58 side=sell	{"trade_id": null, "order_id": "6a54a590-1081-4290-ab95-c71aca6147c4", "ticker": "KO", "side": "sell", "event_qty": 1.0, "cum_filled": 2.0, "total_qty": 3.0, "avg_price": 88.585, "account_mode": "paper"}
+55428	2026-10-12 09:40:01.807969	ep_rt_admit	APUS rt 9.8% and delayed 10.6% BOTH >=9 @ 09:40 ET — real-time AGREES with the admit	{"ticker": "APUS", "rt_gap": 9.77, "delayed_gap": 10.56, "tick_et": "09:40", "authoritative": true}
+(8 rows)
+=== Q8 live orders created today
+id	trade_id	ticker	side	order_type	qty	stop_price	limit_price	status	filled_qty	filled_avg_price	purpose	exit_reason	sub_et
+416	404	KOD	sell	stop	4	94.95		accepted			stop_loss	stop_hit	2026-10-12 16:45:03.8016
+417	414	PENG	sell	stop	10	63.37		accepted			stop_loss	stop_hit	2026-10-12 16:45:07.608065
+(2 rows)
+=== Q9 tables with alert in the name
+table_name
+mi_9m_ep_alerts
+mi_consolidation_entry_shadow
+mi_delayed_entry_trigger
+mi_delayed_entry_trigger_voided_0901
+mi_delayed_entry_watch
+mi_delayed_entry_watch_voided_0901
+mi_ep_alerts
+(7 rows)

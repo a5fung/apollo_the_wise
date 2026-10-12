@@ -1,0 +1,36 @@
+=== Q16 ep_rt_* and ep_filter + tinycap details 09:30-10:05
+id	et	event_type	summary	detail
+55407	2026-10-12 09:30:03.380942	ep_rt_admit	WFF rt 20.3% and delayed 11.4% BOTH >=9 @ 09:30 ET — real-time AGREES with the admit	{"ticker": "WFF", "rt_gap": 20.34, "delayed_gap": 11.37, "tick_et": "09:30", "authoritative": true}
+55411	2026-10-12 09:31:02.801421	ep_rt_declined_not_missed	APUS rt 10.2% @ 09:31 ET — DECLINED by ep_rt_sustain_reject, not missed	{"ticker": "APUS", "rt_gap": 10.16, "tick_et": "09:31", "declined_reason": "ep_rt_sustain_reject"}
+55417	2026-10-12 09:35:01.906787	ep_rt_sustain_reject	XRPN rt 10.5% but the level did NOT hold 3 consecutive bars @ 09:35 ET — no catch	{"ticker": "XRPN", "rt_gap": 10.46, "bars_required": 3, "tick_et": "09:35", "gaps": [-0.56, 0.56, 9.98], "minutes": ["09:32", "09:33", "09:34"]}
+55421	2026-10-12 09:35:01.915749	ep_rt_declined_not_missed	XRPN rt 10.5% @ 09:35 ET — DECLINED by ep_rt_sustain_reject, not missed	{"ticker": "XRPN", "rt_gap": 10.46, "tick_et": "09:35", "declined_reason": "ep_rt_sustain_reject"}
+55425	2026-10-12 09:40:01.801898	ep_rt_halt_suspect	XRPN rt 12.8% but print frozen + quote dead @ 09:40 ET — no RT-only admission this tick	{"ticker": "XRPN", "rt_gap": 12.76, "trade_age_s": 252.256327, "tick_et": "09:40"}
+55428	2026-10-12 09:40:01.807969	ep_rt_admit	APUS rt 9.8% and delayed 10.6% BOTH >=9 @ 09:40 ET — real-time AGREES with the admit	{"ticker": "APUS", "rt_gap": 9.77, "delayed_gap": 10.56, "tick_et": "09:40", "authoritative": true}
+55429	2026-10-12 09:40:11.036609	ep_catalyst_provenance	AI routine direct=True	{"ticker": "AI", "alert_date": "2026-10-12", "catalyst_quality": "routine", "sources": {"benzinga_pr": 1, "web_perplexity": 1}, "has_direct_source": true}
+55431	2026-10-12 09:45:01.843122	ep_rt_sustain_reject	GRML rt 9.9% but the level did NOT hold 3 consecutive bars @ 09:45 ET — no catch	{"ticker": "GRML", "rt_gap": 9.86, "bars_required": 3, "tick_et": "09:45", "gaps": [7.62, 8.32, 9.86], "minutes": ["09:42", "09:43", "09:44"]}
+55435	2026-10-12 09:50:03.964959	ep_rt_halt_suspect	WFF flip-up rt 23.5% but print frozen + quote dead — no RT-only admission this tick	{"ticker": "WFF", "rt_gap": 23.52, "tick_et": "09:50"}
+55438	2026-10-12 09:50:05.461129	ep_tinycap_observed	ALLT gap=9.1% — filter:mcap_too_small: $451M < $500M (observe-only)	{"ticker": "ALLT", "gap_pct": 9.06, "rel_volume": 0.69, "price": null, "skip_reason": "filter:mcap_too_small: $451M < $500M"}
+55439	2026-10-12 09:50:05.792149	ep_filter_session_rvol	GRML session pace below normal	session_rvol=0.57x (today 1,079,210 / baseline 1,906,012 n=23) < 1.0x | gap=14.8%
+55440	2026-10-12 09:50:12.994065	ep_catalyst_provenance	ALLT routine direct=False	{"ticker": "ALLT", "alert_date": "2026-10-12", "catalyst_quality": "routine", "sources": {"web_perplexity": 1}, "has_direct_source": false}
+55441	2026-10-12 09:50:13.137094	lowcap_paper_lane_tick	09:50 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)	{"candidates": 1, "graded": 1, "tiered": 0, "cooldown": 0, "already_today": 0, "errors": 0, "order_step": null}
+55445	2026-10-12 09:55:04.156187	ep_filter_session_rvol	GRML session pace below normal	session_rvol=0.72x (today 1,620,654 / baseline 2,240,639 n=23) < 1.0x | gap=17.2%
+55446	2026-10-12 09:55:04.15807	ep_filter_session_rvol	SVRN session pace below normal	session_rvol=0.90x (today 36,325 / baseline 40,378 n=23) < 1.0x | gap=12.5%
+(15 rows)
+=== Q17 depth_open_sale_placed 10-08 detail
+id	et	summary	left
+54549	2026-10-08 19:01:00.158074	PEP: opening-auction sell 3 sh queued (sma_trail_stop); depth stop 492dd1b3-3cb1-40a4-9938-c45b8f28457f cancelled	{"trade_id": 418, "ticker": "PEP", "account_mode": "paper", "order_id": "5f38a844-7acf-4f5e-a841-ae7847b71707", "qty": 3, "reason": "sma_trail_stop", "cancelled_stop_id": "492dd1b3-3cb1-40a4-9938-c45b8f28457f", "stop_price": 120.16, "held_by_resting": 0, "decided_on": "2026-10-08"}
+(1 row)
+=== Q18 per-open-row last closes vs trailing lines? running_closes + hold_days for the 3 open rows
+id	ticker	hold_days	partial_taken	breakeven_active	remaining_shares	stop_price	hard_stop	exit_rule	depth_sell_pending_on	running_closes	lowest_price_seen	highest_price_seen	exits
+404	KOD	14	t	t	4	94.95	58.0818			[91.12, 94.8, 98.46, 94.45, 93.81, 92.34, 91.08, 94.26, 99.87, 99.26]	63.14999999999999857891452847979962825775146484375	104	[{"pnl": 21.975, "time": "2026-09-28T14:10:03.696520+00:00", "price": 85.125, "reason": "partial_profit", "shares": 1, "order_id": "26f62c6e-48ce-4b63-96db-06d92538ba2c"}]
+414	PENG	5	f	f	10	63.37	62.2			[71.57, 76.28, 79.155]	70.070099999999996498445398174226284027099609375	80.0999000000000052068571676500141620635986328125	[]
+419	HUM	3	f	f	1	417.88000000000005	417.88000000000005			[433.5]	423.1499999999999772626324556767940521240234375	456.5	[]
+(3 rows)
+=== Q19 live orders for the 3 open rows (open/accepted stops)
+trade_id	ticker	side	order_type	qty	stop_price	limit_price	status	purpose	sub_et
+404	KOD	sell	stop	4	88.25		new	stop_loss	2026-10-09 16:45:03.785203
+404	KOD	sell	stop	4	94.95		accepted	stop_loss	2026-10-12 16:45:03.8016
+414	PENG	sell	stop	10	62.2		new	stop_loss	2026-10-07 16:20:00.060739
+414	PENG	sell	stop	10	63.37		accepted	stop_loss	2026-10-12 16:45:07.608065
+419	HUM	sell	stop	1	417.88000000000005		new	stop_loss	2026-10-09 16:20:00.046155
+(5 rows)

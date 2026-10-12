@@ -1,0 +1,14 @@
+#!/bin/bash
+# #687 expiry-path test, launcher for 2026-10-13. Waits for 08:25 ET, checks the container holds the file
+# this was written for, then starts the run with its stdout kept in the bind-mounted /app/logs.
+L=/home/apollo/expiry_test_launch_2026-10-13.log
+until [ "$(TZ=America/New_York date '+%F %H%M')" \> "2026-10-13 0824" ]; do sleep 5; done
+date > "$L"
+GOT=$(docker exec apollo-execution md5sum /app/scripts/probes/_687/expiry_path_test.py | cut -d' ' -f1)
+echo "container md5 $GOT, want 3e2315bbbe661d99fcc8ef325e6f2e12" >> "$L"
+[ "$GOT" = "3e2315bbbe661d99fcc8ef325e6f2e12" ] || { echo "MD5 MISMATCH - not launched" >> "$L"; exit 1; }
+docker exec -d -w /app apollo-execution sh -c 'python scripts/probes/_687/expiry_path_test.py run >> /app/logs/expiry_test_2026-10-13.stdout 2>&1' && echo LAUNCHED >> "$L"
+---CONTAINER
+3e2315bbbe661d99fcc8ef325e6f2e12  /app/scripts/probes/_687/expiry_path_test.py
+/app/scripts/probes/_687/expiry_path_test.py
+045fdfb2 Sun Oct 11 18:38:38 2026 -0700

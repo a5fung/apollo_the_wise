@@ -1,0 +1,17 @@
+d	event_type	child	src_on_day
+2026-09-28	theme_parent_pass_linked	Pure-Play NAND/DRAM Memory Chip Makers	live
+2026-09-28	theme_parent_pass_linked	Liquid Biopsy & Molecular Cancer Diagnostics Testing	live
+2026-09-28	theme_parent_pass_linked	Identity & Access Management Security Software	live
+2026-09-29	theme_parent_pass_error		(no row that day)
+2026-09-29	theme_parent_pass_error		(no row that day)
+2026-09-29	theme_parent_pass_error		(no row that day)
+2026-09-29	theme_parent_pass_error		(no row that day)
+2026-09-29	theme_parent_pass_error		(no row that day)
+2026-09-29	theme_parent_pass_error		(no row that day)
+2026-10-01	theme_parent_pass_linked	Low-Cost & Regional Passenger Airline Rebound	live
+(10 rows)
+== counts by source on the day of the ask
+src	count
+live	60
+(no row that day)	7
+(2 rows)

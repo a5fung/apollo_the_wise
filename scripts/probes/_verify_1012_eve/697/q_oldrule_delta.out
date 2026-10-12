@@ -1,0 +1,35 @@
+SET
+SET
+== 1. old-rule admitted set vs new-rule tagged set on D
+old_rule_names	new_rule_names	only_new_rule	only_new_rule_and_carry_only
+1	26	25	15
+(1 row)
+== 2. stored TRIGGERED rows in the last 25 scan dates (is the stored-TRIGGERED carry branch exercised?)
+ticker	scan_date	stage	held_from_stage	triggered_from
+XHLD	2026-09-09	TRIGGERED		coiled
+IOVA	2026-09-14	TRIGGERED		coiled
+IOVA	2026-09-15	TRIGGERED	WATCH	
+IOVA	2026-09-16	TRIGGERED	TIGHTENING	
+(4 rows)
+== 3. KOD last 6 rows
+scan_date	stage	held_from_stage	reason	universe_sources
+2026-10-05	unqualified		base_age_1_below_3	{rs_top200,rs_1m_80,momentum_25pct}
+2026-10-06	unqualified		base_age_2_below_3	{rs_top200,rs_1m_80,momentum_25pct}
+2026-10-07	INVALIDATED		close_91.08_below_base_low_close_92.34	{rs_top200,rs_1m_80,momentum_25pct}
+2026-10-08	COILED		fresh_2bar 5.7%/atr 10.8% bodies_0.42/0.07	{rs_top200,rs_1m_80,momentum_25pct}
+2026-10-09	COILED	WATCH	runup_249% base_5d close_vs_pivot_-4.0%	{rs_top200,rs_1m_80,flag_stage_carryforward}
+2026-10-12	WATCH		runup_249% base_6d close_vs_pivot_-4.6%	{rs_top200,rs_1m_80,flag_stage_carryforward}
+(6 rows)
+== 4. TIGHTENING/COILED rows on 10-08/10-09 (what the board held going into tonight)
+scan_date	stage	count
+2026-10-05	TIGHTENING	2
+2026-10-05	WATCH	11
+2026-10-06	TIGHTENING	1
+2026-10-06	WATCH	2
+2026-10-07	WATCH	1
+2026-10-08	COILED	1
+2026-10-08	WATCH	3
+2026-10-09	COILED	1
+2026-10-09	WATCH	6
+2026-10-12	WATCH	4
+(10 rows)

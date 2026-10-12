@@ -1,0 +1,25 @@
+column_name	data_type
+id	integer
+theme_date	date
+name	text
+stage	text
+score	double precision
+description	text
+tickers	ARRAY
+created_at	timestamp with time zone
+rs_avg	double precision
+parent_theme	text
+days_active	integer
+consecutive_accelerating	integer
+pct_above_20sma	real
+source	text
+(14 rows)
+column_name	data_type
+id	integer
+theme_a	text
+theme_b	text
+verdict	text
+reason	text
+adjudicated_at	timestamp with time zone
+cooldown_until	timestamp with time zone
+(7 rows)

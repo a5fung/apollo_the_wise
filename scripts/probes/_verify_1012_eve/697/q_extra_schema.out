@@ -1,0 +1,10 @@
+SET
+SET
+== A. audit columns
+column_name
+id
+created_at
+event_type
+summary
+detail
+(5 rows)
