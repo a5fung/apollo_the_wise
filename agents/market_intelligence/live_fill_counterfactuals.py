@@ -377,12 +377,17 @@ def pinned_target(entry: Optional[float], orb_low: Optional[float],
     return None if r is None else entry + target_r * r
 
 
-def stack_walk_inputs(rules: dict, entry: float,
-                      orb_low: Optional[float]) -> tuple[Optional[float], dict[str, Any]]:
+def stack_walk_inputs(rules: dict, entry: float, orb_low: Optional[float],
+                      pre_rows: Optional[list[dict]] = None) -> tuple[Optional[float], dict[str, Any]]:
     """(target, walk_arm kwargs) for walking ONE `rule_eras.exit_rules_as_of` stack on the live
     ladder. A caller that stamps its row with `rules` and walks with these cannot stamp one stack
     and walk another — the 2026-09-22 defect: three replay lanes pinned a +2R partial and never
-    passed the breakeven arm, so an era D stamp would have sat on an era C walk."""
+    passed the breakeven arm, so an era D stamp would have sat on an era C walk.
+
+    `pre_rows` (#687): the pre-entry daily rows the caller already holds for its ATR / prior
+    closes. A DEPTH stack takes its ADR20 from them HERE, beside the flag that needs it (a lane
+    that set `depth_exit` and forgot the ADR would walk the stop at the hard/breakeven floor and
+    still stamp era E); without them that stack walks with no ADR20. Ignored on every other stack."""
     partial_r = rules["intraday_partial_r"]
     target = pinned_target(entry, orb_low, partial_r) if partial_r else None
     kw: dict[str, Any] = {
@@ -395,8 +400,10 @@ def stack_walk_inputs(rules: dict, entry: float,
     }
     if rules.get("exit_rule") == DEPTH_EXIT_RULE:
         # #687: a depth stack walks the depth exit — set ONLY on a depth stack so a stamped
-        # era D stack produces kwargs byte-identical to before (the caller supplies the ADR).
+        # era D stack produces kwargs byte-identical to before.
         kw["depth_exit"] = True
+        if pre_rows is not None:
+            kw["depth_adr20_pct"] = depth_adr20_from_rows(pre_rows)
     return target, kw
 
 
@@ -444,6 +451,11 @@ def lane_exit_rule(strategy_rows: list, toggle_rows: list, strategy_id: str,
     if run_date < first:
         return None, f"magna53_depth_exit[{mode}] on, first acting session {first} is after {run_date} — era D"
     return DEPTH_EXIT_RULE, f"magna53_depth_exit[{mode}] on since {first} — depth"
+
+
+# A lane's summary clause on a night with nothing to walk: the toggle is read only when there is a
+# candidate (inside the lane's `if todo:`), so "not read" is NOT a failure and says nothing about the rule.
+LANE_RULE_UNREAD = "exit rule not read (no candidates)"
 
 
 async def load_lane_exit_rule(conn, strategy_id: str, run_date: date) -> tuple[Optional[str], str]:

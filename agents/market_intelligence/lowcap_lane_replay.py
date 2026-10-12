@@ -243,9 +243,8 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
     # of MAGNA53, not a setup", and the question it answers (should the floor admit these names)
     # is about names that would trade MAGNA53's exit. Operator ruling 2026-09-22. Until then it
     # walked the unflipped global stack, because the 09-06 flip was scoped to magna53 only.
-    # #687 (2026-10-11): `exit_rule` is the run's toggle-derived rule ('depth' once the
-    # magna53_depth_exit row for the lane's account is on and run_date reaches its first acting
-    # session — `lfc.load_lane_exit_rule`, read once per run); None = today's rule, era D.
+    # #687: `exit_rule` is the run's toggle-derived rule (`lfc.load_lane_exit_rule`, read once per
+    # run); None = today's rule, era D.
     replay_exit_rules = rule_eras.exit_rules_as_of(run_date, "magna53", exit_rule)
     replay_exit_era = rule_eras.exit_era_label(run_date, "magna53", exit_rule)
     fields = _fresh_fields(sig, admission_era, replay_exit_era, replay_exit_rules,
@@ -340,12 +339,9 @@ async def _record_one_signal(conn, sig: dict, last_session: date, run_date: date
             return
         fields["stop_price"] = stop
         fields["stop_pct_of_entry"] = stop_pct_of_entry(entry_px, stop)
-        target, walk_kw = stack_walk_inputs(replay_exit_rules, entry_px, orb_low)
+        # #687: a depth stack also takes its ADR20 from `pre_rows` (the daily rows the ATR above used)
+        target, walk_kw = stack_walk_inputs(replay_exit_rules, entry_px, orb_low, pre_rows=prior_daily)
         fields["target_price"] = target
-        if walk_kw.get("depth_exit"):
-            # #687: the depth stack's ADR20 (a fraction, the live job's own function) from the
-            # same pre-session daily rows the ATR above used; only a depth stack ever sets it.
-            walk_kw["depth_adr20_pct"] = lfc.depth_adr20_from_rows(prior_daily)
 
         fill_idx = next(i for i, b in enumerate(bars0) if b["m"] == fill["minute"])
 
@@ -449,9 +445,7 @@ async def run_lowcap_lane_replay(today: Optional[date] = None, *,
     out["population"] = len(rows)
     todo = [r for r in rows
             if existing.get((r["ticker"], r["scan_date"])) in (None, "open")]
-    # The toggle is read only when there is something to walk (inside `if todo:`), so a night with no
-    # candidates reports "not read" — that summary is NOT a failure and says nothing about the rule.
-    lane_why = "exit rule not read (no candidates)"
+    lane_why = lfc.LANE_RULE_UNREAD     # the toggle is read only inside `if todo:`
     if todo:
         try:
             pool = await get_pool()
