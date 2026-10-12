@@ -1,0 +1,3 @@
+ERROR:  column "error" does not exist
+LINE 1: ...ew_York') AS started_et, ROUND(duration_s*1000) AS ms, error
+                                                                  ^

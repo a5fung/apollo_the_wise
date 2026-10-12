@@ -1,0 +1,12 @@
+== mi_audit_log columns
+column_name	data_type
+id	integer
+created_at	timestamp with time zone
+event_type	text
+summary	text
+detail	text
+(5 rows)
+== safeguard states for theme
+ERROR:  column "key" does not exist
+LINE 1: select * from mi_safeguard_state where key ilike '%theme%' o...
+                                               ^

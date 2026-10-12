@@ -1,0 +1,18 @@
+== apollo-market
+/app/agents/market_intelligence/theme_engine.py
+8
+/app/agents/market_intelligence/theme_engine.py:1
+/app/agents/market_intelligence/audit_events.py:1
+2
+8872:    """PURE: the one-night wait (section header above) — under SMALL_FADING_RETIRE_MIN_MEMBERS on
+8888:    themes under 3 members that passed the one-night wait (`prior_member_counts`, from
+8907:        logger.info(f"Small-Fading retire (#655 B): {len(held)} weak-Fading theme(s) under "
+== apollo-execution
+/app/agents/market_intelligence/theme_engine.py
+8
+/app/agents/market_intelligence/theme_engine.py:1
+/app/agents/market_intelligence/audit_events.py:1
+2
+8872:    """PURE: the one-night wait (section header above) — under SMALL_FADING_RETIRE_MIN_MEMBERS on
+8888:    themes under 3 members that passed the one-night wait (`prior_member_counts`, from
+8907:        logger.info(f"Small-Fading retire (#655 B): {len(held)} weak-Fading theme(s) under "

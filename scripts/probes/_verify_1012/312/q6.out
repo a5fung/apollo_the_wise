@@ -1,0 +1,4 @@
+=== the exact bound query the allocator runs (pre-entry live book, now) vs rebuilt 09:28 ===
+allocator_query_now
+3
+(1 row)

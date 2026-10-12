@@ -1,0 +1,4 @@
+=== U1 fmp news emptiness in mi_ep_catalyst_metrics last 30d
+n	fmp_null	fmp_empty	fmp_nonempty
+15	0	9	6
+(1 row)

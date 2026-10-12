@@ -723,7 +723,7 @@ statements are in the change log entry 2026-10-10 "the DEPTH exit also covers th
 - **VERIFY-LIVE:** (1) **same-weekend, after the execution deploy, no market needed and no order possible:** `docker exec -i apollo-execution python - < scripts/probes/_wk1010_plus8r/dryrun_two_share.py` drives the REAL `scan_profit_triggers` over fabricated in-memory positions of 1–6 shares for `magna53`, `magna53_smallcap` and `9m_day2` (the money action replaced by a recorder, every broker order function made to raise, no DB opened) and must print `DRYRUN PASS` (2 → 1 sold, 1 → 0, 3+ unchanged, other strategy unchanged); on the old code it prints `DRYRUN FAIL`, or errors if the container was never refreshed. Plus the one-liner `docker exec apollo-execution python -c "from agents.market_intelligence.broker.order_manager import plus8r_partial_shares as f; print([f(n) for n in range(7)])"` → `[0, 0, 1, 1, 1, 1, 2]`. (2) **event-gated:** the rows listed under EXPECT, read for the first 2-share +8R event. HUM (1 share, open) reaching +8R is a no-op under the rule and NOT a verify event; PENG (10 shares) reaching it would confirm the unchanged 3+ arm (3 sold).
 - **Deploy scope:** `order_manager.py` is `broker/` → routed to market-agent AND execution (`scripts/exec_loaded_modules.txt`; the `track_position_extremes` job that runs the poll is EXECUTION_OWNED, so the running sizer is `apollo-execution`): `bash scripts/deploy.sh both` THEN `bash scripts/deploy.sh execution`. `rule_eras.py`, `scripts/ep_replay.py`, `scripts/live_rules.py` are not execution-loaded (ride the `both` build). Weekend = unrestricted windows; avoid the Sun 02:00 / 08:00 / 08:45 / 19:00 / 19:30 ET jobs. Tests: `tests/test_545_per_strategy_exit_levels.py` (poll sells 1 of 2; 1 share still `too_small_to_split`; 3+ unchanged; paper lane; other strategy unchanged; announcement text), `tests/test_ep_replay.py` (integer walk, date gate), `tests/test_partial_exit_message_merge_567.py` (a 1-of-2 request places a 1-share OCO and says "1 of 2") — 10 of the new tests fail on the prior code.
 
-### 2026-10-10 — #692: the headline deal scan ALSO reads Benzinga via Alpaca news — a second SOURCE, the decision rule untouched (BUILT, awaiting its deploy; pulled forward from the Sun 10-11 slot; the candidate-keyword fork RULED 10-10 'Ok to recs' — seven deal-wire phrases added, paid check run, list put to him)
+### 2026-10-10 — #692: the headline deal scan ALSO reads Benzinga via Alpaca news — a second SOURCE, the decision rule untouched (DEPLOYED 2026-10-10; pulled forward from the Sun 10-11 slot; the candidate-keyword fork RULED 10-10 'Ok to recs' — seven deal-wire phrases added, paid check run, list put to him)
 
 - **Authority:** his *"Yes, yet to find new source for benzinga without addition spend"* (2026-10-06). The Alpaca feed is the one the EP grader already reads (`collector.get_alpaca_news`, part of the existing data plan, $0 extra). **Built Sat 10-10 (pulled forward from the Sun 10-11 build slot); awaiting its deploy** (`deploy.sh both` + execution is the next step).
 - **Why:** Polygon's news stopped carrying Benzinga between 06-17 and 06-23 (88 Benzinga articles on 05-14, 72 on 06-17, 0 on 06-23 / 07-15 / 09-10 / 10-02; `scripts/probes/_1006/polygon_benzinga_check.py`). `ma_filter.headline_deal_scan` read ONLY Polygon, so the flag, coil and low-cap boards (their only deal source) and the EP path's second source saw no Benzinga deal headline for ~4 months.
@@ -832,7 +832,7 @@ trading under $50M a day scores 10/65 and ranks below a name with no record (32.
 three on record was on a crowded morning. The shadow row stores neither `today_volume` nor
 `current_price`, so a replay from it alone reproduces everything except the no-record tie-break.
 
-### 2026-10-03 (night) — #692b: ruling 2 REVERTED — `mna` is again the grade for a price-fixing buyout (S19 of the judge-eval corpus passes as authored); the grader adds `quality_if_no_deal`, and a name the 09:35 open window RELEASES is scored with that merit grade instead of `mna` (BUILT on `692b-mna-merit-grade`, NOT DEPLOYED)
+### 2026-10-03 (night) — #692b: ruling 2 REVERTED — `mna` is again the grade for a price-fixing buyout (S19 of the judge-eval corpus passes as authored); the grader adds `quality_if_no_deal`, and a name the 09:35 open window RELEASES is scored with that merit grade instead of `mna` (DEPLOYED — live since the 10-04 deploy; status corrected 2026-10-12)
 
 **Trigger:** #692 deployed to main (`63484fbb`, the branch merged) and `deploy.sh both` exited 17
 at gate `[5m/7]` (ADR 0030): the grade surface changed — ruling 2 had re-tied RULE 3 and the
@@ -939,7 +939,7 @@ served (a released target must not carry a 0-point grade) is kept by `quality_if
 test includes the new field; the regrade script's NEW arm hash-pinned to what ran (it is a
 record now); `tests/test_write_judge_pass_record.py`. Mutations: in the commit.
 
-### 2026-10-03 — #692: the news NOMINATES, the PRICE DECIDES — pre-market the news blocks a nominated target, at 09:35 the open window can only RELEASE it; his four rulings ("Go with rec": RULE 3 re-tied, the price-only arm, NUVL / IRDM) and his timing ruling (no hold, the 09:31 ORB entry untouched) the same day (BUILT on the branch, NOT DEPLOYED)
+### 2026-10-03 — #692: the news NOMINATES, the PRICE DECIDES — pre-market the news blocks a nominated target, at 09:35 the open window can only RELEASE it; his four rulings ("Go with rec": RULE 3 re-tied, the price-only arm, NUVL / IRDM) and his timing ruling (no hold, the 09:31 ORB entry untouched) the same day (DEPLOYED — live since the 10-04 deploy; status corrected 2026-10-12)
 
 **Status:** DEPLOYED 2026-10-03 (server eba92ff4; built on `692-mna-target-question`) — before
 that ship prod had no `pin` key on any `mna_filter_fired` row, no
@@ -1314,7 +1314,7 @@ loads with every repo package unimportable, NEW == the branch grader byte-for-by
 pinned, the row lists == the replays', a $0 dry run prices 96 calls and makes none, nothing is
 called above the ceiling, the paid path asks OLD + NEW on the same text and reports flips).
 
-### 2026-10-02 — #692: the M&A filter asks ONE question — is THIS ticker the TARGET of a SIGNED deal that fixes its price (BUILT, NOT DEPLOYED — rulings recorded; awaiting the replay + operator sign-off)
+### 2026-10-02 — #692: the M&A filter asks ONE question — is THIS ticker the TARGET of a SIGNED deal that fixes its price (rulings recorded; replay + his sign-off followed 10-03, DEPLOYED 10-04 — status corrected 2026-10-12)
 
 **Status:** BUILT — his seven rulings recorded 2026-10-02 22:20 PDT and built in the fix round;
 the paid replay ran and he signed the list (2026-10-03); superseded by the 10-03 entries and DEPLOYED 2026-10-03.

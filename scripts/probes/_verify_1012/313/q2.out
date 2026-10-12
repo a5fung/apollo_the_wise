@@ -1,0 +1,27 @@
+=== api_usage today by caller
+caller	count	last_et
+ep_catalyst_grade	6	2026-10-12 09:50:12.99214
+perplexity_catalyst_validate	5	2026-10-12 09:50:11.981448
+perplexity_news_search	7	2026-10-12 09:50:10.141007
+ep_theme_fit	1	2026-10-12 07:00:24.8306
+(4 rows)
+=== ep_grade_judge last 7 days by ET date
+d	count
+2026-10-05	3
+2026-10-06	3
+2026-10-07	1
+2026-10-08	1
+2026-10-09	2
+(5 rows)
+=== now
+now_et
+2026-10-12 09:58:29.98372
+(1 row)
+=== mi_ep_alerts latest rows
+alert_date	ticker	judge_tier	grade_engine_authority	c
+2026-10-09	AAOI	MODERATE	judge	2026-10-09 09:35:15.169564
+2026-10-09	HUM	HIGH	judge	2026-10-09 07:00:14.407145
+2026-10-08	WOLF	HIGH	judge	2026-10-08 07:00:14.21393
+2026-10-07	PENG	HIGH	judge	2026-10-07 09:35:25.351688
+2026-10-06	VST	HIGH	judge	2026-10-06 09:55:34.395453
+(5 rows)

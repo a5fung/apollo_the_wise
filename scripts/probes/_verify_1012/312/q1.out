@@ -1,0 +1,18 @@
+=== A. unified_allocation_decided rows today (ET) ===
+id	et	summary	detail
+55401	2026-10-12 09:28:00.407065	empty queue for 2026-10-12	{"target_date":"2026-10-12","n_candidates":0,"ranked_at_et":"2026-10-12T09:28:00.404046-04:00","ranked_ids":[]}
+(1 row)
+=== B. mi_job_runs unified_allocator_shadow, last 4 days ===
+=== C. rebuilt 09:28 live book for 2026-10-12 ===
+rebuilt_0928
+3
+(1 row)
+=== C2. the rows in that book ===
+id	ticker	account_mode	status	alert_date	confirmed_et	closed_et
+404	KOD	live	filled	2026-09-28	2026-09-28 09:31:00.80085	
+414	PENG	live	filled	2026-10-07	2026-10-07 09:35:46.679288	
+419	HUM	live	filled	2026-10-09	2026-10-09 09:31:00.458095	
+(3 rows)
+=== D. pending allocations for today (columns) ===
+id	ticker	alert_date	strategy	composite_score	raw_dimensions	status	shadow_rank	shadow_allocated	created_at	evaluated_at
+(0 rows)

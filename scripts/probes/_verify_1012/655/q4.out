@@ -1,0 +1,12 @@
+== rule B rows per night: count, and min/max/null prior_members (detail json)
+d	n	null_prior	min_prior	max_prior
+2026-10-06	2	0	2	2
+2026-10-07	3	0	2	2
+2026-10-08	7	0	2	2
+2026-10-09	9	0	2	2
+(4 rows)
+== detail sample
+left
+{"theme": "Steel & Aluminum Mill Producers", "members": 2, "tickers": ["NUE", "WS"], "prior_members": 2, "rule": "weak-Fading (rs_avg None) under 3 members, and already under 3 the night before (one-night wait), retires tonight, not after 5 nights", "score": 23.470080000000006}
+{"theme": "Space Economy: Satellite Communications & Launch Services", "members": 2, "tickers": ["SPCX", "RKLB"], "prior_members": 2, "rule": "weak-Fading (rs_avg None) under 3 members, and already under 3 the night before (one-night wait), retires tonight, not after 5 nights", "score": 42.368000000
+(2 rows)

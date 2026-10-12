@@ -1,0 +1,11 @@
+== theme_validation calls on 2026-10-09
+n	end_turn	max_tok	gt25	gt50	gt100	p90	mean	mx	cost
+141	141	0	0	0	0	15	9.8	16	0.198
+(1 row)
+== removals that ET day (full pass Mon/Wed/Fri: baseline off 26/19/19, on-precedent 13; replay 5; bar <15)
+removals
+19
+(1 row)
+== alarms that ET day (truncation / near-ceiling / validation errors)
+event_type	count
+(0 rows)

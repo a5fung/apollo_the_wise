@@ -1,0 +1,1 @@
+SELECT theme_date, count(*) n, count(*) FILTER (WHERE stage<>'Retired') live, count(*) FILTER (WHERE parent_theme IS NOT NULL AND stage<>'Retired') with_parent FROM mi_themes WHERE theme_date >= current_date - 6 GROUP BY 1 ORDER BY 1;

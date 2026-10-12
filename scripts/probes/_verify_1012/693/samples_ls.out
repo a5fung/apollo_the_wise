@@ -1,0 +1,25 @@
+total 780
+drwxr-xr-x 2 apollo apollo   4096 Oct 12 13:40 .
+drwxrwxr-x 3 apollo apollo   4096 Oct  9 22:08 ..
+-rw------- 1 apollo apollo  13669 Oct  9 13:35 agents.market_intelligence.catalyst_type_classifier__classify_catalyst_type.json
+-rw------- 1 apollo apollo  33175 Oct 12 13:40 agents.market_intelligence.ep_detector___classify_catalyst_claude.json
+-rw------- 1 apollo apollo  40884 Oct  9 13:35 agents.market_intelligence.ep_detector___judge_shadow.json
+-rw------- 1 apollo apollo  40864 Oct  9 13:35 agents.market_intelligence.judge_divergence___run.json
+-rw------- 1 apollo apollo   9314 Oct  9 22:20 agents.market_intelligence.judge_named_themes__extract_named_themes.json
+-rw------- 1 apollo apollo  13789 Oct  9 21:35 agents.market_intelligence.ma_filter__ask_deal_question.json
+-rw------- 1 apollo apollo   9257 Oct  9 20:02 agents.market_intelligence.mgmt_judge__manage_holistic.json
+-rw------- 1 apollo apollo   6524 Oct 11 12:00 agents.market_intelligence.postmortem__generate_postmortem_narrative.json
+-rw------- 1 apollo apollo  10658 Oct  9 21:00 agents.market_intelligence.scheduler___nightly_data_pull.json
+-rw------- 1 apollo apollo 220015 Oct 11 12:00 agents.market_intelligence.system_review___synthesize.json
+-rw------- 1 apollo apollo  17237 Oct  9 22:11 agents.market_intelligence.theme_ecosystems___assign_via_haiku.json
+-rw------- 1 apollo apollo  38998 Oct  9 21:09 agents.market_intelligence.theme_engine___discover_lane2_registry.json
+-rw------- 1 apollo apollo  73652 Oct  9 21:07 agents.market_intelligence.theme_engine___discover_new_themes_single.json
+-rw------- 1 apollo apollo   6709 Oct  9 21:02 agents.market_intelligence.theme_engine___ensure_descriptions.json
+-rw------- 1 apollo apollo 113564 Oct  9 21:05 agents.market_intelligence.theme_engine___propose_assignment_batch.json
+-rw------- 1 apollo apollo   4212 Oct  7 21:05 agents.market_intelligence.theme_engine___rename_theme_to_fit_cluster.json
+-rw------- 1 apollo apollo  12867 Oct  9 21:07 agents.market_intelligence.theme_engine___split_fat_theme.json
+-rw------- 1 apollo apollo   6528 Oct  9 21:02 agents.market_intelligence.theme_engine___validate_theme_membership.json
+-rw------- 1 apollo apollo   8260 Oct 12 11:00 agents.market_intelligence.theme_engine__judge_theme_fit.json
+-rw------- 1 apollo apollo  13797 Oct  9 21:08 agents.market_intelligence.theme_merge_arm__adjudicate_containment_pair.json
+-rw------- 1 apollo apollo  50974 Oct  9 22:05 agents.market_intelligence.theme_synthesis__run_theme_synthesis.json
+ls: cannot access '/app/logs/llm_samples/theme_validation*': No such file or directory

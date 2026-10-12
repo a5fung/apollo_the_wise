@@ -1,0 +1,20 @@
+=== heartbeat preview (same SQL as write_paper_lane_heartbeat) screened / cap_only
+screened	cap_only_probe
+213	{}
+(1 row)
+=== mcap reason text constant check
+left
+quality filter: filter:mcap_too_small: $451M < $500M
+(1 row)
+=== cap-only names today w/ scan time
+=== scan log last tick today
+=== paper trades any today / account modes of today live trades
+account_mode	signal_type	count
+(0 rows)
+=== live-book orders w/ lane signal_type ever
+account_mode	count
+(0 rows)
+=== lane audit rows other types since 10-10
+t	event_type	left
+10-12 09:50:13	lowcap_paper_lane_tick	09:50 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)
+(1 row)

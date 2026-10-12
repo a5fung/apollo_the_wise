@@ -1,0 +1,49 @@
+== trades touched since 10-11 20:00 ET
+id	ticker	account_mode	status	skip_reason	signal_type	created_et	filled_et	closed_et
+(0 rows)
+== ep alerts today
+id	ticker	ep_score	score_tier	source	created_et
+(0 rows)
+== audit rows mentioning paper chat / 699 / stop restore since deploy
+event_type	count	last_et
+ep_filter_session_rvol	3	2026-10-12 09:55:04.15807
+ep_rt_floor_flip_down	14	2026-10-12 09:55:02.451268
+ep_rt_universe_coverage	38	2026-10-12 09:55:02.439266
+lowcap_paper_lane_tick	1	2026-10-12 09:50:13.137094
+ep_catalyst_provenance	5	2026-10-12 09:50:12.994065
+ep_tinycap_observed	1	2026-10-12 09:50:05.461129
+ep_rt_floor_flip_up	9	2026-10-12 09:50:03.966163
+ep_rt_halt_suspect	2	2026-10-12 09:50:03.964959
+sdk_pool_rollup	7	2026-10-12 09:50:00.014875
+ep_rt_sustain_reject	6	2026-10-12 09:45:01.843122
+ep_rt_admit	6	2026-10-12 09:40:01.807969
+mna_filter_released	1	2026-10-12 09:35:04.019273
+ep_rt_declined_not_missed	2	2026-10-12 09:35:01.915749
+stop_refresh_ran	1	2026-10-12 09:35:00.063023
+entry_partial_fill	2	2026-10-12 09:32:01.682687
+coverage_drift_detected	4	2026-10-12 09:30:00.110444
+unified_allocation_decided	1	2026-10-12 09:28:00.407065
+ep_rt_tick_quality_reject	2	2026-10-12 09:15:01.903816
+ep_rt_universe_catch	2	2026-10-12 09:15:01.901849
+ingest_proposed	1	2026-10-12 09:15:00.549619
+coverage_drift_alerted	1	2026-10-12 09:15:00.538102
+paper_rehearsal_687_end	1	2026-10-12 09:05:23.67652
+stop_cancel_by_planned_sale_silent	1	2026-10-12 09:05:03.25277
+stop_order_id_changed	2	2026-10-12 09:05:00.203589
+dead_stop_price_preserved	1	2026-10-12 09:05:00.200615
+planned_sale_stop_cancel	1	2026-10-12 09:05:00.166092
+evening_verify_heartbeat_ok	1	2026-10-12 09:00:11.243551
+health_heartbeat_ok	1	2026-10-12 09:00:11.240283
+order_status_reconciled	3	2026-10-12 09:00:00.114681
+stop_ack_timeout_remediated	1	2026-10-12 09:00:00.094188
+paper_rehearsal_687_state	2	2026-10-12 08:30:00.630643
+paper_rehearsal_687_start	1	2026-10-12 08:25:07.729605
+ep_rt_universe_degraded	1	2026-10-12 08:15:13.2456
+watchdog_heartbeat	1	2026-10-12 08:00:01.61787
+ep_rt_gap_clamped	1	2026-10-12 07:25:01.302157
+catalyst_repoll_regraded_live	1	2026-10-12 07:05:15.600978
+ep_theme_fit_llm_proposed	1	2026-10-12 07:00:24.831845
+mna_filter_fired	1	2026-10-12 07:00:13.477705
+llm_request_rewrite_adopted	1	2026-10-12 07:00:09.51666
+backup_restore_check_ok	1	2026-10-11 23:32:30.47953
+(40 rows)

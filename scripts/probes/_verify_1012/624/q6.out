@@ -1,0 +1,13 @@
+=== shadow lane signals
+n	sessions	first	last
+19	13	2026-09-09	2026-10-05
+(1 row)
+=== shadow lane signals last 5
+scan_date	ticker
+2026-10-05	SDEV
+2026-09-30	XRPN
+2026-09-25	JAGX
+2026-09-24	GRML
+2026-09-24	SRZN
+(5 rows)
+=== lane replays (shadow) count by status

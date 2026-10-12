@@ -1,0 +1,11 @@
+11:00:04 [agents.market_intelligence.ep_detector] INFO:   SVRN: ADV=291,720 → rel_vol=0.03x
+11:00:09 [httpx2] INFO: HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 400 Bad Request"
+11:00:09 [shared.llm_client] WARNING: llm_client: adopted request rewrite for claude-sonnet-5-5 — forced_tool_to_structured_output (API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for thi
+11:00:13 [httpx2] INFO: HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+11:00:13 [agents.market_intelligence.ep_detector] INFO: CCC: Claude=routine, Perplexity=strong → disagreement, passed to the judge as a second opinion
+11:00:13 [agents.market_intelligence.ep_detector] INFO: Skip CCC: M&A/buyout catalyst — no momentum trade (claude_deal_fields)
+11:00:21 [httpx2] INFO: HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+11:00:24 [httpx2] INFO: HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+11:00:24 [agents.market_intelligence.ep_theme_belonging] INFO: EP scan: theme fit rejected TRAX (shortlist ['Liquid Biopsy & Molecular Cancer Diagnostics Testing']): Autoimmune therapeutics biotech, not cancer diagnostics
+====EXEC
+13:00:00 [agents.market_intelligence.scheduler] INFO: order_status_reconcile: examined=4 updated=3 errors=0

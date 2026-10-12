@@ -1,0 +1,51 @@
+=== V1 audit row full
+-[ RECORD 1 ]------------------------------------------------------------------------------------------------------------------
+id         | 55449
+created_at | 2026-10-12 14:10:00.661722+00
+event_type | tv_news_shadow_run
+summary    | 1 row(s) across 1 candidate(s); 1 ok, 0 skipped-exchange, 0 fetch-error, 0 unparseable, 0 cap-deferred, 0 error(s)
+detail     | 
+
+=== V2 HUM row full
+-[ RECORD 1 ]---------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ticker                            | HUM
+alert_date                        | 2026-10-09
+checked_at                        | 2026-10-12 14:10:00.658568+00
+catalyst_quality                  | game_changer
+our_has_direct_source             | t
+our_source_class_count            | 5
+our_corpus_available              | f
+our_polygon_count                 | 
+our_alpaca_count                  | 
+our_fmp_count                     | 
+our_perplexity_present            | 
+our_total_item_count              | 
+tv_status                         | ok
+tv_skip_reason                    | 
+exchange_mic                      | XNYS
+tv_symbol                         | NYSE:HUM
+tv_item_count                     | 25
+tv_providers                      | {"zacks": 1, "dpa_afx": 2, "reuters": 2, "benzinga": 1, "acceswire": 1, "dow-jones": 9, "stockstory": 1, "stocktwits": 3, "tradingview": 2, "binance_news": 1, "seekingalpha": 1, "business_wire": 1}
+tv_oldest_item_published          | 2026-10-09 10:10:00+00
+tv_coverage_reaches_alert_date    | t
+tv_items_on_alert_date            | 18
+tv_providers_on_alert_date        | {"zacks": 1, "dpa_afx": 1, "reuters": 2, "benzinga": 1, "dow-jones": 7, "stockstory": 1, "stocktwits": 2, "tradingview": 1, "binance_news": 1, "business_wire": 1}
+tv_items_we_missed                | 
+our_captured_at                   | 
+our_corpus_source                 | 
+our_acting_grade                  | game_changer
+our_acting_rule                   | gc_kept_unscheduled_forward
+tv_coverage_reaches_period_start  | 
+tv_unseen_minutes_at_period_start | 
+tv_items_before_grade             | 
+tv_items_in_repoll_window         | 
+tv_items_after_cutoff             | 
+tv_match_summary                  | 
+tv_items_unmatched_seen           | 
+
+=== V3 any tradingview endpoint anomaly / shadow error events today
+-[ RECORD 1 ]------------------------------------------------------------------------------------------------------------------
+event_type | tv_news_shadow_run
+at_et      | 2026-10-12 10:10:00.661722
+left       | 1 row(s) across 1 candidate(s); 1 ok, 0 skipped-exchange, 0 fetch-error, 0 unparseable, 0 cap-deferred, 0 error(s)
+

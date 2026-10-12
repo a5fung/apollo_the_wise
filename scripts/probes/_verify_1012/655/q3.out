@@ -1,0 +1,98 @@
+== latest theme_date and board size by size band (non-Retired, latest snapshot)
+latest_date	active	small_2_3	homes_4plus	under2
+2026-10-09	123	46	77	0
+(1 row)
+== small (2-3 member) active themes on latest snapshot
+name	stage	n	rs_avg	source
+Aerospace Engine, Airframe Components & Defense Subsystem Suppliers	Fading	3		live
+Alternative Asset Managers & Private Markets Platforms	Nascent	2	92.1	live
+Automotive Thermal & Powertrain Components Suppliers	Nascent	3	43.5	shadow_promoted
+Auto & Truck Dealership Retail Chains	Fading	3		live
+Bitcoin Miners Pivoting to AI Data Center Hosting	Fading	3		live
+Branded Footwear & Hotel Consumer Discretionary Turnaround	Fading	2		live
+Building Products & Home Improvement Materials Makers	Fading	2		live
+CAD/PLM & 3D Design Engineering Software	Nascent	2	87.3	live
+Cloud Application Software Rotation (Oversold Turning Up)	Accelerating	3	90.2	live
+Cloud Data Storage & Analytics Infrastructure	Mainstream	3	97.2	live
+Cloud Financial Automation & Insurance Core Platform Software	Nascent	2	85.5	live
+Cloud Supply Chain & Warehouse Management Software	Mainstream	3	90.8	live
+Cross-Industry Test, Measurement & Design-Verification Tools	Mainstream	3	90.2	live
+Data Analytics, AI Platform & Digital Transformation IT Services	Fading	2		live
+Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Fading	3	55	live
+Digital Advertising & Ad-Tech Monetization Platforms	Mainstream	2	83.9	live
+Digital Dollar & Crypto Payments Infrastructure	Mainstream	2	92	live
+Electronics Manufacturing & IT Hardware Distribution Supply Chain	Nascent	3	63.26666666666667	shadow_promoted
+Emerging Medical Device Innovators Breakout	Mainstream	3	86.8	live
+Enterprise Unstructured Data Storage Infrastructure	Mainstream	3	96.6	live
+Exchange, Options Trading & Alternative Consumer Credit Financials	Nascent	3	93.63333333333333	shadow_promoted
+Fabless Semiconductor IP Licensing	Fading	3		live
+Fintech Payments, Prepaid & Consumer Digital Banking Apps	Mainstream	3	97.3	live
+Functional Beverage & Energy Drink Brands	Nascent	3	72.53333333333333	shadow_promoted
+Global Agriculture Value Chain Recovery	Fading	2		live
+Gold & Silver Miners Not Yet Classified (South African & Developer Gold Producers)	Nascent	3	16.466666666666665	shadow_promoted
+HBM & AI-Driven Memory Chip Makers	Fading	3		live
+International Telecom & Cross-Border Communications Services	Nascent	2	97.7	live
+Life Sciences & Healthcare Data/CRM Platforms	Mainstream	3	97.5	live
+Mortgage REITs (Agency & Residential MBS)	Nascent	3	5.8	live
+Orthopedic Surgical Devices & Instruments	Fading	2		live
+Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	Mainstream	2	87.9	live
+Precision Timing & Motion Control Component Makers	Fading	3		live
+Private Mortgage Insurance Underwriters	Fading	3		live
+Private Mortgage & Title Insurance Underwriters	Fading	3		live
+Quick-Service & Fast-Casual Restaurant Franchisors	Nascent	3	57.73333333333333	shadow_promoted
+RF & Analog Wireless Connectivity Semiconductor Makers	Fading	3		live
+Semiconductor Equipment Subsystem & Fluid Delivery Suppliers	Nascent	3	41.46666666666667	shadow_promoted
+Skilled Nursing & Senior Housing Healthcare REITs	Fading	3		live
+Small Modular Reactor & Advanced Nuclear Fission Technology	Fading	2		live
+Software Development & DevOps Collaboration Platforms	Mainstream	3	97.9	live
+Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)	Mainstream	3	98.7	live
+Specialty & Rare-Disease Biopharma Turnarounds	Nascent	3	86	shadow_promoted
+Vaccine Developers Bacterial & Respiratory	Nascent	3	99.2	live
+Vertical Software for Field Services, Restaurants & Retail Operations	Nascent	3	66.2	shadow_promoted
+Work Management & Collaborative Design SaaS	Fading	2		live
+(46 rows)
+== three named churners: recent rows
+theme_date	name	stage	n
+2026-10-09	Appalachian Natural Gas Producers	Retired	
+2026-10-08	Appalachian Natural Gas Producers	Nascent	7
+2026-10-07	Appalachian Natural Gas Producers	Retired	
+2026-10-06	Appalachian Natural Gas Producers	Nascent	7
+2026-10-05	Appalachian Natural Gas Producers	Retired	
+2026-10-02	Appalachian Natural Gas Producers	Nascent	7
+2026-10-01	Appalachian Natural Gas Producers	Retired	
+2026-09-30	Appalachian Natural Gas Producers	Nascent	7
+2026-09-29	Appalachian Natural Gas Producers	Retired	
+2026-09-28	Appalachian Natural Gas Producers	Nascent	7
+2026-10-02	Offshore Drilling Rig Contractors	Retired	
+2026-10-01	Offshore Drilling Rig Contractors	Nascent	4
+2026-09-30	Offshore Drilling Rig Contractors	Retired	
+2026-09-29	Offshore Drilling Rig Contractors	Nascent	4
+2026-09-28	Offshore Drilling Rig Contractors	Retired	
+2026-09-25	Offshore Drilling Rig Contractors	Nascent	4
+2026-08-24	Offshore Drilling Rig Contractors	Retired	
+2026-08-21	Offshore Drilling Rig Contractors	Nascent	3
+2026-09-28	Regulated Natural Gas Distribution Utilities	Retired	
+2026-09-25	Regulated Natural Gas Distribution Utilities	Nascent	5
+2026-09-24	Regulated Natural Gas Distribution Utilities	Retired	
+2026-09-23	Regulated Natural Gas Distribution Utilities	Nascent	5
+2026-09-15	Regulated Natural Gas Distribution Utilities	Retired	
+2026-09-14	Regulated Natural Gas Distribution Utilities	Nascent	4
+2026-09-11	Regulated Natural Gas Distribution Utilities	Retired	
+2026-09-10	Regulated Natural Gas Distribution Utilities	Nascent	5
+2026-08-24	Regulated Natural Gas Distribution Utilities	Retired	
+2026-08-21	Regulated Natural Gas Distribution Utilities	Nascent	4
+2026-08-20	Regulated Natural Gas Distribution Utilities	Retired	
+2026-08-19	Regulated Natural Gas Distribution Utilities	Nascent	4
+(30 rows)
+== 10-09 cap rows
+t	event_type	left
+2026-10-08 17:06:46.351889	theme_sector_cap_not_absorbed	Pass2: 'Natural Gas-Weighted Appalachian & Shale E&P Producers' dropped — 0 of 8 member(s) passed the membership test for 'U.S. Oil Refiners & Refining Margin Expansion' (sector group 'oil_gas')
+2026-10-08 17:06:46.354624	theme_sector_cap_not_absorbed	Pass2: 'Oilfield Services & Offshore Energy Equipment' dropped — 0 of 4 member(s) passed the membership test for 'U.S. Oil Refiners & Refining Margin Expansion' (sector group 'oil_gas')
+2026-10-09 17:07:29.806417	theme_sector_cap_dropped	'Gene Editing & Specialty Biopharma Breakouts' dropped by sector cap (group 'biotech', family '_unstemmed' slot taken)
+2026-10-09 17:07:29.810893	theme_sector_cap_not_absorbed	Pass2: 'Appalachian Natural Gas Producers' dropped — 0 of 7 member(s) passed the membership test for 'U.S. Oil Refiners & Refining Margin Expansion' (sector group 'oil_gas')
+2026-10-09 17:07:29.815421	theme_sector_cap_not_absorbed	Pass2: 'Regulated Electric & Gas Utilities Broad Defensive Rotation Extension' dropped — 0 of 8 member(s) passed the membership test for 'U.S. Oil Refiners & Refining Margin Expansion' (sector group 'oil_gas')
+2026-10-09 17:07:36.611518	theme_sector_cap_absorbed	Pass2: 'Integrated Oil & Gas Majors' -> 'U.S. Oil Refiners & Refining Margin Expansion': admitted 7 of 7 member(s) (sector group 'oil_gas')
+(6 rows)
+== fold/kept/error events ever
+event_type	count	first_et	last_et
+(0 rows)

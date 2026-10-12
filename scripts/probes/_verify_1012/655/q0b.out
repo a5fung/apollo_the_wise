@@ -1,0 +1,12 @@
+== mi_safeguard_state columns
+column_name
+safeguard
+account_mode
+state
+last_transition_at
+last_evaluation_at
+last_drawdown_pct
+last_peak
+last_peak_date
+updated_at
+(9 rows)

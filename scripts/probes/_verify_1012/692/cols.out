@@ -1,0 +1,7 @@
+column_name	data_type
+id	integer
+created_at	timestamp with time zone
+event_type	text
+summary	text
+detail	text
+(5 rows)

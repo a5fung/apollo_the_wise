@@ -1,0 +1,16 @@
+Table "public.mi_safeguard_state"
+Column	Type	Collation	Nullable	Default
+safeguard	text		not null	
+account_mode	text		not null	
+state	text		not null	
+last_transition_at	timestamp with time zone			
+last_evaluation_at	timestamp with time zone			
+last_drawdown_pct	numeric			
+last_peak	numeric			
+last_peak_date	date			
+updated_at	timestamp with time zone			now()
+Indexes:
+    "mi_safeguard_state_pkey" PRIMARY KEY, btree (safeguard, account_mode)
+safeguard	account_mode	state	last_transition_at	last_evaluation_at	last_drawdown_pct	last_peak	last_peak_date	updated_at
+theme_parent_pass	paper	on	2026-09-26 17:54:12.319197+00					2026-09-26 17:54:12.319197+00
+(1 row)

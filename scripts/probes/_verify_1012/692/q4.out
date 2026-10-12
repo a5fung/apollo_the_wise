@@ -1,0 +1,14 @@
+== QRVO board rows
+ticker	anchor_date	state	coil_days	mna_screened_on	upd
+QRVO	2026-09-23	post_runup	7		10-09 17:35
+(1 row)
+== QRVO and SWKS latest daily closes
+ticker	last_bar	count
+QRVO	2026-10-02	23
+SWKS	2026-10-09	28
+SYNA	2026-10-09	28
+(3 rows)
+== QRVO detail of 10-09 price_unread row
+left
+{"ticker": "QRVO", "detector": "anticipation", "scan_date": "2026-10-09", "anchor_date": "2026-09-23", "source": "polygon_headline_model", "match_path": "description+insights", "matched_keyword": "merger", "title": "Skyworks Announces Expiration and Final Results of Exchange Offers for Qorvo\u2019s Senior Notes due 2029 and 2031", "published_utc": "2026-10-05T22:43:00Z", "publisher": "GlobeNewswire Inc.", "role": "target", "status": "signed", "consideration": "mixed", "counterparty": "Skyworks Solutions", "note": "The article says the exchange offers are 'part of its merger with Qorvo' and that new notes will be issued October 7, 2026, so the merger has not yet closed; Polygon's 'completed' is inconsistent, so it stays signed.", "why": "news_blocked_price_unread", "pin": {"window": "day", "range_pct": null, "threshold_pct": 2.0, "bars_n": 0, "readable": false, "why": "no_own_day_bar", "a
+(1 row)

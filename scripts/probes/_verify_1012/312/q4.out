@@ -1,0 +1,16 @@
+column_name
+alert_date
+ep_score
+score_tier
+confidence_multiplier
+created_at
+detected_at
+theme_gated_tier
+theme_gated_score
+materiality_tier
+baseline_floor_tier
+judge_tier
+judge_materiality_tier
+tape_tier
+judge_tier_reason
+(14 rows)

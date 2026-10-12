@@ -1,0 +1,1 @@
+select table_name from information_schema.tables where table_schema='public' and (table_name ilike '%telegram%' or table_name ilike '%alert%' or table_name ilike '%outbox%' or table_name ilike '%message%' or table_name ilike '%notif%') order by 1;

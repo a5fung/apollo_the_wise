@@ -1,0 +1,40 @@
+== Q9 Monday ticks with 2 pending names: their ranks (A-Z would put APUS before WFF)
+t	pending_in_rank_order	any_theme
+09:25	WFF#1 > APUS#2	f
+09:35	WFF#1 > APUS#2	f
+09:40	WFF#1 > APUS#2	f
+09:55	WFF#1 > APUS#2	f
+(4 rows)
+== Q10 history: days where the board exceeded 20, and total scan days in the table
+scan_date	max_board
+2026-09-17	23
+2026-10-05	27
+(2 rows)
+scan_days	first_day
+35	2026-08-24
+(1 row)
+== Q11 board_n distribution per day, last 15 scan days
+scan_date	max_board
+2026-10-12	5
+2026-10-09	6
+2026-10-08	8
+2026-10-07	4
+2026-10-06	13
+2026-10-05	27
+2026-10-02	8
+2026-10-01	11
+2026-09-30	7
+2026-09-29	9
+2026-09-28	5
+2026-09-25	10
+2026-09-24	8
+2026-09-23	5
+2026-09-22	12
+(15 rows)
+== Q12 every Monday tick has >=1 rs_prev_complete row? ticks with zero
+ticks_total	ticks_zero_prev_complete
+38	0
+(1 row)
+== Q13 Monday audit rows
+ts	event_type	d
+(0 rows)

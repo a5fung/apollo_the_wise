@@ -1,0 +1,50 @@
+#692 M&A filter regression harness (N=43; 37 operator-labelled, 6 agent-read)
+
+  ticker date       truth expect new    old    flip  source / calls
+  ACVA   2026-09-11 OP    BLOCK  BLOCK  BLOCK        claude_deal_fields / 0 call(s) / open5m 0.29% / gap 44.8% -> PINNED
+  PD     2026-05-29 OP    PASS   PASS   BLOCK  YES   claude_deal_fields / 0 call(s) / open5m 5.36% / gap 25.4% -> free
+  DSGN   2026-05-18 OP    PASS   PASS   PASS         claude_deal_fields / 0 call(s) / open5m 6.60% / gap 9.7% -> free
+  THR    2026-05-22 OP    PASS   PASS   BLOCK  YES   polygon_headline_model / 1 call(s) / day 2.39% -> free
+  HZO    2026-08-10 OP    BLOCK  BLOCK  PASS   YES   claude_deal_fields / 0 call(s) / open5m 0.15% / gap 45.4% -> PINNED
+  RNW    2026-08-11 OP    BLOCK  BLOCK  PASS   YES   claude_deal_fields / 0 call(s) / open5m 0.74% / gap 10.3% -> PINNED
+  NUVL   2026-06-09 OP    BLOCK  BLOCK  PASS   YES   claude_deal_fields / 0 call(s) / open5m 0.11% / gap 38.8% -> PINNED
+  IRDM   2026-06-29 OP    PASS   PASS   PASS         polygon_headline_model / 1 call(s) / open5m 3.28% / gap 18.9% -> free
+  TMHC   2026-06-01 OP    BLOCK  BLOCK  PASS   YES   open_window_price_pin / 0 call(s) / open5m 0.25% / gap 22.4% -> PINNED
+  APGE   2026-06-22 OP    BLOCK  BLOCK  PASS   YES   open_window_price_pin / 0 call(s) / open5m 0.41% / gap 46.7% -> PINNED
+  SAFT   2026-07-24 OP    BLOCK  BLOCK  PASS   YES   open_window_price_pin / 0 call(s) / open5m 0.37% / gap 41.2% -> PINNED
+  FBRX   2026-07-27 OP    BLOCK  BLOCK  PASS   YES   open_window_price_pin / 0 call(s) / open5m 0.08% / gap 39.5% -> PINNED
+  VREX   2026-08-10 OP    BLOCK  BLOCK  PASS   YES   open_window_price_pin / 0 call(s) / open5m 0.11% / gap 48.2% -> PINNED
+  ARX    2026-08-13 OP    BLOCK  BLOCK  PASS   YES   open_window_price_pin / 0 call(s) / open5m 0.46% / gap 44.1% -> PINNED
+  WEAV   2026-08-18 OP    BLOCK  BLOCK  PASS   YES   open_window_price_pin / 0 call(s) / open5m 0.48% / gap 31.8% -> PINNED
+  ATAI   2026-07-16 agent PASS   PASS   PASS         - / 0 call(s) / open5m 0.99% / gap 31.8%
+  FWDI   2026-09-18 OP    PASS   PASS   BLOCK  YES   - / 0 call(s)
+  CHYM   2026-09-09 OP    PASS   PASS   BLOCK  YES   - / 0 call(s)
+  JBS    2026-09-18 OP    PASS   PASS   BLOCK  YES   - / 0 call(s)
+  GPRK   2026-09-03 OP    PASS   PASS   BLOCK  YES   - / 0 call(s)
+  WAY    2026-09-15 OP    PASS   PASS   BLOCK  YES   claude_deal_fields / 0 call(s) / open5m 5.70% -> free
+  CSR    2026-09-09 OP    PASS   PASS   BLOCK  YES   - / 0 call(s)
+  SWKS   2026-09-15 OP    PASS   PASS   BLOCK  YES   - / 0 call(s)
+  IOVA   2026-09-29 OP    PASS   PASS   BLOCK  YES   - / 1 call(s)
+  VKTX   2026-09-22 OP    PASS   PASS   BLOCK  YES   - / 1 call(s) / open5m 3.38% / gap 22.9%
+  RGTI   2026-09-08 OP    PASS   PASS   BLOCK  YES   - / 1 call(s)
+  SUNE   2026-06-08 OP    BLOCK  BLOCK  BLOCK        polygon_headline_model / 1 call(s)
+  CLRO   2026-07-02 OP    BLOCK  BLOCK  BLOCK        polygon_headline_model / 1 call(s)
+  MMED   2026-06-03 OP    PASS   PASS   PASS         - / 0 call(s)
+  FRMI   2026-06-17 OP    PASS   PASS   PASS         - / 1 call(s)
+  ONDS   2026-05-28 OP    PASS   PASS   PASS         - / 1 call(s)
+  IMAX   2026-05-22 OP    PASS   PASS   PASS         claude_deal_fields / 0 call(s) / open5m 2.65% -> free
+  WEN    2026-06-26 OP    PASS   PASS   BLOCK  YES   - / 1 call(s) / day 13.21%
+  UMAC   2026-06-30 OP    PASS   PASS   PASS         - / 0 call(s)
+  LCID   2026-07-17 OP    PASS   PASS   BLOCK  YES   - / 1 call(s)
+  SOUN   2026-08-06 OP    PASS   PASS   PASS         - / 0 call(s)
+  LII    2026-06-15 OP    PASS   PASS   PASS         - / 0 call(s)
+  SCZM   2026-06-15 OP    PASS   PASS   PASS         - / 0 call(s)
+  CECO   2026-05-22 agent PASS   PASS   BLOCK  YES   - / 1 call(s) / day 2.42%
+  ROKU   2026-06-24 agent BLOCK  BLOCK  BLOCK        polygon_headline_model / 1 call(s) / day 1.84% -> PINNED
+  QBTS   2026-05-21 agent PASS   PASS   PASS         - / 0 call(s) / open5m 5.47%
+  MGM    2026-06-01 agent PASS   PASS   BLOCK  YES   polygon_headline_model / 1 call(s) / open5m 1.24% / gap 11.0% -> free
+  KALV   2026-05-25 agent PASS   PASS   PASS         - / 0 call(s)
+
+  operator-labelled misses: 0
+  verdicts that differ from the OLD module: 26
+exit 0

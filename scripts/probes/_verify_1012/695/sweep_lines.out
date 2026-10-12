@@ -1,0 +1,23 @@
+-rw-r--r-- 1 apollo apollo 42255796 Oct 12 13:59 market-agent.log
+-rw-r--r-- 1 apollo apollo  4540434 Sep 24 01:17 market-agent.log.1
+-rw-r--r-- 1 apollo apollo 52428949 Jun 15 15:15 market-agent.log.10
+-rw-r--r-- 1 apollo apollo 52428941 Sep 23 22:00 market-agent.log.2
+-rw-r--r-- 1 apollo apollo  3612761 Sep 11 01:16 market-agent.log.3
+-rw-r--r-- 1 apollo apollo 52429026 Sep 10 19:45 market-agent.log.4
+-rw-r--r-- 1 apollo apollo   237921 Aug 20 03:57 market-agent.log.5
+-rw-r--r-- 1 apollo apollo 52428810 Aug 19 21:04 market-agent.log.6
+-rw-r--r-- 1 apollo apollo     6996 Jul 20 16:57 market-agent.log.7
+-rw-r--r-- 1 apollo apollo 52429010 Jul 20 16:57 market-agent.log.8
+-rw-r--r-- 1 apollo apollo  5266985 Jun 17 20:57 market-agent.log.9
+2026-09-24 21:30:41 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 86 tables, 2 dead (0 new), 0 error(s)
+2026-09-25 21:30:49 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 86 tables, 2 dead (0 new), 0 error(s)
+2026-09-28 21:30:44 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 88 tables, 2 dead (0 new), 0 error(s)
+2026-09-29 21:30:51 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 88 tables, 2 dead (0 new), 0 error(s)
+2026-09-30 21:30:43 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 88 tables, 2 dead (0 new), 0 error(s)
+2026-10-01 21:30:46 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 88 tables, 2 dead (0 new), 0 error(s)
+2026-10-02 21:30:58 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 88 tables, 2 dead (0 new), 0 error(s)
+2026-10-05 21:30:53 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 88 tables, 3 dead (1 new), 0 error(s)
+2026-10-06 21:30:51 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 88 tables, 2 dead (0 new), 0 suspect, 0 error(s)
+2026-10-07 21:30:50 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 88 tables, 2 dead (0 new), 0 suspect, 0 error(s)
+2026-10-08 21:30:54 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 88 tables, 3 dead (0 new), 0 suspect, 0 error(s)
+2026-10-09 21:30:49 [agents.market_intelligence.scheduler] INFO: Dead-column sweep: 88 tables, 0 dead (0 new), 0 suspect, 1 event-gated, 0 error(s)

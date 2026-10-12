@@ -1,0 +1,35 @@
+=== S1 tv_news_shadow job_runs since 10-09
+id	started_et	fin_et	duration_s	status	rows_written	err
+222677	2026-10-08 20:45:00.002721	2026-10-08 20:45:00.082437	0.0811884105205535888671875	success		
+224964	2026-10-09 20:45:00.001745	2026-10-09 20:45:00.618628	0.6177394054830074310302734375	success		
+225590	2026-10-12 10:10:00.00993	2026-10-12 10:10:00.663131	0.65759910456836223602294921875	success		
+(3 rows)
+=== S2 tv_news_shadow_run audit events since 10-09
+event_type	at_et	detail
+tv_news_shadow_run	2026-10-08 20:45:00.078638	
+tv_news_shadow_run	2026-10-09 20:45:00.615813	
+tv_news_shadow_run	2026-10-12 10:10:00.661722	
+(3 rows)
+=== S3 all shadow rows with new-frame columns
+ticker	alert_date	chk_et	tv_status	raw	acting	our_acting_rule	corp	src	cap_et	r_alert	r_start	on_day	bef	repoll	aft	missed_null	msum	poly
+HUM	2026-10-09	2026-10-12 10:10:00.658568	ok	game_changer	game_changer	gc_kept_unscheduled_forward	f			t		18				t		
+AAOI	2026-10-09	2026-10-09 20:45:00.61234	ok	routine			f			t		1				t		
+PENG	2026-10-07	2026-10-07 20:45:00.696761	ok	routine			t			t		25				f		2
+(3 rows)
+=== S4 ep_scan durations (07:00-10:00 ET ticks) per day last 6 days
+d	ticks	avg_s	max_s
+2026-10-12	36	5.27	52.42
+2026-10-09	36	7.37	52.96
+2026-10-08	36	7.02	34.01
+2026-10-07	36	4.21	46.73
+2026-10-06	36	7.04	43.42
+2026-10-05	36	17.64	123.49
+2026-10-02	36	4.20	22.74
+(7 rows)
+=== S5 grade-corpus coverage at query time
+count
+5
+(1 row)
+=== S6 alerts on 10-12
+ticker	catalyst_quality
+(0 rows)

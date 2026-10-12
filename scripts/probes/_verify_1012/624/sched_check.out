@@ -1,0 +1,3 @@
+7218:        CronTrigger(hour=18, minute=15, day_of_week="mon-fri", timezone="America/New_York"),
+5544:        from agents.market_intelligence.lowcap_paper_lane import write_paper_lane_heartbeat
+5546:        hb = await write_paper_lane_heartbeat(et_today())

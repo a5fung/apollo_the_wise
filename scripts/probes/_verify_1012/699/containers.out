@@ -1,0 +1,23 @@
+apollo-execution	docker-apollo-execution	Up 12 hours (healthy)	2026-10-12 01:53:43 +0000 UTC
+apollo-market	docker-market-agent	Up 12 hours (healthy)	2026-10-12 01:50:54 +0000 UTC
+apollo-orchestrator	docker-orchestrator	Up 12 hours	2026-10-12 01:50:54 +0000 UTC
+apollo-redis	redis:7-alpine	Up 3 months (healthy)	2026-07-06 15:30:56 +0000 UTC
+apollo-postgres	pgvector/pgvector:pg16	Up 3 months (healthy)	2026-07-06 15:12:00 +0000 UTC
+apollo-uptime	louislam/uptime-kuma:1	Up 6 months (healthy)	2026-03-23 05:58:51 +0000 UTC
+== apollo-market
+-5382801675
+2026-10-12T01:51:07.914484052Z docker-market-agent
+== apollo-execution
+-5382801675
+2026-10-12T01:53:56.015986841Z docker-apollo-execution
+== apollo-orchestrator
+-5382801675
+2026-10-12T01:51:07.916274717Z docker-orchestrator
+Mon Oct 12 02:01:48 PM UTC 2026
+docker-apollo-execution	latest	2026-10-12 01:52:53 +0000 UTC
+docker-market-agent	latest	2026-10-12 01:50:02 +0000 UTC
+docker-orchestrator	latest	2026-10-12 01:49:21 +0000 UTC
+alpine	latest	2026-06-16 00:01:29 +0000 UTC
+pgvector/pgvector	pg16	2026-02-26 23:42:52 +0000 UTC
+redis	7-alpine	2026-02-23 17:35:24 +0000 UTC
+louislam/uptime-kuma	1	2025-10-20 17:53:48 +0000 UTC

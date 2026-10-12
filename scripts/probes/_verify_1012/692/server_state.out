@@ -1,0 +1,11 @@
+045fdfb2 Sun Oct 11 18:45:41 2026 -0700 #700 review code: one compaction policy, flags returned not re-read, shared renderers (behaviour-pre
+apollo-execution Up 12 hours (healthy) docker-apollo-execution
+apollo-market Up 12 hours (healthy) docker-market-agent
+apollo-orchestrator Up 12 hours docker-orchestrator
+apollo-redis Up 3 months (healthy) redis:7-alpine
+apollo-postgres Up 3 months (healthy) pgvector/pgvector:pg16
+apollo-uptime Up 6 months (healthy) louislam/uptime-kuma:1
+== apollo-market
+2
+== apollo-execution
+2

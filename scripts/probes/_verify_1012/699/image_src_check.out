@@ -1,0 +1,2 @@
+execution: send_telegram_message calls paper_chat_id_for: True
+market: send_telegram_message calls paper_chat_id_for: True

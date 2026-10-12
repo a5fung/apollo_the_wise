@@ -1,0 +1,38 @@
+== A. all %mna% events since 10-03 by type
+event_type	count
+mna_filter_released	16
+mna_filter_fired	6
+anticipation_mna_check_capped	5
+anticipation_mna_price_unread	5
+mna_pin_confirmed	5
+mna_headline_unanswered	3
+(6 rows)
+== B. non-mna-prefixed mna-ish events (anticipation/open_window)
+id	et	event_type	left
+52569	10-05 17:35:23	anticipation_mna_price_unread	QRVO: deal-nominated (target/signed/mixed via polygon_headline_model) but the own-day bar is unreadable (no_own_day_bar) — kept ON the coil board
+52570	10-05 17:35:23	anticipation_mna_check_capped	M&A checks capped at 40 this run — remaining coil candidates pass unchecked (fail-open, shadow-only)
+53234	10-06 17:35:24	anticipation_mna_price_unread	QRVO: deal-nominated (target/signed/unknown via polygon_headline_model) but the own-day bar is unreadable (no_own_day_bar) — kept ON the coil board
+53236	10-06 17:35:29	anticipation_mna_check_capped	M&A checks capped at 40 this run — remaining coil candidates pass unchecked (fail-open, shadow-only)
+53887	10-07 17:35:20	anticipation_mna_price_unread	QRVO: deal-nominated (target/signed/unknown via polygon_headline_model) but the own-day bar is unreadable (no_own_day_bar) — kept ON the coil board
+53889	10-07 17:35:24	anticipation_mna_check_capped	M&A checks capped at 40 this run — remaining coil candidates pass unchecked (fail-open, shadow-only)
+54491	10-08 17:35:16	anticipation_mna_price_unread	QRVO: deal-nominated (target/signed/unknown via polygon_headline_model) but the own-day bar is unreadable (no_own_day_bar) — kept ON the coil board
+54493	10-08 17:35:23	anticipation_mna_check_capped	M&A checks capped at 40 this run — remaining coil candidates pass unchecked (fail-open, shadow-only)
+55116	10-09 17:35:23	anticipation_mna_price_unread	QRVO: deal-nominated (target/signed/mixed via polygon_headline_model) but the own-day bar is unreadable (no_own_day_bar) — kept ON the coil board
+55117	10-09 17:35:23	anticipation_mna_check_capped	M&A checks capped at 40 this run — remaining coil candidates pass unchecked (fail-open, shadow-only)
+(10 rows)
+== C. any audit row since 10-10 whose detail mentions alpaca news_source
+id	et	event_type	left
+(0 rows)
+== D. toggle state
+safeguard	account_mode	state	last_transition_at	last_evaluation_at	last_drawdown_pct	last_peak	last_peak_date	updated_at
+(0 rows)
+== E. SYNA board rows
+ticker	anchor_date	state	mna_screened_on	upd
+SYNA	2026-10-02	coiled	2026-10-08	10-09 17:35
+(1 row)
+== F. EP alerts for the blocked names
+ticker	alert_date	score_tier	ep_score	t
+(0 rows)
+== G. live trades for the blocked names
+id	ticker	status	account_mode	skip_reason	t
+(0 rows)

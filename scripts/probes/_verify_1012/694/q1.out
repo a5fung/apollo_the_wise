@@ -1,0 +1,63 @@
+== Q1 now / latest complete score date
+now_et
+2026-10-12 09:58:30.967144
+(1 row)
+score_date	n	n_adv
+2026-10-09	2392	2370
+2026-10-08	2388	2369
+2026-10-07	2396	2367
+2026-10-06	2401	2369
+2026-10-05	2423	2379
+2026-10-02	2392	2365
+(6 rows)
+== Q2 shadow per day adv_source counts (last 6 scan dates)
+scan_date	adv_source	rows	ticks	max_board	first_tick	last_tick
+2026-10-12	pending	20	16	5	2026-10-12 07:05:00.032448	2026-10-12 09:55:00.042597
+2026-10-12	rs_prev_complete	106	38	5	2026-10-12 07:00:01.680278	2026-10-12 09:55:00.042597
+2026-10-09	pending	186	38	6	2026-10-09 07:00:01.680321	2026-10-09 09:55:00.048803
+2026-10-08	pending	245	38	8	2026-10-08 07:00:01.545826	2026-10-08 09:55:00.064356
+2026-10-07	pending	77	38	4	2026-10-07 07:00:01.563315	2026-10-07 09:55:00.082419
+2026-10-06	pending	195	38	13	2026-10-06 07:00:01.710082	2026-10-06 09:55:00.079966
+2026-10-05	pending	844	38	27	2026-10-05 07:00:01.634062	2026-10-05 09:55:00.053835
+(7 rows)
+== Q3 Monday ticks
+t	rows	board_n	prev_complete	pending	other	shortlisted	acting_key
+07:00:01	3	3	3	0	0	3	prescore
+07:05:00	4	4	3	1	0	4	prescore
+07:10:00	4	4	3	1	0	4	prescore
+07:15:00	4	4	3	1	0	4	prescore
+07:20:00	4	4	3	1	0	4	prescore
+07:25:00	4	4	3	1	0	4	prescore
+07:30:00	4	4	3	1	0	4	prescore
+07:35:00	4	4	3	1	0	4	prescore
+07:40:00	3	3	3	0	0	3	prescore
+07:45:00	3	3	3	0	0	3	prescore
+07:50:00	3	3	3	0	0	3	prescore
+07:55:00	3	3	3	0	0	3	prescore
+08:00:00	3	3	3	0	0	3	prescore
+08:05:00	3	3	3	0	0	3	prescore
+08:10:00	3	3	3	0	0	3	prescore
+08:15:00	3	3	3	0	0	3	prescore
+08:20:00	3	3	3	0	0	3	prescore
+08:25:00	3	3	3	0	0	3	prescore
+08:30:00	3	3	3	0	0	3	prescore
+08:35:00	3	3	3	0	0	3	prescore
+08:40:00	3	3	3	0	0	3	prescore
+08:45:00	3	3	3	0	0	3	prescore
+08:50:00	3	3	3	0	0	3	prescore
+08:55:00	3	3	3	0	0	3	prescore
+09:00:00	2	2	2	0	0	2	prescore
+09:00:00	2	2	2	0	0	2	prescore
+09:05:00	2	2	2	0	0	2	prescore
+09:10:00	3	3	3	0	0	3	prescore
+09:15:00	4	4	3	1	0	4	prescore
+09:20:00	3	3	3	0	0	3	prescore
+09:25:00	5	5	3	2	0	5	prescore
+09:30:00	2	2	1	1	0	2	prescore
+09:31:00	2	2	1	1	0	2	prescore
+09:35:00	5	5	3	2	0	5	prescore
+09:40:00	5	5	3	2	0	5	prescore
+09:45:00	3	3	2	1	0	3	prescore
+09:50:00	4	4	3	1	0	4	prescore
+09:55:00	5	5	3	2	0	5	prescore
+(38 rows)

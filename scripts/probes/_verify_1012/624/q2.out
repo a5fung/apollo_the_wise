@@ -1,0 +1,727 @@
+=== strategy row
+-[ RECORD 1 ]------------+------------------------------------------------------------
+strategy_id              | magna53_smallcap
+name                     | MAGNA53 small-cap lane (paper)
+family                   | orb_long
+phase                    | paper
+enabled                  | t
+signal_type              | magna53_smallcap
+outcomes_table           | mi_live_trades
+promotion_model          | unpaired_r
+promotion_thresholds     | {"paper_to_live": {"min_closed": 30, "min_median_r": null}}
+notes                    | 
+created_at               | 2026-10-10 18:51:20.322432+00
+updated_at               | 2026-10-10 18:51:20.322432+00
+live_real_enabled        | f
+position_size_multiplier | 1.0
+max_concurrent_positions | 5
+profit_trigger_r         | 8.0
+breakeven_arm_r          | 3.0
+
+=== live scan log today (screened / cap-only)
+-[ RECORD 1 ]-+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.69 < $5.00 floor
+count         | 63
+-[ RECORD 2 ]-+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.29 < $5.00 floor
+count         | 54
+-[ RECORD 3 ]-+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.89 < $5.00 floor
+count         | 46
+-[ RECORD 4 ]-+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.40 < $5.00 floor
+count         | 40
+-[ RECORD 5 ]-+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.14 < $5.00 floor
+count         | 39
+-[ RECORD 6 ]-+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.96 < $5.00 floor
+count         | 38
+-[ RECORD 7 ]-+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.44 < $5.00 floor
+count         | 38
+-[ RECORD 8 ]-+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.51 < $5.00 floor
+count         | 38
+-[ RECORD 9 ]-+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.85 < $5.00 floor
+count         | 38
+-[ RECORD 10 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.95 < $5.00 floor
+count         | 38
+-[ RECORD 11 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.82 < $5.00 floor
+count         | 38
+-[ RECORD 12 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.10 < $5.00 floor
+count         | 36
+-[ RECORD 13 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $4.63 < $5.00 floor
+count         | 36
+-[ RECORD 14 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.95 < $5.00 floor
+count         | 36
+-[ RECORD 15 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.54 < $5.00 floor
+count         | 36
+-[ RECORD 16 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.52 < $5.00 floor
+count         | 36
+-[ RECORD 17 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 6.0% < 9.0% after real-time confirm (recorded only)
+count         | 35
+-[ RECORD 18 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.79 < $5.00 floor
+count         | 34
+-[ RECORD 19 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.36 < $5.00 floor
+count         | 34
+-[ RECORD 20 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.34 < $5.00 floor
+count         | 32
+-[ RECORD 21 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.41 < $5.00 floor
+count         | 32
+-[ RECORD 22 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.11 < $5.00 floor
+count         | 32
+-[ RECORD 23 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 6.1% < 9.0% after real-time confirm (recorded only)
+count         | 32
+-[ RECORD 24 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_day_illiquid: prior-day volume 36,777 < 50,000 shares floor
+count         | 31
+-[ RECORD 25 ]+---------------------------------------------------------------------------------------------------
+filter_reason | M&A/buyout catalyst — no momentum trade
+count         | 31
+-[ RECORD 26 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.55 < $5.00 floor
+count         | 31
+-[ RECORD 27 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.68 < $5.00 floor
+count         | 31
+-[ RECORD 28 ]+---------------------------------------------------------------------------------------------------
+filter_reason | quality filter: filter:atr_too_high: 27.7% > 15.0%
+count         | 31
+-[ RECORD 29 ]+---------------------------------------------------------------------------------------------------
+filter_reason | score 59 < bar 65 (catalyst=strong)
+count         | 30
+-[ RECORD 30 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.46 < $5.00 floor
+count         | 29
+-[ RECORD 31 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.08 < $5.00 floor
+count         | 29
+-[ RECORD 32 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.95 < $5.00 floor
+count         | 27
+-[ RECORD 33 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 7.9% < 9.0% after real-time confirm (recorded only)
+count         | 27
+-[ RECORD 34 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.60 < $5.00 floor
+count         | 27
+-[ RECORD 35 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.41 < $5.00 floor
+count         | 26
+-[ RECORD 36 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.66 < $5.00 floor
+count         | 25
+-[ RECORD 37 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.39 < $5.00 floor
+count         | 25
+-[ RECORD 38 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.67 < $5.00 floor
+count         | 25
+-[ RECORD 39 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.17 < $5.00 floor
+count         | 25
+-[ RECORD 40 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.84 < $5.00 floor
+count         | 25
+-[ RECORD 41 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.02 < $5.00 floor
+count         | 24
+-[ RECORD 42 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.64 < $5.00 floor
+count         | 24
+-[ RECORD 43 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.46 < $5.00 floor
+count         | 23
+-[ RECORD 44 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.13 < $5.00 floor
+count         | 23
+-[ RECORD 45 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.27 < $5.00 floor
+count         | 23
+-[ RECORD 46 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.89 < $5.00 floor
+count         | 23
+-[ RECORD 47 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.50 < $5.00 floor
+count         | 22
+-[ RECORD 48 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.18 < $5.00 floor
+count         | 22
+-[ RECORD 49 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.10 < $5.00 floor
+count         | 21
+-[ RECORD 50 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.52 < $5.00 floor
+count         | 20
+-[ RECORD 51 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_day_illiquid: prior-day volume 3,560 < 50,000 shares floor
+count         | 20
+-[ RECORD 52 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.85 < $5.00 floor
+count         | 20
+-[ RECORD 53 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.63 < $5.00 floor
+count         | 19
+-[ RECORD 54 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 5.0% < 9.0% after real-time confirm (recorded only)
+count         | 19
+-[ RECORD 55 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.77 < $5.00 floor
+count         | 18
+-[ RECORD 56 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.87 < $5.00 floor
+count         | 18
+-[ RECORD 57 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.38 < $5.00 floor
+count         | 17
+-[ RECORD 58 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 6.4% < 9.0% after real-time confirm (recorded only)
+count         | 17
+-[ RECORD 59 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_day_illiquid: prior-day volume 6,661 < 50,000 shares floor
+count         | 17
+-[ RECORD 60 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.03 < $5.00 floor
+count         | 16
+-[ RECORD 61 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.29 < $5.00 floor
+count         | 15
+-[ RECORD 62 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.40 < $5.00 floor
+count         | 15
+-[ RECORD 63 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.62 < $5.00 floor
+count         | 15
+-[ RECORD 64 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.28 < $5.00 floor
+count         | 15
+-[ RECORD 65 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.94 < $5.00 floor
+count         | 14
+-[ RECORD 66 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_day_illiquid: prior-day volume 9,059 < 50,000 shares floor
+count         | 13
+-[ RECORD 67 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 7.0% < 9.0% after real-time confirm (recorded only)
+count         | 13
+-[ RECORD 68 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.43 < $5.00 floor
+count         | 13
+-[ RECORD 69 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.51 < $5.00 floor
+count         | 13
+-[ RECORD 70 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.10 < $5.00 floor
+count         | 13
+-[ RECORD 71 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.17 < $5.00 floor
+count         | 12
+-[ RECORD 72 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.91 < $5.00 floor
+count         | 12
+-[ RECORD 73 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.54 < $5.00 floor
+count         | 12
+-[ RECORD 74 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.42 < $5.00 floor
+count         | 11
+-[ RECORD 75 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.81 < $5.00 floor
+count         | 11
+-[ RECORD 76 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.90 < $5.00 floor
+count         | 11
+-[ RECORD 77 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.07 < $5.00 floor
+count         | 11
+-[ RECORD 78 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.28 < $5.00 floor
+count         | 10
+-[ RECORD 79 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.30 < $5.00 floor
+count         | 10
+-[ RECORD 80 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 5.1% < 9.0% after real-time confirm (recorded only)
+count         | 10
+-[ RECORD 81 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.47 < $5.00 floor
+count         | 10
+-[ RECORD 82 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.38 < $5.00 floor
+count         | 10
+-[ RECORD 83 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.63 < $5.00 floor
+count         | 10
+-[ RECORD 84 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.93 < $5.00 floor
+count         | 9
+-[ RECORD 85 ]+---------------------------------------------------------------------------------------------------
+filter_reason | score 34 < bar 65 (catalyst=routine)
+count         | 9
+-[ RECORD 86 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.48 < $5.00 floor
+count         | 8
+-[ RECORD 87 ]+---------------------------------------------------------------------------------------------------
+filter_reason | already up 511% in prior 5 days (extended)
+count         | 8
+-[ RECORD 88 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.02 < $5.00 floor
+count         | 8
+-[ RECORD 89 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.49 < $5.00 floor
+count         | 8
+-[ RECORD 90 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.70 < $5.00 floor
+count         | 7
+-[ RECORD 91 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.64 < $5.00 floor
+count         | 7
+-[ RECORD 92 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 5.8% < 9.0% after real-time confirm (recorded only)
+count         | 7
+-[ RECORD 93 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.73 < $5.00 floor
+count         | 7
+-[ RECORD 94 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.02 < $5.00 floor
+count         | 7
+-[ RECORD 95 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $4.01 < $5.00 floor
+count         | 7
+-[ RECORD 96 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 5.9% < 9.0% after real-time confirm (recorded only)
+count         | 7
+-[ RECORD 97 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.64 < $5.00 floor
+count         | 6
+-[ RECORD 98 ]+---------------------------------------------------------------------------------------------------
+filter_reason | score 52 < bar 65 (catalyst=strong)
+count         | 6
+-[ RECORD 99 ]+---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.72 < $5.00 floor
+count         | 6
+-[ RECORD 100 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.97 < $5.00 floor
+count         | 6
+-[ RECORD 101 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.33 < $5.00 floor
+count         | 6
+-[ RECORD 102 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -0.4% < 9.0% after real-time confirm (recorded only)
+count         | 5
+-[ RECORD 103 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $4.00 < $5.00 floor
+count         | 5
+-[ RECORD 104 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 4.6% < 9.0% after real-time confirm (recorded only)
+count         | 5
+-[ RECORD 105 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 7.1% < 9.0% after real-time confirm (recorded only)
+count         | 5
+-[ RECORD 106 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.69 < $5.00 floor
+count         | 5
+-[ RECORD 107 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $4.42 < $5.00 floor
+count         | 5
+-[ RECORD 108 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.17 < $5.00 floor
+count         | 5
+-[ RECORD 109 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.84 < $5.00 floor
+count         | 5
+-[ RECORD 110 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 5.2% < 9.0% after real-time confirm (recorded only)
+count         | 5
+-[ RECORD 111 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 6.3% < 9.0% after real-time confirm (recorded only)
+count         | 5
+-[ RECORD 112 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 5.7% < 9.0% after real-time confirm (recorded only)
+count         | 4
+-[ RECORD 113 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 4.2% < 9.0% after real-time confirm (recorded only)
+count         | 4
+-[ RECORD 114 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.98 < $5.00 floor
+count         | 4
+-[ RECORD 115 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 5.4% < 9.0% after real-time confirm (recorded only)
+count         | 4
+-[ RECORD 116 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 7.4% < 9.0% after real-time confirm (recorded only)
+count         | 4
+-[ RECORD 117 ]---------------------------------------------------------------------------------------------------
+filter_reason | already up 56% in prior 5 days (extended)
+count         | 4
+-[ RECORD 118 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.55 < $5.00 floor
+count         | 4
+-[ RECORD 119 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.08 < $5.00 floor
+count         | 4
+-[ RECORD 120 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 4.0% < 9.0% after real-time confirm (recorded only)
+count         | 4
+-[ RECORD 121 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 5.3% < 9.0% after real-time confirm (recorded only)
+count         | 4
+-[ RECORD 122 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.31 < $5.00 floor
+count         | 3
+-[ RECORD 123 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 2.9% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 124 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 8.6% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 125 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -1.7% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 126 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 6.5% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 127 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 3.4% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 128 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 7.8% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 129 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 6.7% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 130 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.53 < $5.00 floor
+count         | 3
+-[ RECORD 131 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.73 < $5.00 floor
+count         | 3
+-[ RECORD 132 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 7.6% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 133 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.22 < $5.00 floor
+count         | 3
+-[ RECORD 134 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 0.2% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 135 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -2.8% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 136 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 3.7% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 137 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.15 < $5.00 floor
+count         | 3
+-[ RECORD 138 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -0.3% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 139 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -1.2% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 140 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 0.0% < 9.0% after real-time confirm (recorded only)
+count         | 3
+-[ RECORD 141 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.47 < $5.00 floor
+count         | 2
+-[ RECORD 142 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 6.9% < 9.0% after real-time confirm (recorded only)
+count         | 2
+-[ RECORD 143 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 4.3% < 9.0% after real-time confirm (recorded only)
+count         | 2
+-[ RECORD 144 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $4.79 < $5.00 floor
+count         | 2
+-[ RECORD 145 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.67 < $5.00 floor
+count         | 2
+-[ RECORD 146 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $4.78 < $5.00 floor
+count         | 2
+-[ RECORD 147 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.59 < $5.00 floor
+count         | 2
+-[ RECORD 148 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 8.8% < 9.0% after real-time confirm (recorded only)
+count         | 2
+-[ RECORD 149 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.03 < $5.00 floor
+count         | 2
+-[ RECORD 150 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 2.0% < 9.0% after real-time confirm (recorded only)
+count         | 2
+-[ RECORD 151 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 6.6% < 9.0% after real-time confirm (recorded only)
+count         | 2
+-[ RECORD 152 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 6.2% < 9.0% after real-time confirm (recorded only)
+count         | 2
+-[ RECORD 153 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 3.9% < 9.0% after real-time confirm (recorded only)
+count         | 2
+-[ RECORD 154 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.57 < $5.00 floor
+count         | 2
+-[ RECORD 155 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.76 < $5.00 floor
+count         | 2
+-[ RECORD 156 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -1.5% < 9.0% after real-time confirm (recorded only)
+count         | 2
+-[ RECORD 157 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 8.4% < 9.0% after real-time confirm (recorded only)
+count         | 2
+-[ RECORD 158 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_day_illiquid: prior-day volume 35,264 < 50,000 shares floor
+count         | 2
+-[ RECORD 159 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.27 < $5.00 floor
+count         | 2
+-[ RECORD 160 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 8.9% < 9.0% after real-time confirm (recorded only)
+count         | 2
+-[ RECORD 161 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -1.6% < 9.0% after real-time confirm (recorded only)
+count         | 2
+-[ RECORD 162 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.47 < $5.00 floor
+count         | 2
+-[ RECORD 163 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.54 < $5.00 floor
+count         | 2
+-[ RECORD 164 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 9.0% < 9.0% after real-time confirm (recorded only)
+count         | 2
+-[ RECORD 165 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.51 < $5.00 floor
+count         | 1
+-[ RECORD 166 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 3.0% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 167 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.42 < $5.00 floor
+count         | 1
+-[ RECORD 168 ]---------------------------------------------------------------------------------------------------
+filter_reason | routine catalyst, gap 10.3%
+count         | 1
+-[ RECORD 169 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 6.8% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 170 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.08 < $5.00 floor
+count         | 1
+-[ RECORD 171 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -3.6% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 172 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:session_rvol_too_low: session_rvol=0.90x (today 36,325 / baseline 40,378 n=23) < 1.0x
+count         | 1
+-[ RECORD 173 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $4.45 < $5.00 floor
+count         | 1
+-[ RECORD 174 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 3.2% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 175 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.07 < $5.00 floor
+count         | 1
+-[ RECORD 176 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -7.6% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 177 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 7.5% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 178 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 2.8% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 179 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -2.6% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 180 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 2.7% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 181 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.78 < $5.00 floor
+count         | 1
+-[ RECORD 182 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 0.5% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 183 ]---------------------------------------------------------------------------------------------------
+filter_reason | quality filter: filter:mcap_too_small: $451M < $500M
+count         | 1
+-[ RECORD 184 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 1.8% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 185 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 2.4% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 186 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $4.16 < $5.00 floor
+count         | 1
+-[ RECORD 187 ]---------------------------------------------------------------------------------------------------
+filter_reason | routine catalyst, gap 9.8%
+count         | 1
+-[ RECORD 188 ]---------------------------------------------------------------------------------------------------
+filter_reason | quality filter: filter:atr_too_high: 23.7% > 15.0%
+count         | 1
+-[ RECORD 189 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.95 < $5.00 floor
+count         | 1
+-[ RECORD 190 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.52 < $5.00 floor
+count         | 1
+-[ RECORD 191 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 4.9% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 192 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.21 < $5.00 floor
+count         | 1
+-[ RECORD 193 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:session_rvol_too_low: session_rvol=0.57x (today 1,079,210 / baseline 1,906,012 n=23) < 1.0x
+count         | 1
+-[ RECORD 194 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $4.03 < $5.00 floor
+count         | 1
+-[ RECORD 195 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.49 < $5.00 floor
+count         | 1
+-[ RECORD 196 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 8.2% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 197 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.58 < $5.00 floor
+count         | 1
+-[ RECORD 198 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_day_illiquid: prior-day volume 11,125 < 50,000 shares floor
+count         | 1
+-[ RECORD 199 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -0.5% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 200 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $4.36 < $5.00 floor
+count         | 1
+-[ RECORD 201 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.89 < $5.00 floor
+count         | 1
+-[ RECORD 202 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_day_illiquid: prior-day volume 37,933 < 50,000 shares floor
+count         | 1
+-[ RECORD 203 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -3.8% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 204 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 0.9% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 205 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.38 < $5.00 floor
+count         | 1
+-[ RECORD 206 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.61 < $5.00 floor
+count         | 1
+-[ RECORD 207 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 4.5% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 208 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.04 < $5.00 floor
+count         | 1
+-[ RECORD 209 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.50 < $5.00 floor
+count         | 1
+-[ RECORD 210 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.56 < $5.00 floor
+count         | 1
+-[ RECORD 211 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -2.1% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 212 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 7.2% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 213 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 8.0% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 214 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.76 < $5.00 floor
+count         | 1
+-[ RECORD 215 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $1.35 < $5.00 floor
+count         | 1
+-[ RECORD 216 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -3.4% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 217 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 23.5% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 218 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -0.8% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 219 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $3.18 < $5.00 floor
+count         | 1
+-[ RECORD 220 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 4.4% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 221 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 4.8% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 222 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $0.92 < $5.00 floor
+count         | 1
+-[ RECORD 223 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_close_too_low: prior close $2.07 < $5.00 floor
+count         | 1
+-[ RECORD 224 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 1.4% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 225 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 5.6% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 226 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 8.3% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 227 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_day_illiquid: prior-day volume 9,076 < 50,000 shares floor
+count         | 1
+-[ RECORD 228 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 4.7% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 229 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 8.7% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 230 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 0.8% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 231 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:session_rvol_too_low: session_rvol=0.72x (today 1,620,654 / baseline 2,240,639 n=23) < 1.0x
+count         | 1
+-[ RECORD 232 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_prev_day_illiquid: prior-day volume 23,063 < 50,000 shares floor
+count         | 1
+-[ RECORD 233 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 0.4% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 234 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap -3.7% < 9.0% after real-time confirm (recorded only)
+count         | 1
+-[ RECORD 235 ]---------------------------------------------------------------------------------------------------
+filter_reason | filter:universe_below_gap_floor: decided gap 5.5% < 9.0% after real-time confirm (recorded only)
+count         | 1
+

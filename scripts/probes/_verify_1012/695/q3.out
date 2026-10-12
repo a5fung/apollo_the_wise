@@ -1,0 +1,31 @@
+== SELECT-only emulation of the dead-column sweep as of now (numeric cols, tables >=30 rows, zero non-null)
+NOTICE:  ALL-NULL: mi_gap_near_miss_replays.mark_r (454 rows)
+NOTICE:  ALL-NULL: mi_live_fill_counterfactuals.mark_r (144 rows)
+DO
+== event-gated predicates now
+k	count
+live_fill.mark_r horizon rows	0
+gap_near_miss open/horizon	0
+gap_near_miss mark_r nonnull	0
+(3 rows)
+== which arms of the oldest in-flight fills are unwritten
+NOTICE:  tables scanned: 88
+id	ticker	fill_day	status	written
+382	OKTA	2026-08-27	closed	harvest_legacy_2r,harvest_no_breakeven,harvest_t3,harvest_trail_only,live_actual,live_replay,stop_adr_050,stop_adr_075,stop_orb_3r,stop_orb_low,trail_character_ma
+396	SEI	2026-09-08	closed	harvest_legacy_2r,harvest_no_breakeven,harvest_t3,harvest_trail_only,live_actual,live_replay,stop_adr_050,stop_adr_075,stop_orb_3r,stop_orb_low
+400	VICR	2026-09-17	closed	harvest_legacy_2r,harvest_no_breakeven,harvest_t3,harvest_trail_only,live_actual,live_replay,stop_adr_050,stop_adr_075,stop_orb_3r,stop_orb_low
+404	KOD	2026-09-28	filled	harvest_t3
+409	CEG	2026-10-06	closed	harvest_legacy_2r,harvest_no_breakeven,harvest_t3,harvest_trail_only,live_actual,live_replay,stop_adr_050,stop_adr_075,stop_orb_low,trail_character_ma,trail_pivot_swing
+414	PENG	2026-10-07	filled	stop_adr_050
+419	HUM	2026-10-09	filled	stop_adr_050,stop_adr_075,stop_orb_low,trail_character_ma
+(7 rows)
+== mi_live_trades closed_at / exits for the in-flight fills
+id	ticker	status	closed_et	exit_rule
+382	OKTA	closed	2026-09-28 09:30:01.326841	
+396	SEI	closed	2026-09-22 15:23:21.11879	
+400	VICR	closed	2026-10-07 09:30:00.983509	
+404	KOD	filled		
+409	CEG	closed	2026-10-08 12:52:51.908919	
+414	PENG	filled		
+419	HUM	filled		
+(7 rows)

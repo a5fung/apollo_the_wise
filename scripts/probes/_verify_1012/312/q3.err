@@ -1,0 +1,8 @@
+ERROR:  column "tier" does not exist
+LINE 1: SELECT alert_date, tier, COUNT(*) n FROM mi_ep_alerts WHERE ...
+                           ^
+HINT:  Perhaps you meant to reference the column "mi_ep_alerts.ticker".
+ERROR:  column "tier" does not exist
+LINE 1: SELECT ticker, tier, ep_score, (detected_at AT TIME ZONE 'Am...
+                       ^
+HINT:  Perhaps you meant to reference the column "mi_ep_alerts.ticker".

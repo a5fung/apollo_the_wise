@@ -1,0 +1,7 @@
+alert_date	score_tier	n
+2026-10-08	HIGH	1
+2026-10-09	HIGH	1
+2026-10-09	MODERATE	1
+(3 rows)
+ticker	score_tier	ep_score	theme_gated_tier	det_et
+(0 rows)

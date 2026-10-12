@@ -1,0 +1,200 @@
+#505 PARENT PASS — DRY RUN over the live board of 2026-10-09 (read-only, $0)
+toggle theme_parent_pass: OFF (nothing below was written; this is what an armed night would do)
+APPROXIMATION, not an exact replay of an armed night: board = yesterday's saved mi_themes snapshot (not tonight's final list, so no tonight-only newborns/splits); sectors = a single mi_stock_scores join (top ~300 by rank), not the engine's wider leaders + existing-theme-ticker cache. See the file docstring for why.
+
+THEMES 123 live (non-Retired) · already PARENTED 9 · ROOT under ecosystem 112 · CATCH-ALL (E-UNASSIGNED) 2
+Every theme has a parent under ruling (5): 123 of 123
+Fading themes on the board (left alone by the pass): 34
+shadow_promoted themes on the board: 15 (the path that never reached the adjudicator in July — 6 of them are in the whole backfill queue; 4 of tonight's 6 capped ask(s))
+
+WOULD ASK the adjudicator: 21 childless theme(s) have an eligible same-ecosystem candidate parent; cap 6/night → 6 tonight, queue drains in ~4 armed nights
+  excluded from the ask: 173 live merge-cooldown pair(s), 58 pair(s) in Arm B's own territory (its uncapped Stage-A pairing)
+  childless non-Fading themes with NO eligible candidate (alone in their ecosystem, or every broader theme is cooled-down / Arm-B territory): 61 → stay ROOT
+BACKFILL COST (whole queue, claude-sonnet-4-6): ~$0.15 for 21 call(s) (~662 prompt tokens each); steady state ≤6 calls/night
+
+TICKER CONTAINMENT (Route A's trigger: ≥0.8 of the child's members inside a broader theme, ≥3 shared):
+  → 0 pair(s) on the whole board. Ticker overlap cannot be the gate; it is a priority signal.
+
+TONIGHT'S 6 ASK(S) (highest signal first):
+  'Cross-Border Remittance & Money Transfer Fintech' [shadow_promoted, 4] → 'Brazil Fintech & Digital Banking Rally' [6]  (same ecosystem E-BANKFIN; parent 6 vs child 4 members; shared tickers 2; shared name tokens 1; industry overlap 0.75; word similarity 0.050)
+  'Fintech Payments, Prepaid & Consumer Digital Banking Apps' [live, 3] → 'Cross-Border Remittance & Money Transfer Fintech' [4]  (same ecosystem E-BANKFIN; parent 4 vs child 3 members; shared tickers 1; shared name tokens 1; industry overlap 0.67; word similarity 0.083)
+  'RF, Microwave & Power Semiconductor Specialists' [shadow_promoted, 4] → 'Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery' [6]  (same ecosystem E-AISEMI; parent 6 vs child 4 members; shared tickers 0; shared name tokens 2; industry overlap 0.75; word similarity 0.083)
+  'Cloud Supply Chain & Warehouse Management Software' [live, 3] → 'Cloud Contact Center & CCaaS Communication Platforms' [4]  (same ecosystem E-SAAS; parent 4 vs child 3 members; shared tickers 0; shared name tokens 1; industry overlap 1.00; word similarity 0.151)
+  'Functional Beverage & Energy Drink Brands' [shadow_promoted, 3] → 'Non-Alcoholic Beverages & Energy Drinks' [5]  (same ecosystem E-CONS; parent 5 vs child 3 members; shared tickers 0; shared name tokens 1; industry overlap 0.67; word similarity 0.150)
+  'Quick-Service & Fast-Casual Restaurant Franchisors' [shadow_promoted, 3] → 'Restaurant Chain Recovery' [8]  (same ecosystem E-CONS; parent 8 vs child 3 members; shared tickers 0; shared name tokens 1; industry overlap 1.00; word similarity 0.043)
+REST OF THE QUEUE (15):
+  'Software Development & DevOps Collaboration Platforms' [live, 3] → 'Cloud Contact Center & CCaaS Communication Platforms' [4]  (shared tickers 0, tokens 1)
+  'Alternative Asset Managers & Private Markets Platforms' [live, 2] → 'Wealth Management & Retail Brokerage Platforms' [14]  (shared tickers 0, tokens 1)
+  'CAD/PLM & 3D Design Engineering Software' [live, 2] → 'Cross-Industry Test, Measurement & Design-Verification Tools' [3]  (shared tickers 0, tokens 1)
+  'Cloud Financial Automation & Insurance Core Platform Software' [live, 2] → 'Software Development & DevOps Collaboration Platforms' [3]  (shared tickers 0, tokens 1)
+  'AI Server Power & Signal-Integrity Analog ICs' [live, 4] → 'AI-Driven Memory & Storage Supply Shortage' [6]  (shared tickers 0, tokens 0)
+  'Discrete, Passive & Low-Power Programmable Semiconductor Components Recovery' [live, 4] → 'AI-Driven Memory & Storage Supply Shortage' [6]  (shared tickers 0, tokens 0)
+  'Hospital & Behavioral Health Facility Procedure Volume Recovery' [live, 4] → 'Post-Acute & Home-Based Healthcare Services' [5]  (shared tickers 0, tokens 0)
+  'Optical Laser & Photonic Materials for AI Transceivers' [live, 4] → 'Enterprise Server, Storage & Data Infrastructure Hardware' [8]  (shared tickers 0, tokens 0)
+  'Vertical Commerce & Tax/Payments Software-Fintech Platforms' [live, 4] → 'Enterprise HR & Workforce Management SaaS' [5]  (shared tickers 0, tokens 0)
+  'Cloud Application Software Rotation (Oversold Turning Up)' [live, 3] → 'Enterprise HR & Workforce Management SaaS' [5]  (shared tickers 0, tokens 0)
+  'Electronics Manufacturing & IT Hardware Distribution Supply Chain' [shadow_promoted, 3] → 'AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers' [6]  (shared tickers 0, tokens 0)
+  'Emerging Medical Device Innovators Breakout' [live, 3] → 'Genomics & DNA Sequencing Tools' [9]  (shared tickers 0, tokens 0)
+  'Vertical Software for Field Services, Restaurants & Retail Operations' [shadow_promoted, 3] → 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS' [14]  (shared tickers 0, tokens 0)
+  'Digital Dollar & Crypto Payments Infrastructure' [live, 2] → 'Bitcoin Miners & HPC Hosting Laggards' [4]  (shared tickers 0, tokens 0)
+  'Peptide & Hormone Therapies for Metabolic & Endocrine Disorders' [live, 2] → 'Specialty & Rare-Disease Biopharma Turnarounds' [3]  (shared tickers 0, tokens 0)
+
+5 BIGGEST FAMILIES (existing parent → children on the board today):
+  'Medical Device Mean-Reversion & Rotation Recovery' ← 2: 'Diabetes Management Devices (CGM, Insulin Pumps & Delivery)' · 'Orthopedic Surgical Devices & Instruments'
+  'AI-Driven Memory & Storage Supply Shortage' ← 1: 'HBM & AI-Driven Memory Chip Makers'
+  'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS' ← 1: 'Customer Engagement & Marketing/CX SaaS Platforms'
+  'Crude & Product Tanker Shipping' ← 1: 'Product Tanker Shipping'
+  'Genomics & DNA Sequencing Tools' ← 1: 'Liquid Biopsy & Molecular Cancer Diagnostics Testing'
+
+5 BIGGEST FAMILIES IF EVERY ASK CAME BACK PARENT_CHILD (upper bound, not a prediction):
+  'AI-Driven Memory & Storage Supply Shortage' ← 3: 'HBM & AI-Driven Memory Chip Makers' · 'AI Server Power & Signal-Integrity Analog ICs?' · 'Discrete, Passive & Low-Power Programmable Semiconductor Components Recovery?'
+  'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS' ← 2: 'Customer Engagement & Marketing/CX SaaS Platforms' · 'Vertical Software for Field Services, Restaurants & Retail Operations?'
+  'Cloud Contact Center & CCaaS Communication Platforms' ← 2: 'Cloud Supply Chain & Warehouse Management Software?' · 'Software Development & DevOps Collaboration Platforms?'
+  'Enterprise HR & Workforce Management SaaS' ← 2: 'Vertical Commerce & Tax/Payments Software-Fintech Platforms?' · 'Cloud Application Software Rotation (Oversold Turning Up)?'
+  'Genomics & DNA Sequencing Tools' ← 2: 'Liquid Biopsy & Molecular Cancer Diagnostics Testing' · 'Emerging Medical Device Innovators Breakout?'
+
+RESOLVED PARENT PER THEME (ruling (5)): kind · theme [stage, source, members] → parent   (ask = tonight's/queued candidate)
+— E-SAAS (21 themes; 1 child, 20 root)
+  ROOT   'Cloud Application Delivery & Observability Infrastructure' [Mainstream, live, 5] → E-SAAS
+  ROOT   'Software Development & DevOps Collaboration Platforms' [Mainstream, live, 3] → E-SAAS   ask: → 'Cloud Contact Center & CCaaS Communication Platforms' (queued)
+  ROOT   'Life Sciences & Healthcare Data/CRM Platforms' [Mainstream, live, 3] → E-SAAS
+  ROOT   'Cloud Data Storage & Analytics Infrastructure' [Mainstream, live, 3] → E-SAAS
+  ROOT   'Cloud Contact Center & CCaaS Communication Platforms' [Nascent, live, 4] → E-SAAS
+  ROOT   'Enterprise Unstructured Data Storage Infrastructure' [Mainstream, live, 3] → E-SAAS
+  CHILD  'Customer Engagement & Marketing/CX SaaS Platforms' [Mainstream, live, 5] → AI-Powered Enterprise Analytics & Intelligent Workflow SaaS
+  ROOT   'Marketing & Digital Presence SaaS Platforms' [Mainstream, live, 4] → E-SAAS
+  ROOT   'Management & Business Process Consulting Services' [Nascent, live, 5] → E-SAAS
+  ROOT   'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS' [Mainstream, live, 14] → E-SAAS
+  ROOT   'Cloud Supply Chain & Warehouse Management Software' [Mainstream, live, 3] → E-SAAS   ask: → 'Cloud Contact Center & CCaaS Communication Platforms' (tonight)
+  ROOT   'Cloud Application Software Rotation (Oversold Turning Up)' [Accelerating, live, 3] → E-SAAS   ask: → 'Enterprise HR & Workforce Management SaaS' (queued)
+  ROOT   'Cross-Industry Test, Measurement & Design-Verification Tools' [Mainstream, live, 3] → E-SAAS
+  ROOT   'Vertical Commerce & Tax/Payments Software-Fintech Platforms' [Nascent, live, 4] → E-SAAS   ask: → 'Enterprise HR & Workforce Management SaaS' (queued)
+  ROOT   'CAD/PLM & 3D Design Engineering Software' [Nascent, live, 2] → E-SAAS   ask: → 'Cross-Industry Test, Measurement & Design-Verification Tools' (queued)
+  ROOT   'IT Consulting & Business Process Outsourcing Services' [Mainstream, live, 7] → E-SAAS
+  ROOT   'Cloud Financial Automation & Insurance Core Platform Software' [Nascent, live, 2] → E-SAAS   ask: → 'Software Development & DevOps Collaboration Platforms' (queued)
+  ROOT   'Enterprise HR & Workforce Management SaaS' [Nascent, live, 5] → E-SAAS
+  ROOT   'Vertical Software for Field Services, Restaurants & Retail Operations' [Nascent, shadow_promoted, 3] → E-SAAS   ask: → 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS' (queued)
+  ROOT   'Data Analytics, AI Platform & Digital Transformation IT Services' [Fading, live, 2] → E-SAAS
+  ROOT   'Work Management & Collaborative Design SaaS' [Fading, live, 2] → E-SAAS
+— E-AISEMI (13 themes; 2 child, 11 root)
+  ROOT   'Semiconductor Test, Yield & Assembly Supply Chain' [Mainstream, live, 6] → E-AISEMI
+  CHILD  'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand' [Mainstream, live, 11] → Semiconductor Test, Yield & Assembly Supply Chain
+  ROOT   'RF, Microwave & Power Semiconductor Specialists' [Nascent, shadow_promoted, 4] → E-AISEMI   ask: → 'Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery' (tonight)
+  ROOT   'AI-Driven Memory & Storage Supply Shortage' [Mainstream, live, 6] → E-AISEMI
+  ROOT   'Semiconductor Design, Test & Assembly Enablement Tools' [Mainstream, live, 4] → E-AISEMI
+  ROOT   'AI Server Power & Signal-Integrity Analog ICs' [Mainstream, live, 4] → E-AISEMI   ask: → 'AI-Driven Memory & Storage Supply Shortage' (queued)
+  ROOT   'Semiconductor Foundry & Advanced Packaging Manufacturing' [Mainstream, live, 6] → E-AISEMI
+  ROOT   'Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery' [Mainstream, live, 6] → E-AISEMI
+  ROOT   'Discrete, Passive & Low-Power Programmable Semiconductor Components Recovery' [Mainstream, live, 4] → E-AISEMI   ask: → 'AI-Driven Memory & Storage Supply Shortage' (queued)
+  CHILD  'HBM & AI-Driven Memory Chip Makers' [Fading, live, 3] → AI-Driven Memory & Storage Supply Shortage
+  ROOT   'Fabless Semiconductor IP Licensing' [Fading, live, 3] → E-AISEMI
+  ROOT   'Semiconductor Equipment Subsystem & Fluid Delivery Suppliers' [Nascent, shadow_promoted, 3] → E-AISEMI
+  ROOT   'RF & Analog Wireless Connectivity Semiconductor Makers' [Fading, live, 3] → E-AISEMI
+— E-BANKFIN (12 themes; 0 child, 12 root)
+  ROOT   'Exchange, Options Trading & Alternative Consumer Credit Financials' [Nascent, shadow_promoted, 3] → E-BANKFIN
+  ROOT   'Cross-Border Remittance & Money Transfer Fintech' [Nascent, shadow_promoted, 4] → E-BANKFIN   ask: → 'Brazil Fintech & Digital Banking Rally' (tonight)
+  ROOT   'Brazil Fintech & Digital Banking Rally' [Nascent, live, 6] → E-BANKFIN
+  ROOT   'Fintech Payments, Prepaid & Consumer Digital Banking Apps' [Mainstream, live, 3] → E-BANKFIN   ask: → 'Cross-Border Remittance & Money Transfer Fintech' (tonight)
+  ROOT   'Alternative Asset Managers & Private Markets Platforms' [Nascent, live, 2] → E-BANKFIN   ask: → 'Wealth Management & Retail Brokerage Platforms' (queued)
+  ROOT   'Fintech & Digital Finance Sector Re-rating on Fed Easing' [Mainstream, live, 19] → E-BANKFIN
+  ROOT   'Wealth Management & Retail Brokerage Platforms' [Mainstream, live, 14] → E-BANKFIN
+  ROOT   'Bank Stocks: Rising-Rate NIM Expansion' [Fading, live, 44] → E-BANKFIN
+  ROOT   'Insurance Brokerage & Employee Benefits Advisory' [Fading, live, 4] → E-BANKFIN
+  ROOT   'Business Development Companies & Private Credit Lenders' [Fading, live, 6] → E-BANKFIN
+  ROOT   'Canadian Big Banks' [Fading, live, 4] → E-BANKFIN
+  ROOT   'U.S. Super-Regional & Midcap Commercial Banks' [Fading, live, 7] → E-BANKFIN
+— E-CONS (11 themes; 0 child, 11 root)
+  ROOT   'Leisure & Recreation Discretionary Rebound' [Nascent, live, 4] → E-CONS
+  ROOT   'Commercial, Office & Home Furniture Retailers and Manufacturers' [Mainstream, live, 5] → E-CONS
+  ROOT   'Functional Beverage & Energy Drink Brands' [Nascent, shadow_promoted, 3] → E-CONS   ask: → 'Non-Alcoholic Beverages & Energy Drinks' (tonight)
+  ROOT   'Restaurant Chain Recovery' [Mainstream, live, 8] → E-CONS
+  ROOT   'U.S. Apparel & Fashion Recovery' [Mainstream, live, 15] → E-CONS
+  ROOT   'Defensive Consumer Rotation & Trade-Down' [Mainstream, live, 9] → E-CONS
+  ROOT   'Non-Alcoholic Beverages & Energy Drinks' [Mainstream, live, 5] → E-CONS
+  ROOT   'Travel & Hospitality Lodging Brand Franchisors Rotation' [Fading, live, 5] → E-CONS
+  ROOT   'Branded Footwear & Hotel Consumer Discretionary Turnaround' [Fading, live, 2] → E-CONS
+  ROOT   'Quick-Service & Fast-Casual Restaurant Franchisors' [Nascent, shadow_promoted, 3] → E-CONS   ask: → 'Restaurant Chain Recovery' (tonight)
+  ROOT   'Auto & Truck Dealership Retail Chains' [Fading, live, 3] → E-CONS
+— E-AIINFRA (8 themes; 0 child, 8 root)
+  ROOT   'Enterprise Server, Storage & Data Infrastructure Hardware' [Mainstream, live, 8] → E-AIINFRA
+  ROOT   'AI data-center power buildout' [Accelerating, live, 6] → E-AIINFRA
+  ROOT   'Optical Laser & Photonic Materials for AI Transceivers' [Mainstream, live, 4] → E-AIINFRA   ask: → 'Enterprise Server, Storage & Data Infrastructure Hardware' (queued)
+  ROOT   'AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers' [Mainstream, live, 6] → E-AIINFRA
+  ROOT   'On-Site Power Generation & Distribution Equipment for Data Centers' [Mainstream, live, 10] → E-AIINFRA
+  ROOT   'Emerging AI Compute & Cloud Infrastructure Platforms' [Mainstream, live, 4] → E-AIINFRA
+  ROOT   'Electronics Manufacturing & IT Hardware Distribution Supply Chain' [Nascent, shadow_promoted, 3] → E-AIINFRA   ask: → 'AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers' (queued)
+  ROOT   'Bitcoin Miners Pivoting to AI Data Center Hosting' [Fading, live, 3] → E-AIINFRA
+— E-MEDTECH (8 themes; 3 child, 5 root)
+  CHILD  'Liquid Biopsy & Molecular Cancer Diagnostics Testing' [Mainstream, live, 4] → Genomics & DNA Sequencing Tools
+  ROOT   'Genomics & DNA Sequencing Tools' [Mainstream, live, 9] → E-MEDTECH
+  ROOT   'Life Science Tools & Analytical Instruments' [Nascent, live, 14] → E-MEDTECH
+  ROOT   'Emerging Medical Device Innovators Breakout' [Mainstream, live, 3] → E-MEDTECH   ask: → 'Genomics & DNA Sequencing Tools' (queued)
+  ROOT   'AI-Driven Diagnostics & Imaging Re-Rating' [Fading, live, 9] → E-MEDTECH
+  ROOT   'Medical Device Mean-Reversion & Rotation Recovery' [Mainstream, live, 17] → E-MEDTECH
+  CHILD  'Diabetes Management Devices (CGM, Insulin Pumps & Delivery)' [Fading, live, 3] → Medical Device Mean-Reversion & Rotation Recovery
+  CHILD  'Orthopedic Surgical Devices & Instruments' [Fading, live, 2] → Medical Device Mean-Reversion & Rotation Recovery
+— E-BIO (5 themes; 0 child, 5 root)
+  ROOT   'Specialty & Rare-Disease Biopharma Turnarounds' [Nascent, shadow_promoted, 3] → E-BIO
+  ROOT   'Vaccine Developers Bacterial & Respiratory' [Nascent, live, 3] → E-BIO
+  ROOT   'Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)' [Mainstream, live, 3] → E-BIO
+  ROOT   'Peptide & Hormone Therapies for Metabolic & Endocrine Disorders' [Mainstream, live, 2] → E-BIO   ask: → 'Specialty & Rare-Disease Biopharma Turnarounds' (queued)
+  ROOT   'mRNA Vaccine & Personalized Cancer Therapy Platforms' [Fading, live, 4] → E-BIO
+— E-ENER (5 themes; 0 child, 5 root)
+  ROOT   'U.S. Oil Refiners & Refining Margin Expansion' [Nascent, live, 15] → E-ENER
+  ROOT   'Natural Gas-Weighted Appalachian & Shale E&P Producers' [Nascent, shadow_promoted, 6] → E-ENER
+  ROOT   'Energy Supply Disruption: Middle East Geopolitical Risk' [Accelerating, live, 15] → E-ENER
+  ROOT   'Energy Infrastructure & Services Complex' [Mainstream, live, 12] → E-ENER
+  ROOT   'Small Modular Reactor & Advanced Nuclear Fission Technology' [Fading, live, 2] → E-ENER
+— E-INDL (5 themes; 0 child, 5 root)
+  ROOT   'Electronics Manufacturing Services (EMS) Providers' [Mainstream, live, 4] → E-INDL
+  ROOT   'Industrial Construction Execution & On-Site Supply Chain' [Mainstream, live, 10] → E-INDL
+  ROOT   'Regulated Electric Utilities Defensive Rotation' [Accelerating, live, 15] → E-INDL
+  ROOT   'Automotive Thermal & Powertrain Components Suppliers' [Nascent, shadow_promoted, 3] → E-INDL
+  ROOT   'Regulated Utilities Wildfire & Rate-Case Exposure' [Fading, live, 4] → E-INDL
+— E-INS (5 themes; 1 child, 4 root)
+  ROOT   'Life Insurance & Annuity Providers' [Fading, live, 9] → E-INS
+  ROOT   'Specialty P&C Insurance Underwriters Rotation Reversal' [Mainstream, live, 18] → E-INS
+  CHILD  'Annuity-Focused Insurers' [Mainstream, live, 4] → Life Insurance & Annuity Providers
+  ROOT   'Private Mortgage & Title Insurance Underwriters' [Fading, live, 3] → E-INS
+  ROOT   'Private Mortgage Insurance Underwriters' [Fading, live, 3] → E-INS
+— E-METAL (5 themes; 0 child, 5 root)
+  ROOT   'Copper Mining & Production' [Mainstream, live, 6] → E-METAL
+  ROOT   'Precious Metals Miners — Fed Easing & Rate Tailwind' [Fading, live, 32] → E-METAL
+  ROOT   'Coal Mining Producers' [Nascent, shadow_promoted, 4] → E-METAL
+  ROOT   'Building Products & Home Improvement Materials Makers' [Fading, live, 2] → E-METAL
+  ROOT   'Gold & Silver Miners Not Yet Classified (South African & Developer Gold Producers)' [Nascent, shadow_promoted, 3] → E-METAL
+— E-REIT (5 themes; 0 child, 5 root)
+  ROOT   'Lodging & Hotel REITs' [Mainstream, live, 7] → E-REIT
+  ROOT   'Homebuilders & Residential Construction Supply Chain' [Fading, live, 7] → E-REIT
+  ROOT   'Mortgage REITs (Agency & Residential MBS)' [Nascent, live, 3] → E-REIT
+  ROOT   'Homebuilders Weak-Tape Correlated Basket' [Nascent, shadow_promoted, 8] → E-REIT
+  ROOT   'Skilled Nursing & Senior Housing Healthcare REITs' [Fading, live, 3] → E-REIT
+— E-TRANS (5 themes; 1 child, 4 root)
+  ROOT   'Crude & Product Tanker Shipping' [Mainstream, live, 6] → E-TRANS
+  CHILD  'Product Tanker Shipping' [Nascent, live, 5] → Crude & Product Tanker Shipping
+  ROOT   'Class I Railroad Freight Carriers' [Mainstream, live, 4] → E-TRANS
+  ROOT   'U.S. Domestic Passenger Airlines' [Fading, live, 5] → E-TRANS
+  ROOT   'Asset-Light Trucking & Freight Logistics Carriers' [Fading, live, 5] → E-TRANS
+— E-CRYPTO (4 themes; 0 child, 4 root)
+  ROOT   'Digital Dollar & Crypto Payments Infrastructure' [Mainstream, live, 2] → E-CRYPTO   ask: → 'Bitcoin Miners & HPC Hosting Laggards' (queued)
+  ROOT   'Bitcoin Treasury & Crypto Proxy Equities Correlation Basket' [Fading, live, 4] → E-CRYPTO
+  ROOT   'Bitcoin Holding & Trading Proxy Equities' [Fading, live, 4] → E-CRYPTO
+  ROOT   'Bitcoin Miners & HPC Hosting Laggards' [Nascent, shadow_promoted, 4] → E-CRYPTO
+— E-DEF (3 themes; 0 child, 3 root)
+  ROOT   'Precision Timing & Motion Control Component Makers' [Fading, live, 3] → E-DEF
+  ROOT   'Space Launch, Satellite Imagery & Lunar Infrastructure' [Nascent, live, 4] → E-DEF
+  ROOT   'Aerospace Engine, Airframe Components & Defense Subsystem Suppliers' [Fading, live, 3] → E-DEF
+— E-COMM (2 themes; 0 child, 2 root)
+  ROOT   'International Telecom & Cross-Border Communications Services' [Nascent, live, 2] → E-COMM
+  ROOT   'Digital Advertising & Ad-Tech Monetization Platforms' [Mainstream, live, 2] → E-COMM
+— E-CYBR (2 themes; 1 child, 1 root)
+  ROOT   'Network Security & Zero-Trust Edge' [Mainstream, live, 14] → E-CYBR
+  CHILD  'Data Backup & Cyber Resiliency Software' [Nascent, live, 4] → Network Security & Zero-Trust Edge
+— E-HLTH (2 themes; 0 child, 2 root)
+  ROOT   'Hospital & Behavioral Health Facility Procedure Volume Recovery' [Nascent, live, 4] → E-HLTH   ask: → 'Post-Acute & Home-Based Healthcare Services' (queued)
+  ROOT   'Post-Acute & Home-Based Healthcare Services' [Mainstream, live, 5] → E-HLTH
+— E-UNASSIGNED (2 themes; 0 child, 2 root)
+  CATCH  'For-Profit Postsecondary & Vocational Education' [Mainstream, live, 5] → E-UNASSIGNED
+  CATCH  'Global Agriculture Value Chain Recovery' [Fading, live, 2] → E-UNASSIGNED
+
+NOT IN THIS REPORT: verdicts. CHILD_OF/INVERTED/PEERS/UNRELATED come from the paid containment adjudicator — the flip gate.

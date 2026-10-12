@@ -1,0 +1,1 @@
+SELECT column_name FROM information_schema.columns WHERE table_name='mi_ep_alerts' AND (column_name ILIKE '%tier%' OR column_name ILIKE '%conf%' OR column_name ILIKE '%score%' OR column_name ILIKE '%date%' OR column_name ILIKE '%lane%' OR column_name ILIKE '%at') ORDER BY ordinal_position;

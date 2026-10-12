@@ -1,0 +1,12 @@
+id	ts	summary
+48993	2026-09-28 17:12:15.160717	Parent pass: 6 candidate(s) adjudicated — 3 linked, 2 no containment (peers/unrelated), 1 inverted, 0 error
+49561	2026-09-29 17:03:18.288882	Parent pass: 6 candidate(s) adjudicated — 0 linked, 0 no containment (peers/unrelated), 0 inverted, 6 error
+50150	2026-09-30 17:08:46.90083	Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+50695	2026-10-01 17:06:11.274517	Parent pass: 6 candidate(s) adjudicated — 1 linked, 5 no containment (peers/unrelated), 0 inverted, 0 error
+51214	2026-10-02 17:08:22.300507	Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+52499	2026-10-05 17:09:41.812961	Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+53164	2026-10-06 17:10:07.095214	Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+53817	2026-10-07 17:11:24.757114	Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+54429	2026-10-08 17:07:49.73336	Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+55048	2026-10-09 17:08:26.253416	Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+(10 rows)

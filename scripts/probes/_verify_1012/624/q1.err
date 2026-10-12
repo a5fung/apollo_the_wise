@@ -1,0 +1,3 @@
+ERROR:  column "sizing_multiplier" does not exist
+LINE 1: ...egy_id, phase, enabled, max_concurrent_positions, sizing_mul...
+                                                             ^

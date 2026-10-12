@@ -1,0 +1,8 @@
+== headline questions asked per ET day (api_usage caller=mna_headline_question)
+d	n	usd
+2026-10-05	7	0.030
+2026-10-06	7	0.030
+2026-10-07	8	0.034
+2026-10-08	6	0.025
+2026-10-09	4	0.017
+(5 rows)

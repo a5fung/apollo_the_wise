@@ -1,0 +1,12 @@
+=== T1 fmp/alpaca json null vs empty on todays grade-corpus rows
+ticker	fmp_null	fmp_empty	alp_null	alp_empty	pplx_null
+AI	f	t	f	f	f
+ALLT	f	t	f	f	f
+CCC	f	t	f	f	f
+CTNM	f	t	f	t	f
+TRAX	f	t	f	f	f
+(5 rows)
+=== T2 mi_ep_alerts 10-12
+count
+0
+(1 row)

@@ -1,0 +1,11 @@
+== audit telegram rows since 2026-10-11 21:50 ET (deploy)
+event_type	count	first_et	last_et
+(0 rows)
+== audit telegram rows last 7d by day
+d	event_type	count
+(0 rows)
+== live/paper trades touched today (ET)
+== ep alerts today
+count
+0
+(1 row)

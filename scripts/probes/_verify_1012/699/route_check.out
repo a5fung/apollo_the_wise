@@ -1,0 +1,16 @@
+== apollo-execution
+env TELEGRAM_PAPER_CHAT_ID = '-5382801675'
+paper Untracked fill page (trade_stream.py:838)         -> -5382801675
+paper Untracked sell page                               -> -5382801675
+live-tagged page                                        -> None
+untagged system alert                                   -> None
+mixed-book tag                                          -> None
+mode unknown tag                                        -> None
+== apollo-market
+env TELEGRAM_PAPER_CHAT_ID = '-5382801675'
+paper Untracked fill page (trade_stream.py:838)         -> -5382801675
+paper Untracked sell page                               -> -5382801675
+live-tagged page                                        -> None
+untagged system alert                                   -> None
+mixed-book tag                                          -> None
+mode unknown tag                                        -> None

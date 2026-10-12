@@ -1,0 +1,57 @@
+=== Q1 mi_job_runs tv_news_shadow last 14
+id	started_et	sched_et	status	rows_written	err
+224964	2026-10-09 20:45:00.001745		success		
+222677	2026-10-08 20:45:00.002721		success		
+220390	2026-10-07 20:45:00.044662		success		
+218103	2026-10-06 20:45:00.038247		success		
+215816	2026-10-05 20:45:00.033381		success		
+213366	2026-10-02 20:45:00.055377		success		
+211079	2026-10-01 20:45:00.038997		success		
+208792	2026-09-30 20:45:00.036824		success		
+206505	2026-09-29 20:45:00.036103		success		
+204219	2026-09-28 20:45:00.048244		success		
+201771	2026-09-25 20:45:00.034865		success		
+199484	2026-09-24 20:45:00.054909		success		
+197198	2026-09-23 20:45:00.041024		success		
+194912	2026-09-22 20:45:00.040189		success		
+(14 rows)
+=== Q2 mi_ep_grade_corpus by alert_date (last 10 days)
+alert_date	n	first_et	last_et
+2026-10-12	5	2026-10-12 07:00:13.457181	2026-10-12 09:50:12.995451
+(1 row)
+=== Q3 provenance audit rows by day (last 8 days, distinct ticker/alert_date)
+et_day	rows	distinct_ticker_days
+2026-10-12	5	5
+2026-10-09	6	6
+2026-10-08	8	8
+2026-10-07	2	2
+2026-10-06	12	11
+2026-10-05	22	22
+(6 rows)
+=== Q4
+ticker	alert_date	has_corpus	cap_et	raw_grade	alp_n	fmp_n	pplx_len	has_sec
+AI	2026-10-12	t	2026-10-12 09:40:11.037738	routine	1	0	526	f
+ALLT	2026-10-12	t	2026-10-12 09:50:12.995451	routine	1	0	520	f
+CCC	2026-10-12	t	2026-10-12 07:00:13.457181	routine	4	0	672	f
+CTNM	2026-10-12	t	2026-10-12 07:05:12.127565	routine	0	0	362	f
+TRAX	2026-10-12	t	2026-10-12 07:00:21.258847	routine	2	0	654	f
+(5 rows)
+=== Q5 mi_tv_news_shadow all rows summary
+ticker	alert_date	chk_et	tv_status	our_corpus_available	our_corpus_source	reach_alert	reach_start	on_day	bef	repoll	aft	missed_null	missed_n	has_cap
+AAOI	2026-10-09	2026-10-09 20:45:00.61234	ok	f		t		1				t		f
+PENG	2026-10-07	2026-10-07 20:45:00.696761	ok	t		t		25				f	25	f
+ITUB	2026-10-05	2026-10-05 20:45:01.875331	ok	f		t		2				t		f
+NU	2026-10-05	2026-10-05 20:45:01.875331	ok	f		t		4				t		f
+PBR	2026-10-05	2026-10-05 20:45:01.875331	ok	f		t		5				t		f
+ACN	2026-10-01	2026-10-01 20:45:00.698494	ok	t		t		25				f	25	f
+MSTR	2026-09-21	2026-09-21 20:45:00.691846	ok	f		t		21				t		f
+CIFR	2026-09-16	2026-09-16 20:45:00.681735	ok	f		t		3				t		f
+ERO	2026-09-08	2026-09-08 20:45:00.708339	ok	t		t		0				f	0	f
+ALAB	2026-09-04	2026-09-07 20:45:00.715173	ok	f		t		1				t		f
+(10 rows)
+=== Q6 mi_ep_alerts today and last 3 days
+unterminated quoted string
+alert_date	n	dt
+2026-10-09	2	2
+2026-10-08	1	1
+(2 rows)

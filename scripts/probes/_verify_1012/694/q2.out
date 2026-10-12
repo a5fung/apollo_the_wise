@@ -1,0 +1,59 @@
+== Q4 Monday rows joined to last
+unterminated quoted string
+t	rk	ticker	gap_pct	prev_close	adv	adv_source	theme	board_n	m_adv_1009	no_m_adv	no_m_row	adv_matches
+07:05	1	CTNM	27.29	13.38	885591.407843	pending	f	4		t	t	
+07:05	2	CCC	10.68	7.02	10903660	rs_prev_complete	f	4	10903660	f	f	t
+07:05	3	TRAX	44.52	31.85	637182	rs_prev_complete	f	4	637182	f	f	t
+07:05	4	SVRN	12.7	44	244204	rs_prev_complete	f	4	244204	f	f	t
+09:15	1	WFF	11.39	12.29	146064663.587799	pending	f	4		t	t	
+09:15	2	CCC	10.97	7.02	10903660	rs_prev_complete	f	4	10903660	f	f	t
+09:15	3	TRAX	24.25	31.85	637182	rs_prev_complete	f	4	637182	f	f	t
+09:15	4	SVRN	14.77	44	244204	rs_prev_complete	f	4	244204	f	f	t
+09:25	1	WFF	12.29	12.29	146064663.587799	pending	f	5		t	t	
+09:25	2	APUS	12.55	5.02	3346278.614845	pending	f	5		t	t	
+09:25	3	CCC	10.11	7.02	10903660	rs_prev_complete	f	5	10903660	f	f	t
+09:25	4	TRAX	26.37	31.85	637182	rs_prev_complete	f	5	637182	f	f	t
+09:25	5	SVRN	13.64	44	244204	rs_prev_complete	f	5	244204	f	f	t
+09:35	1	WFF	9.6	12.29	146064663.587799	pending	f	5		t	t	
+09:35	2	APUS	11.65	5.02	3346278.614845	pending	f	5		t	t	
+09:35	3	CCC	9.77	7.02	10903660	rs_prev_complete	f	5	10903660	f	f	t
+09:35	4	LQDA	11.1	27.38	1295747	rs_prev_complete	f	5	1295747	f	f	t
+09:35	5	TRAX	18.34	31.85	637182	rs_prev_complete	f	5	637182	f	f	t
+09:55	1	WFF	48.17	12.29	146064663.587799	pending	f	5		t	t	
+09:55	2	APUS	9.56	5.02	3346278.614845	pending	f	5		t	t	
+09:55	3	TRAX	15.7	31.85	637182	rs_prev_complete	f	5	637182	f	f	t
+09:55	4	GRML	17.25	5.17	3915330	rs_prev_complete	f	5	3915330	f	f	t
+09:55	5	SVRN	12.52	44	244204	rs_prev_complete	f	5	244204	f	f	t
+(23 rows)
+== Q5 summary over ALL Monday rows: adv_source vs whether mi_stock_scores had a usable adv_20 on 10-09
+adv_source	had_prev_adv	n	tickers
+pending	f	20	4
+rs_prev_complete	t	106	6
+(2 rows)
+== Q6 Monday ticker list
+ticker	adv_source	n	mn_gap	mx_gap
+AI	rs_prev_complete	1	10.26	10.26
+ALLT	pending	1	9.06	9.06
+APUS	pending	4	9.56	12.55
+CCC	rs_prev_complete	32	9.26	11.11
+CTNM	pending	7	12.78	34.53
+GRML	rs_prev_complete	2	14.8	17.25
+LQDA	rs_prev_complete	1	11.1	11.1
+SVRN	rs_prev_complete	32	9.09	14.77
+TRAX	rs_prev_complete	38	12.84	53.28
+WFF	pending	8	9.6	48.17
+(10 rows)
+== Q7 friday ticks with >=2 pending names: were pending order A-Z? (baseline)
+scan_date	ticks_with_pending_ge2
+2026-10-05	38
+2026-10-06	38
+2026-10-07	26
+2026-10-08	38
+2026-10-09	38
+2026-10-12	4
+(6 rows)
+== Q8 audit events last 24h mentioning shortlist/ep scan errors
+ERROR:  column "details" does not exist
+LINE 1: ...'MM-DD HH24:MI:SS') ts, event_type, left(coalesce(details::t...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "mi_audit_log.detail".

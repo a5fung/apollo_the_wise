@@ -1,0 +1,33 @@
+=== B. mi_job_runs cols ===
+id	job_id	started_at	finished_at	duration_s	status	rows_written	expected_min_rows	error_message	created_at	scheduled_for
+(0 rows)
+=== B2. unified_allocator_shadow runs last 5 days ===
+job_id	status	started_et	ms
+unified_allocator_shadow	success	2026-10-08 09:35:00.010995	38
+unified_allocator_shadow	success	2026-10-09 09:35:00.010621	46
+unified_allocator_shadow	success	2026-10-12 09:28:00.003264	407
+(3 rows)
+=== D. pending allocations created/alerted today or yesterday ===
+id	ticker	alert_date	strategy	composite_score	status	shadow_rank	shadow_allocated	created_et	evaluated_et
+382	WOLF	2026-10-08	magna53	68.40039999999999054125510156154632568359375	pending	1	t	2026-10-08 07:00:14.229542	2026-10-08 09:35:00.039504
+383	HUM	2026-10-09	magna53	77.8152000000000043655745685100555419921875	pending	1	f	2026-10-09 07:00:14.417121	2026-10-09 09:35:00.040665
+384	AAOI	2026-10-09	magna53	58.13880000000000336513039655983448028564453125	pending		f	2026-10-09 09:35:15.173079	
+(3 rows)
+=== E. latest 5 audit allocator rows ===
+id	et	summary	detail
+55401	2026-10-12 09:28:00.407065	empty queue for 2026-10-12	{"target_date":"2026-10-12","n_candidates":0,"ranked_at_et":"2026-10-12T09:28:00.404046-04:00","ranked_ids":[]}
+54658	2026-10-09 09:35:00.049102	slots=0 winners=[] n=1 (1 lower-ranked)	{"target_date": "2026-10-09", "regime": "Correcting", "open_positions": 5, "slots_available": 0, "n_candidates": 1, "n_winners": 0, "winners": [], "lower_ranked": [{"rank": 1, "ticker": "HUM", "strategy": "magna53", "composite": 77.82, "legacy_eligible": "eligible"}], "first_cascade_candidate": {"rank": 1, "ticker": "HUM", "strategy": "magna53", "composite": 77.82, "legacy_eligible": "eligible"}}
+54085	2026-10-08 09:35:00.041488	slots=2 winners=['WOLF'] n=1 (0 lower-ranked)	{"target_date": "2026-10-08", "regime": "Choppy", "open_positions": 3, "slots_available": 2, "n_candidates": 1, "n_winners": 1, "winners": [{"rank": 1, "ticker": "WOLF", "strategy": "magna53", "composite": 68.4, "setup": 73.8, "legacy_eligible": "eligible"}], "lower_ranked": [], "first_cascade_candidate": null}
+53430	2026-10-07 09:35:00.042811	empty queue for 2026-10-07	{"target_date":"2026-10-07","n_candidates":0}
+52753	2026-10-06 09:35:00.041758	slots=2 winners=['CEG'] n=1 (0 lower-ranked)	{"target_date": "2026-10-06", "regime": "Choppy", "open_positions": 3, "slots_available": 2, "n_candidates": 1, "n_winners": 1, "winners": [{"rank": 1, "ticker": "CEG", "strategy": "magna53", "composite": 67.56, "setup": 65.0, "legacy_eligible": "ineligible"}], "lower_ranked": [], "first_cascade_candidate": null}
+(5 rows)
+=== F. EP scan activity today (mi_job_runs ep_scan*) ===
+job_id	status	n	first_et	last_et
+9m_ep_scan	success	13	2026-10-12 09:00:00.003154	2026-10-12 10:00:00.004276
+ecosystem_grace_sweep	success	10	2026-10-12 00:12:00.003936	2026-10-12 09:12:00.001405
+ep_scan	success	36	2026-10-12 07:00:00.008014	2026-10-12 09:55:00.003619
+ep_scan_open	success	1	2026-10-12 09:31:00.001315	2026-10-12 09:31:00.001315
+ep_scan_start	success	1	2026-10-12 07:00:00.01609	2026-10-12 07:00:00.01609
+ep_scan_stop	success	1	2026-10-12 10:00:00.004352	2026-10-12 10:00:00.004352
+stop_coverage_repair_retry	success	13	2026-10-12 09:00:00.024877	2026-10-12 10:00:00.026411
+(7 rows)

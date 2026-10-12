@@ -1,0 +1,86 @@
+=== R1 alerts 10-05..10-12 with shadow presence and corpus presence
+alert_date	ticker	acting	in_shadow	in_grade_corpus	in_metrics
+2026-10-09	AAOI	strong	t	f	f
+2026-10-09	HUM	game_changer	f	f	f
+2026-10-08	WOLF	strong	f	f	f
+2026-10-07	PENG	strong	t	f	t
+2026-10-06	CEG	strong	f	f	f
+2026-10-06	TLN	strong	f	f	f
+2026-10-06	VST	strong	f	f	f
+2026-10-05	ITUB	strong	t	f	f
+2026-10-05	NU	strong	t	f	f
+2026-10-05	PBR	strong	t	f	f
+(10 rows)
+=== R2 todays provenance detail (has_direct_source, sources) vs corpus sec_title
+ticker	cq	hds	sources	prov_et
+CCC	routine	true	{"benzinga_pr": 1, "web_perplexity": 1}	2026-10-12 07:00:13.456074
+TRAX	routine	false	{"web_perplexity": 1}	2026-10-12 07:00:21.257716
+CTNM	routine	false	{"web_perplexity": 1}	2026-10-12 07:05:12.126726
+AI	routine	true	{"benzinga_pr": 1, "web_perplexity": 1}	2026-10-12 09:40:11.036609
+ALLT	routine	false	{"web_perplexity": 1}	2026-10-12 09:50:12.994065
+(5 rows)
+=== R3 grade corpus today full-ish
+ticker	cap_et	company_name	raw_grade	sec_title	pplx60
+CCC	2026-10-12 07:00:13.457181	CCC Intelligent Solutions Holdings Inc.	routine		CCC Intelligent Solutions (NASDAQ: CCC) gapped up on reports
+TRAX	2026-10-12 07:00:21.258847	First Tracks Biotherapeutics, Inc.	routine		TRAX’s gap up appears tied to anticipation of today’s clinic
+CTNM	2026-10-12 07:05:12.127565	Contineum Therapeutics, Inc.	routine		I can’t verify a specific fresh catalyst for CTNM’s gap-up f
+AI	2026-10-12 09:40:11.037738	C3.ai, Inc.	routine		If you mean C3.ai (ticker: AI), the latest reported company-
+ALLT	2026-10-12 09:50:12.995451	Allot Ltd.	routine		I don’t see a confirmed company-specific headline explaining
+(5 rows)
+=== R4 job_runs for ALL tv_news_shadow since 10-09, and any job rows from 10:00-10:30 today
+job_id	started_et	status
+stop_ack_timeout_watchdog	2026-10-12 09:55:00.002137	success
+stop_coverage_repair_retry	2026-10-12 09:55:00.002684	success
+9m_ep_scan	2026-10-12 09:55:00.002732	success
+stream_health_watchdog	2026-10-12 09:55:00.002837	success
+stuck_fill_watchdog	2026-10-12 09:55:00.003545	success
+ep_scan	2026-10-12 09:55:00.003619	success
+flag_break_scan	2026-10-12 09:55:00.00438	success
+low_vol_rest_scan	2026-10-12 09:55:00.004842	success
+ma_pullback_scan	2026-10-12 09:55:00.00563	success
+undercut_rally_scan	2026-10-12 09:55:00.00812	success
+support_test_scan	2026-10-12 09:55:00.008628	success
+track_position_extremes	2026-10-12 09:55:00.01235	success
+stop_ack_timeout_watchdog	2026-10-12 09:55:30.001127	success
+stop_ack_timeout_watchdog	2026-10-12 09:56:00.002197	success
+stuck_fill_watchdog	2026-10-12 09:56:00.003279	success
+stop_ack_timeout_watchdog	2026-10-12 09:56:30.001485	success
+stop_ack_timeout_watchdog	2026-10-12 09:57:00.001059	success
+stuck_fill_watchdog	2026-10-12 09:57:00.001389	success
+stop_ack_timeout_watchdog	2026-10-12 09:57:30.001324	success
+stop_ack_timeout_watchdog	2026-10-12 09:58:00.001093	success
+stuck_fill_watchdog	2026-10-12 09:58:00.001431	success
+stop_ack_timeout_watchdog	2026-10-12 09:58:30.001233	success
+stop_ack_timeout_watchdog	2026-10-12 09:59:00.001614	success
+stuck_fill_watchdog	2026-10-12 09:59:00.002244	success
+stop_ack_timeout_watchdog	2026-10-12 09:59:30.000774	success
+orb_window_cleanup	2026-10-12 10:00:00.003633	success
+check_fills	2026-10-12 10:00:00.003649	success
+9m_ep_scan	2026-10-12 10:00:00.004276	success
+ep_scan_stop	2026-10-12 10:00:00.004352	success
+shadow_orb_entry	2026-10-12 10:00:00.005479	success
+stop_ack_timeout_watchdog	2026-10-12 10:00:00.009004	success
+flag_break_scan	2026-10-12 10:00:00.009007	success
+hud_refresh	2026-10-12 10:00:00.009508	success
+support_test_scan	2026-10-12 10:00:00.011545	success
+undercut_rally_scan	2026-10-12 10:00:00.011838	success
+rt_miss_digest	2026-10-12 10:00:00.012262	success
+ma_pullback_scan	2026-10-12 10:00:00.012629	success
+low_vol_rest_scan	2026-10-12 10:00:00.014338	success
+position_coverage_check	2026-10-12 10:00:00.022131	success
+stream_health_watchdog	2026-10-12 10:00:00.022898	success
+order_status_reconcile	2026-10-12 10:00:00.023871	success
+stuck_fill_watchdog	2026-10-12 10:00:00.024351	success
+track_position_extremes	2026-10-12 10:00:00.024736	success
+stop_coverage_repair_retry	2026-10-12 10:00:00.026411	success
+stop_ack_timeout_watchdog	2026-10-12 10:00:30.000893	success
+stop_ack_timeout_watchdog	2026-10-12 10:01:00.001019	success
+stuck_fill_watchdog	2026-10-12 10:01:00.001355	success
+stop_ack_timeout_watchdog	2026-10-12 10:01:30.002792	success
+stop_ack_timeout_watchdog	2026-10-12 10:02:00.00241	success
+stuck_fill_watchdog	2026-10-12 10:02:00.002959	success
+stop_ack_timeout_watchdog	2026-10-12 10:02:30.001795	success
+stop_ack_timeout_watchdog	2026-10-12 10:03:00.000967	success
+stuck_fill_watchdog	2026-10-12 10:03:00.001319	success
+stop_ack_timeout_watchdog	2026-10-12 10:03:30.002665	success
+(54 rows)

@@ -1,0 +1,32 @@
+apollo-execution	docker-apollo-execution	Up 12 hours (healthy)
+apollo-market	docker-market-agent	Up 12 hours (healthy)
+apollo-orchestrator	docker-orchestrator	Up 12 hours
+apollo-redis	redis:7-alpine	Up 3 months (healthy)
+apollo-postgres	pgvector/pgvector:pg16	Up 3 months (healthy)
+apollo-uptime	louislam/uptime-kuma:1	Up 6 months (healthy)
+== apollo-market
+/app/agents/market_intelligence/broker/lowcap_paper_entry.py
+/app/agents/market_intelligence/lowcap_paper_lane.py
+/app/agents/market_intelligence/ep_detector.py:5
+/app/agents/market_intelligence/scheduler.py:5
+== apollo-execution
+/app/agents/market_intelligence/broker/lowcap_paper_entry.py
+/app/agents/market_intelligence/lowcap_paper_lane.py
+/app/agents/market_intelligence/ep_detector.py:5
+/app/agents/market_intelligence/scheduler.py:5
+1
+13:50:00 [agents.market_intelligence.ep_detector] INFO: EP scan: 16 tickers in prior-5d narrative cohorts (fire panel narrative axis; 3 cohort(s) fed to the judge theme axis)
+13:50:02 [agents.market_intelligence.ep_detector] INFO: EP scan: candidate build dropped 134/13270 snapshot rows (0 raised, 134 with prev_close 0/missing)
+13:50:04 [agents.market_intelligence.ep_detector] INFO: EP scan: 54 candidates skipped — unclassified (not in mi_security_types). Weekly refresh runs Mondays; if this number is high consistently, bump to daily.
+13:50:05 [agents.market_intelligence.ep_detector] INFO: EP scan complete: 4 gap candidates → 0 scored (0 HIGH, 0 MODERATE) | regime=Choppy threshold=65 | theme belonging: 4 read, 3 shortlisted (unlisted), 0 belong by fit, scored in 61ms, fit calls 
+13:50:05 [agents.market_intelligence.scheduler] INFO: EP scan complete: 0 candidates, 0 HIGH
+13:55:00 [agents.market_intelligence.scheduler] INFO: EP scan starting...
+13:55:00 [agents.market_intelligence.ep_detector] INFO: EP scan: security_types loaded — 6041 stock, 8023 non-stock
+13:55:00 [agents.market_intelligence.ep_detector] INFO: EP scan: regime=Choppy, threshold=65 (separation=ON)
+13:55:00 [agents.market_intelligence.ep_detector] INFO: EP scan: 375 tickers in active themes (Accelerating/Mainstream) for R4 bonus
+13:55:00 [agents.market_intelligence.ep_detector] INFO: EP scan: theme belonging ON — 82 baskets from 509 member series over 60 sessions before 2026-10-12 (cached)
+13:55:00 [agents.market_intelligence.ep_detector] INFO: EP scan: 16 tickers in prior-5d narrative cohorts (fire panel narrative axis; 3 cohort(s) fed to the judge theme axis)
+13:55:01 [agents.market_intelligence.ep_detector] INFO: EP scan: candidate build dropped 132/13270 snapshot rows (0 raised, 132 with prev_close 0/missing)
+13:55:02 [agents.market_intelligence.ep_detector] INFO: EP scan: 54 candidates skipped — unclassified (not in mi_security_types). Weekly refresh runs Mondays; if this number is high consistently, bump to daily.
+13:55:04 [agents.market_intelligence.ep_detector] INFO: EP scan complete: 5 gap candidates → 0 scored (0 HIGH, 0 MODERATE) | regime=Choppy threshold=65 | theme belonging: 5 read, 2 shortlisted (unlisted), 0 belong by fit, scored in 57ms, fit calls 
+13:55:04 [agents.market_intelligence.scheduler] INFO: EP scan complete: 0 candidates, 0 HIGH

@@ -1,0 +1,24 @@
+apollo-execution	docker-apollo-execution	Up 12 hours (healthy)
+apollo-market	docker-market-agent	Up 12 hours (healthy)
+apollo-orchestrator	docker-orchestrator	Up 12 hours
+apollo-redis	redis:7-alpine	Up 3 months (healthy)
+apollo-postgres	pgvector/pgvector:pg16	Up 3 months (healthy)
+apollo-uptime	louislam/uptime-kuma:1	Up 6 months (healthy)
+== apollo-market
+3
+16
+PLAN.md
+agents
+core
+
+2026-10-11 04:00:59.000000000 +0000
+== apollo-orchestrator
+grep: /app/agents/market_intelligence/theme_engine.py: No such file or directory
+grep: /app/agents/market_intelligence/theme_engine.py: No such file or directory
+__pycache__
+agents
+audit.log
+
+stat: cannot statx '/app/agents/market_intelligence/theme_engine.py': No such file or directory
+2026-10-12T01:50:54.445942265Z 2026-10-12T01:51:07.914484052Z
+045fdfb2 Sun Oct 11 18:45:41 2026 -0700 #700 review code: one compaction policy, flags returned not re-read, shared renderers (behaviour-preserving)

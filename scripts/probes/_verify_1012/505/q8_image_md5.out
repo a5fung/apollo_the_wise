@@ -1,0 +1,13 @@
+== running apollo-market
+a4e6eb267ac517d93b9c22e56c60d6ab  /app/agents/market_intelligence/theme_engine.py
+4b568e0f01c9a9afdbac071357bbfe11  /app/agents/market_intelligence/theme_ecosystems.py
+704b27360d1af4971524346186c420e4  /app/agents/market_intelligence/theme_merge_arm.py
+d2da72ee7554402b5fd8dcb385e6df81  /app/agents/market_intelligence/briefing.py
+== local HEAD fffb4cb9
+a4e6eb267ac517d93b9c22e56c60d6ab agents/market_intelligence/theme_engine.py
+4b568e0f01c9a9afdbac071357bbfe11 agents/market_intelligence/theme_ecosystems.py
+704b27360d1af4971524346186c420e4 agents/market_intelligence/theme_merge_arm.py
+d2da72ee7554402b5fd8dcb385e6df81 agents/market_intelligence/briefing.py
+== diff 78681ad8..HEAD on theme_engine.py
+ agents/market_intelligence/theme_engine.py | 605 +++++++++++++++++++++++++----
+ 1 file changed, 539 insertions(+), 66 deletions(-)

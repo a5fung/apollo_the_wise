@@ -1,0 +1,47 @@
+== safeguard theme rows
+safeguard	account_mode	state	upd_et
+theme_birth_gate	paper	dedup_only	2026-09-13 19:10:56.505753
+theme_parent_pass	paper	on	2026-09-26 13:54:12.319197
+theme_subtheme_arm	paper	on	2026-07-16 17:15:36.460811
+(3 rows)
+== theme-ish audit events by ET date, since 10-05
+d	event_type	count
+2026-10-05	theme_birth_gate	2
+2026-10-05	theme_correctness_check	1
+2026-10-05	theme_retired_small_fading	20
+2026-10-05	theme_sector_cap_not_absorbed	2
+2026-10-06	theme_birth_gate	2
+2026-10-06	theme_correctness_check	1
+2026-10-06	theme_retired_small_fading	2
+2026-10-06	theme_sector_cap_not_absorbed	3
+2026-10-07	theme_birth_gate	2
+2026-10-07	theme_correctness_check	1
+2026-10-07	theme_retired_small_fading	3
+2026-10-07	theme_sector_cap_not_absorbed	4
+2026-10-08	theme_birth_gate	2
+2026-10-08	theme_correctness_check	1
+2026-10-08	theme_retired_small_fading	7
+2026-10-08	theme_sector_cap_not_absorbed	2
+2026-10-09	theme_birth_gate	2
+2026-10-09	theme_correctness_check	1
+2026-10-09	theme_retired_small_fading	9
+2026-10-09	theme_sector_cap_absorbed	1
+2026-10-09	theme_sector_cap_dropped	1
+2026-10-09	theme_sector_cap_not_absorbed	2
+(22 rows)
+== latest theme_correctness_check rows
+id	t_et	s
+55101	2026-10-09 17:31:11.64705	G1 568/603 (94.2% bar 90.0%) · G2 16/603 (2.7% bar<= 5.0%) · G3 106/123 (86.2% bar 90.0%) · G4 14/123 small (11.4% bar<= 10.0%; settled 7/116 6.0%) · latency median 16.5 sessions (n=8)
+54474	2026-10-08 17:31:14.221609	G1 570/609 (93.6% bar 90.0%) · G2 18/609 (3.0% bar<= 5.0%) · G3 103/122 (84.4% bar 90.0%) · G4 15/122 small (12.3% bar<= 10.0%) · latency median 9 sessions (n=9)
+53871	2026-10-07 17:31:12.740608	G1 536/573 (93.5% bar 90.0%) · G2 16/573 (2.8% bar<= 5.0%) · G3 106/124 (85.5% bar 90.0%) · G4 15/124 small (12.1% bar<= 10.0%) · latency median 17.5 sessions (n=8)
+53217	2026-10-06 17:31:13.635646	G1 567/612 (92.6% bar 90.0%) · G2 22/612 (3.6% bar<= 5.0%) · G3 105/120 (87.5% bar 90.0%) · G4 7/120 small (5.8% bar<= 10.0%) · latency median 17.5 sessions (n=8)
+52551	2026-10-05 17:31:15.600696	G1 507/552 (91.8% bar 90.0%) · G2 23/552 (4.2% bar<= 5.0%) · G3 100/116 (86.2% bar 90.0%) · G4 4/116 small (3.4% bar<= 10.0%) · latency median 31.5 sessions (n=6)
+51258	2026-10-02 17:31:23.452592	G1 531/587 (90.5% bar 90.0%) · G2 21/587 (3.6% bar<= 5.0%) · G3 117/133 (88.0% bar 90.0%) · G4 15/133 small (11.3% bar<= 10.0%) · latency median 31.5 sessions (n=6)
+50744	2026-10-01 17:31:09.319427	G1 546/601 (90.8% bar 90.0%) · G2 23/601 (3.8% bar<= 5.0%) · G3 117/131 (89.3% bar 90.0%) · G4 16/131 small (12.2% bar<= 10.0%) · latency median 37 sessions (n=5)
+50196	2026-09-30 17:31:07.58293	G1 534/590 (90.5% bar 90.0%) · G2 24/590 (4.1% bar<= 5.0%) · G3 117/129 (90.7% bar 90.0%) · G4 15/129 small (11.6% bar<= 10.0%) · latency median 37.0 sessions (n=6)
+(8 rows)
+== most recent theme engine run markers (any theme event) last 40h
+t_et	event_type	left
+2026-10-12 07:00:24.831845	ep_theme_fit_llm_proposed	Sonnet proposed 0 assignment(s) (batch 1/1, advisor_calls=0)
+2026-10-11 09:07:18.108611	theme_resilience_weekly_logged	2026-10-05: 124/124 written (124 computable / 0 not computable)
+(2 rows)

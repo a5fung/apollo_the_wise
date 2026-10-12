@@ -1,0 +1,64 @@
+=== columns
+column_name
+id
+scan_date
+ticker
+gap_pct
+prev_close
+rel_volume
+filter_reason
+ep_score
+score_tier
+catalyst_quality
+created_at
+scan_time_et
+rank_by_gap
+projected_vol_multiple
+pm_rvol
+adv
+adv_source
+minutes_since_open
+gap_pct_rt
+gap_pct_delayed
+price_source
+rt_price_age_s
+prev_close_alpaca
+reject_stage
+current_price
+prev_day_volume
+today_volume
+pm_rvol_baseline_n
+days_since_prior_alert
+extension_pct
+quality_adv_dollar
+atr_pct
+market_cap
+vol_percentile
+prior_3m_change
+float_shares
+in_active_theme
+llm_catalyst_quality
+score_breakdown
+ep_bar
+score_side
+rank_by_prescore
+(42 rows)
+=== heartbeat preview (exact SQL)
+screened	cap_only
+213	{ALLT}
+(1 row)
+=== lane rows today
+ticker	score_tier	reject_stage
+ALLT		post_grade_filter
+(1 row)
+=== same preview for prior days (cap_only counts/names) 10-05..10-09
+scan_date	screened	cap_only
+2026-10-01	244	{INGN}
+2026-10-02	316	{BETR,RNAC}
+2026-10-05	309	{ARTV,INTT}
+2026-10-06	337	{}
+2026-10-07	190	{LWAY}
+2026-10-08	193	{NAKA,RNA}
+2026-10-09	272	{}
+2026-10-12	213	{ALLT}
+(8 rows)

@@ -1,0 +1,91 @@
+== market_cap column on mi_stock_scores (expect 0 rows)
+column_name
+(0 rows)
+== mi_stock_scores row counts by score_date (last 5)
+score_date	count
+2026-10-09	2392
+2026-10-08	2388
+2026-10-07	2396
+2026-10-06	2401
+2026-10-05	2423
+(5 rows)
+== live-fill counterfactuals: shape
+== live-fill counterfactuals: outcome distribution
+outcome	count
+settled	134
+unscoreable	8
+abstain	2
+(3 rows)
+== live-fill counterfactuals: columns
+ERROR:  column "created_at" does not exist
+LINE 1: ...ER (WHERE outcome='horizon') AS horizon_rows, min(created_at...
+                                                             ^
+column_name	data_type
+id	integer
+trade_id	integer
+ticker	text
+account_mode	text
+signal_type	text
+entry_attempt	integer
+alert_date	date
+fill_day	date
+arm	text
+arm_kind	text
+stop_rule	text
+harvest_rule	text
+entry_price	double precision
+orb_high	double precision
+orb_low	double precision
+live_stop	double precision
+target_price	double precision
+target_r	double precision
+adr20_pct	double precision
+adr20_n	integer
+adr_dollar	double precision
+stop_price	double precision
+risk_per_share	double precision
+stop_width_pct	double precision
+stop_width_adr	double precision
+outcome	text
+final_reason	text
+realized_r	double precision
+realized_pct	double precision
+pnl_adr	double precision
+mark_r	double precision
+partial_fired	boolean
+gap_through	boolean
+exit_session	integer
+sessions_walked	integer
+day0_bar_count	integer
+exits	jsonb
+pnl_attribution	text
+regime	text
+exit_era	text
+exit_rules	jsonb
+admission_era	text
+rubric_version	text
+score_tier	text
+ep_score	double precision
+judge_grade	text
+judge_tier	text
+grade_engine_authority	text
+setup_class	text
+baseline_floor_tier	text
+alert_source	text
+settle_version	text
+settled_session	date
+recorded_at	timestamp with time zone
+breakeven_arm_r	double precision
+trail_rule	text
+(56 rows)
+== the three mark_r tables
+t	n	nn	ev
+mi_gap_near_miss_replays	454	0	0
+mi_sustain_reject_replays	153	2	2
+mi_lowcap_lane_replays	19	0	0
+mi_lowcap_paper_lane_replays	0	0	0
+(4 rows)
+== dead_column audit rows since 10-05
+t_et	event_type	left
+2026-10-05 17:30:04.966909	dead_column_detected	mi_anticipation_consolidation.orderliness
+(1 row)

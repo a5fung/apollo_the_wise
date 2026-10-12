@@ -1,0 +1,7 @@
+src	event_type	count
+live	theme_parent_pass_distinct	48
+live	theme_parent_pass_inverted	1
+live	theme_parent_pass_linked	4
+(no row)	theme_parent_pass_error	6
+shadow_promoted	theme_parent_pass_distinct	1
+(5 rows)

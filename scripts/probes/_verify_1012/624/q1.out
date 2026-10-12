@@ -1,0 +1,35 @@
+=== strategy row
+=== toggles (lane + paper exit)
+safeguard	account_mode	state	upd
+breakeven_at_broker	live	on	08-10 08:22
+breakeven_at_broker	paper	on	10-10 15:15
+entry_ask_aware	live	on	08-07 10:55
+entry_ask_aware	paper	on	10-10 15:15
+profit_take_oco	live	on	08-17 11:03
+profit_take_oco	paper	on	10-10 15:15
+profit_take_resting_limit	live	on	08-10 17:15
+profit_take_resting_limit	paper	on	10-10 15:15
+(8 rows)
+=== lane alerts all rows
+id	ticker	alert_date	strategy_id	first_graded	score_tier	ep_score	reject_stage	reject_reason	catalyst_quality	gap	rv	mcap_m	judge_tier	lane_rule_version
+1	ALLT	2026-10-12	magna53_smallcap	10-12 09:50:00			post_grade_filter	routine catalyst, gap 9.1%	routine	9.1	0.7	451		paper_v1
+(1 row)
+=== lane replays count
+count
+0
+(1 row)
+=== audit events lowcap since 10-09
+t	event_type	left
+10-08 18:15:00	lowcap_lane_replay_recorded	19 lane signal(s) in window, 0 candidate(s) processed: 0 written (0 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s)
+10-09 18:15:00	lowcap_lane_replay_recorded	19 lane signal(s) in window, 0 candidate(s) processed: 0 written (0 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s)
+10-12 09:50:13	lowcap_paper_lane_tick	09:50 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)
+(3 rows)
+=== lane-related trades
+id	ticker	signal_type	account_mode	status	created
+(0 rows)
+=== overlap lane tickers today in mi_ep_alerts
+ticker	alert_date	live_tier
+(0 rows)
+=== live ep alerts today
+ticker	score_tier	ep_score	t
+(0 rows)
