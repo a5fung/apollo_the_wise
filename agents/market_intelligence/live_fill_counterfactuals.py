@@ -153,7 +153,7 @@ proof against origin/main; a later change may add the threshold to both paths to
 THE THREE LANES (gap_near_miss / sustain_reject / lowcap) hold no trade row: their era comes from
 the `magna53_depth_exit` toggle row for the account mode of the strategy they price, read ONCE
 per run (`load_lane_exit_rule`), 'depth' from the FIRST ACTING SESSION after the flip
-(`rule_eras.first_acting_session_after` — a noon flip stamps nothing until the next ORB), else
+(`rule_eras.first_acting_session_of` — a noon flip stamps nothing until the next ORB), else
 era D exactly as before. No toggle row → era D, byte-identical to today.
 
 THE LINE — read this before touching anything here. This module is a passive OBSERVER:
@@ -214,7 +214,7 @@ import logging
 from datetime import date, datetime, time, timedelta
 from typing import Any, Optional
 
-from shared.dates import _ET, parse_iso_et
+from shared.dates import _ET
 
 from agents.market_intelligence.broker.exit_logic import adr20_pct_from_bars, apply_daily_exit_step, depth_stop_price, seed_exit_state  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — the #482 recorder settles every counterfactual through the SAME ladder the live tracker calls instead of re-implementing it (the giveback / pivot-stop shadow precedent); #687: the depth rule's resting stop + ADR20 are the live 16:45 job's own pure functions, so the replay cannot diverge from live; pure compute, no live execution
 from agents.market_intelligence.constants import resolve_account_mode_for_strategy
@@ -243,7 +243,7 @@ from agents.market_intelligence.rule_eras import (
     admission_era_as_of,
     exit_era_label,
     exit_rules_as_of,
-    first_acting_session_after,
+    first_acting_session_of,
 )
 from agents.market_intelligence.trading_calendar import get_market_status
 
@@ -413,11 +413,8 @@ def depth_first_acting_session(last_transition_at: Any) -> Optional[date]:
     """The first session a `magna53_depth_exit` toggle flipped at `last_transition_at` (a
     datetime or an ISO string, as the row stores it) could stamp — the lanes' era boundary.
     None when the timestamp is missing/unparseable (the caller treats that as 'not live')."""
-    at = parse_iso_et(last_transition_at)
-    if at is None:
-        return None
-    return first_acting_session_after(at.astimezone(_ET),
-                                      is_trading_day=lambda d: get_market_status(d).is_trading_day)
+    return first_acting_session_of(last_transition_at,
+                                   is_trading_day=lambda d: get_market_status(d).is_trading_day)
 
 
 def lane_exit_rule(strategy_rows: list, toggle_rows: list, strategy_id: str,

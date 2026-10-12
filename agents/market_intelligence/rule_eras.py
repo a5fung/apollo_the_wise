@@ -34,8 +34,10 @@ Pure: dates and string composition only. No DB, no I/O, no imports beyond the st
 """
 from __future__ import annotations
 
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from typing import Any, Callable
+
+from shared.dates import parse_iso_et
 
 # ── EXIT / GEOMETRY switches (moved verbatim from scripts/ep_replay.py, 2026-09-03) ──
 # Provenance for every line:
@@ -110,11 +112,11 @@ DEPTH_EXIT_SIGNAL_TYPES = frozenset({"magna53", "magna53_smallcap"})
 # the nightly drift check — the mechanical nag that replaces a prose "bump it the same day".
 # The #631 YAML pin (tests/test_exit_counterfactual_consolidation_631.py) reads every `*_DATE`
 # here, so setting this moves the ONE read's predicate literal in the same commit, by design.
-# WHEN: on the first acting session itself, not the flip day — for a Monday-noon flip that is
-# TUESDAY 2026-10-13 (the #631 pin asserts the pinned era equals TODAY's era, so an earlier commit is
-# red by construction) — and DEPLOY `market-agent` the same day: the nightly drift check, the weekly
-# review and `sell_discipline` read it only inside `apollo-market`. Steps: exit_discipline.md
-# 2026-10-11, "The TUESDAY step".
+# WHEN: on the first acting session itself, not the flip day (`first_acting_session_after`; a
+# Monday-noon flip acts on Tuesday). The #631 pin asserts the pinned era equals TODAY's era, so an
+# earlier commit is red by construction. DEPLOY `market-agent` the same day: the nightly drift
+# check, the weekly review and `sell_discipline` read it only inside `apollo-market`. Steps:
+# exit_discipline.md 2026-10-11, "The TUESDAY step".
 DEPTH_EXIT_LIVE_DATE: date | None = None
 
 # Sentinel: "the caller did not say" — distinct from an explicit None ("the row says today's rule").
@@ -147,11 +149,23 @@ def first_acting_session_after(transition_at_et: datetime, *,
     trading day; weekends/holidays skipped via the injected calendar (this module stays
     stdlib-pure — callers pass `trading_calendar.get_market_status(d).is_trading_day`)."""
     d = transition_at_et.date()
-    if transition_at_et.timetz().replace(tzinfo=None) >= _ORB_OPEN_ET:
-        d = date.fromordinal(d.toordinal() + 1)
+    if transition_at_et.time() >= _ORB_OPEN_ET:
+        d += timedelta(days=1)
     while not is_trading_day(d):
-        d = date.fromordinal(d.toordinal() + 1)
+        d += timedelta(days=1)
     return d
+
+
+def first_acting_session_of(transition_at: Any, *,
+                            is_trading_day: Callable[[date], bool]) -> date | None:
+    """`first_acting_session_after` for a timestamp as a toggle row stores it — a datetime or an
+    ISO string in any zone (`shared.dates.parse_iso_et` reads it as ET). None when it is missing
+    or unparseable: the caller treats that as "not live", never a guess. The ONE place the
+    flip-timestamp -> first-acting-session rule lives: the lanes' era boundary
+    (`live_fill_counterfactuals.depth_first_acting_session`) and the drift rule that polices the
+    dated record (`scripts/live_rules.scan_depth_era_pin`) both call it."""
+    at = parse_iso_et(transition_at)
+    return None if at is None else first_acting_session_after(at, is_trading_day=is_trading_day)
 
 
 def _flipped_8r(d: date, signal_type: str | None) -> bool:
@@ -356,7 +370,7 @@ def split_current_vs_older(values: list, meta: list[dict], today: date) -> dict[
     sig_counts: dict[str | None, int] = {}
     for v, m in zip(values, meta):
         d, sig = m.get("alert_date"), m.get("signal_type")
-        label = exit_era_label(d, sig, m["exit_rule"]) if "exit_rule" in m else exit_era_label(d, sig)
+        label = exit_era_label(d, sig, m.get("exit_rule", _UNSPECIFIED))
         by_era[label] = by_era.get(label, 0) + 1
         sig_counts[sig] = sig_counts.get(sig, 0) + 1
         (current if label == exit_era_label(today, sig) else older).append(v)

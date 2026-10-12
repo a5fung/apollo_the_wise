@@ -876,30 +876,29 @@ def scan_depth_era_pin(res: Resolver) -> list[DriftRow]:
 
     ⚠ This row is DRIFT, so `health_checks.run_drift_check` Telegrams it (18:02 ET nightly): the
     operator gets one page on the flip night and one more per night until the constant is DEPLOYED
-    (the constant is committed on the first acting session — Tue 2026-10-13 for a Monday-noon flip —
-    and read only inside apollo-market). Pre-registered as expected in exit_discipline.md
-    2026-10-11 (EXPECT); it is the agent's task, not the operator's."""
+    (the constant is committed on the first acting session itself and read only inside
+    apollo-market; schedule: exit_discipline.md 2026-10-11, "The TUESDAY step"). Pre-registered as
+    expected there (EXPECT); it is the agent's task, not the operator's."""
     rows: list[DriftRow] = []
     if not res.prod.reachable:
         return rows
     if str(REPO) not in sys.path:
         sys.path.insert(0, str(REPO))
     from agents.market_intelligence import rule_eras  # stdlib-pure, safe offline
+    from agents.market_intelligence.constants import resolve_account_mode_for_strategy
     from agents.market_intelligence.trading_calendar import get_market_status
-    from shared.dates import _ET, parse_iso_et
 
     pinned = rule_eras.DEPTH_EXIT_LIVE_DATE
     where = "agents/market_intelligence/rule_eras.py:DEPTH_EXIT_LIVE_DATE"
     strat = next((s for s in res.prod.strategies if s["strategy_id"] == "magna53"), None)
-    mode = {"live": "live", "paper": "paper"}.get((strat or {}).get("phase"))
-    on_rows = [r for r in res.prod.toggles
-               if r["safeguard"] == "magna53_depth_exit" and str(r["state"]).lower() == "on"]
-    anchor = next((r for r in on_rows if r["account_mode"] == mode), None) if mode else None
-    if anchor is not None:
-        at = parse_iso_et(anchor["last_transition_at"])
-        first = (rule_eras.first_acting_session_after(
-            at.astimezone(_ET), is_trading_day=lambda d: get_market_status(d).is_trading_day)
-            if at else None)
+    try:    # the lanes' own resolver, so a new phase moves the drift rule with them
+        mode = resolve_account_mode_for_strategy(strat) if strat else None
+    except ValueError:      # shadow / deprecated / unknown phase: no account, so no anchor
+        mode = None
+    anchor = res.prod.toggle_row("magna53_depth_exit", mode) if mode else None   # PK (safeguard, account_mode)
+    if anchor is not None and str(anchor["state"]).lower() == "on":
+        first = rule_eras.first_acting_session_of(
+            anchor["last_transition_at"], is_trading_day=lambda d: get_market_status(d).is_trading_day)
         actual = (f"mi_safeguard_state: magna53_depth_exit[{mode}] = on since "
                   f"{anchor['last_transition_at'][:16] or 'date unrecorded'} → first acting session "
                   f"{first or 'unknown (timestamp unreadable)'}")
