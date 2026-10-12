@@ -870,3 +870,21 @@ async def test_stop_replaced_telegram_speaks_when_audit_detail_malformed_and_db_
     )
     assert not any(c.args[0] == "stop_replacement_confirmed_silent"
                    for c in audit.await_args_list)
+
+
+def test_describe_stop_move_below_entry_states_the_loss_and_negative_r_peng():
+    """His ask 2026-10-12, on the PENG page: a trail that rises but stays BELOW entry says what a fill
+    there would cost, in $/share and negative R (R = entry − hard stop, the gain line's own frame).
+    PENG 10-12: entry $72.21, hard stop $62.20, trail $62.20 -> $63.37 = loses $8.84/share, -0.9R.
+    Before the change this line ended at 'The 10/20-day moving-average trail rose.'"""
+    text = describe_stop_move(
+        entry_price=72.21, hard_stop=62.20, old_stop_price=62.20, new_stop_price=63.37,
+        stop_source="trail",
+    )
+    assert text == "The 10/20-day moving-average trail rose — a fill here loses $8.84/share, -0.9R."
+    # no hard stop to size R with -> the $ loss alone, never a made-up R
+    text = describe_stop_move(
+        entry_price=72.21, hard_stop=None, old_stop_price=62.20, new_stop_price=63.37,
+        stop_source="trail",
+    )
+    assert text.endswith("a fill here loses $8.84/share.")

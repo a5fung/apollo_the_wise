@@ -1891,6 +1891,13 @@ def describe_stop_move(
                 tail += f", {r:.1f}R beyond breakeven"
         elif at_entry:
             tail = " — if this stop fills, it's a scratch"
+        elif entry_price is not None and new_stop_price is not None:
+            # Below entry (his ask 2026-10-12): say what a fill here would cost, in $/share and R,
+            # the same frame as the gain line above (R = entry − hard stop).
+            loss = entry_price - new_stop_price
+            tail = f" — a fill here loses ${loss:.2f}/share"
+            if hard_stop is not None and entry_price > hard_stop:
+                tail += f", -{loss / (entry_price - hard_stop):.1f}R"
         else:
             tail = ""
 
