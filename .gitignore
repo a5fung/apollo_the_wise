@@ -144,3 +144,7 @@ scripts/probes/_594_rescore/bars.tsv
 scripts/probes/_146_page/q2_bars.tsv.gz
 scripts/probes/_146_page/arm_rows.tsv.gz
 scripts/probes/_146_page/*_smoke.*
+
+# #146 unpark (2026-10-11) — raw prod captures over 1 MB; re-derivable from q1_stored_rows.sql / q3_bars.sql:
+scripts/probes/_146_unpark/q1_stored_rows.out
+scripts/probes/_146_unpark/q3_bars.tsv.gz
