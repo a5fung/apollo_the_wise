@@ -34,16 +34,15 @@ MUTATIONS = {
     "M4 promotion digits kept": (
         're.sub(r"\\d+", "", str(reasons[0]))', 'str(reasons[0])'),
     "M5 gaps all new": (
-        "new = [g for g in gaps if _gap_key(g) not in prior_keys]\n        head = (f\"🚨",
-        "new = list(gaps)\n        head = (f\"🚨"),
+        "new = [g for g in gaps if _ticker_date_key(g) not in prior_keys]", "new = list(gaps)"),
     "M6 synthesize keeps report": (
         'prior_metrics = {k: v for k, v in prior_metrics.items() if k != "report"}',
         'prior_metrics = dict(prior_metrics)'),
     "M7 replay lines unfiltered": (
         'return [l for l in lines if not l.strip().startswith(("calibration (", "ⓘ"))]', 'return list(lines)'),
     "M8 compact does not catch": (
-        'except Exception:\n            logger.exception(f"{name} compaction failed - the message carries the full text")\n            return full_text',
-        'except ZeroDivisionError:\n            return full_text'),
+        'except Exception:\n        logger.exception(f"{name} compaction failed - the message carries the full text")\n        return fallback',
+        'except ZeroDivisionError:\n        return fallback'),
     "M9 zone after time counts as ticker": (
         "if tok in _NOT_TICKERS or _AFTER_CLOCK_TIME_RE.search(text[:m.start()]):",
         "if tok in _NOT_TICKERS:"),
@@ -54,12 +53,12 @@ MUTATIONS = {
         "            if at_floor:\n                log(\"early_window_drift\", False",
         "            if False:\n                log(\"early_window_drift\", False"),
     "M12 drift keeps LLM block": (
-        'elif kind == "drift" and have_anomalies:', 'elif kind == "drift" and False:'),
+        "        elif kind in repl:", "        elif False:"),
     "M13 theme queue shows all": (
-        "new = [q for q in basis[\"queue\"] if seen is None or _theme_queue_key(q) not in seen]",
+        "new = [q for q in basis[\"queue\"] if seen is None or _ticker_date_key(q) not in seen]",
         "new = list(basis[\"queue\"])"),
     "M14 mfe always prints": (
-        "show, why = _changed(True, key(mfe), key(pm))", "show, why = True, 'x'"),
+        "    if key(mfe) != key(pm):\n        return True,", "    if True:\n        return True,"),
     "M15 band non-HOLD suppressed": (
         "        elif band != \"HOLD\":\n            show_band, why = True, f\"band {band} is an action\"",
         "        elif False:\n            show_band, why = True, f\"band {band} is an action\""),
@@ -81,7 +80,7 @@ MUTATIONS = {
         "                              or (metrics.get(\"mfe_capture\") or {}).get(\"window_closes\"))",
         "                              or False)"),
     "M24 missing stored count hides": (
-        "    elif not found_n or not isinstance(prev_n, int):", "    elif False:"),
+        "    elif prev_n is None:", "    elif False:"),
 }
 
 

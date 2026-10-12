@@ -76,9 +76,9 @@ def test_prior_review_is_the_row_at_or_before_window_start():
         sql = " ".join(conn.fetchrow.await_args.args[0].split())
         assert "review_date <= $2" in sql and "ORDER BY review_date DESC" in sql
         assert conn.fetchrow.await_args.args[1:] == (7, WS)
-        asyncio.run(dbmod.get_latest_system_review(7))                 # the default call keeps its shape
-        assert "review_date <=" not in " ".join(conn.fetchrow.await_args.args[0].split())
-        assert conn.fetchrow.await_args.args[1:] == (7,)
+        asyncio.run(dbmod.get_latest_system_review(7))                 # the default call: the same statement,
+        assert "$2::date IS NULL OR review_date <=" in " ".join(conn.fetchrow.await_args.args[0].split())
+        assert conn.fetchrow.await_args.args[1:] == (7, None)          # ...with NULL bound = no upper bound
     # and the weekly run asks for exactly that row
     got = {}
 
@@ -230,7 +230,8 @@ def test_promotion_rows_print_only_when_new_or_changed():
     message and in the full text. MUTATION: the digit-stripping `re.sub(r"\\d+", "", reason)` removed
     from the comparison - shadow_orb_5m, parabolic_short and magna53_lowcap all printed. RED, restored."""
     sp = FX["review"]["metrics"]["strategy_promotions"]
-    text, why = sr._promotion_message(sp, FX["prior"]["metrics"]["strategy_promotions"]["checks"])
+    text, why, shown = sr._promotion_message(sp, FX["prior"]["metrics"]["strategy_promotions"]["checks"])
+    assert shown is True                                               # the decision log reads this flag, not the text
     rows = [l for l in _lines(text) if l.startswith("•")]
     assert len(rows) == 1 and rows[0].startswith("• magna53_smallcap") and "new on the ladder" in rows[0]
     assert "(paper → live)" in rows[0] and "need 30 closed (have 0)" in rows[0]
@@ -240,10 +241,10 @@ def test_promotion_rows_print_only_when_new_or_changed():
     assert "shadow_orb_5m" not in fold and "shadow_orb_5m" in meta["full_md"]
     assert sum(1 for l in _lines(fold) if l.startswith("• magna53_smallcap")) == 1
     # nothing changed -> the header alone; no prior -> every ladder row prints, no "changed" claim
-    same_text, _ = sr._promotion_message(sp, sp["checks"])
-    assert _lines(same_text) == ["📈 *Strategy promotion* — none ready"]
-    first_text, first_why = sr._promotion_message(sp, None)
-    assert first_why == "no prior" and "changed since last week" not in first_text
+    same_text, _, same_shown = sr._promotion_message(sp, sp["checks"])
+    assert _lines(same_text) == ["📈 *Strategy promotion* — none ready"] and same_shown is False
+    first_text, first_why, first_shown = sr._promotion_message(sp, None)
+    assert first_why == "no prior" and first_shown is True and "changed since last week" not in first_text
     assert len([l for l in _lines(first_text) if l.startswith("•")]) == 5
 
 
@@ -461,17 +462,22 @@ def test_gaps_print_new_rows_only_and_count_the_carried():
     `cur` - all eight rows printed."""
     m = _metrics()["missed_opportunities"]
     prior_keys = {f"{g['ticker']}|{g['alert_date']}" for g in FX["prior"]["metrics"]["missed_opportunities"]["gaps"]}
-    text, why = sr._gaps_message(m["gaps"], m["source_gap_summary"], prior_keys, None)
+    text, why, rows_shown, caps_shown = sr._gaps_message(m["gaps"], m["source_gap_summary"], prior_keys, None)
+    assert rows_shown is True and caps_shown is True                   # the flags the decision log reads
     assert "2 new this week, 6 carried from last week" in _lines(text)[0]
     table = [l for l in _lines(text) if l[:5].strip() in {"EROC", "VST"}]
     assert len(table) == 2 and not any(t in text for t in ("CIFR", "VICR", "TWST", "RPD", "ARM", "TEM"))
     assert "Verify before acting" not in text and "ranked by peak missed upside" not in text   # explainer is gone
     all_old = {f"{g['ticker']}|{g['alert_date']}" for g in m["gaps"]}
-    nothing, _ = sr._gaps_message(m["gaps"], m["source_gap_summary"], all_old, m["source_gap_summary"])
+    nothing, _, nothing_rows, nothing_caps = sr._gaps_message(m["gaps"], m["source_gap_summary"], all_old,
+                                                              m["source_gap_summary"])
+    assert nothing_rows is False and nothing_caps is False
     assert "0 new this week, 8 carried from last week" in nothing and "tckr" not in nothing
     assert "Strong-catalyst MODERATE caps" not in nothing               # unchanged caps line: full text only
-    first, why = sr._gaps_message(m["gaps"], m["source_gap_summary"], None, None)
+    first, why, first_rows, first_caps = sr._gaps_message(m["gaps"], m["source_gap_summary"], None, None)
     assert why == "no prior" and "tckr" in first and "CIFR" in first    # nothing to compare against: print it all
+    assert first_rows is True and first_caps is True
+    assert sr._gaps_message([], m["source_gap_summary"], None, None) == ("", "no gaps", False, False)
     head, fold, meta = _render()
     assert "2 new this week, 6 carried from last week" in fold and "CIFR" not in fold
     assert "CIFR" in meta["full_md"]

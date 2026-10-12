@@ -16960,22 +16960,13 @@ async def get_latest_system_review(window_days: int = 7,
     week. Omitted -> the newest row of all, exactly as before."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        if on_or_before is None:
-            row = await conn.fetchrow("""
-                SELECT review_date, window_days, regime, summary, metrics, suggestions, created_at
-                FROM mi_system_reviews
-                WHERE window_days = $1
-                ORDER BY review_date DESC
-                LIMIT 1
-            """, window_days)
-        else:
-            row = await conn.fetchrow("""
-                SELECT review_date, window_days, regime, summary, metrics, suggestions, created_at
-                FROM mi_system_reviews
-                WHERE window_days = $1 AND review_date <= $2
-                ORDER BY review_date DESC
-                LIMIT 1
-            """, window_days, _to_date(on_or_before))
+        row = await conn.fetchrow("""
+            SELECT review_date, window_days, regime, summary, metrics, suggestions, created_at
+            FROM mi_system_reviews
+            WHERE window_days = $1 AND ($2::date IS NULL OR review_date <= $2::date)
+            ORDER BY review_date DESC
+            LIMIT 1
+        """, window_days, None if on_or_before is None else _to_date(on_or_before))
     if not row:
         return None
     return {

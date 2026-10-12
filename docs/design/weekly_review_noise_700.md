@@ -341,10 +341,14 @@ New pure helpers (module level, typed, docstring states the fail direction):
   exception → `(False, None)`.
 - `_changed(found: bool, cur, prev) -> tuple[bool, str]` — `(True, "no prior")` when not found;
   `(cur != prev, "…")` otherwise, with the reason text the decision log prints.
+- `_prior_as(prior, typ, *path) -> value | None` — `_prior_value`'s value only when it is a `typ`
+  (the sections that do not distinguish a stored null from a missing key); `_compact(name, fallback,
+  make)` — the one "a compaction that raises falls back to the full text" policy.
 - `_render_drift(anomalies: dict) -> str`, `_render_docs_drift(drift_check: dict) -> str`,
-  `_render_crypto_change(crypto, prior_verdict) -> str`, `_render_gaps_new(gaps, prior_keys,
-  caps, prior_caps) -> str`, `_render_top_movers(top_winners) -> str`, `_loser_flag_words(L) ->
-  list[str]`, `_replay_message_lines(lines) -> list[str]` (keeps header + `live (` + `rule eras:`).
+  `_render_top_movers(top_winners) -> str`, `_loser_flags(L) -> list[(emoji, words)]` with
+  `_loser_flag_words(L) -> list[str]` as its words column, `_replay_message_lines(lines) ->
+  list[str]` (keeps header + `live (` + `rule eras:`). Builders that decide what printed return it:
+  `_promotion_message -> (text, why, shown)`, `_gaps_message -> (text, why, rows_shown, caps_shown)`.
 Changed signatures:
 - `_assemble_report(metrics, summary, window_start, today, prior: dict | None = None)`.
 - `compose_report(header, needs_you, needs_me, checked, fold_sections, suppressed, *,
