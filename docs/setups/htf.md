@@ -168,9 +168,15 @@ signal. `flag_digest_sent_error` names a different failure — the record could 
 recovery re-run of the same scan sends a second message and writes a second row. Query: `SELECT created_at, summary FROM mi_audit_log
 WHERE event_type='flag_digest_sent' AND detail LIKE '%"CDNA"%'`.
 
-**Friday watchlist — the "Flag Bases — COILED / TIGHTENING (watch only)" section (#697 item 1a/1c, 2026-10-11).**
-`friday_watchlist._fetch_flag` reads the latest `mi_flag_candidates` scan (within 7 days) and prints up to 5
-COILED + 3 TIGHTENING (M&A-screened names are `unqualified`, so absent). **It has NO strategy gate.** It used
+**Friday watchlist — the "Flag Bases — TRIGGERED / COILED / TIGHTENING (watch only)" section (#697 item 1a/1c, 2026-10-11; TRIGGERED added by the #146 review, same day).**
+`friday_watchlist._fetch_flag` reads the latest `mi_flag_candidates` scan (within 7 days) and prints up to 3
+TRIGGERED + 5 COILED + 3 TIGHTENING (M&A-screened names are `unqualified`, so absent). **TRIGGERED is listed because #146 would otherwise
+take names OFF this list on the night they break out:** the section used to be `stage IN ('COILED','TIGHTENING')`, and a name the shipped rule leaves at
+TIGHTENING now reads TRIGGERED, so it dropped off on exactly the night it mattered — the review's replay of this branch's code over the page's 444 sessions (288 tickers, threaded like the page; not re-run in the fix commit) found 25 Friday ticker-days leave the pool
+that way, 8 of them in 2026, two on the live board (CDNA 2026-07-31, CHPT 2026-09-18). Each TRIGGERED row reads `TRIGGERED · from TIGHTENING · base 12d ·
+run-up +130% · close $36.19 over the base's highest close $34.42` (the path in the same words as the digest, `flag_detector.triggered_from_label`); a row HELD
+over from yesterday says `TRIGGERED · held over from yesterday (today reads TIGHTENING)`. They sort first (priority `FLAG − 0.5`, still behind EP HIGH, so an
+EP-sourced name keeps its EP primary); the 25-ticker cap can now be bound by up to 11 flag names instead of 8. Display only: no order / entry / sizing / safeguard path reads it. **It has NO strategy gate.** It used
 to return `[]` when `should_run("flag_continuation")` was false; that retired strategy row went
 `deprecated / enabled=false` on 2026-08-02 and the section rendered EMPTY from then on (the last stored Friday
 list carrying a FLAG name is the week ending 2026-07-31 — prod `mi_weekly_watchlists`). The detector has no
@@ -184,12 +190,19 @@ ambient rows, as they did before 08-02. Tests: `tests/test_697_htf_reach_repairs
 
 **Which path licensed a TRIGGERED read (#146, 2026-10-11).** Every TRIGGERED line says it, in the same words everywhere
 (`flag_detector.triggered_from_label`): `from COILED` / `from TIGHTENING` / `re-trigger` (after an earlier TRIGGERED). The 17:25
-digest's TRIGGERED row reads `• TICKER — from TIGHTENING · base 12d · run-up +130% · volume 2.48× · close $36.19 above $34.42`, and its
+digest's TRIGGERED row reads `• TICKER — from TIGHTENING · base 12d · run-up +130% · volume 2.48× · close $36.19 over the base's highest close $34.42`, and its
 header carries the day's split (`TRIGGERED (3) 1 from COILED · 2 from TIGHTENING`, `triggered_bucket_summary`); `/flags` shows the
-same row and header; `/flags TICKER` appends `· from TIGHTENING` to the TRIGGERED day. A HELD TRIGGERED row (yesterday's TRIGGERED kept over a
-lower raw read) and any legacy row print nothing extra — nothing licensed them today. **The Friday watchlist prints no label because it
-prints no TRIGGERED row**: its flag section is `stage IN ('COILED','TIGHTENING')` (above), and widening it to add TRIGGERED names is a surfacing
-policy change nobody has signed — surfaced as a fork, not done. Display only: nothing gates on the label.
+same row and header; `/flags TICKER` appends `· from TIGHTENING` to the TRIGGERED day; `/watch` (the Tight-Range Watchlist) writes `(base 12d · from TIGHTENING)` and the same split in the
+TRIGGERED group header; `/setup TICKER` writes `TRIGGERED · from TIGHTENING — base …` and keeps the path through the run-collapsing (`TRIGGERED (from TIGHTENING)`);
+the Friday watchlist lists TRIGGERED names with the path (above). A HELD TRIGGERED row (yesterday's TRIGGERED kept over a
+lower raw read) and any legacy row carry no path — nothing licensed them today — so the header split counts them as `N held` and its parts always add up to the number
+beside it (`TRIGGERED (3) 1 from COILED · 1 from TIGHTENING · 1 held`).
+
+**The close level in the TRIGGERED line.** The gate tests the close against the base's highest CLOSE (`base_high_close`), which is not the stored `base_high` (its highest
+HIGH). The line used to print `close $X above $base_high` — false on about a third of reads (52 of the 143 reads under #146 close at or under `base_high`, 16 of the 42 shipped
+ones; HTFL 2026-10-05 closed 52.21 against a base high of 52.22). It now names the level the gate used, parsed from the row's own `reason` (`close_52.21>base_high_close_51.90`):
+`close $52.21 over the base's highest close $51.90` (`flag_detector.triggered_close_phrase`; a row with no readable reason prints `close $52.21 · base high $52.22` with no
+comparative). The parser is pinned against the detector's real output in `tests/test_146_unpark_triggered_licence.py`. Display only: nothing gates on the label or the line.
 
 ## Bucket the TRIGGERED reads (#146, 2026-10-11) — how to split performance by the path that licensed the breakout
 
@@ -212,11 +225,15 @@ all had a COILED parent; the other 24 had no TRIGGERED EOD read under the shippe
 1 COILED). The two populations differ — an EOD TRIGGERED read need not have an intraday break and an intraday break need not close TRIGGERED — so join on the
 break date (below), never assume they line up.
 
+**Era rule for Q0 and Q2: `scan_date >= DATE '2026-06-27'` (the sourced HTF rebuild, change log 2026-06-27).** Stored raw TRIGGERED rows from before it were read by
+the RETIRED 50%/60-session pole rule (25 of the 30 rows on the day-one prod read: 05-06 → 06-19); the detection page excludes that era for the same reason, so a
+per-path comparison that mixes eras compares two different detectors. The backfill still stamps them `'coiled'` (that WAS the only licence), the SELECTs below leave them out.
+
 **Q0 — how many raw reads came from each path** (`mi_flag_candidates` alone):
 ```sql
 SELECT triggered_from AS bucket, count(*) AS reads, min(scan_date) AS first_seen, max(scan_date) AS last_seen
 FROM mi_flag_candidates
-WHERE stage = 'TRIGGERED' AND held_from_stage IS NULL
+WHERE stage = 'TRIGGERED' AND held_from_stage IS NULL AND scan_date >= DATE '2026-06-27'
 GROUP BY triggered_from ORDER BY 1;
 ```
 **Q1 — the ONE SELECT that splits the recorded breakout performance (shadow R) by path.** Joins each intraday break to the SAME evening's EOD row on the
@@ -244,13 +261,14 @@ CROSS JOIN LATERAL (SELECT count(*) AS n, min(x.close) AS min_close
                     FROM (SELECT d.close FROM mi_daily_closes d
                           WHERE d.ticker = c.ticker AND d.trade_date > c.scan_date
                           ORDER BY d.trade_date LIMIT 10) x) f
-WHERE c.stage = 'TRIGGERED' AND c.held_from_stage IS NULL
+WHERE c.stage = 'TRIGGERED' AND c.held_from_stage IS NULL AND c.scan_date >= DATE '2026-06-27'
 GROUP BY c.triggered_from ORDER BY 1;
 ```
-**Day-one baseline** (dry-run on prod 2026-10-11 with the column simulated as the backfill will write it — `scripts/probes/_146_unpark/q8_ssot_selects_dryrun.out` runs Q0–Q2 exactly as written above; `q5` / `q7` are the earlier drafts):
-Q0 30 raw reads, all `coiled`, 2026-05-06 → 09-14. Q1 `coiled`/COILED parent 3 breaks (3 settled, 2 capture, median +3.0R); `no EOD TRIGGERED read`: TIGHTENING parent 20
-(10 settled, 0 capture, median −0.69R), TRIGGERED parent 3 (2 settled, median −1.0R), COILED parent 1 (none settled). Q2 `coiled` 30 reads, 4 of 30 (13%) closed under the base low within 10
-sessions (the page: 6 of 42, 14%). **Counts, not findings** — n is far too small to rank the paths; the buckets exist so the comparison can be read when it is.
+**Day-one baseline** (dry-run on prod 2026-10-11 with the column simulated as the backfill will write it — `scripts/probes/_146_unpark/q8_ssot_selects_dryrun.out` runs Q0–Q2 exactly as written above, era rule included; `q9_era_split_dryrun.out` splits the 30 stored raw reads by rule era):
+the stored table holds **30 raw TRIGGERED reads, 25 of them from the retired pre-06-27 rule (05-06 → 06-19) and 5 from the sourced rule (06-30 → 09-14)**; the backfill labels all 30 `coiled`, Q0 and Q2 read the 5.
+Q0 5 raw reads, all `coiled`, 2026-06-30 → 09-14. Q1 `coiled`/COILED parent 3 breaks (3 settled, 2 capture, median +3.0R); `no EOD TRIGGERED read`: TIGHTENING parent 20
+(10 settled, 0 capture, median −0.69R), TRIGGERED parent 3 (2 settled, median −1.0R), COILED parent 1 (none settled). Q2 `coiled` 5 reads, 1 of 5 closed under the base low within 10
+sessions (the retired era alone: 3 of 25; the page, over 444 sessions: 6 of 42, 14%). **Counts, not findings** — n is far too small to rank the paths; the buckets exist so the comparison can be read when it is.
 
 ## Known limitations / open questions (CHANGE_PROCESS rule 7 — the canonical surface)
 
@@ -380,7 +398,7 @@ the harness then set the reopen condition (0031 structural stops) — a returns 
 on 2026-10-11 (verbatim in the change log) and the rule shipped on that branch.** Still open after it: (a) the breakout day's OWN
 tightness is not a licence (page §9: 24 of the 355 from-WATCH breakouts read TIGHTENING the same day) — that half of #146 was not
 asked for and is not added; (b) the page's population is wider than the live board (about 1 extra breakout per 4–5 sessions across
-all 2,397 names, 5 of the 10 extras in the 60-session scope window on the live board); (c) the Friday watchlist shows no TRIGGERED row, so it carries no label.
+all 2,397 names, 5 of the 10 extras in the 60-session scope window on the live board); (c) (closed by the review, same day) the Friday watchlist now lists TRIGGERED names with their path.
 
 ## Change log
 - **2026-10-11 — #146 UNPARKED: a breakout reads TRIGGERED from a TIGHTENING-or-better label without first reaching COILED, and every raw TRIGGERED row now says which
@@ -400,9 +418,10 @@ all 2,397 names, 5 of the 10 extras in the 60-session scope window on the live b
   (2) The bucket: `coiled` (COILED today or a COILED label in the window — the shipped path), else `tightening`, else `retrigger`; written to the NEW column
   `mi_flag_candidates.triggered_from` on a raw TRIGGERED read only (NULL on a hold — nothing licensed it today — and on a row the M&A / deal-pin layer demotes to
   `unqualified`). Schema: declared in CREATE TABLE and an idempotent ALTER; one guarded step adds the column on an existing table AND labels the already-stored raw
-  TRIGGERED rows `coiled` (all licensed by the shipped path), exactly once. (3) Display: the 17:25 digest, `/flags` and `/flags TICKER` name the path ("Surfacing" above).
+  TRIGGERED rows `coiled` (all licensed by the shipped path), exactly once. (3) Display: the 17:25 digest, `/flags`, `/flags TICKER`, `/watch`, `/setup TICKER` and the Friday watchlist name the path ("Surfacing" and the Friday section above).
   (4) Tracking: "Bucket the TRIGGERED reads" above — three SELECTs and how `parent_stage` relates. **Not changed**: the 1.5× volume leg, the close-over-the-base's-highest-close
-  leg, pole / depth / floors, the hysteresis, the universe, the intraday scans, the Friday watchlist's composition.
+  leg, pole / depth / floors, the hysteresis, the universe, the intraday scans. **Changed beyond the rule, display only (review, same day)**: the Friday watchlist now also LISTS TRIGGERED names (see its section) —
+  without that, #146 took breaking-out names off the list on the night they broke out.
   **Evidence** (n stated; "no harm seen", NOT "proven good" — the page's own wording): over 444 sessions the rule turns 42 TRIGGERED reads into 143 — +101 reads on 82 flags
   and 72 names the shipped rule never registered; the added breakouts closed under the base low within 10 sessions as rarely as the shipped ones (14% of 99 vs 14% of 42);
   the "held at +10" column separates nothing (55% vs 57%; breakouts with no tightening label at all hold 53%, n = 351). Breakouts from WATCH fail under the base low 21% (n = 157,
@@ -422,12 +441,17 @@ all 2,397 names, 5 of the 10 extras in the 60-session scope window on the live b
   His ruling gives a different reason (separate the paths so returns can be read per path later) and the stamp is what makes that read possible. **To revert: set
   `_TRIGGER_LICENCE = (("COILED", "coiled"),)` in `flag_detector.py` — one line, restores the shipped rule bit for bit (tested), keeps the stamp, and the same-day COILED half is
   never behind it. Already-stored `tightening` / `retrigger` rows stay and keep their labels.**
+  **Review fixes (same day, branch `wk1011/146-unpark-fix`; display + checks only — `_TRIGGER_LICENCE`, every threshold and the stamp are untouched)**: (1) BLOCKING — the Friday watchlist now lists TRIGGERED names (they were
+  leaving the list the night they broke out; "Friday watchlist" section above); (2) the TRIGGERED line no longer says `close $X above $base_high` — it names the base's highest close, the level the gate tests ("The close level"
+  above); (3) `verify_live.sql` statement 4 is now a bucket-vs-parent check over both tracking tables, plus `verify_deploy.sh` for the running image — the old statement 4 could not read differently on a broken gate;
+  (4) the day-one baseline is split by rule era (5 post-rebuild reads, 25 retired-rule); (5) `/watch`, `/setup TICKER` and the header's `N held` carry the path / the holds.
   **Status**: shipped on the branch, awaiting deploy and field validation.
   **Known limitations**: (a) the breakout day's OWN tightness is not a licence — page §9, the same-day TIGHTENING half (24 of the 355 from-WATCH breakouts) is NOT added; (b) it reads
   STORED labels, so a name absent from the universe on the days before its breakout has an emptier window live than on the page (HELP 08-04: on the board, no stored TIGHTENING-or-better row
   in the prior 5 days); (c) stored labels before 10-11 are the old re-arming-hold kind — the licence window reads what was stored; (d) the page's population is wider than the board (about 1 extra
   per 4–5 sessions across all names; roughly 1 per 12 on the live board); (e) NOTHING here measures returns — a TRIGGERED label is a state on a board, not a setup (CLAUDE.md SETUP vs FAMILY);
-  (f) the Friday watchlist prints no TRIGGERED row (fork, "Surfacing").
+  (f) the Friday watchlist lists at most 3 TRIGGERED names (a night with more drops the rest), and it reads the LATEST scan only — a Monday-to-Thursday breakout that is no longer TRIGGERED
+  by Friday's scan is not on that Friday's list (it never was; the digest and `/flags` carry it on the night).
   **EXPECT** (baseline above; read from the first scan after deploy, `d0`; `scripts/probes/_146_unpark/verify_live.sql -v d0=<date>`): (i) **every** raw TRIGGERED row from `d0` carries a non-NULL
   `triggered_from` and no hold, no `INVALIDATED` and no `unqualified` row does (statement 1) — checkable on the very first TRIGGERED night through ANY path; (ii) within the first 20 scan
   sessions at least one `tightening` or `retrigger` row appears, and statement 2 (each raw read judged against its OWN stored 5-day window) prints `ok` for it — expected 2 to 5 at the
@@ -436,18 +460,27 @@ all 2,397 names, 5 of the 10 extras in the 60-session scope window on the live b
   stored TRIGGERED rows keep a name in the universe carry for 25 sessions (#697 item 2) and in the intraday watchlist (`TIGHTENING / COILED / TRIGGERED` parents), so a few shadow rows move from
   parent TIGHTENING to parent TRIGGERED in the `/flags` footer split; (b) the 17:25 digest is sent on more nights (a TRIGGERED section alone un-suppresses it); (c) the BREAKOUT CONVERGENCE tag on EP
   alerts (`db.check_sugar_baby_convergence`, display + audit row) reads a stored TRIGGERED row within 5 days — more `breakout` tags; (d) the deprecated `flag_continuation` outcome adapter counts more
-  `closed` rows (no R, strategy disabled); (e) the monthly #92 graduation evidence's TRIGGERED cohort is now a mix of paths — split it by `triggered_from` before reading it.
+  `closed` rows (no R, strategy disabled); (e) the monthly #92 graduation evidence's TRIGGERED cohort is now a mix of paths — split it by `triggered_from` before reading it;
+  (f) **the Friday watchlist**: a TIGHTENING name that breaks out on a Friday now stays listed, as `TRIGGERED · from TIGHTENING` (CDNA 07-31 class) instead of leaving the list — `mi_weekly_watchlists` rows carry
+  `sources ? 'FLAG'` for it with a reason that starts `TRIGGERED`; the flag section can now hold up to 11 names (3 + 5 + 3) and displace more of the lowest-priority ambient RS rows when the 25-ticker cap binds;
+  (g) **#354 failure telemetry starts on the new-path flags**: `failed_at` / `low_after_breakout` / `undercut_after_breakout` are anchored on `breakout_close` (`db.get_flag_failure_carry`), so a flag that
+  reads TRIGGERED through a TIGHTENING label now begins accumulating them — telemetry only, nothing gates on it; (h) `/watch`, `/setup TICKER` and the digest/`/flags` header carry the path and the `N held` count.
   **WOULD-FAIL-IF** (positive; every one prints from `verify_live.sql`): statement 2 prints any `VIOLATION` — a raw TRIGGERED read with a NULL stamp; a `tightening` row with a COILED label in its own
   window (precedence wrong) or with no TIGHTENING label (the gate widened to WATCH / INVALIDATED); a `retrigger` row with a COILED or TIGHTENING label in its window or none TRIGGERED; a stamped hold; a stamp on a
-  non-TRIGGERED row; or statement 4's `parent_stage_mismatches` > 0. A zero-row day is NOT a pass (statement 1 can be empty) — the proof is a row judged `ok` against its own window. Statement 2 CANNOT discriminate a `coiled` row whose window holds no COILED label (it prints `ok (COILED the same day)` whatever the stamp): for the shipped path the proof is the offline replay's 4-of-4 control plus the code path, and the live check bites on the `tightening` / `retrigger` rows.
-  **DONE-WHEN**: (i) the first raw TRIGGERED row after `d0` is stamped and `ok`, AND (ii) the first non-`coiled` row is `ok` with its window cited in the close note, AND (iii) statement 4 reads 0
-  mismatches on the days the shadow wrote a row. If no `tightening` / `retrigger` row exists by scan session 20 (**2026-11-06** if `d0` = 2026-10-12), tell the operator the rule was never exercised by live data —
-  do not close on silence.
+  non-TRIGGERED row; or statement 4 / 4b prints a `VIOLATION` — in `mi_flag_breaks` or `mi_htf_breakout_shadow`, a COILED parent whose break-date raw TRIGGERED row is stamped anything but `coiled`, a TIGHTENING
+  parent stamped `retrigger`, or a `parent_stage` that no longer equals the candidate row it points at; **or `verify_deploy.sh` prints FAIL** (the running image does not carry `_TRIGGER_LICENCE` with 3 entries — a stale image writes the
+  old rule's unstamped rows and every SQL check then reads as a quiet day). A zero-row day is NOT a pass (statement 1 can be empty) — the proof is a row judged `ok` against its own window. **The checks were shown to be able to fail**:
+  the same SQL on prod with the stamp deliberately wrong (`retrigger` on every raw TRIGGERED row) prints 30 statement-2 and 16 statement-4 `VIOLATION`s (`verify_live_dryrun_wrongstamp.out`), and `verify_deploy.sh` FAILs on the pre-change code
+  (`verify_deploy_selftest_stale.out`) and PASSes on this branch (`verify_deploy_selftest.out`). Statement 4's n is small (a break needs a raw TRIGGERED EOD read the same evening: 15 of 178 `mi_flag_breaks` rows and 3 of 27 shadow rows on the day-one read). Statement 2 CANNOT discriminate a `coiled` row whose window holds no COILED label (it prints `ok (COILED the same day)` whatever the stamp): for the shipped path the proof is the offline replay's 4-of-4 control plus the code path, and the live check bites on the `tightening` / `retrigger` rows.
+  **DONE-WHEN**: (i) the first raw TRIGGERED row after `d0` is stamped and `ok`, AND (ii) the first non-`coiled` row is `ok` with its window cited in the close note, AND (iii) `verify_deploy.sh` PASSed right after the deploy AND statement 4b reads `violations = 0` with `judged_ok >= 1` summed over the two tables (a check that judges nothing is a blank, not a pass; the day-one
+  read judged 18 breaks in about 100 scan sessions, so a handful are expected in 20). If no `tightening` / `retrigger` row exists by scan session 20 (**2026-11-06** if `d0` = 2026-10-12), tell the operator the rule was never exercised by live data —
+  do not close on silence; the same applies to (iii) if no break has had a same-evening raw TRIGGERED read by then.
   **Deploy scope** (derive: `scripts/exec_loaded_modules.txt` lines 10 and 46): `db.py` and `agent.py` are execution-loaded, `flag_detector.py` is market-agent only. The flag scan is INTELLIGENCE-owned
   (`flag_continuation_scan`), so `bash scripts/deploy.sh market-agent` carries the behaviour and `bash scripts/deploy.sh execution` is drift hygiene so the running execution container's `db.py` / `agent.py`
   match the repo — **sequentially: market-agent first, execution after it has booted** (the new column and its one-time label are added by whichever container runs `initialize_schema` first;
-  guarded, idempotent, and if two ever boot together the loser's whole block rolls back on `duplicate_column`, so the label is still written exactly once). No orchestrator change. Weekends are unrestricted. Read the delta
-  first (a deploy ships the BRANCH): diff the running image against `origin/main` before deploying.
+  guarded, idempotent, and if two ever boot together the loser's whole block rolls back on `duplicate_column`, so the label is still written exactly once). No orchestrator change (the Friday job is INTELLIGENCE-owned, `friday_watchlist` — market-agent). Weekends are unrestricted. Read the delta
+  first (a deploy ships the BRANCH): diff the running image against `origin/main` before deploying. **Right after the market-agent deploy and BEFORE `verify_live.sql`: `bash scripts/probes/_146_unpark/verify_deploy.sh`**
+  (`docker exec apollo-market python -c 'from agents.market_intelligence import flag_detector as f; print(len(f._TRIGGER_LICENCE))'` must print 3; the script asserts the whole tuple and exits 1 on a stale image).
 - **2026-10-11 — #697 item 6: corpus mechanics — TEST FIXTURE ONLY, no detector, threshold or surfacing change.**
   `tests/fixtures/htf_labelled.py` gains `label_kind` (htf / consolidation / pointer / negative) and the suite asserts by
   kind (known limitation 6). Added GH 06-27 and HNGE 06-27 as CONSOLIDATION members and HPE 06-02 as a POINTER, from his own

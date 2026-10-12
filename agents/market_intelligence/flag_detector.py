@@ -30,6 +30,7 @@ import json
 import logging
 import math
 import os
+import re
 from datetime import date, datetime, time as _dt_time
 from statistics import median as _median_stat
 from typing import Any, Optional
@@ -1995,32 +1996,64 @@ def triggered_from_label(r: dict) -> str:
 
 
 def triggered_bucket_summary(rows: list[dict]) -> str:
-    """PURE. `1 from COILED · 2 from TIGHTENING · 1 re-trigger` - how many TRIGGERED rows each path licensed, in
-    `TRIGGERED_FROM_BUCKETS` order, empty buckets and unstamped rows omitted; "" when no row carries a stamp.
-    The line that answers "we got more breakouts - where do they come from" without a query (#146)."""
+    """PURE. `1 from COILED · 2 from TIGHTENING · 1 re-trigger · 1 held` - how many TRIGGERED rows each path licensed, in
+    `TRIGGERED_FROM_BUCKETS` order, then how many are HELD over from yesterday (a hold carries no stamp: nothing licensed
+    it today, so without this count the header's parts would not add up to the N beside it). Empty buckets are omitted;
+    "" when no row carries a stamp or a hold. The line that answers "we got more breakouts - where do they come from"
+    without a query (#146)."""
     counts = {b: 0 for b in TRIGGERED_FROM_BUCKETS}
+    held = 0
     for r in rows:
         b = r.get("triggered_from")
         if b in counts:
             counts[b] += 1
-    return " · ".join(f"{n} {_TRIGGERED_FROM_LABELS[b]}" for b, n in counts.items() if n)
+        elif r.get("held_from_stage"):
+            held += 1
+    parts = [f"{n} {_TRIGGERED_FROM_LABELS[b]}" for b, n in counts.items() if n]
+    if held:
+        parts.append(f"{held} held")
+    return " · ".join(parts)
+
+
+# `compute_flag_metrics` writes the TRIGGERED row's reason as `close_52.21>base_high_close_51.90 vol_1.96x`: the second
+# number is the level the gate TESTED (the base's highest CLOSE), which is not `base_high` (the highest HIGH) and is not
+# stored in a column of its own. tests/test_146_unpark_* feeds the REAL detector output through this parser, so a change to
+# the reason format fails a test instead of silently dropping the figure from the line.
+_BASE_HIGH_CLOSE_RE = re.compile(r"base_high_close_(\d+(?:\.\d+)?)")
+
+
+def triggered_close_phrase(r: dict) -> str:
+    """PURE. How a TRIGGERED line states the breakout, worded against the level the gate actually tests - or "" when the
+    row has no breakout close. The gate is `close > base_high_close` (the base's highest CLOSE); the old line said
+    `close $X above $base_high` (the highest HIGH), which is false on about a third of reads (52 of 143 under #146, 16 of
+    42 before it: the close cleared the base's best close but not its best high - HTFL 2026-10-05, close 52.21 against
+    base high 52.22). Parsed from the row's `reason`; when that is missing or unreadable (a legacy row) it states the
+    two numbers with no comparative, so it can never claim an ordering the gate did not test."""
+    close = r.get("breakout_close")
+    if close is None:
+        return ""
+    m = _BASE_HIGH_CLOSE_RE.search(r.get("reason") or "")
+    if m:
+        return f"close ${float(close):.2f} over the base's highest close ${float(m.group(1)):.2f}"
+    bh = r.get("base_high")
+    if bh is None:
+        return f"close ${float(close):.2f}"
+    return f"close ${float(close):.2f} · base high ${float(bh):.2f}"
 
 
 def _fmt_triggered(r: dict) -> str:
     runup = r.get("runup_pct")
     age = r.get("base_age")
     bvr = r.get("breakout_volume_ratio")
-    close = r.get("breakout_close")
-    bh = r.get("base_high")
     lab = triggered_from_label(r)
     lead = f"{tf.esc(lab)} · " if lab else ""
     head = (
         f"  • {tf.code(r['ticker'])} — {lead}base {tf.esc(age)}d · run-up {tf.esc(_fmt_pct(runup, 0, sign=True))} · "
         f"volume {tf.esc(_fmt_ratio(bvr))}×"
     )
-    if close is not None and bh is not None:
-        return f"{head} · close ${close:.2f} above ${bh:.2f}"
-    return head
+    # Worded against the level the gate tests (the base's highest CLOSE) - see `triggered_close_phrase`.
+    phrase = triggered_close_phrase(r)
+    return f"{head} · {tf.esc(phrase)}" if phrase else head
 
 
 # ────────────────────────────────────────────────────────────────────────
@@ -4029,7 +4062,7 @@ async def get_flag_watchlist(scan_date=None):
         candidates = await conn.fetch("""
             SELECT ticker, stage, base_age, base_high, base_low,
                    sma_10, sma_20, runup_pct, range_contraction_ratio,
-                   vol_contraction_ratio
+                   vol_contraction_ratio, triggered_from, held_from_stage
             FROM mi_flag_candidates
             WHERE scan_date = $1
               AND stage IN ('TIGHTENING', 'COILED', 'TRIGGERED')
@@ -4089,6 +4122,9 @@ async def get_flag_watchlist(scan_date=None):
             "current_price": float(current_price),
             "annotations": annotations,
             "scan_date": scan_date,
+            # #146 (2026-10-11): which path licensed a TRIGGERED row - display only (`/watch`)
+            "triggered_from": cand["triggered_from"],
+            "held_from_stage": cand["held_from_stage"],
         })
 
     return watchlist

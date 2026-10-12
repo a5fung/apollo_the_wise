@@ -152,7 +152,29 @@ IOVA	2026-09-14	coiled	{COILED,COILED,COILED}	ok
 bucket	reads	first_seen	last_seen
 coiled	30	2026-05-06	2026-09-14
 (1 row)
-== 4. the breakout tracking tables still agree with the candidate rows they point at (mismatches must be 0)
-shadow_rows_since_d0	parent_stage_matches	parent_stage_mismatches
-27	27	0
-(1 row)
+== 4. PROOF: the stamp agrees with parent_stage in BOTH breakout tracking tables (a failing row says so in the verdict column; none may)
+tbl	id	ticker	break_date	parent_stage	parent_scan_date	bucket	verdict
+mi_flag_breaks	20	CLFD	2026-05-26	COILED	2026-05-25	coiled	ok
+mi_flag_breaks	18	MU	2026-05-26	COILED	2026-05-25	coiled	ok
+mi_flag_breaks	75	BLZE	2026-05-29	COILED	2026-05-28	coiled	ok
+mi_flag_breaks	74	HNGE	2026-05-29	TIGHTENING	2026-05-28	coiled	ok
+mi_flag_breaks	84	CMP	2026-06-01	COILED	2026-05-29	coiled	ok
+mi_flag_breaks	81	HUM	2026-06-01	COILED	2026-05-29	coiled	ok
+mi_flag_breaks	87	INOD	2026-06-01	TRIGGERED	2026-05-29	coiled	ok
+mi_flag_breaks	83	SPT	2026-06-01	TRIGGERED	2026-05-29	coiled	ok
+mi_flag_breaks	104	WLDN	2026-06-03	COILED	2026-06-02	coiled	ok
+mi_flag_breaks	119	GO	2026-06-10	COILED	2026-06-09	coiled	ok
+mi_flag_breaks	134	RLAY	2026-06-18	COILED	2026-06-17	coiled	ok
+mi_flag_breaks	135	VSH	2026-06-18	COILED	2026-06-17	coiled	ok
+mi_flag_breaks	175	CHYM	2026-08-19	COILED	2026-08-18	coiled	ok
+mi_flag_breaks	181	XHLD	2026-09-09	COILED	2026-09-08	coiled	ok
+mi_flag_breaks	182	IOVA	2026-09-14	COILED	2026-09-11	coiled	ok
+mi_htf_breakout_shadow	10	CHYM	2026-08-19	COILED	2026-08-18	coiled	ok
+mi_htf_breakout_shadow	16	XHLD	2026-09-09	COILED	2026-09-08	coiled	ok
+mi_htf_breakout_shadow	17	IOVA	2026-09-14	COILED	2026-09-11	coiled	ok
+(18 rows)
+== 4b. the same, counted per table (EXPECT violations = 0 and judged_ok >= 1 across the two: a check that judges nothing is a blank, not a pass)
+tbl	breaks_since_d0	judged_ok	violations	not_judged
+mi_flag_breaks	178	15	0	163
+mi_htf_breakout_shadow	27	3	0	24
+(2 rows)

@@ -105,7 +105,7 @@ Stages depend on:
 - `range_contraction_ratio` (recent 5-bar range vs base average)
 - `vol_contraction_ratio` (recent 5-bar volume vs ADV20 or recent base avg, whichever is lower per fresh-tightening hybrid)
 - `last_body_pct` and `prev_body_pct` (small bodies = tight days)
-- `breakout_close > base_high` (TRIGGERED) — **licensed since 2026-10-11 (#146)**: close over the base's highest close on >= 1.5x the base's recent volume, AND COILED today, or a COILED / TIGHTENING / TRIGGERED stored label in the last 5 calendar days (held labels count). Before it, only COILED licensed. `mi_flag_candidates.triggered_from` records the path (`coiled` / `tightening` / `retrigger`). Rule + owner: `htf.md` ("TRIGGERED licence", "Bucket the TRIGGERED reads")
+- `close > base_high_close` (TRIGGERED; `base_high_close` = the base's highest CLOSE, which is not the stored `base_high`, its highest HIGH — about a third of reads close under `base_high`, so the board words the line against the close level) — **licensed since 2026-10-11 (#146)**: close over the base's highest close on >= 1.5x the base's recent volume, AND COILED today, or a COILED / TIGHTENING / TRIGGERED stored label in the last 5 calendar days (held labels count). Before it, only COILED licensed. `mi_flag_candidates.triggered_from` records the path (`coiled` / `tightening` / `retrigger`). Rule + owner: `htf.md` ("TRIGGERED licence", "Bucket the TRIGGERED reads")
 - `close < pivot_low` (INVALIDATED)
 
 ### Hysteresis

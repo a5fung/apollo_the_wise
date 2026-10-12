@@ -430,3 +430,276 @@ async def test_the_ticker_history_names_the_path_and_never_on_a_hold(monkeypatch
     lines = {ln.split()[0]: ln for ln in res.result.splitlines() if ln.strip().startswith("2026-")}
     assert "from TIGHTENING" in lines["2026-10-08"]
     assert "(held from WATCH)" in lines["2026-10-09"] and "from TIGHTENING" not in lines["2026-10-09"]
+
+
+# -- 8. review fixes (2026-10-11): the held count, the close wording, and every surface that shows the stage ------------
+
+def test_the_bucket_summary_counts_held_rows_so_the_parts_add_up_to_the_header_number():
+    rows = [{"triggered_from": "tightening"}, {"triggered_from": None, "held_from_stage": "WATCH"},
+            {"triggered_from": "coiled"}]
+    assert fd.triggered_bucket_summary(rows) == "1 from COILED · 1 from TIGHTENING · 1 held"
+    assert fd.triggered_bucket_summary([{"triggered_from": None, "held_from_stage": "COILED"}]) == "1 held"
+    # a legacy row (no stamp, no hold) stays silent, a stamped row is never ALSO counted as held
+    assert fd.triggered_bucket_summary([{"triggered_from": None, "held_from_stage": None}]) == ""
+    assert fd.triggered_bucket_summary([{"triggered_from": "retrigger", "held_from_stage": "X"}]) == "1 re-trigger"
+
+
+def test_the_digest_header_says_how_many_triggered_rows_are_holds():
+    from datetime import date
+    held = dict(_trig("HLD", None), held_from_stage="WATCH", breakout_close=None, breakout_volume_ratio=None)
+    text = fd.build_flag_digest(_board(_trig("AAA", "tightening"), held), date(2026, 10, 12), [])
+    assert "TRIGGERED (2)" in text and "1 from TIGHTENING · 1 held" in text
+
+
+# The close wording. HTFL 2026-10-05 is one of this change's first live gains: close 52.21 cleared the base's highest
+# CLOSE (51.90) and not its highest HIGH (52.22). The old line printed "close $52.21 above $52.22" - false.
+def _htfl():
+    return dict(_trig("HTFL", "tightening"), breakout_close=52.21, base_high=52.22, breakout_volume_ratio=1.96,
+                reason="close_52.21>base_high_close_51.90 vol_1.96x")
+
+
+def test_the_close_phrase_names_the_level_the_gate_tested_not_the_base_high():
+    phrase = fd.triggered_close_phrase(_htfl())
+    assert phrase == "close $52.21 over the base's highest close $51.90"
+    assert "52.22" not in phrase and "above" not in phrase and ">" not in phrase
+
+
+def test_the_close_phrase_reads_the_real_detector_output_not_a_hand_written_reason():
+    """The parser is pinned against `compute_flag_metrics`' own `reason`, so a change to that format fails HERE."""
+    out = _score(["TIGHTENING"])
+    assert out["reason"].startswith("close_19.08>base_high_close_18.00 ")
+    assert fd.triggered_close_phrase(out) == "close $19.08 over the base's highest close $18.00"
+
+
+def test_the_close_phrase_without_a_readable_reason_states_two_numbers_and_no_comparative():
+    for reason in (None, "", "x", "close_52.21>base_high_52.22"):                      # legacy / unreadable
+        phrase = fd.triggered_close_phrase(dict(_htfl(), reason=reason))
+        assert phrase == "close $52.21 · base high $52.22", reason
+    assert fd.triggered_close_phrase(dict(_htfl(), reason=None, base_high=None)) == "close $52.21"
+    assert fd.triggered_close_phrase({"breakout_close": None, "reason": "close_1.00>base_high_close_0.50 vol_2x"}) == ""
+
+
+def test_the_digest_line_uses_that_wording_for_a_close_under_the_base_high():
+    from datetime import date
+    text = fd.build_flag_digest(_board(_htfl()), date(2026, 10, 12), [])
+    assert "close $52.21 over the base's highest close $51.90" in text
+    assert "$52.22" not in text and "above $" not in text
+
+
+@pytest.mark.asyncio
+async def test_the_flags_board_line_does_not_claim_close_greater_than_the_base_high(monkeypatch):
+    agent, Req = _agent_board(monkeypatch, [dict(_htfl(), runup_pct=1.3)])
+    text = (await agent._handle_flag_query(Req(task="/flags", user_id=1, conversation_id="t"))).result
+    assert "`HTFL` — from TIGHTENING" in text
+    assert "close $52.21 over the base's highest close $51.90" in text
+    assert "> $52.22" not in text and "$52.22" not in text
+
+
+@pytest.mark.asyncio
+async def test_the_flags_board_header_counts_holds(monkeypatch):
+    held = dict(_trig("HLD", None), held_from_stage="WATCH", breakout_close=None, breakout_volume_ratio=None,
+                runup_pct=1.0)
+    agent, Req = _agent_board(monkeypatch, [dict(_trig("AAA", "tightening"), runup_pct=1.3), held])
+    text = (await agent._handle_flag_query(Req(task="/flags", user_id=1, conversation_id="t"))).result
+    assert "TRIGGERED (2)* _1 from TIGHTENING · 1 held_" in text
+
+
+# /watch (the Tight-Range Watchlist, grouped by stage)
+@pytest.mark.asyncio
+async def test_the_watch_roster_names_the_path_on_each_triggered_row_and_in_the_group_header(monkeypatch):
+    from agents.market_intelligence.agent import MarketIntelligenceAgent
+    from shared.models import AgentRequest
+
+    def _w(t, stage, via=None, held=None):
+        return {"ticker": t, "stage": stage, "base_age": 9, "base_high": 50.0, "base_low": 45.0,
+                "current_price": 51.0, "annotations": [], "scan_date": "2026-10-09",
+                "triggered_from": via, "held_from_stage": held}
+
+    roster = [_w("AAA", "TRIGGERED", "tightening"), _w("BBB", "TRIGGERED", "coiled"),
+              _w("HLD", "TRIGGERED", None, "WATCH"), _w("CCC", "COILED"), _w("DDD", "TIGHTENING")]
+    monkeypatch.setattr(fd, "get_flag_watchlist", AsyncMock(return_value=roster))
+    res = await MarketIntelligenceAgent()._handle_watchlist_query(
+        AgentRequest(task="/watch", user_id=1, conversation_id="t"))
+    text = res.result
+    assert "`AAA  ` $51.00 (base 9d · from TIGHTENING)" in text
+    assert "`BBB  ` $51.00 (base 9d · from COILED)" in text
+    assert "`HLD  ` $51.00 (base 9d)" in text                                   # a hold carries no path
+    assert "TRIGGERED (3)* _1 from COILED · 1 from TIGHTENING · 1 held_" in text
+    assert "`CCC  ` $51.00 (base 9d)" in text and "`DDD  ` $51.00 (base 9d)" in text   # other stages unchanged
+    assert "|" not in text
+
+
+@pytest.mark.asyncio
+async def test_the_watch_query_selects_the_stamp_and_returns_it(monkeypatch):
+    from agents.market_intelligence import collector
+    pool, conn = make_mock_pool()
+    cand = {"ticker": "AAA", "stage": "TRIGGERED", "base_age": 9, "base_high": 50.0, "base_low": 45.0,
+            "sma_10": 49.0, "sma_20": 48.0, "runup_pct": 1.3, "range_contraction_ratio": 0.5,
+            "vol_contraction_ratio": 0.4, "triggered_from": "tightening", "held_from_stage": None}
+    conn.fetchval = AsyncMock(return_value="2026-10-09")
+    conn.fetch = AsyncMock(side_effect=[[cand], []])
+    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(collector, "get_snapshot_all", AsyncMock(return_value={"AAA": {"day": {"c": 51.0}}}))
+    monkeypatch.setattr(fd, "compute_entry_technique_annotations", lambda *a, **k: [])
+    (row,) = await fd.get_flag_watchlist()
+    assert "triggered_from" in conn.fetch.call_args_list[0].args[0]
+    assert (row["triggered_from"], row["held_from_stage"]) == ("tightening", None)
+
+
+# /setup TICKER (the multi-day timeline) and its run-collapsing
+def _timeline_pool(monkeypatch, flag_rows):
+    pool, conn = make_mock_pool()
+
+    async def _fetch(sql, *a, **kw):
+        return flag_rows if "FROM mi_flag_candidates" in sql else []
+
+    conn.fetch = AsyncMock(side_effect=_fetch)
+    conn.fetchrow = AsyncMock(return_value=None)
+    monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
+    return conn
+
+
+def _flag_hist(d, stage, via=None, held=None, *, bvr=None, close=None):
+    from datetime import date
+    return {"scan_date": date(2026, 10, d), "stage": stage, "base_age": 9, "range_contraction_ratio": 0.5,
+            "vol_contraction_ratio": 0.4, "breakout_volume_ratio": bvr, "breakout_close": close,
+            "base_high": 50.0, "held_from_stage": held, "triggered_from": via}
+
+
+@pytest.mark.asyncio
+async def test_the_setup_timeline_names_the_path_on_a_raw_triggered_day_only(monkeypatch):
+    conn = _timeline_pool(monkeypatch, [
+        _flag_hist(9, "TRIGGERED", None, "WATCH"),                                  # a hold: nothing licensed it
+        _flag_hist(8, "TRIGGERED", "tightening", bvr=2.1, close=52.0),
+        _flag_hist(7, "TRIGGERED", "coiled", bvr=2.0, close=51.0),
+    ])
+    tl = await db.get_ticker_setup_timeline("TST", 30)
+    assert "triggered_from" in next(c.args[0] for c in conn.fetch.call_args_list if "mi_flag_candidates" in c.args[0])
+    by_day = {e["date"].day: e["summary"] for e in tl["events"] if e["source"] == "FLAG"}
+    assert by_day[8].startswith("TRIGGERED · from TIGHTENING — base 9d, vol 2.10× close $52.00")
+    assert by_day[7].startswith("TRIGGERED · from COILED — base 9d")
+    assert by_day[9].startswith("TRIGGERED — base 9d") and "(held WATCH)" in by_day[9]
+
+
+def test_a_collapsed_run_keeps_the_path_that_licensed_the_breakout():
+    from datetime import date
+    from agents.market_intelligence.agent import _collapse_flag_runs
+    evs = [
+        {"date": date(2026, 10, 8), "source": "FLAG", "summary": "TRIGGERED · from TIGHTENING — base 9d, vol 2.10× close $52.00"},
+        {"date": date(2026, 10, 7), "source": "FLAG", "summary": "TIGHTENING — base 8d r0.50 v0.40"},
+        {"date": date(2026, 10, 6), "source": "FLAG", "summary": "WATCH — base 7d r0.90 v0.90"},
+    ]
+    (out,) = _collapse_flag_runs(evs)
+    assert out["summary"] == "base watched 2026-10-06→2026-10-08 (3 states: TRIGGERED (from TIGHTENING)/TIGHTENING/WATCH)"
+    # a TRIGGERED day with no path (a hold / legacy row) collapses exactly as before
+    plain = [dict(evs[0], summary="TRIGGERED — base 9d r0.50 v0.40 (held WATCH)"), evs[1]]
+    assert _collapse_flag_runs(plain)[0]["summary"].endswith("(2 states: TRIGGERED/TIGHTENING)")
+
+
+# -- 9. the Friday watchlist (BLOCKING review finding) ---------------------------------------------------------------
+# The flag section used to be `stage IN ('COILED','TIGHTENING')`. A name the shipped rule leaves at TIGHTENING reads
+# TRIGGERED on the night it breaks out under this change, so it LEFT the Friday list on exactly the night it mattered
+# (replay over 444 sessions: 25 Friday ticker-days, 8 of them in 2026 - CDNA 2026-07-31, CHPT 2026-09-18).
+
+def _fri_row(ticker, stage, *, via=None, held=None, age=12, rr=0.45, vr=0.80, runup=1.30, bvr=None, close=None,
+             reason=None):
+    return {"ticker": ticker, "stage": stage, "base_age": age, "runup_pct": runup,
+            "range_contraction_ratio": rr, "vol_contraction_ratio": vr,
+            "breakout_close": close, "base_high": 50.0, "breakout_volume_ratio": bvr, "reason": reason,
+            "fresh_tight_fires": False, "fresh_2bar_tr_pct": None, "atr14_pct": None,
+            "triggered_from": via, "held_from_stage": held}
+
+
+@pytest.fixture
+def friday(monkeypatch):
+    from datetime import date
+    from agents.market_intelligence import friday_watchlist as fw
+    pool, conn = make_mock_pool()
+    conn.fetchval = AsyncMock(return_value=date(2026, 10, 9))
+    conn.fetch = AsyncMock(return_value=[])
+    monkeypatch.setattr(fw, "get_pool", AsyncMock(return_value=pool))
+    return fw, conn
+
+
+@pytest.mark.asyncio
+async def test_a_tightening_name_that_breaks_out_stays_on_the_friday_list_labelled_with_its_path(friday):
+    fw, conn = friday
+    conn.fetch.return_value = [
+        _fri_row("CDNA", "TRIGGERED", via="tightening", bvr=2.4, close=36.19,
+                 reason="close_36.19>base_high_close_34.42 vol_2.40x"),
+        _fri_row("AAA", "COILED"), _fri_row("BBB", "TIGHTENING"),
+    ]
+    out = await fw._fetch_flag(7)
+    by_t = {r["ticker"]: r for r in out}
+    assert set(by_t) == {"CDNA", "AAA", "BBB"}, "the breakout must not leave the list"
+    assert by_t["CDNA"]["reason"].startswith("TRIGGERED · from TIGHTENING · base 12d · runup +130%")
+    assert "close $36.19 over the base's highest close $34.42" in by_t["CDNA"]["reason"]
+    assert all(r["source_tag"] == "FLAG" for r in out)                        # the section header still resolves
+    # the stage query asks for TRIGGERED and reads the stamp
+    sql = conn.fetch.await_args.args[0]
+    assert "'TRIGGERED'" in sql and "triggered_from" in sql
+
+
+@pytest.mark.asyncio
+async def test_triggered_ranks_above_coiled_and_tightening_but_below_ep_high(friday):
+    fw, conn = friday
+    conn.fetch.return_value = [_fri_row("TTT", "TIGHTENING"), _fri_row("CCC", "COILED"),
+                               _fri_row("RRR", "TRIGGERED", via="coiled", bvr=2.0, close=51.0)]
+    flag = await fw._fetch_flag(7)
+    ep = [{"ticker": "RRR", "source_tag": "EP_HIGH", "reason": "HIGH 90", "priority": fw._PRIORITY["EP_HIGH"],
+           "rank_within": 90.0}]
+    merged = fw._merge_sources([flag, ep])
+    assert next(r for r in merged if r["ticker"] == "RRR")["primary"] == "EP_HIGH"      # EP stays the primary
+    flag_only = fw._merge_sources([flag])
+    assert [r["ticker"] for r in flag_only][0] == "RRR"                                # TRIGGERED lists first
+    pri = {r["ticker"]: r["priority"] for r in flag}
+    assert fw._PRIORITY["EP_HIGH"] < pri["RRR"] < pri["CCC"] < pri["TTT"]
+
+
+@pytest.mark.asyncio
+async def test_at_most_three_triggered_names_are_listed_and_the_coiled_tightening_caps_are_unchanged(friday):
+    fw, conn = friday
+    conn.fetch.return_value = (
+        [_fri_row(f"R{i}", "TRIGGERED", via="tightening", bvr=3.0 - i, close=51.0) for i in range(4)]
+        + [_fri_row(f"C{i}", "COILED") for i in range(7)] + [_fri_row(f"T{i}", "TIGHTENING") for i in range(5)])
+    out = await fw._fetch_flag(7)
+    assert [r["ticker"] for r in out] == (
+        ["R0", "R1", "R2"] + ["C0", "C1", "C2", "C3", "C4"] + ["T0", "T1", "T2"])      # a 4th breakout is dropped
+    ranked = [r["ticker"] for r in fw._merge_sources([out])]
+    assert ranked[:3] == ["R0", "R1", "R2"]                                           # highest-volume breakout first
+
+
+@pytest.mark.asyncio
+async def test_a_held_triggered_row_is_listed_after_the_raw_ones_and_says_it_is_held(friday):
+    fw, conn = friday
+    conn.fetch.return_value = [_fri_row("RAW", "TRIGGERED", via="retrigger", bvr=1.6, close=51.0),
+                               _fri_row("HLD", "TRIGGERED", held="TIGHTENING")]
+    out = {r["ticker"]: r for r in await fw._fetch_flag(7)}
+    assert out["RAW"]["reason"].startswith("TRIGGERED · re-trigger · ")
+    assert out["HLD"]["reason"].startswith("TRIGGERED · held over from yesterday (today reads TIGHTENING) · base 12d")
+    assert "close $" not in out["HLD"]["reason"]                                       # a hold has no breakout close
+    assert out["RAW"]["rank_within"] > out["HLD"]["rank_within"]
+
+
+def test_the_friday_section_header_names_triggered():
+    from agents.market_intelligence import friday_watchlist as fw
+    assert "TRIGGERED" in fw._SECTION_HEADERS["FLAG"][1]
+
+
+@pytest.mark.asyncio
+async def test_the_friday_digest_renders_the_triggered_chip_without_a_pipe_table(friday):
+    fw, conn = friday
+    from datetime import date
+    conn.fetch.return_value = [_fri_row("CDNA", "TRIGGERED", via="tightening", bvr=2.4, close=36.19,
+                                        reason="close_36.19>base_high_close_34.42 vol_2.40x"),
+                               _fri_row("AAA", "COILED"), _fri_row("BBB", "TIGHTENING")]
+    flag = await fw._fetch_flag(7)
+    for r in flag:
+        r["_tv_token"] = r["ticker"]
+    rows = fw._merge_sources([flag])
+    for r in rows:
+        r["_tv_token"] = r["ticker"]
+    body, _tv, _kb = fw._build_digest(date(2026, 10, 9), rows, [], None, False)
+    assert "Flag Bases — TRIGGERED / COILED / TIGHTENING" in body
+    assert "*CDNA* — [TRIGGERED · from TIGHTENING · base 12d" in body
+    assert "|" not in body.replace(" | ", "")        # chips are joined by ' | ' between sources, never a table

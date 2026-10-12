@@ -1,6 +1,6 @@
 == Q0: exactly the SQL in htf.md, column simulated ==
 bucket	reads	first_seen	last_seen
-coiled	30	2026-05-06	2026-09-14
+coiled	5	2026-06-30	2026-09-14
 (1 row)
 == Q1: exactly the SQL in htf.md, column simulated ==
 bucket	parent_stage	breaks	settled	capture	stop	med_realized_r
@@ -11,5 +11,5 @@ no EOD TRIGGERED read	TRIGGERED	3	2	0	2	-1
 (4 rows)
 == Q2: exactly the SQL in htf.md, column simulated ==
 bucket	reads	settled_10_sessions	closed_under_base_low_within_10
-coiled	30	30	4
+coiled	5	5	1
 (1 row)

@@ -8677,7 +8677,7 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
         "flag": _q("""
             SELECT scan_date, stage, base_age, range_contraction_ratio,
                    vol_contraction_ratio, breakout_volume_ratio,
-                   breakout_close, base_high, held_from_stage
+                   breakout_close, base_high, held_from_stage, triggered_from
             FROM mi_flag_candidates
             WHERE ticker = $1 AND stage <> 'unqualified'
               AND scan_date >= CURRENT_DATE - ($2::int || ' days')::interval
@@ -8780,13 +8780,20 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
         _push(r["scan_date"], "PARABOLIC",
               f"{r['stage']} score {r['score']}{pm_s}")
 
+    # Function-local ON PURPOSE (#146): db.py is loaded by apollo-execution, flag_detector is not - a module-level
+    # import would make that container load it (preflight [5n/7]). `triggered_from_label` is the ONE place that words
+    # the path, so /flags, the digest, /watch and this line agree.
+    from agents.market_intelligence.flag_detector import triggered_from_label
+
     for r in _rows("flag"):
         bvr = r["breakout_volume_ratio"]
         rcr = r["range_contraction_ratio"]
         vcr = r["vol_contraction_ratio"]
         if r["stage"] == "TRIGGERED" and bvr is not None and r["breakout_close"]:
+            via = triggered_from_label(r)           # "" for a held / legacy row
+            via_s = f" · {via}" if via else ""
             _push(r["scan_date"], "FLAG",
-                  f"TRIGGERED — base {r['base_age']}d, vol {float(bvr):.2f}× "
+                  f"TRIGGERED{via_s} — base {r['base_age']}d, vol {float(bvr):.2f}× "
                   f"close ${float(r['breakout_close']):.2f}")
         else:
             rs_s = f"r{float(rcr):.2f}" if rcr is not None else "r—"

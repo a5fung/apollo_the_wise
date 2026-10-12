@@ -1,0 +1,4 @@
+container: (local checkout)
+expected : 3 (('COILED', 'coiled'), ('TIGHTENING', 'tightening'), ('TRIGGERED', 'retrigger')) ('coiled', 'tightening', 'retrigger')
+got      : AttributeError: module 'agents.market_intelligence.flag_detector' has no attribute '_TRIGGER_LICENCE'
+FAIL - the running image does NOT carry the #146 licence (stale image, wrong branch deployed, or the container did not recreate)

@@ -286,6 +286,10 @@ def _cap_summary(s, n: int = 110) -> str:
     return s if len(s) <= n else s[:n].rsplit(" ", 1)[0].rstrip() + "…"
 
 
+# `db.get_ticker_setup_timeline` writes a licensed breakout as "TRIGGERED · from TIGHTENING — base 12d, ..." (#146)
+_TRIGGERED_PATH_RE = re.compile(r"TRIGGERED · (from [A-Z]+|re-trigger) —")
+
+
 def _collapse_flag_runs(events: list[dict]) -> list[dict]:
     """The continuation-flag detector logs a state most days a base persists — a run of them is
     ONE base evolving, not N events, and it otherwise drowns the /setup timeline (WULF: 10 near-
@@ -301,7 +305,13 @@ def _collapse_flag_runs(events: list[dict]) -> list[dict]:
         latest, earliest = run[0], run[-1]   # date-DESC: [0] newest, [-1] oldest
         seen: list[str] = []
         for e in run:
-            w = (e.get("summary") or "").split(" ")[0]
+            summary = e.get("summary") or ""
+            w = summary.split(" ")[0]
+            # #146: a TRIGGERED day keeps the path that licensed it ("TRIGGERED (from TIGHTENING)") - the breakout is
+            # usually adjacent to the base's other days, so without this the run collapses the label away.
+            m = _TRIGGERED_PATH_RE.match(summary)
+            if m:
+                w = f"TRIGGERED ({m.group(1)})"
             if w and w not in seen:
                 seen.append(w)
         out.append({
@@ -2227,7 +2237,7 @@ class MarketIntelligenceAgent(BaseAgent):
         # Function-local ON PURPOSE: agent.py is loaded by apollo-execution, flag_detector is not —
         # a module-level import would make the execution container load it (preflight [5n/7]).
         from agents.market_intelligence.flag_detector import (
-            board_tightness, triggered_bucket_summary, triggered_from_label,
+            board_tightness, triggered_bucket_summary, triggered_close_phrase, triggered_from_label,
         )
 
         task = request.task.lower()
@@ -2315,9 +2325,11 @@ class MarketIntelligenceAgent(BaseAgent):
                 via = triggered_from_label(r)
                 lead = f"{via} · " if via else ""
                 if close is not None and bh is not None:
+                    # worded against the level the gate tests (the base's highest CLOSE), not `base_high` - the old
+                    # `close > base_high` was false on ~a third of reads (flag_detector.triggered_close_phrase)
                     lines.append(
                         f"  • `{r['ticker']}` — {lead}base {age}d · runup {ru_s} · "
-                        f"vol {float(bvr):.2f}× · close ${float(close):.2f} > ${float(bh):.2f}"
+                        f"vol {float(bvr):.2f}× · {triggered_close_phrase(r)}"
                     )
                 else:
                     lines.append(f"  • `{r['ticker']}` — {lead}base {age}d · runup {ru_s}")
@@ -2524,7 +2536,9 @@ class MarketIntelligenceAgent(BaseAgent):
         if any(t in ("all", "universe", "inplay") for t in tokens):
             return await self._handle_stocks_in_play_query(request)
 
-        from agents.market_intelligence.flag_detector import get_flag_watchlist
+        from agents.market_intelligence.flag_detector import (
+            get_flag_watchlist, triggered_bucket_summary, triggered_from_label,
+        )
 
         watchlist = await get_flag_watchlist()
         if not watchlist:
@@ -2564,16 +2578,22 @@ class MarketIntelligenceAgent(BaseAgent):
                 continue
             # Surface tickers WITH annotations first within each stage
             stage_rows.sort(key=lambda w: (not w["annotations"], -w["base_age"]))
-            lines.append(f"*{stage_emoji[stage]} {stage} ({len(stage_rows)})*")
+            # #146: a TRIGGERED group says where its breakouts came from (header split + per-row path)
+            by_path = triggered_bucket_summary(stage_rows) if stage == "TRIGGERED" else ""
+            lines.append(
+                f"*{stage_emoji[stage]} {stage} ({len(stage_rows)})*" + (f" _{by_path}_" if by_path else "")
+            )
             for w in stage_rows[:15]:  # cap per stage
                 annot_str = ""
                 if w["annotations"]:
                     annot_str = " " + " ".join(
                         f"{emoji} {detail}" for _, emoji, detail in w["annotations"]
                     )
+                via = triggered_from_label(w) if stage == "TRIGGERED" else ""
+                via_s = f" · {via}" if via else ""
                 lines.append(
                     f"  `{w['ticker']:<5}` ${w['current_price']:.2f} "
-                    f"(base {w['base_age']}d){annot_str}"
+                    f"(base {w['base_age']}d{via_s}){annot_str}"
                 )
             if len(stage_rows) > 15:
                 lines.append(f"  _…{len(stage_rows) - 15} more (no annotations or older base)_")

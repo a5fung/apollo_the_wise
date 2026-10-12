@@ -1,0 +1,53 @@
+# #146 review fix: every reader of the stamp / new display helpers in the code tree (agents core channels shared broker), 2026-10-11
+agents/market_intelligence/db.py:2659:                -- Precedence coiled > tightening > retrigger (flag_detector.trigger_licence). NULL on every row that is
+agents/market_intelligence/db.py:2663:                triggered_from              TEXT,
+agents/market_intelligence/db.py:2719:                                  AND column_name = 'triggered_from') THEN
+agents/market_intelligence/db.py:2720:                    ALTER TABLE mi_flag_candidates ADD COLUMN triggered_from TEXT;
+agents/market_intelligence/db.py:2722:                       SET triggered_from = 'coiled'
+agents/market_intelligence/db.py:2731:            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS triggered_from TEXT;
+agents/market_intelligence/db.py:8106:                 triggered_from)
+agents/market_intelligence/db.py:8150:                triggered_from          = EXCLUDED.triggered_from
+agents/market_intelligence/db.py:8192:            record.get("triggered_from"),
+agents/market_intelligence/db.py:8532:    (flag_detector.trigger_licence: a COILED, TIGHTENING or TRIGGERED label in the
+agents/market_intelligence/db.py:8587:                   triggered_from
+agents/market_intelligence/db.py:8680:                   breakout_close, base_high, held_from_stage, triggered_from
+agents/market_intelligence/db.py:8785:    # cycle. `triggered_from_label` is the ONE place that words the path, so /flags, the digest and this line agree.
+agents/market_intelligence/db.py:8786:    from agents.market_intelligence.flag_detector import triggered_from_label
+agents/market_intelligence/db.py:8793:            via = triggered_from_label(r)           # "" for a held / legacy row
+agents/market_intelligence/flag_detector.py:16:                   `triggered_from` says which path licensed the read.
+agents/market_intelligence/flag_detector.py:468:# first. The first entry that matches names the bucket stamped on the row (`mi_flag_candidates.triggered_from`), so the
+agents/market_intelligence/flag_detector.py:476:# same-day COILED half lives in `trigger_licence`, not here, and is never behind the flag). tests/test_146_unpark_*.
+agents/market_intelligence/flag_detector.py:487:def trigger_licence(coiled_today: bool, recent_stages: Optional[list[str]]) -> Optional[str]:
+agents/market_intelligence/flag_detector.py:896:    the TRIGGERED licence window (`trigger_licence`: a COILED, TIGHTENING or
+agents/market_intelligence/flag_detector.py:962:        # (`trigger_licence`). NULL on every other row, including a HELD TRIGGERED one: nothing licensed it today.
+agents/market_intelligence/flag_detector.py:963:        "triggered_from": None,
+agents/market_intelligence/flag_detector.py:1346:    licence = trigger_licence(coiled_today, recent_stages) if breakout_now else None
+agents/market_intelligence/flag_detector.py:1350:        base["triggered_from"] = licence
+agents/market_intelligence/flag_detector.py:1545:                    r["triggered_from"] = None     # #146: a demoted row was not TRIGGERED, so no licence
+agents/market_intelligence/flag_detector.py:1604:                        r["triggered_from"] = None     # #146: a demoted row was not TRIGGERED, so no licence
+agents/market_intelligence/flag_detector.py:1991:def triggered_from_label(r: dict) -> str:
+agents/market_intelligence/flag_detector.py:1992:    """PURE. Plain words for the path that licensed a TRIGGERED read (`mi_flag_candidates.triggered_from`), or
+agents/market_intelligence/flag_detector.py:1995:    return _TRIGGERED_FROM_LABELS.get(r.get("triggered_from") or "", "")
+agents/market_intelligence/flag_detector.py:1998:def triggered_bucket_summary(rows: list[dict]) -> str:
+agents/market_intelligence/flag_detector.py:2007:        b = r.get("triggered_from")
+agents/market_intelligence/flag_detector.py:2025:def triggered_close_phrase(r: dict) -> str:
+agents/market_intelligence/flag_detector.py:2048:    lab = triggered_from_label(r)
+agents/market_intelligence/flag_detector.py:2054:    # Worded against the level the gate tests (the base's highest CLOSE) - see `triggered_close_phrase`.
+agents/market_intelligence/flag_detector.py:2055:    phrase = triggered_close_phrase(r)
+agents/market_intelligence/flag_detector.py:2233:        by_path = triggered_bucket_summary(triggered)          # #146: where today's breakouts came from
+agents/market_intelligence/flag_detector.py:4065:                   vol_contraction_ratio, triggered_from, held_from_stage
+agents/market_intelligence/flag_detector.py:4126:            "triggered_from": cand["triggered_from"],
+agents/market_intelligence/friday_watchlist.py:29:from agents.market_intelligence.flag_detector import board_tightness, triggered_close_phrase, triggered_from_label
+agents/market_intelligence/friday_watchlist.py:308:    TIGHTENING", flag_detector.triggered_from_label — the same words as the digest and /flags); a row held over
+agents/market_intelligence/friday_watchlist.py:342:                   triggered_from, held_from_stage
+agents/market_intelligence/friday_watchlist.py:369:        via = triggered_from_label(r)
+agents/market_intelligence/friday_watchlist.py:376:        tail = f" · {triggered_close_phrase(r)}" if r.get("breakout_close") is not None else ""
+agents/market_intelligence/agent.py:2240:            board_tightness, triggered_bucket_summary, triggered_close_phrase, triggered_from_label,
+agents/market_intelligence/agent.py:2259:                via = triggered_from_label(r)
+agents/market_intelligence/agent.py:2316:            by_path = triggered_bucket_summary(triggered)
+agents/market_intelligence/agent.py:2325:                via = triggered_from_label(r)
+agents/market_intelligence/agent.py:2329:                    # `close > base_high` was false on ~a third of reads (flag_detector.triggered_close_phrase)
+agents/market_intelligence/agent.py:2332:                        f"vol {float(bvr):.2f}× · {triggered_close_phrase(r)}"
+agents/market_intelligence/agent.py:2540:            get_flag_watchlist, triggered_bucket_summary, triggered_from_label,
+agents/market_intelligence/agent.py:2582:            by_path = triggered_bucket_summary(stage_rows) if stage == "TRIGGERED" else ""
+agents/market_intelligence/agent.py:2592:                via = triggered_from_label(w) if stage == "TRIGGERED" else ""

@@ -317,7 +317,9 @@ async def test_triggered_and_dropped_out_still_render(world):
     )
     await fd.send_flag_digest(board, D1, yesterday_map={"TRG": "COILED", "OLD": "TIGHTENING"})
     text = world.sent[0][0]
-    assert "TRIGGERED (1)" in text and "close $60.00 above $55.50" in text
+    # no stored reason on this row -> the two numbers with no comparative (the gate tests the base's highest CLOSE,
+    # not base_high, so "above" would be a claim about an ordering nobody tested - #146 review, 2026-10-11)
+    assert "TRIGGERED (1)" in text and "close $60.00 · base high $55.50" in text and "above" not in text
     assert "1 dropped out" in text
     assert "NEW TODAY" not in text                              # TRIGGERED is not a push stage
 

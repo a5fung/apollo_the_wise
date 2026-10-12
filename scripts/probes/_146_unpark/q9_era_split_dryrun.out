@@ -1,0 +1,5 @@
+== Q9: the day-one raw TRIGGERED reads by rule era (column simulated; SELECT-only) ==
+era	reads	first_seen	last_seen	settled_10_sessions	closed_under_base_low_within_10
+pre-rebuild (retired rule)	25	2026-05-06	2026-06-19	25	3
+post-rebuild	5	2026-06-30	2026-09-14	5	1
+(2 rows)

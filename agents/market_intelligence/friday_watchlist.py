@@ -26,7 +26,7 @@ from agents.market_intelligence.db import (
     get_latest_regime,
     insert_weekly_watchlist,
 )
-from agents.market_intelligence.flag_detector import board_tightness
+from agents.market_intelligence.flag_detector import board_tightness, triggered_close_phrase, triggered_from_label
 from agents.market_intelligence.strategies.registry import should_run
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ _TG_SAFE_LIMIT = 3900  # margin under Telegram's 4096-char message ceiling
 
 _SECTION_HEADERS = {
     "EP_HIGH":      ("⚡", "EP HIGH"),
-    "FLAG":         ("🚩", "Flag Bases — COILED / TIGHTENING (watch only)"),
+    "FLAG":         ("🚩", "Flag Bases — TRIGGERED / COILED / TIGHTENING (watch only)"),
     "9M_SUGAR":     ("🍬", "9M Sugar Babies"),
     "THEME":        ("🚀", "Themes — Accelerating"),
     "WICK_PENDING": ("🪝", "Wick Pending — break-of-prior-high"),
@@ -293,12 +293,20 @@ async def _fetch_wick(window_days: int) -> list[dict]:
 
 
 async def _fetch_flag(window_days: int) -> list[dict]:
-    """Continuation flag bases — COILED (tightest) + TIGHTENING (forming): watch states, not setups.
+    """Continuation flag bases — TRIGGERED (just broke out) + COILED (tightest) + TIGHTENING (forming): watch
+    states, not setups.
 
     Pulls latest scan date with data (handles pre-EOD Friday before the
     5:25 PM scan completes — falls back to previous day) and surfaces up
-    to 5 COILED + 3 TIGHTENING. Excludes mna_filter:* hits since those
+    to 3 TRIGGERED + 5 COILED + 3 TIGHTENING. Excludes mna_filter:* hits since those
     are deal-pinned and unenterable (the scan rewrites them to `unqualified`).
+
+    TRIGGERED is listed (#146, 2026-10-11) because a name the shipped rule leaves at TIGHTENING reads TRIGGERED
+    on the night it breaks out under the unparked licence — and a name that is TRIGGERED is not COILED or
+    TIGHTENING, so without this branch a Friday-night breakout LEAVES the list on the very night it matters
+    (CDNA 2026-07-31, CHPT 2026-09-18). Each TRIGGERED row says which path licensed it ("TRIGGERED · from
+    TIGHTENING", flag_detector.triggered_from_label — the same words as the digest and /flags); a row held over
+    from yesterday carries no path and says so. Display only: no order, entry, sizing or safeguard path reads it.
 
     ⚠ NO STRATEGY GATE HERE — removed 2026-10-11 (#697, htf_scope G7). This used to return [] when
     `should_run("flag_continuation")` was false. That strategy row was correctly retired on 2026-08-02
@@ -329,21 +337,46 @@ async def _fetch_flag(window_days: int) -> list[dict]:
             """
             SELECT ticker, stage, base_age, runup_pct,
                    range_contraction_ratio, vol_contraction_ratio,
-                   breakout_close, base_high,
-                   fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct
+                   breakout_close, base_high, reason, breakout_volume_ratio,
+                   fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct,
+                   triggered_from, held_from_stage
             FROM mi_flag_candidates
             WHERE scan_date = $1
-              AND stage IN ('COILED', 'TIGHTENING')
+              AND stage IN ('TRIGGERED', 'COILED', 'TIGHTENING')
             ORDER BY
-              CASE stage WHEN 'COILED' THEN 0 ELSE 1 END,
+              CASE stage WHEN 'TRIGGERED' THEN 0 WHEN 'COILED' THEN 1 ELSE 2 END,
+              (held_from_stage IS NOT NULL),
+              CASE WHEN stage = 'TRIGGERED' THEN breakout_volume_ratio END DESC NULLS LAST,
               range_contraction_ratio NULLS LAST
             """,
             scan_date,
         )
 
+    triggered = [r for r in rows if r["stage"] == "TRIGGERED"][:3]
     coiled = [r for r in rows if r["stage"] == "COILED"][:5]
     tightening = [r for r in rows if r["stage"] == "TIGHTENING"][:3]
     out: list[dict] = []
+    # TRIGGERED first: a breakout is the most time-sensitive flag name, so it ranks just above COILED (still behind
+    # EP HIGH, so `_merge_sources` keeps an EP primary). `rank_within` is NEGATIVE-i because the merge sorts
+    # rank_within DESCENDING: 0 (the highest-volume breakout) is listed first.
+    for i, r in enumerate(triggered):
+        runup = r.get("runup_pct")
+        runup_s = f"{float(runup) * 100:+.0f}%" if runup is not None else "—"
+        via = triggered_from_label(r)
+        if via:
+            lead = f"TRIGGERED · {via}"
+        elif r.get("held_from_stage"):
+            lead = f"TRIGGERED · held over from yesterday (today reads {r['held_from_stage']})"
+        else:
+            lead = "TRIGGERED"
+        tail = f" · {triggered_close_phrase(r)}" if r.get("breakout_close") is not None else ""
+        out.append({
+            "ticker": r["ticker"],
+            "source_tag": "FLAG",
+            "reason": f"{lead} · base {r.get('base_age')}d · runup {runup_s}{tail}",
+            "priority": _PRIORITY["FLAG"] - 0.5,
+            "rank_within": -i,
+        })
     # Tightness text comes from `flag_detector.board_tightness` — the ONE place that decides whether a
     # base is too young (<= 5 sessions) for the first-5 vs last-5 ratios to mean anything. Both ratios
     # are exactly 1.00 there by construction, which this chip used to print as `r1.00` (KOD, base 5d,
