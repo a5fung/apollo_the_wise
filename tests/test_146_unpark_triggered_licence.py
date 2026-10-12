@@ -653,7 +653,9 @@ async def test_triggered_ranks_above_coiled_and_tightening_but_below_ep_high(fri
     flag_only = fw._merge_sources([flag])
     assert [r["ticker"] for r in flag_only][0] == "RRR"                                # TRIGGERED lists first
     pri = {r["ticker"]: r["priority"] for r in flag}
-    assert fw._PRIORITY["EP_HIGH"] < pri["RRR"] < pri["CCC"] < pri["TTT"]
+    assert fw._PRIORITY["EP_HIGH"] < pri["RRR"] <= pri["CCC"] < pri["TTT"]
+    # insert_weekly_watchlist stores int(priority): a breakout must persist in the FLAG tier, never the EP HIGH one
+    assert int(pri["RRR"]) == fw._PRIORITY["FLAG"] != fw._PRIORITY["EP_HIGH"]
 
 
 @pytest.mark.asyncio

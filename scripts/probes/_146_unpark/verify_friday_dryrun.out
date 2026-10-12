@@ -1,0 +1,58 @@
+== F1. every Friday board name from a flag source, against its candidate row on the list scan date (verdict starting VIOLATION is a failure)
+week_ending	ticker	list_scan	stage	triggered_from	held_from_stage	chip	verdict
+2026-06-05	ATRA	2026-06-05	COILED		TIGHTENING	[COILED · base 19d · runup +190% · r0.58]	n/a (not TRIGGERED on that scan)
+2026-06-05	CAR	2026-06-05	COILED		TIGHTENING	[COILED · base 24d · runup +122% · r0.71]	n/a (not TRIGGERED on that scan)
+2026-06-05	DGII	2026-06-05	COILED		TIGHTENING	[COILED · base 19d · runup +51% · r0.60]	n/a (not TRIGGERED on that scan)
+2026-06-05	FUN	2026-06-05	TIGHTENING			[TIGHTENING · base 19d · r0.56]	n/a (not TRIGGERED on that scan)
+2026-06-05	GO	2026-06-05	COILED			[COILED · base 14d · runup +67% · r0.67]	n/a (not TRIGGERED on that scan)
+2026-06-05	IMVT	2026-06-05	TIGHTENING			[TIGHTENING · base 10d · r0.62]	n/a (not TRIGGERED on that scan)
+2026-06-05	SNAP	2026-06-05	TIGHTENING			[TIGHTENING · base 19d · r0.68]	n/a (not TRIGGERED on that scan)
+2026-06-05	WSC	2026-06-05	COILED			[COILED · base 18d · runup +74% · r0.49]	n/a (not TRIGGERED on that scan)
+2026-06-12	ALMU	2026-06-12	TIGHTENING			[TIGHTENING · base 20d · r0.64]	n/a (not TRIGGERED on that scan)
+2026-06-12	ANET	2026-06-12	TIGHTENING			[TIGHTENING · base 7d · r0.48]	n/a (not TRIGGERED on that scan)
+2026-06-12	ATLC	2026-06-12	COILED		TIGHTENING	[COILED · base 11d · runup +96% · r0.68]	n/a (not TRIGGERED on that scan)
+2026-06-12	BJDX	2026-06-12	COILED			[COILED · base 7d · runup +331% · r0.68]	n/a (not TRIGGERED on that scan)
+2026-06-12	QTTB	2026-06-12	COILED			[COILED · base 5d · runup +211% · r1.00]	n/a (not TRIGGERED on that scan)
+2026-06-12	SPHL	2026-06-12	COILED			[COILED · base 4d · runup +392% · r1.00]	n/a (not TRIGGERED on that scan)
+2026-06-12	VSA	2026-06-12	TIGHTENING			[TIGHTENING · base 7d · r0.56]	n/a (not TRIGGERED on that scan)
+2026-06-12	WSC	2026-06-12	COILED		TIGHTENING	[COILED · base 23d · runup +74% · r0.76]	n/a (not TRIGGERED on that scan)
+2026-06-19	BJDX	2026-06-19	TIGHTENING			[TIGHTENING · base 11d · r0.35]	n/a (not TRIGGERED on that scan)
+2026-06-19	BTDR	2026-06-19	COILED			[COILED · base 10d · runup +163% · r0.64]	n/a (not TRIGGERED on that scan)
+2026-06-19	FPS	2026-06-19	COILED			[COILED · base 9d · runup +140% · r0.49]	n/a (not TRIGGERED on that scan)
+2026-06-19	NCT	2026-06-19	TIGHTENING			[TIGHTENING · base 14d · r0.37]	n/a (not TRIGGERED on that scan)
+2026-06-19	QTTB	2026-06-19	COILED		TIGHTENING	[COILED · base 9d · runup +211% · r0.53]	n/a (not TRIGGERED on that scan)
+2026-06-19	RDVT	2026-06-19	COILED			[COILED · base 13d · runup +77% · r0.64]	n/a (not TRIGGERED on that scan)
+2026-06-19	STM	2026-06-19	COILED		TIGHTENING	[COILED · base 11d · runup +162% · r0.56]	n/a (not TRIGGERED on that scan)
+2026-06-19	VSA	2026-06-19	TIGHTENING			[TIGHTENING · base 11d · r0.32]	n/a (not TRIGGERED on that scan)
+2026-06-26	ACVA	2026-06-26	unqualified			[TIGHTENING · base 18d · r0.58]	n/a (not TRIGGERED on that scan)
+2026-06-26	JRSH	2026-06-26	unqualified			[COILED · base 7d · runup +92% · r0.58]	n/a (not TRIGGERED on that scan)
+2026-06-26	MEC	2026-06-26	unqualified			[TIGHTENING · base 9d · r0.55]	n/a (not TRIGGERED on that scan)
+2026-06-26	PAYO	2026-06-26	unqualified			[COILED · base 7d · runup +61% · r1.01]	n/a (not TRIGGERED on that scan)
+2026-06-26	SG	2026-06-26	unqualified			[COILED · base 22d · runup +137% · r0.67]	n/a (not TRIGGERED on that scan)
+2026-06-26	VERU	2026-06-26	unqualified			[TIGHTENING · base 14d · r0.37]	n/a (not TRIGGERED on that scan)
+2026-07-03	DDOG	2026-07-03	TIGHTENING		WATCH	[TIGHTENING · base 21d · r0.90]	n/a (not TRIGGERED on that scan)
+2026-07-03	OKTA	2026-07-03	TIGHTENING		WATCH	[TIGHTENING · base 21d · r1.00]	n/a (not TRIGGERED on that scan)
+2026-07-03	RBRK	2026-07-03	TIGHTENING			[TIGHTENING · base 21d · r1.23]	n/a (not TRIGGERED on that scan)
+2026-07-10	TWLO	2026-07-10	TIGHTENING			[TIGHTENING · base 23d · r0.75]	n/a (not TRIGGERED on that scan)
+2026-07-10	VCYT	2026-07-10	TIGHTENING			[TIGHTENING · base 9d · r1.50]	n/a (not TRIGGERED on that scan)
+2026-07-17	ABVX	2026-07-17	TIGHTENING		WATCH	[TIGHTENING · base 9d · r0.92]	n/a (not TRIGGERED on that scan)
+2026-07-17	GH	2026-07-17	TIGHTENING			[TIGHTENING · base 10d · r0.73] | [Theme: Liquid Biopsy & Multi-Cancer Early Detection (RS 95)]	n/a (not TRIGGERED on that scan)
+2026-07-17	NEO	2026-07-17	TIGHTENING			[TIGHTENING · base 9d · r0.67]	n/a (not TRIGGERED on that scan)
+2026-07-24	ATAI	2026-07-24	unqualified			[COILED · base 5d · runup +97% · r1.00]	n/a (not TRIGGERED on that scan)
+2026-07-24	MBX	2026-07-24	TIGHTENING		WATCH	[TIGHTENING · base 10d · r0.75]	n/a (not TRIGGERED on that scan)
+2026-07-31	ATAI	2026-07-31	COILED			[COILED · base 10d · runup +97% · r0.44]	n/a (not TRIGGERED on that scan)
+2026-07-31	CDNA	2026-07-31	TIGHTENING		WATCH	[TIGHTENING · base 10d · r0.87]	n/a (not TRIGGERED on that scan)
+2026-07-31	MBX	2026-07-31	TIGHTENING			[TIGHTENING · base 15d · r0.76]	n/a (not TRIGGERED on that scan)
+(43 rows)
+== F2. per Friday: flag names on the board / TRIGGERED among them (0 TRIGGERED = inconclusive that Friday, not a pass)
+week_ending	list_scan	flag_names_on_board	triggered_on_board	triggered_in_scan
+2026-06-05	2026-06-05	8	0	1
+2026-06-12	2026-06-12	8	0	0
+2026-06-19	2026-06-19	8	0	2
+2026-06-26	2026-06-26	6	0	0
+2026-07-03	2026-07-03	3	0	1
+2026-07-10	2026-07-10	2	0	0
+2026-07-17	2026-07-17	3	0	0
+2026-07-24	2026-07-24	2	0	0
+2026-07-31	2026-07-31	3	0	0
+(9 rows)

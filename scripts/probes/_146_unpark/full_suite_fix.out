@@ -178,10 +178,6 @@ agents/market_intelligence/agent.py:7794
           
     @app.on_event("shutdown")
 
-tests/test_llm_models_auto_resolution.py:212
-  /Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_8bd70274-43c-3/tests/test_llm_models_auto_resolution.py:212: SyntaxWarning: "\$" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\$"? A raw string is also an option.
-    reports WITHOUT them, so a cached call's uncached input cost \$0. Measured: theme_assignment's
-
 tests/test_501_tier1_silent_failure_surfaces.py::test_f11_a_healthy_sdk_shape_raises_nothing
   /Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_8bd70274-43c-3/agents/market_intelligence/broker/trade_stream.py:172: DeprecationWarning: 'asyncio.iscoroutinefunction' is deprecated and slated for removal in Python 3.16; use inspect.iscoroutinefunction() instead
     if not hasattr(stream, "_run_forever") or not asyncio.iscoroutinefunction(
@@ -210,4 +206,4 @@ tests/test_telegram_direct_senders_on_html_layer.py::test_onboarding_replies_esc
 [#577 must-not-miss] 4 of 31 labelled real EPs are currently EXCLUDED by the live selection stack (all MIN_GAP_PCT) — recorded debt against P1 (docs/roadmap/ep_profitability_program.md § THE PRINCIPLES), recorded 2026-09-03. See tests/fixtures/must_not_miss_eps.py::BASELINE_DEBT.
 [#577 must-not-miss] ⚠ ABNB 2026-08-07 is OPERATOR-NAMED, is excluded by the live stack, and is NOT being asserted. This is a declared abstention, not an accepted state — its reason: DECLARED ABSTENTION — not an accepted state, and not a data artifact. ABNB is a REAL EP (operator-labelled 2026-09-06) and the live stack excludes it correctly under the rules as written. Whether it is still waiting on anyone is that reason's job to say, not this banner's. See must_not_miss_eps.py.
 [#577 must-not-miss] ⚠ CHPT 2026-09-03 is OPERATOR-NAMED, is excluded by the live stack, and is NOT being asserted. This is a declared abstention, not an accepted state — its reason: SETTLED EXCLUSION, not a data artifact and no longer a wait. Whether it is still waiting on anyone is that reason's job to say, not this banner's. See must_not_miss_eps.py.
-10808 passed, 10 skipped, 11 warnings in 163.07s (0:02:43)
+10808 passed, 10 skipped, 10 warnings in 150.86s (0:02:30)

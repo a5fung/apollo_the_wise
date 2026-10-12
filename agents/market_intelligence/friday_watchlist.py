@@ -356,9 +356,11 @@ async def _fetch_flag(window_days: int) -> list[dict]:
     coiled = [r for r in rows if r["stage"] == "COILED"][:5]
     tightening = [r for r in rows if r["stage"] == "TIGHTENING"][:3]
     out: list[dict] = []
-    # TRIGGERED first: a breakout is the most time-sensitive flag name, so it ranks just above COILED (still behind
-    # EP HIGH, so `_merge_sources` keeps an EP primary). `rank_within` is NEGATIVE-i because the merge sorts
-    # rank_within DESCENDING: 0 (the highest-volume breakout) is listed first.
+    # TRIGGERED first: a breakout is the most time-sensitive flag name, so it is listed ahead of COILED (still behind
+    # EP HIGH, so `_merge_sources` keeps an EP primary). It keeps the FLAG tier's priority (2) rather than a fractional
+    # one: `insert_weekly_watchlist` stores `int(priority)`, and 1.5 would persist as 1 - the EP HIGH tier. The merge
+    # sorts (priority asc, rank_within DESC), so a rank_within above every COILED/TIGHTENING index lists these first,
+    # the highest-volume breakout (i = 0) at the top.
     for i, r in enumerate(triggered):
         runup = r.get("runup_pct")
         runup_s = f"{float(runup) * 100:+.0f}%" if runup is not None else "—"
@@ -374,8 +376,8 @@ async def _fetch_flag(window_days: int) -> list[dict]:
             "ticker": r["ticker"],
             "source_tag": "FLAG",
             "reason": f"{lead} · base {r.get('base_age')}d · runup {runup_s}{tail}",
-            "priority": _PRIORITY["FLAG"] - 0.5,
-            "rank_within": -i,
+            "priority": _PRIORITY["FLAG"],
+            "rank_within": 1000 - i,
         })
     # Tightness text comes from `flag_detector.board_tightness` — the ONE place that decides whether a
     # base is too young (<= 5 sessions) for the first-5 vs last-5 ratios to mean anything. Both ratios
