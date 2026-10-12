@@ -47,7 +47,7 @@ Every change-log entry on a setup file must have:
 
 4. **Reversals must explain why prior was wrong.** Not just incomplete, not just "we got new evidence" — articulate what specific reasoning the prior change rested on, and why that reasoning was incorrect. A reversal with weak rationale is a candidate for re-reversal next month.
 
-5. **Field-validate before ship to live.** Shadow phase or paper-only first. Audit-event counts confirm the change behaves as anticipated. Live promotion requires the "shipped + validated against [N] live sessions" status.
+5. **Field-validate before ship to live.** Shadow phase or paper-only first. Audit-event counts confirm the change behaves as anticipated. Live promotion requires the "shipped + validated against [N] live sessions" status. **Each setup graduates on its OWN evidence** — its own shadow/paper sample and its own N — never on another setup's cohort numbers (e.g. HTF or consolidation may not reach paper or live on MAGNA53 EP's results). Carried from #311's DoD when it closed 2026-10-11.
 
 6. **Update the SSoT in the same commit as the code change.** Stale SSoT is worse than no SSoT — it'll be cited authoritatively but contradict the code. CI should flag commits that touch detector code without touching the corresponding SSoT file (future).
 

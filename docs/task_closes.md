@@ -2169,3 +2169,13 @@ EVIDENCE:
 - **Engine-improvement candidate queue:** AKAM 09-25 (no theme row), AAOI 10-09 (excluded, stage Nascent).
 - **Independent cross-check:** the probe's direct SELECT re-run on prod 2026-10-11 (`q3_verify_1011.out`, captured once) → `run_probe.py render` ALL MATCH: True.
 - Telemetry only, never a grade input (THE LINE) — stated in the section footer.
+
+## #311 — multi-setup book (roadmap container): closed as parked until EP works (2026-10-11)
+
+BAR: "each setup in the book has its OWN judge and its own graduation evidence, and no setup reaches live money on another's N. WOULD-FAIL-IF: a second setup graduates on the EP cohort's numbers."
+ACCEPTED-PARTIAL: nothing in the container was built and none of it can graduate while EP is unprofitable (his standing ruling). Its one load-bearing principle — no setup reaches live money on another's N — is now written into `docs/setups/CHANGE_PROCESS.md` rule 5, so it binds every future graduation rather than living on a parked line. Its parts: the 9M→flag pipeline is moot (9M is gone); the parabolic-short counter-regime book is TI1 on #314; tightness→expansion graduation is the HTF work (#697 detection, #397 money gate); per-setup judges and regime-adaptive selection have no build and no evidence pending.
+
+EVIDENCE:
+- His "Ok" 2026-10-11 to "close: parked until EP works" (recommendation table the same day).
+- Yesterday's board sweep found nothing started in the container and its 10-22 ETA needed his re-tier signature (three re-dates already).
+- The principle carried: CHANGE_PROCESS.md rule 5, 2026-10-11.
