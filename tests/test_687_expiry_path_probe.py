@@ -17,6 +17,7 @@ market day, from the server). What is pinned:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import importlib.util
 import inspect
 import os
@@ -91,6 +92,30 @@ def test_no_stop_at_the_broker_is_the_day_b_failure():
 def test_a_stop_that_is_wrong_late_unpointed_or_paged_over_fails(over, needle):
     verdict, why = E.classify(_good(**over))
     assert verdict == E.FAIL and needle in why, (verdict, why)
+
+
+def _late(seconds, **over):
+    return _good(stop={"id": "stop-2", "qty": 3.0, "price": 74.8,
+                       "created_at": (EXPIRY + timedelta(seconds=seconds)).isoformat()}, **over)
+
+
+def test_a_retry_stop_a_few_seconds_past_the_bar_fails_but_names_the_retry_window():
+    """Review 10-12: the bar is 15 s from the EXPIRY (the task's DoD); the production retry's window is
+    15 s from its first refusal, 1-2 s later - so a retry that worked can read 'late'. Still a FAIL
+    (the bar is the DoD), but the reason sends it to him as bar-vs-retry-window, not as Day B."""
+    verdict, why = E.classify(_late(16.5, retry_row=True))
+    assert verdict == E.FAIL and "16.5s after the expiry" in why, why
+    assert "retry" in why and "first refusal" in why.lower() and "NOT as the Day B bug" in why, why
+
+
+def test_a_late_stop_without_a_retry_row_does_not_get_the_retry_excuse():
+    verdict, why = E.classify(_late(16.5, retry_row=False))
+    assert verdict == E.FAIL and "retry window" not in why and "Day B" not in why, why
+
+
+def test_a_retry_stop_far_past_the_bar_does_not_get_the_retry_excuse():
+    verdict, why = E.classify(_late(40, retry_row=True))
+    assert verdict == E.FAIL and "retry window" not in why, why
 
 
 def test_a_sale_that_fills_is_void_not_a_pass():
@@ -201,21 +226,42 @@ def test_the_sale_sequence_is_the_production_order():
     # a DAY market sale or any other helper
     (["planned_sale_stop_cancel", "cancel_order", "await_shares_released", "place_market_sell",
       "record_full_exit_order"], "unexpected"),
-    (list(E.SALE_SEQUENCE) + ["cancel_order"], "repeated"),
+    (["planned_sale_stop_cancel", "cancel_order", "await_shares_released", "place_market_on_open_sell",
+      "record_full_exit_order", "cancel_order"], "repeated"),
 ])
 def test_a_sale_that_skips_or_reorders_the_production_helpers_is_named(steps, needle):
     problems = E.sale_sequence_problems(steps)
     assert problems and any(needle in p for p in problems), problems
 
 
-def test_preopen_problems_names_every_way_the_overnight_state_is_not_reproduced():
+def test_preopen_problems_names_what_blocks_the_run():
     sale = {"id": "sale-1", "side": "sell", "type": "market", "qty": 3}
-    assert E.preopen_problems("accepted", [sale], "sale-1", None) == []
-    assert E.preopen_problems("new", [], "sale-1", None) == []         # the listing may omit an opg order
+    assert E.preopen_problems("accepted", [sale], "sale-1") == []
+    assert E.preopen_problems("new", [], "sale-1") == []               # the listing may omit an opg order
     stray = {"id": "stop-9", "side": "OrderSide.SELL", "type": "stop", "qty": 3}
-    assert any("other live sell" in p for p in E.preopen_problems("new", [sale, stray], "sale-1", None))
-    assert any("not queued" in p for p in E.preopen_problems("expired", [sale], "sale-1", None))
-    assert any("still points" in p for p in E.preopen_problems("new", [sale], "sale-1", "stop-1"))
+    assert any("other live sell" in p for p in E.preopen_problems("new", [sale, stray], "sale-1"))
+    assert any("not queued" in p for p in E.preopen_problems("expired", [sale], "sale-1"))
+
+
+def test_a_pointer_that_still_names_the_cancelled_stop_is_a_note_not_a_problem():
+    """Review 10-12: the stale pointer alone must not abort the only slot - §3's restore leaves the
+    cancelled stop's id out of the held-share count. The verdict (classify) still needs it moved."""
+    assert E.preopen_notes(None) == []
+    notes = E.preopen_notes("stop-1-long-id")
+    assert len(notes) == 1 and "stop-1-l" in notes[0] and "NULL" in notes[0]
+    # ...and it no longer appears among the blocking problems, whatever the pointer is
+    assert E.preopen_problems("new", [], "sale-1") == []
+
+
+def test_adoptable_stops_are_only_unknown_three_share_sell_stops():
+    orders = [{"id": "a", "side": "OrderSide.SELL", "type": "OrderType.STOP", "qty": 3.0},
+              {"id": "b", "side": "sell", "type": "stop", "qty": 2},           # wrong size
+              {"id": "c", "side": "buy", "type": "stop", "qty": 3},            # a buy
+              {"id": "d", "side": "sell", "type": "limit", "qty": 3},          # not a stop
+              {"id": "e", "side": "sell", "type": "stop", "qty": 3}]           # known already
+    assert E.adoptable_stops(orders, ["e"], 3) == ["a"]
+    assert E.adoptable_stops(orders, None, 3) == ["a", "e"]
+    assert E.adoptable_stops([], ["e"], 3) == []
 
 
 def test_watchdog_stop_after_counts_only_a_fallback_stop_at_or_after_the_expiry():
@@ -262,11 +308,12 @@ class ExpiryEnv(PR.FakeEnv):
     09:30:57 and the stream's §3 restore follows (or not, per `restore`)."""
 
     def __init__(self, *, restore="ok", sale_fills=False, refuse_stop=False, stray_stop=False,
-                 opg_error=None, record_error=None, **kw):
+                 opg_error=None, record_error=None, stop_reserves=True, stale_pointer=False, **kw):
         super().__init__(start=datetime(2026, 10, 13, 8, 25, tzinfo=_ET), **kw)
         self.prices["KO"] = 88.4
         self.restore, self.sale_fills, self.refuse_stop = restore, sale_fills, refuse_stop
         self.stray_stop, self.opg_error, self.record_error = stray_stop, opg_error, record_error
+        self.stop_reserves, self.stale_pointer = stop_reserves, stale_pointer
         self.journal: list[tuple] = []          # (step, trade lock held when it ran)
         self.alpaca = SimpleNamespace(
             get_latest_quote=self._quote, get_latest_trade=self._last, get_trading_client=self._client,
@@ -347,7 +394,14 @@ class ExpiryEnv(PR.FakeEnv):
     async def submit(self, t, qty, side, *, kind, tif, limit=None, stop=None):
         if kind == "stop" and self.refuse_stop:
             raise RuntimeError("stop orders are not accepted pre-market")
-        return await super().submit(t, qty, side, kind=kind, tif=tif, limit=limit, stop=stop)
+        o = await super().submit(t, qty, side, kind=kind, tif=tif, limit=limit, stop=stop)
+        if kind == "stop" and not self.stop_reserves and self.clock.time() < dtime(8, 45):
+            self.orders[o["id"]]["unrouted"] = True     # a pre-market stop the broker has not routed yet
+        return o
+
+    def _held(self, t, exclude=()):
+        unrouted = tuple(i for i, o in self.orders.items() if o.get("unrouted"))
+        return super()._held(t, tuple(exclude) + unrouted)
 
     async def insert_trade(self, **kw):
         tid = await super().insert_trade(**kw)
@@ -358,7 +412,16 @@ class ExpiryEnv(PR.FakeEnv):
         if self.stray_stop:
             self._timers.append((datetime.combine(day, dtime(9, 20), tzinfo=_ET),
                                  lambda: self._stray(tid)))
+        if self.stale_pointer:
+            self._timers.append((datetime.combine(day, dtime(9, 20), tzinfo=_ET),
+                                 lambda: self._stale(tid)))
         return tid
+
+    def _stale(self, tid):
+        """The row points at the stop the planned sale cancelled (a stream that missed the null)."""
+        cancelled = next(a["detail"]["stop_order_id"] for a in self.audit
+                         if a["event_type"] == "planned_sale_stop_cancel")
+        self.trades[tid]["stop_order_id"] = cancelled
 
     def _stray(self, tid):
         """A stop on the row at 09:20 (what a watchdog fallback would leave): it holds the shares."""
@@ -389,16 +452,17 @@ class ExpiryEnv(PR.FakeEnv):
         o["status"], o["expired_at"] = "expired", self.clock.isoformat()
         tid = next(x["trade_id"] for x in self.live_orders if x["alpaca_order_id"] == o["id"])
         r = self.trades[tid]
-        if self.restore in ("ok", "retry", "no_pointer_row"):
+        if self.restore in ("ok", "retry", "no_pointer_row", "orphan", "late_retry"):
             n = self._new(r["ticker"], r["remaining_shares"], "sell", "stop", "gtc", status="new",
-                          stop=r["stop_price"])
-            n["created_at"] = (self.clock + timedelta(seconds=9 if self.restore == "retry" else 0.4)
-                               ).isoformat()
-            r["stop_order_id"] = n["id"]
-            if self.restore != "no_pointer_row":
+                          stop=r["stop_price"])      # no client order id: the stream's first attempt sends none
+            n["created_at"] = (self.clock + timedelta(
+                seconds={"retry": 9, "late_retry": 16.5}.get(self.restore, 0.4))).isoformat()
+            if self.restore != "orphan":             # orphan: the stop is placed, the row never learns of it
+                r["stop_order_id"] = n["id"]
+            if self.restore not in ("no_pointer_row", "orphan"):
                 self._audit("stop_order_id_changed", {"trade_id": tid, "new_id": n["id"],
                                                       "reason": "cancel_or_reject_restored"})
-            if self.restore == "retry":
+            if self.restore in ("retry", "late_retry"):
                 self._audit("stop_restore_retried", {"trade_id": tid, "attempts": 3})
         elif self.restore == "watchdog":
             self._timers.append((self.clock + timedelta(seconds=3),
@@ -577,3 +641,229 @@ def test_the_launch_guards_still_refuse_before_anything_is_placed(tmp_path):
     with pytest.raises(PR.RehearsalRefused, match="SAME"):
         asyncio.run(E.run(env2, reh2.log, reh2, "KO"))
     assert not env2.orders
+
+
+# ── the review-10-12 fixes, end to end ───────────────────────────────────────────────────────────
+
+def test_t1b_is_info_not_fail_when_the_stop_is_live_but_the_shares_show_unreserved(tmp_path):
+    """A pre-market stop that the broker has not routed yet reserves nothing: T1b must not read FAIL
+    beside a T3 PASS (the verdict is T3's alone)."""
+    env, log, (verdict, why, rc), text = _run(tmp_path, stop_reserves=False)
+    st = _statuses(log)
+    assert st["T1b"] == "INFO" and st["T3"] == "PASS" and (verdict, rc) == (E.PASS, 0), (st, why)
+    assert "cosmetic" in text and not log.failed(), log.failed()
+    assert _sale_steps(env) == list(E.SALE_SEQUENCE)
+
+
+def test_a_stale_row_pointer_at_the_pre_open_check_is_noted_and_the_watch_goes_on(tmp_path):
+    """The row still names the stop the planned sale cancelled; nothing else rests on KO. That used to
+    abort the only slot (INCONCLUSIVE); now T2c is INFO and the restore is judged as usual."""
+    env, log, (verdict, why, rc), text = _run(tmp_path, stale_pointer=True)
+    st = _statuses(log)
+    assert st["T2c"] == "INFO" and "NOTE" in text, st
+    assert (verdict, rc) == (E.PASS, 0), why
+
+
+def test_a_stale_pointer_that_never_moves_is_still_a_fail(tmp_path):
+    """Going on is not the same as passing: with no restore at all the verdict is the Day B FAIL."""
+    _, log, (verdict, why, rc), _ = _run(tmp_path, stale_pointer=True, restore="none")
+    assert _statuses(log)["T2c"] == "INFO" and (verdict, rc) == (E.FAIL, 1) and "NO stop" in why, why
+
+
+def test_a_retry_that_lands_just_past_the_bar_fails_with_the_retry_window_named(tmp_path):
+    _, _, (verdict, why, rc), _ = _run(tmp_path, restore="late_retry")
+    assert (verdict, rc) == (E.FAIL, 1) and "16.5s after the expiry" in why, why
+    assert "NOT as the Day B bug" in why, why
+
+
+def test_an_orphan_restore_stop_is_adopted_so_cleanup_still_flattens_the_ticker(tmp_path):
+    """The stream's first restore attempt sends its stop with no client order id. If its pointer never
+    lands, cleanup used to class it as someone else's, refuse to flatten KO and still delete the row -
+    leaving KO held with no row, and the next run refusing the ticker."""
+    env, log, (verdict, why, rc), text = _run(tmp_path, restore="orphan")
+    assert (verdict, rc) == (E.FAIL, 1) and "cancel_or_reject_restored" in why, why
+    orphans = [o for o in env.orders.values()
+               if o["type"] == "stop" and o["tif"] == "gtc" and o["client_order_id"] is None
+               and o["status"] == "canceled" and o.get("created_at")]
+    assert orphans, "the uncoded restore stop must be there, and cancelled by the cleanup"
+    assert not [o for o in env.orders.values() if o["status"] in PR.LIVE_STATUSES], \
+        "nothing of the test may be left live"
+    assert env.positions.get("KO", 0) == 0 and not env.trades, "KO flattened and the row gone"
+    assert "adopted" in text and "NOT flattened" not in text
+    assert text.rstrip().splitlines()[-1].endswith(f"RESULT: FAIL — {why}")
+
+
+def test_a_late_stop_after_the_watch_ended_is_adopted_just_before_cleanup(tmp_path):
+    """No stop during the watch (FAIL: Day B), then a 3-sh KO sell stop appears before cleanup runs
+    (a late watchdog fallback). Cleanup must still cancel it and flatten KO."""
+    env = ExpiryEnv(restore="none")
+    log = PR.StepLog(str(tmp_path / "expiry.log"), env.now)
+    reh = PR.Rehearsal(env, log, ("KO", "KO", "KO"), r1_ticker=None)
+    env._timers.append((datetime(2026, 10, 13, 9, 40, tzinfo=_ET), lambda: env._new(
+        "KO", 3, "sell", "stop", "gtc", status="new", stop=70.0)))
+    verdict, why, rc = asyncio.run(E.run(env, log, reh, "KO"))
+    assert (verdict, rc) == (E.FAIL, 1), why
+    assert not [o for o in env.orders.values() if o["status"] in PR.LIVE_STATUSES]
+    assert env.positions.get("KO", 0) == 0 and not env.trades
+
+
+def test_a_cleanup_that_raises_still_ends_in_a_result_line_and_keeps_the_verdict(tmp_path):
+    """Review 10-12: `reh.cleanup()` was unguarded in the `finally` - a transient broker error there
+    skipped the RESULT line (and `docker exec -d` threw the traceback away). The verdict reached is a
+    real observation and is NOT replaced; the failure rides on the line."""
+    env = ExpiryEnv()
+    log = PR.StepLog(str(tmp_path / "expiry.log"), env.now)
+    reh = PR.Rehearsal(env, log, ("KO", "KO", "KO"), r1_ticker=None)
+
+    async def boom():
+        raise RuntimeError("broker 503 while listing orders")
+    reh.cleanup = boom
+    verdict, why, rc = asyncio.run(E.run(env, log, reh, "KO"))
+    text = (tmp_path / "expiry.log").read_text()
+    assert (verdict, rc) == (E.PASS, 0) and "CLEANUP RAISED" in why and "broker 503" in why, why
+    assert text.rstrip().splitlines()[-1].endswith(f"RESULT: PASS — {why}")
+    assert _statuses(log)["CLEANUP"] == "FAIL" and "RAISED RuntimeError" in text
+    assert "run `status`, then `cleanup`" in why
+
+
+def test_a_live_touch_in_cleanup_is_never_swallowed(tmp_path):
+    env = ExpiryEnv()
+    log = PR.StepLog(str(tmp_path / "expiry.log"), env.now)
+    reh = PR.Rehearsal(env, log, ("KO", "KO", "KO"), r1_ticker=None)
+
+    async def touched():
+        raise PR.LiveTouched("live")
+    reh.cleanup = touched
+    with pytest.raises(PR.LiveTouched):
+        asyncio.run(E.run(env, log, reh, "KO"))
+
+
+# ── `status` (the pre-arming look) ───────────────────────────────────────────────────────────────
+
+def _status(tmp_path, **kw):
+    env = ExpiryEnv(**kw)
+    log = PR.StepLog(str(tmp_path / "status.log"), env.now)
+    reh = PR.Rehearsal(env, log, ("KO", "KO", "KO"), r1_ticker=None)
+    rc = asyncio.run(E.status(env, log, reh, "KO"))
+    return rc, (tmp_path / "status.log").read_text(), env
+
+
+def test_status_says_which_file_is_in_the_container_and_that_ko_is_clean(tmp_path):
+    rc, text, env = _status(tmp_path)
+    assert rc == 0 and "KO CLEAN" in text and "KO NOT CLEAN" not in text, text
+    assert f"script md5 {E.script_md5()}" in text            # the same value the recipe pins
+    assert "SALE_SEQUENCE ['planned_sale_stop_cancel'" in text
+    assert env.orders == {}, "status places nothing"
+
+
+@pytest.mark.parametrize("kw, needle", [
+    ({"held": {"KO": 3}}, "already holds"),
+    ({"open_orders": {"KO": 3}}, "open order(s)"),          # e.g. Monday's GTC watchdog stop left behind
+    ({"foreign_rows": {"KO": 1}}, "open paper trade row"),
+])
+def test_status_refuses_exactly_what_the_run_refuses_on(tmp_path, kw, needle):
+    rc, text, _ = _status(tmp_path, **kw)
+    assert rc == 2 and "KO NOT CLEAN" in text and needle in text, text
+    # ...and it is the very check the run uses: the run refuses on the same state, placing nothing
+    env = ExpiryEnv(**kw)
+    log = PR.StepLog(str(tmp_path / "run.log"), env.now)
+    reh = PR.Rehearsal(env, log, ("KO", "KO", "KO"), r1_ticker=None)
+    n = len(env.orders)
+    with pytest.raises(PR.RehearsalRefused, match=needle.split("(")[0]):
+        asyncio.run(E.run(env, log, reh, "KO"))
+    assert len(env.orders) == n
+
+
+def test_status_refuses_a_left_over_rehearsal_row(tmp_path):
+    env = ExpiryEnv()
+    asyncio.run(env.insert_trade(ticker="KO", shares=3, entry=88.4, stop=75.14, stop_id=None,
+                                 alert_date=env.et_today()))
+    log = PR.StepLog(str(tmp_path / "status.log"), env.now)
+    reh = PR.Rehearsal(env, log, ("KO", "KO", "KO"), r1_ticker=None)
+    assert asyncio.run(E.status(env, log, reh, "KO")) == 2
+    assert "KO NOT CLEAN" in (tmp_path / "status.log").read_text()
+
+
+# ── main(): nothing leaves a bare traceback behind ──────────────────────────────────────────────
+
+def test_main_turns_a_crash_outside_the_guarded_run_into_a_result_line_and_a_traceback(
+        monkeypatch, capsys):
+    """Review 10-12: a crash in `run_real` before `run()` (credentials, the DB pool, a transient
+    broker read) reached no RESULT line, and `docker exec -d` discards stdout anyway - so main prints
+    both on stdout, which the launcher redirects into /app/logs."""
+    async def boom(cmd, ticker, *, force_time, send_pages):
+        raise ConnectionError("db pool refused")
+    monkeypatch.setattr(E, "run_real", boom)
+    assert E.main(["run"]) == 2
+    out = capsys.readouterr()
+    text = out.out + out.err
+    assert "RESULT: INCONCLUSIVE" in text and "ConnectionError: db pool refused" in text
+    assert "Traceback" in text and "run `status`" in text
+
+
+def test_main_still_reports_a_refusal_and_a_live_touch_as_before(monkeypatch, capsys):
+    async def refuse(*a, **k):
+        raise PR.RehearsalRefused("KO is held")
+    monkeypatch.setattr(E, "run_real", refuse)
+    assert E.main(["run"]) == 2 and "REFUSED: KO is held" in capsys.readouterr().out
+
+    async def touch(*a, **k):
+        raise PR.LiveTouched("live")
+    monkeypatch.setattr(E, "run_real", touch)
+    assert E.main(["run"]) == 2 and "LIVE TOUCHED" in capsys.readouterr().out
+
+
+# ── the arming recipe (finding 1: it must not be able to ship Monday's file) ─────────────────────
+
+def test_script_md5_hashes_the_bytes_of_the_file_it_is_given_or_its_own(tmp_path, monkeypatch):
+    f = tmp_path / "probe.py"
+    f.write_bytes(b"print('a stand-in for the probe')\n")
+    want = hashlib.md5(b"print('a stand-in for the probe')\n").hexdigest()
+    assert E.script_md5(str(f)) == want
+    monkeypatch.setattr(E, "__file__", str(f))               # the default is the script's own path
+    assert E.script_md5() == want
+    f.write_bytes(b"print('edited')\n")                      # any edit moves the pin
+    assert E.script_md5() != want
+
+
+def test_the_launcher_recipe_checks_the_file_before_it_launches_and_keeps_the_stdout():
+    from datetime import date
+    md5 = "0123456789abcdef0123456789abcdef"
+    text = E.launcher_text(date(2026, 10, 13), md5)
+    # a script under `set -e`; the local wrong-file guard runs BEFORE the copy; the container md5 and the
+    # new symbol are ENFORCED (each `|| { ...; exit 1; }`, not printed for the person to eyeball); `status`
+    # (which exits 2 on a dirty KO) comes before anything is armed
+    assert "\nset -e\n" in text
+    wrong_local = text.index('echo "WRONG FILE')
+    wrong_box = text.index('echo "CONTAINER HAS THE WRONG FILE')
+    no_symbol = text.index('echo "CONTAINER FILE HAS NO SALE_SEQUENCE')
+    assert wrong_local < text.index("docker cp") < wrong_box < no_symbol
+    assert f'= "{md5}" ] || {{ echo "CONTAINER HAS THE WRONG FILE' in text
+    assert "e.SALE_SEQUENCE" in text and "grep -q planned_sale_stop_cancel" in text
+    assert no_symbol < text.index("expiry_path_test.py status") < text.index("nohup")
+    # inside the launcher: the md5 compare comes before the one `docker exec -d`, and refuses on mismatch
+    launcher = text.split("<<'LAUNCHER_EOF'\n")[1].split("LAUNCHER_EOF")[0]
+    assert launcher.count("docker exec -d") == 1
+    assert launcher.index("MD5 MISMATCH - not launched") < launcher.index("docker exec -d")
+    assert f'[ "$GOT" = "{md5}" ] ||' in launcher and "exit 1" in launcher
+    # wall-clock wait for 08:25 ET (string compare on the ET date+time) and the Monday log shape
+    assert "TZ=America/New_York" in launcher and "2026-10-13 0824" in launcher
+    assert "expiry_test_launch_2026-10-13.log" in launcher and "echo LAUNCHED" in launcher
+    # stdout survives a recreate: sh -c with the redirect into the bind-mounted /app/logs, in /app
+    assert ("docker exec -d -w /app apollo-execution sh -c 'python scripts/probes/_687/expiry_path_test.py "
+            "run >> /app/logs/expiry_test_2026-10-13.stdout 2>&1'") in launcher
+    assert "@DAY@" not in text and "@MD5@" not in text and "@REMOTE@" not in text, "unfilled token"
+
+
+def test_the_launcher_refuses_a_weekend_day():
+    from datetime import date
+    with pytest.raises(ValueError, match="market day"):
+        E.launcher_text(date(2026, 10, 10), "x")
+
+
+def test_the_launcher_command_prints_the_recipe_for_this_very_file_and_arms_nothing(capsys):
+    assert E.main(["launcher", "--day", "2026-10-13"]) == 0
+    out = capsys.readouterr().out
+    assert E.script_md5() in out and "LAUNCHER_EOF" in out
+    with pytest.raises(SystemExit):
+        E.main(["launcher"])                                    # --day is required

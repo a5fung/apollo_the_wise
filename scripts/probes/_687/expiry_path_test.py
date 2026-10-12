@@ -25,7 +25,9 @@ THE SEQUENCE (ET, a market day) - a real depth sale, collapsed from 19:01-then-o
               waited on until the broker shows it live and every share reserved; the trade row
               ('filled', remaining_shares 3, stop_order_id = that stop, stop_price/hard_stop = its
               price). If the placement is refused the watchdog's fallback stop (09:00 tick) is
-              accepted instead - the row only has to HAVE a live stop at 09:05.
+              accepted instead - the row only has to HAVE a live stop at 09:05. A stop that is live
+              but whose shares the broker does not (yet) show reserved logs T1b as INFO, not FAIL: a
+              pre-market stop may reserve only once routed, and nothing downstream depends on it.
   T2   09:05  the planned sale, under the per-trade lock `execute_depth_open_sale` holds (so the
               watchdog's try-lock defers), the helpers it calls, in its order, each a production
               function: `_record_planned_sale_stop_cancel` (the `planned_sale_stop_cancel` marker the
@@ -37,20 +39,30 @@ THE SEQUENCE (ET, a market day) - a real depth sale, collapsed from 19:01-then-o
               steps actually run are checked against it and printed.
   T2b         the stream recorded the planned-sale cancel (`stop_cancel_by_planned_sale_silent` naming
               the stop) - positive evidence it did not page "unprotected". INFO if absent.
-  T2c  09:29  pre-open: the sale still queued, nothing else resting on the ticker, the row pointer
-              NULL (the production state overnight). A stop sitting there = the precondition is
-              broken -> INCONCLUSIVE, never FAIL.
+  T2c  09:29  pre-open: the sale still queued and nothing else resting on the ticker (the production
+              state overnight). Another live sell order there = the precondition is broken ->
+              INCONCLUSIVE, never FAIL. The row pointer still naming the (cancelled) stop is only
+              NOTED (T2c INFO) and the watch goes on: the stream's §3 restore leaves the cancelled
+              stop's id out of the held-share count and keeps its price, and the verdict still needs
+              the pointer moved onto the restored stop.
   T3   09:30  watch the sale and the broker. 09:31:30 is the FAIL line; 09:32 is the INCONCLUSIVE line.
+              Any 3-sh sell stop that shows up on KO is adopted into the run's order list at once
+              (and again just before cleanup), so cleanup cancels it and flattens KO even if the
+              stream's pointer row never lands (the stream's FIRST restore attempt sends its stop
+              with no client order id, which cleanup would otherwise class as someone else's).
   --   09:46  cleanup (rehearsal's: the planned-sale cancel row for the restored stop is written BEFORE
               it is cancelled, shares free, KO sold at market, rows deleted), then a read-only wait
               (<= 5 min) for KO to be FLAT: paper fills the flatten in pieces over minutes, so the
               cleanup's own CLEANUP line can read FAIL "flatten order ... is new" for a position that
-              is flat a minute later - the `is FLAT` note is the truth.
+              is flat a minute later - the `is FLAT` note is the truth. A cleanup that RAISES is
+              logged (CLEANUP FAIL + the error), appended to the RESULT line and does not change the
+              verdict already reached; `status` then `cleanup` finishes it by hand.
 WATCHDOG INTERPLAY (read from scheduler.py::_stop_ack_timeout_watchdog_job, not yet seen live). Once the
 sale is queued and the lock released, the watchdog's next 30 s tick should find the sale covering the
 row and write `stop_ack_broker_covered` (inside its own 24 h dedup set), so after the 09:30:57 expiry
-the only thing left that puts a stop on is the stream's §3 - the test discriminates. If the watchdog places a stop AFTER the expiry anyway, `classify` says so (FAIL: the
-restore did not get there first); it is never read as the restore's pass.
+the only thing left that puts a stop on is the stream's §3 - the test discriminates. If the watchdog
+places a stop AFTER the expiry anyway, `classify` says so (FAIL: the restore did not get there first);
+it is never read as the restore's pass.
 
 PAPER ONLY - it reuses paper_rehearsal.py's guards unchanged: the paper account id is compared with
 the live one, a TRIPWIRE makes any non-paper client lookup raise, every order carries
@@ -76,23 +88,59 @@ VERDICTS (`classify`, pure, unit-checked):
   Telegram group, NOT the main chat - look there (the main chat only when TELEGRAM_PAPER_CHAT_ID is
   unset). A page seen in the main chat means #699's switch is off; a page seen nowhere fails BOTH tasks.
 
+READING THE LOG (what is NOT a failure):
+  * `[T1b] INFO` (the stop is live but the shares are not yet shown reserved) beside `[T3] PASS` is
+    cosmetic; the verdict is T3's alone. T1b is never FAIL.
+  * FAIL whose ONLY reason is "created 15-18 s after the expiry" with a `stop_restore_retried` row:
+    the bar (15 s from the expiry, the task's DoD) is stricter than the production retry's own window
+    (15 s from its FIRST REFUSAL, ~1-2 s after the expiry). Bring it to him as bar-vs-retry-window;
+    it is NOT the Day B bug coming back.
+  * FAIL with "no stop_order_id_changed row" and a KO stop at the broker: the stream placed the stop
+    but its pointer never landed. Cleanup now adopts that stop and flattens KO anyway; if `cleanup`
+    still reports a foreign order, cancel the uncoded 3-sh KO stop by hand and run `cleanup` again.
+  * The KO row is open ('filled') 08:30 -> 09:46, which covers the 09:31-09:45 entry window, and
+    `count_open_positions` has no signal_type filter, so it counts toward the PAPER position cap: if
+    the paper book already holds 4 positions it can block a paper entry. Same as Monday. Say so in the
+    morning note when the paper lane is near its cap.
+
 WHERE IT RUNS - the SERVER, never the laptop (a laptop wake can miss 08:30). Armed the night before as
-a `nohup` wall-clock loop on the host that, at 08:25 ET, runs
-    docker exec -d -w /app apollo-execution python scripts/probes/_687/expiry_path_test.py run
+a `nohup` wall-clock loop on the host that, at 08:25 ET, checks the container's file md5 and runs
+    docker exec -d -w /app apollo-execution sh -c 'python scripts/probes/_687/expiry_path_test.py run \\
+        >> /app/logs/expiry_test_<date>.stdout 2>&1'
 logging `LAUNCHED` to /home/apollo/expiry_test_launch_<date>.log (the shape of Friday's dayb_launch).
-The container runs the file that is IN it (the image's, or the last `docker cp`): copy this one in
-first. KO must be flat and row-less at 08:25 or the ticker check REFUSES (INCONCLUSIVE, nothing placed).
-    expiry_path_test.py status     # read-only: the log tail + the row + KO at the broker
+THE EXACT RECIPE is printed by `expiry_path_test.py launcher --day <date>` (printing arms nothing; it
+embeds the md5 of the file it is run from, so it cannot name a stale file; the OLD script has no
+`launcher` command, so running it from a checkout that lacks this commit fails loudly). It is a bash
+script under `set -e` - `launcher --day D > /tmp/arm_D.sh && bash /tmp/arm_D.sh` - so each check below
+STOPS it before anything is armed (Monday's recipe logged the md5 and checked nothing):
+  1. md5 of the local file = the recipe's, then copy THIS file into the container (`docker cp`) - from a
+     checkout that holds it, never one still at the old commit; the container runs the file IN it;
+  2. MANDATORY smoke, enforced: the container file's md5 equals the recipe's, and `import ...
+     expiry_path_test` prints SALE_SEQUENCE (an AttributeError = the old file);
+  3. `status`: KO flat, no open orders, no open or rehearsal rows - it prints `KO CLEAN`, or
+     `KO NOT CLEAN` and exits 2 (the exact check the 08:25 run refuses on; a left-over GTC stop from an
+     earlier run is an open order and would burn the only slot);
+  4. the wait-until-08:25-ET loop; before `docker exec -d` it compares the container file's md5 again
+     and writes `MD5 MISMATCH - not launched` instead of launching.
+`docker exec -d` throws stdout away, so the launch wraps the run in `sh -c '... >> /app/logs/...'`:
+/app/logs is the bind mount (host /home/apollo/apollo_the_wise/logs) and survives a container recreate;
+the step log (scripts/probes/_687/expiry_test_<date>.log) lives in the container's writable layer and
+does NOT. NO apollo-execution deploy/restart between 08:25 and ~09:52 ET - it kills the run; read the
+step log before any execution deploy. A run that dies mid-way is finished with `cleanup` (resumes from
+the audit state row).
+    expiry_path_test.py status     # read-only: md5 + SALE_SEQUENCE, KO, orders, rows, CLEAN / NOT CLEAN
     expiry_path_test.py cleanup    # the abort path
+    expiry_path_test.py launcher --day 2026-10-13   # prints the arming recipe; arms nothing
 It REFUSES to start outside a market day 08:20-08:45 ET (`--force-time` overrides, for a dry look).
 
 EXIT CODES: 0 PASS (or INCONCLUSIVE-no-expiry / VOID, which are re-runs, not failures - see the log) ·
-1 FAIL · 2 refused / raised / could not run (INCONCLUSIVE too).
+1 FAIL · 2 refused / raised / could not run (INCONCLUSIVE too) · `status`: 2 = KO NOT CLEAN.
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import logging
 import os
 import sys
@@ -127,6 +175,7 @@ T_FAIL_DEADLINE = dtime(9, 31, 30)      # no stop by here = FAIL
 T_NO_EXPIRY_DEADLINE = dtime(9, 32)     # no expiry by here = INCONCLUSIVE
 T_CLEANUP = dtime(9, 46)
 PASS_WITHIN_S = 15.0                    # stop created within this long of the expiry
+RETRY_WINDOW_SLACK_S = 3.0              # a 'late' stop this close to the bar, with a retry row, is named
 ROW_STOP_WAIT_S = 90.0                  # at T_SELL, how long to wait for the watchdog's fallback stop
 PLANNED_CANCEL_WAIT_S = 30              # the stream's planned-sale row (it re-checks the broker ~3 s)
 FLAT_WAIT_S = 300.0                     # after cleanup: paper fills a market flatten in pieces over minutes
@@ -214,11 +263,11 @@ def sale_sequence_problems(steps) -> list[str]:
     return problems
 
 
-def preopen_problems(sale_status, open_orders: list, sale_id, row_stop_id) -> list[str]:
+def preopen_problems(sale_status, open_orders: list, sale_id) -> list[str]:
     """Why the 09:29 state is NOT the production overnight one (pure; [] = it is): the sale must be
-    queued, no OTHER sell order may rest on the ticker (a stop there holds the shares, so a later
-    stop could not be told from the restore's), and the row's pointer must be NULL (the stream nulled
-    it on the planned cancel)."""
+    queued and no OTHER sell order may rest on the ticker (a stop there holds the shares, so a later
+    stop could not be told from the restore's). These BLOCK the run (INCONCLUSIVE). The row's
+    pointer is `preopen_notes`: it does not."""
     problems = []
     status = PR.canon(sale_status)
     if status not in PR.QUEUED_OK:
@@ -229,9 +278,19 @@ def preopen_problems(sale_status, open_orders: list, sale_id, row_stop_id) -> li
         problems.append("other live sell order(s) on the ticker: "
                         + ", ".join(f"{str(o.get('id'))[:8]} {str(o.get('type'))} {o.get('qty')}"
                                     for o in others))
-    if row_stop_id:
-        problems.append(f"the row still points at stop {str(row_stop_id)[:8]} (production: NULL)")
     return problems
+
+
+def preopen_notes(row_stop_id) -> list[str]:
+    """What is worth SAYING about the 09:29 state without stopping the run (pure). The row still
+    pointing at a stop is one: production nulls it on the planned cancel, but a pointer to a stop
+    that is no longer live at the broker (a live one would be an 'other sell order' above) does not
+    change what §3 does - it leaves the cancelled stop's id out of the held-share count and keeps its
+    price - and the verdict still needs the pointer moved onto the restored stop."""
+    if not row_stop_id:
+        return []
+    return [f"the row still points at stop {str(row_stop_id)[:8]} (production: NULL) - not live at the "
+            f"broker, so the restore is unaffected; the verdict still needs the pointer moved"]
 
 
 def terminal_at(raw) -> datetime | None:
@@ -245,14 +304,89 @@ def terminal_at(raw) -> datetime | None:
     return None
 
 
+def _is_sell_stop_of(o: dict, qty: int) -> bool:
+    return (str(o.get("side") or "").split(".")[-1].lower() == "sell"
+            and str(o.get("type") or "").split(".")[-1].lower() == "stop"
+            and abs(float(o.get("qty") or 0) - qty) < 1e-9)
+
+
 def find_restored_stop(open_orders: list, qty: int) -> dict | None:
     """The live SELL stop that holds `qty` shares (the restored one), or None."""
     for o in open_orders:
-        if (str(o.get("side") or "").split(".")[-1].lower() == "sell"
-                and str(o.get("type") or "").split(".")[-1].lower() == "stop"
-                and abs(float(o.get("qty") or 0) - qty) < 1e-9):
+        if _is_sell_stop_of(o, qty):
             return o
     return None
+
+
+def adoptable_stops(open_orders: list, known_ids, qty: int) -> list[str]:
+    """Ids of live `qty`-share SELL stops on the ticker that the run does not know yet (pure). The
+    stream's FIRST restore attempt places its stop with no client order id, and cleanup classes an
+    order that is neither in the run's list, nor on a row, nor ours by id as someone else's - and then
+    will not flatten the ticker. KO is clean when the run starts, so a 3-sh KO sell stop that appears
+    during it is a consequence of the test: adopt it so cleanup cancels it."""
+    known = {str(i) for i in (known_ids or [])}
+    return [str(o["id"]) for o in open_orders
+            if _is_sell_stop_of(o, qty) and str(o.get("id")) not in known]
+
+
+def script_md5(path: str | None = None) -> str:
+    """md5 of this script (or of `path`): what the arming recipe pins and `status` prints."""
+    with open(path or os.path.abspath(__file__), "rb") as fh:
+        return hashlib.md5(fh.read(), usedforsecurity=False).hexdigest()
+
+
+_HOST = "apollo@87.99.134.162"
+_REMOTE_PROBE = "/app/scripts/probes/_687/expiry_path_test.py"
+_LAUNCHER_SCRIPT = """#!/bin/bash
+# #687 expiry-path test, launcher for @DAY@. Waits for 08:25 ET, checks the container holds the file
+# this was written for, then starts the run with its stdout kept in the bind-mounted /app/logs.
+L=/home/apollo/expiry_test_launch_@DAY@.log
+until [ "$(TZ=America/New_York date '+%F %H%M')" \\> "@DAY@ 0824" ]; do sleep 5; done
+date > "$L"
+GOT=$(docker exec apollo-execution md5sum @REMOTE@ | cut -d' ' -f1)
+echo "container md5 $GOT, want @MD5@" >> "$L"
+[ "$GOT" = "@MD5@" ] || { echo "MD5 MISMATCH - not launched" >> "$L"; exit 1; }
+docker exec -d -w /app apollo-execution sh -c 'python scripts/probes/_687/expiry_path_test.py run >> /app/logs/expiry_test_@DAY@.stdout 2>&1' && echo LAUNCHED >> "$L"
+"""
+
+
+def launcher_text(day: date, md5: str) -> str:
+    """The exact arming recipe for market day `day`, pinned to `md5` (pure; arms nothing - the person
+    runs it). Order matters: copy -> MANDATORY smoke (md5 + the new symbol) -> `status` -> arm."""
+    if day.weekday() >= 5:
+        raise ValueError(f"{day} is not a market day (Mon-Fri)")
+    d = day.isoformat()
+    script = _LAUNCHER_SCRIPT.replace("@DAY@", d).replace("@MD5@", md5).replace("@REMOTE@", _REMOTE_PROBE)
+    return f"""# #687 expiry-path test - arm for {d} (08:25 ET). Nothing below starts the test before then.
+# Run it AS A SCRIPT (`bash`), from the repo root of a checkout that HOLDS THIS COMMIT (the old
+# script has no `launcher` command, so a stale checkout could not have printed this). Under
+# `set -e` every check below stops it before anything is armed. Expected md5 of the probe: {md5}
+set -e
+
+# 1. the right file, then copy it into the container (never while a run is in flight)
+F=scripts/probes/_687/expiry_path_test.py
+[ "$(md5 -q $F 2>/dev/null || md5sum $F | cut -d' ' -f1)" = "{md5}" ] || {{ echo "WRONG FILE - not copying"; exit 1; }}
+scp $F {_HOST}:/home/apollo/expiry_path_test.py
+ssh {_HOST} 'docker cp /home/apollo/expiry_path_test.py apollo-execution:{_REMOTE_PROBE}'
+
+# 2. MANDATORY smoke, enforced: the container holds that file and the new step order (an AttributeError = the old file)
+[ "$(ssh {_HOST} 'docker exec apollo-execution md5sum {_REMOTE_PROBE}' | cut -d' ' -f1)" = "{md5}" ] || {{ echo "CONTAINER HAS THE WRONG FILE - not arming"; exit 1; }}
+ssh {_HOST} 'docker exec -w /app apollo-execution python -c "import scripts.probes._687.expiry_path_test as e; print(e.SALE_SEQUENCE)"' | grep -q planned_sale_stop_cancel || {{ echo "CONTAINER FILE HAS NO SALE_SEQUENCE (the old script) - not arming"; exit 1; }}
+
+# 3. read-only: KO flat, no open orders (a GTC stop from an earlier run counts), no rows. Prints "KO CLEAN";
+#    "KO NOT CLEAN" exits 2 and `set -e` stops here (the 08:25 run would REFUSE on the same state).
+ssh {_HOST} 'docker exec -w /app apollo-execution python scripts/probes/_687/expiry_path_test.py status'
+
+# 4. arm: write the launcher on the host, start it detached (it waits for 08:25 ET, re-checks the md5, launches)
+ssh {_HOST} 'cat > /home/apollo/expiry_launch_{d}.sh' <<'LAUNCHER_EOF'
+{script}LAUNCHER_EOF
+ssh {_HOST} 'nohup bash /home/apollo/expiry_launch_{d}.sh </dev/null >/dev/null 2>&1 &'
+
+# 5. after arming: ssh {_HOST} 'ps -eo pid,cmd | grep expiry_launch_{d} | grep -v grep'   (must show the loop)
+#    08:26 ET: cat /home/apollo/expiry_test_launch_{d}.log (md5 line + LAUNCHED); tail the run with
+#    ssh {_HOST} 'tail -f /home/apollo/apollo_the_wise/logs/expiry_test_{d}.stdout'. No apollo-execution
+#    deploy/restart 08:25-09:52 ET.
+"""
 
 
 def watchdog_stop_after(rows: list, trade_id, expiry_at) -> bool:
@@ -308,7 +442,12 @@ def classify(obs: dict) -> tuple[str, str]:
     if delta is None:
         problems.append("the stop has no creation time")
     elif delta > PASS_WITHIN_S:
-        problems.append(f"stop created {delta:.1f}s after the expiry (> {PASS_WITHIN_S:.0f}s)")
+        late = f"stop created {delta:.1f}s after the expiry (> {PASS_WITHIN_S:.0f}s)"
+        if obs.get("retry_row") and delta <= PASS_WITHIN_S + RETRY_WINDOW_SLACK_S:
+            late += (" - a stop_restore_retried row exists: the production retry's own 15 s window starts "
+                     "at its FIRST REFUSAL (~1-2 s after the expiry), so a retry that worked can land "
+                     "here; bring it to him as the bar vs the retry window, NOT as the Day B bug")
+        problems.append(late)
     elif delta < 0:
         problems.append(f"stop created {-delta:.1f}s BEFORE the expiry — not the restore")
     if not obs.get("pointer_row"):
@@ -412,9 +551,17 @@ async def _protect(env, log, reh, ticker: str, today: date, fill: float) -> tupl
     if stop_id:
         pos = await reh._settle(ticker, QTY, 0.0)
         ok = bool(pos and float(pos["qty"]) == QTY and float(pos["qty_available"]) == 0)
+        # Live but not (yet) shown as reserving the shares is INFO, not FAIL: nothing on paper has yet
+        # shown whether a PRE-MARKET stop reserves before it is routed, and no later step depends on
+        # it (T2 cancels the stop and waits for the shares to be free). A FAIL beside a T3 PASS would
+        # only mislead.
         log.step("T1b", f"the row has its own live {QTY}-sh stop at the broker, every share reserved", ok,
                  f"stop {stop_id[:8]} {status} @ ${f['stop']:.2f}; position {pos and pos['qty']} / "
-                 f"free {pos and pos['qty_available']}")
+                 f"free {pos and pos['qty_available']}"
+                 + ("" if ok else " - live, but the broker does not show the shares reserved yet "
+                                  "(a pre-market stop may reserve only once routed): cosmetic, the "
+                                  "verdict is T3's"),
+                 status="PASS" if ok else "INFO")
     else:
         log.step("T1b", "the row's own stop", None,
                  f"{why} — the row is written without one; the production watchdog's fallback "
@@ -499,17 +646,43 @@ async def _preopen(env, log, ticker: str, tid: int, sale_id: str, today: date) -
     row = await env.trade(tid)
     rows = [r for r in await env.audit_rows(list(WATCHDOG_EVENTS), _at(today, dtime(8, 0)))
             if r["detail"].get("trade_id") == tid]
-    problems = preopen_problems(sale and sale.get("status"), orders, sale_id,
-                                (row or {}).get("stop_order_id"))
-    log.step("T2c", "pre-open: the sale queued, nothing else resting on the ticker, row pointer NULL",
+    problems = preopen_problems(sale and sale.get("status"), orders, sale_id)
+    notes = preopen_notes((row or {}).get("stop_order_id"))
+    log.step("T2c", "pre-open: the sale queued and nothing else resting on the ticker",
              not problems,
              f"sale {PR.canon(sale and sale.get('status'))}; open orders "
              f"{[(str(o['id'])[:8], str(o.get('type')), o.get('qty')) for o in orders]}; row pointer "
              f"{(row or {}).get('stop_order_id')}; watchdog rows so far "
              f"{sorted({r['event_type'] for r in rows}) or 'none'}"
-             + (f"; PROBLEMS {problems}" if problems else ""))
+             + (f"; PROBLEMS {problems}" if problems else "")
+             + (f"; NOTE {notes}" if notes else ""),
+             status="FAIL" if problems else ("INFO" if notes else "PASS"))
     if problems:
         raise PR.RehearsalRefused("precondition broken at the pre-open check: " + "; ".join(problems))
+
+
+async def _adopt(log, reh, ids: list[str], why: str) -> None:
+    """Put stop ids the run did not place into its order list (saved at once, so a crash keeps it):
+    cleanup then cancels them and flattens the ticker instead of refusing over a 'foreign' order."""
+    known = reh.state.setdefault("order_ids", [])
+    new = [i for i in ids if i not in known]
+    if new:
+        known.extend(new)
+        await reh._save()
+        log.note(f"adopted {[i[:8] for i in new]} into the run's orders ({why}): cleanup will cancel "
+                 f"them and flatten")
+
+
+async def _adopt_strays(env, log, reh, ticker: str) -> None:
+    """Just before cleanup: adopt any 3-sh KO sell stop that appeared and is not known yet (a late
+    restore, a late watchdog fallback). Never raises (a failed read is noted); a live touch does."""
+    try:
+        ids = adoptable_stops(await env.open_orders(ticker), reh.state.get("order_ids"), QTY)
+        await _adopt(log, reh, ids, "a stop on the ticker the run did not place")
+    except PR.LiveTouched:
+        raise
+    except Exception as e:  # loud-ok: noted; cleanup still runs and the RESULT line is the report
+        log.note(f"could not look for stray {ticker} stops before cleanup ({type(e).__name__}: {e})")
 
 
 async def _watch(env, log, reh, ticker: str, tid: int, sale_id: str, today: date) -> dict:
@@ -532,6 +705,7 @@ async def _watch(env, log, reh, ticker: str, tid: int, sale_id: str, today: date
             row = await env.trade(tid)
             obs["row_stop_id"] = (row or {}).get("stop_order_id")
             if stop:
+                await _adopt(log, reh, [stop["id"]], "the restored stop")
                 obs["stop"] = {"id": stop["id"], "qty": stop.get("qty"),
                                "price": stop.get("stop_price"), "created_at": stop.get("created_at")}
                 rows = await env.audit_rows(
@@ -622,7 +796,18 @@ async def run(env, log, reh, ticker: str, *, force_time: bool = False) -> tuple[
         log.step("T0", "a step raised", None, f"{why} | {tail}", status="INFO")
         await _result_row(env, verdict, why, trade_id=reh.state.get("trade_id"), traceback=tail)
     finally:
-        await reh.cleanup()
+        await _adopt_strays(env, log, reh, ticker)
+        try:
+            await reh.cleanup()
+        except PR.LiveTouched:
+            raise
+        except Exception as e:
+            # Monday's class: nothing may stop the RESULT line below. The verdict already reached is
+            # NOT replaced (a real PASS stays a PASS): the cleanup failure rides on the line.
+            tail = " | ".join(traceback.format_exc().strip().splitlines()[-4:])
+            log.step("CLEANUP", "the rehearsal's cleanup", False, f"RAISED {type(e).__name__}: {e} | {tail}")
+            why += (f" | CLEANUP RAISED ({type(e).__name__}: {e}) - {ticker} and its row may be left "
+                    f"behind: run `status`, then `cleanup`")
         try:
             await _confirm_flat(env, log, ticker)
         except PR.LiveTouched:
@@ -631,6 +816,26 @@ async def run(env, log, reh, ticker: str, *, force_time: bool = False) -> tuple[
             log.note(f"could not confirm {ticker} is flat ({type(e).__name__}: {e})")
     log.note(f"RESULT: {verdict} — {why}")
     return verdict, why, rc
+
+
+async def status(env, log, reh, ticker: str) -> int:
+    """Read-only look before arming: the script's md5 + SALE_SEQUENCE (which file is in the
+    container), KO at the broker, its orders and rows, and whether the 08:25 run would START - the
+    same `_ticker_clean` check it refuses on (so a left-over GTC stop shows here, not at 08:25).
+    0 = KO CLEAN, 2 = KO NOT CLEAN."""
+    await reh.preflight(day="status")                # paper guard + tripwire
+    pos = await env.position(ticker)
+    orders = await env.open_orders(ticker)
+    log.note(f"script md5 {script_md5()}; SALE_SEQUENCE {list(SALE_SEQUENCE)}")
+    log.note(f"{ticker} at the broker: {pos}; open orders: "
+             f"{[(str(o['id'])[:8], o['type'], o['qty']) for o in orders]}; "
+             f"rows: {await env.sentinel_rows(ticker)}; state: {env.load_state()}")
+    unusable = await _ticker_clean(env, ticker)
+    if unusable:
+        log.note(f"{ticker} NOT CLEAN - the 08:25 run would REFUSE (nothing placed): {unusable}")
+        return 2
+    log.note(f"{ticker} CLEAN - flat, no open orders, no open or rehearsal trade rows: the run would start")
+    return 0
 
 
 async def run_real(cmd: str, ticker: str, *, force_time: bool, send_pages: bool) -> int:
@@ -651,25 +856,26 @@ async def run_real(cmd: str, ticker: str, *, force_time: bool, send_pages: bool)
                                          "r1": {}}
         return await reh.cleanup()
     if cmd == "status":
-        await reh.preflight(day="status")
-        pos = await env.position(ticker)
-        log.note(f"{ticker} at the broker: {pos}; open orders: "
-                 f"{[(o['id'][:8], o['type'], o['qty']) for o in await env.open_orders(ticker)]}; "
-                 f"rows: {await env.sentinel_rows(ticker)}; state: {env.load_state()}")
-        return 0
+        return await status(env, log, reh, ticker)
     _, _, rc = await run(env, log, reh, ticker, force_time=force_time)
     return rc
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("cmd", choices=["run", "status", "cleanup"])
+    ap.add_argument("cmd", choices=["run", "status", "cleanup", "launcher"])
     ap.add_argument("--ticker", default=TICKER)
     ap.add_argument("--force-time", action="store_true",
                     help="skip the 08:20-08:45 ET market-day launch refusal")
     ap.add_argument("--capture-pages", action="store_true",
                     help="log the pages this process would send instead of sending them")
+    ap.add_argument("--day", help="launcher only: the market day to arm for, YYYY-MM-DD")
     a = ap.parse_args(argv)
+    if a.cmd == "launcher":
+        if not a.day:
+            ap.error("launcher needs --day YYYY-MM-DD")
+        print(launcher_text(date.fromisoformat(a.day), script_md5()))     # prints; arms nothing
+        return 0
     try:
         return asyncio.run(run_real(a.cmd, a.ticker.upper(), force_time=a.force_time,
                                     send_pages=not a.capture_pages))
@@ -678,6 +884,15 @@ def main(argv=None) -> int:
         return 2
     except PR.LiveTouched as e:
         print(f"ABORTED — LIVE TOUCHED: {e}")
+        return 2
+    except Exception as e:
+        # Monday's gap: `docker exec -d` threw a bare traceback away. This reaches here only for what
+        # `run()` itself did not catch (the setup before it, or a crash outside its guarded block):
+        # say so on stdout, which the launcher redirects into /app/logs.
+        print(f"RESULT: INCONCLUSIVE — raised outside the guarded run: {type(e).__name__}: {e}")
+        traceback.print_exc()
+        print(f"NOTE: nothing is known to be placed unless the step log says so; run `status` "
+              f"(and `cleanup` if {a.ticker.upper()} or a row is left)")
         return 2
 
 
