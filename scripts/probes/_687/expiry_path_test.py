@@ -1,69 +1,102 @@
-"""#687 — the MONDAY PAPER TEST of the expired full-exit-sale restore (card 1 of
+"""#687 — the PAPER TEST of the expired full-exit-sale restore (card 1 of
 docs/roadmap/weekend_build_cards_2026-10-10.md; his ruling 2026-10-09: *"ok, monday"* — one test of
-this path at Monday's open, then the switch-on).
+this path at the open, then the switch-on). Monday 2026-10-12's run was VOID (see below); this is the
+re-run, written for Tuesday 2026-10-13.
 
 WHAT IT PROVES. Friday's Day B (scripts/probes/_1008/) found that when a queued opening-auction sale
 EXPIRES unfilled, `trade_stream._handle_cancel_or_reject` §3 counted the dead sale as still holding
 every share, paged "No stop re-placed" and returned: PEP sat without a stop 09:30:57 -> 09:35:00. The
 fix (excluded dead sale id + a background held-shares retry) is unit-tested; this is the one live
-look at the real thing. A 3-share KO position on the PAPER account is bought pre-market with NO stop,
-a sale that cannot fill is queued for the open, the sale expires at ~09:30:57, and we look for the
-stop.
+look at the real thing, driven through the SAME sequence a real depth sale takes.
 
-PAPER ONLY — it reuses paper_rehearsal.py's guards unchanged: the paper account id is compared with
+WHY MONDAY WAS VOID. The old probe bought 3 KO with NO stop. At 09:00 the PRODUCTION stop-ACK watchdog
+(left exactly as it is - it is a safety net) put a fallback stop on the row ("filled_at 08:30,
+stop_order_id NULL >30s; fallback stop placed at $75.14"), which reserved all 3 shares. At 09:05 the
+probe sent its opening-auction sale on top of that stop; the broker refused it (probable cause: held
+shares - the traceback went to a `docker exec -d` stdout, so it is not on record), the exception was
+not one `run_real` caught, and the run fell into cleanup with no verdict. The restore path never ran.
+Two defects, both fixed here: the sequence now CANCELS THE STOP FIRST, the way a real sale does, and
+any exception ends in an INCONCLUSIVE `RESULT:` line (never a bare traceback).
+
+THE SEQUENCE (ET, a market day) - a real depth sale, collapsed from 19:01-then-open to 09:05-then-open:
+  T1   08:30  extended-hours LIMIT buy of 3 KO at the ask (+0.3%) -> its fill pages "Untracked fill"
+              (expected). T1b, at once: the ROW'S STOP, a GTC stop-market for 3 sh 15% under the fill
+              (a stop above the market would take ruling 3 - a market sale - instead of restoring),
+              waited on until the broker shows it live and every share reserved; the trade row
+              ('filled', remaining_shares 3, stop_order_id = that stop, stop_price/hard_stop = its
+              price). If the placement is refused the watchdog's fallback stop (09:00 tick) is
+              accepted instead - the row only has to HAVE a live stop at 09:05.
+  T2   09:05  the planned sale, under the per-trade lock `execute_depth_open_sale` holds (so the
+              watchdog's try-lock defers), the helpers it calls, in its order, each a production
+              function: `_record_planned_sale_stop_cancel` (the `planned_sale_stop_cancel` marker the
+              stream reads) -> `cancel_order` of the row's stop -> `_await_shares_released` ->
+              `place_market_on_open_sell` (opg, `make_client_order_id('paper','integration_test',
+              ticker)`) -> `_record_full_exit_order` (the `full_exit` row the stream's §3 keys on).
+              NOT `execute_depth_open_sale` itself: its paper vehicle is a DAY market sell (#687 c),
+              which FILLS at the open - the opg is what expires. SALE_SEQUENCE pins the order; the
+              steps actually run are checked against it and printed.
+  T2b         the stream recorded the planned-sale cancel (`stop_cancel_by_planned_sale_silent` naming
+              the stop) - positive evidence it did not page "unprotected". INFO if absent.
+  T2c  09:29  pre-open: the sale still queued, nothing else resting on the ticker, the row pointer
+              NULL (the production state overnight). A stop sitting there = the precondition is
+              broken -> INCONCLUSIVE, never FAIL.
+  T3   09:30  watch the sale and the broker. 09:31:30 is the FAIL line; 09:32 is the INCONCLUSIVE line.
+  --   09:46  cleanup (rehearsal's: the planned-sale cancel row for the restored stop is written BEFORE
+              it is cancelled, shares free, KO sold at market, rows deleted), then a read-only wait
+              (<= 5 min) for KO to be FLAT: paper fills the flatten in pieces over minutes, so the
+              cleanup's own CLEANUP line can read FAIL "flatten order ... is new" for a position that
+              is flat a minute later - the `is FLAT` note is the truth.
+WATCHDOG INTERPLAY (read from scheduler.py::_stop_ack_timeout_watchdog_job, not yet seen live). Once the
+sale is queued and the lock released, the watchdog's next 30 s tick should find the sale covering the
+row and write `stop_ack_broker_covered` (inside its own 24 h dedup set), so after the 09:30:57 expiry
+the only thing left that puts a stop on is the stream's §3 - the test discriminates. If the watchdog places a stop AFTER the expiry anyway, `classify` says so (FAIL: the
+restore did not get there first); it is never read as the restore's pass.
+
+PAPER ONLY - it reuses paper_rehearsal.py's guards unchanged: the paper account id is compared with
 the live one, a TRIPWIRE makes any non-paper client lookup raise, every order carries
 `make_client_order_id('paper', 'integration_test', ticker)`, every row is
-`signal_type='integration_test', account_mode='paper'`, and cleanup is the rehearsal's own.
-
-SCHEDULE (ET, a market day):
-  08:30  extended-hours LIMIT buy of 3 KO at the ask (alpaca-py LimitOrderRequest, extended_hours=True,
-         DAY) -> its fill pages "Untracked fill" (expected). Then the trade row: status 'filled',
-         remaining_shares 3, stop_order_id NULL (as on Day B), stop_price/hard_stop 15% BELOW the
-         fill (a stop above the market would take ruling 3 — a market sale — instead of restoring).
-  09:05  opening-auction (opg) SELL of 3 sh, recorded with `order_manager._record_full_exit_order`
-         (called, not copied). A LIMIT at 2x the last price cannot fill; only a MARKET opg that expires
-         unfilled is proven on paper (Day B), so a refused opg limit falls back to a market opg (it
-         may FILL -> VOID).
-  09:30  watch the sale and the broker. 09:31:30 is the FAIL line; 09:32 is the INCONCLUSIVE line.
-  09:46  cleanup (rehearsal's: the planned-sale cancel row for the restored stop is written BEFORE it
-         is cancelled, shares free, KO sold at market, rows deleted).
+`signal_type='integration_test', account_mode='paper'`, and cleanup is the rehearsal's own. No
+production module is touched or patched.
 
 VERDICTS (`classify`, pure, unit-checked):
   PASS          a stop for 3 sh at the row's price, created <= 15 s after the expiry, its id on the row,
                 and the restore's pointer row (`stop_order_id_changed` reason `cancel_or_reject_restored`
-                — written immediately before the 'Stop re-placed' page). It ALSO records whether a
+                - written immediately before the 'Stop re-placed' page). It ALSO records whether a
                 `stop_restore_retried` row appeared: a first-attempt stop passes but leaves the retry
-                unit-tested only (as on Day A) — that is a pass, say so.
+                unit-tested only (as on Day A) - that is a pass, say so.
   FAIL          no stop by 09:31:30; a stop of the wrong size / price / not on the row / late; or a
                 'No stop re-placed' / UNPROTECTED page was seen.
-  INCONCLUSIVE  the opg order was rejected, or no expiry by 09:32.
+  INCONCLUSIVE  the opg order was rejected / refused, a precondition broke, no expiry by 09:32, or the
+                run raised.
   VOID          the sale FILLED.
   ⚠ The pages themselves are sent by the STREAM process, not this one, so they are not observable
-  here: the probe uses the pointer row as the page's marker and prints "CHECK TELEGRAM" — the laptop
+  here: the probe uses the pointer row as the page's marker and prints "CHECK TELEGRAM" - the laptop
   wake looks for exactly one 'Stop re-placed' paper page and none of 'No stop re-placed' /
-  'UNPROTECTED' / 'STOP RESTORE FAILED'. ⚠ #699 (2026-10-11): paper pages now go to the 'Apollo Paper'
+  'UNPROTECTED' / 'STOP RESTORE FAILED'. ⚠ #699 (2026-10-11): paper pages land in the 'Apollo Paper'
   Telegram group, NOT the main chat - look there (the main chat only when TELEGRAM_PAPER_CHAT_ID is
   unset). A page seen in the main chat means #699's switch is off; a page seen nowhere fails BOTH tasks.
 
-WHERE IT RUNS — the SERVER, never the laptop (a laptop wake can miss 08:30). Armed Sunday night as a
-`nohup` wall-clock loop on the host that, at 08:25 ET Monday, runs
-    docker exec -d apollo-execution python scripts/probes/_687/expiry_path_test.py run
-logging `LAUNCHED` to /home/apollo/expiry_test_launch_2026-10-12.log (the shape of Friday's dayb_launch).
+WHERE IT RUNS - the SERVER, never the laptop (a laptop wake can miss 08:30). Armed the night before as
+a `nohup` wall-clock loop on the host that, at 08:25 ET, runs
+    docker exec -d -w /app apollo-execution python scripts/probes/_687/expiry_path_test.py run
+logging `LAUNCHED` to /home/apollo/expiry_test_launch_<date>.log (the shape of Friday's dayb_launch).
+The container runs the file that is IN it (the image's, or the last `docker cp`): copy this one in
+first. KO must be flat and row-less at 08:25 or the ticker check REFUSES (INCONCLUSIVE, nothing placed).
     expiry_path_test.py status     # read-only: the log tail + the row + KO at the broker
     expiry_path_test.py cleanup    # the abort path
 It REFUSES to start outside a market day 08:20-08:45 ET (`--force-time` overrides, for a dry look).
 
-EXIT CODES: 0 PASS (or INCONCLUSIVE/VOID, which are re-runs, not failures — see the log) ·
-1 FAIL · 2 refused / could not run.
+EXIT CODES: 0 PASS (or INCONCLUSIVE-no-expiry / VOID, which are re-runs, not failures - see the log) ·
+1 FAIL · 2 refused / raised / could not run (INCONCLUSIVE too).
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import logging
 import os
 import sys
+import traceback
 from datetime import date, datetime, time as dtime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -77,25 +110,40 @@ _ET = ZoneInfo("America/New_York")
 TICKER = "KO"
 QTY = 3
 STOP_BELOW_FILL = 0.85            # the row's stop: 15% under the fill — far below any pre-open price
-SALE_LIMIT_MULT = 2.0             # an opg LIMIT sell at 2x the last price cannot fill
 BUY_LIMIT_BUFFER = 0.003          # the 08:30 paper buy pays up to 0.3% over the ask (review 10-10: a
-                                  # stale pre-market ask must not cost Monday's only run; paper only)
+                                  # stale pre-market ask must not cost the only run; paper only)
 RESULT_EVENT = "expiry_path_test_687_result"
+SITE = "expiry_path_test_687"     # the `site` the planned-sale marker is written with (truthful: not
+                                  # execute_depth_open_sale)
 
 T_LAUNCH_FROM = dtime(8, 20)
 T_LAUNCH_TO = dtime(8, 45)
 T_BUY = dtime(8, 30)
 T_BUY_FILL_DEADLINE = dtime(8, 58)
 T_SELL = dtime(9, 5)
+T_PREOPEN = dtime(9, 29)
 T_OPEN = dtime(9, 30)
 T_FAIL_DEADLINE = dtime(9, 31, 30)      # no stop by here = FAIL
 T_NO_EXPIRY_DEADLINE = dtime(9, 32)     # no expiry by here = INCONCLUSIVE
 T_CLEANUP = dtime(9, 46)
 PASS_WITHIN_S = 15.0                    # stop created within this long of the expiry
+ROW_STOP_WAIT_S = 90.0                  # at T_SELL, how long to wait for the watchdog's fallback stop
+PLANNED_CANCEL_WAIT_S = 30              # the stream's planned-sale row (it re-checks the broker ~3 s)
+FLAT_WAIT_S = 300.0                     # after cleanup: paper fills a market flatten in pieces over minutes
 
 PASS, FAIL, INCONCLUSIVE, VOID = "PASS", "FAIL", "INCONCLUSIVE", "VOID"
 BAD_PAGES = ("No stop re-placed", "UNPROTECTED", "STOP RESTORE FAILED")
 DEAD_STATUSES = {"expired", "canceled", "cancelled"}
+
+# The order a real depth sale runs its helpers in (`execute_depth_open_sale`, order_manager.py): the
+# marker the stream reads BEFORE the cancel, the cancel BEFORE the shares are waited on, the shares
+# free BEFORE the order, the order BEFORE its row. Monday's probe skipped the first three.
+SALE_SEQUENCE = ("planned_sale_stop_cancel", "cancel_order", "await_shares_released",
+                 "place_market_on_open_sell", "record_full_exit_order")
+# The audit rows the production watchdog writes about a trade (read, never written, here).
+WATCHDOG_EVENTS = ("stop_ack_timeout_remediated", "stop_ack_broker_covered",
+                   "stop_ack_remediation_failed", "stop_ack_breach_sold_at_market",
+                   "stop_ack_deferred_trade_locked")
 
 
 # ── pure parts (unit-checked in tests/test_687_expiry_path_probe.py; never touch a broker) ────────
@@ -118,8 +166,11 @@ def stop_price_for(fill: float) -> float:
     return round(float(fill) * STOP_BELOW_FILL, 2)
 
 
-def sale_limit_for(last: float) -> float:
-    return round(float(last) * SALE_LIMIT_MULT, 2)
+def row_stop_fields(ticker: str, qty: int, fill: float) -> dict:
+    """The row's own stop, as plain fields for `env.submit` (pure): a GTC stop-market SELL of the
+    whole position at `stop_price_for(fill)` — what the OTO child / `place_stop_order` give a real row."""
+    return {"ticker": ticker, "qty": qty, "side": "sell", "kind": "stop", "tif": "gtc",
+            "stop": stop_price_for(fill)}
 
 
 def ext_hours_buy_fields(ticker: str, qty: int, ask: float, client_order_id: str) -> dict:
@@ -140,6 +191,47 @@ def build_ext_hours_buy(ticker: str, qty: int, ask: float, client_order_id: str)
         symbol=f["symbol"], qty=f["qty"], side=OrderSide.BUY, time_in_force=TimeInForce.DAY,
         limit_price=f["limit_price"], extended_hours=f["extended_hours"],
         client_order_id=f["client_order_id"])
+
+
+def sale_sequence_problems(steps) -> list[str]:
+    """What is wrong with the helper calls the planned sale actually made (`steps`, in call order)
+    against SALE_SEQUENCE. [] = exactly the production order."""
+    steps = list(steps)
+    if steps == list(SALE_SEQUENCE):
+        return []
+    problems = []
+    missing = [s for s in SALE_SEQUENCE if s not in steps]
+    extra = [s for s in steps if s not in SALE_SEQUENCE]
+    repeated = sorted({s for s in steps if steps.count(s) > 1})
+    if missing:
+        problems.append(f"missing {missing}")
+    if extra:
+        problems.append(f"unexpected {extra}")
+    if repeated:
+        problems.append(f"repeated {repeated}")
+    if not problems:
+        problems.append(f"out of order: {steps} (production order is {list(SALE_SEQUENCE)})")
+    return problems
+
+
+def preopen_problems(sale_status, open_orders: list, sale_id, row_stop_id) -> list[str]:
+    """Why the 09:29 state is NOT the production overnight one (pure; [] = it is): the sale must be
+    queued, no OTHER sell order may rest on the ticker (a stop there holds the shares, so a later
+    stop could not be told from the restore's), and the row's pointer must be NULL (the stream nulled
+    it on the planned cancel)."""
+    problems = []
+    status = PR.canon(sale_status)
+    if status not in PR.QUEUED_OK:
+        problems.append(f"the sale is '{status}', not queued")
+    others = [o for o in open_orders if str(o.get("id")) != str(sale_id)
+              and str(o.get("side") or "").split(".")[-1].lower() == "sell"]
+    if others:
+        problems.append("other live sell order(s) on the ticker: "
+                        + ", ".join(f"{str(o.get('id'))[:8]} {str(o.get('type'))} {o.get('qty')}"
+                                    for o in others))
+    if row_stop_id:
+        problems.append(f"the row still points at stop {str(row_stop_id)[:8]} (production: NULL)")
+    return problems
 
 
 def terminal_at(raw) -> datetime | None:
@@ -163,6 +255,21 @@ def find_restored_stop(open_orders: list, qty: int) -> dict | None:
     return None
 
 
+def watchdog_stop_after(rows: list, trade_id, expiry_at) -> bool:
+    """Did the stop-ACK watchdog place a fallback stop for this trade at / after the sale's expiry
+    (within 2 s before it, for clock skew)? `rows` are `audit_rows` dicts (pure)."""
+    expiry = PR._ts(expiry_at)
+    if expiry is None:
+        return False
+    for r in rows:
+        at = PR._ts(r.get("at"))
+        if (r.get("event_type") == "stop_ack_timeout_remediated"
+                and r.get("detail", {}).get("trade_id") == trade_id
+                and at is not None and at >= expiry - timedelta(seconds=2)):
+            return True
+    return False
+
+
 def classify(obs: dict) -> tuple[str, str]:
     """(verdict, why) from what the watch saw. `obs` keys:
        sale_status      canon status of the opg sale ('filled', 'rejected', 'expired', ...)
@@ -172,6 +279,7 @@ def classify(obs: dict) -> tuple[str, str]:
        row_stop_id      mi_live_trades.stop_order_id at the end of the watch
        pointer_row      a stop_order_id_changed row, reason cancel_or_reject_restored, naming the stop
        retry_row        a stop_restore_retried row exists for the trade
+       watchdog_row     (optional) the stop-ACK watchdog placed a fallback stop at / after the expiry
        bad_page_seen    True / False / None (None = not observable from this process)
     """
     status = PR.canon(obs.get("sale_status"))
@@ -205,7 +313,10 @@ def classify(obs: dict) -> tuple[str, str]:
         problems.append(f"stop created {-delta:.1f}s BEFORE the expiry — not the restore")
     if not obs.get("pointer_row"):
         problems.append("no stop_order_id_changed row (reason cancel_or_reject_restored) naming the stop "
-                        "— the 'Stop re-placed' page's marker")
+                        "— the 'Stop re-placed' page's marker"
+                        + ("; the stop-ACK WATCHDOG placed a fallback stop after the expiry "
+                           "(stop_ack_timeout_remediated) - the stream's restore did not get there first"
+                           if obs.get("watchdog_row") else ""))
     if problems:
         return FAIL, "; ".join(problems)
     path = ("the held-shares RETRY placed it (stop_restore_retried row) — the retry is PROVEN live"
@@ -218,7 +329,7 @@ def classify(obs: dict) -> tuple[str, str]:
                   f"TELEGRAM_PAPER_CHAT_ID is unset): one 'Stop re-placed' paper page, none of {list(BAD_PAGES)}")
 
 
-# ── the real run (apollo-execution, paper) ────────────────────────────────────────────────────────
+# ── the real run (apollo-execution, paper) — env-agnostic so the tests drive it with a fake ───────
 
 def _at(day: date, t: dtime) -> datetime:
     return datetime.combine(day, t, tzinfo=_ET)
@@ -248,8 +359,8 @@ async def _wait_until(env, day: date, t: dtime) -> None:
         await env.sleep_until(_at(day, t))
 
 
-async def _buy(env, log, reh, ticker: str, today: date) -> tuple[int, float]:
-    """08:30 — the extended-hours buy, its fill, and the row. Returns (trade_id, fill price)."""
+async def _buy(env, log, reh, ticker: str, today: date) -> float:
+    """08:30 — the extended-hours buy and its fill. Returns the fill price."""
     await _wait_until(env, today, T_BUY)
     quote = await env.alpaca.get_latest_quote(ticker)
     if not quote or not quote.get("ask"):
@@ -268,37 +379,137 @@ async def _buy(env, log, reh, ticker: str, today: date) -> tuple[int, float]:
         raise PR.RehearsalRefused(f"the buy was '{st}' by {T_BUY_FILL_DEADLINE:%H:%M} ET — "
                                   f"no position to test; cleaning up")
     filled = await env.get_order(order["id"])
-    fill = float(filled["filled_avg_price"])
-    tid = await env.insert_trade(ticker=ticker, shares=QTY, entry=fill, stop=stop_price_for(fill),
-                                 stop_id=None, alert_date=today)
-    reh.state["trade_id"], reh.state["fill"] = tid, fill
-    await reh._save()
-    log.step("T1", f"{QTY} {ticker} bought pre-market, row #{tid} (no stop, as on Day B)", True,
-             f"fill ${fill:.2f}; stop_price/hard_stop ${stop_price_for(fill):.2f}")
-    return tid, fill
+    return float(filled["filled_avg_price"])
 
 
-async def _queue_sale(env, log, reh, ticker: str, tid: int, fill: float, today: date) -> str:
-    """09:05 — the opg sale that cannot fill, recorded as the production path records it."""
-    await _wait_until(env, today, T_SELL)
-    last = (await env.alpaca.get_latest_trade(ticker) or {}).get("price") or fill
-    kind = "LIMIT"
+async def _protect(env, log, reh, ticker: str, today: date, fill: float) -> tuple[int, str | None]:
+    """T1 + T1b — the row's own stop right after the fill, then the trade row pointing at it.
+    Returns (trade_id, stop_id). A refused / never-live stop is not fatal: the row is written without
+    one and the production watchdog's fallback (09:00 tick) is accepted at T_SELL."""
+    f = row_stop_fields(ticker, QTY, fill)
+    stop_id, status, why = None, "", ""
     try:
-        sale = await env.submit(ticker, QTY, "sell", kind="limit", tif="opg",
-                                limit=sale_limit_for(last))
+        stop = await env.submit(f["ticker"], f["qty"], f["side"], kind=f["kind"], tif=f["tif"],
+                                stop=f["stop"])
+        reh.state["order_ids"].append(stop["id"])
+        reh.state["stop_id"] = stop["id"]
+        await reh._save()
+        status = await reh._wait_status(stop["id"], PR.STOP_READY_1850, budget_s=PR.SETTLE_BUDGET_S)
+        if status in PR.STOP_READY_1850:
+            stop_id = stop["id"]
+        else:
+            why = f"the stop sat '{status}' (not live) after {PR.SETTLE_BUDGET_S:.0f}s"
     except PR.LiveTouched:
         raise
     except Exception as e:
-        kind = "MARKET (the opg limit was refused: " + str(e)[:120] + ")"
-        sale = await env.alpaca.place_market_on_open_sell(
-            ticker, QTY, account_mode=PR.ACCOUNT_MODE, client_order_id=env._coid(ticker))
-    reh.state["order_ids"].append(sale["id"])
-    reh.state["sale_id"] = sale["id"]
-    await env.om._record_full_exit_order(tid, ticker, sale, QTY, PR.REASON)
+        why = f"the stop was refused ({type(e).__name__}: {str(e)[:160]})"
+    tid = await env.insert_trade(ticker=ticker, shares=QTY, entry=fill, stop=stop_price_for(fill),
+                                 stop_id=stop_id, alert_date=today)
+    reh.state["trade_id"], reh.state["fill"] = tid, fill
     await reh._save()
-    log.step("T2", f"opening-auction {kind} sell of {QTY} {ticker} queued and recorded", True,
-             f"order {sale['id'][:8]} status {PR.canon(sale.get('status'))}")
-    return sale["id"]
+    log.step("T1", f"{QTY} {ticker} bought pre-market, row #{tid}", True,
+             f"fill ${fill:.2f}; stop_price/hard_stop ${stop_price_for(fill):.2f}")
+    if stop_id:
+        pos = await reh._settle(ticker, QTY, 0.0)
+        ok = bool(pos and float(pos["qty"]) == QTY and float(pos["qty_available"]) == 0)
+        log.step("T1b", f"the row has its own live {QTY}-sh stop at the broker, every share reserved", ok,
+                 f"stop {stop_id[:8]} {status} @ ${f['stop']:.2f}; position {pos and pos['qty']} / "
+                 f"free {pos and pos['qty_available']}")
+    else:
+        log.step("T1b", "the row's own stop", None,
+                 f"{why} — the row is written without one; the production watchdog's fallback "
+                 f"(09:00 tick) is accepted at {T_SELL:%H:%M}", status="INFO")
+    return tid, stop_id
+
+
+async def _wait_row_stop(env, tid: int) -> str | None:
+    """The row's stop pointer, waiting up to ROW_STOP_WAIT_S for the production watchdog to set one."""
+    deadline = env.now() + timedelta(seconds=ROW_STOP_WAIT_S)
+    while True:
+        stop_id = ((await env.trade(tid)) or {}).get("stop_order_id")
+        if stop_id or env.now() >= deadline:
+            return stop_id
+        await env.sleep(1.0)
+
+
+async def _planned_sale(env, log, reh, ticker: str, tid: int, today: date) -> tuple[str, str]:
+    """T2 + T2b — the production planned-sale sequence (`SALE_SEQUENCE`) on the row's stop.
+    Returns (sale_id, cancelled stop id)."""
+    await _wait_until(env, today, T_SELL)
+    stop_id = ((await env.trade(tid)) or {}).get("stop_order_id") or await _wait_row_stop(env, tid)
+    if not stop_id:
+        raise PR.RehearsalRefused(f"the row has no stop at {T_SELL:%H:%M} and the watchdog placed none "
+                                  f"in {ROW_STOP_WAIT_S:.0f}s — nothing for the planned sale to cancel")
+    stop = await env.get_order(stop_id)
+    if PR.canon(stop and stop.get("status")) not in PR.STOP_READY_1850:
+        raise PR.RehearsalRefused(f"the row's stop {stop_id[:8]} is "
+                                  f"'{PR.canon(stop and stop.get('status'))}', not live")
+    steps: list[str] = []
+    async with env.trade_lock(tid):          # the lock execute_depth_open_sale holds: the watchdog defers
+        await env.om._record_planned_sale_stop_cancel(
+            tid, ticker, stop_id, PR.REASON, PR.ACCOUNT_MODE, site=SITE)
+        steps.append("planned_sale_stop_cancel")
+        cancelled = await env.cancel(stop_id)
+        steps.append("cancel_order")
+        if not cancelled:
+            raise PR.RehearsalRefused(f"the broker would not cancel the row's stop {stop_id[:8]}")
+        released = await env.om._await_shares_released(ticker, float(QTY), PR.ACCOUNT_MODE)
+        steps.append("await_shares_released")
+        try:
+            sale = await env.alpaca.place_market_on_open_sell(
+                ticker, QTY, account_mode=PR.ACCOUNT_MODE, client_order_id=env._coid(ticker))
+        except PR.LiveTouched:
+            raise
+        except Exception as e:
+            raise PR.RehearsalRefused(f"the opening-auction order was REFUSED: {str(e)[:200]}")
+        steps.append("place_market_on_open_sell")
+        reh.state["order_ids"].append(sale["id"])      # BEFORE its row: cleanup can cancel it on any crash
+        reh.state["sale_id"] = sale["id"]
+        await reh._save()
+        await env.om._record_full_exit_order(tid, ticker, sale, QTY, PR.REASON)
+        steps.append("record_full_exit_order")
+    problems = sale_sequence_problems(steps)
+    status = PR.canon(sale.get("status"))
+    log.step("T2", f"planned sale of {QTY} {ticker}: marker -> cancel stop -> shares free -> "
+             f"opening-auction sell -> full_exit row, in production order",
+             not problems and status in PR.QUEUED_OK,
+             f"steps {steps}{'; PROBLEMS ' + str(problems) if problems else ''}; stop "
+             f"{stop_id[:8]} cancelled; shares free before the sale: {released}; order "
+             f"{sale['id'][:8]} {status}")
+    since = _at(today, dtime(8, 0))
+    marker = await reh._audit_for_trade(["planned_sale_stop_cancel"], since, tid,
+                                        extra={"stop_order_id": stop_id})
+    silent = await reh._audit_for_trade(["stop_cancel_by_planned_sale_silent"], since, tid,
+                                        budget_s=PLANNED_CANCEL_WAIT_S,
+                                        extra={"cancelled_order_id": stop_id})
+    log.step("T2b", "the stream recorded the planned-sale cancel (no 'unprotected' page)",
+             True if (marker and silent) else None,
+             f"planned_sale_stop_cancel {len(marker)}, stop_cancel_by_planned_sale_silent {len(silent)}"
+             + ("" if silent else " — NOT seen: look in the Apollo Paper group for a 'Stop order "
+                                  "CANCELLED ... unprotected' page and check the paper stream"),
+             status="PASS" if (marker and silent) else "INFO")
+    return sale["id"], stop_id
+
+
+async def _preopen(env, log, ticker: str, tid: int, sale_id: str, today: date) -> None:
+    """T2c — 09:29: the state a real depth row is in at the open. Raises RehearsalRefused if not."""
+    await _wait_until(env, today, T_PREOPEN)
+    sale = await env.get_order(sale_id)
+    orders = await env.open_orders(ticker)
+    row = await env.trade(tid)
+    rows = [r for r in await env.audit_rows(list(WATCHDOG_EVENTS), _at(today, dtime(8, 0)))
+            if r["detail"].get("trade_id") == tid]
+    problems = preopen_problems(sale and sale.get("status"), orders, sale_id,
+                                (row or {}).get("stop_order_id"))
+    log.step("T2c", "pre-open: the sale queued, nothing else resting on the ticker, row pointer NULL",
+             not problems,
+             f"sale {PR.canon(sale and sale.get('status'))}; open orders "
+             f"{[(str(o['id'])[:8], str(o.get('type')), o.get('qty')) for o in orders]}; row pointer "
+             f"{(row or {}).get('stop_order_id')}; watchdog rows so far "
+             f"{sorted({r['event_type'] for r in rows}) or 'none'}"
+             + (f"; PROBLEMS {problems}" if problems else ""))
+    if problems:
+        raise PR.RehearsalRefused("precondition broken at the pre-open check: " + "; ".join(problems))
 
 
 async def _watch(env, log, reh, ticker: str, tid: int, sale_id: str, today: date) -> dict:
@@ -307,7 +518,7 @@ async def _watch(env, log, reh, ticker: str, tid: int, sale_id: str, today: date
     since = _at(today, dtime(8, 0))
     obs = {"sale_status": "", "expiry_at": None, "stop": None, "expected_qty": QTY,
            "expected_price": stop_price_for(reh.state["fill"]), "row_stop_id": None,
-           "pointer_row": False, "retry_row": False, "bad_page_seen": None}
+           "pointer_row": False, "retry_row": False, "watchdog_row": False, "bad_page_seen": None}
     while env.now() < _at(today, T_NO_EXPIRY_DEADLINE):
         raw = await _raw_order(env, sale_id)
         obs["sale_status"] = PR.canon(getattr(raw, "status", None))
@@ -323,13 +534,15 @@ async def _watch(env, log, reh, ticker: str, tid: int, sale_id: str, today: date
             if stop:
                 obs["stop"] = {"id": stop["id"], "qty": stop.get("qty"),
                                "price": stop.get("stop_price"), "created_at": stop.get("created_at")}
-                rows = await env.audit_rows(["stop_order_id_changed", "stop_restore_retried"], since)
+                rows = await env.audit_rows(
+                    ["stop_order_id_changed", "stop_restore_retried", *WATCHDOG_EVENTS], since)
                 mine = [r for r in rows if r["detail"].get("trade_id") == tid]
                 obs["pointer_row"] = any(
                     r["event_type"] == "stop_order_id_changed"
                     and r["detail"].get("reason") == "cancel_or_reject_restored"
                     and r["detail"].get("new_id") == stop["id"] for r in mine)
                 obs["retry_row"] = any(r["event_type"] == "stop_restore_retried" for r in mine)
+                obs["watchdog_row"] = watchdog_stop_after(mine, tid, obs["expiry_at"])
                 if obs["pointer_row"] and obs["row_stop_id"] == stop["id"]:
                     break
             elif env.now() >= max(_at(today, T_FAIL_DEADLINE),
@@ -337,6 +550,87 @@ async def _watch(env, log, reh, ticker: str, tid: int, sale_id: str, today: date
                 break   # a late expiry still gets its full retry window (review 10-10)
         await env.sleep(1.0)
     return obs
+
+
+async def _confirm_flat(env, log, ticker: str, budget_s: float = FLAT_WAIT_S) -> None:
+    """Read-only follow-up to the rehearsal's cleanup. Its market flatten fills IN PIECES over minutes
+    on paper (Monday's: 09:31:26 -> 09:33:19) while its own wait is 20 s, so its CLEANUP line can read
+    FAIL "flatten order ... is new" for a position that is flat a minute later. This says when it is."""
+    deadline = env.now() + timedelta(seconds=budget_s)
+    while True:
+        pos = await env.position(ticker)
+        if not pos or abs(float(pos.get("qty") or 0)) == 0:
+            log.note(f"{ticker} is FLAT at the broker ({env.now():%H:%M:%S} ET) — the next run's ticker "
+                     f"check will pass")
+            return
+        if env.now() >= deadline:
+            log.note(f"{ticker} still holds {pos.get('qty')} sh {budget_s:.0f}s after the cleanup — "
+                     f"check the flatten order, or run `cleanup`, before the next run")
+            return
+        await env.sleep(5.0)
+
+
+async def _result_row(env, verdict: str, why: str, **extra) -> None:
+    """The durable verdict row. Never raises: the log line is the report, this is its backup."""
+    try:
+        await env.write_audit(RESULT_EVENT, f"#687 expiry-path test: {verdict}",
+                              {"verdict": verdict, "why": why, **extra})
+    except PR.LiveTouched:
+        raise
+    except Exception as e:  # loud-ok: logged by the caller's RESULT line; the audit row is a backup
+        logging.getLogger(__name__).warning(f"result audit row not written: {e}")
+
+
+async def run(env, log, reh, ticker: str, *, force_time: bool = False) -> tuple[str, str, int]:
+    """The whole test against any env (RealEnv on the server, a fake in the tests). Returns
+    (verdict, why, exit code). The guards raise RehearsalRefused BEFORE anything is placed; once
+    something is, every outcome ends in a `RESULT:` line and the rehearsal's cleanup."""
+    today = env.et_today()
+    why = launch_refusal(env.now())
+    if why and not force_time:
+        raise PR.RehearsalRefused(why)
+    await reh.preflight(day="expiry")                       # paper guard + live tripwire
+    unusable = await _ticker_clean(env, ticker)
+    if unusable:
+        raise PR.RehearsalRefused(unusable)
+    env.install_page_router()
+    reh.state = {"day_a": today.isoformat(), "tickers": [ticker], "started_at": env.now().isoformat(),
+                 "order_ids": [], "p1": {}, "p2": {}, "r1": {}}
+    await env.write_audit(PR.START_EVENT, f"#687 expiry-path test started ({ticker})", {"state": reh.state})
+    verdict, why, rc = INCONCLUSIVE, "did not complete", 2
+    try:
+        tid, _ = await _protect(env, log, reh, ticker, today, await _buy(env, log, reh, ticker, today))
+        sale_id, _stop = await _planned_sale(env, log, reh, ticker, tid, today)
+        await _preopen(env, log, ticker, tid, sale_id, today)
+        obs = await _watch(env, log, reh, ticker, tid, sale_id, today)
+        verdict, why = classify(obs)
+        rc = 1 if verdict == FAIL else 0
+        log.step("T3", "the expired sale's stop is re-placed within 15 s",
+                 verdict == PASS, f"{verdict}: {why}",
+                 status="PASS" if verdict == PASS else ("FAIL" if verdict == FAIL else "INFO"))
+        await _result_row(env, verdict, why, trade_id=tid, obs={k: v for k, v in obs.items()})
+        await _wait_until(env, today, T_CLEANUP)
+    except PR.LiveTouched:
+        raise
+    except PR.RehearsalRefused as e:
+        verdict, why, rc = INCONCLUSIVE, f"refused: {e}", 2
+        log.step("T0", "could not run", None, why, status="INFO")
+        await _result_row(env, verdict, why, trade_id=reh.state.get("trade_id"))
+    except Exception as e:   # Monday's crash class: an unexpected error must end in a RESULT line
+        tail = " | ".join(traceback.format_exc().strip().splitlines()[-4:])
+        verdict, why, rc = INCONCLUSIVE, f"raised: {type(e).__name__}: {e}", 2
+        log.step("T0", "a step raised", None, f"{why} | {tail}", status="INFO")
+        await _result_row(env, verdict, why, trade_id=reh.state.get("trade_id"), traceback=tail)
+    finally:
+        await reh.cleanup()
+        try:
+            await _confirm_flat(env, log, ticker)
+        except PR.LiveTouched:
+            raise
+        except Exception as e:  # loud-ok: a follow-up read; the RESULT line below is the report
+            log.note(f"could not confirm {ticker} is flat ({type(e).__name__}: {e})")
+    log.note(f"RESULT: {verdict} — {why}")
+    return verdict, why, rc
 
 
 async def run_real(cmd: str, ticker: str, *, force_time: bool, send_pages: bool) -> int:
@@ -363,38 +657,8 @@ async def run_real(cmd: str, ticker: str, *, force_time: bool, send_pages: bool)
                  f"{[(o['id'][:8], o['type'], o['qty']) for o in await env.open_orders(ticker)]}; "
                  f"rows: {await env.sentinel_rows(ticker)}; state: {env.load_state()}")
         return 0
-
-    why = launch_refusal(env.now())
-    if why and not force_time:
-        raise PR.RehearsalRefused(why)
-    await reh.preflight(day="expiry")                       # paper guard + live tripwire
-    unusable = await _ticker_clean(env, ticker)
-    if unusable:
-        raise PR.RehearsalRefused(unusable)
-    env.install_page_router()
-    reh.state = {"day_a": today.isoformat(), "tickers": [ticker], "started_at": env.now().isoformat(),
-                 "order_ids": [], "p1": {}, "p2": {}, "r1": {}}
-    await env.write_audit(PR.START_EVENT, f"#687 expiry-path test started ({ticker})", {"state": reh.state})
-    verdict, why = INCONCLUSIVE, "did not complete"
-    try:
-        tid, fill = await _buy(env, log, reh, ticker, today)
-        sale_id = await _queue_sale(env, log, reh, ticker, tid, fill, today)
-        obs = await _watch(env, log, reh, ticker, tid, sale_id, today)
-        verdict, why = classify(obs)
-        log.step("T3", "the expired sale's stop is re-placed within 15 s",
-                 verdict == PASS, f"{verdict}: {why}",
-                 status="PASS" if verdict == PASS else ("FAIL" if verdict == FAIL else "INFO"))
-        await env.write_audit(RESULT_EVENT, f"#687 expiry-path test: {verdict}",
-                              {"verdict": verdict, "why": why, "trade_id": tid,
-                               "obs": {k: v for k, v in obs.items()}})
-        await _wait_until(env, today, T_CLEANUP)
-    except PR.RehearsalRefused as e:
-        verdict, why = INCONCLUSIVE, f"refused: {e}"
-        log.step("T0", "could not run", None, why, status="INFO")
-    finally:
-        await reh.cleanup()
-    log.note(f"RESULT: {verdict} — {why}")
-    return 1 if verdict == FAIL else 0
+    _, _, rc = await run(env, log, reh, ticker, force_time=force_time)
+    return rc
 
 
 def main(argv=None) -> int:
