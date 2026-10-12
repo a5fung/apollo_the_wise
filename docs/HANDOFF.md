@@ -1421,7 +1421,21 @@ stagger cards, one at a time.
 
 **Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
-## 2026-10-10 (Sat) CLOSE — 🔴 RESUME HERE. Supersedes the 10-09 close below.
+## 2026-10-11 (Sun) CLOSE — 🔴 RESUME HERE. Supersedes the 10-10 close below.
+
+**Board 33 → 32.** Closed #486 (Sunday-review theme readout ran live with the declared numbers) and #311 (multi-setup roadmap parked until EP works; its own-evidence rule now in CHANGE_PROCESS rule 5). Filed #700 (weekly-review noise). Server = main after the ~20:15 PT deploy (both + execution, exit codes 0, new code confirmed in the running containers).
+
+**Shipped + deployed Sun:** #687 option (c) — paper depth sale is a DAY market order, live keeps the opening auction · #699 paper alerts → Telegram group "Apollo Paper" (chat -5382801675; his test message confirmed) · #700 weekly review cut ~56% (he approved the preview; first live Sun 10-18) · depth-exit replays (era E from the row stamp / toggle) · early open-position skip fix (his "Ship"; restores no-same-day-re-entry) · #697 items 1, 2, 5, 6 · #146 UNPARKED on his word with `triggered_from` buckets · a simplify pass (32 fixes, identity-proven).
+
+**His rulings Sun:** option (c) · #699 · #700 rule ("informative can stay, remove noise as much as possible") · #594/#559/#698 ("go with rec" Sat night) · early-skip "Ship" · #146 unpark + separate buckets · #540 paper rejects count · #314 TI3/TI4/TI5 retired, TI6 RMV removed ("a tightness measure in consolidation, not a setup") · #311 closed · thin analyst coverage ruled out as a neglect measure (his idea "no / slowing upgrades" on #333; Bonde's five kinds of neglect transcribed). **Capacity resets Friday 8 PM PT weekly — never carry a low-capacity note past it.**
+
+**Mon 10-12:** 08:25 ET #687 paper test (host pid 1276060) → its page lands in **Apollo Paper** → his go-live yes → noon ET he runs BOTH depth rows (paste-ready message in the pickup / magna53_ep.md 2026-10-10: live then paper, each ONCE). 09:28 #312 allocator row · 10:10 #210 TradingView job + grade-corpus rows · #313 judge rows · #694/#624/#692/#655/#505/#693/#695/#491/#699 verifies · 17:25 flag scan → `_697/verify_carry_live.sql`, `verify_hold_live.sql`, `_146_unpark/verify_live.sql`. Expect one 18:02 ET drift page Monday night (depth-era date not set yet). After verifies: #312 → event-gated + dated ETA; ask him one line: #313 re-date to 10-27.
+
+**Tue 10-13:** set `rule_eras.DEPTH_EXIT_LIVE_DATE = date(2026,10,13)` + move the YAML era literals the #631 test names, ONE commit. Re-run the ranking-rule read after the rank job. #646/#649 one-line rulings after Monday's rows.
+
+**Deploy procedure (10-11 lesson):** run `deploy.sh <scope>` unpiped, check its exit code (11 = scope-drift abort), then grep a new symbol in the running container before calling it live.
+
+## 2026-10-10 (Sat) CLOSE — superseded by the 10-11 close above.
 
 **Board 39 → 33.** Closed #359 (keep $500M), #331→#519, #529→#491, #307/#309→#594, #308 (superseded), #414 (shelved), #559 (keep both real-time switches on). Filed #697 (HTF detection fixes, 10-17/18), #698 (+8R sells 1 of 2 shares), #699 (paper alerts to their own chat). Server = main after the ~00:15 ET Sun deploy (both + execution, preflight green).
 
