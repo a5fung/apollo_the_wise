@@ -339,6 +339,8 @@ async def _fetch_flag(window_days: int) -> list[dict]:
         )
         if scan_date is None:
             return []
+        # Order within a stage: a name held over from yesterday (`held_from_stage`) sorts after a fresh read - for ALL
+        # three stages; then TRIGGERED by breakout volume, COILED / TIGHTENING by tightest range. Display order only.
         rows = await conn.fetch(
             """
             SELECT ticker, stage, base_age, runup_pct,
