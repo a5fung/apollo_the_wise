@@ -1,0 +1,5 @@
+F5 execute_depth_open_sale: 420 runs  old-vs-new differences=0  mutant(branch swapped)-vs-old differences=120 (must be > 0)
+   coverage (old): day_market_order_sent=48, opg_order_sent=72, pages_naming_opening_auction=108, pages_saying_at_the_open=48, placed_audit_rows=60, rejected_audit_rows=60, runs=420, sale_accepted(True)=60, sale_not_placed(False)=360, stale_mark_rows=60
+F7 entry_pipeline._skip tag: 3072 runs  old-vs-new differences=0  mutant(lookup-failed arm dropped)-vs-old differences=64 (must be > 0)
+   coverage (old): cap_plus_one_pages=80, pages_LIVE_tag=376, pages_MODE_UNKNOWN=856, pages_PAPER_tag=352, pages_to_main_chat=1232, pages_to_paper_chat=352, raised_out_of_funnel=640, runs=3072, skip_pages=1504, skip_row_write_errors=1824, strategy_mode_resolve_error_rows=1920
+IDENTITY PASS
