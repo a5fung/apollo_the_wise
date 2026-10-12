@@ -138,17 +138,13 @@ rule is defined on the SMA line; one ADR under a swing low or a character MA is 
 nobody studied) and the four fixed harvest arms keep their declared rule. The era stamp comes
 from THE ROW (`exit_era_label(alert_date, sig, row["exit_rule"])` → era_e), never from a date:
 a trade entered the same morning before the flip, or one whose stamp failed closed, keeps era D.
-DELIBERATE DEVIATION (4): the next-open sale fills at the DAILY bar's open; live's opening-
-auction order fills at the official open, a paper DAY market order ~09:31–09:32 — live_replay
-mirrors the live book. A close-below decided on the last settled session is `pending` until the
-next session's bar is stored (never settled at the close, never leapt).
-DELIBERATE DEVIATION (5): the resting-stop ratchet raises on ANY higher stop, while live moves the
-broker's stop only when the new one is MORE than 1 cent above the current one (`live_tracker`:
-`depth_stop > current_stop + 0.01`; the non-depth path has the same threshold on `step.
-effective_stop`) — so a 1-cent raise is applied here and skipped live (1 of 5,000 random tapes
-differed: stop_hit 26.19 here vs 26.18 live; 0 of 10,000 with live's threshold removed from the
-simulation). Pre-existing on the non-depth path, and changing it would break the byte-identity
-proof against origin/main; a later change may add the threshold to both paths together.
+DELIBERATE DEVIATION (4): the next-open sale fills at the DAILY bar's open, not live's official
+open (live_replay mirrors the live book). A close-below decided on the last settled session is
+`pending` until the next session's bar is stored (never settled at the close, never leapt).
+DELIBERATE DEVIATION (5): the resting-stop ratchet raises on ANY higher stop; live moves the
+broker's stop only on MORE than 1 cent (pre-existing on the non-depth path). Both deviations, with
+the measured numbers and the follow-up: docs/setups/exit_discipline.md, 2026-10-11 #687 entry
+("Deliberate deviation" / "Second stated deviation").
 
 THE THREE LANES (gap_near_miss / sustain_reject / lowcap) hold no trade row: their era comes from
 the `magna53_depth_exit` toggle row for the account mode of the strategy they price, read ONCE
@@ -628,6 +624,14 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
         exits.append({"time": str(when), "price": px, "reason": reason, "shares": qty,
                       "pnl": (px - entry) * qty})
 
+    def pend(reason: str, at: date, left: float) -> dict:
+        """The walk is blocked at `at` (a missing session, or a depth sale whose next open is not
+        stored yet): pending, with the legs booked so far and `left` still open."""
+        out.update(status="pending", reason=reason, pending_at=at)
+        out["exits"] = exits
+        out["remaining"] = left
+        return out
+
     def take_partial(px: float, when: Any) -> float:
         nonlocal remaining, partial_taken
         qty = remaining / 3
@@ -713,11 +717,7 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
             if closed:
                 break
             if b is None or b.get("c") is None or b.get("l") is None or b.get("h") is None:
-                out.update(status="pending", reason=f"missing_session:{d.isoformat()}",
-                           pending_at=d)
-                out["exits"] = exits
-                out["remaining"] = state["remaining_shares"]
-                return out
+                return pend(f"missing_session:{d.isoformat()}", d, state["remaining_shares"])
             out["sessions_walked"] = idx
             last_close = b["c"]
             if be_ambiguous(b["l"], b["h"], resting):
@@ -786,50 +786,36 @@ def walk_arm(*, entry: float, stop: float, target: Optional[float],
                          breakeven_active=step.new_breakeven_active,
                          exits=step.new_exits,
                          running_closes=step.new_running_closes)
-            if step.closed and depth_exit and step.close_reason == "sma_trail_stop":
-                # #687: the depth rule decides on this TRUE close exactly as the ladder did, but the
-                # SALE is the next session's open (live: the 19:01 opening-auction order; paper: a
-                # DAY market order at the open) — `scripts/probes/_687/mechanics.py` `next_open`.
-                nxt = sessions[idx] if idx < len(sessions) else None
-                if nxt is None:
-                    if idx >= horizon:
+            if step.closed:
+                px, reason, sale_session, sale_leg = step.close_price, step.close_reason, idx, {}
+                if depth_exit and reason == "sma_trail_stop":
+                    # #687: the depth rule decides on this TRUE close exactly as the ladder did, but
+                    # the SALE is the next session's open (live: the 19:01 opening-auction order;
+                    # paper: a DAY market order at the open) — `scripts/probes/_687/mechanics.py`
+                    # `next_open`. Pending paths below book the legs and size BEFORE the close leg.
+                    nxt = sessions[idx] if idx < len(sessions) else None
+                    if nxt is None and idx >= horizon:
                         # decided on the last horizon session: the fill lies beyond the walk —
                         # written `horizon` with the mark, like any arm still open there, and
                         # the reason says the sale was decided (never settled at the close).
                         horizon_reason = f"depth_sale_decided_at_horizon:{d.isoformat()}"
                         break
-                    # the next session is not settled yet: retried nightly, never leapt.
-                    # `exits` / `remaining` are the legs and size BEFORE the ladder's close leg.
-                    out.update(status="pending", reason="depth_next_open_not_yet_settled",
-                               pending_at=d)
-                    out["exits"] = exits
-                    out["remaining"] = remaining
-                    return out
-                nd, nb = nxt
-                if nb is None or nb.get("o") is None:
-                    out.update(status="pending", reason=f"missing_session:{nd.isoformat()}",
-                               pending_at=nd)
-                    out["exits"] = exits
-                    out["remaining"] = remaining
-                    return out
-                exits = [dict(e) for e in step.new_exits]
-                exits[-1] = {**exits[-1], "time": str(nd), "price": nb["o"],
-                             "pnl": (nb["o"] - entry) * exits[-1]["shares"], "fill": "next_open"}
-                out["final_reason"] = step.close_reason
-                out["exit_session"] = idx + 1
-                out["sessions_walked"] = idx + 1
-                remaining = 0.0
-                closed = True
-            elif step.closed:
-                px, reason = step.close_price, step.close_reason
-                if reason == "stop_hit" and b["o"] is not None and b["o"] < px:
+                    if nxt is None:
+                        # the next session is not settled yet: retried nightly, never leapt.
+                        return pend("depth_next_open_not_yet_settled", d, remaining)
+                    nd, nb = nxt
+                    if nb is None or nb.get("o") is None:
+                        return pend(f"missing_session:{nd.isoformat()}", nd, remaining)
+                    px, sale_session, sale_leg = nb["o"], idx + 1, {"time": str(nd), "fill": "next_open"}
+                    out["sessions_walked"] = idx + 1
+                elif reason == "stop_hit" and b["o"] is not None and b["o"] < px:
                     px = b["o"]           # gap-through honesty: the resting stop fills at the open
                     out["gap_through"] = True
                 exits = [dict(e) for e in step.new_exits]
                 exits[-1] = {**exits[-1], "price": px,
-                             "pnl": (px - entry) * exits[-1]["shares"]}
+                             "pnl": (px - entry) * exits[-1]["shares"], **sale_leg}
                 out["final_reason"] = reason
-                out["exit_session"] = idx
+                out["exit_session"] = sale_session
                 remaining = 0.0
                 closed = True
             else:
