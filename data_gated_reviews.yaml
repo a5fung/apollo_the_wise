@@ -15336,7 +15336,7 @@ reviews:
     action_when_ready: |
       1. Dry run, then the paid run, of scripts/probes/_519/chart_pilot.py on prod (≈ $4 at 60 trades).
       2. If the chart's changed calls still lean the right way with enough moves to read, put the $42
-         full run (scripts/eval_chart_judge.py — switch its raw client to make_async_anthropic first)
+         full run (scripts/eval_chart_judge.py — already on make_async_anthropic, checked 2026-10-11)
          to him; otherwise keep chart reading parked.
     added_on: 2026-10-03
 
