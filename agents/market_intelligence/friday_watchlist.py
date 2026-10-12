@@ -292,6 +292,12 @@ async def _fetch_wick(window_days: int) -> list[dict]:
     return out
 
 
+def _runup_text(r: dict) -> str:
+    """`+45%` for a flag row's run-up fraction, `—` when it is not stored."""
+    runup = r.get("runup_pct")
+    return f"{float(runup) * 100:+.0f}%" if runup is not None else "—"
+
+
 async def _fetch_flag(window_days: int) -> list[dict]:
     """Continuation flag bases — TRIGGERED (just broke out) + COILED (tightest) + TIGHTENING (forming): watch
     states, not setups.
@@ -362,8 +368,6 @@ async def _fetch_flag(window_days: int) -> list[dict]:
     # sorts (priority asc, rank_within DESC), so a rank_within above every COILED/TIGHTENING index lists these first,
     # the highest-volume breakout (i = 0) at the top.
     for i, r in enumerate(triggered):
-        runup = r.get("runup_pct")
-        runup_s = f"{float(runup) * 100:+.0f}%" if runup is not None else "—"
         via = triggered_from_label(r)
         if via:
             lead = f"TRIGGERED · {via}"
@@ -371,11 +375,12 @@ async def _fetch_flag(window_days: int) -> list[dict]:
             lead = f"TRIGGERED · held over from yesterday (today reads {r['held_from_stage']})"
         else:
             lead = "TRIGGERED"
-        tail = f" · {triggered_close_phrase(r)}" if r.get("breakout_close") is not None else ""
+        phrase = triggered_close_phrase(r)      # "" when the row has no breakout close
+        tail = f" · {phrase}" if phrase else ""
         out.append({
             "ticker": r["ticker"],
             "source_tag": "FLAG",
-            "reason": f"{lead} · base {r.get('base_age')}d · runup {runup_s}{tail}",
+            "reason": f"{lead} · base {r.get('base_age')}d · runup {_runup_text(r)}{tail}",
             "priority": _PRIORITY["FLAG"],
             "rank_within": 1000 - i,
         })
@@ -384,12 +389,10 @@ async def _fetch_flag(window_days: int) -> list[dict]:
     # are exactly 1.00 there by construction, which this chip used to print as `r1.00` (KOD, base 5d,
     # Friday 2026-10-09: stored 1.000 / 1.000, the real last-two-bars reading 0.63). #697 item 1(c).
     for i, r in enumerate(coiled):
-        runup = r.get("runup_pct")
-        runup_s = f"{float(runup) * 100:+.0f}%" if runup is not None else "—"
         out.append({
             "ticker": r["ticker"],
             "source_tag": "FLAG",
-            "reason": (f"COILED · base {r.get('base_age')}d · runup {runup_s} · "
+            "reason": (f"COILED · base {r.get('base_age')}d · runup {_runup_text(r)} · "
                        f"{board_tightness(r, compact=True)}"),
             "priority": _PRIORITY["FLAG"],
             "rank_within": i,

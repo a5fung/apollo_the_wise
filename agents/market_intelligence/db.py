@@ -7842,7 +7842,9 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
           liquidity floors, pole, depth, trend and M&A screens all still
           apply. A carried name must also have a bar ON THE SCAN DATE (same
           as the organic path): a name with no bar that day is not scored on
-          frozen history, and a market-holiday scan carries no flag-stage names
+          frozen history (FBRX: last bar 08-26, carried on 12 scans through
+          09-14, a frozen WATCH-or-better read re-arming its own carry), and
+          a market-holiday scan carries no flag-stage names
           (the R3 / 9M carries are separate paths).
           INTERACTION with the hold (htf_scope G4, #697 item 5): the
           hysteresis stores a held label, and a carried name is scored from
@@ -8008,49 +8010,13 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
             for r in ninem_rows:
                 source_map.setdefault(r["ticker"], []).append("ninem_universe_watch")
 
-        # ── Path (e): flag-stage carryforward (2026-05-19 RVMD-class fix) ──
-        # Tickers that were in active setup stages (COILED, TIGHTENING) in
-        # the last 5 trading days stay in the universe even if their RS
-        # gates fail today. The flag detector's whole purpose is catching
-        # consolidating leaders before breakout — knocking RVMD-class names
-        # (3 consecutive COILED days, tight $141-$151 range, rs_3m=94 still
-        # elite) out of the universe when their rs_1m percentile dipped
-        # below 80 on a one-day rotation is structurally inverted.
-        #
-        # ⚠ WIDENED 2026-10-11 (#697 item 2, htf_scope G1). The paragraph
-        # above and the "5-day window" below describe the ORIGINAL rule;
-        # the live rule is the one in the block comment above
-        # `flag_carry_sources` (scan SESSIONS, WATCH + TRIGGERED added, plus a
-        # 25-session TIGHTENING-or-better memory). The same inversion hit a
-        # WATCH name mid-base and a stored-TRIGGERED name (WDAY: no row
-        # 09-03 -> 09-16, so its 09-08 breakout failure never stamped, #654).
-        # This query only RANKS the stored rows by scan session (a scan
-        # session = a scan date with bars in mi_daily_closes, so the 09-07
-        # Labor Day partial scan uses up no slot); `lag` = 1 for the previous
-        # session. Rows older than 25 sessions are dropped here, the 5-vs-25
-        # split is `flag_carry_sources` (pure, tested).
-        #
-        # A carried name must also have a BAR ON THE SCAN DATE ($1) - the same
-        # requirement the organic path states (`INNER JOIN mi_daily_closes d ...
-        # d.trade_date = $1`). Without it `_score` rates a name on FROZEN history:
-        # FBRX (last bar 08-26, the deal closed) was carried on 12 scans 08-27 ->
-        # 09-14, and a frozen WATCH-or-better read re-arms its own carry (with the
-        # G4 hold, indefinitely). It also keeps a market-holiday scan (06-19, 07-03,
-        # 09-07: 0 bars each) from re-scoring ~26-30 carried names on the prior
-        # day's bars. A halted name resumes the carry the day its bar returns; the
-        # window counts scan SESSIONS, not this name's missing bars.
-        #
-        # (Original rationale, still the reason for the short window:) long
-        # enough to bridge multi-day RS dips, short enough to age out stale
-        # setups that genuinely broke down.
-        # State machine handles correctness — carried-forward tickers
-        # either re-establish COILED/TIGHTENING (consolidation continued)
-        # or progress to INVALIDATED (base broke). Universe expansion
-        # alone doesn't change detection rules.
-        #
-        # Env flag for safety / quick revert. Trigger: RVMD 2026-05-19
-        # dropped from universe (rs_rank 321→499, rs_1m 85.6→70.3 in one
-        # day) despite 3 consecutive COILED scans.
+        # ── Path (e): flag-stage carryforward (RVMD 2026-05-19; widened #697 item 2) ──
+        # The RULE (scan-SESSION windows, WATCH-or-better, a bar required ON THE SCAN DATE) is docstring (e) and
+        # the block above `flag_carry_sources` - not restated here. This query only RANKS the stored rows by scan
+        # session (`lag` = 1 for the previous session; a scan date with no bars, e.g. a holiday, uses up no slot),
+        # drops rows older than 25 sessions, and keeps tickers with a bar on $1; the 5-vs-25 split is `flag_carry_sources`.
+        # Trigger: RVMD dropped from the universe on a one-day rs_1m dip (85.6 -> 70.3) despite 3 COILED scans.
+        # `FLAG_STAGE_CARRYFORWARD_ENABLED` is the kill switch.
         flag_carry_enabled = env_is_true("FLAG_STAGE_CARRYFORWARD_ENABLED", default=True)
         if flag_carry_enabled:
             stage_carry_rows = await conn.fetch("""
@@ -8071,9 +8037,10 @@ async def get_flag_universe(scan_date: "str | date") -> dict[str, list[str]]:
                 FROM mi_flag_candidates c
                 JOIN scan_days sd ON sd.scan_date = c.scan_date
                 WHERE sd.lag <= $3::int
-                  AND c.stage IN ('WATCH', 'TIGHTENING', 'COILED', 'TRIGGERED')
+                  AND c.stage = ANY($4::text[])
                   AND EXISTS (SELECT 1 FROM mi_daily_closes dc WHERE dc.ticker = c.ticker AND dc.trade_date = $1::date)
-            """, scan_date, _FLAG_CARRY_CALENDAR_CAP_DAYS, _FLAG_CARRY_PIVOT_SESSIONS)
+            """, scan_date, _FLAG_CARRY_CALENDAR_CAP_DAYS, _FLAG_CARRY_PIVOT_SESSIONS,
+                sorted(_FLAG_CARRY_SHORT_STAGES))
             for ticker, tags in flag_carry_sources(stage_carry_rows).items():
                 source_map.setdefault(ticker, []).extend(tags)
 
@@ -8726,9 +8693,9 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
 
     events: list[dict[str, Any]] = []
 
-    def _push(d, source, summary):
+    def _push(d, source, summary, **extra):
         events.append({"date": d, "source": source, "summary": summary,
-                        "priority": PRIO.get(source, 99)})
+                        "priority": PRIO.get(source, 99), **extra})
 
     def _rows(key):
         v = by_key.get(key)
@@ -8792,9 +8759,12 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
         if r["stage"] == "TRIGGERED" and bvr is not None and r["breakout_close"]:
             via = triggered_from_label(r)           # "" for a held / legacy row
             via_s = f" · {via}" if via else ""
+            # `state` = the word /setup's run-collapse lists for this day (agent._collapse_flag_runs): a licensed
+            # breakout keeps its path, so the collapse never has to parse it back out of the summary text.
             _push(r["scan_date"], "FLAG",
                   f"TRIGGERED{via_s} — base {r['base_age']}d, vol {float(bvr):.2f}× "
-                  f"close ${float(r['breakout_close']):.2f}")
+                  f"close ${float(r['breakout_close']):.2f}",
+                  state=f"TRIGGERED ({via})" if via else "TRIGGERED")
         else:
             rs_s = f"r{float(rcr):.2f}" if rcr is not None else "r—"
             vs_s = f"v{float(vcr):.2f}" if vcr is not None else "v—"

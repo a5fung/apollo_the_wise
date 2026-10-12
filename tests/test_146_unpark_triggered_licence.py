@@ -581,19 +581,23 @@ async def test_the_setup_timeline_names_the_path_on_a_raw_triggered_day_only(mon
     assert by_day[9].startswith("TRIGGERED — base 9d") and "(held WATCH)" in by_day[9]
 
 
-def test_a_collapsed_run_keeps_the_path_that_licensed_the_breakout():
-    from datetime import date
+@pytest.mark.asyncio
+async def test_a_collapsed_run_keeps_the_path_that_licensed_the_breakout(monkeypatch):
+    """The REAL timeline output goes into the collapse - the path travels as the event's own `state`, not as text the
+    collapse parses back out of the summary."""
     from agents.market_intelligence.agent import _collapse_flag_runs
-    evs = [
-        {"date": date(2026, 10, 8), "source": "FLAG", "summary": "TRIGGERED · from TIGHTENING — base 9d, vol 2.10× close $52.00"},
-        {"date": date(2026, 10, 7), "source": "FLAG", "summary": "TIGHTENING — base 8d r0.50 v0.40"},
-        {"date": date(2026, 10, 6), "source": "FLAG", "summary": "WATCH — base 7d r0.90 v0.90"},
-    ]
-    (out,) = _collapse_flag_runs(evs)
+    _timeline_pool(monkeypatch, [
+        _flag_hist(8, "TRIGGERED", "tightening", bvr=2.1, close=52.0),
+        _flag_hist(7, "TIGHTENING"),
+        _flag_hist(6, "WATCH"),
+    ])
+    tl = await db.get_ticker_setup_timeline("TST", 30)
+    (out,) = _collapse_flag_runs(tl["events"])
     assert out["summary"] == "base watched 2026-10-06→2026-10-08 (3 states: TRIGGERED (from TIGHTENING)/TIGHTENING/WATCH)"
     # a TRIGGERED day with no path (a hold / legacy row) collapses exactly as before
-    plain = [dict(evs[0], summary="TRIGGERED — base 9d r0.50 v0.40 (held WATCH)"), evs[1]]
-    assert _collapse_flag_runs(plain)[0]["summary"].endswith("(2 states: TRIGGERED/TIGHTENING)")
+    _timeline_pool(monkeypatch, [_flag_hist(8, "TRIGGERED", None, "WATCH"), _flag_hist(7, "TIGHTENING")])
+    tl = await db.get_ticker_setup_timeline("TST", 30)
+    assert _collapse_flag_runs(tl["events"])[0]["summary"].endswith("(2 states: TRIGGERED/TIGHTENING)")
 
 
 # -- 9. the Friday watchlist (BLOCKING review finding) ---------------------------------------------------------------

@@ -33,9 +33,10 @@ async def capture() -> tuple[str, tuple]:
 sql, params = asyncio.run(capture())
 assert "scan_days" in sql, "captured the wrong query"
 print("-- #697 item 2: the production carry query, run read-only for several scan dates.")
-print(f"PREPARE carry(date, int, int) AS {sql.strip()};")
+stages = "ARRAY[" + ", ".join(f"'{x}'" for x in params[3]) + "]::text[]"   # the bound stage list ($4)
+print(f"PREPARE carry(date, int, int, text[]) AS {sql.strip()};")
 for d in DATES:
     print(f"\\echo ## {d}")
-    print(f"EXECUTE carry('{d}', {params[1]}, {params[2]});")
+    print(f"EXECUTE carry('{d}', {params[1]}, {params[2]}, {stages});")
 print("\\echo ## EXPLAIN 2026-10-09")
-print(f"EXPLAIN (ANALYZE, BUFFERS) EXECUTE carry('2026-10-09', {params[1]}, {params[2]});")
+print(f"EXPLAIN (ANALYZE, BUFFERS) EXECUTE carry('2026-10-09', {params[1]}, {params[2]}, {stages});")

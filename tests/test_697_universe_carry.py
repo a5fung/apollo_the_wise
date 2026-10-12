@@ -107,9 +107,10 @@ async def test_the_carry_is_one_query_and_it_asks_for_all_four_active_stages():
     assert out == {}
     sqls = [c.args[0] for c in conn.fetch.await_args_list]
     assert len(sqls) == 4, "path (e) must stay ONE query (the fixed-order mocks in the neighbouring tests)"
-    sql = sqls[3]
-    for stage in ("WATCH", "TIGHTENING", "COILED", "TRIGGERED"):
-        assert f"'{stage}'" in sql, f"the carry query does not select stored {stage}"
+    # the stage list is BOUND from the same set `flag_carry_sources` reads ($4), not a second literal in the SQL
+    assert "c.stage = ANY($4::text[])" in " ".join(sqls[3].split())
+    assert set(conn.fetch.await_args_list[3].args[4]) == {"WATCH", "TIGHTENING", "COILED", "TRIGGERED"}
+    assert set(conn.fetch.await_args_list[3].args[4]) == db_mod._FLAG_CARRY_SHORT_STAGES
 
 
 @pytest.mark.asyncio

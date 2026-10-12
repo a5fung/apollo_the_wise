@@ -352,6 +352,17 @@ def _htf_management_replay(bars, entry_idx, *, entry_price, initial_stop, shares
 # TIGHTENING base and reached the board and the NEW TODAY block). WATCH stays unscreened.
 _MNA_SCREENED_STAGES = ("TIGHTENING", "COILED", "TRIGGERED")
 
+
+def _demote_unqualified(r: dict, reason: str) -> None:
+    """Demote a scored row to `unqualified` in place (M&A news screen / deal-pin backstop), keeping the scored stage in
+    `original_stage` for the audit row. ONE place for the invariant that a demoted row carries no TRIGGERED licence
+    (#146): it was not TRIGGERED, so `triggered_from` must not survive on it."""
+    r["original_stage"] = r["stage"]
+    r["stage"] = "unqualified"
+    r["triggered_from"] = None
+    r["reason"] = reason
+
+
 # Deal-pin M&A signature (Layer 3): once price is pinned at an announced
 # deal value, daily ranges collapse to bid-ask noise (~0.2-0.5%). Real
 # VCPs run 1.5-3% even when tight, so a strict 0.5% threshold has
@@ -480,8 +491,10 @@ _TRIGGER_LICENCE: tuple[tuple[str, str], ...] = (
     ("TRIGGERED", "retrigger"),
 )
 # The closed vocabulary of the stamp, independent of the table above: after a revert the already-stored
-# 'tightening' / 'retrigger' rows still need their labels.
-TRIGGERED_FROM_BUCKETS: tuple[str, ...] = ("coiled", "tightening", "retrigger")
+# 'tightening' / 'retrigger' rows still need their labels. ONE table: its keys ARE the buckets (in display order), its
+# values the plain words (`triggered_from_label`), so a bucket cannot exist without a label.
+_TRIGGERED_FROM_LABELS = {"coiled": "from COILED", "tightening": "from TIGHTENING", "retrigger": "re-trigger"}
+TRIGGERED_FROM_BUCKETS: tuple[str, ...] = tuple(_TRIGGERED_FROM_LABELS)
 
 
 def trigger_licence(coiled_today: bool, recent_stages: Optional[list[str]]) -> Optional[str]:
@@ -1540,10 +1553,7 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                     pin_reader=_day_reader,
                 )
                 if is_mna:
-                    r["original_stage"] = r["stage"]
-                    r["stage"] = "unqualified"
-                    r["triggered_from"] = None     # #146: a demoted row was not TRIGGERED, so no licence
-                    r["reason"] = f"mna_filter:{(meta or {}).get('source', 'unknown')}"
+                    _demote_unqualified(r, f"mna_filter:{(meta or {}).get('source', 'unknown')}")
                     # _score already inserted the row at its scored stage.
                     # Re-upsert so the persisted row reflects the flip.
                     await db.insert_flag_candidate(r)
@@ -1599,15 +1609,13 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                     if sig and (sig.get("is_pin") or sig.get("is_fresh_pin")):
                         mature = bool(sig.get("is_pin"))
                         sticky_from = 0 if mature else int(sig.get("sticky_from_session") or 0)
-                        r["original_stage"] = r["stage"]
-                        r["stage"] = "unqualified"
-                        r["triggered_from"] = None     # #146: a demoted row was not TRIGGERED, so no licence
                         if mature:
-                            r["reason"] = "mna_filter:deal_pin_signature"
+                            reason = "mna_filter:deal_pin_signature"
                         elif sticky_from:
-                            r["reason"] = "mna_filter:deal_pin_sticky"
+                            reason = "mna_filter:deal_pin_sticky"
                         else:
-                            r["reason"] = "mna_filter:deal_pin_fresh"
+                            reason = "mna_filter:deal_pin_fresh"
+                        _demote_unqualified(r, reason)
                         await db.insert_flag_candidate(r)
                         # Same-trading-day audit dedup (#89). Same detector
                         # tag as the keyword-match flag site above — both
@@ -1985,9 +1993,6 @@ def _fmt_coiled(r: dict) -> str:
     return head + f"range {tf.esc(_fmt_ratio(rr))} · volume {tf.esc(_fmt_ratio(vr))}"
 
 
-_TRIGGERED_FROM_LABELS = {"coiled": "from COILED", "tightening": "from TIGHTENING", "retrigger": "re-trigger"}
-
-
 def triggered_from_label(r: dict) -> str:
     """PURE. Plain words for the path that licensed a TRIGGERED read (`mi_flag_candidates.triggered_from`), or
     "" when the row carries none (a held TRIGGERED row, a legacy row, an unknown value). ONE place, so the digest,
@@ -2187,18 +2192,21 @@ def build_flag_digest(
     by_stage: dict[str, list[dict]],
     scan_date,
     transitions: list[dict],
+    sections: Optional[dict] = None,
 ) -> Optional[str]:
     """PURE. The daily HTF digest as Telegram HTML, or None on a quiet day (no TRIGGERED, no
     COILED, no new transition). Section order: NEW TODAY (the transitions) · TRIGGERED · COILED
-    that were already coiled · dropped-out count."""
+    that were already coiled · dropped-out count. `sections` = the caller's own `digest_sections(by_stage,
+    transitions)` when it also needs them (`send_flag_digest` records the very sections it sent); omitted,
+    they are derived here."""
     coiled      = by_stage.get("COILED", [])
     tightening  = by_stage.get("TIGHTENING", [])
     watch       = by_stage.get("WATCH", [])
-    invalidated = by_stage.get("INVALIDATED", [])
-    triggered   = by_stage.get("TRIGGERED", [])
 
-    sections = digest_sections(by_stage, transitions)
+    if sections is None:
+        sections = digest_sections(by_stage, transitions)
     standing = sections["standing"]
+    triggered = sections["triggered"]
 
     if not (triggered or standing or transitions):
         return None
@@ -2232,7 +2240,7 @@ def build_flag_digest(
         lines.append("")
         by_path = triggered_bucket_summary(triggered)          # #146: where today's breakouts came from
         lines.append(f"🎯 {tf.b(f'TRIGGERED ({len(triggered)})')}" + (f" {tf.i(by_path)}" if by_path else ""))
-        for r in sections["triggered"]:
+        for r in triggered:
             lines.append(_fmt_triggered(r))
 
     if standing:
@@ -2252,8 +2260,8 @@ def build_flag_digest(
     # scan-churn noise — a ticker leaving the watchlist isn't actionable. Keep
     # a one-line count so the churn is still visible; the roster is on `/htf`.
     # (The whole message is already suppressed when nothing actionable fired.)
-    if invalidated:
-        lines.append(f"📉 {len(invalidated)} dropped out ({tf.code('/htf')})")
+    if sections["dropped_out"]:
+        lines.append(f"📉 {sections['dropped_out']} dropped out ({tf.code('/htf')})")
 
     return tf.render(lines)
 
@@ -2403,7 +2411,8 @@ async def send_flag_digest(
             detail=str(e)[:500],
         )
 
-    msg = build_flag_digest(by_stage, scan_date, transitions)
+    sections = digest_sections(by_stage, transitions)
+    msg = build_flag_digest(by_stage, scan_date, transitions, sections)
     if msg is None:
         logger.info("flag_scan: zero triggered/coiled/new-transition — digest suppressed")
         return
@@ -2417,7 +2426,7 @@ async def send_flag_digest(
         if transitions:
             await _record_transitions(transitions, scan_date, outcome)
     finally:
-        await _record_digest_sent(digest_sections(by_stage, transitions), scan_date, outcome)
+        await _record_digest_sent(sections, scan_date, outcome)
 
 
 # ────────────────────────────────────────────────────────────────────────

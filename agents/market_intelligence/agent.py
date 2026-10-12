@@ -286,10 +286,6 @@ def _cap_summary(s, n: int = 110) -> str:
     return s if len(s) <= n else s[:n].rsplit(" ", 1)[0].rstrip() + "…"
 
 
-# `db.get_ticker_setup_timeline` writes a licensed breakout as "TRIGGERED · from TIGHTENING — base 12d, ..." (#146)
-_TRIGGERED_PATH_RE = re.compile(r"TRIGGERED · (from [A-Z]+|re-trigger) —")
-
-
 def _collapse_flag_runs(events: list[dict]) -> list[dict]:
     """The continuation-flag detector logs a state most days a base persists — a run of them is
     ONE base evolving, not N events, and it otherwise drowns the /setup timeline (WULF: 10 near-
@@ -305,13 +301,10 @@ def _collapse_flag_runs(events: list[dict]) -> list[dict]:
         latest, earliest = run[0], run[-1]   # date-DESC: [0] newest, [-1] oldest
         seen: list[str] = []
         for e in run:
-            summary = e.get("summary") or ""
-            w = summary.split(" ")[0]
-            # #146: a TRIGGERED day keeps the path that licensed it ("TRIGGERED (from TIGHTENING)") - the breakout is
-            # usually adjacent to the base's other days, so without this the run collapses the label away.
-            m = _TRIGGERED_PATH_RE.match(summary)
-            if m:
-                w = f"TRIGGERED ({m.group(1)})"
+            # #146: `db.get_ticker_setup_timeline` stamps a licensed TRIGGERED day with its own `state` ("TRIGGERED
+            # (from TIGHTENING)") - the breakout is usually adjacent to the base's other days, so without it the run
+            # collapses the path away. Every other day is its stage, the first word of the summary.
+            w = e.get("state") or (e.get("summary") or "").split(" ")[0]
             if w and w not in seen:
                 seen.append(w)
         out.append({
