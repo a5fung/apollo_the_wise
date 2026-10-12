@@ -447,6 +447,11 @@ async def submit_trade_entry(
             await log_audit_event(audit_event, f"{strategy_label} {ticker} — {reason}")
         except Exception:  # loud-ok: log_audit_event() never raises — self-catches + logs internally (db.py); a Telegram skip/block alert always follows below (its own try/except is loud)
             pass
+        # #699 review: label with the OWNING strategy's account (`_skip_mode`, resolved above), never
+        # the bare default - that is `current_account_mode()` = paper in every prod container, so an
+        # infra:* page for a LIVE entry (INFRA_NO_BAR ...) would have moved to the paper chat.
+        # One tag for the skip page and the CAP+1 page below: both name the same signal's book.
+        _tag = strategy_mode_prefix(None if _skip_mode_lookup_failed else _skip_mode)
         # aggregate_skips=True: caller emits one grouped digest after gather().
         # infra:* always pings immediately (no-silent-failures rule); filter /
         # setup / block reasons stay aggregated.
@@ -454,10 +459,7 @@ async def submit_trade_entry(
         if not aggregate_skips or is_infra:
             try:
                 await send_telegram_message(
-                    # #699 review: label with the OWNING strategy's account (`_skip_mode`, resolved above), never
-                    # the bare default - that is `current_account_mode()` = paper in every prod container, so an
-                    # infra:* page for a LIVE entry (INFRA_NO_BAR ...) would have moved to the paper chat.
-                    f"{strategy_mode_prefix(None if _skip_mode_lookup_failed else _skip_mode)}{icon} *{ticker}* {strategy_label} skipped — {humanize(reason)}"
+                    f"{_tag}{icon} *{ticker}* {strategy_label} skipped — {humanize(reason)}"
                 )
             except Exception as e:
                 logger.error(f"{strategy_label} {ticker}: telegram skip alert failed — {e}")
@@ -474,7 +476,7 @@ async def submit_trade_entry(
             _is_cap = isinstance(reason, str) and reason.startswith(BLOCK_MAX_POSITIONS)
             if page_cap_plus_one and _is_cap and _cq == "game_changer":
                 await send_telegram_message(
-                    f"{strategy_mode_prefix(None if _skip_mode_lookup_failed else _skip_mode)}🌟🚫 *CAP+1 CANDIDATE — {ticker}*\n"
+                    f"{_tag}🌟🚫 *CAP+1 CANDIDATE — {ticker}*\n"
                     f"game\\_changer · score {alert_context.get('ep_score', '?')} · "
                     f"blocked by full position cap.\n"
                     f"_Would auto-enter under the cap+1 rule (SHADOW — not live). "
