@@ -5945,7 +5945,7 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
         ticker = trade["ticker"]
         account_mode = trade.get("account_mode") or current_account_mode()
         vehicle = depth_sale_vehicle(account_mode)
-        words = depth_sale_words(account_mode)
+        words = _DEPTH_SALE_WORDS[vehicle]
         if (trade.get("status") != "filled" or float(trade.get("remaining_shares") or 0) <= 0
                 or trade.get("exit_rule") != DEPTH_EXIT_RULE
                 or trade.get("depth_sell_pending_on") is None):
@@ -6006,13 +6006,12 @@ async def execute_depth_open_sale(trade_id: int, reason: str = "sma_trail_stop")
         try:
             coid = alpaca.make_client_order_id(
                 account_mode, trade.get("signal_type") or _DEPTH_EXIT_STRATEGY, ticker)
-            if vehicle == DEPTH_SALE_VEHICLE_OPG:
-                order = await alpaca.place_market_on_open_sell(
-                    ticker, sell_qty, account_mode=account_mode, client_order_id=coid)
-            else:
-                # #687 (c): PAPER — a regular DAY market sell, queued overnight; fills at the open.
-                order = await alpaca.place_market_sell(
-                    ticker, sell_qty, account_mode=account_mode, client_order_id=coid)
+            # One call, one argument list for both books. #687 (c): PAPER is a regular DAY market
+            # sell, queued overnight, that fills at the open; LIVE keeps the opening-auction order.
+            _place = (alpaca.place_market_on_open_sell if vehicle == DEPTH_SALE_VEHICLE_OPG
+                      else alpaca.place_market_sell)
+            order = await _place(
+                ticker, sell_qty, account_mode=account_mode, client_order_id=coid)
         except Exception as e:
             logger.error(f"Depth sale ({words['tag']}) failed for {ticker}: {e}")
             try:
