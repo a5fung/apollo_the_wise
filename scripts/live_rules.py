@@ -884,7 +884,7 @@ def scan_depth_era_pin(res: Resolver) -> list[DriftRow]:
         return rows
     if str(REPO) not in sys.path:
         sys.path.insert(0, str(REPO))
-    from agents.market_intelligence import rule_eras  # stdlib-pure, safe offline
+    from agents.market_intelligence import rule_eras  # stdlib + shared.dates only, safe offline
     from agents.market_intelligence.constants import resolve_account_mode_for_strategy
     from agents.market_intelligence.trading_calendar import get_market_status
 

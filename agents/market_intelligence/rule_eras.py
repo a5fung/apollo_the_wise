@@ -146,8 +146,8 @@ def first_acting_session_after(transition_at_et: datetime, *,
                                is_trading_day: Callable[[date], bool]) -> date:
     """The first session whose ORB fills a toggle flipped at `transition_at_et` (an ET-aware
     datetime) could stamp: the same day only when the flip preceded the 09:30 open, else the next
-    trading day; weekends/holidays skipped via the injected calendar (this module stays
-    stdlib-pure — callers pass `trading_calendar.get_market_status(d).is_trading_day`)."""
+    trading day; weekends/holidays skipped via the injected calendar (this module imports only the
+    stdlib and `shared.dates` — callers pass `trading_calendar.get_market_status(d).is_trading_day`)."""
     d = transition_at_et.date()
     if transition_at_et.time() >= _ORB_OPEN_ET:
         d += timedelta(days=1)
