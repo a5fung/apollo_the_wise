@@ -6301,7 +6301,10 @@ async def _book_dead_full_exit_leg_locked(
     """The locked body of `book_dead_full_exit_leg`. No broker I/O, no audit row, no Telegram in
     here — the caller reports the outcome after the lock is released."""
     pool = await get_pool()
-    async with pool.acquire() as conn:
+    # Bounded (review 10-13): this runs as a BACKGROUND task while the lock pins one connection of
+    # the max_size=5 pool, so an unbounded inner acquire is the 09-18 nested-acquire deadlock class.
+    # A starved pool raises here instead — the caller's booking_error audit row + page, nothing written.
+    async with pool.acquire(timeout=_REPROTECT_DB_TIMEOUT) as conn:
         trade = await conn.fetchrow("""
             SELECT id, ticker, entry_price, entry_attempt, exits, total_pnl, remaining_shares, status
             FROM mi_live_trades WHERE id = $1 AND account_mode = $2
@@ -6336,7 +6339,7 @@ async def _book_dead_full_exit_leg_locked(
     # RECOMPUTED from the legs (never `+= pnl`) - the invariant every writer of this column keeps.
     total_pnl = sum(float(e.get("pnl") or 0) for e in exits)
 
-    async with pool.acquire() as conn:
+    async with pool.acquire(timeout=_REPROTECT_DB_TIMEOUT) as conn:
         await conn.execute("""
             UPDATE mi_live_trades SET
                 exits = $2::jsonb,

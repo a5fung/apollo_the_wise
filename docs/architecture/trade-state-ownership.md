@@ -142,8 +142,11 @@ total_pnl 11→10, exits 10→9.
 
 ### `exits`
 
-The same writers as `total_pnl` plus `trade_stream._process_stop_fill`, each
-appending its own leg and recomputing `total_pnl` from the legs.
+Writers (matches `ALLOWED_WRITERS['exits']` in `scripts/audit_column_writes.py`):
+`order_manager._finalize_full_exit_locked`, `_finalize_partial_exit_locked`,
+`_finalize_stop_fill_locked`, `_book_dead_full_exit_leg_locked`,
+`attempt_day1_reentry` and `trade_stream._process_stop_fill` — each appending its
+own leg and recomputing `total_pnl` from the legs.
 
 - **`order_manager._book_dead_full_exit_leg_locked` (#687, 2026-10-14) writes
   `exits` and `total_pnl` and NOTHING ELSE.** It is allow-listed under those two
