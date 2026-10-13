@@ -983,7 +983,8 @@ def test_gated_review_is_registered_with_its_population_declared():
     # tests/test_exit_counterfactual_consolidation_631.py's job.
     assert "HAVING COUNT(DISTINCT arm) = 2" in e["predicate_sql"]
     assert "arm IN ('live_actual', 'live_replay')" in e["predicate_sql"]
-    assert "exit_era = 'era_d'" in e["predicate_sql"]
+    # era-scoped to SOME single era; WHICH one is #631's pin (it moved era_d -> era_e 2026-10-13)
+    assert re.search(r"exit_era = 'era_[a-z]'", e["predicate_sql"])
     assert "to_regclass('mi_live_fill_counterfactuals')" in e["predicate_sql"]
     assert "mi_live_fill_counterfactuals.admission_era" in e["discriminates_on"]
     assert "mi_live_fill_counterfactuals.signal_type" in e["discriminates_on"]
