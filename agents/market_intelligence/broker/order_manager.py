@@ -6260,6 +6260,97 @@ async def _finalize_full_exit_locked(
     )
 
 
+async def book_dead_full_exit_leg(
+    trade_id: int,
+    account_mode: str,
+    order_id: str,
+    filled_qty: int,
+    filled_price: float,
+    reason: str,
+    source: str,
+) -> dict:
+    """#687 (2026-10-14) — book the shares a DEAD full-exit sale sold before it died.
+
+    A planned full-exit sale can part-fill and then expire / cancel / reject (prod 2026-10-13, KO:
+    1 of 3 sold at the open, the other 2 expired). The stream's cancel/reject handler re-places the
+    stop from the BROKER's count, but nothing recorded the share that sold: no `exits[]` leg, no
+    realised P&L. This appends that ONE leg, serialised under the per-trade #151 lock like every
+    finalizer, and is idempotent per `order_id`.
+
+    ⚠ It writes `exits` and `total_pnl` and NOTHING ELSE — never `remaining_shares`, `status`,
+    `stop_price`, `stop_order_id`, `partial_taken` or `breakeven_active`. The stop restore reads
+    `remaining_shares` (its database fallback is `remaining − pending exits`), so a count lowered
+    here would shrink the stop on a duplicate delivery or after a sync (five review rounds on the
+    parked c5bf1dfa design). Sync keeps healing the share count exactly as before.
+    Gate: `scripts/audit_column_writes.py` allow-lists this function under exits + total_pnl only.
+    """
+    async with _trade_advisory_lock(trade_id):
+        return await _book_dead_full_exit_leg_locked(
+            trade_id, account_mode, order_id, filled_qty, filled_price, reason, source)
+
+
+async def _book_dead_full_exit_leg_locked(
+    trade_id: int,
+    account_mode: str,
+    order_id: str,
+    filled_qty: int,
+    filled_price: float,
+    reason: str,
+    source: str,
+) -> dict:
+    """The locked body of `book_dead_full_exit_leg`. No broker I/O, no audit row, no Telegram in
+    here — the caller reports the outcome after the lock is released."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        trade = await conn.fetchrow("""
+            SELECT id, ticker, entry_price, entry_attempt, exits, total_pnl, remaining_shares, status
+            FROM mi_live_trades WHERE id = $1 AND account_mode = $2
+        """, trade_id, account_mode)
+    if not trade:
+        return {"outcome": "not_found"}
+
+    exits = trade["exits"] if isinstance(trade["exits"], list) else json.loads(trade["exits"] or "[]")
+
+    # The same idempotency key every finalizer checks, so a re-delivered event — or a late 'fill'
+    # for this very order — finds this leg and writes nothing (and the finalizers find it too).
+    if any(e.get("order_id") == order_id for e in exits):
+        return {"outcome": "already_booked", "ticker": trade["ticker"]}
+
+    entry_price = trade["entry_price"]
+    if entry_price is None:
+        return {"outcome": "no_entry_price", "ticker": trade["ticker"]}   # never a $0-basis leg
+
+    shares = int(filled_qty)
+    pnl = (float(filled_price) - float(entry_price)) * shares
+    total_pnl_before = float(trade["total_pnl"] or 0)
+    exits.append({
+        "time": datetime.now(timezone.utc).isoformat(),
+        "price": filled_price,
+        "reason": reason,
+        "shares": shares,
+        "pnl": pnl,
+        "order_id": order_id,
+        "attempt": trade.get("entry_attempt") or 1,
+        "source": source,
+    })
+    # RECOMPUTED from the legs (never `+= pnl`) - the invariant every writer of this column keeps.
+    total_pnl = sum(float(e.get("pnl") or 0) for e in exits)
+
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            UPDATE mi_live_trades SET
+                exits = $2::jsonb,
+                total_pnl = $3
+            WHERE id = $1 AND account_mode = $4
+        """, trade_id, exits, total_pnl, account_mode)   # #216: the codec single-encodes the list
+
+    return {
+        "outcome": "booked", "ticker": trade["ticker"], "pnl": pnl,
+        "total_pnl_before": total_pnl_before, "total_pnl": total_pnl,
+        "remaining_shares": trade["remaining_shares"], "status": trade["status"],
+    }
+
+
 async def finalize_stop_fill(
     trade_id: int,
     filled_qty: int,

@@ -1447,6 +1447,10 @@ def _next_repair_sentence(now) -> str:
 # `_WATCHDOG_BG_TASKS` idiom); a finished task removes itself. Tests drain this set.
 _RESTORE_RETRY_BG_TASKS: set = set()
 
+# #687 (2026-10-14): the booking of the shares a DEAD full-exit sale sold runs in its own background
+# task, the same idiom as the set above. Tests drain this set too.
+_DEAD_SALE_BOOKING_BG_TASKS: set = set()
+
 
 def _full_exit_restore_page(
     outcome: str, *, account_mode: str, event_norm: str, symbol: str, restore_price: float,
@@ -1498,6 +1502,140 @@ async def _dead_sale_exit_reason(pool, order_id: str, symbol: str, account_mode:
                        f"{sale} is labelled stop_hit")
         reason = None
     return reason or "stop_hit"
+
+
+def _money_signed(x: float) -> str:
+    """`−$0.49` / `+$1.23` — the sign in front of the dollar sign, as the operator reads it."""
+    return f"{'−' if x < 0 else '+'}${abs(x):,.2f}"
+
+
+def _dead_full_exit_booked_page(
+    prefix: str, symbol: str, event_norm: str, filled: float, order_qty: float,
+    avg: float, pnl: float,
+) -> str:
+    """Page B — the dead sale's shares are now in the books (#687, 2026-10-14). `prefix` is the
+    caller's `mode_prefix(account_mode)` (the caller is the one that sends it)."""
+    ev = event_norm.upper()
+    if order_qty > 0 and filled >= order_qty:
+        head = f"{symbol}: all {filled:g} sh sold before the close order {ev}"
+        tail = ""
+    else:
+        of = f" of {order_qty:g}" if order_qty > 0 else ""
+        rest = f"The other {order_qty - filled:g}" if order_qty > filled else "The rest"
+        head = f"{symbol}: {filled:g}{of} sh sold before the close order {ev}"
+        tail = (f" {rest} did not sell; the stop page says how they are protected.")
+    return (f"{prefix}📤 *{head}*\n"
+            f"Sold @${avg:.2f}, P&L {_money_signed(pnl)} — now in the books.{tail}")
+
+
+async def _book_dead_full_exit_sale(
+    *, trade_id: int, symbol: str, order_id: str, event_norm: str, account_mode: str,
+    filled: float, avg: float, order_qty: float,
+) -> None:
+    """#687 (2026-10-14) — book the shares a dead full-exit sale sold, as ONE exits[] leg + its
+    realised P&L (`order_manager.book_dead_full_exit_leg`; idempotent per order id). It writes
+    NOTHING the stop restore reads (`remaining_shares` stays; sync heals it as before), runs beside
+    the restore rather than in front of it, and NEVER raises: every outcome other than a clean
+    booking leaves a durable `_error` audit row AND a page, because the loss is a silent hole in
+    the books. Never names an event `partial_exit_committed` (that name resets the partial-exit
+    failure breaker)."""
+    prefix = mode_prefix(account_mode)
+    audit = dict(trade_id=trade_id, ticker=symbol, account_mode=account_mode, order_id=order_id,
+                 event_norm=event_norm, shares=filled, order_qty=order_qty, fill_price=avg)
+    try:
+        if avg <= 0:
+            await log_audit_event(
+                "full_exit_dead_fill_unpriced_error",
+                f"{symbol}: {filled:g} sh sold before the close order {event_norm} but the broker "
+                f"gave no fill price — NOT booked",
+                json.dumps(audit))
+            await send_telegram_message(
+                f"{prefix}⚠️ *{symbol}: {filled:g} sh sold before the close order "
+                f"{event_norm.upper()}, but the broker gave no price* — not recorded; fix trade "
+                f"{trade_id} by hand.")
+            return
+        # The sale's own label. NOT `_dead_sale_exit_reason` (it defaults to stop_hit, which would
+        # count the leg as a prior stop-out attempt); partial_profit would read as a taken partial.
+        reason = None
+        try:
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                reason = await conn.fetchval(
+                    "SELECT exit_reason FROM mi_live_orders WHERE alpaca_order_id = $1", order_id)
+        except Exception as _re:  # loud-ok: the label only — the booking goes ahead as 'exit'
+            logger.warning(f"WS [{account_mode}]: exit_reason read failed for {symbol} ({_re}) "
+                           f"— dead-sale leg labelled 'exit'")
+        if not reason or reason in ("stop_hit", "partial_profit"):
+            reason = "exit"
+        from agents.market_intelligence.broker import order_manager as om
+        res = await om.book_dead_full_exit_leg(
+            trade_id, account_mode, order_id, int(filled), avg, reason, f"dead_order:{event_norm}")
+        outcome = res.get("outcome")
+        if outcome == "booked":
+            await log_audit_event(
+                "full_exit_dead_fill_booked",
+                f"{symbol}: dead full-exit sale ({event_norm}) sold {filled:g} @${avg:.2f} — "
+                f"booked as one exits leg, P&L ${res['pnl']:+,.2f}, total "
+                f"${res['total_pnl_before']:+,.2f} -> ${res['total_pnl']:+,.2f}; "
+                f"remaining_shares not touched",
+                json.dumps({**audit, "pnl": res["pnl"], "total_pnl_before": res["total_pnl_before"],
+                            "total_pnl_after": res["total_pnl"], "reason": reason,
+                            "source": f"dead_order:{event_norm}",
+                            "remaining_shares_unchanged": res["remaining_shares"]}))
+            await send_telegram_message(_dead_full_exit_booked_page(
+                prefix, symbol, event_norm, filled, order_qty, avg, res["pnl"]))
+            logger.warning(f"WS [{account_mode}]: dead full-exit sale {event_norm} for {symbol} "
+                           f"booked {filled:g} sh @${avg:.2f} (leg only; remaining_shares untouched)")
+            return
+        if outcome == "already_booked":
+            await log_audit_event(
+                "full_exit_dead_fill_duplicate",
+                f"{symbol}: dead full-exit sale {order_id[:8]} already booked — duplicate "
+                f"{event_norm} delivery, nothing written",
+                json.dumps(audit))
+            return
+        raise RuntimeError(f"booking refused: {outcome}")
+    except Exception as e:  # loud-ok: the audit row + page below ARE the report
+        logger.error(f"WS [{account_mode}]: could not book the dead full-exit sale {order_id[:8]} "
+                     f"for {symbol} — {e}")
+        try:
+            await log_audit_event(
+                "full_exit_dead_fill_booking_error",
+                f"{symbol}: {filled:g} sh sold @${avg:.2f} before the close order {event_norm} "
+                f"but the books could NOT be updated — {e}",
+                json.dumps({**audit, "error": str(e)[:400]}))
+        except Exception as _ae:  # loud-ok: the page below still goes out; logged
+            logger.error(f"WS [{account_mode}]: dead-sale booking error row failed: {_ae}")
+        try:
+            await send_telegram_message(
+                f"{prefix}🚨 *{symbol}: {filled:g} sh sold @${avg:.2f} before the close order "
+                f"{event_norm.upper()}, but the books could NOT be updated* — fix trade "
+                f"{trade_id} by hand (its exits and P&L).")
+        except Exception as _se:  # loud-ok: nothing further can be done; logged
+            logger.error(f"WS [{account_mode}]: could not page the failed booking for {symbol}: {_se}")
+
+
+def _schedule_dead_full_exit_booking(
+    pending_exit, order, order_id: str, symbol: str, event_norm: str, account_mode: str,
+) -> None:
+    """#687 — start the dead-sale booking in the background. Sync, and it NEVER raises (it sits in
+    front of the stop restore). Nothing sold → returns before any task or I/O, so that path is
+    byte-identical to before this change. The order's numbers are snapshotted here."""
+    try:
+        filled = float(getattr(order, "filled_qty", 0) or 0)
+        if filled <= 0:
+            return
+        avg = float(getattr(order, "filled_avg_price", 0) or 0)
+        order_qty = float(getattr(order, "qty", 0) or 0)
+        task = asyncio.create_task(_book_dead_full_exit_sale(
+            trade_id=pending_exit["trade_id"], symbol=symbol, order_id=order_id,
+            event_norm=event_norm, account_mode=account_mode, filled=filled, avg=avg,
+            order_qty=order_qty))
+        _DEAD_SALE_BOOKING_BG_TASKS.add(task)
+        task.add_done_callback(_DEAD_SALE_BOOKING_BG_TASKS.discard)
+    except Exception as e:  # loud-ok: must not stand in front of the stop restore; logged
+        logger.error(f"WS [{account_mode}]: could not schedule the dead-sale booking for {symbol} "
+                     f"order {order_id[:8]} — {e}")
 
 
 async def _restore_stop_after_dead_sale_in_background(
@@ -2512,6 +2650,7 @@ async def _handle_cancel_or_reject(data, event: str, account_mode: str) -> None:
         return
 
     if pending_exit and pending_exit["purpose"] == "full_exit":
+        _schedule_dead_full_exit_booking(pending_exit, order, order_id, symbol, event_norm, account_mode)  # #687: books the sold leg beside the restore, never in front of it
         # Original stop was already cancelled in execute_full_exit. Restoring
         # the stop here requires the original stop_price; mi_live_trades still
         # has it (we didn't null it out — DB commit was deferred). Surface and

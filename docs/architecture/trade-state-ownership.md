@@ -128,6 +128,10 @@ total_pnl 11→10, exits 10→9.
 - `order_manager.attempt_day1_reentry` (lines 439, 464, 534, 563) — re-entry
   resets/recomputes (4 sites in one function — concerning, but contained
   within a single function's branches)
+- `order_manager._book_dead_full_exit_leg_locked` (#687, 2026-10-14) — books the
+  shares a DEAD full-exit sale (part-filled, then expired/cancelled/rejected)
+  sold: ONE leg appended to `exits`, `total_pnl` RECOMPUTED from the legs.
+  Idempotent per `order_id` under the per-trade #151 lock.
 
 **Forbidden / refactor targets**:
 - `live_tracker.update_open_positions_live` (lines 537, 614) — currently
@@ -135,6 +139,22 @@ total_pnl 11→10, exits 10→9.
   `finalize_*` functions, not write directly. Sunday: refactor to call
   finalize_full_exit on close paths; the trail-only branches should not
   touch total_pnl.
+
+### `exits`
+
+The same writers as `total_pnl` plus `trade_stream._process_stop_fill`, each
+appending its own leg and recomputing `total_pnl` from the legs.
+
+- **`order_manager._book_dead_full_exit_leg_locked` (#687, 2026-10-14) writes
+  `exits` and `total_pnl` and NOTHING ELSE.** It is allow-listed under those two
+  columns only, so `audit_column_writes check` (deploy step `[5c]`) fails the
+  build if it ever also writes `remaining_shares`, `status`, `closed_at`,
+  `stop_price`, `stop_order_id`, `partial_taken` or `breakeven_active`.
+  Why that boundary: the stop restore after a dead sale sizes its database
+  fallback from `remaining_shares`; a count lowered at booking time shrank the
+  stop on a duplicate delivery or after a sync (five review rounds, parked
+  branch `worktree-wf_a8a2e5e1-5d6-1`). `_sync_positions_for_mode` keeps healing
+  the share count exactly as before; the leg and the count reconcile there.
 
 ### `remaining_shares`
 

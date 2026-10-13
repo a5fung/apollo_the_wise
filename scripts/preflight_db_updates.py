@@ -144,6 +144,15 @@ TRADE_LIFECYCLE_UPDATES: list[tuple[str, str]] = [
         """,
     ),
     (
+        "order_manager._book_dead_full_exit_leg_locked: dead-sale leg (#687, exits + total_pnl ONLY)",
+        """
+            UPDATE mi_live_trades SET
+                exits = $2::jsonb,
+                total_pnl = $3
+            WHERE id = $1 AND account_mode = $4
+        """,
+    ),
+    (
         "live_tracker.update_open_positions_live: depth close-below mark (#687 B)",
         """
                     UPDATE mi_live_trades SET
