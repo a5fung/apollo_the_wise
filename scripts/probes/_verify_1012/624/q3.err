@@ -1,6 +1,0 @@
-ERROR:  column "scanned_at" does not exist
-LINE 1: ...T ticker, left(filter_reason,110) fr, to_char(min(scanned_at...
-                                                             ^
-ERROR:  column "scanned_at" does not exist
-LINE 1: SELECT to_char(max(scanned_at) AT TIME ZONE 'America/New_Yor...
-                           ^

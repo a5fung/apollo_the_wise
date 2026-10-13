@@ -1,3 +1,0 @@
-ERROR:  column "strategy_id" does not exist
-LINE 1: select id, ticker, strategy_id, account_mode, status, skip_r...
-                           ^

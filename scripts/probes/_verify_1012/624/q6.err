@@ -1,3 +1,0 @@
-ERROR:  column "status" does not exist
-LINE 1: SELECT status, count(*) FROM mi_lowcap_lane_replays GROUP BY...
-               ^

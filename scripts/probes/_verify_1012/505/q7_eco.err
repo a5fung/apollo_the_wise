@@ -1,3 +1,0 @@
-ERROR:  column "ecosystem_code" does not exist
-LINE 1: SELECT ecosystem_code, count(*) FROM mi_theme_ecosystems GRO...
-               ^

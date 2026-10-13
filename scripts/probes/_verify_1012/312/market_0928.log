@@ -1,5 +1,0 @@
-09:28:00 [apscheduler.executors.default] INFO: Running job "_telegram_poll_watchdog_job (trigger: cron[minute='*/2'], next run at: 2026-10-12 05:30:00 EDT)" (scheduled at 2026-10-12 05:28:00-04:00)
-09:28:00 [apscheduler.executors.default] INFO: Job "_telegram_poll_watchdog_job (trigger: cron[minute='*/2'], next run at: 2026-10-12 05:30:00 EDT)" executed successfully
-13:26:00 [apscheduler.executors.default] INFO: Running job "_telegram_poll_watchdog_job (trigger: cron[minute='*/2'], next run at: 2026-10-12 09:28:00 EDT)" (scheduled at 2026-10-12 09:26:00-04:00)
-13:26:00 [apscheduler.executors.default] INFO: Job "_telegram_poll_watchdog_job (trigger: cron[minute='*/2'], next run at: 2026-10-12 09:28:00 EDT)" executed successfully
-13:28:00 [apscheduler.executors.default] INFO: Running job "_telegram_poll_watchdog_job (trigger: cron[minute='*/2'], next run at: 2026-10-12 09:30:00 EDT)" (scheduled at 2026-10-12 09:28:00-04:00)
