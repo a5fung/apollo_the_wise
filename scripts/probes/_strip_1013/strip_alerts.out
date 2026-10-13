@@ -1,0 +1,22 @@
+     d      | count 
+------------+-------
+ 2026-10-06 |     1
+ 2026-10-08 |     1
+ 2026-10-09 |     3
+ 2026-10-10 |     1
+ 2026-10-13 |     3
+(5 rows)
+
+                               name                                | theme_date |         created_et         |       tickers        
+-------------------------------------------------------------------+------------+----------------------------+----------------------
+ Cross-Border Remittance & Money Transfer Fintech                  | 2026-10-09 | 2026-10-09 18:11:01.189845 | {RELY,WSE,INTR,STNE}
+ Cross-Border Remittance & Money Transfer Fintech                  | 2026-10-12 | 2026-10-12 17:11:07.529142 | {}
+ Electronics Manufacturing & IT Hardware Distribution Supply Chain | 2026-10-09 | 2026-10-09 17:09:35.652533 | {FLEX,CDW,ON}
+ Electronics Manufacturing & IT Hardware Distribution Supply Chain | 2026-10-12 | 2026-10-12 17:11:07.510029 | {CDW,CNXN,NSIT,SCSC}
+ Quick-Service & Fast-Casual Restaurant Franchisors                | 2026-10-09 | 2026-10-09 17:09:38.793194 | {YUM,KRUS,VVV}
+ Quick-Service & Fast-Casual Restaurant Franchisors                | 2026-10-12 | 2026-10-12 17:11:07.533314 | {}
+(6 rows)
+
+psql:/tmp/s.sql:12: ERROR:  column "reason" does not exist
+LINE 1: ... TIME ZONE 'America/New_York' AS removed_et, left(reason, 22...
+                                                             ^

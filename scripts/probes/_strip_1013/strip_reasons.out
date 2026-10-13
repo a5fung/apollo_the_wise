@@ -1,0 +1,36 @@
+   column_name   
+-----------------
+ id
+ ticker
+ theme_name
+ removed_at
+ cooldown_until
+ removal_reason
+ removal_count
+ bypassed
+ bypassed_at
+ bypassed_reason
+(10 rows)
+
+ id  | ticker |                            theme_name                             |          removed_at           |        cooldown_until         |                                                              removal_reason                                                              | removal_count | bypassed | bypassed_at | bypassed_reason 
+-----+--------+-------------------------------------------------------------------+-------------------------------+-------------------------------+------------------------------------------------------------------------------------------------------------------------------------------+---------------+----------+-------------+-----------------
+ 986 | STNE   | Cross-Border Remittance & Money Transfer Fintech                  | 2026-10-12 21:03:42.977156+00 | 2026-10-26 21:03:42.977156+00 | Description 'Technology / Software - Infrastructure — Payment processing, merchant financial software Brazil' does not match theme       |             1 | f        |             | 
+ 987 | INTR   | Cross-Border Remittance & Money Transfer Fintech                  | 2026-10-12 21:03:42.997458+00 | 2026-10-26 21:03:42.997458+00 | Description 'Financial Services / Banks - Regional — Digital banking, payments, fintech services Brazil' does not match theme            |             1 | f        |             | 
+ 988 | ON     | Electronics Manufacturing & IT Hardware Distribution Supply Chain | 2026-10-12 21:03:54.622707+00 | 2026-10-26 21:03:54.622707+00 | Description 'Power semiconductors, auto/industrial' does not match theme                                                                 |             1 | f        |             | 
+ 997 | FLEX   | Electronics Manufacturing & IT Hardware Distribution Supply Chain | 2026-10-12 21:06:48.444064+00 | 2026-10-26 21:06:48.444064+00 | rehome: moved to 'Electronics Manufacturing Services (EMS) Providers' on the tape (0.84 vs own unreadable)                               |             1 | f        |             | 
+ 994 | VVV    | Quick-Service & Fast-Casual Restaurant Franchisors                | 2026-10-12 21:05:23.295697+00 | 2026-10-26 21:05:23.295697+00 | Description 'Consumer Cyclical / Auto & Truck Dealerships — Automotive oil changes & preventive maintenance retail' does not match theme |             1 | f        |             | 
+ 999 | KRUS   | Quick-Service & Fast-Casual Restaurant Franchisors                | 2026-10-12 21:06:48.461528+00 | 2026-10-26 21:06:48.461528+00 | rehome: moved to 'Restaurant Chain Recovery' on the tape (0.64 vs own unreadable)                                                        |             1 | f        |             | 
+(6 rows)
+
+ theme_date | empty_themes | themes 
+------------+--------------+--------
+ 2026-10-01 |           12 |    143
+ 2026-10-02 |            9 |    142
+ 2026-10-05 |           32 |    147
+ 2026-10-06 |           10 |    130
+ 2026-10-07 |           13 |    137
+ 2026-10-08 |           14 |    136
+ 2026-10-09 |           17 |    140
+ 2026-10-12 |           27 |    138
+(8 rows)
+

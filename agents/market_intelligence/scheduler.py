@@ -6079,11 +6079,15 @@ async def _theme_round_trip_validator_job():
     crosses 50%.
 
     Pure observability — no new schema, no LLM calls, no write authorities.
-    SQL + audit event + Telegram line. Dedup by (theme_name, day) via
-    audit-log presence so same theme doesn't re-alarm.
+    SQL + audit event. Dedup by (theme_name, day) via audit-log presence so
+    same theme doesn't re-alarm.
+
+    Audit row only, no Telegram (operator 2026-10-13, "any action for these?"): the
+    strips it counts have already happened — validation removed the misfit members and
+    the rehome moved the rest — so the page asked him to review work already done. The
+    `theme_high_strip_rate` rows feed the theme-birth quality reads (#655).
     """
     from agents.market_intelligence.db import get_pool, log_audit_event
-    from agents.market_intelligence.briefing import send_telegram_message
 
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -6154,12 +6158,6 @@ async def _theme_round_trip_validator_job():
                     f"member_count={count} stripped_within_3d={stripped} "
                     f"strip_pct={pct:.1f}"
                 ),
-            )
-            await send_telegram_message(
-                f"🟡 *Theme high strip rate*\n"
-                f"`{row['name']}` ({row['theme_date']})\n"
-                f"{stripped}/{count} members stripped within 3d of creation ({pct:.0f}%).\n"
-                f"Likely a hallucinated theme or wrong member assignment — review."
             )
         logger.info(
             f"Theme round-trip validator: scanned 7d window, "
