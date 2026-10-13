@@ -1,0 +1,63 @@
+-[ RECORD 1 ]---------+--------------------------------------------------
+id                    | 421
+ticker                | KO
+alert_date            | 2026-10-13
+ep_score              | 
+catalyst_quality      | 
+gap_pct               | 
+regime                | 
+status                | filled
+orb_high              | 
+orb_low               | 77.22
+atr_14                | 
+entry_price           | 90.85
+entry_shares          | 3
+stop_price            | 77.22
+hard_stop             | 77.22
+position_size         | 
+risk_dollars          | 
+entry_order_id        | 
+stop_order_id         | f18ed7c0-4355-4b3e-ba17-bb9c494e48aa
+exits                 | []
+remaining_shares      | 3
+total_pnl             | 0
+hold_days             | 0
+partial_taken         | t
+breakeven_active      | f
+running_closes        | []
+proposed_at           | 
+confirmed_at          | 
+skip_reason           | 
+created_at            | 2026-10-13 12:30:01.652919+00
+filled_at             | 2026-10-13 12:30:01.652919+00
+closed_at             | 
+entry_attempt         | 1
+signal_type           | integration_test
+account_mode          | paper
+lowest_price_seen     | 90.2600000000000051159076974727213382720947265625
+highest_price_seen    | 90.56000000000000227373675443232059478759765625
+pnl_attribution       | 
+risk_dollars_actual   | 
+dead_stop_price       | 77.22
+dead_stop_order_id    | 6c5a378d-04ed-4853-ba84-8d96cce04cc3
+dead_stop_status      | OrderStatus.CANCELED
+dead_stop_recorded_at | 2026-10-13 13:05:00.077523+00
+exit_rule             | 
+depth_sell_pending_on | 
+
+  id   |             et             |             event_type             |                                                                                                                                detail                                                                                                                                
+-------+----------------------------+------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 55936 | 2026-10-13 08:30:01.658174 | paper_rehearsal_687_state          | {"day_a": "2026-10-13", "tickers": ["KO"], "started_at": "2026-10-13T08:25:05.329858-04:00", "order_ids": ["63d39477-28f1-4eda-b7d9-74290d5d6e45", "6c5a378d-04ed-4853-ba84-8d96cce04cc3"], "p1": {}, "p2": {}, "r1": {}, "stop_id": "6c5a378d-04ed-4853-ba84-8d96cc
+ 55951 | 2026-10-13 09:05:00.042452 | planned_sale_stop_cancel           | {"trade_id": 421, "ticker": "KO", "stop_order_id": "6c5a378d-04ed-4853-ba84-8d96cce04cc3", "reason": "sma_trail_stop", "account_mode": "paper", "site": "expiry_path_test_687"}
+ 55952 | 2026-10-13 09:05:00.079191 | dead_stop_price_preserved          | {"trade_id": 421, "account_mode": "paper", "order_id": "6c5a378d-04ed-4853-ba84-8d96cce04cc3", "status": "OrderStatus.CANCELED", "price": 77.22}
+ 55953 | 2026-10-13 09:05:00.082033 | stop_order_id_changed              | {"trade_id": 421, "account_mode": "paper", "new_id": null, "reason": "cancel_or_reject_null"}
+ 55954 | 2026-10-13 09:05:00.088763 | paper_rehearsal_687_state          | {"day_a": "2026-10-13", "tickers": ["KO"], "started_at": "2026-10-13T08:25:05.329858-04:00", "order_ids": ["63d39477-28f1-4eda-b7d9-74290d5d6e45", "6c5a378d-04ed-4853-ba84-8d96cce04cc3", "1822f417-cc3f-4985-8060-54bb2d40d47b"], "p1": {}, "p2": {}, "r1": {}, "s
+ 55956 | 2026-10-13 09:05:03.126782 | stop_cancel_by_planned_sale_silent | {"trade_id": 421, "ticker": "KO", "account_mode": "paper", "cancelled_order_id": "6c5a378d-04ed-4853-ba84-8d96cce04cc3", "event_norm": "cancelled"}
+ 55957 | 2026-10-13 09:05:30.015589 | stop_ack_broker_covered            | {"trade_id": 421, "ticker": "KO", "account_mode": "paper", "remaining_shares": 3.0, "broker_covered": 3.0, "synced_stop_order_id": null, "open_sell_orders": [{"id": "1822f417-cc3f-4985-8060-54bb2d40d47b", "type": "market", "qty": 3.0, "stop_price": null}]}
+ 55960 | 2026-10-13 09:15:00.044084 | order_status_reconciled            | order_id=1822f417-cc3f-4985-8060-54bb2d40d47b trade_id=421 purpose=full_exit db_was='pending_new' alpaca_now=new filled_qty=0.0 filled_avg_price=None
+ 55969 | 2026-10-13 09:30:26.112769 | entry_partial_fill                 | {"trade_id": 421, "order_id": "1822f417-cc3f-4985-8060-54bb2d40d47b", "ticker": "KO", "side": "sell", "event_qty": 1.0, "cum_filled": 1.0, "total_qty": 3.0, "avg_price": 90.36, "account_mode": "paper"}
+ 55970 | 2026-10-13 09:31:00.021687 | order_status_reconciled            | order_id=1822f417-cc3f-4985-8060-54bb2d40d47b trade_id=421 purpose=full_exit db_was='new' alpaca_now=partially_filled filled_qty=1.0 filled_avg_price=90.36
+ 55974 | 2026-10-13 09:31:30.249496 | stop_order_id_changed              | {"trade_id": 421, "account_mode": "paper", "new_id": "f18ed7c0-4355-4b3e-ba17-bb9c494e48aa", "reason": "cancel_or_reject_restored"}
+ 55975 | 2026-10-13 09:31:48.00414  | expiry_path_test_687_result        | {"verdict": "FAIL", "why": "NO stop at the broker by 09:31:30 ET after the sale died at 09:31:30.1 ET \u2014 the Day B failure, not fixed", "trade_id": 421, "obs": {"sale_status": "expired", "expiry_at": "2026-10-13 13:31:30.141166+00:00", "stop": null, "expec
+(12 rows)
+

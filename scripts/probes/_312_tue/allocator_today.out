@@ -1,0 +1,17 @@
+  id   |             et             |         event_type         |                                                     detail                                                      
+-------+----------------------------+----------------------------+-----------------------------------------------------------------------------------------------------------------
+ 55965 | 2026-10-13 09:28:00.017308 | unified_allocation_decided | {"target_date":"2026-10-13","n_candidates":0,"ranked_at_et":"2026-10-13T09:28:00.013358-04:00","ranked_ids":[]}
+(1 row)
+
+ live_open_filled 
+------------------
+                3
+(1 row)
+
+ ticker | account_mode | status | remaining_shares 
+--------+--------------+--------+------------------
+ HUM    | live         | filled |                1
+ KOD    | live         | filled |                4
+ PENG   | live         | filled |               10
+(3 rows)
+
