@@ -1,0 +1,14 @@
+A 2008 B 2010 B-A [(datetime.date(2026, 9, 15), 'NA'), (datetime.date(2026, 9, 16), 'NA')] A-B []
+Traceback (most recent call last):
+  File "/Users/alvinfung/apollo_the_wise/scripts/probes/_584_rerun_1013/r8_diff_rows.py", line 13, in <module>
+    x = D[(D.scan_date == pd.Timestamp(d)) & (D.ticker == t)].iloc[0]
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/Users/alvinfung/Library/Python/3.14/lib/python/site-packages/pandas/core/indexing.py", line 1207, in __getitem__
+    return self._getitem_axis(maybe_callable, axis=axis)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alvinfung/Library/Python/3.14/lib/python/site-packages/pandas/core/indexing.py", line 1773, in _getitem_axis
+    self._validate_integer(key, axis)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/Users/alvinfung/Library/Python/3.14/lib/python/site-packages/pandas/core/indexing.py", line 1706, in _validate_integer
+    raise IndexError("single positional indexer is out-of-bounds")
+IndexError: single positional indexer is out-of-bounds

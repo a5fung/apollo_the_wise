@@ -1,0 +1,1382 @@
+Pager usage is off.
+Null display is "-".
+              event_type               |  am   |  n  | nights |                                                 hhmm                                                  
+---------------------------------------+-------+-----+--------+-------------------------------------------------------------------------------------------------------
+ alert_rank_shadow_recorded            | ?     |  20 |     20 | 17:53
+ analyst_estimates_snapshot            | ?     |  20 |     20 | 18:20,18:21,18:22,18:23,18:24
+ anticipation_coil_buyout_pin_rejected | ?     | 211 |     20 | 17:35
+ api_failure_alpaca                    | ?     |   2 |      1 | 16:00,16:15
+ api_failure_fmp                       | ?     | 482 |     20 | 18:12,18:13,18:14,18:15,18:16,18:17,18:18,18:19,18:20,18:21,18:22,18:23
+ catalyst_lattice_monitor_alert        | ?     |   7 |      7 | 17:30
+ coverage_checked_late                 | ?     |  21 |     21 | 19:00
+ coverage_checked_post_close           | ?     |  21 |     21 | 17:00
+ coverage_drift_check_degraded         | ?     |   2 |      1 | 16:00,16:15
+ coverage_verified_evening             | ?     |  21 |     21 | 21:10
+ crypto_ingest_error                   | ?     |   1 |      1 | 18:00
+ db_growth_alert                       | ?     |   1 |      1 | 17:30
+ dead_stop_price_preserved             | live  |  32 |     21 | 16:05,16:45
+ dead_stop_price_preserved             | paper |   2 |      2 | 16:45,19:04
+ detector_liveness_alert               | ?     |   1 |      1 | 17:30
+ exit_path_shadow_recorded             | ?     |  20 |     20 | 17:50
+ full_exit_sized_around_resting_exit   | paper |   1 |      1 | 16:45
+ judge_named_themes_extracted          | ?     |  13 |     13 | 18:20
+ narrative_theme_discovery_ran         | ?     |  20 |     20 | 17:04,17:07,17:09,17:10,17:11,17:12,17:13,17:15,17:16,17:17,17:18
+ planned_sale_stop_cancel              | paper |   4 |      2 | 16:45,19:01,19:04
+ position_mgmt_judge_null              | ?     |   2 |      1 | 16:02
+ splits_ingest_summary                 | ?     |  21 |     21 | 17:00
+ stop_cancel_by_planned_sale_silent    | paper |   4 |      2 | 16:45,19:01,19:04
+ stop_order_id_changed                 | live  |  68 |     21 | 16:05,16:45
+ stop_order_id_changed                 | paper |   4 |      2 | 16:45,19:01,19:04
+ stop_refresh_ran                      | ?     |  21 |     21 | 16:20
+ stop_remediation_skipped_pending_exit | ?     |   2 |      1 | 21:00
+ stop_replacement_confirmed_silent     | live  |  32 |     21 | 16:45
+ stop_updated                          | ?     |  36 |     21 | 16:20,16:45
+ stop_update_retry_succeeded           | ?     |  32 |     21 | 16:45
+ stop_update_retry_triggered           | ?     |  32 |     21 | 16:45
+ stop_update_started                   | ?     |  36 |     21 | 16:20,16:45
+ strength_spread_alert_check           | ?     |  30 |     15 | 17:40
+ sustain_reject_replay_recorded        | ?     |  19 |     19 | 18:13
+ sustain_reject_replay_recorded        | live  |   1 |      1 | 18:13
+ theme_composition_churn               | ?     |  20 |     20 | 17:04,17:08,17:10,17:12,17:13,17:14,17:15,17:16,17:17,17:19
+ theme_discovered                      | ?     | 103 |     21 | 17:02,17:05,17:06,17:07,17:08,17:09,17:10,17:11,17:12
+ theme_discovery_llm_call              | ?     | 262 |     21 | 17:01,17:02,17:04,17:05,17:06,17:07,17:08,17:09,17:10,17:11,17:12,17:13,17:14,17:15,17:16,17:17,17:18
+ theme_discovery_shadow_ran            | ?     |  20 |     20 | 17:04,17:07,17:09,17:10,17:11,17:12,17:13,17:15,17:16,17:17,17:18
+ theme_discovery_shown_declined        | ?     |  41 |     21 | 17:02,17:04,17:06,17:07,17:08,17:09,17:10,17:11,17:12,17:13,17:15,17:16,17:17,17:18
+ theme_parent_pass_error               | ?     |   6 |      1 | 17:03
+ theme_small_fold_ran                  | ?     |   1 |      1 | 17:10
+ theme_synthesis_error                 | ?     |   1 |      1 | 18:05
+(43 rows)
+
+       et       |              event_type               |                                                                                                           summary                                                                                                            
+----------------+---------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 09-14 16:00:30 | api_failure_alpaca                    | ALPACA API FAILURE class=timeout tg=0 — get_open_orders
+ 09-14 16:00:30 | coverage_drift_check_degraded         | coverage-drift check degraded (paper): broker read failed
+ 09-14 16:15:30 | api_failure_alpaca                    | ALPACA API FAILURE class=timeout tg=0 — get_open_orders
+ 09-14 16:15:30 | coverage_drift_check_degraded         | coverage-drift check degraded (paper): broker read failed
+ 09-14 17:00:10 | splits_ingest_summary                 | new=6 applied=8 failed=25
+ 09-14 17:06:56 | theme_discovery_llm_call              | stop=tool_use out_tok=2426 forced=False tool_uses=1 iter=1
+ 09-14 17:07:40 | theme_discovery_llm_call              | stop=tool_use out_tok=4076 forced=False tool_uses=1 iter=1
+ 09-14 17:07:54 | theme_discovery_llm_call              | stop=tool_use out_tok=1276 forced=False tool_uses=1 iter=1
+ 09-14 17:08:27 | theme_discovery_llm_call              | stop=tool_use out_tok=3127 forced=False tool_uses=1 iter=1
+ 09-14 17:08:46 | theme_discovery_llm_call              | stop=tool_use out_tok=1751 forced=False tool_uses=1 iter=1
+ 09-14 17:09:03 | theme_discovery_llm_call              | stop=tool_use out_tok=1598 forced=False tool_uses=1 iter=1
+ 09-14 17:09:03 | theme_discovery_shown_declined        | shown=63 declined=51 proposed=6 clusters shown=7 declined=1 already_named=3 partial=3 taken=0 recall_mode=False
+ 09-14 17:09:18 | theme_discovered                      | New theme: Blank-Check SPAC Shell Speculation (2 stocks)
+ 09-14 17:09:18 | theme_discovered                      | New theme: Independent Petroleum Refiners RS Breakout (5 stocks)
+ 09-14 17:09:18 | theme_discovered                      | New theme: Identity & Access Management Security Software (2 stocks)
+ 09-14 17:09:18 | theme_discovered                      | New theme: Regulated Electric Utility Rate-Sensitive Rotation (Uncovered Names) (3 stocks)
+ 09-14 17:11:48 | theme_discovery_llm_call              | stop=tool_use out_tok=3556 forced=False tool_uses=1 iter=1
+ 09-14 17:13:13 | theme_discovery_llm_call              | stop=max_tokens out_tok=8000 forced=False tool_uses=0 iter=1
+ 09-14 17:13:40 | theme_discovery_llm_call              | stop=tool_use out_tok=2216 forced=True tool_uses=1 iter=2
+ 09-14 17:14:20 | theme_discovery_llm_call              | stop=tool_use out_tok=3916 forced=False tool_uses=1 iter=1
+ 09-14 17:15:02 | theme_discovery_llm_call              | stop=tool_use out_tok=4145 forced=False tool_uses=1 iter=1
+ 09-14 17:16:10 | theme_discovery_llm_call              | stop=tool_use out_tok=6535 forced=False tool_uses=1 iter=1
+ 09-14 17:16:26 | theme_discovery_llm_call              | stop=tool_use out_tok=1349 forced=False tool_uses=1 iter=1
+ 09-14 17:16:48 | theme_discovery_llm_call              | stop=tool_use out_tok=2054 forced=False tool_uses=1 iter=1
+ 09-14 17:17:03 | theme_discovery_llm_call              | stop=tool_use out_tok=1284 forced=False tool_uses=1 iter=1
+ 09-14 17:17:03 | theme_discovery_shown_declined        | shown=87 declined=51 proposed=17 clusters shown=7 declined=1 already_named=1 partial=4 taken=1 recall_mode=True
+ 09-14 17:17:03 | theme_discovery_shadow_ran            | Theme discovery shadow: 17 candidate themes written
+ 09-14 17:17:05 | narrative_theme_discovery_ran         | 2026-09-14: v2reg 2 today (grounded=2 analysis=0 catalyst=0) roster 2 active / 3 seeds -> 0 join + 0 new + 2 seed(s): []
+ 09-14 17:17:36 | theme_composition_churn               | Composition churn (on-demand): +ET→Oil & Gas Value Chain: Infrastructure, Refining & Services · +KNTK→Oil & Gas Value Chain: Infrastructure, Refining & Services · +WES→Oil & Gas Value Chain: Infrastructure, Refining & Se
+ 09-14 17:35:15 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-14 17:35:15 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-14 17:35:15 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 09-14 17:35:16 | anticipation_coil_buyout_pin_rejected | MKTX coil rejected — stop_floor
+ 09-14 17:35:16 | anticipation_coil_buyout_pin_rejected | MKTX coil rejected — stop_floor
+ 09-14 17:35:16 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-14 17:35:16 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-14 17:50:00 | exit_path_shadow_recorded             | 4 row(s) written/updated across 32 eligible live trade(s) for 2026-09-14 (0 error(s))
+ 09-14 17:53:00 | alert_rank_shadow_recorded            | 2 row(s) written/updated across 1 date(s) needing processing (0 error(s))
+ 09-14 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:13:00 | sustain_reject_replay_recorded        | 113 net-declined ticker-day(s) in window, 4 candidate(s) processed: 4 written (0 settled, 2 no_trade, 0 unscoreable, 2 open, 0 at horizon), 0 pending, 0 error(s)
+ 09-14 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:13:48 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:14:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:14:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:15:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:15:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:17:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:17:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:17:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:18:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:18:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:19:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:19:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:19:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:20:00 | judge_named_themes_extracted          | 2 alert(s): 0 named a group, 2 row(s) written, 0 failed (retry next run), ~$0.0030
+ 09-14 18:20:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:20:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:21:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:21:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:21:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:22:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:22:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:23:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:23:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-14 18:23:38 | analyst_estimates_snapshot            | 93 row(s) across 29/29 ticker(s) (42 quarterly-from-yfinance, 51 quarterly-from-finnhub, 37 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 29 annual-40
+ 09-15 17:00:01 | splits_ingest_summary                 | new=4 applied=4 failed=1
+ 09-15 17:04:56 | theme_discovery_llm_call              | stop=tool_use out_tok=2888 forced=False tool_uses=1 iter=1
+ 09-15 17:05:31 | theme_discovery_llm_call              | stop=tool_use out_tok=3291 forced=False tool_uses=1 iter=1
+ 09-15 17:05:50 | theme_discovery_llm_call              | stop=tool_use out_tok=1695 forced=False tool_uses=1 iter=1
+ 09-15 17:06:10 | theme_discovery_llm_call              | stop=tool_use out_tok=2065 forced=False tool_uses=1 iter=1
+ 09-15 17:06:23 | theme_discovery_llm_call              | stop=tool_use out_tok=1198 forced=False tool_uses=1 iter=1
+ 09-15 17:06:47 | theme_discovery_llm_call              | stop=tool_use out_tok=2323 forced=False tool_uses=1 iter=1
+ 09-15 17:06:47 | theme_discovery_shown_declined        | shown=65 declined=60 proposed=6 clusters shown=10 declined=2 already_named=5 partial=1 taken=2 recall_mode=False
+ 09-15 17:07:01 | theme_discovered                      | New theme: Crude, Product & LPG Tanker Shipping Rate Cycle (8 stocks)
+ 09-15 17:07:01 | theme_discovered                      | New theme: Specialty P&C Insurance Underwriters Rotation Reversal (3 stocks)
+ 09-15 17:07:01 | theme_discovered                      | New theme: Crude & Product Tanker Shipping Owners (7 stocks)
+ 09-15 17:07:01 | theme_discovered                      | New theme: mRNA Vaccine & Personalized Cancer Therapy Platforms (3 stocks)
+ 09-15 17:07:01 | theme_discovered                      | New theme: Homebuilders & Residential Construction Supply Chain (10 stocks)
+ 09-15 17:08:59 | theme_discovery_llm_call              | stop=tool_use out_tok=3403 forced=False tool_uses=1 iter=1
+ 09-15 17:10:03 | theme_discovery_llm_call              | stop=tool_use out_tok=6267 forced=False tool_uses=1 iter=1
+ 09-15 17:10:44 | theme_discovery_llm_call              | stop=tool_use out_tok=4068 forced=False tool_uses=1 iter=1
+ 09-15 17:11:13 | theme_discovery_llm_call              | stop=tool_use out_tok=2930 forced=False tool_uses=1 iter=1
+ 09-15 17:11:24 | theme_discovery_llm_call              | stop=tool_use out_tok=931 forced=False tool_uses=1 iter=1
+ 09-15 17:11:35 | theme_discovery_llm_call              | stop=tool_use out_tok=1010 forced=False tool_uses=1 iter=1
+ 09-15 17:11:35 | theme_discovery_shown_declined        | shown=51 declined=33 proposed=11 clusters shown=10 declined=2 already_named=4 partial=3 taken=1 recall_mode=True
+ 09-15 17:11:35 | theme_discovery_shadow_ran            | Theme discovery shadow: 11 candidate themes written
+ 09-15 17:11:35 | narrative_theme_discovery_ran         | 2026-09-15: v2reg 0 qualifying today — no evaluation (roster 2 active / 5 seeds)
+ 09-15 17:12:18 | theme_composition_churn               | Composition churn (on-demand): Software Development & DevOps Collaboration Platforms: +U · Defense Intelligence & Cybersecurity IT Contractors: +BAH · AI-Powered Enterprise Analytics & Intelligent Workflow SaaS: +WK · IT
+ 09-15 17:30:47 | catalyst_lattice_monitor_alert        | catalyst lattice revert trigger: high_conversion_drop
+ 09-15 17:35:13 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-15 17:35:13 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-15 17:35:13 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 09-15 17:35:14 | anticipation_coil_buyout_pin_rejected | MKTX coil rejected — stop_floor
+ 09-15 17:35:14 | anticipation_coil_buyout_pin_rejected | MKTX coil rejected — stop_floor
+ 09-15 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-15 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-15 17:40:00 | strength_spread_alert_check           | Precious metals: state=quiet move=+5.4 band=11.2 crossed=False
+ 09-15 17:40:00 | strength_spread_alert_check           | Energy: state=falling_behind move=-17.7 band=12.7 crossed=True
+ 09-15 17:50:00 | exit_path_shadow_recorded             | 3 row(s) written/updated across 32 eligible live trade(s) for 2026-09-15 (0 error(s))
+ 09-15 17:53:00 | alert_rank_shadow_recorded            | 0 row(s) written/updated across 0 date(s) needing processing (0 error(s))
+ 09-15 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:13:00 | sustain_reject_replay_recorded        | 115 net-declined ticker-day(s) in window, 4 candidate(s) processed: 4 written (2 settled, 1 no_trade, 0 unscoreable, 1 open, 0 at horizon), 0 pending, 0 error(s)
+ 09-15 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:13:48 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:14:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:14:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:17:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:17:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:19:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:20:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:20:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:21:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:21:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:21:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:22:15 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:22:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:23:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:23:28 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-15 18:23:40 | analyst_estimates_snapshot            | 93 row(s) across 29/29 ticker(s) (42 quarterly-from-yfinance, 51 quarterly-from-finnhub, 37 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 29 annual-40
+ 09-16 17:00:00 | splits_ingest_summary                 | new=3 applied=1 failed=0
+ 09-16 17:06:49 | theme_discovery_llm_call              | stop=tool_use out_tok=2954 forced=False tool_uses=1 iter=1
+ 09-16 17:07:10 | theme_discovery_llm_call              | stop=tool_use out_tok=2140 forced=False tool_uses=1 iter=1
+ 09-16 17:07:21 | theme_discovery_llm_call              | stop=tool_use out_tok=877 forced=False tool_uses=1 iter=1
+ 09-16 17:07:38 | theme_discovery_llm_call              | stop=tool_use out_tok=1484 forced=False tool_uses=1 iter=1
+ 09-16 17:08:03 | theme_discovery_llm_call              | stop=tool_use out_tok=2172 forced=False tool_uses=1 iter=1
+ 09-16 17:08:18 | theme_discovery_llm_call              | stop=tool_use out_tok=1314 forced=False tool_uses=1 iter=1
+ 09-16 17:08:18 | theme_discovery_shown_declined        | shown=61 declined=47 proposed=7 clusters shown=10 declined=2 already_named=5 partial=1 taken=2 recall_mode=False
+ 09-16 17:08:34 | theme_discovered                      | New theme: Petroleum Refining Margin Expansion (7 stocks)
+ 09-16 17:08:34 | theme_discovered                      | New theme: Emerging Aerospace & Defense Systems Momentum (3 stocks)
+ 09-16 17:08:34 | theme_discovered                      | New theme: Post-Acute & Home-Based Healthcare Services (2 stocks)
+ 09-16 17:08:34 | theme_discovered                      | New theme: Live Music & Concert Promotion (2 stocks)
+ 09-16 17:08:34 | theme_discovered                      | New theme: Net Lease Commercial & Retail REITs (5 stocks)
+ 09-16 17:08:34 | theme_discovered                      | New theme: Small Modular Reactor & Advanced Nuclear Fission Technology (4 stocks)
+ 09-16 17:11:14 | theme_discovery_llm_call              | stop=tool_use out_tok=4512 forced=False tool_uses=1 iter=1
+ 09-16 17:11:52 | theme_discovery_llm_call              | stop=tool_use out_tok=3814 forced=False tool_uses=1 iter=1
+ 09-16 17:12:33 | theme_discovery_llm_call              | stop=tool_use out_tok=4072 forced=False tool_uses=1 iter=1
+ 09-16 17:12:59 | theme_discovery_llm_call              | stop=tool_use out_tok=2377 forced=False tool_uses=1 iter=1
+ 09-16 17:13:21 | theme_discovery_llm_call              | stop=tool_use out_tok=2002 forced=False tool_uses=1 iter=1
+ 09-16 17:13:32 | theme_discovery_llm_call              | stop=tool_use out_tok=879 forced=False tool_uses=1 iter=1
+ 09-16 17:13:32 | theme_discovery_shown_declined        | shown=62 declined=42 proposed=9 clusters shown=10 declined=2 already_named=7 partial=0 taken=1 recall_mode=True
+ 09-16 17:13:32 | theme_discovery_shadow_ran            | Theme discovery shadow: 9 candidate themes written
+ 09-16 17:13:34 | narrative_theme_discovery_ran         | 2026-09-16: v2reg 1 today (grounded=1 analysis=0 catalyst=0) roster 2 active / 5 seeds -> 1 join + 0 new + 0 seed(s): ['AI data-center power buildout']
+ 09-16 17:13:59 | theme_composition_churn               | Composition churn (on-demand): Software Development & DevOps Collaboration Platforms:  -U · Defense Intelligence & Cybersecurity IT Contractors:  -BAH · nascent +1/-2
+ 09-16 17:30:44 | catalyst_lattice_monitor_alert        | catalyst lattice revert trigger: high_conversion_drop
+ 09-16 17:35:14 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-16 17:35:14 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-16 17:35:14 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 09-16 17:35:15 | anticipation_coil_buyout_pin_rejected | MKTX coil rejected — stop_floor
+ 09-16 17:35:15 | anticipation_coil_buyout_pin_rejected | MKTX coil rejected — stop_floor
+ 09-16 17:35:15 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-16 17:35:15 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-16 17:40:00 | strength_spread_alert_check           | Precious metals: state=quiet move=+1.7 band=11.2 crossed=False
+ 09-16 17:40:00 | strength_spread_alert_check           | Energy: state=falling_behind move=-22.9 band=12.7 crossed=False
+ 09-16 17:50:00 | exit_path_shadow_recorded             | 2 row(s) written/updated across 32 eligible live trade(s) for 2026-09-16 (0 error(s))
+ 09-16 17:53:00 | alert_rank_shadow_recorded            | 1 row(s) written/updated across 1 date(s) needing processing (0 error(s))
+ 09-16 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:13:00 | sustain_reject_replay_recorded        | 117 net-declined ticker-day(s) in window, 3 candidate(s) processed: 3 written (0 settled, 1 no_trade, 0 unscoreable, 2 open, 0 at horizon), 0 pending, 0 error(s)
+ 09-16 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:13:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:14:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:14:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:16:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:16:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:17:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:17:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:19:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:20:01 | judge_named_themes_extracted          | 1 alert(s): 1 named a group, 1 row(s) written, 0 failed (retry next run), ~$0.0019
+ 09-16 18:20:15 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:20:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:21:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:21:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:21:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:22:16 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:22:40 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:23:04 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:23:28 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:23:52 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-16 18:24:04 | analyst_estimates_snapshot            | 97 row(s) across 30/30 ticker(s) (44 quarterly-from-yfinance, 53 quarterly-from-finnhub, 39 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 30 annual-40
+ 09-17 17:00:01 | splits_ingest_summary                 | new=7 applied=5 failed=0
+ 09-17 17:04:32 | theme_discovery_llm_call              | stop=tool_use out_tok=2452 forced=False tool_uses=1 iter=1
+ 09-17 17:04:53 | theme_discovery_llm_call              | stop=tool_use out_tok=2062 forced=False tool_uses=1 iter=1
+ 09-17 17:05:12 | theme_discovery_llm_call              | stop=tool_use out_tok=1720 forced=False tool_uses=1 iter=1
+ 09-17 17:05:22 | theme_discovery_llm_call              | stop=tool_use out_tok=954 forced=False tool_uses=1 iter=1
+ 09-17 17:05:38 | theme_discovery_llm_call              | stop=tool_use out_tok=1417 forced=False tool_uses=1 iter=1
+ 09-17 17:06:13 | theme_discovery_llm_call              | stop=tool_use out_tok=3344 forced=False tool_uses=1 iter=1
+ 09-17 17:06:33 | theme_discovery_llm_call              | stop=tool_use out_tok=1752 forced=False tool_uses=1 iter=1
+ 09-17 17:06:33 | theme_discovery_shown_declined        | shown=65 declined=54 proposed=8 clusters shown=12 declined=3 already_named=5 partial=3 taken=1 recall_mode=False
+ 09-17 17:06:55 | theme_discovered                      | New theme: Renewable Diesel & Renewable Fuels Refining (2 stocks)
+ 09-17 17:06:55 | theme_discovered                      | New theme: Bitcoin Holding & Trading Proxy Equities (3 stocks)
+ 09-17 17:06:55 | theme_discovered                      | New theme: Dermatology-Focused Specialty Pharma (2 stocks)
+ 09-17 17:06:55 | theme_discovered                      | New theme: On-Site Power Generation & Distribution Equipment for Data Centers (3 stocks)
+ 09-17 17:06:55 | theme_discovered                      | New theme: Renewable Power Generation Operators (2 stocks)
+ 09-17 17:06:55 | theme_discovered                      | New theme: Bitcoin Miners Diversifying into AI/HPC Data Center Hosting (Emerging Names) (2 stocks)
+ 09-17 17:06:55 | theme_discovered                      | New theme: Investment Research & Financial Data Platforms (2 stocks)
+ 09-17 17:09:24 | theme_discovery_llm_call              | stop=tool_use out_tok=6086 forced=False tool_uses=1 iter=1
+ 09-17 17:10:15 | theme_discovery_llm_call              | stop=tool_use out_tok=5024 forced=False tool_uses=1 iter=1
+ 09-17 17:10:58 | theme_discovery_llm_call              | stop=tool_use out_tok=4284 forced=False tool_uses=1 iter=1
+ 09-17 17:11:52 | theme_discovery_llm_call              | stop=tool_use out_tok=5681 forced=False tool_uses=1 iter=1
+ 09-17 17:12:11 | theme_discovery_llm_call              | stop=tool_use out_tok=1589 forced=False tool_uses=1 iter=1
+ 09-17 17:12:28 | theme_discovery_llm_call              | stop=tool_use out_tok=1445 forced=False tool_uses=1 iter=1
+ 09-17 17:12:42 | theme_discovery_llm_call              | stop=tool_use out_tok=1312 forced=False tool_uses=1 iter=1
+ 09-17 17:12:42 | theme_discovery_shown_declined        | shown=73 declined=33 proposed=17 clusters shown=12 declined=2 already_named=5 partial=5 taken=0 recall_mode=True
+ 09-17 17:12:42 | theme_discovery_shadow_ran            | Theme discovery shadow: 17 candidate themes written
+ 09-17 17:12:45 | narrative_theme_discovery_ran         | 2026-09-17: v2reg 2 today (grounded=2 analysis=0 catalyst=0) roster 2 active / 5 seeds -> 1 join + 0 new + 0 seed(s): ['AI data-center power buildout']
+ 09-17 17:13:22 | theme_composition_churn               | Composition churn (on-demand): Consumer PC & Gaming Hardware Refresh Cycle: +LOGI · Genomics & DNA Sequencing Tools: +BRKR +GH +GRAL +ILMN +NTRA +QGEN +TXG +WGS · Defense Intelligence & Cybersecurity IT Contractors: +BAH
+ 09-17 17:35:13 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-17 17:35:13 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-17 17:35:13 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 09-17 17:35:13 | anticipation_coil_buyout_pin_rejected | MKTX coil rejected — stop_floor
+ 09-17 17:35:13 | anticipation_coil_buyout_pin_rejected | MKTX coil rejected — stop_floor
+ 09-17 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-17 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-17 17:40:00 | strength_spread_alert_check           | Precious metals: state=quiet move=-1.3 band=11.2 crossed=False
+ 09-17 17:40:00 | strength_spread_alert_check           | Energy: state=falling_behind move=-18.8 band=12.8 crossed=False
+ 09-17 17:50:00 | exit_path_shadow_recorded             | 3 row(s) written/updated across 33 eligible live trade(s) for 2026-09-17 (0 error(s))
+ 09-17 17:53:00 | alert_rank_shadow_recorded            | 2 row(s) written/updated across 1 date(s) needing processing (0 error(s))
+ 09-17 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:13:00 | sustain_reject_replay_recorded        | 125 net-declined ticker-day(s) in window, 10 candidate(s) processed: 10 written (0 settled, 3 no_trade, 3 unscoreable, 4 open, 0 at horizon), 0 pending, 0 error(s)
+ 09-17 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:13:48 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:14:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:14:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:17:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:17:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:19:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:20:00 | judge_named_themes_extracted          | 2 alert(s): 2 named a group, 2 row(s) written, 0 failed (retry next run), ~$0.0036
+ 09-17 18:20:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:20:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:21:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:21:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:21:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:22:15 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:22:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:23:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:23:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:23:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-17 18:24:03 | analyst_estimates_snapshot            | 102 row(s) across 30/30 ticker(s) (46 quarterly-from-yfinance, 56 quarterly-from-finnhub, 43 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 30 annual-4
+ 09-18 17:00:01 | splits_ingest_summary                 | new=6 applied=5 failed=1
+ 09-18 17:07:46 | theme_discovery_llm_call              | stop=tool_use out_tok=4233 forced=False tool_uses=1 iter=1
+ 09-18 17:08:34 | theme_discovery_llm_call              | stop=tool_use out_tok=4439 forced=False tool_uses=1 iter=1
+ 09-18 17:09:42 | theme_discovery_llm_call              | stop=tool_use out_tok=6855 forced=False tool_uses=1 iter=1
+ 09-18 17:10:15 | theme_discovery_llm_call              | stop=tool_use out_tok=3109 forced=False tool_uses=1 iter=1
+ 09-18 17:10:32 | theme_discovery_llm_call              | stop=tool_use out_tok=1512 forced=False tool_uses=1 iter=1
+ 09-18 17:10:40 | theme_discovery_llm_call              | stop=tool_use out_tok=665 forced=False tool_uses=1 iter=1
+ 09-18 17:10:49 | theme_discovery_llm_call              | stop=tool_use out_tok=838 forced=False tool_uses=1 iter=1
+ 09-18 17:11:03 | theme_discovery_llm_call              | stop=tool_use out_tok=1153 forced=False tool_uses=1 iter=1
+ 09-18 17:11:03 | theme_discovery_shown_declined        | shown=61 declined=46 proposed=10 clusters shown=13 declined=1 already_named=8 partial=3 taken=1 recall_mode=False
+ 09-18 17:11:28 | theme_discovered                      | New theme: Bitcoin Treasury & Crypto Proxy Equities Correlation Basket (3 stocks)
+ 09-18 17:11:28 | theme_discovered                      | New theme: Independent Petroleum Refiners - Crack Spread Rally (5 stocks)
+ 09-18 17:11:28 | theme_discovered                      | New theme: Enterprise Data Backup & Cyber Resilience Software (2 stocks)
+ 09-18 17:11:28 | theme_discovered                      | New theme: Regulated Natural Gas Distribution Utilities (2 stocks)
+ 09-18 17:11:28 | theme_discovered                      | New theme: Rare Earth Elements Mining & Processing (4 stocks)
+ 09-21 17:00:00 | splits_ingest_summary                 | new=2 applied=2 failed=0
+ 09-21 17:09:51 | theme_discovery_llm_call              | stop=tool_use out_tok=1796 forced=False tool_uses=1 iter=1
+ 09-21 17:10:06 | theme_discovery_llm_call              | stop=tool_use out_tok=426 forced=False tool_uses=1 iter=2
+ 09-21 17:10:18 | theme_discovery_llm_call              | stop=tool_use out_tok=1137 forced=False tool_uses=1 iter=1
+ 09-21 17:10:47 | theme_discovery_llm_call              | stop=tool_use out_tok=2653 forced=False tool_uses=1 iter=1
+ 09-21 17:11:14 | theme_discovery_llm_call              | stop=tool_use out_tok=2417 forced=False tool_uses=1 iter=1
+ 09-21 17:11:37 | theme_discovery_llm_call              | stop=tool_use out_tok=2210 forced=False tool_uses=1 iter=1
+ 09-21 17:11:59 | theme_discovery_llm_call              | stop=tool_use out_tok=2073 forced=False tool_uses=1 iter=1
+ 09-21 17:11:59 | theme_discovery_shown_declined        | shown=65 declined=60 proposed=6 clusters shown=10 declined=0 already_named=6 partial=1 taken=3 recall_mode=False
+ 09-21 17:12:16 | theme_discovered                      | New theme: Semiconductor Equipment & Materials Velocity Surge (3 stocks)
+ 09-21 17:12:16 | theme_discovered                      | New theme: Precision Timing & Motion Control Component Makers (2 stocks)
+ 09-21 17:12:16 | theme_discovered                      | New theme: Appalachian Basin Natural Gas E&P (6 stocks)
+ 09-21 17:12:16 | theme_discovered                      | New theme: Offshore Contract Drilling Rig Operators (4 stocks)
+ 09-21 17:12:16 | theme_discovered                      | New theme: Small Modular Reactor & Advanced Nuclear Fission Technology (4 stocks)
+ 09-21 17:12:16 | theme_discovered                      | New theme: Trucking & Freight Carrier Rate Recovery (3 stocks)
+ 09-21 17:14:57 | theme_discovery_llm_call              | stop=tool_use out_tok=7398 forced=False tool_uses=1 iter=1
+ 09-21 17:16:00 | theme_discovery_llm_call              | stop=tool_use out_tok=6356 forced=False tool_uses=1 iter=1
+ 09-21 17:17:19 | theme_discovery_llm_call              | stop=tool_use out_tok=7787 forced=False tool_uses=1 iter=1
+ 09-21 17:17:56 | theme_discovery_llm_call              | stop=tool_use out_tok=3700 forced=False tool_uses=1 iter=1
+ 09-21 17:18:09 | theme_discovery_llm_call              | stop=tool_use out_tok=1092 forced=False tool_uses=1 iter=1
+ 09-21 17:18:25 | theme_discovery_llm_call              | stop=tool_use out_tok=1558 forced=False tool_uses=1 iter=1
+ 09-21 17:18:25 | theme_discovery_shown_declined        | shown=68 declined=42 proposed=16 clusters shown=10 declined=0 already_named=5 partial=3 taken=2 recall_mode=True
+ 09-21 17:18:25 | theme_discovery_shadow_ran            | Theme discovery shadow: 16 candidate themes written
+ 09-21 17:18:28 | narrative_theme_discovery_ran         | 2026-09-21: v2reg 2 today (grounded=2 analysis=0 catalyst=0) roster 2 active / 4 seeds -> 0 join + 0 new + 2 seed(s): []
+ 09-21 17:19:16 | theme_composition_churn               | Composition churn (on-demand): Semiconductor Foundry & Advanced Packaging Manufacturing: +TSEM · Defense Intelligence & Cybersecurity IT Contractors: +BAH +SAIC +VVX · Life Science Tools & Analytical Instruments: +BIO +M
+ 09-21 17:30:43 | catalyst_lattice_monitor_alert        | catalyst lattice revert trigger: high_conversion_drop
+ 09-21 17:35:14 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-21 17:35:14 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-21 17:35:14 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 09-21 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-21 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-21 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-21 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-21 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-21 17:50:00 | exit_path_shadow_recorded             | 3 row(s) written/updated across 33 eligible live trade(s) for 2026-09-21 (0 error(s))
+ 09-21 17:53:00 | alert_rank_shadow_recorded            | 2 row(s) written/updated across 1 date(s) needing processing (0 error(s))
+ 09-21 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:13:00 | sustain_reject_replay_recorded        | 129 net-declined ticker-day(s) in window, 5 candidate(s) processed: 5 written (1 settled, 1 no_trade, 0 unscoreable, 3 open, 0 at horizon), 0 pending, 0 error(s)
+ 09-21 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:13:48 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:14:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:14:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:17:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:17:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:17:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:18:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:19:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:20:01 | judge_named_themes_extracted          | 2 alert(s): 1 named a group, 2 row(s) written, 0 failed (retry next run), ~$0.0032
+ 09-21 18:20:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:20:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:21:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-21 18:21:14 | analyst_estimates_snapshot            | 76 row(s) across 23/23 ticker(s) (34 quarterly-from-yfinance, 42 quarterly-from-finnhub, 31 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 23 annual-40
+ 09-22 17:00:02 | splits_ingest_summary                 | new=6 applied=11 failed=0
+ 09-22 17:07:52 | theme_discovery_llm_call              | stop=tool_use out_tok=4541 forced=False tool_uses=1 iter=1
+ 09-22 17:08:23 | theme_discovery_llm_call              | stop=tool_use out_tok=2769 forced=False tool_uses=1 iter=1
+ 09-22 17:09:09 | theme_discovery_llm_call              | stop=tool_use out_tok=4265 forced=False tool_uses=1 iter=1
+ 09-22 17:09:27 | theme_discovery_llm_call              | stop=tool_use out_tok=1710 forced=False tool_uses=1 iter=1
+ 09-22 17:09:36 | theme_discovery_llm_call              | stop=tool_use out_tok=805 forced=False tool_uses=1 iter=1
+ 09-22 17:09:36 | theme_discovery_shown_declined        | shown=60 declined=54 proposed=6 clusters shown=7 declined=1 already_named=2 partial=2 taken=2 recall_mode=False
+ 09-22 17:09:49 | theme_discovered                      | New theme: Building Products Distribution & Supply (2 stocks)
+ 09-22 17:09:49 | theme_discovered                      | New theme: AI Server Power & Signal-Integrity Analog ICs (2 stocks)
+ 09-22 17:09:49 | theme_discovered                      | New theme: Brazilian Financial Services & Fintech (4 stocks)
+ 09-22 17:09:49 | theme_discovered                      | New theme: Coal Mining Producers (4 stocks)
+ 09-22 17:09:49 | theme_discovered                      | New theme: Offshore Drilling Rig Contractors (4 stocks)
+ 09-22 17:11:26 | theme_discovery_llm_call              | stop=tool_use out_tok=3203 forced=False tool_uses=1 iter=1
+ 09-22 17:12:06 | theme_discovery_llm_call              | stop=tool_use out_tok=3728 forced=False tool_uses=1 iter=1
+ 09-22 17:13:04 | theme_discovery_llm_call              | stop=tool_use out_tok=5561 forced=False tool_uses=1 iter=1
+ 09-22 17:13:30 | theme_discovery_llm_call              | stop=tool_use out_tok=2280 forced=False tool_uses=1 iter=1
+ 09-22 17:13:39 | theme_discovery_llm_call              | stop=tool_use out_tok=835 forced=False tool_uses=1 iter=1
+ 09-22 17:13:39 | theme_discovery_shown_declined        | shown=58 declined=37 proposed=10 clusters shown=7 declined=1 already_named=4 partial=1 taken=1 recall_mode=True
+ 09-22 17:13:39 | theme_discovery_shadow_ran            | Theme discovery shadow: 10 candidate themes written
+ 09-22 17:13:41 | narrative_theme_discovery_ran         | 2026-09-22: v2reg 1 today (grounded=1 analysis=0 catalyst=0) roster 2 active / 6 seeds -> 0 join + 0 new + 1 seed(s): []
+ 09-22 17:14:10 | theme_composition_churn               | Composition churn (on-demand): Network Security & Zero-Trust Edge: +CHKP +CRWD +FFIV +FTNT +NET +NTSK +OKTA +PANW +QLYS +RPD +S +SAIL +TENB +VRNS +ZS · Life Science Tools & Analytical Instruments:  -MLAB · Semiconductor 
+ 09-22 17:30:43 | catalyst_lattice_monitor_alert        | catalyst lattice revert trigger: high_conversion_drop
+ 09-22 17:35:14 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-22 17:35:14 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-22 17:35:14 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 09-22 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-22 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-22 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-22 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-22 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-22 17:50:00 | exit_path_shadow_recorded             | 3 row(s) written/updated across 33 eligible live trade(s) for 2026-09-22 (0 error(s))
+ 09-22 17:53:00 | alert_rank_shadow_recorded            | 1 row(s) written/updated across 1 date(s) needing processing (0 error(s))
+ 09-22 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:13:00 | sustain_reject_replay_recorded        | 130 net-declined ticker-day(s) in window, 4 candidate(s) processed: 4 written (0 settled, 1 no_trade, 0 unscoreable, 3 open, 0 at horizon), 0 pending, 0 error(s)
+ 09-22 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:13:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:14:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:14:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:17:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:17:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:19:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:20:00 | judge_named_themes_extracted          | 1 alert(s): 0 named a group, 1 row(s) written, 0 failed (retry next run), ~$0.0015
+ 09-22 18:20:15 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:20:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:21:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:21:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-22 18:21:39 | analyst_estimates_snapshot            | 78 row(s) across 24/24 ticker(s) (34 quarterly-from-yfinance, 44 quarterly-from-finnhub, 31 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 24 annual-40
+ 09-23 16:02:00 | position_mgmt_judge_null              | OKTA 2026-09-23: management judge fail-open (no verdict)
+ 09-23 16:02:01 | position_mgmt_judge_null              | VICR 2026-09-23: management judge fail-open (no verdict)
+ 09-23 17:00:00 | splits_ingest_summary                 | new=26 applied=0 failed=0
+ 09-23 17:08:33 | theme_discovery_llm_call              | stop=tool_use out_tok=1122 forced=False tool_uses=1 iter=1
+ 09-23 17:09:15 | theme_discovery_llm_call              | stop=tool_use out_tok=3868 forced=False tool_uses=1 iter=1
+ 09-23 17:09:54 | theme_discovery_llm_call              | stop=tool_use out_tok=3974 forced=False tool_uses=1 iter=1
+ 09-23 17:10:10 | theme_discovery_llm_call              | stop=tool_use out_tok=673 forced=False tool_uses=1 iter=2
+ 09-23 17:10:24 | theme_discovery_llm_call              | stop=tool_use out_tok=1193 forced=False tool_uses=1 iter=1
+ 09-23 17:10:37 | theme_discovery_llm_call              | stop=tool_use out_tok=1177 forced=False tool_uses=1 iter=1
+ 09-23 17:10:55 | theme_discovery_llm_call              | stop=tool_use out_tok=1704 forced=False tool_uses=1 iter=1
+ 09-23 17:10:55 | theme_discovery_shown_declined        | shown=57 declined=53 proposed=8 clusters shown=10 declined=2 already_named=2 partial=2 taken=4 recall_mode=False
+ 09-23 17:11:10 | theme_discovered                      | New theme: Electric & Unmanned Aircraft Innovators (2 stocks)
+ 09-23 17:11:10 | theme_discovered                      | New theme: Global Reinsurance Underwriters (3 stocks)
+ 09-23 17:11:10 | theme_discovered                      | New theme: Appalachian Basin Natural Gas E&P (6 stocks)
+ 09-23 17:11:10 | theme_discovered                      | New theme: Uranium Mining & Extraction (2 stocks)
+ 09-23 17:11:10 | theme_discovered                      | New theme: Small Modular Reactor & Advanced Nuclear Fission Technology (4 stocks)
+ 09-23 17:13:09 | theme_discovery_llm_call              | stop=tool_use out_tok=4664 forced=False tool_uses=1 iter=1
+ 09-23 17:14:14 | theme_discovery_llm_call              | stop=tool_use out_tok=6432 forced=False tool_uses=1 iter=1
+ 09-23 17:15:39 | theme_discovery_llm_call              | stop=max_tokens out_tok=8000 forced=False tool_uses=0 iter=1
+ 09-23 17:16:12 | theme_discovery_llm_call              | stop=tool_use out_tok=2826 forced=True tool_uses=1 iter=2
+ 09-23 17:16:42 | theme_discovery_llm_call              | stop=tool_use out_tok=2822 forced=False tool_uses=1 iter=1
+ 09-23 17:18:05 | theme_discovery_llm_call              | stop=max_tokens out_tok=8000 forced=False tool_uses=0 iter=1
+ 09-23 17:18:28 | theme_discovery_llm_call              | stop=tool_use out_tok=1880 forced=True tool_uses=1 iter=2
+ 09-23 17:18:50 | theme_discovery_llm_call              | stop=tool_use out_tok=2099 forced=False tool_uses=1 iter=1
+ 09-23 17:18:50 | theme_discovery_shown_declined        | shown=61 declined=48 proposed=12 clusters shown=10 declined=2 already_named=4 partial=2 taken=2 recall_mode=True
+ 09-23 17:18:50 | theme_discovery_shadow_ran            | Theme discovery shadow: 12 candidate themes written
+ 09-23 17:18:50 | narrative_theme_discovery_ran         | 2026-09-23: v2reg 0 qualifying today — no evaluation (roster 1 active / 5 seeds)
+ 09-23 17:19:15 | theme_composition_churn               | Composition churn (on-demand): Vaccine & Antiviral Therapeutics Rebound: +GILD · Life Science Tools & Analytical Instruments: +MLAB · AI-Driven Diagnostics & Imaging Re-Rating: +PSNL · Crude & Product Tanker Shipping:  -
+ 09-23 17:30:46 | detector_liveness_alert               | mi_9m_ep_alerts: silent
+ 09-23 17:30:48 | catalyst_lattice_monitor_alert        | catalyst lattice revert trigger: high_conversion_drop
+ 09-23 17:35:13 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-23 17:35:13 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-23 17:35:14 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 09-23 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-23 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-23 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-23 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-23 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-23 17:50:00 | exit_path_shadow_recorded             | 2 row(s) written/updated across 33 eligible live trade(s) for 2026-09-23 (0 error(s))
+ 09-23 17:53:00 | alert_rank_shadow_recorded            | 0 row(s) written/updated across 0 date(s) needing processing (0 error(s))
+ 09-23 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:13:00 | sustain_reject_replay_recorded        | 131 net-declined ticker-day(s) in window, 4 candidate(s) processed: 4 written (0 settled, 1 no_trade, 0 unscoreable, 3 open, 0 at horizon), 0 pending, 0 error(s)
+ 09-23 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:13:48 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:14:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:14:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:15:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:15:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:15:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:16:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:16:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:17:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:17:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:18:15 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:18:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:19:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:19:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:19:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:20:15 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:20:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:21:04 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:21:28 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-23 18:21:40 | analyst_estimates_snapshot            | 78 row(s) across 24/24 ticker(s) (34 quarterly-from-yfinance, 44 quarterly-from-finnhub, 31 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 24 annual-40
+ 09-24 17:00:00 | splits_ingest_summary                 | new=12 applied=2 failed=0
+ 09-24 17:06:09 | theme_discovery_llm_call              | stop=tool_use out_tok=3057 forced=False tool_uses=1 iter=1
+ 09-24 17:06:39 | theme_discovery_llm_call              | stop=tool_use out_tok=3056 forced=False tool_uses=1 iter=1
+ 09-24 17:07:15 | theme_discovery_llm_call              | stop=tool_use out_tok=3286 forced=False tool_uses=1 iter=1
+ 09-24 17:07:27 | theme_discovery_llm_call              | stop=tool_use out_tok=1028 forced=False tool_uses=1 iter=1
+ 09-24 17:07:51 | theme_discovery_llm_call              | stop=tool_use out_tok=2352 forced=False tool_uses=1 iter=1
+ 09-24 17:08:08 | theme_discovery_llm_call              | stop=tool_use out_tok=1624 forced=False tool_uses=1 iter=1
+ 09-24 17:08:08 | theme_discovery_shown_declined        | shown=61 declined=58 proposed=7 clusters shown=10 declined=2 already_named=2 partial=2 taken=4 recall_mode=False
+ 09-24 17:08:30 | theme_discovered                      | New theme: Liquid Biopsy & Molecular Cancer Diagnostics Testing (3 stocks)
+ 09-24 17:08:30 | theme_discovered                      | New theme: Home Improvement Retail & Building Products (4 stocks)
+ 09-24 17:08:30 | theme_discovered                      | New theme: Brazilian Fintech & Digital Payments (2 stocks)
+ 09-24 17:08:30 | theme_discovered                      | New theme: Small Modular Reactor & Advanced Nuclear Fission Technology (4 stocks)
+ 09-24 17:10:34 | theme_discovery_llm_call              | stop=tool_use out_tok=6304 forced=False tool_uses=1 iter=1
+ 09-24 17:11:15 | theme_discovery_llm_call              | stop=tool_use out_tok=4050 forced=False tool_uses=1 iter=1
+ 09-24 17:12:39 | theme_discovery_llm_call              | stop=tool_use out_tok=7978 forced=False tool_uses=1 iter=1
+ 09-24 17:13:05 | theme_discovery_llm_call              | stop=tool_use out_tok=2242 forced=False tool_uses=1 iter=1
+ 09-24 17:13:24 | theme_discovery_llm_call              | stop=tool_use out_tok=1702 forced=False tool_uses=1 iter=1
+ 09-24 17:13:46 | theme_discovery_llm_call              | stop=tool_use out_tok=1784 forced=False tool_uses=1 iter=1
+ 09-24 17:13:46 | theme_discovery_shown_declined        | shown=68 declined=34 proposed=18 clusters shown=10 declined=2 already_named=4 partial=0 taken=4 recall_mode=True
+ 09-24 17:13:46 | theme_discovery_shadow_ran            | Theme discovery shadow: 18 candidate themes written
+ 09-24 17:13:46 | narrative_theme_discovery_ran         | 2026-09-24: v2reg 0 qualifying today — no evaluation (roster 1 active / 5 seeds)
+ 09-24 17:14:22 | theme_composition_churn               | Composition churn (on-demand): Bitcoin Treasury & Crypto Proxy Equities Correlation Basket: +ASST · Bitcoin Holding & Trading Proxy Equities:  -BLSH · Life Science Tools & Analytical Instruments:  -MLAB · mRNA Vaccine & 
+ 09-24 17:30:45 | catalyst_lattice_monitor_alert        | catalyst lattice revert trigger: high_conversion_drop, zero_alert_days
+ 09-24 17:35:13 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-24 17:35:13 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-24 17:35:13 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 09-24 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-24 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-24 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-24 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-24 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-24 17:50:00 | exit_path_shadow_recorded             | 2 row(s) written/updated across 33 eligible live trade(s) for 2026-09-24 (0 error(s))
+ 09-24 17:53:00 | alert_rank_shadow_recorded            | 0 row(s) written/updated across 0 date(s) needing processing (0 error(s))
+ 09-24 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:13:00 | sustain_reject_replay_recorded        | 133 net-declined ticker-day(s) in window, 5 candidate(s) processed: 5 written (0 settled, 2 no_trade, 0 unscoreable, 3 open, 0 at horizon), 0 pending, 0 error(s)
+ 09-24 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:13:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:14:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:14:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:17:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:17:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:19:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:20:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:20:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:21:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:21:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-24 18:21:39 | analyst_estimates_snapshot            | 78 row(s) across 24/24 ticker(s) (34 quarterly-from-yfinance, 44 quarterly-from-finnhub, 31 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 24 annual-40
+ 09-25 17:00:02 | splits_ingest_summary                 | new=10 applied=3 failed=2
+ 09-25 17:09:47 | theme_discovery_llm_call              | stop=tool_use out_tok=1953 forced=False tool_uses=1 iter=1
+ 09-25 17:10:01 | theme_discovery_llm_call              | stop=tool_use out_tok=1218 forced=False tool_uses=1 iter=1
+ 09-25 17:10:39 | theme_discovery_llm_call              | stop=tool_use out_tok=3701 forced=False tool_uses=1 iter=1
+ 09-25 17:11:00 | theme_discovery_llm_call              | stop=tool_use out_tok=1941 forced=False tool_uses=1 iter=1
+ 09-25 17:11:11 | theme_discovery_llm_call              | stop=tool_use out_tok=1002 forced=False tool_uses=1 iter=1
+ 09-25 17:11:11 | theme_discovery_shown_declined        | shown=62 declined=57 proposed=5 clusters shown=7 declined=2 already_named=2 partial=0 taken=3 recall_mode=False
+ 09-25 17:11:21 | theme_discovered                      | New theme: Appalachian & Natural Gas-Weighted E&P Producers (7 stocks)
+ 09-25 17:11:21 | theme_discovered                      | New theme: Diversified Property & Casualty Insurance Carriers (5 stocks)
+ 09-25 17:14:18 | theme_discovery_llm_call              | stop=max_tokens out_tok=8000 forced=False tool_uses=1 iter=1
+ 09-25 17:14:38 | theme_discovery_llm_call              | stop=tool_use out_tok=1585 forced=True tool_uses=1 iter=2
+ 09-25 17:15:31 | theme_discovery_llm_call              | stop=tool_use out_tok=5349 forced=False tool_uses=1 iter=1
+ 09-25 17:16:36 | theme_discovery_llm_call              | stop=tool_use out_tok=6248 forced=False tool_uses=1 iter=1
+ 09-25 17:16:46 | theme_discovery_llm_call              | stop=tool_use out_tok=821 forced=False tool_uses=1 iter=1
+ 09-25 17:16:52 | theme_discovery_llm_call              | stop=tool_use out_tok=447 forced=False tool_uses=1 iter=1
+ 09-25 17:16:52 | theme_discovery_shown_declined        | shown=60 declined=34 proposed=12 clusters shown=7 declined=1 already_named=4 partial=0 taken=2 recall_mode=True
+ 09-25 17:16:52 | theme_discovery_shadow_ran            | Theme discovery shadow: 12 candidate themes written
+ 09-25 17:16:55 | narrative_theme_discovery_ran         | 2026-09-25: v2reg 1 today (grounded=1 analysis=0 catalyst=0) roster 1 active / 5 seeds -> 1 join + 0 new + 0 seed(s): ['AI data-center power buildout']
+ 09-25 17:17:55 | theme_composition_churn               | Composition churn (on-demand): Bitcoin Treasury & Crypto Proxy Equities Correlation Basket:  -ASST · Network Security & Zero-Trust Edge:  -BLZE -CVLT -RBRK · Digital Advertising & Ad-Tech Monetization Platforms:  -PUBM ·
+ 09-25 17:30:52 | db_growth_alert                       | DB grew 300.9 MB in a week — ~10x the planned rate (4.7 GB → 4.9 GB in 6d)
+ 09-25 17:35:13 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-25 17:35:13 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-25 17:35:13 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-25 17:35:13 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-25 17:35:13 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-25 17:35:13 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-25 17:35:13 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 09-25 17:35:13 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 09-25 17:35:13 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 09-25 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-25 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-25 17:35:14 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-25 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-25 17:35:14 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-25 17:40:00 | strength_spread_alert_check           | Precious metals: state=falling_behind move=-13.4 band=10.4 crossed=True
+ 09-25 17:40:00 | strength_spread_alert_check           | Energy: state=falling_behind move=-22.4 band=15.0 crossed=False
+ 09-25 17:50:00 | exit_path_shadow_recorded             | 2 row(s) written/updated across 33 eligible live trade(s) for 2026-09-25 (0 error(s))
+ 09-25 17:53:00 | alert_rank_shadow_recorded            | 1 row(s) written/updated across 1 date(s) needing processing (0 error(s))
+ 09-25 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:13:00 | sustain_reject_replay_recorded        | 135 net-declined ticker-day(s) in window, 5 candidate(s) processed: 5 written (0 settled, 0 no_trade, 2 unscoreable, 3 open, 0 at horizon), 0 pending, 0 error(s)
+ 09-25 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:13:48 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:14:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:14:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:15:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:17:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:17:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:19:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:20:01 | judge_named_themes_extracted          | 1 alert(s): 1 named a group, 1 row(s) written, 0 failed (retry next run), ~$0.0017
+ 09-25 18:20:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:20:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:21:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:21:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:21:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-25 18:22:03 | analyst_estimates_snapshot            | 82 row(s) across 25/25 ticker(s) (36 quarterly-from-yfinance, 46 quarterly-from-finnhub, 33 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 25 annual-40
+ 09-28 17:00:03 | splits_ingest_summary                 | new=23 applied=9 failed=0
+ 09-28 17:08:40 | theme_discovery_llm_call              | stop=tool_use out_tok=2355 forced=False tool_uses=1 iter=1
+ 09-28 17:08:53 | theme_discovery_llm_call              | stop=tool_use out_tok=301 forced=False tool_uses=1 iter=2
+ 09-28 17:09:20 | theme_discovery_llm_call              | stop=tool_use out_tok=2797 forced=False tool_uses=1 iter=1
+ 09-28 17:09:59 | theme_discovery_llm_call              | stop=tool_use out_tok=3504 forced=False tool_uses=1 iter=1
+ 09-28 17:10:23 | theme_discovery_llm_call              | stop=tool_use out_tok=2130 forced=False tool_uses=1 iter=1
+ 09-28 17:10:37 | theme_discovery_llm_call              | stop=tool_use out_tok=1514 forced=False tool_uses=1 iter=1
+ 09-28 17:10:37 | theme_discovery_shown_declined        | shown=59 declined=59 proposed=5 clusters shown=8 declined=1 already_named=2 partial=1 taken=4 recall_mode=False
+ 09-28 17:10:47 | theme_discovered                      | New theme: Auto & Truck Dealership Retail Chains (4 stocks)
+ 09-28 17:10:47 | theme_discovered                      | New theme: Legal, Tax & Professional Information Analytics (2 stocks)
+ 09-28 17:10:47 | theme_discovered                      | New theme: Appalachian Natural Gas E&P (7 stocks)
+ 09-28 17:10:47 | theme_discovered                      | New theme: Class I Railroad Freight Carriers (4 stocks)
+ 09-28 17:13:31 | theme_discovery_llm_call              | stop=tool_use out_tok=4380 forced=False tool_uses=1 iter=1
+ 09-28 17:14:34 | theme_discovery_llm_call              | stop=tool_use out_tok=6104 forced=False tool_uses=1 iter=1
+ 09-28 17:15:11 | theme_discovery_llm_call              | stop=tool_use out_tok=3404 forced=False tool_uses=1 iter=1
+ 09-28 17:15:23 | theme_discovery_llm_call              | stop=tool_use out_tok=1125 forced=False tool_uses=1 iter=1
+ 09-28 17:15:42 | theme_discovery_llm_call              | stop=tool_use out_tok=1693 forced=False tool_uses=1 iter=1
+ 09-28 17:15:42 | theme_discovery_shown_declined        | shown=46 declined=26 proposed=14 clusters shown=8 declined=0 already_named=3 partial=2 taken=3 recall_mode=True
+ 09-28 17:15:42 | theme_discovery_shadow_ran            | Theme discovery shadow: 14 candidate themes written
+ 09-28 17:15:44 | narrative_theme_discovery_ran         | 2026-09-28: v2reg 1 today (grounded=1 analysis=0 catalyst=0) roster 1 active / 5 seeds -> 0 join + 0 new + 1 seed(s): []
+ 09-28 17:16:32 | theme_composition_churn               | Composition churn (on-demand): Commercial, Office & Home Furniture Retailers and Manufacturers: +MHK · Wealth Management & Retail Brokerage Platforms: +WLTH · Lodging & Hotel REITs: +HLT · Orthopedic Surgical Devices & I
+ 09-28 17:35:15 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-28 17:35:15 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-28 17:35:15 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-28 17:35:15 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-28 17:35:16 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-28 17:35:16 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-28 17:35:16 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 09-28 17:35:16 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 09-28 17:35:16 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 09-28 17:35:16 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-28 17:35:16 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-28 17:35:16 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-28 17:35:16 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-28 17:35:16 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-28 17:40:01 | strength_spread_alert_check           | Precious metals: state=falling_behind move=-17.5 band=10.4 crossed=False
+ 09-28 17:40:01 | strength_spread_alert_check           | Energy: state=falling_behind move=-18.9 band=15.0 crossed=False
+ 09-28 17:50:00 | exit_path_shadow_recorded             | 3 row(s) written/updated across 34 eligible live trade(s) for 2026-09-28 (0 error(s))
+ 09-28 17:53:00 | alert_rank_shadow_recorded            | 1 row(s) written/updated across 1 date(s) needing processing (0 error(s))
+ 09-28 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:13:00 | sustain_reject_replay_recorded        | 139 net-declined ticker-day(s) in window, 7 candidate(s) processed: 7 written (1 settled, 3 no_trade, 1 unscoreable, 2 open, 0 at horizon), 0 pending, 0 error(s)
+ 09-28 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:13:48 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:14:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:14:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:15:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:17:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:17:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:19:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-28 18:20:00 | judge_named_themes_extracted          | 1 alert(s): 0 named a group, 1 row(s) written, 0 failed (retry next run), ~$0.0014
+ 09-28 18:20:02 | analyst_estimates_snapshot            | 66 row(s) across 20/20 ticker(s) (30 quarterly-from-yfinance, 36 quarterly-from-finnhub, 27 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 20 annual-40
+ 09-29 17:00:11 | splits_ingest_summary                 | new=5 applied=23 failed=18
+ 09-29 17:01:50 | theme_discovery_llm_call              | stop=tool_use out_tok=358 forced=False tool_uses=1 iter=1
+ 09-29 17:01:51 | theme_discovery_llm_call              | stop=refusal out_tok=0 forced=False tool_uses=0 iter=1
+ 09-29 17:01:58 | theme_discovery_llm_call              | stop=tool_use out_tok=451 forced=True tool_uses=1 iter=2
+ 09-29 17:02:00 | theme_discovery_llm_call              | stop=refusal out_tok=67 forced=False tool_uses=1 iter=1
+ 09-29 17:02:04 | theme_discovery_llm_call              | stop=tool_use out_tok=401 forced=False tool_uses=1 iter=1
+ 09-29 17:02:09 | theme_discovery_llm_call              | stop=tool_use out_tok=516 forced=False tool_uses=1 iter=1
+ 09-29 17:02:14 | theme_discovery_llm_call              | stop=tool_use out_tok=561 forced=False tool_uses=1 iter=1
+ 09-29 17:02:14 | theme_discovery_shown_declined        | shown=57 declined=51 proposed=6 clusters shown=9 declined=1 already_named=4 partial=1 taken=3 recall_mode=False
+ 09-29 17:02:26 | theme_discovered                      | New theme: Cruise & Expedition Travel Operators (2 stocks)
+ 09-29 17:02:26 | theme_discovered                      | New theme: Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery (3 stocks)
+ 09-29 17:02:26 | theme_discovered                      | New theme: Insurance Brokerage & Risk Advisory Firms (5 stocks)
+ 09-29 17:02:26 | theme_discovered                      | New theme: U.S. Shale Oil & Gas Exploration & Production (8 stocks)
+ 09-29 17:02:26 | theme_discovered                      | New theme: U.S. Trucking & Freight Transportation Carriers (7 stocks)
+ 09-29 17:03:07 | theme_parent_pass_error               | Parent pass: adjudication failed for 'AI data-center power buildout' × 'AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers'
+ 09-29 17:03:08 | theme_parent_pass_error               | Parent pass: adjudication failed for 'Semiconductor Foundry & Advanced Packaging Manufacturing' × 'AI-Driven Memory & Storage Supply Shortage'
+ 09-29 17:03:10 | theme_parent_pass_error               | Parent pass: adjudication failed for 'Fabless Semiconductor IP Licensing' × 'AI Server Power & Signal-Integrity Analog ICs'
+ 09-29 17:03:12 | theme_parent_pass_error               | Parent pass: adjudication failed for 'Semiconductor Design, Test & Assembly Enablement Tools' × 'Semiconductor Test, Yield & Assembly Supply Chain'
+ 09-29 17:03:14 | theme_parent_pass_error               | Parent pass: adjudication failed for 'Cloud Data Storage & Analytics Infrastructure' × 'Cloud Application Delivery & Observability Infrastructure'
+ 09-29 17:03:18 | theme_parent_pass_error               | Parent pass: adjudication failed for 'Cardiac & Bioelectric Ablation Device Innovators' × 'Emerging Medical Device Innovators Breakout'
+ 09-29 17:04:01 | theme_discovery_llm_call              | stop=refusal out_tok=368 forced=False tool_uses=1 iter=1
+ 09-29 17:04:07 | theme_discovery_llm_call              | stop=refusal out_tok=527 forced=False tool_uses=1 iter=1
+ 09-29 17:04:13 | theme_discovery_llm_call              | stop=tool_use out_tok=553 forced=False tool_uses=1 iter=1
+ 09-29 17:04:19 | theme_discovery_llm_call              | stop=tool_use out_tok=659 forced=False tool_uses=1 iter=1
+ 09-29 17:04:25 | theme_discovery_llm_call              | stop=tool_use out_tok=637 forced=False tool_uses=1 iter=1
+ 09-29 17:04:25 | theme_discovery_shown_declined        | shown=46 declined=44 proposed=5 clusters shown=9 declined=0 already_named=5 partial=1 taken=3 recall_mode=True
+ 09-29 17:04:25 | theme_discovery_shadow_ran            | Theme discovery shadow: 5 candidate themes written
+ 09-29 17:04:25 | narrative_theme_discovery_ran         | 2026-09-29: v2reg 0 qualifying today — no evaluation (roster 1 active / 4 seeds)
+ 09-29 17:04:59 | theme_composition_churn               | Composition churn (on-demand):  · nascent +0/-2
+ 09-29 17:35:14 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-29 17:35:14 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-29 17:35:14 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-29 17:35:14 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-29 17:35:15 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-29 17:35:15 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-29 17:35:15 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 09-29 17:35:15 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 09-29 17:35:15 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 09-29 17:35:15 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-29 17:35:15 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-29 17:35:15 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-29 17:35:15 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-29 17:35:15 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-29 17:40:01 | strength_spread_alert_check           | Precious metals: state=falling_behind move=-19.4 band=10.4 crossed=False
+ 09-29 17:40:01 | strength_spread_alert_check           | Energy: state=falling_behind move=-17.0 band=15.0 crossed=False
+ 09-29 17:50:00 | exit_path_shadow_recorded             | 2 row(s) written/updated across 34 eligible live trade(s) for 2026-09-29 (0 error(s))
+ 09-29 17:53:00 | alert_rank_shadow_recorded            | 0 row(s) written/updated across 0 date(s) needing processing (0 error(s))
+ 09-29 18:00:00 | crypto_ingest_error                   | universe fetch failed
+ 09-29 18:05:10 | theme_synthesis_error                 | LLM call failed: structured output is not JSON: Unterminated string starting at: line 1 column 24 (char 23): '{"analysis_scratchpad":"Most candidates fall into existing live themes: semicap equipment (ACLS, AMAT, ONTO, F
+ 09-29 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:13:00 | sustain_reject_replay_recorded        | 142 net-declined ticker-day(s) in window, 5 candidate(s) processed: 5 written (0 settled, 2 no_trade, 1 unscoreable, 2 open, 0 at horizon), 0 pending, 0 error(s)
+ 09-29 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:13:48 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:14:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:14:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:17:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:17:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:19:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-29 18:20:02 | analyst_estimates_snapshot            | 66 row(s) across 20/20 ticker(s) (30 quarterly-from-yfinance, 36 quarterly-from-finnhub, 27 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 20 annual-40
+ 09-30 17:00:02 | splits_ingest_summary                 | new=7 applied=4 failed=1
+ 09-30 17:07:14 | theme_discovery_llm_call              | stop=tool_use out_tok=455 forced=False tool_uses=1 iter=1
+ 09-30 17:07:19 | theme_discovery_llm_call              | stop=tool_use out_tok=620 forced=False tool_uses=1 iter=1
+ 09-30 17:07:23 | theme_discovery_llm_call              | stop=tool_use out_tok=294 forced=False tool_uses=1 iter=1
+ 09-30 17:07:27 | theme_discovery_llm_call              | stop=tool_use out_tok=452 forced=False tool_uses=1 iter=1
+ 09-30 17:07:31 | theme_discovery_llm_call              | stop=tool_use out_tok=563 forced=False tool_uses=1 iter=1
+ 09-30 17:07:31 | theme_discovery_shown_declined        | shown=59 declined=56 proposed=4 clusters shown=8 declined=1 already_named=4 partial=1 taken=2 recall_mode=False
+ 09-30 17:07:45 | theme_discovered                      | New theme: Topical Dermatology & Hair Loss Therapeutics (2 stocks)
+ 09-30 17:07:45 | theme_discovered                      | New theme: Coal Mining Producers (3 stocks)
+ 09-30 17:07:45 | theme_discovered                      | New theme: Appalachian & Natural Gas-Weighted E&P Producers (7 stocks)
+ 09-30 17:09:15 | theme_discovery_llm_call              | stop=tool_use out_tok=709 forced=False tool_uses=1 iter=1
+ 09-30 17:09:19 | theme_discovery_llm_call              | stop=tool_use out_tok=644 forced=False tool_uses=1 iter=1
+ 09-30 17:09:27 | theme_discovery_llm_call              | stop=tool_use out_tok=878 forced=False tool_uses=1 iter=1
+ 09-30 17:09:32 | theme_discovery_llm_call              | stop=tool_use out_tok=547 forced=False tool_uses=1 iter=1
+ 09-30 17:09:36 | theme_discovery_llm_call              | stop=tool_use out_tok=597 forced=False tool_uses=1 iter=1
+ 09-30 17:09:40 | theme_discovery_llm_call              | stop=tool_use out_tok=453 forced=False tool_uses=1 iter=1
+ 09-30 17:09:40 | theme_discovery_shown_declined        | shown=62 declined=26 proposed=21 clusters shown=8 declined=0 already_named=1 partial=3 taken=4 recall_mode=True
+ 09-30 17:09:40 | theme_discovery_shadow_ran            | Theme discovery shadow: 21 candidate themes written
+ 09-30 17:09:40 | narrative_theme_discovery_ran         | 2026-09-30: v2reg 0 qualifying today — no evaluation (roster 1 active / 4 seeds)
+ 09-30 17:10:47 | theme_composition_churn               | Composition churn (on-demand): Customer Engagement & Marketing/CX SaaS Platforms: +BRZE · Semiconductor Equipment & Materials Velocity Surge: +UCTT · Digital Advertising & Ad-Tech Monetization Platforms: +PUBM · Semicond
+ 09-30 17:30:48 | catalyst_lattice_monitor_alert        | catalyst lattice revert trigger: zero_alert_days
+ 09-30 17:35:15 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-30 17:35:15 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-30 17:35:15 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-30 17:35:15 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 09-30 17:35:15 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-30 17:35:15 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 09-30 17:35:16 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 09-30 17:35:16 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 09-30 17:35:16 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 09-30 17:35:16 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-30 17:35:16 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-30 17:35:16 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 09-30 17:35:16 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-30 17:35:16 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 09-30 17:40:01 | strength_spread_alert_check           | Precious metals: state=falling_behind move=-18.1 band=10.4 crossed=False
+ 09-30 17:40:01 | strength_spread_alert_check           | Energy: state=falling_behind move=-16.5 band=15.1 crossed=False
+ 09-30 17:50:00 | exit_path_shadow_recorded             | 2 row(s) written/updated across 34 eligible live trade(s) for 2026-09-30 (0 error(s))
+ 09-30 17:53:00 | alert_rank_shadow_recorded            | 0 row(s) written/updated across 0 date(s) needing processing (0 error(s))
+ 09-30 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:13:00 | sustain_reject_replay_recorded        | 137 net-declined ticker-day(s) in window, 2 candidate(s) processed: 2 written (0 settled, 0 no_trade, 0 unscoreable, 2 open, 0 at horizon), 0 pending, 0 error(s)
+ 09-30 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:13:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:14:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:14:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:17:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:17:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:19:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 09-30 18:20:03 | analyst_estimates_snapshot            | 66 row(s) across 20/20 ticker(s) (30 quarterly-from-yfinance, 36 quarterly-from-finnhub, 27 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 20 annual-40
+ 10-01 17:00:01 | splits_ingest_summary                 | new=4 applied=5 failed=1
+ 10-01 17:04:29 | theme_discovery_llm_call              | stop=tool_use out_tok=554 forced=False tool_uses=1 iter=1
+ 10-01 17:04:33 | theme_discovery_llm_call              | stop=tool_use out_tok=499 forced=False tool_uses=1 iter=1
+ 10-01 17:04:37 | theme_discovery_llm_call              | stop=tool_use out_tok=459 forced=False tool_uses=1 iter=1
+ 10-01 17:04:40 | theme_discovery_llm_call              | stop=tool_use out_tok=305 forced=False tool_uses=1 iter=1
+ 10-01 17:04:43 | theme_discovery_llm_call              | stop=tool_use out_tok=438 forced=False tool_uses=1 iter=1
+ 10-01 17:04:46 | theme_discovery_llm_call              | stop=tool_use out_tok=334 forced=False tool_uses=1 iter=1
+ 10-01 17:04:50 | theme_discovery_llm_call              | stop=tool_use out_tok=453 forced=False tool_uses=1 iter=1
+ 10-01 17:04:50 | theme_discovery_shown_declined        | shown=54 declined=50 proposed=8 clusters shown=11 declined=0 already_named=5 partial=3 taken=3 recall_mode=False
+ 10-01 17:05:06 | theme_discovered                      | New theme: Optical Networking & Optical Component Manufacturing (2 stocks)
+ 10-01 17:05:06 | theme_discovered                      | New theme: Private Mortgage & Title Insurance Underwriters (6 stocks)
+ 10-01 17:05:06 | theme_discovered                      | New theme: Regulated Electric Utilities Defensive Rotation (12 stocks)
+ 10-01 17:05:06 | theme_discovered                      | New theme: Gold & Silver Miners Uncovered Mid-Tier and Junior Producers (9 stocks)
+ 10-01 17:05:06 | theme_discovered                      | New theme: Oil & Gas Royalty and Mineral-Interest and E&P Producers (Uncovered Energy) (3 stocks)
+ 10-01 17:05:06 | theme_discovered                      | New theme: Small Modular Reactor & Advanced Nuclear Fission Technology (4 stocks)
+ 10-01 17:06:51 | theme_discovery_llm_call              | stop=tool_use out_tok=1001 forced=False tool_uses=1 iter=1
+ 10-01 17:06:58 | theme_discovery_llm_call              | stop=tool_use out_tok=871 forced=False tool_uses=1 iter=1
+ 10-01 17:07:02 | theme_discovery_llm_call              | stop=tool_use out_tok=464 forced=False tool_uses=1 iter=1
+ 10-01 17:07:08 | theme_discovery_llm_call              | stop=tool_use out_tok=710 forced=False tool_uses=1 iter=1
+ 10-01 17:07:09 | theme_discovery_llm_call              | stop=tool_use out_tok=108 forced=False tool_uses=1 iter=1
+ 10-01 17:07:14 | theme_discovery_llm_call              | stop=tool_use out_tok=631 forced=False tool_uses=1 iter=1
+ 10-01 17:07:20 | theme_discovery_llm_call              | stop=tool_use out_tok=603 forced=False tool_uses=1 iter=1
+ 10-01 17:07:20 | theme_discovery_shown_declined        | shown=49 declined=13 proposed=21 clusters shown=11 declined=0 already_named=4 partial=2 taken=5 recall_mode=True
+ 10-01 17:07:20 | theme_discovery_shadow_ran            | Theme discovery shadow: 21 candidate themes written
+ 10-01 17:07:27 | narrative_theme_discovery_ran         | 2026-10-01: v2reg 2 today (grounded=2 analysis=0 catalyst=0) roster 1 active / 4 seeds -> 0 join + 0 new + 2 seed(s): []
+ 10-01 17:08:26 | theme_composition_churn               | Composition churn (on-demand): Crude & Product Tanker Shipping: +CMBT · IT Consulting & Business Process Outsourcing Services: +CNXC · Semiconductor Equipment & Materials Velocity Surge: +AEIS · AI Data Center High-Speed
+ 10-01 17:35:14 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-01 17:35:14 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-01 17:35:14 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-01 17:35:14 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-01 17:35:15 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 10-01 17:35:15 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 10-01 17:35:15 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 10-01 17:35:15 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 10-01 17:35:15 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 10-01 17:35:15 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-01 17:35:15 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-01 17:35:15 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-01 17:35:15 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-01 17:35:15 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-01 17:40:01 | strength_spread_alert_check           | Precious metals: state=falling_behind move=-23.0 band=10.5 crossed=False
+ 10-01 17:40:01 | strength_spread_alert_check           | Energy: state=quiet move=-14.0 band=15.0 crossed=False
+ 10-01 17:50:00 | exit_path_shadow_recorded             | 2 row(s) written/updated across 34 eligible live trade(s) for 2026-10-01 (0 error(s))
+ 10-01 17:53:00 | alert_rank_shadow_recorded            | 2 row(s) written/updated across 1 date(s) needing processing (0 error(s))
+ 10-01 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:13:00 | sustain_reject_replay_recorded        | 131 net-declined ticker-day(s) in window, 2 candidate(s) processed: 2 written (1 settled, 0 no_trade, 0 unscoreable, 1 open, 0 at horizon), 0 pending, 0 error(s)
+ 10-01 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:13:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:14:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:14:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:17:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:17:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:19:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:19:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:19:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:20:01 | judge_named_themes_extracted          | 2 alert(s): 1 named a group, 2 row(s) written, 0 failed (retry next run), ~$0.0031
+ 10-01 18:20:15 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:20:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-01 18:20:51 | analyst_estimates_snapshot            | 75 row(s) across 22/22 ticker(s) (32 quarterly-from-yfinance, 43 quarterly-from-finnhub, 29 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 22 annual-40
+ 10-02 17:00:02 | splits_ingest_summary                 | new=7 applied=7 failed=0
+ 10-02 17:06:56 | theme_discovery_llm_call              | stop=tool_use out_tok=288 forced=False tool_uses=1 iter=1
+ 10-02 17:07:00 | theme_discovery_llm_call              | stop=tool_use out_tok=287 forced=False tool_uses=1 iter=1
+ 10-02 17:07:03 | theme_discovery_llm_call              | stop=tool_use out_tok=519 forced=False tool_uses=1 iter=1
+ 10-02 17:07:13 | theme_discovery_llm_call              | stop=tool_use out_tok=1314 forced=False tool_uses=1 iter=1
+ 10-02 17:07:16 | theme_discovery_llm_call              | stop=tool_use out_tok=213 forced=False tool_uses=1 iter=1
+ 10-02 17:07:19 | theme_discovery_llm_call              | stop=tool_use out_tok=352 forced=False tool_uses=1 iter=1
+ 10-02 17:07:19 | theme_discovery_shown_declined        | shown=49 declined=49 proposed=3 clusters shown=13 declined=2 already_named=8 partial=2 taken=1 recall_mode=False
+ 10-02 17:07:28 | theme_discovered                      | New theme: Optical Laser & Photonic Materials for AI Transceivers (5 stocks)
+ 10-02 17:07:28 | theme_discovered                      | New theme: Gold & Silver Miners Uncovered Mid-Tier and Junior Producers (4 stocks)
+ 10-02 17:07:28 | theme_discovered                      | New theme: Small Modular Reactor & Advanced Nuclear Fission Technology (4 stocks)
+ 10-02 17:08:53 | theme_discovery_llm_call              | stop=tool_use out_tok=904 forced=False tool_uses=1 iter=1
+ 10-02 17:08:57 | theme_discovery_llm_call              | stop=tool_use out_tok=460 forced=False tool_uses=1 iter=1
+ 10-02 17:09:05 | theme_discovery_llm_call              | stop=tool_use out_tok=551 forced=False tool_uses=1 iter=1
+ 10-02 17:09:11 | theme_discovery_llm_call              | stop=tool_use out_tok=631 forced=False tool_uses=1 iter=1
+ 10-02 17:09:16 | theme_discovery_llm_call              | stop=tool_use out_tok=552 forced=False tool_uses=1 iter=1
+ 10-02 17:09:22 | theme_discovery_llm_call              | stop=tool_use out_tok=448 forced=False tool_uses=1 iter=1
+ 10-02 17:09:24 | theme_discovery_llm_call              | stop=tool_use out_tok=216 forced=False tool_uses=1 iter=1
+ 10-02 17:09:24 | theme_discovery_shown_declined        | shown=49 declined=33 proposed=16 clusters shown=13 declined=0 already_named=5 partial=5 taken=3 recall_mode=True
+ 10-02 17:09:24 | theme_discovery_shadow_ran            | Theme discovery shadow: 16 candidate themes written
+ 10-02 17:09:24 | narrative_theme_discovery_ran         | 2026-10-02: v2reg 0 qualifying today — no evaluation (roster 1 active / 6 seeds)
+ 10-02 17:10:16 | theme_composition_churn               | Composition churn (on-demand): Genomics & DNA Sequencing Tools:  -CRSP -NTLA · Semiconductor Foundry & Advanced Packaging Manufacturing: +AMKR · AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers:  -VIC
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-02 17:35:13 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-02 17:40:00 | strength_spread_alert_check           | Precious metals: state=falling_behind move=-21.6 band=10.5 crossed=False
+ 10-02 17:40:00 | strength_spread_alert_check           | Energy: state=quiet move=-13.4 band=15.0 crossed=False
+ 10-02 17:50:00 | exit_path_shadow_recorded             | 2 row(s) written/updated across 34 eligible live trade(s) for 2026-10-02 (0 error(s))
+ 10-02 17:53:00 | alert_rank_shadow_recorded            | 0 row(s) written/updated across 0 date(s) needing processing (0 error(s))
+ 10-02 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:13:00 | sustain_reject_replay_recorded        | 133 net-declined ticker-day(s) in window, 4 candidate(s) processed: 4 written (2 settled, 0 no_trade, 1 unscoreable, 1 open, 0 at horizon), 0 pending, 0 error(s)
+ 10-02 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:13:48 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:14:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:14:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:17:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:17:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:19:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:19:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:20:15 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:20:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-02 18:20:51 | analyst_estimates_snapshot            | 73 row(s) across 22/22 ticker(s) (32 quarterly-from-yfinance, 41 quarterly-from-finnhub, 29 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 22 annual-40
+ 10-05 17:00:03 | splits_ingest_summary                 | new=6 applied=7 failed=2
+ 10-05 17:07:56 | theme_discovery_llm_call              | stop=tool_use out_tok=356 forced=False tool_uses=1 iter=1
+ 10-05 17:08:00 | theme_discovery_llm_call              | stop=tool_use out_tok=421 forced=False tool_uses=1 iter=1
+ 10-05 17:08:03 | theme_discovery_llm_call              | stop=tool_use out_tok=309 forced=False tool_uses=1 iter=1
+ 10-05 17:08:07 | theme_discovery_llm_call              | stop=tool_use out_tok=571 forced=False tool_uses=1 iter=1
+ 10-05 17:08:13 | theme_discovery_llm_call              | stop=tool_use out_tok=337 forced=False tool_uses=1 iter=1
+ 10-05 17:08:17 | theme_discovery_llm_call              | stop=tool_use out_tok=420 forced=False tool_uses=1 iter=1
+ 10-05 17:08:17 | theme_discovery_shown_declined        | shown=45 declined=44 proposed=7 clusters shown=11 declined=1 already_named=3 partial=3 taken=4 recall_mode=False
+ 10-05 17:08:36 | theme_discovered                      | New theme: Offshore IT Services & Digital Engineering Outsourcers (4 stocks)
+ 10-05 17:08:36 | theme_discovered                      | New theme: Mortgage REITs (Agency & Residential MBS) (3 stocks)
+ 10-05 17:08:36 | theme_discovered                      | New theme: Coal Mining Producers (4 stocks)
+ 10-05 17:08:36 | theme_discovered                      | New theme: Home Improvement Retail & Building Products (4 stocks)
+ 10-05 17:08:36 | theme_discovered                      | New theme: Regulated Utilities Wildfire & Rate-Case Exposure (4 stocks)
+ 10-05 17:10:23 | theme_discovery_llm_call              | stop=tool_use out_tok=624 forced=False tool_uses=1 iter=1
+ 10-05 17:10:29 | theme_discovery_llm_call              | stop=tool_use out_tok=829 forced=False tool_uses=1 iter=1
+ 10-05 17:10:34 | theme_discovery_llm_call              | stop=tool_use out_tok=663 forced=False tool_uses=1 iter=1
+ 10-05 17:10:39 | theme_discovery_llm_call              | stop=tool_use out_tok=627 forced=False tool_uses=1 iter=1
+ 10-05 17:10:44 | theme_discovery_llm_call              | stop=tool_use out_tok=499 forced=False tool_uses=1 iter=1
+ 10-05 17:10:47 | theme_discovery_llm_call              | stop=tool_use out_tok=295 forced=False tool_uses=1 iter=1
+ 10-05 17:10:47 | theme_discovery_shown_declined        | shown=55 declined=23 proposed=20 clusters shown=11 declined=0 already_named=3 partial=4 taken=4 recall_mode=True
+ 10-05 17:10:47 | theme_discovery_shadow_ran            | Theme discovery shadow: 20 candidate themes written
+ 10-05 17:10:51 | narrative_theme_discovery_ran         | 2026-10-05: v2reg 3 today (grounded=3 analysis=0 catalyst=0) roster 1 active / 6 seeds -> 0 join + 1 new + 0 seed(s): ['Brazil election relief rally']
+ 10-05 17:12:04 | theme_composition_churn               | Composition churn (on-demand): Crude & Product Tanker Shipping:  -CMBT · Digital Advertising & Ad-Tech Monetization Platforms:  -PUBM -ZD · Bitcoin Treasury & Crypto Proxy Equities Correlation Basket: +MSTR · Network Sec
+ 10-05 17:35:04 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-05 17:35:04 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-05 17:35:04 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-05 17:35:04 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-05 17:35:05 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 10-05 17:35:05 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 10-05 17:35:05 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 10-05 17:35:05 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-05 17:35:05 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-05 17:35:05 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-05 17:35:05 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-05 17:35:05 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-05 17:40:01 | strength_spread_alert_check           | Precious metals: state=falling_behind move=-25.3 band=10.5 crossed=False
+ 10-05 17:40:01 | strength_spread_alert_check           | Energy: state=falling_behind move=-15.3 band=15.1 crossed=True
+ 10-05 17:50:00 | exit_path_shadow_recorded             | 2 row(s) written/updated across 34 eligible live trade(s) for 2026-10-05 (0 error(s))
+ 10-05 17:53:00 | alert_rank_shadow_recorded            | 3 row(s) written/updated across 1 date(s) needing processing (0 error(s))
+ 10-05 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:13:00 | sustain_reject_replay_recorded        | 127 net-declined ticker-day(s) in window, 2 candidate(s) processed: 2 written (0 settled, 1 no_trade, 0 unscoreable, 1 open, 0 at horizon), 0 pending, 0 error(s)
+ 10-05 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:13:48 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:14:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:14:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:17:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:17:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:17:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:18:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:18:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:19:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:20:01 | judge_named_themes_extracted          | 3 alert(s): 2 named a group, 3 row(s) written, 0 failed (retry next run), ~$0.0048
+ 10-05 18:20:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-05 18:20:26 | analyst_estimates_snapshot            | 68 row(s) across 21/21 ticker(s) (28 quarterly-from-yfinance, 40 quarterly-from-finnhub, 25 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 21 annual-40
+ 10-06 17:00:01 | splits_ingest_summary                 | new=8 applied=5 failed=0
+ 10-06 17:08:04 | theme_discovery_llm_call              | stop=tool_use out_tok=269 forced=False tool_uses=1 iter=1
+ 10-06 17:08:09 | theme_discovery_llm_call              | stop=tool_use out_tok=581 forced=False tool_uses=1 iter=1
+ 10-06 17:08:16 | theme_discovery_llm_call              | stop=tool_use out_tok=846 forced=False tool_uses=1 iter=1
+ 10-06 17:08:18 | theme_discovery_llm_call              | stop=tool_use out_tok=301 forced=False tool_uses=1 iter=1
+ 10-06 17:08:21 | theme_discovery_llm_call              | stop=tool_use out_tok=405 forced=False tool_uses=1 iter=1
+ 10-06 17:08:28 | theme_discovery_llm_call              | stop=tool_use out_tok=940 forced=False tool_uses=1 iter=1
+ 10-06 17:08:35 | theme_discovery_llm_call              | stop=tool_use out_tok=563 forced=False tool_uses=1 iter=1
+ 10-06 17:08:38 | theme_discovery_llm_call              | stop=tool_use out_tok=323 forced=False tool_uses=1 iter=1
+ 10-06 17:08:38 | theme_discovery_shown_declined        | shown=54 declined=49 proposed=7 clusters shown=13 declined=3 already_named=5 partial=3 taken=2 recall_mode=False
+ 10-06 17:08:55 | theme_discovered                      | New theme: Brazil Fintech & Digital Banking Rally (4 stocks)
+ 10-06 17:08:55 | theme_discovered                      | New theme: Vaccine Developers Bacterial & Respiratory (3 stocks)
+ 10-06 17:08:55 | theme_discovered                      | New theme: Silver-Focused Producers & Developers (5 stocks)
+ 10-06 17:08:55 | theme_discovered                      | New theme: Appalachian & Natural Gas-Weighted E&P Producers (7 stocks)
+ 10-06 17:08:55 | theme_discovered                      | New theme: Oil-Weighted US Shale & Independent E&P Producers (8 stocks)
+ 10-06 17:08:55 | theme_discovered                      | New theme: Nuclear Power & Uranium Fuel Cycle (6 stocks)
+ 10-06 17:11:24 | theme_discovery_llm_call              | stop=tool_use out_tok=711 forced=False tool_uses=1 iter=1
+ 10-06 17:11:31 | theme_discovery_llm_call              | stop=tool_use out_tok=801 forced=False tool_uses=1 iter=1
+ 10-06 17:11:36 | theme_discovery_llm_call              | stop=tool_use out_tok=474 forced=False tool_uses=1 iter=1
+ 10-06 17:11:42 | theme_discovery_llm_call              | stop=tool_use out_tok=637 forced=False tool_uses=1 iter=1
+ 10-06 17:11:47 | theme_discovery_llm_call              | stop=tool_use out_tok=460 forced=False tool_uses=1 iter=1
+ 10-06 17:11:51 | theme_discovery_llm_call              | stop=tool_use out_tok=477 forced=False tool_uses=1 iter=1
+ 10-06 17:11:55 | theme_discovery_llm_call              | stop=tool_use out_tok=477 forced=False tool_uses=1 iter=1
+ 10-06 17:11:56 | theme_discovery_llm_call              | stop=tool_use out_tok=112 forced=False tool_uses=1 iter=1
+ 10-06 17:11:56 | theme_discovery_shown_declined        | shown=47 declined=22 proposed=20 clusters shown=13 declined=0 already_named=2 partial=6 taken=5 recall_mode=True
+ 10-06 17:11:56 | theme_discovery_shadow_ran            | Theme discovery shadow: 20 candidate themes written
+ 10-06 17:12:00 | narrative_theme_discovery_ran         | 2026-10-06: v2reg 3 today (grounded=3 analysis=0 catalyst=0) roster 2 active / 4 seeds -> 1 join + 0 new + 0 seed(s): ['AI data-center power buildout']
+ 10-06 17:13:54 | theme_composition_churn               | Composition churn (on-demand): Liquid Biopsy & Molecular Cancer Diagnostics Testing: +CSTL · Wealth Management & Retail Brokerage Platforms: +BLK +FUTU +IBKR · Restaurant Chain Recovery: +SHAK · Defensive Consumer Rotati
+ 10-06 17:35:09 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-06 17:35:09 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-06 17:35:09 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-06 17:35:09 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-06 17:35:09 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 10-06 17:35:09 | anticipation_coil_buyout_pin_rejected | ITGR coil rejected — stop_floor
+ 10-06 17:35:10 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 10-06 17:35:10 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-06 17:35:10 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-06 17:35:10 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-06 17:35:11 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-06 17:35:11 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-06 17:40:01 | strength_spread_alert_check           | Precious metals: state=falling_behind move=-25.5 band=10.5 crossed=False
+ 10-06 17:40:01 | strength_spread_alert_check           | Energy: state=quiet move=-12.7 band=15.1 crossed=False
+ 10-06 17:50:00 | exit_path_shadow_recorded             | 3 row(s) written/updated across 35 eligible live trade(s) for 2026-10-06 (0 error(s))
+ 10-06 17:53:00 | alert_rank_shadow_recorded            | 3 row(s) written/updated across 1 date(s) needing processing (0 error(s))
+ 10-06 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:12:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:13:00 | sustain_reject_replay_recorded        | 121 net-declined ticker-day(s) in window, 4 candidate(s) processed: 4 written (0 settled, 2 no_trade, 1 unscoreable, 1 open, 0 at horizon), 0 pending, 0 error(s)
+ 10-06 18:13:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:13:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:13:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:14:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:14:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:15:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:15:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:15:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:16:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:16:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:17:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:17:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:17:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:18:15 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:18:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:19:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:19:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:19:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:20:01 | judge_named_themes_extracted          | 3 alert(s): 2 named a group, 3 row(s) written, 0 failed (retry next run), ~$0.0049
+ 10-06 18:20:15 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:20:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:21:04 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:21:28 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-06 18:21:40 | analyst_estimates_snapshot            | 80 row(s) across 24/24 ticker(s) (34 quarterly-from-yfinance, 46 quarterly-from-finnhub, 31 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 24 annual-40
+ 10-07 17:00:02 | splits_ingest_summary                 | new=5 applied=6 failed=1
+ 10-07 17:09:25 | theme_discovery_llm_call              | stop=tool_use out_tok=1305 forced=False tool_uses=1 iter=1
+ 10-07 17:09:29 | theme_discovery_llm_call              | stop=tool_use out_tok=389 forced=False tool_uses=1 iter=1
+ 10-07 17:09:33 | theme_discovery_llm_call              | stop=tool_use out_tok=551 forced=False tool_uses=1 iter=1
+ 10-07 17:09:36 | theme_discovery_llm_call              | stop=tool_use out_tok=311 forced=False tool_uses=1 iter=1
+ 10-07 17:09:45 | theme_discovery_llm_call              | stop=tool_use out_tok=1260 forced=False tool_uses=1 iter=1
+ 10-07 17:09:49 | theme_discovery_llm_call              | stop=tool_use out_tok=550 forced=False tool_uses=1 iter=1
+ 10-07 17:09:52 | theme_discovery_llm_call              | stop=tool_use out_tok=328 forced=False tool_uses=1 iter=1
+ 10-07 17:09:52 | theme_discovery_shown_declined        | shown=62 declined=52 proposed=10 clusters shown=13 declined=2 already_named=4 partial=3 taken=4 recall_mode=False
+ 10-07 17:10:15 | theme_discovered                      | New theme: Global Oil & Gas Producers and Refiners (8 stocks)
+ 10-07 17:10:15 | theme_discovered                      | New theme: Alternative Asset Managers & Private Markets Platforms (2 stocks)
+ 10-07 17:10:15 | theme_discovered                      | New theme: International Telecom & Cross-Border Communications Services (2 stocks)
+ 10-07 17:10:15 | theme_discovered                      | New theme: CAD/PLM & 3D Design Engineering Software (2 stocks)
+ 10-07 17:10:15 | theme_discovered                      | New theme: Private Mortgage Insurance Underwriters (3 stocks)
+ 10-07 17:10:15 | theme_discovered                      | New theme: Silver-Weighted Primary Silver Miners (5 stocks)
+ 10-07 17:10:15 | theme_discovered                      | New theme: Mortgage REITs (Agency & Residential MBS) (3 stocks)
+ 10-07 17:10:15 | theme_discovered                      | New theme: Coal Mining Producers (4 stocks)
+ 10-07 17:10:15 | theme_discovered                      | New theme: Asset-Light Trucking & Freight Logistics Carriers (6 stocks)
+ 10-07 17:10:15 | theme_discovered                      | New theme: Bitcoin Miners Pivoting to AI Data Center Hosting (4 stocks)
+ 10-07 17:13:10 | theme_discovery_llm_call              | stop=tool_use out_tok=700 forced=False tool_uses=1 iter=1
+ 10-07 17:13:16 | theme_discovery_llm_call              | stop=tool_use out_tok=808 forced=False tool_uses=1 iter=1
+ 10-07 17:13:23 | theme_discovery_llm_call              | stop=tool_use out_tok=737 forced=False tool_uses=1 iter=1
+ 10-07 17:13:26 | theme_discovery_llm_call              | stop=tool_use out_tok=344 forced=False tool_uses=1 iter=1
+ 10-07 17:13:32 | theme_discovery_llm_call              | stop=tool_use out_tok=526 forced=False tool_uses=1 iter=1
+ 10-07 17:13:35 | theme_discovery_llm_call              | stop=tool_use out_tok=347 forced=False tool_uses=1 iter=1
+ 10-07 17:13:38 | theme_discovery_llm_call              | stop=tool_use out_tok=319 forced=False tool_uses=1 iter=1
+ 10-07 17:13:41 | theme_discovery_llm_call              | stop=tool_use out_tok=405 forced=False tool_uses=1 iter=1
+ 10-07 17:13:41 | theme_discovery_shown_declined        | shown=63 declined=26 proposed=21 clusters shown=13 declined=0 already_named=3 partial=5 taken=5 recall_mode=True
+ 10-07 17:13:41 | theme_discovery_shadow_ran            | Theme discovery shadow: 21 candidate themes written
+ 10-07 17:13:45 | narrative_theme_discovery_ran         | 2026-10-07: v2reg 1 today (grounded=1 analysis=0 catalyst=0) roster 2 active / 3 seeds -> 1 join + 0 new + 0 seed(s): ['AI data-center power buildout']
+ 10-07 17:15:54 | theme_composition_churn               | Composition churn (on-demand): Customer Engagement & Marketing/CX SaaS Platforms: +KVYO · Crude & Product Tanker Shipping:  -ASC · AI data-center power buildout:  -SNOW · AI-Powered Enterprise Analytics & Intelligent Wor
+ 10-07 17:35:05 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-07 17:35:05 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-07 17:35:05 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-07 17:35:05 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-07 17:35:05 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 10-07 17:35:05 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-07 17:35:05 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-07 17:35:05 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-07 17:35:05 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-07 17:35:05 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-07 17:40:01 | strength_spread_alert_check           | Precious metals: state=falling_behind move=-28.4 band=10.5 crossed=False
+ 10-07 17:40:01 | strength_spread_alert_check           | Energy: state=quiet move=-10.6 band=15.0 crossed=False
+ 10-07 17:50:00 | exit_path_shadow_recorded             | 4 row(s) written/updated across 36 eligible live trade(s) for 2026-10-07 (0 error(s))
+ 10-07 17:53:00 | alert_rank_shadow_recorded            | 1 row(s) written/updated across 1 date(s) needing processing (0 error(s))
+ 10-07 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:13:00 | sustain_reject_replay_recorded        | 119 net-declined ticker-day(s) in window, 2 candidate(s) processed: 2 written (0 settled, 1 no_trade, 0 unscoreable, 1 open, 0 at horizon), 0 pending, 0 error(s)
+ 10-07 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:13:48 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:14:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:14:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:17:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:17:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:19:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:20:01 | judge_named_themes_extracted          | 1 alert(s): 1 named a group, 1 row(s) written, 0 failed (retry next run), ~$0.0017
+ 10-07 18:20:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:20:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:21:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:21:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:21:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-07 18:22:03 | analyst_estimates_snapshot            | 83 row(s) across 25/25 ticker(s) (34 quarterly-from-yfinance, 49 quarterly-from-finnhub, 31 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 25 annual-40
+ 10-08 17:00:01 | splits_ingest_summary                 | new=4 applied=4 failed=0
+ 10-08 17:06:12 | theme_discovery_llm_call              | stop=tool_use out_tok=435 forced=False tool_uses=1 iter=1
+ 10-08 17:06:17 | theme_discovery_llm_call              | stop=tool_use out_tok=724 forced=False tool_uses=1 iter=1
+ 10-08 17:06:20 | theme_discovery_llm_call              | stop=tool_use out_tok=488 forced=False tool_uses=1 iter=1
+ 10-08 17:06:28 | theme_discovery_llm_call              | stop=tool_use out_tok=996 forced=False tool_uses=1 iter=1
+ 10-08 17:06:32 | theme_discovery_llm_call              | stop=tool_use out_tok=536 forced=False tool_uses=1 iter=1
+ 10-08 17:06:32 | theme_discovery_shown_declined        | shown=58 declined=53 proposed=5 clusters shown=9 declined=2 already_named=2 partial=4 taken=1 recall_mode=False
+ 10-08 17:06:46 | theme_discovered                      | New theme: U.S. Oil Refiners & Refining Margin Expansion (6 stocks)
+ 10-08 17:06:46 | theme_discovered                      | New theme: Brazil Fintech & Digital Banking Rally (5 stocks)
+ 10-08 17:06:46 | theme_discovered                      | New theme: Primary Silver Miners (6 stocks)
+ 10-08 17:08:42 | theme_discovery_llm_call              | stop=tool_use out_tok=873 forced=False tool_uses=1 iter=1
+ 10-08 17:08:48 | theme_discovery_llm_call              | stop=tool_use out_tok=778 forced=False tool_uses=1 iter=1
+ 10-08 17:08:52 | theme_discovery_llm_call              | stop=tool_use out_tok=465 forced=False tool_uses=1 iter=1
+ 10-08 17:08:55 | theme_discovery_llm_call              | stop=tool_use out_tok=440 forced=False tool_uses=1 iter=1
+ 10-08 17:09:00 | theme_discovery_llm_call              | stop=tool_use out_tok=600 forced=False tool_uses=1 iter=1
+ 10-08 17:09:02 | theme_discovery_llm_call              | stop=tool_use out_tok=248 forced=False tool_uses=1 iter=1
+ 10-08 17:09:02 | theme_discovery_shown_declined        | shown=54 declined=25 proposed=18 clusters shown=9 declined=0 already_named=2 partial=4 taken=3 recall_mode=True
+ 10-08 17:09:02 | theme_discovery_shadow_ran            | Theme discovery shadow: 18 candidate themes written
+ 10-08 17:09:05 | narrative_theme_discovery_ran         | 2026-10-08: v2reg 1 today (grounded=1 analysis=0 catalyst=0) roster 2 active / 3 seeds -> 0 join + 0 new + 1 seed(s): []
+ 10-08 17:10:31 | theme_composition_churn               | Composition churn (on-demand): Customer Engagement & Marketing/CX SaaS Platforms: +HUBS · For-Profit Postsecondary & Vocational Education: +PRDO · U.S. Apparel & Fashion Recovery: +PVH · Restaurant Chain Recovery: +FWRG 
+ 10-08 17:35:05 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-08 17:35:05 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-08 17:35:05 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-08 17:35:05 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-08 17:35:05 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 10-08 17:35:06 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-08 17:35:06 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-08 17:35:06 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-08 17:35:06 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-08 17:35:06 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-08 17:40:00 | strength_spread_alert_check           | Precious metals: state=falling_behind move=-25.5 band=10.5 crossed=False
+ 10-08 17:40:00 | strength_spread_alert_check           | Energy: state=quiet move=-6.9 band=15.0 crossed=False
+ 10-08 17:50:00 | exit_path_shadow_recorded             | 3 row(s) written/updated across 36 eligible live trade(s) for 2026-10-08 (0 error(s))
+ 10-08 17:53:00 | alert_rank_shadow_recorded            | 1 row(s) written/updated across 1 date(s) needing processing (0 error(s))
+ 10-08 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:13:00 | sustain_reject_replay_recorded        | 117 net-declined ticker-day(s) in window, 2 candidate(s) processed: 2 written (0 settled, 0 no_trade, 0 unscoreable, 2 open, 0 at horizon), 0 pending, 0 error(s)
+ 10-08 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:13:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:14:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:14:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:17:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:17:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:19:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:20:01 | judge_named_themes_extracted          | 1 alert(s): 1 named a group, 2 row(s) written, 0 failed (retry next run), ~$0.0023
+ 10-08 18:20:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:20:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:21:03 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:21:27 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:21:51 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:22:15 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-08 18:22:27 | analyst_estimates_snapshot            | 86 row(s) across 26/26 ticker(s) (34 quarterly-from-yfinance, 52 quarterly-from-finnhub, 31 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 26 annual-40
+ 10-08 21:00:00 | stop_remediation_skipped_pending_exit | KO: 3 pending exit covers full 3 remaining
+ 10-08 21:00:00 | stop_remediation_skipped_pending_exit | PEP: 3 pending exit covers full 3 remaining
+ 10-09 17:00:02 | splits_ingest_summary                 | new=3 applied=5 failed=1
+ 10-09 17:07:05 | theme_discovery_llm_call              | stop=tool_use out_tok=616 forced=False tool_uses=1 iter=1
+ 10-09 17:07:07 | theme_discovery_llm_call              | stop=tool_use out_tok=334 forced=False tool_uses=1 iter=1
+ 10-09 17:07:10 | theme_discovery_llm_call              | stop=tool_use out_tok=267 forced=False tool_uses=1 iter=1
+ 10-09 17:07:14 | theme_discovery_llm_call              | stop=tool_use out_tok=701 forced=False tool_uses=1 iter=1
+ 10-09 17:07:19 | theme_discovery_llm_call              | stop=tool_use out_tok=493 forced=False tool_uses=1 iter=1
+ 10-09 17:07:21 | theme_discovery_llm_call              | stop=tool_use out_tok=455 forced=False tool_uses=1 iter=1
+ 10-09 17:07:21 | theme_discovery_shown_declined        | shown=56 declined=56 proposed=3 clusters shown=10 declined=1 already_named=6 partial=1 taken=2 recall_mode=False
+ 10-09 17:07:29 | theme_discovered                      | New theme: Primary Silver Miners (5 stocks)
+ 10-09 17:07:29 | theme_discovered                      | New theme: Space Launch, Satellite Imagery & Lunar Infrastructure (4 stocks)
+ 10-09 17:07:29 | theme_discovered                      | New theme: Mortgage REITs (Agency & Residential MBS) (3 stocks)
+ 10-09 17:09:02 | theme_discovery_llm_call              | stop=tool_use out_tok=826 forced=False tool_uses=1 iter=1
+ 10-09 17:09:08 | theme_discovery_llm_call              | stop=tool_use out_tok=884 forced=False tool_uses=1 iter=1
+ 10-09 17:09:14 | theme_discovery_llm_call              | stop=tool_use out_tok=812 forced=False tool_uses=1 iter=1
+ 10-09 17:09:17 | theme_discovery_llm_call              | stop=tool_use out_tok=306 forced=False tool_uses=1 iter=1
+ 10-09 17:09:22 | theme_discovery_llm_call              | stop=tool_use out_tok=637 forced=False tool_uses=1 iter=1
+ 10-09 17:09:26 | theme_discovery_llm_call              | stop=tool_use out_tok=431 forced=False tool_uses=1 iter=1
+ 10-09 17:09:30 | theme_discovery_llm_call              | stop=tool_use out_tok=502 forced=False tool_uses=1 iter=1
+ 10-09 17:09:30 | theme_discovery_shown_declined        | shown=68 declined=26 proposed=23 clusters shown=10 declined=0 already_named=2 partial=4 taken=4 recall_mode=True
+ 10-09 17:09:30 | theme_discovery_shadow_ran            | Theme discovery shadow: 23 candidate themes written
+ 10-09 17:09:33 | narrative_theme_discovery_ran         | 2026-10-09: v2reg 2 today (grounded=2 analysis=0 catalyst=0) roster 2 active / 4 seeds -> 1 join + 0 new + 1 seed(s): ['AI data-center power buildout']
+ 10-09 17:10:40 | theme_composition_churn               | Composition churn (on-demand): Liquid Biopsy & Molecular Cancer Diagnostics Testing: +VCYT -CDNA · AI data-center power buildout:  -ALAB · Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand: +
+ 10-09 17:35:06 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-09 17:35:06 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-09 17:35:06 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-09 17:35:06 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-09 17:35:06 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 10-09 17:35:07 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-09 17:35:07 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-09 17:35:07 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-09 17:35:07 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-09 17:35:07 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-09 17:40:01 | strength_spread_alert_check           | Precious metals: state=falling_behind move=-27.4 band=10.6 crossed=False
+ 10-09 17:40:01 | strength_spread_alert_check           | Energy: state=quiet move=-5.9 band=15.0 crossed=False
+ 10-09 17:50:00 | exit_path_shadow_recorded             | 3 row(s) written/updated across 37 eligible live trade(s) for 2026-10-09 (0 error(s))
+ 10-09 17:53:00 | alert_rank_shadow_recorded            | 2 row(s) written/updated across 1 date(s) needing processing (0 error(s))
+ 10-09 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:13:00 | sustain_reject_replay_recorded        | 114 net-declined ticker-day(s) in window, 4 candidate(s) processed: 4 written (1 settled, 0 no_trade, 1 unscoreable, 2 open, 0 at horizon), 0 pending, 0 error(s)
+ 10-09 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:13:24 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:13:48 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:14:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:14:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:15:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:17:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:17:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:17:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:18:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:18:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:19:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:20:01 | judge_named_themes_extracted          | 2 alert(s): 1 named a group, 2 row(s) written, 0 failed (retry next run), ~$0.0034
+ 10-09 18:20:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:20:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-09 18:20:50 | analyst_estimates_snapshot            | 78 row(s) across 22/22 ticker(s) (30 quarterly-from-yfinance, 48 quarterly-from-finnhub, 29 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 22 annual-40
+ 10-12 17:00:02 | splits_ingest_summary                 | new=6 applied=6 failed=2
+ 10-12 17:09:25 | theme_discovery_llm_call              | stop=tool_use out_tok=951 forced=False tool_uses=1 iter=1
+ 10-12 17:09:28 | theme_discovery_llm_call              | stop=tool_use out_tok=460 forced=False tool_uses=1 iter=1
+ 10-12 17:09:30 | theme_discovery_llm_call              | stop=tool_use out_tok=311 forced=False tool_uses=1 iter=1
+ 10-12 17:09:36 | theme_discovery_llm_call              | stop=tool_use out_tok=774 forced=False tool_uses=1 iter=1
+ 10-12 17:09:44 | theme_discovery_llm_call              | stop=tool_use out_tok=1083 forced=False tool_uses=1 iter=1
+ 10-12 17:09:47 | theme_discovery_llm_call              | stop=tool_use out_tok=256 forced=False tool_uses=1 iter=1
+ 10-12 17:09:47 | theme_discovery_shown_declined        | shown=57 declined=55 proposed=6 clusters shown=9 declined=0 already_named=4 partial=2 taken=3 recall_mode=False
+ 10-12 17:10:07 | theme_discovered                      | New theme: Digital-First Beauty & Cosmetics Brands (2 stocks)
+ 10-12 17:10:07 | theme_discovered                      | New theme: Brazil Fintech & Digital Banking Rally (3 stocks)
+ 10-12 17:10:07 | theme_discovered                      | New theme: Primary Silver Miners (5 stocks)
+ 10-12 17:10:07 | theme_discovered                      | New theme: Asset-Based Trucking & Intermodal Freight Carriers (5 stocks)
+ 10-12 17:10:07 | theme_discovered                      | New theme: Canadian Big Banks (7 stocks)
+ 10-12 17:10:07 | theme_discovered                      | New theme: Small Modular Reactor & Advanced Nuclear Fission Technology (4 stocks)
+ 10-12 17:10:45 | theme_small_fold_ran                  | Small-theme fold: ran — 35 theme(s) of 2-3 members, 11 failed G3, 6 folded
+ 10-12 17:11:53 | theme_discovery_llm_call              | stop=tool_use out_tok=753 forced=False tool_uses=1 iter=1
+ 10-12 17:12:00 | theme_discovery_llm_call              | stop=tool_use out_tok=916 forced=False tool_uses=1 iter=1
+ 10-12 17:12:06 | theme_discovery_llm_call              | stop=tool_use out_tok=712 forced=False tool_uses=1 iter=1
+ 10-12 17:12:09 | theme_discovery_llm_call              | stop=tool_use out_tok=412 forced=False tool_uses=1 iter=1
+ 10-12 17:12:11 | theme_discovery_llm_call              | stop=tool_use out_tok=106 forced=False tool_uses=1 iter=1
+ 10-12 17:12:17 | theme_discovery_llm_call              | stop=tool_use out_tok=733 forced=False tool_uses=1 iter=1
+ 10-12 17:12:17 | theme_discovery_shown_declined        | shown=68 declined=29 proposed=18 clusters shown=9 declined=0 already_named=6 partial=2 taken=1 recall_mode=True
+ 10-12 17:12:17 | theme_discovery_shadow_ran            | Theme discovery shadow: 18 candidate themes written
+ 10-12 17:12:17 | narrative_theme_discovery_ran         | 2026-10-12: v2reg 0 qualifying today — no evaluation (roster 2 active / 5 seeds)
+ 10-12 17:13:29 | theme_composition_churn               | Composition churn (on-demand): Crude & Product Tanker Shipping: +SFL · Fintech Payments, Prepaid & Consumer Digital Banking Apps: +CHYM +WSE · Cloud Contact Center & CCaaS Communication Platforms: +BOX · Energy Supply Di
+ 10-12 17:35:06 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-12 17:35:06 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-12 17:35:06 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-12 17:35:06 | anticipation_coil_buyout_pin_rejected | BWIN coil rejected — stop_floor
+ 10-12 17:35:06 | anticipation_coil_buyout_pin_rejected | CBZ coil rejected — stop_floor
+ 10-12 17:35:06 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 10-12 17:35:06 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 10-12 17:35:06 | anticipation_coil_buyout_pin_rejected | ACVA coil rejected — stop_floor
+ 10-12 17:35:06 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-12 17:35:06 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-12 17:35:06 | anticipation_coil_buyout_pin_rejected | DV coil rejected — stop_floor
+ 10-12 17:35:06 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-12 17:35:06 | anticipation_coil_buyout_pin_rejected | ARX coil rejected — stop_floor
+ 10-12 17:40:01 | strength_spread_alert_check           | Precious metals: state=falling_behind move=-23.7 band=10.6 crossed=False
+ 10-12 17:40:01 | strength_spread_alert_check           | Energy: state=quiet move=-6.0 band=15.0 crossed=False
+ 10-12 17:50:00 | exit_path_shadow_recorded             | 3 row(s) written/updated across 37 eligible live trade(s) for 2026-10-12 (0 error(s))
+ 10-12 17:53:00 | alert_rank_shadow_recorded            | 0 row(s) written/updated across 0 date(s) needing processing (0 error(s))
+ 10-12 18:12:12 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:12:36 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:13:00 | sustain_reject_replay_recorded        | 116 net-declined ticker-day(s) in window, 6 candidate(s) processed: 6 written (3 settled, 1 no_trade, 2 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: magna53_depth_exit[live] on, first acting sess
+ 10-12 18:13:00 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:13:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:13:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:14:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:14:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:15:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:15:25 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:15:49 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:16:13 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:16:37 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:17:01 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:17:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:17:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:18:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:18:38 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:19:02 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:19:26 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:19:50 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:20:14 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:20:39 | api_failure_fmp                       | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 10-12 18:20:51 | analyst_estimates_snapshot            | 77 row(s) across 22/22 ticker(s) (30 quarterly-from-yfinance, 47 quarterly-from-finnhub, 29 divergence rows); 0 no-anchor (zero honest days, by design), 0 anchor-error (zero honest days, EDGAR fetch failed), 22 annual-40
+(1329 rows)
+

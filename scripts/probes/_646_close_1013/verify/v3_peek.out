@@ -1,0 +1,82 @@
+Pager usage is off.
+              event_type               |             k             | count 
+---------------------------------------+---------------------------+-------
+ dead_stop_price_preserved             | account_mode              |    42
+ dead_stop_price_preserved             | order_id                  |    42
+ dead_stop_price_preserved             | price                     |    42
+ dead_stop_price_preserved             | status                    |    42
+ dead_stop_price_preserved             | trade_id                  |    42
+ full_exit_rejected                    | account_mode              |     4
+ full_exit_rejected                    | error                     |     4
+ full_exit_rejected                    | reason                    |     4
+ full_exit_rejected                    | shares                    |     4
+ full_exit_rejected                    | stop_price                |     4
+ full_exit_rejected                    | ticker                    |     4
+ full_exit_rejected                    | trade_id                  |     4
+ planned_sale_stop_cancel              | account_mode              |    17
+ planned_sale_stop_cancel              | reason                    |    17
+ planned_sale_stop_cancel              | site                      |    17
+ planned_sale_stop_cancel              | stop_order_id             |    17
+ planned_sale_stop_cancel              | ticker                    |    17
+ planned_sale_stop_cancel              | trade_id                  |    17
+ stop_ack_timeout_remediated           | account_mode              |     3
+ stop_ack_timeout_remediated           | fallback_order_id         |     3
+ stop_ack_timeout_remediated           | filled_at                 |     3
+ stop_ack_timeout_remediated           | qty                       |     3
+ stop_ack_timeout_remediated           | stop_target               |     3
+ stop_ack_timeout_remediated           | ticker                    |     3
+ stop_ack_timeout_remediated           | trade_id                  |     3
+ stop_coverage_repaired                | account_mode              |     1
+ stop_coverage_repaired                | db_stop_price             |     1
+ stop_coverage_repaired                | new_stop_id               |     1
+ stop_coverage_repaired                | stop_price                |     1
+ stop_coverage_repaired                | target_qty                |     1
+ stop_coverage_repaired                | ticker                    |     1
+ stop_coverage_repaired                | trade_id                  |     1
+ stop_order_id_changed                 | account_mode              |   102
+ stop_order_id_changed                 | new_id                    |   102
+ stop_order_id_changed                 | reason                    |   102
+ stop_order_id_changed                 | trade_id                  |   102
+ stop_refresh_ran                      | already_covered           |    43
+ stop_refresh_ran                      | covered_by_resting_exit   |     1
+ stop_refresh_ran                      | examined                  |    43
+ stop_refresh_ran                      | pass                      |    43
+ stop_refresh_ran                      | placed                    |    43
+ stop_refresh_ran                      | placed_tickers            |    43
+ stop_refresh_ran                      | same_day_excluded         |    22
+ stop_refresh_ran                      | same_day_excluded_tickers |    22
+ stop_refresh_ran                      | skipped                   |    43
+ stop_refresh_ran                      | unprotected               |    43
+ stop_remediation_skipped_pending_exit | pending_exit_qty          |     2
+ stop_remediation_skipped_pending_exit | remaining_shares          |     2
+ stop_remediation_skipped_pending_exit | ticker                    |     2
+ stop_remediation_skipped_pending_exit | trade_id                  |     2
+ stop_replacement_confirmed_silent     | account_mode              |    32
+ stop_replacement_confirmed_silent     | audit_price_matched       |    32
+ stop_replacement_confirmed_silent     | db_matched                |    32
+ stop_replacement_confirmed_silent     | event_norm                |    32
+ stop_replacement_confirmed_silent     | rechecked                 |    32
+ stop_replacement_confirmed_silent     | replacement_order_id      |    32
+ stop_replacement_confirmed_silent     | replacement_stop_price    |    32
+ stop_replacement_confirmed_silent     | ticker                    |    32
+ stop_replacement_confirmed_silent     | trade_id                  |    32
+ stop_updated                          | effective_qty             |    37
+ stop_updated                          | new_stop_id               |    37
+ stop_updated                          | new_stop_price            |    37
+ stop_updated                          | old_cancel_ok             |    37
+ stop_updated                          | old_stop_id               |    37
+ stop_updated                          | old_stop_price            |    37
+ stop_updated                          | pending_exit_qty          |    37
+ stop_updated                          | remaining_shares          |    37
+ stop_updated                          | ticker                    |    37
+ stop_updated                          | trade_id                  |    37
+(69 rows)
+
+            event_type             |             et             |                                                                                                   summary                                                                                                    |                                                                                                                            detail                                                                                                                            
+-----------------------------------+----------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ dead_stop_price_preserved         | 2026-10-13 09:05:00.079191 | trade #421 [paper]: dead stop 6c5a378d (status=OrderStatus.CANCELED) preserved at $77.22 for the #600 floor                                                                                                  | {"trade_id": 421, "account_mode": "paper", "order_id": "6c5a378d-04ed-4853-ba84-8d96cce04cc3", "status": "OrderStatus.CANCELED", "price": 77.22}
+ stop_replacement_confirmed_silent | 2026-10-12 16:45:07.210665 | PENG: WS safety-net agrees with order_manager's own recorded evidence ($63.37, 6b74a7e5-5ea7-4208-a262-116b9045165b) via audit_price_only — Telegram suppressed, operator already notified via order_manager | {"trade_id": 414, "ticker": "PENG", "account_mode": "live", "replacement_order_id": "6b74a7e5-5ea7-4208-a262-116b9045165b", "replacement_stop_price": 63.37, "event_norm": "cancelled", "rechecked": true, "db_matched": false, "audit_price_matched": true}
+ stop_refresh_ran                  | 2026-10-13 09:35:00.152531 | Morning: examined 3, placed 0, already-covered 3, skipped 0 (none), same-day excluded 1 (KO)                                                                                                                 | {"pass": "Morning", "examined": 3, "placed": 0, "placed_tickers": [], "already_covered": ["PENG", "HUM", "KOD"], "skipped": [], "unprotected": [], "same_day_excluded": 1, "same_day_excluded_tickers": ["KO"]}
+ stop_order_id_changed             | 2026-10-13 09:46:00.260397 | trade #421 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)                                                                                                                                        | {"trade_id": 421, "account_mode": "paper", "new_id": null, "reason": "cancel_or_reject_null"}
+(4 rows)
+

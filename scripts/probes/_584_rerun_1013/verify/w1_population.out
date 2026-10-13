@@ -1,0 +1,73 @@
+BEGIN
+=== W1a: base counts (scan_date <= 10-12), NULL-safe side split
+ rows_ | names | dates | null_flags | rej_rows | rej_names |  pv  | p_only | v_only 
+-------+-------+-------+------------+----------+-----------+------+--------+--------
+  7340 |  2461 |    28 |          0 |     5477 |      1510 | 1245 |   3935 |    297
+(1 row)
+
+=== W1b: rows whose created_at / first_seen / last_seen ET date differs from scan_date (backfill / test / replay rows)
+ created_mismatch | first_mismatch | last_mismatch | created_null | min_created_time | max_created_time | max_last_seen_time 
+------------------+----------------+---------------+--------------+------------------+------------------+--------------------
+                0 |              0 |             0 |            0 | 07:00:00.352539  | 09:55:03.67862   | 09:55:00.149167
+(1 row)
+
+=== W1c: suspicious tickers (test-like / non-standard symbols)
+ ticker | count 
+--------+-------
+(0 rows)
+
+=== W1d: slot consistency
+ dv_without_min | min_without_dv | dv_ne_pxv | fallback_eligible | bad_minutes 
+----------------+----------------+-----------+-------------------+-------------
+              0 |              0 |         0 |                 0 |           0
+(1 row)
+
+=== W1e: at_open minute mix x side
+ rej | m  | count 
+-----+----+-------
+ f   |  1 |   670
+ f   |  5 |    41
+ f   | 10 |    35
+ f   | 15 |    91
+ f   | 20 |   485
+ f   | 25 |   232
+ f   |    |   309
+ t   |  1 |  1933
+ t   |  5 |   148
+ t   | 10 |   142
+ t   | 15 |   286
+ t   | 20 |   856
+ t   | 25 |   493
+ t   |    |  1619
+(14 rows)
+
+=== W1f: acting floors in window
+ acting_price_floor | acting_volume_floor | count 
+--------------------+---------------------+-------
+                  5 |               50000 |  7340
+(1 row)
+
+=== W1g: mi_daily_closes duplicate (ticker,trade_date) among shadow tickers 06-01..10-12
+ dup_keys 
+----------
+        0
+(1 row)
+
+=== W1h: calendar dates with thin coverage (<5000 rows) 06-01..10-12
+ trade_date | count 
+------------+-------
+(0 rows)
+
+=== W1i: splits for shadow tickers 09-01..10-13 NOT applied
+ ticker | execution_date | split_from | split_to | adjustment_applied | applied_at 
+--------+----------------+------------+----------+--------------------+------------
+ FMFC   | 2026-10-13     |         40 |        1 | f                  | 
+(1 row)
+
+=== W1j: mi_daily_closes last date + now
+ last_close |           now_et           
+------------+----------------------------
+ 2026-10-12 | 2026-10-13 10:08:23.894765
+(1 row)
+
+ROLLBACK

@@ -1,0 +1,61 @@
+Pager usage is off.
+Null display is "-".
+psql:/tmp/x.sql:12: ERROR:  invalid input syntax for type json
+DETAIL:  Token "'" is invalid.
+CONTEXT:  JSON data, line 1: {'...
+ event_type | et | summary 
+------------+----+---------
+(0 rows)
+
+         et         |              event_type               |  am   | tkr | tid |                                                                             summary                                                                              
+--------------------+---------------------------------------+-------+-----+-----+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 10-05 10:34:21.954 | full_exit_rejected                    | paper | PEP | 408 | PEP full exit REJECTED (sma_trail_stop) — 3 sh still open
+ 10-05 10:34:22.003 | stop_order_id_changed                 | paper | -   | 408 | trade #408 [paper]: stop_order_id=b83b84e1-d89a-431b-ae51-aa20dc918cb5 (reason=restored_after_failed_full_exit)
+ 10-05 12:03:00.035 | stop_order_id_changed                 | paper | -   | 407 | trade #407 [paper]: stop_order_id=5664c691-5969-4432-9684-ae9160064bb0 (reason=stop_ack_timeout)
+ 10-05 12:03:00.036 | stop_ack_timeout_remediated           | paper | KO  | 407 | KO #407: stop-ACK timeout (filled_at 14:33:58 ET, stop_order_id NULL >30s); fallback stop placed at $81.64 order=5664c691-5969-4432-9684-ae9160064bb0
+ 10-06 09:35:28.199 | stop_order_id_changed                 | paper | -   | 410 | trade #410 [paper]: stop_order_id=NULL (reason=partial_naked)
+ 10-06 09:35:28.275 | stop_coverage_repair_failed           | paper | KO  | 410 | KO: place coverage stop (target 3) failed: {"available":"0","code":40310000,"existing_qty":"3","held_for_orders":"3","message":"insufficient qty available for o
+ 10-06 09:35:48.324 | full_exit_rejected                    | paper | PEP | 411 | PEP full exit REJECTED (sma_trail_stop) — 3 sh still open
+ 10-06 09:36:00.022 | stop_order_id_changed                 | paper | -   | 410 | trade #410 [paper]: stop_order_id=8e050a56-e5b4-4999-990e-ae087d1864a1 (reason=watchdog_synced_from_broker)
+ 10-06 09:36:00.025 | stop_ack_broker_covered               | paper | KO  | 410 | KO #410: broker has 3.0 sh covering 3.0 remaining (stop_order_id=synced)
+ 10-06 09:36:30.032 | stop_order_id_changed                 | paper | -   | 411 | trade #411 [paper]: stop_order_id=821530a8-843e-47c1-a930-aa58d63530f6 (reason=stop_ack_timeout)
+ 10-06 09:36:30.033 | stop_ack_timeout_remediated           | paper | PEP | 411 | PEP #411: stop-ACK timeout (filled_at 09:35:43 ET, stop_order_id NULL >30s); fallback stop placed at $119.68 order=821530a8-843e-47c1-a930-aa58d63530f6
+ 10-08 09:35:38.913 | full_exit_rejected                    | paper | CL  | 416 | CL full exit REJECTED (sma_trail_stop) — 3 sh still open
+ 10-08 09:35:38.950 | stop_order_id_changed                 | paper | -   | 416 | trade #416 [paper]: stop_order_id=32095cef-934e-457e-aed0-131092267511 (reason=restored_after_failed_full_exit)
+ 10-08 10:15:02.223 | full_exit_rejected                    | paper | PEP | 418 | PEP full exit REJECTED (sma_trail_stop) — 3 sh still open
+ 10-08 10:15:02.387 | stop_order_id_changed                 | paper | -   | 418 | trade #418 [paper]: stop_order_id=492dd1b3-3cb1-40a4-9938-c45b8f28457f (reason=restored_after_failed_full_exit)
+ 10-08 21:00:00.056 | stop_remediation_skipped_pending_exit | -     | KO  | 417 | KO: 3 pending exit covers full 3 remaining
+ 10-08 21:00:00.069 | stop_remediation_skipped_pending_exit | -     | PEP | 418 | PEP: 3 pending exit covers full 3 remaining
+ 10-09 09:00:00.220 | stop_ack_broker_covered               | paper | KO  | 417 | KO #417: broker has 3.0 sh covering 3.0 remaining (stop_order_id=no_stop_only_market)
+ 10-09 09:00:00.242 | stop_ack_broker_covered               | paper | PEP | 418 | PEP #418: broker has 3.0 sh covering 3.0 remaining (stop_order_id=no_stop_only_market)
+ 10-09 09:32:04.366 | full_exit_committed                   | -     | KO  | 417 | KO: DB committed on WS fill — sold 2 @$87.74, reason=sma_trail_stop, total_pnl $+7.16 — 1 sh remain under a resting exit, trade stays OPEN
+ 10-09 09:41:01.244 | stop_order_id_changed                 | paper | -   | 417 | trade #417 [paper]: stop_order_id=5a09fb83-c56c-47c0-baf3-085774bc78a2 (reason=sync_coverage_repair)
+ 10-09 09:41:01.246 | stop_coverage_repaired                | paper | KO  | 417 | KO: placed coverage stop 1 @ $83.25 (was no live stop)
+ 10-12 09:00:00.091 | stop_order_id_changed                 | paper | -   | 420 | trade #420 [paper]: stop_order_id=cd020e0e-80ae-4c60-883f-06b7a78b5f48 (reason=stop_ack_timeout)
+ 10-12 09:00:00.094 | stop_ack_timeout_remediated           | paper | KO  | 420 | KO #420: stop-ACK timeout (filled_at 08:30:00 ET, stop_order_id NULL >30s); fallback stop placed at $75.14 order=cd020e0e-80ae-4c60-883f-06b7a78b5f48
+(24 rows)
+
+ position_slots | mirror_alive_any | mirror_alive_excl_replaced |                                                      not_alive_excl_replaced                                                       
+----------------+------------------+----------------------------+------------------------------------------------------------------------------------------------------------------------------------
+            150 |              150 |                        144 | VICR@2026-09-17 1700, VICR@2026-09-17 1900, VICR@2026-09-17 2110, VICR@2026-09-18 1700, VICR@2026-09-18 1900, VICR@2026-09-18 2110
+(1 row)
+
+ ticker | slots | held_min | held_max | stopq_min | stopq_max | under_covered_slots 
+--------+-------+----------+----------+-----------+-----------+---------------------
+ CEG    |     6 |        3 |        3 |         3 |         3 |                   0
+ HOOD   |     3 |        4 |        4 |         8 |         8 |                   0
+ HUM    |     6 |        1 |        1 |         1 |         1 |                   0
+ KOD    |    33 |        4 |        4 |         4 |         8 |                   0
+ OKTA   |    30 |        2 |        2 |         2 |         4 |                   0
+ PENG   |    12 |       10 |       10 |        10 |        20 |                   0
+ SEI    |    18 |        2 |        2 |         2 |         4 |                   0
+ VICR   |    42 |        1 |        1 |         0 |         2 |                   6
+(8 rows)
+
+ id  | ticker |      total_pnl      |                                                                                exits                                                                                
+-----+--------+---------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 382 | OKTA   |   47.24200000000002 | [{"pnl": 47.24200000000002, "time": "2026-09-28T13:30:01.326663+00:00", "price": 191.5, "reason": "stop_hit", "shares": 2, "source": "websocket", "attempt": 1}]
+ 392 | HOOD   | -27.400000000000034 | [{"pnl": -27.400000000000034, "time": "2026-09-15T13:30:00.274809+00:00", "price": 111.52, "reason": "stop_hit", "shares": 4, "source": "websocket", "attempt": 1}]
+ 400 | VICR   |   75.73000000000002 | [{"pnl": 75.73000000000002, "time": "2026-10-07T13:30:00.983290+00:00", "price": 287.23, "reason": "stop_hit", "shares": 1, "source": "websocket", "attempt": 1}]
+(3 rows)
+

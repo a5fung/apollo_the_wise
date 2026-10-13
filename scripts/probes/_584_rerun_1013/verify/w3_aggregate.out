@@ -1,0 +1,178 @@
+=== V1 POPULATION ===
+rows 7340 names 2461 dates 28 2026-09-02 -> 2026-10-12
+rejected rows 5477 names 1510 | admitted rows 1863 names 1069
+rej with at_open read 3858 names 1395 | pre-market-only (no at_open) rows 1619
+rej in-window rows 2509 names 1150 | minute-1 in-window 1933 | share gap>=10 0.198
+adm in-window rows 837 names 615 | gap>=10 rows 159 names 136
+D0 dates with a 20-session settled close: 8 2026-09-02 -> 2026-09-14 | 5-session: 23 2026-09-02 -> 2026-10-05
+clean h20 (pipeline ADR rule): rej in-window rows 556 names 435 | adm 215 / 196 | adm gap>=10 38 / 35
+clean h5 (pipeline ADR rule): rej in-window rows 2010 names 1022 | adm 722 / 536 | adm gap>=10 135 / 114
+
+=== V2 the >=15 gate: rejected in-window clearers -> names (rows) clearing | with a D0+20 close | CLEAN h20 ===
+  all gaps >=$ 10M: clearing 172 (260) | D0+20 close 50 (56) | CLEAN 50 (56) MEETS | clean w/ ADR from any 20 prior bars 50 (56) | names/day 9.3
+  all gaps >=$ 25M: clearing 118 (156) | D0+20 close 29 (29) | CLEAN 29 (29) MEETS | clean w/ ADR from any 20 prior bars 29 (29) | names/day 5.6
+  all gaps >=$ 50M: clearing 80 (96) | D0+20 close 13 (13) | CLEAN 13 (13) BELOW | clean w/ ADR from any 20 prior bars 13 (13) | names/day 3.4
+  all gaps >=$100M: clearing 36 (39) | D0+20 close 2 (2) | CLEAN 2 (2) BELOW | clean w/ ADR from any 20 prior bars 2 (2) | names/day 1.4
+  gap>=10  >=$ 10M: clearing 160 (229) | D0+20 close 47 (49) | CLEAN 47 (49) MEETS | clean w/ ADR from any 20 prior bars 47 (49) | names/day 8.2
+  gap>=10  >=$ 25M: clearing 113 (150) | D0+20 close 29 (29) | CLEAN 29 (29) MEETS | clean w/ ADR from any 20 prior bars 29 (29) | names/day 5.4
+  gap>=10  >=$ 50M: clearing 79 (95) | D0+20 close 13 (13) | CLEAN 13 (13) BELOW | clean w/ ADR from any 20 prior bars 13 (13) | names/day 3.4
+  gap>=10  >=$100M: clearing 36 (39) | D0+20 close 2 (2) | CLEAN 2 (2) BELOW | clean w/ ADR from any 20 prior bars 2 (2) | names/day 1.4
+
+=== V3 h=20 ALL GAPS ===
+  REJ >=$  0M  n= 556 names= 435 | reach  51   9.2% [ 7.0-11.9] | ex-D0  49   8.8% [ 6.7-11.5] | crash 213  38.3% [34.4-42.4] | win  42  7.6% | settled med  -14.6%
+CHECK|h20|REJ|all|0|556|51|49|213|42
+  REJ >=$ 10M  n=  56 names=  50 | reach   8  14.3% [ 7.4-25.7] | ex-D0   7  12.5% [ 6.2-23.6] | crash  35  62.5% [49.4-74.0] | win   3  5.4% | settled med  -27.7%
+CHECK|h20|REJ|all|10|56|8|7|35|3
+  REJ >=$ 25M  n=  29 names=  29 | reach   3  10.3% [ 3.6-26.4] | ex-D0   2   6.9% [ 1.9-22.0] | crash  21  72.4% [54.3-85.3] | win   1  3.4% | settled med  -30.3%
+CHECK|h20|REJ|all|25|29|3|2|21|1
+  REJ >=$ 50M  n=  13 names=  13 | reach   2  15.4% [ 4.3-42.2] | ex-D0   2  15.4% [ 4.3-42.2] | crash   8  61.5% [35.5-82.3] | win   1  7.7% | settled med  -27.6%
+CHECK|h20|REJ|all|50|13|2|2|8|1
+  REJ >=$100M  n=   2 names=   2 | reach   1  50.0% [ 9.5-90.5] | ex-D0   1  50.0% [ 9.5-90.5] | crash   0   0.0% [ 0.0-65.8] | win   0  0.0% | settled med   -4.6%
+CHECK|h20|REJ|all|100|2|1|1|0|0
+  ADM >=$  0M  n= 215 names= 196 | reach   9   4.2% [ 2.2- 7.8] | ex-D0   9   4.2% [ 2.2- 7.8] | crash  54  25.1% [19.8-31.3] | win  18  8.4% | settled med   -7.7%
+CHECK|h20|ADM|all|0|215|9|9|54|18
+  ADM >=$ 10M  n=  46 names=  43 | reach   1   2.2% [ 0.4-11.3] | ex-D0   1   2.2% [ 0.4-11.3] | crash  10  21.7% [12.3-35.6] | win   4  8.7% | settled med   -6.7%
+CHECK|h20|ADM|all|10|46|1|1|10|4
+  ADM >=$ 25M  n=  33 names=  31 | reach   1   3.0% [ 0.5-15.3] | ex-D0   1   3.0% [ 0.5-15.3] | crash   5  15.2% [ 6.7-30.9] | win   3  9.1% | settled med   -0.9%
+CHECK|h20|ADM|all|25|33|1|1|5|3
+  ADM >=$ 50M  n=  22 names=  21 | reach   0   0.0% [ 0.0-14.9] | ex-D0   0   0.0% [ 0.0-14.9] | crash   3  13.6% [ 4.7-33.3] | win   2  9.1% | settled med   -0.1%
+CHECK|h20|ADM|all|50|22|0|0|3|2
+  ADM >=$100M  n=  14 names=  13 | reach   0   0.0% [ 0.0-21.5] | ex-D0   0   0.0% [ 0.0-21.5] | crash   1   7.1% [ 1.3-31.5] | win   1  7.1% | settled med    0.3%
+CHECK|h20|ADM|all|100|14|0|0|1|1
+
+=== V3 h=20 GAP>=10 ===
+  REJ >=$  0M  n= 100 names=  95 | reach   9   9.0% [ 4.8-16.2] | ex-D0   7   7.0% [ 3.4-13.7] | crash  60  60.0% [50.2-69.1] | win   6  6.0% | settled med  -25.0%
+CHECK|h20|REJ|g10|0|100|9|7|60|6
+  REJ >=$ 10M  n=  49 names=  47 | reach   5  10.2% [ 4.4-21.8] | ex-D0   4   8.2% [ 3.2-19.2] | crash  32  65.3% [51.3-77.1] | win   2  4.1% | settled med  -27.8%
+CHECK|h20|REJ|g10|10|49|5|4|32|2
+  REJ >=$ 25M  n=  29 names=  29 | reach   3  10.3% [ 3.6-26.4] | ex-D0   2   6.9% [ 1.9-22.0] | crash  21  72.4% [54.3-85.3] | win   1  3.4% | settled med  -30.3%
+CHECK|h20|REJ|g10|25|29|3|2|21|1
+  REJ >=$ 50M  n=  13 names=  13 | reach   2  15.4% [ 4.3-42.2] | ex-D0   2  15.4% [ 4.3-42.2] | crash   8  61.5% [35.5-82.3] | win   1  7.7% | settled med  -27.6%
+CHECK|h20|REJ|g10|50|13|2|2|8|1
+  REJ >=$100M  n=   2 names=   2 | reach   1  50.0% [ 9.5-90.5] | ex-D0   1  50.0% [ 9.5-90.5] | crash   0   0.0% [ 0.0-65.8] | win   0  0.0% | settled med   -4.6%
+CHECK|h20|REJ|g10|100|2|1|1|0|0
+  ADM >=$  0M  n=  38 names=  35 | reach   4  10.5% [ 4.2-24.1] | ex-D0   4  10.5% [ 4.2-24.1] | crash  11  28.9% [17.0-44.8] | win   5 13.2% | settled med   -9.3%
+CHECK|h20|ADM|g10|0|38|4|4|11|5
+  ADM >=$ 10M  n=  18 names=  16 | reach   0   0.0% [ 0.0-17.6] | ex-D0   0   0.0% [ 0.0-17.6] | crash   8  44.4% [24.6-66.3] | win   1  5.6% | settled med  -15.1%
+CHECK|h20|ADM|g10|10|18|0|0|8|1
+  ADM >=$ 25M  n=  12 names=  11 | reach   0   0.0% [ 0.0-24.3] | ex-D0   0   0.0% [ 0.0-24.3] | crash   4  33.3% [13.8-60.9] | win   1  8.3% | settled med   -9.6%
+CHECK|h20|ADM|g10|25|12|0|0|4|1
+  ADM >=$ 50M  n=   8 names=   8 | reach   0   0.0% [ 0.0-32.4] | ex-D0   0   0.0% [ 0.0-32.4] | crash   3  37.5% [13.7-69.4] | win   1 12.5% | settled med   -9.6%
+CHECK|h20|ADM|g10|50|8|0|0|3|1
+  ADM >=$100M  n=   3 names=   3 | reach   0   0.0% [ 0.0-56.2] | ex-D0   0   0.0% [ 0.0-56.2] | crash   1  33.3% [ 6.1-79.2] | win   0  0.0% | settled med   -9.6%
+CHECK|h20|ADM|g10|100|3|0|0|1|0
+
+=== V3 h=5 ALL GAPS ===
+  REJ >=$  0M  n=2010 names=1022 | reach  90   4.5% [ 3.7- 5.5] | ex-D0  71   3.5% [ 2.8- 4.4] | crash 327  16.3% [14.7-17.9] | win 139  6.9% | settled med   -5.8%
+CHECK|h5|REJ|all|0|2010|90|71|327|139
+  REJ >=$ 10M  n= 204 names= 146 | reach  26  12.7% [ 8.8-18.0] | ex-D0  18   8.8% [ 5.7-13.5] | crash 115  56.4% [49.5-63.0] | win  18  8.8% | settled med  -23.9%
+CHECK|h5|REJ|all|10|204|26|18|115|18
+  REJ >=$ 25M  n= 124 names=  99 | reach  12   9.7% [ 5.6-16.2] | ex-D0   6   4.8% [ 2.2-10.2] | crash  79  63.7% [55.0-71.6] | win   6  4.8% | settled med  -29.2%
+CHECK|h5|REJ|all|25|124|12|6|79|6
+  REJ >=$ 50M  n=  74 names=  64 | reach   9  12.2% [ 6.5-21.5] | ex-D0   5   6.8% [ 2.9-14.9] | crash  49  66.2% [54.9-76.0] | win   5  6.8% | settled med  -34.3%
+CHECK|h5|REJ|all|50|74|9|5|49|5
+  REJ >=$100M  n=  30 names=  29 | reach   5  16.7% [ 7.3-33.6] | ex-D0   4  13.3% [ 5.3-29.7] | crash  20  66.7% [48.8-80.8] | win   2  6.7% | settled med  -37.3%
+CHECK|h5|REJ|all|100|30|5|4|20|2
+  ADM >=$  0M  n= 722 names= 536 | reach  16   2.2% [ 1.4- 3.6] | ex-D0  15   2.1% [ 1.3- 3.4] | crash  64   8.9% [ 7.0-11.2] | win  28  3.9% | settled med   -3.1%
+CHECK|h5|ADM|all|0|722|16|15|64|28
+  ADM >=$ 10M  n= 167 names= 133 | reach   2   1.2% [ 0.3- 4.3] | ex-D0   1   0.6% [ 0.1- 3.3] | crash  25  15.0% [10.4-21.2] | win   5  3.0% | settled med   -3.6%
+CHECK|h5|ADM|all|10|167|2|1|25|5
+  ADM >=$ 25M  n= 110 names=  91 | reach   2   1.8% [ 0.5- 6.4] | ex-D0   1   0.9% [ 0.2- 5.0] | crash  13  11.8% [ 7.0-19.2] | win   3  2.7% | settled med   -3.3%
+CHECK|h5|ADM|all|25|110|2|1|13|3
+  ADM >=$ 50M  n=  69 names=  58 | reach   2   2.9% [ 0.8-10.0] | ex-D0   1   1.4% [ 0.3- 7.8] | crash   8  11.6% [ 6.0-21.2] | win   1  1.4% | settled med   -3.5%
+CHECK|h5|ADM|all|50|69|2|1|8|1
+  ADM >=$100M  n=  42 names=  34 | reach   1   2.4% [ 0.4-12.3] | ex-D0   1   2.4% [ 0.4-12.3] | crash   4   9.5% [ 3.8-22.1] | win   1  2.4% | settled med   -3.6%
+CHECK|h5|ADM|all|100|42|1|1|4|1
+
+=== V3 h=5 GAP>=10 ===
+  REJ >=$  0M  n= 400 names= 311 | reach  30   7.5% [ 5.3-10.5] | ex-D0  16   4.0% [ 2.5- 6.4] | crash 143  35.8% [31.2-40.6] | win  27  6.8% | settled med  -12.8%
+CHECK|h5|REJ|g10|0|400|30|16|143|27
+  REJ >=$ 10M  n= 180 names= 138 | reach  20  11.1% [ 7.3-16.5] | ex-D0  12   6.7% [ 3.9-11.3] | crash 105  58.3% [51.0-65.3] | win  13  7.2% | settled med  -25.1%
+CHECK|h5|REJ|g10|10|180|20|12|105|13
+  REJ >=$ 25M  n= 119 names=  95 | reach  12  10.1% [ 5.9-16.8] | ex-D0   6   5.0% [ 2.3-10.6] | crash  76  63.9% [54.9-71.9] | win   6  5.0% | settled med  -29.4%
+CHECK|h5|REJ|g10|25|119|12|6|76|6
+  REJ >=$ 50M  n=  73 names=  63 | reach   9  12.3% [ 6.6-21.8] | ex-D0   5   6.8% [ 3.0-15.1] | crash  49  67.1% [55.7-76.8] | win   5  6.8% | settled med  -36.0%
+CHECK|h5|REJ|g10|50|73|9|5|49|5
+  REJ >=$100M  n=  30 names=  29 | reach   5  16.7% [ 7.3-33.6] | ex-D0   4  13.3% [ 5.3-29.7] | crash  20  66.7% [48.8-80.8] | win   2  6.7% | settled med  -37.3%
+CHECK|h5|REJ|g10|100|30|5|4|20|2
+  ADM >=$  0M  n= 135 names= 114 | reach  12   8.9% [ 5.2-14.9] | ex-D0  11   8.1% [ 4.6-14.0] | crash  27  20.0% [14.1-27.5] | win  13  9.6% | settled med   -4.4%
+CHECK|h5|ADM|g10|0|135|12|11|27|13
+  ADM >=$ 10M  n=  59 names=  49 | reach   2   3.4% [ 0.9-11.5] | ex-D0   1   1.7% [ 0.3- 9.0] | crash  19  32.2% [21.7-44.9] | win   3  5.1% | settled med   -8.9%
+CHECK|h5|ADM|g10|10|59|2|1|19|3
+  ADM >=$ 25M  n=  42 names=  36 | reach   2   4.8% [ 1.3-15.8] | ex-D0   1   2.4% [ 0.4-12.3] | crash  11  26.2% [15.3-41.1] | win   2  4.8% | settled med   -7.0%
+CHECK|h5|ADM|g10|25|42|2|1|11|2
+  ADM >=$ 50M  n=  29 names=  27 | reach   2   6.9% [ 1.9-22.0] | ex-D0   1   3.4% [ 0.6-17.2] | crash   8  27.6% [14.7-45.7] | win   1  3.4% | settled med  -13.0%
+CHECK|h5|ADM|g10|50|29|2|1|8|1
+  ADM >=$100M  n=  15 names=  14 | reach   1   6.7% [ 1.2-29.8] | ex-D0   1   6.7% [ 1.2-29.8] | crash   4  26.7% [10.9-52.0] | win   1  6.7% | settled med  -12.8%
+CHECK|h5|ADM|g10|100|15|1|1|4|1
+
+=== V4 one-sided Fisher (rejected clearers vs comparator) on 20-session reach, reach ex-D0, crash ===
+  $10M all-gap REJ 8/56 vs ADM-all 9/215: p=0.011 | ex-D0 7/56 vs 9/215: p=0.027 | vs ADM gap>=10 4/38: p=0.419 | gap-matched REJ 5/49 vs 4/38: p=0.660
+      crash REJ 35/56 vs ADM gap>=10 11/38: p(REJ crashes more)=0.0013
+      vs #570 8.2%: binomial P(X>=8 | n=56, p=.082) = 0.085
+  $25M all-gap REJ 3/29 vs ADM-all 9/215: p=0.159 | ex-D0 2/29 vs 9/215: p=0.384 | vs ADM gap>=10 4/38: p=0.659 | gap-matched REJ 3/29 vs 4/38: p=0.659
+      crash REJ 21/29 vs ADM gap>=10 11/38: p(REJ crashes more)=0.0004
+      vs #570 8.2%: binomial P(X>=3 | n=29, p=.082) = 0.429
+
+=== V5 projection: per D0 date, NEW distinct in-window clearing names with ADR (cumulative) at $50M / $100M ===
+  $50M 09-02:2 09-03:3 09-04:5 09-08:9 09-09:10 09-10:11 09-11:11 09-14:13 09-15:15 09-16:21 09-17:26 09-18:29 09-21:33 09-22:38 09-23:42 09-24:45 09-25:47 09-28:51 09-29:54 09-30:58 10-01:60 10-02:62 10-05:65 10-06:69 10-07:74 10-08:76 10-09:76 10-12:80
+  $100M 09-02:0 09-03:0 09-04:0 09-08:1 09-09:1 09-10:2 09-11:2 09-14:2 09-15:3 09-16:5 09-17:7 09-18:9 09-21:11 09-22:14 09-23:17 09-24:19 09-25:21 09-28:21 09-29:23 09-30:26 10-01:26 10-02:28 10-05:29 10-06:30 10-07:32 10-08:34 10-09:34 10-12:36
+
+=== V6 pre-market-price flag: minute-1 in-window rejected reads with price outside D0 [low,high] +-0.5% (bars un-adjusted by applied splits after D0) ===
+  all rej minute-1 in-window: 773 / 1927 (40%)
+  same, WITHOUT split un-adjustment: 818 / 1927
+  >=$10M: flagged 24/260 clearers (253 are minute-1) | clean-20 cohort flagged 7/56
+  >=$25M: flagged 10/156 clearers (155 are minute-1) | clean-20 cohort flagged 2/29
+  >=$50M: flagged 9/96 clearers (95 are minute-1) | clean-20 cohort flagged 2/13
+  >=$100M: flagged 5/39 clearers (39 are minute-1) | clean-20 cohort flagged 1/2
+
+=== V7 split exposure inside clean 20-session rows; >4x single-day DROP (unapplied forward split would read as a crash) ===
+  clean rej in-window h20 rows with an applied split inside D0..D0+20: 19 / 556 | rows with a >4x down day (minq20<0.25): 1 [('2026-09-11', 'SXTC')]
+   >=$10M clean rows with split in window: [('09-08', 'GMEX'), ('09-08', 'TRUG'), ('09-09', 'AGRZ'), ('09-10', 'IPDN'), ('09-11', 'TRUG'), ('09-14', 'NCT'), ('09-14', 'UZX')] | >4x drop: []
+   >=$25M clean rows with split in window: [('09-10', 'IPDN'), ('09-11', 'TRUG'), ('09-14', 'NCT')] | >4x drop: []
+   >=$50M clean rows with split in window: [('09-14', 'NCT')] | >4x drop: []
+   >=$100M clean rows with split in window: [] | >4x drop: []
+
+=== V8 clean 20-session $50M and $100M cohort listing (date ticker ao gap reach reach_x settled) ===
+  >=$50M 2026-09-02 LHAI   ao=$   63.6M m=1 gap=  57.1 adr=0.074 exc=+0.18 excx=+0.18 8adr=0.59 s20=-0.18
+  >=$50M 2026-09-02 PPBT   ao=$   84.2M m=1 gap=  45.3 adr=0.097 exc=+0.08 excx=-0.12 8adr=0.78 s20=-0.36
+  >=$50M 2026-09-03 MIMI   ao=$   57.8M m=1 gap=  56.0 adr=0.214 exc=+0.03 excx=-0.07 8adr=1.71 s20=-0.23
+  >=$50M 2026-09-04 AKAN   ao=$   67.2M m=1 gap=  19.9 adr=0.112 exc=+0.02 excx=-0.18 8adr=0.90 s20=-0.56
+  >=$50M 2026-09-04 IMRN   ao=$   91.5M m=1 gap=  60.4 adr=0.052 exc=+0.10 excx=+0.06 8adr=0.42 s20=-0.41
+  >=$50M 2026-09-08 ARBE   ao=$   56.2M m=1 gap=  33.4 adr=0.056 exc=+0.10 excx=+0.10 8adr=0.45 s20=-0.28
+  >=$50M 2026-09-08 BNC    ao=$  183.6M m=1 gap=  62.8 adr=0.074 exc=+0.29 excx=+0.29 8adr=0.60 s20=+0.09
+  >=$50M 2026-09-08 PDSB   ao=$   56.9M m=1 gap= 138.2 adr=0.184 exc=+1.77 excx=+1.77 8adr=1.47 s20=+1.14
+  >=$50M 2026-09-08 WYHG   ao=$   59.3M m=1 gap=  30.5 adr=0.191 exc=+0.12 excx=-0.05 8adr=1.53 s20=-0.31
+  >=$50M 2026-09-09 OLB    ao=$   71.5M m=1 gap=  35.9 adr=0.120 exc=+0.24 excx=+0.24 8adr=0.96 s20=-0.02
+  >=$50M 2026-09-10 TNON   ao=$  109.2M m=1 gap=  77.0 adr=0.178 exc=+1.58 excx=+1.58 8adr=1.42 s20=-0.18
+  >=$50M 2026-09-14 BMGL   ao=$   85.6M m=1 gap=  68.8 adr=0.105 exc=+0.14 excx=-0.18 8adr=0.84 s20=-0.54
+  >=$50M 2026-09-14 NCT    ao=$   59.1M m=1 gap=  76.9 adr=0.556 exc=+0.14 excx=+0.14 8adr=4.45 s20=-0.89
+  >=$25M 2026-09-02 EOSE   ao=$   31.0M m=1 gap=  16.8 adr=0.073 exc=+0.34 excx=+0.34 8adr=0.58 s20=-0.08
+  >=$25M 2026-09-02 LHAI   ao=$   63.6M m=1 gap=  57.1 adr=0.074 exc=+0.18 excx=+0.18 8adr=0.59 s20=-0.18
+  >=$25M 2026-09-02 PPBT   ao=$   84.2M m=1 gap=  45.3 adr=0.097 exc=+0.08 excx=-0.12 8adr=0.78 s20=-0.36
+  >=$25M 2026-09-02 VIVK   ao=$   39.5M m=1 gap=  27.5 adr=0.133 exc=+0.09 excx=-0.09 8adr=1.06 s20=-0.72
+  >=$25M 2026-09-03 GELS   ao=$   41.7M m=1 gap=  42.6 adr=0.096 exc=+0.13 excx=-0.05 8adr=0.77 s20=-0.47
+  >=$25M 2026-09-03 GIPR   ao=$   37.3M m=1 gap=  48.1 adr=0.269 exc=+1.97 excx=+1.97 8adr=2.15 s20=-0.24
+  >=$25M 2026-09-03 MIMI   ao=$   57.8M m=1 gap=  56.0 adr=0.214 exc=+0.03 excx=-0.07 8adr=1.71 s20=-0.23
+  >=$25M 2026-09-04 AKAN   ao=$   67.2M m=1 gap=  19.9 adr=0.112 exc=+0.02 excx=-0.18 8adr=0.90 s20=-0.56
+  >=$25M 2026-09-04 IMRN   ao=$   91.5M m=1 gap=  60.4 adr=0.052 exc=+0.10 excx=+0.06 8adr=0.42 s20=-0.41
+  >=$25M 2026-09-04 OFAL   ao=$   35.8M m=1 gap=  34.1 adr=0.257 exc=+0.07 excx=-0.18 8adr=2.06 s20=-0.50
+  >=$25M 2026-09-04 WETO   ao=$   29.8M m=1 gap=  28.3 adr=0.447 exc=+0.00 excx=-0.32 8adr=3.57 s20=-0.75
+  >=$25M 2026-09-08 ARBE   ao=$   56.2M m=1 gap=  33.4 adr=0.056 exc=+0.10 excx=+0.10 8adr=0.45 s20=-0.28
+  >=$25M 2026-09-08 BJDX   ao=$   32.9M m=1 gap=  24.9 adr=0.083 exc=+0.06 excx=+0.05 8adr=0.66 s20=-0.21
+  >=$25M 2026-09-08 BNC    ao=$  183.6M m=1 gap=  62.8 adr=0.074 exc=+0.29 excx=+0.29 8adr=0.60 s20=+0.09
+  >=$25M 2026-09-08 MOBX   ao=$   33.7M m=1 gap=  28.0 adr=0.125 exc=+0.25 excx=+0.10 8adr=1.00 s20=-0.05
+  >=$25M 2026-09-08 PDSB   ao=$   56.9M m=1 gap= 138.2 adr=0.184 exc=+1.77 excx=+1.77 8adr=1.47 s20=+1.14
+  >=$25M 2026-09-08 TWG    ao=$   29.8M m=1 gap=  20.4 adr=0.128 exc=+0.02 excx=-0.03 8adr=1.02 s20=-0.81
+  >=$25M 2026-09-08 WYHG   ao=$   59.3M m=1 gap=  30.5 adr=0.191 exc=+0.12 excx=-0.05 8adr=1.53 s20=-0.31
+  >=$25M 2026-09-09 OLB    ao=$   71.5M m=1 gap=  35.9 adr=0.120 exc=+0.24 excx=+0.24 8adr=0.96 s20=-0.02
+  >=$25M 2026-09-09 SUNE   ao=$   37.5M m=1 gap=  29.1 adr=0.074 exc=+0.62 excx=+0.43 8adr=0.60 s20=-0.22
+  >=$25M 2026-09-09 YMAT   ao=$   33.8M m=1 gap=  39.2 adr=0.115 exc=+0.24 excx=+0.24 8adr=0.92 s20=-0.30
+  >=$25M 2026-09-10 AEON   ao=$   29.3M m=1 gap=  29.8 adr=0.140 exc=+0.41 excx=+0.41 8adr=1.12 s20=+0.05
+  >=$25M 2026-09-10 IPDN   ao=$   38.9M m=1 gap=  40.5 adr=0.223 exc=+0.42 excx=+0.42 8adr=1.78 s20=-0.22
+  >=$25M 2026-09-10 TNON   ao=$  109.2M m=1 gap=  77.0 adr=0.178 exc=+1.58 excx=+1.58 8adr=1.42 s20=-0.18
+  >=$25M 2026-09-11 AENT   ao=$   34.3M m=1 gap=  32.0 adr=0.056 exc=+0.05 excx=-0.15 8adr=0.45 s20=-0.39
+  >=$25M 2026-09-11 TRUG   ao=$   40.5M m=1 gap=  38.4 adr=0.181 exc=+0.88 excx=+0.88 8adr=1.45 s20=-0.62
+  >=$25M 2026-09-14 BMGL   ao=$   85.6M m=1 gap=  68.8 adr=0.105 exc=+0.14 excx=-0.18 8adr=0.84 s20=-0.54
+  >=$25M 2026-09-14 NCT    ao=$   59.1M m=1 gap=  76.9 adr=0.556 exc=+0.14 excx=+0.14 8adr=4.45 s20=-0.89
+  >=$25M 2026-09-14 SCNI   ao=$   46.4M m=1 gap=  43.9 adr=0.118 exc=+0.15 excx=-0.11 8adr=0.94 s20=-0.50

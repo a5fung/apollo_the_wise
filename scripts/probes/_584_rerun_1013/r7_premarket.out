@@ -1,0 +1,28 @@
+=== PRE-MARKET PRICE FLAG on the 09:31-09:45 reads (price outside the session low-high +-0.5%) ===
+rows whose D0 precedes an applied split of that ticker (bar un-adjusted before the comparison): 160 of 7340
+  REJECTED in-window minute 1: split-corrected 773/1927 (40%) | raw/uncorrected (10-01 method) 818/1927 (42%)
+  REJECTED in-window minute 5: split-corrected 44/148 (30%) | raw/uncorrected (10-01 method) 46/148 (31%)
+  REJECTED in-window minute 10: split-corrected 58/142 (41%) | raw/uncorrected (10-01 method) 61/142 (43%)
+  REJECTED in-window minute 15: split-corrected 69/285 (24%) | raw/uncorrected (10-01 method) 72/285 (25%)
+  REJECTED in-window ALL in-window: split-corrected 944/2502 (38%) | raw 997/2502 (40%)
+  ADMITTED in-window minute 1: split-corrected 211/670 (31%) | raw/uncorrected (10-01 method) 212/670 (32%)
+  ADMITTED in-window minute 5: split-corrected 10/41 (24%) | raw/uncorrected (10-01 method) 10/41 (24%)
+  ADMITTED in-window minute 10: split-corrected 13/35 (37%) | raw/uncorrected (10-01 method) 13/35 (37%)
+  ADMITTED in-window minute 15: split-corrected 13/91 (14%) | raw/uncorrected (10-01 method) 13/91 (14%)
+  ADMITTED in-window ALL in-window: split-corrected 247/837 (30%) | raw 248/837 (30%)
+--- the 09:31 (minute-1) reads among BAR-CLEARERS (rejected, in-window, ao >= bar) ---
+  >=$10M: all in-window reads 24/260 (9%) | minute-1 reads 24/253 (9%) (minute-1 share of clearers 253/260)
+  >=$25M: all in-window reads 10/156 (6%) | minute-1 reads 10/155 (6%) (minute-1 share of clearers 155/156)
+  >=$50M: all in-window reads 9/96 (9%) | minute-1 reads 9/95 (9%) (minute-1 share of clearers 95/96)
+  >=$100M: all in-window reads 5/39 (13%) | minute-1 reads 5/39 (13%) (minute-1 share of clearers 39/39)
+--- the 20-session CLEAN cohort per bar (D0 <= 09-14) ---
+  >=$10M clean-20s rows 56: flagged pre-market 7/56 (12%)
+  >=$25M clean-20s rows 29: flagged pre-market 2/29 (7%)
+  >=$50M clean-20s rows 13: flagged pre-market 2/13 (15%)
+  >=$100M clean-20s rows 2: flagged pre-market 1/2 (50%)
+--- the 5-session CLEAN cohort per bar (D0 <= 10-05) ---
+  >=$10M clean-5s rows 204: flagged pre-market 21/204 (10%)
+  >=$25M clean-5s rows 124: flagged pre-market 9/124 (7%)
+  >=$50M clean-5s rows 74: flagged pre-market 8/74 (11%)
+  >=$100M clean-5s rows 30: flagged pre-market 4/30 (13%)
+strict (no +-0.5% tolerance) rejected minute-1: 852/1927 (44%)

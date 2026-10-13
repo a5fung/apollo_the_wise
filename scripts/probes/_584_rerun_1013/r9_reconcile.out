@@ -1,0 +1,2 @@
+A lines 40 B lines 40
+RECONCILE: ALL 40 CHECK rows identical (n, reach count, ex-gap-day reach count, settled<=-20% count, settled>=+20% count)

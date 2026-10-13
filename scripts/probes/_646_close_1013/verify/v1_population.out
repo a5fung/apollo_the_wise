@@ -1,0 +1,97 @@
+Pager usage is off.
+Null display is "-".
+   table_name   |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   cols                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+----------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ mi_audit_log   | id:integer, created_at:timestamp with time zone, event_type:text, summary:text, detail:text
+ mi_job_runs    | id:bigint, job_id:text, started_at:timestamp with time zone, finished_at:timestamp with time zone, duration_s:numeric, status:text, rows_written:integer, expected_min_rows:integer, error_message:text, created_at:timestamp with time zone, scheduled_for:timestamp with time zone
+ mi_live_orders | id:integer, trade_id:integer, alpaca_order_id:text, ticker:text, side:text, order_type:text, qty:double precision, stop_price:double precision, limit_price:double precision, status:text, filled_qty:double precision, filled_avg_price:double precision, submitted_at:timestamp with time zone, filled_at:timestamp with time zone, cancelled_at:timestamp with time zone, raw_response:jsonb, purpose:text, exit_reason:text
+ mi_live_trades | id:integer, ticker:text, alert_date:date, ep_score:double precision, catalyst_quality:text, gap_pct:double precision, regime:text, status:text, orb_high:double precision, orb_low:double precision, atr_14:double precision, entry_price:double precision, entry_shares:double precision, stop_price:double precision, hard_stop:double precision, position_size:double precision, risk_dollars:double precision, entry_order_id:text, stop_order_id:text, exits:jsonb, remaining_shares:double precision, total_pnl:double precision, hold_days:integer, partial_taken:boolean, breakeven_active:boolean, running_closes:jsonb, proposed_at:timestamp with time zone, confirmed_at:timestamp with time zone, skip_reason:text, created_at:timestamp with time zone, filled_at:timestamp with time zone, closed_at:timestamp with time zone, entry_attempt:integer, signal_type:text, account_mode:text, lowest_price_seen:numeric, highest_price_seen:numeric, pnl_attribution:text, risk_dollars_actual:double precision, dead_stop_price:double precision, dead_stop_order_id:text, dead_stop_status:text, dead_stop_recorded_at:timestamp with time zone, exit_rule:text, depth_sell_pending_on:date
+(4 rows)
+
+ max_id | n_rows 
+--------+--------
+    419 |    352
+(1 row)
+
+ missing_id 
+------------
+        407
+        408
+        410
+        411
+        416
+        417
+        418
+(7 rows)
+
+psql:/tmp/x.sql:15: ERROR:  column "exit_reason" does not exist
+LINE 3: ...ry_shares, remaining_shares, stop_price, orb_low, exit_reaso...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "mi_live_trades.skip_reason".
+     d      |  nm   | live_held | other_held |           held            
+------------+-------+-----------+------------+---------------------------
+ 2026-09-14 | a1700 |         3 |          0 | OKTA#382,HOOD#392,SEI#396
+ 2026-09-14 | b1900 |         3 |          0 | OKTA#382,HOOD#392,SEI#396
+ 2026-09-14 | c2110 |         3 |          0 | OKTA#382,HOOD#392,SEI#396
+ 2026-09-15 | a1700 |         2 |          0 | OKTA#382,SEI#396
+ 2026-09-15 | b1900 |         2 |          0 | OKTA#382,SEI#396
+ 2026-09-15 | c2110 |         2 |          0 | OKTA#382,SEI#396
+ 2026-09-16 | a1700 |         2 |          0 | OKTA#382,SEI#396
+ 2026-09-16 | b1900 |         2 |          0 | OKTA#382,SEI#396
+ 2026-09-16 | c2110 |         2 |          0 | OKTA#382,SEI#396
+ 2026-09-17 | a1700 |         3 |          0 | OKTA#382,SEI#396,VICR#400
+ 2026-09-17 | b1900 |         3 |          0 | OKTA#382,SEI#396,VICR#400
+ 2026-09-17 | c2110 |         3 |          0 | OKTA#382,SEI#396,VICR#400
+ 2026-09-18 | a1700 |         3 |          0 | OKTA#382,SEI#396,VICR#400
+ 2026-09-18 | b1900 |         3 |          0 | OKTA#382,SEI#396,VICR#400
+ 2026-09-18 | c2110 |         3 |          0 | OKTA#382,SEI#396,VICR#400
+ 2026-09-21 | a1700 |         3 |          0 | OKTA#382,SEI#396,VICR#400
+ 2026-09-21 | b1900 |         3 |          0 | OKTA#382,SEI#396,VICR#400
+ 2026-09-21 | c2110 |         3 |          0 | OKTA#382,SEI#396,VICR#400
+ 2026-09-22 | a1700 |         2 |          0 | OKTA#382,VICR#400
+ 2026-09-22 | b1900 |         2 |          0 | OKTA#382,VICR#400
+ 2026-09-22 | c2110 |         2 |          0 | OKTA#382,VICR#400
+ 2026-09-23 | a1700 |         2 |          0 | OKTA#382,VICR#400
+ 2026-09-23 | b1900 |         2 |          0 | OKTA#382,VICR#400
+ 2026-09-23 | c2110 |         2 |          0 | OKTA#382,VICR#400
+ 2026-09-24 | a1700 |         2 |          0 | OKTA#382,VICR#400
+ 2026-09-24 | b1900 |         2 |          0 | OKTA#382,VICR#400
+ 2026-09-24 | c2110 |         2 |          0 | OKTA#382,VICR#400
+ 2026-09-25 | a1700 |         2 |          0 | OKTA#382,VICR#400
+ 2026-09-25 | b1900 |         2 |          0 | OKTA#382,VICR#400
+ 2026-09-25 | c2110 |         2 |          0 | OKTA#382,VICR#400
+ 2026-09-28 | a1700 |         2 |          0 | VICR#400,KOD#404
+ 2026-09-28 | b1900 |         2 |          0 | VICR#400,KOD#404
+ 2026-09-28 | c2110 |         2 |          0 | VICR#400,KOD#404
+ 2026-09-29 | a1700 |         2 |          0 | VICR#400,KOD#404
+ 2026-09-29 | b1900 |         2 |          0 | VICR#400,KOD#404
+ 2026-09-29 | c2110 |         2 |          0 | VICR#400,KOD#404
+ 2026-09-30 | a1700 |         2 |          0 | VICR#400,KOD#404
+ 2026-09-30 | b1900 |         2 |          0 | VICR#400,KOD#404
+ 2026-09-30 | c2110 |         2 |          0 | VICR#400,KOD#404
+ 2026-10-01 | a1700 |         2 |          0 | VICR#400,KOD#404
+ 2026-10-01 | b1900 |         2 |          0 | VICR#400,KOD#404
+ 2026-10-01 | c2110 |         2 |          0 | VICR#400,KOD#404
+ 2026-10-02 | a1700 |         2 |          0 | VICR#400,KOD#404
+ 2026-10-02 | b1900 |         2 |          0 | VICR#400,KOD#404
+ 2026-10-02 | c2110 |         2 |          0 | VICR#400,KOD#404
+ 2026-10-05 | a1700 |         2 |          0 | VICR#400,KOD#404
+ 2026-10-05 | b1900 |         2 |          0 | VICR#400,KOD#404
+ 2026-10-05 | c2110 |         2 |          0 | VICR#400,KOD#404
+ 2026-10-06 | a1700 |         3 |          0 | VICR#400,KOD#404,CEG#409
+ 2026-10-06 | b1900 |         3 |          0 | VICR#400,KOD#404,CEG#409
+ 2026-10-06 | c2110 |         3 |          0 | VICR#400,KOD#404,CEG#409
+ 2026-10-07 | a1700 |         3 |          0 | KOD#404,CEG#409,PENG#414
+ 2026-10-07 | b1900 |         3 |          0 | KOD#404,CEG#409,PENG#414
+ 2026-10-07 | c2110 |         3 |          0 | KOD#404,CEG#409,PENG#414
+ 2026-10-08 | a1700 |         2 |          0 | KOD#404,PENG#414
+ 2026-10-08 | b1900 |         2 |          0 | KOD#404,PENG#414
+ 2026-10-08 | c2110 |         2 |          0 | KOD#404,PENG#414
+ 2026-10-09 | a1700 |         3 |          0 | KOD#404,PENG#414,HUM#419
+ 2026-10-09 | b1900 |         3 |          0 | KOD#404,PENG#414,HUM#419
+ 2026-10-09 | c2110 |         3 |          0 | KOD#404,PENG#414,HUM#419
+ 2026-10-12 | a1700 |         3 |          0 | KOD#404,PENG#414,HUM#419
+ 2026-10-12 | b1900 |         3 |          0 | KOD#404,PENG#414,HUM#419
+ 2026-10-12 | c2110 |         3 |          0 | KOD#404,PENG#414,HUM#419
+(63 rows)
+

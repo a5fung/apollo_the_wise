@@ -1,0 +1,63 @@
+Pager usage is off.
+Null display is "-".
+  am   |             reason              | to_null | n  | null_then_restored | null_never_restored_in_window |  max_bare_s   |                           et_hhmm                           
+-------+---------------------------------+---------+----+--------------------+-------------------------------+---------------+-------------------------------------------------------------
+ live  | cancel_or_reject_null           | t       | 37 |                 33 |                             2 | 607199.810144 | 10:10,16:05,16:45
+ live  | cancel_or_reject_restored       | f       | 32 |                  0 |                             0 |             - | 16:45
+ live  | partial_replacement             | f       |  1 |                  0 |                             0 |             - | 10:10
+ paper | cancel_or_reject_null           | t       | 15 |                  6 |                             8 |  60961.099810 | 09:05,09:35,09:41,10:15,10:34,12:02,12:06,16:45,19:01,19:04
+ paper | partial_naked                   | t       |  1 |                  1 |                             0 |     31.822966 | 09:35
+ paper | partial_replacement             | f       |  2 |                  0 |                             0 |             - | 10:05,10:33
+ paper | rehearsal_687_price_replace     | f       |  2 |                  0 |                             0 |             - | 10:10,10:33
+ paper | restored_after_failed_full_exit | f       |  3 |                  0 |                             0 |             - | 09:35,10:15,10:34
+ paper | stop_ack_timeout                | f       |  3 |                  0 |                             0 |             - | 09:00,09:36,12:03
+ paper | sync_coverage_repair            | f       |  1 |                  0 |                             0 |             - | 09:41
+ paper | watchdog_synced_from_broker     | f       |  1 |                  0 |                             0 |             - | 09:36
+(11 rows)
+
+      null_et       | ticker | trade_id |        reason         |      next_et       |        next_reason        |  bare_s   
+--------------------+--------+----------+-----------------------+--------------------+---------------------------+-----------
+ 09-14 16:45:00.543 | OKTA   |      382 | cancel_or_reject_null | 09-14 16:45:03.569 | cancel_or_reject_restored |      3.03
+ 09-14 16:45:04.398 | HOOD   |      392 | cancel_or_reject_null | 09-14 16:45:07.423 | cancel_or_reject_restored |      3.03
+ 09-15 16:45:00.458 | OKTA   |      382 | cancel_or_reject_null | 09-15 16:45:03.483 | cancel_or_reject_restored |      3.02
+ 09-15 16:45:04.273 | SEI    |      396 | cancel_or_reject_null | 09-15 16:45:07.295 | cancel_or_reject_restored |      3.02
+ 09-16 16:45:00.449 | OKTA   |      382 | cancel_or_reject_null | 09-16 16:45:03.475 | cancel_or_reject_restored |      3.03
+ 09-16 16:45:04.207 | SEI    |      396 | cancel_or_reject_null | 09-16 16:45:07.232 | cancel_or_reject_restored |      3.02
+ 09-17 16:05:04.422 | VICR   |      400 | cancel_or_reject_null | 09-24 16:45:04.232 | cancel_or_reject_null     | 607199.81
+ 09-17 16:45:00.426 | OKTA   |      382 | cancel_or_reject_null | 09-17 16:45:03.445 | cancel_or_reject_restored |      3.02
+ 09-17 16:45:04.195 | SEI    |      396 | cancel_or_reject_null | 09-17 16:45:07.214 | cancel_or_reject_restored |      3.02
+ 09-18 16:45:00.440 | OKTA   |      382 | cancel_or_reject_null | 09-18 16:45:03.464 | cancel_or_reject_restored |      3.02
+ 09-18 16:45:04.223 | SEI    |      396 | cancel_or_reject_null | 09-18 16:45:07.247 | cancel_or_reject_restored |      3.02
+ 09-21 16:45:00.546 | OKTA   |      382 | cancel_or_reject_null | 09-21 16:45:03.572 | cancel_or_reject_restored |      3.03
+ 09-21 16:45:04.328 | SEI    |      396 | cancel_or_reject_null | 09-21 16:45:07.354 | cancel_or_reject_restored |      3.03
+ 09-22 16:45:00.454 | OKTA   |      382 | cancel_or_reject_null | 09-22 16:45:03.481 | cancel_or_reject_restored |      3.03
+ 09-23 16:45:00.463 | OKTA   |      382 | cancel_or_reject_null | 09-23 16:45:03.490 | cancel_or_reject_restored |      3.03
+ 09-24 16:45:00.451 | OKTA   |      382 | cancel_or_reject_null | 09-24 16:45:03.475 | cancel_or_reject_restored |      3.02
+ 09-24 16:45:04.232 | VICR   |      400 | cancel_or_reject_null | 09-24 16:45:07.260 | cancel_or_reject_restored |      3.03
+ 09-25 16:45:00.491 | OKTA   |      382 | cancel_or_reject_null | 09-25 16:45:03.516 | cancel_or_reject_restored |      3.03
+ 09-25 16:45:04.259 | VICR   |      400 | cancel_or_reject_null | 09-25 16:45:07.280 | cancel_or_reject_restored |      3.02
+ 09-28 10:10:00.241 | KOD    |      404 | cancel_or_reject_null | 09-28 10:10:00.360 | partial_replacement       |      0.12
+ 09-28 16:45:00.483 | VICR   |      400 | cancel_or_reject_null | 09-28 16:45:03.509 | cancel_or_reject_restored |      3.03
+ 09-29 16:45:00.551 | VICR   |      400 | cancel_or_reject_null | 09-29 16:45:03.576 | cancel_or_reject_restored |      3.02
+ 09-30 16:45:00.445 | VICR   |      400 | cancel_or_reject_null | 09-30 16:45:03.479 | cancel_or_reject_restored |      3.03
+ 10-01 16:45:00.505 | VICR   |      400 | cancel_or_reject_null | 10-01 16:45:03.530 | cancel_or_reject_restored |      3.03
+ 10-02 16:45:00.457 | VICR   |      400 | cancel_or_reject_null | 10-02 16:45:03.481 | cancel_or_reject_restored |      3.02
+ 10-05 16:45:00.465 | VICR   |      400 | cancel_or_reject_null | 10-05 16:45:03.492 | cancel_or_reject_restored |      3.03
+ 10-05 16:45:04.302 | KOD    |      404 | cancel_or_reject_null | 10-05 16:45:07.326 | cancel_or_reject_restored |      3.02
+ 10-06 16:05:04.196 | CEG    |      409 | cancel_or_reject_null | -                  | -                         |         -
+ 10-06 16:45:00.537 | VICR   |      400 | cancel_or_reject_null | 10-06 16:45:03.563 | cancel_or_reject_restored |      3.03
+ 10-06 16:45:04.316 | KOD    |      404 | cancel_or_reject_null | 10-06 16:45:07.336 | cancel_or_reject_restored |      3.02
+ 10-07 16:05:02.973 | PENG   |      414 | cancel_or_reject_null | 10-12 16:45:04.185 | cancel_or_reject_null     | 434401.21
+ 10-07 16:45:00.431 | KOD    |      404 | cancel_or_reject_null | 10-07 16:45:03.457 | cancel_or_reject_restored |      3.03
+ 10-08 16:45:00.427 | KOD    |      404 | cancel_or_reject_null | 10-08 16:45:03.449 | cancel_or_reject_restored |      3.02
+ 10-09 16:05:04.807 | HUM    |      419 | cancel_or_reject_null | -                  | -                         |         -
+ 10-09 16:45:00.385 | KOD    |      404 | cancel_or_reject_null | 10-09 16:45:03.415 | cancel_or_reject_restored |      3.03
+ 10-12 16:45:00.402 | KOD    |      404 | cancel_or_reject_null | 10-12 16:45:03.425 | cancel_or_reject_restored |      3.02
+ 10-12 16:45:04.185 | PENG   |      414 | cancel_or_reject_null | 10-12 16:45:07.208 | cancel_or_reject_restored |      3.02
+(37 rows)
+
+ live_nulls_16_to_2110 | back_within_5s | back_after_5s | not_back 
+-----------------------+----------------+---------------+----------
+                    36 |             32 |             0 |        4
+(1 row)
+

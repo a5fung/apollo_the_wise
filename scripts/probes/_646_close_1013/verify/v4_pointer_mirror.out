@@ -1,0 +1,40 @@
+Pager usage is off.
+Null display is "-".
+psql:/tmp/x.sql:17: ERROR:  column reference "created_at" is ambiguous
+LINE 11:        max(extract(epoch FROM next_at - created_at)) FILTER ...
+                                                 ^
+psql:/tmp/x.sql:32: ERROR:  column reference "created_at" is ambiguous
+LINE 9: SELECT to_char(created_at AT TIME ZONE 'America/New_York','M...
+                       ^
+       et       |    pass    | ex | placed | placed_t |          covered_t           | unprot | skipped 
+----------------+------------+----+--------+----------+------------------------------+--------+---------
+ 09-17 16:20:00 | post-close | 3  | 1      | ["VICR"] | ["OKTA", "SEI"]              | []     | []
+ 10-06 16:20:00 | post-close | 5  | 1      | ["CEG"]  | ["VICR", "PEP", "KO", "KOD"] | []     | []
+ 10-07 16:20:00 | post-close | 3  | 1      | ["PENG"] | ["CEG", "KOD"]               | []     | []
+ 10-09 09:35:00 | Morning    | 4  | 1      | ["PEP"]  | ["PENG", "KOD"]              | []     | []
+ 10-09 16:20:00 | post-close | 3  | 1      | ["HUM"]  | ["PENG", "KOD"]              | []     | []
+(5 rows)
+
+   purpose    | order_type |  status   | tif | n  | has_cancelled_at 
+--------------+------------+-----------+-----+----+------------------
+ partial_exit | limit      | filled    | -   |  1 |                0
+ stop_loss    | stop       | canceled  | -   | 33 |               33
+ stop_loss    | stop       | cancelled | -   |  2 |                2
+ stop_loss    | stop       | expired   | -   |  4 |                4
+ stop_loss    | stop       | filled    | -   |  6 |                0
+ stop_loss    | stop       | new       | -   |  3 |                0
+ stop_loss    | stop       | replaced  | -   |  3 |                0
+(7 rows)
+
+ ticker | trade_id |   oid    |  purpose  | order_type | qty |     stop_price     |  status  | tif |     sub_et     |    canc_et     |    fill_et     
+--------+----------+----------+-----------+------------+-----+--------------------+----------+-----+----------------+----------------+----------------
+ VICR   |      400 | 67262086 | stop_loss | stop       |   1 |             206.55 | expired  | -   | 09-17 09:31:00 | 09-17 16:15:00 | -
+ VICR   |      400 | 2449d492 | stop_loss | stop       |   1 | 201.13010000000003 | replaced | -   | 09-17 16:20:00 | -              | -
+ CEG    |      409 | 8d935ffc | stop_loss | stop       |   3 |                291 | expired  | -   | 10-06 09:31:01 | 10-06 16:15:00 | -
+ CEG    |      409 | aaf173f9 | stop_loss | stop       |   3 |             281.29 | filled   | -   | 10-06 16:20:00 | -              | 10-08 13:00:00
+ PENG   |      414 | e69409e6 | stop_loss | stop       |  10 |               65.7 | expired  | -   | 10-07 09:35:46 | 10-07 16:15:00 | -
+ PENG   |      414 | 846900d4 | stop_loss | stop       |  10 |               62.2 | canceled | -   | 10-07 16:20:00 | 10-13 09:00:00 | -
+ HUM    |      419 | 75dc2f70 | stop_loss | stop       |   1 |             434.29 | expired  | -   | 10-09 09:31:00 | 10-09 16:15:00 | -
+ HUM    |      419 | e440a379 | stop_loss | stop       |   1 | 417.88000000000005 | new      | -   | 10-09 16:20:00 | -              | -
+(8 rows)
+
