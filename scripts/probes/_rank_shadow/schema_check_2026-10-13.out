@@ -1,0 +1,12 @@
+table_name|column_name
+mi_job_runs|id
+mi_job_runs|job_id
+mi_job_runs|started_at
+mi_job_runs|finished_at
+mi_job_runs|duration_s
+mi_job_runs|status
+mi_job_runs|rows_written
+mi_job_runs|expected_min_rows
+mi_job_runs|error_message
+mi_job_runs|created_at
+mi_job_runs|scheduled_for

@@ -12929,6 +12929,20 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_10_13: >-
+      RAN 2026-10-13 after the 17:53 ET rank job (scripts/probes/_rank_shadow/verify_rank_shadow_2026-10-13.out;
+      Opus re-derivation in scripts/probes/_rank_shadow/verify/): n = 23 sessions, 49 rows, 45 with a matured 5-day
+      outcome. NO new session: zero EP alerts 10-12 and 10-13 (scanner alive; the rank job ran 0 dates, 0 errors). The
+      10-05 and 10-06 pools MATURED: ITUB 1.4x, NU 2.5x, PBR 3.2x, CEG 1.8x, TLN 2.9x, VST 3.7x of ADR, all far from 8x;
+      ITUB, PBR and CEG broke their EP-day low. All six landed in the rest — VST is rank 0.278, NOT top quartile
+      (corrects the 10-07 note; it was best on two features and middle on the third). Cells (EOD): top quartile 6
+      matured / 0 at 8x / 4 broke low (unchanged); the rest 39 / 2 (MRNA 9.1x, KOD 12.4x) / 25. 09:45: top 5/0/3,
+      rest 40/2/26 (IONQ 09-08 sits on a float edge: with a 1e-9 tolerance it joins the 09:45 top cell, 6/0/4 vs
+      39/2/25 — no change). Losers' direction: the top broke its low 4 of 6, the rest 25 of 39 — the same rate, so
+      neither direction separates the groups. Conclusion UNCHANGED: thin (23 of 25), leaning against the rule on one
+      miss (MRNA, ranked last of 4); at this size 0 of 6 in the top cell is what chance gives. Next movement: PENG
+      matures 10-14, WOLF 10-15, AAOI + HUM 10-16 (AAOI's 09:45 rank is exactly 0.25 in a pool of 2, so it enters
+      that top cell); decision-grade needs 2 more alert sessions plus their 5-day windows (estimate: late October).
     resolution_2026_10_11: >-
       SURFACED by the Sun 10-11 weekly review as "ripe"; no new session since the 10-09 read (weekend), so
       nothing can move: n = 23 sessions, same cells. Conclusion unchanged: THIN, directional only, against

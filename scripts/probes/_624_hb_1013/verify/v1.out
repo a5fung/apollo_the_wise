@@ -1,0 +1,268 @@
+Pager usage is off.
+=== A now ET
+       now_et        
+---------------------
+ 2026-10-13 18:48:27
+(1 row)
+
+=== B every heartbeat row ever (full)
+  id   |        t_et         |                                                               summary                                                                |                                                                                     detail                                                                                      
+-------+---------------------+--------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 55862 | 2026-10-12 18:15:00 | 2026-10-12 ran: 213 screened by the live scan, 1 turned away only by the $500M floor, 1 graded by the lane, 0 HIGH, 0 paper order(s) | {"date": "2026-10-12", "verdict": "ran", "screened": 213, "cap_only_eligible": 1, "reached_lane": 1, "graded": 1, "high": 0, "ordered": 0, "missing": [], "lane_enabled": true}
+ 56375 | 2026-10-13 18:15:00 | 2026-10-13 ran: 218 screened by the live scan, 1 turned away only by the $500M floor, 1 graded by the lane, 0 HIGH, 0 paper order(s) | {"date": "2026-10-13", "verdict": "ran", "screened": 218, "cap_only_eligible": 1, "reached_lane": 1, "graded": 1, "high": 0, "ordered": 0, "missing": [], "lane_enabled": true}
+(2 rows)
+
+=== B2 heartbeat verdict tally (any non ran/quiet ever?)
+ verdict | count 
+---------+-------
+ ran     |     2
+(1 row)
+
+=== C every lowcap-ish audit event type since 10-10 00:00 ET (counts)
+            event_type             | count |  first_et   |   last_et   
+-----------------------------------+-------+-------------+-------------
+ lowcap_lane_replay_recorded       |     2 | 10-12 18:15 | 10-13 18:15
+ lowcap_paper_lane_heartbeat       |     2 | 10-12 18:15 | 10-13 18:15
+ lowcap_paper_lane_replay_recorded |     2 | 10-12 18:15 | 10-13 18:15
+ lowcap_paper_lane_tick            |     5 | 10-12 09:50 | 10-13 07:20
+(4 rows)
+
+=== C2 any lowcap_paper_lane_error ever
+ id | t_et | summary 
+----+------+---------
+(0 rows)
+
+=== D replay job runs since 10-09 ET
+   id   |       job_id       |     st_et      |  fin_et  |  dur  | status  | err 
+--------+--------------------+----------------+----------+-------+---------+-----
+ 224952 | lowcap_lane_replay | 10-09 18:15:00 | 18:15:00 | 0.040 | success | 
+ 227403 | lowcap_lane_replay | 10-12 18:15:00 | 18:15:00 | 0.057 | success | 
+ 229691 | lowcap_lane_replay | 10-13 18:15:00 | 18:15:00 | 0.113 | success | 
+(3 rows)
+
+=== E heartbeat screened SQL, verbatim, 10-12 and 10-13
+     d      | screened | cap_only 
+------------+----------+----------
+ 2026-10-13 |      218 | {GOSS}
+ 2026-10-12 |      213 | {ALLT}
+(2 rows)
+
+=== E2 scan log 10-13: rows, ticks, first/last row ET, rows created after 18:15 ET (late writes after the heartbeat?)
+ nrows | ticks | first_et | last_et  | after_hb 
+-------+-------+----------+----------+----------
+  2422 |    38 | 07:00:02 | 09:55:04 |        0
+(1 row)
+
+=== F lane table columns
+      column_name       |        data_type         
+------------------------+--------------------------
+ id                     | integer
+ ticker                 | text
+ alert_date             | date
+ strategy_id            | text
+ first_graded_at        | timestamp with time zone
+ last_graded_at         | timestamp with time zone
+ detected_at            | timestamp with time zone
+ score_tier             | text
+ ep_score               | double precision
+ baseline_floor_tier    | text
+ grade_engine_authority | text
+ reject_stage           | text
+ reject_reason          | text
+ catalyst_quality       | text
+ llm_catalyst_quality   | text
+ catalyst               | text
+ claude_analysis        | text
+ gemini_validation      | text
+ gap_pct                | double precision
+ rel_volume             | double precision
+ vol_percentile         | double precision
+ pm_rvol                | double precision
+ pm_rvol_baseline_n     | integer
+ prev_close             | double precision
+ current_price          | double precision
+ market_cap             | double precision
+ quality_adv_dollar     | double precision
+ atr_pct                | double precision
+ score_breakdown        | jsonb
+ in_active_theme        | boolean
+ setup_class            | text
+ judge_tier             | text
+ judge_direction        | text
+ judge_rationale        | text
+ judge_materiality_tier | text
+ judge_grade            | text
+ judge_grade_reason     | text
+ judge_tier_reason      | text
+ fire_axes              | ARRAY
+ rubric_version         | text
+ regime                 | text
+ lane_rule_version      | text
+ recorded_at            | timestamp with time zone
+ updated_at             | timestamp with time zone
+(44 rows)
+
+=== F2 lane table population (all rows, by strategy/date)
+   strategy_id    | alert_date | count | tickers | ids 
+------------------+------------+-------+---------+-----
+ magna53_smallcap | 2026-10-12 |     1 | {ALLT}  | {1}
+ magna53_smallcap | 2026-10-13 |     1 | {GOSS}  | {2}
+(2 rows)
+
+=== F3 lane rows heartbeat SQL verbatim 10-13
+ ticker | score_tier |   reject_stage    
+--------+------------+-------------------
+ GOSS   |            | post_grade_filter
+(1 row)
+
+=== G mi_ep_alerts: lane tickers on any date; any alert dated or created 10-12/10-13
+ id | ticker | alert_date | score_tier | c_et 
+----+--------+------------+------------+------
+(0 rows)
+
+ by_alert_date | by_created 
+---------------+------------
+             0 |          0
+(1 row)
+
+=== G2 last 5 mi_ep_alerts rows (is the table live at all?)
+  id   | ticker | alert_date | score_tier |      c_et      
+-------+--------+------------+------------+----------------
+ 12506 | AAOI   | 2026-10-09 | MODERATE   | 10-09 09:35:15
+ 12505 | HUM    | 2026-10-09 | HIGH       | 10-09 07:00:14
+ 12504 | WOLF   | 2026-10-08 | HIGH       | 10-08 07:00:14
+ 12503 | PENG   | 2026-10-07 | HIGH       | 10-07 09:35:25
+ 12502 | VST    | 2026-10-06 | HIGH       | 10-06 09:55:34
+(5 rows)
+
+=== H mi_live_trades columns
+      column_name      
+-----------------------
+ id
+ ticker
+ alert_date
+ ep_score
+ catalyst_quality
+ gap_pct
+ regime
+ status
+ orb_high
+ orb_low
+ atr_14
+ entry_price
+ entry_shares
+ stop_price
+ hard_stop
+ position_size
+ risk_dollars
+ entry_order_id
+ stop_order_id
+ exits
+ remaining_shares
+ total_pnl
+ hold_days
+ partial_taken
+ breakeven_active
+ running_closes
+ proposed_at
+ confirmed_at
+ skip_reason
+ created_at
+ filled_at
+ closed_at
+ entry_attempt
+ signal_type
+ account_mode
+ lowest_price_seen
+ highest_price_seen
+ pnl_attribution
+ risk_dollars_actual
+ dead_stop_price
+ dead_stop_order_id
+ dead_stop_status
+ dead_stop_recorded_at
+ exit_rule
+ depth_sell_pending_on
+(45 rows)
+
+=== H2 lane strategy trades ever / lane tickers / dated 10-12..13
+ id | ticker | signal_type | account_mode | status | alert_date | entry_order_id 
+----+--------+-------------+--------------+--------+------------+----------------
+(0 rows)
+
+=== H3 last 8 trades by id (what is the newest trade at all?)
+ id  | ticker | signal_type | account_mode | status  | alert_date |    c_et     |                 eoid                 
+-----+--------+-------------+--------------+---------+------------+-------------+--------------------------------------
+ 419 | HUM    | magna53     | live         | closed  | 2026-10-09 | 10-09 09:31 | cec3cce3-bcb2-4921-b9a3-85973d37d8fd
+ 415 | WOLF   | magna53     | live         | skipped | 2026-10-08 | 10-08 09:31 | 
+ 414 | PENG   | magna53     | live         | filled  | 2026-10-07 | 10-07 09:35 | d4700ac7-f727-429e-8ff2-ccfb8030a32a
+ 413 | TLN    | magna53     | live         | skipped | 2026-10-06 | 10-06 09:55 | 
+ 412 | VST    | magna53     | live         | skipped | 2026-10-06 | 10-06 09:55 | 
+ 409 | CEG    | magna53     | live         | closed  | 2026-10-06 | 10-06 09:31 | cb6df959-3b53-4996-be03-3c67c4996647
+ 406 | ACN    | magna53     | live         | skipped | 2026-10-01 | 10-01 09:50 | 
+ 405 | SNPS   | magna53     | live         | skipped | 2026-10-01 | 10-01 09:45 | 
+(8 rows)
+
+=== I
+psql:/tmp/x.sql:37: error: unterminated quoted string
+  id   |   t_et   |             event_type             |                                                                          left                                                                          
+-------+----------+------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------
+ 55932 | 08:30:00 | paper_rehearsal_687_state          | #687 paper rehearsal state
+ 55933 | 08:30:00 | entry_partial_fill                 | [paper] KO partial_fill 2/3 (cum 2) @ $90.85 side=buy
+ 55934 | 08:30:01 | paper_rehearsal_687_state          | #687 paper rehearsal state
+ 55936 | 08:30:01 | paper_rehearsal_687_state          | #687 paper rehearsal state
+ 55942 | 09:00:00 | order_status_reconciled            | PENG order=6b74a7e5: accepted -> new (live)
+ 55943 | 09:00:00 | order_status_reconciled            | KOD order=b26e8ca2: accepted -> new (live)
+ 55944 | 09:00:00 | order_status_reconciled            | KOD order=73cc60ee: new -> canceled (live)
+ 55945 | 09:00:00 | order_status_reconciled            | PENG order=846900d4: new -> canceled (live)
+ 55954 | 09:05:00 | paper_rehearsal_687_state          | #687 paper rehearsal state
+ 55960 | 09:15:00 | order_status_reconciled            | KO order=1822f417: pending_new -> new (paper)
+ 55969 | 09:30:26 | entry_partial_fill                 | [paper] KO partial_fill 1/3 (cum 1) @ $90.36 side=sell
+ 55970 | 09:31:00 | order_status_reconciled            | KO order=1822f417: new -> partially_filled (paper)
+ 55986 | 09:46:05 | entry_partial_fill                 | [paper] KO partial_fill 1/2 (cum 1) @ $89.75 side=sell
+ 55998 | 10:06:06 | trade_lifecycle_telegram_attempted | stop_out HUM @$417.66 pnl=$-34.34
+ 56000 | 10:15:00 | order_status_reconciled            | HUM order=e440a379: new -> filled (live)
+ 56009 | 12:04:09 | account_mode_active                | mode=paper equity=n/a (intelligence role — no broker creds)
+ 56010 | 12:04:33 | entry_rejection_watch_armed        | F [paper] order c4a120c2 cancelled — buy-side, no tracked entry row (routine path already handled it, or genuinely untracked) — nothing new to capture
+ 56015 | 12:06:59 | account_mode_active                | mode=paper equity=$89,843.81
+ 56016 | 12:07:22 | entry_rejection_watch_armed        | F [paper] order 97476f02 cancelled — buy-side, no tracked entry row (routine path already handled it, or genuinely untracked) — nothing new to capture
+ 56024 | 13:36:14 | trade_lifecycle_telegram_attempted | stop_out KOD @$94.86 pnl=$+126.83
+ 56026 | 13:45:00 | order_status_reconciled            | KOD order=b26e8ca2: new -> filled (live)
+(21 rows)
+
+=== J strategy row + toggle
+   strategy_id    | phase | enabled | live_real_enabled | position_size_multiplier | max_concurrent_positions | profit_trigger_r | breakeven_arm_r |          created_at           |          updated_at           
+------------------+-------+---------+-------------------+--------------------------+--------------------------+------------------+-----------------+-------------------------------+-------------------------------
+ magna53_smallcap | paper | t       | f                 |                      1.0 |                        5 |              8.0 |             3.0 | 2026-10-10 18:51:20.322432+00 | 2026-10-10 18:51:20.322432+00
+(1 row)
+
+    column_name     
+--------------------
+ safeguard
+ account_mode
+ state
+ last_transition_at
+ last_evaluation_at
+ last_drawdown_pct
+ last_peak
+ last_peak_date
+ updated_at
+(9 rows)
+
+ safeguard | account_mode | state | last_transition_at | last_evaluation_at | last_drawdown_pct | last_peak | last_peak_date | updated_at 
+-----------+--------------+-------+--------------------+--------------------+-------------------+-----------+----------------+------------
+(0 rows)
+
+=== K 09:31 open-scan run 10-13 vs EFXT fresh grade
+    job_id    |    st    |   fin    |  dur  | status  
+--------------+----------+----------+-------+---------
+ ep_scan      | 09:25:00 | 09:25:01 |  1.82 | success
+ ep_scan      | 09:30:00 | 09:30:02 |  2.33 | success
+ ep_scan_open | 09:31:00 | 09:31:12 | 12.65 | success
+ ep_scan      | 09:35:00 | 09:35:02 |  2.59 | success
+ ep_scan      | 09:40:00 | 09:40:01 |  1.92 | success
+ ep_scan      | 09:45:00 | 09:45:02 |  2.31 | success
+ ep_scan      | 09:50:00 | 09:50:03 |  3.08 | success
+ ep_scan      | 09:55:00 | 09:55:04 |  4.13 | success
+(8 rows)
+

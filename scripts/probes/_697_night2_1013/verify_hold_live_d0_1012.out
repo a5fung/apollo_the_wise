@@ -1,0 +1,8 @@
+SET
+after_hold|violators|fingerprint|first_holds|scan_dates
+1|0|1|0|2
+(1 row)
+scan_date|expected_holds_carried
+2026-10-12|1
+2026-10-13|0
+(2 rows)

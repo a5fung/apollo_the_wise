@@ -1,0 +1,104 @@
+Output format is unaligned.
+Field separator is "	".
+== now
+now_et
+2026-10-13 18:42:41.267984
+(1 row)
+== A. theme-related audit events since 16:30 ET Tue (counts)
+event_type	n	first_t	last_t
+theme_breadth_fade	4	17:02:12	17:02:21
+theme_load_state	1	17:02:12	17:02:12
+theme_low_quality_description	6	17:02:12	17:02:12
+theme_stage_flip_held	7	17:02:12	17:02:20
+theme_carryforward_filter_stripped	1	17:02:40	17:02:40
+theme_rehome_judged	18	17:02:54	17:02:54
+theme_rehome_pass_ran	1	17:02:54	17:02:54
+theme_retired_small_fading	6	17:02:54	17:02:54
+theme_discovery_llm_call	10	17:05:15	17:08:12
+theme_discovery_shown_declined	2	17:05:31	17:08:12
+theme_birth_gate	2	17:05:36	17:08:14
+theme_rehome_join_carry_ran	1	17:05:36	17:05:36
+theme_discovered	2	17:05:39	17:05:39
+theme_engine_funnel	1	17:05:39	17:05:39
+theme_pass1_5_absorption	2	17:05:39	17:05:39
+theme_retired	8	17:05:39	17:05:39
+theme_score_ties	5	17:05:39	17:05:59
+theme_sector_cap_kept_distinct	3	17:05:39	17:05:59
+theme_split	2	17:05:46	17:05:55
+theme_merge_pairs_proposed	1	17:05:59	17:05:59
+theme_merge_distinct	5	17:06:03	17:06:30
+theme_thesis_merged	1	17:06:25	17:06:25
+theme_auto_retired	1	17:06:38	17:06:38
+theme_small_folded	2	17:06:38	17:06:38
+theme_small_fold_ran	1	17:06:38	17:06:38
+theme_parent_pass_distinct	6	17:06:42	17:06:59
+theme_parent_pass_ran	1	17:06:59	17:06:59
+theme_ecosystem_assigned	10	17:07:01	17:08:27
+theme_constituent_churn	1	17:07:07	17:07:07
+theme_discovery_shadow_ran	1	17:08:12	17:08:12
+theme_renamed_for_continuity	1	17:08:12	17:08:12
+theme_composition_churn	1	17:09:05	17:09:05
+theme_quality_clean	1	17:30:55	17:30:55
+theme_hierarchy_health	1	17:30:56	17:30:56
+theme_correctness_check	1	17:31:11	17:31:11
+theme_axis_eod_unscored_logged	1	18:03:00	18:03:00
+theme_synthesis_run	1	18:05:18	18:05:18
+theme_axis_bounded_sweep	1	18:10:00	18:10:00
+(38 rows)
+== A2. theme-engine job runs today
+id	job_id	st	status	rows_written	err
+229637	post_eod_audit	2026-10-13 16:15:00.001273	success		
+229665	post_nightly_audit	2026-10-13 17:30:00.001071	success		
+229677	theme_axis_co_move_refresh	2026-10-13 17:58:00.003083	success		
+229681	theme_axis_eod_unscored	2026-10-13 18:03:00.001102	success		
+229683	theme_synthesis	2026-10-13 18:05:00.001434	success	0	
+229686	theme_axis_bounded_sweep	2026-10-13 18:10:00.001674	success		
+229693	judge_named_themes_extract	2026-10-13 18:20:00.003592	success		
+(7 rows)
+== B. theme_small_fold_ran / error (full)
+id	t	event_type	summary	detail
+56271	2026-10-13 17:06:37.810516	theme_small_fold_ran	Small-theme fold: ran — 32 theme(s) of 2-3 members, 8 failed G3, 2 folded	{"status": "ran", "small": 32, "counts": {"small": 32, "g3_fail": 8, "folded": 2, "skipped_renamed": 0, "skipped_protected": 0, "no_ecosystem": 1, "no_home": 3, "members_fail_test": 2}, "g3_rate_pct": 91.3, "folded": ["Diagnostic Testing & Lab Equipment Re-Rating", "Enterprise Information Management & Infrastructure Engineering Software"], "industries_read": true}
+(1 row)
+== C. theme_small_folded rows (summary + key fields)
+id	t	summary	th	home	e	members	moved	released	g3
+56269	17:06:38	'Diagnostic Testing & Lab Equipment Re-Rating' -> 'Medical Device Mean-Reversion & Rotation Recovery': moved 2, released 1 of 3 (G3 fail, cohesion 0.09253368035315779 vs random p95 0.2752832116781091), #655 fold	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	E-MEDTECH	["OMCL", "MDLN", "QDEL"]	["OMCL", "MDLN"]	["QDEL"]	{"cohesion": 0.09253368035315779, "c1_p95": 0.2752832116781091, "pass_g3": false}
+56270	17:06:38	'Enterprise Information Management & Infrastructure Engineering Software' -> 'Enterprise HR & Workforce Management SaaS': moved 2, released 1 of 3 (G3 fail, cohesion -0.0002647012850059601 vs random p95 0.2748192922588107), #655 fold	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	E-SAAS	["BSY", "OTEX", "P"]	["BSY", "OTEX"]	["P"]	{"cohesion": -0.0002647012850059601, "c1_p95": 0.2748192922588107, "pass_g3": false}
+(2 rows)
+== D. theme_correctness_check rows 10-01 on (summary)
+id	t	summary
+52551	2026-10-05 17:31:15.600696	G1 507/552 (91.8% bar 90.0%) · G2 23/552 (4.2% bar<= 5.0%) · G3 100/116 (86.2% bar 90.0%) · G4 4/116 small (3.4% bar<= 10.0%) · latency median 31.5 sessions (n=6)
+53217	2026-10-06 17:31:13.635646	G1 567/612 (92.6% bar 90.0%) · G2 22/612 (3.6% bar<= 5.0%) · G3 105/120 (87.5% bar 90.0%) · G4 7/120 small (5.8% bar<= 10.0%) · latency median 17.5 sessions (n=8)
+53871	2026-10-07 17:31:12.740608	G1 536/573 (93.5% bar 90.0%) · G2 16/573 (2.8% bar<= 5.0%) · G3 106/124 (85.5% bar 90.0%) · G4 15/124 small (12.1% bar<= 10.0%) · latency median 17.5 sessions (n=8)
+54474	2026-10-08 17:31:14.221609	G1 570/609 (93.6% bar 90.0%) · G2 18/609 (3.0% bar<= 5.0%) · G3 103/122 (84.4% bar 90.0%) · G4 15/122 small (12.3% bar<= 10.0%) · latency median 9 sessions (n=9)
+55101	2026-10-09 17:31:11.64705	G1 568/603 (94.2% bar 90.0%) · G2 16/603 (2.7% bar<= 5.0%) · G3 106/123 (86.2% bar 90.0%) · G4 14/123 small (11.4% bar<= 10.0%; settled 7/116 6.0%) · latency median 16.5 sessions (n=8)
+55813	2026-10-12 17:31:15.351386	G1 570/609 (93.6% bar 90.0%) · G2 18/609 (3.0% bar<= 5.0%) · G3 100/109 (91.7% bar 90.0%) · G4 10/109 small (9.2% bar<= 10.0%; settled 5/104 4.8%) · latency median 5.5 sessions (n=6)
+56328	2026-10-13 17:31:11.453993	G1 572/617 (92.7% bar 90.0%) · G2 23/617 (3.7% bar<= 5.0%) · G3 99/107 (92.5% bar 90.0%) · G4 10/107 small (9.3% bar<= 10.0%; settled 5/102 4.9%) · latency median 5.5 sessions (n=6)
+(7 rows)
+== E. sector-cap rows tonight (summaries)
+id	t	event_type	summary
+56252	17:05:39	theme_sector_cap_kept_distinct	Pass2: 'Natural Gas-Weighted Appalachian & Shale E&P Producers' kept distinct from 'Crude & Product Tanker Shipping' — 8 of 8 member(s) judged, none co-moves (sector group 'oil_gas')
+56258	17:05:59	theme_sector_cap_kept_distinct	Pass2: 'Oil & Gas Mineral and Royalty Owners' kept distinct from 'Crude & Product Tanker Shipping' — 3 of 3 member(s) judged, none co-moves (sector group 'oil_gas')
+56259	17:05:59	theme_sector_cap_kept_distinct	Pass2: 'Natural Gas-Weighted Appalachian & Shale E&P Producers' kept distinct from 'Crude & Product Tanker Shipping' — 8 of 8 member(s) judged, none co-moves (sector group 'oil_gas')
+(3 rows)
+== E2. kept_distinct detail tonight
+id	detail
+56252	{"source": "Natural Gas-Weighted Appalachian & Shale E&P Producers", "target": "Crude & Product Tanker Shipping", "group": "oil_gas", "judged": 8, "passed": 0, "bar": 0.35, "members": {"EQT": {"path": "tape", "corr": -0.0336, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "AR": {"path": "tape", "corr": 0.0474, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "RRC": {"path": "tape", "corr": 0.098, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "GPOR": {"path": "tape", "corr": 0.1493, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "EXE": {"path": "tape", "corr": 0.0341, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "CNX": {"path": "tape", "corr": 0.0747, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "BKV": {"path": "tape", "corr": 0.032, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "CRK": {"path": "tape", "corr": -0.1241, "overlap": 60, "basket_n": 7, "verdict": "reject"}}}
+56258	{"source": "Oil & Gas Mineral and Royalty Owners", "target": "Crude & Product Tanker Shipping", "group": "oil_gas", "judged": 3, "passed": 0, "bar": 0.35, "members": {"KRP": {"path": "tape", "corr": 0.3485, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "VNOM": {"path": "tape", "corr": 0.2983, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "TPL": {"path": "tape", "corr": 0.0121, "overlap": 60, "basket_n": 7, "verdict": "reject"}}}
+56259	{"source": "Natural Gas-Weighted Appalachian & Shale E&P Producers", "target": "Crude & Product Tanker Shipping", "group": "oil_gas", "judged": 8, "passed": 0, "bar": 0.35, "members": {"EQT": {"path": "tape", "corr": -0.0336, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "AR": {"path": "tape", "corr": 0.0474, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "RRC": {"path": "tape", "corr": 0.098, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "GPOR": {"path": "tape", "corr": 0.1493, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "EXE": {"path": "tape", "corr": 0.0341, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "CNX": {"path": "tape", "corr": 0.0747, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "BKV": {"path": "tape", "corr": 0.032, "overlap": 60, "basket_n": 7, "verdict": "reject"}, "CRK": {"path": "tape", "corr": -0.1241, "overlap": 60, "basket_n": 7, "verdict": "reject"}}}
+(3 rows)
+== G. rule B rows tonight
+id	th	m	prior
+56181	Bitcoin Miners Pivoting to AI Data Center Hosting	2	2
+56182	Discrete, Passive & Low-Power Programmable Semiconductor Components Recovery	2	2
+56183	Emerging AI Compute & Cloud Infrastructure Platforms	2	2
+56184	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	2	2
+56185	Precision Timing & Motion Control Component Makers	2	2
+56186	U.S. Domestic Passenger Airlines	2	2
+(6 rows)
+== H. board by night: n themes, 2-3 members, <=1, retired
+theme_date	active	n23	n01	retired
+2026-10-08	122	45	0	14
+2026-10-09	123	46	0	17
+2026-10-12	111	36	0	27
+2026-10-13	107	34	0	14
+(4 rows)

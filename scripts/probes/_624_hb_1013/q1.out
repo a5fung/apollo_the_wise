@@ -1,0 +1,287 @@
+=== 0 now (ET) + heartbeat/lane audit rows since 10-12 18:00 ET (full)
+       now_et        
+---------------------
+ 2026-10-13 18:42:26
+(1 row)
+
+  id   |      t_et      |            event_type             |                                                                                                                          summary                                                                                                                          |                                                                                     detail                                                                                      
+-------+----------------+-----------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 55860 | 10-12 18:15:00 | lowcap_lane_replay_recorded       | 19 lane signal(s) in window, 0 candidate(s) processed: 0 written (0 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: exit rule not read (no candidates)                                                       | 
+ 55861 | 10-12 18:15:00 | lowcap_paper_lane_replay_recorded | 1 lane signal(s) in window, 1 candidate(s) processed: 1 written (0 settled, 1 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: magna53_depth_exit[paper] on, first acting session 2026-10-13 is after 2026-10-12 — era D | 
+ 55862 | 10-12 18:15:00 | lowcap_paper_lane_heartbeat       | 2026-10-12 ran: 213 screened by the live scan, 1 turned away only by the $500M floor, 1 graded by the lane, 0 HIGH, 0 paper order(s)                                                                                                                      | {"date": "2026-10-12", "verdict": "ran", "screened": 213, "cap_only_eligible": 1, "reached_lane": 1, "graded": 1, "high": 0, "ordered": 0, "missing": [], "lane_enabled": true}
+ 55907 | 10-13 07:00:14 | lowcap_paper_lane_tick            | 07:00 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)                                                                                                                                                        | {"candidates": 1, "graded": 1, "tiered": 0, "cooldown": 0, "already_today": 0, "errors": 0, "order_step": null}
+ 55911 | 10-13 07:10:01 | lowcap_paper_lane_tick            | 07:10 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)                                                                                                                                                        | {"candidates": 1, "graded": 1, "tiered": 0, "cooldown": 0, "already_today": 0, "errors": 0, "order_step": null}
+ 55913 | 10-13 07:15:01 | lowcap_paper_lane_tick            | 07:15 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)                                                                                                                                                        | {"candidates": 1, "graded": 1, "tiered": 0, "cooldown": 0, "already_today": 0, "errors": 0, "order_step": null}
+ 55916 | 10-13 07:20:01 | lowcap_paper_lane_tick            | 07:20 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)                                                                                                                                                        | {"candidates": 1, "graded": 1, "tiered": 0, "cooldown": 0, "already_today": 0, "errors": 0, "order_step": null}
+ 56373 | 10-13 18:15:00 | lowcap_lane_replay_recorded       | 19 lane signal(s) in window, 0 candidate(s) processed: 0 written (0 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: exit rule not read (no candidates)                                                       | 
+ 56374 | 10-13 18:15:00 | lowcap_paper_lane_replay_recorded | 2 lane signal(s) in window, 1 candidate(s) processed: 1 written (0 settled, 0 no_trade, 1 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: magna53_depth_exit[paper] on since 2026-10-13 — depth                                     | 
+ 56375 | 10-13 18:15:00 | lowcap_paper_lane_heartbeat       | 2026-10-13 ran: 218 screened by the live scan, 1 turned away only by the $500M floor, 1 graded by the lane, 0 HIGH, 0 paper order(s)                                                                                                                      | {"date": "2026-10-13", "verdict": "ran", "screened": 218, "cap_only_eligible": 1, "reached_lane": 1, "graded": 1, "high": 0, "ordered": 0, "missing": [], "lane_enabled": true}
+(10 rows)
+
+=== 1 heartbeat rows ever (count by ET day, ids)
+     d      | n | min_id | max_id 
+------------+---+--------+--------
+ 2026-10-12 | 1 |  55862 |  55862
+ 2026-10-13 | 1 |  56375 |  56375
+(2 rows)
+
+=== 1b any lane error / page-class row since ship (10-10 12:00 UTC)
+  id   |      t_et      |            event_type             |                                                                                                                       left                                                                                                                       
+-------+----------------+-----------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 55441 | 10-12 09:50:13 | lowcap_paper_lane_tick            | 09:50 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)
+ 55860 | 10-12 18:15:00 | lowcap_lane_replay_recorded       | 19 lane signal(s) in window, 0 candidate(s) processed: 0 written (0 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: exit rule not read (no candidates)
+ 55861 | 10-12 18:15:00 | lowcap_paper_lane_replay_recorded | 1 lane signal(s) in window, 1 candidate(s) processed: 1 written (0 settled, 1 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: magna53_depth_exit[paper] on, first acting session 2026-10-13 is after 2026-10-1
+ 55907 | 10-13 07:00:14 | lowcap_paper_lane_tick            | 07:00 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)
+ 55911 | 10-13 07:10:01 | lowcap_paper_lane_tick            | 07:10 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)
+ 55913 | 10-13 07:15:01 | lowcap_paper_lane_tick            | 07:15 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)
+ 55916 | 10-13 07:20:01 | lowcap_paper_lane_tick            | 07:20 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)
+ 56373 | 10-13 18:15:00 | lowcap_lane_replay_recorded       | 19 lane signal(s) in window, 0 candidate(s) processed: 0 written (0 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: exit rule not read (no candidates)
+ 56374 | 10-13 18:15:00 | lowcap_paper_lane_replay_recorded | 2 lane signal(s) in window, 1 candidate(s) processed: 1 written (0 settled, 0 no_trade, 1 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: magna53_depth_exit[paper] on since 2026-10-13 — depth
+(9 rows)
+
+=== 1c lane tick rows (all days)
+  id   |      t_et      |                                              summary                                               |                                                     detail                                                      
+-------+----------------+----------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------
+ 55441 | 10-12 09:50:13 | 09:50 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s) | {"candidates": 1, "graded": 1, "tiered": 0, "cooldown": 0, "already_today": 0, "errors": 0, "order_step": null}
+ 55907 | 10-13 07:00:14 | 07:00 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s) | {"candidates": 1, "graded": 1, "tiered": 0, "cooldown": 0, "already_today": 0, "errors": 0, "order_step": null}
+ 55911 | 10-13 07:10:01 | 07:10 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s) | {"candidates": 1, "graded": 1, "tiered": 0, "cooldown": 0, "already_today": 0, "errors": 0, "order_step": null}
+ 55913 | 10-13 07:15:01 | 07:15 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s) | {"candidates": 1, "graded": 1, "tiered": 0, "cooldown": 0, "already_today": 0, "errors": 0, "order_step": null}
+ 55916 | 10-13 07:20:01 | 07:20 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s) | {"candidates": 1, "graded": 1, "tiered": 0, "cooldown": 0, "already_today": 0, "errors": 0, "order_step": null}
+(5 rows)
+
+=== 2 lane table rows (all)
+ id | ticker | alert_date |   strategy_id    |       fg       |       lg       | score_tier | ep_score |   reject_stage    |       reject_reason        | gap | mcap_m | catalyst_quality | judge_tier 
+----+--------+------------+------------------+----------------+----------------+------------+----------+-------------------+----------------------------+-----+--------+------------------+------------
+  1 | ALLT   | 2026-10-12 | magna53_smallcap | 10-12 09:50:00 | 10-12 09:50:00 |            |          | post_grade_filter | routine catalyst, gap 9.1% | 9.1 |    451 | routine          | 
+  2 | GOSS   | 2026-10-13 | magna53_smallcap | 10-13 07:00:01 | 10-13 07:20:00 |            |          | post_grade_filter | routine catalyst, gap 9.8% | 9.8 |     57 | routine          | 
+(2 rows)
+
+=== 3 mi_ep_alerts rows matching a lane ticker+date (must be 0)
+ id | ticker | alert_date | score_tier 
+----+--------+------------+------------
+(0 rows)
+
+=== 3b mi_ep_alerts by date/tier 10-05..today (live-path baseline)
+ alert_date | score_tier | count 
+------------+------------+-------
+ 2026-10-05 | MODERATE   |     3
+ 2026-10-06 | HIGH       |     3
+ 2026-10-07 | HIGH       |     1
+ 2026-10-08 | HIGH       |     1
+ 2026-10-09 | HIGH       |     1
+ 2026-10-09 | MODERATE   |     1
+(6 rows)
+
+=== 3c mi_ep_alerts today rows
+ id | ticker | alert_date | score_tier | t_et 
+----+--------+------------+------------+------
+(0 rows)
+
+=== 4 trades: magna53_smallcap ever, by account
+ account_mode | signal_type | status | count 
+--------------+-------------+--------+-------
+(0 rows)
+
+=== 4b all trades created since 10-12 ET by account/signal/status
+ account_mode | signal_type | status | count 
+--------------+-------------+--------+-------
+(0 rows)
+
+=== 4c any trade whose order id mentions smallcap or any trade whose ticker is a lane ticker
+ id | ticker | signal_type | account_mode | status | alert_date | entry_order_id 
+----+--------+-------------+--------------+--------+------------+----------------
+(0 rows)
+
+=== 5 heartbeat SQL re-run at EOD (screened / cap-only)
+ screened | cap_only 
+----------+----------
+      218 | {GOSS}
+(1 row)
+
+=== 5b scan log last row + ticks
+ last_row_et | ticks | nrows 
+-------------+-------+-------
+ 09:55:04    |    38 |  2422
+(1 row)
+
+=== 5c sub-500M, $5+, gap>=9 names on scan log today with stage
+ ticker |  reject_stage  |                         fr                          | mcap_m | gap  |  pc  |         scan_time_et          
+--------+----------------+-----------------------------------------------------+--------+------+------+-------------------------------
+ GOSS   | quality_filter | quality filter: filter:mcap_too_small: $57M < $500M |     57 | 10.3 | 9.28 | 2026-10-13 11:00:01.885864+00
+ GOSS   | quality_filter | quality filter: filter:mcap_too_small: $57M < $500M |     57 |  9.8 | 9.28 | 2026-10-13 11:10:00.026966+00
+ GOSS   | quality_filter | quality filter: filter:mcap_too_small: $57M < $500M |     57 |  9.8 | 9.28 | 2026-10-13 11:15:00.037464+00
+ GOSS   | quality_filter | quality filter: filter:mcap_too_small: $57M < $500M |     57 |  9.8 | 9.28 | 2026-10-13 11:20:00.075474+00
+(4 rows)
+
+=== 5d ALL mcap_too_small-stamped names today (incl. any pre-$5 / low-gap)
+ ticker | mcap_m | gap  |  pc  
+--------+--------+------+------
+ GOSS   |     57 |  9.8 | 9.28
+ GOSS   |     57 | 10.3 | 9.28
+(2 rows)
+
+=== 6 paper lane replays
+ count 
+-------
+     2
+(1 row)
+
+=== 7 prior sessions baseline: screened / cap-only per scan date
+ scan_date  | screened |  cap_only   
+------------+----------+-------------
+ 2026-10-05 |      309 | {ARTV,INTT}
+ 2026-10-06 |      337 | {}
+ 2026-10-07 |      190 | {LWAY}
+ 2026-10-08 |      193 | {NAKA,RNA}
+ 2026-10-09 |      272 | {}
+ 2026-10-12 |      213 | {ALLT}
+ 2026-10-13 |      218 | {GOSS}
+(7 rows)
+
+=== 8 strategy row
+=== 9 job-run cols
+    column_name    
+-------------------
+ id
+ job_id
+ started_at
+ finished_at
+ duration_s
+ status
+ rows_written
+ expected_min_rows
+ error_message
+ created_at
+ scheduled_for
+(11 rows)
+
+=== 9b lowcap / ep-scan job runs since 10-12 ET
+   id   |       job_id       |     st_et      |           duration_s            | status  | rows_written | err 
+--------+--------------------+----------------+---------------------------------+---------+--------------+-----
+ 227403 | lowcap_lane_replay | 10-12 18:15:00 |  0.0565070919692516326904296875 | success |              | 
+ 229691 | lowcap_lane_replay | 10-13 18:15:00 | 0.11317282356321811676025390625 | success |              | 
+(2 rows)
+
+=== 9c ep scan job_id names today
+psql:/tmp/x.sql:39: ERROR:  column "id" does not exist
+LINE 1: ...trategies WHERE strategy_id ILIKE '%smallcap%' OR id::text I...
+                                                             ^
+      job_id      | count |               min                |               max                | avg_s | nonok 
+------------------+-------+----------------------------------+----------------------------------+-------+-------
+ 9m_ep_scan       |    84 |    0.002380587160587310791015625 |   0.0691059716045856475830078125 |   0.0 |     0
+ ep_scan          |    36 |  0.91270037554204463958740234375 |    4.444340191781520843505859375 |   1.7 |     0
+ ep_scan_open     |     1 | 12.64562805928289890289306640625 | 12.64562805928289890289306640625 |  12.6 |     0
+ ep_scan_start    |     1 |    0.051857508718967437744140625 |    0.051857508718967437744140625 |   0.1 |     0
+ ep_scan_stop     |     1 |   0.0077238045632839202880859375 |   0.0077238045632839202880859375 |   0.0 |     0
+ ep_scan_watchdog |     1 |   0.0385093577206134796142578125 |   0.0385093577206134796142578125 |   0.0 |     0
+(6 rows)
+
+=== 10 live-scan judge timeout / late grade audit rows 10-13 and 10-12 ORB window
+  id   |      t_et      |               event_type               |                                                                                        left                                                                                         
+-------+----------------+----------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 55368 | 10-12 09:00:00 | stop_ack_timeout_remediated            | KO #420: stop-ACK timeout (filled_at 08:30:00 ET, stop_order_id NULL >30s); fallback stop placed at $75.14 order=cd020e0e-80ae-4c60-883f-06b7a78b5f48
+ 55629 | 10-12 17:06:48 | theme_rehome_judged                    | VIAV stays — the judgement did not place it (offered on tape 0.86 to 'Optical Laser & Photonic Materials for AI Transceivers', own_unjudgeable:thin_basket)
+ 55631 | 10-12 17:06:48 | theme_rehome_judged                    | VSH moved -> 'RF, Microwave & Power Semiconductor Specialists' (tape 0.86, own_unjudgeable:thin_basket)
+ 55633 | 10-12 17:06:48 | theme_rehome_judged                    | FLEX moved -> 'Electronics Manufacturing Services (EMS) Providers' (tape 0.84, own_unjudgeable:thin_basket)
+ 55634 | 10-12 17:06:48 | theme_rehome_judged                    | LSCC stays — the judgement did not place it (offered on tape 0.83 to 'RF, Microwave & Power Semiconductor Specialists', own_unjudgeable:thin_basket)
+ 55635 | 10-12 17:06:48 | theme_rehome_judged                    | FN stays — the judgement did not place it (offered on tape 0.79 to 'AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers', own_unjudgeable:thin_basket)
+ 55637 | 10-12 17:06:48 | theme_rehome_judged                    | ICHR moved -> 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand' (tape 0.78, own_unjudgeable:thin_basket)
+ 55638 | 10-12 17:06:48 | theme_rehome_judged                    | LFUS stays — the judgement did not place it (offered on tape 0.75 to 'Electronics Manufacturing Services (EMS) Providers', own_unjudgeable:thin_basket)
+ 55639 | 10-12 17:06:48 | theme_rehome_judged                    | PENG stays — the judgement did not place it (offered on tape 0.70 to 'Semiconductor Equipment Capex Cycle: AI-Driven Fab & Advanced Packaging Demand', own_unjudgeable:thin_basket)
+ 55640 | 10-12 17:06:48 | theme_rehome_judged                    | NTLA stays — the judgement did not place it (offered on tape 0.68 to 'Vaccine Developers Bacterial & Respiratory', own_unjudgeable:thin_basket)
+ 55641 | 10-12 17:06:48 | theme_rehome_judged                    | FROG stays — the judgement did not place it (offered on tape 0.68 to 'Network Security & Zero-Trust Edge', own_unjudgeable:thin_basket)
+ 55642 | 10-12 17:06:48 | theme_rehome_judged                    | BSY stays — the judgement did not place it (offered on tape 0.67 to 'Cloud Supply Chain & Warehouse Management Software', own_unjudgeable:thin_basket)
+ 55643 | 10-12 17:06:48 | theme_rehome_judged                    | PAX stays — the judgement did not place it (offered on tape 0.67 to 'Brazil Fintech & Digital Banking Rally', own_unjudgeable:thin_basket)
+ 55644 | 10-12 17:06:48 | theme_rehome_judged                    | DOCN stays — the judgement did not place it (offered on tape 0.65 to 'Semiconductor Foundry & Advanced Packaging Manufacturing', own_unjudgeable:thin_basket)
+ 55646 | 10-12 17:06:48 | theme_rehome_judged                    | KRUS moved -> 'Restaurant Chain Recovery' (tape 0.64, own_unjudgeable:thin_basket)
+ 55647 | 10-12 17:06:48 | theme_rehome_judged                    | BTDR stays — the judgement did not place it (offered on tape 0.64 to 'AI-Driven Memory & Storage Supply Shortage', own_unjudgeable:thin_basket)
+ 55648 | 10-12 17:06:48 | theme_rehome_judged                    | TTAN stays — the judgement did not place it (offered on tape 0.64 to 'Customer Engagement & Marketing/CX SaaS Platforms', own_unjudgeable:thin_basket)
+ 55649 | 10-12 17:06:48 | theme_rehome_judged                    | SPSC stays — the judgement did not place it (offered on tape 0.62 to 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS', own_unjudgeable:thin_basket)
+ 55651 | 10-12 17:06:48 | theme_rehome_judged                    | CHYM moved -> 'Fintech Payments, Prepaid & Consumer Digital Banking Apps' (tape 0.61, g2_misfiled)
+ 55876 | 10-12 18:20:00 | judge_named_theme_candidates_evaluated | 7 recurring group(s): 6 matched a theme, 1 unmatched (1 already surfaced, 0 re-seeded), 0 fired
+ 56162 | 10-13 17:02:54 | theme_rehome_judged                    | MXL stays — the judgement did not place it (offered on tape 0.80 to 'AI Server Power & Signal-Integrity Analog ICs', own_unjudgeable:thin_basket)
+ 56163 | 10-13 17:02:54 | theme_rehome_judged                    | OTEX stays — the judgement did not place it (offered on tape 0.77 to 'Cloud Supply Chain & Warehouse Management Software', own_unjudgeable:thin_basket)
+ 56164 | 10-13 17:02:54 | theme_rehome_judged                    | WOLF stays — the judgement did not place it (offered on tape 0.74 to 'AI-Driven Semiconductor Manufacturing Ecosystem (Capex & Foundry)', own_unjudgeable:thin_basket)
+ 56165 | 10-13 17:02:54 | theme_rehome_judged                    | MCHP stays — the judgement did not place it (offered on tape 0.72 to 'AI Server Power & Signal-Integrity Analog ICs', own_unjudgeable:thin_basket)
+ 56166 | 10-13 17:02:54 | theme_rehome_judged                    | SEIC stays — the judgement did not place it (offered on tape 0.63 to 'Insurance Brokerage & Employee Benefits Advisory', g2_misfiled)
+ 56167 | 10-13 17:02:54 | theme_rehome_judged                    | DV stays — the judgement did not place it (offered on tape 0.62 to 'Software Development & DevOps Collaboration Platforms', own_unjudgeable:thin_basket)
+ 56168 | 10-13 17:02:54 | theme_rehome_judged                    | MARA stays — the judgement did not place it (offered on tape 0.62 to 'AI-Driven Memory & Storage Supply Shortage', own_unjudgeable:thin_basket)
+ 56169 | 10-13 17:02:54 | theme_rehome_judged                    | ICE stays — the judgement did not place it (offered on tape 0.62 to 'Insurance Brokerage & Employee Benefits Advisory', g2_misfiled)
+ 56170 | 10-13 17:02:54 | theme_rehome_judged                    | MA stays — the judgement did not place it (offered on tape 0.61 to 'Insurance Brokerage & Employee Benefits Advisory', g2_misfiled)
+ 56171 | 10-13 17:02:54 | theme_rehome_judged                    | ESTC stays — the judgement did not place it (offered on tape 0.61 to 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS', own_unjudgeable:thin_basket)
+ 56172 | 10-13 17:02:54 | theme_rehome_judged                    | J stays — the judgement did not place it (offered on tape 0.60 to 'Insurance Brokerage & Employee Benefits Advisory', g2_misfiled)
+ 56173 | 10-13 17:02:54 | theme_rehome_judged                    | ALNT stays — the judgement did not place it (offered on tape 0.59 to 'Semiconductor Design, Test & Assembly Enablement Tools', own_unjudgeable:thin_basket)
+ 56174 | 10-13 17:02:54 | theme_rehome_judged                    | ABG stays — the judgement did not place it (offered on tape 0.59 to 'IT Consulting & Business Process Outsourcing Services', own_unjudgeable:thin_basket)
+ 56175 | 10-13 17:02:54 | theme_rehome_judged                    | PAR stays — the judgement did not place it (offered on tape 0.59 to 'Vertical Commerce & Tax/Payments Software-Fintech Platforms', own_unjudgeable:thin_basket)
+ 56176 | 10-13 17:02:54 | theme_rehome_judged                    | AGI stays — the judgement did not place it (offered on tape 0.58 to 'Copper Mining & Production', own_unjudgeable:thin_basket)
+ 56177 | 10-13 17:02:54 | theme_rehome_judged                    | SAH stays — the judgement did not place it (offered on tape 0.57 to 'Management & Business Process Consulting Services', own_unjudgeable:thin_basket)
+ 56178 | 10-13 17:02:54 | theme_rehome_judged                    | SCHW stays — the judgement did not place it (offered on tape 0.56 to 'Insurance Brokerage & Employee Benefits Advisory', g2_misfiled)
+ 56179 | 10-13 17:02:54 | theme_rehome_judged                    | TOST stays — the judgement did not place it (offered on tape 0.56 to 'Vertical Commerce & Tax/Payments Software-Fintech Platforms', own_unjudgeable:thin_basket)
+ 56389 | 10-13 18:20:00 | judge_named_theme_candidates_evaluated | 7 recurring group(s): 6 matched a theme, 1 unmatched (1 already surfaced, 0 re-seeded), 0 fired
+(39 rows)
+
+=== 11 all audit event types logged today (counts) for a scan of anything new
+              event_type               | count 
+---------------------------------------+-------
+ path_coverage_gap                     |    64
+ sdk_pool_rollup                       |    42
+ ep_rt_universe_coverage               |    38
+ api_failure_fmp                       |    22
+ theme_rehome_judged                   |    18
+ assignment_llm_proposed               |    16
+ stage_change                          |    12
+ assignment_skipped_comove_below_bar   |    12
+ metric_sample                         |    12
+ theme_ecosystem_assigned              |    10
+ theme_discovery_llm_call              |    10
+ anticipation_coil_buyout_pin_rejected |    10
+ theme_retired                         |     8
+ order_status_reconciled               |     8
+ theme_stage_flip_held                 |     7
+ theme_retired_small_fading            |     6
+ theme_parent_pass_distinct            |     6
+ theme_low_quality_description         |     6
+ theme_score_ties                      |     5
+ stop_order_id_changed                 |     5
+ theme_merge_distinct                  |     5
+ llm_request_rewrite_adopted           |     4
+ lowcap_paper_lane_tick                |     4
+ paper_rehearsal_687_state             |     4
+ theme_breadth_fade                    |     4
+ entry_partial_fill                    |     3
+ ep_rt_floor_flip_down                 |     3
+ mna_filter_released                   |     3
+ theme_high_strip_rate                 |     3
+ theme_sector_cap_kept_distinct        |     3
+ ep_rt_floor_flip_up                   |     3
+ description_generated                 |     2
+ theme_split                           |     2
+ ep_rt_universe_catch                  |     2
+ ep_catalyst_provenance                |     2
+ planned_sale_stop_cancel              |     2
+ trade_lifecycle_telegram_attempted    |     2
+ ep_rt_admit                           |     2
+ theme_pass1_5_absorption              |     2
+ flag_stage_transition                 |     2
+ stop_refresh_ran                      |     2
+ dead_stop_price_preserved             |     2
+ split_applied                         |     2
+ theme_birth_gate                      |     2
+ account_mode_active                   |     2
+ entry_rejection_watch_armed           |     2
+ theme_discovered                      |     2
+ strength_spread_alert_check           |     2
+ theme_discovery_shown_declined        |     2
+ stop_cancel_by_planned_sale_silent    |     2
+ theme_small_folded                    |     2
+ dual_account_creds_resolved           |     2
+ drift_check_snapshot                  |     1
+ delayed_entry_shadow_recorded         |     1
+ evening_brief_sent                    |     1
+ lowcap_lane_replay_recorded           |     1
+ stop_replacement_confirmed_silent     |     1
+ theme_composition_churn               |     1
+ sugar_babies_cohort_refreshed         |     1
+ ep_rt_shadow_capture                  |     1
+(60 rows)
+

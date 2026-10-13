@@ -1,0 +1,40 @@
+=== 1 live-path rows that reached grading inside 09:30-09:55 ET, 10-12 and 10-13 (stage past gap_floor/universe_floor)
+ scan_date  | ticker |   t_et   |   reject_stage    |                          fr                          | gap  | mcap_m 
+------------+--------+----------+-------------------+------------------------------------------------------+------+--------
+ 2026-10-12 | TRAX   | 09:30:00 | score_bar         | score 59 < bar 65 (catalyst=strong)                  | 23.9 |   1138
+ 2026-10-12 | WFF    | 09:30:00 | extension         | already up 511% in prior 5 days (extended)           | 20.3 |       
+ 2026-10-12 | TRAX   | 09:31:00 | score_bar         | score 59 < bar 65 (catalyst=strong)                  | 20.2 |   1138
+ 2026-10-12 | WFF    | 09:31:00 | extension         | already up 511% in prior 5 days (extended)           | 11.5 |       
+ 2026-10-12 | APUS   | 09:35:00 | extension         | already up 56% in prior 5 days (extended)            | 11.7 |       
+ 2026-10-12 | CCC    | 09:35:00 | post_grade_filter | routine catalyst, gap 9.8%                           |  9.8 |   4135
+ 2026-10-12 | LQDA   | 09:35:00 | quality_filter    | quality filter: filter:atr_too_high: 23.7% > 15.0%   | 11.1 |       
+ 2026-10-12 | TRAX   | 09:35:00 | score_bar         | score 59 < bar 65 (catalyst=strong)                  | 18.3 |   1138
+ 2026-10-12 | WFF    | 09:35:00 | extension         | already up 511% in prior 5 days (extended)           |  9.6 |       
+ 2026-10-12 | AI     | 09:40:00 | post_grade_filter | routine catalyst, gap 10.3%                          | 10.3 |   2046
+ 2026-10-12 | APUS   | 09:40:00 | extension         | already up 56% in prior 5 days (extended)            |  9.8 |       
+ 2026-10-12 | SVRN   | 09:40:00 | quality_filter    | quality filter: filter:atr_too_high: 27.7% > 15.0%   | 13.6 |       
+ 2026-10-12 | TRAX   | 09:40:00 | score_bar         | score 59 < bar 65 (catalyst=strong)                  | 16.7 |   1138
+ 2026-10-12 | WFF    | 09:40:00 | extension         | already up 511% in prior 5 days (extended)           | 23.5 |       
+ 2026-10-12 | SVRN   | 09:45:00 | quality_filter    | quality filter: filter:atr_too_high: 27.7% > 15.0%   | 10.1 |       
+ 2026-10-12 | TRAX   | 09:45:00 | score_bar         | score 59 < bar 65 (catalyst=strong)                  | 19.3 |   1138
+ 2026-10-12 | WFF    | 09:45:00 | extension         | already up 511% in prior 5 days (extended)           | 23.5 |       
+ 2026-10-12 | ALLT   | 09:50:00 | quality_filter    | quality filter: filter:mcap_too_small: $451M < $500M |  9.1 |    451
+ 2026-10-12 | SVRN   | 09:50:00 | quality_filter    | quality filter: filter:atr_too_high: 27.7% > 15.0%   | 12.1 |       
+ 2026-10-12 | TRAX   | 09:50:00 | score_bar         | score 59 < bar 65 (catalyst=strong)                  | 17.4 |   1138
+ 2026-10-13 | MMEDV  | 09:30:00 | quality_filter    | quality filter: filter:adv_no_data                   | 25.7 |       
+ 2026-10-13 | EFXT   | 09:31:00 | score_bar         | score 46 < bar 65 (catalyst=strong)                  | 12.8 |   3309
+ 2026-10-13 | MMEDV  | 09:31:00 | quality_filter    | quality filter: filter:adv_no_data                   | 10.6 |       
+ 2026-10-13 | EFXT   | 09:35:00 | score_bar         | score 46 < bar 65 (catalyst=strong)                  |  9.8 |   3309
+ 2026-10-13 | MMEDV  | 09:35:00 | quality_filter    | quality filter: filter:adv_no_data                   | 12.6 |       
+ 2026-10-13 | EFXT   | 09:40:00 | score_bar         | score 46 < bar 65 (catalyst=strong)                  | 11.3 |   3309
+ 2026-10-13 | EFXT   | 09:45:00 | score_bar         | score 46 < bar 65 (catalyst=strong)                  | 12.6 |   3309
+ 2026-10-13 | EFXT   | 09:50:00 | score_bar         | score 46 < bar 65 (catalyst=strong)                  | 12.8 |   3309
+(28 rows)
+
+=== 2 does mi_ep_scan_log hold any row for a lane-only grade (ALLT/GOSS after their lane grade)
+ scan_date  | ticker | count |         array_agg          
+------------+--------+-------+----------------------------
+ 2026-10-12 | ALLT   |     2 | {gap_floor,quality_filter}
+ 2026-10-13 | GOSS   |    36 | {gap_floor,quality_filter}
+(2 rows)
+

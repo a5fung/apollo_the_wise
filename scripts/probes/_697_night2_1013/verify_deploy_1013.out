@@ -1,0 +1,4 @@
+container: apollo-market
+expected : 3 (('COILED', 'coiled'), ('TIGHTENING', 'tightening'), ('TRIGGERED', 'retrigger')) ('coiled', 'tightening', 'retrigger')
+got      : 3 (('COILED', 'coiled'), ('TIGHTENING', 'tightening'), ('TRIGGERED', 'retrigger')) ('coiled', 'tightening', 'retrigger')
+PASS - the running image carries the #146 licence

@@ -1,0 +1,1 @@
+3dc24793 2026-10-13 07:30:36 -0700 #687 era E: the #482 registration test asserted the literal era_d — it now checks the read is scoped to one era and leaves which era to the #631 pin (the one place

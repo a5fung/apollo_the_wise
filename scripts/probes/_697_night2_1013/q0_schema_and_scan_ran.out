@@ -1,0 +1,28 @@
+SET
+SET
+== A. mi_job_runs columns
+column_name
+id
+job_id
+started_at
+finished_at
+duration_s
+status
+rows_written
+expected_min_rows
+error_message
+created_at
+scheduled_for
+(11 rows)
+== B. newest scan_dates in mi_flag_candidates (rows, raw TRIGGERED, holds)
+scan_date|rows|raw_trig|holds|watch_or_better|last_written
+2026-10-09|492|0|1|7|2026-10-09 21:25:03.325023+00
+2026-10-12|507|0|0|4|2026-10-12 21:25:03.660126+00
+2026-10-13|493|0|0|4|2026-10-13 21:25:03.316943+00
+(3 rows)
+== C. bars present for 10-13 in mi_daily_closes
+trade_date|count
+2026-10-09|12385
+2026-10-12|12454
+2026-10-13|12450
+(3 rows)

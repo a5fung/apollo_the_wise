@@ -1,0 +1,92 @@
+Pager usage is off.
+Output format is aligned.
+== H. per-day theme_validation history (calls, gt25, mean, max_tok, removals)
+     d      | dow |  n  | gt25 | mean | max_tok | non_end | removals 
+------------+-----+-----+------+------+---------+---------+----------
+ 2026-09-28 | Mon | 137 |    1 |  9.6 |       0 |       0 |       14
+ 2026-09-29 | Tue |   5 |    0 |  9.0 |       0 |       0 |        0
+ 2026-09-30 | Wed | 136 |   40 | 78.3 |       0 |       0 |       11
+ 2026-10-01 | Thu |  13 |    3 | 74.2 |       0 |       0 |        0
+ 2026-10-02 | Fri | 146 |   39 | 59.5 |       0 |       0 |       13
+ 2026-10-05 | Mon | 151 |    4 | 14.0 |       0 |       0 |       26
+ 2026-10-06 | Tue |  26 |    1 | 18.7 |       0 |       0 |        6
+ 2026-10-07 | Wed | 142 |    1 | 11.2 |       0 |       0 |       19
+ 2026-10-08 | Thu |  27 |    0 |  9.6 |       0 |       0 |        3
+ 2026-10-09 | Fri | 141 |    0 |  9.8 |       0 |       0 |       19
+ 2026-10-12 | Mon | 154 |   36 | 48.1 |       0 |       0 |       12
+ 2026-10-13 | Tue |  15 |    6 | 65.4 |       0 |       0 |        1
+(12 rows)
+
+== I. the four job run events + cooldown, detail Tue 10-13
+           at_et            |          event_type           |                                                    summ                                                     |                                                                                                                                      det                                                                                                                                       
+----------------------------+-------------------------------+-------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 2026-10-13 17:04:52.307516 | validation_cooldown_triggered | COR → 'Hospital & Behavioral Health Facility Procedure Volume Recovery' cooldown 14d (removal #1)           | Description: 'Healthcare / Medical Distribution — Pharmaceutical distribution & healthcare logistics'
+ 2026-10-13 17:06:59.159975 | theme_parent_pass_ran         | Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error | 'Leisure & Recreation Discretionary Rebound' → 'Cruise Lines & Leisure Travel Rebound' [PEERS] same ecosystem E-CONS; parent 5 vs child 4 members; shared tickers 2; shared name tokens 2; industry overlap 1.00; word similarity 0.116                                       +
+                            |                               |                                                                                                             | 'Cloud Financial Automation & Insurance Core Platform Software' → 'Software Development & DevOps Collaboration Platforms' [UNRELATED] same ecosystem E-SAAS; parent 3 vs child 2 members; shared tickers 0; shared name tokens 1; industry overlap 1.00; word similarity 0.068+
+                            |                               |                                                                                                             | 'Natural Gas-Weighted Appalachian & Shale E&P Producers' → 'Energy Supply Disruption: Middle East Geopolitical Risk' [PEERS] same ecosystem E-ENER; parent 19 vs child 8 members; shared tickers 0; s
+ 2026-10-13 17:08:11.55575  | narrative_theme_discovery_ran | 2026-10-13: v2reg 0 qualifying today — no evaluation (roster 2 active / 4 seeds)                            | 
+ 2026-10-13 18:05:17.857808 | theme_synthesis_run           | 53 candidates → 1 proposed → 0 kept                                                                         | {"run_date": "2026-10-13", "n_candidates": 53, "n_proposed": 1, "n_kept": 0, "stop_reason": "tool_use", "kept": [], "dropped": ["Cross-Border Remittance & Payments Rally: restates live theme 'Fintech Payments, Prepaid & Consumer Digital Banking Apps'"]}
+(4 rows)
+
+== J. theme-ish job runs Tue evening
+            job_id            | status  |         started_et         |            duration_s             | rows_written | err 
+------------------------------+---------+----------------------------+-----------------------------------+--------------+-----
+ nightly_data_pull            | success | 2026-10-13 17:00:00.00374  | 546.34102494083344936370849609375 |         2397 | 
+ ecosystem_grace_sweep        | success | 2026-10-13 17:12:00.00157  |         0.00942385196685791015625 |              | 
+ post_nightly_audit           | success | 2026-10-13 17:30:00.001071 |  79.66484643705189228057861328125 |              | 
+ theme_axis_co_move_refresh   | success | 2026-10-13 17:58:00.003083 |    0.0098009519279003143310546875 |              | 
+ crypto_nightly_ingest        | success | 2026-10-13 18:00:00.001646 |  339.5785484872758388519287109375 |          344 | 
+ theme_axis_eod_unscored      | success | 2026-10-13 18:03:00.001102 |   0.15539460815489292144775390625 |              | 
+ theme_synthesis              | success | 2026-10-13 18:05:00.001434 |  17.86040729098021984100341796875 |            0 | 
+ theme_axis_bounded_sweep     | success | 2026-10-13 18:10:00.001674 |      0.01006536185741424560546875 |              | 
+ ecosystem_grace_sweep        | success | 2026-10-13 18:12:00.026761 |    0.0541176088154315948486328125 |              | 
+ judge_named_themes_extract   | success | 2026-10-13 18:20:00.003592 |    0.1786033026874065399169921875 |              | 
+ minute_volume_curves_refresh | running | 2026-10-13 18:30:00.00624  |                                   |              | 
+(11 rows)
+
+== K. non-success job runs since 10-13 16:00 ET (any job)
+            job_id            | status  |        started_et         | err 
+------------------------------+---------+---------------------------+-----
+ minute_volume_curves_refresh | running | 2026-10-13 18:30:00.00624 | 
+(1 row)
+
+== L. api_usage stop_reason x caller, non end_turn/tool_use, whole ET day Tue 10-13
+            caller            |       model       | stop_reason | count 
+------------------------------+-------------------+-------------+-------
+ perplexity_catalyst_validate | openai/gpt-6-luna | completed   |     2
+ perplexity_health            | openai/gpt-6-luna | completed   |     1
+ perplexity_news_search       | openai/gpt-6-luna | completed   |    19
+(3 rows)
+
+== M. error/fail/refusal/truncation audit events Tue 10-13 excluding fmp
+ event_type | count | sample 
+------------+-------+--------
+(0 rows)
+
+== N. rewrite adopted: which caller/summary at 17:06 Tue and 17:10 Mon, full detail
+           at_et            |                        summary                        |                                                                                                                                                             det                                                                                                                                                             
+----------------------------+-------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 2026-10-12 17:10:45.569629 | claude-sonnet-5-5: thinking_disabled_to_between_tools | API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'To turn thinking off on this model, send "thinking": {"type": "between_tools"} instead of {"type": "disabled"}. The model does not think before responding. The short updates it writes between tool calls come b
+ 2026-10-13 17:06:38.052062 | claude-sonnet-5-5: thinking_disabled_to_between_tools | API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'To turn thinking off on this model, send "thinking": {"type": "between_tools"} instead of {"type": "disabled"}. The model does not think before responding. The short updates it writes between tool calls come b
+(2 rows)
+
+== O. theme_validation per-call output tokens distribution Tue 10-13
+ output_tokens | stop_reason |  cost  
+---------------+-------------+--------
+           107 | end_turn    | 0.0022
+           222 | end_turn    | 0.0036
+             9 | end_turn    | 0.0013
+             9 | end_turn    | 0.0021
+             9 | end_turn    | 0.0021
+            14 | end_turn    | 0.0014
+            80 | end_turn    | 0.0020
+             9 | end_turn    | 0.0015
+             9 | end_turn    | 0.0016
+           166 | end_turn    | 0.0040
+           107 | end_turn    | 0.0022
+           213 | end_turn    | 0.0040
+             9 | end_turn    | 0.0012
+             9 | end_turn    | 0.0012
+             9 | end_turn    | 0.0018
+(15 rows)
+

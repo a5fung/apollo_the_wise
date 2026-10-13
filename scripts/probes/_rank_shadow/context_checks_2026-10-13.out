@@ -1,0 +1,16 @@
+chk|job_id|status|rows_written|sched_et|fin_et|err
+1_job_runs|alert_rank_shadow|success|||2026-10-13 17:53:00.03124|
+1_job_runs|alert_rank_shadow|success|||2026-10-12 17:53:00.035592|
+1_job_runs|alert_rank_shadow|success|||2026-10-09 17:53:00.096395|
+1_job_runs|alert_rank_shadow|success|||2026-10-08 17:53:00.078399|
+chk|n_sessions|n_rows|latest
+2_predicate_n_sessions|23|49|2026-10-09
+chk|ticker|alert_date|score_tier|trade_filled|composite_rank_eod|pool_size_eod
+3_shadow_rows_1013|AAOI|2026-10-09|MODERATE|f|0.4166666666666667|2
+3_shadow_rows_1013|HUM|2026-10-09|HIGH|t|0.5833333333333334|2
+chk|latest_close|rows_1013
+4_daily_closes_latest|2026-10-13|12450
+psql:/tmp/x_rankshadow_context_checks_2026-10-13.sql:10: ERROR:  column "close_price" does not exist
+LINE 1: ...close_1013_for_pools' AS chk, ticker, trade_date, close_pric...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "mi_daily_closes.low_price".

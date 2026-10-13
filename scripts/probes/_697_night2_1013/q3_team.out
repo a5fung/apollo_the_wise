@@ -1,0 +1,35 @@
+SET
+SET
+== 1. TEAM flag rows 2026-09-22 .. 2026-10-13
+scan_date|stage|held_from_stage|universe_sources|reason
+2026-09-22|TIGHTENING||{rs_top200}|range_0.71 vol_1.06
+2026-09-23|TIGHTENING||{rs_top200,rs_1m_80,flag_stage_carryforward}|range_0.71 vol_1.18
+2026-09-24|TIGHTENING|WATCH|{rs_top200,flag_stage_carryforward}|runup_147% base_16d close_vs_pivot_-2.4%
+2026-09-25|INVALIDATED||{rs_top200,flag_stage_carryforward}|close_187.74_below_sma20_188.65
+2026-09-28|INVALIDATED||{flag_stage_carryforward}|close_178.54_below_sma20_188.05
+2026-09-29|INVALIDATED||{rs_top200,flag_stage_carryforward}|close_175.96_below_base_low_close_176.42
+2026-09-30|INVALIDATED||{rs_top200}|close_179.29_below_sma20_186.75
+2026-10-01|WATCH||{rs_top200,rs_1m_80}|runup_147% base_21d close_vs_pivot_-3.7%
+2026-10-02|WATCH||{rs_top200,rs_1m_80}|runup_147% base_22d close_vs_pivot_-4.8%
+2026-10-05|WATCH||{rs_top200}|runup_147% base_23d close_vs_pivot_-0.3%
+2026-10-06|unqualified||{rs_top200}|ma_stack_not_stage2_187.8/187.8/167.8
+2026-10-07|unqualified||{rs_top200}|ma_stack_not_stage2_187.8/188.7/169.7
+2026-10-08|unqualified||{rs_top200,rs_1m_80}|ma_stack_not_stage2_188.9/189.9/171.7
+2026-10-09|unqualified||{rs_top200,rs_1m_80}|ma_stack_not_stage2_190.8/191.3/173.8
+2026-10-12|unqualified||{rs_top200,rs_1m_80,flag_stage_carryforward}|base_age_1_below_3
+2026-10-13|unqualified||{rs_top200,rs_1m_80,flag_pivot_window_carryforward}|base_age_0_below_3
+(16 rows)
+== 2. TEAM bars in mi_daily_closes 2026-10-05 .. 2026-10-13
+trade_date
+2026-10-05
+2026-10-06
+2026-10-07
+2026-10-08
+2026-10-09
+2026-10-12
+2026-10-13
+(7 rows)
+== 3. bars count TEAM total
+count
+1267
+(1 row)

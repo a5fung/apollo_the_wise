@@ -1,0 +1,18 @@
+Pager usage is off.
+== W1. every rewrite row 10-03..10-05 (is 10-05 really the first nightly with the between_tools rewrite?)
+           at_et            |                           s                           
+----------------------------+-------------------------------------------------------
+ 2026-10-03 17:06:04.460153 | claude-opus-5-5: forced_tool_to_structured_output
+ 2026-10-03 21:10:25.62355  | claude-opus-5-5: forced_tool_to_structured_output
+ 2026-10-05 07:00:13.259561 | claude-sonnet-5-5: forced_tool_to_structured_output
+ 2026-10-05 07:01:56.705645 | claude-opus-5-5: forced_tool_to_structured_output
+ 2026-10-05 16:02:00.921037 | claude-opus-5-5: forced_tool_to_structured_output
+ 2026-10-05 17:02:14.977187 | claude-sonnet-5-5: thinking_disabled_to_between_tools
+ 2026-10-05 17:05:15.286325 | claude-sonnet-5-5: forced_tool_to_structured_output
+(7 rows)
+
+== W2. thinking-off jobs api calls 10-03..10-04 (did a weekend run exercise them?)
+ at_et | caller | stop_reason | output_tokens 
+-------+--------+-------------+---------------
+(0 rows)
+

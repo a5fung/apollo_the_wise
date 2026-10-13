@@ -11,5 +11,10 @@ FROM api_usage WHERE caller='theme_validation' AND (created_at AT TIME ZONE 'Ame
 SELECT count(*) removals FROM mi_audit_log WHERE event_type='ticker_revalidated_out' AND (created_at AT TIME ZONE 'America/New_York')::date = :'d'::date;
 \echo == alarms that ET day (truncation / near-ceiling / validation errors)
 SELECT event_type, count(*) FROM mi_audit_log WHERE (created_at AT TIME ZONE 'America/New_York')::date = :'d'::date
-  AND (event_type IN ('llm_truncation_live','llm_refusal') OR event_type ILIKE '%near_ceiling%' OR event_type ILIKE '%validation%error%' OR (event_type ILIKE '%validation%' AND summary ILIKE '%parse%'))
+  AND (event_type IN ('llm_truncation_live','llm_refusal','validation_error','validation_api_failure','validation_rate_limited','anthropic_rate_limited')
+       OR event_type ILIKE '%near_ceiling%' OR event_type ILIKE '%validation%error%' OR (event_type ILIKE '%validation%' AND summary ILIKE '%parse%'))
 GROUP BY 1 ORDER BY 1;
+-- ⚠ (Opus verifier 2026-10-13) a validator that ERRORS keeps every ticker, so a broken run ALSO shows <15 removals and no
+-- truncation. A PASS needs, together: the call count of a FULL pass (10-07 142, 10-09 141, 10-12 154; Tue's small
+-- rescore was 15), ZERO rows of the four error/rate-limit events above, 0 max_tokens, >=20% of calls >25 tokens,
+-- mean >=40, removals <15. Removals 15-19 = neither pass nor fail (>=20): do not close; re-read Friday.

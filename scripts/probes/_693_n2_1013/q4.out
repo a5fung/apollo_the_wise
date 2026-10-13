@@ -1,0 +1,15 @@
+Pager usage is off.
+== U. the 10-08 truncation events in full
+           at_et            |       event_type        |                                       summary                                       |                                                                                                   det                                                                                                    
+----------------------------+-------------------------+-------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 2026-10-06 09:55:53.484445 | judge_verdict_truncated | TLN                                                                                 | holistic judge hit max_tokens=1500; verdict discarded, our score's alert tier kept
+ 2026-10-08 17:02:17.793785 | llm_truncation_live     | theme_descriptions response TRUNCATED at 500 output tokens (model claude-haiku-5-5) | AMPLE HEADROOM — mean 76, peak 267/500 53%, 7x mean, check input
+ 2026-10-08 17:52:11.681539 | llm_truncation_check    | 0 caller(s) truncating, 0 not reporting stop_reason, 1 within 10% of their ceiling  | {"window_hours": 24, "truncating": [], "unreported": [], "tight": [{"caller": "theme_descriptions", "max_completed": 468, "cap": 500, "pct_of_cap": 93.6}], "since": "2026-08-08T01:00:20.734610+00:00"}
+(3 rows)
+
+== V. any max_tokens stop in api_usage since 10-03 by caller
+     d      |       caller       |      model       | count 
+------------+--------------------+------------------+-------
+ 2026-10-08 | theme_descriptions | claude-haiku-5-5 |     1
+(1 row)
+

@@ -1,0 +1,49 @@
+SET
+SET
+== 1. every flag/digest audit row since 2026-10-12 00:00 PT (ET time, event, summary, detail)
+id|t_et|event_type|summary|detail
+55609|10-12 17:04:50|theme_dissolved_flagged_pair|Arm A dissolve: 'Automotive Thermal & Powertrain Components Suppliers' — validation flagged HOG at 2 members|via=validation flagged=['HOG'] survivors=['BWA'] (survivor released, no cooldown — ADR 0025 Arm A)
+56312|10-13 17:25:04|flag_stage_transition|IOVA entered COILED 2026-10-13|{"ticker": "IOVA", "stage": "COILED", "prev_stage": "WATCH", "scan_date": "2026-10-13", "run_up_pct": 2.5664335664335667, "pivot_high_price": 15.3, "range_contraction_ratio": 1.0991962096491708, "vol_contraction_ratio": 0.8461925527160227, "base_age": 9, "telegram": "sent"}
+56313|10-13 17:25:04|flag_stage_transition|GRAL entered COILED 2026-10-13|{"ticker": "GRAL", "stage": "COILED", "prev_stage": "WATCH", "scan_date": "2026-10-13", "run_up_pct": 1.5090089207531472, "pivot_high_price": 166.475, "range_contraction_ratio": 1.0, "vol_contraction_ratio": 1.0, "base_age": 4, "telegram": "sent"}
+56314|10-13 17:25:04|flag_digest_sent|flag digest 2026-10-13 (sent)|{"scan_date": "2026-10-13", "telegram": "sent", "new_today": ["IOVA", "GRAL"], "triggered": [], "coiled": [], "coiled_not_shown": [], "dropped_out": 9}
+(4 rows)
+== 1b. flag_digest_sent ever
+n|first_et|last_et
+1|2026-10-13 17:25:04.287153|2026-10-13 17:25:04.287153
+(1 row)
+== 2. stage mix by night (rows / holds / WATCH-or-better) 10-09 .. 10-13
+scan_date|stage|n|holds
+2026-10-09|COILED|1|1
+2026-10-09|INVALIDATED|3|0
+2026-10-09|unqualified|482|0
+2026-10-09|WATCH|6|0
+2026-10-12|INVALIDATED|12|0
+2026-10-12|unqualified|491|0
+2026-10-12|WATCH|4|0
+2026-10-13|COILED|2|0
+2026-10-13|INVALIDATED|9|0
+2026-10-13|unqualified|480|0
+2026-10-13|WATCH|2|0
+(11 rows)
+== 3. the WATCH-or-better rows on 10-12 and 10-13 (ticker, stage, tags)
+scan_date|ticker|stage|held_from_stage|universe_sources|reason
+2026-10-12|GRAL|WATCH||{rs_top200,rs_1m_80}|runup_151% base_3d close_vs_pivot_-17.5%
+2026-10-12|HTFL|WATCH||{flag_stage_carryforward}|runup_117% base_15d close_vs_pivot_-3.2%
+2026-10-12|IOVA|WATCH||{rs_top200,rs_1m_80,flag_stage_carryforward}|runup_257% base_8d close_vs_pivot_-4.8%
+2026-10-12|KOD|WATCH||{rs_top200,rs_1m_80,flag_stage_carryforward}|runup_249% base_6d close_vs_pivot_-4.6%
+2026-10-13|GRAL|COILED||{rs_top200,rs_1m_80,flag_stage_carryforward}|fresh_2bar 4.9%/atr 8.8% bodies_0.18/0.00
+2026-10-13|IOVA|COILED||{rs_top200,rs_1m_80,flag_stage_carryforward}|fresh_2bar 4.3%/atr 7.4% bodies_0.02/0.06
+2026-10-13|HTFL|WATCH||{flag_stage_carryforward}|runup_117% base_16d close_vs_pivot_-3.6%
+2026-10-13|KOD|WATCH||{rs_top200,rs_1m_80,flag_stage_carryforward}|runup_249% base_7d close_vs_pivot_-11.9%
+(8 rows)
+== 4. HOLD at-risk population: tickers whose 10-12 row was TIGHTENING-or-better and not a hold (only these could be held on 10-13)
+at_risk_for_a_first_hold_on_1013
+0
+(1 row)
+== 4b. same, any WATCH-or-better row on 10-12 that dropped on 10-13 (WATCH is the lowest stage; a WATCH drop is INVALIDATED/unqualified, never held)
+ticker|stage_1012|stage_1013|held_from_stage
+GRAL|WATCH|COILED|
+HTFL|WATCH|WATCH|
+IOVA|WATCH|COILED|
+KOD|WATCH|WATCH|
+(4 rows)

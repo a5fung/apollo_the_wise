@@ -1,0 +1,41 @@
+== now
+           now_et           
+----------------------------
+ 2026-10-13 18:42:16.149756
+(1 row)
+
+== mi_job_runs columns
+    column_name    |        data_type         
+-------------------+--------------------------
+ id                | bigint
+ job_id            | text
+ started_at        | timestamp with time zone
+ finished_at       | timestamp with time zone
+ duration_s        | numeric
+ status            | text
+ rows_written      | integer
+ expected_min_rows | integer
+ error_message     | text
+ created_at        | timestamp with time zone
+ scheduled_for     | timestamp with time zone
+(11 rows)
+
+== mi_themes columns
+       column_name        |        data_type         
+--------------------------+--------------------------
+ id                       | integer
+ theme_date               | date
+ name                     | text
+ stage                    | text
+ score                    | double precision
+ description              | text
+ tickers                  | ARRAY
+ created_at               | timestamp with time zone
+ rs_avg                   | double precision
+ parent_theme             | text
+ days_active              | integer
+ consecutive_accelerating | integer
+ pct_above_20sma          | real
+ source                   | text
+(14 rows)
+

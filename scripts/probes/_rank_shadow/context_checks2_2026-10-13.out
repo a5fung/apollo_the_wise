@@ -1,0 +1,25 @@
+chk|alert_date|n_alerts|n_high
+6_ep_alerts_by_date|2026-10-05|3|0
+6_ep_alerts_by_date|2026-10-06|3|3
+6_ep_alerts_by_date|2026-10-07|1|1
+6_ep_alerts_by_date|2026-10-08|1|1
+6_ep_alerts_by_date|2026-10-09|2|1
+chk|alert_date|n_shadow
+7_shadow_by_date|2026-10-05|3
+7_shadow_by_date|2026-10-06|3
+7_shadow_by_date|2026-10-07|1
+7_shadow_by_date|2026-10-08|1
+7_shadow_by_date|2026-10-09|2
+chk|trade_date|count
+8_closes_per_day|2026-10-05|12485
+8_closes_per_day|2026-10-06|12404
+8_closes_per_day|2026-10-07|12456
+8_closes_per_day|2026-10-08|12430
+8_closes_per_day|2026-10-09|12385
+8_closes_per_day|2026-10-12|12454
+8_closes_per_day|2026-10-13|12450
+chk|event_type|summary|at_et
+9_audit_rank|alert_rank_shadow_recorded|0 row(s) written/updated across 0 date(s) needing processing (0 error(s))|2026-10-13 17:53:00.029967
+9_audit_rank|alert_rank_shadow_recorded|0 row(s) written/updated across 0 date(s) needing processing (0 error(s))|2026-10-12 17:53:00.034033
+9_audit_rank|alert_rank_shadow_recorded|2 row(s) written/updated across 1 date(s) needing processing (0 error(s))|2026-10-09 17:53:00.094974
+9_audit_rank|alert_rank_shadow_recorded|1 row(s) written/updated across 1 date(s) needing processing (0 error(s))|2026-10-08 17:53:00.076442

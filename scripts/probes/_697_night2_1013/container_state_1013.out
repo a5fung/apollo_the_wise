@@ -1,0 +1,4 @@
+apollo-execution docker-apollo-execution Up 7 hours (healthy)
+apollo-market docker-market-agent Up 7 hours (healthy)
+/apollo-market created=2026-10-13T16:03:53.351229108Z started=2026-10-13T16:04:05.504601184Z image=sha256:de885735b9cc998ef419fe8047206c65e699ca8f38ebde19af212c7ced50b7a5
+/apollo-execution created=2026-10-13T16:06:42.606627317Z started=2026-10-13T16:06:54.969244113Z image=sha256:8b2d0d49697017c926349e40bd971a8d30c33532fe1a150ab20cbad359d2f4ca

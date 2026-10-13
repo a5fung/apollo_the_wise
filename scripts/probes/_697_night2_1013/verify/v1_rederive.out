@@ -1,0 +1,267 @@
+SET
+SET
+== P1. population: rows / distinct tickers / write window (ET) per scan_date >= 10-09, and any scan_date > 10-13
+scan_date|n|tickers|first_et|last_et|off_window
+2026-10-09|492|492|2026-10-09 17:25:02.462017|2026-10-09 17:25:03.325023|0
+2026-10-12|507|507|2026-10-12 17:25:02.988206|2026-10-12 17:25:03.660126|0
+2026-10-13|493|493|2026-10-13 17:25:02.686694|2026-10-13 17:25:03.316943|0
+(3 rows)
+== P2. job runs for flag jobs since 10-12 (ET)
+job_id|sched_et|start_et|status|rows_written|error_message
+flag_break_scan||2026-10-12 09:00:00.00383|success|0|
+flag_break_scan||2026-10-12 09:05:00.002256|success|0|
+flag_break_scan||2026-10-12 09:10:00.0053|success|0|
+flag_break_scan||2026-10-12 09:15:00.002891|success|0|
+flag_break_scan||2026-10-12 09:20:00.004391|success|0|
+flag_break_scan||2026-10-12 09:25:00.003572|success|0|
+flag_break_scan||2026-10-12 09:30:00.00384|success|0|
+flag_break_scan||2026-10-12 09:35:00.002838|success|0|
+flag_break_scan||2026-10-12 09:40:00.012434|success|0|
+flag_break_scan||2026-10-12 09:45:00.004117|success|0|
+flag_break_scan||2026-10-12 09:50:00.00498|success|0|
+flag_break_scan||2026-10-12 09:55:00.00438|success|0|
+flag_break_scan||2026-10-12 10:00:00.009007|success|0|
+flag_break_scan||2026-10-12 10:05:00.002561|success|0|
+flag_break_scan||2026-10-12 10:10:00.010641|success|0|
+flag_break_scan||2026-10-12 10:15:00.002834|success|0|
+flag_break_scan||2026-10-12 10:20:00.013521|success|0|
+flag_break_scan||2026-10-12 10:25:00.003398|success|0|
+flag_break_scan||2026-10-12 10:30:00.013226|success|0|
+flag_break_scan||2026-10-12 10:35:00.002137|success|0|
+flag_break_scan||2026-10-12 10:40:00.012769|success|0|
+flag_break_scan||2026-10-12 10:45:00.00257|success|0|
+flag_break_scan||2026-10-12 10:50:00.006188|success|0|
+flag_break_scan||2026-10-12 10:55:00.002361|success|0|
+flag_break_scan||2026-10-12 11:00:00.00348|success|0|
+flag_break_scan||2026-10-12 11:05:00.003529|success|0|
+flag_break_scan||2026-10-12 11:10:00.002772|success|0|
+flag_break_scan||2026-10-12 11:15:00.003057|success|0|
+flag_break_scan||2026-10-12 11:20:00.002216|success|0|
+flag_break_scan||2026-10-12 11:25:00.00251|success|0|
+flag_break_scan||2026-10-12 11:30:00.002808|success|0|
+flag_break_scan||2026-10-12 11:35:00.004667|success|0|
+flag_break_scan||2026-10-12 11:40:00.003232|success|0|
+flag_break_scan||2026-10-12 11:45:00.002|success|0|
+flag_break_scan||2026-10-12 11:50:00.003036|success|0|
+flag_break_scan||2026-10-12 11:55:00.002646|success|0|
+flag_break_scan||2026-10-12 12:00:00.008489|success|0|
+flag_break_scan||2026-10-12 12:05:00.002616|success|0|
+flag_break_scan||2026-10-12 12:10:00.009667|success|0|
+flag_break_scan||2026-10-12 12:15:00.002055|success|0|
+flag_break_scan||2026-10-12 12:20:00.013795|success|0|
+flag_break_scan||2026-10-12 12:25:00.003562|success|0|
+flag_break_scan||2026-10-12 12:30:00.004753|success|0|
+flag_break_scan||2026-10-12 12:35:00.003103|success|0|
+flag_break_scan||2026-10-12 12:40:00.014473|success|0|
+flag_break_scan||2026-10-12 12:45:00.003417|success|0|
+flag_break_scan||2026-10-12 12:50:00.008798|success|0|
+flag_break_scan||2026-10-12 12:55:00.004108|success|0|
+flag_break_scan||2026-10-12 13:00:00.003716|success|0|
+flag_break_scan||2026-10-12 13:05:00.003385|success|0|
+flag_break_scan||2026-10-12 13:10:00.00425|success|0|
+flag_break_scan||2026-10-12 13:15:00.00201|success|0|
+flag_break_scan||2026-10-12 13:20:00.010798|success|0|
+flag_break_scan||2026-10-12 13:25:00.003493|success|0|
+flag_break_scan||2026-10-12 13:30:00.005993|success|0|
+flag_break_scan||2026-10-12 13:35:00.00199|success|0|
+flag_break_scan||2026-10-12 13:40:00.007922|success|0|
+flag_break_scan||2026-10-12 13:45:00.003854|success|0|
+flag_break_scan||2026-10-12 13:50:00.003106|success|0|
+flag_break_scan||2026-10-12 13:55:00.002268|success|0|
+flag_break_scan||2026-10-12 14:00:00.006329|success|0|
+flag_break_scan||2026-10-12 14:05:00.003193|success|0|
+flag_break_scan||2026-10-12 14:10:00.011416|success|0|
+flag_break_scan||2026-10-12 14:15:00.003608|success|0|
+flag_break_scan||2026-10-12 14:20:00.011018|success|0|
+flag_break_scan||2026-10-12 14:25:00.004053|success|0|
+flag_break_scan||2026-10-12 14:30:00.007784|success|0|
+flag_break_scan||2026-10-12 14:35:00.003655|success|0|
+flag_break_scan||2026-10-12 14:40:00.004549|success|0|
+flag_break_scan||2026-10-12 14:45:00.00989|success|0|
+flag_break_scan||2026-10-12 14:50:00.003717|success|0|
+flag_break_scan||2026-10-12 14:55:00.003051|success|0|
+flag_break_scan||2026-10-12 15:00:00.007216|success|0|
+flag_break_scan||2026-10-12 15:05:00.003593|success|0|
+flag_break_scan||2026-10-12 15:10:00.008064|success|0|
+flag_break_scan||2026-10-12 15:15:00.004824|success|0|
+flag_break_scan||2026-10-12 15:20:00.00305|success|0|
+flag_break_scan||2026-10-12 15:25:00.001903|success|0|
+flag_break_scan||2026-10-12 15:30:00.003419|success|0|
+flag_break_scan||2026-10-12 15:35:00.003547|success|0|
+flag_break_scan||2026-10-12 15:40:00.005489|success|0|
+flag_break_scan||2026-10-12 15:45:00.004738|success|0|
+flag_break_scan||2026-10-12 15:50:00.012186|success|0|
+flag_break_scan||2026-10-12 15:55:00.004634|success|0|
+flag_continuation_scan||2026-10-12 17:25:00.001581|success|507|
+flag_break_scan||2026-10-13 09:00:00.023871|success|0|
+flag_break_scan||2026-10-13 09:05:00.003845|success|0|
+flag_break_scan||2026-10-13 09:10:00.021856|success|0|
+flag_break_scan||2026-10-13 09:15:00.002379|success|0|
+flag_break_scan||2026-10-13 09:20:00.012458|success|0|
+flag_break_scan||2026-10-13 09:25:00.003112|success|0|
+flag_break_scan||2026-10-13 09:30:00.008971|success|0|
+flag_break_scan||2026-10-13 09:35:00.005435|success|0|
+flag_break_scan||2026-10-13 09:40:00.00322|success|0|
+flag_break_scan||2026-10-13 09:45:00.004549|success|0|
+flag_break_scan||2026-10-13 09:50:00.003985|success|0|
+flag_break_scan||2026-10-13 09:55:00.003821|success|0|
+flag_break_scan||2026-10-13 10:00:00.005752|success|0|
+flag_break_scan||2026-10-13 10:05:00.00334|success|0|
+flag_break_scan||2026-10-13 10:10:00.007151|success|0|
+flag_break_scan||2026-10-13 10:15:00.003377|success|0|
+flag_break_scan||2026-10-13 10:20:00.004613|success|0|
+flag_break_scan||2026-10-13 10:25:00.002728|success|0|
+flag_break_scan||2026-10-13 10:30:00.00685|success|0|
+flag_break_scan||2026-10-13 10:35:00.003867|success|0|
+flag_break_scan||2026-10-13 10:40:00.003292|success|0|
+flag_break_scan||2026-10-13 10:45:00.002233|success|0|
+flag_break_scan||2026-10-13 10:50:00.00584|success|0|
+flag_break_scan||2026-10-13 10:55:00.004823|success|0|
+flag_break_scan||2026-10-13 11:00:00.005937|success|0|
+flag_break_scan||2026-10-13 11:05:00.003143|success|0|
+flag_break_scan||2026-10-13 11:10:00.008542|success|0|
+flag_break_scan||2026-10-13 11:15:00.002363|success|0|
+flag_break_scan||2026-10-13 11:20:00.008599|success|0|
+flag_break_scan||2026-10-13 11:25:00.002382|success|0|
+flag_break_scan||2026-10-13 11:30:00.008059|success|0|
+flag_break_scan||2026-10-13 11:35:00.002137|success|0|
+flag_break_scan||2026-10-13 11:40:00.008672|success|0|
+flag_break_scan||2026-10-13 11:45:00.002115|success|0|
+flag_break_scan||2026-10-13 11:50:00.006537|success|0|
+flag_break_scan||2026-10-13 11:55:00.004054|success|0|
+flag_break_scan||2026-10-13 12:00:00.004571|success|0|
+flag_break_scan||2026-10-13 12:05:00.002542|success|0|
+flag_break_scan||2026-10-13 12:10:00.003708|success|0|
+flag_break_scan||2026-10-13 12:15:00.004237|success|0|
+flag_break_scan||2026-10-13 12:20:00.002782|success|0|
+flag_break_scan||2026-10-13 12:25:00.003478|success|0|
+flag_break_scan||2026-10-13 12:30:00.005764|success|0|
+flag_break_scan||2026-10-13 12:35:00.005994|success|0|
+flag_break_scan||2026-10-13 12:40:00.012293|success|0|
+flag_break_scan||2026-10-13 12:45:00.002875|success|0|
+flag_break_scan||2026-10-13 12:50:00.009673|success|0|
+flag_break_scan||2026-10-13 12:55:00.005753|success|0|
+flag_break_scan||2026-10-13 13:00:00.002859|success|0|
+flag_break_scan||2026-10-13 13:05:00.002846|success|0|
+flag_break_scan||2026-10-13 13:10:00.003632|success|0|
+flag_break_scan||2026-10-13 13:15:00.004834|success|0|
+flag_break_scan||2026-10-13 13:20:00.004465|success|0|
+flag_break_scan||2026-10-13 13:25:00.00436|success|0|
+flag_break_scan||2026-10-13 13:30:00.003024|success|0|
+flag_break_scan||2026-10-13 13:35:00.002667|success|0|
+flag_break_scan||2026-10-13 13:40:00.007144|success|0|
+flag_break_scan||2026-10-13 13:45:00.002289|success|0|
+flag_break_scan||2026-10-13 13:50:00.007008|success|0|
+flag_break_scan||2026-10-13 13:55:00.003247|success|0|
+flag_break_scan||2026-10-13 14:00:00.008932|success|0|
+flag_break_scan||2026-10-13 14:05:00.001744|success|0|
+flag_break_scan||2026-10-13 14:10:00.007393|success|0|
+flag_break_scan||2026-10-13 14:15:00.001952|success|0|
+flag_break_scan||2026-10-13 14:20:00.007789|success|0|
+flag_break_scan||2026-10-13 14:25:00.002597|success|0|
+flag_break_scan||2026-10-13 14:30:00.006903|success|0|
+flag_break_scan||2026-10-13 14:35:00.004068|success|0|
+flag_break_scan||2026-10-13 14:40:00.00381|success|0|
+flag_break_scan||2026-10-13 14:45:00.002574|success|0|
+flag_break_scan||2026-10-13 14:50:00.008183|success|0|
+flag_break_scan||2026-10-13 14:55:00.003685|success|0|
+flag_break_scan||2026-10-13 15:00:00.007139|success|0|
+flag_break_scan||2026-10-13 15:05:00.00257|success|0|
+flag_break_scan||2026-10-13 15:10:00.011404|success|0|
+flag_break_scan||2026-10-13 15:15:00.002999|success|0|
+flag_break_scan||2026-10-13 15:20:00.011866|success|0|
+flag_break_scan||2026-10-13 15:25:00.003638|success|0|
+flag_break_scan||2026-10-13 15:30:00.005792|success|0|
+flag_break_scan||2026-10-13 15:35:00.002663|success|0|
+flag_break_scan||2026-10-13 15:40:00.009059|success|0|
+flag_break_scan||2026-10-13 15:45:00.004072|success|0|
+flag_break_scan||2026-10-13 15:50:00.003582|success|0|
+flag_break_scan||2026-10-13 15:55:00.013759|success|0|
+flag_continuation_scan||2026-10-13 17:25:00.001356|success|493|
+(170 rows)
+== P3. every universe_sources tag on 10-13 (is the organic list complete?)
+tag|count
+rs_1m_80|474
+rs_top200|199
+momentum_25pct|13
+flag_pivot_window_carryforward|10
+flag_stage_carryforward|9
+(5 rows)
+== C1. carry rows on 10-12 and 10-13: long tag, short tag, carry-only (no tag outside the two carry tags)
+scan_date|long_tag|short_tag|carry_only
+2026-10-09|0|3|2
+2026-10-12|10|16|15
+2026-10-13|10|9|10
+(3 rows)
+== C2. last 5 scan sessions before 10-13 (by distinct scan_date)
+scan_date
+2026-10-12
+2026-10-09
+2026-10-08
+2026-10-07
+2026-10-06
+(5 rows)
+== C3. stored WATCH-or-better names in those 5 sessions: row on 10-13? bar on 10-13? bars to date
+ticker|hist|stage_1013|universe_sources|bar_1013
+FWDI|WATCH@10-06|INVALIDATED|{flag_stage_carryforward}|t
+GRAL|WATCH@10-12|COILED|{rs_top200,rs_1m_80,flag_stage_carryforward}|t
+HTFL|TIGHTENING@10-06,WATCH@10-09,WATCH@10-12|WATCH|{flag_stage_carryforward}|t
+IOVA|WATCH@10-08,WATCH@10-09,WATCH@10-12|COILED|{rs_top200,rs_1m_80,flag_stage_carryforward}|t
+KOD|COILED@10-08,COILED@10-09,WATCH@10-12|WATCH|{rs_top200,rs_1m_80,flag_stage_carryforward}|t
+MRNA|WATCH@10-07,WATCH@10-08,WATCH@10-09|unqualified|{rs_top200,rs_1m_80,flag_stage_carryforward}|t
+OMER|WATCH@10-08,WATCH@10-09|INVALIDATED|{flag_stage_carryforward}|t
+QMCO|WATCH@10-06,WATCH@10-09|INVALIDATED|{rs_top200,flag_stage_carryforward}|t
+VICR|WATCH@10-09|INVALIDATED|{flag_stage_carryforward}|t
+(9 rows)
+== C4. TIGHTENING-or-better names in the last 25 scan sessions before 10-13 with a bar on 10-13 and NO row on 10-13 (must be empty)
+ticker|bar_1013|row_1013
+AMLX|t|t
+CDNA|t|t
+CHPT|t|t
+EFOR|t|t
+ESTC|t|t
+HTFL|t|t
+IOVA|t|t
+KOD|t|t
+OMER|t|t
+PLSE|t|t
+PURR|t|t
+QMCO|t|t
+TEAM|t|t
+TJGC|t|t
+XHLD|t|t
+(15 rows)
+== H1. hold: per row on 10-12/10-13, yesterday = latest prior row within 5 calendar days (the code's definition)
+scan_date|holds_written|violators|yesterday_was_hold|at_risk_first_hold|at_risk_and_fell
+2026-10-12|0|0|1|0|0
+2026-10-13|0|0|0|0|0
+(2 rows)
+== H2. holds_carried the 10-13 scan should log: tickers whose latest prior row in [10-08,10-12] is a hold
+expected_holds_carried_1013
+0
+(1 row)
+== H3. every hold row ever since 10-01 (old vs new code)
+scan_date|ticker|stage|held_from_stage
+2026-10-06|HTFL|TIGHTENING|WATCH
+2026-10-09|KOD|COILED|WATCH
+(2 rows)
+== D1. flag digest / transition / held / error audit rows since 10-12 00:00 ET
+id|t_et|event_type|summary|detail
+56312|2026-10-13 17:25:04.2819|flag_stage_transition|IOVA entered COILED 2026-10-13|{"ticker": "IOVA", "stage": "COILED", "prev_stage": "WATCH", "scan_date": "2026-10-13", "run_up_pct": 2.5664335664335667, "pivot_high_price": 15.3, "range_contraction_ratio": 1.0991962096491708, "vol_contraction_ratio": 0.8461925527160227, "base_age": 9, "telegram": "sent"}
+56313|2026-10-13 17:25:04.285678|flag_stage_transition|GRAL entered COILED 2026-10-13|{"ticker": "GRAL", "stage": "COILED", "prev_stage": "WATCH", "scan_date": "2026-10-13", "run_up_pct": 1.5090089207531472, "pivot_high_price": 166.475, "range_contraction_ratio": 1.0, "vol_contraction_ratio": 1.0, "base_age": 4, "telegram": "sent"}
+56314|2026-10-13 17:25:04.287153|flag_digest_sent|flag digest 2026-10-13 (sent)|{"scan_date": "2026-10-13", "telegram": "sent", "new_today": ["IOVA", "GRAL"], "triggered": [], "coiled": [], "coiled_not_shown": [], "dropped_out": 9}
+(3 rows)
+== D2. flag_digest_sent / _error ever
+event_type|count|min|max
+flag_digest_sent|1|2026-10-13 17:25:04.287153|2026-10-13 17:25:04.287153
+(1 row)
+== D3. board on 10-13 at COILED/TRIGGERED (digest must not be quiet)
+ticker|stage|held_from_stage|triggered_from
+GRAL|COILED||
+IOVA|COILED||
+(2 rows)
+== T1. #146: TRIGGERED rows and triggered_from stamps since 10-12
+scan_date|trig|stamped
+2026-10-12|0|0
+2026-10-13|0|0
+(2 rows)

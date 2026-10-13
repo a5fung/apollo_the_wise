@@ -1,0 +1,148 @@
+Output format is unaligned.
+Field separator is "	".
+== 1. full detail of
+psql:/tmp/x655_1013_q2.sql:4: error: unterminated quoted string
+id	detail
+56269	{"theme": "Diagnostic Testing & Lab Equipment Re-Rating", "home": "Medical Device Mean-Reversion & Rotation Recovery", "e_code": "E-MEDTECH", "members": ["OMCL", "MDLN", "QDEL"], "moved": ["OMCL", "MDLN"], "already_in_home": [], "released": ["QDEL"], "g3": {"cohesion": 0.09253368035315779, "c1_p95": 0.2752832116781091, "pass_g3": false}, "home_pick": {"shared": 0, "industry_overlap": 0.666667, "word_similarity": 0.0, "home_members": 18}, "bar": 0.35, "verdicts": {"OMCL": {"path": "tape", "corr": 0.4346, "basket_n": 18, "pass": true}, "MDLN": {"path": "tape", "corr": 0.3702, "basket_n": 18, "pass": true}, "QDEL": {"path": "tape", "corr": -0.0649, "basket_n": 18, "pass": false}}}
+56270	{"theme": "Enterprise Information Management & Infrastructure Engineering Software", "home": "Enterprise HR & Workforce Management SaaS", "e_code": "E-SAAS", "members": ["BSY", "OTEX", "P"], "moved": ["BSY", "OTEX"], "already_in_home": [], "released": ["P"], "g3": {"cohesion": -0.0002647012850059601, "c1_p95": 0.2748192922588107, "pass_g3": false}, "home_pick": {"shared": 0, "industry_overlap": 0.666667, "word_similarity": 0.086957, "home_members": 6}, "bar": 0.35, "verdicts": {"BSY": {"path": "tape", "corr": 0.5693, "basket_n": 6, "pass": true}, "OTEX": {"path": "tape", "corr": 0.7567, "basket_n": 6, "pass": true}, "P": {"path": "tape", "corr": -0.3467, "basket_n": 6, "pass": false}}}
+(2 rows)
+== 2. TUESDAY-BOARD CLAUSE: Appalachian theme in mi_themes by date (stage, n, rs, source)
+theme_date	name	stage	n	rs_avg	source	tk
+2026-10-07	Natural Gas-Weighted Appalachian & Shale E&P Producers	Nascent	6	71.8	shadow_promoted	BKV,CRK,CNX,AR,EXE,EQT
+2026-10-08	Natural Gas-Weighted Appalachian & Shale E&P Producers	Retired			live	
+2026-10-09	Natural Gas-Weighted Appalachian & Shale E&P Producers	Nascent	6	72.58333333333333	shadow_promoted	BKV,CRK,CNX,AR,EXE,EQT
+2026-10-12	Natural Gas-Weighted Appalachian & Shale E&P Producers	Accelerating	8	76.3	live	EQT,AR,EXE,BKV,CRK,CNX,RRC,GPOR
+2026-10-13	Natural Gas-Weighted Appalachian & Shale E&P Producers	Accelerating	8	82.4	live	EQT,AR,RRC,GPOR,EXE,CNX,BKV,CRK
+(5 rows)
+== 2b. all rows with this name, any date (count, first, last, stages)
+n	first_d	last_d	stages
+5	2026-10-07	2026-10-13	Accelerating,Nascent,Retired
+(1 row)
+== 3. Oil & Gas Mineral and Royalty Owners (also kept tonight) history
+theme_date	name	stage	n	rs_avg	source	tk
+2026-10-13	Oil & Gas Mineral and Royalty Owners	Nascent	3	83.1	live	KRP,VNOM,TPL
+(1 row)
+== 4. all sector-cap events (dropped/kept/absorbed) by night since 10-02
+d	event_type	n
+2026-10-02	theme_sector_cap_dropped	1
+2026-10-02	theme_sector_cap_not_absorbed	3
+2026-10-05	theme_sector_cap_not_absorbed	2
+2026-10-06	theme_sector_cap_not_absorbed	3
+2026-10-07	theme_sector_cap_not_absorbed	4
+2026-10-08	theme_sector_cap_not_absorbed	2
+2026-10-09	theme_sector_cap_absorbed	1
+2026-10-09	theme_sector_cap_dropped	1
+2026-10-09	theme_sector_cap_not_absorbed	2
+2026-10-12	theme_sector_cap_dropped	1
+2026-10-12	theme_sector_cap_kept_distinct	1
+2026-10-13	theme_sector_cap_kept_distinct	3
+(12 rows)
+== 5. audit rows naming the Appalachian theme since 10-12 (id, time, type, summary)
+id	t	event_type	s
+55664	2026-10-12 17:07:29.511017	assignment_llm_proposed	Sonnet proposed 1 assignment(s) (batch 5/16, advisor_calls=0)
+55673	2026-10-12 17:08:41.41445	assignment_llm_proposed	Sonnet proposed 3 assignment(s) (batch 14/16, advisor_calls=0)
+55722	2026-10-12 17:10:07.5154	stage_change	Natural Gas-Weighted Appalachian & Shale E&P Producers: Nascent → Accelerating
+55737	2026-10-12 17:10:07.54893	theme_sector_cap_kept_distinct	Pass2: 'Natural Gas-Weighted Appalachian & Shale E&P Producers' kept distinct from 'Crude & Product Tanker Shipping' — 8 of 8 member(s) judged, none co-moves (sector group 'oil_gas')
+55813	2026-10-12 17:31:15.351386	theme_correctness_check	G1 570/609 (93.6% bar 90.0%) · G2 18/609 (3.0% bar<= 5.0%) · G3 100/109 (91.7% bar 90.0%) · G4 10/109 small (9.2% bar<= 10.0%; settled 5/104 4.8%) · latency median 5.5 sessions (n=6)
+56252	2026-10-13 17:05:38.558863	theme_sector_cap_kept_distinct	Pass2: 'Natural Gas-Weighted Appalachian & Shale E&P Producers' kept distinct from 'Crude & Product Tanker Shipping' — 8 of 8 member(s) judged, none co-moves (sector group 'oil_gas')
+56259	2026-10-13 17:05:59.106056	theme_sector_cap_kept_distinct	Pass2: 'Natural Gas-Weighted Appalachian & Shale E&P Producers' kept distinct from 'Crude & Product Tanker Shipping' — 8 of 8 member(s) judged, none co-moves (sector group 'oil_gas')
+56276	2026-10-13 17:06:49.245646	theme_parent_pass_distinct	Parent pass: 'Natural Gas-Weighted Appalachian & Shale E&P Producers' vs 'Energy Supply Disruption: Middle East Geopolitical Risk' PEERS — no containment, 30d pair cooldown
+56280	2026-10-13 17:06:59.159975	theme_parent_pass_ran	Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+56285	2026-10-13 17:07:06.505986	theme_constituent_churn	12 high-churn (theme,ticker) pair(s) in last 10d — sample: AKAM↔Cloud Application De(2), AMR↔Coal Mining Producer(2), BTU↔Coal Mining Producer(2), HCC↔Coal Mining Producer(2), AGNC↔Mortgage REITs (Agen(2)
+56328	2026-10-13 17:31:11.453993	theme_correctness_check	G1 572/617 (92.7% bar 90.0%) · G2 23/617 (3.7% bar<= 5.0%) · G3 99/107 (92.5% bar 90.0%) · G4 10/107 small (9.3% bar<= 10.0%; settled 5/102 4.9%) · latency median 5.5 sessions (n=6)
+(11 rows)
+== 6. tonight G3 detail: n, rate, fail_list
+id	nb	nj	p	r	fl
+56328	107	107	99	92.5	["Digital Advertising & Ad-Tech Monetization Platforms", "Digital-First Beauty & Cosmetics Brands", "Exchange, Options Trading & Alternative Consumer Credit Financials", "International Telecom & Cross-Border Communications Services", "Off-Price & Specialty Retail Consumer Rotation", "Quick-Service Restaurant & Fitness Franchisors Consumer Rotation", "Space Launch, Satellite Imagery & Lunar Infrastructure", "Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)"]
+(1 row)
+== 6b. tonight G3 failing themes: stage, size, cohesion, p95
+name	stage	size	coh	p95
+Digital Advertising & Ad-Tech Monetization Platforms	Mainstream	2	0.073	0.393
+Digital-First Beauty & Cosmetics Brands	Nascent	2	0.030	0.436
+International Telecom & Cross-Border Communications Services	Nascent	2	0.155	0.438
+Quick-Service Restaurant & Fitness Franchisors Consumer Rotation	Nascent	2	0.160	0.406
+Space Launch, Satellite Imagery & Lunar Infrastructure	Fading	2	0.331	0.362
+Off-Price & Specialty Retail Consumer Rotation	Nascent	3	0.136	0.242
+Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)	Mainstream	3	0.123	0.268
+Exchange, Options Trading & Alternative Consumer Credit Financials	Fading	6	0.125	0.198
+(8 rows)
+== 6c. tonight G3 pass/fail by size bucket
+bucket	pass	n
+2-3	false	7
+2-3	true	27
+4+	false	1
+4+	true	72
+(4 rows)
+== 6d. last
+bucket	pass	n
+2-3	false	9
+2-3	true	26
+4+	true	74
+(3 rows)
+== 7. last nights six folded themes + tonights two: stage on 10-13 board (tombstone check)
+name	theme_date	stage	n	source
+Alternative Asset Managers & Private Markets Platforms	2026-10-12	Retired		live
+Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	2026-10-12	Retired		live
+Diagnostic Testing & Lab Equipment Re-Rating	2026-10-12	Nascent	3	shadow_promoted
+Diagnostic Testing & Lab Equipment Re-Rating	2026-10-13	Retired		live
+Emerging Medical Device Innovators Breakout	2026-10-12	Retired		live
+Enterprise Information Management & Infrastructure Engineering Software	2026-10-12	Nascent	3	shadow_promoted
+Enterprise Information Management & Infrastructure Engineering Software	2026-10-13	Retired		live
+Enterprise Unstructured Data Storage Infrastructure	2026-10-12	Retired		live
+Functional Beverage & Energy Drink Brands	2026-10-12	Retired		live
+Functional Energy Drink Brands	2026-10-12	Nascent	3	shadow_promoted
+Functional Energy Drink Brands	2026-10-13	Fading	3	live
+Orthopedic Surgical Devices & Instruments	2026-10-12	Retired		live
+(12 rows)
+== 8. where moved/released members sit on the 10-13 board (active themes only)
+tk	name	stage	n
+BSY	Enterprise HR & Workforce Management SaaS	Nascent	8
+MDLN	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	20
+OMCL	Medical Device Mean-Reversion & Rotation Recovery	Mainstream	20
+OTEX	Enterprise HR & Workforce Management SaaS	Nascent	8
+(4 rows)
+== 9. homes tonight: roster size 10-12 vs 10-13
+psql:/tmp/x655_1013_q2.sql:31: error: unterminated quoted string
+name	theme_date	stage	n	tk
+Enterprise HR & Workforce Management SaaS	2026-10-12	Nascent	6	WDAY,ALIT,ADP,TNET,PCTY,PAYC
+Enterprise HR & Workforce Management SaaS	2026-10-13	Nascent	8	PAYC,ALIT,TNET,WDAY,ADP,PCTY,BSY,OTEX
+Medical Device Mean-Reversion & Rotation Recovery	2026-10-12	Mainstream	22	INSP,BAX,LIVN,RMD,BDX,EW,MMSI,GEHC,ICUI,ZBH,HAE,MDT,ISRG,ATRC,GKOS,TMDX,ABT,MMED,DXCM,ATEC,CNMD,SIBN
+Medical Device Mean-Reversion & Rotation Recovery	2026-10-13	Mainstream	20	LIVN,MMED,MDT,EW,INSP,DXCM,ATRC,HAE,BAX,BDX,ICUI,MMSI,ISRG,GEHC,ABT,RMD,GKOS,TMDX,OMCL,MDLN
+(4 rows)
+== 10. G3-failing small themes tonight on the 10-13 board: ecosystem + members
+name	stage	n	tk	source
+Digital Advertising & Ad-Tech Monetization Platforms	Mainstream	2	MGNI,DV	live
+Digital-First Beauty & Cosmetics Brands	Nascent	2	ODD,ELF	live
+Exchange, Options Trading & Alternative Consumer Credit Financials	Fading	6	PAX,PWP,CME,CBOE,ICE,SEZL	live
+International Telecom & Cross-Border Communications Services	Nascent	2	IDT,VEON	live
+Off-Price & Specialty Retail Consumer Rotation	Nascent	3	TJX,BBWI,DORM	shadow_promoted
+Quick-Service Restaurant & Fitness Franchisors Consumer Rotation	Nascent	2	YUM,PLNT	live
+Space Launch, Satellite Imagery & Lunar Infrastructure	Fading	2	RKLB,SPCX	live
+Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)	Mainstream	3	MANE,KOD,UTHR	live
+(8 rows)
+== 11. tonight births/retire/absorb summaries
+id	event_type	s
+56228	theme_discovered	New theme: Quick-Service Restaurant & Fitness Franchisors Consumer Rotation (2 stocks)
+56229	theme_discovered	New theme: Primary Silver Miners (3 stocks)
+56230	theme_retired	Retired: Regulated Utilities Wildfire & Rate-Case Exposure
+56231	theme_retired	Retired: Mobile SoC & Wireless Connectivity Semiconductors
+56232	theme_retired	Retired: Bitcoin Miners Pivoting to AI Data Center Hosting
+56233	theme_retired	Retired: Discrete, Passive & Low-Power Programmable Semiconductor Components Recovery
+56234	theme_retired	Retired: Emerging AI Compute & Cloud Infrastructure Platforms
+56235	theme_retired	Retired: Peptide & Hormone Therapies for Metabolic & Endocrine Disorders
+56236	theme_retired	Retired: Precision Timing & Motion Control Component Makers
+56237	theme_retired	Retired: U.S. Domestic Passenger Airlines
+56250	theme_pass1_5_absorption	Pass1.5: 'Capital Markets & Deal-Flow Re-Rating' -> 'Exchange, Options Trading & Alternative Consumer Credit Financials'
+56251	theme_pass1_5_absorption	Pass1.5: 'Primary Silver Miners' -> 'Precious Metals Miners — Fed Easing & Rate Tailwind'
+56255	theme_split	Split: 'Oil & Gas Mineral and Royalty Owners' from 'Energy Supply Disruption: Middle East Geopolitical Risk' (3 stocks)
+56256	theme_split	Split: 'Orthopedic & Spinal Surgery Devices' from 'Medical Device Mean-Reversion & Rotation Recovery' (4 stocks)
+56267	theme_thesis_merged	Arm B: 'AI-Driven Semiconductor Manufacturing Ecosystem (Capex & Foundry)' merged into 'AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)' (17 members)
+56272	theme_auto_retired	Auto-retired 10 theme(s) dropped during merge passes (2 with successor pointer)
+(16 rows)
+== 12. fold-related event types ever (nights): ran / folded / error counts
+d	event_type	count
+2026-10-12	theme_small_folded	6
+2026-10-12	theme_small_fold_ran	1
+2026-10-13	theme_small_folded	2
+2026-10-13	theme_small_fold_ran	1
+(4 rows)

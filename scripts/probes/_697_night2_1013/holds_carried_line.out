@@ -1,0 +1,2 @@
+# grep of ONE log line per scan date (not the log): docker logs apollo-market | grep 'flag_scan 2026-10-1[23]: scoring'
+21:25:02 [agents.market_intelligence.flag_detector] INFO: flag_scan 2026-10-13: scoring 493 candidates | holds_carried=0

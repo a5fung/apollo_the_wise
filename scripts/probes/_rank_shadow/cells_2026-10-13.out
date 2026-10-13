@@ -1,0 +1,27 @@
+FILE verify_rank_shadow_2026-10-13.out
+rows=49 sessions=23 latest=2026-10-09 filled=15 matured5d=45 matured20d=29
+5-DAY cells:
+  EOD    top quartile (<=0.25)  matured= 6  reached8x=0 []  broke_low=4
+  EOD    the rest               matured=39  reached8x=2 ['MRNA', 'KOD']  broke_low=25
+  09:45  top quartile (<=0.25)  matured= 5  reached8x=0 []  broke_low=3
+  09:45  the rest               matured=40  reached8x=2 ['MRNA', 'KOD']  broke_low=26
+20-DAY (secondary; only rows with 21 sessions):
+  EOD    top   matured= 3 reached8x=0 []
+  EOD    rest  matured=26 reached8x=1 ['MRNA']
+  09:45  top   matured= 2 reached8x=0 []
+  09:45  rest  matured=27 reached8x=1 ['MRNA']
+ROWS of interest (5d x-ADR / broke low / sess / EOD rank,pool / 09:45 rank,pool / filled):
+  2026-10-01 ACN   sess=9 x5= 1.60 broke_low=True eod=0.750/2 0945=0.750/2 filled=False tier=HIGH
+  2026-10-01 SNPS  sess=9 x5= 2.58 broke_low=False eod=0.250/2 0945=0.250/2 filled=False tier=HIGH
+  2026-10-05 ITUB  sess=7 x5= 1.42 broke_low=True eod=0.611/3 0945=0.833/3 filled=False tier=MODERATE
+  2026-10-05 NU    sess=7 x5= 2.50 broke_low=False eod=0.389/3 0945=0.389/3 filled=False tier=MODERATE
+  2026-10-05 PBR   sess=7 x5= 3.21 broke_low=True eod=0.500/3 0945=0.278/3 filled=False tier=MODERATE
+  2026-10-06 CEG   sess=6 x5= 1.78 broke_low=True eod=0.500/3 0945=0.722/3 filled=True tier=HIGH
+  2026-10-06 TLN   sess=6 x5= 2.94 broke_low=False eod=0.722/3 0945=0.500/3 filled=False tier=HIGH
+  2026-10-06 VST   sess=6 x5= 3.74 broke_low=False eod=0.278/3 0945=0.278/3 filled=False tier=HIGH
+  2026-10-07 PENG  sess=5 x5= 3.79 broke_low=False eod=0.500/1 0945=0.500/1 filled=True tier=HIGH
+  2026-10-08 WOLF  sess=4 x5= 0.37 broke_low=True eod=0.500/1 0945=0.500/1 filled=False tier=HIGH
+  2026-10-09 AAOI  sess=3 x5= 0.53 broke_low=True eod=0.417/2 0945=0.250/2 filled=False tier=MODERATE
+  2026-10-09 HUM   sess=3 x5= 0.40 broke_low=True eod=0.583/2 0945=0.750/2 filled=True tier=HIGH
+TOP-QUARTILE rows (EOD rank<=0.25) matured: [('DG', '2026-08-27', 1.93, True), ('ERO', '2026-09-08', 1.46, True), ('SRRK', '2026-09-14', 0.17, True), ('VICR', '2026-09-17', 6.02, False), ('MSTR', '2026-09-21', 0.63, True), ('SNPS', '2026-10-01', 2.58, False)]
+big winners (>=8x 5d, any rank): [('MRNA', '2026-08-19', 9.13, 0.875, 4), ('KOD', '2026-09-28', 12.43, 0.5, 1)]

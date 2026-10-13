@@ -1,0 +1,56 @@
+chk|table_name|string_agg
+A_schema|mi_alert_rank_shadow|alert_id,ticker,alert_date,score_tier,alerted_high,trade_exists,trade_filled,account_mode,prior_trading_day,prior_close,prior_bars_count,sma10,sma20,sma50,adr20_frac,atr14_prior,day_open,day_high,day_low,day_close,day_bar_source,gap_pct_eod,tightness_pct_eod,ext_xadr_eod,ext_no_ma_below_eod,qualifies_for_rank_eod,rank_gap_eod,rank_tightness_eod,rank_ext_eod,composite_rank_eod,pool_size_eod,minute_bars_available,minute_bar_count,orb_open_0945,orb_high_0945,orb_low_0945,orb_close_0945,gap_pct_asof0945,tightness_pct_asof0945,ext_xadr_asof0945,ext_no_ma_below_asof0945,qualifies_for_rank_asof0945,rank_gap_asof0945,rank_tightness_asof0945,rank_ext_asof0945,composite_rank_asof0945,pool_size_asof0945,orb_range_over_atr14,orb_range_over_adr20,open_range_position,bar_contraction,bar_contraction_bar_count,expct_scheduled,expct_scheduled_src,expct_looking,expct_beat,expct_growth_yoy_pct,expct_growth_src,computed_at,expct_combined_class,expct_classifiable_frac,ext_xadr_pregap,ext_no_ma_below_pregap,base_days_raw40,base_depth_raw40,base_censored_raw40,base_days_adr6,base_depth_adr6,base_censored_adr6,base_net_disp_xadr,base_lookback_bars
+A_schema|mi_ep_alerts|id,ticker,alert_date,gap_pct,rel_volume,ep_score,score_tier,catalyst,catalyst_quality,claude_analysis,gemini_validation,confidence_multiplier,vol_percentile,created_at,source,pm_rvol,pm_rvol_baseline_n,detected_at,catalyst_type,catalyst_type_rationale,theme_gated_tier,theme_gated_score,in_active_theme,in_narrative_cohort,fire_status,fire_axes,materiality_tier,materiality_source,fire_status_mat_shadow,grounded_text,baseline_floor_tier,judge_tier,judge_direction,judge_rationale,judge_materiality_tier,grade_engine_authority,rubric_version,setup_class,tape_tier,tape_spike_ct,tape_held,tape_rev,tape_bmr2,tape_ntr_med,vol_hist_n,vol_r5_50,vol_lab50,vol_lab50_ratio,vol_alert_vs_max,judge_grade,judge_grade_reason,judge_tier_reason
+A_schema|mi_live_trades|id,ticker,alert_date,ep_score,catalyst_quality,gap_pct,regime,status,orb_high,orb_low,atr_14,entry_price,entry_shares,stop_price,hard_stop,position_size,risk_dollars,entry_order_id,stop_order_id,exits,remaining_shares,total_pnl,hold_days,partial_taken,breakeven_active,running_closes,proposed_at,confirmed_at,skip_reason,created_at,filled_at,closed_at,entry_attempt,signal_type,account_mode,lowest_price_seen,highest_price_seen,pnl_attribution,risk_dollars_actual,dead_stop_price,dead_stop_order_id,dead_stop_status,dead_stop_recorded_at,exit_rule,depth_sell_pending_on
+chk|ticker|alert_date|count
+chk|shadow_rows|sessions|with_live_alert
+B_backing|49|23|49
+chk|live_alert_rows|live_alert_days|live_alerts_without_shadow
+B_live_alerts_oos|49|23|0
+chk|source|alert_date|count
+chk|ticker|alert_date|nsess|x5|broke|r_eod|p_eod|r_0945|p_0945
+C_row|MRNA|2026-08-19|39|9.13|f|0.8750|4|0.8750|4
+C_row|DG|2026-08-27|33|1.93|t|0.2333|5|0.2333|5
+C_row|ERO|2026-09-08|26|1.46|t|0.2500|6|0.1944|6
+C_row|IONQ|2026-09-08|26|0.91|t|0.4167|6|0.2500|6
+C_row|SRRK|2026-09-14|22|0.17|t|0.2500|2|0.4167|2
+C_row|VICR|2026-09-17|19|6.02|f|0.2500|2|0.2500|2
+C_row|MSTR|2026-09-21|17|0.63|t|0.2500|2|0.2500|2
+C_row|KOD|2026-09-28|12|12.43|f|0.5000|1|0.5000|1
+C_row|ACN|2026-10-01|9|1.60|t|0.7500|2|0.7500|2
+C_row|SNPS|2026-10-01|9|2.58|f|0.2500|2|0.2500|2
+C_row|ITUB|2026-10-05|7|1.42|t|0.6111|3|0.8333|3
+C_row|NU|2026-10-05|7|2.50|f|0.3889|3|0.3889|3
+C_row|PBR|2026-10-05|7|3.21|t|0.5000|3|0.2778|3
+C_row|CEG|2026-10-06|6|1.78|t|0.5000|3|0.7222|3
+C_row|TLN|2026-10-06|6|2.94|f|0.7222|3|0.5000|3
+C_row|VST|2026-10-06|6|3.74|f|0.2778|3|0.2778|3
+C_row|PENG|2026-10-07|5|3.79|f|0.5000|1|0.5000|1
+C_row|WOLF|2026-10-08|4|0.37|t|0.5000|1|0.5000|1
+C_row|AAOI|2026-10-09|3|0.53|t|0.4167|2|0.2500|2
+C_row|HUM|2026-10-09|3|0.40|t|0.5833|2|0.7500|2
+chk|rk|cell|matured5|hit8x_5d|broke_low|matured20|hit8x_20d
+C_cells|0945|top|5|0|3|2|0
+C_cells|0945|rest|40|2|26|27|1
+C_cells|0945_tol|top|6|0|4|3|0
+C_cells|0945_tol|rest|39|2|25|26|1
+C_cells|EOD|top|6|0|4|3|0
+C_cells|EOD|rest|39|2|25|26|1
+chk|rows|sessions|latest
+C_totals|49|23|2026-10-09
+chk|count
+D_close_dupes|0
+chk|at_et|left
+F_admit|2026-10-12 07:00:03.176353|TRAX rt 14.6% and delayed 14.9% BOTH >=9 @ 07:00 ET — real-time AGREES with the admit
+F_admit|2026-10-12 07:00:03.177713|SVRN rt 12.0% and delayed 15.9% BOTH >=9 @ 07:00 ET — real-time AGREES with the admit
+F_admit|2026-10-12 07:15:01.054577|CCC rt 11.0% and delayed 9.3% BOTH >=9 @ 07:15 ET — real-time AGREES with the admit
+F_admit|2026-10-12 07:20:01.16059|CTNM rt 27.1% and delayed 20.1% BOTH >=9 @ 07:20 ET — real-time AGREES with the admit
+F_admit|2026-10-12 09:30:03.380942|WFF rt 20.3% and delayed 11.4% BOTH >=9 @ 09:30 ET — real-time AGREES with the admit
+F_admit|2026-10-12 09:40:01.807969|APUS rt 9.8% and delayed 10.6% BOTH >=9 @ 09:40 ET — real-time AGREES with the admit
+F_admit|2026-10-13 07:00:03.350898|GOSS rt 10.3% and delayed 10.9% BOTH >=9 @ 07:00 ET — real-time AGREES with the admit
+F_admit|2026-10-13 09:50:02.602958|EFXT rt 12.8% and delayed 9.4% BOTH >=9 @ 09:50 ET — real-time AGREES with the admit
+chk|d|event_type|count
+F_alert_events|2026-10-06|ep_alert|3
+F_alert_events|2026-10-07|ep_alert|1
+F_alert_events|2026-10-08|ep_alert|1
+F_alert_events|2026-10-09|ep_alert|1

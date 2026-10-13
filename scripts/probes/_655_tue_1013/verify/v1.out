@@ -1,0 +1,121 @@
+Output format is unaligned.
+Field separator is "	".
+== 0 now
+now_et	tz	cd
+2026-10-13 18:47:58.837288	Etc/UTC	2026-10-13
+(1 row)
+== 1 correctness rows per ET night since 09-28 (dup or rehearsal check)
+d	n	id0	id1	g3
+2026-09-28	2	48496	49035	G3 104/118 (88.1% | G3 105/117 (89.7%
+2026-09-29	1	49602	49602	G3 109/122 (89.3%
+2026-09-30	1	50196	50196	G3 117/129 (90.7%
+2026-10-01	1	50744	50744	G3 117/131 (89.3%
+2026-10-02	1	51258	51258	G3 117/133 (88.0%
+2026-10-05	1	52551	52551	G3 100/116 (86.2%
+2026-10-06	1	53217	53217	G3 105/120 (87.5%
+2026-10-07	1	53871	53871	G3 106/124 (85.5%
+2026-10-08	1	54474	54474	G3 103/122 (84.4%
+2026-10-09	1	55101	55101	G3 106/123 (86.2%
+2026-10-12	1	55813	55813	G3 100/109 (91.7%
+2026-10-13	1	56328	56328	G3 99/107 (92.5%
+(12 rows)
+== 2 tonight G3 recompute from per-theme array (56328) and 10-12 (55813)
+id	n_themes	n_pass	n_fail	n_null	pct
+55813	109	100	9	0	91.7
+56328	107	99	8	0	92.5
+(2 rows)
+== 2b top-level detail keys of 56328 (any rehearsal/dry-run flag?)
+string_agg
+n_board,g1,g2,g3,g4,judgeable_share_pct,era_breakdown,latency,all_signed_bars_pass
+(1 row)
+== 2c g3 sub-keys
+string_agg
+n_board,n_judgeable,pass,rate_pct,bar_pct,pass_bar,fail_list,themes
+(1 row)
+== 3 board population: G3 theme names vs reconstructed get_active_themes(7) as of 10-13
+side	name	sz	d
+board_count		107	
+board_not_dated_1013		0	
+(2 rows)
+== 4 mi_themes rows dated 10-13: write-time spread (one run? anything after 17:31?)
+source	retired	n	first_w	last_w
+live	f	101	2026-10-13 17:06:59.193111	2026-10-13 17:06:59.266538
+live	t	14	2026-10-13 17:06:59.267461	2026-10-13 17:06:59.280758
+shadow_promoted	f	6	2026-10-13 17:08:12.172291	2026-10-13 17:08:13.617186
+(3 rows)
+== 4b any name with >1 row dated 10-13
+name	count
+(0 rows)
+== 5 Appalachian / gas-E&P lookalike names, 10-06..10-13
+theme_date	id	name	stage	n	rs	source	w
+2026-10-06	11545	Appalachian Natural Gas Producers	Nascent	7	44.4	shadow_promoted	2026-10-06 17:12:01.177764
+2026-10-07	11679	Appalachian Natural Gas Producers	Retired			live	2026-10-07 17:11:24.861672
+2026-10-08	11845	Appalachian Natural Gas Producers	Nascent	7	74.8	shadow_promoted	2026-10-08 17:09:06.45412
+2026-10-09	11988	Appalachian Natural Gas Producers	Retired			live	2026-10-09 17:08:26.361756
+2026-10-07	11707	Natural Gas-Weighted Appalachian & Shale E&P Producers	Nascent	6	71.8	shadow_promoted	2026-10-07 17:13:48.176632
+2026-10-08	11840	Natural Gas-Weighted Appalachian & Shale E&P Producers	Retired			live	2026-10-08 17:07:49.888137
+2026-10-09	12019	Natural Gas-Weighted Appalachian & Shale E&P Producers	Nascent	6	72.6	shadow_promoted	2026-10-09 17:09:38.165286
+2026-10-12	12097	Natural Gas-Weighted Appalachian & Shale E&P Producers	Accelerating	8	76.3	live	2026-10-12 17:11:07.499634
+2026-10-13	12237	Natural Gas-Weighted Appalachian & Shale E&P Producers	Accelerating	8	82.4	live	2026-10-13 17:06:59.230748
+2026-10-06	11562	U.S. Shale Oil E&P Producers (Crude-Price Driven)	Nascent	11	41.1	shadow_promoted	2026-10-06 17:12:04.141024
+2026-10-07	11689	U.S. Shale Oil E&P Producers (Crude-Price Driven)	Retired			live	2026-10-07 17:11:24.868176
+(11 rows)
+== 6 kept_distinct rows tonight: recompute max corr and count >= bar from member detail
+id	src	passed_field	judged_field	n_members	max_corr	n_ge_bar	n_not_reject
+56252	Natural Gas-Weighted Appalachian & Shale E&P Producers	0	8	8	0.1493	0	0
+56258	Oil & Gas Mineral and Royalty Owners	0	3	3	0.3485	0	0
+56259	Natural Gas-Weighted Appalachian & Shale E&P Producers	0	8	8	0.1493	0	0
+(3 rows)
+== 6b every sector-cap / cap-drop style event tonight (any name)
+event_type	count
+anticipation_mna_check_capped	1
+cap_plus_one_shadow_recorded	1
+ep_rt_shadow_capture	1
+extension_cap_watch_blocked_anyway	1
+lowcap_lane_replay_recorded	1
+lowcap_paper_lane_heartbeat	1
+lowcap_paper_lane_replay_recorded	1
+theme_sector_cap_kept_distinct	3
+(8 rows)
+== 6c the prior-night drop the 10-12 sweep cites (id 54406)
+id	event_type	t	left
+54406	theme_sector_cap_not_absorbed	2026-10-08 17:06:46.351889	Pass2: 'Natural Gas-Weighted Appalachian & Shale E&P Producers' dropped — 0 of 8 member(s) passed the membership test for 'U.S. Oil Refiners & Refining Margin Expansion' (sector group 'oil_gas')
+(1 row)
+== 7 fold rows tonight: members count, moved in home roster on 10-13, old theme stage on 10-13
+id	th	n_mem	e	old_stage_1013	home_n_1013	moved_all_in_home	home_n_1012
+56269	Diagnostic Testing & Lab Equipment Re-Rating	3	E-MEDTECH	Retired	20	t	22
+56270	Enterprise Information Management & Infrastructure Engineering Software	3	E-SAAS	Retired	8	t	6
+(2 rows)
+== 7b home theme ecosystems (same-ecosystem check) via theme_ecosystem_assigned or mapping table
+table_name
+mi_theme_ecosystems
+mi_ecosystem_proposals
+mi_theme_ecosystems_dynamic
+(3 rows)
+== 8 fold_ran rows per night ever + any fold error rows
+d	event_type	count	string_agg
+2026-10-12	theme_small_folded	6	'Alternative Asset Managers & Private Markets Platforms' -> 'Wealth Management & Retail Brokerage Platforms': moved 1, released 1 of 2 (G3 f | 'Diabetes Management Devices (CGM, Insulin Pumps & Delivery)' -> 'Medical Device Mean-Reversion & Rotation Recovery': moved 2, released 1 of | 'Emerging Medical Device Innovators Breakout' -> 'Medical Device Mean-Reversion & Rotation Recovery': moved 1, released 1 of 3 (G3 fail, coh | 'Enterprise Unstructured Data Storage Infrastructure' -> 'Cloud Contact Center & CCaaS Communication Platforms': moved 2, released 1 of 3 (G | 'Functional Beverage & Energy Drink Brands' -> 'Non-Alcoholic Beverages & Energy Drinks': moved 1, released 1 of 2 (G3 fail, cohesion 0.2611 | 'Orthopedic Surgical Devices & Instruments' -> 'Medical Device Mean-Reversion & Rotation Recovery': moved 2, released 0 of 2 (G3 fail, cohes
+2026-10-12	theme_small_fold_ran	1	Small-theme fold: ran — 35 theme(s) of 2-3 members, 11 failed G3, 6 folded
+2026-10-13	theme_small_folded	2	'Diagnostic Testing & Lab Equipment Re-Rating' -> 'Medical Device Mean-Reversion & Rotation Recovery': moved 2, released 1 of 3 (G3 fail, co | 'Enterprise Information Management & Infrastructure Engineering Software' -> 'Enterprise HR & Workforce Management SaaS': moved 2, released 
+2026-10-13	theme_small_fold_ran	1	Small-theme fold: ran — 32 theme(s) of 2-3 members, 8 failed G3, 2 folded
+(4 rows)
+== 9 theme engine run count tonight (one run, not a rerun)
+event_type	count	string_agg
+theme_auto_retired	1	56272
+theme_correctness_check	1	56328
+theme_engine_funnel	1	56227
+theme_load_state	1	56139
+theme_small_fold_ran	1	56271
+(5 rows)
+== 10 tonight G3 fails: 17:31 list vs 10-12 list (carried-over fails)
+id	name	sz
+55813	Diagnostic Testing & Lab Equipment Re-Rating	3
+55813	Digital Advertising & Ad-Tech Monetization Platforms	2
+55813	Digital-First Beauty & Cosmetics Brands	2
+55813	Enterprise Information Management & Infrastructure Engineering Software	3
+55813	Functional Energy Drink Brands	3
+55813	International Telecom & Cross-Border Communications Services	2
+55813	Peptide & Hormone Therapies for Metabolic & Endocrine Disorders	2
+55813	Precision Timing & Motion Control Component Makers	2
+55813	Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)	3
+(9 rows)

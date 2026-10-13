@@ -1,0 +1,77 @@
+Pager usage is off.
+== P. thinking_disabled_to_between_tools rows since deploy 10-03 (first nightly after deploy)
+           at_et            |                         summ                          
+----------------------------+-------------------------------------------------------
+ 2026-10-05 17:02:14.977187 | claude-sonnet-5-5: thinking_disabled_to_between_tools
+ 2026-10-06 17:05:08.680986 | claude-sonnet-5-5: thinking_disabled_to_between_tools
+ 2026-10-08 17:03:20.850414 | claude-sonnet-5-5: thinking_disabled_to_between_tools
+ 2026-10-09 17:02:19.056791 | claude-sonnet-5-5: thinking_disabled_to_between_tools
+ 2026-10-12 17:10:45.569629 | claude-sonnet-5-5: thinking_disabled_to_between_tools
+ 2026-10-13 17:06:38.052062 | claude-sonnet-5-5: thinking_disabled_to_between_tools
+(6 rows)
+
+== Q. four-job run events 10-05..10-13 with error counts
+     d      |          event_type           |                                                                          summ                                                                          
+------------+-------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------
+ 2026-10-05 | theme_parent_pass_ran         | Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+ 2026-10-05 | narrative_theme_discovery_ran | 2026-10-05: v2reg 3 today (grounded=3 analysis=0 catalyst=0) roster 1 active / 6 seeds -> 0 join + 1 new + 0 seed(s): ['Brazil election relief rally']
+ 2026-10-05 | theme_synthesis_run           | 50 candidates → 0 proposed → 0 kept
+ 2026-10-06 | theme_parent_pass_ran         | Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+ 2026-10-06 | narrative_theme_discovery_ran | 2026-10-06: v2reg 3 today (grounded=3 analysis=0 catalyst=0) roster 2 active / 4 seeds -> 1 join + 0 new + 0 seed(s): ['AI data-center power buildout'
+ 2026-10-06 | theme_synthesis_run           | 57 candidates → 1 proposed → 0 kept
+ 2026-10-07 | theme_parent_pass_ran         | Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+ 2026-10-07 | narrative_theme_discovery_ran | 2026-10-07: v2reg 1 today (grounded=1 analysis=0 catalyst=0) roster 2 active / 3 seeds -> 1 join + 0 new + 0 seed(s): ['AI data-center power buildout'
+ 2026-10-07 | theme_synthesis_run           | 58 candidates → 1 proposed → 0 kept
+ 2026-10-08 | theme_parent_pass_ran         | Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+ 2026-10-08 | narrative_theme_discovery_ran | 2026-10-08: v2reg 1 today (grounded=1 analysis=0 catalyst=0) roster 2 active / 3 seeds -> 0 join + 0 new + 1 seed(s): []
+ 2026-10-08 | theme_synthesis_run           | 54 candidates → 0 proposed → 0 kept
+ 2026-10-09 | theme_parent_pass_ran         | Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+ 2026-10-09 | narrative_theme_discovery_ran | 2026-10-09: v2reg 2 today (grounded=2 analysis=0 catalyst=0) roster 2 active / 4 seeds -> 1 join + 0 new + 1 seed(s): ['AI data-center power buildout'
+ 2026-10-09 | theme_synthesis_run           | 57 candidates → 1 proposed → 1 kept
+ 2026-10-12 | theme_parent_pass_ran         | Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+ 2026-10-12 | narrative_theme_discovery_ran | 2026-10-12: v2reg 0 qualifying today — no evaluation (roster 2 active / 5 seeds)
+ 2026-10-12 | theme_synthesis_run           | 48 candidates → 2 proposed → 2 kept
+ 2026-10-13 | theme_parent_pass_ran         | Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+ 2026-10-13 | narrative_theme_discovery_ran | 2026-10-13: v2reg 0 qualifying today — no evaluation (roster 2 active / 4 seeds)
+ 2026-10-13 | theme_synthesis_run           | 53 candidates → 1 proposed → 0 kept
+(21 rows)
+
+== R. any refusal / truncation / llm_* alarm events since deploy 10-03
+         event_type          | count |          first_et          |          last_et           
+-----------------------------+-------+----------------------------+----------------------------
+ judge_verdict_truncated     |     1 | 2026-10-06 09:55:53.484445 | 2026-10-06 09:55:53.484445
+ llm_request_rewrite_adopted |    24 | 2026-10-03 17:06:04.460153 | 2026-10-13 17:06:38.052062
+ llm_truncation_check        |     1 | 2026-10-08 17:52:11.681539 | 2026-10-08 17:52:11.681539
+ llm_truncation_live         |     1 | 2026-10-08 17:02:17.793785 | 2026-10-08 17:02:17.793785
+(4 rows)
+
+== S. full synthesis_run detail Tue 10-13 (error keys?)
+                                                                                                                              det                                                                                                                              
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"run_date": "2026-10-13", "n_candidates": 53, "n_proposed": 1, "n_kept": 0, "stop_reason": "tool_use", "kept": [], "dropped": ["Cross-Border Remittance & Payments Rally: restates live theme 'Fintech Payments, Prepaid & Consumer Digital Banking Apps'"]}
+(1 row)
+
+== T. thinking-off jobs token means since 10-05 (theme_parent_adjudication, theme_synthesis, narrative_theme_discovery)
+     d      |          caller           | n | mean_out | bad_stop 
+------------+---------------------------+---+----------+----------
+ 2026-10-05 | narrative_theme_discovery | 1 |      137 |        0
+ 2026-10-06 | narrative_theme_discovery | 1 |      131 |        0
+ 2026-10-07 | narrative_theme_discovery | 1 |      120 |        0
+ 2026-10-08 | narrative_theme_discovery | 1 |       99 |        0
+ 2026-10-09 | narrative_theme_discovery | 1 |      205 |        0
+ 2026-10-05 | theme_parent_adjudication | 6 |      259 |        0
+ 2026-10-06 | theme_parent_adjudication | 6 |      258 |        0
+ 2026-10-07 | theme_parent_adjudication | 6 |      247 |        0
+ 2026-10-08 | theme_parent_adjudication | 6 |      250 |        0
+ 2026-10-09 | theme_parent_adjudication | 6 |      266 |        0
+ 2026-10-12 | theme_parent_adjudication | 6 |      270 |        0
+ 2026-10-13 | theme_parent_adjudication | 6 |      244 |        0
+ 2026-10-05 | theme_synthesis           | 1 |      483 |        0
+ 2026-10-06 | theme_synthesis           | 1 |      557 |        0
+ 2026-10-07 | theme_synthesis           | 1 |      563 |        0
+ 2026-10-08 | theme_synthesis           | 1 |      400 |        0
+ 2026-10-09 | theme_synthesis           | 1 |      452 |        0
+ 2026-10-12 | theme_synthesis           | 1 |      538 |        0
+ 2026-10-13 | theme_synthesis           | 1 |      428 |        0
+(19 rows)
+

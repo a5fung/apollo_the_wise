@@ -1,0 +1,95 @@
+Pager usage is off.
+== V1. theme_validation per ET day since 09-28 (re-derived): calls, stops, >25 tok, mean, window, models
+     d      | dow |  n  | endt | maxtok | other_stop | gt25 | pct25 | mean | mx  |      models       | first_et | last_et | cost  
+------------+-----+-----+------+--------+------------+------+-------+------+-----+-------------------+----------+---------+-------
+ 2026-09-28 | Mon | 137 |  137 |      0 |          0 |    1 |     1 |  9.6 |  64 | claude-sonnet-5   | 17:01    | 17:11   | 0.189
+ 2026-09-29 | Tue |   5 |    5 |      0 |          0 |    0 |     0 |  9.0 |   9 | claude-sonnet-5-5 | 17:02    | 17:02   | 0.006
+ 2026-09-30 | Wed | 136 |  136 |      0 |          0 |   40 |    29 | 78.3 | 791 | claude-sonnet-5-5 | 17:01    | 17:07   | 0.274
+ 2026-10-01 | Thu |  13 |   13 |      0 |          0 |    3 |    23 | 74.2 | 376 | claude-sonnet-5-5 | 17:04    | 17:05   | 0.025
+ 2026-10-02 | Fri | 146 |  146 |      0 |          0 |   39 |    27 | 59.5 | 413 | claude-sonnet-5-5 | 17:01    | 17:07   | 0.267
+ 2026-10-05 | Mon | 151 |  151 |      0 |          0 |    4 |     3 | 14.0 | 224 | claude-sonnet-5-5 | 17:02    | 17:09   | 0.214
+ 2026-10-06 | Tue |  26 |   26 |      0 |          0 |    1 |     4 | 18.7 | 228 | claude-sonnet-5-5 | 17:05    | 17:09   | 0.043
+ 2026-10-07 | Wed | 142 |  142 |      0 |          0 |    1 |     1 | 11.2 | 185 | claude-sonnet-5-5 | 17:03    | 17:10   | 0.199
+ 2026-10-08 | Thu |  27 |   27 |      0 |          0 |    0 |     0 |  9.6 |  20 | claude-sonnet-5-5 | 17:03    | 17:07   | 0.042
+ 2026-10-09 | Fri | 141 |  141 |      0 |          0 |    0 |     0 |  9.8 |  16 | claude-sonnet-5-5 | 17:02    | 17:07   | 0.198
+ 2026-10-12 | Mon | 154 |  154 |      0 |          0 |   36 |    23 | 48.1 | 351 | claude-sonnet-5-5 | 17:03    | 17:10   | 0.272
+ 2026-10-13 | Tue |  15 |   15 |      0 |          0 |    6 |    40 | 65.4 | 222 | claude-sonnet-5-5 | 17:04    | 17:06   | 0.032
+(12 rows)
+
+== V2. removals (ticker_revalidated_out) per ET day with time window + count outside 16:30-19:30 ET
+     d      | removals | first_et | last_et | outside_window 
+------------+----------+----------+---------+----------------
+ 2026-09-28 |       14 | 17:02    | 17:11   |              0
+ 2026-09-30 |       11 | 17:01    | 17:07   |              0
+ 2026-10-02 |       13 | 17:01    | 17:06   |              0
+ 2026-10-05 |       26 | 17:02    | 17:08   |              0
+ 2026-10-06 |        6 | 17:07    | 17:08   |              0
+ 2026-10-07 |       19 | 17:03    | 17:10   |              0
+ 2026-10-08 |        3 | 17:05    | 17:06   |              0
+ 2026-10-09 |       19 | 17:02    | 17:07   |              0
+ 2026-10-12 |       12 | 17:03    | 17:10   |              0
+ 2026-10-13 |        1 | 17:04    | 17:04   |              0
+(10 rows)
+
+== V3. validator side events per ET day since 09-28 (parse/API errors, rate limits, shield, mass flag)
+     d      |              event_type              | count 
+------------+--------------------------------------+-------
+ 2026-09-28 | validation_mass_removal_name_suspect |     1
+ 2026-10-07 | validation_mass_removal_name_suspect |     1
+(2 rows)
+
+== V4. tonight theme_validation calls outside the nightly window (population)
+ outside | total 
+---------+-------
+       0 |    15
+(1 row)
+
+== V5. any non-clean stop by the four jobs + validator since deploy 10-03 10:40 ET
+          caller           |       model       | stop_reason | count 
+---------------------------+-------------------+-------------+-------
+ narrative_theme_discovery | claude-sonnet-5-5 | tool_use    |     5
+ theme_parent_adjudication | claude-sonnet-5-5 | tool_use    |    42
+ theme_synthesis           | claude-sonnet-5-5 | tool_use    |     7
+ theme_validation          | claude-sonnet-5-5 | end_turn    |   656
+(4 rows)
+
+== V6. truncation / refusal / near-ceiling audit events since 10-03 (all callers)
+           at_et            |         event_type          |                                                                      s                                                                       
+----------------------------+-----------------------------+----------------------------------------------------------------------------------------------------------------------------------------------
+ 2026-10-06 09:55:53.484445 | judge_verdict_truncated     | TLN
+ 2026-10-07 21:22:47.098093 | output_ceilings_model_drift | 8 output ceiling(s) were sized on a model that just changed: catalyst_type_classifier, context_compression, description_backfill, healthchec
+ 2026-10-08 17:02:17.793785 | llm_truncation_live         | theme_descriptions response TRUNCATED at 500 output tokens (model claude-haiku-5-5)
+ 2026-10-08 17:52:11.681539 | llm_truncation_check        | 0 caller(s) truncating, 0 not reporting stop_reason, 1 within 10% of their ceiling
+(4 rows)
+
+== V7. four-job run events Tue 10-13 (error counts in summary)
+           at_et            |          event_type           |                                                      s                                                      
+----------------------------+-------------------------------+-------------------------------------------------------------------------------------------------------------
+ 2026-10-13 07:00:11.554103 | llm_request_rewrite_adopted   | claude-sonnet-5-5: forced_tool_to_structured_output
+ 2026-10-13 16:02:01.047332 | llm_request_rewrite_adopted   | claude-opus-5-5: forced_tool_to_structured_output
+ 2026-10-13 17:02:44.769257 | llm_request_rewrite_adopted   | claude-sonnet-5-5: forced_tool_to_structured_output
+ 2026-10-13 17:06:38.052062 | llm_request_rewrite_adopted   | claude-sonnet-5-5: thinking_disabled_to_between_tools
+ 2026-10-13 17:06:59.159975 | theme_parent_pass_ran         | Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+ 2026-10-13 17:08:11.55575  | narrative_theme_discovery_ran | 2026-10-13: v2reg 0 qualifying today — no evaluation (roster 2 active / 4 seeds)
+ 2026-10-13 18:05:17.857808 | theme_synthesis_run           | 53 candidates → 1 proposed → 0 kept
+(7 rows)
+
+== V8. container boots since 10-09 (era: which code ran tonight)
+           job_id            |         started_et         
+-----------------------------+----------------------------
+ order_status_reconcile_boot | 2026-10-09 12:07:11.976004
+ order_status_reconcile_boot | 2026-10-09 12:31:40.435844
+ order_status_reconcile_boot | 2026-10-13 12:07:59.201789
+(3 rows)
+
+== V9. validation/nightly job runs 10-12 and 10-13
+       job_id       | status  |         started_et         | rows_written | err 
+--------------------+---------+----------------------------+--------------+-----
+ nightly_data_pull  | success | 2026-10-12 17:00:00.001833 |         2410 | 
+ post_nightly_audit | success | 2026-10-12 17:30:00.001756 |              | 
+ theme_synthesis    | success | 2026-10-12 18:05:00.001002 |            2 | 
+ nightly_data_pull  | success | 2026-10-13 17:00:00.00374  |         2397 | 
+ post_nightly_audit | success | 2026-10-13 17:30:00.001071 |              | 
+ theme_synthesis    | success | 2026-10-13 18:05:00.001434 |            0 | 
+(6 rows)
+

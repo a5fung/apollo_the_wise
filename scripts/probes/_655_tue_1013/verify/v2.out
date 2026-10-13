@@ -1,0 +1,49 @@
+Output format is unaligned.
+Field separator is "	".
+== 1 Monday fold rows: theme, home, moved, released
+id	th	home	moved	rel
+55748	Alternative Asset Managers & Private Markets Platforms	Wealth Management & Retail Brokerage Platforms	["PAX"]	["PS"]
+55749	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	["MMED", "DXCM"]	["BBNX"]
+55750	Emerging Medical Device Innovators Breakout	Medical Device Mean-Reversion & Rotation Recovery	["ATEC"]	["ITGR"]
+55751	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	["DBX", "BOX"]	["QMCO"]
+55752	Functional Beverage & Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	["COCO"]	["CELH"]
+55753	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	["CNMD", "SIBN"]	[]
+(6 rows)
+== 2 tonight split rows full detail
+id	summary	left
+56255	Split: 'Oil & Gas Mineral and Royalty Owners' from 'Energy Supply Disruption: Middle East Geopolitical Risk' (3 stocks)	Tickers: ['KRP', 'VNOM', 'TPL']
+Thesis: Mineral and royalty owners collect asset-light, high-margin revenue from oil and gas output without bearing drilling capex, so they trade differently from operating E&Ps. They gain from higher oil prices during Middle East supply shocks without cost inflation.
+56256	Split: 'Orthopedic & Spinal Surgery Devices' from 'Medical Device Mean-Reversion & Rotation Recovery' (4 stocks)	Tickers: ['ATEC', 'SIBN', 'CNMD', 'ZBH']
+Thesis: Spine and orthopedic implant and surgical-instrument makers share procedure-volume and surgeon-adoption drivers. They trade as a distinct musculoskeletal device group, separate from cardio, diabetes and diagnostics names.
+(2 rows)
+== 3 10-13 rows that are new names (no row 10-06..10-12) or shadow_promoted, with members
+name	stage	source	n	tk
+Agricultural Commodity Processing & Animal Protein/Rendering	Nascent	shadow_promoted	4	JBS,ADM,DAR,ANDE
+AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)	Mainstream	live	17	PDFS,COHU,FORM,TER,UMC,TSM,ACLS,ENTG,INTC,GFS,ASML,ASX,LRCX,KLAC,VECO,AEIS,AMAT
+Beverage Brands: Beer, Sparkling Water & Wellness Nutrition	Nascent	shadow_promoted	3	STZ,FIZZ,HLF
+IT Services & Infrastructure Outsourcing (Government/Commercial/Offshore)	Nascent	shadow_promoted	3	EFOR,INFY,KD
+Off-Price & Specialty Retail Consumer Rotation	Nascent	shadow_promoted	3	TJX,BBWI,DORM
+Oil & Gas Mineral and Royalty Owners	Nascent	live	3	KRP,VNOM,TPL
+Online Consumer Marketplaces & Performance Marketing Platforms	Nascent	shadow_promoted	3	PINS,QNST,EVER
+Orthopedic & Spinal Surgery Devices	Nascent	live	4	ATEC,SIBN,CNMD,ZBH
+Quick-Service Restaurant & Fitness Franchisors Consumer Rotation	Nascent	live	2	YUM,PLNT
+Secondary Gold & Silver Miners Mid-Cap Producers (Cluster Leftovers)	Nascent	shadow_promoted	6	HMY,PAAS,AG,EXK,NG,HYMC
+(10 rows)
+== 4 where
+psql:/tmp/v655_1013_verif_v2.sql:13: error: unterminated quoted string
+src	k	tk	on_1013
+Alternative Asset Managers & Private Markets Platforms	moved	PAX	Exchange, Options Trading & Alternative Consumer Credit Financials [Fading] ; Wealth Management & Retail Brokerage Platforms [Mainstream]
+Alternative Asset Managers & Private Markets Platforms	released	PS	
+Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	moved	DXCM	Medical Device Mean-Reversion & Rotation Recovery [Mainstream]
+Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	moved	MMED	Medical Device Mean-Reversion & Rotation Recovery [Mainstream]
+Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	released	BBNX	
+Emerging Medical Device Innovators Breakout	moved	ATEC	Orthopedic & Spinal Surgery Devices [Nascent]
+Emerging Medical Device Innovators Breakout	released	ITGR	
+Enterprise Unstructured Data Storage Infrastructure	moved	BOX	Cloud Contact Center & CCaaS Communication Platforms [Mainstream]
+Enterprise Unstructured Data Storage Infrastructure	moved	DBX	Cloud Contact Center & CCaaS Communication Platforms [Mainstream]
+Enterprise Unstructured Data Storage Infrastructure	released	QMCO	
+Functional Beverage & Energy Drink Brands	moved	COCO	Non-Alcoholic Beverages & Energy Drinks [Mainstream]
+Functional Beverage & Energy Drink Brands	released	CELH	Functional Energy Drink Brands [Fading]
+Orthopedic Surgical Devices & Instruments	moved	CNMD	Orthopedic & Spinal Surgery Devices [Nascent]
+Orthopedic Surgical Devices & Instruments	moved	SIBN	Orthopedic & Spinal Surgery Devices [Nascent]
+(14 rows)
