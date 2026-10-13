@@ -420,7 +420,12 @@ to more than `entry_shares`, so `audit_invariants.check_exit_share_sum` (L1) now
 row the broker shows flat once its legs already account for every entered share — changes WHEN a row closes, which
 #597 treats as THE LINE: his call if ever proposed; NOT part of this build. (3) A stream event lost entirely books
 nothing (same as base; `reconcile_order_states` books nothing, #123). (4) A leg landing after `sell_discipline`'s
-once-written realised-R record leaves that record stale (same residual class as the phantom shares).
+once-written realised-R record leaves that record stale (same residual class as the phantom shares). (5) LOCK HOLD (advisor 10-13): the booking task holds
+the per-trade #151 lock for its two inner reads/writes, each pool acquire bounded at 5 s (`_REPROTECT_DB_TIMEOUT`), so a
+stop FILL on the same trade (`trade_stream._process_stop_fill`, the only stream path taking that lock) can wait behind it
+for up to ~10 s plus the SELECT/UPDATE. The stop RESTORE never waits: it takes no blocking lock (verified 10-13 by reading
+`_apply_reprotect_floor`, `_broker_free_qty_for_restore`, `_retry_restore_while_shares_held`). The lock's OWN acquire
+(`_trade_advisory_lock`, `pool.acquire()`) stays unbounded — pre-existing, the #621 ruling.
 
 **Tests**: `tests/test_687_dead_sale_pnl_leg.py` (KO world; the booking-stubbed-vs-real equivalence matrix over
 worlds × deliveries × restore-read modes; duplicate delivery; nothing sold / no price; closed row; the double-count

@@ -323,7 +323,7 @@ reviews:
     # 10-17/18. The 5 era-D closes are a replaced rule's trades and do not answer the question.
     threshold: 40
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode, mi_safeguard_state.account_mode]  # backfilled 2026-08-30 (#573); all three FILTERED since 2026-09-19 (#669)
-    earliest_review_date: 2026-10-17   # the re-cut owed by the 10-13 firing (see the 🔔 note) — weekend build slot, tracked on #687
+    earliest_review_date: 2026-10-19   # the day after the re-cut owed by the 10-13 firing lands (weekend 10-17/18, tracked on #687) — so it does not read 'ZERO since its date passed' while the re-cut is still being built
     can_fire:
       predicate_runs: "2026-09-29 - the rule-toggle form runs against prod and returns 3 (three era-D
         live magna53 closes; the only live/global transition since 09-06 is the drawdown breaker's state).
@@ -15522,9 +15522,11 @@ reviews:
         Counts exactly the readings that would make the repair or a page act — a gap or a failed
         broker read — which is the population the unproven paths need.
       instrument_trusted: >-
-        Each slot's `examined` equalled the independently derived live-held count on 63 of 63 readings
-        (Opus verifier, 2026-10-13), so a zero is a real zero, not a blind detector; the only proof the
-        detector function catches a gap at all remains ETON 2026-08-14 (intraday).
+        COVERAGE is proven: each slot's `examined` equalled the independently derived live-held count on 63
+        of 63 readings (Opus verifier, 2026-10-13), so the slots looked at every position. DETECTION of a real
+        gap is proven only INTRADAY (ETON 2026-08-14, the same detector function); no evening slot has ever
+        been shown writing a gap. So a zero means 'every position examined, none flagged', not yet
+        'a gap would have been flagged' — this tripwire's first firing is that proof.
     action_when_ready: >-
       Verify on the event, against #649's DoD: the position was re-protected at a price no worse than its
       current effective stop, OR the operator was told inside the 16:00-21:00 window rather than at

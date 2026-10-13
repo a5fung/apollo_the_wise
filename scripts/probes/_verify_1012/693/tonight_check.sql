@@ -7,6 +7,13 @@ SELECT count(*) n, count(*) FILTER (WHERE stop_reason='end_turn') end_turn, coun
   count(*) FILTER (WHERE output_tokens>25) gt25, count(*) FILTER (WHERE output_tokens>50) gt50, count(*) FILTER (WHERE output_tokens>100) gt100,
   percentile_disc(0.9) WITHIN GROUP (ORDER BY output_tokens) p90, round(avg(output_tokens),1) mean, max(output_tokens) mx, round(sum(cost_usd)::numeric,3) cost
 FROM api_usage WHERE caller='theme_validation' AND (created_at AT TIME ZONE 'America/New_York')::date = :'d'::date;
+\echo == FULL-PASS GATE (a broken validator keeps every ticker; only a full call count + zero errors discriminate)
+SELECT count(*) AS calls,
+       CASE WHEN count(*) >= 130 THEN 'FULL_PASS' WHEN count(*) BETWEEN 1 AND 40 THEN 'SMALL_RESCORE_DOES_NOT_COUNT'
+            ELSE 'PARTIAL_PASS_INVESTIGATE' END AS pass_kind,
+       (SELECT count(*) FROM mi_audit_log WHERE (created_at AT TIME ZONE 'America/New_York')::date = :'d'::date
+          AND event_type IN ('validation_error','validation_api_failure','validation_rate_limited','anthropic_rate_limited')) AS error_rows
+FROM api_usage WHERE caller='theme_validation' AND (created_at AT TIME ZONE 'America/New_York')::date = :'d'::date;
 \echo == removals that ET day (full pass Mon/Wed/Fri: baseline off 26/19/19, on-precedent 13; replay 5; bar <15)
 SELECT count(*) removals FROM mi_audit_log WHERE event_type='ticker_revalidated_out' AND (created_at AT TIME ZONE 'America/New_York')::date = :'d'::date;
 \echo == alarms that ET day (truncation / near-ceiling / validation errors)

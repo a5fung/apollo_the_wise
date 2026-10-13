@@ -1,0 +1,15 @@
+== theme_validation calls on 2026-10-13
+n	end_turn	max_tok	gt25	gt50	gt100	p90	mean	mx	cost
+15	15	0	6	6	5	213	65.4	222	0.032
+(1 row)
+== FULL-PASS GATE (a broken validator keeps every ticker; only a full call count + zero errors discriminate)
+calls	pass_kind	error_rows
+15	SMALL_RESCORE_DOES_NOT_COUNT	0
+(1 row)
+== removals that ET day (full pass Mon/Wed/Fri: baseline off 26/19/19, on-precedent 13; replay 5; bar <15)
+removals
+1
+(1 row)
+== alarms that ET day (truncation / near-ceiling / validation errors)
+event_type	count
+(0 rows)
