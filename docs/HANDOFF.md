@@ -1421,7 +1421,24 @@ stagger cards, one at a time.
 
 **Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
-## 2026-10-11 (Sun) CLOSE — 🔴 RESUME HERE. Supersedes the 10-10 close below.
+## 2026-10-12 (Mon) CLOSE — 🔴 RESUME HERE. Supersedes the 10-11 close below.
+
+**Board 32 → 30.** Closed #692 (deal filter; live watches carried to #701), #505 (theme parent links; Opus-upheld), #699 (paper pages reach Apollo Paper, 0 fallbacks). Filed #701 (M&A filter live week, 10-16). Server = 243018da (both + execution, after-hours window; loss line confirmed in both containers); main adds only PLAN/.gitignore since.
+
+**#687 depth exit is LIVE** — his "go live", both rows on 09:39 ET, stamp confirmed. Monday's paper test was VOID (the stop-ACK watchdog stopped the test position at 09:00). Re-armed for **Tue 08:25 ET** (host pid 2260800, probe md5 3e2315bb…): read `logs/expiry_test_2026-10-13.stdout` RESULT at ~09:32 ET + exactly one "Stop re-placed" page in Apollo Paper. Hands off apollo-execution 08:25–09:52 ET. The report must say plainly whether the restore path the live switch depends on is PROVEN; if it fails, the fork to him is turning the live row off (his call, never fix-forward).
+
+**Shipped Mon:** Stop-confirmed page — a stop still below entry states "a fill here loses $X/share, -N R" (his ask, PENG) · probe captures: container logs/.err gitignored (they carry chat/order/account ids).
+
+**His rulings Mon:** go live on #687 · run the depth SQL · loss + negative R on below-entry stop pages · **#312/#313 remaining builds → Thu 10-15** ("I'm allowing light weekdays to pick up some work"; memory `light-weekdays-can-take-build-work`).
+
+**Tue 10-13:** 08:25 #687 test → 09:32 read. Noon window: ONE commit `rule_eras.DEPTH_EXIT_LIVE_DATE = date(2026,10,13)` + the YAML era literals the #631 test names (`live_fill_counterfactuals_first_read_482`, `exit_tune_cohort_review`, `exit_tune_bull_regime_read`, `runner_rule_sweep_recut`); deploy market-agent then execution, unpiped, check exit codes. #646/#649 one-line rulings off Monday's 19:00/21:10 rows · #655 Tuesday board · #697 night 2 · #312 first non-empty-morning book check · re-run `alert_rank_shadow_out_of_sample` after the rank job.
+
+**Wed 10-14:** #693 night 2 (close if clean; BAR = original DoD) · #697 night 3 · #655 · #654 date passes (event-gated → re-date with event tag).
+**Thu 10-15:** BUILD #312 demotion ladder (ships dark) + #313 replay-everything CI (#302); nightly #655/#624/#697.
+**Fri 10-16:** #624 week read (after 18:15 ET) · #701 week read (after 17:35 ET) · #697 Friday "Flag Bases" section · #598 close · #655 3-of-5 decision · #686 registration committed before its Sat 10-17 read.
+**Weekend 10-17/18:** #697 item 4 · #686 frozen read · #655 churn re-measure · /trades TICKER paper display gap (#624) · #700 first live Sunday review 10-18.
+
+## 2026-10-11 (Sun) CLOSE — superseded by the 10-12 close above.
 
 **Board 33 → 32.** Closed #486 (Sunday-review theme readout ran live with the declared numbers) and #311 (multi-setup roadmap parked until EP works; its own-evidence rule now in CHANGE_PROCESS rule 5). Filed #700 (weekly-review noise). Server = main after the ~20:15 PT deploy (both + execution, exit codes 0, new code confirmed in the running containers).
 
