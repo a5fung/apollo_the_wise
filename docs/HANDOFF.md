@@ -1421,7 +1421,24 @@ stagger cards, one at a time.
 
 **Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
-## 2026-10-12 (Mon) CLOSE — 🔴 RESUME HERE. Supersedes the 10-11 close below.
+## 2026-10-13 (Tue) CLOSE — 🔴 RESUME HERE. Supersedes the 10-12 close below.
+
+**Board 30 → 28.** Closed #646 + #649 on their own 20-day arm (63/63 evening checks examined every live position, 0 gaps; repair + page paths UNPROVEN → tripwire `evening_stop_gap_first_fire_646_649`). No new tasks. Server = 3dc24793 (Tue noon: both + execution; era-E date + strip-rate audit-only, both confirmed in the containers; drift 0). main = later: the #687 P&L-leg booking + the /trades 💰 badge — **deploy Wed 12:00 ET.**
+
+**#687 today:** the 08:25 paper test PROVED the restore (paper sold 1 of 3 at the open; production protected the 2 held in 0.15 s; the probe looked only for a 3-share stop and printed FAIL). It found a bookkeeping gap (a part-filled dead sale's shares unrecorded). First design (lower remaining_shares) failed five Opus rounds — parked in worktree wf_a8a2e5e1-5d6-1 @ c5bf1dfa, never merge. Redesign (book exits[] leg + P&L only, never remaining_shares) passed: merged 97f06936. Era E pinned (DEPTH_EXIT_LIVE_DATE 10-13, four #631 literals). The runner-rule tripwire fired on the depth toggle → re-cut owed weekend 10-17/18.
+
+**His rulings Tue:** #312/#313 builds → Thu 10-15 ("light weekdays pick up some work") · bookkeeping fix → Wed ("can we do that tmr?") · strip-rate alerts → audit only (asked "any action?").
+
+**Reviews Tue:** #584 same-morning-volume NO at $10M/$25M ($50M readable 10-15, $100M 10-21) · HTF graduation check-back re-gated behind his hold (11-13) · ranking-rule read unchanged (thin).
+
+**Wed 10-14:** 12:00 ET deploy `both` then `execution` (unpiped, exit codes, grep `book_dead_full_exit_leg` + the 💰 badge in both containers) · #693 night 3 with the FIXED check (FULL_PASS + 0 error rows, else don't close) · #697 night 3 (a COILED drop to WATCH/TIGHTENING must hold) · #655 night 3 · #624 heartbeat 3 (first after the #687 deploy) · #654 date passes (event-gated) · remove worktree wf_bda946e1-366-2 after the deploy verifies.
+**Thu 10-15:** BUILD #312 demotion ladder (ships dark) + #313 replay CI · #584 $50M read · #655/#624/#697 nightly.
+**Fri 10-16:** #624 + #701 week reads · #697 Friday Flag Bases early look (DoD date 10-23) · #598 close · #655 decision · #686 registration.
+**Weekend 10-17/18:** #697 item 4 · #686 frozen read · #655 churn re-measure (one fold undone within a night; promote-lane free night) · runner-rule re-cut with the depth control · /trades paper display gap (#624) · #700 first live Sunday review 10-18.
+
+**Lessons (memory):** correct a field the safety path doesn't read (a-non-converging-fix-round) · unique remote temp files for parallel probe cards · light weekdays can take build work.
+
+## 2026-10-12 (Mon) CLOSE — superseded by the 10-13 close above.
 
 **Board 32 → 30.** Closed #692 (deal filter; live watches carried to #701), #505 (theme parent links; Opus-upheld), #699 (paper pages reach Apollo Paper, 0 fallbacks). Filed #701 (M&A filter live week, 10-16). Server = 243018da (both + execution, after-hours window; loss line confirmed in both containers); main adds only PLAN/.gitignore since.
 
