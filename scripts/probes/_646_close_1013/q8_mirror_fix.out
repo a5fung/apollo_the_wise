@@ -1,0 +1,13 @@
+Pager usage is off.
+Null display is "-".
+  nm  | position_slots | mirror_shows_live_stop | mirror_shows_none 
+------+----------------+------------------------+-------------------
+ 1700 |             50 |                     50 |                 0
+ 1900 |             50 |                     50 |                 0
+ 2110 |             50 |                     50 |                 0
+(3 rows)
+
+ d | nm | ticker 
+---+----+--------
+(0 rows)
+

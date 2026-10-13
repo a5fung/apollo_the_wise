@@ -1,0 +1,254 @@
+Pager usage is off.
+Null display is "-".
+Output format is unaligned.
+Field separator is " | ".
+id | et | event_type | summary | detail
+48645 | 2026-09-28 10:10:00.367149 | partial_exit_stop_replaced | KOD: stop reissued for 4 sh @$63.15 (fada5284-a6d0-44d0-920f-ab96b6645195) | {"trade_id": 404, "ticker": "KOD", "new_stop_id": "fada5284-a6d0-44d0-920f-ab96b6645195", "new_remaining": 4, "stop_price": 63.15, "mechanism": "leg_safe_cancel_new", "timings_ms": {"cancel_req_ms": 7.3, "cancel_confirm_ms": 121.4, "avail_release_ms": 144.4, "stop_accept_ms": 163.6, "stop_attempts": 1}}
+52031 | 2026-10-05 10:33:58.133611 | partial_exit_stop_replaced | KO: stop reissued for 2 sh @$81.64 (6d5ff7a8-5a7b-417c-a5c9-45470ba9a880) | {"trade_id": 407, "ticker": "KO", "new_stop_id": "6d5ff7a8-5a7b-417c-a5c9-45470ba9a880", "new_remaining": 2, "stop_price": 81.64, "mechanism": "replace"}
+52038 | 2026-10-05 10:34:21.409024 | planned_sale_stop_cancel | PEP: cancelling stop 10b5eada on purpose — a planned sale (sma_trail_stop) replaces it | {"trade_id": 408, "ticker": "PEP", "stop_order_id": "10b5eada-0798-4df3-9644-eefe1296aa7c", "reason": "sma_trail_stop", "account_mode": "paper", "site": "execute_full_exit"}
+52041 | 2026-10-05 10:34:21.954905 | full_exit_rejected | PEP full exit REJECTED (sma_trail_stop) — 3 sh still open | {"trade_id": 408, "ticker": "PEP", "reason": "sma_trail_stop", "shares": 3.0, "account_mode": "paper", "stop_price": 118.33, "error": "{\"available\":\"3\",\"code\":40310000,\"existing_qty\":\"4\",\"held_for_orders\":\"1\",\"message\":\"insufficient qty available for order (requested: 4, available: 3)\",\"symbol\":\"PEP\"}"}
+52044 | 2026-10-05 10:34:24.505596 | stop_pointer_repair_deferred | PEP [paper]: broker-confirmed stop b83b84e1 was NOT written — the pointer had already been set by another writer | {"trade_id": 408, "ticker": "PEP", "account_mode": "paper", "cancelled_order_id": "10b5eada-0798-4df3-9644-eefe1296aa7c", "confirmed_replacement_id": "b83b84e1-d89a-431b-ae51-aa20dc918cb5"}
+52060 | 2026-10-05 12:03:00.036703 | stop_ack_timeout_remediated | KO #407: stop-ACK timeout (filled_at 14:33:58 ET, stop_order_id NULL >30s); fallback stop placed at $81.64 order=5664c691-5969-4432-9684-ae9160064bb0 | {"trade_id": 407, "ticker": "KO", "account_mode": "paper", "filled_at": "2026-10-05 14:33:58.031249+00:00", "qty": 3.0, "stop_target": 81.64, "fallback_order_id": "5664c691-5969-4432-9684-ae9160064bb0"}
+52061 | 2026-10-05 12:03:00.287273 | stop_pointer_repair_deferred | KO [paper]: broker-confirmed stop 5664c691 was NOT written — the pointer had already been set by another writer | {"trade_id": 407, "ticker": "KO", "account_mode": "paper", "cancelled_order_id": "346bf2ff-af40-44f5-b8c2-ec1e3a32a69d", "confirmed_replacement_id": "5664c691-5969-4432-9684-ae9160064bb0"}
+52067 | 2026-10-05 12:06:03.751556 | planned_sale_stop_cancel | KO: cancelling stop 5664c691 on purpose — a planned sale (paper_rehearsal_687_cleanup) replaces it | {"trade_id": 407, "ticker": "KO", "stop_order_id": "5664c691-5969-4432-9684-ae9160064bb0", "reason": "paper_rehearsal_687_cleanup", "account_mode": "paper", "site": "paper_rehearsal_687_cleanup"}
+52068 | 2026-10-05 12:06:03.774866 | planned_sale_stop_cancel | PEP: cancelling stop b83b84e1 on purpose — a planned sale (paper_rehearsal_687_cleanup) replaces it | {"trade_id": 408, "ticker": "PEP", "stop_order_id": "b83b84e1-d89a-431b-ae51-aa20dc918cb5", "reason": "paper_rehearsal_687_cleanup", "account_mode": "paper", "site": "paper_rehearsal_687_cleanup"}
+52070 | 2026-10-05 12:06:06.831393 | stop_cancel_by_planned_sale_silent | KO: stop 5664c691 cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 407, "ticker": "KO", "account_mode": "paper", "cancelled_order_id": "5664c691-5969-4432-9684-ae9160064bb0", "event_norm": "cancelled"}
+52072 | 2026-10-05 12:06:09.862193 | stop_cancel_by_planned_sale_silent | PEP: stop b83b84e1 cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 408, "ticker": "PEP", "account_mode": "paper", "cancelled_order_id": "b83b84e1-d89a-431b-ae51-aa20dc918cb5", "event_norm": "cancelled"}
+52769 | 2026-10-06 09:35:28.27537 | stop_coverage_repair_failed | KO: place coverage stop (target 3) failed: {"available":"0","code":40310000,"existing_qty":"3","held_for_orders":"3","message":"insufficient qty available for order (requested: 3, available: 0)","related_orders":["8e050a56-e5b4-4999-990e-ae087d1864a1"],"symbol":"KO"} | {"trade_id": 410, "ticker": "KO", "account_mode": "paper", "target_qty": 3.0, "error": "{\"available\":\"0\",\"code\":40310000,\"existing_qty\":\"3\",\"held_for_orders\":\"3\",\"message\":\"insufficient qty available for order (requested: 3, available: 0)\",\"related_orders\":[\"8e050a56-e5b4-4999-990e-ae087d1864a1\"],\"symbol\":\"KO\"}"}
+52773 | 2026-10-06 09:35:43.199312 | planned_sale_stop_cancel | PEP: cancelling stop 97039c8b on purpose — a planned sale (sma_trail_stop) replaces it | {"trade_id": 411, "ticker": "PEP", "stop_order_id": "97039c8b-4bb3-46ab-8b1a-b5386b00845a", "reason": "sma_trail_stop", "account_mode": "paper", "site": "execute_full_exit"}
+52774 | 2026-10-06 09:35:48.324147 | full_exit_rejected | PEP full exit REJECTED (sma_trail_stop) — 3 sh still open | {"trade_id": 411, "ticker": "PEP", "reason": "sma_trail_stop", "shares": 3.0, "account_mode": "paper", "stop_price": 119.68, "error": "{\"available\":\"0\",\"code\":40310000,\"existing_qty\":\"4\",\"held_for_orders\":\"4\",\"message\":\"insufficient qty available for order (requested: 4, available: 0)\",\"symbol\":\"PEP\"}"}
+52778 | 2026-10-06 09:35:53.993339 | stop_cancel_by_planned_sale_silent | PEP: stop 97039c8b cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 411, "ticker": "PEP", "account_mode": "paper", "cancelled_order_id": "97039c8b-4bb3-46ab-8b1a-b5386b00845a", "event_norm": "cancelled"}
+52780 | 2026-10-06 09:36:00.025122 | stop_ack_broker_covered | KO #410: broker has 3.0 sh covering 3.0 remaining (stop_order_id=synced) | {"trade_id": 410, "ticker": "KO", "account_mode": "paper", "remaining_shares": 3.0, "broker_covered": 3.0, "synced_stop_order_id": "8e050a56-e5b4-4999-990e-ae087d1864a1", "open_sell_orders": [{"id": "8e050a56-e5b4-4999-990e-ae087d1864a1", "type": "stop", "qty": 3.0, "stop_price": 82.33}]}
+52784 | 2026-10-06 09:36:30.033818 | stop_ack_timeout_remediated | PEP #411: stop-ACK timeout (filled_at 09:35:43 ET, stop_order_id NULL >30s); fallback stop placed at $119.68 order=821530a8-843e-47c1-a930-aa58d63530f6 | {"trade_id": 411, "ticker": "PEP", "account_mode": "paper", "filled_at": "2026-10-06 13:35:43.184034+00:00", "qty": 3.0, "stop_target": 119.68, "fallback_order_id": "821530a8-843e-47c1-a930-aa58d63530f6"}
+52786 | 2026-10-06 09:40:00.066841 | stop_coverage_retry_attempted | KO: coverage repair retry 1/6 — coverage now meets target | {"trade_id": 410, "ticker": "KO", "account_mode": "paper", "attempt": 1, "broker_qty": 3.0, "outcome": null, "healed": true, "status": "covered", "reason": "live_stop_meets_target"}
+52796 | 2026-10-06 09:45:00.127781 | stop_coverage_retry_attempted | KO: coverage repair retry 2/6 — coverage now meets target | {"trade_id": 410, "ticker": "KO", "account_mode": "paper", "attempt": 2, "broker_qty": 3.0, "outcome": null, "healed": true, "status": "covered", "reason": "live_stop_meets_target"}
+52801 | 2026-10-06 09:50:00.116573 | stop_coverage_retry_attempted | KO: coverage repair retry 3/6 — coverage now meets target | {"trade_id": 410, "ticker": "KO", "account_mode": "paper", "attempt": 3, "broker_qty": 3.0, "outcome": null, "healed": true, "status": "covered", "reason": "live_stop_meets_target"}
+52812 | 2026-10-06 09:55:00.072052 | stop_coverage_retry_attempted | KO: coverage repair retry 4/6 — coverage now meets target | {"trade_id": 410, "ticker": "KO", "account_mode": "paper", "attempt": 4, "broker_qty": 3.0, "outcome": null, "healed": true, "status": "covered", "reason": "live_stop_meets_target"}
+52845 | 2026-10-06 10:00:00.141858 | stop_coverage_retry_attempted | KO: coverage repair retry 5/6 — coverage now meets target | {"trade_id": 410, "ticker": "KO", "account_mode": "paper", "attempt": 5, "broker_qty": 3.0, "outcome": null, "healed": true, "status": "covered", "reason": "live_stop_meets_target"}
+52848 | 2026-10-06 10:05:00.065189 | stop_coverage_retry_attempted | KO: coverage repair retry 6/6 — coverage now meets target | {"trade_id": 410, "ticker": "KO", "account_mode": "paper", "attempt": 6, "broker_qty": 3.0, "outcome": null, "healed": true, "status": "covered", "reason": "live_stop_meets_target"}
+53287 | 2026-10-06 19:04:00.205196 | planned_sale_stop_cancel | KO: cancelling stop 8e050a56 on purpose — a planned sale (paper_rehearsal_687_cleanup) replaces it | {"trade_id": 410, "ticker": "KO", "stop_order_id": "8e050a56-e5b4-4999-990e-ae087d1864a1", "reason": "paper_rehearsal_687_cleanup", "account_mode": "paper", "site": "paper_rehearsal_687_cleanup"}
+53288 | 2026-10-06 19:04:00.22253 | planned_sale_stop_cancel | PEP: cancelling stop 821530a8 on purpose — a planned sale (paper_rehearsal_687_cleanup) replaces it | {"trade_id": 411, "ticker": "PEP", "stop_order_id": "821530a8-843e-47c1-a930-aa58d63530f6", "reason": "paper_rehearsal_687_cleanup", "account_mode": "paper", "site": "paper_rehearsal_687_cleanup"}
+53291 | 2026-10-06 19:04:03.284228 | stop_cancel_by_planned_sale_silent | KO: stop 8e050a56 cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 410, "ticker": "KO", "account_mode": "paper", "cancelled_order_id": "8e050a56-e5b4-4999-990e-ae087d1864a1", "event_norm": "cancelled"}
+53293 | 2026-10-06 19:04:06.31366 | stop_cancel_by_planned_sale_silent | PEP: stop 821530a8 cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 411, "ticker": "PEP", "account_mode": "paper", "cancelled_order_id": "821530a8-843e-47c1-a930-aa58d63530f6", "event_norm": "cancelled"}
+54094 | 2026-10-08 09:35:38.367562 | planned_sale_stop_cancel | CL: cancelling stop 3a328a03 on purpose — a planned sale (sma_trail_stop) replaces it | {"trade_id": 416, "ticker": "CL", "stop_order_id": "3a328a03-3288-44dd-b71d-dd12f8bc70f0", "reason": "sma_trail_stop", "account_mode": "paper", "site": "execute_full_exit"}
+54097 | 2026-10-08 09:35:38.913489 | full_exit_rejected | CL full exit REJECTED (sma_trail_stop) — 3 sh still open | {"trade_id": 416, "ticker": "CL", "reason": "sma_trail_stop", "shares": 3.0, "account_mode": "paper", "stop_price": 82.93, "error": "{\"available\":\"3\",\"code\":40310000,\"existing_qty\":\"4\",\"held_for_orders\":\"1\",\"message\":\"insufficient qty available for order (requested: 4, available: 3)\",\"symbol\":\"CL\"}"}
+54100 | 2026-10-08 09:35:39.446928 | planned_sale_stop_cancel | CL: cancelling stop 32095cef on purpose — a planned sale (paper_rehearsal_687_cleanup) replaces it | {"trade_id": 416, "ticker": "CL", "stop_order_id": "32095cef-934e-457e-aed0-131092267511", "reason": "paper_rehearsal_687_cleanup", "account_mode": "paper", "site": "paper_rehearsal_687_cleanup"}
+54101 | 2026-10-08 09:35:39.466954 | planned_sale_stop_cancel | CL: cancelling stop 3a328a03 on purpose — a planned sale (paper_rehearsal_687_cleanup) replaces it | {"trade_id": 416, "ticker": "CL", "stop_order_id": "3a328a03-3288-44dd-b71d-dd12f8bc70f0", "reason": "paper_rehearsal_687_cleanup", "account_mode": "paper", "site": "paper_rehearsal_687_cleanup"}
+54102 | 2026-10-08 09:35:41.906339 | stop_cancel_by_planned_sale_silent | CL: stop 3a328a03 cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 416, "ticker": "CL", "account_mode": "paper", "cancelled_order_id": "3a328a03-3288-44dd-b71d-dd12f8bc70f0", "event_norm": "cancelled"}
+54105 | 2026-10-08 09:35:44.933039 | stop_cancel_by_planned_sale_silent | CL: stop 32095cef cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 416, "ticker": "CL", "account_mode": "paper", "cancelled_order_id": "32095cef-934e-457e-aed0-131092267511", "event_norm": "cancelled"}
+54128 | 2026-10-08 10:05:00.210431 | partial_exit_stop_replaced | KO: stop reissued for 2 sh @$82.43 (18d33d91-bdcd-45ae-89e1-495debb8d741) | {"trade_id": 417, "ticker": "KO", "new_stop_id": "18d33d91-bdcd-45ae-89e1-495debb8d741", "new_remaining": 2, "stop_price": 82.43, "mechanism": "replace"}
+54140 | 2026-10-08 10:15:01.546331 | planned_sale_stop_cancel | PEP: cancelling stop 831b5850 on purpose — a planned sale (sma_trail_stop) replaces it | {"trade_id": 418, "ticker": "PEP", "stop_order_id": "831b5850-3d1e-4a88-ad36-be33d274ef9d", "reason": "sma_trail_stop", "account_mode": "paper", "site": "execute_full_exit"}
+54143 | 2026-10-08 10:15:02.223914 | full_exit_rejected | PEP full exit REJECTED (sma_trail_stop) — 3 sh still open | {"trade_id": 418, "ticker": "PEP", "reason": "sma_trail_stop", "shares": 3.0, "account_mode": "paper", "stop_price": 120.16, "error": "{\"available\":\"3\",\"code\":40310000,\"existing_qty\":\"4\",\"held_for_orders\":\"1\",\"message\":\"insufficient qty available for order (requested: 4, available: 3)\",\"symbol\":\"PEP\"}"}
+54146 | 2026-10-08 10:15:04.728329 | stop_pointer_repair_deferred | PEP [paper]: broker-confirmed stop 492dd1b3 was NOT written — the pointer had already been set by another writer | {"trade_id": 418, "ticker": "PEP", "account_mode": "paper", "cancelled_order_id": "831b5850-3d1e-4a88-ad36-be33d274ef9d", "confirmed_replacement_id": "492dd1b3-3cb1-40a4-9938-c45b8f28457f"}
+54239 | 2026-10-08 16:45:00.103731 | full_exit_sized_around_resting_exit | KO: selling 2 sh (sma_trail_stop); 1 sh stay under the resting profit-take | {"trade_id": 417, "ticker": "KO", "reason": "sma_trail_stop", "account_mode": "paper", "sell_qty": 2, "broker_qty": 3.0, "held_by_resting": 1.0, "plain_limit_qty": 0, "pending_partial_qty": 1.0, "remaining_shares": 3.0}
+54240 | 2026-10-08 16:45:00.106383 | planned_sale_stop_cancel | KO: cancelling stop 53b0aa02 on purpose — a planned sale (sma_trail_stop) replaces it | {"trade_id": 417, "ticker": "KO", "stop_order_id": "53b0aa02-0e70-402d-8865-66ad4790bf4a", "reason": "sma_trail_stop", "account_mode": "paper", "site": "execute_full_exit"}
+54248 | 2026-10-08 16:45:03.178816 | stop_cancel_by_planned_sale_silent | KO: stop 53b0aa02 cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 417, "ticker": "KO", "account_mode": "paper", "cancelled_order_id": "53b0aa02-0e70-402d-8865-66ad4790bf4a", "event_norm": "cancelled"}
+54547 | 2026-10-08 19:01:00.097841 | planned_sale_stop_cancel | PEP: cancelling stop 492dd1b3 on purpose — a planned sale (sma_trail_stop) replaces it | {"trade_id": 418, "ticker": "PEP", "stop_order_id": "492dd1b3-3cb1-40a4-9938-c45b8f28457f", "reason": "sma_trail_stop", "account_mode": "paper", "site": "execute_depth_open_sale"}
+54550 | 2026-10-08 19:01:03.174069 | stop_cancel_by_planned_sale_silent | PEP: stop 492dd1b3 cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 418, "ticker": "PEP", "account_mode": "paper", "cancelled_order_id": "492dd1b3-3cb1-40a4-9938-c45b8f28457f", "event_norm": "cancelled"}
+54555 | 2026-10-08 21:00:00.056242 | stop_remediation_skipped_pending_exit | KO: 3 pending exit covers full 3 remaining | {"trade_id": 417, "ticker": "KO", "remaining_shares": 3.0, "pending_exit_qty": 3}
+54556 | 2026-10-08 21:00:00.069553 | stop_remediation_skipped_pending_exit | PEP: 3 pending exit covers full 3 remaining | {"trade_id": 418, "ticker": "PEP", "remaining_shares": 3.0, "pending_exit_qty": 3}
+54623 | 2026-10-09 09:00:00.220802 | stop_ack_broker_covered | KO #417: broker has 3.0 sh covering 3.0 remaining (stop_order_id=no_stop_only_market) | {"trade_id": 417, "ticker": "KO", "account_mode": "paper", "remaining_shares": 3.0, "broker_covered": 3.0, "synced_stop_order_id": null, "open_sell_orders": [{"id": "62a96d17-af9f-490e-8bb4-328e08c0cbbe", "type": "market", "qty": 2.0, "stop_price": null}, {"id": "39e09ba2-92ba-43c7-8548-5eb3bb079806", "type": "limit", "qty": 1.0, "stop_price": null}]}
+54624 | 2026-10-09 09:00:00.242917 | stop_ack_broker_covered | PEP #418: broker has 3.0 sh covering 3.0 remaining (stop_order_id=no_stop_only_market) | {"trade_id": 418, "ticker": "PEP", "account_mode": "paper", "remaining_shares": 3.0, "broker_covered": 3.0, "synced_stop_order_id": null, "open_sell_orders": [{"id": "5f38a844-7acf-4f5e-a841-ae7847b71707", "type": "market", "qty": 3.0, "stop_price": null}]}
+54655 | 2026-10-09 09:32:04.366283 | full_exit_committed | KO: DB committed on WS fill — sold 2 @$87.74, reason=sma_trail_stop, total_pnl $+7.16 — 1 sh remain under a resting exit, trade stays OPEN | {"trade_id": 417, "ticker": "KO", "shares": 2, "fill_price": 87.74, "pnl": 7.159999999999997, "total_pnl": 7.159999999999997, "reason": "sma_trail_stop", "order_id": "62a96d17-af9f-490e-8bb4-328e08c0cbbe", "new_remaining": 1}
+54657 | 2026-10-09 09:35:00.039393 | stop_update_aborted | KO: pending exits (1) cover full remaining (1.0) — no stop sizing left | {"trade_id": 417, "ticker": "KO", "remaining_shares": 1.0, "pending_exit_qty": 1, "effective_qty": 0, "new_stop_price": 83.25}
+54683 | 2026-10-09 09:41:01.246159 | stop_coverage_repaired | KO: placed coverage stop 1 @ $83.25 (was no live stop) | {"trade_id": 417, "ticker": "KO", "account_mode": "paper", "new_stop_id": "5a09fb83-c56c-47c0-baf3-085774bc78a2", "target_qty": 1.0, "stop_price": 83.25, "db_stop_price": 83.25}
+54684 | 2026-10-09 09:41:03.382993 | planned_sale_stop_cancel | KO: cancelling stop 5a09fb83 on purpose — a planned sale (paper_rehearsal_687_cleanup) replaces it | {"trade_id": 417, "ticker": "KO", "stop_order_id": "5a09fb83-c56c-47c0-baf3-085774bc78a2", "reason": "paper_rehearsal_687_cleanup", "account_mode": "paper", "site": "paper_rehearsal_687_cleanup"}
+54685 | 2026-10-09 09:41:03.400128 | planned_sale_stop_cancel | PEP: cancelling stop d5d321c4 on purpose — a planned sale (paper_rehearsal_687_cleanup) replaces it | {"trade_id": 418, "ticker": "PEP", "stop_order_id": "d5d321c4-f517-46a8-a1ab-b6a258868a03", "reason": "paper_rehearsal_687_cleanup", "account_mode": "paper", "site": "paper_rehearsal_687_cleanup"}
+54687 | 2026-10-09 09:41:06.563035 | stop_cancel_by_planned_sale_silent | KO: stop 5a09fb83 cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 417, "ticker": "KO", "account_mode": "paper", "cancelled_order_id": "5a09fb83-c56c-47c0-baf3-085774bc78a2", "event_norm": "cancelled"}
+54689 | 2026-10-09 09:41:09.596534 | stop_cancel_by_planned_sale_silent | PEP: stop d5d321c4 cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 418, "ticker": "PEP", "account_mode": "paper", "cancelled_order_id": "d5d321c4-f517-46a8-a1ab-b6a258868a03", "event_norm": "cancelled"}
+55368 | 2026-10-12 09:00:00.094188 | stop_ack_timeout_remediated | KO #420: stop-ACK timeout (filled_at 08:30:00 ET, stop_order_id NULL >30s); fallback stop placed at $75.14 order=cd020e0e-80ae-4c60-883f-06b7a78b5f48 | {"trade_id": 420, "ticker": "KO", "account_mode": "paper", "filled_at": "2026-10-12 12:30:00.625828+00:00", "qty": 3.0, "stop_target": 75.14, "fallback_order_id": "cd020e0e-80ae-4c60-883f-06b7a78b5f48"}
+55378 | 2026-10-12 09:05:00.166092 | planned_sale_stop_cancel | KO: cancelling stop cd020e0e on purpose — a planned sale (paper_rehearsal_687_cleanup) replaces it | {"trade_id": 420, "ticker": "KO", "stop_order_id": "cd020e0e-80ae-4c60-883f-06b7a78b5f48", "reason": "paper_rehearsal_687_cleanup", "account_mode": "paper", "site": "paper_rehearsal_687_cleanup"}
+55382 | 2026-10-12 09:05:03.25277 | stop_cancel_by_planned_sale_silent | KO: stop cd020e0e cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 420, "ticker": "KO", "account_mode": "paper", "cancelled_order_id": "cd020e0e-80ae-4c60-883f-06b7a78b5f48", "event_norm": "cancelled"}
+55951 | 2026-10-13 09:05:00.042452 | planned_sale_stop_cancel | KO: cancelling stop 6c5a378d on purpose — a planned sale (sma_trail_stop) replaces it | {"trade_id": 421, "ticker": "KO", "stop_order_id": "6c5a378d-04ed-4853-ba84-8d96cce04cc3", "reason": "sma_trail_stop", "account_mode": "paper", "site": "expiry_path_test_687"}
+55956 | 2026-10-13 09:05:03.126782 | stop_cancel_by_planned_sale_silent | KO: stop 6c5a378d cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 421, "ticker": "KO", "account_mode": "paper", "cancelled_order_id": "6c5a378d-04ed-4853-ba84-8d96cce04cc3", "event_norm": "cancelled"}
+55957 | 2026-10-13 09:05:30.015589 | stop_ack_broker_covered | KO #421: broker has 3.0 sh covering 3.0 remaining (stop_order_id=no_stop_only_market) | {"trade_id": 421, "ticker": "KO", "account_mode": "paper", "remaining_shares": 3.0, "broker_covered": 3.0, "synced_stop_order_id": null, "open_sell_orders": [{"id": "1822f417-cc3f-4985-8060-54bb2d40d47b", "type": "market", "qty": 3.0, "stop_price": null}]}
+55983 | 2026-10-13 09:46:00.224278 | planned_sale_stop_cancel | KO: cancelling stop f18ed7c0 on purpose — a planned sale (paper_rehearsal_687_cleanup) replaces it | {"trade_id": 421, "ticker": "KO", "stop_order_id": "f18ed7c0-4355-4b3e-ba17-bb9c494e48aa", "reason": "paper_rehearsal_687_cleanup", "account_mode": "paper", "site": "paper_rehearsal_687_cleanup"}
+55985 | 2026-10-13 09:46:03.364334 | stop_cancel_by_planned_sale_silent | KO: stop f18ed7c0 cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome) | {"trade_id": 421, "ticker": "KO", "account_mode": "paper", "cancelled_order_id": "f18ed7c0-4355-4b3e-ba17-bb9c494e48aa", "event_norm": "cancelled"}
+(61 rows)
+id | et | event_type | summary
+52041 | 2026-10-05 10:34:21.954905 | full_exit_rejected | PEP full exit REJECTED (sma_trail_stop) — 3 sh still open
+52044 | 2026-10-05 10:34:24.505596 | stop_pointer_repair_deferred | PEP [paper]: broker-confirmed stop b83b84e1 was NOT written — the pointer had already been set by another writer
+52060 | 2026-10-05 12:03:00.036703 | stop_ack_timeout_remediated | KO #407: stop-ACK timeout (filled_at 14:33:58 ET, stop_order_id NULL >30s); fallback stop placed at $81.64 order=5664c691-5969-4432-9684-ae9160064bb0
+52061 | 2026-10-05 12:03:00.287273 | stop_pointer_repair_deferred | KO [paper]: broker-confirmed stop 5664c691 was NOT written — the pointer had already been set by another writer
+52769 | 2026-10-06 09:35:28.27537 | stop_coverage_repair_failed | KO: place coverage stop (target 3) failed: {"available":"0","code":40310000,"existing_qty":"3","held_for_orders":"3","message":"insufficient qty available for order (requested: 3, available: 0)","rela
+52774 | 2026-10-06 09:35:48.324147 | full_exit_rejected | PEP full exit REJECTED (sma_trail_stop) — 3 sh still open
+52780 | 2026-10-06 09:36:00.025122 | stop_ack_broker_covered | KO #410: broker has 3.0 sh covering 3.0 remaining (stop_order_id=synced)
+52784 | 2026-10-06 09:36:30.033818 | stop_ack_timeout_remediated | PEP #411: stop-ACK timeout (filled_at 09:35:43 ET, stop_order_id NULL >30s); fallback stop placed at $119.68 order=821530a8-843e-47c1-a930-aa58d63530f6
+54097 | 2026-10-08 09:35:38.913489 | full_exit_rejected | CL full exit REJECTED (sma_trail_stop) — 3 sh still open
+54143 | 2026-10-08 10:15:02.223914 | full_exit_rejected | PEP full exit REJECTED (sma_trail_stop) — 3 sh still open
+54146 | 2026-10-08 10:15:04.728329 | stop_pointer_repair_deferred | PEP [paper]: broker-confirmed stop 492dd1b3 was NOT written — the pointer had already been set by another writer
+54555 | 2026-10-08 21:00:00.056242 | stop_remediation_skipped_pending_exit | KO: 3 pending exit covers full 3 remaining
+54556 | 2026-10-08 21:00:00.069553 | stop_remediation_skipped_pending_exit | PEP: 3 pending exit covers full 3 remaining
+54623 | 2026-10-09 09:00:00.220802 | stop_ack_broker_covered | KO #417: broker has 3.0 sh covering 3.0 remaining (stop_order_id=no_stop_only_market)
+54624 | 2026-10-09 09:00:00.242917 | stop_ack_broker_covered | PEP #418: broker has 3.0 sh covering 3.0 remaining (stop_order_id=no_stop_only_market)
+54683 | 2026-10-09 09:41:01.246159 | stop_coverage_repaired | KO: placed coverage stop 1 @ $83.25 (was no live stop)
+55368 | 2026-10-12 09:00:00.094188 | stop_ack_timeout_remediated | KO #420: stop-ACK timeout (filled_at 08:30:00 ET, stop_order_id NULL >30s); fallback stop placed at $75.14 order=cd020e0e-80ae-4c60-883f-06b7a78b5f48
+55957 | 2026-10-13 09:05:30.015589 | stop_ack_broker_covered | KO #421: broker has 3.0 sh covering 3.0 remaining (stop_order_id=no_stop_only_market)
+(18 rows)
+reason | new_is_null | n | first_et | last_et
+cancel_or_reject_null | t | 54 | 2026-09-14 16:45:00.543189 | 2026-10-13 09:46:00.260397
+cancel_or_reject_restored | f | 33 | 2026-09-14 16:45:03.56975 | 2026-10-13 09:31:30.249496
+partial_naked | t | 1 | 2026-10-06 09:35:28.199702 | 2026-10-06 09:35:28.199702
+partial_replacement | f | 3 | 2026-09-28 10:10:00.360076 | 2026-10-08 10:05:00.205227
+rehearsal_687_price_replace | f | 2 | 2026-10-05 10:33:58.71267 | 2026-10-08 10:10:00.133929
+restored_after_failed_full_exit | f | 3 | 2026-10-05 10:34:22.003234 | 2026-10-08 10:15:02.387591
+stop_ack_timeout | f | 3 | 2026-10-05 12:03:00.035173 | 2026-10-12 09:00:00.091989
+sync_coverage_repair | f | 1 | 2026-10-09 09:41:01.244739 | 2026-10-09 09:41:01.244739
+sync_remediation | f | 1 | 2026-09-11 21:00:00.186889 | 2026-09-11 21:00:00.186889
+watchdog_synced_from_broker | f | 1 | 2026-10-06 09:36:00.022668 | 2026-10-06 09:36:00.022668
+(10 rows)
+id | et | summary
+42660 | 2026-09-11 21:00:00.186889 | trade #382 [live]: stop_order_id=5a93bd8e-aee7-43ad-b25a-8544a428f3a0 (reason=sync_remediation)
+43021 | 2026-09-14 16:45:00.543189 | trade #382 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+43023 | 2026-09-14 16:45:03.56975 | trade #382 [live]: stop_order_id=567e8e86-050a-4a77-9ba8-6ae5de54f9d8 (reason=cancel_or_reject_restored)
+43029 | 2026-09-14 16:45:04.398003 | trade #392 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+43031 | 2026-09-14 16:45:07.423193 | trade #392 [live]: stop_order_id=40e10589-e6ef-4a9a-90de-ff33c1d84328 (reason=cancel_or_reject_restored)
+43497 | 2026-09-15 16:45:00.45855 | trade #382 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+43499 | 2026-09-15 16:45:03.483036 | trade #382 [live]: stop_order_id=3c1a1181-7afe-4ad0-80eb-6fdd5b013fc5 (reason=cancel_or_reject_restored)
+43504 | 2026-09-15 16:45:04.273713 | trade #396 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+43506 | 2026-09-15 16:45:07.295064 | trade #396 [live]: stop_order_id=cacb75e4-b8fb-40c7-a637-f3e43f4564da (reason=cancel_or_reject_restored)
+43956 | 2026-09-16 16:45:00.449465 | trade #382 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+43958 | 2026-09-16 16:45:03.475857 | trade #382 [live]: stop_order_id=d0bd6909-62f9-4079-b1e7-d5d85d2b54e0 (reason=cancel_or_reject_restored)
+43964 | 2026-09-16 16:45:04.207746 | trade #396 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+43966 | 2026-09-16 16:45:07.23206 | trade #396 [live]: stop_order_id=40e3732c-3026-4482-bdde-46ed89939efd (reason=cancel_or_reject_restored)
+44472 | 2026-09-17 16:05:04.422336 | trade #400 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+44614 | 2026-09-17 16:45:00.426767 | trade #382 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+44616 | 2026-09-17 16:45:03.445431 | trade #382 [live]: stop_order_id=147fa71b-a66f-4bab-a863-a014a85ef5fd (reason=cancel_or_reject_restored)
+44622 | 2026-09-17 16:45:04.195432 | trade #396 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+44624 | 2026-09-17 16:45:07.214419 | trade #396 [live]: stop_order_id=b74a1c11-ef54-4781-ad3f-d8d1874481ec (reason=cancel_or_reject_restored)
+45128 | 2026-09-18 16:45:00.44082 | trade #382 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+45130 | 2026-09-18 16:45:03.464633 | trade #382 [live]: stop_order_id=4d9e1360-797b-4db5-a3dd-1154f17a2d70 (reason=cancel_or_reject_restored)
+45136 | 2026-09-18 16:45:04.223955 | trade #396 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+45138 | 2026-09-18 16:45:07.247632 | trade #396 [live]: stop_order_id=cf9d1636-6912-4d05-8b22-05c6bae54d38 (reason=cancel_or_reject_restored)
+45925 | 2026-09-21 16:45:00.546741 | trade #382 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+45927 | 2026-09-21 16:45:03.572822 | trade #382 [live]: stop_order_id=89e0430d-f6ca-4dd1-a24f-41c3ec184fd2 (reason=cancel_or_reject_restored)
+45933 | 2026-09-21 16:45:04.328767 | trade #396 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+45935 | 2026-09-21 16:45:07.354637 | trade #396 [live]: stop_order_id=a4c10e45-4e68-4e84-8b5c-cffe142dc508 (reason=cancel_or_reject_restored)
+46484 | 2026-09-22 16:45:00.454852 | trade #382 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+46486 | 2026-09-22 16:45:03.481924 | trade #382 [live]: stop_order_id=2292402e-00f9-4d43-a064-dc431dcc2ebd (reason=cancel_or_reject_restored)
+46997 | 2026-09-23 16:45:00.463289 | trade #382 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+46999 | 2026-09-23 16:45:03.490323 | trade #382 [live]: stop_order_id=5738de12-2e71-42ca-b10c-b79c1f103c12 (reason=cancel_or_reject_restored)
+47529 | 2026-09-24 16:45:00.451168 | trade #382 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+47531 | 2026-09-24 16:45:03.475147 | trade #382 [live]: stop_order_id=680f0a5b-c6d3-4687-8c57-82b95ab21ede (reason=cancel_or_reject_restored)
+47537 | 2026-09-24 16:45:04.23248 | trade #400 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+47539 | 2026-09-24 16:45:07.260848 | trade #400 [live]: stop_order_id=31164a3d-3add-44c4-a79f-4f0666c9fb46 (reason=cancel_or_reject_restored)
+48119 | 2026-09-25 16:45:00.491199 | trade #382 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+48121 | 2026-09-25 16:45:03.516511 | trade #382 [live]: stop_order_id=2a57c270-35a3-40d5-a560-19f5c0a55b27 (reason=cancel_or_reject_restored)
+48127 | 2026-09-25 16:45:04.259571 | trade #400 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+48129 | 2026-09-25 16:45:07.280079 | trade #400 [live]: stop_order_id=b517959f-9744-493f-92c9-e8c3b82f5336 (reason=cancel_or_reject_restored)
+48643 | 2026-09-28 10:10:00.241661 | trade #404 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+48775 | 2026-09-28 16:45:00.483219 | trade #400 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+48777 | 2026-09-28 16:45:03.509465 | trade #400 [live]: stop_order_id=721a6320-a8e1-49bc-9472-427592fb0b76 (reason=cancel_or_reject_restored)
+49417 | 2026-09-29 16:45:00.551651 | trade #400 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+49419 | 2026-09-29 16:45:03.576562 | trade #400 [live]: stop_order_id=cdd1a889-1d2f-48d8-9ab6-7fec478302cd (reason=cancel_or_reject_restored)
+49980 | 2026-09-30 16:45:00.445669 | trade #400 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+49982 | 2026-09-30 16:45:03.479317 | trade #400 [live]: stop_order_id=3f8f1dff-13e6-4cb2-af3e-0b6b9c6161a4 (reason=cancel_or_reject_restored)
+50550 | 2026-10-01 16:45:00.505127 | trade #400 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+50552 | 2026-10-01 16:45:03.530328 | trade #400 [live]: stop_order_id=8288fe66-d695-4ae0-8906-368dc6e51115 (reason=cancel_or_reject_restored)
+51040 | 2026-10-02 16:45:00.457286 | trade #400 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+51042 | 2026-10-02 16:45:03.481831 | trade #400 [live]: stop_order_id=7c52d06b-df7c-4437-b852-49d2633352be (reason=cancel_or_reject_restored)
+52034 | 2026-10-05 10:33:58.71267 | trade #407 [paper]: stop_order_id=346bf2ff-af40-44f5-b8c2-ec1e3a32a69d (reason=rehearsal_687_price_replace)
+52040 | 2026-10-05 10:34:21.467839 | trade #408 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+52042 | 2026-10-05 10:34:22.003234 | trade #408 [paper]: stop_order_id=b83b84e1-d89a-431b-ae51-aa20dc918cb5 (reason=restored_after_failed_full_exit)
+52058 | 2026-10-05 12:02:57.249131 | trade #407 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+52059 | 2026-10-05 12:03:00.035173 | trade #407 [paper]: stop_order_id=5664c691-5969-4432-9684-ae9160064bb0 (reason=stop_ack_timeout)
+52069 | 2026-10-05 12:06:03.794614 | trade #407 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+52071 | 2026-10-05 12:06:06.836663 | trade #408 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+52196 | 2026-10-05 16:45:00.465871 | trade #400 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+52198 | 2026-10-05 16:45:03.49235 | trade #400 [live]: stop_order_id=3ad7aff9-8cf5-483a-be07-73c469676be3 (reason=cancel_or_reject_restored)
+52203 | 2026-10-05 16:45:04.302771 | trade #404 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+52205 | 2026-10-05 16:45:07.326213 | trade #404 [live]: stop_order_id=1c7860fc-ecd7-46b3-b0dc-dc82430cd2b5 (reason=cancel_or_reject_restored)
+52767 | 2026-10-06 09:35:28.199702 | trade #410 [paper]: stop_order_id=NULL (reason=partial_naked)
+52777 | 2026-10-06 09:35:50.954559 | trade #411 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+52779 | 2026-10-06 09:36:00.022668 | trade #410 [paper]: stop_order_id=8e050a56-e5b4-4999-990e-ae087d1864a1 (reason=watchdog_synced_from_broker)
+52783 | 2026-10-06 09:36:30.032513 | trade #411 [paper]: stop_order_id=821530a8-843e-47c1-a930-aa58d63530f6 (reason=stop_ack_timeout)
+52879 | 2026-10-06 16:05:04.196829 | trade #409 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+52970 | 2026-10-06 16:45:00.53782 | trade #400 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+52972 | 2026-10-06 16:45:03.563661 | trade #400 [live]: stop_order_id=68a622a6-36e7-4573-bb87-46720344d6fb (reason=cancel_or_reject_restored)
+52978 | 2026-10-06 16:45:04.316198 | trade #404 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+52980 | 2026-10-06 16:45:07.33669 | trade #404 [live]: stop_order_id=8d528031-9ce2-40f8-87d4-c16e964fbe34 (reason=cancel_or_reject_restored)
+53290 | 2026-10-06 19:04:00.24549 | trade #410 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+53292 | 2026-10-06 19:04:03.288604 | trade #411 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+53502 | 2026-10-07 16:05:02.973182 | trade #414 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+53592 | 2026-10-07 16:45:00.431715 | trade #404 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+53594 | 2026-10-07 16:45:03.457026 | trade #404 [live]: stop_order_id=e72a4a8b-8421-4c9c-8adc-0b7b92020d22 (reason=cancel_or_reject_restored)
+54096 | 2026-10-08 09:35:38.874475 | trade #416 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+54098 | 2026-10-08 09:35:38.950783 | trade #416 [paper]: stop_order_id=32095cef-934e-457e-aed0-131092267511 (reason=restored_after_failed_full_exit)
+54103 | 2026-10-08 09:35:41.911871 | trade #416 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+54133 | 2026-10-08 10:10:00.133929 | trade #417 [paper]: stop_order_id=53b0aa02-0e70-402d-8865-66ad4790bf4a (reason=rehearsal_687_price_replace)
+54142 | 2026-10-08 10:15:01.669139 | trade #418 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+54144 | 2026-10-08 10:15:02.387591 | trade #418 [paper]: stop_order_id=492dd1b3-3cb1-40a4-9938-c45b8f28457f (reason=restored_after_failed_full_exit)
+54242 | 2026-10-08 16:45:00.144929 | trade #417 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+54246 | 2026-10-08 16:45:00.427271 | trade #404 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+54250 | 2026-10-08 16:45:03.449678 | trade #404 [live]: stop_order_id=32a179ad-097a-4f8c-912a-649c78683a95 (reason=cancel_or_reject_restored)
+54548 | 2026-10-08 19:01:00.136684 | trade #418 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+54682 | 2026-10-09 09:41:01.244739 | trade #417 [paper]: stop_order_id=5a09fb83-c56c-47c0-baf3-085774bc78a2 (reason=sync_coverage_repair)
+54686 | 2026-10-09 09:41:03.525935 | trade #417 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+54688 | 2026-10-09 09:41:06.571857 | trade #418 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+54759 | 2026-10-09 16:05:04.80728 | trade #419 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+54842 | 2026-10-09 16:45:00.385564 | trade #404 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+54844 | 2026-10-09 16:45:03.415123 | trade #404 [live]: stop_order_id=73cc60ee-3d69-4095-b659-2ed1b10674dc (reason=cancel_or_reject_restored)
+55367 | 2026-10-12 09:00:00.091989 | trade #420 [paper]: stop_order_id=cd020e0e-80ae-4c60-883f-06b7a78b5f48 (reason=stop_ack_timeout)
+55380 | 2026-10-12 09:05:00.203589 | trade #420 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+55545 | 2026-10-12 16:45:00.402087 | trade #404 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+55547 | 2026-10-12 16:45:03.425874 | trade #404 [live]: stop_order_id=b26e8ca2-09f3-4140-9729-97c74f6cccf9 (reason=cancel_or_reject_restored)
+55552 | 2026-10-12 16:45:04.185794 | trade #414 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+55554 | 2026-10-12 16:45:07.208184 | trade #414 [live]: stop_order_id=6b74a7e5-5ea7-4208-a262-116b9045165b (reason=cancel_or_reject_restored)
+55953 | 2026-10-13 09:05:00.082033 | trade #421 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+55974 | 2026-10-13 09:31:30.249496 | trade #421 [paper]: stop_order_id=f18ed7c0-4355-4b3e-ba17-bb9c494e48aa (reason=cancel_or_reject_restored)
+55984 | 2026-10-13 09:46:00.260397 | trade #421 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+(99 rows)
+event_type | n
+api_failure_alpaca | 2
+coverage_checked_late | 21
+coverage_checked_post_close | 21
+coverage_drift_check_degraded | 2
+coverage_verified_evening | 21
+dead_stop_price_preserved | 34
+ep_residual_outcomes_backfilled | 19
+exit_path_shadow_recorded | 20
+full_exit_sized_around_resting_exit | 1
+job_recovery_sweep | 12
+live_fill_counterfactual_recorded | 20
+narrative_theme_discovery_ran | 20
+order_status_reconciled | 5
+planned_sale_stop_cancel | 4
+position_mgmt_judge_null | 2
+stop_cancel_by_planned_sale_silent | 4
+stop_order_id_changed | 72
+stop_refresh_ran | 21
+stop_remediation_skipped_pending_exit | 2
+stop_replacement_confirmed_silent | 32
+stop_updated | 36
+stop_update_retry_succeeded | 32
+stop_update_retry_triggered | 32
+stop_update_started | 36
+theme_composition_churn | 20
+theme_discovered | 103
+theme_discovery_llm_call | 262
+theme_discovery_shadow_ran | 20
+theme_discovery_shown_declined | 41
+(29 rows)
+d | started | updated | retry_trig | retry_ok | repl_conf | dead_preserved | aborted
+2026-09-14 | 2 | 2 | 2 | 2 | 2 | 1 | 0
+2026-09-15 | 2 | 2 | 2 | 2 | 2 | 1 | 0
+2026-09-16 | 2 | 2 | 2 | 2 | 2 | 2 | 0
+2026-09-17 | 2 | 2 | 2 | 2 | 2 | 2 | 0
+2026-09-18 | 2 | 2 | 2 | 2 | 2 | 2 | 0
+2026-09-21 | 2 | 2 | 2 | 2 | 2 | 2 | 0
+2026-09-22 | 1 | 1 | 1 | 1 | 1 | 1 | 0
+2026-09-23 | 1 | 1 | 1 | 1 | 1 | 1 | 0
+2026-09-24 | 2 | 2 | 2 | 2 | 2 | 2 | 0
+2026-09-25 | 2 | 2 | 2 | 2 | 2 | 2 | 0
+2026-09-28 | 1 | 1 | 1 | 1 | 1 | 1 | 0
+2026-09-29 | 1 | 1 | 1 | 1 | 1 | 1 | 0
+2026-09-30 | 1 | 1 | 1 | 1 | 1 | 1 | 0
+2026-10-01 | 1 | 1 | 1 | 1 | 1 | 1 | 0
+2026-10-02 | 1 | 1 | 1 | 1 | 1 | 1 | 0
+2026-10-05 | 2 | 2 | 2 | 2 | 2 | 1 | 0
+2026-10-06 | 2 | 2 | 2 | 2 | 2 | 2 | 0
+2026-10-07 | 1 | 1 | 1 | 1 | 1 | 1 | 0
+2026-10-08 | 1 | 1 | 1 | 1 | 1 | 2 | 0
+2026-10-09 | 1 | 1 | 1 | 1 | 1 | 1 | 0
+2026-10-12 | 2 | 2 | 2 | 2 | 2 | 1 | 0
+(21 rows)

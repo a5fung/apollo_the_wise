@@ -1,0 +1,67 @@
+Pager usage is off.
+Null display is "-".
+   oid    | side | order_type |   purpose    |  status   | qty | stop_price |           sub_et           |          canc_et           |          fill_et           
+----------+------+------------+--------------+-----------+-----+------------+----------------------------+----------------------------+----------------------------
+ bfbd110d | buy  | stop_limit | -            | filled    |   5 |    62.8982 | 2026-09-28 09:31:00.841773 | -                          | 2026-09-28 09:32:00.024432
+ a1b21d12 | sell | stop       | stop_loss    | replaced  |   5 |      60.49 | 2026-09-28 09:31:00.844984 | -                          | -
+ b105e02e | sell | stop       | stop_loss    | canceled  |   5 |      63.15 | 2026-09-28 09:40:00.147764 | 2026-09-28 10:15:00.053681 | -
+ fada5284 | sell | stop       | stop_loss    | canceled  |   4 |      63.15 | 2026-09-28 10:10:00.361448 | 2026-10-06 09:00:00.198037 | -
+ 26f62c6e | sell | limit      | partial_exit | filled    |   1 |          - | 2026-09-28 10:10:00.654284 | -                          | 2026-09-28 10:10:03.693832
+ 7a7c604b | sell | stop       | stop_loss    | cancelled |   1 |      63.15 | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 | -
+ 1c7860fc | sell | stop       | stop_loss    | canceled  |   4 |       63.6 | 2026-10-05 16:45:07.733913 | 2026-10-07 09:00:00.204805 | -
+ 8d528031 | sell | stop       | stop_loss    | canceled  |   4 |      69.59 | 2026-10-06 16:45:07.717752 | 2026-10-08 09:00:00.112511 | -
+ e72a4a8b | sell | stop       | stop_loss    | canceled  |   4 |      75.31 | 2026-10-07 16:45:03.851544 | 2026-10-09 09:00:00.165597 | -
+ 32a179ad | sell | stop       | stop_loss    | canceled  |   4 |      81.59 | 2026-10-08 16:45:03.846482 | 2026-10-12 09:00:00.113754 | -
+ 73cc60ee | sell | stop       | stop_loss    | canceled  |   4 |      88.25 | 2026-10-09 16:45:03.785203 | 2026-10-13 09:00:00.100554 | -
+ b26e8ca2 | sell | stop       | stop_loss    | new       |   4 |      94.95 | 2026-10-12 16:45:03.8016   | -                          | -
+(12 rows)
+
+ rows_with_fada5284 
+--------------------
+                  1
+(1 row)
+
+             et             |               event_type               |                                                                                                 summary                                                                                                  
+----------------------------+----------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 2026-09-28 07:00:01.843542 | ep_rt_admit                            | KOD rt 58.6% and delayed 40.0% BOTH >=9 @ 07:00 ET — real-time AGREES with the admit
+ 2026-09-28 07:00:20.265358 | ep_catalyst_provenance                 | KOD game_changer direct=True
+ 2026-09-28 07:00:21.121083 | judge_signal_trace                     | [ep_grade_judge] KOD: direct_source held=True sent=yes | revenue_stage held=None sent=not checked
+ 2026-09-28 07:00:27.979802 | ep_grade_decision                      | KOD our score HIGH · judge HIGH · judge note hold · outcome verdict
+ 2026-09-28 07:00:27.982059 | judge_signal_trace                     | [judge_divergence] KOD: direct_source held=True sent=yes | revenue_stage held=None sent=not checked
+ 2026-09-28 07:00:28.079748 | ep_catalyst_suppressed                 | KOD catalyst discovery line suppressed (grounded direct-source grade)
+ 2026-09-28 07:00:28.525274 | ep_alert                               | HIGH EP: KOD gap=58.6% score=90
+ 2026-09-28 07:00:33.019882 | judge_divergence_check_failed          | KOD 2026-09-28: 2nd-model call failed/timed out (model=claude-sonnet-5)
+ 2026-09-28 07:10:01.081485 | ep_rt_gap_clamped                      | KOD rt 71.3% vs delayed 40.1% (Δ>30pp) — keeping delayed
+ 2026-09-28 09:31:00.204901 | orb_triggered                          | [bar_stream] 1 alerts: ['KOD']
+ 2026-09-28 09:31:00.777961 | exposure_family_checked                | KOD (live/ORB): no theme membership — nothing to compare
+ 2026-09-28 09:31:00.779597 | orb_bar_stream_used                    | ORB KOD attempt 1 — O=62.00 H=62.90 L=60.49
+ 2026-09-28 09:31:00.78195  | orb_bar_fetched                        | ORB KOD O=62.00 H=62.90 L=60.49 range=2.41
+ 2026-09-28 09:31:00.846444 | orb_order_placed                       | ORB KOD entry=$62.90 stop=$58.08 shares=5 risk=$25 trade_id=404
+ 2026-09-28 09:31:06.556269 | orb_triggered                          | [cron_9_31] 1 alerts: ['KOD']
+ 2026-09-28 09:31:16.563668 | trade_lifecycle_telegram_attempted     | fill KOD @$63.15 x5
+ 2026-09-28 09:32:00.025999 | order_status_reconciled                | KOD order=bfbd110d: pending_new -> filled (live)
+ 2026-09-28 09:35:00.042441 | unified_allocation_decided             | slots=3 winners=['KOD'] n=1 (0 lower-ranked)
+ 2026-09-28 09:35:00.05068  | stop_refresh_ran                       | Morning: examined 1, placed 0, already-covered 1, skipped 0 (none), same-day excluded 1 (KOD)
+ 2026-09-28 09:40:00.15038  | breakeven_armed                        | KOD: traded $74.58 >= 3R level $71.13 — stop $58.08 → $63.15 (entry) on the full 5-share stop via price-only replace (a1b21d12→b105e02e)
+ 2026-09-28 09:45:00.057787 | order_status_reconciled                | KOD order=a1b21d12: new -> replaced (live)
+ 2026-09-28 10:10:00.172025 | partial_exit_started                   | KOD: sell 1 of 5 (new_remaining=4)
+ 2026-09-28 10:10:00.239077 | dead_stop_price_preserved              | trade #404 [live]: dead stop b105e02e (status=OrderStatus.CANCELED) preserved at $63.15 for the #600 floor
+ 2026-09-28 10:10:00.241661 | stop_order_id_changed                  | trade #404 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+ 2026-09-28 10:10:00.360076 | stop_order_id_changed                  | trade #404 [live]: stop_order_id=fada5284-a6d0-44d0-920f-ab96b6645195 (reason=partial_replacement)
+ 2026-09-28 10:10:00.367149 | partial_exit_stop_replaced             | KOD: stop reissued for 4 sh @$63.15 (fada5284-a6d0-44d0-920f-ab96b6645195)
+ 2026-09-28 10:10:00.658612 | partial_exit_sell_placed               | KOD: OCO resting for 1: limit @ $84.43 / stop @ $63.15 (26f62c6e-48ce-4b63-96db-06d92538ba2c, status=pending_new)
+ 2026-09-28 10:10:01.085405 | profit_trigger_fired                   | KOD: high $85.88 >= 8R target $84.43
+ 2026-09-28 10:10:03.699015 | partial_exit_committed                 | KOD: DB committed on WS fill — sold 1 @$85.12, pnl $+21.98, remaining 4
+ 2026-09-28 10:15:00.042488 | order_status_reconciled                | KOD order=fada5284: pending_new -> new (live)
+ 2026-09-28 10:15:00.056774 | order_status_reconciled                | KOD order=b105e02e: new -> canceled (live)
+ 2026-09-28 17:00:21.680736 | rs_extreme_return                      | 5 tickers cleared legacy heuristic ceilings — sample: KOD, MRNA, SVRN, TJGC, USDE
+ 2026-09-28 17:00:33.537067 | 9m_sugar_baby_filtered_destroyed_trend | KOD 2026-09-28: prev_20d=-17.3% sma50_ratio=0.84 sma50_slope=-2.3% — all 3 destroyed-name markers
+ 2026-10-05 16:45:04.253559 | stop_update_started                    | KOD: $63.15 → $63.60 (4 of 4 after 0 held)
+ 2026-10-05 16:45:04.27832  | stop_update_retry_triggered            | KOD: place_stop_order raised on first attempt — APIError — retrying in 3s
+ 2026-10-05 16:45:04.302771 | stop_order_id_changed                  | trade #404 [live]: stop_order_id=NULL (reason=cancel_or_reject_null)
+ 2026-10-05 16:45:07.292983 | stop_update_retry_succeeded            | KOD: retry placed stop @$63.60
+ 2026-10-05 16:45:07.326213 | stop_order_id_changed                  | trade #404 [live]: stop_order_id=1c7860fc-ecd7-46b3-b0dc-dc82430cd2b5 (reason=cancel_or_reject_restored)
+ 2026-10-05 16:45:07.327881 | stop_replacement_confirmed_silent      | KOD: WS safety-net agrees with order_manager's own recorded evidence ($63.60, 1c7860fc-ecd7-46b3-b0dc-dc82430cd2b5) via audit_price_only — Telegram suppressed, operator already notified via order_mana
+ 2026-10-05 16:45:07.735781 | stop_updated                           | KOD: stop now $63.60 (1c7860fc-ecd7-46b3-b0dc-dc82430cd2b5) for 4 sh
+(40 rows)
+

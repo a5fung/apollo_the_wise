@@ -1,0 +1,12 @@
+         event_type          |             et             |                                    detail                                     
+-----------------------------+----------------------------+-------------------------------------------------------------------------------
+ coverage_verified_evening   | 2026-10-12 21:10:00.041516 | {"examined": 3, "covered": 3, "gaps": [], "check_failed": [], "deferred": []}
+ coverage_checked_late       | 2026-10-12 19:00:00.080971 | {"examined": 3, "covered": 3, "gaps": [], "check_failed": [], "deferred": []}
+ coverage_checked_post_close | 2026-10-12 17:00:00.052971 | {"examined": 3, "covered": 3, "gaps": [], "check_failed": [], "deferred": []}
+(3 rows)
+
+ would_count_now 
+-----------------
+               0
+(1 row)
+

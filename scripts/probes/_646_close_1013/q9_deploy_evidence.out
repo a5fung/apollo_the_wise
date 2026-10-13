@@ -1,0 +1,28 @@
+Pager usage is off.
+Null display is "-".
+Output format is unaligned.
+Field separator is " | ".
+et | event_type | summary
+2026-09-11 21:19:47.706503 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-11 21:31:54.414479 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-12 10:05:08.402802 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-12 11:54:55.306734 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-12 13:20:09.827083 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-12 13:46:12.470975 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-12 15:44:00.521668 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-12 16:06:50.31027 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-12 16:20:14.632132 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-12 16:38:38.87919 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-12 17:53:40.138654 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-12 21:57:59.604748 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-12 22:50:14.054049 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-12 23:23:15.592439 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-12 23:49:38.126195 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-13 10:25:59.754367 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-13 16:00:12.027394 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-13 19:29:23.920277 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+2026-09-14 21:20:42.061706 | dual_account_boot_verified | Alpaca clients verified for modes=['paper', 'live']
+(19 rows)
+et | job_id | status | err
+2026-09-13 19:00:00.049643 | crypto_category_refresh | interrupted | cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables
+(1 row)

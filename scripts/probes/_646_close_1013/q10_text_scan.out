@@ -1,0 +1,32 @@
+Pager usage is off.
+Null display is "-".
+             event_type             | n  |          first_et          |          last_et           
+------------------------------------+----+----------------------------+----------------------------
+ oco_parent_cancelled_unfilled      |  2 | 2026-10-05 12:03:00.729892 | 2026-10-09 09:41:01.18461
+ stop_cancel_by_planned_sale_silent | 12 | 2026-10-05 12:06:06.831393 | 2026-10-12 09:05:03.25277
+ stop_coverage_repaired             |  1 | 2026-10-09 09:41:01.246159 | 2026-10-09 09:41:01.246159
+ stop_order_id_changed              |  1 | 2026-10-06 09:35:28.199702 | 2026-10-06 09:35:28.199702
+ stop_refresh_ran                   | 42 | 2026-09-14 09:35:00.556165 | 2026-10-12 16:20:00.04718
+ stop_update_aborted                |  1 | 2026-10-09 09:35:00.039393 | 2026-10-09 09:35:00.039393
+ theme_discovered                   |  4 | 2026-09-14 17:09:18.517496 | 2026-10-02 17:07:28.451715
+ theme_ecosystem_assigned           |  3 | 2026-09-14 17:11:08.879502 | 2026-10-07 17:14:13.092539
+ theme_engine_funnel                | 21 | 2026-09-14 17:09:18.511005 | 2026-10-12 17:10:07.496796
+ theme_retired                      |  1 | 2026-09-22 17:09:49.642657 | 2026-09-22 17:09:49.642657
+ theme_sector_cap_not_absorbed      |  1 | 2026-10-01 17:05:06.137591 | 2026-10-01 17:05:06.137591
+ theme_thesis_merged                |  2 | 2026-10-02 17:07:47.531965 | 2026-10-08 17:07:23.85879
+(12 rows)
+
+  id   |             et             |    event_type    |                                            summary                                             
+-------+----------------------------+------------------+------------------------------------------------------------------------------------------------
+ 42897 | 2026-09-14 09:35:00.556165 | stop_refresh_ran | Morning: examined 3, placed 0, already-covered 3, skipped 0 (none), same-day excluded 1 (DFTX)
+ 44365 | 2026-09-17 09:35:00.065728 | stop_refresh_ran | Morning: examined 2, placed 0, already-covered 2, skipped 0 (none), same-day excluded 1 (VICR)
+ 48616 | 2026-09-28 09:35:00.05068  | stop_refresh_ran | Morning: examined 1, placed 0, already-covered 1, skipped 0 (none), same-day excluded 1 (KOD)
+ 52752 | 2026-10-06 09:35:00.035319 | stop_refresh_ran | Morning: examined 2, placed 0, already-covered 2, skipped 0 (none), same-day excluded 1 (CEG)
+ 54661 | 2026-10-09 09:35:00.133361 | stop_refresh_ran | Morning: examined 4, placed 1, already-covered 2, skipped 0 (none), same-day excluded 1 (HUM)
+(5 rows)
+
+ slot_rows_with_any_nonempty_array 
+-----------------------------------
+                                 0
+(1 row)
+

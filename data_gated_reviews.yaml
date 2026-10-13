@@ -15460,3 +15460,61 @@ reviews:
          sign-off on the tables, as on 2026-10-03). The display of the score stays regardless.
     added_on: 2026-10-03
     cross_refs: ["task #394", "docs/analysis/394_coil_tuning_methodology_2026-07-11.md"]
+  - review_id: evening_stop_gap_first_fire_646_649
+    title: "#646/#649 — the evening stop-coverage checks have found a REAL gap for the first time"
+    question: >-
+      #646 and #649 closed 2026-10-13 on their own DONE-WHEN's second arm: 20 trading days live
+      (09-15..10-12) with the 17:00 / 19:00 / 21:10 ET coverage checks running every night, examining
+      every live position held (63 of 63 slot readings, 150 position-slots) and finding ZERO gaps —
+      so the paths that only act on a gap were never exercised live: the 17:00/19:00 automatic
+      repair, all three page texts (UNPROTECTED AFTER THE CLOSE / STILL UNPROTECTED THIS EVENING /
+      STILL UNPROTECTED AFTER THE 9 PM REPAIR), the computed next-repair sentence, and a live
+      rejected exit's audit row. This tripwire carries them: it fires on the first real gap so the
+      repair-or-page can be verified on the event, not assumed working (docs/task_closes.md #646/#649).
+    predicate_sql: |
+      -- A real evening gap = a repair attempt row, or a slot reading with a non-empty gaps /
+      -- check_failed list. Read 0 on 2026-10-13 back to 09-15 (scripts/probes/_646_close_1013/tripwire_shape.*).
+      SELECT count(*) FROM mi_audit_log
+       WHERE created_at >= DATE '2026-10-13'
+         AND (event_type LIKE 'coverage_%repair_attempted'
+              OR (event_type IN ('coverage_checked_post_close', 'coverage_checked_late',
+                                 'coverage_verified_evening')
+                  AND (coalesce(jsonb_array_length(detail::jsonb->'gaps'), 0) > 0
+                       OR coalesce(jsonb_array_length(detail::jsonb->'check_failed'), 0) > 0)))
+    threshold: 1
+    discriminates_on: []
+    earliest_review_date: 2026-10-13
+    status: pending
+    kind: tripwire
+    added_on: 2026-10-13
+    can_fire:
+      predicate_runs: >-
+        Run against prod 2026-10-13 (scripts/probes/_646_close_1013/tripwire_shape.*): 0 — and 0 over the
+        whole 09-15..10-12 window with the date widened, matching the Opus-verified close read.
+      nonzero_possible: >-
+        Writers: scheduler.py _COVERAGE_SLOTS (:2621) emits the three slot rows every weeknight and
+        `{event}_repair_attempted` (:2729) on a repair; jobs coverage_watch_post_close / _late / _evening
+        registered (:129), each 21 of 21 successful runs in the window.
+      lane_live: >-
+        Live MAGNA53 positions (2-3 held a night); the slot checks are live-only by design
+        (check_position_coverage filters account_mode = 'live').
+      threshold_vs_observed: >-
+        Threshold 1 (a tripwire). Observed 0 in 20 trading days; the historical base rate of a real
+        evening gap is the single OKTA 2026-09-11 incident, so this may stay quiet for months.
+      era_scoped: >-
+        From 2026-10-13, after the close; the slot code has been unchanged since the #649 build
+        (2026-09-14/15). No exit-rule dependence — coverage is about whether a stop exists.
+      population_actionable: >-
+        Counts exactly the readings that would make the repair or a page act — a gap or a failed
+        broker read — which is the population the unproven paths need.
+      instrument_trusted: >-
+        Each slot's `examined` equalled the independently derived live-held count on 63 of 63 readings
+        (Opus verifier, 2026-10-13), so a zero is a real zero, not a blind detector; the only proof the
+        detector function catches a gap at all remains ETON 2026-08-14 (intraday).
+    action_when_ready: >-
+      Verify on the event, against #649's DoD: the position was re-protected at a price no worse than its
+      current effective stop, OR the operator was told inside the 16:00-21:00 window rather than at
+      21:10 — and #646's (c) the page stated the computed next repair time, (d) a rejected exit wrote
+      its audit row. Report what fired and what did not; a path that failed is a P0 back on the board.
+      Any change to WHAT the stop is stays his (THE LINE).
+    cross_refs: ["docs/task_closes.md", "scripts/probes/_646_close_1013/"]

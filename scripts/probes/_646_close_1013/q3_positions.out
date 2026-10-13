@@ -1,0 +1,54 @@
+Pager usage is off.
+Null display is "-".
+ account_mode |  status   |  n  | first_alert | last_alert | ever_filled | rem_pos_now 
+--------------+-----------+-----+-------------+------------+-------------+-------------
+ live         | cancelled |  21 | 2026-06-24  | 2026-09-25 |           0 |           0
+ live         | closed    |  34 | 2026-07-06  | 2026-10-06 |          34 |           0
+ live         | filled    |   3 | 2026-09-28  | 2026-10-09 |           3 |           3
+ live         | skipped   |  75 | 2026-07-20  | 2026-10-08 |           0 |           0
+ paper        | cancelled |  36 | 2026-04-16  | 2026-06-22 |           0 |           0
+ paper        | closed    |  34 | 2026-04-17  | 2026-06-22 |          32 |           0
+ paper        | skipped   | 149 | 2026-03-30  | 2026-07-14 |           0 |           0
+(7 rows)
+
+ id  | ticker | account_mode | status | signal_type |         filled_et          |         closed_et          | entry_shares | remaining_shares | stop_ptr_now | exit_rule | n_exits 
+-----+--------+--------------+--------+-------------+----------------------------+----------------------------+--------------+------------------+--------------+-----------+---------
+ 382 | OKTA   | live         | closed | magna53     | 2026-08-27 09:49:50.777226 | 2026-09-28 09:30:01.326841 |            2 |                0 | f            | -         |       1
+ 392 | HOOD   | live         | closed | magna53     | 2026-09-03 09:36:09.960473 | 2026-09-15 09:30:00.274914 |            4 |                0 | f            | -         |       1
+ 396 | SEI    | live         | closed | magna53     | 2026-09-08 09:35:28.101426 | 2026-09-22 15:23:21.11879  |            2 |                0 | f            | -         |       1
+ 399 | DFTX   | live         | closed | magna53     | 2026-09-14 09:33:18.110617 | 2026-09-14 10:19:51.292124 |            7 |                0 | f            | -         |       1
+ 400 | VICR   | live         | closed | magna53     | 2026-09-17 09:31:01.01886  | 2026-10-07 09:30:00.983509 |            1 |                0 | f            | -         |       1
+ 404 | KOD    | live         | filled | magna53     | 2026-09-28 09:31:16.562476 | -                          |            5 |                4 | t            | -         |       1
+ 409 | CEG    | live         | closed | magna53     | 2026-10-06 09:31:01.196997 | 2026-10-08 12:52:51.908919 |            3 |                0 | f            | -         |       1
+ 414 | PENG   | live         | filled | magna53     | 2026-10-07 09:35:53.476364 | -                          |           10 |               10 | t            | -         |       0
+ 419 | HUM    | live         | filled | magna53     | 2026-10-09 09:31:33.511684 | -                          |            1 |                1 | t            | -         |       0
+(9 rows)
+
+     d      | dow | live_1700 | live_1900 | live_2110 | nonlive_2110 | live_tickers_2110 
+------------+-----+-----------+-----------+-----------+--------------+-------------------
+ 2026-09-14 | Mon |         3 |         3 |         3 |            0 | HOOD,OKTA,SEI
+ 2026-09-15 | Tue |         2 |         2 |         2 |            0 | OKTA,SEI
+ 2026-09-16 | Wed |         2 |         2 |         2 |            0 | OKTA,SEI
+ 2026-09-17 | Thu |         3 |         3 |         3 |            0 | OKTA,SEI,VICR
+ 2026-09-18 | Fri |         3 |         3 |         3 |            0 | OKTA,SEI,VICR
+ 2026-09-21 | Mon |         3 |         3 |         3 |            0 | OKTA,SEI,VICR
+ 2026-09-22 | Tue |         2 |         2 |         2 |            0 | OKTA,VICR
+ 2026-09-23 | Wed |         2 |         2 |         2 |            0 | OKTA,VICR
+ 2026-09-24 | Thu |         2 |         2 |         2 |            0 | OKTA,VICR
+ 2026-09-25 | Fri |         2 |         2 |         2 |            0 | OKTA,VICR
+ 2026-09-28 | Mon |         2 |         2 |         2 |            0 | KOD,VICR
+ 2026-09-29 | Tue |         2 |         2 |         2 |            0 | KOD,VICR
+ 2026-09-30 | Wed |         2 |         2 |         2 |            0 | KOD,VICR
+ 2026-10-01 | Thu |         2 |         2 |         2 |            0 | KOD,VICR
+ 2026-10-02 | Fri |         2 |         2 |         2 |            0 | KOD,VICR
+ 2026-10-05 | Mon |         2 |         2 |         2 |            0 | KOD,VICR
+ 2026-10-06 | Tue |         3 |         3 |         3 |            0 | CEG,KOD,VICR
+ 2026-10-07 | Wed |         3 |         3 |         3 |            0 | CEG,KOD,PENG
+ 2026-10-08 | Thu |         2 |         2 |         2 |            0 | KOD,PENG
+ 2026-10-09 | Fri |         3 |         3 |         3 |            0 | HUM,KOD,PENG
+ 2026-10-12 | Mon |         3 |         3 |         3 |            0 | HUM,KOD,PENG
+(21 rows)
+
+psql:/tmp/x_q3_positions.sql:35: ERROR:  column reference "status" is ambiguous
+LINE 1: SELECT purpose, order_type, status, count(*) AS n, count(*) ...
+                                    ^

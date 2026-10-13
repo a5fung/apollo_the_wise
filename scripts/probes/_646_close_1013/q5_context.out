@@ -1,0 +1,133 @@
+Pager usage is off.
+Null display is "-".
+   purpose    | order_type |  status   | n  | cancelled_at_null | filled_at_null 
+--------------+------------+-----------+----+-------------------+----------------
+ partial_exit | limit      | filled    |  1 |                 1 |              0
+ stop_loss    | stop       | canceled  | 33 |                 0 |             33
+ stop_loss    | stop       | cancelled |  2 |                 0 |              2
+ stop_loss    | stop       | expired   |  4 |                 0 |              4
+ stop_loss    | stop       | filled    |  6 |                 6 |              0
+ stop_loss    | stop       | new       |  3 |                 3 |              3
+ stop_loss    | stop       | replaced  |  3 |                 3 |              3
+(7 rows)
+
+ id  | ticker | account_mode |  status   | alert_date |         filled_et          |         closed_et          | remaining_shares 
+-----+--------+--------------+-----------+------------+----------------------------+----------------------------+------------------
+ 399 | DFTX   | live         | closed    | 2026-09-14 | 2026-09-14 09:33:18.110617 | 2026-09-14 10:19:51.292124 |                0
+ 400 | VICR   | live         | closed    | 2026-09-17 | 2026-09-17 09:31:01.01886  | 2026-10-07 09:30:00.983509 |                0
+ 401 | GNRC   | live         | skipped   | 2026-09-17 | -                          | -                          |                0
+ 402 | ONON   | live         | skipped   | 2026-09-22 | -                          | -                          |                0
+ 403 | AKAM   | live         | cancelled | 2026-09-25 | -                          | -                          |                0
+ 404 | KOD    | live         | filled    | 2026-09-28 | 2026-09-28 09:31:16.562476 | -                          |                4
+ 405 | SNPS   | live         | skipped   | 2026-10-01 | -                          | -                          |                0
+ 406 | ACN    | live         | skipped   | 2026-10-01 | -                          | -                          |                0
+ 409 | CEG    | live         | closed    | 2026-10-06 | 2026-10-06 09:31:01.196997 | 2026-10-08 12:52:51.908919 |                0
+ 412 | VST    | live         | skipped   | 2026-10-06 | -                          | -                          |                0
+ 413 | TLN    | live         | skipped   | 2026-10-06 | -                          | -                          |                0
+ 414 | PENG   | live         | filled    | 2026-10-07 | 2026-10-07 09:35:53.476364 | -                          |               10
+ 415 | WOLF   | live         | skipped   | 2026-10-08 | -                          | -                          |                0
+ 419 | HUM    | live         | filled    | 2026-10-09 | 2026-10-09 09:31:33.511684 | -                          |                1
+(14 rows)
+
+ id  | ticker | status |         closed_et          |                                                                                exits                                                                                
+-----+--------+--------+----------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 399 | DFTX   | closed | 2026-09-14 10:19:51.292124 | [{"pnl": -23.730000000000004, "time": "2026-09-14T14:19:51.292015+00:00", "price": 40.37, "reason": "stop_hit", "shares": 7, "source": "websocket", "attempt": 1}]
+ 392 | HOOD   | closed | 2026-09-15 09:30:00.274914 | [{"pnl": -27.400000000000034, "time": "2026-09-15T13:30:00.274809+00:00", "price": 111.52, "reason": "stop_hit", "shares": 4, "source": "websocket", "attempt": 1}]
+ 396 | SEI    | closed | 2026-09-22 15:23:21.11879  | [{"pnl": 4.104399999999998, "time": "2026-09-22T19:23:21.118672+00:00", "price": 64.86, "reason": "stop_hit", "shares": 2, "source": "websocket", "attempt": 1}]
+ 382 | OKTA   | closed | 2026-09-28 09:30:01.326841 | [{"pnl": 47.24200000000002, "time": "2026-09-28T13:30:01.326663+00:00", "price": 191.5, "reason": "stop_hit", "shares": 2, "source": "websocket", "attempt": 1}]
+ 400 | VICR   | closed | 2026-10-07 09:30:00.983509 | [{"pnl": 75.73000000000002, "time": "2026-10-07T13:30:00.983290+00:00", "price": 287.23, "reason": "stop_hit", "shares": 1, "source": "websocket", "attempt": 1}]
+ 409 | CEG    | closed | 2026-10-08 12:52:51.908919 | [{"pnl": -58.94999999999993, "time": "2026-10-08T16:52:51.908754+00:00", "price": 281.29, "reason": "stop_hit", "shares": 3, "source": "websocket", "attempt": 1}]
+(6 rows)
+
+Output format is unaligned.
+Field separator is " | ".
+id | et | event_type | summary | detail
+42950 | 2026-09-14 16:00:30.057383 | api_failure_alpaca | ALPACA API FAILURE class=timeout tg=0 — get_open_orders | 
+42951 | 2026-09-14 16:00:30.06025 | coverage_drift_check_degraded | coverage-drift check degraded (paper): broker read failed | account_mode=paper error=TimeoutError()
+42961 | 2026-09-14 16:15:30.051455 | api_failure_alpaca | ALPACA API FAILURE class=timeout tg=0 — get_open_orders | 
+42962 | 2026-09-14 16:15:30.052922 | coverage_drift_check_degraded | coverage-drift check degraded (paper): broker read failed | account_mode=paper error=TimeoutError()
+44473 | 2026-09-17 16:15:00.055887 | order_status_reconciled | VICR order=67262086: new -> expired (live) | order_id=67262086-a8df-42fd-af2b-1db488b70d1c trade_id=400 purpose=stop_loss db_was='new' alpaca_now=expired filled_qty=0.0 filled_avg_price=None
+45025 | 2026-09-18 16:00:00.042596 | order_status_reconciled | SEI order=b74a1c11: new -> replaced (live) | order_id=b74a1c11-ef54-4781-ad3f-d8d1874481ec trade_id=396 purpose=stop_loss db_was='new' alpaca_now=replaced filled_qty=0.0 filled_avg_price=None
+46209 | 2026-09-21 21:19:41.565376 | job_recovery_sweep | boot [live]: 66 eligible job(s), 134 slot(s) examined, 0 gap(s), 0 unrecoverable | 
+46777 | 2026-09-22 21:20:36.074034 | job_recovery_sweep | boot [live]: 66 eligible job(s), 133 slot(s) examined, 0 gap(s), 0 unrecoverable | 
+46911 | 2026-09-23 16:02:00.667776 | position_mgmt_judge_null | OKTA 2026-09-23: management judge fail-open (no verdict) | 
+46912 | 2026-09-23 16:02:01.452929 | position_mgmt_judge_null | VICR 2026-09-23: management judge fail-open (no verdict) | 
+47305 | 2026-09-23 21:20:02.894627 | job_recovery_sweep | boot [live]: 66 eligible job(s), 182 slot(s) examined, 0 gap(s), 0 unrecoverable | 
+47795 | 2026-09-24 21:20:32.016053 | job_recovery_sweep | boot [live]: 66 eligible job(s), 227 slot(s) examined, 0 gap(s), 0 unrecoverable | 
+48403 | 2026-09-25 21:20:25.70694 | job_recovery_sweep | boot [live]: 66 eligible job(s), 229 slot(s) examined, 0 gap(s), 0 unrecoverable | 
+49120 | 2026-09-28 21:21:09.136723 | job_recovery_sweep | boot [live]: 66 eligible job(s), 134 slot(s) examined, 0 gap(s), 0 unrecoverable | 
+49673 | 2026-09-29 21:20:47.847419 | job_recovery_sweep | boot [live]: 66 eligible job(s), 133 slot(s) examined, 0 gap(s), 0 unrecoverable | 
+50264 | 2026-09-30 21:20:30.423152 | job_recovery_sweep | boot [live]: 66 eligible job(s), 182 slot(s) examined, 0 gap(s), 0 unrecoverable | 
+50817 | 2026-10-01 21:20:57.700285 | job_recovery_sweep | boot [live]: 66 eligible job(s), 228 slot(s) examined, 0 gap(s), 0 unrecoverable | 
+52625 | 2026-10-05 21:20:19.362066 | job_recovery_sweep | boot [live]: 66 eligible job(s), 134 slot(s) examined, 0 gap(s), 0 unrecoverable | 
+52885 | 2026-10-06 16:15:00.037207 | order_status_reconciled | CEG order=8d935ffc: new -> expired (live) | order_id=8d935ffc-3d08-4cf2-9f59-5c9ae88aa8ed trade_id=409 purpose=stop_loss db_was='new' alpaca_now=expired filled_qty=0.0 filled_avg_price=None
+53508 | 2026-10-07 16:15:00.032183 | order_status_reconciled | PENG order=e69409e6: new -> expired (live) | order_id=e69409e6-1197-452a-b942-6632badf7e5b trade_id=414 purpose=stop_loss db_was='new' alpaca_now=expired filled_qty=0.0 filled_avg_price=None
+53959 | 2026-10-07 21:24:46.195037 | job_recovery_sweep | boot [live]: 66 eligible job(s), 182 slot(s) examined, 0 gap(s), 0 unrecoverable | 
+54762 | 2026-10-09 16:15:00.038004 | order_status_reconciled | HUM order=75dc2f70: new -> expired (live) | order_id=75dc2f70-5242-47aa-b4dd-deeac0f92cad trade_id=419 purpose=stop_loss db_was='new' alpaca_now=expired filled_qty=0.0 filled_avg_price=None
+55891 | 2026-10-12 21:21:06.325538 | job_recovery_sweep | boot [live]: 66 eligible job(s), 134 slot(s) examined, 0 gap(s), 0 unrecoverable | 
+(23 rows)
+id | et | summary | detail
+42964 | 2026-09-14 16:20:00.04418 | post-close: examined 3, placed 0, already-covered 3, skipped 0 (none) | {"pass": "post-close", "examined": 3, "placed": 0, "placed_tickers": [], "already_covered": ["OKTA", "SEI", "HOOD"], "skipped": [], "unprotected": []}
+43435 | 2026-09-15 16:20:00.035998 | post-close: examined 2, placed 0, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 2, "placed": 0, "placed_tickers": [], "already_covered": ["OKTA", "SEI"], "skipped": [], "unprotected": []}
+43880 | 2026-09-16 16:20:00.031072 | post-close: examined 2, placed 0, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 2, "placed": 0, "placed_tickers": [], "already_covered": ["OKTA", "SEI"], "skipped": [], "unprotected": []}
+44485 | 2026-09-17 16:20:00.065696 | post-close: examined 3, placed 1, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 3, "placed": 1, "placed_tickers": ["VICR"], "already_covered": ["OKTA", "SEI"], "skipped": [], "unprotected": []}
+45035 | 2026-09-18 16:20:00.037561 | post-close: examined 3, placed 0, already-covered 3, skipped 0 (none) | {"pass": "post-close", "examined": 3, "placed": 0, "placed_tickers": [], "already_covered": ["SEI", "VICR", "OKTA"], "skipped": [], "unprotected": []}
+45828 | 2026-09-21 16:20:00.042882 | post-close: examined 3, placed 0, already-covered 3, skipped 0 (none) | {"pass": "post-close", "examined": 3, "placed": 0, "placed_tickers": [], "already_covered": ["SEI", "VICR", "OKTA"], "skipped": [], "unprotected": []}
+46407 | 2026-09-22 16:20:00.038829 | post-close: examined 2, placed 0, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 2, "placed": 0, "placed_tickers": [], "already_covered": ["VICR", "OKTA"], "skipped": [], "unprotected": []}
+46926 | 2026-09-23 16:20:00.036288 | post-close: examined 2, placed 0, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 2, "placed": 0, "placed_tickers": [], "already_covered": ["VICR", "OKTA"], "skipped": [], "unprotected": []}
+47472 | 2026-09-24 16:20:00.043713 | post-close: examined 2, placed 0, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 2, "placed": 0, "placed_tickers": [], "already_covered": ["VICR", "OKTA"], "skipped": [], "unprotected": []}
+48032 | 2026-09-25 16:20:00.039899 | post-close: examined 2, placed 0, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 2, "placed": 0, "placed_tickers": [], "already_covered": ["VICR", "OKTA"], "skipped": [], "unprotected": []}
+48700 | 2026-09-28 16:20:00.043995 | post-close: examined 2, placed 0, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 2, "placed": 0, "placed_tickers": [], "already_covered": ["VICR", "KOD"], "skipped": [], "unprotected": []}
+49356 | 2026-09-29 16:20:00.036687 | post-close: examined 2, placed 0, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 2, "placed": 0, "placed_tickers": [], "already_covered": ["VICR", "KOD"], "skipped": [], "unprotected": []}
+49898 | 2026-09-30 16:20:00.034515 | post-close: examined 2, placed 0, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 2, "placed": 0, "placed_tickers": [], "already_covered": ["VICR", "KOD"], "skipped": [], "unprotected": []}
+50477 | 2026-10-01 16:20:00.041989 | post-close: examined 2, placed 0, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 2, "placed": 0, "placed_tickers": [], "already_covered": ["VICR", "KOD"], "skipped": [], "unprotected": []}
+50967 | 2026-10-02 16:20:00.03926 | post-close: examined 2, placed 0, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 2, "placed": 0, "placed_tickers": [], "already_covered": ["VICR", "KOD"], "skipped": [], "unprotected": []}
+52108 | 2026-10-05 16:20:00.034413 | post-close: examined 2, placed 0, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 2, "placed": 0, "placed_tickers": [], "already_covered": ["VICR", "KOD"], "skipped": [], "unprotected": []}
+52898 | 2026-10-06 16:20:00.190325 | post-close: examined 5, placed 1, already-covered 4, skipped 0 (none) | {"pass": "post-close", "examined": 5, "placed": 1, "placed_tickers": ["CEG"], "already_covered": ["VICR", "PEP", "KO", "KOD"], "skipped": [], "unprotected": []}
+53522 | 2026-10-07 16:20:00.073469 | post-close: examined 3, placed 1, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 3, "placed": 1, "placed_tickers": ["PENG"], "already_covered": ["CEG", "KOD"], "skipped": [], "unprotected": []}
+54188 | 2026-10-08 16:20:00.07875 | post-close: examined 4, placed 0, already-covered 4, skipped 0 (none) | {"pass": "post-close", "examined": 4, "placed": 0, "placed_tickers": [], "already_covered": ["PENG", "KO", "PEP", "KOD"], "skipped": [], "unprotected": []}
+54775 | 2026-10-09 16:20:00.066622 | post-close: examined 3, placed 1, already-covered 2, skipped 0 (none) | {"pass": "post-close", "examined": 3, "placed": 1, "placed_tickers": ["HUM"], "already_covered": ["PENG", "KOD"], "skipped": [], "unprotected": []}
+55487 | 2026-10-12 16:20:00.04718 | post-close: examined 3, placed 0, already-covered 3, skipped 0 (none) | {"pass": "post-close", "examined": 3, "placed": 0, "placed_tickers": [], "already_covered": ["PENG", "HUM", "KOD"], "skipped": [], "unprotected": []}
+(21 rows)
+Output format is aligned.
+  id   |          null_et           | trade_id |        reason         | secs_to_next_nonnull |        next_reason        | trade_status_now 
+-------+----------------------------+----------+-----------------------+----------------------+---------------------------+------------------
+ 43021 | 2026-09-14 16:45:00.543189 |      382 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 43029 | 2026-09-14 16:45:04.398003 |      392 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 43497 | 2026-09-15 16:45:00.45855  |      382 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 43504 | 2026-09-15 16:45:04.273713 |      396 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 43956 | 2026-09-16 16:45:00.449465 |      382 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 43964 | 2026-09-16 16:45:04.207746 |      396 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 44472 | 2026-09-17 16:05:04.422336 |      400 | cancel_or_reject_null |             607202.8 | cancel_or_reject_restored | closed
+ 44614 | 2026-09-17 16:45:00.426767 |      382 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 44622 | 2026-09-17 16:45:04.195432 |      396 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 45128 | 2026-09-18 16:45:00.44082  |      382 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 45136 | 2026-09-18 16:45:04.223955 |      396 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 45925 | 2026-09-21 16:45:00.546741 |      382 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 45933 | 2026-09-21 16:45:04.328767 |      396 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 46484 | 2026-09-22 16:45:00.454852 |      382 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 46997 | 2026-09-23 16:45:00.463289 |      382 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 47529 | 2026-09-24 16:45:00.451168 |      382 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 47537 | 2026-09-24 16:45:04.23248  |      400 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 48119 | 2026-09-25 16:45:00.491199 |      382 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 48127 | 2026-09-25 16:45:04.259571 |      400 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 48643 | 2026-09-28 10:10:00.241661 |      404 | cancel_or_reject_null |                  0.1 | partial_replacement       | filled
+ 48775 | 2026-09-28 16:45:00.483219 |      400 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 49417 | 2026-09-29 16:45:00.551651 |      400 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 49980 | 2026-09-30 16:45:00.445669 |      400 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 50550 | 2026-10-01 16:45:00.505127 |      400 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 51040 | 2026-10-02 16:45:00.457286 |      400 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 52196 | 2026-10-05 16:45:00.465871 |      400 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 52203 | 2026-10-05 16:45:04.302771 |      404 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | filled
+ 52879 | 2026-10-06 16:05:04.196829 |      409 | cancel_or_reject_null |                    - | -                         | closed
+ 52970 | 2026-10-06 16:45:00.53782  |      400 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | closed
+ 52978 | 2026-10-06 16:45:04.316198 |      404 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | filled
+ 53502 | 2026-10-07 16:05:02.973182 |      414 | cancel_or_reject_null |             434404.2 | cancel_or_reject_restored | filled
+ 53592 | 2026-10-07 16:45:00.431715 |      404 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | filled
+ 54246 | 2026-10-08 16:45:00.427271 |      404 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | filled
+ 54759 | 2026-10-09 16:05:04.80728  |      419 | cancel_or_reject_null |                    - | -                         | filled
+ 54842 | 2026-10-09 16:45:00.385564 |      404 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | filled
+ 55545 | 2026-10-12 16:45:00.402087 |      404 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | filled
+ 55552 | 2026-10-12 16:45:04.185794 |      414 | cancel_or_reject_null |                  3.0 | cancel_or_reject_restored | filled
+(37 rows)
+

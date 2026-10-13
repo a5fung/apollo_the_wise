@@ -1,0 +1,69 @@
+Pager usage is off.
+Null display is "-".
+ night_slots | audit_row_present | examined_equals_held | mismatches | slots_with_live_shares_held | of_which_examined_pos | total_held_position_slots | total_examined | total_covered 
+-------------+-------------------+----------------------+------------+-----------------------------+-----------------------+---------------------------+----------------+---------------
+          63 |                63 |                   63 |          0 |                          63 |                    63 |                       150 |            150 |           150
+(1 row)
+
+  nm  |      verdict      | position_slots 
+------+-------------------+----------------
+ 1700 | ended_before_slot |              5
+ 1700 | live              |             45
+ 1900 | ended_before_slot |              5
+ 1900 | live              |             45
+ 2110 | ended_before_slot |              5
+ 2110 | live              |             45
+(6 rows)
+
+     d      |  nm  | ticker |      verdict      | o_status  |     stop_submitted_et      |        cancelled_et        | o_stop | o_qty 
+------------+------+--------+-------------------+-----------+----------------------------+----------------------------+--------+-------
+ 2026-09-28 | 1700 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-09-28 | 1900 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-09-28 | 2110 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-09-29 | 1700 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-09-29 | 1900 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-09-29 | 2110 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-09-30 | 1700 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-09-30 | 1900 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-09-30 | 2110 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-10-01 | 1700 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-10-01 | 1900 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-10-01 | 2110 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-10-02 | 1700 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-10-02 | 1900 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+ 2026-10-02 | 2110 | KOD    | ended_before_slot | cancelled | 2026-09-28 10:10:00.656572 | 2026-09-28 10:10:04.145181 |  63.15 |     1
+(15 rows)
+
+         event_type          | n  |          first_et          |          last_et           
+-----------------------------+----+----------------------------+----------------------------
+ coverage_checked_late       | 21 | 2026-09-14 19:00:00.126972 | 2026-10-12 19:00:00.080971
+ coverage_checked_post_close | 21 | 2026-09-14 17:00:00.040686 | 2026-10-12 17:00:00.052971
+ coverage_verified_evening   | 21 | 2026-09-14 21:10:00.087322 | 2026-10-12 21:10:00.041516
+ full_exit_rejected          |  4 | 2026-10-05 10:34:21.954905 | 2026-10-08 10:15:02.223914
+ naked_position_detected     |  8 | 2026-05-08 16:45:04.320373 | 2026-06-23 09:35:03.95334
+ position_unprotected        |  1 | 2026-08-14 09:45:00.059494 | 2026-08-14 09:45:00.059494
+ stop_ack_remediation_failed |  4 | 2026-05-27 09:00:00.16543  | 2026-06-23 09:35:30.040985
+(7 rows)
+
+  id   |             et             |         event_type          |                          summary                           
+-------+----------------------------+-----------------------------+------------------------------------------------------------
+ 32316 | 2026-08-14 09:45:00.059494 | position_unprotected        | ETON: live stop qty 12 < 17 shares held — GAP
+ 17179 | 2026-06-23 09:35:30.040985 | stop_ack_remediation_failed | FPS #183: stop-ACK timeout AND fallback stop submit failed
+ 17178 | 2026-06-23 09:35:03.95334  | naked_position_detected     | FPS: stop_order_id cleared; sync_positions will remediate
+ 13448 | 2026-06-05 09:35:03.842344 | naked_position_detected     | FPS: stop_order_id cleared; sync_positions will remediate
+ 13432 | 2026-06-05 09:00:00.419237 | stop_ack_remediation_failed | FPS #183: stop-ACK timeout AND fallback stop submit failed
+ 13263 | 2026-06-04 16:45:02.027814 | naked_position_detected     | FPS: stop_order_id cleared; sync_positions will remediate
+ 12394 | 2026-06-01 12:36:53.156493 | naked_position_detected     | RCAT: stop_order_id cleared; sync_positions will remediate
+ 12045 | 2026-05-29 12:38:00.026892 | stop_ack_remediation_failed | F #181: cannot remediate — qty=4.0, orb_low=None
+ 11753 | 2026-05-28 16:45:01.634418 | naked_position_detected     | IBM: stop_order_id cleared; sync_positions will remediate
+ 11484 | 2026-05-27 21:18:57.58086  | naked_position_detected     | IBM: stop_order_id cleared; sync_positions will remediate
+ 11347 | 2026-05-27 16:45:00.532437 | naked_position_detected     | IBM: stop_order_id cleared; sync_positions will remediate
+ 11130 | 2026-05-27 09:00:00.16543  | stop_ack_remediation_failed | BW #119: stop-ACK timeout AND fallback stop submit failed
+(12 rows)
+
+ is_1645_cycle | live_null_events | restored_within_10s | max_secs_when_restored_within_1h 
+---------------+------------------+---------------------+----------------------------------
+ f             |                5 |                   1 |                         0.118415
+ t             |               32 |                  32 |                         3.033648
+(2 rows)
+

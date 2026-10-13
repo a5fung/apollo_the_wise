@@ -1,0 +1,95 @@
+Pager usage is off.
+Null display is "-".
+              job_id               | runs  | success | non_success | min_t_et | max_t_et | first_day  |  last_day  
+-----------------------------------+-------+---------+-------------+----------+----------+------------+------------
+ coverage_probe                    |    21 |      20 |           1 | 17:55:00 | 17:55:00 | 2026-09-14 | 2026-10-12
+ coverage_watch_evening            |    21 |      21 |           0 | 21:10:00 | 21:10:00 | 2026-09-14 | 2026-10-12
+ coverage_watch_late               |    21 |      21 |           0 | 19:00:00 | 19:00:00 | 2026-09-14 | 2026-10-12
+ coverage_watch_post_close         |    21 |      21 |           0 | 17:00:00 | 17:00:00 | 2026-09-14 | 2026-10-12
+ eod_cleanup                       |    21 |      21 |           0 | 16:05:00 | 16:05:00 | 2026-09-14 | 2026-10-12
+ evening_position_backstop         |    22 |      22 |           0 | 21:00:00 | 21:00:00 | 2026-09-11 | 2026-10-12
+ live_position_update              |    21 |      21 |           0 | 16:45:00 | 16:45:00 | 2026-09-14 | 2026-10-12
+ morning_stop_refresh              |    22 |      22 |           0 | 09:35:00 | 09:35:00 | 2026-09-14 | 2026-10-13
+ naked_position_post_refresh_check |    21 |      21 |           0 | 16:27:00 | 16:27:00 | 2026-09-14 | 2026-10-12
+ naked_position_pre_close_check    |    21 |      21 |           0 | 15:55:00 | 15:55:00 | 2026-09-14 | 2026-10-12
+ position_coverage_check           |   592 |     592 |           0 | 09:00:00 | 09:45:00 | 2026-09-14 | 2026-10-13
+ position_mgmt_judge               |    21 |      21 |           0 | 16:02:00 | 16:02:00 | 2026-09-14 | 2026-10-12
+ position_path_eod_sweep           |    21 |      21 |           0 | 16:10:00 | 16:10:00 | 2026-09-14 | 2026-10-12
+ post_close_stop_refresh           |    21 |      21 |           0 | 16:20:00 | 16:20:00 | 2026-09-14 | 2026-10-12
+ stop_ack_timeout_watchdog         | 17744 |   17744 |           0 | 09:00:00 | 09:54:30 | 2026-09-14 | 2026-10-13
+ stop_coverage_repair_retry        |  1775 |    1775 |           0 | 09:00:00 | 09:50:00 | 2026-09-14 | 2026-10-13
+ time_stop_scan                    |    21 |      21 |           0 | 16:55:00 | 16:55:00 | 2026-09-14 | 2026-10-12
+ track_position_extremes           |  1775 |    1775 |           0 | 09:00:00 | 09:50:00 | 2026-09-14 | 2026-10-13
+(18 rows)
+
+     d      | dow | eod_st  |  eod_t   | refresh_st | refresh_t | lpu_st  |  lpu_t   | cw_pc_st | cw_pc_t  | cw_late_st | cw_late_t | backstop_st | backstop_t | cw_ev_st | cw_ev_t  
+------------+-----+---------+----------+------------+-----------+---------+----------+----------+----------+------------+-----------+-------------+------------+----------+----------
+ 2026-09-14 | Mon | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-09-15 | Tue | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-09-16 | Wed | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-09-17 | Thu | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-09-18 | Fri | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-09-21 | Mon | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-09-22 | Tue | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-09-23 | Wed | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-09-24 | Thu | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-09-25 | Fri | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-09-28 | Mon | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-09-29 | Tue | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-09-30 | Wed | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-10-01 | Thu | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-10-02 | Fri | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-10-05 | Mon | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-10-06 | Tue | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-10-07 | Wed | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-10-08 | Thu | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-10-09 | Fri | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+ 2026-10-12 | Mon | success | 16:05:00 | success    | 16:20:00  | success | 16:45:00 | success  | 17:00:00 | success    | 19:00:00  | success     | 21:00:00   | success  | 21:10:00
+(21 rows)
+
+     started_et      |      sched_et       |     job_id     |    status     |                                                                   err                                                                   
+---------------------+---------------------+----------------+---------------+-----------------------------------------------------------------------------------------------------------------------------------------
+ 2026-09-18 17:55:00 | 2026-09-18 17:55:00 | coverage_probe | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-recovered chain
+(1 row)
+
+         started_et         |            job_id            |    status     |                                                           err                                                            
+----------------------------+------------------------------+---------------+--------------------------------------------------------------------------------------------------------------------------
+ 2026-09-13 19:00:00.049643 | crypto_category_refresh      | interrupted   | cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables
+ 2026-09-18 17:00:00.001736 | nightly_data_pull            | interrupted   | cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables
+ 2026-09-18 17:15:00        | parabolic_scan               | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:22:00        | sugar_babies_cohort_refresh  | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:25:00        | flag_continuation_scan       | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:30:00        | post_nightly_audit           | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:35:00        | consolidation_readiness      | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:36:00        | htf_management_shadow        | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:40:00        | strength_spread_alert        | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:45:00        | wick_forward_returns         | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:46:00        | sell_discipline_recorder     | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:50:00        | exit_path_shadow             | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:52:00        | spend_alarm                  | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:53:00        | alert_rank_shadow            | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:55:00        | coverage_probe               | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:57:00        | delayed_entry_shadow         | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 17:58:00        | theme_axis_co_move_refresh   | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:00:00        | evening_briefing             | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:00:00        | crypto_nightly_ingest        | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:00:00        | friday_watchlist             | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:02:00        | drift_check                  | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:03:00        | theme_axis_eod_unscored      | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:04:00        | live_fill_counterfactuals    | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:05:00        | theme_synthesis              | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:08:00        | model_resolution_refresh     | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:09:00        | judge_eval_divergence_check  | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:10:00        | theme_axis_bounded_sweep     | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:12:00        | analyst_estimates_snapshot   | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:13:00        | sustain_reject_replay        | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:14:00        | gap_near_miss_replay         | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:15:00        | lowcap_lane_replay           | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:20:00        | judge_named_themes_extract   | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 18:30:00        | minute_volume_curves_refresh | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 20:45:00        | tv_news_shadow               | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-18 21:30:00        | silent_error_sweep           | unrecoverable | operator 2026-09-20: forget Friday — slot closed by hand so the sweep could go LIVE today without re-running an already-
+ 2026-09-20 19:00:00.030197 | crypto_category_refresh      | interrupted   | cancelled — process shutdown/restart mid-run; outcome unknown, check downstream tables
+ 2026-09-29 18:00:00.003017 | crypto_nightly_ingest        | empty_result  | 
+(37 rows)
+

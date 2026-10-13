@@ -1,0 +1,21 @@
+Pager usage is off.
+Null display is "-".
+Output format is unaligned.
+Field separator is " | ".
+et | event_type | summary
+2026-10-06 09:35:11.127158 | paper_rehearsal_687_start | #687 paper rehearsal Day A started (KO, PEP, probe PG)
+2026-10-06 09:35:26.536905 | paper_rehearsal_687_state | #687 paper rehearsal state
+2026-10-06 09:35:28.751148 | paper_rehearsal_687_state | #687 paper rehearsal state
+2026-10-06 09:35:40.80086 | entry_partial_fill | [paper] PEP partial_fill 3/4 (cum 3) @ $125.98 side=buy
+2026-10-06 09:35:43.186756 | paper_rehearsal_687_state | #687 paper rehearsal state
+2026-10-06 09:35:43.199312 | planned_sale_stop_cancel | PEP: cancelling stop 97039c8b on purpose — a planned sale (sma_trail_stop) replaces it
+2026-10-06 09:35:48.324147 | full_exit_rejected | PEP full exit REJECTED (sma_trail_stop) — 3 sh still open
+2026-10-06 09:35:50.886736 | paper_rehearsal_687_state | #687 paper rehearsal state
+2026-10-06 09:35:50.951311 | dead_stop_price_preserved | trade #411 [paper]: dead stop 97039c8b (status=OrderStatus.CANCELED) preserved at $119.68 for the #600 floor
+2026-10-06 09:35:50.954559 | stop_order_id_changed | trade #411 [paper]: stop_order_id=NULL (reason=cancel_or_reject_null)
+2026-10-06 09:35:53.993339 | stop_cancel_by_planned_sale_silent | PEP: stop 97039c8b cancelled by our own planned sale — not paged as unprotected (the sale reports its own outcome)
+2026-10-06 09:36:08.211186 | paper_rehearsal_687_state | #687 paper rehearsal state
+2026-10-06 09:36:08.213055 | paper_rehearsal_687_state | #687 paper rehearsal state
+2026-10-06 09:36:30.032513 | stop_order_id_changed | trade #411 [paper]: stop_order_id=821530a8-843e-47c1-a930-aa58d63530f6 (reason=stop_ack_timeout)
+2026-10-06 09:36:30.033818 | stop_ack_timeout_remediated | PEP #411: stop-ACK timeout (filled_at 09:35:43 ET, stop_order_id NULL >30s); fallback stop placed at $119.68 order=821530a8-843e-47c1-a930-aa58d63530f6
+(15 rows)
