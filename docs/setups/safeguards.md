@@ -547,6 +547,11 @@ leg never offsets it). The closed-trade query is byte-identical (pinned by `test
 **Anticipated effect**: the gate trips the same day a partial sale realizes the loss that crosses −2%, instead
 of on the day the remainder exits. Today: no change on any day without a losing partial leg on an open trade.
 
+**2026-10-14 (#687, bookkeeping only — no threshold or rule changed)**: the leg a PART-FILLED dead full-exit sale
+books (`exits[].source = 'dead_order:*'`, `order_manager.book_dead_full_exit_leg`) is a partial-sale leg this gate
+already counts — a losing one counts the moment it is booked, once (ruling (iv) nets it on the close day); it is also
+an outcome for the circuit breaker (2026-08-05). Base left that real loss out of the books entirely.
+
 **Ruling (iv), operator 2026-10-02 — count each realized dollar ONCE, on the day it was realized** (was the open
 item here: a partial loss counted on its own day was counted AGAIN inside the trade's `total_pnl` on its close
 day). *Trigger*: his answer to the cut-back's open item (iv) (PLAN.md #687): net it out. *Evidence*: rule ruled by

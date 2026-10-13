@@ -163,6 +163,10 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
         "order_manager.attempt_day1_reentry", "order_manager._finalize_partial_exit_locked",
         "order_manager._finalize_full_exit_locked", "order_manager._finalize_stop_fill_locked",
         "trade_stream._process_stop_fill",
+        # #687 (2026-10-14): books the shares a DEAD full-exit sale sold as ONE leg — exits and
+        # total_pnl ONLY. It must never appear under remaining_shares / status / stop_*: the stop
+        # restore reads remaining_shares, and this gate is what keeps that input unmovable.
+        "order_manager._book_dead_full_exit_leg_locked",
     },
     "remaining_shares":   {
         "order_manager.check_fills", "order_manager.attempt_day1_reentry",
@@ -174,6 +178,7 @@ ALLOWED_WRITERS: dict[str, set[str]] = {
         "order_manager.attempt_day1_reentry", "order_manager._finalize_partial_exit_locked",
         "order_manager._finalize_full_exit_locked", "order_manager._finalize_stop_fill_locked",
         "order_manager.cancel_unfilled_entries", "trade_stream._process_stop_fill",
+        "order_manager._book_dead_full_exit_leg_locked",   # #687 — see exits above
     },
     "closed_at":          {
         "order_manager.attempt_day1_reentry", "order_manager._finalize_full_exit_locked",

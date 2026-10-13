@@ -358,6 +358,75 @@ what any live position does.
 
 ## Change log (newest first)
 
+### 2026-10-14 — #687: the shares a PART-FILLED dead full-exit sale sold are BOOKED as one exits leg + P&L; `remaining_shares` is NEVER written (BOOKKEEPING ONLY — rule unchanged; no exit rule, stop level, target, size or safeguard threshold changed; BUILT, NOT DEPLOYED)
+
+**Trigger**: prod paper trade 421 (KO), 2026-10-13. A planned full-exit sale (3 sh, `purpose='full_exit'`) part-filled
+1 sh @ $90.36 at the open and the other 2 EXPIRED at 09:31:30. `trade_stream._handle_cancel_or_reject` §3's full-exit
+branch correctly re-placed a stop sized from the BROKER (2 sh), but the 1 sold share was never recorded: no `exits[]`
+leg, no realised P&L (`remaining_shares` stayed 3 until sync healed it toward the broker). The cancelled PARTIAL-exit
+branch has committed its fill since #566; the full-exit branch had no mirror.
+
+**The change**: at a dead full-exit sale (`expired` / `cancelled` / `rejected`) with `filled_qty > 0` AND a fill
+price, a background task (`trade_stream._book_dead_full_exit_sale`, scheduled as the FIRST statement of the branch,
+before any await) calls `order_manager.book_dead_full_exit_leg` under the per-trade #151 lock. It appends ONE leg
+`{time, price, reason, shares, pnl, order_id, attempt, source: 'dead_order:<event>'}` to `exits[]` (reason = the
+sale's own `exit_reason`, else `exit`; never `stop_hit` — that would count as a prior attempt — and never
+`partial_profit` — that infers `partial_taken`) and sets `total_pnl` = the sum of the legs' pnl (recomputed, never
+added). Idempotent per `order_id`: a duplicate delivery, or a late 'fill' of the same order into
+`finalize_full_exit`, finds the leg and writes nothing. Outcomes: `full_exit_dead_fill_booked` + one page (the sold
+shares, price, P&L — "now in the books"); `full_exit_dead_fill_duplicate` (no page); `…_booking_error` /
+`…_unpriced_error` (audit `_error` row, picked up by the nightly sweep) + a page telling him to fix the trade by hand.
+No page when nothing sold.
+
+**What it WRITES**: `mi_live_trades.exits` and `.total_pnl` of ONE row (`WHERE id AND account_mode`), plus new-named
+`mi_audit_log` rows and one Telegram page. **What it NEVER writes**: `remaining_shares`, `status`, `closed_at`,
+`stop_price`, `stop_order_id`, `partial_taken`, `breakeven_active` — enforced by `scripts/audit_column_writes.py`
+(`_book_dead_full_exit_leg_locked` is allow-listed under `exits` and `total_pnl` ONLY; deploy step `[5c]` fails the build
+if it ever writes another column). It places, cancels and resizes NO order. The stop-restore code path is
+UNCHANGED (the diff to `trade_stream.py` is additions only; inside the branch, ONE added line). Sync
+(`_sync_positions_for_mode`, 16:05 / 21:00 and `/sync`) keeps healing the share count exactly as before.
+
+**Why the first design was parked, and replaced**: the first design (parked branch `worktree-wf_a8a2e5e1-5d6-1`, last
+commit `c5bf1dfa` — never merged) LOWERED `remaining_shares` at booking time. The stop restore's database fallback
+reads `remaining_shares` (`remaining − pending exits`), so a lowered count persisted into a duplicate delivery, a
+later sync, a stale pending row, and the restore protected FEWER shares than today's code — five Opus review rounds
+each found a new such case (the last: a duplicate delivery after a sync left NO stop). The lesson: correct only
+fields the safety path does not read. Every reader of `exits` / `total_pnl` was enumerated for this design; none of
+the restore's inputs (`remaining_shares`, `stop_price`, `stop_order_id`, `signal_type`, `dead_stop_*`, `mi_live_orders`
+pending rows, the broker) is among them. The booking runs BESIDE the restore, never in front of it (the trade lock
+is blocking with no timeout, #621).
+
+**Safeguards (existing rulings applied, not changed)**: a booked losing leg counts toward the 2% daily-loss gate the
+moment it is booked (`docs/setups/safeguards.md`, #687 ruling (1) 2026-10-01 / (iv) 2026-10-02: a sale that sells part
+of a position at a loss counts AT ONCE, once) and toward the circuit-breaker outcomes (2026-08-05: realised partial
+sales count). These are the same dollars `finalize_full_exit` counts when the same sale fills completely; base simply
+missed them. Visible effect: a real loss booked at 09:31 can block a later entry in the 09:31–09:45 window where base
+let it through.
+
+**Anticipated effect (EXPECT)**: the first part-filled dead full-exit sale writes exactly ONE leg (source
+`dead_order:*`) at the broker price, one `full_exit_dead_fill_booked` row and one 📤 page. Stop size, restore page,
+`remaining_shares`, `status` and the pointer stay exactly as base (the count heals at the 16:05 sync). **WOULD-FAIL-IF**:
+two legs for one `order_id`, any column other than exits / total_pnl written, or a stop size that differs from a
+booking-stubbed run. **DONE-WHEN**: the equivalence matrix is green AND the first real event shows one leg
+(event-gated).
+
+**Residuals (known, identical to or visible beside today's code)**: (1) if the REST of the position exits (the
+restored stop fills) before the 16:05 sync heals the count, the row stays OPEN with phantom shares (`remaining_shares`
+3 → 1), pointer NULL, legs + total P&L correct; 16:05 pages "Books vs broker" — same as base. (2) The 16:45
+`inferred_close` then books `filled_qty = remaining_shares` under a synthetic id, so `order_id` idempotency does not
+apply: on a later 16:45 with the bar low at or below the hard stop those phantom shares are booked AGAIN at the
+hard-stop price. Base writes the same phantom leg silently at a wrong price; with the real leg present the legs add up
+to more than `entry_shares`, so `audit_invariants.check_exit_share_sum` (L1) now PAGES it. The clean fix — sync closes a
+row the broker shows flat once its legs already account for every entered share — changes WHEN a row closes, which
+#597 treats as THE LINE: his call if ever proposed; NOT part of this build. (3) A stream event lost entirely books
+nothing (same as base; `reconcile_order_states` books nothing, #123). (4) A leg landing after `sell_discipline`'s
+once-written realised-R record leaves that record stale (same residual class as the phantom shares).
+
+**Tests**: `tests/test_687_dead_sale_pnl_leg.py` (KO world; the booking-stubbed-vs-real equivalence matrix over
+worlds × deliveries × restore-read modes; duplicate delivery; nothing sold / no price; closed row; the double-count
+paths — later stop fill, sync heal then stop fill, `_resolve_position_gone`, `check_exit_share_sum`; the SET-clause
+and column-write gate; daily-loss gate counts the leg). The convergence harness is NOT edited.
+
 ### 2026-10-11 — #687 / #482 flip-day duty: the replay walkers model the DEPTH exit, and era E is stamped from the ROW (or the toggle), never from a hand-typed date (ANALYSIS / REPLAY CODE ONLY — no live order, entry, exit, stop, target or size path touched; BUILT on branch `wk1011/depth-era-replays`, NOT DEPLOYED)
 
 **Trigger**: the flip-day duty this file's 2026-10-01 entry left open (*"add the exit-era boundary to
