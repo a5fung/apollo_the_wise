@@ -173,7 +173,7 @@ def test_the_one_read_predicate_is_scoped_to_the_current_exit_era():
     e = _registry()[ONE_READ]
     sql = e["predicate_sql"]
     latest = _latest_exit_switch()
-    assert latest == rule_eras.PARTIAL_8R_DATE == date(2026, 9, 6)   # the fact as of this commit
+    assert latest == rule_eras.DEPTH_EXIT_LIVE_DATE == date(2026, 10, 13)   # the fact as of this commit (#687 era E)
     # #633 (2026-09-09): the offline forensic's earliest_review_date is the SAME era start, so
     # its "zero since eligible" age counts from the flip, not from a date two eras back.
     # yaml hands back a date object — compare to `latest` directly.

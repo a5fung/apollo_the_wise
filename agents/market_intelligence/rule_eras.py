@@ -117,7 +117,7 @@ DEPTH_EXIT_SIGNAL_TYPES = frozenset({"magna53", "magna53_smallcap"})
 # earlier commit is red by construction. DEPLOY `market-agent` the same day: the nightly drift
 # check, the weekly review and `sell_discipline` read it only inside `apollo-market`. Steps:
 # exit_discipline.md 2026-10-11, "The TUESDAY step".
-DEPTH_EXIT_LIVE_DATE: date | None = None
+DEPTH_EXIT_LIVE_DATE: date | None = date(2026, 10, 13)
 
 # Sentinel: "the caller did not say" — distinct from an explicit None ("the row says today's rule").
 _UNSPECIFIED: Any = object()

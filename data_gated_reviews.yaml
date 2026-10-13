@@ -303,20 +303,27 @@ reviews:
         (SELECT count(*) FROM mi_live_trades
           WHERE status = 'closed' AND risk_dollars > 0
             AND account_mode = 'live' AND signal_type = 'magna53'
-            AND created_at >= DATE '2026-09-06')
+            AND created_at >= DATE '2026-10-13')
         + 40 * (SELECT count(*) FROM mi_safeguard_state
                  WHERE account_mode IN ('live', 'global')
                    AND safeguard NOT IN ('drawdown_breaker', 'kill_scale_band', 'manual_trading_halt')
-                   AND last_transition_at >= DATE '2026-09-06');
+                   AND last_transition_at >= DATE '2026-10-13');
     # ⚠ FALSE FIRE 2026-09-29, predicate fixed the same day: it read 43 = 3 era-D closes + 40 x the
     # drawdown_breaker returning to OK on 2026-09-21. A breaker's STATE (and the kill/scale band's, and
     # the manual halt) moves with P&L and is not a rule change — it cannot void an exit read. The
     # safeguard arm now counts only RULE toggles, and includes 'global' rows, which DO act on live
     # (partial_exit_leg_safe, the ep_rt_* admission switches) and were invisible to the old form.
     # Reads 3 on 2026-09-29 (3 era-D live closes, no rule toggle moved since 09-06).
+    # 🔔 FIRED 2026-10-13 — CORRECTLY: 45 = 5 era-D live closes + 40 x ONE rule toggle, and that toggle
+    # is `magna53_depth_exit|live` (on 2026-10-12 09:39 ET; scripts/probes/_runner_recut_1013/what_fired.*) —
+    # the depth exit, exactly the exit-stack change this tripwire exists to catch. The same day the era
+    # literals moved to 2026-10-13 (#687 era E, the pinned Tuesday step), so the predicate now reads 0:
+    # the firing is RECORDED HERE, not lost. ACTION OWED: re-cut the Run-U runner sweep with the DEPTH
+    # exit as the control (the 08-29 control and era D's are both gone) — tracked on PLAN #687, weekend
+    # 10-17/18. The 5 era-D closes are a replaced rule's trades and do not answer the question.
     threshold: 40
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode, mi_safeguard_state.account_mode]  # backfilled 2026-08-30 (#573); all three FILTERED since 2026-09-19 (#669)
-    earliest_review_date: 2026-09-29
+    earliest_review_date: 2026-10-17   # the re-cut owed by the 10-13 firing (see the 🔔 note) — weekend build slot, tracked on #687
     can_fire:
       predicate_runs: "2026-09-29 - the rule-toggle form runs against prod and returns 3 (three era-D
         live magna53 closes; the only live/global transition since 09-06 is the drawdown breaker's state).
@@ -10210,7 +10217,11 @@ reviews:
       -- over-count, the 7/18-readiness-redteam finding). Gate arms on 5 real signals, not 5 rejects.
       SELECT COUNT(*) FROM mi_htf_breakout_shadow WHERE outcome IS NOT NULL AND would_reject_reason IS NULL;
     threshold: 5
-    earliest_review_date: 2026-10-13   # RE-GATED 2026-09-15 to stop it reading "MY WORK IS DUE"
+    earliest_review_date: 2026-11-13   # [blocked: his 09-15 hold — HTF waits behind EP profitability;
+      # EP's new exit (#687 depth) only went live 2026-10-12, so its first read is weeks out. Checked back
+      # 2026-10-13: the predicate reads 10 takeable settlements (bar 5); the hold, not the sample, is what
+      # stops it. Not raised to him (never re-ask an answered question).]
+      # RE-GATED 2026-09-15 to stop it reading "MY WORK IS DUE"
       # every single day on a question the operator has already ANSWERED. It is NOT a graduation
       # date and NOT a prediction - it is a CHECK-BACK, and it is the mechanical half of
       # resolution_2026_09_15 above: he held the GO/NO-GO, so leaving the gate open would make
@@ -11503,7 +11514,7 @@ reviews:
       SELECT LEAST(
         (SELECT COUNT(*) FROM mi_live_trades
           WHERE account_mode = 'live' AND status = 'closed'
-            AND created_at >= DATE '2026-09-06'),
+            AND created_at >= DATE '2026-10-13'),
         -- ── RUNNER GATE (2026-07-30, REPLACED a winner gate the operator broke) ──
         -- My first version required 2 live WINNERS. The operator caught the catch-22:
         -- "if our sell rules need improvement, current 3-day profit take may not yield
@@ -11541,7 +11552,7 @@ reviews:
         -- artificial blocker, so cohort size - the honest constraint - governs again.
         (SELECT 10 * COUNT(*) FROM mi_sell_discipline_records
           WHERE account_mode = 'live' AND peak_adr >= 1.5
-            AND created_at >= DATE '2026-09-06')
+            AND created_at >= DATE '2026-10-13')
       );
     # RUN 2026-08-22 at n=22 -> docs/analysis/exit_tune_cohort_review_2026-08-22.md
     # VERDICT: the stop this record was compiled under was TOO TIGHT — median stop
@@ -11566,8 +11577,23 @@ reviews:
     # is under the 1.5 runner bar, so LEAST() = 0 honestly; 28 closed live trades all-time flow
     # through the same columns, so the shape is proven. Move this date with _EXIT_ERA_START on
     # the next flip.
-    earliest_review_date: 2026-09-06
+    earliest_review_date: 2026-10-13
     zero_verdict: "2026-09-09 WAITING — era D started 09-06; 1 closed live trade so far (PHVS, no runner). 28 closed live trades all-time flow through these columns."
+    can_fire:
+      predicate_runs: >-
+        Run against prod 2026-10-13 after the era-E move (scripts/probes/_era_e_1013/predicates.*): reads 0 - era E starts today.
+      nonzero_possible: >-
+        mi_live_trades closes are written by the finalizers (order_manager.py _finalize_full_exit_locked / _finalize_stop_fill_locked); mi_sell_discipline_records by sell_discipline.py:368. Both run on every live close.
+      lane_live: >-
+        Live trading is MAGNA53 only; depth exit on for new live MAGNA53 trades from 2026-10-13.
+      threshold_vs_observed: >-
+        Bar 20 closes AND 2 records with peak_adr >= 1.5 (x10). Observed 0 on day one; ~3-5 live closes a month puts the bar several months out.
+      era_scoped: >-
+        created_at >= 2026-10-13 on both tables (era E, pinned by the #631 test); earliest_review_date moved with it as that test requires.
+      population_actionable: >-
+        Live closed trades under the current exit stack - the cohort the exit-tune forensic re-scores; earlier eras ran replaced rules.
+      instrument_trusted: >-
+        peak_adr comes from the sell-discipline recorder written at close; realised R from the finalizers (the 10-13 part-fill bookkeeping gap is being fixed under #687 before any era-E close).
     status: pending
     action_when_ready: |
       ⚠ STALL CLAUSE (added 2026-08-01, mirroring cooldown_admission_unassumed).
@@ -11698,7 +11724,7 @@ reviews:
         (SELECT 4 * COUNT(*) FROM mi_live_trades
           WHERE account_mode = 'live' AND status = 'closed' AND signal_type = 'magna53'
             AND COALESCE(regime, '') <> 'Bull'
-            AND created_at >= DATE '2026-09-06')
+            AND created_at >= DATE '2026-10-13')
       )
     # RUN 2026-09-02 at stamped-Bull n=10 (predicate 10 vs 8; sat READY since ~08-24 — ABCL's close —
     # while the registry said pending) -> docs/analysis/exit_tune_bull_regime_read_2026-09-02.md.
@@ -11720,6 +11746,21 @@ reviews:
     threshold: 20
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-06
+    can_fire:
+      predicate_runs: >-
+        Run against prod 2026-10-13 after the era-E move (scripts/probes/_era_e_1013/predicates.*): reads 0 - the non-Bull arm restarts at era E.
+      nonzero_possible: >-
+        mi_live_trades closes written by the order_manager finalizers on every live MAGNA53 exit; regime stamped at entry.
+      lane_live: >-
+        MAGNA53 live; depth exit on for new live MAGNA53 trades from 2026-10-13.
+      threshold_vs_observed: >-
+        Bar 20 = LEAST(stamped-Bull closes, 4 x non-Bull closes in era E): needs >= 5 era-E non-Bull closes; 0 today.
+      era_scoped: >-
+        Non-Bull arm scoped to created_at >= 2026-10-13 (era E, pinned by the #631 test); the Bull arm is all-time by design (run 1 note).
+      population_actionable: >-
+        Live MAGNA53 closes split by stamped regime - the contrast the run-2 grid needs.
+      instrument_trusted: >-
+        regime is stamped on the row at entry; closes from the finalizers (part-fill bookkeeping fix under #687 lands before any era-E close).
     status: pending
     last_run_note: >-
       RAN 2026-09-02 at stamped-Bull n=10 and stays PENDING by its own RECURRING idiom (8 -> 20 -> 40),
@@ -14244,7 +14285,22 @@ reviews:
     # variant selector — the rejected-side filter this question needs lives in
     # the predicate itself. No discriminating column exists to declare.
     discriminates_on: []
-    earliest_review_date: 2026-10-13
+    earliest_review_date: 2026-10-15   # [blocked: the $50M level's 15th settled name is the 09-15 cohort's
+      # 20th close, ingested tonight 10-13 and readable 10-14; one guard drop slides it to the 09-16 cohort
+      # (10-15). The data does not exist before then — not a re-date of work that could run.]
+    resolution_2026_10_13: >-
+      RAN 2026-10-13 ($0, read-only; scripts/probes/_584_rerun_1013, Opus-verified 40/40 checks from its own
+      SQL in _584_rerun_1013/verify). Population clean: 7,340 shadow rows / 2,461 names / 28 scan dates
+      09-02..10-12, acting floors $5 / 50k throughout, 0 backfill/test rows. VERDICT BY LEVEL against the
+      pre-registered bar (>=15 settled rejected-side names, tail materially above #570's 8.2%):
+      $10M (50 names) NO — 20-session reach to 8xADR 14.3% [7.4-25.7] (p=0.085 vs 8.2%), and 62.5% settle
+      <=-20% vs 28.9% for gap-matched admitted names (p=0.0013). $25M (29 names) NO — reach 10.3% (p=0.43),
+      crash 72.4% (p=0.0004). $50M (13) and $100M (2) below the bar — nothing concluded. Flagged, not
+      acted on: against the SAME-WINDOW admitted pool (4.2%) $10M is higher (p=0.011), but the gap explains
+      all of it (gap-matched p=0.66), and that pool runs at half #570's reconstructed 8.2% — the gap-matched
+      comparison is the control that answers the question, so the conclusion does not move. Also fixed in
+      the re-run: pandas read the ticker 'NA' as NaN (2 rows; no count changed). NEXT: $50M on 10-15 (one
+      re-run, $0); $100M's 15th name completes with the 10-21 close. Admission stays his (THE LINE).
     resolution_2026_10_01: >-
       RAN 2026-10-01 ($0, read-only; scripts/probes/_584 + an independent re-derivation in
       scripts/probes/_584_verify — every number reproduced). VERDICT: NOT YET. The review's bar
@@ -14451,12 +14507,27 @@ reviews:
                   ELSE (SELECT COUNT(*) FROM (
                           SELECT trade_id FROM mi_live_fill_counterfactuals
                           WHERE account_mode = 'live' AND signal_type = 'magna53'
-                            AND exit_era = 'era_d' AND alert_date >= DATE '2026-09-06'
+                            AND exit_era = 'era_e' AND alert_date >= DATE '2026-10-13'
                             AND arm IN ('live_actual', 'live_replay') AND outcome = 'settled'
                           GROUP BY trade_id HAVING COUNT(DISTINCT arm) = 2) complete) END
     threshold: 20
     discriminates_on: [mi_live_fill_counterfactuals.arm, mi_live_fill_counterfactuals.account_mode, mi_live_fill_counterfactuals.signal_type, mi_live_fill_counterfactuals.exit_era, mi_live_fill_counterfactuals.admission_era]
     earliest_review_date: 2026-10-05
+    can_fire:
+      predicate_runs: >-
+        Run against prod 2026-10-13 after the era-E literal move (scripts/probes/_era_e_1013/predicates.*): reads 0 - correct, era E starts today and no depth-stamped fill has settled.
+      nonzero_possible: >-
+        Writer db.py:18028 (INSERT INTO mi_live_fill_counterfactuals) via live_fill_counterfactuals job registered scheduler.py:7163 (_live_fill_counterfactuals_job, :5401); the era label comes from the trade ROW (live_fill_counterfactuals.py:1101, exit_era_label(.., row exit_rule) -> era_e).
+      lane_live: >-
+        MAGNA53 live; magna53_depth_exit|live = on since 2026-10-12 09:39 ET, first acting session 10-13, so new live MAGNA53 fills are stamped depth/era_e.
+      threshold_vs_observed: >-
+        Bar 20 settled PAIRED fills (live_actual + live_replay). Observed 0 today; at ~3-5 live MAGNA53 fills a month the bar is months out - the honest pace for a paired read.
+      era_scoped: >-
+        Single era by construction: exit_era = 'era_e' AND alert_date >= 2026-10-13 (pinned to rule_eras.DEPTH_EXIT_LIVE_DATE by tests/test_exit_counterfactual_consolidation_631.py); admission_era is segmented in the action, never pooled.
+      population_actionable: >-
+        Counts exactly the fills the ONE read scores: live, magna53, era E, both control arms settled for the same trade_id.
+      instrument_trusted: >-
+        live_replay vs live_actual fidelity is the read's own section (1); the era label reads the row's stamped exit_rule, not a date, so a depth fill cannot replay under era D (tests/test_depth_era_replays.py).
     status: pending
     kind: accrual
     added_on: 2026-09-03
