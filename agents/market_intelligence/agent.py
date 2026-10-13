@@ -7169,7 +7169,7 @@ class MarketIntelligenceAgent(BaseAgent):
                 enriched.append(d)
 
             lines: list[str] = []
-            lines.append(f"📊 *Positions — {date_str}* · 🔴 LIVE (real money)")
+            lines.append(f"📊 *Positions — {date_str}* · 💰 LIVE (real money)")  # the live badge every page uses (mode_prefix), not a P&L colour
 
             if enriched:
                 lines.append("")
