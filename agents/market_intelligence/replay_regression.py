@@ -181,6 +181,19 @@ async def run_replay_regression(account_mode: str = "live", *, persist: bool = T
                 json.dumps({"account_mode": account_mode,
                             **{k: fp[k] for k in _PERSISTED_KEYS},
                             "calibration_source": CALIBRATION_ENVELOPE["source"]}))
+        if persist:
+            # ADR 0022 §3 L4 (#313, 2026-10-14): the ONE place this job's verdict becomes a CI
+            # status the deploy gate reads. Written on EVERY persisting run, n=0 included — the
+            # file existing is what proves the Sunday job ran; below n=50 it says the threshold
+            # is not armed. File-only (no audit row, no Telegram): the digest keeps its
+            # no-verdict posture, the deploy gate is the only reader. `write_status` never
+            # raises; on a failed write the old file ages into the gate's WARN.
+            from agents.market_intelligence.ci_status import (
+                JOB_SELECTION_REPLAY, selection_replay_status, write_status)
+            from agents.market_intelligence.kill_scale_bands import CALIBRATION_ENVELOPE
+            write_status(JOB_SELECTION_REPLAY,
+                         *selection_replay_status(fp, CALIBRATION_ENVELOPE["expectancy_r"],
+                                                  era_split=split))
         out = {"lines": lines, "fingerprint": fp}
         if split is None and fp.get("n", 0) > 0:
             out["suppressed"] = {"what": "replay-regression live numbers",

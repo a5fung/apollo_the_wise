@@ -102,7 +102,58 @@ def test_run_does_not_persist_pre_launch(monkeypatch):
     assert any("comparison begins at cutover" in ln for ln in res["lines"])
 
 
-def test_run_persist_false_never_writes(monkeypatch):
+def test_run_persist_false_never_writes(monkeypatch, tmp_path):
+    monkeypatch.setenv("APOLLO_CI_STATUS_DIR", str(tmp_path))
     audited = _wire(monkeypatch, [1.0, -1.0, 2.0])
     asyncio.run(rr.run_replay_regression("live", persist=False))
     assert audited == []
+    assert list(tmp_path.iterdir()) == []            # #313: no CI status file either
+
+
+# ── #313 / ADR 0022 L4: the persisting run writes ci_status/selection_replay.json ──
+
+def _ci_file(tmp_path):
+    import json
+    p = tmp_path / "selection_replay.json"
+    return json.loads(p.read_text()) if p.exists() else None
+
+
+def test_persisting_run_writes_the_ci_status_file_green_below_n50(monkeypatch, tmp_path):
+    monkeypatch.setenv("APOLLO_CI_STATUS_DIR", str(tmp_path))
+    audited = _wire(monkeypatch, [2.0, -1.0, 3.0, -1.0])
+    asyncio.run(rr.run_replay_regression("live", persist=True))
+    raw = _ci_file(tmp_path)
+    assert raw["job"] == "selection_replay" and raw["status"] == "green"
+    assert "n=4" in raw["detail"] and "not armed" in raw["detail"]
+    assert raw["asof"].endswith(("-04:00", "-05:00"))   # ET, offset-aware
+    assert [e for e, _ in audited] == ["replay_regression_snapshot"]   # file-only: no second audit row
+
+
+def test_persisting_run_writes_the_file_at_n0_too_so_a_missing_file_means_the_job_died(monkeypatch, tmp_path):
+    monkeypatch.setenv("APOLLO_CI_STATUS_DIR", str(tmp_path))
+    audited = _wire(monkeypatch, [])
+    asyncio.run(rr.run_replay_regression("live", persist=True))
+    raw = _ci_file(tmp_path)
+    assert raw["status"] == "green" and "n=0" in raw["detail"]
+    assert audited == []                              # the audit snapshot still skips n=0
+
+
+def test_persisting_run_goes_red_at_the_signed_threshold(monkeypatch, tmp_path):
+    """50 live trades at +0.60R mean vs the +0.95R calibration = a 0.35R gap at n>=50 (M3f)."""
+    monkeypatch.setenv("APOLLO_CI_STATUS_DIR", str(tmp_path))
+    _wire(monkeypatch, [0.60] * 50)
+    asyncio.run(rr.run_replay_regression("live", persist=True))
+    raw = _ci_file(tmp_path)
+    assert raw["status"] == "red" and "n=50" in raw["detail"] and "REGRESSION" in raw["detail"]
+    _wire(monkeypatch, [0.60] * 49)
+    asyncio.run(rr.run_replay_regression("live", persist=True))
+    assert _ci_file(tmp_path)["status"] == "green"    # one trade fewer: not armed
+
+
+def test_a_failed_status_write_never_breaks_the_digest(monkeypatch, tmp_path):
+    blocker = tmp_path / "not-a-dir"
+    blocker.write_text("x")
+    monkeypatch.setenv("APOLLO_CI_STATUS_DIR", str(blocker / "ci"))
+    _wire(monkeypatch, [1.0, 2.0])
+    res = asyncio.run(rr.run_replay_regression("live", persist=True))
+    assert "error" not in res and any("live (n=2)" in ln for ln in res["lines"])

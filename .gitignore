@@ -31,6 +31,9 @@ logs/*.log
 # #690 replay samples — real production prompts, never committed
 logs/llm_samples/
 audit.log
+# #313 / ADR 0022 L4 — replay-everything CI status files (host state, written by the weekly
+# replay job through the market-agent bind mount; read by deploy gate [5p/7]). Never committed.
+ci_status/
 
 # Session scratch — one-off analysis artifacts that don't belong in history.
 # Durable analysis goes to docs/analysis/; durable tooling to scripts/.

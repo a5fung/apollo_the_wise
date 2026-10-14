@@ -126,6 +126,13 @@ services:
     volumes:
       - /home/apollo/apollo_the_wise/logs:/app/logs  # persists across rebuilds
       - /home/apollo/apollo_the_wise/PLAN.md:/app/PLAN.md:ro  # #435: LIVE PLAN.md bind-mount (was COPY-baked → #426 blocking-count went stale on PLAN-only sessions)
+      # #313 / ADR 0022 §3 L4 (2026-10-14): the replay-everything CI status files. The in-container
+      # writer (weekly_system_review → replay_regression, an INTELLIGENCE-owned job, so THIS service
+      # only) writes /app/ci_status/<job>.json; the on-host deploy gate [5p/7] reads the same files
+      # at /home/apollo/backups/ci_status (repo-external, like the watchdog state). deploy.sh
+      # `mkdir -p`s the host dir as `apollo` (uid 1000 = the container user) BEFORE `up -d` —
+      # docker would otherwise create a missing bind source as root and the writer would fail.
+      - /home/apollo/backups/ci_status:/app/ci_status
     # Event-loop liveness probe. If uvicorn stops responding for ~3 min,
     # Docker restarts the container and scheduler catch-up logic re-fires
     # missed briefings/data-pulls on startup.

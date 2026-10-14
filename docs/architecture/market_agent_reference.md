@@ -100,6 +100,30 @@ Currently enforces:
 
 Pre-commit gates are vanilla shell + fast (<1s); the pre-push test gate is ~30s (Python pushes only). Bypass with `--no-verify` only if you really know what you're doing.
 
+## Deploy gate [5p/7] — replay-everything CI (ADR 0022 §3 L4, #313 / #302, 2026-10-14)
+
+**Regressions block DEPLOYS, never trades.** `scripts/deploy.sh` runs `scripts/preflight_ci_status_gate.py`
+(host-side, stdlib) **before the image build** — a block stops the deploy from starting. It reads
+`/home/apollo/backups/ci_status/<job>.json` (`{job, status: green|red, asof (ET), detail}`), the files the
+in-container regression jobs write through the market-agent bind mount (`/app/ci_status`, writer module
+`agents/market_intelligence/ci_status.py`).
+
+| Reading | market-agent / both / execution | orchestrator |
+|---|---|---|
+| red, ≤ 7 days old | **BLOCK — `exit 21`** | pass (never blocked, M4f) |
+| red, > 7 days old (stale) | WARN | WARN |
+| green ≤ 7d · green > 7d | pass · WARN (job may be dead) | same |
+| file missing / unreadable | WARN, never block | same |
+
+Jobs the gate expects (ADR 0022 §3): `selection_replay` (**live** — the Sunday `weekly_system_review`
+writes it; red iff live realized expectancy sits >0.3R under the +0.95R #268b calibration at n≥50, M3f),
+`judge_eval` and `entry_sim` (**not built** — missing = WARN on every deploy; the ADR's §3 says what each
+would need). Override, **operator only**, LOUD: `CI_OVERRIDE="<reason>" bash scripts/deploy.sh <scope>` →
+banner + `logs/ci_override.log` line + `mi_audit_log` row `ci_override_deploy` (relayed via
+`scripts/log_judge_envelope_change.py` into the running container). First deploy after the change needs
+`both` (the compose edit is all-service scope) and then `execution` to clear the drift warning; the gate
+itself `mkdir -p`s the host dir as `apollo` so the uid-1000 writer can write on the first Sunday.
+
 ## Required Env Vars
 ```
 TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USER_IDS

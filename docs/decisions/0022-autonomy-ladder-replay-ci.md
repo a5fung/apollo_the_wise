@@ -1,6 +1,7 @@
 # ADR 0022 — P5 Autonomy Ladder + Allocator-Live · P6 Replay-Everything CI (D-6, #432)
 
 **Status:** ACTIVE — operator-signed 2026-07-05 ('Signed.', all forks resolved per the recommendations with the Gemini 7/5 modifications adopted; full review trail in-doc).
+**L4 BUILT 2026-10-14 (#313 / #302) — the gate and the one writer that exists; see §3 "What shipped".** Deploy gate is **[5p/7], exit 21** (the ADR's [5m/7] / exit 17 were taken by ADR 0030's judge-eval gate before this shipped). Of the three §3 jobs only (a) the selection replay has a writer; (b) and (c) are NOT built — their absent files read WARN on every deploy by design (missing never blocks), and what each would need is recorded in §3.
 Exists and stays: `mi_strategies.phase` ladder semantics (#66) · the weekly promotion checker
 (eligibility + blocking_reasons in the Sunday review) · `cross_strategy_allocator.py` (shadow,
 #415 telemetry accruing to the 8/4 registry read) · `replay_regression.py` (weekly surface,
@@ -77,6 +78,47 @@ Three scheduled regression jobs, one gating mechanism:
   its own freshness is watchdog-monitored).
 - This makes "a methodology change that degrades replayed expectancy fails before deploy"
   literal — the trading equivalent of the pre-push test gate.
+
+**What shipped (L4, 2026-10-14, #313) — derived from the code, not restated from the table:**
+- **Writer module** `agents/market_intelligence/ci_status.py`: `write_status(job, green|red,
+  detail)` → `ci_status/<job>.json` `{job, status, asof (ET, offset-aware), detail}`, atomic,
+  never raises (a failed write leaves the OLD file to age into the gate's WARN — an error in the
+  writer is not a regression). In-container the dir is `/app/ci_status` (WORKDIR `/app`); the
+  compose bind mount `/home/apollo/backups/ci_status:/app/ci_status` is on **market-agent only**
+  — the only writer runs in `weekly_system_review` (INTELLIGENCE-owned → apollo-market).
+- **(a) Selection replay — LIVE.** `replay_regression.run_replay_regression(persist=True)`
+  (the Sunday review) writes `selection_replay.json` on every run, n=0 included (the file
+  existing is the liveness proof). M3f exactly: red iff `n ≥ 50` and
+  `CALIBRATION_ENVELOPE.expectancy_r (+0.95R) − live expectancy > 0.3R`; below 50 the detail
+  says "threshold not armed". The verdict uses the POOLED live fingerprint (the number M3f was
+  signed against); the #662 rule-era clause rides in `detail` for the reader.
+- **(b) Judge frozen-cohort eval — NOT BUILT.** ADR 0018's X6 (A/B regrade over the
+  operator-labelled cohort) was never built. The nearest existing tool, ADR 0030's robustness
+  eval (`scripts/evals/run_judge_robustness_eval.py`), is a $3.49 **operator-triggered** run on
+  the synthetic adversarial corpus — not the labelled cohort, not scheduled — so any `asof` it
+  wrote would be stale (>7d) on nearly every deploy, a permanent WARN that means nothing; and
+  `[5m/7]` already BLOCKS a deploy whose grade surface changed without a passing eval, which is
+  strictly stronger than a status file. Would need: the X6 harness over
+  `mi_operator_labels`, a scheduled trigger that refreshes within 7 days (a paid run per month
+  is an operator cost decision), and a baseline definition for "correctness".
+- **(c) Entry-mechanics sim — NOT BUILT** (the 7/5 review already flagged it as a build).
+  `scripts/ep_replay.py` is the fidelity-validated replay harness but it reads hand-pulled TSV
+  captures (`scripts/ep_replay_data/_pull*.sql`), takes an explicit ruleset, and prints per-label
+  mean R — there is no trailing-90d cohort definition, no "previous run" baseline, no in-container
+  data path and no schedule. Each of those is a judgement call, so nothing was invented.
+- **Gate** `scripts/preflight_ci_status_gate.py` (host-side, stdlib, the [5h/7] pattern), wired
+  as **[5p/7] BEFORE the image build** (`[1/5] pull` → gate → `[2/5] build`): a block must stop
+  the deploy from STARTING, whereas every other [5x/7] verifies code already up. Fresh red
+  (≤7d) ⇒ `exit 21` for `market-agent` / `both` / `execution` only (M4f); `orchestrator` is
+  never blocked; stale (>7d) / missing / unreadable ⇒ WARN. The three expected jobs are named so
+  a missing writer prints rather than vanishes. `mkdir -p` of the host dir runs in the same
+  block as `apollo` (uid 1000 = the container user) so docker never creates it root-owned.
+- **Override** `CI_OVERRIDE="<reason>" bash scripts/deploy.sh <scope>` — banner printed, a line
+  appended to `logs/ci_override.log`, and an `mi_audit_log` row `ci_override_deploy` relayed
+  through the running container via `scripts/log_judge_envelope_change.py` (payload-generic, the
+  [5m/7] relay); an empty reason is not an override. Tests: `tests/test_ci_status.py`,
+  `tests/test_preflight_ci_status_gate.py` (the deploy.sh block is extracted and RUN dry),
+  `tests/test_replay_regression.py`.
 
 ## 4. Build cards
 | Card | Scope | Class |

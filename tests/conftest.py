@@ -34,6 +34,10 @@ for _git_var in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR",
 # throwaway directory for the whole session (tests that exercise capture set their own per test).
 import tempfile as _tempfile
 os.environ["APOLLO_LLM_SAMPLE_DIR"] = _tempfile.mkdtemp(prefix="apollo_llm_samples_test_")
+# ── #313 / ADR 0022 L4: the weekly replay now writes ci_status/<job>.json on every persisting
+# run, and tests exercise that run with mocked inputs (test_weekly_review_noise_700). Point the
+# writer at a throwaway directory so no test ever drops a status file into the repo.
+os.environ["APOLLO_CI_STATUS_DIR"] = _tempfile.mkdtemp(prefix="apollo_ci_status_test_")
 from unittest.mock import AsyncMock, MagicMock
 
 

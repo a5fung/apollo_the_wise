@@ -307,6 +307,54 @@ if [ "$BEFORE_PULL" != "$AFTER_PULL" ]; then
   fi
 fi
 
+# >>> #313 ci-status gate >>>
+echo ""
+echo "=== [5p/7] Replay-everything CI gate (ADR 0022 L4 — regressions block DEPLOYS, never trades) ==="
+# Runs BEFORE the build on purpose. Every other [5x/7] gate verifies the code that just went up
+# and leaves rollback as the remedy; this one decides whether the deploy may START (ADR 0022 §3:
+# "red status + age <7d ⇒ deploy BLOCKED"), so it precedes [2/5]. Host-side stdlib script (the
+# [5h/7] pattern) reads $CI_STATUS_DIR/<job>.json — the files the in-container weekly jobs write
+# through the market-agent bind mount (docker-compose.prod.yml). Scope rule (M4f, signed 7/5): a
+# red younger than 7 days BLOCKS market-agent / both / execution only; an orchestrator-only
+# deploy is never blocked. Stale (>7d), missing or unreadable = WARN, never block — a dead CI job
+# must not freeze deploys, and the first deploy after this ships has no files at all.
+# The slot is [5p/7] and the exit code 21: the ADR named [5m/7] / exit 17, both taken by ADR
+# 0030's judge-eval gate before this shipped. Operator hotfix escape, LOUD by design:
+#     CI_OVERRIDE="<reason>" bash scripts/deploy.sh <scope>
+# → banner printed, a line appended to logs/ci_override.log, and an mi_audit_log row
+# (ci_override_deploy) relayed through the RUNNING container exactly as [5m/7] relays its
+# envelope row — the gate script itself has no DB access.
+CI_STATUS_DIR="${CI_STATUS_DIR:-/home/apollo/backups/ci_status}"
+# The container runs as uid 1000 (`apollo`, Dockerfile.market). A bind source docker has to
+# create itself is root-owned, so the Sunday writer would fail on the first deploy after this
+# ships. deploy.sh runs as `apollo` on the host — creating it here (idempotent) fixes ownership.
+# Never silent: a failed mkdir is the one thing that turns the Sunday writer dark, and a missing
+# file then reads MISSING WARN forever, indistinguishable from "job not built". Print, don't block
+# (the gate's own rule: missing never blocks).
+if ! mkdir -p "$CI_STATUS_DIR"; then
+  echo "⚠️  could not create $CI_STATUS_DIR as $(id -un) — the Sunday replay writer will NOT be able"
+  echo "    to write its status file (docker would create the bind source root-owned). Create it by"
+  echo "    hand as apollo: mkdir -p $CI_STATUS_DIR"
+fi
+if ! CI_STATUS_DIR="$CI_STATUS_DIR" python3 scripts/preflight_ci_status_gate.py --scope "$SCOPE"; then
+  echo ""
+  echo "DEPLOY BLOCKED — a replay-regression CI status is RED and fresher than 7 days (ADR 0022 §3)."
+  echo "Fix the regression (re-run the job to green), or — OPERATOR ONLY, for a hotfix —"
+  echo "    CI_OVERRIDE=\"<reason>\" bash scripts/deploy.sh $SCOPE"
+  exit 21
+fi
+# Second cheap invocation (<10ms, same files, same env): prints ONE JSON line iff an override was
+# used, which the in-container relay turns into the mi_audit_log row. `|| true` on both — an
+# audit-row write must never fail (or block) a deploy, matching log_audit_event()'s contract.
+CI_OVERRIDE_AUDIT=$(CI_STATUS_DIR="$CI_STATUS_DIR" python3 scripts/preflight_ci_status_gate.py --scope "$SCOPE" --audit-json || true)
+if [[ -n "$CI_OVERRIDE_AUDIT" ]]; then
+  # log_judge_envelope_change.py is payload-generic ({event_type, summary, detail}) — reused as-is.
+  if ! docker exec "$PREFLIGHT_CONTAINER" python -m scripts.log_judge_envelope_change "$CI_OVERRIDE_AUDIT"; then
+    echo "⚠️  ci_override_deploy audit row NOT written ($PREFLIGHT_CONTAINER not running?) — logs/ci_override.log still carries it"
+  fi
+fi
+# <<< #313 ci-status gate <<<
+
 echo "=== [2/5] Building images: $SERVICES ==="
 docker compose --env-file .env -f "$COMPOSE_FILE" $COMPOSE_PROFILE_ARGS build --no-cache $SERVICES
 
