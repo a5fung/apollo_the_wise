@@ -1,0 +1,61 @@
+Output format is unaligned.
+Field separator is "	".
+== 1. theme_member_rehomed rows tonight
+id	t	s
+56697	17:05:38	Rehome: 'IT Services & Infrastructure Outsourcing (Government/Commercial/Offshore)' -> 'IT Consulting & Business Process Outsourcing Services' INFY moved on the tape (0.85 vs own unreadable; own_unjudgeable:thin_basket) — a paying theme: +10 on its next EP
+56702	17:05:38	Rehome: 'IT Services & Infrastructure Outsourcing (Government/Commercial/Offshore)' -> 'IT Consulting & Business Process Outsourcing Services' KD moved on the tape (0.76 vs own unreadable; own_unjudgeable:thin_basket) — a paying theme: +10 on its next EP
+56706	17:05:38	Rehome: 'Beverage Brands: Beer, Sparkling Water & Wellness Nutrition' -> 'Non-Alcoholic Beverages & Energy Drinks' FIZZ moved on the tape (0.69 vs own unreadable; own_unjudgeable:thin_basket) — a paying theme: +10 on its next EP
+(3 rows)
+== 2. audit rows tonight naming BOX or DBX (summary only)
+id	t	event_type	s
+56650	17:02:30	ticker_revalidated_out	BOX removed from 'Cloud Contact Center & CCaaS Communication Platforms' by validation
+56651	17:02:30	validation_cooldown_triggered	BOX → 'Cloud Contact Center & CCaaS Communication Platforms' cooldown 14d (removal #1)
+56652	17:02:30	ticker_revalidated_out	DBX removed from 'Cloud Contact Center & CCaaS Communication Platforms' by validation
+56653	17:02:30	validation_cooldown_triggered	DBX → 'Cloud Contact Center & CCaaS Communication Platforms' cooldown 14d (removal #1)
+(4 rows)
+== 3. parent pass ran summaries 10-12 on
+id	t	s
+55763	2026-10-12 17:11:07.415676	Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+56280	2026-10-13 17:06:59.159975	Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+56837	2026-10-14 17:10:04.452964	Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+(3 rows)
+== 3b. parent pass per-night verdict counts (linked or CHILD_OF vs distinct)
+d	event_type	count
+2026-10-08	theme_parent_pass_distinct	6
+2026-10-08	theme_parent_pass_ran	1
+2026-10-09	theme_parent_pass_distinct	6
+2026-10-09	theme_parent_pass_ran	1
+2026-10-12	theme_parent_pass_distinct	6
+2026-10-12	theme_parent_pass_ran	1
+2026-10-13	theme_parent_pass_distinct	6
+2026-10-13	theme_parent_pass_ran	1
+2026-10-14	theme_parent_pass_distinct	6
+2026-10-14	theme_parent_pass_ran	1
+(10 rows)
+== 4. shadow_themes_promoted summaries 10-12 on
+id	t	s
+55779	2026-10-12 17:12:20.659908	Graduated 8 shadow cohort(s) into live mi_themes (8 new) — 7 held at the birth gate
+56296	2026-10-13 17:08:14.224088	Graduated 6 shadow cohort(s) into live mi_themes (6 new) — 5 held at the birth gate
+56858	2026-10-14 17:11:22.476179	Graduated 10 shadow cohort(s) into live mi_themes (6 new) — 7 held at the birth gate
+(3 rows)
+== 4b. promote-lane rows per night: all shadow_promoted rows 2-3 members active vs total, by theme_date
+theme_date	promoted_active	promoted_small
+2026-10-08	11	6
+2026-10-09	15	9
+2026-10-12	10	7
+2026-10-13	6	4
+2026-10-14	10	6
+(5 rows)
+== 4c. promote-lane names tonight that had a Retired tombstone or small active row on the prior board (re-mint of a dissolved name)
+name	n	tk	prior_rows
+Capital Markets & Deal-Flow Re-Rating	3	PWP,PAX,CBOE	2026-10-12:Nascent:3 2026-10-13:Retired:0
+Consumer Franchise Operators: Fitness & Quick-Service	3	PLNT,YUM,VVV	
+Diagnostic Testing & Lab Equipment Re-Rating	3	QDEL,OMCL,MDLN	2026-10-12:Nascent:3 2026-10-13:Retired:0
+Enterprise Information Management & Infrastructure Engineering Software	3	OTEX,BSY,P	2026-10-12:Nascent:3 2026-10-13:Retired:0
+Franchised Auto Dealership Groups	4	SAH,GPI,AN,ABG	
+Insurance Distribution & Specialty Insurance Services	3	LIFE,GSHD,RYAN	
+Multifamily Apartment REITs	4	UDR,IRT,CPT,MAA	
+Payroll, Tax & Small-Business Financial Software	3	INTU,PAYX,PAR	
+Used & New Auto Dealership Groups Oversold Basket	4	GPI,AN,ABG,SAH	
+U.S. Homebuilders & Manufactured Housing Builders	8	TOL,CVCO,DHI,SKY,PHM,MHO,MTH,KBH	
+(10 rows)

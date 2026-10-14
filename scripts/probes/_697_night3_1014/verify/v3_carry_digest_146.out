@@ -1,0 +1,100 @@
+SET
+SET
+== V3a. the 26 market sessions before 10-14 per mi_daily_closes (lag, date, bars)
+lag|trade_date|n
+1|2026-10-13|12451
+2|2026-10-12|12455
+3|2026-10-09|12386
+4|2026-10-08|12431
+5|2026-10-07|12456
+6|2026-10-06|12405
+7|2026-10-05|12486
+8|2026-10-02|12455
+9|2026-10-01|12450
+10|2026-09-30|12462
+11|2026-09-29|12440
+12|2026-09-28|12435
+13|2026-09-25|12442
+14|2026-09-24|12551
+15|2026-09-23|12579
+16|2026-09-22|12576
+17|2026-09-21|12588
+18|2026-09-18|12561
+19|2026-09-17|12530
+20|2026-09-16|12536
+21|2026-09-15|12559
+22|2026-09-14|12516
+23|2026-09-11|12473
+24|2026-09-10|12549
+25|2026-09-09|12450
+26|2026-09-08|12511
+(26 rows)
+== V3b. name-by-name: expected tag (bar-session def) vs actual 10-14 tag; only rows where they differ or a carry tag exists
+ticker|exp_tag|act_tag|min_lag|stages_seen|stage_1014|us|bars|verdict
+CDNA|flag_pivot_window_carryforward|flag_pivot_window_carryforward|19|TIGHTENING,WATCH|unqualified|{rs_top200,rs_1m_80,flag_pivot_window_carryforward}|1268|ok
+CHPT|flag_pivot_window_carryforward|flag_pivot_window_carryforward|9|TIGHTENING|INVALIDATED|{flag_pivot_window_carryforward}|1268|ok
+EFOR|flag_pivot_window_carryforward|flag_pivot_window_carryforward|9|TIGHTENING,WATCH|unqualified|{rs_top200,rs_1m_80,flag_pivot_window_carryforward}|120|ok
+ESTC|flag_pivot_window_carryforward|flag_pivot_window_carryforward|9|TIGHTENING|unqualified|{flag_pivot_window_carryforward}|1268|ok
+PLSE|flag_pivot_window_carryforward|flag_pivot_window_carryforward|15|TIGHTENING,WATCH|unqualified|{flag_pivot_window_carryforward}|1268|ok
+PURR|flag_pivot_window_carryforward|flag_pivot_window_carryforward|7|TIGHTENING,WATCH|INVALIDATED|{flag_pivot_window_carryforward}|217|ok
+TEAM|flag_pivot_window_carryforward|flag_pivot_window_carryforward|7|TIGHTENING,WATCH|unqualified|{rs_top200,rs_1m_80,flag_pivot_window_carryforward}|1268|ok
+TJGC|flag_pivot_window_carryforward|flag_pivot_window_carryforward|23|COILED|unqualified|{flag_pivot_window_carryforward}|201|ok
+XHLD|flag_pivot_window_carryforward|flag_pivot_window_carryforward|25|TRIGGERED|INVALIDATED|{flag_pivot_window_carryforward}|419|ok
+GRAL|flag_stage_carryforward|flag_stage_carryforward|1|COILED,WATCH|COILED|{rs_top200,rs_1m_80,flag_stage_carryforward}|578|ok
+HTFL|flag_stage_carryforward|flag_stage_carryforward|1|TIGHTENING,WATCH|INVALIDATED|{rs_top200,rs_1m_80,flag_stage_carryforward}|298|ok
+IOVA|flag_stage_carryforward|flag_stage_carryforward|1|COILED,TRIGGERED,WATCH|COILED|{rs_top200,rs_1m_80,flag_stage_carryforward}|1268|ok
+KOD|flag_stage_carryforward|flag_stage_carryforward|1|COILED,WATCH|INVALIDATED|{rs_top200,rs_1m_80,flag_stage_carryforward}|1268|ok
+MRNA|flag_stage_carryforward|flag_stage_carryforward|3|WATCH|unqualified|{rs_top200,rs_1m_80,flag_stage_carryforward}|1268|ok
+OMER|flag_stage_carryforward|flag_stage_carryforward|3|COILED,WATCH|INVALIDATED|{flag_stage_carryforward}|1268|ok
+QMCO|flag_stage_carryforward|flag_stage_carryforward|3|TIGHTENING,WATCH|INVALIDATED|{flag_stage_carryforward}|1268|ok
+VICR|flag_stage_carryforward|flag_stage_carryforward|3|WATCH|INVALIDATED|{flag_stage_carryforward}|1268|ok
+(17 rows)
+== V3c. carry-only rows on 10-14 (carry tag, no organic/R3/9M tag): count by tag x stage
+tag|stage|count
+long|INVALIDATED|3
+long|unqualified|3
+short|INVALIDATED|3
+(3 rows)
+== V3d. long-tag rows per scan date since 09-29 (the OLD code never wrote this tag)
+scan_date|long_tag|short_tag
+2026-09-29|0|2
+2026-09-30|0|4
+2026-10-01|0|4
+2026-10-02|0|4
+2026-10-05|0|4
+2026-10-06|0|5
+2026-10-07|0|2
+2026-10-08|0|2
+2026-10-09|0|3
+2026-10-12|10|16
+2026-10-13|10|9
+2026-10-14|9|8
+(12 rows)
+== V3e. WATCH names stored in the last 5 sessions with NO organic/R3/9M tag on 10-14 (the DoD clause): their 10-14 row
+ticker|last_watch|stage_1014|universe_sources
+OMER|2026-10-09|INVALIDATED|{flag_stage_carryforward}
+QMCO|2026-10-09|INVALIDATED|{flag_stage_carryforward}
+VICR|2026-10-09|INVALIDATED|{flag_stage_carryforward}
+(3 rows)
+== V3f. flag_digest_sent rows since 10-09 (ET time, detail) and the board (stored COILED/TRIGGERED/TIGHTENING) that scan date
+id|t_et|detail|board
+56314|10-13 17:25:04|{"scan_date": "2026-10-13", "telegram": "sent", "new_today": ["IOVA", "GRAL"], "triggered": [], "coiled": [], "coiled_not_shown": [], "dropped_out": 9}|GRAL:COILED,IOVA:COILED
+56875|10-14 17:25:04|{"scan_date": "2026-10-14", "telegram": "sent", "new_today": [], "triggered": [], "coiled": ["IOVA", "GRAL"], "coiled_not_shown": [], "dropped_out": 11}|GRAL:COILED,IOVA:COILED
+(2 rows)
+== V3g. per scan date since 10-09: board TIGHTENING+ names and digest rows that ET day
+scan_date|board_tight_plus|digest_rows
+2026-10-09|1|0
+2026-10-12|0|0
+2026-10-13|2|1
+2026-10-14|2|1
+(4 rows)
+== V3h. #146: any TRIGGERED row (raw or held) or any triggered_from stamp 10-12..10-14
+scan_date|ticker|stage|held_from_stage|triggered_from
+(0 rows)
+== V3i. flag-related audit event types in the last 3 ET days (errors? failures?)
+event_type|count
+flag_digest_sent|2
+flag_stage_flip_held|1
+flag_stage_transition|2
+theme_dissolved_flagged_pair|1
+(4 rows)

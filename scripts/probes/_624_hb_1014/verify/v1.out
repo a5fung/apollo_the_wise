@@ -1,0 +1,129 @@
+Pager usage is off.
+=== V1-0 now ET
+       now_et        
+---------------------
+ 2026-10-14 18:29:47
+(1 row)
+
+=== V1-1 every audit row whose summary starts 2026-10-14 for the heartbeat event, plus any heartbeat row created 10-14 ET (dupes / rehearsal)
+  id   |         event_type          |          c_et           | after_market_boot | verdict | screened | cap_only | missing | lane_enabled 
+-------+-----------------------------+-------------------------+-------------------+---------+----------+----------+---------+--------------
+ 56936 | lowcap_paper_lane_heartbeat | 2026-10-14 18:15:00.062 | t                 | quiet   |      205 | 0        | []      | true
+(1 row)
+
+=== V1-2 mi_job_runs columns
+    column_name    
+-------------------
+ id
+ job_id
+ started_at
+ finished_at
+ duration_s
+ status
+ rows_written
+ expected_min_rows
+ error_message
+ created_at
+ scheduled_for
+(11 rows)
+
+=== V1-3 the 10-14 lowcap_lane_replay job run (all columns)
+   id   |       job_id       |          started_at           |         finished_at          |           duration_s            | status  | rows_written | expected_min_rows | error_message |          created_at           | scheduled_for 
+--------+--------------------+-------------------------------+------------------------------+---------------------------------+---------+--------------+-------------------+---------------+-------------------------------+---------------
+ 231979 | lowcap_lane_replay | 2026-10-14 22:15:00.001413+00 | 2026-10-14 22:15:00.06417+00 | 0.06285043619573116302490234375 | success |              |                   |               | 2026-10-14 22:15:00.001413+00 | 
+(1 row)
+
+=== V1-4 independent screened/cap-only: distinct tickers 10-14 by ET created date vs scan_date, and ANY row mentioning mcap / market cap on 10-12..10-14, any stage
+ scan_date  | screened_by_scan_date | screened_created_same_et_day | rows_off_day 
+------------+-----------------------+------------------------------+--------------
+ 2026-10-12 |                   213 |                          213 |            0
+ 2026-10-13 |                   218 |                          218 |            0
+ 2026-10-14 |                   205 |                          205 |            0
+(3 rows)
+
+ scan_date  | ticker |  reject_stage  |                          fr                          | count 
+------------+--------+----------------+------------------------------------------------------+-------
+ 2026-10-12 | ALLT   | quality_filter | quality filter: filter:mcap_too_small: $451M < $500M |     1
+ 2026-10-13 | GOSS   | quality_filter | quality filter: filter:mcap_too_small: $57M < $500M  |     4
+(2 rows)
+
+=== V1-5 any 10-14 scan row with a non-null market_cap under 500M (any stage, any price, any gap)
+ ticker | reject_stage | mcap_m | max_gap | pc | count 
+--------+--------------+--------+---------+----+-------
+(0 rows)
+
+=== V1-6 quality_filter tickers 10-14 with their distinct filter reasons
+ ticker |    reasons     | count 
+--------+----------------+-------
+ AEHL   | {atr_too_high} |    38
+ GRML   | {atr_too_high} |    38
+ LQDA   | {atr_too_high} |    38
+ RGC    | {adv_too_low}  |     2
+ VEEA   | {atr_too_high} |     7
+(5 rows)
+
+=== V1-7 lane table: any row dated 10-14 or graded on 10-14 ET
+ id | ticker | alert_date | fg 
+----+--------+------------+----
+(0 rows)
+
+ total_lane_rows 
+-----------------
+               2
+(1 row)
+
+=== V1-8 lane tick / error audit rows created 10-14 ET, and error rows ever
+ event_type | count 
+------------+-------
+(0 rows)
+
+ lane_error_rows_ever 
+----------------------
+                    0
+(1 row)
+
+=== V1-9 WOULD-FAIL-IF arms: lane ticker+date in mi_ep_alerts (ever); smallcap trades (any account); non-live trades created since 10-10
+ lane_rows_in_ep_alerts 
+------------------------
+                      0
+(1 row)
+
+ account_mode | signal_type | count 
+--------------+-------------+-------
+(0 rows)
+
+=== V1-10 toggle override row and strategy row (the
+ safeguard | account_mode | state | updated_at 
+-----------+--------------+-------+------------
+(0 rows)
+
+   strategy_id    | phase | enabled |          updated_at           
+------------------+-------+---------+-------------------------------
+ magna53_smallcap | paper | t       | 2026-10-10 18:51:20.322432+00
+(1 row)
+
+=== V1-11 dropped-job sweep, Wed vs Wed: job ids that ran Wed 10-07 12:06-18:30 ET but not Wed 10-14 same window (catches weekday-specific jobs)
+psql:/tmp/c624v_v1hb1014.sql:26: error: unterminated quoted string
+      side      |           job_id            
+----------------+-----------------------------
+ only_wed_10_14 | order_status_reconcile_boot
+(1 row)
+
+ wed_1007_ids | wed_1014_ids 
+--------------+--------------
+           73 |           74
+(1 row)
+
+=== V1-12 lowcap_lane_replay run every weekday since lane go-live (a gap = a dropped run)
+     d      |     t     | status  
+------------+-----------+---------
+ 2026-10-05 | Mon 18:15 | success
+ 2026-10-06 | Tue 18:15 | success
+ 2026-10-07 | Wed 18:15 | success
+ 2026-10-08 | Thu 18:15 | success
+ 2026-10-09 | Fri 18:15 | success
+ 2026-10-12 | Mon 18:15 | success
+ 2026-10-13 | Tue 18:15 | success
+ 2026-10-14 | Wed 18:15 | success
+(8 rows)
+

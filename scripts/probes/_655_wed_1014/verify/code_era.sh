@@ -1,0 +1,2 @@
+# #655 Wed 10-14 VERIFIER: READ-ONLY. Did the fold/G3 code change since Mon 10-12? (server checkout mtimes + md5 in running containers; no git)
+ssh apollo@87.99.134.162 'cd /home/apollo/apollo_the_wise; for f in agents/market_intelligence/theme_engine.py agents/market_intelligence/theme_correctness.py; do echo "== $f"; TZ=America/New_York stat -c "checkout mtime_ET=%y size=%s" $f; md5sum $f | sed "s/^/checkout /"; for c in apollo-market apollo-execution; do docker exec $c sh -c "md5sum /app/$f 2>/dev/null || md5sum $f 2>/dev/null" | sed "s/^/$c /"; done; done'

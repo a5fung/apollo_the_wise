@@ -1,0 +1,62 @@
+Output format is unaligned.
+Field separator is "	".
+== V0 clock
+now_et
+2026-10-14 18:30:00.933617
+(1 row)
+== V1 ALL theme_correctness_check rows 10-10..10-14 ET (any hour), with writer time; dup/rehearsal check
+id	t_et	d_et	s
+55813	2026-10-12 17:31:15.351386	2026-10-12	G1 570/609 (93.6% bar 90.0%) · G2 18/609 (3.0% bar<= 5.0%) ·
+56328	2026-10-13 17:31:11.453993	2026-10-13	G1 572/617 (92.7% bar 90.0%) · G2 23/617 (3.7% bar<= 5.0%) ·
+56889	2026-10-14 17:31:18.850776	2026-10-14	G1 590/626 (94.2% bar 90.0%) · G2 22/626 (3.5% bar<= 5.0%) ·
+(3 rows)
+== V2 G3 recomputed from per-theme array, per night (pass=true / judgeable=true+false / null) vs stored scalar
+id	d_et	n_arr	n_true	n_false	n_null	pct_judgeable	pct_all	st_pass	st_nj	st_rate	st_board
+55813	2026-10-12	109	100	9	0	91.74	91.74	100	109	91.7	109
+56328	2026-10-13	107	99	8	0	92.52	92.52	99	107	92.5	107
+56889	2026-10-14	110	101	8	1	92.66	91.82	101	109	92.7	110
+(3 rows)
+== V2b the unjudgeable (null) theme(s) per night with size and any reason key
+id	d_et	e
+56889	2026-10-14	{"name": "Packaged Food Processors: Frozen Potato & Canned Vegetables", "stage": "Nascent", "size": 2, "cohesion": null, "c1_p95": null, "pass_g3": null}
+(1 row)
+== V3 POPULATION 10-14: G3 names NOT on the raw active 10-14 board
+side	name
+(0 rows)
+== V3b counts: raw active board 10-14, distinct names, 2-3 members, 4+, <=1
+active	dnames	n23	n4p	n01	last_write
+110	110	35	75	0	2026-10-14 17:11:22.232535
+(1 row)
+== V3c same population check for 10-12 and 10-13 rows (counts of mismatches each way)
+d	n_g3	n_board	g3_not_board	board_not_g3
+2026-10-12	109	111	0	2
+2026-10-13	107	107	0	0
+2026-10-14	110	110	0	0
+(3 rows)
+== V4 fold audit rows 10-10..10-14 at ANY hour (rehearsal/manual-run check): count by ET date + hour
+d	hr	event_type	count
+2026-10-12	17	theme_small_folded	6
+2026-10-12	17	theme_small_fold_ran	1
+2026-10-13	17	theme_small_folded	2
+2026-10-13	17	theme_small_fold_ran	1
+2026-10-14	17	theme_small_folded	2
+2026-10-14	17	theme_small_fold_ran	1
+(6 rows)
+== V5
+psql:/tmp/c655v_v1.sql:49: error: unterminated quoted string
+id	old	old_1013	old_1014	home	home_1013	home_1014	moved_in_home	released_in_home	verdicts	bar	g3
+56826	Functional Energy Drink Brands	Fading:3:CELH,HELE,JBS	Retired:0	Non-Alcoholic Beverages & Energy Drinks	Mainstream:6	Mainstream:8	t	f	CELH=0.3647/true HELE=0.3202/false	0.35	false
+56827	Off-Price & Specialty Retail Consumer Rotation	Nascent:3:TJX,BBWI,DORM	Retired:0	U.S. Apparel & Fashion Recovery	Mainstream:15	Mainstream:16	t	f	TJX=0.2792/false BBWI=0.4344/true	0.35	false
+(2 rows)
+== V5b home ecosystem vs old theme ecosystem (theme_ecosystem_assigned rows naming either, latest)
+id	t	s
+55785	2026-10-12 17:12:28.989907	'Functional Energy Drink Brands' → E-CONS (haiku)
+56301	2026-10-13 17:08:23.039451	'Off-Price & Specialty Retail Consumer Rotation' → E-CONS (haiku)
+(2 rows)
+== V6 theme engine / fold / correctness timing vs container boot (12:03:28 / 12:06:15 ET): first+last theme audit row tonight
+first_theme_row	last_theme_row	count
+2026-10-14 17:02:12.183151	2026-10-14 17:58:00.016002	136
+(1 row)
+== V6b any theme audit rows between 12:00 and 16:59 ET today (manual rerun check)
+event_type	count	min	max
+(0 rows)

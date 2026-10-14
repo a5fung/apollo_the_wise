@@ -1,0 +1,16 @@
+SET
+SET
+== B. newest scan_dates in mi_flag_candidates (rows, raw TRIGGERED, holds, WATCH-or-better, written)
+scan_date|rows|raw_trig|holds|watch_or_better|last_written_et
+2026-10-09|492|0|1|7|10-09 17:25:03
+2026-10-12|507|0|0|4|10-12 17:25:03
+2026-10-13|493|0|0|4|10-13 17:25:03
+2026-10-14|495|0|1|2|10-14 17:25:03
+(4 rows)
+== C. bars present for the newest days in mi_daily_closes
+trade_date|count
+2026-10-09|12386
+2026-10-12|12455
+2026-10-13|12451
+2026-10-14|12523
+(4 rows)

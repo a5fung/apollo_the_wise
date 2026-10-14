@@ -1,0 +1,8 @@
+SET
+SET
+scan_date|audit_rows|rows|holds_that_date
+2026-10-09|1|55086 KOD WATCH→held@COILED|1
+2026-10-12|0||0
+2026-10-13|0||0
+2026-10-14|1|56874 GRAL WATCH→held@COILED|1
+(4 rows)

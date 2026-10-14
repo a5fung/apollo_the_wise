@@ -1,0 +1,18 @@
+== 1. stamp tripwire per scan date (unstamped raw reads, stamped holds, stamped non-TRIGGERED rows must all be 0)
+scan_date|raw_triggered|unstamped_raw|stamped_hold|stamped_non_triggered
+2026-10-12|0|0|0|0
+2026-10-13|0|0|0|0
+2026-10-14|0|0|0|0
+(3 rows)
+== 2. PROOF: every raw TRIGGERED read since d0 against its own stored 5-day window
+ticker|scan_date|triggered_from|labels|verdict
+(0 rows)
+== 3. raw TRIGGERED reads per bucket since d0 (EXPECT: coiled keeps its ~1 per 15 sessions; tightening/retrigger are the new ones)
+bucket|reads|first_seen|last_seen
+(0 rows)
+== 4. PROOF: the stamp agrees with parent_stage in BOTH breakout tracking tables (a failing row says so in the verdict column; none may)
+tbl|id|ticker|break_date|parent_stage|parent_scan_date|bucket|verdict
+(0 rows)
+== 4b. the same, counted per table (EXPECT violations = 0 and judged_ok >= 1 across the two: a check that judges nothing is a blank, not a pass)
+tbl|breaks_since_d0|judged_ok|violations|not_judged
+(0 rows)

@@ -1,0 +1,39 @@
+SET
+SET
+== 1. old-rule admitted set vs new-rule tagged set on D
+old_rule_names|new_rule_names|only_new_rule|only_new_rule_and_carry_only
+3|17|14|9
+(1 row)
+== 2. stored TRIGGERED rows in the last 25 scan dates (is the stored-TRIGGERED carry branch exercised?)
+ticker|scan_date|stage|held_from_stage|triggered_from
+XHLD|2026-09-09|TRIGGERED||coiled
+IOVA|2026-09-14|TRIGGERED||coiled
+IOVA|2026-09-15|TRIGGERED|WATCH|
+IOVA|2026-09-16|TRIGGERED|TIGHTENING|
+(4 rows)
+== 3. GRAL rows since 2026-10-06
+scan_date|stage|held_from_stage|reason|universe_sources
+2026-10-06|unqualified||base_age_0_below_3|{rs_top200,rs_1m_80,momentum_25pct}
+2026-10-07|unqualified||base_age_0_below_3|{rs_top200,rs_1m_80}
+2026-10-08|unqualified||base_age_1_below_3|{rs_top200,rs_1m_80}
+2026-10-09|unqualified||base_age_2_below_3|{rs_top200,rs_1m_80}
+2026-10-12|WATCH||runup_151% base_3d close_vs_pivot_-17.5%|{rs_top200,rs_1m_80}
+2026-10-13|COILED||fresh_2bar 4.9%/atr 8.8% bodies_0.18/0.00|{rs_top200,rs_1m_80,flag_stage_carryforward}
+2026-10-14|COILED|WATCH|runup_151% base_5d close_vs_pivot_-16.1%|{rs_top200,rs_1m_80,flag_stage_carryforward}
+(7 rows)
+== 4. WATCH-or-better rows per scan date since 10-05
+scan_date|stage|count
+2026-10-05|TIGHTENING|2
+2026-10-05|WATCH|11
+2026-10-06|TIGHTENING|1
+2026-10-06|WATCH|2
+2026-10-07|WATCH|1
+2026-10-08|COILED|1
+2026-10-08|WATCH|3
+2026-10-09|COILED|1
+2026-10-09|WATCH|6
+2026-10-12|WATCH|4
+2026-10-13|COILED|2
+2026-10-13|WATCH|2
+2026-10-14|COILED|2
+(13 rows)

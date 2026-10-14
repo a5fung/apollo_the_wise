@@ -1,0 +1,180 @@
+Pager usage is off.
+=== Q1-0 now ET
+       now_et        
+---------------------
+ 2026-10-14 18:23:26
+(1 row)
+
+=== Q1-1 lane/heartbeat/replay audit rows since 10-13 18:00 ET (full)
+  id   |      t_et      |            event_type             |                                                                                                        summary                                                                                                        |                                                                                      detail                                                                                       
+-------+----------------+-----------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 56373 | 10-13 18:15:00 | lowcap_lane_replay_recorded       | 19 lane signal(s) in window, 0 candidate(s) processed: 0 written (0 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: exit rule not read (no candidates)                   | 
+ 56374 | 10-13 18:15:00 | lowcap_paper_lane_replay_recorded | 2 lane signal(s) in window, 1 candidate(s) processed: 1 written (0 settled, 0 no_trade, 1 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: magna53_depth_exit[paper] on since 2026-10-13 — depth | 
+ 56375 | 10-13 18:15:00 | lowcap_paper_lane_heartbeat       | 2026-10-13 ran: 218 screened by the live scan, 1 turned away only by the $500M floor, 1 graded by the lane, 0 HIGH, 0 paper order(s)                                                                                  | {"date": "2026-10-13", "verdict": "ran", "screened": 218, "cap_only_eligible": 1, "reached_lane": 1, "graded": 1, "high": 0, "ordered": 0, "missing": [], "lane_enabled": true}
+ 56934 | 10-14 18:15:00 | lowcap_lane_replay_recorded       | 19 lane signal(s) in window, 0 candidate(s) processed: 0 written (0 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: exit rule not read (no candidates)                   | 
+ 56935 | 10-14 18:15:00 | lowcap_paper_lane_replay_recorded | 2 lane signal(s) in window, 0 candidate(s) processed: 0 written (0 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: exit rule not read (no candidates)                    | 
+ 56936 | 10-14 18:15:00 | lowcap_paper_lane_heartbeat       | 2026-10-14 quiet: 205 screened by the live scan, 0 turned away only by the $500M floor, 0 graded by the lane, 0 HIGH, 0 paper order(s)                                                                                | {"date": "2026-10-14", "verdict": "quiet", "screened": 205, "cap_only_eligible": 0, "reached_lane": 0, "graded": 0, "high": 0, "ordered": 0, "missing": [], "lane_enabled": true}
+(6 rows)
+
+=== Q1-1b every heartbeat row ever (full)
+  id   |        t_et         |                                                                summary                                                                 |                                                                                      detail                                                                                       
+-------+---------------------+----------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 55862 | 2026-10-12 18:15:00 | 2026-10-12 ran: 213 screened by the live scan, 1 turned away only by the $500M floor, 1 graded by the lane, 0 HIGH, 0 paper order(s)   | {"date": "2026-10-12", "verdict": "ran", "screened": 213, "cap_only_eligible": 1, "reached_lane": 1, "graded": 1, "high": 0, "ordered": 0, "missing": [], "lane_enabled": true}
+ 56375 | 2026-10-13 18:15:00 | 2026-10-13 ran: 218 screened by the live scan, 1 turned away only by the $500M floor, 1 graded by the lane, 0 HIGH, 0 paper order(s)   | {"date": "2026-10-13", "verdict": "ran", "screened": 218, "cap_only_eligible": 1, "reached_lane": 1, "graded": 1, "high": 0, "ordered": 0, "missing": [], "lane_enabled": true}
+ 56936 | 2026-10-14 18:15:00 | 2026-10-14 quiet: 205 screened by the live scan, 0 turned away only by the $500M floor, 0 graded by the lane, 0 HIGH, 0 paper order(s) | {"date": "2026-10-14", "verdict": "quiet", "screened": 205, "cap_only_eligible": 0, "reached_lane": 0, "graded": 0, "high": 0, "ordered": 0, "missing": [], "lane_enabled": true}
+(3 rows)
+
+=== Q1-1c heartbeat verdict tally
+ verdict | count 
+---------+-------
+ quiet   |     1
+ ran     |     2
+(2 rows)
+
+=== Q1-1d lane error rows ever (lowcap_paper_lane_error / lowcap_lane_error-ish)
+ id | t_et | event_type | left 
+----+------+------------+------
+(0 rows)
+
+=== Q1-1e lowcap-ish event types since 10-10 00:00 ET (counts)
+            event_type             | count |  first_et   |   last_et   
+-----------------------------------+-------+-------------+-------------
+ lowcap_lane_replay_recorded       |     3 | 10-12 18:15 | 10-14 18:15
+ lowcap_paper_lane_heartbeat       |     3 | 10-12 18:15 | 10-14 18:15
+ lowcap_paper_lane_replay_recorded |     3 | 10-12 18:15 | 10-14 18:15
+ lowcap_paper_lane_tick            |     5 | 10-12 09:50 | 10-13 07:20
+(4 rows)
+
+=== Q1-1f lane tick rows (all days)
+  id   |      t_et      |                                              summary                                               
+-------+----------------+----------------------------------------------------------------------------------------------------
+ 55441 | 10-12 09:50:13 | 09:50 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)
+ 55907 | 10-13 07:00:14 | 07:00 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)
+ 55911 | 10-13 07:10:01 | 07:10 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)
+ 55913 | 10-13 07:15:01 | 07:15 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)
+ 55916 | 10-13 07:20:01 | 07:20 ET: 1 cap-only name(s), 1 graded, 0 tiered, 0 on lane cooldown, 0 already scored, 0 error(s)
+(5 rows)
+
+=== Q1-2 lane table rows (all)
+ id | ticker | alert_date |   strategy_id    |       fg       |       lg       | score_tier | ep_score |   reject_stage    |       reject_reason        | gap | mcap_m | catalyst_quality | judge_tier | rubric_version | lane_rule_version 
+----+--------+------------+------------------+----------------+----------------+------------+----------+-------------------+----------------------------+-----+--------+------------------+------------+----------------+-------------------
+  1 | ALLT   | 2026-10-12 | magna53_smallcap | 10-12 09:50:00 | 10-12 09:50:00 |            |          | post_grade_filter | routine catalyst, gap 9.1% | 9.1 |    451 | routine          |            |                | paper_v1
+  2 | GOSS   | 2026-10-13 | magna53_smallcap | 10-13 07:00:01 | 10-13 07:20:00 |            |          | post_grade_filter | routine catalyst, gap 9.8% | 9.8 |     57 | routine          |            |                | paper_v1
+(2 rows)
+
+=== Q1-3 mi_ep_alerts rows matching a lane ticker+date (must be 0)
+ id | ticker | alert_date | score_tier 
+----+--------+------------+------------
+(0 rows)
+
+=== Q1-3b mi_ep_alerts by date/tier 10-05..today (live-path baseline)
+ alert_date | score_tier | count 
+------------+------------+-------
+ 2026-10-05 | MODERATE   |     3
+ 2026-10-06 | HIGH       |     3
+ 2026-10-07 | HIGH       |     1
+ 2026-10-08 | HIGH       |     1
+ 2026-10-09 | HIGH       |     1
+ 2026-10-09 | MODERATE   |     1
+ 2026-10-14 | MODERATE   |     1
+(7 rows)
+
+=== Q1-3c mi_ep_alerts: rows dated or created since 10-10
+  id   | ticker | alert_date | score_tier |      c_et      
+-------+--------+------------+------------+----------------
+ 12507 | BSP    | 2026-10-14 | MODERATE   | 10-14 09:40:06
+(1 row)
+
+=== Q1-4 trades: magna53_smallcap ever, by account
+ account_mode | signal_type | status | count 
+--------------+-------------+--------+-------
+(0 rows)
+
+=== Q1-4b all trades created since 10-12 ET by account/signal/status
+ account_mode | signal_type | status | count 
+--------------+-------------+--------+-------
+(0 rows)
+
+=== Q1-4c trades whose ticker is a lane ticker, or newest 6 trades
+ id  | ticker | signal_type | account_mode | status  | alert_date |    c_et     
+-----+--------+-------------+--------------+---------+------------+-------------
+ 419 | HUM    | magna53     | live         | closed  | 2026-10-09 | 10-09 09:31
+ 415 | WOLF   | magna53     | live         | skipped | 2026-10-08 | 10-08 09:31
+ 414 | PENG   | magna53     | live         | filled  | 2026-10-07 | 10-07 09:35
+ 413 | TLN    | magna53     | live         | skipped | 2026-10-06 | 10-06 09:55
+ 412 | VST    | magna53     | live         | skipped | 2026-10-06 | 10-06 09:55
+ 409 | CEG    | magna53     | live         | closed  | 2026-10-06 | 10-06 09:31
+(6 rows)
+
+=== Q1-5 heartbeat screened/cap-only SQL verbatim, 10-14 and 10-13
+     d      | screened | cap_only 
+------------+----------+----------
+ 2026-10-14 |      205 | {}
+ 2026-10-13 |      218 | {GOSS}
+(2 rows)
+
+=== Q1-5b lane rows heartbeat SQL verbatim 10-14
+ ticker | score_tier | reject_stage 
+--------+------------+--------------
+(0 rows)
+
+=== Q1-5c scan log 10-14: rows, ticks, first/last row ET, rows created after 18:15 ET
+ nrows | ticks | first_et | last_et  | after_hb 
+-------+-------+----------+----------+----------
+  2295 |    38 | 07:00:02 | 09:55:08 |        0
+(1 row)
+
+=== Q1-5d sub-500M, $5+, gap>=9 names on scan log 10-14 with stage
+ ticker | reject_stage | fr | mcap_m | gap | pc | t_et 
+--------+--------------+----+--------+-----+----+------
+(0 rows)
+
+=== Q1-5e ALL mcap_too_small-stamped names 10-14 (any price/gap)
+ ticker | mcap_m | rows | min_gap | max_gap | pc 
+--------+--------+------+---------+---------+----
+(0 rows)
+
+=== Q1-6 paper lane replays (count + all rows, key cols)
+ count 
+-------
+     2
+(1 row)
+
+ ticker | session_date | signal_id |    tick_et     |   entry_status    |       entry_reason        |   outcome   |       final_reason        | realized_r |                admission_era                 | replay_exit_era |                                                                                                                                     replay_exit_rules                                                                                                                                      | replay_asof_date | settle_version |     rec_et     |     upd_et     
+--------+--------------+-----------+----------------+-------------------+---------------------------+-------------+---------------------------+------------+----------------------------------------------+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+----------------+----------------+----------------
+ ALLT   | 2026-10-12   |         1 | 10-12 09:50:00 | window_out_of_orb |                           | no_trade    | window_out_of_orb         |            | adm_2026-08-31_extension_cap_50_slot_rank_rs | era_d           | {"stop_mode": "entry_minus_2r", "breakeven_at_r": 3.0, "ladder_partial": false, "score_separation": true, "intraday_partial_r": 8.0, "trail_prior_closes": true, "breakeven_at_partial": true}                                                                                             | 2026-10-12       | lcl_v1         | 10-12 18:15:00 | 10-12 18:15:00
+ GOSS   | 2026-10-13   |         2 | 10-13 07:00:01 | abstain           | entry_window_gaps:1_of_29 | unscoreable | entry_window_gaps:1_of_29 |            | adm_2026-08-31_extension_cap_50_slot_rank_rs | era_e           | {"exit_rule": "depth", "stop_mode": "entry_minus_2r", "stop_rest": "one_adr20_under_line", "breakeven_at_r": 3.0, "ladder_partial": false, "close_below_sale": "next_open", "score_separation": true, "intraday_partial_r": 8.0, "trail_prior_closes": true, "breakeven_at_partial": true} | 2026-10-13       | lcl_v1         | 10-13 18:15:00 | 10-13 18:15:00
+(2 rows)
+
+=== Q1-6b lowcap_lane_replay job runs since 10-09 ET
+   id   |       job_id       |     st_et      |  fin_et  |  dur  | status  | rows_written | err 
+--------+--------------------+----------------+----------+-------+---------+--------------+-----
+ 224952 | lowcap_lane_replay | 10-09 18:15:00 | 18:15:00 | 0.040 | success |              | 
+ 227403 | lowcap_lane_replay | 10-12 18:15:00 | 18:15:00 | 0.057 | success |              | 
+ 229691 | lowcap_lane_replay | 10-13 18:15:00 | 18:15:00 | 0.113 | success |              | 
+ 231979 | lowcap_lane_replay | 10-14 18:15:00 | 18:15:00 | 0.063 | success |              | 
+(4 rows)
+
+=== Q1-7 prior sessions baseline: screened / cap-only per scan date
+ scan_date  | screened |  cap_only   
+------------+----------+-------------
+ 2026-10-05 |      309 | {ARTV,INTT}
+ 2026-10-06 |      337 | {}
+ 2026-10-07 |      190 | {LWAY}
+ 2026-10-08 |      193 | {NAKA,RNA}
+ 2026-10-09 |      272 | {}
+ 2026-10-12 |      213 | {ALLT}
+ 2026-10-13 |      218 | {GOSS}
+ 2026-10-14 |      205 | {}
+(8 rows)
+
+=== Q1-8 strategy row + stop-switch row
+   strategy_id    | phase | enabled | live_real_enabled | position_size_multiplier | max_concurrent_positions | profit_trigger_r | breakeven_arm_r |          created_at           |          updated_at           
+------------------+-------+---------+-------------------+--------------------------+--------------------------+------------------+-----------------+-------------------------------+-------------------------------
+ magna53_smallcap | paper | t       | f                 |                      1.0 |                        5 |              8.0 |             3.0 | 2026-10-10 18:51:20.322432+00 | 2026-10-10 18:51:20.322432+00
+(1 row)
+
+ safeguard | account_mode | state | last_transition_at | last_evaluation_at | last_drawdown_pct | last_peak | last_peak_date | updated_at 
+-----------+--------------+-------+--------------------+--------------------+-------------------+-----------+----------------+------------
+(0 rows)
+

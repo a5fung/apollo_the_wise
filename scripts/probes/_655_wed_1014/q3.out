@@ -1,0 +1,80 @@
+Output format is unaligned.
+Field separator is "	".
+== 0 now
+now_et	tz
+2026-10-14 18:23:18.212427	Etc/UTC
+(1 row)
+== 1 correctness rows per ET night since 09-28 (dup or rehearsal check)
+d	n	id0	id1	g3
+2026-09-28	2	48496	49035	G3 104/118 (88.1% | G3 105/117 (89.7%
+2026-09-29	1	49602	49602	G3 109/122 (89.3%
+2026-09-30	1	50196	50196	G3 117/129 (90.7%
+2026-10-01	1	50744	50744	G3 117/131 (89.3%
+2026-10-02	1	51258	51258	G3 117/133 (88.0%
+2026-10-05	1	52551	52551	G3 100/116 (86.2%
+2026-10-06	1	53217	53217	G3 105/120 (87.5%
+2026-10-07	1	53871	53871	G3 106/124 (85.5%
+2026-10-08	1	54474	54474	G3 103/122 (84.4%
+2026-10-09	1	55101	55101	G3 106/123 (86.2%
+2026-10-12	1	55813	55813	G3 100/109 (91.7%
+2026-10-13	1	56328	56328	G3 99/107 (92.5%
+2026-10-14	1	56889	56889	G3 101/109 (92.7%
+(13 rows)
+== 2 tonight G3 recompute from per-theme array
+id	n_themes	n_pass	n_fail	n_null	pct
+56889	110	101	8	1	91.8
+(1 row)
+== 2b top-level detail keys of tonight row
+id	string_agg
+56889	n_board,g1,g2,g3,g4,judgeable_share_pct,era_breakdown,latency,all_signed_bars_pass
+(1 row)
+== 3 board population: G3 theme names vs reconstructed active board as of 10-14
+side	name	sz	d
+board_count		110	
+board_not_dated_1014		0	
+(2 rows)
+== 4 mi_themes rows dated 10-14: write-time spread
+source	retired	n	first_w	last_w
+live	f	100	2026-10-14 17:10:04.489255	2026-10-14 17:10:04.54815
+live	t	13	2026-10-14 17:10:04.548807	2026-10-14 17:10:04.556915
+shadow_promoted	f	10	2026-10-14 17:11:20.132783	2026-10-14 17:11:22.232535
+(3 rows)
+== 4b any name with >1 row dated 10-14
+name	count
+(0 rows)
+== 5 kept_distinct rows tonight: recompute max corr and count >= bar
+id	src	passed_field	judged_field	n_members	max_corr	n_ge_bar	n_not_reject
+56805	Oil & Gas Mineral and Royalty Owners	0	3	3	0.3443	0	0
+56806	Natural Gas-Weighted Appalachian & Shale E&P Producers	0	9	9	0.1599	0	0
+56813	Oil & Gas Mineral and Royalty Owners	0	3	3	0.3443	0	0
+56814	Natural Gas-Weighted Appalachian & Shale E&P Producers	0	9	9	0.1599	0	0
+(4 rows)
+== 6 fold rows tonight: members count, moved in home roster on 10-14, old theme stage on 10-14
+id	th	n_mem	e	old_stage_1014	home_n_1014	moved_all_in_home	home_n_1013
+56826	Functional Energy Drink Brands	2	E-CONS	Retired	8	t	6
+56827	Off-Price & Specialty Retail Consumer Rotation	2	E-CONS	Retired	16	t	15
+(2 rows)
+== 7 engine run count tonight (one run, not a rerun)
+event_type	count	string_agg
+theme_auto_retired	1	56829
+theme_correctness_check	1	56889
+theme_engine_funnel	1	56767
+theme_load_state	1	56647
+theme_small_fold_ran	1	56828
+(5 rows)
+== 8 carried-over G3 fails: tonight vs last night (names failing both)
+k	name
+fail_both	Digital-First Beauty & Cosmetics Brands
+fail_both	International Telecom & Cross-Border Communications Services
+fail_both	Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)
+fail_last_night_only	Digital Advertising & Ad-Tech Monetization Platforms
+fail_last_night_only	Exchange, Options Trading & Alternative Consumer Credit Financials
+fail_last_night_only	Off-Price & Specialty Retail Consumer Rotation
+fail_last_night_only	Quick-Service Restaurant & Fitness Franchisors Consumer Rotation
+fail_last_night_only	Space Launch, Satellite Imagery & Lunar Infrastructure
+fail_tonight_only	Behavioral Health & Transplant/MSK Care Delivery Re-Rating
+fail_tonight_only	Capital Markets & Deal-Flow Re-Rating
+fail_tonight_only	Consumer Franchise Operators: Fitness & Quick-Service
+fail_tonight_only	Diagnostic Testing & Lab Equipment Re-Rating
+fail_tonight_only	Enterprise Information Management & Infrastructure Engineering Software
+(13 rows)

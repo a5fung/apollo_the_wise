@@ -1,0 +1,20 @@
+chk|id|ticker|alert_date|source|score_tier|ep_score|gap|rvol|catalyst|created_et|detected_et|fire_status
+V1_bsp_alert|12507|BSP|2026-10-14|live|MODERATE|65|43.24|1.3|Fresh catalyst today: Benzinga reports Berkshire Hathaway is investing|2026-10-14 09:40:06.322534|2026-10-14 09:40:00.057842|
+chk|alert_id|ticker|alert_date|account_mode|trade_exists|trade_filled|qualifies_for_rank_eod|composite_rank_eod|pool_size_eod|composite_rank_asof0945|pool_size_asof0945|day_bar_source|computed_et
+V1_bsp_shadow|12507|BSP|2026-10-14||f|f|t|0.5|1|0.5|1|daily|2026-10-14 17:53:00.082698
+chk|shadow_rows|id_resolves|id_live_same_key|sessions|first_d|last_d
+V2_alert_id_join|50|50|50|24|2026-08-17|2026-10-14
+chk|source|count|count
+V2_sources_oos|live|50|24
+chk|job_id|status|sched_et|start_et|fin_et|duration_s|err
+V3_job|alert_rank_shadow|success||2026-10-14 17:53:00.001329|2026-10-14 17:53:00.087629|0.086362682282924652099609375|
+psql:/tmp/crankv_opus_rederive_1014.sql:39: ERROR:  column reference "ticker" is ambiguous
+LINE 14: SELECT 'V4_row' AS chk, ticker, alert_date, cal_sess, miss6,...
+                                 ^
+chk|rk|cell|matured5|hit8x_5d|broke_low|matured5_pool2plus|matured20|hit8x_20d
+V4_cells|0945|top|5|0|3|5|2|0
+V4_cells|0945|rest|41|2|26|32|28|1
+V4_cells|EOD|top|6|0|4|6|3|0
+V4_cells|EOD|rest|40|2|25|31|27|1
+chk|sessions|single_alert|multi_alert
+V5_pools|24|11|13

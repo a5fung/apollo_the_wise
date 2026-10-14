@@ -1,0 +1,2 @@
+# #655 Wed 10-14: READ-ONLY docker state on the host (no writes).
+ssh apollo@87.99.134.162 'date -u; echo "== containers"; docker ps --format "{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.CreatedAt}}"; echo "== inspect start + image id"; for c in $(docker ps --format "{{.Names}}"); do docker inspect -f "{{.Name}} started={{.State.StartedAt}} image={{.Image}} cfgimage={{.Config.Image}}" $c; done; echo "== image created times"; docker images --format "{{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.CreatedAt}}" | head -12'

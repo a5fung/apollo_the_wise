@@ -1,0 +1,12 @@
+SET
+SET
+ticker|last_stored_stage|last_stored_date|sessions_ago|stage_1014|held_from_stage|universe_sources|organic|carried
+GRAL|COILED|2026-10-13|1|COILED|WATCH|{rs_top200,rs_1m_80,flag_stage_carryforward}|t|t
+HTFL|WATCH|2026-10-13|1|INVALIDATED||{rs_top200,rs_1m_80,flag_stage_carryforward}|t|t
+IOVA|COILED|2026-10-13|1|COILED||{rs_top200,rs_1m_80,flag_stage_carryforward}|t|t
+KOD|WATCH|2026-10-13|1|INVALIDATED||{rs_top200,rs_1m_80,flag_stage_carryforward}|t|t
+MRNA|WATCH|2026-10-09|3|unqualified||{rs_top200,rs_1m_80,flag_stage_carryforward}|t|t
+OMER|WATCH|2026-10-09|3|INVALIDATED||{flag_stage_carryforward}|f|t
+QMCO|WATCH|2026-10-09|3|INVALIDATED||{flag_stage_carryforward}|f|t
+VICR|WATCH|2026-10-09|3|INVALIDATED||{flag_stage_carryforward}|f|t
+(8 rows)

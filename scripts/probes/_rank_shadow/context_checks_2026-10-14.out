@@ -1,0 +1,37 @@
+chk|job_id|status|rows_written|fin_et|err
+1_job_runs|alert_rank_shadow|success||2026-10-14 17:53:00.087629|
+1_job_runs|alert_rank_shadow|success||2026-10-13 17:53:00.03124|
+1_job_runs|alert_rank_shadow|success||2026-10-12 17:53:00.035592|
+1_job_runs|alert_rank_shadow|success||2026-10-09 17:53:00.096395|
+1_job_runs|alert_rank_shadow|success||2026-10-08 17:53:00.078399|
+chk|n_sessions|n_rows|latest
+2_predicate_n_sessions|24|50|2026-10-14
+chk|ticker|alert_date|score_tier|trade_filled|composite_rank_eod|pool_size_eod
+3_shadow_rows_since_1009|AAOI|2026-10-09|MODERATE|f|0.4166666666666667|2
+3_shadow_rows_since_1009|HUM|2026-10-09|HIGH|t|0.5833333333333334|2
+3_shadow_rows_since_1009|BSP|2026-10-14|MODERATE|f|0.5|1
+chk|latest_close|rows_1014
+4_daily_closes_latest|2026-10-14|12523
+chk|trade_date|count
+5_closes_per_day|2026-10-07|12456
+5_closes_per_day|2026-10-08|12431
+5_closes_per_day|2026-10-09|12386
+5_closes_per_day|2026-10-12|12455
+5_closes_per_day|2026-10-13|12451
+5_closes_per_day|2026-10-14|12523
+chk|alert_date|source|n_alerts|n_high
+6_ep_alerts_by_date_source|2026-10-09|live|2|1
+6_ep_alerts_by_date_source|2026-10-14|live|1|0
+chk|event_type|summary|at_et
+7_audit_rank|alert_rank_shadow_recorded|1 row(s) written/updated across 1 date(s) needing processing (0 error(s))|2026-10-14 17:53:00.085691
+7_audit_rank|alert_rank_shadow_recorded|0 row(s) written/updated across 0 date(s) needing processing (0 error(s))|2026-10-13 17:53:00.029967
+7_audit_rank|alert_rank_shadow_recorded|0 row(s) written/updated across 0 date(s) needing processing (0 error(s))|2026-10-12 17:53:00.034033
+7_audit_rank|alert_rank_shadow_recorded|2 row(s) written/updated across 1 date(s) needing processing (0 error(s))|2026-10-09 17:53:00.094974
+chk|trade_date|open_price|high_price|low_price
+8_peng_sessions|2026-10-07|67.33|76.0999|65.7
+8_peng_sessions|2026-10-08|72.53|75.63|70.0701
+8_peng_sessions|2026-10-09|77.61|78.75|70.75
+8_peng_sessions|2026-10-12|75.7|80.0999|72.83
+8_peng_sessions|2026-10-13|76.33|80.47|75.47
+8_peng_sessions|2026-10-14|76.63|77.41|67.21
+chk|d|job_id|status|count|last_fin_et

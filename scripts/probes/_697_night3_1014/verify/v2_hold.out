@@ -1,0 +1,34 @@
+SET
+SET
+== V2a. per night: rows, actual holds, NEW-rule expected holds, mismatches vs NEW rule, OLD-rule holds, rows where OLD != NEW
+scan_date|rows|actual_holds|new_rule_holds|mismatches_vs_new|old_rule_holds|old_ne_new
+2026-10-12|507|0|0|0|1|1
+2026-10-13|493|0|0|0|0|0
+2026-10-14|495|1|1|0|1|0
+(3 rows)
+== V2b. every row where a hold is expected under EITHER rule, or happened
+scan_date|ticker|p_date|p_stage|p_held|raw|stage|held_from_stage|new_holds|old_holds
+2026-10-12|KOD|2026-10-09|COILED|WATCH|WATCH|WATCH||f|t
+2026-10-14|GRAL|2026-10-13|COILED||WATCH|COILED|WATCH|t|t
+(2 rows)
+== V2c. 10-14 rows whose prior row was WATCH-or-better (the hold-eligible population), all stages
+ticker|p_date|p_stage|p_held|raw|stage|held_from_stage
+GRAL|2026-10-13|COILED||WATCH|COILED|WATCH
+HTFL|2026-10-13|WATCH||INVALIDATED|INVALIDATED|
+IOVA|2026-10-13|COILED||COILED|COILED|
+KOD|2026-10-13|WATCH||INVALIDATED|INVALIDATED|
+(4 rows)
+== V2d. GRAL rows 10-12..10-14, full row as json
+scan_date|row_to_json
+2026-10-12|{"id":66866,"ticker":"GRAL","scan_date":"2026-10-12","pivot_high_date":"2026-10-06","pivot_high_price":166.475,"base_age":3,"base_high":142.57,"base_low":127.46,"runup_pct":1.5090089207531472,"runup_start_date":"2026-08-14","range_contraction_ratio":1,"vol_contraction_ratio":1,"last_body_pct":0.0032006894467958573,"prev_body_pct":0.5665220320829805,"atr_14":12.497307428571428,"sma_10":138.733,"sma_20":118.79,"breakout_close":null,"breakout_volume_ratio":null,"rs_rank":5,"rs_composite":99.8,"sector":"Healthcare","stage":"WATCH","reason":"runup_151% base_3d close_vs_pivot_-17.5%","score":1,"held_from_stage":null,"created_at":"2026-10-12T21:25:02.98924+00:00","fresh_tight_fires":false,"fresh_2bar_tr_pct":null,"atr14_pct":null,"rmv_5d":20.680508152166293,"rmv_15d":13.26286659268929,"universe_sources":["rs_top200","rs_1m_80"],"flagpole_ratio":2.509008920753147,"flag_depth_pct":0.23435951344045658,"failed_at":null,"low_after_breakout":null,"undercut_after_breakout":null,"depth_on_low":0.7656404865595434,"depth_on_close":0.7965760624718428,"sma20_margin":0.15641047226197488,"ma_stack_margin":0.16788450206246314,"triggered_from":null}
+2026-10-13|{"id":67377,"ticker":"GRAL","scan_date":"2026-10-13","pivot_high_date":"2026-10-06","pivot_high_price":166.475,"base_age":4,"base_high":142.57,"base_low":127.46,"runup_pct":1.5090089207531472,"runup_start_date":"2026-08-14","range_contraction_ratio":1,"vol_contraction_ratio":1,"last_body_pct":0.18256061035343385,"prev_body_pct":0.0032311612451928896,"atr_14":12.379450285714285,"sma_10":139.11100000000002,"sma_20":122.03099999999999,"breakout_close":null,"breakout_volume_ratio":null,"rs_rank":5,"rs_composite":99.8,"sector":"Healthcare","stage":"COILED","reason":"fresh_2bar 4.9%/atr 8.8% bodies_0.18/0.00","score":2,"held_from_stage":null,"created_at":"2026-10-13T21:25:02.713728+00:00","fresh_tight_fires":true,"fresh_2bar_tr_pct":4.937655860349112,"atr14_pct":8.82041345615553,"rmv_5d":53.19656298455564,"rmv_15d":20.51136580741277,"universe_sources":["rs_top200","rs_1m_80","flag_stage_carryforward"],"flagpole_ratio":2.509008920753147,"flag_depth_pct":0.23435951344045658,"failed_at":null,"low_after_breakout":null,"undercut_after_breakout":null,"depth_on_low":0.7656404865595434,"depth_on_close":0.7965760624718428,"sma20_margin":0.15011759307061323,"ma_stack_margin":0.13996443526644892,"triggered_from":null}
+2026-10-14|{"id":67869,"ticker":"GRAL","scan_date":"2026-10-14","pivot_high_date":"2026-10-06","pivot_high_price":166.475,"base_age":5,"base_high":142.57,"base_low":127.46,"runup_pct":1.5090089207531472,"runup_start_date":"2026-08-14","range_contraction_ratio":1,"vol_contraction_ratio":1,"last_body_pct":0.008146781519561792,"prev_body_pct":0.2045747359356542,"atr_14":11.047307428571427,"sma_10":139.06900000000002,"sma_20":125.22149999999999,"breakout_close":null,"breakout_volume_ratio":null,"rs_rank":5,"rs_composite":99.8,"sector":"Healthcare","stage":"COILED","reason":"runup_151% base_5d close_vs_pivot_-16.1%","score":2,"held_from_stage":"WATCH","created_at":"2026-10-14T21:25:03.172278+00:00","fresh_tight_fires":false,"fresh_2bar_tr_pct":4.937655860349112,"atr14_pct":7.90787933326516,"rmv_5d":44.554793128897366,"rmv_15d":12.83055226439168,"universe_sources":["rs_top200","rs_1m_80","flag_stage_carryforward"],"flagpole_ratio":2.509008920753147,"flag_depth_pct":0.23435951344045658,"failed_at":null,"low_after_breakout":null,"undercut_after_breakout":null,"depth_on_low":0.7656404865595434,"depth_on_close":0.7965760624718428,"sma20_margin":0.11562311583873375,"ma_stack_margin":0.11058404507213239,"triggered_from":null}
+(3 rows)
+== V2e. flag_stage_flip_held audit rows per ET day since 10-09 vs holds written that scan_date
+== V2f. pre-registered for 10-15: tickers whose latest row in [10-10, 10-15) is a hold (= holds_carried the 10-15 scan should log)
+psql:/tmp/c697v_v2_hold.sql:86: ERROR:  subquery uses ungrouped column "a.created_at" from outer query
+LINE 2: ...*) FROM mi_flag_candidates c WHERE c.scan_date = (a.created_...
+                                                             ^
+ticker|scan_date|stage|held_from_stage
+GRAL|2026-10-14|COILED|WATCH
+(1 row)

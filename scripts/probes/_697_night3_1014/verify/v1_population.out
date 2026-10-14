@@ -1,0 +1,27 @@
+SET
+SET
+== V1a. mi_flag_candidates columns (is there an updated_at that a rerun would bump?)
+column_name
+created_at
+held_from_stage
+triggered_from
+universe_sources
+(4 rows)
+== V1b. per scan_date: rows, distinct tickers, write window ET, rows written outside 17:20-17:40 ET of that date
+scan_date|rows|tickers|first_et|last_et|outside_window|holds|raw_triggered|stamped|watch_plus
+2026-10-09|492|492|10-09 17:25:02|10-09 17:25:03|0|1|0|0|7
+2026-10-12|507|507|10-12 17:25:02|10-12 17:25:03|0|0|0|0|4
+2026-10-13|493|493|10-13 17:25:02|10-13 17:25:03|0|0|0|0|4
+2026-10-14|495|495|10-14 17:25:03|10-14 17:25:03|0|1|0|0|2
+(4 rows)
+== V1c. stage mix 10-14 (stored stage; raw = coalesce(held_from_stage, stage))
+stage|raw|count
+COILED|COILED|1
+COILED|WATCH|1
+INVALIDATED|INVALIDATED|11
+unqualified|unqualified|482
+(4 rows)
+== V1d. every 10-14 row whose universe_sources is empty/NULL (would mean an unexplained admission)
+count
+0
+(1 row)

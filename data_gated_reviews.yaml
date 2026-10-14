@@ -12929,6 +12929,20 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_10_14: >-
+      RAN 2026-10-14 after the 17:53 ET rank job (first run on the noon-deployed images; success, 0 errors;
+      scripts/probes/_rank_shadow/verify_rank_shadow_2026-10-14.out, cells_2026-10-14.out; Opus re-derivation in
+      verify/ agrees on every cell): n = 24 sessions, 50 rows, 46 with a matured 5-day outcome. THIN (24 of 25),
+      directional only. One new session, BSP 10-14 (live alert id 12507, Berkshire investment catalyst): a pool of
+      ONE, outside the rule's reach. PENG (10-07, pool of one, bought) MATURED: 3.8x ADR, EP-day low held; in the
+      rest. Cells (EOD): top quartile 6 matured / 0 at 8x / 4 broke low (unchanged); the rest 40 / 2 (MRNA 9.1x,
+      KOD 12.4x) / 25. 09:45: top 5/0/3, rest 41/2/26. Medians second: best 5-day high 1.7x ADR in the EOD top
+      cell vs 1.9x in the rest (09:45: 1.9x vs 1.8x) - no separation. Conclusion UNCHANGED: thin, leaning against
+      the rule on ONE miss (MRNA, ranked last of 4; KOD was a pool of one and never placeable). Chance: 31 of the
+      37 matured rows in pools of 2+ sit outside the top cell, so missing MRNA alone is ~5 in 6. CAUTION: only 13
+      of 24 sessions had 2+ alerts; the next alert session makes n = 25 and flips the label to decision-grade
+      while the matured top cell is still 6 rows / 0 winners - quote the matured top-cell count beside the label,
+      never the label alone. Next: WOLF matures 10-15, AAOI + HUM 10-16 (AAOI enters the 09:45 top cell), BSP 10-21.
     resolution_2026_10_13: >-
       RAN 2026-10-13 after the 17:53 ET rank job (scripts/probes/_rank_shadow/verify_rank_shadow_2026-10-13.out;
       Opus re-derivation in scripts/probes/_rank_shadow/verify/): n = 23 sessions, 49 rows, 45 with a matured 5-day

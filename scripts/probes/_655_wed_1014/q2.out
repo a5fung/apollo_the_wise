@@ -1,0 +1,189 @@
+Output format is unaligned.
+Field separator is "	".
+== 1. full detail of tonight folds
+id	detail
+56826	{"theme": "Functional Energy Drink Brands", "home": "Non-Alcoholic Beverages & Energy Drinks", "e_code": "E-CONS", "members": ["CELH", "HELE"], "moved": ["CELH"], "already_in_home": [], "released": ["HELE"], "g3": {"cohesion": 0.18592371712889444, "c1_p95": 0.415399082968636, "pass_g3": false}, "home_pick": {"shared": 0, "industry_overlap": 0.5, "word_similarity": 0.090909, "home_members": 7}, "bar": 0.35, "verdicts": {"CELH": {"path": "tape", "corr": 0.3647, "basket_n": 7, "pass": true}, "HELE": {"path": "tape", "corr": 0.3202, "basket_n": 7, "pass": false}}}
+56827	{"theme": "Off-Price & Specialty Retail Consumer Rotation", "home": "U.S. Apparel & Fashion Recovery", "e_code": "E-CONS", "members": ["TJX", "BBWI"], "moved": ["BBWI"], "already_in_home": [], "released": ["TJX"], "g3": {"cohesion": 0.18282051022110757, "c1_p95": 0.3255848159902542, "pass_g3": false}, "home_pick": {"shared": 0, "industry_overlap": 0.5, "word_similarity": 0.033333, "home_members": 15}, "bar": 0.35, "verdicts": {"TJX": {"path": "tape", "corr": 0.2792, "basket_n": 15, "pass": false}, "BBWI": {"path": "tape", "corr": 0.4344, "basket_n": 15, "pass": true}}}
+(2 rows)
+== 2. Appalachian theme in mi_themes by date (stage, n, rs, source)
+theme_date	name	stage	n	rs_avg	source	tk
+2026-10-07	Natural Gas-Weighted Appalachian & Shale E&P Producers	Nascent	6	71.8	shadow_promoted	BKV,CRK,CNX,AR,EXE,EQT
+2026-10-08	Natural Gas-Weighted Appalachian & Shale E&P Producers	Retired			live	
+2026-10-09	Natural Gas-Weighted Appalachian & Shale E&P Producers	Nascent	6	72.58333333333333	shadow_promoted	BKV,CRK,CNX,AR,EXE,EQT
+2026-10-12	Natural Gas-Weighted Appalachian & Shale E&P Producers	Accelerating	8	76.3	live	EQT,AR,EXE,BKV,CRK,CNX,RRC,GPOR
+2026-10-13	Natural Gas-Weighted Appalachian & Shale E&P Producers	Accelerating	8	82.4	live	EQT,AR,RRC,GPOR,EXE,CNX,BKV,CRK
+2026-10-14	Natural Gas-Weighted Appalachian & Shale E&P Producers	Accelerating	9	76.7	live	AR,RRC,BKV,EQT,CNX,EXE,CRK,GPOR,DEC
+(6 rows)
+== 3. Oil Gas Mineral and Royalty Owners history
+theme_date	name	stage	n	rs_avg	source	tk
+2026-10-13	Oil & Gas Mineral and Royalty Owners	Nascent	3	83.1	live	KRP,VNOM,TPL
+2026-10-14	Oil & Gas Mineral and Royalty Owners	Nascent	3	83.8	live	KRP,TPL,VNOM
+(2 rows)
+== 4. all sector-cap events by night since 10-02
+d	event_type	n
+2026-10-02	theme_sector_cap_dropped	1
+2026-10-02	theme_sector_cap_not_absorbed	3
+2026-10-05	theme_sector_cap_not_absorbed	2
+2026-10-06	theme_sector_cap_not_absorbed	3
+2026-10-07	theme_sector_cap_not_absorbed	4
+2026-10-08	theme_sector_cap_not_absorbed	2
+2026-10-09	theme_sector_cap_absorbed	1
+2026-10-09	theme_sector_cap_dropped	1
+2026-10-09	theme_sector_cap_not_absorbed	2
+2026-10-12	theme_sector_cap_dropped	1
+2026-10-12	theme_sector_cap_kept_distinct	1
+2026-10-13	theme_sector_cap_kept_distinct	3
+2026-10-14	theme_sector_cap_kept_distinct	4
+(13 rows)
+== 6. tonight G3 detail: n, rate, fail_list
+id	nb	nj	p	r	fl
+56889	110	109	101	92.7	["Behavioral Health & Transplant/MSK Care Delivery Re-Rating", "Capital Markets & Deal-Flow Re-Rating", "Consumer Franchise Operators: Fitness & Quick-Service", "Diagnostic Testing & Lab Equipment Re-Rating", "Digital-First Beauty & Cosmetics Brands", "Enterprise Information Management & Infrastructure Engineering Software", "International Telecom & Cross-Border Communications Services", "Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)"]
+(1 row)
+== 6b. tonight G3 failing themes: stage, size, cohesion, p95
+name	stage	size	coh	p95
+Digital-First Beauty & Cosmetics Brands	Nascent	2	0.030	0.353
+International Telecom & Cross-Border Communications Services	Mainstream	2	0.151	0.442
+Behavioral Health & Transplant/MSK Care Delivery Re-Rating	Nascent	3	0.150	0.288
+Capital Markets & Deal-Flow Re-Rating	Nascent	3	0.097	0.200
+Consumer Franchise Operators: Fitness & Quick-Service	Nascent	3	0.138	0.259
+Diagnostic Testing & Lab Equipment Re-Rating	Nascent	3	0.086	0.294
+Enterprise Information Management & Infrastructure Engineering Software	Nascent	3	-0.003	0.281
+Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)	Mainstream	3	0.127	0.333
+(8 rows)
+== 6c. tonight G3 pass/fail by size bucket
+bucket	pass	n
+2-3	false	8
+2-3	true	26
+2-3		1
+4+	true	75
+(4 rows)
+== 6d. last night G3 by size bucket (10-13 row)
+bucket	pass	n
+2-3	false	7
+2-3	true	27
+4+	false	1
+4+	true	72
+(4 rows)
+== 7. every folded old theme (10-12 on): stage on 10-14 board
+fd	old_theme	home	old_theme_by_date
+2026-10-12	Alternative Asset Managers & Private Markets Platforms	Wealth Management & Retail Brokerage Platforms	2026-10-12:Retired:0
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	2026-10-12:Retired:0
+2026-10-12	Emerging Medical Device Innovators Breakout	Medical Device Mean-Reversion & Rotation Recovery	2026-10-12:Retired:0
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	2026-10-12:Retired:0
+2026-10-12	Functional Beverage & Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	2026-10-12:Retired:0
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	2026-10-12:Retired:0
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	2026-10-12:Nascent:3 2026-10-13:Retired:0 2026-10-14:Nascent:3
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	2026-10-12:Nascent:3 2026-10-13:Retired:0 2026-10-14:Nascent:3
+2026-10-14	Functional Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	2026-10-12:Nascent:3 2026-10-13:Fading:3 2026-10-14:Retired:0
+2026-10-14	Off-Price & Specialty Retail Consumer Rotation	U.S. Apparel & Fashion Recovery	2026-10-13:Nascent:3 2026-10-14:Retired:0
+(10 rows)
+== 8. FOLD-UNDONE CHECK: every moved/released member from every fold since 10-12: still in home on 10-14 board? where now?
+fd	old_theme	home	kind	tk	still_in_home_1014	now_in
+2026-10-12	Alternative Asset Managers & Private Markets Platforms	Wealth Management & Retail Brokerage Platforms	moved	PAX	t	Capital Markets & Deal-Flow Re-Rating [Nascent,3]; Wealth Management & Retail Brokerage Platforms [Mainstream,16]
+2026-10-12	Alternative Asset Managers & Private Markets Platforms	Wealth Management & Retail Brokerage Platforms	released	PS	f	
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	moved	DXCM	t	Medical Device Mean-Reversion & Rotation Recovery [Mainstream,18]
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	moved	MMED	t	Medical Device Mean-Reversion & Rotation Recovery [Mainstream,18]
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	released	BBNX	f	
+2026-10-12	Emerging Medical Device Innovators Breakout	Medical Device Mean-Reversion & Rotation Recovery	moved	ATEC	f	Orthopedic & Spinal Surgery Devices [Nascent,4]
+2026-10-12	Emerging Medical Device Innovators Breakout	Medical Device Mean-Reversion & Rotation Recovery	released	ITGR	f	
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	moved	BOX	f	
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	moved	DBX	f	
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	released	QMCO	f	
+2026-10-12	Functional Beverage & Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	moved	COCO	t	Non-Alcoholic Beverages & Energy Drinks [Mainstream,8]
+2026-10-12	Functional Beverage & Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	released	CELH	t	Non-Alcoholic Beverages & Energy Drinks [Mainstream,8]
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	moved	CNMD	f	Orthopedic & Spinal Surgery Devices [Nascent,4]
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	moved	SIBN	f	Orthopedic & Spinal Surgery Devices [Nascent,4]
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	moved	MDLN	t	Medical Device Mean-Reversion & Rotation Recovery [Mainstream,18]; Diagnostic Testing & Lab Equipment Re-Rating [Nascent,3]
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	moved	OMCL	f	Diagnostic Testing & Lab Equipment Re-Rating [Nascent,3]
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	released	QDEL	f	Diagnostic Testing & Lab Equipment Re-Rating [Nascent,3]
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	moved	BSY	f	Enterprise Information Management & Infrastructure Engineering Software [Nascent,3]
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	moved	OTEX	f	Enterprise Information Management & Infrastructure Engineering Software [Nascent,3]
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	released	P	f	Enterprise Information Management & Infrastructure Engineering Software [Nascent,3]
+2026-10-14	Functional Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	moved	CELH	t	Non-Alcoholic Beverages & Energy Drinks [Mainstream,8]
+2026-10-14	Functional Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	released	HELE	f	
+2026-10-14	Off-Price & Specialty Retail Consumer Rotation	U.S. Apparel & Fashion Recovery	moved	BBWI	t	U.S. Apparel & Fashion Recovery [Mainstream,16]
+2026-10-14	Off-Price & Specialty Retail Consumer Rotation	U.S. Apparel & Fashion Recovery	released	TJX	f	
+(24 rows)
+== 8b. RE-MINT CHECK: active 10-14 themes (not the home) sharing >=2 members with a previously folded theme
+fd	old_theme	home	new_name	stage	source	n	overlap	ov
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	Orthopedic & Spinal Surgery Devices	Nascent	live	4	2	CNMD,SIBN
+(1 row)
+== 8c. old folded theme names that are ACTIVE (not Retired) on 10-14
+name	stage	source	n	tk
+Diagnostic Testing & Lab Equipment Re-Rating	Nascent	shadow_promoted	3	QDEL,OMCL,MDLN
+Enterprise Information Management & Infrastructure Engineering Software	Nascent	shadow_promoted	3	OTEX,BSY,P
+(2 rows)
+== 9. homes tonight: roster size 10-13 vs 10-14
+name	theme_date	stage	n	tk
+Cloud Contact Center & CCaaS Communication Platforms	2026-10-13	Mainstream	6	NICE,RNG,BOX,FIVN,TWLO,DBX
+Cloud Contact Center & CCaaS Communication Platforms	2026-10-14	Nascent	4	TWLO,FIVN,NICE,RNG
+Enterprise HR & Workforce Management SaaS	2026-10-13	Nascent	8	PAYC,ALIT,TNET,WDAY,ADP,PCTY,BSY,OTEX
+Enterprise HR & Workforce Management SaaS	2026-10-14	Mainstream	6	WDAY,TNET,PAYC,ALIT,PCTY,ADP
+Medical Device Mean-Reversion & Rotation Recovery	2026-10-13	Mainstream	20	LIVN,MMED,MDT,EW,INSP,DXCM,ATRC,HAE,BAX,BDX,ICUI,MMSI,ISRG,GEHC,ABT,RMD,GKOS,TMDX,OMCL,MDLN
+Medical Device Mean-Reversion & Rotation Recovery	2026-10-14	Mainstream	18	BAX,BDX,MMED,EW,MDLN,LIVN,GKOS,RMD,DXCM,ATRC,MDT,INSP,HAE,ISRG,MMSI,ABT,GEHC,ICUI
+Non-Alcoholic Beverages & Energy Drinks	2026-10-13	Mainstream	6	CCEP,KO,KOF,KDP,COCO,COKE
+Non-Alcoholic Beverages & Energy Drinks	2026-10-14	Mainstream	8	CCEP,KOF,KDP,KO,COKE,COCO,FIZZ,CELH
+U.S. Apparel & Fashion Recovery	2026-10-13	Mainstream	15	SHOO,GAP,RL,WWW,BKE,URBN,AEO,VSXY,PVH,ROST,ANF,KSS,FIGS,M,DDS
+U.S. Apparel & Fashion Recovery	2026-10-14	Mainstream	16	PVH,ANF,AEO,FIGS,SHOO,KSS,WWW,VSXY,URBN,BKE,ROST,DDS,GAP,M,RL,BBWI
+Wealth Management & Retail Brokerage Platforms	2026-10-13	Mainstream	15	VCTR,HOOD,AAMI,WT,XP,PAX,SEIC,BLK,IBKR,BEN,OPY,FUTU,SCHW,AMG,IVZ
+Wealth Management & Retail Brokerage Platforms	2026-10-14	Mainstream	16	BEN,OPY,SCHW,AAMI,IVZ,AMG,FUTU,PAX,BLK,HOOD,IBKR,WT,SEIC,VCTR,XP,LPLA
+(12 rows)
+== 10. G3-failing themes tonight on the 10-14 board: size, source, written-at, 10-13 presence
+name	stage	n	tk	source	written	on_1013	on_1012
+Digital-First Beauty & Cosmetics Brands	Nascent	2	ELF,ODD	live	17:10:04	Nascent:2	Nascent:2
+International Telecom & Cross-Border Communications Services	Mainstream	2	VEON,IDT	live	17:10:04	Nascent:2	Nascent:2
+Behavioral Health & Transplant/MSK Care Delivery Re-Rating	Nascent	3	ACHC,HNGE,CDNA	live	17:10:04		
+Capital Markets & Deal-Flow Re-Rating	Nascent	3	PWP,PAX,CBOE	shadow_promoted	17:11:20	Retired:0	Nascent:3
+Consumer Franchise Operators: Fitness & Quick-Service	Nascent	3	PLNT,YUM,VVV	shadow_promoted	17:11:20		
+Diagnostic Testing & Lab Equipment Re-Rating	Nascent	3	QDEL,OMCL,MDLN	shadow_promoted	17:11:20	Retired:0	Nascent:3
+Enterprise Information Management & Infrastructure Engineering Software	Nascent	3	OTEX,BSY,P	shadow_promoted	17:11:20	Retired:0	Nascent:3
+Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)	Mainstream	3	UTHR,KOD,MANE	live	17:10:05	Mainstream:3	Mainstream:3
+(8 rows)
+== 11. tonight births/retire/absorb summaries
+id	t	event_type	s
+56768	17:08:43	theme_discovered	New theme: Packaged Food Processors: Frozen Potato & Canned Vegetables (2 stocks)
+56769	17:08:43	theme_discovered	New theme: Behavioral Health & Transplant/MSK Care Delivery Re-Rating (3 stocks)
+56770	17:08:43	theme_discovered	New theme: UK Banks (NatWest, Lloyds, Barclays) (3 stocks)
+56771	17:08:43	theme_discovered	New theme: Mini-Mill Steel Producers & Recyclers (3 stocks)
+56772	17:08:43	theme_discovered	New theme: Industrial Warehouse & Logistics REITs (4 stocks)
+56773	17:08:43	theme_discovered	New theme: Small Modular Reactor & Advanced Nuclear Fission Technology (4 stocks)
+56774	17:08:43	theme_retired	Retired: Auto & Truck Dealership Retail Chains
+56775	17:08:43	theme_retired	Retired: Coal Mining Producers
+56776	17:08:43	theme_retired	Retired: Digital Advertising & Ad-Tech Monetization Platforms
+56777	17:08:43	theme_retired	Retired: Gold Miners Not Yet Classified: Mid-Tier Gold Producers (AGI, NG, HYMC, MUX)
+56778	17:08:43	theme_retired	Retired: HBM & AI-Driven Memory Chip Makers
+56779	17:08:43	theme_retired	Retired: Quick-Service Restaurant & Fitness Franchisors Consumer Rotation
+56780	17:08:43	theme_retired	Retired: Small Modular Reactor & Advanced Nuclear Fission Technology
+56781	17:08:43	theme_retired	Retired: Space Launch, Satellite Imagery & Lunar Infrastructure
+56804	17:08:43	theme_pass1_5_absorption	Pass1.5: 'Optical Laser & Photonic Materials for AI Transceivers' -> 'AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers'
+56809	17:08:43	theme_cap_drop	Cap: 2 theme(s) dropped below PRUNE_MIN_TICKERS=2
+56811	17:08:49	theme_split	Split: 'Property & Casualty Reinsurers' from 'Specialty P&C Insurance Underwriters Rotation Reversal' (5 stocks)
+56824	17:09:28	theme_thesis_merged	Arm B: 'Secondary Gold & Silver Miners Mid-Cap Producers (Cluster Leftovers)' merged into 'Precious Metals Miners — Fed Easing & Rate Tailwind' (27 members)
+56829	17:09:42	theme_auto_retired	Auto-retired 10 theme(s) dropped during merge passes (2 with successor pointer)
+(19 rows)
+== 12. fold-related event types ever by night
+d	event_type	count
+2026-10-12	theme_small_folded	6
+2026-10-12	theme_small_fold_ran	1
+2026-10-13	theme_small_folded	2
+2026-10-13	theme_small_fold_ran	1
+2026-10-14	theme_small_folded	2
+2026-10-14	theme_small_fold_ran	1
+(6 rows)
+== 13. PROMOTE-LANE: shadow_promoted rows on 10-14 board, 2-3 members, written-at vs fold_ran time
+name	stage	n	tk	written	fold_ran_at	on_1013
+Capital Markets & Deal-Flow Re-Rating	Nascent	3	PWP,PAX,CBOE	17:11:20	17:09:42	Retired:0
+Consumer Franchise Operators: Fitness & Quick-Service	Nascent	3	PLNT,YUM,VVV	17:11:20	17:09:42	
+Diagnostic Testing & Lab Equipment Re-Rating	Nascent	3	QDEL,OMCL,MDLN	17:11:20	17:09:42	Retired:0
+Enterprise Information Management & Infrastructure Engineering Software	Nascent	3	OTEX,BSY,P	17:11:20	17:09:42	Retired:0
+Insurance Distribution & Specialty Insurance Services	Nascent	3	LIFE,GSHD,RYAN	17:11:21	17:09:42	
+Payroll, Tax & Small-Business Financial Software	Nascent	3	INTU,PAYX,PAR	17:11:22	17:09:42	
+(6 rows)
+== 13b. promote-lane and discovery events tonight (id, time, type, summary)
+id	t	event_type	s
+56766	17:08:37	theme_birth_gate	2026-10-14 [lane1/dedup_only] birth-gate: 2 birth / 0 join / 3 awaiting-2nd-sighting / 1 held-floor · ⚠ 54 previously-held later PASSED
+56854	17:11:16	theme_discovery_shadow_ran	Theme discovery shadow: 16 candidate themes written
+56857	17:11:19	theme_renamed_for_continuity	2 theme(s) renamed to prior canonical names
+56858	17:11:22	shadow_themes_promoted	Graduated 10 shadow cohort(s) into live mi_themes (6 new) — 7 held at the birth gate
+56859	17:11:22	theme_birth_gate	2026-10-14 [promote/dedup_only] birth-gate: 7 birth / 14 join / 3 awaiting-2nd-sighting / 3 held-floor · ⚠ 58 previously-held later PASSED
+(5 rows)

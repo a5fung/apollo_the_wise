@@ -1,0 +1,240 @@
+Output format is unaligned.
+Field separator is "|".
+== CTX1 per-ET-day theme_validation metrics 10-05..10-14 (same columns as the gate)
+d|n|max_tok|gt25|pct_gt25|mean|p90|mx|cost|first_t|last_t
+2026-10-05|151|0|4|2.6|14.0|15|224|0.214|2026-10-05 17:02:16.441563|2026-10-05 17:09:04.534456
+2026-10-06|26|0|1|3.8|18.7|16|228|0.043|2026-10-06 17:05:09.615095|2026-10-06 17:09:22.556878
+2026-10-07|142|0|1|0.7|11.2|15|185|0.199|2026-10-07 17:03:00.829935|2026-10-07 17:10:34.911324
+2026-10-08|27|0|0|0.0|9.6|9|20|0.042|2026-10-08 17:03:21.58736|2026-10-08 17:07:23.856997
+2026-10-09|141|0|0|0.0|9.8|15|16|0.198|2026-10-09 17:02:20.002593|2026-10-09 17:07:59.321378
+2026-10-12|154|0|36|23.4|48.1|187|351|0.272|2026-10-12 17:03:18.195518|2026-10-12 17:10:36.611578
+2026-10-13|15|0|6|40.0|65.4|213|222|0.032|2026-10-13 17:04:44.832866|2026-10-13 17:06:25.434032
+2026-10-14|138|0|25|18.1|38.3|145|356|0.236|2026-10-14 17:02:13.645342|2026-10-14 17:09:27.619705
+(8 rows)
+== CTX2 10-14 model + stop_reason
+model|stop_reason|count|first_at|last_at|mx
+claude-sonnet-5-5|end_turn|138|2026-10-14 17:02:13.645342|2026-10-14 17:09:27.619705|356
+(1 row)
+== CTX3 10-14 output-token buckets (width 50 from 0; 9/10 tokens = no thinking, empty answer shape)
+b|count|min|max
+000-025|113|9|21
+026-050|1|50|50
+051-100|3|66|95
+101-200|14|101|198
+201+|7|209|356
+(5 rows)
+== CTX3b same buckets 10-12
+b|count|min|max
+000-025|118|9|16
+051-100|4|66|98
+101-200|20|102|195
+201+|12|211|351
+(4 rows)
+== CTX4 10-14 calls by ET minute
+hhmm|count|gt25
+17:02|30|7
+17:03|43|5
+17:04|34|4
+17:05|4|1
+17:07|15|3
+17:08|11|5
+17:09|1|0
+(7 rows)
+== CTX5 removals detail 10-14
+at_et|summary|detail
+2026-10-14 17:02:29.761165|BOX removed from 'Cloud Contact Center & CCaaS Communication Platforms' by validation|Description: 'Cloud content management, file collaboration' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:02:29.780347|DBX removed from 'Cloud Contact Center & CCaaS Communication Platforms' by validation|Description: 'Cloud file storage, content collaboration platform' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:02:38.084725|MAT removed from 'Cruise Lines & Leisure Travel Rebound' by validation|Description: 'Consumer Cyclical / Leisure — Toy design, manufacturing & brand licensing' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:03:01.185463|JBS removed from 'Functional Energy Drink Brands' by validation|Description: 'Animal protein processing, beef, pork' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:03:30.130091|DORM removed from 'Off-Price & Specialty Retail Consumer Rotation' by validation|Description: 'Consumer Cyclical / Auto Parts — Auto replacement parts & aftermarket upgrades' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:03:58.0645|BRC removed from 'Building Products & HVAC/Industrial Motion Rotation' by validation|Description: 'Industrials / Security & Protection Services — Identification labels & workplace safety products' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:04:06.868654|BSY removed from 'Enterprise HR & Workforce Management SaaS' by validation|Description: 'Technology / Software - Application — Infrastructure engineering software solutions' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:04:06.872084|OTEX removed from 'Enterprise HR & Workforce Management SaaS' by validation|Description: 'Technology / Software - Application — Enterprise information management software, content services' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:04:11.440364|PAX removed from 'Exchange, Options Trading & Alternative Consumer Credit Financials' by validation|Description: 'Financial Services / Asset Management — Private equity & venture capital fund management' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:04:19.766752|OMCL removed from 'Medical Device Mean-Reversion & Rotation Recovery' by validation|Description: 'Healthcare / Health Information Services — Hospital medication & supply automation systems' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:04:24.395903|VIAV removed from 'Semiconductor Design, Test & Assembly Enablement Tools' by validation|Description: 'Network test & monitoring equipment, telecom infrastructure' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:07:51.943262|SEZL removed from 'Exchange, Options Trading & Alternative Consumer Credit Financials' by validation|Description: 'Financial Services / Credit Services — Buy-now-pay-later consumer credit' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:07:53.07306|MCK removed from 'Hospital & Behavioral Health Facility Procedure Volume Recovery' by validation|Description: 'Healthcare / Medical Distribution — Pharmaceutical & healthcare distribution, oncology specialty' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:07:55.622931|RELX removed from 'Management & Business Process Consulting Services' by validation|Description: 'Industrials / Specialty Business Services — Professional analytics, data & decision-making tools' — validation (claude-sonnet-5-5) flagged as not matching theme
+2026-10-14 17:08:00.723957|LTC removed from 'Post-Acute & Home-Based Healthcare Services' by validation|Description: 'Real Estate / REIT - Healthcare Facilities — Senior housing & healthcare facility leasing' — validation (claude-sonnet-5-5) flagged as not matching theme
+(15 rows)
+== CTX6 removals per ET day 10-05..10-14
+d|count
+2026-10-05|26
+2026-10-06|6
+2026-10-07|19
+2026-10-08|3
+2026-10-09|19
+2026-10-12|12
+2026-10-13|1
+2026-10-14|15
+(8 rows)
+== CTX7 rewrite adopted rows 10-12..now
+at_et|summary|det
+2026-10-12 07:00:09.51666|claude-sonnet-5-5: forced_tool_to_structured_output|API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011
+2026-10-12 16:02:00.862437|claude-opus-5-5: forced_tool_to_structured_output|API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011
+2026-10-12 17:10:45.569629|claude-sonnet-5-5: thinking_disabled_to_between_tools|API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'To turn thinking off on this model, send "thinking": {"type": "between_tools"} instead of {"ty
+2026-10-13 07:00:11.554103|claude-sonnet-5-5: forced_tool_to_structured_output|API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011
+2026-10-13 16:02:01.047332|claude-opus-5-5: forced_tool_to_structured_output|API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011
+2026-10-13 17:02:44.769257|claude-sonnet-5-5: forced_tool_to_structured_output|API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011
+2026-10-13 17:06:38.052062|claude-sonnet-5-5: thinking_disabled_to_between_tools|API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'To turn thinking off on this model, send "thinking": {"type": "between_tools"} instead of {"ty
+2026-10-14 16:02:00.675403|claude-opus-5-5: forced_tool_to_structured_output|API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011
+2026-10-14 17:05:17.969007|claude-sonnet-5-5: forced_tool_to_structured_output|API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'tool_choice: type "tool" and "any" are not supported for this model.'}, 'request_id': 'req_011
+2026-10-14 17:09:41.784352|claude-sonnet-5-5: thinking_disabled_to_between_tools|API rejection: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'To turn thinking off on this model, send "thinking": {"type": "between_tools"} instead of {"ty
+(10 rows)
+== CTX8 audit event types 10-14 17:00-18:30 ET
+event_type|count
+alert_rank_shadow_recorded|1
+analyst_estimates_plan_change|1
+analyst_estimates_snapshot|1
+anomaly_detected|1
+anticipation_coil_buyout_pin_rejected|10
+anticipation_mna_check_capped|1
+anticipation_mna_price_unread|1
+api_failure_fmp|23
+assignment_comove_admitted_over_sector|2
+assignment_comove_summary|2
+assignment_llm_proposed|15
+assignment_skipped_comove_below_bar|8
+cap_plus_one_shadow_recorded|1
+cost_watchdog_check|1
+coverage_checked_post_close|1
+coverage_probe_ran|1
+crypto_ingest_completed|1
+db_growth_check|1
+delayed_entry_population_check|1
+delayed_entry_shadow_recorded|1
+description_generated|2
+detector_liveness_check|1
+drift_check_snapshot|1
+ecosystem_reactivation_clean|1
+evening_brief_sent|1
+exit_path_shadow_recorded|1
+extension_cap_watch_blocked_anyway|1
+flag_digest_sent|1
+flag_stage_flip_held|1
+gap_near_miss_replay_recorded|1
+global_ticker_ban_active|1
+health_job_liveness_clean|1
+health_null_sweep_clean|1
+htf_management_shadow_run|1
+jsonb_encoding_check|1
+judge_named_theme_candidates_evaluated|1
+judge_named_themes_extracted|1
+lane2_decision_record|1
+live_fill_counterfactual_recorded|1
+llm_request_rewrite_adopted|2
+lowcap_lane_replay_recorded|1
+lowcap_paper_lane_heartbeat|1
+lowcap_paper_lane_replay_recorded|1
+ma_break|1
+metric_sample|4
+missed_outcomes_reconciled|1
+missed_outcomes_refreshed|1
+mna_filter_fired|1
+mna_filter_released|3
+mna_pin_confirmed|1
+narrative_theme_discovery_ran|1
+row_count_drift_sweep|1
+rs_deterioration|1
+rs_extreme_return|1
+sdk_pool_rollup|1
+seeded_pool_admission|1
+shadow_themes_promoted|1
+split_applied|3
+split_detected|3
+splits_ingest_fractional_skipped|1
+splits_ingest_summary|1
+stage_change|22
+strength_spread_alert_check|2
+sugar_babies_cohort_refreshed|1
+sustain_reject_replay_recorded|1
+theme_auto_retired|1
+theme_axis_bounded_sweep|1
+theme_axis_co_move_refreshed|1
+theme_axis_eod_unscored_logged|1
+theme_birth_gate|2
+theme_breadth_fade|6
+theme_cap_drop|1
+theme_carryforward_filter_stripped|2
+theme_composition_churn|1
+theme_constituent_churn|1
+theme_correctness_check|1
+theme_discovered|6
+theme_discovery_llm_call|14
+theme_discovery_shadow_ran|1
+theme_discovery_shown_declined|2
+theme_ecosystem_assigned|12
+theme_empty_tickers|1
+theme_engine_funnel|1
+theme_hierarchy_health|1
+theme_load_state|1
+theme_low_quality_description|8
+theme_member_rehomed|3
+theme_merge_distinct|7
+theme_merge_pairs_proposed|1
+theme_parent_pass_distinct|6
+theme_parent_pass_ran|1
+theme_pass1_5_absorption|1
+theme_quality_clean|1
+theme_rehome_judged|18
+theme_rehome_pass_ran|1
+theme_renamed_for_continuity|1
+theme_retired|8
+theme_retired_small_fading|7
+theme_score_ties|5
+theme_sector_cap_kept_distinct|4
+theme_small_folded|2
+theme_small_fold_ran|1
+theme_split|1
+theme_stage_flip_held|4
+theme_synthesis_run|1
+theme_thesis_merged|1
+ticker_revalidated_out|15
+validation_cooldown_triggered|15
+(108 rows)
+== CTX9 any error/refusal/truncation event whole ET day 10-14
+event_type|count
+api_failure_fmp|23
+(1 row)
+== CTX10 other theme callers 10-14 stop_reason (four jobs: synthesis, parent adjudication, narrative discovery)
+caller|model|stop_reason|count|mx|first_at
+narrative_theme_discovery|claude-sonnet-5-5|tool_use|1|115|2026-10-14 17:11:18.805931
+theme_assignment|claude-sonnet-5-5|tool_use|15|2013|2026-10-14 17:05:32.429054
+theme_descriptions|claude-haiku-5-5|end_turn|2|99|2026-10-14 17:02:12.150634
+theme_discovery|claude-sonnet-5-5|tool_use|14|828|2026-10-14 17:08:12.890123
+theme_ecosystem_assignment|claude-haiku-5-5|tool_use|12|398|2026-10-14 17:10:06.492255
+theme_merge_adjudication|claude-haiku-4-5-20251001|tool_use|8|481|2026-10-14 17:08:57.552825
+theme_parent_adjudication|claude-sonnet-5-5|tool_use|6|339|2026-10-14 17:09:47.379095
+theme_split|claude-sonnet-5-5|tool_use|1|530|2026-10-14 17:08:49.272193
+theme_synthesis|claude-sonnet-5-5|tool_use|1|414|2026-10-14 18:05:17.821824
+theme_validation|claude-sonnet-5-5|end_turn|138|356|2026-10-14 17:02:13.645342
+(10 rows)
+== CTX11 four named run events on 10-14 and 10-12
+d|event_type|count|first_at|sample
+2026-10-12|narrative_theme_discovery_ran|1|2026-10-12 17:12:17.35073|2026-10-12: v2reg 0 qualifying today — no evaluation (roster 2 active / 5 seeds)
+2026-10-12|theme_discovery_llm_call|12|2026-10-12 17:09:25.182189|stop=tool_use out_tok=951 forced=False tool_uses=1 iter=1
+2026-10-12|theme_discovery_shadow_ran|1|2026-10-12 17:12:17.322587|Theme discovery shadow: 18 candidate themes written
+2026-10-12|theme_discovery_shown_declined|2|2026-10-12 17:09:47.434087|shown=68 declined=29 proposed=18 clusters shown=9 declined=0 already_named=6 partial=2 taken=1 recall_mode=True
+2026-10-12|theme_parent_pass_ran|1|2026-10-12 17:11:07.415676|Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+2026-10-12|theme_synthesis_run|1|2026-10-12 18:05:16.64025|48 candidates → 2 proposed → 2 kept
+2026-10-12|ticker_revalidated_out|12|2026-10-12 17:03:42.975128|VVV removed from 'Quick-Service & Fast-Casual Restaurant Franchisors' by validation
+2026-10-13|narrative_theme_discovery_ran|1|2026-10-13 17:08:11.55575|2026-10-13: v2reg 0 qualifying today — no evaluation (roster 2 active / 4 seeds)
+2026-10-13|theme_discovery_llm_call|10|2026-10-13 17:05:14.824856|stop=tool_use out_tok=927 forced=False tool_uses=1 iter=1
+2026-10-13|theme_discovery_shadow_ran|1|2026-10-13 17:08:11.525048|Theme discovery shadow: 15 candidate themes written
+2026-10-13|theme_discovery_shown_declined|2|2026-10-13 17:05:31.080032|shown=52 declined=49 proposed=3 clusters shown=7 declined=0 already_named=5 partial=1 taken=1 recall_mode=False
+2026-10-13|theme_parent_pass_ran|1|2026-10-13 17:06:59.159975|Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+2026-10-13|theme_synthesis_run|1|2026-10-13 18:05:17.857808|53 candidates → 1 proposed → 0 kept
+2026-10-13|ticker_revalidated_out|1|2026-10-13 17:04:52.296992|COR removed from 'Hospital & Behavioral Health Facility Procedure Volume Recovery' by validation
+2026-10-14|narrative_theme_discovery_ran|1|2026-10-14 17:11:18.816075|2026-10-14: v2reg 1 today (grounded=1 analysis=0 catalyst=0) roster 2 active / 4 seeds -> 0 join + 0 new + 1 seed(s): []
+2026-10-14|theme_discovery_llm_call|14|2026-10-14 17:08:12.888193|stop=tool_use out_tok=828 forced=False tool_uses=1 iter=1
+2026-10-14|theme_discovery_shadow_ran|1|2026-10-14 17:11:15.553145|Theme discovery shadow: 16 candidate themes written
+2026-10-14|theme_discovery_shown_declined|2|2026-10-14 17:08:28.370055|shown=54 declined=49 proposed=6 clusters shown=15 declined=3 already_named=8 partial=2 taken=2 recall_mode=False
+2026-10-14|theme_parent_pass_ran|1|2026-10-14 17:10:04.452964|Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+2026-10-14|theme_synthesis_run|1|2026-10-14 18:05:17.841957|55 candidates → 1 proposed → 0 kept
+2026-10-14|ticker_revalidated_out|15|2026-10-14 17:02:29.761165|VIAV removed from 'Semiconductor Design, Test & Assembly Enablement Tools' by validation
+(21 rows)
+== CTX12 now ET
+now_et
+2026-10-14 18:21:57.425561
+(1 row)

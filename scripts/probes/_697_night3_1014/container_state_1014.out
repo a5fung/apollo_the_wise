@@ -1,0 +1,9 @@
+apollo-execution docker-apollo-execution Up 6 hours (healthy)
+apollo-market docker-market-agent Up 6 hours (healthy)
+apollo-orchestrator docker-orchestrator Up 6 hours
+apollo-redis redis:7-alpine Up 3 months (healthy)
+apollo-postgres pgvector/pgvector:pg16 Up 3 months (healthy)
+apollo-uptime louislam/uptime-kuma:1 Up 6 months (healthy)
+//apollo-market created=2026-10-14T16:03:15.935366119Z started=2026-10-14T16:03:28.624565429Z image=sha256:1e7b65c2711cf86bb025897ebe21d0b0b11fc8d52816e4dd6e34df0cf321964a
+//apollo-execution created=2026-10-14T16:06:03.191851404Z started=2026-10-14T16:06:15.561989475Z image=sha256:f2dfa71a0d84ed993d4116000927c4f157dc9aceb3e7cb5cc7c9dab2d36d6ccd
+36147deb 2026-10-14 06:52:24 -0700 #654: one sweep marker carrying the line's real fingerprint (the 10-14 re-check left a stale cd36 beside a hand-typed one)

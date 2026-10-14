@@ -1,0 +1,52 @@
+Output format is unaligned.
+Field separator is "	".
+== W1 10-12 active board rows NOT in the 10-12 G3 array
+name	stage	n	source	written	tk
+Capital Markets & Deal-Flow Re-Rating	Nascent	3	shadow_promoted	2026-10-12 18:36:35.866074	PWP,PAX,CBOE
+Cruise Lines & Leisure Travel Rebound	Nascent	5	shadow_promoted	2026-10-12 18:36:34.28981	CCL,RCL,MAR,WH,MAT
+(2 rows)
+== W1b 10-12 board write-time spread by source (did anything land after the 17:31 check?)
+source	retired	count	first_w	last_w
+live	f	101	2026-10-12 17:11:07.457688	2026-10-12 17:11:07.522076
+live	t	27	2026-10-12 17:11:07.522535	2026-10-12 17:11:07.536449
+shadow_promoted	f	10	2026-10-12 17:12:18.258557	2026-10-12 18:36:35.866074
+(3 rows)
+== W2 re-mint identity: promote-lane names tonight vs their 10-12 and 10-13 rows (sorted tickers)
+name	theme_date	stage	source	tk_sorted	w
+Capital Markets & Deal-Flow Re-Rating	2026-10-12	Nascent	shadow_promoted	CBOE,PAX,PWP	18:36:36
+Capital Markets & Deal-Flow Re-Rating	2026-10-13	Retired	live		17:06:59
+Capital Markets & Deal-Flow Re-Rating	2026-10-14	Nascent	shadow_promoted	CBOE,PAX,PWP	17:11:20
+Diagnostic Testing & Lab Equipment Re-Rating	2026-10-12	Nascent	shadow_promoted	MDLN,OMCL,QDEL	17:12:18
+Diagnostic Testing & Lab Equipment Re-Rating	2026-10-13	Retired	live		17:06:59
+Diagnostic Testing & Lab Equipment Re-Rating	2026-10-14	Nascent	shadow_promoted	MDLN,OMCL,QDEL	17:11:20
+Enterprise Information Management & Infrastructure Engineering Software	2026-10-12	Nascent	shadow_promoted	BSY,OTEX,P	17:12:19
+Enterprise Information Management & Infrastructure Engineering Software	2026-10-13	Retired	live		17:06:59
+Enterprise Information Management & Infrastructure Engineering Software	2026-10-14	Nascent	shadow_promoted	BSY,OTEX,P	17:11:20
+(9 rows)
+== W3 audit rows tonight 16:30-18:30 ET whose summary names OTEX BSY OMCL MDLN TMDX QDEL P
+id	t	event_type	s
+56672	17:04:07	ticker_revalidated_out	BSY removed from 'Enterprise HR & Workforce Management SaaS' by validation
+56673	17:04:07	validation_cooldown_triggered	BSY → 'Enterprise HR & Workforce Management SaaS' cooldown 14d (removal #1)
+56674	17:04:07	ticker_revalidated_out	OTEX removed from 'Enterprise HR & Workforce Management SaaS' by validation
+56675	17:04:07	validation_cooldown_triggered	OTEX → 'Enterprise HR & Workforce Management SaaS' cooldown 14d (removal #1)
+56682	17:04:20	ticker_revalidated_out	OMCL removed from 'Medical Device Mean-Reversion & Rotation Recovery' by validation
+56683	17:04:20	validation_cooldown_triggered	OMCL → 'Medical Device Mean-Reversion & Rotation Recovery' cooldown 14d (removal #1)
+56872	17:12:32	theme_composition_churn	Composition churn (on-demand): IT Consulting & Business Process Outsourcing Services: +GLOB +INFY · Enterprise HR & Workforce Management SaaS:  -BSY -OTEX · AI-Powered Enterprise Analytics & Intelligent Workflow SaaS: +M
+(7 rows)
+== W4 mi_themes columns
+column_name	data_type
+id	integer
+theme_date	date
+name	text
+stage	text
+score	double precision
+description	text
+tickers	ARRAY
+created_at	timestamp with time zone
+rs_avg	double precision
+parent_theme	text
+days_active	integer
+consecutive_accelerating	integer
+pct_above_20sma	real
+source	text
+(14 rows)

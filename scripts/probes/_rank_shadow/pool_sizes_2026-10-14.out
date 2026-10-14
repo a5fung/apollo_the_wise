@@ -1,0 +1,8 @@
+sessions 24 single-alert sessions 11 pools>=2 13
+matured 46 matured in pools>=2 37 matured top-q 6
+8x winners: [('MRNA', 4, 0.875), ('KOD', 1, 0.5)]
+P(0 of 2 winners land in a 6-row top cell | 46 matured, winners placed at random) = 0.754
+fraction of matured rows in top cell: 0.13
+rows reaching exactly 6 sessions today: [('PENG', '2026-10-07')]
+rows reaching exactly 21 sessions today: [('CIFR', '2026-09-16')]
+unmatured: [('WOLF', '2026-10-08', 5, 0.5, 1), ('AAOI', '2026-10-09', 4, 0.4166666666666667, 2), ('HUM', '2026-10-09', 4, 0.5833333333333334, 2), ('BSP', '2026-10-14', 1, 0.5, 1)]

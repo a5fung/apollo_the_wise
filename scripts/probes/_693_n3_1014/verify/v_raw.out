@@ -1,0 +1,60 @@
+Output format is unaligned.
+Field separator is "|".
+== V0 columns of api_usage and mi_audit_log
+table_name|string_agg
+api_usage|id,created_at,model,caller,input_tokens,output_tokens,cache_creation,cache_read,cost_usd,stop_reason
+mi_audit_log|id,created_at,event_type,summary,detail
+(2 rows)
+== V1 population: theme_validation rows 10-14 ET (by model/stop_reason; before market container start 16:03:28Z; outside 17:00-17:15 ET; distinct ids)
+model|stop_reason|n|n_ids|before_deploy_start|outside_window|first_et|last_et
+claude-sonnet-5-5|end_turn|138|138|0|0|2026-10-14 17:02:13.645342|2026-10-14 17:09:27.619705
+(1 row)
+== V2 manual recompute 10-14 vs 10-12 (sum/n, count >25, pct, count at <=10 tokens = bare-answer shape)
+d|n|sum_out|mean_manual|gt25|pct_gt25|le10|max_tok|not_end_turn|cost
+2026-10-12|154|7402|48.06|36|23.38|111|0|0|0.2719
+2026-10-13|15|981|65.40|6|40.00|8|0|0|0.0323
+2026-10-14|138|5290|38.33|25|18.12|103|0|0|0.2363
+(3 rows)
+== V3 10-14 output tokens >25, sorted desc (the thinking tail)
+string_agg
+356,331,279,271,216,211,209,198,174,169,164,160,159,145,144,143,129,113,112,111,101,95,94,66,50
+(1 row)
+== V4 any OTHER validation-like caller 10-14 (rehearsal / replay / probe rows)
+caller|model|count|first_et
+perplexity_catalyst_validate|openai/gpt-6-luna|5|2026-10-14 07:00:11.581684
+theme_validation|claude-sonnet-5-5|138|2026-10-14 17:02:13.645342
+(2 rows)
+== V5 removals 10-14: count, distinct summaries, detail-format check, cooldown rows, time span
+n|n_distinct|validator_format|cooldown_rows|first_et|last_et
+15|15|15|15|2026-10-14 17:02:29.761165|2026-10-14 17:08:00.723957
+(1 row)
+== V6 hidden-flag paths (flags that do NOT become ticker_revalidated_out rows) on 10-12 and 10-14
+d|event_type|count|sample
+2026-10-12|theme_dissolved_flagged_pair|1|Arm A dissolve: 'Automotive Thermal & Powertrain Components Suppliers' — validation flagged HOG at 2 members
+(1 row)
+== V7 every error/failure/refusal/truncation/rate-limit/llm_ event type on ET 10-14 (whole day)
+event_type|count|first_et|sample
+api_failure_fmp|23|2026-10-14 18:12:12.286034|FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+llm_request_rewrite_adopted|3|2026-10-14 16:02:00.675403|claude-sonnet-5-5: thinking_disabled_to_between_tools
+validation_cooldown_triggered|15|2026-10-14 17:02:29.7779|VIAV → 'Semiconductor Design, Test & Assembly Enablement Tools' cooldown 14d (removal #1)
+(3 rows)
+== V8 DoD live clause on 10-14: four
+event_type|count|first_et|sample
+llm_request_rewrite_adopted|3|2026-10-14 16:02:00.675403|claude-sonnet-5-5: thinking_disabled_to_between_tools
+narrative_theme_discovery_ran|1|2026-10-14 17:11:18.816075|2026-10-14: v2reg 1 today (grounded=1 analysis=0 catalyst=0) roster 2 active / 4 seeds -> 0 join + 0 new + 1 seed(s): []
+theme_parent_pass_ran|1|2026-10-14 17:10:04.452964|Parent pass: 6 candidate(s) adjudicated — 0 linked, 6 no containment (peers/unrelated), 0 inverted, 0 error
+theme_synthesis_run|1|2026-10-14 18:05:17.841957|55 candidates → 1 proposed → 0 kept
+(4 rows)
+== V9 four
+psql:/tmp/c693v_vraw1014.sql:57: error: unterminated quoted string
+psql:/tmp/c693v_vraw1014.sql:62: error: unterminated quoted string
+caller|model|stop_reason|count|mx
+narrative_theme_discovery|claude-sonnet-5-5|tool_use|1|115
+theme_parent_adjudication|claude-sonnet-5-5|tool_use|6|339
+theme_synthesis|claude-sonnet-5-5|tool_use|1|414
+theme_validation|claude-sonnet-5-5|end_turn|138|356
+(4 rows)
+== V10 now ET
+now_et
+2026-10-14 18:26:36.309395
+(1 row)

@@ -1,0 +1,36 @@
+Output format is unaligned.
+Field separator is "	".
+== X1 fold-moved members since 10-12 vs ticker_revalidated_out rows naming the same ticker AND the same home
+fd	tk	home	validated_out_at	in_home_1014
+2026-10-12	BOX	Cloud Contact Center & CCaaS Communication Platforms	2026-10-14 17:02:29.761165	f
+2026-10-12	DBX	Cloud Contact Center & CCaaS Communication Platforms	2026-10-14 17:02:29.780347	f
+2026-10-12	ATEC	Medical Device Mean-Reversion & Rotation Recovery		f
+2026-10-12	CNMD	Medical Device Mean-Reversion & Rotation Recovery		f
+2026-10-12	DXCM	Medical Device Mean-Reversion & Rotation Recovery		t
+2026-10-12	MMED	Medical Device Mean-Reversion & Rotation Recovery		t
+2026-10-12	SIBN	Medical Device Mean-Reversion & Rotation Recovery		f
+2026-10-12	COCO	Non-Alcoholic Beverages & Energy Drinks		t
+2026-10-12	PAX	Wealth Management & Retail Brokerage Platforms		t
+2026-10-13	BSY	Enterprise HR & Workforce Management SaaS	2026-10-14 17:04:06.868654	f
+2026-10-13	OTEX	Enterprise HR & Workforce Management SaaS	2026-10-14 17:04:06.872084	f
+2026-10-13	MDLN	Medical Device Mean-Reversion & Rotation Recovery		t
+2026-10-13	OMCL	Medical Device Mean-Reversion & Rotation Recovery	2026-10-14 17:04:19.766752	f
+2026-10-14	CELH	Non-Alcoholic Beverages & Energy Drinks		t
+2026-10-14	BBWI	U.S. Apparel & Fashion Recovery		t
+(15 rows)
+== X2 validation passes 10-12..10-14: ticker_revalidated_out count + time window per ET date
+d	n	min	max
+2026-10-12	12	17:03:43	17:10:03
+2026-10-13	1	17:04:52	17:04:52
+2026-10-14	15	17:02:30	17:08:01
+(3 rows)
+== X3 audit rows 10-12 18:30-18:40 ET (what wrote the 18:36 board rows)
+id	t	event_type	s
+55881	18:36:34	theme_operator_promoted	Operator promoted 'Cruise Lines & Leisure Travel Rebound' (5 members)
+55882	18:36:36	theme_operator_promoted	Operator promoted 'Capital Markets & Deal-Flow Re-Rating' (3 members)
+55883	18:36:38	theme_ecosystem_assigned	'Capital Markets & Deal-Flow Re-Rating' → E-UNASSIGNED (unassigned)
+(3 rows)
+== X3b job runs 10-12 18:25-18:40 ET
+id	job_id	st	status
+227406	minute_volume_curves_refresh	18:30:00	success
+(1 row)

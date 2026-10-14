@@ -1,0 +1,3 @@
+21:25:03 [agents.market_intelligence.flag_detector] INFO: flag_scan 2026-10-14: universe=495 | rs_1m_80=474 rs_top200=200 momentum_25pct=13 flag_pivot_window_carryforward=9 flag_stage_carryforward=8
+21:25:03 [agents.market_intelligence.flag_detector] INFO: flag_scan 2026-10-14: scoring 495 candidates | holds_carried=0
+21:25:04 [agents.market_intelligence.flag_detector] INFO: flag_scan 2026-10-14: 0 triggered, 2 coiled, 0 tightening, 0 watch, 11 invalidated, 482 unqualified

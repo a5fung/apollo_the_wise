@@ -1,0 +1,5 @@
+r_eod top: n=6 median_x5=1.70
+r_eod rest: n=40 median_x5=1.88
+r_0945 top: n=5 median_x5=1.93
+r_0945 rest: n=41 median_x5=1.83
+matured in pools of 2+: 37 top: 6 -> MRNA miss under random placement among eligible rows: 0.838

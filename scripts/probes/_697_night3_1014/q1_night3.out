@@ -1,0 +1,70 @@
+SET
+SET
+== 1. every flag/digest/hold audit row since 2026-10-13 12:00 PT (ET time, event, summary, detail)
+id|t_et|event_type|summary|detail
+56312|10-13 17:25:04|flag_stage_transition|IOVA entered COILED 2026-10-13|{"ticker": "IOVA", "stage": "COILED", "prev_stage": "WATCH", "scan_date": "2026-10-13", "run_up_pct": 2.5664335664335667, "pivot_high_price": 15.3, "range_contraction_ratio": 1.0991962096491708, "vol_contraction_ratio": 0.8461925527160227, "base_age": 9, "telegram": "sent"}
+56313|10-13 17:25:04|flag_stage_transition|GRAL entered COILED 2026-10-13|{"ticker": "GRAL", "stage": "COILED", "prev_stage": "WATCH", "scan_date": "2026-10-13", "run_up_pct": 1.5090089207531472, "pivot_high_price": 166.475, "range_contraction_ratio": 1.0, "vol_contraction_ratio": 1.0, "base_age": 4, "telegram": "sent"}
+56314|10-13 17:25:04|flag_digest_sent|flag digest 2026-10-13 (sent)|{"scan_date": "2026-10-13", "telegram": "sent", "new_today": ["IOVA", "GRAL"], "triggered": [], "coiled": [], "coiled_not_shown": [], "dropped_out": 9}
+56635|10-14 16:55:00|market_close_digest_sent|Market Close Digest: 3 contribution(s) across 3 section(s)|{"sections": ["EP", "JUDGE", "SIGNALS"], "contributions": 3, "sent": true, "chars": 984}
+56874|10-14 17:25:03|flag_stage_flip_held|GRAL WATCH→held@COILED|runup_151% base_5d close_vs_pivot_-16.1%
+56875|10-14 17:25:04|flag_digest_sent|flag digest 2026-10-14 (sent)|{"scan_date": "2026-10-14", "telegram": "sent", "new_today": [], "triggered": [], "coiled": ["IOVA", "GRAL"], "coiled_not_shown": [], "dropped_out": 11}
+(6 rows)
+== 1b. flag_digest_sent ever, and flag_stage_flip_held ever + since 10-12
+event_type|n|first_et|last_et
+flag_digest_sent|2|10-13 17:25|10-14 17:25
+flag_stage_flip_held|535|05-05 17:25|10-14 17:25
+(2 rows)
+== 2. stage mix by night 10-12 .. 10-14 (rows / holds)
+scan_date|stage|n|holds
+2026-10-12|INVALIDATED|12|0
+2026-10-12|unqualified|491|0
+2026-10-12|WATCH|4|0
+2026-10-13|COILED|2|0
+2026-10-13|INVALIDATED|9|0
+2026-10-13|unqualified|480|0
+2026-10-13|WATCH|2|0
+2026-10-14|COILED|2|1
+2026-10-14|INVALIDATED|11|0
+2026-10-14|unqualified|482|0
+(10 rows)
+== 3. WATCH-or-better rows on 10-13 and 10-14 (ticker, stage, held_from, tags, reason)
+scan_date|ticker|stage|held_from_stage|universe_sources|reason
+2026-10-13|GRAL|COILED||{rs_top200,rs_1m_80,flag_stage_carryforward}|fresh_2bar 4.9%/atr 8.8% bodies_0.18/0.00
+2026-10-13|IOVA|COILED||{rs_top200,rs_1m_80,flag_stage_carryforward}|fresh_2bar 4.3%/atr 7.4% bodies_0.02/0.06
+2026-10-13|HTFL|WATCH||{flag_stage_carryforward}|runup_117% base_16d close_vs_pivot_-3.6%
+2026-10-13|KOD|WATCH||{rs_top200,rs_1m_80,flag_stage_carryforward}|runup_249% base_7d close_vs_pivot_-11.9%
+2026-10-14|GRAL|COILED|WATCH|{rs_top200,rs_1m_80,flag_stage_carryforward}|runup_151% base_5d close_vs_pivot_-16.1%
+2026-10-14|IOVA|COILED||{rs_top200,rs_1m_80,flag_stage_carryforward}|fresh_2bar 3.4%/atr 7.4% bodies_0.13/0.02
+(6 rows)
+== 4. HOLD at-risk population: tickers whose 10-13 row was TIGHTENING-or-better and not a hold -> their 10-14 row (ANY stage, incl. unqualified/INVALIDATED/no row)
+ticker|stage_1013|stage_1014|held_from_stage|reason_1014|src_1014
+GRAL|COILED|COILED|WATCH|runup_151% base_5d close_vs_pivot_-16.1%|{rs_top200,rs_1m_80,flag_stage_carryforward}
+IOVA|COILED|COILED||fresh_2bar 3.4%/atr 7.4% bodies_0.13/0.02|{rs_top200,rs_1m_80,flag_stage_carryforward}
+(2 rows)
+== 4b. same for every WATCH-or-better row on 10-13 (WATCH is the lowest stage: a WATCH drop is INVALIDATED/unqualified, never held)
+ticker|stage_1013|stage_1014|held_from_stage
+GRAL|COILED|COILED|WATCH
+HTFL|WATCH|INVALIDATED|
+IOVA|COILED|COILED|
+KOD|WATCH|INVALIDATED|
+(4 rows)
+== 5. every hold row written 10-12 or later
+scan_date|ticker|stage|held_from_stage|reason
+2026-10-14|GRAL|COILED|WATCH|runup_151% base_5d close_vs_pivot_-16.1%
+(1 row)
+== 6. IOVA and GRAL last 5 rows (full)
+ticker|scan_date|stage|held_from_stage|base_age|failed_at|universe_sources|reason
+GRAL|2026-10-08|unqualified||1||{rs_top200,rs_1m_80}|base_age_1_below_3
+GRAL|2026-10-09|unqualified||2||{rs_top200,rs_1m_80}|base_age_2_below_3
+GRAL|2026-10-12|WATCH||3||{rs_top200,rs_1m_80}|runup_151% base_3d close_vs_pivot_-17.5%
+GRAL|2026-10-13|COILED||4||{rs_top200,rs_1m_80,flag_stage_carryforward}|fresh_2bar 4.9%/atr 8.8% bodies_0.18/0.00
+GRAL|2026-10-14|COILED|WATCH|5||{rs_top200,rs_1m_80,flag_stage_carryforward}|runup_151% base_5d close_vs_pivot_-16.1%
+IOVA|2026-10-08|WATCH||6||{rs_top200,rs_1m_80}|runup_257% base_6d close_vs_pivot_-13.0%
+IOVA|2026-10-09|WATCH||7||{rs_top200,rs_1m_80,momentum_25pct}|runup_257% base_7d close_vs_pivot_-4.4%
+IOVA|2026-10-12|WATCH||8||{rs_top200,rs_1m_80,flag_stage_carryforward}|runup_257% base_8d close_vs_pivot_-4.8%
+IOVA|2026-10-13|COILED||9||{rs_top200,rs_1m_80,flag_stage_carryforward}|fresh_2bar 4.3%/atr 7.4% bodies_0.02/0.06
+IOVA|2026-10-14|COILED||10||{rs_top200,rs_1m_80,flag_stage_carryforward}|fresh_2bar 3.4%/atr 7.4% bodies_0.13/0.02
+(10 rows)
+== 7. fingerprint: ticker with a hold on its prior row and a fallen stage on 10-14
+ticker|prior_date|prior_stage|prior_held_from|stage_d|held_d
+(0 rows)

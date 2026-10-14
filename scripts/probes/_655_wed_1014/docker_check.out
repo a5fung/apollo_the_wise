@@ -1,0 +1,23 @@
+Wed Oct 14 10:24:31 PM UTC 2026
+== containers
+apollo-execution	docker-apollo-execution	Up 6 hours (healthy)	2026-10-14 16:06:03 +0000 UTC
+apollo-market	docker-market-agent	Up 6 hours (healthy)	2026-10-14 16:03:15 +0000 UTC
+apollo-orchestrator	docker-orchestrator	Up 6 hours	2026-10-14 16:03:15 +0000 UTC
+apollo-redis	redis:7-alpine	Up 3 months (healthy)	2026-07-06 15:30:56 +0000 UTC
+apollo-postgres	pgvector/pgvector:pg16	Up 3 months (healthy)	2026-07-06 15:12:00 +0000 UTC
+apollo-uptime	louislam/uptime-kuma:1	Up 6 months (healthy)	2026-03-23 05:58:51 +0000 UTC
+== inspect start + image id
+/apollo-execution started=2026-10-14T16:06:15.561989475Z image=sha256:f2dfa71a0d84ed993d4116000927c4f157dc9aceb3e7cb5cc7c9dab2d36d6ccd cfgimage=docker-apollo-execution
+/apollo-market started=2026-10-14T16:03:28.624565429Z image=sha256:1e7b65c2711cf86bb025897ebe21d0b0b11fc8d52816e4dd6e34df0cf321964a cfgimage=docker-market-agent
+/apollo-orchestrator started=2026-10-14T16:03:28.626055656Z image=sha256:515509e5ae90af14873565e755bdb189f55204b6c1b8d1544cc68a3d45fba2de cfgimage=docker-orchestrator
+/apollo-redis started=2026-07-06T15:31:07.253651326Z image=sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065 cfgimage=redis:7-alpine
+/apollo-postgres started=2026-07-06T15:12:13.02509592Z image=sha256:7d400e340efb42f4d8c9c12c6427adb253f726881a9985d2a471bf0eed824dff cfgimage=pgvector/pgvector:pg16
+/apollo-uptime started=2026-04-06T09:14:19.102669414Z image=sha256:3d632903e6af34139a37f18055c4f1bfd9b7205ae1138f1e5e8940ddc1d176f9 cfgimage=louislam/uptime-kuma:1
+== image created times
+docker-apollo-execution:latest	f2dfa71a0d84	2026-10-14 16:05:10 +0000 UTC
+docker-market-agent:latest	1e7b65c2711c	2026-10-14 16:02:23 +0000 UTC
+docker-orchestrator:latest	515509e5ae90	2026-10-14 16:01:50 +0000 UTC
+alpine:latest	28bd5fe8b56d	2026-06-16 00:01:29 +0000 UTC
+pgvector/pgvector:pg16	7d400e340efb	2026-02-26 23:42:52 +0000 UTC
+redis:7-alpine	8b81dd37ff02	2026-02-23 17:35:24 +0000 UTC
+louislam/uptime-kuma:1	3d632903e6af	2025-10-20 17:53:48 +0000 UTC

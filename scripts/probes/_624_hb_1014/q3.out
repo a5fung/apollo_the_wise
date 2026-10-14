@@ -1,0 +1,21 @@
+Pager usage is off.
+=== Q3-1 api_failure_fmp rows by ET day, last 8 days (is
+psql:/tmp/c624_hb1014_q3.sql:2: error: unterminated quoted string
+   d   | n  | first_et | last_et | distinct_msgs 
+-------+----+----------+---------+---------------
+ 10-06 | 24 | 18:12    | 18:21   |             1
+ 10-07 | 25 | 18:12    | 18:21   |             1
+ 10-08 | 26 | 18:12    | 18:22   |             1
+ 10-09 | 22 | 18:12    | 18:20   |             1
+ 10-12 | 22 | 18:12    | 18:20   |             1
+ 10-13 | 22 | 18:12    | 18:20   |             1
+ 10-14 | 23 | 18:12    | 18:21   |             1
+(7 rows)
+
+=== Q3-2 api_failure_fmp today vs yesterday, same 16:00-22:30 UTC window, by endpoint text
+   d   |                                   s                                   | count 
+-------+-----------------------------------------------------------------------+-------
+ 10-13 | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates |    22
+ 10-14 | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates |    23
+(2 rows)
+

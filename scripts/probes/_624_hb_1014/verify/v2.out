@@ -1,0 +1,30 @@
+Pager usage is off.
+=== V2-1 market-agent boot rows (intelligence role) 10-11 00:00 ET .. now, to date each image that scanned
+  id   |      t_et      |     event_type      |                              s                              
+-------+----------------+---------------------+-------------------------------------------------------------
+ 55241 | 10-11 00:03:01 | account_mode_active | mode=paper equity=n/a (intelligence role — no broker creds)
+ 55245 | 10-11 00:05:40 | account_mode_active | mode=paper equity=$89,845.99
+ 55247 | 10-11 00:09:03 | account_mode_active | mode=paper equity=n/a (intelligence role — no broker creds)
+ 55252 | 10-11 00:11:42 | account_mode_active | mode=paper equity=$89,845.99
+ 55263 | 10-11 11:34:34 | account_mode_active | mode=paper equity=n/a (intelligence role — no broker creds)
+ 55267 | 10-11 11:37:10 | account_mode_active | mode=paper equity=$89,845.99
+ 55270 | 10-11 12:27:48 | account_mode_active | mode=paper equity=n/a (intelligence role — no broker creds)
+ 55274 | 10-11 12:30:28 | account_mode_active | mode=paper equity=$89,845.99
+ 55277 | 10-11 14:35:18 | account_mode_active | mode=paper equity=n/a (intelligence role — no broker creds)
+ 55281 | 10-11 14:38:05 | account_mode_active | mode=paper equity=$89,845.99
+ 55284 | 10-11 14:48:16 | account_mode_active | mode=paper equity=n/a (intelligence role — no broker creds)
+ 55288 | 10-11 14:51:05 | account_mode_active | mode=paper equity=$89,845.99
+ 55291 | 10-11 16:59:09 | account_mode_active | mode=paper equity=n/a (intelligence role — no broker creds)
+ 55295 | 10-11 17:01:53 | account_mode_active | mode=paper equity=$89,845.99
+ 55302 | 10-11 20:20:03 | account_mode_active | mode=paper equity=$89,845.99
+ 55304 | 10-11 20:23:11 | account_mode_active | mode=paper equity=n/a (intelligence role — no broker creds)
+ 55308 | 10-11 21:51:11 | account_mode_active | mode=paper equity=n/a (intelligence role — no broker creds)
+ 55312 | 10-11 21:54:00 | account_mode_active | mode=paper equity=$89,845.99
+ 55890 | 10-12 21:19:07 | account_mode_active | mode=paper equity=n/a (intelligence role — no broker creds)
+ 55894 | 10-12 21:21:47 | account_mode_active | mode=paper equity=$89,846.53
+ 56009 | 10-13 12:04:09 | account_mode_active | mode=paper equity=n/a (intelligence role — no broker creds)
+ 56015 | 10-13 12:06:59 | account_mode_active | mode=paper equity=$89,843.81
+ 56528 | 10-14 12:03:33 | account_mode_active | mode=paper equity=n/a (intelligence role — no broker creds)
+ 56534 | 10-14 12:06:20 | account_mode_active | mode=paper equity=$89,843.79
+(24 rows)
+

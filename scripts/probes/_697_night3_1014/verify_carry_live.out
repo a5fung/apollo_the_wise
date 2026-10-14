@@ -1,0 +1,7 @@
+SET
+k|a|b|c
+a_long_tag_rows|9||
+c_carry_only_rows|9||
+c_carry_only_stage|INVALIDATED|6|
+c_carry_only_stage|unqualified|3|
+rows_on_d|495||
