@@ -1,0 +1,122 @@
+== A. live-EP invariant: rows in live table with NO live mi_ep_alerts row (health_checks._DE_NON_EP_WHERE), split by ep_date vs 2026-09-01
+ ep_on_or_after_0901 | non_ep_rows 
+---------------------+-------------
+(0 rows)
+
+== A2. whole live table size and fire_date range
+ rows_total |  min_fire  |  max_fire  | rows_since_0902 
+------------+------------+------------+-----------------
+        152 | 2026-08-28 | 2026-10-13 |             136
+(1 row)
+
+== B. voided table: what the 09-19 predicate (160) was counting
+ voided_table_exists 
+---------------------
+ t
+(1 row)
+
+ reentry_shape  | voided_rows_fire_since_0902_ep_low_reclaim_075_settled 
+----------------+--------------------------------------------------------
+ new_high_break |                                                    109
+ same_pattern   |                                                     95
+(2 rows)
+
+ voided_total_ep_low_reclaim_since_0902 
+----------------------------------------
+                                    379
+(1 row)
+
+== B2. live table: the YAML predicate as written (all shapes) vs first-only
+ reentry_shape  | predicate_rows 
+----------------+----------------
+ first          |             15
+ new_high_break |              4
+ same_pattern   |             12
+(3 rows)
+
+== C. composition by rung x shape x fire month (live table, fire_date >= 2026-09-02)
+       rung        | reentry_shape  | fire_month | n_rows | has_adr | mature_20 | inc_settled | v075_settled | v075_unscor | v100_settled | v100_unscor | mature_all3_settled | mature_but_open_or_unscor | immature_but_settled_075 
+-------------------+----------------+------------+--------+---------+-----------+-------------+--------------+-------------+--------------+-------------+---------------------+---------------------------+--------------------------
+ ep_close_620_prox | first          | 2026-09    |     15 |      15 |         7 |          14 |           13 |           0 |           12 |           0 |                   7 |                         0 |                        6
+ ep_close_620_prox | first          | 2026-10    |      7 |       7 |         0 |           5 |            2 |           0 |            2 |           0 |                   0 |                         0 |                        2
+ ep_close_620_prox | new_high_break | 2026-09    |      7 |       7 |         3 |           7 |            7 |           0 |            7 |           0 |                   3 |                         0 |                        4
+ ep_close_620_prox | new_high_break | 2026-10    |      4 |       4 |         0 |           1 |            1 |           0 |            0 |           0 |                   0 |                         0 |                        1
+ ep_close_620_prox | same_pattern   | 2026-09    |     12 |      12 |         6 |          12 |           11 |           0 |           11 |           0 |                   6 |                         0 |                        5
+ ep_close_620_prox | same_pattern   | 2026-10    |      7 |       7 |         0 |           6 |            3 |           0 |            3 |           0 |                   0 |                         0 |                        3
+ ep_close_reclaim  | first          | 2026-09    |     10 |      10 |         5 |           8 |            8 |           0 |            8 |           0 |                   5 |                         0 |                        3
+ ep_close_reclaim  | first          | 2026-10    |      8 |       8 |         0 |           8 |            7 |           0 |            7 |           0 |                   0 |                         0 |                        7
+ ep_close_reclaim  | new_high_break | 2026-09    |      6 |       6 |         3 |           6 |            6 |           0 |            6 |           0 |                   3 |                         0 |                        3
+ ep_close_reclaim  | new_high_break | 2026-10    |      4 |       4 |         0 |           1 |            1 |           0 |            0 |           0 |                   0 |                         0 |                        1
+ ep_close_reclaim  | same_pattern   | 2026-09    |      5 |       5 |         2 |           4 |            3 |           0 |            4 |           0 |                   1 |                         1 |                        2
+ ep_close_reclaim  | same_pattern   | 2026-10    |      3 |       3 |         0 |           2 |            0 |           0 |            0 |           0 |                   0 |                         0 |                        0
+ ep_high_break     | first          | 2026-09    |      4 |       4 |         2 |           3 |            3 |           0 |            3 |           0 |                   2 |                         0 |                        1
+ ep_high_break     | first          | 2026-10    |      2 |       2 |         0 |           1 |            1 |           0 |            1 |           0 |                   0 |                         0 |                        1
+ ep_low_reclaim    | first          | 2026-09    |     16 |      16 |         7 |          15 |           12 |           0 |           13 |           0 |                   7 |                         0 |                        5
+ ep_low_reclaim    | first          | 2026-10    |      6 |       6 |         0 |           3 |            3 |           0 |            3 |           0 |                   0 |                         0 |                        3
+ ep_low_reclaim    | new_high_break | 2026-09    |      5 |       5 |         2 |           4 |            4 |           0 |            4 |           0 |                   2 |                         0 |                        2
+ ep_low_reclaim    | new_high_break | 2026-10    |      1 |       1 |         0 |           0 |            0 |           0 |            0 |           0 |                   0 |                         0 |                        0
+ ep_low_reclaim    | same_pattern   | 2026-09    |     13 |      13 |         6 |          11 |           11 |           0 |           11 |           0 |                   6 |                         0 |                        5
+ ep_low_reclaim    | same_pattern   | 2026-10    |      1 |       1 |         0 |           1 |            1 |           0 |            1 |           0 |                   0 |                         0 |                        1
+(20 rows)
+
+== D. ep_low_reclaim first attempts: every fire, newest first
+  id  | ticker |  ep_date   | fire_date  | fire_minute_et | sess_after_fire |    inc     |    o075    |    o100    
+------+--------+------------+------------+----------------+-----------------+------------+------------+------------
+ 3811 | ACN    | 2026-10-01 | 2026-10-12 |            570 |               1 |            |            | 
+ 3814 | HUM    | 2026-10-09 | 2026-10-12 |            720 |               1 | stop       | stop       | stop
+ 3797 | ITUB   | 2026-10-05 | 2026-10-08 |            595 |               3 |            |            | 
+ 3798 | PBR    | 2026-10-05 | 2026-10-08 |            745 |               3 |            |            | 
+ 3789 | CEG    | 2026-10-06 | 2026-10-07 |            585 |               4 | stop       | stop       | stop
+ 3777 | CIFR   | 2026-09-16 | 2026-10-02 |            570 |               7 | trail_exit | trail_exit | trail_exit
+ 3768 | AKAM   | 2026-09-25 | 2026-09-28 |            575 |              11 | stop       | stop       | trail_exit
+ 3769 | INTC   | 2026-09-21 | 2026-09-28 |            690 |              11 | stop       | trail_exit | trail_exit
+ 3770 | ONON   | 2026-09-22 | 2026-09-28 |            575 |              11 | stop       |            | 
+ 3694 | MSTR   | 2026-09-21 | 2026-09-23 |            610 |              14 | stop       | stop       | stop
+ 3695 | SRRK   | 2026-09-14 | 2026-09-23 |            610 |              14 | trail_exit |            | 
+ 3653 | ERO    | 2026-09-08 | 2026-09-22 |            660 |              15 |            |            | 
+ 3659 | ROIV   | 2026-09-08 | 2026-09-22 |            835 |              15 | trail_exit | trail_exit | trail_exit
+ 3539 | GNRC   | 2026-09-17 | 2026-09-18 |            610 |              17 | stop       | stop       | stop
+ 3484 | DFTX   | 2026-09-14 | 2026-09-17 |            630 |              18 | trail_exit |            | trail_exit
+ 3303 | ALAB   | 2026-09-04 | 2026-09-10 |            620 |              23 | trail_exit | trail_exit | trail_exit
+ 3304 | HOOD   | 2026-09-03 | 2026-09-10 |            575 |              23 | stop       | stop       | stop
+ 3305 | QCOM   | 2026-09-08 | 2026-09-10 |            570 |              23 | stop       | trail_exit | trail_exit
+ 3230 | AGX    | 2026-09-03 | 2026-09-09 |            840 |              24 | stop       | trail_exit | trail_exit
+ 3233 | IONQ   | 2026-09-08 | 2026-09-09 |            590 |              24 | stop       | trail_exit | trail_exit
+ 3234 | PHVS   | 2026-09-08 | 2026-09-09 |            590 |              24 | stop       | stop       | trail_exit
+ 2670 | CRWD   | 2026-08-27 | 2026-09-02 |            620 |              28 | stop       | trail_exit | trail_exit
+(22 rows)
+
+== E. all-rung first-attempt fires per fire_date week (accrual rate for the next-read estimate)
+     wk     |       rung        | first_fires 
+------------+-------------------+-------------
+ 2026-08-31 | ep_close_620_prox |           2
+ 2026-08-31 | ep_low_reclaim    |           1
+ 2026-09-07 | ep_close_620_prox |           4
+ 2026-09-07 | ep_close_reclaim  |           5
+ 2026-09-07 | ep_high_break     |           2
+ 2026-09-07 | ep_low_reclaim    |           6
+ 2026-09-14 | ep_close_620_prox |           3
+ 2026-09-14 | ep_close_reclaim  |           2
+ 2026-09-14 | ep_high_break     |           2
+ 2026-09-14 | ep_low_reclaim    |           2
+ 2026-09-21 | ep_close_620_prox |           4
+ 2026-09-21 | ep_close_reclaim  |           2
+ 2026-09-21 | ep_low_reclaim    |           4
+ 2026-09-28 | ep_close_620_prox |           3
+ 2026-09-28 | ep_close_reclaim  |           2
+ 2026-09-28 | ep_low_reclaim    |           4
+ 2026-10-05 | ep_close_620_prox |           3
+ 2026-10-05 | ep_close_reclaim  |           6
+ 2026-10-05 | ep_high_break     |           2
+ 2026-10-05 | ep_low_reclaim    |           3
+ 2026-10-12 | ep_close_620_prox |           3
+ 2026-10-12 | ep_close_reclaim  |           1
+ 2026-10-12 | ep_low_reclaim    |           2
+(23 rows)
+
+== F. ep_low_reclaim first-attempt fires BEFORE 09-02 left in the live table (not prospective; excluded)
+ n_before_0902 |    min     |    max     
+---------------+------------+------------
+             4 | 2026-08-28 | 2026-08-31
+(1 row)
+

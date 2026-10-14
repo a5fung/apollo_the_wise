@@ -1,0 +1,135 @@
+last_bar=2026-10-13  rows=81  all live_ep=True
+
+##### 1. POPULATION (before any outcome number)
+ep_low_reclaim first attempts, fire_date>=09-02, live-EP: 22 rows, 22 campaigns, months={'2026-09': 16, '2026-10': 6}
+  excluded as not prospective (fire_date<09-02): 4
+  20 sessions elapsed (mature): 7   immature: 15
+  mature but not all three arms settled/scoreable (excluded, would be listed): 0
+  pattern_version=['v2']  settle_version(inc)=['settle_v3', nan] v075=['settle_v3'] v100=['settle_v3']  ep_adr20_n null=0
+  judged fires:
+ticker    ep_date  fire_date  sess_after_fire  stop_width_pct  stop_width_pct_075  stop_width_pct_100 outcome_trail  realized_r_trail outcome_trail_075  realized_r_trail_075 outcome_trail_100  realized_r_trail_100
+  CRWD 2026-08-27 2026-09-02               28           1.017               3.610               4.814          stop            -1.000        trail_exit                -0.413        trail_exit                -0.310
+   AGX 2026-09-03 2026-09-09               24           0.239               4.065               5.419          stop            -1.000        trail_exit                 0.059        trail_exit                 0.044
+  IONQ 2026-09-08 2026-09-09               24           2.368               4.211               5.615          stop            -1.000        trail_exit                -0.827        trail_exit                -0.620
+  PHVS 2026-09-08 2026-09-09               24           0.822               3.574               4.766          stop            -1.000              stop                -1.000        trail_exit                -0.754
+  ALAB 2026-09-04 2026-09-10               23           2.813               4.683               6.244    trail_exit            -0.507        trail_exit                -0.305        trail_exit                -0.229
+  HOOD 2026-09-03 2026-09-10               23           1.650               4.026               5.368          stop            -1.000              stop                -1.000              stop                -1.000
+  QCOM 2026-09-08 2026-09-10               23           0.138               2.214               2.952          stop            -1.000        trail_exit                 1.437        trail_exit                 1.078
+
+##### 2. PRE-REGISTERED READ: ep_low_reclaim first attempts, mature only, trail arm
+
+=== ep_low_reclaim / first / prospective / MATURE  (n=7, campaigns=7, months=['2026-09'])
+arm                               incumbent         0.75xADR         1.00xADR
+n                                         7                7                7
+mean_R                               -0.930           -0.293           -0.256
+median_R                             -1.000           -0.413           -0.310
+sum_R                                -6.507           -2.049           -1.790
+win_rate                              0.000            0.286            0.286
+stops                                     6                2                1
+trail_exits                               1                5                6
+time_exits                                0                0                0
+reached_4R                                0                2                2
+max_R                                -0.507            1.437            1.078
+min_R                                -1.000           -1.000           -1.000
+mean_pct_of_entry                    -1.095           -1.511           -1.706
+median_pct_of_entry                  -1.017           -1.491           -1.492
+best_campaign               ALAB 2026-09-04  QCOM 2026-09-08  QCOM 2026-09-08
+best_R                               -0.507            1.437            1.078
+mean_R_drop_best                     -1.000           -0.581           -0.478
+sum_R_drop_best                      -6.000           -3.486           -2.868
+mean_none_arm_R                      -1.000            0.569            0.248
+top1_share_of_positive_sum              NaN            0.961            0.961
+  monthly trail-arm sum R (n):
+    2026-09: incumbent -6.51R | 0.75xADR -2.05R | 1.00xADR -1.79R  (n=7)
+  paired 0.75xADR - incumbent (trail, R own units): mean +0.637  median +0.203  variant>inc 5  variant<inc 0  tie 2
+  paired 1.00xADR - incumbent (trail, R own units): mean +0.674  median +0.380  variant>inc 6  variant<inc 0  tie 1
+
+##### 3. SECONDARY RUNGS (same rule, mature only)
+
+=== ep_close_reclaim  (n=5, campaigns=5, months=['2026-09'])
+arm                              incumbent         0.75xADR         1.00xADR
+n                                        5                5                5
+mean_R                              -1.000           -0.544           -0.278
+median_R                            -1.000           -1.000           -0.494
+sum_R                               -5.000           -2.721           -1.390
+win_rate                             0.000            0.200            0.400
+stops                                    5                3                2
+trail_exits                              0                2                3
+time_exits                               0                0                0
+reached_4R                               1                1                2
+max_R                               -1.000            0.937            0.703
+min_R                               -1.000           -1.000           -1.000
+mean_pct_of_entry                   -0.407           -2.163           -1.242
+median_pct_of_entry                 -0.301           -2.600           -2.600
+best_campaign               AGX 2026-09-03  QCOM 2026-09-08  QCOM 2026-09-08
+best_R                              -1.000            0.937            0.703
+mean_R_drop_best                    -1.000           -0.915           -0.523
+sum_R_drop_best                     -4.000           -3.658           -2.093
+mean_none_arm_R                     -1.000           -0.644            0.000
+top1_share_of_positive_sum             NaN            1.000            0.637
+  monthly trail-arm sum R (n):
+    2026-09: incumbent -5.00R | 0.75xADR -2.72R | 1.00xADR -1.39R  (n=5)
+  paired 0.75xADR - incumbent (trail, R own units): mean +0.456  median +0.000  variant>inc 2  variant<inc 0  tie 3
+  paired 1.00xADR - incumbent (trail, R own units): mean +0.722  median +0.506  variant>inc 3  variant<inc 0  tie 2
+
+=== ep_close_620_prox  (n=7, campaigns=7, months=['2026-09'])
+arm                              incumbent        0.75xADR        1.00xADR
+n                                        7               7               7
+mean_R                              -1.000          -0.565          -0.602
+median_R                            -1.000          -1.000          -1.000
+sum_R                               -7.000          -3.953          -4.215
+win_rate                             0.000           0.143           0.143
+stops                                    7               5               5
+trail_exits                              0               2               2
+time_exits                               0               0               0
+reached_4R                               0               1               1
+max_R                               -1.000           1.106           0.830
+min_R                               -1.000          -1.000          -1.000
+mean_pct_of_entry                   -1.836          -1.530          -2.261
+median_pct_of_entry                 -1.690          -2.434          -3.246
+best_campaign               AGX 2026-09-03  SEI 2026-09-08  SEI 2026-09-08
+best_R                              -1.000           1.106           0.830
+mean_R_drop_best                    -1.000          -0.843          -0.841
+sum_R_drop_best                     -6.000          -5.059          -5.044
+mean_none_arm_R                     -1.000          -0.069          -0.266
+top1_share_of_positive_sum             NaN           1.000           1.000
+  monthly trail-arm sum R (n):
+    2026-09: incumbent -7.00R | 0.75xADR -3.95R | 1.00xADR -4.21R  (n=7)
+  paired 0.75xADR - incumbent (trail, R own units): mean +0.435  median +0.000  variant>inc 2  variant<inc 0  tie 5
+  paired 1.00xADR - incumbent (trail, R own units): mean +0.398  median +0.000  variant>inc 2  variant<inc 0  tie 5
+
+=== ep_high_break  (n=2, campaigns=2, months=['2026-09'])
+arm                              incumbent        0.75xADR        1.00xADR
+n                                        2               2               2
+mean_R                               0.107          -1.000          -0.436
+median_R                             0.107          -1.000          -0.436
+sum_R                                0.215          -2.000          -0.871
+win_rate                             1.000           0.000           0.500
+stops                                    0               2               1
+trail_exits                              2               0               1
+time_exits                               0               0               0
+reached_4R                               0               0               0
+max_R                                0.132          -1.000           0.129
+min_R                                0.083          -1.000          -1.000
+mean_pct_of_entry                    0.637          -3.992          -2.495
+median_pct_of_entry                  0.637          -3.992          -2.495
+best_campaign               AGX 2026-09-03  AGX 2026-09-03  AGX 2026-09-03
+best_R                               0.132          -1.000           0.129
+mean_R_drop_best                     0.083          -1.000          -1.000
+sum_R_drop_best                      0.083          -1.000          -1.000
+mean_none_arm_R                      0.629          -1.000          -1.000
+top1_share_of_positive_sum           0.615             NaN           1.000
+  monthly trail-arm sum R (n):
+    2026-09: incumbent +0.21R | 0.75xADR -2.00R | 1.00xADR -0.87R  (n=2)
+  paired 0.75xADR - incumbent (trail, R own units): mean -1.107  median -1.107  variant>inc 0  variant<inc 2  tie 0
+  paired 1.00xADR - incumbent (trail, R own units): mean -0.543  median -0.543  variant>inc 0  variant<inc 2  tie 0
+
+##### 4. NOT JUDGED - immature-settled contrast (ep_low_reclaim, 0.75xADR trail arm)
+  immature rows already settled on 0.75: n=8  stop share=62%  mean R=-0.658   (mature: stop share=29%, mean R=-0.293)
+  immature rows still OPEN on 0.75 (ep_low_reclaim): 7 of 15
+
+##### 5. ACCRUAL
+  ep_low_reclaim first fires since 09-02: 22 over 29 sessions = 0.76/session = 15.9/month
+  30th fire expected ~session 40 after 09-02; matures 20 sessions later -> ~session 60
+  -> calendar date of that session: 2026-11-25
+  all October fires (through 10-30) mature after session idx +20 -> 2026-11-30 (20th session after 10-30)

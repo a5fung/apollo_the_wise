@@ -1,0 +1,88 @@
+Pager usage is off.
+== P1. ep_low_reclaim rows in LIVE table, all shapes, by fire-date bucket
+ reentry_shape  | prospective | n  |    min     |    max     
+----------------+-------------+----+------------+------------
+ first          | f           |  4 | 2026-08-28 | 2026-08-31
+ first          | t           | 22 | 2026-09-02 | 2026-10-12
+ new_high_break | t           |  6 | 2026-09-11 | 2026-10-05
+ same_pattern   | f           |  1 | 2026-09-01 | 2026-09-01
+ same_pattern   | t           | 14 | 2026-09-03 | 2026-10-09
+(5 rows)
+
+== P2. first attempts since 09-02: one row each, with provenance (created vs fired), live-EP source, own-ticker bar count after fire
+  id  | ticker |  ep_date   | fire_date  | fm  | pa | created_et | lag_days | pv |    sv     |    stv    |    s75    |   s100    | adrn | ep_alert_sources | own_bars_after | spy_bars_after 
+------+--------+------------+------------+-----+----+------------+----------+----+-----------+-----------+-----------+-----------+------+------------------+----------------+----------------
+ 2670 | CRWD   | 2026-08-27 | 2026-09-02 | 620 |    | 2026-09-02 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |             28 |             28
+ 3230 | AGX    | 2026-09-03 | 2026-09-09 | 840 |    | 2026-09-09 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |             24 |             24
+ 3233 | IONQ   | 2026-09-08 | 2026-09-09 | 590 |    | 2026-09-09 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |             24 |             24
+ 3234 | PHVS   | 2026-09-08 | 2026-09-09 | 590 |    | 2026-09-09 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |             24 |             24
+ 3303 | ALAB   | 2026-09-04 | 2026-09-10 | 620 |    | 2026-09-10 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |             23 |             23
+ 3304 | HOOD   | 2026-09-03 | 2026-09-10 | 575 |    | 2026-09-10 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |             23 |             23
+ 3305 | QCOM   | 2026-09-08 | 2026-09-10 | 570 |    | 2026-09-10 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |             23 |             23
+ 3484 | DFTX   | 2026-09-14 | 2026-09-17 | 630 |    | 2026-09-17 |        0 | v2 | screen_v1 | settle_v3 |           | settle_v3 |   20 | live             |             18 |             18
+ 3539 | GNRC   | 2026-09-17 | 2026-09-18 | 610 |    | 2026-09-19 |        1 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |             17 |             17
+ 3653 | ERO    | 2026-09-08 | 2026-09-22 | 660 |    | 2026-09-22 |        0 | v2 | screen_v1 |           |           |           |   20 | live             |             15 |             15
+ 3659 | ROIV   | 2026-09-08 | 2026-09-22 | 835 |    | 2026-09-22 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |             15 |             15
+ 3694 | MSTR   | 2026-09-21 | 2026-09-23 | 610 |    | 2026-09-23 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |             14 |             14
+ 3695 | SRRK   | 2026-09-14 | 2026-09-23 | 610 |    | 2026-09-23 |        0 | v2 | screen_v1 | settle_v3 |           |           |   20 | live             |             14 |             14
+ 3768 | AKAM   | 2026-09-25 | 2026-09-28 | 575 |    | 2026-09-28 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |             11 |             11
+ 3769 | INTC   | 2026-09-21 | 2026-09-28 | 690 |    | 2026-09-28 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |             11 |             11
+ 3770 | ONON   | 2026-09-22 | 2026-09-28 | 575 |    | 2026-09-28 |        0 | v2 | screen_v1 | settle_v3 |           |           |   20 | live             |             11 |             11
+ 3777 | CIFR   | 2026-09-16 | 2026-10-02 | 570 |    | 2026-10-02 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |              7 |              7
+ 3789 | CEG    | 2026-10-06 | 2026-10-07 | 585 |    | 2026-10-07 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |              4 |              4
+ 3797 | ITUB   | 2026-10-05 | 2026-10-08 | 595 |    | 2026-10-08 |        0 | v2 | screen_v1 |           |           |           |   20 | live             |              3 |              3
+ 3798 | PBR    | 2026-10-05 | 2026-10-08 | 745 |    | 2026-10-08 |        0 | v2 | screen_v1 |           |           |           |   20 | live             |              3 |              3
+ 3811 | ACN    | 2026-10-01 | 2026-10-12 | 570 |    | 2026-10-12 |        0 | v2 | screen_v1 |           |           |           |   20 | live             |              1 |              1
+ 3814 | HUM    | 2026-10-09 | 2026-10-12 | 720 |    | 2026-10-12 |        0 | v2 | screen_v1 | settle_v3 | settle_v3 | settle_v3 |   20 | live             |              1 |              1
+(22 rows)
+
+== P3. distinct campaigns among those first attempts
+ rows | campaigns | tickers 
+------+-----------+---------
+   22 |        22 |      22
+(1 row)
+
+== P4. mi_ep_alerts source values overall (what "live" means)
+ source | count 
+--------+-------
+ live   |   133
+(1 row)
+
+== P5. predicate as written, today
+ predicate_today 
+-----------------
+              31
+(1 row)
+
+== R1. reconcile the 09-19 reading of 160: live + voided, settled on the 075 trail arm by 09-19 (two cutoffs), by table and shape
+  tbl   | reentry_shape  | by_0919_pre_eod | by_0919_end | pre0902_by_0919_end | settled_now 
+--------+----------------+-----------------+-------------+---------------------+-------------
+ live   | first          |               5 |           5 |                   0 |          15
+ live   | new_high_break |               1 |           1 |                   0 |           4
+ live   | same_pattern   |               3 |           3 |                   0 |          12
+ voided | first          |               0 |           0 |                   0 |           0
+ voided | new_high_break |              80 |          80 |                   1 |         109
+ voided | same_pattern   |              82 |          82 |                   0 |          95
+(6 rows)
+
+== R2. voided table: ep_low_reclaim since 09-02 by shape, settled/total, latest settle stamp, EP-date range
+ reentry_shape  |  n  | settled_075 |       last_settle_et       |    min     |    max     
+----------------+-----+-------------+----------------------------+------------+------------
+ new_high_break | 192 |         109 | 2026-09-25 17:57:31.310423 | 2026-08-24 | 2026-08-28
+ same_pattern   | 187 |          95 | 2026-09-25 17:57:33.526961 | 2026-08-24 | 2026-08-28
+(2 rows)
+
+== R3. live-table settled 075 rows by shape x 20-session maturity (SPY calendar)
+ reentry_shape  | mature | immature 
+----------------+--------+----------
+ first          |      7 |        8
+ new_high_break |      2 |        2
+ same_pattern   |      6 |        6
+(3 rows)
+
+== R4. last settle run stamps (did the 10-13 EOD settle run?)
+     last_inc_settle_et     |     last_075_settle_et     |       last_create_et       
+----------------------------+----------------------------+----------------------------
+ 2026-10-13 17:57:05.135166 | 2026-10-13 17:57:05.458863 | 2026-10-13 17:57:01.575461
+(1 row)
+

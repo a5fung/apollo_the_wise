@@ -1,0 +1,7 @@
+immature settled 075: M-none outcomes [('GNRC', 'stop', 'stop'), ('ROIV', 'stop', 'trail_exit'), ('MSTR', 'stop', 'stop'), ('AKAM', 'stop', 'stop'), ('INTC', 'stop', 'trail_exit'), ('CIFR', 'stop', 'trail_exit'), ('CEG', 'stop', 'stop'), ('HUM', 'stop', 'stop')]
+inc mean %entry -1.0946
+075 mean %entry -1.5115
+100 mean %entry -1.7058
+620 0.75 mean -0.5647142857142857
+M-none 075 per fire [(-1.0, 'AGX'), (-1.0, 'ALAB'), (-1.0, 'HOOD'), (-1.0, 'IONQ'), (-1.0, 'PHVS'), (0.9886, 'QCOM'), (7.9934, 'CRWD')] drop-best mean -0.669
+M-none 100 per fire [(-1.0, 'AGX'), (-1.0, 'ALAB'), (-1.0, 'HOOD'), (-1.0, 'IONQ'), (-1.0, 'PHVS'), (0.7414, 'QCOM'), (5.995, 'CRWD')] drop-best mean -0.71

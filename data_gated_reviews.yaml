@@ -14016,24 +14016,30 @@ reviews:
     # fires (recorded from 2026-09-02, no cell-picking)" but nothing in the SQL said so - one
     # August row already carried a variant settlement (160 of 161 were prospective), and a
     # future backfill run would have polluted the out-of-sample claim silently. Reads 160.
+    # 🔧 TIGHTENED 2026-10-14 (Opus-verified review): first attempts only, all three trail arms settled AND 20 SPY
+    # sessions elapsed — the old form read 31 on 15 first attempts (8 immature stop-outs) + 16 re-entries, and its
+    # 09-19 '160' was 153 voided first-week re-entries. Reads 7 on 2026-10-14 (scripts/probes/_616_review_1014/verify/).
     predicate_sql: >-
       SELECT CASE WHEN to_regclass('mi_delayed_entry_trigger') IS NULL THEN 0
-                  ELSE (SELECT COUNT(*) FROM mi_delayed_entry_trigger
-                        WHERE rung = 'ep_low_reclaim'
-                          AND fire_date >= DATE '2026-09-02'
-                          AND realized_r_trail_075 IS NOT NULL) END
+                  ELSE (SELECT COUNT(*) FROM mi_delayed_entry_trigger t
+                        WHERE t.rung = 'ep_low_reclaim' AND t.reentry_shape = 'first'
+                          AND t.fire_date >= DATE '2026-09-02'
+                          AND t.realized_r_trail IS NOT NULL AND t.realized_r_trail_075 IS NOT NULL
+                          AND t.realized_r_trail_100 IS NOT NULL
+                          AND (SELECT COUNT(*) FROM mi_daily_closes d
+                               WHERE d.ticker = 'SPY' AND d.trade_date > t.fire_date) >= 20) END
     threshold: 30
-    discriminates_on: [mi_delayed_entry_trigger.rung]
+    discriminates_on: [mi_delayed_entry_trigger.rung, mi_delayed_entry_trigger.reentry_shape]
     can_fire:
-      predicate_runs: "2026-09-19 (#669 audit) - runs against prod: 160 with the fire_date guard,
-        161 without. Clean SQL."
+      predicate_runs: "2026-10-14 - the tightened form runs against prod and reads 7 (first attempts with all three trail arms settled and 20 SPY sessions elapsed). The old form read 31; its 09-19 '160' was 153 voided first-week re-entry rows."
       nonzero_possible: "The #616 recorder stamps stop_price_075/_100 beside every trigger and
         the settle path fills realized_r_trail_075 through the SAME compute_settlement; 160
         ep_low_reclaim rows settled on the trail arm since 09-02."
       lane_live: "Shadow lane by design (delayed_ep_reentry.md); the recorder runs every session."
-      threshold_vs_observed: "30 against 160 - met 5x over, ahead of the 2026-10-12 date. The
-        binding constraint is the action's own maturity rule (only fires whose 20-session window
-        has fully elapsed), which the predicate's realized-not-null already encodes."
+      threshold_vs_observed: "30 against 7 on 2026-10-14 (all September; 0 October fires mature). The earlier
+        'met 5x over' and 'realized-not-null already encodes maturity' were FALSE: settlement before 20 sessions
+        happens only on a stop. 3 of the 22 current first attempts can never score the 0.75xADR arm (DFTX, SRRK,
+        ACN), so 12-01 may read ~27-28; the predicate, not a new date, holds the review until 30."
       era_scoped: "Prospective rows only (fire_date >= 2026-09-02, the day the variant columns
         shipped). The variants settle through the lane's own trail ladder, not the magna53 exit
         stack, so the 09-06 magna53 flip does not straddle them; pattern_version / screen_version
@@ -14046,7 +14052,35 @@ reviews:
         compute_settlement on stored daily bars - verified 160 settled 2026-09-19. Known bias the
         action already names: early variant-settled rows are STOP-HEAVY by construction (wider
         stops settle later), so an immature read under-states the band."
-    earliest_review_date: 2026-10-12
+    earliest_review_date: 2026-12-01
+    resolution_2026_10_14: >-
+      EXTENDED, no verdict. Verified 10-14 from the raw table, plus a walk of QCOM and CRWD from daily bars
+      that reproduces the stored settlements. Population: 22 ep_low_reclaim first attempts fired 2026-09-02
+      to 10-12 (16 in September, 6 in October), 22 separate campaigns, every one on a live EP alert, each
+      recorded on its fire date (GNRC one day late, from the 09-18 run's after-midnight write, not a
+      backfill); 4 rows fired before 09-02 were excluded. Only 7 have had their full 20 sessions (fired
+      09-02 to 09-10, all in September) against the bar of 30, so the pre-registered action applies: extend.
+      What the 7 show on the trail arm, in R units of each stop: the incumbent averages -0.93 (median -1.00,
+      sum -6.51, 0 winners of 7); 0.75xADR -0.29 (median -0.41, sum -2.05, 2 of 7); 1.00xADR -0.26 (median
+      -0.31, sum -1.79, 2 of 7). On the same fires both bands beat the incumbent (0.75xADR better on 5,
+      tied on 2, worse on 0; 1.00xADR better on 6, tied on 1, worse on 0) but both stay negative. Dropping
+      each arm's best fire leaves -1.00, -0.58 and -0.48, and QCOM is 96% of the positive R on both bands.
+      So there is no CHANGE_PROCESS candidate and the incumbent stays. Only one month is readable, so the
+      more-than-one-month test cannot run yet. Tail: 2 of 7 touched 4R on both bands; the trail kept +1.44R
+      of QCOM and exited CRWD on day 0 at -0.41R. Not pre-registered, no verdict drawn: the hold-to-day-20
+      arm reads +0.57R per fire at 0.75xADR only because CRWD held to day 20 is +7.99R; without CRWD it is
+      -0.67R. Measured in price the bands lost more per fire than the incumbent (-1.51% and -1.71% of entry
+      against -1.09%), but the bar is in R. Immature rows are stop-heavy as predicted: 5 of the 8 early-
+      settled 0.75xADR rows are stops, against 2 of the 7 mature ones. Predicate fixed. As written it read 31:
+      15 first attempts, 8 of them immature stop-outs, plus 16 re-entries. The 160 recorded on 09-19 was 153
+      voided first-week re-entry rows, 3 live re-entries and 4 live first attempts, none of them mature. The
+      new predicate counts first attempts with all three trail arms settled and 20 SPY sessions elapsed (it
+      read 7 on 10-14), so the bar of 30 now means 30 matured fires that score on all three arms. 3 of the 22
+      can never score the 0.75xADR arm (DFTX, SRRK, ACN; SRRK can't score 1.00xADR either), because day-0
+      minutes are fetched only when the incumbent stop needs them. They close unscoreable and are counted, so
+      12-01 may read about 27-28; the predicate, not a new date, holds the review until it reaches 30. Next
+      read 2026-12-01, the first morning every September and October fire has had its 20 sessions; one read,
+      no interim. Nothing flipped; the stop is the operator's call (THE LINE).
     status: pending
     kind: accrual
     added_on: 2026-09-02

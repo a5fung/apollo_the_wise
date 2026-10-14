@@ -1,0 +1,13 @@
+Pager usage is off.
+== proposed tightened predicate (first attempts, all three trail arms settled, 20 SPY sessions elapsed since fire)
+ tightened_predicate 
+---------------------
+                   7
+(1 row)
+
+== current predicate as written
+ current_predicate 
+-------------------
+                31
+(1 row)
+

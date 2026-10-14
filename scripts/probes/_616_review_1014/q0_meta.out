@@ -1,0 +1,78 @@
+Pager usage is off.
+== calendar: SPY sessions (maturity clock)
+ last_spy_bar | spy_sessions_since_0820 
+--------------+-------------------------
+ 2026-10-13   |                      38
+(1 row)
+
+== last trade_date any ticker, and tickers on last date
+  last_any  | n_tickers_last 
+------------+----------------
+ 2026-10-13 |          12450
+(1 row)
+
+== SPY sessions since 09-01
+                                                                                     string_agg                                                                                      
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 09-01 09-02 09-03 09-04 09-08 09-09 09-10 09-11 09-14 09-15 09-16 09-17 09-18 09-21 09-22 09-23 09-24 09-25 09-28 09-29 09-30 10-01 10-02 10-05 10-06 10-07 10-08 10-09 10-12 10-13
+(1 row)
+
+== table existence + columns
+     column_name      
+----------------------
+ ep_adr20_n
+ ep_date
+ fire_date
+ outcome_trail
+ outcome_trail_075
+ outcome_trail_100
+ pattern_version
+ reached_4r
+ reached_4r_075
+ reached_4r_100
+ realized_r_trail
+ realized_r_trail_075
+ realized_r_trail_100
+ reentry_shape
+ rung
+ screen_version
+ settle_version
+ settle_version_075
+ settle_version_100
+ stop_width_pct
+ stop_width_pct_075
+ stop_width_pct_100
+ ticker
+(23 rows)
+
+== versions in play (all post-09-02 rows)
+       rung        | reentry_shape  | pattern_version | settle_version | count 
+-------------------+----------------+-----------------+----------------+-------
+ ep_close_620_prox | first          | v2              | settle_v3      |    19
+ ep_close_620_prox | first          | v2              |                |     3
+ ep_close_620_prox | new_high_break | v2              | settle_v3      |     8
+ ep_close_620_prox | new_high_break | v2              |                |     3
+ ep_close_620_prox | same_pattern   | v2              | settle_v3      |    18
+ ep_close_620_prox | same_pattern   | v2              |                |     1
+ ep_close_reclaim  | first          | v2              | settle_v3      |    16
+ ep_close_reclaim  | first          | v2              |                |     2
+ ep_close_reclaim  | new_high_break | v2              | settle_v3      |     7
+ ep_close_reclaim  | new_high_break | v2              |                |     3
+ ep_close_reclaim  | same_pattern   | v2              | settle_v3      |     6
+ ep_close_reclaim  | same_pattern   | v2              |                |     2
+ ep_high_break     | first          | v2              | settle_v3      |     4
+ ep_high_break     | first          | v2              |                |     2
+ ep_low_reclaim    | first          | v2              | settle_v3      |    18
+ ep_low_reclaim    | first          | v2              |                |     4
+ ep_low_reclaim    | new_high_break | v2              | settle_v3      |     4
+ ep_low_reclaim    | new_high_break | v2              |                |     2
+ ep_low_reclaim    | same_pattern   | v2              | settle_v3      |    12
+ ep_low_reclaim    | same_pattern   | v2              |                |     2
+(20 rows)
+
+== predicate value as the YAML reads it
+ count 
+-------
+    31
+(1 row)
+

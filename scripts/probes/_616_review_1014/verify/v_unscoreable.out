@@ -1,0 +1,15 @@
+rows that can NEVER settle a variant (minute fire, fire-day low <= variant stop, no cached day-0 minutes):
+  ep_low_reclaim first n=22: blocked075 ['DFTX', 'SRRK', 'ITUB', 'PBR', 'ACN'] blocked100 ['SRRK', 'PBR'] | incumbent wider than 0.75xADR on ['DFTX', 'ERO', 'SRRK', 'CIFR', 'ITUB', 'PBR', 'ACN']
+  ep_close_reclaim first n=18: blocked075 ['KOD', 'PBR', 'TLN', 'VST', 'PENG'] blocked100 ['KOD', 'VST', 'PENG'] | incumbent wider than 0.75xADR on ['KOD', 'PBR', 'TLN', 'VST', 'PENG']
+  ep_close_620_prox first n=22: blocked075 ['ITUB', 'HUM'] blocked100 ['ITUB', 'HUM'] | incumbent wider than 0.75xADR on ['HUM']
+  ep_high_break first n=6: blocked075 [] blocked100 [] | incumbent wider than 0.75xADR on ['AGX', 'SEI', 'CIFR', 'VICR', 'ITUB', 'NU']
+
+PRECISE censor rule (code: minutes fetched only when the INCUMBENT needs them): minute fire AND stop_inc < day_low <= stop_variant AND no cached day-0
+  ep_low_reclaim first n=22 075: censored 3 [('DFTX', '2026-09-17', 'inc_settled', 'open'), ('SRRK', '2026-09-23', 'inc_settled', 'open'), ('ACN', '2026-10-12', 'inc_open', 'open')]
+  ep_low_reclaim first n=22 100: censored 1 [('SRRK', '2026-09-23', 'inc_settled', 'open')]
+  ep_close_reclaim first n=18 075: censored 0 []
+  ep_close_reclaim first n=18 100: censored 0 []
+  ep_close_620_prox first n=22 075: censored 0 []
+  ep_close_620_prox first n=22 100: censored 0 []
+  ep_high_break first n=6 075: censored 0 []
+  ep_high_break first n=6 100: censored 0 []

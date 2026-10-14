@@ -1,0 +1,39 @@
+ep_low_reclaim first since 09-02: 22 months {'2026-09': 16, '2026-10': 6}
+mature (>=20 SPY sessions after fire): 7 ['CRWD 2026-09-02', 'AGX 2026-09-09', 'IONQ 2026-09-09', 'PHVS 2026-09-09', 'ALAB 2026-09-10', 'HOOD 2026-09-10', 'QCOM 2026-09-10']
+own-ticker bars agree with SPY on all 22: True
+mature with any arm unsettled: []
+immature settled on 075: 8 stops 5 | immature open on 075: 7
+mature 075 stop share: 2 / 7
+
+per-fire, mature (R: inc / 075 / 100 ; outcome M-none 075):
+  2670 CRWD  fire 2026-09-02 entry 206.50 stops 204.40/199.05/196.56 R -1.000 / -0.413 / -0.310  trail-out stop/trail_exit/trail_exit 4R f/t/t mfe075 8.4239
+  3230 AGX   fire 2026-09-09 entry 401.17 stops 400.21/384.86/379.43 R -1.000 / +0.059 / +0.044  trail-out stop/trail_exit/trail_exit 4R f/f/f mfe075 2.3814
+  3233 IONQ  fire 2026-09-09 entry 39.52 stops 38.58/37.85/37.30 R -1.000 / -0.827 / -0.620  trail-out stop/trail_exit/trail_exit 4R f/f/f mfe075 0.2398
+  3234 PHVS  fire 2026-09-09 entry 37.73 stops 37.41/36.38/35.93 R -1.000 / -1.000 / -0.754  trail-out stop/stop/trail_exit 4R f/f/f mfe075 2.1321
+  3303 ALAB  fire 2026-09-10 entry 288.65 stops 280.53/275.13/270.63 R -0.507 / -0.305 / -0.229  trail-out trail_exit/trail_exit/trail_exit 4R f/f/f mfe075 0.6628
+  3304 HOOD  fire 2026-09-10 entry 113.83 stops 111.95/109.25/107.72 R -1.000 / -1.000 / -1.000  trail-out stop/stop/stop 4R f/f/f mfe075 0.561
+  3305 QCOM  fire 2026-09-10 entry 172.24 stops 172.00/168.43/167.16 R -1.000 / +1.437 / +1.078  trail-out stop/trail_exit/trail_exit 4R f/t/t mfe075 8.814
+
+--- ep_low_reclaim FIRST, MATURE (the pre-registered cell): n=7
+  inc: mean -0.930 median -1.000 sum -6.51 win 0/7 outcomes {'stop': 6, 'trail_exit': 1} touched4R 0 best ALAB -0.507 | mean %entry -1.09% median stopwidth 1.02%
+      drop-best (ALAB): n=6 mean -1.000 sum -6.00
+  075: mean -0.293 median -0.413 sum -2.05 win 2/7 outcomes {'trail_exit': 5, 'stop': 2} touched4R 2 best QCOM +1.437 | mean %entry -1.51% median stopwidth 4.03%
+      drop-best (QCOM): n=6 mean -0.581 sum -3.49
+      best share of positive R: 96%
+  100: mean -0.256 median -0.310 sum -1.79 win 2/7 outcomes {'trail_exit': 6, 'stop': 1} touched4R 2 best QCOM +1.078 | mean %entry -1.71% median stopwidth 5.37%
+      drop-best (QCOM): n=6 mean -0.478 sum -2.87
+      best share of positive R: 96%
+  month 2026-09 n 7 inc -6.51 075 -2.05 100 -1.79
+  paired 075 vs inc: better 5 tie 2 worse 0 mean diff +0.637
+  paired 100 vs inc: better 6 tie 1 worse 0 mean diff +0.674
+
+  M-none inc: mean -1.000 median -1.000 sum -7.00
+  M-none 075: mean +0.569 median -1.000 sum +3.98
+  M-none 100: mean +0.248 median -1.000 sum +1.74
+
+ep_close_reclaim n 5 inc -1.00 075 -0.54 100 -0.28 | unsettled-mature []
+ep_close_620_prox n 7 inc -1.00 075 -0.56 100 -0.60 | unsettled-mature []
+ep_high_break n 2 inc +0.11 075 -1.00 100 -0.44 | unsettled-mature []
+
+NAIVE (all 3 arms settled, incl immature) n 15 inc -0.896 075 -0.487 100 -0.462
+ep_low_reclaim first fires per session since 09-02: 22 / 29 = 0.759

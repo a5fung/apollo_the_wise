@@ -1,0 +1,110 @@
+Pager usage is off.
+== all columns of mi_delayed_entry_trigger
+       column_name        |        data_type         
+--------------------------+--------------------------
+ id                       | integer
+ ticker                   | text
+ ep_date                  | date
+ rung                     | text
+ pattern_version          | text
+ fire_date                | date
+ fire_minute_et           | integer
+ resolution               | text
+ sessions_since_ep        | integer
+ entry_price              | double precision
+ stop_price               | double precision
+ stop_width_pct           | double precision
+ gap_day_low              | double precision
+ gap_day_close            | double precision
+ gap_day_high             | double precision
+ gap_day_volume           | bigint
+ prior_session_low        | double precision
+ day_open                 | double precision
+ day_high                 | double precision
+ day_low                  | double precision
+ day_close                | double precision
+ day_volume               | bigint
+ adr20_pct                | double precision
+ adr20_n                  | integer
+ gap_high_exceeded_before | boolean
+ in_active_theme          | boolean
+ ep_score                 | double precision
+ catalyst_grade           | text
+ screen_member            | boolean
+ screen_version           | text
+ prior_missing_sessions   | integer
+ outcome                  | text
+ realized_r               | double precision
+ outcome_trail            | text
+ realized_r_trail         | double precision
+ r_none_s1                | double precision
+ r_none_s5                | double precision
+ r_none_s10               | double precision
+ r_none_s20               | double precision
+ r_trail_s1               | double precision
+ r_trail_s5               | double precision
+ r_trail_s10              | double precision
+ r_trail_s20              | double precision
+ mfe_r                    | double precision
+ mae_r                    | double precision
+ reached_4r               | boolean
+ settle_version           | text
+ settled_at               | timestamp with time zone
+ created_at               | timestamp with time zone
+ reentry_shape            | text
+ prior_attempt_id         | integer
+ near_definition          | text
+ band_adr_dollar          | double precision
+ stop_hit_date            | date
+ ep_adr20_dollar          | double precision
+ ep_adr20_n               | integer
+ stop_price_075           | double precision
+ stop_width_pct_075       | double precision
+ stop_price_100           | double precision
+ stop_width_pct_100       | double precision
+ day0_resolved            | boolean
+ day0_post_low            | double precision
+ day0_post_high           | double precision
+ outcome_075              | text
+ realized_r_075           | double precision
+ outcome_trail_075        | text
+ realized_r_trail_075     | double precision
+ mfe_r_075                | double precision
+ mae_r_075                | double precision
+ reached_4r_075           | boolean
+ settle_version_075       | text
+ settled_at_075           | timestamp with time zone
+ outcome_100              | text
+ realized_r_100           | double precision
+ outcome_trail_100        | text
+ realized_r_trail_100     | double precision
+ mfe_r_100                | double precision
+ mae_r_100                | double precision
+ reached_4r_100           | boolean
+ settle_version_100       | text
+ settled_at_100           | timestamp with time zone
+ stop_price_025           | double precision
+ stop_width_pct_025       | double precision
+ outcome_025              | text
+ realized_r_025           | double precision
+ outcome_trail_025        | text
+ realized_r_trail_025     | double precision
+ mfe_r_025                | double precision
+ mae_r_025                | double precision
+ reached_4r_025           | boolean
+ settle_version_025       | text
+ settled_at_025           | timestamp with time zone
+(92 rows)
+
+== all columns of voided table (names only)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      string_agg                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ id,ticker,ep_date,rung,pattern_version,fire_date,fire_minute_et,resolution,sessions_since_ep,entry_price,stop_price,stop_width_pct,gap_day_low,gap_day_close,gap_day_high,gap_day_volume,prior_session_low,day_open,day_high,day_low,day_close,day_volume,adr20_pct,adr20_n,gap_high_exceeded_before,in_active_theme,ep_score,catalyst_grade,screen_member,screen_version,prior_missing_sessions,outcome,realized_r,outcome_trail,realized_r_trail,r_none_s1,r_none_s5,r_none_s10,r_none_s20,r_trail_s1,r_trail_s5,r_trail_s10,r_trail_s20,mfe_r,mae_r,reached_4r,settle_version,settled_at,created_at,reentry_shape,prior_attempt_id,near_definition,band_adr_dollar,stop_hit_date,ep_adr20_dollar,ep_adr20_n,stop_price_075,stop_width_pct_075,stop_price_100,stop_width_pct_100,day0_resolved,day0_post_low,day0_post_high,outcome_075,realized_r_075,outcome_trail_075,realized_r_trail_075,mfe_r_075,mae_r_075,reached_4r_075,settle_version_075,settled_at_075,outcome_100,realized_r_100,outcome_trail_100,realized_r_trail_100,mfe_r_100,mae_r_100,reached_4r_100,settle_version_100,settled_at_100,stop_price_025,stop_width_pct_025,outcome_025,realized_r_025,outcome_trail_025,realized_r_trail_025,mfe_r_025,mae_r_025,reached_4r_025,settle_version_025,settled_at_025
+(1 row)
+
+== now
+              now              |           now_et           
+-------------------------------+----------------------------
+ 2026-10-14 13:37:57.997854+00 | 2026-10-14 09:37:57.997854
+(1 row)
+
