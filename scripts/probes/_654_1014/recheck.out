@@ -1,0 +1,9 @@
+ rows  | failed_at_stamped | low_after_breakout_stamped 
+-------+-------------------+----------------------------
+ 65611 |                 0 |                          2
+(1 row)
+
+ scan_date | ticker | stage 
+-----------+--------+-------
+(0 rows)
+
