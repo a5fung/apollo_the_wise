@@ -152,3 +152,8 @@ def test_gate_script_expects_exactly_the_jobs_the_module_names():
     spec.loader.exec_module(gate)
     assert tuple(gate.EXPECTED_JOBS) == tuple(cs.EXPECTED_JOBS)
     assert tuple(gate.STATUSES) == tuple(cs.STATUSES)
+    # Review 2026-10-14: the not-built set drives "(not built)" vs "MISSING WARN"; the two copies
+    # must agree, and every not-built job must be one the gate expects.
+    assert tuple(gate.NOT_BUILT) == tuple(cs.NOT_BUILT_JOBS)
+    assert set(cs.NOT_BUILT_JOBS) <= set(cs.EXPECTED_JOBS)
+    assert cs.JOB_SELECTION_REPLAY not in cs.NOT_BUILT_JOBS     # it has the live writer

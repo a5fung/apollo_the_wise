@@ -113,16 +113,26 @@ in-container regression jobs write through the market-agent bind mount (`/app/ci
 | red, ≤ 7 days old | **BLOCK — `exit 21`** | pass (never blocked, M4f) |
 | red, > 7 days old (stale) | WARN | WARN |
 | green ≤ 7d · green > 7d | pass · WARN (job may be dead) | same |
-| file missing / unreadable | WARN, never block | same |
+| file missing / unreadable | WARN, never block (a missing `judge_eval` / `entry_sim` prints `(not built)`, information) | same |
 
 Jobs the gate expects (ADR 0022 §3): `selection_replay` (**live** — the Sunday `weekly_system_review`
-writes it; red iff live realized expectancy sits >0.3R under the +0.95R #268b calibration at n≥50, M3f),
-`judge_eval` and `entry_sim` (**not built** — missing = WARN on every deploy; the ADR's §3 says what each
-would need). Override, **operator only**, LOUD: `CI_OVERRIDE="<reason>" bash scripts/deploy.sh <scope>` →
+writes it, live account only; red iff live realized expectancy sits >0.3R under the +0.95R #268b
+calibration at n≥50, M3f; a missing file is the one `MISSING WARN` that matters — the writer is dark),
+`judge_eval` and `entry_sim` (**not built** — missing prints `(not built)` on every deploy, information
+not a WARN; the ADR's §3 says what each would need). The gate's block exit code is **3**; deploy.sh maps
+only 3 to `exit 21` — a crash in the gate prints `CI GATE ERROR — not blocking` and the deploy continues.
+Override, **operator only**, LOUD: `CI_OVERRIDE="<reason>" bash scripts/deploy.sh <scope>` →
 banner + `logs/ci_override.log` line + `mi_audit_log` row `ci_override_deploy` (relayed via
-`scripts/log_judge_envelope_change.py` into the running container). First deploy after the change needs
-`both` (the compose edit is all-service scope) and then `execution` to clear the drift warning; the gate
-itself `mkdir -p`s the host dir as `apollo` so the uid-1000 writer can write on the first Sunday.
+`scripts/log_judge_envelope_change.py` into the running container).
+
+**First deploy of this change — one-time pre-step.** The host dir must be owned by `apollo` (uid 1000, the
+container user) or the Sunday writer cannot write; docker creates a missing bind source root-owned. The
+[5p/7] block `mkdir -p`s it and warns loudly unless it is writable, but the deploy that SHIPS the block runs
+the pre-merge `deploy.sh` (bash keeps the old inode across `git pull`), so it prints no `[5p/7]` at all.
+Therefore, as `apollo` on the host: `mkdir -p /home/apollo/backups/ci_status` BEFORE `bash scripts/deploy.sh
+both` (the compose edit is all-service scope); if it already exists root-owned, `sudo chown apollo:apollo` it.
+Then `deploy.sh execution` (clears the #324 drift warning) is the first run of the gate: expect
+`selection_replay MISSING WARN` + two `(not built)` lines until Sunday's 08:00 ET review writes the file.
 
 ## Required Env Vars
 ```

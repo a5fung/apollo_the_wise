@@ -8,14 +8,17 @@ ci_status.py`): `{"job", "status": "green"|"red", "asof": "<ET ISO>", "detail"}`
 
 VERDICT RULES (signed 2026-07-05 — M3f thresholds live in the writers, M4f scope + the 7-day
 stale rule live here):
-  red  AND age <= 7d  → BLOCK (exit 1; deploy.sh maps it to exit 21) — but ONLY for the scopes
+  red  AND age <= 7d  → BLOCK (exit 3; deploy.sh maps it to exit 21) — but ONLY for the scopes
                         that ship trading code: market-agent / both / execution. An
                         orchestrator-only deploy is NEVER blocked (M4f rec, signed).
   red  AND age  > 7d  → WARN (stale — a dead CI job must not freeze deploys).
   green AND age > 7d  → WARN (stale: the job may be dead; its freshness is the signal).
   green AND age <= 7d → OK.
-  missing file        → WARN, never block (the first deploy after this ships has no files, and
-                        ADR jobs (b)/(c) have no writer yet).
+  missing file        → WARN, never block (the first deploy after this ships has no files) —
+                        EXCEPT a job in `NOT_BUILT` (ADR jobs (b)/(c) have no writer yet), whose
+                        missing file prints "(not built)" as information, NOT a WARN: those two
+                        lines are permanent, so as WARNs they would train the reader to ignore
+                        the one that matters — a dead `selection_replay` writer reads MISSING WARN.
   unreadable          → WARN, never block (bad JSON / unknown status / bad asof — printed).
 The gate names the THREE jobs the ADR expects (`EXPECTED_JOBS`) so a missing writer is a
 printed line rather than a silent skip; any other `*.json` in the directory is evaluated too.
@@ -28,9 +31,13 @@ to `logs/ci_override.log`, (3) hands deploy.sh an `mi_audit_log` payload (`--aud
 empty `CI_OVERRIDE` is not an override. An override that was not needed (nothing red) is noted
 and NOT logged — nothing was overridden.
 
-Exit codes: 0 = proceed (OK or WARN), 1 = BLOCK. Nothing else — an unexpected exception here
-is a bug in this gate, and deploy.sh treats any non-zero as a block, which is the safe side for
-a gate whose job is to stop regressions shipping.
+Exit codes: 0 = proceed (OK or WARN), 3 = BLOCK — and ONLY 3 (`EXIT_BLOCK`). It is deliberately
+not 1 (what an uncaught exception exits with) or 2 (argparse): a crash, an import failure or a
+missing interpreter is a bug in THIS gate, not a regression, and ADR 0022 says a broken CI job
+must not freeze deploys — deploy.sh maps exactly 3 to exit 21 and prints any other non-zero as
+"CI GATE ERROR — not blocking" (loud, deploy continues). Review 2026-10-14: at exit 1 a PermissionError
+from one `stat()` blocked every trading-scope deploy under a false "a status is RED" message that
+`CI_OVERRIDE` could not rescue, since the override is evaluated inside this script.
 
 Run: CI_STATUS_DIR=/home/apollo/backups/ci_status python3 scripts/preflight_ci_status_gate.py --scope market-agent
 """
@@ -57,12 +64,16 @@ DEFAULT_LOG = REPO / "logs" / "ci_override.log"
 # purpose: this script must stay import-free of the app (host-side, stdlib-only). A test pins the
 # two tuples equal.
 EXPECTED_JOBS = ("selection_replay", "judge_eval", "entry_sim")
+# The expected jobs that have NO writer yet (ADR 0022 §3 (b)/(c), CHANGELOG 2026-10-14). Also
+# pinned equal to ci_status.NOT_BUILT_JOBS. Delete a job from here the day its writer ships —
+# from then on its missing file is a MISSING WARN like selection_replay's.
+NOT_BUILT = ("judge_eval", "entry_sim")
 BLOCKING_SCOPES = frozenset({"market-agent", "both", "execution"})   # M4f (signed)
 STALE_AFTER = timedelta(days=7)                                      # M3f stale rule (signed)
 STATUSES = ("green", "red")
 
 EXIT_OK = 0
-EXIT_BLOCK = 1
+EXIT_BLOCK = 3          # NOT 1/2: those are what a crash / argparse exit with — see "Exit codes"
 
 AUDIT_EVENT = "ci_override_deploy"
 
@@ -71,7 +82,8 @@ AUDIT_EVENT = "ci_override_deploy"
 
 def read_status(path: Path, now: datetime) -> dict:
     """One job's reading: `{job, state, status, age_days, detail, asof}` where state is one of
-    green · red · stale · missing · unreadable. Never raises — every defect is a WARN reading."""
+    green · red · stale · missing · unreadable. Never raises — every defect is a WARN reading.
+    (`evaluate` re-labels a missing NOT_BUILT job `not_built`; this reads the file as found.)"""
     job = path.stem
     base = {"job": job, "status": None, "age_days": None, "detail": "", "asof": None}
     if not path.exists():
@@ -109,7 +121,12 @@ def evaluate(status_dir: Path, now: datetime | None = None) -> list[dict]:
         for p in sorted(status_dir.glob("*.json")):
             if p.stem not in seen and not p.name.startswith("."):
                 seen.append(p.stem)
-    return [read_status(status_dir / f"{job}.json", now) for job in seen]
+    readings = [read_status(status_dir / f"{job}.json", now) for job in seen]
+    for r in readings:
+        if r["state"] == "missing" and r["job"] in NOT_BUILT:
+            r["state"] = "not_built"
+            r["detail"] = "no writer built yet — nothing to read (ADR 0022 §3)"
+    return readings
 
 
 # ── the decision ─────────────────────────────────────────────────────────────────────────────
@@ -133,6 +150,8 @@ def decide(readings: list[dict], scope: str, override: str | None) -> dict:
             tag = "RED"
         elif r["state"] == "stale":
             tag = f"STALE-{r['status']} (>{STALE_AFTER.days}d) WARN"
+        elif r["state"] == "not_built":
+            tag = "(not built)"
         elif r["state"] == "missing":
             tag = "MISSING WARN"
         else:

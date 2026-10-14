@@ -129,9 +129,12 @@ services:
       # #313 / ADR 0022 §3 L4 (2026-10-14): the replay-everything CI status files. The in-container
       # writer (weekly_system_review → replay_regression, an INTELLIGENCE-owned job, so THIS service
       # only) writes /app/ci_status/<job>.json; the on-host deploy gate [5p/7] reads the same files
-      # at /home/apollo/backups/ci_status (repo-external, like the watchdog state). deploy.sh
-      # `mkdir -p`s the host dir as `apollo` (uid 1000 = the container user) BEFORE `up -d` —
-      # docker would otherwise create a missing bind source as root and the writer would fail.
+      # at /home/apollo/backups/ci_status (repo-external, like the watchdog state). The host dir
+      # must be owned by `apollo` (uid 1000 = the container user): docker creates a MISSING bind
+      # source as root and the writer's mkstemp then fails. deploy.sh's [5p/7] block `mkdir -p`s it
+      # and WARNS if it is not writable — but the deploy that SHIPS this mount runs the pre-merge
+      # script (bash keeps the old inode across `git pull`), so create it by hand as apollo BEFORE
+      # the first `deploy.sh both`:  mkdir -p /home/apollo/backups/ci_status
       - /home/apollo/backups/ci_status:/app/ci_status
     # Event-loop liveness probe. If uvicorn stops responding for ~3 min,
     # Docker restarts the container and scheduler catch-up logic re-fires

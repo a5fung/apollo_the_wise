@@ -157,3 +157,41 @@ def test_a_failed_status_write_never_breaks_the_digest(monkeypatch, tmp_path):
     _wire(monkeypatch, [1.0, 2.0])
     res = asyncio.run(rr.run_replay_regression("live", persist=True))
     assert "error" not in res and any("live (n=2)" in ln for ln in res["lines"])
+
+
+# ── review 2026-10-14: the CI write is isolated and live-only ──
+
+def test_a_raise_in_the_ci_status_code_never_costs_the_digest_its_replay_section(monkeypatch, tmp_path):
+    """The CI block sat inside run_replay_regression's outer try, so ANY raise from the status code
+    replaced the already-rendered digest lines with 'replay-regression unavailable'. Unreachable
+    today (compute_fingerprint always sets expectancy_r when n>0) — but a future edit to the status
+    code must cost the deploy gate a stale file, never the Sunday review its replay section."""
+    import agents.market_intelligence.ci_status as cs
+    monkeypatch.setenv("APOLLO_CI_STATUS_DIR", str(tmp_path))
+    audited = _wire(monkeypatch, [2.0, -1.0, 3.0, -1.0])
+
+    def boom(*a, **k):
+        raise RuntimeError("status code regressed")
+
+    monkeypatch.setattr(cs, "selection_replay_status", boom)
+    res = asyncio.run(rr.run_replay_regression("live", persist=True))
+    assert "error" not in res and any("live (n=4)" in ln for ln in res["lines"])
+    assert not any("unavailable" in ln for ln in res["lines"])
+    assert res["fingerprint"]["n"] == 4
+    assert [e for e, _ in audited] == ["replay_regression_snapshot"]      # the audit row still landed
+    assert list(tmp_path.iterdir()) == []                                  # and no half-written file
+
+
+def test_a_non_live_run_never_overwrites_the_live_ci_status(monkeypatch, tmp_path):
+    """M3f was signed against the LIVE cohort. Paper's n is large with low expectancy: a paper
+    call (nothing makes one today) would overwrite the live status with a false RED that blocks
+    the next trading-scope deploy."""
+    monkeypatch.setenv("APOLLO_CI_STATUS_DIR", str(tmp_path))
+    _wire(monkeypatch, [2.0, -1.0, 3.0, -1.0])
+    asyncio.run(rr.run_replay_regression("live", persist=True))
+    live_file = _ci_file(tmp_path)
+    assert live_file["status"] == "green" and "n=4" in live_file["detail"]
+    _wire(monkeypatch, [0.1] * 400)                    # a big, mediocre paper book: would read RED
+    res = asyncio.run(rr.run_replay_regression("paper", persist=True))
+    assert "error" not in res and res["fingerprint"]["n"] == 400    # the paper digest still renders
+    assert _ci_file(tmp_path) == live_file             # byte-for-byte the live reading

@@ -24,7 +24,9 @@ gate's dead-job signal). A writer that fails writes NOTHING (the previous file a
 an error in the writer is not a regression and must never read as one.
 
 Jobs (b) judge frozen-cohort eval and (c) entry-mechanics sim are NOT built (2026-10-14 — see
-the ADR's L4 status line); their absent files surface as WARN on every deploy by design.
+the ADR's L4 status line); the gate prints their absent files as "(not built)" information on
+every deploy — NOT a WARN (review 2026-10-14: two permanent WARNs hid the one that matters, a
+dead `selection_replay` writer, which reads MISSING WARN).
 """
 from __future__ import annotations
 
@@ -55,6 +57,10 @@ JOB_SELECTION_REPLAY = "selection_replay"
 JOB_JUDGE_EVAL = "judge_eval"
 JOB_ENTRY_SIM = "entry_sim"
 EXPECTED_JOBS = (JOB_SELECTION_REPLAY, JOB_JUDGE_EVAL, JOB_ENTRY_SIM)
+# The expected jobs with NO writer yet. The gate (which carries its own copy — host-side,
+# stdlib-only; a test pins the two equal) prints their missing file as "(not built)", not WARN.
+# Remove a job here AND in the gate the day its writer ships.
+NOT_BUILT_JOBS = (JOB_JUDGE_EVAL, JOB_ENTRY_SIM)
 
 
 def ci_status_dir() -> Path:

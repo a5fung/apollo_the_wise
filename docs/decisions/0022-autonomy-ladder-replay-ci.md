@@ -1,7 +1,7 @@
 # ADR 0022 — P5 Autonomy Ladder + Allocator-Live · P6 Replay-Everything CI (D-6, #432)
 
 **Status:** ACTIVE — operator-signed 2026-07-05 ('Signed.', all forks resolved per the recommendations with the Gemini 7/5 modifications adopted; full review trail in-doc).
-**L4 BUILT 2026-10-14 (#313 / #302) — the gate and the one writer that exists; see §3 "What shipped".** Deploy gate is **[5p/7], exit 21** (the ADR's [5m/7] / exit 17 were taken by ADR 0030's judge-eval gate before this shipped). Of the three §3 jobs only (a) the selection replay has a writer; (b) and (c) are NOT built — their absent files read WARN on every deploy by design (missing never blocks), and what each would need is recorded in §3.
+**L4 BUILT 2026-10-14 (#313 / #302) — the gate and the one writer that exists; see §3 "What shipped".** Deploy gate is **[5p/7], exit 21** (the ADR's [5m/7] / exit 17 were taken by ADR 0030's judge-eval gate before this shipped). Of the three §3 jobs only (a) the selection replay has a writer; (b) and (c) are NOT built — the gate prints their absent files as `(not built)` information on every deploy (never a WARN, so a dead (a) writer — `MISSING WARN` — is the only warning that means anything; missing never blocks), and what each would need is recorded in §3. **One-time pre-step before the first deploy:** `mkdir -p /home/apollo/backups/ci_status` as `apollo` on the host (see "Gate" below — the shipping deploy runs the pre-merge script).
 Exists and stays: `mi_strategies.phase` ladder semantics (#66) · the weekly promotion checker
 (eligibility + blocking_reasons in the Sunday review) · `cross_strategy_allocator.py` (shadow,
 #415 telemetry accruing to the 8/4 registry read) · `replay_regression.py` (weekly surface,
@@ -110,9 +110,25 @@ Three scheduled regression jobs, one gating mechanism:
   as **[5p/7] BEFORE the image build** (`[1/5] pull` → gate → `[2/5] build`): a block must stop
   the deploy from STARTING, whereas every other [5x/7] verifies code already up. Fresh red
   (≤7d) ⇒ `exit 21` for `market-agent` / `both` / `execution` only (M4f); `orchestrator` is
-  never blocked; stale (>7d) / missing / unreadable ⇒ WARN. The three expected jobs are named so
-  a missing writer prints rather than vanishes. `mkdir -p` of the host dir runs in the same
-  block as `apollo` (uid 1000 = the container user) so docker never creates it root-owned.
+  never blocked; stale (>7d) / missing / unreadable ⇒ WARN, except a missing (b)/(c) file,
+  which prints `(not built)`. The three expected jobs are named so a missing writer prints
+  rather than vanishes. The gate's exit code is **3** for a block and deploy.sh maps only 3 to
+  exit 21: a crash in the gate (exit 1/2/127) prints `CI GATE ERROR — not blocking` and the
+  deploy continues — a broken CI job must not freeze deploys, and `CI_OVERRIDE` lives inside the
+  script so it could never have rescued a false block. A blocked deploy that also pulled
+  execution-runtime changes (#324) re-states the owed `deploy.sh execution` in the exit-21
+  message (the override retry pulls nothing and never repeats the drift warning).
+  **Host dir ownership.** The bind source `/home/apollo/backups/ci_status` must be owned by
+  `apollo` (uid 1000 = the container user); docker creates a missing one root-owned and the
+  Sunday writer then fails (write_status logs a WARNING and writes nothing). The block `mkdir
+  -p`s it and prints a loud warning unless it is WRITABLE (`-w`) — `mkdir -p` returns 0 on an
+  existing root-owned dir, so its exit code alone is no guard. ⚠ **The deploy that ships this
+  cannot do it:** bash keeps reading the pre-merge deploy.sh across the `git pull` in [1/5]
+  (verified: the old inode), so that deploy prints no [5p/7] block and its `up -d` applies the
+  new compose file, letting docker create the dir root-owned. Hence the one-time pre-step:
+  `mkdir -p /home/apollo/backups/ci_status` as `apollo` BEFORE the first `deploy.sh both` (if
+  docker already created it: `sudo chown apollo:apollo` — a bind mount shows host permissions
+  live, no restart). The follow-up `deploy.sh execution` is the first run of the gate.
 - **Override** `CI_OVERRIDE="<reason>" bash scripts/deploy.sh <scope>` — banner printed, a line
   appended to `logs/ci_override.log`, and an `mi_audit_log` row `ci_override_deploy` relayed
   through the running container via `scripts/log_judge_envelope_change.py` (payload-generic, the
