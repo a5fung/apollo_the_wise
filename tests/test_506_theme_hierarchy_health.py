@@ -390,6 +390,21 @@ def test_catch_all_growth_fires_once_own_history_is_long_enough():
     assert any(f["kind"] == "catch_all_growth" for f in flags)
 
 
+def test_catch_all_growth_needs_three_more_themes_not_just_the_pp_bar():
+    """His 10-14 paste: 2 -> 4 catch-all themes (+1.8pp on a 110-theme board) cleared the pp bar
+    (1.6) but all four were real themes outside the 19 ecosystems. Two more themes no longer page;
+    three or more still do (a mapper outage leaves a whole night's births unassigned)."""
+    history = [{"catch_all_pct": 0.9 if i % 2 else 1.8, "top_pct": 15.0}
+               for i in range(_HIER_MIN_OWN_HISTORY)]
+    baseline = {"catch_all_pct": 1.87, "catch_all_n": 2, "top_pct": 15.0}
+    quiet = _evaluate_theme_hierarchy(_today(catch_all_pct=3.64, catch_all_n=4, top_pct=15.0),
+                                      baseline, history)
+    assert not any(f["kind"] == "catch_all_growth" for f in quiet)
+    loud = _evaluate_theme_hierarchy(_today(catch_all_pct=4.55, catch_all_n=5, top_pct=15.0),
+                                     baseline, history)
+    assert any(f["kind"] == "catch_all_growth" for f in loud)
+
+
 def test_concentration_drift_is_two_sided():
     history = [{"catch_all_pct": 2.5, "top_pct": 10.0} for _ in range(_HIER_MIN_OWN_HISTORY)]
     baseline = {"catch_all_pct": 2.5, "top_pct": 30.0}

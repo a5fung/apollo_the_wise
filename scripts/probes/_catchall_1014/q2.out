@@ -1,0 +1,9 @@
+                                   name                                    | theme_date |   stage    | n |    e_code    |   method   |        assigned_et         |      theme_created_et      
+---------------------------------------------------------------------------+------------+------------+---+--------------+------------+----------------------------+----------------------------
+ Behavioral Health & Transplant/MSK Care Delivery Re-Rating                | 2026-10-14 | Nascent    | 3 | E-UNASSIGNED | unassigned | 2026-10-14 17:10:06.493607 | 2026-10-14 17:10:04.492334
+ Capital Markets & Deal-Flow Re-Rating                                     | 2026-10-14 | Nascent    | 3 | E-UNASSIGNED | unassigned | 2026-10-12 18:36:37.786222 | 2026-10-14 17:11:20.132783
+ For-Profit Postsecondary & Vocational Education                           | 2026-10-14 | Mainstream | 6 | E-UNASSIGNED | unassigned | 2026-08-17 17:17:07.440118 | 2026-10-14 17:10:04.518596
+ IT Services & Infrastructure Outsourcing (Government/Commercial/Offshore) | 2026-10-14 | Retired    |   | E-UNASSIGNED | unassigned | 2026-10-13 17:08:21.658208 | 2026-10-14 17:10:04.555004
+ Packaged Food Processors: Frozen Potato & Canned Vegetables               | 2026-10-14 | Nascent    | 2 | E-UNASSIGNED | unassigned | 2026-10-14 17:10:09.537957 | 2026-10-14 17:10:04.531208
+(5 rows)
+

@@ -3238,6 +3238,11 @@ _HIER_ORPHAN_GROWTH_MARGIN_PP = 0.5   # added on top of the derived historical m
 _HIER_MIN_OWN_HISTORY = 10          # nights of self-collected audit rows before catch-all /
                                      # concentration-drift will EVER page (bootstrap; see header)
 _HIER_CONCENTRATION_MARGIN_PP = 0.5   # same margin idiom, applied to the self-collected series
+# A catch-all page also needs this many MORE catch-all themes than the baseline night (his 10-14 paste:
+# 2 → 4 themes, +1.8pp, all four genuinely outside the 19 ecosystems — the mapper looked and found no
+# fit). On a ~110-theme board one theme is ~0.9pp, so the pp bar alone pages on two small births; a
+# mapper outage leaves a whole night's births unassigned and still clears this easily.
+_HIER_CATCH_ALL_MIN_NEW_THEMES = 3
 
 # #471 fixed parent_theme PERSISTENCE 2026-07-25 (the "1-of-94 for 11 days" incident this whole
 # check exists because of). Every night BEFORE that date reflects the KNOWN-BROKEN era, not
@@ -3500,7 +3505,12 @@ def _evaluate_theme_hierarchy(
                 and baseline.get("catch_all_pct") is not None):
             cat_alert = max(0.0, max(cat_diffs)) + _HIER_CONCENTRATION_MARGIN_PP
             cat_delta = today["catch_all_pct"] - baseline["catch_all_pct"]
-            if cat_delta > cat_alert:
+            # Count floor only when both nights carry the count (older rows may not): never a
+            # 0-substitution, the 09-26 rule above.
+            cat_new = (today["catch_all_n"] - baseline["catch_all_n"]
+                       if today.get("catch_all_n") is not None
+                       and baseline.get("catch_all_n") is not None else None)
+            if cat_delta > cat_alert and (cat_new is None or cat_new >= _HIER_CATCH_ALL_MIN_NEW_THEMES):
                 flags.append({"kind": "catch_all_growth", "delta_pp": round(cat_delta, 1),
                              "catch_all_pct": round(today["catch_all_pct"], 1),
                              "alert_pp": round(cat_alert, 1), "n": len(own_history)})
