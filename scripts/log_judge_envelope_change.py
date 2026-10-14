@@ -13,6 +13,10 @@ Never blocks the deploy: an empty/missing/unparseable argv or a DB failure insid
 `deploy.sh` additionally wraps the call with `|| true` as a second belt.
 
 Usage: python -m scripts.log_judge_envelope_change '<json payload from stdout>'
+
+Also the relay for deploy gate [5p/7] (#313 / ADR 0022 L4): the payload is generic
+(`{event_type, summary, detail}`), so a `CI_OVERRIDE` deploy's `ci_override_deploy` audit row
+goes through this same script — no second relay, no new query, no new credentials.
 """
 from __future__ import annotations
 

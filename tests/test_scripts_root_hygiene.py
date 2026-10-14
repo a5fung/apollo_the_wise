@@ -163,6 +163,7 @@ KEPT_AT_ROOT = {
     "orb_wick_outlier_backwardcheck.py": "imported-or-code-ref+yaml-cited",
     "preflight_account_mode_literals.py": "code-ref:deploy+code-ref:test+imported-or-code-ref",
     "preflight_check.py": "code-ref:deploy+code-ref:test+yaml-cited",
+    "preflight_ci_status_gate.py": "code-ref:deploy+code-ref:test",   # #313 / ADR 0022 L4 — deploy gate [5p/7], tests/test_preflight_ci_status_gate.py
     "preflight_command_parity.py": "code-ref:deploy",
     "preflight_datetime_hygiene.py": "code-ref:deploy+code-ref:other+code-ref:test+imported-or-code-ref",
     "preflight_db_updates.py": "code-ref:deploy+code-ref:test+imported-or-code-ref+yaml-cited",

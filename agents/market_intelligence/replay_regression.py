@@ -181,6 +181,26 @@ async def run_replay_regression(account_mode: str = "live", *, persist: bool = T
                 json.dumps({"account_mode": account_mode,
                             **{k: fp[k] for k in _PERSISTED_KEYS},
                             "calibration_source": CALIBRATION_ENVELOPE["source"]}))
+        if persist and account_mode == "live":
+            # ADR 0022 §3 L4 (#313, 2026-10-14): the ONE place this job's verdict becomes a CI
+            # status the deploy gate reads. Written on EVERY persisting live run, n=0 included —
+            # the file existing is what proves the Sunday job ran; below n=50 it says the
+            # threshold is not armed. File-only (no audit row, no Telegram): the digest keeps its
+            # no-verdict posture, the deploy gate is the only reader.
+            # Two guards (review 2026-10-14): (1) LIVE ONLY — M3f's threshold was signed against
+            # the live cohort and the +0.95R calibration, and paper's n is large with low
+            # expectancy, so a paper call here would overwrite the live status with a false RED;
+            # (2) its OWN try — a raise from the status code must cost the deploy gate a stale
+            # file (it ages into WARN), never the Sunday digest its replay section.
+            try:
+                from agents.market_intelligence.ci_status import (
+                    JOB_SELECTION_REPLAY, selection_replay_status, write_status)
+                from agents.market_intelligence.kill_scale_bands import CALIBRATION_ENVELOPE
+                write_status(JOB_SELECTION_REPLAY,
+                             *selection_replay_status(fp, CALIBRATION_ENVELOPE["expectancy_r"],
+                                                      era_split=split))
+            except Exception as e:  # noqa: BLE001 — the CI status must never replace the digest
+                logger.warning(f"run_replay_regression({account_mode}): CI status not written: {e!r}")
         out = {"lines": lines, "fingerprint": fp}
         if split is None and fp.get("n", 0) > 0:
             out["suppressed"] = {"what": "replay-regression live numbers",
