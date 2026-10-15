@@ -5336,8 +5336,10 @@ async def _ladder_watchdog_job():
     per enabled paper/live strategy on ITS book, computes the four signed M1f demotion
     triggers, writes ONE `ladder_demotion_shadow` audit row. NO phase write, NO sizing/toggle/
     order path, NO Telegram — the act step does not exist in the module (THE LINE: any live
-    flip is the operator's sign-off). A crash pages through the standard job-failure path
-    only, which carries no verdict."""
+    flip is the operator's sign-off). A crash is logged and RE-RAISED, never swallowed here:
+    `audit_wrap` then records the run 'failed' in `mi_job_runs` and `record_job_failure` writes
+    the durable row + one deduped page (which carries no verdict) — a handler that called
+    `notify_job_failure` itself and returned would have left the run recorded as 'success'."""
     try:
         from agents.market_intelligence.ladder_watchdog import run_ladder_watchdog
         res = await run_ladder_watchdog()
@@ -5345,7 +5347,7 @@ async def _ladder_watchdog_job():
                     f"{res['would_demote_count']} would demote, acted: none")
     except Exception as e:
         logger.error(f"ladder watchdog job failed: {e}", exc_info=True)
-        await notify_job_failure("ladder_watchdog", str(e))
+        raise
 
 
 async def _strength_spread_alert_job():

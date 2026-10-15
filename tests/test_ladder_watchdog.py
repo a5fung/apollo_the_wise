@@ -4,16 +4,20 @@ ADR §6's L2 plan reads "synthetic breach → demotion + alert + history row; no
 writes". Adapted to the dark build the operator asked for (2026-10-12: "ships dark; any live
 flip is his sign-off"), the bar is:
 
-  * a synthetic breach of EACH trigger → `would_demote: true` IN THE AUDIT ROW, and the spied DB
-    layer saw exactly one write — the audit INSERT — never `mi_strategies`, never an order or
-    sizing path, never a Telegram;
+  * a synthetic breach of EACH trigger → `would_demote: true` (the pure evaluator, one test per
+    trigger), and a synthetic STREAK breach through the real run → `would_demote: true` IN THE
+    AUDIT ROW with the spied DB layer seeing exactly one write — the audit INSERT — never
+    `mi_strategies`, never an order or sizing path, never a Telegram;
   * no breach → `would_demote: false`, still one row (the row existing is the liveness proof);
   * too few trades → "not enough data" on every trigger, never a breach.
 
 The orchestrator tests run the REAL `run_ladder_watchdog` over `tests.conftest.make_mock_pool`
 (the same harness the kill/scale band tests use), so the query wiring, the account-mode threading
-and the audit write are exercised, not re-described. The one source scan at the bottom checks
-the NON-existence of an act step, which no call can exercise — it carries the reviewed escape.
+and the audit write are exercised, not re-described. The mock DB interprets ONLY the clauses
+the watchdog's own SQL declares — its ORDER BY, the as-of bound and the "tonight's row exists"
+lookup — so a change to that SQL changes what the run sees (there is no Postgres in the test
+environment to execute it). The one source scan at the bottom checks the NON-existence of an act
+step, which no call can exercise — it carries the reviewed escape.
 """
 from __future__ import annotations
 
@@ -82,6 +86,22 @@ def test_trailing20_above_minus_0_3r_is_not_a_breach():
     assert v["triggers"]["trailing20_expectancy_r"]["value"] == pytest.approx(-0.25)
     assert v["triggers"]["trailing20_expectancy_r"]["breached"] is False
     assert v["would_demote"] is False
+
+
+def test_trailing20_exactly_at_the_threshold_is_not_a_breach():
+    """The trigger is STRICT (`<`): a mean sitting exactly ON the line is not below it. Pinned
+    through the `thresholds` override with a value that is exact in binary — the signed -0.3 is
+    not, so no real series can land on it — so a `<=` regression is caught here. [-0.5, 0.0]*10
+    averages exactly -0.25. (Only this trigger is asserted: under this module's convention a
+    breakeven 0.0 is a loss, so the streak breaches on this series and `would_demote` is True.)"""
+    series = [-0.5, 0.0] * 10
+    at_line = lw.evaluate_demotion_triggers(series, thresholds={"trailing20_expectancy_r": -0.25})
+    t = at_line["triggers"]["trailing20_expectancy_r"]
+    assert t["value"] == -0.25 and t["threshold"] == -0.25
+    assert t["breached"] is False
+    just_above = lw.evaluate_demotion_triggers(
+        series, thresholds={"trailing20_expectancy_r": -0.2})
+    assert just_above["triggers"]["trailing20_expectancy_r"]["breached"] is True
 
 
 def test_drawdown_10r_from_peak_breaches_only_that_trigger():
@@ -178,38 +198,80 @@ def _strategy(sid, phase, enabled=True, live_real=False):
                     live_real_enabled=live_real)
 
 
-def _closed_rows(rs, *, exit_rule=None):
+def _closed_rows(rs, *, exit_rule=None, first_id=1):
     """Uncapped rows: entry_shares=1, entry 101, hard_stop 1 → risk_placed = 100, so total_pnl
-    = 100·R reproduces the R series exactly (the #586 fixture shape)."""
+    = 100·R reproduces the R series exactly (the #586 fixture shape). `id` ascends with
+    `alert_date`; `closed_on_et` (the ET date of `closed_at`) is the entry day — a same-day
+    close — and is NOT selected by the watchdog, only read by the mock DB's as-of bound."""
     base = dt.date(2026, 7, 1)
-    return [{"total_pnl": 100.0 * r, "risk_dollars_actual": None, "entry_shares": 1.0,
-             "entry_price": 101.0, "hard_stop": 1.0,
-             "alert_date": base + dt.timedelta(days=i), "signal_type": "magna53",
-             "exit_rule": exit_rule} for i, r in enumerate(rs)]
+    return [{"id": first_id + i, "total_pnl": 100.0 * r, "risk_dollars_actual": None,
+             "entry_shares": 1.0, "entry_price": 101.0, "hard_stop": 1.0,
+             "alert_date": base + dt.timedelta(days=i), "closed_on_et": base + dt.timedelta(days=i),
+             "signal_type": "magna53", "exit_rule": exit_rule} for i, r in enumerate(rs)]
+
+
+def _one_row(r, *, id, alert_date, closed_on_et="same-day"):
+    """One closed row with realised R = `r` (same shape as `_closed_rows`) at an explicit id /
+    entry date / close date. `closed_on_et=None` is a legacy row with no `closed_at`."""
+    return {"id": id, "total_pnl": 100.0 * r, "risk_dollars_actual": None, "entry_shares": 1.0,
+            "entry_price": 101.0, "hard_stop": 1.0, "alert_date": alert_date,
+            "closed_on_et": alert_date if closed_on_et == "same-day" else closed_on_et,
+            "signal_type": "magna53", "exit_rule": None}
+
+
+def _order_key(cols):
+    return lambda row: tuple(row[c] for c in cols)
 
 
 class _Spy:
     """Every statement the watchdog sent to the DB, by verb, plus the senders it must never
     reach. Wires `db.get_pool` (used by both the watchdog's read and `log_audit_event`) so the
-    REAL audit write is observed, not mocked away."""
+    REAL audit write is observed, not mocked away.
 
-    def __init__(self, monkeypatch, strategies, rows_by_key):
+    There is no Postgres in the test environment, so the mock DB INTERPRETS the clauses the
+    watchdog's SQL declares — and only those: the trade read's ORDER BY, its `alert_date <= $3`
+    and `COALESCE(<closed_at ET date>, alert_date) <= $3` bounds, and the "tonight's row exists"
+    lookup over the audit rows it has seen (pre-seeded via `prior_audit` and appended to by every
+    audit INSERT). Stored rows are served REVERSED, so a read with no ORDER BY — or the wrong one
+    — hands the evaluator a different series. Edit the SQL and the mock follows what it says."""
+
+    def __init__(self, monkeypatch, strategies, rows_by_key, prior_audit=()):
         from tests.conftest import make_mock_pool
         self.calls: list[tuple[str, str, tuple]] = []
+        self.audit_seen: list[tuple[str, str]] = list(prior_audit)   # (event_type, summary)
         pool, conn = make_mock_pool()
 
         async def fetch(sql, *args, **kw):
             self.calls.append(("fetch", sql, args))
-            return rows_by_key.get(tuple(args), [])
+            rows = list(reversed(rows_by_key.get(tuple(args[:2]), [])))
+            as_of = args[2] if len(args) > 2 else None
+            if "alert_date <= $3" in sql:
+                rows = [r for r in rows if r["alert_date"] <= as_of]
+            if "COALESCE((closed_at AT TIME ZONE 'America/New_York')::date, alert_date) <= $3" in sql:
+                rows = [r for r in rows if (r.get("closed_on_et") or r["alert_date"]) <= as_of]
+            if "ORDER BY" in sql:
+                cols = [c.split()[0] for c in sql.split("ORDER BY", 1)[1].split(",")]
+                rows = sorted(rows, key=_order_key(cols))
+            return rows
+
+        async def fetchval(sql, *args, **kw):
+            self.calls.append(("fetchval", sql, args))
+            assert sql == lw._NIGHT_ROW_EXISTS_SQL, f"unexpected fetchval: {sql}"
+            event_type, pattern = args
+            assert pattern.endswith("%") and "%" not in pattern[:-1] and "_" not in pattern
+            return 1 if any(e == event_type and m.startswith(pattern[:-1])
+                            for e, m in self.audit_seen) else None
 
         async def execute(sql, *args, **kw):
             self.calls.append(("execute", sql, args))
+            if sql == dbmod._AUDIT_INSERT_SQL:
+                self.audit_seen.append((args[0], args[1]))
             return "INSERT 0 1"
 
         conn.fetch = fetch
+        conn.fetchval = fetchval
         conn.execute = execute
         conn.fetchrow = AsyncMock(side_effect=AssertionError("unexpected fetchrow"))
-        conn.fetchval = AsyncMock(side_effect=AssertionError("unexpected fetchval"))
         conn.executemany = AsyncMock(side_effect=AssertionError("unexpected executemany"))
         monkeypatch.setattr(dbmod, "get_pool", AsyncMock(return_value=pool))
         # The watchdog reads the rows FRESH (`registry._load_all`, a plain SELECT), never the
@@ -241,8 +303,8 @@ class _Spy:
         return [c for c in self.writes if c[1] == dbmod._AUDIT_INSERT_SQL]
 
 
-def _run(spy):
-    return asyncio.run(lw.run_ladder_watchdog(today=_TODAY))
+def _run(spy, today=_TODAY):
+    return asyncio.run(lw.run_ladder_watchdog(today=today))
 
 
 def _row_detail(spy, event=lw.AUDIT_EVENT):
@@ -289,7 +351,8 @@ def test_each_strategy_is_read_on_its_own_book(monkeypatch):
     spy = _Spy(monkeypatch, strategies, {})
     _run(spy)
     reads = [c[2] for c in spy.calls if c[0] == "fetch"]
-    assert sorted(reads) == [("magna53", "live"), ("magna53_smallcap", "paper")]
+    assert sorted(r[:2] for r in reads) == [("magna53", "live"), ("magna53_smallcap", "paper")]
+    assert all(r[2] == _TODAY for r in reads)   # the night being scored rides as $3
     for _, sql, _ in [c for c in spy.calls if c[0] == "fetch"]:
         assert "account_mode = $2" in sql and "pnl_attribution IS NULL" in sql
         assert "status = 'closed'" in sql
@@ -332,7 +395,7 @@ def test_shadow_deprecated_and_disabled_are_skipped_with_a_reason(monkeypatch):
     assert "no rung below" in row["skipped"]["9m_day2"]
     assert row["skipped"]["paused_lane"].startswith("disabled")
     # only the evaluated strategy was read
-    assert [c[2] for c in spy.calls if c[0] == "fetch"] == [("magna53", "live")]
+    assert [c[2][:2] for c in spy.calls if c[0] == "fetch"] == [("magna53", "live")]
 
 
 def test_rows_without_an_r_frame_are_excluded_and_counted(monkeypatch):
@@ -351,9 +414,9 @@ def test_era_split_rides_in_the_row_as_report_only(monkeypatch):
     """#662: the row says which rules its trades ran under; a depth-stamped row (era E) is
     labelled from its own `exit_rule`, not the date. Verdict unchanged by the split."""
     old = _closed_rows(_rs(-1.0, 6))                       # 2026-07 alert dates → era A
-    new = _closed_rows([2.0, 2.0], exit_rule="depth")      # row-stamped era E
+    new = _closed_rows([2.0, 2.0], exit_rule="depth", first_id=100)   # row-stamped era E
     for r in new:
-        r["alert_date"] = dt.date(2026, 10, 14)
+        r["alert_date"] = r["closed_on_et"] = dt.date(2026, 10, 14)
     spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)],
                {("magna53", "live"): old + new})
     _run(spy)
@@ -374,6 +437,137 @@ def test_a_crash_writes_an_error_row_and_re_raises(monkeypatch):
         _run(spy)
     assert [c[2][0] for c in spy.audit_rows] == [lw.ERROR_EVENT]
     assert len(spy.writes) == 1
+
+
+def test_the_series_is_in_alert_date_order_not_insertion_order(monkeypatch):
+    """The streak, the trailing-20 mean and the drawdown all depend on ORDER. A row backfilled
+    late (high id) with an EARLY alert_date belongs at the START of the series: in alert_date
+    order the book ends on six straight losses (breach); read in id order the backfilled winner
+    would land last and the streak would read 0. The mock DB serves rows reversed and applies
+    the SQL's own ORDER BY, so `ORDER BY id` (or none) fails this."""
+    rows = _closed_rows(_rs(2.0, 20) + _rs(-1.0, 6))                     # ids 1-26, dates 07-01..07-26
+    rows.append(_one_row(2.0, id=999, alert_date=dt.date(2026, 6, 30)))  # backfilled: early date, last id
+    spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)],
+               {("magna53", "live"): rows})
+    _run(spy)
+    _, row = _row_detail(spy)
+    e = row["evaluated"][0]
+    assert e["n_closed"] == 27
+    assert e["triggers"]["consec_losses"]["value"] == 6
+    assert e["triggers"]["consec_losses"]["breached"] is True
+
+
+def test_same_day_entries_are_ordered_by_id(monkeypatch):
+    """Two trades with the SAME alert_date: `id ASC` is the tie-break. The winner has the lower
+    id, so the book ends on the loss (streak 1); without the tie-break the mock's reversed
+    storage order would put the winner last (streak 0)."""
+    last_day = dt.date(2026, 8, 1)
+    rows = _closed_rows(_rs(2.0, 10) + _rs(-1.0, 5))
+    rows += [_one_row(2.0, id=100, alert_date=last_day), _one_row(-1.0, id=101, alert_date=last_day)]
+    spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)],
+               {("magna53", "live"): rows})
+    _run(spy)
+    _, row = _row_detail(spy)
+    assert row["evaluated"][0]["triggers"]["consec_losses"]["value"] == 1
+
+
+def test_a_rerun_scores_only_what_that_night_could_have_seen(monkeypatch):
+    """A re-run of night D (manual, or a #672 recovery that pins `et_today()` to D) must not
+    score the future: a trade ENTERED after D, and a trade entered on/before D that CLOSED after
+    D, are both excluded — and a legacy closed row with no `closed_at` is still counted (the
+    COALESCE falls back to its entry date). Unbounded, the two later winners would end the book
+    and break the six-loss streak."""
+    past = _closed_rows(_rs(2.0, 20) + _rs(-1.0, 6))
+    past[-1] = {**past[-1], "closed_on_et": None}                  # legacy row: no closed_at
+    entered_after = _one_row(2.0, id=500, alert_date=_TODAY + dt.timedelta(days=1))
+    closed_after = _one_row(2.0, id=501, alert_date=_TODAY - dt.timedelta(days=1),
+                            closed_on_et=_TODAY + dt.timedelta(days=1))   # multi-day hold
+    spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)],
+               {("magna53", "live"): past + [entered_after, closed_after]})
+    _run(spy)
+    _, row = _row_detail(spy)
+    e = row["evaluated"][0]
+    assert e["n_closed"] == 26
+    assert e["triggers"]["consec_losses"]["value"] == 6 and e["would_demote"] is True
+
+
+def test_the_trade_read_carries_both_as_of_bounds(monkeypatch):
+    """The SQL itself names both bounds on the night being scored ($3)."""
+    spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)], {})
+    _run(spy)
+    (_, sql, args), = [c for c in spy.calls if c[0] == "fetch"]
+    assert "alert_date <= $3" in sql
+    assert "COALESCE((closed_at AT TIME ZONE 'America/New_York')::date, alert_date) <= $3" in sql
+    assert args == ("magna53", "live", _TODAY)
+
+
+def test_a_rerun_of_the_same_night_writes_no_second_row(monkeypatch):
+    """ONE row per night. A manual re-run, or a #672 recovery re-run after a run whose row landed
+    but whose ledger entry did not, must not stack a second `ladder_demotion_shadow` row for the
+    same as_of (the first row stands; the returned dict says so)."""
+    spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)], {
+        ("magna53", "live"): _closed_rows(_rs(2.0, 20) + _rs(-1.0, 6))})
+    first = _run(spy)
+    second = _run(spy)
+    assert "row_already_written" not in first
+    assert second["row_already_written"] is True
+    assert second["would_demote_count"] == first["would_demote_count"] == 1   # still evaluated
+    assert len(spy.audit_rows) == 1 and len(spy.writes) == 1
+
+
+def test_an_existing_row_for_another_night_does_not_suppress_tonights(monkeypatch):
+    """The existence key is the night itself: yesterday's row (here pre-seeded) and the same
+    night's `ladder_watchdog_error` row do not stop tonight's `ladder_demotion_shadow`."""
+    yesterday = _TODAY - dt.timedelta(days=1)
+    prior = [(lw.AUDIT_EVENT, lw._summary(yesterday, [])),
+             (lw.ERROR_EVENT, lw._summary(_TODAY, []))]
+    spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)], {}, prior_audit=prior)
+    detail = _run(spy)
+    assert "row_already_written" not in detail
+    summary, row = _row_detail(spy)
+    assert row["as_of"] == _TODAY.isoformat() and _TODAY.isoformat() in summary
+    # …and the next evening writes its own row again
+    _run(spy, today=_TODAY + dt.timedelta(days=1))
+    assert len(spy.audit_rows) == 2
+
+
+# ─── 2b. The scheduler job: a crash must reach the run ledger, not be swallowed ────────────
+
+
+def test_a_crash_in_the_job_reaches_the_ledger_as_failed_and_pages_once(monkeypatch):
+    """`_ladder_watchdog_job` used to catch the crash and call `notify_job_failure` itself, so
+    `audit_wrap` saw a clean return: `mi_job_runs` said 'success', the durable deduped
+    `record_job_failure` never ran, and #672 recovery had nothing to re-run. Run through the
+    REAL `audit_wrap` the way `start_scheduler` registers it: the exception must propagate, the
+    ledger must read 'failed', and the one page + durable row must come from `audit_run`."""
+    from agents.market_intelligence import scheduler as sched
+    from core import job_audit
+    from tests.conftest import make_mock_pool
+
+    pool, conn = make_mock_pool()
+    conn.fetchrow = AsyncMock(return_value={"id": 42})       # _record_start -> run id
+    conn.execute = AsyncMock(return_value="UPDATE 1")        # _record_finish
+    audit = AsyncMock()
+    monkeypatch.setattr(dbmod, "get_pool", AsyncMock(return_value=pool))
+    monkeypatch.setattr(dbmod, "log_audit_event", audit)
+    monkeypatch.setattr(dbmod, "get_audit_log", AsyncMock(return_value=[]))   # dedup lookback
+    monkeypatch.setattr(job_audit, "notify_job_failure", AsyncMock())         # the ONE page
+    monkeypatch.setattr(job_audit, "_last_job_failure_alert_ts", {})
+    direct = AsyncMock()                                     # the scheduler's own bound name
+    monkeypatch.setattr(sched, "notify_job_failure", direct)
+    monkeypatch.setattr(lw, "run_ladder_watchdog",
+                        AsyncMock(side_effect=RuntimeError("registry unreachable")))
+
+    wrapped = job_audit.audit_wrap(sched._ladder_watchdog_job, lw.JOB_ID)
+    with pytest.raises(RuntimeError, match="registry unreachable"):
+        asyncio.run(wrapped())
+
+    conn.execute.assert_awaited_once()                       # the ledger UPDATE…
+    assert conn.execute.await_args.args[3] == "failed"       # …status, not 'success'
+    assert audit.await_args.args[0] == "job_failed_error"    # durable row from record_job_failure
+    assert f"job={lw.JOB_ID} " in audit.await_args.args[1]
+    job_audit.notify_job_failure.assert_awaited_once()       # exactly one page
+    direct.assert_not_awaited()                              # none from a handler in the job
 
 
 # ─── 3. Registration: the job exists, is INTELLIGENCE-owned, and fires after the close ─────

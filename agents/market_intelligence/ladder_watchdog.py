@@ -17,11 +17,12 @@ WHAT IT IS NOT — and this is structural, not a flag. This module has NO act st
     by the operator's `/strategy <id> promote|demote`);
   * it touches no sizing (`position_size_multiplier`), no toggle, no order path;
   * it sends NO Telegram — a would-demote is an audit row the weekly review can read; the only
-    page this job can ever produce is the scheduler's standard `notify_job_failure` when the
-    job itself crashes, which carries no verdict;
+    page this job can ever produce is `audit_run`'s `record_job_failure` (one deduped page plus
+    a durable `job_failed_error` row) when the job itself crashes, which carries no verdict;
   * there is no "live mode" switch a typo could enable — the act step does not exist yet.
-Pinned by `tests/test_ladder_watchdog.py` (the DB layer is spied: a synthetic breach of every
-trigger produces the row and ZERO writes to `mi_strategies` or any order/sizing path).
+Pinned by `tests/test_ladder_watchdog.py` (the DB layer is spied: a synthetic STREAK breach
+produces the row and ZERO writes to `mi_strategies` or any order/sizing path; each trigger's own
+breach and boundary is pinned on the pure evaluator).
 Building the act step is a later, operator-signed build (THE LINE) — it also needs the L1
 pieces this dark build does not: a `demotion_triggers` column (the thresholds below are code
 constants with their provenance), `phase_history`, and the mandatory review-before-re-promotion.
@@ -43,6 +44,19 @@ DATA FLOOR. `MIN_CLOSED_TRADES` (6 — the smallest trigger's own window: six co
 need six trades) below which every trigger reads "not enough data" and nothing can breach; the
 trailing-20 trigger additionally needs 20 trades (its window), and says so. These are judgement
 calls recorded in the #312 commit, not signed numbers.
+
+ONE ROW PER NIGHT, PINNED TO THE NIGHT. The pass is stamped with `as_of` (the ET trading day;
+inside a #672 recovery re-run `et_today()` returns the missed slot's day). Two guards make a
+re-run of the same night honest: (1) the trade read is bounded to what that night could have
+seen — entered on or before `as_of` AND closed (ET date of `closed_at`, falling back to
+`alert_date` for a row with no `closed_at`) on or before `as_of` — so a late re-run does not score
+trades that closed afterwards; (2) when a row for that `as_of` already exists the write is skipped
+(`row_already_written` in the returned dict), so a manual or recovery re-run cannot stack a
+second row. The existing-row key is the row's SUMMARY prefix (`_summary_prefix`, the same
+function that builds the summary) rather than `detail`: `detail` is a TEXT column whose JSON
+`_fit_audit_detail` may wrap in a truncation envelope, so a SQL cast of it is unsafe and a key
+inside it can vanish. NOT a lock — `max_instances=1` plus `jobs_in_flight()` already keep two runs
+of the job from overlapping.
 
 The 4th trigger ("1 harmful auto-action", ADR 0017 §4: a harmful EXECUTED judge action,
 operator-labelled) has no source today — `mgmt_judge.py` is at L0 SHADOW with zero execution
@@ -101,7 +115,15 @@ _CLOSED_TRADES_SQL = """
     FROM mi_live_trades
     WHERE status = 'closed' AND signal_type = $1 AND account_mode = $2
       AND pnl_attribution IS NULL
+      AND alert_date <= $3
+      AND COALESCE((closed_at AT TIME ZONE 'America/New_York')::date, alert_date) <= $3
     ORDER BY alert_date ASC, id ASC
+"""
+
+# Is tonight's row already there? Keyed on the summary prefix (see the module docstring), never on
+# the TEXT `detail` column.
+_NIGHT_ROW_EXISTS_SQL = """
+    SELECT 1 FROM mi_audit_log WHERE event_type = $1 AND summary LIKE $2 LIMIT 1
 """
 
 
@@ -172,8 +194,9 @@ def evaluate_demotion_triggers(realized_rs, thresholds: dict | None = None) -> d
 async def fetch_closed_r_series(conn, signal_type: str, account_mode: str, *, today: date) -> dict:
     """The strategy's closed methodology trades on ONE book as a chronological realised-R
     series (denominator = `kill_scale_bands.risk_placed`, rows without an R frame excluded and
-    counted), plus the #662 era split as REPORT ONLY."""
-    rows = await conn.fetch(_CLOSED_TRADES_SQL, signal_type, account_mode)
+    counted), plus the #662 era split as REPORT ONLY. `today` is the night being scored: the
+    read excludes anything entered or closed after it (a late re-run must not see the future)."""
+    rows = await conn.fetch(_CLOSED_TRADES_SQL, signal_type, account_mode, today)
     rs: list[float] = []
     meta: list[dict] = []
     no_frame = 0
@@ -197,10 +220,15 @@ async def fetch_closed_r_series(conn, signal_type: str, account_mode: str, *, to
 # ── The nightly step ────────────────────────────────────────────────────────────────────────
 
 
+def _summary_prefix(as_of: date) -> str:
+    """The head of the night's audit summary — the key `_NIGHT_ROW_EXISTS_SQL` matches on."""
+    return f"ladder watchdog (DARK) {as_of.isoformat()}:"
+
+
 def _summary(as_of: date, evaluated: list[dict]) -> str:
     who = ", ".join(f"{e['strategy_id']}/{e['account_mode']}" for e in evaluated) or "none"
     n_would = sum(1 for e in evaluated if e["would_demote"])
-    return (f"ladder watchdog (DARK) {as_of.isoformat()}: {len(evaluated)} evaluated ({who}) · "
+    return (f"{_summary_prefix(as_of)} {len(evaluated)} evaluated ({who}) · "
             f"{n_would} would demote · acted: none")
 
 
@@ -208,9 +236,13 @@ async def run_ladder_watchdog(*, today: date | None = None) -> dict:
     """One nightly pass → ONE `ladder_demotion_shadow` audit row. Returns the row's detail.
 
     Reads the registry and `mi_live_trades`; writes `mi_audit_log` only. A failure writes a
-    `ladder_watchdog_error` row and RE-RAISES so `audit_wrap` records the run as failed and the
-    scheduler's standard job-failure page fires — a dead watchdog must not look like a quiet
-    one (the only Telegram this job can produce, and it carries no verdict)."""
+    `ladder_watchdog_error` row and RE-RAISES; the scheduler job (`_ladder_watchdog_job`) lets
+    it propagate, so `audit_run` records the run 'failed' and `record_job_failure` writes the
+    durable `job_failed_error` row and one deduped page — a dead watchdog must not look like a
+    quiet one (the only Telegram this job can produce, and it carries no verdict).
+
+    One row per `as_of`: if a row for this night already exists (a manual or #672 recovery
+    re-run) the write is skipped and the returned dict carries `row_already_written: True`."""
     from agents.market_intelligence.constants import resolve_account_mode_for_strategy
     from agents.market_intelligence.db import get_pool, log_audit_event
     from agents.market_intelligence.strategies.registry import _load_all
@@ -236,6 +268,8 @@ async def run_ladder_watchdog(*, today: date | None = None) -> dict:
         series: dict[str, tuple[str, dict]] = {}
         pool = await get_pool()
         async with pool.acquire() as conn:
+            already_written = bool(await conn.fetchval(
+                _NIGHT_ROW_EXISTS_SQL, AUDIT_EVENT, _summary_prefix(as_of) + "%"))
             for s in targets:
                 mode = resolve_account_mode_for_strategy(s)
                 series[s.strategy_id] = (
@@ -270,8 +304,16 @@ async def run_ladder_watchdog(*, today: date | None = None) -> dict:
             "note": ("DARK — this module has no phase/sizing/order path; a would-demote is this "
                      "row, nothing else. Any live flip is operator sign-off (THE LINE)."),
         }
-        await log_audit_event(AUDIT_EVENT, _summary(as_of, evaluated),
-                              json.dumps(detail, default=str))
+        if already_written:
+            # A re-run of a night that already has its row: the existing row stands (nothing
+            # reads it yet; an operator who wants it recomputed deletes it). Marker is on the
+            # RETURNED dict only — the stored row is never touched.
+            logger.info(f"ladder watchdog: a row for {as_of.isoformat()} already exists — "
+                        f"write skipped")
+            detail["row_already_written"] = True
+        else:
+            await log_audit_event(AUDIT_EVENT, _summary(as_of, evaluated),
+                                  json.dumps(detail, default=str))
         return detail
     except Exception as e:
         logger.error(f"ladder watchdog failed: {e}", exc_info=True)

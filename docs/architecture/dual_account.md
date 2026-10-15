@@ -34,7 +34,12 @@ there is no act step to switch on (`tests/test_ladder_watchdog.py` spies the DB 
 step (step down one rung + page + mandatory review before re-promotion) is the operator's
 sign-off (THE LINE). Checking a night: `SELECT created_at, summary FROM mi_audit_log WHERE
 event_type = 'ladder_demotion_shadow' ORDER BY created_at DESC LIMIT 3;` — `detail` is JSON
-(`evaluated[]`, `skipped{}`, `would_demote_count`, `acted: false`).
+(`evaluated[]`, `skipped{}`, `would_demote_count`, `acted: false`). **A night is verified by the
+ROW, not the ledger:** `mi_job_runs` `success` AND a `ladder_demotion_shadow` row whose `detail`
+`as_of` is that night — `log_audit_event` never raises, so a failed audit write still leaves the
+run `success`. The job lets a crash propagate (`audit_run` records it `failed` and pages once via
+`record_job_failure`), and a re-run of a night that already has its row writes no second one
+(the trade read is also bounded to trades entered and closed on or before that night).
 
 **Strategies that can submit, and where (2026-10-10):**
 
