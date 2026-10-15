@@ -14,6 +14,28 @@
 | live | False | live | 🟡 STAGED-PAPER Telegram proposal; no auto-submit |
 | live | True | live | Alpaca live account (real fills, real $) |
 
+**Moving between phases.** Up is HUMAN: the Sunday review flags ✓-eligible from the row's
+`promotion_thresholds` (`strategies/promotion.py`) and the operator runs `/strategy <id>
+promote`; down is `/strategy <id> demote` (`strategies/telegram.py::_DEMOTE_BACK`, live→paper→
+shadow). Both go through the ONE phase writer, `strategies/registry.update_strategy`, and write
+a `strategy_phase_change` audit row — that row trail is the phase history today. `deprecated`
+is terminal (#424) and is set only by the boot migration in `db._seed_strategies_registry`.
+
+**Demotion — the ladder's automatic direction (ADR 0022 §1 L2, built DARK 2026-10-15, #312).**
+`agents/market_intelligence/ladder_watchdog.py`, job `ladder_watchdog` 16:17 ET mon-fri. Every
+night, for each ENABLED strategy at `paper` or `live`, on the book its phase resolves to, it
+computes the four signed M1f demotion triggers (6 consecutive losses · trailing-20 expectancy
+< −0.3R · −10R drawdown from the cumulative-R peak · 1 harmful auto-action — the last is
+"not measurable yet": nothing auto-executes) over its closed methodology trades (R =
+`kill_scale_bands.risk_placed`) and writes ONE `ladder_demotion_shadow` audit row with each
+trigger's value, threshold and `would_demote`. **It cannot move a phase**: the module has no
+`update_strategy`, no UPDATE on `mi_strategies`, no sizing/toggle/order path and no Telegram —
+there is no act step to switch on (`tests/test_ladder_watchdog.py` spies the DB layer). The act
+step (step down one rung + page + mandatory review before re-promotion) is the operator's
+sign-off (THE LINE). Checking a night: `SELECT created_at, summary FROM mi_audit_log WHERE
+event_type = 'ladder_demotion_shadow' ORDER BY created_at DESC LIMIT 3;` — `detail` is JSON
+(`evaluated[]`, `skipped{}`, `would_demote_count`, `acted: false`).
+
 **Strategies that can submit, and where (2026-10-10):**
 
 | strategy_id | phase | account | order step | reads alerts from |
