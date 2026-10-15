@@ -1,0 +1,66 @@
+Pager usage is off.
+=== V1-0 now ET
+       now_et        
+---------------------
+ 2026-10-15 18:30:55
+(1 row)
+
+=== V1-1 vol_percentile parity: lane rows vs live graded rows 10-15 (lane 0.0 is a defect only if live graded names never read 0)
+ src  | ticker | t_et  |  vp  |  rv  | vc 
+------+--------+-------+------+------+----
+ lane | ALLT   | 09:50 |  0.0 | 0.69 | 
+ lane | BETR   | 09:55 |  0.0 | 0.62 | 0
+ lane | GOSS   | 07:20 | 50.0 | 0.10 | 
+ lane | OPI    | 09:35 |  0.0 | 0.00 | 
+ live | ANL    | 09:45 |  0.0 | 0.28 | 
+ live | ANL    | 09:50 | 88.1 | 0.82 | 
+ live | DFH    | 09:50 |  0.0 | 0.28 | 
+ live | DFH    | 09:55 |  0.0 | 0.34 | 0
+ live | ERIC   | 09:30 |  0.0 | 0.45 | 0
+ live | ERIC   | 09:31 |  0.0 | 0.45 | 0
+ live | ERIC   | 09:45 | 85.7 | 1.12 | 3
+ live | SAH    | 09:45 |  0.0 | 0.09 | 
+ live | SAH    | 09:55 |  0.0 | 0.12 | 
+ live | WINA   | 09:40 |  0.0 | 0.09 | 
+ live | WINA   | 09:45 |  0.0 | 0.10 | 
+(15 rows)
+
+=== V1-2 api_usage ep_catalyst_grade 10-15 exact timestamps vs provenance rows
+ src  |   t_et   | stop_reason |            s             
+------+----------+-------------+--------------------------
+ api  | 07:00:12 | tool_use    | 
+ prov | 07:00:12 |             | ERIC strong direct=True
+ api  | 07:05:10 | tool_use    | 
+ prov | 07:05:10 |             | ANL routine direct=True
+ api  | 08:20:11 | tool_use    | 
+ prov | 08:20:11 |             | OPI routine direct=False
+ api  | 09:40:15 | tool_use    | 
+ prov | 09:40:15 |             | WINA routine direct=True
+ api  | 09:40:22 | tool_use    | 
+ prov | 09:40:22 |             | BETR routine direct=True
+ api  | 09:45:21 | tool_use    | 
+ prov | 09:45:21 |             | SAH routine direct=False
+ api  | 09:50:16 | tool_use    | 
+ prov | 09:50:16 |             | DFH routine direct=True
+(14 rows)
+
+=== V1-3 ep_scan job finish times 09:40 and 09:45 vs BETR lane grade (lane runs after the live scan, detached)
+ job_id  |    st    |     fin      | status  
+---------+----------+--------------+---------
+ ep_scan | 09:40:00 | 09:40:15.348 | success
+ ep_scan | 09:45:00 | 09:45:21.828 | success
+(2 rows)
+
+=== V1-4 P15 shadow recorder (the other #624 half): signals by session since 10-01
+psql:/tmp/c624v_hb1015_v1.sql:17: ERROR:  column "session_date" does not exist
+LINE 1: SELECT session_date, count(*) FROM mi_lowcap_lane_signals WH...
+               ^
+=== V1-5 lane rows ever with a non-paper strategy or a tier (must be magna53_smallcap only; tier any = first HIGH)
+psql:/tmp/c624v_hb1015_v1.sql:18: ERROR:  column "session_date" does not exist
+LINE 1: SELECT count(*) total, max(session_date) last_session FROM m...
+                                   ^
+   strategy_id    | score_tier | count 
+------------------+------------+-------
+ magna53_smallcap |            |     4
+(1 row)
+

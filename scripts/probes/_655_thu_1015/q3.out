@@ -1,0 +1,41 @@
+Output format is unaligned.
+Field separator is "	".
+== now
+now_et
+2026-10-15 18:24:19.680088
+(1 row)
+== 1. apparel neighbours board history 10-08 on (stage, n, source, written, tickers)
+name	theme_date	stage	n	source	written	tk
+Casual Footwear & Athletic Lifestyle Brands	2026-10-15	Nascent	3	shadow_promoted	17:09:21	CROX,AS,MNSO
+Footwear & Branded Apparel Consumer Turnaround	2026-10-12	Nascent	3	shadow_promoted	17:12:19	VFC,ONON,BIRK
+Footwear & Branded Apparel Consumer Turnaround	2026-10-13	Nascent	3	live	17:06:59	ONON,BIRK,VFC
+Footwear & Branded Apparel Consumer Turnaround	2026-10-14	Nascent	3	live	17:10:05	VFC,ONON,BIRK
+Footwear & Branded Apparel Consumer Turnaround	2026-10-15	Nascent	3	live	17:07:55	VFC,ONON,BIRK
+Off-Price & Branded Apparel/Footwear Retail Rotation	2026-10-15	Nascent	3	shadow_promoted	17:09:22	TJX,RL,SHOE
+Off-Price & Specialty Retail Consumer Rotation	2026-10-13	Nascent	3	shadow_promoted	17:08:13	TJX,BBWI,DORM
+Off-Price & Specialty Retail Consumer Rotation	2026-10-14	Retired		live	17:10:05	
+Off-Price & Specialty Retail Consumer Rotation	2026-10-15	Nascent	3	shadow_promoted	17:09:23	TJX,BBWI,DORM
+Specialty Apparel & Mall-Based Specialty Retail Strength	2026-10-15	Nascent	4	shadow_promoted	17:09:24	ANF,BKE,BBWI,FIGS
+(10 rows)
+== 2. PER-FOLD undone check, every fold 10-12..10-15 (window = fold night + 2 calendar days, data ends 10-15)
+fd	old_theme	home	n_mem	n_moved	same_name_active_after	other_name_remint	validator_removed_moved
+2026-10-12	Alternative Asset Managers & Private Markets Platforms	Wealth Management & Retail Brokerage Platforms	2	1			
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	3	2			
+2026-10-12	Emerging Medical Device Innovators Breakout	Medical Device Mean-Reversion & Rotation Recovery	3	1			
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	3	2			BOX@2026-10-14,DBX@2026-10-14
+2026-10-12	Functional Beverage & Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	2	1			
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	2	2		Orthopedic & Spinal Surgery Devices@2026-10-13; Orthopedic & Spinal Surgery Devices@2026-10-14	
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	3	2	2026-10-14,2026-10-15		OMCL@2026-10-14
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	3	2	2026-10-14	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS@2026-10-15	BSY@2026-10-14,OTEX@2026-10-14
+2026-10-14	Functional Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	2	1	2026-10-15		
+2026-10-14	Off-Price & Specialty Retail Consumer Rotation	U.S. Apparel & Fashion Recovery	2	1	2026-10-15		
+2026-10-15	Cloud Data Storage & Analytics Infrastructure	Cloud Application Delivery & Observability Infrastructure	2	1			
+2026-10-15	Consumer Franchise Operators: Fitness & Quick-Service	Franchised Auto Dealership Groups	2	1			
+2026-10-15	Enterprise Information Management & Infrastructure Engineering Software	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	3	2			
+2026-10-15	RF, Microwave & Power Semiconductor Specialists	AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)	2	2			
+(14 rows)
+== 3. tonight: tickers that sit in 2+ active themes among the apparel births
+tk	n_themes	themes
+TJX	2	Off-Price & Branded Apparel/Footwear Retail Rotation | Off-Price & Specialty Retail Consumer Rotation
+BBWI	2	Off-Price & Specialty Retail Consumer Rotation | Specialty Apparel & Mall-Based Specialty Retail Strength
+(2 rows)

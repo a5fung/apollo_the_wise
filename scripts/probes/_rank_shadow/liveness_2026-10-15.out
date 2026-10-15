@@ -1,0 +1,63 @@
+chk|event_type|n|first_et|last_et
+L1_ep_audit_today|ep_catalyst_provenance|7|2026-10-15 07:00:12.590503|2026-10-15 09:50:16.029319
+L1_ep_audit_today|ep_delayed_residual_scan|1|2026-10-15 16:35:19.547167|2026-10-15 16:35:19.547167
+L1_ep_audit_today|ep_provenance_daily|1|2026-10-15 10:05:00.335547|2026-10-15 10:05:00.335547
+L1_ep_audit_today|ep_residual_outcomes_backfilled|1|2026-10-15 16:35:19.566256|2026-10-15 16:35:19.566256
+L1_ep_audit_today|ep_rt_admit|6|2026-10-15 07:00:03.377044|2026-10-15 09:55:07.056727
+L1_ep_audit_today|ep_rt_declined_not_missed|1|2026-10-15 09:40:06.185115|2026-10-15 09:40:06.185115
+L1_ep_audit_today|ep_rt_floor_flip_down|19|2026-10-15 07:20:01.036274|2026-10-15 09:55:07.051866
+L1_ep_audit_today|ep_rt_floor_flip_up|7|2026-10-15 08:35:01.069421|2026-10-15 09:55:07.05298
+L1_ep_audit_today|ep_rt_halt_suspect|1|2026-10-15 09:55:07.047773|2026-10-15 09:55:07.047773
+L1_ep_audit_today|ep_rt_postcutover_residual_regression|1|2026-10-15 16:35:19.572549|2026-10-15 16:35:19.572549
+L1_ep_audit_today|ep_rt_shadow_capture|1|2026-10-15 16:35:19.570844|2026-10-15 16:35:19.570844
+L1_ep_audit_today|ep_rt_sustain_reject|2|2026-10-15 08:20:01.552572|2026-10-15 09:50:04.605376
+L1_ep_audit_today|ep_rt_sustain_undecidable|4|2026-10-15 07:05:01.175651|2026-10-15 09:05:01.425822
+L1_ep_audit_today|ep_rt_tick_quality_reject|3|2026-10-15 08:30:01.3022|2026-10-15 09:40:06.175469
+L1_ep_audit_today|ep_rt_universe_catch|9|2026-10-15 07:05:01.177612|2026-10-15 09:55:06.966011
+L1_ep_audit_today|ep_rt_universe_coverage|38|2026-10-15 07:00:03.331211|2026-10-15 09:55:06.858367
+L1_ep_audit_today|ep_theme_fit_llm_proposed|1|2026-10-15 07:00:23.88343|2026-10-15 07:00:23.88343
+L1_ep_audit_today|ep_tinycap_observed|2|2026-10-15 08:20:02.258185|2026-10-15 09:40:07.274016
+chk|at_et|event_type|summary
+L2_admit_today|2026-10-15 07:00:03.377044|ep_rt_admit|ERIC rt 12.1% and delayed 12.0% BOTH >=9 @ 07:00 ET — real-time AGREES with the admit
+L2_admit_today|2026-10-15 08:20:01.552572|ep_rt_sustain_reject|NRXS rt 11.5% but the level did NOT hold 3 consecutive bars @ 08:20 ET — no catch
+L2_admit_today|2026-10-15 08:35:01.068113|ep_rt_admit|OPI rt 13.0% and delayed 13.1% BOTH >=9 @ 08:35 ET — real-time AGREES with the admit
+L2_admit_today|2026-10-15 09:10:01.251846|ep_rt_admit|NRXS rt 10.6% and delayed 9.7% BOTH >=9 @ 09:10 ET — real-time AGREES with the admit
+L2_admit_today|2026-10-15 09:10:01.253708|ep_rt_admit|NTWK rt 13.7% and delayed 13.7% BOTH >=9 @ 09:10 ET — real-time AGREES with the admit
+L2_admit_today|2026-10-15 09:20:01.347581|ep_rt_admit|FMFC rt 10.5% and delayed 11.2% BOTH >=9 @ 09:20 ET — real-time AGREES with the admit
+L2_admit_today|2026-10-15 09:40:06.185115|ep_rt_declined_not_missed|DFH rt 9.2% @ 09:40 ET — DECLINED by ep_rt_tick_quality_reject, not missed
+L2_admit_today|2026-10-15 09:50:04.605376|ep_rt_sustain_reject|RPGL rt 9.7% but the level did NOT hold 3 consecutive bars @ 09:50 ET — no catch
+L2_admit_today|2026-10-15 09:55:07.056727|ep_rt_admit|BETR rt 11.1% and delayed 14.8% BOTH >=9 @ 09:55 ET — real-time AGREES with the admit
+chk|id|ticker|alert_date|source|score_tier|created_et
+chk|job_id|status|n|last_fin_et
+L4_jobs_today|9m_ep_scan|success|84|2026-10-15 15:55:00.00839
+L4_jobs_today|alert_rank_shadow|success|1|2026-10-15 17:53:00.034
+L4_jobs_today|ecosystem_grace_sweep|success|19|2026-10-15 18:12:00.045997
+L4_jobs_today|eod_ep_recap|success|1|2026-10-15 16:10:00.019773
+L4_jobs_today|ep_scan|success|36|2026-10-15 09:55:10.657277
+L4_jobs_today|ep_scan_open|success|1|2026-10-15 09:31:03.773328
+L4_jobs_today|ep_scan_start|success|1|2026-10-15 07:00:00.043429
+L4_jobs_today|ep_scan_stop|success|1|2026-10-15 10:00:00.008635
+L4_jobs_today|ep_scan_watchdog|success|1|2026-10-15 10:05:00.33749
+L4_jobs_today|flag_break_scan|success|84|2026-10-15 15:55:00.010974
+L4_jobs_today|flag_continuation_scan|success|1|2026-10-15 17:25:06.581475
+L4_jobs_today|gap_near_miss_replay|success|1|2026-10-15 18:14:02.067004
+L4_jobs_today|lowcap_lane_replay|success|1|2026-10-15 18:15:00.083403
+L4_jobs_today|missed_job_recovery|success|37|2026-10-15 18:20:00.25989
+L4_jobs_today|position_path_eod_sweep|success|1|2026-10-15 16:10:00.105466
+L4_jobs_today|stop_coverage_repair_retry|success|84|2026-10-15 15:55:00.007049
+L4_jobs_today|sustain_reject_replay|success|1|2026-10-15 18:13:00.149229
+L4_jobs_today|theme_axis_bounded_sweep|success|1|2026-10-15 18:10:00.017838
+chk|id|ticker|alert_date|status|skip_reason|account_mode
+chk|alert_date|n
+L6_prior_alert_days|2026-09-28|1
+L6_prior_alert_days|2026-10-01|2
+L6_prior_alert_days|2026-10-05|3
+L6_prior_alert_days|2026-10-06|3
+L6_prior_alert_days|2026-10-07|1
+L6_prior_alert_days|2026-10-08|1
+L6_prior_alert_days|2026-10-09|2
+L6_prior_alert_days|2026-10-14|1
+psql:/tmp/crank_rankshadow_1015_liveness.sql:14: ERROR:  column "close_price" does not exist
+LINE 1: ...r, trade_date, open_price, high_price, low_price, close_pric...
+                                                             ^
+HINT:  Perhaps you meant to reference the column "mi_daily_closes.low_price".

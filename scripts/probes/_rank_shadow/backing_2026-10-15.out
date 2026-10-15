@@ -1,0 +1,20 @@
+chk|live_alert_rows|live_alert_days|latest_alert|alerts_without_shadow|shadow_rows
+B1_alert_vs_shadow|50|24|2026-10-14|0|50
+chk|alert_date|source|count
+B2_scan_filter_by_day|2026-10-09|moderate_alert|1
+B2_scan_filter_by_day|2026-10-09|scan_filter|271
+B2_scan_filter_by_day|2026-10-12|scan_filter|213
+B2_scan_filter_by_day|2026-10-13|scan_filter|218
+B2_scan_filter_by_day|2026-10-14|moderate_alert|1
+B2_scan_filter_by_day|2026-10-14|scan_filter|205
+B2_scan_filter_by_day|2026-10-15|scan_filter|248
+chk|d|count
+B3_ep_alert_events|2026-10-06|3
+B3_ep_alert_events|2026-10-07|1
+B3_ep_alert_events|2026-10-08|1
+B3_ep_alert_events|2026-10-09|1
+chk|job_id|status|count|first_et|last_et
+B4_orb_window_jobs|ep_scan|success|7|2026-10-15 09:25:00.006217|2026-10-15 09:55:00.00279
+B4_orb_window_jobs|ep_scan_open|success|1|2026-10-15 09:31:00.003091|2026-10-15 09:31:00.003091
+B4_orb_window_jobs|ep_scan_stop|success|1|2026-10-15 10:00:00.003094|2026-10-15 10:00:00.003094
+B4_orb_window_jobs|ep_scan_watchdog|success|1|2026-10-15 10:05:00.003006|2026-10-15 10:05:00.003006

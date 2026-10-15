@@ -1,0 +1,23 @@
+SET
+SET
+== A1. flag_stage_flip_held rows per scan_date vs holds written
+ scan_date  | audit_rows |               rows                | holds_that_date 
+------------+------------+-----------------------------------+-----------------
+ 2026-10-09 |          1 | 55086 KOD WATCH→held@COILED       |               1
+ 2026-10-12 |          0 |                                   |               0
+ 2026-10-13 |          0 |                                   |               0
+ 2026-10-14 |          1 | 56874 GRAL WATCH→held@COILED      |               1
+ 2026-10-15 |          1 | 57482 IOVA TIGHTENING→held@COILED |               1
+(5 rows)
+
+== A2. every flag/digest audit row since 2026-10-14 00:00 PT
+  id   |          created_at           |        event_type        |                          summary                           
+-------+-------------------------------+--------------------------+------------------------------------------------------------
+ 56635 | 2026-10-14 20:55:00.475781+00 | market_close_digest_sent | Market Close Digest: 3 contribution(s) across 3 section(s)
+ 56874 | 2026-10-14 21:25:03.189143+00 | flag_stage_flip_held     | GRAL WATCH→held@COILED
+ 56875 | 2026-10-14 21:25:04.738671+00 | flag_digest_sent         | flag digest 2026-10-14 (sent)
+ 57242 | 2026-10-15 20:55:00.471119+00 | market_close_digest_sent | Market Close Digest: 1 contribution(s) across 1 section(s)
+ 57482 | 2026-10-15 21:25:03.122889+00 | flag_stage_flip_held     | IOVA TIGHTENING→held@COILED
+ 57483 | 2026-10-15 21:25:04.260692+00 | flag_digest_sent         | flag digest 2026-10-15 (sent)
+(6 rows)
+

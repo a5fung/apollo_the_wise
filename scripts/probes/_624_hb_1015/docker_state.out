@@ -1,0 +1,30 @@
+# read-only: docker ps on prod host, run 2026-10-15T22:24:59.730901+00:00 UTC
+apollo-execution|docker-apollo-execution|Up 21 hours (healthy)|2026-10-15 01:21:27 +0000 UTC
+apollo-market|docker-market-agent|Up 21 hours (healthy)|2026-10-15 01:18:26 +0000 UTC
+apollo-orchestrator|docker-orchestrator|Up 21 hours|2026-10-15 01:18:26 +0000 UTC
+apollo-redis|redis:7-alpine|Up 3 months (healthy)|2026-07-06 15:30:56 +0000 UTC
+apollo-postgres|pgvector/pgvector:pg16|Up 3 months (healthy)|2026-07-06 15:12:00 +0000 UTC
+apollo-uptime|louislam/uptime-kuma:1|Up 6 months (healthy)|2026-03-23 05:58:51 +0000 UTC
+
+//apollo-market started=2026-10-15T01:18:40.431075761Z image=sha256:d3b33a46959cd98fc5a46d86a07842377a590c4f44448967eb855dea3508c5ee
+//apollo-execution started=2026-10-15T01:21:41.685327141Z image=sha256:dd4a21fd6228f23faa910d92c6a2fad6e175d016f3d8ef75b4f9067a639fe962
+//apollo-orchestrator started=2026-10-15T01:18:40.430032153Z image=sha256:cd1cff41248597b32bbd88c174373b6dc44184bf251087ff444f5cc10150ae58
+server HEAD 7b90c04c 2026-10-14 15:35:45 -0700 Wed 10-14 evening verifies (each Opus-verified): #693 night 3 inconclusive (15 removals, thinking bars just missed) — re-read Fri; #697 night 3 pass; #655 fold DONE-WHEN met, churn scope Sat with one table for him; #624 heartbeat 3 survived the deploy; ranking read unchanged
+
+# md5 inside apollo-market (read-only)
+fc9269a77344e69037446542023ee913  agents/market_intelligence/ep_detector.py
+187cbd81f319c3fc8c3542c699889e13  agents/market_intelligence/lowcap_paper_lane.py
+47a6d2c1388f563e5c05afb622ef1d19  agents/market_intelligence/db.py
+240fb75ddc1178bc4343e6df38cbedbc  agents/market_intelligence/broker/skip_reasons.py
+b8557f7ee54e74e4acc6afff73f8af6a  agents/market_intelligence/scheduler.py
+agents/market_intelligence/ep_detector.py:5
+agents/market_intelligence/scheduler.py:5
+
+# md5 inside apollo-execution (read-only)
+fc9269a77344e69037446542023ee913  agents/market_intelligence/ep_detector.py
+187cbd81f319c3fc8c3542c699889e13  agents/market_intelligence/lowcap_paper_lane.py
+47a6d2c1388f563e5c05afb622ef1d19  agents/market_intelligence/db.py
+240fb75ddc1178bc4343e6df38cbedbc  agents/market_intelligence/broker/skip_reasons.py
+b8557f7ee54e74e4acc6afff73f8af6a  agents/market_intelligence/scheduler.py
+agents/market_intelligence/ep_detector.py:5
+agents/market_intelligence/scheduler.py:5

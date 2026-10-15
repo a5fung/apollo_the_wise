@@ -1,0 +1,56 @@
+Pager usage is off.
+=== V6-0 now ET
+       now_et        
+---------------------
+ 2026-10-15 18:33:07
+(1 row)
+
+=== V6-1 GRML/AEHL 10-14 scan rows: every tick, today_volume, gap, stage (P15 free terms need gap>=15, pc>=5, vol pct>=90 at a post-open tick)
+ ticker | t_et  | mso |  reject_stage  |  gap  |  pc  | today_volume | prev_day_volume |  rv   |                         fr                         
+--------+-------+-----+----------------+-------+------+--------------+-----------------+-------+----------------------------------------------------
+ AEHL   | 09:25 |     | quality_filter | 188.8 | 8.55 |      3097325 |         3383720 | 12.73 | quality filter: filter:atr_too_high: 16.0% > 15.0%
+ AEHL   | 09:30 |   1 | quality_filter | 183.3 | 8.55 |      2745497 |         3383720 | 11.28 | quality filter: filter:atr_too_high: 16.0% > 15.0%
+ AEHL   | 09:31 |   1 | quality_filter | 172.1 | 8.55 |      3230531 |         3383720 | 13.28 | quality filter: filter:atr_too_high: 16.0% > 15.0%
+ AEHL   | 09:35 |   5 | quality_filter | 219.3 | 8.55 |      3303398 |         3383720 | 13.58 | quality filter: filter:atr_too_high: 16.0% > 15.0%
+ AEHL   | 09:40 |  10 | quality_filter | 188.8 | 8.55 |      3527512 |         3383720 | 14.50 | quality filter: filter:atr_too_high: 16.0% > 15.0%
+ AEHL   | 09:45 |  15 | quality_filter | 180.8 | 8.55 |      3776757 |         3383720 | 15.52 | quality filter: filter:atr_too_high: 16.0% > 15.0%
+ AEHL   | 09:50 |  20 | quality_filter | 143.6 | 8.55 |      3954600 |         3383720 | 16.25 | quality filter: filter:atr_too_high: 16.0% > 15.0%
+ AEHL   | 09:55 |  25 | quality_filter | 112.8 | 8.55 |      4224640 |         3383720 | 17.36 | quality filter: filter:atr_too_high: 16.0% > 15.0%
+ GRML   | 09:25 |     | quality_filter |  37.2 | 5.54 |     12220208 |         1742893 |  2.54 | quality filter: filter:atr_too_high: 32.8% > 15.0%
+ GRML   | 09:30 |   1 | quality_filter |  35.4 | 5.54 |     11775137 |         1742893 |  2.45 | quality filter: filter:atr_too_high: 32.8% > 15.0%
+ GRML   | 09:31 |   1 | quality_filter |  27.7 | 5.54 |     12828918 |         1742893 |  2.67 | quality filter: filter:atr_too_high: 32.8% > 15.0%
+ GRML   | 09:35 |   5 | quality_filter |  25.5 | 5.54 |     14096821 |         1742893 |  2.94 | quality filter: filter:atr_too_high: 32.8% > 15.0%
+ GRML   | 09:40 |  10 | quality_filter |  23.7 | 5.54 |     14887883 |         1742893 |  3.10 | quality filter: filter:atr_too_high: 32.8% > 15.0%
+ GRML   | 09:45 |  15 | quality_filter |  28.3 | 5.54 |     15669917 |         1742893 |  3.26 | quality filter: filter:atr_too_high: 32.8% > 15.0%
+ GRML   | 09:50 |  20 | quality_filter |  31.2 | 5.54 |     16543039 |         1742893 |  3.45 | quality filter: filter:atr_too_high: 32.8% > 15.0%
+ GRML   | 09:55 |  25 | quality_filter |  32.0 | 5.54 |     17367750 |         1742893 |  3.62 | quality filter: filter:atr_too_high: 32.8% > 15.0%
+(16 rows)
+
+=== V6-2 their rolling-20-day mean volume series (end-dates in the 60 calendar days before 10-14) = the P15 rank history: n, min, max
+ ticker | hist_n | min_mean20 | max_mean20 | p90_mean20 
+--------+--------+------------+------------+------------
+ AEHL   |     41 |     282623 |    4607007 |    4594462
+ GRML   |     41 |      72541 |   25084770 |   24252235
+(2 rows)
+
+=== V6-3 their last 5 daily closes rows before 10-14 (is the daily table current for them)
+ ticker | trade_date | close |  volume  
+--------+------------+-------+----------
+ AEHL   | 2026-10-06 | 11.76 |    43438
+ AEHL   | 2026-10-07 | 12.32 |    64522
+ AEHL   | 2026-10-08 | 11.35 |    24457
+ AEHL   | 2026-10-09 |  9.87 |    35877
+ AEHL   | 2026-10-12 |  9.27 |    23204
+ AEHL   | 2026-10-13 |  8.55 |  1436260
+ AEHL   | 2026-10-14 | 11.49 | 12417902
+ AEHL   | 2026-10-15 | 11.42 |  1741697
+ GRML   | 2026-10-06 |  6.38 |  4767475
+ GRML   | 2026-10-07 |  5.83 |  1790920
+ GRML   | 2026-10-08 |  5.88 |  1818469
+ GRML   | 2026-10-09 |  5.17 |  3591285
+ GRML   | 2026-10-12 |  6.02 | 11733615
+ GRML   | 2026-10-13 |  5.54 |  1704704
+ GRML   | 2026-10-14 |  6.49 | 27521328
+ GRML   | 2026-10-15 |  6.96 |  3030878
+(16 rows)
+

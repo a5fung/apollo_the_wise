@@ -1,0 +1,26 @@
+Pager usage is off.
+=== V4-0 now ET
+       now_et        
+---------------------
+ 2026-10-15 18:31:34
+(1 row)
+
+=== V4-1 P15 silence 10-06..10-15: names on the scan log at the 09:30/09:31 ticks with gap>=15 and prev_close>=5, any stage, with their cap (NULL cap = unknown)
+ scan_date  | ticker | t_et  |   reject_stage    |  gap  |   pc   | mcap_m |  vp   |                                   fr                                   
+------------+--------+-------+-------------------+-------+--------+--------+-------+------------------------------------------------------------------------
+ 2026-10-06 | AIFA   | 09:30 | quality_filter    |  16.3 |   5.88 |        |       | quality filter: filter:adv_too_low: $187,036
+ 2026-10-06 | APOG   | 09:30 | score_bar         |  19.9 |  35.66 |    744 |   0.0 | score 52 < bar 65 (catalyst=strong)
+ 2026-10-06 | OPCH   | 09:30 | post_grade_filter |  32.8 |  23.37 |   3500 | 100.0 | M&A/buyout catalyst — no momentum trade
+ 2026-10-08 | COE    | 09:30 | universe_floor    |  15.5 |   9.96 |        |       | filter:universe_prev_day_illiquid: prior-day volume 19,228 < 50,000 sh
+ 2026-10-08 | HELE   | 09:30 | score_bar         |  22.8 |  25.55 |    595 |   0.0 | score 34 < bar 65 (catalyst=routine)
+ 2026-10-08 | PCRX   | 09:30 | post_grade_filter |  44.2 |  25.20 |   1005 | 100.0 | M&A/buyout catalyst — no momentum trade
+ 2026-10-09 | HUM    | 09:30 | duplicate         |  16.2 | 387.12 |        |       | already scored earlier today
+ 2026-10-12 | TRAX   | 09:30 | score_bar         |  23.9 |  31.85 |   1138 | 100.0 | score 59 < bar 65 (catalyst=strong)
+ 2026-10-12 | WFF    | 09:30 | extension         |  20.3 |  12.29 |        |       | already up 511% in prior 5 days (extended)
+ 2026-10-13 | MMEDV  | 09:30 | quality_filter    |  25.7 |  19.10 |        |       | quality filter: filter:adv_no_data
+ 2026-10-14 | AEHL   | 09:30 | quality_filter    | 183.3 |   8.55 |        |       | quality filter: filter:atr_too_high: 16.0% > 15.0%
+ 2026-10-14 | BSP    | 09:30 | score_bar         |  34.0 |  37.86 |  24049 |   0.0 | score 59 < bar 65 (catalyst=strong)
+ 2026-10-14 | GRML   | 09:30 | quality_filter    |  35.4 |   5.54 |        |       | quality filter: filter:atr_too_high: 32.8% > 15.0%
+ 2026-10-14 | LQDA   | 09:30 | quality_filter    |  34.3 |  26.81 |        |       | quality filter: filter:atr_too_high: 24.5% > 15.0%
+(14 rows)
+

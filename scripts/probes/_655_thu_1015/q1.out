@@ -1,0 +1,79 @@
+Output format is unaligned.
+Field separator is "	".
+== now
+now_et
+2026-10-15 18:22:52.541109
+(1 row)
+== 1. theme_small_fold_ran / error tonight (full)
+id	t	event_type	summary	detail
+57435	2026-10-15 17:07:35.146387	theme_small_fold_ran	Small-theme fold: ran — 31 theme(s) of 2-3 members, 9 failed G3, 4 folded	{"status": "ran", "small": 31, "counts": {"small": 31, "g3_fail": 9, "folded": 4, "skipped_renamed": 0, "skipped_protected": 0, "no_ecosystem": 1, "no_home": 1, "members_fail_test": 3}, "g3_rate_pct": 91.2, "folded": ["Cloud Data Storage & Analytics Infrastructure", "Consumer Franchise Operators: Fitness & Quick-Service", "Enterprise Information Management & Infrastructure Engineering Software", "RF, Microwave & Power Semiconductor Specialists"], "industries_read": true}
+(1 row)
+== 2. theme_small_folded rows tonight
+id	t	summary	th	home	e	members	moved	released	g3
+57431	17:07:35	'Cloud Data Storage & Analytics Infrastructure' -> 'Cloud Application Delivery & Observability Infrastructure': moved 1, released 1 of 2 (G3 fail, cohesion 0.44439271873288266 vs random p95 0.48914993015336167), #655 fold	Cloud Data Storage & Analytics Infrastructure	Cloud Application Delivery & Observability Infrastructure	E-SAAS	["SNOW", "ESTC"]	["SNOW"]	["ESTC"]	{"cohesion": 0.44439271873288266, "c1_p95": 0.48914993015336167, "pass_g3": false}
+57432	17:07:35	'Consumer Franchise Operators: Fitness & Quick-Service' -> 'Franchised Auto Dealership Groups': moved 1, released 1 of 2 (G3 fail, cohesion 0.06960109889505584 vs random p95 0.29795373682183185), #655 fold	Consumer Franchise Operators: Fitness & Quick-Service	Franchised Auto Dealership Groups	E-CONS	["VVV", "PLNT"]	["VVV"]	["PLNT"]	{"cohesion": 0.06960109889505584, "c1_p95": 0.29795373682183185, "pass_g3": false}
+57433	17:07:35	'Enterprise Information Management & Infrastructure Engineering Software' -> 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS': moved 2, released 1 of 3 (G3 fail, cohesion 0.0031297889928224945 vs random p95 0.3236133643605129), #655 fold	Enterprise Information Management & Infrastructure Engineering Software	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	E-SAAS	["OTEX", "P", "BSY"]	["OTEX", "BSY"]	["P"]	{"cohesion": 0.0031297889928224945, "c1_p95": 0.3236133643605129, "pass_g3": false}
+57434	17:07:35	'RF, Microwave & Power Semiconductor Specialists' -> 'AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)': moved 2, released 0 of 2 (G3 fail, cohesion 0.5330442992081923 vs random p95 0.5806806452433784), #655 fold	RF, Microwave & Power Semiconductor Specialists	AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)	E-AISEMI	["MTSI", "ON"]	["MTSI", "ON"]	[]	{"cohesion": 0.5330442992081923, "c1_p95": 0.5806806452433784, "pass_g3": false}
+(4 rows)
+== 3. theme_correctness_check rows 10-12 on (summary)
+id	t	summary
+55813	2026-10-12 17:31:15.351386	G1 570/609 (93.6% bar 90.0%) · G2 18/609 (3.0% bar<= 5.0%) · G3 100/109 (91.7% bar 90.0%) · G4 10/109 small (9.2% bar<= 10.0%; settled 5/104 4.8%) · latency median 5.5 sessions (n=6)
+56328	2026-10-13 17:31:11.453993	G1 572/617 (92.7% bar 90.0%) · G2 23/617 (3.7% bar<= 5.0%) · G3 99/107 (92.5% bar 90.0%) · G4 10/107 small (9.3% bar<= 10.0%; settled 5/102 4.9%) · latency median 5.5 sessions (n=6)
+56889	2026-10-14 17:31:18.850776	G1 590/626 (94.2% bar 90.0%) · G2 22/626 (3.5% bar<= 5.0%) · G3 101/109 (92.7% bar 90.0%) · G4 8/110 small (7.3% bar<= 10.0%; settled 5/107 4.7%) · latency median 5.5 sessions (n=6)
+57499	2026-10-15 17:31:18.371687	G1 560/599 (93.5% bar 90.0%) · G2 23/599 (3.8% bar<= 5.0%) · G3 99/109 (90.8% bar 90.0%) · G4 4/109 small (3.7% bar<= 10.0%; settled 2/107 1.9%) · latency median 6.0 sessions (n=8)
+(4 rows)
+== 4.
+psql:/tmp/c655_thu1015_q1.sql:16: error: unterminated quoted string
+id	g3_scalars
+57499	{"pass": 99, "bar_pct": 90.0, "n_board": 109, "pass_bar": true, "rate_pct": 90.8, "fail_list": ["Behavioral Health & Transplant/MSK Care Delivery Re-Rating", "Casual Footwear & Athletic Lifestyle Brands", "Diagnostic Testing & Lab Equipment Re-Rating", "Digital-First Beauty & Cosmetics Brands", "Digital Freight & Shared Mobility Platforms", "Functional Energy Drink Brands", "International Telecom & Cross-Border Communications Services", "Off-Price & Branded Apparel/Footwear Retail Rotation", "Off-Price & Specialty Retail Consumer Rotation", "Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)"], "n_judgeable": 109}
+(1 row)
+id	g4_block
+57499	{"list": ["Digital-First Beauty & Cosmetics Brands", "International Telecom & Cross-Border Communications Services", "Small Modular Reactor & Advanced Nuclear Fission Technology", "U.S. Homebuilders & Manufactured Housing Builders"], "small": 4, "bar_pct": 10.0, "n_board": 109, "settled": {"list": ["Digital-First Beauty & Cosmetics Brands", "International Telecom & Cross-Border Communications Services"], "small": 2, "bar_pct": 10.0, "n_board": 107, "waiting": ["Small Modular Reactor & Advanced Nuclear Fission Technology", "U.S. Homebuilders & Manufactured Housing Builders"], "pass_bar": true, "rate_pct": 1.9}, "pass_bar": true, "rate_pct": 3.7}
+(1 row)
+id	g1_block	g2_block
+57499	{"n": 599, "pass": 560, "bar_pct": 90.0, "pass_bar": true, "rate_pct": 93.5}	{"n": 599, "list": [["JBS", "Agricultural Commodity Processing & Animal Protein/Rendering", "Non-Alcoholic Beverages & Energy Drinks"], ["DGX", "AI-Driven Diagnostics & Imaging Re-Rating", "Life Science Tools & Analytical Instruments"], ["CDNA", "AI-Driven Diagnostics & Imaging Re-Rating", "Genomics & DNA Sequencing Tools"], ["LH", "AI-Driven Diagnostics & Imaging Re-Rating", "Life Science Tools & Analytical Instruments"], ["SAN", "Bank Stocks: Rising-Rate NIM Expansion", "UK Banks (NatWest, Lloyds, Barclays)"], ["BBVA", "Bank Stocks: Rising-Rate NIM Expansion", "UK Banks (NatWest, Lloyds, Barclays)"], ["MFG", "Bank Stocks: Rising-Rate NIM Expansion", "UK Banks (NatWest, Lloyds, Barclays)"], ["ING", "Bank Stocks: Rising-Rate NIM Expansion", "UK Banks (NatWest, Lloyds, Barclays)"], ["SMFG", "Bank Stocks: Rising-Rate NIM Expansion", "UK Banks (NatWest, Lloyds, Barclays)"], ["HLF", "Beverage Brands: Beer, Sparkling Water & Wellness Nutrition", "Lodging & Hotel REITs"], ["RRX", "Building Products & HVAC/Industrial Motion Rotation", "AI Data Center High-Speed Interconnect & Signal Integrity Chipmakers"], ["ARHS", "Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings", "Fintech Payments, Prepaid & Consumer Digital Banking Apps"], ["NTNX", "Enterprise Server, Storage & Data Infrastructure Hardware", "Customer Engagement & Marketing/CX SaaS Platforms"], ["PAX", "Exchange, Options Trading & Alternative Consumer Credit Financials", "Brazil Fintech & Digital Banking Rally"], ["MA", "Fintech & Digital Finance Sector Re-rating on Fed Easing", "Specialty P&C Insurance Underwriters Rotation Reversal"], ["USDE", "Fintech & Digital Finance Sector Re-rating on Fed Easing", "Bitcoin Holding & Trading Proxy Equities"], ["J", "Industrial Construction Execution & On-Site Supply Chain", "Metal & Rigid Consumer Packaging"], ["TTEK", "Industrial Construction Execution & On-Site Supply Chain", "IT Consulting & Business Process Outsourcing Services"], ["FIGS", "Specialty Apparel & Mall-Based Specialty Retail Strength", "Online Consumer Marketplaces & Performance Marketing Platforms"], ["VERX", "Vertical Commerce & Tax/Payments Software-Fintech Platforms", "Cloud Application Software Rotation (Oversold Turning Up)"], ["SEIC", "Wealth Management & Retail Brokerage Platforms", "Insurance Brokerage & Employee Benefits Advisory"], ["SCHW", "Wealth Management & Retail Brokerage Platforms", "Exchange, Options Trading & Alternative Consumer Credit Financials"], ["XP", "Wealth Management & Retail Brokerage Platforms", "Fintech & Digital Finance Sector Re-rating on Fed Easing"]], "bar_pct": 5.0, "flagged": 23, "pass_bar": true, "rate_pct": 3.8}
+(1 row)
+== 5. tonight G3 failing themes: stage, size, cohesion, p95
+name	stage	size	coh	p95
+Digital-First Beauty & Cosmetics Brands	Nascent	2	0.027	0.392
+International Telecom & Cross-Border Communications Services	Mainstream	2	0.154	0.509
+Behavioral Health & Transplant/MSK Care Delivery Re-Rating	Nascent	3	0.063	0.310
+Casual Footwear & Athletic Lifestyle Brands	Nascent	3	0.118	0.245
+Diagnostic Testing & Lab Equipment Re-Rating	Accelerating	3	0.085	0.300
+Digital Freight & Shared Mobility Platforms	Nascent	3	0.152	0.265
+Functional Energy Drink Brands	Nascent	3	0.197	0.215
+Off-Price & Branded Apparel/Footwear Retail Rotation	Nascent	3	0.295	0.373
+Off-Price & Specialty Retail Consumer Rotation	Nascent	3	0.152	0.222
+Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)	Mainstream	3	0.126	0.313
+(10 rows)
+== 5b. G3 pass/fail by size bucket: tonight, then last night (10-14)
+night	bucket	pass	n
+tonight	2-3	false	10
+tonight	2-3	true	25
+tonight	4+	true	74
+wed_1014	2-3	false	8
+wed_1014	2-3	true	26
+wed_1014	2-3		1
+wed_1014	4+	true	75
+(7 rows)
+== 6. board by night: active, 2-3 members, <=1, retired
+theme_date	active	n23	n01	retired
+2026-10-09	123	46	0	17
+2026-10-12	111	36	0	27
+2026-10-13	107	34	0	14
+2026-10-14	110	35	0	13
+2026-10-15	108	35	0	18
+(5 rows)
+== 7. G3-failing themes tonight on the 10-15 board: size, source, written-at vs fold_ran, previous nights
+name	stage	n	tk	source	written	fold_ran_at	on_1014	on_1013
+Digital-First Beauty & Cosmetics Brands	Nascent	2	ELF,ODD	live	17:07:55	17:07:35	Nascent:2	Nascent:2
+International Telecom & Cross-Border Communications Services	Mainstream	2	IDT,VEON	live	17:07:55	17:07:35	Mainstream:2	Nascent:2
+Behavioral Health & Transplant/MSK Care Delivery Re-Rating	Nascent	3	CDNA,ACHC,LFST	live	17:07:55	17:07:35	Nascent:3	
+Casual Footwear & Athletic Lifestyle Brands	Nascent	3	CROX,AS,MNSO	shadow_promoted	17:09:21	17:07:35		
+Diagnostic Testing & Lab Equipment Re-Rating	Accelerating	3	MDLN,OMCL,QDEL	live	17:07:55	17:07:35	Nascent:3	Retired:0
+Digital Freight & Shared Mobility Platforms	Nascent	3	YMM,VIA,MBGL	shadow_promoted	17:09:21	17:07:35		
+Functional Energy Drink Brands	Nascent	3	CELH,HELE,JBS	shadow_promoted	17:09:21	17:07:35	Retired:0	Fading:3
+Off-Price & Branded Apparel/Footwear Retail Rotation	Nascent	3	TJX,RL,SHOE	shadow_promoted	17:09:22	17:07:35		
+Off-Price & Specialty Retail Consumer Rotation	Nascent	3	TJX,BBWI,DORM	shadow_promoted	17:09:23	17:07:35	Retired:0	Nascent:3
+Specialty Biopharma Clinical & Commercial Breakouts (Retinal, Pulmonary, Dermatology)	Mainstream	3	UTHR,KOD,MANE	live	17:07:55	17:07:35	Mainstream:3	Mainstream:3
+(10 rows)

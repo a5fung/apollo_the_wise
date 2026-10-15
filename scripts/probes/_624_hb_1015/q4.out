@@ -1,0 +1,27 @@
+Pager usage is off.
+=== Q4-0 now ET
+       now_et        
+---------------------
+ 2026-10-15 18:25:25
+(1 row)
+
+=== Q4-1 re-run of Q3-1b (it errored on a round cast): inputs of BETR lane row vs DFH live row - different inputs bucketing to the same score = coincidence, same inputs = contamination
+    src    |  gap  |  rv  | pmrv |  px  |  pc  | atr  | adv_m | mcap_m | in_active_theme | catalyst_quality 
+-----------+-------+------+------+------+------+------+-------+--------+-----------------+------------------
+ lane BETR | 11.08 | 0.62 | 3.56 | 9.02 | 8.12 | 14.3 |   6.3 |    177 | f               | routine
+ live DFH  | 12.67 | 0.34 | 8.75 | 8.36 | 7.42 |  9.2 |  12.0 |    737 | f               | routine
+(2 rows)
+
+=== Q4-2 does the scoring formula bucket (same breakdown different gap gives the same score)? other 10-15 live rows with breakdown gap 10 float 5 and nothing else
+ ticker | t_et  | ep_score |  gap  |                                        score_breakdown                                        
+--------+-------+----------+-------+-----------------------------------------------------------------------------------------------
+ DFH    | 09:55 |     33.8 | 12.67 | {"gap": 10, "float": 5, "catalyst": 0, "liquidity": 0, "theme_bonus": 0, "vol_conviction": 0}
+(1 row)
+
+=== Q4-3 lane BETR row full tail (all time stamps and reject fields)
+ id | ticker |    fg    |    lg    | det |   reject_stage    |            reject_reason             | ep_score | baseline_floor_tier | grade_engine_authority | setup_class | rubric_version |   regime   
+----+--------+----------+----------+-----+-------------------+--------------------------------------+----------+---------------------+------------------------+-------------+----------------+------------
+  6 | OPI    | 08:20:00 | 09:35:00 |     | post_grade_filter | pre-mkt volume 100 < 25,000 shares   |          |                     |                        |             |                | Correcting
+ 23 | BETR   | 09:40:00 | 09:55:00 |     | score_bar         | score 34 < bar 65 (catalyst=routine) |     33.8 |                     |                        |             |                | Correcting
+(2 rows)
+

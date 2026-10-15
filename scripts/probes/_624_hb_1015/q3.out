@@ -1,0 +1,89 @@
+Pager usage is off.
+=== Q3-0 now ET
+       now_et        
+---------------------
+ 2026-10-15 18:24:33
+(1 row)
+
+=== Q3-1 BETR lane row vs DFH live scan row at 09:55: same 33.8 score, are the breakdowns the same object or different inputs
+    src    | ep_score |           bd            
+-----------+----------+-------------------------
+ lane BETR |     33.8 | {                      +
+           |          |     "gap": 10,         +
+           |          |     "float": 5,        +
+           |          |     "catalyst": 0,     +
+           |          |     "liquidity": 0,    +
+           |          |     "theme_bonus": 0,  +
+           |          |     "vol_conviction": 0+
+           |          | }
+(1 row)
+
+      src       | ep_score |           bd            
+----------------+----------+-------------------------
+ live DFH 09:55 |     33.8 | {                      +
+                |          |     "gap": 10,         +
+                |          |     "float": 5,        +
+                |          |     "catalyst": 0,     +
+                |          |     "liquidity": 0,    +
+                |          |     "theme_bonus": 0,  +
+                |          |     "vol_conviction": 0+
+                |          | }
+(1 row)
+
+=== Q3-1b the inputs of each: gap, rel_volume, pm_rvol, price, atr, adv, theme, catalyst for BETR lane row and DFH live row
+=== Q3-2 provenance rows (grader ran) for the two lane names, full detail
+psql:/tmp/c624_hb1015_q3.sql:10: ERROR:  function round(double precision, integer) does not exist
+LINE 1: ...ce::numeric,2) px, round(atr_pct::numeric,1) atr, round(qual...
+                                                             ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+  id   |   t_et   |       event_type       |         summary          |                                                                                     d                                                                                     
+-------+----------+------------------------+--------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 57009 | 08:20:11 | ep_catalyst_provenance | OPI routine direct=False | {"ticker": "OPI", "alert_date": "2026-10-15", "catalyst_quality": "routine", "sources": {"web_perplexity": 1}, "has_direct_source": false}
+ 57095 | 09:40:22 | ep_catalyst_provenance | BETR routine direct=True | {"ticker": "BETR", "alert_date": "2026-10-15", "catalyst_quality": "routine", "sources": {"sec_8k": 1, "benzinga_pr": 3, "web_perplexity": 1}, "has_direct_source": true}
+(2 rows)
+
+=== Q3-3 per-tick join: every live scan tick that logged a cap-only name vs a lane tick audit row within 150s after it (any miss = a dropped tick)
+ scan_ticks_with_cap_only | matched_to_lane_tick | lane_ticks_today 
+--------------------------+----------------------+------------------
+                       21 |                   21 |               21
+(1 row)
+
+ unmatched_scan_tick 
+---------------------
+(0 rows)
+
+=== Q3-4 order_status_reconcile_boot and other boot-only job runs around the 10-14 deploy
+   id   |           job_id            |     st_et      | status  
+--------+-----------------------------+----------------+---------
+ 228467 | order_status_reconcile_boot | 10-13 12:07:59 | success
+ 230754 | order_status_reconcile_boot | 10-14 12:07:19 | success
+(2 rows)
+
+=== Q3-5 api_failure_fmp rows by ET day, last 8 days (new burst or the standing pattern)
+   d   | n  | first_et | last_et | distinct_msgs 
+-------+----+----------+---------+---------------
+ 10-07 | 25 | 18:12    | 18:21   |             1
+ 10-08 | 26 | 18:12    | 18:22   |             1
+ 10-09 | 22 | 18:12    | 18:20   |             1
+ 10-12 | 22 | 18:12    | 18:20   |             1
+ 10-13 | 22 | 18:12    | 18:20   |             1
+ 10-14 | 23 | 18:12    | 18:21   |             1
+ 10-15 | 21 | 18:12    | 18:20   |             1
+(7 rows)
+
+=== Q3-6 heartbeat 10-15 written exactly once and after the scan finished
+ heartbeat_rows_1015 |  at_et   
+---------------------+----------
+                   1 | 18:15:00
+(1 row)
+
+=== Q3-7 paper account activity: any non-live trade rows or lane order ids since go-live, and any live-book row carrying the lane strategy id
+ account_mode | signal_type | count 
+--------------+-------------+-------
+(0 rows)
+
+   strategy_id    | phase | enabled |          updated_at           
+------------------+-------+---------+-------------------------------
+ magna53_smallcap | paper | t       | 2026-10-10 18:51:20.322432+00
+(1 row)
+

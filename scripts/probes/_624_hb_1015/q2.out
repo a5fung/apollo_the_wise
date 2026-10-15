@@ -1,0 +1,227 @@
+Pager usage is off.
+=== Q2-0 now ET
+       now_et        
+---------------------
+ 2026-10-15 18:23:29
+(1 row)
+
+=== Q2-1 boot / deploy evidence 10-14 20:30 ET .. 10-15 00:30 ET (rows only a restart writes)
+  id   |      t_et      |         event_type          |                            left                             
+-------+----------------+-----------------------------+-------------------------------------------------------------
+ 56962 | 10-14 21:18:44 | dual_account_creds_resolved | Alpaca creds status=intelligence_no_creds
+ 56963 | 10-14 21:18:45 | account_mode_active         | mode=paper equity=n/a (intelligence role — no broker creds)
+ 56965 | 10-14 21:21:45 | dual_account_creds_resolved | Alpaca creds status=dual_ready
+ 56967 | 10-14 21:21:46 | account_mode_active         | mode=paper equity=$89,843.79
+(4 rows)
+
+=== Q2-1b boot rows 10-15 ET (any further restart today?)
+ id | t_et | event_type | left 
+----+------+------------+------
+(0 rows)
+
+=== Q2-2 DROPPED-JOB SWEEP: job ids in the window after the 10-13 evening deploy-equivalent (10-13 21:20 ET -> 10-14 18:30 ET) vs the window after THIS deploy (10-14 21:20 ET -> 10-15 18:30 ET) whose run counts differ
+           job_id            | wed_window | thu_window 
+-----------------------------+------------+------------
+ order_status_reconcile_boot |          1 |          0
+(1 row)
+
+=== Q2-2b same sweep, how many job ids match exactly
+ same_count | only_thu | only_wed | total_job_ids 
+------------+----------+----------+---------------
+         93 |        0 |        1 |            94
+(1 row)
+
+=== Q2-3 non-success job runs since the deploy (10-14 21:00 ET onward)
+ id | job_id | st_et | status | err 
+----+--------+-------+--------+-----
+(0 rows)
+
+=== Q2-4 ep_scan job durations inside ORB window 09:25-10:00 ET, by day
+   d   | n |  mn   |  mx   |  av   | nonok 
+-------+---+-------+-------+-------+-------
+ 10-05 | 7 | 13.54 | 26.98 | 19.80 |     0
+ 10-06 | 7 |  3.24 | 43.42 | 16.12 |     0
+ 10-07 | 7 |  2.42 | 46.73 | 10.77 |     0
+ 10-08 | 7 |  4.19 | 16.92 |  7.06 |     0
+ 10-09 | 7 |  3.16 | 35.54 | 13.98 |     0
+ 10-12 | 7 |  2.64 | 11.36 |  5.24 |     0
+ 10-13 | 7 |  1.82 |  4.13 |  2.60 |     0
+ 10-14 | 7 |  2.97 | 20.13 | 11.01 |     0
+ 10-15 | 7 |  2.57 | 21.82 | 10.94 |     0
+(9 rows)
+
+=== Q2-4b ep_scan_open + ep_scan rows 10-15 ET 09:25-10:00
+    job_id    |       st       |  dur  | status  
+--------------+----------------+-------+---------
+ ep_scan      | 10-15 09:25:00 |  2.57 | success
+ ep_scan      | 10-15 09:30:00 |  3.95 | success
+ ep_scan_open | 10-15 09:31:00 |  3.77 | success
+ ep_scan      | 10-15 09:35:00 |  5.27 | success
+ ep_scan      | 10-15 09:40:00 | 15.35 | success
+ ep_scan      | 10-15 09:45:00 | 21.82 | success
+ ep_scan      | 10-15 09:50:00 | 16.94 | success
+ ep_scan      | 10-15 09:55:00 | 10.65 | success
+(8 rows)
+
+=== Q2-5 live-path rows that reached grading 09:30-09:55 ET on 10-15
+ ticker |   t_et   |   reject_stage    |                          fr                          | gap  | mcap_m | ep_score | score_tier 
+--------+----------+-------------------+------------------------------------------------------+------+--------+----------+------------
+ ERIC   | 09:30:00 | score_bar         | score 36 < bar 65 (catalyst=routine)                 | 11.1 |  31092 |     36.2 | 
+ OPI    | 09:30:00 | quality_filter    | quality filter: filter:mcap_too_small: $291M < $500M | 13.1 |    291 |          | 
+ ERIC   | 09:31:00 | score_bar         | score 36 < bar 65 (catalyst=routine)                 |  9.3 |  31092 |     36.2 | 
+ OPI    | 09:31:00 | quality_filter    | quality filter: filter:mcap_too_small: $291M < $500M | 13.1 |    291 |          | 
+ OPI    | 09:35:00 | quality_filter    | quality filter: filter:mcap_too_small: $291M < $500M | 13.1 |    291 |          | 
+ BETR   | 09:40:00 | quality_filter    | quality filter: filter:mcap_too_small: $177M < $500M | 14.8 |    177 |          | 
+ WINA   | 09:40:00 | post_grade_filter | routine catalyst, gap 10.1%                          | 10.1 |   1171 |          | 
+ ANL    | 09:45:00 | post_grade_filter | routine catalyst, gap 11.2%                          | 11.2 |    701 |          | 
+ BETR   | 09:45:00 | quality_filter    | quality filter: filter:mcap_too_small: $177M < $500M | 16.2 |    177 |          | 
+ ERIC   | 09:45:00 | score_bar         | score 40 < bar 65 (catalyst=routine)                 |  9.3 |  31092 |       40 | 
+ FMFC   | 09:45:00 | quality_filter    | quality filter: filter:adv_too_low: $46,639          | 23.2 |        |          | 
+ NRXS   | 09:45:00 | quality_filter    | quality filter: filter:adv_too_low: $682,500         | 13.6 |        |          | 
+ SAH    | 09:45:00 | post_grade_filter | routine catalyst, gap 10.3%                          | 10.3 |   2095 |          | 
+ WINA   | 09:45:00 | post_grade_filter | routine catalyst, gap 9.4%                           |  9.4 |   1171 |          | 
+ ANL    | 09:50:00 | post_grade_filter | routine catalyst, gap 11.3%                          | 11.4 |    701 |          | 
+ BETR   | 09:50:00 | quality_filter    | quality filter: filter:mcap_too_small: $177M < $500M | 12.1 |    177 |          | 
+ DFH    | 09:50:00 | post_grade_filter | routine catalyst, gap 9.8%                           |  9.8 |    737 |          | 
+ FMFC   | 09:50:00 | quality_filter    | quality filter: filter:adv_too_low: $46,639          | 19.8 |        |          | 
+ NRXS   | 09:50:00 | quality_filter    | quality filter: filter:adv_too_low: $682,500         | 11.9 |        |          | 
+ VOGX   | 09:50:00 | quality_filter    | quality filter: filter:atr_too_high: 17.3% > 15.0%   |  9.4 |        |          | 
+(20 rows)
+
+=== Q2-5b live scan stage breakdown 10-15 whole day
+   reject_stage    |  n   | tk  
+-------------------+------+-----
+ universe_floor    | 2187 | 198
+ gap_floor         |  309 |  46
+ quality_filter    |   49 |   8
+ score_bar         |   35 |   2
+ post_grade_filter |   10 |   4
+(5 rows)
+
+=== Q2-5c any scored row (ep_score not null) in the live scan log 10-15
+ ticker | t_et  | reject_stage | ep_score | score_tier | catalyst_quality | llm_catalyst_quality 
+--------+-------+--------------+----------+------------+------------------+----------------------
+ ERIC   | 07:00 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 07:05 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 07:10 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 07:15 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 07:20 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 07:25 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 07:30 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 07:35 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 07:40 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 07:45 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 07:50 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 07:55 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 08:00 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 08:05 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 08:10 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 08:15 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 08:20 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 08:25 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 08:30 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 08:35 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 08:40 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 08:45 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 08:50 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 08:55 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 09:00 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 09:00 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 09:05 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 09:10 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 09:15 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 09:20 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 09:25 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 09:30 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 09:31 | score_bar    |     36.2 |            | routine          | routine
+ ERIC   | 09:45 | score_bar    |       40 |            | routine          | routine
+ DFH    | 09:55 | score_bar    |     33.8 |            | routine          | routine
+(35 rows)
+
+=== Q2-6 judge timeout / late grade / refusal audit rows since 10-15 00:00 ET
+ id | t_et | event_type | left 
+----+------+------------+------
+(0 rows)
+
+=== Q2-7 live-path provenance/admit rows 10-15
+  id   |   t_et   |       event_type       |                                           s                                           
+-------+----------+------------------------+---------------------------------------------------------------------------------------
+ 56974 | 07:00:03 | ep_rt_admit            | ERIC rt 12.1% and delayed 12.0% BOTH >=9 @ 07:00 ET — real-time AGREES with the admit
+ 56978 | 07:00:12 | ep_catalyst_provenance | ERIC strong direct=True
+ 56984 | 07:05:01 | ep_rt_universe_catch   | ANL rt 10.2% ≥9 vs delayed n/a @ 07:05 ET
+ 56985 | 07:05:10 | ep_catalyst_provenance | ANL routine direct=True
+ 57007 | 08:20:01 | ep_rt_universe_catch   | OPI rt 13.0% ≥9 vs delayed n/a @ 08:20 ET
+ 57009 | 08:20:11 | ep_catalyst_provenance | OPI routine direct=False
+ 57012 | 08:25:00 | ep_rt_universe_catch   | NRXS rt 9.0% ≥9 vs delayed 4.1% @ 08:25 ET
+ 57017 | 08:35:01 | ep_rt_admit            | OPI rt 13.0% and delayed 13.1% BOTH >=9 @ 08:35 ET — real-time AGREES with the admit
+ 57030 | 08:55:01 | ep_rt_universe_catch   | NTWK rt 13.7% ≥9 vs delayed n/a @ 08:55 ET
+ 57049 | 09:05:01 | ep_rt_universe_catch   | FMFC rt 11.4% ≥9 vs delayed 3.4% @ 09:05 ET
+ 57052 | 09:10:01 | ep_rt_admit            | NRXS rt 10.6% and delayed 9.7% BOTH >=9 @ 09:10 ET — real-time AGREES with the admit
+ 57053 | 09:10:01 | ep_rt_admit            | NTWK rt 13.7% and delayed 13.7% BOTH >=9 @ 09:10 ET — real-time AGREES with the admit
+ 57060 | 09:20:01 | ep_rt_admit            | FMFC rt 10.5% and delayed 11.2% BOTH >=9 @ 09:20 ET — real-time AGREES with the admit
+ 57087 | 09:40:06 | ep_rt_universe_catch   | BETR rt 14.8% ≥9 vs delayed -0.4% @ 09:40 ET
+ 57088 | 09:40:06 | ep_rt_universe_catch   | WINA rt 10.1% ≥9 vs delayed 2.4% @ 09:40 ET
+ 57094 | 09:40:15 | ep_catalyst_provenance | WINA routine direct=True
+ 57095 | 09:40:22 | ep_catalyst_provenance | BETR routine direct=True
+ 57102 | 09:45:09 | ep_rt_universe_catch   | SAH rt 10.3% ≥9 vs delayed 0.7% @ 09:45 ET
+ 57103 | 09:45:21 | ep_catalyst_provenance | SAH routine direct=False
+ 57111 | 09:50:16 | ep_catalyst_provenance | DFH routine direct=True
+ 57115 | 09:55:06 | ep_rt_universe_catch   | RPGL rt 11.0% ≥9 vs delayed 4.3% @ 09:55 ET
+ 57120 | 09:55:07 | ep_rt_admit            | BETR rt 11.1% and delayed 14.8% BOTH >=9 @ 09:55 ET — real-time AGREES with the admit
+ 57239 | 16:35:19 | ep_rt_shadow_capture   | 2026-10-15: 2/3 residual crossers had a same-day ep_rt_universe_catch — MISSING: DFH
+(23 rows)
+
+=== Q2-8 any audit row 10-15 mentioning paper lane / magna53_smallcap / small-cap
+ id | t_et | event_type | left 
+----+------+------------+------
+(0 rows)
+
+=== Q2-9 audit error-class rows since the deploy (10-14 21:00 ET onward)
+  id   |      t_et      |   event_type    |                                 left                                  
+-------+----------------+-----------------+-----------------------------------------------------------------------
+ 57537 | 10-15 18:12:12 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57538 | 10-15 18:12:36 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57540 | 10-15 18:13:00 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57541 | 10-15 18:13:24 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57542 | 10-15 18:13:48 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57544 | 10-15 18:14:12 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57545 | 10-15 18:14:36 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57549 | 10-15 18:15:01 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57550 | 10-15 18:15:25 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57551 | 10-15 18:15:49 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57552 | 10-15 18:16:13 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57553 | 10-15 18:16:37 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57554 | 10-15 18:17:01 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57555 | 10-15 18:17:25 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57556 | 10-15 18:17:49 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57557 | 10-15 18:18:13 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57558 | 10-15 18:18:38 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57559 | 10-15 18:19:02 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57560 | 10-15 18:19:26 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57561 | 10-15 18:19:50 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+ 57563 | 10-15 18:20:14 | api_failure_fmp | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates
+(21 rows)
+
+=== Q2-10 api_usage ep_catalyst_grade calls 10-15 by ET minute-bucket (08:00-10:00) and day totals
+ m_et  |      caller       | n |  cost  |  stops   
+-------+-------------------+---+--------+----------
+ 07:00 | ep_catalyst_grade | 1 | 0.0134 | tool_use
+ 07:05 | ep_catalyst_grade | 1 | 0.0129 | tool_use
+ 08:20 | ep_catalyst_grade | 1 | 0.0111 | tool_use
+ 09:40 | ep_catalyst_grade | 2 | 0.0268 | tool_use
+ 09:45 | ep_catalyst_grade | 1 | 0.0084 | tool_use
+ 09:50 | ep_catalyst_grade | 1 | 0.0119 | tool_use
+(6 rows)
+
+=== Q2-10b ep_catalyst_grade calls per ET day last 7 days
+   d   | n | cost  
+-------+---+-------
+ 10-07 | 2 | 0.029
+ 10-08 | 8 | 0.103
+ 10-09 | 6 | 0.067
+ 10-12 | 6 | 0.061
+ 10-13 | 2 | 0.021
+ 10-14 | 7 | 0.088
+ 10-15 | 7 | 0.085
+(7 rows)
+

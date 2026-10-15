@@ -1,0 +1,74 @@
+chk|rows|sessions|latest|filled|mat5|mat20|gap_in_5d_window|gap_in_20d_window
+R1_totals|50|24|2026-10-14|15|47|32|0|0
+chk|rk|cell|mat5|hit5|broke_low|mat20|hit20|hit20_names
+R2_cells|0945|top|5|0|3|3|1|VICR
+R2_cells|0945|rest|42|2|27|29|1|MRNA
+R2_cells|0945_tol|top|6|0|4|4|1|VICR
+R2_cells|0945_tol|rest|41|2|26|28|1|MRNA
+R2_cells|EOD|top|6|0|4|4|1|VICR
+R2_cells|EOD|rest|41|2|26|28|1|MRNA
+chk|ticker|alert_date|cal_sess|miss6|x5|x20|broke|r_eod|p_eod|r_0945|trade_filled
+R3_rows|MRNA|2026-08-19|41|0|9.13|9.13|f|0.8750|4|0.8750|t
+R3_rows|DG|2026-08-27|35|0|1.93|1.93|t|0.2333|5|0.2333|f
+R3_rows|ERO|2026-09-08|28|0|1.46|1.46|t|0.2500|6|0.1944|f
+R3_rows|SRRK|2026-09-14|24|0|0.17|0.17|t|0.2500|2|0.4167|f
+R3_rows|CIFR|2026-09-16|22|0|2.88|2.88|f|0.5000|1|0.5000|f
+R3_rows|GNRC|2026-09-17|21|0|0.28|0.28|t|0.7500|2|0.7500|f
+R3_rows|VICR|2026-09-17|21|0|6.02|9.50|f|0.2500|2|0.2500|t
+R3_rows|MSTR|2026-09-21|19|0|0.63|0.63|t|0.2500|2|0.2500|f
+R3_rows|KOD|2026-09-28|14|0|12.43|12.43|f|0.5000|1|0.5000|t
+R3_rows|SNPS|2026-10-01|11|0|2.58|2.61|f|0.2500|2|0.2500|f
+R3_rows|PENG|2026-10-07|7|0|3.79|3.79|f|0.5000|1|0.5000|t
+R3_rows|WOLF|2026-10-08|6|0|0.37|0.37|t|0.5000|1|0.5000|f
+R3_rows|AAOI|2026-10-09|5|0|0.53|0.53|t|0.4167|2|0.2500|f
+R3_rows|HUM|2026-10-09|5|0|0.40|0.40|t|0.5833|2|0.7500|t
+R3_rows|BSP|2026-10-14|2|0|2.63|2.63|f|0.5000|1|0.5000|f
+chk|ticker|alert_date|cal_sess
+R4_today_maturity|WOLF|2026-10-08|6
+R4_today_maturity|GNRC|2026-09-17|21
+R4_today_maturity|VICR|2026-09-17|21
+chk|sessions|single_sessions|mat5_pool2plus|mat5_top|mat5
+R5_pools|24|11|37|6|47
+chk|at_et|event_type|summary
+R6_audit_mentions|2026-10-15 07:00:12.590503|ep_catalyst_provenance|ERIC strong direct=True
+R6_audit_mentions|2026-10-15 07:00:22.235653|catalyst_earnings_revenue_weak_downgrade|ERIC: strong → routine (earnings catalyst, rubric_composite_10.8_below_22_label_weak)
+R6_audit_mentions|2026-10-15 07:05:10.661888|catalyst_earnings_boost|ERIC: routine → strong (earnings_day, source=earnings_dates)
+R6_audit_mentions|2026-10-15 08:20:01.552572|ep_rt_sustain_reject|NRXS rt 11.5% but the level did NOT hold 3 consecutive bars @ 08:20 ET — no catch
+R6_audit_mentions|2026-10-15 08:20:01.604111|ep_rt_sustain_undecidable|OPI sustain rule UNAVAILABLE (too_few_bars) @ 08:20 ET — admitted on today's behaviour
+R6_audit_mentions|2026-10-15 08:20:01.605942|ep_rt_universe_catch|OPI rt 13.0% ≥9 vs delayed n/a @ 08:20 ET
+R6_audit_mentions|2026-10-15 08:20:02.258185|ep_tinycap_observed|OPI gap=13.1% — filter:mcap_too_small: $291M < $500M (observe-only)
+R6_audit_mentions|2026-10-15 08:20:11.774558|ep_catalyst_provenance|OPI routine direct=False
+R6_audit_mentions|2026-10-15 08:25:00.961815|ep_rt_universe_catch|NRXS rt 9.0% ≥9 vs delayed 4.1% @ 08:25 ET
+R6_audit_mentions|2026-10-15 08:30:01.3022|ep_rt_tick_quality_reject|OPI rt 13.0% REJECTED (no_bar_confirm) @ 08:30 ET
+R6_audit_mentions|2026-10-15 08:55:01.183059|ep_rt_sustain_undecidable|NTWK sustain rule UNAVAILABLE (too_few_bars) @ 08:55 ET — admitted on today's behaviour
+R6_audit_mentions|2026-10-15 08:55:01.184517|ep_rt_universe_catch|NTWK rt 13.7% ≥9 vs delayed n/a @ 08:55 ET
+R6_audit_mentions|2026-10-15 09:05:01.331238|ep_rt_tick_quality_reject|NTWK rt 13.7% REJECTED (outside_band) @ 09:05 ET
+R6_audit_mentions|2026-10-15 09:05:01.425822|ep_rt_sustain_undecidable|FMFC sustain rule UNAVAILABLE (too_few_bars) @ 09:05 ET — admitted on today's behaviour
+R6_audit_mentions|2026-10-15 09:05:01.427577|ep_rt_universe_catch|FMFC rt 11.4% ≥9 vs delayed 3.4% @ 09:05 ET
+R6_audit_mentions|2026-10-15 09:40:06.046029|ep_rt_universe_catch|BETR rt 14.8% ≥9 vs delayed -0.4% @ 09:40 ET
+R6_audit_mentions|2026-10-15 09:40:07.274016|ep_tinycap_observed|BETR gap=14.8% — filter:mcap_too_small: $177M < $500M (observe-only)
+R6_audit_mentions|2026-10-15 09:40:22.807851|ep_catalyst_provenance|BETR routine direct=True
+R6_audit_mentions|2026-10-15 09:40:22.939057|mna_filter_released|BETR: old rule would have blocked (keyword_in_text_0:takeover); grader read none/none/none
+R6_audit_mentions|2026-10-15 09:40:23.5398|catalyst_earnings_boost|BETR: routine → strong (earnings_day, source=no_match)
+R6_audit_mentions|2026-10-15 09:40:29.38432|catalyst_earnings_revenue_weak_downgrade|BETR: strong → routine (earnings catalyst, rubric_composite_8.2_below_22_label_weak)
+chk|ticker|alert_date|source
+R7_missed_1015|ABAT|2026-10-15|scan_filter
+R7_missed_1015|ABG|2026-10-15|scan_filter
+R7_missed_1015|ABLV|2026-10-15|scan_filter
+R7_missed_1015|ACRS|2026-10-15|scan_filter
+R7_missed_1015|ACRV|2026-10-15|scan_filter
+R7_missed_1015|ACTU|2026-10-15|scan_filter
+R7_missed_1015|ACXP|2026-10-15|scan_filter
+R7_missed_1015|ADIL|2026-10-15|scan_filter
+R7_missed_1015|ADXN|2026-10-15|scan_filter
+R7_missed_1015|AGIG|2026-10-15|scan_filter
+R7_missed_1015|AGNT|2026-10-15|scan_filter
+R7_missed_1015|AHMA|2026-10-15|scan_filter
+R7_missed_1015|AKTX|2026-10-15|scan_filter
+R7_missed_1015|ALLO|2026-10-15|scan_filter
+R7_missed_1015|AMOD|2026-10-15|scan_filter
+R7_missed_1015|AMPY|2026-10-15|scan_filter
+R7_missed_1015|ANL|2026-10-15|scan_filter
+R7_missed_1015|ANNX|2026-10-15|scan_filter
+R7_missed_1015|ANPA|2026-10-15|scan_filter
+R7_missed_1015|APWC|2026-10-15|scan_filter

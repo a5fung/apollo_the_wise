@@ -1,0 +1,63 @@
+Pager usage is off.
+=== V2-0 now ET
+       now_et        
+---------------------
+ 2026-10-15 18:31:07
+(1 row)
+
+=== V2-1 columns of mi_lowcap_lane_signals (the P15 shadow recorder)
+         column_name          |        data_type         
+------------------------------+--------------------------
+ id                           | integer
+ ticker                       | text
+ scan_date                    | date
+ tick_wallclock_et            | timestamp with time zone
+ minutes_since_open           | integer
+ gap_pct                      | double precision
+ gap_pct_rt                   | double precision
+ gap_pct_delayed              | double precision
+ price_source                 | text
+ prev_close                   | double precision
+ current_price                | double precision
+ market_cap                   | double precision
+ market_cap_source            | text
+ today_volume_delayed         | double precision
+ today_volume_rt              | double precision
+ rt_pm_bars                   | integer
+ rt_session_bars              | integer
+ acting_volume_source         | text
+ vol_percentile               | double precision
+ vol_history_n                | integer
+ extension_pct                | double precision
+ quality_adv_dollar           | double precision
+ atr_pct                      | double precision
+ blocking_filters             | jsonb
+ rank_by_prescore             | integer
+ rank_by_gap                  | integer
+ in_shortlist                 | boolean
+ days_since_prior_alert       | integer
+ days_since_prior_lane_signal | integer
+ bid_px                       | double precision
+ ask_px                       | double precision
+ bid_size                     | double precision
+ ask_size                     | double precision
+ quoted_spread_bps            | double precision
+ quote_ts                     | timestamp with time zone
+ ma_flag                      | boolean
+ ma_source                    | text
+ admission_era                | text
+ regime                       | text
+ lane_gap_floor_pct           | double precision
+ lane_vol_percentile_floor    | double precision
+ lane_max_market_cap          | double precision
+ lane_rule_version            | text
+ recorded_at                  | timestamp with time zone
+(44 rows)
+
+=== V2-2 P15 signals: total + by scan date since 10-01 (uses created_at ET date, column-agnostic)
+psql:/tmp/c624v_hb1015_v2.sql:7: ERROR:  column "created_at" does not exist
+LINE 1: SELECT count(*) total, to_char(max(created_at) AT TIME ZONE ...
+                                           ^
+psql:/tmp/c624v_hb1015_v2.sql:8: ERROR:  column "created_at" does not exist
+LINE 1: SELECT (created_at AT TIME ZONE 'America/New_York')::date d,...
+                ^

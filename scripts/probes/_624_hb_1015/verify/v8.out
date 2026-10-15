@@ -1,0 +1,21 @@
+Pager usage is off.
+=== V8-0 now ET
+       now_et        
+---------------------
+ 2026-10-15 18:33:46
+(1 row)
+
+=== V8-1 WFF 10-12 at the 09:30 tick: percentile of 7,351,633 in its rolling-20 mean history (P15 needs >= 90 with gap 20.3%)
+ hist_n | below | pct  
+--------+-------+------
+     41 |    27 | 65.9
+(1 row)
+
+=== V8-2 WFF cap anywhere we store it (scan log any date, P15 table, tinycap audit)
+      src      | d | mcap_m 
+---------------+---+--------
+ scanlog       |   |       
+ p15           |   |       
+ tinycap_audit |   |      0
+(3 rows)
+

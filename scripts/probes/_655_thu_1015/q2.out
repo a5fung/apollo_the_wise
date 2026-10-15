@@ -1,0 +1,146 @@
+Output format is unaligned.
+Field separator is "	".
+== now
+now_et
+2026-10-15 18:22:55.678061
+(1 row)
+== 1. board history: apparel theme, furniture theme, Arm B survivor (10-12 on)
+theme_date	name	stage	n	source	written	tk
+2026-10-12	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	5	live	17:11:07	W,MLKN,ARHS,HNI,WSM
+2026-10-13	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	5	live	17:06:59	WSM,ARHS,HNI,MLKN,W
+2026-10-14	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	5	live	17:10:05	HNI,WSM,MLKN,ARHS,W
+2026-10-15	Commercial, Office & Home Furniture Retailers and Manufacturers	Retired		live	17:07:55	
+2026-10-15	Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings	Mainstream	5	live	17:07:55	W,ARHS,MLKN,HNI,WSM
+2026-10-12	U.S. Apparel & Fashion Recovery	Mainstream	15	live	17:11:07	AEO,BKE,GAP,PVH,M,KSS,RL,SHOO,ROST,ANF,VSXY,DDS,WWW,URBN,FIGS
+2026-10-13	U.S. Apparel & Fashion Recovery	Mainstream	15	live	17:06:59	SHOO,GAP,RL,WWW,BKE,URBN,AEO,VSXY,PVH,ROST,ANF,KSS,FIGS,M,DDS
+2026-10-14	U.S. Apparel & Fashion Recovery	Mainstream	16	live	17:10:05	PVH,ANF,AEO,FIGS,SHOO,KSS,WWW,VSXY,URBN,BKE,ROST,DDS,GAP,M,RL,BBWI
+2026-10-15	U.S. Apparel & Fashion Recovery	Retired		live	17:07:55	
+(9 rows)
+== 2. the removed set: tickers validation removed from the furniture theme tonight (cooldown rows)
+n_removed	tickers
+17	AEO,ANF,BBWI,BKE,COLM,DDS,FIGS,GAP,KSS,M,PVH,RL,ROST,SHOO,URBN,VSXY,WWW
+(1 row)
+== 3. NEW-TO-BOARD TONIGHT: themes active 10-15 whose name was NOT active on 10-14, with overlap against the dispersal pool (removed set UNION old apparel roster 10-14)
+name	stage	source	n	written	ov_pool	ov_removed	prior_rows_any_stage	tk
+Specialty Apparel & Mall-Based Specialty Retail Strength	Nascent	shadow_promoted	4	17:09:24	4	4	0	ANF,BKE,BBWI,FIGS
+Off-Price & Branded Apparel/Footwear Retail Rotation	Nascent	shadow_promoted	3	17:09:22	1	1	0	TJX,RL,SHOE
+Off-Price & Specialty Retail Consumer Rotation	Nascent	shadow_promoted	3	17:09:23	1	1	2	TJX,BBWI,DORM
+Banking Software for Financial Institutions	Nascent	live	3	17:07:55	0	0	0	JKHY,NCNO,QTWO
+Casual Footwear & Athletic Lifestyle Brands	Nascent	shadow_promoted	3	17:09:21	0	0	0	CROX,AS,MNSO
+Cloud Content, Nonprofit & SMB Software Re-Rating	Nascent	shadow_promoted	3	17:09:21	0	0	0	BOX,BLKB,ADSK
+Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings	Mainstream	live	5	17:07:55	0	0	0	W,ARHS,MLKN,HNI,WSM
+Digital Freight & Shared Mobility Platforms	Nascent	shadow_promoted	3	17:09:21	0	0	0	YMM,VIA,MBGL
+Functional Energy Drink Brands	Nascent	shadow_promoted	3	17:09:21	0	0	3	CELH,HELE,JBS
+Home Improvement Retail & Residential Repair/Remodel Products	Nascent	live	4	17:07:55	0	0	0	HD,LOW,MAS,FBIN
+Independent Power Producers & Nuclear Fleet Generators	Mainstream	live	3	17:07:55	0	0	2	CEG,TLN,VST
+Metal & Rigid Consumer Packaging	Nascent	shadow_promoted	3	17:09:22	0	0	0	BALL,CCK,SLGN
+Online Real Estate Marketplaces & Local Listings Platforms	Nascent	shadow_promoted	3	17:09:23	0	0	0	ZG,Z,YELP
+Residential Building Materials & Construction Products Suppliers	Nascent	live	3	17:07:55	0	0	0	BCC,SSD,IBP
+Silver & Diversified Precious Metals Miners	Nascent	live	7	17:07:55	0	0	0	PAAS,HL,EXK,AG,CDE,MUX,NG
+Space Launch, Satellite Imagery & Lunar Infrastructure	Nascent	shadow_promoted	4	17:09:23	0	0	4	RKLB,RDW,BKSY,LUNR
+Specialty E&S Commercial P&C Underwriters	Nascent	live	4	17:07:55	0	0	0	KNSL,RLI,SKWD,PLMR
+(17 rows)
+== 4. EVERY pool ticker: where it sat on the 10-14 board vs where it sits tonight
+tk	in_removed	in_old_apparel	was_1014	now_1015
+AEO	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	-- none --
+ANF	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	Specialty Apparel & Mall-Based Specialty Retail Strength [Nascent,4]
+BBWI	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	Off-Price & Specialty Retail Consumer Rotation [Nascent,3]; Specialty Apparel & Mall-Based Specialty Retail Strength [Nascent,4]
+BKE	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	Specialty Apparel & Mall-Based Specialty Retail Strength [Nascent,4]
+COLM	t	f	-- none --	-- none --
+DDS	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	-- none --
+FIGS	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	Specialty Apparel & Mall-Based Specialty Retail Strength [Nascent,4]
+GAP	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	-- none --
+KSS	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	-- none --
+M	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	-- none --
+PVH	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	-- none --
+RL	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	Off-Price & Branded Apparel/Footwear Retail Rotation [Nascent,3]
+ROST	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	-- none --
+SHOO	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	-- none --
+URBN	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	-- none --
+VSXY	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	-- none --
+WWW	t	t	U.S. Apparel & Fashion Recovery [Mainstream,16]	-- none --
+(17 rows)
+== 5. G3 status tonight for every new-to-board theme with pool overlap >= 1 (from the correctness row)
+name	stage	size	pass_g3	coh	p95	not_in_g3_array
+Off-Price & Branded Apparel/Footwear Retail Rotation	Nascent	3	false	0.295	0.373	f
+Off-Price & Specialty Retail Consumer Rotation	Nascent	3	false	0.152	0.222	f
+Specialty Apparel & Mall-Based Specialty Retail Strength	Nascent	4	true	0.295	0.242	f
+(3 rows)
+== 6. audit trail tonight around the dispersal and the births (excl. per-ticker revalidation noise)
+id	t	event_type	s
+57350	17:06:46	theme_birth_gate	2026-10-15 [lane1/dedup_only] birth-gate: 1 birth / 2 join / 0 awaiting-2nd-sighting / 2 held-floor · ⚠ 59 previously-held later PASSED
+57354	17:06:50	theme_engine_funnel	births: uncovered=7 v/t/e=14/2/33 discovery=ON → LLM=5 → survived=3 | retired=7
+57355	17:06:50	theme_discovered	New theme: Silver & Diversified Precious Metals Miners (7 stocks)
+57356	17:06:50	theme_discovered	New theme: Residential Building Materials & Construction Products Suppliers (3 stocks)
+57357	17:06:50	theme_discovered	New theme: Home Improvement Retail & Residential Repair/Remodel Products (4 stocks)
+57377	17:06:50	theme_pass1_5_absorption	Pass1.5: 'Capital Markets & Deal-Flow Re-Rating' -> 'Exchange, Options Trading & Alternative Consumer Credit Financials'
+57378	17:06:50	theme_pass1_5_absorption	Pass1.5: 'Mini-Mill Steel Producers & Recyclers' -> 'Steel Producers & Flat-Rolled Steel Processors'
+57383	17:06:50	theme_cap_drop	Cap: 3 theme(s) dropped below PRUNE_MIN_TICKERS=2
+57385	17:06:55	theme_split	Split: 'Banking Software for Financial Institutions' from 'Fintech & Digital Finance Sector Re-rating on Fed Easing' (3 stocks)
+57386	17:07:06	theme_split	Split: 'Specialty E&S Commercial P&C Underwriters' from 'Specialty P&C Insurance Underwriters Rotation Reversal' (4 stocks)
+57393	17:07:18	validation_mass_removal_name_suspect	'Commercial, Office & Home Furniture Retailers and Manufacturers': validation flagged 17/22 members — name likely narrower than the cluster (#214)
+57428	17:07:18	theme_thesis_merged	Arm B: 'U.S. Apparel & Fashion Recovery' merged into 'Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings' (5 members)
+57429	17:07:22	theme_merge_distinct	Arm B: 'Agricultural Commodity Processing & Animal Protein/Rendering' vs 'Defensive Consumer Rotation & Trade-Down' DISTINCT — 30d pair cooldown
+57430	17:07:27	theme_merge_distinct	Arm B: 'Beverage Brands: Beer, Sparkling Water & Wellness Nutrition' vs 'Defensive Consumer Rotation & Trade-Down' DISTINCT — 30d pair cooldown
+57431	17:07:35	theme_small_folded	'Cloud Data Storage & Analytics Infrastructure' -> 'Cloud Application Delivery & Observability Infrastructure': moved 1, released 1 of 2 (G3 fail, cohesion 0.44439271873288266 vs random p95 0.48914993015336167), #655 fold
+57432	17:07:35	theme_small_folded	'Consumer Franchise Operators: Fitness & Quick-Service' -> 'Franchised Auto Dealership Groups': moved 1, released 1 of 2 (G3 fail, cohesion 0.06960109889505584 vs random p95 0.29795373682183185), #655 fold
+57433	17:07:35	theme_small_folded	'Enterprise Information Management & Infrastructure Engineering Software' -> 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS': moved 2, released 1 of 3 (G3 fail, cohesion 0.0031297889928224945 vs random p95 0.3236133643605129), #655 fold
+57434	17:07:35	theme_small_folded	'RF, Microwave & Power Semiconductor Specialists' -> 'AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)': moved 2, released 0 of 2 (G3 fail, cohesion 0.5330442992081923 vs random p95 0.5806806452433784), #655 fold
+57435	17:07:35	theme_small_fold_ran	Small-theme fold: ran — 31 theme(s) of 2-3 members, 9 failed G3, 4 folded
+57436	17:07:35	theme_auto_retired	Auto-retired 12 theme(s) dropped during merge passes (5 with successor pointer)
+57445	17:07:55	theme_renamed_for_continuity	1 theme(s) renamed to prior canonical names
+57446	17:07:57	theme_ecosystem_assigned	'Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings' → E-CONS (haiku)
+57462	17:09:19	theme_discovery_shadow_ran	Theme discovery shadow: 19 candidate themes written
+57464	17:09:19	theme_renamed_for_continuity	2 theme(s) renamed to prior canonical names
+57465	17:09:24	shadow_themes_promoted	Graduated 10 shadow cohort(s) into live mi_themes (7 new) — 13 held at the birth gate
+57466	17:09:24	theme_birth_gate	2026-10-15 [promote/dedup_only] birth-gate: 4 birth / 22 join / 6 awaiting-2nd-sighting / 1 held-floor · ⚠ 58 previously-held later PASSED
+57467	17:09:26	theme_ecosystem_assigned	'Casual Footwear & Athletic Lifestyle Brands' → E-CONS (haiku)
+57471	17:09:34	theme_ecosystem_assigned	'Off-Price & Branded Apparel/Footwear Retail Rotation' → E-CONS (haiku)
+57473	17:09:37	theme_ecosystem_assigned	'Specialty Apparel & Mall-Based Specialty Retail Strength' → E-CONS (haiku)
+(29 rows)
+== 7. REFRESH (a): stocks the fold MOVED since 10-12 that the description validator later removed from the home (cooldown rows after the fold)
+fd	old_theme	home	tk	removed_from_home_on	still_in_home_1015
+2026-10-12	Alternative Asset Managers & Private Markets Platforms	Wealth Management & Retail Brokerage Platforms	PAX		t
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	DXCM		t
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	MMED		t
+2026-10-12	Emerging Medical Device Innovators Breakout	Medical Device Mean-Reversion & Rotation Recovery	ATEC		f
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	BOX	2026-10-14	f
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	DBX	2026-10-14	f
+2026-10-12	Functional Beverage & Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	COCO		f
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	CNMD		f
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	SIBN		f
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	MDLN		t
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	OMCL	2026-10-14	f
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	BSY	2026-10-14	f
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	OTEX	2026-10-14	f
+2026-10-14	Functional Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	CELH		t
+2026-10-14	Off-Price & Specialty Retail Consumer Rotation	U.S. Apparel & Fashion Recovery	BBWI		f
+2026-10-15	Cloud Data Storage & Analytics Infrastructure	Cloud Application Delivery & Observability Infrastructure	SNOW		t
+2026-10-15	Consumer Franchise Operators: Fitness & Quick-Service	Franchised Auto Dealership Groups	VVV		t
+2026-10-15	Enterprise Information Management & Infrastructure Engineering Software	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	BSY		t
+2026-10-15	Enterprise Information Management & Infrastructure Engineering Software	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	OTEX		t
+2026-10-15	RF, Microwave & Power Semiconductor Specialists	AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)	MTSI		t
+2026-10-15	RF, Microwave & Power Semiconductor Specialists	AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)	ON		t
+(21 rows)
+== 8. REFRESH (b): re-mints of folded/dissolved themes (active 10-15 themes sharing >=2 members with a previously folded theme, not the home)
+fd	old_theme	home	new_name	stage	source	n	overlap	ov
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	Orthopedic & Spinal Surgery Devices	Nascent	live	4	2	CNMD,SIBN
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	Mainstream	live	17	2	BSY,OTEX
+(2 rows)
+== 8c. folded old-theme names ACTIVE on 10-15
+name	stage	source	n	tk
+Diagnostic Testing & Lab Equipment Re-Rating	Accelerating	live	3	MDLN,OMCL,QDEL
+Functional Energy Drink Brands	Nascent	shadow_promoted	3	CELH,HELE,JBS
+Off-Price & Specialty Retail Consumer Rotation	Nascent	shadow_promoted	3	TJX,BBWI,DORM
+(3 rows)
+== 9. fold counts by night (event_type x night)
+d	event_type	count
+2026-10-12	theme_small_folded	6
+2026-10-12	theme_small_fold_ran	1
+2026-10-13	theme_small_folded	2
+2026-10-13	theme_small_fold_ran	1
+2026-10-14	theme_small_folded	2
+2026-10-14	theme_small_fold_ran	1
+2026-10-15	theme_small_folded	4
+2026-10-15	theme_small_fold_ran	1
+(8 rows)

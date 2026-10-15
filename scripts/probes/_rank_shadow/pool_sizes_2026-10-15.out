@@ -1,0 +1,15 @@
+sessions 24 single-alert sessions 11 pools>=2 13
+matured5 47 in pools>=2 37 top-q EOD 6
+matured20 32 top-q EOD 4 top-q 0945 3
+5d median best-high xADR EOD: top 1.70 (n=6) vs rest 1.83 (n=41)
+20d median best-high xADR EOD: top 1.70 (n=4) vs rest 2.18 (n=28)
+5d median best-high xADR 09:45: top 1.93 (n=5) vs rest 1.81 (n=42)
+20d median best-high xADR 09:45: top 1.93 (n=3) vs rest 2.06 (n=29)
+5d: P(0 of 2 winners land in a 6-row top cell | 47 matured, random) = 0.759; top cell is 0.128 of matured
+20d: winners ['MRNA', 'VICR']; P(>=1 of 2 winners lands in a 4-row top cell | 32 matured, random) = 0.238; top cell is 0.125 of matured
+broke-low rate EOD: top 4 of 6 | rest 26 of 41
+20d floors already >=8x but unmatured: [('KOD', '2026-09-28', 14, 12.43, 0.5, 1)]
+rows reaching exactly 6 sessions today: [('WOLF', '2026-10-08')]
+rows reaching exactly 21 sessions today: [('GNRC', '2026-09-17', 0.75, 2), ('VICR', '2026-09-17', 0.25, 2)]
+unmatured5: [('AAOI', '2026-10-09', 5, 0.417, 2), ('HUM', '2026-10-09', 5, 0.583, 2), ('BSP', '2026-10-14', 2, 0.5, 1)]
+next 20d maturities: [(18, 'ONON', '2026-09-22'), (19, 'INTC', '2026-09-21'), (19, 'MSTR', '2026-09-21')]

@@ -1,0 +1,19 @@
+Pager usage is off.
+=== V3-0 now ET
+       now_et        
+---------------------
+ 2026-10-15 18:31:15
+(1 row)
+
+=== V3-1 P15 shadow recorder signals: total + last scan_date
+ total | last_scan_date 
+-------+----------------
+    19 | 2026-10-05
+(1 row)
+
+=== V3-2 P15 signals by scan_date since 10-01
+ scan_date  | count | string_agg 
+------------+-------+------------
+ 2026-10-05 |     1 | SDEV
+(1 row)
+

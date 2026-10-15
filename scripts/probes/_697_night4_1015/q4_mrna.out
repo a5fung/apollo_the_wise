@@ -1,0 +1,7 @@
+SET
+SET
+ ticker | scan_date  | stage | held_from_stage |                 reason                  
+--------+------------+-------+-----------------+-----------------------------------------
+ MRNA   | 2026-10-15 | WATCH |                 | runup_270% base_3d close_vs_pivot_+5.1%
+(1 row)
+

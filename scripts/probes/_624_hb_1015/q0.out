@@ -1,0 +1,118 @@
+Pager usage is off.
+=== Q0-0 now ET
+       now_et        
+---------------------
+ 2026-10-15 18:22:04
+(1 row)
+
+=== Q0-1 columns of mi_lowcap_paper_lane_alerts
+      column_name       |        data_type         
+------------------------+--------------------------
+ id                     | integer
+ ticker                 | text
+ alert_date             | date
+ strategy_id            | text
+ first_graded_at        | timestamp with time zone
+ last_graded_at         | timestamp with time zone
+ detected_at            | timestamp with time zone
+ score_tier             | text
+ ep_score               | double precision
+ baseline_floor_tier    | text
+ grade_engine_authority | text
+ reject_stage           | text
+ reject_reason          | text
+ catalyst_quality       | text
+ llm_catalyst_quality   | text
+ catalyst               | text
+ claude_analysis        | text
+ gemini_validation      | text
+ gap_pct                | double precision
+ rel_volume             | double precision
+ vol_percentile         | double precision
+ pm_rvol                | double precision
+ pm_rvol_baseline_n     | integer
+ prev_close             | double precision
+ current_price          | double precision
+ market_cap             | double precision
+ quality_adv_dollar     | double precision
+ atr_pct                | double precision
+ score_breakdown        | jsonb
+ in_active_theme        | boolean
+ setup_class            | text
+ judge_tier             | text
+ judge_direction        | text
+ judge_rationale        | text
+ judge_materiality_tier | text
+ judge_grade            | text
+ judge_grade_reason     | text
+ judge_tier_reason      | text
+ fire_axes              | ARRAY
+ rubric_version         | text
+ regime                 | text
+ lane_rule_version      | text
+ recorded_at            | timestamp with time zone
+ updated_at             | timestamp with time zone
+(44 rows)
+
+=== Q0-2 columns of api_usage
+  column_name   |        data_type         
+----------------+--------------------------
+ id             | integer
+ created_at     | timestamp with time zone
+ model          | text
+ caller         | text
+ input_tokens   | integer
+ output_tokens  | integer
+ cache_creation | integer
+ cache_read     | integer
+ cost_usd       | double precision
+ stop_reason    | text
+(10 rows)
+
+=== Q0-3 columns of mi_ep_scan_log
+      column_name       |        data_type         
+------------------------+--------------------------
+ id                     | integer
+ scan_date              | date
+ ticker                 | text
+ gap_pct                | double precision
+ prev_close             | double precision
+ rel_volume             | double precision
+ filter_reason          | text
+ ep_score               | double precision
+ score_tier             | text
+ catalyst_quality       | text
+ created_at             | timestamp with time zone
+ scan_time_et           | timestamp with time zone
+ rank_by_gap            | integer
+ projected_vol_multiple | double precision
+ pm_rvol                | double precision
+ adv                    | double precision
+ adv_source             | text
+ minutes_since_open     | integer
+ gap_pct_rt             | double precision
+ gap_pct_delayed        | double precision
+ price_source           | text
+ rt_price_age_s         | double precision
+ prev_close_alpaca      | double precision
+ reject_stage           | text
+ current_price          | double precision
+ prev_day_volume        | bigint
+ today_volume           | bigint
+ pm_rvol_baseline_n     | integer
+ days_since_prior_alert | integer
+ extension_pct          | double precision
+ quality_adv_dollar     | double precision
+ atr_pct                | double precision
+ market_cap             | double precision
+ vol_percentile         | double precision
+ prior_3m_change        | double precision
+ float_shares           | double precision
+ in_active_theme        | boolean
+ llm_catalyst_quality   | text
+ score_breakdown        | jsonb
+ ep_bar                 | double precision
+ score_side             | text
+ rank_by_prescore       | integer
+(42 rows)
+

@@ -1,0 +1,76 @@
+Output format is unaligned.
+Field separator is "	".
+== now
+now_et
+2026-10-15 18:22:49.349238
+(1 row)
+== A. non-success job runs since 12:00 ET today
+id	job_id	st	status	err
+(0 rows)
+== B. the
+id	job_id	st	status	rows_written
+234234	nightly_data_pull	17:00:00	success	2402
+234239	flag_continuation_scan	17:25:00	success	493
+234240	post_nightly_audit	17:30:00	success	
+234249	alert_rank_shadow	17:53:00	success	
+234258	theme_synthesis	18:05:00	success	0
+234261	theme_axis_bounded_sweep	18:10:00	success	
+234266	lowcap_lane_replay	18:15:00	success	
+(7 rows)
+== C. theme audit events since 16:30 ET Thu (counts)
+psql:/tmp/c655_thu1015_q0.sql:9: error: unterminated quoted string
+event_type	n	first_t	last_t
+theme_load_state	1	17:02:16	17:02:16
+theme_breadth_fade	4	17:02:17	17:02:25
+theme_low_quality_description	6	17:02:17	17:02:20
+theme_stage_flip_held	2	17:02:17	17:02:25
+theme_carryforward_filter_stripped	3	17:02:54	17:02:54
+theme_member_rehomed	6	17:03:35	17:03:35
+theme_rehome_judged	19	17:03:35	17:06:46
+theme_rehome_pass_ran	1	17:03:35	17:03:35
+theme_retired_small_fading	4	17:03:35	17:03:35
+theme_discovery_llm_call	13	17:06:10	17:09:19
+theme_discovery_shown_declined	2	17:06:38	17:09:19
+theme_birth_gate	2	17:06:46	17:09:24
+theme_rehome_join_carry_ran	1	17:06:46	17:06:46
+theme_birth_validated	1	17:06:49	17:06:49
+theme_cap_drop	1	17:06:50	17:06:50
+theme_discovered	3	17:06:50	17:06:50
+theme_empty_tickers	1	17:06:50	17:06:50
+theme_engine_funnel	1	17:06:50	17:06:50
+theme_pass1_5_absorption	2	17:06:50	17:06:50
+theme_pass1_protect_strip	1	17:06:50	17:06:50
+theme_retired	7	17:06:50	17:06:50
+theme_score_ties	5	17:06:50	17:07:09
+theme_sector_cap_kept_distinct	4	17:06:50	17:07:09
+theme_split	2	17:06:55	17:07:06
+theme_merge_pairs_proposed	1	17:07:09	17:07:09
+theme_thesis_merged	1	17:07:18	17:07:18
+validation_mass_removal_name_suspect	1	17:07:18	17:07:18
+theme_merge_distinct	2	17:07:22	17:07:27
+theme_auto_retired	1	17:07:35	17:07:35
+theme_small_folded	4	17:07:35	17:07:35
+theme_small_fold_ran	1	17:07:35	17:07:35
+theme_parent_pass_distinct	6	17:07:39	17:07:55
+theme_parent_pass_ran	1	17:07:55	17:07:55
+theme_renamed_for_continuity	2	17:07:55	17:09:19
+theme_ecosystem_assigned	13	17:07:57	17:09:37
+theme_constituent_churn	1	17:08:06	17:08:06
+theme_discovery_shadow_ran	1	17:09:19	17:09:19
+theme_composition_churn	1	17:10:36	17:10:36
+theme_hierarchy_health	1	17:31:01	17:31:01
+theme_quality_clean	1	17:31:01	17:31:01
+theme_correctness_check	1	17:31:18	17:31:18
+theme_axis_eod_unscored_logged	1	18:03:00	18:03:00
+theme_synthesis_run	1	18:05:18	18:05:18
+theme_axis_bounded_sweep	1	18:10:00	18:10:00
+(44 rows)
+== D. lane heartbeat / rank / flag events since 17:00 ET
+event_type	n	first_t	last_t
+flag_stage_flip_held	1	17:25:03	17:25:03
+flag_digest_sent	1	17:25:04	17:25:04
+alert_rank_shadow_recorded	1	17:53:00	17:53:00
+lowcap_lane_replay_recorded	1	18:15:00	18:15:00
+lowcap_paper_lane_heartbeat	1	18:15:00	18:15:00
+lowcap_paper_lane_replay_recorded	1	18:15:00	18:15:00
+(6 rows)
