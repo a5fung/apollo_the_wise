@@ -203,6 +203,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "evening_briefing", "friday_watchlist", "hud_refresh",
     "sugar_babies_cohort_refresh", "position_mgmt_judge",
     "chart_axis_shadow", "chart_axis_shadow_weekly_digest", "kill_scale_band_eval",
+    "ladder_watchdog",  # #312 ADR 0022 L2 (2026-10-15) — DARK nightly demotion-trigger read per paper/live strategy; registry + mi_live_trades READ, ONE audit row, no phase/sizing/order write, no broker, SILENT (no Telegram) — same DB-only shape as kill_scale_band_eval
     # data / RS / regime / crypto
     "nightly_data_pull", "baseline_refresh", "minute_volume_curves_refresh",
     "wick_forward_returns", "crypto_category_refresh", "crypto_nightly_ingest",
@@ -5327,6 +5328,28 @@ async def _book_concentration_job():
         await notify_job_failure("book_concentration", str(e))
 
 
+async def _ladder_watchdog_job():
+    """Run at 16:17 ET mon-fri — ADR 0022 §1 auto-DEMOTION watchdog, built DARK (#312).
+
+    After the 16:05 EOD cleanup settles today's closes and the 16:13 kill/scale band
+    evaluation (whose realised-R definition it shares). Reads the registry + `mi_live_trades`
+    per enabled paper/live strategy on ITS book, computes the four signed M1f demotion
+    triggers, writes ONE `ladder_demotion_shadow` audit row. NO phase write, NO sizing/toggle/
+    order path, NO Telegram — the act step does not exist in the module (THE LINE: any live
+    flip is the operator's sign-off). A crash is logged and RE-RAISED, never swallowed here:
+    `audit_wrap` then records the run 'failed' in `mi_job_runs` and `record_job_failure` writes
+    the durable row + one deduped page (which carries no verdict) — a handler that called
+    `notify_job_failure` itself and returned would have left the run recorded as 'success'."""
+    try:
+        from agents.market_intelligence.ladder_watchdog import run_ladder_watchdog
+        res = await run_ladder_watchdog()
+        logger.info(f"ladder watchdog (dark): {len(res['evaluated'])} evaluated, "
+                    f"{res['would_demote_count']} would demote, acted: none")
+    except Exception as e:
+        logger.error(f"ladder watchdog job failed: {e}", exc_info=True)
+        raise
+
+
 async def _strength_spread_alert_job():
     """Run at 17:40 ET mon-fri — after the 17:00 nightly_data_pull refreshes
     mi_daily_closes (the input is DAILY CLOSES, so this is the earliest hour the reading can
@@ -7819,6 +7842,19 @@ def start_scheduler() -> AsyncIOScheduler:
         CronTrigger(hour=16, minute=13, day_of_week="mon-fri", timezone="America/New_York"),
         id="kill_scale_band_eval",
         replace_existing=True,
+    )
+
+    # #312 / ADR 0022 L2 — ladder DEMOTION watchdog, DARK: 4:17 PM ET mon-fri, after the
+    # 16:05 cleanup settles closes and the 16:13 band eval (same realised-R definition),
+    # before the 16:18 book snapshot. ONE `ladder_demotion_shadow` audit row per night; no
+    # phase / sizing / order write exists in the module, no Telegram. Intelligence-owned,
+    # DB-sourced (the kill_scale_band_eval precedent).
+    _scheduler.add_job(
+        audit_wrap(_ladder_watchdog_job, "ladder_watchdog"),
+        CronTrigger(hour=16, minute=17, day_of_week="mon-fri", timezone="America/New_York"),
+        id="ladder_watchdog",
+        replace_existing=True,
+        misfire_grace_time=600,
     )
 
     # ORB cancellation EOD reclassify: 4:25 PM ET (#183) — corrects the intraday

@@ -209,6 +209,7 @@ held at the httpx layer (`shared/telegram_hold.py`). Exercise / verify: `scripts
 - **L2** anomaly (metric outside 30d trimmed median ± 3 MAD OR > 5× median) → immediate Telegram with Sonnet hypothesis.
 - **L3** drift (band transition) → audit row only, surfaces in Sunday weekly digest.
 - Jobs: `_post_eod_audit_job` 16:15 ET, `_post_nightly_audit_job` 17:30 ET, `_baseline_refresh_job` 02:00 ET.
+- `_ladder_watchdog_job` 16:17 ET mon-fri (#312, ADR 0022 L2, **DARK**): the four signed demotion triggers per enabled paper/live strategy on its own book → ONE `ladder_demotion_shadow` audit row; no phase/sizing/order write exists in `ladder_watchdog.py`, no Telegram. Owner doc: `docs/architecture/dual_account.md` §"Demotion".
 - On-demand: `/audit <topic>` (cooldowns/themes/skips/positions/feed/9m/job_runs/all) — and, since #691, `/audit <check>` for any monthly-sweep check (see §Monthly backward-check sweep below).
 - Cold-start tiers: `sample_n < 7` → hardcoded `_COLD_START_CEILINGS` only. `7 ≤ n < 14` → L3 only. `≥ 14` → full L2.
 - Sonnet hypothesis call gets last 5 CLAUDE.md change headers + last 10 distinct audit event types as context.

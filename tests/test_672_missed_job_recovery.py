@@ -50,6 +50,13 @@ def _fridays_misses_by_the_ledgers_own_word(rows_by_job: dict[str, list[dict]]) 
 _RETIMED_SINCE_LEDGER = {
     "tv_news_shadow": "#210 build 2026-10-10: 20:45 ET -> 10:10 ET mon-fri",
 }
+# Daily intelligence jobs ADDED after the 09-18 incident: the fixture ledger cannot hold a row for
+# them, so their Wed/Thu slots read as gaps in the replay through no fault of the derivation. The
+# exclusion is asserted honest below: the id must be registered now AND absent from the fixture
+# (a job that has rows in the ledger was not added since it). {job_id: why}.
+_ADDED_SINCE_LEDGER = {
+    "ladder_watchdog": "#312 build 2026-10-15: new 16:17 ET mon-fri job (ADR 0022 L2, dark)",
+}
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────────────────
@@ -166,6 +173,12 @@ def test_the_derivation_reproduces_fridays_gap_set_from_the_real_ledger(monkeypa
         fire = jobs_now[jid].trigger.get_next_fire_time(None, datetime(2026, 9, 18, 0, 0, tzinfo=ET))
         assert fire.astimezone(ET).hour < 17, f"{jid} still has an evening slot - it is not retimed"
     oracle = oracle - set(_RETIMED_SINCE_LEDGER)
+    # A job ADDED after the incident has no ledger rows at all — every one of its fixture-window
+    # slots is a "gap" the ledger cannot contradict. Excluded by name, and the exclusion is only
+    # honest while the job is really registered today and really absent from the incident ledger.
+    for jid in _ADDED_SINCE_LEDGER:
+        assert jid in jobs_now, f"{jid} is listed as added since the ledger but is not registered"
+        assert jid not in rows_by_job, f"{jid} has rows in the incident ledger - it was not added since"
     assert len(oracle) >= 20, f"the fixture-derived oracle is only {len(oracle)} — the fixture is not the incident ledger"
     missing = oracle - fri
     assert not missing, f"the ledger says these missed Friday and the derivation did not find them: {sorted(missing)}"
@@ -177,7 +190,8 @@ def test_the_derivation_reproduces_fridays_gap_set_from_the_real_ledger(monkeypa
                          and r["started_at"].astimezone(ET).hour >= 17 and r["status"] != "missed" for r in rows)}
     assert not (fri & ran_friday), f"derived as gap but the ledger shows a Friday run: {sorted(fri & ran_friday)}"
 
-    earlier = [d for d in plan if d.slot.astimezone(ET).date() in
+    earlier = [d for d in plan if d.job_id not in _ADDED_SINCE_LEDGER
+               and d.slot.astimezone(ET).date() in
                (datetime(2026, 9, 16).date(), datetime(2026, 9, 17).date())]
     not_done = [d.label for d in earlier if d.kind != "done"]
     assert earlier and not not_done, f"Wed/Thu slots that ran read as something other than done: {not_done[:8]}"
