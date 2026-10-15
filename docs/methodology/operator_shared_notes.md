@@ -1891,3 +1891,34 @@ against the bars:**
 consolidation work stays behind EP profitability ([[priority-ep-profitability-before-new-setups]],
 [[htf-is-detection-not-trading]]). Use: the #697 corpus (MRNA is already `htf` there) gains the two entry days and the
 third gate; the anticipation-vs-breakout split is a #354 / Family A question for when that work opens.
+
+## 2026-10-15 — share count vs relative volume on EP gap days (James Muninn, reposted by stockbee), operator-shared "food for thought"
+
+**🖼 Image:** `docs/methodology/operator_shared_charts/2026-10-15_muninn_9m_vs_rvol/01_tweet.png`.
+
+> **Tweet, verbatim (@Muninn, reposted by @PradeepBonde):** *"This screening rule by @PradeepBonde is extraordinary. And for the
+> life of me I don't know why it works. But does it even matter? He screens Episodic Pivots (catalyst trade) with a simple 9M+
+> shares on gap day. When tested on all qualified gappers since 1992, this filter outperforms the relative volume screen. The names
+> which traded 9M+ shares outperform by +0.32 R on avg.. The most surprising finding though is probably that extreme relative
+> volume have no reliable edge compared to lower relative volume.."* (quoting Bonde, 19 Nov 2023: *"A new version of EP I trade
+> called EP 9 million."*)
+
+**His chart ("Share count vs relative volume — extra R per trade vs the other gaps"; dot = average, line = 95% range), read off the image:**
+
+| comparison | period | average | 95% range | reading |
+|---|---|---|---|---|
+| 9M+ shares vs under 9M | 1992-2024 | ≈ +0.32R | ≈ +0.08 to +0.57R | clears zero |
+| 9M+ shares vs under 9M | 2016-2024 | ≈ +0.32R | ≈ +0.03 to +0.62R | clears zero |
+| highest vs lowest relative volume | 1992-2024 | ≈ +0.27R | ≈ -0.42 to +0.97R | no edge |
+| highest vs lowest relative volume | 2016-2024 | ≈ -0.15R | ≈ -0.97 to +0.68R | no edge |
+
+**How it touches our system (stated, not proposed):**
+- **Timing:** "9M+ shares on gap day" is a FULL-DAY count. Our MAGNA53 entry is the 09:31-09:45 opening range, where we have
+  pre-market and projected volume, not the day's share count. As a screen it is knowable for a day-2 / delayed entry, not for our ORB.
+- **Our admission leans on RELATIVE volume** (pre-market and projected RVOL at scan time). His chart says extreme RVOL carries no
+  reliable edge over low RVOL, while an absolute share count does. Consistent with [[ep-edge-is-surprise-not-magnitude]] only in part:
+  a share count is a liquidity/participation measure, not a surprise measure.
+- **The frozen #686 read (Sat 10-17)** carries 20-day dollar volume and pre-market RVOL but NOT gap-day share count, and its
+  registration cannot be edited now. A $0 follow-up AFTER that read: gap-day share count (>= 9M, and as a continuous feature) vs
+  RVOL on our scored candidates, tail first ([[measure-the-tail-not-the-median]]) — recorded on #686 beside the book-trait tests.
+- Any change to the score or admission is CHANGE_PROCESS and his call (THE LINE).
