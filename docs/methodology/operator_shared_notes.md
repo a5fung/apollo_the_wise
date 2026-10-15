@@ -1831,3 +1831,48 @@ How each maps to what we have (no change proposed):
   his own corollary (no / slowing analyst upgrades) is on #333. A size-matched comparison would be the way to test Bonde's version
   without the tiny-cap confound. "No major news for months" is measurable from our stored headline feeds.
 - **Ownership** — fund counts (13F) are not in our data.
+
+## 2026-10-15 — MRNA: the post-EP consolidation and his two entries (operator, verbatim)
+
+> *"I just looked at the MRNA chart, aside from EP, it's the perfect post-EP consolidation, pulled back and got really
+> tight on 9/15-16 and broke out 9/17. Personally, I'd likely buy early on tight inside day on 9/16 anticipating the
+> breakout, and a ORB entry on 9/17 can also work."*
+
+**🖼 Image (committed, not cited):** `docs/methodology/images/mrna_2026-10-15_post_ep_consolidation_daily.png` — his TradingView
+daily as of 10-15 (last $239.97, ADR 8.41%): the 08-19 EP gap on ~199M shares, his drawn flag rails from the ~$175 spike
+high down to the mid-September tight spot, the 9/17 break and the trend to ~$240.
+
+**Family vs setups (the CLAUDE.md definition):** post-EP consolidation is the FAMILY (Family A, #354). He names TWO setups
+inside it, each with its own buy point — they need their own names and must never be pooled:
+1. **Anticipation buy on the tight inside day — 9/16.** Buy before the break, in the tightest bar of the base.
+2. **ORB breakout entry — 9/17.** Buy the opening-range break on the breakout day.
+He gave no stop for either; the stop stays undetermined (see [[entries-and-exits-are-undetermined-for-new-setups]]).
+
+**The bars (`mi_daily_closes`, `scripts/probes/_mrna_1015/q2.*`):**
+
+| day | open | high | low | close | range % of close | note |
+|---|---|---|---|---|---|---|
+| 09-11 | 137.91 | 149.73 | 135.01 | 143.97 | 10.2 | the wide day whose high caps the base |
+| 09-14 | 144.93 | 147.34 | 139.02 | 146.69 | 5.7 | |
+| 09-15 | 146.00 | 148.70 | 141.16 | 143.77 | 5.2 | tight |
+| **09-16** | 145.26 | 148.93 | 142.30 | 145.62 | **4.6** | **his inside day** — the tightest bar (about half its ADR); low inside 9/15's, high 0.15% over it, so a strict inside-day rule would miss it by 23 cents |
+| **09-17** | **152.50** | 161.96 | 149.50 | 158.07 | 7.9 | **his ORB day** — opened above the 9/11 high on 2.2x the prior day's volume |
+
+**WHAT OUR SYSTEM SAID — checked before writing (`scripts/probes/_mrna_1015/q1.*`):**
+
+| day | flag stage board | delayed-entry lane |
+|---|---|---|
+| 09-10 → 09-15 | unqualified — `flag_low_128.61_below_75%_of_pole_176.66` (the depth gate, recorded 09-17) | no trigger |
+| **09-16** (his anticipation day) | **INVALIDATED** — `close_145.62_below_sma20_145.67` (the 5-cent kill, recorded 09-17) | no trigger |
+| **09-17** (his ORB day) | unqualified — **`ma_stack_not_stage2_144.5/144.9/96.6`** | no trigger |
+| 09-18 | unqualified — `ma_stack_not_stage2_145.0/145.9/98.2` | no trigger |
+
+**🔑 A THIRD gate, not in the 09-17 note:** on the breakout day itself the board read `ma_stack_not_stage2` — the short
+averages were still tangled (144.5 vs 144.9) after the pullback, so the stack test failed exactly when the base resolved.
+So MRNA was blocked by three different gates on three different days (depth, then a 5-cent SMA20 kill, then the MA-stack
+order). The delayed-entry lane never fired at all — 9/17 is ~20 sessions after the EP.
+
+⚠ **Recorded as a labelled example, not a proposal.** All three are detection/admission criteria (THE LINE), and HTF /
+consolidation work stays behind EP profitability ([[priority-ep-profitability-before-new-setups]],
+[[htf-is-detection-not-trading]]). Use: the #697 corpus (MRNA is already `htf` there) gains the two entry days and the
+third gate; the anticipation-vs-breakout split is a #354 / Family A question for when that work opens.

@@ -1,0 +1,18 @@
+ scan_date  |    stage    |                  reason                  | triggered_from 
+------------+-------------+------------------------------------------+----------------
+ 2026-09-10 | unqualified | flag_low_128.61_below_75%_of_pole_176.66 | 
+ 2026-09-11 | unqualified | flag_low_128.61_below_75%_of_pole_176.66 | 
+ 2026-09-14 | unqualified | flag_low_128.61_below_75%_of_pole_176.66 | 
+ 2026-09-15 | unqualified | flag_low_128.61_below_75%_of_pole_176.66 | 
+ 2026-09-16 | INVALIDATED | close_145.62_below_sma20_145.67          | 
+ 2026-09-17 | unqualified | ma_stack_not_stage2_144.5/144.9/96.6     | 
+ 2026-09-18 | unqualified | ma_stack_not_stage2_145.0/145.9/98.2     | 
+(7 rows)
+
+ fire_date | rung | reentry_shape | entry_price | stop_price | realized_r_trail | settled_at 
+-----------+------+---------------+-------------+------------+------------------+------------
+(0 rows)
+
+psql:/tmp/cmrna_q1.sql:7: ERROR:  column d.open does not exist
+LINE 1: SELECT d.trade_date, d.open, d.high, d.low, d.close, d.volum...
+                             ^
