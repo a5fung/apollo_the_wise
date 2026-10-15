@@ -213,12 +213,17 @@ async def run_ladder_watchdog(*, today: date | None = None) -> dict:
     one (the only Telegram this job can produce, and it carries no verdict)."""
     from agents.market_intelligence.constants import resolve_account_mode_for_strategy
     from agents.market_intelligence.db import get_pool, log_audit_event
-    from agents.market_intelligence.strategies.registry import load_strategies
+    from agents.market_intelligence.strategies.registry import _load_all
     from shared.dates import et_today
 
     as_of = today or et_today()
     try:
-        strategies = await load_strategies()
+        # The rows as they are TONIGHT, not the process cache: the operator hand-UPDATEs
+        # `mi_strategies` (registry.py: a direct edit is unseen by `load_strategies()` until
+        # restart), and a same-day phase change must not mislabel this row's phase / book.
+        # `_load_all` is a fresh SELECT that mutates no shared state — the cache the entry
+        # pipeline reads is untouched (never `load_strategies(force=True)` here).
+        strategies = await _load_all()
         targets, skipped = [], {}
         for sid, s in sorted(strategies.items()):
             if s.phase not in DEMOTE_TO:

@@ -212,8 +212,13 @@ class _Spy:
         conn.fetchval = AsyncMock(side_effect=AssertionError("unexpected fetchval"))
         conn.executemany = AsyncMock(side_effect=AssertionError("unexpected executemany"))
         monkeypatch.setattr(dbmod, "get_pool", AsyncMock(return_value=pool))
-        monkeypatch.setattr(registry, "load_strategies",
+        # The watchdog reads the rows FRESH (`registry._load_all`, a plain SELECT), never the
+        # process cache — a hand-UPDATE of a phase the same day must land in tonight's row.
+        monkeypatch.setattr(registry, "_load_all",
                             AsyncMock(return_value={s.strategy_id: s for s in strategies}))
+        monkeypatch.setattr(registry, "load_strategies",
+                            AsyncMock(side_effect=AssertionError(
+                                "the watchdog must read the registry fresh, not the cache")))
 
         # The act step must not exist: if anything in the pass reaches a phase writer, a sizing
         # knob or a Telegram sender, the test fails loudly rather than recording a "write".
@@ -363,7 +368,7 @@ def test_a_crash_writes_an_error_row_and_re_raises(monkeypatch):
     """A dead watchdog must not look like a quiet one: the error row feeds the nightly
     `%error%` sweep and the re-raise lets audit_wrap record 'failed'."""
     spy = _Spy(monkeypatch, [], {})
-    monkeypatch.setattr(registry, "load_strategies",
+    monkeypatch.setattr(registry, "_load_all",
                         AsyncMock(side_effect=RuntimeError("registry unreachable")))
     with pytest.raises(RuntimeError, match="registry unreachable"):
         _run(spy)
