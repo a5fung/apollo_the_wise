@@ -1,0 +1,35 @@
+(1) gatherer CHECK rows (h5/h20): 40 | reproduced exactly by SQL derivation: 40 | mismatches: []
+(2) 5-session read on the SAME clean 20-session rows: n | reach5 | reach5 ex-D0 | crash5 | settled5 median
+   REJ >=$0M n=694 reach5=32 ex=26 crash5=108 (15.6%) med5=-6.1%
+   REJ >=$10M n=73 reach5=11 ex=7 crash5=38 (52.1%) med5=-21.9%
+   REJ >=$25M n=40 reach5=6 ex=2 crash5=24 (60.0%) med5=-25.9%
+   REJ >=$50M n=19 reach5=5 ex=2 crash5=11 (57.9%) med5=-23.0%
+   REJ >=$100M n=5 reach5=3 ex=2 crash5=1 (20.0%) med5=-8.6%
+   REJ gap>=10 all n=125 reach5=9 ex=4 crash5=48 (38.4%) med5=-15.4%
+   ADM >=$0M n=244 reach5=5 ex=5 crash5=23 (9.4%) med5=-3.2%
+   ADM >=$10M n=52 reach5=0 ex=0 crash5=8 (15.4%) med5=-3.3%
+   ADM >=$25M n=37 reach5=0 ex=0 crash5=4 (10.8%) med5=-2.8%
+   ADM >=$50M n=23 reach5=0 ex=0 crash5=2 (8.7%) med5=-3.0%
+   ADM >=$100M n=14 reach5=0 ex=0 crash5=1 (7.1%) med5=-1.4%
+   ADM gap>=10 all n=44 reach5=3 ex=3 crash5=10 (22.7%) med5=-5.2%
+(3) 5-session reach incl vs ex-D0 split by COHORT: early (D0<=09-14, the 20-session cohort) vs late (D0 09-15..10-05)
+   >=$10M early n= 57 reach5  7 (12.3%) ex-D0  6 (10.5%)
+   >=$10M late  n=171 reach5 22 (12.9%) ex-D0 12 ( 7.0%)
+   >=$25M early n= 29 reach5  2 ( 6.9%) ex-D0  1 ( 3.4%)
+   >=$25M late  n=110 reach5 13 (11.8%) ex-D0  5 ( 4.5%)
+   >=$50M early n= 13 reach5  1 ( 7.7%) ex-D0  1 ( 7.7%)
+   >=$50M late  n= 73 reach5 10 (13.7%) ex-D0  4 ( 5.5%)
+   >=$100M early n=  2 reach5  1 (50.0%) ex-D0  1 (50.0%)
+   >=$100M late  n= 32 reach5  4 (12.5%) ex-D0  3 ( 9.4%)
+(4) 10-01 regression subset (5-session, D0<=09-23, NA excluded): gap>=10 REJ clearers + gap-matched ADM
+   REJ g10 >=$0M n=240 reach=7.9% ex-D0=3.3% crash=36.7%
+   ADM g10 >=$0M n=82 reach=9.8% ex-D0=8.5% crash=20.7%
+   REJ g10 >=$10M n=108 reach=12.0% ex-D0=5.6% crash=58.3%
+   ADM g10 >=$10M n=39 reach=2.6% ex-D0=0.0% crash=35.9%
+   REJ g10 >=$25M n=71 reach=12.7% ex-D0=5.6% crash=63.4%
+   ADM g10 >=$25M n=27 reach=3.7% ex-D0=0.0% crash=25.9%
+   REJ g10 >=$50M n=43 reach=18.6% ex-D0=9.3% crash=65.1%
+   ADM g10 >=$50M n=16 reach=6.2% ex-D0=0.0% crash=25.0%
+   REJ g10 >=$100M n=17 reach=29.4% ex-D0=23.5% crash=52.9%
+   ADM g10 >=$100M n=8 reach=0.0% ex-D0=0.0% crash=37.5%
+   ticker NA rows (date, minute, ao): [('2026-09-03', None, None), ('2026-09-15', 1.0, 2187.8208), ('2026-09-16', 1.0, 4818.21)]

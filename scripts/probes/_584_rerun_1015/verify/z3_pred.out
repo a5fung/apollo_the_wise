@@ -1,0 +1,41 @@
+BEGIN
+=== Z3a: proposed predicate at 100M (threshold 15)
+ count 
+-------
+     5
+(1 row)
+
+=== Z3b: same text at 50M
+ count 
+-------
+    19
+(1 row)
+
+=== Z3c: the 100M in-window rejected clearers by D0 (to project when the 15th name can settle)
+ scan_date  | n |    tickers     
+------------+---+----------------
+ 2026-09-08 | 1 | BNC
+ 2026-09-10 | 1 | TNON
+ 2026-09-15 | 1 | VEEA
+ 2026-09-16 | 2 | MEDS,ZTG
+ 2026-09-17 | 2 | AEMD,DAIC
+ 2026-09-18 | 2 | GIPR,TNMG
+ 2026-09-21 | 2 | GLND,GRML
+ 2026-09-22 | 3 | DCOY,LHSW,QNME
+ 2026-09-23 | 3 | BENF,IPDN,WHLR
+ 2026-09-24 | 2 | APUS,PFSA
+ 2026-09-25 | 2 | AIFF,INLF
+ 2026-09-29 | 2 | BKYI,SLND
+ 2026-09-30 | 3 | CNTB,LGHL,VBIO
+ 2026-10-02 | 2 | AMOD,SDEV
+ 2026-10-05 | 2 | ALEC,VEEA
+ 2026-10-06 | 2 | AIXI,IPDN
+ 2026-10-07 | 2 | BIYA,LPCN
+ 2026-10-08 | 2 | DKI,FLYE
+ 2026-10-09 | 1 | VEEA
+ 2026-10-12 | 2 | MNDR,YMAT
+ 2026-10-13 | 3 | BKYI,BMBL,TCRT
+ 2026-10-14 | 2 | GLND,TCRT
+(22 rows)
+
+ROLLBACK

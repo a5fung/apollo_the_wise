@@ -1,0 +1,65 @@
+rows parsed 444 | rejected (>= $10M in-window) 280 | admitted gap>=10 in-window 164
+NA ticker present: False
+
+===== H=20 =====
+ADMITTED gap>=10 in-window clean: rows 44 names 40 | reach_in 4 reach_ex 4 | crash 14 (31.8%) win 5 | settled mean -11.9% median -9.3%
+REJ >= $10M: clearing 181 names (280 rows) | with D20 close 65 (75) | CLEAN 63 names (73 rows) | guard-dropped [('BENF', '2026-09-16')]
+   reach_in 15/73 20.5% | reach_ex 11/73 15.1% wilson 0.086-0.250 | crash 47/73 64.4% | win 6 | settled mean -24.6% median -30.3%
+   p(one-sided Fisher vs adm) reach_ex 0.262 reach_in 0.083 crash 0.0006 | p(binom vs 8.2%) reach_ex 0.035 reach_in 0.0008
+REJ >= $25M: clearing 126 names (170 rows) | with D20 close 40 (41) | CLEAN 39 names (40 rows) | guard-dropped [('BENF', '2026-09-16')]
+   reach_in 7/40 17.5% | reach_ex 3/40 7.5% wilson 0.026-0.199 | crash 30/40 75.0% | win 2 | settled mean -36.1% median -37.5%
+   p(one-sided Fisher vs adm) reach_ex 0.742 reach_in 0.207 crash 0.0001 | p(binom vs 8.2%) reach_ex 0.648 reach_in 0.0422
+REJ >= $50M: clearing 86 names (105 rows) | with D20 close 20 (20) | CLEAN 19 names (19 rows) | guard-dropped [('BENF', '2026-09-16')]
+   reach_in 6/19 31.6% | reach_ex 3/19 15.8% wilson 0.055-0.376 | crash 13/19 68.4% | win 2 | settled mean -30.5% median -31.2%
+   p(one-sided Fisher vs adm) reach_ex 0.353 reach_in 0.035 crash 0.0078 | p(binom vs 8.2%) reach_ex 0.201 reach_in 0.0032
+   per-row ($50M, H=20, clean):
+     2026-09-02 LHAI   ao $   63.6M m=1 gap   57.1% adr 0.074 8xADR 0.59 | exc_in +0.18 exc_ex +0.18 | reach_in 0 ex 0 | settled -18.4% | maxq 1.20 | o0 1.225 c20 1.0
+     2026-09-02 PPBT   ao $   84.2M m=1 gap   45.3% adr 0.097 8xADR 0.78 | exc_in +0.08 exc_ex -0.12 | reach_in 0 ex 0 | settled -36.4% | maxq 1.03 | o0 2.39 c20 1.52
+     2026-09-03 MIMI   ao $   57.8M m=1 gap   56.0% adr 0.214 8xADR 1.71 | exc_in +0.03 exc_ex -0.07 | reach_in 0 ex 0 | settled -23.4% | maxq 1.17 | o0 1.155 c20 0.8847
+     2026-09-04 AKAN   ao $   67.2M m=1 gap   19.9% adr 0.112 8xADR 0.90 | exc_in +0.02 exc_ex -0.18 | reach_in 0 ex 0 | settled -56.2% | maxq 1.10 | o0 4.36 c20 1.91
+     2026-09-04 IMRN   ao $   91.5M m=1 gap   60.4% adr 0.052 8xADR 0.42 | exc_in +0.10 exc_ex +0.06 | reach_in 0 ex 0 | settled -40.9% | maxq 1.03 | o0 1.81 c20 1.07
+     2026-09-08 ARBE   ao $   56.2M m=1 gap   33.4% adr 0.056 8xADR 0.45 | exc_in +0.10 exc_ex +0.10 | reach_in 0 ex 0 | settled -27.6% | maxq 1.07 | o0 0.8255 c20 0.5976
+     2026-09-08 BNC    ao $  183.6M m=1 gap   62.8% adr 0.074 8xADR 0.60 | exc_in +0.29 exc_ex +0.29 | reach_in 0 ex 0 | settled +8.9% | maxq 1.14 | o0 5.37 c20 5.85
+     2026-09-08 PDSB   ao $   56.9M m=1 gap  138.2% adr 0.184 8xADR 1.47 | exc_in +1.77 exc_ex +1.77 | reach_in 1 ex 1 | settled +114.1% | maxq 1.69 | o0 0.488 c20 1.045
+     2026-09-08 WYHG   ao $   59.3M m=1 gap   30.5% adr 0.191 8xADR 1.53 | exc_in +0.12 exc_ex -0.05 | reach_in 0 ex 0 | settled -31.2% | maxq 1.15 | o0 5.52 c20 3.8
+     2026-09-09 OLB    ao $   71.5M m=1 gap   35.9% adr 0.120 8xADR 0.96 | exc_in +0.24 exc_ex +0.24 | reach_in 0 ex 0 | settled -1.9% | maxq 2.18 | o0 0.3945 c20 0.387
+     2026-09-10 TNON   ao $  109.2M m=1 gap   77.0% adr 0.178 8xADR 1.42 | exc_in +1.58 exc_ex +1.58 | reach_in 1 ex 1 | settled -18.1% | maxq 1.50 | o0 4.2 c20 3.44
+     2026-09-14 BMGL   ao $   85.6M m=1 gap   68.8% adr 0.105 8xADR 0.84 | exc_in +0.14 exc_ex -0.18 | reach_in 0 ex 0 | settled -54.0% | maxq 1.10 | o0 8.06 c20 3.71
+     2026-09-14 NCT    ao $   59.1M m=1 gap   76.9% adr 0.556 8xADR 4.45 | exc_in +0.14 exc_ex +0.14 | reach_in 0 ex 0 | settled -89.3% | maxq 1.18 | o0 12.655 c20 1.35
+     2026-09-15 SUGP   ao $   68.9M m=1 gap   49.0% adr 0.210 8xADR 1.68 | exc_in +0.16 exc_ex -0.37 | reach_in 0 ex 0 | settled -65.4% | maxq 1.20 | o0 6.3 c20 2.18
+     2026-09-15 VEEA   ao $  175.2M m=1 gap   88.6% adr 0.123 8xADR 0.99 | exc_in +1.05 exc_ex +1.05 | reach_in 1 ex 1 | settled +20.1% | maxq 1.72 | o0 4.33 c20 5.2
+     2026-09-16 DLXY   ao $   95.0M m=1 gap  134.2% adr 0.087 8xADR 0.70 | exc_in +3.36 exc_ex +0.24 | reach_in 1 ex 0 | settled -58.6% | maxq 1.22 | o0 5.1 c20 2.11
+     2026-09-16 MEDS   ao $  239.6M m=1 gap  164.2% adr 0.193 8xADR 1.54 | exc_in +2.05 exc_ex +0.67 | reach_in 1 ex 0 | settled -29.4% | maxq 1.28 | o0 4.035 c20 2.85
+     2026-09-16 RETO   ao $   81.8M m=1 gap   36.4% adr 0.304 8xADR 2.43 | exc_in +3.61 exc_ex -0.86 | reach_in 1 ex 0 | settled -99.0% | maxq 1.26 | o0 90.4 c20 0.9409
+     2026-09-16 ZTG    ao $  135.8M m=1 gap  247.7% adr 0.275 8xADR 2.20 | exc_in +0.04 exc_ex +0.04 | reach_in 0 ex 0 | settled -72.7% | maxq 1.51 | o0 2.31 c20 0.6298
+   without 09-16: reach_in 3/15 p_fisher vs adm 0.243
+REJ >= $100M: clearing 38 names (44 rows) | with D20 close 5 (5) | CLEAN 5 names (5 rows) | guard-dropped []
+   reach_in 3/5 60.0% | reach_ex 2/5 40.0% wilson 0.118-0.769 | crash 2/5 40.0% | win 1 | settled mean -18.2% median -18.1%
+   p(one-sided Fisher vs adm) reach_ex 0.107 reach_in 0.017 crash 0.5322 | p(binom vs 8.2%) reach_ex 0.057 reach_in 0.0049
+
+===== H=5 =====
+ADMITTED gap>=10 in-window clean: rows 142 names 121 | reach_in 12 reach_ex 11 | crash 29 (20.4%) win 13 | settled mean -4.5% median -4.4%
+REJ >= $10M: clearing 181 names (280 rows) | with D5 close 161 (233) | CLEAN 159 names (228 rows) | guard-dropped [('BENF', '2026-09-16'), ('BENF', '2026-09-18')]
+   reach_in 29/228 12.7% | reach_ex 18/228 7.9% wilson 0.051-0.121 | crash 134/228 58.8% | win 18 | settled mean -20.8% median -25.2%
+   p(one-sided Fisher vs adm) reach_ex 0.563 reach_in 0.135 crash 0.0000 | p(binom vs 8.2%) reach_ex 0.602 reach_in 0.0125
+REJ >= $25M: clearing 126 names (170 rows) | with D5 close 110 (141) | CLEAN 110 names (139 rows) | guard-dropped [('BENF', '2026-09-16'), ('BENF', '2026-09-18')]
+   reach_in 15/139 10.8% | reach_ex 6/139 4.3% wilson 0.020-0.091 | crash 91/139 65.5% | win 6 | settled mean -29.0% median -30.7%
+   p(one-sided Fisher vs adm) reach_ex 0.928 reach_in 0.322 crash 0.0000 | p(binom vs 8.2%) reach_ex 0.975 reach_in 0.1674
+REJ >= $50M: clearing 86 names (105 rows) | with D5 close 73 (87) | CLEAN 73 names (86 rows) | guard-dropped [('BENF', '2026-09-16')]
+   reach_in 11/86 12.8% | reach_ex 5/86 5.8% wilson 0.025-0.129 | crash 59/86 68.6% | win 5 | settled mean -30.7% median -36.3%
+   p(one-sided Fisher vs adm) reach_ex 0.792 reach_in 0.203 crash 0.0000 | p(binom vs 8.2%) reach_ex 0.843 reach_in 0.0931
+REJ >= $100M: clearing 38 names (44 rows) | with D5 close 32 (34) | CLEAN 32 names (34 rows) | guard-dropped []
+   reach_in 5/34 14.7% | reach_ex 4/34 11.8% wilson 0.047-0.266 | crash 23/34 67.6% | win 2 | settled mean -29.2% median -37.3%
+   p(one-sided Fisher vs adm) reach_ex 0.323 reach_in 0.210 crash 0.0000 | p(binom vs 8.2%) reach_ex 0.303 reach_in 0.1422
+
+=== projection: $50M clean-name accrual by D0 cutoff (names with any in-window clearing row by D0) ===
+  D0 <= 2026-09-16 >= $50M: 21 names
+  D0 <= 2026-09-16 >= $100M: 5 names
+  D0 <= 2026-09-18 >= $50M: 29 names
+  D0 <= 2026-09-18 >= $100M: 9 names
+  D0 <= 2026-09-21 >= $50M: 33 names
+  D0 <= 2026-09-21 >= $100M: 11 names
+  D0 <= 2026-09-22 >= $50M: 38 names
+  D0 <= 2026-09-22 >= $100M: 14 names
+  D0 <= 2026-09-23 >= $50M: 42 names
+  D0 <= 2026-09-23 >= $100M: 17 names

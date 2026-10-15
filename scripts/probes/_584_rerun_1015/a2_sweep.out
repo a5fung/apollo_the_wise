@@ -1,0 +1,181 @@
+=== 1. POPULATION COMPOSITION (stated before any outcome number) ===
+captured 2026-10-15 ~09:40 ET; scan dates in analysis: 30 2026-09-02 -> 2026-10-14 (10-15 session live => EXCLUDED); last close in mi_daily_closes: 2026-10-14
+all shadow rows (both sides): 7762  names: 2507
+rejected-side rows: 5845 names: 1546 | admitted-side rows: 1917 names: 1085
+rejected by class: {'P': 4179, 'PV': 1349, 'V': 317}
+rejected with an at_open dollar-volume read: 4077 names: 1430 dates: 30 | no post-open read at all (pre-market-only rows, excluded): 1768
+fallback to _last (minutes_since_open_last<=15) usable on rows with NO at_open read: 0 => fallback NOT used
+at_open read minute mix (rejected): {1.0: 2047, 5.0: 158, 10.0: 153, 15.0: 298, 20.0: 902, 25.0: 519}
+IN-WINDOW (minutes<=15) rejected rows: 2656 names: 1180 | out-of-window (20/25 min) excluded: 1421
+  in-window by class: {'P': 1915, 'PV': 608, 'V': 133} | gap_at_open quantiles 5/25/50/75/95: [5.1, 5.7, 6.8, 9.0, 34.7] | share gap>=10: 0.201
+  in-window rows/day: {'09-02': 77, '09-03': 86, '09-04': 69, '09-08': 82, '09-09': 59, '09-10': 72, '09-11': 83, '09-14': 74, '09-15': 66, '09-16': 87, '09-17': 172, '09-18': 96, '09-21': 128, '09-22': 96, '09-23': 97, '09-24': 75, '09-25': 87, '09-28': 96, '09-29': 88, '09-30': 109, '10-01': 79, '10-02': 105, '10-05': 109, '10-06': 104, '10-07': 74, '10-08': 72, '10-09': 90, '10-12': 77, '10-13': 82, '10-14': 65}
+ADMITTED pool (cleared both floors, in-window at_open read): rows 859 names 626 | gap-matched (gap>=10): 164 rows / 139 names
+D0 dates with ANY 20-session settled close: 10 ['09-02', '09-03', '09-04', '09-08', '09-09', '09-10', '09-11', '09-14', '09-15', '09-16'] | D0+20 close exists only for D0 <=  2026-09-16
+D0 dates with a 5-session settled close: 25 2026-09-02 -> 2026-10-07
+
+=== 2. 20-SESSION SETTLED NAMES PER BAR (the >=15 gate; rejected side, in-window at_open read >= bar) ===
+funnel columns = distinct NAMES (rows) at each stage:  clearing | +D0+20 close exists | +all 20 forward bars | +ADR20 defined | +no >4x jump-up (CLEAN = analysed sample)
+  all gaps (review-literal)
+    >=$10M: 181 (280) | 65 (75) | 65 (75) | 64 (74) | 63 (73)   -> CLEAN names 63 MEETS the >=15 bar
+    >=$25M: 126 (170) | 40 (41) | 40 (41) | 40 (41) | 39 (40)   -> CLEAN names 39 MEETS the >=15 bar
+    >=$50M: 86 (105) | 20 (20) | 20 (20) | 20 (20) | 19 (19)   -> CLEAN names 19 MEETS the >=15 bar
+    >=$100M: 38 (44) | 5 (5) | 5 (5) | 5 (5) | 5 (5)   -> CLEAN names 5 BELOW the >=15 bar
+  gap_at_open>=10
+    >=$10M: 170 (248) | 62 (66) | 62 (66) | 61 (65) | 60 (64)   -> CLEAN names 60 MEETS the >=15 bar
+    >=$25M: 121 (164) | 39 (40) | 39 (40) | 39 (40) | 38 (39)   -> CLEAN names 38 MEETS the >=15 bar
+    >=$50M: 85 (104) | 20 (20) | 20 (20) | 20 (20) | 19 (19)   -> CLEAN names 19 MEETS the >=15 bar
+    >=$100M: 38 (44) | 5 (5) | 5 (5) | 5 (5) | 5 (5)   -> CLEAN names 5 BELOW the >=15 bar
+PROJECTION: close date at which the 15th distinct in-window ADR-defined clearing name has a 20-session close (assumes no guard/missing-bar attrition):
+  all gaps >=$10M: total clearing names through 10-14 = 179; 15th settles at 20 once closes reach 2026-10-05
+  all gaps >=$25M: total clearing names through 10-14 = 126; 15th settles at 20 once closes reach 2026-10-06
+  all gaps >=$50M: total clearing names through 10-14 = 86; 15th settles at 20 once closes reach 2026-10-13
+  all gaps >=$100M: total clearing names through 10-14 = 38; 15th settles at 20 once closes reach 2026-10-21
+  gap>=10 >=$10M: total clearing names through 10-14 = 168; 15th settles at 20 once closes reach 2026-10-05
+  gap>=10 >=$25M: total clearing names through 10-14 = 121; 15th settles at 20 once closes reach 2026-10-06
+  gap>=10 >=$50M: total clearing names through 10-14 = 85; 15th settles at 20 once closes reach 2026-10-13
+  gap>=10 >=$100M: total clearing names through 10-14 = 38; 15th settles at 20 once closes reach 2026-10-21
+
+=== 3. TABLES (all excursions are EXCURSIONS vs the D0 open, never returns; settled = close at D0+h vs D0 open). reach = peak incl. gap-day high; reachx = EXCLUDING the gap day's own high ===
+refs from #570 (admitted pool baselines): reach>=8xADR 8.2% | median settled -11.7%.  10-01 interim (5-session, D0<=09-23): admitted gap-matched pool 9.8% reach / 20.7% settle<=-20%.
+==== 20-SESSION horizon, D0 in 2026-09-02..2026-09-16 (10 dates): rejected in-window, ALL gaps
+            label  rows_all  names_per_day   n  names  guard_dropped  reach_k  reach  r_lo  r_hi  reachx_k  reachx  rx_lo  rx_hi  exc_med  exc_p90  s_med  s_p10  crash_k  crash  c_lo  c_hi  win_k  s5_med  crash5_k  crash5  reach5_k  reach5x_k
+REJ all in-window      2656           88.5 694    510              7       72   10.4   8.3  12.9        66     9.5    7.5   11.9     12.2     87.5  -15.5  -46.4      281   40.5  36.9  44.2     54    -6.1       108    15.6        32         26
+      REJ >= $10M       280            9.3  73     63              1       15   20.5  12.9  31.2        11    15.1    8.6   25.0     18.4    191.5  -30.3  -71.0       47   64.4  52.9  74.4      6   -21.9        38    52.1        11          7
+      REJ >= $25M       170            5.7  40     39              1        7   17.5   8.7  32.0         3     7.5    2.6   19.9     15.4    178.7  -37.5  -74.8       30   75.0  59.8  85.8      2   -25.9        24    60.0         6          2
+      REJ >= $50M       105            3.5  19     19              1        6   31.6  15.4  54.0         3    15.8    5.5   37.6     16.2    231.3  -31.2  -76.1       13   68.4  46.0  84.6      2   -23.0        11    57.9         5          2
+     REJ >= $100M        44            1.5   5      5              0        3   60.0  23.1  88.2         2    40.0   11.8   76.9    105.1    186.3  -18.1  -55.4        2   40.0  11.8  76.9      1    -8.6         1    20.0         3          2
+ADM all in-window       859           28.6 244    217              0        9    3.7   2.0   6.9         9     3.7    2.0    6.9      7.8     33.6   -7.8  -35.1       62   25.4  20.4  31.2     19    -3.2        23     9.4         5          5
+      ADM >= $10M       190            6.3  52     48              0        1    1.9   0.3  10.1         1     1.9    0.3   10.1     11.0     34.4   -8.0  -47.1       14   26.9  16.8  40.3      4    -3.3         8    15.4         0          0
+      ADM >= $25M       129            4.3  37     34              0        1    2.7   0.5  13.8         1     2.7    0.5   13.8     11.4     33.7   -7.4  -43.7        7   18.9   9.5  34.2      3    -2.8         4    10.8         0          0
+      ADM >= $50M        83            2.8  23     22              0        0    0.0  -0.0  14.3         0     0.0   -0.0   14.3     11.4     32.7   -0.1  -38.1        3   13.0   4.5  32.1      2    -3.0         2     8.7         0          0
+     ADM >= $100M        50            1.7  14     13              0        0    0.0   0.0  21.5         0     0.0    0.0   21.5     13.5     30.4    0.3  -13.9        1    7.1   1.3  31.5      1    -1.4         1     7.1         0          0
+
+==== 20-SESSION horizon: rejected in-window, gap_at_open >= 10 (gap-matched; ADM rows also gap>=10)
+            label  rows_all  names_per_day   n  names  guard_dropped  reach_k  reach  r_lo  r_hi  reachx_k  reachx  rx_lo  rx_hi  exc_med  exc_p90  s_med  s_p10  crash_k  crash  c_lo  c_hi  win_k  s5_med  crash5_k  crash5  reach5_k  reach5x_k
+REJ all in-window       535           17.8 125    116              1       16   12.8   8.0  19.8        11     8.8    5.0   15.1     14.1    127.8  -26.2  -61.5       76   60.8  52.0  68.9     10   -15.4        48    38.4         9          4
+      REJ >= $10M       248            8.3  64     60              1       11   17.2   9.9  28.2         7    10.9    5.4   20.9     15.5    171.1  -30.7  -70.3       43   67.2  55.0  77.4      5   -22.8        35    54.7         7          3
+      REJ >= $25M       164            5.5  39     38              1        7   17.9   9.0  32.7         3     7.7    2.7   20.3     16.2    180.7  -36.4  -75.0       29   74.4  58.9  85.4      2   -25.1        23    59.0         6          2
+      REJ >= $50M       104            3.5  19     19              1        6   31.6  15.4  54.0         3    15.8    5.5   37.6     16.2    231.3  -31.2  -76.1       13   68.4  46.0  84.6      2   -23.0        11    57.9         5          2
+     REJ >= $100M        44            1.5   5      5              0        3   60.0  23.1  88.2         2    40.0   11.8   76.9    105.1    186.3  -18.1  -55.4        2   40.0  11.8  76.9      1    -8.6         1    20.0         3          2
+ADM all in-window       164            5.5  44     40              0        4    9.1   3.6  21.2         4     9.1    3.6   21.2      8.6     60.5   -9.3  -52.4       14   31.8  20.0  46.6      5    -5.2        10    22.7         3          3
+      ADM >= $10M        69            2.3  21     18              0        0    0.0   0.0  15.5         0     0.0    0.0   15.5      8.6     54.2  -24.0  -54.4       11   52.4  32.4  71.7      1   -12.8         8    38.1         0          0
+      ADM >= $25M        52            1.7  14     12              0        0    0.0   0.0  21.5         0     0.0    0.0   21.5     10.0     47.9  -10.4  -54.3        6   42.9  21.4  67.4      1    -7.9         4    28.6         0          0
+      ADM >= $50M        37            1.2   8      8              0        0    0.0   0.0  32.4         0     0.0    0.0   32.4      9.4     70.5   -9.6  -55.3        3   37.5  13.7  69.4      1   -13.6         2    25.0         0          0
+     ADM >= $100M        19            0.6   3      3              0        0    0.0   0.0  56.2         0     0.0    0.0   56.2      1.9     26.9   -9.6  -48.4        1   33.3   6.1  79.2      0   -12.8         1    33.3         0          0
+
+==== 5-SESSION horizon, EXTENDED to 25 D0 dates (2026-09-02..2026-10-07): rejected in-window, ALL gaps
+            label  rows_all  names_per_day    n  names  guard_dropped  reach_k  reach  r_lo  r_hi  reachx_k  reachx  rx_lo  rx_hi  exc_med  exc_p90  s_med  s_p10  crash_k  crash  c_lo  c_hi  win_k
+REJ all in-window      2656           88.5 2184   1059              6       97    4.4   3.7   5.4        73     3.3    2.7    4.2      8.1     42.9   -6.2  -27.7      385   17.6  16.1  19.3    141
+      REJ >= $10M       280            9.3  228    159              2       29   12.7   9.0  17.7        18     7.9    5.1   12.1     16.4    106.2  -25.2  -53.5      134   58.8  52.3  65.0     18
+      REJ >= $25M       170            5.7  139    110              2       15   10.8   6.6  17.0         6     4.3    2.0    9.1     17.1     94.7  -30.7  -55.8       91   65.5  57.2  72.9      6
+      REJ >= $50M       105            3.5   86     73              1       11   12.8   7.3  21.5         5     5.8    2.5   12.9     18.7    124.7  -36.3  -58.1       59   68.6  58.2  77.4      5
+     REJ >= $100M        44            1.5   34     32              0        5   14.7   6.4  30.1         4    11.8    4.7   26.6     21.8    116.8  -37.3  -57.5       23   67.6  50.8  80.9      2
+ADM all in-window       859           28.6  761    567              0       16    2.1   1.3   3.4        15     2.0    1.2    3.2      5.3     22.0   -3.2  -18.1       68    8.9   7.1  11.2     28
+      ADM >= $10M       190            6.3  172    138              0        2    1.2   0.3   4.1         1     0.6    0.1    3.2      6.4     24.0   -3.5  -35.7       26   15.1  10.5  21.2      5
+      ADM >= $25M       129            4.3  113     94              0        2    1.8   0.5   6.2         1     0.9    0.2    4.8      6.2     27.7   -3.1  -27.7       13   11.5   6.8  18.7      3
+      ADM >= $50M        83            2.8   72     61              0        2    2.8   0.8   9.6         1     1.4    0.2    7.5      5.7     23.6   -3.3  -23.8        8   11.1   5.7  20.4      1
+     ADM >= $100M        50            1.7   44     36              0        1    2.3   0.4  11.8         1     2.3    0.4   11.8      4.6     16.1   -3.5  -18.2        4    9.1   3.6  21.2      1
+
+==== 5-SESSION horizon, extended: gap_at_open >= 10
+            label  rows_all  names_per_day   n  names  guard_dropped  reach_k  reach  r_lo  r_hi  reachx_k  reachx  rx_lo  rx_hi  exc_med  exc_p90  s_med  s_p10  crash_k  crash  c_lo  c_hi  win_k
+REJ all in-window       535           17.8 427    322              2       33    7.7   5.6  10.7        16     3.7    2.3    6.0     12.8     74.0  -13.5  -46.1      160   37.5  33.0  42.2     27
+      REJ >= $10M       248            8.3 199    148              2       23   11.6   7.8  16.7        12     6.0    3.5   10.2     17.1    105.1  -26.6  -54.0      122   61.3  54.4  67.8     13
+      REJ >= $25M       164            5.5 133    105              2       15   11.3   7.0  17.8         6     4.5    2.1    9.5     19.1     96.6  -30.8  -56.0       88   66.2  57.8  73.7      6
+      REJ >= $50M       104            3.5  85     72              1       11   12.9   7.4  21.7         5     5.9    2.5   13.0     19.1    125.3  -36.5  -58.1       59   69.4  59.0  78.2      5
+     REJ >= $100M        44            1.5  34     32              0        5   14.7   6.4  30.1         4    11.8    4.7   26.6     21.8    116.8  -37.3  -57.5       23   67.6  50.8  80.9      2
+ADM all in-window       164            5.5 142    121              0       12    8.5   4.9  14.2        11     7.7    4.4   13.3      7.3     50.6   -4.4  -38.6       29   20.4  14.6  27.8     13
+      ADM >= $10M        69            2.3  60     50              0        2    3.3   0.9  11.4         1     1.7    0.3    8.9      8.5     40.8   -8.7  -49.9       19   31.7  21.3  44.2      3
+      ADM >= $25M        52            1.7  43     37              0        2    4.7   1.3  15.5         1     2.3    0.4   12.1      8.6     50.6   -5.6  -49.1       11   25.6  14.9  40.2      2
+      ADM >= $50M        37            1.2  30     28              0        2    6.7   1.8  21.3         1     3.3    0.6   16.7      7.2     38.1  -12.9  -40.8        8   26.7  14.2  44.4      1
+     ADM >= $100M        19            0.6  16     15              0        1    6.2   1.1  28.3         1     6.2    1.1   28.3      3.9     33.0   -8.6  -44.3        4   25.0  10.2  49.5      1
+
+=== 4. REGRESSION vs the 10-01 run (5-session, D0 <= 2026-09-23 only; counts must equal the 10-01 table) ===
+==== REGRESSION all gaps (D0<=09-23)
+            label  rows_all  names_per_day    n  names  guard_dropped  reach_k  reach  r_lo  r_hi  reachx_k  reachx  rx_lo  rx_hi  exc_med  exc_p90  s_med  s_p10  crash_k  crash  c_lo  c_hi  win_k
+REJ all in-window      1342           67.1 1291    787              5       59    4.6   3.6   5.9        46     3.6    2.7    4.7      8.4     44.3   -5.5  -25.2      190   14.7  12.9  16.8     97
+      REJ >= $10M       127            6.4  121     97              2       17   14.0   9.0  21.4        10     8.3    4.6   14.5     16.2    126.1  -23.0  -53.4       67   55.4  46.5  63.9     10
+      REJ >= $25M        76            3.8   73     65              2        9   12.3   6.6  21.8         4     5.5    2.2   13.3     14.6    101.7  -27.5  -55.2       46   63.0  51.5  73.2      2
+      REJ >= $50M        46            2.3   44     41              1        8   18.2   9.5  32.0         4     9.1    3.6   21.2     16.1    155.2  -27.5  -57.6       28   63.6  48.9  76.2      2
+     REJ >= $100M        17            0.8   17     17              0        5   29.4  13.3  53.1         4    23.5    9.6   47.3     47.8    152.3  -20.2  -58.5        9   52.9  31.0  73.8      2
+ADM all in-window       506           25.3  503    391              0       12    2.4   1.4   4.1        11     2.2    1.2    3.9      5.7     22.8   -3.0  -16.7       41    8.2   6.1  10.9     21
+      ADM >= $10M       118            5.9  118     92              0        1    0.8   0.1   4.6         0     0.0    0.0    3.2      7.6     28.9   -3.3  -28.5       17   14.4   9.2  21.9      3
+      ADM >= $25M        79            4.0   79     64              0        1    1.3   0.2   6.8         0     0.0   -0.0    4.6      6.3     28.8   -3.1  -18.9        8   10.1   5.2  18.7      2
+      ADM >= $50M        47            2.4   47     39              0        1    2.1   0.4  11.1         0     0.0    0.0    7.6      5.4     19.5   -3.6  -15.5        4    8.5   3.4  19.9      0
+     ADM >= $100M        31            1.6   31     25              0        0    0.0  -0.0  11.0         0     0.0   -0.0   11.0      5.4     16.5   -3.6  -16.3        3    9.7   3.3  24.9      0
+
+==== REGRESSION gap>=10 (D0<=09-23)
+            label  rows_all  names_per_day   n  names  guard_dropped  reach_k  reach  r_lo  r_hi  reachx_k  reachx  rx_lo  rx_hi  exc_med  exc_p90  s_med  s_p10  crash_k  crash  c_lo  c_hi  win_k
+REJ all in-window       252           12.6 240    208              2       19    7.9   5.1  12.0         8     3.3    1.7    6.4     11.9     71.6  -13.6  -45.1       88   36.7  30.8  42.9     17
+      REJ >= $10M       114            5.7 108     93              2       13   12.0   7.2  19.5         6     5.6    2.6   11.6     16.6    117.5  -24.5  -53.6       63   58.3  48.9  67.2      6
+      REJ >= $25M        74            3.7  71     63              2        9   12.7   6.8  22.4         4     5.6    2.2   13.6     16.1    105.1  -27.5  -55.2       45   63.4  51.8  73.6      2
+      REJ >= $50M        45            2.2  43     40              1        8   18.6   9.7  32.6         4     9.3    3.7   21.6     16.2    156.2  -27.7  -57.8       28   65.1  50.2  77.6      2
+     REJ >= $100M        17            0.8  17     17              0        5   29.4  13.3  53.1         4    23.5    9.6   47.3     47.8    152.3  -20.2  -58.5        9   52.9  31.0  73.8      2
+ADM all in-window        82            4.1  82     69              0        8    9.8   5.0  18.1         7     8.5    4.2   16.6      8.6     57.2   -5.2  -44.3       17   20.7  13.4  30.7      8
+      ADM >= $10M        39            2.0  39     31              0        1    2.6   0.5  13.2         0     0.0    0.0    9.0     10.9     54.8  -12.0  -49.9       14   35.9  22.7  51.6      1
+      ADM >= $25M        27            1.4  27     22              0        1    3.7   0.7  18.3         0     0.0    0.0   12.5     10.9     55.5   -5.6  -47.5        7   25.9  13.2  44.7      1
+      ADM >= $50M        16            0.8  16     15              0        1    6.2   1.1  28.3         0     0.0    0.0   19.4      7.9     43.7  -13.2  -39.3        4   25.0  10.2  49.5      0
+     ADM >= $100M         8            0.4   8      7              0        0    0.0   0.0  32.4         0     0.0    0.0   32.4      6.4     33.0  -13.4  -42.1        3   37.5  13.7  69.4      0
+
+REGRESSION RESULT: ALL 20 table rows (n, reach count, crash count, win count) reproduce the 10-01 analyst run exactly (with ticker NA excluded as it was then)
+
+
+CHECK|h20|REJ|all|0|694|72|66|281|54
+CHECK|h20|REJ|all|10|73|15|11|47|6
+CHECK|h20|REJ|all|25|40|7|3|30|2
+CHECK|h20|REJ|all|50|19|6|3|13|2
+CHECK|h20|REJ|all|100|5|3|2|2|1
+CHECK|h20|ADM|all|0|244|9|9|62|19
+CHECK|h20|ADM|all|10|52|1|1|14|4
+CHECK|h20|ADM|all|25|37|1|1|7|3
+CHECK|h20|ADM|all|50|23|0|0|3|2
+CHECK|h20|ADM|all|100|14|0|0|1|1
+CHECK|h20|REJ|g10|0|125|16|11|76|10
+CHECK|h20|REJ|g10|10|64|11|7|43|5
+CHECK|h20|REJ|g10|25|39|7|3|29|2
+CHECK|h20|REJ|g10|50|19|6|3|13|2
+CHECK|h20|REJ|g10|100|5|3|2|2|1
+CHECK|h20|ADM|g10|0|44|4|4|14|5
+CHECK|h20|ADM|g10|10|21|0|0|11|1
+CHECK|h20|ADM|g10|25|14|0|0|6|1
+CHECK|h20|ADM|g10|50|8|0|0|3|1
+CHECK|h20|ADM|g10|100|3|0|0|1|0
+CHECK|h5|REJ|all|0|2184|97|73|385|141
+CHECK|h5|REJ|all|10|228|29|18|134|18
+CHECK|h5|REJ|all|25|139|15|6|91|6
+CHECK|h5|REJ|all|50|86|11|5|59|5
+CHECK|h5|REJ|all|100|34|5|4|23|2
+CHECK|h5|ADM|all|0|761|16|15|68|28
+CHECK|h5|ADM|all|10|172|2|1|26|5
+CHECK|h5|ADM|all|25|113|2|1|13|3
+CHECK|h5|ADM|all|50|72|2|1|8|1
+CHECK|h5|ADM|all|100|44|1|1|4|1
+CHECK|h5|REJ|g10|0|427|33|16|160|27
+CHECK|h5|REJ|g10|10|199|23|12|122|13
+CHECK|h5|REJ|g10|25|133|15|6|88|6
+CHECK|h5|REJ|g10|50|85|11|5|59|5
+CHECK|h5|REJ|g10|100|34|5|4|23|2
+CHECK|h5|ADM|g10|0|142|12|11|29|13
+CHECK|h5|ADM|g10|10|60|2|1|19|3
+CHECK|h5|ADM|g10|25|43|2|1|11|2
+CHECK|h5|ADM|g10|50|30|2|1|8|1
+CHECK|h5|ADM|g10|100|16|1|1|4|1
+CHECK|regh5|REJ|all|0|1291|59|46|190|97
+CHECK|regh5|REJ|all|10|121|17|10|67|10
+CHECK|regh5|REJ|all|25|73|9|4|46|2
+CHECK|regh5|REJ|all|50|44|8|4|28|2
+CHECK|regh5|REJ|all|100|17|5|4|9|2
+CHECK|regh5|ADM|all|0|503|12|11|41|21
+CHECK|regh5|ADM|all|10|118|1|0|17|3
+CHECK|regh5|ADM|all|25|79|1|0|8|2
+CHECK|regh5|ADM|all|50|47|1|0|4|0
+CHECK|regh5|ADM|all|100|31|0|0|3|0
+CHECK|regh5|REJ|g10|0|240|19|8|88|17
+CHECK|regh5|REJ|g10|10|108|13|6|63|6
+CHECK|regh5|REJ|g10|25|71|9|4|45|2
+CHECK|regh5|REJ|g10|50|43|8|4|28|2
+CHECK|regh5|REJ|g10|100|17|5|4|9|2
+CHECK|regh5|ADM|g10|0|82|8|7|17|8
+CHECK|regh5|ADM|g10|10|39|1|0|14|1
+CHECK|regh5|ADM|g10|25|27|1|0|7|1
+CHECK|regh5|ADM|g10|50|16|1|0|4|0
+CHECK|regh5|ADM|g10|100|8|0|0|3|0

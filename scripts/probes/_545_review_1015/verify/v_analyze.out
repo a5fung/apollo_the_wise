@@ -1,0 +1,48 @@
+POPULATION: ep_low_reclaim first attempts fired >=09-02: 24 rows, 24 campaigns, months {'2026-09': 16, '2026-10': 8}, range 2026-09-02..2026-10-14; before 09-02: 4
+  mature(>=20 SPY sessions): 7  fire dates {'2026-09-02': 1, '2026-09-09': 3, '2026-09-10': 3}  immature 17
+  ASSUMPTION: rows whose day-0 minutes were needed but NOT cached are walked assuming no post-fire touch (production had the minutes in scope at the incumbent settle): 12: [('ACN', '2026-10-12'), ('ALAB', '2026-09-10'), ('CEG', '2026-10-07'), ('CIFR', '2026-10-02'), ('DFTX', '2026-09-17'), ('ERO', '2026-09-22'), ('HUM', '2026-10-12'), ('ITUB', '2026-10-08'), ('NU', '2026-10-14'), ('PBR', '2026-10-08'), ('ROIV', '2026-09-22'), ('SRRK', '2026-09-23')]
+
+INDEPENDENT WALK: 52 stored settlements (all arms, both exits) re-walked, mismatches=0
+   CRWD 2026-09-02 025: no stop stamped; stored=unscoreable/unscoreable
+   DFTX 2026-09-17 sess=19 025: stored open/unsc=nan; walk says stop/trail_exit
+   DFTX 2026-09-17 sess=19 075: stored open/unsc=nan; walk says stop/trail_exit
+   ERO 2026-09-22 sess=16 inc: stored open/unsc=nan; walk says OPEN/trail_exit
+   ERO 2026-09-22 sess=16 025: stored open/unsc=nan; walk says stop/stop
+   ERO 2026-09-22 sess=16 075: stored open/unsc=nan; walk says stop/stop
+   SRRK 2026-09-23 sess=15 025: stored open/unsc=nan; walk says stop/trail_exit
+   SRRK 2026-09-23 sess=15 075: stored open/unsc=nan; walk says stop/trail_exit
+   ONON 2026-09-28 sess=12 075: stored open/unsc=nan; walk says OPEN/OPEN
+   CIFR 2026-10-02 sess=8 025: stored open/unsc=nan; walk says stop/trail_exit
+   PBR 2026-10-08 sess=4 inc: stored open/unsc=nan; walk says OPEN/OPEN
+   PBR 2026-10-08 sess=4 025: stored open/unsc=nan; walk says OPEN/OPEN
+   PBR 2026-10-08 sess=4 075: stored open/unsc=nan; walk says OPEN/OPEN
+   ACN 2026-10-12 sess=2 inc: stored open/unsc=nan; walk says OPEN/OPEN
+   ACN 2026-10-12 sess=2 025: stored open/unsc=nan; walk says stop/stop
+   ACN 2026-10-12 sess=2 075: stored open/unsc=nan; walk says OPEN/OPEN
+   NU 2026-10-14 sess=0 inc: stored open/unsc=nan; walk says OPEN/trail_exit
+   NU 2026-10-14 sess=0 025: stored open/unsc=nan; walk says OPEN/trail_exit
+   NU 2026-10-14 sess=0 075: stored open/unsc=nan; walk says OPEN/trail_exit
+   VST 2026-10-14 sess=0 075: stored open/unsc=nan; walk says OPEN/trail_exit
+
+JUDGED SET n=6: [('AGX', '2026-09-09'), ('IONQ', '2026-09-09'), ('PHVS', '2026-09-09'), ('ALAB', '2026-09-10'), ('HOOD', '2026-09-10'), ('QCOM', '2026-09-10')]
+  mature excluded: [('CRWD', '2026-09-02', 'unscoreable')]
+  inc: trail mean -0.918 median -1.000 sum -5.507 winners 0 stops 5 trail_exits 1 best ALAB -0.507 drop-best mean -1.000 | hold-only mean -1.000 median -1.000 stops 6 | price %/fire -1.108
+  025: trail mean -0.790 median -1.000 sum -4.738 winners 1 stops 4 trail_exits 2 best AGX +0.177 drop-best mean -0.983 | hold-only mean -1.000 median -1.000 stops 6 | price %/fire -0.977
+  075: trail mean -0.273 median -0.566 sum -1.636 winners 2 stops 2 trail_exits 4 best QCOM +1.437 drop-best mean -0.615 | hold-only mean -0.669 median -1.000 stops 5 | price %/fire -1.515
+  paired 025 trail - inc trail: better 1 tied 4 worse 1 mean +0.128
+  paired 025 trail - 075 trail: better 1 tied 2 worse 3 mean -0.517
+  widths: incumbent stop width pct [0.239, 2.368, 0.822, 2.813, 1.65, 0.138]  025 width [1.355, 1.404, 1.191, 1.561, 1.342, 0.738]
+  025 wider than incumbent on 3 of 6 judged; all prospective w/ stop: 9 of 23
+
+IMMATURE: 17 rows; 025 trail settled 10 (stops 8, mean -0.787); 025 open 7: ['DFTX', 'ERO', 'SRRK', 'CIFR', 'PBR', 'ACN', 'NU']
+
+CENSORED 025 (never scoreable; day low reached the 025 stop, no day-0 minutes cached): [('DFTX', '2026-09-17'), ('ERO', '2026-09-22'), ('SRRK', '2026-09-23'), ('CIFR', '2026-10-02'), ('ACN', '2026-10-12')]
+CENSORED 075: [('DFTX', '2026-09-17'), ('SRRK', '2026-09-23'), ('ACN', '2026-10-12')]
+  fires since 09-03: 23; never-scoreable on 025 or 075: 5
+
+CENSORED-025 BOUND (walk from daily bars; 'no post-fire touch' = upper bound, day-0 stop = -1.0R lower bound):
+  DFTX 2026-09-17 sess=19 fire_min=630 day_low=38.02 stop025=39.072 stop_inc=36.7  no-touch walk: none=stop -1.0, trail=trail_exit -1.856
+  ERO 2026-09-22 sess=16 fire_min=660 day_low=35.455 stop025=36.265 stop_inc=31.64  no-touch walk: none=stop -1.0, trail=stop -1.0
+  SRRK 2026-09-23 sess=15 fire_min=610 day_low=49.25 stop025=51.097 stop_inc=45.875  no-touch walk: none=stop -1.0, trail=trail_exit -3.339
+  CIFR 2026-10-02 sess=8 fire_min=570 day_low=15.35 stop025=15.681 stop_inc=14.88  no-touch walk: none=stop -1.0, trail=trail_exit -0.918
+  ACN 2026-10-12 sess=2 fire_min=570 day_low=210.0 stop025=213.674 stop_inc=192.5848  no-touch walk: none=stop -1.0, trail=stop -1.0

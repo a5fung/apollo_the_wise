@@ -1,0 +1,25 @@
+SET
+Pager usage is off.
+== R1. what the 09-19 reading of 111 counted: ep_low_reclaim rows settled on the 025 trail arm by end of 09-19 ET, by table and shape (fire_date >= 09-02 guard)
+  tbl   | reentry_shape  | by_0919_end_guarded | by_0919_end_unguarded | settled_now_guarded 
+--------+----------------+---------------------+-----------------------+---------------------
+ live   | first          |                   6 |                     6 |                  16
+ live   | new_high_break |                   1 |                     1 |                   4
+ live   | same_pattern   |                   3 |                     3 |                  10
+ voided | first          |                   0 |                     0 |                   0
+ voided | new_high_break |                  63 |                    64 |                  89
+ voided | same_pattern   |                  45 |                    45 |                  51
+(6 rows)
+
+== R2. missing settle stamps?
+ r_set_but_no_settled_at_025 
+-----------------------------
+                           0
+(1 row)
+
+== R3. latest settle stamps (did the 10-14 EOD settle run?)
+     last_inc_settle_et     |     last_025_settle_et     |      last_create_et       
+----------------------------+----------------------------+---------------------------
+ 2026-10-14 17:57:04.257918 | 2026-10-14 17:57:04.344964 | 2026-10-14 17:57:12.81255
+(1 row)
+

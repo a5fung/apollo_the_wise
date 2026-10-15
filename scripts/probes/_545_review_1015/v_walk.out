@@ -1,0 +1,23 @@
+CRWD | inc | trail walk=('stop', -1.0) stored=('stop', -1.0) OK | none walk=('stop', -1.0) stored=('stop', -1) OK | sessions_after_fire_in_bars=0
+CRWD | 025 | NOT RECORDED (no stop stamped)
+CRWD | 075 | trail walk=('trail_exit', -0.4131) stored=('trail_exit', -0.4131) OK | none walk=('time_exit', 7.9934) stored=('time_exit', 7.9934) OK | sessions_after_fire_in_bars=20
+AGX | inc | trail walk=('stop', -1.0) stored=('stop', -1.0) OK | none walk=('stop', -1.0) stored=('stop', -1) OK | sessions_after_fire_in_bars=0
+AGX | 025 | trail walk=('trail_exit', 0.1766) stored=('trail_exit', 0.1766) OK | none walk=('stop', -1.0) stored=('stop', -1.0) OK | sessions_after_fire_in_bars=20
+AGX | 075 | trail walk=('trail_exit', 0.0589) stored=('trail_exit', 0.0589) OK | none walk=('stop', -1.0) stored=('stop', -1.0) OK | sessions_after_fire_in_bars=20
+IONQ | inc | trail walk=('stop', -1.0) stored=('stop', -1.0) OK | none walk=('stop', -1.0) stored=('stop', -1) OK | sessions_after_fire_in_bars=0
+IONQ | 025 | trail walk=('stop', -1.0) stored=('stop', -1.0) OK | none walk=('stop', -1.0) stored=('stop', -1.0) OK | sessions_after_fire_in_bars=0
+IONQ | 075 | trail walk=('trail_exit', -0.8268) stored=('trail_exit', -0.8268) OK | none walk=('stop', -1.0) stored=('stop', -1.0) OK | sessions_after_fire_in_bars=20
+PHVS | inc | trail walk=('stop', -1.0) stored=('stop', -1.0) OK | none walk=('stop', -1.0) stored=('stop', -1) OK | sessions_after_fire_in_bars=0
+PHVS | 025 | trail walk=('stop', -1.0) stored=('stop', -1.0) OK | none walk=('stop', -1.0) stored=('stop', -1.0) OK | sessions_after_fire_in_bars=0
+PHVS | 075 | trail walk=('stop', -1.0) stored=('stop', -1.0) OK | none walk=('stop', -1.0) stored=('stop', -1.0) OK | sessions_after_fire_in_bars=20
+ALAB | inc | trail walk=('trail_exit', -0.5074) stored=('trail_exit', -0.5074) OK | none walk=('stop', -1.0) stored=('stop', -1) OK | sessions_after_fire_in_bars=20
+ALAB | 025 | trail walk=('trail_exit', -0.9143) stored=('trail_exit', -0.9143) OK | none walk=('stop', -1.0) stored=('stop', -1.0) OK | sessions_after_fire_in_bars=20
+ALAB | 075 | trail walk=('trail_exit', -0.3048) stored=('trail_exit', -0.3048) OK | none walk=('stop', -1.0) stored=('stop', -1.0) OK | sessions_after_fire_in_bars=20
+HOOD | inc | trail walk=('stop', -1.0) stored=('stop', -1.0) OK | none walk=('stop', -1.0) stored=('stop', -1) OK | sessions_after_fire_in_bars=20
+HOOD | 025 | trail walk=('stop', -1.0) stored=('stop', -1.0) OK | none walk=('stop', -1.0) stored=('stop', -1.0) OK | sessions_after_fire_in_bars=20
+HOOD | 075 | trail walk=('stop', -1.0) stored=('stop', -1.0) OK | none walk=('stop', -1.0) stored=('stop', -1.0) OK | sessions_after_fire_in_bars=20
+QCOM | inc | trail walk=('stop', -1.0) stored=('stop', -1.0) OK | none walk=('stop', -1.0) stored=('stop', -1) OK | sessions_after_fire_in_bars=0
+QCOM | 025 | trail walk=('stop', -1.0) stored=('stop', -1.0) OK | none walk=('stop', -1.0) stored=('stop', -1.0) OK | sessions_after_fire_in_bars=20
+QCOM | 075 | trail walk=('trail_exit', 1.437) stored=('trail_exit', 1.437) OK | none walk=('time_exit', 0.9886) stored=('time_exit', 0.9886) OK | sessions_after_fire_in_bars=20
+
+mismatches: 0

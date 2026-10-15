@@ -1,0 +1,73 @@
+=== X1 comparators (20-session, clean, in-window admitted): gap-matched (gap>=10) n=44 reach 4 (9.1%) ex-gap-day 4 crash 14 (31.8%) | all admitted n=244 reach 9 (3.7%) | #570 baseline reach 8.2%
+--- $50M AS-RUN (pre-registered guard): n=19 names=19 dates=9
+  reach (pre-registered, incl gap-day high) 6/19 = 31.6% [15.4-54.0] | vs gap-matched admitted 4/44 Fisher p=0.035 | vs #570 8.2% binomial p=0.003
+  reach ex-gap-day-high 3/19 = 15.8% [5.5-37.6] | vs gap-matched admitted 4/44 Fisher p=0.353 | vs #570 8.2% binomial p=0.201
+  crash (settled<=-20%) 13/19 = 68.4% [46.0-84.6] | vs gap-matched admitted 14/44 (31.8%) Fisher p=0.0078 | settled>=+20% 2/19
+  settled-vs-D0-open (excursion-free, no fills): mean -30.5% median -31.2% p10 -76.1% p90 11.2% | gap-matched admitted: mean -11.9% median -9.3% | all admitted median -7.8% | #570 admitted median -11.7%
+  of the 6 reach hits: also settled <=-20%: 3; hit only on the gap day itself: 3; hit dates: {'09-08': np.int64(1), '09-10': np.int64(1), '09-15': np.int64(1), '09-16': np.int64(3)}
+--- $100M AS-RUN: n=5 names=5 dates=4
+  reach (pre-registered, incl gap-day high) 3/5 = 60.0% [23.1-88.2] | vs gap-matched admitted 4/44 Fisher p=0.017 | vs #570 8.2% binomial p=0.005
+  reach ex-gap-day-high 2/5 = 40.0% [11.8-76.9] | vs gap-matched admitted 4/44 Fisher p=0.107 | vs #570 8.2% binomial p=0.057
+  crash (settled<=-20%) 2/5 = 40.0% [11.8-76.9] | vs gap-matched admitted 14/44 (31.8%) Fisher p=0.5322 | settled>=+20% 1/5
+  settled-vs-D0-open (excursion-free, no fills): mean -18.2% median -18.1% p10 -55.4% p90 15.6% | gap-matched admitted: mean -11.9% median -9.3% | all admitted median -7.8% | #570 admitted median -11.7%
+  of the 3 reach hits: also settled <=-20%: 1; hit only on the gap day itself: 1; hit dates: {'09-10': np.int64(1), '09-15': np.int64(1), '09-16': np.int64(1)}
+=== GUARD-DROPPED at >=$50M (settled, ADR defined, >4x close jump-up in D0..D0+20): 1
+  2026-09-16 BENF ao=$52.9M gap=35.9 max 1-day close ratio 5.39 exc20 282% exc20x 282% 8xADR 164% reach True reachx True settled20 +5.6% | splits near: []
+=== GUARD-DROPPED at >=$100M (settled, ADR defined, >4x close jump-up in D0..D0+20): 0
+--- $50M with guard-dropped rows RESTORED (sensitivity, NOT the pre-registered definition): n=20 names=20 dates=9
+  reach (pre-registered, incl gap-day high) 7/20 = 35.0% [18.1-56.7] | vs gap-matched admitted 4/44 Fisher p=0.017 | vs #570 8.2% binomial p=0.001
+  reach ex-gap-day-high 4/20 = 20.0% [8.1-41.6] | vs gap-matched admitted 4/44 Fisher p=0.204 | vs #570 8.2% binomial p=0.076
+  crash (settled<=-20%) 13/20 = 65.0% [43.3-81.9] | vs gap-matched admitted 14/44 (31.8%) Fisher p=0.0133 | settled>=+20% 2/20
+  settled-vs-D0-open (excursion-free, no fills): mean -28.7% median -30.3% p10 -74.4% p90 10.1% | gap-matched admitted: mean -11.9% median -9.3% | all admitted median -7.8% | #570 admitted median -11.7%
+  of the 7 reach hits: also settled <=-20%: 3; hit only on the gap day itself: 3; hit dates: {'09-08': np.int64(1), '09-10': np.int64(1), '09-15': np.int64(1), '09-16': np.int64(4)}
+=== $50M AS-RUN cohort, row by row (sorted by D0)
+  2026-09-02 LHAI  min=1 ao=$  63.6M gap=  57.1 adr=0.074 exc=   +18% excx=   +18% 8adr=  59% reach=0 reachx=0 s20= -18.4%
+  2026-09-02 PPBT  min=1 ao=$  84.2M gap=  45.3 adr=0.097 exc=    +8% excx=   -12% 8adr=  78% reach=0 reachx=0 s20= -36.4%
+  2026-09-03 MIMI  min=1 ao=$  57.8M gap=  56.0 adr=0.214 exc=    +3% excx=    -7% 8adr= 171% reach=0 reachx=0 s20= -23.4%
+  2026-09-04 AKAN  min=1 ao=$  67.2M gap=  19.9 adr=0.112 exc=    +2% excx=   -18% 8adr=  90% reach=0 reachx=0 s20= -56.2%
+  2026-09-04 IMRN  min=1 ao=$  91.5M gap=  60.4 adr=0.052 exc=   +10% excx=    +6% 8adr=  42% reach=0 reachx=0 s20= -40.9%
+  2026-09-08 ARBE  min=1 ao=$  56.2M gap=  33.4 adr=0.056 exc=   +10% excx=   +10% 8adr=  45% reach=0 reachx=0 s20= -27.6%
+  2026-09-08 BNC   min=1 ao=$ 183.6M gap=  62.8 adr=0.074 exc=   +29% excx=   +29% 8adr=  60% reach=0 reachx=0 s20=  +8.9%
+  2026-09-08 PDSB  min=1 ao=$  56.9M gap= 138.2 adr=0.184 exc=  +177% excx=  +177% 8adr= 147% reach=1 reachx=1 s20=+114.1%
+  2026-09-08 WYHG  min=1 ao=$  59.3M gap=  30.5 adr=0.191 exc=   +12% excx=    -5% 8adr= 153% reach=0 reachx=0 s20= -31.2%
+  2026-09-09 OLB   min=1 ao=$  71.5M gap=  35.9 adr=0.120 exc=   +24% excx=   +24% 8adr=  96% reach=0 reachx=0 s20=  -1.9%
+  2026-09-10 TNON  min=1 ao=$ 109.2M gap=  77.0 adr=0.178 exc=  +158% excx=  +158% 8adr= 142% reach=1 reachx=1 s20= -18.1%
+  2026-09-14 BMGL  min=1 ao=$  85.6M gap=  68.8 adr=0.105 exc=   +14% excx=   -18% 8adr=  84% reach=0 reachx=0 s20= -54.0%
+  2026-09-14 NCT   min=1 ao=$  59.1M gap=  76.9 adr=0.556 exc=   +14% excx=   +14% 8adr= 445% reach=0 reachx=0 s20= -89.3%
+  2026-09-15 SUGP  min=1 ao=$  68.9M gap=  49.0 adr=0.210 exc=   +16% excx=   -37% 8adr= 168% reach=0 reachx=0 s20= -65.4%
+  2026-09-15 VEEA  min=1 ao=$ 175.2M gap=  88.6 adr=0.123 exc=  +105% excx=  +105% 8adr=  99% reach=1 reachx=1 s20= +20.1%
+  2026-09-16 DLXY  min=1 ao=$  95.0M gap= 134.2 adr=0.087 exc=  +336% excx=   +24% 8adr=  70% reach=1 reachx=0 s20= -58.6%
+  2026-09-16 MEDS  min=1 ao=$ 239.6M gap= 164.2 adr=0.193 exc=  +205% excx=   +67% 8adr= 154% reach=1 reachx=0 s20= -29.4%
+  2026-09-16 RETO  min=1 ao=$  81.8M gap=  36.4 adr=0.304 exc=  +361% excx=   -86% 8adr= 243% reach=1 reachx=0 s20= -99.0%
+  2026-09-16 ZTG   min=1 ao=$ 135.8M gap= 247.7 adr=0.275 exc=    +4% excx=    +4% 8adr= 220% reach=0 reachx=0 s20= -72.7%
+--- $50M AS-RUN minus rows with an applied split inside the 20-session window (NCT, SUGP, DLXY, RETO): n=15 names=15 dates=9
+  reach (pre-registered, incl gap-day high) 4/15 = 26.7% [10.9-52.0] | vs gap-matched admitted 4/44 Fisher p=0.104 | vs #570 8.2% binomial p=0.030
+  reach ex-gap-day-high 3/15 = 20.0% [7.0-45.2] | vs gap-matched admitted 4/44 Fisher p=0.243 | vs #570 8.2% binomial p=0.119
+  crash (settled<=-20%) 9/15 = 60.0% [35.7-80.2] | vs gap-matched admitted 14/44 (31.8%) Fisher p=0.0530 | settled>=+20% 2/15
+  settled-vs-D0-open (excursion-free, no fills): mean -17.8% median -27.6% p10 -55.3% p90 15.6% | gap-matched admitted: mean -11.9% median -9.3% | all admitted median -7.8% | #570 admitted median -11.7%
+  of the 4 reach hits: also settled <=-20%: 1; hit only on the gap day itself: 1; hit dates: {'09-08': np.int64(1), '09-10': np.int64(1), '09-15': np.int64(1), '09-16': np.int64(1)}
+--- $50M AS-RUN minus the 09-16 cohort day (DLXY, MEDS, RETO, ZTG): n=15 names=15 dates=8
+  reach (pre-registered, incl gap-day high) 3/15 = 20.0% [7.0-45.2] | vs gap-matched admitted 4/44 Fisher p=0.243 | vs #570 8.2% binomial p=0.119
+  reach ex-gap-day-high 3/15 = 20.0% [7.0-45.2] | vs gap-matched admitted 4/44 Fisher p=0.243 | vs #570 8.2% binomial p=0.119
+  crash (settled<=-20%) 9/15 = 60.0% [35.7-80.2] | vs gap-matched admitted 14/44 (31.8%) Fisher p=0.0530 | settled>=+20% 2/15
+  settled-vs-D0-open (excursion-free, no fills): mean -21.3% median -27.6% p10 -61.7% p90 15.6% | gap-matched admitted: mean -11.9% median -9.3% | all admitted median -7.8% | #570 admitted median -11.7%
+  of the 3 reach hits: also settled <=-20%: 0; hit only on the gap day itself: 0; hit dates: {'09-08': np.int64(1), '09-10': np.int64(1), '09-15': np.int64(1)}
+=== per-D0-date cohort in the $50M as-run sample: n names, reach hits
+  2026-09-02 n=2 reach=0 reachx=0 crash=1
+  2026-09-03 n=1 reach=0 reachx=0 crash=1
+  2026-09-04 n=2 reach=0 reachx=0 crash=2
+  2026-09-08 n=4 reach=1 reachx=1 crash=2
+  2026-09-09 n=1 reach=0 reachx=0 crash=0
+  2026-09-10 n=1 reach=1 reachx=1 crash=0
+  2026-09-14 n=2 reach=0 reachx=0 crash=2
+  2026-09-15 n=2 reach=1 reachx=1 crash=1
+  2026-09-16 n=4 reach=3 reachx=0 crash=4
+=== DRIFT $10M now n=73 reach 15 (20.5%) binomial-vs-8.2% p=0.001 Fisher-vs-gap-matched-admitted p=0.083 crash 47 (64.4%) | was 10-13: n=56 reach 14.3% crash 62.5%; without 09-15/09-16 D0: reach 8/56
+=== DRIFT $25M now n=40 reach 7 (17.5%) binomial-vs-8.2% p=0.042 Fisher-vs-gap-matched-admitted p=0.207 crash 30 (75.0%) | was 10-13: n=29 reach 10.3% crash 72.4%; without 09-15/09-16 D0: reach 3/29
+=== PROJECTION $50M: date by which the Nth distinct in-window ADR-defined clearing name has a 20-session close (before guard attrition ~5%)
+  20 names: closes through 2026-10-14 (ingested that night, readable next morning)
+  25 names: closes through 2026-10-15 (ingested that night, readable next morning)
+  30 names: closes through 2026-10-19 (ingested that night, readable next morning)
+  40 names: closes through 2026-10-21 (ingested that night, readable next morning)
+=== 5-SESSION larger sample >=$50M: n=86 names=73 dates=24 reach 11 (12.8%) Fisher-vs-gap-matched-admitted 12/142 p=0.203 | ex-gap-day 5 (5.8%) vs 11/142 p=0.792 binomial-vs-8.2% p=0.843 | crash 59 (68.6%) vs 29/142 (20.4%) p=0.00000
+=== 5-SESSION larger sample >=$100M: n=34 names=32 dates=17 reach 5 (14.7%) Fisher-vs-gap-matched-admitted 12/142 p=0.210 | ex-gap-day 4 (11.8%) vs 11/142 p=0.323 binomial-vs-8.2% p=0.303 | crash 23 (67.6%) vs 29/142 (20.4%) p=0.00000

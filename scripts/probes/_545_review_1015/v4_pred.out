@@ -1,0 +1,14 @@
+SET
+Pager usage is off.
+== corrected predicate, exact proposed YAML text (expect 6 on 2026-10-15)
+ corrected_predicate 
+---------------------
+                   6
+(1 row)
+
+== predicate as currently written in YAML (expect 30)
+ predicate_as_written 
+----------------------
+                   30
+(1 row)
+

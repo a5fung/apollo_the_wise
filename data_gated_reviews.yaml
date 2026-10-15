@@ -14136,36 +14136,86 @@ reviews:
     # fire_date guard added 2026-09-19 (#669 audit) for the same reason as the 616 sibling: the
     # question is explicitly out-of-sample "on fires recorded from 2026-09-02" and the SQL did
     # not say so (111 of 112 were prospective). Reads 111.
+    # 🔧 TIGHTENED 2026-10-15 (Opus-verified review): first attempts only, incumbent + 0.25xADR + 0.75xADR trail arms settled
+    # AND 20 SPY sessions elapsed - the old form read 30 (= threshold) on 16 first attempts (10 immature, 8 of them early
+    # stop-outs) + 14 re-entries, and its 09-19 '111' was 102 voided re-entry rows (moved out 09-26) + 9 live rows, none
+    # mature. Reads 6 on 2026-10-15 (scripts/probes/_545_review_1015/verify/).
     predicate_sql: >-
       SELECT CASE WHEN to_regclass('mi_delayed_entry_trigger') IS NULL THEN 0
-                  ELSE (SELECT COUNT(*) FROM mi_delayed_entry_trigger
-                        WHERE rung = 'ep_low_reclaim'
-                          AND fire_date >= DATE '2026-09-02'
-                          AND realized_r_trail_025 IS NOT NULL) END
+                  ELSE (SELECT COUNT(*) FROM mi_delayed_entry_trigger t
+                        WHERE t.rung = 'ep_low_reclaim' AND t.reentry_shape = 'first'
+                          AND t.fire_date >= DATE '2026-09-02'
+                          AND t.realized_r_trail IS NOT NULL AND t.realized_r_trail_025 IS NOT NULL
+                          AND t.realized_r_trail_075 IS NOT NULL
+                          AND (SELECT COUNT(*) FROM mi_daily_closes d
+                               WHERE d.ticker = 'SPY' AND d.trade_date > t.fire_date) >= 20) END
     threshold: 30
-    discriminates_on: [mi_delayed_entry_trigger.rung]
+    discriminates_on: [mi_delayed_entry_trigger.rung, mi_delayed_entry_trigger.reentry_shape]
     can_fire:
-      predicate_runs: "2026-09-19 (#669 audit) - runs against prod: 111 with the fire_date guard,
-        112 without. Clean SQL."
-      nonzero_possible: "The 0.25xADR counterfactual is stamped beside 0.75x/1.00x on every
-        trigger and settles through compute_settlement; 111 ep_low_reclaim rows settled on the
-        025 trail arm since 09-02."
+      predicate_runs: "2026-10-15 - the tightened form runs against prod and reads 6 (ep_low_reclaim first attempts with
+        the incumbent, 0.25xADR and 0.75xADR trail arms settled and 20 SPY sessions elapsed). The old form read 30, exactly
+        the threshold; its 09-19 '111' was 102 voided re-entry rows, 3 live re-entries and 6 live first attempts, none mature."
+      nonzero_possible: "The 0.25xADR counterfactual is stamped beside 0.75x/1.00x on every trigger from the 09-03 run on and
+        settles through compute_settlement; 6 matured first attempts already score on all three arms (2026-10-15)."
       lane_live: "Shadow lane by design; the recorder runs every session."
-      threshold_vs_observed: "30 against 111 - met, ahead of the 2026-10-12 date; maturity of
-        the 20-session window is the real constraint and the action states it."
-      era_scoped: "Prospective rows only (fire_date >= 2026-09-02). Settled through the lane's
-        own ladder, so the magna53 exit flips do not straddle it. ⚠ The #545 chained-retry
-        composite this variant is compared AGAINST was measured on the 46-name BACKFILL
-        (545_retry_test_2026-09-02.md) - a different era and population, which the action
-        already says cannot be reconstructed here; quote it as the backfill figure, never pooled."
-      population_actionable: "The action restricts to reentry_shape='first' and reads the 025
-        arms against the incumbent and the 075 arm on the same fires; the predicate counts
-        ep_low_reclaim rows with a settled 025 trail arm, prospective only. Re-entry rows are
-        keyed to the INCUMBENT's stop-out, so they are excluded by the action, as its text says."
-      instrument_trusted: "Same recorder and settle path as the 616 sibling, verified 111 settled
-        2026-09-19; the 025 arm is stop-heavy EARLY in the opposite direction (a tight stop
-        settles fastest), so an immature read over-states its losses - name the maturity cut."
-    earliest_review_date: 2026-10-12
+      threshold_vs_observed: "30 against 6 on 2026-10-15 (fired 09-09 and 09-10; 0 October fires mature). The earlier '30
+        against 111 - met' was FALSE: 111 counted voided re-entry rows, and settlement before 20 sessions happens only on a
+        stop. 5 of the 23 fires since 09-03 can never score the 0.25xADR arm (DFTX, ERO, SRRK, CIFR, ACN), so 12-01 reads
+        about 26; the predicate, not a new date, holds the review until 30 (about 12-08 to 12-10). Those 5 are all 0.25 losers
+        on daily bars - see instrument_trusted."
+      era_scoped: "Prospective rows only (fire_date >= 2026-09-02); the 0.25xADR arm itself is prospective from the 09-03 run
+        (CRWD, fired 09-02, was recorded before the column shipped and closed unscoreable, so the guard is harmless).
+        Settled through the lane's own ladder, so the magna53 exit flips do not straddle it. ⚠ The #545 chained-retry
+        composite this variant is compared AGAINST was measured on the 46-name BACKFILL (545_retry_test_2026-09-02.md) - a
+        different era and population, which the action already says cannot be reconstructed here; quote it as the backfill
+        figure, never pooled."
+      population_actionable: "The predicate now counts exactly what the action reads: ep_low_reclaim FIRST attempts,
+        prospective, whose 20-session window has elapsed and whose incumbent, 0.25xADR and 0.75xADR trail arms are all
+        settled - the SAME fires the action compares. The old form was a superset by reentry_shape (14 of 30 were re-entries
+        keyed to the incumbent's stop-out), by maturity (17 of 30 under 20 sessions) and by missing comparison arms."
+      instrument_trusted: "Same recorder and settle path as the 616 sibling; on 2026-10-15 all 52 stored settlements on the 24
+        first attempts were re-walked from raw daily bars with 0 mismatches. ⚠ The censored class is NOT neutral: the 5 fires
+        that can never score the 0.25xADR arm (fire-day low reached the 0.25 stop but not the incumbent's, so day-0 minutes
+        were never fetched) all lose on that arm on daily bars - DFTX and SRRK closed the fire day below the 0.25 stop
+        (certain day-0 stop-outs), all 5 stop on hold-only, trail -0.92R or worse - while the incumbent lost about -0.3R on
+        the three it settled. Censoring can only drop fires where the 0.25 stop is tighter than the incumbent's, so it
+        flatters the 0.25 arm and its paired edge: at the read, quote every never-scoreable fire at its daily-bar bound beside
+        the judged mean. The 0.25xADR stop is not uniformly the tight arm - it is wider than the incumbent's on 9 of 23
+        prospective fires."
+    earliest_review_date: 2026-12-01
+    resolution_2026_10_15: >-
+      EXTENDED, no verdict. Verified 10-15 from the raw table (last SPY bar 10-14), plus an independent walk from raw daily
+      bars that reproduces all 52 stored settlements on the 24 first attempts (0 mismatches, every arm, trail and hold-only;
+      12 rows whose day-0 minutes were used at settle but never cached, ALAB among the judged, walked assuming no post-fire
+      touch). Population: 24 ep_low_reclaim first attempts fired 2026-09-02 to 10-14 (16 in September, 8 in October), 24
+      separate campaigns, every one on a live EP alert; 4 first attempts fired before 09-02 excluded. Only 7 have had their
+      full 20 sessions (fired 09-02, 09-09 x3, 09-10 x3) against the bar of 30. CRWD (09-02) can never score this arm: it was
+      recorded before the 0.25xADR columns shipped (first stamped on the 09-03 run), so it closed unscoreable; the 09-02
+      date guard is harmless, its R is NULL. Judged set = 6 fires on two trading days (09-09, 09-10), all September. On the
+      trail arm, in R units of each stop: the incumbent averages -0.92 (median -1.00, sum -5.51, 0 winners of 6); 0.25xADR
+      -0.79 (median -1.00, sum -4.74, 1 of 6 = AGX +0.18R; drop-best -0.98); 0.75xADR -0.27 (median -0.57, sum -1.64, 2 of
+      6). Hold-only: 0.25xADR -1.00 (all 6 stopped inside 20 sessions), incumbent -1.00, 0.75xADR -0.67. On the same fires
+      0.25xADR trail beats the incumbent on 1, ties 4, loses on 1 (mean +0.13), and against 0.75xADR beats it on 1, ties 2,
+      loses on 3 (mean -0.52). Measured in price, 0.25xADR loses -0.98% of entry per fire against -1.11% (incumbent) and
+      -1.52% (0.75xADR); the bar is in R. The backfill single-attempt leg (-0.71R trail / -0.58R hold-only per fire, 46
+      ex-May names, quoted never pooled) has the same sign, but 6 fires on two trading days is a description, not a read:
+      no verdict, the incumbent stays, a single 0.25xADR try is neither confirmed non-viable nor shown positive. Immature
+      rows do not distort this arm at this n: the 10 early-settled first attempts are 80% stops, mean -0.79, equal to the 6
+      mature (-0.79); of the other 7 immature, 2 are genuinely pending (PBR, NU) and 5 can never score. Those 5 (DFTX, ERO,
+      SRRK, CIFR, ACN: the fire-day low reached the 0.25xADR stop but not the incumbent's, so day-0 minutes were never
+      fetched) are NOT neutral attrition: on daily bars all 5 lose on the 0.25 arm (DFTX and SRRK closed the fire day below
+      the 0.25 stop, certain day-0 stop-outs; all 5 stop on hold-only; trail -0.92R or worse) while the incumbent lost about
+      -0.3R on the three it settled. Censoring can only drop fires where the 0.25 stop is tighter than the incumbent's, so
+      excluding them flatters the 0.25 arm and its paired edge; the read quotes them at that bound beside the judged mean.
+      Predicate fixed. As written it read exactly 30 (the threshold): 16 first attempts (10 immature, 8 of them early
+      stop-outs) plus 14 re-entries; only 6 are matured first attempts with the incumbent, 0.25 and 0.75 trail arms settled.
+      The '111' read on 09-19 was 102 voided re-entry rows (still in the live table then, moved out 09-26, commit
+      6b782d86), 3 live re-entries and 6 live first attempts, none mature (cumulative through the 09-17 settle run = 111;
+      118 after the 09-19 11:26 ET run); 'met' and 'verified 111 settled' in can_fire were FALSE. The new predicate counts
+      first attempts with all three trail arms settled and 20 SPY sessions elapsed (reads 6 on 10-15; as written 30). With 5
+      of the 23 fires since 09-03 never scoreable, 12-01 reads about 26 and the predicate, not a new date, holds the review
+      until 30 (about 12-08 to 12-10 at 0.8 fires per session). Next read 2026-12-01, the same morning as the 616 sibling;
+      one read, no interim. Nothing flipped; the stop is the operator's call (THE LINE).
     status: pending
     kind: accrual
     added_on: 2026-09-02
@@ -14326,30 +14376,90 @@ reviews:
       reconstruction): does a same-day dollar-volume bar, checkable inside
       the 09:31-09:45 window, separate the woken-up tail from the crashing
       sludge well enough to be worth proposing?
-    # Gates on REJECTED-side rows that got a POST-OPEN same-day read — the
-    # population the re-check would act on. The information_schema idiom
-    # extends 606's to_regclass guard to the COLUMN (the table pre-exists in
-    # code from #606, so a partial deploy could have the table without these
-    # columns): reads 0, never errors, until the deploy adds them.
+    # REPLACED 2026-10-15 (#584 verifier, scripts/probes/_584_rerun_1015/p1_predicate.* + verify/z3_pred.*):
+    # the old predicate counted DISTINCT scan dates with any rejected-side at-open read. It read 31 vs
+    # threshold 20 and had been true since ~10-01, so it could never say when a level had >=15 settled names.
+    # This one counts what the action reads at the level still below the bar ($100M): distinct
+    # rejected-side names with an in-window (<=15 min) at-open dollar-volume read >= $100M, a 20-session
+    # close, all 20 forward bars, 20 prior bars (ADR) and no >4x close jump-up. Ran 2026-10-15: 5. The same
+    # text at $50M reads 19, equal to the pipeline's clean count. No column guard is needed: the columns
+    # exist in prod.
     predicate_sql: >-
-      SELECT CASE WHEN NOT EXISTS (
-                 SELECT 1 FROM information_schema.columns
-                 WHERE table_name = 'mi_universe_floor_shadow'
-                   AND column_name = 'today_dollar_volume_at_open')
-             THEN 0
-             ELSE (SELECT COUNT(DISTINCT scan_date) FROM mi_universe_floor_shadow
-                   WHERE (failed_price_floor OR failed_volume_floor)
-                     AND today_dollar_volume_at_open IS NOT NULL) END
-    threshold: 20
+      SELECT COUNT(DISTINCT ticker) FROM (
+        WITH cal AS (
+          SELECT trade_date, (row_number() OVER (ORDER BY trade_date))::int rn
+          FROM (SELECT DISTINCT trade_date FROM mi_daily_closes
+                WHERE trade_date >= (SELECT MIN(scan_date) FROM mi_universe_floor_shadow)) x
+        )
+        SELECT s.ticker
+        FROM mi_universe_floor_shadow s
+        JOIN cal c0  ON c0.trade_date = s.scan_date
+        JOIN cal c20 ON c20.rn = c0.rn + 20
+        JOIN LATERAL (
+          SELECT count(*) FILTER (WHERE w.trade_date > s.scan_date) n_fwd, max(w.q) maxq,
+                 max(w.close) FILTER (WHERE w.trade_date = c20.trade_date) c20
+          FROM (SELECT d.trade_date, d.close, d.close / NULLIF(lag(d.close) OVER (ORDER BY d.trade_date), 0) q
+                FROM mi_daily_closes d
+                WHERE d.ticker = s.ticker AND d.trade_date BETWEEN s.scan_date AND c20.trade_date) w) f ON true
+        WHERE (s.failed_price_floor OR s.failed_volume_floor)
+          AND s.minutes_since_open_at_open <= 15
+          AND s.today_dollar_volume_at_open >= 100000000
+          AND f.c20 IS NOT NULL AND f.n_fwd = 20 AND COALESCE(f.maxq, 0) <= 4
+          AND (SELECT count(*) FROM (SELECT 1 FROM mi_daily_closes d
+                 WHERE d.ticker = s.ticker AND d.trade_date < s.scan_date
+                 ORDER BY d.trade_date DESC LIMIT 20) z) = 20
+      ) t
+    threshold: 15
     # Same table as d1_universe_floor_dollar_volume_606, same reasoning: every
     # row carries both directions as independent facts (failed_price_floor /
     # failed_volume_floor), and the same-day columns are raw inputs, not a
     # variant selector — the rejected-side filter this question needs lives in
     # the predicate itself. No discriminating column exists to declare.
     discriminates_on: []
-    earliest_review_date: 2026-10-15   # [blocked: the $50M level's 15th settled name is the 09-15 cohort's
-      # 20th close, ingested tonight 10-13 and readable 10-14; one guard drop slides it to the 09-16 cohort
-      # (10-15). The data does not exist before then — not a re-date of work that could run.]
+    earliest_review_date: 2026-10-22   # [blocked: the $100M level's 15th clean settled name is the 09-23 cohort's
+      # 20th close (14 distinct $100M names have D0 <= 09-22, 17 have D0 <= 09-23; two can drop to the guard or
+      # missing bars), ingested 10-21 and readable 10-22. The data does not exist before then; not a re-date of work that could run.]
+    resolution_2026_10_15: >-
+      RAN 2026-10-15 ($0, read-only; scripts/probes/_584_rerun_1015 = the _584_rerun_1013 pipeline with cutoffs
+      moved to 10-14; Opus-verified from its own SQL in _584_rerun_1015/verify/z1..z6, where every load-bearing
+      number reproduces). Population clean: 7,762 shadow rows / 2,507 names / 30 scan dates 09-02..10-14
+      (10-15 live session excluded), acting floors $5 / 50k on every row, 0 null side flags, 0 backfill rows,
+      0 _last-fallback rows. Clean settled 20-session rejected-side names (in-window at-open read >= level):
+      $10M 63, $25M 39, $50M 19, $100M 5. VERDICT $50M: NO on the pre-registered measure. Reach >=8xADR over
+      D1..D20 (gap day excluded) is 3/19 = 15.8% vs the gap-matched admitted pool's 4/44 = 9.1% (one-sided
+      Fisher p=0.35) and vs #570's 8.2% (p=0.20). Crash cost priced from the same rows: 13/19 = 68% settle
+      <=-20% vs 32% for gap-matched admitted (p=0.008); median settled -31% vs -9%; only 2/19 settle >=+20%
+      (PDSB +114%, VEEA +20%). $100M: 5 names, below the bar, nothing concluded. MEASURE CORRECTION, stated
+      openly: the 10-13 headline AND its gap-matched p=0.66 both read the D0..D20 column (gap day included).
+      That column deviates from #570's measure. #570's 8.2% and 21.6% are _552_missed_why_cohort.sql tailx,
+      the max high over D1..D20, and sustain_rule_cost_2026-08-24 states that tailx is identical to the
+      silent-floors study. The 10-01 verifier flagged the deviation as correction #1. Both facts predate the
+      10-15 data; the column is corrected here. On 10-13's column, $50M reads 6/19 = 31.6% (p=0.035 vs
+      gap-matched, p=0.003 vs 8.2%). Full grid, one-sided p, in the order ex vs gap-matched / ex vs 8.2% /
+      incl vs gap-matched / incl vs 8.2%: $50M 0.35 / 0.20 / 0.035 / 0.003; $25M 0.74 / 0.65 / 0.21 / 0.042;
+      $10M 0.26 / 0.035 / 0.083 / 0.0008. Only ex vs gap-matched reads NO at every level. The column is
+      grounded in #570 plus the 10-01 verifier; the control is grounded in the 10-13 resolution ("the
+      gap-matched comparison is the control that answers the question"). The ex-column $10M result against
+      8.2% (15.1%, p=0.035) is directional only: #570's tailx divides by the D0 close, not the open, and it is
+      a 2025-08..2026-08 reconstruction from a different era, whereas the same-window gap-matched pool (9.1%)
+      is base- and era-consistent. Four levels were tested at nominal p; neither 0.035 survives a 4-level
+      correction (~0.14). That correction was not pre-registered, so it is stated, not applied. WHERE THE
+      INCLUDED-COLUMN-ONLY HITS COME FROM: DLXY, MEDS and RETO, all on 09-16, reached 8xADR only on the gap
+      day's own high. Their bars are real: they agree with the shadow's raw reads under the applied reverse
+      splits (DLXY 09-28, RETO 10-02). The 09:31 and ~09:55 shadow prices sit far below the highs, so the
+      spikes most likely came after the check. DLXY and MEDS closed D0 well above the open. These were real
+      D0 runs that then settled -59% / -29% / -99%. Admitted names show no gap-day-only hits (incl = ex in
+      every admitted cell): rejected names spike on D0 and give it back. Without 09-16 the incl column is
+      3/15 (p=0.24). Flagged, not acted on: (1) the >4x close-jump guard dropped BENF 09-16 (a real +439% day
+      on 09-23, no split in mi_splits, settled +5.6%); restoring it gives 4/20 ex (p=0.20 vs gap-matched) and
+      13/20 crash, so the verdict is unchanged. (2) The 10-13 NOs at $10M and $25M stand on the governing line
+      (p=0.26 / 0.74). (3) The old predicate counted scan dates (31 vs threshold 20, true since ~10-01), not
+      the settled names the action needs; it has been replaced. 5-session read on the larger sample ($50M,
+      86 rows / 73 names): ex 5.8% vs gap-matched 7.7% (p=0.79), crash 69% vs 20%. NEXT: one re-run on
+      2026-10-22 ($0; copy _584_rerun_1015, move cutoffs to 10-21). It gives $100M's first possible verdict
+      (its 15th clean name settles on the 10-21 close) and reads $50M at ~40 names, judged on the decision
+      rule recorded in action_when_ready today, before that data exists. Admission stays his (THE LINE);
+      nothing goes to him.
     resolution_2026_10_13: >-
       RAN 2026-10-13 ($0, read-only; scripts/probes/_584_rerun_1013, Opus-verified 40/40 checks from its own
       SQL in _584_rerun_1013/verify). Population clean: 7,340 shadow rows / 2,461 names / 28 scan dates
@@ -14378,22 +14488,29 @@ reviews:
       sample reaches 15 names with a 20-session close (~2026-10-13) — earliest_review_date moved
       there so the review stops firing on data that cannot answer it.
     can_fire:
-      predicate_runs: "Run 2026-10-01 via scripts/operator_asks.py: reads 21 against threshold 20
-        (distinct scan dates with a rejected-side at-open read)."
-      nonzero_possible: "db.py:16439 inserts into mi_universe_floor_shadow from the EP scan's
-        universe-floor path on every scan tick; 5,268 rows 09-02..09-30."
-      lane_live: "n/a — a shadow recorder; it reads the live D-1 floors' rejections, which are
-        acting (universe_floor stage in mi_ep_scan_log)."
-      threshold_vs_observed: "21 distinct dates as of 2026-10-01 (bar 20) — but the ACTION's own bar
-        (>=15 settled 20-session names per dollar-volume level) is not met until ~10-13 at $50M;
-        that is why earliest_review_date moved, not the threshold."
-      era_scoped: "Single era: acting floors $5 / 50k throughout 09-02..09-30 (no floor change in
-        the window); outcomes from mi_daily_closes (back-adjusted)."
-      population_actionable: "The predicate counts rejected-side rows (failed_price_floor OR
-        failed_volume_floor) with an at-open read — exactly the rows the action sweeps."
-      instrument_trusted: "today_dollar_volume_at_open is day.v falling back to min.av (accumulated,
-        incl. pre-market): at a 09:31 read it is largely pre-market volume x price (verifier: 41% of
-        first-minute reads sit outside the session's low-high). Ratios use mi_daily_closes only."
+      predicate_runs: "Run 2026-10-15 against prod (read-only; scripts/probes/_584_rerun_1015/verify/z3_pred.*):
+        the replacement predicate reads 5 at $100M against threshold 15. The identical text at $50M reads 19,
+        equal to the pipeline's clean count."
+      nonzero_possible: "db.py inserts into mi_universe_floor_shadow from the EP scan's universe-floor path on
+        every scan tick: 7,762 rows 09-02..10-14. 38 distinct rejected-side names cleared $100M in-window, and
+        5 have already settled clean."
+      lane_live: "n/a - a shadow recorder. It reads the live D-1 floors' rejections, which are acting
+        (universe_floor stage in mi_ep_scan_log); acting floors were $5 / 50k on every row through 10-14."
+      threshold_vs_observed: "5 clean settled $100M names on 2026-10-15 vs bar 15. 14 distinct $100M names have
+        D0 <= 09-22 and 17 have D0 <= 09-23, so the 15th settles with the 10-21 close (09-23 + 20 sessions),
+        readable 10-22, with room for two drops to missing bars or the >4x guard."
+      era_scoped: "Shadow side is single-era: acting floors $5 / 50k on all 7,762 rows 09-02..10-14. Outcomes
+        come from mi_daily_closes (back-adjusted; every split on the $50M and gap-matched tickers since 08-01 has
+        adjustment_applied). The comparator #570 8.2% is CROSS-ERA (a 2025-08..2026-08 reconstruction, based on
+        the D0 close), so it is directional only; the governing control is the same-window gap-matched admitted pool."
+      population_actionable: "Counts exactly the action's analysed sample at the pending level: distinct
+        rejected-side names with in-window at-open dollar volume >= $100M, a 20-session close, 20 forward bars,
+        20 prior bars and no >4x jump-up. Verified 2026-10-15: 19 at $50M and 5 at $100M, both equal to the
+        pipeline. It does not check the D0 bar or a positive D0 open, which the pipeline additionally requires."
+      instrument_trusted: "today_dollar_volume_at_open is day.v falling back to min.av (accumulated, including
+        pre-market). All 19 settled $50M names are 09:31 reads. The >4x close-jump guard, built for unapplied
+        reverse splits, also drops real spikes (BENF 09-16: +439% on 09-23, no split); this is stated beside
+        every read. Ratios use mi_daily_closes only."
     status: pending
     kind: accrual
     added_on: 2026-08-31
@@ -14417,6 +14534,14 @@ reviews:
       (THE LINE — admission is his sole authority; nothing flips here).
       Fewer than 15 settled names on the rejected side -> report the count
       and extend, conclude nothing.
+      DECISION RULE, recorded 2026-10-15 BEFORE the 10-22 data. This is pre-registration, not THE LINE:
+      meeting it only routes the result to the operator. Reach = max HIGH over D1..D20 vs the D0 open
+      >= 8 x ADR20 (#570's measure; gap day excluded). "Materially above" = one-sided Fisher p < 0.05 against
+      the gap-matched admitted pool (admitted-side rows with an in-window at-open read, gap_at_open >= 10,
+      same clean rules) at the level read, nominal, stating how many levels were tested. Shown alongside but
+      never governing: the D0..D20 column and #570's 8.2% (directional: its base is the D0 close and it comes
+      from a different era). Also report the leave-one-D0-date-out range of the governing p, and the crash
+      cost (share settling <= -20% and median settled vs the D0 open) from the same rows.
     cross_refs: ["docs/analysis/silent_universe_floors_570_2026-08-22.md",
                  "agents/market_intelligence/universe_floor_shadow.py",
                  "docs/setups/magna53_ep.md"]

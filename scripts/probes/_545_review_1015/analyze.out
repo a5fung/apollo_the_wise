@@ -1,0 +1,70 @@
+last_bar=2026-10-14  first-attempt rows pulled (all rungs, fire>=08-28)=83
+
+##### 1. POPULATION (before any outcome number)
+ep_low_reclaim first attempts, fire_date>=09-02: 24 rows, 24 campaigns, all live-EP=True, months={'2026-09': 16, '2026-10': 8}
+  excluded as not prospective (fire_date<09-02): 4
+  pattern_version=['v2']  settle_version_025=['settle_v3']  ep_adr20_n null=0
+  20 SPY sessions elapsed (mature): 7   immature: 17
+  fire days of the mature rows: {'09-02': 1, '09-09': 3, '09-10': 3}
+  incumbent trail arm: all fires {'settled': 20, 'open': 4}   | mature fires {'settled': 7}
+  0.25xADR  trail arm: all fires {'settled': 16, 'open': 7, 'unscoreable': 1}   | mature fires {'settled': 6, 'unscoreable': 1}
+  0.75xADR  trail arm: all fires {'settled': 16, 'open': 8}   | mature fires {'settled': 7}
+  mature but not all three arms settled (excluded from the judged set): 1  [['CRWD', '2026-09-02', 'unscoreable', 'settle_v3']]
+  rows that can NEVER score the 0.25xADR arm (no stop on file, or fire-day low reached the 025 stop but not the incumbent's and no day-0 minutes cached):
+     CRWD fired 09-02 sess=29 mature=True 025state=unscoreable  -> no 025 stop recorded (025 columns first stamped on the 09-03 run)
+     DFTX fired 09-17 sess=19 mature=False 025state=open  -> censored by rule
+     ERO fired 09-22 sess=16 mature=False 025state=open  -> censored by rule
+     SRRK fired 09-23 sess=15 mature=False 025state=open  -> censored by rule
+     CIFR fired 10-02 sess=8 mature=False 025state=open  -> censored by rule
+     ACN fired 10-12 sess=2 mature=False 025state=open  -> censored by rule
+  rows that can NEVER score the 0.75xADR arm: ['DFTX', 'SRRK', 'ACN']
+
+##### 2. PRE-REGISTERED READ: ep_low_reclaim first attempts, MATURE, three arms settled - n=6 vs bar 30
+ticker    ep_date  fire_date  sess_after_fire  stop_width_pct  stop_width_pct_025  stop_width_pct_075 outcome_trail  realized_r_trail outcome_trail_025  realized_r_trail_025  realized_r_025 outcome_trail_075  realized_r_trail_075  realized_r_075
+   AGX 2026-09-03 2026-09-09               25           0.239               1.355               4.065          stop            -1.000        trail_exit                 0.177          -1.000        trail_exit                 0.059          -1.000
+  IONQ 2026-09-08 2026-09-09               25           2.368               1.404               4.211          stop            -1.000              stop                -1.000          -1.000        trail_exit                -0.827          -1.000
+  PHVS 2026-09-08 2026-09-09               25           0.822               1.191               3.574          stop            -1.000              stop                -1.000          -1.000              stop                -1.000          -1.000
+  ALAB 2026-09-04 2026-09-10               24           2.813               1.561               4.683    trail_exit            -0.507        trail_exit                -0.914          -1.000        trail_exit                -0.305          -1.000
+  HOOD 2026-09-03 2026-09-10               24           1.650               1.342               4.026          stop            -1.000              stop                -1.000          -1.000              stop                -1.000          -1.000
+  QCOM 2026-09-08 2026-09-10               24           0.138               0.738               2.214          stop            -1.000              stop                -1.000          -1.000        trail_exit                 1.437           0.989
+arm                           incumbent        0.25xADR         0.75xADR
+n                                     6               6                6
+mean_trail_R                     -0.918          -0.790           -0.273
+median_trail_R                   -1.000          -1.000           -0.566
+sum_trail_R                      -5.507          -4.738           -1.636
+winners                               0               1                2
+stops                                 5               4                2
+trail_exits                           1               2                4
+time_exits                            0               0                0
+max_R                            -0.507           0.177            1.437
+min_R                            -1.000          -1.000           -1.000
+mean_pct_of_entry                -1.108          -0.977           -1.515
+best                    ALAB 2026-09-04  AGX 2026-09-03  QCOM 2026-09-08
+mean_trail_R_drop_best           -1.000          -0.983           -0.615
+sum_trail_R_drop_best            -5.000          -4.914           -3.073
+mean_none_R                      -1.000          -1.000           -0.669
+median_none_R                    -1.000          -1.000           -1.000
+none_stops                            6               6                5
+none_winners                          0               0                1
+reached_4R                            0               1                1
+  monthly (trail sum R): 2026-09: incumbent -5.51R | 0.25xADR -4.74R | 0.75xADR -1.64R (n=6)
+  paired 0.25xADR trail - incumbent: mean +0.128 median +0.000  0.25 better on 1, tied 4, worse on 1
+  paired 0.25xADR trail - 0.75xADR trail: mean -0.517 median -0.087  0.25 better on 1, tied 2, worse on 3
+  paired 0.25xADR none - incumbent: mean -0.082 median +0.000  0.25 better on 0, tied 5, worse on 1
+  paired 0.25xADR none - 0.75xADR trail: mean -0.727 median -0.434  0.25 better on 0, tied 2, worse on 4
+  independent fire days in the judged set: 2  ({'09-09': 3, '09-10': 3})
+  BACKFILL reference (545_retry_test_2026-09-02.md, 0.25xADR x 1 try, ep_low_reclaim, ex-May, common set n=46) - quoted, never pooled: trail -32.7R = -0.71R/fire; none -26.5R = -0.58R/fire
+  prospective 0.25xADR single attempt: trail -0.79R/fire; none -1.00R/fire (n=6)
+  drop-best 0.25xADR trail mean: -0.983 (n=5); incumbent drop-best -1.000; 0.75xADR drop-best -0.615
+  CRWD (025 not recorded) RECONSTRUCTED stop 204.015 vs cached day-0 post-fire low 200.6 -> would have been a day-0 stop: True; if added as -1.0R: 7-fire mean -0.820  (reconstructed, not recorded, NOT in the judged set)
+
+##### 3. NOT JUDGED - immature-settled contrast (ep_low_reclaim first attempts, 0.25xADR trail arm)
+  immature rows already settled on 0.25: n=10  stop share=80%  mean R=-0.787   (mature judged: stop share=67%, mean R=-0.790)
+  immature rows still open on 0.25: 7 of 17  -> a tight stop settles FASTEST, so an immature read is the stop-heavy tail
+
+##### 4. Accrual / next read
+  ep_low_reclaim first fires since 09-02: 24 over 30 sessions = 0.80/session (since 09-14: 0.77/session)
+  share that can ever score all three arms (excluding CRWD): 78%  (18 of 23)
+  [overall rate 0.80/session x scoring share 78%] 30th scoring fire ~session 48 after 09-02; matures 20 sessions later -> session 68 = 2026-12-08
+  [recent rate 0.77/session x scoring share 78%] 30th scoring fire ~session 50 after 09-02; matures 20 sessions later -> session 70 = 2026-12-10
+  expected judged count on 2026-12-01 (every fire through 10-30 mature): ~26  (bar 30)

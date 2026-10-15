@@ -260,8 +260,11 @@ def test_review_gates_on_rejected_side_rows_with_a_post_open_read():
     side, which accrues trivially every day."""
     r = _review()
     sql = r["predicate_sql"]
-    assert "failed_price_floor OR failed_volume_floor" in sql
-    assert "today_dollar_volume_at_open IS NOT NULL" in sql
+    assert "s.failed_price_floor OR s.failed_volume_floor" in sql
+    # 2026-10-15: the predicate counts settled names at the level still below the bar ($100M) with an
+    # in-window read — the old "IS NOT NULL" form counted scan dates and was true since ~10-01.
+    assert "s.today_dollar_volume_at_open >= " in sql
+    assert "s.minutes_since_open_at_open <= 15" in sql
     assert isinstance(r["threshold"], int) and r["threshold"] >= 15
     assert r["kind"] == "accrual"
     assert r["discriminates_on"] == []  # declared, with the both-sides rationale in-file

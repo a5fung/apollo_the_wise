@@ -1,0 +1,88 @@
+SET
+Pager usage is off.
+== N1. clock: now ET, last SPY bar
+           now_et           | last_spy_bar 
+----------------------------+--------------
+ 2026-10-15 09:47:25.295172 | 2026-10-14
+(1 row)
+
+== N2. predicate EXACTLY as written in the YAML today
+ predicate_as_written 
+----------------------
+                   30
+(1 row)
+
+== N3. what it counts: shape x mature(20 SPY sessions after fire) x 025 trail outcome
+ reentry_shape  | mature20 | outcome_trail_025 | n 
+----------------+----------+-------------------+---
+ first          | f        | stop              | 8
+ first          | f        | trail_exit        | 2
+ first          | t        | stop              | 4
+ first          | t        | trail_exit        | 2
+ new_high_break | f        | stop              | 2
+ new_high_break | t        | stop              | 2
+ same_pattern   | f        | stop              | 4
+ same_pattern   | f        | trail_exit        | 1
+ same_pattern   | t        | stop              | 3
+ same_pattern   | t        | trail_exit        | 2
+(10 rows)
+
+== N4. ep_low_reclaim live rows by shape and prospective flag
+ reentry_shape  | prospective | n  |  min_fire  |  max_fire  | campaigns 
+----------------+-------------+----+------------+------------+-----------
+ first          | f           |  4 | 2026-08-28 | 2026-08-31 |         4
+ first          | t           | 24 | 2026-09-02 | 2026-10-14 |        24
+ new_high_break | t           |  6 | 2026-09-11 | 2026-10-05 |         6
+ same_pattern   | f           |  1 | 2026-09-01 | 2026-09-01 |         1
+ same_pattern   | t           | 15 | 2026-09-03 | 2026-10-14 |        15
+(5 rows)
+
+== N5. ep_low_reclaim first attempts since 09-02 missing a live EP alert (expect 0)
+ no_live_ep 
+------------
+          0
+(1 row)
+
+== N6. proposed corrected predicate (exact text)
+ corrected_predicate 
+---------------------
+                   6
+(1 row)
+
+== N7. the 09-19 reading of 111: live + voided ep_low_reclaim rows with 025 trail settled, fire>=09-02, by settle-stamp cutoff
+  tbl   | reentry_shape  | before_0918_noon | before_0919_noon | before_0920 
+--------+----------------+------------------+------------------+-------------
+ live   | first          |                6 |                6 |           6
+ live   | new_high_break |                1 |                1 |           1
+ live   | same_pattern   |                2 |                3 |           3
+ live   |                |                9 |               10 |          10
+ voided | new_high_break |               60 |               63 |          63
+ voided | same_pattern   |               42 |               45 |          45
+ voided |                |              102 |              108 |         108
+        |                |              111 |              118 |         118
+(8 rows)
+
+== N8. the settle-run stamps between 09-16 and 09-20 (ET) on ep_low_reclaim 025 trail settlements (live+voided)
+       run_et        | count 
+---------------------+-------
+ 2026-09-16 17:57:00 |     5
+ 2026-09-17 17:57:00 |     4
+ 2026-09-19 11:26:00 |     7
+(3 rows)
+
+== N9. 025 stop first stamped: earliest created_at of any row carrying stop_price_025 vs the CRWD 09-02 row
+    first_025_stamp_et     
+---------------------------
+ 2026-09-03 18:05:27.46076
+(1 row)
+
+ first_025_stamp_voided_et  
+----------------------------
+ 2026-09-03 17:58:51.006596
+(1 row)
+
+  id  | ticker | fire_date  |         created_et         | stop_price_025 | outcome_025 | outcome_trail_025 |          s025_et           
+------+--------+------------+----------------------------+----------------+-------------+-------------------+----------------------------
+ 2670 | CRWD   | 2026-09-02 | 2026-09-02 17:57:00.149688 |                | unscoreable | unscoreable       | 2026-09-03 17:58:47.627837
+(1 row)
+

@@ -1,0 +1,35 @@
+BEGIN
+=== P0: the CURRENT predicate_sql, verbatim (threshold 20)
+ current_predicate_reads 
+-------------------------
+                      31
+(1 row)
+
+=== P1: what the current predicate counts at each narrowing toward the action population (rejected side)
+ dates_any_at_open_read | dates_excl_live_day | dates_in_window | dates_with_a_50m_clearer | names_50m_in_window_any_settle_state 
+------------------------+---------------------+-----------------+--------------------------+--------------------------------------
+                     31 |                  30 |              31 |                       30 |                                   87
+(1 row)
+
+=== P2: CORRECTED population per level: distinct rejected-side names, in-window (<=15 min) at-open dollar volume >= level, that SETTLED a 20-session close (simple), and CLEAN (+20 forward bars, 20 prior bars for ADR, no >4x close jump-up) = the action analysed sample
+    lvl    | names_with_20_session_close | names_clean_corrected_predicate 
+-----------+-----------------------------+---------------------------------
+  10000000 |                          65 |                              63
+  25000000 |                          40 |                              39
+  50000000 |                          20 |                              19
+ 100000000 |                           5 |                               5
+(4 rows)
+
+=== P3: PROPOSED predicate_sql at the 100M level (the pending one), threshold 15
+ count 
+-------
+     5
+(1 row)
+
+=== P4: same predicate shape at the 50M level (must equal the pipeline CLEAN count 19)
+ count 
+-------
+    19
+(1 row)
+
+ROLLBACK

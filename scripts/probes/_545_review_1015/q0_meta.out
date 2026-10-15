@@ -1,0 +1,102 @@
+SET
+Pager usage is off.
+== now
+           now_et           
+----------------------------
+ 2026-10-15 09:37:13.611921
+(1 row)
+
+== calendar: SPY last bar and sessions since 09-01 (maturity clock)
+ last_spy_bar | spy_sessions_since_0901 
+--------------+-------------------------
+ 2026-10-14   |                      31
+(1 row)
+
+                                                                                   spy_sessions_0901_on                                                                                    
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 09-01 09-02 09-03 09-04 09-08 09-09 09-10 09-11 09-14 09-15 09-16 09-17 09-18 09-21 09-22 09-23 09-24 09-25 09-28 09-29 09-30 10-01 10-02 10-05 10-06 10-07 10-08 10-09 10-12 10-13 10-14
+(1 row)
+
+== 025 columns present (live + voided)
+              table_name              | n_025_cols 
+--------------------------------------+------------
+ mi_delayed_entry_trigger             |         11
+ mi_delayed_entry_trigger_voided_0901 |         11
+(2 rows)
+
+== 025 stop recorded on which rows? (post-09-02 live rows: adr basis present vs stop_price_025 present)
+ prospective |  n  | has_adr | has_stop025 | has_outcome025 | has_trail025 
+-------------+-----+---------+-------------+----------------+--------------
+ f           |  16 |       0 |           0 |              0 |            0
+ t           | 139 |     139 |         138 |            114 |          113
+(2 rows)
+
+== 025 stop recorded on the 09-02 fire date itself (did the 025 columns ship before that
+psql:/tmp/c545_q0_meta.sql:13: error: unterminated quoted string
+  id  | ticker |       rung        | reentry_shape | fire_date  | ep_adr20_n | has_stop025 | has_stop075 |         created_et         
+------+--------+-------------------+---------------+------------+------------+-------------+-------------+----------------------------
+  345 | CHRN   | ep_low_reclaim    | first         | 2026-08-28 |            | f           | f           | 2026-08-31 18:01:05.121249
+  346 | CHRN   | ep_close_620_prox | first         | 2026-08-28 |            | f           | f           | 2026-08-31 18:01:05.122969
+ 1146 | OKTA   | ep_close_620_prox | first         | 2026-08-28 |            | f           | f           | 2026-08-31 18:10:44.142679
+ 1606 | VEEV   | ep_close_reclaim  | first         | 2026-08-28 |            | f           | f           | 2026-08-31 18:16:07.368445
+ 1607 | VEEV   | ep_close_620_prox | first         | 2026-08-28 |            | f           | f           | 2026-08-31 18:16:07.370115
+  431 | CRWD   | ep_close_reclaim  | first         | 2026-08-31 |            | f           | f           | 2026-08-31 18:02:09.564271
+  492 | DG     | ep_low_reclaim    | first         | 2026-08-31 |            | f           | f           | 2026-08-31 18:02:46.941314
+  493 | DG     | ep_close_620_prox | first         | 2026-08-31 |            | f           | f           | 2026-08-31 18:02:46.942973
+ 1147 | OKTA   | ep_close_reclaim  | first         | 2026-08-31 |            | f           | f           | 2026-08-31 18:10:44.408508
+ 1466 | SOLS   | ep_close_reclaim  | first         | 2026-08-31 |            | f           | f           | 2026-08-31 18:14:20.633326
+ 1467 | SOLS   | ep_low_reclaim    | first         | 2026-08-31 |            | f           | f           | 2026-08-31 18:14:20.634917
+ 1468 | SOLS   | ep_close_620_prox | first         | 2026-08-31 |            | f           | f           | 2026-08-31 18:14:20.636469
+ 1608 | VEEV   | ep_low_reclaim    | first         | 2026-08-31 |            | f           | f           | 2026-08-31 18:16:07.635517
+ 2352 | OKTA   | ep_close_620_prox | same_pattern  | 2026-08-31 |            | f           | f           | 2026-08-31 18:45:43.535553
+ 2419 | VEEV   | ep_close_620_prox | same_pattern  | 2026-08-31 |            | f           | f           | 2026-08-31 18:46:26.379091
+ 2647 | SOLS   | ep_low_reclaim    | same_pattern  | 2026-09-01 |            | f           | f           | 2026-09-01 18:06:02.943978
+ 2670 | CRWD   | ep_low_reclaim    | first         | 2026-09-02 |         20 | f           | t           | 2026-09-02 17:57:00.149688
+ 3010 | CRWD   | ep_low_reclaim    | same_pattern  | 2026-09-03 |         20 | t           | t           | 2026-09-03 18:05:27.46076
+(18 rows)
+
+== THE PREDICATE AS WRITTEN IN YAML (live table)
+ predicate_as_written 
+----------------------
+                   30
+(1 row)
+
+== predicate_as_written split by shape and by 20-session maturity (SPY clock)
+ reentry_shape  | counted_by_predicate | mature20 | immature | immature_stopouts 
+----------------+----------------------+----------+----------+-------------------
+ first          |                   16 |        6 |       10 |                 8
+ new_high_break |                    4 |        2 |        2 |                 2
+ same_pattern   |                   10 |        5 |        5 |                 4
+(3 rows)
+
+== voided table: the old pre-void cohort the 09-19 reading 111 could have counted
+ voided_table_exists 
+---------------------
+ t
+(1 row)
+
+ reentry_shape  |  n  | settled_025 | guarded_settled_025 
+----------------+-----+-------------+---------------------
+ first          | 576 |           0 |                   0
+ new_high_break | 261 |          90 |                  89
+ same_pattern   | 430 |          51 |                  51
+(3 rows)
+
+== candidate corrected predicate A (first attempts, incumbent + 025 + 075 trail arms settled, 20 SPY sessions elapsed)
+ corrected_a_3arms 
+-------------------
+                 6
+(1 row)
+
+== candidate B (first attempts, incumbent + 025 only, 20 sessions) - how much the 075 requirement costs
+ corrected_b_025_and_incumbent_only 
+------------------------------------
+                                  6
+(1 row)
+
+== do trail and none arms of 025 settle together? (any row with one set and the other null)
+ trail_none_mismatch_025 | trail_none_mismatch_075 | unsc_but_r_025 
+-------------------------+-------------------------+----------------
+                       0 |                       0 |              0
+(1 row)
+

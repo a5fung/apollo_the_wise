@@ -1,0 +1,11 @@
+   ticker   fire_date  fire_minute_et  entry_price  stop_price_025  day_low  day_close  close_below_025 outcome_trail  realized_r_trail
+11   DFTX  2026-09-17             630      39.5300       39.072085   38.020      38.68             True    trail_exit           -0.3004
+13    ERO  2026-09-22             660      36.7100       36.264869   35.455      37.29            False           NaN               NaN
+16   SRRK  2026-09-23             610      51.6300       51.096838   49.250      49.85             True    trail_exit           -0.3093
+20   CIFR  2026-10-02             570      16.0300       15.681379   15.350      15.71            False    trail_exit           -0.2783
+24    ACN  2026-10-12             570     215.4625      213.674254  210.000     214.87            False           NaN               NaN
+
+075 censored (sibling 616, FYI only): daily-bar bound
+  DFTX 2026-09-17 close_below_075=False no-touch walk none=stop -1.0 trail=trail_exit -0.619
+  SRRK 2026-09-23 close_below_075=True no-touch walk none=stop -1.0 trail=trail_exit -1.113
+  ACN 2026-10-12 close_below_075=False no-touch walk none=OPEN None trail=OPEN None

@@ -1,0 +1,4 @@
+$10M n=73: ex x gap-matched 0.262 | ex x 8.2% 0.0352 | incl x gap-matched 0.083 | incl x 8.2% 0.0008
+$25M n=40: ex x gap-matched 0.742 | ex x 8.2% 0.6476 | incl x gap-matched 0.207 | incl x 8.2% 0.0422
+$50M n=19: ex x gap-matched 0.353 | ex x 8.2% 0.2007 | incl x gap-matched 0.035 | incl x 8.2% 0.0032
+10-13 reproduction: REJ g10 $10M incl 5/49 vs ADM g10 4/38 = 0.660 (the recorded p=0.66 => 10-13 control read the INCL column); ex 4/49 vs 4/38 = 0.775

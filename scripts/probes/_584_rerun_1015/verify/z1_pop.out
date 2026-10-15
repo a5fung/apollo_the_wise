@@ -1,0 +1,61 @@
+BEGIN
+=== Z1a: base (scan_date <= 10-14), side split, null flags
+ rows_ | names | dates |    min     |    max     | null_flags | rej_rows | rej_names | adm_rows | adm_names 
+-------+-------+-------+------------+------------+------------+----------+-----------+----------+-----------
+  7762 |  2507 |    30 | 2026-09-02 | 2026-10-14 |          0 |     5845 |      1546 |     1917 |      1085
+(1 row)
+
+=== Z1b: rows on/after 10-15 (live session, excluded)
+ scan_date  | count 
+------------+-------
+ 2026-10-15 |   214
+(1 row)
+
+=== Z1c: acting floors
+ acting_price_floor | acting_volume_floor |    min     |    max     | count 
+--------------------+---------------------+------------+------------+-------
+                  5 |               50000 | 2026-09-02 | 2026-10-14 |  7762
+(1 row)
+
+=== Z1d: backfill/test signature (created_at ET date vs scan_date)
+ created_ne_scan | created_null | first_ne_scan 
+-----------------+--------------+---------------
+               0 |            0 |             0
+(1 row)
+
+=== Z1e: in-window (at_open read, minutes <= 15) by side; admitted gap>=10
+ rej | rows_ | names | g10_rows | g10_names | min1_rows 
+-----+-------+-------+----------+-----------+-----------
+ f   |   859 |   626 |      164 |       139 |       689
+ t   |  2656 |  1180 |      535 |       383 |      2047
+(2 rows)
+
+=== Z1f: rejected rows with NO at_open read; fallback-eligible (_last <= 15 min)
+ no_atopen | fallback_eligible 
+-----------+-------------------
+      1768 |                 0
+(1 row)
+
+=== Z1g: duplicate daily bars on (ticker, trade_date) since 07-01
+ count 
+-------
+     0
+(1 row)
+
+=== Z1h: last close date ingested + thin dates since 07-01
+    max     
+------------
+ 2026-10-14
+(1 row)
+
+ trade_date | count 
+------------+-------
+(0 rows)
+
+=== Z1i: the CURRENT predicate_sql verbatim
+ current_predicate 
+-------------------
+                31
+(1 row)
+
+ROLLBACK
