@@ -27,6 +27,11 @@ SELECT COALESCE(json_agg(t), '[]'::json) FROM (
            CASE WHEN status = 'filled' THEN 'open' ELSE status END AS status,
            entry_price::float8 AS entry_price,
            stop_price::float8 AS stop_price,
+           -- Original entry risk (2026-10-15): the dashboard's R used the CURRENT stop, which trails above entry on
+           -- every winner, so all 10 winners were dropped as 'corrupt stop' and avg R read -1.00. These two feed
+           -- the same original-risk frame as sell_discipline.trade_risk_per_share (entry - hard_stop, else entry - orb_low).
+           hard_stop::float8 AS hard_stop,
+           orb_low::float8 AS orb_low,
            entry_shares::float8 AS entry_shares,
            COALESCE(total_pnl, 0)::float8 AS total_pnl,
            regime,
