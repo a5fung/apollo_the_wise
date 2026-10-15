@@ -1421,7 +1421,21 @@ stagger cards, one at a time.
 
 **Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
-## 2026-10-13 (Tue) CLOSE — 🔴 RESUME HERE. Supersedes the 10-12 close below.
+## 2026-10-14 (Wed) CLOSE — 🔴 RESUME HERE. Supersedes the 10-13 close below.
+
+**Board 28 → 28.** No closes (none was due by its own DoD), no new tasks. Server = main as of 21:16 ET (both + execution, exit codes 0).
+
+**Shipped + deployed Wed:** 12:00 ET — #687 dead-sale P&L-leg booking (`book_dead_full_exit_leg` in both containers) + /trades 💰 badge. 21:16 ET — #313 replay CI gate [5p/7] (pulled from Thu on his word; first run matched EXPECT: selection_replay MISSING WARN, two '(not built)', OK; /app/ci_status mounted + writable) + the theme catch-all alert needs 3+ new themes (his paste; all four were real themes outside the 19 ecosystems). Dashboard (portfolio-app2, his report): Contrib column = points of the portfolio's return (was share of a near-zero total gain, read +9928%) — pushed 1c6c827, page not opened (SSO); he glances.
+
+**Reviews Wed:** #616 ADR-stop variants — too early (7 of 30 matured; wider stops lose less but still lose; QCOM carries the upside), predicate tightened, next 12-01 · #654 re-checked (no breakout since 10-01) → 10-28 · ranking-rule read unchanged (thin).
+
+**Evening (Opus-verified):** #693 night 3 inconclusive (removals 15, the 'neither' band) → Fri re-read; his addendum (removals <15, 0 truncations) is the bar, my 20%/40 thinking figures are a proxy · #697 night 3 pass (10-15 is the discriminating GRAL hold read) · #655 fold DONE-WHEN met; Sat churn re-measure PRE-REGISTERED on the line, one table for him · #624 heartbeat 3 survived the deploy.
+
+**Thu 10-15:** BUILD #312 demotion ladder (ships dark; money path → Fable build + Opus review first) · #584 $50M read · #697 GRAL hold read · #624 heartbeat 4 (first lane grading on the new image) · ranking read (WOLF matures). One line to him: #313 close fork (one replay job shipped; the other two need his cost/method calls).
+**Fri 10-16:** #693 full-pass re-read · #624 + #701 week reads · #598 close · #686 registration · #697 Friday early look.
+**Weekend 10-17/18:** runner-rule re-cut (depth control) · #655 churn re-measure + table · #697 item 4 · #686 frozen read · #700 first live Sunday review 10-18 (also writes the first ci_status/selection_replay.json).
+
+## 2026-10-13 (Tue) CLOSE — superseded by the 10-14 close above.
 
 **Board 30 → 28.** Closed #646 + #649 on their own 20-day arm (63/63 evening checks examined every live position, 0 gaps; repair + page paths UNPROVEN → tripwire `evening_stop_gap_first_fire_646_649`). No new tasks. Server = 3dc24793 (Tue noon: both + execution; era-E date + strip-rate audit-only, both confirmed in the containers; drift 0). main = later: the #687 P&L-leg booking + the /trades 💰 badge — **deploy Wed 12:00 ET.**
 
