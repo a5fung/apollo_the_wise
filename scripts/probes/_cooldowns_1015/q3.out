@@ -1,0 +1,43 @@
+  id   |             et             |              event_type              |                                                                       summary                                                                       
+-------+----------------------------+--------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ 57243 | 2026-10-15 17:00:00.005629 | coverage_checked_post_close          | coverage check [post_close]: examined 0, covered 0, gaps 0, unreadable 0, deferred 0
+ 57296 | 2026-10-15 17:03:35.160581 | theme_rehome_judged                  | BIRK stays — the judgement did not place it (offered on tape 0.54 to 'U.S. Apparel & Fashion Recovery', own_unjudgeable:thin_basket)
+ 57305 | 2026-10-15 17:03:35.171242 | theme_rehome_judged                  | OMCL stays — the judgement did not place it (offered on tape 0.50 to 'Footwear & Branded Apparel Consumer Turnaround', own_unjudgeable:thin_basket)
+ 57307 | 2026-10-15 17:03:35.174124 | theme_retired_small_fading           | AI Server Power & Signal-Integrity Analog ICs: retired — weak Fading at 2 members (< 3), #655
+ 57308 | 2026-10-15 17:03:35.175316 | theme_retired_small_fading           | Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery: retired — weak Fading at 2 members (< 3), #655
+ 57309 | 2026-10-15 17:03:35.176451 | theme_retired_small_fading           | Electronics Manufacturing Services (EMS) Providers: retired — weak Fading at 2 members (< 3), #655
+ 57310 | 2026-10-15 17:03:35.177738 | theme_retired_small_fading           | Packaged Food Processors: Frozen Potato & Canned Vegetables: retired — weak Fading at 2 members (< 3), #655
+ 57354 | 2026-10-15 17:06:49.538418 | theme_engine_funnel                  | births: uncovered=7 v/t/e=14/2/33 discovery=ON → LLM=5 → survived=3 | retired=7
+ 57358 | 2026-10-15 17:06:49.542891 | theme_retired                        | Retired: U.S. Super-Regional & Midcap Commercial Banks
+ 57359 | 2026-10-15 17:06:49.543853 | theme_retired                        | Retired: Private Mortgage Insurance Underwriters
+ 57360 | 2026-10-15 17:06:49.544762 | theme_retired                        | Retired: Business Development Companies & Private Credit Lenders
+ 57361 | 2026-10-15 17:06:49.545733 | theme_retired                        | Retired: AI Server Power & Signal-Integrity Analog ICs
+ 57362 | 2026-10-15 17:06:49.547321 | theme_retired                        | Retired: Analog, Mixed-Signal & Power Semiconductor Cyclical Recovery
+ 57363 | 2026-10-15 17:06:49.548386 | theme_retired                        | Retired: Electronics Manufacturing Services (EMS) Providers
+ 57364 | 2026-10-15 17:06:49.549312 | theme_retired                        | Retired: Packaged Food Processors: Frozen Potato & Canned Vegetables
+ 57381 | 2026-10-15 17:06:49.593484 | theme_score_ties                     | 18 score-tie group(s) after stage 'after_merge_1'
+ 57382 | 2026-10-15 17:06:49.594662 | theme_empty_tickers                  | 1 theme(s) with empty ticker list after 'after_merge_1'
+ 57390 | 2026-10-15 17:07:09.222226 | theme_score_ties                     | 18 score-tie group(s) after stage 'after_merge_2'
+ 57393 | 2026-10-15 17:07:17.676838 | validation_mass_removal_name_suspect | 'Commercial, Office & Home Furniture Retailers and Manufacturers': validation flagged 17/22 members — name likely narrower than the cluster (#214)
+ 57428 | 2026-10-15 17:07:17.748479 | theme_thesis_merged                  | Arm B: 'U.S. Apparel & Fashion Recovery' merged into 'Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings' (5 members)
+ 57436 | 2026-10-15 17:07:35.194624 | theme_auto_retired                   | Auto-retired 12 theme(s) dropped during merge passes (5 with successor pointer)
+ 57446 | 2026-10-15 17:07:56.666077 | theme_ecosystem_assigned             | 'Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings' → E-CONS (haiku)
+ 57471 | 2026-10-15 17:09:33.75319  | theme_ecosystem_assigned             | 'Off-Price & Branded Apparel/Footwear Retail Rotation' → E-CONS (haiku)
+ 57473 | 2026-10-15 17:09:36.502626 | theme_ecosystem_assigned             | 'Specialty Apparel & Mall-Based Specialty Retail Strength' → E-CONS (haiku)
+ 57495 | 2026-10-15 17:31:01.098642 | theme_quality_clean                  | clean: 0 retirement flag(s), 0 prune flag(s)
+(25 rows)
+
+                                 name                                  | n  |   stage    |     source      |                              tickers                              
+-----------------------------------------------------------------------+----+------------+-----------------+-------------------------------------------------------------------
+ Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings   |  5 | Mainstream | live            | W,ARHS,MLKN,HNI,WSM
+ Footwear & Branded Apparel Consumer Turnaround                        |  3 | Nascent    | live            | VFC,ONON,BIRK
+ Vertical Software for Field Services, Restaurants & Retail Operations |  3 | Fading     | live            | TOST,PAR,TTAN
+ Wealth Management & Retail Brokerage Platforms                        | 15 | Mainstream | live            | BEN,WT,BLK,VCTR,AAMI,IVZ,PAX,HOOD,AMG,SEIC,LPLA,SCHW,XP,FUTU,IBKR
+ Home Improvement Retail & Residential Repair/Remodel Products         |  4 | Nascent    | live            | HD,LOW,MAS,FBIN
+ Commercial, Office & Home Furniture Retailers and Manufacturers       |    | Retired    | live            | 
+ U.S. Apparel & Fashion Recovery                                       |    | Retired    | live            | 
+ Off-Price & Branded Apparel/Footwear Retail Rotation                  |  3 | Nascent    | shadow_promoted | TJX,RL,SHOE
+ Off-Price & Specialty Retail Consumer Rotation                        |  3 | Nascent    | shadow_promoted | TJX,BBWI,DORM
+ Specialty Apparel & Mall-Based Specialty Retail Strength              |  4 | Nascent    | shadow_promoted | ANF,BKE,BBWI,FIGS
+(10 rows)
+

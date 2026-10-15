@@ -1,0 +1,53 @@
+  id   |             et             |              event_type              |                                                                             summary                                                                              
+-------+----------------------------+--------------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 55813 | 2026-10-12 17:31:15.351386 | theme_correctness_check              | G1 570/609 (93.6% bar 90.0%) · G2 18/609 (3.0% bar<= 5.0%) · G3 100/109 (91.7% bar 90.0%) · G4 10/109 small (9.2% bar<= 10.0%; settled 5/104 4.8%) · latency med
+ 56328 | 2026-10-13 17:31:11.453993 | theme_correctness_check              | G1 572/617 (92.7% bar 90.0%) · G2 23/617 (3.7% bar<= 5.0%) · G3 99/107 (92.5% bar 90.0%) · G4 10/107 small (9.3% bar<= 10.0%; settled 5/102 4.9%) · latency medi
+ 56889 | 2026-10-14 17:31:18.850776 | theme_correctness_check              | G1 590/626 (94.2% bar 90.0%) · G2 22/626 (3.5% bar<= 5.0%) · G3 101/109 (92.7% bar 90.0%) · G4 8/110 small (7.3% bar<= 10.0%; settled 5/107 4.7%) · latency medi
+ 57392 | 2026-10-15 17:07:09.243678 | theme_merge_pairs_proposed           | Arm B Stage A: 8 candidate pair(s) for adjudication
+ 57393 | 2026-10-15 17:07:17.676838 | validation_mass_removal_name_suspect | 'Commercial, Office & Home Furniture Retailers and Manufacturers': validation flagged 17/22 members — name likely narrower than the cluster (#214)
+ 57394 | 2026-10-15 17:07:17.678695 | ticker_revalidated_out               | SHOO removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57395 | 2026-10-15 17:07:17.681821 | validation_cooldown_triggered        | SHOO → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57396 | 2026-10-15 17:07:17.683517 | ticker_revalidated_out               | RL removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57397 | 2026-10-15 17:07:17.686456 | validation_cooldown_triggered        | RL → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57398 | 2026-10-15 17:07:17.688416 | ticker_revalidated_out               | ANF removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57399 | 2026-10-15 17:07:17.692709 | validation_cooldown_triggered        | ANF → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57400 | 2026-10-15 17:07:17.694471 | ticker_revalidated_out               | COLM removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57401 | 2026-10-15 17:07:17.697353 | validation_cooldown_triggered        | COLM → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57402 | 2026-10-15 17:07:17.699007 | ticker_revalidated_out               | BKE removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57403 | 2026-10-15 17:07:17.701913 | validation_cooldown_triggered        | BKE → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57404 | 2026-10-15 17:07:17.703761 | ticker_revalidated_out               | WWW removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57405 | 2026-10-15 17:07:17.707123 | validation_cooldown_triggered        | WWW → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57406 | 2026-10-15 17:07:17.709231 | ticker_revalidated_out               | VSXY removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57407 | 2026-10-15 17:07:17.712226 | validation_cooldown_triggered        | VSXY → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57408 | 2026-10-15 17:07:17.71406  | ticker_revalidated_out               | KSS removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57409 | 2026-10-15 17:07:17.716991 | validation_cooldown_triggered        | KSS → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57410 | 2026-10-15 17:07:17.718595 | ticker_revalidated_out               | URBN removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57411 | 2026-10-15 17:07:17.722186 | validation_cooldown_triggered        | URBN → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57412 | 2026-10-15 17:07:17.723775 | ticker_revalidated_out               | GAP removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57413 | 2026-10-15 17:07:17.725815 | validation_cooldown_triggered        | GAP → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57414 | 2026-10-15 17:07:17.726897 | ticker_revalidated_out               | M removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57415 | 2026-10-15 17:07:17.728802 | validation_cooldown_triggered        | M → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57416 | 2026-10-15 17:07:17.729943 | ticker_revalidated_out               | DDS removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57417 | 2026-10-15 17:07:17.731823 | validation_cooldown_triggered        | DDS → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57418 | 2026-10-15 17:07:17.7329   | ticker_revalidated_out               | FIGS removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57419 | 2026-10-15 17:07:17.734764 | validation_cooldown_triggered        | FIGS → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57420 | 2026-10-15 17:07:17.735842 | ticker_revalidated_out               | BBWI removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57421 | 2026-10-15 17:07:17.737768 | validation_cooldown_triggered        | BBWI → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57422 | 2026-10-15 17:07:17.738889 | ticker_revalidated_out               | ROST removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57423 | 2026-10-15 17:07:17.740812 | validation_cooldown_triggered        | ROST → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57424 | 2026-10-15 17:07:17.741899 | ticker_revalidated_out               | PVH removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57425 | 2026-10-15 17:07:17.743853 | validation_cooldown_triggered        | PVH → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+ 57426 | 2026-10-15 17:07:17.745005 | ticker_revalidated_out               | AEO removed from 'Commercial, Office & Home Furniture Retailers and Manufacturers' by validation
+ 57427 | 2026-10-15 17:07:17.747166 | validation_cooldown_triggered        | AEO → 'Commercial, Office & Home Furniture Retailers and Manufacturers' cooldown 14d (removal #1)
+(39 rows)
+
+ theme_date | n | source |   stage    |       tickers       
+------------+---+--------+------------+---------------------
+ 2026-10-15 |   | live   | Retired    | 
+ 2026-10-14 | 5 | live   | Mainstream | HNI,WSM,MLKN,ARHS,W
+ 2026-10-13 | 5 | live   | Mainstream | WSM,ARHS,HNI,MLKN,W
+ 2026-10-12 | 5 | live   | Mainstream | W,MLKN,ARHS,HNI,WSM
+ 2026-10-09 | 5 | live   | Mainstream | WSM,HNI,MLKN,W,ARHS
+ 2026-10-08 | 5 | live   | Mainstream | HNI,ARHS,MLKN,W,WSM
+(6 rows)
+

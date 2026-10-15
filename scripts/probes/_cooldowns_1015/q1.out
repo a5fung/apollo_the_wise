@@ -1,0 +1,60 @@
+              cause              | count 
+---------------------------------+-------
+ validator: description mismatch |    22
+ rehome                          |     6
+(2 rows)
+
+                            theme_name                            | ticker |             et             |                                                     reason                                                     
+------------------------------------------------------------------+--------+----------------------------+----------------------------------------------------------------------------------------------------------------
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | AEO    | 2026-10-15 17:07:17.746043 | Description 'Consumer Cyclical / Apparel Retail — Apparel retail stores & e-commerce' does not match theme
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | ANF    | 2026-10-15 17:07:17.690061 | Description 'Apparel retail, casual fashion' does not match theme
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | BBWI   | 2026-10-15 17:07:17.736681 | Description 'Bath & body, home fragrance retail' does not match theme
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | BKE    | 2026-10-15 17:07:17.700348 | Description 'Consumer Cyclical / Apparel Retail — Retail apparel, footwear, accessories stores' does not match
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | COLM   | 2026-10-15 17:07:17.69582  | Description 'Consumer Cyclical / Apparel Manufacturing — Outdoor apparel & footwear (Columbia, Sorel)' does no
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | DDS    | 2026-10-15 17:07:17.730865 | Description 'Department store retail, apparel & accessories' does not match theme
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | FIGS   | 2026-10-15 17:07:17.733806 | Description 'Direct-to-consumer healthcare apparel, scrubs & lifestyle' does not match theme
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | GAP    | 2026-10-15 17:07:17.724817 | Description 'Apparel retail, clothing & accessories' does not match theme
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | KSS    | 2026-10-15 17:07:17.715468 | Description 'Department store, apparel and home goods' does not match theme
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | M      | 2026-10-15 17:07:17.727846 | Description 'Department store retail & apparel' does not match theme
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | PVH    | 2026-10-15 17:07:17.742876 | Description 'Apparel manufacturing, Tommy Hilfiger, Calvin Klein' does not match theme
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | RL     | 2026-10-15 17:07:17.685056 | Description 'Consumer Cyclical / Apparel Manufacturing — Apparel, footwear & lifestyle brand retail' does not 
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | ROST   | 2026-10-15 17:07:17.739791 | Description 'Consumer Cyclical / Apparel Retail — Off-price apparel & home fashion retail stores' does not mat
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | SHOO   | 2026-10-15 17:07:17.68013  | Description 'Consumer Cyclical / Footwear & Accessories — Fashion footwear & accessories design, wholesale & r
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | URBN   | 2026-10-15 17:07:17.719943 | Description 'Urban Outfitters, Anthropologie, Free People apparel retail' does not match theme
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | VSXY   | 2026-10-15 17:07:17.71074  | Description 'Specialty retail apparel, women's intimates and beauty' does not match theme
+ Commercial, Office & Home Furniture Retailers and Manufacturers  | WWW    | 2026-10-15 17:07:17.705137 | Description 'Consumer Cyclical / Footwear & Accessories — Footwear, apparel, accessories design & distribution
+ Consumer Franchise Operators: Fitness & Quick-Service            | YUM    | 2026-10-15 17:03:35.157148 | rehome: moved to 'Restaurant Chain Recovery' on the tape (0.54 vs own unreadable)
+ Fintech Payments, Prepaid & Consumer Digital Banking Apps        | DAVE   | 2026-10-15 17:03:35.16732  | rehome: moved to 'Fintech & Digital Finance Sector Re-rating on Fed Easing' on the tape (0.51 vs own -0.00)
+ Insurance Distribution & Specialty Insurance Services            | GSHD   | 2026-10-15 17:03:35.144586 | rehome: moved to 'Insurance Brokerage & Employee Benefits Advisory' on the tape (0.79 vs own unreadable)
+ Insurance Distribution & Specialty Insurance Services            | LIFE   | 2026-10-15 17:03:31.515736 | Description 'Insurance third-party administrator, tech platform' does not match theme
+ Insurance Distribution & Specialty Insurance Services            | RYAN   | 2026-10-15 17:03:35.151012 | rehome: moved to 'Insurance Brokerage & Employee Benefits Advisory' on the tape (0.71 vs own unreadable)
+ Mini-Mill Steel Producers & Recyclers                            | STLD   | 2026-10-15 17:03:35.139613 | rehome: moved to 'Steel Producers & Flat-Rolled Steel Processors' on the tape (0.84 vs own unreadable)
+ Payroll, Tax & Small-Business Financial Software                 | PAR    | 2026-10-15 17:03:32.738663 | Description 'Cloud POS & omnichannel software, restaurant/retail' does not match theme
+ Payroll, Tax & Small-Business Financial Software                 | PAYX   | 2026-10-15 17:03:35.147883 | rehome: moved to 'Enterprise HR & Workforce Management SaaS' on the tape (0.74 vs own unreadable)
+ Regulated Electric Utilities Defensive Rotation                  | SR     | 2026-10-15 17:05:56.363813 | Description 'Utilities / Utilities - Regulated Gas — Natural gas distribution & utilities' does not match them
+ Residential Building Materials & Construction Products Suppliers | PPG    | 2026-10-15 17:06:48.61507  | Description 'Basic Materials / Specialty Chemicals — Paints, coatings, specialty materials manufacturing' does
+ Trucking & Freight Carriers (Capacity-Driven Pricing Recovery)   | EXPD   | 2026-10-15 17:06:01.15006  | Description 'Industrials / Integrated Freight & Logistics — International freight forwarding & logistics servi
+(28 rows)
+
+     d      | count 
+------------+-------
+ 2026-09-25 |     1
+ 2026-09-28 |    13
+ 2026-09-30 |    10
+ 2026-10-02 |    13
+ 2026-10-05 |    28
+ 2026-10-06 |     9
+ 2026-10-07 |    18
+ 2026-10-08 |     4
+ 2026-10-09 |    20
+ 2026-10-12 |    17
+ 2026-10-13 |     1
+ 2026-10-14 |    18
+ 2026-10-15 |    28
+(13 rows)
+
+      caller      | calls | mean_out 
+------------------+-------+----------
+ theme_validation |    30 |    115.0
+(1 row)
+
