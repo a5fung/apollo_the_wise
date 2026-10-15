@@ -1872,6 +1872,21 @@ averages were still tangled (144.5 vs 144.9) after the pullback, so the stack te
 So MRNA was blocked by three different gates on three different days (depth, then a 5-cent SMA20 kill, then the MA-stack
 order). The delayed-entry lane never fired at all — 9/17 is ~20 sessions after the EP.
 
+**His emphasis, the same day (verbatim):**
+> *"i want to emphasize that this is a really good setup per my estimation, also give it was a strong EP, pulled back
+> orderly and tightened, lower vol then broke out again"*
+
+**So this is a TOP-RATED labelled example — his own five-part definition of a good post-EP consolidation, each checked
+against the bars:**
+
+| his trait | MRNA, from `mi_daily_closes` / his chart |
+|---|---|
+| 1. a **strong EP** before it | 08-19 gap on ~199M shares (his "textbook EP", 08-19 note) |
+| 2. an **orderly pullback** | ~$175 spike high down to ~$128-135 over 08-20 → 09-10, inside his drawn rails — no collapse through the base |
+| 3. it **tightened** | daily range fell to 5.2% (09-15) and 4.6% (09-16) of close, about half its ~8% ADR |
+| 4. **lower volume** | 8.2M (09-15) and 8.8M (09-16) vs 15.3M on 09-11 and ~199M on the EP day |
+| 5. **broke out again** | 09-17 opened $152.50 above the 09-11 high ($149.73) on 19.2M (2.2x the prior day), closed $158.07; ~$240 by 10-15 |
+
 ⚠ **Recorded as a labelled example, not a proposal.** All three are detection/admission criteria (THE LINE), and HTF /
 consolidation work stays behind EP profitability ([[priority-ep-profitability-before-new-setups]],
 [[htf-is-detection-not-trading]]). Use: the #697 corpus (MRNA is already `htf` there) gains the two entry days and the
