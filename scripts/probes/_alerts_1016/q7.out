@@ -1,0 +1,7 @@
+     d      | ticker |                            theme                             | stripped | revalidated 
+------------+--------+--------------------------------------------------------------+----------+-------------
+ 2026-09-17 | HAYW   | Homebuilders & Residential Construction Supply Chain         | t        | f
+ 2026-09-17 | OKLO   | Small Modular Reactor & Advanced Nuclear Fission Technology  | t        | f
+ 2026-10-16 | IBP    | Residential Building Materials & Construction Products Suppl | t        | f
+(3 rows)
+

@@ -1,0 +1,17 @@
+          created_at           |                                  left                                  
+-------------------------------+------------------------------------------------------------------------
+ 2026-10-16 21:05:13.976864+00 | theme=Residential Building Materials & Construction Products Suppliers+
+                               | pre_size=3 post_size=2                                                +
+                               | sector_outlier=['IBP']
+(1 row)
+
+ strips_30d 
+------------
+         76
+(1 row)
+
+ guard_flags_30d 
+-----------------
+               3
+(1 row)
+

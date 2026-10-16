@@ -1,0 +1,45 @@
+ last_entry | since_0901 | confirm_total 
+------------+------------+---------------
+ 2026-10-01 |         26 |           164
+(1 row)
+
+     d      | board_rows | coiled 
+------------+------------+--------
+ 2026-09-22 |         18 |      1
+ 2026-09-23 |         14 |      0
+ 2026-09-24 |         19 |      2
+ 2026-09-25 |         18 |      0
+ 2026-09-28 |         12 |      0
+ 2026-09-29 |          7 |      0
+ 2026-09-30 |         23 |      1
+ 2026-10-01 |         22 |      0
+ 2026-10-02 |         23 |      0
+ 2026-10-05 |         16 |      0
+ 2026-10-06 |         14 |      0
+ 2026-10-07 |         15 |      0
+ 2026-10-08 |          8 |      2
+ 2026-10-09 |         17 |      1
+ 2026-10-12 |         26 |      0
+ 2026-10-13 |         21 |      1
+ 2026-10-14 |         21 |      0
+ 2026-10-15 |         11 |      0
+ 2026-10-16 |         56 |      1
+(19 rows)
+
+ d | event_type | summary 
+---+------------+---------
+(0 rows)
+
+ theme_date |                               name                               |  stage  | has_ibp | n 
+------------+------------------------------------------------------------------+---------+---------+---
+ 2026-10-15 | Residential Building Materials & Construction Products Suppliers | Nascent | t       | 3
+ 2026-10-16 | Residential Building Materials & Construction Products Suppliers | Fading  | f       | 2
+(2 rows)
+
+          created_at           |            event_type            |                                                     summary                                                      
+-------------------------------+----------------------------------+------------------------------------------------------------------------------------------------------------------
+ 2026-10-15 21:06:38.497415+00 | theme_discovery_shown_declined   | shown=56 declined=54 proposed=5 clusters shown=10 declined=1 already_named=5 partial=1 taken=3 recall_mode=False
+ 2026-10-15 21:09:19.182627+00 | theme_discovery_shown_declined   | shown=71 declined=32 proposed=19 clusters shown=10 declined=0 already_named=4 partial=2 taken=4 recall_mode=True
+ 2026-10-16 21:31:01.854124+00 | theme_member_pruned_while_rising | IBP@Residential Building Materials & Construction Products Suppliers: pruned while RS rising (RS=18.5)
+(3 rows)
+

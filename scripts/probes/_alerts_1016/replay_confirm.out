@@ -1,0 +1,25 @@
+2026-09-14 universe=109 keys=2037 candidates=453 replay_fires=['STEP'] recorded=['STEP'] recorded_reproduced=1/1
+2026-09-15 universe=193 keys=2071 candidates=440 replay_fires=['RDNT'] recorded=['RDNT'] recorded_reproduced=1/1
+2026-09-16 universe=173 keys=2068 candidates=402 replay_fires=['PGEN'] recorded=['PGEN'] recorded_reproduced=1/1
+2026-09-17 universe=139 keys=2062 candidates=352 replay_fires=['CMPS', 'HPEpC', 'IVES'] recorded=['CMPS', 'HPEpC', 'IVES'] recorded_reproduced=3/3
+2026-09-18 universe=145 keys=2064 candidates=329 replay_fires=['FEIM', 'QMCO', 'SMMT', 'TGTX'] recorded=['QMCO', 'SMMT', 'TGTX'] recorded_reproduced=3/3
+2026-09-21 universe=153 keys=2062 candidates=311 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-09-22 universe=151 keys=2069 candidates=255 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-09-23 universe=138 keys=2046 candidates=269 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-09-24 universe=189 keys=2068 candidates=269 replay_fires=['PRGO'] recorded=['PRGO'] recorded_reproduced=1/1
+2026-09-25 universe=189 keys=2067 candidates=261 replay_fires=['MSFL', 'MSFU'] recorded=['MSFL', 'MSFU'] recorded_reproduced=2/2
+2026-09-28 universe=155 keys=2064 candidates=317 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-09-29 universe=232 keys=2092 candidates=315 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-09-30 universe=224 keys=2094 candidates=369 replay_fires=['TWLO', 'ZETA'] recorded=['TWLO', 'ZETA'] recorded_reproduced=2/2
+2026-10-01 universe=163 keys=2073 candidates=337 replay_fires=['AIS', 'ANDG', 'GO', 'HURN', 'MUU'] recorded=['AIS', 'ANDG', 'GO', 'HURN', 'MUU'] recorded_reproduced=5/5
+2026-10-02 universe=196 keys=2079 candidates=288 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-10-05 universe=206 keys=2090 candidates=249 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-10-06 universe=176 keys=2075 candidates=203 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-10-07 universe=153 keys=2060 candidates=190 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-10-08 universe=120 keys=2053 candidates=189 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-10-09 universe=183 keys=2075 candidates=231 replay_fires=['SYNA'] recorded=[] recorded_reproduced=0/0
+2026-10-12 universe=150 keys=2067 candidates=257 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-10-13 universe=189 keys=2088 candidates=204 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-10-14 universe=93 keys=2048 candidates=157 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-10-15 universe=89 keys=2035 candidates=155 replay_fires=[] recorded=[] recorded_reproduced=0/0
+2026-10-16 universe=91 keys=2046 candidates=138 replay_fires=[] recorded=[] recorded_reproduced=0/0

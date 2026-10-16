@@ -1,0 +1,3 @@
+recent period-end lookup failed for IBM (today's quarterly labels may drift; self-heals next run): RuntimeError: Required environment variable 'POSTGRES_PASSWORD' is not set. Check your .env file or environment configuration.
+2026-12-31 12.31139 24 70384638120.0 23
+2027-12-31 13.15007 24 73101816910.0 23

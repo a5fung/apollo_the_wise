@@ -1,0 +1,7 @@
+code: /Users/alvinfung/apollo_the_wise/.claude/worktrees/wf_b546823b-702-1/agents/market_intelligence/analyst_estimates_recorder.py
+population: 176 tickers (saved 09-03 live-alert list), as_of 2026-10-16
+snapshot errors: 0; yahoo raw errors: 0
+COVERAGE: 135 of 138 tickers with quarterly rows also have an annual estimate (97.8%; bar >= 85%)
+  annual frames present but no label (skipped, counted): 24
+LABELS vs Yahoo endDate: 304 match, 0 differ
+VALUES vs Yahoo raw (eps avg, revenue avg, both analyst counts): 304 match, 0 differ

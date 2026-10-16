@@ -1,0 +1,14 @@
+psql:/tmp/alerts1016_q3.sql:2: ERROR:  column "status" does not exist
+LINE 1: ... id, ticker, anchor_date, entry_date, entry_mode, status FRO...
+                                                             ^
+ ticker | anchor_date | state  | last_eval  | mna_screened_on 
+--------+-------------+--------+------------+-----------------
+ SYNA   | 2026-10-02  | coiled | 2026-10-08 | 2026-10-08
+(1 row)
+
+          created_at           |    event_type     |                                                                  left                                                                   
+-------------------------------+-------------------+-----------------------------------------------------------------------------------------------------------------------------------------
+ 2026-10-09 21:35:11.759261+00 | mna_pin_confirmed | SYNA: the open window confirmed the block (target/signed/unknown via polygon_headline_model): day range 1.3854% <= 2.0%
+ 2026-10-09 21:35:11.812638+00 | mna_filter_fired  | SYNA via polygon_headline_model (anticipation) — target/signed/unknown, day range 1.3854% <= 2.0% pinned; off the coil board (1 row(s))
+(2 rows)
+

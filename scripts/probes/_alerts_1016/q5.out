@@ -1,0 +1,46 @@
+          created_at           |             event_type             |                                                                                          left                                                                                          
+-------------------------------+------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 2026-10-16 21:05:13.976864+00 | theme_carryforward_filter_stripped | Residential Building Materials & Construction Products Suppliers: stripped 1 ticker(s) (sector_outlier)
+ 2026-10-16 21:05:27.544711+00 | theme_rehome_judged                | BCC stays — the judgement did not place it (offered on tape 0.76 to 'Home Improvement Retail & Residential Repair/Remodel Products', own_unjudgeable:thin_basket)
+ 2026-10-16 21:05:27.546046+00 | theme_rehome_judged                | SSD stays — the judgement did not place it (offered on tape 0.76 to 'Home Improvement Retail & Residential Repair/Remodel Products', own_unjudgeable:thin_basket)
+ 2026-10-16 21:09:14.721387+00 | theme_merge_pairs_proposed         | Arm B Stage A: 8 candidate pair(s) for adjudication
+ 2026-10-16 21:09:44.765458+00 | theme_merge_distinct               | Arm B: 'Residential Building Materials & Construction Products Suppliers' vs 'Precious Metals Miners — Fed Easing & Rate Tailwind' DISTINCT — 30d pair cooldown
+ 2026-10-16 21:11:53.742954+00 | theme_birth_gate                   | 2026-10-16 [promote/dedup_only] birth-gate: 3 birth / 27 join / 8 awaiting-2nd-sighting / 0 held-floor · ⚠ 61 previously-held later PASSED
+ 2026-10-16 21:31:01.854124+00 | theme_member_pruned_while_rising   | IBP@Residential Building Materials & Construction Products Suppliers: pruned while RS rising (RS=18.5)
+ 2026-10-16 21:31:20.012095+00 | theme_correctness_check            | G1 578/618 (93.5% bar 90.0%) · G2 26/618 (4.2% bar<= 5.0%) · G3 101/118 (85.6% bar 90.0%) · G4 11/118 small (9.3% bar<= 10.0%; settled 7/114 6.1%) · latency median 6.0 sessions (n=8)
+(8 rows)
+
+             event_type              | count 
+-------------------------------------+-------
+ theme_rehome_judged                 |    18
+ theme_ecosystem_assigned            |    17
+ assignment_llm_proposed             |    16
+ theme_discovery_llm_call            |    15
+ theme_discovered                    |    11
+ assignment_skipped_comove_below_bar |    10
+ ticker_revalidated_out              |     9
+ validation_cooldown_triggered       |     9
+ stage_change                        |     8
+ split_detected                      |     7
+ theme_low_quality_description       |     7
+ theme_merge_distinct                |     6
+ theme_parent_pass_distinct          |     6
+ theme_stage_flip_held               |     5
+ theme_score_ties                    |     5
+ theme_sector_cap_absorbed           |     5
+ theme_breadth_fade                  |     4
+ split_applied                       |     3
+ theme_birth_gate                    |     2
+ theme_small_folded                  |     2
+ theme_retired_small_fading          |     2
+ theme_retired                       |     2
+ theme_split                         |     2
+ llm_request_rewrite_adopted         |     2
+ theme_pass1_5_absorption            |     2
+ theme_discovery_shown_declined      |     2
+ description_generated               |     2
+ mna_filter_released                 |     1
+ theme_auto_retired                  |     1
+ missed_outcomes_refreshed           |     1
+(30 rows)
+

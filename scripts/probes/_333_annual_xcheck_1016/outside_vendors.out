@@ -1,0 +1,10 @@
+# #333 annual leg — outside-vendor cross-check, 2026-10-16 (our live code path vs a second publisher)
+IBM vs Alpha Vantage EARNINGS_ESTIMATES (public demo key, av_ibm.json):
+  FY2026 (2026-12-31): ours EPS 12.3114 (24 analysts), revenue $70.385B (23) | AV EPS 12.3121 (23), revenue $70.395B (22)
+  FY2027 (2027-12-31): ours EPS 13.1501 (24), revenue $73.102B (23)         | AV EPS 13.1512 (23), revenue $73.120B (22)
+  -> dates identical; values within 0.03%; analyst counts differ by one (different snapshot or vendor).
+S&P Global Market Intelligence consensus as published on stockanalysis.com forecast pages (WebFetch):
+  NRIX FY2026 (Nov 30): S&P rev $744.85M (704.0-785.2), EPS 3.05 (3.00-3.10), 4 analysts | ours rev 744.846M (704.05-785.2), EPS 3.0508 (3.00-3.10)
+  ETON FY2026 (Dec 31): S&P rev $149.71M (147.6-152.3), EPS 1.40 (1.28-1.52), 4 analysts | ours rev 149.712M (147.6-152.3), EPS 1.40 (1.28-1.52)
+  COST FY2027 (Aug 31): S&P rev $329.41B, EPS 22.82, 33 analysts                         | ours rev 329.407B, EPS 22.794, 32/33
+  -> identical to the dollar: Yahoo and this page share an upstream, so this confirms our CAPTURE, not the analysts.
