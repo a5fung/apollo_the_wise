@@ -1889,8 +1889,8 @@ against the bars:**
 
 ⚠ **Recorded as a labelled example, not a proposal.** All three are detection/admission criteria (THE LINE), and HTF /
 consolidation work stays behind EP profitability ([[priority-ep-profitability-before-new-setups]],
-[[htf-is-detection-not-trading]]). Use: the #697 corpus (MRNA is already `htf` there) gains the two entry days and the
-third gate; the anticipation-vs-breakout split is a #354 / Family A question for when that work opens.
+[[htf-is-detection-not-trading]]). Use: the #697 corpus (MRNA is `htf` there and, since 2026-10-15, carries the two entry days, the
+third gate and his TOP rating — `tests/fixtures/htf_labelled.py`); the anticipation-vs-breakout split is a #354 / Family A question for when that work opens.
 
 ## 2026-10-15 — share count vs relative volume on EP gap days (James Muninn, reposted by stockbee), operator-shared "food for thought"
 

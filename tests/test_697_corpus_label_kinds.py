@@ -15,7 +15,9 @@ home at all (they were "stated by inspection of the bars, not replayed" — htf_
 
 What would make this file red on the pre-change tree: `label_kind` / `known_miss_gate` / `closed_by` /
 `quote_file` do not exist on origin/main's fixture (`ImportError: cannot import name 'LABEL_KINDS'` at
-import), and GH / HPE have no bars.
+import), and GH / HPE have no bars. The 2026-10-15 additions (`trader_entries` / `gates_recorded` / `rating` /
+`rating_quote`, section 2b: MRNA's two entry days, third gate and TOP rating) likewise fail the import on a tree
+without `RATINGS`.
 """
 from __future__ import annotations
 
@@ -27,7 +29,7 @@ from pathlib import Path
 import pytest
 
 from agents.market_intelligence import flag_detector as fd
-from tests.fixtures.htf_labelled import HTF_LABELLED, LABEL_KINDS, POSITIVE_KINDS
+from tests.fixtures.htf_labelled import HTF_LABELLED, LABEL_KINDS, POSITIVE_KINDS, RATINGS
 from tests.test_htf_labelled_corpus import (
     _PRE_TRADE_SESSIONS,
     _load_bars,
@@ -96,7 +98,10 @@ def _norm(s: str) -> str:
 
 
 def quote_in_doc(quote: str, doc: str) -> bool:
-    return _norm(quote) in _norm((_ROOT / doc).read_text())
+    # his notes are markdown blockquotes: a sentence wrapped across two source lines carries a "> " at the start
+    # of the second one, which is not part of what he said — strip it so a wrapped quote still matches verbatim
+    text = re.sub(r"(?m)^[ \t]*>[ \t]?", "", (_ROOT / doc).read_text())
+    return _norm(quote) in _norm(text)
 
 
 _QUOTED = [m for m in HTF_LABELLED if m.quote_file]
@@ -118,6 +123,100 @@ def test_trader_read_is_verbatim_in_its_source_doc(member):
 
 def test_the_verbatim_check_can_fail():
     assert not quote_in_doc("a sentence he never said about a coil", "docs/methodology/operator_shared_notes.md")
+    # a paraphrase of a real sentence is not his sentence
+    assert not quote_in_doc("i want to emphasize this is a really good setup", "docs/methodology/operator_shared_notes.md")
+
+
+# ── 2b. MRNA: his two entry days, the THIRD blocking gate and his TOP rating (10-15 note) — PINNED ──
+# His note (docs/methodology/operator_shared_notes.md § "2026-10-15 — MRNA: the post-EP consolidation and his
+# two entries"): post-EP consolidation is the FAMILY; he names two SETUPS inside it (anticipation buy on the tight
+# inside day 09-16, ORB breakout entry 09-17), our board wrote a third distinct gate on the breakout day, and he
+# rated the example a "really good setup". All of it lives on the MRNA member; these pins make a silent loss (a
+# refactor that drops a field, a mistyped reason, a paraphrased quote) red. Nothing here touches the detector.
+
+_NOTES = "docs/methodology/operator_shared_notes.md"
+_MRNA_KEY = ("MRNA", date(2026, 9, 17))
+_MRNA_GATES = {
+    date(2026, 9, 15): "flag_low_128.61_below_75%_of_pole_176.66",         # 1. depth (existing)
+    date(2026, 9, 16): "close_145.62_below_sma20_145.67",                  # 2. the 5-cent SMA20 kill (existing)
+    date(2026, 9, 17): "ma_stack_not_stage2_144.5/144.9/96.6",             # 3. NEW: MA-stack order, breakout day
+    date(2026, 9, 18): "ma_stack_not_stage2_145.0/145.9/98.2",             #    NEW: same gate, prod row only
+}
+
+
+def test_mrna_records_his_two_entry_days_as_two_named_setups():
+    m = _m(*_MRNA_KEY)
+    assert [(d, name) for d, name, _ in m.trader_entries] == [
+        (date(2026, 9, 16), "anticipation buy on the tight inside day"),
+        (date(2026, 9, 17), "ORB breakout entry"),
+    ]
+    assert len({name for _, name, _ in m.trader_entries}) == 2, "two setups, two names — never pooled"
+    for d, name, words in m.trader_entries:
+        assert quote_in_doc(words, _NOTES), f"{d} {name}: not his words verbatim in {_NOTES}"
+
+
+def test_mrna_entry_days_match_the_chart_he_described():
+    """His five traits are checked against the stored bars in the note; pin the ones the entry days rest on
+    (tightest bar of the base on 09-16, lower volume into it, a 09-17 open above the 09-11 high on 2x volume)."""
+    rows = {r["trade_date"]: r for r in _load_bars()["MRNA"]}
+    rng = lambda d: (rows[d]["high_price"] - rows[d]["low_price"]) / rows[d]["close"]    # noqa: E731
+    base = [date(2026, 9, 11), date(2026, 9, 14), date(2026, 9, 15), date(2026, 9, 16)]
+    assert min(base, key=rng) == date(2026, 9, 16) and rng(date(2026, 9, 16)) < 0.05
+    assert rows[date(2026, 9, 15)]["volume"] < rows[date(2026, 9, 11)]["volume"]
+    assert rows[date(2026, 9, 16)]["volume"] < rows[date(2026, 9, 11)]["volume"]
+    assert rows[date(2026, 9, 17)]["open_price"] > rows[date(2026, 9, 11)]["high_price"]
+    assert rows[date(2026, 9, 17)]["volume"] > 2 * rows[date(2026, 9, 16)]["volume"]
+
+
+def test_mrna_records_three_different_gates_on_three_days_and_neither_entry_day_was_surfaced(replays):
+    m = _m(*_MRNA_KEY)
+    assert dict(m.gates_recorded) == _MRNA_GATES
+    res = replays[member_id(m)]
+    # the days the bars reach are LIVE replay assertions, not frozen strings
+    for d in (date(2026, 9, 15), date(2026, 9, 16), date(2026, 9, 17)):
+        assert res[d]["reason"] == _MRNA_GATES[d], (d, res[d]["stage"], res[d]["reason"])
+    assert res[date(2026, 9, 16)]["stage"] == "INVALIDATED"
+    # three distinct gates (depth, SMA20 kill, MA-stack order), not one gate on three days
+    kinds = {next(p for p in ("flag_low_", "close_", "ma_stack_not_stage2_") if r.startswith(p))
+             for r in _MRNA_GATES.values()}
+    assert len(kinds) == 3
+    # neither of his entry days was on the board as an actionable stage
+    for d, _, _ in m.trader_entries:
+        assert res[d]["stage"] not in ("WATCH", "TIGHTENING", "COILED", "TRIGGERED"), (d, res[d]["stage"])
+
+
+def test_mrna_09_18_gate_is_prod_sourced_text_because_the_bars_end_09_17(replays):
+    """09-18 is not replayable (the fixture ends on his breakout day 09-17 — test_610 and the stale-window test
+    lean on that, so no bar is appended). It is pinned as the stored `mi_flag_candidates` row, which his note
+    records verbatim; every recorded reason must appear in that note."""
+    m = _m(*_MRNA_KEY)
+    assert date(2026, 9, 18) not in replays[member_id(m)]
+    assert max(r["trade_date"] for r in _load_bars()["MRNA"]) == date(2026, 9, 17)
+    for d, reason in m.gates_recorded:
+        assert quote_in_doc(reason, _NOTES), f"{d}: {reason} is not recorded in {_NOTES}"
+
+
+def test_mrna_is_rated_top_in_his_own_words():
+    m = _m(*_MRNA_KEY)
+    assert m.rating == "top" and m.rating in RATINGS
+    assert "really good setup" in m.rating_quote
+    assert quote_in_doc(m.rating_quote, _NOTES), "rating_quote is not his sentence verbatim (typo included)"
+
+
+def test_a_rating_is_not_a_hit_and_the_example_stays_a_declared_miss(replays):
+    """The rating is a LEAN about the label (memory charts-support-never-decide): it adds nothing to the HTF hit
+    tally and does not turn the known flag_low_ miss into a catch."""
+    m = _m(*_MRNA_KEY)
+    assert m.label_kind == "htf" and m.known_miss_gate == "flag_low_" and m.expected == "rejected:flag_low_"
+    assert member_id(m) not in hit_tally(HTF_LABELLED, replays)["caught"]
+
+
+def test_a_moved_recorded_gate_fails_on_the_real_mrna_replay(replays):
+    m = _m(*_MRNA_KEY)
+    wrong = dataclasses.replace(m, gates_recorded=((date(2026, 9, 17), "ma_stack_not_stage2_1/1/1"),))
+    with pytest.raises(AssertionError, match="gates_recorded says"):
+        check_member(wrong, replays[member_id(m)])
+    check_member(m, replays[member_id(m)])          # the real record still passes
 
 
 # ── 3. the replay, by kind, and the hit tally ────────────────────────────────────────────────
@@ -342,6 +441,36 @@ def test_the_checker_passes_a_well_formed_member_at_the_window_edge():
     ("a replay that starts too late to fill the window",
      _member(_GH, expected="rejected:runup_", known_miss_gate="runup_"),
      _synthetic(_QUIET[:3]), "not complete"),
+    # ── optional detail (his entries / the board's recorded readings / his rating): #697 item 6, 2026-10-15 ──
+    ("a recorded gate the replay no longer reads",
+     _member(_HNGE_AUG, expected="rejected:runup_", known_miss_gate="runup_",
+             gates_recorded=((_LABEL, "ma_stack_not_stage2_1/2/3"),)),
+     _synthetic(_QUIET), "gates_recorded says"),
+    ("a rating with no quote of his words",
+     _member(_CDNA, expected="actionable", known_miss_gate="", rating="top"),
+     _synthetic(_QUIET), "rating and rating_quote"),
+    ("a quote of his with no rating",
+     _member(_CDNA, expected="actionable", known_miss_gate="", rating_quote="a really good setup"),
+     _synthetic(_QUIET), "rating and rating_quote"),
+    ("a rating that is not one of the known ones",
+     _member(_CDNA, expected="actionable", known_miss_gate="", rating="great", rating_quote="x"),
+     _synthetic(_QUIET), "rating must be one of"),
+    ("a trader entry on a day the market was shut",
+     _member(_CDNA, expected="actionable", known_miss_gate="",
+             trader_entries=((date(2026, 7, 11), "ORB breakout entry", "a ORB entry"),)),
+     _synthetic(_QUIET), "not an NYSE session"),
+    ("a trader entry without his words",
+     _member(_CDNA, expected="actionable", known_miss_gate="",
+             trader_entries=((date(2026, 7, 9), "ORB breakout entry", ""),)),
+     _synthetic(_QUIET), "HIS words"),
+    ("a trader entry without a setup name",
+     _member(_CDNA, expected="actionable", known_miss_gate="",
+             trader_entries=((date(2026, 7, 9), "", "a ORB entry"),)),
+     _synthetic(_QUIET), "HIS words"),
+    ("the same recorded day twice",
+     _member(_CDNA, expected="actionable", known_miss_gate="",
+             gates_recorded=((_LABEL, "a"), (_LABEL, "b"))),
+     _synthetic(_QUIET), "names"),
 ])
 def test_the_checker_raises_on_a_wrong_member(label, member, res, fragment):
     with pytest.raises(AssertionError) as exc:
@@ -362,6 +491,16 @@ def test_a_well_formed_negative_leak_and_pointer_pass():
     check_member(_member(_ATAI, expected="actionable"), _synthetic(_QUIET, on_label=("COILED", "range_1.0")))
     check_member(_member(_HPE, expected="rejected:base_age_"),
                  _synthetic(_QUIET, on_label=("unqualified", "base_age_0_below_3")))
+
+
+def test_a_member_with_entries_recorded_gates_and_a_rating_passes():
+    """The optional detail, well formed: a replayed recorded gate that matches, a prod-sourced one the replay
+    does not reach (skipped by the replay check, pinned as text elsewhere), a named entry on a real session."""
+    ok = _member(_HNGE_AUG, expected="rejected:runup_", known_miss_gate="runup_",
+                 trader_entries=((date(2026, 7, 9), "anticipation buy on the tight inside day", "buy early"),),
+                 gates_recorded=((_LABEL, "runup_50%_below_90%"), (date(2026, 7, 13), "prod_only_row")),
+                 rating="top", rating_quote="a really good setup")
+    check_member(ok, _synthetic(_QUIET))
 
 
 def test_static_contract_rejects_a_kindless_looking_member():

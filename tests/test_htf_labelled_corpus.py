@@ -18,6 +18,9 @@ suite asserts BY KIND (`check_member`, applied to the replay of every member):
     layer above the function that closes it (`closed_by`).
 The checker is pure (member + replay in, AssertionError out) so
 `tests/test_697_corpus_label_kinds.py` can prove it bites on deliberately wrong members.
+Optional detail a member may carry (MRNA, 2026-10-15): `trader_entries` (his named entry days), `gates_recorded`
+(the board's reading per day — REPLAYED when the bars reach the day, so a detector change that moves a recorded
+gate fails loudly) and `rating` / `rating_quote` (his rating, verbatim). Static contract: `check_member_static`.
 """
 from __future__ import annotations
 
@@ -30,7 +33,7 @@ from pathlib import Path
 import pytest
 
 from agents.market_intelligence import flag_detector as fd
-from tests.fixtures.htf_labelled import HTF_LABELLED, LABEL_KINDS, POSITIVE_KINDS, HTFLabelledMember
+from tests.fixtures.htf_labelled import HTF_LABELLED, LABEL_KINDS, POSITIVE_KINDS, RATINGS, HTFLabelledMember
 
 _BARS = Path(__file__).parent / "fixtures" / "htf_labelled_bars.psv"
 _ACTIONABLE = ("WATCH", "TIGHTENING", "COILED", "TRIGGERED")
@@ -113,6 +116,11 @@ def _nyse():
     return xcals.get_calendar("XNYS")
 
 
+def _is_nyse_session(d: date) -> bool:
+    import pandas as pd
+    return bool(_nyse().is_session(pd.Timestamp(d)))
+
+
 def sessions_before(label_date: date, sessions: int = _PRE_TRADE_SESSIONS) -> list[date]:
     """The `sessions` NYSE sessions STRICTLY before `label_date`, oldest first — i.e. the window
     `pushable_before` is supposed to judge. A weekend / holiday label rolls back to the last session."""
@@ -181,6 +189,25 @@ def check_member_static(member: HTFLabelledMember) -> None:
         assert not member.known_miss_gate, (
             f"{tag}: known_miss_gate only applies to htf / consolidation (a {member.label_kind} "
             f"never asserts a hit, so there is no miss to declare)")
+    # ── optional detail: his entries, the board's recorded readings, his rating (#697 item 6, 2026-10-15) ──
+    assert member.rating == "" or member.rating in RATINGS, (
+        f"{tag}: rating must be one of {RATINGS} (or empty), got {member.rating!r}")
+    assert bool(member.rating) == bool(member.rating_quote), (
+        f"{tag}: rating and rating_quote go together — a rating with no quote of his words is an inference, "
+        f"a quote with no rating is an unlabelled sentence")
+    seen: set[date] = set()
+    for entry in member.trader_entries:
+        assert len(entry) == 3 and all(entry[1:]), (
+            f"{tag}: a trader entry is (date, setup name, his words) — each setup needs its own name and "
+            f"HIS words, never a paraphrase: {entry!r}")
+        assert entry[0] not in seen, f"{tag}: trader_entries names {entry[0]} twice"
+        seen.add(entry[0])
+        assert _is_nyse_session(entry[0]), f"{tag}: trader entry {entry[0]} is not an NYSE session"
+    seen = set()
+    for gate in member.gates_recorded:
+        assert len(gate) == 2 and gate[1], f"{tag}: a recorded gate is (date, reason): {gate!r}"
+        assert gate[0] not in seen, f"{tag}: gates_recorded names {gate[0]} twice"
+        seen.add(gate[0])
 
 
 def check_member(member: HTFLabelledMember, res: dict[date, dict]) -> None:
@@ -245,6 +272,15 @@ def check_member(member: HTFLabelledMember, res: dict[date, dict]) -> None:
                 f"layer above the function that closes it (closed_by)")
         else:
             assert not member.closed_by, f"{tag}: closed_by only applies to an actionable negative"
+    # 3. the board's recorded readings: a day the replay reaches must read EXACTLY what is recorded, so a
+    # detector change that moves a gate (or a mistyped reason) fails here. A day past the last bar is not in
+    # `res` — it is prod-sourced and pinned as text by tests/test_697_corpus_label_kinds.py.
+    for d, reason in member.gates_recorded:
+        if d in res:
+            assert res[d]["reason"] == reason, (
+                f"{tag} {d}: gates_recorded says {reason!r} but the shipped detector now reads "
+                f"stage={res[d]['stage']} reason={res[d]['reason']!r} — a recorded gate moved; if deliberate, "
+                f"update the member's gates_recorded and its note in the same commit")
 
 
 def hit_tally(members, replays: dict[str, dict[date, dict]]) -> dict:
@@ -264,8 +300,9 @@ def replay_member(member: HTFLabelledMember, bars: dict[str, list[dict]]) -> dic
     (the pre-trade window is judged on the sessions before the label, which can follow the last
     assert date — GH / HNGE-June are labelled on a Saturday)."""
     assert member.ticker in bars, f"no bars for {member.ticker} in {_BARS.name}"
+    recorded = [d for d, _ in member.gates_recorded]
     return _replay(member.ticker, bars[member.ticker],
-                   through=max(max(member.assert_dates), member.label_date),
+                   through=max([max(member.assert_dates), member.label_date, *recorded]),
                    replay_from=member.replay_from)
 
 
