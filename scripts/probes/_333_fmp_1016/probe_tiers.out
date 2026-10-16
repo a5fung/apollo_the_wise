@@ -1,0 +1,13 @@
+AAPL limit=10: HTTP 200 | [
+  {
+    "symbol": "AAPL",
+    "date": "2030-09-27",
+    "revenueLow": 616387927847,
+    "revenueHigh": 704297430716,
+    "revenueAvg": 647707000000,
+    "ebitdaLow": 234287022236,
+    "ebitdaHigh": 275344002497,
+    "e
+AAPL limit=20: HTTP 402 | Premium Query Parameter: 'Special Parameters : The values for 'limit' must be between 0 and 10 based on your current subscription. Please visit our subscription page to upgrade your plan at https://financialmodelingprep.
+WOLF limit=10: HTTP 402 | Premium Query Parameter: 'Special Endpoint : This value set for 'symbol' is not available under your current subscription please visit our subscription page to upgrade your plan at https://financialmodelingprep.com/
+QCOM limit=10: HTTP 402 | Premium Query Parameter: 'Special Endpoint : This value set for 'symbol' is not available under your current subscription please visit our subscription page to upgrade your plan at https://financialmodelingprep.com/

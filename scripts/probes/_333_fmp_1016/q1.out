@@ -1,0 +1,26 @@
+     d      | fmp_failures | on_analyst_estimates 
+------------+--------------+----------------------
+ 2026-10-02 |           22 |                   22
+ 2026-10-05 |           21 |                   21
+ 2026-10-06 |           24 |                   24
+ 2026-10-07 |           25 |                   25
+ 2026-10-08 |           26 |                   26
+ 2026-10-09 |           22 |                   22
+ 2026-10-12 |           22 |                   22
+ 2026-10-13 |           22 |                   22
+ 2026-10-14 |           23 |                   23
+ 2026-10-15 |           21 |                   21
+(10 rows)
+
+             et             |                                summary                                |                                                                                                                                                         detail                                                                                                                                                          
+----------------------------+-----------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 2026-10-15 18:20:14.415158 | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates | Client error '402 Payment Required' for url 'https://financialmodelingprep.com/stable/analyst-estimates?apikey=***REDACTED***&symbol=WOLF&period=annual&page=0&limit=20'                                                                                                                                               +
+                            |                                                                       | For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/402 | body=Premium Query Parameter: 'Special Endpoint : This value set for 'symbol' is not available under your current subscription please visit our subscription page to upgrade your plan at https://financialmodelingprep.com/
+ 2026-10-15 18:19:50.286273 | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates | Client error '402 Payment Required' for url 'https://financialmodelingprep.com/stable/analyst-estimates?apikey=***REDACTED***&symbol=VST&period=annual&page=0&limit=20'                                                                                                                                                +
+                            |                                                                       | For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/402 | body=Premium Query Parameter: 'Special Endpoint : This value set for 'symbol' is not available under your current subscription please visit our subscription page to upgrade your plan at https://financialmodelingprep.com/
+ 2026-10-15 18:19:26.181019 | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates | Client error '402 Payment Required' for url 'https://financialmodelingprep.com/stable/analyst-estimates?apikey=***REDACTED***&symbol=VICR&period=annual&page=0&limit=20'                                                                                                                                               +
+                            |                                                                       | For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/402 | body=Premium Query Parameter: 'Special Endpoint : This value set for 'symbol' is not available under your current subscription please visit our subscription page to upgrade your plan at https://financialmodelingprep.com/
+ 2026-10-15 18:19:02.091947 | FMP API FAILURE class=http_4xx HTTP 402 tg=0 — GET /analyst-estimates | Client error '402 Payment Required' for url 'https://financialmodelingprep.com/stable/analyst-estimates?apikey=***REDACTED***&symbol=TLN&period=annual&page=0&limit=20'                                                                                                                                                +
+                            |                                                                       | For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/402 | body=Premium Query Parameter: 'Special Endpoint : This value set for 'symbol' is not available under your current subscription please visit our subscription page to upgrade your plan at https://financialmodelingprep.com/
+(4 rows)
+
