@@ -1560,6 +1560,145 @@ def test_annual_label_missing_or_malformed_inputs_are_none_never_a_guess():
         assert aer.resolve_annual_period_ends(rel, {**ok, "fiscal_year_end": bad}) == none, bad
 
 
+# ── annual leg: EDGAR fiscalYearEnd cross-checked against the last 10-K's own period end ──
+# AEHR (measured 2026-10-16, scripts/probes/_333_annual_xcheck_1016/): its 8-K of 2026-04-07
+# (Item 5.03) moved the year end from late May to late June; EDGAR's fiscalYearEnd still reads
+# "1231"; the last 10-K reportDate is 2026-05-29. Labels came out 2026-12-31 / 2027-12-31 while
+# Yahoo's own endDate says 2027-05-31 / 2028-05-31. The other 304 annual labels matched Yahoo.
+
+_AEHR_CADENCE = {"last_reported_quarter_end": date(2026, 5, 29), "fiscal_year_end": "1231",
+                 "last_annual_report_end": date(2026, 5, 29)}
+_NONE_LABELS = {"0y": None, "+1y": None}
+
+
+def test_annual_label_is_skipped_when_edgars_fiscal_year_end_disagrees_with_the_last_10k():
+    """MUTATION TARGET: the cross-check. AEHR shape -> both None (the caller counts
+    annual_yf_no_label). The control proves the defect was real: WITHOUT the 10-K fact the
+    same cadence resolves to the wrong 2026-12-31 / 2027-12-31 labels, so the None above is
+    the cross-check acting, not some other gate."""
+    release = date(2026, 7, 14)
+    assert aer.resolve_annual_period_ends(release, dict(_AEHR_CADENCE)) == _NONE_LABELS
+    no_10k = {**_AEHR_CADENCE, "last_annual_report_end": None}
+    assert aer.resolve_annual_period_ends(release, no_10k) == {
+        "0y": date(2026, 12, 31), "+1y": date(2027, 12, 31)}      # the wrong labels it prevents
+    # any month disagreement skips, not only a half-year one (Dec FYE vs a November 10-K)
+    assert aer.resolve_annual_period_ends(
+        date(2026, 8, 12),
+        {"last_reported_quarter_end": date(2026, 6, 30), "fiscal_year_end": "1231",
+         "last_annual_report_end": date(2025, 11, 30)}) == _NONE_LABELS
+
+
+def test_annual_label_still_resolves_when_fiscal_year_end_agrees_with_the_last_10k():
+    """No false skip on the names that matched Yahoo: COST (0830 vs a 10-K ending 08-31 / 08-30),
+    AAPL (0926 vs 09-27 — a 52/53-week year), and the Dec-FYE small cap. Same labels as the
+    pre-cross-check tests above."""
+    cost = {"last_reported_quarter_end": date(2026, 8, 30), "fiscal_year_end": "0830"}
+    for ten_k in (date(2025, 8, 31), date(2026, 8, 30)):
+        assert aer.resolve_annual_period_ends(
+            date(2026, 9, 24), {**cost, "last_annual_report_end": ten_k}
+        ) == {"0y": date(2027, 8, 31), "+1y": date(2028, 8, 31)}, ten_k
+    aapl = {"last_reported_quarter_end": date(2026, 6, 27), "fiscal_year_end": "0926"}
+    for ten_k in (date(2025, 9, 27), date(2025, 9, 28), date(2024, 9, 28)):
+        assert aer.resolve_annual_period_ends(
+            date(2026, 7, 30), {**aapl, "last_annual_report_end": ten_k}
+        ) == {"0y": date(2026, 9, 30), "+1y": date(2027, 9, 30)}, ten_k
+    dec = {"last_reported_quarter_end": date(2026, 6, 30), "fiscal_year_end": "1231",
+           "last_annual_report_end": date(2025, 12, 31)}
+    assert aer.resolve_annual_period_ends(date(2026, 8, 12), dec) == {
+        "0y": date(2026, 12, 31), "+1y": date(2027, 12, 31)}
+
+
+def test_annual_label_cross_check_compares_months_so_a_53_week_year_is_not_falsely_skipped():
+    """A 52/53-week Dec filer's 10-K reportDate drifts across the year boundary: 2026-01-03
+    snaps BACK to 2025-12-31 while the label for 'year 2026' is 2026-12-31 — different calendar
+    years, same MONTH. Comparing dates (or years) would skip it; comparing the snapped month
+    does not. 12-27 (snaps forward to 12-31) likewise."""
+    for ten_k in (date(2026, 1, 3), date(2025, 12, 27), date(2025, 12, 28), date(2026, 1, 1)):
+        out = aer.resolve_annual_period_ends(
+            date(2026, 8, 5),
+            {"last_reported_quarter_end": date(2026, 7, 4), "fiscal_year_end": "1231",
+             "last_annual_report_end": ten_k})
+        assert out == {"0y": date(2026, 12, 31), "+1y": date(2027, 12, 31)}, ten_k
+
+
+def test_annual_label_without_a_10k_on_record_is_unchanged():
+    """A recent IPO has no 10-K yet: the cross-check has nothing to compare, so the result is
+    exactly the pre-existing rule's — key absent, key None, and the all-None facts dict."""
+    base = {"last_reported_quarter_end": date(2026, 6, 30), "fiscal_year_end": "1231"}
+    want = {"0y": date(2026, 12, 31), "+1y": date(2027, 12, 31)}
+    rel = date(2026, 8, 12)
+    assert aer.resolve_annual_period_ends(rel, dict(base)) == want
+    assert aer.resolve_annual_period_ends(rel, {**base, "last_annual_report_end": None}) == want
+    assert aer.resolve_annual_period_ends(
+        rel, {**dict(aer._EMPTY_CADENCE_FACTS), **base}) == want
+
+
+def test_annual_label_malformed_fiscal_year_end_with_a_10k_still_falls_to_the_malformed_path():
+    """fiscal_quarter_end_from_label returning None must not crash the cross-check or be read
+    as a month disagreement — it falls through to the existing malformed handling (None, None)."""
+    ok = {"last_reported_quarter_end": date(2026, 6, 30), "last_annual_report_end": date(2025, 12, 31)}
+    for bad in ("1340", "0000", "13 1", "ab12"):
+        assert aer.resolve_annual_period_ends(
+            date(2026, 8, 12), {**ok, "fiscal_year_end": bad}) == _NONE_LABELS, bad
+
+
+def test_the_quarterly_path_ignores_the_new_annual_fact():
+    """THE QUARTERLY LEG MUST STAY BYTE-IDENTICAL: AEHR-shaped facts that make the annual leg
+    skip change nothing for resolve_quarterly_period_ends or the Finnhub label functions."""
+    cadence = {"last_reported_quarter_end": date(2026, 6, 27),
+               "prior_reported_quarter_end": date(2026, 3, 28), "fiscal_year_end": "0926"}
+    with_fact = {**cadence, "last_annual_report_end": date(2026, 1, 3)}   # disagrees on purpose
+    assert aer.resolve_quarterly_period_ends(
+        date(2026, 10, 29), date(2026, 7, 30), with_fact
+    ) == aer.resolve_quarterly_period_ends(date(2026, 10, 29), date(2026, 7, 30), cadence)
+    assert aer.fiscal_quarter_end_from_label(1, 2026, "0926") == date(2025, 12, 26)
+    assert aer.finnhub_period_end_from_entry(
+        date(2026, 10, 29), 4, 2026, "0926", date(2026, 6, 27)) == date(2026, 9, 26)
+
+
+def test_cadence_facts_last_annual_report_end_is_the_max_10k_or_10ka_reportdate():
+    """The new fact: MAX reportDate over 10-K and 10-K/A only. A later 10-Q must not move it
+    (the quarterly forms are the whole point of NOT reusing last_reported_quarter_end), and
+    the three pre-existing facts are exactly what they were."""
+    payload = {"fiscalYearEnd": "0926", **_submissions_full([
+        ("10-K", "2024-11-01", "2024-09-28"),
+        ("10-K/A", "2025-12-01", "2025-09-27"),     # newest annual period, an amendment
+        ("10-Q", "2026-01-30", "2025-12-27"),
+        ("10-Q", "2026-05-01", "2026-03-28"),
+        ("10-Q", "2026-07-31", "2026-06-27"),       # newest of everything — NOT annual
+        ("8-K", "2026-08-20", "2026-08-20"),
+        ("20-F", "2026-08-21", "2026-08-21"),       # annual-class but not a 10-K
+    ])}
+    facts = aer.quarterly_cadence_facts(payload)
+    assert facts == {
+        "last_reported_quarter_end": date(2026, 6, 27),
+        "prior_reported_quarter_end": date(2026, 3, 28),
+        "fiscal_year_end": "0926",
+        "last_annual_report_end": date(2025, 9, 27),
+    }
+    # robust to EDGAR's ordering: shuffled records give the same answer
+    records = list(zip(payload["filings"]["recent"]["form"],
+                       payload["filings"]["recent"]["filingDate"],
+                       payload["filings"]["recent"]["reportDate"]))
+    shuffled = {"fiscalYearEnd": "0926", **_submissions_full(records[::-1])}
+    assert aer.quarterly_cadence_facts(shuffled) == facts
+
+
+def test_cadence_facts_last_annual_report_end_is_none_without_a_parseable_10k():
+    """No 10-K / 10-K/A (10-Q only, 20-F only, or an unparseable 10-K reportDate) -> None, and
+    the empty-facts template carries the key as None."""
+    assert aer._EMPTY_CADENCE_FACTS["last_annual_report_end"] is None
+    assert set(aer._EMPTY_CADENCE_FACTS) == {
+        "last_reported_quarter_end", "prior_reported_quarter_end", "fiscal_year_end",
+        "last_annual_report_end"}
+    ten_q_only = _submissions_full([("10-Q", "2026-07-31", "2026-06-27")])
+    assert aer.quarterly_cadence_facts(ten_q_only)["last_annual_report_end"] is None
+    assert aer.quarterly_cadence_facts(ten_q_only)["last_reported_quarter_end"] == date(2026, 6, 27)
+    bad_date = _submissions_full([("10-K", "2026-02-01", "not-a-date"),
+                                  ("10-Q", "2026-07-31", "2026-06-27")])
+    assert aer.quarterly_cadence_facts(bad_date)["last_annual_report_end"] is None
+
+
 def test_annual_label_is_always_the_first_year_end_past_the_floor():
     """Property sweep (pure): for assorted fiscal year ends and every last-reported-quarter
     date across two years, '0y' is strictly after the 30-day floor, no earlier year end is,
