@@ -72,7 +72,7 @@ setup's criteria, change log and findings.
 | Continuation flag (RETIRED → folded into HTF) | `docs/setups/flag_continuation.md` |
 | Portfolio safeguards | `docs/setups/safeguards.md` |
 | Catalyst rubric (LIVE gate) | `docs/setups/catalyst_rubric.md` |
-| **Analyst-estimates recorder (#333)** — which sources feed `mi_analyst_estimates` (yfinance primary · Finnhub cross-check · EDGAR anchor; FMP removed 2026-10-16), what is NOT captured (annual), the pace, the run-level yfinance error row, the 60-day gate, and the findings behind it | `docs/setups/catalyst_rubric.md` §"Forward-estimates backbone (#333)" |
+| **Analyst-estimates recorder (#333)** — which sources feed `mi_analyst_estimates` (yfinance primary · Finnhub cross-check · EDGAR anchor; FMP removed 2026-10-16), the annual `0y`/`+1y` leg and its label rule + ≥85% bar (built 2026-10-16), the pace, the run-level yfinance error row, the 60-day gate, and the findings behind it | `docs/setups/catalyst_rubric.md` §"Forward-estimates backbone (#333)" |
 | Meta rubric | `docs/setups/meta_rubric.md` |
 | Meta rubric — what it is, the REAL dependency graph, the anti-block table (decision record, #504) | `docs/decisions/0035-meta-rubric-architecture.md` |
 | Portfolio | `docs/setups/PORTFOLIO.md` |

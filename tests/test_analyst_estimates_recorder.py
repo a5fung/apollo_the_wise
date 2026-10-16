@@ -31,10 +31,16 @@ source of record, Finnhub the cross-check. What replaced the FMP-era tests: a sp
 proving the job never calls FMP, the per-ticker pace now enforced on the yfinance
 cadence the FMP sleeps used to impose, and the run-level `analyst_estimates_error` row a
 run writes when yfinance recorded nothing (the FMP-era failures were loud only by accident).
+
+2026-10-16 (later): the ANNUAL leg is rebuilt on yfinance ('0y'/'+1y' out of the SAME frames,
+zero extra Yahoo requests) — the section at the foot of this file: the fiscal-year-end label
+rule against Yahoo's own observed endDates, the roll across a fiscal year boundary, the
+reporting-gap gate, golden quarterly rows unchanged, the request-count spies, and the
+pre-registered coverage bar with the empty-frame case that must FAIL it.
 """
 import asyncio
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -1412,3 +1418,649 @@ def test_the_402_endpoint_is_never_called_and_log_lines_are_redacted():
     assert '_fmp_get("/earnings"' not in src
     assert "from shared.secret_redaction import redact_secrets" in src
     assert "logger.warning(redact_secrets(" in src   # the per-ticker failure line
+
+
+# ══ THE ANNUAL LEG (2026-10-16) — yfinance '0y'/'+1y' from the frames already fetched ══════
+# His ruling 2026-09-03 (1): "two forward quarters PLUS THE ANNUAL, re-test at 60 days". The
+# annual leg was FMP's alone and went with it. Pre-registered bar (docs/analysis/
+# 333_free_estimate_sources_2026-10-16.md, recommendation 1): after one night, annual rows
+# for >= 85% of the tickers that have quarterly yfinance rows; it FAILS if the annual frames
+# come back empty/all-NaN for thin-coverage names.
+#
+# What the label tests are anchored on: Yahoo's OWN endDate for each period, observed
+# 2026-10-16 from the earningsTrend payload behind the frames (AAPL 0y 2026-09-30, +1y
+# 2027-09-30; COST 2027-08-31 / 2028-08-31; WMT 2027-01-31 / 2028-01-31; NRIX 2026-11-30 /
+# 2027-11-30; AMLX, ETON, ABCL 2026-12-31 / 2027-12-31). The EDGAR-side inputs below
+# (last reported quarter end, fiscal year end MMDD) are shaped from each name's filing
+# calendar, not re-fetched from SEC; the release date only has to be a plausible one.
+
+
+def test_annual_labels_land_on_yahoos_own_year_ends_observed_2026_10_16():
+    """The rule against ground truth: for seven real names the resolved '0y'/'+1y' sit
+    in Yahoo's month and within a week of its endDate (Yahoo rounds a 52/53-week year to
+    the month end; the rule keeps EDGAR's MMDD — a label, not an exact-day claim, exactly
+    like the quarterly leg). NRIX, AMLX, ETON, ABCL match to the day."""
+    cases = [  # name, fiscal_year_end, last_reported_quarter_end, last release, Yahoo 0y, +1y
+        ("AAPL", "0926", date(2026, 6, 27), date(2026, 7, 30),
+         date(2026, 9, 30), date(2027, 9, 30)),
+        ("COST", "0830", date(2026, 8, 30), date(2026, 9, 24),
+         date(2027, 8, 31), date(2028, 8, 31)),
+        ("WMT", "0131", date(2026, 7, 31), date(2026, 8, 20),
+         date(2027, 1, 31), date(2028, 1, 31)),
+        ("NRIX", "1130", date(2026, 8, 31), date(2026, 10, 8),
+         date(2026, 11, 30), date(2027, 11, 30)),
+        ("AMLX", "1231", date(2026, 6, 30), date(2026, 8, 12),
+         date(2026, 12, 31), date(2027, 12, 31)),
+        ("ETON", "1231", date(2026, 6, 30), date(2026, 8, 13),
+         date(2026, 12, 31), date(2027, 12, 31)),
+        ("ABCL", "1231", date(2026, 6, 30), date(2026, 8, 7),
+         date(2026, 12, 31), date(2027, 12, 31)),
+    ]
+    for name, fye, last_q, release, yahoo_0y, yahoo_p1y in cases:
+        out = aer.resolve_annual_period_ends(
+            release, {"last_reported_quarter_end": last_q, "fiscal_year_end": fye})
+        for got, want, label in ((out["0y"], yahoo_0y, "0y"), (out["+1y"], yahoo_p1y, "+1y")):
+            assert got is not None, f"{name} {label} unresolved"
+            assert (got.year, got.month) == (want.year, want.month), (name, label, got, want)
+            assert abs((got - want).days) <= 7, (name, label, got, want)
+    exact = aer.resolve_annual_period_ends(
+        date(2026, 10, 8), {"last_reported_quarter_end": date(2026, 8, 31),
+                            "fiscal_year_end": "1130"})
+    assert exact == {"0y": date(2026, 11, 30), "+1y": date(2027, 11, 30)}
+
+
+def test_annual_label_rolls_with_the_fiscal_year_and_keeps_the_same_key_across_the_roll():
+    """THE FISCAL-YEAR BOUNDARY. Before the 10-K posts, '0y' is the year about to end
+    and '+1y' the one after; once it posts (last reported quarter end advances to the year
+    end) '0y' becomes what '+1y' was. The invariant that keeps the revision series whole:
+    the SAME fiscal year carries the SAME period_end_date on both sides of the roll."""
+    aapl = {"fiscal_year_end": "0926"}
+    before = aer.resolve_annual_period_ends(
+        date(2026, 7, 30), {**aapl, "last_reported_quarter_end": date(2026, 6, 27)})
+    after = aer.resolve_annual_period_ends(
+        date(2026, 10, 29), {**aapl, "last_reported_quarter_end": date(2026, 9, 26)})
+    assert before == {"0y": date(2026, 9, 26), "+1y": date(2027, 9, 26)}
+    assert after == {"0y": date(2027, 9, 26), "+1y": date(2028, 9, 26)}
+    assert before["+1y"] == after["0y"], "the same fiscal year must keep the same key"
+
+    dec = {"fiscal_year_end": "1231"}
+    before = aer.resolve_annual_period_ends(
+        date(2026, 11, 5), {**dec, "last_reported_quarter_end": date(2026, 9, 30)})
+    after = aer.resolve_annual_period_ends(
+        date(2027, 2, 25), {**dec, "last_reported_quarter_end": date(2026, 12, 31)})
+    assert before == {"0y": date(2026, 12, 31), "+1y": date(2027, 12, 31)}
+    assert after == {"0y": date(2027, 12, 31), "+1y": date(2028, 12, 31)}
+    assert before["+1y"] == after["0y"]
+
+
+def test_annual_label_is_skipped_in_the_reporting_gap_never_a_year_early():
+    """MUTATION TARGET: the gate. Fiscal-year results are RELEASED (Yahoo's '0y' has
+    rolled to the next year) but the 10-K is not yet FILED, so EDGAR's last reported quarter
+    is still the third. Without the release-lag bound the rule would name the year that
+    just ended; with it both labels are None and the caller skips and counts."""
+    gap_aapl = aer.resolve_annual_period_ends(
+        date(2026, 10, 29), {"last_reported_quarter_end": date(2026, 6, 27),
+                             "fiscal_year_end": "0926"})
+    assert gap_aapl == {"0y": None, "+1y": None}      # release 124 days after the 3rd quarter
+    gap_dec = aer.resolve_annual_period_ends(
+        date(2027, 2, 25), {"last_reported_quarter_end": date(2026, 9, 30),
+                            "fiscal_year_end": "1231"})
+    assert gap_dec == {"0y": None, "+1y": None}
+    # the bound is the quarterly leg's own: 75 days passes, 76 fails, a release BEFORE the
+    # quarter end (a mismatched pair) fails
+    base = {"last_reported_quarter_end": date(2026, 9, 30), "fiscal_year_end": "1231"}
+    assert aer.resolve_annual_period_ends(date(2026, 9, 30) + timedelta(days=75), base)["0y"]
+    assert aer.resolve_annual_period_ends(date(2026, 9, 30) + timedelta(days=76), base)["0y"] is None
+    assert aer.resolve_annual_period_ends(date(2026, 9, 29), base)["0y"] is None
+
+
+def test_annual_label_band_keeps_a_just_reported_year_from_looking_current():
+    """MUTATION TARGET: the 30-day band. EDGAR's MMDD is approximate for a 52/53-week
+    filer: AAPL's 10-K reportDate can be 2026-09-25 against MMDD '0926'. Without the band
+    the year that JUST reported (2026-09-26) would be named '0y' again. Strict '>' at the
+    boundary, pinned both sides."""
+    out = aer.resolve_annual_period_ends(
+        date(2026, 10, 28), {"last_reported_quarter_end": date(2026, 9, 25),
+                             "fiscal_year_end": "0926"})
+    assert out["0y"] == date(2027, 9, 26)
+    dec = {"fiscal_year_end": "1231"}
+    # last quarter end 2026-12-01 -> floor is exactly 2026-12-31: not strictly after, so roll
+    assert aer.resolve_annual_period_ends(
+        date(2027, 1, 20), {**dec, "last_reported_quarter_end": date(2026, 12, 1)}
+    )["0y"] == date(2027, 12, 31)
+    # one day earlier the floor is 2026-12-30, and 2026-12-31 is past it
+    assert aer.resolve_annual_period_ends(
+        date(2027, 1, 20), {**dec, "last_reported_quarter_end": date(2026, 11, 30)}
+    )["0y"] == date(2026, 12, 31)
+
+
+def test_annual_label_clamps_a_leap_day_year_end_like_the_finnhub_leg():
+    """Shared day-clamping (fiscal_quarter_end_from_label, not a second implementation):
+    MMDD '0229' is Feb 29 in a leap year and Feb 28 otherwise."""
+    out = aer.resolve_annual_period_ends(
+        date(2027, 11, 5), {"last_reported_quarter_end": date(2027, 9, 30),
+                            "fiscal_year_end": "0229"})
+    assert out == {"0y": date(2028, 2, 29), "+1y": date(2029, 2, 28)}
+
+
+def test_annual_label_missing_or_malformed_inputs_are_none_never_a_guess():
+    ok = {"last_reported_quarter_end": date(2026, 6, 30), "fiscal_year_end": "1231"}
+    rel = date(2026, 8, 12)
+    assert aer.resolve_annual_period_ends(rel, ok)["0y"] == date(2026, 12, 31)
+    none = {"0y": None, "+1y": None}
+    assert aer.resolve_annual_period_ends(None, ok) == none
+    assert aer.resolve_annual_period_ends(rel, {**ok, "fiscal_year_end": None}) == none
+    assert aer.resolve_annual_period_ends(rel, {**ok, "last_reported_quarter_end": None}) == none
+    assert aer.resolve_annual_period_ends(rel, dict(aer._EMPTY_CADENCE_FACTS)) == none
+    for bad in ("", "12", "ab12", "1340", "0000", "13 1"):
+        assert aer.resolve_annual_period_ends(rel, {**ok, "fiscal_year_end": bad}) == none, bad
+
+
+def test_annual_label_is_always_the_first_year_end_past_the_floor():
+    """Property sweep (pure): for assorted fiscal year ends and every last-reported-quarter
+    date across two years, '0y' is strictly after the 30-day floor, no earlier year end is,
+    and '+1y' is the next year's end (a 364-366 day step)."""
+    for fye in ("0131", "0229", "0630", "0926", "1130", "1231", "0103"):
+        d = date(2026, 1, 1)
+        while d < date(2028, 1, 1):
+            out = aer.resolve_annual_period_ends(
+                d + timedelta(days=20), {"last_reported_quarter_end": d, "fiscal_year_end": fye})
+            floor = d + timedelta(days=30)
+            assert out["0y"] is not None and out["0y"] > floor, (fye, d, out)
+            assert (out["0y"] - floor).days <= 366, (fye, d, out)
+            assert 364 <= (out["+1y"] - out["0y"]).days <= 366, (fye, d, out)
+            prior = aer.fiscal_quarter_end_from_label(4, out["0y"].year - 1, fye)
+            assert prior <= floor, (fye, d, out, "an earlier year end was also past the floor")
+            d += timedelta(days=9)
+
+
+def test_normalize_yfinance_annual_builds_a_distinct_annual_row_from_the_shared_mapping():
+    row = aer.normalize_yfinance_annual_estimate(
+        ticker="AAPL", yf_period="0y", as_of=AS_OF, anchor_filing_date=date(2026, 7, 31),
+        period_end_date=date(2026, 9, 26),
+        revenue_row={"avg": 478224124500, "high": 496306000000, "low": 471800000000,
+                     "numberOfAnalysts": 40},
+        earnings_row={"avg": 8.82006, "high": 8.94, "low": 8.28, "numberOfAnalysts": 39,
+                      "growth": 0.18},
+    )
+    assert row["period_type"] == "annual" and row["source"] == "yfinance"
+    assert row["period_label_method"] == aer.LABEL_METHOD_YF_FISCAL_YEAR_END == "yf_fiscal_year_end"
+    assert row["fiscal_quarter"] is None and row["fiscal_year"] is None
+    assert row["analyst_count_available"] is True
+    assert row["num_analysts_revenue"] == 40 and row["num_analysts_eps"] == 39
+    assert row["valid_from_date"] == date(2026, 7, 31) and row["as_of_date"] == AS_OF
+    assert row["recorder_version"] == aer.RECORDER_VERSION
+    # same column set as the quarterly row — the schema did not grow a column
+    quarterly = aer.normalize_yfinance_quarterly_estimate(
+        ticker="AAPL", yf_period="0q", as_of=AS_OF, anchor_filing_date=date(2026, 7, 31),
+        period_end_date=date(2026, 9, 26), revenue_row={"avg": 1.0}, earnings_row=None)
+    assert set(row) == set(quarterly)
+    # the honesty guard holds here too
+    assert aer.normalize_yfinance_annual_estimate(
+        ticker="X", yf_period="0y", as_of=AS_OF, anchor_filing_date=None, period_end_date=None,
+        revenue_row=_yf_row(), earnings_row=_yf_row()) is None
+    assert aer.normalize_yfinance_annual_estimate(
+        ticker="X", yf_period="0y", as_of=AS_OF, anchor_filing_date=None,
+        period_end_date=date(2026, 12, 31), revenue_row=None, earnings_row=None) is None
+
+
+def test_has_estimate_counts_a_stated_zero_but_not_an_empty_row():
+    assert aer._has_estimate({"revenue_avg": 0.0, "eps_avg": None})       # AMLX 0y revenue, a stated $0
+    assert aer._has_estimate({"revenue_avg": None, "eps_avg": -1.48})
+    assert not aer._has_estimate({"revenue_avg": None, "eps_avg": None, "revenue_high": 5.0})
+
+
+# ── annual leg: orchestration (db + fetch monkeypatched, like the quarterly tests) ───────
+
+
+def _annual_payload(*, rev_avg=478224124500.0, eps_avg=8.82006, n_rev=40, n_eps=39):
+    """yfinance-shaped '0y'/'+1y' payloads (AAPL values from the 2026-10-16 probe)."""
+    return {
+        "0y": {"revenue": {"avg": rev_avg, "high": 496306000000.0, "low": 471800000000.0,
+                           "numberOfAnalysts": n_rev},
+               "earnings": {"avg": eps_avg, "high": 8.94, "low": 8.28, "numberOfAnalysts": n_eps}},
+        "+1y": {"revenue": {"avg": 528113789120.0, "high": 594863000000.0,
+                            "low": 485693900000.0, "numberOfAnalysts": n_rev},
+                "earnings": {"avg": 9.9, "high": 10.4, "low": 9.1, "numberOfAnalysts": n_eps}},
+    }
+
+
+def _yf_data_with_annual(ticker, annual=None, **kw):
+    data = _yf_data_for(ticker, **kw)
+    data["annual_periods"] = _annual_payload() if annual is None else annual
+    return data
+
+
+@pytest.mark.asyncio
+async def test_annual_rows_are_written_beside_the_quarterly_rows(monkeypatch):
+    """THE POSITIVE: a ticker whose frames carry '0y'/'+1y' lands two annual rows next to its
+    two quarterly rows — same table, same schema, period_type='annual', year ends resolved
+    from EDGAR's fiscalYearEnd."""
+    written, audits, _div = _wire(
+        monkeypatch,
+        anchors={"AAPL": date(2026, 7, 31)},
+        quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
+        yf_data={"AAPL": _yf_data_with_annual("AAPL")},
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert out["errors"] == 0 and out["rows_written"] == 4
+    assert out["quarter_yf_rows_written"] == 2          # the quarterly counter is NOT inflated
+    assert out["annual_yf_rows_written"] == 2 and out["annual_yf_no_label"] == 0
+    assert out["quarter_yf_tickers"] == 1 and out["annual_yf_tickers"] == 1
+    annual = [r for r in written if r["period_type"] == "annual"]
+    assert len(annual) == 2 and len([r for r in written if r["period_type"] == "quarter"]) == 2
+    assert {r["period_end_date"] for r in annual} == {date(2026, 9, 26), date(2027, 9, 26)}
+    assert all(r["source"] == "yfinance" and r["as_of_date"] == AS_OF for r in annual)
+    assert all(r["valid_from_date"] == date(2026, 7, 31) for r in annual), (
+        "the same honest window as the quarterly rows: the ticker's last filing")
+    assert all(r["period_label_method"] == aer.LABEL_METHOD_YF_FISCAL_YEAR_END for r in annual)
+    assert all(r["fiscal_quarter"] is None and r["fiscal_year"] is None for r in annual)
+    assert all(r["num_analysts_revenue"] == 40 for r in annual)
+    y0 = next(r for r in annual if r["period_end_date"] == date(2026, 9, 26))
+    assert y0["revenue_avg"] == 478224124500.0 and y0["eps_avg"] == 8.82006
+    keys = [(r["ticker"], r["period_type"], r["period_end_date"], r["as_of_date"], r["source"])
+            for r in written]
+    assert len(keys) == len(set(keys)), "annual and quarterly rows must not collide on the PK"
+    assert not any(e == "analyst_estimates_error" for e, _ in audits)
+
+
+@pytest.mark.asyncio
+async def test_no_annual_frames_means_no_annual_rows_and_no_error(monkeypatch):
+    """THE NEGATIVE: frames without '0y'/'+1y' (the key absent, as every pre-existing
+    fixture; or present and empty, as the real fetch returns) write no annual row, count no
+    'unresolvable label' (nothing was there to label), and raise no error row."""
+    for annual_value in ("absent", {}):
+        data = _yf_data_for("AAPL")
+        if annual_value != "absent":
+            data["annual_periods"] = annual_value
+        written, audits, _div = _wire(
+            monkeypatch, anchors={"AAPL": date(2026, 7, 31)},
+            quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE}, yf_data={"AAPL": data})
+        out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+        assert out["rows_written"] == 2 and out["errors"] == 0
+        assert all(r["period_type"] == "quarter" for r in written)
+        assert out["annual_yf_rows_written"] == 0 and out["annual_yf_no_label"] == 0
+        assert out["annual_yf_tickers"] == 0 and out["quarter_yf_tickers"] == 1
+        assert not any(e == "analyst_estimates_error" for e, _ in audits)
+
+
+@pytest.mark.asyncio
+async def test_an_unresolvable_fiscal_year_end_is_counted_and_never_stored(monkeypatch):
+    """Frames HAD annual data but EDGAR gave no fiscalYearEnd: the quarterly rows still
+    land (they never needed it), the annual ones are skipped and COUNTED — not stored against
+    a guessed date, not an error."""
+    written, audits, _div = _wire(
+        monkeypatch, anchors={"AAPL": date(2026, 7, 31)},
+        quarter_cadence={"AAPL": _AAPL_CADENCE},          # no fiscal_year_end
+        yf_data={"AAPL": _yf_data_with_annual("AAPL")})
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert out["rows_written"] == 2 and out["quarter_yf_rows_written"] == 2
+    assert out["annual_yf_rows_written"] == 0 and out["annual_yf_no_label"] == 1
+    assert out["annual_yf_tickers"] == 0 and out["quarter_yf_tickers"] == 1
+    assert out["errors"] == 0
+    assert not any(e == "analyst_estimates_error" for e, _ in audits)
+
+
+@pytest.mark.asyncio
+async def test_annual_rows_do_not_need_a_quarterly_date_to_resolve(monkeypatch):
+    """A name Yahoo lists no NEXT earnings date for cannot label its quarters (counted as
+    quarter-no-cadence) but its year end depends only on EDGAR + the last release — so the
+    annual estimate is still recorded. That is the leg's independence from the quarterly
+    reconstruction, and it must not shift a quarterly counter."""
+    data = _yf_data_with_annual("AAPL", next_earnings_date=None)
+    written, audits, _div = _wire(
+        monkeypatch, anchors={"AAPL": date(2026, 7, 31)},
+        quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE}, yf_data={"AAPL": data})
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert out["quarter_yf_no_cadence"] == 1 and out["quarter_yf_rows_written"] == 0
+    assert out["annual_yf_rows_written"] == 2 and out["rows_written"] == 2
+    assert {r["period_type"] for r in written} == {"annual"}
+    # the run-level quarterly error row keeps its trigger and wording: no quarterly row landed
+    assert any(e == "analyst_estimates_error" and "yfinance wrote 0 quarterly rows for 1 ticker(s)" in m
+               for e, m in audits)
+    # and this ticker is NOT in the bar's denominator (no quarterly row)
+    assert out["quarter_yf_tickers"] == 0 and out["annual_yf_tickers"] == 0
+
+
+# The two golden quarterly rows for _yf_data_for("AAPL") + _AAPL_CADENCE_WITH_FYE, anchor
+# 2026-07-31, as of 2026-08-31 — captured from the pre-annual module (the 84 existing tests
+# passed unchanged against it) and pinned literally so a key gained, lost or re-valued fails.
+_GOLDEN_AAPL_QUARTERLY_ROWS = [
+    {"ticker": "AAPL", "as_of_date": AS_OF, "anchor_filing_date": date(2026, 7, 31),
+     "valid_from_date": date(2026, 7, 31), "period_type": "quarter",
+     "period_end_date": date(2026, 9, 26),
+     "revenue_avg": 113563145910.0, "revenue_high": 117219700000.0,
+     "revenue_low": 112137000000.0, "eps_avg": 1.97656, "eps_high": 2.07, "eps_low": 1.93,
+     "num_analysts_revenue": 28, "num_analysts_eps": 28, "source": "yfinance",
+     "recorder_version": "v4", "analyst_count_available": True,
+     "fiscal_quarter": None, "fiscal_year": None, "period_label_method": "yf_reconstructed"},
+    {"ticker": "AAPL", "as_of_date": AS_OF, "anchor_filing_date": date(2026, 7, 31),
+     "valid_from_date": date(2026, 7, 31), "period_type": "quarter",
+     "period_end_date": date(2026, 12, 26),
+     "revenue_avg": 153735499960.0, "revenue_high": 160000000000.0,
+     "revenue_low": 132850061129.0, "eps_avg": 2.89268, "eps_high": 3.42, "eps_low": 2.51,
+     "num_analysts_revenue": 22, "num_analysts_eps": 22, "source": "yfinance",
+     "recorder_version": "v4", "analyst_count_available": True,
+     "fiscal_quarter": None, "fiscal_year": None, "period_label_method": "yf_reconstructed"},
+]
+
+
+@pytest.mark.asyncio
+async def test_quarterly_rows_are_byte_identical_with_and_without_the_annual_leg(monkeypatch):
+    """GOLDEN. Adding the annual leg must not move one quarterly value, key or counter."""
+    plain_written, _, _ = _wire(
+        monkeypatch, anchors={"AAPL": date(2026, 7, 31)},
+        quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
+        yf_data={"AAPL": _yf_data_for("AAPL")})
+    plain_out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert plain_written == _GOLDEN_AAPL_QUARTERLY_ROWS
+
+    annual_written, _, _ = _wire(
+        monkeypatch, anchors={"AAPL": date(2026, 7, 31)},
+        quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
+        yf_data={"AAPL": _yf_data_with_annual("AAPL")})
+    annual_out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+    assert [r for r in annual_written if r["period_type"] == "quarter"] == _GOLDEN_AAPL_QUARTERLY_ROWS
+    for counter in ("quarter_yf_rows_written", "quarter_yf_unavailable", "quarter_yf_no_cadence",
+                    "quarter_finnhub_rows_written", "quarter_finnhub_unavailable",
+                    "quarter_finnhub_no_cadence", "divergence_rows_written", "no_anchor",
+                    "anchor_errors", "errors", "population", "tickers_written"):
+        assert annual_out[counter] == plain_out[counter], counter
+
+
+@pytest.mark.asyncio
+async def test_finnhub_rows_and_divergences_are_byte_identical_with_the_annual_leg(monkeypatch):
+    """The Finnhub leg, the corroborated override and the divergence join are untouched."""
+    results = []
+    for data in (_yf_data_for("AAPL"), _yf_data_with_annual("AAPL")):
+        written, _, divergences = _wire(
+            monkeypatch, anchors={"AAPL": date(2026, 7, 31)},
+            quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE}, yf_data={"AAPL": data},
+            finnhub_data={"AAPL": _finnhub_entries_for_aapl()})
+        await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+        results.append(([r for r in written if r["period_type"] == "quarter"], divergences))
+    assert results[0] == results[1]
+    assert len(results[0][0]) == 4 and len(results[0][1]) == 2
+
+
+@pytest.mark.asyncio
+async def test_the_annual_label_follows_the_year_across_a_fiscal_year_boundary(monkeypatch):
+    """End to end across a Dec fiscal year end. Night 1 (before Q4 reports): the '+1y' row
+    is FY2027. Night 2 (after Q4 reports and the 10-K posts): the '0y' row is FY2027 with the
+    IDENTICAL period_end_date — the series continues under one key — and '0y' has moved on."""
+    dec_before = {"last_reported_quarter_end": date(2026, 9, 30),
+                  "prior_reported_quarter_end": date(2026, 6, 30), "fiscal_year_end": "1231"}
+    dec_after = {"last_reported_quarter_end": date(2026, 12, 31),
+                 "prior_reported_quarter_end": date(2026, 9, 30), "fiscal_year_end": "1231"}
+    night1, night2 = date(2026, 11, 20), date(2027, 3, 20)
+    w1, _, _ = _wire(
+        monkeypatch, anchors={"XYZ": date(2026, 11, 6)}, quarter_cadence={"XYZ": dec_before},
+        yf_data={"XYZ": _yf_data_with_annual(
+            "XYZ", next_earnings_date=date(2027, 2, 25),
+            last_actual_release_date=date(2026, 11, 5))})
+    await aer.run_analyst_estimates_snapshot(night1, tickers=["XYZ"])
+    w2, _, _ = _wire(
+        monkeypatch, anchors={"XYZ": date(2027, 3, 12)}, quarter_cadence={"XYZ": dec_after},
+        yf_data={"XYZ": _yf_data_with_annual(
+            "XYZ", next_earnings_date=date(2027, 5, 8),
+            last_actual_release_date=date(2027, 2, 25))})
+    await aer.run_analyst_estimates_snapshot(night2, tickers=["XYZ"])
+    by_label = lambda rows: {r["period_end_date"] for r in rows if r["period_type"] == "annual"}  # noqa: E731
+    n1, n2 = by_label(w1), by_label(w2)
+    assert n1 == {date(2026, 12, 31), date(2027, 12, 31)}
+    assert n2 == {date(2027, 12, 31), date(2028, 12, 31)}
+    assert n1 & n2 == {date(2027, 12, 31)}, "FY2027 must keep ONE key across the roll"
+    y1 = {r["period_end_date"]: r for r in w1 if r["period_type"] == "annual"}
+    assert y1[date(2027, 12, 31)]["revenue_avg"] == 528113789120.0    # night 1's '+1y' value
+
+
+# ── annual leg: the ZERO-EXTRA-REQUEST pin (a spy on the real fetch) ─────────────────────
+
+
+class _SpyYfTicker:
+    """Stands in for yfinance.Ticker. The recorder may read exactly the three properties it
+    always did; ANY other attribute is a further Yahoo request and fails the test loudly."""
+    reads: list = []
+    inits: list = []
+
+    def __init__(self, symbol):
+        type(self).inits.append(symbol)
+
+    @property
+    def revenue_estimate(self):
+        type(self).reads.append("revenue_estimate")
+        return _estimate_df({
+            "0q": {"avg": 113563145910.0, "low": 112137000000.0, "high": 117219700000.0,
+                   "numberOfAnalysts": 28},
+            "+1q": {"avg": 153735499960.0, "low": 132850061129.0, "high": 160000000000.0,
+                    "numberOfAnalysts": 22},
+            "0y": {"avg": 478224124500.0, "low": 471800000000.0, "high": 496306000000.0,
+                   "numberOfAnalysts": 40},
+            "+1y": {"avg": 528113789120.0, "low": 485693900000.0, "high": 594863000000.0,
+                    "numberOfAnalysts": 40},
+        })
+
+    @property
+    def earnings_estimate(self):
+        type(self).reads.append("earnings_estimate")
+        return _estimate_df({
+            "0q": {"avg": 1.97656, "low": 1.93, "high": 2.07, "numberOfAnalysts": 28},
+            "+1q": {"avg": 2.89268, "low": 2.51, "high": 3.42, "numberOfAnalysts": 22},
+            "0y": {"avg": 8.82006, "low": 8.28, "high": 8.94, "numberOfAnalysts": 39},
+            "+1y": {"avg": 9.9, "low": 9.1, "high": 10.4, "numberOfAnalysts": 39},
+        })
+
+    @property
+    def earnings_dates(self):
+        type(self).reads.append("earnings_dates")
+        return _earnings_dates_df([("2026-10-29", None), ("2026-07-30", 2.02)])
+
+    def __getattr__(self, name):          # only reached for attributes NOT defined above
+        raise AssertionError(f"unexpected yfinance access .{name} — an extra Yahoo request")
+
+
+def _install_spy_yfinance(monkeypatch):
+    import types
+    _SpyYfTicker.reads, _SpyYfTicker.inits = [], []
+    fake = types.ModuleType("yfinance")
+    fake.Ticker = _SpyYfTicker
+    monkeypatch.setitem(sys.modules, "yfinance", fake)
+
+
+@pytest.mark.asyncio
+async def test_the_annual_rows_cost_zero_extra_yahoo_requests(monkeypatch):
+    """MUTATION TARGET: reading '0y'/'+1y' via a further property (growth_estimates,
+    earnings_trend, ...) or a second Ticker. The real fetch, against a Ticker that records
+    every attribute read: exactly the three properties the quarterly leg always read, once
+    each, one Ticker — and the result carries BOTH legs."""
+    _install_spy_yfinance(monkeypatch)
+    data = await aer._fetch_yfinance_quarterly("AAPL")
+    assert sorted(_SpyYfTicker.reads) == ["earnings_dates", "earnings_estimate", "revenue_estimate"]
+    assert _SpyYfTicker.inits == ["AAPL"]
+    assert set(data["periods"]) == {"0q", "+1q"} and set(data["annual_periods"]) == {"0y", "+1y"}
+    assert data["annual_periods"]["0y"]["revenue"]["numberOfAnalysts"] == 40
+    assert data["annual_periods"]["+1y"]["earnings"]["avg"] == 9.9
+    assert data["next_earnings_date"] == date(2026, 10, 29)
+    assert data["last_actual_release_date"] == date(2026, 7, 30)
+
+
+@pytest.mark.asyncio
+async def test_a_whole_ticker_makes_the_same_requests_with_and_without_annual_frames(monkeypatch):
+    """The request budget through snapshot_ticker: one yfinance fetch (3 property reads),
+    one Finnhub call, the shared EDGAR calls — identical whether or not the frames carry the
+    annual periods, and the annual rows still come out."""
+    calls = {"filing": 0, "cadence": 0, "finnhub": 0}
+
+    async def fake_filing(ticker, as_of):
+        calls["filing"] += 1
+        return date(2026, 7, 31)
+
+    async def fake_cadence(ticker, as_of):
+        calls["cadence"] += 1
+        return dict(_AAPL_CADENCE_WITH_FYE)
+
+    async def fake_finnhub(ticker, as_of):
+        calls["finnhub"] += 1
+        return None
+
+    async def fake_recent(ticker, since):
+        return []
+
+    monkeypatch.setattr(aer, "_fetch_last_filing_date", fake_filing)
+    monkeypatch.setattr(aer, "_fetch_quarter_cadence_facts", fake_cadence)
+    monkeypatch.setattr(aer, "_fetch_finnhub_calendar", fake_finnhub)
+    monkeypatch.setattr(aer, "get_recent_quarterly_period_ends", fake_recent)
+
+    _install_spy_yfinance(monkeypatch)
+    snap = await aer.snapshot_ticker("AAPL", AS_OF)
+    assert snap["quarter_yf_rows"] == 2 and snap["annual_yf_rows"] == 2
+    assert [r["period_end_date"] for r in snap["rows"] if r["period_type"] == "annual"] == [
+        date(2026, 9, 26), date(2027, 9, 26)]
+    with_annual = (dict(calls), sorted(_SpyYfTicker.reads), list(_SpyYfTicker.inits))
+
+    # the same ticker through a Ticker whose frames have NO annual rows
+    class _QuarterlyOnly(_SpyYfTicker):
+        # the base property records the read (against THIS subclass's list) — do not
+        # record it a second time here
+        @property
+        def revenue_estimate(self):
+            return _SpyYfTicker.revenue_estimate.fget(self).loc[["0q", "+1q"]]
+
+        @property
+        def earnings_estimate(self):
+            return _SpyYfTicker.earnings_estimate.fget(self).loc[["0q", "+1q"]]
+
+    for k in calls:
+        calls[k] = 0
+    _QuarterlyOnly.reads, _QuarterlyOnly.inits = [], []
+    import types
+    fake = types.ModuleType("yfinance")
+    fake.Ticker = _QuarterlyOnly
+    monkeypatch.setitem(sys.modules, "yfinance", fake)
+    snap2 = await aer.snapshot_ticker("AAPL", AS_OF)
+    assert snap2["quarter_yf_rows"] == 2 and snap2["annual_yf_rows"] == 0
+    without_annual = (dict(calls), sorted(_QuarterlyOnly.reads), list(_QuarterlyOnly.inits))
+    assert with_annual == without_annual
+    assert with_annual[0] == {"filing": 1, "cadence": 1, "finnhub": 1}
+
+
+@pytest.mark.asyncio
+async def test_an_annual_only_frame_is_still_unavailable_and_the_fetch_is_unchanged(monkeypatch):
+    """The quarterly 'unavailable' gate is untouched: frames with only '0y'/'+1y' return
+    None exactly as frames with nothing did, so no quarterly counter changes meaning, and
+    quarterly-only frames come back with an empty annual dict."""
+    import types
+
+    class _AnnualOnly(_SpyYfTicker):
+        @property
+        def revenue_estimate(self):
+            return _SpyYfTicker.revenue_estimate.fget(self).loc[["0y", "+1y"]]
+
+        @property
+        def earnings_estimate(self):
+            return _SpyYfTicker.earnings_estimate.fget(self).loc[["0y", "+1y"]]
+
+    class _QuarterlyOnly(_SpyYfTicker):
+        @property
+        def revenue_estimate(self):
+            return _SpyYfTicker.revenue_estimate.fget(self).loc[["0q", "+1q"]]
+
+        @property
+        def earnings_estimate(self):
+            return _SpyYfTicker.earnings_estimate.fget(self).loc[["0q", "+1q"]]
+
+    for cls, expect_none in ((_AnnualOnly, True), (_QuarterlyOnly, False)):
+        fake = types.ModuleType("yfinance")
+        fake.Ticker = cls
+        monkeypatch.setitem(sys.modules, "yfinance", fake)
+        data = await aer._fetch_yfinance_quarterly("AAPL")
+        if expect_none:
+            assert data is None
+        else:
+            assert set(data["periods"]) == {"0q", "+1q"} and data["annual_periods"] == {}
+
+
+# ── annual leg: the pre-registered bar, and what would make it fail ─────────────────────
+
+
+def test_annual_coverage_summary_states_the_bar_and_the_verdict():
+    base = {"annual_yf_rows_written": 12, "annual_yf_no_label": 2}
+    ok = aer.annual_coverage_summary({**base, "annual_yf_tickers": 6, "quarter_yf_tickers": 7})
+    assert "6/7 ticker(s) with quarterly yfinance rows also have an annual estimate" in ok
+    assert "86%, meets the >= 85% bar" in ok and "12 annual row(s)" in ok
+    assert "2 had annual frames but no resolvable fiscal year end" in ok
+    low = aer.annual_coverage_summary({**base, "annual_yf_tickers": 5, "quarter_yf_tickers": 7})
+    assert "71%, BELOW the >= 85% bar" in low
+    edge = aer.annual_coverage_summary({**base, "annual_yf_tickers": 17, "quarter_yf_tickers": 20})
+    assert "85%, meets" in edge                       # exactly 85% passes (>=)
+    none = aer.annual_coverage_summary({**base, "annual_yf_tickers": 0, "quarter_yf_tickers": 0},
+                                       "one-shot backfill: ")
+    assert none.startswith("one-shot backfill: ") and "(n/a, n/a)" in none
+    assert len(aer.annual_coverage_summary(
+        {"annual_yf_rows_written": 99999, "annual_yf_no_label": 99999,
+         "annual_yf_tickers": 99999, "quarter_yf_tickers": 99999}, "one-shot backfill: ")) < 500, (
+        "log_audit_event stores only the first 500 characters — the bar must fit")
+
+
+@pytest.mark.asyncio
+async def test_the_nightly_annual_row_carries_the_bar_and_leaves_the_main_row_alone(monkeypatch):
+    """Seven tickers with quarterly rows, six with annual estimates: one
+    `analyst_estimates_snapshot_annual` row reads 6/7 and meets the bar; the existing
+    `analyst_estimates_snapshot` row is still written, once, with its original opening."""
+    tickers = ["T1", "T2", "T3", "T4", "T5", "T6", "T7"]
+    yf = {t: _yf_data_with_annual(t) for t in tickers[:6]}
+    yf["T7"] = _yf_data_for("T7")                        # quarterly only
+    written, audits, _div = _wire(
+        monkeypatch, anchors={t: date(2026, 7, 31) for t in tickers},
+        quarter_cadence={t: _AAPL_CADENCE_WITH_FYE for t in tickers}, yf_data=yf)
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=tickers)
+    assert (out["annual_yf_tickers"], out["quarter_yf_tickers"]) == (6, 7)
+    main = [m for e, m in audits if e == "analyst_estimates_snapshot"]
+    annual = [m for e, m in audits if e == "analyst_estimates_snapshot_annual"]
+    assert len(main) == 1 and len(annual) == 1
+    assert main[0].startswith("26 row(s) across 7/7 ticker(s) (14 quarterly-from-yfinance, "), main[0]
+    assert "annual" not in main[0], "the existing summary row must read exactly as before"
+    assert "6/7 ticker(s)" in annual[0] and "meets the >= 85% bar" in annual[0]
+    assert not any(e == "analyst_estimates_error" for e, _ in audits)
+
+
+@pytest.mark.asyncio
+async def test_thin_names_with_empty_annual_frames_fail_the_bar_instead_of_passing_on_empty_rows(
+        monkeypatch):
+    """WOULD-FAIL-IF, as a test. The annual frames come back all-NaN for the thin-coverage
+    names: the rows are stored ('we asked, the vendor had nothing') but they must NOT count
+    as coverage — otherwise an empty leg meets the bar by the row count alone."""
+    nan = float("nan")
+    empty = {p: {"revenue": {"avg": nan, "high": nan, "low": nan, "numberOfAnalysts": nan},
+                 "earnings": {"avg": nan, "high": nan, "low": nan, "numberOfAnalysts": nan}}
+             for p in ("0y", "+1y")}
+    tickers = ["T1", "T2", "T3", "T4"]
+    yf = {"T1": _yf_data_with_annual("T1")}              # one healthy name...
+    yf.update({t: _yf_data_with_annual(t, annual=empty) for t in tickers[1:]})   # ...three empty
+    written, audits, _div = _wire(
+        monkeypatch, anchors={t: date(2026, 7, 31) for t in tickers},
+        quarter_cadence={t: _AAPL_CADENCE_WITH_FYE for t in tickers}, yf_data=yf)
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=tickers)
+    assert out["annual_yf_rows_written"] == 8            # all eight rows were stored, NULL-valued
+    empty_rows = [r for r in written if r["period_type"] == "annual" and r["ticker"] != "T1"]
+    assert len(empty_rows) == 6 and all(r["revenue_avg"] is None and r["eps_avg"] is None
+                                        for r in empty_rows)
+    assert (out["annual_yf_tickers"], out["quarter_yf_tickers"]) == (1, 4)
+    annual_row = next(m for e, m in audits if e == "analyst_estimates_snapshot_annual")
+    assert "1/4 ticker(s)" in annual_row and "25%, BELOW the >= 85% bar" in annual_row
+
+
+@pytest.mark.asyncio
+async def test_the_backfill_writes_its_own_annual_row_too(monkeypatch):
+    async def population(since):
+        return ["AAPL"]
+
+    monkeypatch.setattr(aer, "get_analyst_estimate_population", population)
+    _, audits, _div = _wire(
+        monkeypatch, anchors={"AAPL": date(2026, 7, 31)},
+        quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
+        yf_data={"AAPL": _yf_data_with_annual("AAPL")})
+    await aer.run_analyst_estimates_backfill(AS_OF)
+    annual = [m for e, m in audits if e == "analyst_estimates_backfill_annual"]
+    assert len(annual) == 1 and annual[0].startswith("one-shot backfill: annual-from-yfinance: ")
+
