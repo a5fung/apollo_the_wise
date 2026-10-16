@@ -2580,8 +2580,9 @@ _VALIDATOR_EVENT = "ticker_revalidated_out"
 # The `<category>=[...]` lines of the carry-forward filter's strip row that mean "this ticker was
 # REMOVED" (theme_engine._apply_carryforward_deterministic_filter's `reason_parts`). `comove_kept`
 # is deliberately NOT here: the writer logs it in the same row, but those tickers were KEPT — a
-# comove-kept member that later leaves on RS must still be scored. Pinned against the writer's
-# source by tests/test_theme_quality_check.py so a new strip category cannot drift in unseen.
+# comove-kept member that later leaves on RS must still be scored. The round-trip test in
+# tests/test_theme_quality_check.py exercises every current arm; a NEW strip category must be added
+# here and to that test (until then its tickers still page — fail open, nothing hidden).
 _STRIP_REMOVAL_CATEGORIES = frozenset(
     {"deal_pinned", "banned", "cooldown", "sector_outlier", "comove_below_bar"}
 )
