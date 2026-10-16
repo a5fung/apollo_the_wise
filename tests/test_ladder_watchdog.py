@@ -34,6 +34,7 @@ import agents.market_intelligence.db as dbmod
 from agents.market_intelligence import ladder_watchdog as lw
 from agents.market_intelligence.strategies import registry
 from agents.market_intelligence.strategies.registry import Strategy
+from tests._audit_emitters import TELEGRAM_SENDERS
 
 _TODAY = dt.date(2026, 10, 15)
 
@@ -198,25 +199,23 @@ def _strategy(sid, phase, enabled=True, live_real=False):
                     live_real_enabled=live_real)
 
 
-def _closed_rows(rs, *, exit_rule=None, first_id=1):
-    """Uncapped rows: entry_shares=1, entry 101, hard_stop 1 → risk_placed = 100, so total_pnl
-    = 100·R reproduces the R series exactly (the #586 fixture shape). `id` ascends with
-    `alert_date`; `closed_on_et` (the ET date of `closed_at`) is the entry day — a same-day
-    close — and is NOT selected by the watchdog, only read by the mock DB's as-of bound."""
-    base = dt.date(2026, 7, 1)
-    return [{"id": first_id + i, "total_pnl": 100.0 * r, "risk_dollars_actual": None,
-             "entry_shares": 1.0, "entry_price": 101.0, "hard_stop": 1.0,
-             "alert_date": base + dt.timedelta(days=i), "closed_on_et": base + dt.timedelta(days=i),
-             "signal_type": "magna53", "exit_rule": exit_rule} for i, r in enumerate(rs)]
-
-
-def _one_row(r, *, id, alert_date, closed_on_et="same-day"):
-    """One closed row with realised R = `r` (same shape as `_closed_rows`) at an explicit id /
-    entry date / close date. `closed_on_et=None` is a legacy row with no `closed_at`."""
+def _one_row(r, *, id, alert_date, closed_on_et="same-day", exit_rule=None):
+    """One closed row with realised R = `r` at an explicit id / entry date / close date.
+    Uncapped: entry_shares=1, entry 101, hard_stop 1 → risk_placed = 100, so total_pnl = 100·R
+    reproduces the R series exactly (the #586 fixture shape). `closed_on_et` (the ET date of
+    `closed_at`) is NOT selected by the watchdog, only read by the mock DB's as-of bound; the
+    default is a same-day close, `None` is a legacy row with no `closed_at`."""
     return {"id": id, "total_pnl": 100.0 * r, "risk_dollars_actual": None, "entry_shares": 1.0,
             "entry_price": 101.0, "hard_stop": 1.0, "alert_date": alert_date,
             "closed_on_et": alert_date if closed_on_et == "same-day" else closed_on_et,
-            "signal_type": "magna53", "exit_rule": None}
+            "signal_type": "magna53", "exit_rule": exit_rule}
+
+
+def _closed_rows(rs, *, exit_rule=None, first_id=1):
+    """A series of same-day-close rows (`_one_row`); `id` ascends with `alert_date`."""
+    base = dt.date(2026, 7, 1)
+    return [_one_row(r, id=first_id + i, alert_date=base + dt.timedelta(days=i),
+                     exit_rule=exit_rule) for i, r in enumerate(rs)]
 
 
 def _order_key(cols):
@@ -303,7 +302,7 @@ class _Spy:
         return [c for c in self.writes if c[1] == dbmod._AUDIT_INSERT_SQL]
 
 
-def _run(spy, today=_TODAY):
+def _run(today=_TODAY):
     return asyncio.run(lw.run_ladder_watchdog(today=today))
 
 
@@ -322,7 +321,7 @@ def test_breach_writes_would_demote_true_and_touches_nothing_else(monkeypatch):
         ("magna53", "live"): _closed_rows(_rs(2.0, 20) + _rs(-1.0, 6)),   # 6-streak breach
         ("magna53_smallcap", "paper"): _closed_rows([1.0, -1.0, 2.0, -0.5, 1.5, -1.0]),
     })
-    detail = _run(spy)
+    detail = _run()
 
     summary, row = _row_detail(spy)
     assert row == json.loads(json.dumps(detail, default=str))
@@ -349,7 +348,7 @@ def test_each_strategy_is_read_on_its_own_book(monkeypatch):
     strategies = [_strategy("magna53", "live", live_real=True),
                   _strategy("magna53_smallcap", "paper")]
     spy = _Spy(monkeypatch, strategies, {})
-    _run(spy)
+    _run()
     reads = [c[2] for c in spy.calls if c[0] == "fetch"]
     assert sorted(r[:2] for r in reads) == [("magna53", "live"), ("magna53_smallcap", "paper")]
     assert all(r[2] == _TODAY for r in reads)   # the night being scored rides as $3
@@ -361,7 +360,7 @@ def test_each_strategy_is_read_on_its_own_book(monkeypatch):
 def test_no_breach_still_writes_one_row_with_would_demote_false(monkeypatch):
     spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)], {
         ("magna53", "live"): _closed_rows([1.5, -1.0, 2.0, -1.0, -1.0, 3.0] * 5)})
-    _run(spy)
+    _run()
     _, row = _row_detail(spy)
     e = row["evaluated"][0]
     assert e["would_demote"] is False and e["reasons"] == [] and e["n_closed"] == 30
@@ -372,7 +371,7 @@ def test_no_breach_still_writes_one_row_with_would_demote_false(monkeypatch):
 def test_too_few_trades_reads_not_enough_data_in_the_row(monkeypatch):
     spy = _Spy(monkeypatch, [_strategy("magna53_smallcap", "paper")], {
         ("magna53_smallcap", "paper"): _closed_rows(_rs(-1.0, 3))})
-    _run(spy)
+    _run()
     _, row = _row_detail(spy)
     e = row["evaluated"][0]
     assert e["n_closed"] == 3 and e["would_demote"] is False
@@ -387,7 +386,7 @@ def test_shadow_deprecated_and_disabled_are_skipped_with_a_reason(monkeypatch):
                   _strategy("9m_day2", "deprecated", enabled=False),
                   _strategy("paused_lane", "paper", enabled=False)]
     spy = _Spy(monkeypatch, strategies, {})
-    _run(spy)
+    _run()
     _, row = _row_detail(spy)
     assert [e["strategy_id"] for e in row["evaluated"]] == ["magna53"]
     assert set(row["skipped"]) == {"shadow_orb_5m", "9m_day2", "paused_lane"}
@@ -403,7 +402,7 @@ def test_rows_without_an_r_frame_are_excluded_and_counted(monkeypatch):
     rows[0] = {**rows[0], "hard_stop": None, "risk_dollars_actual": None}   # no R frame
     spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)],
                {("magna53", "live"): rows})
-    _run(spy)
+    _run()
     _, row = _row_detail(spy)
     e = row["evaluated"][0]
     assert e["n_closed"] == 5 and e["rows_without_r_frame"] == 1
@@ -419,7 +418,7 @@ def test_era_split_rides_in_the_row_as_report_only(monkeypatch):
         r["alert_date"] = r["closed_on_et"] = dt.date(2026, 10, 14)
     spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)],
                {("magna53", "live"): old + new})
-    _run(spy)
+    _run()
     _, row = _row_detail(spy)
     e = row["evaluated"][0]
     assert e["by_era"].get("era_e") == 2 and e["by_era"].get("era_a") == 6
@@ -427,16 +426,16 @@ def test_era_split_rides_in_the_row_as_report_only(monkeypatch):
     assert e["would_demote"] is False   # streak broken by the two winners; pooled verdict
 
 
-def test_a_crash_writes_an_error_row_and_re_raises(monkeypatch):
-    """A dead watchdog must not look like a quiet one: the error row feeds the nightly
-    `%error%` sweep and the re-raise lets audit_wrap record 'failed'."""
+def test_a_crash_propagates_out_of_the_run_and_writes_no_row_of_its_own(monkeypatch):
+    """A dead watchdog must not look like a quiet one: the crash leaves `run_ladder_watchdog`
+    (so `audit_wrap` records 'failed', writes `job_failed_error` and pages once — pinned
+    through the real job below) and the run itself writes nothing."""
     spy = _Spy(monkeypatch, [], {})
     monkeypatch.setattr(registry, "_load_all",
                         AsyncMock(side_effect=RuntimeError("registry unreachable")))
     with pytest.raises(RuntimeError, match="registry unreachable"):
-        _run(spy)
-    assert [c[2][0] for c in spy.audit_rows] == [lw.ERROR_EVENT]
-    assert len(spy.writes) == 1
+        _run()
+    assert spy.writes == []
 
 
 def test_the_series_is_in_alert_date_order_not_insertion_order(monkeypatch):
@@ -449,7 +448,7 @@ def test_the_series_is_in_alert_date_order_not_insertion_order(monkeypatch):
     rows.append(_one_row(2.0, id=999, alert_date=dt.date(2026, 6, 30)))  # backfilled: early date, last id
     spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)],
                {("magna53", "live"): rows})
-    _run(spy)
+    _run()
     _, row = _row_detail(spy)
     e = row["evaluated"][0]
     assert e["n_closed"] == 27
@@ -466,7 +465,7 @@ def test_same_day_entries_are_ordered_by_id(monkeypatch):
     rows += [_one_row(2.0, id=100, alert_date=last_day), _one_row(-1.0, id=101, alert_date=last_day)]
     spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)],
                {("magna53", "live"): rows})
-    _run(spy)
+    _run()
     _, row = _row_detail(spy)
     assert row["evaluated"][0]["triggers"]["consec_losses"]["value"] == 1
 
@@ -484,7 +483,7 @@ def test_a_rerun_scores_only_what_that_night_could_have_seen(monkeypatch):
                             closed_on_et=_TODAY + dt.timedelta(days=1))   # multi-day hold
     spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)],
                {("magna53", "live"): past + [entered_after, closed_after]})
-    _run(spy)
+    _run()
     _, row = _row_detail(spy)
     e = row["evaluated"][0]
     assert e["n_closed"] == 26
@@ -494,7 +493,7 @@ def test_a_rerun_scores_only_what_that_night_could_have_seen(monkeypatch):
 def test_the_trade_read_carries_both_as_of_bounds(monkeypatch):
     """The SQL itself names both bounds on the night being scored ($3)."""
     spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)], {})
-    _run(spy)
+    _run()
     (_, sql, args), = [c for c in spy.calls if c[0] == "fetch"]
     assert "alert_date <= $3" in sql
     assert "COALESCE((closed_at AT TIME ZONE 'America/New_York')::date, alert_date) <= $3" in sql
@@ -507,8 +506,8 @@ def test_a_rerun_of_the_same_night_writes_no_second_row(monkeypatch):
     same as_of (the first row stands; the returned dict says so)."""
     spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)], {
         ("magna53", "live"): _closed_rows(_rs(2.0, 20) + _rs(-1.0, 6))})
-    first = _run(spy)
-    second = _run(spy)
+    first = _run()
+    second = _run()
     assert "row_already_written" not in first
     assert second["row_already_written"] is True
     assert second["would_demote_count"] == first["would_demote_count"] == 1   # still evaluated
@@ -516,18 +515,18 @@ def test_a_rerun_of_the_same_night_writes_no_second_row(monkeypatch):
 
 
 def test_an_existing_row_for_another_night_does_not_suppress_tonights(monkeypatch):
-    """The existence key is the night itself: yesterday's row (here pre-seeded) and the same
-    night's `ladder_watchdog_error` row do not stop tonight's `ladder_demotion_shadow`."""
+    """The existence key is the night AND the event type: yesterday's row (here pre-seeded) and
+    the same night's row of another event type do not stop tonight's `ladder_demotion_shadow`."""
     yesterday = _TODAY - dt.timedelta(days=1)
     prior = [(lw.AUDIT_EVENT, lw._summary(yesterday, [])),
-             (lw.ERROR_EVENT, lw._summary(_TODAY, []))]
+             ("some_other_event", lw._summary(_TODAY, []))]
     spy = _Spy(monkeypatch, [_strategy("magna53", "live", live_real=True)], {}, prior_audit=prior)
-    detail = _run(spy)
+    detail = _run()
     assert "row_already_written" not in detail
     summary, row = _row_detail(spy)
     assert row["as_of"] == _TODAY.isoformat() and _TODAY.isoformat() in summary
     # …and the next evening writes its own row again
-    _run(spy, today=_TODAY + dt.timedelta(days=1))
+    _run(today=_TODAY + dt.timedelta(days=1))
     assert len(spy.audit_rows) == 2
 
 
@@ -573,36 +572,15 @@ def test_a_crash_in_the_job_reaches_the_ledger_as_failed_and_pages_once(monkeypa
 # ─── 3. Registration: the job exists, is INTELLIGENCE-owned, and fires after the close ─────
 
 
-def _registered_jobs(monkeypatch):
-    """The jobs `start_scheduler` ACTUALLY registers (the test_job_partition capture), with their
-    real trigger objects."""
-    from agents.market_intelligence import scheduler as sched
-    from tests.test_job_partition import _CapturingScheduler
-    seen = {}
-    real = sched._apply_role_partition
-
-    def _spy(scheduler, role):
-        seen["jobs"] = {j.id: j for j in scheduler.get_jobs()}
-        return real(scheduler, role)
-
-    monkeypatch.setattr(sched, "AsyncIOScheduler", _CapturingScheduler)
-    monkeypatch.setattr(sched, "_apply_role_partition", _spy)
-
-    async def _start():
-        sched.start_scheduler()
-
-    asyncio.run(_start())
-    return seen["jobs"]
-
-
 def test_ladder_watchdog_is_registered_intelligence_owned_after_the_close(monkeypatch):
     from agents.market_intelligence import scheduler as sched
-    jobs = _registered_jobs(monkeypatch)
+    from tests.test_672_missed_job_recovery import _real_job_list
+    _, registered = _real_job_list(monkeypatch)   # what start_scheduler ACTUALLY registers
+    jobs = {j.id: j for j in registered}
     assert lw.JOB_ID in jobs, "ladder_watchdog is not registered by start_scheduler"
     trig = str(jobs[lw.JOB_ID].trigger)
     assert "hour='16'" in trig and "minute='17'" in trig and "mon-fri" in trig, trig
-    assert lw.JOB_ID in sched.INTELLIGENCE_OWNED_JOB_IDS
-    assert lw.JOB_ID not in sched.EXECUTION_OWNED_JOB_IDS
+    assert lw.JOB_ID in sched.INTELLIGENCE_OWNED_JOB_IDS   # (disjointness: test_job_partition)
     assert jobs[lw.JOB_ID].misfire_grace_time == 600
 
 
@@ -619,9 +597,9 @@ def test_the_module_has_no_phase_sizing_order_or_telegram_path():
     attrs = {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
     imported = {a.name for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)
                 for a in n.names}
-    forbidden = {"update_strategy", "send_telegram_message", "notify_owner", "notify_job_failure",
-                 "submit_trade_entry", "place_stop_order", "replace_order",
-                 "claim_safeguard_state_transition", "set_safeguard_state"}
+    forbidden = TELEGRAM_SENDERS | {
+        "update_strategy", "submit_trade_entry", "place_stop_order", "replace_order",
+        "claim_safeguard_state_transition", "set_safeguard_state"}
     assert not forbidden & (names | attrs | imported), forbidden & (names | attrs | imported)
     # Every string the module can hand to the DB — docstrings (which DESCRIBE the forbidden
     # paths) excluded by identity, not by content.

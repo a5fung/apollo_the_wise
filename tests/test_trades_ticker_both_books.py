@@ -25,6 +25,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agents.market_intelligence.constants import is_paper_message, mode_prefix  # noqa: E402
+from tests.test_partial_visible_in_trades_549 import _extract  # noqa: E402
 
 LIVE_TAG = mode_prefix("live")
 PAPER_TAG = mode_prefix("paper")
@@ -32,17 +33,10 @@ PAPER_TAG = mode_prefix("paper")
 # conftest STUBS `backtester.tracker` (it drags in heavy deps the suite deliberately mocks) and the
 # module cannot be exec'd standalone, so a plain import hands the handler a MagicMock and every
 # assertion would pass without one line of the real row formatter running. Same technique as
-# tests/test_partial_visible_in_trades_549.py: compile just the functions the handler imports, from
-# the real source, so this cannot drift from what ships.
-_TRACKER_SRC = Path("agents/market_intelligence/backtester/tracker.py").read_text(encoding="utf-8")
+# tests/test_partial_visible_in_trades_549.py (whose `_extract` this reuses): compile just the
+# functions the handler imports, from the real source, so this cannot drift from what ships.
 _TRACKER_FNS = ("parse_json_list", "format_trade_attempts", "format_trade_attempts_live",
                 "_attempt_count")
-
-
-def _extract(name: str) -> str:
-    i = _TRACKER_SRC.index(f"def {name}(")
-    j = _TRACKER_SRC.find("\ndef ", i + 1)
-    return _TRACKER_SRC[i:j if j > 0 else len(_TRACKER_SRC)]
 
 
 def _real_formatter_module() -> types.ModuleType:
