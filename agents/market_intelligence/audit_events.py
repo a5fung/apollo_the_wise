@@ -78,6 +78,7 @@ ANTICIPATION_COIL_BUYOUT_PIN_REJECTED = "anticipation_coil_buyout_pin_rejected" 
 # ── #327 readiness-job robustness (blocker fix, operator-signed 2026-07-14 — 7/13 >2h hang) ──
 CONSOLIDATION_READINESS_SCAN_TIMEOUT = "consolidation_readiness_scan_timeout"  # scan budget hit; failed open, settlement still ran
 ANTICIPATION_MNA_CHECK_CAPPED = "anticipation_mna_check_capped"  # per-run M&A-check cap hit; remaining candidates passed UNchecked (fail-open) — since #394 (2026-10-03) the screen walks candidates in the board's own order, so the unchecked tail is the BOTTOM of the board
+ANTICIPATION_STALE_BARS_SKIPPED = "anticipation_stale_bars_skipped"  # #701(c) (2026-10-16): the nightly coil scan skipped names whose latest daily bar is more than 3 trading sessions old (QRVO, none since 10-02) — one row per run naming each ticker + its last bar date; stale data hygiene, no coil-finder threshold moved
 
 # ── Theme ecosystems (ADR 0032 Phase 1) ─────────────────────────────────────
 THEME_ECOSYSTEM_ASSIGNED = "theme_ecosystem_assigned"  # method=haiku|keyword|unassigned in summary

@@ -623,6 +623,58 @@ rows with the number equal to the stored value to one decimal, AND the board ord
 `orderliness` and a normal bar history (the wiring is dark), a line whose phrase disagrees with its stored value,
 or a board order that follows the score.
 
+### 2026-10-16 — #701(c): the nightly scan skips a name with no daily bar for more than 3 NYSE sessions
+
+**Trigger** (prod, read-only, 2026-10-16): QRVO, a Skyworks merger target, has had no daily bar since
+2026-10-02, yet its frozen bar series still reads as a coil, so it was a candidate EVERY night from 10-05. Each
+night it wrote `anticipation_mna_price_unread` ("deal-nominated … but the own-day bar is unreadable
+(no_own_day_bar) — kept ON the coil board") and spent one of the 40 per-run M&A checks, and
+`anticipation_mna_check_capped` fired on 10 of 10 nights — so a real candidate at the bottom of the board went
+unchecked because of a name with no price.
+
+**Rule** (stale-data hygiene, NOT a detection-criterion change — no threshold of the coil-finder moves): PHASE 1
+of `scheduler._consolidation_readiness_scan` skips a key whose LATEST daily bar is more than
+`_CONS_STALE_BAR_SESSIONS = 3` NYSE sessions before the scan date: it reaches no coil-finder, no M&A check, no
+board write, no entry signal. Sessions are counted on the real NYSE calendar
+(`trading_calendar.get_market_status`: weekends + holidays — a holiday in the span is not a session; the cutoff is
+computed once per run by `scheduler._stale_bar_cutoff`). A bar exactly on the scan date, or 1–3 sessions old, is
+evaluated as before. QRVO (last bar Fri 10-02) is still read on 10-05, 10-06 and 10-07 and skipped from 10-08.
+Skips are counted in the scan's `stats['stale_bars']` (tickers) and written as ONE audit row per run,
+`anticipation_stale_bars_skipped`, naming each ticker and its last bar date (full list in the detail JSON); no
+Telegram.
+
+**The skipped name leaves the board by the existing rule, not a new one**: `db.get_consolidation_board` shows only
+rows whose `last_eval` equals the newest `last_eval` in the table (the 2026-10-03 rule above), and a skipped name is
+not rewritten tonight — so it drops off the board the same night. Its old rows stay in the table as history; a
+name whose bars resume is evaluated and written again the next scan.
+
+**Not changed**: the coil-finder (`find_coil_setup` / `evaluate_coil_consolidation`) and every threshold, the
+universe proposer and carry-forward keys, the M&A screen and its 40-check cap, the price-hold, the Confirm entry
+signal, the write order. No entry/exit/order code. A name that does NOT fail the staleness test behaves exactly as
+before.
+
+**Reversion-flag**: NEW (no prior staleness rule on this scan). Shadow board, no money; additive exclusion of
+names with no current price.
+
+**Tests**: `tests/test_consolidation_scan_timeout.py` Part E — a key 4+ sessions stale is skipped (no coil-finder,
+no M&A check, no write, no entry insert, one audit row naming it with its last bar date) while a bar dated the
+scan day or 1/2/3 sessions old is evaluated and written; across Labor Day and Juneteenth a 3-session bar is kept
+and a 4-session bar skipped (weekday-only arithmetic would skip the 3-session one); the QRVO timeline
+(evaluated 10-05..10-07, skipped 10-08 and 10-16); with 3 frozen + 4 live names against a cap of 4 the checks
+spent equal the live count and the cap does not trip; two stale tickers (one with two board rows) produce one
+row naming each once and no Telegram; the real `is_likely_ma` is never asked about a frozen deal-nominated name
+(no `anticipation_mna_price_unread`), while the same name one session old still writes it; on real SQL a skipped
+name drops off the board and a live coil stays. The default test fixtures' LAST bar was re-dated from 2026-05-30
+(45 days before the scan date) to the session before it — a frozen series is exactly what this rule skips; no
+assertion in an existing test changed.
+
+**Status**: built 2026-10-16, awaiting deploy (market-agent, then a second `execution` step —
+`scheduler.py` is in `scripts/exec_loaded_modules.txt`). **Verify-live** (positive, the first 17:35 ET scan after
+deploy, while QRVO still has no bar): an `anticipation_stale_bars_skipped` row whose summary names `QRVO (last bar
+2026-10-02)`, AND QRVO has no `mi_anticipation_consolidation` row with that night's `last_eval`, AND `/anticipation`
+does not list it. WOULD-FAIL-IF: no stale-bars row while QRVO's latest `mi_daily_closes` date is still 2026-10-02
+(the rule is dark), or QRVO written / listed that night, or an `anticipation_mna_price_unread` row for QRVO.
+
 ---
 
 ## 2026-08-16 — FINDINGS FROM THE EP WORK THAT LAND ON THIS FAMILY
