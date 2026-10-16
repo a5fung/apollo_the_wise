@@ -1,0 +1,21 @@
+🚩 *Flag Scanner — 2026-10-15*  _(data: 2026-10-15)_
+
+
+🌀 *COILED — tightest bases, watch only (1)*
+  • `IOVA` — base 11d · range 0.72 · vol 0.72
+
+👀 *WATCH (4)*
+  KOD, MRNA, GRAL, HTFL
+
+🚩 *Breakout-entry shadow* — 7 open · 17 settled (18% capture) · 3 unbookable
+  COILED: 2/3 capture · med +3.0R
+  TIGHTENING: 1/12 capture · med -0.7R
+  TRIGGERED: 0/2 capture · med -1.0R
+_SHADOW — no money; flip gated on N≥10 + sign-off (#397)._
+
+_Drill-down: `/flags TICKER` for 14-day history_
+HEADER_COILED_LINES: ['🌀 *COILED — tightest bases, watch only (1)*']
+OLD_HEADER_PRESENT: False
+DIGEST: 2026-10-13 21:25:04.287153+00:00 flag digest 2026-10-13 (sent) {"scan_date": "2026-10-13", "telegram": "sent", "new_today": ["IOVA", "GRAL"], "triggered": [], "coiled": [], "coiled_not_shown": [], "dropped_out": 9}
+DIGEST: 2026-10-14 21:25:04.738671+00:00 flag digest 2026-10-14 (sent) {"scan_date": "2026-10-14", "telegram": "sent", "new_today": [], "triggered": [], "coiled": ["IOVA", "GRAL"], "coiled_not_shown": [], "dropped_out": 11}
+DIGEST: 2026-10-15 21:25:04.260692+00:00 flag digest 2026-10-15 (sent) {"scan_date": "2026-10-15", "telegram": "sent", "new_today": [], "triggered": [], "coiled": ["IOVA"], "coiled_not_shown": [], "dropped_out": 8}
