@@ -4472,10 +4472,14 @@ class MarketIntelligenceAgent(BaseAgent):
         'paper p&l'                     — running totals only
         'entry/exit for TVTX'           — single ticker detail
 
-        When LIVE_TRADING_ENABLED=true, queries mi_live_trades (Alpaca paper).
+        When LIVE_TRADING_ENABLED=true, queries mi_live_trades. The LIST views and the TOTALS
+        footer are the LIVE (real-money) book only. A TICKER query (`/trades TICKER`) shows that
+        ticker's rows from BOTH books, each tagged with its book (`mode_prefix`), because the
+        low-cap paper lane (`magna53_smallcap`, paper since 2026-10-11) keeps its positions in
+        mi_live_trades with account_mode='paper' (#624) and would otherwise be unreachable.
         When false, queries mi_paper_trades (EOD sim).
         """
-        from agents.market_intelligence.constants import LIVE_TRADING_ENABLED
+        from agents.market_intelligence.constants import LIVE_TRADING_ENABLED, strategy_mode_prefix
         task = request.task.lower()
         pool = await get_pool()
 
@@ -4493,10 +4497,16 @@ class MarketIntelligenceAgent(BaseAgent):
             # mi_live_trades: "open" = filled + remaining_shares > 0
             table = "mi_live_trades"
             entry_col = "entry_price"
-            where_clauses.append("account_mode = 'live'")   # mode-ok: #447 real-money book only (paper is dormant/legacy)
             if ticker:
+                # both books (#624): a ticker lookup must reach the paper lane's positions. Named
+                # explicitly, never an absent condition; every row is tagged with its own book.
+                where_clauses.append("account_mode IN ('live', 'paper')")
                 where_clauses.append(f"ticker = ${len(params)+1}")
                 params.append(ticker.upper())
+            else:
+                # The LIST views stay the real-money book (#447): the low-cap paper lane has written
+                # paper rows to this table since 2026-10-11, and they surface via `/trades TICKER`.
+                where_clauses.append("account_mode = 'live'")   # mode-ok: #447 list views = the real-money book; paper positions surface via /trades TICKER (#624)
             if "open" in task and "closed" not in task:
                 where_clauses.append("status IN ('filled', 'order_placed') AND remaining_shares > 0")
             elif "closed" in task and "open" not in task:
@@ -4505,7 +4515,8 @@ class MarketIntelligenceAgent(BaseAgent):
             elif "skipped" in task or "filtered" in task:
                 where_clauses.append("status IN ('skipped', 'cancelled', 'order_failed')")
             open_statuses = ("filled", "order_placed", "pending_confirmation", "confirmed")
-            label = "Live Trade History (Alpaca · real money)"
+            label = ("Trade History (live + paper books · totals = live book)" if ticker
+                     else "Live Trade History (Alpaca · real money)")
         else:
             table = "mi_paper_trades"
             entry_col = "last_entry_price"
@@ -4529,6 +4540,10 @@ class MarketIntelligenceAgent(BaseAgent):
         # mi_paper_trades has entries column; mi_live_trades has entry_attempt int instead
         entries_col = "entries" if not LIVE_TRADING_ENABLED else "NULL::jsonb AS entries"
         attempt_col = "entry_attempt" if LIVE_TRADING_ENABLED else "NULL::int AS entry_attempt"
+        # A ticker view spans both books, so each row must say which one it is from (#624). The
+        # list views are live-only and stay untagged (and their SQL unchanged).
+        tag_rows = bool(LIVE_TRADING_ENABLED and ticker)
+        mode_col = ", account_mode" if tag_rows else ""
         async with pool.acquire() as conn:
             # entry_shares pulled for live-mode timeline rendering (paper has
             # the column too via entries[0].shares, but living off the
@@ -4539,7 +4554,7 @@ class MarketIntelligenceAgent(BaseAgent):
                        status, skip_reason,
                        {entry_col} AS entry_price, orb_high, orb_low, stop_price,
                        total_pnl, hold_days,
-                       exits, {entries_col}, {attempt_col}, {shares_col}
+                       exits, {entries_col}, {attempt_col}, {shares_col}{mode_col}
                 FROM {table}
                 WHERE {where}
                 ORDER BY alert_date DESC
@@ -4574,6 +4589,8 @@ class MarketIntelligenceAgent(BaseAgent):
         if not rows and not ticker:
             return self._ok(request, result="No paper trades recorded yet.")
         if not rows and ticker:
+            if tag_rows:
+                return self._ok(request, result=f"No trades found for {ticker.upper()} in the live or paper book.")
             return self._ok(request, result=f"No paper trades found for {ticker.upper()}.")
 
         from agents.market_intelligence.backtester.tracker import (
@@ -4596,7 +4613,11 @@ class MarketIntelligenceAgent(BaseAgent):
             num_attempts = r.get("entry_attempt") or _attempt_count(r.get("entries"))
             att_str = f" {num_attempts}x" if num_attempts > 1 else ""
 
-            header = f"{status_emoji} *{r['ticker']}* {date_str} {gap} {score}{att_str}"
+            # mode_prefix already carries its trailing space; the book tag sits between the status
+            # emoji and the ticker so a mixed ticker view reads row by row. Never at the START of
+            # the message: the sender routes a paper-tagged message to the paper chat.
+            book_tag = strategy_mode_prefix(r["account_mode"]) if tag_rows else ""
+            header = f"{status_emoji} {book_tag}*{r['ticker']}* {date_str} {gap} {score}{att_str}"
             lines.append(header)
 
             if is_skipped(r):
@@ -7091,9 +7112,12 @@ class MarketIntelligenceAgent(BaseAgent):
 
             async with pool.acquire() as conn:
                 # #447: the MAIN /trades summary is the REAL-MONEY (live) book — every block
-                # filters account_mode='live'. Without it these mixed the dormant historical PAPER
-                # book in and the realized total read paper-dominated (operator 7/10). Paper stays
-                # reachable behind the separate 'Paper (legacy)' button.
+                # filters account_mode='live'. Without it these mixed the historical PAPER book
+                # in and the realized total read paper-dominated (operator 7/10). The low-cap
+                # paper lane (magna53_smallcap, paper since 2026-10-11) keeps its positions in
+                # this table with account_mode='paper'; they are reached per ticker via
+                # `/trades TICKER` (#624), never blended into this live summary. The separate
+                # 'Paper (legacy)' button reads the dead mi_paper_trades EOD-sim table.
                 open_rows = await conn.fetch("""
                     SELECT ticker, alert_date, entry_price, remaining_shares,
                            stop_price, hard_stop, total_pnl, hold_days,
