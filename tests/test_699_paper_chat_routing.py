@@ -355,6 +355,10 @@ _BUILDERS_VIA_SENDER = {
 _BUILDERS_NOT_ROUTED = {
     # an interactive /dryrun reply to the operator: stays where he asked
     ("agents/market_intelligence/agent.py", "_handle_dryrun"),
+    # an interactive `/trades TICKER` reply (#624): tags each row's book mid-message, but the reply
+    # opens with its own header (never the paper tag, pinned in tests/test_trades_ticker_both_books.py)
+    # and returns through AgentResponse to the chat he asked in
+    ("agents/market_intelligence/agent.py", "_handle_trades_query"),
     # folded into the 16:55 Market Close Digest (a composite message that starts with the digest
     # header, so it is untagged and stays in the main chat by design)
     ("agents/market_intelligence/broker/live_tracker.py", "send_live_trade_summary"),
