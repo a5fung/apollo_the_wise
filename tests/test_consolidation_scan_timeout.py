@@ -117,13 +117,19 @@ async def test_scan_success_no_timeout_audit(monkeypatch):
 
 # ── the scan harness (Part A(3) + Part B wiring) ───────────────────────────────────────────────
 def _mk_bars(n=60, v=200_000.0):
-    """Rising daily bars with REAL ISO dates (the scan parses anchor_date via fromisoformat)."""
+    """Rising daily bars with REAL ISO dates (the scan parses anchor_date via fromisoformat).
+    The LAST bar is dated the session before the scan date (_TODAY - 1 day — the 'own-day bar not
+    pulled yet' shape `_bars_with_own_day(own_day=False)` already uses). It used to be 2026-05-30,
+    45 days before _TODAY: a frozen series that the #701(c) stale-bar rule rightly skips, so every
+    default-fixture test would have exercised nothing. Only the last bar moves — bars[55] stays
+    2026-05-26, the anchor `_HELD_ANCHOR` and the key defaults rely on."""
     d0 = date(2026, 4, 1)
     bars = []
     for i in range(n):
         c = 50.0 + 0.5 * i
         bars.append({"date": (d0 + timedelta(days=i)).isoformat(),
                      "o": c, "h": c + 0.2, "l": c - 0.2, "c": c, "v": v})
+    bars[-1]["date"] = (_TODAY - timedelta(days=1)).isoformat()
     return bars
 
 
@@ -888,6 +894,9 @@ def _raw_coil_rows(*, gappy_days=(), null_open_dip=False, dip_open_as_close=Fals
             for i, c in enumerate(closes)]
     if null_open_dip:
         rows[50]["open_price"] = None
+    # #701(c): the LAST row is dated the session before the scan date (as `_mk_bars` does) — it used
+    # to be 2026-05-30, a series 45 days stale that the stale-bar rule rightly skips.
+    rows[-1]["trade_date"] = _TODAY - timedelta(days=1)
     return rows
 
 
@@ -1061,3 +1070,229 @@ async def test_394_a_first_seen_pinned_coil_gets_a_marked_row_so_the_price_hold_
     _, entries = await _scan()
     assert await _board_tickers() == [] and entries == []  # held off by its pinned price
     assert pool.row("NUVL", _HELD_ANCHOR)[1] == _TODAY.isoformat()
+
+
+# ══ Part E — #701(c): a name with no daily bar for 3+ NYSE sessions is not evaluated ═══════════
+# QRVO (a Skyworks merger target) has had no daily bar since 2026-10-02, yet its frozen series
+# still read as a coil: every night since 10-05 it was a candidate, wrote `anticipation_mna_price_unread`
+# ("own-day bar unreadable") and burned one of the 40 M&A checks (`anticipation_mna_check_capped`
+# fired 10 nights of 10), so a real candidate at the bottom of the board went unchecked. Stale-data
+# hygiene, NOT a detection change: no coil-finder threshold moves; the skipped name is simply not
+# rewritten tonight, and the board shows only the rows the latest scan rewrote.
+def _bars_ending(last_day):
+    """The harness bars with the LATEST bar dated `last_day`."""
+    bars = _mk_bars()
+    bars[-1] = {**bars[-1], "date": last_day.isoformat()}
+    return bars
+
+
+async def _scan_by_last_bar(monkeypatch, last_bars, *, today=_TODAY, extra_keys=(), **harness):
+    """One scan with one key per ticker; `last_bars` = {ticker: date of its latest daily bar}.
+    Every ticker reads a coil (the harness coil-finder); `extra_keys` are additional keys for the
+    same tickers (a second board row). Returns (cap, stats, evaluated, screened, telegrams)."""
+    import agents.market_intelligence.briefing as briefing
+    import agents.market_intelligence.db as db
+    import agents.market_intelligence.ma_filter as mf
+
+    fresh = _mk_bars()
+    cap, _ = _patch_scan_harness(
+        monkeypatch, bars=fresh, csig=_csig(fresh),
+        keys=[_key(tk) for tk in last_bars] + list(extra_keys), **harness)
+    series = {tk: _bars_ending(d) for tk, d in last_bars.items()}
+    evaluated, screened, telegrams = [], [], []
+
+    async def tagged_ohlcv(ticker, _today):
+        return [dict(b, tk=ticker) for b in series[ticker]]
+
+    def recording_cons(b, **kw):
+        evaluated.append(b[0]["tk"])
+        return _cons_for(b), None
+
+    async def recording_mna(ticker, **kw):
+        screened.append(ticker)
+        return False, None
+
+    async def no_telegram(msg, *a, **kw):
+        telegrams.append(msg)
+        return True
+
+    monkeypatch.setattr(db, "get_anticipation_ohlcv", tagged_ohlcv)
+    monkeypatch.setattr(ant, "evaluate_coil_consolidation", recording_cons)
+    monkeypatch.setattr(mf, "is_likely_ma", recording_mna)
+    monkeypatch.setattr(briefing, "send_telegram_message", no_telegram)
+
+    stats, transitions, entries = {"universe": 0, "written": 0}, [], []
+    await sched._consolidation_readiness_scan(today, stats, transitions, entries)
+    return cap, stats, evaluated, screened, telegrams
+
+
+def test_701c_cutoff_is_the_third_nyse_session_before_the_scan_date(monkeypatch):
+    """The cutoff is counted on the real NYSE calendar. Scan Fri 10-16: a 10-13 bar has three
+    sessions after it (10-14, 10-15, 10-16) and is kept; a 10-12 bar has four and is skipped →
+    cutoff 10-13. Juneteenth (Fri 06-19) and Labor Day (Mon 09-07) are the discriminating cases:
+    weekday-only arithmetic would count the holiday as a session and land one day LATER (06-18 /
+    09-07). A non-session scan date counts from the latest session before it."""
+    assert sched._stale_bar_cutoff(date(2026, 10, 16)) == date(2026, 10, 13)
+    assert sched._stale_bar_cutoff(date(2026, 10, 5)) == date(2026, 9, 30)       # Mon: back over the weekend
+    assert sched._stale_bar_cutoff(date(2026, 6, 23)) == date(2026, 6, 17)       # Juneteenth not a session
+    assert sched._stale_bar_cutoff(date(2026, 9, 10)) == date(2026, 9, 4)        # Labor Day not a session
+    # Sat 10-03: the sessions after a 09-29 bar are 09-30, 10-01, 10-02 (3) — kept; 09-28 has 4
+    assert sched._stale_bar_cutoff(date(2026, 10, 3)) == date(2026, 9, 29)
+    monkeypatch.setattr(sched, "_CONS_STALE_BAR_SESSIONS", 1)                   # the constant drives it
+    assert sched._stale_bar_cutoff(date(2026, 10, 16)) == date(2026, 10, 15)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("last_bar, evaluated_expected", [
+    (date(2026, 7, 14), True),    # the scan date's own bar
+    (date(2026, 7, 13), True),    # 1 session old
+    (date(2026, 7, 10), True),    # 2 sessions
+    (date(2026, 7, 9), True),     # 3 sessions — the last day still evaluated
+    (date(2026, 7, 8), False),    # 4 sessions — skipped
+    (date(2026, 6, 12), False),   # weeks old
+], ids=["today", "1-session", "2-sessions", "3-sessions", "4-sessions", "weeks"])
+async def test_701c_only_a_key_more_than_3_sessions_stale_is_skipped(
+        monkeypatch, last_bar, evaluated_expected):
+    """Scan Tue 2026-07-14. A skipped key reaches no coil-finder, no M&A check, no board write and
+    no entry fire, and is named in ONE audit row; an evaluated key is written as before."""
+    from agents.market_intelligence.audit_events import ANTICIPATION_STALE_BARS_SKIPPED
+    cap, stats, evaluated, screened, _tg = await _scan_by_last_bar(monkeypatch, {"TST": last_bar})
+
+    if evaluated_expected:
+        assert evaluated == ["TST"] and screened == ["TST"]
+        assert cap["upsert_tickers"] == ["TST"] and stats["written"] == 1
+        assert stats["stale_bars"] == 0
+        assert _rows(cap, ANTICIPATION_STALE_BARS_SKIPPED) == []        # no row on a clean night
+    else:
+        assert evaluated == [] and screened == []
+        assert cap["upsert_tickers"] == [] and cap["inserts"] == [] and stats["written"] == 0
+        assert stats["stale_bars"] == 1
+        rows = _rows(cap, ANTICIPATION_STALE_BARS_SKIPPED)
+        assert len(rows) == 1
+        assert f"TST (last bar {last_bar.isoformat()})" in rows[0][0]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scan_day, last_bar, evaluated_expected", [
+    # Labor Day Mon 2026-09-07: scan Thu 09-10, sessions after a 09-04 bar = 09-08, 09-09, 09-10 → 3
+    (date(2026, 9, 10), date(2026, 9, 4), True),
+    (date(2026, 9, 10), date(2026, 9, 3), False),
+    # Juneteenth Fri 2026-06-19: scan Tue 06-23, sessions after a 06-17 bar = 06-18, 06-22, 06-23 → 3
+    (date(2026, 6, 23), date(2026, 6, 17), True),
+    (date(2026, 6, 23), date(2026, 6, 16), False),
+], ids=["labor-day-3", "labor-day-4", "juneteenth-3", "juneteenth-4"])
+async def test_701c_a_market_holiday_in_the_span_is_not_counted_as_a_session(
+        monkeypatch, scan_day, last_bar, evaluated_expected):
+    """Weekday-only arithmetic would call the 3-session bars above 4 sessions old and skip a name
+    that is only a holiday behind — the case the real calendar exists for."""
+    _cap, _stats, evaluated, _s, _tg = await _scan_by_last_bar(
+        monkeypatch, {"TST": last_bar}, today=scan_day)
+    assert (evaluated == ["TST"]) is evaluated_expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scan_day, evaluated_expected", [
+    (date(2026, 10, 5), True), (date(2026, 10, 6), True), (date(2026, 10, 7), True),   # 1-3 sessions
+    (date(2026, 10, 8), False), (date(2026, 10, 16), False),                           # 4+ sessions
+], ids=["10-05", "10-06", "10-07", "10-08", "10-16"])
+async def test_701c_qrvo_timeline(monkeypatch, scan_day, evaluated_expected):
+    """QRVO's last bar is Fri 2026-10-02: still read for three more nights, skipped from 10-08."""
+    _cap, _stats, evaluated, _s, _tg = await _scan_by_last_bar(
+        monkeypatch, {"QRVO": date(2026, 10, 2)}, today=scan_day)
+    assert (evaluated == ["QRVO"]) is evaluated_expected
+
+
+@pytest.mark.asyncio
+async def test_701c_the_check_cap_is_no_longer_spent_on_stale_names(monkeypatch):
+    """4 live candidates + 3 frozen ones against a cap of 4: the spend equals the live count, the
+    cap does not trip (it would have, 7 > 4, with the frozen names counted), and every live
+    candidate is checked and written."""
+    from agents.market_intelligence.audit_events import ANTICIPATION_MNA_CHECK_CAPPED
+    monkeypatch.setattr(sched, "_CONS_MNA_CHECKS_CAP", 4)
+    live = {f"LIVE{i}": date(2026, 7, 13) for i in range(4)}
+    frozen = {f"OLD{i}": date(2026, 7, 1) for i in range(3)}
+    # frozen names FIRST in key order, so a cap spent in key order would be spent on them
+    cap, stats, evaluated, screened, _tg = await _scan_by_last_bar(
+        monkeypatch, {**frozen, **live})
+
+    assert sorted(screened) == sorted(live)                      # checks spent == the live count
+    assert len(screened) == 4
+    assert _rows(cap, ANTICIPATION_MNA_CHECK_CAPPED) == []       # the cap did not trip
+    assert sorted(evaluated) == sorted(live)
+    assert sorted(cap["upsert_tickers"]) == sorted(live) and stats["written"] == 4
+    assert stats["stale_bars"] == 3
+
+
+@pytest.mark.asyncio
+async def test_701c_one_audit_row_per_run_naming_every_stale_ticker_and_no_telegram(monkeypatch):
+    """Two stale tickers (one carrying two board rows) and one live: ONE row, each stale ticker
+    named once with its last bar date, the full list in the detail JSON; stats counts tickers;
+    nothing is sent to Telegram."""
+    from agents.market_intelligence.audit_events import ANTICIPATION_STALE_BARS_SKIPPED
+    cap, stats, evaluated, _s, telegrams = await _scan_by_last_bar(
+        monkeypatch,
+        {"ZZZ": date(2026, 7, 1), "AAA": date(2026, 6, 1), "LIVE": date(2026, 7, 13)},
+        extra_keys=[_key("ZZZ", date(2026, 5, 1))])
+
+    rows = _rows(cap, ANTICIPATION_STALE_BARS_SKIPPED)
+    assert len(rows) == 1
+    summary, detail = rows[0]
+    assert summary.index("AAA (last bar 2026-06-01)") < summary.index("ZZZ (last bar 2026-07-01)")
+    assert summary.count("ZZZ") == 1                              # the two-row ticker is named once
+    assert "LIVE" not in summary
+    assert json.loads(detail)["stale"] == {"AAA": "2026-06-01", "ZZZ": "2026-07-01"}
+    assert json.loads(detail)["cutoff"] == "2026-07-09" and json.loads(detail)["scan_date"] == "2026-07-14"
+    assert stats["stale_bars"] == 2                               # tickers, matching the row
+    assert evaluated == ["LIVE"] and telegrams == []
+
+
+@pytest.mark.asyncio
+async def test_701c_a_frozen_deal_nominated_name_no_longer_writes_price_unread_or_asks_the_news(
+        monkeypatch):
+    """The QRVO night, end to end through the REAL is_likely_ma: a deal-nominated target whose
+    latest bar is 07-01 (frozen) is skipped before any M&A work — no headline lookup, no
+    `anticipation_mna_price_unread`. The control is the same name with a latest bar one session
+    old (own-day bar missing): the pre-existing 'kept ON the board + recorded' row still fires."""
+    from agents.market_intelligence.audit_events import ANTICIPATION_MNA_PRICE_UNREAD
+
+    bars = _bars_ending(date(2026, 7, 1))
+    cap, _ = _patch_scan_harness(monkeypatch, bars=bars, csig=_csig(bars), real_mna=True,
+                                 keys=[_key("QRVO")])
+    _f, calls = _real_mna_edges(monkeypatch, _CRNX_HIT)
+    await _scan()
+    assert calls == [] and cap["upserts"] == 0
+    assert _rows(cap, ANTICIPATION_MNA_PRICE_UNREAD) == []
+
+    bars = _bars_ending(_TODAY - timedelta(days=1))               # control: 1 session old
+    cap, _ = _patch_scan_harness(monkeypatch, bars=bars, csig=_csig(bars), real_mna=True,
+                                 keys=[_key("QRVO")])
+    _f, calls = _real_mna_edges(monkeypatch, _CRNX_HIT)
+    await _scan()
+    assert calls == ["QRVO"] and cap["upserts"] == 1
+    assert len(_rows(cap, ANTICIPATION_MNA_PRICE_UNREAD)) == 1
+
+
+@pytest.mark.asyncio
+async def test_701c_a_skipped_name_is_not_rewritten_so_it_leaves_the_board(monkeypatch):
+    """On REAL SQL: QRVO sits on the board from last night's scan (last_eval = yesterday). Tonight
+    its bars are frozen → skipped → not rewritten; a live coil is. The board (only rows the
+    latest scan rewrote) drops QRVO and keeps the live one; QRVO's row stays in the table."""
+    import agents.market_intelligence.db as db
+    bars_live = _bars_ending(_TODAY - timedelta(days=1))
+    _patch_scan_harness(monkeypatch, bars=bars_live, csig=_csig(bars_live),
+                        keys=[_key("QRVO"), _key("LIVE")])
+    frozen = _bars_ending(date(2026, 7, 1))
+
+    async def per_ticker_ohlcv(ticker, today):
+        return frozen if ticker == "QRVO" else bars_live
+
+    monkeypatch.setattr(db, "get_anticipation_ohlcv", per_ticker_ohlcv)
+    pool = _real_board_db(monkeypatch)
+    pool.seed("QRVO", _HELD_ANCHOR, last_eval=_TODAY - timedelta(days=1), streak=9)
+    assert await _board_tickers() == ["QRVO"]                     # last night: QRVO on the board
+
+    stats, _entries = await _scan()
+
+    assert stats["stale_bars"] == 1 and stats["written"] == 1
+    assert await _board_tickers() == ["LIVE"]                     # tonight: only the rewritten row
+    assert pool.row("QRVO", _HELD_ANCHOR) == ((_TODAY - timedelta(days=1)).isoformat(), None)

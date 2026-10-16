@@ -4563,6 +4563,32 @@ _CONS_SCAN_BUDGET_S = 900        # per-run time budget for the SCAN section ONLY
                                  # the settlement runs AFTER, unconditionally
 _CONS_MNA_CHECKS_CAP = 40        # max Polygon-backed M&A checks per run (defense in depth under
                                  # the budget; overflow candidates pass UNchecked + one audit row)
+_CONS_STALE_BAR_SESSIONS = 3     # #701(c): a key whose latest daily bar is more than this many NYSE
+                                 # sessions before the scan date is not evaluated (a name with no
+                                 # price for 3+ sessions cannot be a coil today). QRVO, a merger
+                                 # target, has had no bar since 2026-10-02 yet its frozen series still
+                                 # read as a coil: it spent one of the 40 checks every night 10-05..10-16
+
+
+def _stale_bar_cutoff(today, sessions: int | None = None):
+    """The OLDEST latest-bar date a coil key may carry and still be evaluated (default
+    _CONS_STALE_BAR_SESSIONS = 3): a latest bar dated BEFORE it has more than `sessions` NYSE
+    sessions between it and `today` (sessions in (bar, today]). Counted on the real NYSE calendar
+    (get_market_status: weekends + holidays), never weekday arithmetic, so a holiday inside the span
+    is not counted as a session. Scan Fri 10-16, sessions=3 → cutoff Tue 10-13: a 10-13 bar is kept
+    (10-14, 10-15, 10-16 follow it), a 10-12 bar is skipped (4). A non-session `today` (weekend run)
+    counts from the latest session before it, so the same rule holds. Computed ONCE per run — a
+    per-key walk would be hundreds of calendar probes (each logs an INFO line)."""
+    n = _CONS_STALE_BAR_SESSIONS if sessions is None else sessions
+    d, seen = today + timedelta(days=1), 0
+    for _ in range((n + 1) * 7 + 10):    # bounded: >= 1 session per 5 calendar days even around holidays
+        d -= timedelta(days=1)
+        # the explicit weekday test keeps weekends out even if the calendar library fails open
+        if d.weekday() < 5 and get_market_status(d).is_trading_day:
+            seen += 1                    # `today` itself counts when it is a session
+            if seen > n:
+                break
+    return d
 
 # #394 — the /anticipation board's own order, so the scan screens the TOP of the board first and
 # the cap's unchecked tail is its bottom. The renderer shows the coiled section, then post_runup;
@@ -4809,7 +4835,12 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
     (#327 blocker fix — the unbounded cumulative Polygon time was the prime hang suspect; overflow
     candidates pass UNchecked, fail-open + anticipation_mna_check_capped audit). Neither guard
     touches the #327 gates themselves (runup / hold / tightness) — additive exclusions only, per
-    THE LINE (SHADOW-only, zero execution authority)."""
+    THE LINE (SHADOW-only, zero execution authority).
+
+    #701(c) STALE-BAR HYGIENE (2026-10-16): PHASE 1 skips a key whose latest daily bar is more than
+    _CONS_STALE_BAR_SESSIONS NYSE sessions old (QRVO — no bar since 10-02, yet a coil candidate and
+    a spent M&A check every night). Counted in stats['stale_bars'] + ONE
+    anticipation_stale_bars_skipped audit row per run; no coil-finder threshold moves."""
     from datetime import date, timedelta
     from agents.market_intelligence import anticipation as de
     from agents.market_intelligence.ma_filter import (
@@ -4818,7 +4849,7 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
     from agents.market_intelligence.audit_events import (
         ANTICIPATION_COIL_BUYOUT_PIN_REJECTED, ANTICIPATION_MNA_CHECK_CAPPED,
         ANTICIPATION_MNA_PRICE_UNREAD, ANTICIPATION_MNA_PIN_HELD, ANTICIPATION_MNA_PIN_RELEASED,
-        MNA_FILTER_FIRED,
+        ANTICIPATION_STALE_BARS_SKIPPED, MNA_FILTER_FIRED,
     )
     from agents.market_intelligence.db import (
         get_anticipation_universe, get_anticipation_ohlcv, get_consolidation_state_map,
@@ -4864,11 +4895,22 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
     # it is fast and holds no hang risk. The M&A screen + writes run in PHASE 2 below, in the
     # BOARD's own order.
     candidates: list = []
+    # #701(c) STALE-BAR HYGIENE: a key whose latest daily bar is more than _CONS_STALE_BAR_SESSIONS
+    # NYSE sessions old is not evaluated — a frozen series can still read as a coil (QRVO: no bar
+    # since 10-02, a coil candidate + one of the 40 M&A checks every night). NOT a coil-finder
+    # change: no threshold moves; the skipped name is simply not rewritten tonight, so it leaves
+    # the board (db.get_consolidation_board shows only the rows the latest scan rewrote).
+    stale_cutoff = _stale_bar_cutoff(today)
+    stale: dict = {}                # ticker -> its latest bar date (a two-row ticker is named once)
     for k in keys:
         ticker, anchor_date = k["ticker"], k["anchor_date"]
         try:
             bars = de.db_rows_to_bars(await get_anticipation_ohlcv(ticker, today))
             if len(bars) < 60:
+                continue
+            last_bar = date.fromisoformat(str(bars[-1]["date"]))
+            if last_bar < stale_cutoff:
+                stale.setdefault(ticker, last_bar)
                 continue
             # #327 LIVE base detection: the COIL-FINDER (runup leg → hold-≤50% → tight) REPLACES
             # the old peak-anchored evaluate_consolidation (which swallowed the post-runup
@@ -4893,6 +4935,22 @@ async def _consolidation_readiness_scan(today, stats, transitions, entries_fired
             candidates.append((k, bars, cons))
         except Exception as e:
             logger.error(f"consolidation readiness {ticker}/{anchor_date}: {e}", exc_info=True)
+
+    stats["stale_bars"] = len(stale)
+    if stale:
+        # ONE audit row per run (never Telegram): the tickers + each one's last bar date. The summary
+        # is cut at 500 chars by the audit writer, so it names the first 12; the detail holds all.
+        ordered = sorted(stale.items())
+        named = ", ".join(f"{t} (last bar {d.isoformat()})" for t, d in ordered[:12])
+        more = f", +{len(ordered) - 12} more" if len(ordered) > 12 else ""
+        await log_audit_event(
+            ANTICIPATION_STALE_BARS_SKIPPED,
+            f"{len(ordered)} coil key name(s) skipped — latest daily bar older than "
+            f"{_CONS_STALE_BAR_SESSIONS} sessions (before {stale_cutoff.isoformat()}): {named}{more}",
+            detail=json.dumps({"scan_date": today.isoformat(), "cutoff": stale_cutoff.isoformat(),
+                               "sessions": _CONS_STALE_BAR_SESSIONS,
+                               "stale": {t: d.isoformat() for t, d in ordered}}),
+        )
 
     # PHASE 2 (#394) — screen + entry + write, walking the candidates in the order the board
     # SHOWS them (_coil_board_rank). The per-run check cap (_CONS_MNA_CHECKS_CAP) tripped on every
