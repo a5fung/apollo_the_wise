@@ -1872,6 +1872,8 @@ averages were still tangled (144.5 vs 144.9) after the pullback, so the stack te
 So MRNA was blocked by three different gates on three different days (depth, then a 5-cent SMA20 kill, then the MA-stack
 order). The delayed-entry lane never fired at all — 9/17 is ~20 sessions after the EP.
 
+**Pole vs EP — one clarification so the two MRNA notes do not read as two definitions:** the 09-17 note's "pole" (170% in his source's chart, our `runup_pct` 2.4) runs from the ~$52-65 base to the spike HIGH ($176.66); the 08-19 EP note measures the gap day from its ~$120 open. Both share the same pole HIGH, and our depth gate is `flag_low / pole_high` (128.61 / 176.66 = 72.8% vs the 75% bar) — so the depth math does not depend on where the pole starts; only the runup figure does.
+
 **His emphasis, the same day (verbatim):**
 > *"i want to emphasize that this is a really good setup per my estimation, also give it was a strong EP, pulled back
 > orderly and tightened, lower vol then broke out again"*
