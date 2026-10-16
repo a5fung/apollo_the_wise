@@ -1705,7 +1705,8 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
                     annual_rows.append(row)
             if not annual_rows:
                 # The frames HAD annual data but no fiscal year end could be resolved
-                # (no EDGAR fiscalYearEnd/last quarter, or the reporting-gap gate) — skipped
+                # (no EDGAR fiscalYearEnd/last quarter, the reporting-gap gate, or EDGAR's year
+                # end disagreeing with the last 10-K's own period, e.g. AEHR) — skipped
                 # and counted, never stored against a guessed date.
                 annual_no_label = True
     rows.extend(quarter_rows)
