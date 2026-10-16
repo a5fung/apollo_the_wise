@@ -1421,7 +1421,22 @@ stagger cards, one at a time.
 
 **Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
-## 2026-10-14 (Wed) CLOSE — 🔴 RESUME HERE. Supersedes the 10-13 close below.
+## 2026-10-15 (Thu) CLOSE — 🔴 RESUME HERE. Supersedes the 10-14 close below.
+
+**Board 28 → 28.** No closes, no new tasks. Server = main as of the 21:16 ET deploy (both + execution, exit 0): #312 dark ladder, #624 /trades TICKER both books, the trades export with original stops. main is later by the simplify pass (ships Fri noon).
+
+**Built + shipped Thu:** #312 ladder watchdog, DARK (Fable build → Opus review → fix; first row already written by the recovery re-run: live magna53 not demoted on the built reading — but the worst-ever drawdown −13.1R WOULD demote under a worst-ever reading; that is the key ruling of six before any act step) · #624 /trades TICKER shows paper + live rows (pulled from the weekend) · #697 MRNA corpus entry (his two entries, third gate, TOP rating) · dashboard (portfolio-app2): calendar in date order on phones, R from the original stop, P&L shows period + all-time, YTD default · the trades export carries hard_stop/orb_low · simplify pass on all of it.
+
+**His rulings / input Thu:** #313 close on what shipped (closes after Sunday's first status file) · default the dashboard to YTD · MRNA = a TOP post-EP consolidation (strong EP, orderly pullback, tightened, lower volume, broke out; buy the 9/16 inside day or the 9/17 ORB) — captured in operator_shared_notes with the bars · Muninn/Bonde "9M+ shares beats RVOL" food for thought — a $0 follow-up on #686 after Saturday's frozen read.
+
+**Reviews Thu:** #584 $50M = NO (68% crash; measure corrected to #570's gap-day-excluded column), re-read 10-22 at $100M · #545 0.25×ADR variant too early (6 of 30), predicate fixed, 12-01 · ranking read unchanged (VICR the first top-cell 20-day winner).
+
+**Evening (verified):** #697 the discriminating hold read PASSED (GRAL held exactly one day, released, not re-armed; IOVA a second hold) — read in the main loop after the cards' prod reads were refused · #624 heartbeat 4 ran (two small caps graded for real) · #655 night 4 G3 90.8% · the cooldowns anomaly = one merge glued 17 apparel names into the furniture theme → on Saturday's #655 table.
+
+**Fri 10-16:** noon deploy (both → execution): the job_recovery fix (design (a): persist job_first_seen, skip slots before it — the recovery back-filled the new ladder job and paged Mon-Wed) + the simplify pass · tell him: `/trades <older ticker>` now shows pre-July Alpaca-paper rows tagged 📄 (not the low-cap lane) · 16:17 ET the ladder's first scheduled run (check trigger VALUES) · #693 full-pass re-read (his addendum decides) · #624 hb5 + week read, #701 week read · #598 close · after the 23:30Z export: recompute the dashboard's R on the new snapshot (KOD +5.87, VICR +7.30, avg ~+0.14) · capacity resets 8 PM PT — the runner-rule re-cut (Fable) only after that.
+**Weekend 10-17/18:** runner-rule re-cut (depth control) · #655 churn re-measure + the table (incl. the apparel dispersal) · #697 item 4, MRNA first · #686 frozen read + the 9M share-count follow-up · Sun 10-18 first #700 review + first ci_status file → #313 close.
+
+## 2026-10-14 (Wed) CLOSE — superseded by the 10-15 close above.
 
 **Board 28 → 28.** No closes (none was due by its own DoD), no new tasks. Server = main as of 21:16 ET (both + execution, exit codes 0).
 
