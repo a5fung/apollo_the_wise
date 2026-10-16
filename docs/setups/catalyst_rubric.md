@@ -319,6 +319,13 @@ then STEP-0 → operator sign-off → CHANGE_PROCESS. Code: `agents/market_intel
     counted (`annual_yf_no_label`), never guessed; **expect a nonzero nightly baseline**, like `quarter_yf_no_cadence`.
     Deterministic in two EDGAR facts, the one that moves (the MMDD) absorbed by the month-end snap, so there is no
     stabilization pass.
+  - **10-K cross-check** (2026-10-16): EDGAR's `fiscalYearEnd` can be stale after a fiscal-year change — AEHR's 8-K of
+    2026-04-07 moved its year end from late May to late June, its last 10-K `reportDate` is 2026-05-29, EDGAR still
+    reads `1231`, so the label came out 2026-12-31 against Yahoo's 2027-05-31 (the other 304 annual labels in the
+    176-ticker sample matched Yahoo exactly). New fact `last_annual_report_end` (max `reportDate` over 10-K / 10-K/A): if its
+    snapped month differs from the month of the year end `fiscalYearEnd` implies, one fact is stale — skip (counts in
+    `annual_yf_no_label`), never guess. No 10-K on record (recent IPO) -> unchanged. Annual path only; the quarterly
+    and Finnhub paths never read it. Pinned in `tests/test_analyst_estimates_recorder.py`.
   - **Checked against Yahoo's own `endDate`** (private payload, observed 2026-10-16, not used in production):
     AAPL `0y` 2026-09-30, COST 2027-08-31, WMT 2027-01-31, NRIX 2026-11-30, AMLX/ETON/ABCL 2026-12-31 — **our label
     equals Yahoo's date exactly on all seven** (before the snap AAPL read 09-26 and COST 08-30). Pinned in

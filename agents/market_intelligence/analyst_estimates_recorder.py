@@ -259,9 +259,16 @@ already holds (a test spies the Ticker attribute accesses and pins exactly three
   a year each ticker spends in that gap. Skipped
   and counted (`annual_yf_no_label`), never stored against a guessed date. EXPECT A NONZERO
   BASELINE there for the same reason as `quarter_yf_no_cadence`.
+  THE 10-K CROSS-CHECK (2026-10-16, measured on 176 live-alert tickers): EDGAR's fiscalYearEnd
+  can be STALE after a fiscal-year change — AEHR's 8-K of 2026-04-07 moved its year end from
+  late May to late June, its last 10-K reportDate is 2026-05-29, EDGAR still says "1231", so
+  the label read 2026-12-31 against Yahoo's 2027-05-31 (the other 304 labels matched Yahoo).
+  The fact `last_annual_report_end` (max 10-K/10-K/A reportDate) is compared by snapped month
+  with the year end fiscalYearEnd implies; a disagreement skips (`annual_yf_no_label`), never
+  guesses. No 10-K on record -> unchanged. Quarterly/Finnhub paths never read it.
   DETERMINISTIC, SO NO STABILIZATION: the label is a pure function of (EDGAR fiscalYearEnd,
-  EDGAR last_reported_quarter_end). Neither moves day to day; the one input that DOES move
-  (fiscalYearEnd's MMDD, a day or two at a Q1 10-Q on a 52/53-week filer) is absorbed by the
+  EDGAR last_reported_quarter_end, EDGAR last 10-K). None moves day to day; the one input
+  that DOES drift (fiscalYearEnd's MMDD, a day or two at a Q1 10-Q on a 52/53-week filer) is absorbed by the
   month-end snap above rather than by a history read, so unlike the quarterly leg there is no
   `stabilize_period_end` pass (the one existing helper, get_recent_quarterly_period_ends, is
   hardcoded to period_type='quarter' anyway).
@@ -479,7 +486,13 @@ _EMPTY_CADENCE_FACTS: dict[str, Any] = {
     "fiscal_year_end": None,   # v4: EDGAR's own "MMDD" fiscal-year-end fact (e.g. AAPL "0926") —
                                 # zero extra network cost, same submissions payload; feeds
                                 # fiscal_quarter_end_from_label, the v4 Finnhub labeling leg
+    "last_annual_report_end": None,   # the MAX reportDate over 10-K/10-K/A — the company's OWN
+                                       # last annual period end; read ONLY by the annual leg
+                                       # (resolve_annual_period_ends) to catch a stale fiscalYearEnd
 }
+# Annual report forms — the only forms last_annual_report_end reads (a subset of
+# QUARTERLY_CADENCE_FORMS: a 10-K is annual and rides the same reportDate parse).
+_ANNUAL_REPORT_FORMS = frozenset({"10-K", "10-K/A"})
 # Sanity bounds for resolve_quarterly_period_ends — an out-of-range lag or quarter length
 # means the inputs are bad/mismatched, not that this ticker is unusual; treat it the same
 # as unresolvable rather than storing an implausible date.
@@ -626,6 +639,10 @@ def quarterly_cadence_facts(payload: Any) -> dict[str, Any]:
                                    payload than filings.recent, so it is extracted FIRST and
                                    independently of whether the recent-filings parse below
                                    succeeds at all
+      last_annual_report_end      the MAX reportDate over 10-K / 10-K/A filings only (None if
+                                   none or unparseable) — the company's OWN last annual period
+                                   end. Read ONLY by resolve_annual_period_ends, to cross-check
+                                   fiscal_year_end; no quarterly/Finnhub path touches it
     Any field the payload can't support -> None; never a guess. A recent IPO with only one
     filing on record gets last_reported_quarter_end but no prior — '0q' can still resolve,
     '+1q' cannot (resolve_quarterly_period_ends handles that split)."""
@@ -640,14 +657,18 @@ def quarterly_cadence_facts(payload: Any) -> dict[str, Any]:
     except (TypeError, KeyError):
         return facts
     dates: list[date] = []
+    annual_dates: list[date] = []
     for form, rdate in zip(forms, report_dates):
         if form not in QUARTERLY_CADENCE_FORMS:
             continue
         parsed = _d(rdate)
         if parsed is not None:
             dates.append(parsed)
+            if form in _ANNUAL_REPORT_FORMS:
+                annual_dates.append(parsed)
     if not dates:
         return facts
+    facts["last_annual_report_end"] = max(annual_dates) if annual_dates else None
     ordered = sorted(set(dates))
     facts["last_reported_quarter_end"] = ordered[-1]
     facts["prior_reported_quarter_end"] = ordered[-2] if len(ordered) >= 2 else None
@@ -916,6 +937,14 @@ def resolve_annual_period_ends(
     the year that just ended). Missing input, a malformed fiscalYearEnd, or a failed gate ->
     None for both — the caller skips and counts (annual_yf_no_label), never a guess.
 
+    CROSS-CHECKED against the company's own last 10-K: EDGAR's top-level fiscalYearEnd can be
+    stale after a fiscal-year change (measured 2026-10-16: AEHR's 8-K of 2026-04-07 moved its
+    year end from late May to late June and its last 10-K reportDate is 2026-05-29, yet EDGAR
+    still reads "1231" -> labels 2026-12-31 against Yahoo's 2027-05-31). When the month of the
+    year end implied by fiscalYearEnd differs from the month of the last 10-K's own period end
+    (`cadence['last_annual_report_end']`, both snapped), one of the two facts is stale: skip,
+    never guess. No 10-K on record (a recent IPO) -> no cross-check, behaviour unchanged.
+
     PURE and DETERMINISTIC in the EDGAR facts, with the one input that does move (the MMDD)
     absorbed by the snap, so no stabilization pass exists for it (contrast
     stabilize_period_end). The loop walks fiscal years forward from the last reported
@@ -933,6 +962,13 @@ def resolve_annual_period_ends(
     release_lag_days = (last_actual_release_date - last_q_end).days
     if not (_MIN_RELEASE_LAG_DAYS <= release_lag_days <= _MAX_RELEASE_LAG_DAYS):
         return out
+    last_10k_end = cadence.get("last_annual_report_end")
+    if last_10k_end is not None:
+        implied = fiscal_quarter_end_from_label(4, last_10k_end.year, fye)
+        # implied None (malformed fiscalYearEnd) -> fall through to the malformed handling below
+        if implied is not None and (nearest_month_end(last_10k_end).month
+                                    != nearest_month_end(implied).month):
+            return out          # fiscalYearEnd disagrees with the last 10-K's own period end
     floor = last_q_end + timedelta(days=_ANNUAL_ROLL_BAND_DAYS)
     for year in range(last_q_end.year, last_q_end.year + 3):
         raw_year_end = fiscal_quarter_end_from_label(4, year, fye)
@@ -1669,7 +1705,8 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
                     annual_rows.append(row)
             if not annual_rows:
                 # The frames HAD annual data but no fiscal year end could be resolved
-                # (no EDGAR fiscalYearEnd/last quarter, or the reporting-gap gate) — skipped
+                # (no EDGAR fiscalYearEnd/last quarter, the reporting-gap gate, or EDGAR's year
+                # end disagreeing with the last 10-K's own period, e.g. AEHR) — skipped
                 # and counted, never stored against a guessed date.
                 annual_no_label = True
     rows.extend(quarter_rows)
