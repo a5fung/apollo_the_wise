@@ -3884,6 +3884,10 @@ _DEAD_COL_MIN_ROWS = 30          # below this the table is too young to judge
 # on, why). The column is exempt ONLY while ZERO rows are in that state; the moment one is and the
 # column is still all-NULL, the writer is broken and the column counts dead like any other. This
 # is not a mute: a dropped/never-wired column is not on this list, and an entry needs a writer test.
+# #697 item 4 (2026-10-16) adds `mi_flag_candidates.days_since_breakout`: stamped only in the 25 sessions after
+# a formed flag's pole top is closed above, NULL on every other row and on all history (no backfill), so it
+# is all-NULL on every night no name has just broken out — the writer test is
+# `test_697_item4_post_breakout.py::test_insert_flag_candidate_writes_both_columns_in_their_own_places`.
 _WALK_OPEN = ("outcome IN ('open', 'horizon')", "filled while a walk is open; cleared when it settles")
 _DEAD_COL_EVENT_GATED: dict[str, tuple[str, str]] = {
     "mi_live_fill_counterfactuals.mark_r": (
@@ -3893,6 +3897,11 @@ _DEAD_COL_EVENT_GATED: dict[str, tuple[str, str]] = {
     "mi_sustain_reject_replays.mark_r": _WALK_OPEN,
     "mi_lowcap_lane_replays.mark_r": _WALK_OPEN,
     "mi_lowcap_paper_lane_replays.mark_r": _WALK_OPEN,
+    # both columns are written together, so a stamped `post_breakout_from` with this one still NULL is a broken writer
+    "mi_flag_candidates.days_since_breakout": (
+        "post_breakout_from IS NOT NULL",
+        "set only in the 25 sessions after a formed flag's pole top is closed above; NULL on all other rows "
+        "and on all history (no backfill)"),
 }
 _DEAD_COL_TABLE_PREFIXES = ("mi_", "crypto_")
 # Row-write timestamps (a row stamped after the first sighting in ANY of them counts). Deliberately small

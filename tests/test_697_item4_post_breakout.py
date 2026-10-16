@@ -31,7 +31,9 @@ import pytest
 
 from agents.market_intelligence import db
 from agents.market_intelligence import flag_detector as fd
+from agents.market_intelligence import health_checks
 from tests.conftest import make_mock_pool
+from tests.test_dead_column_sweep_543 import _FakeDB, _run, telegram  # noqa: F401  (the sweep's fake connection + page capture)
 from tests.test_697_one_day_hold import table  # noqa: F401  (the in-memory mi_flag_candidates fixture)
 from tests.test_htf_criteria import _htf_rows, _pole_top, _row
 
@@ -327,6 +329,10 @@ async def test_the_schema_step_adds_both_columns_additively_with_no_backfill(mon
     create = create[:create.index(");")]
     assert re.search(r"^\s+post_breakout_from\s+DATE,", create, re.M)
     assert re.search(r"^\s+days_since_breakout\s+INT,", create, re.M)
+    # the nightly dead-column sweep's event predicate names a column the table really declares (a typo would make the
+    # exemption raise on every sweep and cost mi_flag_candidates its check)
+    pred_col = health_checks._DEAD_COL_EVENT_GATED["mi_flag_candidates.days_since_breakout"][0].split()[0]
+    assert re.search(rf"^\s+{pred_col}\s+DATE,", create, re.M), pred_col
     assert "ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS post_breakout_from DATE;" in ddl
     assert "ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS days_since_breakout INT;" in ddl
     assert not re.search(r"UPDATE\s+mi_flag_candidates[^;]*(post_breakout_from|days_since_breakout)", ddl, re.S)
@@ -395,15 +401,26 @@ async def test_run_flag_scan_hands_each_ticker_its_carried_stamp_and_stores_what
 
 def test_the_label_is_plain_words_and_markdown_safe():
     assert fd.post_breakout_label({"post_breakout_from": date(2026, 9, 16), "days_since_breakout": 4}) == \
-        "broke out of the 09-16 flag · day 4"
+        "broke out of the 09-16 flag 4 sessions ago"
     assert fd.post_breakout_label({"post_breakout_from": "2026-08-19", "days_since_breakout": 13}) == \
-        "broke out of the 08-19 flag · day 13"
+        "broke out of the 08-19 flag 13 sessions ago"
+    # the singular: the first row after the breakout bar is ONE session after it
+    assert fd.post_breakout_label({"post_breakout_from": date(2026, 8, 19), "days_since_breakout": 1}) == \
+        "broke out of the 08-19 flag 1 session ago"
     for r in ({}, {"post_breakout_from": None, "days_since_breakout": None},
               {"post_breakout_from": date(2026, 9, 16), "days_since_breakout": None},
               {"post_breakout_from": "not-a-date", "days_since_breakout": 3}):
         assert fd.post_breakout_label(r) == "", r
     text = fd.post_breakout_label({"post_breakout_from": date(2026, 9, 16), "days_since_breakout": 4})
     assert not re.search(r"[_*`\[\]|]", text), "legacy Markdown would eat these characters"
+
+
+def test_the_label_never_says_day_n_which_reads_one_session_early():
+    """'day 1' on the 09-23 row of a 09-22 breakout reads as 'the breakout day itself'. The count is sessions AFTER the
+    breakout bar, so the words say 'sessions ago' - for every count, in the one place the wording is built."""
+    for n in (1, 2, 13, 25):
+        text = fd.post_breakout_label({"post_breakout_from": date(2026, 8, 19), "days_since_breakout": n})
+        assert "day" not in text.lower() and text.endswith(f"{n} session{'' if n == 1 else 's'} ago"), text
 
 
 @pytest.mark.asyncio
@@ -424,7 +441,111 @@ async def test_flags_ticker_shows_the_post_breakout_state_on_those_rows_only(mon
     res = await MarketIntelligenceAgent()._handle_flag_query(
         AgentRequest(task="/flags MRNA", user_id=1, conversation_id="t"))
     lines = {ln.split()[0]: ln for ln in res.result.splitlines() if ln.strip().startswith("2026-")}
-    assert lines["2026-09-26"].endswith("broke out of the 09-16 flag · day 4")
-    assert lines["2026-09-23"].endswith("broke out of the 09-16 flag · day 1")
+    assert lines["2026-09-26"].endswith("broke out of the 09-16 flag 4 sessions ago")
+    assert lines["2026-09-23"].endswith("broke out of the 09-16 flag 1 session ago")
     assert "broke out" not in lines["2026-09-22"]
     assert "|" not in res.result
+
+
+# ── 8. the nightly dead-column sweep must not page on a column that is NULL until the first breakout ────────────────
+#
+# `days_since_breakout` is an INT on a table with tens of thousands of rows and is NULL on every row until a name first
+# re-anchors off a formed flag (no backfill). The 17:30 ET sweep reads "numeric, 100% NULL, table written since" as a
+# dead column, announces it ONCE EVER, and the first two scans after deploy stamp nothing about one time in three
+# (41 of 110 back-to-back two-scan windows in the 62-name capture replay) - so without the exemption the first deploy
+# pages falsely and the column's one real alarm is spent. Same defect #695 fixed for `mark_r`.
+
+_FLAGS = "mi_flag_candidates"
+_FLAGS_KEY = f"{_FLAGS}.days_since_breakout"
+
+
+def _flags_table(**over):
+    t = {"rows": 54_000, "nonnull": {"days_since_breakout": 0}, "ts_col": "created_at", "last_write": None,
+         "gate_rows": 0}
+    t.update(over)
+    return {_FLAGS: t}
+
+
+def test_the_column_is_registered_as_event_gated_on_the_stamp():
+    pred, why = health_checks._DEAD_COL_EVENT_GATED[_FLAGS_KEY]
+    assert pred == "post_breakout_from IS NOT NULL" and why
+
+
+@pytest.mark.asyncio
+async def test_no_stamp_yet_is_neither_suspect_nor_a_page_on_any_night(telegram, monkeypatch):  # noqa: F811
+    """The first scans after deploy: every row is NULL and the table is written every evening. Four nights running -
+    no audit row, no page, and the column shows up in the sweep's `event_gated` count instead."""
+    fake = _FakeDB(_flags_table())
+    for _ in range(4):
+        fake.tables[_FLAGS]["last_write"] = fake.now + timedelta(minutes=5)
+        out = await _run(fake, monkeypatch)
+        fake.advance(days=1)
+        assert out["dead"] == [] and out["suspect"] == []
+        assert [(g["table"], g["column"]) for g in out["event_gated"]] == [(_FLAGS, "days_since_breakout")]
+    assert fake.audit == [] and telegram == []
+
+
+@pytest.mark.asyncio
+async def test_a_stamped_post_breakout_from_with_days_still_null_is_a_broken_writer(telegram, monkeypatch):  # noqa: F811
+    """The exemption is not a mute: the two columns are written together, so once a row carries `post_breakout_from`
+    and `days_since_breakout` is STILL all-NULL the writer set one and not the other - judged under its own key,
+    quiet on the first look, announced on the second."""
+    fake = _FakeDB(_flags_table(gate_rows=2))
+    out = await _run(fake, monkeypatch)
+    assert out["event_gated"] == [] and fake.events() == [("dead_column_suspect", _FLAGS_KEY + "@event_live")]
+    fake.tables[_FLAGS]["last_write"] = fake.now + timedelta(minutes=5)
+    fake.advance(days=1)
+    await _run(fake, monkeypatch)
+    assert fake.events("dead_column_detected") == [("dead_column_detected", _FLAGS_KEY + "@event_live")]
+    assert len(telegram) == 1 and _FLAGS_KEY in telegram[0]
+
+
+@pytest.mark.asyncio
+async def test_once_a_stamp_has_been_written_the_sweep_has_nothing_to_say(telegram, monkeypatch):  # noqa: F811
+    fake = _FakeDB(_flags_table(nonnull={"days_since_breakout": 3}, gate_rows=3))
+    out = await _run(fake, monkeypatch)
+    assert out["dead"] == [] and out["suspect"] == [] and out["event_gated"] == []
+    assert fake.audit == [] and telegram == []
+
+
+# ── 9. the docs say only what the code delivers ─────────────────────────────────────────────────────────────────────
+
+_HTF = (_ROOT / "docs" / "setups" / "htf.md").read_text(encoding="utf-8")
+
+
+def test_the_horizon_is_not_said_to_be_the_universe_carrys():
+    """Path (e) holds a TIGHTENING-or-better name 25 sessions from its LAST such stored row, not from the breakout bar,
+    and never covers a name that was never pushable (MRNA's rows come from the organic universe) - so the SSoT may not
+    say the rows exist for as long as the stamp does."""
+    assert "so the rows exist for as long as the stamp does" not in _HTF
+    bullet = next(ln for ln in _HTF.splitlines() if ln.startswith("- **the horizon**"))
+    assert "not from the breakout bar" in bullet and "never reached a pushable stage" in bullet
+
+
+def _latest_scan_select() -> str:
+    m = re.search(r"which names carry the stamp on the latest scan[^\n]*\n```sql\n(.*?)```", _HTF, re.S)
+    assert m, "the SELECT for 'which names carry the stamp' is gone from htf.md"
+    return m.group(1)
+
+
+def test_the_which_names_carry_the_stamp_select_reads_the_latest_scan_not_forty_calendar_days():
+    """The old SELECT kept the latest STAMPED row per ticker inside 40 calendar days, so it listed a stamp that had
+    lapsed (its last stamped row was day 25, a month ago) and a breakout up to ~75 calendar days old. Run the SQL
+    exactly as printed in the SSoT, in DuckDB, over rows seeded relative to today."""
+    duckdb = pytest.importorskip("duckdb")
+    sql = _latest_scan_select()
+    assert "CURRENT_DATE" not in sql, "a window in calendar days is the defect"
+    con = duckdb.connect()
+    con.execute("CREATE TABLE mi_flag_candidates (ticker TEXT, scan_date DATE, stage TEXT, "
+                "post_breakout_from DATE, days_since_breakout INT)")
+    con.execute("""
+        INSERT INTO mi_flag_candidates VALUES
+          ('AAA', CURRENT_DATE,      'WATCH',        CURRENT_DATE - 40, 3),   -- stamped on the latest scan
+          ('CCC', CURRENT_DATE,      'unqualified',  CURRENT_DATE - 9,  1),   -- stamped on the latest scan, day 1
+          ('DDD', CURRENT_DATE,      'WATCH',        NULL,              NULL),-- scanned, never broke out
+          ('BBB', CURRENT_DATE - 30, 'WATCH',        CURRENT_DATE - 70, 25),  -- its LAST stamped row: day 25, lapsed
+          ('BBB', CURRENT_DATE,      'WATCH',        NULL,              NULL),
+          ('EEE', CURRENT_DATE - 1,  'WATCH',        CURRENT_DATE - 8,  2)    -- stamped, but not scanned on the latest date
+    """)
+    got = [r[0] for r in con.execute(sql).fetchall()]
+    assert got == ["CCC", "AAA"], got      # ordered by days_since_breakout, then ticker

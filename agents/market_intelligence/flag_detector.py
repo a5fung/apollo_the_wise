@@ -910,7 +910,10 @@ def _find_pivot_high(
 #   * the re-anchor: the pivot the finder chose today is a LATER bar than yesterday's carried pivot;
 #   * `days_since_breakout` = trading sessions from the breakout bar to today (1 = the first row after the breakout
 #     bar), derived from the bars every night so a skipped scan cannot drift it; the stamp lapses after
-#     `_PIVOT_LOOKBACK_DAYS` sessions, the same horizon the universe carry (htf.md item 2) keeps a pushable name.
+#     `_PIVOT_LOOKBACK_DAYS` sessions, and it only shows while the ticker is still SCANNED: the universe carry
+#     (htf.md item 2, path (e)) holds a TIGHTENING-or-better name 25 sessions from its last such row, not from the
+#     breakout bar, and does not cover a name that never reached a pushable stage (MRNA's rows come from the
+#     organic universe).
 # The carried date comes from the ticker's last stored row (`db.get_flag_post_breakout_carry`); a newer breakout
 # replaces it. A claim the bars no longer support (the pole bar is gone, no formed close above it) lapses to NULL.
 
@@ -968,14 +971,18 @@ def _post_breakout_state(
 
 def post_breakout_label(r: dict) -> str:
     """PURE. Plain words for the post-breakout state on a stored row (`post_breakout_from` + `days_since_breakout`),
-    e.g. `broke out of the 09-16 flag · day 4`, or "" when the row carries none. Markdown-safe (no underscores or
-    asterisks). ONE place, so the 14-day history cannot word it two ways. Display only - nothing gates on it."""
+    e.g. `broke out of the 09-16 flag 4 sessions ago` (`1 session ago` on the first row after the breakout bar), or ""
+    when the row carries none. Says "sessions ago", never "day N": a reader takes "day 1" for the breakout day itself,
+    one session early. The breakout date is not stored (a third column was rejected), so the date of the flag it broke
+    out of is the only date named. Markdown-safe (no underscores or asterisks). ONE place, so the 14-day history cannot
+    word it two ways. Display only - nothing gates on it."""
     frm, days = r.get("post_breakout_from"), r.get("days_since_breakout")
     if frm is None or days is None:
         return ""
     try:
         stamp = (frm if isinstance(frm, date) else date.fromisoformat(str(frm))).strftime("%m-%d")
-        return f"broke out of the {stamp} flag · day {int(days)}"
+        n = int(days)
+        return f"broke out of the {stamp} flag {n} session{'' if n == 1 else 's'} ago"
     except (TypeError, ValueError):
         return ""
 
