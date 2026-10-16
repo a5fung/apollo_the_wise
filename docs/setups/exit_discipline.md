@@ -28,22 +28,26 @@ the exit path sees intraday price", which stopped being true on 2026-08-01):**
   One sizer, `order_manager.profit_take_shares` (→ `plus8r_partial_shares`); every order shape
   (market, resting limit, OCO) takes the count from it. Entry: `magna53_ep.md` change log
   2026-10-10 (+8R on a 2-share position).
-- **A PRICE-ARMED breakeven exists but is OFF**: `order_manager.scan_breakeven_arms` (same
-  5-minute poll, after the partial) moves the full-position stop to entry at
-  `entry + mi_strategies.breakeven_arm_r × R` — NULL on every row today → it returns `[]`
-  before any read, so breakeven today still arrives ONLY via the partial (#548). Change log
-  2026-09-06.
+- **A PRICE-ARMED breakeven is ON at +3R** for `magna53` and `magna53_smallcap`
+  (`mi_strategies.breakeven_arm_r = 3.0` on both, read from prod 2026-10-16):
+  `order_manager.scan_breakeven_arms` (same 5-minute poll, after the partial) moves the
+  full-position stop to entry at `entry + breakeven_arm_r × R`. A strategy with a NULL value is
+  skipped. Change log 2026-09-06. *(This bullet read "OFF — NULL on every row" until 2026-10-16;
+  the runner re-cut pre-registration found it stale.)*
 - **The TRAIL is DAILY**: `exit_logic.py` is *"pure daily-exit-step decision logic"*;
   `apply_daily_exit_step(state, daily_bar, …)` consumes **one daily bar** — the SMA-trail /
   stop-update decisions are evaluated once, against the close, not on the touch.
-- **A DEPTH variant of the trail exists for NEW MAGNA53 trades and NEW small-cap paper lane
-  (`magna53_smallcap`) trades but is OFF** (#687 B, operator-ruled 2026-09-29; the lane joined
+- **A DEPTH variant of the trail is ON for NEW MAGNA53 trades and NEW small-cap paper lane
+  (`magna53_smallcap`) trades since 2026-10-12 09:39 ET** (his "go live"; both
+  `magna53_depth_exit` rows 'on', read from prod 2026-10-16; first acting session 10-13 =
+  `rule_eras.DEPTH_EXIT_LIVE_DATE`) (#687 B, operator-ruled 2026-09-29; the lane joined
   2026-10-10, his "Ok"): toggle `magna53_depth_exit` (per mode, no row = OFF; the ROW'S own mode —
   MAGNA53 follows the 'live' row, the lane the 'paper' row) stamps `mi_live_trades.exit_rule
   = 'depth'` at entry; a stamped trade's stop rests one ADR20 under the line and a close below the
   line sells at the next open (order sent 19:01 ET): LIVE sends an opening-auction order, PAPER a
   regular DAY market order (#687 (c), his "got it, c" 2026-10-10 — paper's simulator never fills an
-  opening-auction order). No row is stamped today, so every trade runs the trail described here.
+  opening-auction order). Trades opened BEFORE 10-13 keep the plain trail described here (the
+  stamp is set at entry; an open trade is never switched).
   Change log 2026-10-01 and 2026-10-10 / 2026-10-11.
 
 **Jobs:** `track_position_extremes` every 5 min (bars + the #508 profit trigger);
