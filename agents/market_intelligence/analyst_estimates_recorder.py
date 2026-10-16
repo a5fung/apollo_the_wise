@@ -26,10 +26,10 @@ name wrote an `api_failure_fmp` row (21-26 a night since 10-07; 22 on 10-12) plu
 yfinance gives ... re-test at 60 days") makes yfinance the source of record, Finnhub the
 cross-check. The FMP leg, its pacing, its 402 handling and its `plan_change` alarm are
 DELETED, not flagged off. Consequences, stated so nobody has to rediscover them:
-  - NO ANNUAL CAPTURE. The "annual leg" was FMP's and only FMP's; yfinance's '0y'/'+1y'
-    were never built here. Annual estimates are simply not recorded until a yfinance
-    annual leg is built (a separate scoped build: it needs a fiscal-year-end label
-    resolution of its own).
+  - THE ANNUAL LEG WAS REPLACED, NOT DROPPED. It was FMP's and only FMP's; it is REBUILT on
+    yfinance in the same deploy as the FMP removal (Sat 2026-10-17), so no night runs
+    without an annual leg (his ruling 2026-09-03: "two forward quarters PLUS THE ANNUAL") —
+    see "THE ANNUAL LEG IS YFINANCE TOO" below. Nothing FMP-shaped came back with it.
   - The ~24s-per-ticker FMP sleeps were also the only thing spacing the yfinance scrapes.
     That cadence is kept, explicitly, as YFINANCE_PACE_SECONDS (enforced in the run loop) so
     this change alters no vendor's request pattern. Lowering it is a separate, measured
@@ -88,7 +88,8 @@ applied READ-SIDE (`estimate_for_scoring`, threshold parameterized) and the coun
 stored, so the rule can be re-tuned without re-fetching.
 
 SOURCES (estimates: yfinance primary + Finnhub calendar; anchor: SEC EDGAR, above):
-  yfinance revenue_estimate / earnings_estimate / earnings_dates   the 0q/+1q rows, with
+  yfinance revenue_estimate / earnings_estimate / earnings_dates   the 0q/+1q rows AND (since
+                                              2026-10-16) the 0y/+1y annual rows, all with
                                               analyst counts — the only source the
                                               n_analysts<3 rule can admit
   Finnhub /calendar/earnings                  free; forward EPS + revenue, NO count
@@ -97,7 +98,7 @@ SOURCES (estimates: yfinance primary + Finnhub calendar; anchor: SEC EDGAR, abov
                                               99/99 tickers) — NEVER call
   FMP /analyst-estimates                      WAS the annual leg; removed 2026-10-16 (above)
 COST: $0 — no paid plan is touched. Per ticker per run: 3 yfinance calls (fetched
-concurrently), 1 Finnhub call, and 0 extra EDGAR calls (the cadence facts are parsed from
+concurrently — the annual rows ride the SAME two estimate frames, 0 extra), 1 Finnhub call, and 0 extra EDGAR calls (the cadence facts are parsed from
 the SAME submissions payload the anchor already fetched) + 1 EDGAR ticker-map call per run.
 The daily population (live-source EP alerts, trailing 30 days) is ~20-100 tickers. The
 one-shot backfill over the full alert population (~335 tickers) is ~1,300 calls, once.
@@ -207,6 +208,82 @@ vendor's request pattern (Yahoo throttles scrapers; a throttled night is a night
 quarter_yf_unavailable and a stalled clock). It is not a measured limit. Lowering it
 is a separate decision that needs a measured Yahoo tolerance, and a night's
 wall time (~24s x population) is the only thing it costs.
+
+THE ANNUAL LEG IS YFINANCE TOO (2026-10-16 — his ruling 2026-09-03 (1): "start with what
+yfinance gives — two forward quarters PLUS THE ANNUAL — and re-test at 60 days"). The same
+`revenue_estimate` / `earnings_estimate` frames the quarterly leg already downloads carry
+FOUR periods ('0q','+1q','0y','+1y' — yfinance's `_get_periodic_df` slices the one cached
+`earningsTrend` fetch to `[:4]`; probed 2026-10-16 on AAPL, COST, WMT, NRIX, AMLX, ETON,
+ABCL: all four periods, with analyst counts, on 7 of 7). So the annual rows cost ZERO extra
+Yahoo requests — `_fetch_yfinance_quarterly` just reads two more rows out of frames it
+already holds (a test spies the Ticker attribute accesses and pins exactly three).
+  Rows: `period_type='annual'`, `source='yfinance'`, `period_label_method=
+  'yf_fiscal_year_end'` (LABEL_METHOD_YF_FISCAL_YEAR_END), `fiscal_quarter`/`fiscal_year`
+  NULL (those columns hold a VENDOR's raw label; this period end is derived, and
+  `fiscal_year` would just repeat `period_end_date.year`). Same columns and same raw-value
+  mapping as the quarterly row (one shared builder), same honest-window stamping.
+  RECORDER_VERSION does not move: no existing row changed shape or meaning, and the 60-day
+  reader tells quarterly from annual by `period_type` alone.
+  THE LABEL RULE (resolve_annual_period_ends) — yfinance's '0y'/'+1y' are RELATIVE like
+  '0q'/'+1q' and the frame carries no date, so an ABSOLUTE fiscal-year end is resolved with
+  the same ingredients the quarterly and Finnhub legs already use:
+    '0y'  = the first fiscal-year-end after (last_reported_quarter_end + 30 days), where
+            the year-end for fiscal year Y is `fiscal_quarter_end_from_label(4, Y, fiscal_
+            year_end)` — EDGAR's own `fiscalYearEnd` MMDD, the Finnhub leg's resolver,
+            so day-clamping (a "0229") is shared rather than re-implemented — SNAPPED TO
+            THE NEAREST MONTH END (below).
+    '+1y' = the next year's end by the same function.
+  THE SNAP (2026-10-16, reviewer-found BLOCKER): the label is the NEAREST MONTH END to that
+  date (0831/0830/0901/0903 -> 08-31; 0926/0927 -> 09-30; 0103 -> the PRECEDING 12-31;
+  nearest, not end-of-the-containing-month). Why: EDGAR's `fiscalYearEnd` MMDD is not a
+  constant for a 52/53-week filer — it drifts a day or two, at each Q1 10-Q (COST 0831 ->
+  0830, AAPL 0927 -> 0926) — and `period_end_date` is part of the row's primary key, so an
+  unsnapped label would split ONE fiscal year's revision series into two keys the day the
+  MMDD moved. Yahoo itself dates a 52/53-week year at the month end (observed 2026-10-16:
+  AAPL 2026-09-30, COST 2027-08-31, WMT 2027-01-31), so the snap also makes the label equal
+  Yahoo's on all seven names checked. It is applied to the ANNUAL label only:
+  fiscal_quarter_end_from_label (the Finnhub quarterly leg) is deliberately unchanged.
+  Why +30 days: EDGAR's MMDD is only approximate for a 52/53-week filer (a 10-K reportDate
+  of 09-25 against MMDD "0926"); without the band a year that has JUST reported could be
+  re-labelled as still-current. Fiscal year ends are 365 days apart, so 30 days can never
+  merge two years. Why the anchor is last_reported_quarter_end and not the quarterly leg's
+  stored '0q': it is an exact EDGAR fact, so the annual label does not inherit the
+  quarterly reconstruction's ~week of residual imprecision (resolve_quarterly_period_ends'
+  own docstring), and it still resolves for a name whose next earnings date Yahoo has not
+  published yet.
+  THE GATE (same bound as resolve_quarterly_period_ends): last_actual_release_date minus
+  last_reported_quarter_end must fall in [_MIN, _MAX]_RELEASE_LAG_DAYS. That is what rejects
+  the REPORTING-GAP race — fiscal-year results RELEASED (Yahoo's '0y' has already rolled)
+  but the 10-K not yet FILED (EDGAR still shows the third quarter): without it '0y' would be
+  labelled a year early for the days (up to ~40, per the module's reporting-gap note above)
+  a year each ticker spends in that gap. Skipped
+  and counted (`annual_yf_no_label`), never stored against a guessed date. EXPECT A NONZERO
+  BASELINE there for the same reason as `quarter_yf_no_cadence`.
+  DETERMINISTIC, SO NO STABILIZATION: the label is a pure function of (EDGAR fiscalYearEnd,
+  EDGAR last_reported_quarter_end). Neither moves day to day; the one input that DOES move
+  (fiscalYearEnd's MMDD, a day or two at a Q1 10-Q on a 52/53-week filer) is absorbed by the
+  month-end snap above rather than by a history read, so unlike the quarterly leg there is no
+  `stabilize_period_end` pass (the one existing helper, get_recent_quarterly_period_ends, is
+  hardcoded to period_type='quarter' anyway).
+  ASSUMPTION THE FIRST FISCAL-YEAR BOUNDARY IN THE DATA CONFIRMS OR BREAKS: Yahoo's '0y'
+  rolls to the next year when '0q' does (at the Q4 RELEASE, not at the filing). Observed
+  2026-10-16: AAPL's FY ended 09-26 and has not reported (10-29); Yahoo shows BOTH 0q and
+  0y ending 2026-09-30 — i.e. 0y stays on the just-ended, unreported year. The after side
+  of the roll is not yet observed. If it differs, the signature is an annual
+  `period_end_date` that flips on a night the ticker's quarterly '0q' did not cross its
+  fiscal year end; the SSoT's DONE-WHEN reads for exactly that.
+  Annual rows ride only when the quarterly frame has data (`periods` non-empty — the
+  `return None` gate is untouched, so no quarterly counter changed meaning). Annual rows
+  do NOT need the quarterly leg to resolve a '0q' date, so a name Yahoo lists no next
+  earnings date for still records its annual estimate. The pre-registered bar is counted
+  in the run (`annual_yf_tickers` / `quarter_yf_tickers`) and printed on its own short
+  `analyst_estimates_snapshot_annual` audit row (annual_coverage_summary) — NOT as a clause
+  on the main summary row, because log_audit_event stores only the first 500 characters and
+  that row is ~600 characters on any night, so its tail is already cut off.
+  Only a row with a revenue_avg OR eps_avg counts as covered (`_has_estimate`): a frame
+  row that is all-NaN is stored — "we asked, the vendor had nothing", the same record the
+  quarterly leg keeps — but must not pass a coverage bar, or the bar could be met by an
+  empty leg.
 
 FINNHUB — A SECOND ESTIMATES SOURCE (v4, 2026-09-03). Verified live with the
 operator's own key: `/stock/revenue-estimate` (the consensus SERIES, the same
@@ -347,7 +424,10 @@ RECORDER_VERSION = "v4"           # v2 2026-09-01: anchor source FMP -> SEC EDGA
                                    # v3 2026-09-02: quarterly leg added (yfinance, see below)
                                    # v4 2026-09-03: Finnhub calendar added as a 2nd source (see below)
                                    # (2026-10-16: the FMP annual leg was REMOVED with no bump on
-                                   # purpose — no row this job still writes changed shape or meaning)
+                                   # purpose — no row this job still writes changed shape or meaning;
+                                   # the same day the yfinance ANNUAL leg was ADDED, again no bump:
+                                   # annual rows are NEW rows (period_type='annual'), no existing
+                                   # row changed shape or meaning)
 QUARTERLY_ESTIMATES_SOURCE = "yfinance"  # the QUARTERLY leg (v3) — distinguishes vendor in
                                           # the existing `source` column; no schema change
 FINNHUB_SOURCE = "finnhub_calendar"      # the v4 second source — /calendar/earnings only;
@@ -361,6 +441,14 @@ MIN_ANALYSTS_DEFAULT = 3          # the sketch's n<3 -> None rule (read-side, re
 LABEL_METHOD_YF_RECONSTRUCTED = "yf_reconstructed"   # yfinance quarterly, no Finnhub corroboration
 LABEL_METHOD_FINNHUB_FISCAL = "finnhub_fiscal_label"  # period_end_date derived from Finnhub's own
                                                        # (quarter, year) — see fiscal_quarter_end_from_label
+LABEL_METHOD_YF_FISCAL_YEAR_END = "yf_fiscal_year_end"  # ANNUAL rows (2026-10-16): period_end_date
+                                                         # derived from EDGAR's fiscalYearEnd +
+                                                         # last_reported_quarter_end — see
+                                                         # resolve_annual_period_ends. The db.py DDL
+                                                         # comment lists only the earlier values; it is
+                                                         # left alone on purpose (no schema change, and
+                                                         # a comment edit there would widen the deploy
+                                                         # scope) — this is the vocabulary.
 # ── SEC EDGAR anchor source (v2) ──────────────────────────────────────────────────────
 # The exact form set the 08-31 reach measurement used (306/335 resolved) — foreign
 # filers report on 20-F/6-K; amendments carry the same filing-date semantics.
@@ -420,8 +508,15 @@ _STABILIZE_LOOKBACK_DAYS = 120    # how far back to look for a prior recorded da
 # declared-but-unenforced 1.0 courtesy; it is now enforced.
 YFINANCE_PACE_SECONDS = 24.0
 _YF_QUARTER_TIMEOUT_SECONDS = 30.0  # mirrors fundamentals.py's _YF_TIMEOUT
-_YF_QUARTER_PERIODS = ("0q", "+1q")  # the only two yfinance periods this leg stores — '0y'/'+1y'
-                                      # (annual) are NOT recorded: the annual leg was FMP's and is gone
+_YF_QUARTER_PERIODS = ("0q", "+1q")  # the two QUARTERLY periods — they alone decide
+                                      # quarter_yf_unavailable (an annual-only frame is not "available")
+_YF_ANNUAL_PERIODS = ("0y", "+1y")   # 2026-10-16: the two ANNUAL periods, read out of the SAME two
+                                      # frames (no extra request) — see "THE ANNUAL LEG IS YFINANCE TOO"
+_ANNUAL_ROLL_BAND_DAYS = 30          # '0y' is the first fiscal year end MORE than this many days after
+                                      # last_reported_quarter_end — absorbs EDGAR's approximate MMDD on
+                                      # a 52/53-week filer; year ends are 365 days apart so it can
+                                      # never merge two years (see resolve_annual_period_ends). The
+                                      # year end itself is then snapped to the nearest month end.
 
 # ── Finnhub /calendar/earnings (v4) — the second estimates source ────────────────────
 FINNHUB_BASE = "https://finnhub.io/api/v1"
@@ -781,6 +876,76 @@ def pair_finnhub_periods_to_slots(
     return out
 
 
+def nearest_month_end(d: date) -> date:
+    """The month end (last calendar day of a month) NEAREST to `d`: `d` itself when it is
+    one; otherwise the closer of the end of d's own month and the end of the PRECEDING month
+    (a tie goes to d's own month end — no real fiscal year end is ever mid-month). This is
+    NEAREST, not "end of the containing month": 0901 and 0903 snap BACK to 08-31, 0103 to
+    the preceding 12-31, while 0926/0927 snap forward to 09-30. Pure calendar arithmetic."""
+    prev_end = d.replace(day=1) - timedelta(days=1)
+    next_first = date(d.year + 1, 1, 1) if d.month == 12 else date(d.year, d.month + 1, 1)
+    this_end = next_first - timedelta(days=1)
+    return this_end if (this_end - d) <= (d - prev_end) else prev_end
+
+
+def resolve_annual_period_ends(
+    last_actual_release_date: Optional[date], cadence: dict[str, Any],
+) -> dict[str, Optional[date]]:
+    """yfinance's RELATIVE annual labels ('0y','+1y') -> ABSOLUTE fiscal-year-end dates.
+    The annual twin of resolve_quarterly_period_ends; the module docstring's "THE ANNUAL
+    LEG IS YFINANCE TOO" has the full rationale. The rule, stated once:
+
+      '0y'  = the first fiscal-year end MORE THAN _ANNUAL_ROLL_BAND_DAYS (30) after
+              `cadence['last_reported_quarter_end']`; the year end for fiscal year Y is
+              nearest_month_end(fiscal_quarter_end_from_label(4, Y, cadence['fiscal_year_end']))
+              — the Finnhub leg's resolver, on this ticker's OWN EDGAR fiscalYearEnd, never a
+              Jan-Dec guess, snapped to the NEAREST MONTH END.
+      '+1y' = the same function one year on.
+
+    WHY THE SNAP: EDGAR's fiscalYearEnd MMDD drifts by a day or two for a 52/53-week filer
+    (COST 0831 -> 0830, AAPL 0927 -> 0926, at each Q1 10-Q), and the resolved date is part of
+    the row's primary key — unsnapped, one fiscal year would split into two keys the day the
+    MMDD moved. Snapped, every drifted spelling of the same year end lands on one date (and
+    on Yahoo's own month-end dating). Only this annual label is snapped; the quarterly
+    (Finnhub) resolver is untouched.
+
+    GATED by the quarterly leg's own release-lag bound: `last_actual_release_date -
+    last_reported_quarter_end` must sit in [_MIN, _MAX]_RELEASE_LAG_DAYS, else both are None.
+    That rejects the reporting-gap race (annual results RELEASED, so Yahoo's '0y' has rolled,
+    but the 10-K not yet FILED, so EDGAR still shows the third quarter and the rule would name
+    the year that just ended). Missing input, a malformed fiscalYearEnd, or a failed gate ->
+    None for both — the caller skips and counts (annual_yf_no_label), never a guess.
+
+    PURE and DETERMINISTIC in the EDGAR facts, with the one input that does move (the MMDD)
+    absorbed by the snap, so no stabilization pass exists for it (contrast
+    stabilize_period_end). The loop walks fiscal years forward from the last reported
+    quarter's calendar year and exits at the first SNAPPED year end past the 30-day floor;
+    two years reach it for every realistic calendar, the third is a defensive outer bound (a
+    pure-function sweep test pins that the answer is always the first year end past the
+    floor, whichever iteration finds it). A year end snapped back across New Year (0103 ->
+    the preceding 12-31) is still found: the walk starts at last_q_end.year, and an earlier
+    fiscal year's snapped end can never exceed the floor."""
+    out: dict[str, Optional[date]] = {"0y": None, "+1y": None}
+    last_q_end = cadence.get("last_reported_quarter_end")
+    fye = cadence.get("fiscal_year_end")
+    if last_q_end is None or last_actual_release_date is None or not fye:
+        return out
+    release_lag_days = (last_actual_release_date - last_q_end).days
+    if not (_MIN_RELEASE_LAG_DAYS <= release_lag_days <= _MAX_RELEASE_LAG_DAYS):
+        return out
+    floor = last_q_end + timedelta(days=_ANNUAL_ROLL_BAND_DAYS)
+    for year in range(last_q_end.year, last_q_end.year + 3):
+        raw_year_end = fiscal_quarter_end_from_label(4, year, fye)
+        if raw_year_end is None:
+            return out          # malformed fiscalYearEnd is malformed for every year
+        year_end = nearest_month_end(raw_year_end)   # the SNAP — see the docstring
+        if year_end > floor:
+            out["0y"] = year_end
+            out["+1y"] = nearest_month_end(fiscal_quarter_end_from_label(4, year + 1, fye))
+            return out
+    return out
+
+
 def next_earnings_date_from_yfinance(df: Any) -> Optional[date]:
     """The soonest date in a yfinance `earnings_dates` frame that has NO Reported EPS
     yet — yfinance's own live "next quarter to report," which is exactly what
@@ -837,6 +1002,7 @@ def normalize_yfinance_quarterly_estimate(
     revenue_row: Optional[dict], earnings_row: Optional[dict],
     period_label_method: str = LABEL_METHOD_YF_RECONSTRUCTED,
     fiscal_quarter: Optional[int] = None, fiscal_year: Optional[int] = None,
+    period_type: str = "quarter",
 ) -> Optional[dict]:
     """One yfinance revenue_estimate/earnings_estimate period ('0q' or '+1q') -> one
     mi_analyst_estimates row, in the SAME shape every source's rows share — a
@@ -860,7 +1026,11 @@ def normalize_yfinance_quarterly_estimate(
     date, but the guard holds here too) or when neither vendor row has any data.
     Missing individual fields store as NULL, never 0 — zero is a claim, NULL is an
     absence (NaN, yfinance's own "missing" sentinel, is normalized to NULL too via
-    _nan_to_none)."""
+    _nan_to_none).
+
+    `period_type` (2026-10-16) defaults to "quarter", so every existing caller is
+    byte-identical; normalize_yfinance_annual_estimate passes "annual" so the annual leg
+    shares THIS field mapping (one NaN/None policy, not two that can drift apart)."""
     if period_end_date is None:
         return None
     if not revenue_row and not earnings_row:
@@ -872,7 +1042,7 @@ def normalize_yfinance_quarterly_estimate(
         "as_of_date": as_of,
         "anchor_filing_date": anchor_filing_date,
         "valid_from_date": honest_valid_from(anchor_filing_date, as_of),
-        "period_type": "quarter",
+        "period_type": period_type,
         "period_end_date": period_end_date,
         "revenue_avg": _f(_nan_to_none(revenue_row.get("avg"))),
         "revenue_high": _f(_nan_to_none(revenue_row.get("high"))),
@@ -888,6 +1058,34 @@ def normalize_yfinance_quarterly_estimate(
         "fiscal_quarter": fiscal_quarter, "fiscal_year": fiscal_year,
         "period_label_method": period_label_method,
     }
+
+
+def normalize_yfinance_annual_estimate(
+    *, ticker: str, yf_period: str, as_of: date,
+    anchor_filing_date: Optional[date], period_end_date: Optional[date],
+    revenue_row: Optional[dict], earnings_row: Optional[dict],
+) -> Optional[dict]:
+    """One yfinance '0y' or '+1y' period -> one mi_analyst_estimates row with
+    period_type='annual', source='yfinance', period_label_method=LABEL_METHOD_YF_FISCAL_YEAR_END
+    and NO fiscal_quarter/fiscal_year (those columns hold a vendor's raw label; this
+    period end is derived — see the module docstring). Everything else — the raw-value
+    mapping, NaN -> NULL, the honest-window stamp, the None-on-unresolved-date guard — is
+    the quarterly builder's, by calling it. Returns None under the same conditions."""
+    return normalize_yfinance_quarterly_estimate(
+        ticker=ticker, yf_period=yf_period, as_of=as_of,
+        anchor_filing_date=anchor_filing_date, period_end_date=period_end_date,
+        revenue_row=revenue_row, earnings_row=earnings_row,
+        period_label_method=LABEL_METHOD_YF_FISCAL_YEAR_END, period_type="annual",
+    )
+
+
+def _has_estimate(row: dict) -> bool:
+    """True when a stored row carries an actual estimate (a revenue OR EPS average). An
+    all-NaN frame row is stored as an all-NULL row — "we asked, the vendor had nothing" —
+    but it must NOT count toward the annual coverage bar, or an empty leg could meet it.
+    Zero counts: a vendor's 0 (AMLX '0y' revenue, 2026-10-16) is a stated forecast; the
+    read-side question of how $0 reads on a growth axis is his, not this recorder's."""
+    return row.get("revenue_avg") is not None or row.get("eps_avg") is not None
 
 
 def normalize_finnhub_estimate(
@@ -1111,7 +1309,15 @@ async def _fetch_yfinance_quarterly(ticker: str) -> Optional[dict[str, Any]]:
     async code. Returns None (never raises) on any failure, or when neither period has
     any data at all; otherwise {"next_earnings_date": date|None,
     "last_actual_release_date": date|None,
-    "periods": {"0q"|"+1q": {"revenue": dict|None, "earnings": dict|None}}}."""
+    "periods": {"0q"|"+1q": {"revenue": dict|None, "earnings": dict|None}},
+    "annual_periods": {"0y"|"+1y": {"revenue": dict|None, "earnings": dict|None}}}.
+
+    2026-10-16: `annual_periods` is read out of the SAME two frames (they carry '0y'/'+1y'
+    beside '0q'/'+1q' — one cached earningsTrend fetch), so it adds ZERO Yahoo requests; a
+    test spies the Ticker attribute accesses. It is {} when the frames lack both annual
+    periods. It does NOT take part in the `return None` decision: "unavailable" still
+    means "no QUARTERLY period", exactly as before, so a quarterly counter keeps its
+    meaning and an annual-only frame stays unavailable (annual rows ride only with quarterly)."""
     try:
         import yfinance as yf
     except ImportError:
@@ -1169,9 +1375,16 @@ async def _fetch_yfinance_quarterly(ticker: str) -> Optional[dict[str, Any]]:
         periods[period] = {"revenue": rev_row, "earnings": earn_row}
     if not periods:
         return None
+    annual_periods: dict[str, Any] = {}
+    for period in _YF_ANNUAL_PERIODS:
+        rev_row = _yf_period_row(revenue_df, period)
+        earn_row = _yf_period_row(earnings_df, period)
+        if rev_row is None and earn_row is None:
+            continue
+        annual_periods[period] = {"revenue": rev_row, "earnings": earn_row}
     return {"next_earnings_date": next_earnings_date_from_yfinance(dates_df),
             "last_actual_release_date": last_actual_earnings_date_from_yfinance(dates_df),
-            "periods": periods}
+            "periods": periods, "annual_periods": annual_periods}
 
 
 # ── Finnhub /calendar/earnings fetch (v4 — the second estimates source) ──────────────
@@ -1282,7 +1495,8 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
     """Fetch + normalize one ticker's estimates. Returns {rows, anchor, anchor_error,
     quarter_yf_rows, quarter_yf_unavailable, quarter_yf_no_cadence,
     quarter_finnhub_rows, quarter_finnhub_unavailable, quarter_finnhub_no_cadence,
-    divergences} (per-ticker isolation lives in the run loop, not here). The anchor
+    divergences, annual_yf_rows, annual_yf_informative, annual_yf_no_label}
+    (per-ticker isolation lives in the run loop, not here). The anchor
     NEVER aborts: an unresolvable or failed anchor records the rows with a zero
     honest window (the 2026-09-01 first-run bug was exactly this abort). The v3
     quarterly (yfinance) leg and the v4 Finnhub leg are equally non-fatal: any
@@ -1359,6 +1573,8 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
     quarter_yf_unavailable = False
     quarter_no_cadence = False
     quarter_rows: list[dict] = []
+    annual_rows: list[dict] = []        # 2026-10-16 annual leg — see the block after the quarter loop
+    annual_no_label = False
     try:
         yf_data = await _yf_task          # started above, concurrently with the Finnhub fetch
     except Exception as e:  # belt-and-suspenders: _fetch_yfinance_quarterly already
@@ -1434,7 +1650,30 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
             # absolute date (no cadence facts, or every candidate failed the sanity
             # bounds) — skipped and counted, never stored against a guessed date.
             quarter_no_cadence = True
+        # ── annual leg (2026-10-16, yfinance '0y'/'+1y') — same frames, zero extra requests ──
+        # Reads nothing the quarterly block above produced and writes nothing it reads: the
+        # label comes from EDGAR facts + yfinance's last release date alone
+        # (resolve_annual_period_ends), so a quarterly skip/override/stabilization cannot move
+        # it, and this block cannot move a quarterly row, counter or the divergence join.
+        annual_payloads = yf_data.get("annual_periods") or {}
+        if annual_payloads:
+            annual_period_ends = resolve_annual_period_ends(
+                yf_data.get("last_actual_release_date"), quarter_cadence)
+            for period, payload in annual_payloads.items():
+                row = normalize_yfinance_annual_estimate(
+                    ticker=ticker, yf_period=period, as_of=as_of,
+                    anchor_filing_date=anchor, period_end_date=annual_period_ends.get(period),
+                    revenue_row=payload.get("revenue"), earnings_row=payload.get("earnings"),
+                )
+                if row is not None:
+                    annual_rows.append(row)
+            if not annual_rows:
+                # The frames HAD annual data but no fiscal year end could be resolved
+                # (no EDGAR fiscalYearEnd/last quarter, or the reporting-gap gate) — skipped
+                # and counted, never stored against a guessed date.
+                annual_no_label = True
     rows.extend(quarter_rows)
+    rows.extend(annual_rows)
 
     # v4: raw values from BOTH sources are already in `rows` — surface where they
     # disagree on the SAME real quarter (see compute_estimate_divergences; only fires
@@ -1449,7 +1688,10 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
             "quarter_finnhub_rows": len(finnhub_rows),
             "quarter_finnhub_unavailable": quarter_finnhub_unavailable,
             "quarter_finnhub_no_cadence": quarter_finnhub_no_cadence,
-            "divergences": divergences}
+            "divergences": divergences,
+            "annual_yf_rows": len(annual_rows),
+            "annual_yf_informative": any(_has_estimate(r) for r in annual_rows),
+            "annual_yf_no_label": annual_no_label}
 
 
 # ── run functions (never raise into the scheduler — the house shadow contract) ────────
@@ -1461,7 +1703,11 @@ async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict
            "quarter_yf_rows_written": 0, "quarter_yf_unavailable": 0,
            "quarter_yf_no_cadence": 0,
            "quarter_finnhub_rows_written": 0, "quarter_finnhub_unavailable": 0,
-           "quarter_finnhub_no_cadence": 0, "divergence_rows_written": 0}
+           "quarter_finnhub_no_cadence": 0, "divergence_rows_written": 0,
+           # annual leg (2026-10-16). annual_yf_tickers / quarter_yf_tickers IS the
+           # pre-registered bar: tickers with an annual estimate / tickers with quarterly rows.
+           "annual_yf_rows_written": 0, "annual_yf_no_label": 0,
+           "annual_yf_tickers": 0, "quarter_yf_tickers": 0}
     for i, ticker in enumerate(tickers):
         if i:
             # Between tickers, not after the last: the cadence the FMP sleeps used to impose
@@ -1486,6 +1732,14 @@ async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict
             if snap["divergences"]:
                 out["divergence_rows_written"] += await upsert_analyst_estimates_divergence(
                     snap["divergences"])
+            # annual leg counters — after the write, like the quarterly ones above
+            out["annual_yf_rows_written"] += snap["annual_yf_rows"]
+            if snap["annual_yf_no_label"]:
+                out["annual_yf_no_label"] += 1       # annual frames present, fiscal year end unresolvable
+            if snap["quarter_yf_rows"]:
+                out["quarter_yf_tickers"] += 1       # the bar's denominator
+                if snap["annual_yf_informative"]:
+                    out["annual_yf_tickers"] += 1    # the bar's numerator (a stated estimate, not an empty row)
             if snap["anchor_error"]:
                 out["anchor_errors"] += 1        # EDGAR outage — NOT the by-design case
             elif snap["anchor"] is None:
@@ -1529,15 +1783,42 @@ _EMPTY_RUN = {"population": 0, "tickers_written": 0, "rows_written": 0,
               "quarter_yf_rows_written": 0, "quarter_yf_unavailable": 0,
               "quarter_yf_no_cadence": 0,
               "quarter_finnhub_rows_written": 0, "quarter_finnhub_unavailable": 0,
-              "quarter_finnhub_no_cadence": 0, "divergence_rows_written": 0}
+              "quarter_finnhub_no_cadence": 0, "divergence_rows_written": 0,
+              "annual_yf_rows_written": 0, "annual_yf_no_label": 0,
+              "annual_yf_tickers": 0, "quarter_yf_tickers": 0}
+
+
+ANNUAL_COVERAGE_BAR = 0.85   # the annual leg's pre-registered bar (2026-10-16): of the tickers that
+                             # have quarterly yfinance rows that night, >= 85% also have an annual one
+
+
+def annual_coverage_summary(out: dict[str, Any], summary_prefix: str = "") -> str:
+    """The one-line text of the nightly annual-coverage audit row (event_type
+    `<run's event_type>_annual`): the pre-registered bar, readable without a query.
+    Kept well under log_audit_event's 500-character cut. The numerator counts only tickers
+    with a STATED estimate (a revenue or EPS average) among those with quarterly yfinance
+    rows — see _has_estimate. Pure, so the wording is pinned by a test."""
+    covered, of = out["annual_yf_tickers"], out["quarter_yf_tickers"]
+    pct = f"{100.0 * covered / of:.0f}%" if of else "n/a"
+    verdict = ("n/a" if not of
+               else ("meets" if covered / of >= ANNUAL_COVERAGE_BAR else "BELOW")
+               + f" the >= {ANNUAL_COVERAGE_BAR:.0%} bar")
+    return (f"{summary_prefix}annual-from-yfinance: {out['annual_yf_rows_written']} annual row(s) "
+            f"(already INCLUDED in the snapshot row's leading row count; subtract them for the "
+            f"quarterly-only figure); "
+            f"{covered}/{of} ticker(s) with quarterly yfinance rows also have an annual "
+            f"estimate ({pct}, {verdict}); {out['annual_yf_no_label']} had annual frames but no "
+            f"resolvable fiscal year end (an unresolved year end or mid reporting-gap — a "
+            f"nonzero baseline is expected)")
 
 
 async def _run_and_log(tickers: list[str], today: date, event_type: str,
                        summary_prefix: str = "") -> dict[str, Any]:
-    """Run the population and write ONE audit row. The daily snapshot and the one-shot
-    backfill are the same run over different populations — extracted so a change to the
-    counters or the audit shape lands in one place, not two (the duplication class
-    `_persist_minute_bars_for_ticker_day` was pulled apart for the same day).
+    """Run the population and write ONE audit row (plus, since 2026-10-16, one short
+    `<event_type>_annual` row carrying the annual leg's coverage bar). The daily snapshot
+    and the one-shot backfill are the same run over different populations — extracted so a
+    change to the counters or the audit shape lands in one place, not two (the duplication
+    class `_persist_minute_bars_for_ticker_day` was pulled apart for the same day).
     Never raises into the scheduler; SILENT (no Telegram on any path)."""
     try:
         out = await _run_over_tickers(tickers, today, event_type)
@@ -1562,6 +1843,15 @@ async def _run_and_log(tickers: list[str], today: date, event_type: str,
                 f"{out['errors']} error(s)",
             )
         except Exception:  # loud-ok: counters already logged by the scheduler wrapper
+            pass
+        # The annual leg's pre-registered bar gets its OWN short row (2026-10-16), not a
+        # clause on the row above: log_audit_event stores only the first 500 characters and
+        # that summary is ~600 long on any night, so a clause appended to it
+        # would be silently cut off — and an edit near its front would push the quarterly
+        # counters out instead. A separate row also leaves the existing one byte-identical.
+        try:
+            await log_audit_event(f"{event_type}_annual", annual_coverage_summary(out, summary_prefix))
+        except Exception:  # loud-ok: the counters are also on the returned dict
             pass
         return out
     except Exception as e:

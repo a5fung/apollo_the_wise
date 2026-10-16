@@ -283,7 +283,8 @@ then STEP-0 → operator sign-off → CHANGE_PROCESS. Code: `agents/market_intel
 **What is recorded, and from where (current, 2026-10-16):**
 - **yfinance** `revenue_estimate`/`earnings_estimate` (`source='yfinance'`) — the primary and the ONLY source
   carrying an analyst count, so the only one `estimate_for_scoring`'s `n_analysts < 3 → None` rule can admit.
-  Two forward quarters (`0q`, `+1q`), labelled to an absolute period end per ticker (SEC EDGAR cadence).
+  Two forward quarters (`0q`, `+1q`), labelled to an absolute period end per ticker (SEC EDGAR cadence),
+  **plus the annual `0y`/`+1y` rows (built 2026-10-16, next bullets) from the same two frames.**
 - **Finnhub** `/calendar/earnings` (`source='finnhub_calendar'`) — free, two forward quarters, **no analyst
   count**; an independent cross-check, stored beside yfinance with a divergence row where both land on the same
   quarter. `/stock/revenue-estimate` is premium-walled (403 on 7/7) — never call it.
@@ -294,8 +295,46 @@ then STEP-0 → operator sign-off → CHANGE_PROCESS. Code: `agents/market_intel
   ruling 2026-09-03 (*"start with what yfinance gives… re-test at 60 days"*). Deleted, not flagged off: the leg,
   its pacing, its 402 handling and the `analyst_estimates_plan_change` alarm. Stored `fmp_stable` rows stay valid
   history. `collector._fmp_get`/`FMP_API_KEY` now have no live caller.
-- **No annual capture.** The annual leg was FMP's alone; a yfinance `0y`/`+1y` leg was never built. Annual
-  estimates are not recorded until one is (a separate build — it needs its own fiscal-year label resolution).
+- **Annual leg — BUILT 2026-10-16 on yfinance `0y`/`+1y`** (his ruling 2026-09-03 (1): *"two forward quarters plus
+  the annual"*). It replaces the removed FMP annual leg in the same deploy (Sat 2026-10-17), so capture has no
+  gap; first run Mon 2026-10-19 18:12 ET. Read out of the SAME two frames the quarterly leg
+  already downloads — yfinance serves all four periods from one `earningsTrend` fetch, probed 2026-10-16 on 7 of 7
+  names with analyst counts — so **zero extra Yahoo requests** (a test spies the `Ticker` reads: exactly
+  `revenue_estimate`, `earnings_estimate`, `earnings_dates`). Rows: `period_type='annual'`, `source='yfinance'`,
+  `period_label_method='yf_fiscal_year_end'`, `fiscal_quarter`/`fiscal_year` NULL; same columns, same honest-window
+  stamp; `RECORDER_VERSION` stays `v4` (no existing row changed). Read quarterly and annual apart by `period_type`,
+  and always filter `source` (any FMP-era `fmp_stable` annual rows are a different source).
+  - **Label rule** (`resolve_annual_period_ends`): `0y` = the first fiscal-year end MORE than 30 days after the
+    ticker's last reported quarter end (EDGAR `reportDate`); `+1y` = the year after. A year end is
+    `fiscal_quarter_end_from_label(4, Y, fiscalYearEnd)` — the Finnhub leg's resolver on EDGAR's own MMDD, so
+    day-clamping is shared — **snapped to the NEAREST month end** (`nearest_month_end`: 0830/0831/0901/0903 -> 08-31,
+    0926/0927 -> 09-30, 0103 -> the preceding 12-31; nearest, not end-of-the-containing-month). The snap exists
+    because EDGAR's `fiscalYearEnd` MMDD **drifts a day or two for a 52/53-week filer** (COST 0831 -> 0830, AAPL
+    0927 -> 0926, at each Q1 10-Q) and `period_end_date` is part of the row's key: unsnapped, one fiscal year would
+    split into two keys the day the MMDD moved. It is the annual label only; the Finnhub quarterly resolver is
+    unchanged. The 30 days absorb EDGAR's approximate MMDD when picking WHICH year is current.
+  - **Gate** (the quarterly leg's own bound): `last_actual_release_date − last_reported_quarter_end` must be 0-75
+    days. It rejects the reporting-gap race — year results released (Yahoo's `0y` has rolled) but the 10-K not yet
+    filed (EDGAR still shows the third quarter), where the rule would name the year that just ended. Skipped and
+    counted (`annual_yf_no_label`), never guessed; **expect a nonzero nightly baseline**, like `quarter_yf_no_cadence`.
+    Deterministic in two EDGAR facts, the one that moves (the MMDD) absorbed by the month-end snap, so there is no
+    stabilization pass.
+  - **Checked against Yahoo's own `endDate`** (private payload, observed 2026-10-16, not used in production):
+    AAPL `0y` 2026-09-30, COST 2027-08-31, WMT 2027-01-31, NRIX 2026-11-30, AMLX/ETON/ABCL 2026-12-31 — **our label
+    equals Yahoo's date exactly on all seven** (before the snap AAPL read 09-26 and COST 08-30). Pinned in
+    `tests/test_analyst_estimates_recorder.py`.
+  - **Unverified assumption:** Yahoo's `0y` rolls to the next year at the Q4 RELEASE, as `0q` does. Seen so far
+    (AAPL, FY ended 09-26, unreported): `0q` and `0y` both still end 2026-09-30, i.e. `0y` holds the just-ended year.
+    The after-roll side is not yet observed; September/June/October year-end names cross it inside the first 60 days.
+  - **Pre-registered bar** (`docs/analysis/333_free_estimate_sources_2026-10-16.md` rec. 1): after one night, annual
+    rows for **≥ 85%** of the tickers that have quarterly yfinance rows that night. **Fails if** the annual frames
+    come back empty or all-NaN for thin-coverage names. A ticker counts only with a revenue or EPS average
+    (`_has_estimate`) — an all-NaN row is stored ("we asked, nothing") but cannot pass the bar. The ratio is printed
+    nightly on its own audit row `analyst_estimates_snapshot_annual`; it could not ride the main summary row, which
+    `log_audit_event` cuts at 500 characters (that row is ~600 characters on any night, so its tail is already cut).
+    **Reading the main row:** its leading `N row(s)` count now INCLUDES the annual rows (the parenthetical still lists
+    only the quarterly sources, left byte-identical on purpose); the annual row says so and gives the annual count —
+    subtract it to compare with nights before the annual leg.
 - **Pace.** The job sleeps `YFINANCE_PACE_SECONDS` (24s) between tickers — the cadence the FMP sleeps used to
   impose on every vendor, kept so the removal changed no request pattern. Not a measured Yahoo limit; lowering
   it is a separate, measured decision.
@@ -318,7 +357,8 @@ then STEP-0 → operator sign-off → CHANGE_PROCESS. Code: `agents/market_intel
 
 **Open, and HIS at the 60-day read (none now):** the spread bar; flag vs exclude; how a $0 forecast reads on a
 growth axis; whether two forward quarters (not four) separate winners at all — Pradeep's four-quarter shape has
-never been measured here because nothing was stored.
+never been measured here because nothing was stored; whether the annual `+1y` (a coarser proxy for the quarters
+beyond the second) adds anything the two quarters do not.
 
 ## Quarterly Review Protocol
 
