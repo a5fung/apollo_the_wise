@@ -401,6 +401,15 @@ asked for and is not added; (b) the page's population is wider than the live boa
 all 2,397 names, 5 of the 10 extras in the 60-session scope window on the live board); (c) (closed by the review, same day) the Friday watchlist now lists TRIGGERED names with their path.
 
 ## Change log
+- **2026-10-15 — #697 item 6: MRNA's corpus entry now records his two entry days, the THIRD blocking gate and his TOP rating — TEST FIXTURE ONLY, no detector, threshold or surfacing change.**
+  From his 10-15 note (`operator_shared_notes.md` § "2026-10-15 — MRNA: the post-EP consolidation and his two entries"). `tests/fixtures/htf_labelled.py` gains
+  four optional, default-empty fields — `trader_entries` (09-16 anticipation buy on the tight inside day; 09-17 ORB breakout entry: two SETUPS in the post-EP
+  consolidation family, each with its own name, his words checked verbatim), `gates_recorded` (the board's reading per day: 09-15 `flag_low_`, 09-16 SMA20 kill,
+  **09-17 `ma_stack_not_stage2_144.5/144.9/96.6`**, 09-18 `ma_stack_not_stage2_145.0/145.9/98.2`), `rating` / `rating_quote` (`top`: "a really good setup per my
+  estimation"). The days the bars reach are REPLAYED (the replay reproduces 09-17 exactly), so a detector change that moves a gate fails the suite; 09-18 is a prod
+  row (bars end 09-17) pinned as text. Pins + bite cases: `tests/test_697_corpus_label_kinds.py` § 2b. The member stays `htf` / declared `flag_low_` miss; the rating is a
+  lean about the label, not a score input or filter. No criterion reopened — three gates on three days (depth, a 5-cent SMA20 kill, MA-stack order) is a recorded
+  verdict, and the admit-or-not fork stays the operator's.
 - **2026-10-11 — #146 UNPARKED: a breakout reads TRIGGERED from a TIGHTENING-or-better label without first reaching COILED, and every raw TRIGGERED row now says which
   path licensed it (`triggered_from`: `coiled` / `tightening` / `retrigger`). DETECTION only — no threshold, window, floor or volume leg moved; the flag strategy
   stays disabled and HTF trading stays parked behind EP (#397); no order / entry / sizing / safeguard path reads a stage or the stamp (THE LINE holds).**

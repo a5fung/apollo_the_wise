@@ -50,6 +50,21 @@ GH and HPE: bars pulled 2026-10-11 (#697 item 6), 2025-07-28 → 2026-09-04, sam
 existing members keep 06-15 on purpose — moving it would re-thread their recorded pivots (OUST's
 reads $49.39, not the recorded $48.83, from a 05-18 start).
 
+#697 item 6 (2026-10-15) — three more OPTIONAL fields, all default-empty, all HIS words or OUR board's recorded
+reading, never inference (MRNA is the first member to carry them; his 10-15 note, verbatim in
+docs/methodology/operator_shared_notes.md § "2026-10-15 — MRNA: the post-EP consolidation and his two entries"):
+  - `trader_entries` — the entry days HE named on the chart: (date, setup name, his words verbatim). A SETUP
+                     needs its own name and buy point (CLAUDE.md "SETUP vs FAMILY"): anticipation-buy and
+                     ORB-breakout are two setups inside one family, never pooled. His words are checked verbatim in
+                     the notes doc; the date must be an NYSE session.
+  - `gates_recorded` — the board's reading per day, (date, reason), for the days that are NOT `assert_dates`
+                     (`expected` is one prefix for all of those). A day the fixture's bars reach is REPLAYED and must
+                     equal the recorded reason; a day past the last bar (MRNA 09-18) is prod-sourced
+                     (`mi_flag_candidates`, scripts/probes/_mrna_1015/q1.out) and is pinned only as text.
+  - `rating` / `rating_quote` — HIS rating of the example ("top" = "a really good setup per my estimation"),
+                     with the sentence verbatim. A rating is a LEAN about the label, never a filter or a score input
+                     (memory `charts-support-never-decide`).
+
 HOW TO ADD A MEMBER — one line: append an `HTFLabelledMember(...)`, and append that
 ticker's bars to the .psv (same pull SQL as the grid replay; see
 `scripts/probes/_592_610_htf_grid_replay.py`). Check what the detector said on the label
@@ -67,6 +82,8 @@ LABEL_KINDS = ("htf", "consolidation", "pointer", "negative")
 # Kinds that claim "the detector should have flagged this": they must reach a pushable stage or
 # declare the gate that stops them. Pointer / negative never assert a hit.
 POSITIVE_KINDS = ("htf", "consolidation")
+# His rating of an example, when he gave one. "top" = his own "really good setup per my estimation" (MRNA, 10-15).
+RATINGS = ("top",)
 
 
 @dataclass(frozen=True)
@@ -88,6 +105,13 @@ class HTFLabelledMember:
     quote_file: str = ""
     # replay start override (default: the corpus test's 2026-06-15)
     replay_from: date | None = None
+    # the entry days HE named: (date, setup name, his words verbatim in the notes doc)
+    trader_entries: tuple[tuple[date, str, str], ...] = ()
+    # the board's recorded reading per day: (date, reason). Replayed when the bars reach the day, else prod-sourced
+    gates_recorded: tuple[tuple[date, str], ...] = ()
+    # his rating of the example ("top") and the sentence it rests on, verbatim in the notes doc
+    rating: str = ""
+    rating_quote: str = ""
 
 
 HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
@@ -126,13 +150,34 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
         label_source=("operator-shared trader post 2026-09-17 07:53 (Leif Soreide, @LeifSoreide); "
                       "his chart is dated 2026-09-16 10:38, i.e. BEFORE the move he called. "
                       "Transcribed in docs/methodology/operator_shared_notes.md § 2026-09-17; charts stored at "
-                      "docs/methodology/images/mrna_2026-09-1[67]_htf_*"),
+                      "docs/methodology/images/mrna_2026-09-1[67]_htf_*. THE OPERATOR's own read of the same "
+                      "chart, 2026-10-15 (his two entry days and his TOP rating), is verbatim in "
+                      "docs/methodology/operator_shared_notes.md § \"2026-10-15 — MRNA: the post-EP "
+                      "consolidation and his two entries\""),
         trader_read=("High Tight Flag. \"Wanted closer to 5 weeks because the flag was a touch deep "
                      "(~26%), but that was mostly one stretch day (~1% over).\" Breakout Watch spot "
                      "= the flag's upper rail; he says it triggered 09-17."),
         assert_dates=(date(2026, 9, 11), date(2026, 9, 15)),
         expected="rejected:flag_low_",
         known_miss_gate="flag_low_",
+        # HIS two entries on this chart (operator, 2026-10-15). Two SETUPS in one family (post-EP consolidation,
+        # Family A / #354): each has its own buy point, he gave no stop for either (stop stays undetermined).
+        trader_entries=(
+            (date(2026, 9, 16), "anticipation buy on the tight inside day",
+             "buy early on tight inside day on 9/16 anticipating the breakout"),
+            (date(2026, 9, 17), "ORB breakout entry", "a ORB entry on 9/17 can also work"),
+        ),
+        # THREE different gates on three different days, all before/at his breakout. 09-17 is a live replay
+        # assertion; 09-18 is a prod `mi_flag_candidates` row (the fixture's bars end 09-17 by design).
+        gates_recorded=(
+            (date(2026, 9, 15), "flag_low_128.61_below_75%_of_pole_176.66"),
+            (date(2026, 9, 16), "close_145.62_below_sma20_145.67"),
+            (date(2026, 9, 17), "ma_stack_not_stage2_144.5/144.9/96.6"),
+            (date(2026, 9, 18), "ma_stack_not_stage2_145.0/145.9/98.2"),
+        ),
+        rating="top",
+        rating_quote=("i want to emphasize that this is a really good setup per my estimation, also give it was "
+                      "a strong EP, pulled back orderly and tightened, lower vol then broke out again"),
         note=("RECORDED GAP, and a DIFFERENT gate from HNGE's — which is the point of adding it. "
               "The pole is never the issue here: runup reads 2.4 (240%) against a 90% floor. We "
               "reject on FLAG DEPTH, the same reason for 15 consecutive sessions 08-25 → 09-15: "
@@ -140,9 +185,22 @@ HTF_LABELLED: tuple[HTFLabelledMember, ...] = (
               "ceiling. He called it 26.2% and took it anyway because the breach was \"mostly one "
               "stretch day (~1% over)\" — we have no one-bar allowance, we read the extreme. "
               "⚠ AND ON 2026-09-16 WE INVALIDATED IT BY FIVE CENTS: `close_145.62_below_sma20_145.67`, "
-              "a 0.03% margin, the session before his breakout. Not asserted here because the "
-              "INVALIDATED reason has a different prefix; the two flag_low dates are asserted "
-              "instead and the 09-16 kill is recorded in the shared-notes entry. "
+              "a 0.03% margin, the session before his breakout. Not an `assert_dates` row because the "
+              "INVALIDATED reason has a different prefix (`expected` is one prefix) — the two flag_low "
+              "dates are asserted there, and that 09-16 kill is pinned in `gates_recorded` (replayed) beside "
+              "it. "
+              "⚠ A THIRD GATE, on the breakout day itself (his note 2026-10-15, checked against the board "
+              "2026-10-15): 09-17 reads `ma_stack_not_stage2_144.5/144.9/96.6` (replayed, == the stored "
+              "row) and 09-18 `ma_stack_not_stage2_145.0/145.9/98.2` (prod row, bars end 09-17) — the short "
+              "averages were still tangled (144.5 vs 144.9) after the pullback, so the MA-stack test failed "
+              "exactly when the base resolved. Three gates on three days (depth → a 5-cent SMA20 kill → MA "
+              "stack order); neither of his entry days (`trader_entries`: the 09-16 anticipation buy on the "
+              "tight inside day, the 09-17 ORB breakout) had a pushable stage; the delayed-entry lane never "
+              "fired (9/17 is ~20 sessions after the 08-19 EP). "
+              "He rates it TOP (`rating`): \"a really good setup per my estimation\" — strong EP, orderly "
+              "pullback, tightened, lower volume, broke out again. A LEAN about the label, never a filter; "
+              "recorded as a labelled example, not a proposal (detection/admission criteria are THE LINE, "
+              "HTF stays behind EP profitability). "
               "Two shared names, two different gates: tuning from HNGE alone tunes the wrong thing."),
     ),
     HTFLabelledMember(
