@@ -17642,6 +17642,28 @@ async def get_theme_member_departures(conn, today: "date", prior_date: "date") -
     return [dict(r) for r in rows]
 
 
+async def get_theme_departure_explanations(conn, et_date: "date") -> list[dict]:
+    """The audit rows that EXPLAIN a theme member leaving a theme on ET night `et_date` by a
+    rule OTHER than the RS prune: the carry-forward filter's strip
+    (`theme_carryforward_filter_stripped` — sector outlier / banned / cooldown / deal-pinned /
+    comove-below-bar, one aggregate row per affected theme) and the validator's single-ticker
+    removal (`ticker_revalidated_out`). ONE query for the whole night, raw
+    `(event_type, summary, detail)` rows with NO parsing — `health_checks._explained_departures`
+    owns the format knowledge, so a writer rewording is a one-place fix there (the same split
+    `get_theme_parent_nominations` uses). #531: the pruned-while-rising guard paged IBP, HAYW and
+    OKLO as RS prunes when each was a sector-outlier strip.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT event_type, summary, detail FROM mi_audit_log
+        WHERE event_type IN ('theme_carryforward_filter_stripped', 'ticker_revalidated_out')
+          AND (created_at AT TIME ZONE 'America/New_York')::date = $1
+        """,
+        et_date,
+    )
+    return [dict(r) for r in rows]
+
+
 async def get_rs_on_date(conn, tickers: list[str], d: "date") -> dict[str, float]:
     """Exact rs_composite for `tickers` on EXACTLY `d` — no fallback to a nearby prior date.
     Deliberately narrower than `get_recent_rs_batch` (which silently walks back to the nearest
