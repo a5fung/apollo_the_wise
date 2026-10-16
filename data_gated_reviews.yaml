@@ -321,6 +321,13 @@ reviews:
     # the firing is RECORDED HERE, not lost. ACTION OWED: re-cut the Run-U runner sweep with the DEPTH
     # exit as the control (the 08-29 control and era D's are both gone) — tracked on PLAN #687, weekend
     # 10-17/18. The 5 era-D closes are a replaced rule's trades and do not answer the question.
+    # ✅ RE-CUT RUN 2026-10-16 (pre-registered docs/analysis/runner_recut_preregistration_2026-10-16.md; Sonnet ran it, Opus
+    # re-derived it from independent code; docs/analysis/runner_recut_results_2026-10-16.md): STANDS. Primary hold-20 (stop held
+    # at its +8R-partial level) vs the live depth exit on Run U, n = 185 scored (29 reached the partial, 16 differ across 8 weeks):
+    # +6.69R total, p = 0.90, -13.15R without its two best trades, behind in the first half, 9 vs 10 trades at +4R; one trade
+    # (BABA 07-08, +15.58R) carries the sign. #687's exact rule did not replicate (+8.05R, p 0.90). The depth exit stands for the
+    # runner; this window is not re-cut again; the trade arm (40 era-E closes) stays armed. Limit: the optional prod pull was
+    # refused, so 12 control positions (August entries) are marked at the 08-28 data end.
     threshold: 40
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode, mi_safeguard_state.account_mode]  # backfilled 2026-08-30 (#573); all three FILTERED since 2026-09-19 (#669)
     earliest_review_date: 2026-10-19   # the day after the re-cut owed by the 10-13 firing lands (weekend 10-17/18, tracked on #687) — so it does not read 'ZERO since its date passed' while the re-cut is still being built

@@ -1,0 +1,70 @@
+== Frame A engaged trades (n=29): control vs primary t20_be vs #687's exact rule, money-R ==
+ticker entry      trig_idx   F_R    ctrl  t20_be   delta t20_ref  control_exit / primary_exit
+SGML   2026-04-13        3  0.00   +4.99   +2.55   -2.44   +2.55  sma_trail_stop/settled -> time_close/settled
+AOSL   2026-04-14        0  0.00  +17.84  +15.80   -2.04  +15.80  stop_hit/settled -> time_close/settled
+BE     2026-04-14       11  0.00   +4.22   +5.09   +0.87   +5.09  sma_trail_stop/settled -> time_close/settled
+CRDO   2026-04-14        8  0.00   +2.40   +1.33   -1.07   +1.33  sma_trail_stop/settled -> stop_hit/settled
+IONQ   2026-04-14        1  0.00   +4.35   +8.01   +3.66   +8.01  sma_trail_stop/settled -> time_close/settled
+SMR    2026-04-14        0  0.00   +1.33   +1.33   +0.00   +1.33  stop_hit/settled -> stop_hit/settled
+QBTS   2026-04-15        1  0.00   +1.33   +1.33   +0.00   +1.33  stop_hit/settled -> stop_hit/settled
+NVTS   2026-04-21        1  0.00   +1.33   +1.33   +0.00   +1.33  stop_hit/settled -> stop_hit/settled
+STM    2026-04-23        5  0.00  +12.46  +10.12   -2.34  +10.12  sma_trail_stop/settled -> time_close/settled
+TXN    2026-04-23       14  1.54   +4.31   +2.36   -1.95   +3.71  sma_trail_stop/settled -> stop_hit/settled
+DOCN   2026-05-05        0  0.00   +2.78   +7.04   +4.26   +7.04  sma_trail_stop/settled -> time_close/settled
+FLEX   2026-05-06        5  0.00   +1.71   +1.33   -0.38   +1.33  sma_trail_stop/settled -> stop_hit/settled
+RKLB   2026-05-08        0  0.00   +7.82   +5.61   -2.21   +5.61  stop_hit/settled -> time_close/settled
+P      2026-05-11        0  0.00   +1.33   +1.33   +0.00   +1.33  stop_hit/settled -> stop_hit/settled
+ONDS   2026-05-14        1  0.00   +1.33   +1.33   +0.00   +1.33  stop_hit/settled -> stop_hit/settled
+RGTI   2026-05-21        1  0.00   +3.34   +1.33   -2.00   +1.33  sma_trail_stop/settled -> stop_hit/settled
+NOW    2026-05-29        1  0.00   +1.33   +1.33   +0.00   +1.33  stop_hit/settled -> stop_hit/settled
+OKTA   2026-05-29        1  0.00   +1.88   +1.33   -0.55   +1.33  sma_trail_stop/settled -> stop_hit/settled
+WDC    2026-06-15        1  0.00   +1.33   +1.33   +0.00   +1.33  stop_hit/settled -> stop_hit/settled
+BABA   2026-07-08        1  0.00   +7.09  +22.67  +15.58  +22.67  sma_trail_stop/settled -> time_close/settled
+MANE   2026-07-15        0  0.00   +1.33   +1.33   +0.00   +1.33  stop_hit/settled -> stop_hit/settled
+MRVL   2026-07-30        1  0.00   +1.51   +1.33   -0.17   +1.33  sma_trail_stop/settled -> stop_hit/settled
+MSFT   2026-07-30        2  0.00   +3.99   +5.20   +1.21   +5.20  sma_trail_stop/settled -> open_walk_not_definitive/data_end
+FTK    2026-08-03        2  0.00   +5.07   +1.33   -3.74   +1.33  stop_hit/settled -> stop_hit/settled
+TEAM   2026-08-07        8  0.00   +5.38   +5.38   +0.00   +5.38  open_walk_not_definitive/data_end -> open_walk_not_definitive/data_end
+SHAZ   2026-08-12        3  0.00   +1.33   +1.33   +0.00   +1.33  stop_hit/settled -> stop_hit/settled
+ARGX   2026-08-17        2  0.00   +3.89   +3.89   +0.00   +3.89  open_walk_not_definitive/data_end -> open_walk_not_definitive/data_end
+MRNA   2026-08-19        0  0.00   +2.49   +2.49   +0.00   +2.49  open_walk_not_definitive/data_end -> open_walk_not_definitive/data_end
+TEM    2026-08-19        2  0.00   +2.74   +2.74   +0.00   +2.74  open_walk_not_definitive/data_end -> open_walk_not_definitive/data_end
+
+engaged-only totals (money-R): control 112.26, primary 118.95, t20_entry_ref 120.31; engaged n=29
+how the 29 engaged trades end under the primary: {'time_close': 8, 'stop_hit': 16, 'open_walk_not_definitive': 5}
+how the 29 engaged trades end under the control: {'sma_trail_stop': 13, 'stop_hit': 12, 'open_walk_not_definitive': 4}
+trigger-session split: day0=7, later=22
+entry months of the 29: {'2026-04': 10, '2026-05': 8, '2026-06': 1, '2026-07': 4, '2026-08': 6}
+entry weeks (distinct) of the 29: 13  of the 16 that differ: 8
+population: entry weeks distinct: 19
+
+== why sma10_depth == control: engaged trades with SMA20 > SMA10 at any post-trigger session on the CONTROL path ==
+  Frame A: 6 of 29 engaged trades ever have SMA20 > SMA10 while held after the trigger
+  Frame B: 17 of 75 engaged trades ever have SMA20 > SMA10 while held after the trigger
+
+== BABA 2026-07-08 and AOSL 2026-04-14 (the two names that carried the 08-29 read) ==
+('BABA', '2026-07-08'): entry 107.61, money-R 0.600, sessions stored 37, triggers {'B': {'idx': 0, 'F': 107.61}, 'A': {'idx': 1, 'F': 107.61}}
+   control R +7.09 (sma_trail_stop, exit_session 12); primary R +22.67 (time_close, exit_session 21, settled)
+   legs control: [('partial_profit', 110.01, 0.333), ('sma_trail_stop', 112.79, 0.667)]
+   legs primary: [('partial_profit', 110.01, 0.333), ('time_close', 126.81, 0.667)]
+('AOSL', '2026-04-14'): entry 27.74, money-R 0.460, sessions stored 40, triggers {'B': {'idx': 0, 'F': 27.74}, 'A': {'idx': 0, 'F': 27.74}}
+   control R +17.84 (stop_hit, exit_session 17); primary R +15.80 (time_close, exit_session 20, settled)
+   legs control: [('partial_profit', 29.58, 0.333), ('stop_hit', 39.13, 0.667)]
+   legs primary: [('partial_profit', 29.58, 0.333), ('time_close', 37.72, 0.667)]
+
+== primary without BABA: paired totals ==
+  total delta 6.69 ; without BABA -8.89 ; without BABA and DOCN -13.15
+  the 16 differing trades' deltas: [(15.58, 'BABA'), (4.26, 'DOCN'), (3.66, 'IONQ'), (1.21, 'MSFT'), (0.87, 'BE'), (-0.17, 'MRVL'), (-0.38, 'FLEX'), (-0.55, 'OKTA'), (-1.07, 'CRDO'), (-1.95, 'TXN'), (-2.0, 'RGTI'), (-2.04, 'AOSL'), (-2.21, 'RKLB'), (-2.34, 'STM'), (-2.44, 'SGML'), (-3.74, 'FTK')]
+
+== control trades by entry half and month (n, total R) ==
+  H1: n=120 total +23.24 (+4R trades 7)
+  H2: n=65 total +21.03 (+4R trades 3)
+  2026-04: n=45 total +43.27
+  2026-05: n=62 total -11.19
+  2026-06: n=13 total -8.84
+  2026-07: n=24 total +3.34
+  2026-08: n=41 total +17.69
+
+== era_d vs control (the switch's effect on this population) ==
+  n=185, control total 44.27, era-D total 43.45, differ (>0.005R) on 62 trades
+  control_at_close vs control: closing-price sale of the 47 close-below exits vs next-open: total 4.45 over 47 trades differing

@@ -1,0 +1,221 @@
+population (own loader): 295 rows on 252 tickers; {'never_triggered': 85, 'degenerate_orb': 4, 'no_bars_after_orb': 12, 'filled': 194}
+entry dates: 2026-04-13 -> 2026-08-28; ADR20 None on 0 of 194
+run_rows.tsv rows: 194; my filled set == tsv set: True
+live walk_arm control statuses: {'settled': 173, 'abstain': 9, 'data_end': 12}
+own control clone == live walk_arm (status + R to 1e-9) on 194 of 194; mismatches []
+live control R vs run_rows.tsv control column (4dp): 194 of 194 agree; disagreements []
+own t20_be (orderable, F = resting stop at the partial) vs run_rows.tsv 'A|t20_be': 194 of 194 agree; disagreements []
+own t20_entry_ref (F reset to entry) vs run_rows.tsv 't20_entry_ref': 194 of 194 agree; disagreements []
+own control_at_close vs run_rows.tsv 'control_at_close': 194 of 194 agree; disagreements []
+live era_d (depth_exit=False) vs run_rows.tsv 'era_d': 194 of 194 agree; disagreements []
+scored n=185; Frame A engaged (control reached +8 ORB-R partial) = 29; day-0 triggers 7
+F above entry on 1 of 29: [(('TXN', '2026-04-23'), 1.538)]; median F 0.000R
+tsv trigA_idx non-empty: 29; trigger index agreement: 29 of 29
+
+== PRIMARY A t20_be (own aggregates) ==
+  n                185
+  differ           16
+  differ_weeks     8
+  blocks           19
+  nz_blocks        8
+  total            50.9603
+  ctrl_total       44.2675
+  delta            6.6927
+  mean_delta       0.0362
+  delta_ex_top2    -13.1451
+  top2             [(('BABA', '2026-07-08'), np.float64(15.58)), (('DOCN', '2026-05-05'), np.float64(4.26))]
+  ex_baba          -8.885
+  drop_best2       12.4965
+  ctrl_drop_best2  13.9668
+  h1               -6.1862
+  n1               120
+  h2               12.8789
+  n2               65
+  p_exact          0.8984
+  boot             (np.float64(-0.09643936635464015), np.float64(0.2677802803678338))
+  n4               9
+  n4c              10
+  n15              21
+  n15c             27
+  lost             [('SGML', '2026-04-13'), ('TXN', '2026-04-23'), ('FTK', '2026-08-03')]
+  gained           [('DOCN', '2026-05-05'), ('MSFT', '2026-07-30')]
+  median           -0.5301
+  cmedian          -0.5301
+  win              0.2811
+  p90              1.9605
+  cp90             2.3805
+
+== REF t20_entry_ref (own aggregates) ==
+  n                185
+  differ           16
+  differ_weeks     8
+  blocks           19
+  nz_blocks        8
+  total            52.3166
+  ctrl_total       44.2675
+  delta            8.0491
+  mean_delta       0.0435
+  delta_ex_top2    -11.7888
+  top2             [(('BABA', '2026-07-08'), np.float64(15.58)), (('DOCN', '2026-05-05'), np.float64(4.26))]
+  ex_baba          -7.5287
+  drop_best2       13.8528
+  ctrl_drop_best2  13.9668
+  h1               -4.8298
+  n1               120
+  h2               12.8789
+  n2               65
+  p_exact          0.8984
+  boot             (np.float64(-0.08283655407988949), np.float64(0.2735210340098341))
+  n4               9
+  n4c              10
+  n15              21
+  n15c             27
+  lost             [('SGML', '2026-04-13'), ('TXN', '2026-04-23'), ('FTK', '2026-08-03')]
+  gained           [('DOCN', '2026-05-05'), ('MSFT', '2026-07-30')]
+  median           -0.5301
+  cmedian          -0.5301
+  win              0.2811
+  p90              1.9605
+  cp90             2.3805
+
+== REF control_at_close (own aggregates) ==
+  n                185
+  differ           47
+  differ_weeks     14
+  blocks           19
+  nz_blocks        14
+  total            48.7222
+  ctrl_total       44.2675
+  delta            4.4547
+  mean_delta       0.0241
+  delta_ex_top2    2.0818
+  top2             [(('BABA', '2026-07-08'), np.float64(1.41)), (('MRVL', '2026-07-30'), np.float64(0.96))]
+  ex_baba          3.0435
+  drop_best2       20.1504
+  ctrl_drop_best2  13.9668
+  h1               0.1778
+  n1               120
+  h2               4.2768
+  n2               65
+  p_exact          0.3523
+  boot             (np.float64(-0.022152483338225334), np.float64(0.07354911247841103))
+  n4               9
+  n4c              10
+  n15              27
+  n15c             27
+  lost             [('BE', '2026-04-14'), ('TXN', '2026-04-23')]
+  gained           [('MSFT', '2026-07-30')]
+  median           -0.585
+  cmedian          -0.5301
+  win              0.3027
+  p90              2.4079
+  cp90             2.3805
+
+== REF era_d (own aggregates) ==
+  n                185
+  differ           62
+  differ_weeks     14
+  blocks           19
+  nz_blocks        14
+  total            43.446
+  ctrl_total       44.2675
+  delta            -0.8216
+  mean_delta       -0.0044
+  delta_ex_top2    -5.0113
+  top2             [(('BABA', '2026-07-08'), np.float64(2.81)), (('RKLB', '2026-05-08'), np.float64(1.38))]
+  ex_baba          -3.6283
+  drop_best2       17.0229
+  ctrl_drop_best2  13.9668
+  h1               -5.3637
+  n1               120
+  h2               4.5421
+  n2               65
+  p_exact          0.9465
+  boot             (np.float64(-0.13727856727790372), np.float64(0.1147125709755797))
+  n4               7
+  n4c              10
+  n15              27
+  n15c             27
+  lost             [('SGML', '2026-04-13'), ('BE', '2026-04-14'), ('TXN', '2026-04-23'), ('TEAM', '2026-08-07')]
+  gained           [('MSFT', '2026-07-30')]
+  median           -0.4959
+  cmedian          -0.5301
+  win              0.3243
+  p90              2.3846
+  cp90             2.3805
+
+BAR on own numbers: P1 True P2 False P3 False P4 False P5 False -> STANDS
+open at data end: control 12, primary 13; horizon control 0, primary 0
+control data-end marks: [(('CHYM', '2026-08-06'), 3.18), (('TEAM', '2026-08-07'), 5.38), (('OMER', '2026-08-13'), 0.94), (('ARGX', '2026-08-17'), 3.89), (('AMLX', '2026-08-18'), 1.57), (('MRNA', '2026-08-19'), 2.49), (('TEM', '2026-08-19'), 2.74), (('TWST', '2026-08-19'), 1.1), (('CRM', '2026-08-27'), 2.48), (('OKTA', '2026-08-27'), -0.1), (('VEEV', '2026-08-27'), -0.37), (('SOLS', '2026-08-28'), -0.77)]; sum +22.53R
+
+engaged 29 (own): key | trigA | F(R) | control R | t20_be R | t20 exit | delta
+  SGML   2026-04-13 trig=3   F=+0.000 ctrl=+4.9939 t20=+2.5545 exit=(23, 'time_close', 17.865) ctrl_exit=(20, 'close_below@next_open', 21.89, 21.71) d=-2.4394 st=settled/settled
+  AOSL   2026-04-14 trig=0   F=+0.000 ctrl=+17.8406 t20=+15.7971 exit=(20, 'time_close', 37.72) ctrl_exit=(17, 'stop', 39.13) d=-2.0435 st=settled/settled
+  BE     2026-04-14 trig=11  F=+0.000 ctrl=+4.2152 t20=+5.0850 exit=(31, 'time_close', 290.01) ctrl_exit=(18, 'close_below@next_open', 271.22, 258.64) d=+0.8699 st=settled/settled
+  CRDO   2026-04-14 trig=8   F=+0.000 ctrl=+2.4030 t20=+1.3333 exit=(24, 'stop_F', 154.36) ctrl_exit=(11, 'close_below@next_open', 171.56, 165.92) d=-1.0697 st=settled/settled
+  IONQ   2026-04-14 trig=1   F=+0.000 ctrl=+4.3536 t20=+8.0145 exit=(21, 'time_close', 55.26) ctrl_exit=(11, 'close_below@next_open', 42.63, 43.08) d=+3.6609 st=settled/settled
+  SMR    2026-04-14 trig=0   F=+0.000 ctrl=+1.3333 t20=+1.3333 exit=('d0', 'stop', 10.37) ctrl_exit=('d0', 'stop', 10.37) d=+0.0000 st=settled/settled
+  QBTS   2026-04-15 trig=1   F=+0.000 ctrl=+1.3333 t20=+1.3333 exit=(7, 'stop_F', 18.54) ctrl_exit=(7, 'stop', 18.54) d=+0.0000 st=settled/settled
+  NVTS   2026-04-21 trig=1   F=+0.000 ctrl=+1.3333 t20=+1.3333 exit=(6, 'stop_F', 14.51) ctrl_exit=(6, 'stop', 14.51) d=+0.0000 st=settled/settled
+  STM    2026-04-23 trig=5   F=+0.000 ctrl=+12.4602 t20=+10.1247 exit=(25, 'time_close', 69.31) ctrl_exit=(31, 'close_below@next_open', 74.74, 70.72) d=-2.3355 st=settled/settled
+  TXN    2026-04-23 trig=14  F=+1.538 ctrl=+4.3111 t20=+2.3585 exit=(32, 'stop_F', 278.22) ctrl_exit=(21, 'close_below@next_open', 305.4, 298.39) d=-1.9526 st=settled/settled
+  DOCN   2026-05-05 trig=0   F=+0.000 ctrl=+2.7813 t20=+7.0414 exit=(20, 'time_close', 173.68) ctrl_exit=(10, 'close_below@next_open', 143.02, 147.43) d=+4.2601 st=settled/settled
+  FLEX   2026-05-06 trig=5   F=+0.000 ctrl=+1.7117 t20=+1.3333 exit=(9, 'stop_F', 122.0) ctrl_exit=(9, 'close_below@next_open', 125.405, 129.73) d=-0.3783 st=settled/settled
+  RKLB   2026-05-08 trig=0   F=+0.000 ctrl=+7.8157 t20=+5.6102 exit=(20, 'time_close', 113.65) ctrl_exit=(15, 'stop', 126.94) d=-2.2055 st=settled/settled
+  P      2026-05-11 trig=0   F=+0.000 ctrl=+1.3333 t20=+1.3333 exit=(1, 'stop_F', 83.15) ctrl_exit=(1, 'stop', 83.15) d=+0.0000 st=settled/settled
+  ONDS   2026-05-14 trig=1   F=+0.000 ctrl=+1.3333 t20=+1.3333 exit=(2, 'stop_F', 10.01) ctrl_exit=(2, 'stop', 10.01) d=+0.0000 st=settled/settled
+  RGTI   2026-05-21 trig=1   F=+0.000 ctrl=+3.3358 t20=+1.3333 exit=(12, 'stop_F', 19.08) ctrl_exit=(10, 'close_below@next_open', 23.165, 24.16) d=-2.0025 st=settled/settled
+  NOW    2026-05-29 trig=1   F=+0.000 ctrl=+1.3333 t20=+1.3333 exit=(3, 'stop_F', 118.59) ctrl_exit=(3, 'stop', 118.59) d=+0.0000 st=settled/settled
+  OKTA   2026-05-29 trig=1   F=+0.000 ctrl=+1.8835 t20=+1.3333 exit=(14, 'stop_F', 109.3) ctrl_exit=(9, 'close_below@next_open', 113.92, 114.92) d=-0.5501 st=settled/settled
+  WDC    2026-06-15 trig=1   F=+0.000 ctrl=+1.3333 t20=+1.3333 exit=(6, 'stop_F', 623.9) ctrl_exit=(6, 'stop', 623.9) d=+0.0000 st=settled/settled
+  BABA   2026-07-08 trig=1   F=+0.000 ctrl=+7.0889 t20=+22.6667 exit=(21, 'time_close', 126.81) ctrl_exit=(12, 'close_below@next_open', 112.79, 114.06) d=+15.5778 st=settled/settled
+  MANE   2026-07-15 trig=0   F=+0.000 ctrl=+1.3333 t20=+1.3333 exit=(1, 'stop_F', 118.75) ctrl_exit=(1, 'stop', 118.75) d=+0.0000 st=settled/settled
+  MRVL   2026-07-30 trig=1   F=+0.000 ctrl=+1.5082 t20=+1.3333 exit=(2, 'stop_F', 179.24) ctrl_exit=(2, 'close_below@next_open', 180.52, 187.56) d=-0.1749 st=settled/settled
+  MSFT   2026-07-30 trig=2   F=+0.000 ctrl=+3.9912 t20=+5.2037 exit=None ctrl_exit=(12, 'close_below@next_open', 490.14, 495.4) d=+1.2125 st=settled/data_end
+  FTK    2026-08-03 trig=2   F=+0.000 ctrl=+5.0699 t20=+1.3333 exit=(12, 'stop_F', 25.16) ctrl_exit=(10, 'stop', 32.11) d=-3.7366 st=settled/settled
+  TEAM   2026-08-07 trig=8   F=+0.000 ctrl=+5.3830 t20=+5.3830 exit=None ctrl_exit=None d=+0.0000 st=data_end/data_end
+  SHAZ   2026-08-12 trig=3   F=+0.000 ctrl=+1.3333 t20=+1.3333 exit=(6, 'stop_F', 63.66) ctrl_exit=(6, 'stop', 63.66) d=+0.0000 st=settled/settled
+  ARGX   2026-08-17 trig=2   F=+0.000 ctrl=+3.8884 t20=+3.8884 exit=None ctrl_exit=None d=+0.0000 st=data_end/data_end
+  MRNA   2026-08-19 trig=0   F=+0.000 ctrl=+2.4880 t20=+2.4880 exit=None ctrl_exit=None d=+0.0000 st=data_end/data_end
+  TEM    2026-08-19 trig=2   F=+0.000 ctrl=+2.7385 t20=+2.7385 exit=None ctrl_exit=None d=+0.0000 st=data_end/data_end
+
+BABA 2026-07-08 raw: entry 107.61 ORB-R 0.3000 stop 107.0100 target 110.0100 +3R 108.5100 ADR20 0.02595
+  s1  2026-07-09 o 109.12 h 112.17 l 108.85 c 111.14
+  s2  2026-07-10 o 113.24 h 115.58 l 112.01 c 112.33
+  s3  2026-07-13 o 112.86 h 114.20 l 111.82 c 112.35
+  s4  2026-07-14 o 112.95 h 113.35 l 111.23 c 112.32
+  s5  2026-07-15 o 117.40 h 121.22 l 117.15 c 117.69
+  s6  2026-07-16 o 118.47 h 119.94 l 117.42 c 117.49
+  s7  2026-07-17 o 114.65 h 115.93 l 113.94 c 114.97
+  s8  2026-07-20 o 118.91 h 121.86 l 117.86 c 120.34
+  s9  2026-07-21 o 118.66 h 119.45 l 117.65 c 117.97
+  s10 2026-07-22 o 116.22 h 116.83 l 115.14 c 116.56
+  s11 2026-07-23 o 115.76 h 116.41 l 113.10 c 114.06
+  s12 2026-07-24 o 112.79 h 113.33 l 111.66 c 112.14
+  s13 2026-07-27 o 114.12 h 115.02 l 112.61 c 115.00
+  s14 2026-07-28 o 114.71 h 115.99 l 113.55 c 115.19
+  s15 2026-07-29 o 114.71 h 117.66 l 113.94 c 115.03
+  s16 2026-07-30 o 114.00 h 116.33 l 112.94 c 116.32
+  s17 2026-07-31 o 120.11 h 122.58 l 119.22 c 122.25
+  s18 2026-08-03 o 126.60 h 129.50 l 126.04 c 127.30
+  s19 2026-08-04 o 126.06 h 129.62 l 125.78 c 128.99
+  s20 2026-08-05 o 130.65 h 130.99 l 128.22 c 128.53
+  s21 2026-08-06 o 126.78 h 127.21 l 125.56 c 126.81
+  s22 2026-08-07 o 127.61 h 128.62 l 126.07 c 128.41
+  s23 2026-08-10 o 128.62 h 132.57 l 128.12 c 132.32
+  s24 2026-08-11 o 129.19 h 129.19 l 127.66 c 127.85
+  s25 2026-08-12 o 125.33 h 125.75 l 123.70 c 125.22
+  s26 2026-08-13 o 123.52 h 124.28 l 121.45 c 122.16
+  s27 2026-08-14 o 122.79 h 124.96 l 122.35 c 123.81
+  s28 2026-08-17 o 126.00 h 126.19 l 123.49 c 124.71
+  s29 2026-08-18 o 127.76 h 128.79 l 126.34 c 128.15
+  s30 2026-08-19 o 127.77 h 129.50 l 127.54 c 128.90
+  s31 2026-08-20 o 123.47 h 130.62 l 121.88 c 130.53
+  s32 2026-08-21 o 125.35 h 125.77 l 119.23 c 119.34
+  s33 2026-08-24 o 116.90 h 120.47 l 116.40 c 118.47
+  s34 2026-08-25 o 117.94 h 119.48 l 117.31 c 119.44
+  s35 2026-08-26 o 119.34 h 121.40 l 119.34 c 119.83
+  s36 2026-08-27 o 117.49 h 117.89 l 115.09 c 116.31
+  s37 2026-08-28 o 117.06 h 119.76 l 116.85 c 118.90
+  control: {'status': 'settled', 'R': 7.0888888888889525, 'trigA': 1, 'F': None, 'exit': (12, 'close_below@next_open', 112.79, 114.06)}
+  t20_be : {'status': 'settled', 'R': 22.66666666666687, 'trigA': 1, 'F': 107.61, 'exit': (21, 'time_close', 126.81)}

@@ -1,0 +1,165 @@
+gates (re-run immediately before the run):
+G0       PASS  decompressed capture hashes match the pinned prefixes (7 files)
+G2       PASS  frozen copy with no rule == live walk_arm on all 194 filled rows (status, reason, pending_at, every exit leg to 1e-9)
+G2b      PASS  ADR20 None on 0 of 194 rows [] | sessions where the resting stop = line x (1-ADR20) AND raised the stop: 223 | close-below sales: 47, of which priced at a next open that differs from the deciding close: 47 | stop-hit sales above entry (depth-bound stop): 6
+           example stop: SGML 2026-04-13 session 7 (2026-04-22) line 18.3760 ADR20 0.1064 floor 15.85 -> depth stop 16.42 (was 15.85)
+           example sale:  GPRE 2026-04-13 sold session 2: deciding close 15.3900, next open 15.3600
+G3       PASS  4656 candidate/reference x trade walks equal the control on every trade whose trigger never fired, and match it up to the trigger bar where it did (Frame A fired on 29 trades, Frame B on 75)
+G-ext    NOT RUN  the optional prod pull (pre-registration step 3) was REFUSED by the permission system; no extension attached, the capture alone is the read of record (pull_daily_ext.REFUSED.txt). Positions still open at 2026-08-28 are marked at their last stored close and counted per arm.
+
+====================================================================================================
+RUNNER RE-CUT - THE RUN (read of record = the capture alone; extension pull REFUSED)
+====================================================================================================
+population: 295 Run-U replayable rows on 252 tickers; {'never_triggered': 85, 'no_bars:degenerate_orb': 4, 'no_bars:no_bars_after_orb': 12, 'filled': 194}
+control walk status over 194 filled trades: {'settled': 173, 'abstain': 9, 'data_end': 12}   (settled = sold; horizon = marked at the 40th close; data_end = still open at 2026-08-28, marked at the last stored close; gap = a session missing INSIDE the capture, unscoreable; abstain = same-bar order unknowable)
+control scored n=185; Frame A trigger (the +8 ORB-R partial) fired on 29; Frame B trigger (the +3 ORB-R arm) fired on 75; control R>=+4.0 on 10; R>=+1.5 on 27
+
+CONTROL  n=185 +4R=10 (5.4%) +1.5R=27 p90=+2.381 total=+44.27 mean=+0.2393 drop-best-2=+13.97 median=-0.530 win=28.1% best=('AOSL', '2026-04-14') +17.84R worst=('GLW', '2026-07-09') -1.20R losses<-1.5R=0 give-backs=31 open(h/e)=0/12
+  control +4R names: [('AOSL', '2026-04-14'), ('BABA', '2026-07-08'), ('BE', '2026-04-14'), ('FTK', '2026-08-03'), ('IONQ', '2026-04-14'), ('RKLB', '2026-05-08'), ('SGML', '2026-04-13'), ('STM', '2026-04-23'), ('TEAM', '2026-08-07'), ('TXN', '2026-04-23')]
+
+--- PRIMARY ---
+A  t20_be (PRIMARY)  n=185  eng=29   diff=16   4R=9(4.9%) 1.5R=21 p90=+1.96 tot=+50.96 mean=+0.2755 dTot=+6.69 dEx2=-13.15 drop2=+12.50 H1/H2=-6.19/+12.88 p=0.9024 med=-0.530 win=28.1% open(h/e)=0/13
+
+--- the other 21 arms (EXPLORATORY: cannot produce a proposal) ---
+A  t3_be             n=185  eng=29   diff=23   4R=13(7.0%) 1.5R=29 p90=+3.08 tot=+47.44 mean=+0.2564 dTot=+3.17 dEx2=-3.83 drop2=+29.17 H1/H2=+1.58/+1.58 p=0.6697 med=-0.530 win=28.1% open(h/e)=0/8
+A  t5_be             n=185  eng=29   diff=20   4R=12(6.5%) 1.5R=26 p90=+2.43 tot=+49.25 mean=+0.2662 dTot=+4.98 dEx2=-2.96 drop2=+19.11 H1/H2=-3.04/+8.02 p=0.6667 med=-0.530 win=28.1% open(h/e)=0/8
+A  t10_be            n=185  eng=29   diff=16   4R=9(4.9%) 1.5R=24 p90=+2.37 tot=+41.94 mean=+0.2267 dTot=-2.33 dEx2=-5.20 drop2=+14.18 H1/H2=+0.68/-3.01 p=0.7409 med=-0.530 win=28.1% open(h/e)=0/12
+A  close_only        n=185  eng=29   diff=3    4R=9(4.9%) 1.5R=27 p90=+2.38 tot=+40.14 mean=+0.2170 dTot=-4.13 dEx2=-4.13 drop2=+12.43 H1/H2=-2.86/-1.27 p=0.2583 med=-0.530 win=28.1% open(h/e)=0/12
+A  sma10_depth       n=185  eng=29   diff=0    4R=10(5.4%) 1.5R=27 p90=+2.38 tot=+44.27 mean=+0.2393 dTot=+0.00 dEx2=+0.00 drop2=+13.97 H1/H2=+0.00/+0.00 p=1.0000 med=-0.530 win=28.1% open(h/e)=0/12
+A  sma20_depth       n=185  eng=29   diff=15   4R=8(4.3%) 1.5R=25 p90=+2.40 tot=+46.50 mean=+0.2513 dTot=+2.23 dEx2=-8.92 drop2=+15.87 H1/H2=-5.52/+7.75 p=0.8520 med=-0.530 win=28.1% open(h/e)=1/13
+A  atr1_be           n=185  eng=29   diff=26   4R=11(5.9%) 1.5R=32 p90=+3.26 tot=+51.46 mean=+0.2782 dTot=+7.19 dEx2=+1.64 drop2=+25.31 H1/H2=+4.70/+2.49 p=0.3919 med=-0.530 win=28.1% open(h/e)=0/8
+A  atr2_be           n=185  eng=29   diff=22   4R=9(4.9%) 1.5R=30 p90=+3.03 tot=+50.94 mean=+0.2753 dTot=+6.67 dEx2=+0.40 drop2=+20.58 H1/H2=+4.09/+2.58 p=0.4883 med=-0.530 win=28.1% open(h/e)=0/10
+A  gb25_be           n=185  eng=29   diff=24   4R=9(4.9%) 1.5R=32 p90=+3.05 tot=+63.98 mean=+0.3459 dTot=+19.72 dEx2=+10.08 drop2=+30.31 H1/H2=+13.57/+6.14 p=0.0178 med=-0.530 win=28.1% open(h/e)=0/8
+A  gb50_be           n=185  eng=29   diff=18   4R=8(4.3%) 1.5R=30 p90=+2.44 tot=+47.85 mean=+0.2587 dTot=+3.58 dEx2=-2.70 drop2=+17.92 H1/H2=+1.67/+1.91 p=0.5073 med=-0.530 win=28.1% open(h/e)=2/12
+B  t3_be             n=185  eng=75   diff=46   4R=15(8.1%) 1.5R=34 p90=+3.06 tot=+55.04 mean=+0.2975 dTot=+10.77 dEx2=+1.77 drop2=+37.46 H1/H2=-1.88/+12.66 p=0.6185 med=-0.530 win=29.7% open(h/e)=0/4
+B  t5_be             n=185  eng=75   diff=44   4R=13(7.0%) 1.5R=38 p90=+3.13 tot=+75.87 mean=+0.4101 dTot=+31.61 dEx2=+18.64 drop2=+45.52 H1/H2=+5.19/+26.42 p=0.1442 med=-0.530 win=29.2% open(h/e)=0/4
+B  t10_be            n=185  eng=75   diff=33   4R=11(5.9%) 1.5R=27 p90=+2.48 tot=+47.39 mean=+0.2562 dTot=+3.13 dEx2=-7.95 drop2=+17.64 H1/H2=-9.73/+12.86 p=0.8228 med=-0.530 win=25.9% open(h/e)=0/10
+B  t20_be            n=185  eng=75   diff=31   4R=10(5.4%) 1.5R=26 p90=+2.88 tot=+67.69 mean=+0.3659 dTot=+23.43 dEx2=+0.23 drop2=+27.32 H1/H2=-0.42/+23.85 p=0.3531 med=-0.530 win=25.9% open(h/e)=0/15
+B  close_only        n=185  eng=75   diff=6    4R=9(4.9%) 1.5R=28 p90=+2.38 tot=+38.86 mean=+0.2101 dTot=-5.40 dEx2=-5.80 drop2=+11.16 H1/H2=-4.13/-1.27 p=0.1978 med=-0.530 win=27.6% open(h/e)=0/12
+B  sma10_depth       n=185  eng=75   diff=0    4R=10(5.4%) 1.5R=27 p90=+2.38 tot=+44.27 mean=+0.2393 dTot=+0.00 dEx2=+0.00 drop2=+13.97 H1/H2=+0.00/+0.00 p=1.0000 med=-0.530 win=28.1% open(h/e)=0/12
+B  sma20_depth       n=185  eng=75   diff=28   4R=8(4.3%) 1.5R=28 p90=+2.49 tot=+49.73 mean=+0.2688 dTot=+5.46 dEx2=-5.68 drop2=+19.10 H1/H2=-3.37/+8.83 p=0.6889 med=-0.530 win=25.9% open(h/e)=1/17
+B  atr1_be           n=185  eng=75   diff=53   4R=10(5.4%) 1.5R=35 p90=+2.65 tot=+59.09 mean=+0.3194 dTot=+14.82 dEx2=+4.73 drop2=+32.93 H1/H2=+5.24/+9.58 p=0.4963 med=-0.530 win=32.4% open(h/e)=0/4
+B  atr2_be           n=185  eng=75   diff=42   4R=11(5.9%) 1.5R=30 p90=+3.18 tot=+62.36 mean=+0.3371 dTot=+18.10 dEx2=+9.15 drop2=+32.00 H1/H2=+5.71/+12.38 p=0.2567 med=-0.530 win=30.3% open(h/e)=0/10
+B  gb25_be           n=185  eng=75   diff=48   4R=10(5.4%) 1.5R=35 p90=+2.87 tot=+64.64 mean=+0.3494 dTot=+20.37 dEx2=+8.98 drop2=+30.96 H1/H2=+9.12/+11.25 p=0.3021 med=-0.530 win=31.4% open(h/e)=0/4
+B  gb50_be           n=185  eng=75   diff=40   4R=9(4.9%) 1.5R=30 p90=+2.44 tot=+56.15 mean=+0.3035 dTot=+11.88 dEx2=+2.11 drop2=+26.22 H1/H2=+2.38/+9.50 p=0.4975 med=-0.530 win=31.4% open(h/e)=2/13
+
+--- reference rows (never candidates) ---
+A  t20_entry_ref     n=185  eng=29   diff=16   4R=9(4.9%) 1.5R=21 p90=+1.96 tot=+52.32 mean=+0.2828 dTot=+8.05 dEx2=-11.79 drop2=+13.85 H1/H2=-4.83/+12.88 p=0.9024 med=-0.530 win=28.1% open(h/e)=0/13
+-  era_d             n=185  eng=-    diff=62   4R=7(3.8%) 1.5R=27 p90=+2.38 tot=+43.45 mean=+0.2348 dTot=-0.82 dEx2=-5.01 drop2=+17.02 H1/H2=-5.36/+4.54 p=0.9478 med=-0.496 win=32.4% open(h/e)=0/11
+-  control_at_close  n=185  eng=-    diff=47   4R=9(4.9%) 1.5R=27 p90=+2.41 tot=+48.72 mean=+0.2634 dTot=+4.45 dEx2=+2.08 drop2=+20.15 H1/H2=+0.18/+4.28 p=0.3607 med=-0.585 win=30.3% open(h/e)=0/12
+
+--- PRIMARY IN FULL (Frame A t20_be) ---
+  paired_n         185
+  engaged_n        29
+  differ_n         16
+  differ_weeks     8
+  n_blocks         19
+  n_tail           9
+  n_tail_ctrl      10
+  n_be             21
+  n_be_ctrl        27
+  p90              1.9605340453938576
+  total            50.960287093038005
+  ctrl_total       44.26754987179507
+  mean             0.275461011313719
+  median           -0.5300554870530216
+  win              0.2810810810810811
+  delta_total      6.692737221242931
+  delta_mean       0.03617695795266449
+  delta_ex_top2    -13.14514893502602
+  drop_best2       12.496518977095576
+  h1               -6.186163389062208
+  h1_n             120
+  h2               12.87890061030514
+  h2_n             65
+  p_weekblock      0.9024195160967806
+  boot_lo          -0.09606548469952826
+  boot_hi          0.2749362096812097
+  top5_share       3.822228693419626
+  capture          0.47529106333482785
+  capture_n        28
+  loss_beyond_1p5  0
+  giveback         31
+  open_horizon     0
+  open_data_end    13
+  F_above_entry    1
+  F_median_R       0.0
+  F_min_R          0.0
+  best             (('BABA', '2026-07-08'), 22.66666666666687)
+  worst            (('GLW', '2026-07-09'), -1.1972222222222215)
+  tail_lost        [('SGML', '2026-04-13'), ('TXN', '2026-04-23'), ('FTK', '2026-08-03')]
+  tail_gained      [('DOCN', '2026-05-05'), ('MSFT', '2026-07-30')]
+  top2_contrib     [(('BABA', '2026-07-08'), 15.577777777777918), (('DOCN', '2026-05-05'), 4.260108378491035)]
+  top5             [(('BABA', '2026-07-08'), 15.577777777777918), (('DOCN', '2026-05-05'), 4.260108378491035), (('IONQ', '2026-04-14'), 3.660869565217385), (('MSFT', '2026-07-30'), 1.2125453602903042), (('BE', '2026-04-14'), 0.8698711627756239)]
+  by_month         {'2026-04': (-5.31, 45), '2026-05': (-0.876, 62), '2026-06': (0.0, 13), '2026-07': (16.615, 24), '2026-08': (-3.737, 41)}
+
+--- THE PRE-REGISTERED BAR, APPLIED MECHANICALLY TO THE PRIMARY ---
+  P1 >=10 trades differ AND >=6 distinct entry weeks : True  (differ n=16, weeks=8)
+  P2 paired total > 0 AND week-block p < 0.05        : False  (delta total=+6.693, p=0.9024)
+  P3 ahead without its two largest contributors      : False  (delta ex top 2=-13.145)
+  P4 ahead in BOTH halves                            : False  (H1=-6.186 n=120, H2=+12.879 n=65)
+  P5 +4R count no lower than the control's           : False  (arm 9 vs control 10)
+  P6 orderable live (F>=entry at every trigger; resting stop never stepped down in 4268 walks): True
+  RESULT WORD: STANDS
+
+--- EXPLORATORY: arms meeting P1,P3,P4,P5 with unadjusted p<0.05 and a positive total: NONE
+    registered as the next primary: none
+--- FRAME B EXPECTATION (wrong if any Frame B rule gains > +0.2R a trade with p<0.01 and ahead in both halves): holds (none does)
+
+--- MARKS PER ARM (positions still open: horizon = marked at the 40th close; data_end = open at 2026-08-28, marked at the last stored close) ---
+  control: horizon 0, data_end 12, of 185 scored
+  A|t20_be           horizon 0, data_end 13, of 185 paired
+  A|t3_be            horizon 0, data_end 8, of 185 paired
+  A|t5_be            horizon 0, data_end 8, of 185 paired
+  A|t10_be           horizon 0, data_end 12, of 185 paired
+  A|close_only       horizon 0, data_end 12, of 185 paired
+  A|sma10_depth      horizon 0, data_end 12, of 185 paired
+  A|sma20_depth      horizon 1, data_end 13, of 185 paired
+  A|atr1_be          horizon 0, data_end 8, of 185 paired
+  A|atr2_be          horizon 0, data_end 10, of 185 paired
+  A|gb25_be          horizon 0, data_end 8, of 185 paired
+  A|gb50_be          horizon 2, data_end 12, of 185 paired
+  B|t3_be            horizon 0, data_end 4, of 185 paired
+  B|t5_be            horizon 0, data_end 4, of 185 paired
+  B|t10_be           horizon 0, data_end 10, of 185 paired
+  B|t20_be           horizon 0, data_end 15, of 185 paired
+  B|close_only       horizon 0, data_end 12, of 185 paired
+  B|sma10_depth      horizon 0, data_end 12, of 185 paired
+  B|sma20_depth      horizon 1, data_end 17, of 185 paired
+  B|atr1_be          horizon 0, data_end 4, of 185 paired
+  B|atr2_be          horizon 0, data_end 10, of 185 paired
+  B|gb25_be          horizon 0, data_end 4, of 185 paired
+  B|gb50_be          horizon 2, data_end 13, of 185 paired
+  t20_entry_ref      horizon 0, data_end 13, of 185 paired
+  era_d              horizon 0, data_end 11, of 185 paired
+  control_at_close   horizon 0, data_end 12, of 185 paired
+
+--- UNSCORED PER ARM (abstain / gap) ---
+  control: {'abstain': 9}
+  A|t3_be        {'abstain': 9}
+  A|t5_be        {'abstain': 9}
+  A|t10_be       {'abstain': 9}
+  A|t20_be       {'abstain': 9}
+  A|close_only   {'abstain': 9}
+  A|sma10_depth  {'abstain': 9}
+  A|sma20_depth  {'abstain': 9}
+  A|atr1_be      {'abstain': 9}
+  A|atr2_be      {'abstain': 9}
+  A|gb25_be      {'abstain': 9}
+  A|gb50_be      {'abstain': 9}
+  B|t3_be        {'abstain': 9}
+  B|t5_be        {'abstain': 9}
+  B|t10_be       {'abstain': 9}
+  B|t20_be       {'abstain': 9}
+  B|close_only   {'abstain': 9}
+  B|sma10_depth  {'abstain': 9}
+  B|sma20_depth  {'abstain': 9}
+  B|atr1_be      {'abstain': 9}
+  B|atr2_be      {'abstain': 9}
+  B|gb25_be      {'abstain': 9}
+  B|gb50_be      {'abstain': 9}
+  t20_entry_ref  {'abstain': 9}
+  era_d          {'abstain': 9}
+  control_at_close {'abstain': 9}
+
+wrote /Users/alvinfung/apollo_the_wise/scripts/probes/_runner_recut_1017/run_rows.tsv and /Users/alvinfung/apollo_the_wise/scripts/probes/_runner_recut_1017/run_results.json

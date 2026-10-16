@@ -1,0 +1,23 @@
+Frame A ('IONQ', '2026-04-14'): SMA20>SMA10 on sessions [1]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame A ('QBTS', '2026-04-15'): SMA20>SMA10 on sessions [1]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame A ('ONDS', '2026-05-14'): SMA20>SMA10 on sessions [1, 2]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame A ('BABA', '2026-07-08'): SMA20>SMA10 on sessions [1, 2, 3, 4]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame A ('MRVL', '2026-07-30'): SMA20>SMA10 on sessions [1]...; sessions where eff_stop/resting differ between control and sma10_depth: [(1, 209.565, 192.072, 179.24, 179.24)]
+Frame A: 5 trades with SMA20>SMA10 post-trigger while both walks are live; 1 of them show any differing stop line
+
+Frame B ('IONQ', '2026-04-14'): SMA20>SMA10 on sessions [1]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame B ('QBTS', '2026-04-15'): SMA20>SMA10 on sessions [1]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame B ('ONDS', '2026-05-14'): SMA20>SMA10 on sessions [1, 2]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame B ('BABA', '2026-07-08'): SMA20>SMA10 on sessions [1, 2, 3, 4]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame B ('SMCI', '2026-07-22'): SMA20>SMA10 on sessions [1, 2]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame B ('COHR', '2026-07-30'): SMA20>SMA10 on sessions [1]...; sessions where eff_stop/resting differ between control and sma10_depth: [(1, 296.704, 278.76, 246.64, 246.64)]
+Frame B ('LITE', '2026-07-30'): SMA20>SMA10 on sessions [1]...; sessions where eff_stop/resting differ between control and sma10_depth: [(1, 746.849, 744.244, 665.18, 665.18)]
+Frame B ('MRVL', '2026-07-30'): SMA20>SMA10 on sessions [1]...; sessions where eff_stop/resting differ between control and sma10_depth: [(1, 209.565, 192.072, 179.24, 179.24)]
+Frame B ('AMZN', '2026-07-31'): SMA20>SMA10 on sessions [1, 2, 3]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame B ('FTK', '2026-08-03'): SMA20>SMA10 on sessions [1]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame B ('PLTR', '2026-08-04'): SMA20>SMA10 on sessions [1, 2]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame B ('RPD', '2026-08-11'): SMA20>SMA10 on sessions [1]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame B ('SHAZ', '2026-08-12'): SMA20>SMA10 on sessions [1, 2]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame B ('ARGX', '2026-08-17'): SMA20>SMA10 on sessions [1]...; sessions where eff_stop/resting differ between control and sma10_depth: none
+Frame B: 14 trades with SMA20>SMA10 post-trigger while both walks are live; 3 of them show any differing stop line
+

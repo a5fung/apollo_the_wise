@@ -1,0 +1,53 @@
+HAND-TRACES: the FIRST trade in entry order that shows each event; every number below is recomputed from the raw bars
+with independent arithmetic (no library calls), then compared with the walker's own answer.
+
+====================================================================================================
+EVENT 1: the control's first depth next-open sale
+  GPRE entry date 2026-04-13: ORB high 15.5 low 15.225; entry 15.5; ORB-R 0.2750; placed stop 2*low-high = 14.9500; money-R unit 0.5500
+  +3 ORB-R arm 16.3250; +8 ORB-R partial 17.7000
+  ADR20 = mean (high-low)/close over the 20 sessions before entry = 0.05899809474468485   (walker input 0.05899809474468485)
+  prior closes in [entry-40d, entry-1]: 27 values, last 3 [15.59, 15.21, 15.23]
+  triggers recorded: {}
+  idx date           open     high      low    close    SMA10    SMA20 resting in decision                    
+    1 2026-04-14    15.61    15.83    15.21    15.39   15.938   16.041      14.95 control -> sma_trail_stop   
+  legs: [('sma_trail_stop', 15.36, 1.0)]
+  walker answer: final_reason=sma_trail_stop exit_session=2 R=-0.2545
+  independent R = sum((price-entry)*shares)/money-R = -0.2545
+  the decision: session 1 closed 15.39 below its line; the sale is session 2's OPEN 15.36 (walker price 15.36): MATCH; differs from the deciding close: True
+
+====================================================================================================
+EVENT 2: the primary's first +8R partial followed by a t20 time exit
+  SGML entry date 2026-04-13: ORB high 15.85 low 15.3; entry 15.85; ORB-R 0.5500; placed stop 2*low-high = 14.7500; money-R unit 1.1000
+  +3 ORB-R arm 17.5000; +8 ORB-R partial 20.2500
+  ADR20 = mean (high-low)/close over the 20 sessions before entry = 0.10643208814962554   (walker input 0.10643208814962554)
+  prior closes in [entry-40d, entry-1]: 27 values, last 3 [14.47, 13.73, 14.85]
+  triggers recorded: {'B': {'idx': 0, 'F': 15.85}, 'A': {'idx': 3, 'F': 15.85}}
+  idx date           open     high      low    close    SMA10    SMA20 resting in decision                    
+    1 2026-04-14    17.58    18.37    17.30    17.57   14.024   12.216      15.85 control                     
+    2 2026-04-15    17.23    18.31    17.02    18.22   14.653   12.559      15.85 control                     
+    3 2026-04-16    19.52    21.35    19.22    20.70   15.488   13.014      15.85 owned by candidate          
+    4 2026-04-17    19.79    20.15    18.99    19.72   16.277   13.474      15.85 owned by candidate          
+    5 2026-04-20    20.04    21.82    19.69    21.69   17.009   14.064      15.85 owned by candidate          
+    6 2026-04-21   21.375    22.32    20.90    21.29   17.687   14.676      15.85 owned by candidate          
+    7 2026-04-22    21.75    22.00    20.63    21.52   18.376   15.235      15.85 owned by candidate          
+    8 2026-04-23    20.66    21.25    19.48    20.16   18.945   15.709      15.85 owned by candidate          
+    9 2026-04-24    21.05    21.15    19.22    19.69   19.541   16.169      15.85 owned by candidate          
+   10 2026-04-27    19.94    20.75    18.96    20.71   20.127   16.720      15.85 owned by candidate          
+   11 2026-04-28    20.01    21.33    19.33    20.61   20.431   17.227      15.85 owned by candidate          
+   12 2026-04-29   21.475    22.74    20.55    21.78   20.787   17.720      15.85 owned by candidate          
+   13 2026-04-30    22.18    22.76    21.52    22.07   20.924   18.206      15.85 owned by candidate          
+   14 2026-05-01   21.935    21.98    20.80    21.97   21.149   18.713      15.85 owned by candidate          
+   15 2026-05-04    21.97    23.01    20.86    22.57   21.237   19.123      15.85 owned by candidate          
+   16 2026-05-05    22.98    23.46    22.11    22.53   21.361   19.524      15.85 owned by candidate          
+   17 2026-05-06   22.475    22.97    20.11    22.85   21.494   19.935      15.85 owned by candidate          
+   18 2026-05-07   23.575    24.48    23.30    23.65   21.843   20.394      15.85 owned by candidate          
+   19 2026-05-08    23.33    23.45    21.29    21.71   22.045   20.793      15.85 owned by candidate          
+   20 2026-05-11    21.89    21.90    20.15    20.30   22.004   21.066      15.85 owned by candidate          
+   21 2026-05-12    19.78    21.11    19.38    20.88   22.031   21.231      15.85 owned by candidate          
+   22 2026-05-13    20.72    20.80    18.75    18.83   21.736   21.262      15.85 owned by candidate          
+   23 2026-05-14    18.16    18.34    17.01    17.86   21.316   21.120      15.85 owned by candidate -> time_close
+  legs: [('partial_profit', 20.25, 0.3333), ('time_close', 17.865, 0.6667)]
+  walker answer: final_reason=time_close exit_session=23 R=+2.5545
+  independent R = sum((price-entry)*shares)/money-R = +2.5545
+  trigger session 3 (session 0 of the hold), F = 15.8500; the 20th session after it is 23, close 17.865; walker exit price 17.865: MATCH
+

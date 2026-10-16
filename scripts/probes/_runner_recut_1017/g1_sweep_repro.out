@@ -1,0 +1,25 @@
+GATE PASS: control reproduces run 1 on all 295 Run-U rows
+inputs: no ATR14 0 [] | <20 prior closes 1 ['P 2026-05-11'] | no day0 close 0 []
+     breakeven: n=194 mean=+0.142 med=+0.333 tot=+27.5 exact1/3=82 below=0 above=24 worse=0(0) better=0(+0) ex2mean=-0.007 open@end=24 gapx=12 drop=0
+          hard: n=194 mean=+0.207 med=-0.333 tot=+40.2 exact1/3=0 below=68 above=38 worse=68(-43.44) better=14(+56.08) ex2mean=+0.058 open@end=43 gapx=3 drop=0
+ live_trail_be: n=194 mean=+0.131 med=+0.333 tot=+25.3 exact1/3=64 below=0 above=42 worse=11(-22.44) better=22(+20.21) ex2mean=+0.018 open@end=7 gapx=8 drop=0
+         sma10: n=194 mean=+0.144 med=-0.333 tot=+27.9 exact1/3=0 below=52 above=54 worse=63(-51.29) better=34(+51.62) ex2mean=+0.031 open@end=9 gapx=2 drop=0
+         sma20: n=194 mean=+0.283 med=-0.333 tot=+55.0 exact1/3=0 below=53 above=53 worse=61(-44.54) better=31(+71.96) ex2mean=+0.142 open@end=17 gapx=2 drop=0
+          atr1: n=194 mean=+0.265 med=-0.333 tot=+51.4 exact1/3=0 below=34 above=72 worse=49(-42.07) better=56(+65.94) ex2mean=+0.142 open@end=2 gapx=11 drop=0
+          atr2: n=194 mean=+0.238 med=-0.333 tot=+46.2 exact1/3=0 below=51 above=55 worse=62(-48.13) better=38(+66.77) ex2mean=+0.093 open@end=8 gapx=8 drop=0
+          gb25: n=194 mean=+0.236 med=-0.333 tot=+45.8 exact1/3=0 below=32 above=74 worse=49(-42.98) better=56(+61.2) ex2mean=+0.103 open@end=1 gapx=1 drop=0
+          gb50: n=194 mean=+0.229 med=-0.333 tot=+44.4 exact1/3=0 below=38 above=68 worse=49(-39.41) better=45(+56.25) ex2mean=+0.128 open@end=12 gapx=2 drop=0
+            t3: n=194 mean=+0.273 med=-0.333 tot=+53.0 exact1/3=0 below=36 above=70 worse=50(-50.4) better=55(+75.81) ex2mean=+0.199 open@end=2 gapx=2 drop=0
+            t5: n=194 mean=+0.296 med=-0.333 tot=+57.4 exact1/3=0 below=44 above=62 worse=59(-43.55) better=46(+73.38) ex2mean=+0.151 open@end=2 gapx=2 drop=0
+           t10: n=194 mean=+0.230 med=-0.333 tot=+44.5 exact1/3=0 below=56 above=50 worse=67(-52.27) better=32(+69.24) ex2mean=+0.087 open@end=9 gapx=2 drop=0
+           t20: n=194 mean=+0.358 med=-0.333 tot=+69.5 exact1/3=0 below=62 above=44 worse=67(-44.34) better=24(+86.31) ex2mean=+0.162 open@end=16 gapx=3 drop=0
+   sma10_touch: n=194 mean=+0.188 med=-0.333 tot=+36.5 exact1/3=0 below=41 above=65 worse=57(-45.29) better=43(+54.29) ex2mean=+0.063 open@end=8 gapx=21 drop=0
+   sma20_touch: n=194 mean=+0.302 med=-0.333 tot=+58.6 exact1/3=0 below=49 above=57 worse=57(-41.34) better=36(+72.46) ex2mean=+0.137 open@end=15 gapx=12 drop=0
+gap-fill  breakeven: mean +0.142 -> +0.126 (delta -0.0162)
+gap-fill       hard: mean +0.207 -> +0.191 (delta -0.0159)
+gap-fill       atr1: mean +0.265 -> +0.240 (delta -0.0250)
+gap-fill       atr2: mean +0.238 -> +0.214 (delta -0.0237)
+gap-fill        t10: mean +0.230 -> +0.214 (delta -0.0156)
+gap-fill        t20: mean +0.358 -> +0.342 (delta -0.0159)
+
+wrote /Users/alvinfung/.claude/jobs/6b173ac9/tmp/runner_sweep_results.json + runner_sweep_rows.tsv

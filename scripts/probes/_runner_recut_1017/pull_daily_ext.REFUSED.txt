@@ -1,0 +1,1 @@
+optional prod read (step 3) REFUSED by the permission system (auto-mode classifier: Production Reads) at 2026-10-16T17:37:53Z. Not retried, not routed around. Capture-only fallback in force (pre-registration section 1 Fallback).

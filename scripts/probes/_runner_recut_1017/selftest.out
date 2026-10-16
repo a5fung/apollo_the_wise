@@ -1,0 +1,57 @@
+synthetic battery (entry 100, stop 92, 1 money-R = 8; +8R partial at 132, +3R arm at 112)
+  ok   G2 identity copy==live [run]: got True
+  ok   G2 identity copy==live [roll]: got True
+  ok   G2 identity copy==live [atr]: got True
+  ok   G2 identity copy==live [gb]: got True
+  ok   G2 identity copy==live [gap]: got True
+  ok   G2 identity copy==live [flat]: got True
+  ok   G2 identity copy==live [pre]: got True
+  ok   t3_be A exits at the close of session 5: got 4.083333333333334
+  ok   t3_be A reason: got 'time_close'
+  ok   t5_be A exits at the close of session 7: got 4.25
+  ok   t5_be A reason: got 'time_close'
+  ok   t10_be A exits at the close of session 12: got 4.666666666666667
+  ok   t10_be A reason: got 'time_close'
+  ok   t20_be A exits at the close of session 22: got 5.5
+  ok   t20_be A reason: got 'time_close'
+  ok   t3_be B exits at the close of session 4: got 4.0
+  ok   control on a rising series is marked at the last stored close (data end), not sold: got 'data_end'
+  ok   atr1_be A exits at the level 133: got 4.083333333333334
+  ok   atr2_be A exits at the level 131: got 3.916666666666667
+  ok   gb25_be A sells at the NEXT open (123), not the deciding close (124): got 3.25
+  ok   gb50_be A sells at the NEXT open (117): got 2.75
+  ok   close_only A: close below the line -> NEXT open 106: got 1.8333333333333333
+  ok   close_only A: priced at a next open != the deciding close: got True
+  ok   sma10_depth A: stopped at its depth stop 115.33: got 2.6108333333333333
+  ok   sma20_depth A: single lower line -> not stopped, sells at the next open 106: got 1.8333333333333333
+  ok   control (max of both lines) on the same bars is stopped at the SMA10 depth stop: got 2.6108333333333333
+  ok   gap through F: fills at the open 95: got 0.9166666666666665
+  ok   gap_through flag set: got True
+  ok   no-trigger identity: all 22 arms equal the control on a flat path: got True
+  ok   flat path never fires either trigger: got 0
+  ok   Frame B trigger on day 0 recorded at index 0: got 0
+  ok   Frame B day-0 trigger: t3 sells at the close of session 3 (112): got 1.5
+  ok   F at the Frame-A trigger sits ABOVE entry (depth stop had ratcheted): got True
+  ok   orderable t20_be: low 100.3 <= F -> stopped at F: got 'stop_hit'
+  ok   t20_entry_ref: stop reset to entry 100 -> low 100.3 does NOT stop it: got True
+  ok   control_at_close differs from the control only where a close-below sale occurs (this path is a stop-hit: equal): got True
+  ok   no-ADR path: control sells at next open 106: got 1.8333333333333333
+  ok   control_at_close sells at the deciding close 108: got 2.0
+  ok   pre scenario: control sells on a close-below at s2 (next open 107) before any +8R: got 'sma_trail_stop'
+  ok   G3 stays GREEN for the honest candidate (trigger never fires -> identical): got True
+  ok   MUTATION (candidate applied before the trigger) turns G3 RED: got False
+  ok   Frame B honest candidate: G3 GREEN (identical up to the trigger bar): got True
+  ok   Frame B honest candidate DIFFERS from the control after the trigger (it holds; the control sold): got True
+  ok   pre2 scenario: control sells on a close-below at s1 (next open 105), B trigger never fires: got ('sma_trail_stop', 0)
+  ok   MUTATION in Frame B turns G3 RED too: got False
+  ok   no orderable arm ever steps its resting stop DOWN after the trigger: got True
+  ok   sign-flip p on ten equal +1 weeks is tiny (true p = 2/1024): got True
+  ok   sign-flip p on a zero difference is 1: got 1.0
+  ok   sign-flip p on offsetting weeks (+1,-1,+1,-1) is large: got True
+  ok   bootstrap CI of a constant mean-1.0 difference collapses to 1.0: got (1.0, 1.0)
+  ok   percentile (linear): p90 of 0..10 is 9.0: got 9.0
+  ok   dry-run of do_run completes and returns a verdict word: got True
+  ok   dry-run wrote its rows file: got 25
+  ok   gates run on the synthetic population (G0 consumes stub hashes; G2/G3 must be green): got True
+  ok   synthetic s_run copies: primary arm R = 5.5 on all four: got [5.5, 5.5, 5.5, 5.5]
+selftest: ALL PASS

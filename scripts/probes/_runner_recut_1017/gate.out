@@ -1,0 +1,8 @@
+population: 295 rows -> 194 filled trades {'never_triggered': 85, 'no_bars:degenerate_orb': 4, 'no_bars:no_bars_after_orb': 12, 'filled': 194}
+G0       PASS  decompressed capture hashes match the pinned prefixes (7 files)
+G2       PASS  frozen copy with no rule == live walk_arm on all 194 filled rows (status, reason, pending_at, every exit leg to 1e-9)
+G2b      PASS  ADR20 None on 0 of 194 rows [] | sessions where the resting stop = line x (1-ADR20) AND raised the stop: 223 | close-below sales: 47, of which priced at a next open that differs from the deciding close: 47 | stop-hit sales above entry (depth-bound stop): 6
+           example stop: SGML 2026-04-13 session 7 (2026-04-22) line 18.3760 ADR20 0.1064 floor 15.85 -> depth stop 16.42 (was 15.85)
+           example sale:  GPRE 2026-04-13 sold session 2: deciding close 15.3900, next open 15.3600
+G3       PASS  4656 candidate/reference x trade walks equal the control on every trade whose trigger never fired, and match it up to the trigger bar where it did (Frame A fired on 29 trades, Frame B on 75)
+G-ext    NOT RUN  the optional prod pull (pre-registration step 3) was REFUSED by the permission system; no extension attached, the capture alone is the read of record (pull_daily_ext.REFUSED.txt). Positions still open at 2026-08-28 are marked at their last stored close and counted per arm.

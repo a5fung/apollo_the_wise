@@ -1,0 +1,5 @@
+APOLLO LIVE RULES — generated from code + prod state, never from hand-written prose
+generated 2026-10-16 10:36 PDT · prod: reachable (server checkout f06371f4)
+
+== ⚠ DRIFT — where the prose contradicts code or prod (0 finding(s)) ==
+  none found — every checked claim matches the acting state
