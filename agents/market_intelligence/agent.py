@@ -4498,15 +4498,13 @@ class MarketIntelligenceAgent(BaseAgent):
             table = "mi_live_trades"
             entry_col = "entry_price"
             if ticker:
-                # both books (#624): a ticker lookup must reach the paper lane's positions. Named
-                # explicitly, never an absent condition; every row is tagged with its own book.
+                # both books, named explicitly (never an absent condition) — see the docstring.
                 where_clauses.append("account_mode IN ('live', 'paper')")
                 where_clauses.append(f"ticker = ${len(params)+1}")
                 params.append(ticker.upper())
             else:
-                # The LIST views stay the real-money book (#447): the low-cap paper lane has written
-                # paper rows to this table since 2026-10-11, and they surface via `/trades TICKER`.
-                where_clauses.append("account_mode = 'live'")   # mode-ok: #447 list views = the real-money book; paper positions surface via /trades TICKER (#624)
+                # The LIST views stay the real-money book (#447).
+                where_clauses.append("account_mode = 'live'")   # mode-ok: #447 list views = the real-money book
             if "open" in task and "closed" not in task:
                 where_clauses.append("status IN ('filled', 'order_placed') AND remaining_shares > 0")
             elif "closed" in task and "open" not in task:
@@ -4540,8 +4538,7 @@ class MarketIntelligenceAgent(BaseAgent):
         # mi_paper_trades has entries column; mi_live_trades has entry_attempt int instead
         entries_col = "entries" if not LIVE_TRADING_ENABLED else "NULL::jsonb AS entries"
         attempt_col = "entry_attempt" if LIVE_TRADING_ENABLED else "NULL::int AS entry_attempt"
-        # A ticker view spans both books, so each row must say which one it is from (#624). The
-        # list views are live-only and stay untagged (and their SQL unchanged).
+        # A ticker view spans both books: tag each row with its own (#624).
         tag_rows = bool(LIVE_TRADING_ENABLED and ticker)
         mode_col = ", account_mode" if tag_rows else ""
         async with pool.acquire() as conn:
@@ -7113,11 +7110,9 @@ class MarketIntelligenceAgent(BaseAgent):
             async with pool.acquire() as conn:
                 # #447: the MAIN /trades summary is the REAL-MONEY (live) book — every block
                 # filters account_mode='live'. Without it these mixed the historical PAPER book
-                # in and the realized total read paper-dominated (operator 7/10). The low-cap
-                # paper lane (magna53_smallcap, paper since 2026-10-11) keeps its positions in
-                # this table with account_mode='paper'; they are reached per ticker via
-                # `/trades TICKER` (#624), never blended into this live summary. The separate
-                # 'Paper (legacy)' button reads the dead mi_paper_trades EOD-sim table.
+                # in and the realized total read paper-dominated (operator 7/10). Paper-lane rows
+                # are reached per ticker (`_handle_trades_query`, #624), never blended in here. The
+                # separate 'Paper (legacy)' button reads the dead mi_paper_trades EOD-sim table.
                 open_rows = await conn.fetch("""
                     SELECT ticker, alert_date, entry_price, remaining_shares,
                            stop_price, hard_stop, total_pnl, hold_days,

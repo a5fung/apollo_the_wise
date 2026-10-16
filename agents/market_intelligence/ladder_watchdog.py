@@ -1,31 +1,29 @@
 """Ladder watchdog — ADR 0022 §1 auto-DEMOTION, built DARK (#312, 2026-10-15).
 
-WHAT IT IS. The nightly `ladder_watchdog` step the ADR specifies ("evaluates `demotion_triggers`
-per live/paper strategy against DB ground truth"), built as the operator asked on 2026-10-12:
-*"ships dark; any live flip is his sign-off."* Every night it computes the four signed M1f
-triggers (ADR 0022 §7, operator-signed 2026-07-05: 6 consecutive losses · trailing-20
+WHAT IT IS. The nightly `ladder_watchdog` step the ADR specifies, built as the operator asked on
+2026-10-12: *"ships dark; any live flip is his sign-off."* Every night it computes the four signed
+M1f triggers (ADR 0022 §7, operator-signed 2026-07-05: 6 consecutive losses · trailing-20
 expectancy < −0.3R · drawdown −10R from the cumulative-R peak · 1 harmful auto-action) for every
 ENABLED strategy on a rung that HAS a rung below it (phase 'paper' or 'live'), against the ONE
 book that strategy's phase resolves to (`resolve_account_mode_for_strategy` — dual-account
 invariant 3: `account_mode` on every trade query), and writes ONE `mi_audit_log` row
 (`ladder_demotion_shadow`) listing, per strategy, each trigger's value, its threshold and
-`would_demote`.
+`would_demote`. One row per night: see `_summary_prefix`.
 
 WHAT IT IS NOT — and this is structural, not a flag. This module has NO act step:
-  * it never writes `mi_strategies` (no `update_strategy`, no UPDATE statement — the only
-    phase writer in the repo stays `strategies/registry.update_strategy`, reached today only
-    by the operator's `/strategy <id> promote|demote`);
+  * it never writes `mi_strategies` (no UPDATE statement; the only phase writer stays
+    `strategies/registry.update_strategy`, reached today only by the operator's
+    `/strategy <id> promote|demote`);
   * it touches no sizing (`position_size_multiplier`), no toggle, no order path;
   * it sends NO Telegram — a would-demote is an audit row the weekly review can read; the only
     page this job can ever produce is `audit_run`'s `record_job_failure` (one deduped page plus
     a durable `job_failed_error` row) when the job itself crashes, which carries no verdict;
   * there is no "live mode" switch a typo could enable — the act step does not exist yet.
-Pinned by `tests/test_ladder_watchdog.py` (the DB layer is spied: a synthetic STREAK breach
-produces the row and ZERO writes to `mi_strategies` or any order/sizing path; each trigger's own
-breach and boundary is pinned on the pure evaluator).
-Building the act step is a later, operator-signed build (THE LINE) — it also needs the L1
-pieces this dark build does not: a `demotion_triggers` column (the thresholds below are code
-constants with their provenance), `phase_history`, and the mandatory review-before-re-promotion.
+Pinned by `tests/test_ladder_watchdog.py` (a spied DB layer sees exactly one write, the audit
+INSERT; an AST test pins the absence of any act-step name). Building the act step is a later,
+operator-signed build (THE LINE) — it also needs the L1 pieces this dark build does not: a
+`demotion_triggers` column (the thresholds below are code constants with their provenance),
+`phase_history`, and the mandatory review-before-re-promotion.
 
 WHAT COUNTS AS R. `kill_scale_bands.risk_placed` — the ONE realised-R denominator (#586: the
 risk AT the placed stop, after the 20% notional cap), over `status='closed'` methodology trades
@@ -45,19 +43,6 @@ need six trades) below which every trigger reads "not enough data" and nothing c
 trailing-20 trigger additionally needs 20 trades (its window), and says so. These are judgement
 calls recorded in the #312 commit, not signed numbers.
 
-ONE ROW PER NIGHT, PINNED TO THE NIGHT. The pass is stamped with `as_of` (the ET trading day;
-inside a #672 recovery re-run `et_today()` returns the missed slot's day). Two guards make a
-re-run of the same night honest: (1) the trade read is bounded to what that night could have
-seen — entered on or before `as_of` AND closed (ET date of `closed_at`, falling back to
-`alert_date` for a row with no `closed_at`) on or before `as_of` — so a late re-run does not score
-trades that closed afterwards; (2) when a row for that `as_of` already exists the write is skipped
-(`row_already_written` in the returned dict), so a manual or recovery re-run cannot stack a
-second row. The existing-row key is the row's SUMMARY prefix (`_summary_prefix`, the same
-function that builds the summary) rather than `detail`: `detail` is a TEXT column whose JSON
-`_fit_audit_detail` may wrap in a truncation envelope, so a SQL cast of it is unsafe and a key
-inside it can vanish. NOT a lock — `max_instances=1` plus `jobs_in_flight()` already keep two runs
-of the job from overlapping.
-
 The 4th trigger ("1 harmful auto-action", ADR 0017 §4: a harmful EXECUTED judge action,
 operator-labelled) has no source today — `mgmt_judge.py` is at L0 SHADOW with zero execution
 authority, so nothing auto-executes and nothing can be labelled harmful. The row records it as
@@ -69,7 +54,6 @@ import json
 import logging
 from datetime import date, datetime
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from agents.market_intelligence.kill_scale_bands import (
     _mean_tail,
@@ -77,12 +61,11 @@ from agents.market_intelligence.kill_scale_bands import (
     risk_placed,
 )
 from agents.market_intelligence.rule_eras import era_split_sentence, split_current_vs_older
+from shared.dates import _ET
 
 logger = logging.getLogger(__name__)
-_ET = ZoneInfo("America/New_York")
 
 AUDIT_EVENT = "ladder_demotion_shadow"
-ERROR_EVENT = "ladder_watchdog_error"
 JOB_ID = "ladder_watchdog"
 
 # ADR 0022 §7 M1f — operator-signed 2026-07-05 ("Signed.", the recommendations as written).
@@ -120,8 +103,7 @@ _CLOSED_TRADES_SQL = """
     ORDER BY alert_date ASC, id ASC
 """
 
-# Is tonight's row already there? Keyed on the summary prefix (see the module docstring), never on
-# the TEXT `detail` column.
+# Is tonight's row already there? Keyed on the summary prefix — see `_summary_prefix`.
 _NIGHT_ROW_EXISTS_SQL = """
     SELECT 1 FROM mi_audit_log WHERE event_type = $1 AND summary LIKE $2 LIMIT 1
 """
@@ -194,8 +176,8 @@ def evaluate_demotion_triggers(realized_rs, thresholds: dict | None = None) -> d
 async def fetch_closed_r_series(conn, signal_type: str, account_mode: str, *, today: date) -> dict:
     """The strategy's closed methodology trades on ONE book as a chronological realised-R
     series (denominator = `kill_scale_bands.risk_placed`, rows without an R frame excluded and
-    counted), plus the #662 era split as REPORT ONLY. `today` is the night being scored: the
-    read excludes anything entered or closed after it (a late re-run must not see the future)."""
+    counted), plus the #662 era split as REPORT ONLY. `today` is the night being scored; the
+    read is bounded to it (see `_summary_prefix`)."""
     rows = await conn.fetch(_CLOSED_TRADES_SQL, signal_type, account_mode, today)
     rs: list[float] = []
     meta: list[dict] = []
@@ -221,7 +203,20 @@ async def fetch_closed_r_series(conn, signal_type: str, account_mode: str, *, to
 
 
 def _summary_prefix(as_of: date) -> str:
-    """The head of the night's audit summary — the key `_NIGHT_ROW_EXISTS_SQL` matches on."""
+    """The head of the night's audit summary — the key `_NIGHT_ROW_EXISTS_SQL` matches on.
+
+    ONE ROW PER NIGHT, PINNED TO THE NIGHT. The pass is stamped with `as_of` (the ET trading
+    day; inside a #672 recovery re-run `et_today()` returns the missed slot's day). Two guards
+    make a re-run of the same night honest: (1) the trade read is bounded to what that night
+    could have seen — entered on or before `as_of` AND closed (ET date of `closed_at`, falling
+    back to `alert_date` for a row with no `closed_at`) on or before `as_of` — so a late re-run
+    does not score trades that closed afterwards; (2) when a row for that `as_of` already
+    exists the write is skipped (`row_already_written` on the returned dict), so a manual or
+    recovery re-run cannot stack a second row (the first stands; to recompute, delete it). The
+    key is the SUMMARY prefix, not `detail`: `detail` is a TEXT column whose JSON
+    `_fit_audit_detail` may wrap in a truncation envelope, so a SQL cast of it is unsafe and a
+    key inside it can vanish. NOT a lock — `max_instances=1` plus `jobs_in_flight()` already
+    keep two runs of the job from overlapping."""
     return f"ladder watchdog (DARK) {as_of.isoformat()}:"
 
 
@@ -235,51 +230,39 @@ def _summary(as_of: date, evaluated: list[dict]) -> str:
 async def run_ladder_watchdog(*, today: date | None = None) -> dict:
     """One nightly pass → ONE `ladder_demotion_shadow` audit row. Returns the row's detail.
 
-    Reads the registry and `mi_live_trades`; writes `mi_audit_log` only. A failure writes a
-    `ladder_watchdog_error` row and RE-RAISES; the scheduler job (`_ladder_watchdog_job`) lets
-    it propagate, so `audit_run` records the run 'failed' and `record_job_failure` writes the
-    durable `job_failed_error` row and one deduped page — a dead watchdog must not look like a
-    quiet one (the only Telegram this job can produce, and it carries no verdict).
-
-    One row per `as_of`: if a row for this night already exists (a manual or #672 recovery
-    re-run) the write is skipped and the returned dict carries `row_already_written: True`."""
+    Reads the registry and `mi_live_trades`; writes `mi_audit_log` only. A crash propagates to
+    `audit_wrap` (run 'failed', `job_failed_error` row, one deduped page). A re-run of a night
+    that already has its row skips the write and returns `row_already_written: True` — see
+    `_summary_prefix`."""
     from agents.market_intelligence.constants import resolve_account_mode_for_strategy
     from agents.market_intelligence.db import get_pool, log_audit_event
     from agents.market_intelligence.strategies.registry import _load_all
     from shared.dates import et_today
 
     as_of = today or et_today()
-    try:
-        # The rows as they are TONIGHT, not the process cache: the operator hand-UPDATEs
-        # `mi_strategies` (registry.py: a direct edit is unseen by `load_strategies()` until
-        # restart), and a same-day phase change must not mislabel this row's phase / book.
-        # `_load_all` is a fresh SELECT that mutates no shared state — the cache the entry
-        # pipeline reads is untouched (never `load_strategies(force=True)` here).
-        strategies = await _load_all()
-        targets, skipped = [], {}
-        for sid, s in sorted(strategies.items()):
-            if s.phase not in DEMOTE_TO:
-                skipped[sid] = f"phase={s.phase}: no rung below — nothing to demote"
-            elif not s.enabled:
-                skipped[sid] = f"disabled (phase={s.phase})"
-            else:
-                targets.append(s)
+    # The rows as they are TONIGHT, not the process cache: the operator hand-UPDATEs
+    # `mi_strategies` (registry.py: a direct edit is unseen by `load_strategies()` until
+    # restart), and a same-day phase change must not mislabel this row's phase / book.
+    # `_load_all` is a fresh SELECT that mutates no shared state — the cache the entry
+    # pipeline reads is untouched (never `load_strategies(force=True)` here).
+    strategies = await _load_all()
+    targets, skipped = [], {}
+    for sid, s in sorted(strategies.items()):
+        if s.phase not in DEMOTE_TO:
+            skipped[sid] = f"phase={s.phase}: no rung below — nothing to demote"
+        elif not s.enabled:
+            skipped[sid] = f"disabled (phase={s.phase})"
+        else:
+            targets.append(s)
 
-        series: dict[str, tuple[str, dict]] = {}
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            already_written = bool(await conn.fetchval(
-                _NIGHT_ROW_EXISTS_SQL, AUDIT_EVENT, _summary_prefix(as_of) + "%"))
-            for s in targets:
-                mode = resolve_account_mode_for_strategy(s)
-                series[s.strategy_id] = (
-                    mode, await fetch_closed_r_series(conn, s.signal_type, mode, today=as_of))
-        # The connection is RELEASED before the audit write below — holding one while asking the
-        # pool for a second is the 2026-09-17 deadlock class (tests/test_no_nested_pool_acquire).
-
-        evaluated = []
+    evaluated = []
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        already_written = bool(await conn.fetchval(
+            _NIGHT_ROW_EXISTS_SQL, AUDIT_EVENT, _summary_prefix(as_of) + "%"))
         for s in targets:
-            mode, data = series[s.strategy_id]
+            mode = resolve_account_mode_for_strategy(s)
+            data = await fetch_closed_r_series(conn, s.signal_type, mode, today=as_of)
             v = evaluate_demotion_triggers(data["realized_rs"])
             evaluated.append({
                 "strategy_id": s.strategy_id, "phase": s.phase, "account_mode": mode,
@@ -290,36 +273,27 @@ async def run_ladder_watchdog(*, today: date | None = None) -> dict:
                 "triggers": v["triggers"], "would_demote": v["would_demote"],
                 "reasons": v["reasons"],
             })
+    # The connection is RELEASED before the audit write below — holding one while asking the
+    # pool for a second is the 2026-09-17 deadlock class (tests/test_no_nested_pool_acquire).
 
-        detail = {
-            "as_of": as_of.isoformat(),
-            "ran_at_et": datetime.now(_ET).isoformat(timespec="seconds"),
-            "mode": "dark",
-            "thresholds": dict(M1F_DEMOTION_TRIGGERS),
-            "min_closed_trades": MIN_CLOSED_TRADES,
-            "evaluated": evaluated,
-            "skipped": skipped,
-            "would_demote_count": sum(1 for e in evaluated if e["would_demote"]),
-            "acted": False,
-            "note": ("DARK — this module has no phase/sizing/order path; a would-demote is this "
-                     "row, nothing else. Any live flip is operator sign-off (THE LINE)."),
-        }
-        if already_written:
-            # A re-run of a night that already has its row: the existing row stands (nothing
-            # reads it yet; an operator who wants it recomputed deletes it). Marker is on the
-            # RETURNED dict only — the stored row is never touched.
-            logger.info(f"ladder watchdog: a row for {as_of.isoformat()} already exists — "
-                        f"write skipped")
-            detail["row_already_written"] = True
-        else:
-            await log_audit_event(AUDIT_EVENT, _summary(as_of, evaluated),
-                                  json.dumps(detail, default=str))
-        return detail
-    except Exception as e:
-        logger.error(f"ladder watchdog failed: {e}", exc_info=True)
-        try:
-            await log_audit_event(ERROR_EVENT, f"ladder watchdog failed: {e}",
-                                  json.dumps({"as_of": as_of.isoformat(), "error": str(e)}))
-        except Exception as e2:
-            logger.warning(f"ladder watchdog: error-row write also failed: {e2}")
-        raise
+    detail = {
+        "as_of": as_of.isoformat(),
+        "ran_at_et": datetime.now(_ET).isoformat(timespec="seconds"),
+        "mode": "dark",
+        "thresholds": dict(M1F_DEMOTION_TRIGGERS),
+        "min_closed_trades": MIN_CLOSED_TRADES,
+        "evaluated": evaluated,
+        "skipped": skipped,
+        "would_demote_count": sum(1 for e in evaluated if e["would_demote"]),
+        "acted": False,
+        "note": ("DARK — this module has no phase/sizing/order path; a would-demote is this "
+                 "row, nothing else. Any live flip is operator sign-off (THE LINE)."),
+    }
+    if already_written:
+        logger.info(f"ladder watchdog: a row for {as_of.isoformat()} already exists — "
+                    f"write skipped")
+        detail["row_already_written"] = True   # on the RETURNED dict only; the stored row stands
+    else:
+        await log_audit_event(AUDIT_EVENT, _summary(as_of, evaluated),
+                              json.dumps(detail, default=str))
+    return detail
