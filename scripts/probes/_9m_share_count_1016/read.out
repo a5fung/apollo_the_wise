@@ -1,0 +1,105 @@
+PRE-REGISTRATION sha256 at run time 40a76a72b02e1e80757c908fa394a6dc011e2ffaf29a7e9aa96bb25010e2003a  (prereg.sha256 40a76a72b02e1e80757c908fa394a6dc011e2ffaf29a7e9aa96bb25010e2003a)  MATCH
+E2 threshold (volumes only, before outcomes): discovery median first-15-min/day share ratio 0.1250 (n 547) -> 9M x ratio = 1,124,650 shares by 09:44
+ANCHOR vs #684 summary.json: outcome rows 667 (want 667)  runners>=5 71 (want 71)  >=8 26 (want 26)
+DISCOVERY n 604 runners>=5 67 >=8 26   HELD-OUT n 63 runners>=5 4 >=8 0
+best discovery week 2026-W19 (18 runners); two biggest discovery runners ['UMC', 'CRSR']  (#684: 2026-W19, ['UMC', 'CRSR'])
+
+=== DECISIVE DRAWS (#684 four-condition bar; rates = share reaching >= 5 ADR within 15 sessions of the gap-day close) ===
+D1 gap-day shares >= 9M | disc n 604: fav 34/235 = 14.5% vs rest 33/369 = 8.9% (+5.5pp) AUC 0.567 p 0.051 | held fav 3/33 vs rest 1/30 (+5.8pp, held p 0.320) | drop best week +1.7pp p 0.386 | drop best two +4.9pp p 0.061 | labelled in fav 5 of 5 | can't tell (discovery p >= 0.05)
+D2 gap-day shares, top tercile | disc n 604: fav 24/202 = 11.9% vs rest 43/402 = 10.7% (+1.2pp) AUC 0.563 p 0.457 | held fav 3/29 vs rest 1/34 (+7.4pp, held p 0.215) | drop best week -1.8pp p 0.832 | drop best two +0.9pp p 0.475 | labelled in fav 4 of 5 | can't tell (discovery p >= 0.05)
+D3 gap-day relative volume (vs 50-day avg), top tercile | disc n 604: fav 23/202 = 11.4% vs rest 44/402 = 10.9% (+0.4pp) AUC 0.510 p 0.678 | held fav 2/30 vs rest 2/33 (+0.6pp, held p 0.665) | drop best week +1.7pp p 0.397 | drop best two +0.6pp p 0.658 | labelled in fav 5 of 5 | can't tell (discovery p >= 0.05)
+D3 cross-check vs #684 results.tsv: published fav 0.1139 rest 0.1095 p 0.6745 verdict 'can't tell (discovery p >= 0.05)' -> IDENTICAL rates
+
+VERDICT (P5 map): neither   share-count PASS draws []   relative-volume PASS False   thin draws []
+
+=== HEAD-TO-HEAD: AUC(gap-day shares) - AUC(relative volume) for >= 5 ADR, paired swap permutation, one-sided share count > RVOL ===
+DISCOVERY (decisive): n 604 runners 67  AUC shares 0.563  AUC RVOL 0.510  difference +0.052  p 0.112
+HELD-OUT (descriptive): n 63 runners 4  AUC shares 0.500  AUC RVOL 0.568  difference -0.068  p 0.644
+ALL (descriptive): n 667 runners 71  AUC shares 0.560  AUC RVOL 0.511  difference +0.048  p 0.128
+
+=== HIS CHART'S TWO COMPARISONS, IN OUR UNITS ===
+ALL: >=9M 37/268 = 13.8% vs <9M 34/399 = 8.5%  (+5.3pp; mean run ADR 2.50 vs 2.30)   |   top RVOL third 25/232 = 10.8% vs bottom third 23/219 = 10.5%  (+0.3pp; mean run ADR 2.38 vs 2.29)
+DISCOVERY: >=9M 34/235 = 14.5% vs <9M 33/369 = 8.9%  (+5.5pp; mean run ADR 2.62 vs 2.35)   |   top RVOL third 23/202 = 11.4% vs bottom third 23/201 = 11.4%  (-0.1pp; mean run ADR 2.49 vs 2.40)
+HELD-OUT: >=9M 3/33 = 9.1% vs <9M 1/30 = 3.3%  (+5.8pp; mean run ADR 1.66 vs 1.62)   |   top RVOL third 2/30 = 6.7% vs bottom third 0/18 = 0.0%  (+6.7pp; mean run ADR 1.65 vs 1.08)
+
+share-count tercile cuts (discovery): 3,361,777 / 11,223,375 shares   RVOL tercile cuts: 2.31x / 3.76x
+--- gap-day shares, >= 9M vs < 9M (all 667) ---
+group | n | >=5 ADR n (rate) | >=8 ADR n (rate) | p90 run ADR | median run ADR | mean run ADR | median ADR%
+>= 9M | 268 | 37 (13.8%) | 10 (3.7%) | 5.8 | 1.95 | 2.50 | 5.7
+< 9M | 399 | 34 (8.5%) | 16 (4.0%) | 4.5 | 1.66 | 2.30 | 4.9
+
+--- gap-day shares by tercile (all 667; discovery cuts) ---
+group | n | >=5 ADR n (rate) | >=8 ADR n (rate) | p90 run ADR | median run ADR | mean run ADR | median ADR%
+bottom third | 221 | 17 (7.7%) | 8 (3.6%) | 4.4 | 1.63 | 2.25 | 4.7
+middle third | 215 | 27 (12.6%) | 9 (4.2%) | 5.5 | 1.78 | 2.50 | 5.1
+top third | 231 | 27 (11.7%) | 9 (3.9%) | 5.6 | 1.88 | 2.39 | 5.9
+
+--- gap-day relative volume by tercile (all; discovery cuts) ---
+group | n | >=5 ADR n (rate) | >=8 ADR n (rate) | p90 run ADR | median run ADR | mean run ADR | median ADR%
+bottom third | 219 | 23 (10.5%) | 8 (3.7%) | 5.0 | 1.67 | 2.29 | 6.5
+middle third | 216 | 23 (10.6%) | 9 (4.2%) | 5.1 | 1.76 | 2.46 | 4.8
+top third | 232 | 25 (10.8%) | 9 (3.9%) | 5.5 | 1.84 | 2.38 | 4.9
+
+--- 20-day average shares (the liquidity half of share count) by tercile ---
+group | n | >=5 ADR n (rate) | >=8 ADR n (rate) | p90 run ADR | median run ADR | mean run ADR | median ADR%
+bottom third | 222 | 14 (6.3%) | 6 (2.7%) | 4.3 | 1.59 | 2.15 | 4.5
+middle third | 221 | 28 (12.7%) | 11 (5.0%) | 5.7 | 1.80 | 2.44 | 5.1
+top third | 224 | 29 (12.9%) | 9 (4.0%) | 5.6 | 1.97 | 2.55 | 6.3
+
+--- ALERTED rows only: >= 9M vs < 9M ---
+group | n | >=5 ADR n (rate) | >=8 ADR n (rate) | p90 run ADR | median run ADR | mean run ADR | median ADR%
+>= 9M | 129 | 16 (12.4%) | 3 (2.3%) | 5.1 | 2.38 | 2.54 | 6.2
+< 9M | 177 | 19 (10.7%) | 11 (6.2%) | 5.3 | 1.66 | 2.50 | 5.2
+
+--- ALERTED rows only: relative volume by tercile ---
+group | n | >=5 ADR n (rate) | >=8 ADR n (rate) | p90 run ADR | median run ADR | mean run ADR | median ADR%
+bottom third | 85 | 12 (14.1%) | 4 (4.7%) | 5.6 | 1.66 | 2.49 | 6.6
+middle third | 103 | 12 (11.7%) | 5 (4.9%) | 5.1 | 1.95 | 2.42 | 5.1
+top third | 118 | 11 (9.3%) | 5 (4.2%) | 4.9 | 2.23 | 2.62 | 5.4
+
+--- 2x2: >= 9M x relative volume above/below its discovery median (all 667) ---
+>= 9M & RVOL above median (2.97x) | n 169 | >=5 ADR 22 (13.0%) | >=8 ADR 6 (3.6%) | median ADR% 5.3
+>= 9M & RVOL at/below median (2.97x) | n 99 | >=5 ADR 15 (15.2%) | >=8 ADR 4 (4.0%) | median ADR% 6.6
+< 9M & RVOL above median (2.97x) | n 170 | >=5 ADR 12 (7.1%) | >=8 ADR 7 (4.1%) | median ADR% 4.5
+< 9M & RVOL at/below median (2.97x) | n 229 | >=5 ADR 22 (9.6%) | >=8 ADR 9 (3.9%) | median ADR% 5.4
+
+=== SECONDARY DRAWS (same machinery, NO verdict mapped) ===
+[PRE] S pre-market relative volume | disc n 545: fav 28/182 = 15.4% vs rest 35/363 = 9.6% (+5.7pp) AUC 0.544 p 0.194 | held fav 1/30 vs rest 3/31 (-6.3pp, held p 0.922) | drop best week +3.8pp p 0.180 | drop best two +6.0pp p 0.149 | labelled in fav 4 of 5 | can't tell (discovery p >= 0.05)
+[PRE] S projected volume multiple at the scan | disc n 297: fav 7/100 = 7.0% vs rest 21/197 = 10.7% (-3.7pp) AUC 0.470 p 0.858 | held fav 3/24 vs rest 0/10 (+12.5pp, held p 0.337) | drop best week -4.7pp p 0.921 | drop best two -4.8pp p 0.906 | labelled in fav 1 of 1 | fail (wrong way)
+[PRE] S 20-day avg shares (the liquidity half of share count) | disc n 604: fav 27/202 = 13.4% vs rest 40/402 = 10.0% (+3.4pp) AUC 0.563 p 0.141 | held fav 2/22 vs rest 2/41 (+4.2pp, held p 0.488) | drop best week -0.4pp p 0.666 | drop best two +3.2pp p 0.157 | labelled in fav 4 of 5 | can't tell (discovery p >= 0.05)
+[0945] E1 shares 09:30-09:44, top tercile | disc n 547: fav 23/183 = 12.6% vs rest 38/364 = 10.4% (+2.1pp) AUC 0.558 p 0.332 | held fav 3/31 vs rest 1/30 (+6.3pp, held p 0.287) | drop best week -2.1pp p 0.876 | drop best two +1.7pp p 0.397 | labelled in fav 4 of 5 | can't tell (discovery p >= 0.05)
+[0945] E2 shares 09:30-09:44 >= 9M-equivalent | disc n 547: fav 25/211 = 11.8% vs rest 36/336 = 10.7% (+1.1pp) AUC 0.514 p 0.490 | held fav 3/33 vs rest 1/28 (+5.5pp, held p 0.327) | drop best week -3.0pp p 0.934 | drop best two +0.8pp p 0.546 | labelled in fav 5 of 5 | can't tell (discovery p >= 0.05)
+[0945] E3 09:30-09:44 shares / 20-day avg daily shares (early RVOL) | disc n 547: fav 20/183 = 10.9% vs rest 41/364 = 11.3% (-0.3pp) AUC 0.491 p 0.784 | held fav 3/39 vs rest 1/22 (+3.1pp, held p 0.556) | drop best week -1.8pp p 0.871 | drop best two -0.4pp p 0.753 | labelled in fav 5 of 5 | fail (wrong way)
+early-share tercile cuts (discovery): 397,704 / 1,488,941 shares by 09:44
+--- shares 09:30-09:44 by tercile (rows with >= 12 of 15 minute bars) ---
+group | n | >=5 ADR n (rate) | >=8 ADR n (rate) | p90 run ADR | median run ADR | mean run ADR | median ADR%
+bottom third | 200 | 17 (8.5%) | 5 (2.5%) | 4.4 | 1.67 | 2.18 | 4.6
+middle third | 194 | 22 (11.3%) | 10 (5.2%) | 5.5 | 1.72 | 2.53 | 5.1
+top third | 214 | 26 (12.1%) | 9 (4.2%) | 5.6 | 2.05 | 2.51 | 5.8
+
+early head-to-head (DISCOVERY, descriptive): n 547 runners 61  AUC early shares 0.558  AUC early RVOL 0.491  difference +0.066  p 0.047
+
+=== HIS LABELLED EPs ===
+BFLY 2026-06-18 (DISCOVERY): shares 59,538,584 (>=9M 1, tercile top)  RVOL 11.65x (tercile top)  run 1.2 ADR (9%)
+PLTR 2026-08-04 (DISCOVERY): shares 172,028,925 (>=9M 1, tercile top)  RVOL 4.33x (tercile top)  run 2.7 ADR (12%)
+TEAM 2026-08-07 (DISCOVERY): shares 20,055,997 (>=9M 1, tercile top)  RVOL 4.28x (tercile top)  run 4.9 ADR (31%)
+HTFL 2026-08-14 (DISCOVERY): shares 9,897,050 (>=9M 1, tercile middle)  RVOL 6.53x (tercile top)  run 4.4 ADR (23%)
+MRNA 2026-08-19 (HELD-OUT): shares 191,705,760 (>=9M 1, tercile top)  RVOL 28.02x (tercile top)  run -1.3 ADR (-7%)
+
+=== THE 15 BIGGEST RUNS (all 667) — who carries the tail ===
+ticker | scan_date | block | alerted | shares | >=9M | RVOL | ADR% | run ADR | run %
+UMC | 2026-05-06 | DISCOVERY | 0 | 29,036,187 | 1 | 2.91 | 3.2 | 17.3 | 56
+CRSR | 2026-05-08 | DISCOVERY | 0 | 3,991,111 | 0 | 3.34 | 3.9 | 16.8 | 66
+VOYG | 2026-05-05 | DISCOVERY | 1 | 2,972,797 | 0 | 2.03 | 6.9 | 13.5 | 92
+TE | 2026-05-12 | DISCOVERY | 1 | 36,627,590 | 1 | 2.38 | 8.4 | 13.3 | 111
+HPE | 2026-05-29 | DISCOVERY | 0 | 85,667,520 | 1 | 5.06 | 3.9 | 12.6 | 49
+PSNL | 2026-05-13 | DISCOVERY | 0 | 5,777,479 | 0 | 3.21 | 7.7 | 12.5 | 96
+HQ | 2026-06-15 | DISCOVERY | 1 | 6,225,799 | 0 | 28.22 | 12.3 | 12.4 | 153
+NRIX | 2026-06-08 | DISCOVERY | 1 | 20,974,956 | 1 | 19.29 | 5.0 | 11.9 | 59
+VPG | 2026-05-12 | DISCOVERY | 1 | 1,093,440 | 0 | 4.60 | 5.1 | 11.6 | 59
+VCX | 2026-05-05 | DISCOVERY | 1 | 542,509 | 0 | 1.24 | 11.5 | 10.9 | 125
+ALOY | 2026-06-01 | DISCOVERY | 1 | 4,219,150 | 0 | 2.54 | 8.4 | 10.4 | 87
+EFOR | 2026-07-22 | DISCOVERY | 1 | 1,132,742 | 0 | 1.05 | 6.5 | 10.1 | 66
+UMC | 2026-05-14 | DISCOVERY | 0 | 17,540,045 | 1 | 1.57 | 3.9 | 9.8 | 38
+HLIT | 2026-05-12 | DISCOVERY | 1 | 7,759,018 | 0 | 6.56 | 3.8 | 9.7 | 37
+FET | 2026-07-31 | DISCOVERY | 1 | 378,631 | 0 | 2.33 | 4.3 | 9.3 | 39

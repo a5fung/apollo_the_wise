@@ -1,0 +1,49 @@
+STEP 0 — composition only (no outcome read). Source: scripts/probes/_684/{features.tsv,daily.tsv.gz,orb.tsv} pulled 2026-09-28.
+population rows 670   names 546   scan dates 86   window 2026-05-01 .. 2026-09-03
+by month (n / alerted / scored-not-alerted):
+  2026-05:  228  alerted  111  not  117
+  2026-06:  110  alerted   53  not   57
+  2026-07:  119  alerted   41  not   78
+  2026-08:  198  alerted   99  not   99
+  2026-09:   15  alerted    3  not   12
+block DISCOVERY: n 607  alerted 287  ISO weeks 16
+block HELD-OUT: n 63  alerted 20  ISO weeks 3
+era: {'A': 630, 'B': 40}
+
+gap-day share count present: 670 of 670 (missing: )
+gap-day shares: p10 1,240,016  p25 2,593,869  median 6,144,662  p75 16,155,593  p90 38,080,320
+  >= 9M shares, ALL: 268 of 670 (40.0 %)   alerted 129 of 307   not-alerted 139 of 363
+  >= 9M shares, DISCOVERY: 235 of 607 (38.7 %)   alerted 117 of 287   not-alerted 118 of 320
+  >= 9M shares, HELD-OUT: 33 of 63 (52.4 %)   alerted 12 of 20   not-alerted 21 of 43
+  split_mismatch rows (scan-log prev close vs adjusted bar differ > 3 %; their share counts are split-ADJUSTED): 0: 
+  >= 9M by price band (prev close): $5-20 124 of 248; $20-100 93 of 270; $100+ 51 of 152
+
+CLOSE_vol_vs_avg50: filled 667 of 670   p25 2.058  median 3.036  p75 4.475
+PRE_rel_volume_scan: filled 670 of 670   p25 0.04  median 0.13  p75 0.3
+PRE_pm_rvol: filled 609 of 670   p25 2.673  median 6.139  p75 13.36
+PRE_projected_vol_multiple: filled 333 of 670   p25 3  median 4.5  p75 8.1
+O945_orb_vol_vs_20d: filled 608 of 670   p25 0.2474  median 0.3808  p75 0.6068
+CLOSE_vol_vs_max250: filled 667 of 670   p25 0.3001  median 0.5175  p75 0.8453
+PRE_dollar_vol_20d: filled 667 of 670   p25 2.251e+07  median 6.438e+07  p75 2.254e+08
+PRE_adr20_pct: filled 667 of 670   p25 3.969  median 5.241  p75 7.113
+
+09:30-09:44 shares (early proxy) present: 608 of 670   alerted 264 of 307   not-alerted 344 of 363
+FEED CHECK — first-15-minute shares / full-day shares: p10 0.074  median 0.127  p90 0.185  (consolidated feed ~0.1-0.4 on a gap day; IEX-only would read ~0.01-0.03)  rows > 1.0: 0
+09:30-09:44 shares: p25 296,523  median 769,667  p75 2,158,117
+
+rank correlations with gap-day share count (composition — what share count is made of):
+  CLOSE_vol_vs_avg50: rho +0.29 (n 667)
+  PRE_vol_20d_shares: rho +0.88 (n 667)
+  PRE_dollar_vol_20d: rho +0.49 (n 667)
+  PRE_prev_close: rho -0.21 (n 670)
+  PRE_adr20_pct: rho +0.21 (n 667)
+  PRE_gap_pct_scan: rho +0.15 (n 670)
+  E_orb_shares: rho +0.97 (n 608)
+  ep_score: rho +0.09 (n 670)
+
+his labelled EPs in the population (operator_labelled_eps.md; ABNB 08-07 + CHPT 09-03 never scored, PENG 10-07 outside window):
+  BFLY 2026-06-18: block DISCOVERY alerted 0 shares 59,538,584 (>=9M 1)  RVOL50 11.65  09:30-09:44 shares 5,276,613
+  PLTR 2026-08-04: block DISCOVERY alerted 1 shares 172,028,925 (>=9M 1)  RVOL50 4.33  09:30-09:44 shares 22,049,431
+  TEAM 2026-08-07: block DISCOVERY alerted 1 shares 20,055,997 (>=9M 1)  RVOL50 4.28  09:30-09:44 shares 3,042,964
+  HTFL 2026-08-14: block DISCOVERY alerted 1 shares 9,897,050 (>=9M 1)  RVOL50 6.53  09:30-09:44 shares 1,176,288
+  MRNA 2026-08-19: block HELD-OUT alerted 1 shares 191,705,760 (>=9M 1)  RVOL50 28.02  09:30-09:44 shares 14,538,968

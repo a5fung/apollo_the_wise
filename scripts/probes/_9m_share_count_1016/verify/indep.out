@@ -1,0 +1,45 @@
+rows 670  shares present 670
+ADR mismatches vs features.tsv: 217  RVOL50 mismatches vs CLOSE_vol_vs_avg50: 276  run_xadr mismatches vs #684 outcomes.tsv: 0
+outcome rows 667  >=5ADR 71  >=8ADR 26
+censored: [('AVEX', '2026-05-12', 3503565.0), ('CHRN', '2026-05-28', 1316664.0), ('BRUN', '2026-05-29', 2965515.0)]
+>=9M all: 268 of 670
+disc 604 runners 67  held 63 runners 4 >=8 0
+shares tercile cut (disc, outcome rows) hi=11,223,375 lo=3,361,777;  (all disc rows) hi=11,175,018
+rv50 tercile cut (disc) hi=3.765 lo=2.305
+best week 2026-W19 18  two biggest disc: [('UMC', '2026-05-06', 17.31), ('CRSR', '2026-05-08', 16.81)]
+D1 >=9M: fav: 34/235 = 14.5% | rest: 33/369 = 8.9% | diff +5.5pp | perm p seeds 9016/684/1/2/3 = [0.0365, 0.0475, 0.047, 0.0445, 0.0475] | held 3/33 vs 1/30 | drop week +1.7pp p 0.387 | drop two +5.4pp p 0.051
+D2 shares top3: fav: 24/202 = 11.9% | rest: 43/402 = 10.7% | diff +1.2pp | perm p seeds 9016/684/1/2/3 = [0.452, 0.457, 0.4595, 0.471, 0.45] | held 3/29 vs 1/34 | drop week -1.8pp p 0.828 | drop two +1.0pp p 0.489
+D3 rv50 top3: fav: 23/202 = 11.4% | rest: 44/402 = 10.9% | diff +0.4pp | perm p seeds 9016/684/1/2/3 = [0.655, 0.675, 0.683, 0.6735, 0.6705] | held 2/30 vs 2/33 | drop week +1.7pp p 0.429 | drop two +0.9pp p 0.636
+AUC disc n 604 runners 67: shares 0.563 rv50 0.510 diff +0.052
+paired perm (own impl, seed 9016): obs +0.052 p 0.120
+
+TAIL all outcome rows:
+  >=9M: n 268 >=5 37 (13.8%) >=8 10 (3.7%) median 1.95 mean 2.50
+  <9M: n 399 >=5 34 (8.5%) >=8 16 (4.0%) median 1.66 mean 2.30
+  top 15 runs: [('UMC', '2026-05-06', 17.3, 29.0), ('CRSR', '2026-05-08', 16.8, 4.0), ('VOYG', '2026-05-05', 13.5, 3.0), ('TE', '2026-05-12', 13.3, 36.6), ('HPE', '2026-05-29', 12.6, 85.7), ('PSNL', '2026-05-13', 12.5, 5.8), ('HQ', '2026-06-15', 12.4, 6.2), ('NRIX', '2026-06-08', 11.9, 21.0), ('VPG', '2026-05-12', 11.6, 1.1), ('VCX', '2026-05-05', 10.9, 0.5), ('ALOY', '2026-06-01', 10.4, 4.2), ('EFOR', '2026-07-22', 10.1, 1.1), ('UMC', '2026-05-14', 9.8, 17.5), ('HLIT', '2026-05-12', 9.7, 7.8), ('FET', '2026-07-31', 9.3, 0.4)]
+  top 15 under 9M: 10
+
+ALERTED outcome rows 306
+  >=9M: n 129 >=5 16 (12.4%) >=8 3 (2.3%)
+  <9M: n 177 >=5 19 (10.7%) >=8 11 (6.2%)
+
+POSTHOC by week (disc):
+  best wk: >=9M 13/28  <9M 5/37
+  others: >=9M 21/207  <9M 28/332
+  ADR tercile cuts (all oc) 4.40 6.31
+  ADR low: >=9M 10/64 (>=8 4)  <9M 6/158 (>=8 3)
+  ADR mid: >=9M 16/92 (>=8 4)  <9M 10/130 (>=8 3)
+  ADR high: >=9M 11/112 (>=8 2)  <9M 18/111 (>=8 10)
+
+first-15-min / day: n 608 median 0.127
+early top third (>= 1,488,941): fav: 23/183 = 12.6% | rest: 38/364 = 10.4%
+rank corr shares vs 09:30-09:44 shares: 0.967 (n 608)
+
+RVOL50 terciles (disc cuts 2.305 3.765 )
+  all bottom: n 219 >=5 23 (10.5%) >=8 8 mean 2.29
+  all mid: n 216 >=5 23 (10.6%) >=8 9 mean 2.46
+  all top: n 232 >=5 25 (10.8%) >=8 9 mean 2.38
+  alerted bottom: n 85 >=5 12 (14.1%) >=8 4 mean 2.49
+  alerted mid: n 103 >=5 12 (11.7%) >=8 5 mean 2.42
+  alerted top: n 118 >=5 11 (9.3%) >=8 5 mean 2.62
+share of all outcome rows under 9M: 399/667  share of >=8 ADR under 9M: 16/26
