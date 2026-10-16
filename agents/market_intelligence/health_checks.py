@@ -57,6 +57,7 @@ DEFERRED next increment: (5) the specific hard-check registry (backups etc., CHA
 """
 from __future__ import annotations
 
+import ast
 import json
 import logging
 import os
@@ -71,7 +72,7 @@ from zoneinfo import ZoneInfo
 from agents.market_intelligence.db import (
     get_pool, log_audit_event, LIVE_SOURCE_SQL,
     get_latest_two_theme_dates, get_theme_retired_candidate_names,
-    get_theme_history_window, get_theme_member_departures,
+    get_theme_history_window, get_theme_member_departures, get_theme_departure_explanations,
     get_theme_quality_alerted_targets, get_recent_rs_batch, get_rs_on_date,
     get_reactivation_sessions, get_high_ep_ticker_days,
     get_ticker_ecosystem_membership, get_mapped_theme_stages_before,
@@ -2433,6 +2434,12 @@ async def run_inert_sweep_check() -> dict[str, Any]:
 # from 'AI Compute & GPU Data Center Hosting Operators' 7/22 while both were igniting (the exact
 # #368 miner-cohort mechanism F3 now holds instead of prunes).
 #
+# 2026-10-16 — A THIRD exclusion, found in prod rather than in the measurement window: a member
+# another rule removed THE SAME ET NIGHT is not an RS prune. The guard flagged 3 members in 30 days
+# (HAYW + OKLO 09-17, IBP 10-16) and all three were the carry-forward filter's sector-outlier strip
+# (`theme_carryforward_filter_stripped`); validator removals (`ticker_revalidated_out`) are the same
+# class. `_explained_departures` drops them before RS is read; the audit read fails open.
+#
 # DROPPED — fragmentation (2+ live themes sharing >=50% of the smaller theme's members): 251
 # day-level firings across 122 DISTINCT theme-name pairs in the same window — far too broad to ship
 # (a guard that always fires is not a guard). More important than the noise count: the #368
@@ -2547,8 +2554,8 @@ def _evaluate_pruned_while_rising(rs_now: float | None, hist3: list[float], hist
     sessions respectively, from ONE `get_recent_rs_batch(..., days=6)` call — hist3 is
     hist6[:3]). Mirrors the ENGINE'S OWN exact prune-candidacy gate before judging rising,
     so a ticker the engine was never going to prune in the first place (e.g. RS 40, never a
-    candidate at all) can't false-fire here for leaving for some OTHER reason (validation,
-    reassignment already excluded upstream):
+    candidate at all) can't false-fire here for leaving for some OTHER reason (a move to another
+    theme, a strip or a validator removal — all excluded upstream in `_check_pruned_while_rising`):
       rs_now < HARD(25)          -> a prune candidate every day
       HARD <= rs_now < SOFT(35)  -> a candidate ONLY if the last 3 sessions were ALL < SOFT
       rs_now >= SOFT             -> never a prune candidate — not this check's concern
@@ -2566,6 +2573,70 @@ def _evaluate_pruned_while_rising(rs_now: float | None, hist3: list[float], hist
     if not candidate or not _rs_rising_mirror(hist6):
         return None
     return {"rs_now": rs_now, "hist": list(hist6)}
+
+
+_STRIP_EVENT = "theme_carryforward_filter_stripped"
+_VALIDATOR_EVENT = "ticker_revalidated_out"
+# The `<category>=[...]` lines of the carry-forward filter's strip row that mean "this ticker was
+# REMOVED" (theme_engine._apply_carryforward_deterministic_filter's `reason_parts`). `comove_kept`
+# is deliberately NOT here: the writer logs it in the same row, but those tickers were KEPT — a
+# comove-kept member that later leaves on RS must still be scored. The round-trip test in
+# tests/test_theme_quality_check.py exercises every current arm; a NEW strip category must be added
+# here and to that test (until then its tickers still page — fail open, nothing hidden).
+_STRIP_REMOVAL_CATEGORIES = frozenset(
+    {"deal_pinned", "banned", "cooldown", "sector_outlier", "comove_below_bar"}
+)
+
+
+def _parse_strip_detail(detail: str | None) -> tuple[str, set[str]] | None:
+    """Parse one `theme_carryforward_filter_stripped` detail into (theme, removed tickers), or
+    None when the row cannot be trusted. Writer format (theme_engine.py):
+        theme=<name>\\npre_size=N post_size=M\\n<category>=['A', 'B']\\n...
+    FAIL OPEN: any unparseable removal line, or a missing `theme=` line, voids the WHOLE row —
+    an unreadable row explains nothing, so a real regression is never hidden by a parse guess."""
+    theme: str | None = None
+    removed: set[str] = set()
+    for line in (detail or "").split("\n"):
+        if theme is None and line.startswith("theme="):
+            theme = line[len("theme="):]
+            continue
+        key, sep, rest = line.partition("=")
+        if not sep or key not in _STRIP_REMOVAL_CATEGORIES:
+            continue
+        try:
+            val = ast.literal_eval(rest.strip())
+        except (ValueError, SyntaxError):
+            return None
+        if not isinstance(val, list) or not all(isinstance(t, str) for t in val):
+            return None
+        removed.update(val)
+    if theme is None:
+        return None
+    return theme, removed
+
+
+def _explained_departures(
+    rows: list[dict], pairs: list[tuple[str, str]], removal_fmt: str,
+) -> set[tuple[str, str]]:
+    """Of the (theme, ticker) `pairs`, those another rule removed on the SAME ET night, per the
+    night's audit `rows` (db.get_theme_departure_explanations): the carry-forward filter's strip
+    (theme line must equal the theme; ticker must sit in a removal category) or the validator's
+    `ticker_revalidated_out` (summary equals `removal_fmt` filled with this ticker and theme).
+    Pure — no DB. Anything that does not match exactly is NOT explained (fail open)."""
+    stripped: set[tuple[str, str]] = set()
+    validator_summaries: set[str] = set()
+    for r in rows:
+        if r.get("event_type") == _STRIP_EVENT:
+            parsed = _parse_strip_detail(r.get("detail"))
+            if parsed is not None:
+                theme, removed = parsed
+                stripped.update((theme, t) for t in removed)
+        elif r.get("event_type") == _VALIDATOR_EVENT:
+            validator_summaries.add(r.get("summary") or "")
+    return {
+        (name, tk) for name, tk in pairs
+        if (name, tk) in stripped or removal_fmt.format(tk=tk, theme=name) in validator_summaries
+    }
 
 
 async def _check_theme_retirements(conn, today) -> dict[str, Any]:
@@ -2586,8 +2657,16 @@ async def _check_theme_retirements(conn, today) -> dict[str, Any]:
 
 async def _check_pruned_while_rising(conn, today, prior_date) -> dict[str, Any]:
     """Signature B. Isolated by the caller's try/except — a bad query here must not blind
-    signature A. Returns {"flags": [...], "errors": [...]}."""
-    out: dict[str, Any] = {"flags": [], "errors": []}
+    signature A. Returns {"flags": [...], "errors": [...], "explained_by_other_rule": n}.
+
+    A departure is scored against the RS hold ONLY if no other rule removed the member the same
+    ET night: the carry-forward filter's strip (sector outlier / banned / cooldown / deal-pinned /
+    comove-below-bar) and the validator's removal are not RS prunes, so the #368 hold never
+    decided them (#531, 2026-10-16: HAYW + OKLO 09-17 and IBP 10-16 were each a sector-outlier
+    strip, paged as "pruned while rising"). Those are dropped before RS is read and counted in
+    `explained_by_other_rule`. The audit read FAILS OPEN — if it errors, nothing is explained
+    away and every candidate is scored as before."""
+    out: dict[str, Any] = {"flags": [], "errors": [], "explained_by_other_rule": 0}
     departures = await get_theme_member_departures(conn, today, prior_date)
     if not departures:
         return out
@@ -2612,6 +2691,30 @@ async def _check_pruned_while_rising(conn, today, prior_date) -> dict[str, Any]:
 
     if not candidates:
         return out
+
+    try:
+        # Function-local: theme_engine pulls in anthropic + numpy, which this module's imports
+        # deliberately avoid. The format is imported, never re-typed, so a reworded validator
+        # summary cannot silently stop matching.
+        from agents.market_intelligence.theme_engine import _REMOVAL_SUMMARY_FMT
+        explained = _explained_departures(
+            await get_theme_departure_explanations(conn, today),
+            [(c["name"], c["ticker"]) for c in candidates],
+            _REMOVAL_SUMMARY_FMT,
+        )
+    except Exception as e:
+        logger.warning("theme_quality_check: other-rule explanation read failed, scoring every "
+                       "departure (fail open): %s", e)
+        out["errors"].append({"signature": "pruned_while_rising",
+                              "error": f"explanation read failed (fail-open): {e}"})
+        explained = set()
+    if explained:
+        logger.info("theme_quality_check: %d departure(s) explained by another rule the same "
+                    "night, not scored: %s", len(explained), sorted(explained))
+        out["explained_by_other_rule"] = len(explained)
+        candidates = [c for c in candidates if (c["name"], c["ticker"]) not in explained]
+        if not candidates:
+            return out
 
     tickers = sorted({c["ticker"] for c in candidates})
     # rs_now must be the ticker's EXACT-today value, not "most recent available" —
@@ -2658,7 +2761,8 @@ async def run_theme_quality_check(conn=None) -> dict[str, Any]:
     blind the other; dedupes each against its own permanent history (the inert-sweep idiom,
     failing OPEN); logs an audit row + sends ONE grouped Telegram only for NEW findings.
 
-    Returns a summary dict: dates used, per-signature flag counts (fresh only), errors.
+    Returns a summary dict: dates used, per-signature flag counts (fresh only), errors, and
+    `explained_by_other_rule` (prune-guard departures a strip/validator removed the same night).
     """
     if conn is None:
         pool = await get_pool()
@@ -2670,6 +2774,7 @@ async def run_theme_quality_check(conn=None) -> dict[str, Any]:
         "today": today.isoformat(),
         "retired_while_healthy": [],
         "pruned_while_rising": [],
+        "explained_by_other_rule": 0,
         "assignment_producing_nothing": [],
         "errors": [],
     }
@@ -2731,6 +2836,8 @@ async def run_theme_quality_check(conn=None) -> dict[str, Any]:
             latest_date, prior_date = dates
             b_result = await _check_pruned_while_rising(conn, latest_date, prior_date)
             summary["pruned_while_rising"] = b_result["flags"]
+            summary["explained_by_other_rule"] = b_result["explained_by_other_rule"]
+            summary["errors"].extend(b_result["errors"])
     except Exception as e:
         logger.warning("theme_quality_check: prune signature failed: %s", e)
         summary["errors"].append({"signature": "pruned_while_rising", "error": str(e)})
@@ -2830,6 +2937,8 @@ async def run_theme_quality_check(conn=None) -> dict[str, Any]:
         note = (
             f"clean: {len(summary.get('retired_while_healthy', []))} retirement flag(s), "
             f"{len(summary.get('pruned_while_rising', []))} prune flag(s)"
+            + (f"; {summary['explained_by_other_rule']} departure(s) explained by another rule"
+               if summary["explained_by_other_rule"] else "")
             + (f"; {len(summary['errors'])} error(s)" if summary["errors"] else "")
         )
         await log_audit_event("theme_quality_clean", note, detail=str(summary))

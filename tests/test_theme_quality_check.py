@@ -41,8 +41,21 @@ from agents.market_intelligence.health_checks import (
     _PRUNE_RS_SOFT_MIRROR,
     _PRUNE_HOLD_MIN_POINTS_MIRROR,
     _check_pruned_while_rising,
+    _explained_departures,
+    _parse_strip_detail,
     run_theme_quality_check,
 )
+
+
+@pytest.fixture(autouse=True)
+def _no_other_rule_explanations_by_default(monkeypatch):
+    """Signature B reads the night's audit rows to drop departures another rule removed (#531,
+    2026-10-16). Default: the night has none, so the pre-existing tests exercise the real
+    scoring path rather than the fail-open degrade (which `conn=object()` would trigger).
+    The explanation tests re-patch this with their own rows."""
+    async def _none(conn, et_date):
+        return []
+    monkeypatch.setattr(health_checks, "get_theme_departure_explanations", _none)
 
 
 # ── Mirror-parity pin: this check's copy of the engine's thresholds/rising test ──────────────────
@@ -550,3 +563,280 @@ def test_findings_persist_forever_once_announced_no_resolve_path():
     i = hcsrc.index("async def run_theme_quality_check")
     block = hcsrc[i:i + 6000]
     assert "reconcile_health_flags" not in block
+
+
+# ── Signature B: a departure ANOTHER rule explains the same night is not an RS prune ─────────────
+# 2026-10-16 (#531): the guard flagged 3 members in 30 days — HAYW + OKLO (09-17) and IBP (10-16) —
+# and every one was the carry-forward filter's sector-outlier strip, paged as "pruned while
+# rising". The #368 hold never decided those exits. Validator removals are the same class.
+
+_IBP_THEME = "Residential Building Materials & Construction Products Suppliers"
+# Verbatim prod row, 2026-10-16 21:05 UTC (writer: theme_engine._apply_carryforward_deterministic_filter)
+_IBP_STRIP_ROW = {
+    "event_type": "theme_carryforward_filter_stripped",
+    "summary": f"{_IBP_THEME}: stripped 1 ticker(s) (sector_outlier)",
+    "detail": f"theme={_IBP_THEME}\npre_size=3 post_size=2\nsector_outlier=['IBP']",
+}
+_IBP_HIST = [18.5, 18.0, 14.0, 13.0, 14.0, 14.0]  # the page's own numbers: RS 18.5, rising
+_TODAY, _PRIOR = date(2026, 10, 16), date(2026, 10, 15)
+
+
+def _wire_ibp_departure(monkeypatch, rows, *, name=_IBP_THEME, seen_nights=None):
+    """IBP leaves `name` (3 members -> 2, not a mass eviction), not in any theme today, RS rising.
+    `rows` is everything the audit table holds; the reader double filters by night exactly as the
+    SQL does, so a row from another ET night never reaches the matcher."""
+    async def _departures(conn, t, p):
+        return [{"name": name, "ticker": "IBP", "prior_member_count": 3, "moved_today": False}]
+
+    async def _reader(conn, et_date):
+        if seen_nights is not None:
+            seen_nights.append(et_date)
+        return [r for r in rows if r.get("night", et_date) == et_date]
+
+    monkeypatch.setattr(health_checks, "get_theme_member_departures", _departures)
+    monkeypatch.setattr(health_checks, "get_theme_departure_explanations", _reader)
+    _wire_rs(monkeypatch, {"IBP": _IBP_HIST})
+
+
+@pytest.mark.asyncio
+async def test_control_the_ibp_shape_flags_when_no_other_rule_explains_it(monkeypatch):
+    # The control that makes the next tests mean something: same departure, same RS, no audit
+    # row -> the guard still fires (a true regression is never hidden).
+    _wire_ibp_departure(monkeypatch, rows=[])
+    result = await _check_pruned_while_rising(conn=object(), today=_TODAY, prior_date=_PRIOR)
+    assert [f["ticker"] for f in result["flags"]] == ["IBP"]
+    assert result["explained_by_other_rule"] == 0
+
+
+@pytest.mark.asyncio
+async def test_a_sector_outlier_strip_of_the_same_theme_is_not_paged_as_an_rs_prune(monkeypatch):
+    seen: list = []
+    _wire_ibp_departure(monkeypatch, rows=[_IBP_STRIP_ROW], seen_nights=seen)
+    result = await _check_pruned_while_rising(conn=object(), today=_TODAY, prior_date=_PRIOR)
+    assert result["flags"] == []
+    assert result["explained_by_other_rule"] == 1
+    assert seen == [_TODAY], "ONE read for the night, keyed on the guard's own `today`"
+
+
+@pytest.mark.asyncio
+async def test_a_strip_row_naming_the_ticker_for_a_different_theme_still_flags(monkeypatch):
+    other = {**_IBP_STRIP_ROW,
+             "detail": "theme=Some Other Theme\npre_size=3 post_size=2\nsector_outlier=['IBP']"}
+    _wire_ibp_departure(monkeypatch, rows=[other])
+    result = await _check_pruned_while_rising(conn=object(), today=_TODAY, prior_date=_PRIOR)
+    assert [f["ticker"] for f in result["flags"]] == ["IBP"]
+    assert result["explained_by_other_rule"] == 0
+
+
+@pytest.mark.asyncio
+async def test_a_strip_row_from_a_different_et_night_still_flags(monkeypatch):
+    # Last night's strip of IBP (re-added since, now leaving again for an RS reason) must not
+    # explain tonight's exit. The night filter is the SQL's job — pinned in the next test — and
+    # the matcher is only ever handed that night's rows.
+    stale = {**_IBP_STRIP_ROW, "night": _PRIOR}
+    _wire_ibp_departure(monkeypatch, rows=[stale])
+    result = await _check_pruned_while_rising(conn=object(), today=_TODAY, prior_date=_PRIOR)
+    assert [f["ticker"] for f in result["flags"]] == ["IBP"]
+
+
+@pytest.mark.asyncio
+async def test_the_explanation_read_is_one_query_keyed_on_the_et_date_of_the_night():
+    from agents.market_intelligence.db import get_theme_departure_explanations
+
+    calls: list = []
+
+    class _Conn:
+        async def fetch(self, sql, *args):
+            calls.append((sql, args))
+            return [{"event_type": "x", "summary": "s", "detail": "d"}]
+
+    rows = await get_theme_departure_explanations(_Conn(), _TODAY)
+    assert rows == [{"event_type": "x", "summary": "s", "detail": "d"}]
+    assert len(calls) == 1, "one query for the whole night, never one per ticker"
+    sql, args = calls[0]
+    assert args == (_TODAY,)
+    assert "(created_at AT TIME ZONE 'America/New_York')::date = $1" in sql
+    assert "'theme_carryforward_filter_stripped'" in sql and "'ticker_revalidated_out'" in sql
+
+
+@pytest.mark.asyncio
+async def test_a_validator_removal_of_the_same_ticker_and_theme_is_not_paged(monkeypatch):
+    from agents.market_intelligence.theme_engine import _REMOVAL_SUMMARY_FMT
+    row = {"event_type": "ticker_revalidated_out",
+           "summary": _REMOVAL_SUMMARY_FMT.format(tk="IBP", theme=_IBP_THEME),
+           "detail": "Description: 'x' — validation flagged as not matching theme"}
+    _wire_ibp_departure(monkeypatch, rows=[row])
+    result = await _check_pruned_while_rising(conn=object(), today=_TODAY, prior_date=_PRIOR)
+    assert result["flags"] == []
+    assert result["explained_by_other_rule"] == 1
+
+
+@pytest.mark.asyncio
+async def test_a_validator_removal_for_another_ticker_or_theme_still_flags(monkeypatch):
+    from agents.market_intelligence.theme_engine import _REMOVAL_SUMMARY_FMT
+    rows = [
+        {"event_type": "ticker_revalidated_out",
+         "summary": _REMOVAL_SUMMARY_FMT.format(tk="OTHR", theme=_IBP_THEME), "detail": ""},
+        {"event_type": "ticker_revalidated_out",
+         "summary": _REMOVAL_SUMMARY_FMT.format(tk="IBP", theme="Some Other Theme"), "detail": ""},
+    ]
+    _wire_ibp_departure(monkeypatch, rows=rows)
+    result = await _check_pruned_while_rising(conn=object(), today=_TODAY, prior_date=_PRIOR)
+    assert [f["ticker"] for f in result["flags"]] == ["IBP"]
+
+
+@pytest.mark.parametrize("bad_detail", [
+    f"theme={_IBP_THEME}\npre_size=3 post_size=2\nsector_outlier=['IBP'",        # unbalanced bracket
+    f"theme={_IBP_THEME}\npre_size=3 post_size=2\nsector_outlier=IBP",           # not a literal list
+    f"theme={_IBP_THEME}\npre_size=3 post_size=2\nsector_outlier='IBP'",         # a str, not a list
+    f"theme={_IBP_THEME}\npre_size=3 post_size=2\nsector_outlier=[1, 2]",        # not tickers
+    "pre_size=3 post_size=2\nsector_outlier=['IBP']",                            # no theme= line
+    f"theme={_IBP_THEME}\nbanned=['ZZZZ'\nsector_outlier=['IBP']",               # one bad line voids the row
+    "",
+    None,
+])
+@pytest.mark.asyncio
+async def test_a_malformed_strip_detail_explains_nothing_and_still_flags(monkeypatch, bad_detail):
+    # Fail OPEN: an unreadable row must never hide a real regression.
+    _wire_ibp_departure(monkeypatch, rows=[{**_IBP_STRIP_ROW, "detail": bad_detail}])
+    result = await _check_pruned_while_rising(conn=object(), today=_TODAY, prior_date=_PRIOR)
+    assert [f["ticker"] for f in result["flags"]] == ["IBP"]
+    assert result["explained_by_other_rule"] == 0
+
+
+@pytest.mark.asyncio
+async def test_a_comove_kept_member_was_not_removed_so_it_is_still_scored(monkeypatch):
+    # The writer logs `comove_kept=[...]` in the SAME row as the removals, but those tickers were
+    # KEPT. If one later leaves on RS, the strip row must not explain it away.
+    kept = {**_IBP_STRIP_ROW,
+            "detail": f"theme={_IBP_THEME}\npre_size=3 post_size=3\ncomove_kept=['IBP']"}
+    _wire_ibp_departure(monkeypatch, rows=[kept])
+    result = await _check_pruned_while_rising(conn=object(), today=_TODAY, prior_date=_PRIOR)
+    assert [f["ticker"] for f in result["flags"]] == ["IBP"]
+
+
+@pytest.mark.asyncio
+async def test_only_the_explained_departure_is_dropped_its_theme_mate_still_flags(monkeypatch):
+    async def _departures(conn, t, p):
+        return [{"name": _IBP_THEME, "ticker": tk, "prior_member_count": 5, "moved_today": False}
+                for tk in ("IBP", "GONE")]
+
+    async def _reader(conn, et_date):
+        return [_IBP_STRIP_ROW]
+
+    monkeypatch.setattr(health_checks, "get_theme_member_departures", _departures)
+    monkeypatch.setattr(health_checks, "get_theme_departure_explanations", _reader)
+    _wire_rs(monkeypatch, {"IBP": _IBP_HIST, "GONE": [10.7, 7.4, 6.0, 1.5, 1.7, 2.4]})
+    result = await _check_pruned_while_rising(conn=object(), today=_TODAY, prior_date=_PRIOR)
+    assert [f["ticker"] for f in result["flags"]] == ["GONE"]
+    assert result["explained_by_other_rule"] == 1
+
+
+@pytest.mark.asyncio
+async def test_a_failed_explanation_read_fails_open_and_every_departure_is_scored(monkeypatch):
+    _wire_ibp_departure(monkeypatch, rows=[_IBP_STRIP_ROW])
+
+    async def _boom(conn, et_date):
+        raise RuntimeError("audit table unreadable")
+
+    monkeypatch.setattr(health_checks, "get_theme_departure_explanations", _boom)
+    result = await _check_pruned_while_rising(conn=object(), today=_TODAY, prior_date=_PRIOR)
+    assert [f["ticker"] for f in result["flags"]] == ["IBP"], "a broken read must page, not hide"
+    assert any("fail-open" in e["error"] for e in result["errors"])
+
+
+@pytest.mark.asyncio
+async def test_run_counts_the_explained_departure_in_the_clean_audit_row(
+        _captured_telegram, _captured_audit, monkeypatch):
+    # End to end on the IBP night: no Telegram, and the audit row says one departure was
+    # explained away (so "clean" can be told apart from "quiet because the guard is blind").
+    _wire_signature_a_empty(monkeypatch)
+    _wire_ibp_departure(monkeypatch, rows=[_IBP_STRIP_ROW])
+
+    async def _dates(conn=None):
+        return (_TODAY, _PRIOR)
+
+    async def _alerted(conn, event_type):
+        return set()
+
+    monkeypatch.setattr(health_checks, "get_latest_two_theme_dates", _dates)
+    monkeypatch.setattr(health_checks, "get_theme_quality_alerted_targets", _alerted)
+    monkeypatch.setattr(health_checks, "et_today", lambda: _TODAY)
+
+    summary = await run_theme_quality_check(conn=object())
+
+    assert summary["pruned_while_rising"] == []
+    assert summary["explained_by_other_rule"] == 1
+    assert _captured_telegram == []
+    clean = [e for e in _captured_audit if e[0] == "theme_quality_clean"]
+    assert len(clean) == 1 and "1 departure(s) explained by another rule" in clean[0][1]
+
+
+def test_parse_strip_detail_reads_the_prod_row_and_ignores_kept_members():
+    assert _parse_strip_detail(_IBP_STRIP_ROW["detail"]) == (_IBP_THEME, {"IBP"})
+    multi = (f"theme={_IBP_THEME}\npre_size=9 post_size=4\ndeal_pinned=['A']\nbanned=['B', 'C']\n"
+             "cooldown=['D']\nsector_outlier=['E']\ncomove_below_bar=['F']\ncomove_kept=['G']")
+    assert _parse_strip_detail(multi) == (_IBP_THEME, {"A", "B", "C", "D", "E", "F"})
+    # a theme name containing '=' is split on the FIRST '=' only
+    assert _parse_strip_detail("theme=A=B\nbanned=['X']") == ("A=B", {"X"})
+
+
+def test_explained_departures_matches_theme_and_ticker_exactly():
+    from agents.market_intelligence.theme_engine import _REMOVAL_SUMMARY_FMT
+    rows = [_IBP_STRIP_ROW,
+            {"event_type": "ticker_revalidated_out",
+             "summary": _REMOVAL_SUMMARY_FMT.format(tk="VAL", theme="T2"), "detail": ""},
+            # right summary text but the wrong event type: must not count
+            {"event_type": "theme_retired",
+             "summary": _REMOVAL_SUMMARY_FMT.format(tk="NOPE", theme="T2"), "detail": ""}]
+    pairs = [(_IBP_THEME, "IBP"), (_IBP_THEME, "OTHER"), ("T2", "VAL"), ("T2", "NOPE"),
+             ("T3", "IBP")]
+    assert _explained_departures(rows, pairs, _REMOVAL_SUMMARY_FMT) == {
+        (_IBP_THEME, "IBP"), ("T2", "VAL")}
+
+
+@pytest.mark.asyncio
+async def test_the_real_strip_writer_round_trips_through_the_parser(monkeypatch):
+    # Run the REAL writer (theme_engine._apply_carryforward_deterministic_filter) over a theme that
+    # exercises every strip arm plus a comove-KEPT member, capture the audit row it writes, and feed
+    # it to the matcher. Contract: every ticker the writer REMOVED is explained, every ticker it
+    # KEPT (comove_kept included) is not. A writer format change or a new removal category that this
+    # scenario exercises reddens it, instead of silently turning the guard blind or over-eager.
+    from agents.market_intelligence import theme_engine
+    import agents.market_intelligence.db as dbmod
+
+    audit: list[dict] = []
+
+    async def _fake_audit(event_type, summary=None, detail=None, **kw):
+        audit.append({"event_type": event_type, "summary": summary or "", "detail": detail or ""})
+
+    async def _fake_pinned(as_of, tickers=None, **kw):
+        return {t for t in (tickers or ()) if t == "PIN"}
+
+    verdicts = {
+        "CBELOW": theme_engine.ComoveVerdict(False, 0.1, 40, 5, "below_bar"),
+        "CKEPT": theme_engine.ComoveVerdict(True, 0.8, 40, 5, "comoves"),
+    }  # OUT is absent -> None -> falls back to the sector test -> `sector_outlier`
+
+    monkeypatch.setattr(theme_engine, "log_audit_event", _fake_audit)
+    monkeypatch.setattr(dbmod, "get_deal_pinned_tickers", _fake_pinned)
+    monkeypatch.setattr(theme_engine, "_comove_verdict", lambda t, members, ctx: verdicts.get(t))
+
+    name = "Round Trip Theme"
+    members = ["BAN", "COOL", "PIN", "OUT", "CBELOW", "CKEPT", "A1", "A2", "A3"]
+    sectors = {"OUT": "S1", "CBELOW": "S2", "CKEPT": "S3"}   # one singleton sector each
+    stocks = {t: {"sector": sectors.get(t, "Tech")} for t in members}
+    themes = [{"name": name, "tickers": list(members), "score": 50.0, "stage": "Mainstream"}]
+
+    await theme_engine._apply_carryforward_deterministic_filter(
+        themes, {"BAN"}, {("COOL", name)}, stocks, comove_ctx=None, as_of="2026-10-16")
+
+    kept = set(themes[0]["tickers"])
+    removed = set(members) - kept
+    assert removed == {"BAN", "COOL", "PIN", "OUT", "CBELOW"}, "scenario no longer exercises every arm"
+    assert "CKEPT" in kept
+    detail = next(r["detail"] for r in audit if r["event_type"] == "theme_carryforward_filter_stripped")
+    assert "comove_kept=['CKEPT']" in detail, "the kept-member trap must actually be in the row"
+
+    explained = _explained_departures(audit, [(name, t) for t in members], "{tk}|{theme}")
+    assert explained == {(name, t) for t in removed}
