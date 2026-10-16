@@ -373,3 +373,8 @@ THEME_SECTOR_CAP_KEPT_DISTINCT = "theme_sector_cap_kept_distinct"
 THEME_SMALL_FOLDED = "theme_small_folded"
 THEME_SMALL_FOLD_RAN = "theme_small_fold_ran"
 THEME_SMALL_FOLD_ERROR = "theme_small_fold_error"
+
+# #312 (2026-10-16) — written by `job_recovery.ensure_first_seen`, read back by `fetch_first_seen`:
+# summary = job id, detail = the boot time (tz-aware ISO) the job was first registered. One row per
+# job, ever — the recovery planner skips every slot earlier than it.
+JOB_FIRST_SEEN = "job_first_seen"
