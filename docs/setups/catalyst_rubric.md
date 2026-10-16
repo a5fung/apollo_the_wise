@@ -307,15 +307,22 @@ then STEP-0 → operator sign-off → CHANGE_PROCESS. Code: `agents/market_intel
   - **Label rule** (`resolve_annual_period_ends`): `0y` = the first fiscal-year end MORE than 30 days after the
     ticker's last reported quarter end (EDGAR `reportDate`); `+1y` = the year after. A year end is
     `fiscal_quarter_end_from_label(4, Y, fiscalYearEnd)` — the Finnhub leg's resolver on EDGAR's own MMDD, so
-    day-clamping is shared. The 30 days absorb EDGAR's approximate MMDD on a 52/53-week filer.
+    day-clamping is shared — **snapped to the NEAREST month end** (`nearest_month_end`: 0830/0831/0901/0903 -> 08-31,
+    0926/0927 -> 09-30, 0103 -> the preceding 12-31; nearest, not end-of-the-containing-month). The snap exists
+    because EDGAR's `fiscalYearEnd` MMDD **drifts a day or two for a 52/53-week filer** (COST 0831 -> 0830, AAPL
+    0927 -> 0926, at each Q1 10-Q) and `period_end_date` is part of the row's key: unsnapped, one fiscal year would
+    split into two keys the day the MMDD moved. It is the annual label only; the Finnhub quarterly resolver is
+    unchanged. The 30 days absorb EDGAR's approximate MMDD when picking WHICH year is current.
   - **Gate** (the quarterly leg's own bound): `last_actual_release_date − last_reported_quarter_end` must be 0-75
     days. It rejects the reporting-gap race — year results released (Yahoo's `0y` has rolled) but the 10-K not yet
     filed (EDGAR still shows the third quarter), where the rule would name the year that just ended. Skipped and
     counted (`annual_yf_no_label`), never guessed; **expect a nonzero nightly baseline**, like `quarter_yf_no_cadence`.
-    Deterministic in two EDGAR facts that do not drift, so there is no stabilization pass.
+    Deterministic in two EDGAR facts, the one that moves (the MMDD) absorbed by the month-end snap, so there is no
+    stabilization pass.
   - **Checked against Yahoo's own `endDate`** (private payload, observed 2026-10-16, not used in production):
-    AAPL `0y` 2026-09-30 (we label 09-26), COST 2027-08-31 (08-30), WMT 2027-01-31 (01-31), NRIX 2026-11-30 (exact),
-    AMLX/ETON/ABCL 2026-12-31 (exact). Pinned in `tests/test_analyst_estimates_recorder.py`.
+    AAPL `0y` 2026-09-30, COST 2027-08-31, WMT 2027-01-31, NRIX 2026-11-30, AMLX/ETON/ABCL 2026-12-31 — **our label
+    equals Yahoo's date exactly on all seven** (before the snap AAPL read 09-26 and COST 08-30). Pinned in
+    `tests/test_analyst_estimates_recorder.py`.
   - **Unverified assumption:** Yahoo's `0y` rolls to the next year at the Q4 RELEASE, as `0q` does. Seen so far
     (AAPL, FY ended 09-26, unreported): `0q` and `0y` both still end 2026-09-30, i.e. `0y` holds the just-ended year.
     The after-roll side is not yet observed; September/June/October year-end names cross it inside the first 60 days.
@@ -325,6 +332,9 @@ then STEP-0 → operator sign-off → CHANGE_PROCESS. Code: `agents/market_intel
     (`_has_estimate`) — an all-NaN row is stored ("we asked, nothing") but cannot pass the bar. The ratio is printed
     nightly on its own audit row `analyst_estimates_snapshot_annual`; it could not ride the main summary row, which
     `log_audit_event` cuts at 500 characters (that row is ~600 characters on any night, so its tail is already cut).
+    **Reading the main row:** its leading `N row(s)` count now INCLUDES the annual rows (the parenthetical still lists
+    only the quarterly sources, left byte-identical on purpose); the annual row says so and gives the annual count —
+    subtract it to compare with nights before the annual leg.
 - **Pace.** The job sleeps `YFINANCE_PACE_SECONDS` (24s) between tickers — the cadence the FMP sleeps used to
   impose on every vendor, kept so the removal changed no request pattern. Not a measured Yahoo limit; lowering
   it is a separate, measured decision.

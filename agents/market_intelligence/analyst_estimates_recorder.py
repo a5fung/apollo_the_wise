@@ -230,8 +230,19 @@ already holds (a test spies the Ticker attribute accesses and pins exactly three
     '0y'  = the first fiscal-year-end after (last_reported_quarter_end + 30 days), where
             the year-end for fiscal year Y is `fiscal_quarter_end_from_label(4, Y, fiscal_
             year_end)` — EDGAR's own `fiscalYearEnd` MMDD, the Finnhub leg's resolver,
-            so day-clamping (a "0229") is shared rather than re-implemented.
+            so day-clamping (a "0229") is shared rather than re-implemented — SNAPPED TO
+            THE NEAREST MONTH END (below).
     '+1y' = the next year's end by the same function.
+  THE SNAP (2026-10-16, reviewer-found BLOCKER): the label is the NEAREST MONTH END to that
+  date (0831/0830/0901/0903 -> 08-31; 0926/0927 -> 09-30; 0103 -> the PRECEDING 12-31;
+  nearest, not end-of-the-containing-month). Why: EDGAR's `fiscalYearEnd` MMDD is not a
+  constant for a 52/53-week filer — it drifts a day or two, at each Q1 10-Q (COST 0831 ->
+  0830, AAPL 0927 -> 0926) — and `period_end_date` is part of the row's primary key, so an
+  unsnapped label would split ONE fiscal year's revision series into two keys the day the
+  MMDD moved. Yahoo itself dates a 52/53-week year at the month end (observed 2026-10-16:
+  AAPL 2026-09-30, COST 2027-08-31, WMT 2027-01-31), so the snap also makes the label equal
+  Yahoo's on all seven names checked. It is applied to the ANNUAL label only:
+  fiscal_quarter_end_from_label (the Finnhub quarterly leg) is deliberately unchanged.
   Why +30 days: EDGAR's MMDD is only approximate for a 52/53-week filer (a 10-K reportDate
   of 09-25 against MMDD "0926"); without the band a year that has JUST reported could be
   re-labelled as still-current. Fiscal year ends are 365 days apart, so 30 days can never
@@ -249,9 +260,11 @@ already holds (a test spies the Ticker attribute accesses and pins exactly three
   and counted (`annual_yf_no_label`), never stored against a guessed date. EXPECT A NONZERO
   BASELINE there for the same reason as `quarter_yf_no_cadence`.
   DETERMINISTIC, SO NO STABILIZATION: the label is a pure function of (EDGAR fiscalYearEnd,
-  EDGAR last_reported_quarter_end) and neither drifts day to day, so unlike the quarterly
-  leg there is no `stabilize_period_end` pass and no history read (the one existing helper,
-  get_recent_quarterly_period_ends, is hardcoded to period_type='quarter' anyway).
+  EDGAR last_reported_quarter_end). Neither moves day to day; the one input that DOES move
+  (fiscalYearEnd's MMDD, a day or two at a Q1 10-Q on a 52/53-week filer) is absorbed by the
+  month-end snap above rather than by a history read, so unlike the quarterly leg there is no
+  `stabilize_period_end` pass (the one existing helper, get_recent_quarterly_period_ends, is
+  hardcoded to period_type='quarter' anyway).
   ASSUMPTION THE FIRST FISCAL-YEAR BOUNDARY IN THE DATA CONFIRMS OR BREAKS: Yahoo's '0y'
   rolls to the next year when '0q' does (at the Q4 RELEASE, not at the filing). Observed
   2026-10-16: AAPL's FY ended 09-26 and has not reported (10-29); Yahoo shows BOTH 0q and
@@ -502,7 +515,8 @@ _YF_ANNUAL_PERIODS = ("0y", "+1y")   # 2026-10-16: the two ANNUAL periods, read 
 _ANNUAL_ROLL_BAND_DAYS = 30          # '0y' is the first fiscal year end MORE than this many days after
                                       # last_reported_quarter_end — absorbs EDGAR's approximate MMDD on
                                       # a 52/53-week filer; year ends are 365 days apart so it can
-                                      # never merge two years (see resolve_annual_period_ends)
+                                      # never merge two years (see resolve_annual_period_ends). The
+                                      # year end itself is then snapped to the nearest month end.
 
 # ── Finnhub /calendar/earnings (v4) — the second estimates source ────────────────────
 FINNHUB_BASE = "https://finnhub.io/api/v1"
@@ -862,6 +876,18 @@ def pair_finnhub_periods_to_slots(
     return out
 
 
+def nearest_month_end(d: date) -> date:
+    """The month end (last calendar day of a month) NEAREST to `d`: `d` itself when it is
+    one; otherwise the closer of the end of d's own month and the end of the PRECEDING month
+    (a tie goes to d's own month end — no real fiscal year end is ever mid-month). This is
+    NEAREST, not "end of the containing month": 0901 and 0903 snap BACK to 08-31, 0103 to
+    the preceding 12-31, while 0926/0927 snap forward to 09-30. Pure calendar arithmetic."""
+    prev_end = d.replace(day=1) - timedelta(days=1)
+    next_first = date(d.year + 1, 1, 1) if d.month == 12 else date(d.year, d.month + 1, 1)
+    this_end = next_first - timedelta(days=1)
+    return this_end if (this_end - d) <= (d - prev_end) else prev_end
+
+
 def resolve_annual_period_ends(
     last_actual_release_date: Optional[date], cadence: dict[str, Any],
 ) -> dict[str, Optional[date]]:
@@ -871,9 +897,17 @@ def resolve_annual_period_ends(
 
       '0y'  = the first fiscal-year end MORE THAN _ANNUAL_ROLL_BAND_DAYS (30) after
               `cadence['last_reported_quarter_end']`; the year end for fiscal year Y is
-              fiscal_quarter_end_from_label(4, Y, cadence['fiscal_year_end']) — the Finnhub
-              leg's resolver, on this ticker's OWN EDGAR fiscalYearEnd, never a Jan-Dec guess.
+              nearest_month_end(fiscal_quarter_end_from_label(4, Y, cadence['fiscal_year_end']))
+              — the Finnhub leg's resolver, on this ticker's OWN EDGAR fiscalYearEnd, never a
+              Jan-Dec guess, snapped to the NEAREST MONTH END.
       '+1y' = the same function one year on.
+
+    WHY THE SNAP: EDGAR's fiscalYearEnd MMDD drifts by a day or two for a 52/53-week filer
+    (COST 0831 -> 0830, AAPL 0927 -> 0926, at each Q1 10-Q), and the resolved date is part of
+    the row's primary key — unsnapped, one fiscal year would split into two keys the day the
+    MMDD moved. Snapped, every drifted spelling of the same year end lands on one date (and
+    on Yahoo's own month-end dating). Only this annual label is snapped; the quarterly
+    (Finnhub) resolver is untouched.
 
     GATED by the quarterly leg's own release-lag bound: `last_actual_release_date -
     last_reported_quarter_end` must sit in [_MIN, _MAX]_RELEASE_LAG_DAYS, else both are None.
@@ -882,12 +916,15 @@ def resolve_annual_period_ends(
     the year that just ended). Missing input, a malformed fiscalYearEnd, or a failed gate ->
     None for both — the caller skips and counts (annual_yf_no_label), never a guess.
 
-    PURE and DETERMINISTIC in EDGAR facts that do not drift day to day, so no stabilization
-    pass exists for it (contrast stabilize_period_end). The loop walks fiscal years forward
-    from the last reported quarter's calendar year and exits at the first year end past the
-    30-day floor; two years reach it for every realistic calendar, the third is a defensive
-    outer bound (a pure-function sweep test pins that the answer is always the first year end
-    past the floor, whichever iteration finds it)."""
+    PURE and DETERMINISTIC in the EDGAR facts, with the one input that does move (the MMDD)
+    absorbed by the snap, so no stabilization pass exists for it (contrast
+    stabilize_period_end). The loop walks fiscal years forward from the last reported
+    quarter's calendar year and exits at the first SNAPPED year end past the 30-day floor;
+    two years reach it for every realistic calendar, the third is a defensive outer bound (a
+    pure-function sweep test pins that the answer is always the first year end past the
+    floor, whichever iteration finds it). A year end snapped back across New Year (0103 ->
+    the preceding 12-31) is still found: the walk starts at last_q_end.year, and an earlier
+    fiscal year's snapped end can never exceed the floor."""
     out: dict[str, Optional[date]] = {"0y": None, "+1y": None}
     last_q_end = cadence.get("last_reported_quarter_end")
     fye = cadence.get("fiscal_year_end")
@@ -898,12 +935,13 @@ def resolve_annual_period_ends(
         return out
     floor = last_q_end + timedelta(days=_ANNUAL_ROLL_BAND_DAYS)
     for year in range(last_q_end.year, last_q_end.year + 3):
-        year_end = fiscal_quarter_end_from_label(4, year, fye)
-        if year_end is None:
+        raw_year_end = fiscal_quarter_end_from_label(4, year, fye)
+        if raw_year_end is None:
             return out          # malformed fiscalYearEnd is malformed for every year
+        year_end = nearest_month_end(raw_year_end)   # the SNAP — see the docstring
         if year_end > floor:
             out["0y"] = year_end
-            out["+1y"] = fiscal_quarter_end_from_label(4, year + 1, fye)
+            out["+1y"] = nearest_month_end(fiscal_quarter_end_from_label(4, year + 1, fye))
             return out
     return out
 
@@ -1765,7 +1803,9 @@ def annual_coverage_summary(out: dict[str, Any], summary_prefix: str = "") -> st
     verdict = ("n/a" if not of
                else ("meets" if covered / of >= ANNUAL_COVERAGE_BAR else "BELOW")
                + f" the >= {ANNUAL_COVERAGE_BAR:.0%} bar")
-    return (f"{summary_prefix}annual-from-yfinance: {out['annual_yf_rows_written']} annual row(s); "
+    return (f"{summary_prefix}annual-from-yfinance: {out['annual_yf_rows_written']} annual row(s) "
+            f"(already INCLUDED in the snapshot row's leading row count; subtract them for the "
+            f"quarterly-only figure); "
             f"{covered}/{of} ticker(s) with quarterly yfinance rows also have an annual "
             f"estimate ({pct}, {verdict}); {out['annual_yf_no_label']} had annual frames but no "
             f"resolvable fiscal year end (an unresolved year end or mid reporting-gap — a "

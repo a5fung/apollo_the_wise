@@ -1433,13 +1433,18 @@ def test_the_402_endpoint_is_never_called_and_log_lines_are_redacted():
 # 2027-11-30; AMLX, ETON, ABCL 2026-12-31 / 2027-12-31). The EDGAR-side inputs below
 # (last reported quarter end, fiscal year end MMDD) are shaped from each name's filing
 # calendar, not re-fetched from SEC; the release date only has to be a plausible one.
+# The resolved year end is SNAPPED to the nearest month end (reviewer-found BLOCKER,
+# 2026-10-16): EDGAR's fiscalYearEnd MMDD drifts a day or two for a 52/53-week filer (COST
+# 0831 -> 0830, AAPL 0927 -> 0926, at each Q1 10-Q) and would otherwise split one fiscal year
+# into two period_end keys. Yahoo dates those years at the month end too, so the label now
+# equals Yahoo's date exactly on all seven names.
 
 
 def test_annual_labels_land_on_yahoos_own_year_ends_observed_2026_10_16():
-    """The rule against ground truth: for seven real names the resolved '0y'/'+1y' sit
-    in Yahoo's month and within a week of its endDate (Yahoo rounds a 52/53-week year to
-    the month end; the rule keeps EDGAR's MMDD — a label, not an exact-day claim, exactly
-    like the quarterly leg). NRIX, AMLX, ETON, ABCL match to the day."""
+    """The rule against ground truth: for seven real names the resolved '0y'/'+1y' EQUAL
+    Yahoo's own endDate exactly (Yahoo dates a 52/53-week year at the month end; the rule
+    snaps EDGAR's MMDD to the nearest month end, so AAPL reads 09-30 not 09-26 and COST
+    08-31 not 08-30). Before the snap only the four calendar/November names matched."""
     cases = [  # name, fiscal_year_end, last_reported_quarter_end, last release, Yahoo 0y, +1y
         ("AAPL", "0926", date(2026, 6, 27), date(2026, 7, 30),
          date(2026, 9, 30), date(2027, 9, 30)),
@@ -1461,8 +1466,7 @@ def test_annual_labels_land_on_yahoos_own_year_ends_observed_2026_10_16():
             release, {"last_reported_quarter_end": last_q, "fiscal_year_end": fye})
         for got, want, label in ((out["0y"], yahoo_0y, "0y"), (out["+1y"], yahoo_p1y, "+1y")):
             assert got is not None, f"{name} {label} unresolved"
-            assert (got.year, got.month) == (want.year, want.month), (name, label, got, want)
-            assert abs((got - want).days) <= 7, (name, label, got, want)
+            assert got == want, (name, label, got, want)
     exact = aer.resolve_annual_period_ends(
         date(2026, 10, 8), {"last_reported_quarter_end": date(2026, 8, 31),
                             "fiscal_year_end": "1130"})
@@ -1479,8 +1483,8 @@ def test_annual_label_rolls_with_the_fiscal_year_and_keeps_the_same_key_across_t
         date(2026, 7, 30), {**aapl, "last_reported_quarter_end": date(2026, 6, 27)})
     after = aer.resolve_annual_period_ends(
         date(2026, 10, 29), {**aapl, "last_reported_quarter_end": date(2026, 9, 26)})
-    assert before == {"0y": date(2026, 9, 26), "+1y": date(2027, 9, 26)}
-    assert after == {"0y": date(2027, 9, 26), "+1y": date(2028, 9, 26)}
+    assert before == {"0y": date(2026, 9, 30), "+1y": date(2027, 9, 30)}
+    assert after == {"0y": date(2027, 9, 30), "+1y": date(2028, 9, 30)}
     assert before["+1y"] == after["0y"], "the same fiscal year must keep the same key"
 
     dec = {"fiscal_year_end": "1231"}
@@ -1517,12 +1521,12 @@ def test_annual_label_is_skipped_in_the_reporting_gap_never_a_year_early():
 def test_annual_label_band_keeps_a_just_reported_year_from_looking_current():
     """MUTATION TARGET: the 30-day band. EDGAR's MMDD is approximate for a 52/53-week
     filer: AAPL's 10-K reportDate can be 2026-09-25 against MMDD '0926'. Without the band
-    the year that JUST reported (2026-09-26) would be named '0y' again. Strict '>' at the
-    boundary, pinned both sides."""
+    the year that JUST reported (2026-09-30 once snapped) would be named '0y' again. Strict
+    '>' at the boundary, pinned both sides."""
     out = aer.resolve_annual_period_ends(
         date(2026, 10, 28), {"last_reported_quarter_end": date(2026, 9, 25),
                              "fiscal_year_end": "0926"})
-    assert out["0y"] == date(2027, 9, 26)
+    assert out["0y"] == date(2027, 9, 30)
     dec = {"fiscal_year_end": "1231"}
     # last quarter end 2026-12-01 -> floor is exactly 2026-12-31: not strictly after, so roll
     assert aer.resolve_annual_period_ends(
@@ -1569,9 +1573,117 @@ def test_annual_label_is_always_the_first_year_end_past_the_floor():
             assert out["0y"] is not None and out["0y"] > floor, (fye, d, out)
             assert (out["0y"] - floor).days <= 366, (fye, d, out)
             assert 364 <= (out["+1y"] - out["0y"]).days <= 366, (fye, d, out)
-            prior = aer.fiscal_quarter_end_from_label(4, out["0y"].year - 1, fye)
+            # every returned year end is a month end (the snap)
+            for label in ("0y", "+1y"):
+                assert (out[label] + timedelta(days=1)).day == 1, (fye, d, label, out)
+            # the PRECEDING fiscal year's (snapped) end must not also be past the floor — for a
+            # snapped-back 0103 filer that year end falls in the previous calendar year, so step
+            # back by year-end date, not by calendar year number
+            prior = aer.nearest_month_end(aer.fiscal_quarter_end_from_label(
+                4, out["0y"].year - (0 if fye == "0103" else 1), fye))
             assert prior <= floor, (fye, d, out, "an earlier year end was also past the floor")
             d += timedelta(days=9)
+
+
+def test_nearest_month_end_is_nearest_not_end_of_the_containing_month():
+    """The snap's unit contract. 0901/0903 go BACK to 08-31 (a 1-3 day drift past the month
+    end, not 27 days forward); 0926/0927 go FORWARD to 09-30; 0103 goes back across New Year;
+    a month end is itself; leap Feb is handled."""
+    table = {
+        date(2027, 8, 30): date(2027, 8, 31), date(2027, 8, 31): date(2027, 8, 31),
+        date(2027, 9, 1): date(2027, 8, 31), date(2027, 9, 3): date(2027, 8, 31),
+        date(2026, 9, 26): date(2026, 9, 30), date(2026, 9, 27): date(2026, 9, 30),
+        date(2027, 1, 3): date(2026, 12, 31), date(2027, 1, 1): date(2026, 12, 31),
+        date(2026, 12, 29): date(2026, 12, 31), date(2026, 12, 31): date(2026, 12, 31),
+        date(2026, 11, 30): date(2026, 11, 30), date(2027, 1, 31): date(2027, 1, 31),
+        date(2027, 2, 1): date(2027, 1, 31), date(2028, 2, 29): date(2028, 2, 29),
+        date(2029, 2, 28): date(2029, 2, 28), date(2028, 3, 1): date(2028, 2, 29),
+        date(2026, 7, 2): date(2026, 6, 30), date(2026, 6, 28): date(2026, 6, 30),
+    }
+    for given, want in table.items():
+        assert aer.nearest_month_end(given) == want, (given, aer.nearest_month_end(given), want)
+    # sweep: always a month end, and no month end (previous / own / next month) is closer
+    def month_end(year, month):
+        first_next = date(year + (month == 12), month % 12 + 1, 1)
+        return first_next - timedelta(days=1)
+
+    d = date(2025, 1, 1)
+    while d < date(2030, 1, 1):
+        got = aer.nearest_month_end(d)
+        assert (got + timedelta(days=1)).day == 1, (d, got)
+        py, pm = (d.year - 1, 12) if d.month == 1 else (d.year, d.month - 1)
+        ny, nm = (d.year + 1, 1) if d.month == 12 else (d.year, d.month + 1)
+        closest = min(abs((c - d).days) for c in
+                      (month_end(py, pm), month_end(d.year, d.month), month_end(ny, nm)))
+        assert abs((got - d).days) == closest, (d, got)
+        d += timedelta(days=1)
+
+
+def test_the_same_fiscal_year_is_ONE_period_end_across_an_edgar_mmdd_drift():
+    """THE BLOCKER (reviewer, 2026-10-16). EDGAR's fiscalYearEnd MMDD drifts a day or two for
+    a 52/53-week filer at each Q1 10-Q — COST 0831 -> 0830, AAPL 0927 -> 0926 — and
+    period_end_date is part of the row key, so an unsnapped label splits one fiscal year's
+    series in two. Same fiscal year, either spelling -> identical labels, before the roll,
+    after it, and across it (night 1 spelled one way, night 2 the other)."""
+    cases = [  # name, (spelling A, spelling B), pre-roll (last_q, release), post-roll (last_q, release), year end
+        ("AAPL", ("0927", "0926"), (date(2026, 6, 27), date(2026, 7, 30)),
+         (date(2026, 9, 26), date(2026, 10, 29)), date(2026, 9, 30)),
+        ("COST", ("0831", "0830"), (date(2026, 5, 10), date(2026, 5, 28)),
+         (date(2026, 8, 30), date(2026, 9, 24)), date(2026, 8, 31)),
+    ]
+    for name, (a, b), (pre_q, pre_rel), (post_q, post_rel), fy_end in cases:
+        # the drift is real: unsnapped, the Finnhub-style resolver WOULD split the year
+        assert (aer.fiscal_quarter_end_from_label(4, fy_end.year, a)
+                != aer.fiscal_quarter_end_from_label(4, fy_end.year, b)), name
+        nxt = date(fy_end.year + 1, fy_end.month, fy_end.day)
+        for q, rel, want in ((pre_q, pre_rel, {"0y": fy_end, "+1y": nxt}),
+                             (post_q, post_rel, {"0y": nxt, "+1y": date(nxt.year + 1, nxt.month,
+                                                                          nxt.day)})):
+            out_a = aer.resolve_annual_period_ends(
+                rel, {"last_reported_quarter_end": q, "fiscal_year_end": a})
+            out_b = aer.resolve_annual_period_ends(
+                rel, {"last_reported_quarter_end": q, "fiscal_year_end": b})
+            assert out_a == out_b == want, (name, q, out_a, out_b, want)
+        # across the roll with the MMDD flipping between the two nights
+        night1 = aer.resolve_annual_period_ends(
+            pre_rel, {"last_reported_quarter_end": pre_q, "fiscal_year_end": a})
+        night2 = aer.resolve_annual_period_ends(
+            post_rel, {"last_reported_quarter_end": post_q, "fiscal_year_end": b})
+        assert night1["+1y"] == night2["0y"], (name, "one fiscal year, one key across the roll")
+        # and the other 52/53-week spellings that snap to the same month end
+    for spelling in ("0830", "0831", "0901", "0903", "0828"):
+        out = aer.resolve_annual_period_ends(
+            date(2026, 9, 24), {"last_reported_quarter_end": date(2026, 8, 30),
+                                "fiscal_year_end": spelling})
+        assert out == {"0y": date(2027, 8, 31), "+1y": date(2028, 8, 31)}, spelling
+    # a January 52/53-week filer: 0103 is the PRECEDING calendar year's 12-31
+    out = aer.resolve_annual_period_ends(
+        date(2026, 11, 20), {"last_reported_quarter_end": date(2026, 10, 3),
+                             "fiscal_year_end": "0103"})
+    assert out == {"0y": date(2026, 12, 31), "+1y": date(2027, 12, 31)}
+
+
+def test_all_seven_yahoo_checked_names_match_yahoo_exactly_even_if_their_mmdd_drifts():
+    """AAPL, COST, WMT, NRIX, AMLX, ETON, ABCL: the label equals Yahoo's observed endDate
+    (2026-10-16) for the stored MMDD AND for every spelling within 3 days either side of it
+    — the MMDD drift the snap exists to absorb."""
+    cases = [  # name, fiscal_year_end, last_reported_quarter_end, last release, Yahoo 0y, +1y
+        ("AAPL", "0926", date(2026, 6, 27), date(2026, 7, 30), date(2026, 9, 30), date(2027, 9, 30)),
+        ("COST", "0830", date(2026, 8, 30), date(2026, 9, 24), date(2027, 8, 31), date(2028, 8, 31)),
+        ("WMT", "0131", date(2026, 7, 31), date(2026, 8, 20), date(2027, 1, 31), date(2028, 1, 31)),
+        ("NRIX", "1130", date(2026, 8, 31), date(2026, 10, 8), date(2026, 11, 30), date(2027, 11, 30)),
+        ("AMLX", "1231", date(2026, 6, 30), date(2026, 8, 12), date(2026, 12, 31), date(2027, 12, 31)),
+        ("ETON", "1231", date(2026, 6, 30), date(2026, 8, 13), date(2026, 12, 31), date(2027, 12, 31)),
+        ("ABCL", "1231", date(2026, 6, 30), date(2026, 8, 7), date(2026, 12, 31), date(2027, 12, 31)),
+    ]
+    for name, fye, last_q, release, yahoo_0y, yahoo_p1y in cases:
+        base = date(2025, int(fye[:2]), int(fye[2:]))      # non-leap year: only to spell MMDDs
+        for delta in range(-3, 4):
+            drifted = base + timedelta(days=delta)
+            spelling = f"{drifted.month:02d}{drifted.day:02d}"
+            out = aer.resolve_annual_period_ends(
+                release, {"last_reported_quarter_end": last_q, "fiscal_year_end": spelling})
+            assert out == {"0y": yahoo_0y, "+1y": yahoo_p1y}, (name, spelling, out)
 
 
 def test_normalize_yfinance_annual_builds_a_distinct_annual_row_from_the_shared_mapping():
@@ -1649,14 +1761,14 @@ async def test_annual_rows_are_written_beside_the_quarterly_rows(monkeypatch):
     assert out["quarter_yf_tickers"] == 1 and out["annual_yf_tickers"] == 1
     annual = [r for r in written if r["period_type"] == "annual"]
     assert len(annual) == 2 and len([r for r in written if r["period_type"] == "quarter"]) == 2
-    assert {r["period_end_date"] for r in annual} == {date(2026, 9, 26), date(2027, 9, 26)}
+    assert {r["period_end_date"] for r in annual} == {date(2026, 9, 30), date(2027, 9, 30)}
     assert all(r["source"] == "yfinance" and r["as_of_date"] == AS_OF for r in annual)
     assert all(r["valid_from_date"] == date(2026, 7, 31) for r in annual), (
         "the same honest window as the quarterly rows: the ticker's last filing")
     assert all(r["period_label_method"] == aer.LABEL_METHOD_YF_FISCAL_YEAR_END for r in annual)
     assert all(r["fiscal_quarter"] is None and r["fiscal_year"] is None for r in annual)
     assert all(r["num_analysts_revenue"] == 40 for r in annual)
-    y0 = next(r for r in annual if r["period_end_date"] == date(2026, 9, 26))
+    y0 = next(r for r in annual if r["period_end_date"] == date(2026, 9, 30))
     assert y0["revenue_avg"] == 478224124500.0 and y0["eps_avg"] == 8.82006
     keys = [(r["ticker"], r["period_type"], r["period_end_date"], r["as_of_date"], r["source"])
             for r in written]
@@ -1915,7 +2027,7 @@ async def test_a_whole_ticker_makes_the_same_requests_with_and_without_annual_fr
     snap = await aer.snapshot_ticker("AAPL", AS_OF)
     assert snap["quarter_yf_rows"] == 2 and snap["annual_yf_rows"] == 2
     assert [r["period_end_date"] for r in snap["rows"] if r["period_type"] == "annual"] == [
-        date(2026, 9, 26), date(2027, 9, 26)]
+        date(2026, 9, 30), date(2027, 9, 30)]
     with_annual = (dict(calls), sorted(_SpyYfTicker.reads), list(_SpyYfTicker.inits))
 
     # the same ticker through a Ticker whose frames have NO annual rows
@@ -2021,6 +2133,10 @@ async def test_the_nightly_annual_row_carries_the_bar_and_leaves_the_main_row_al
     assert main[0].startswith("26 row(s) across 7/7 ticker(s) (14 quarterly-from-yfinance, "), main[0]
     assert "annual" not in main[0], "the existing summary row must read exactly as before"
     assert "6/7 ticker(s)" in annual[0] and "meets the >= 85% bar" in annual[0]
+    # the main row's leading count INCLUDES the 12 annual rows (14 quarterly yfinance + 12
+    # annual = 26); the main row stays byte-identical, so the annual row carries the key
+    assert annual[0].startswith("annual-from-yfinance: 12 annual row(s) (already INCLUDED in "
+                                "the snapshot row's leading row count"), annual[0]
     assert not any(e == "analyst_estimates_error" for e, _ in audits)
 
 
