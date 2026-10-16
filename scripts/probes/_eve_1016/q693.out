@@ -1,0 +1,17 @@
+Output format is unaligned.
+Field separator is "|".
+== theme_validation calls on 2026-10-16
+n|end_turn|max_tok|gt25|gt50|gt100|p90|mean|mx|cost
+140|140|0|37|37|34|178|53.0|350|0.261
+(1 row)
+== FULL-PASS GATE (a broken validator keeps every ticker; only a full call count + zero errors discriminate)
+calls|pass_kind|error_rows
+140|FULL_PASS|0
+(1 row)
+== removals that ET day (full pass Mon/Wed/Fri: baseline off 26/19/19, on-precedent 13; replay 5; bar <15)
+removals
+9
+(1 row)
+== alarms that ET day (truncation / near-ceiling / validation errors)
+event_type|count
+(0 rows)

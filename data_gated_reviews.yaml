@@ -12936,6 +12936,12 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_10_16: >-
+      RAN 2026-10-16 (scripts/probes/_rank_shadow/verify_rank_shadow_2026-10-16.out, cells_2026-10-16.out). No new alert
+      session (latest still 10-14; n = 24 of 25, THIN, directional only). AAOI + HUM (10-09, a pool of 2) MATURED at 5 days:
+      both broke the EP-day low (AAOI low 75.43 vs 108.62; HUM 410.5 vs 428.4); AAOI entered the 09:45 top cell, HUM the rest.
+      5-day EOD: top 0 of 6 at 8x (4 broke low) vs rest 2 of 43 (MRNA, KOD; 28 broke low); 09:45: top 0 of 6 (4) vs rest
+      2 of 43 (28). 20-day unchanged (VICR the only top-cell winner, within chance). Conclusion UNCHANGED. Next: BSP 10-21.
     resolution_2026_10_15: >-
       RAN 2026-10-15 (scripts/probes/_rank_shadow/verify_rank_shadow_2026-10-15.out). No new alert session (zero EP alerts;
       scanner running). n = 24 of 25 sessions, THIN, directional only; matured top cell 6 rows (5-day), 4 (20-day). WOLF
@@ -15720,3 +15726,54 @@ reviews:
       its audit row. Report what fired and what did not; a path that failed is a P0 back on the board.
       Any change to WHAT the stop is stays his (THE LINE).
     cross_refs: ["docs/task_closes.md", "scripts/probes/_646_close_1013/"]
+  - review_id: flag_mna_screen_first_fire_598
+    title: "#598 — the flag board's buyout screen has blocked a name for the first time since its 10-03 rebuild"
+    question: >-
+      #598 closed 2026-10-16 on its sub-feature DONE-WHEN's zero arm: 10 trading days (10-05..10-16) with no
+      flag-detector buyout block while the board carried 0-2 screened names a night. A zero cannot tell a
+      working screen from a dead one, and the positive trace planned for it turned out to be the 17:35 COIL
+      scan's screen, not the 17:25 flag scan's. This tripwire fires on the first flag-detector block so it is
+      checked against its news on the event (docs/task_closes.md #598).
+    predicate_sql: |
+      -- Flag-detector buyout blocks after the close. Read 0 since 2026-10-04; 36 ever, the last 2026-08-12 17:25
+      -- (scripts/probes/_eve_1016/tripwire_598.*), so the row shape is real.
+      SELECT count(*) FROM mi_audit_log
+       WHERE event_type = 'mna_filter_fired' AND created_at >= DATE '2026-10-17'
+         AND (summary LIKE '%(flag)%' OR detail LIKE '%''detector'': ''flag''%')
+    threshold: 1
+    discriminates_on: []
+    earliest_review_date: 2026-10-17
+    status: pending
+    kind: tripwire
+    added_on: 2026-10-16
+    can_fire:
+      predicate_runs: >-
+        Run against prod 2026-10-16 with the date widened (scripts/probes/_eve_1016/tripwire_598.out): 0 since
+        10-04, 36 ever, the last 2026-08-12 17:25 ET.
+      nonzero_possible: >-
+        Writers: flag_detector.py's two `mna_filter_fired` sites (the headline screen ~:1693 and the deal-pin
+        shape check ~:1781), both under should_log_mna_filter_fired dedup; the 17:25 ET flag_continuation_scan
+        runs every weeknight (logs 'flag_scan <date>: ... tightening ...' nightly).
+      lane_live: >-
+        The flag board screens TIGHTENING / COILED / TRIGGERED names nightly; 11 such name-nights in the 10
+        trading days to 10-16.
+      threshold_vs_observed: >-
+        Threshold 1 (a tripwire). Base rate before the rebuild: 36 blocks up to 08-12; none in the two months
+        since, so this may stay quiet for weeks.
+      era_scoped: >-
+        Reads mi_audit_log only, from 2026-10-17 (after the close). The flag screen's code is the 10-03/10-04
+        rebuild (news nominates, the own-day price decides — #692/#394); the 36 earlier blocks are the
+        pre-rebuild rule and are excluded by the date floor.
+      population_actionable: >-
+        Counts exactly the flag-detector blocks (summary '(flag)' or detail detector 'flag'), which are the rows
+        the action checks against news; the coil scan's '(anticipation)' blocks are a different detector and
+        are not counted.
+      instrument_trusted: >-
+        The action reads the block's own audit row (ticker, source, stage) plus the flag row's
+        `mna_filter:<source>` reason in mi_flag_candidates; both writers are in the same branch of
+        flag_detector.py (re-upsert, then the audit row), so a counted block always has its flag row.
+    action_when_ready: >-
+      Read the block against its news: the blocked name must be a deal TARGET (or a price-pinned deal name),
+      never the bidder; its flag row must read `unqualified` with reason `mna_filter:<source>`, and it must not
+      appear in that night's 17:25 digest. A wrong block is a P1 back on the board.
+    cross_refs: ["docs/task_closes.md", "scripts/probes/_eve_1016/", "scripts/probes/_598_close_1016/"]

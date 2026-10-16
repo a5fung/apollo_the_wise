@@ -1,0 +1,5 @@
+21:25:00 [agents.market_intelligence.scheduler] INFO: Flag scan starting...
+21:25:02 [agents.market_intelligence.flag_detector] INFO: flag_scan 2026-10-16: universe=499 | rs_1m_80=473 rs_top200=200 flag_stage_carryforward=8 flag_pivot_window_carryforward=7 momentum_25pct=6
+21:25:02 [agents.market_intelligence.flag_detector] INFO: flag_scan 2026-10-16: scoring 499 candidates | holds_carried=1
+21:25:04 [agents.market_intelligence.flag_detector] INFO: flag_scan 2026-10-16: 0 triggered, 0 coiled, 1 tightening, 1 watch, 9 invalidated, 488 unqualified
+21:25:04 [agents.market_intelligence.flag_detector] INFO: flag_scan: zero triggered/coiled/new-transition — digest suppressed

@@ -1,0 +1,15 @@
+             et             |     event_type      |                                                      summary                                                      
+----------------------------+---------------------+-------------------------------------------------------------------------------------------------------------------
+ 2026-10-07 17:35:10.645284 | mna_filter_released | IOVA: old rule would have blocked (headline_keyword); grader read no grader answer; 1 headline(s) answered no pin
+ 2026-10-08 17:35:21.967606 | mna_filter_released | IOVA: old rule would have blocked (headline_keyword); grader read no grader answer; 1 headline(s) answered no pin
+(2 rows)
+
+                                           x                                            
+----------------------------------------------------------------------------------------
+ --- mna_headline_cap_hit since 10-05 (shared pool exhausted before the flag scan?) ---
+(1 row)
+
+ et | summary 
+----+---------
+(0 rows)
+

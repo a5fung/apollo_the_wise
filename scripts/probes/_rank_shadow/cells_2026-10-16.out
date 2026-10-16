@@ -1,0 +1,14 @@
+FILE verify_rank_shadow_2026-10-16.out
+rows=50 sessions=24 latest=2026-10-14 filled=15 matured5d=49 matured20d=32
+5-DAY cells:
+  EOD    top quartile (<=0.25)  matured= 6  reached8x=0 []  broke_low=4
+  EOD    the rest               matured=43  reached8x=2 ['MRNA', 'KOD']  broke_low=28
+  09:45  top quartile (<=0.25)  matured= 6  reached8x=0 []  broke_low=4
+  09:45  the rest               matured=43  reached8x=2 ['MRNA', 'KOD']  broke_low=28
+20-DAY (secondary; only rows with 21 sessions):
+  EOD    top   matured= 4 reached8x=1 ['VICR']
+  EOD    rest  matured=28 reached8x=1 ['MRNA']
+  09:45  top   matured= 3 reached8x=1 ['VICR']
+  09:45  rest  matured=29 reached8x=1 ['MRNA']
+TOP-QUARTILE rows (EOD rank<=0.25) matured: [('DG', '2026-08-27', 1.93, True), ('ERO', '2026-09-08', 1.46, True), ('SRRK', '2026-09-14', 0.17, True), ('VICR', '2026-09-17', 6.02, False), ('MSTR', '2026-09-21', 0.63, True), ('SNPS', '2026-10-01', 2.58, False)]
+big winners (>=8x 5d, any rank): [('MRNA', '2026-08-19', 9.13, 0.875, 4), ('KOD', '2026-09-28', 12.43, 0.5, 1)]
