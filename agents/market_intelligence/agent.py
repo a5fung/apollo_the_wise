@@ -2230,7 +2230,8 @@ class MarketIntelligenceAgent(BaseAgent):
         # Function-local ON PURPOSE: agent.py is loaded by apollo-execution, flag_detector is not —
         # a module-level import would make the execution container load it (preflight [5n/7]).
         from agents.market_intelligence.flag_detector import (
-            board_tightness, triggered_bucket_summary, triggered_close_phrase, triggered_from_label,
+            board_tightness, post_breakout_label, triggered_bucket_summary, triggered_close_phrase,
+            triggered_from_label,
         )
 
         task = request.task.lower()
@@ -2251,9 +2252,13 @@ class MarketIntelligenceAgent(BaseAgent):
                 # #146: which path licensed a RAW TRIGGERED read (a held row carries none)
                 via = triggered_from_label(r)
                 via_s = f" · {via}" if via else ""
+                # #697 item 4: the night after a close above the pole the pivot re-anchors and the row reads age 0 -
+                # say which flag it broke out of and how many sessions ago instead of leaving a bare age 0
+                post = post_breakout_label(r)
+                post_s = f" · {post}" if post else ""
                 lines.append(
                     f"  {r['scan_date']}  `{r['stage']:<11}` "
-                    f"age {r.get('base_age') or '—':<3}  {tight_s}{held}{via_s}"
+                    f"age {r.get('base_age') or '—':<3}  {tight_s}{held}{via_s}{post_s}"
                 )
             return self._ok(request, result="\n".join(lines))
 

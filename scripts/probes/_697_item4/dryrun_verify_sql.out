@@ -1,0 +1,8 @@
+[corpus] 870 replayed rows (748 reach the pivot) -> {'ok_null': (585, None), 'ok_stamped': (156, None)}
+[capture] 6716 replayed rows (5651 reach the pivot) -> {'ok_null': (4495, None), 'ok_stamped': (1110, None)}
+  bites: a stamp deleted                               -> VIOLATION_missing_stamp (1, 'NEO')
+  bites: a stamp invented on a row with no breakout    -> VIOLATION_unsupported_stamp (1, 'LIFE')
+  bites: a day count off by one                        -> VIOLATION_wrong_value (1, 'NEO')
+  bites: a stamp citing another pole                   -> VIOLATION_wrong_value (1, 'NEO')
+  statement 3 (shape): 0 on real rows, 1 on days=26
+AGREE on every replayed row: ok_null=5080, ok_stamped=1266, VIOLATION=0

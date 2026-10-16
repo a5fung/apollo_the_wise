@@ -1,0 +1,21 @@
+#697 item 4 - NO STAGE RULE MOVED: the shipped detector, replayed before and after the change (captured once, 2026-10-16)
+
+Command (repo root, identical on both sides):
+  PYTHONPATH=. python scripts/probes/_697_item4/replay_equiv.py --equiv <out.jsonl> --events <out.tsv>
+  - populations: the 10 labelled-corpus tickers (tests/fixtures/htf_labelled_bars.psv) + the 62-ticker prod capture
+    (scripts/probes/_697/q6_extra_bars.out), 2026-05-04 -> 2026-10-09; state threaded the way run_flag_scan threads it
+  - dumped per ticker-day: EVERY field compute_flag_metrics returns EXCEPT post_breakout_from / days_since_breakout
+
+BEFORE  main @ f06371f4 (detector takes no carry):  rows replayed: 7586; rows carrying post_breakout_from: 0
+AFTER   this branch (detector takes the carry):     rows replayed: 7586; rows carrying post_breakout_from: 1266
+  sha256  678042dee8d12d93d85e9a1bb4fd830b51c46a23b6d288444d59e209894f5138  baseline_equiv.jsonl
+  sha256  678042dee8d12d93d85e9a1bb4fd830b51c46a23b6d288444d59e209894f5138  final_equiv.jsonl
+  cmp baseline_equiv.jsonl final_equiv.jsonl  ->  BYTE-IDENTICAL (7586 of 7586 rows; stage, held_from_stage, reason, score,
+  pivot, base, runup, triggered_from, failed_at ... all of it)
+
+Tests, same files before and after (tests/test_697_*.py test_146_*.py test_htf_*.py test_610_htf_four_reading_observer.py
+test_354_flag_failure_telemetry.py test_592_flag_pivot_carry.py test_598_*.py test_flag_*.py):
+  BEFORE 347 passed.  AFTER the change, before any test edit: 346 passed, 1 failed - test_610's pin on the INSERT parameter count
+  (41 -> 43, the two new columns; updated, with an added assertion that a record with no breakout writes (None, None)).
+  Full suite (python -m pytest tests/ -q -p no:cacheprovider): BEFORE 11,133 passed + 10 skipped (exit 0, counted from the progress dots);
+  AFTER 11,160 passed, 10 skipped, 10 warnings in 158.53s (exit 0) = +27 tests, the new tests/test_697_item4_post_breakout.py.
