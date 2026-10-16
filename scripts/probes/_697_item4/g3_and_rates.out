@@ -1,0 +1,11 @@
+capture episodes (a row whose stamp differs from the previous replayed row's): 71 tickers: 36
+days on the first stamped row: 1 -> 58 | 2 -> 8 | >=3 -> 5
+G3 CDNA 2026-07-31 -> next row 2026-08-03: stamp from=2026-07-16 day=1 reason=base_age_0_below_3 pivot=2026-07-31 | stored: - 
+G3 CDNA 2026-08-25 -> next row 2026-08-26: stamp from=2026-08-03 day=1 reason=base_age_0_below_3 pivot=2026-08-25 | stored: - 
+G3 CHPT 2026-09-18 -> next row 2026-09-21: stamp from=2026-09-04 day=1 reason=base_age_0_below_3 pivot=2026-09-18 | stored: base_age_0_below_3 2026-09-18
+G3 EFOR 2026-10-01 -> next row 2026-10-02: stamp from=2026-09-14 day=1 reason=base_age_0_below_3 pivot=2026-10-01 | stored: base_age_0_below_3 2026-10-01
+G3 HELP 2026-08-04 -> next row 2026-08-05: stamp from=2026-07-21 day=1 reason=base_age_0_below_3 pivot=2026-08-04 | stored: base_age_0_below_3 2026-08-04
+G3 PBF 2026-09-02 -> next row 2026-09-03: stamp from=2026-07-30 day=13 reason=base_age_0_below_3 pivot=2026-09-02 | stored: base_age_0_below_3 2026-09-02
+G3 REPL 2026-09-02 -> next row 2026-09-03: stamp from=2026-08-12 day=7 reason=base_age_0_below_3 pivot=2026-09-02 | stored: base_age_0_below_3 2026-09-02
+G3 TJGC 2026-09-11 -> next row 2026-09-14: stamp from=2026-09-01 day=2 reason=base_age_0_below_3 pivot=2026-09-11 | stored: base_age_0_below_3 2026-09-11
+G3 XHLD 2026-09-09 -> next row 2026-09-10: stamp from=2026-08-28 day=1 reason=base_age_0_below_3 pivot=2026-09-09 | stored: base_age_0_below_3 2026-09-09

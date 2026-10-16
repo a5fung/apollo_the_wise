@@ -407,6 +407,7 @@ async def test_run_flag_scan_pushes_only_the_real_new_entries(world, monkeypatch
     monkeypatch.setattr(db, "get_sectors_batch", AsyncMock(return_value={}))
     monkeypatch.setattr(db, "get_yesterday_flag_pivots", AsyncMock(return_value={}))
     monkeypatch.setattr(db, "get_flag_failure_carry", AsyncMock(return_value={}))
+    monkeypatch.setattr(db, "get_flag_post_breakout_carry", AsyncMock(return_value={}))
     monkeypatch.setattr(db, "get_recent_daily_history", AsyncMock(return_value=[{}] * 80))
     monkeypatch.setattr(db, "insert_flag_candidate", AsyncMock())
     monkeypatch.setattr(fd, "_check_deal_pin_signatures_batch", AsyncMock(return_value={}))

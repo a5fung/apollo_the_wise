@@ -22,6 +22,11 @@ TRIGGERED breakout later closed back under the base it broke out of, and HOW
 FAR it fell — set inside `compute_flag_metrics`, right after the pivot
 anchor. They never affect `stage`. See the CREATE TABLE comment on
 mi_flag_candidates (db.py) for the NULL semantics of each.
+
+`post_breakout_from` / `days_since_breakout` (#697 item 4, 2026-10-16): the flag a name
+last broke out of and how many sessions ago, so the rows after the pivot re-anchors read
+more than a bare `base_age_0`. Same stance - observational, set right after the pivot
+anchor, read by no stage. See `_post_breakout_state` and docs/setups/htf.md.
 """
 from __future__ import annotations
 
@@ -886,6 +891,102 @@ def _find_pivot_high(
     return (pivot_idx, float(rows[pivot_idx]["high_price"]))
 
 
+# ── #697 item 4 (htf_scope G3, 2026-10-16): the post-breakout state ─────────────────────────────────────────
+#
+# When price CLOSES above the pole top of a formed flag, the next scan re-anchors the pivot on the breakout bar
+# (`_find_pivot_high` + `_flag_resolved_by`), the base window restarts at zero and the row reads a bare
+# `base_age_0_below_3`: the board forgets the flag (CDNA 08-26, MRNA 09-23; 11 pushable ticker-days in 60). These
+# helpers record WHICH flag the name broke out of and how many sessions ago, as two columns on the row
+# (`post_breakout_from`, `days_since_breakout`). TELEMETRY ONLY: no stage, gate, threshold, hysteresis, M&A screen,
+# universe path or order path reads them (tests/test_697_item4_post_breakout.py replays the corpus and asserts every
+# other field of every row is identical with and without them).
+#
+# The definition is a chart fact, deliberately NOT a stage test: MRNA, the operator's top-rated example, was
+# `unqualified` (flag depth on the low) every night of its flag and still broke out of it on 2026-09-22.
+#   * the flag: a pole top whose pole the detector would call a pole (`_RUNUP_MIN_RATIO` over `_RUNUP_LOOKBACK_DAYS`,
+#     measured exactly as the runup gate measures it) with a base of at least `_BASE_AGE_MIN_WATCH` sessions under it
+#     when the breakout bar printed - fewer bars is a pole still extending, not a flag (`_flag_resolved_by`'s own line);
+#   * the breakout: the first bar after that, strictly before today, that CLOSED above the pole top's high;
+#   * the re-anchor: the pivot the finder chose today is a LATER bar than yesterday's carried pivot;
+#   * `days_since_breakout` = trading sessions from the breakout bar to today (1 = the first row after the breakout
+#     bar), derived from the bars every night so a skipped scan cannot drift it; the stamp lapses after
+#     `_PIVOT_LOOKBACK_DAYS` sessions, and it only shows while the ticker is still SCANNED: the universe carry
+#     (htf.md item 2, path (e)) holds a TIGHTENING-or-better name 25 sessions from its last such row, not from the
+#     breakout bar, and does not cover a name that never reached a pushable stage (MRNA's rows come from the
+#     organic universe).
+# The carried date comes from the ticker's last stored row (`db.get_flag_post_breakout_carry`); a newer breakout
+# replaces it. A claim the bars no longer support (the pole bar is gone, no formed close above it) lapses to NULL.
+
+def _index_of_date(rows: list[dict], d: date, lo: int, hi: int) -> Optional[int]:
+    """Index in `rows[lo:hi]` of the bar dated `d`, or None."""
+    for i in range(lo, hi):
+        if rows[i]["trade_date"] == d:
+            return i
+    return None
+
+
+def _flag_breakout_idx(rows: list[dict], pole_idx: int, before_idx: int) -> Optional[int]:
+    """Index of the bar that broke out of the flag under the pole top at `pole_idx`, or None. PURE.
+
+    None unless the pole is a pole (high / lowest low of the `_RUNUP_LOOKBACK_DAYS` sessions ending at the top,
+    >= `_RUNUP_MIN_RATIO` - the runup gate's own quantity). Else the first bar from `_BASE_AGE_MIN_WATCH` sessions
+    after the top up to (not including) `before_idx` that closed above the top's high."""
+    start = max(0, pole_idx - _RUNUP_LOOKBACK_DAYS + 1)
+    low = min(float(r["low_price"]) for r in rows[start: pole_idx + 1])
+    pole_high = float(rows[pole_idx]["high_price"])
+    if low <= 0 or pole_high / low < _RUNUP_MIN_RATIO:
+        return None
+    for j in range(pole_idx + 1 + _BASE_AGE_MIN_WATCH, before_idx):
+        if float(rows[j]["close"]) > pole_high:
+            return j
+    return None
+
+
+def _post_breakout_state(
+    rows: list[dict],
+    today_idx: int,
+    pivot_idx: int,
+    prior_pivot_date: Optional[date],
+    carried_from: Optional[date],
+) -> tuple[Optional[date], Optional[int]]:
+    """`(post_breakout_from, days_since_breakout)` for today's row; `(None, None)` when the name has not broken out
+    of a flag within `_PIVOT_LOOKBACK_DAYS` sessions. PURE. `pivot_idx` is the pivot the finder chose today,
+    `prior_pivot_date` yesterday's carried pivot, `carried_from` the date stamped on the ticker's last stored row."""
+    # a breakout re-anchor TODAY: the pivot moved forward off a pole top still inside the lookback, and a formed flag
+    # under that top closed above it. The newest breakout wins over a carried one.
+    if prior_pivot_date is not None:
+        prior_idx = _index_of_date(rows, prior_pivot_date, max(0, today_idx - _PIVOT_LOOKBACK_DAYS), today_idx)
+        if prior_idx is not None and pivot_idx > prior_idx:
+            b = _flag_breakout_idx(rows, prior_idx, today_idx)
+            if b is not None:
+                return prior_pivot_date, today_idx - b
+    if carried_from is not None:
+        pole_idx = _index_of_date(rows, carried_from, 0, today_idx)
+        if pole_idx is not None:
+            b = _flag_breakout_idx(rows, pole_idx, today_idx)
+            if b is not None and today_idx - b <= _PIVOT_LOOKBACK_DAYS:
+                return carried_from, today_idx - b
+    return None, None
+
+
+def post_breakout_label(r: dict) -> str:
+    """PURE. Plain words for the post-breakout state on a stored row (`post_breakout_from` + `days_since_breakout`),
+    e.g. `broke out of the 09-16 flag 4 sessions ago` (`1 session ago` on the first row after the breakout bar), or ""
+    when the row carries none. Says "sessions ago", never "day N": a reader takes "day 1" for the breakout day itself,
+    one session early. The breakout date is not stored (a third column was rejected), so the date of the flag it broke
+    out of is the only date named. Markdown-safe (no underscores or asterisks). ONE place, so the 14-day history cannot
+    word it two ways. Display only - nothing gates on it."""
+    frm, days = r.get("post_breakout_from"), r.get("days_since_breakout")
+    if frm is None or days is None:
+        return ""
+    try:
+        stamp = (frm if isinstance(frm, date) else date.fromisoformat(str(frm))).strftime("%m-%d")
+        n = int(days)
+        return f"broke out of the {stamp} flag {n} session{'' if n == 1 else 's'} ago"
+    except (TypeError, ValueError):
+        return ""
+
+
 def compute_flag_metrics(
     rows: list[dict],
     ticker: Optional[str] = None,
@@ -898,6 +999,7 @@ def compute_flag_metrics(
     prior_pivot_high: Optional[float] = None,
     prior_failure: Optional[dict] = None,
     yesterday_was_held: bool = False,
+    prior_post_breakout: Optional[date] = None,
 ) -> dict[str, Any]:
     """Score the LAST row in `rows` as a continuation-flag candidate.
 
@@ -921,6 +1023,11 @@ def compute_flag_metrics(
     whenever `yesterday_stage` is a stored stage — a replay that threads its own output must pass
     `prev["held_from_stage"] is not None` — or a downgrade is held night after night (the
     pre-#697-item-5 behaviour).
+
+    `prior_post_breakout` = the `post_breakout_from` stamped on the ticker's last stored row
+    (`db.get_flag_post_breakout_carry`) - the flag it broke out of, carried until the stamp lapses
+    after `_PIVOT_LOOKBACK_DAYS` sessions (#697 item 4). Telemetry: read by no stage or gate; pass None
+    during a fresh replay (the two output columns then appear only on a breakout re-anchor seen today).
 
     Returns a dict with every metric + final `stage`. Hysteresis applied at end:
     a downgrade vs `yesterday_stage` is held ONE day (except INVALIDATED, which fires
@@ -983,6 +1090,10 @@ def compute_flag_metrics(
         "failed_at": None,
         "low_after_breakout": None,
         "undercut_after_breakout": None,
+        # #697 item 4 (2026-10-16): the flag this name broke out of, and how many sessions ago (see
+        # `_post_breakout_state`). Telemetry; NULL until a breakout re-anchor is on record for the name.
+        "post_breakout_from": None,
+        "days_since_breakout": None,
     }
 
     if not rows:
@@ -1091,6 +1202,19 @@ def compute_flag_metrics(
             base["undercut_after_breakout"] = False
         if anchor_low is not None and close_today < anchor_low:
             base["undercut_after_breakout"] = True
+
+    # ── Post-breakout state (#697 item 4, 2026-10-16) ─────────────────────
+    # Placed here, before the `base_age_N_below_3` return just below: the rows it exists for ARE those rows (the
+    # night after a breakout re-anchors the pivot, base_age is 0). Observational only - no stage, gate or threshold
+    # reads it - and it must never be load-bearing for the scan: a bar it cannot read leaves both columns NULL
+    # rather than costing the ticker its row.
+    try:
+        base["post_breakout_from"], base["days_since_breakout"] = _post_breakout_state(
+            rows, today_idx, pivot_idx, prior_pivot_date, prior_post_breakout,
+        )
+    except Exception as e:
+        logger.warning("post-breakout state skipped for %s: %s", ticker, e)
+        base["post_breakout_from"], base["days_since_breakout"] = None, None
 
     # ── Base window: strictly between pivot and today ────────────────────
     base_rows = rows[pivot_idx + 1 : today_idx]   # excludes pivot AND today
@@ -1464,7 +1588,7 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
     )
 
     ((yesterday_map, held_yesterday), recent_map, rs_map, sector_map, pivot_map,
-     failure_map) = await asyncio.gather(
+     failure_map, post_breakout_map) = await asyncio.gather(
         # #697 item 5: the stored stage AND which of those stored stages were themselves a hold (a hold is never
         # followed by one) — one statement, so both come from the same row of the same snapshot
         db.get_yesterday_flag_state(scan_date),
@@ -1473,6 +1597,8 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
         db.get_sectors_batch(universe),
         db.get_yesterday_flag_pivots(scan_date, carry_days=_PIVOT_CARRY_DAYS),
         db.get_flag_failure_carry(scan_date),
+        # #697 item 4: the flag each ticker last broke out of (telemetry; fails open to {} - see the reader)
+        db.get_flag_post_breakout_carry(scan_date, carry_days=_PIVOT_CARRY_DAYS),
     )
 
     # holds_carried = how many tickers' yesterday-row was a hold, i.e. how many will NOT be held again (#697 item 5).
@@ -1504,6 +1630,7 @@ async def run_flag_scan(scan_date: date) -> dict[str, list[dict]]:
                     prior_pivot_date=prior_pivot[0] if prior_pivot else None,
                     prior_pivot_high=prior_pivot[1] if prior_pivot else None,
                     prior_failure=failure_map.get(ticker),
+                    prior_post_breakout=post_breakout_map.get(ticker),
                 )
                 metrics["scan_date"] = scan_date
                 # P7.2: record universe-pattern provenance for telemetry

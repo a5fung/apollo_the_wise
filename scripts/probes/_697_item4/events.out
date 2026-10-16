@@ -1,0 +1,82 @@
+rows with the stamp: 1266 | first-day events: 80
+events per ticker (top): [('REPL', 8), ('TXG', 6), ('ABCL', 5), ('SLS', 4), ('EFOR', 3), ('HELP', 3), ('SLN', 3), ('XNCR', 3), ('CDNA', 2), ('OUST', 2), ('ABSI', 2), ('AMBQ', 2), ('APPN', 2), ('APPS', 2), ('BB', 2)]
+corpus  CDNA  2026-08-03 stage=unqualified pivot=2026-07-31 age=  0 from=2026-07-16 day=1 | stored: 
+corpus  CDNA  2026-08-26 stage=unqualified pivot=2026-08-25 age=  0 from=2026-08-03 day=1 | stored: 
+corpus  HNGE  2026-06-16 stage=unqualified pivot=2026-06-15 age=  0 from=2026-06-05 day=1 | stored: 
+corpus  OUST  2026-05-26 stage=unqualified pivot=2026-05-22 age=  0 from=2026-05-15 day=1 | stored: 
+corpus  OUST  2026-06-30 stage=unqualified pivot=2026-06-29 age=  0 from=2026-06-02 day=1 | stored: 
+corpus  REPL  2026-06-01 stage=unqualified pivot=2026-05-29 age=  0 from=2026-05-13 day=1 | stored: 
+corpus  REPL  2026-06-23 stage=unqualified pivot=2026-06-22 age=  0 from=2026-06-04 day=1 | stored: 
+corpus  REPL  2026-08-13 stage=unqualified pivot=2026-08-12 age=  0 from=2026-08-06 day=1 | stored: 
+corpus  REPL  2026-09-03 stage=unqualified pivot=2026-09-02 age=  0 from=2026-08-12 day=7 | stored: 
+capture ABCL  2026-06-29 stage=unqualified pivot=2026-06-26 age=  0 from=2026-06-01 day=1 | stored: 
+capture ABCL  2026-08-11 stage=unqualified pivot=2026-08-10 age=  0 from=2026-07-07 day=1 | stored: unqualified||base_age_0_below_3|2026-08-10|10.01
+capture ABCL  2026-08-26 stage=unqualified pivot=2026-08-25 age=  0 from=2026-08-19 day=1 | stored: unqualified||base_age_0_below_3|2026-08-25|12.5
+capture ABCL  2026-09-18 stage=unqualified pivot=2026-09-17 age=  0 from=2026-08-25 day=1 | stored: unqualified||base_age_0_below_3|2026-09-17|13.18
+capture ABCL  2026-09-29 stage=unqualified pivot=2026-09-28 age=  0 from=2026-09-17 day=1 | stored: unqualified||base_age_0_below_3|2026-09-28|14.2299
+capture ABSI  2026-06-01 stage=unqualified pivot=2026-05-29 age=  0 from=2026-05-11 day=1 | stored: 
+capture ABSI  2026-06-23 stage=unqualified pivot=2026-06-22 age=  0 from=2026-05-29 day=2 | stored: 
+capture AMBQ  2026-05-21 stage=unqualified pivot=2026-05-20 age=  0 from=2026-05-13 day=1 | stored: 
+capture AMBQ  2026-06-22 stage=unqualified pivot=2026-06-18 age=  0 from=2026-05-26 day=1 | stored: 
+capture AMPL  2026-08-28 stage=unqualified pivot=2026-08-27 age=  0 from=2026-08-13 day=1 | stored: unqualified||base_age_0_below_3|2026-08-27|14.325
+capture APPN  2026-08-20 stage=WATCH       pivot=2026-08-14 age=  3 from=2026-08-13 day=1 | stored: WATCH||runup_93% base_3d close_vs_pivot_-1.0%|2026-08-14|37.66
+capture APPN  2026-08-24 stage=unqualified pivot=2026-08-21 age=  0 from=2026-08-14 day=1 | stored: unqualified||base_age_0_below_3|2026-08-21|38.46
+capture APPS  2026-06-10 stage=unqualified pivot=2026-06-09 age=  0 from=2026-06-01 day=1 | stored: 
+capture APPS  2026-06-29 stage=unqualified pivot=2026-06-26 age=  0 from=2026-06-10 day=1 | stored: 
+capture BB    2026-05-26 stage=unqualified pivot=2026-05-22 age=  0 from=2026-05-08 day=2 | stored: 
+capture BB    2026-06-29 stage=unqualified pivot=2026-06-26 age=  0 from=2026-06-04 day=1 | stored: 
+capture CHPT  2026-09-21 stage=unqualified pivot=2026-09-18 age=  0 from=2026-09-04 day=1 | stored: unqualified||base_age_0_below_3|2026-09-18|10.72
+capture CRWD  2026-07-07 stage=unqualified pivot=2026-07-06 age=  0 from=2026-06-01 day=1 | stored: unqualified||base_age_0_below_3|2026-07-06|209.5
+capture DDOG  2026-05-18 stage=unqualified pivot=2026-05-15 age=  0 from=2026-05-11 day=1 | stored: 
+capture DELL  2026-08-05 stage=unqualified pivot=2026-08-04 age=  0 from=2026-07-09 day=1 | stored: unqualified||base_age_0_below_3|2026-08-04|476.9
+capture EFOR  2026-08-14 stage=INVALIDATED pivot=2026-08-10 age=  3 from=2026-08-07 day=1 | stored: INVALIDATED||close_31.67_below_base_low_close_32.72|2026-08-10|33.73
+capture EFOR  2026-09-15 stage=unqualified pivot=2026-09-14 age=  0 from=2026-08-10 day=1 | stored: unqualified||base_age_0_below_3|2026-09-14|34.37
+capture EFOR  2026-10-02 stage=unqualified pivot=2026-10-01 age=  0 from=2026-09-14 day=1 | stored: unqualified||base_age_0_below_3|2026-10-01|37.66
+capture ETON  2026-08-25 stage=unqualified pivot=2026-08-24 age=  0 from=2026-08-17 day=2 | stored: unqualified||base_age_0_below_3|2026-08-24|66.37
+capture FIVN  2026-06-02 stage=unqualified pivot=2026-06-01 age=  0 from=2026-05-05 day=1 | stored: 
+capture HELP  2026-08-05 stage=unqualified pivot=2026-08-04 age=  0 from=2026-07-21 day=1 | stored: unqualified||base_age_0_below_3|2026-08-04|9.4
+capture HELP  2026-08-14 stage=unqualified pivot=2026-08-13 age=  0 from=2026-08-06 day=2 | stored: unqualified||base_age_0_below_3|2026-08-13|11.95
+capture HELP  2026-08-21 stage=unqualified pivot=2026-08-20 age=  0 from=2026-08-13 day=1 | stored: unqualified||base_age_0_below_3|2026-08-20|12.715
+capture HTFL  2026-10-06 stage=TRIGGERED   pivot=2026-09-18 age= 11 from=2026-08-31 day=1 | stored: TIGHTENING|WATCH|runup_117% base_11d close_vs_pivot_-2.9%|2026-09-18|52.2212
+capture LIFE  2026-08-25 stage=unqualified pivot=2026-08-24 age=  0 from=2026-08-13 day=1 | stored: unqualified||base_age_0_below_3|2026-08-24|37.17
+capture LIFE  2026-09-09 stage=unqualified pivot=2026-09-08 age=  0 from=2026-08-26 day=1 | stored: unqualified||base_age_0_below_3|2026-09-08|42.55
+capture MBX   2026-08-05 stage=unqualified pivot=2026-08-04 age=  0 from=2026-07-09 day=1 | stored: unqualified||base_age_0_below_3|2026-08-04|71.12
+capture MBX   2026-08-24 stage=INVALIDATED pivot=2026-08-05 age= 12 from=2026-07-09 day=14 | stored: 
+capture MRNA  2026-09-23 stage=unqualified pivot=2026-09-22 age=  0 from=2026-08-19 day=1 | stored: unqualified||base_age_0_below_3|2026-09-22|187.2
+capture NEO   2026-07-31 stage=unqualified pivot=2026-07-29 age=  1 from=2026-07-02 day=1 | stored: unqualified||base_age_1_below_3|2026-07-29|16.1
+capture OKTA  2026-07-07 stage=unqualified pivot=2026-07-02 age=  1 from=2026-06-01 day=1 | stored: unqualified||base_age_1_below_3|2026-07-02|145.95
+capture OKTA  2026-07-15 stage=unqualified pivot=2026-07-14 age=  0 from=2026-07-07 day=1 | stored: unqualified||base_age_0_below_3|2026-07-14|155.55
+capture OMER  2026-08-20 stage=unqualified pivot=2026-08-19 age=  0 from=2026-08-13 day=1 | stored: unqualified||base_age_0_below_3|2026-08-19|18.89
+capture OMER  2026-09-23 stage=unqualified pivot=2026-09-22 age=  0 from=2026-08-21 day=1 | stored: unqualified||base_age_0_below_3|2026-09-22|21.2399
+capture PBF   2026-09-03 stage=unqualified pivot=2026-09-02 age=  0 from=2026-07-30 day=13 | stored: unqualified||base_age_0_below_3|2026-09-02|77.94
+capture PGEN  2026-08-21 stage=unqualified pivot=2026-08-20 age=  0 from=2026-08-05 day=1 | stored: unqualified||base_age_0_below_3|2026-08-20|7.49
+capture RBRK  2026-07-07 stage=unqualified pivot=2026-07-06 age=  0 from=2026-06-01 day=1 | stored: unqualified||base_age_0_below_3|2026-07-06|89.35
+capture REPL  2026-06-01 stage=unqualified pivot=2026-05-29 age=  0 from=2026-05-13 day=1 | stored: 
+capture REPL  2026-06-23 stage=unqualified pivot=2026-06-22 age=  0 from=2026-06-04 day=1 | stored: 
+capture REPL  2026-08-13 stage=unqualified pivot=2026-08-12 age=  0 from=2026-08-06 day=1 | stored: unqualified||base_age_0_below_3|2026-08-12|15.68
+capture REPL  2026-09-03 stage=unqualified pivot=2026-09-02 age=  0 from=2026-08-12 day=7 | stored: unqualified||base_age_0_below_3|2026-09-02|16.33
+capture SDGR  2026-10-06 stage=unqualified pivot=2026-10-05 age=  0 from=2026-09-23 day=1 | stored: unqualified||base_age_0_below_3|2026-10-05|33.09
+capture SLN   2026-07-23 stage=unqualified pivot=2026-07-22 age=  0 from=2026-06-29 day=1 | stored: 
+capture SLN   2026-08-10 stage=unqualified pivot=2026-07-27 age=  9 from=2026-06-29 day=13 | stored: unqualified||pole_12.17_only_69%_of_52w_high_17.58_(not_stage2)|2026-07-28|12.1689
+capture SLN   2026-08-11 stage=unqualified pivot=2026-08-10 age=  0 from=2026-07-27 day=1 | stored: unqualified||base_age_0_below_3|2026-08-10|17.5758
+capture SLS   2026-05-21 stage=unqualified pivot=2026-05-20 age=  0 from=2026-05-14 day=1 | stored: 
+capture SLS   2026-06-01 stage=unqualified pivot=2026-05-29 age=  0 from=2026-05-20 day=2 | stored: 
+capture SLS   2026-06-26 stage=unqualified pivot=2026-06-25 age=  0 from=2026-05-29 day=1 | stored: 
+capture SLS   2026-08-20 stage=unqualified pivot=2026-08-19 age=  0 from=2026-07-17 day=1 | stored: unqualified||base_age_0_below_3|2026-08-19|14.29
+capture TEM   2026-09-28 stage=unqualified pivot=2026-09-25 age=  0 from=2026-09-17 day=2 | stored: unqualified||base_age_0_below_3|2026-09-25|85.46
+capture TJGC  2026-09-14 stage=unqualified pivot=2026-09-11 age=  0 from=2026-09-01 day=2 | stored: unqualified||base_age_0_below_3|2026-09-11|11.5
+capture TJGC  2026-09-21 stage=unqualified pivot=2026-09-18 age=  0 from=2026-09-14 day=1 | stored: unqualified||base_age_0_below_3|2026-09-18|19.18
+capture TRAX  2026-07-28 stage=unqualified pivot=2026-07-27 age=  0 from=2026-07-10 day=1 | stored: unqualified||base_age_0_below_3|2026-07-27|46.45
+capture TXG   2026-07-10 stage=unqualified pivot=2026-07-09 age=  0 from=2026-07-01 day=1 | stored: unqualified||base_age_0_below_3|2026-07-09|43.1
+capture TXG   2026-07-22 stage=WATCH       pivot=2026-07-15 age=  4 from=2026-07-14 day=1 | stored: WATCH||runup_122% base_4d close_vs_pivot_+1.6%|2026-07-15|46.32
+capture TXG   2026-07-23 stage=unqualified pivot=2026-07-22 age=  0 from=2026-07-15 day=2 | stored: unqualified||base_age_0_below_3|2026-07-22|47.85
+capture TXG   2026-08-10 stage=unqualified pivot=2026-08-07 age=  0 from=2026-07-23 day=1 | stored: unqualified||base_age_0_below_3|2026-08-07|52.22
+capture TXG   2026-08-20 stage=unqualified pivot=2026-08-19 age=  0 from=2026-08-10 day=1 | stored: unqualified||base_age_0_below_3|2026-08-19|62.36
+capture TXG   2026-09-14 stage=unqualified pivot=2026-09-11 age=  0 from=2026-08-25 day=3 | stored: unqualified||base_age_0_below_3|2026-09-11|69.67
+capture XHLD  2026-08-26 stage=unqualified pivot=2026-08-25 age=  0 from=2026-08-19 day=1 | stored: unqualified||base_age_0_below_3|2026-08-25|8.76
+capture XHLD  2026-09-10 stage=unqualified pivot=2026-09-09 age=  0 from=2026-08-28 day=1 | stored: unqualified||base_age_0_below_3|2026-09-09|12.155
+capture XMTR  2026-05-21 stage=unqualified pivot=2026-05-20 age=  0 from=2026-05-13 day=1 | stored: 
+capture XMTR  2026-05-28 stage=unqualified pivot=2026-05-27 age=  0 from=2026-05-20 day=1 | stored: 
+capture XNCR  2026-07-31 stage=unqualified pivot=2026-07-30 age=  0 from=2026-07-21 day=1 | stored: unqualified||base_age_0_below_3|2026-07-30|21.76
+capture XNCR  2026-08-12 stage=unqualified pivot=2026-08-10 age=  1 from=2026-07-30 day=1 | stored: unqualified||base_age_1_below_3|2026-08-10|21.81
+capture XNCR  2026-08-19 stage=unqualified pivot=2026-08-18 age=  0 from=2026-08-12 day=1 | stored: unqualified||base_age_0_below_3|2026-08-18|25.53

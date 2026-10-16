@@ -71,6 +71,7 @@ def world(monkeypatch):
     monkeypatch.setattr(db, "get_sectors_batch", AsyncMock(return_value={}))
     monkeypatch.setattr(db, "get_yesterday_flag_pivots", AsyncMock(return_value={}))
     monkeypatch.setattr(db, "get_flag_failure_carry", AsyncMock(return_value={}))
+    monkeypatch.setattr(db, "get_flag_post_breakout_carry", AsyncMock(return_value={}))
     monkeypatch.setattr(fd, "reconcile_flag_state_post_eod", AsyncMock())
     monkeypatch.setattr(ma_filter, "should_log_mna_filter_fired", AsyncMock(return_value=True))
     return w

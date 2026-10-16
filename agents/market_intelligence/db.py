@@ -2661,6 +2661,19 @@ async def initialize_schema() -> None:
                 -- raw read: nothing licensed it today), so a bucket SELECT filters `held_from_stage IS NULL`. Read by
                 -- NO gate and no order path; display + bucket SELECTs only (htf.md "Bucket the TRIGGERED reads").
                 triggered_from              TEXT,
+                -- #697 item 4 (htf_scope G3, 2026-10-16): the POST-BREAKOUT state. The night after a name closes above
+                -- the pole top of a formed flag the pivot re-anchors on the breakout bar and the row reads a bare
+                -- base_age_0 - the board forgot the flag (CDNA 08-26, MRNA 09-23). These two say which flag it broke
+                -- out of and how long ago. TELEMETRY: read by no stage, gate, threshold or order path; display only
+                -- (/flags TICKER). NULL on a row of a name with no breakout on record, and on every row written
+                -- before this column existed (no backfill: NULL history means "not recorded", not "no breakout").
+                --   post_breakout_from   - the date of the OLD pivot / pole-high bar the name broke out of
+                --   days_since_breakout  - trading sessions from the breakout bar (the first close above that pole
+                --                          top, after the flag had >= 3 sessions of base) to this scan; 1 = the first
+                --                          row after the breakout bar. Both go NULL together once it passes 25 sessions.
+                -- Set in flag_detector._post_breakout_state; carried by db.get_flag_post_breakout_carry.
+                post_breakout_from          DATE,
+                days_since_breakout         INT,
                 created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 UNIQUE (ticker, scan_date)
             );
@@ -2729,6 +2742,10 @@ async def initialize_schema() -> None:
                 NULL;
             END $$;
             ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS triggered_from TEXT;
+            -- #697 item 4 (2026-10-16) - see the CREATE TABLE comment above. Additive and nullable, no backfill:
+            -- prod's table predates the columns, and the rows already stored stay NULL ("not recorded").
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS post_breakout_from DATE;
+            ALTER TABLE mi_flag_candidates ADD COLUMN IF NOT EXISTS days_since_breakout INT;
 
             -- Intraday flag-break detections (#94, ADR 0005, 2026-05-23).
             -- EOD flag_candidates is the IDENTIFICATION layer (which stocks
@@ -8070,11 +8087,11 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                  rmv_5d, rmv_15d, universe_sources,
                  failed_at, low_after_breakout, undercut_after_breakout,
                  depth_on_low, depth_on_close, sma20_margin, ma_stack_margin,
-                 triggered_from)
+                 triggered_from, post_breakout_from, days_since_breakout)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
                     $13, $14, $15, $16, $17, $18, $19, $20, $21, $22,
                     $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33,
-                    $34, $35, $36, $37, $38, $39, $40, $41)
+                    $34, $35, $36, $37, $38, $39, $40, $41, $42, $43)
             ON CONFLICT (ticker, scan_date) DO UPDATE SET
                 pivot_high_date         = EXCLUDED.pivot_high_date,
                 pivot_high_price        = EXCLUDED.pivot_high_price,
@@ -8114,7 +8131,9 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
                 depth_on_close          = EXCLUDED.depth_on_close,
                 sma20_margin            = EXCLUDED.sma20_margin,
                 ma_stack_margin         = EXCLUDED.ma_stack_margin,
-                triggered_from          = EXCLUDED.triggered_from
+                triggered_from          = EXCLUDED.triggered_from,
+                post_breakout_from      = EXCLUDED.post_breakout_from,
+                days_since_breakout     = EXCLUDED.days_since_breakout
         """,
             record["ticker"],
             scan_date,
@@ -8157,6 +8176,8 @@ async def insert_flag_candidate(record: dict[str, Any]) -> None:
             record.get("sma20_margin"),
             record.get("ma_stack_margin"),
             record.get("triggered_from"),
+            record.get("post_breakout_from"),
+            record.get("days_since_breakout"),
         )
 
 
@@ -8381,6 +8402,45 @@ async def get_yesterday_flag_pivots(
     return {r["ticker"]: (r["pivot_high_date"], float(r["pivot_high_price"])) for r in rows}
 
 
+async def get_flag_post_breakout_carry(
+    scan_date: "str | date",
+    *,
+    carry_days: int,
+) -> dict[str, date]:
+    """Map ticker -> `post_breakout_from` of the ticker's most recent prior row that carries one, within
+    `carry_days` calendar days (the caller passes its pivot carry, flag_detector._PIVOT_CARRY_DAYS: 25 sessions
+    plus a week of holidays). #697 item 4 (htf_scope G3, 2026-10-16).
+
+    Only the DATE travels. The detector re-derives `days_since_breakout` from the bars every night
+    (`flag_detector._post_breakout_state`) and lets the stamp lapse past 25 sessions, so this reader needs no expiry
+    of its own and a skipped scan cannot drift the count. A newer breakout replaces the carried date in the detector.
+
+    Telemetry must never be load-bearing for the live scan: a failed read is caught and logged, returning {} - the
+    stamp then appears only on a breakout re-anchor seen that night, and the next night's read restores the carried
+    one (the row it comes from is unchanged). Same stance as `get_flag_failure_carry`."""
+    try:
+        pool = await get_pool()
+        if isinstance(scan_date, str):
+            scan_date = date.fromisoformat(scan_date)
+        async with pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT DISTINCT ON (ticker) ticker, post_breakout_from
+                FROM mi_flag_candidates
+                WHERE scan_date < $1
+                  AND scan_date >= $1 - make_interval(days => $2)
+                  AND post_breakout_from IS NOT NULL
+                ORDER BY ticker, scan_date DESC
+            """, scan_date, carry_days)
+        return {r["ticker"]: r["post_breakout_from"] for r in rows}
+    except Exception:
+        logger.warning(
+            "get_flag_post_breakout_carry: failed, returning {} (post-breakout telemetry "
+            "must never block run_flag_scan - see this function's docstring)",
+            exc_info=True,
+        )
+        return {}
+
+
 async def get_flag_failure_carry(
     scan_date: "str | date", lookback_days: int = 5,
 ) -> dict[str, dict[str, Any]]:
@@ -8551,7 +8611,7 @@ async def get_ticker_flag_history(ticker: str, days: int = 14) -> list[dict[str,
             SELECT scan_date, stage, base_age, range_contraction_ratio,
                    vol_contraction_ratio, reason, held_from_stage,
                    fresh_tight_fires, fresh_2bar_tr_pct, atr14_pct,
-                   triggered_from
+                   triggered_from, post_breakout_from, days_since_breakout
             FROM mi_flag_candidates
             WHERE ticker = $1
               AND scan_date >= CURRENT_DATE - ($2::int || ' days')::interval

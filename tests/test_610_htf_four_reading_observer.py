@@ -179,8 +179,10 @@ async def test_insert_flag_candidate_carries_the_four_readings(monkeypatch):
     for col in _FOUR:
         assert col in insert_cols, col
         assert f"{col} = EXCLUDED.{col}".replace(" ", "") in on_conflict.replace(" ", ""), col
-    # 41 since #146 (2026-10-11) appended `triggered_from` ($41); the four readings stay $37-$40, in column order
-    assert sql.count("$") == len(params) == 41
+    # 41 since #146 (2026-10-11) appended `triggered_from` ($41); 43 since #697 item 4 (2026-10-16) appended
+    # `post_breakout_from` ($42) and `days_since_breakout` ($43); the four readings stay $37-$40, in column order
+    assert sql.count("$") == len(params) == 43
     assert params[36:40] == [sentinel[k] for k in _FOUR]
     assert params[40] is None                                  # an unqualified row carries no TRIGGERED licence
+    assert params[41:43] == [None, None]                       # a record with no breakout on file writes no post-breakout state
     assert params[0] == "MRNA" and params[1] == date(2026, 9, 17)
