@@ -24,11 +24,18 @@ data during design (see the module docstring for why a naive fixed-3-month
 extrapolation was rejected: it silently picked the WRONG MONTH on COST's 4-4-5
 retail calendar). Every path here that cannot resolve a period returns None and the
 caller skips + counts it — never a guessed date.
+
+2026-10-16: the FMP /analyst-estimates ANNUAL leg was REMOVED (free tier serves ~1
+ticker in 12; 21-26 `api_failure_fmp` rows a night for no estimate). yfinance is the
+source of record, Finnhub the cross-check. What replaced the FMP-era tests: a spy
+proving the job never calls FMP, the per-ticker pace now enforced on the yfinance
+cadence the FMP sleeps used to impose, and the run-level `analyst_estimates_error` row a
+run writes when yfinance recorded nothing (the FMP-era failures were loud only by accident).
 """
+import asyncio
 import sys
 from datetime import date
 from pathlib import Path
-from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -97,53 +104,6 @@ def test_edgar_anchor_malformed_payload_is_none_never_a_guess():
     assert aer.latest_filing_from_submissions({"filings": {}}) is None
     assert aer.latest_filing_from_submissions(
         _submissions([("10-Q", "not-a-date")])) is None
-
-
-# ── normalize_fmp_estimate (raw capture, never derived) ──────────────────────────────
-
-
-def _rec(**over):
-    base = {
-        "date": "2026-12-31", "revenueAvg": 2.5e9, "revenueHigh": 3.0e9,
-        "revenueLow": 2.0e9, "epsAvg": 1.25, "epsHigh": 1.5, "epsLow": 1.0,
-        "numAnalystsRevenue": 7, "numAnalystsEps": 6,
-    }
-    base.update(over)
-    return base
-
-
-def test_normalize_maps_raw_fields_and_stamps_the_window():
-    row = aer.normalize_fmp_estimate(
-        _rec(), ticker="MRNA", period_type="annual", as_of=AS_OF,
-        anchor_filing_date=date(2026, 7, 31))
-    assert row["ticker"] == "MRNA"
-    assert row["period_end_date"] == date(2026, 12, 31)
-    assert row["as_of_date"] == AS_OF
-    assert row["anchor_filing_date"] == date(2026, 7, 31)
-    assert row["valid_from_date"] == date(2026, 7, 31)
-    assert row["revenue_avg"] == 2.5e9 and row["revenue_low"] == 2.0e9
-    assert row["eps_high"] == 1.5
-    assert row["num_analysts_revenue"] == 7 and row["num_analysts_eps"] == 6
-    assert row["source"] == "fmp_stable"
-    assert row["recorder_version"] == aer.RECORDER_VERSION
-
-
-def test_normalize_missing_values_store_null_never_zero():
-    row = aer.normalize_fmp_estimate(
-        _rec(revenueAvg=None, numAnalystsRevenue=None),
-        ticker="X", period_type="quarter", as_of=AS_OF, anchor_filing_date=None)
-    assert row["revenue_avg"] is None          # NULL is an absence; 0 is a claim
-    assert row["num_analysts_revenue"] is None
-    assert row["valid_from_date"] == AS_OF     # no anchor -> zero claimed history
-
-
-def test_normalize_without_a_period_date_returns_none():
-    assert aer.normalize_fmp_estimate(
-        _rec(date=None), ticker="X", period_type="annual", as_of=AS_OF,
-        anchor_filing_date=None) is None
-    assert aer.normalize_fmp_estimate(
-        _rec(date="not-a-date"), ticker="X", period_type="annual", as_of=AS_OF,
-        anchor_filing_date=None) is None
 
 
 # ── quarterly_cadence_facts (v3 — the SEC-sourced cadence facts, pure) ───────────────
@@ -768,10 +728,10 @@ def test_thin_coverage_scores_none_and_threshold_is_tunable():
 # ── orchestration (db + fetch monkeypatched; never raises; per-ticker isolation) ─────
 
 
-def _wire(monkeypatch, *, estimates=None, anchors=None, fail_tickers=(),
-          anchor_fail_tickers=(), p402=(), quarter_cadence=None, yf_data=None,
+def _wire(monkeypatch, *, anchors=None,
+          anchor_fail_tickers=(), quarter_cadence=None, yf_data=None,
           yf_fail_tickers=(), recent_period_ends=None,
-          finnhub_data=None, finnhub_fail_tickers=()):
+          finnhub_data=None, finnhub_fail_tickers=(), upsert_fail_tickers=()):
     written = []
     audits = []
     divergences = []
@@ -789,13 +749,6 @@ def _wire(monkeypatch, *, estimates=None, anchors=None, fail_tickers=(),
         # cadence facts" (an ETF/non-filer, or a ticker the test didn't configure).
         return dict((quarter_cadence or {}).get(ticker, aer._EMPTY_CADENCE_FACTS))
 
-    async def fake_estimates(ticker, period):
-        if ticker in fail_tickers:
-            raise RuntimeError("fetch boom")
-        if period in p402:
-            raise RuntimeError_402()
-        return (estimates or {}).get((ticker, period), [])
-
     async def fake_yf_quarterly(ticker):
         if ticker in yf_fail_tickers:
             raise RuntimeError("yfinance boom")
@@ -810,6 +763,8 @@ def _wire(monkeypatch, *, estimates=None, anchors=None, fail_tickers=(),
         return list((recent_period_ends or {}).get(ticker, []))
 
     async def fake_upsert(rows):
+        if rows and rows[0]["ticker"] in upsert_fail_tickers:
+            raise RuntimeError("db boom")   # the only per-ticker raise path left
         written.extend(rows)
         return len(rows)
 
@@ -822,23 +777,15 @@ def _wire(monkeypatch, *, estimates=None, anchors=None, fail_tickers=(),
 
     monkeypatch.setattr(aer, "_fetch_last_filing_date", fake_filing)
     monkeypatch.setattr(aer, "_fetch_quarter_cadence_facts", fake_quarter_cadence)
-    monkeypatch.setattr(aer, "_fetch_estimates", fake_estimates)
     monkeypatch.setattr(aer, "_fetch_yfinance_quarterly", fake_yf_quarterly)
     monkeypatch.setattr(aer, "_fetch_finnhub_calendar", fake_finnhub_calendar)
     monkeypatch.setattr(aer, "get_recent_quarterly_period_ends", fake_recent_period_ends)
     monkeypatch.setattr(aer, "upsert_analyst_estimates", fake_upsert)
     monkeypatch.setattr(aer, "upsert_analyst_estimates_divergence", fake_upsert_divergence)
     monkeypatch.setattr(aer, "log_audit_event", fake_audit)
-    monkeypatch.setattr(aer, "FMP_PACE_SECONDS", 0)
     monkeypatch.setattr(aer, "YFINANCE_PACE_SECONDS", 0)
     monkeypatch.setattr(aer, "FINNHUB_PACE_SECONDS", 0)
     return written, audits, divergences
-
-
-class RuntimeError_402(Exception):
-    def __init__(self):
-        super().__init__("402")
-        self.response = SimpleNamespace(status_code=402)
 
 
 @pytest.mark.asyncio
@@ -846,16 +793,13 @@ async def test_snapshot_writes_rows_with_the_read_date_stamped(monkeypatch):
     written, audits, _div = _wire(
         monkeypatch,
         anchors={"MRNA": date(2026, 7, 31)},
-        estimates={("MRNA", "annual"): [_rec()],
-                   # present but NEVER fetched: quarter is not on this tier (2026-09-02)
-                   ("MRNA", "quarter"): [_rec(date="2026-09-30")]},
+        quarter_cadence={"MRNA": _AAPL_CADENCE},
+        yf_data={"MRNA": _yf_data_for("MRNA")},
     )
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
-    assert out["rows_written"] == 1 and out["errors"] == 0   # annual only
-    assert {r["period_type"] for r in written} == {"annual"}, (
-        "quarter is not on this tier — fetching it anyway doubled the call volume against the "
-        "very quota the annual call needs, which is how a working endpoint returned 99-for-99 "
-        "empty on 2026-09-02")
+    assert out["rows_written"] == 2 and out["errors"] == 0   # '0q' + '+1q'
+    assert {r["period_type"] for r in written} == {"quarter"}
+    assert {r["source"] for r in written} == {"yfinance"}
     assert all(r["as_of_date"] == AS_OF for r in written)
     assert all(r["valid_from_date"] == date(2026, 7, 31) for r in written)
     assert any(e == "analyst_estimates_snapshot" for e, _ in audits)
@@ -863,122 +807,153 @@ async def test_snapshot_writes_rows_with_the_read_date_stamped(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_one_bad_ticker_never_kills_the_run(monkeypatch):
+    """Per-ticker isolation. With the FMP leg gone the only raise path left in a ticker is
+    the DB write; one failing must not stop the next ticker."""
     written, audits, _div = _wire(
         monkeypatch,
-        anchors={"GOOD": date(2026, 8, 7)},
-        estimates={("GOOD", "annual"): [_rec()]},
-        fail_tickers={"BAD"},
+        anchors={"GOOD": date(2026, 8, 7), "BAD": date(2026, 8, 7)},
+        quarter_cadence={"GOOD": _AAPL_CADENCE, "BAD": _AAPL_CADENCE},
+        yf_data={"GOOD": _yf_data_for("GOOD"), "BAD": _yf_data_for("BAD")},
+        upsert_fail_tickers={"BAD"},
     )
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["BAD", "GOOD"])
     assert out["errors"] == 1
     assert out["tickers_written"] == 1
-    assert [r["ticker"] for r in written] == ["GOOD"]
+    assert {r["ticker"] for r in written} == {"GOOD"}
     assert any(e == "analyst_estimates_error" for e, _ in audits)
-
-
-@pytest.mark.asyncio
-async def test_anchor_failure_records_with_zero_window_not_abort(monkeypatch):
-    """MUTATION TARGET — THE 2026-09-01 FIRST-RUN BUG. The anchor fetch failing (v1:
-    FMP 402; v2: an EDGAR outage) must NOT abort the ticker: its estimates still
-    record with a ZERO honest window (valid_from == as_of — honest_valid_from's
-    no-anchor arm), the ticker is COUNTED (anchor_errors, not errors), and the clock
-    this backbone exists to start keeps accruing. Removing the try/except around the
-    anchor call recreates the 0-rows/99-errors run exactly."""
-    written, _, _div = _wire(
-        monkeypatch,
-        estimates={("MRNA", "annual"): [_rec()],
-                   ("MRNA", "quarter"): [_rec(date="2026-09-30")]},
-        anchor_fail_tickers={"MRNA"},
-    )
-    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
-    assert out["errors"] == 0
-    assert out["rows_written"] == 1 and out["tickers_written"] == 1   # annual only
-    assert out["anchor_errors"] == 1
-    assert out["no_anchor"] == 0               # outage is NOT the by-design case
-    assert all(r["valid_from_date"] == AS_OF for r in written)   # zero claimed history
-    assert all(r["anchor_filing_date"] is None for r in written)
 
 
 @pytest.mark.asyncio
 async def test_true_non_filer_counts_no_anchor_and_claims_zero_history(monkeypatch):
     """An ETF/non-filer (anchor resolves to None without error) is the BY-DESIGN
-    zero-window case: counted as no_anchor, never as an error."""
-    written, _, _div = _wire(monkeypatch, estimates={("SPYX", "annual"): [_rec()]})
-    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["SPYX"])
-    assert out["no_anchor"] == 1 and out["anchor_errors"] == 0 and out["errors"] == 0
-    assert written[0]["valid_from_date"] == AS_OF
-
-
-@pytest.mark.asyncio
-async def test_the_quarter_endpoint_is_never_called_at_all(monkeypatch):
-    """MUTATION TARGET: putting "quarter" back in the period loop.
-
-    FMP refuses it explicitly — "This value set for 'period' is not available under your current
-    subscription" — and we VERIFIED that. Calling it anyway spent half of every run buying a
-    refusal we already had, on the same quota the annual call needs. On 2026-09-02 that produced
-    99 annual-402s from an endpoint that works, and an alarm announcing a plan change that had
-    not happened. A 402 we can predict is not a degrade to handle, it is a call not to make."""
-    called = []
+    zero-window case: counted as no_anchor, never as an error — and the rows it DOES
+    record claim ZERO history (valid_from == as_of; the lookahead guard)."""
     written, _, _div = _wire(
         monkeypatch,
-        anchors={"MRNA": date(2026, 7, 31)},
-        estimates={("MRNA", "annual"): [_rec()], ("MRNA", "quarter"): [_rec()]},
+        quarter_cadence={"SPYX": _AAPL_CADENCE},
+        yf_data={"SPYX": _yf_data_for("SPYX")},
     )
-    real = aer._fetch_estimates
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["SPYX"])
+    assert out["no_anchor"] == 1 and out["anchor_errors"] == 0 and out["errors"] == 0
+    assert out["rows_written"] == 2
+    assert all(r["valid_from_date"] == AS_OF for r in written)
+    assert all(r["anchor_filing_date"] is None for r in written)
 
-    async def spy(ticker, period):
-        called.append(period)
-        return await real(ticker, period)
 
-    monkeypatch.setattr(aer, "_fetch_estimates", spy)
-    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
-    assert called == ["annual"], f"the run fetched {called}; quarter must never be requested"
-    assert out["rows_written"] == 1 and out["errors"] == 0
-    assert written[0]["period_type"] == "annual"
+def test_the_pace_is_the_cadence_the_fmp_sleeps_used_to_impose():
+    """Removing the FMP leg also removed its two 12s sleeps per ticker — the only thing that
+    ever spaced the yfinance scrapes (the old YFINANCE_PACE_SECONDS=1.0 was declared and never
+    awaited). 24s keeps every vendor's request pattern exactly as the 09-04..10-16 runs had
+    it. Lowering it is a deliberate, MEASURED decision: change this number and this test
+    together, with the Yahoo tolerance in the commit."""
+    assert aer.YFINANCE_PACE_SECONDS == 24.0
 
 
 @pytest.mark.asyncio
-async def test_annual_402_degrades_and_audits_a_plan_change(monkeypatch):
-    """MUTATION TARGET: letting a 402 kill the ticker, or letting a zero-row run go silent.
+async def test_tickers_are_paced_between_each_other_not_after_the_last(monkeypatch):
+    """MUTATION TARGET: dropping the pause (a 25x speed-up of every scrape), or sleeping
+    after the last ticker (wall time for nothing)."""
+    _wire(monkeypatch,
+          quarter_cadence={t: _AAPL_CADENCE for t in "ABC"},
+          yf_data={t: _yf_data_for(t) for t in "ABC"})
+    monkeypatch.setattr(aer, "YFINANCE_PACE_SECONDS", 7.5)
+    sleeps = []
 
-    Annual IS in-plan (verified 08-31, re-verified 09-02), so a 402 here is almost always a RATE
-    BREACH — FMP answers both with 402, which is exactly why the 09-02 run read as a plan change
-    when the real cause was our own 240-calls/min pacing against a free tier. Either way the run
-    must degrade rather than raise, and must NOT be silent: a run that stored nothing is the one
-    a reader most needs told about."""
+    async def fake_sleep(seconds, *a, **k):
+        sleeps.append(seconds)
+
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+    await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["A", "B", "C"])
+    assert sleeps == [7.5, 7.5]
+    sleeps.clear()
+    await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["A"])
+    assert sleeps == [], "one ticker has nothing to be paced against"
+
+
+@pytest.mark.asyncio
+async def test_the_job_never_calls_fmp_and_cannot_write_an_fmp_shaped_error_row(monkeypatch):
+    """MUTATION TARGET: putting the FMP leg (or any FMP call) back. `_fmp_get` is the only
+    emitter of an `api_failure_fmp` row, and the old leg also wrote
+    `analyst_estimates_plan_change` every night; neither may come from this job any more.
+    Exercises every branch a ticker can take (healthy, yfinance empty, EDGAR down) so a
+    call hiding in a failure path is caught too."""
+    from agents.market_intelligence import collector, llm_health
+    fmp_calls, api_alerts = [], []
+
+    async def spy_fmp_get(path, params=None):
+        fmp_calls.append((path, params))
+        raise RuntimeError("the estimates job must not call FMP")
+
+    async def spy_alert(provider, exc, **kw):
+        api_alerts.append(provider)
+
+    monkeypatch.setattr(collector, "_fmp_get", spy_fmp_get)
+    monkeypatch.setattr(llm_health, "maybe_alert_api_failure", spy_alert)
+    monkeypatch.setattr(llm_health, "alert_api_failure", spy_alert)
     written, audits, _div = _wire(
         monkeypatch,
-        anchors={"MRNA": date(2026, 7, 31)},
-        p402={"annual"},
+        anchors={"GOOD": date(2026, 7, 31), "NOYF": date(2026, 7, 31)},
+        anchor_fail_tickers={"EDGARDOWN"},
+        quarter_cadence={"GOOD": _AAPL_CADENCE, "NOYF": _AAPL_CADENCE},
+        yf_data={"GOOD": _yf_data_for("GOOD")},          # NOYF -> None (unavailable)
     )
-    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
-    assert out["errors"] == 0
-    assert out["rows_written"] == 0 and written == []
-    assert out["annual_unavailable"] == 1
-    assert sum(1 for e, _ in audits if e == "analyst_estimates_plan_change") == 1
-    msg = next(m for e, m in audits if e == "analyst_estimates_plan_change")
-    assert "rate" in msg.lower(), (
-        "the alarm must not assert a plan change it cannot know happened — it said exactly that "
-        "on 09-02 and was wrong")
+    out = await aer.run_analyst_estimates_snapshot(
+        AS_OF, tickers=["GOOD", "NOYF", "EDGARDOWN"])
+
+    assert fmp_calls == [] and api_alerts == []
+    event_types = {e for e, _ in audits}
+    assert "analyst_estimates_plan_change" not in event_types
+    assert not any(e.startswith("api_failure") for e in event_types)
+    assert out["rows_written"] == 2, "yfinance rows are still written"
+    assert "annual_unavailable" not in out, "the FMP-402 counter is gone with its leg"
+    assert all(r["source"] == "yfinance" and r["period_type"] == "quarter" for r in written)
+    for gone in ("_fetch_estimates", "normalize_fmp_estimate", "_is_payment_required",
+                 "FMP_PACE_SECONDS", "ESTIMATES_SOURCE", "MAX_PERIODS_PER_CALL",
+                 "LABEL_METHOD_VENDOR_REPORTED"):
+        assert not hasattr(aer, gone), f"{gone} is a dead remnant of the removed FMP leg"
 
 
 @pytest.mark.asyncio
-async def test_both_periods_402_is_counted_not_an_error(monkeypatch):
-    """Losing the estimate endpoint is a degrade, not a per-ticker error — the counters and the
-    audit row carry the news; nothing raises. (Only annual is requested since 2026-09-02, so
-    the `quarter_unavailable` counter is GONE: we cannot lose an endpoint we never call.)"""
+async def test_a_run_where_yfinance_wrote_nothing_says_so_once_and_loudly(monkeypatch):
+    """MUTATION TARGET: the clock stopping silently. With FMP gone, yfinance returns None on
+    every failure BY CONTRACT, so per ticker "Yahoo is down" and "an ETF has no estimates" look
+    the same. A run-level zero is not ambiguous: ONE `analyst_estimates_error` row, naming the
+    counts, and no per-ticker spam. errors stays 0 (it counts raising tickers, not this)."""
     written, audits, _div = _wire(
-        monkeypatch, anchors={"MRNA": date(2026, 7, 31)},
-        p402={"annual", "quarter"},
+        monkeypatch,
+        anchors={t: date(2026, 7, 31) for t in "ABC"},
+        quarter_cadence={t: _AAPL_CADENCE for t in "ABC"},
+        yf_data={},                                   # yfinance returns None for all three
     )
-    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
-    assert out["errors"] == 0 and out["rows_written"] == 0
-    assert out["annual_unavailable"] == 1
-    assert "quarter_unavailable" not in out, (
-        "the counter is dead — quarter is never requested from FMP, so it could only ever be 0; "
-        "a digest line that always prints zero teaches a reader to stop reading it")
-    assert written == []
-    assert any(e == "analyst_estimates_plan_change" for e, _ in audits)
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["A", "B", "C"])
+    assert written == [] and out["rows_written"] == 0 and out["errors"] == 0
+    assert out["quarter_yf_unavailable"] == 3
+    errs = [m for e, m in audits if e == "analyst_estimates_error"]
+    assert len(errs) == 1, f"one run-level row, not one per ticker: {errs}"
+    assert "yfinance wrote 0 quarterly rows for 3 ticker(s)" in errs[0]
+    assert "3 unavailable" in errs[0]
+    assert any(e == "analyst_estimates_snapshot" for e, _ in audits), "the summary row too"
+
+
+@pytest.mark.asyncio
+async def test_a_healthy_or_partly_covered_run_writes_no_error_row(monkeypatch):
+    """The other half: an ETF with no estimates beside a name that has them is NORMAL
+    (quarter_yf_unavailable has a nonzero nightly baseline) and must not page the audit log;
+    nor does an empty population (nothing to record is not a failure)."""
+    _, audits, _div = _wire(
+        monkeypatch,
+        anchors={"GOOD": date(2026, 7, 31), "ETF": date(2026, 7, 31)},
+        quarter_cadence={"GOOD": _AAPL_CADENCE, "ETF": _AAPL_CADENCE},
+        yf_data={"GOOD": _yf_data_for("GOOD")},       # ETF -> None
+    )
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["GOOD", "ETF"])
+    assert out["quarter_yf_rows_written"] == 2 and out["quarter_yf_unavailable"] == 1
+    assert not any(e == "analyst_estimates_error" for e, _ in audits)
+
+    audits.clear()
+    out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=[])
+    assert out["population"] == 0
+    assert not any(e == "analyst_estimates_error" for e, _ in audits)
 
 
 # ── quarterly leg orchestration (v3, yfinance) ────────────────────────────────────────
@@ -1009,49 +984,47 @@ _AAPL_CADENCE = {"last_reported_quarter_end": date(2026, 6, 27),
 
 
 @pytest.mark.asyncio
-async def test_quarterly_leg_writes_yfinance_rows_alongside_the_annual_row(monkeypatch):
-    """Happy path: annual (FMP, source=fmp_stable) + both quarterly periods
-    (yfinance, source=yfinance) all land in the same run, same table, distinguishable
-    only by `source` and `period_type` — no schema change needed."""
+async def test_yfinance_leg_writes_both_quarters_and_nothing_else(monkeypatch):
+    """Happy path: both quarterly periods ('0q','+1q') land as source=yfinance quarter rows,
+    and a healthy run writes no error row — there is no other source of estimate rows in
+    this job any more (Finnhub is wired to None here)."""
     written, audits, _div = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
-        estimates={("AAPL", "annual"): [_rec()]},
         quarter_cadence={"AAPL": _AAPL_CADENCE},
         yf_data={"AAPL": _yf_data_for("AAPL")},
     )
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
     assert out["errors"] == 0
-    assert out["rows_written"] == 3   # 1 annual + 2 quarterly ('0q','+1q')
+    assert out["rows_written"] == 2   # '0q','+1q'
     assert out["quarter_yf_rows_written"] == 2
     assert out["quarter_yf_unavailable"] == 0 and out["quarter_yf_no_cadence"] == 0
-    quarterly = [r for r in written if r["period_type"] == "quarter"]
-    annual = [r for r in written if r["period_type"] == "annual"]
-    assert len(quarterly) == 2 and len(annual) == 1
-    assert all(r["source"] == "yfinance" for r in quarterly)
-    assert annual[0]["source"] == "fmp_stable"
-    assert {r["period_end_date"] for r in quarterly} == {date(2026, 9, 26), date(2026, 12, 26)}
-    assert all(r["num_analysts_revenue"] is not None for r in quarterly), (
+    assert len(written) == 2
+    assert all(r["period_type"] == "quarter" and r["source"] == "yfinance" for r in written)
+    assert {r["period_end_date"] for r in written} == {date(2026, 9, 26), date(2026, 12, 26)}
+    assert all(r["num_analysts_revenue"] is not None for r in written), (
         "numberOfAnalysts must be preserved, not dropped — the n<3 rule reads it later")
+    assert not any(e == "analyst_estimates_error" for e, _ in audits)
 
 
 @pytest.mark.asyncio
-async def test_yfinance_failure_leaves_the_annual_row_intact_and_counted(monkeypatch):
-    """A yfinance outage degrades ONLY the quarterly leg — the annual (FMP) row still
-    writes, and the failure is counted (quarter_yf_unavailable), never raised."""
-    written, _, _div = _wire(
+async def test_yfinance_failure_is_counted_and_gets_its_own_error_row(monkeypatch):
+    """A yfinance outage writes no estimate rows (it IS the estimate source now), is counted
+    (quarter_yf_unavailable), never raises — and writes its own `analyst_estimates_error`
+    row, so the clock cannot stop silently."""
+    written, audits, _div = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
-        estimates={("AAPL", "annual"): [_rec()]},
         quarter_cadence={"AAPL": _AAPL_CADENCE},
         yf_fail_tickers={"AAPL"},
     )
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
     assert out["errors"] == 0
-    assert out["rows_written"] == 1 and out["tickers_written"] == 1
+    assert out["rows_written"] == 0 and out["tickers_written"] == 0 and written == []
     assert out["quarter_yf_rows_written"] == 0
     assert out["quarter_yf_unavailable"] == 1
-    assert all(r["period_type"] == "annual" for r in written)
+    assert any(e == "analyst_estimates_error" and "yfinance wrote 0 quarterly rows" in m
+               for e, m in audits)
 
 
 @pytest.mark.asyncio
@@ -1061,14 +1034,13 @@ async def test_yfinance_empty_frame_counts_as_unavailable_not_an_error(monkeypat
     written, _, _div = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
-        estimates={("AAPL", "annual"): [_rec()]},
         quarter_cadence={"AAPL": _AAPL_CADENCE},
         yf_data={"AAPL": None},   # _fetch_yfinance_quarterly's own "nothing usable" return
     )
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
     assert out["errors"] == 0
     assert out["quarter_yf_unavailable"] == 1 and out["quarter_yf_no_cadence"] == 0
-    assert all(r["period_type"] == "annual" for r in written)
+    assert written == []
 
 
 @pytest.mark.asyncio
@@ -1076,10 +1048,9 @@ async def test_no_cadence_anchor_skips_quarterly_rows_and_counts_it_not_an_error
     """yfinance HAD estimate data, but no SEC cadence facts were resolvable (ETF-like
     ticker, or QUARTERLY_CADENCE_FORMS never matched) — never store against a guessed
     date: skip both periods and count it distinctly from a yfinance outage."""
-    written, _, _div = _wire(
+    written, audits, _div = _wire(
         monkeypatch,
         anchors={"SPYX": date(2026, 7, 31)},
-        estimates={("SPYX", "annual"): [_rec()]},
         # quarter_cadence omitted -> defaults to _EMPTY_CADENCE_FACTS for SPYX
         yf_data={"SPYX": _yf_data_for("SPYX")},
     )
@@ -1087,27 +1058,34 @@ async def test_no_cadence_anchor_skips_quarterly_rows_and_counts_it_not_an_error
     assert out["errors"] == 0
     assert out["quarter_yf_no_cadence"] == 1 and out["quarter_yf_unavailable"] == 0
     assert out["quarter_yf_rows_written"] == 0
-    assert all(r["period_type"] == "annual" for r in written)
+    assert written == []
+    assert any(e == "analyst_estimates_error" and "1 no-cadence-anchor" in m
+               for e, m in audits)
 
 
 @pytest.mark.asyncio
-async def test_anchor_outage_skips_the_quarterly_leg_too_not_just_the_honesty_window(monkeypatch):
-    """An EDGAR outage (anchor_fail_tickers) kills _fetch_last_filing_date, and
-    snapshot_ticker's try/except means _fetch_quarter_cadence_facts is never even
-    called for that ticker in the same run — one outage degrades BOTH legs' anchor
-    story together, exactly as the shared _get_edgar_facts cache implies."""
-    written, _, _div = _wire(
+async def test_anchor_outage_is_counted_never_an_abort_and_skips_the_quarterly_leg(monkeypatch):
+    """MUTATION TARGET — THE 2026-09-01 FIRST-RUN BUG (0 rows, 99 errors). An anchor fetch
+    failing must NOT raise out of the ticker: it is counted (anchor_errors, not errors) and
+    the run carries on. An EDGAR outage kills _fetch_last_filing_date, and snapshot_ticker's
+    try/except means _fetch_quarter_cadence_facts is never even called for that ticker — one
+    outage degrades BOTH the honesty window and the cadence facts together, exactly as the
+    shared _get_edgar_facts cache implies. (The FMP annual row used to be recorded anyway,
+    with a zero window; with that leg gone an EDGAR outage means no row for the night — and
+    the run-level error row says so.)"""
+    written, audits, _div = _wire(
         monkeypatch,
-        estimates={("MRNA", "annual"): [_rec()]},
         anchor_fail_tickers={"MRNA"},
         quarter_cadence={"MRNA": _AAPL_CADENCE},   # would resolve fine IF it were reached
         yf_data={"MRNA": _yf_data_for("MRNA")},
     )
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["MRNA"])
-    assert out["errors"] == 0 and out["anchor_errors"] == 1
+    assert out["errors"] == 0 and out["anchor_errors"] == 1 and out["no_anchor"] == 0
     assert out["quarter_yf_no_cadence"] == 1
     assert out["quarter_yf_rows_written"] == 0
-    assert all(r["period_type"] == "annual" for r in written)
+    assert written == []
+    assert any(e == "analyst_estimates_error" and "1 EDGAR anchor-error" in m
+               for e, m in audits)
 
 
 @pytest.mark.asyncio
@@ -1131,7 +1109,6 @@ async def test_label_stability_across_a_filing_boundary_reuses_the_recorded_date
     written_day1, _, _div1 = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
-        estimates={("AAPL", "annual"): [_rec()]},
         quarter_cadence={"AAPL": day1_cadence},
         yf_data={"AAPL": _yf_data_for("AAPL", next_earnings_date=date(2026, 10, 29),
                                        last_actual_release_date=date(2026, 7, 30))},
@@ -1161,7 +1138,6 @@ async def test_label_stability_across_a_filing_boundary_reuses_the_recorded_date
     written_day40, _, _div40 = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 10, 31)},
-        estimates={("AAPL", "annual"): [_rec()]},
         quarter_cadence={"AAPL": day40_cadence},
         yf_data={"AAPL": _yf_data_for("AAPL", next_earnings_date=day40_next_earnings,
                                        last_actual_release_date=date(2026, 10, 29))},
@@ -1216,15 +1192,14 @@ async def test_finnhub_corroboration_overrides_the_yfinance_label_and_writes_div
     written, _, divergences = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
-        estimates={("AAPL", "annual"): [_rec()]},
         quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
         yf_data={"AAPL": _yf_data_for("AAPL")},
         finnhub_data={"AAPL": _finnhub_entries_for_aapl()},
     )
     out = await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
     assert out["errors"] == 0
-    # 1 annual (FMP) + 2 quarterly (yfinance, now finnhub-labeled) + 2 finnhub_calendar
-    assert out["rows_written"] == 5
+    # 2 quarterly (yfinance, now finnhub-labeled) + 2 finnhub_calendar
+    assert out["rows_written"] == 4
     assert out["quarter_finnhub_rows_written"] == 2
     assert out["quarter_finnhub_unavailable"] == 0 and out["quarter_finnhub_no_cadence"] == 0
     assert out["divergence_rows_written"] == 2
@@ -1268,7 +1243,6 @@ async def test_finnhub_override_realigns_to_an_already_established_date(monkeypa
     written, _, divergences = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
-        estimates={("AAPL", "annual"): [_rec()]},
         quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
         yf_data={"AAPL": _yf_data_for("AAPL")},
         finnhub_data={"AAPL": _finnhub_entries_for_aapl()},
@@ -1299,11 +1273,12 @@ async def test_finnhub_override_realigns_to_an_already_established_date(monkeypa
 async def test_finnhub_row_is_stored_even_when_yfinance_is_unavailable(monkeypatch):
     """THE RESILIENCE PROPERTY (module docstring's "PREFER, NEVER REQUIRE"): a
     Finnhub calendar row does NOT depend on yfinance succeeding at all — an
-    independent second source, not a mere corroboration signal."""
-    written, _, divergences = _wire(
+    independent second source, not a mere corroboration signal. It is NOT a substitute for
+    yfinance, though: with yfinance down the run still says so (the Finnhub rows carry no
+    analyst count, so nothing the n<3 rule can admit was recorded)."""
+    written, audits, divergences = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
-        estimates={("AAPL", "annual"): [_rec()]},
         quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
         yf_fail_tickers={"AAPL"},
         finnhub_data={"AAPL": _finnhub_entries_for_aapl()},
@@ -1315,6 +1290,8 @@ async def test_finnhub_row_is_stored_even_when_yfinance_is_unavailable(monkeypat
     fh_rows = [r for r in written if r["source"] == "finnhub_calendar"]
     assert len(fh_rows) == 2
     assert divergences == [], "no yfinance row exists to diverge against"
+    assert any(e == "analyst_estimates_error" and "Finnhub wrote 2 row(s)" in m
+               for e, m in audits)
 
 
 @pytest.mark.asyncio
@@ -1328,7 +1305,6 @@ async def test_finnhub_uncorroborated_slot_keeps_the_reconstruction(monkeypatch)
     written, _, divergences = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
-        estimates={("AAPL", "annual"): [_rec()]},
         quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
         yf_data={"AAPL": _yf_data_for("AAPL")},
         finnhub_data={"AAPL": [far_entry]},
@@ -1344,12 +1320,11 @@ async def test_finnhub_uncorroborated_slot_keeps_the_reconstruction(monkeypatch)
 
 
 @pytest.mark.asyncio
-async def test_finnhub_outage_degrades_only_that_leg_and_never_touches_annual_or_yfinance(
+async def test_finnhub_outage_degrades_only_that_leg_and_never_touches_yfinance(
         monkeypatch):
     written, _, divergences = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
-        estimates={("AAPL", "annual"): [_rec()]},
         quarter_cadence={"AAPL": _AAPL_CADENCE_WITH_FYE},
         yf_data={"AAPL": _yf_data_for("AAPL")},
         finnhub_fail_tickers={"AAPL"},
@@ -1358,7 +1333,7 @@ async def test_finnhub_outage_degrades_only_that_leg_and_never_touches_annual_or
     assert out["errors"] == 0
     assert out["quarter_finnhub_unavailable"] == 1 and out["quarter_finnhub_rows_written"] == 0
     assert out["quarter_finnhub_no_cadence"] == 0
-    assert out["rows_written"] == 3   # unaffected: 1 annual + 2 yfinance quarterly
+    assert out["rows_written"] == 2   # unaffected: the 2 yfinance quarterly rows
     assert divergences == []
 
 
@@ -1370,7 +1345,6 @@ async def test_finnhub_entries_that_all_fail_guards_count_as_label_rejected(monk
     written, _, _div = _wire(
         monkeypatch,
         anchors={"AAPL": date(2026, 7, 31)},
-        estimates={("AAPL", "annual"): [_rec()]},
         quarter_cadence={"AAPL": _AAPL_CADENCE},   # no fiscal_year_end
         yf_data={"AAPL": _yf_data_for("AAPL")},
         finnhub_data={"AAPL": _finnhub_entries_for_aapl()},

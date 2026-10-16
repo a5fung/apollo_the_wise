@@ -271,6 +271,55 @@ Applied AFTER composite computation, regardless of score:
    entry below is now belt-and-suspenders (except when the revert toggle is OFF), as its
    2026-05-28 architectural note anticipated.
 
+## Forward-estimates backbone (#333) — the data the unbuilt durability axis will read
+
+**DATA CAPTURE ONLY.** No axis, score or admission rule reads it (THE LINE). Pradeep's durability test is
+forward (~2 quarters realized + ~4 projected high revenue growth); the rubric above scores only the
+trailing leg because we had never stored a single analyst estimate. The axis stays gated on **≥60 distinct
+`as_of_date`s** in `mi_analyst_estimates` (review `analyst_estimates_60d_accrual_333`, earliest 2026-11-30),
+then STEP-0 → operator sign-off → CHANGE_PROCESS. Code: `agents/market_intelligence/analyst_estimates_recorder.py`
+(its module docstring is the mechanism SSoT); job `analyst_estimates_snapshot`, 18:12 ET Mon-Fri.
+
+**What is recorded, and from where (current, 2026-10-16):**
+- **yfinance** `revenue_estimate`/`earnings_estimate` (`source='yfinance'`) — the primary and the ONLY source
+  carrying an analyst count, so the only one `estimate_for_scoring`'s `n_analysts < 3 → None` rule can admit.
+  Two forward quarters (`0q`, `+1q`), labelled to an absolute period end per ticker (SEC EDGAR cadence).
+- **Finnhub** `/calendar/earnings` (`source='finnhub_calendar'`) — free, two forward quarters, **no analyst
+  count**; an independent cross-check, stored beside yfinance with a divergence row where both land on the same
+  quarter. `/stock/revenue-estimate` is premium-walled (403 on 7/7) — never call it.
+- **SEC EDGAR** — the honest-window anchor (last filing date) and the cadence facts. Every row carries the date
+  it was READ and `valid_from = last filing` (zero window when no anchor) — the lookahead rule.
+- **FMP `/analyst-estimates` was REMOVED 2026-10-16.** The free tier serves ~1 ticker in 12 (symbol allow-list,
+  `limit` 0-10, measured 2026-09-03), so it produced 21-26 `api_failure_fmp` rows a night for no estimate. His
+  ruling 2026-09-03 (*"start with what yfinance gives… re-test at 60 days"*). Deleted, not flagged off: the leg,
+  its pacing, its 402 handling and the `analyst_estimates_plan_change` alarm. Stored `fmp_stable` rows stay valid
+  history. `collector._fmp_get`/`FMP_API_KEY` now have no live caller.
+- **No annual capture.** The annual leg was FMP's alone; a yfinance `0y`/`+1y` leg was never built. Annual
+  estimates are not recorded until one is (a separate build — it needs its own fiscal-year label resolution).
+- **Pace.** The job sleeps `YFINANCE_PACE_SECONDS` (24s) between tickers — the cadence the FMP sleeps used to
+  impose on every vendor, kept so the removal changed no request pattern. Not a measured Yahoo limit; lowering
+  it is a separate, measured decision.
+- **Failure is loud on purpose.** A run in which yfinance wrote no quarterly row for the whole population writes
+  ONE `analyst_estimates_error` audit row (counts: unavailable / no-cadence / EDGAR anchor-error / Finnhub rows).
+  Per-ticker rows would be noise (an ETF legitimately has no estimates). Silent, no Telegram.
+
+**What the measurements established (findings; each is a dated snapshot, not an owner):**
+- `docs/analysis/analyst_estimates_backfill_reach_2026-08-31.md` — the per-ticker backfill (an estimate persists
+  until the period reports) buys a mean 28 days / median 25 across the 305 resolved of 335 alert tickers, not the ~45 first assumed;
+  only 29% of past alerts fall inside an honest window. Moves when the axis becomes buildable.
+- `docs/analysis/estimates_free_sources_333_2026-09-03.md` — nothing free beats yfinance for our population (it
+  covers 7/7 named small caps; FMP free covered ~1/12); Tiingo/Polygon/Alpaca have no forward consensus;
+  Finnhub's consensus series is premium (its calendar is free but carries no analyst count). Stop shopping.
+- `docs/analysis/analyst_estimates_coverage_accuracy_333_2026-09-03.md` — on 176 live-source alert tickers 91%
+  pass the n≥3 rule and 86% are usable for a growth axis; yfinance and Finnhub agree on 156 of 159 comparable
+  quarters; the one confirmed vendor error was yfinance on NRIX (21× high on 3 analysts). **The low-to-high
+  spread flags both known-bad cases while touching 3% of the population; the analyst count flags 26% for the
+  same two.**
+
+**Open, and HIS at the 60-day read (none now):** the spread bar; flag vs exclude; how a $0 forecast reads on a
+growth axis; whether two forward quarters (not four) separate winners at all — Pradeep's four-quarter shape has
+never been measured here because nothing was stored.
+
 ## Quarterly Review Protocol
 
 Per `user_quarterly_rule_review.md` discipline: rubric reviewed

@@ -16,8 +16,35 @@ THE LINE — read before touching anything here. DATA CAPTURE ONLY:
     detector-liveness registry (health_checks._DETECTOR_LIVENESS_TABLES,
     mi_analyst_estimates) is the watchdog for a silently-dead writer.
 
+FMP IS GONE FROM THIS JOB (2026-10-16). The annual leg used to call FMP
+/stable/analyst-estimates. On the free tier that endpoint serves about 1 ticker in 12
+(the `symbol` allow-list, plus `limit` must be 0-10 — measured 2026-09-03), so every other
+name wrote an `api_failure_fmp` row (21-26 a night since 10-07; 22 on 10-12) plus one
+`analyst_estimates_plan_change` row a night, for no estimate (the one read of the table,
+2026-09-04, found 144 rows, all yfinance/quarter, none from FMP). The operator's ruling
+2026-09-03 ("start with what
+yfinance gives ... re-test at 60 days") makes yfinance the source of record, Finnhub the
+cross-check. The FMP leg, its pacing, its 402 handling and its `plan_change` alarm are
+DELETED, not flagged off. Consequences, stated so nobody has to rediscover them:
+  - NO ANNUAL CAPTURE. The "annual leg" was FMP's and only FMP's; yfinance's '0y'/'+1y'
+    were never built here. Annual estimates are simply not recorded until a yfinance
+    annual leg is built (a separate scoped build: it needs a fiscal-year-end label
+    resolution of its own).
+  - The ~24s-per-ticker FMP sleeps were also the only thing spacing the yfinance scrapes.
+    That cadence is kept, explicitly, as YFINANCE_PACE_SECONDS (enforced in the run loop) so
+    this change alters no vendor's request pattern. Lowering it is a separate, measured
+    decision.
+  - `source='fmp_stable'` / `period_label_method='vendor_reported'` rows already stored stay
+    valid history; the schema default and CHECK in db.py are untouched on purpose.
+  - Row shape and meaning are unchanged for every row this job still writes, so
+    RECORDER_VERSION does not move.
+  - scheduler.py's job docstring/comments still say "FMP": left alone deliberately —
+    scheduler.py is loaded by apollo-execution, so even a comment edit would drag a
+    money-path service into the deploy.
+`collector._fmp_get` (and FMP_API_KEY) now have NO live caller anywhere in the repo.
+
 THE HONESTY CONSTRAINT (this decided the whole design). Estimates are point-in-time:
-what FMP returns today for a future period is TODAY'S consensus — stamping it onto a
+what a vendor returns today for a future period is TODAY'S consensus — stamping it onto a
 past alert date is lookahead, the defect class that invalidated the 08-25 structure
 study. But there is a genuine, bounded backfill (operator-identified): an estimate for a
 future period persists until that period's results land, so today's read IS the estimate
@@ -55,42 +82,30 @@ are ETFs/preferreds/non-filers, which buy zero days BY DESIGN. SEC asks for a
 declared User-Agent (collector._SEC_UA, `SEC_USER_AGENT` env) and <=10 req/s; the run pace
 is ~4 req/s worst case.
 
-A 402 DEGRADES THE FIELD, NEVER THE TICKER (v2). Any FMP endpoint going 402 marks
-that period unavailable and the snapshot continues; the run summary carries the
-counts, and an annual-period 402 — the endpoint verified in-plan 2026-08-31 —
-additionally writes ONE `analyst_estimates_plan_change` audit row, because that means
-the FMP plan itself changed and must be visible, not silent.
-
 RAW VALUES, NEVER A COMPUTED SCORE: thresholds belong to today's rule set; a stored
 score goes stale the moment one is swept. The sketch's n_analysts<3 -> None rule is
 applied READ-SIDE (`estimate_for_scoring`, threshold parameterized) and the count is
 stored, so the rule can be re-tuned without re-fetching.
 
-ENDPOINTS (estimates: FMP /stable/, the subscription we already pay for —
-collector._fmp_get is the canonical transport; anchor: SEC EDGAR, above):
-  /analyst-estimates?symbol=X&period=annual   verified in-plan (2026-08-31); a 402
-                                              here = plan change -> audit + degrade
-  /analyst-estimates?symbol=X&period=quarter  NOT yet verified — degrade gracefully:
-                                              a 402 records annual only + counter
-  /income-statement                           402 on our plan (verified live
-                                              2026-09-01, 99/99 tickers) — NEVER call
-  /earnings                                   402 on our plan — same
-COST: fixed subscription — call budget only. ~3 calls per ticker per run (1 EDGAR +
-2 FMP) + 1 EDGAR ticker-map call per run; the daily population (live-source EP
-alerts, trailing 30 days) is ~100 tickers => ~300 calls/day, paced under FMP's
-300/min limit and EDGAR's 10/s policy. The one-shot backfill over the full alert
-population (~335 tickers) is ~1,000 calls, once.
-The v3 quarterly leg ADDS 3 yfinance calls per ticker (revenue_estimate,
-earnings_estimate, earnings_dates — fetched concurrently) and ZERO extra EDGAR
-calls (the cadence facts are parsed from the SAME submissions payload already
-fetched above). yfinance is free/unofficial, not a paid-plan concern; pacing is
-YFINANCE_PACE_SECONDS, a courtesy, not a limit FMP_PACE_SECONDS doesn't already
-dominate (see the module's pacing note below).
+SOURCES (estimates: yfinance primary + Finnhub calendar; anchor: SEC EDGAR, above):
+  yfinance revenue_estimate / earnings_estimate / earnings_dates   the 0q/+1q rows, with
+                                              analyst counts — the only source the
+                                              n_analysts<3 rule can admit
+  Finnhub /calendar/earnings                  free; forward EPS + revenue, NO count
+  SEC EDGAR submissions                       the honest-window anchor + cadence facts
+  FMP /income-statement, /earnings            402 on our plan (verified live 2026-09-01,
+                                              99/99 tickers) — NEVER call
+  FMP /analyst-estimates                      WAS the annual leg; removed 2026-10-16 (above)
+COST: $0 — no paid plan is touched. Per ticker per run: 3 yfinance calls (fetched
+concurrently), 1 Finnhub call, and 0 extra EDGAR calls (the cadence facts are parsed from
+the SAME submissions payload the anchor already fetched) + 1 EDGAR ticker-map call per run.
+The daily population (live-source EP alerts, trailing 30 days) is ~20-100 tickers. The
+one-shot backfill over the full alert population (~335 tickers) is ~1,300 calls, once.
 
-CREDENTIALS: FMP authenticates by QUERY STRING, so raw exception text can carry the
-live key (it did — 99 audit rows on 2026-09-01). `db.log_audit_event` redacts at the
-chokepoint; every log line here that formats an exception goes through
-`redact_secrets` too, so the key never lands in container logs either.
+CREDENTIALS: Finnhub authenticates by QUERY STRING (`?token=`), exactly as FMP did — and
+FMP's raw exception text carried the live key into 99 audit rows on 2026-09-01.
+`db.log_audit_event` redacts at the chokepoint; every log line here that formats an
+exception goes through `redact_secrets` too, so a key never lands in container logs either.
 
 THE QUARTERLY LEG IS YFINANCE (v3, 2026-09-02) — operator-approved after the pacing
 root-cause: FMP's `period=quarter` is not on any FMP plan and never will be for
@@ -168,23 +183,30 @@ RUN: on any given day some slice of the population is genuinely mid reporting-ga
 (released, not yet filed — see above), and the rejection there is CORRECT
 behavior, not a defect to chase. A yfinance
 outage or empty frame is a SEPARATE, first-class outcome (quarter_yf_unavailable)
-that degrades only the quarterly leg — it never touches the annual FMP row and
-never raises into the scheduler. A get_recent_quarterly_period_ends read failure
+that never touches the Finnhub leg and never raises into the scheduler. When it leaves
+the WHOLE run without one yfinance row, _run_over_tickers writes ONE
+`analyst_estimates_error` row naming the counts (the FMP-era failures were loud by
+accident — a raise per ticker; with FMP gone the primary source must say so on purpose).
+Per-ticker rows would be wrong: an ETF legitimately has no estimates. A
+get_recent_quarterly_period_ends read failure
 degrades to "no history to stabilize against" (today's date may drift a little;
 self-heals the next run) rather than aborting anything.
 
 NOT STORED: yfinance's growth/yearAgoRevenue/yearAgoEps/currency fields, even
 though they are genuine raw (not computed) values — kept out to hold the
-quarterly row to the SAME shape as the annual leg, which has never carried them
-either. Revisit if a future reader actually needs them; they cost nothing to add
+quarterly row to the SAME shape the (since removed) FMP annual leg had, which never
+carried them either. Revisit if a future reader actually needs them; they cost nothing to add
 later (additive column) and nothing was thrown away (yfinance is queried live).
 
 PACING: revenue_estimate + earnings_estimate + earnings_dates are fetched
-concurrently per ticker (YFINANCE_PACE_SECONDS pause after), the same
-run_in_executor + wait_for shape fundamentals.get_fundamentals already uses for
-this synchronous, scraped library. FMP_PACE_SECONDS (12s x2) already dominates
-per-ticker wall time; the yfinance pause is a modest added courtesy, not the
-binding limiter.
+concurrently per ticker, the same run_in_executor + wait_for shape
+fundamentals.get_fundamentals already uses for this synchronous, scraped library.
+YFINANCE_PACE_SECONDS (24s) is slept BETWEEN tickers in _run_over_tickers — the exact
+per-ticker cadence the two 12s FMP sleeps used to impose, kept so removing FMP changed no
+vendor's request pattern (Yahoo throttles scrapers; a throttled night is a night of
+quarter_yf_unavailable and a stalled clock). It is not a measured limit. Lowering it
+is a separate decision that needs a measured Yahoo tolerance, and a night's
+wall time (~24s x population) is the only thing it costs.
 
 FINNHUB — A SECOND ESTIMATES SOURCE (v4, 2026-09-03). Verified live with the
 operator's own key: `/stock/revenue-estimate` (the consensus SERIES, the same
@@ -194,7 +216,7 @@ EPS + revenue estimates on 7/7, two quarters ahead each, at 30 calls/sec. ITS ON
 GAP: the calendar carries NO ANALYST COUNT, so `n_analysts < 3 -> None`
 (estimate_for_scoring) cannot be applied to it — `analyst_count_available=False`
 marks that NULL as "this source never reports a count," never to be confused with
-`num_analysts_revenue IS NULL` on a FMP/yfinance row (which means "we asked and
+`num_analysts_revenue IS NULL` on a yfinance row (which means "we asked and
 the vendor had nothing"). Finnhub therefore CANNOT replace yfinance (which stays
 PRIMARY, and the only source estimate_for_scoring's rule can ever admit) — it is
 an independent second calendar, stored as its own rows (`source='finnhub_calendar'`,
@@ -282,25 +304,24 @@ pre-judged.
 FINNHUB IS SILENT AND NEVER RAISES (matches _fetch_yfinance_quarterly's contract
 exactly). `_finnhub_get` is a BESPOKE transport, deliberately NOT
 collector._fmp_get: that helper routes every failure through
-llm_health.maybe_alert_api_failure, which CAN Telegram — this recorder is SILENT
-on every path (THE LINE, top of this file). It reads and logs the response BODY
+llm_health.maybe_alert_api_failure, which CAN Telegram and writes `api_failure_<vendor>`
+audit rows — this recorder is SILENT on every path (THE LINE, top of this file) and
+no longer touches that helper at all. It reads and logs the response BODY
 (redacted) on an HTTP error, never just the status — the FMP lesson (2026-09-03
 root cause): a 402/403 can mean a parameter restriction, not a rate breach, and
 the body text is the only way to tell them apart. `FINNHUB_API_KEY` unset,
 network failure, malformed shape, or an empty calendar all degrade to
 "nothing recorded, counted" (quarter_finnhub_unavailable) and never touch the
-annual FMP row or the yfinance quarterly leg.
+yfinance quarterly leg.
 
 PACING: FINNHUB_PACE_SECONDS=1.1s (~54 calls/min, safely under the free tier's
 ~60/min ceiling) is a REAL elapsed-time throttle (mirrors collector._polygon_get's
-last-call-timestamp pattern, not YFINANCE_PACE_SECONDS's declared-but-unenforced
-one above) — it costs ~0 wall time in practice because tickers process
-sequentially and FMP_PACE_SECONDS's two 12s sleeps already space consecutive
-tickers ~24s apart, >20x the deficit this throttle would ever need to sleep off;
-it exists to protect a future parallel run (a backfill, or a re-architected
-nightly loop), not because today's cadence needs it. The fetch itself launches as
-a task alongside `_yf_task` (see snapshot_ticker) so its ~1 network round trip
-per ticker runs under FMP's cover time too.
+last-call-timestamp pattern) — it costs ~0 wall time in practice because tickers
+process sequentially and YFINANCE_PACE_SECONDS already space consecutive tickers ~24s
+apart, >20x the deficit this throttle would ever need to sleep off; it exists to protect
+a future parallel run (a backfill, or a re-architected nightly loop), not because
+today's cadence needs it. The fetch itself launches as a task alongside `_yf_task`
+(see snapshot_ticker) so the two vendors' round trips overlap.
 """
 from __future__ import annotations
 
@@ -325,32 +346,21 @@ logger = logging.getLogger(__name__)
 RECORDER_VERSION = "v4"           # v2 2026-09-01: anchor source FMP -> SEC EDGAR (402 fix)
                                    # v3 2026-09-02: quarterly leg added (yfinance, see below)
                                    # v4 2026-09-03: Finnhub calendar added as a 2nd source (see below)
-ESTIMATES_SOURCE = "fmp_stable"   # the ANNUAL estimate values are FMP; only the anchor moved
+                                   # (2026-10-16: the FMP annual leg was REMOVED with no bump on
+                                   # purpose — no row this job still writes changed shape or meaning)
 QUARTERLY_ESTIMATES_SOURCE = "yfinance"  # the QUARTERLY leg (v3) — distinguishes vendor in
                                           # the existing `source` column; no schema change
 FINNHUB_SOURCE = "finnhub_calendar"      # the v4 second source — /calendar/earnings only;
                                           # /stock/revenue-estimate is premium-walled (403, 7/7)
 POPULATION_LOOKBACK_DAYS = 30     # daily run: tickers with a live-source alert this recent
 MIN_ANALYSTS_DEFAULT = 3          # the sketch's n<3 -> None rule (read-side, re-tunable)
-MAX_PERIODS_PER_CALL = 20         # bound the per-ticker estimate payload
 
 # ── period_label_method (v4) — which method produced a QUARTER row's period_end_date ──
 # Recorded on EVERY row (annual included) so the Finnhub-labeling improvement is
 # MEASURABLE rather than assumed (operator instruction, 2026-09-03).
-LABEL_METHOD_VENDOR_REPORTED = "vendor_reported"     # FMP annual: the vendor's own `date`
-                                                      # field IS the period end — no reconstruction
 LABEL_METHOD_YF_RECONSTRUCTED = "yf_reconstructed"   # yfinance quarterly, no Finnhub corroboration
 LABEL_METHOD_FINNHUB_FISCAL = "finnhub_fiscal_label"  # period_end_date derived from Finnhub's own
                                                        # (quarter, year) — see fiscal_quarter_end_from_label
-# 🛑 PACING IS THE WHOLE BUG (root-caused 2026-09-02). This was 0.25s — its own comment said
-# "~240 calls/min worst case" — against a FREE tier. FMP answers a rate breach with HTTP **402**,
-# not 429, so it is indistinguishable from "endpoint not in your plan" unless you read the body:
-# a plan refusal says "not available under your current subscription", a rate breach says nothing
-# and CLEARS ON ITS OWN. Proven by probing the identical URL minutes apart from inside the
-# container: 200 -> 402 -> 200. The 09-02 run's "99 annual-402" was NOT a plan change; the alarm
-# that fired said the plan had changed, and it was wrong.
-FMP_PACE_SECONDS = 12.0           # ~5 calls/min — the free tier's documented allowance
-
 # ── SEC EDGAR anchor source (v2) ──────────────────────────────────────────────────────
 # The exact form set the 08-31 reach measurement used (306/335 resolved) — foreign
 # filers report on 20-F/6-K; amendments carry the same filing-date semantics.
@@ -403,18 +413,22 @@ _STABILIZE_TOLERANCE_DAYS = 15    # see stabilize_period_end — about half a qu
 _STABILIZE_LOOKBACK_DAYS = 120    # how far back to look for a prior recorded date to reuse —
                                    # a bit over one quarter, so a population-coverage gap never
                                    # loses the prior snapshot of the SAME quarter
-YFINANCE_PACE_SECONDS = 1.0       # a modest courtesy pause; FMP_PACE_SECONDS (12s x2) already
-                                   # dominates per-ticker wall time and is the binding limiter
+# Slept BETWEEN tickers in _run_over_tickers. 24s is not a Yahoo limit anyone measured: it is
+# the per-ticker cadence the two 12s FMP sleeps imposed on every yfinance/Finnhub/EDGAR call
+# from 2026-09-04 (the first night the yfinance path ever ran) until the FMP leg was removed
+# 2026-10-16, kept so that removal altered no vendor's request pattern. This used to be a
+# declared-but-unenforced 1.0 courtesy; it is now enforced.
+YFINANCE_PACE_SECONDS = 24.0
 _YF_QUARTER_TIMEOUT_SECONDS = 30.0  # mirrors fundamentals.py's _YF_TIMEOUT
 _YF_QUARTER_PERIODS = ("0q", "+1q")  # the only two yfinance periods this leg stores — '0y'/'+1y'
-                                      # are the annual leg's territory (FMP), never duplicated here
+                                      # (annual) are NOT recorded: the annual leg was FMP's and is gone
 
 # ── Finnhub /calendar/earnings (v4) — the second estimates source ────────────────────
 FINNHUB_BASE = "https://finnhub.io/api/v1"
 FINNHUB_PACE_SECONDS = 1.1        # ~54 calls/min, safely under the free tier's ~60/min ceiling —
-                                   # a REAL elapsed-time throttle (see _finnhub_get), unlike
-                                   # YFINANCE_PACE_SECONDS above; costs ~0 wall time today because
-                                   # FMP_PACE_SECONDS's own sleeps already space tickers ~24s apart
+                                   # a REAL elapsed-time throttle (see _finnhub_get); costs ~0 wall
+                                   # time today because YFINANCE_PACE_SECONDS already spaces tickers
+                                   # ~24s apart
 _FINNHUB_TIMEOUT_SECONDS = 20.0
 _FINNHUB_CALENDAR_WINDOW_DAYS = 200   # ~2 quarters ahead — matches the shape verified live
                                        # 2026-09-03 (7/7 population tickers, 2 forward quarters each)
@@ -429,7 +443,7 @@ _FINNHUB_OVERRIDE_TOLERANCE_DAYS = 45  # ~half a quarter: wide enough to accept 
 
 def _i(v) -> Optional[int]:
     """None-safe int coercion. NOT db._int_or_none — that one raises on garbage
-    (its callers want a BIGINT param to fail loudly); an FMP field must degrade to
+    (its callers want a BIGINT param to fail loudly); a vendor field must degrade to
     None instead. Float coercion is db._f, imported above."""
     try:
         return None if v is None else int(v)
@@ -452,8 +466,8 @@ def _d(v) -> Optional[date]:
 def _nan_to_none(v: Any) -> Any:
     """yfinance/pandas represents a missing numeric field as float('nan'), not None.
     float(nan) survives db._f unchanged (nan is not None, so _f's guard doesn't
-    catch it) and would store NaN into a DOUBLE PRECISION column — the FMP leg
-    never hit this because FMP's JSON uses explicit null for a missing value.
+    catch it) and would store NaN into a DOUBLE PRECISION column (FMP's JSON used an
+    explicit null for a missing value; yfinance does not).
     Filter it out before handing a value to _f/_i (_i is unaffected: int(nan)
     already raises ValueError, which _i already catches)."""
     try:
@@ -496,42 +510,6 @@ def latest_filing_from_submissions(payload: Any) -> Optional[date]:
         if parsed is not None and (best is None or parsed > best):
             best = parsed
     return best
-
-
-def normalize_fmp_estimate(
-    rec: dict, *, ticker: str, period_type: str, as_of: date,
-    anchor_filing_date: Optional[date],
-) -> Optional[dict]:
-    """One FMP /stable/analyst-estimates record -> one mi_analyst_estimates row.
-
-    Raw field capture only — no derived numbers. Returns None when the record has no
-    parseable period date (a row that is FOR no period is meaningless). Missing value
-    fields store as NULL, never 0 — zero is a claim, NULL is an absence.
-    """
-    period_end = _d(rec.get("date"))
-    if period_end is None:
-        return None
-    return {
-        "ticker": ticker,
-        "as_of_date": as_of,
-        "anchor_filing_date": anchor_filing_date,
-        "valid_from_date": honest_valid_from(anchor_filing_date, as_of),
-        "period_type": period_type,
-        "period_end_date": period_end,
-        "revenue_avg": _f(rec.get("revenueAvg")),
-        "revenue_high": _f(rec.get("revenueHigh")),
-        "revenue_low": _f(rec.get("revenueLow")),
-        "eps_avg": _f(rec.get("epsAvg")),
-        "eps_high": _f(rec.get("epsHigh")),
-        "eps_low": _f(rec.get("epsLow")),
-        "num_analysts_revenue": _i(rec.get("numAnalystsRevenue")),
-        "num_analysts_eps": _i(rec.get("numAnalystsEps")),
-        "source": ESTIMATES_SOURCE,
-        "recorder_version": RECORDER_VERSION,
-        "analyst_count_available": True,
-        "fiscal_quarter": None, "fiscal_year": None,
-        "period_label_method": LABEL_METHOD_VENDOR_REPORTED,
-    }
 
 
 # ── quarterly leg (v3) — SEC-sourced cadence resolution + yfinance normalization ──────
@@ -861,13 +839,13 @@ def normalize_yfinance_quarterly_estimate(
     fiscal_quarter: Optional[int] = None, fiscal_year: Optional[int] = None,
 ) -> Optional[dict]:
     """One yfinance revenue_estimate/earnings_estimate period ('0q' or '+1q') -> one
-    mi_analyst_estimates row, in the SAME shape normalize_fmp_estimate produces — a
+    mi_analyst_estimates row, in the SAME shape every source's rows share — a
     future reader cannot tell which vendor a field came from without checking `source`
-    (set to QUARTERLY_ESTIMATES_SOURCE here, ESTIMATES_SOURCE for the annual/FMP leg).
-    Raw capture only, same discipline as the annual leg: growth/yearAgoRevenue/
-    yearAgoEps/currency are available on the yfinance frames but deliberately NOT
-    stored — kept out to hold this row to the annual leg's shape, which has never
-    carried them either (see the module docstring).
+    (set to QUARTERLY_ESTIMATES_SOURCE here, FINNHUB_SOURCE for the Finnhub leg).
+    Raw capture only: growth/yearAgoRevenue/yearAgoEps/currency are available on the
+    yfinance frames but deliberately NOT stored — kept out to hold this row to the
+    shape the (since removed) FMP annual leg had, which never carried them either
+    (see the module docstring).
 
     v4: `period_label_method` records WHICH method produced `period_end_date` — the
     caller (snapshot_ticker) passes LABEL_METHOD_FINNHUB_FISCAL + this quarter's
@@ -882,7 +860,7 @@ def normalize_yfinance_quarterly_estimate(
     date, but the guard holds here too) or when neither vendor row has any data.
     Missing individual fields store as NULL, never 0 — zero is a claim, NULL is an
     absence (NaN, yfinance's own "missing" sentinel, is normalized to NULL too via
-    _nan_to_none, unlike FMP's explicit JSON null which _f/_i already handle)."""
+    _nan_to_none)."""
     if period_end_date is None:
         return None
     if not revenue_row and not earnings_row:
@@ -924,7 +902,7 @@ def normalize_finnhub_estimate(
     high/low spread and NO ANALYST COUNT (verified live 2026-09-03, all 7 population
     tickers) — revenue_high/low and eps_high/low store NULL, and
     analyst_count_available=False marks that NULL as "this source never reports a
-    count," never to be confused with num_analysts_revenue=None on a FMP/yfinance row
+    count," never to be confused with num_analysts_revenue=None on a yfinance row
     (which means "we asked and the vendor had nothing"). estimate_for_scoring checks
     this flag explicitly so a future caller cannot apply the n<3 rule to it by
     accident."""
@@ -1118,26 +1096,10 @@ async def _fetch_quarter_cadence_facts(ticker: str, as_of: date) -> dict[str, Op
     return {k: v for k, v in facts.items() if k != "anchor_filing_date"}
 
 
-# ── estimates fetch (collector._fmp_get is the canonical FMP transport) ───────────────
-
-async def _fetch_estimates(ticker: str, period: str) -> list[dict]:
-    from agents.market_intelligence.collector import _fmp_get
-    out = await _fmp_get("/analyst-estimates",
-                         {"symbol": ticker, "period": period,
-                          "page": 0, "limit": MAX_PERIODS_PER_CALL})
-    return out if isinstance(out, list) else []
-
-
-def _is_payment_required(exc: Exception) -> bool:
-    """True for FMP's 402 (endpoint not in plan) — the degrade-not-die case."""
-    resp = getattr(exc, "response", None)
-    return getattr(resp, "status_code", None) == 402
-
-
 # ── quarterly estimates fetch (v3 — yfinance, unofficial and scraped) ────────────────
 # THE LINE for this function specifically: every failure mode here (import error, bad
 # ticker, timeout, malformed frame, scrape breakage) returns None. It never raises past
-# this function and never touches the annual FMP row — see snapshot_ticker's call site.
+# this function and never touches the Finnhub leg — see snapshot_ticker's call site.
 
 async def _fetch_yfinance_quarterly(ticker: str) -> Optional[dict[str, Any]]:
     """revenue_estimate + earnings_estimate + earnings_dates via yfinance, for the two
@@ -1216,7 +1178,7 @@ async def _fetch_yfinance_quarterly(ticker: str) -> Optional[dict[str, Any]]:
 # THE LINE for this whole section, mirroring _fetch_yfinance_quarterly exactly: every
 # failure mode (missing key, network error, bad status, malformed shape, empty
 # calendar) degrades to None/nothing-recorded-and-counted. It NEVER raises past
-# _fetch_finnhub_calendar and never touches the annual FMP row or the yfinance leg.
+# _fetch_finnhub_calendar and never touches the yfinance leg.
 
 _finnhub_pace_lock = asyncio.Lock()
 _finnhub_last_call_state: dict[str, float] = {"t": 0.0}
@@ -1317,17 +1279,16 @@ async def _fetch_finnhub_calendar(ticker: str, as_of: date) -> "Optional[list[di
 
 
 async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
-    """Fetch + normalize one ticker's estimates. Returns {rows, annual_unavailable,
-    anchor, anchor_error, quarter_yf_rows, quarter_yf_unavailable,
-    quarter_yf_no_cadence, quarter_finnhub_rows, quarter_finnhub_unavailable,
-    quarter_finnhub_no_cadence} — raises only on a hard ANNUAL FMP fetch failure the
-    caller counts (per-ticker isolation lives in the run loop, not here). The anchor
+    """Fetch + normalize one ticker's estimates. Returns {rows, anchor, anchor_error,
+    quarter_yf_rows, quarter_yf_unavailable, quarter_yf_no_cadence,
+    quarter_finnhub_rows, quarter_finnhub_unavailable, quarter_finnhub_no_cadence,
+    divergences} (per-ticker isolation lives in the run loop, not here). The anchor
     NEVER aborts: an unresolvable or failed anchor records the rows with a zero
     honest window (the 2026-09-01 first-run bug was exactly this abort). The v3
     quarterly (yfinance) leg and the v4 Finnhub leg are equally non-fatal: any
     failure in either degrades to nothing-recorded-and-counted and never touches
-    the annual row OR each other — Finnhub's own row does not even depend on
-    yfinance succeeding (see the module docstring's "PREFER, NEVER REQUIRE")."""
+    the other — Finnhub's own row does not even depend on yfinance succeeding
+    (see the module docstring's "PREFER, NEVER REQUIRE")."""
     anchor: Optional[date] = None
     quarter_cadence: dict[str, Any] = dict(_EMPTY_CADENCE_FACTS)
     anchor_error = False
@@ -1342,44 +1303,15 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
         anchor_error = True
         logger.warning(f"anchor fetch failed for {ticker} (zero honest window): "
                        f"{redact_secrets(f'{type(e).__name__}: {e}')}")
-    # ⏱ THE YFINANCE AND FINNHUB LEGS START HERE, NOT AFTER THE FMP SLEEPS (2026-09-02,
-    # extended 2026-09-03). Both are different vendors with independent rate limits, so
-    # running either in series behind FMP's two deliberate 12s pauses just adds latency to
-    # every ticker. Launched as tasks, awaited only where their results are needed, so the
-    # pauses become cover time. Neither can take the annual row down: both fetch functions
-    # catch everything internally.
+    # ⏱ THE YFINANCE AND FINNHUB LEGS RUN CONCURRENTLY (2026-09-02, extended 2026-09-03).
+    # Different vendors with independent rate limits, so running either in series behind the
+    # other just adds latency to every ticker. Launched as tasks, awaited only where their
+    # results are needed. Neither can take the run down: both fetch functions catch
+    # everything internally.
     _yf_task = asyncio.ensure_future(_fetch_yfinance_quarterly(ticker))
     _finnhub_task = asyncio.ensure_future(_fetch_finnhub_calendar(ticker, as_of))
 
-    await asyncio.sleep(FMP_PACE_SECONDS)
     rows: list[dict] = []
-    annual_unavailable = False
-    # ⚠ ANNUAL ONLY FROM FMP (2026-09-02). `period=quarter` is NOT on this tier — FMP says so
-    # explicitly: "This value set for 'period' is not available under your current subscription".
-    # Calling it anyway DOUBLED our call volume for a guaranteed 402, on the exact quota the
-    # annual call needs, which is how a working endpoint came back 99-for-99 empty. The quarterly
-    # leg is yfinance — see the module docstring's "THE QUARTERLY LEG IS YFINANCE" section.
-    # Straight-line rather than a one-element loop: a `for period in ("annual",)` reads as though
-    # a per-period fetch still happens, and carried a `quarter_unavailable` counter that could
-    # never be anything but zero.
-    try:
-        recs = await _fetch_estimates(ticker, "annual")
-    except Exception as e:
-        if not _is_payment_required(e):
-            raise
-        # A 402 degrades the FIELD, never the ticker. Annual IS in-plan (verified 08-31,
-        # re-verified 09-02), so a 402 here is most likely a RATE BREACH — FMP answers both
-        # with 402 — which is why the run loop's alarm no longer asserts a plan change.
-        annual_unavailable = True
-        recs = []
-    for rec in recs:
-        row = normalize_fmp_estimate(
-            rec, ticker=ticker, period_type="annual", as_of=as_of,
-            anchor_filing_date=anchor,
-        )
-        if row is not None:
-            rows.append(row)
-    await asyncio.sleep(FMP_PACE_SECONDS)
 
     # ── Finnhub leg (v4) — guard-passed period_ends, independent of yfinance's fate ──
     quarter_finnhub_unavailable = False
@@ -1391,12 +1323,12 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
                                                  # stabilize_period_end reuses an older date)
     finnhub_period_ends: list[Optional[date]] = []
     try:
-        finnhub_raw = await _finnhub_task   # started before the FMP pauses; usually already done
+        finnhub_raw = await _finnhub_task   # started above, concurrently with the yfinance fetch
     except Exception as e:  # belt-and-suspenders: _fetch_finnhub_calendar already catches
         # everything internally and returns None, but this leg must NEVER be able to
-        # take the annual row (or the yfinance leg) down with it if that contract slips.
+        # take the yfinance leg down with it if that contract slips.
         finnhub_raw = None
-        logger.warning(f"Finnhub calendar fetch failed for {ticker} (annual/yfinance "
+        logger.warning(f"Finnhub calendar fetch failed for {ticker} (yfinance "
                        f"rows unaffected): {redact_secrets(f'{type(e).__name__}: {e}')}")
     if not finnhub_raw:
         quarter_finnhub_unavailable = True
@@ -1428,12 +1360,12 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
     quarter_no_cadence = False
     quarter_rows: list[dict] = []
     try:
-        yf_data = await _yf_task          # started before the FMP pauses; usually already done
+        yf_data = await _yf_task          # started above, concurrently with the Finnhub fetch
     except Exception as e:  # belt-and-suspenders: _fetch_yfinance_quarterly already
         # catches everything internally and returns None, but this leg must NEVER be
-        # able to take the annual row down with it even if that contract slips.
+        # able to take the Finnhub rows down with it even if that contract slips.
         yf_data = None
-        logger.warning(f"yfinance quarterly fetch failed for {ticker} (annual row "
+        logger.warning(f"yfinance quarterly fetch failed for {ticker} (Finnhub rows "
                        f"unaffected): {redact_secrets(f'{type(e).__name__}: {e}')}")
     if not yf_data:
         quarter_yf_unavailable = True
@@ -1509,7 +1441,7 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
     # when the corroborated-override above made their period_end_date identical).
     divergences = compute_estimate_divergences(rows)
 
-    return {"rows": rows, "annual_unavailable": annual_unavailable,
+    return {"rows": rows,
             "anchor": anchor, "anchor_error": anchor_error,
             "quarter_yf_rows": len(quarter_rows),
             "quarter_yf_unavailable": quarter_yf_unavailable,
@@ -1525,12 +1457,16 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
 async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict[str, Any]:
     out = {"population": len(tickers), "tickers_written": 0, "rows_written": 0,
            "no_anchor": 0, "anchor_errors": 0,
-           "annual_unavailable": 0, "errors": 0,
+           "errors": 0,
            "quarter_yf_rows_written": 0, "quarter_yf_unavailable": 0,
            "quarter_yf_no_cadence": 0,
            "quarter_finnhub_rows_written": 0, "quarter_finnhub_unavailable": 0,
            "quarter_finnhub_no_cadence": 0, "divergence_rows_written": 0}
-    for ticker in tickers:
+    for i, ticker in enumerate(tickers):
+        if i:
+            # Between tickers, not after the last: the cadence the FMP sleeps used to impose
+            # on every vendor (see YFINANCE_PACE_SECONDS).
+            await asyncio.sleep(YFINANCE_PACE_SECONDS)
         try:
             snap = await snapshot_ticker(ticker, as_of)
             written = await upsert_analyst_estimates(snap["rows"])
@@ -1554,8 +1490,6 @@ async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict
                 out["anchor_errors"] += 1        # EDGAR outage — NOT the by-design case
             elif snap["anchor"] is None:
                 out["no_anchor"] += 1            # true non-filer/ETF — zero days by design
-            if snap["annual_unavailable"]:
-                out["annual_unavailable"] += 1
         except Exception as e:  # per-ticker isolation: one bad name never kills the run
             out["errors"] += 1
             logger.warning(redact_secrets(
@@ -1567,30 +1501,31 @@ async def _run_over_tickers(tickers: list[str], as_of: date, label: str) -> dict
                 )
             except Exception:  # loud-ok: logger.warning above already fired
                 pass
-    if out["annual_unavailable"]:
-        # Annual is IN-PLAN (verified 2026-08-31, re-verified 2026-09-02). A 402 here is
-        # therefore almost always a RATE BREACH — FMP returns 402 for both, which is why the
-        # 09-02 run read as a plan change when it was our own 240-calls/min pacing. One loud
-        # row per run either way: a run that stored nothing must never be silent.
+    if tickers and out["quarter_yf_rows_written"] == 0:
+        # The primary source recorded NOTHING for the whole run. With the FMP leg gone this is
+        # the one place a yfinance failure speaks for itself: _fetch_yfinance_quarterly returns
+        # None on every failure by contract, so per ticker it is indistinguishable from "no
+        # coverage" (an ETF) and a per-ticker row would be noise. A run-level zero is not
+        # ambiguous: Yahoo throttled/changed shape, or EDGAR cadence facts were down for the
+        # whole population. Finnhub rows may still have landed and still advance the
+        # as_of_date count — but they carry no analyst count, so nothing the n_analysts<3
+        # rule can use was recorded tonight. One audit row; SILENT (no Telegram) like the rest.
+        msg = (f"{label}: yfinance wrote 0 quarterly rows for {out['population']} ticker(s) "
+               f"({out['quarter_yf_unavailable']} unavailable, {out['quarter_yf_no_cadence']} "
+               f"no-cadence-anchor, {out['anchor_errors']} EDGAR anchor-error); Finnhub wrote "
+               f"{out['quarter_finnhub_rows_written']} row(s), which carry no analyst count — "
+               f"tonight added nothing the n_analysts<3 rule can admit")
+        logger.warning(redact_secrets(msg))
         try:
-            await log_audit_event(
-                "analyst_estimates_plan_change",
-                f"{label}: /analyst-estimates period=annual returned 402 for "
-                f"{out['annual_unavailable']} ticker(s). FMP answers a RATE BREACH with 402, "
-                f"not 429, so this is most likely pacing, not a plan change — verified "
-                f"2026-09-02 by probing the identical URL minutes apart: 200 -> 402 -> 200. "
-                f"Check the pace before assuming a downgrade; a genuine plan refusal says "
-                f"'not available under your current subscription' in the body and does NOT "
-                f"clear on its own.",
-            )
-        except Exception:  # loud-ok: the run-summary row still carries the counter
+            await log_audit_event("analyst_estimates_error", msg[:400])
+        except Exception:  # loud-ok: logger.warning above already fired
             pass
     return out
 
 
 _EMPTY_RUN = {"population": 0, "tickers_written": 0, "rows_written": 0,
               "no_anchor": 0, "anchor_errors": 0,
-              "annual_unavailable": 0, "errors": 1,
+              "errors": 1,
               "quarter_yf_rows_written": 0, "quarter_yf_unavailable": 0,
               "quarter_yf_no_cadence": 0,
               "quarter_finnhub_rows_written": 0, "quarter_finnhub_unavailable": 0,
@@ -1616,7 +1551,6 @@ async def _run_and_log(tickers: list[str], today: date, event_type: str,
                 f"{out['divergence_rows_written']} divergence rows); "
                 f"{out['no_anchor']} no-anchor (zero honest days, by design), "
                 f"{out['anchor_errors']} anchor-error (zero honest days, EDGAR fetch failed), "
-                f"{out['annual_unavailable']} annual-402, "
                 f"{out['quarter_yf_no_cadence']} quarter-no-cadence-anchor "
                 f"(yfinance had data, period end unresolvable — no EDGAR cadence facts, "
                 f"OR the ticker is mid reporting-gap today; a nonzero baseline here EVERY "
