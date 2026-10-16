@@ -312,6 +312,7 @@ def _apply_role_partition(scheduler, role: str) -> dict:
 
 
 _scheduler: AsyncIOScheduler | None = None
+_boot_at: datetime | None = None   # #312: when THIS process registered its jobs; the recovery sweep's first-seen stamp
 _ep_scan_active = False  # Legacy — no longer gates scanning. Kept for /status display.
 
 
@@ -6868,7 +6869,7 @@ async def _run_recovery_sweep(reason: str) -> dict:
     from agents.market_intelligence.job_recovery import run_recovery_sweep
     if _scheduler is None:
         return {"reason": reason, "skipped": "no scheduler"}
-    return await run_recovery_sweep(_scheduler, EXECUTION_OWNED_JOB_IDS, reason=reason)
+    return await run_recovery_sweep(_scheduler, EXECUTION_OWNED_JOB_IDS, reason=reason, boot_at=_boot_at)
 
 
 async def _missed_job_recovery_job():
@@ -6964,8 +6965,9 @@ async def _telegram_poll_watchdog_job():
 
 
 def start_scheduler() -> AsyncIOScheduler:
-    global _scheduler
+    global _scheduler, _boot_at
     _scheduler = AsyncIOScheduler(timezone="America/New_York")
+    _boot_at = datetime.now(_ET)       # #312: every job below is first registered NOW, before any slot of today can fire
 
     # Reap stale 'running' rows from prior process kills before any new job fires.
     # boot_time captured HERE — before add_job()/_scheduler.start() below — is

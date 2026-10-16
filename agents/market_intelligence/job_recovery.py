@@ -45,6 +45,17 @@ TELEGRAMS. A re-run's sends are HELD, not delivered, by `shared.telegram_hold` a
 Sending late is the operator's flip (`APOLLO_RECOVERY_SEND_LATE=1`), off by default, after Friday's
 watchlist reached him twice on 09-20 from a probe that said it could not.
 
+A JOB THAT DID NOT EXIST YET HAS NO SLOTS TO MISS (#312, 2026-10-15). `ladder_watchdog` was
+registered for the first time by a Thursday-night deploy: empty ledger, a mon-fri 16:17 trigger. The
+derivation read four days of 16:17 slots with no row near any of them as four gaps — re-ran Thursday's
+and paged Mon-Wed as `unrecoverable`, days before the job existed. The ledger cannot tell "never ran"
+from "was not there", so the first boot RECORDS when it first saw each job (`mi_audit_log`,
+event `job_first_seen`, summary = job id, detail = this process's boot time) and `plan_recovery`
+skips every slot earlier than that. Written only for a job with NO ledger row older than the boot and
+NO prior first-seen row, so a job with history is untouched and a reboot never moves the stamp. Opt-in
+per sweep (`boot_at`): a caller that passes none — and a job with no first-seen row — keeps the old
+long-standing reading. Scope: ELIGIBLE jobs only (the only ones whose ledger this sweep reads).
+
 WHAT IS EXERCISED vs ASSUMED: the derivation is replayed against prod's real 09-16..09-20 ledger in
 `tests/test_672_missed_job_recovery.py` and must reproduce the incident's gap set; the re-run path
 is driven through the real `audit_wrap` with the real listener and a real-scheduler job list; the
@@ -59,6 +70,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Callable, Iterable
 
+from agents.market_intelligence.audit_events import JOB_FIRST_SEEN
 from shared.dates import _ET, pinned_recovery
 
 logger = logging.getLogger(__name__)
@@ -81,6 +93,8 @@ SESSION_CLOSE = time(16, 0)
 MATCH_BEFORE_S = 120              # an ordinary run's started_at may precede its slot by clock skew
 ATTEMPTED = frozenset({"running", "success", "failed", "empty_result", "interrupted"})
 TERMINAL = frozenset({"unrecoverable"})
+FIRST_SEEN_LOOKBACK_H = 10 * 365 * 24   # a stamp records EXISTENCE, not a run: it must never age out of the read, or a job silent past
+                                        # the ledger window is re-stamped and a second row appears (ten years ~ unbounded; ~66 rows ever)
 # 'missed' (written by the EVENT_JOB_MISSED listener) is neither: a recorded gap, still open.
 
 
@@ -295,10 +309,17 @@ def bound_for(rows: list[dict]) -> int:
 
 
 def plan_recovery(jobs: list, rows_by_job: dict[str, list[dict]], now: datetime,
-                  in_flight: Iterable[str] = ()) -> list[Disposition]:
-    """Every eligible job × every past slot → a disposition. Pure; slot order."""
+                  in_flight: Iterable[str] = (),
+                  first_seen: dict[str, datetime] | None = None) -> list[Disposition]:
+    """Every eligible job × every past slot → a disposition. Pure; slot order.
+
+    `first_seen` ({job_id: when this job was first registered}) drops every slot EARLIER than it —
+    a slot from before the job existed is not one it could have missed (#312). No entry = a
+    long-standing job: every slot in the lookback is judged, exactly as before."""
+    first_seen = first_seen or {}
     out: list[Disposition] = []
     for job in jobs:
+        born = first_seen.get(job.id)
         rows = rows_by_job.get(job.id, [])
         grace = getattr(job, "misfire_grace_time", None) or 0
         try:
@@ -308,6 +329,8 @@ def plan_recovery(jobs: list, rows_by_job: dict[str, list[dict]], now: datetime,
             next_fire = None
         bound = bound_for(rows)                  # per JOB, not per slot — `rows` never changes here
         for slot in past_slots(job.trigger, now):
+            if born is not None and slot < born:
+                continue                                 # before the job existed — not a gap, not unrecoverable
             try:
                 slot_end = job.trigger.get_next_fire_time(None, slot + timedelta(seconds=1))
             except Exception:                        # loud-ok: falls back to the grace window below
@@ -372,6 +395,78 @@ async def record_terminal(job_id: str, slot: datetime, status: str, reason: str)
             job_id, slot, status, reason[:500])
 
 
+# ── first seen (#312): a job that did not exist yet has no slots to miss ──────────────────
+
+def parse_first_seen(rows: Iterable[dict]) -> dict[str, datetime]:
+    """{job_id: earliest stamp} from `job_first_seen` audit rows. Pure. The stamp is the boot time
+    carried in `detail` (tz-aware ISO); an unreadable or naive one falls back to the row's own
+    `created_at` — a few minutes later than the boot, never earlier, so a bad stamp can only
+    skip fewer slots, not more."""
+    out: dict[str, datetime] = {}
+    for r in rows:
+        jid = r.get("summary")
+        if not jid:
+            continue
+        at = None
+        try:
+            at = datetime.fromisoformat(r.get("detail") or "")
+        except ValueError:                           # loud-ok: falls back to created_at just below
+            pass
+        if at is None or at.tzinfo is None:
+            at = r.get("created_at")
+        if at is None or at.tzinfo is None:
+            continue
+        if jid not in out or at < out[jid]:
+            out[jid] = at
+    return out
+
+
+def jobs_needing_first_seen(job_ids: Iterable[str], rows_by_job: dict[str, list[dict]],
+                            known: dict[str, datetime], boot_at: datetime) -> list[str]:
+    """Jobs this boot is the FIRST sighting of. Pure. A job qualifies when it has no first-seen
+    stamp AND no ledger row that predates the boot. "Predates the boot" is the point: a job added
+    by this very deploy whose real slot lands inside the boot delay writes a ledger row of its own
+    before the sweep runs, and that row is not history. The ledger read is `fetch_ledger`'s 60-day
+    window — a daily job silent for longer than that reads as new, which only suppresses a back-fill
+    for a job that was already not running."""
+    out = []
+    for jid in job_ids:
+        if jid in known:
+            continue
+        if any(r.get("started_at") is not None and r["started_at"] < boot_at
+               for r in rows_by_job.get(jid, ())):
+            continue
+        out.append(jid)
+    return out
+
+
+async def fetch_first_seen() -> dict[str, datetime]:
+    """Every stamp on file. One read of `mi_audit_log` through the existing `get_audit_log`."""
+    from agents.market_intelligence.db import get_audit_log
+    return parse_first_seen(await get_audit_log(limit=5000, event_type=JOB_FIRST_SEEN,
+                                                since_hours=FIRST_SEEN_LOOKBACK_H))
+
+
+async def record_first_seen(job_id: str, boot_at: datetime) -> None:
+    """Stamp one job. `log_audit_event` never raises, so a failed write costs only this pass's
+    persistence — `ensure_first_seen` still hands the pass its own stamp."""
+    from agents.market_intelligence.db import log_audit_event
+    await log_audit_event(JOB_FIRST_SEEN, job_id, boot_at.isoformat())
+
+
+async def ensure_first_seen(job_ids: Iterable[str], rows_by_job: dict[str, list[dict]],
+                            boot_at: datetime) -> tuple[dict[str, datetime], list[str]]:
+    """(every stamp now in force, the job ids stamped by THIS call). Idempotent: a stamp on file is
+    never rewritten or moved, so the second boot of a new job reads the first boot's time. A failed
+    read propagates and aborts the sweep, like `fetch_ledger` — reading it as "no stamps" would
+    back-fill a brand-new job, which is the defect this exists to end."""
+    known = await fetch_first_seen()
+    new = jobs_needing_first_seen(job_ids, rows_by_job, known, boot_at)
+    for jid in new:
+        await _safe(record_first_seen, jid, boot_at)
+    return {**known, **{jid: boot_at for jid in new}}, new
+
+
 # ── execution ─────────────────────────────────────────────────────────────────────────────
 
 async def rerun_one(job, disp: Disposition, bound_s: int) -> Disposition:
@@ -419,7 +514,8 @@ def dry_run_enabled() -> bool:
 
 async def run_recovery_sweep(scheduler, execution_owned: Iterable[str], *, reason: str,
                              now: datetime | None = None, dry_run: bool = False,
-                             notify: Callable | None = None, audit: Callable | None = None) -> dict:
+                             notify: Callable | None = None, audit: Callable | None = None,
+                             boot_at: datetime | None = None) -> dict:
     """Derive → classify → re-run gaps in slot order → ONE summary. Returns what it did.
 
     SERIALISED under one lock: the boot pass, the :20/:50 pass and the miss-kick can overlap, and
@@ -429,13 +525,19 @@ async def run_recovery_sweep(scheduler, execution_owned: Iterable[str], *, reaso
 
     `notify`/`audit` default to the live senders; tests and the probe pass captures. `now` pins the
     clock for replays; live passes read it fresh before each re-run so a long pass cannot walk into
-    the ORB window unnoticed."""
+    the ORB window unnoticed.
+
+    `boot_at` is this PROCESS's boot time (#312). Given, the pass stamps every eligible job that is
+    new at this boot and skips the slots from before a stamped job existed; omitted, every job is
+    long-standing and nothing is read or written for it — the production wrapper
+    (`scheduler._run_recovery_sweep`) is the one caller that passes it."""
     async with _lock():
         return await _run_recovery_sweep_locked(scheduler, execution_owned, reason=reason, now=now,
-                                                dry_run=dry_run, notify=notify, audit=audit)
+                                                dry_run=dry_run, notify=notify, audit=audit, boot_at=boot_at)
 
 
-async def _run_recovery_sweep_locked(scheduler, execution_owned, *, reason, now, dry_run, notify, audit) -> dict:
+async def _run_recovery_sweep_locked(scheduler, execution_owned, *, reason, now, dry_run, notify, audit,
+                                     boot_at) -> dict:
     pinned_now = now
     clock = (lambda: pinned_now) if pinned_now is not None else (lambda: datetime.now(_ET))
     now = clock()
@@ -454,7 +556,11 @@ async def _run_recovery_sweep_locked(scheduler, execution_owned, *, reason, now,
         logger.info("recovery sweep: inside the ORB quiet window — deferred")
         return out
     rows_by_job = await fetch_ledger([j.id for j in jobs])
-    plan = plan_recovery(jobs, rows_by_job, now, jobs_in_flight())
+    first_seen, stamped = {}, []
+    if boot_at is not None and jobs:
+        first_seen, stamped = await ensure_first_seen([j.id for j in jobs], rows_by_job, boot_at)
+    out["first_seen_new"] = stamped
+    plan = plan_recovery(jobs, rows_by_job, now, jobs_in_flight(), first_seen)
     out["plan"] = plan
     gaps = [d for d in plan if d.kind == "gap"]
     stale = [d for d in plan if d.kind in ("unrecoverable", "exhausted")]
@@ -470,7 +576,8 @@ async def _run_recovery_sweep_locked(scheduler, execution_owned, *, reason, now,
         await _safe(audit, "job_recovery_sweep",
                     f"boot [{mode}]: {len(jobs)} eligible job(s), {len(plan)} slot(s) examined, "
                     f"{len(gaps)} gap(s), {len(to_terminate)} unrecoverable"
-                    + (f"; would re-run: {', '.join(d.label for d in gaps)}" if gaps else ""))
+                    + (f"; would re-run: {', '.join(d.label for d in gaps)}" if gaps else "")
+                    + (f"; first seen (earlier slots not back-filled): {', '.join(stamped)}" if stamped else ""))
         if dry_run and (gaps or to_terminate):
             await _safe(notify, "⏪ *Missed-job recovery — DRY RUN, nothing executed*\n"
                         f"Would re-run {len(gaps)}: " + ", ".join(d.label for d in gaps)
