@@ -7237,10 +7237,11 @@ def start_scheduler() -> AsyncIOScheduler:
     )
 
     # #333 ANALYST-ESTIMATES RECORDER — 18:12 ET mon-fri (EOD shadow family, after the
-    # 18:05/18:08/18:09 siblings). Snapshots FMP consensus estimates for the trailing
-    # 30-day live-alert population, honest-window stamped (read date + last-filing
-    # anchor). DATA CAPTURE ONLY, SILENT — no Telegram on any path; ~300 FMP calls/run
-    # on a fixed subscription (THE LINE; analyst_estimates_recorder.py docstring).
+    # 18:05/18:08/18:09 siblings). Snapshots yfinance consensus estimates (two quarters + the
+    # two fiscal years, 2026-10-16) and Finnhub's earnings calendar for the trailing 30-day
+    # live-alert population, honest-window stamped (read date + last-filing anchor). FMP is
+    # GONE from this job (2026-10-16 — its free tier refused the call every night). DATA
+    # CAPTURE ONLY, SILENT — no Telegram on any path (THE LINE; analyst_estimates_recorder.py docstring).
     _scheduler.add_job(
         audit_wrap(_analyst_estimates_snapshot_job, "analyst_estimates_snapshot"),
         CronTrigger(hour=18, minute=12, day_of_week="mon-fri", timezone="America/New_York"),

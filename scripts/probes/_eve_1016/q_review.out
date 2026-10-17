@@ -1,0 +1,28 @@
+                conname                 |                          pg_get_constraintdef                          
+----------------------------------------+------------------------------------------------------------------------
+ mi_analyst_estimates_check             | CHECK ((valid_from_date <= as_of_date))
+ mi_analyst_estimates_period_type_check | CHECK ((period_type = ANY (ARRAY['annual'::text, 'quarter'::text])))
+ mi_analyst_estimates_pk                | PRIMARY KEY (ticker, period_type, period_end_date, as_of_date, source)
+(3 rows)
+
+ period_type |      source      | count 
+-------------+------------------+-------
+ quarter     | finnhub_calendar |  1680
+ quarter     | yfinance         |  1454
+(2 rows)
+
+ id | ticker | anchor_date | entry_date | entry_mode 
+----+--------+-------------+------------+------------
+(0 rows)
+
+             et             |           event_type           |                                                       left                                                       
+----------------------------+--------------------------------+------------------------------------------------------------------------------------------------------------------
+ 2026-09-17 17:06:33.096591 | theme_discovery_shown_declined | shown=65 declined=54 proposed=8 clusters shown=12 declined=3 already_named=5 partial=3 taken=1 recall_mode=False
+ 2026-09-17 17:12:42.782395 | theme_discovery_shown_declined | shown=73 declined=33 proposed=17 clusters shown=12 declined=2 already_named=5 partial=5 taken=0 recall_mode=True
+(2 rows)
+
+ ticker | anchor_date |   state    | last_eval  
+--------+-------------+------------+------------
+ FEIM   | 2026-09-21  | post_runup | 2026-10-07
+(1 row)
+
