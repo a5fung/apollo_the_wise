@@ -1421,7 +1421,22 @@ stagger cards, one at a time.
 
 **Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
-## 2026-10-15 (Thu) CLOSE — 🔴 RESUME HERE. Supersedes the 10-14 close below.
+## 2026-10-16 (Fri) CLOSE — 🔴 RESUME HERE. Supersedes the 10-15 close below.
+
+**Board 28 → 26.** Closed #693 (second clean full validator pass: 140 calls, 0 errors, 0 cut off, 9 removals; the Mon 10-12 night is the other) and #598 (its DoD met live; the screen arm closed on its own written zero arm — 10 trading days, 0 flag-screen blocks — with the tripwire `flag_mna_screen_first_fire_598` carrying the first real block). No new tasks. Server = 291cb305 (21:15–21:21 ET: `deploy.sh both` exit 0, then `deploy.sh execution` exit 0; symbols grepped in apollo-market AND apollo-execution; `mi_flag_candidates.post_breakout_from` / `days_since_breakout` exist; 0 error rows after boot). main = server + PLAN/probe commits only.
+
+**Shipped + deployed tonight (pulled from Sat on his "go"):** #697 item 4 (post-breakout state) · #333 FMP /analyst-estimates removal + the yfinance annual 0y/+1y leg + the AEHR fiscal-year guard (EDGAR's year end disagreeing with the last 10-K → skip, never mislabel; 176-ticker cross-check: 304/304 labels and values = Yahoo's raw data; IBM = Alpha Vantage within 0.03%) · #531 theme-guard false alarm (a member another rule removed the same night — sector-outlier strip, validator — is not paged as an RS prune; IBP/HAYW/OKLO were all strips) · #701 (c) the coil scan skips names with no daily bar for 3+ sessions (QRVO + 8 others; no fresh name skipped).
+
+**Answered tonight (no action):** "detectors gone quiet" for the consolidation breakout recorder = a quiet tape, not a defect (a read-only replay reproduced 21/21 logged September fires; October's only fire, SYNA, was correctly blocked as a deal target) · the Apollo Trades dashboard ImportError = a stale Streamlit Cloud module; his reboot fixed it · dashboard R figures checked on the 23:30Z export (KOD +5.87R, VICR +7.30R; 90-day avg +0.14R, YTD +0.00R).
+
+**Evening reads (all filed on their lines):** #312 ladder first scheduled run verified (values as registered; next verify Mon 10-19's row) · #624 heartbeat 5 + week read (quiet, 0 errors; next Fri 10-23) · #701 (a) met · ranking read (AAOI + HUM matured; unchanged; next BSP 10-21).
+
+**Mon 10-19 checks (pre-registered on the lines):** #333 annual coverage >= 85% of quarterly tickers on the 18:12 run · #697 item 4 `scripts/probes/_697_item4/verify_live.sql` after the 17:25 scan · #655 the `theme_quality_clean` note carries `explained_by_other_rule` · #701 (c) one `anticipation_stale_bars_skipped` row naming QRVO · #312 the ladder's weekday row.
+**Weekend 10-17/18:** #686 frozen read · #655 churn re-measure + his table · #687 · Sun 10-18 first #700 review + first ci_status file → close #313 (ACCEPTED-PARTIAL, his ruling) · DECISION: Finnhub quarterly label drift (does `stabilize_period_end` already absorb a 52/53-week MMDD drift? a month-end snap is WRONG for quarters).
+
+**Not Apollo (his personal trading review, outside the repo, in `~/trading_review`):** a verified replay of 174 of his 206 logged 2026 trades on real 1-minute/hourly prices; findings + next step in the machine-local memory `personal-trading-review-2026`. A runner-variant test on the C3 rule set was still running at close. Never put that data in this repo.
+
+## 2026-10-15 (Thu) CLOSE — superseded by the 10-16 close above.
 
 **Board 28 → 28.** No closes, no new tasks. Server = main as of the 21:16 ET deploy (both + execution, exit 0): #312 dark ladder, #624 /trades TICKER both books, the trades export with original stops. main is later by the simplify pass (ships Fri noon).
 
