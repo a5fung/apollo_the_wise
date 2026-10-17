@@ -375,6 +375,16 @@ THEME_SMALL_FOLDED = "theme_small_folded"
 THEME_SMALL_FOLD_RAN = "theme_small_fold_ran"
 THEME_SMALL_FOLD_ERROR = "theme_small_fold_error"
 
+# ── #655 (c): a theme the OPERATOR promotes is not absorbed by Pass 1.5 for its first 3 theme nights
+# (2026-10-17, operator "go with rec"). EXEMPT: one row per theme per run, written only on a night Pass 1.5
+# WOULD have absorbed it (theme, the would-be absorber, night k of 3). Merge pass 1 and 2 share one
+# written-set, so a normal night writes ONE row per theme (a same-night engine re-run writes another —
+# count DISTINCT themes per ET date, not rows). ERROR: the exemption read raised, nothing is exempt
+# tonight (today's behaviour) — the only row that distinguishes "no promotion in the window" from
+# "could not read".
+THEME_PASS1_5_OPERATOR_EXEMPT = "theme_pass1_5_operator_exempt"
+THEME_PASS1_5_OPERATOR_EXEMPT_ERROR = "theme_pass1_5_operator_exempt_error"
+
 # #312 (2026-10-16) — written by `job_recovery.ensure_first_seen`, read back by `fetch_first_seen`:
 # summary = job id, detail = the boot time (tz-aware ISO) the job was first registered. One row per
 # job, ever — the recovery planner skips every slot earlier than it.
