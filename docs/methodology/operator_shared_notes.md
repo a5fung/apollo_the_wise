@@ -1924,3 +1924,28 @@ third gate and his TOP rating — `tests/fixtures/htf_labelled.py`); the anticip
   registration cannot be edited now. A $0 follow-up AFTER that read: gap-day share count (>= 9M, and as a continuous feature) vs
   RVOL on our scored candidates, tail first ([[measure-the-tail-not-the-median]]) — recorded on #686 beside the book-trait tests.
 - Any change to the score or admission is CHANGE_PROCESS and his call (THE LINE).
+
+## 2026-10-17 — Qullamaggie's BREAKOUT setup ("My 3 timeless setups that have made me tens of millions"), operator-shared reference
+
+Source: https://qullamaggie.com/my-3-timeless-setups-that-have-made-me-tens-of-millions/ (fetched 2026-10-17). He asked to TEST a
+special case of the consolidation family with these tighter criteria, plus additions of his own: group RS, RS, entry/exit timing,
+bull vs bear phase. Quotes are the article's words (via a page summary).
+
+- **Prior move:** *"A big move higher sometime in the past 1-3 months. This move can be anywhere from 30-100%+ and usually lasts
+  a few days to a few weeks."*
+- **Consolidation:** *"usually 2 weeks to 2 months. During the consolidation the stock price 'surfs' the rising 10- and 20-day
+  and sometimes the 50-day moving average"*, with *"higher lows and tightening range."* Shapes: flat channels, symmetrical and
+  descending triangles.
+- **Which stocks:** *"the 1 or 2% of stocks that are up the most over these 3 timeframes: 1-month, 3-month, 6-month."*
+- **Market:** bullish; when it turns bearish, *"fewer or no trades."*
+- **Entry:** *"Enter on the opening range highs. The opening range highs can be the highs of the first 1-minute candle, the
+  5-minute candle or the 60-minute candle."* Or simply buy as the daily chart starts to break out.
+- **Stop:** *"Stop is always lows of the day and stop should not be wider than the ATR or ADR of the stock."*
+- **Size:** positions 10-20% of the account; risk 0.25-1% a trade, rarely more than 1%; at most 30% of the account in one stock
+  overnight.
+- **Exits:** *"sell 1/3 to 1/2 of the position after 3-5 days, and then move the stop to break even."* The rest *"trailed with the
+  10- or the 20-day moving average... You wait for the first CLOSE below the 10-day."*
+- **What he expects:** *"In a bullish market it is very common to get moves that are 10-20x+ your initial risk if you are good at
+  setup selection."*
+- **Under our definitions (CLAUDE.md, SETUP vs FAMILY):** this is a SETUP inside the consolidation family. It has a defined buy
+  point (the opening-range high on the breakout day) and a defined stop (the low of that day, no wider than one ADR).
