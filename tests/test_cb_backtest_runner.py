@@ -597,3 +597,888 @@ class TestFetchMinutes:
         (out / fm.DONE_NAME).write_text("2025-03-03|AAA|390|ok\n")
         fm.main(["--list", str(lst), "--out", str(out), "--dry-run"])
         assert "to fetch 2 pairs over 2 dates" in capsys.readouterr().err
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# P2b - the MINUTE STAGE (entries, exits, controls, sensitivities, holdout firewall, report)
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+import inspect  # noqa: E402
+from collections import Counter  # noqa: E402
+
+from agents.market_intelligence import anticipation as ant  # noqa: E402
+
+
+def _e_day_minutes():
+    """One breakout session, minute by minute (390 rows). pivot 10.25: orh1/pivot fill at minute 1, orh5 at minute 7
+    (level ORH5 = 10.30), orh60 never triggers (ORH60 = 10.60 is the session high). Session high 10.60, low 10.15."""
+    rows = []
+    for m in range(390):
+        if m == 0:
+            rows.append((m, 10.20, 10.25, 10.15, 10.22))
+        elif 1 <= m <= 4:
+            rows.append((m, 10.25, 10.30 if m == 3 else 10.28, 10.20, 10.25))
+        elif m in (5, 6):
+            rows.append((m, 10.28, 10.29, 10.25, 10.28))
+        elif m == 7:
+            rows.append((m, 10.29, 10.35, 10.28, 10.34))
+        elif m < 20:
+            rows.append((m, 10.34, 10.40, 10.30, 10.38))
+        elif m == 20:
+            rows.append((m, 10.40, 10.60, 10.38, 10.58))
+        else:
+            rows.append((m, 10.55, 10.58, 10.50, 10.55))
+    return rows
+
+
+def _minute_lines(ticker, rows=None):
+    return [f"{ticker}|{m}|{o}|{h}|{l}|{c}|1000" for m, o, h, l, c in (rows or _e_day_minutes())]
+
+
+def _mb(rows=None):
+    rows = rows or _e_day_minutes()
+    return cb.minute_bars_from_lists([r[0] for r in rows], [r[1] for r in rows], [r[2] for r in rows],
+                                     [r[3] for r in rows], [r[4] for r in rows], [1000.0] * len(rows))
+
+
+DISCOVERY_START = dt.date(2023, 1, 2)       # a discovery candidate's D must be <= 2024-12-31 (read_candidates checks it)
+
+
+def _e_bars(n=220, e=150, tail=None, start=None):
+    """Flat $10 history, then E (high 10.60 / low 10.15, close 10.55), then forward days: d1 runs to 10.85; d2 dips to
+    10.25 (inside the fill, above the entry stop 10.15); d3 gaps down to 9.50; flat 9.50 after. Starts 2025-01-06
+    (holdout-era dates) unless `start` says otherwise."""
+    d = _weekdays(n) if start is None else _weekdays(n, start)
+    o = np.full(n, 10.0)
+    h, l, c = o * 1.01, o * 0.99, o.copy()
+    o[e], h[e], l[e], c[e] = 10.20, 10.60, 10.15, 10.55
+    fwd = tail or [(10.60, 10.85, 10.50, 10.80), (10.70, 10.75, 10.25, 10.70), (9.50, 9.60, 9.40, 9.50)]
+    for j in range(1, n - e):
+        oo, hh, ll, cc = fwd[j - 1] if j <= len(fwd) else (9.50, 9.60, 9.40, 9.50)
+        o[e + j], h[e + j], l[e + j], c[e + j] = oo, hh, ll, cc
+    return cb.daily_bars_from_arrays(d, o, h, l, c, np.full(n, 1e6)), e
+
+
+def _m_cand(bars, e, **kw):
+    c = {"ticker": "X", "D": bars.dates[e - 1].isoformat(), "E": bars.dates[e].isoformat(), "K": "k5", "split": "discovery",
+         "pole_date": "p", "base_id": "X|p", "apollo_regime": "", "pivot": 10.25, "adr20": 0.10, "high_E": 10.60,
+         "low_E": 10.15, "open_E": 10.20, "close_E": 10.55, "atr14": 0.05, "median_dollar_vol20": 5e7,
+         "retrigger": 0, "retrigger_chain": 0, "pole_bad_high": 0, "gap_over_1adr": False, "phase_qqq_10_20": True,
+         "phase_qqq_10_20_s5": True, "phase_spy_qqq_50": False, "inside_day": False}
+    for name in rn.CELL_COLS:
+        c[name] = name in ("C0", "C1")
+    for name in rn.CELL_NAMES:
+        c["first_" + name], c["first_chain_" + name] = 1, 1
+    c.update(kw)
+    return c
+
+
+def _eval(bars=None, e=None, minutes=None, **kw):
+    if bars is None:
+        bars, e = _e_bars()
+    cidx = np.arange(len(bars))
+    c = _m_cand(bars, e, **kw)
+    res = rn.evaluate_candidate(c, bars, cidx, e, minutes if minutes is not None else _mb(), list(bars.dates), len(bars) - 1)
+    return c, bars, e, {r["variant"]: r for r in res}
+
+
+# ═══ the minute reader ═══════════════════════════════════════════════════════════════════════════
+class TestMinuteReader:
+    def test_the_last_block_per_date_and_ticker_wins_across_gzip_members(self, tmp_path):
+        f = tmp_path / "2025-03-03.psv.gz"
+        fm._append_gz(f, ["AAA|0|1|1|1|1|1", "AAA|1|1|1|1|1|1", "BBB|0|2|2|2|2|2"])
+        fm._append_gz(f, ["CCC|0|3|3|3|3|3"])
+        fm._append_gz(f, ["AAA|0|9|9|9|9|9", "AAA|1|9|9|9|9|9", "AAA|2|9|9|9|9|9"])      # a resumed fetch re-did AAA
+        blocks, info = rn.read_minute_file(f)
+        assert [r[2] for r in blocks["AAA"]] == ["9", "9", "9"]                          # the LAST block, not the first
+        assert [r[2] for r in blocks["BBB"]] == ["2"] and [r[2] for r in blocks["CCC"]] == ["3"]
+        assert info["refetched"] == 1 and not info["truncated"]
+        only, _ = rn.read_minute_file(f, {"BBB"})
+        assert set(only) == {"BBB"}                                                      # the want-filter skips the rest
+
+    def test_a_ticker_in_two_consecutive_members_is_a_refetch_the_second_replaces_and_bad_lines_are_counted(self, tmp_path):
+        f = tmp_path / "d.psv.gz"
+        fm._append_gz(f, ["AAA|0|1|1|1|1|1", "AAA|1|1|1|1|1|1"])
+        fm._append_gz(f, ["AAA|2|1|1|1|1|1", "not a row"])
+        blocks, info = rn.read_minute_file(f)
+        # the fetcher writes ONE member per symbol per fetch, so the second member is a re-fetch: it REPLACES, never extends
+        assert [r[1] for r in blocks["AAA"]] == ["2"] and info["bad_lines"] == 1 and info["refetched"] == 1
+
+    def test_a_crash_resume_refetch_right_after_the_tickers_own_member_is_one_390_row_block_and_usable(self, tmp_path):
+        """The reviewer's repro: SSS's member was written, the crash lost its done-line, and the resume re-fetches SSS FIRST,
+        so the new member directly follows the old one. Merged, the 780 rows fail validation (duplicate minutes) and a
+        fetched pair becomes an `invalid` -> no_minutes data abstain; replaced, it is the new 390-row block."""
+        f = tmp_path / "2023-01-12.psv.gz"
+        fm._append_gz(f, [f"AAA|{m}|1|1|1|1|1" for m in range(390)])           # done-line written
+        fm._append_gz(f, [f"SSS|{m}|5|5|5|5|5" for m in range(390)])           # member written, crash before its done-line
+        fm._append_gz(f, [f"SSS|{m}|6|6|6|6|6" for m in range(390)])           # resume: SSS is the first not-done ticker
+        (tmp_path / "_done.psv").write_text("2023-01-12|AAA|390|ok\n2023-01-12|SSS|390|ok\n")
+        blocks, info = rn.read_minute_file(f)
+        assert len(blocks["SSS"]) == 390 and {r[2] for r in blocks["SSS"]} == {"6"}        # the LAST fetch, once
+        assert len(blocks["AAA"]) == 390 and info["refetched"] == 1
+        mb, state = rn.minutes_for(blocks, rn.load_done_pairs(tmp_path), "2023-01-12", "SSS")
+        assert state == "ok" and mb is not None
+        only, _ = rn.read_minute_file(f, {"SSS"})                                           # the want-filter path agrees
+        assert len(only["SSS"]) == 390 and set(only) == {"SSS"}
+        # a multi-ticker member is still read by runs inside the member, and a re-fetch of one of its tickers wins
+        g = tmp_path / "2023-01-13.psv.gz"
+        fm._append_gz(g, ["AAA|0|1|1|1|1|1", "AAA|1|1|1|1|1|1", "BBB|0|2|2|2|2|2"])
+        fm._append_gz(g, ["BBB|0|7|7|7|7|7", "BBB|1|7|7|7|7|7"])
+        gb, _ = rn.read_minute_file(g)
+        assert len(gb["AAA"]) == 2 and [r[2] for r in gb["BBB"]] == ["7", "7"]
+
+    def test_a_truncated_tail_member_is_dropped_and_every_complete_member_before_it_is_kept(self, tmp_path):
+        f = tmp_path / "d.psv.gz"
+        fm._append_gz(f, ["AAA|0|1|1|1|1|1"])
+        third = gzip.compress(("BBB|0|2|2|2|2|2\n" * 400).encode(), mtime=0)
+        f.write_bytes(f.read_bytes() + third[:len(third) // 2])
+        blocks, info = rn.read_minute_file(f)
+        assert info["truncated"] is True and "AAA" in blocks and "BBB" not in blocks
+        f.write_bytes(f.read_bytes()[:len(f.read_bytes()) - len(third) // 2] + b"\x1f\x8bjunk")           # garbage after the good member
+        assert rn.read_minute_file(f)[1]["truncated"] and "AAA" in rn.read_minute_file(f)[0]
+
+    def test_minutes_for_distinguishes_pending_from_an_abstain(self):
+        blocks = {"AAA": [list(map(str, ("AAA", 0, 1, 1, 1, 1, 1))), list(map(str, ("AAA", 1, 1, 1, 1, 1, 1)))],
+                  "BAD": [list(map(str, ("BAD", 5, 1, 1, 1, 1, 1))), list(map(str, ("BAD", 5, 1, 1, 1, 1, 1)))]}
+        done = {("2025-03-03", "AAA"): "ok", ("2025-03-03", "BAD"): "ok", ("2025-03-03", "EMPTY"): "empty"}
+        assert rn.minutes_for(blocks, done, "2025-03-03", "AAA")[1] == "ok"
+        assert rn.minutes_for(blocks, done, "2025-03-03", "BAD") == (None, "invalid")       # duplicate minutes
+        assert rn.minutes_for(blocks, done, "2025-03-03", "EMPTY") == (None, "no_rows")     # fetched, nothing came back
+        assert rn.minutes_for(blocks, done, "2025-03-03", "NEVER") == (None, "pending")     # not fetched yet: skipped
+        assert rn.minutes_for(blocks, None, "2025-03-03", "NEVER") == (None, "pending")     # no _done.psv: absent = pending
+        assert rn.minutes_for(blocks, None, "2025-03-03", "AAA")[1] == "ok"
+
+
+# ═══ maturity / account % / bootstrap ════════════════════════════════════════════════════════════
+class TestMaturity:
+    def test_terminal_and_horizon_statuses(self):
+        H = cb.EXIT_HORIZON
+        for st in ("stopped", "stopped_day0", "trailed", "target", "time_exit"):
+            assert rn.is_mature(st, 3, H)                                    # a terminal exit before the data end
+        assert not rn.is_mature("degraded", H + 1, H)                        # forward bars ran out: an open mark
+        assert rn.is_mature("censored", H + 1, H)                            # horizon reached with the next open behind it
+        assert not rn.is_mature("censored", H, H)                            # marked at the horizon close, no next open: open mark
+        assert not rn.is_mature("censored", 60, H)
+
+    def test_a_walk_cut_at_a_hole_is_an_open_mark_and_a_stop_before_it_is_mature(self):
+        c, bars, e, vr = _eval()
+        cidx = np.arange(len(bars))
+        cidx[e + 6:] += 3                                                   # three sessions missing after E+5: the stop at E+3 is first
+        cut = rn.evaluate_candidate(c, bars, cidx, e, _mb(), list(bars.dates) + [bars.dates[-1]] * 4, len(bars) + 2)
+        arms = {r["variant"]: r for r in cut}["orh5"]["arms"]
+        assert arms[cb.PRIMARY_ARM]["mature"] is True and arms[cb.PRIMARY_ARM]["status"] == "stopped"
+        d, e2 = _e_bars(tail=[(10.75 + 0.01 * j, 10.90 + 0.01 * j, 10.70 + 0.01 * j, 10.80 + 0.01 * j) for j in range(9)])   # never stopped or trailed: the walk reaches the cut
+        cidx2 = np.arange(len(d))
+        cidx2[e2 + 4:] += 3                                                 # hole after E+3: the walk ends degraded
+        cut2 = rn.evaluate_candidate(_m_cand(d, e2), d, cidx2, e2, _mb(), list(d.dates) + [d.dates[-1]] * 4, len(d) + 2)
+        a = {r["variant"]: r for r in cut2}["orh5"]["arms"][cb.PRIMARY_ARM]
+        assert a["status"] == "degraded" and a["mature"] is False and a["open_mark"] is True
+
+    def test_arm_result_carries_the_labels(self):
+        res = {"status": "stopped", "realized_r": -1.0, "pnl_adr": -0.2, "sessions_held": 2, "events": [(1, "partial", 1, .3), (2, "be_above_close", 1, 0.0)]}
+        a = rn.arm_result(res, width=0.05, n_fwd=10)
+        assert a["mature"] is True and a["open_mark"] is False and a["beabove"] == 1
+        assert a["acct_pct"] == pytest.approx(rn.acct_pct(-1.0, 0.05))
+
+
+def test_account_pct_from_events_equals_the_r_formula_on_both_sizing_regimes():
+    fill = 10.0
+    for width in (0.05, 0.10, 0.02):                                          # 20% cap binds / equal / 1% risk binds
+        risk = fill * width
+        events = [(1, "partial", fill + 1.0, 1 / 3), (5, "trail", fill + 2.0, 2 / 3)]
+        pnl = (1.0 / 3) + (2.0 / 3) * 2.0
+        r = pnl / risk
+        assert rn.acct_pct_from_events(events, fill, width) == pytest.approx(rn.acct_pct(r, width))
+    assert rn.acct_pct_from_events([(0, "day0_stop", 9.5, 1.0)], 10.0, 0.05) == pytest.approx(-0.5 * min(0.20, 0.01 / 0.05) / 10.0)
+
+
+class TestBootstrap:
+    def test_deterministic_per_key_and_independent_of_call_order(self):
+        rng = np.random.default_rng(3)
+        v = rng.normal(0.3, 2.0, 120)
+        months = np.array([f"2023-{1 + k % 12:02d}" for k in range(120)])
+        a1 = rn.block_bootstrap_ci(v, months, key="g1")
+        b1 = rn.block_bootstrap_ci(v, months, key="g2")
+        a2 = rn.block_bootstrap_ci(v, months, key="g1")
+        assert a1 == a2 and a1 != b1                                        # same key -> same stream; another key -> its own
+        assert a1[0] < v.mean() < a1[1]
+
+    def test_it_resamples_whole_months_not_trades(self):
+        v = np.array([1.0, 1.0, 1.0, 5.0])
+        months = np.array(["a", "a", "a", "b"])
+        lo, hi = rn.block_bootstrap_ci(v, months, key="x", draws=4000)
+        assert lo == pytest.approx(1.0) and hi == pytest.approx(5.0)         # only {all a, all b, mixed} means are reachable
+        one = rn.block_bootstrap_ci(np.array([2.0, 4.0]), np.array(["m", "m"]), key="y")
+        assert one == (3.0, 3.0)                                            # one block: every resample is the sample
+        assert all(x != x for x in rn.block_bootstrap_ci([], [], key="z"))
+
+    def test_terciles_and_stats(self):
+        cuts = rn.tercile_cuts(np.arange(1.0, 10.0))
+        assert list(rn.tercile_of([1.0, 4.0, 9.0, float("nan")], cuts)) == [1, 2, 3, 0]
+        s = rn.rstats([10.0, 5.0, 3.0, 1.0, 0.5, -1.0, -1.0], [1, 1, 1, 1, 1, 1, 1], [0.1] * 7)
+        assert s["n"] == 7 and s["share_ge3"] == pytest.approx(3 / 7) and s["share_ge5"] == pytest.approx(2 / 7)
+        assert s["share_ge10"] == pytest.approx(1 / 7) and s["mean_ex_top5"] == pytest.approx(-1.0)   # the two smallest remain
+        assert rn.rstats([1.0, 2.0])["mean_ex_top5"] is None and rn.rstats([])["n"] == 0
+
+
+# ═══ the candidate engine: entries, day-0, controls, sensitivities ═══════════════════════════════
+class TestEngine:
+    def test_variants_arms_and_row_alignment(self):
+        c, bars, e, vr = _eval()
+        assert {k: v["entry"]["status"] for k, v in vr.items()} == {"orh1": "filled", "orh5": "filled", "orh60": "no_trigger", "pivot": "filled"}
+        assert vr["orh5"]["entry"]["fill_minute"] == 7 and vr["orh1"]["entry"]["fill_minute"] == 1
+        assert vr["orh5"]["entry"]["stop"] == pytest.approx(10.15)
+        assert set(vr["orh5"]["arms"]) == set(rn.ALL_ARMS) and len(rn.ALL_ARMS) == len(cb.ARMS) + 2
+        assert vr["orh60"]["arms"] == {}
+        prefix = rn.cand_values(c)
+        rows = [r for v in vr.values() for r in rn.trade_rows_for(c, v, prefix)]
+        assert all(len(r) == len(rn.TRADE_COLS) for r in rows)
+        assert sum(1 for r in rows if r[len(rn.TRADE_CAND_COLS)] == "orh5") == len(rn.ALL_ARMS)
+        nt = [r for r in rows if r[len(rn.TRADE_CAND_COLS)] == "orh60"]
+        assert len(nt) == 1 and nt[0][len(rn.TRADE_CAND_COLS) + len(rn.TRADE_VAR_COLS)] == ""        # one row, no arm
+        assert len(rn.entry_row_for(c, vr["orh5"], "ok")) == len(rn.ENTRY_COLS)
+        cb_arm = vr["orh5"]["arms"][cb.PRIMARY_ARM]
+        assert cb_arm["status"] == "stopped" and cb_arm["mature"] and cb_arm["sessions_held"] == 3
+        fill, stop = vr["orh5"]["entry"]["fill"], vr["orh5"]["entry"]["stop"]
+        assert cb_arm["realized_r"] == pytest.approx((9.50 - fill) / (fill - stop))               # the d3 gap open, booked at the open
+
+    def test_a_day0_stop_out_is_booked_once_for_every_arm_but_the_controls_walk_day0_themselves(self):
+        rows = _e_day_minutes()
+        rows = [r if r[0] != 12 else (12, 10.34, 10.40, 10.10, 10.30) for r in rows]      # minute 12 trades through the 10.15 stop
+        bars, e = _e_bars()
+        h = bars.h.copy(); l = bars.l.copy()
+        l[e] = 10.10                                                                       # the daily low agrees with the minutes
+        bars = cb.daily_bars_from_arrays(bars.dates, bars.o, h, l, bars.c, bars.v)
+        c, bars, e, vr = _eval(bars, e, _mb(rows), low_E=10.10)
+        ent = vr["orh5"]["entry"]
+        assert ent["day0"]["stopped"] and ent["day0"]["exit_minute"] == 12
+        want = cb.day0_result_to_outcome(ent, c["adr20"])
+        for name in cb.ARMS:
+            a = vr["orh5"]["arms"][name]
+            assert a["status"] == "stopped_day0" and a["mature"] and a["realized_r"] == pytest.approx(want["realized_r"])
+            assert a["sessions_held"] == 0
+        fa = vr["orh5"]["arms"][rn.FAMILY_A_ARM]
+        assert fa["status"] == "settled" and fa["realized_r"] < 0                           # stopped out in the minutes, by simulate's own walk
+
+    def test_too_wide_abstain_gets_the_cap_not_skip_rerun(self):
+        c, bars, e, vr = _eval(adr20=0.01)                                                  # a 1.5% stop is wider than a 1% ADR
+        ent = vr["orh5"]["entry"]
+        assert ent["status"] == "abstain" and ent["reason"] == "too_wide" and vr["orh5"]["arms"] == {}
+        cap = vr["orh5"]["sens"]["cap"]
+        assert cap["stop"] == pytest.approx(ent["fill"] * 0.99)
+        assert cap["status"] == "stopped" and cap["mature"]                                  # d3 gap through the capped stop too
+        want = (9.50 - ent["fill"]) / (ent["fill"] - cap["stop"])
+        assert cap["realized_r"] == pytest.approx(want)
+        rows = rn.trade_rows_for(c, vr["orh5"], rn.cand_values(c))
+        assert len(rows) == 1                                                               # one row, no arm, carrying the cap columns
+        row = dict(zip(rn.TRADE_COLS, rows[0]))
+        assert row["arm"] == "" and row["status"] == "abstain" and row["abstain_reason"] == "too_wide"
+        assert row["cap_acct_pct"] == pytest.approx(cap["acct_pct"]) and row["cap_realized_r"] == pytest.approx(cap["realized_r"])
+        assert row["cap_stop"] == pytest.approx(cap["stop"]) and row["cap_mature"] == 1
+
+    def test_horizon_60_atr14_floors_and_account_pct_are_recorded_per_row(self):
+        c, bars, e, vr = _eval()
+        prim = vr["orh5"]["arms"][cb.PRIMARY_ARM]
+        h60 = vr["orh5"]["sens"]["h60"]
+        assert h60["status"] == prim["status"] == "stopped" and h60["realized_r"] == pytest.approx(prim["realized_r"])
+        width = vr["orh5"]["entry"]["width_pct"]
+        assert rn.atr_wide_flag(width, 0.05) == 0 and rn.atr_wide_flag(width, 0.01) == 1 and rn.atr_wide_flag(None, 0.05) == ""
+        assert rn.floor_flags(width, 0.10) == [0, 1, 1, 1, 1]                               # width 1.55%: under .25 x 10% = 2.5% and every wider floor
+        assert rn.floor_flags(0.03, 0.10) == [0, 0, 1, 1, 1]                                # 3%: clears the .25 floor only
+        assert rn.floor_flags(None, 0.10) == [""] * 5
+        assert prim["acct_pct"] == pytest.approx(rn.acct_pct(prim["realized_r"], width))
+        grind = [(10.75 + 0.01 * j, 10.90 + 0.01 * j, 10.70 + 0.01 * j, 10.80 + 0.01 * j) for j in range(70)]   # a slow climb: never stopped, never trailed
+        d, e2 = _e_bars(tail=grind)                                                         # 120 > the 69 bars on disk, 60 < them
+        c2, _b, _e, v2 = _eval(d, e2)
+        assert v2["orh5"]["arms"][cb.PRIMARY_ARM]["mature"] is False                         # 120-session walk: forward bars ran out
+        assert v2["orh5"]["sens"]["h60"]["mature"] is True and v2["orh5"]["sens"]["h60"]["status"] == "censored"
+
+
+# ═══ the two controls on a hand-worked example ═══════════════════════════════════════════════════
+class TestControls:
+    def test_family_a_hand_worked(self):
+        # fill = 10.30 x 1.001, stop 10.15: +1R = 10.4706 is touched at minute 20 (half out, +0.5R); +3R = 10.7912 on d1 (h 10.85)
+        # takes the other half at +3R: 0.5 x 1 + 0.5 x 3 = 2.0R, out on forward day 1
+        c, bars, e, vr = _eval()
+        fa = vr["orh5"]["arms"][rn.FAMILY_A_ARM]
+        assert fa["realized_r"] == pytest.approx(2.0) and fa["sessions_held"] == 1 and fa["mature"] and fa["status"] == "settled"
+        ent = vr["orh5"]["entry"]
+        assert fa["pnl_adr"] == pytest.approx(2.0 * (ent["fill"] - ent["stop"]) / (ent["fill"] * c["adr20"]))
+        # the same call made by hand through the two shipped functions
+        mb = _mb()
+        md = rn.minute_dicts(mb)
+        daily = [{"o": float(bars.o[e + j]), "h": float(bars.h[e + j]), "l": float(bars.l[e + j]), "c": float(bars.c[e + j])} for j in range(1, 6)]
+        path = ant.build_mixed_path(md, rn.fill_position(mb, 7), daily)
+        assert ant.simulate(ent["fill"], ent["stop"], path, ant.SETTLE_RULE, "pess")[0] == pytest.approx(fa["realized_r"])
+        assert all(b["kind"] == "min" for b in path[:-5]) and path[0]["day_idx"] == 0 and path[-5]["kind"] == "day"
+
+    def test_family_a_with_two_forward_bars_is_an_open_mark_unless_it_exited_earlier(self):
+        c, bars, e, vr = _eval()
+        ent = vr["orh5"]["entry"]
+        mb = _mb()
+        md, fp = rn.minute_dicts(mb), rn.fill_position(mb, 7)
+        quiet = cb.daily_bars_from_arrays(bars.dates[:2], [10.6] * 2, [10.7] * 2, [10.5] * 2, [10.6] * 2, [1e6] * 2)
+        a = rn.family_a_control(mdicts=md, fill_pos=fp, fwd=quiet, fill=ent["fill"], stop=ent["stop"], adr20=0.10)
+        assert a["mature"] is False and a["status"] == "open_mark"                          # marked at the last close, not exited
+        run = cb.daily_bars_from_arrays(bars.dates[:2], [10.6, 10.7], [10.85, 10.9], [10.5, 10.6], [10.8, 10.8], [1e6] * 2)
+        b = rn.family_a_control(mdicts=md, fill_pos=fp, fwd=run, fill=ent["fill"], stop=ent["stop"], adr20=0.10)
+        assert b["mature"] is True and b["realized_r"] == pytest.approx(2.0)                # out at day 1 < the 2 available days
+
+    def test_apollo_walk_inputs_are_the_live_ladder_anchored_on_the_placed_risk(self):
+        fill, stop = 10.3103, 10.15
+        target, kw = rn.apollo_walk_inputs(fill, stop, 0.04)
+        risk = fill - stop
+        assert target == pytest.approx(fill + 4 * risk)                       # +8 ORB-R with 1 placed-risk R = 2 ORB-R
+        assert kw["r_frame_ps"] == pytest.approx(risk / 2) and fill - 2 * kw["r_frame_ps"] == pytest.approx(stop)
+        # recut.py CONTROL_KW (the precedent), minus the three keys walk_arm is given explicitly here
+        assert kw["breakeven_at_r"] == 3.0 and kw["breakeven_at_partial"] is True and kw["trail_prior_closes"] is True
+        assert kw["ladder_partial"] is False and kw["depth_exit"] is True and kw["depth_adr20_pct"] == 0.04
+        rules = rn.apollo_rules()
+        assert rules["intraday_partial_r"] == 8.0 and rules["exit_rule"] == "depth" and rules["close_below_sale"] == "next_open"
+
+    def test_apollo_hand_worked_breakeven_scratch(self):
+        # day 0: minute 20's high 10.60 >= fill + 1.5 x risk (10.5507) arms the breakeven at the fill. Day 1 runs
+        # (10.50 .. 10.85, short of +4 R = 10.9515); day 2 trades down to 10.25 - inside the fill, above the CB stop 10.15 -
+        # so the live ladder is stopped at breakeven (R = 0.0) while the CB stop-only arm is still in the trade.
+        c, bars, e, vr = _eval()
+        ent = vr["orh5"]["entry"]
+        ap = vr["orh5"]["arms"][rn.APOLLO_ARM]
+        assert ap["status"] == "settled" and ap["mature"] and ap["note"] == "stop_hit"
+        assert ap["realized_r"] == pytest.approx(0.0, abs=1e-9) and ap["sessions_held"] == 2
+        assert vr["orh5"]["arms"]["stop_only"]["status"] == "stopped" and vr["orh5"]["arms"]["stop_only"]["sessions_held"] == 3
+
+    def test_a_breakout_bar_that_is_also_the_low_of_the_day_does_not_abstain_the_apollo_walk(self):
+        # fill minute 0 trades 10.20-10.35 and IS the low of the day, so the CB stop (low of the day at the fill) is 10.20
+        # = the fill bar's own low. walk_arm's fill-bar test (low <= stop) would abstain 'straddles the stop'; the CB trade
+        # never walks the fill bar (day0_walk starts after it), so the adapter neutralises the bar's LOW (its high and
+        # close post-date a buy that triggered inside it, and stay live).
+        c, bars, e, vr = _eval()
+        rows = [(0, 10.30, 10.35, 10.20, 10.34)] + [(m, 10.34, 10.40, 10.31, 10.38) for m in range(1, 390)]
+        md = rn.minute_dicts(_mb(rows))
+        fill, stop = 10.30 * 1.001, 10.20
+        sessions = rn.apollo_sessions(bars, np.arange(len(bars)), list(bars.dates), e, len(bars) - 1, 120)
+        a = rn.apollo_control(mdicts=md, fill_pos=0, sessions=sessions, prior_closes=[10.0] * 10, e_date=bars.dates[e],
+                              fill=fill, stop=stop, adr20=0.10)
+        assert a["status"] == "settled" and a["mature"] and a["realized_r"] is not None
+        from agents.market_intelligence import live_fill_counterfactuals as lfc
+        target, kw = rn.apollo_walk_inputs(fill, stop, 0.10)
+        raw = lfc.walk_arm(entry=fill, stop=stop, target=target, day0_bars=md, fill_idx=0, sessions=sessions,
+                           prior_closes=[10.0] * 10, harvest="live_ladder", fill_day=bars.dates[e], horizon=120, **kw)
+        assert raw["status"] == "abstain" and raw["reason"] == "day0_fill_bar_straddles_stop"      # the raw walker WOULD have
+
+    def test_the_fill_bars_high_still_arms_the_breakeven_on_day_zero(self):
+        # fill bar: 10.20 .. 10.60 (stop 10.20 = its low). Its high 10.60 >= fill + 1.5 x risk (10.4758) arms the breakeven
+        # at the fill; minute 1 then trades down to 10.30 - below the fill, above the original stop - so the live ladder is
+        # stopped at breakeven ON DAY 0 (R = 0), where a fully inert fill bar would have left the trade open.
+        c, bars, e, vr = _eval()
+        rows = ([(0, 10.30, 10.60, 10.20, 10.40), (1, 10.40, 10.45, 10.30, 10.42)]
+                + [(m, 10.42, 10.50, 10.35, 10.45) for m in range(2, 390)])
+        md = rn.minute_dicts(_mb(rows))
+        fill, stop = 10.30 * 1.001, 10.20
+        sessions = rn.apollo_sessions(bars, np.arange(len(bars)), list(bars.dates), e, len(bars) - 1, 120)
+        a = rn.apollo_control(mdicts=md, fill_pos=0, sessions=sessions, prior_closes=[10.0] * 10, e_date=bars.dates[e],
+                              fill=fill, stop=stop, adr20=0.10)
+        assert a["status"] == "settled" and a["sessions_held"] == 0 and a["note"] == "stop_hit"
+        assert a["realized_r"] == pytest.approx(0.0, abs=1e-9)
+
+    def test_apollo_open_walks_are_marks_with_no_r_and_a_hole_blocks(self):
+        c, bars, e, vr = _eval()
+        ent = vr["orh5"]["entry"]
+        mb = _mb()
+        md, fp = rn.minute_dicts(mb), rn.fill_position(mb, 7)
+        one_day = rn.apollo_sessions(bars, np.arange(len(bars)), list(bars.dates), e, e + 1, 120)
+        a = rn.apollo_control(mdicts=md, fill_pos=fp, sessions=one_day, prior_closes=[10.0] * 10, e_date=bars.dates[e],
+                              fill=ent["fill"], stop=ent["stop"], adr20=0.10)
+        assert a["status"] == "pending" and a["mature"] is False and a["realized_r"] is None and a["note"]
+        cidx = np.arange(len(bars))
+        cidx[e + 2:] += 1                                                    # E+2 is missing from the ticker's bars
+        sess = rn.apollo_sessions(bars, cidx, list(bars.dates) + [bars.dates[-1]], e, len(bars), 120)
+        assert sess[0][1] is not None and sess[1][1] is None                 # a hole is a None bar, not a skipped day
+        b = rn.apollo_control(mdicts=md, fill_pos=fp, sessions=sess, prior_closes=[10.0] * 10, e_date=bars.dates[e],
+                              fill=ent["fill"], stop=ent["stop"], adr20=0.10)
+        assert b["status"] == "pending" and "missing_session" in b["note"] and not b["mature"]
+
+
+# ═══ the forward window is the daily stage's, byte for byte ═══════════════════════════════════════
+def test_forward_window_is_what_close_variant_rows_walks():
+    bars, e = _close_bars()
+    cidx = np.arange(len(bars))
+    cidx[e + 4:] += 3
+    fwd, cut = rn.forward_window(bars, cidx, e, cb.EXIT_HORIZON)
+    (row,) = rn.close_variant_rows("T", bars, [_close_cand(bars, e)], cidx)
+    assert len(fwd) == row["fwd_bars"] == 3 and cut is True and row["fwd_hole"] == 1
+    assert fwd.dates[-1].isoformat() == row["fwd_last_date"]
+    f2, c2 = rn.forward_window(bars, None, e, cb.EXIT_HORIZON)
+    assert len(f2) == len(bars) - e - 1 and c2 is False
+
+
+# ═══ the STEP 0 firewall ═════════════════════════════════════════════════════════════════════════
+def _write_cands(path, cands):
+    cols = (["ticker", "D", "E", "K", "split", "pole_date", "base_id", "apollo_regime", "pivot", "adr20", "high_E", "low_E",
+             "open_E", "close_E", "atr14", "median_dollar_vol20", "retrigger", "retrigger_chain", "pole_bad_high"]
+            + list(rn.FLAG_FIELDS) + list(rn.CELL_COLS) + ["first_" + x for x in rn.CELL_NAMES]
+            + ["first_chain_" + x for x in rn.CELL_NAMES])
+    rn.write_tsv(path, cands, cols)
+
+
+def _syn_dir(tmp_path, *, split="discovery", n_cands=1, with_done=True):
+    """DATA dir: a SPY+X daily export, candidates.tsv, a minute dir with ONE session (X's E day), _done.psv. The bars sit
+    in the split's own period (a discovery candidate's D is <= 2024-12-31, a holdout one's is later)."""
+    bars, e = _e_bars(start=DISCOVERY_START if split == "discovery" else None)
+    data = tmp_path / "data"
+    (data / "out").mkdir(parents=True)
+    with gzip.open(data / "daily_closes_all.csv.gz", "wt") as fh:
+        for t in ("SPY", "X"):
+            for k in range(len(bars)):
+                fh.write(f"{t},{bars.dates[k].isoformat()},{bars.o[k]},{bars.h[k]},{bars.l[k]},{bars.c[k]},{bars.v[k]}\n")
+    cands = [_m_cand(bars, e, split=split, K=k) for k in ("k5", "k10", "full")[:n_cands]]
+    for c in cands:
+        c["pole_date"] = "p"
+    _write_cands(data / "out" / "candidates.tsv", cands)
+    md = data / "minutes"
+    md.mkdir()
+    fm._append_gz(md / f"{bars.dates[e].isoformat()}.psv.gz", _minute_lines("X"))
+    if with_done:
+        (md / "_done.psv").write_text(f"{bars.dates[e].isoformat()}|X|390|ok\n")
+    return data, bars, e, cands
+
+
+class TestStep0Firewall:
+    FORBIDDEN_COLS = ("day0", "exit", "realized", "held", "pnl", "mature", "arm")
+
+    def test_step0_never_reaches_a_walker_and_writes_no_outcome_column(self, tmp_path, monkeypatch, capsys):
+        data, bars, e, cands = _syn_dir(tmp_path, split="holdout", n_cands=3)
+
+        def boom(*a, **k):
+            raise AssertionError("STEP 0 reached an outcome walker")
+        from agents.market_intelligence import live_fill_counterfactuals as lfc
+        for owner, name in ((cb, "walk_exit"), (cb, "day0_result_to_outcome"), (ant, "simulate"), (lfc, "walk_arm"),
+                            (rn, "walk_arms"), (rn, "family_a_control"), (rn, "apollo_control"), (rn, "cap_sensitivity"),
+                            (rn, "evaluate_candidate"), (rn, "load_daily"), (rn, "close_variant_rows")):
+            monkeypatch.setattr(owner, name, boom)
+        rn.main(["step0-entries", "--data", str(data), "--workers", "1", "--small-out", str(tmp_path / "small")])
+        txt = capsys.readouterr().out
+        comp = (data / "out" / "entries_holdout_composition.tsv").read_text().splitlines()
+        header = comp[0].split("\t")
+        assert header == rn.COMPOSITION_COLS
+        assert not [h for h in header if any(f in h for f in self.FORBIDDEN_COLS)]
+        assert not {"fill", "stop", "level"} & set(header)                           # not even the fill price or the stop
+        assert len(comp) == 1 + 3 * len(rn.MINUTE_VARIANTS)                          # 3 candidates x 4 variants, entry-time facts
+        rows = [dict(zip(header, r.split("\t"))) for r in comp[1:]]
+        by = {(r["K"], r["variant"]): r for r in rows}
+        assert by[("k5", "orh5")]["status"] == "filled" and by[("k5", "orh5")]["fill_minute"] == "7"
+        assert by[("k5", "orh60")]["status"] == "no_trigger"
+        assert "GO/NO-GO input, SPEC key" in txt and "GO/NO-GO input, CHAIN key" in txt
+        assert "C1" in txt and "orh5: k5=1" in txt                                    # C1 holdout, spec key: one k5 filled
+
+    def test_entry_facts_carry_entry_time_columns_only(self):
+        # behaviour, not source text: the walker-never-reached guarantee is the monkeypatch test above
+        facts = rn.entry_facts(_mb(), _m_cand(*_e_bars()))
+        assert set(facts["orh5"]) == {"status", "reason", "width_pct", "fill_minute"}      # nothing else leaves the function
+
+    def test_a_pending_pair_is_not_an_abstain_and_an_empty_one_is(self, tmp_path):
+        data, bars, e, cands = _syn_dir(tmp_path, split="holdout", n_cands=1, with_done=False)
+        rn.main(["step0-entries", "--data", str(data), "--workers", "1", "--small-out", str(tmp_path / "small")])
+        assert len((data / "out" / "entries_holdout_composition.tsv").read_text().splitlines()) == 1 + 4
+        (data / "minutes" / "_done.psv").write_text(f"{bars.dates[e].isoformat()}|X|0|empty\n")
+        (data / "minutes" / f"{bars.dates[e].isoformat()}.psv.gz").write_bytes(gzip.compress(b"", mtime=0))
+        rn.main(["step0-entries", "--data", str(data), "--workers", "1", "--small-out", str(tmp_path / "small")])
+        rows = [r.split("\t") for r in (data / "out" / "entries_holdout_composition.tsv").read_text().splitlines()[1:]]
+        assert len(rows) == 4 and all(r[6] == "abstain" and r[7] == "no_minutes" and r[8] == "no_rows" for r in rows)
+
+
+# ═══ the holdout guard ═══════════════════════════════════════════════════════════════════════════
+class TestHoldoutGuard:
+    def _tree(self, tmp_path, monkeypatch):
+        data = tmp_path / "data"
+        (data / "out").mkdir(parents=True)
+        (data / "minutes").mkdir()
+        small = tmp_path / "small"
+        small.mkdir()
+        monkeypatch.setattr(rn, "HERE", tmp_path / "hereroot")
+        (rn.HERE / "out").mkdir(parents=True)
+        repo = tmp_path / "repo"
+        (repo / "agents" / "market_intelligence").mkdir(parents=True)
+        (repo / "docs" / "analysis").mkdir(parents=True)
+        (repo / "agents" / "market_intelligence" / "consolidation_breakout.py").write_text("# module\n")
+        for rel in rn.FROZEN_CODE.values():                                   # the code the controls and the fills compute with
+            (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+            (repo / rel).write_text(f"# {rel}\n")
+        (data / "daily_closes_all.csv.gz").write_bytes(b"export")
+        (data / "cb702_sic.psv").write_text("sic\n")
+        for name in ("watch.tsv.gz", "candidates.tsv", "minute_fetch_list.tsv", "gap_in_bars.tsv", "close_variant_discovery.tsv.gz",
+                     "trades_discovery.tsv.gz", "entries_discovery.tsv.gz", "entries_holdout_composition.tsv",
+                     "discovery_report.tsv"):
+            (data / "out" / name).write_text(name)
+        (rn.HERE / "out" / "discovery_report.txt").write_text("report")
+        (data / "minutes" / "2025-03-03.psv.gz").write_bytes(b"m1")
+        return data, repo
+
+    def _doc(self, repo, data, body="Method / population. What this does not answer. n=1.\n"):
+        doc = repo / "docs" / "analysis" / "cb_preregistration_2026-10-20.md"
+        doc.write_text(body + rn.FREEZE_MARK + "\n## Freeze record\n")
+        pins = rn.pin_lines(data, repo) + [f"- doc body sha256: `{rn.doc_body_sha(doc.read_text())}`"]
+        doc.write_text(doc.read_text() + "\n".join(pins) + "\n")
+        return doc
+
+    def test_a_matching_footer_accepts_and_every_edit_refuses(self, tmp_path, monkeypatch):
+        data, repo = self._tree(tmp_path, monkeypatch)
+        doc = self._doc(repo, data)
+        assert rn.freeze_check(data=data, repo=repo) == []
+        (data / "out" / "trades_discovery.tsv.gz").write_text("one byte changed")
+        assert any("trades_discovery.tsv.gz sha256 mismatch" in p for p in rn.freeze_check(data=data, repo=repo))
+        (data / "out" / "trades_discovery.tsv.gz").write_text("trades_discovery.tsv.gz")      # restored
+        assert rn.freeze_check(data=data, repo=repo) == []
+        (data / "minutes" / "fetch.log").write_text("a log line")                              # logs and OS litter are not data
+        (data / ".DS_Store").write_bytes(b"x")
+        assert rn.freeze_check(data=data, repo=repo) == []
+        (data / "minutes" / "2025-03-04.psv.gz").write_bytes(b"a new minute file")           # the tree pin sees a new file
+        assert any(p.startswith("minutes (tree) sha256 mismatch") for p in rn.freeze_check(data=data, repo=repo))
+        (data / "minutes" / "2025-03-04.psv.gz").unlink()
+        (data / "cb702_sic.psv").write_text("edited")                                         # a data file
+        assert any(p.startswith("data/cb702_sic.psv sha256 mismatch") for p in rn.freeze_check(data=data, repo=repo))
+        (data / "cb702_sic.psv").write_text("sic\n")
+        doc.write_text(doc.read_text().replace("n=1", "n=2"))                                 # the doc body
+        assert any(p.startswith("doc body sha256 mismatch") for p in rn.freeze_check(data=data, repo=repo))
+
+    def test_missing_doc_marker_pin_or_file_refuse(self, tmp_path, monkeypatch):
+        data, repo = self._tree(tmp_path, monkeypatch)
+        assert "registration doc missing" in rn.freeze_check(data=data, repo=repo)[0]
+        doc = repo / "docs" / "analysis" / "cb_preregistration_2026-10-20.md"
+        doc.write_text("no marker here\n")
+        assert "no <!-- FREEZE --> marker" in rn.freeze_check(data=data, repo=repo)[0]
+        doc.unlink()
+        doc = self._doc(repo, data)
+        (data / "out" / "watch.tsv.gz").unlink()                                              # a pinned file gone
+        assert "cell table: file missing" in rn.freeze_check(data=data, repo=repo)
+        (data / "out" / "watch.tsv.gz").write_text("watch.tsv.gz")
+        lines = [ln for ln in doc.read_text().splitlines() if not ln.startswith("- runner sha256")]
+        doc.write_text("\n".join(lines) + "\n")
+        assert "footer carries no runner sha256" in rn.freeze_check(data=data, repo=repo)
+        (repo / "docs" / "analysis" / "cb_preregistration_2026-10-21.md").write_text("another")
+        assert "2 registration docs" in rn.freeze_check(data=data, repo=repo)[0]
+
+    def test_cli_refuses_with_exit_2_before_opening_anything(self, tmp_path, monkeypatch, capsys):
+        data, repo = self._tree(tmp_path, monkeypatch)
+        monkeypatch.setattr(rn, "REPO", repo)
+
+        def boom(*a, **k):
+            raise AssertionError("the holdout was opened")
+        for name in ("read_candidates", "load_daily", "run_minute_stage", "_setup_minute_inputs"):
+            monkeypatch.setattr(rn, name, boom)
+        with pytest.raises(SystemExit) as ex:                                                  # no registration doc at all
+            rn.main(["holdout", "--data", str(data)])
+        assert ex.value.code == 2 and "REFUSED" in capsys.readouterr().err
+        with pytest.raises(SystemExit) as ex:                                                  # the skip flag needs --dry-run
+            rn.main(["holdout", "--data", str(data), "--no-freeze-check"])
+        assert ex.value.code == 2 and "--dry-run" in capsys.readouterr().err
+        self._doc(repo, data)
+        (data / "daily_closes_all.csv.gz").write_bytes(b"edited export")
+        with pytest.raises(SystemExit) as ex:                                                  # a mismatch refuses
+            rn.main(["holdout", "--data", str(data)])
+        assert ex.value.code == 2 and "daily_closes_all.csv.gz sha256 mismatch" in capsys.readouterr().err
+
+    def test_dry_run_and_print_pins_and_a_second_run_is_refused(self, tmp_path, monkeypatch, capsys):
+        data, repo = self._tree(tmp_path, monkeypatch)
+        monkeypatch.setattr(rn, "REPO", repo)
+        monkeypatch.setattr(rn, "read_candidates", lambda *a, **k: [])
+        monkeypatch.setattr(rn, "_setup_minute_inputs", lambda *a, **k: {"cands": [], "files": {}, "by_date": {}, "minutes_dir": data / "minutes"})
+        assert rn.run_holdout(argparse_ns(data, dry_run=True, no_freeze_check=True)) == 0
+        assert "DRY RUN (freeze check SKIPPED)" in capsys.readouterr().out
+        assert rn.run_holdout(argparse_ns(data, print_pins=True)) == 0
+        pins = capsys.readouterr().out
+        assert "- module sha256: `" in pins and "- minutes (tree) sha256: `" in pins and "- cell table sha256: `" in pins
+        self._doc(repo, data)
+        assert rn.run_holdout(argparse_ns(data, dry_run=True)) == 0                            # the check passed, then it only describes
+        assert "DRY RUN (freeze check passed)" in capsys.readouterr().out
+        (data / "out" / "trades_holdout.tsv.gz").write_bytes(b"")
+        assert rn.run_holdout(argparse_ns(data)) == 2 and "joined ONCE" in capsys.readouterr().err
+
+
+    def test_an_edit_to_the_code_the_numbers_are_computed_with_refuses(self, tmp_path, monkeypatch):
+        """Finding: the freeze pinned the module file but not constants.py (ENTRY_SLIPPAGE_PCT sets every fill), nor the
+        Family A / Apollo control code. A production edit after the freeze must now refuse the run."""
+        data, repo = self._tree(tmp_path, monkeypatch)
+        self._doc(repo, data)
+        assert rn.freeze_check(data=data, repo=repo) == []
+        assert set(rn.FROZEN_CODE) == {"code/constants.py", "code/anticipation.py", "code/live_fill_counterfactuals.py",
+                                       "code/rule_eras.py", "code/exit_logic.py"}
+        for label, rel in rn.FROZEN_CODE.items():
+            f = repo / rel
+            before = f.read_text()
+            f.write_text(before + "ENTRY_SLIPPAGE_PCT = 0.9  # an edit after the freeze\n")
+            assert any(p.startswith(f"{label} sha256 mismatch") for p in rn.freeze_check(data=data, repo=repo)), label
+            f.unlink()
+            assert f"{label}: file missing" in rn.freeze_check(data=data, repo=repo), label
+            f.write_text(before)
+            assert rn.freeze_check(data=data, repo=repo) == [], label                  # restored: accepted again
+        assert all(f"- {k} sha256: `" in "\n".join(rn.pin_lines(data, repo)) for k in rn.FROZEN_CODE)   # --print-pins carries them
+
+    def test_every_repo_file_the_outcome_path_computes_with_is_pinned(self):
+        """The pin list is DERIVED, not hand-listed: walk the static call graph from the runner's two worker entry points
+        (`_minute_job`, `_step0_job`) into each repo module they call, and into the repo modules THOSE call, following
+        function-level imports too. Every module reached must be pinned (FROZEN_CODE / the module pin) or exempt with a
+        reason. The members are NAMED, so a new import into the outcome path fails here instead of slipping past a count."""
+        import ast
+        repo = Path(rn.__file__).resolve().parents[3]
+
+        def parse(mod):
+            path = repo.joinpath(*mod.split(".")).with_suffix(".py")
+            tree = ast.parse(path.read_text())
+            defs = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
+            assigns = {t.id: n for n in tree.body if isinstance(n, ast.Assign) for t in n.targets if isinstance(t, ast.Name)}
+            return tree, defs, assigns
+
+        def local_imports(node):                                                       # {bound name: module}
+            out = {}
+            for n in ast.walk(node):
+                if isinstance(n, ast.ImportFrom) and n.level == 0 and (n.module or "").split(".")[0] in ("agents", "shared", "core"):
+                    for a in n.names:
+                        out[a.asname or a.name] = n.module
+            return out
+
+        def used_imports(mod, entries):
+            """{(module, name)} the entries of `mod` reach through its own functions."""
+            tree, defs, assigns = parse(mod)
+            top = local_imports(ast.Module(body=[n for n in tree.body if isinstance(n, (ast.Import, ast.ImportFrom))],
+                                           type_ignores=[]))                           # module-level imports only
+            seen, todo, hit = set(), list(entries), set()
+            while todo:
+                f = todo.pop()
+                if f in seen:
+                    continue
+                seen.add(f)
+                node = defs.get(f) or assigns.get(f)
+                if node is None:
+                    continue
+                lazy = local_imports(node) if f in defs else {}
+                for m in ast.walk(node):
+                    if isinstance(m, ast.Name):
+                        if m.id in lazy:
+                            hit.add((lazy[m.id], m.id))
+                        elif m.id in top:
+                            hit.add((top[m.id], m.id))
+                        if m.id in defs or m.id in assigns:
+                            todo.append(m.id)
+            return hit
+
+        # runner -> the repo-module names its outcome path touches (cb.X, ant.X, lfc.X, rule_eras.X)
+        rtree = ast.parse(Path(rn.__file__).read_text())
+        rdefs = {n.name: n for n in rtree.body if isinstance(n, ast.FunctionDef)}
+        seen, todo, attrs = set(), ["_minute_job", "_step0_job"], {}
+        alias = {"cb": "agents.market_intelligence.consolidation_breakout", "ant": "agents.market_intelligence.anticipation",
+                 "lfc": "agents.market_intelligence.live_fill_counterfactuals", "rule_eras": "agents.market_intelligence.rule_eras"}
+        while todo:
+            f = todo.pop()
+            if f in seen or f not in rdefs:
+                continue
+            seen.add(f)
+            for n in ast.walk(rdefs[f]):
+                if isinstance(n, ast.Name) and n.id in rdefs:
+                    todo.append(n.id)
+                if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id in alias:
+                    attrs.setdefault(alias[n.value.id], set()).add(n.attr)
+        assert set(attrs) == set(alias.values()), set(attrs)                           # all four are on the outcome path
+        reached, work = set(attrs), [(m, set(a)) for m, a in attrs.items()]
+        visited = set()
+        while work:
+            mod, names = work.pop()
+            for (m2, nm) in used_imports(mod, sorted(names)):
+                if (m2, nm) in visited:
+                    continue
+                visited.add((m2, nm))
+                reached.add(m2)
+                work.append((m2, {nm}))
+        pinned = {"agents.market_intelligence.consolidation_breakout"} | {
+            rel[:-3].replace("/", ".") for rel in rn.FROZEN_CODE.values()}
+        assert reached == {"agents.market_intelligence.consolidation_breakout", "agents.market_intelligence.constants",
+                           "agents.market_intelligence.anticipation", "agents.market_intelligence.live_fill_counterfactuals",
+                           "agents.market_intelligence.rule_eras", "agents.market_intelligence.broker.exit_logic",
+                           "agents.market_intelligence.db"}, sorted(reached)
+        assert reached - pinned == set(rn.FROZEN_CODE_EXEMPT), sorted(reached - pinned)       # nothing is silently unpinned
+        assert all(len(why) > 20 for why in rn.FROZEN_CODE_EXEMPT.values())
+        assert {n for m, n in visited if m == "agents.market_intelligence.db"} == {"_f"}      # only the float helper
+
+    def test_the_holdout_runs_only_in_its_registered_form(self, tmp_path, monkeypatch, capsys):
+        """Finding: `holdout --out <dir>` passed the freeze check against the untouched DATA/out, then read an UNPINNED
+        candidates.tsv from <dir> and looked for 'already joined' there - so the once-only run could be repeated at will.
+        --limit-dates / --no-close / --no-apollo ran a partial or altered holdout whose output then blocked the real one."""
+        data, repo = self._tree(tmp_path, monkeypatch)
+        monkeypatch.setattr(rn, "REPO", repo)
+        self._doc(repo, data)
+        other = tmp_path / "elsewhere"
+        other.mkdir()
+
+        def boom(*a, **k):
+            raise AssertionError("the holdout was opened")
+        for name in ("read_candidates", "load_daily", "run_minute_stage", "_setup_minute_inputs"):
+            monkeypatch.setattr(rn, name, boom)
+        for extra, needle in ((["--out", str(other)], "--out"), (["--small-out", str(other)], "--small-out"),
+                              (["--limit-dates", "3"], "--limit-dates"), (["--no-close"], "--no-close"),
+                              (["--no-apollo"], "--no-apollo")):
+            for tail in ([], ["--dry-run"], ["--dry-run", "--no-freeze-check"]):           # the dry run reads the file too
+                with pytest.raises(SystemExit) as ex:
+                    rn.main(["holdout", "--data", str(data)] + extra + tail)
+                err = capsys.readouterr().err
+                assert ex.value.code == 2 and "REFUSED" in err and needle in err, (extra, tail, err)
+        # the registered form is still accepted: DATA/out spelled out is the same place
+        monkeypatch.setattr(rn, "_setup_minute_inputs", lambda *a, **k: {"cands": [], "files": {}, "by_date": {}, "minutes_dir": data / "minutes"})
+        assert rn.run_holdout(argparse_ns(data, out=str(data / "out"), dry_run=True)) == 0
+        assert "DRY RUN (freeze check passed)" in capsys.readouterr().out
+        # --print-pins is a read-only helper and stays available
+        assert rn.run_holdout(argparse_ns(data, out=str(other), print_pins=True)) == 0
+
+    def test_a_crashed_runs_partial_files_refuse_a_rerun_and_are_named(self, tmp_path, monkeypatch, capsys):
+        data, repo = self._tree(tmp_path, monkeypatch)
+        monkeypatch.setattr(rn, "REPO", repo)
+        self._doc(repo, data)
+        ran = []
+        monkeypatch.setattr(rn, "run_minute_stage", lambda *a, **k: ran.append(1))
+        assert rn.run_holdout(argparse_ns(data)) == 0 and ran == [1]                     # nothing on disk: it runs
+        part = data / "out" / "trades_holdout.tsv.gz.partial"
+        part.write_bytes(b"half a run")
+        assert rn.holdout_existing_outputs(data / "out") == [part]
+        assert rn.run_holdout(argparse_ns(data)) == 2 and ran == [1]
+        err = capsys.readouterr().err
+        assert "CRASHED holdout run" in err and str(part) in err and "removes it by hand" in err
+        part.unlink()
+        (data / "out" / "entries_holdout.tsv.gz.partial").write_bytes(b"x")              # either table's partial counts
+        assert rn.run_holdout(argparse_ns(data)) == 2 and ran == [1]
+
+
+def argparse_ns(data, **kw):
+    import argparse
+    ns = dict(data=str(data), out=None, small_out=None, workers=1, minutes=None, limit_dates=0, no_close=False, dry_run=False,
+              no_freeze_check=False, print_pins=False, prereg=None, trades=None, no_apollo=False)
+    ns.update(kw)
+    return argparse.Namespace(**ns)
+
+
+# ═══ end to end: minute -> report, and the holdout engine ═════════════════════════════════════════
+def _close_file(data, bars, e, cands):
+    rows = []
+    for c in cands:
+        rows += rn.close_variant_rows("X", bars, [dict(c, E_i=e)], np.arange(len(bars)))
+    cols = list(rows[0].keys())
+    rn.write_tsv(data / "out" / "close_variant_discovery.tsv.gz", rows, cols, gz=True)
+
+
+class TestMinuteEndToEnd:
+    def test_minute_then_report(self, tmp_path, capsys):
+        data, bars, e, cands = _syn_dir(tmp_path, n_cands=3)
+        _close_file(data, bars, e, cands)
+        small = tmp_path / "small"
+        args = ["minute", "--data", str(data), "--workers", "1", "--small-out", str(small)]
+        rn.main(args)
+        out = capsys.readouterr().out
+        assert "DISCOVERY MINUTE STAGE" in out and "DATA GATE" in out and "PENDING fetch" in out
+        trades = pd_read(data / "out" / "trades_discovery.tsv.gz")
+        entries = pd_read(data / "out" / "entries_discovery.tsv.gz")
+        assert list(trades.columns) == rn.TRADE_COLS and list(entries.columns) == rn.ENTRY_COLS
+        o5 = trades[(trades.variant == "orh5") & (trades.K == "k5")]
+        assert sorted(o5.arm.dropna()) == sorted(rn.ALL_ARMS) and o5.mature.eq(1).all()
+        cl = trades[(trades.variant == "close") & (trades.K == "k5")]
+        assert sorted(cl.arm.dropna()) == sorted(cb.ARMS) and len(entries[entries.variant == "close"]) == 3     # reused, joined
+        assert (trades[trades.variant == "orh60"].arm.isna()).all() and (trades[trades.variant == "orh60"].status == "no_trigger").all()
+        assert set(entries[entries.variant == "orh5"].minutes_state) == {"ok"}
+        # the report reads exactly that file; two runs are byte-identical (fixed seed)
+        assert rn.main(["report", "--data", str(data), "--small-out", str(small)]) is None
+        txt1 = (small / "discovery_report.txt").read_text()
+        rn.main(["report", "--data", str(data), "--small-out", str(small)])
+        assert (small / "discovery_report.txt").read_text() == txt1
+        assert "HEADLINE - entry orh5, arm p33_s3_t10" in txt1 and "C1_no_tightening" in txt1 and "SENSITIVITIES" in txt1
+        assert (data / "out" / "discovery_report.tsv").exists() and (small / "discovery_report.tsv").exists()
+        import pandas as pd
+        rep = pd.read_csv(small / "discovery_report.tsv", sep="\t", keep_default_na=False, na_values=[""])
+        r = rep[(rep.key == "spec") & (rep.cell == "C1") & (rep.K == "k5") & (rep.variant == "orh5") & (rep.arm == cb.PRIMARY_ARM)].iloc[0]
+        assert r.n == 1 and r.n_open == 0                                                    # ONE trade per (K, variant, arm), mature
+
+    def test_the_holdout_engine_walks_the_close_variant_itself_and_the_discovery_run_ignores_the_holdout(self, tmp_path, capsys):
+        data, bars, e, cands = _syn_dir(tmp_path, split="holdout", n_cands=1)
+        small = tmp_path / "small"
+        rn.main(["minute", "--data", str(data), "--workers", "1", "--small-out", str(small)])      # nothing in the discovery split
+        assert "nothing to do" in capsys.readouterr().out and not (data / "out" / "trades_discovery.tsv.gz").exists()
+        ns = argparse_ns(data, small_out=str(small))
+        rn.run_minute_stage(ns, "holdout")                                                         # the engine only; the CLI guard is tested above
+        t = pd_read(data / "out" / "trades_holdout.tsv.gz")
+        assert set(t.split) == {"holdout"} and "close" in set(t.variant) and len(t[(t.variant == "close")]) == len(cb.ARMS)
+
+    def test_a_crash_mid_run_leaves_no_final_table_only_a_partial_and_a_clean_run_leaves_no_partial(self, tmp_path, monkeypatch, capsys):
+        data, bars, e, cands = _syn_dir(tmp_path, split="holdout", n_cands=1)
+        ns = argparse_ns(data, small_out=str(tmp_path / "small"))
+        real = rn._minute_job
+
+        def crash(date_iso):
+            raise RuntimeError("worker died")
+        monkeypatch.setattr(rn, "_minute_job", crash)
+        with pytest.raises(RuntimeError):
+            rn.run_minute_stage(ns, "holdout")
+        out = data / "out"
+        assert not (out / "trades_holdout.tsv.gz").exists() and not (out / "entries_holdout.tsv.gz").exists()
+        assert (out / "trades_holdout.tsv.gz.partial").exists() and (out / "entries_holdout.tsv.gz.partial").exists()
+        assert [q.name for q in rn.holdout_existing_outputs(out)] == ["trades_holdout.tsv.gz.partial", "entries_holdout.tsv.gz.partial"]
+        monkeypatch.setattr(rn, "_minute_job", real)                                   # the operator clears the partial and re-runs
+        for q in rn.holdout_existing_outputs(out):
+            q.unlink()
+        rn.run_minute_stage(ns, "holdout")
+        assert (out / "trades_holdout.tsv.gz").exists() and (out / "entries_holdout.tsv.gz").exists()
+        assert not list(out.glob("*.partial"))                                           # a finished run leaves no partial
+        assert [q.name for q in rn.holdout_existing_outputs(out)] == ["trades_holdout.tsv.gz", "entries_holdout.tsv.gz"]
+
+    def test_the_data_gate_blocks_above_five_percent(self):
+        tally = Counter({("data_abstain", "none"): 90, ("data_abstain", "no_minutes"): 4, ("data_abstain", "minute_daily_mismatch"): 3,
+                         ("data_abstain", "minute_high_below_pivot"): 3})
+        share, txt = rn.minute_data_gate(tally)
+        assert share == pytest.approx(0.10) and "BLOCKS THE READ" in txt and "match rate 97.00%" in txt
+        assert "ok" in rn.minute_data_gate(Counter({("data_abstain", "none"): 99, ("data_abstain", "no_minutes"): 1}))[1]
+
+
+def pd_read(path):
+    import pandas as pd
+    return pd.read_csv(path, sep="\t", keep_default_na=False, na_values=[""], low_memory=False)
+
+
+def test_read_candidates_types_and_group_by_date(tmp_path):
+    bars, e = _e_bars(start=DISCOVERY_START)
+    hbars, he = _e_bars()
+    cs = [_m_cand(hbars, he, split="holdout"), _m_cand(bars, e, K="k10"), _m_cand(bars, e, E="2030-01-01")]
+    _write_cands(tmp_path / "c.tsv", cs)
+    only = rn.read_candidates(tmp_path / "c.tsv", "discovery")
+    assert len(only) == 2 and only[0]["pivot"] == 10.25 and only[0]["C1"] is True and only[0]["C2"] is False
+    assert only[0]["retrigger"] == 0 and isinstance(only[0]["first_C0"], int) and only[0]["atr14"] == 0.05
+    by = rn.group_by_date(only, {bars.dates[e].isoformat()})
+    assert list(by) == [bars.dates[e].isoformat()] and [c["K"] for c in by[bars.dates[e].isoformat()]] == ["k10"]
+
+
+def test_read_candidates_refuses_a_row_whose_split_label_disagrees_with_its_D(tmp_path):
+    """Finding: `minute` trusted the file's split column, so `minute --out X` on a relabelled file computed HOLDOUT outcomes
+    (and relabelling the other way hid holdout rows from `holdout`). The label is re-derived from D (split_label)."""
+    dbars, de = _e_bars(start=DISCOVERY_START)
+    hbars, he = _e_bars()
+    ok = [_m_cand(dbars, de), _m_cand(hbars, he, split="holdout")]
+    _write_cands(tmp_path / "ok.tsv", ok)
+    assert len(rn.read_candidates(tmp_path / "ok.tsv")) == 2 and len(rn.read_candidates(tmp_path / "ok.tsv", "holdout")) == 1
+    holdout_as_discovery = [_m_cand(hbars, he, split="discovery")]                       # a 2025 D wearing the discovery label
+    _write_cands(tmp_path / "a.tsv", holdout_as_discovery)
+    with pytest.raises(ValueError, match="labelled split='discovery' but D falls in the 'holdout' period"):
+        rn.read_candidates(tmp_path / "a.tsv", "discovery")
+    discovery_as_holdout = [_m_cand(dbars, de, split="holdout")]                         # and the other way round
+    _write_cands(tmp_path / "b.tsv", discovery_as_holdout)
+    with pytest.raises(ValueError, match="labelled split='holdout' but D falls in the 'discovery' period"):
+        rn.read_candidates(tmp_path / "b.tsv", "holdout")
+    with pytest.raises(ValueError):                                                      # checked even for the side not asked for
+        rn.read_candidates(tmp_path / "a.tsv", "holdout")
+    edge = [_m_cand(dbars, de, D="2024-12-31"), _m_cand(hbars, he, D="2025-01-02", split="holdout")]   # the boundary is exact
+    _write_cands(tmp_path / "e.tsv", edge)
+    assert len(rn.read_candidates(tmp_path / "e.tsv")) == 2
+
+
+def test_minute_on_a_relabelled_candidates_file_computes_nothing(tmp_path):
+    """The end-to-end form of the hole: a holdout candidate (D in 2025) relabelled discovery in an `--out` directory."""
+    data, bars, e, cands = _syn_dir(tmp_path, split="holdout", n_cands=1)
+    other = tmp_path / "elsewhere"
+    other.mkdir()
+    relabelled = [dict(c, split="discovery") for c in cands]
+    _write_cands(other / "candidates.tsv", relabelled)
+    with pytest.raises(ValueError, match="relabelled or is stale"):
+        rn.main(["minute", "--data", str(data), "--out", str(other), "--workers", "1", "--small-out", str(tmp_path / "small")])
+    assert not list(other.glob("trades_*")) and not list(other.glob("entries_*"))
