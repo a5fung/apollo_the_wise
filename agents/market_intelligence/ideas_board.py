@@ -5,7 +5,7 @@ genuinely tradeable list. An entry must be COMPLETED + GRADUATED before its name
 here. Today the only graduated entry is **MAGNA53 EP**.
 
 NOT in play (operator 2026-06-16, corrected repeatedly):
-  • Shadow / in-development entries — **tight coil / flag, anticipation, wick,
+  • Shadow / in-development entries — **tight coil / flag, anticipation,
     parabolic** — are being COMPLETED (the priority work, esp. anticipation #270). They are
     surfaced as "in development" drill-down buttons, never the in-play list.
   • **9M is the stock FILTER** (the universe that identifies candidates which feed the real

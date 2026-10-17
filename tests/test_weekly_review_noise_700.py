@@ -409,7 +409,7 @@ def test_drift_and_docs_drift_are_rerendered_in_plain_words_from_metrics():
 
 def test_an_unrecognised_narrative_block_is_kept_verbatim(monkeypatch):
     """Fail-open: a header the splitter does not know (the prompt can still ask for a "📐 Shadow ORB"
-    or "🪝 Wick" line, and a model can invent one) lands in the fold untouched - and does NOT get
+    line, and a model can invent one) lands in the fold untouched - and does NOT get
     swallowed by the block before it. Green today by construction (the whole summary folds); RED
     against a splitter that drops `other`. Keep it."""
     summary = ("✅ *Working*\n• a\n\n📄 *Docs drift (unverified):*\n• `d.md:1`: x\n\n"

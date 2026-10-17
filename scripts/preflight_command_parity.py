@@ -58,7 +58,6 @@ HIDDEN_OK = {
     "pregame",
     "strategy",
     "why",
-    "wick",
     "watchlist",
     # Singular aliases paired with plural BotCommand
     "sugarbaby",

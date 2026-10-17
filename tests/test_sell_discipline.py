@@ -252,7 +252,7 @@ def _render_data():
         "cohorts": [{"signal_type": "magna53", "account_mode": "paper", "n": 26,
                      "reached_avg": 1.1, "kept_avg": -0.4}],
         "shadow": {"consol": [("anticipate", 118, 2.44, -0.27), ("confirm", 43, 0.7, -0.1)],
-                   "htf": (2, 0.51, -1.0), "wick": (65, 8.1, 2.3),
+                   "htf": (2, 0.51, -1.0),
                    # DoD leg 3 (#508 verify 2026-08-08): the surface renders what a
                    # CANDIDATE RULE would have kept, not a row count. `changed` is the
                    # load-bearing number — an average can drift merely because a profile
@@ -295,7 +295,7 @@ def test_renderer_full_surface():
     assert "peak may be understated" in out                              # inline, where the ~ used to be
     assert "market condition when entered" in out and "Correcting 6" in out
     assert "consolidation, early entry" in out and "118 trades" in out
-    assert "wick fade setup (percent moves, not R)" in out               # odd unit called out in words
+    assert "wick" not in out.lower()                                     # wick-fill retired 2026-10-17: no simulation row
     assert "MAGNA53 EP (paper trading)" in out and "26 trades" in out
     assert "WOULD A DIFFERENT EXIT HAVE KEPT MORE" in out                # #631: every arm, one block
     assert "swing-stop rule" in out and "character-based rule" in out
@@ -324,7 +324,7 @@ def test_renderer_full_surface():
     import re
     assert re.search(r"\bd\d+\b", out) is None, "a bare d<N> day-abbreviation leaked in"
     for token in ("BE+", "n=", "regime@entry", "consol-", "9m_day2", "magna53",
-                  "wick (pct", "abstained", "giveback store", "p1", "p2", "@+2.7R",
+                  "abstained", "giveback store", "p1", "p2", "@+2.7R",
                   "TT@", "extremes-poll peak", "~"):
         assert token not in out, f"lingo/symbol leaked into the render: {token!r}"
 
@@ -371,7 +371,7 @@ def test_renderer_worst_case_length_stays_under_telegram_limit():
     path — it never calls a model. The real ceiling is Telegram's message limit:
     send_telegram_message splits at 4000 chars (hard cap 4096). Build a maximal realistic
     surface (8 recorded rows — the query's LIMIT 8 — 5 open, 5 provisional, both consol
-    modes + htf + wick, a populated candidate replay) and confirm it stays well clear."""
+    modes + htf, a populated candidate replay) and confirm it stays well clear."""
     open_lines = [_fmt_open_line(
         {"ticker": t, "entry_price": 100.0, "hard_stop": 90.0,
          "highest_price_seen": 100.0 + i * 10, "hold_days": i, "stop_price": 90.0 + i,

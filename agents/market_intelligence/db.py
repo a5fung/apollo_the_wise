@@ -22,11 +22,11 @@ logger = logging.getLogger(__name__)
 # CS = Common Stock, ADRC = ADR Common (foreign stocks traded on US exchanges).
 COMMON_STOCK_TYPES = ('CS', 'ADRC')
 
-# Shared CTE block for 9M-context EOD selection queries. Both
-# get_eod_9m_sugar_babies (close ≥ 75% range) and get_eod_9m_wick_candidates
-# (close ∈ [0.50, 0.75)) build their context (ADV, prev_close, prior closes,
-# SMAs, slope, prior_sessions) from this same CTE so the two cohorts are
-# defined off identical going-in metrics. Parameter $1 = trade_date.
+# Shared CTE block for 9M-context EOD selection queries. get_eod_9m_sugar_babies
+# (close ≥ 75% range) builds its context (ADV, prev_close, prior closes, SMAs,
+# slope, prior_sessions) from this CTE. (A second consumer, the wick-fill
+# candidate query, was removed 2026-10-17 with the setup — docs/setups/wick_fill.md.)
+# Parameter $1 = trade_date.
 _NINEM_CONTEXT_CTE = """
 WITH adv AS (
     SELECT ticker,
@@ -313,30 +313,6 @@ async def _seed_strategies_registry(conn) -> None:
             },
         },
         {
-            "strategy_id": "wick_fill",
-            "name": "Wick-Fill (Negated Shooting Star)",
-            "family": "orb_long",
-            # Backlog "hold" (#424, operator-signed 2026-07-05/06): stays
-            # shadow telemetry, NOT promotion-track. review_required=True
-            # (vs. the False used elsewhere) means _eval_telemetry_review
-            # ALWAYS appends a blocking reason regardless of metrics clearing
-            # — the weekly checker can never flag this "✓ ready". Same
-            # mechanism as parabolic_short's implicit default (no explicit
-            # review_required key there = True).
-            "phase": "shadow",
-            "signal_type": "wick_fill",
-            "outcomes_table": "mi_wick_candidates",
-            "promotion_model": "telemetry_review",
-            "promotion_thresholds": {
-                "shadow_to_paper": {
-                    "metric_key": "n_candidates",
-                    "min_count": 30,
-                    "min_fill_rate": 0.50,
-                    "review_required": True,
-                },
-            },
-        },
-        {
             "strategy_id": "flag_continuation",
             "name": "Continuation Flag (post-runup tightening)",
             "family": "long_setup",
@@ -397,6 +373,23 @@ async def _seed_strategies_registry(conn) -> None:
         SET phase = 'deprecated', updated_at = NOW()  -- mode-ok: terminal-phase convergence migration; writes the phase, filters nothing that rots
         WHERE strategy_id IN ('9m_day2', 'flag_continuation')
           AND phase != 'deprecated'  -- mode-ok: idempotence guard on the same migration
+        """
+    )
+
+    # wick_fill RETIRED (operator 2026-10-17: "kill wick fill, remove that setup completely"). The
+    # seed above no longer creates the row, so this is the ONLY thing that converges an EXISTING
+    # prod row (seeded 'shadow', enabled) — and it must set BOTH columns in ONE statement:
+    # `strategies.registry.assert_no_deprecated_but_enabled` RAISES at the first load_strategies()
+    # on phase='deprecated' AND enabled=true, so a phase-only copy of the migration above would
+    # turn the retirement into a boot failure. Never a DELETE: the row and the retained
+    # mi_wick_candidates history stay (like 9M); nothing writes either any more. Idempotent: the
+    # guard makes it a no-op once converged (no updated_at churn); a fresh DB has no row to touch.
+    await conn.execute(
+        """
+        UPDATE mi_strategies
+        SET phase = 'deprecated', enabled = FALSE, updated_at = NOW()  -- mode-ok: terminal-phase convergence migration (wick_fill retired 2026-10-17); writes the phase, filters nothing that rots
+        WHERE strategy_id = 'wick_fill'
+          AND (phase != 'deprecated' OR enabled)  -- mode-ok: idempotence guard on the same migration
         """
     )
 
@@ -2506,6 +2499,9 @@ async def initialize_schema() -> None:
                 ON mi_parabolic_exclusions(ticker);
         """)
 
+        # RETIRED 2026-10-17 (operator: "kill wick fill, remove that setup completely") — the
+        # table and this DDL are KEPT as history (like the 9M tables); NOTHING writes it any more
+        # (the EOD sweep, the settlement job and every reader were removed). docs/setups/wick_fill.md.
         # Wick-fill candidates (P22, telemetry-only). 9M days closing mid-range
         # ([0.50, 0.75)) with green body and ≥3× ADV — Bonde / Kristjan
         # "negated shooting star": Day 1 traps shorts on the upper-wick close,
@@ -7244,239 +7240,6 @@ async def check_sugar_baby_convergence(ticker: str) -> dict | None:
     return dict(row) if row else None
 
 
-async def get_eod_9m_wick_candidates(trade_date: "str | date") -> list[dict]:
-    """Wick-fill candidates (P22): 9M day, green body, close in [0.50, 0.75)
-    of intraday range. Same gates as sugar babies — only the range-position
-    branch differs. Telemetry-only; Day 2 break of prior_high is the
-    canonical short-trap fill (Bonde / Kristjan negated shooting star).
-    Returns up to 20, ordered by volume desc.
-    """
-    pool = await get_pool()
-    if isinstance(trade_date, str):
-        trade_date = date.fromisoformat(trade_date)
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(_NINEM_CONTEXT_CTE + """
-            SELECT d.ticker, d.close AS close_price, d.open_price,
-                   d.high_price, d.low_price, d.volume,
-                   d.high_price AS prior_high,
-                   m.prev_close,
-                   CASE WHEN (d.high_price - d.low_price) > 0
-                        THEN (d.close - d.low_price) / (d.high_price - d.low_price)
-                        ELSE NULL END AS close_in_range_pct,
-                   CASE WHEN m.close_5d_ago IS NOT NULL AND m.close_5d_ago > 0
-                        THEN (m.prev_close - m.close_5d_ago) / m.close_5d_ago * 100.0
-                        ELSE NULL END AS prev_5d_pct,
-                   CASE WHEN m.close_20d_ago IS NOT NULL AND m.close_20d_ago > 0
-                        THEN (m.prev_close - m.close_20d_ago) / m.close_20d_ago * 100.0
-                        ELSE NULL END AS prev_20d_pct,
-                   CASE WHEN m.sma_10 > 0 THEN m.prev_close / m.sma_10 ELSE NULL END AS prev_vs_sma10,
-                   CASE WHEN m.sma_50 > 0 THEN m.prev_close / m.sma_50 ELSE NULL END AS prev_vs_sma50,
-                   CASE WHEN m.sma_50_5d_ago IS NOT NULL AND m.sma_50_5d_ago > 0
-                        THEN (m.sma_50 - m.sma_50_5d_ago) / m.sma_50_5d_ago * 100.0
-                        ELSE NULL END AS sma50_slope_pct,
-                   m.prior_sessions
-            FROM mi_daily_closes d
-            LEFT JOIN mi_security_types st ON st.ticker = d.ticker
-            LEFT JOIN adv a ON a.ticker = d.ticker
-            LEFT JOIN ctx m ON m.ticker = d.ticker
-            WHERE d.trade_date = $1
-              AND (st.security_type IN ('CS', 'ADRC') OR st.ticker IS NULL)
-              AND d.volume >= 9000000
-              AND d.close >= 5.0
-              AND (d.volume * d.close) >= 50000000
-              AND d.open_price IS NOT NULL
-              AND d.high_price IS NOT NULL
-              AND d.low_price IS NOT NULL
-              AND d.close > d.open_price
-              AND (d.high_price - d.low_price) > 0
-              -- Mid-range upper-wick close. Three-way EOD branch:
-              --   ≥ 0.75 → sugar baby; [0.50, 0.75) → wick; < 0.50 → distribution.
-              AND (d.close - d.low_price) / (d.high_price - d.low_price) >= 0.50
-              AND (d.close - d.low_price) / (d.high_price - d.low_price) <  0.75
-              AND a.adv_20 IS NOT NULL
-              AND m.sma_10 IS NOT NULL
-              AND m.sma_50 IS NOT NULL
-              AND m.prev_close IS NOT NULL
-              AND d.volume >= (a.adv_20 * 3)
-              AND (d.high_price - d.low_price) >= (d.close * 0.02)
-              AND m.prev_close <= m.sma_10 * 1.20
-              -- Trend floor: reject crash-recovery candidates. A wick-trap
-              -- needs a structurally intact uptrend so shorts entered on the
-              -- upper wick are actually trapped. VISN 4/29 (post -50% gap)
-              -- passed every single-bar gate but had prev_vs_sma50=0.55.
-              AND m.prev_close >= m.sma_50 * 0.85
-            ORDER BY d.volume DESC
-            LIMIT 20
-        """, trade_date)
-    from agents.market_intelligence.ninem_detector import is_9m_directional, is_green_close
-    return [
-        dict(r) for r in rows
-        if is_9m_directional(float(r["prev_close"]), float(r["open_price"]), float(r["close_price"]))
-        and is_green_close(float(r["prev_close"]), float(r["close_price"]))
-    ]
-
-
-async def insert_wick_candidate(record: dict[str, Any]) -> None:
-    """Upsert a wick candidate from EOD sweep. Forward-return fields stay
-    NULL — populated later by wick_tracker.update_forward_returns once
-    the 10d horizon has settled.
-    """
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            INSERT INTO mi_wick_candidates
-                (ticker, alert_date, open_price, close_price, high_price, low_price,
-                 volume, close_in_range_pct, prior_high,
-                 prev_5d_pct, prev_20d_pct, prev_vs_sma10, prev_vs_sma50,
-                 sma50_slope_pct, prior_sessions)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-            ON CONFLICT (ticker, alert_date) DO UPDATE SET
-                open_price         = EXCLUDED.open_price,
-                close_price        = EXCLUDED.close_price,
-                high_price         = EXCLUDED.high_price,
-                low_price          = EXCLUDED.low_price,
-                volume             = EXCLUDED.volume,
-                close_in_range_pct = EXCLUDED.close_in_range_pct,
-                prior_high         = EXCLUDED.prior_high,
-                prev_5d_pct        = EXCLUDED.prev_5d_pct,
-                prev_20d_pct       = EXCLUDED.prev_20d_pct,
-                prev_vs_sma10      = EXCLUDED.prev_vs_sma10,
-                prev_vs_sma50      = EXCLUDED.prev_vs_sma50,
-                sma50_slope_pct    = EXCLUDED.sma50_slope_pct,
-                prior_sessions     = EXCLUDED.prior_sessions
-        """,
-            record["ticker"],
-            record["alert_date"] if isinstance(record["alert_date"], date) else date.fromisoformat(record["alert_date"]),
-            record["open_price"],
-            record["close_price"],
-            record["high_price"],
-            record["low_price"],
-            record["volume"],
-            record["close_in_range_pct"],
-            record["prior_high"],
-            record.get("prev_5d_pct"),
-            record.get("prev_20d_pct"),
-            record.get("prev_vs_sma10"),
-            record.get("prev_vs_sma50"),
-            record.get("sma50_slope_pct"),
-            record.get("prior_sessions"),
-        )
-
-
-async def get_unsettled_wick_candidates(today: "str | date") -> list[dict]:
-    """Wick rows whose 10d forward return isn't measured yet. Sweep job
-    retries each day until the horizon settles. Bounded 20-day lookback
-    so we don't re-scan ancient rows that never got their fwd window
-    (early-table data, manual deletions).
-    """
-    pool = await get_pool()
-    if isinstance(today, str):
-        today = date.fromisoformat(today)
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT id, ticker, alert_date, prior_high, close_price
-            FROM mi_wick_candidates
-            WHERE alert_date < $1
-              AND fwd_10d_from_close_pct IS NULL
-              AND alert_date >= $1 - INTERVAL '20 days'
-            ORDER BY alert_date ASC
-        """, today)
-    return [dict(r) for r in rows]
-
-
-async def update_wick_forward_returns(
-    candidate_id: int,
-    *,
-    filled_wick: bool | None,
-    fill_date: "date | None",
-    fwd_1d_from_high_pct: float | None,
-    fwd_3d_from_high_pct: float | None,
-    fwd_10d_from_high_pct: float | None,
-    fwd_1d_from_close_pct: float | None,
-    fwd_3d_from_close_pct: float | None,
-    fwd_10d_from_close_pct: float | None,
-) -> None:
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("""
-            UPDATE mi_wick_candidates
-               SET filled_wick            = $1,
-                   fill_date              = $2,
-                   fwd_1d_from_high_pct   = $3,
-                   fwd_3d_from_high_pct   = $4,
-                   fwd_10d_from_high_pct  = $5,
-                   fwd_1d_from_close_pct  = $6,
-                   fwd_3d_from_close_pct  = $7,
-                   fwd_10d_from_close_pct = $8
-             WHERE id = $9
-        """, filled_wick, fill_date,
-             fwd_1d_from_high_pct, fwd_3d_from_high_pct, fwd_10d_from_high_pct,
-             fwd_1d_from_close_pct, fwd_3d_from_close_pct, fwd_10d_from_close_pct,
-             candidate_id)
-
-
-async def get_wick_candidates_window(window_days: int) -> list[dict]:
-    """Wick candidates with all stored fields, used by the strategy adapter
-    and `/wick` Telegram surface."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT ticker, alert_date, open_price, close_price, high_price,
-                   low_price, volume, close_in_range_pct, prior_high,
-                   prev_5d_pct, prev_20d_pct, prev_vs_sma10, prev_vs_sma50,
-                   sma50_slope_pct, prior_sessions,
-                   filled_wick, fill_date,
-                   fwd_1d_from_high_pct, fwd_3d_from_high_pct, fwd_10d_from_high_pct,
-                   fwd_1d_from_close_pct, fwd_3d_from_close_pct, fwd_10d_from_close_pct
-            FROM mi_wick_candidates
-            WHERE alert_date >= CURRENT_DATE - $1::int
-            ORDER BY alert_date DESC, volume DESC
-        """, window_days)
-    return [dict(r) for r in rows]
-
-
-async def get_wick_pending_candidates(lookback_sessions: int = 3) -> list[dict]:
-    """Forward-looking wick candidates: `filled_wick IS NULL` (sweep hasn't
-    closed the row — the 10-session forward window isn't complete yet) AND
-    price hasn't already broken `prior_high` (so the setup is still
-    actionable for next-session entry).
-
-    Lookback is in trading sessions, not calendar days — `recent_sessions`
-    CTE selects DISTINCT trade_date from `mi_daily_closes` so prior-Friday
-    wicks remain visible Mon/Tue/Wed without weekend off-by-one.
-
-    The `NOT EXISTS` clause closes the already-filled blind spot: between
-    the day a wick fires and the day the 5:45 PM sweep marks it filled,
-    intraday breaks of `prior_high` would otherwise still surface here as
-    "pending."
-    """
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch("""
-            WITH recent_sessions AS (
-                SELECT DISTINCT trade_date FROM mi_daily_closes
-                WHERE trade_date <= CURRENT_DATE
-                ORDER BY trade_date DESC
-                LIMIT $1
-            ),
-            cutoff AS (SELECT MIN(trade_date) AS cutoff_date FROM recent_sessions)
-            SELECT w.ticker, w.alert_date, w.close_price, w.high_price,
-                   w.prior_high, w.close_in_range_pct, w.prev_5d_pct, w.volume
-            FROM mi_wick_candidates w
-            CROSS JOIN cutoff
-            WHERE w.alert_date >= cutoff.cutoff_date
-              AND w.filled_wick IS NULL
-              AND NOT EXISTS (
-                  SELECT 1 FROM mi_daily_closes d
-                  WHERE d.ticker = w.ticker
-                    AND d.trade_date > w.alert_date
-                    AND d.high_price >= w.prior_high
-              )
-            ORDER BY w.alert_date DESC, w.volume DESC
-        """, lookback_sessions)
-    return [dict(r) for r in rows]
-
-
 async def get_pending_9m_sugar_babies(trade_date: "str | date") -> list[dict]:
     """
     Fetch confirmed sugar babies from a given date with day2_status='pending'.
@@ -8623,13 +8386,13 @@ async def get_ticker_flag_history(ticker: str, days: int = 14) -> list[dict[str,
 async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, Any]:
     """Reverse-lookup chronology — every detector hit for one ticker.
 
-    Powers `/setup TICKER`. Fans out 10 small per-table SELECTs in parallel
+    Powers `/setup TICKER`. Fans out 9 small per-table SELECTs in parallel
     via `asyncio.gather`. Each subquery acquires its own pool connection
     (asyncpg refuses concurrent queries on a single Connection), so total
     roundtrip ≈ slowest subquery.
 
     Tables covered: mi_ep_alerts, mi_9m_ep_alerts, mi_9m_day2_candidates,
-    mi_wick_candidates, mi_parabolic_candidates, mi_flag_candidates,
+    mi_parabolic_candidates, mi_flag_candidates,
     mi_themes (array containment), mi_live_trades, mi_paper_trades,
     mi_weekly_watchlists. Plus latest mi_stock_scores row for context.
 
@@ -8643,10 +8406,12 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
     pool = await get_pool()
 
     # Source priority for tie-breaking when multiple events land on the same
-    # date. TRADE > FLAG > EP > 9M > WICK > PARABOLIC > THEME > WATCHLIST.
+    # date. TRADE > FLAG > EP > 9M > PARABOLIC > THEME > WATCHLIST.
+    # (WICK retired 2026-10-17 — the setup is gone; its frozen mi_wick_candidates
+    # history is no longer read here.)
     PRIO = {
         "TRADE-LIVE": 0, "TRADE-PAPER": 1, "FLAG": 2, "EP-MAGNA": 3,
-        "9M-INTRADAY": 4, "9M-SUGAR": 5, "WICK": 6, "PARABOLIC": 7,
+        "9M-INTRADAY": 4, "9M-SUGAR": 5, "PARABOLIC": 7,
         "THEME": 8, "WATCHLIST": 9, "RS": 10,
     }
     POST_MERGE_CAP = 60
@@ -8682,14 +8447,6 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
             SELECT alert_date, day2_status, close_in_range_pct, prev_5d_pct,
                    prev_20d_pct, volume
             FROM mi_9m_day2_candidates
-            WHERE ticker = $1
-              AND alert_date >= CURRENT_DATE - ($2::int || ' days')::interval
-            ORDER BY alert_date DESC LIMIT 50
-        """, t, days),
-        "wick": _q("""
-            SELECT alert_date, filled_wick, fill_date, close_in_range_pct,
-                   fwd_3d_from_high_pct
-            FROM mi_wick_candidates
             WHERE ticker = $1
               AND alert_date >= CURRENT_DATE - ($2::int || ' days')::interval
             ORDER BY alert_date DESC LIMIT 50
@@ -8795,12 +8552,6 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
         _push(r["alert_date"], "9M-SUGAR",
               f"day2={r['day2_status']}, close top {rp}%{p5_s}")
 
-    for r in _rows("wick"):
-        fwd = r["fwd_3d_from_high_pct"]
-        fwd_s = f", fwd3d {float(fwd)*100:+.1f}%" if fwd is not None else ""
-        fill_s = "filled" if r["filled_wick"] else "unfilled"
-        _push(r["alert_date"], "WICK", f"{fill_s}{fwd_s}")
-
     for r in _rows("parabolic"):
         pm = r["prior_move_pct"]
         pm_s = f", prior {float(pm)*100:+.0f}%" if pm is not None else ""
@@ -8877,7 +8628,7 @@ async def get_ticker_setup_timeline(ticker: str, days: int = 180) -> dict[str, A
 
     for r in _rows("watchlist"):
         # composite_priority is an internal source-precedence integer
-        # (1=EP_HIGH, 2=THEME, 3=9M_SUGAR, 4=WICK, 5=PARABOLIC, 6=RS) — not
+        # (1=EP_HIGH, 2=THEME, 3=9M_SUGAR, 4=WICK [retired], 5=PARABOLIC, 6=RS) — not
         # meaningful to humans. The source list tells the actual story.
         srcs = r["sources"]
         if isinstance(srcs, str):

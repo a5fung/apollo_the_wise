@@ -205,12 +205,12 @@ async def test_db_reader_keys_by_signal_type_and_skips_foreign_rows():
     class _C:
         async def fetch(self, sql):
             assert "FROM mi_strategies" in sql and "signal_type" in sql
-            return [_override("magna53", 8.0, None), _override("wick_fill", None, 3.0),
+            return [_override("magna53", 8.0, None), _override("parabolic_short", None, 3.0),
                     _trade()]  # <- a trade row: no override columns → skipped
     out = await db.get_strategy_exit_overrides(conn=_C())
     assert out == {
         "magna53": {"profit_trigger_r": 8.0, "breakeven_arm_r": None},
-        "wick_fill": {"profit_trigger_r": None, "breakeven_arm_r": 3.0},
+        "parabolic_short": {"profit_trigger_r": None, "breakeven_arm_r": 3.0},
     }
 
 
@@ -341,7 +341,7 @@ def test_profit_take_shares_changes_only_the_signed_strategies():
     (the paper lane mirrors MAGNA53's exits and must size the same)."""
     for st in ("magna53", "magna53_smallcap"):
         assert [om.profit_take_shares(n, st) for n in range(7)] == [0, 0, 1, 1, 1, 1, 2], st
-    for st in ("9m_day2", "wick_fill", "", None):
+    for st in ("9m_day2", "parabolic_short", "", None):
         assert [om.profit_take_shares(n, st) for n in range(7)] == [0, 0, 0, 1, 1, 1, 2], st
 
 

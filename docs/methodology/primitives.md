@@ -51,7 +51,7 @@ gates real decisions · `evaluated` = a data-gated review is open on it (`data_g
 | **9M EP (Pradeep)** | virgin 9M-volume universe; sugar-baby Day-2 ORB | `ninem_detector.py` | load-bearing |
 | **Continuation flag** | post-runup VCP/Qullamaggie tightening (5 stages) | `flag_detector.py:377 compute_flag_metrics` | load-bearing + intraday flag-break (#94) |
 | **Fishhook** | reclaim-after-undercut fill mechanic | ~~`fishhook_detector.py`~~ removed | **retired 2026-07-21** (operator; discretionary delayed-EP re-entry doesn't belong in the automated core) — the reclaim-mechanic pattern survives in `anticipation.detect_gdl_reclaim` |
-| **Wick-fill** | gap-wick fill tracker | `wick_tracker.py` | shadow · **#283** promotion eval |
+| **Wick-fill** | gap-wick fill tracker | ~~`wick_tracker.py`~~ removed | **retired 2026-10-17** (operator: "kill wick fill, remove that setup completely"; #283 closed) |
 | **U&R (undercut & rally)** | undercut prior low → reclaim (Morales/OWL) | future detector **#98** (greenlit, may be unbuilt — verify before citing) | planned |
 | **#270 anticipation** | gap → tightening pullback (arm; undercut = 1 shape) → reclaim(ready) → coil/entry → harvest | `anticipation.py` (Step 3; generalized recorder 6/16) | shadow |
 

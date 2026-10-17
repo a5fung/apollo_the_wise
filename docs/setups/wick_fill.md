@@ -1,8 +1,28 @@
-# Wick-Fill / Negated Shooting Star
+# Wick-Fill / Negated Shooting Star — RETIRED 2026-10-17 (history only)
 
-**Phase**: Telemetry (Stage 1). Promotion path: `telemetry_review`.
+> ⚠ **READ THIS FIRST (2026-10-17).** Operator: *"kill wick fill, remove that setup completely"*
+> (the same day the board audit closed #283, this setup's shadow→PAPER promotion eval, on that ruling).
+> The setup is **GONE from the codebase**, not merely disabled — the way 9M Day 2 went
+> (`ninem.md`, #515). **Everything below the change-log entry is kept as HISTORY, marked RETIRED — do not
+> implement from it.** It stays so the next reader sees what was built, what it measured and why no
+> one needs to rebuild it.
+>
+> **Removed:** `wick_tracker.py` (EOD sweep + forward-returns settlement) · the nightly-pull step 4.6
+> that called the sweep · the 17:45 ET `wick_forward_returns` job (and its two ownership-manifest
+> entries) · every `mi_wick_candidates` writer and reader (`insert_/update_/get_*_wick_*`) · the
+> `/wick` Telegram command and its router/parity entries · the evening/morning/Friday briefing wick
+> sections (Wick Watch, Wick Pending, Wick Fill) · the weekly-review wick roll-up and its prompt rule ·
+> the sell-discipline "wick fade" simulation row · the strategy-promotion adapter and its fill-rate
+> gate · the `SOURCE_WICK_FILL` stocks-in-play source · the `/setup TICKER` WICK tag.
+> **Kept (history, nothing writes them):** the `mi_wick_candidates` table and its DDL, and the
+> `mi_strategies` row `wick_fill` — which an idempotent startup UPDATE (`db._seed_strategies_registry`)
+> forces to `phase='deprecated'` **and** `enabled=false` in one statement (the registry refuses a
+> deprecated-but-enabled row at load). The seed no longer creates the row; a fresh database never has it.
+> **Pinned by** `tests/test_wick_fill_retired.py`.
+
+**Phase**: RETIRED (terminal, 2026-10-17) — was Telemetry (Stage 1), shadow, `telemetry_review`.
 **Origin**: Kristjan Kullamägi / Pradeep Bonde — when a 9M day closes mid-range with a green body and the upper wick traps shorts, the next-day break of `prior_high` becomes the canonical short-cover impulse.
-**Code**: `agents/market_intelligence/wick_tracker.py`. EOD sweep (`run_wick_sweep`) is called
+**Code (what existed; ALL DELETED 2026-10-17)**: `agents/market_intelligence/wick_tracker.py`. EOD sweep (`run_wick_sweep`) was called
 from `scheduler.py`'s nightly-data-pull job (step "4.6", right after the 9M EOD sweep) — NOT
 from within `ninem_detector.py`, despite sharing the same `_NINEM_CONTEXT_CTE`-shaped query.
 
@@ -43,7 +63,7 @@ The gap between these medians at the 3-day horizon is the strategy's edge in one
 
 ### Settlement job
 
-`_wick_forward_returns_job` runs 5:45 PM ET cron (`scheduler.py` line 5635), walks unsettled rows. Intentionally NOT gated by `should_run('wick_fill')` so in-flight telemetry survives mid-cycle disable.
+(RETIRED — job deleted) `_wick_forward_returns_job` ran 5:45 PM ET cron (`scheduler.py` line 5635), walked unsettled rows. Intentionally NOT gated by `should_run('wick_fill')` so in-flight telemetry survives mid-cycle disable.
 
 ## Known limitations / open questions
 
@@ -54,6 +74,30 @@ The gap between these medians at the 3-day horizon is the strategy's edge in one
 3. **Promotion eligibility**: `n_candidates ≥ 30 AND fill_rate ≥ 0.50`. Currently insufficient sample.
 
 ## Change log (newest first)
+
+### 2026-10-17 — RETIRED: the setup is removed completely (operator ruling)
+
+**Trigger**: operator, verbatim, 2026-10-17: *"kill wick fill, remove that setup completely"* (said
+while ruling the board audit — "Fix all of them per rec ... kill wick fill"). #283 (wick_fill promotion
+eval, shadow→PAPER) was closed the same day on it (`docs/task_closes.md`); the standing promotion
+"hold" (restored 2026-09-08 on his approval) is moot with it.
+
+**Change**: deletes the sweep, the settlement job, every writer and reader, the `/wick` command, all
+briefing / weekly-review / sell-discipline / Friday-watchlist surfaces, the promotion adapter and its
+`min_fill_rate` gate, and the stocks-in-play source; the registry seed stops creating the row and a
+startup UPDATE deprecates + disables an existing one (full list in the banner above). Rows are never
+deleted: `mi_wick_candidates` and the `mi_strategies` row stay as history, like 9M.
+
+**Evidence**: none required — this removes a SHADOW, telemetry-only setup on his explicit order; it had
+no entry path, no order path, no sizing and no safeguard role (promotion was always held). No criterion
+changed, so CHANGE_PROCESS's backtest rule does not apply.
+
+**Reversion-flag**: NONE. A comeback is a NEW setup build (a named buy point and stop first — see the
+SETUP-vs-FAMILY definition in CLAUDE.md) through CHANGE_PROCESS, not a flip of this row: the startup
+UPDATE re-deprecates it on every boot by design.
+
+**Deploy**: `deploy.sh both` THEN `deploy.sh execution` — `db.py`, `scheduler.py`, `briefing.py` and
+`agent.py` are in `scripts/exec_loaded_modules.txt`.
 
 ### 2026-07-24 — FL-5 reconcile: doc synced to code
 

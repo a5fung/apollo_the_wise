@@ -4,6 +4,7 @@
 **Status**: Design — generalization gated on Sugar Baby Convergence prototype earning its keep over 2-3 weeks operationally (#84 shipped 2026-05-22)
 **Authors**: Apollo Assistant (with user framing 2026-05-22 PM)
 **Supersedes**: none
+**Update 2026-10-17**: the **wick fill** source (`wick_tracker`, `/wick`, `SOURCE_WICK_FILL`, `mi_wick_candidates` rows) is **RETIRED** on the operator's order ("kill wick fill, remove that setup completely") — every wick reference below is history; `docs/setups/wick_fill.md` owns it.
 **Sequencing**: Step 2 of option (c) — Prototype (#83/#84) shipped 2026-05-22; this ADR captures the macro-scale architecture; full `mi_stocks_in_play` ship deferred pending prototype validation
 
 ## 1. Context

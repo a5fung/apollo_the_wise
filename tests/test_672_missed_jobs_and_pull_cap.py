@@ -136,14 +136,14 @@ async def test_a_burst_of_missed_jobs_is_ONE_alert_that_names_every_job(monkeypa
             self.job_id = jid
             self.scheduled_run_time = datetime(2026, 9, 18, hh, 30)
 
-    for jid, hh in (("evening_briefing", 18), ("wick_forward_returns", 17), ("parabolic_scan", 17)):
+    for jid, hh in (("evening_briefing", 18), ("post_nightly_audit", 17), ("parabolic_scan", 17)):
         sched._on_job_missed(_Ev(jid, hh))
 
     assert sched._missed_flush_task is not None, "no flush was scheduled — the burst is silent"
     await sched._missed_flush_task
 
     assert len(sent) == 1, f"a burst must coalesce into ONE alert, got {len(sent)}"
-    for jid in ("evening_briefing", "wick_forward_returns", "parabolic_scan"):
+    for jid in ("evening_briefing", "post_nightly_audit", "parabolic_scan"):
         assert jid in sent[0], f"{jid} was missed but not named in the alert"
     assert len(rows) == 3, f"every miss must be RECORDED even when the alert is summarised; got {len(rows)}"
     assert all(r[0] and "missed" not in str(r[1]) for r in rows)

@@ -208,7 +208,7 @@ each session; this index is the cross-cutting view.
 - [~] **P19** VIX-scaled risk sizing — helper WIRED tonight into `prepare_orb_order` + `prepare_9m_day2_orb_order`; VIX ingest still missing → `data_gated_reviews.yaml::vix_ingest_for_p19_sizing` + memory
 - [ ] **P20** Earnings-week IV pre-pass (blocked on Polygon IV data) → memory
 - [~] **P21** Cross-asset thematic RS — V1 script shipped tonight (`scripts/probes/cross_asset_rs.py`); V2 conviction boost into theme_engine deferred (needs theme-to-commodity mapping) → memory
-- [ ] **P22b** Wick-Fill productionization (gated on n≥30 shadow fills with fill_rate≥0.50) → memory
+- [x] **P22b** Wick-Fill productionization — DROPPED 2026-10-17 (the setup was retired; see TI2) → `docs/setups/wick_fill.md`
 - [ ] **P24** Audit-system backfill verification (earliest 2026-05-24 after 30d baseline accumulation) → memory + plan `~/.claude/plans/shiny-mapping-locket.md`
 - [~] **P25** Theme Rank Evolution Dashboard — MVP scaffold shipped tonight (`dashboard/theme_rank_evolution.py`); requires local `pip install streamlit pandas psycopg2-binary` to run; canonical-ID layer (stage 2) deferred → memory
 - [x] **P26** Verify Fix B global ticker ban — verified 2026-05-14 (firing daily since 4/28 deploy)
@@ -225,7 +225,7 @@ platform features. Each goes through Stage 1 telemetry → Stage 2 paper →
 Stage 3 live.
 
 - [~] **TI1** Parabolic Short — Stage 1 telemetry deployed 4/25, watch 2-3 months for Stage 2 → memory
-- [~] **TI2** Wick-Fill (P22) — Stage 1 deployed 4/28, watching for promotion (n≥30, fill_rate≥0.50) → memory + P22b above
+- [x] **TI2** Wick-Fill (P22) — RETIRED 2026-10-17 (operator: "kill wick fill, remove that setup completely"; code deleted, table kept as history) → `docs/setups/wick_fill.md`
 - [x] **TI3** Fishhook V3 — RETIRED 2026-07-21 (operator: discretionary delayed-EP re-entry doesn't belong in the automated core); a fresh non-fishhook approach would need its own scoping → memory
 - [~] **TI4** Convergence engine V1 (earnings) — spike memo + yfinance coverage script (`scripts/_ti4_yfinance_spike.py`), pre-coding sign-off pending → memory + plan `~/.claude/plans/wave-d-convergence-spike.md`
 - [~] **TI5** Post-EP Pattern Shape Classifier — explorer script ready (`scripts/probes/ep_shape_explorer.py`, 376 lines), v0 cohort review pending → memory

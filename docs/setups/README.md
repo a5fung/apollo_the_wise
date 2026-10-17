@@ -13,11 +13,16 @@
 | [htf.md](htf.md) | HTF — High Tight Flag (O'Neil/Minervini/Qullamaggie, sourced) — supersedes `flag_continuation.md`'s detection criteria | Shadow (telemetry-only; breakout-entry shadow→paper→live is the promotion path) | 2026-07-19 | see file (liquidity floor tune, ADR-0026 Confirm(b) reconciliation) |
 | [parabolic_short.md](parabolic_short.md) | Parabolic Short (Stamatoudis / Quallamaggie) | Shadow | 2026-05-08 | 1 (pivot stability) |
 | [flag_continuation.md](flag_continuation.md) | Continuation Flag (VCP / Qullamaggie tightening) — **RETIRED as a standalone strategy 2026-07-19** (ADR 0026 D1/C4); code lives on as `htf.md`'s engine + the Confirm(b) entry mode | Deprecated (registry `phase='deprecated'`, #424 2026-07-05, confirmed by ADR 0026 2026-07-19) | 2026-07-19 | 0 |
-| [wick_fill.md](wick_fill.md) | Wick-Fill / Negated Shooting Star (Kristjan/Bonde) | Telemetry | 2026-04-29 | 0 |
 | [delayed_ep_reentry.md](delayed_ep_reentry.md) | Delayed-EP Re-entry / tiny-cap fast-runner (#270) | Pre-deploy spec (paused — analysis+tuning complete 2026-06-14; deployable wiring blocked on #277 op-split residuals) | 2026-06-14 | wiring sequencing, post-#277 |
 | [undercut_rally.md](undercut_rally.md) | Undercut & Rally (Morales/OWL, entry-technique #5) | Shadow (telemetry-only; promotion gated on `undercut_rally_signal_n10` N≥10) | 2026-05-31 | 6 (V2 deferrals) |
 | [convergence.md](convergence.md) | Base + Anticipated Catalyst (Wave D #8) | Spike memo only | 2026-05-08 | 7 (in spike memo) |
 | [safeguards.md](safeguards.md) | Portfolio safeguards (drawdown breaker #6 in shadow) | Shadow → Active (target ≥14d post-live-cutover) | 2026-05-08 | 3 |
+
+## Retired setups (history only — nothing runs)
+
+| File | Setup | Retired | Why |
+|---|---|---|---|
+| [wick_fill.md](wick_fill.md) | Wick-Fill / Negated Shooting Star (Kristjan/Bonde) — shadow telemetry | **2026-10-17** | Operator: *"kill wick fill, remove that setup completely"*. Code, job, `/wick` and every briefing surface deleted; `mi_wick_candidates` + a deprecated/disabled `mi_strategies` row kept as history (like 9M). |
 
 Not yet tabled above (exist as SSoT files, not part of the original active-setups list):
 [catalyst_rubric.md](catalyst_rubric.md) (LIVE gate, see file), [meta_rubric.md](meta_rubric.md),

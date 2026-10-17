@@ -139,7 +139,7 @@ live, and the same tests still enforce them.
 
 ## 🛑 Trading Setup Changes — Read SSoT First (NON-NEGOTIABLE)
 
-**Before changing ANY detection criterion** (parabolic, EP, 9M, flag, wick, convergence, future setups) **OR portfolio safeguard** (max_positions, daily_loss_limit, circuit_breaker, drawdown_breaker, PDT — see `docs/setups/safeguards.md`):
+**Before changing ANY detection criterion** (parabolic, EP, 9M, flag, convergence, future setups) **OR portfolio safeguard** (max_positions, daily_loss_limit, circuit_breaker, drawdown_breaker, PDT — see `docs/setups/safeguards.md`):
 
 0. 🗂 **START AT `docs/SSoT.md` — THE ROUTER: for ANY topic it names the ONE file that owns it** (pointers only, cannot go stale). `tests/test_ssot_router_complete.py` FAILS the build on an unregistered SSoT, dead path, orphaned finding, or dropped ruling. ⚠ `docs/analysis/**` + `docs/design/**` are findings, **NEVER owners**.
 1. **Read the setup's SSoT file** at `docs/setups/<setup>.md` — entire file, not just change log. Confirms current criteria, recent changes, and known limitations.
@@ -206,6 +206,9 @@ Bottom-up from price action (themes emerge from RS, not hypotheses); lifecycle N
 
 ### 9M EP Detection — **GONE** (operator, repeatedly: do not raise it, re-verify it, or cite it as a risk)
 Tables still exist; `docs/setups/ninem.md` owns it.
+
+### Wick Fill — **GONE** (operator 2026-10-17: *"kill wick fill, remove that setup completely"*)
+No job, command or seed row; the table + a deprecated/disabled registry row stay as history. `docs/setups/wick_fill.md` owns it.
 
 ### Entry Pipeline
 **`broker/entry_pipeline.py::submit_trade_entry`** — the single entry funnel (per-strategy differences inject via `spec_builder`). **FULL SSoT: `docs/architecture/entry_pipeline.md`** (pipeline stages, action/skip-reason vocabularies, account_mode threading) — update it in the same commit as any pipeline change. **Contract kept inline: every terminal failure Telegrams via `humanize()`.**

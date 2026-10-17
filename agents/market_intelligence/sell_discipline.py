@@ -663,7 +663,7 @@ def format_sell_discipline_section(data: dict) -> str:
     give it a split point INSIDE this fence, leaving an unterminated ``` on a long day.
     `data` keys (all optional): open_lines [str], provisional [dict], recorded [dict],
     live_cohort {n,wins,reached_avg,kept_avg,partials,stop_above,regimes:[(name,n,kept)]},
-    cohorts [dict], shadow {consol:[(mode,n,reached,kept)], htf, wick,
+    cohorts [dict], shadow {consol:[(mode,n,reached,kept)], htf,
     exit_cf {n, era, arms:[{arm,n,unscoreable,delta_pct,changed}]}} (#631).
     Returns "" when there is nothing at all to show."""
     sections: list[list[str]] = []
@@ -730,11 +730,6 @@ def format_sell_discipline_section(data: dict) -> str:
     if sh.get("htf"):
         n, reached, kept = sh["htf"]
         shadow_rows.append(("higher-timeframe breakout", n, _r(reached), _r(kept)))
-    if sh.get("wick"):
-        n, reached, kept = sh["wick"]
-        reached_s = f"{reached:+.1f}%" if reached is not None else "?"
-        kept_s = f"{kept:+.1f}%" if kept is not None else "?"
-        shadow_rows.append(("wick fade setup (percent moves, not R)", n, reached_s, kept_s))
     if shadow_rows:
         label_w = max(len(label) for label, *_ in shadow_rows)
         shadow_lines = [
@@ -911,14 +906,6 @@ async def build_sell_discipline_section(
                    percentile_cont(0.5) WITHIN GROUP (ORDER BY realized_r) AS kept
             FROM mi_htf_breakout_shadow WHERE outcome IN ('capture', 'stop')
         """)
-        wick = await conn.fetchrow("""
-            SELECT count(*) AS n,
-                   percentile_cont(0.5) WITHIN GROUP (ORDER BY
-                       GREATEST(fwd_1d_from_close_pct, fwd_3d_from_close_pct,
-                                fwd_10d_from_close_pct)) AS reached,
-                   percentile_cont(0.5) WITHIN GROUP (ORDER BY fwd_10d_from_close_pct) AS kept
-            FROM mi_wick_candidates WHERE fwd_10d_from_close_pct IS NOT NULL
-        """)
         # DoD leg 3 (#508): "what a CANDIDATE RULE would have kept" — the RUNNING read.
         # #631 (2026-09-09): repointed from mi_pivot_stop_shadow (retired, read-only) to the
         # ONE exit-counterfactual recorder, mi_live_fill_counterfactuals, CURRENT EXIT ERA ONLY
@@ -977,7 +964,6 @@ async def build_sell_discipline_section(
         "shadow": {
             "consol": [(c["entry_mode"], c["n"], _f(c["reached"]), _f(c["kept"])) for c in consol],
             "htf": (htf["n"], _f(htf["reached"]), _f(htf["kept"])) if htf and htf["n"] else None,
-            "wick": (wick["n"], _f(wick["reached"]), _f(wick["kept"])) if wick and wick["n"] else None,
             "exit_cf": exit_cf,
         },
     }

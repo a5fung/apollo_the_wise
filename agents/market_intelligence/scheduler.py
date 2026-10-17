@@ -71,7 +71,6 @@ JOB_SILENT_ERROR_SWEEP = "silent_error_sweep"
 JOB_EVENING_BRIEFING = "evening_briefing"
 JOB_MORNING_BRIEFING = "morning_briefing"
 JOB_PARABOLIC_SCAN = "parabolic_scan"
-JOB_WICK_FORWARD_RETURNS = "wick_forward_returns"
 JOB_FLAG_SCAN = "flag_continuation_scan"
 JOB_SUGAR_BABIES_COHORT_REFRESH = "sugar_babies_cohort_refresh"
 JOB_TIME_STOP_SCAN = "time_stop_scan"
@@ -206,7 +205,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "ladder_watchdog",  # #312 ADR 0022 L2 (2026-10-15) — DARK nightly demotion-trigger read per paper/live strategy; registry + mi_live_trades READ, ONE audit row, no phase/sizing/order write, no broker, SILENT (no Telegram) — same DB-only shape as kill_scale_band_eval
     # data / RS / regime / crypto
     "nightly_data_pull", "baseline_refresh", "minute_volume_curves_refresh",
-    "wick_forward_returns", "crypto_category_refresh", "crypto_nightly_ingest",
+    "crypto_category_refresh", "crypto_nightly_ingest",
     # audits / health / methodology
     "post_eod_audit", "post_nightly_audit", "weekly_system_review", "drift_check",
     # #604 — naked_position L1 pulled out of post_eod_audit's 16:15 slot (which
@@ -672,15 +671,6 @@ async def _nightly_data_pull():
             summary_parts.append(f"{_9m_count} 9M sugar babies")
     except Exception as e:
         logger.warning(f"9M EOD sweep failed (non-fatal): {e}")
-
-    # 4.6. Wick-fill (P22) EOD sweep — same 9M data, mid-range close branch
-    try:
-        from agents.market_intelligence.wick_tracker import run_wick_sweep
-        _wick_count = await run_wick_sweep(_today)
-        if _wick_count:
-            summary_parts.append(f"{_wick_count} wick candidates")
-    except Exception as e:
-        logger.warning(f"Wick EOD sweep failed (non-fatal): {e}")
 
     # 5. Theme engine
     theme_changelog: list[dict] = []
@@ -3931,27 +3921,6 @@ async def _theme_synthesis_job():
     return res["n_kept"]
 
 
-async def _wick_forward_returns_job():
-    """Run at 5:45 PM ET. Walk unsettled wick rows whose 10-trading-session
-    horizon has elapsed and write filled_wick + fwd_Nd_from_{high,close}.
-
-    Slots after 5:30 post_nightly_audit so the audit window doesn't collide.
-    Idempotent — `get_unsettled_wick_candidates` returns only rows with
-    fwd_10d_from_close_pct IS NULL within a bounded 20-day lookback.
-    """
-    logger.info("Wick forward-returns starting...")
-    try:
-        from agents.market_intelligence.collector import et_today
-        from agents.market_intelligence.wick_tracker import update_forward_returns
-        n = await update_forward_returns(et_today())
-        logger.info(f"Wick forward-returns: settled {n} rows")
-        return None
-    except Exception as e:
-        logger.error(f"Wick forward-returns failed: {e}", exc_info=True)
-        await notify_job_failure(JOB_WICK_FORWARD_RETURNS, str(e))
-        return None
-
-
 async def _post_nightly_audit_job():
     """Run at 5:30 PM ET. Theme/cooldown/regime invariants + metrics scan post-data-pull.
 
@@ -7163,7 +7132,7 @@ def start_scheduler() -> AsyncIOScheduler:
 
     # #579 — ad-hoc strength-map spread-crossing alert, 17:40 ET mon-fri: after the 17:00
     # nightly_data_pull refreshes mi_daily_closes, and a free slot ahead of the 17:45+ EOD
-    # chain (17:35/17:36 HTF family, 17:45 wick_forward_returns, 17:46 sell_discipline, ...).
+    # chain (17:35/17:36 HTF family, 17:46 sell_discipline, ...).
     # Outside both deploy blackout windows (09:25-10:05 and 16:00-17:00 ET) like every job in
     # this file. Fires ONLY on a genuine crossing of each pair's own recalculated 75th-
     # percentile bar — not on a schedule. Read-only + Telegram, no strategy/entry/exit/sizing/
@@ -8325,17 +8294,6 @@ def start_scheduler() -> AsyncIOScheduler:
         id=JOB_BACKUP_HEALTH_CHECK,
         replace_existing=True,
         misfire_grace_time=3600,
-    )
-
-    # Wick-fill forward returns: 5:45 PM ET — slots after post_nightly_audit
-    # (5:30) so it doesn't collide with the audit window. Telemetry-only
-    # (expected_min_rows=None — empty days are normal during shadow phase).
-    _scheduler.add_job(
-        audit_wrap(_wick_forward_returns_job, JOB_WICK_FORWARD_RETURNS),
-        CronTrigger(hour=17, minute=45, day_of_week="mon-fri", timezone="America/New_York"),
-        id=JOB_WICK_FORWARD_RETURNS,
-        replace_existing=True,
-        misfire_grace_time=900,
     )
 
     # Post-nightly audit: 5:30 PM ET — theme/cooldown/regime invariants + metrics,

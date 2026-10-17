@@ -1795,7 +1795,7 @@ class TelegramChannel:
         # Kept as handlers so old pinned messages and muscle memory still work,
         # but removed from the bot menu to keep the command surface lean.
         for _cmd in ("9m", "clusters", "regime", "pregame", "audit", "crypto", "altseason", "parabolic",
-                     "strategy", "watchlist", "wick", "why", "setup", "htf", "flags", "flag", "dryrun",
+                     "strategy", "watchlist", "why", "setup", "htf", "flags", "flag", "dryrun",
                      "missed", "trade",
                      # 2026-05-22+ new commands — must be registered here AND have a
                      # BotCommand entry above. Missing this list = silent drop in Telegram

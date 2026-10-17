@@ -50,6 +50,13 @@ def _fridays_misses_by_the_ledgers_own_word(rows_by_job: dict[str, list[dict]]) 
 _RETIMED_SINCE_LEDGER = {
     "tv_news_shadow": "#210 build 2026-10-10: 20:45 ET -> 10:10 ET mon-fri",
 }
+# Jobs REMOVED after the 09-18 incident: the fixture ledger (prod's real export) holds rows for them,
+# the real job list no longer registers them, so the ledger's "missed Friday" reading has no job to
+# re-run. {job_id: why}. The exclusion is asserted honest below: the id must be ABSENT from the live
+# job list (a job still registered that missed Friday is not excluded by this).
+_REMOVED_SINCE_LEDGER = {
+    "wick_forward_returns": "wick_fill setup retired 2026-10-17 (operator: 'kill wick fill, remove that setup completely')",
+}
 # Daily intelligence jobs ADDED after the 09-18 incident: the fixture ledger cannot hold a row for
 # them, so their Wed/Thu slots read as gaps in the replay through no fault of the derivation. The
 # exclusion is asserted honest below: the id must be registered now AND absent from the fixture
@@ -173,6 +180,10 @@ def test_the_derivation_reproduces_fridays_gap_set_from_the_real_ledger(monkeypa
         fire = jobs_now[jid].trigger.get_next_fire_time(None, datetime(2026, 9, 18, 0, 0, tzinfo=ET))
         assert fire.astimezone(ET).hour < 17, f"{jid} still has an evening slot - it is not retimed"
     oracle = oracle - set(_RETIMED_SINCE_LEDGER)
+    for jid in _REMOVED_SINCE_LEDGER:
+        assert jid not in jobs_now, f"{jid} is listed as removed since the ledger but is still registered"
+        assert jid in rows_by_job, f"{jid} has no rows in the incident ledger - there is nothing to exclude"
+    oracle = oracle - set(_REMOVED_SINCE_LEDGER)
     # A job ADDED after the incident has no ledger rows at all — every one of its fixture-window
     # slots is a "gap" the ledger cannot contradict. Excluded by name, and the exclusion is only
     # honest while the job is really registered today and really absent from the incident ledger.

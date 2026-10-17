@@ -735,7 +735,7 @@ async def test_compute_and_render_end_to_end(monkeypatch):
 @pytest.mark.asyncio
 async def test_briefing_wire_survives_computation_exception(monkeypatch):
     """A raising compute_and_render must NOT propagate out of send_evening_briefing's
-    guard — mirrors the try/except pattern already used for sugar_babies/wick/etc."""
+    guard — mirrors the try/except pattern already used for sugar_babies/etc."""
     import agents.market_intelligence.briefing as briefing_mod
 
     async def _boom(conn, today=None):

@@ -93,5 +93,5 @@ Detector: `flag_detector.run_intraday_undercut_rally_scan` (every 5 min, gated
   Thresholds seeded (2%/8%/0%); tune on `undercut_rally_signal_n10`. Built per operator
   directive ("build U&R now as a shadow, surface via Telegram FYI, collect data to refine")
   + advisor design pass (depth-band adjacency to support-test, max-undercut cap,
-  v1 scope discipline). Distinct from wick-fill (`wick_tracker.py`) — different mechanics
+  v1 scope discipline). Distinct from wick-fill (`wick_tracker.py`, retired 2026-10-17) — different mechanics
   (pullback-to-MA reclaim vs fill-on-wick).

@@ -164,12 +164,13 @@ def test_job_failures_are_dispositioned_from_the_ledger_and_only_the_unrecorded_
 # ── a check that cannot change state is not "pending" ───────────────────────────────────────
 
 def test_a_hold_by_operator_ruling_is_never_printed_as_deferred():
-    """wick_fill's blocker is appended unconditionally by `review_required: true` — no data can
-    clear it (db.py registry seed, #424). MUTATION: the hold no longer filtered out of
+    """A hold strategy's blocker is appended unconditionally by `review_required: true` — no data can
+    clear it (promotion._eval_telemetry_review, #424; the fixture id is synthetic — wick_fill, the
+    original example, was retired 2026-10-17). MUTATION: the hold no longer filtered out of
     `reasons` in `_format_promotion_section` — the line read 'eligibility deferred' again.
     RED, restored."""
     text, held = sr._format_promotion_section({"checks": [
-        {"strategy_id": "wick_fill", "current_phase": "shadow", "next_phase": "paper",
+        {"strategy_id": "example_hold_strategy", "current_phase": "shadow", "next_phase": "paper",
          "eligible": False, "metrics": {"fill_rate": 0.702, "n_candidates": 47},
          "blocking_reasons": [MANUAL_REVIEW_HOLD_REASON]},
         {"strategy_id": "shadow_orb_5m", "current_phase": "shadow", "next_phase": "paper",
@@ -181,8 +182,8 @@ def test_a_hold_by_operator_ruling_is_never_printed_as_deferred():
         {"strategy_id": "magna53", "current_phase": "live", "next_phase": None,
          "eligible": False, "metrics": {}, "blocking_reasons": ["already at top of ladder"]},
     ]})
-    assert held == ["wick_fill"]
-    assert "wick_fill: held in shadow by operator ruling" in text
+    assert held == ["example_hold_strategy"]
+    assert "example_hold_strategy: held in shadow by operator ruling" in text
     assert "deferred" not in text and "not yet captured" not in text
     assert "shadow_orb_5m: median R -0.10 < 0.0 (have 42 closed)" in text     # rounded, counted
     assert "parabolic_short: need 20 climax_alerts (have 4)" in text          # the data blocker leads
@@ -191,17 +192,17 @@ def test_a_hold_by_operator_ruling_is_never_printed_as_deferred():
 
 def test_an_eligible_strategy_is_his_sign_off_in_the_head(monkeypatch):
     """MUTATION: `ready = [...]` filter in `_assemble_report` dropped the `eligible` test — the
-    held wick_fill surfaced as 'ready to move'. RED, restored."""
+    held example_hold_strategy surfaced as 'ready to move'. RED, restored."""
     head, fold, meta = _assemble(monkeypatch, strategy_promotions={"checks": [
         {"strategy_id": "shadow_orb_5m", "current_phase": "shadow", "next_phase": "paper",
          "eligible": True, "metrics": {"n_closed": 42}, "blocking_reasons": []},
-        {"strategy_id": "wick_fill", "current_phase": "shadow", "next_phase": "paper",
+        {"strategy_id": "example_hold_strategy", "current_phase": "shadow", "next_phase": "paper",
          "eligible": False, "metrics": {}, "blocking_reasons": [MANUAL_REVIEW_HOLD_REASON]},
     ]})
     assert "*Needs you (1):*" in head
     assert "strategy `shadow_orb_5m` is ready to move shadow → paper — your sign-off" in head
-    assert "wick_fill" not in head
-    assert {"what": "wick_fill promotion blocker",
+    assert "example_hold_strategy" not in head
+    assert {"what": "example_hold_strategy promotion blocker",
             "rule": "held by operator ruling — no data can change it, so it is not pending"} in meta["suppressed"]
 
 
@@ -291,7 +292,7 @@ def _assemble(monkeypatch, **overrides):
         "pending_reviews": {"ready": [], "pending_count": 56},
         "audit_errors": {"total": 0, "open_total": 0, "top_types": [], "dispositioned": []},
         "strategy_promotions": {"checks": [
-            {"strategy_id": "wick_fill", "current_phase": "shadow", "next_phase": "paper",
+            {"strategy_id": "example_hold_strategy", "current_phase": "shadow", "next_phase": "paper",
              "eligible": False, "metrics": {}, "blocking_reasons": [MANUAL_REVIEW_HOLD_REASON]}]},
         # `is_live` / `ready_to_flip` are the fields the head decides on (#662, 2026-09-20) — it
         # used to string-match the `verdict` prose, so a rewording silently killed the "needs you"
@@ -346,7 +347,7 @@ def test_a_quiet_week_says_so_and_names_what_was_checked(monkeypatch):
     assert "the narrator's bullets" in fold                # UNVERIFIED narrative: fold, not head
     assert "📈 *Strategy promotion* — none ready" in fold
     assert "*🎚️ Kill/scale bands*" in fold and "rule eras:" in fold
-    assert meta["suppressed"][0]["what"] == "wick_fill promotion blocker"
+    assert meta["suppressed"][0]["what"] == "example_hold_strategy promotion blocker"
 
 
 def test_run_weekly_review_sends_the_folded_html_once(monkeypatch):

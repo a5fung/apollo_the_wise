@@ -32,8 +32,8 @@ logger = logging.getLogger(__name__)
 WINDOW_DAYS = 90  # promotion check window — wide enough to accumulate 30+ closed
 
 # The blocking reason `_eval_telemetry_review` appends UNCONDITIONALLY whenever a strategy's
-# thresholds carry `review_required: true` (wick_fill, db.py's registry seed; parabolic_short by
-# default). It is a standing operator HOLD, not a data gap — nothing captures a "manual review
+# thresholds carry `review_required: true` (parabolic_short, by default; wick_fill used to be the
+# other, retired 2026-10-17). It is a standing operator HOLD, not a data gap — nothing captures a "manual review
 # field", so no outcome can ever clear it. Named here (#662, 2026-09-20) so the weekly review
 # can tell a hold-by-ruling from a metric still accruing and stop printing it as "deferred"
 # every Sunday. Text unchanged: `/strategy` and the verdict payload read exactly as before.
@@ -197,8 +197,6 @@ def _eval_telemetry_review(rows: list[OutcomeRow], thresholds: dict) -> tuple[di
         metric_key:      output metric name (default "n_climax_alerts")
         min_count:       minimum rows to clear (legacy "min_climax_alerts"
                          key still honored; default 20)
-        min_fill_rate:   optional fill-rate gate; counts `extras.filled_wick`
-                         truthy rows. Skipped when absent.
         min_median_r:    optional median R-multiple gate over rows with
                          non-null r_multiple. Skipped when absent.
         min_hit_rate:    optional hit-rate gate (fraction of rows with
@@ -231,14 +229,6 @@ def _eval_telemetry_review(rows: list[OutcomeRow], thresholds: dict) -> tuple[di
             blocking.append(f"need {min_count} {label} (have {n} — {breakdown})")
         else:
             blocking.append(f"need {min_count} {label} (have {n})")
-
-    min_fill = thresholds.get("min_fill_rate")
-    if min_fill is not None and n > 0:
-        filled = sum(1 for r in closed if (r.extras or {}).get("filled_wick"))
-        fill_rate = filled / n
-        metrics["fill_rate"] = round(fill_rate, 3)
-        if fill_rate < min_fill:
-            blocking.append(f"fill rate {fill_rate:.2f} < {min_fill}")
 
     rs = [r.r_multiple for r in closed if r.r_multiple is not None]
     min_med = thresholds.get("min_median_r")

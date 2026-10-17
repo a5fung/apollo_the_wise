@@ -114,7 +114,6 @@ def _quiet_data(**over):
             "ticker": "ZZZ", "score_tier": "MODERATE",
             "trade_status": "filtered", "pt_status": None, "skip_reason": "block:x",
         }],
-        wick_today_count=0,
         undercut_today_count=0,
         flag_breaks_today=0,
         velocity_qual=14,
@@ -431,9 +430,6 @@ def _busy_data():
         rs_leaders_prior=prior,
         ep_outcomes=[{"ticker": "ABC", "score_tier": "HIGH", "trade_status": "traded",
                       "pt_status": "filled", "last_entry_price": 12.34, "fwd_1d_pct": 2.1}],
-        wick_today_count=1,
-        wick_fill_rate_30d=0.62,
-        wick_settled_30d=13,
         is_friday=True,
         signal_quality_block="*SIGNAL QUALITY (30d)*\n  RS Top 20: avg +1.0% vs SPY +0.5% (alpha +0.5%)",
     )
@@ -452,7 +448,7 @@ def test_busy_night_class_precedence_and_annotations():
     assert "← now #1" in text                       # newly-#1 annotation
     assert "9 seeded" in text
     assert "#>100 → #2" in text
-    assert "30d wick fill 62% (13 settled)" in text  # Friday wick telemetry
+    assert "wick" not in text.lower()                # wick-fill retired 2026-10-17: no telemetry, no /wick hint
     assert "*SIGNAL QUALITY (30d)*" in text          # Friday block appended
     assert "Top-10 sectors:" in text                 # concentration line ALWAYS present
     assert len(text) < 4096

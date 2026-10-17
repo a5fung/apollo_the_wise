@@ -13,7 +13,7 @@ the database is right** — and the disagreement is a bug worth fixing in the sa
 | **MAGNA53 EP** | `live` | **Yes — real money.** The only one. |
 | Parabolic short | `shadow` | No — telemetry only |
 | 5-min ORB shadow | `shadow` | No — carries the #482 bracket-geometry evidence |
-| Wick fill | `shadow` | No — telemetry only |
+| Wick fill | `deprecated` | No — **RETIRED 2026-10-17**, code deleted (operator: "kill wick fill, remove that setup completely"); `docs/setups/wick_fill.md` |
 | 9M Day 2 | `deprecated` | No — **code DELETED 2026-08-02 (#515)** |
 | Continuation flag | `deprecated` | No — the *detector* stays live and feeds HTF; the strategy is dead |
 | Fishhook v3 | `deprecated` | No — machinery removed 2026-07-21 |
@@ -51,11 +51,10 @@ Apollo runs a full market intelligence stack focused on momentum/EP trading meth
 | "Best Accelerating theme stocks with fundamentals" | Screener filtered to Accelerating themes with EPS/revenue data |
 | "AXTI is working, track it" | Apollo asks questions, adds to tracking + seeds theme |
 | Any stock/investment question | Apollo consults market agent before answering |
-| `/setup TICKER [days]` | Reverse-lookup detector chronology across 11 tables (EP, 9M, wick, parabolic, flag, themes, trades, watchlist) with TradingView chart link |
+| `/setup TICKER [days]` | Reverse-lookup detector chronology across 10 tables (EP, 9M, parabolic, flag, themes, trades, watchlist) with TradingView chart link |
 | `/flags` / `/flags TICKER` | Continuation flag detector (VCP / Qullamaggie tightening) — today's COILED + TRIGGERED, or 14d ticker history |
 | `/detectors` | Intraday entry-technique detector roll-up (#218) — flag-break / support-test / MA-pullback / low-vol-rest / U&R (all shadow) |
 | `/watchlist` | Friday curated watchlist (Friday 6 PM ET) — best ideas across all sources + TradingView import block |
-| `/wick` | Wick-fill candidates (telemetry) — today's candidates + 30d fill-rate footer |
 | `/why TICKER [date]` | EP lifecycle timeline — every gate hit/miss for one alert |
 | `/audit <topic>` | On-demand L1/L2/L3 anomaly check — cooldowns, themes, skips, positions, feed, 9m, all — or, by name, the last stored output of any monthly-sweep check (e.g. `/audit mna_filter_accuracy_review`; a wrong name lists them all) |
 | `/strategies` / `/strategy <id>` | Strategy maturity registry — phase + KPI promotion thresholds, manual `enable / disable / promote / demote` |
@@ -214,30 +213,6 @@ trade 9m TICKER      → manually queue a Day 2 entry for a specific ticker
 
 ---
 
-### Wick-Fill Shadow Tracking (TI2 / P22 — telemetry only)
-
-A nightly EOD branch off the 9M sugar-baby selection. **Telemetry-only** — no entries, no orders. Promotion to paper gated on 30+ candidates AND fill rate ≥ 50%.
-
-The "negated shooting star" setup (Kristjan / Pradeep Bonde): when a 9M day closes mid-range with a green body, shorts are trapped at the upper wick. Day 2+ break of `prior_high` is the canonical short-cover impulse.
-
-**Three-way EOD branch off the shared 9M context CTE:**
-- `close_in_range_pct ≥ 0.75` → sugar baby (existing Day-2 ORB path)
-- `close_in_range_pct ∈ [0.50, 0.75)` → **wick candidate** (new — telemetry row only)
-- `close_in_range_pct < 0.50` → distribution, ignored
-
-Wick candidates inherit all sugar baby gates (price ≥ $5, dollar-vol ≥ $50M, ≥ 3× ADV, range ≥ 2%, extension cap, **and the same net-up ≥ 3% directional gate**). Only the range-position branch differs — single source of truth via shared `_NINEM_CONTEXT_CTE` + `is_9m_directional` / `is_green_close` predicates.
-
-**Forward-returns measurement** (10-session horizon): two anchors deliberately — `fwd_{1,3,10}d_from_high_pct` (conditional on fill — measures the actual short-cover impulse) and `fwd_{1,3,10}d_from_close_pct` (unconditional drift baseline). The gap between them is the strategy's edge.
-
-**From Telegram:**
-```
-/wick                → today's candidates + 30d telemetry footer (n_settled · n_filled / fill_rate)
-```
-
-**Schedule:** EOD sweep at 5:00 PM ET writes wick rows alongside sugar babies. New `_wick_forward_returns_job` 5:35 PM ET walks unsettled rows once the 10-session horizon elapses.
-
----
-
 ### Parabolic Short Detection (TI1 — telemetry only)
 
 A nightly scan for the Stamatoudis / Qullamaggie parabolic-exhaustion setup. **Telemetry-only** — surfaces candidates to a Telegram digest, no entries placed. Promotion path (paper → live) requires 2-3 months of shadow data per `memory/project_trading_ideas_backlog.md` (TI1).
@@ -300,9 +275,9 @@ Daily state-machine scan for the post-runup VCP / tightening flag setup. **Shado
 
 ### Friday Curated Watchlist
 
-Friday 6:00 PM ET aggregator — combines best ideas from EP / 9M / themes / wick / parabolic / RS into a single Telegram digest with TradingView import block + per-ticker chart-link buttons.
+Friday 6:00 PM ET aggregator — combines best ideas from EP / 9M / themes / parabolic / RS into a single Telegram digest with TradingView import block + per-ticker chart-link buttons.
 
-**Cross-source dedup priority:** EP > theme > 9M > wick > parabolic > RS. Single bullet per ticker with bracketed reason chips. Top 25 by composite priority.
+**Cross-source dedup priority:** EP > theme > 9M > parabolic > RS. Single bullet per ticker with bracketed reason chips. Top 25 by composite priority.
 
 **Two integration depths:**
 1. Text import block `EXCHANGE:TICKER` comma-separated → TradingView mobile Watchlist Import
@@ -438,7 +413,7 @@ MAGNA53 scoring (Pradeep Bonde / Kullamägi methodology).
 
 **EP diagnostic from Telegram:** "Why not EP ARAI?" → runs filter checks in sequence, stops at first failure, fetches recent news. Returns specific answer (e.g. `❌ Price filter: $0.67 < $5 minimum`) instead of a generic checklist.
 
-**`/setup TICKER`**: reverse-lookup detector chronology across 11 tables (EP, 9M intraday, 9M sugar, wick, parabolic, flag, themes, live/paper trades, weekly watchlist) with TradingView chart-link button. Answers "what did Apollo see in $XNDU?" — see also `/why TICKER` for EP-specific lifecycle.
+**`/setup TICKER`**: reverse-lookup detector chronology across 10 tables (EP, 9M intraday, 9M sugar, parabolic, flag, themes, live/paper trades, weekly watchlist) with TradingView chart-link button. Answers "what did Apollo see in $XNDU?" — see also `/why TICKER` for EP-specific lifecycle.
 
 ### Market Regime
 
@@ -565,9 +540,8 @@ Show logs excluded → exclusion events
 | 5:15 PM | 2:15 PM | Parabolic-short scan (TI1 telemetry) → anticipation/climax digest if any |
 | 5:25 PM | 2:25 PM | **Continuation flag scan** (shadow) — VCP / Qullamaggie tightening flag detector |
 | 5:30 PM | 2:30 PM | **Post-nightly audit** — theme/cooldown/regime L2/L3 anomaly detection |
-| 5:35 PM | 2:35 PM | Wick-fill forward-returns (TI2/P22 telemetry) — settles unsettled wick candidates |
 | 6:00 PM (Fri) | 3:00 PM | **Friday curated watchlist** — chart-review aggregator + TradingView import block |
-| 8:00 PM | 5:00 PM | Evening briefing → Telegram (includes sugar babies, wick watch, parabolic, flag candidates) |
+| 8:00 PM | 5:00 PM | Evening briefing → Telegram (includes sugar babies, parabolic, flag candidates) |
 | 9:00 PM | 6:00 PM | **Evening position backstop** — 2nd `sync_positions` pass catches late EXPIRED events |
 | 2:00 AM | 11:00 PM | **Baseline refresh** — rebuild `mi_metric_baselines` 30d trailing for L2/L3 audit |
 | Sun 8:00 AM | 5:00 AM | Weekly system self-audit — 7d metrics + L3 drift roll-up → Telegram digest |
@@ -614,7 +588,6 @@ Apollo_Assistant/
 │       ├── parabolic_detector.py    # Parabolic-short scan (TI1 telemetry, 5:15 PM ET) + earnings-day exclusion
 │       ├── flag_detector.py         # Continuation flag detector (VCP / Qullamaggie, 5:25 PM ET)
 │       ├── friday_watchlist.py      # Friday 6:00 PM ET aggregator + TradingView import block
-│       ├── wick_tracker.py          # Wick-fill forward-returns settlement (TI2/P22 telemetry)
 │       ├── ma_filter.py             # SSoT M&A filter — keywords + Polygon news backstop
 │       ├── earnings_calendar.py     # is_earnings_day(ticker, scan_date) via yfinance two-surface
 │       ├── minute_volume.py         # RVOL@T per-minute baselines (mi_minute_volume_curves)
@@ -668,7 +641,6 @@ Apollo_Assistant/
 │   ├── backtest_9m_ep.py            # 9M EP historical backtest (D1/D5/D10/D21 returns by vol/range bucket)
 │   ├── backtest_clusters.py         # Correlation cluster precision/recall backtest
 │   ├── backfill_parabolic_car.py    # CAR/GME/NVDA verification tool for parabolic detector
-│   ├── backfill_wick_replay.py      # POET-class wick-fill verification (yfinance, no DB)
 │   └── backfill_ohlc.py             # One-time OHLC backfill (mi_daily_closes via Polygon grouped-daily)
 ├── start.sh                         # Start Apollo locally
 └── start_market.sh                  # Start market agent locally
@@ -810,10 +782,10 @@ OAuth token recovery (if the gdrive upload itself starts failing): see [`docs/op
 - ✅ **Drawdown circuit breaker (#39, shadow ship 5/8)** — methodology-aware state machine replacing count-based breaker. Daily 4:12 PM ET cron snapshots Alpaca equity (includes unrealized — open winners lift), recomputes state with asymmetric hysteresis (-5% trip / -2.5% release). State-aware threshold check eliminates flap-spam; stale-data fail-open prevents silent cron-failure lockout. Promotion gated on ≥14d post-live-cutover
 - ✅ **Stable-anchor pivot for flag detector (#37, 5/8)** — pivot only walks forward when current lookback's max_high beats prior pivot by ≥1%. Fixes marginal-walk-forward where slow higher-highs in tight increments kept `base_age` stuck at zero. Replay-verified on XNDU/VECO/OKLO calibration cases
 - ✅ **5/7 paper-session triage (5/8)** — five additive fixes: parabolic earnings-day exclusion + `days_up_streak ≥ 3` hard gate (AGL/XMTR class); EP earnings-day catalyst boost (DDOG/AAON class); EP cooldown bypass on fresh earnings (HIMX class); pm-shares floor relative-anomaly carveout (`pm_rvol ≥ 5×`); phantom split sanity check via post-apply ratio
-- ✅ **Setup SSoT discipline (5/7)** — `docs/setups/*.md` per-setup canonical files (magna53_ep, ninem, parabolic_short, flag_continuation, wick_fill, safeguards, convergence) + `CHANGE_PROCESS.md` discipline rules. Required reading before any setup change; all changes carry Trigger / Evidence / Anticipated effect / Reversion-flag / Status fields
+- ✅ **Setup SSoT discipline (5/7)** — `docs/setups/*.md` per-setup canonical files (magna53_ep, ninem, parabolic_short, flag_continuation, wick_fill [retired 2026-10-17], safeguards, convergence) + `CHANGE_PROCESS.md` discipline rules. Required reading before any setup change; all changes carry Trigger / Evidence / Anticipated effect / Reversion-flag / Status fields
 - ✅ **`/setup TICKER` reverse-lookup (5/1)** — fans out across ~10 detector tables in parallel; ticker timeline merged + sorted, top 60 capped, TradingView chart-link button. Answers "what did Apollo see in $XNDU?"
 - ✅ **Continuation flag detector (5/1, shadow)** — VCP / Qullamaggie tightening flag, daily 5:25 PM ET. Five-stage state machine, fresh-tightening predicate for short bases, M&A filter shared with EP via `ma_filter.py` SSoT
-- ✅ **Friday curated watchlist (4/30)** — Friday 6:00 PM ET aggregator combining EP/9M/themes/wick/parabolic/RS into one digest with TradingView import block + per-ticker chart-link buttons
+- ✅ **Friday curated watchlist (4/30)** — Friday 6:00 PM ET aggregator combining EP/9M/themes/parabolic/RS into one digest with TradingView import block + per-ticker chart-link buttons
 - ✅ **Splits ingest authoritative (5/1)** — Polygon `/v3/reference/splits` Phase 0 of nightly; replaces `MAX_PERIOD_RETURN=300` heuristic that misfired on recently-listed verticals. Phantom split sanity check via post-apply ratio (5/8)
 - ✅ **`compute_atr_14` Wilder TR (5/5)** — switched from close-only approximation to full Wilder TR (`max(H-L, |H-prev_close|, |L-prev_close|)`). Volatile/gappy stocks (STRL/EVER) no longer reject as `setup:stop_too_wide`
 - ✅ **Stop-leg ID capture SSoT (5/3)** — `alpaca_client.extract_stop_leg_id` is canonical helper; `_handle_fill` checks WS event legs + DB + REST refetch before remediation. Deferred-commit pattern for partial/full exits — DB writes happen on real fill, not order placement
@@ -825,8 +797,8 @@ OAuth token recovery (if the gdrive upload itself starts failing): see [`docs/op
 - ✅ **Apollo time handling discipline (4/29 → 5/8)** — every datetime/time comparison in this codebase is in America/New_York (ET). Container runs UTC; naive `datetime.now()` returns UTC clock with no tzinfo and silently breaks every ET-keyed comparison. `datetime.now(_ET)` everywhere, never `datetime.now()` / `datetime.utcnow()` / `date.today()`
 
 ### Recently completed (April 2026)
-- ✅ **P22 — Wick-Fill shadow tracker (telemetry-only)** — 9M days closing mid-range with green body (Kristjan/Bonde "negated shooting star"). Three-way EOD branching off shared 9M CTE: `≥ 0.75` → sugar baby, `[0.50, 0.75)` → wick, `< 0.50` → ignored. Same gates as sugar babies (incl. net-up ≥ 3% via shared `is_green_close` predicate); only range-position differs. Forward-returns measured from two anchors (prior_high conditional on fill, prior_close unconditional baseline) — gap between them is the edge. `/wick` command, evening-brief Wick Watch line, weekly review drift-gap citation. POET 2026-04-21 verified via `scripts/probes/backfill_wick_replay.py`. First strategy shipped through the Strategy Maturity Framework
-- ✅ **Strategy Maturity Framework (Option A)** — thin overlay registry (`mi_strategies`); each strategy declares phase (shadow → paper → live) + KPI promotion thresholds + enable flag. Three promotion models: `paired_r` (Shadow ORB), `unpaired_r` (MAGNA53, 9M Day 2), `telemetry_review` (parabolic_short, wick_fill). Per-strategy outcome tables stay; adapter pattern layers on top. Phase gate at three entry points (entry_pipeline + shadow_orb_tracker + parabolic_detector). `/strategies` table + `/strategy <id> [enable|disable|promote|demote]`. Manual promotion only — verdict flags eligibility, user runs the action
+- ⛔ **P22 — Wick-Fill shadow tracker (telemetry-only) — RETIRED 2026-10-17 (operator: "kill wick fill, remove that setup completely"; code deleted, history in `docs/setups/wick_fill.md`). As built:** — 9M days closing mid-range with green body (Kristjan/Bonde "negated shooting star"). Three-way EOD branching off shared 9M CTE: `≥ 0.75` → sugar baby, `[0.50, 0.75)` → wick, `< 0.50` → ignored. Same gates as sugar babies (incl. net-up ≥ 3% via shared `is_green_close` predicate); only range-position differs. Forward-returns measured from two anchors (prior_high conditional on fill, prior_close unconditional baseline) — gap between them is the edge. `/wick` command, evening-brief Wick Watch line, weekly review drift-gap citation. POET 2026-04-21 verified by a one-off backfill replay. First strategy shipped through the Strategy Maturity Framework
+- ✅ **Strategy Maturity Framework (Option A)** — thin overlay registry (`mi_strategies`); each strategy declares phase (shadow → paper → live) + KPI promotion thresholds + enable flag. Three promotion models: `paired_r` (Shadow ORB), `unpaired_r` (MAGNA53, 9M Day 2), `telemetry_review` (parabolic_short; wick_fill until its 2026-10-17 retirement). Per-strategy outcome tables stay; adapter pattern layers on top. Phase gate at three entry points (entry_pipeline + shadow_orb_tracker + parabolic_detector). `/strategies` table + `/strategy <id> [enable|disable|promote|demote]`. Manual promotion only — verdict flags eligibility, user runs the action
 - ✅ **Apollo strip to market/trading focus** — deleted 5 unused sub-agents (finance/calendar/research/browser/travel) + Dockerfiles + compose blocks + tool schemas + enum values + 9 dead secrets; orchestrator kept for future expansion
 - ✅ **9M Sugar Baby going-in shape telemetry** — 6 new columns (prev_5d, prev_20d, prev_vs_sma10/50, sma50 slope, prior_sessions); bucket tags (uptrend/pullback/extended/bounce/downtrend/flat) surfaced in evening brief + `/9m` + `9m outcomes`. Telemetry-only — promote to filter after 30+ outcomes
 - ✅ **EP entry diagnostics & performance traceability** — `broker/skip_reasons.py` (18 bounded constants); every HIGH EP has durable terminal state by 4:10 PM ET; `/why TICKER [date]` lifecycle timeline; 4:10 PM EOD EP recap; evening-brief "EP OUTCOMES TODAY" section

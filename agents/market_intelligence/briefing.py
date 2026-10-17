@@ -1172,10 +1172,6 @@ def _format_evening_briefing(
     signal_quality_summary: dict | None = None,
     cooldowns: list[dict] | None = None,
     ep_outcomes: list[dict] | None = None,
-    wick_today_count: int = 0,
-    wick_today_tickers: list[str] | None = None,
-    wick_fill_rate_30d: float | None = None,
-    wick_settled_30d: int = 0,
     undercut_rallies: list[dict] | None = None,
     eco_map: dict[str, str] | None = None,
 ) -> str:
@@ -1382,9 +1378,6 @@ async def _compose_delta_brief(
     warnings: list[str] | None,
     cooldowns: list[dict] | None,
     ep_outcomes: list[dict] | None,
-    wick_today_count: int | None,
-    wick_fill_rate_30d: float | None,
-    wick_settled_30d: int,
     undercut_rallies: list[dict] | None,
     signal_quality_summary: dict | None,
 ) -> str:
@@ -1509,9 +1502,6 @@ async def _compose_delta_brief(
         unanchored_sessions=unanchored_sessions,
         ep_outcomes=ep_outcomes,
         sizing_blocked_today=await _fetch_sizing_blocked_today(today),
-        wick_today_count=wick_today_count,
-        wick_fill_rate_30d=wick_fill_rate_30d,
-        wick_settled_30d=wick_settled_30d,
         undercut_today_count=len(undercut_rallies) if undercut_rallies is not None else None,
         flag_breaks_today=flag_breaks,
         velocity_qual=velocity_qual,
@@ -1649,25 +1639,6 @@ async def send_evening_briefing(
     except Exception as e:
         logger.warning(f"EP outcomes fetch failed: {e}")
 
-    # Wick Watch (P22) — today's count + 30d fill rate. Count None = fetch failed.
-    wick_today_count: int | None = None
-    wick_today_tickers: list[str] = []
-    wick_fill_rate_30d: float | None = None
-    wick_settled_30d = 0
-    try:
-        from agents.market_intelligence.db import get_wick_candidates_window
-        wick_30d = await get_wick_candidates_window(30)
-        today_rows = [r for r in wick_30d if str(r.get("alert_date")) == today_str]
-        wick_today_count = len(today_rows)
-        wick_today_tickers = [r["ticker"] for r in today_rows if r.get("ticker")]
-        settled = [r for r in wick_30d if r.get("filled_wick") is not None]
-        wick_settled_30d = len(settled)
-        if settled:
-            filled_n = sum(1 for r in settled if r["filled_wick"])
-            wick_fill_rate_30d = filled_n / wick_settled_30d
-    except Exception as e:
-        logger.warning(f"Wick candidates fetch failed: {e}")
-
     if mode == "delta":
         text = await _compose_delta_brief(
             today=today,
@@ -1682,9 +1653,6 @@ async def send_evening_briefing(
             warnings=warnings,
             cooldowns=cooldowns,
             ep_outcomes=ep_outcomes,
-            wick_today_count=wick_today_count,
-            wick_fill_rate_30d=wick_fill_rate_30d,
-            wick_settled_30d=wick_settled_30d,
             undercut_rallies=undercut_rallies,
             signal_quality_summary=signal_quality_summary,
         )
@@ -1707,10 +1675,6 @@ async def send_evening_briefing(
             signal_quality_summary=signal_quality_summary,
             cooldowns=cooldowns,
             ep_outcomes=ep_outcomes,
-            wick_today_count=wick_today_count or 0,
-            wick_today_tickers=wick_today_tickers,
-            wick_fill_rate_30d=wick_fill_rate_30d,
-            wick_settled_30d=wick_settled_30d,
             undercut_rallies=undercut_rallies,
             eco_map=eco_map,
         )
@@ -2156,7 +2120,6 @@ def _format_morning_briefing(
     earnings_calendar: str | None = None,
     ep_scan_log: list[dict] | None = None,
     overnight_errors: list[dict] | None = None,
-    wick_pending: list[dict] | None = None,
     tinycap_observed: list[dict] | None = None,
     theme_merges: list[dict] | None = None,
 ) -> str:
@@ -2297,19 +2260,6 @@ def _format_morning_briefing(
         "",
         _format_ep_section(sorted_eps, section_num=1, scan_log=ep_scan_log),
     ]
-
-    # Wick Pending — forward-looking wick fills (prior_high not yet broken,
-    # 5:45 PM sweep hasn't closed the row). Actionable for today's session.
-    if wick_pending:
-        wp_lines = [f"🪝 *Wick Pending* ({len(wick_pending)}) — break-of-prior-high candidates"]
-        for r in wick_pending[:5]:
-            d = r.get("alert_date")
-            ds = d.strftime("%b %d") if hasattr(d, "strftime") else str(d)
-            prior_high = float(r.get("prior_high") or 0)
-            wp_lines.append(f"  • *{r['ticker']}* — {ds}: break > ${prior_high:.2f}")
-        if len(wick_pending) > 5:
-            wp_lines.append(f"  …{len(wick_pending) - 5} more")
-        sections += ["", "\n".join(wp_lines)]
 
     # Tiny-cap observe lane (operator-approved 2026-06-11, the MNTS $74M case):
     # movers that passed every gap/RVOL gate but sit under the $500M auto-trade
@@ -2459,17 +2409,6 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
     _perplexity_cache.clear()
     _perplexity_cache[today_str] = cache
 
-    # Wick Pending — forward-looking wicks not yet filled, sweep hasn't closed
-    # them yet. Sibling of evening Wick Watch (settled outcomes).
-    wick_pending: list[dict] = []
-    try:
-        from agents.market_intelligence.db import get_wick_pending_candidates
-        from agents.market_intelligence.strategies.registry import should_run as _should_run
-        if await _should_run("wick_fill"):
-            wick_pending = await get_wick_pending_candidates(lookback_sessions=3)
-    except Exception as e:
-        logger.warning(f"Wick pending fetch failed: {e}")
-
     # Tiny-cap observe lane (operator-approved 2026-06-11, MNTS case): movers
     # the $500M floor excluded from auto-trading, surfaced for eyes-only.
     tinycap_observed: list[dict] = []
@@ -2500,7 +2439,6 @@ async def send_morning_briefing(chat_id: int | None = None) -> str:
         earnings_calendar=earnings_calendar_text,
         ep_scan_log=ep_scan_log,
         overnight_errors=overnight_errors,
-        wick_pending=wick_pending,
         tinycap_observed=tinycap_observed,
         theme_merges=theme_merge_rows,
     )

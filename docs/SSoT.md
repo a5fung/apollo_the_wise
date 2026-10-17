@@ -66,7 +66,7 @@ setup's criteria, change log and findings.
 | 9M EP + Sugar Baby | `docs/setups/ninem.md` |
 | HTF — high tight flag | `docs/setups/htf.md` |
 | Undercut & rally | `docs/setups/undercut_rally.md` |
-| Wick fill | `docs/setups/wick_fill.md` |
+| Wick fill (**RETIRED 2026-10-17** — history only; operator: "kill wick fill, remove that setup completely") | `docs/setups/wick_fill.md` |
 | Parabolic short | `docs/setups/parabolic_short.md` |
 | Convergence | `docs/setups/convergence.md` |
 | Continuation flag (RETIRED → folded into HTF) | `docs/setups/flag_continuation.md` |

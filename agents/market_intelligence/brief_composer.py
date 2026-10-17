@@ -88,7 +88,7 @@ UNANCHORED_SESSIONS_NEEDED = UNANCHORED_PERSISTENT_STREAK + 1  # +1 to diff vs t
 # ── Reachability — every hint below is pinned against agent.py's dispatch ──────
 # tests/test_brief_composer.py fails if any of these is absent from the dispatch
 # dict / routing cascade (the 7/20 orphaning failure this task exists to correct).
-CITED_SLASH_COMMANDS = frozenset({"/regime", "/themes", "/eps", "/detectors", "/wick", "/hud"})
+CITED_SLASH_COMMANDS = frozenset({"/regime", "/themes", "/eps", "/detectors", "/hud"})
 CITED_PHRASES = frozenset({"rs leaders", "ep outcome", "show cooldowns", "pullback", "crypto"})
 
 _NUM_EMOJI = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
@@ -227,9 +227,6 @@ class BriefData:
     sizing_blocked_today: int | None = None
 
     # detectors (today counts; None = fetch failed)
-    wick_today_count: int | None = 0
-    wick_fill_rate_30d: float | None = None
-    wick_settled_30d: int = 0
     undercut_today_count: int | None = 0
     flag_breaks_today: int | None = 0
 
@@ -912,23 +909,17 @@ def _ep_state_line(counts: dict) -> str:
 def _detectors_state_line(data: BriefData) -> str:
     def _c(v):
         return "?" if v is None else v
-    wick, flags, unr = data.wick_today_count, data.flag_breaks_today, data.undercut_today_count
-    if wick == 0 and flags == 0 and unr == 0:
+    flags, unr = data.flag_breaks_today, data.undercut_today_count
+    if flags == 0 and unr == 0:
         body = "quiet"
     else:
         bits = []
-        if wick != 0:
-            bits.append(f"{_c(wick)} wick")
         if flags != 0:
             bits.append(f"{_c(flags)} flag-break")
         if unr != 0:
             bits.append(f"{_c(unr)} U&R")
         body = " · ".join(bits)
-    line = f"Detectors: {body} · `/detectors`"
-    if data.is_friday and data.wick_fill_rate_30d is not None and data.wick_settled_30d:
-        line += (f" · 30d wick fill {data.wick_fill_rate_30d * 100:.0f}% "
-                 f"({data.wick_settled_30d} settled) · `/wick`")
-    return line
+    return f"Detectors: {body} · `/detectors`"
 
 
 def _standing_state_line(data: BriefData) -> str:

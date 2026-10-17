@@ -1,10 +1,11 @@
 """#424 (ADR 0022 §1, operator-signed 2026-07-05/06): execute the standing
 strategy deprecations — 9m_day2 and flag_continuation retired to a new
-terminal `phase='deprecated'`; wick_fill stays a shadow "hold" (backlog
-idea, never auto-flagged promotion-ready).
+terminal `phase='deprecated'`. (wick_fill was the third, a shadow "hold"; it was RETIRED outright
+2026-10-17 — no seed row, startup fix-up deprecates + disables an existing one — and its pins moved
+to tests/test_wick_fill_retired.py.)
 
 Three things this pins:
-  1. The registry SEED sets the right phase for each of the three strategies,
+  1. The registry SEED sets the right phase for each of the two strategies,
      and ships an idempotent migration UPDATE so EXISTING prod rows (seeded
      under the old phases before this fix) converge too — the seed's
      `ON CONFLICT DO NOTHING` only applies on first insert.
@@ -78,23 +79,30 @@ def test_seed_deprecates_9m_day2_and_flag_continuation():
     by_id = {row[0]: row for row in seed_rows}  # row[0] = strategy_id, row[3] = phase
     assert by_id["9m_day2"][3] == "deprecated"
     assert by_id["flag_continuation"][3] == "deprecated"
-    # wick_fill is the backlog "hold" — stays shadow, NOT deprecated.
-    assert by_id["wick_fill"][3] == "shadow"
+    # wick_fill is RETIRED (2026-10-17): the seed no longer creates it at all.
+    assert "wick_fill" not in by_id
 
 
-def test_wick_fill_review_required_blocks_auto_ready():
-    """wick_fill must never auto-show '✓ ready' in the weekly checker — the
+def test_parabolic_short_review_required_blocks_auto_ready():
+    """parabolic_short must never auto-show '✓ ready' in the weekly checker — the
     telemetry_review evaluator always appends a blocking reason when
-    review_required is True (or absent), regardless of metrics clearing."""
+    review_required is True (or absent), regardless of metrics clearing. (This
+    was pinned on wick_fill until its 2026-10-17 retirement; parabolic_short is
+    the strategy that still carries the standing hold.)"""
+    from agents.market_intelligence.strategies.promotion import (
+        MANUAL_REVIEW_HOLD_REASON, _eval_telemetry_review)
     conn = _run_seed()
     _, seed_rows = conn.executemany_calls[0]
     by_id = {row[0]: row for row in seed_rows}
     # row[7] = promotion_thresholds — a plain dict (#216: the jsonb codec encodes it
     # exactly once; json.loads()-ing it here would double-encode on write and is no
     # longer how the seed binds this param).
-    thresholds = by_id["wick_fill"][7]
+    thresholds = by_id["parabolic_short"][7]
     assert isinstance(thresholds, dict)
-    assert thresholds["shadow_to_paper"]["review_required"] is True
+    # no explicit review_required key == the evaluator's default True (a standing hold)
+    assert thresholds["shadow_to_paper"].get("review_required", True) is True
+    _metrics, blocking = _eval_telemetry_review([], thresholds["shadow_to_paper"])
+    assert MANUAL_REVIEW_HOLD_REASON in blocking
 
 
 def test_seed_migration_update_converges_existing_prod_rows():

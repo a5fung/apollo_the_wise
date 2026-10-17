@@ -47,7 +47,7 @@ def test_live_and_shadow_are_untouched():
     assert_no_deprecated_but_enabled(_reg(
         _S("MAGNA53 EP", "live", True),
         _S("Parabolic Short", "shadow", True),
-        _S("Wick-Fill", "shadow", True)))
+        _S("Shadow ORB 5-min", "shadow", True)))
 
 
 def test_phase_check_is_case_insensitive():

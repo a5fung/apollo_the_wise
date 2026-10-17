@@ -22,7 +22,6 @@ SOURCE_SUGAR_BABY_COHORT        = "sugar_baby_cohort"          # Pradeep persist
 SOURCE_SUGAR_BABY_RIPE          = "sugar_baby_ripe"            # cohort × flag stage
 SOURCE_FLAG_TIGHTENING          = "flag_tightening"            # in tight range, pre-breakout
 SOURCE_FLAG_COILED              = "flag_coiled"                # late-base, max compression
-SOURCE_WICK_FILL                = "wick_fill"
 SOURCE_PARABOLIC_SHORT          = "parabolic_short"
 
 # ── Entry-technique triggers ──────────────────────────────────────────
@@ -42,7 +41,7 @@ VALID_SOURCES = frozenset({
     # Methodology presence
     SOURCE_SUGAR_BABY_COHORT, SOURCE_SUGAR_BABY_RIPE,
     SOURCE_FLAG_TIGHTENING, SOURCE_FLAG_COILED,
-    SOURCE_WICK_FILL, SOURCE_PARABOLIC_SHORT,
+    SOURCE_PARABOLIC_SHORT,
     # Entry-technique triggers
     SOURCE_CONVERGENCE_ANTICIPATORY, SOURCE_CONVERGENCE_BREAKOUT,
     SOURCE_FLAG_BREAK_INTRADAY, SOURCE_FLAG_TRIGGERED,

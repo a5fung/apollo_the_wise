@@ -82,7 +82,7 @@ _WINDOW_DAYS = 7
 # number. The single sonnet-5 sample is CENSORED (cut off at 1200) — true new-model need is
 # unknown beyond "more than 1200". WATCH: next Sunday 8:00 ET run (1 call); if it lands at
 # exactly 2800, the cap is not the constraint and the next move is bounding the ask again
-# (candidates: the drift/strategy-promotion/shadow-ORB/wick/silent-failures sections in the
+# (candidates: the drift/strategy-promotion/shadow-ORB/silent-failures sections in the
 # system prompt below), not a further raise.
 from shared.llm_models import SYSTEM_REVIEW_MODEL as _MODEL
 from shared.output_ceilings import max_tokens_for
@@ -160,7 +160,6 @@ Rules:
 - `strategy_promotions` and `audit_errors` are rendered deterministically BELOW your output (#662 — a hold-by-ruling and a dispositioned incident were being narrated as pending/open). Do NOT render a promotion-check or silent-failures section yourself; you may still cite `audit_errors` counts in ⚠️ *Anomalies to verify* per the rules above.
 - `ep_outcomes.by_tier` / `by_catalyst` win rates are the ALERT cohort's forward-return hit rate (`fwd_1w_pct > 0` per alert), NOT a trade win rate — `ep_outcomes.traded` is how many were actually traded, and that is the only cohort a trading read may cite. Never quote a by-tier/by-catalyst rate as if it described trades.
 - When `shadow_orb.paired_closed_total >= 10`, append a "📐 *Shadow ORB:*" line after 🔁 summarizing 5-min vs 1-min ORB telemetry. Cite `entered` / `no_entry` counts and the top `by_shape` entry's `per_alert_delta` (e.g. "12 5m entries, 4 no-entry; bounce 9m delta +0.4 R over 8 paired"). Note: by-shape deltas are 9M-cohort only — `shape_tag` is NULL on MAGNA53 rows. If `paired_closed_total < 10`, omit the line entirely (insufficient signal).
-- When `wick.n_settled >= 10`, append a "🪝 *Wick:*" line after 🔁 summarizing wick-fill telemetry. Cite `n_total` candidates, `fill_rate`, and the gap between `median_fwd_3d_from_high` (filled cohort, conditional drift after fill) and `median_fwd_3d_from_close` (all-settled drift baseline) — the gap is the strategy's actual edge. Format: `12 candidates, 58% fill rate; +1.2% 3d post-fill vs +0.4% baseline drift`. If `n_settled < 10`, omit the line entirely (insufficient signal).
 - The `pending_reviews` field (data-gated "Reviews ready") is surfaced separately as a deterministic appendix below your output (#412 — the titles are actionable and must not be truncated). Do NOT render a Reviews-ready section yourself.
 - `audit_errors.top_types[].disposition` is already decided in code (`live` / `quiet` / `recovered` / `closed` / `refused`); only `live` is an open concern. Never call a `refused`, `recovered`, `closed` or `quiet` type live-concerning.
 - When `drift_check.unverified_n > 0`, append a "📄 *Docs drift (unverified):*" section after 🔁 listing up to 3 entries from `drift_check.unverified_claims` as `<where>: <words>`. These are dated doc claims the nightly drift check could not mechanically confirm or refute — NOT bugs, NOT errors; do not fold them into ⚠️ *Anomalies to verify* or 🔴 *Silent failures*. `drift_check.drift_n` (contradictions the nightly check could prove) already Telegrams separately every night it is non-zero — do NOT restate it here, cite `unverified_n` only. If `drift_check` is missing or `unverified_n == 0`, omit the section entirely.
@@ -1488,7 +1487,6 @@ async def _gather_and_aggregate(
     anomalies = await _aggregate_anomalies(window_days)
     crypto = await _aggregate_crypto_readiness(window_days)
     shadow_orb = await _aggregate_shadow_orb_outcomes(window_days)
-    wick = await _aggregate_wick_outcomes(window_days)
     strategy_promotions = await _aggregate_promotion_checks()
     pending_reviews = await _aggregate_pending_reviews(today)
     missed_opps = await _aggregate_missed_opportunities(window_days)
@@ -1513,7 +1511,6 @@ async def _gather_and_aggregate(
         "loser_breakdown": loser_breakdown,
         "crypto": crypto,
         "shadow_orb": shadow_orb,
-        "wick": wick,
         "strategy_promotions": strategy_promotions,
         "pending_reviews": pending_reviews,
         "missed_opportunities": missed_opps,
@@ -2783,65 +2780,6 @@ async def _aggregate_shadow_orb_outcomes(window_days: int) -> dict:
         "gate_blocked": int(counts["gate_blocked"] or 0),
         "paired_closed_total": total_paired,
         "by_shape": by_shape[:5],
-    }
-
-
-async def _aggregate_wick_outcomes(window_days: int) -> dict:
-    """Wick-fill (P22) telemetry roll-up — pure forward-return cohort stats.
-
-    Two anchors per candidate (see wick_tracker.update_forward_returns):
-      * `fwd_3d_from_high_pct`  — close − prior_high, conditional on fill
-        (NULL on rows that never broke prior_high in the 10-session window)
-      * `fwd_3d_from_close_pct` — close − Day1 close, unconditional
-        (the all-settled drift baseline)
-
-    The gap between the two medians IS the strategy's edge. If filled cohort
-    drift ≈ baseline drift, wick-fill isn't doing anything special.
-
-    Returns empty dict if `mi_wick_candidates` doesn't exist.
-    """
-    from agents.market_intelligence.db import get_pool
-    pool = await get_pool()
-    try:
-        async with pool.acquire() as conn:
-            schema_check = await conn.fetchval(
-                "SELECT to_regclass('public.mi_wick_candidates')"
-            )
-            if schema_check is None:
-                return {}
-
-            row = await conn.fetchrow(
-                """
-                SELECT
-                  COUNT(*)                                                AS n_total,
-                  COUNT(*) FILTER (WHERE fwd_10d_from_close_pct IS NOT NULL) AS n_settled,
-                  COUNT(*) FILTER (WHERE filled_wick = TRUE)              AS n_filled,
-                  PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY fwd_3d_from_high_pct)
-                    FILTER (WHERE fwd_3d_from_high_pct IS NOT NULL)       AS median_fwd_3d_from_high,
-                  PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY fwd_3d_from_close_pct)
-                    FILTER (WHERE fwd_3d_from_close_pct IS NOT NULL)      AS median_fwd_3d_from_close
-                FROM mi_wick_candidates
-                WHERE alert_date >= CURRENT_DATE - ($1::int * INTERVAL '1 day')
-                """,
-                window_days,
-            )
-    except Exception:
-        logger.exception("wick aggregator failed")
-        return {}
-
-    n_total = int(row["n_total"] or 0)
-    n_settled = int(row["n_settled"] or 0)
-    n_filled = int(row["n_filled"] or 0)
-    fill_rate = round(n_filled / n_settled, 3) if n_settled else None
-    med_high = row["median_fwd_3d_from_high"]
-    med_close = row["median_fwd_3d_from_close"]
-    return {
-        "n_total": n_total,
-        "n_settled": n_settled,
-        "n_filled": n_filled,
-        "fill_rate": fill_rate,
-        "median_fwd_3d_from_high": round(float(med_high), 2) if med_high is not None else None,
-        "median_fwd_3d_from_close": round(float(med_close), 2) if med_close is not None else None,
     }
 
 
