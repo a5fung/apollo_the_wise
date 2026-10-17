@@ -394,20 +394,26 @@ _STABILIZE_TOLERANCE_DAYS, same _STABILIZE_LOOKBACK_DAYS) against that ticker's 
 `source='finnhub_calendar'` dates — db.get_recent_quarterly_period_ends(source=...),
 one read per ticker per run. Deliberately NOT against yfinance history: a 15-day window
 must not pull a Finnhub label onto an uncorroborated yfinance reconstruction. Boundaries:
-  - `finnhub_period_ends` (the list pair_finnhub_periods_to_slots reads, and the source of
-    the yfinance `candidate`) keeps the FRESH guard-passed dates, so the corroboration step
-    and every yfinance row are byte-identical to before; only the stored Finnhub row moves.
+  - `finnhub_period_ends` (the list pair_finnhub_periods_to_slots reads) keeps the FRESH
+    guard-passed dates, so the CORROBORATION step is unchanged: which yfinance slot pairs
+    with which Finnhub entry is decided on fresh labels exactly as before.
+  - The yfinance `candidate` for a corroborated slot is the Finnhub row's own STORED
+    (already-stabilized) date, not the fresh label — so on a drift night both sources start
+    from ONE key for that quarter. The yfinance rows are therefore NOT byte-identical to
+    before on such a night: only `period_end_date` can differ, only on a corroborated
+    quarterly row, never an annual row, and only when the Finnhub history held a near date.
+    Why this and not the fresh label: yfinance first sees a new +1q quarter only on the 10-Q
+    night (the 75-day lag gate drops it earlier), and that same 10-Q is what moves EDGAR's
+    MMDD — Finnhub has already stored the quarter under the old MMDD. With the fresh label
+    the yfinance row lands on the fresh date, the Finnhub row on the stored one, and
+    `period_end == candidate` so no realign fires: the divergence join for that quarter
+    would stay split on every later night (reviewer replay: a divergence row on 0 of 8-15
+    nights in 7 of 8 timelines; zero lost with the stored date as the candidate).
   - The yfinance block's realign (above) still runs afterwards and still wins the stored
-    Finnhub key when yfinance's history reuses a date. It converges: the realigned row is
-    written tonight, so tomorrow's Finnhub history carries that key first.
-  - KNOWN RESIDUAL (stated, not fixed — the yfinance path is out of scope): a quarter with
-    Finnhub history but NO yfinance history within the lookback (a yfinance outage longer
-    than _STABILIZE_LOOKBACK_DAYS, or the ticker's first yfinance sighting), on a night its
-    fresh label has drifted, stores the yfinance row at the fresh date and the Finnhub row
-    at its established date; `period_end == candidate`, so no realign fires and that
-    quarter's divergence join stays split (it does not self-heal). Both legs cover the same
-    ~2 forward quarters and are written on the same nights, so the two histories normally
-    agree; before this change the same quarter instead split the FINNHUB series itself.
+    Finnhub key when yfinance's own history reuses a different date. It converges: the
+    realigned row is written tonight, so tomorrow's Finnhub history carries that key first.
+  - Nothing known is left split on a drift night: the two sources start from the Finnhub
+    row's key and yfinance's own history can only move BOTH rows together (realign).
   - A history-read failure degrades to "no history" (warning, never aborts), like the
     yfinance read; a genuinely new quarter (>= 16 days from every stored date) is kept as is.
 
@@ -1624,8 +1630,10 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
         fiscal_year_end = quarter_cadence.get("fiscal_year_end")
         last_q_end = quarter_cadence.get("last_reported_quarter_end")
         # `finnhub_period_ends` keeps the FRESH guard-passed dates: they, not the
-        # stabilized ones below, feed pair_finnhub_periods_to_slots and the yfinance
-        # override, which are unchanged by the Finnhub row stabilization.
+        # stabilized ones below, feed pair_finnhub_periods_to_slots (which slot a Finnhub
+        # entry corroborates is unchanged). The yfinance block then starts a corroborated
+        # slot's candidate from the STORED row's date (finnhub_row_by_idx), so both
+        # sources share one key on a drift night.
         for entry in finnhub_raw:
             finnhub_period_ends.append(finnhub_period_end_from_entry(
                 entry["date"], entry.get("quarter"), entry.get("year"),
@@ -1711,7 +1719,15 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
             match_idx = paired.get(period)
             if match_idx is not None:
                 matched = finnhub_raw[match_idx]
-                candidate = finnhub_period_ends[match_idx]
+                # #333: the candidate is the Finnhub row's own STORED date (already
+                # stabilized against ITS history above), not today's fresh label. On a
+                # drift night the two sources therefore start from ONE key for this
+                # quarter; the stabilize below then only has to reconcile it with
+                # yfinance's own history. Using the fresh label here instead leaves the
+                # yfinance row on the fresh date and the Finnhub row on the established
+                # one, with `period_end == candidate` so no realign fires — the
+                # divergence join for that quarter would stay split for good.
+                candidate = finnhub_row_by_idx[match_idx]["period_end_date"]
                 label_method = LABEL_METHOD_FINNHUB_FISCAL
                 fiscal_quarter, fiscal_year = matched.get("quarter"), matched.get("year")
             else:

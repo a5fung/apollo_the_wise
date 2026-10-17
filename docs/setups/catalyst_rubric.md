@@ -297,11 +297,12 @@ then STEP-0 → operator sign-off → CHANGE_PROCESS. Code: `agents/market_intel
     exactly as the yfinance rows already do against yfinance history. Never against yfinance history (a 15-day
     window must not pull a Finnhub label onto an uncorroborated yfinance reconstruction). A genuinely new quarter
     (>= 16 days from every stored date) is kept as is; no history = the fresh label. The corroboration step
-    (`pair_finnhub_periods_to_slots`) and every yfinance row still use the FRESH Finnhub date, unchanged. Measured
-    before the fix (2026-10-17, prod): 0 split pairs in 1,680 Finnhub rows over 105 tickers — the table only starts
-    2026-09-03 and no MMDD changed in it, so this is prevention, not a repair. Known residual: a quarter with
-    Finnhub history but no yfinance history in the lookback, on a night its label drifts, leaves that quarter's
-    divergence join split (module docstring, "FINNHUB ROWS ARE STABILIZED TOO"). Pinned in
+    (`pair_finnhub_periods_to_slots`) still pairs on the FRESH Finnhub dates, unchanged; a corroborated yfinance
+    quarterly row then starts from the Finnhub row's STORED date (so on a drift night both sources share one key and
+    the divergence join survives — only `period_end_date` of a corroborated quarterly yfinance row can differ from
+    before, never an annual row). Measured before the fix (2026-10-17, prod): 0 split pairs in 1,680 Finnhub rows
+    over 105 tickers — the table only starts 2026-09-03 and no MMDD changed in it, so this is prevention, not a
+    repair (module docstring, "FINNHUB ROWS ARE STABILIZED TOO"). Pinned in
     `tests/test_analyst_estimates_recorder.py`.
 - **SEC EDGAR** — the honest-window anchor (last filing date) and the cadence facts. Every row carries the date
   it was READ and `valid_from = last filing` (zero window when no anchor) — the lookahead rule.

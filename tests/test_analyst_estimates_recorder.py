@@ -1418,12 +1418,15 @@ async def test_finnhub_rows_are_never_stabilized_against_yfinance_history(monkey
 
 
 @pytest.mark.asyncio
-async def test_yfinance_rows_are_byte_identical_whatever_the_finnhub_history_holds(
-        monkeypatch):
-    """MUTATION TARGET (requirement 2): the corroboration step and the yfinance override keep
-    using the FRESH Finnhub dates. The same yfinance inputs through a ticker with NO Finnhub
-    history and through one WITH a drifted Finnhub history produce identical yfinance rows —
-    only the stored Finnhub rows differ."""
+async def test_on_a_drift_night_both_sources_land_on_the_stored_finnhub_date(monkeypatch):
+    """MUTATION TARGET (reviewer defect 1+2): yfinance first sees the new quarter on the
+    10-Q night — the same night EDGAR's MMDD drifts 0927 -> 0926 — so it has NO history for
+    it, while Finnhub already stored it under the old MMDD. The yfinance candidate must start
+    from the Finnhub row's STORED date, so both sources share ONE key and the divergence
+    join survives. (Starting from the fresh label leaves yfinance on 09-26 and Finnhub on
+    09-27 with `period_end == candidate`, so nothing realigns and the join is dead for good.)
+    The no-history leg pins that the fresh label is still used when nothing is stored, and
+    that only `period_end_date` differs between the two yfinance row sets."""
     snaps = []
     for finnhub_hist in (None, {"AAPL": [_FINNHUB_STORED_Q4, _FINNHUB_STORED_Q1]}):
         _wire(monkeypatch,
@@ -1434,17 +1437,51 @@ async def test_yfinance_rows_are_byte_identical_whatever_the_finnhub_history_hol
               finnhub_recent_period_ends=finnhub_hist)
         snaps.append(await aer.snapshot_ticker("AAPL", AS_OF))
     plain, drifted = snaps
-    yf_plain = [r for r in plain["rows"] if r["source"] == "yfinance"]
-    yf_drifted = [r for r in drifted["rows"] if r["source"] == "yfinance"]
-    assert len(yf_plain) == 2 and yf_plain == yf_drifted
-    assert all(r["period_label_method"] == aer.LABEL_METHOD_FINNHUB_FISCAL for r in yf_drifted)
-    fh_plain = {r["fiscal_quarter"]: r["period_end_date"]
-                for r in plain["rows"] if r["source"] == "finnhub_calendar"}
-    fh_drifted = {r["fiscal_quarter"]: r["period_end_date"]
-                  for r in drifted["rows"] if r["source"] == "finnhub_calendar"}
-    assert fh_plain == {4: date(2026, 9, 26), 1: date(2026, 12, 26)}
-    assert fh_drifted == {4: _FINNHUB_STORED_Q4, 1: _FINNHUB_STORED_Q1}
+
+    def _dates(snap, source):
+        return {r["fiscal_quarter"]: r["period_end_date"]
+                for r in snap["rows"] if r["source"] == source}
+
+    assert _dates(plain, "yfinance") == _dates(plain, "finnhub_calendar") == {
+        4: date(2026, 9, 26), 1: date(2026, 12, 26)}
+    assert _dates(drifted, "yfinance") == _dates(drifted, "finnhub_calendar") == {
+        4: _FINNHUB_STORED_Q4, 1: _FINNHUB_STORED_Q1}
+
+    def _strip(rows):
+        return [{k: v for k, v in r.items() if k != "period_end_date"}
+                for r in rows if r["source"] == "yfinance"]
+
+    assert len(_strip(plain["rows"])) == 2 and _strip(plain["rows"]) == _strip(drifted["rows"])
+    assert all(r["period_label_method"] == aer.LABEL_METHOD_FINNHUB_FISCAL
+               for r in drifted["rows"] if r["source"] == "yfinance")
     assert plain["quarter_yf_rows"] == drifted["quarter_yf_rows"] == 2
+    # the point of it all: the divergence join still finds both quarters
+    assert len(aer.compute_estimate_divergences(plain["rows"])) == 2
+    assert {d["period_end_date"] for d in aer.compute_estimate_divergences(drifted["rows"])} == {
+        _FINNHUB_STORED_Q4, _FINNHUB_STORED_Q1}
+
+
+@pytest.mark.asyncio
+async def test_the_divergence_join_survives_every_night_after_a_drift(monkeypatch):
+    """The reviewer's 30-night replay in miniature: night 1 the quarter is first stored on
+    the stored (old-MMDD) key by both sources; every LATER night yfinance's own history now
+    holds that key and the Finnhub history does too, while the fresh label stays one day off.
+    A divergence row must exist on each of those nights, not only the first."""
+    for yf_hist in ([], [_FINNHUB_STORED_Q4, _FINNHUB_STORED_Q1]):
+        written, _, divergences = _wire(
+            monkeypatch,
+            anchors={"AAPL": date(2026, 7, 31)},
+            quarter_cadence={"AAPL": _FYE_DRIFTED},
+            yf_data={"AAPL": _yf_data_for("AAPL")},
+            finnhub_data={"AAPL": _finnhub_entries_for_aapl()},
+            recent_period_ends={"AAPL": yf_hist},
+            finnhub_recent_period_ends={"AAPL": [_FINNHUB_STORED_Q4, _FINNHUB_STORED_Q1]},
+        )
+        await aer.run_analyst_estimates_snapshot(AS_OF, tickers=["AAPL"])
+        assert {d["period_end_date"] for d in divergences} == {
+            _FINNHUB_STORED_Q4, _FINNHUB_STORED_Q1}, yf_hist
+        assert {r["period_end_date"] for r in written
+                if r["period_type"] == "quarter"} == {_FINNHUB_STORED_Q4, _FINNHUB_STORED_Q1}
 
 
 @pytest.mark.asyncio
