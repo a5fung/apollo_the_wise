@@ -1434,8 +1434,6 @@ stagger cards, one at a time.
 **Mon 10-19 checks (pre-registered on the lines):** #333 annual coverage >= 85% of quarterly tickers on the 18:12 run · #697 item 4 `scripts/probes/_697_item4/verify_live.sql` after the 17:25 scan · #655 the `theme_quality_clean` note carries `explained_by_other_rule` · #701 (c) one `anticipation_stale_bars_skipped` row naming QRVO · #312 the ladder's weekday row.
 **Weekend 10-17/18:** #686 frozen read · #655 churn re-measure + his table · #687 · Sun 10-18 first #700 review + first ci_status file → close #313 (ACCEPTED-PARTIAL, his ruling) · DECISION: Finnhub quarterly label drift (does `stabilize_period_end` already absorb a 52/53-week MMDD drift? a month-end snap is WRONG for quarters).
 
-**Not Apollo (his personal trading review, outside the repo, in `~/trading_review`):** a verified replay of 174 of his 206 logged 2026 trades on real 1-minute/hourly prices; findings + next step in the machine-local memory `personal-trading-review-2026`. A runner-variant test on the C3 rule set was still running at close. Never put that data in this repo.
-
 ## 2026-10-15 (Thu) CLOSE — superseded by the 10-16 close above.
 
 **Board 28 → 28.** No closes, no new tasks. Server = main as of the 21:16 ET deploy (both + execution, exit 0): #312 dark ladder, #624 /trades TICKER both books, the trades export with original stops. main is later by the simplify pass (ships Fri noon).
