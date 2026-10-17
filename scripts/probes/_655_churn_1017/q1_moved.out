@@ -1,0 +1,100 @@
+== now
+now_et	latest_theme_night
+2026-10-17 10:42:10.07689	2026-10-16
+(1 row)
+== 0. THEME NIGHTS present from 10-08 (a weekend or extra night here would shift the 2-night windows in q2)
+theme_night	live_rows	retired_rows	live_2_to_3_members
+2026-10-08	122	14	45
+2026-10-09	123	17	46
+2026-10-12	111	27	36
+2026-10-13	107	14	34
+2026-10-14	110	13	35
+2026-10-15	108	18	35
+2026-10-16	118	10	45
+(7 rows)
+== 1. THE NIGHTLY HEARTBEAT: theme_small_fold_ran / theme_small_fold_error, 10-12..10-16 (status, small themes, G3 fails, folded, why not)
+id	et	event_type	status	small_themes	g3_fail	folded	no_ecosystem	no_home	members_fail_test	skipped_protected	skipped_renamed	g3_rate_pct	summary	error_text
+55754	2026-10-12 17:10:45	theme_small_fold_ran	ran	35	11	6	1	2	2	0	0	89.7	Small-theme fold: ran — 35 theme(s) of 2-3 members, 11 failed G3, 6 folded	
+56271	2026-10-13 17:06:38	theme_small_fold_ran	ran	32	8	2	1	3	2	0	0	91.3	Small-theme fold: ran — 32 theme(s) of 2-3 members, 8 failed G3, 2 folded	
+56828	2026-10-14 17:09:42	theme_small_fold_ran	ran	31	6	2	1	0	3	0	0	94.1	Small-theme fold: ran — 31 theme(s) of 2-3 members, 6 failed G3, 2 folded	
+57435	2026-10-15 17:07:35	theme_small_fold_ran	ran	31	9	4	1	1	3	0	0	91.2	Small-theme fold: ran — 31 theme(s) of 2-3 members, 9 failed G3, 4 folded	
+57950	2026-10-16 17:09:58	theme_small_fold_ran	ran	37	11	2	4	0	5	0	0	89.1	Small-theme fold: ran — 37 theme(s) of 2-3 members, 11 failed G3, 2 folded	
+(5 rows)
+== 2. EVERY THEME THE FOLD DISSOLVED (one row each; window_complete = two later theme nights are in the data)
+fold_night	dissolved_theme	e_code	home	members	moved	already_in_home	released	cohesion	random_p95	home_size_before	shared_with_home	was_on_board_night_before	has_tombstone	later_nights_seen	window_complete	audit_rows
+2026-10-12	Alternative Asset Managers & Private Markets Platforms	E-BANKFIN	Wealth Management & Retail Brokerage Platforms	2	1	0	1	0.149	0.336	14	0	t	t	2	t	1
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	E-MEDTECH	Medical Device Mean-Reversion & Rotation Recovery	3	2	0	1	0.210	0.249	17	0	t	t	2	t	1
+2026-10-12	Emerging Medical Device Innovators Breakout	E-MEDTECH	Medical Device Mean-Reversion & Rotation Recovery	3	1	1	1	0.076	0.258	17	1	t	t	2	t	1
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	E-SAAS	Cloud Contact Center & CCaaS Communication Platforms	3	2	0	1	0.110	0.262	4	0	t	t	2	t	1
+2026-10-12	Functional Beverage & Energy Drink Brands	E-CONS	Non-Alcoholic Beverages & Energy Drinks	2	1	0	1	0.261	0.425	5	0	t	t	2	t	1
+2026-10-12	Orthopedic Surgical Devices & Instruments	E-MEDTECH	Medical Device Mean-Reversion & Rotation Recovery	2	2	0	0	0.261	0.428	17	0	t	t	2	t	1
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	E-MEDTECH	Medical Device Mean-Reversion & Rotation Recovery	3	2	0	1	0.093	0.275	18	0	t	t	2	t	1
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	E-SAAS	Enterprise HR & Workforce Management SaaS	3	2	0	1	0.000	0.275	6	0	t	t	2	t	1
+2026-10-14	Functional Energy Drink Brands	E-CONS	Non-Alcoholic Beverages & Energy Drinks	2	1	0	1	0.186	0.415	7	0	t	t	2	t	1
+2026-10-14	Off-Price & Specialty Retail Consumer Rotation	E-CONS	U.S. Apparel & Fashion Recovery	2	1	0	1	0.183	0.326	15	0	t	t	2	t	1
+2026-10-15	Cloud Data Storage & Analytics Infrastructure	E-SAAS	Cloud Application Delivery & Observability Infrastructure	2	1	0	1	0.444	0.489	5	0	t	t	1	f	1
+2026-10-15	Consumer Franchise Operators: Fitness & Quick-Service	E-CONS	Franchised Auto Dealership Groups	2	1	0	1	0.070	0.298	5	0	t	t	1	f	1
+2026-10-15	Enterprise Information Management & Infrastructure Engineering Software	E-SAAS	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	3	2	0	1	0.003	0.324	15	0	t	t	1	f	1
+2026-10-15	RF, Microwave & Power Semiconductor Specialists	E-AISEMI	AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)	2	2	0	0	0.533	0.581	5	0	t	t	1	f	1
+2026-10-16	Casual Footwear & Athletic Lifestyle Brands	E-CONS	Cruise Lines & Leisure Travel Rebound	2	1	0	1	0.249	0.359	5	0	t	t	0	f	1
+2026-10-16	Off-Price & Branded Apparel/Footwear Retail Rotation	E-CONS	Specialty Apparel & Mall-Based Specialty Retail Strength	3	2	1	0	0.314	0.359	7	1	t	t	0	f	1
+(16 rows)
+== 3. EVERY MEMBER OF EVERY DISSOLVED THEME: moved / already_in_home / released, with the tape test the fold used
+fold_night	dissolved_theme	home	what_happened	stock	membership_test	tape_corr_at_fold	basket_n
+2026-10-12	Alternative Asset Managers & Private Markets Platforms	Wealth Management & Retail Brokerage Platforms	moved	PAX	tape	0.395	14
+2026-10-12	Alternative Asset Managers & Private Markets Platforms	Wealth Management & Retail Brokerage Platforms	released	PS	tape	0.093	14
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	moved	DXCM	tape	0.463	17
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	moved	MMED	tape	0.403	17
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	released	BBNX	tape	0.310	17
+2026-10-12	Emerging Medical Device Innovators Breakout	Medical Device Mean-Reversion & Rotation Recovery	moved	ATEC	tape	0.482	17
+2026-10-12	Emerging Medical Device Innovators Breakout	Medical Device Mean-Reversion & Rotation Recovery	already_in_home	INSP	already_in_home		
+2026-10-12	Emerging Medical Device Innovators Breakout	Medical Device Mean-Reversion & Rotation Recovery	released	ITGR	tape	0.009	17
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	moved	BOX	tape	0.651	4
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	moved	DBX	tape	0.511	4
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	released	QMCO	tape	-0.140	4
+2026-10-12	Functional Beverage & Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	moved	COCO	tape	0.414	5
+2026-10-12	Functional Beverage & Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	released	CELH	tape	0.342	5
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	moved	CNMD	tape	0.457	17
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	moved	SIBN	tape	0.772	17
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	moved	MDLN	tape	0.370	18
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	moved	OMCL	tape	0.435	18
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	released	QDEL	tape	-0.065	18
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	moved	BSY	tape	0.569	6
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	moved	OTEX	tape	0.757	6
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	released	P	tape	-0.347	6
+2026-10-14	Functional Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	moved	CELH	tape	0.365	7
+2026-10-14	Functional Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	released	HELE	tape	0.320	7
+2026-10-14	Off-Price & Specialty Retail Consumer Rotation	U.S. Apparel & Fashion Recovery	moved	BBWI	tape	0.434	15
+2026-10-14	Off-Price & Specialty Retail Consumer Rotation	U.S. Apparel & Fashion Recovery	released	TJX	tape	0.279	15
+2026-10-15	Cloud Data Storage & Analytics Infrastructure	Cloud Application Delivery & Observability Infrastructure	moved	SNOW	tape	0.363	5
+2026-10-15	Cloud Data Storage & Analytics Infrastructure	Cloud Application Delivery & Observability Infrastructure	released	ESTC	tape	0.151	5
+2026-10-15	Consumer Franchise Operators: Fitness & Quick-Service	Franchised Auto Dealership Groups	moved	VVV	tape	0.387	5
+2026-10-15	Consumer Franchise Operators: Fitness & Quick-Service	Franchised Auto Dealership Groups	released	PLNT	tape	0.147	5
+2026-10-15	Enterprise Information Management & Infrastructure Engineering Software	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	moved	BSY	tape	0.637	15
+2026-10-15	Enterprise Information Management & Infrastructure Engineering Software	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	moved	OTEX	tape	0.697	15
+2026-10-15	Enterprise Information Management & Infrastructure Engineering Software	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	released	P	tape	-0.304	15
+2026-10-15	RF, Microwave & Power Semiconductor Specialists	AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)	moved	MTSI	tape	0.744	5
+2026-10-15	RF, Microwave & Power Semiconductor Specialists	AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)	moved	ON	tape	0.529	5
+2026-10-16	Casual Footwear & Athletic Lifestyle Brands	Cruise Lines & Leisure Travel Rebound	moved	AS	tape	0.371	5
+2026-10-16	Casual Footwear & Athletic Lifestyle Brands	Cruise Lines & Leisure Travel Rebound	released	CROX	tape	0.213	5
+2026-10-16	Off-Price & Branded Apparel/Footwear Retail Rotation	Specialty Apparel & Mall-Based Specialty Retail Strength	moved	RL	tape	0.456	7
+2026-10-16	Off-Price & Branded Apparel/Footwear Retail Rotation	Specialty Apparel & Mall-Based Specialty Retail Strength	moved	SHOE	tape	0.525	7
+2026-10-16	Off-Price & Branded Apparel/Footwear Retail Rotation	Specialty Apparel & Mall-Based Specialty Retail Strength	already_in_home	TJX	already_in_home		
+(39 rows)
+== 4. TOTALS: n themes dissolved, n stocks moved (this is the denominator for q2), by fold night
+fold_night	themes_dissolved	n_moved	distinct_stocks_moved	already_in_home	released
+2026-10-12	6	9	9	1	5
+2026-10-13	2	4	4	0	2
+2026-10-14	2	2	2	0	2
+2026-10-15	4	6	6	0	3
+2026-10-16	2	3	3	1	1
+ALL NIGHTS	16	24	22	2	13
+(6 rows)
+== 5. TIE-OUT per night: fold rows vs the heartbeat vs the Retired rows (a mismatch means a fold is missing from the denominator)
+fold_night	fold_audit_rows	unreadable_rows	distinct_folds	fold_ran_says_folded	tombstones_with_655_note	fold_error_rows
+2026-10-12	6	0	6	6	6	0
+2026-10-13	2	0	2	2	2	0
+2026-10-14	2	0	2	2	2	0
+2026-10-15	4	0	4	4	4	0
+2026-10-16	2	0	2	2	2	0
+(5 rows)

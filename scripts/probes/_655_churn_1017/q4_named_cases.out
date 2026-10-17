@@ -1,0 +1,124 @@
+== now
+now_et	latest_theme_night
+2026-10-17 10:42:24.977563	2026-10-16
+(1 row)
+== C1. ROW (c) the promoted theme and the theme Pass 1.5 put it into, night by night from 10-09
+night	name	stage	members	source	written_et	parent_theme	tickers
+2026-10-12	Capital Markets & Deal-Flow Re-Rating	Nascent	3	shadow_promoted	18:36:36		PWP,PAX,CBOE
+2026-10-13	Capital Markets & Deal-Flow Re-Rating	Retired	0	live	17:06:59	Exchange, Options Trading & Alternative Consumer Credit Financials	
+2026-10-14	Capital Markets & Deal-Flow Re-Rating	Nascent	3	shadow_promoted	17:11:20		PWP,PAX,CBOE
+2026-10-15	Capital Markets & Deal-Flow Re-Rating	Retired	0	live	17:07:55	Exchange, Options Trading & Alternative Consumer Credit Financials	
+2026-10-09	Exchange, Options Trading & Alternative Consumer Credit Financials	Nascent	3	shadow_promoted	17:09:36		CBOE,SEZL,SVRN
+2026-10-12	Exchange, Options Trading & Alternative Consumer Credit Financials	Nascent	4	live	17:11:07		CBOE,SEZL,ICE,CME
+2026-10-13	Exchange, Options Trading & Alternative Consumer Credit Financials	Fading	6	live	17:06:59		PAX,PWP,CME,CBOE,ICE,SEZL
+2026-10-14	Exchange, Options Trading & Alternative Consumer Credit Financials	Fading	4	live	17:10:05		CME,ICE,CBOE,TW
+2026-10-15	Exchange, Options Trading & Alternative Consumer Credit Financials	Fading	6	live	17:07:55		VIRT,CBOE,CME,PAX,TW,ICE
+2026-10-16	Exchange, Options Trading & Alternative Consumer Credit Financials	Mainstream	5	live	17:10:22		ICE,TW,CBOE,CME,VIRT
+(10 rows)
+== C2. ROW (c) every audit row naming it since 10-12 (operator promotion, Pass 1.5, promote lane, birth gate, folds)
+id	et	event_type	summary
+55882	2026-10-12 18:36:36	theme_operator_promoted	Operator promoted 'Capital Markets & Deal-Flow Re-Rating' (3 members)
+56250	2026-10-13 17:05:39	theme_pass1_5_absorption	Pass1.5: 'Capital Markets & Deal-Flow Re-Rating' -> 'Exchange, Options Trading & Alternative Consumer Credit Financials'
+56272	2026-10-13 17:06:38	theme_auto_retired	Auto-retired 10 theme(s) dropped during merge passes (2 with successor pointer)
+56296	2026-10-13 17:08:14	shadow_themes_promoted	Graduated 6 shadow cohort(s) into live mi_themes (6 new) — 5 held at the birth gate
+56858	2026-10-14 17:11:22	shadow_themes_promoted	Graduated 10 shadow cohort(s) into live mi_themes (6 new) — 7 held at the birth gate
+56859	2026-10-14 17:11:22	theme_birth_gate	2026-10-14 [promote/dedup_only] birth-gate: 7 birth / 14 join / 3 awaiting-2nd-sighting / 3 held-floor · ⚠ 58 previously-held later PASSED
+57377	2026-10-15 17:06:50	theme_pass1_5_absorption	Pass1.5: 'Capital Markets & Deal-Flow Re-Rating' -> 'Exchange, Options Trading & Alternative Consumer Credit Financials'
+57436	2026-10-15 17:07:35	theme_auto_retired	Auto-retired 12 theme(s) dropped during merge passes (5 with successor pointer)
+57465	2026-10-15 17:09:24	shadow_themes_promoted	Graduated 10 shadow cohort(s) into live mi_themes (7 new) — 13 held at the birth gate
+(9 rows)
+== C3. ROW (c) BASE RATE, per operator promotion since 09-01: absorbed by Pass 1.5 inside 3 theme nights, retired, still live
+promoted_night	promoted_theme	absorbed_by_pass1_5_within_3_nights	retired_rows_within_3_nights	live_at_latest_night	three_nights_elapsed
+2026-09-01	US LNG Export Value Chain Buildout		2026-09-02,2026-09-04	f	t
+2026-09-02	Farm Economy Value Chain Re-Rating			f	t
+2026-09-03	Brazil/LatAm Macro Risk-On Rotation	2026-09-09 -> Wealth Management & Retail Brokerage Platforms	2026-09-09	f	t
+2026-09-14	AI monetization	2026-09-15 -> Software Development & DevOps Collaboration Platforms	2026-09-15	f	t
+2026-09-14	Brazil Macro Re-Rating: Energy + Financials + Fintech		2026-09-15,2026-09-17	f	t
+2026-09-28	Cross-Industry Test, Measurement & Design-Verification Tools			f	t
+2026-10-09	Cross-Border Remittance & Money Transfer Fintech	2026-10-12 -> Fintech Payments, Prepaid & Consumer Digital Banking Apps	2026-10-12	f	t
+2026-10-12	Cruise Lines & Leisure Travel Rebound			t	t
+2026-10-12	Capital Markets & Deal-Flow Re-Rating	2026-10-13 -> Exchange, Options Trading & Alternative Consumer Credit Financials; 2026-10-15 -> Exchange, Options Trading & Alternative Consumer Credit Financials	2026-10-13,2026-10-15	f	t
+(9 rows)
+== C4. ROW (c) BASE RATE total
+operator_promotions_with_3_nights_elapsed	absorbed_by_pass1_5_within_3_nights	promotions_still_inside_3_nights
+9	4	0
+(1 row)
+== D1. ROW (d) the three themes night by night from 10-12
+night	name	stage	members	source	parent_theme	written_et	tickers
+2026-10-12	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	5	live		17:11:07	W,MLKN,ARHS,HNI,WSM
+2026-10-13	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	5	live		17:06:59	WSM,ARHS,HNI,MLKN,W
+2026-10-14	Commercial, Office & Home Furniture Retailers and Manufacturers	Mainstream	5	live		17:10:05	HNI,WSM,MLKN,ARHS,W
+2026-10-15	Commercial, Office & Home Furniture Retailers and Manufacturers	Retired	0	live	Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings	17:07:55	
+2026-10-15	Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings	Mainstream	5	live		17:07:55	W,ARHS,MLKN,HNI,WSM
+2026-10-16	Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings	Mainstream	5	live		17:10:22	HNI,ARHS,WSM,W,MLKN
+2026-10-12	U.S. Apparel & Fashion Recovery	Mainstream	15	live		17:11:07	AEO,BKE,GAP,PVH,M,KSS,RL,SHOO,ROST,ANF,VSXY,DDS,WWW,URBN,FIGS
+2026-10-13	U.S. Apparel & Fashion Recovery	Mainstream	15	live		17:06:59	SHOO,GAP,RL,WWW,BKE,URBN,AEO,VSXY,PVH,ROST,ANF,KSS,FIGS,M,DDS
+2026-10-14	U.S. Apparel & Fashion Recovery	Mainstream	16	live		17:10:05	PVH,ANF,AEO,FIGS,SHOO,KSS,WWW,VSXY,URBN,BKE,ROST,DDS,GAP,M,RL,BBWI
+2026-10-15	U.S. Apparel & Fashion Recovery	Retired	0	live	Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings	17:07:55	
+(10 rows)
+== D2. ROW (d) the 10-15 sequence: pairs proposed, the tripwire, the strip, the thesis merge (read the order and the clock times)
+id	et	event_type	summary
+57392	17:07:09.244	theme_merge_pairs_proposed	Arm B Stage A: 8 candidate pair(s) for adjudication
+57393	17:07:17.677	validation_mass_removal_name_suspect	'Commercial, Office & Home Furniture Retailers and Manufacturers': validation flagged 17/22 members — name likely narrower than the cluster (#214)
+57394	17:07:17.679 .. 17:07:17.745	ticker_revalidated_out x17	from 'Commercial, Office & Home Furniture ...' by validation: SHOO,RL,ANF,COLM,BKE,WWW,VSXY,KSS,URBN,GAP,M,DDS,FIGS,BBWI,ROST,PVH,AEO
+57428	17:07:17.748	theme_thesis_merged	Arm B: 'U.S. Apparel & Fashion Recovery' merged into 'Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings' (5 members)
+57431	17:07:35.141	theme_small_folded	'Cloud Data Storage & Analytics Infrastructure' -> 'Cloud Application Delivery & Observability Infrastructure': moved 1, released 1 of 2 (G3 fail, cohesion 0.44439271873288266 vs random p95 0.48914993015336167), #655 fold
+57432	17:07:35.143	theme_small_folded	'Consumer Franchise Operators: Fitness & Quick-Service' -> 'Franchised Auto Dealership Groups': moved 1, released 1 of 2 (G3 fail, cohesion 0.06960109889505584 vs random p95 0.29795373682183185), #655 fold
+57433	17:07:35.144	theme_small_folded	'Enterprise Information Management & Infrastructure Engineering Software' -> 'AI-Powered Enterprise Analytics & Intelligent Workflow SaaS': moved 2, released 1 of 3 (G3 fail, cohesion 0.0031297889928224945 vs random p95 0.3236133643605129),
+57434	17:07:35.145	theme_small_folded	'RF, Microwave & Power Semiconductor Specialists' -> 'AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)': moved 2, released 0 of 2 (G3 fail, cohesion 0.5330442992081923 vs random p95 0.5806806452433784), #655 fold
+(8 rows)
+== D3. ROW (d) every stripped name plus the old apparel roster: where it sat on 10-14, where it sits at the latest night
+tk	stripped_from_furniture_10_15	sat_in_10_14	sits_in_at_latest_night
+AEO	t	U.S. Apparel & Fashion Recovery [16]	Specialty Apparel & Mall-Based Specialty Retail Strength [9]
+ANF	t	U.S. Apparel & Fashion Recovery [16]	Specialty Apparel & Mall-Based Specialty Retail Strength [9]
+BBWI	t	U.S. Apparel & Fashion Recovery [16]	Specialty Apparel & Mall-Based Specialty Retail Strength [9]
+BKE	t	U.S. Apparel & Fashion Recovery [16]	Specialty Apparel & Mall-Based Specialty Retail Strength [9]
+COLM	t	-- none --	-- none --
+DDS	t	U.S. Apparel & Fashion Recovery [16]	-- none --
+FIGS	t	U.S. Apparel & Fashion Recovery [16]	Specialty Apparel & Mall-Based Specialty Retail Strength [9]
+GAP	t	U.S. Apparel & Fashion Recovery [16]	-- none --
+KSS	t	U.S. Apparel & Fashion Recovery [16]	-- none --
+M	t	U.S. Apparel & Fashion Recovery [16]	-- none --
+PVH	t	U.S. Apparel & Fashion Recovery [16]	-- none --
+RL	t	U.S. Apparel & Fashion Recovery [16]	Specialty Apparel & Mall-Based Specialty Retail Strength [9]
+ROST	t	U.S. Apparel & Fashion Recovery [16]	-- none --
+SHOO	t	U.S. Apparel & Fashion Recovery [16]	-- none --
+URBN	t	U.S. Apparel & Fashion Recovery [16]	Specialty Apparel & Mall-Based Specialty Retail Strength [9]
+VSXY	t	U.S. Apparel & Fashion Recovery [16]	-- none --
+WWW	t	U.S. Apparel & Fashion Recovery [16]	-- none --
+(17 rows)
+== D3b. ROW (d) the stripped names in one line (how many are in no theme now)
+stripped_names	in_no_theme_at_latest_night	in_some_theme_at_latest_night	in_two_or_more_themes
+17	10	7	0
+(1 row)
+== D4. ROW (d) BASE RATE per tripwire event since 08-26: did the rename arm act, or did a strip go ahead (weekday column: the rename arm is the Mon/Wed/Fri rescore caller)
+night	theme	flagged_of_members	stripped_within_2_min	renamed_around_it	outcome	weekday
+2026-08-26	Oil Refining & Marketing	17/24	17	0	STRIPPED (a caller without the rename arm)	Wed
+2026-08-28	Oil Refining & Marketing	30/45	0	1	RENAMED (the #214 arm acted)	Fri
+2026-08-28	Oilfield Services & Equipment Providers	12/17	0	1	RENAMED (the #214 arm acted)	Fri
+2026-08-31	Energy Infrastructure & Utility Operators	12/17	0	0	neither seen	Mon
+2026-09-02	Independent Oil Refining & Marketing	21/34	0	1	RENAMED (the #214 arm acted)	Wed
+2026-09-02	Energy Infrastructure & Utility Operators	11/11	0	0	neither seen	Wed
+2026-09-04	Energy Infrastructure & Utility Operators	6/6	0	0	neither seen	Fri
+2026-09-04	U.S. Downstream Refining & Marketing	39/39	0	1	RENAMED (the #214 arm acted)	Fri
+2026-09-04	Pure-Play Agricultural Tractor & Farm Machinery Manufacturers	7/10	0	1	RENAMED (the #214 arm acted)	Fri
+2026-09-09	Energy Infrastructure & Utility Operators	6/6	0	0	neither seen	Wed
+2026-09-09	Pure-Play Oil Refining & Marketing	46/54	0	1	RENAMED (the #214 arm acted)	Wed
+2026-09-11	Oil Refining & Marketing	19/27	0	0	neither seen	Fri
+2026-09-11	European Bank Stocks	23/32	23	0	STRIPPED (a caller without the rename arm)	Fri
+2026-09-14	Oil & Product Tanker Shipping	9/16	0	0	neither seen	Mon
+2026-09-14	Oil Refining & Marketing	14/27	0	1	RENAMED (the #214 arm acted)	Mon
+2026-09-16	Renewable Diesel / Renewable Fuels Refiners	35/43	0	1	RENAMED (the #214 arm acted)	Wed
+2026-09-18	Renewable Diesel & Renewable Fuels Refining	11/19	0	1	RENAMED (the #214 arm acted)	Fri
+2026-09-18	Space Economy: Satellite Communications & Launch Services	4/8	4	0	STRIPPED (a caller without the rename arm)	Fri
+2026-09-21	Independent Petroleum Refiners - Crack Spread Rally	12/24	0	1	RENAMED (the #214 arm acted)	Mon
+2026-09-22	Crude & Product Tanker Shipping	15/27	15	0	STRIPPED (a caller without the rename arm)	Tue
+2026-09-25	Petroleum Refiners & Marketers	12/19	0	1	RENAMED (the #214 arm acted)	Fri
+2026-09-28	Value Retail & Grocery Wholesale Trade-Down Basket	11/21	11	0	STRIPPED (a caller without the rename arm)	Mon
+2026-10-07	Cruise Lines & Leisure Travel Rebound	3/5	0	1	RENAMED (the #214 arm acted)	Wed
+2026-10-15	Commercial, Office & Home Furniture Retailers and Manufacturers	17/22	17	0	STRIPPED (a caller without the rename arm)	Thu
+(24 rows)
+== D5. ROW (d) BASE RATE total
+tripwire_events_since_08_26	ended_in_rename	ended_in_strip	neither_seen
+24	12	6	6
+(1 row)

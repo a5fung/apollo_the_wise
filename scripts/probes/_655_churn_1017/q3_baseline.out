@@ -1,0 +1,94 @@
+== now
+now_et	latest_theme_night	post_fold_nights_present
+2026-10-17 10:42:13.331952	2026-10-16	5
+(1 row)
+== 1. TOTALS by window (calibration row scope_14n must read 154 / 31 / 20)
+label	w_from	w_to	engine_nights	exits	same_name_returns	of_those_via_promote_lane_row	distinct_names_returned	new_name_remints_7d	returns_per_night
+scope_14n	2026-09-22	2026-10-09	14	154	31	26	27	20	3.64
+pre_fold_9n	2026-09-29	2026-10-09	9	117	22	20	19	18	4.44
+post_fold_5n	2026-10-12	2026-10-16	5	82	8	8	8	13	4.20
+(3 rows)
+== 2. PER NIGHT (definition A): returns ARRIVING that night, and returns charged to the night the theme LEFT
+label	night	exits_tonight	same_name_returns_arriving	new_name_remints_arriving	same_name_returns_from_tonights_exits	new_name_remints_from_tonights_exits
+pre_fold_9n	2026-09-29	3	0	0	2	0
+pre_fold_9n	2026-09-30	6	2	0	2	0
+pre_fold_9n	2026-10-01	11	2	0	5	2
+pre_fold_9n	2026-10-02	9	4	1	1	5
+pre_fold_9n	2026-10-05	33	1	1	4	3
+pre_fold_9n	2026-10-06	10	4	6	2	1
+pre_fold_9n	2026-10-07	13	2	5	3	2
+pre_fold_9n	2026-10-08	14	4	1	3	1
+pre_fold_9n	2026-10-09	18	3	4	0	4
+post_fold_5n	2026-10-12	27	0	3	0	7
+post_fold_5n	2026-10-13	14	0	2	3	3
+post_fold_5n	2026-10-14	13	3	4	3	2
+post_fold_5n	2026-10-15	19	3	3	2	1
+post_fold_5n	2026-10-16	9	2	1	0	0
+(14 rows)
+== 3. DEFINITION B, every removal: undone within 2 later nights (strict = same name or a new-to-the-board theme sharing >= 2 members; loose = any other theme holding >= 2). Only complete-window removals feed the percentages
+label	removal_size_class	removals	removals_with_2_later_nights	undone_strict	of_which_same_name	of_which_new_name_only	pct_undone_strict	undone_loose	pct_undone_loose	censored_undone_floor	censored_removals
+scope_14n	other sizes	56	47	32	12	20	68.1	42	89.4	5	9
+scope_14n	small (2-3 members)	98	75	22	12	10	29.3	33	44.0	5	23
+scope_14n	ALL REMOVALS	154	122	54	24	30	44.3	75	61.5	10	32
+pre_fold_9n	other sizes	43	34	25	8	17	73.5	32	94.1	5	9
+pre_fold_9n	small (2-3 members)	74	51	17	9	8	33.3	21	41.2	5	23
+pre_fold_9n	ALL REMOVALS	117	85	42	17	25	49.4	53	62.4	10	32
+post_fold_5n	other sizes	20	11	9	0	9	81.8	10	90.9	3	9
+post_fold_5n	small (2-3 members)	62	43	12	6	6	27.9	19	44.2	2	19
+post_fold_5n	ALL REMOVALS	82	54	21	6	15	38.9	29	53.7	5	28
+(9 rows)
+== 4. small-theme removals that came back, by window (the rows behind the small line of section 3)
+label	removed_night	name	members_before	complete	back_same_name	back_new_name	back_loose_other
+pre_fold_9n	2026-09-29	Trucking & Freight Carrier Rebound	2	t	t	t	t
+pre_fold_9n	2026-10-01	AI Data Services & GPU Cloud Platforms	3	t	t	f	f
+pre_fold_9n	2026-10-01	Defense Electronics & Aerospace Subsystem Suppliers	3	t	f	f	t
+pre_fold_9n	2026-10-01	Defense & Space Systems Satellite Solutions	3	t	t	f	t
+pre_fold_9n	2026-10-02	Brazilian Fintech & Digital Payments	2	t	f	t	t
+pre_fold_9n	2026-10-02	Home Improvement Retail & Building Products	2	t	t	f	f
+pre_fold_9n	2026-10-05	Auto & Truck Dealership Retail Chains	2	t	t	t	t
+pre_fold_9n	2026-10-05	Cruise & Expedition Travel Operators	2	t	f	t	t
+pre_fold_9n	2026-10-05	Data Backup & Cyber Resiliency Software	3	t	t	f	f
+pre_fold_9n	2026-10-05	Optical Networking & Optical Component Manufacturing	3	t	f	f	t
+pre_fold_9n	2026-10-05	Precious Metals Miners Velocity Breakout	3	t	f	t	t
+pre_fold_9n	2026-10-05	Silver Producers & Streaming Momentum (SVM, AGI, MUX)	3	t	f	t	t
+pre_fold_9n	2026-10-06	Crypto Exchange & Stablecoin Infrastructure Equities	3	t	f	f	t
+pre_fold_9n	2026-10-06	Enterprise Data Backup & Cyber Resilience Software	3	t	f	t	t
+pre_fold_9n	2026-10-06	Oilfield Services & Offshore Energy Equipment	3	t	t	f	f
+pre_fold_9n	2026-10-06	Primary Silver Miners	3	t	f	t	t
+pre_fold_9n	2026-10-06	Semiconductor Process Instruments & RF/PCB Electronic Components	3	t	t	f	f
+pre_fold_9n	2026-10-07	Gold & Silver Miners Not Yet Classified (Mid-Tier & South African PGM/Gold Producers)	3	t	t	t	t
+pre_fold_9n	2026-10-07	Independent Power Producers & Nuclear Fleet Generators	3	t	f	f	t
+pre_fold_9n	2026-10-07	Insurance Brokerage & Risk Advisory Firms	2	t	f	t	t
+pre_fold_9n	2026-10-07	U.S. Trucking & Freight Transportation Carriers	3	t	f	t	t
+pre_fold_9n	2026-10-08	Automotive Thermal & Powertrain Components Suppliers	2	f	t	f	f
+pre_fold_9n	2026-10-08	Branded Footwear & Apparel Brand Turnaround	2	f	f	t	t
+pre_fold_9n	2026-10-08	Brazil election relief rally	2	f	f	f	t
+pre_fold_9n	2026-10-08	Coal Mining Producers	2	f	t	f	f
+pre_fold_9n	2026-10-08	Fuel Cell & Gas Power Generation Equipment	3	f	f	f	t
+pre_fold_9n	2026-10-09	Gold & Silver Miners Not Yet Classified (Mid-Tier & South African PGM/Gold Producers)	3	f	f	t	t
+pre_fold_9n	2026-10-09	Platinum Group & South African/Junior Precious Metals Miners	3	f	f	t	t
+post_fold_5n	2026-10-12	Branded Footwear & Hotel Consumer Discretionary Turnaround	2	t	f	t	t
+post_fold_5n	2026-10-12	Cross-Industry Test, Measurement & Design-Verification Tools	3	t	f	f	t
+post_fold_5n	2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	3	t	f	f	t
+post_fold_5n	2026-10-12	Digital Dollar & Crypto Payments Infrastructure	2	t	f	f	t
+post_fold_5n	2026-10-12	Enterprise Unstructured Data Storage Infrastructure	3	t	f	f	t
+post_fold_5n	2026-10-12	Fabless Semiconductor IP Licensing	3	t	f	f	t
+post_fold_5n	2026-10-12	Functional Beverage & Energy Drink Brands	3	t	f	f	t
+post_fold_5n	2026-10-12	Gold & Silver Miners Not Yet Classified (South African & Developer Gold Producers)	3	t	f	t	t
+post_fold_5n	2026-10-12	Orthopedic Surgical Devices & Instruments	2	t	f	t	t
+post_fold_5n	2026-10-12	Quick-Service & Fast-Casual Restaurant Franchisors	3	t	f	t	t
+post_fold_5n	2026-10-13	Capital Markets & Deal-Flow Re-Rating	3	t	t	f	t
+post_fold_5n	2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	3	t	t	f	f
+post_fold_5n	2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	3	t	t	f	t
+post_fold_5n	2026-10-14	Auto & Truck Dealership Retail Chains	3	t	f	t	t
+post_fold_5n	2026-10-14	Functional Energy Drink Brands	3	t	t	f	t
+post_fold_5n	2026-10-14	IT Services & Infrastructure Outsourcing (Government/Commercial/Offshore)	3	t	f	f	t
+post_fold_5n	2026-10-14	Off-Price & Specialty Retail Consumer Rotation	3	t	t	t	t
+post_fold_5n	2026-10-14	Quick-Service Restaurant & Fitness Franchisors Consumer Rotation	2	t	f	t	t
+post_fold_5n	2026-10-14	Space Launch, Satellite Imagery & Lunar Infrastructure	2	t	t	f	f
+post_fold_5n	2026-10-15	Consumer Franchise Operators: Fitness & Quick-Service	3	f	t	f	f
+post_fold_5n	2026-10-15	Enterprise Information Management & Infrastructure Engineering Software	3	f	f	f	t
+post_fold_5n	2026-10-15	Insurance Distribution & Specialty Insurance Services	3	f	f	f	t
+post_fold_5n	2026-10-15	Mini-Mill Steel Producers & Recyclers	3	f	f	f	t
+post_fold_5n	2026-10-15	Payroll, Tax & Small-Business Financial Software	3	f	t	f	f
+(52 rows)
