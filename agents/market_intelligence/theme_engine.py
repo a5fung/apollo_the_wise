@@ -92,6 +92,7 @@ from agents.market_intelligence.audit_events import (
     THEME_RETIRED_SMALL_FADING, THEME_SMALL_FADING_RETIRE_ERROR,
     THEME_SECTOR_CAP_KEPT_DISTINCT,
     THEME_SMALL_FOLDED, THEME_SMALL_FOLD_RAN, THEME_SMALL_FOLD_ERROR,
+    THEME_PASS1_5_OPERATOR_EXEMPT, THEME_PASS1_5_OPERATOR_EXEMPT_ERROR,
 )
 from shared.llm_response import content_block_types, first_text, is_truncated, stop_reason
 from shared.output_ceilings import max_tokens_for
@@ -8227,6 +8228,106 @@ def _successor_pointers_from_audit_rows(rows) -> tuple[dict[str, str], dict[str,
     return successor_by_lost, cap_rejected_by_lost
 
 
+# ── #655 (c): a theme the OPERATOR promotes is not absorbed by Pass 1.5 for its first 3 theme nights ──
+# (his ruling 2026-10-17, "go with rec"). Evidence (scripts/probes/_655_churn_1017/q4_named_cases.out):
+# his 10-12 promotion 'Capital Markets & Deal-Flow Re-Rating' (PWP, PAX, CBOE) was absorbed by Pass 1.5
+# on 10-13 into a theme it shares CBOE with, re-graduated by the nightly step on 10-14, absorbed again
+# 10-15; by 10-16 PWP and PAX sat in no theme. Base rate: 4 of 9 operator promotions since 09-01 were
+# absorbed by Pass 1.5 within 3 nights.
+#
+# ⚠ THE AUDIT ROW IS THE ONLY SIGNAL. `mi_themes.source` is 'shadow_promoted' for BOTH his /promotetheme
+# and the nightly graduation (`_upsert_promoted_theme` is the one shared write path), so the table cannot
+# say whose promotion a row is. `theme_operator_promoted` is written only by `promote_candidate_by_name`.
+# That row's summary is "Operator promoted '<name>' (N members)" (+ " — already a live theme, left
+# intact" when nothing was written); a noop row COUNTS — the operator asked for the name, and the ruling
+# is keyed on the exact name, not on whether the write landed.
+#
+# NIGHTS ARE ENGINE NIGHTS, NOT CALENDAR DAYS: the window is the 3 distinct `mi_themes.theme_date`s
+# (source='live' = the engine's own nightly board; his weekend /promotetheme of ANOTHER theme writes a
+# 'shadow_promoted' row on a non-engine date and must not use up this window) STRICTLY AFTER the
+# promotion's ET date and STRICTLY BEFORE tonight's (a same-night engine re-run has tonight's rows
+# already). A promotion at 18:36 ET on Mon 10-12 lands after that night's run, so night 1 = Tue 10-13,
+# night 3 = Thu 10-15, and Fri 10-16 is absorbed as today; a Friday promotion's night 1 is Monday.
+# A promotion made BEFORE that day's own run also covers that run (the first run that sees the theme
+# must not absorb it), so the window is then 4 runs; a same-evening re-run is covered either way.
+OPERATOR_PASS1_5_EXEMPT_NIGHTS = 3
+OPERATOR_PROMOTE_LOOKBACK_DAYS = 30   # >= any 3-night window incl. a long weekend + a holiday
+_OPERATOR_PROMOTED_SUMMARY_RE = re.compile(r"^Operator promoted '(.+)' \(\d+ members\)")
+
+# ONE query for the whole run (not per theme, not per merge pass): the recent promotion rows ('promo',
+# summary + ET date) UNION the distinct engine-night dates ('night'). The counting is done in
+# `_operator_exempt_nights_left` (pure, unit-tested on dates) so the window rule is not buried in SQL.
+# $1 = tonight's theme date, $2 = the lookback start.
+_OPERATOR_EXEMPT_SQL = """
+    SELECT 'promo' AS kind, a.summary,
+           (a.created_at AT TIME ZONE 'America/New_York')::date AS d
+      FROM mi_audit_log a
+     WHERE a.event_type = 'theme_operator_promoted'
+       AND (a.created_at AT TIME ZONE 'America/New_York')::date >= $2
+       AND (a.created_at AT TIME ZONE 'America/New_York')::date <= $1
+    UNION ALL
+    SELECT 'night' AS kind, NULL::text AS summary, t.theme_date AS d
+      FROM mi_themes t
+     WHERE t.source = 'live' AND t.theme_date >= $2 AND t.theme_date < $1
+     GROUP BY t.theme_date
+"""
+
+
+@dataclass
+class OperatorExempt:
+    """Tonight's exemption set, built ONCE per run by `_load_operator_exempt` and handed to every
+    `_merge_overlapping_themes` call (merge 1 and merge 2). `nights_left` maps an exact theme name to
+    the number of exempt nights remaining INCLUDING tonight (3 = his first engine night, 1 = his last).
+    `logged` is the run's written-set: the exempt audit row is one per theme per run, not one per merge
+    pass."""
+    nights_left: dict[str, int] = field(default_factory=dict)
+    logged: set[str] = field(default_factory=set)
+
+
+def _operator_exempt_nights_left(
+    promos, night_dates, today: date, window: int = OPERATOR_PASS1_5_EXEMPT_NIGHTS,
+) -> dict[str, int]:
+    """Pure. `promos`: (summary, promoted_et_date) per `theme_operator_promoted` row. `night_dates`:
+    the distinct engine-night dates (`mi_themes.theme_date`, source='live'). Returns
+    {exact theme name: exempt nights left INCLUDING tonight} for every promotion still inside
+    `window`. Engine nights completed since a promotion = the dates STRICTLY after its ET date and
+    STRICTLY before `today`; tonight is the next one. A promotion dated after `today` (a back-dated
+    re-run) has not happened yet and exempts nothing. A name promoted twice keeps the LATEST
+    promotion (the most nights left — re-promoting renews the window). A summary that does not parse
+    is skipped, never guessed at; a name must match EXACTLY."""
+    nights = set(night_dates)
+    out: dict[str, int] = {}
+    for summary, promoted_et in promos:
+        m = _OPERATOR_PROMOTED_SUMMARY_RE.match(summary or "")
+        if not m or promoted_et > today:
+            continue
+        left = window - sum(1 for d in nights if promoted_et < d < today)
+        if left >= 1:
+            out[m.group(1)] = max(out.get(m.group(1), 0), left)
+    return out
+
+
+async def _load_operator_exempt(today: date) -> OperatorExempt:
+    """ONE read of the night's exemption set. Fail-open to TODAY's behaviour: any error -> nothing is
+    exempt tonight, a `theme_pass1_5_operator_exempt_error` row says so (the nightly never goes down,
+    and a silent empty set would read as "nobody promoted anything")."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                _OPERATOR_EXEMPT_SQL, today, today - timedelta(days=OPERATOR_PROMOTE_LOOKBACK_DAYS))
+        promos = [(r["summary"], r["d"]) for r in rows if r["kind"] == "promo"]
+        night_dates = [r["d"] for r in rows if r["kind"] == "night"]
+        return OperatorExempt(nights_left=_operator_exempt_nights_left(promos, night_dates, today))
+    except Exception as e:
+        logger.warning(f"#655 (c) operator Pass 1.5 exemption read failed (nothing exempt tonight): {e}")
+        await log_audit_event(
+            THEME_PASS1_5_OPERATOR_EXEMPT_ERROR,
+            summary="#655 (c): exemption read failed — no operator-promoted theme is exempt from Pass 1.5 tonight",
+            detail=str(e)[:500])
+        return OperatorExempt()
+
+
 async def _merge_overlapping_themes(
     themes: list[dict],
     stocks_by_ticker: dict[str, dict],
@@ -8238,6 +8339,7 @@ async def _merge_overlapping_themes(
     protected: set[tuple[str, str]] | None = None,
     cooldown_set: set[tuple[str, str]] | None = None,
     theme_exclusions: dict[str, set[str]] | None = None,
+    operator_exempt: OperatorExempt | None = None,
 ) -> list[dict]:
     """
     Two-pass theme consolidation:
@@ -8261,6 +8363,11 @@ async def _merge_overlapping_themes(
     Pass-2 sector cap would move into a group's top theme. Without them (every pre-fix caller)
     the cap still runs the test — the tape cannot judge, so the validator decides — a member is
     never moved on a blind union again.
+
+    operator_exempt (#655 (c), 2026-10-17): Pass 1.5 does not absorb a theme whose exact name is in
+    `operator_exempt.nights_left` (the operator promoted it within its last 3 theme nights). None
+    (every pre-existing caller) = no exemption, byte-identical to before. Pass 1, the sector cap and
+    every later step are untouched.
     """
     if len(themes) <= 1:
         return themes
@@ -8481,6 +8588,30 @@ async def _merge_overlapping_themes(
             ):
                 skipped_targets.append((target["name"], "protection:t_protected_target_not"))
                 continue
+            # #655 (c): an operator-promoted theme inside its first 3 theme nights is NOT absorbed.
+            # Sited here, past every guard, so the row names the target that WOULD have taken it —
+            # a promoted theme that was not eligible tonight writes nothing (the exemption did not
+            # fire). `break` skips the for-else, so no `theme_pass1_5_skip` row either.
+            if operator_exempt is not None and t["name"] in operator_exempt.nights_left:
+                if t["name"] not in operator_exempt.logged:
+                    operator_exempt.logged.add(t["name"])
+                    left = operator_exempt.nights_left[t["name"]]
+                    k = OPERATOR_PASS1_5_EXEMPT_NIGHTS - left + 1
+                    logger.info(
+                        f"Theme merge (small-theme absorption): '{t['name']}' EXEMPT — operator-promoted, "
+                        f"night {k} of {OPERATOR_PASS1_5_EXEMPT_NIGHTS}; would have joined '{target['name']}'")
+                    await log_audit_event(
+                        THEME_PASS1_5_OPERATOR_EXEMPT,
+                        summary=(f"Pass1.5: '{t['name']}' exempt (operator-promoted, night {k} of "
+                                 f"{OPERATOR_PASS1_5_EXEMPT_NIGHTS}); would have joined '{target['name']}'"),
+                        detail=(
+                            f"t='{t['name']}' would_be_absorber='{target['name']}' "
+                            f"night={k} of {OPERATOR_PASS1_5_EXEMPT_NIGHTS} nights_left_after_tonight={left - 1} "
+                            f"t_score={t_score} t_protected={t_protected} t_size={len(tickers)} "
+                            f"unique_count={unique_count} target_score={target.get('score', 0)}"
+                        ),
+                    )
+                break
             target["tickers"] = list(target_tickers | tickers)
             absorbed.add(t["name"])
             logger.info(
@@ -10647,6 +10778,11 @@ async def run_theme_engine(
         ),
     )
 
+    # #655 (c): the names the operator promoted within their first 3 theme nights, read ONCE and
+    # shared by both merge passes (Pass 1.5 does not absorb them). Fail-open: a read error = nothing
+    # exempt tonight (today's behaviour) + a `theme_pass1_5_operator_exempt_error` row.
+    operator_exempt = await _load_operator_exempt(today)
+
     all_themes = await _merge_overlapping_themes(
         updated_themes + new_themes,
         stocks_by_ticker,
@@ -10656,6 +10792,7 @@ async def run_theme_engine(
         # 2026-09-25: the sector cap's re-homed members pass the run's membership test
         comove_ctx=comove_ctx, changelog=changelog, protected=protected_set,
         cooldown_set=cooldown_set, theme_exclusions=theme_exclusions,
+        operator_exempt=operator_exempt,
     )
     await _emit_pipeline_diagnostic(all_themes, "after_merge_1", sub_theme_parents=prior_sub_parents)
     all_themes.sort(key=lambda t: (-(t.get("score") or 0), t.get("name") or ""))
@@ -10751,6 +10888,7 @@ async def run_theme_engine(
             subtheme_ctx=subtheme_ctx,
             comove_ctx=comove_ctx, changelog=changelog, protected=protected_set,
             cooldown_set=cooldown_set, theme_exclusions=theme_exclusions,
+            operator_exempt=operator_exempt,
         )
         await _emit_pipeline_diagnostic(all_themes, "after_merge_2", sub_theme_parents=combined_sub_parents)
         all_themes.sort(key=lambda t: (-(t.get("score") or 0), t.get("name") or ""))
