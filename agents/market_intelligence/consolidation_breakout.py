@@ -20,6 +20,14 @@ registration doc. The scan is registry-enumerated, so this module is not scanned
       never presented as sourced
   P = fixed by the approved plan's Definitions table, not by the article
 
+The TRENDLINE breakout level `tl` (#702 P1c): the operator's note of 2026-10-17 (`operator_shared_notes.md`,
+"2026-10-17 — his note on the breakout ENTRY") says he often draws the flag with *"a down sloping trend line and
+a breakout of that trend line"*, which *"may dictate a lower entry than what we call a breakout"*. The line is
+S-class (his words, "down sloping trend line"); how it is anchored and drawn (through the pole top, the line that
+keeps every later high on or under it, projected one session ahead) is the #702 P1c spec's reading of that sentence,
+not his words, and the line is tested BESIDE the horizontal pivots, never instead of them. `TL_TOUCH_TOL` (0.5%) is B and TELEMETRY
+ONLY: it feeds `tl_interior_touches`, which never gates.
+
 Reused (never re-implemented): `anticipation._MA_NEAR_PCT` (R), `anticipation.atr14_pct`,
 `anticipation.COIL_HOLD_LIMIT` (R: the signed Family A hold rule, 0.50), `broker.exit_logic.adr20_pct_from_bars` (mirrored: the execution boundary forbids the import),
 `flag_detector._DEAL_PIN_RANGE_THRESHOLD` (R), `flag_detector._RANGE_CONTRACTION_MAX` (R),
@@ -111,8 +119,11 @@ RS_BEST_STRICT = 99.0            # B: C2
 RS_BEST_LOOSE = 95.0             # B: C5
 GROUP_PCT_MIN = 80.0             # B: C2 / C6
 PRIOR_MOVE_STRICT = 0.50         # B: C2 (grid 0.30 / 0.50 / 1.00)
-PIVOT_KEYS = ("k5", "k10", "full")   # B: which pivot the cells and the breakout use — NO default,
-                                     #    the primary is picked in the discovery read (P4)
+PIVOT_KEYS = ("k5", "k10", "full", "tl")   # B: which pivot the cells and the breakout use — NO default,
+                                          #    the primary is picked in the discovery read (P4). k5/k10/full are
+                                          #    HORIZONTAL levels; "tl" is the down-sloping trendline (S: his
+                                          #    2026-10-17 note), projected one session ahead — see `_down_trendline`
+TL_TOUCH_TOL = 0.005             # B, TELEMETRY ONLY: a base high within 0.5% under the line is an interior touch
 CELLS = ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7")      # the 8 DECIDING cells
 REPORT_CELLS = ("C1_no_retrace", "C1_no_tightening")            # reported beside C1, never deciding
 
@@ -242,6 +253,65 @@ def _pole_top(h: np.ndarray, c: np.ndarray, lo: int, hi: int) -> int:
     return T
 
 
+def _down_trendline(bars: DailyBars, P: int, i: int) -> dict:
+    """The down-sloping TRENDLINE breakout level (#702 P1c; his note 2026-10-17 in `operator_shared_notes.md`:
+    *"a flag with a down sloping trend line and a breakout of that trend line"* — "a lower entry than what we
+    call a breakout"). Bars <= i only; P is the module's pole top.
+
+    The line passes through the ANCHOR A = the base's highest high over [P, i] (ties -> the earliest; this is the
+    pole top P unless a later wick topped it — a wick does not end the base) with slope
+        m = max over j in (A, i] of (high[j] - high[A]) / (j - A)        (units: price per session, <= 0)
+    — the flattest line from the anchor that keeps every later high on or under it. The touch j* is the argmax
+    (ties -> the LATEST bar, `_argmax_last`). Fewer than `_BASE_AGE_MIN_WATCH` (3) sessions after the anchor
+    -> no line yet (`pivot_tl` None). m == 0 (a flat top) is a valid line.
+
+    `pivot_tl` is the line's value on the NEXT session, high[P] + m x (i + 1 - P): the level a breakout on
+    E = i + 1 must clear. The horizontal pivots are FIXED levels read off bars <= i; this one is PROJECTED one
+    session ahead, which is why it sits `|m|` under the line's own value at i. A projected value that is not
+    > 0 is no level either (None: the line has fallen through zero; not expected on a night that passes the C0
+    gates — close >= SMA50 — and kept so a caller never sees a non-positive "pivot").
+
+    Returns every `tl` key on every call (the runner derives its watch-table columns from the first row's keys):
+      pivot_tl, pivot_tl_idx, pivot_tl_date   the level, and the touch it is drawn through (idx/date are
+                                              aliases of tl_touch_*, here so `pivot_<k>_date` reads uniformly)
+      tl_slope_pct        m / high[A], per session (<= 0)
+      tl_anchor_idx / tl_anchor_date   the anchor A (given on every call)
+      tl_touch_idx / tl_touch_date / tl_touch_is_today (j* == i)
+      tl_interior_touches the number of base highs in (P, i) — neither the pole top nor the watch night — within
+                          `TL_TOUCH_TOL` (0.5%) UNDER the line at their own session (j* itself counts when it is
+                          interior)
+    TELEMETRY (none of it gates). Every field but the anchor is None when there is no line."""
+    h = bars.h
+    # The line is drawn from the base's HIGHEST high (ties -> the earliest), which is the pole top unless a later
+    # WICK topped it (a wick does not end the base, `_base_resolved`). Anchoring at P alone left ~31% of watch
+    # nights with no line (a base high above high[P] makes the slope positive) - the 10-17 review finding.
+    A = P + int(np.argmax(h[P:i + 1]))                                 # ties -> the EARLIEST: a flat top stays a flat line
+    out = {"pivot_tl": None, "pivot_tl_idx": None, "pivot_tl_date": None, "tl_slope_pct": None,
+           "tl_anchor_idx": int(A), "tl_anchor_date": bars.dates[A].isoformat(), "tl_touch_idx": None,
+           "tl_touch_date": None, "tl_touch_is_today": None, "tl_interior_touches": None}
+    if i - A < _BASE_AGE_MIN_WATCH:                                   # the highest high is (nearly) tonight: no line to draw yet
+        return out
+    hp = float(h[A])
+    seg = h[A + 1:i + 1]
+    slopes = (seg - hp) / np.arange(1, i - A + 1, dtype=float)       # (high[j] - high[A]) / (j - A), j = A+1 .. i
+    k = _argmax_last(slopes)
+    m = float(slopes[k])                                              # <= 0 by construction (A is the highest high)
+    out["tl_slope_pct"] = (m / hp) if hp > 0.0 else None
+    if not m <= 0.0:                                                  # NaN guard only
+        return out
+    pivot = hp + m * (i + 1 - A)
+    if not pivot > 0.0:
+        return out
+    j_star = A + 1 + k
+    line = hp + m * np.arange(1, i - A, dtype=float)                  # the line at the interior sessions A+1 .. i-1
+    touches = int((np.abs(line - h[A + 1:i]) <= TL_TOUCH_TOL * np.abs(line)).sum())
+    touch_date = bars.dates[j_star].isoformat()
+    out.update(pivot_tl=float(pivot), pivot_tl_idx=int(j_star), pivot_tl_date=touch_date,
+               tl_touch_idx=int(j_star), tl_touch_date=touch_date,
+               tl_touch_is_today=bool(j_star == i), tl_interior_touches=touches)
+    return out
+
+
 def _base_resolved(c: np.ndarray, P: int, i: int, pole_high: float) -> bool:
     """Has any CLOSE in (P, i] gone ABOVE high[P]? Mirrors `flag_detector._flag_resolved_by`
     (the #592 fix): STRICT `>` on the close, a wick over the top does not count. The real
@@ -306,12 +376,14 @@ def explain_watch(bars: DailyBars, i: int) -> tuple:
       watch_date, i, close, pole_idx/pole_date/pole_high, pole_low/pole_low_idx/pole_low_date,
       prior_move, pole_sessions, base_len, base_low, base_depth, retrace, retrace_ok,
       pivot_k5 / pivot_k10 / pivot_full  (+ _date, + _idx),
+      pivot_tl (+ _date, + _idx = the touch; None when no down-sloping line exists — see `_down_trendline`),
       sma10/sma20/sma50, sma20_ok, sma50_rising, higher_lows,
       range_recent5, range_early5, tightening_ratio, tightening_ok, median_range5,
       adr20, atr14 (fractions), trigger_bar_range_adr, inside_day,
       fresh_pin (always False on a passing row) + fresh_pin_band_pct / fresh_pin_spike_x (the
       evaluator's own numbers — how close the name was to the gate),
-    and TELEMETRY (none of it gates): median_dollar_vol20, pole_max_gain_day / pole_max_gain,
+    and TELEMETRY (none of it gates): tl_slope_pct / tl_touch_idx / tl_touch_date / tl_touch_is_today /
+      tl_interior_touches (the trendline's slope, touch and interior touches), median_dollar_vol20, pole_max_gain_day / pole_max_gain,
       pole_day_vol_ratio, pole_max_gap, atr14_slope (= ATR14% at i / ATR14% at P+1, both as a
       fraction of that day's close — the unit of `atr14`)."""
     n = len(bars)
@@ -377,6 +449,7 @@ def explain_watch(bars: DailyBars, i: int) -> tuple:
     p10, p10_idx = _pivot(10)
     pf_idx = (P + 1) + _argmax_last(h[P + 1:i + 1])
     pf = float(h[pf_idx])
+    tl = _down_trendline(bars, P, i)          # the 4th breakout level: a down-sloping line, projected to D+1
 
     sma10 = float(c[i - SMA_SHORT + 1:i + 1].mean())
     sma20 = float(c[i - SMA_MID + 1:i + 1].mean())
@@ -420,6 +493,7 @@ def explain_watch(bars: DailyBars, i: int) -> tuple:
         "pivot_k5": p5, "pivot_k5_idx": int(p5_idx), "pivot_k5_date": bars.dates[p5_idx].isoformat(),
         "pivot_k10": p10, "pivot_k10_idx": int(p10_idx), "pivot_k10_date": bars.dates[p10_idx].isoformat(),
         "pivot_full": pf, "pivot_full_idx": int(pf_idx), "pivot_full_date": bars.dates[pf_idx].isoformat(),
+        **tl,
         "sma10": sma10, "sma20": sma20, "sma50": sma50,
         "sma20_ok": bool(close_i >= (1.0 - _MA_NEAR_PCT / 100.0) * sma20),
         "sma50_rising": bool(sma50 > sma50_prev),
@@ -578,9 +652,10 @@ def _ge(x, thr) -> bool:
 def cell_flags(features: Optional[dict], ctx: dict, *, k: str) -> dict:
     """C0..C7 (`CELLS`, the 8 DECIDING cells) plus the two REPORTED-only cells (`REPORT_CELLS`:
     `C1_no_retrace`, `C1_no_tightening` — C1 with that one structure term dropped, shown beside C1
-    and never deciding) as post-hoc flags on one watch row. `k` ("k5" | "k10" | "full") selects the
+    and never deciding) as post-hoc flags on one watch row. `k` ("k5" | "k10" | "full" | "tl") selects the
     pivot the cell and the breakout use — NO default; the primary is chosen in the discovery read
-    (P4). It enters C0 as the plan's "pivot" clause: the chosen pivot must exist. It no longer has
+    (P4). It enters C0 as the plan's "pivot" clause: the chosen pivot must exist (for "tl": there must be
+    a down-sloping line that night, `pivot_tl` not None). It no longer has
     to sit at or under high(P): a wick over the pole top is a real resistance level, and the base
     survives a wick (only a CLOSE above the top ends it, see `explain_watch`).
 
@@ -622,10 +697,13 @@ def cell_flags(features: Optional[dict], ctx: dict, *, k: str) -> dict:
 
 
 def breakout_key(ticker: str, features: dict, k: str) -> tuple:
-    """One trade per (ticker, pivot date for k)."""
+    """One trade per (ticker, pivot date for k). For "tl" the pivot date is the line's TOUCH date."""
     if k not in PIVOT_KEYS:
         raise ValueError(f"breakout_key: k must be one of {PIVOT_KEYS}, got {k!r}")
-    return (ticker, features[f"pivot_{k}_date"])
+    pivot_date = features[f"pivot_{k}_date"]
+    if pivot_date is None:                       # only "tl" can: no down-sloping line that night, so no base to key
+        raise ValueError(f"breakout_key: no {k} pivot on this row")
+    return (ticker, pivot_date)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════

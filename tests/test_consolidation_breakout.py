@@ -657,6 +657,14 @@ class TestCells:
             assert flags["C0"] is False and not any(flags[c] for c in cb.CELLS[1:]), bad_pivot
             assert cb.cell_flags(bad, _ctx(), k="k5")["C0"] is True      # other pivot unaffected
 
+    def test_tl_c0_needs_a_down_sloping_line_that_night(self):
+        f = _good_features()
+        assert f["pivot_tl"] is not None and cb.cell_flags(f, _ctx(), k="tl")["C0"] is True
+        none = dict(f, pivot_tl=None)
+        flags = cb.cell_flags(none, _ctx(), k="tl")
+        assert flags["C0"] is False and not any(flags[c] for c in cb.CELLS[1:])
+        assert cb.cell_flags(none, _ctx(), k="k10")["C0"] is True             # the horizontal levels are unaffected
+
     def test_k_has_no_default_and_is_validated(self):
         f = _good_features()
         with pytest.raises(TypeError):
@@ -1951,6 +1959,209 @@ class TestTelemetry:
         assert f["pole_max_gain"] == pytest.approx(0.06)
         assert f["pole_day_vol_ratio"] == pytest.approx(8e6 / 2e6)             # flat 2e6 before the pole low
         assert low_idx < k
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 6b. The down-sloping TRENDLINE breakout level `tl` (#702 P1c — his note 2026-10-17)
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _tl_synth(highs: dict) -> Synth:
+    """A Synth C0 pass (pole high 16.0 at P, i = P + 20) whose base highs for sessions P+j are overridden from
+    `highs` {j: high}. Every override sits at or above the Synth closes/opens (<= 15.09), so the bars stay
+    internally consistent, and the first three base sessions stay under the pole high (else the pole walk moves)."""
+    s = Synth()
+    for j, hi in highs.items():
+        s.h[s.P + j] = hi
+    return s
+
+
+def _line16(j: int) -> float:
+    """The dyadic test line through (P, 16.0) with slope -1/32 per session: exact in binary, so every expected
+    number below is exact rather than approximately equal."""
+    return 16.0 - j / 32.0
+
+
+class TestTrendline:
+    """The line is anchored at the pole top (P, high[P]) with slope m = max over j in (P, i] of
+    (high[j] - high[P]) / (j - P); pivot_tl = high[P] + m x (i + 1 - P), the level a break on E = i + 1 must clear."""
+
+    def setup_method(self):
+        self.bars, self.idx = _mrna()
+        self.i = self.idx["2026-09-16"]
+        self.f = cb.evaluate_watch(self.bars, self.i)
+
+    def test_pivot_keys_gain_tl(self):
+        assert cb.PIVOT_KEYS == ("k5", "k10", "full", "tl")
+
+    # ── MRNA canary, derived by hand from tests/fixtures/htf_labelled_bars.psv ───────────────────
+    def test_mrna_slope_touch_and_the_projected_level_by_hand(self):
+        # P = 2026-08-19, high 176.66. Sessions after P and each base high's slope (high - 176.66) / sessions:
+        #   08-25  161.37  4 sessions  -15.29 / 4  = -3.8225        09-02  156.4151 10 sessions -2.0245
+        #   09-04  154.69  12 sessions -22.0 / 12  = -1.8308        09-11  149.7344 16 sessions -1.6828
+        #   09-14  147.3399 17 sessions            = -1.7247        09-15  148.6999 18 sessions -1.5533
+        #   09-16  148.93  19 sessions -27.73 / 19 = -1.4595  <- the flattest: the touch is the watch night itself
+        m = (148.93 - 176.66) / 19
+        assert m == pytest.approx(-1.4595, abs=5e-5)
+        assert self.f["tl_touch_date"] == "2026-09-16" and self.f["tl_touch_idx"] == self.i
+        assert self.f["tl_touch_is_today"] is True
+        assert self.f["tl_slope_pct"] == pytest.approx(m / 176.66, rel=1e-12)
+        # the level for 09-17 is the line 20 sessions after the pole: 176.66 - 20 x 1.45947... = 147.4705,
+        # which is the touch high plus ONE more session of slope (148.93 + m), NOT the line's value at 09-16
+        assert self.f["pivot_tl"] == pytest.approx(176.66 + 20 * m, rel=1e-12)
+        assert self.f["pivot_tl"] == pytest.approx(147.4705, abs=5e-5)
+        assert self.f["pivot_tl"] == pytest.approx(148.93 + m, rel=1e-12)       # kills "projected at i, not i + 1"
+        assert self.f["pivot_tl"] != pytest.approx(148.93, abs=0.5)
+        # every other base high lies UNDER the line (the definition's own invariant)
+        P = self.f["pole_idx"]
+        for j in range(P + 1, self.i + 1):
+            assert self.bars.h[j] <= 176.66 + m * (j - P) + 1e-9, self.bars.dates[j]
+
+    def test_mrna_the_line_sits_below_the_horizontal_breakouts_and_the_next_session_clears_it(self):
+        assert self.f["pivot_tl"] < self.f["pivot_k5"] == 149.7344
+        assert self.f["pivot_tl"] < self.f["pivot_k10"] < self.f["pivot_full"]
+        assert self.bars.h[self.idx["2026-09-17"]] == 161.9599 > self.f["pivot_tl"]
+        # 09-17's open 152.50 gaps over the line, so a buy-the-line entry fills at the open
+        assert 152.5 > self.f["pivot_tl"]
+
+    def test_mrna_interior_touches_by_hand(self):
+        # the line at 09-15 is 148.93 + 1.4595 = 150.39; the 09-15 high 148.6999 is 1.1% under it, more than the 0.5%
+        # tolerance, and no other interior base high is closer in percentage terms -> none touch
+        m = (148.93 - 176.66) / 19
+        P = self.f["pole_idx"]
+        gaps = [(176.66 + m * (j - P) - self.bars.h[j]) / (176.66 + m * (j - P)) for j in range(P + 1, self.i)]
+        assert min(gaps) > cb.TL_TOUCH_TOL
+        assert self.f["tl_interior_touches"] == 0
+
+    def test_mrna_aliases_and_cells_and_the_breakout_key(self):
+        assert self.f["pivot_tl_date"] == self.f["tl_touch_date"] and self.f["pivot_tl_idx"] == self.f["tl_touch_idx"]
+        ctx = {"rs_best": 99.5, "rs_all": 99.0, "grp_pct": 90.0, "phase_qqq_10_20": True, "phase_spy_qqq_50": True}
+        flags = cb.cell_flags(self.f, ctx, k="tl")
+        assert all(flags[c] for c in cb.CELLS)
+        assert cb.breakout_key("MRNA", self.f, "tl") == ("MRNA", "2026-09-16")
+
+    # ── synthetic: each case isolates one property of the definition ─────────────────────────────
+    def test_a_falling_flag_the_line_is_below_the_base_high_and_breaks_first(self):
+        # highs on the exact line 16 - j/32 at j = 10 and 1/8 UNDER it everywhere else (j = 5 and 7 excepted below):
+        # slope at j = 10 is -0.3125 / 10 = -1/32 exactly; every other session is steeper (-1/32 - 1/(8 j)).
+        highs = {j: _line16(j) - 0.125 for j in range(1, 21)}
+        highs[10] = _line16(10)                                       # 15.6875 — the touch
+        s = _tl_synth(highs)
+        f = s.watch()
+        assert f is not None
+        assert f["tl_touch_idx"] == s.P + 10 and f["tl_touch_is_today"] is False
+        assert f["tl_touch_date"] == _weekdays(s.n)[s.P + 10].isoformat() == f["pivot_tl_date"]
+        assert f["tl_slope_pct"] == -1 / 32 / 16.0
+        # next-session level: 16 - 21/32 = 15.34375 — the line 20 + 1 sessions after the pole
+        assert f["pivot_tl"] == 15.34375
+        # the base high is the first session's 16 - 1/32 - 1/8 = 15.84375: the line is 0.5 BELOW it
+        assert f["pivot_full"] == 15.84375 and f["pivot_tl"] < f["pivot_full"]
+        # a break of the line before any break of the base high: a day topping at 15.5 clears one, not the other
+        mins = _flat_day(price=15.4, overrides={0: (15.4, 15.5, 15.3, 15.45)}, hi=0.1)
+        at_line = _run(mins, pivot=f["pivot_tl"])
+        at_base = _run(mins, pivot=f["pivot_full"])
+        assert at_line["pivot"]["status"] == "filled" and at_line["pivot"]["level"] == f["pivot_tl"]
+        assert at_base["pivot"]["status"] != "filled"
+
+    def test_the_touch_is_the_flattest_line_not_the_highest_high(self):
+        # the base high (j = 1, 15.84375) is NOT the touch: j = 1 has slope -0.15625, far steeper than -1/32
+        highs = {j: _line16(j) - 0.125 for j in range(1, 21)}
+        highs[10] = _line16(10)
+        f = _tl_synth(highs).watch()
+        assert f["pivot_full_idx"] != f["tl_touch_idx"]
+
+    def test_ties_resolve_to_the_latest_touch(self):
+        # three exactly collinear highs on the -1/32 line at j = 6, 12, 18 (slope -1/32 each); np.argmax would take 6
+        highs = {j: _line16(j) - 0.125 for j in range(1, 21)}
+        for j in (6, 12, 18):
+            highs[j] = _line16(j)
+        s = _tl_synth(highs)
+        f = s.watch()
+        assert f["tl_touch_idx"] == s.P + 18
+        assert f["pivot_tl"] == 16.0 - 21 / 32
+        assert f["tl_interior_touches"] == 3                    # 6, 12 and 18 are all interior (< i = P + 20)
+
+    def test_a_flat_top_is_a_valid_line_and_ties_to_the_latest_equal_high(self):
+        # two base highs EQUAL to the pole high (j = 12 and 15, past the pole walk's window): m == 0
+        highs = {j: 15.5 for j in range(1, 21)}
+        highs[12] = highs[15] = 16.0
+        s = _tl_synth(highs)
+        f = s.watch()
+        assert f is not None
+        assert f["pivot_tl"] == 16.0 and f["tl_slope_pct"] == 0.0
+        assert f["tl_touch_idx"] == s.P + 15                    # the LATEST of the two ties
+        assert f["tl_interior_touches"] == 2
+        assert cb.cell_flags(f, _ctx(), k="tl")["C0"] is True
+
+    def test_a_wick_above_the_pole_high_moves_the_line_s_anchor_to_the_wick(self):
+        # a base high at 16.4 > the pole high 16.0 (a wick; only a CLOSE above ends the base). The line is drawn
+        # from the base's highest high: A = P+15 (16.4); the flattest line to the later highs (all 15.5) touches
+        # tonight, i = P+20: slope (15.5 - 16.4) / 5 = -0.18 per session; projected to i+1: 16.4 - 0.18 x 6 = 15.32.
+        highs = {j: 15.5 for j in range(1, 21)}
+        highs[15] = 16.4
+        s = _tl_synth(highs)
+        f = s.watch()
+        assert f is not None, "a wick does not end the base"
+        assert f["tl_anchor_idx"] == s.P + 15
+        assert f["pivot_tl"] == pytest.approx(16.4 - 0.18 * 6)
+        assert f["tl_slope_pct"] == pytest.approx(-0.18 / 16.4)
+        assert f["tl_touch_idx"] == s.i and f["tl_touch_is_today"] is True
+        assert f["pivot_full"] == 16.4                                        # the horizontal levels are untouched
+        assert cb.cell_flags(f, _ctx(), k="tl")["C0"] is True
+        json.dumps(f)
+
+    def test_no_line_while_the_highest_high_is_under_three_sessions_old(self):
+        highs = {j: 15.5 for j in range(1, 21)}
+        highs[18] = 16.4                                                      # i - A = 2 < 3
+        f = _tl_synth(highs).watch()
+        assert f is not None and f["pivot_tl"] is None and f["tl_slope_pct"] is None
+        assert cb.cell_flags(f, _ctx(), k="tl")["C0"] is False
+        with pytest.raises(ValueError):
+            cb.breakout_key("ABC", f, "tl")
+
+    def test_interior_touches_count_within_half_a_percent_and_exclude_the_watch_night_and_the_pole(self):
+        highs = {j: _line16(j) - 0.125 for j in range(1, 21)}
+        highs[10] = _line16(10)                                 # the touch (interior)
+        highs[5] = _line16(5) - 0.05                            # 0.05 / 15.84 = 0.32% under the line  -> a touch
+        highs[7] = _line16(7) - 0.10                            # 0.10 / 15.78 = 0.63% under the line  -> not
+        highs[20] = _line16(20) - 0.05                          # within tolerance but it IS the watch night -> excluded
+        f = _tl_synth(highs).watch()
+        assert f["tl_interior_touches"] == 2                    # j = 10 and j = 5
+        assert f["tl_touch_is_today"] is False
+        # the 0.5% edge is relative to the line at the high's OWN session: 0.005 x 15.84375 = 0.0792 at j = 5
+        for gap, want in ((0.0790, 2), (0.0795, 1)):
+            h2 = dict(highs)
+            h2[5] = _line16(5) - gap
+            assert _tl_synth(h2).watch()["tl_interior_touches"] == want, gap
+
+    def test_a_non_positive_projected_level_is_no_level(self):
+        # a line that has fallen through zero: pole high 100, the watch night's high 5 ten sessions later
+        n = 12
+        h = np.array([100.0, 90.0, 80.0, 70.0, 60.0, 50.0, 40.0, 30.0, 20.0, 10.0, 5.0, 4.0][:n])
+        bars = cb.daily_bars_from_arrays(_weekdays(n), h, h, h, h, [1.0] * n)
+        out = cb._down_trendline(bars, 0, 10)                   # P = 0, i = 10: m = max((h[j]-100)/j) = -9.5 at j = 10
+        assert out["tl_slope_pct"] == pytest.approx(-9.5 / 100.0)
+        assert out["pivot_tl"] is None and out["tl_touch_idx"] is None      # 100 - 9.5 x 11 = -4.5
+
+    def test_every_tl_key_is_present_on_every_row_with_plain_json_types(self):
+        keys = {"pivot_tl", "pivot_tl_idx", "pivot_tl_date", "tl_slope_pct", "tl_touch_idx", "tl_touch_date",
+                "tl_touch_is_today", "tl_interior_touches"}
+        wick = _tl_synth({**{j: 15.5 for j in range(1, 21)}, 15: 16.4}).watch()
+        for f in (self.f, wick, Synth().watch()):
+            assert keys <= set(f)
+            for k in keys:
+                assert type(f[k]) in (int, float, bool, str, type(None)), (k, type(f[k]))
+            json.dumps(f)
+
+    def test_the_line_uses_bars_up_to_the_watch_night_only(self):
+        # bars after i never enter: three huge later sessions change nothing about the line at i
+        s = Synth()
+        base = s.watch()
+        bars = s.bars()
+        longer = cb.daily_bars_from_arrays(
+            list(bars.dates) + _weekdays(s.n + 3)[s.n:], list(bars.o) + [20.0] * 3, list(bars.h) + [99.0] * 3,
+            list(bars.l) + [19.0] * 3, list(bars.c) + [20.0] * 3, list(bars.v) + [2e6] * 3)
+        again = cb.evaluate_watch(longer, s.i)
+        assert {k: again[k] for k in base if k.startswith(("tl_", "pivot_tl"))} == \
+            {k: base[k] for k in base if k.startswith(("tl_", "pivot_tl"))}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════

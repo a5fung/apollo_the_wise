@@ -14,9 +14,11 @@ skips `explain_watch` on nights that provably fail its first gate (see `prescree
 Stage 1  universe + cross-section per session D (SPY calendar): `universe_ok`, `rs_returns` ->
          `percentile_ranks` (21/63/126), SIC-2 `group_returns` -> group percentile, three phase rules.
 Stage 2  watch nights: `explain_watch(bars, i)` on every (ticker, D) in the universe from 2022-03-28;
-         failing-gate funnel; `cell_flags` for K in k5/k10/full; `watch.tsv.gz`.
+         failing-gate funnel; `cell_flags` for K in k5/k10/full/tl; `watch.tsv.gz`.
 Stage 3  breakouts: E = the ticker's next bar (must be the next SPY session), breakout iff high(E) >
-         pivot_K(D); ONE TRADE PER BASE under two keys - the spec key (ticker, pole_date, K; later breaks are
+         pivot_K(D) (K = k5/k10/full are HORIZONTAL levels; K = tl is the down-sloping TRENDLINE, already projected
+         to E by the module, and a night with no down-sloping line has no tl level and no tl candidate; #702 P1c);
+         ONE TRADE PER BASE under two keys - the spec key (ticker, pole_date, K; later breaks are
          `retrigger=1`) and the drift-robust chain key (`retrigger_chain`: poles <= 3 sessions apart = one
          base); the daily CLOSE variant + EVERY exit arm on DISCOVERY rows ONLY (D <= 2024-12-31;
          holdout rows get no outcome here - they are joined once, after the P4 freeze); the minute fetch list.
@@ -61,7 +63,9 @@ from agents.market_intelligence import consolidation_breakout as cb  # noqa: E40
 HERE = Path(__file__).resolve().parent
 WATCH_START = date(2022, 3, 28)          # first watch night D (plan: discovery 2022-03-28 .. 2024-12-31)
 DISCOVERY_END = date(2024, 12, 31)       # D <= this -> discovery; later -> holdout
-KS = cb.PIVOT_KEYS                        # ("k5", "k10", "full")
+KS = cb.PIVOT_KEYS                        # ("k5", "k10", "full", "tl")
+NEW_FETCH_KS = ("tl",)                    # the K added after the first minute pull (#702 P1c): its (ticker, E) pairs not in
+#                                           _done.psv are written to minute_fetch_list_delta.tsv (k5/k10/full were all pulled)
 CELL_NAMES = cb.CELLS + cb.REPORT_CELLS   # 8 deciding + 2 reported-only
 GATE_NAMES = cb.WATCH_GATES
 # pre-screen windows: P in [i-45, i-10] (explain_watch), pole_low in [P-40, P] -> [i-85, i-10]
@@ -185,6 +189,22 @@ def next_bar_status(cidx: np.ndarray, i: int, last_ci: int) -> str:
 def gap_fields(open_e: float, pivot: float, adr20: float) -> tuple:
     """(gap_open_pct, gap_over_1adr): open(E)/pivot - 1, and open(E) > pivot x (1 + adr20)."""
     return open_e / pivot - 1.0, bool(open_e > pivot * (1.0 + adr20))
+
+
+def breaks_out(high_e: float, pivot) -> bool:
+    """high(E) > pivot_K(D). A K with no level that night (`pivot` None: "tl" on a night with no down-sloping line)
+    never breaks out - comparing against None would raise, and a missing level must not read as a break."""
+    return pivot is not None and high_e > pivot
+
+
+def minute_fetch_delta(fetch_rows: list, cands: list, done: "dict | None", ks=NEW_FETCH_KS) -> list:
+    """The rows of the full fetch list (`{ticker, date, tier}`, same order and tier) that the NEW K's candidates
+    need and `_done.psv` does not already hold. `done` = `load_done_pairs` ({(date_iso, ticker): status}, any status
+    - ok or empty - counts as fetched) or None when no `_done.psv` exists (then nothing was fetched: every pair
+    the new K needs is in the delta)."""
+    need = {(c["ticker"], c["E"]) for c in cands if c["K"] in ks}
+    have = done or {}
+    return [r for r in fetch_rows if (r["ticker"], r["date"]) in need and (r["date"], r["ticker"]) not in have]
 
 
 def acct_pct(realized_r: float, width_pct: float) -> float:
@@ -763,7 +783,7 @@ def run_daily(args) -> None:
         adv20 = float(D.v[a + i - 19:a + i + 1].mean())
         for k in KS:
             pivot = w[f"pivot_{k}"]
-            if not D.h[e] > pivot:
+            if not breaks_out(float(D.h[e]), pivot):             # also: no tl level that night -> no tl candidate
                 continue
             gap_open, over1 = gap_fields(float(D.o[e]), pivot, w["adr20"])
             c = {"ticker": w["ticker"], "D": w["watch_date"], "E": cal[e_ci].isoformat(), "K": k,
@@ -843,6 +863,10 @@ def run_daily(args) -> None:
         fetch[key] = max(fetch.get(key, 0), tier)
     fetch_rows = [{"ticker": k[0], "date": k[1], "tier": v} for k, v in sorted(fetch.items(), key=lambda kv: (kv[0][1], kv[0][0]))]
     write_tsv(out / "minute_fetch_list.tsv", fetch_rows, ["ticker", "date", "tier"])
+    minutes_dir = Path(args.minutes) if args.minutes else data / "minutes"
+    done = load_done_pairs(minutes_dir) if minutes_dir.is_dir() else None
+    delta_rows = minute_fetch_delta(fetch_rows, cands, done)
+    write_tsv(out / "minute_fetch_list_delta.tsv", delta_rows, ["ticker", "date", "tier"])
     write_tsv(small / "universe_by_date.tsv", uni_rows,
               ["date", "universe_n", "members_with_group", "groups_ge10", "watch_rows", "phase_qqq_10_20_s1",
                "phase_qqq_10_20_s5", "phase_spy_qqq_50", "apollo_regime"])
@@ -887,6 +911,9 @@ def run_daily(args) -> None:
     hdr = ["cell"] + [f"{k}" for k in KS]
     say("  watch nights with the cell true (all splits):")
     say(table([[c] + [sum(1 for w in watch_rows if w[f'{c}_{k}']) for k in KS] for c in CELL_NAMES + ("C1_s5",)], hdr))
+    say("  tl vs the horizontal levels - the tl C0 population is a SUBSET (a night with no down-sloping line has no tl level), "
+        "so a tl-vs-k5 difference is level AND population:")
+    say(tl_population_text(watch_rows))
     say("")
     bad = [w for w in watch_rows if w["pole_hi_over_oc"] is not None and w["pole_hi_over_oc"] > POLE_BAD_HIGH_X]
     say(f"  DATA FLAG: {len(bad):,} watch rows on {len({w['ticker'] for w in bad}):,} tickers have a pole bar whose high is "
@@ -907,6 +934,11 @@ def run_daily(args) -> None:
     say(f"MINUTE FETCH LIST: {len(fetch_rows):,} unique (ticker, E) pairs over {len({r['date'] for r in fetch_rows}):,} dates "
         f"(tier 1 = any cell C1..C7/report cells true: {sum(1 for r in fetch_rows if r['tier']):,}; "
         f"non-retrigger only: {len({(c['ticker'], c['E']) for c in cands if c['retrigger'] == 0}):,})")
+    new_pairs = {(c["ticker"], c["E"]) for c in cands if c["K"] in NEW_FETCH_KS}
+    say(f"MINUTE FETCH DELTA (pairs the {'/'.join(NEW_FETCH_KS)} candidates need that _done.psv does not hold; "
+        f"{'no _done.psv under ' + str(minutes_dir) + ' - every pair counts as not fetched' if done is None else format(len(done), ',') + ' pairs in _done.psv'}): "
+        f"{len(delta_rows):,} pairs over {len({r['date'] for r in delta_rows}):,} dates "
+        f"(of {len(new_pairs):,} {'/'.join(NEW_FETCH_KS)} pairs; tier 1: {sum(1 for r in delta_rows if r['tier']):,}) -> {out / 'minute_fetch_list_delta.tsv'}")
     say(f"WALL TIME: {time.time() - T0:.0f}s total  " + "  ".join(f"{k}={v:.0f}s" for k, v in timers.items()))
     (small / "run_summary.txt").write_text("\n".join(log) + "\n")
 
@@ -959,6 +991,21 @@ def step0_text(cands: list) -> str:
                  f"non-retrigger C1 trades affected: holdout {sum(1 for c in c1_flag if c['split'] == 'holdout')}, "
                  f"discovery {sum(1 for c in c1_flag if c['split'] == 'discovery')}  [column pole_bad_high]")
     return "\n".join(lines)
+
+
+def tl_population_text(watch_rows: list) -> str:
+    """The `tl` line is drawn from the base's highest high (the pole top, or a later wick that topped it); it is
+    absent only while that high is under 3 sessions old, so its C0 population is a SUBSET of the horizontal levels'.
+    A tl-vs-k5 difference can therefore mix the entry LEVEL with a change of POPULATION - this table is printed so the
+    P4 read states the no-line count per split next to it (#702 P1c review, 10-17). `anchored on a later wick` = the
+    nights whose line starts at a base high above the pole top, not at the pole top itself."""
+    body = []
+    for split in ("discovery", "holdout"):
+        ws = [w for w in watch_rows if w["split"] == split]
+        body.append([split, f"{len(ws):,}", f"{sum(1 for w in ws if w['C0_k5']):,}", f"{sum(1 for w in ws if w['C0_tl']):,}",
+                     f"{sum(1 for w in ws if w['pivot_tl'] is None):,}",
+                     f"{sum(1 for w in ws if w.get('tl_anchor_idx') is not None and w['tl_anchor_idx'] != w['pole_idx']):,}"])
+    return table(body, ["split", "watch nights", "C0_k5", "C0_tl", "tl: no line", "tl anchored on a later wick"])
 
 
 def run_step0(args) -> None:
@@ -2357,7 +2404,7 @@ def main(argv=None) -> None:
     ap.add_argument("--check-prescreen", type=int, default=0, metavar="N",
                     help="daily: exhaustively prove the pre-screen on N tickers (real explain_watch on every night) and exit")
     ap.add_argument("--limit-tickers", type=int, default=0, help="daily, dev: random subset of tickers")
-    ap.add_argument("--minutes", help="minute/step0-entries/holdout: the minute-file directory (default DATA/minutes)")
+    ap.add_argument("--minutes", help="daily (fetch delta: reads _done.psv) / minute / step0-entries / holdout: the minute-file directory (default DATA/minutes)")
     ap.add_argument("--limit-dates", type=int, default=0, help="minute/step0-entries, dev: only the first N minute dates on disk (holdout refuses it)")
     ap.add_argument("--no-close", action="store_true", help="minute: skip the daily CLOSE variant (holdout refuses it)")
     ap.add_argument("--no-apollo", action="store_true",

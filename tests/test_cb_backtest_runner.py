@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime as dt
 import gzip
+import re
 from pathlib import Path
 
 import numpy as np
@@ -1030,7 +1031,7 @@ def _syn_dir(tmp_path, *, split="discovery", n_cands=1, with_done=True):
         for t in ("SPY", "X"):
             for k in range(len(bars)):
                 fh.write(f"{t},{bars.dates[k].isoformat()},{bars.o[k]},{bars.h[k]},{bars.l[k]},{bars.c[k]},{bars.v[k]}\n")
-    cands = [_m_cand(bars, e, split=split, K=k) for k in ("k5", "k10", "full")[:n_cands]]
+    cands = [_m_cand(bars, e, split=split, K=k) for k in ("k5", "k10", "full", "tl")[:n_cands]]
     for c in cands:
         c["pole_date"] = "p"
     _write_cands(data / "out" / "candidates.tsv", cands)
@@ -1482,3 +1483,168 @@ def test_minute_on_a_relabelled_candidates_file_computes_nothing(tmp_path):
     with pytest.raises(ValueError, match="relabelled or is stale"):
         rn.main(["minute", "--data", str(data), "--out", str(other), "--workers", "1", "--small-out", str(tmp_path / "small")])
     assert not list(other.glob("trades_*")) and not list(other.glob("entries_*"))
+
+
+# ═══ #702 P1c: K = "tl", the down-sloping trendline level ═════════════════════════════════════════
+class TestTrendlineK:
+    def test_ks_is_the_modules_four_levels_and_the_new_one_is_the_fetch_delta_k(self):
+        assert rn.KS == cb.PIVOT_KEYS == ("k5", "k10", "full", "tl") and rn.NEW_FETCH_KS == ("tl",)
+
+    def test_breaks_out_is_strictly_above_and_a_missing_level_never_breaks(self):
+        assert rn.breaks_out(10.01, 10.0) is True
+        assert rn.breaks_out(10.0, 10.0) is False and rn.breaks_out(9.99, 10.0) is False
+        assert rn.breaks_out(1e9, None) is False             # a night with no down-sloping line has no tl level: no TypeError, no break
+
+    def test_minute_fetch_delta_is_the_new_ks_pairs_not_already_in_done(self):
+        full = [{"ticker": t, "date": d, "tier": tier} for t, d, tier in
+                [("AAA", "2025-03-03", 0), ("BBB", "2025-03-03", 1), ("AAA", "2025-03-04", 0), ("CCC", "2025-03-05", 1)]]
+        cands = [{"ticker": "AAA", "E": "2025-03-03", "K": "k5"}, {"ticker": "AAA", "E": "2025-03-03", "K": "tl"},   # shared pair
+                 {"ticker": "BBB", "E": "2025-03-03", "K": "k5"},                                                    # k5 only: not new
+                 {"ticker": "AAA", "E": "2025-03-04", "K": "tl"}, {"ticker": "CCC", "E": "2025-03-05", "K": "tl"}]
+        done = {("2025-03-03", "AAA"): "ok", ("2025-03-05", "CCC"): "empty"}            # 'empty' counts as fetched too
+        got = rn.minute_fetch_delta(full, cands, done)
+        assert got == [{"ticker": "AAA", "date": "2025-03-04", "tier": 0}]              # the list's own order and tier
+        assert rn.minute_fetch_delta(full, cands, {}) == [r for r in full if (r["ticker"], r["date"]) != ("BBB", "2025-03-03")]
+        assert rn.minute_fetch_delta(full, cands, None) == rn.minute_fetch_delta(full, cands, {})    # no _done.psv: nothing fetched
+        assert rn.minute_fetch_delta(full, [c for c in cands if c["K"] != "tl"], {}) == []
+
+    def _daily_dir(self, tmp_path, *, with_done):
+        """DATA dir for the real daily stage: SPY + QQQ (flat), MRNA (the fixture's real bars) and WICK = MRNA with one
+        base high on 09-09 lifted over the pole high (a wick: the base stands, but no down-sloping line exists)."""
+        mrna = _fixture_bars()["MRNA"]
+        wick_h = mrna.h.copy()
+        k = mrna.dates.index(dt.date(2026, 9, 9))
+        wick_h[k] = 180.0                                            # pole high is 176.66; 09-09 is outside the pole window
+        wick = cb.daily_bars_from_arrays(mrna.dates, mrna.o, wick_h, mrna.l, mrna.c, mrna.v)
+        data = tmp_path / "data"
+        (data / "out").mkdir(parents=True)
+        n = len(mrna)
+        with gzip.open(data / "daily_closes_all.csv.gz", "wt") as fh:
+            for t, b in (("MRNA", mrna), ("WICK", wick)):
+                for j in range(n):
+                    fh.write(f"{t},{b.dates[j].isoformat()},{b.o[j]},{b.h[j]},{b.l[j]},{b.c[j]},{b.v[j]}\n")
+            for t in ("SPY", "QQQ"):
+                for j in range(n):
+                    px = 100.0 + 0.01 * j
+                    fh.write(f"{t},{mrna.dates[j].isoformat()},{px},{px * 1.001},{px * 0.999},{px},1000000000\n")
+        for name in ("small_pulls.psv", "cb702_splits.psv", "cb702_sic.psv"):
+            (data / name).write_text("")
+        if with_done:                                               # the first pull: MRNA's 09-17 session was fetched
+            (data / "minutes").mkdir()
+            (data / "minutes" / "_done.psv").write_text("2026-09-17|MRNA|390|ok\n")
+        return data
+
+    def _read(self, path, gz=False):
+        import csv
+        opener = gzip.open if gz else open
+        with opener(path, "rt", newline="") as fh:
+            return list(csv.DictReader(fh, delimiter="\t"))
+
+    def test_daily_stage_end_to_end_tl_candidates_and_the_fetch_delta(self, tmp_path, capsys):
+        data = self._daily_dir(tmp_path, with_done=False)
+        small = tmp_path / "small"
+        rn.main(["daily", "--data", str(data), "--workers", "1", "--small-out", str(small)])
+        txt = capsys.readouterr().out
+        out = data / "out"
+        watch = self._read(out / "watch.tsv.gz", gz=True)
+        cands = self._read(out / "candidates.tsv")
+        # the watch table carries the new level, its telemetry and a cell block per K
+        cols = set(watch[0])
+        assert {"pivot_tl", "pivot_tl_date", "tl_slope_pct", "tl_interior_touches", "C0_tl", "C1_tl", "C1_s5_tl"} <= cols
+        mrna = next(r for r in watch if r["ticker"] == "MRNA" and r["watch_date"] == "2026-09-16")
+        m = (148.93 - 176.66) / 19
+        assert float(mrna["pivot_tl"]) == pytest.approx(176.66 + 20 * m) and mrna["pivot_tl_date"] == "2026-09-16"
+        wick = next(r for r in watch if r["ticker"] == "WICK" and r["watch_date"] == "2026-09-16")
+        # WICK's base high (the 180 wick) tops the pole high, so its line is anchored on the wick, not the pole top
+        assert wick["pivot_tl"] != "" and wick["C0_tl"] == "1" and wick["C0_k5"] == "1" and float(wick["tl_slope_pct"]) <= 0
+        assert wick["tl_anchor_idx"] != wick["pole_idx"]
+        # candidates: MRNA breaks out of all four levels on 09-17; WICK only of k5 (its k10/full are the 180 wick)
+        on = {(c["ticker"], c["K"]): c for c in cands if c["D"] == "2026-09-16"}
+        assert {k for (t, k) in on if t == "MRNA"} == {"k5", "k10", "full", "tl"}
+        wick_e = next(r for r in cands if r["ticker"] == "WICK" and r["D"] == "2026-09-16")["high_E"]
+        assert {k for (t, k) in on if t == "WICK"} == {"k5"} | ({"tl"} if float(wick_e) > float(wick["pivot_tl"]) else set())
+        tl = on[("MRNA", "tl")]
+        assert float(tl["pivot"]) == pytest.approx(176.66 + 20 * m) and tl["pivot_date"] == "2026-09-16" and tl["E"] == "2026-09-17"
+        assert tl["pole_date"] == on[("MRNA", "k5")]["pole_date"] == "2026-08-19"          # the spec key is (ticker, pole_date, K)
+        # one trade per base: the base's FIRST tl break (by E) is the trade, every later one is a retrigger. By hand, the first
+        # is D = 09-03 -> E = 09-04: the touch is 09-02 (156.4151, 10 sessions after the pole), m = (156.4151 - 176.66) / 10,
+        # and E is the 12th session after the pole, so the level is 176.66 + 12 m = 152.3661; E's high 154.69 clears it
+        base = sorted((c for c in cands if c["ticker"] == "MRNA" and c["K"] == "tl" and c["pole_date"] == "2026-08-19"),
+                      key=lambda c: c["E"])
+        assert [c["retrigger"] for c in base] == ["0"] + ["1"] * (len(base) - 1) and tl is base[-1]
+        first = base[0]
+        assert (first["D"], first["E"], first["pivot_date"]) == ("2026-09-03", "2026-09-04", "2026-09-02")
+        assert float(first["pivot"]) == pytest.approx(176.66 + 12 * (156.4151 - 176.66) / 10) == pytest.approx(152.3661, abs=5e-5)
+        assert float(first["high_E"]) == 154.69 > float(first["pivot"])
+        # invariants over EVERY tl row: a level existed that night and E's high cleared it; no candidate on a no-line night
+        no_line = {(r["ticker"], r["watch_date"]) for r in watch if r["pivot_tl"] == ""}
+        for c in cands:
+            if c["K"] == "tl":
+                assert (c["ticker"], c["D"]) not in no_line and float(c["high_E"]) > float(c["pivot"])
+        # the delta: nothing was fetched yet, so every tl pair is in it; full list = the union incl. tl pairs
+        delta = self._read(out / "minute_fetch_list_delta.tsv")
+        tl_pairs = {(c["ticker"], c["E"]) for c in cands if c["K"] == "tl"}
+        assert {(r["ticker"], r["date"]) for r in delta} == tl_pairs and ("MRNA", "2026-09-17") in tl_pairs
+        full = {(r["ticker"], r["date"]) for r in self._read(out / "minute_fetch_list.tsv")}
+        assert tl_pairs <= full
+        assert list(delta[0]) == ["ticker", "date", "tier"]
+        assert f"MINUTE FETCH DELTA" in txt and f"{len(delta):,} pairs" in txt
+        assert "no _done.psv" in txt
+        # the daily-stage STEP 0 carries tl: a column group in the composition tables and a count in the go/no-go line
+        # (a hardcoded K tuple in step0_text / _step0_block would drop these)
+        assert "tl:trades" in txt and "tl:first" in txt and "tl:gap>1adr" in txt
+        assert re.search(r"k5: \d+, k10: \d+, full: \d+, tl: \d+", txt.split("GO/NO-GO input, SPEC key", 1)[1].splitlines()[0])
+        # the tl-vs-horizontal population table: the no-line night count per split, read off the watch table
+        # (the WICK nights are anchored on the wick that topped the pole high)
+        assert "tl: no line" in txt and "tl anchored on a later wick" in txt
+        # the fixture's 2026 nights all fall in the HOLDOUT split (D > 2024-12-31); the discovery row exists and is empty
+        rows = {ln.split()[0]: [int(x.replace(",", "")) for x in ln.split()[1:]]
+                for ln in txt.splitlines() if ln.split()[:1] in (["discovery"], ["holdout"]) and len(ln.split()) == 6}
+        assert rows["discovery"] == [0, 0, 0, 0, 0]
+        h = [w for w in watch if w["split"] == "holdout"]
+        assert rows["holdout"] == [
+            len(h), sum(w["C0_k5"] == "1" for w in h), sum(w["C0_tl"] == "1" for w in h),
+            sum(w["pivot_tl"] == "" for w in h),
+            sum(w["tl_anchor_idx"] != "" and w["tl_anchor_idx"] != w["pole_idx"] for w in h)]
+        n, c0_k5, c0_tl, no_line, wick_anchored = rows["holdout"]
+        # no-line nights = the highest high under 3 sessions old; the WICK nights are anchored on the wick, not lost
+        assert no_line > 0 and wick_anchored > 0 and c0_tl < c0_k5 and c0_k5 - c0_tl == no_line
+
+    def test_the_fetch_delta_leaves_out_what_the_first_pull_already_fetched(self, tmp_path, capsys):
+        data = self._daily_dir(tmp_path, with_done=True)
+        rn.main(["daily", "--data", str(data), "--workers", "1", "--small-out", str(tmp_path / "small")])
+        txt = capsys.readouterr().out
+        out = data / "out"
+        cands = self._read(out / "candidates.tsv")
+        delta = {(r["ticker"], r["date"]) for r in self._read(out / "minute_fetch_list_delta.tsv")}
+        tl_pairs = {(c["ticker"], c["E"]) for c in cands if c["K"] == "tl"}
+        assert ("MRNA", "2026-09-17") in tl_pairs and ("MRNA", "2026-09-17") not in delta        # in _done.psv
+        assert delta == tl_pairs - {("MRNA", "2026-09-17")}
+        assert "1 pairs in _done.psv" in txt
+
+    def test_the_minute_stage_the_step0_and_the_report_all_carry_tl(self, tmp_path, capsys):
+        data, bars, e, cands = _syn_dir(tmp_path, n_cands=4)
+        assert [c["K"] for c in cands] == ["k5", "k10", "full", "tl"]
+        _close_file(data, bars, e, cands)
+        small = tmp_path / "small"
+        rn.main(["minute", "--data", str(data), "--workers", "1", "--small-out", str(small)])
+        capsys.readouterr()
+        trades = pd_read(data / "out" / "trades_discovery.tsv.gz")
+        entries = pd_read(data / "out" / "entries_discovery.tsv.gz")
+        assert set(trades.K) == {"k5", "k10", "full", "tl"} and set(entries.K) == {"k5", "k10", "full", "tl"}
+        tl5 = trades[(trades.K == "tl") & (trades.variant == "orh5")]
+        assert sorted(tl5.arm.dropna()) == sorted(rn.ALL_ARMS) and tl5.mature.eq(1).all()
+        rn.main(["report", "--data", str(data), "--small-out", str(small)])
+        import pandas as pd
+        rep = pd.read_csv(small / "discovery_report.tsv", sep="\t", keep_default_na=False, na_values=[""])
+        r = rep[(rep.key == "spec") & (rep.cell == "C1") & (rep.K == "tl") & (rep.variant == "orh5") & (rep.arm == cb.PRIMARY_ARM)]
+        assert len(r) == 1 and r.iloc[0].n == 1
+        txt = (small / "discovery_report.txt").read_text()
+        assert "tl" in txt.split("HEADLINE", 1)[1]
+        # STEP 0 on the holdout: the K appears in the composition and in the go/no-go line
+        hdata, _hb, _he, hcands = _syn_dir(tmp_path / "h", split="holdout", n_cands=4)
+        rn.main(["step0-entries", "--data", str(hdata), "--workers", "1", "--small-out", str(tmp_path / "hsmall")])
+        step0 = capsys.readouterr().out
+        assert "orh5: k5=1, k10=1, full=1, tl=1" in step0 and "tl     orh5" in step0
+        comp = self._read(hdata / "out" / "entries_holdout_composition.tsv")
+        assert {r["K"] for r in comp} == {"k5", "k10", "full", "tl"} and len(comp) == 4 * len(rn.MINUTE_VARIANTS)
