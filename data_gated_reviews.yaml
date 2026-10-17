@@ -15754,6 +15754,46 @@ reviews:
       its audit row. Report what fired and what did not; a path that failed is a P0 back on the board.
       Any change to WHAT the stop is stays his (THE LINE).
     cross_refs: ["docs/task_closes.md", "scripts/probes/_646_close_1013/"]
+  - review_id: shortlist_crowded_morning_first_694
+    title: "#694 — the first crowded morning (more than 20 gap names) since the 10-12 volume-ranking fix"
+    question: >-
+      #694's last DoD clause: "the first weekday with more than 20 gap names shows ranks ordered by volume, not A→Z".
+      Moved to a predicate 2026-10-17 on his "Fix all of them per rec" (board audit), so the task no longer needs
+      re-dating. On the first such day, read mi_ep_shortlist_shadow for it: within a composite tier, the shortlisted
+      names have higher adv x prev_close than the cut names, and the cut set is NOT the alphabetically-last names;
+      no-record names are ordered by pre-market dollar volume. Then close #694 on that read.
+      WOULD-FAIL-IF: the cut set is the alphabetically-last names within a tier, or adv_source reads 'pending' on rows
+      that had a complete prior score date.
+    predicate_sql: |
+      SELECT count(DISTINCT scan_date) FROM mi_ep_shortlist_shadow
+       WHERE board_n > 20 AND scan_date >= DATE '2026-10-12'
+    threshold: 1
+    zero_verdict: "2026-10-17 WAITING — 0 crowded days since the 10-12 fix; 2 ever (09-17 max board 23, 10-05 max 27), about 6% of scan days."
+    discriminates_on: [mi_ep_shortlist_shadow.board_n, mi_ep_shortlist_shadow.scan_date]
+    earliest_review_date: 2026-10-17
+    status: pending
+    kind: tripwire
+    added_on: 2026-10-17
+    can_fire:
+      predicate_runs: >-
+        Run on prod 2026-10-17: 0 as written; widened to all history it returns 2 days (09-17, 10-05), so board_n and
+        the date floor behave.
+      nonzero_possible: >-
+        The EP scan writes mi_ep_shortlist_shadow on every pre-open and in-session tick (8,165 rows 08-24..10-16);
+        board_n is the number of gap names on that tick and reached 23 and 27 on the two crowded days.
+      lane_live: >-
+        MAGNA53 EP is the live setup; the shortlist shadow wrote rows every scan day through 10-16.
+      threshold_vs_observed: >-
+        Threshold 1 against 0 since 10-12; crowded mornings run about 6% of scan days (2 of ~35).
+      era_scoped: >-
+        From 2026-10-12, the first scan day on the fixed ranking (deployed 10-10, verified 10-12); 09-17 and 10-05 ran on
+        the old A-to-Z order and are excluded.
+      population_actionable: >-
+        Each counted day is exactly the day the action reads; the shadow rows carry rank_by_prescore,
+        shortlisted_by_prescore, adv, adv_source and prev_close per name.
+      instrument_trusted: >-
+        The rows are written by run_ep_scan itself at the ranking step (the 10-12 verify matched adv to the prior
+        night's adv_20 on all 106 rows).
   - review_id: plus8r_two_share_first_event_698
     title: "#698 — the first live 2-share MAGNA53 position to reach +8R since the 10-10 helper"
     question: >-
