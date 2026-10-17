@@ -65,6 +65,7 @@ setup's criteria, change log and findings.
 | **Exit counterfactuals — the ONE recorder (every exit arm on every MAGNA53 fill) + the ONE read + which reviews it absorbed (#631)** | `docs/setups/exit_discipline.md` §"Exit counterfactuals — ONE recorder, ONE read" |
 | 9M EP + Sugar Baby | `docs/setups/ninem.md` |
 | HTF — high tight flag | `docs/setups/htf.md` |
+| **Consolidation Breakout (#702)** — Qullamaggie's breakout as a SETUP (buys the opening-range high on the breakout day, stops at the low of the day): the definition table with its S/R/B sources, the cells, entries/exits, the forward SHADOW recorder (`mi_consolidation_breakout_*`, job 17:48 ET), the deviation list, the paper-path map | `docs/setups/consolidation_breakout.md` |
 | Undercut & rally | `docs/setups/undercut_rally.md` |
 | Wick fill (**RETIRED 2026-10-17** — history only; operator: "kill wick fill, remove that setup completely") | `docs/setups/wick_fill.md` |
 | Parabolic short | `docs/setups/parabolic_short.md` |

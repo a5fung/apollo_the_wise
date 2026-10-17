@@ -63,6 +63,7 @@ _REMOVED_SINCE_LEDGER = {
 # (a job that has rows in the ledger was not added since it). {job_id: why}.
 _ADDED_SINCE_LEDGER = {
     "ladder_watchdog": "#312 build 2026-10-15: new 16:17 ET mon-fri job (ADR 0022 L2, dark)",
+    "consolidation_breakout_shadow": "#702 P6 build 2026-10-17: new 17:48 ET mon-fri job (Consolidation Breakout forward shadow, dark)",
 }
 
 

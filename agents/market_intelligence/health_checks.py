@@ -1739,6 +1739,12 @@ _DETECTOR_LIVENESS_TABLES: tuple[tuple[str, str, str, str | None], ...] = (
     # noise class this registry avoids — the watch table covers the writer, and both
     # tables are written by the same job.
     ("mi_delayed_entry_watch", "delayed-entry watch lane (#327)", "session_date", None),
+    # #702 P6 (2026-10-17): the Consolidation Breakout forward shadow - SILENT on a normal night (a crash
+    # pages through audit_wrap; a `success` run whose writer wrote nothing is the one failure audit_wrap
+    # cannot see). The watch table writes ~200 rows every market night, keyed on the plain-DATE business
+    # column `scan_date` (created_at/updated_at are timestamptz and would silently never be checked).
+    # The entry / exit tables are deliberately NOT registered: breakouts legitimately go quiet.
+    ("mi_consolidation_breakout_watch", "Consolidation Breakout watch (#702)", "scan_date", None),
     # #533 slot-ranking watch (2026-08-30): written on EVERY process_new_alerts_live
     # invocation with >=1 HIGH alert on the board, and SILENT by convention (no
     # Telegram on any path) — so this registry is its only watchdog. Keyed on the

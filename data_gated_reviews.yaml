@@ -15987,3 +15987,44 @@ reviews:
       never the bidder; its flag row must read `unqualified` with reason `mna_filter:<source>`, and it must not
       appear in that night's 17:25 digest. A wrong block is a P1 back on the board.
     cross_refs: ["docs/task_closes.md", "scripts/probes/_eve_1016/", "scripts/probes/_598_close_1016/"]
+  - review_id: consolidation_breakout_forward_read
+    title: "#702 Consolidation Breakout — 30 forward C1 entries have settled on the primary exit; read the forward result"
+    question: >-
+      The Consolidation Breakout forward shadow (job consolidation_breakout_shadow, 17:48 ET, deployed as #702 P6) records
+      every watch name's breakout, its simulated fill and stop, and all 15 exit arms. Once 30 distinct bases have a MATURE
+      primary-arm exit on a C1 entry (Qullamaggie's criteria + the forwarded QQQ 10/20 phase), what do they show - the tail
+      first (share at 5R and 10R, mean without the top 5), then the mean R with a month-block interval and the P&L in ADR
+      units - against C0 and against the backtest's holdout result on the same entry and exit? That read is the evidence the
+      operator's paper decision for this setup rests on (live stays his sign-off).
+    predicate_sql: |
+      -- Distinct bases (ticker, pole date) with a MATURE primary-arm exit on a filled, first-break (retrigger = 0) 5-minute
+      -- opening-range-high entry whose watch night met C1. K-agnostic until the P4 read freezes the primary pivot K; the
+      -- DISTINCT collapses the same base counted under k5 / k10 / full / tl.
+      SELECT count(DISTINCT (e.ticker, e.pole_date))
+        FROM mi_consolidation_breakout_exit x
+        JOIN mi_consolidation_breakout_entry e ON e.id = x.entry_id
+       WHERE x.arm = 'p33_s3_t10' AND x.mature
+         AND e.entry_variant = 'orh5' AND e.status = 'filled' AND e.retrigger = 0
+         AND (e.cells->>'C1')::boolean
+    threshold: 30
+    earliest_review_date: 2026-11-23
+    status: pending
+    kind: accrual
+    added_on: 2026-10-17
+    discriminates_on: [mi_consolidation_breakout_exit.arm, mi_consolidation_breakout_exit.mature, mi_consolidation_breakout_entry.entry_variant, mi_consolidation_breakout_entry.status, mi_consolidation_breakout_entry.retrigger, mi_consolidation_breakout_entry.cells]
+    can_fire:
+      predicate_runs: "To be run on prod at deploy (the main loop fills this in then): the three tables do not exist before the deploy, so the first honest reading is the verify-live night after it."
+      nonzero_possible: "Yes. consolidation_breakout_shadow.py writes mi_consolidation_breakout_entry (record_entries) and _exit (walk_exits); the job is registered in agents/market_intelligence/scheduler.py (id consolidation_breakout_shadow, 17:48 ET mon-fri) and classified in INTELLIGENCE_OWNED_JOB_IDS. tests/test_cb_shadow_pg.py runs the job on a real Postgres and shows mature primary-arm rows (stopped / trailed / day-0 stops) being written."
+      lane_live: "n/a - a shadow recorder with no strategy row and no lane; it is live when the job is registered and the 17:00 nightly pull has run."
+      threshold_vs_observed: "30 against 0 today. The backtest's HOLDOUT (2025-01-01 to 2026-10-16, ~21 months) holds 33 C1 trades under the spec key for k5 - about 1.5 a month - so 30 MATURE C1 primary-arm entries is roughly a 1.5-year wait at that rate (looser cells C3 100, C4 285, C5 86, C7 63 accrue 2-9 times faster). The bar is the plan's; whether to wait on C1 or read a looser cell sooner is the operator's call, flagged in docs/setups/consolidation_breakout.md."
+      era_scoped: "Every row is written by one recorder under one frozen module (consolidation_breakout.py is hashed at the P4 freeze); the cell flags are read from the watch night's own stored cells JSON, so a later threshold edit cannot re-label an old row. The minute feed (iex vs the backtest's sip) is recorded per row (feed) and is a stated difference, not an era."
+      population_actionable: "The action reads exactly these rows - filled, first-break, 5-minute opening-range entries with a mature primary-arm exit and C1 true on their watch night - and then every other cell and arm of the same entries; retriggers are reported apart, not counted."
+      instrument_trusted: "mi_consolidation_breakout_exit / _entry, written by one job; its plumbing is pinned against the offline runner's own functions (tests/test_cb_shadow.py) and its SQL against a real Postgres (tests/test_cb_shadow_pg.py). Known caveats: thin IEX minutes raise the abstain share; the SIC cache fills over the first week so group cells are thin until then."
+    action_when_ready: >-
+      Run the forward read on the mature entries (script from the P5 holdout read, pointed at the forward tables): n; share at
+      >= 5R and >= 10R; mean R without the top 5; mean R with a month-block 95% interval; mean P&L in ADR units; by month and by
+      phase - for C1 and for C0 on the same entry and exit - and the same table for the backtest's holdout. Report the abstain
+      share by reason (the IEX feed shows up there) before any R. Then bring the operator ONE decision: paper yes/no for this setup
+      on its own evidence, with the cell and entry it would use. Live is his sign-off and not asked here.
+    cross_refs: ["task #702", "docs/setups/consolidation_breakout.md", "docs/methodology/operator_shared_notes.md", "scripts/probes/_cb_backtest/README.md"]
+    zero_verdict: "2026-10-17 WAITING — born with the recorder: the tables are empty until the first deploy night; a mature C1 primary-arm exit needs a C1 breakout and then the primary walk to terminate (trail or stop), typically 2-6 weeks after the break."

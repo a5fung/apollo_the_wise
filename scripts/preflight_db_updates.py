@@ -35,6 +35,7 @@ from agents.market_intelligence.db import (
     ECOSYSTEM_PROPOSAL_INSERT_SQL, ECOSYSTEM_DYNAMIC_INSERT_SQL,
     LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
     GRADE_CORPUS_INSERT_SQL, UNIVERSE_FLOOR_SHADOW_INSERT_SQL, _TV_NEWS_SHADOW_UPSERT_SQL,
+    CB_ENTRY_UPSERT_SQL, CB_EXIT_UPSERT_SQL, CB_SIC_UPSERT_SQL, CB_WATCH_UPSERT_SQL,
     get_pool)
 
 logger = logging.getLogger(__name__)
@@ -420,6 +421,26 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
         # here would leave the table empty with no downstream error.
         "ep_theme_belonging.record_ep_theme_belonging_shadow: theme belonging list-vs-belonging record",
         EP_THEME_BELONGING_SHADOW_UPSERT_SQL,
+    ),
+    (
+        # #702 P6 (2026-10-17): the Consolidation Breakout forward shadow's four writers. Nightly,
+        # SILENT, and the only place the setup's forward record lands - a type-deduction failure
+        # (the entry/watch upserts bind jsonb params beside plain ones, the entry upsert carries a
+        # conditional DO UPDATE ... WHERE) would leave the tables empty with no downstream error.
+        "db.cb_upsert_watch_rows: #702 Consolidation Breakout watch rows (nightly)",
+        CB_WATCH_UPSERT_SQL,
+    ),
+    (
+        "db.cb_upsert_entry_rows: #702 Consolidation Breakout entry rows (guarded no_minutes retry)",
+        CB_ENTRY_UPSERT_SQL,
+    ),
+    (
+        "db.cb_upsert_exit_rows: #702 Consolidation Breakout exit rows (a mature row is final)",
+        CB_EXIT_UPSERT_SQL,
+    ),
+    (
+        "db.cb_upsert_sic_rows: #702 Consolidation Breakout SIC cache",
+        CB_SIC_UPSERT_SQL,
     ),
 ]
 

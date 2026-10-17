@@ -182,6 +182,10 @@ def test_module_constant_covers_the_required_tables():
         # watchdog. The trigger table is deliberately absent (rungs legitimately
         # go quiet; the watch table covers the writer).
         "mi_delayed_entry_watch",
+        # 2026-10-17 (#702 P6): the Consolidation Breakout forward shadow's watch table - SILENT on a
+        # normal night; a `success` run with a dead writer is the one failure audit_wrap cannot see.
+        # The entry / exit tables are deliberately absent (breakouts legitimately go quiet).
+        "mi_consolidation_breakout_watch",
         # 2026-08-30 (#533): the slot-ranking watch — a SILENT fire-and-forget
         # writer on the ORB entry path (no Telegram on any path), the exact
         # can-fail-100%-silently class this registry exists for.
@@ -245,6 +249,9 @@ def test_new_tables_key_off_a_date_column_not_a_timestamp():
     # #327 (2026-08-30): session_date is the lane's plain-DATE business column —
     # created_at/updated_at here are timestamptz and would silently never be checked.
     assert by_table["mi_delayed_entry_watch"] == "session_date"
+    # #702 P6 (2026-10-17): scan_date is the watch table's plain-DATE business column - created_at /
+    # updated_at are timestamptz and would silently never be checked.
+    assert by_table["mi_consolidation_breakout_watch"] == "scan_date"
     # #533 (2026-08-30): alert_date is the watch's plain-DATE business column —
     # recorded_at/created_at are timestamptz and would silently never be checked.
     assert by_table["mi_ep_slot_rank_shadow"] == "alert_date"

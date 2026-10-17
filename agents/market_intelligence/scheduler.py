@@ -203,6 +203,7 @@ INTELLIGENCE_OWNED_JOB_IDS = frozenset({
     "sugar_babies_cohort_refresh", "position_mgmt_judge",
     "chart_axis_shadow", "chart_axis_shadow_weekly_digest", "kill_scale_band_eval",
     "ladder_watchdog",  # #312 ADR 0022 L2 (2026-10-15) — DARK nightly demotion-trigger read per paper/live strategy; registry + mi_live_trades READ, ONE audit row, no phase/sizing/order write, no broker, SILENT (no Telegram) — same DB-only shape as kill_scale_band_eval
+    "consolidation_breakout_shadow",  # #702 P6 (2026-10-17) — Consolidation Breakout forward SHADOW; mi_daily_closes + Alpaca minute-bar READ, four shadow tables + ONE audit row WRITTEN, no phase/sizing/order write, no broker import (gate 5j), SILENT (no Telegram on a normal night) — same DB-only shape as ladder_watchdog
     # data / RS / regime / crypto
     "nightly_data_pull", "baseline_refresh", "minute_volume_curves_refresh",
     "crypto_category_refresh", "crypto_nightly_ingest",
@@ -5365,6 +5366,19 @@ async def _ladder_watchdog_job():
                 f"{res['would_demote_count']} would demote, acted: none")
 
 
+async def _consolidation_breakout_shadow_job():
+    """17:48 ET mon-fri — the Consolidation Breakout forward SHADOW recorder (#702 P6, no money, SILENT): last
+    night's watch rows that broke out today get their entry rows, tonight's watch list is built, every open
+    entry is walked over all exit arms, ONE audit row. The date comes from `et_today()` (the #672 recovery pin
+    reaches it); a crash propagates to `audit_wrap`, which is the one Telegram. Imported INSIDE the function:
+    `scheduler.py` is on the execution image's module list and execution must never load this module."""
+    from agents.market_intelligence.collector import et_today
+    from agents.market_intelligence.consolidation_breakout_shadow import run_consolidation_breakout_shadow
+    res = await run_consolidation_breakout_shadow(et_today())
+    logger.info(f"consolidation breakout shadow: {res['watch_n']} watch row(s), {res['entry_rows']} entry row(s), "
+                f"{res['exit_rows']} exit row(s), skipped={res['skipped']}, timed_out={res['timed_out']}")
+
+
 async def _strength_spread_alert_job():
     """Run at 17:40 ET mon-fri — after the 17:00 nightly_data_pull refreshes
     mi_daily_closes (the input is DAILY CLOSES, so this is the earliest hour the reading can
@@ -7870,6 +7884,18 @@ def start_scheduler() -> AsyncIOScheduler:
         audit_wrap(_ladder_watchdog_job, "ladder_watchdog"),
         CronTrigger(hour=16, minute=17, day_of_week="mon-fri", timezone="America/New_York"),
         id="ladder_watchdog",
+        replace_existing=True,
+        misfire_grace_time=600,
+    )
+
+    # #702 P6 — Consolidation Breakout forward SHADOW: 17:48 ET mon-fri, after the 17:00 nightly pull has
+    # refreshed mi_daily_closes (45-min hard cap -> 17:45 at the latest) and the 17:46 sell-discipline
+    # recorder. The spec said 17:50, but exit_path_shadow and chart_axis_shadow already sit there; 17:48 is
+    # free. SILENT (no Telegram on a normal night), no order path, no strategy row. Intelligence-owned.
+    _scheduler.add_job(
+        audit_wrap(_consolidation_breakout_shadow_job, "consolidation_breakout_shadow"),
+        CronTrigger(hour=17, minute=48, day_of_week="mon-fri", timezone="America/New_York"),
+        id="consolidation_breakout_shadow",
         replace_existing=True,
         misfire_grace_time=600,
     )

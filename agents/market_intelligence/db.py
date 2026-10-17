@@ -5461,6 +5461,11 @@ async def initialize_schema() -> None:
                 ON mi_live_orders(purpose);
         """)
 
+        # #702 P6 — Consolidation Breakout forward SHADOW tables (watch / entry / exit + the SIC cache).
+        # One module-level DDL string (`_CB_SHADOW_DDL`, end of this file), idempotent: the schema init and
+        # `tests/test_cb_shadow_ddl.py` run the very same text.
+        await conn.execute(_CB_SHADOW_DDL)
+
         # ── One-time cleanup: delete auto-generated descriptions for tickers ──
         # that now have authoritative static entries in universe.py.
         # These corrupted rows were created by _ensure_descriptions when
@@ -18953,3 +18958,413 @@ async def get_tv_news_shadow_trailing_item_counts(days: int, before: "date") -> 
               AND checked_at < $1::date
         """, before, str(days))
     return [r["tv_item_count"] for r in rows]
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════════
+# #702 P6 — CONSOLIDATION BREAKOUT forward SHADOW (no money): watch / entry / exit + the SIC cache.
+#
+# Owner doc: docs/setups/consolidation_breakout.md. The job body is
+# agents/market_intelligence/consolidation_breakout_shadow.py; every decision it makes is a call into
+# the pure module agents/market_intelligence/consolidation_breakout.py.
+#
+# ⚠ These are NOT trade tables: NO `account_mode` column, by design. Nothing here is an order, a
+# position or a fill - the "fill" columns are a SIMULATED entry price recorded for the read, written by a
+# job with no broker import (deploy gate 5j), and no `mi_live_*` / `mi_strategies` row is touched. The
+# account_mode invariant (CLAUDE.md: "account_mode filter on every trade query") governs trade queries;
+# a shadow table that records a hypothetical has none to filter on.
+# ═════════════════════════════════════════════════════════════════════════════════════════════════
+_CB_SHADOW_DDL = """
+    -- One row per (ticker, watch night D): EVERY night that passes the C0 structural gates
+    -- (cb.explain_watch), with all features as JSON and the cell flags per pivot key K.
+    CREATE TABLE IF NOT EXISTS mi_consolidation_breakout_watch (
+        ticker           TEXT NOT NULL,
+        scan_date        DATE NOT NULL,                 -- the watch night D (plain DATE: liveness is keyed on it)
+        pole_date        DATE NOT NULL,                 -- the pole top P (one trade per (ticker, pole_date, K))
+        pole_high        DOUBLE PRECISION,
+        pivot_k5         DOUBLE PRECISION,              -- highest high of the last 5 sessions ending D
+        pivot_k5_date    DATE,
+        pivot_k10        DOUBLE PRECISION,
+        pivot_k10_date   DATE,
+        pivot_full       DOUBLE PRECISION,              -- highest high of the whole base
+        pivot_full_date  DATE,
+        pivot_tl         DOUBLE PRECISION,              -- the down-sloping trendline projected to D+1; NULL = no line that night
+        pivot_tl_date    DATE,
+        adr20            DOUBLE PRECISION,              -- ADR20 as a FRACTION of the close
+        close            DOUBLE PRECISION,
+        rs_best          DOUBLE PRECISION,              -- max of the 21/63/126-session percentiles across the universe
+        rs_all           DOUBLE PRECISION,              -- min of them (NULL if any is NULL)
+        grp_pct          DOUBLE PRECISION,              -- group (SIC-2) percentile; NULL = no usable group that night
+        phase_qqq_10_20  BOOLEAN,                       -- primary bull phase (slope 1)
+        phase_qqq_10_20_s5 BOOLEAN,                     -- slope-5 sensitivity
+        phase_spy_qqq_50 BOOLEAN,                       -- the alternative phase (cell C7)
+        universe_n       INT,                           -- the RS denominator that night
+        features         JSONB NOT NULL,                -- everything cb.explain_watch returned
+        cells            JSONB NOT NULL,                -- {K: {C0..C7, C1_no_retrace, C1_no_tightening, C1_s5}}
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (ticker, scan_date)
+    );
+    CREATE INDEX IF NOT EXISTS idx_cb_watch_scan_date ON mi_consolidation_breakout_watch (scan_date DESC);
+
+    -- One row per (watch row, K, entry variant) the breakout day E crossed: the simulated fill, the stop,
+    -- or the NAMED reason there was none. An abstain is a row, never a silent gap.
+    CREATE TABLE IF NOT EXISTS mi_consolidation_breakout_entry (
+        id                 BIGSERIAL PRIMARY KEY,
+        ticker             TEXT NOT NULL,
+        watch_date         DATE NOT NULL,               -- D
+        break_date         DATE NOT NULL,               -- E, the first session whose high cleared the pivot
+        k                  TEXT NOT NULL,               -- k5 | k10 | full | tl
+        pole_date          DATE NOT NULL,
+        entry_variant      TEXT NOT NULL,               -- orh1 | orh5 | orh60 | pivot | close
+        status             TEXT NOT NULL,               -- filled | no_trigger | abstain
+        reason             TEXT,                        -- the named abstain / no-trigger reason
+        pivot              DOUBLE PRECISION,
+        level              DOUBLE PRECISION,
+        fill               DOUBLE PRECISION,
+        stop               DOUBLE PRECISION,
+        width_pct          DOUBLE PRECISION,            -- (fill - stop) / fill
+        adr20              DOUBLE PRECISION,
+        gap_pct            DOUBLE PRECISION,            -- open(E) / pivot - 1
+        gap_over_1adr      BOOLEAN,
+        fill_minute        INT,
+        day0_stopped       BOOLEAN,                     -- the rest of day E walked against the stop
+        day0_exit_price    DOUBLE PRECISION,
+        day0_exit_minute   INT,
+        retrigger          INT NOT NULL DEFAULT 0,      -- spec key (ticker, pole_date, K): 1 = a later break of a base already broken
+        retrigger_chain    INT NOT NULL DEFAULT 0,      -- drift-robust key: poles <= 3 sessions apart are ONE base
+        base_id            TEXT,
+        cells              JSONB NOT NULL,              -- the watch night's cell flags for this K
+        first_cells        JSONB,                       -- {cell: 0|1} - the first break of the base on which THAT cell held
+        first_chain_cells  JSONB,
+        minutes_state      TEXT,                        -- ok | no_minutes | invalid | n/a (close variant, split abstain)
+        feed               TEXT,                        -- the Alpaca data feed the minutes came from (iex | sip)
+        created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (ticker, pole_date, k, entry_variant, break_date)
+    );
+    CREATE INDEX IF NOT EXISTS idx_cb_entry_break_date ON mi_consolidation_breakout_entry (break_date DESC);
+    CREATE INDEX IF NOT EXISTS idx_cb_entry_ticker_base ON mi_consolidation_breakout_entry (ticker, pole_date, k);
+
+    -- One row per (entry, exit arm), recomputed nightly from stored daily bars until MATURE, so a restart
+    -- can never corrupt it.
+    CREATE TABLE IF NOT EXISTS mi_consolidation_breakout_exit (
+        entry_id        BIGINT NOT NULL REFERENCES mi_consolidation_breakout_entry (id) ON DELETE CASCADE,
+        arm             TEXT NOT NULL,
+        status          TEXT NOT NULL,                  -- the walk's status, or `unbookable`
+        realized_r      DOUBLE PRECISION,
+        pnl_adr         DOUBLE PRECISION,
+        sessions_held   INT,
+        events          JSONB NOT NULL DEFAULT '[]'::jsonb,
+        n_fwd           INT,                            -- forward sessions the walk was given
+        mature          BOOLEAN NOT NULL DEFAULT FALSE, -- a terminal exit, or the horizon reached with its next open
+        reason          TEXT,
+        last_bar_date   DATE,
+        updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (entry_id, arm)
+    );
+    CREATE INDEX IF NOT EXISTS idx_cb_exit_arm_mature ON mi_consolidation_breakout_exit (arm, mature);
+
+    -- SIC cache: Polygon /v3/reference/tickers/{t}, filled lazily and capped per night. `status`: ok | none.
+    CREATE TABLE IF NOT EXISTS mi_consolidation_breakout_sic (
+        ticker           TEXT PRIMARY KEY,
+        sic_code         TEXT,
+        sic2             TEXT,
+        sic_description  TEXT,
+        ticker_type      TEXT,
+        status           TEXT NOT NULL,
+        fetched_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+"""
+
+CB_WATCH_COLS = (
+    "ticker", "scan_date", "pole_date", "pole_high", "pivot_k5", "pivot_k5_date", "pivot_k10",
+    "pivot_k10_date", "pivot_full", "pivot_full_date", "pivot_tl", "pivot_tl_date", "adr20", "close",
+    "rs_best", "rs_all", "grp_pct", "phase_qqq_10_20", "phase_qqq_10_20_s5", "phase_spy_qqq_50",
+    "universe_n", "features", "cells",
+)
+_CB_WATCH_JSONB = frozenset({"features", "cells"})
+CB_WATCH_UPSERT_SQL = (
+    f"INSERT INTO mi_consolidation_breakout_watch ({', '.join(CB_WATCH_COLS)}) VALUES ("
+    + _jsonb_value_list(CB_WATCH_COLS, _CB_WATCH_JSONB)
+    + ") ON CONFLICT (ticker, scan_date) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in CB_WATCH_COLS if c not in ("ticker", "scan_date"))
+    + ", updated_at = NOW()"
+)
+
+CB_ENTRY_COLS = (
+    "ticker", "watch_date", "break_date", "k", "pole_date", "entry_variant", "status", "reason", "pivot",
+    "level", "fill", "stop", "width_pct", "adr20", "gap_pct", "gap_over_1adr", "fill_minute",
+    "day0_stopped", "day0_exit_price", "day0_exit_minute", "retrigger", "retrigger_chain", "base_id",
+    "cells", "first_cells", "first_chain_cells", "minutes_state", "feed",
+)
+_CB_ENTRY_JSONB_DICT = frozenset({"cells", "first_cells", "first_chain_cells"})
+_CB_ENTRY_KEY_COLS = ("ticker", "pole_date", "k", "entry_variant", "break_date")
+# The ONLY row a re-run may overwrite is a `no_minutes` abstain (the minute fetch is retried for 3
+# sessions). A filled / no_trigger / mismatch row is never touched again - a later run must not move a
+# fill that exits were already walked from.
+CB_ENTRY_UPSERT_SQL = (
+    f"INSERT INTO mi_consolidation_breakout_entry ({', '.join(CB_ENTRY_COLS)}) VALUES ("
+    + _jsonb_value_list(CB_ENTRY_COLS, _CB_ENTRY_JSONB_DICT)
+    + f") ON CONFLICT ({', '.join(_CB_ENTRY_KEY_COLS)}) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in CB_ENTRY_COLS if c not in _CB_ENTRY_KEY_COLS)
+    + ", updated_at = NOW()"
+    + " WHERE mi_consolidation_breakout_entry.status = 'abstain'"
+    + " AND mi_consolidation_breakout_entry.reason = 'no_minutes'"
+)
+
+CB_EXIT_COLS = ("entry_id", "arm", "status", "realized_r", "pnl_adr", "sessions_held", "events", "n_fwd",
+                "mature", "reason", "last_bar_date")
+_CB_EXIT_JSONB_LIST = frozenset({"events"})
+# A MATURE row is final and is never overwritten.
+CB_EXIT_UPSERT_SQL = (
+    f"INSERT INTO mi_consolidation_breakout_exit ({', '.join(CB_EXIT_COLS)}) VALUES ("
+    + _jsonb_value_list(CB_EXIT_COLS, _CB_EXIT_JSONB_LIST)
+    + ") ON CONFLICT (entry_id, arm) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in CB_EXIT_COLS if c not in ("entry_id", "arm"))
+    + ", updated_at = NOW() WHERE NOT mi_consolidation_breakout_exit.mature"
+)
+
+CB_SIC_COLS = ("ticker", "sic_code", "sic2", "sic_description", "ticker_type", "status")
+CB_SIC_UPSERT_SQL = (
+    f"INSERT INTO mi_consolidation_breakout_sic ({', '.join(CB_SIC_COLS)}) VALUES ("
+    + ", ".join(f"${i + 1}" for i in range(len(CB_SIC_COLS)))
+    + ") ON CONFLICT (ticker) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in CB_SIC_COLS if c != "ticker")
+    + ", fetched_at = NOW()"
+)
+
+
+def _cb_row_params(row: dict, cols: tuple, *, jsonb_dict=frozenset(), jsonb_list=frozenset()) -> tuple:
+    """One executemany tuple, column order = `cols`. A jsonb dict/list goes through the #216 helpers (the
+    codec encodes it ONCE - never a pre-dumped string); NULL stays NULL."""
+    out = []
+    for c in cols:
+        v = row.get(c)
+        if c in jsonb_dict:
+            v = _jsonb_param(v) if v is not None else None
+        elif c in jsonb_list:
+            v = _jsonb_list_param(v) if v is not None else None
+        out.append(v)
+    return tuple(out)
+
+
+async def cb_upsert_watch_rows(rows: list[dict]) -> int:
+    if not rows:
+        return 0
+    vals = [_cb_row_params(r, CB_WATCH_COLS, jsonb_dict=_CB_WATCH_JSONB) for r in rows]
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany(CB_WATCH_UPSERT_SQL, vals)
+    return len(rows)
+
+
+async def cb_upsert_entry_rows(rows: list[dict]) -> int:
+    if not rows:
+        return 0
+    vals = [_cb_row_params(r, CB_ENTRY_COLS, jsonb_dict=_CB_ENTRY_JSONB_DICT) for r in rows]
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany(CB_ENTRY_UPSERT_SQL, vals)
+    return len(rows)
+
+
+async def cb_upsert_exit_rows(rows: list[dict]) -> int:
+    if not rows:
+        return 0
+    vals = [_cb_row_params(r, CB_EXIT_COLS, jsonb_list=_CB_EXIT_JSONB_LIST) for r in rows]
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany(CB_EXIT_UPSERT_SQL, vals)
+    return len(rows)
+
+
+async def cb_upsert_sic_rows(rows: list[dict]) -> int:
+    if not rows:
+        return 0
+    vals = [_cb_row_params(r, CB_SIC_COLS) for r in rows]
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await conn.executemany(CB_SIC_UPSERT_SQL, vals)
+    return len(rows)
+
+
+async def cb_get_calendar(upto: date, limit: int = 400) -> list[date]:
+    """SPY's sessions (the calendar every other ticker's bars are indexed against), ascending, the last
+    `limit` up to and including `upto`. SPY is in `mi_daily_closes` every session; a session with no SPY
+    row is not a session as far as this recorder is concerned."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT trade_date FROM mi_daily_closes WHERE ticker = 'SPY' AND trade_date <= $1 "
+            "ORDER BY trade_date DESC LIMIT $2", upto, limit)
+    return sorted(r["trade_date"] for r in rows)
+
+
+async def cb_get_universe_bars(today: date, start: date, liq_start: date, *, min_price: float,
+                               prefilter_dollar_vol: float) -> list[tuple]:
+    """Daily bars `(ticker, trade_date, open, high, low, close, volume)` from `start` through `today` for
+    every ticker that PASSES THE PREFILTER tonight: a bar today, close >= `min_price` (today the raw price
+    IS the adjusted price - no split executes after today), and a median close x volume over the sessions
+    from `liq_start` on >= `prefilter_dollar_vol`. The prefilter is a deliberate SUPERSET of
+    `cb.universe_ok` (the caller passes a floor BELOW the module's $10M) - the module stays the authority;
+    this only keeps ~10,000 tickers' bars off the wire. A ticker whose bar today has a NULL field is
+    dropped here (a half-written row is not a bar)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            WITH cand AS (
+                SELECT ticker FROM mi_daily_closes
+                 WHERE trade_date = $1 AND close >= $2
+                   AND open_price IS NOT NULL AND high_price IS NOT NULL AND low_price IS NOT NULL
+                   AND volume IS NOT NULL
+            ), liq AS (
+                SELECT d.ticker
+                  FROM mi_daily_closes d JOIN cand c ON c.ticker = d.ticker
+                 WHERE d.trade_date >= $3 AND d.trade_date <= $1
+                 GROUP BY d.ticker
+                HAVING percentile_cont(0.5) WITHIN GROUP (ORDER BY d.close * d.volume) >= $4
+            )
+            SELECT d.ticker, d.trade_date, d.open_price, d.high_price, d.low_price, d.close, d.volume
+              FROM mi_daily_closes d JOIN liq l ON l.ticker = d.ticker
+             WHERE d.trade_date >= $5 AND d.trade_date <= $1
+             ORDER BY d.ticker, d.trade_date
+            """, today, float(min_price), liq_start, float(prefilter_dollar_vol), start)
+    return [tuple(r) for r in rows]
+
+
+async def cb_get_ticker_bars(tickers: list[str], start: date, end: date) -> list[tuple]:
+    """`(ticker, trade_date, open, high, low, close, volume)` for the named tickers over [start, end]."""
+    if not tickers:
+        return []
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, trade_date, open_price, high_price, low_price, close, volume "
+            "FROM mi_daily_closes WHERE ticker = ANY($1::text[]) AND trade_date >= $2 AND trade_date <= $3 "
+            "ORDER BY ticker, trade_date", list(tickers), start, end)
+    return [tuple(r) for r in rows]
+
+
+async def cb_get_security_types(tickers: list[str]) -> dict[str, str]:
+    if not tickers:
+        return {}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, security_type FROM mi_security_types WHERE ticker = ANY($1::text[])",
+            list(tickers))
+    return {r["ticker"]: r["security_type"] for r in rows}
+
+
+async def cb_get_unapplied_split_tickers(since: date, upto: date) -> set[str]:
+    """Tickers with a split that EXECUTED in [since, upto] whose adjustment has NOT been applied to
+    `mi_daily_closes` yet: their stored history mixes two price scales, so a watch row computed off it
+    would be a phantom (a reverse split reads as a run-up). They sit out tonight. A split merely ANNOUNCED
+    for a later date (`execution_date > upto`) has changed no stored price and excludes nobody."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT DISTINCT ticker FROM mi_splits WHERE execution_date >= $1 AND execution_date <= $2 "
+            "AND adjustment_applied = FALSE", since, upto)
+    return {r["ticker"] for r in rows}
+
+
+async def cb_get_splits_after(tickers: list[str], after_date: date, upto_date: date) -> dict[str, list[dict]]:
+    """{ticker: [{execution_date, split_from, split_to}, ...]} for splits executing STRICTLY after
+    `after_date` and no later than `upto_date` (the batch form of `get_split_dates_after`, #667). The
+    upper bound matters: `mi_splits` also holds ANNOUNCED splits that have not executed yet, and a split
+    next week has changed no stored price."""
+    if not tickers:
+        return {}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, execution_date, split_from, split_to FROM mi_splits "
+            "WHERE ticker = ANY($1::text[]) AND execution_date > $2 AND execution_date <= $3 "
+            "ORDER BY ticker, execution_date",
+            list(tickers), after_date, upto_date)
+    out: dict[str, list[dict]] = {}
+    for r in rows:
+        out.setdefault(r["ticker"], []).append(dict(r))
+    return out
+
+
+async def cb_get_watch_rows(scan_date: date) -> list[dict]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT * FROM mi_consolidation_breakout_watch WHERE scan_date = $1 ORDER BY ticker", scan_date)
+    return [dict(r) for r in rows]
+
+
+async def cb_get_watch_poles(tickers: list[str], upto: date) -> list[tuple]:
+    """Distinct `(ticker, pole_date)` over every stored watch row of the named tickers up to `upto` - the
+    input of the chain key (poles <= 3 sessions apart are one base)."""
+    if not tickers:
+        return []
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT DISTINCT ticker, pole_date FROM mi_consolidation_breakout_watch "
+            "WHERE ticker = ANY($1::text[]) AND scan_date <= $2", list(tickers), upto)
+    return [(r["ticker"], r["pole_date"]) for r in rows]
+
+
+async def cb_get_entry_state(break_date: date) -> list[dict]:
+    """What is already recorded for breakout day E: the key + status + reason of every entry row."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, pole_date, k, entry_variant, status, reason FROM mi_consolidation_breakout_entry "
+            "WHERE break_date = $1", break_date)
+    return [dict(r) for r in rows]
+
+
+async def cb_get_candidate_history(tickers: list[str], before: date) -> list[dict]:
+    """Every earlier CANDIDATE (one per (ticker, pole_date, K, break_date), whichever variant rows exist) of
+    the named tickers with break_date < `before`, with its cell flags - the history the one-trade-per-base
+    stamping runs against."""
+    if not tickers:
+        return []
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT DISTINCT ON (ticker, pole_date, k, break_date) ticker, pole_date, k, break_date, cells "
+            "FROM mi_consolidation_breakout_entry WHERE ticker = ANY($1::text[]) AND break_date < $2 "
+            "ORDER BY ticker, pole_date, k, break_date", list(tickers), before)
+    return [dict(r) for r in rows]
+
+
+async def cb_get_open_entries(n_arms: int) -> list[dict]:
+    """FILLED entries with fewer than `n_arms` MATURE exit rows - the walk's work list (a mature arm is
+    final), each with `mature_arms`: the arms already final, which the walk does not recompute. Ordered by
+    break_date so the oldest are walked first."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT e.id, e.ticker, e.watch_date, e.break_date, e.k, e.pole_date, e.entry_variant, e.fill,
+                   e.stop, e.width_pct, e.adr20, e.fill_minute, e.day0_stopped, e.day0_exit_price,
+                   e.day0_exit_minute,
+                   COALESCE((SELECT array_agg(x.arm) FROM mi_consolidation_breakout_exit x
+                              WHERE x.entry_id = e.id AND x.mature), ARRAY[]::text[]) AS mature_arms
+              FROM mi_consolidation_breakout_entry e
+             WHERE e.status = 'filled'
+               AND (SELECT count(*) FROM mi_consolidation_breakout_exit x
+                     WHERE x.entry_id = e.id AND x.mature) < $1
+             ORDER BY e.break_date, e.ticker, e.k, e.entry_variant
+            """, int(n_arms))
+    return [dict(r) for r in rows]
+
+
+async def cb_get_sic(tickers: list[str]) -> dict[str, dict]:
+    """{ticker: {sic_code, sic2, ticker_type, status, fetched_at}} for the cached tickers."""
+    if not tickers:
+        return {}
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT ticker, sic_code, sic2, ticker_type, status, fetched_at FROM mi_consolidation_breakout_sic "
+            "WHERE ticker = ANY($1::text[])", list(tickers))
+    return {r["ticker"]: dict(r) for r in rows}

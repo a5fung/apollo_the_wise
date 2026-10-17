@@ -256,6 +256,7 @@ SSoT = this ADR (NOT `delayed_ep_reentry.md`, which is Family B's).
 the bridge Family B reuses, but Family B's universe, gating, and stops are its own decision.
 **2026-10-17: the EP-first hold is lifted (his ruling 2026-10-17 ("we are pretty much done with all EP work... we are free to focus on other setups and building them to shadow and paper where we see fit")), so PAPER for a Family A setup is decided on that setup's own evidence; LIVE stays his sign-off.** Any live / paper sizing for Family A — evidence-gated, no date. Mode stays SHADOW (no submit, no
 trade-state) throughout Phases 1–5.
+**2026-10-17 pointer:** Consolidation Breakout (#702) is a separate SETUP (buys the opening-range high on the breakout day, stops at the low of the day), not a Family A mode, and does not share this family's coil detection — owner `docs/setups/consolidation_breakout.md`.
 
 ---
 

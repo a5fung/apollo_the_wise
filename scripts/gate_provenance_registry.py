@@ -464,4 +464,141 @@ GATE_REGISTRY: list[dict] = [
                 "not a max over ~20 baskets) — the two are free to diverge. 60-day replay: "
                 "docs/analysis/assignment_comove_backtest_2026-09-13.md.",
     },
+    # ── Consolidation Breakout (#702 P6, 2026-10-17; owner docs/setups/consolidation_breakout.md) ────
+    # Only the S-class (sourced verbatim in operator_shared_notes.md) and R-class (reused, cited) C0
+    # constants are registered. The B-class parameters (the pivot keys, the 5-session windows incl.
+    # RECENT_WINDOW, the group/RS grid thresholds, the phase slope) are deliberately NOT here: no source
+    # exists to cite, they stay parameters until the P4 discovery read cites them, and a citation is
+    # never invented to make an entry pass (ADR 0013, this file's header).
+    {
+        "id": "consolidation_breakout.PRIOR_MOVE_MIN",
+        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "kind": "const",
+        "name": "PRIOR_MOVE_MIN",
+        "value": 0.30,
+        "citation": {
+            "file": "docs/methodology/operator_shared_notes.md",
+            "text": "anywhere from 30-100%+",
+        },
+        "note": "Qullamaggie's prior move, operator-shared 2026-10-17: 'A big move higher sometime in the past 1-3 "
+                "months. This move can be anywhere from 30-100%+'. The floor of his range.",
+    },
+    {
+        "id": "consolidation_breakout.BASE_MIN_SESSIONS",
+        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "kind": "const",
+        "name": "BASE_MIN_SESSIONS",
+        "value": 10,
+        "citation": {
+            "file": "docs/methodology/operator_shared_notes.md",
+            "text": "usually 2 weeks to 2 months",
+        },
+        "note": "His consolidation length, 'usually 2 weeks to 2 months'. 10 sessions = two weeks.",
+    },
+    {
+        "id": "consolidation_breakout.BASE_MAX_SESSIONS",
+        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "kind": "const",
+        "name": "BASE_MAX_SESSIONS",
+        "value": 45,
+        "citation": {
+            "file": "docs/methodology/operator_shared_notes.md",
+            "text": "usually 2 weeks to 2 months",
+        },
+        "note": "Same sentence. 'Two months' is ~43 sessions; 45 is the #702 plan's rounding of it (stated in "
+                "docs/setups/consolidation_breakout.md), not his number.",
+    },
+    {
+        "id": "consolidation_breakout.RS_BEST_PRIMARY",
+        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "kind": "const",
+        "name": "RS_BEST_PRIMARY",
+        "value": 98.0,
+        "citation": {
+            "file": "docs/methodology/operator_shared_notes.md",
+            "text": "the 1 or 2% of stocks that are up the most",
+        },
+        "note": "'the 1 or 2% of stocks that are up the most over these 3 timeframes' read as the 98th percentile "
+                "of the best of the three periods. The 99 / 95 grid values (RS_BEST_STRICT / _LOOSE) are B-class "
+                "and not registered.",
+    },
+    {
+        "id": "consolidation_breakout.RS_HORIZONS",
+        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "kind": "const",
+        "name": "RS_HORIZONS",
+        "value": (21, 63, 126),
+        "citation": {
+            "file": "docs/methodology/operator_shared_notes.md",
+            "text": "1-month, 3-month, 6-month",
+        },
+        "note": "His three RS timeframes in sessions (21 / 63 / 126, the house conversion).",
+    },
+    {
+        "id": "consolidation_breakout.OPENING_RANGE_MINUTES",
+        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "kind": "const",
+        "name": "OPENING_RANGE_MINUTES",
+        "value": {"orh1": 1, "orh5": 5, "orh60": 60},
+        "citation": {
+            "file": "docs/methodology/operator_shared_notes.md",
+            "text": "the highs of the first 1-minute candle, the 5-minute candle or the 60-minute candle",
+        },
+        "note": "His three entry candles. Which one is primary (the plan defaults to the 5-minute) is a backtest "
+                "choice, not a sourced number.",
+    },
+    {
+        "id": "consolidation_breakout.POLE_ARTIFACT_JUMP",
+        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "kind": "const",
+        "name": "POLE_ARTIFACT_JUMP",
+        "value": 1.50,
+        "citation": {
+            "file": "docs/setups/htf.md",
+            "text": ">50% single-day close jump",
+        },
+        "note": "R: mirrors the pole data-artifact guard in flag_detector.compute_flag_metrics (an inline literal "
+                "there, hence a named mirror here). A one-session close jump > 1.50x on < 2x the window's volume "
+                "is a split or a bad tick, not a pole.",
+    },
+    {
+        "id": "consolidation_breakout.POLE_ARTIFACT_VOL_MULT",
+        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "kind": "const",
+        "name": "POLE_ARTIFACT_VOL_MULT",
+        "value": 2.0,
+        "citation": {
+            "file": "docs/setups/htf.md",
+            "text": "vol < 2× window avg",
+        },
+        "note": "R: the volume half of the same guard (Gemini 6/27, htf.md 'Flagpole data-artifact').",
+    },
+    {
+        "id": "consolidation_breakout.MIN_PRICE",
+        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "kind": "const",
+        "name": "MIN_PRICE",
+        "value": 5.0,
+        "citation": {
+            "file": "docs/setups/consolidation_breakout.md",
+            "text": "price floor $5 and median dollar-volume floor $10M (operator-signed 2026-06-15, #286",
+        },
+        "note": "R: a MIRROR of rs_engine.MIN_PRICE (the test asserts equality). The original's only record of the "
+                "operator's 2026-06-15 sign-off (#286) is a code comment in rs_engine.py, which is not a citable "
+                "source file, so this entry cites the setup doc row that states the origin and the reused "
+                "constant. If the sign-off text is ever filed in a document, repoint both this and MIN_DOLLAR_VOL.",
+    },
+    {
+        "id": "consolidation_breakout.MIN_DOLLAR_VOL",
+        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "kind": "const",
+        "name": "MIN_DOLLAR_VOL",
+        "value": 10_000_000.0,
+        "citation": {
+            "file": "docs/setups/consolidation_breakout.md",
+            "text": "price floor $5 and median dollar-volume floor $10M (operator-signed 2026-06-15, #286",
+        },
+        "note": "R: a MIRROR of rs_engine.MIN_DOLLAR_VOL (the 20-session median dollar-volume floor); same note as "
+                "MIN_PRICE above.",
+    },
 ]

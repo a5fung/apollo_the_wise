@@ -1,0 +1,208 @@
+# Consolidation Breakout (Qullamaggie's breakout — a SETUP inside the consolidation family, #702)
+
+**Phase**: SHADOW (forward recorder only — NO order path, NO `mi_strategies` row, NO sizing, NO Telegram on a normal night).
+The offline backtest (`scripts/probes/_cb_backtest/`) decides whether it graduates; paper is decided on THIS setup's own
+evidence (CHANGE_PROCESS rule 5; his ruling 2026-10-17 lifted the EP-first hold), live stays his sign-off.
+**Origin (SOURCED)**: Qullamaggie, *"My 3 timeless setups that have made me tens of millions"*, shared by the operator
+2026-10-17 — `docs/methodology/operator_shared_notes.md` §"2026-10-17 — Qullamaggie's BREAKOUT setup" and §"2026-10-17 —
+his note on the breakout ENTRY" — plus additions of his own (group RS, RS, entry/exit timing, bull vs bear phase).
+**Provenance rule (ADR 0013 §2 / #358): every cohort-shaping constant below cites its source or says it is a parameter
+the backtest chooses; a constant with no source is telemetry or a parameter, never presented as sourced.**
+**Code**: the pure core `agents/market_intelligence/consolidation_breakout.py` (`cb`, no I/O, shared by both callers) ·
+the offline runner `scripts/probes/_cb_backtest/` · the forward recorder
+`agents/market_intelligence/consolidation_breakout_shadow.py` (job `consolidation_breakout_shadow`, **17:48 ET mon–fri**,
+tables `mi_consolidation_breakout_{watch,entry,exit,sic}`).
+
+> **It is a SETUP, not Confirm, and not Family A's coil.** A setup has a defined buy and a defined stop (CLAUDE.md "SETUP vs
+> FAMILY"). This one **buys the opening-range high on the breakout day and stops at the low of that day** (no wider than one
+> ADR, else it abstains). Family A Confirm buys the close above the base high and stops at the base low. The two are never
+> pooled, have their own names, tables and numbers. `docs/HANDOFF.md` once called Confirm "the consolidation breakout
+> recorder" — that wording was about Confirm and is corrected there.
+
+## What it records, in one paragraph's worth of facts
+
+- **Watch list** — every night, every stock in the universe that passes the C0 structural gates gets ONE row
+  (`mi_consolidation_breakout_watch`): all features as JSON, the pivot for each of four breakout levels K, and the cell flags
+  C0…C7 (+ two reported-only cells) per K.
+- **Entry rows** — the next session, for every watch row whose pivot that day's HIGH cleared, five rows per K (four minute
+  variants `orh1 / orh5 / orh60 / pivot` + the daily `close` variant): a simulated fill and stop, or the NAMED reason there was
+  none. An abstain is a row, never a gap.
+- **Exit rows** — every filled entry is walked over all **15** exit arms (`cb.ARMS`) from stored daily bars, recomputed every
+  night until each arm is mature.
+
+## Definitions (computable; sessions, not calendar days; all on bars ≤ the watch night D unless stated)
+
+Source column: **S** = sourced verbatim in `operator_shared_notes.md` (2026-10-17) · **R** = reuses an existing constant (cited) ·
+**B** = a parameter the backtest chooses (P4 discovery read); NO source yet, never presented as sourced · **P** = fixed by the
+approved plan, not by the article · **T** = telemetry only, never gates.
+
+| Piece | Definition | Source | Code |
+|---|---|---|---|
+| Universe | common stock or ADR (or unknown type), ticker `^[A-Z]{1,5}$`, RAW close ≥ $5, 20-session median dollar volume ≥ $10M, ≥ 130 CONSECUTIVE sessions, not an exchange test symbol | **R**: universe floor reused from `rs_engine` — price floor $5 and median dollar-volume floor $10M (operator-signed 2026-06-15, #286; the sign-off lives in the `rs_engine` comment, no other document carries its text) | `cb.universe_ok`, `MIN_PRICE`, `MIN_DOLLAR_VOL` |
+| Prior move | P = highest high in sessions [D−45, D−10]; pole_low = lowest low in [P−40, P]; high(P) / pole_low − 1 ≥ 0.30 | **S** *"anywhere from 30-100%+"*; the 40-session pole window is **P** (the article says only "sometime in the past 1-3 months") | `PRIOR_MOVE_MIN`, `POLE_LOOKBACK` |
+| Base | the sessions after P up to D; 10 to 45 sessions long | **S** *"usually 2 weeks to 2 months"* (10 = two weeks; 45 ≈ two months, rounded up from ~43) | `BASE_MIN_SESSIONS`, `BASE_MAX_SESSIONS` |
+| Base anchor | the base ends only if a CLOSE (not a wick) goes above high(P) | **R** the shipped HTF `_flag_resolved_by` (#592) | `_base_resolved` |
+| Pivot (K) | `k5` / `k10` / `full` = highest high of the last 5 / 10 / all base sessions (HORIZONTAL levels); `tl` = the down-sloping trendline, projected one session ahead | k5 / k10 / full: **B** (the primary is picked in discovery, then frozen). `tl`: **S** his 2026-10-17 note *"a flag with a down sloping trend line and a breakout of that trend line"* — how the line is anchored and drawn is the #702 P1c reading of that sentence, tested BESIDE the horizontal levels | `PIVOT_KEYS`, `_down_trendline` |
+| MA surfing | close ≥ SMA50; close ≥ 0.98 × SMA20; SMA50 rising over 10 sessions | **S** *"surfs the rising 10- and 20-day and sometimes the 50-day"* · **R** `anticipation._MA_NEAR_PCT` · 10-session slope **P** | `explain_watch`, `sma20_ok`, `sma50_rising` |
+| Higher lows | lowest low of the last 5 sessions > the base low | **S** *"higher lows"*; the 5-session window is **B** | `higher_lows`, `RECENT_WINDOW` |
+| Tightening | mean daily range of the last 5 sessions ÷ the first 5 base sessions ≤ 0.75 | **S** *"tightening range"* · **R** `flag_detector._RANGE_CONTRACTION_MAX` | `tightening_ok` |
+| Retrace | ≤ 50% of the pole's range given back (a C1 term; "C1 without retrace" is reported beside, not deciding) | **R** `anticipation.COIL_HOLD_LIMIT` (Family A's signed hold rule) | `retrace_ok` |
+| Deal-pin guards | median daily range of the last 5 sessions ≥ 0.5% (`deal_pin_median`); the #502 fresh deal-pin layer; a pole-window close jump > 50% on < 2× volume is a data artifact | **R** `flag_detector._DEAL_PIN_RANGE_THRESHOLD`, `_evaluate_fresh_pin`; artifact guard = `docs/setups/htf.md` "Flagpole data-artifact" | `explain_watch`, `POLE_ARTIFACT_JUMP`, `POLE_ARTIFACT_VOL_MULT` |
+| RS | percentile across the universe at D of the 21 / 63 / 126-session return; rs_best = the max of the three; ≥ 98 | **S** *"the 1 or 2% of stocks that are up the most over these 3 timeframes: 1-month, 3-month, 6-month"* | `RS_HORIZONS`, `RS_BEST_PRIMARY` |
+| Group RS | SIC-2 group = median member 63-session return; groups with < 10 members → NULL; percentile across groups ≥ 80 | his addition; thresholds **B** | `group_returns`, `GROUP_PCT_MIN` |
+| Phase (primary) | QQQ SMA10 > SMA20 and both higher than 1 session ago, at D | his addition — an ATTRIBUTION (operator-forwarded Gemini review, not in the article); the slope window is **B** | `phase_qqq_10_20` |
+| Phase (alternative) | SPY and QQQ both close above their 50-day (cell C7) | **B** | `phase_spy_qqq_50` |
+| Breakout volume, trigger-bar tightness, pole length, base depth, ATR14 slope | recorded | **T** — never gate | features |
+
+## Cells (post-hoc flags on one watch row; the 8 deciding cells strict → loose)
+
+C0 baseline (universe + prior move + base + a pivot + close ≥ SMA50 + the deal-pin guards) · **C1 Qullamaggie + the forwarded
+10/20 market rule** (C0 + SMA20 tolerance + rising SMA50 + higher lows + tightening + retrace ≤ 50% + RS ≥ 98 + the QQQ phase) ·
+C2 strict (C1 + prior move ≥ 50% + RS ≥ 99 + group ≥ 80) · C3 (C1 without phase) · C4 (C1 without RS) · C5 (RS ≥ 95) ·
+C6 (C1 + group ≥ 80) · C7 (SPY + QQQ above their 50-day instead of the 10/20 rule). Reported beside C1, never deciding:
+`C1_no_retrace`, `C1_no_tightening`; the slope-5 phase variant is stored as `C1_s5`.
+
+## Entry, stop, exits
+
+- **Breakout day E** = the first session after a watch night whose high clears the pivot. **One trade per base:** the first
+  break of (ticker, pole date, K) is the trade, later breaks of the same base are stamped `retrigger = 1` (and
+  `retrigger_chain` under the drift-robust key: poles ≤ 3 sessions apart are one base), reported apart.
+- **Entry** (regular-hours minutes, slippage 0.1% = `ENTRY_SLIPPAGE_PCT`): `orh1 / orh5 / orh60` = the first minute after the
+  1 / 5 / 60-minute opening range whose high exceeds max(opening-range high, pivot), filled at that level or at the minute's
+  open if it gapped through (**S** *"The opening range highs can be the highs of the first 1-minute candle, the 5-minute
+  candle or the 60-minute candle"*); `pivot` = the first minute above the pivot; `close` = the daily close if it is above the pivot.
+- **Stop** = the low of the day AT THE FILL (minutes 09:30 … fill; the full-day low would be look-ahead). **Skip** if the stop
+  is wider than ADR20 measured the session before (**S** *"stop should not be wider than the ATR or ADR"*).
+- **Abstains (named, counted):** `no_minutes` · `minute_daily_mismatch` (minute high/low vs the daily's by > 1%) ·
+  `minute_high_below_pivot` · `stop_at_or_above_fill` · `too_wide` · `no_opening_range_minutes` · `split_after_watch`.
+  **No-trigger rows** (the level was never crossed): `no_minute_above_level` (minute variants) · `close_not_above_pivot` (close).
+- **Day-0 walk:** after the fill the rest of day E is walked against the stop; a stop-out is a full −1R (worse on a gap) booked
+  once for every arm and never reaches the daily walk.
+- **Exits (daily walk from E+1; 15 arms in `cb.ARMS`):** the **S** grid *"sell 1/3 to 1/2 of the position after 3-5 days, and
+  then move the stop to break even … trailed with the 10- or the 20-day moving average … You wait for the first CLOSE below the
+  10-day"* = 1/3 or 1/2 × after session 3 or 5 × trail SMA10 or SMA20 (8 arms; primary `p33_s3_t10`), plus four sensitivities
+  (`p33_s3_t10_early` trail live before the partial · `_close` trail filled at the signal close · `_nobe` no breakeven move ·
+  `_ifprofit` partial only if the close is above the fill) and three controls (`trail10_only`, `stop_only`, `fixed_3r_12`).
+  A trail signal fills at the NEXT OPEN (his 2026-09-29 execution ruling). Horizon 120 sessions, then marked and counted censored.
+- **Mature** = a terminal exit, or the 120-session horizon reached with its next open behind it; anything else is an OPEN MARK,
+  recorded and never in a decisive number.
+
+## The forward shadow — what runs, nightly at 17:48 ET (mon–fri)
+
+One job, one audit row (`consolidation_breakout_shadow_run`), under a 900 s budget that FAILS OPEN on timeout (an
+`..._error` row, no raise — every step is idempotent). A step that crashes is recorded and the others still run; the FIRST
+failure is re-raised after the audit row so `audit_wrap` records it and `notify_job_failure` is the one page. No other Telegram.
+
+1. **Entries.** For each of the last **3** sessions E (oldest first): the previous session's watch rows whose pivot E's daily
+   high cleared → candidates → one-trade-per-base stamping against every earlier candidate → E's minutes from
+   `collector.get_alpaca_minute_bars_window` (batches of 5, one retry) → `cb.entry_variants` + `cb.close_entry` → five rows
+   per candidate. A candidate whose minute fetch failed OUTRIGHT (not one ticker returned a bar) is deferred and written the
+   next night; on the oldest look-back day it is written as `no_minutes` instead. A `no_minutes` row may be overwritten by a
+   later fetch (and only that row — a fill is never moved).
+2. **Tonight's watch list.** SQL prefilter (price ≥ 5, median dollar volume ≥ 7M — a strict superset of the module's) →
+   `cb.universe_ok` → 130 consecutive sessions → RS percentiles over the WHOLE universe → group RS → phases (SPY/QQQ, joined by
+   date) → `cb.explain_watch` → `cb.cell_flags` per K. Names with a split executed in their window and not yet applied to the
+   stored bars sit the night out.
+3. **Exits.** Every filled entry with a non-mature arm has each of its NON-FINAL arms (of the 15) recomputed in full from stored
+   bars; a mature arm is final and is neither recomputed nor overwritten. A split executing after E makes every still-open arm
+   `unbookable` (stored fills are raw, stored bars retro-adjusted — the #667 HTF precedent); an arm that settled before the split
+   keeps its valid pre-split outcome. A forward window cut at a data hole ends `degraded`, and an entry still open past the
+   horizon + 10 sessions is no longer re-walked. Bars are loaded 200 tickers at a time.
+4. **Audit row** with watch count, universe size, the gate funnel, cells per K, new entries by status and reason, exits settled,
+   SIC fetched/known, wall time.
+
+Group RS needs SIC; the cache fills at most **300 names a night** (watch names first, then by dollar volume), so the first week
+runs with a thin group RS (`grp_pct` NULL where a group has < 10 known members) and the group cells (C2, C6) read False
+until it fills. The SIC is the CURRENT one, not the point-in-time one the backtest used.
+
+### Verify-live (declared before the deploy)
+
+- **EXPECT** (baseline: nothing exists — no rows in the four tables, no `consolidation_breakout_shadow` run in `mi_job_runs`):
+  (1) the first market night after the deploy: a `success` run at 17:48 ET, one `consolidation_breakout_shadow_run` audit row,
+  and **tens to a couple of hundred** watch rows for that `scan_date` (the backtest averaged ~210 a night over ~2,000
+  universe names); `mi_consolidation_breakout_sic` gains up to 300 rows. (2) The first night a watch name's high clears its
+  pivot: **5 entry rows per (name, K)** — a fill or a named abstain — and **15 exit rows per filled entry** the same night
+  (the plan said 12; `len(cb.ARMS)` is 15). (3) Zero Telegram. (4) apollo-execution never imports the module.
+- **DONE-WHEN:** the first entry has a mature row on every one of its 15 arms, and the review
+  `consolidation_breakout_forward_read` (mature C1 primary-arm entries ≥ 30) has fired and been read.
+- **WOULD-FAIL-IF:** watch rows exist and a pivot cross produces no entry row · a `success` run on a session writes 0 watch
+  rows · a filled entry has fewer than 15 exit rows after the run that wrote it · the run row is `success` while the audit row
+  lists `STEP ERRORS`.
+
+## Deviation list — where the forward recorder differs from the backtest
+
+1. **Does NOT share Family A's coil detection.** Family A's coil/flag detectors (`anticipation.py`, `flag_detector.py`
+   stages WATCH/TIGHTENING/COILED/TRIGGERED) are STATES of a different family; this setup has its own gates (`cb.explain_watch`)
+   and reuses only the cited constants above (his 08-02 "some parameters differ").
+2. **Minute feed.** The backtest's minutes are Alpaca SIP; production reads `ALPACA_DATA_FEED` (iex by default). IEX bars are
+   thinner, so `minute_daily_mismatch` / `minute_high_below_pivot` abstains will run higher than the backtest's and fills can land on
+   different minutes. Every minute-variant row records its `feed`; compare like with like.
+3. **SIC** is current, not point-in-time, and fills over about a week (above).
+4. **Catch-up.** The spec said "last night's watch rows"; the job looks back 3 sessions so a missed night or a failed minute
+   fetch is written the next night.
+5. **Runner-only analyses are not recorded:** the two controls (Family A `SETTLE_RULE`, `walk_arm` "Apollo as it runs today"),
+   the cap-not-skip and ATR14-width sensitivities, the 60-session re-walk, the stop-floor sweep (derivable from `width_pct` and
+   `adr20`). The 15 `cb.ARMS` are the shadow's arms.
+6. **Stored features omit** `i` and every `*_idx` (positions inside one night's 150-bar slice; the matching dates are kept).
+   Features agree with a whole-history evaluation (tested).
+7. **One trade per base, night by night.** The chain key is stamped with the poles known at the candidate's night; a pole that
+   appears LATER between two earlier ones can merge two bases after the fact, which the batch backtest sees and the forward
+   record cannot (the spec key is unaffected). Tested and named.
+8. **Slot.** 17:48 ET, not the spec's 17:50 (taken by `exit_path_shadow` and `chart_axis_shadow`) nor the plan's 17:45.
+9. **Two named edges in the entry stamping.** (a) If the minute fetch fails outright on two CONSECUTIVE nights, E = N is deferred
+   twice (it is not the oldest look-back day until night N+2), E = N+1 is stamped against a history that lacks it, and E = N is
+   then written on night N+2 — two `retrigger = 0` rows in one base. A single-night outage is fine (oldest first). (b) A split
+   between D and E is checked AFTER the candidate is built, so a reverse split on a name that passes C0 (close ≥ a rising SMA50,
+   i.e. near-never) becomes an abstained candidate row that enters the stamping history.
+10. **Steady-state cost.** ~130 breakout candidates a night × ~2.5 filled variants, each open until every arm is mature (the
+    `stop_only` control runs to the horizon), is tens of thousands of open entries by month 6. Only non-final arms are recomputed
+    and bars load in chunks, but `wall_s` in the audit row is the number to watch against the 900 s budget.
+11. **The accrual review hard-codes the 5-minute opening-range entry (`orh5`).** If the P4 freeze picks a different primary
+    entry, `consolidation_breakout_forward_read`'s predicate must be re-pointed (its question says so).
+12. **Open parameter question — `RECENT_WINDOW = 5` is B-class but feeds a C0 gate** (`deal_pin_median`, the median range of
+   the last 5 sessions). It is deliberately NOT in the provenance registry (no source exists to cite); it stays a parameter until
+   the P4 read cites or replaces it. Same for `PRIOR_MOVE_STRICT`, `GROUP_PCT_MIN`, `RS_BEST_STRICT/LOOSE`, `PHASE_SLOPE_PRIMARY`.
+
+## Paper path (MAPPED only, nothing built — every item is money-path work)
+
+Paper is decided on this setup's own forward + holdout evidence; live is the operator's sign-off. What it would take:
+a **per-strategy trail mode and the day 3–5 partial** (the partial is globally off today) · the **ORB submission window and the
+10:00 ET unfilled-cancel** (`orh60` cannot fit inside 09:31–09:45, so the 60-minute variant is shadow-only) · a **risk
+multiplier** to ≤ 1% of the account at the article's sizing (position = min(20%, 1% ÷ stop width)) · **shared paper slots**
+(`max_positions`) with the EP lanes. None of it is touched by this build.
+
+## Known limitations / open questions
+
+- The primary K, the primary entry and the cell ladder are chosen in the backtest's discovery read and then frozen; this file's
+  definitions change only through that path (CHANGE_PROCESS).
+- **C1 is rare.** The backtest's HOLDOUT (2025-01-01 → 2026-10-16, ~21 months) holds 33 C1 trades under the spec key (k5) — about
+  1.5 a month — so the review's bar of 30 MATURE primary-arm C1 entries is a ~1.5-year wait at that rate. The looser cells
+  (holdout trades under the same key: C3 100, C4 285, C5 86, C7 63) accrue 2–9 times faster and are read beside C1; whether the
+  bar or the cell is the right thing to wait on is the operator's call, not this file's.
+- IEX-vs-SIP and thin-SIC effects above bias the first weeks; the read states them.
+
+## Change log
+
+### 2026-10-17 — NEW: the forward SHADOW recorder (job `consolidation_breakout_shadow`, 17:48 ET mon–fri; tables + review; no order path)
+
+**Trigger**: his 2026-10-17 ask to run Qullamaggie's breakout *"as a parallel shadow/paper from other consolidation"*, and his
+ruling the same day that other setups may go to shadow and paper on their own evidence. The loose consolidation lanes show no
+edge (Family A Confirm 157 settled trades at +0.10R, none reached 3R; Anticipate parked at −0.24R).
+
+**Evidence**: the rules are the article's own words (`operator_shared_notes.md` 2026-10-17) plus his additions, each marked S / R /
+B above; the pure module is pinned by its own suite (MRNA canary: watch night 2026-09-16, pivot_k5 149.7344, breakout day
+2026-09-17) and the recorder by `tests/test_cb_shadow.py` (parity with the runner's plumbing, the job end to end against an oracle
+built from the module) and `tests/test_cb_shadow_pg.py` (the SQL for real). Backtest verdict: NOT yet read (P4/P5) — the shadow
+ships regardless of it, because it needs forward time to accrue and costs no money.
+
+**Anticipated effect**: no production behaviour changes (no order, sizing, safeguard, grade or admission is touched; THE LINE).
+Four new tables fill nightly; one audit row a night; ~300 Polygon reference calls a night for a week, then ~0.
+
+**Reversion-flag**: NEW (no prior change to any of this).
+
+A liveness watch (`health_checks._DETECTOR_LIVENESS_TABLES`, key `scan_date`) covers the one failure `audit_wrap` cannot see: a
+`success` run whose writer wrote nothing.
+
+**Status**: built, awaiting deploy (market-agent; `db.py` and `scheduler.py` are on the execution image's module list, so a
+follow-up `deploy.sh execution` clears the drift warning — the execution copy only gains DDL/helper definitions and an unused
+job function, and the job is not registered there). Verify-live per the block above.
