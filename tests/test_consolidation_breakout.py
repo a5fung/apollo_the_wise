@@ -2056,3 +2056,17 @@ class TestShapesAndPurity:
                 "if x in sys.modules]; print(bad); sys.exit(1 if bad else 0)")
         p = subprocess.run([sys.executable, "-c", code], cwd=REPO, capture_output=True, text=True)
         assert p.returncode == 0, p.stdout + p.stderr
+
+
+def test_adr20_mirror_equals_the_broker_function():
+    # the module mirrors exit_logic.adr20_pct_from_bars because deploy gate 5j forbids the import
+    from agents.market_intelligence.broker.exit_logic import adr20_pct_from_bars as real
+    cases = [
+        None, [],
+        [{"h": 11.0, "l": 10.0, "c": 10.5}] * 9,
+        [{"h": 11.0 + k * 0.1, "l": 10.0, "c": 10.5 + k * 0.05} for k in range(25)],
+        [{"h": 11.0, "l": 10.0, "c": 10.5}] * 12 + [{"h": None, "l": 9.0, "c": 9.5}] * 3,
+        [{"h": 11.0, "l": 10.0, "c": 0.0}] * 5 + [{"h": 12.0, "l": 11.0, "c": 11.5}] * 15,
+    ]
+    for bars in cases:
+        assert cb.adr20_pct_from_bars(bars) == real(bars)

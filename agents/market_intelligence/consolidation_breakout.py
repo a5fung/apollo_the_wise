@@ -21,7 +21,7 @@ registration doc. The scan is registry-enumerated, so this module is not scanned
   P = fixed by the approved plan's Definitions table, not by the article
 
 Reused (never re-implemented): `anticipation._MA_NEAR_PCT` (R), `anticipation.atr14_pct`,
-`anticipation.COIL_HOLD_LIMIT` (R: the signed Family A hold rule, 0.50), `broker.exit_logic.adr20_pct_from_bars`,
+`anticipation.COIL_HOLD_LIMIT` (R: the signed Family A hold rule, 0.50), `broker.exit_logic.adr20_pct_from_bars` (mirrored: the execution boundary forbids the import),
 `flag_detector._DEAL_PIN_RANGE_THRESHOLD` (R), `flag_detector._RANGE_CONTRACTION_MAX` (R),
 `flag_detector._evaluate_fresh_pin` + `_PIN_HISTORY_DAYS` (R: the #502 fresh deal-pin layer, called
 as shipped on the same 40 rows prod feeds it), `constants.ENTRY_SLIPPAGE_PCT` (R).
@@ -50,7 +50,6 @@ from agents.market_intelligence.anticipation import (
     _MA_NEAR_PCT,
     atr14_pct as _anticipation_atr14_pct,
 )
-from agents.market_intelligence.broker.exit_logic import adr20_pct_from_bars
 from agents.market_intelligence.constants import ENTRY_SLIPPAGE_PCT
 from agents.market_intelligence.flag_detector import (
     _DEAL_PIN_RANGE_THRESHOLD,
@@ -59,6 +58,19 @@ from agents.market_intelligence.flag_detector import (
     _evaluate_fresh_pin,
     _BASE_AGE_MIN_WATCH,
 )
+
+def adr20_pct_from_bars(prior_bars) -> Optional[float]:
+    """MIRROR of `broker.exit_logic.adr20_pct_from_bars` (the execution-boundary check, deploy gate
+    5j / #256 W1, forbids importing broker/ from intelligence code). ADR20% as a FRACTION: the mean
+    daily (high - low) / close over the <= 20 bars given; the last 20 are taken FIRST, then unusable
+    ones dropped; fewer than 10 usable -> None. `tests/test_consolidation_breakout.py` asserts
+    equality with the real function on several inputs."""
+    vals = [(b["h"] - b["l"]) / b["c"] for b in (prior_bars or [])[-20:]
+            if b.get("h") is not None and b.get("l") is not None and b.get("c")]
+    if len(vals) < 10:
+        return None
+    return sum(vals) / len(vals)
+
 
 # ── Structure constants ─────────────────────────────────────────────────────────────────────────
 MIN_HISTORY = 130                # P: >= 130 sessions ending D (the 126-session RS return needs 127)
