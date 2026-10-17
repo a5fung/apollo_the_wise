@@ -21,10 +21,16 @@ registration doc. The scan is registry-enumerated, so this module is not scanned
   P = fixed by the approved plan's Definitions table, not by the article
 
 Reused (never re-implemented): `anticipation._MA_NEAR_PCT` (R), `anticipation.atr14_pct`,
-`broker.exit_logic.adr20_pct_from_bars`, `flag_detector._DEAL_PIN_RANGE_THRESHOLD` (R),
-`flag_detector._RANGE_CONTRACTION_MAX` (R), `constants.ENTRY_SLIPPAGE_PCT` (R).
+`anticipation.COIL_HOLD_LIMIT` (R: the signed Family A hold rule, 0.50), `broker.exit_logic.adr20_pct_from_bars`,
+`flag_detector._DEAL_PIN_RANGE_THRESHOLD` (R), `flag_detector._RANGE_CONTRACTION_MAX` (R),
+`flag_detector._evaluate_fresh_pin` + `_PIN_HISTORY_DAYS` (R: the #502 fresh deal-pin layer, called
+as shipped on the same 40 rows prod feeds it), `constants.ENTRY_SLIPPAGE_PCT` (R).
 MIRRORED, not imported, because `rs_engine` drags asyncpg + httpx into a pure module (the test
 asserts equality against the real thing): `_percentile_ranks`, `MIN_PRICE`, `MIN_DOLLAR_VOL`.
+MIRRORED because the real thing wants DB-shaped dict rows (per-call cost x ~2M watch nights; the
+test asserts equality against it): `flag_detector._flag_resolved_by` -> `_base_resolved`. MIRRORED
+because the rule is an inline literal there, not a constant: the pole data-artifact guard in
+`flag_detector.compute_flag_metrics` -> `_pole_data_artifact`.
 
 Index convention: `i` is the session index of the WATCH NIGHT D inside a `DailyBars`. Every
 feature about D uses bars <= i only. The breakout day is E = D + 1 (a later session).
@@ -40,6 +46,7 @@ from typing import Optional, Sequence
 import numpy as np
 
 from agents.market_intelligence.anticipation import (
+    COIL_HOLD_LIMIT,
     _MA_NEAR_PCT,
     atr14_pct as _anticipation_atr14_pct,
 )
@@ -47,7 +54,10 @@ from agents.market_intelligence.broker.exit_logic import adr20_pct_from_bars
 from agents.market_intelligence.constants import ENTRY_SLIPPAGE_PCT
 from agents.market_intelligence.flag_detector import (
     _DEAL_PIN_RANGE_THRESHOLD,
+    _PIN_HISTORY_DAYS,
     _RANGE_CONTRACTION_MAX,
+    _evaluate_fresh_pin,
+    _BASE_AGE_MIN_WATCH,
 )
 
 # ── Structure constants ─────────────────────────────────────────────────────────────────────────
@@ -64,6 +74,15 @@ RECENT_WINDOW = 5                # B: the 5-session windows (higher lows, tighte
 RS_HORIZONS = (21, 63, 126)      # S: "1-month, 3-month, 6-month" in sessions
 ADR_WINDOW = 20                  # R: exit_logic.adr20_pct_from_bars takes the last 20 bars
 ATR_WINDOW = 14                  # R: anticipation.atr14_pct
+# R: the pole data-artifact guard in flag_detector.compute_flag_metrics (htf.md "Flagpole
+#    data-artifact", Gemini 6/27) — literals there, mirrored here by name: a one-session close jump
+#    > 1.50x on < 2.0x the window's mean volume is a split / bad tick, not a pole.
+POLE_ARTIFACT_JUMP = 1.50
+POLE_ARTIFACT_VOL_MULT = 2.0
+# The C0 structural gates, in evaluation order — the names `explain_watch` reports. `close_nonpositive`
+# is bad data (a zero close); it is listed so the vocabulary is closed.
+WATCH_GATES = ("history", "prior_move", "close_above_pole_high", "close_nonpositive", "sma50",
+               "deal_pin_median", "fresh_pin", "pole_artifact", "adr_unusable")
 
 # ── Universe (MIRRORS of rs_engine; equality asserted in the tests) ─────────────────────────────
 MIN_PRICE = 5.0                  # R: rs_engine.MIN_PRICE (RAW close, not the adjusted one)
@@ -82,7 +101,8 @@ GROUP_PCT_MIN = 80.0             # B: C2 / C6
 PRIOR_MOVE_STRICT = 0.50         # B: C2 (grid 0.30 / 0.50 / 1.00)
 PIVOT_KEYS = ("k5", "k10", "full")   # B: which pivot the cells and the breakout use — NO default,
                                      #    the primary is picked in the discovery read (P4)
-CELLS = ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7")
+CELLS = ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7")      # the 8 DECIDING cells
+REPORT_CELLS = ("C1_no_retrace", "C1_no_tightening")            # reported beside C1, never deciding
 
 # ── Entries / exits ─────────────────────────────────────────────────────────────────────────────
 OPENING_RANGE_MINUTES = {"orh1": 1, "orh5": 5, "orh60": 60}   # S: "first 1-minute ... 5-minute ... 60-minute"
@@ -111,7 +131,9 @@ class DailyBars:
         return len(self.c)
 
     def slice(self, lo: int, hi: int) -> "DailyBars":
-        """Sessions [lo, hi) — e.g. `bars.slice(E + 1, E + 1 + horizon)` is the forward walk input."""
+        """Sessions [lo, hi) — e.g. `bars.slice(E + 1, E + 2 + horizon)` is the forward walk input:
+        horizon + 1 sessions, the extra one being the next open a trail signal on the horizon
+        session fills at (see `walk_exit`'s CALLER CONTRACT)."""
         return DailyBars(self.dates[lo:hi], self.o[lo:hi], self.h[lo:hi], self.l[lo:hi],
                          self.c[lo:hi], self.v[lo:hi])
 
@@ -188,63 +210,151 @@ def _bar_dicts(bars: DailyBars, lo: int, hi: int) -> list:
             for j in range(lo, hi + 1)]
 
 
-def evaluate_watch(bars: DailyBars, i: int) -> Optional[dict]:
-    """Watch-night structure at session `i`. None unless every C0 STRUCTURAL gate passes.
+def _dollar_vol_median(bars: DailyBars, i: int) -> float:
+    """Median of close x volume over the DOLLAR_VOL_WINDOW sessions ending at `i` (split-invariant)."""
+    a = i - DOLLAR_VOL_WINDOW + 1
+    return float(np.median(bars.c[a:i + 1] * bars.v[a:i + 1]))
 
-    Gates: >= 130 sessions of history; a prior move (P = highest high in [i-45, i-10], ties ->
-    the latest; pole_low = lowest low in [P-40, P]; high(P)/pole_low - 1 >= 0.30); no new high
-    since P; close >= SMA50; the deal-pin guard (median daily range of the last 5 sessions
-    >= `flag_detector._DEAL_PIN_RANGE_THRESHOLD` — the MEDIAN arm only, not its `is_pin`, which also
-    needs all 5 days under it). Raw price and liquidity are NOT checked here (`universe_ok`).
+
+def _pole_top(h: np.ndarray, c: np.ndarray, lo: int, hi: int) -> int:
+    """The pole top P in [lo, hi], stateless mirror of `flag_detector._find_pivot_high`'s #592
+    rule: walking forward, a higher (or equal — ties go to the latest) high only becomes the top
+    when the pole is still extending (fewer than `_BASE_AGE_MIN_WATCH` bars since the current
+    top) or some CLOSE since the current top went above it (`_flag_resolved_by`). A wick over an
+    unresolved top never becomes the top, however old it gets (the reviewer's #592 point: with a
+    plain argmax, a wick 10+ sessions old became P and moved the base start into the base)."""
+    T = lo
+    for t in range(lo + 1, hi + 1):
+        if h[t] >= h[T] and (t - T - 1 < _BASE_AGE_MIN_WATCH or bool((c[T + 1:t + 1] > h[T]).any())):
+            T = t
+    return T
+
+
+def _base_resolved(c: np.ndarray, P: int, i: int, pole_high: float) -> bool:
+    """Has any CLOSE in (P, i] gone ABOVE high[P]? Mirrors `flag_detector._flag_resolved_by`
+    (the #592 fix): STRICT `>` on the close, a wick over the top does not count. The real
+    function also returns True for fewer than `_BASE_AGE_MIN_WATCH` (3) bars since the pivot —
+    a pole still extending; that branch can never fire here (base_len >= 10 by construction).
+    The test asserts equality against the real function."""
+    return bool((c[P + 1:i + 1] > pole_high).any())
+
+
+def _fresh_pin_rows(bars: DailyBars, i: int) -> list:
+    """The last `_PIN_HISTORY_DAYS` (40) sessions ending at `i`, NEWEST FIRST, in the keys
+    `flag_detector._evaluate_fresh_pin` reads — exactly what `_check_deal_pin_signatures_batch`
+    feeds it in prod (the sticky carry re-runs the evaluator on `rows[k:]`, so the row count is
+    part of the verdict)."""
+    lo = max(0, i - _PIN_HISTORY_DAYS + 1)
+    return [{"high_price": float(bars.h[j]), "low_price": float(bars.l[j]),
+             "close": float(bars.c[j]), "volume": float(bars.v[j])}
+            for j in range(i, lo - 1, -1)]
+
+
+def _pole_data_artifact(bars: DailyBars, P: int) -> bool:
+    """True when a single session inside the pole window [P-40, P] closed > 1.50x the previous
+    close on < 2.0x the window's mean volume (a split / bad tick, not a pole). Mirrors the guard in
+    `flag_detector.compute_flag_metrics` (htf.md "Flagpole data-artifact", Gemini 6/27): strict `>`
+    on the ratio, strict `<` on the volume, mean over the window INCLUDING the spike day, and no
+    verdict when the mean volume is not positive. The detector's window is 40 bars
+    [P-39, P]; this module's pole window is 41 [P-40, P] (the same one `pole_low` is read from) —
+    a deliberate one-session difference, stated rather than hidden."""
+    a = P - POLE_LOOKBACK
+    avg = float(bars.v[a:P + 1].mean())
+    if not avg > 0.0:
+        return False
+    prev, cur = bars.c[a:P], bars.c[a + 1:P + 1]
+    safe = np.where(prev > 0.0, prev, 1.0)
+    jump = (prev > 0.0) & (cur / safe > POLE_ARTIFACT_JUMP)
+    return bool((jump & (bars.v[a + 1:P + 1] < POLE_ARTIFACT_VOL_MULT * avg)).any())
+
+
+def explain_watch(bars: DailyBars, i: int) -> tuple:
+    """`(features, failing_gate)` at session `i`: `(dict, None)` when every C0 STRUCTURAL gate
+    passes, else `(None, <name of the FIRST gate that failed>)`. Gates, in evaluation order
+    (`WATCH_GATES`):
+      history              >= 130 sessions ending D
+      prior_move           P = highest high in [i-45, i-10] (ties -> the latest); pole_low = lowest
+                           low in [P-40, P]; high(P) / pole_low - 1 >= 0.30
+      close_above_pole_high  NO CLOSE above high(P) in (P, i] — a wick over the top does not end
+                           the base (mirrors the shipped HTF `_flag_resolved_by`, strict `>`)
+      sma50                close >= SMA50
+      deal_pin_median      median daily range of the last 5 sessions >=
+                           `flag_detector._DEAL_PIN_RANGE_THRESHOLD` — the MEDIAN arm only, not its
+                           `is_pin`, which also needs 5 sessions under it
+      fresh_pin            `flag_detector._evaluate_fresh_pin` (the #502 layer: a welded 5-session
+                           band AND an announcement-sized volume event — a days-old cash deal that the
+                           median arm cannot see yet) is NOT firing on the 40 rows ending at i
+      pole_artifact        no > 50% one-session close jump on < 2x volume inside the pole window
+      adr_unusable         ADR20 over the last 20 bars is positive
+    (Bad data: a non-positive pole low reports `prior_move`; a non-positive close reports
+    `close_nonpositive` — never a real name.) Raw price and liquidity are NOT checked here
+    (`universe_ok`).
 
     Returns plain floats/ints/bools/ISO-date strings (json.dumps-safe). Key families:
       watch_date, i, close, pole_idx/pole_date/pole_high, pole_low/pole_low_idx/pole_low_date,
-      prior_move, pole_sessions, base_len, base_low, base_depth,
+      prior_move, pole_sessions, base_len, base_low, base_depth, retrace, retrace_ok,
       pivot_k5 / pivot_k10 / pivot_full  (+ _date, + _idx),
       sma10/sma20/sma50, sma20_ok, sma50_rising, higher_lows,
       range_recent5, range_early5, tightening_ratio, tightening_ok, median_range5,
-      adr20, atr14 (fractions), trigger_bar_range_adr, inside_day.
-    """
+      adr20, atr14 (fractions), trigger_bar_range_adr, inside_day,
+      fresh_pin (always False on a passing row) + fresh_pin_band_pct / fresh_pin_spike_x (the
+      evaluator's own numbers — how close the name was to the gate),
+    and TELEMETRY (none of it gates): median_dollar_vol20, pole_max_gain_day / pole_max_gain,
+      pole_day_vol_ratio, pole_max_gap, atr14_slope (= ATR14% at i / ATR14% at P+1, both as a
+      fraction of that day's close — the unit of `atr14`)."""
     n = len(bars)
     if not (0 <= i < n):
         raise IndexError(f"evaluate_watch: i={i} outside 0..{n - 1}")
     if i < MIN_HISTORY - 1:
-        return None
+        return None, "history"
     h, l, c = bars.h, bars.l, bars.c
 
-    # prior move: P = the (latest) highest high in the window that leaves a 10..45 session base
+    # prior move: P = the pole top in the window that leaves a 10..45 session base (#592 walk, `_pole_top`)
     lo, hi = i - BASE_MAX_SESSIONS, i - BASE_MIN_SESSIONS
-    P = lo + _argmax_last(h[lo:hi + 1])
+    P = _pole_top(h, c, lo, hi)
     pole_high = float(h[P])
-    if float(h[P + 1:i + 1].max()) > pole_high:          # a new high since P — not a base under P
-        return None
     base_len = i - P
     assert BASE_MIN_SESSIONS <= base_len <= BASE_MAX_SESSIONS, base_len   # true by construction
-
     pole_seg = l[P - POLE_LOOKBACK:P + 1]
     pole_low = float(pole_seg.min())
     if not pole_low > 0.0:
-        return None
+        return None, "prior_move"
     prior_move = pole_high / pole_low - 1.0
     if prior_move < PRIOR_MOVE_MIN:
-        return None
+        return None, "prior_move"
+
+    if _base_resolved(c, P, i, pole_high):               # price left the base through the top
+        return None, "close_above_pole_high"
 
     close_i = float(c[i])
     if not close_i > 0.0:
-        return None
+        return None, "close_nonpositive"
     sma50 = float(c[i - SMA_LONG + 1:i + 1].mean())
     if close_i < sma50:
-        return None
+        return None, "sma50"
 
     w = RECENT_WINDOW
     rng = (h[i - w + 1:i + 1] - l[i - w + 1:i + 1]) / c[i - w + 1:i + 1]
     median_range5 = float(np.sort(rng)[len(rng) // 2])   # same median as flag_detector._evaluate_deal_pin
     if median_range5 < _DEAL_PIN_RANGE_THRESHOLD:
-        return None
+        return None, "deal_pin_median"
+
+    fresh = _evaluate_fresh_pin(_fresh_pin_rows(bars, i))
+    if fresh is not None and fresh["is_fresh_pin"]:
+        return None, "fresh_pin"
+
+    if _pole_data_artifact(bars, P):
+        return None, "pole_artifact"
+
+    bar20 = _bar_dicts(bars, i - ADR_WINDOW + 1, i)
+    adr20 = adr20_pct_from_bars(bar20)
+    if adr20 is None or not adr20 > 0.0:
+        return None, "adr_unusable"                       # unusable bars in the window — abstain
 
     # ── passed C0: compute every feature ───────────────────────────────────────────────────────
     pole_low_idx = (P - POLE_LOOKBACK) + _argmin_last(pole_seg)
     base_low = float(l[P + 1:i + 1].min())
+    retrace = (pole_high - base_low) / (pole_high - pole_low)    # share of the pole's range given back
 
     def _pivot(window: int) -> tuple:
         a = i - window + 1
@@ -265,12 +375,27 @@ def evaluate_watch(bars: DailyBars, i: int) -> Optional[dict]:
     recent_mean = float(rng.mean())
     ratio = (recent_mean / early_mean) if early_mean > 0 else None
 
-    bar20 = _bar_dicts(bars, i - ADR_WINDOW + 1, i)
-    adr20 = adr20_pct_from_bars(bar20)
     atr_pct = _anticipation_atr14_pct(_bar_dicts(bars, i - ATR_WINDOW, i), ATR_WINDOW)
-    if adr20 is None or not adr20 > 0.0:
-        return None                                   # unusable bars in the window — abstain
+    atr_at_base = _anticipation_atr14_pct(_bar_dicts(bars, P + 1 - ATR_WINDOW, P + 1), ATR_WINDOW)
     bar_range = (float(h[i]) - float(l[i])) / close_i
+
+    # telemetry about the pole (none of it gates): the biggest single-session close gain inside
+    # (pole_low_idx, P] — ties -> the earliest — its volume against the 20 sessions that ended the day
+    # before the pole began, and the biggest overnight gap. Empty when the low sits on P itself.
+    gain_day = gain = vol_ratio = max_gap = None
+    if pole_low_idx < P:
+        prev, cur = c[pole_low_idx:P], c[pole_low_idx + 1:P + 1]
+        okp = prev > 0.0
+        g = np.where(okp, cur / np.where(okp, prev, 1.0) - 1.0, -np.inf)
+        k = int(np.argmax(g))
+        if np.isfinite(g[k]):
+            gain, gain_day = float(g[k]), bars.dates[pole_low_idx + 1 + k].isoformat()
+            a0 = pole_low_idx - 20
+            if a0 >= 0:
+                base_vol = float(bars.v[a0:pole_low_idx].mean())
+                vol_ratio = (float(bars.v[pole_low_idx + 1 + k]) / base_vol) if base_vol > 0 else None
+            gaps = np.where(okp, bars.o[pole_low_idx + 1:P + 1] / np.where(okp, prev, 1.0) - 1.0, -np.inf)
+            max_gap = float(gaps.max())
 
     return {
         "watch_date": bars.dates[i].isoformat(), "i": int(i), "close": close_i,
@@ -279,6 +404,7 @@ def evaluate_watch(bars: DailyBars, i: int) -> Optional[dict]:
         "pole_low_date": bars.dates[pole_low_idx].isoformat(),
         "prior_move": prior_move, "pole_sessions": int(P - pole_low_idx),
         "base_len": int(base_len), "base_low": base_low, "base_depth": 1.0 - base_low / pole_high,
+        "retrace": float(retrace), "retrace_ok": bool(retrace <= COIL_HOLD_LIMIT),
         "pivot_k5": p5, "pivot_k5_idx": int(p5_idx), "pivot_k5_date": bars.dates[p5_idx].isoformat(),
         "pivot_k10": p10, "pivot_k10_idx": int(p10_idx), "pivot_k10_date": bars.dates[p10_idx].isoformat(),
         "pivot_full": pf, "pivot_full_idx": int(pf_idx), "pivot_full_date": bars.dates[pf_idx].isoformat(),
@@ -294,7 +420,22 @@ def evaluate_watch(bars: DailyBars, i: int) -> Optional[dict]:
         "atr14": (float(atr_pct) / 100.0) if atr_pct is not None else None,   # atr14_pct is PERCENT
         "trigger_bar_range_adr": bar_range / float(adr20),
         "inside_day": bool(h[i] <= h[i - 1] and l[i] >= l[i - 1]),
-    }
+        "fresh_pin": False,
+        "fresh_pin_band_pct": float(fresh["band_pct"]) if fresh is not None else None,
+        "fresh_pin_spike_x": float(fresh["vol_spike_x"]) if fresh is not None else None,
+        # ── telemetry, never a gate ──
+        "median_dollar_vol20": _dollar_vol_median(bars, i),
+        "pole_max_gain_day": gain_day, "pole_max_gain": gain, "pole_day_vol_ratio": vol_ratio,
+        "pole_max_gap": max_gap,
+        "atr14_slope": (float(atr_pct) / float(atr_at_base)
+                        if atr_pct is not None and atr_at_base is not None and atr_at_base > 0 else None),
+    }, None
+
+
+def evaluate_watch(bars: DailyBars, i: int) -> Optional[dict]:
+    """Watch-night structure at session `i`: the features, or None unless every C0 STRUCTURAL gate
+    passes. A thin wrapper over `explain_watch`, which also names the gate that failed."""
+    return explain_watch(bars, i)[0]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -412,8 +553,7 @@ def universe_ok(bars: DailyBars, i: int, *, raw_factor: float, ticker: str,
         return False
     if not float(bars.c[i]) * raw_factor >= MIN_PRICE:
         return False
-    a = i - DOLLAR_VOL_WINDOW + 1
-    return bool(float(np.median(bars.c[a:i + 1] * bars.v[a:i + 1])) >= MIN_DOLLAR_VOL)
+    return bool(_dollar_vol_median(bars, i) >= MIN_DOLLAR_VOL)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -424,10 +564,16 @@ def _ge(x, thr) -> bool:
 
 
 def cell_flags(features: Optional[dict], ctx: dict, *, k: str) -> dict:
-    """C0..C7 as post-hoc flags on one watch row (the plan's cell table). `k` ("k5" | "k10" |
-    "full") selects the pivot the cell and the breakout use — NO default; the primary is chosen
-    in the discovery read (P4). It enters C0 as the plan's "pivot" clause: the chosen pivot must
-    exist and sit at or under high(P).
+    """C0..C7 (`CELLS`, the 8 DECIDING cells) plus the two REPORTED-only cells (`REPORT_CELLS`:
+    `C1_no_retrace`, `C1_no_tightening` — C1 with that one structure term dropped, shown beside C1
+    and never deciding) as post-hoc flags on one watch row. `k` ("k5" | "k10" | "full") selects the
+    pivot the cell and the breakout use — NO default; the primary is chosen in the discovery read
+    (P4). It enters C0 as the plan's "pivot" clause: the chosen pivot must exist. It no longer has
+    to sit at or under high(P): a wick over the pole top is a real resistance level, and the base
+    survives a wick (only a CLOSE above the top ends it, see `explain_watch`).
+
+    C1 = C0 + SMA20 tolerance + rising SMA50 + higher lows + tightening + RETRACE <= 50% (Family A's
+    signed hold rule) + RS best >= 98 + the QQQ 10/20 phase. C2..C7 inherit every term of it.
 
     ctx keys: rs_best (max of the three percentiles), rs_all (min of them — carried for the
     caller's "all three >= 98" variant, not read by C0..C7), grp_pct (None -> group cells False),
@@ -435,14 +581,14 @@ def cell_flags(features: Optional[dict], ctx: dict, *, k: str) -> dict:
     if k not in PIVOT_KEYS:
         raise ValueError(f"cell_flags: k must be one of {PIVOT_KEYS}, got {k!r}")
     if features is None:
-        return {name: False for name in CELLS}
+        return {name: False for name in CELLS + REPORT_CELLS}
     pivot = features.get(f"pivot_{k}")
-    c0 = bool(pivot is not None and 0.0 < pivot <= features["pole_high"])
+    c0 = bool(pivot is not None and pivot > 0.0)
     rs_best, grp = ctx.get("rs_best"), ctx.get("grp_pct")
     phase_a = bool(ctx.get("phase_qqq_10_20"))
     phase_b = bool(ctx.get("phase_spy_qqq_50"))
-    base = (c0 and features["sma20_ok"] and features["sma50_rising"]
-            and features["higher_lows"] and features["tightening_ok"])
+    core = bool(c0 and features["sma20_ok"] and features["sma50_rising"] and features["higher_lows"])
+    base = bool(core and features["tightening_ok"] and features["retrace_ok"])
     c1 = bool(base and _ge(rs_best, RS_BEST_PRIMARY) and phase_a)
     c6 = bool(c1 and _ge(grp, GROUP_PCT_MIN))
     return {
@@ -455,6 +601,11 @@ def cell_flags(features: Optional[dict], ctx: dict, *, k: str) -> dict:
         "C5": bool(base and _ge(rs_best, RS_BEST_LOOSE) and phase_a),           # RS >= 95
         "C6": c6,
         "C7": bool(base and _ge(rs_best, RS_BEST_PRIMARY) and phase_b),         # SPY+QQQ > SMA50
+        # reported beside C1, never deciding
+        "C1_no_retrace": bool(core and features["tightening_ok"]
+                              and _ge(rs_best, RS_BEST_PRIMARY) and phase_a),
+        "C1_no_tightening": bool(core and features["retrace_ok"]
+                                 and _ge(rs_best, RS_BEST_PRIMARY) and phase_a),
     }
 
 
@@ -582,10 +733,22 @@ def close_entry(daily_close: float, daily_low: float, pivot: float, adr20: float
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # 6. Exits
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+TRAIL_FILLS = ("next_open", "close")
+
+
 @dataclass(frozen=True)
 class Arm:
     """One exit arm. kind "qm": optional partial then trail; kind "fixed": +target_r / stop over
-    max_sessions. partial_frac 0 / partial_session None = no partial (and so no breakeven move)."""
+    max_sessions. partial_frac 0 / partial_session None = no partial (and so no breakeven move).
+
+    trail_fill: where a trail signal (a close under the SMA) is filled. "next_open" = the remainder
+    sells at the OPEN of the next session (his 09-29 execution ruling: decide on the true close,
+    sell in the next morning's opening auction — docs/setups/exit_discipline.md, #687); "close" =
+    at the signal close (sensitivity only — it cannot be executed). Partials always fill at the
+    session close. breakeven: move the stop to the fill after the partial (False = the
+    tail-killer control, exit_discipline.md / 545). partial_if_profit: take the partial (and the
+    breakeven) only when the partial session's close is above the fill; either way the trail arms
+    from the NEXT session on."""
     name: str
     kind: str                                  # "qm" | "fixed"
     partial_frac: float = 0.0
@@ -596,6 +759,15 @@ class Arm:
     trail_before_partial: bool = False         # False = the article: "sell 1/3 to 1/2 ... after
                                                # 3-5 days ... The rest trailed" - the trail arms only
                                                # once the partial is taken. True = sensitivity.
+    trail_fill: str = "next_open"
+    breakeven: bool = True
+    partial_if_profit: bool = False
+
+    def __post_init__(self):
+        if self.trail_fill not in TRAIL_FILLS:
+            raise ValueError(f"Arm {self.name!r}: trail_fill must be one of {TRAIL_FILLS}, got {self.trail_fill!r}")
+        if self.partial_if_profit and (self.partial_session is None or not self.partial_frac > 0):
+            raise ValueError(f"Arm {self.name!r}: partial_if_profit needs a partial")
 
 
 def _build_arms() -> dict:
@@ -607,7 +779,15 @@ def _build_arms() -> dict:
                 arms[nm] = Arm(nm, "qm", frac, sess, trail)
     # sensitivity: the primary with the trail live from session 1 (before the partial)
     arms["p33_s3_t10_early"] = Arm("p33_s3_t10_early", "qm", 1 / 3, 3, 10, trail_before_partial=True)
+    # sensitivity: the primary with the trail filled at the signal close instead of the next open
+    arms["p33_s3_t10_close"] = Arm("p33_s3_t10_close", "qm", 1 / 3, 3, 10, trail_fill="close")
+    # control: the primary without the breakeven move after the partial (545: breakeven = the tail-killer)
+    arms["p33_s3_t10_nobe"] = Arm("p33_s3_t10_nobe", "qm", 1 / 3, 3, 10, breakeven=False)
+    # sensitivity: partial (and breakeven) only if the session-3 close is above the fill; trail from session 4
+    arms["p33_s3_t10_ifprofit"] = Arm("p33_s3_t10_ifprofit", "qm", 1 / 3, 3, 10, partial_if_profit=True)
     arms["trail10_only"] = Arm("trail10_only", "qm", 0.0, None, 10)
+    # control: the entry stop held to the horizon, then marked — no partial, no trail
+    arms["stop_only"] = Arm("stop_only", "qm")
     arms["fixed_3r_12"] = Arm("fixed_3r_12", "fixed", target_r=FIXED_TARGET_R,
                               max_sessions=FIXED_SESSIONS)
     return arms
@@ -632,10 +812,20 @@ def walk_exit(*, fill: float, stop: float, closes_before, fwd: DailyBars, arm: A
 
     "qm", per session j = 1..horizon, in order: (1) stop — open <= stop exits ALL remaining at
     the open (a gap is worse than -1R), else low <= stop exits at the stop; (2) the partial at
-    `partial_session`'s close, after which stop <- max(stop, fill) rests from the NEXT session;
-    (3) trail — close < SMA(trail_sma) over closes_before + fwd through j exits the remainder at
-    the close; (4) j == horizon marks the remainder at the close ("censored"); if fwd runs out
-    first it marks at the last close ("degraded").
+    `partial_session`'s close, after which stop <- max(stop, fill) rests from the NEXT session
+    (not with `breakeven=False`; `partial_if_profit` takes the partial only on a close above the
+    fill); (3) trail — close < SMA(trail_sma) over closes_before + fwd through j is a SIGNAL on
+    the close of j. `trail_fill="next_open"` (the default, every grid arm): the remainder exits at
+    the OPEN of session j+1 (event `(j+1, "trail", open, remaining)`, sessions_held j+1) — booked
+    straight away, so the stop check of j+1 can never book it a second time; if fwd ends at j the
+    signal cannot fill and the remainder is marked at the close of j ("degraded"); if j is the
+    horizon the status is "censored", filled at the next open when fwd has it, else marked at the
+    close of j. `trail_fill="close"`: exits the remainder at the close of j, status "trailed";
+    (4) j == horizon marks the remainder at the close ("censored"); if fwd runs out first it marks
+    at the last close ("degraded"). When the breakeven stop lands ABOVE the partial session's
+    close (the partial sold below the fill) an event `(j, "be_above_close", close, 0.0)` follows
+    the partial: the next session's open will take it out — a hidden one-day time stop the runner
+    counts.
     "fixed": target = fill + target_r x risk, pessimistic (a bar touching both -> the stop),
     max_sessions, then marked at the close ("time_exit"; "degraded" if fwd is shorter). A bar that
     gaps over the target fills AT the target, not the better open.
@@ -646,6 +836,10 @@ def walk_exit(*, fill: float, stop: float, closes_before, fwd: DailyBars, arm: A
       * `closes_before[-1]` MUST be E's own close. The module cannot check this; a series that
         stops at E-1 shifts every SMA a day (the #548 trap, at the call site). The runner asserts
         `closes_before[-1] == bars.c[E]` before calling.
+      * `fwd` = horizon + 1 sessions: `bars.slice(E + 1, E + 2 + horizon)`. The extra session is the
+        next open a trail signal on the horizon session fills at (status "censored"); with exactly
+        `horizon` rows that branch is unreachable and the signal falls through to the mark at the
+        horizon close. The walk itself never reads past session `horizon` except for that open.
       * status "degraded" = fwd ran out before the horizon — an UNSETTLED mark, not an outcome.
         The runner excludes every "degraded" row from the decisive numbers (or counts it open).
         With no forward bars at all the remainder is marked at E's close (`closes_before[-1]`,
@@ -694,6 +888,7 @@ def walk_exit(*, fill: float, stop: float, closes_before, fwd: DailyBars, arm: A
     remaining = 1.0
     stop_now = stop0
     partial_done = False
+    next_open = arm.trail_fill == "next_open"
     for j in range(1, min(int(horizon), n) + 1):
         oj, lj, cj = float(o[j - 1]), float(l[j - 1]), float(c[j - 1])
         # 1. the stop
@@ -703,21 +898,37 @@ def walk_exit(*, fill: float, stop: float, closes_before, fwd: DailyBars, arm: A
             pnl += (px - fill) * remaining
             return _outcome("stopped", pnl, risk, fill, adr20, j, events)
         # 2. the partial, at the close; the breakeven stop rests from the NEXT session
-        if (not partial_done and arm.partial_session == j and arm.partial_frac > 0):
+        if (not partial_done and arm.partial_session == j and arm.partial_frac > 0
+                and not (arm.partial_if_profit and not cj > fill)):
             events.append((j, "partial", cj, arm.partial_frac))
             pnl += (cj - fill) * arm.partial_frac
             remaining -= arm.partial_frac
             partial_done = True
-            stop_now = max(stop_now, fill)
+            if arm.breakeven:
+                stop_now = max(stop_now, fill)
+                if stop_now > cj:               # partial sold under the fill: tomorrow's open takes it
+                    events.append((j, "be_above_close", cj, 0.0))
         # 3. the trail: first CLOSE below the SMA (today's close included)
-        if trail_n and (partial_done or arm.partial_session is None or arm.trail_before_partial):
+        if arm.partial_if_profit:               # trail arms from the session AFTER the partial session
+            trail_live = j > arm.partial_session
+        else:
+            trail_live = partial_done or arm.partial_session is None or arm.trail_before_partial
+        if trail_n and trail_live:
             pos = n_before + j                  # 1-based position of session j inside cs
             if pos - trail_n >= 0:
                 sma = (cs[pos] - cs[pos - trail_n]) / trail_n
                 if cj < sma:
-                    events.append((j, "trail", cj, remaining))
-                    pnl += (cj - fill) * remaining
-                    return _outcome("trailed", pnl, risk, fill, adr20, j, events)
+                    if not next_open:
+                        events.append((j, "trail", cj, remaining))
+                        pnl += (cj - fill) * remaining
+                        return _outcome("trailed", pnl, risk, fill, adr20, j, events)
+                    if j < n:                   # session j+1 exists: sell the remainder at its open
+                        opx = float(o[j])
+                        events.append((j + 1, "trail", opx, remaining))
+                        pnl += (opx - fill) * remaining
+                        return _outcome("censored" if j == int(horizon) else "trailed", pnl, risk,
+                                        fill, adr20, j + 1, events)
+                    # no next open: fall through — the horizon mark below, or "degraded" after the loop
         # 4. the horizon
         if j == int(horizon):
             events.append((j, "mark", cj, remaining))

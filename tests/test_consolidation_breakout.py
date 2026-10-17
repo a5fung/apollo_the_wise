@@ -8,8 +8,10 @@ mutation that does not).
 """
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -65,6 +67,7 @@ class Synth:
         self.n, self.i, self.base_n, self.top = n, n - 1, base_n, top
         self.P = self.i - base_n
         self.o, self.h, self.l, self.c = ([0.0] * n for _ in range(4))
+        self.v = [2e6] * n                                    # flat volume; tests raise single bars
         for k in range(0, self.P - 20):                       # pad
             self.o[k] = self.c[k] = 10.0
             self.h[k], self.l[k] = 10.1, 9.9
@@ -90,11 +93,13 @@ class Synth:
             self.h[k], self.l[k] = c * hi, c * lo
 
     def bars(self) -> cb.DailyBars:
-        return cb.daily_bars_from_arrays(_weekdays(self.n), self.o, self.h, self.l, self.c,
-                                         [2e6] * self.n)
+        return cb.daily_bars_from_arrays(_weekdays(self.n), self.o, self.h, self.l, self.c, self.v)
 
     def watch(self):
         return cb.evaluate_watch(self.bars(), self.i)
+
+    def explain(self):
+        return cb.explain_watch(self.bars(), self.i)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -136,7 +141,7 @@ class TestMrnaCanary:
         assert 161.9599 > self.f["pivot_k5"]
         assert 161.9599 > self.f["pivot_k10"]
         assert 161.9599 > self.f["pivot_full"]            # 161.9599 > 161.37 (08-25)
-        # and the previous-day pivots are all still under the pole high (the C0 clause)
+        # and (a fact about MRNA, no longer a gate) the previous-day pivots all sit under the pole high
         assert self.f["pivot_full"] <= self.f["pole_high"]
 
     def test_higher_lows_and_tightening(self):
@@ -233,23 +238,57 @@ class TestC0Gates:
         assert Synth(top=12.9).watch() is not None
         assert Synth(top=12.8).watch() is None
 
-    def test_no_new_high_since_pole(self):
+    def test_a_wick_over_the_pole_high_does_not_end_the_base_only_a_close_does(self):
+        # #702 P1b change 1 (was: "no new high since P"). The shipped HTF `_flag_resolved_by` rule:
+        # price has LEFT the base only once some bar CLOSES above high(P); a wick over it is not an exit.
         s = Synth()
         assert s.watch() is not None
-        s.h[s.i - 3] = s.top * 1.01                       # outside [i-45, i-10]: P stays, base broken
-        assert s.watch() is None
-
-    def test_a_later_higher_high_inside_the_window_re_anchors_the_pole(self):
-        s = Synth()
-        s.h[s.i - 12] = s.top * 1.01                      # inside the window -> this IS the new P
+        s.h[s.i - 3] = s.top * 1.01                       # a wick: close stays ~15, P stays, base stands
         f = s.watch()
+        assert f is not None and f["pole_idx"] == s.P
+        assert f["pivot_k5"] == s.top * 1.01              # and the wick IS the resistance level
+        s2 = Synth()
+        s2.c[s2.i - 3], s2.o[s2.i - 3] = s2.top * 1.001, s2.top * 1.001
+        s2.h[s2.i - 3] = s2.top * 1.01                    # now it CLOSED over the top
+        assert s2.explain() == (None, "close_above_pole_high")
+        s3 = Synth()
+        s3.c[s3.i - 3], s3.o[s3.i - 3] = s3.top, s3.top   # a close EXACTLY at the pole high: strict `>`
+        s3.h[s3.i - 3] = s3.top * 1.01
+        assert s3.watch() is not None
+
+    def test_a_later_wick_over_an_unresolved_top_does_not_become_the_pole(self):
+        # #592 (mirrored in `_pole_top`): a higher HIGH 12 sessions back, with no CLOSE above the
+        # top since the top, is a wick over the base, not a new top - P stays.
+        s = Synth()
+        s.h[s.i - 12] = s.top * 1.01
+        f = s.watch()
+        assert f is not None and f["pole_idx"] == s.P
+
+    def test_a_close_above_the_top_lets_a_later_high_re_anchor_the_pole(self):
+        s = Synth()
+        s.h[s.i - 12] = s.top * 1.02
+        s.c[s.i - 12] = s.top * 1.01                      # the close resolves the old top
+        f, gate = cb.explain_watch(s.bars(), s.i)
+        assert gate != "close_above_pole_high"            # the new top is P, so it is not "after P"
         assert f is not None and f["pole_idx"] == s.i - 12 and f["base_len"] == 12
 
-    def test_pole_high_ties_resolve_to_the_latest(self):
+    def test_pole_top_walk_matches_the_592_rule(self):
+        h = np.array([10.0, 12.0, 12.5, 12.4, 12.3, 12.2, 12.6, 12.1])   # 12.6 at t=6: a wick
+        c = np.array([10.0, 11.9, 12.4, 12.2, 12.1, 12.0, 12.3, 12.0])   # no close > 12.5
+        assert cb._pole_top(h, c, 0, 7) == 2              # t=6 is 3 bars after t=2: the base formed
+        c2 = c.copy(); c2[4] = 12.55                      # a close above 12.5 resolves the top
+        assert cb._pole_top(h, c2, 0, 7) == 6
+        h3 = h.copy(); h3[4] = 12.7                       # 1 bar after the t=2 top (4-2-1 = 1 < 3):
+        assert cb._pole_top(h3, c, 0, 7) == 4             # the pole is still extending -> it walks
+
+    def test_pole_high_ties_resolve_to_the_latest_only_while_the_pole_extends(self):
         s = Synth()
-        s.h[s.P - 5] = s.top                              # an equal high 5 sessions earlier
-        f = s.watch()
-        assert f["pole_idx"] == s.P                       # not P-5
+        s.h[s.P - 2] = s.top                              # an equal high 2 sessions earlier: extending
+        assert s.watch()["pole_idx"] == s.P
+        s = Synth()
+        s.h[s.P - 5] = s.top                              # 5 sessions earlier (P-(P-5)-1 = 4 >= 3) and the
+        f = s.watch()                                     # ramp closes P-4..P (14.7..15.8) never exceed 16:
+        assert f["pole_idx"] == s.P - 5 and f["base_len"] == 25   # the later equal high is a re-test
 
     def test_base_length_bounds_are_inclusive(self):
         for base_n in (10, 45):
@@ -352,6 +391,7 @@ class TestC0Gates:
         for k in range(s.i - 59, s.i - 54):               # 5 bars that leave SMA50 between i-10 and i
             s.o[k] = s.c[k] = 30.0                         # (and are gone by i-5: the slope is over 10, not 5)
             s.h[k], s.l[k] = 30.3, 29.7
+        s.v[s.i - 59] = 2e7        # 10 -> 30 is a 3x jump INSIDE the pole window: only on real volume is it a pole
         f = s.watch()
         assert f is not None and f["sma50_rising"] is False
 
@@ -598,18 +638,24 @@ class TestCells:
         assert cb.cell_flags(_good_features(prior_move=0.49), ctx, k="k5")["C1"] is True
         assert cb.cell_flags(_good_features(prior_move=0.50), ctx, k="k5")["C2"] is True
 
-    @pytest.mark.parametrize("flag", ["sma20_ok", "sma50_rising", "higher_lows", "tightening_ok"])
+    @pytest.mark.parametrize("flag", ["sma20_ok", "sma50_rising", "higher_lows", "tightening_ok", "retrace_ok"])
     def test_each_structure_flag_gates_c1_to_c7_but_not_c0(self, flag):
         flags = cb.cell_flags(_good_features(**{flag: False}), _ctx(spyqqq=True), k="k5")
         assert flags["C0"] is True
         assert not any(flags[c] for c in cb.CELLS[1:]), flags
 
-    def test_c0_needs_the_chosen_pivot_under_the_pole_high(self):
+    def test_c0_needs_the_chosen_pivot_to_exist_and_may_sit_over_the_pole_high(self):
+        # #702 P1b change 1: the old `pivot <= pole_high` clause is gone — a wick over the pole top is a
+        # real resistance level and the base survives it. Only a missing / non-positive pivot fails C0.
         f = _good_features()
         assert cb.cell_flags(f, _ctx(), k="full")["C0"] is True
-        bad = dict(f, pivot_full=f["pole_high"] + 0.01)
-        assert cb.cell_flags(bad, _ctx(), k="full")["C0"] is False
-        assert cb.cell_flags(bad, _ctx(), k="k5")["C0"] is True      # other pivot unaffected
+        wick = dict(f, pivot_full=f["pole_high"] + 0.01)
+        assert cb.cell_flags(wick, _ctx(), k="full")["C0"] is True
+        for bad_pivot in (None, 0.0, -1.0):
+            bad = dict(f, pivot_full=bad_pivot)
+            flags = cb.cell_flags(bad, _ctx(), k="full")
+            assert flags["C0"] is False and not any(flags[c] for c in cb.CELLS[1:]), bad_pivot
+            assert cb.cell_flags(bad, _ctx(), k="k5")["C0"] is True      # other pivot unaffected
 
     def test_k_has_no_default_and_is_validated(self):
         f = _good_features()
@@ -621,7 +667,7 @@ class TestCells:
             cb.breakout_key("ABC", f, "5")
 
     def test_no_watch_row_means_no_cells(self):
-        assert cb.cell_flags(None, _ctx(), k="k5") == {c: False for c in cb.CELLS}
+        assert cb.cell_flags(None, _ctx(), k="k5") == {c: False for c in cb.CELLS + cb.REPORT_CELLS}
 
     def test_breakout_key_is_ticker_and_pivot_date(self):
         b, idx = _mrna()
@@ -883,8 +929,16 @@ ADR = 0.05
 
 
 def _walk(rows, arm="p33_s3_t10", fill=100.0, stop=95.0, before=BEFORE, **kw):
-    return cb.walk_exit(fill=fill, stop=stop, closes_before=before, fwd=_fwd(rows),
-                        arm=cb.ARMS[arm], adr20=ADR, **kw)
+    """`arm` is an ARMS name or an Arm instance."""
+    a = arm if isinstance(arm, cb.Arm) else cb.ARMS[arm]
+    return cb.walk_exit(fill=fill, stop=stop, closes_before=before, fwd=_fwd(rows), arm=a, adr20=ADR, **kw)
+
+
+def _close(name):
+    """The named arm with its trail filled at the SIGNAL CLOSE (the pre-#702-P1b behaviour): keeps
+    every hand-derived trail signal in this file checkable on a single row, while the arms table
+    itself now fills at the next open."""
+    return dataclasses.replace(cb.ARMS[name], trail_fill="close")
 
 
 def _drift_rows(n, step=0.5, start=100.0):
@@ -894,13 +948,25 @@ def _drift_rows(n, step=0.5, start=100.0):
 
 
 class TestArms:
-    def test_the_eleven_arms(self):
-        assert len(cb.ARMS) == 11
+    def test_the_fifteen_arms(self):
+        assert len(cb.ARMS) == 15
         assert cb.ARMS["p33_s3_t10_early"].trail_before_partial
-        grid = [n for n in cb.ARMS if n.startswith("p") and not n.endswith("_early")]
+        grid = [n for n in cb.ARMS if re.fullmatch(r"p\d+_s\d+_t\d+", n)]
         assert sorted(grid) == sorted(
             f"p{p}_s{s}_t{t}" for p in (33, 50) for s in (3, 5) for t in (10, 20))
+        assert sorted(set(cb.ARMS) - set(grid)) == sorted([
+            "p33_s3_t10_early", "p33_s3_t10_close", "p33_s3_t10_nobe", "p33_s3_t10_ifprofit",
+            "trail10_only", "stop_only", "fixed_3r_12"])
+        # EVERY arm fills a trail at the NEXT OPEN (his 09-29 execution ruling) except the one
+        # sensitivity arm that fills at the signal close
+        assert {n for n, a in cb.ARMS.items() if a.trail_fill == "close"} == {"p33_s3_t10_close"}
+        assert all(a.trail_fill == "next_open" for n, a in cb.ARMS.items() if n != "p33_s3_t10_close")
+        # only the nobe control drops the breakeven; only the ifprofit arm conditions the partial
+        assert {n for n, a in cb.ARMS.items() if not a.breakeven} == {"p33_s3_t10_nobe"}
+        assert {n for n, a in cb.ARMS.items() if a.partial_if_profit} == {"p33_s3_t10_ifprofit"}
         assert "trail10_only" in cb.ARMS and "fixed_3r_12" in cb.ARMS
+        so = cb.ARMS["stop_only"]
+        assert (so.kind, so.partial_frac, so.partial_session, so.trail_sma) == ("qm", 0.0, None, None)
         assert cb.PRIMARY_ARM == "p33_s3_t10" and cb.PRIMARY_ARM in cb.ARMS
         a = cb.ARMS["p33_s3_t10"]
         assert (a.partial_frac, a.partial_session, a.trail_sma, a.kind) == (1 / 3, 3, 10, "qm")
@@ -942,10 +1008,16 @@ class TestQmExit:
     def test_trail_uses_pre_entry_closes_so_it_can_fire_on_session_1(self):
         # (a no-partial arm: on partial arms the trail waits for the partial, see below)
         before = [120.0] * 30                    # SMA10 on E+1 = (9 x 120 + 101) / 10 = 118.1
-        out = _walk([(101, 103, 99, 101)], fill=100.0, stop=90.0, before=before, arm="trail10_only")
+        out = _walk([(101, 103, 99, 101)], fill=100.0, stop=90.0, before=before, arm=_close("trail10_only"))
         assert out["status"] == "trailed" and out["sessions_held"] == 1
         assert out["events"] == [(1, "trail", 101.0, 1.0)]
         assert out["realized_r"] == pytest.approx((101 - 100) / 10.0)
+        # the arms table fills that same signal at the NEXT open: session 2 opens 100.5
+        nxt = _walk([(101, 103, 99, 101), (100.5, 102, 100, 101.5)], fill=100.0, stop=90.0,
+                    before=before, arm="trail10_only")
+        assert nxt["status"] == "trailed" and nxt["sessions_held"] == 2
+        assert nxt["events"] == [(2, "trail", 100.5, 1.0)]
+        assert nxt["realized_r"] == pytest.approx((100.5 - 100) / 10.0)
         # without the pre-entry closes there is no SMA10 until session 10 (the #548 defect)
         blind = _walk([(101, 103, 99, 101)], fill=100.0, stop=90.0, before=[], arm="trail10_only")
         assert blind["status"] == "degraded" and blind["events"][-1][:2] == (1, "mark")
@@ -953,10 +1025,16 @@ class TestQmExit:
     def test_trail_needs_a_close_strictly_below_the_sma(self):
         # (a no-partial arm: on partial arms the trail waits for the partial, see below)
         # SMA10 at j=1 = (9 x 100 + 100) / 10 = 100.0; a close of exactly 100.0 does not trail
-        out = _walk([(100, 101, 99, 100.0)], fill=100.0, stop=90.0, arm="trail10_only")
+        out = _walk([(100, 101, 99, 100.0)], fill=100.0, stop=90.0, arm=_close("trail10_only"))
         assert out["status"] == "degraded"
-        out2 = _walk([(100, 101, 99, 99.99)], fill=100.0, stop=90.0, arm="trail10_only")
+        out2 = _walk([(100, 101, 99, 99.99)], fill=100.0, stop=90.0, arm=_close("trail10_only"))
         assert out2["status"] == "trailed"
+        # the same two closes on the next-open arm (a second session exists): 100.0 never signals,
+        # 99.99 signals on session 1 and sells session 2's open
+        nxt_rows = [(100.0, 101, 99, 99.99), (99.8, 100, 99, 99.9)]
+        assert _walk([(100, 101, 99, 100.0), (100.1, 101, 99, 100.1)], fill=100.0, stop=90.0,
+                     arm="trail10_only")["status"] == "degraded"
+        assert _walk(nxt_rows, fill=100.0, stop=90.0, arm="trail10_only")["events"] == [(2, "trail", 99.8, 1.0)]
 
     def test_the_stop_is_checked_before_the_trail_in_a_session(self):
         before = [120.0] * 30
@@ -1029,10 +1107,16 @@ class TestQmExit:
         # Hand the walker the series ending E-1 and SMA10 = (9 x 100 + 101) / 10 = 100.1 -> no trail.
         # The P2 runner therefore asserts closes_before[-1] == bars.c[E] before every call.
         row = [(101.0, 102.0, 100.5, 101.0)]
-        right = _walk(row, fill=100.0, stop=90.0, before=[100.0] * 9 + [110.0], arm="trail10_only")
+        right = _walk(row, fill=100.0, stop=90.0, before=[100.0] * 9 + [110.0], arm=_close("trail10_only"))
         assert right["status"] == "trailed" and right["events"] == [(1, "trail", 101.0, 1.0)]
-        wrong = _walk(row, fill=100.0, stop=90.0, before=[100.0] * 9, arm="trail10_only")
+        wrong = _walk(row, fill=100.0, stop=90.0, before=[100.0] * 9, arm=_close("trail10_only"))
         assert wrong["status"] == "degraded" and wrong["events"] == [(1, "mark", 101.0, 1.0)]
+        # and on the next-open arm the right series sells session 2's open, the wrong one never signals
+        row2 = row + [(100.7, 101.0, 100.4, 100.9)]
+        right2 = _walk(row2, fill=100.0, stop=90.0, before=[100.0] * 9 + [110.0], arm="trail10_only")
+        assert right2["events"] == [(2, "trail", 100.7, 1.0)]
+        wrong2 = _walk(row2, fill=100.0, stop=90.0, before=[100.0] * 9, arm="trail10_only")
+        assert wrong2["status"] == "degraded"
 
     def test_trail_waits_for_the_partial_on_partial_arms(self):
         # The article's sequence: sell 1/3 after 3-5 days, THEN trail the rest. Day-1 close 104 is
@@ -1045,15 +1129,25 @@ class TestQmExit:
         out = _walk(rows, fill=108.0, stop=103.0, before=before)
         assert out["events"][0][:3] == (3, "partial", 106.0)
         assert out["events"][0][3] == pytest.approx(1 / 3)
-        early = _walk(rows[:1], arm="p33_s3_t10_early", fill=108.0, stop=103.0, before=before)
-        assert early["status"] == "trailed" and early["events"] == [(1, "trail", 104.0, 1.0)]
-        assert early["realized_r"] == pytest.approx((104.0 - 108.0) / 5.0)       # -0.8R, no partial
+        # the partial sold at 106, UNDER the 108 fill: the breakeven stop (108) sits above that close, so
+        # the event is appended and session 4 (open 106) is taken out at the open by the resting stop
+        assert out["events"][1] == (3, "be_above_close", 106.0, 0.0)
+        assert out["events"][2][:3] == (4, "stop_gap", 106.0)
+        early_close = _walk(rows[:1], arm=_close("p33_s3_t10_early"), fill=108.0, stop=103.0, before=before)
+        assert early_close["status"] == "trailed" and early_close["events"] == [(1, "trail", 104.0, 1.0)]
+        assert early_close["realized_r"] == pytest.approx((104.0 - 108.0) / 5.0)       # -0.8R, no partial
+        early = _walk(rows[:2], arm="p33_s3_t10_early", fill=108.0, stop=103.0, before=before)
+        assert early["events"] == [(2, "trail", 104.5, 1.0)]                            # session 2 opens 104.5
+        assert early["realized_r"] == pytest.approx((104.5 - 108.0) / 5.0)
 
     def test_no_partial_arm_trails_from_session_one(self):
         before = [float(x) for x in range(100, 109)] + [110.0]
-        out = _walk([(109.0, 109.5, 103.5, 104.0)], arm="trail10_only", fill=108.0, stop=103.0,
+        out = _walk([(109.0, 109.5, 103.5, 104.0)], arm=_close("trail10_only"), fill=108.0, stop=103.0,
                     before=before)
         assert out["status"] == "trailed" and out["events"] == [(1, "trail", 104.0, 1.0)]
+        nxt = _walk([(109.0, 109.5, 103.5, 104.0), (104.2, 105.0, 104.0, 104.5)], arm="trail10_only",
+                    fill=108.0, stop=103.0, before=before)
+        assert nxt["status"] == "trailed" and nxt["events"] == [(2, "trail", 104.2, 1.0)]
 
     def test_p50_s5_t20_partial_and_mark(self):
         # close_j = 100 + j, lows 0.5 under: never near the 95 stop nor the 100 breakeven after j=5
@@ -1074,9 +1168,14 @@ class TestQmExit:
         before = [100.0] * 30
         rows2 = [(100 + j - 0.3, 100 + j + 0.4, 100 + j - 0.5, 100.0 + j) for j in range(1, 6)]
         rows2 += [(102, 103, 100.6, 100.7)]       # close 100.7 < SMA20(6) = (14 x 100 + 101..105 + 100.7)/20 = 100.8
-        out2 = _walk(rows2, arm="p50_s5_t20", before=before)
+        out2 = _walk(rows2, arm=_close("p50_s5_t20"), before=before)
         assert out2["events"][-1] == (6, "trail", 100.7, 0.5)
         assert out2["status"] == "trailed"
+        # next-open arm: the same signal sells the remaining half at session 7's open (100.9)
+        out3 = _walk(rows2 + [(100.9, 101.5, 100.6, 101.0)], arm="p50_s5_t20", before=before)
+        assert out3["events"][-1] == (7, "trail", 100.9, 0.5) and out3["status"] == "trailed"
+        assert out3["sessions_held"] == 7
+        assert out3["realized_r"] == pytest.approx((0.5 * 5 + 0.5 * 0.9) / 5.0)
 
     def test_bad_inputs(self):
         with pytest.raises(ValueError):
@@ -1117,6 +1216,810 @@ class TestFixedExit:
         short = _walk(rows[:11], arm="fixed_3r_12")
         assert short["status"] == "degraded" and short["sessions_held"] == 11
         assert short["events"] == [(11, "mark", pytest.approx(104.4), 1.0)]
+
+
+class TestNextOpenTrail:
+    """Change 7 — a trail signal on the CLOSE of session j sells the remainder at the OPEN of j+1."""
+
+    BEFORE120 = [120.0] * 30                     # SMA10 ~ 118+: any close near 100 signals
+
+    def _walk(self, rows, arm="trail10_only", fill=100.0, stop=90.0, **kw):
+        return _walk(rows, arm=arm, fill=fill, stop=stop, before=self.BEFORE120, **kw)
+
+    def test_the_pending_exit_fills_at_the_open_and_the_next_stop_check_never_books_twice(self):
+        # session 1 closes 101 (< SMA10 118.1): signal. Session 2 opens 95, ABOVE the 90 stop, and trades
+        # down to 80 through it. The remainder was already sold at the 95 open, so it books ONCE, at 95 —
+        # not at the 90 stop (an order that ran the stop check first would book -1R here).
+        out = self._walk([(101, 103, 99, 101), (95, 96, 80, 85)])
+        assert out["events"] == [(2, "trail", 95.0, 1.0)]
+        assert out["status"] == "trailed" and out["sessions_held"] == 2
+        assert out["realized_r"] == pytest.approx((95.0 - 100.0) / 10.0)
+        assert out["pnl_adr"] == pytest.approx(-5.0 / (100.0 * ADR))
+
+    def test_a_gap_below_the_stop_still_books_once_at_the_open(self):
+        out = self._walk([(101, 103, 99, 101), (85, 86, 80, 82)])
+        assert out["events"] == [(2, "trail", 85.0, 1.0)]            # one event, at the open (-1.5R), kind "trail"
+        assert out["realized_r"] == pytest.approx(-1.5)
+
+    def test_a_signal_on_the_last_forward_bar_cannot_fill_and_stays_degraded(self):
+        out = self._walk([(101, 103, 99, 101)])
+        assert out["status"] == "degraded" and out["events"] == [(1, "mark", 101.0, 1.0)]
+        assert out["sessions_held"] == 1
+
+    def test_a_signal_the_session_before_the_stop_session_still_exits_at_the_trail_open(self):
+        # the close-fill arm on the same rows exits on session 1 at the close; the stop on session 2 is moot
+        rows = [(101, 103, 99, 101), (100.5, 101, 88, 95)]
+        assert self._walk(rows, arm=_close("trail10_only"))["events"] == [(1, "trail", 101.0, 1.0)]
+        assert self._walk(rows)["events"] == [(2, "trail", 100.5, 1.0)]
+
+    def test_horizon_signal_is_censored_filled_at_the_next_open_when_there_is_one(self):
+        # closes 101..104 stay above the rising SMA10, session 5 (the horizon) closes 99.5 under it
+        before = [100.0] * 30
+        rows = [(100.5, 101.5, 100.2, 101.0), (101.0, 102.5, 100.8, 102.0), (102.0, 103.5, 101.8, 103.0),
+                (103.0, 104.5, 102.8, 104.0), (103.5, 104.0, 99.0, 99.5)]
+        mark = _walk(rows, arm="trail10_only", stop=90.0, before=before, horizon=5)
+        assert mark["status"] == "censored" and mark["events"] == [(5, "mark", 99.5, 1.0)]    # no session 6
+        out = _walk(rows + [(98.8, 99.5, 98.0, 99.0)], arm="trail10_only", stop=90.0, before=before, horizon=5)
+        assert out["status"] == "censored"
+        assert out["events"] == [(6, "trail", 98.8, 1.0)] and out["sessions_held"] == 6
+        assert out["realized_r"] == pytest.approx((98.8 - 100.0) / 10.0)
+        # one session earlier (horizon 6 on the same 6 rows) the signal at 5 is an ordinary trail
+        ordinary = _walk(rows + [(98.8, 99.5, 98.0, 99.0)], arm="trail10_only", stop=90.0, before=before, horizon=6)
+        assert ordinary["status"] == "trailed" and ordinary["events"] == [(6, "trail", 98.8, 1.0)]
+
+    def test_the_documented_forward_slice_is_long_enough_for_a_horizon_signal_to_fill(self):
+        # `DailyBars.slice`'s docstring gives the forward-walk input as `bars.slice(<lo>, <hi>)` in E / horizon.
+        # Evaluate THAT expression and walk it: a trail signal on the horizon session must fill at the next
+        # open, which only exists if the documented slice carries horizon + 1 sessions. With exactly `horizon`
+        # rows the branch is unreachable and the signal is marked at the close instead.
+        import re as _re
+        m = _re.search(r"bars\.slice\(([^)]*)\)", cb.DailyBars.slice.__doc__)
+        assert m, "DailyBars.slice's docstring no longer shows the forward-walk slice"
+        lo_src, hi_src = (x.strip() for x in m.group(1).split(","))
+        E, horizon = 29, 5
+        fwd_rows = [(100.5, 101.5, 100.2, 101.0), (101.0, 102.5, 100.8, 102.0), (102.0, 103.5, 101.8, 103.0),
+                    (103.0, 104.5, 102.8, 104.0), (103.5, 104.0, 99.0, 99.5),      # session 5 = the horizon: trail signal
+                    (98.8, 99.5, 98.0, 99.0), (98.0, 98.5, 97.0, 97.5)]            # the next open, then one spare row
+        rows = [(100.0, 100.0, 100.0, 100.0)] * (E + 1) + fwd_rows
+        o, h, l, c = zip(*rows)
+        bars = cb.daily_bars_from_arrays(_weekdays(len(rows)), o, h, l, c, [1.0] * len(rows))
+        env = {"__builtins__": {}}
+        lo, hi = eval(lo_src, env, {"E": E, "horizon": horizon}), eval(hi_src, env, {"E": E, "horizon": horizon})
+        assert (lo, hi) == (E + 1, E + 2 + horizon)
+        fwd = bars.slice(lo, hi)
+        assert len(fwd) == horizon + 1
+        walk = dict(fill=100.0, stop=90.0, closes_before=bars.c[:E + 1], arm=cb.ARMS["trail10_only"],
+                    adr20=ADR, horizon=horizon)
+        out = cb.walk_exit(fwd=fwd, **walk)
+        assert out["status"] == "censored" and out["events"] == [(6, "trail", 98.8, 1.0)]
+        assert out["sessions_held"] == 6
+        short = cb.walk_exit(fwd=bars.slice(E + 1, E + 1 + horizon), **walk)       # the OLD documented slice
+        assert short["status"] == "censored" and short["events"] == [(5, "mark", 99.5, 1.0)]
+
+    def test_partials_stay_at_the_session_close_whatever_the_trail_fill(self):
+        # partial at the j=3 close (106); the j=4 trail signal sells the rest at j=5's open, the partial
+        # price is untouched: 1/3 x (106 - 100) + 2/3 x (100.8 - 100) = 2 + 0.5333
+        before = [100.0] * 30
+        rows = [(101, 104.5, 100.5, 104.0), (104, 105.5, 103.5, 105.0), (105, 107, 104.5, 106.0),
+                (105.5, 106, 100.5, 101.0), (100.8, 101.5, 100.2, 101.2)]
+        out = _walk(rows, before=before)
+        assert out["events"] == [(3, "partial", 106.0, pytest.approx(1 / 3)),
+                                 (5, "trail", 100.8, pytest.approx(2 / 3))]
+        assert out["realized_r"] == pytest.approx((6 / 3 + 0.8 * 2 / 3) / 5.0)
+        assert out["sessions_held"] == 5 and out["status"] == "trailed"
+        close = _walk(rows, arm="p33_s3_t10_close", before=before)
+        assert close["events"] == [(3, "partial", 106.0, pytest.approx(1 / 3)),
+                                   (4, "trail", 101.0, pytest.approx(2 / 3))]
+        assert close["realized_r"] == pytest.approx((6 / 3 + 1.0 * 2 / 3) / 5.0)
+        assert close["sessions_held"] == 4
+
+    def test_arm_validates_its_trail_fill(self):
+        with pytest.raises(ValueError):
+            cb.Arm("x", "qm", 0.0, None, 10, trail_fill="tomorrow")
+        with pytest.raises(ValueError):
+            cb.Arm("x", "qm", 0.0, None, 10, partial_if_profit=True)      # needs a partial
+
+
+class TestNewExitArms:
+    """Change 7 — the four new arms."""
+
+    BEFORE = [100.0] * 30
+
+    def test_nobe_keeps_the_entry_stop_after_the_partial(self):
+        # partial 1/3 at the j=3 close (106). Session 4 trades down to 98: under the BREAKEVEN stop (100) but
+        # above the entry stop (95). Primary: stopped at 100. nobe: carries on; session 5 breaks the 95 stop.
+        rows = [(101, 104.5, 100.5, 104.0), (104, 105.5, 103.5, 105.0), (105, 107, 104.5, 106.0),
+                (104.0, 105.0, 98.0, 103.0), (103.0, 104.0, 94.0, 95.0)]
+        prim = _walk(rows, before=self.BEFORE)
+        assert prim["events"] == [(3, "partial", 106.0, pytest.approx(1 / 3)), (4, "stop", 100.0, pytest.approx(2 / 3))]
+        assert prim["realized_r"] == pytest.approx((6 / 3 + 0.0) / 5.0)
+        nobe = _walk(rows, arm="p33_s3_t10_nobe", before=self.BEFORE)
+        assert nobe["events"] == [(3, "partial", 106.0, pytest.approx(1 / 3)), (5, "stop", 95.0, pytest.approx(2 / 3))]
+        assert nobe["realized_r"] == pytest.approx((6 / 3 + (95 - 100) * 2 / 3) / 5.0)         # -0.2667R
+        assert nobe["sessions_held"] == 5
+
+    def test_nobe_never_emits_be_above_close(self):
+        rows = [(99, 100, 98, 99), (99, 100, 97, 98), (98, 99, 96, 97), (97.5, 98.5, 96.5, 98.0)]
+        out = _walk(rows, arm="p33_s3_t10_nobe", before=[90.0] * 30)
+        assert [e[1] for e in out["events"]] == ["partial", "mark"]
+
+    def test_be_above_close_marks_the_hidden_day4_time_stop(self):
+        # the partial sells at 97, UNDER the 100 fill: the breakeven stop (100) sits above the close, so the
+        # next session's open (97.5 <= 100) takes the rest out. The event lets the runner count those.
+        rows = [(99, 100, 98, 99), (99, 100, 97, 98), (98, 99, 96, 97), (97.5, 98.5, 96.5, 98.0)]
+        out = _walk(rows, before=[90.0] * 30)
+        assert out["events"] == [(3, "partial", 97.0, pytest.approx(1 / 3)), (3, "be_above_close", 97.0, 0.0),
+                                 (4, "stop_gap", 97.5, pytest.approx(2 / 3))]
+        assert out["realized_r"] == pytest.approx(((97 - 100) / 3 + (97.5 - 100) * 2 / 3) / 5.0)
+        # a partial AT a profit never emits it
+        up = _walk([(101, 104.5, 100.5, 104.0), (104, 105.5, 103.5, 105.0), (105, 107, 104.5, 106.0)],
+                   before=[90.0] * 30)
+        assert all(e[1] != "be_above_close" for e in up["events"])
+        # the breakeven stop equal to the close is NOT above it
+        flat = _walk([(99, 101, 98, 100), (100, 101, 99, 100), (100, 101, 99, 100.0)], before=[90.0] * 30)
+        assert all(e[1] != "be_above_close" for e in flat["events"])
+
+    def test_ifprofit_takes_the_partial_only_on_a_profit_and_arms_the_trail_a_session_later(self):
+        before = [120.0] * 30                     # SMA10 ~118: every close near 100 is under it
+        # (a) the j=3 close (102) is ABOVE the fill: partial + breakeven. The PRIMARY trails on that same
+        #     close (signal j=3 -> sells session 4's open 102); ifprofit holds the trail until session 4's
+        #     close, then sells session 5's open.
+        rows = [(100.5, 101.5, 99.5, 101.0), (101.0, 102.0, 100.5, 101.5), (101.5, 103.0, 101.0, 102.0),
+                (102.0, 103.0, 100.5, 101.0), (100.8, 101.5, 100.2, 101.2)]
+        prim = _walk(rows, before=before)
+        assert prim["events"] == [(3, "partial", 102.0, pytest.approx(1 / 3)), (4, "trail", 102.0, pytest.approx(2 / 3))]
+        ifp = _walk(rows, arm="p33_s3_t10_ifprofit", before=before)
+        assert ifp["events"] == [(3, "partial", 102.0, pytest.approx(1 / 3)), (5, "trail", 100.8, pytest.approx(2 / 3))]
+        assert ifp["realized_r"] == pytest.approx((2 / 3 + 0.8 * 2 / 3) / 5.0)
+        # (b) the j=3 close (99) is under the fill: NO partial, NO breakeven (the entry stop 95 stays), the
+        #     whole position rides on; the trail arms from session 4 and sells session 5's open
+        rows_b = [(100.0, 101.0, 98.0, 99.5), (99.5, 100.0, 97.0, 98.0), (98.0, 99.5, 96.0, 99.0),
+                  (98.5, 99.0, 96.5, 97.5), (97.0, 98.0, 96.0, 97.0)]
+        ifp_b = _walk(rows_b, arm="p33_s3_t10_ifprofit", before=BEFORE)
+        assert ifp_b["events"] == [(5, "trail", 97.0, 1.0)]
+        assert ifp_b["realized_r"] == pytest.approx((97.0 - 100.0) / 5.0)
+        prim_b = _walk(rows_b, before=BEFORE)                          # the primary DOES partial at 99 (a loss)
+        assert prim_b["events"][0] == (3, "partial", 99.0, pytest.approx(1 / 3))
+        assert prim_b["events"][1] == (3, "be_above_close", 99.0, 0.0)
+        # exactly at the fill is not a profit
+        rows_c = [(100.0, 101.0, 98.0, 99.5), (99.5, 100.0, 97.0, 98.0), (98.0, 100.5, 96.0, 100.0)]
+        assert all(e[1] != "partial" for e in _walk(rows_c, arm="p33_s3_t10_ifprofit", before=[90.0] * 30)["events"])
+
+    def test_stop_only_holds_the_entry_stop_to_the_horizon_and_marks(self):
+        before = [120.0] * 30                      # the trail arms would all fire immediately
+        rows = [(101, 102, 100, 101 - 0.1 * j) for j in range(1, 11)]
+        out = _walk(rows, arm="stop_only", before=before, horizon=8)
+        assert out["status"] == "censored" and out["sessions_held"] == 8
+        assert out["events"] == [(8, "mark", pytest.approx(101 - 0.8), 1.0)]
+        assert out["realized_r"] == pytest.approx((101 - 0.8 - 100.0) / 5.0)
+        short = _walk(rows[:5], arm="stop_only", before=before, horizon=8)
+        assert short["status"] == "degraded" and short["events"] == [(5, "mark", pytest.approx(100.5), 1.0)]
+        # the entry stop still works: session 5 breaks 95
+        hit = _walk(rows[:4] + [(100, 101, 94.5, 95.0)], arm="stop_only", before=before)
+        assert hit["status"] == "stopped" and hit["events"] == [(5, "stop", 95.0, 1.0)]
+        assert hit["realized_r"] == pytest.approx(-1.0)
+
+    def test_close_arm_is_the_primary_with_the_signal_close_fill(self):
+        a, p = cb.ARMS["p33_s3_t10_close"], cb.ARMS["p33_s3_t10"]
+        assert dataclasses.replace(a, name=p.name, trail_fill=p.trail_fill) == p
+        assert cb.PRIMARY_ARM == "p33_s3_t10" and p.trail_fill == "next_open"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 6b. #702 P1b — base anchor, fresh pin, retrace, artifact guard, explain_watch, telemetry
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _fixture(ticker: str):
+    """(bars, {iso date: index}) for one ticker of tests/fixtures/htf_labelled_bars.psv."""
+    rows = [ln.rstrip("\n").split("|") for ln in FIXTURE.read_text().splitlines()
+            if ln.startswith(ticker + "|")]
+    cols = [[float(r[k]) for r in rows] for k in (2, 3, 4, 5, 6)]
+    bars = cb.daily_bars_from_arrays([dt.date.fromisoformat(r[1]) for r in rows], *cols)
+    return bars, {r[1]: k for k, r in enumerate(rows)}
+
+
+def _welded_tail(s: Synth, n: int = 5) -> None:
+    """The last `n` sessions as 1% daily ranges: the 5-session median range (1%) clears the mature
+    deal-pin arm (0.5%) while the 5-session band (~1.6%) stays under the fresh-pin 2.5% ceiling —
+    so a fresh-pin verdict can only come from the VOLUME axis. (`n=10` also welds the sessions the
+    sticky carry re-reads as-of 1..5 sessions ago.)"""
+    for k in range(s.i - n + 1, s.i + 1):
+        s.h[k], s.l[k] = s.c[k] * 1.005, s.c[k] * 0.995
+
+
+class TestBaseAnchor:
+    """Change 1 — the base survives a wick over the pole high; only a CLOSE ends it."""
+
+    def test_base_resolved_equals_flag_detectors_flag_resolved_by(self):
+        from agents.market_intelligence.flag_detector import _flag_resolved_by
+        cases = {
+            "all closes under": [99.0, 98.0, 99.5, 97.0, 96.0, 98.0, 99.0, 99.9, 98.5, 97.5, 99.0, 98.0],
+            "a close EXACTLY at the pole high": [99.0, 98.0, 100.0, 97.0, 96.0, 98.0, 99.0, 99.9, 98.5, 97.5, 99.0, 98.0],
+            "first base close over": [100.01, 98.0, 99.5, 97.0, 96.0, 98.0, 99.0, 99.9, 98.5, 97.5, 99.0, 98.0],
+            "a middle close over": [99.0, 98.0, 99.5, 97.0, 96.0, 101.0, 99.0, 99.9, 98.5, 97.5, 99.0, 98.0],
+            "last close over": [99.0, 98.0, 99.5, 97.0, 96.0, 98.0, 99.0, 99.9, 98.5, 97.5, 99.0, 100.01],
+        }
+        for name, base_closes in cases.items():
+            c = np.array([100.0] + base_closes)              # P = 0, i = 12 (11+ base sessions)
+            rows = [{"close": float(x)} for x in c]
+            real = _flag_resolved_by(rows, 0, 100.0, len(c) - 1)
+            assert cb._base_resolved(c, 0, len(c) - 1, 100.0) is real, name
+        # strictness, spelled out: equal does not resolve, a cent over does
+        assert cb._base_resolved(np.array([100.0, 100.0] + [90.0] * 11), 0, 12, 100.0) is False
+        assert cb._base_resolved(np.array([100.0, 100.01] + [90.0] * 11), 0, 12, 100.0) is True
+
+    def test_gh_2026_06_15_hand_check_two_wicks_over_the_pole_high_leave_the_base_standing(self):
+        # HAND-DERIVED from tests/fixtures/htf_labelled_bars.psv (GH rows). P = 2026-05-29, high 133.9699.
+        # Closes 06-01..06-15, read straight off the rows:
+        closes = [129.14, 130.17, 127.03, 133.06, 125.61, 124.89, 130.12, 130.7, 130.9, 131.62, 129.82]
+        # Highs over the same eleven sessions; TWO of them are wicks over 133.9699 (06-04 and 06-15):
+        highs = [130.44, 131.88, 129.87, 134.28, 133.335, 132.0, 130.36, 133.31, 133.37, 133.66, 134.998]
+        bars, idx = _fixture("GH")
+        P, i = idx["2026-05-29"], idx["2026-06-15"]
+        assert i - P == 11 and bars.h[P] == 133.9699
+        assert list(bars.c[P + 1:i + 1]) == closes and list(bars.h[P + 1:i + 1]) == highs
+        assert max(closes) == 133.06 < 133.9699                  # no close ever got over the top
+        assert max(highs) == 134.998 > 133.9699                  # but the OLD gate (max high > high(P)) would reject
+        assert [h for h in highs if h > 133.9699] == [134.28, 134.998]
+        # P really is the highest high of [i-45, i-10] (independent argmax, latest tie)
+        win = bars.h[i - 45:i - 10 + 1]
+        assert win.max() == 133.9699 and i - 45 + int(np.flatnonzero(win == win.max())[-1]) == P
+        f, gate = cb.explain_watch(bars, i)
+        assert gate is None, gate
+        assert f["pole_date"] == "2026-05-29" and f["pole_high"] == 133.9699 and f["base_len"] == 11
+        assert f["pole_low"] == 74.55 and f["pole_low_date"] == "2026-04-10"
+        assert f["prior_move"] == pytest.approx(133.9699 / 74.55 - 1.0)
+        assert f["pivot_k5"] == 134.998 and f["pivot_k5_date"] == "2026-06-15"   # the wick IS the resistance
+        # The night a CLOSE finally clears the top (06-24 closes 136.96) ends the base
+        j = idx["2026-06-24"]
+        assert bars.c[j] == 136.96 > 133.9699
+        assert cb.explain_watch(bars, j) == (None, "close_above_pole_high")
+
+    def test_gh_passes_c0_on_the_june_nights_it_failed_before(self):
+        # the same nights through the committed P1 gate (a wick over the pole high rejected) were all
+        # None; they are now C0 nights (06-11..06-23, eight sessions)
+        bars, idx = _fixture("GH")
+        for d in ("2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18",
+                  "2026-06-22", "2026-06-23"):
+            assert cb.evaluate_watch(bars, idx[d]) is not None, d
+            P = cb.evaluate_watch(bars, idx[d])["pole_idx"]
+            assert bars.h[P + 1:idx[d] + 1].max() > bars.h[P], d       # the old gate would have said None
+
+
+class TestFreshPinGate:
+    """Change 2 — `flag_detector._evaluate_fresh_pin` (#502) inside C0."""
+
+    def test_the_rows_fed_are_the_40_prod_rows_newest_first(self):
+        s = Synth()
+        b = s.bars()
+        rows = cb._fresh_pin_rows(b, s.i)
+        assert len(rows) == 40
+        assert rows[0] == {"high_price": b.h[s.i], "low_price": b.l[s.i], "close": b.c[s.i], "volume": b.v[s.i]}
+        assert rows[39]["close"] == b.c[s.i - 39] and rows[1]["close"] == b.c[s.i - 1]
+
+    def test_control_welded_tail_flat_volume_passes_and_records_the_numbers(self):
+        s = Synth()
+        _welded_tail(s)
+        f = s.watch()
+        assert f is not None and f["fresh_pin"] is False
+        assert f["fresh_pin_spike_x"] == pytest.approx(1.0)       # flat 2e6 volume: max event / mean baseline
+        c5 = np.array(s.c[s.i - 4:s.i + 1])
+        band = (max(s.h[s.i - 4:s.i + 1]) - min(s.l[s.i - 4:s.i + 1])) / c5.mean()
+        assert f["fresh_pin_band_pct"] == pytest.approx(band) and band < 0.025
+
+    def test_welded_band_plus_a_10x_volume_event_in_the_last_10_sessions_rejects(self):
+        s = Synth()
+        _welded_tail(s)
+        s.v[s.i - 5] = 2e7                                    # 10x the 2e6 baseline, inside the event window
+        assert s.explain() == (None, "fresh_pin")
+
+    def test_spike_threshold_is_5x_inclusive(self):
+        for vol, want in ((8e6, None), (1e7, "fresh_pin")):    # 4x passes, 5.0x fires (>=)
+            s = Synth()
+            _welded_tail(s)
+            s.v[s.i - 5] = vol
+            assert s.explain()[1] == want, vol
+
+    def test_either_axis_alone_does_not_reject(self):
+        s = Synth()                                           # default tail: 2% ranges, band ~2.6% > 2.5%
+        s.v[s.i - 5] = 2e7
+        assert s.watch() is not None                           # volume spike but not welded
+        s2 = Synth()
+        _welded_tail(s2)
+        assert s2.watch() is not None                          # welded but no volume event
+
+    def test_event_window_is_the_last_10_sessions_then_the_sticky_carry_holds_it_to_14_back(self):
+        # i-9 is the oldest session in today's event window; the spike at i-10 only counts through the
+        # STICKY carry (re-run as-of 1..5 sessions ago while today's band is still <= 2.5%): i-14 is the
+        # farthest back that is still carried, i-15 is not.
+        for back, want in ((9, "fresh_pin"), (10, "fresh_pin"), (14, "fresh_pin"), (15, None)):
+            s = Synth()
+            _welded_tail(s, 10)
+            s.v[s.i - back] = 2e7
+            assert s.explain()[1] == want, back
+        # the carry needs today's band to still be welded: a wide tail releases it
+        s = Synth()
+        s.v[s.i - 10] = 2e7
+        assert s.watch() is not None
+
+    def test_a_mature_pin_is_reported_before_the_fresh_one(self):
+        s = Synth()
+        for k in range(s.i - 4, s.i + 1):                      # 0.2% ranges: the mature MEDIAN arm fires
+            s.h[k], s.l[k] = s.c[k] * 1.001, s.c[k] * 0.999
+        s.v[s.i - 5] = 2e7                                     # ... and so would the fresh one
+        assert s.explain() == (None, "deal_pin_median")
+
+    def test_atai_0903_0904_hand_check_the_fresh_layer_does_NOT_reject_it(self):
+        # RECORDED GAP, hand-derived from tests/fixtures/htf_labelled_bars.psv (ATAI rows). The cash deal
+        # day is 2026-07-16 (165.6M shares), 35 sessions before 2026-09-03: far outside the 10-session event
+        # window, and INSIDE the 30-session baseline window (i-39 .. i-10), where it inflates the mean.
+        # 09-03's own print (17.48M) is therefore only ~1.1x that baseline (1.65x with the deal day removed;
+        # a longer event window alone would not fire either). So the layer that caught ATAI on 07-23 .. 08-05
+        # (the `fired` list below) does not fire here and ATAI is still a C0 night.
+        # (What stands between ATAI and a C1 trade: higher_lows is False on both nights, asserted below,
+        # and P2's STEP 0 deal check on every C1 trade >= 5R.)
+        bars, idx = _fixture("ATAI")
+        i = idx["2026-09-03"]
+        hi5, lo5 = [7.37, 7.38, 7.385, 7.36, 7.43], [7.29, 7.29, 7.34, 7.32, 7.32]   # 08-28 .. 09-03
+        close5 = [7.29, 7.34, 7.34, 7.35, 7.34]
+        assert bars.v[i] == 17475711
+        assert list(bars.h[i - 4:i + 1]) == hi5 and list(bars.l[i - 4:i + 1]) == lo5
+        assert list(bars.c[i - 4:i + 1]) == close5
+        band = (max(hi5) - min(lo5)) / (sum(close5) / 5)                # 0.14 / 7.332 = 1.91% <= 2.5%: welded
+        assert band == pytest.approx(0.019094, abs=1e-6)
+        baseline = bars.v[i - 39:i - 9]                                  # the 30 sessions i-39 .. i-10
+        event_max = bars.v[i - 9:i + 1].max()                            # the last 10 sessions i-9 .. i
+        assert event_max == 17475711
+        spike = event_max / baseline.mean()                              # independent of the module
+        assert spike == pytest.approx(1.1102, abs=1e-3) and spike < 5.0  # the volume axis fails
+        deal = idx["2026-07-16"]                                         # the deal day sits in the baseline window
+        assert (i - deal, bars.v[deal]) == (35, 165634412)
+        assert i - 39 <= deal <= i - 10
+        without = np.delete(baseline, deal - (i - 39))                   # baseline with the deal day removed
+        assert len(without) == 29 and event_max / without.mean() == pytest.approx(1.6529, abs=1e-3)
+        f, gate = cb.explain_watch(bars, i)
+        assert gate is None and f["fresh_pin"] is False
+        assert f["fresh_pin_band_pct"] == pytest.approx(band) and f["fresh_pin_spike_x"] == pytest.approx(spike)
+        assert f["higher_lows"] is False and f["retrace_ok"] is True
+        # 09-04: the same story one session later
+        j = idx["2026-09-04"]
+        assert cb.explain_watch(bars, j)[1] is None
+        assert cb.evaluate_watch(bars, j)["higher_lows"] is False
+        # and on the nights the layer DID fire (07-23 .. 08-05) another gate reports first, so the
+        # first-failing-gate name never reads "fresh_pin" for ATAI in the corpus
+        from agents.market_intelligence.flag_detector import _evaluate_fresh_pin
+        fired = [d for d, k in idx.items()
+                 if k >= 129 and _evaluate_fresh_pin(cb._fresh_pin_rows(bars, k))["is_fresh_pin"]]
+        assert fired == ["2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29",
+                         "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05"]
+        assert all(cb.explain_watch(bars, idx[d])[1] in ("close_above_pole_high", "deal_pin_median") for d in fired)
+
+
+class TestRetrace:
+    """Change 3 — the pole retrace as a C1 term, with two REPORTED-only cells."""
+
+    def test_retrace_formula_on_the_synth_base(self):
+        s = Synth()
+        f = s.watch()
+        base_low = min(s.l[s.P + 1:s.i + 1])                   # 14.0052: the first base sessions' lows
+        assert f["base_low"] == pytest.approx(base_low) and base_low == pytest.approx(0.94 * 16 * 0.97 * 0.96)
+        assert f["retrace"] == pytest.approx((16.0 - base_low) / (16.0 - 9.9))
+        assert f["retrace_ok"] is True and f["retrace"] < 0.5
+
+    def test_the_hold_limit_is_the_signed_family_a_constant(self):
+        from agents.market_intelligence.anticipation import COIL_HOLD_LIMIT
+        assert COIL_HOLD_LIMIT == 0.50 and cb.COIL_HOLD_LIMIT is COIL_HOLD_LIMIT
+
+    def test_retrace_ok_boundary_at_one_half_of_the_pole(self):
+        # pole 9.9 -> 16.0 is 6.1; giving back half is a base low of 12.95
+        for low, ok in ((12.96, True), (12.94, False)):        # 49.8% / 50.2%
+            s = Synth()
+            s.l[s.P + 10] = low
+            f = s.watch()
+            assert f is not None and f["retrace_ok"] is ok, low
+            assert f["retrace"] == pytest.approx((16.0 - low) / 6.1)
+
+    def test_retrace_of_exactly_one_half_is_ok_the_limit_is_inclusive(self):
+        # pole low 10 -> pole high 20 -> base low 15: (20 - 15) / (20 - 10) = 0.5 EXACTLY in floating point
+        # (every term is a small integer), so this sits ON the line. `anticipation.evaluate_coil_consolidation`
+        # rejects only on `retrace > hold_limit`, so "ok" means `<=`: a `<` here would drop the exact-half base.
+        s = Synth(top=20.0)
+        for k in range(s.P - 20):
+            s.l[k] = 10.0                                      # pad lows 9.9 -> 10.0: the pole low is exactly 10
+        s.l[s.P + 10] = 15.0
+        f = s.watch()
+        assert f is not None
+        assert (f["pole_high"], f["pole_low"], f["base_low"]) == (20.0, 10.0, 15.0)
+        assert f["retrace"] == 0.5 and f["retrace_ok"] is True
+        s.l[s.P + 10] = 14.99                                  # one cent deeper: 50.1%, over the line
+        g = s.watch()
+        assert g is not None and g["retrace"] > 0.5 and g["retrace_ok"] is False
+
+    def test_oust_hand_check_the_august_base_gave_back_82_percent_the_june_base_46(self):
+        # HAND-DERIVED from tests/fixtures/htf_labelled_bars.psv (OUST rows).
+        # AUGUST base: pole top 63.79 (2026-06-30), pole low 23.60 (2026-05-11), base low 30.822 (07-28):
+        #   (63.79 - 30.822) / (63.79 - 23.60) = 32.968 / 40.19 = 0.8203 -> over the 50% cap.
+        # JUNE base: pole top 49.39 (06-02), pole low 18.4601 (04-07), base low 35.30 (06-09):
+        #   (49.39 - 35.30) / (49.39 - 18.4601) = 14.09 / 30.9299 = 0.4555 -> under it.
+        bars, idx = _fixture("OUST")
+        assert (bars.h[idx["2026-06-30"]], bars.l[idx["2026-05-11"]]) == (63.79, 23.6)
+        assert bars.l[idx["2026-07-28"]] == 30.822 and bars.l[idx["2026-07-01"]:idx["2026-08-05"] + 1].min() == 30.822
+        assert (bars.h[idx["2026-06-02"]], bars.l[idx["2026-04-07"]], bars.l[idx["2026-06-09"]]) == (49.39, 18.4601, 35.3)
+        aug_expect = (63.79 - 30.822) / (63.79 - 23.6)
+        jun_expect = (49.39 - 35.3) / (49.39 - 18.4601)
+        assert aug_expect == pytest.approx(0.8203, abs=1e-4) and jun_expect == pytest.approx(0.4555, abs=1e-4)
+        # the nights OUST passes the four C1 STRUCTURE flags (sma20, rising sma50, higher lows, tightening)
+        struct = []
+        for d, k in idx.items():
+            f = cb.evaluate_watch(bars, k) if k >= 129 else None
+            if f and f["sma20_ok"] and f["sma50_rising"] and f["higher_lows"] and f["tightening_ok"]:
+                struct.append((d, f))
+        assert [d for d, _ in struct] == ["2026-06-16", "2026-06-17", "2026-08-05", "2026-08-06",
+                                          "2026-08-14", "2026-08-17", "2026-08-18"]
+        for d, f in struct:
+            if d.startswith("2026-08"):
+                assert f["pole_date"] == "2026-06-30" and f["retrace"] == pytest.approx(aug_expect)
+                assert f["retrace_ok"] is False
+            else:
+                assert f["pole_date"] == "2026-06-02" and f["retrace"] == pytest.approx(jun_expect)
+                assert f["retrace_ok"] is True
+        # so C1 loses the five August nights and keeps the two June ones; the reported cell keeps all seven
+        ctx = _ctx(spyqqq=True)
+        for d, f in struct:
+            flags = cb.cell_flags(f, ctx, k="k5")
+            assert flags["C1"] is f["retrace_ok"] and flags["C1_no_retrace"] is True, d
+
+    def test_report_cells_drop_exactly_one_term(self):
+        ctx = _ctx(spyqqq=True)
+        ok = cb.cell_flags(_good_features(), ctx, k="k5")
+        assert ok["C1"] and ok["C1_no_retrace"] and ok["C1_no_tightening"]
+        r = cb.cell_flags(_good_features(retrace_ok=False), ctx, k="k5")
+        assert (r["C1"], r["C1_no_retrace"], r["C1_no_tightening"]) == (False, True, False)
+        t = cb.cell_flags(_good_features(tightening_ok=False), ctx, k="k5")
+        assert (t["C1"], t["C1_no_retrace"], t["C1_no_tightening"]) == (False, False, True)
+        both = cb.cell_flags(_good_features(retrace_ok=False, tightening_ok=False), ctx, k="k5")
+        assert not both["C1_no_retrace"] and not both["C1_no_tightening"]
+        # the other C1 terms still gate both reported cells
+        for kw in (dict(rs=97.9), dict(qqq=False)):
+            fl = cb.cell_flags(_good_features(), _ctx(**kw), k="k5")
+            assert not fl["C1"] and not fl["C1_no_retrace"] and not fl["C1_no_tightening"], kw
+        for flag in ("sma20_ok", "sma50_rising", "higher_lows"):
+            fl = cb.cell_flags(_good_features(**{flag: False}), ctx, k="k5")
+            assert not fl["C1_no_retrace"] and not fl["C1_no_tightening"], flag
+        # reported cells never join the deciding set
+        assert cb.CELLS == ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7")
+        assert cb.REPORT_CELLS == ("C1_no_retrace", "C1_no_tightening")
+        assert set(cb.CELLS).isdisjoint(cb.REPORT_CELLS)
+
+
+class TestPoleArtifact:
+    """Change 4 — a > 50% one-session close jump on < 2x volume inside the pole window rejects."""
+
+    @staticmethod
+    def _inject(s: Synth, back: int, close: float, vol: float = 2e6) -> None:
+        k = s.P - back                                         # inside the pad, outside P's search window
+        s.c[k] = s.o[k] = close
+        s.h[k], s.l[k] = close * 1.01, close * 0.99
+        s.v[k] = vol
+
+    def test_a_1_6x_jump_on_ordinary_volume_rejects(self):
+        s = Synth()
+        assert s.watch() is not None
+        self._inject(s, 30, 16.0)                              # 10.0 -> 16.0 = 1.6x on 1x volume
+        assert s.explain() == (None, "pole_artifact")
+
+    def test_real_volume_on_the_same_jump_is_a_pole_not_an_artifact(self):
+        s = Synth()
+        self._inject(s, 30, 16.0, vol=5e6)                     # window mean = (40 x 2e6 + 5e6) / 41 = 2.073e6
+        assert 5e6 >= 2.0 * (40 * 2e6 + 5e6) / 41              # >= 2x the window's own mean (spike day included)
+        assert s.watch() is not None
+        s2 = Synth()
+        self._inject(s2, 30, 16.0, vol=3e6)                    # 3e6 < 2 x 2.049e6 = 4.10e6 -> still an artifact
+        assert s2.explain() == (None, "pole_artifact")
+
+    def test_a_jump_day_at_exactly_2x_the_window_mean_volume_is_not_an_artifact(self):
+        # 40 sessions at 975 + the jump day at 2000 -> window mean = 41000 / 41 = 1000.0 EXACTLY (integer sums),
+        # so the jump day is exactly 2.0x the mean: the guard is a strict `<`, so it does NOT reject. 1999 is
+        # 1.9990x of its own mean (999.976) and does; 2001 is above and does not. A `<=` would flip the 2000 case.
+        def artifact(jump_vol: float) -> bool:
+            n, P, jump = 60, 50, 20                            # window [P-40, P] = [10, 50]; jump inside it
+            c = [10.0] * n
+            c[jump] = 16.0                                     # 10 -> 16 = 1.6x (> 1.5); the next day falls back
+            v = [975.0] * n
+            v[jump] = jump_vol
+            bars = cb.daily_bars_from_arrays(_weekdays(n), c, c, c, c, v)
+            assert P - cb.POLE_LOOKBACK < jump <= P
+            return cb._pole_data_artifact(bars, P)
+
+        assert (40 * 975.0 + 2000.0) / 41 == 1000.0 and 2000.0 == cb.POLE_ARTIFACT_VOL_MULT * 1000.0
+        assert artifact(2000.0) is False
+        assert artifact(1999.0) is True
+        assert artifact(2001.0) is False
+
+    def test_exactly_1_5x_is_not_over_the_line(self):
+        s = Synth()
+        self._inject(s, 30, 15.0)                              # 15.0 / 10.0 = 1.5 exactly: strict `>`
+        assert s.watch() is not None
+        s2 = Synth()
+        self._inject(s2, 30, 15.01)
+        assert s2.explain() == (None, "pole_artifact")
+
+    def test_the_pole_window_is_41_sessions_a_jump_on_its_first_or_older_session(self):
+        # window [P-40, P]; a jump is read on sessions P-39..P (prev close inside the window). A jump
+        # landing on P-40 (prev = P-41, outside) is not a pole-window event; one on P-39 is.
+        s = Synth()
+        self._inject(s, 40, 16.0)
+        assert s.watch() is not None
+        s2 = Synth()
+        self._inject(s2, 39, 16.0)
+        assert s2.explain() == (None, "pole_artifact")
+
+    def test_agrees_with_the_shipped_detector_guard_on_the_same_bars(self):
+        # The guard is an inline literal in flag_detector.compute_flag_metrics, so it is MIRRORED, not
+        # imported. Same Synth bars (top 21 so the detector's 90% runup gate lets them through) through
+        # BOTH: where the module says pole_artifact the real detector says flagpole_data_artifact_*.
+        from agents.market_intelligence import flag_detector as fd
+
+        def detector_reason(s: Synth) -> str:
+            ds = _weekdays(s.n)
+            rows = [{"trade_date": ds[k], "open_price": s.o[k], "high_price": s.h[k], "low_price": s.l[k],
+                     "close": s.c[k], "volume": s.v[k]} for k in range(s.n)]
+            return fd.compute_flag_metrics(rows, ticker="X").get("reason") or ""
+
+        scenarios = [("control", None, None), ("1.6x low vol", 16.0, 2e6), ("1.6x high vol", 16.0, 5e6),
+                     ("exactly 1.5x", 15.0, 2e6), ("1.51x low vol", 15.1, 2e6)]
+        for name, close, vol in scenarios:
+            s = Synth(top=21.0)
+            if close is not None:
+                self._inject(s, 30, close, vol)
+            real = detector_reason(s).startswith("flagpole_data_artifact")
+            ours = s.explain()[1] == "pole_artifact"
+            assert real == ours, (name, detector_reason(s), s.explain())
+        # the one deliberate difference: our window is the module's 41-session pole window [P-40, P],
+        # the detector's is 40 [P-39, P] -> a jump landing on P-39 is ours alone. Pinned both ways so a
+        # drift in EITHER window fails loudly.
+        s = Synth(top=21.0)
+        self._inject(s, 39, 16.0, 2e6)
+        assert s.explain()[1] == "pole_artifact"
+        assert not detector_reason(s).startswith("flagpole_data_artifact")
+
+    def test_mrna_08_19_is_a_195m_share_ep_not_an_artifact(self):
+        # 62.96 -> 174.38 is a 2.77x one-session close jump, so the volume leg MUST clear or the canary
+        # is rejected as a bad tick: 191.7M shares against 2 x the 41-session window mean. The 40
+        # sessions before it each traded under 15M (max 14.57M, 07-06), so that mean is under
+        # (40 x 15M + 191.7M) / 41 = 19.3M and 2x it under 38.6M (actual mean 10.86M) -> 191.7M clears it.
+        bars, idx = _mrna()
+        P = idx["2026-08-19"]
+        assert bars.c[P] / bars.c[P - 1] == pytest.approx(174.38 / 62.96) and 174.38 / 62.96 > 1.5
+        window_mean = bars.v[P - 40:P + 1].mean()
+        assert bars.v[P] >= 2.0 * window_mean and bars.v[P] == 191705760
+        assert cb.explain_watch(bars, idx["2026-09-16"])[1] is None
+
+
+class TestExplainWatch:
+    """Change 5 — which gate failed, FIRST in evaluation order."""
+
+    def test_the_gate_vocabulary_and_order(self):
+        assert cb.WATCH_GATES == ("history", "prior_move", "close_above_pole_high", "close_nonpositive",
+                                  "sma50", "deal_pin_median", "fresh_pin", "pole_artifact", "adr_unusable")
+
+    def test_control_passes_and_every_gate_fails_alone_under_its_own_name(self):
+        assert Synth().explain()[1] is None
+
+        def variants():
+            yield "history", Synth(n=129)
+            yield "prior_move", Synth(top=12.8)
+            s = Synth(); s.c[s.i - 3] = s.top * 1.001; s.o[s.i - 3] = s.c[s.i - 3]; s.h[s.i - 3] = s.top * 1.01
+            yield "close_above_pole_high", s
+            s = Synth(); s.c[s.i], s.o[s.i], s.h[s.i], s.l[s.i] = 12.0, 12.0, 12.1, 11.9
+            yield "sma50", s
+            s = Synth()
+            for k in (s.i - 4, s.i - 3, s.i - 2):
+                s.h[k], s.l[k] = s.c[k] * 1.001, s.c[k] * 0.999
+            yield "deal_pin_median", s
+            s = Synth(); _welded_tail(s); s.v[s.i - 5] = 2e7
+            yield "fresh_pin", s
+            s = Synth(); TestPoleArtifact._inject(s, 30, 16.0)
+            yield "pole_artifact", s
+            s = Synth()
+            for k in range(s.i - 19, s.i - 8):                 # 11 of the last 20 closes unreadable (0)
+                s.c[k] = 0.0
+            yield "adr_unusable", s
+
+        seen = []
+        for gate, s in variants():
+            feats, got = s.explain()
+            assert feats is None and got == gate, (gate, got)
+            seen.append(gate)
+        assert seen == [g for g in cb.WATCH_GATES if g != "close_nonpositive"]
+
+    def test_close_nonpositive_is_bad_data(self):
+        s = Synth()
+        s.c[s.i] = 0.0
+        assert s.explain() == (None, "close_nonpositive")
+
+    def test_when_two_gates_fail_the_earlier_one_in_the_order_is_named(self):
+        # prior_move + close_above_pole_high
+        s = Synth(top=12.8); s.c[s.i - 3] = 13.0; s.h[s.i - 3] = 13.1
+        assert s.explain()[1] == "prior_move"
+        # close_above_pole_high + sma50
+        s = Synth(); s.c[s.i - 3] = s.top * 1.001; s.h[s.i - 3] = s.top * 1.01
+        s.c[s.i], s.o[s.i], s.h[s.i], s.l[s.i] = 12.0, 12.0, 12.1, 11.9
+        assert s.explain()[1] == "close_above_pole_high"
+        # sma50 + deal_pin_median
+        s = Synth(); s.c[s.i], s.o[s.i] = 12.0, 12.0
+        for k in range(s.i - 4, s.i + 1):
+            s.h[k], s.l[k] = s.c[k] * 1.001, s.c[k] * 0.999
+        assert s.explain()[1] == "sma50"
+        # deal_pin_median + fresh_pin
+        s = Synth()
+        for k in range(s.i - 4, s.i + 1):
+            s.h[k], s.l[k] = s.c[k] * 1.001, s.c[k] * 0.999
+        s.v[s.i - 5] = 2e7
+        assert s.explain()[1] == "deal_pin_median"
+        # fresh_pin + pole_artifact
+        s = Synth(); _welded_tail(s); s.v[s.i - 5] = 2e7; TestPoleArtifact._inject(s, 30, 16.0)
+        assert s.explain()[1] == "fresh_pin"
+        # pole_artifact + adr_unusable
+        s = Synth(); TestPoleArtifact._inject(s, 30, 16.0)
+        for k in range(s.i - 19, s.i - 8):
+            s.c[k] = 0.0
+        assert s.explain()[1] == "pole_artifact"
+
+    def test_evaluate_watch_is_the_thin_wrapper(self):
+        for s in (Synth(), Synth(n=129), Synth(top=12.8)):
+            b = s.bars()
+            assert cb.evaluate_watch(b, s.i) == cb.explain_watch(b, s.i)[0]
+        b, idx = _mrna()
+        assert cb.evaluate_watch(b, idx["2026-09-16"]) == cb.explain_watch(b, idx["2026-09-16"])[0]
+
+    def test_out_of_range_index_is_still_a_caller_bug(self):
+        b = Synth().bars()
+        with pytest.raises(IndexError):
+            cb.explain_watch(b, len(b))
+        with pytest.raises(IndexError):
+            cb.explain_watch(b, -1)
+
+
+class TestTelemetry:
+    """Change 6 — features that never gate."""
+
+    def setup_method(self):
+        self.bars, self.idx = _mrna()
+        self.i = self.idx["2026-09-16"]
+        self.f = cb.evaluate_watch(self.bars, self.i)
+
+    def test_mrna_retrace_by_hand(self):
+        # pole top 176.66, pole low 52.6601, base low 128.61 -> (176.66 - 128.61) / (176.66 - 52.6601)
+        assert (self.f["pole_high"], self.f["pole_low"], self.f["base_low"]) == (176.66, 52.6601, 128.61)
+        assert self.f["retrace"] == pytest.approx(48.05 / 124.0, rel=1e-6) and self.f["retrace"] == pytest.approx(0.3875, abs=1e-4)
+        assert self.f["retrace_ok"] is True
+
+    def test_mrna_pole_telemetry_by_hand(self):
+        # the biggest single-session close gain inside (08-03, 08-19] is the EP day itself:
+        # 174.38 / 62.96 - 1; its gap is the 08-19 open 116.02 over the 08-18 close 62.96
+        assert self.f["pole_max_gain_day"] == "2026-08-19"
+        assert self.f["pole_max_gain"] == pytest.approx(174.38 / 62.96 - 1.0)
+        assert self.f["pole_max_gap"] == pytest.approx(116.02 / 62.96 - 1.0)
+        # volume that day 191,705,760 over the mean of the 20 sessions ENDING THE DAY BEFORE the pole low
+        # (08-03): 07-06 .. 07-31, whose twenty volumes sum to 117,820,466 -> mean 5,891,023.3
+        v20 = [14571593, 6932312, 6545770, 4343874, 9142812, 8514671, 5474033, 3418829, 5579167, 4543225,
+               4943704, 4116413, 3764801, 4454400, 4398086, 5036752, 5523004, 4338643, 4424240, 7754137]
+        assert list(self.bars.v[self.idx["2026-08-03"] - 20:self.idx["2026-08-03"]]) == v20
+        assert sum(v20) == 117_820_466
+        assert self.f["pole_day_vol_ratio"] == pytest.approx(191_705_760 / (117_820_466 / 20))
+        assert self.f["pole_day_vol_ratio"] == pytest.approx(32.542, abs=1e-3)
+
+    def test_mrna_dollar_volume_and_atr_slope_match_independent_computations(self):
+        b, i = self.bars, self.i
+        assert self.f["median_dollar_vol20"] == pytest.approx(float(np.median(b.c[i - 19:i + 1] * b.v[i - 19:i + 1])))
+
+        def atr_pct(j):                                        # mean of the 14 true ranges ending j, over close j
+            trs = [max(b.h[k] - b.l[k], abs(b.h[k] - b.c[k - 1]), abs(b.l[k] - b.c[k - 1])) for k in range(j - 13, j + 1)]
+            return float(np.mean(trs) / b.c[j])
+
+        P = self.f["pole_idx"]
+        assert self.f["atr14_slope"] == pytest.approx(atr_pct(i) / atr_pct(P + 1), rel=1e-12)
+        assert self.f["atr14"] == pytest.approx(atr_pct(i), rel=1e-12)
+
+    def test_a_pole_low_on_the_pole_day_leaves_the_pole_telemetry_empty(self):
+        s = Synth()
+        s.l[s.P] = 5.0                                          # the lowest low of the window IS the pole day
+        f = s.watch()
+        assert f is not None and f["pole_sessions"] == 0
+        assert f["pole_max_gain_day"] is None and f["pole_max_gain"] is None
+        assert f["pole_max_gap"] is None and f["pole_day_vol_ratio"] is None
+
+    def test_telemetry_never_gates(self):
+        s = Synth()
+        s.v = [10.0] * s.n                                     # $20 of dollar volume a day: telemetry, not a gate
+        f = s.watch()
+        assert f is not None and f["median_dollar_vol20"] < 1_000.0
+        s2 = Synth()
+        s2.o[s2.P - 3] = s2.c[s2.P - 4] * 1.4                  # a 40% overnight gap inside the pole
+        f2 = s2.watch()
+        assert f2 is not None and f2["pole_max_gap"] == pytest.approx(0.4)
+
+    def test_synth_pole_gain_day_and_volume_ratio(self):
+        s = Synth()
+        k = s.P - 7                                             # one big up session inside the pole
+        s.c[k] = s.c[k - 1] * 1.06
+        s.o[k], s.h[k], s.l[k] = s.c[k - 1], s.c[k] * 1.01, s.c[k - 1] * 0.99
+        s.v[k] = 8e6
+        f = s.watch()
+        low_idx = f["pole_low_idx"]
+        assert f["pole_max_gain_day"] == _weekdays(s.n)[k].isoformat()
+        assert f["pole_max_gain"] == pytest.approx(0.06)
+        assert f["pole_day_vol_ratio"] == pytest.approx(8e6 / 2e6)             # flat 2e6 before the pole low
+        assert low_idx < k
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 6c. The labelled corpus (change 8)
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# (ticker, label_date) -> runs of (first night, last night, verdict) over the member's window: the 10 bar
+# sessions strictly before `label_date` plus its `assert_dates`. verdict = "C0" (every structural gate
+# passed) or the name of the FIRST failing gate. Generated by running `explain_watch` over the fixture
+# bars on 2026-10-17 — a REGRESSION PIN of what the module does, NOT evidence that it is right.
+CORPUS_PIN = {
+    ("CDNA", "2026-08-19"): [("2026-08-05", "2026-08-14", "close_above_pole_high"), ("2026-08-17", "2026-08-19", "C0")],
+    ("HNGE", "2026-08-24"): [("2026-08-10", "2026-08-21", "close_above_pole_high"), ("2026-08-24", "2026-08-24", "C0")],
+    ("MRNA", "2026-09-17"): [("2026-09-02", "2026-09-16", "C0")],
+    ("NCI", "2026-06-27"): [("2026-06-12", "2026-06-15", "close_above_pole_high"), ("2026-06-16", "2026-06-18", "C0"),
+                            ("2026-06-22", "2026-06-26", "close_above_pole_high")],
+    ("ATAI", "2026-07-24"): [("2026-07-10", "2026-07-24", "close_above_pole_high")],
+    ("OUST", "2026-09-04"): [("2026-06-29", "2026-06-29", "close_above_pole_high"), ("2026-08-21", "2026-09-03", "sma50")],
+    ("SHAZ", "2026-09-04"): [("2026-06-29", "2026-08-21", "history"), ("2026-08-24", "2026-09-03", "sma50")],
+    ("REPL", "2026-09-04"): [("2026-08-10", "2026-09-03", "close_above_pole_high")],
+    ("GH", "2026-06-27"): [("2026-06-12", "2026-06-23", "C0"), ("2026-06-24", "2026-06-26", "close_above_pole_high")],
+    ("HNGE", "2026-06-27"): [("2026-06-12", "2026-06-26", "close_above_pole_high")],
+    ("HPE", "2026-06-02"): [("2026-05-18", "2026-06-02", "close_above_pole_high")],
+}
+
+
+class TestLabelledCorpus:
+    """REGRESSION PIN over every member of tests/fixtures/htf_labelled.py that has bars in the fixture
+    psv. It pins BEHAVIOUR — which nights of each labelled window pass C0, else the first failing gate —
+    so a later change to any gate shows up as a diff here; it does not prove any verdict is right. The
+    hand-derived assertions live beside it: MRNA (TestMrnaCanary), GH (TestBaseAnchor), ATAI
+    (TestFreshPinGate), OUST (TestRetrace)."""
+
+    @staticmethod
+    def _runs(member) -> list:
+        bars, _ = _fixture(member.ticker)
+        d = bars.dates
+        before = [k for k, x in enumerate(d) if x < member.label_date][-10:]
+        extra = [d.index(x) for x in member.assert_dates if x in d]
+        out: list = []
+        for k in sorted(set(before) | set(extra)):
+            f, g = cb.explain_watch(bars, k)
+            verdict, night = ("C0" if f else g), d[k].isoformat()
+            if out and out[-1][2] == verdict:
+                out[-1] = (out[-1][0], night, verdict)
+            else:
+                out.append((night, night, verdict))
+        return out
+
+    @staticmethod
+    def _members_with_bars() -> dict:
+        from tests.fixtures.htf_labelled import HTF_LABELLED
+        tickers = {ln.split("|", 1)[0] for ln in FIXTURE.read_text().splitlines() if ln}
+        return {(m.ticker, m.label_date.isoformat()): m for m in HTF_LABELLED if m.ticker in tickers}
+
+    def test_the_pinned_set_is_every_labelled_member_that_has_bars(self):
+        assert set(self._members_with_bars()) == set(CORPUS_PIN)
+
+    def test_every_window_verdict_is_pinned(self):
+        for key, member in self._members_with_bars().items():
+            assert self._runs(member) == CORPUS_PIN[key], key
+
+    def test_every_verdict_is_a_known_gate_or_c0(self):
+        known = set(cb.WATCH_GATES) | {"C0"}
+        assert {v for runs in CORPUS_PIN.values() for *_, v in runs} <= known
+
+    def test_the_hand_derived_canaries_agree_with_the_pin(self):
+        # MRNA's 09-16 watch night and GH's 06-23 (a pass the committed P1 gate could not give) are pass nights
+        assert ("2026-09-02", "2026-09-16", "C0") in CORPUS_PIN[("MRNA", "2026-09-17")]
+        assert ("2026-06-12", "2026-06-23", "C0") in CORPUS_PIN[("GH", "2026-06-27")]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
