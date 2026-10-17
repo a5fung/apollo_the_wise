@@ -1,0 +1,7 @@
+disc 604 held684 63 new block 75 runners 12
+DRY-RUN order (L1's 4th leg = #684 held-out, 63 rows) L1: disc raw p(less) 0.006 ctl -1.0pp p 0.383 | drop-week ctl p 0.755 | drop-two ctl p 0.488 | block ctl -4.0pp p 0.508
+DRY-RUN order (L1's 4th leg = #684 held-out, 63 rows) L2: disc raw p(less) 0.007 ctl -4.9pp p 0.029 | drop-week ctl p 0.079 | drop-two ctl p 0.018 | block ctl +4.5pp p 0.792
+REAL-READ order (L1's 4th leg = September block, 75 rows) L1: disc raw p(less) 0.006 ctl -1.0pp p 0.383 | drop-week ctl p 0.755 | drop-two ctl p 0.488 | block ctl -6.4pp p 0.505
+REAL-READ order (L1's 4th leg = September block, 75 rows) L2: disc raw p(less) 0.007 ctl -4.9pp p 0.029 | drop-week ctl p 0.089 | drop-two ctl p 0.028 | block ctl -14.6pp p 0.265
+PRECISE (40,000 draws, seed 99) L1: disc ctl p 0.3876 | drop-week 0.7576 | drop-two 0.4860 | block raw p(less) 0.6704 ctl p(less) 0.5118 p(more) 0.7073
+PRECISE (40,000 draws, seed 99) L2: disc ctl p 0.0316 | drop-week 0.0849 | drop-two 0.0226 | block raw p(less) 0.3343 ctl p(less) 0.2612 p(more) 0.8333

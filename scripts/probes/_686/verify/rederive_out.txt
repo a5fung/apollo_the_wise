@@ -1,0 +1,86 @@
+====================================================================================================
+(1) POPULATION
+  rows 75; unique (ticker, scan_date) 75
+  scan dates 14: {'2026-09-04': 6, '2026-09-08': 10, '2026-09-09': 9, '2026-09-11': 4, '2026-09-14': 5, '2026-09-15': 1, '2026-09-16': 2, '2026-09-17': 11, '2026-09-18': 3, '2026-09-21': 10, '2026-09-22': 6, '2026-09-23': 3, '2026-09-24': 2, '2026-09-25': 3}
+  rows outside 09-04..09-25: []
+  rows with NULL ep_score: []
+  XNYS sessions 09-04..10-16: 30; SPY daily dates same span: 30; identical: True
+  block sessions (SPY calendar) 15; sessions with ZERO population rows: ['2026-09-10']
+  in-block prev_scored_date references: [('FAC', '2026-09-17', '2026-09-08'), ('SECZ', '2026-09-18', '2026-09-17'), ('NUAI', '2026-09-21', '2026-09-08'), ('SECZ', '2026-09-21', '2026-09-18')]; all present in pop: True; any pointing at 09-10: False
+  independent alert list (_rank_shadow/verify_rank_shadow_2026-10-16.out, block dates): 16 alerts; missing from pop: []
+    alerts there: ['ALAB 09-04 MODERATE', 'ERO 09-08 MODERATE', 'IONQ 09-08 HIGH', 'PHVS 09-08 HIGH', 'QCOM 09-08 HIGH', 'ROIV 09-08 HIGH', 'SEI 09-08 HIGH', 'DFTX 09-14 HIGH', 'SRRK 09-14 HIGH', 'CIFR 09-16 MODERATE', 'GNRC 09-17 HIGH', 'VICR 09-17 HIGH', 'INTC 09-21 MODERATE', 'MSTR 09-21 none', 'ONON 09-22 HIGH', 'AKAM 09-25 HIGH']
+  pop rows with a scan PASS (alerted): 16; same set as the alert list: True
+  trades.tsv records 11; all in pop: True; rank-shadow trade_filled=True: ['PHVS', 'SEI', 'DFTX', 'VICR']
+  records carrying a block:* reason: [('PHVS', '2026-09-08', 'placed', 'block:r3_reentry_disabled'), ('DFTX', '2026-09-14', 'placed', 'block:r3_reentry_disabled')]
+  bar-context problems: {'censored_missing_calendar_sessions': [('GRAL', '2026-09-21', ['2026-09-23'])], 'own_next15_differs_from_calendar': [('GRAL', '2026-09-21')]}
+  rows with 15 calendar forward sessions present: 74 of 75
+  split/adjustment checks:
+    rows with 09:30 intraday open vs daily open off >3% or scan prev_close vs daily prior close off >1%: []
+    rows whose intraday day-high vs daily high differs >2%: []
+====================================================================================================
+(2) FRAME A
+  n 75; runners >=5 ADR 12; >=8 ADR 3; alerted n 16 runners 3; not-alerted n 59 runners 9
+  runners: [('QCOM', '09-08', 6.247), ('ALMR', '09-11', 5.556), ('FPS', '09-15', 5.957), ('ALVO', '09-16', 5.399), ('CIEN', '09-17', 5.133), ('SECZ', '09-17', 10.662), ('VICR', '09-17', 8.351), ('SECZ', '09-18', 6.517), ('GRAL', '09-21', 9.812), ('ONON', '09-22', 7.682), ('CBRL', '09-23', 7.483), ('P', '09-24', 5.257)]
+  vs read's 686_outcomes.tsv: max |run_xadr diff| 0.0005 (read rounds to 3 dp); runner5 disagreements []
+  rows within 0.5 ADR of the 5-ADR bar (fragility): [('SWBI', '09-04', 4.849), ('ALVO', '09-16', 5.399), ('ABSI', '09-17', 4.868), ('CIEN', '09-17', 5.133), ('P', '09-24', 5.257)]
+  ADR$ vs features.tsv adr_dollar_ep: max relative diff 4.65e-06
+====================================================================================================
+(3) FRAME B (today's order path, modelled from the registration §3 table)
+  admission/status counts: {'not_high_never_ordered': 64, 'chase_cap_skip': 1, 'filled': 4, 'gap_below_floor': 2, 'orb_invalid': 1, 'no_entry': 2, 'window_out_of_orb': 1}
+  orderable 7: ['IONQ 09-08', 'PHVS 09-08', 'SEI 09-08', 'DFTX 09-14', 'GNRC 09-17', 'VICR 09-17', 'AKAM 09-25']
+  filled 4; runners_B 1
+    IONQ  09-08 chase_cap_skip           first_high 09:35 submit 09:35 H 42.95 L 42.03 rt_gap 10.88 atr14 2.5136 P 43.82 lim None chase 1.522 fill None@  runB  gaps 
+    PHVS  09-08 filled                   first_high 07:10 submit 09:31 H 41.88 L 40.19 rt_gap 18.06 atr14 1.4731 P 41.615 lim 42.09 chase None fill 41.88@09:31 stop_limit_bracket_at_H runB 0.762 gaps []
+    QCOM  09-08 gap_below_floor          first_high 09:10 submit 09:31 H 180.65 L 176.71 rt_gap 5.74 atr14 None P None lim None chase None fill None@  runB  gaps 
+    ROIV  09-08 orb_invalid:stop_too_wide first_high 07:00 submit 09:31 H 40.4 L 38.5 rt_gap 11.08 atr14 1.2107 P None lim None chase None fill None@  runB  gaps 
+    SEI   09-08 filled                   first_high 08:00 submit 09:31 H 62.78 L 60.3 rt_gap 9.85 atr14 3.5142 P 60.42 lim 63.09 chase None fill 62.78@09:35 stop_limit_bracket_at_H runB 2.553 gaps [('09:31', '09:33')]
+    DFTX  09-14 filled                   first_high 07:30 submit 09:31 H 43.61 L 42.01 rt_gap 10.54 atr14 1.8796 P 42.99 lim 43.83 chase None fill 43.61@09:33 stop_limit_bracket_at_H runB 0.087 gaps []
+    SRRK  09-14 gap_below_floor          first_high 07:00 submit 09:31 H 56.9 L 55.0 rt_gap 0.06 atr14 None P None lim None chase None fill None@  runB  gaps 
+    GNRC  09-17 no_entry                 first_high 09:40 submit 09:40 H 231.8871 L 223.0 rt_gap 24.17 atr14 7.9036 P 217.4375 lim 233.05 chase None fill None@  runB  gaps []
+    VICR  09-17 filled                   first_high 07:00 submit 09:31 H 211.9699 L 206.55 rt_gap 14.64 atr14 12.8284 P 210.8293 lim 213.03 chase None fill 211.9699@09:32 stop_limit_bracket_at_H runB 8.673 gaps []
+    ONON  09-22 window_out_of_orb        first_high 09:45 submit None H None L None rt_gap None atr14 None P None lim None chase None fill None@  runB  gaps 
+    AKAM  09-25 no_entry                 first_high 07:00 submit 09:31 H 128.46 L 122.61 rt_gap 15.09 atr14 5.8643 P 127.07 lim 129.1 chase None fill None@  runB  gaps []
+  vs read's 686_outcomes.tsv: frame-B mismatches []
+  orderable x order record:
+    IONQ  09-08 model chase_cap_skip  record cancelled setup:chase_cap_exceeded: limit $43.99 risk $2.88/sh vs planned $1.84/sh (cap 1.50x, ORB high $42.95)
+    PHVS  09-08 model filled          record placed    block:r3_reentry_disabled
+    SEI   09-08 model filled          record placed    
+    DFTX  09-14 model filled          record placed    block:r3_reentry_disabled
+    GNRC  09-17 model no_entry        record skipped   setup:size_too_small: $12 risk / $17.77 per-share < 1 share
+    VICR  09-17 model filled          record placed    
+    AKAM  09-25 model no_entry        record cancelled ORB window unfilled
+  records on rows the model does NOT find orderable: [(('QCOM', '2026-09-08'), 'skipped', 'setup:gap_below_floor: rt 5.8% < 9% floor (alert said 9.6%, '), (('ROIV', '2026-09-08'), 'skipped', 'setup:stop_too_wide: ORB range $1.90 (4.9%) > 1.5x ATR $1.82'), (('SRRK', '2026-09-14'), 'skipped', 'setup:gap_below_floor: rt 0.2% < 9% floor (alert said 11.0%,'), (('ONON', '2026-09-22'), 'skipped', 'window:out_of_orb: detected 09:45 ET')]
+====================================================================================================
+(4) FRAME-A RUNNERS TODAY'S PATH NEVER BUYS
+  11 of 12: {'gap_below_floor': 1, 'not_high_never_ordered': 9, 'window_out_of_orb': 1}
+  bought: ['VICR 09-17']
+  never bought: [('QCOM', '09-08', 'gap_below_floor', 't'), ('ALMR', '09-11', 'not_high_never_ordered', 'f'), ('FPS', '09-15', 'not_high_never_ordered', 'f'), ('ALVO', '09-16', 'not_high_never_ordered', 'f'), ('CIEN', '09-17', 'not_high_never_ordered', 'f'), ('SECZ', '09-17', 'not_high_never_ordered', 'f'), ('SECZ', '09-18', 'not_high_never_ordered', 'f'), ('GRAL', '09-21', 'not_high_never_ordered', 'f'), ('ONON', '09-22', 'window_out_of_orb', 't'), ('CBRL', '09-23', 'not_high_never_ordered', 'f'), ('P', '09-24', 'not_high_never_ordered', 'f')]
+====================================================================================================
+FEATURE CROSS-CHECK vs the read's data/features.tsv (my values from raw bars):
+  PRE_repeat_scored_90d: identical on all 75
+  PRE_prev_close: identical on all 75
+  PRE_adr20_pct: identical on all 75
+  PRE_dollar_vol_20d: identical on all 75
+  PRE_base_range20_pct: identical on all 75
+  CLOSE_range_xadr: identical on all 75
+====================================================================================================
+(5) SPLITS + week-block permutation p (own generator numpy default_rng(686); 2,000 draws as registered, 200,000 draws for precision, and EXACT)
+  PRE_repeat_scored_90d  fav 56/19.6% (11 runners) vs rest 19/5.3% (1) diff +14.4pp | p(dec) 2k 0.032 200k 0.0289 exact 0.0295 | p(rev) 2k 0.997 200k 0.9974 exact 0.9975  || read: ['56/19.6% vs 19/5.3%', '+', '0.026']
+  PRE_prev_close         fav 36/8.3% (3 runners) vs rest 39/23.1% (9) diff -14.7pp | p(dec) 2k 0.998 200k 0.9968 exact 0.9971 | p(rev) 2k 0.017 200k 0.0201 exact 0.0202  || read: ['36/8.3% vs 39/23.1%', '-', '0.996']
+  PRE_adr20_pct          fav 20/10.0% (2 runners) vs rest 55/18.2% (10) diff -8.2pp | p(dec) 2k 0.971 200k 0.9750 exact 0.9752 | p(rev) 2k 0.114 200k 0.1201 exact 0.1202  || read: ['20/10.0% vs 55/18.2%', '-', '0.978']
+     thin-rule inputs: runners among rows carrying the feature 12 (>=3), fav 20 (>=8), rest 55 (>=8) -> not thin; sign - -> sign against
+  PRE_dollar_vol_20d     fav 30/13.3% (4 runners) vs rest 45/17.8% (8) diff -4.4pp | p(dec) 2k 0.728 200k 0.7193 exact 0.7207 | p(rev) 2k 0.532 200k 0.5361 exact 0.5355  || read: ['30/13.3% vs 45/17.8%', '-', '0.724']
+     thin-rule inputs: runners among rows carrying the feature 12, fav 30, rest 45; sign -
+====================================================================================================
+(6) REVERSED LEADS on the block (declared: that third runs LESS)
+  L1 quietest third              third 23/13.0% (3) vs rest 52/17.3% (9) raw -4.3pp p(less) 200k 0.674 exact 0.674 | controlled -6.4pp p(less) 0.515 p(more) 0.705 (50k draws)
+     strata sizes (ADR% <=4.49 / mid / >=6.42): [23, 32, 20]; third per stratum [16, 7, 0]; runners per stratum [3, 7, 2]
+  L2 widest gap-day-range third  third 19/5.3% (1) vs rest 56/19.6% (11) raw -14.4pp p(less) 200k 0.330 exact 0.330 | controlled -14.6pp p(less) 0.264 p(more) 0.833 (50k draws)
+     strata sizes (ADR% <=4.49 / mid / >=6.42): [23, 32, 20]; third per stratum [11, 7, 1]; runners per stratum [3, 7, 2]
+====================================================================================================
+SENSITIVITY — drop GRAL 09-21 (its daily file has no 09-23 bar, so its +1..+15 calendar window is incomplete)
+  frame A: n 74 runners 11
+  PRE_repeat_scored_90d  fav 55/18.2% vs rest 19/5.3% diff +12.9pp exact p(dec) 0.0399 p(rev) 0.9964
+  PRE_prev_close         fav 36/8.3% vs rest 38/21.1% diff -12.7pp exact p(dec) 0.9947 p(rev) 0.0336
+  PRE_adr20_pct          fav 20/10.0% vs rest 54/16.7% diff -6.7pp exact p(dec) 0.9665 p(rev) 0.1534
+  PRE_dollar_vol_20d     fav 30/13.3% vs rest 44/15.9% diff -2.6pp exact p(dec) 0.6651 p(rev) 0.6046

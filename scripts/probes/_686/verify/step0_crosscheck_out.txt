@@ -1,0 +1,7 @@
+scan-tick HIGH (first_high_time set) but no HIGH alert row: [('ALAB', '09-04'), ('ERO', '09-08'), ('CIFR', '09-16'), ('INTC', '09-21'), ('MSTR', '09-21')]
+HIGH alert rows without a scan-tick HIGH (judge promotion): []
+any_high_alert t: 11  first_high_alert_et < 09:45: 10
+09:45 coverage (>=12 of 15 ORB minutes): 71 of 75
+median gap 10.62 median ep_score 52.5
+alerted (any_pass_tick): 16
+alert_tier of FIRST alert row vs any_high_alert: [('ALAB', '09-04', 'MODERATE', 'f', ''), ('ERO', '09-08', 'MODERATE', 'f', ''), ('IONQ', '09-08', 'HIGH', 't', '09:35'), ('PHVS', '09-08', 'HIGH', 't', '07:10'), ('QCOM', '09-08', 'HIGH', 't', '09:10'), ('ROIV', '09-08', 'HIGH', 't', '07:00'), ('SEI', '09-08', 'HIGH', 't', '08:00'), ('DFTX', '09-14', 'HIGH', 't', '07:30'), ('SRRK', '09-14', 'HIGH', 't', '07:00'), ('CIFR', '09-16', 'MODERATE', 'f', ''), ('GNRC', '09-17', 'HIGH', 't', '09:40'), ('VICR', '09-17', 'HIGH', 't', '07:00'), ('INTC', '09-21', 'MODERATE', 'f', ''), ('MSTR', '09-21', 'none', 'f', ''), ('ONON', '09-22', 'HIGH', 't', '09:45'), ('AKAM', '09-25', 'HIGH', 't', '07:00')]

@@ -1,0 +1,18 @@
+#686 PRE-REGISTERED READ — mode: THE READ, block 2026-09-04..2026-09-25
+registration: docs/analysis/686_preregistration_2026-10-04.md   script sha256 ae1f09a6a66f8b21f997af9aee2c7f1b3b7d9861832d2ed66472883bc01695d8   draws 63 (sha 21502f2a2140…)
+seeds: discovery legs 684 (frozen, #684); new-block leg 686 (frame A, B1, B2 — one generator, DRAWS order); leads 687; permutation draws 2000; alpha 0.05; runner >= 5 ADR
+
+FROZEN DISCOVERY LEGS vs #684 results.tsv (n_disc, n_fav, p_disc, drop-week p, drop-two p): IDENTICAL on all 63 bar-tested draws
+discovery best week 2026-W19, best two names ['UMC', 'CRSR'] (frozen, #684)
+
+STEP 0 — COMPOSITION of the block 2026-09-04..2026-09-25 (no outcome exists yet; written to out/686_step0.txt)
+  rows 75 on 14 scan dates (calendar sessions in block: 15): {'2026-09-04': 6, '2026-09-08': 10, '2026-09-09': 9, '2026-09-11': 4, '2026-09-14': 5, '2026-09-15': 1, '2026-09-16': 2, '2026-09-17': 11, '2026-09-18': 3, '2026-09-21': 10, '2026-09-22': 6, '2026-09-23': 3, '2026-09-24': 2, '2026-09-25': 3}
+  alerted (scan pass, any tier) 16; scored-not-alerted 59; HIGH (alert row tier, post-judge) 11; HIGH with its first HIGH alert before 09:45 (orderable window) 10; scan-tick HIGH but no HIGH alert (judge demotion — never ordered) 5
+  era: {'B': 75}   ISO weeks: {'2026-W36': 6, '2026-W37': 23, '2026-W38': 22, '2026-W39': 24}
+  median gap at the scan 10.6%; median ep_score 52; 09:45 minute coverage 71 of 75; rows without 20 prior sessions (no bar features) 0
+  rows without 15 stored forward sessions (censored — a count of rows, not a price): 0 
+  frame-B admission (today's path, no fill walked yet): {'not_high_never_ordered': 64, 'orderable': 7, 'gap_below_floor': 2, 'orb_invalid': 1, 'window_out_of_orb': 1}
+  order records (data/trades.tsv): orderable-by-model 7, of which with a record 7 ({'cancelled': 2, 'placed': 4, 'skipped': 1}), without any record 0 []; PLACED in the record but NOT orderable by the model (model misses) 0 []
+  operator-labelled EPs dated inside the block (operator_labelled_eps.md at run time): none; in the population: none
+  STEP 0 alarms: none
+

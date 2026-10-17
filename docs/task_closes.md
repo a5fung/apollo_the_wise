@@ -2257,3 +2257,13 @@ EVIDENCE:
 - **Header seen live:** rendered in apollo-market 10-16 09:59 ET, '🌀 COILED — tightest bases, watch only (1)' with IOVA; the old 'actionable setup' header absent (`scripts/probes/_598_close_1016/render_flags_1016.out`).
 - **Screen arm, recorded as a ZERO:** 10 trading days 10-05..10-16, 0 flag-detector `mna_filter_fired` rows and 0 flag rows demoted with `mna_filter:` (`scripts/probes/_eve_1016/q598_4.out`), while the board carried 0-2 screened names a night (11 name-nights: HTFL, PURR, KOD, GRAL, IOVA — `q598_6.out`).
 - ⚠ **What the zero cannot show:** a dead screen reads the same zero. The planned positive trace (q5, IOVA released 10-07/10-08) turned out to be the 17:35 COIL scan's screen, not the 17:25 flag scan's, so the flag screen's running is UNPROVEN live. Carried, not dropped: the tripwire `flag_mna_screen_first_fire_598` fires on the first flag-detector block so it is checked against its news on the event.
+
+## #686 — re-reading #684 on the September block: no gap-day feature marks the EPs that run big, out of sample (2026-10-17)
+
+BAR: "the registration committed before 10-16, then one pre-registered read on the new block naming which features hold (or none), each with n, sign and permutation p, and a one-paragraph proposal for his ruling — any change to score or admission is CHANGE_PROCESS and his call (THE LINE)."
+
+EVIDENCE:
+- **Registration committed before 10-16:** frozen 2026-10-04 (merge 4e761ae5); the read's freeze check printed `PINS OK` on 10-17, and its REPRO step matched #684's `results.tsv` on all 63 draws.
+- **One pre-registered read on the new block:** run ONCE 2026-10-17 07:41 PT on the 07:39 read-only pull (`scripts/probes/_686/out/686_*`): 75 rows on 14 scan dates, STEP 0 no alarms, 12 runners. It names which hold: **none.** 0 of 63 features CONFIRMED and neither reversed lead confirmed, each with n, sign and p (ADR % 20 vs 55, 10.0% vs 18.2%, wrong sign, p 0.978; dollar volume 30 vs 45, 13.3% vs 17.8%, wrong sign, p 0.724; L1 p 0.669; L2 p 0.319). Report-only: HOLDS `PRE_repeat_scored_90d` (p 0.026), AGAINST `PRE_prev_close`.
+- **Independent check:** Opus re-derivation from the registration text, without the read's code (`scripts/probes/_686/verify/rederive_out.txt`): VERDICT MATCH on every number; p's differ by sampling noise only.
+- **One-paragraph proposal for his ruling:** `docs/analysis/686_results_2026-10-17.md` §"The proposal": no change to the score or admission is supported; the repeat-scored draw is named as a lead for a third block. Nothing waits on him unless he wants the separate 9-of-12 finding (runners that never scored HIGH) looked into.
