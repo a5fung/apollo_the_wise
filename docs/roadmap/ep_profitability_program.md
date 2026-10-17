@@ -248,6 +248,7 @@ the SMALLER of the two priced options for exactly this reason.
 
 ### P10 — PRIORITY: MAKE EXISTING EP PROFITABLE BEFORE NEW SETUPS
 Consolidation / HTF / wick are important-not-urgent and must not graduate to LIVE until EP works.
+**⚠ SUPERSEDED 2026-10-17 — his ruling 2026-10-17 ("we are pretty much done with all EP work... we are free to focus on other setups and building them to shadow and paper where we see fit").** EP is in run-and-accrue mode; other setups may be built to shadow and paper on their own evidence. Live money for any new setup remains his sign-off (THE LINE).
 
 ### P11 — SETUP vs FAMILY IS A DEFINITION, NOT A PREFERENCE
 A **SETUP** has a defined BUY POINT and STOP. A **FAMILY** is a chart condition hosting several

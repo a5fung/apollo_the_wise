@@ -254,7 +254,7 @@ SSoT = this ADR (NOT `delayed_ep_reentry.md`, which is Family B's).
 **FAMILY B — the EP family (delayed-EP, fishhook, MAGNA53, 9M).** EP-required. Next, separate rework
 (new #-task). Fishhook = EP-gated U&R = delayed-EP. U&R's generic mechanic (a reference-level reclaim) is
 the bridge Family B reuses, but Family B's universe, gating, and stops are its own decision.
-Any live / paper sizing for Family A — evidence-gated, no date. Mode stays SHADOW (no submit, no
+**2026-10-17: the EP-first hold is lifted (his ruling 2026-10-17 ("we are pretty much done with all EP work... we are free to focus on other setups and building them to shadow and paper where we see fit")), so PAPER for a Family A setup is decided on that setup's own evidence; LIVE stays his sign-off.** Any live / paper sizing for Family A — evidence-gated, no date. Mode stays SHADOW (no submit, no
 trade-state) throughout Phases 1–5.
 
 ---
