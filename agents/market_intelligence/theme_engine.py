@@ -9465,27 +9465,33 @@ def _merged_validation_thesis(winner: dict, absorbed: dict) -> str | None:
 
 
 async def _carry_protection_to_merged_name(
-    protected: set[tuple[str, str]] | None, old_winner_name: str, merged_name: str,
+    protected: set[tuple[str, str]] | None, old_names: str | list[str] | tuple[str, ...], target_name: str,
 ) -> set[tuple[str, str]] | None:
     """#655 (d): the operator-protection shield matches `(ticker, theme_name)` against the name the
     validator is called with. Validating under the merged name would silently drop every `/bypass`
     ruling filed under the winner's old name for THIS night's post-merge validation: the Arm B rename
     is only recorded in the #601 lineage (`mi_theme_renames`, which `get_operator_protected_set`
     expands) when `_save_themes` lands the merged theme's row, which is AFTER this validation runs.
-    So the old-name pairs are also filed under the merged name for this one validation call. From
-    the next night on the lineage row carries them (his ruling 2026-10-17: the merge pass stages
-    `arm_b_renamed_from` on the theme and `_save_themes` writes the old -> merged edge); before
-    that fix a ruling filed under the old name stopped protecting from the next Mon/Wed/Fri rescore
-    on. Operator rulings outrank the validator. `protected=None` (the run-level prefetch failed) is
-    fetched here; a failed fetch returns None - the same fail-open the validator's own fallback has."""
+    So the pairs filed under ANY of `old_names` are also filed under `target_name` for this one
+    validation call. `old_names` is every name the winner has held tonight (a winner can win twice in
+    a night: the second validation must still honour a ruling filed under its ORIGINAL name, which
+    the lineage has not yet recorded either). From the next night on the lineage row carries them
+    (his ruling 2026-10-17: the merge pass stages `arm_b_renamed_from` on the theme and
+    `_save_themes` writes the old -> merged edge); before that fix a ruling filed under the old name
+    stopped protecting from the next Mon/Wed/Fri rescore on. Operator rulings outrank the validator.
+    `protected=None` (the run-level prefetch failed) is fetched here; a failed fetch returns None -
+    the same fail-open the validator's own fallback has."""
+    if isinstance(old_names, str):
+        old_names = (old_names,)
+    sources = set(old_names)
     if protected is None:
         try:
             protected = await get_operator_protected_set()
         except Exception as e:
-            logger.warning(f"[merge arm] operator-protected set fetch failed for '{merged_name}' - "
+            logger.warning(f"[merge arm] operator-protected set fetch failed for '{target_name}' - "
                            f"validator falls back to its own lookup: {e}")
             return None
-    return set(protected) | {(tk, merged_name) for (tk, nm) in protected if nm == old_winner_name}
+    return set(protected) | {(tk, target_name) for (tk, nm) in protected if nm in sources}
 
 
 async def _run_thesis_merge_pass(
@@ -9515,8 +9521,10 @@ async def _run_thesis_merge_pass(
                      old one; with no usable merged name it falls back to the
                      winner's name exactly as before. When the merged name IS adopted
                      (his ruling 2026-10-17, "Yes"): the merged theme STORES the
-                     validation thesis as its description (None -> the winner's old
-                     one stays) and stages `arm_b_renamed_from` so `_save_themes`
+                     validation thesis as its description - only if it passes the
+                     #125 description-quality check the #214 rename applies (None or
+                     a failing text -> the winner's old one stays, outcome in the
+                     audit row) - and stages `arm_b_renamed_from` so `_save_themes`
                      writes the old -> merged #601 lineage edge.
       DISTINCT     → 30d (A,B) merge_distinct cooldown + theme_merge_distinct audit.
       PARENT_CHILD → existing sub-theme machinery (child.parent_theme = parent),
@@ -9626,17 +9634,26 @@ async def _run_thesis_merge_pass(
                 merged_name = (verdict.get("merged_name") or "").strip()
                 taken = ({t["name"] for t in all_themes} | persisted_names) - {old_winner_name}
                 adopt_merged = bool(merged_name) and merged_name != old_winner_name and merged_name not in taken
+                # EVERY name this winner has held tonight (a winner can win twice in a night): its
+                # earlier Arm B names are staged on the theme, but the lineage edges for them are not
+                # written until `_save_themes`, so a `/bypass` filed under its ORIGINAL name is
+                # visible to this validation only if it is carried here. Empty on a first win.
+                prior_names = list(winner.get("arm_b_renamed_from") or [])
                 if adopt_merged:
                     validate_name = merged_name
                     validate_basis = "merged name"
                     validate_thesis = _merged_validation_thesis(winner, absorbed)
                     validate_protected = await _carry_protection_to_merged_name(
-                        protected, old_winner_name, merged_name)
+                        protected, prior_names + [old_winner_name], merged_name)
                 else:
                     # Today's behaviour, byte for byte: no new name to judge against.
                     validate_name = old_winner_name
                     validate_thesis = winner.get("description")
-                    validate_protected = protected
+                    # ...except a winner that ALREADY renamed itself tonight is validated under
+                    # that name, which no ruling was filed under: carry the earlier names to it.
+                    validate_protected = (
+                        await _carry_protection_to_merged_name(protected, prior_names, old_winner_name)
+                        if prior_names else protected)
                     if not merged_name:
                         validate_basis = "winner name (adjudicator proposed no merged name)"
                     elif merged_name == old_winner_name:
@@ -9681,8 +9698,26 @@ async def _run_thesis_merge_pass(
                     # one. No new LLM call, nothing invented; no usable text (both descriptions
                     # missing/garbage) leaves the winner's description exactly as it was.
                     # Persisted by `_save_themes` (INSERT ... description = t["description"]).
-                    if validate_thesis is not None:
+                    #
+                    # GUARDED by the same description-quality check (#125) the #214 rename path
+                    # applies before it adopts a fresh thesis (`_apply_mass_flag_rename`): the
+                    # check caps an Accelerating/Mainstream theme to Nascent when the description
+                    # names no member, which costs every member the in-theme +10 on the EP score,
+                    # and the stored text is two halves cut at 148 chars that can drop the only
+                    # ticker mention. A text that fails keeps the winner's existing description
+                    # (the pre-ruling behaviour) - the merge, the members and the rename are
+                    # untouched; the verdict is recorded in the `theme_thesis_merged` audit row.
+                    # Same call shape as #214's: (new name, the members, the candidate text). No usable
+                    # text (None) reads `empty_description`, the check's own rule for it.
+                    _desc_ok, _desc_fail = _check_description_quality(
+                        merged_name, list(validated), validate_thesis)
+                    _desc_stored = _desc_ok
+                    _desc_why = "ok" if _desc_ok else _desc_fail
+                    if _desc_ok:
                         winner["description"] = validate_thesis
+                    else:
+                        logger.info(f"[merge arm] '{merged_name}': merged description not stored "
+                                    f"({_desc_fail}) - keeping the winner's own description")
                     # The #601 lineage edge old winner -> merged name. Staged here, written by
                     # `_save_themes` when the merged theme's row lands (same connection) - see
                     # the comment there. A LIST: one winner can win twice in a night, and
@@ -9705,10 +9740,8 @@ async def _run_thesis_merge_pass(
                 # Evidence for the verify-live read; the non-adopt paths add nothing (byte-for-byte).
                 _adopted_note = ""
                 if adopt_merged:
-                    _quality = _check_description_quality(
-                        winner["name"], validated, winner.get("description"))[1] or "ok"
-                    _adopted_note = (f" description_stored={validate_thesis is not None} "
-                                     f"(description quality check: {_quality}) "
+                    _adopted_note = (f" description_stored={_desc_stored} "
+                                     f"(description quality check: {_desc_why}) "
                                      f"lineage_staged={old_winner_name!r}->{merged_name!r}")
                 changelog.append({
                     "type": "theme_thesis_merged",

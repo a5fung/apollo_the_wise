@@ -4,9 +4,13 @@ validation text as the theme's description, and an Arm B rename WRITES a #601 li
 Two changes, both only on the `adopt_merged` branch of `_run_thesis_merge_pass`:
 
   1. The merged theme's stored description = exactly `_merged_validation_thesis(winner, absorbed)`
-     (the text the union was just validated against). `None` (no usable description on either
-     side) keeps the winner's old one. It must reach `mi_themes` - proved here through the REAL
-     `_save_themes` against an in-memory store, not by reading a dict field.
+     (the text the union was just validated against) - BUT ONLY IF it passes the #125
+     description-quality check the #214 rename path applies before it adopts a fresh thesis
+     (`_check_description_quality(merged name, surviving members, text)`). `None` (no usable
+     description on either side) or a failing text keeps the winner's old one, and the
+     `theme_thesis_merged` audit row says which (`description_stored=False (description quality
+     check: <rule>)`). It must reach `mi_themes` - proved here through the REAL `_save_themes`
+     against an in-memory store, not by reading a dict field.
   2. An adopted rename stages `arm_b_renamed_from` on the theme; `_save_themes` writes the
      `old winner -> merged name` edge with `record_theme_rename` (mechanism `arm_b_merge_rename`)
      on the connection that lands the merged theme's row. NOT `renamed_from`: that flag also
@@ -35,6 +39,19 @@ GARBAGE = "No specific news found for this theme"
 SECOND_MERGED_NAME = "Consumer Discretionary Cyclical Rebound & Household Goods"
 
 
+def _named_pair():
+    """The shared fixture pair with a member ticker NAMED in each description - the shape that
+    passes the #125 quality check (Rule B: at least one member mentioned). `_furniture_and_apparel`
+    names none, so on its own the merged text fails the guard (pinned below). A comma between the
+    symbols: `F1 F2` adjacent would trip Rule A (concat)."""
+    themes = _furniture_and_apparel()
+    themes[0]["description"] = ("Office, home and commercial furniture demand (F1, F2) tied to housing "
+                                "and office fit-outs")
+    themes[1]["description"] = ("Mall-based apparel and footwear retailers (A1, A2) recovering on "
+                                "consumer spending")
+    return themes
+
+
 # ── an in-memory DB that persists ACROSS "nights" (the #601 harness) ───────────────────────
 
 @pytest.fixture
@@ -55,9 +72,9 @@ def store(monkeypatch):
 
 
 async def _run_pass(monkeypatch, themes, *, merged_name=MERGED_NAME, validate=None, protected=None,
-                    calls=None, events=None):
+                    calls=None, events=None, details=None):
     got_events, _cd = _wire(monkeypatch, _merge_verdict(merged_name),
-                            validate=validate or _name_aware_validator(), calls=calls)
+                            validate=validate or _name_aware_validator(), calls=calls, details=details)
     if events is not None:
         events.extend(got_events)   # same list object is appended to by the fake audit
     _pair_them(monkeypatch)
@@ -80,7 +97,7 @@ def _edges(store):
 @pytest.mark.asyncio
 async def test_a_renaming_merge_stores_exactly_the_validation_text(monkeypatch):
     calls: list[dict] = []
-    themes = _furniture_and_apparel()
+    themes = _named_pair()
     expected = te._merged_validation_thesis(themes[0], themes[1])
     old_desc = themes[0]["description"]
     out, _ = await _run_pass(monkeypatch, themes, calls=calls)
@@ -96,7 +113,7 @@ async def test_the_stored_description_reaches_mi_themes_through_the_real_save(mo
     """The failure to avoid: a field set on a dict that no save path ever writes. The REAL
     `_save_themes` runs against the in-memory store and the INSERT's description argument is read back."""
     calls: list[dict] = []
-    out, _ = await _run_pass(monkeypatch, _furniture_and_apparel(), calls=calls)
+    out, _ = await _run_pass(monkeypatch, _named_pair(), calls=calls)
     await te._save_themes(out)
 
     assert _mi_themes_description(store, MERGED_NAME) == calls[0]["thesis"]
@@ -153,6 +170,83 @@ async def test_a_gutted_renamed_merge_stores_nothing_and_stages_no_lineage(monke
     assert store.renames == []
 
 
+def _desc_note(details):
+    """The `theme_thesis_merged` audit detail's description clause (the verify-live evidence)."""
+    rows = [d for e, d in details if e == "theme_thesis_merged"]
+    assert len(rows) == 1
+    return rows[0]
+
+
+@pytest.mark.asyncio
+async def test_a_merged_text_that_passes_the_quality_check_is_stored_and_the_audit_says_so(
+        monkeypatch, store):
+    details: list = []
+    out, _ = await _run_pass(monkeypatch, _named_pair(), details=details)
+    await te._save_themes(out)
+
+    merged = next(t for t in out if t["name"] == MERGED_NAME)
+    assert "|" in merged["description"] and merged["description"] != _named_pair()[0]["description"]
+    assert _mi_themes_description(store, MERGED_NAME) == merged["description"]
+    assert "description_stored=True (description quality check: ok)" in _desc_note(details)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("winner_desc, absorbed_desc, rule", [
+    # Rule B: neither half names a member ticker (the shared fixture's own descriptions)
+    ("Office, home and commercial furniture demand tied to housing and office fit-outs",
+     "Mall-based apparel and footwear retailers recovering on consumer spending",
+     "no_member_ticker_mentioned"),
+    # Rule A: two member symbols run together read as one entity ('LOVE SEAT')
+    ("Office furniture names F1 F2 tied to housing", "Apparel retailers recovering",
+     "ticker_concat:F1_F2"),
+])
+async def test_a_merged_text_that_fails_the_quality_check_is_not_stored(
+        monkeypatch, store, winner_desc, absorbed_desc, rule):
+    """The guard (his ruling's intent kept: the merged theme keeps its members and its new name; only
+    the TEXT is held back). The winner's own description stays - today's behaviour, byte for byte - the
+    rename and its lineage edge still land, and the audit row carries the failing rule."""
+    details: list = []
+    calls: list[dict] = []
+    themes = _furniture_and_apparel()
+    themes[0]["description"], themes[1]["description"] = winner_desc, absorbed_desc
+    out, _ = await _run_pass(monkeypatch, themes, calls=calls, details=details)
+    await te._save_themes(out)
+
+    assert "|" in calls[0]["thesis"]                                   # it WAS judged on the joined text
+    merged = next(t for t in out if t["name"] == MERGED_NAME)
+    assert merged["description"] == winner_desc                        # ...but not stored
+    assert _mi_themes_description(store, MERGED_NAME) == winner_desc
+    assert set(merged["tickers"]) == set(FURNITURE + APPAREL)           # members untouched
+    assert [(e[0], e[1]) for e in _edges(store)] == [(OLD_NAME, MERGED_NAME)]   # rename + lineage still land
+    assert f"description_stored=False (description quality check: {rule})" in _desc_note(details)
+
+
+@pytest.mark.asyncio
+async def test_the_quality_check_judges_the_surviving_members_not_the_pre_validation_union(
+        monkeypatch, store):
+    """Mirrors #214 (`_check_description_quality(new_name, tickers, thesis)` over the members that
+    REMAIN): a text naming only a member the validator stripped names no member of the merged theme."""
+    details: list = []
+    themes = _furniture_and_apparel(extra_apparel=["X1"])               # X1 fits neither name: stripped
+    themes[0]["description"] = "Furniture demand and the X1 bank lender, tied to housing"
+    out, _ = await _run_pass(monkeypatch, themes, details=details)
+
+    merged = next(t for t in out if t["name"] == MERGED_NAME)
+    assert "X1" not in merged["tickers"]
+    assert merged["description"] == "Furniture demand and the X1 bank lender, tied to housing"   # kept, not merged text
+    assert "description_stored=False (description quality check: no_member_ticker_mentioned)" in _desc_note(details)
+
+
+@pytest.mark.asyncio
+async def test_no_usable_description_reads_empty_description_in_the_audit_row(monkeypatch, store):
+    details: list = []
+    themes = _furniture_and_apparel()
+    themes[0]["description"] = GARBAGE
+    themes[1]["description"] = GARBAGE
+    await _run_pass(monkeypatch, themes, details=details)
+    assert "description_stored=False (description quality check: empty_description)" in _desc_note(details)
+
+
 # ── 2. the lineage row ────────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
@@ -181,10 +275,8 @@ async def test_arm_b_does_not_set_the_214_renamed_from_flag(monkeypatch):
     assert merged["arm_b_renamed_from"] == [OLD_NAME]
 
 
-@pytest.mark.asyncio
-async def test_a_winner_that_wins_twice_in_a_night_records_every_name_it_carried(monkeypatch, store):
-    """One winner can win two pairs (3 merges/night): the second rename starts from the FIRST merged
-    name, so a single-valued field would silently lose the name the operator actually ruled under."""
+def _two_pairs_one_winner(second_merged_name):
+    """One winner (the furniture theme) wins two pairs in a night."""
     themes = _furniture_and_apparel()
     other = _t("Household Goods Retail", ["H1", "H2"], 40)
     themes.append(other)
@@ -192,18 +284,66 @@ async def test_a_winner_that_wins_twice_in_a_night_records_every_name_it_carried
         ABSORBED_NAME: {"verdict": "MERGE", "driver_a": "c", "driver_b": "c", "reason": "r",
                         "merged_name": MERGED_NAME},
         other["name"]: {"verdict": "MERGE", "driver_a": "c", "driver_b": "c", "reason": "r",
-                        "merged_name": SECOND_MERGED_NAME},
+                        "merged_name": second_merged_name},
     }
-    _wire(monkeypatch, verdicts)
+    return themes, verdicts
+
+
+@pytest.mark.asyncio
+async def test_a_winner_that_wins_twice_in_a_night_records_every_name_it_carried(monkeypatch, store):
+    """One winner can win two pairs (3 merges/night): the second rename starts from the FIRST merged
+    name, so a single-valued field would silently lose the name the operator actually ruled under.
+    The same holds for tonight's PROTECTION: a `/bypass` filed under the ORIGINAL name has no lineage
+    edge yet (`_save_themes` writes them after the pass), so the second validation - run under the
+    second merged name - must still be handed it."""
+    themes, verdicts = _two_pairs_one_winner(SECOND_MERGED_NAME)
+    calls: list[dict] = []
+    _wire(monkeypatch, verdicts, calls=calls)
     monkeypatch.setattr(te, "propose_merge_pairs",
                         lambda cands, **kw: [(cands[0], cands[1]), (cands[0], cands[2])])
-    out = await te._run_thesis_merge_pass(themes, {t["name"] for t in themes}, [], None, TODAY)
+    bypass = {("F2", OLD_NAME), ("ZZ", "Some Other Theme")}          # filed under the ORIGINAL name
+    out = await te._run_thesis_merge_pass(themes, {t["name"] for t in themes}, [], bypass, TODAY)
     await te._save_themes(out)
 
     live = [t["name"] for t in out if t["stage"] != "Retired"]
     assert live == [SECOND_MERGED_NAME]
     assert sorted((e[0], e[1]) for e in _edges(store)) == sorted(
         [(OLD_NAME, SECOND_MERGED_NAME), (MERGED_NAME, SECOND_MERGED_NAME)])
+    assert [c["name"] for c in calls] == [MERGED_NAME, SECOND_MERGED_NAME]
+    assert ("F2", MERGED_NAME) in calls[0]["protected"]
+    assert ("F2", SECOND_MERGED_NAME) in calls[1]["protected"]       # the original name's ruling, carried twice
+    assert ("ZZ", SECOND_MERGED_NAME) not in calls[1]["protected"]   # only the winner's own names move
+    assert ("F2", OLD_NAME) in calls[1]["protected"]                 # nothing dropped
+
+
+@pytest.mark.asyncio
+async def test_a_second_win_that_adopts_no_name_still_carries_the_earlier_names(monkeypatch, store):
+    """The non-adopt branch of the same night: the second pair's adjudicator proposes no new name, so the
+    winner (already named MERGED_NAME by its first win) is validated under THAT name - which no ruling was
+    ever filed under. A `/bypass` under the ORIGINAL name must reach that call too."""
+    themes, verdicts = _two_pairs_one_winner("")
+    calls: list[dict] = []
+    _wire(monkeypatch, verdicts, calls=calls)
+    monkeypatch.setattr(te, "propose_merge_pairs",
+                        lambda cands, **kw: [(cands[0], cands[1]), (cands[0], cands[2])])
+    out = await te._run_thesis_merge_pass(
+        themes, {t["name"] for t in themes}, [], {("F2", OLD_NAME)}, TODAY)
+
+    assert [c["name"] for c in calls] == [MERGED_NAME, MERGED_NAME]   # no second rename
+    assert ("F2", MERGED_NAME) in calls[1]["protected"]
+    assert [t["name"] for t in out if t["stage"] != "Retired"] == [MERGED_NAME]
+    assert next(t for t in out if t["name"] == MERGED_NAME)["arm_b_renamed_from"] == [OLD_NAME]
+
+
+@pytest.mark.asyncio
+async def test_a_first_win_that_adopts_no_name_passes_the_protected_set_through_untouched(monkeypatch):
+    """The non-adopt path stays byte-for-byte today's when the winner has not renamed tonight: the very
+    object (and `None`, which the validator re-fetches itself) goes through, no carry, no fetch."""
+    sentinel = {("F2", OLD_NAME)}
+    for given in (sentinel, None):
+        calls: list[dict] = []
+        await _run_pass(monkeypatch, _furniture_and_apparel(), merged_name="", protected=given, calls=calls)
+        assert calls[0]["protected"] is given
 
 
 @pytest.mark.asyncio
