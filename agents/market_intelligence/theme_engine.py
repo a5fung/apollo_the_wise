@@ -2928,8 +2928,10 @@ async def _validate_theme_membership(
       * post-assignment validation — the strip is rejecting stocks the assignment LLM just
         added. The assignment was wrong, not the theme's name; renaming a stable theme
         because one bad assignment was rejected would be backwards.
-      * the Arm-B post-merge call — that name is the merge machinery's own product;
-        renaming it there fights the pass that just chose it.
+      * the Arm-B post-merge call — it is called with the MERGED name (#655 d, 2026-10-17:
+        the adjudicated name the pass is about to apply, not the winner's old narrower one),
+        so a strip there means a member does not fit the name the merge chose; renaming
+        that name would fight the pass that just chose it.
 
     dissolve_flagged_pair (ADR 0025 Arm A, #274 — callers pass merge_arm_enabled()):
     when True and the theme has exactly 2 members, a flagged removal PROCEEDS past the
@@ -9419,6 +9421,52 @@ async def _fold_small_failing_themes(
     return [t for t in all_themes if t["name"] not in removed] + retired_rows
 
 
+# #655 (d): `_validate_theme_membership` shows the model `thesis[:300]`. A merged theme has no
+# description of its own (the adjudicator returns a merged_name only), so the validation thesis is
+# the two themes' own descriptions side by side; each half gets half of that window.
+_MERGE_THESIS_HALF_CHARS = 148
+
+
+def _merged_validation_thesis(winner: dict, absorbed: dict) -> str | None:
+    """The thesis the post-merge validation judges the union against when the merge RENAMES the
+    winner (#655 d): the winner's own description and the absorbed theme's, each capped to half of
+    the validator's 300-character window, joined with ' | '. Why both: the winner's description was
+    written for its OLD, narrower name, so on its own it would pull the apparel names back out of a
+    theme now named for apparel too. A garbage description is left out (the validator's rule - a bad
+    Perplexity/Haiku blurb must never shield bad members); with none usable the result is None and
+    the validator judges the merged name alone. Nothing is invented: both halves are text the
+    two themes already carry."""
+    halves = []
+    for t in (winner, absorbed):
+        d = (t.get("description") or "").strip()
+        if d and not _is_garbage(d):
+            halves.append(d[:_MERGE_THESIS_HALF_CHARS].rstrip())
+    return " | ".join(halves) or None
+
+
+async def _carry_protection_to_merged_name(
+    protected: set[tuple[str, str]] | None, old_winner_name: str, merged_name: str,
+) -> set[tuple[str, str]] | None:
+    """#655 (d): the operator-protection shield matches `(ticker, theme_name)` against the name the
+    validator is called with. Validating under the merged name would silently drop every `/bypass`
+    ruling filed under the winner's old name - and `get_operator_protected_set`'s #601 rename-lineage
+    expansion cannot help: an Arm B rename never writes a lineage row on any night (`record_theme_rename`
+    runs only from `_save_themes`, and only for a theme carrying `renamed_from`, which only the #214
+    rename in `_rescore_existing_theme` sets; this pass only sets `winner["name"]`). So the old-name
+    pairs are also filed under the merged name for THIS ONE validation call only; from the next
+    Mon/Wed/Fri rescore a ruling filed under the old name no longer protects that member in the
+    merged theme (open for the operator, not decided here). Operator rulings outrank the validator. `protected=None` (the run-level prefetch failed) is fetched here; a failed fetch
+    returns None - the same fail-open the validator's own fallback has."""
+    if protected is None:
+        try:
+            protected = await get_operator_protected_set()
+        except Exception as e:
+            logger.warning(f"[merge arm] operator-protected set fetch failed for '{merged_name}' - "
+                           f"validator falls back to its own lookup: {e}")
+            return None
+    return set(protected) | {(tk, merged_name) for (tk, nm) in protected if nm == old_winner_name}
+
+
 async def _run_thesis_merge_pass(
     all_themes: list[dict],
     persisted_names: set[str],
@@ -9441,6 +9489,10 @@ async def _run_thesis_merge_pass(
                      tonight; a gutted union (<2 survivors) dissolves instead of
                      merging (Arm A composition). Name = adjudicator-proposed (F1,
                      operator-signed) with a collision guard. ≤3 executed/night.
+                     The re-validation judges the union against the MERGED name
+                     (#655 d, 2026-10-17) - decided before it runs - not the winner's
+                     old one; with no usable merged name it falls back to the
+                     winner's name exactly as before.
       DISTINCT     → 30d (A,B) merge_distinct cooldown + theme_merge_distinct audit.
       PARENT_CHILD → existing sub-theme machinery (child.parent_theme = parent),
                      no dissolution.
@@ -9538,12 +9590,44 @@ async def _run_thesis_merge_pass(
                 union = winner_tickers + [
                     tk for tk in (absorbed.get("tickers") or []) if tk not in winner_tickers
                 ]
+                # #655 (d), his ruling 2026-10-17: the merged name is decided FIRST, as a LOCAL
+                # (the theme dict keeps its old name until the gutted-union check below has
+                # passed - that branch retires the winner by its current name), and the combined
+                # list is validated against IT, not the winner's old narrower name. On 10-15 the
+                # old name was 'Commercial, Office & Home Furniture ...': 17 of 22 apparel
+                # members were stripped for not being furniture, then the survivor was renamed
+                # 'Consumer Discretionary Cyclical Rebound: Apparel & Home Furnishings'.
+                old_winner_name = winner["name"]
+                merged_name = (verdict.get("merged_name") or "").strip()
+                taken = ({t["name"] for t in all_themes} | persisted_names) - {old_winner_name}
+                adopt_merged = bool(merged_name) and merged_name != old_winner_name and merged_name not in taken
+                if adopt_merged:
+                    validate_name = merged_name
+                    validate_basis = "merged name"
+                    validate_thesis = _merged_validation_thesis(winner, absorbed)
+                    validate_protected = await _carry_protection_to_merged_name(
+                        protected, old_winner_name, merged_name)
+                else:
+                    # Today's behaviour, byte for byte: no new name to judge against.
+                    validate_name = old_winner_name
+                    validate_thesis = winner.get("description")
+                    validate_protected = protected
+                    if not merged_name:
+                        validate_basis = "winner name (adjudicator proposed no merged name)"
+                    elif merged_name == old_winner_name:
+                        validate_basis = "winner name (merged name is the winner's own)"
+                    else:
+                        validate_basis = "winner name (merged name collides with an existing theme)"
+                    if merged_name != old_winner_name:  # the missing / colliding case; an unchanged name is not news
+                        logger.info(
+                            f"[merge arm] '{absorbed['name']}' -> '{old_winner_name}': {validate_basis}; "
+                            f"validating the union against the winner's name as before (#655 d)")
                 # Post-merge validation (#266 birth-style): a bad union self-corrects
                 # tonight; dissolve_flagged_pair composes Arm A for a 2-member union.
                 validated = await _validate_theme_membership(
-                    winner["name"], union, changelog, protected=protected,
+                    validate_name, union, changelog, protected=validate_protected,
                     dissolve_flagged_pair=True,
-                    thesis=winner.get("description"),
+                    thesis=validate_thesis,
                 )
                 merges_executed += 1  # a gutted merge still consumed the night's action
                 if len(validated) < PRUNE_MIN_TICKERS:
@@ -9561,13 +9645,10 @@ async def _run_thesis_merge_pass(
                         "theme_merge_dissolved_post_validation",
                         summary=(f"Arm B: merge '{absorbed['name']}' → '{winner['name']}' gutted by "
                                  f"post-merge validation — both dissolved (Arm A composition)"),
-                        detail=f"union={union} validated={validated}",
+                        detail=f"union={union} validated={validated} validated_against={validate_name!r} ({validate_basis})",
                     )
                     continue
-                old_winner_name = winner["name"]
-                merged_name = (verdict.get("merged_name") or "").strip()
-                taken = ({t["name"] for t in all_themes} | persisted_names) - {old_winner_name}
-                if merged_name and merged_name != old_winner_name and merged_name not in taken:
+                if adopt_merged:
                     winner["name"] = merged_name  # F1 (operator-signed): adjudicator-proposed name
                     if old_winner_name in persisted_names:
                         retired_rows.append(_synthetic_retired_row(
@@ -9594,6 +9675,7 @@ async def _run_thesis_merge_pass(
                     summary=f"Arm B: '{absorbed['name']}' merged into '{winner['name']}' ({len(validated)} members)",
                     detail=(f"driver_a={verdict.get('driver_a', '')!r} driver_b={verdict.get('driver_b', '')!r} "
                             f"reason={verdict.get('reason', '')!r} merged_name={merged_name!r} "
+                            f"validated_against={validate_name!r} ({validate_basis}) "
                             f"scratchpad={(verdict.get('analysis_scratchpad') or '')[:400]!r}"),
                 )
                 logger.info(f"[merge arm] '{absorbed['name']}' merged into '{winner['name']}'")
