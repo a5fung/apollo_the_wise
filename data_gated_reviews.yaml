@@ -15538,7 +15538,10 @@ reviews:
     # the path this fix protects has executed for the first time on real money.
     predicate_sql: >-
       SELECT count(*) FROM mi_audit_log
-      WHERE event_type = 'sync_position_gone_unresolved';
+      WHERE event_type IN ('sync_position_gone_unresolved', 'sync_gone_stop_fill_recorded');
+    # WIDENED 2026-10-17 at #597's close (board audit rec): the guard's two written outcomes,
+    # the refusal (unresolved) AND the recorded exit (stop_fill_recorded) - either one is the
+    # first real exercise of the path. Re-run on prod 10-17: 0.
     # #573 population declaration: event_type is the ONLY thing separating this question
     # from every other row in mi_audit_log, and the predicate filters on it. There is no
     # account_mode or era axis here — the guard is live-book-only by construction (its
@@ -15751,6 +15754,89 @@ reviews:
       its audit row. Report what fired and what did not; a path that failed is a P0 back on the board.
       Any change to WHAT the stop is stays his (THE LINE).
     cross_refs: ["docs/task_closes.md", "scripts/probes/_646_close_1013/"]
+  - review_id: plus8r_two_share_first_event_698
+    title: "#698 — the first live 2-share MAGNA53 position to reach +8R since the 10-10 helper"
+    question: >-
+      #698 closed 2026-10-17 on his ok ("Fix all of them per rec", after: close #597, #698 and #654 the #679 way).
+      The helper (order_manager.plus8r_partial_shares: 2 shares -> sell 1) is deployed and its dry run passed in
+      apollo-execution 10-10. The DoD's live half needs a real 2-share position that reaches +8R; 5 two-share
+      MAGNA53 fills ever, none since 10-10, none at +8R. On the first one check: profit_trigger_fired with shares=1,
+      partial_exit_started 'sell 1 of 2', partial_exit_committed 'remaining 1', partial_taken true and
+      remaining_shares 1 on the trade row, a 1-share OCO, Telegram 'Limit sell 1 of 2 sh'.
+      WOULD-FAIL-IF: the position records too_small_to_split, sells both shares, or leaves no profit_trigger_fired
+      row at the next 5-minute poll.
+    predicate_sql: |
+      -- Live 2-share MAGNA53 trades opened after the close whose high-water mark reached +8R of their hard stop.
+      SELECT count(*) FROM mi_live_trades
+       WHERE entry_shares = 2 AND signal_type IN ('magna53', 'magna53_smallcap')
+         AND created_at >= DATE '2026-10-17' AND hard_stop IS NOT NULL AND entry_price > hard_stop
+         AND highest_price_seen >= entry_price + 8 * (entry_price - hard_stop)
+    threshold: 1
+    zero_verdict: "2026-10-17 WAITING — a tripwire born 10-17: 5 two-share MAGNA53 fills ever (last 09-25), 0 since the 10-10 helper; it fires on the first one opened after 10-17 that reaches +8R."
+    discriminates_on: [mi_live_trades.entry_shares, mi_live_trades.highest_price_seen]
+    earliest_review_date: 2026-10-17
+    status: pending
+    kind: tripwire
+    added_on: 2026-10-17
+    can_fire:
+      predicate_runs: >-
+        Run on prod 2026-10-17: 0 as written; widened to all history at +2R it returns 1 row (a 2-share trade whose
+        high-water mark rose 44.6 above entry), so the columns and arithmetic are real.
+      nonzero_possible: >-
+        MAGNA53 sizes 1-2 share positions on wide-stop names (5 two-share fills to date) and highest_price_seen is
+        updated by the live tracker on every poll; a +8R run (KOD 09-28 reached 10x ADR) is rare but has happened.
+      lane_live: >-
+        MAGNA53 is the live setup; scan_profit_triggers runs every 5 minutes in market hours on apollo-execution.
+      threshold_vs_observed: >-
+        Threshold 1 (a tripwire) against 0 since 10-17; expect 0-1 such events a quarter.
+      era_scoped: >-
+        From 2026-10-17 (after the close); the helper has been live since 10-10 and no 2-share trade opened between.
+      population_actionable: >-
+        Each counted row is exactly the trade the action inspects (its audit rows by ticker and date, its trade row).
+      instrument_trusted: >-
+        mi_live_trades.highest_price_seen is written by the live tracker that also drives the +8R trigger, so a row
+        reaching the bar here is a row the trigger saw.
+  - review_id: flag_breakout_first_after_close_654
+    title: "#654 — the first HTF flag breakout (TRIGGERED) after 10-17: watch it, and if it fails, failed_at must stamp"
+    question: >-
+      #654 closed 2026-10-17 on his ok ("Fix all of them per rec", after: close #597, #698 and #654 the #679 way).
+      Its columns are populated by the live 17:25 ET scan (low_after_breakout written on IOVA 09-15/09-16); the DoD's
+      other half needs a REAL failed breakout stamped with the session it failed (failed_at) and its depth
+      (low_after_breakout). There have been 3 TRIGGERED rows since the 09-13 deploy (IOVA 09-14..16, a success), so
+      no failure has occurred to stamp. This tripwire fires on the FIRST TRIGGERED row after 10-17 (a positive event,
+      not an absence); the action follows that name for 10 sessions: if any close falls back below its trigger-night
+      base high, failed_at must equal that session and low_after_breakout its lowest close; if it never fails, record
+      it and move the date floor to the next breakout.
+      WOULD-FAIL-IF: a followed breakout closes back below its base high and failed_at stays NULL.
+    predicate_sql: |
+      SELECT count(*) FROM mi_flag_candidates
+       WHERE stage = 'TRIGGERED' AND scan_date >= DATE '2026-10-17'
+    threshold: 1
+    zero_verdict: "2026-10-17 WAITING — a tripwire born 10-17: 60 TRIGGERED rows ever, 3 since the 09-13 deploy (IOVA, the last 09-16); it fires on the first breakout after the close."
+    discriminates_on: [mi_flag_candidates.stage, mi_flag_candidates.scan_date]
+    earliest_review_date: 2026-10-17
+    status: pending
+    kind: tripwire
+    added_on: 2026-10-17
+    can_fire:
+      predicate_runs: >-
+        Run on prod 2026-10-17: 0 as written; 60 TRIGGERED rows all-time and 3 since 09-13 (IOVA 09-14..16), so the
+        stage value and column are real.
+      nonzero_possible: >-
+        The 17:25 ET flag_continuation_scan writes TRIGGERED when a flag breaks out; 60 in the board's life, roughly
+        one name a month lately.
+      lane_live: >-
+        The flag board runs every weeknight (11 screened name-nights in the 10 trading days to 10-16).
+      threshold_vs_observed: >-
+        Threshold 1 (a tripwire) against 0 since 10-17.
+      era_scoped: >-
+        From 2026-10-17, after the close; the stamping code has been live since 09-13.
+      population_actionable: >-
+        Each counted row is the breakout the action follows; the action reads that ticker's next 10 scan rows and
+        daily closes, both already stored.
+      instrument_trusted: >-
+        failed_at / low_after_breakout are written on the same row by the same scan (flag_detector.py ~1175-1200),
+        from the trigger-night anchor it carries forward; IOVA 09-15/16 show low_after_breakout being written.
   - review_id: perplexity_outage_theme_window_679
     title: "#679 — the first Perplexity failure inside a nightly theme run since the 09-21 fix (and #680's true branch on the same event)"
     question: >-

@@ -2258,6 +2258,42 @@ EVIDENCE:
 - **Screen arm, recorded as a ZERO:** 10 trading days 10-05..10-16, 0 flag-detector `mna_filter_fired` rows and 0 flag rows demoted with `mna_filter:` (`scripts/probes/_eve_1016/q598_4.out`), while the board carried 0-2 screened names a night (11 name-nights: HTFL, PURR, KOD, GRAL, IOVA — `q598_6.out`).
 - ⚠ **What the zero cannot show:** a dead screen reads the same zero. The planned positive trace (q5, IOVA released 10-07/10-08) turned out to be the 17:35 COIL scan's screen, not the 17:25 flag scan's, so the flag screen's running is UNPROVEN live. Carried, not dropped: the tripwire `flag_mna_screen_first_fire_598` fires on the first flag-detector block so it is checked against its news on the event.
 
+## #283 — wick_fill retired: the setup is removed completely on his ruling (2026-10-17)
+
+BAR: "wick_fill completes the rung the line originally SKIPPED — shadow → PAPER → live, with its own N and its own evidence at each step. WOULD-FAIL-IF: it graduates straight from shadow to live, or on the 'ready' flag that was measured to be counting the wrong thing."
+
+EVIDENCE:
+- **Retired, not promoted, by his ruling 2026-10-17:** *"kill wick fill, remove that setup completely"* (after the board audit found #283 duplicated #314's TI2 wick-fill decision). The rung it asked for is no longer wanted; the DoD is moot by his decision, not met.
+- **What "remove completely" does:** the detector, its nightly job, its strategy row and its docs are removed in the same day's commits (a worktree build, reviewed before merge); the tables stay in place, as 9M's did, with nothing writing them.
+- **Last evidence on record:** 07-26 shadow read, +0.01% average 3-day return, 50.8% winners, n=65 — a coin flip, consistent with retiring it.
+
+## #597 — a vanished broker position no longer closes blind; the first real occurrence is carried by a tripwire (2026-10-17)
+
+BAR: "make that branch record the exit it implies (or refuse to close and let the finaliser do it), so the invariant stops being the only thing standing between a race and a wrong number."
+
+EVIDENCE:
+- **Code DoD, MET and deployed:** `order_manager._resolve_position_gone` records the exit the broker reports or refuses to close (fix 1604f54a / eb6d39d3, deployed to apollo-execution and byte-verified on the image 09-12; its 9 tests green).
+- **Live occurrence, NOT YET OBSERVED — carried on his ok 2026-10-17 (asked: "ok to close #597, #698 and #654 the #679 way?"; he said *"Fix all of them per rec"*):** prod 10-17: 0 `sync_position_gone_unresolved` and 0 `sync_gone_stop_fill_recorded` rows ever; the sweep that reaches the guard runs twice a trading day. The tripwire `sync_position_gone_first_real_vanish_597` (widened 10-17 to both written outcomes) fires on the first one.
+- ⚠ **What this close cannot show:** the guard acting on a real vanish. Three resolver exits write no row, so a cleanly self-resolved vanish stays invisible to the count.
+
+## #698 — the +8R sale now sells 1 of 2 shares; the first live 2-share +8R event is carried by a tripwire (2026-10-17)
+
+BAR: "deployed with the helper on every live sizing site (population derived, listed in the commit), SSoT change-log entry per CHANGE_PROCESS, and verified live on the first 2-share position that reaches +8R (1 share sold, 1 held, action recorded) — event-gated after the deploy check. WOULD-FAIL-IF: a 2-share position at +8R records `too_small_to_split`, or sells both shares."
+
+EVIDENCE:
+- **Deployed on every live sizing site:** one helper `order_manager.plus8r_partial_shares` at the one live sizing site (`scan_profit_triggers`), deployed 10-10 (fa39f5ef; population listed in the commit); SSoT change-log entries in `docs/setups/magna53_ep.md` and `docs/setups/exit_discipline.md`.
+- **Deploy check:** `dryrun_two_share.py` in apollo-execution printed DRYRUN PASS, helper [0, 0, 1, 1, 1, 1, 2].
+- **Live 2-share +8R event, NOT YET OBSERVED — carried on his ok 2026-10-17 (asked: "ok to close #597, #698 and #654 the #679 way?"; he said *"Fix all of them per rec"*):** prod 10-17: 5 two-share MAGNA53 fills ever (last 09-25), 0 since 10-10, none at +8R. The tripwire `plus8r_two_share_first_event_698` fires on the first one and its action checks the WOULD-FAIL-IF rows.
+
+## #654 — failed-breakout columns live on the 17:25 scan; the first real failed breakout is carried by a tripwire (2026-10-17)
+
+BAR: "the columns are populated by the live 17:25 ET scan, and a real failed breakout is stamped with the session it failed and the depth it reached."
+
+EVIDENCE:
+- **Columns populated by the live 17:25 ET scan:** `low_after_breakout` written on IOVA 09-15 and 09-16 after its 09-14 TRIGGERED (prod 10-17); deployed 09-13.
+- **A real failed breakout stamped, NOT YET OBSERVED — carried on his ok 2026-10-17 (asked: "ok to close #597, #698 and #654 the #679 way?"; he said *"Fix all of them per rec"*):** 3 TRIGGERED rows since the deploy (IOVA 09-14..16), and IOVA did not fail (it ran to 14+), so nothing has existed to stamp. The tripwire `flag_breakout_first_after_close_654` fires on the first breakout after 10-17 (a positive event) and its action follows it for 10 sessions: a close back below its base high must stamp `failed_at`.
+- ⚠ **What this close cannot show:** `failed_at` written on a real failure. The WOULD-FAIL-IF shape in the line (INVALIDATED under the same pivot after TRIGGERED) cannot occur any more because a breakout re-anchors the pivot (#697 item 4), which is why the tripwire follows the breakout instead.
+
 ## #679 — a Perplexity outage no longer records "no catalysts found" and costs themes their stage; the outage half is carried by a tripwire (2026-10-17)
 
 BAR: "(1) CLEAN-NIGHT HALF, checkable 2026-09-22: tonight's nightly theme run produces a stage distribution with no diff against the prior night's — a clean night must change nothing at all. (2) FAILURE HALF, whenever the next provider failure lands: `mi_audit_log` shows an `api_failure_perplexity` inside a nightly theme window with NO `theme_low_quality_description` row within 100ms of it"
