@@ -1953,3 +1953,19 @@ bull vs bear phase. Quotes are the article's words (via a page summary).
   A WebFetch of the article on 10-17 found no index moving-average rule; its only market words are the "bullish" / "fewer or no
   trades" lines above. #702 tests it as the primary bull-phase cell, using QQQ as a stand-in for the Composite, and keeps
   "SPY and QQQ above their 50-day" as the alternative cell. It is an addition to his setup, never "as written".
+
+## 2026-10-17 — his note on the breakout ENTRY: a down-sloping trendline, not only the base high (operator, verbatim)
+
+> *"If you actually look at all the traits, the entry he uses, break out base high, depends on how he draws it on the
+> chart. A lot of time he draws a flag with a down sloping trend line and a breakout of that trend line. So I don't
+> know how that translates to breakout for us, but that may dictate a lower entry than what we call a breakout. And
+> with that, success and failure may differ a lot."*
+
+- **Context:** said after the #702 discovery read (2026-10-17), whose breakout levels were all HORIZONTAL (the high of
+  the last 5 or 10 sessions, or the whole base's high).
+- **What #702 does with it:** adds a fourth breakout level, the down-sloping TRENDLINE across the base's highs. It is
+  anchored at the pole top and drawn so that no later high sits above it, using bars up to the watch night only.
+  The breakout day buys when price crosses the line's value that day. It is tested beside the horizontal levels,
+  never instead of them.
+- **Why it can matter:** a descending line sits BELOW the base high, so it triggers earlier and lower, and the
+  stop, the R unit and the failure rate can all differ.
