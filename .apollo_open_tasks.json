@@ -98,5 +98,9 @@
  {
   "id": 701,
   "status": "deployed"
+ },
+ {
+  "id": 702,
+  "status": "in_progress"
  }
 ]

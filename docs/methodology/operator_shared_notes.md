@@ -1949,3 +1949,7 @@ bull vs bear phase. Quotes are the article's words (via a page summary).
   setup selection."*
 - **Under our definitions (CLAUDE.md, SETUP vs FAMILY):** this is a SETUP inside the consolidation family. It has a defined buy
   point (the opening-range high on the breakout day) and a defined stop (the low of that day, no wider than one ADR).
+- **Market rule, ATTRIBUTED, not in the article (operator-forwarded Gemini review, 2026-10-17):** Gemini review forwarded by the operator 10-17 attributes to Qullamaggie a NASDAQ 10-day > 20-day, both rising, market rule; not in the 10-17 article; source not given.
+  A WebFetch of the article on 10-17 found no index moving-average rule; its only market words are the "bullish" / "fewer or no
+  trades" lines above. #702 tests it as the primary bull-phase cell, using QQQ as a stand-in for the Composite, and keeps
+  "SPY and QQQ above their 50-day" as the alternative cell. It is an addition to his setup, never "as written".
