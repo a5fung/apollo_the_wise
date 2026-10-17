@@ -171,6 +171,10 @@ calendar-aligned filers (AAPL, WMT) but systematically MISDATES a true 4-4-5
 retailer like COST, whose real quarter ends sit 1-3 weeks from any month
 boundary — is the only fix verified to hold for both filer types, because it
 compares against this ticker's OWN recorded history instead of any general rule.
+The FINNHUB quarter rows get the same treatment (2026-10-17, #333): their stored
+period_end_date is stabilized against that ticker's own Finnhub history
+(`source='finnhub_calendar'`, one read per ticker per run), never against yfinance's.
+See "FINNHUB ROWS ARE STABILIZED TOO" below.
 
 Sanity-bounded, never a guess passed off as data: an out-of-range lag or quarter
 length, or a computed '0q' that doesn't fall after the last reported quarter,
@@ -324,7 +328,8 @@ the ~1-week precision resolve_quarterly_period_ends already claims — and is
 ACCEPTED anyway, for three reasons that do not apply to that earlier design's
 REJECTED fixed-3-month attempt: (1) it is DETERMINISTIC — same (quarter, year,
 fiscalYearEnd) always produces the SAME date, so unlike the yfinance leg's live
-inputs it can never fracture a quarter's primary key by drifting; (2) this
+inputs it cannot drift DAY TO DAY (the one input that does move, EDGAR's MMDD, is
+absorbed by the stored-date stabilization — "FINNHUB ROWS ARE STABILIZED TOO"); (2) this
 recorder's population is overwhelmingly Dec-fiscal-year small/micro caps, where
 the error is ~0; (3) real quarters are ~90 days apart, so a 0-20 day error can
 never collide two adjacent quarters. It is a LABEL, not a claim of exact-day
@@ -375,6 +380,36 @@ identified WHICH quarter this is, which remains true even though the established
 key, not Finnhub's freshly-computed date, is what gets stored. This is what keeps
 the two sources joinable for the divergence check across every future run, not
 only the run where they first agree.
+
+FINNHUB ROWS ARE STABILIZED TOO (2026-10-17, #333; data capture only). The fresh Finnhub
+label is a pure function of (quarter, year, EDGAR `fiscalYearEnd` MMDD), and that MMDD
+DRIFTS by a day or two at the first-quarter 10-Q of a 52/53-week filer (COST 0831 -> 0830,
+AAPL 0927 -> 0926; COST and AAPL are next due Dec / late Jan). Unstabilized, every Finnhub
+quarter label of that ticker would move a day on the same night and mint a second primary
+key for each quarter — splitting its Finnhub revision series (measured in prod 2026-10-17:
+0 split pairs yet in 1,680 Finnhub rows over 105 tickers, because the table only reaches
+back to 2026-09-03 and no MMDD changed in it; the drift is ahead, not behind). So the
+STORED Finnhub row's period_end_date goes through the same stabilize_period_end (same
+_STABILIZE_TOLERANCE_DAYS, same _STABILIZE_LOOKBACK_DAYS) against that ticker's own
+`source='finnhub_calendar'` dates — db.get_recent_quarterly_period_ends(source=...),
+one read per ticker per run. Deliberately NOT against yfinance history: a 15-day window
+must not pull a Finnhub label onto an uncorroborated yfinance reconstruction. Boundaries:
+  - `finnhub_period_ends` (the list pair_finnhub_periods_to_slots reads, and the source of
+    the yfinance `candidate`) keeps the FRESH guard-passed dates, so the corroboration step
+    and every yfinance row are byte-identical to before; only the stored Finnhub row moves.
+  - The yfinance block's realign (above) still runs afterwards and still wins the stored
+    Finnhub key when yfinance's history reuses a date. It converges: the realigned row is
+    written tonight, so tomorrow's Finnhub history carries that key first.
+  - KNOWN RESIDUAL (stated, not fixed — the yfinance path is out of scope): a quarter with
+    Finnhub history but NO yfinance history within the lookback (a yfinance outage longer
+    than _STABILIZE_LOOKBACK_DAYS, or the ticker's first yfinance sighting), on a night its
+    fresh label has drifted, stores the yfinance row at the fresh date and the Finnhub row
+    at its established date; `period_end == candidate`, so no realign fires and that
+    quarter's divergence join stays split (it does not self-heal). Both legs cover the same
+    ~2 forward quarters and are written on the same nights, so the two histories normally
+    agree; before this change the same quarter instead split the FINNHUB series itself.
+  - A history-read failure degrades to "no history" (warning, never aborts), like the
+    yfinance read; a genuinely new quarter (>= 16 days from every stored date) is kept as is.
 
 DIVERGENCE, NO THRESHOLD (compute_estimate_divergences, mi_analyst_estimates_
 divergence table). Where BOTH sources land a row on the exact SAME (ticker,
@@ -788,7 +823,10 @@ def _shift_months(d: date, months: int) -> date:
     about using it to extrapolate from a LIVE, drifting anchor across runs; here it is
     applied ONCE, deterministically, to a fixed EDGAR fact (fiscal_year_end) plus a
     vendor-stated integer quarter — the failure mode that rejection guarded against
-    (day-to-day primary-key fracture) cannot occur here because the inputs never drift."""
+    (day-to-day primary-key fracture) cannot occur here because the inputs do not drift day
+    to day; the one that moves rarely (EDGAR's fiscalYearEnd MMDD, a day or two at a
+    52/53-week filer's first-quarter 10-Q) is absorbed where the Finnhub row is stored —
+    snapshot_ticker's stabilize_period_end against the ticker's own Finnhub dates."""
     total = d.month - 1 + months
     year = d.year + total // 12
     month = total % 12 + 1
@@ -1585,16 +1623,41 @@ async def snapshot_ticker(ticker: str, as_of: date) -> dict[str, Any]:
     else:
         fiscal_year_end = quarter_cadence.get("fiscal_year_end")
         last_q_end = quarter_cadence.get("last_reported_quarter_end")
-        for i, entry in enumerate(finnhub_raw):
-            period_end = finnhub_period_end_from_entry(
+        # `finnhub_period_ends` keeps the FRESH guard-passed dates: they, not the
+        # stabilized ones below, feed pair_finnhub_periods_to_slots and the yfinance
+        # override, which are unchanged by the Finnhub row stabilization.
+        for entry in finnhub_raw:
+            finnhub_period_ends.append(finnhub_period_end_from_entry(
                 entry["date"], entry.get("quarter"), entry.get("year"),
-                fiscal_year_end, last_q_end)
-            finnhub_period_ends.append(period_end)
-            if period_end is None:
+                fiscal_year_end, last_q_end))
+        # STABILITY (#333, 2026-10-17) — the STORED Finnhub row reuses this ticker's own
+        # already-stored Finnhub date within _STABILIZE_TOLERANCE_DAYS, the same
+        # stabilize_period_end the yfinance rows get, against ITS OWN source's history
+        # (source=FINNHUB_SOURCE, never yfinance: a 15-day window must not pull a Finnhub
+        # label onto an uncorroborated yfinance reconstruction). The fresh label is a pure
+        # function of (quarter, year, EDGAR fiscalYearEnd MMDD) and that MMDD drifts a day
+        # or two at the first-quarter 10-Q of a 52/53-week filer (COST 0831 -> 0830, AAPL
+        # 0927 -> 0926), which would otherwise split one fiscal quarter's revision series
+        # across two keys. ONE read per ticker per run (not per entry); a read failure
+        # degrades to "no history", exactly like the yfinance read below.
+        finnhub_recent_period_ends: list[date] = []
+        if any(pe is not None for pe in finnhub_period_ends):
+            try:
+                finnhub_recent_period_ends = await get_recent_quarterly_period_ends(
+                    ticker, as_of - timedelta(days=_STABILIZE_LOOKBACK_DAYS),
+                    source=FINNHUB_SOURCE)
+            except Exception as e:
+                logger.warning(f"recent Finnhub period-end lookup failed for {ticker} "
+                               f"(today's Finnhub labels may drift; self-heals next run): "
+                               f"{redact_secrets(f'{type(e).__name__}: {e}')}")
+        for i, entry in enumerate(finnhub_raw):
+            fresh_period_end = finnhub_period_ends[i]
+            if fresh_period_end is None:
                 continue
             row = normalize_finnhub_estimate(
                 entry, ticker=ticker, as_of=as_of, anchor_filing_date=anchor,
-                period_end_date=period_end)
+                period_end_date=stabilize_period_end(
+                    fresh_period_end, finnhub_recent_period_ends))
             finnhub_rows.append(row)
             finnhub_row_by_idx[i] = row
         if not finnhub_rows:

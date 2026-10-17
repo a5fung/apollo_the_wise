@@ -17992,12 +17992,15 @@ async def get_analyst_estimate_population(since: "str | date") -> list[str]:
 
 
 async def get_recent_quarterly_period_ends(
-    ticker: str, since: "str | date"
+    ticker: str, since: "str | date", source: "str | None" = None
 ) -> list[date]:
     """Quarter-type period_end_dates already stored for this ticker since `since`,
-    source='yfinance', ordered MOST-RECENTLY-WRITTEN FIRST (MAX(as_of_date) DESC) —
-    the v3 quarterly leg's STABILITY read (analyst_estimates_recorder.
-    stabilize_period_end). yfinance's '0q'/'+1q' labels are RELATIVE, and
+    for ONE source, ordered MOST-RECENTLY-WRITTEN FIRST (MAX(as_of_date) DESC) —
+    the quarterly legs' STABILITY read (analyst_estimates_recorder.
+    stabilize_period_end). `source=None` (the default, and every caller before
+    2026-10-17) reads source='yfinance'; the Finnhub leg passes
+    source='finnhub_calendar' so its rows are stabilized against ITS OWN history,
+    never against a yfinance reconstruction. yfinance's '0q'/'+1q' labels are RELATIVE, and
     resolve_quarterly_period_ends derives an ABSOLUTE date from live inputs (a
     next-earnings-date estimate that can shift a few days, a filing that can swing
     the observed lag) that drift slightly run to run. Before minting a fresh
@@ -18010,22 +18013,24 @@ async def get_recent_quarterly_period_ends(
     today's candidate (e.g. an early, poorly-informed estimate from months ago
     alongside a recently-confirmed one) — stabilize_period_end takes the FIRST
     match in this list, i.e. prefers the most recently confirmed label over
-    whichever is merely a day or two numerically closer. `source` is hardcoded to
-    the literal 'yfinance' (must match analyst_estimates_recorder.
+    whichever is merely a day or two numerically closer. The default source is the
+    literal 'yfinance' (must match analyst_estimates_recorder.
     QUARTERLY_ESTIMATES_SOURCE) rather than imported — db.py is imported BY the
-    recorder, not the reverse."""
+    recorder, not the reverse; a caller wanting another source passes its literal
+    (analyst_estimates_recorder.FINNHUB_SOURCE for the Finnhub leg)."""
     pool = await get_pool()
+    effective_source = source if source is not None else "yfinance"
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """
             SELECT period_end_date, MAX(as_of_date) AS last_seen
             FROM mi_analyst_estimates
-            WHERE ticker = $1 AND period_type = 'quarter' AND source = 'yfinance'
+            WHERE ticker = $1 AND period_type = 'quarter' AND source = $3
               AND as_of_date >= $2
             GROUP BY period_end_date
             ORDER BY last_seen DESC
             """,
-            ticker, _coerce_date(since),
+            ticker, _coerce_date(since), effective_source,
         )
     return [r["period_end_date"] for r in rows]
 

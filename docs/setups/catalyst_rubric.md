@@ -288,6 +288,21 @@ then STEP-0 → operator sign-off → CHANGE_PROCESS. Code: `agents/market_intel
 - **Finnhub** `/calendar/earnings` (`source='finnhub_calendar'`) — free, two forward quarters, **no analyst
   count**; an independent cross-check, stored beside yfinance with a divergence row where both land on the same
   quarter. `/stock/revenue-estimate` is premium-walled (403 on 7/7) — never call it.
+  - **Label rule (quarters), stored date stabilized 2026-10-17 (#333):** the fresh label is
+    `fiscal_quarter_end_from_label(quarter, year, EDGAR fiscalYearEnd MMDD)`, and that MMDD drifts a day or two
+    at a 52/53-week filer's first-quarter 10-Q (COST 0831 -> 0830, AAPL 0927 -> 0926; due Dec / late Jan), which
+    would split one fiscal quarter's revision series across two `period_end_date` keys. So the STORED Finnhub row
+    reuses that ticker's own already-stored Finnhub date within 15 days (`stabilize_period_end`, most recently
+    written first, one history read per ticker per run: `get_recent_quarterly_period_ends(source='finnhub_calendar')`),
+    exactly as the yfinance rows already do against yfinance history. Never against yfinance history (a 15-day
+    window must not pull a Finnhub label onto an uncorroborated yfinance reconstruction). A genuinely new quarter
+    (>= 16 days from every stored date) is kept as is; no history = the fresh label. The corroboration step
+    (`pair_finnhub_periods_to_slots`) and every yfinance row still use the FRESH Finnhub date, unchanged. Measured
+    before the fix (2026-10-17, prod): 0 split pairs in 1,680 Finnhub rows over 105 tickers — the table only starts
+    2026-09-03 and no MMDD changed in it, so this is prevention, not a repair. Known residual: a quarter with
+    Finnhub history but no yfinance history in the lookback, on a night its label drifts, leaves that quarter's
+    divergence join split (module docstring, "FINNHUB ROWS ARE STABILIZED TOO"). Pinned in
+    `tests/test_analyst_estimates_recorder.py`.
 - **SEC EDGAR** — the honest-window anchor (last filing date) and the cadence facts. Every row carries the date
   it was READ and `valid_from = last filing` (zero window when no anchor) — the lookahead rule.
 - **FMP `/analyst-estimates` was REMOVED 2026-10-16.** The free tier serves ~1 ticker in 12 (symbol allow-list,
@@ -312,7 +327,7 @@ then STEP-0 → operator sign-off → CHANGE_PROCESS. Code: `agents/market_intel
     because EDGAR's `fiscalYearEnd` MMDD **drifts a day or two for a 52/53-week filer** (COST 0831 -> 0830, AAPL
     0927 -> 0926, at each Q1 10-Q) and `period_end_date` is part of the row's key: unsnapped, one fiscal year would
     split into two keys the day the MMDD moved. It is the annual label only; the Finnhub quarterly resolver is
-    unchanged. The 30 days absorb EDGAR's approximate MMDD when picking WHICH year is current.
+    unchanged (its stored date is stabilized instead, in the Finnhub bullet above). The 30 days absorb EDGAR's approximate MMDD when picking WHICH year is current.
   - **Gate** (the quarterly leg's own bound): `last_actual_release_date − last_reported_quarter_end` must be 0-75
     days. It rejects the reporting-gap race — year results released (Yahoo's `0y` has rolled) but the 10-K not yet
     filed (EDGAR still shows the third quarter), where the rule would name the year that just ended. Skipped and
