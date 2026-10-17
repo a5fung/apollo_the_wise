@@ -16066,10 +16066,13 @@ THEME_RENAME_INSERT_SQL = """
     ON CONFLICT (old_name, new_name, theme_date) DO NOTHING
 """
 
-# The only mechanism that deliberately KEEPS a new name today (#214). Canonicalize
-# (#59) and name-inheritance both rename TOWARD the prior persisted name, so the
-# name they discard was never one the operator could have ruled under.
+# The mechanisms that deliberately KEEP a new name: #214 (mass-flag rename) and, since
+# 2026-10-17, an Arm B thesis merge whose adjudicator-proposed name is adopted (#655 d,
+# written by `_save_themes` off the theme's `arm_b_renamed_from`). Canonicalize (#59)
+# and name-inheritance both rename TOWARD the prior persisted name, so the name they
+# discard was never one the operator could have ruled under.
 THEME_RENAME_MECHANISM_MASS_FLAG = "mass_flag_rename"
+THEME_RENAME_MECHANISM_ARM_B_MERGE = "arm_b_merge_rename"
 
 
 # ── Judge-named themes (#651) — the recorder's three statements ──────────────

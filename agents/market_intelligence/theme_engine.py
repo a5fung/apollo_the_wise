@@ -73,7 +73,7 @@ from agents.market_intelligence.db import (
     get_theme_subtheme_arm_enabled, get_theme_birth_gate_mode,
     get_theme_parent_pass_enabled, get_industries_for_tickers,
     get_seeded_assignment_tickers, latest_complete_score_date_sql,
-    record_theme_rename, THEME_RENAME_MECHANISM_MASS_FLAG,
+    record_theme_rename, THEME_RENAME_MECHANISM_MASS_FLAG, THEME_RENAME_MECHANISM_ARM_B_MERGE,
     get_recent_rehome_judged_tickers, REHOME_JUDGED_EVENT,
 )
 # ADR 0025 (#274) — theme fragmentation controls, behind THEME_MERGE_ARM (default OFF).
@@ -2292,20 +2292,40 @@ async def _save_themes(themes: list[dict]) -> None:
             # it is the one record that lets an operator ruling filed under the OLD name
             # (a bypassed cooldown, an exclusion) reach the theme under its new one.
             # Loud on failure, never fatal: the save must still finish for the other themes.
+            #
+            # #655 (d), 2026-10-17: an Arm B thesis merge that ADOPTED the adjudicator's name
+            # stages the winner's old name(s) on the theme as `arm_b_renamed_from` (a list: one
+            # winner can win twice in a night). It is a SEPARATE key from `renamed_from` on
+            # purpose - `renamed_from` also carries the old name's day counters here, skips
+            # `_canonicalize_theme_names`, the small-theme fold and the weak-Fading retire, and
+            # the mechanism recorded for it is the #214 one. The edge lands HERE, with the new
+            # name's row, not inside the merge pass: a merge that a later step removes from the
+            # board (fold, a crash before the save) must not leave an edge to a name that never
+            # existed.
+            _rename_edges: list[tuple[str, str, str]] = []
             if t.get("renamed_from"):
+                _rename_edges.append((
+                    t["renamed_from"], THEME_RENAME_MECHANISM_MASS_FLAG,
+                    f"#214 mass-flag rename; {len(t.get('tickers') or [])} members kept"))
+            for _old in dict.fromkeys(t.get("arm_b_renamed_from") or ()):
+                if _old and _old != t["name"]:
+                    _rename_edges.append((
+                        _old, THEME_RENAME_MECHANISM_ARM_B_MERGE,
+                        f"Arm B thesis-merge rename (#655 d); {len(t.get('tickers') or [])} members"))
+            for _old, _mechanism, _detail in _rename_edges:
                 try:
                     await record_theme_rename(
-                        t["renamed_from"], t["name"],
-                        mechanism=THEME_RENAME_MECHANISM_MASS_FLAG,
+                        _old, t["name"],
+                        mechanism=_mechanism,
                         theme_date=t["theme_date"],
-                        detail=f"#214 mass-flag rename; {len(t.get('tickers') or [])} members kept",
+                        detail=_detail,
                         conn=conn)
                 except Exception as e:
                     logger.error(f"#601: rename lineage write FAILED for "
-                                 f"'{t['renamed_from']}' -> '{t['name']}': {e}")
+                                 f"'{_old}' -> '{t['name']}': {e}")
                     await log_audit_event(
                         "theme_rename_lineage_write_failed",
-                        summary=(f"'{t['renamed_from']}' -> '{t['name']}': lineage row NOT "
+                        summary=(f"'{_old}' -> '{t['name']}': lineage row NOT "
                                  f"written — operator rulings under the old name will not "
                                  f"follow the rename until it is (#601)"),
                         detail=str(e)[:500],
@@ -9449,14 +9469,15 @@ async def _carry_protection_to_merged_name(
 ) -> set[tuple[str, str]] | None:
     """#655 (d): the operator-protection shield matches `(ticker, theme_name)` against the name the
     validator is called with. Validating under the merged name would silently drop every `/bypass`
-    ruling filed under the winner's old name - and `get_operator_protected_set`'s #601 rename-lineage
-    expansion cannot help: an Arm B rename never writes a lineage row on any night (`record_theme_rename`
-    runs only from `_save_themes`, and only for a theme carrying `renamed_from`, which only the #214
-    rename in `_rescore_existing_theme` sets; this pass only sets `winner["name"]`). So the old-name
-    pairs are also filed under the merged name for THIS ONE validation call only; from the next
-    Mon/Wed/Fri rescore a ruling filed under the old name no longer protects that member in the
-    merged theme (open for the operator, not decided here). Operator rulings outrank the validator. `protected=None` (the run-level prefetch failed) is fetched here; a failed fetch
-    returns None - the same fail-open the validator's own fallback has."""
+    ruling filed under the winner's old name for THIS night's post-merge validation: the Arm B rename
+    is only recorded in the #601 lineage (`mi_theme_renames`, which `get_operator_protected_set`
+    expands) when `_save_themes` lands the merged theme's row, which is AFTER this validation runs.
+    So the old-name pairs are also filed under the merged name for this one validation call. From
+    the next night on the lineage row carries them (his ruling 2026-10-17: the merge pass stages
+    `arm_b_renamed_from` on the theme and `_save_themes` writes the old -> merged edge); before
+    that fix a ruling filed under the old name stopped protecting from the next Mon/Wed/Fri rescore
+    on. Operator rulings outrank the validator. `protected=None` (the run-level prefetch failed) is
+    fetched here; a failed fetch returns None - the same fail-open the validator's own fallback has."""
     if protected is None:
         try:
             protected = await get_operator_protected_set()
@@ -9492,7 +9513,11 @@ async def _run_thesis_merge_pass(
                      The re-validation judges the union against the MERGED name
                      (#655 d, 2026-10-17) - decided before it runs - not the winner's
                      old one; with no usable merged name it falls back to the
-                     winner's name exactly as before.
+                     winner's name exactly as before. When the merged name IS adopted
+                     (his ruling 2026-10-17, "Yes"): the merged theme STORES the
+                     validation thesis as its description (None -> the winner's old
+                     one stays) and stages `arm_b_renamed_from` so `_save_themes`
+                     writes the old -> merged #601 lineage edge.
       DISTINCT     → 30d (A,B) merge_distinct cooldown + theme_merge_distinct audit.
       PARENT_CHILD → existing sub-theme machinery (child.parent_theme = parent),
                      no dissolution.
@@ -9650,6 +9675,19 @@ async def _run_thesis_merge_pass(
                     continue
                 if adopt_merged:
                     winner["name"] = merged_name  # F1 (operator-signed): adjudicator-proposed name
+                    # His ruling 2026-10-17 ("Yes"): the merged theme stores the SAME text the
+                    # union was just validated against, so the next Mon/Wed/Fri rescore and the
+                    # EP theme judge read the merged description, not the winner's old narrow
+                    # one. No new LLM call, nothing invented; no usable text (both descriptions
+                    # missing/garbage) leaves the winner's description exactly as it was.
+                    # Persisted by `_save_themes` (INSERT ... description = t["description"]).
+                    if validate_thesis is not None:
+                        winner["description"] = validate_thesis
+                    # The #601 lineage edge old winner -> merged name. Staged here, written by
+                    # `_save_themes` when the merged theme's row lands (same connection) - see
+                    # the comment there. A LIST: one winner can win twice in a night, and
+                    # overwriting would lose the name the operator actually ruled under.
+                    winner.setdefault("arm_b_renamed_from", []).append(old_winner_name)
                     if old_winner_name in persisted_names:
                         retired_rows.append(_synthetic_retired_row(
                             old_winner_name, today, successor=winner["name"],
@@ -9664,6 +9702,14 @@ async def _run_thesis_merge_pass(
                         note=(f"Auto-retired {today}: thesis-merged into '{winner['name']}' "
                               f"(ADR 0025 Arm B)."),
                     ))
+                # Evidence for the verify-live read; the non-adopt paths add nothing (byte-for-byte).
+                _adopted_note = ""
+                if adopt_merged:
+                    _quality = _check_description_quality(
+                        winner["name"], validated, winner.get("description"))[1] or "ok"
+                    _adopted_note = (f" description_stored={validate_thesis is not None} "
+                                     f"(description quality check: {_quality}) "
+                                     f"lineage_staged={old_winner_name!r}->{merged_name!r}")
                 changelog.append({
                     "type": "theme_thesis_merged",
                     "theme": absorbed["name"],
@@ -9676,7 +9722,8 @@ async def _run_thesis_merge_pass(
                     detail=(f"driver_a={verdict.get('driver_a', '')!r} driver_b={verdict.get('driver_b', '')!r} "
                             f"reason={verdict.get('reason', '')!r} merged_name={merged_name!r} "
                             f"validated_against={validate_name!r} ({validate_basis}) "
-                            f"scratchpad={(verdict.get('analysis_scratchpad') or '')[:400]!r}"),
+                            f"scratchpad={(verdict.get('analysis_scratchpad') or '')[:400]!r}"
+                            f"{_adopted_note}"),
                 )
                 logger.info(f"[merge arm] '{absorbed['name']}' merged into '{winner['name']}'")
 

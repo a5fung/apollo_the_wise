@@ -8,6 +8,8 @@ adjudication-error fail-open · F1 adjudicator-proposed name (+ collision guard)
 
 #655 (d), 2026-10-17: the post-merge validation judges the union against the MERGED name
 (decided first), not the winner's old one - see the `test_655d_*` block at the bottom.
+His 2026-10-17 "Yes" (stored merged description + the Arm B #601 lineage row) is covered in
+tests/test_655d_merged_description_and_lineage.py, which reuses this module's helpers.
 """
 from __future__ import annotations
 
@@ -381,9 +383,10 @@ async def test_655d_with_no_usable_merged_name_today_s_behaviour_stands(monkeypa
 
 @pytest.mark.asyncio
 async def test_655d_a_renamed_merge_carries_the_operators_rulings_to_the_merged_name(monkeypatch):
-    """A /bypass filed under the winner's old name must still shield under the merged name for this
-    call: an Arm B rename never writes a #601 lineage row (only the #214 rename sets `renamed_from`),
-    so nothing else carries it - and from the next rescore it no longer protects."""
+    """A /bypass filed under the winner's old name must still shield under the merged name for THIS
+    night's validation call: the Arm B rename's #601 lineage row is only written by `_save_themes`
+    when the merged theme's row lands, which is after this call. From the next night the lineage row
+    carries the ruling (his 2026-10-17 ruling; tests/test_655d_merged_description_and_lineage.py)."""
     calls: list[dict] = []
     _wire(monkeypatch, _merge_verdict(MERGED_NAME), validate=_name_aware_validator(), calls=calls)
     _pair_them(monkeypatch)
