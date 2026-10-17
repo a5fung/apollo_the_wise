@@ -15751,6 +15751,54 @@ reviews:
       its audit row. Report what fired and what did not; a path that failed is a P0 back on the board.
       Any change to WHAT the stop is stays his (THE LINE).
     cross_refs: ["docs/task_closes.md", "scripts/probes/_646_close_1013/"]
+  - review_id: perplexity_outage_theme_window_679
+    title: "#679 — the first Perplexity failure inside a nightly theme run since the 09-21 fix (and #680's true branch on the same event)"
+    question: >-
+      #679 closed 2026-10-17 on his ok ("Ok", after: close it and hand the outage check to an alert that fires on the
+      first real outage). Its clean-night half was verified live 2026-09-22; its failure half needs a provider failure
+      inside a theme run, and none has landed since the 2026-09-21 12:02 ET deploy (last api_failure_perplexity
+      2026-09-21 13:40 UTC, before it). On the first such failure check, on that event: (1) NO theme_low_quality_description
+      row within 100 ms of the failure (on 09-04 four pairs landed 17-27 ms apart); (2) the affected theme writes
+      news_score 15 (theme_news_api_err true), KEEPS its prior description and keeps its stage; (3) #680's true branch:
+      ep_corpus_missing_news_provider shows one row per affected ticker for any EP scan inside the failure window.
+      WOULD-FAIL-IF: a cap lands inside 100 ms of the failure row, or the theme loses its stage or description.
+    predicate_sql: |
+      -- Perplexity failures inside the nightly theme window (nightly_data_pull starts 17:00 ET; the 09-04
+      -- failures landed 17:01 ET). 8 rows ever (09-04 .. 09-21), 0 since the 09-21 deploy.
+      SELECT count(*) FROM mi_audit_log
+       WHERE event_type = 'api_failure_perplexity' AND created_at >= DATE '2026-10-17'
+         AND EXTRACT(ISODOW FROM created_at AT TIME ZONE 'America/New_York') BETWEEN 1 AND 5
+         AND (created_at AT TIME ZONE 'America/New_York')::time BETWEEN TIME '17:00' AND TIME '20:00'
+    threshold: 1
+    zero_verdict: "2026-10-17 WAITING — a tripwire born 10-17: 8 api_failure_perplexity rows ever (09-04 .. 09-21), 0 since the 09-21 12:02 ET deploy, so the row shape is real; it fires on the first failure inside a weekday 17:00-20:00 ET theme window."
+    discriminates_on: [mi_audit_log.event_type, mi_audit_log.created_at]
+    earliest_review_date: 2026-10-17
+    status: pending
+    kind: tripwire
+    added_on: 2026-10-17
+    can_fire:
+      predicate_runs: >-
+        Run against prod 2026-10-17 with the date and window widened: event_type api_failure_perplexity has 8 rows,
+        2026-09-04 21:01 UTC .. 2026-09-21 13:40 UTC; the four 09-04 rows sit at 17:01 ET, inside the window.
+      nonzero_possible: >-
+        Writer: collector.search_news_perplexity's failure path writes api_failure_perplexity (8 rows ever); the
+        theme run calls it nightly via theme_engine._news_check (raise_on_failure=True since #679).
+      lane_live: >-
+        The nightly theme run (nightly_data_pull, 17:00 ET weekdays) calls Perplexity for every rescored theme;
+        the 09-22 clean night shows it running under the fix.
+      threshold_vs_observed: >-
+        Threshold 1 (a tripwire). Base rate: 8 failures in 17 days around 09-04..09-21, none in the 26 days since,
+        so it may stay quiet for weeks.
+      era_scoped: >-
+        From 2026-10-17 only, after the 09-21 fix and the close; the 8 earlier rows are the pre-fix and pre-close
+        history and are excluded by the date floor.
+      population_actionable: >-
+        Counts exactly the failures inside the weekday theme window, which are the rows the action checks; failures
+        on the morning catalyst path (e.g. 09-21 13:40 UTC = 09:40 ET) are outside the window and not counted.
+      instrument_trusted: >-
+        The action reads the failure row's own timestamp and the theme run's rows written in the same window
+        (theme_low_quality_description, theme_news_api_err, the theme's stage and description), all in mi_audit_log
+        and mi_themes, written by the same nightly job.
   - review_id: flag_mna_screen_first_fire_598
     title: "#598 — the flag board's buyout screen has blocked a name for the first time since its 10-03 rebuild"
     question: >-

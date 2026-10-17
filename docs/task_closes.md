@@ -2258,6 +2258,15 @@ EVIDENCE:
 - **Screen arm, recorded as a ZERO:** 10 trading days 10-05..10-16, 0 flag-detector `mna_filter_fired` rows and 0 flag rows demoted with `mna_filter:` (`scripts/probes/_eve_1016/q598_4.out`), while the board carried 0-2 screened names a night (11 name-nights: HTFL, PURR, KOD, GRAL, IOVA — `q598_6.out`).
 - ⚠ **What the zero cannot show:** a dead screen reads the same zero. The planned positive trace (q5, IOVA released 10-07/10-08) turned out to be the 17:35 COIL scan's screen, not the 17:25 flag scan's, so the flag screen's running is UNPROVEN live. Carried, not dropped: the tripwire `flag_mna_screen_first_fire_598` fires on the first flag-detector block so it is checked against its news on the event.
 
+## #679 — a Perplexity outage no longer records "no catalysts found" and costs themes their stage; the outage half is carried by a tripwire (2026-10-17)
+
+BAR: "(1) CLEAN-NIGHT HALF, checkable 2026-09-22: tonight's nightly theme run produces a stage distribution with no diff against the prior night's — a clean night must change nothing at all. (2) FAILURE HALF, whenever the next provider failure lands: `mi_audit_log` shows an `api_failure_perplexity` inside a nightly theme window with NO `theme_low_quality_description` row within 100ms of it"
+
+EVIDENCE:
+- **Clean-night half, MET live 2026-09-22:** the first theme run under the fix with zero Perplexity failures in its window read like every prior clean night — 0 `theme_news_api_err`, 3 `theme_low_quality_description` caps (prior 2-4), 18 stage changes (prior 20-24), 5 births (prior 5-7). Recorded on the PLAN line that day.
+- **Failure half, NOT YET OBSERVED — carried, not dropped, on his ok 2026-10-17** (asked: *"679 if no outage for a month, what are we waiting for and why"*; answered: close it and hand the outage check to an alert that fires on the first real outage; he said *"Ok"*). Prod re-checked 2026-10-17: 8 `api_failure_perplexity` rows ever (09-04 .. 09-21 13:40 UTC), 0 since the 09-21 12:02 ET deploy, so no theme-window failure has occurred to observe. The tripwire `perplexity_outage_theme_window_679` (data_gated_reviews.yaml) fires on the first failure inside a weekday 17:00-20:00 ET theme window and its action runs both checks plus #680's true branch on that event.
+- ⚠ **What this close cannot show:** that the guard works on a real outage. It is test-proven only until the tripwire fires.
+
 ## #686 — re-reading #684 on the September block: no gap-day feature marks the EPs that run big, out of sample (2026-10-17)
 
 BAR: "the registration committed before 10-16, then one pre-registered read on the new block naming which features hold (or none), each with n, sign and permutation p, and a one-paragraph proposal for his ruling — any change to score or admission is CHANGE_PROCESS and his call (THE LINE)."
