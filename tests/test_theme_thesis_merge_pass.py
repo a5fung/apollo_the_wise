@@ -381,8 +381,9 @@ async def test_655d_with_no_usable_merged_name_today_s_behaviour_stands(monkeypa
 
 @pytest.mark.asyncio
 async def test_655d_a_renamed_merge_carries_the_operators_rulings_to_the_merged_name(monkeypatch):
-    """A /bypass filed under the winner's old name must still shield under the merged name: the
-    #601 lineage that would carry it is written at save time, after this pass."""
+    """A /bypass filed under the winner's old name must still shield under the merged name for this
+    call: an Arm B rename never writes a #601 lineage row (only the #214 rename sets `renamed_from`),
+    so nothing else carries it - and from the next rescore it no longer protects."""
     calls: list[dict] = []
     _wire(monkeypatch, _merge_verdict(MERGED_NAME), validate=_name_aware_validator(), calls=calls)
     _pair_them(monkeypatch)
@@ -426,7 +427,8 @@ async def test_655d_an_unreadable_run_prefetch_is_refetched_for_the_merged_name(
 async def test_655d_the_real_validator_shield_matches_a_ruling_filed_under_the_old_name(monkeypatch):
     """End to end through the REAL `_validate_theme_membership` (LLM stubbed to flag A1 and A2):
     A1 has an operator /bypass under the winner's OLD name -> kept; A2 has none -> stripped, and its
-    14-day cooldown is filed under the MERGED name (the name the theme goes on to carry)."""
+    14-day cooldown is filed under the MERGED name (the name the theme carries if the merge
+    survives; on a gutted renamed merge that name never exists)."""
     from tests.test_theme_validation_shield import _fake_client
 
     events: list[tuple[str, str]] = []

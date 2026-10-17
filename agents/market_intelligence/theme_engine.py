@@ -9319,9 +9319,12 @@ async def _carry_protection_to_merged_name(
     """#655 (d): the operator-protection shield matches `(ticker, theme_name)` against the name the
     validator is called with. Validating under the merged name would silently drop every `/bypass`
     ruling filed under the winner's old name - and `get_operator_protected_set`'s #601 rename-lineage
-    expansion cannot help, because that lineage is written at SAVE time, after this pass. So the
-    old-name pairs are also filed under the merged name for this one call. Operator rulings outrank
-    the validator. `protected=None` (the run-level prefetch failed) is fetched here; a failed fetch
+    expansion cannot help: an Arm B rename never writes a lineage row on any night (`record_theme_rename`
+    runs only from `_save_themes`, and only for a theme carrying `renamed_from`, which only the #214
+    rename in `_rescore_existing_theme` sets; this pass only sets `winner["name"]`). So the old-name
+    pairs are also filed under the merged name for THIS ONE validation call only; from the next
+    Mon/Wed/Fri rescore a ruling filed under the old name no longer protects that member in the
+    merged theme (open for the operator, not decided here). Operator rulings outrank the validator. `protected=None` (the run-level prefetch failed) is fetched here; a failed fetch
     returns None - the same fail-open the validator's own fallback has."""
     if protected is None:
         try:

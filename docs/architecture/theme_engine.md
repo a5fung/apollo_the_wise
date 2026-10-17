@@ -999,18 +999,21 @@ retires the two ORIGINAL themes by their own names. **Thesis:** the adjudicator 
 thesis is the two themes' own descriptions side by side (`_merged_validation_thesis`: each capped at 148 chars — the validator shows
 `thesis[:300]` — garbage descriptions dropped, none usable = name alone); the winner's description alone was written for the OLD name
 and would pull the apparel names back out. **Operator rulings:** the shield matches `(ticker, theme_name)`, so a `/bypass` filed under
-the winner's old name is also filed under the merged name for this one call (`_carry_protection_to_merged_name`; the #601 lineage that
-would carry it is written at save time, after this pass; an unreadable run-level prefetch is re-fetched once). **Fallback:** no usable
+the winner's old name is also filed under the merged name for this one call only (`_carry_protection_to_merged_name`; it is needed because
+an Arm B rename never writes a #601 lineage row — `record_theme_rename` runs only from `_save_themes` for a theme carrying `renamed_from`,
+which only the #214 rename sets; an unreadable run-level prefetch is re-fetched once). **Fallback:** no usable
 merged name → the winner's old name, the winner's own description and the very same protected set — today's behaviour byte for byte —
 and the audit row says why (`validated_against='<name>' (<basis>)` on `theme_thesis_merged` and `theme_merge_dissolved_post_validation`).
 Unchanged: which pairs merge, the adjudicator, the 3-a-night cap, the strip itself for a member that fits neither name, `dissolve_flagged_pair`.
 
-**Consequences, stated.** (1) A stripped member's 14-day cooldown is now filed under the MERGED name — the name the theme goes on to
-carry — where it used to be filed under the retired old name and fenced nothing. (2) **Not built:** the merged theme still STORES the
-winner's old description (no merged description exists to store; writing one changes the thesis the Mon/Wed/Fri rescore and
-`judge_theme_fit` read). The next rescore therefore judges name + that old description, and can strip or (mass-flag) rename the apparel
-names again — his call if a stored merged description is wanted. (3) #214 rename-instead-of-strip stays unwired here (the template's
-second option, not ruled).
+**Consequences, stated.** (1) A stripped member's 14-day cooldown is now filed under the MERGED name — the name the theme carries if the
+merge survives (on a gutted renamed merge that name never exists) — where it used to be filed under the retired old name and fenced
+nothing. (2) **Not built:** the merged theme still STORES the winner's old description (no merged description exists to store; writing one
+changes the thesis the Mon/Wed/Fri rescore and `judge_theme_fit` read). The next rescore therefore judges name + that old description,
+and can strip or (mass-flag) rename the apparel names again — his call if a stored merged description is wanted. (3) #214
+rename-instead-of-strip stays unwired here (the template's second option, not ruled). (4) **Open for the operator, not decided here:**
+rulings (`/bypass`) filed under the winner's old name stop protecting from the next Mon/Wed/Fri rescore on, because an Arm B rename writes
+no #601 lineage row (older than this change; the carry above covers the merge-time call only).
 
 **Pre-registered expectation (written before deploy; event-gated).** EXPECT: on the next Arm B merge whose `merged_name` differs from
 the winner's name, the `ticker_revalidated_out` / `validation_mass_removal_name_suspect` rows between `theme_merge_pairs_proposed` and
