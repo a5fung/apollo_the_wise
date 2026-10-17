@@ -10213,6 +10213,16 @@ reviews:
 
   - review_id: htf_breakout_paper_graduation
     title: "#356 HTF breakout-shadow -> PAPER graduation"
+    resolution_2026_10_17: >-
+      RAN 2026-10-17 after his ruling that day lifted the EP-first hold ("free to focus on other setups and
+      building them to shadow and paper where we see fit"), so the GO/NO-GO half is no longer suspended and the
+      paper call is ours on evidence. VERDICT: NO-GO for paper now. Evidence (prod, read-only): 10 takeable
+      settled breakouts (06-29 .. 09-17), average -0.24R, 2 winners, 1 at >= 3R; the #610 whole-market replay of
+      the same fixed entry (+3R / -1R) read +0.05R on 148 settled breakouts (capture 16.9% vs a 25% breakeven);
+      and this shadow's own settlement carries known defects (docs/setups/htf.md, impossible gap fills and raw vs
+      split-adjusted prices). Paper-trading it would trade a measured near-zero rule. RE-OPENS when an HTF
+      entry/exit grid (ORH / pivot / trendline entries x the partial + MA-trail exits) shows a positive tail on a
+      pre-registered bar - #702's engine can run that on high-tight-flag bases at no cost (a report cell).
     question: |
       Does the HTF (high-tight-flag) breakout entry (base_high stop-limit-buy — breakout IS the entry
       here, the O'Neil/Minervini primary def, unlike anticipation) show a real edge once N settle?
