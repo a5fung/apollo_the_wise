@@ -11751,6 +11751,7 @@ reviews:
     # Threshold 8 -> 20 (RECURRING idiom) + the non-Bull era-C term above. Next: 20 -> 40 — which,
     # with the 4x scaling, also requires non-Bull era-C >= 10; re-scale the second term if that is not the intent.
     threshold: 20
+    zero_verdict: "2026-10-17 WAITING — term 2 counts non-Bull live closes ENTERED since 2026-10-13 (the depth-exit era), and no live MAGNA53 trade has opened since 10-13 (0 opened, 0 closed; scripts/probes/_zero_rulings_1017/q1.out). Term 1 reads 11 Bull closes, so the shape is real; it accrues with the first live trades of the new era."
     discriminates_on: [mi_live_trades.signal_type, mi_live_trades.account_mode]  # backfilled 2026-08-30 (#573) from the verified 2026-08-17 table->column mapping
     earliest_review_date: 2026-08-06
     can_fire:
@@ -13852,8 +13853,16 @@ reviews:
         censored at a median of 8 of 20 - the instrument was not broken, it was IMMATURE, which
         is the p74 class in the other direction). mi_intraday_bars persists alert-ticker-days
         only, so the targeted minute pull is still owed for approach days."
-    earliest_review_date: 2026-10-17
+    earliest_review_date: 2026-11-16
     status: pending
+    resolution_2026_10_17: |
+      CHECK-IN RUN on its date. ** ANSWER: NOT YET — both halves of the proposed selective subset now have their own live
+      measurement, so the 620 test waits on them rather than on a fresh sizing pass. ** (a) Names excluded ONLY by the $500M cap
+      floor: he ruled keep $500M (#359, 2026-10-10) and those names are now graded and traded on PAPER by the #624 low-cap lane
+      (live since 10-12; 19 lane signals, 10 settled replays so far). (b) Names excluded ONLY by the 60-day cooldown:
+      `cooldown_admission_unassumed` is accruing at 46 of 55. The 620 trigger (approach near a pivot without a touch) needs a pool
+      that one of those two reads shows to be winner-dense; until either fires there is nothing selective to test it on. No ask
+      to him. Re-set to 2026-11-16 (the next check-in, alongside delayed_entry_mid_november_reread).
     resolution_2026_09_16: |
       CHECK-IN RUN, one day late. ** ANSWER: NOT YET — and "not yet" is not "never", which this
       entry's own action insists on. Re-set to 2026-10-17. **
@@ -14717,6 +14726,7 @@ reviews:
                             AND arm IN ('live_actual', 'live_replay') AND outcome = 'settled'
                           GROUP BY trade_id HAVING COUNT(DISTINCT arm) = 2) complete) END
     threshold: 20
+    zero_verdict: "2026-10-17 WAITING — counts era_e fills (since 2026-10-13) with a settled live_actual + live_replay pair; no live MAGNA53 trade has opened since 10-13, so 0 era_e rows exist. The writer works: 15 settled pairs in earlier eras (scripts/probes/_zero_rulings_1017/q1.out)."
     discriminates_on: [mi_live_fill_counterfactuals.arm, mi_live_fill_counterfactuals.account_mode, mi_live_fill_counterfactuals.signal_type, mi_live_fill_counterfactuals.exit_era, mi_live_fill_counterfactuals.admission_era]
     earliest_review_date: 2026-10-05
     can_fire:
@@ -15217,6 +15227,15 @@ reviews:
         FROM mi_lowcap_lane_replays
       ) END;
     threshold: 1          # the predicate returns 1/0 (ready / not ready), not a row count
+    can_fire:
+      predicate_runs: "Ran 2026-10-17 via operator_asks.py: returns 0 (a 0/1 readiness flag)."
+      nonzero_possible: "Writer = the nightly 18:15 ET lowcap lane replay (`lowcap_lane_replay_recorded` audit row every weeknight since 10-12); mi_lowcap_lane_replays holds 19 rows, 10 settled (scripts/probes/_zero_rulings_1017/q1.out), so the count rises as signals settle."
+      lane_live: "The low-cap shadow lane records every candidate at the scan tick (mi_lowcap_lane_signals, 19 so far) and the paper lane grades cap-only names nightly (heartbeat rows 10-12..10-16)."
+      threshold_vs_observed: "Bar: >= 30 settled walks AND >= 20 distinct tickers. Observed 10 and 10 on 2026-10-17 (about a third of the way)."
+      era_scoped: "Walks are replayed under the CURRENT MAGNA53 bracket at write time (replay_exit_era stamped per row); discriminates_on names admission_era and replay_exit_era so a later exit flip is visible in the read."
+      population_actionable: "Counts settled walks of lane signals, the same population the action reads for the tail rate (no_trade / unscoreable rows excluded from both)."
+      instrument_trusted: "The replay walks stored minute bars from each signal's own tick wall-clock (the verified MAGNA53 replay path); outcome is set only once the walk settles."
+    zero_verdict: "2026-10-17 WAITING — a joint sample bar (>= 30 settled walks AND >= 20 tickers) read as 0/1; today 10 settled of 19 replays, 10 tickers (6 no_trade, 3 unscoreable), accruing nightly from mi_lowcap_lane_signals (19 signals) — scripts/probes/_zero_rulings_1017/q1.out."
     # Reads ONE table. Every row is lane-framed by construction (sub-$500M, gap>=15,
     # vol pct>=90 at the tick); admission_era + replay_exit_era are the two dimensions a
     # later read must segment on (a MAGNA53 stack that has since changed may not generalise;
@@ -15688,6 +15707,7 @@ reviews:
                   AND (coalesce(jsonb_array_length(detail::jsonb->'gaps'), 0) > 0
                        OR coalesce(jsonb_array_length(detail::jsonb->'check_failed'), 0) > 0)))
     threshold: 1
+    zero_verdict: "2026-10-17 WAITING — a tripwire: the 17:00 / 19:00 / 21:10 ET slot checks keep writing every weeknight with 0 gaps; it fires on the first real evening gap, by design."
     discriminates_on: []
     earliest_review_date: 2026-10-13
     status: pending
@@ -15741,6 +15761,7 @@ reviews:
        WHERE event_type = 'mna_filter_fired' AND created_at >= DATE '2026-10-17'
          AND (summary LIKE '%(flag)%' OR detail LIKE '%''detector'': ''flag''%')
     threshold: 1
+    zero_verdict: "2026-10-17 WAITING — a tripwire born 10-16: 0 flag-detector blocks since 10-04, 36 ever (last 08-12), so the row shape is real; it fires on the first block after the close."
     discriminates_on: []
     earliest_review_date: 2026-10-17
     status: pending

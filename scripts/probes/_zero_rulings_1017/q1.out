@@ -1,0 +1,21 @@
+                          k                           | v  
+------------------------------------------------------+----
+ bull closes (term 1)                                 | 11
+ live magna53 closes entered since 10-13 (any regime) |  0
+ live magna53 opened since 10-13                      |  0
+ counterfactual rows era_e (any outcome)              |  0
+ counterfactual rows era_e settled live_actual        |  0
+ counterfactual rows any era settled pairs (shape)    | 15
+ lowcap replays total                                 | 19
+ lowcap replays settled                               | 10
+ lowcap replays settled distinct tickers              | 10
+ lowcap lane signals total                            | 19
+(10 rows)
+
+   outcome   | count 
+-------------+-------
+ settled     |    10
+ no_trade    |     6
+ unscoreable |     3
+(3 rows)
+
