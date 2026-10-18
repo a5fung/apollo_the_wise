@@ -2258,6 +2258,17 @@ EVIDENCE:
 - **Screen arm, recorded as a ZERO:** 10 trading days 10-05..10-16, 0 flag-detector `mna_filter_fired` rows and 0 flag rows demoted with `mna_filter:` (`scripts/probes/_eve_1016/q598_4.out`), while the board carried 0-2 screened names a night (11 name-nights: HTFL, PURR, KOD, GRAL, IOVA — `q598_6.out`).
 - ⚠ **What the zero cannot show:** a dead screen reads the same zero. The planned positive trace (q5, IOVA released 10-07/10-08) turned out to be the 17:35 COIL scan's screen, not the 17:25 flag scan's, so the flag screen's running is UNPROVEN live. Carried, not dropped: the tripwire `flag_mna_screen_first_fire_598` fires on the first flag-detector block so it is checked against its news on the event.
 
+## #700 — the Sunday weekly review is cut to what informs: 4,129 characters against 12,257, every line actionable or informative (2026-10-18)
+
+BAR: "the Sun 10-18 review arrives with every line either actionable or informative (no repeated rows, no unchanged-status block, no unverified anomaly), at well under the 10-11 length, and nothing he relied on is lost (the head's checks still listed). WOULD-FAIL-IF: a section that changed or crossed a bar is missing, or the message is unchanged in length/shape."
+
+EVIDENCE:
+- **Arrived Sun 10-18 in that shape:** his own paste of the message, 10-18. Head = 5 lines ("Needs me (2)", its two bullets, and the "Also checked" line naming every surface: reviews, errors, promotions, bands, themes, spend, the unchanged blocks folded into one clause).
+- **Well under the 10-11 length:** `mi_system_reviews.metrics.report.fold_chars` = 4,129 on 2026-10-18 against 12,257 on 2026-10-11 (34%); the stored full text (8,853 characters) keeps every section.
+- **No repeated rows, no unchanged-status block, no unverified anomaly in the message:** the 38 identical parse-error rows are gone (the batch did not recur); crypto / gates print as "unchanged" in one clause; the three unverified observations (cooldowns, theme count, alert volume) are held in the stored full text and named only by count in the head.
+- **Nothing he relied on lost:** the head's checks are all listed; the changed sections printed (a trade closed this week -> the setup / bands / replay / MFE blocks; a band move -> drift; the should've-entered gaps; the judge read; spend vs P&L).
+- **He did not flag a missing fact:** he pasted it and asked to add it to the day's list (10-18).
+
 ## #283 — wick_fill retired: the setup is removed completely on his ruling (2026-10-17)
 
 BAR: "wick_fill completes the rung the line originally SKIPPED — shadow → PAPER → live, with its own N and its own evidence at each step. WOULD-FAIL-IF: it graduates straight from shadow to live, or on the 'ready' flag that was measured to be counting the wrong thing."
