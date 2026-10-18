@@ -15,6 +15,11 @@ Pipeline (runs as Phase 0 of nightly_data_pull, before grouped daily fetch):
     4. (#704) Every row it handles carries the ingest's OWN verdict - `adjustment_outcome` 'applied' (+
        `applied_factor`) / 'phantom' / 'skipped_no_data' - written by `mark_split_applied` at the exact branch that
        decides it, so a consumer asks `db.stored_price_scale` instead of re-deriving phantom-vs-real from the bars.
+       Two limits of that verdict, both pre-existing ingest behaviour that #704 only records: 'skipped_no_data' is
+       also what a FAILED fetch produces (`fetch_ticker_history` swallows every error to []), so consumers read it as
+       a moved split, never as "no bar moved"; and the verdict is written AFTER the bars, so a crash between
+       `upsert_ticker_history` and `mark_split_applied` makes the retry compare the fresh adjusted bars with the
+       already-adjusted stored close (about 1.0) and record a real split as 'phantom'.
 
 The heuristic blocks in rs_engine.py (MAX_1D_RETURN, MAX_PERIOD_RETURN) become
 unnecessary once cached history is split-adjusted. They false-positive on

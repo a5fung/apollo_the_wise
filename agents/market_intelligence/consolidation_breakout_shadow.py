@@ -479,8 +479,9 @@ async def fetch_minutes(e: date, tickers: list, out: Optional[dict] = None) -> t
 
 def moved_splits(rows: list) -> list:
     """The rows of `rows` that moved - or, still unapplied, may yet move - a stored bar: everything the ingest did
-    not record as a PHANTOM / no-data split (`db.split_row_factor` 1.0). A phantom is ignored by the entry step, the
-    exit guard, the HTF settler and the parabolic shadow ALIKE (#704)."""
+    not record as a PHANTOM split (`db.split_row_factor` 1.0; a 'skipped_no_data' row is NOT one - it may be a failed
+    fetch of a real split, so it counts as moved). A phantom is ignored by the entry step, the exit guard, the HTF
+    settler and the parabolic shadow ALIKE (#704)."""
     return [s for s in rows if split_row_factor(s) != 1.0]
 
 
@@ -490,8 +491,8 @@ def split_scale(window_splits: list, d_close_now, d_close_watch, watch_date: dat
 
     The pivot was stored raw on night D; the 17:00 pull has since retro-adjusted the stored bars for every APPLIED
     split, so E's stored bar and the pivot sit on two price scales. The factor is the ingest's OWN recorded verdict
-    (#704: `db.scale_from_split_rows` - the product of the applied factors, 1.0 for a PHANTOM / no-data row,
-    None while any row is unapplied), no longer re-derived here. The data stays as this consumer's cross-check: D's
+    (#704: `db.scale_from_split_rows` - the product of the applied factors, 1.0 for a PHANTOM row, the table
+    ratio for a 'skipped_no_data' one, None while any row is unapplied), no longer re-derived here. The data stays as this consumer's cross-check: D's
     stored close now over the close the watch row recorded that night must agree with it (within `SPLIT_SCALE_TOL`),
     else the reading is unexplained and returns None, never a guess. For a LEGACY row (written before the outcome
     column, so a phantom cannot be told from a real split) that cross-check is what degrades a pre-column phantom
@@ -738,8 +739,8 @@ def walk_entry_rows(entry: dict, bars: "cb.DailyBars", cidx, ticker_splits: list
     arms = {name: arm for name, arm in cb.ARMS.items() if name not in final}
     later = [s for s in ticker_splits if s["execution_date"] > e_date]
     if later:
-        # #704: the same reading as the entry step, read once. A later split the ingest recorded as PHANTOM (or
-        # no-data) moved no stored bar - the walk is as bookable as with no split at all. A REAL one still voids
+        # #704: the same reading as the entry step, read once. A later split the ingest recorded as PHANTOM
+        # moved no stored bar - the walk is as bookable as with no split at all. A REAL one still voids
         # (this consumer's policy: the fill and stop are raw, the stored bars are not). While a later split is still
         # UNAPPLIED nothing can be said either way: no row tonight, the full recompute tomorrow settles it.
         scale = scale_from_split_rows(later)

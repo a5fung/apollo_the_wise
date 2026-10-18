@@ -149,10 +149,14 @@ pages) and the next night, once the 17:00 pull has decided, advances it. The ing
 levels were frozen in): `1.0` → nothing moved, continue; `None` → wait (or, past the 30-day backstop, `void_data_gap`); anything else
 → `void_restated`. The `RESTATE_TOLERANCE` re-read of the climax high is KEPT behind it as the catch-all for a restatement the split
 table never held (a corrected bar), so today's voids are a strict subset of tomorrow's. Back-fill: an outcome-NULL applied row reads
-as a real split at the table's ratio.
+as a real split at the table's ratio - EXCEPT here: when every mover in the window is such a legacy row (`db.split_verdict_recorded`
+False) the climax-high re-read decides, as it did before #704, so a legacy PHANTOM (written before the column, indistinguishable from
+a real split by the table) does not void an open episode; a legacy row the re-read bears out still voids (`detail.legacy_split_scale`).
+A recorded verdict is the ingest's own word and voids without the re-read; `skipped_no_data` is such a verdict and is NOT a phantom (it
+is also what a failed Polygon fetch of a real split records, leaving a cliff the climax-high re-read cannot see), so it voids too.
 
 **Anticipated effect**: none on a night with no split. An episode with a recorded phantom is unchanged (it never voided before
-either). A real split now voids by the table even if the re-read were within 0.5% (a 51:50 style split). Shadow telemetry only — no
+either), and so is one whose only movers are legacy phantoms (the review of this change caught that the first draft voided those). A real split now voids by the table even if the re-read were within 0.5% (a 51:50 style split). Shadow telemetry only — no
 arm, trigger, stop or sizing rule moved, no order path.
 
 **Reversion-flag**: NEW; not a detection-criterion change. **Status**: built on a worktree branch, not deployed. EXPECT / DONE-WHEN /

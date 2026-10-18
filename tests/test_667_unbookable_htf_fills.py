@@ -103,13 +103,16 @@ def test_the_temporary_abstain_is_still_a_bare_none():
 def _split_row(exec_date, split_from=1, split_to=4, *, kind="recorded", **over):
     """An `mi_splits` row as `db._split_rows_between` returns it. kind: 'recorded' = the ingest's verdict 'applied'
     (+ the factor it restated by) · 'legacy' = written before the #704 outcome column · 'phantom' = the ingest
-    recorded a split that never happened · 'unapplied' = executed, the 17:00 pull has not handled it."""
+    recorded a split that never happened · 'nodata' = the ingest wrote no bar ('skipped_no_data': Polygon had none OR
+    the fetch failed) · 'unapplied' = executed, the 17:00 pull has not handled it."""
     row = {"ticker": "CRWD", "execution_date": exec_date, "split_from": split_from, "split_to": split_to,
            "adjustment_applied": True, "adjustment_outcome": None, "applied_factor": None}
     if kind == "recorded":
         row.update(adjustment_outcome="applied", applied_factor=split_from / split_to)
     elif kind == "phantom":
         row.update(adjustment_outcome="phantom")
+    elif kind == "nodata":
+        row.update(adjustment_outcome="skipped_no_data")
     elif kind == "unapplied":
         row.update(adjustment_applied=False)
     return {**row, **over}
@@ -129,7 +132,8 @@ def _rows_between(rows, seen=None):
     _split_row(date(2026, 7, 2), 1, 4),                              # the real forward split, recorded
     _split_row(date(2026, 7, 2), 4, 1),                              # a real reverse split, recorded
     _split_row(date(2026, 7, 2), 1, 4, kind="legacy"),               # written before the column
-], ids=["forward_recorded", "reverse_recorded", "forward_legacy"])
+    _split_row(date(2026, 7, 2), 1, 4, kind="nodata"),               # no bar written: may be a FAILED fetch of a real split
+], ids=["forward_recorded", "reverse_recorded", "forward_legacy", "forward_no_data"])
 async def test_a_split_between_break_and_settle_is_marked_and_the_bars_are_never_fetched(monkeypatch, split_row):
     """CRWD 2026-07-01: entry stored 778.82 against a break-day low of 191.25, because a 1:4 split
     executed 2026-07-02. The shadow keeps RAW prices and `mi_daily_closes` is retro-ADJUSTED, so the
@@ -280,8 +284,44 @@ async def test_a_recorded_phantom_split_is_no_split_the_row_settles(monkeypatch)
 async def test_an_unapplied_split_defers_the_row_it_is_neither_marked_nor_settled(monkeypatch):
     """A split executed and the 17:00 pull has not handled it: the stored bars cannot be read either way. Marking the
     row unbookable now would be PERMANENT and wrong if the ingest then records a phantom — so it waits for the next run."""
-    settled, marked, got = await _run_settle_job(monkeypatch, [_split_row(date(2026, 7, 2), kind="unapplied")])
+    settled, marked, got = await _run_settle_job(monkeypatch, [_split_row(date(2026, 9, 16), kind="unapplied")])
     assert marked == [] and got["settled"] == [] and got["bars"] == 0 and settled == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("age_days,marked_for_good", [(30, False), (31, True)], ids=["30d_still_waits", "31d_unbookable"])
+async def test_a_split_that_stays_unapplied_is_given_up_on_after_the_staleness_limit(monkeypatch, caplog, age_days,
+                                                                                    marked_for_good):
+    """Review fix on #704: an unapplied split used to make the row wait with NO exit - a split the ingest never
+    applies (it raises every night, or the ratio is unreadable) left the row open for ever, the only consumer with no
+    way out (parabolic voids after STALE_EPISODE_DAYS, CB exits age out). The limit counts from the SPLIT'S execution
+    date - a ripe row is already >= 24 days past its break, so counting from the break would void a row on the first
+    night a fresh split is unapplied."""
+    import logging
+    from datetime import timedelta
+    from agents.market_intelligence import scheduler as sch
+    today = date(2026, 9, 18)
+    assert sch.HTF_SPLIT_UNRESOLVED_DAYS == 30
+    with caplog.at_level(logging.INFO):
+        settled, marked, got = await _run_settle_job(
+            monkeypatch, [_split_row(today - timedelta(days=age_days), kind="unapplied")], today=today)
+    assert settled == [] and got["settled"] == [] and got["bars"] == 0
+    if marked_for_good:
+        assert len(marked) == 1 and marked[0][0] == 42
+        assert "split_unresolved_1:4_on_" in marked[0][1] and f"_{age_days}d_unapplied" in marked[0][1]
+        assert "0 waiting" in caplog.text
+    else:
+        assert marked == []
+        assert "1 waiting on an unapplied split" in caplog.text and "waiting [('CRWD'" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_unapplied_ratio_also_ages_out(monkeypatch):
+    """A legacy row whose ratio cannot be read (`split_to=0`) reads None for ever; it must not hold a row open either."""
+    today = date(2026, 9, 18)
+    settled, marked, got = await _run_settle_job(
+        monkeypatch, [_split_row(date(2026, 7, 2), 1, 0, kind="legacy")], today=today)
+    assert settled == [] and got["bars"] == 0 and len(marked) == 1 and "split_unresolved_" in marked[0][1]
 
 
 @pytest.mark.asyncio

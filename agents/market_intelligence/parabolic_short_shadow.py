@@ -588,18 +588,29 @@ async def _advance_episode(ep: dict, trade_date: date, summary: dict,
             logger.warning("parabolic_short_shadow: %s %s has a split not yet applied - episode not advanced", ticker, d0)
         return
     stored_high, current_high = ep.get("climax_high"), float(rows[ci]["high_price"])
+    legacy_scale = None
     if not db.scale_unmoved(scale):
-        # The ingest restated the history under the frozen arm levels: unbookable - never a made-up R across two
-        # price scales (the consolidation shadow's split guard).
-        await _outcome("voided", OUT_VOID_RESTATED, trade_date,
-                       detail={"stored_climax_high": float(stored_high) if stored_high else None,
-                               "current_climax_high": current_high, "split_scale": scale})
-        return
+        # A LEGACY split row (applied before the ingest recorded a verdict, outcome NULL) is read at the table's
+        # ratio, so a legacy PHANTOM looks like a real split here. Before #704 this shadow decided those on the DATA
+        # alone (the climax-high re-read below), and a phantom left the high where it was - so for a window whose only
+        # movers are legacy rows the data still decides, and the void is the re-read's. Any recorded verdict
+        # (`applied`, or `skipped_no_data` - which may be a FAILED fetch of a real split, a cliff the re-read cannot
+        # see) is the ingest's own word and voids without the re-read, as above.
+        if db.split_verdict_recorded(await db.get_split_dates_after(ticker, armed_on, trade_date)) or not stored_high:
+            # The ingest restated the history under the frozen arm levels: unbookable - never a made-up R across
+            # two price scales (the consolidation shadow's split guard).
+            await _outcome("voided", OUT_VOID_RESTATED, trade_date,
+                           detail={"stored_climax_high": float(stored_high) if stored_high else None,
+                                   "current_climax_high": current_high, "split_scale": scale})
+            return
+        legacy_scale = scale
     if stored_high and abs(current_high / float(stored_high) - 1.0) > RESTATE_TOLERANCE:
-        # Any OTHER restatement (a corrected bar, a split the table never held) moved the bars under the frozen
-        # levels: the same void. The data check stays as the catch-all behind the split table.
+        # Any OTHER restatement (a corrected bar, a split the table never held, a LEGACY split row the data bears out)
+        # moved the bars under the frozen levels: the same void. The data check stays as the catch-all behind the
+        # split table.
         await _outcome("voided", OUT_VOID_RESTATED, trade_date,
-                       detail={"stored_climax_high": float(stored_high), "current_climax_high": current_high})
+                       detail={"stored_climax_high": float(stored_high), "current_climax_high": current_high,
+                               **({"legacy_split_scale": legacy_scale} if legacy_scale is not None else {})})
         return
 
     if ep.get("trigger_status") == "skipped":

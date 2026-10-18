@@ -121,8 +121,10 @@ the entries a night, never the watch list.
    the factors it restated the bars by, 1.0 for a split it recorded as a phantom, unknown while any is unapplied; D's stored
    close against the close the watch row recorded stays as the cross-check, and a reading the data does not bear out is
    unexplained). A split the ingest recorded as a PHANTOM moved no bar and is no split here at all: the name is treated as
-   unsplit (minutes fetched, variants fill). A split row written BEFORE the outcome column (outcome NULL) is read at the table's
-   ratio, so a legacy phantom fails the cross-check and sits out — that case ages out within the 3-session look-back. A name that then breaks out
+   unsplit (minutes fetched, variants fill). Only a PHANTOM reads 1.0: a split recorded `skipped_no_data` (the ingest wrote no
+   bar — Polygon had none, OR the fetch failed, which is swallowed to an empty answer) and a split row written BEFORE the outcome
+   column (outcome NULL) are both read at the table's ratio, so when the stored bars did not move they fail the cross-check and the
+   name sits out — that case ages out within the 3-session look-back. A name that then breaks out
    abstains EVERY variant, named `split_after_watch` (minutes are raw as traded on E, the stored bars are not); a name that did
    not break out writes nothing, in either split direction. A name whose split is executed but not yet applied, or whose scale is
    unexplained, sits the entry step out for the night (counted in `entry_split_unresolved`, named in
@@ -266,6 +268,11 @@ real split at the table's ratio (what the bare boolean always meant here).
 voids the exit walk (`unbookable`) — it is ignored, as the parabolic shadow always did; a later split still UNAPPLIED defers the
 exit walk (no row, `exit_split_deferred`) where it used to void it for good; a LEGACY phantom (no outcome) now sits the entry out
 (`entry_split_unresolved`) instead of abstaining 20 rows.
+**Review fix, same day**: only a PHANTOM reads 1.0. `skipped_no_data` is also what a FAILED Polygon fetch of a real split records
+(`fetch_ticker_history` swallows every error to an empty answer), and then the pre-split bars stay raw while later bars are
+post-split — so it is read at the table's ratio like a legacy row: the exit guard voids the walk as it did before #704, and the
+entry step sits the name out on its D-close cross-check (it writes no `split_after_watch` rows and counts the name in
+`entry_split_unresolved`) instead of treating it as unsplit and letting a reverse split invent a breakout.
 **Not touched**: `consolidation_breakout.py`, the runner, the watch step's own `split_unapplied` gate, any threshold or entry/exit rule —
 the backtest is unaffected. No money path (shadow tables only).
 **Reversion-flag**: NEW; not a detection-criterion change (no admission, pivot, stop or exit rule moved). Reverting = make

@@ -34,10 +34,22 @@ class TestSplitRowFactor:
         assert db.split_row_factor(row(applied=False)) is None
         assert db.split_row_factor(row(applied=False, outcome="applied", factor=0.25)) is None   # a stale verdict does not count
 
-    @pytest.mark.parametrize("outcome", ["phantom", "skipped_no_data"])
-    def test_a_phantom_or_no_data_row_moved_no_bar(self, outcome):
-        assert db.split_row_factor(row(outcome=outcome)) == 1.0
-        assert db.split_row_factor(row(outcome=outcome, factor=0.25)) == 1.0     # whatever a factor column holds
+    def test_a_phantom_row_moved_no_bar(self):
+        assert db.split_row_factor(row(outcome="phantom")) == 1.0
+        assert db.split_row_factor(row(outcome="phantom", factor=0.25)) == 1.0   # whatever a factor column holds
+
+    @pytest.mark.parametrize("split_from,split_to,want", [(1, 4, 0.25), (4, 1, 4.0)])
+    def test_a_no_data_row_is_NOT_a_phantom_it_reads_at_the_table_ratio(self, split_from, split_to, want):
+        """Review fix on #704: 'skipped_no_data' = the ingest wrote no bar, which is also what a FAILED Polygon fetch of a
+        REAL split produces (`fetch_ticker_history` swallows every error to []). The pre-split bars are then still raw
+        and the nightly grouped daily writes post-split ones: a cliff. Only a PHANTOM means no bar moved."""
+        assert db.split_row_factor(row(split_from, split_to, outcome="skipped_no_data")) == want
+        assert not db.scale_unmoved(db.scale_from_split_rows([row(split_from, split_to, outcome="skipped_no_data")]))
+        assert db.split_row_factor(row(split_from, split_to, outcome="skipped_no_data")) == \
+            db.split_row_factor(row(split_from, split_to, outcome=None))             # exactly the legacy / pre-#704 reading
+
+    def test_a_no_data_row_with_an_unreadable_ratio_is_unknown_not_a_guess(self):
+        assert db.split_row_factor({**row(outcome="skipped_no_data"), "split_to": 0}) is None
 
     @pytest.mark.parametrize("split_from,split_to,factor", [(1, 4, 0.25), (4, 1, 4.0), (3, 2, 1.5)])
     def test_an_applied_row_is_read_at_its_recorded_factor(self, split_from, split_to, factor):
@@ -64,6 +76,14 @@ class TestSplitRowFactor:
 
 
 # ── the product over a window ────────────────────────────────────────────────────────────
+class TestSplitVerdictRecorded:
+    def test_any_recorded_verdict_counts_and_all_legacy_does_not(self):
+        legacy = row(outcome=None)
+        assert db.split_verdict_recorded([legacy]) is False and db.split_verdict_recorded([]) is False
+        for outcome in ("applied", "phantom", "skipped_no_data"):
+            assert db.split_verdict_recorded([legacy, row(outcome=outcome, factor=0.25)]) is True
+
+
 class TestScaleFromSplitRows:
     def test_no_split_is_one(self):
         assert db.scale_from_split_rows([]) == 1.0 and db.scale_unmoved(1.0)
@@ -157,7 +177,7 @@ class TestGetSplitDatesAfter:
                      row(on=D(2026, 7, 16)), row(applied=False, on=D(2026, 7, 23)),
                      row(outcome="skipped_no_data", on=D(2026, 7, 30))]
         got = asyncio.run(db.get_split_dates_after("ZZZ", D(2026, 7, 1)))
-        assert [r["execution_date"] for r in got] == [D(2026, 7, 9), D(2026, 7, 16), D(2026, 7, 23)]
+        assert [r["execution_date"] for r in got] == [D(2026, 7, 9), D(2026, 7, 16), D(2026, 7, 23), D(2026, 7, 30)]
         sql, args = conn.fetch_calls[0]
         assert "execution_date <=" not in sql and args == ("ZZZ", D(2026, 7, 1))     # no `through`: the pre-#704 reading
 

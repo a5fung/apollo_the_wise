@@ -58,6 +58,13 @@ def _real_split(style, exec_date, split_from, split_to, **over):
     return {**row, **over}
 
 
+def _nodata_split(exec_date, split_from=1, split_to=4):
+    """The ingest got no bars to apply ('skipped_no_data') - Polygon had none, OR the fetch FAILED (every error is
+    swallowed to []): either way no bar was written, which is NOT "no bar moved" for a real split."""
+    return _real_split("recorded", exec_date, split_from, split_to, adjustment_outcome="skipped_no_data",
+                       applied_factor=None)
+
+
 def _phantom_split(exec_date, split_from=1, split_to=4):
     """Polygon reported a split that never happened: the ingest recorded 'phantom' and wrote no bar."""
     return _real_split("recorded", exec_date, split_from, split_to, adjustment_outcome="phantom", applied_factor=None)
@@ -486,6 +493,19 @@ class TestExitsAgainstTheOracle:
         live = [x for (eid, _a), x in store.exit.items() if not by_id[eid]["day0_stopped"]]
         assert live and all(x["n_fwd"] >= 1 for x in live)                 # walked forward over the 09-18 / 09-21 bars
 
+    def test_a_no_data_split_after_the_break_day_still_voids_the_walk(self, world):
+        """Review fix on #704: 'skipped_no_data' is also what a FAILED Polygon fetch of a real split records, and then the
+        pre-split bars stay raw while later bars are post-split - a cliff. It is not "no bar moved" (a phantom is), so the
+        walk is unbookable exactly as it was before the verdict column existed."""
+        m, store, _ = world
+        run(WATCH_NIGHT)
+        run(BREAK_DAY)
+        store.splits.append(_nodata_split(D(2026, 9, 21)))
+        out = run(D(2026, 9, 21))
+        un = [x for x in store.exit.values() if x["status"] == "unbookable"]
+        assert un and all(x["mature"] and "split_1:4_on_2026-09-21_after_entry" in x["reason"] for x in un)
+        assert out["exit_split_deferred"] == 0 and out["exit_status"]["unbookable"] == len(un)
+
     def test_an_unapplied_split_after_the_break_day_defers_the_walk_then_the_applied_verdict_decides(self, world):
         m, store, _ = world
         run(WATCH_NIGHT)
@@ -594,10 +614,11 @@ class TestSplitScaleArithmetic:
         row = {"execution_date": D(2026, 9, 17), "split_from": 1, "split_to": 4, "adjustment_applied": True}
         applied = {**row, "adjustment_outcome": "applied", "applied_factor": 0.25}
         phantom = {**row, "adjustment_outcome": "phantom", "applied_factor": None}
-        nodata = {**row, "adjustment_outcome": "skipped_no_data"}
+        nodata = {**row, "adjustment_outcome": "skipped_no_data"}      # no bar written: NOT a phantom, read at the table
         assert sh.split_scale([applied], 25.0, 100.0, d) == 0.25                    # the bars moved, as recorded
         assert sh.split_scale([phantom], 100.0, 100.0, d) == 1.0                    # recorded phantom, bars unmoved
-        assert sh.split_scale([nodata], 100.0, 100.0, d) == 1.0
+        assert sh.split_scale([nodata], 100.0, 100.0, d) is None                    # the bars did not move but the table says 1:4: sits out
+        assert sh.split_scale([nodata], 25.0, 100.0, d) == 0.25                     # the data bears the table out: rescaled
         assert sh.split_scale([{**applied, "adjustment_applied": False}], 25.0, 100.0, d) is None   # not applied yet
         assert sh.split_scale([phantom], 25.0, 100.0, d) is None                    # recorded phantom but the bars moved
         assert sh.split_scale([applied], 100.0, 100.0, d) is None                   # recorded applied but they did not
@@ -946,6 +967,28 @@ class TestSplitGuard:
         assert coll.minute_calls                                         # the minutes WERE fetched
         assert out["entry_split_rescaled"] == 0 and out["entry_split_unresolved"] == 0
         assert out["entry_reasons"].get(sh.SPLIT_REASON, 0) == 0
+
+    def test_a_no_data_split_is_not_a_phantom_it_sits_out_when_no_bar_moved(self, world):
+        """Review fix on #704: a split the ingest could not fetch ('skipped_no_data') leaves the pre-split bars raw, so
+        it is NOT read as 1.0. The table says 1:4, the stored D close did not move: the data cross-check refuses both
+        readings and the name sits out (counted, named) - it neither enters on a raw/adjusted mismatch nor claims the
+        name is unsplit. The loosened reading (1.0) used to let a reverse split invent a breakout and write FILLED rows."""
+        m, store, coll = world
+        store.splits.append(_nodata_split(BREAK_DAY))
+        run(WATCH_NIGHT)
+        out = run(BREAK_DAY)
+        assert not store.entry and not coll.minute_calls
+        assert out["entry_split_unresolved"] == 1 and out["entry_split_rescaled"] == 0
+
+    def test_a_no_data_split_whose_bars_did_move_is_rescaled_by_the_table(self, world):
+        m, store, coll = world
+        run(WATCH_NIGHT)
+        _rescale_bars(m, 4.0)                                       # the bars were restated by some other route
+        store.splits.append(_nodata_split(BREAK_DAY))
+        out = run(BREAK_DAY)
+        rows = [r for r in store.entry.values() if r["break_date"] == BREAK_DAY]
+        assert len(rows) == 20 and {r["reason"] for r in rows} == {sh.SPLIT_REASON}
+        assert out["entry_split_rescaled"] == 1 and out["entry_split_unresolved"] == 0
 
     def test_a_legacy_phantom_that_moved_no_bar_sits_out_rather_than_being_rescaled_by_the_table(self, world):
         """A phantom written BEFORE the outcome column cannot be told from a real split by its boolean: the table

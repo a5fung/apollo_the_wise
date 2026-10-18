@@ -342,7 +342,7 @@ class TestReadHelpers:
 
     def test_the_split_outcome_is_written_read_and_cleared_for_real(self, env):
         """#704 against a real Postgres: the ingest's verdict goes in with the applied flag, `stored_price_scale` reads
-        the (since, through] window off it, a phantom / no-data row is 1.0, an unapplied row is unknown, a legacy row
+        the (since, through] window off it, a phantom row is 1.0 (a no-data row is read at the table's ratio), an unapplied row is unknown, a legacy row
         (no verdict) is read at the table's ratio, and a reset clears the verdict with the flag."""
         async def go():
             async with env.pool.acquire() as c:
@@ -368,9 +368,9 @@ class TestReadHelpers:
                                                "applied_at FROM mi_splits WHERE ticker='FWD'"))
             return scale, window, named, reset
         scale, window, named, reset = arun(env, go())
-        assert scale == {"FWD": 0.25, "REV": 4.0, "PHA": 1.0, "NOD": 1.0, "LEG": 0.25, "UNA": None}
+        assert scale == {"FWD": 0.25, "REV": 4.0, "PHA": 1.0, "NOD": 0.25, "LEG": 0.25, "UNA": None}   # only a PHANTOM is 1.0
         assert window == (1.0, 1.0)
-        assert named == {"FWD": [D(2026, 7, 2)], "PHA": [], "NOD": [], "UNA": [D(2026, 7, 2)]}
+        assert named == {"FWD": [D(2026, 7, 2)], "PHA": [], "NOD": [D(2026, 7, 2)], "UNA": [D(2026, 7, 2)]}
         assert reset == (False, None, None, None)
 
 

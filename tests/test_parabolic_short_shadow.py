@@ -859,6 +859,45 @@ class TestLifecycle:
         o = env.row("ZZZ", "outcome")
         assert (o["status"], o["reason"]) == ("settled", "time_stop")
 
+    async def test_a_legacy_phantom_row_lets_the_data_decide_and_the_episode_runs_on(self, env):
+        """Review fix on #704: a split row applied BEFORE the ingest recorded a verdict (outcome NULL) is read at the
+        table's ratio, so a legacy PHANTOM looks real. Before #704 this shadow decided on the climax-high re-read alone and
+        a phantom left the high where it was - the data still decides when every mover in the window is legacy."""
+        env.load("ZZZ", TRIGGER_THEN_TIME_STOP)
+        env.splits.append({"ticker": "ZZZ", "execution_date": D[2], "split_from": 1, "split_to": 4,
+                           "adjustment_applied": True, "adjustment_outcome": None, "applied_factor": None})
+        for k in (0, 1, 5):
+            await env.night(k)
+        o = env.row("ZZZ", "outcome")
+        assert (o["status"], o["reason"]) == ("settled", "time_stop")
+
+    async def test_a_legacy_split_row_the_bars_bear_out_still_voids(self, env):
+        env.load("ZZZ", TRIGGER_THEN_TIME_STOP)
+        await env.night(0)
+        env.splits.append({"ticker": "ZZZ", "execution_date": D[1], "split_from": 1, "split_to": 2,
+                           "adjustment_applied": True, "adjustment_outcome": None, "applied_factor": None})
+        env.bars["ZZZ"] = [{**b, **{k: b[k] / 2.0 for k in ("open_price", "high_price", "low_price", "close")}}
+                           for b in env.bars["ZZZ"]]
+        await env.night(1)
+        o = env.row("ZZZ", "outcome")
+        assert (o["status"], o["reason"]) == ("voided", "void_restated") and o.get("realized_r") is None
+        assert o["detail"]["legacy_split_scale"] == pytest.approx(0.5)
+
+    @pytest.mark.parametrize("outcome,factor", [("applied", 0.25), ("skipped_no_data", None)],
+                             ids=["recorded_applied", "no_data"])
+    async def test_a_recorded_verdict_that_moved_or_may_have_moved_a_bar_voids_without_the_reread(self, env, outcome, factor):
+        """The ingest's own word is not second-guessed by the re-read: 'applied' says the bars were restated, and
+        'skipped_no_data' is also what a FAILED fetch of a real split records (review fix on #704: not read as 1.0), so
+        the series may carry a cliff the climax-high re-read cannot see."""
+        env.load("ZZZ", TRIGGER_THEN_TIME_STOP)
+        await env.night(0)
+        env.splits.append({"ticker": "ZZZ", "execution_date": D[1], "split_from": 1, "split_to": 4,
+                           "adjustment_applied": True, "adjustment_outcome": outcome, "applied_factor": factor})
+        await env.night(1)                                              # the bars are unmoved: the climax high re-reads clean
+        o = env.row("ZZZ", "outcome")
+        assert (o["status"], o["reason"]) == ("voided", "void_restated")
+        assert o["detail"]["split_scale"] == pytest.approx(0.25) and "legacy_split_scale" not in o["detail"]
+
     async def test_an_unapplied_split_defers_the_episode_without_an_error_until_the_ingest_has_decided(self, env):
         env.load("ZZZ", TRIGGER_THEN_TIME_STOP)
         await env.night(0)

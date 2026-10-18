@@ -12494,8 +12494,9 @@ async def mark_split_applied(ticker: str, execution_date: date, *, outcome: str 
     """Mark a split row handled. `outcome` / `factor` (#704) record WHAT the handling did to the stored bars:
     'applied' (history re-fetched and overwritten; `factor` = the factor it was restated by) · 'phantom'
     (Polygon reported a split that never happened; no bar written) · 'skipped_no_data' (Polygon returned no
-    bars to apply; none written). Both default to None so a caller that does not say leaves the pre-#704 shape
-    (a bare boolean) - `split_row_factor` reads that as a legacy row."""
+    bars to apply, or the fetch failed - `fetch_ticker_history` returns [] on any error; none written). Both
+    default to None so a caller that does not say leaves the pre-#704 shape (a bare boolean) -
+    `split_row_factor` reads that as a legacy row."""
     if outcome is not None and outcome not in SPLIT_OUTCOMES:
         raise ValueError(f"split outcome must be one of {SPLIT_OUTCOMES}, got {outcome!r}")
     pool = await get_pool()
@@ -12537,7 +12538,14 @@ def split_row_factor(row: dict) -> Optional[float]:
     moved none; None when that cannot be told yet (the row is not applied, or its ratio is unreadable).
 
       * not applied                                -> None   (the 17:00 ingest has not handled it)
-      * outcome 'phantom' / 'skipped_no_data'      -> 1.0    (the ingest wrote no bar)
+      * outcome 'phantom'                          -> 1.0    (Polygon's adjusted feed matched the stored close: the
+        split never happened, no bar was written and none needs to be)
+      * outcome 'skipped_no_data'                  -> split_from / split_to  (NOT 1.0: the ingest wrote no bar, but
+        that is not "no bar moved" - `fetch_ticker_history` turns EVERY failure into [] (a 5xx, a transport error), so
+        this verdict is also what a failed fetch of a REAL split produces, and then the pre-split bars stay raw while
+        the nightly grouped daily writes post-split bars: a cliff. Every consumer reads it as a moved split, which is
+        what the pre-#704 guards did with every row; the CB shadow's data cross-check in `split_scale` then makes the
+        entry step sit out when the bars did not move)
       * outcome 'applied'                          -> `applied_factor` as recorded
       * outcome NULL with adjustment_applied TRUE  -> split_from / split_to  (a LEGACY row, written before the
         column existed: the boolean said only "handled", and every consumer read that as a real split at the
@@ -12547,7 +12555,7 @@ def split_row_factor(row: dict) -> Optional[float]:
     if not row.get("adjustment_applied"):
         return None
     outcome = row.get("adjustment_outcome")
-    if outcome in ("phantom", "skipped_no_data"):
+    if outcome == "phantom":
         return 1.0
     if outcome == "applied":
         try:
@@ -12584,6 +12592,14 @@ def scale_unmoved(scale: float) -> bool:
     return abs(scale - 1.0) <= SCALE_UNMOVED_TOL
 
 
+def split_verdict_recorded(rows) -> bool:
+    """True when ANY of `rows` carries the ingest's recorded verdict (`adjustment_outcome` set). False = every row is
+    LEGACY (applied before the column existed): the table can then not tell a phantom from a real split, so a consumer
+    that can check the DATA itself (the parabolic shadow re-reads its frozen climax high) lets the data decide instead of
+    trusting the table ratio read off a guess."""
+    return any(r.get("adjustment_outcome") is not None for r in rows)
+
+
 _SPLIT_FACTOR_COLS = ("ticker, execution_date, split_from, split_to, adjustment_applied, "
                       "adjustment_outcome, applied_factor")
 
@@ -12606,7 +12622,8 @@ async def _split_rows_between(ticker: str, since, through=None) -> list[dict]:
 async def stored_price_scale(ticker: str, since, through) -> Optional[float]:
     """#704 - the factor between a price stored RAW on `since` and the same bar in `mi_daily_closes` now:
     the product of the applied factors of the splits executing in (`since`, `through`]. 1.0 when there is none
-    (or only phantom / no-data rows: the ingest moved no bar). None while any split in the window is unapplied
+    (or only PHANTOM rows: the ingest moved no bar because there was no split; a 'skipped_no_data' row is NOT in that
+    class - see `split_row_factor`). None while any split in the window is unapplied
     - the stored series is then on two scales and no consumer may compare across it.
 
     A legacy row (outcome NULL, written before the column) is read as a real split at the table's ratio:
@@ -13574,7 +13591,7 @@ async def get_split_dates_after(ticker: str, after_date, through=None) -> list:
     nonsense — CRWD 2026-07-01 has entry 778.82 against a break-day low of 191.25 because a 1:4
     executed on 2026-07-02. Cheap enough to call per ripe row; `mi_splits` is tiny.
 
-    #704: a split the ingest recorded as PHANTOM / 'skipped_no_data' moved no bar (`split_row_factor` 1.0) and is
+    #704: a split the ingest recorded as PHANTOM moved no bar (`split_row_factor` 1.0) and is
     no longer returned - it used to count as a split here while the CB entry step and the parabolic shadow
     ignored it. The decision itself (settle / defer / unbookable) is `stored_price_scale`'s; this names the
     splits for the reason string."""

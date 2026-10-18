@@ -5238,6 +5238,14 @@ async def _run_entry_shadow_settlement(today):
     return settled
 
 
+# #704: how long an HTF row waits on a split the splits ingest has not applied before it is marked unbookable. Counted
+# from the split's EXECUTION date (not the break date - a ripe row is already >= 24 days past its break). The nightly
+# ingest retries a split for up to 60 days (`splits_ingest.LOOKBACK_DAYS`); a split still unapplied 30 days after it
+# executed is one the ingest is not going to resolve (it raises every night, or its ratio is unreadable). The same
+# backstop as the parabolic shadow's `STALE_EPISODE_DAYS`, so no consumer of the split verdict can wait forever.
+HTF_SPLIT_UNRESOLVED_DAYS = 30
+
+
 async def _htf_breakout_settle_job(today):
     """#356 Phase 3 — settle ripe HTF breakout-shadow rows from daily bars. Mirrors the #327 entry-shadow
     settle job, but the HTF entry FILLS at base_high (a stop-limit-buy), NOT the bar close — so the R-math
@@ -5248,11 +5256,13 @@ async def _htf_breakout_settle_job(today):
     from agents.market_intelligence.flag_detector import _htf_settle_from_bars
     from agents.market_intelligence.db import (
         get_settleable_htf_breakout_shadows, get_anticipation_ohlcv, settle_htf_breakout_shadow,
-        get_split_dates_after, mark_htf_breakout_shadow_unbookable, scale_unmoved, stored_price_scale,
+        get_split_dates_after, mark_htf_breakout_shadow_unbookable, scale_unmoved, split_row_factor,
+        stored_price_scale,
     )
     ripe = await get_settleable_htf_breakout_shadows(today - timedelta(days=24))
     settled = []
     abstained = []
+    waiting = []
     for r in ripe:
         try:
             # ── #667 GUARD 1: a SPLIT between the break and now ──────────────────────────
@@ -5266,10 +5276,23 @@ async def _htf_breakout_settle_job(today):
             # (`stored_price_scale`, the window (break_date, today] - an ANNOUNCED split not yet executed is no
             # longer a reason to void). 1.0 = nothing moved (no split, or the ingest recorded a phantom): settle.
             # None = a split executed and is not applied yet: the bars cannot be read either way, so the row
-            # waits for the next run instead of being marked unbookable for good (it may turn out phantom).
+            # waits for the next run instead of being marked unbookable for good (it may turn out phantom) - but
+            # not for ever: a split still unresolved `HTF_SPLIT_UNRESOLVED_DAYS` after it executed is marked
+            # unbookable (the ingest is not going to decide it), so no row waits without an exit.
             # Anything else = a real restatement: unbookable, as before.
             scale = await stored_price_scale(r["ticker"], r["break_date"], today)
             if scale is None:
+                unresolved = [sp for sp in await get_split_dates_after(r["ticker"], r["break_date"], today)
+                              if split_row_factor(sp) is None]
+                oldest = min(unresolved, key=lambda sp: sp["execution_date"]) if unresolved else None
+                age = (today - oldest["execution_date"]).days if oldest else 0
+                if oldest is not None and age > HTF_SPLIT_UNRESOLVED_DAYS:
+                    reason = (f"split_unresolved_{oldest['split_from']}:{oldest['split_to']}_on_"
+                              f"{oldest['execution_date']}_{age}d_unapplied")
+                    if await mark_htf_breakout_shadow_unbookable(r["id"], reason):
+                        abstained.append((r["ticker"], reason))
+                else:
+                    waiting.append((r["ticker"], str(oldest["execution_date"]) if oldest else "?"))
                 continue
             if not scale_unmoved(scale):
                 splits = await get_split_dates_after(r["ticker"], r["break_date"], today)
@@ -5302,8 +5325,9 @@ async def _htf_breakout_settle_job(today):
         except Exception as e:
             logger.error(f"htf-breakout-shadow settle {r['ticker']}/{r['id']}: {e}", exc_info=True)
     logger.info(f"htf-breakout-shadow settlement: {len(ripe)} ripe considered, {len(settled)} settled, "
-                f"{len(abstained)} marked unbookable (#667)"
-                + (f" — {abstained}" if abstained else ""))
+                f"{len(abstained)} marked unbookable (#667), {len(waiting)} waiting on an unapplied split (#704)"
+                + (f" — {abstained}" if abstained else "")
+                + (f" — waiting {waiting}" if waiting else ""))
     return settled
 
 
