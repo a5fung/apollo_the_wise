@@ -236,7 +236,7 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
   unchanged); one candidate's K x variant entries that share (fill, stop, day-0, ADR) are walked once per arm; the recorded `feed` is
   `execution_client.get_data_feed_name()` (an unrecognised env value now records `iex`, which is what the fetch used); the unapplied-split
   tickers come from `get_unapplied_splits(since, upto=)`.
-**Reversion-flag**: NEW. **Status**: built, awaiting deploy (market-agent; `db.py` is on the execution image's module list, as in the
+**Reversion-flag**: NEW. **Status**: built (✅ Confirmed in production 2026-10-18 00:25 ET, 61974034; at build time: market-agent; `db.py` is on the execution image's module list, as in the
 entry below).
 
 ### 2026-10-17 — NEW: the forward SHADOW recorder (job `consolidation_breakout_shadow`, 17:48 ET mon–fri; tables + review; no order path)
@@ -267,6 +267,6 @@ deviation 2). (5) The catch-up wording says it recovers entries, not a missed wa
 reuse, not as #286-signed. Open for the P4 freeze: `consolidation_breakout.py` lines 15-17 still say "NOTHING here is in the
 registry yet" although ten constants are registered (the module is hash-pinned, so the docstring is changed with the freeze).
 
-**Status**: built, awaiting deploy (market-agent; `db.py` and `scheduler.py` are on the execution image's module list, so a
-follow-up `deploy.sh execution` clears the drift warning — the execution copy only gains DDL/helper definitions and an unused
-job function, and the job is not registered there). Verify-live per the block above.
+**Status**: DEPLOYED 2026-10-17 20:13 ET (ea78bae7, both + execution) and re-deployed with the /simplify pass 2026-10-18 00:25 ET
+(61974034); the four tables exist in prod, the SIC cache was seeded (3,303 with a code, 639 none). First run: Mon 10-19 17:48 ET.
+Verify-live per the block above.

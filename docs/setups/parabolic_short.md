@@ -134,6 +134,21 @@ None currently. Each scan_date computes stage independently from prior scans. Pr
 
 ## Change log (newest first)
 
+### 2026-10-18 — DEPLOYED and verified (status superseding the 10-17 entries below)
+
+**Trigger**: the 10-17 entries below carried a build-time status; the OPEN drift check (live_rules) flagged them as the doc's latest word.
+
+**Evidence**: deployed 2026-10-17 22:35 ET as 963a735e (`deploy.sh both`, then `deploy.sh execution` back to back, exit 0), and the
+/simplify pass redeployed 2026-10-18 00:25 ET as 61974034. Verified in prod both times: `mi_parabolic_short_shadow` exists, and the facade
+borrow read from apollo-market returns AAPL `shortable` + `easy_to_borrow`. Climax baseline read at deploy: 0 non-excluded climax
+candidates in the last 30 days, so a night with no arm row is the expected reading until a climax appears.
+
+**Anticipated effect**: none — a status record. The first 17:15 ET run under the shadow is Mon 10-19.
+
+**Reversion-flag**: none.
+
+**Status**: deployed (61974034), awaiting its first real climax episode (#314's DONE-WHEN).
+
 ### 2026-10-17 (evening) — /simplify pass: the earnings probe's "next session" is the NYSE calendar's (no detector or threshold change)
 
 The no-overnight-through-earnings probe asked about the day after a held session and "the next weekday"; it now asks about the next NYSE
@@ -155,7 +170,7 @@ writers (`db._row_params`). **Reversion-flag**: NEW.
 
 **Reversion-flag**: NEW behaviour on an undeployed recorder — nothing is reverted. Reading #10 (no retries) is the one documented reading this changes.
 
-**Status**: built 2026-10-17, NOT deployed (needs market-agent then execution, in one deploy window). The SQL-layer tests (`tests/test_parabolic_short_shadow_pg.py`) need a throwaway Postgres and were not re-run in this round; the round adds no SQL (it reuses `get_parabolic_short_open_episodes`).
+**Status**: built 2026-10-17 (at build time not yet deployed) — ✅ Confirmed in production 2026-10-17 22:35 ET (963a735e), see the 2026-10-18 entry. The SQL-layer tests (`tests/test_parabolic_short_shadow_pg.py`) need a throwaway Postgres and were not re-run in this round; the round adds no SQL (it reuses `get_parabolic_short_open_episodes`).
 
 ### 2026-10-17 — #314: the short-side forward SHADOW (ADR 0020 §4, card B3) — arm / trigger / outcome rows, no orders
 
@@ -167,7 +182,7 @@ writers (`db._row_params`). **Reversion-flag**: NEW.
 
 **Reversion-flag**: NEW (no prior short-side mechanics; ADR 0020 §4 is the first spec).
 
-**Status**: shipped, awaiting field validation — built 2026-10-17, NOT deployed in the build commit. Deploy needs the execution step (`/exec/get_asset` lives on apollo-execution). Open readings of the ADR are listed in the section above for the operator to confirm or change; none blocks the shadow.
+**Status**: shipped, awaiting field validation — built 2026-10-17; ✅ Confirmed in production 2026-10-17 22:35 ET (963a735e), see the 2026-10-18 entry. Deploy needs the execution step (`/exec/get_asset` lives on apollo-execution). Open readings of the ADR are listed in the section above for the operator to confirm or change; none blocks the shadow.
 
 ### 2026-07-24 — FL-5 reconcile: doc synced to code
 
