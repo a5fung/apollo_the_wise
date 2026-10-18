@@ -19,6 +19,9 @@ import sys
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..")))
+
+from agents.market_intelligence import consolidation_breakout as cb  # noqa: E402
 
 WATCH_START = dt.date(2022, 3, 28)
 WIN_DAYS = 28
@@ -27,10 +30,13 @@ FEAT = ["base_len", "pole_date", "pole_sessions", "prior_move", "base_depth", "r
 
 
 def load_watch(path):
-    cols = ["ticker", "watch_date"] + FEAT
+    cols = ["ticker", "watch_date", "pole_ci"] + FEAT
     w = pd.read_csv(path, sep="\t", usecols=cols)
     w["wd"] = pd.to_datetime(w["watch_date"]).map(dt.datetime.toordinal)
-    w["base_id"] = w["ticker"] + "|" + w["pole_date"].astype(str)
+    # candidates.tsv keys a base by the runner's drift-robust chain id (cb.chain_bases over EVERY watch row), not
+    # ticker|pole_date; key the watch rows the same way, or a base whose pole drifted a session reads "no breakout"
+    base_of = cb.chain_bases(zip(w["ticker"], w["pole_ci"], w["pole_date"].astype(str)))
+    w["base_id"] = [base_of[(t, int(p))] for t, p in zip(w["ticker"], w["pole_ci"])]
     return w.sort_values(["ticker", "wd"])
 
 

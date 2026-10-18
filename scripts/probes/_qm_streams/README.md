@@ -50,6 +50,5 @@ unchanged except `match_bars.match_one`, which gained two optional arguments (de
 
 Known limits (extension): Alpaca's asset list omits many delisted names (ABMD, TWTR, ATVI...), so a spoken ticker with no Alpaca series
 cannot be matched before 2022-03-28. A reused symbol whose old issuer left before 2021-09-27 is only seen by the hole / jump tests.
-The first-pass `match_one` keys breakouts by pole date while the production candidates use a drift-robust chain id, so for talks on or
-after 2022-03-28 a base whose pole drifted one session can read "no breakout" (97 of 483 both-C0 cases in a spot check differ; two
-inspected were exactly this); the Alpaca path walks forward night by night and is not affected.
+`match_bars.load_watch` now keys watch rows by the runner's drift-robust chain id (`cb.chain_bases`), the same key candidates.tsv uses;
+before the 2026-10-18 fix a base whose pole drifted one session read "no breakout" (first pass: 22 -> 40 of 46 labelled now find theirs).
