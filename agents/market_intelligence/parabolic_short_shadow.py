@@ -9,11 +9,13 @@ it already persists to `mi_parabolic_candidates`, after the M&A / news exclusion
 THE STATE MACHINE (one episode per climax-flagged (ticker, scan date) D0), every number from stored daily
 bars (`mi_daily_closes`), every day counted in TRADING rows, never calendar days:
 
-  D0 evening  decide ONCE: market-cap floor ($250M HARD reject, unknown cap rejects too) -> borrow check
-              (Alpaca `shortable AND easy_to_borrow`, ETB-only) -> ARM, or a rejected 'arm' row with a NAMED
-              reason. The geometry is recorded either way: climax high, prior-day low, ATR14, the stop
-              buffer min(3% of the climax high, 0.5 x ATR14), the stop above the climax high, and 1R's
-              risk basis (half the long book's per-trade risk - a RECORDED NUMBER ONLY).
+  D0 evening  decide ONCE: one-open-episode-per-name -> market-cap floor ($250M HARD reject, unknown cap
+              rejects too) -> borrow check (Alpaca `shortable AND easy_to_borrow`, ETB-only) -> ARM, or a
+              rejected 'arm' row with a NAMED reason. A borrow READ that fails (`infra:`) writes no row while
+              a later night can still arm it - the candidate is retried; the infra row is written only on the
+              last window night. The geometry is recorded either way: climax high, prior-day low (the level in
+              force), ATR14, the stop buffer min(3% of the climax high, 0.5 x ATR14), the stop above the climax
+              high, and 1R's risk basis (half the long book's per-trade risk - a RECORDED NUMBER ONLY).
   sessions 1-3 after D0 (the arm window): a stop-limit SHORT rests at the PRIOR session's low (it trails
               daily). A session whose low reaches it TRIGGERS (borrow check repeated -> 'trigger' row). A
               session that CLOSES above the climax high first, or the 3rd session passing untriggered,
@@ -24,11 +26,18 @@ bars (`mi_daily_closes`), every day counted in TRADING rows, never calendar days
               not held - no adds, ever. Settlement writes the 'outcome' row with the blended R.
 
 DAILY-BAR HONESTY (a daily bar cannot order its own events): the fill convention is the one a real
-stop-limit SHORT has - open above the level and low <= level fills AT the level; an open at/below the level
-but inside the limit fills at the open; an open below the limit is a NO FILL (the arm carries to the next
-session, its level re-set to that session's low). Whenever one bar could both stop the position out and
-take the flush, the STOP is assumed first; a stop-out on the entry session itself is flagged
-`entry_day_ambiguous` (the high may have come before the fill). A gap above the stop exits at the open.
+DAY stop-limit SHORT has - open above the level and low <= level fills AT the level (`intraday`); an open
+at/below the level but inside the limit fills at the open (`gap_open`); an open BELOW the limit triggers the
+stop and leaves a resting limit SELL, which fills at the limit the moment the session trades back up to it
+(`limit_recovery`: high >= limit - the open is the first print, so the rise happened while the order was
+live); only when the high never reaches the limit is it a NO FILL (the arm carries to the next session, its
+level re-set to that session's low). Whenever one bar could both stop the position out and take the flush,
+the STOP is assumed first; a stop-out on the entry session itself is flagged `entry_day_ambiguous` (the high
+may have come before the fill). A gap above the stop exits at the open. On the ENTRY session only: an
+`intraday` fill does not count that session's high toward `mae_r` (price was above the level before the
+fill, so the high may predate it); a `limit_recovery` fill credits no flush and no `mfe_r` from that
+session's low (the low sat under the limit BEFORE the order could fill) and flags `entry_day_ambiguous` if
+the low reached the flush level.
 
 THE BOUNDARY (deploy gate 5j, #256 W1): this module imports `execution_client` only - never `broker.*`.
 The ONE broker call it can reach is the read-only `execution_client.get_asset`; `tests` pin that no order
@@ -76,6 +85,7 @@ BORROW_HARD_TO_BORROW = "borrow:hard_to_borrow"
 BORROW_ASSET_NOT_FOUND = "borrow:asset_not_found"
 INFRA_BORROW_CHECK_FAILED = "infra:borrow_check_failed"
 REASON_INVALIDATED_BEFORE_ARM = "invalidated_before_arm"
+REASON_EPISODE_OPEN = "episode_already_open"      # ADR "no adds, ever": one open episode per name
 OUT_INVALIDATED = "invalidated"
 OUT_EXPIRED = "expired_untriggered"
 OUT_STOP = "stop"
@@ -87,6 +97,14 @@ OUT_VOID_RESTATED = "void_restated"
 OUT_VOID_MISMATCH = "void_replay_mismatch"
 OUT_VOID_GEOMETRY = "void_bad_geometry"
 OUT_VOID_DATA_GAP = "void_data_gap"
+
+# Trigger kinds (`trigger_fill` returns one; the trigger row records it as detail.kind)
+KIND_NONE = "none"                          # the session's low never reached the level
+KIND_INTRADAY = "intraday"                  # opened above the level, traded down through it: filled AT the level
+KIND_GAP_OPEN = "gap_open"                  # opened at/below the level but inside the limit: filled at the open
+KIND_LIMIT_RECOVERY = "limit_recovery"      # opened below the limit; the resting limit sell filled on the way back up
+KIND_NO_FILL = "gap_through_limit"          # triggered, but the high never got back to the limit: no fill
+FILL_KINDS = frozenset({KIND_INTRADAY, KIND_GAP_OPEN, KIND_LIMIT_RECOVERY})
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════════
@@ -151,22 +169,29 @@ def arm_geometry(rows: list[dict], ci: int) -> dict:
 
 
 def trigger_fill(level: float, bar: dict) -> tuple[str, Optional[float]]:
-    """A resting stop-limit SHORT at `level` against one session's bar -> (kind, fill price).
+    """A resting DAY stop-limit SHORT at `level` against one session's bar -> (kind, fill price).
 
-    ('none', None)              the low never reached the level
-    ('fill', level)             opened above it, traded down through it: filled AT the level
-    ('fill', open)              gapped to/below it but opened inside the limit: filled at the open
-    ('gap_through_limit', None) opened below the limit: triggered, never filled (the arm carries)
+    (KIND_NONE, None)           the low never reached the level
+    (KIND_INTRADAY, level)      opened above it, traded down through it: filled AT the level
+    (KIND_GAP_OPEN, open)       gapped to/below it but opened inside the limit: filled at the open
+    (KIND_LIMIT_RECOVERY, limit) opened below the limit: the opening print triggers the stop and the order
+                                rests as a limit SELL at `limit`; a high >= limit means price came back up
+                                to it while the order was live - a certain fill, at the limit
+    (KIND_NO_FILL, None)        opened below the limit and the high never got back to it: triggered, never
+                                filled (the arm carries)
     """
     low = float(bar["low_price"])
     if low > level:
-        return ("none", None)
+        return (KIND_NONE, None)
     open_ = float(bar["open_price"])
     if open_ > level:
-        return ("fill", level)
-    if open_ >= short_limit_price(level):
-        return ("fill", open_)
-    return ("gap_through_limit", None)
+        return (KIND_INTRADAY, level)
+    limit = short_limit_price(level)
+    if open_ >= limit:
+        return (KIND_GAP_OPEN, open_)
+    if float(bar["high_price"]) >= limit:
+        return (KIND_LIMIT_RECOVERY, limit)
+    return (KIND_NO_FILL, None)
 
 
 def replay_episode(
@@ -199,6 +224,7 @@ def replay_episode(
     entry_idx = None
     entry_price = None
     entry_level = None
+    entry_kind = None
     for k in range(1, n_after + 1):
         idx = ci + k
         bar = rows[idx]
@@ -208,10 +234,10 @@ def replay_episode(
         bar_date = _as_date(bar["trade_date"])
         if bar_date is not None and bar_date > armed_on:
             kind, px = trigger_fill(level, bar)
-            if kind == "fill":
-                entry_idx, entry_price, entry_level = idx, px, level
+            if kind in FILL_KINDS:
+                entry_idx, entry_price, entry_level, entry_kind = idx, px, level, kind
                 break
-            if kind == "gap_through_limit":
+            if kind == KIND_NO_FILL:
                 out["gap_skips"] += 1
         if float(bar["close"]) > climax_high:
             out["state"] = "closed"
@@ -231,7 +257,7 @@ def replay_episode(
     out["trigger"] = {
         "idx": entry_idx, "date": entry_bar_date, "level": entry_level,
         "limit": short_limit_price(entry_level), "entry_price": entry_price,
-        "kind": "intraday" if entry_price == entry_level else "gap_open",
+        "kind": entry_kind,
         "risk_per_share": risk,
     }
     if risk <= 0:
@@ -256,19 +282,32 @@ def replay_episode(
             stop = min(stop, float(rows[j - 1]["high_price"]))   # trails to the prior session's high; never up
         high, low = float(bar["high_price"]), float(bar["low_price"])
         close, open_ = float(bar["close"]), float(bar["open_price"])
-        mfe = max(mfe, (entry_price - low) / risk)
-        mae = max(mae, (high - entry_price) / risk)
+        # What an ENTRY-session bar can honestly say about the held position (a daily bar cannot order its
+        # events): an `intraday` fill came on the way DOWN from above the level, so that session's high may
+        # predate it (no MAE from it); a `limit_recovery` fill came on the way UP from under the limit, so
+        # that session's low predates it (no MFE and no flush credit from it).
+        entry_bar = j == entry_idx
+        high_after_fill = not (entry_bar and entry_kind == KIND_INTRADAY)
+        low_after_fill = not (entry_bar and entry_kind == KIND_LIMIT_RECOVERY)
+        if low_after_fill:
+            mfe = max(mfe, (entry_price - low) / risk)
+        if high_after_fill:
+            mae = max(mae, (high - entry_price) / risk)
         exit_px = None
         reason = None
         if high >= stop:                                          # stop BEFORE the flush: the conservative order
-            if j == entry_idx:
+            if entry_bar:
                 exit_px, ambiguous = stop, True                   # the high may predate the fill
             else:
                 exit_px = max(stop, open_)                        # a gap above the stop exits at the open
+            mae = max(mae, (exit_px - entry_price) / risk)        # a stop-out is at least the stop distance
             reason = OUT_TRAIL_STOP if stop < stop_price else OUT_STOP
         else:
             if not flush_taken and low <= flush_level:
-                flush_taken, flush_price = True, flush_level
+                if low_after_fill:
+                    flush_taken, flush_price = True, flush_level
+                else:
+                    ambiguous = True                              # the flush may have come after the fill - not credited
             bar_date = _as_date(bar["trade_date"])
             if held >= time_stop:
                 exit_px, reason = close, OUT_TIME_STOP
@@ -373,7 +412,7 @@ async def default_earnings_before_next_open(ticker: str, session: date) -> Optio
 
 def _new_summary(trade_date: date) -> dict:
     return {"trade_date": str(trade_date), "armed": [], "rejected": [], "triggered": [], "settled": [],
-            "closed": [], "stale": 0, "errors": [], "disabled": False}
+            "closed": [], "deferred": [], "stale": 0, "errors": [], "disabled": False}
 
 
 def _row(ticker: str, climax_date: date, kind: str, event_date: date, status: str, reason: Optional[str],
@@ -392,8 +431,19 @@ def _risk_fraction() -> float:
     return RISK_PCT * SHORT_RISK_FRACTION
 
 
-async def _decide_candidate(cand: dict, trade_date: date, summary: dict) -> None:
-    """The one arm decision for a climax candidate with no 'arm' row yet."""
+async def _decide_candidate(cand: dict, trade_date: date, summary: dict, open_tickers: set) -> None:
+    """The arm decision for a climax candidate with no 'arm' row yet - ONE row, written once.
+
+    `open_tickers` - names with an armed episode that has no outcome row yet (read AFTER tonight's advance
+    step, so an episode that closed on tonight's own bar no longer blocks). ADR 0020 "NO adds, ever": a name
+    holds at most one open episode, so a second climax on it is rejected by name (it is never a second row of
+    the same cohort). A newly armed ticker is added to the set, so two candidates for one name cannot both
+    arm in one run.
+
+    The one thing that is NOT decided is a failed borrow READ (`infra:`): while a later night can still arm
+    this candidate no row is written and it is retried (summary['deferred']); the infra row is written only
+    on the last window night, when there is no later night to retry on.
+    """
     from agents.market_intelligence import db
 
     ticker = cand["ticker"]
@@ -410,6 +460,12 @@ async def _decide_candidate(cand: dict, trade_date: date, summary: dict) -> None
         return
 
     geo = arm_geometry(rows, ci)
+    if sessions_since > 0 and _bar_ok(rows[-1]):
+        # A late arm (a carried-over or retried candidate): the level in force tonight is the LAST session's
+        # low, not the climax day's - record the one the resting order would actually sit at.
+        live_level = float(rows[-1]["low_price"])
+        geo["prior_day_low"] = live_level
+        geo["limit_price"] = short_limit_price(live_level)
     mcap = cand.get("market_cap")
     base = _geometry_cols(geo)
     base.update(market_cap=mcap, risk_fraction=_risk_fraction())
@@ -417,7 +473,10 @@ async def _decide_candidate(cand: dict, trade_date: date, summary: dict) -> None
 
     reject: Optional[str] = None
     snapshot: dict = {}
-    if mcap is None:
+    if ticker in open_tickers:
+        reject = REASON_EPISODE_OPEN
+        detail["open_episode"] = True
+    elif mcap is None:
         reject = FILTER_MCAP_UNKNOWN
     elif mcap < SHORT_MCAP_FLOOR_USD:
         reject = FILTER_MCAP_TOO_SMALL
@@ -433,6 +492,13 @@ async def _decide_candidate(cand: dict, trade_date: date, summary: dict) -> None
                 reject = b["reason"]
                 if snapshot.get("error"):
                     detail["borrow_error"] = snapshot["error"]
+                if reject.startswith("infra:") and sessions_since < ARM_WINDOW_SESSIONS - 1:
+                    # Could not READ the broker, and tomorrow night can still arm this one: no row (rows are
+                    # insert-once, so writing now would forfeit it for good). Logged by check_borrow; counted
+                    # here and in the audit row, deliberately NOT in `errors` (that pages).
+                    summary["deferred"].append({"ticker": ticker, "reason": reject,
+                                                "sessions_since": sessions_since, "error": snapshot.get("error")})
+                    return
     if reject is not None:
         new = await db.insert_parabolic_short_shadow_row(
             _row(ticker, d0, "arm", trade_date, "rejected", reject, **base, **_borrow_cols(snapshot), detail=detail))
@@ -443,6 +509,7 @@ async def _decide_candidate(cand: dict, trade_date: date, summary: dict) -> None
     new = await db.insert_parabolic_short_shadow_row(
         _row(ticker, d0, "arm", trade_date, "armed", None, **base, **_borrow_cols(snapshot), detail=detail))
     if new:
+        open_tickers.add(ticker)
         summary["armed"].append({"ticker": ticker, "level": geo["prior_day_low"], "stop": geo["stop_price"]})
 
 
@@ -567,10 +634,11 @@ async def run_parabolic_short_shadow(
     *,
     earnings_checker: Callable[[str, date], Awaitable[Optional[bool]]] = default_earnings_before_next_open,
 ) -> dict:
-    """The nightly step: decide new climax candidates, then advance every open episode. Reads only data
-    <= trade_date. One failing episode is logged and counted in `errors` and never stops the others; the
-    caller (the scan job) pages on `errors` and still sends the digest. One audit row per run, so a night
-    with nothing to do is distinguishable from a night the step did not run."""
+    """The nightly step: advance every open episode, then decide new climax candidates (oldest first) against
+    the episodes still open. Reads only data <= trade_date. One failing episode is logged and counted in
+    `errors` and never stops the others; the caller (the scan job) pages on `errors` and still sends the
+    digest. One audit row per run, so a night with nothing to do is distinguishable from a night the step
+    did not run."""
     from agents.market_intelligence import db
     from agents.market_intelligence.strategies.registry import should_run
 
@@ -579,13 +647,10 @@ async def run_parabolic_short_shadow(
         summary["disabled"] = True
         return summary
 
-    for cand in await db.get_parabolic_short_new_candidates(trade_date, NEW_CANDIDATE_LOOKBACK_DAYS):
-        try:
-            await _decide_candidate(cand, trade_date, summary)
-        except Exception as e:
-            logger.error("parabolic_short_shadow: deciding %s failed: %s", cand.get("ticker"), e, exc_info=True)
-            summary["errors"].append(f"{cand.get('ticker')} decide: {type(e).__name__}: {e}")
-
+    # ADVANCE first, DECIDE second: an episode that closes on tonight's own bar (a close above its climax
+    # high is exactly the next day's own climax flag) must be closed before the "one open episode per name"
+    # check reads the open set. A newly armed episode has nothing to advance on its arm night - a session on
+    # or before `armed_on` cannot trigger and the invalidation was tested at the arm - so nothing is lost.
     open_eps = await db.get_parabolic_short_open_episodes()
     for ep in open_eps:
         try:
@@ -594,9 +659,22 @@ async def run_parabolic_short_shadow(
             logger.error("parabolic_short_shadow: advancing %s failed: %s", ep.get("ticker"), e, exc_info=True)
             summary["errors"].append(f"{ep.get('ticker')} advance: {type(e).__name__}: {e}")
 
+    open_tickers = {e["ticker"] for e in await db.get_parabolic_short_open_episodes()}
+    # Oldest climax first (the reader returns newest first): with two climaxes on one name in a catch-up run,
+    # the earlier one is the episode that would have armed on its own night.
+    candidates = sorted(await db.get_parabolic_short_new_candidates(trade_date, NEW_CANDIDATE_LOOKBACK_DAYS),
+                        key=lambda c: (_as_date(c["scan_date"]) or date.min, c["ticker"]))
+    for cand in candidates:
+        try:
+            await _decide_candidate(cand, trade_date, summary, open_tickers)
+        except Exception as e:
+            logger.error("parabolic_short_shadow: deciding %s failed: %s", cand.get("ticker"), e, exc_info=True)
+            summary["errors"].append(f"{cand.get('ticker')} decide: {type(e).__name__}: {e}")
+
     text = (f"armed {len(summary['armed'])}, rejected {len(summary['rejected'])}, "
             f"triggered {len(summary['triggered'])}, settled {len(summary['settled'])}, "
-            f"closed {len(summary['closed'])}, errors {len(summary['errors'])} "
+            f"closed {len(summary['closed'])}, deferred {len(summary['deferred'])}, "
+            f"errors {len(summary['errors'])} "
             f"({len(open_eps)} episode(s) open going in)")
     await db.log_audit_event("parabolic_short_shadow_run", f"{trade_date}: {text}",
                              json.dumps(summary, default=str))

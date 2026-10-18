@@ -110,18 +110,36 @@ class TestGeometry:
 
 
 class TestFillConvention:
-    @pytest.mark.parametrize("o,l,expect", [
-        (150.0, 141.0, ("none", None)),                # the low never reached 140
-        (150.0, 140.0, ("fill", 140.0)),               # a print AT the level triggers a sell-stop
-        (150.0, 138.0, ("fill", 140.0)),               # opened above, traded down through: filled AT the level
-        (140.0, 135.0, ("fill", 140.0)),               # opened AT the level
-        (139.8, 137.0, ("fill", 139.8)),               # gapped under the stop but inside the 139.30 limit: the open
-        (139.3, 130.0, ("fill", 139.3)),               # exactly at the limit still fills
-        (139.29, 130.0, ("gap_through_limit", None)),  # one cent under the limit: triggered, never filled
-        (135.0, 130.0, ("gap_through_limit", None)),
+    """A resting DAY stop-limit SHORT at 140 (limit 139.30) against one daily bar (open, high, low)."""
+
+    @pytest.mark.parametrize("o,h,l,expect", [
+        (150.0, 151.0, 141.0, ("none", None)),                    # the low never reached 140
+        (150.0, 151.0, 140.0, ("intraday", 140.0)),               # a print AT the level triggers a sell-stop
+        (150.0, 151.0, 138.0, ("intraday", 140.0)),               # opened above, traded down through: filled AT the level
+        (140.0, 141.0, 135.0, ("gap_open", 140.0)),               # opened AT the level: the open is the fill
+        (139.8, 141.0, 137.0, ("gap_open", 139.8)),               # gapped under the stop but inside the 139.30 limit
+        (139.3, 141.0, 130.0, ("gap_open", 139.3)),               # exactly at the limit still fills at the open
+        # opened BELOW the limit: the opening print triggers the stop, the order rests as a limit SELL at 139.30
+        # and fills the moment the session trades back up to it (the open is the first print, so any high that
+        # reaches the limit came while the order was live)
+        (139.29, 141.0, 130.0, ("limit_recovery", 139.3)),
+        (135.0, 141.0, 130.0, ("limit_recovery", 139.3)),
+        (135.0, 139.3, 130.0, ("limit_recovery", 139.3)),         # a high exactly at the limit fills
+        # the REAL no-fill: opened under the limit and never got back to it
+        (139.29, 139.29, 130.0, ("gap_through_limit", None)),
+        (135.0, 139.0, 130.0, ("gap_through_limit", None)),
     ])
-    def test_stop_limit_short_against_one_bar(self, o, l, expect):
-        assert psh.trigger_fill(LEVEL0, bar(D[1], o, max(o, 141.0), l, l)) == expect
+    def test_stop_limit_short_against_one_bar(self, o, h, l, expect):
+        assert psh.trigger_fill(LEVEL0, bar(D[1], o, h, l, l)) == expect
+
+    def test_a_session_that_opens_under_the_limit_and_rallies_back_to_it_is_a_fill_not_a_skipped_arm(self):
+        # The reviewer's case: level 140, open 139.0, high 141.0, low 130.0 - the old model recorded a no-fill and
+        # re-armed at the session's low; a real resting limit sell is certain to have filled at 139.30.
+        assert psh.trigger_fill(140.0, bar(D[1], 139.0, 141.0, 130.0, 133.0)) == ("limit_recovery", 139.3)
+        r = replay([(139.0, 141.0, 130.0, 133.0)])
+        t = r["trigger"]
+        assert (t["date"], t["kind"], t["entry_price"], t["level"], t["limit"]) == (D[1], "limit_recovery", 139.3, 140.0, 139.3)
+        assert t["risk_per_share"] == pytest.approx(STOP - 139.3) and r["gap_skips"] == 0 and r["state"] == "open"
 
 
 class TestArmWindowAndInvalidation:
@@ -200,7 +218,8 @@ class TestManagement:
         assert o["flush_taken"] and o["flush_price"] == pytest.approx(140.0 - R)
         assert o["exit_price"] == 110.0 and o["exit_leg_r"] == pytest.approx(30.0 / R)
         assert o["realized_r"] == pytest.approx(1 / 3 + (2 / 3) * (30.0 / R))
-        assert o["mfe_r"] == pytest.approx(32.0 / R) and o["mae_r"] == pytest.approx(13.0 / R)
+        # MAE: D1 is an `intraday` fill, so its high (153) may predate the fill and is NOT counted; D2's 145 is the worst
+        assert o["mfe_r"] == pytest.approx(32.0 / R) and o["mae_r"] == pytest.approx(5.0 / R)
         assert o["entry_day_ambiguous"] is False
 
     def test_the_time_stop_counts_the_entry_session_as_one(self):
@@ -259,6 +278,44 @@ class TestManagement:
         r = replay(TRIGGER_THEN_TIME_STOP)
         assert set(r["trigger"]) == {"idx", "date", "level", "limit", "entry_price", "kind", "risk_per_share"}
         assert r["outcome"]["sessions_held"] == 5
+
+    def test_a_limit_recovery_fill_credits_no_flush_and_no_excursion_from_the_low_that_came_before_it(self):
+        # D1 opens under the limit (135 < 139.30), trades down to 110 (<= the 115.53 flush level), THEN rallies to
+        # 141 and fills at 139.30. The 110 low almost surely predates the fill: no flush, no MFE from it, flagged.
+        # D2-D5 never get down to the flush level again, so the flush stays untaken to the time stop.
+        post = [(135, 141, 110, 120), (125, 128, 120, 126), (126, 127, 119, 121), (121, 125, 118, 120),
+                (120, 124, 117, 119)]
+        r = replay(post)
+        t, o = r["trigger"], r["outcome"]
+        risk = STOP - 139.3
+        assert t["kind"] == "limit_recovery" and t["entry_price"] == 139.3
+        assert (o["reason"], o["sessions_held"], o["exit_price"]) == ("time_stop", 5, 119.0)
+        assert o["flush_taken"] is False and o["entry_day_ambiguous"] is True
+        assert o["realized_r"] == pytest.approx((139.3 - 119.0) / risk)             # no 1/3 flush leg
+        assert o["mfe_r"] == pytest.approx((139.3 - 117.0) / risk)                  # D2-D5's best low, NOT D1's 110
+        assert o["mae_r"] == pytest.approx((141.0 - 139.3) / risk)                  # the D1 high WAS after the fill
+
+    def test_a_limit_recovery_flush_on_a_later_session_is_credited(self):
+        r = replay([(135, 141, 110, 120), (121, 124, 112, 114)])        # D2 low 112 <= the 115.53 flush level
+        o = r["state"], r.get("open")
+        assert r["state"] == "open" and r["open"]["flush_taken"] is True
+
+    def test_an_intraday_fill_counts_no_mae_from_the_entry_sessions_high(self):
+        # Opened above the level and came DOWN to the fill: that session's high (158) may predate it.
+        r = replay([(150, 158, 138, 139)])
+        assert r["trigger"]["kind"] == "intraday" and r["open"]["mae_r"] == 0.0
+        assert r["open"]["mfe_r"] == pytest.approx(2.0 / R)               # the low (138) is at/after the fill: counted
+        r2 = replay([(150, 158, 138, 139), (140, 150, 135, 141)])          # D2's high (150) counts in full
+        assert r2["open"]["mae_r"] == pytest.approx(10.0 / R)
+
+    def test_a_gap_open_fill_counts_the_entry_sessions_high_in_full(self):
+        r = replay([(139.8, 150.0, 137.0, 140.0)])                         # the open IS the first print: the high is after the fill
+        assert r["trigger"]["kind"] == "gap_open"
+        assert r["open"]["mae_r"] == pytest.approx((150.0 - 139.8) / (STOP - 139.8))
+
+    def test_a_stop_out_always_carries_at_least_the_stop_distance_as_mae(self):
+        r = replay([(150, 170, 138, 139)])                                # intraday fill, high excluded - the stop still hit
+        assert r["outcome"]["mae_r"] == pytest.approx(1.0)
 
     def test_a_stop_at_or_below_the_entry_voids_the_episode(self):
         r = psh.replay_episode(market([(150, 153, 138, 139)]), N_HIST, stop_price=139.0, armed_on=D[0])
@@ -423,17 +480,66 @@ class TestArmDecision:
         ec.ExecutionUnreachable("execution call 'get_asset' failed over HTTP: ConnectError"),
         ec.ExecutionCallFailed("execution call 'get_asset' failed IN the execution service: APIError: 503"),
     ])
-    async def test_a_broker_or_transport_error_is_an_infra_row_never_an_assumed_etb(self, env, exc):
+    async def test_a_broker_or_transport_error_is_retried_then_an_infra_row_never_an_assumed_etb(self, env, exc):
+        # Rows are insert-once, so a row written on night 0 would forfeit the climax for good while the arm window
+        # still has two nights to run: while a later night can arm it, a failed READ writes NOTHING and the
+        # candidate is retried. Only on the last window night (2 sessions after D0) is the infra row written.
         env.load("ZZZ", TRIGGER_THEN_TIME_STOP)
-        env.plan["ZZZ"] = [exc]
-        s = await env.night(0)
+        env.plan["ZZZ"] = [exc]                                # the broker stays unreadable every night
+        for k in (0, 1):
+            s = await env.night(k)
+            assert env.row("ZZZ", "arm") is None, k            # nothing decided yet
+            assert s["armed"] == [] and s["rejected"] == [] and s["errors"] == []     # `errors` would page
+            assert [(d["ticker"], d["reason"], d["sessions_since"]) for d in s["deferred"]] == \
+                [("ZZZ", "infra:borrow_check_failed", k)]
+            assert type(exc).__name__ in s["deferred"][0]["error"]
+        assert len(env.borrow_calls) == 2
+        s = await env.night(2)                                 # the last night the window allows
         a = env.row("ZZZ", "arm")
         assert a["status"] == "rejected" and a["reason"] == "infra:borrow_check_failed"
         assert a["shortable"] is None and a["easy_to_borrow"] is None          # nothing was learned, nothing recorded
         assert type(exc).__name__ in a["detail"]["borrow_error"]
-        assert s["armed"] == [] and s["errors"] == []                          # a recorded outcome, not a crashed run
-        await env.night(1)
-        assert env.row("ZZZ", "trigger") is None
+        assert s["armed"] == [] and s["errors"] == [] and s["deferred"] == []  # a recorded outcome, not a crashed run
+        assert s["rejected"] == [{"ticker": "ZZZ", "reason": "infra:borrow_check_failed", "stage": "arm"}]
+        await env.night(3)
+        assert env.row("ZZZ", "trigger") is None and len(env.borrow_calls) == 3     # a rejected episode never advances
+
+    async def test_a_transient_borrow_failure_on_the_arm_night_still_arms_the_next_night(self, env):
+        env.load("ZZZ", [(150, 152, 141, 148)] + TRIGGER_THEN_TIME_STOP[1:])        # D1 does not break 140
+        env.plan["ZZZ"] = [ec.ExecutionUnreachable("down"), ETB]
+        s0 = await env.night(0)
+        assert env.row("ZZZ", "arm") is None and len(s0["deferred"]) == 1 and s0["armed"] == []
+        s1 = await env.night(1)
+        a = env.row("ZZZ", "arm")
+        assert a["status"] == "armed" and a["event_date"] == D[1] and a["detail"]["late_sessions"] == 1
+        assert s1["armed"] == [{"ticker": "ZZZ", "level": 141.0, "stop": STOP}] and s1["deferred"] == []
+        # a LATE arm: the level on the row is the one in force (D1's low), not the climax day's
+        assert (a["prior_day_low"], a["limit_price"]) == (141.0, psh.short_limit_price(141.0))
+        assert a["climax_low"] == 140.0
+        await env.night(2)                                     # D2 (138,145,130,132) breaks 141 -> triggers after the late arm
+        assert env.row("ZZZ", "trigger")["status"] == "triggered"
+        assert [r["row_kind"] for r in env.rows] == ["arm", "trigger"]
+
+    async def test_a_deferral_is_in_the_audit_row_but_a_deferral_alone_pages_nothing(self, env):
+        env.load("ZZZ", TRIGGER_THEN_TIME_STOP)
+        env.plan["ZZZ"] = [ec.ExecutionUnreachable("down")]
+        s = await env.night(0)
+        assert "deferred 1" in env.audit[0][1] and '"deferred": [{' in env.audit[0][2]
+        assert s["errors"] == []                               # the job pages on `errors` only (see TestJobWiring)
+
+    async def test_only_an_infra_failure_defers_a_definite_answer_is_written_at_once(self, env):
+        env.load("ZZZ", TRIGGER_THEN_TIME_STOP)
+        env.plan["ZZZ"] = [HTB]
+        s = await env.night(0)
+        assert env.row("ZZZ", "arm")["reason"] == "borrow:hard_to_borrow" and s["deferred"] == []
+
+    async def test_a_late_arm_records_the_level_in_force_not_the_climax_days_low(self, env):
+        env.load("ZZZ", [(150, 152, 142, 148)] + TRIGGER_THEN_TIME_STOP[1:])
+        await env.night(1)                                     # first met on D1's night (a carried-over candidate)
+        a = env.row("ZZZ", "arm")
+        assert a["status"] == "armed" and a["climax_low"] == 140.0
+        assert (a["prior_day_low"], a["limit_price"]) == (142.0, psh.short_limit_price(142.0))
+        assert a["stop_price"] == STOP                         # the stop is the climax high + buffer either way
 
     @pytest.mark.parametrize("mcap,reason", [
         (249_999_999, "filter:mcap_too_small"),
@@ -495,6 +601,75 @@ class TestArmDecision:
         s = await env.night(0)
         assert env.row("ZZZ", "arm")["status"] == "armed"
         assert len(s["errors"]) == 1 and s["errors"][0].startswith("BAD decide")
+
+    # ── ADR 0020 "NO adds, ever": one open episode per name ───────────────────────────────────────
+    @staticmethod
+    def _two_climaxes(env, d1_bar):
+        """ZZZ: D0 climaxes (150,160,140,155); D1 is ALSO flagged a climax. `d1_bar` decides how D1 treats D0."""
+        env.load("ZZZ", [d1_bar, (140, 148, 135, 138), (136, 140, 128, 130)])
+        env.cands.append({"ticker": "ZZZ", "scan_date": D[1], "market_cap": 1_000_000_000, "cap_tier": "small",
+                          "excluded_reason": None})
+
+    async def test_a_second_climax_on_a_name_with_an_open_episode_is_rejected_by_name(self, env):
+        # D1 is a record-volume gap-up climax that closes UNDER D0's high (158 < 160): D0's arm is not invalidated.
+        self._two_climaxes(env, (156, 165, 150, 158))
+        await env.night(0)
+        s1 = await env.night(1)
+        d1 = env.row("ZZZ", "arm", D[1])
+        assert d1["status"] == "rejected" and d1["reason"] == "episode_already_open"
+        assert d1["climax_high"] == 165.0 and d1["detail"]["open_episode"] is True      # geometry still recorded
+        assert s1["rejected"] == [{"ticker": "ZZZ", "reason": "episode_already_open", "stage": "arm"}]
+        assert len(env.borrow_calls) == 1                       # no broker read spent on it
+        for k in (2, 3, 4, 5, 6):
+            await env.night(k)
+        kinds = [(r["climax_date"], r["row_kind"]) for r in env.rows]
+        assert kinds.count((D[0], "trigger")) <= 1 and (D[1], "trigger") not in kinds and (D[1], "outcome") not in kinds
+        assert sum(1 for r in env.rows if r["row_kind"] == "trigger") <= 1                # never two entries on one name
+        assert [r["status"] for r in env.rows if r["row_kind"] == "arm"].count("armed") == 1
+
+    async def test_an_open_triggered_position_also_blocks_a_new_episode_no_adds(self, env):
+        env.load("ZZZ", TRIGGER_THEN_TIME_STOP)                  # D0 arms; D1 triggers; held through D5
+        env.cands.append({"ticker": "ZZZ", "scan_date": D[2], "market_cap": 1_000_000_000, "cap_tier": "small",
+                          "excluded_reason": None})
+        for k in (0, 1, 2):
+            await env.night(k)
+        assert env.row("ZZZ", "trigger")["status"] == "triggered" and env.row("ZZZ", "outcome") is None
+        a = env.row("ZZZ", "arm", D[2])
+        assert a["status"] == "rejected" and a["reason"] == "episode_already_open"
+
+    async def test_the_prior_episode_closing_on_the_same_bar_does_not_block_the_new_climax(self, env):
+        # D1 closes ABOVE D0's high (165 > 160): D0's arm is invalidated tonight - and D1 is the next, higher climax.
+        # Advance-then-decide: D0 is closed before the open-episode check reads, so D1 arms.
+        self._two_climaxes(env, (150, 170, 141, 165))
+        await env.night(0)
+        s1 = await env.night(1)
+        assert env.row("ZZZ", "outcome")["reason"] == "invalidated"
+        assert env.row("ZZZ", "arm", D[1])["status"] == "armed" and s1["rejected"] == []
+        assert len(env.borrow_calls) == 2
+
+    async def test_a_catch_up_night_arms_the_earlier_climax_and_rejects_the_later_one(self, env):
+        self._two_climaxes(env, (156, 165, 150, 158))
+        env.cands.reverse()                                     # the real reader returns newest first
+        s = await env.night(1)                                  # the shadow first runs on D1's night
+        assert env.row("ZZZ", "arm", D[0])["status"] == "armed"
+        assert env.row("ZZZ", "arm", D[1])["reason"] == "episode_already_open"
+        assert [a["ticker"] for a in s["armed"]] == ["ZZZ"]
+
+    async def test_a_different_name_is_never_blocked_by_an_open_episode(self, env):
+        env.load("ZZZ", TRIGGER_THEN_TIME_STOP)
+        env.load("AAA", TRIGGER_THEN_TIME_STOP)
+        await env.night(0)
+        assert env.row("ZZZ", "arm")["status"] == "armed" and env.row("AAA", "arm")["status"] == "armed"
+
+    async def test_a_name_may_arm_again_once_its_earlier_episode_has_an_outcome(self, env):
+        env.load("ZZZ", [(150, 152, 141, 148), (150, 153, 142, 149), (150, 154, 143, 150), (150, 150, 140, 145)])
+        for k in (0, 1, 2, 3):
+            await env.night(k)                                  # D0's arm expires untriggered on D3
+        assert env.row("ZZZ", "outcome")["reason"] == "expired_untriggered"
+        env.cands.append({"ticker": "ZZZ", "scan_date": D[3], "market_cap": 1_000_000_000, "cap_tier": "small",
+                          "excluded_reason": None})
+        await env.night(3)
+        assert env.row("ZZZ", "arm", D[3])["status"] == "armed"
 
 
 @pytest.mark.asyncio
@@ -651,7 +826,8 @@ class TestLifecycle:
         env.load("ZZZ", TRIGGER_THEN_TIME_STOP)
         await env.night(0)
         await env.night(1)
-        env.bars["ZZZ"][N_HIST + 1]["low_price"] = 141.0       # a corrected bar: D1 no longer breaks 140
+        env.bars["ZZZ"][N_HIST + 1] = bar(D[1], 150, 153, 141, 148)    # a corrected bar: D1 no longer breaks 140 ...
+        env.bars["ZZZ"][N_HIST + 2] = bar(D[2], 150, 153, 142, 149)    # ... and D2 does not break D1's (corrected) low 141
         await env.night(2)
         o = env.row("ZZZ", "outcome")
         assert (o["status"], o["reason"]) == ("voided", "void_replay_mismatch")
