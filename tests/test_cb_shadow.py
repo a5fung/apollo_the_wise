@@ -608,17 +608,195 @@ class TestMinuteFailures:
             assert store.entry[k]["fill"] == v["fill"] and store.entry[k]["status"] == v["status"]
 
 
+class TestAMissedWatchNight:
+    def test_a_missed_watch_night_is_named_in_the_audit_row_and_its_breakouts_are_not_recovered(self, world):
+        """The look-back recovers ENTRIES, not a WATCH LIST: with no D = 09-16 rows, E = 09-17 has nothing to
+        break out of, tonight and on every later night. The audit row says which sessions had no watch rows."""
+        m, store, coll = world
+        out = run(BREAK_DAY)                                            # night 09-16 never ran
+        assert not store.entry and WATCH_NIGHT.isoformat() in out["entry_days_without_watch"]
+        nxt = run(m.cal[m.cal.index(BREAK_DAY) + 1])
+        assert not [r for r in store.entry.values() if r["break_date"] == BREAK_DAY]
+        assert WATCH_NIGHT.isoformat() in nxt["entry_days_without_watch"]      # still named a night later
+        assert all(day != BREAK_DAY for day, _t in coll.minute_calls)          # and no minute was ever fetched for it
+
+    def test_a_session_with_watch_rows_is_not_listed(self, world):
+        m, store, _ = world
+        run(WATCH_NIGHT)
+        out = run(BREAK_DAY)
+        assert WATCH_NIGHT.isoformat() not in out["entry_days_without_watch"]
+        assert out["entry_rows"] == 20
+
+
+class TestMinuteFeedDown:
+    """A hanging / empty feed costs a bounded few minutes, not the job's whole budget."""
+
+    @staticmethod
+    def _fetch(monkeypatch, responder, tickers, out=None):
+        from agents.market_intelligence import collector
+        calls = []
+
+        async def fake(batch, start, end, timeout_s=6.0):
+            calls.append(tuple(batch))
+            return responder(batch, len(calls))
+        monkeypatch.setattr(collector, "get_alpaca_minute_bars_window", fake)
+        got = asyncio.run(sh.fetch_minutes(BREAK_DAY, tickers, out))
+        return got, calls
+
+    def test_three_empty_batches_in_a_row_end_the_fetch_as_an_outage(self, monkeypatch):
+        tickers = [f"T{i:02d}" for i in range(60)]                      # 12 batches of 5
+        out = {"minutes_feed_down": False}
+        (mins, outage), calls = self._fetch(monkeypatch, lambda b, n: {}, tickers, out)
+        assert outage is True and out["minutes_feed_down"] is True
+        assert len(calls) == 2 * sh.MINUTE_EMPTY_STREAK_STOP == 6         # 3 batches x (ask + one retry), not 24
+        assert set(mins) == set(tickers) and {st for _mb, st in mins.values()} == {"no_minutes"}
+
+    def test_the_stop_is_an_outage_even_when_earlier_batches_were_fine(self, monkeypatch):
+        """Otherwise the tickers never asked would be written as `no_minutes` abstains on a feed that merely died."""
+        tickers = [f"T{i:02d}" for i in range(60)]
+        good = synth_minutes(BREAK_DAY, 10.0, 11.0, 9.5, 10.5)
+        (mins, outage), calls = self._fetch(
+            monkeypatch, lambda b, n: {t: good for t in b} if n == 1 else {}, tickers, {"minutes_feed_down": False})
+        assert outage is True
+        assert mins["T00"][1] == "ok" and mins["T59"][1] == "no_minutes"
+
+    def test_two_empty_batches_then_a_good_one_do_not_stop_the_fetch(self, monkeypatch):
+        tickers = [f"T{i:02d}" for i in range(40)]                      # 8 batches
+        good = synth_minutes(BREAK_DAY, 10.0, 11.0, 9.5, 10.5)
+        # calls 1-4 are batches 1 and 2 (each asked twice) and return nothing: a streak of TWO, under the stop of 3
+        out = {"minutes_feed_down": False}
+        (mins, outage), calls = self._fetch(
+            monkeypatch, lambda b, n: {} if n <= 4 else {t: good for t in b}, tickers, out)
+        assert outage is False and out["minutes_feed_down"] is False
+        assert len(calls) == 4 + 6                                       # the 2 failed batches twice, then 6 good ones
+        assert sum(1 for mb, st in mins.values() if st == "ok") == 30
+        assert [t for t, (mb, st) in mins.items() if st == "no_minutes"] == tickers[:10]
+
+    def test_once_a_day_finds_the_feed_down_the_later_days_of_the_run_do_not_ask_again(self, world, monkeypatch):
+        m, store, coll = world
+        coll.outage_days.add(BREAK_DAY)
+        run(WATCH_NIGHT)
+        run(BREAK_DAY)                                                  # deferred: nothing returned
+        calls = []
+
+        async def feed_down(e, tickers, out=None):
+            calls.append(e)
+            out["minutes_feed_down"] = True
+            return {}, True
+        monkeypatch.setattr(sh, "fetch_minutes", feed_down)
+        out = run(m.cal[m.cal.index(BREAK_DAY) + 1])                    # look-back: 09-16, 09-17, 09-18
+        assert calls == [BREAK_DAY]                                     # 09-18 had candidates too, and did not ask
+        assert out["minutes_feed_down"] is True and out["minutes_deferred"] >= 2
+        assert not store.entry
+
+
+def _rescale_bars(m, ratio, when=lambda d: True):
+    """What the 17:00 pull leaves behind for a split: MRNA's stored bars on the post-split scale (price / ratio,
+    volume x ratio) - the split is 1:4 forward at ratio 4.0, 4:1 reverse at 0.25. `when` picks the dates."""
+    m.bars["MRNA"] = [(d, o / ratio, h / ratio, l / ratio, c / ratio, v * ratio) if when(d) else (d, o, h, l, c, v)
+                      for d, o, h, l, c, v in m.bars["MRNA"]]
+
+
+SPLITS = pytest.mark.parametrize("split_from,split_to,ratio", [(1, 4, 4.0), (4, 1, 0.25)],
+                                 ids=["forward_1_for_4", "reverse_4_for_1"])
+
+
 class TestSplitGuard:
-    def test_a_split_between_the_watch_night_and_the_break_day_abstains_every_variant(self, world):
+    @SPLITS
+    def test_a_split_between_the_watch_night_and_the_break_day_abstains_every_variant(self, world, split_from,
+                                                                                      split_to, ratio):
+        """Both directions, with the stored bars ACTUALLY on the post-split scale (as the 17:00 pull leaves them)
+        and the pivot still raw from night D. Before the breakout test carried the pivot into the stored units, a
+        forward split wrote no row at all and a reverse one wrote a row for every K whether or not it broke out."""
+        m, store, coll = world
+        run(WATCH_NIGHT)
+        w = dict(store.watch[("MRNA", WATCH_NIGHT)])
+        e_bar = {x[0]: x for x in m.bars["MRNA"]}[BREAK_DAY]
+        _rescale_bars(m, ratio)
+        store.splits.append({"ticker": "MRNA", "execution_date": BREAK_DAY, "split_from": split_from,
+                             "split_to": split_to, "adjustment_applied": True})
+        out = run(BREAK_DAY)
+        rows = [r for r in store.entry.values() if r["break_date"] == BREAK_DAY]
+        assert len(rows) == len(store.entry) == 20 and {(r["status"], r["reason"]) for r in rows} == \
+            {("abstain", sh.SPLIT_REASON)}
+        assert not coll.minute_calls                                # no minute was fetched for a raw/adjusted mismatch
+        assert out["entry_reasons"][sh.SPLIT_REASON] == 20
+        assert out["entry_split_rescaled"] == 1 and out["entry_split_unresolved"] == 0
+        for r in rows:                                              # pivot and gap read in the STORED units
+            assert r["pivot"] == pytest.approx(w[f"pivot_{r['k']}"] / ratio)
+            assert r["gap_pct"] == pytest.approx(e_bar[1] / w[f"pivot_{r['k']}"] - 1.0)
+
+    @SPLITS
+    def test_a_split_on_a_name_that_did_not_break_out_writes_no_row_in_either_direction(self, world, split_from,
+                                                                                        split_to, ratio):
+        """The pivot is lifted out of reach (x1.5). On the RAW numbers a reverse split would still read as a break
+        (E's stored high is 4x the raw pivot) - the phantom candidate that used to enter the one-trade-per-base
+        history; in the stored units neither direction broke out, so neither writes anything."""
+        m, store, coll = world
+        run(WATCH_NIGHT)
+        w = store.watch[("MRNA", WATCH_NIGHT)]
+        for key in ("pivot_k5", "pivot_k10", "pivot_full", "pivot_tl"):
+            w[key] *= 1.5
+        _rescale_bars(m, ratio)
+        store.splits.append({"ticker": "MRNA", "execution_date": BREAK_DAY, "split_from": split_from,
+                             "split_to": split_to, "adjustment_applied": True})
+        out = run(BREAK_DAY)
+        assert not store.entry and out["entry_candidates"] == 0 and out["entry_rows"] == 0
+        assert out["entry_split_rescaled"] == 1 and not coll.minute_calls
+
+    def test_a_phantom_split_that_moved_no_bar_is_read_off_the_data_not_the_table(self, world):
+        """Polygon sometimes reports a split that never happened; `splits_ingest` marks it applied WITHOUT rewriting
+        a bar. The table says 1:4, the stored D close is unchanged: the scale is 1.0 (a table-only rescale would
+        have lifted the pivot x0.25 and missed a real breakout)."""
         m, store, coll = world
         store.splits.append({"ticker": "MRNA", "execution_date": BREAK_DAY, "split_from": 1, "split_to": 4,
                              "adjustment_applied": True})
         run(WATCH_NIGHT)
         out = run(BREAK_DAY)
-        assert len(store.entry) == 20 and {(r["status"], r["reason"]) for r in store.entry.values()} == \
-            {("abstain", sh.SPLIT_REASON)}
-        assert not coll.minute_calls                                # no minute was fetched for a raw/adjusted mismatch
-        assert out["entry_reasons"][sh.SPLIT_REASON] == 20
+        assert len(store.entry) == 20 and {r["reason"] for r in store.entry.values()} == {sh.SPLIT_REASON}
+        assert out["entry_split_rescaled"] == 1 and out["entry_split_unresolved"] == 0
+
+    def test_an_unexplained_scale_sits_the_name_out_instead_of_guessing(self, world):
+        m, store, coll = world
+        run(WATCH_NIGHT)
+        _rescale_bars(m, 2.0)                                       # the table says 1:4; the bars moved by half
+        store.splits.append({"ticker": "MRNA", "execution_date": BREAK_DAY, "split_from": 1, "split_to": 4,
+                             "adjustment_applied": True})
+        out = run(BREAK_DAY)
+        assert not store.entry and out["entry_split_unresolved"] == 1 and out["entry_split_rescaled"] == 0
+        assert out["entry_split_unresolved_tickers"] == ["MRNA:2026-09-17"]
+
+    def test_an_unapplied_split_sits_out_tonight_and_the_catch_up_writes_it_once_applied(self, world):
+        m, store, coll = world
+        run(WATCH_NIGHT)
+        # the split executed on E; E's bar (grouped daily) is on the new scale, the history is not yet adjusted
+        _rescale_bars(m, 4.0, when=lambda d: d == BREAK_DAY)
+        store.splits.append({"ticker": "MRNA", "execution_date": BREAK_DAY, "split_from": 1, "split_to": 4,
+                             "adjustment_applied": False})
+        out = run(BREAK_DAY)
+        assert not store.entry and out["entry_split_unresolved"] == 1 and not coll.minute_calls
+        # the next 17:00 pull applies it: the history (and every later bar) is on the new scale
+        _rescale_bars(m, 4.0, when=lambda d: d != BREAK_DAY)
+        store.splits[0]["adjustment_applied"] = True
+        out = run(m.cal[m.cal.index(BREAK_DAY) + 1])
+        rows = [r for r in store.entry.values() if r["break_date"] == BREAK_DAY]
+        assert len(rows) == 20 and {r["reason"] for r in rows} == {sh.SPLIT_REASON}
+        assert out["entry_split_rescaled"] >= 1
+
+    def test_a_split_after_the_break_day_never_touches_the_days_recorded_fills(self, world):
+        m, store, coll = world
+        run(WATCH_NIGHT)
+        run(BREAK_DAY)
+        before = {k: dict(v) for k, v in store.entry.items()}
+        assert any(v["status"] == "filled" for v in before.values())
+        nxt = m.cal[m.cal.index(BREAK_DAY) + 1]
+        _rescale_bars(m, 0.25)                                      # a reverse 4:1 on the next session
+        store.splits.append({"ticker": "MRNA", "execution_date": nxt, "split_from": 4, "split_to": 1,
+                             "adjustment_applied": True})
+        run(nxt)
+        for k, v in before.items():                                 # the look-back re-reads E: nothing is rewritten
+            assert store.entry[k] == v
+        assert not any(r["reason"] == sh.SPLIT_REASON for r in store.entry.values() if r["break_date"] == BREAK_DAY)
 
     def test_an_announced_future_split_changes_nothing(self, world):
         m, store, coll = world
@@ -703,6 +881,43 @@ class TestFailureHandling:
         from scripts import check_job_date_sources as cj
         job = next(j for j in cj.analyse()["jobs"] if j["job_id"] == "consolidation_breakout_shadow")
         assert job["sends"] == [] and job["date_from_clock"] == [] and job["reach"] > 3
+
+    def test_the_steps_run_watch_first_then_entries_then_exits(self, world, monkeypatch):
+        m, store, _ = world
+        order = []
+        for name in ("build_watch", "record_entries", "walk_exits"):
+            real = getattr(sh, name)
+
+            async def spy(*a, _real=real, _n=name, **k):
+                order.append(_n)
+                return await _real(*a, **k)
+            monkeypatch.setattr(sh, name, spy)
+        run(WATCH_NIGHT)
+        assert order == ["build_watch", "record_entries", "walk_exits"]
+
+    def test_a_hanging_minute_fetch_cannot_stop_tonights_watch_list_and_the_next_night_recovers_the_entries(
+            self, world, monkeypatch):
+        """Tonight's watch list is the one output with no catch-up (build_watch builds only tonight); the entries
+        come back from the 3-session look-back. A hang in the minute fetch used to eat the shared 900 s budget
+        BEFORE the watch step ran."""
+        from agents.market_intelligence import collector
+        m, store, coll = world
+        run(WATCH_NIGHT)
+
+        async def hang(*a, **k):
+            await asyncio.sleep(60)
+        monkeypatch.setattr(collector, "get_alpaca_minute_bars_window", hang)
+        monkeypatch.setattr(sh, "BUDGET_S", 2.0)
+        out = run(BREAK_DAY)                                            # no raise: fail open
+        assert out["timed_out"] is True and not store.entry
+        assert ("MRNA", BREAK_DAY) in store.watch                       # tonight's watch list WAS written
+        assert sh.AUDIT_ERROR_EVENT in [a[0] for a in store.audit]
+        monkeypatch.setattr(sh, "BUDGET_S", 900)
+        coll.install(monkeypatch)                                       # the feed is back
+        nxt = m.cal[m.cal.index(BREAK_DAY) + 1]
+        run(nxt)
+        assert len([r for r in store.entry.values() if r["break_date"] == BREAK_DAY]) == 20     # recovered
+        assert ("MRNA", nxt) in store.watch
 
     def test_a_crash_propagates_after_the_audit_row_and_the_other_steps_still_ran(self, world, monkeypatch):
         m, store, _ = world

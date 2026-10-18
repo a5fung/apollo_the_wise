@@ -17,17 +17,25 @@ THE LINE. This module is a passive OBSERVER:
   - SILENT. No Telegram on any normal night. A crash propagates to `audit_wrap`, whose `notify_job_failure` is
     the one page (Telegram only on a job failure). A quiet night is not an alert.
 
-THE NIGHT (17:48 ET mon-fri, after the 17:00 nightly pull; one job, one audit row):
-  a. ENTRIES. For each of the last `ENTRY_LOOKBACK_SESSIONS` (3) sessions E, the previous session's watch rows
-     whose pivot (per K in k5 / k10 / full / tl) E's daily high cleared become candidates; one trade per base
-     (the runner's spec key + chain key) is stamped; E's regular-hours minutes come from
-     `collector.get_alpaca_minute_bars_window`; `cb.entry_variants` + `cb.close_entry` write one row per variant,
-     abstains and no-triggers included with a NAMED reason. The 3-session look-back is the catch-up: a night the
-     job missed, or whose minute fetch failed outright, is written the next night.
-  b. TONIGHT'S WATCH LIST. Universe from `mi_daily_closes` + `mi_security_types` (`cb.universe_ok`, today's raw
+THE NIGHT (17:48 ET mon-fri, after the 17:00 nightly pull; one job, one audit row). The steps run in this order,
+WATCH FIRST (see `_run_steps`: tonight's watch list is the one output nothing re-creates, so a slow minute fetch
+must not be able to starve it):
+  a. TONIGHT'S WATCH LIST. Universe from `mi_daily_closes` + `mi_security_types` (`cb.universe_ok`, today's raw
      factor is 1), RS percentiles across the WHOLE universe, group RS from SIC-2 (`mi_consolidation_breakout_sic`,
      filled lazily, capped per night), the phases from SPY / QQQ, `cb.explain_watch` per name, `cb.cell_flags`
      per K. One row per passing name, all features as JSON.
+  b. ENTRIES. For each of the last `ENTRY_LOOKBACK_SESSIONS` (3) sessions E, the previous session's watch rows
+     whose pivot (per K in k5 / k10 / full / tl) E's daily high cleared become candidates; one trade per base
+     (the runner's spec key + chain key) is stamped; E's regular-hours minutes come from
+     `collector.get_alpaca_minute_bars_window`; `cb.entry_variants` + `cb.close_entry` write one row per variant,
+     abstains and no-triggers included with a NAMED reason. The 3-session look-back recovers the ENTRIES of a
+     break day the job missed or whose minute fetch failed outright (written the next night). It does NOT rebuild
+     a missed night's WATCH LIST: a night the watch step did not write (a crash, a timeout, a skip with no SPY bar)
+     leaves no D row, so the breakouts of the NEXT session are never seen - that gap is named in the audit row's
+     `watch_n` and in docs/setups/consolidation_breakout.md (deviation 4), not silently recovered.
+     A split between D and today is read BEFORE the breakout test (`split_scales`): the pivot is carried into the
+     stored bars' units, so a forward and a reverse split are both judged on a like-for-like breakout and a real
+     one abstains every variant by name (`split_after_watch`).
   c. EXITS. Every filled entry with a non-mature arm is walked over EVERY arm in `cb.ARMS` from stored daily bars
      (full recompute each night: restart-safe), day-0 stop-outs booked once by `cb.day0_result_to_outcome`.
      A split after the break day makes the walk `unbookable` (the #667 HTF precedent: stored fills are raw, stored
@@ -35,7 +43,9 @@ THE NIGHT (17:48 ET mon-fri, after the 17:00 nightly pull; one job, one audit ro
   d. ONE audit row, `consolidation_breakout_shadow_run`.
 
 The whole job runs under `BUDGET_S` and FAILS OPEN on timeout (an `..._error` audit row, no raise): every step is
-idempotent, so the next night picks up where this one stopped.
+idempotent, so the next night picks up where this one stopped. That `*_error` row is not silent: the audit
+self-check reads it (`audit_invariants.check_audit_error_window`, any `*_error` event in 24 h, and
+`system_audit`'s `audit_errors_per_day`) - a timeout is reported through the audit, not through a job-failure page.
 """
 from __future__ import annotations
 
@@ -99,12 +109,15 @@ SCAN_CHUNK = 250                   # tickers per to_thread slice: cancellation l
 WALK_TICKER_CHUNK = 200            # tickers per exit-walk slice: their bars are loaded, walked and freed together
 MINUTE_BATCH = 5                   # tickers per Alpaca call (the helper's whole-batch timeout is generous below)
 MINUTE_TIMEOUT_S = 45.0
+MINUTE_EMPTY_STREAK_STOP = 3       # empty batches in a row (each already retried once) = the feed is down: stop asking
 EXIT_CLOSES_BACK_DAYS = 100        # calendar days of pre-entry closes loaded for the SMA10/20 trails
 EXIT_STALE_MARGIN_SESSIONS = 10    # past horizon + this many sessions a still-open entry is no longer re-walked
 
 VARIANTS = cb.ENTRY_VARIANTS + ("close",)
 RETRYABLE_REASON = "no_minutes"    # the only abstain a later night may overwrite (db.CB_ENTRY_UPSERT_SQL's WHERE)
 SPLIT_REASON = "split_after_watch"
+SPLIT_SCALE_TOL = 0.02             # an observed D-close ratio within 2% of 1.0 or of the split table's factor is that factor
+ENTRY_UNRESOLVED_LIST_MAX = 50     # tickers named in the audit row for the split-unresolved sit-out
 KS = cb.PIVOT_KEYS
 CELL_NAMES = cb.CELLS + cb.REPORT_CELLS             # the 8 deciding + 2 reported-only cells
 POLE_DRIFT_MAX = 3                 # poles <= this many sessions apart are ONE base (the runner's chain key)
@@ -550,28 +563,91 @@ def _feed() -> str:
     return os.environ.get("ALPACA_DATA_FEED", "iex").lower()
 
 
-async def fetch_minutes(e: date, tickers: list) -> tuple:
+async def fetch_minutes(e: date, tickers: list, out: Optional[dict] = None) -> tuple:
     """({ticker: (MinuteBars | None, state)}, outage). `outage` = tickers were asked for and NOT ONE came back with
     a single bar - a failed fetch (the collector returns {} on any failure), which must never be written as a
-    `no_minutes` abstain. A ticker missing from an otherwise good fetch really had no bars."""
+    `no_minutes` abstain. A ticker missing from an otherwise good fetch really had no bars.
+
+    `MINUTE_EMPTY_STREAK_STOP` empty batches IN A ROW end the fetch (after each batch's one retry) and make it an
+    outage whatever came back before: a hanging feed costs a bounded few minutes instead of the whole budget
+    (20 batches x 2 tries x 45 s). The caller defers the tickers never asked to the next night instead of writing
+    them as `no_minutes` (only on the oldest look-back day, the last chance, are they written). The stop sets `out["minutes_feed_down"]`, so the later look-back days of the same run do not try again."""
     from agents.market_intelligence import collector
     start = datetime(e.year, e.month, e.day, 9, 30, tzinfo=_ET)
     end = datetime(e.year, e.month, e.day, 16, 0, tzinfo=_ET)
     raw: dict = {}
+    streak, stopped = 0, False
     for lo in range(0, len(tickers), MINUTE_BATCH):
         batch = tickers[lo:lo + MINUTE_BATCH]
         got = await collector.get_alpaca_minute_bars_window(batch, start, end, timeout_s=MINUTE_TIMEOUT_S) or {}
         if not any(got.get(t) for t in batch):         # {} is also what a transient failure returns: ask once more
             got = await collector.get_alpaca_minute_bars_window(batch, start, end, timeout_s=MINUTE_TIMEOUT_S) or {}
         raw.update(got)
+        streak = 0 if any(got.get(t) for t in batch) else streak + 1
+        if streak >= MINUTE_EMPTY_STREAK_STOP:
+            stopped = True
+            break
+    if stopped and out is not None:
+        out["minutes_feed_down"] = True
     got_any = any(raw.get(t) for t in tickers)
-    outage = bool(tickers) and not got_any
+    outage = bool(tickers) and (stopped or not got_any)
     return {t: minute_bars_from_alpaca(raw.get(t) or [], e) for t in tickers}, outage
 
 
-def _candidate(w: dict, k: str, e: date, day: tuple, cal_index: dict) -> Optional[dict]:
-    """One flat candidate (the shape the runner's stamping reads) or None when K did not break out."""
+def split_scale(window_splits: list, d_close_now, d_close_watch) -> Optional[float]:
+    """The factor that carries the WATCH NIGHT's pivot into the units of the bars stored NOW, for a ticker with a
+    split executing in (D, today]; None when it cannot be told.
+
+    The pivot was stored raw on night D; the 17:00 pull has since retro-adjusted the stored bars for every APPLIED
+    split, so E's stored bar and the pivot sit on two price scales. The scale is read OFF THE DATA - D's stored
+    close now over the close the watch row recorded that night - and then snapped to 1.0 (nothing moved: Polygon's
+    PHANTOM splits are marked applied without rewriting a bar, `splits_ingest`) or to the split table's own factor
+    (the product of split_from / split_to). A reading that is neither (within `SPLIT_SCALE_TOL`) is unexplained and
+    returns None, never a guess."""
+    try:
+        table = 1.0
+        for s in window_splits:
+            table *= float(s["split_from"]) / float(s["split_to"])
+        obs = float(d_close_now) / float(d_close_watch)
+    except (TypeError, ValueError, ZeroDivisionError, KeyError):
+        return None
+    if not (math.isfinite(obs) and math.isfinite(table) and obs > 0.0 and table > 0.0):
+        return None
+    best = min((1.0, table), key=lambda c: abs(obs / c - 1.0))
+    return best if abs(obs / best - 1.0) <= SPLIT_SCALE_TOL else None
+
+
+async def split_scales(sp: dict, watch: list, d: date, today: date, e: date, out: dict) -> dict:
+    """{ticker: factor | None} for each watch ticker with a split in (D, today] (`sp`); a ticker without one is
+    absent (factor 1). None = the ticker SITS OUT tonight's entry step, counted and named in the audit row: a split
+    executed and NOT yet applied leaves the stored series on two scales (the same reason the watch step drops it),
+    and an unexplained scale is never guessed. Both heal: the 3-session look-back retries the day once the split
+    is applied."""
+    if not sp:
+        return {}
+    unapplied = await cb_get_unapplied_split_tickers(d + timedelta(days=1), today)
+    d_close = {r[0]: r[5] for r in await cb_get_ticker_bars(sorted(sp), d, d) if r[1] == d and r[5] is not None}
+    w_close = {w["ticker"]: w.get("close") for w in watch}
+    scale = {t: (None if t in unapplied else split_scale(ss, d_close.get(t), w_close.get(t)))
+             for t, ss in sp.items()}
+    bad = sorted(t for t, v in scale.items() if v is None)
+    out["entry_split_rescaled"] += len(scale) - len(bad)
+    if bad:
+        out["entry_split_unresolved"] += len(bad)
+        room = ENTRY_UNRESOLVED_LIST_MAX - len(out["entry_split_unresolved_tickers"])
+        out["entry_split_unresolved_tickers"].extend(f"{t}:{e}" for t in bad[:max(room, 0)])
+        logger.warning(f"consolidation_breakout_shadow: E={e}: {len(bad)} ticker(s) with a split in the window sit "
+                       f"out the entry step (unapplied or unexplained scale): {bad[:10]}")
+    return scale
+
+
+def _candidate(w: dict, k: str, e: date, day: tuple, cal_index: dict, scale: float = 1.0) -> Optional[dict]:
+    """One flat candidate (the shape the runner's stamping reads) or None when K did not break out. `scale` carries
+    the stored pivot into the units of E's stored bar (`split_scale`; 1.0 for every ticker without a split in
+    the window), so the breakout test and the gap compare like with like."""
     pivot = w.get(f"pivot_{k}")
+    if pivot is not None and scale != 1.0:
+        pivot = pivot * scale
     open_e, high_e, low_e, close_e = day
     if not breaks_out(high_e, pivot):
         return None
@@ -636,6 +712,7 @@ def _group_complete(rows: list) -> bool:
 async def record_entries_for(e: date, d: date, cal: list, cal_index: dict, out: dict, *, oldest: bool) -> None:
     watch = await cb_get_watch_rows(d)
     if not watch:
+        out["entry_days_without_watch"].append(d.isoformat())      # a missed night, or a genuinely empty one: named, not rebuilt
         return
     tickers = sorted({w["ticker"] for w in watch})
     day = {}
@@ -648,12 +725,24 @@ async def record_entries_for(e: date, d: date, cal: list, cal_index: dict, out: 
     for r in await cb_get_entry_state(e):
         state[(r["ticker"], r["pole_date"].isoformat(), r["k"])].append(r)
 
+    # SPLIT GUARD, read BEFORE the breakout test: the pivot was stored raw on night D, E's stored bar is split-
+    # adjusted (the 17:00 pull), so the test must compare like with like - a forward split would otherwise hide
+    # a real breakout (no candidate, no row), a reverse one invent it (every K, every variant). The pivot is carried
+    # into the stored units (`split_scale`); a candidate that then breaks out abstains EVERY variant below
+    # (`split_after_watch`: minutes are raw as traded on E, the stored bars are not).
+    sp = await cb_get_splits_after(tickers, d, cal[-1])
+    scale = await split_scales(sp, watch, d, cal[-1], e, out)
+    split_t = {t for t, v in sp.items() if v}
+
     cands = []
     for w in watch:
         if w["ticker"] not in day:
             continue                                  # no bar for E: the runner's 'no_next_bar' - no candidate
+        sc = scale.get(w["ticker"], 1.0)
+        if sc is None:
+            continue                                  # a split nobody can scale tonight: sits out, counted (split_scales)
         for k in KS:
-            c = _candidate(w, k, e, day[w["ticker"]], cal_index)
+            c = _candidate(w, k, e, day[w["ticker"]], cal_index, scale=sc)
             if c is not None and not _group_complete(state.get((c["ticker"], c["pole_date"], c["K"]), [])):
                 cands.append(c)
     out["entry_candidates"] += len(cands)
@@ -678,15 +767,14 @@ async def record_entries_for(e: date, d: date, cal: list, cal_index: dict, out: 
     cands = usable
     stamp_forward([h for h in history if h["pole_ci"] is not None], cands, poles)
 
-    # split guard: stored bars are retro-adjusted, minutes are raw as of E
-    sp = await cb_get_splits_after(ctick, d, cal[-1])
-    split_t = {t for t, v in sp.items() if v}
-
-    # minutes for every candidate not split-abstained
+    # minutes for every candidate not split-abstained (`split_t`, above)
     need_min = sorted({c["ticker"] for c in cands if c["ticker"] not in split_t})
     mins, outage = ({}, False)
     if need_min:
-        mins, outage = await fetch_minutes(e, need_min)
+        if out["minutes_feed_down"]:                      # an earlier day of THIS run found the feed down: do not ask again
+            outage = True
+        else:
+            mins, outage = await fetch_minutes(e, need_min, out)
     if outage and not oldest:
         out["minutes_deferred"] += len(cands)
         out["minutes_outage_days"].append(e.isoformat())
@@ -824,7 +912,8 @@ def _new_out(today: date) -> dict:
     return {"date": today.isoformat(), "skipped": None, "timed_out": False, "step_errors": [],
             "entry_candidates": 0, "entry_pole_off_calendar": 0, "entry_day_bar_unusable": 0,
             "entry_rows": 0, "entry_status": Counter(),
-            "entry_reasons": Counter(), "minutes_deferred": 0, "minutes_outage_days": [],
+            "entry_reasons": Counter(), "minutes_deferred": 0, "minutes_outage_days": [], "minutes_feed_down": False,
+            "entry_days_without_watch": [], "entry_split_rescaled": 0, "entry_split_unresolved": 0, "entry_split_unresolved_tickers": [],
             "watch_n": 0, "universe_n": 0, "prefilter_tickers": 0, "sic_errors": 0, "sic_fetched": 0,
             "sic_known": 0, "gate_funnel": {}, "cells_per_k": {}, "groups_ge10": 0, "members_with_group": 0,
             "phase_data_gap": None, "phases": {}, "bad_bars": 0, "exit_entries_open": 0,
@@ -833,16 +922,22 @@ def _new_out(today: date) -> dict:
 
 
 async def _run_steps(today: date, out: dict) -> Optional[BaseException]:
-    """The three steps, each isolated: a step that crashes is recorded and the others still run (a broken
-    minute fetch must not starve tonight's watch list). The FIRST failure is returned so the caller re-raises it
-    AFTER the audit row - a crash still propagates to `audit_wrap`."""
+    """The three steps, each isolated: a step that crashes is recorded and the others still run. The FIRST
+    failure is returned so the caller re-raises it AFTER the audit row - a crash still propagates to `audit_wrap`.
+
+    ORDER: watch -> entries -> exits. Tonight's watch list is the ONE output with no catch-up (`build_watch`
+    builds only tonight, so a night it did not write is never rebuilt, and the next session's breakouts then
+    have no D row), while the entries are re-derived from the 3-session look-back and the exits are recomputed in
+    full every night. So the step that cannot be redone runs first, and a slow or hanging minute fetch - which
+    the time budget cuts off - can only delay work the next night does again. Nothing in the watch step reads
+    the entries step: entries read the PREVIOUS sessions' watch rows (`scan_date <= D < today`)."""
     cal = await cb_get_calendar(today, CALENDAR_SESSIONS)
     if not cal or cal[-1] != today:
         out["skipped"] = "no_spy_bar_for_today"
         return None
     cal_index = {d: i for i, d in enumerate(cal)}
     first_exc: Optional[BaseException] = None
-    for name, step in (("entries", record_entries), ("watch", build_watch), ("exits", walk_exits)):
+    for name, step in (("watch", build_watch), ("entries", record_entries), ("exits", walk_exits)):
         try:
             await step(today, cal, cal_index, out)
         except Exception as e:

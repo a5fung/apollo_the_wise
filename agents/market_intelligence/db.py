@@ -5463,7 +5463,7 @@ async def initialize_schema() -> None:
 
         # #702 P6 — Consolidation Breakout forward SHADOW tables (watch / entry / exit + the SIC cache).
         # One module-level DDL string (`_CB_SHADOW_DDL`, end of this file), idempotent: the schema init and
-        # `tests/test_cb_shadow_ddl.py` run the very same text.
+        # `tests/test_cb_shadow.py::TestDdlAndStatements` and `tests/test_cb_shadow_pg.py` run the very same text.
         await conn.execute(_CB_SHADOW_DDL)
 
         # ── One-time cleanup: delete auto-generated descriptions for tickers ──

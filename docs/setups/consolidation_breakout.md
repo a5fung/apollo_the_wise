@@ -38,7 +38,7 @@ approved plan, not by the article · **T** = telemetry only, never gates.
 
 | Piece | Definition | Source | Code |
 |---|---|---|---|
-| Universe | common stock or ADR (or unknown type), ticker `^[A-Z]{1,5}$`, RAW close ≥ $5, 20-session median dollar volume ≥ $10M, ≥ 130 CONSECUTIVE sessions, not an exchange test symbol | **R**: universe floor reused from `rs_engine` — price floor $5 and median dollar-volume floor $10M (operator-signed 2026-06-15, #286; the sign-off lives in the `rs_engine` comment, no other document carries its text) | `cb.universe_ok`, `MIN_PRICE`, `MIN_DOLLAR_VOL` |
+| Universe | common stock or ADR (or unknown type), ticker `^[A-Z]{1,5}$`, RAW close ≥ $5, 20-session median dollar volume ≥ $10M, ≥ 130 CONSECUTIVE sessions, not an exchange test symbol | **R**: universe floor reused from `rs_engine` — price floor $5 (reused `rs_engine.MIN_PRICE`; no sign-off of its own is on record) and median dollar-volume floor $10M (operator-signed 2026-06-15, #286; the sign-off is on the dollar-volume floor and lives in the `rs_engine` comment, no other document carries its text) | `cb.universe_ok`, `MIN_PRICE`, `MIN_DOLLAR_VOL` |
 | Prior move | P = highest high in sessions [D−45, D−10]; pole_low = lowest low in [P−40, P]; high(P) / pole_low − 1 ≥ 0.30 | **S** *"anywhere from 30-100%+"*; the 40-session pole window is **P** (the article says only "sometime in the past 1-3 months") | `PRIOR_MOVE_MIN`, `POLE_LOOKBACK` |
 | Base | the sessions after P up to D; 10 to 45 sessions long | **S** *"usually 2 weeks to 2 months"* (10 = two weeks; 45 ≈ two months, rounded up from ~43) | `BASE_MIN_SESSIONS`, `BASE_MAX_SESSIONS` |
 | Base anchor | the base ends only if a CLOSE (not a wick) goes above high(P) | **R** the shipped HTF `_flag_resolved_by` (#592) | `_base_resolved` |
@@ -90,26 +90,43 @@ C6 (C1 + group ≥ 80) · C7 (SPY + QQQ above their 50-day instead of the 10/20 
 ## The forward shadow — what runs, nightly at 17:48 ET (mon–fri)
 
 One job, one audit row (`consolidation_breakout_shadow_run`), under a 900 s budget that FAILS OPEN on timeout (an
-`..._error` row, no raise — every step is idempotent). A step that crashes is recorded and the others still run; the FIRST
-failure is re-raised after the audit row so `audit_wrap` records it and `notify_job_failure` is the one page. No other Telegram.
+`..._error` row, no raise — every step is idempotent). That `*_error` row is not silent: the audit self-check reads it
+(`audit_invariants.check_audit_error_window` — any `*_error` event in the last 24 h — and `system_audit`'s
+`audit_errors_per_day`), so a timeout is reported through the audit, not through a job-failure page. A step that crashes is
+recorded and the others still run; the FIRST failure is re-raised after the audit row so `audit_wrap` records it and
+`notify_job_failure` is the one page. No other Telegram.
 
-1. **Entries.** For each of the last **3** sessions E (oldest first): the previous session's watch rows whose pivot E's daily
-   high cleared → candidates → one-trade-per-base stamping against every earlier candidate → E's minutes from
-   `collector.get_alpaca_minute_bars_window` (batches of 5, one retry) → `cb.entry_variants` + `cb.close_entry` → five rows
-   per candidate. A candidate whose minute fetch failed OUTRIGHT (not one ticker returned a bar) is deferred and written the
-   next night; on the oldest look-back day it is written as `no_minutes` instead. A `no_minutes` row may be overwritten by a
-   later fetch (and only that row — a fill is never moved).
-2. **Tonight's watch list.** SQL prefilter (price ≥ 5, median dollar volume ≥ 7M — a strict superset of the module's) →
+**Order: watch → entries → exits.** Tonight's watch list is the one output nothing re-creates (the entries come back from the
+3-session look-back, the exits are recomputed in full every night), so it runs FIRST: a slow or hanging minute fetch can cost
+the entries a night, never the watch list.
+
+1. **Tonight's watch list.** SQL prefilter (price ≥ 5, median dollar volume ≥ 7M — a strict superset of the module's) →
    `cb.universe_ok` → 130 consecutive sessions → RS percentiles over the WHOLE universe → group RS → phases (SPY/QQQ, joined by
    date) → `cb.explain_watch` → `cb.cell_flags` per K. Names with a split executed in their window and not yet applied to the
    stored bars sit the night out.
+2. **Entries.** For each of the last **3** sessions E (oldest first): the previous session's watch rows whose pivot E's daily
+   high cleared → candidates → one-trade-per-base stamping against every earlier candidate → E's minutes from
+   `collector.get_alpaca_minute_bars_window` (batches of 5, one retry; **3 empty batches in a row end the fetch as an outage**,
+   and the later look-back days of the same run do not ask again) → `cb.entry_variants` + `cb.close_entry` → five rows per
+   candidate. A candidate whose minute fetch failed OUTRIGHT (not one ticker returned a bar, or the fetch was stopped) is deferred
+   and written the next night; on the oldest look-back day it is written as `no_minutes` instead. A `no_minutes` row may be
+   overwritten by a later fetch (and only that row — a fill is never moved).
+   **Splits are read before the breakout test.** The pivot was stored raw on night D; the 17:00 pull has since split-adjusted the
+   stored bars, so E's bar and the pivot sit on two price scales. For a name with a split in (D, today] the pivot is carried into
+   the stored units (the scale is read off D's stored close against the close the watch row recorded, snapped to 1.0 — a
+   phantom split moved no bar — or to the split table's factor; anything else is unexplained). A name that then breaks out
+   abstains EVERY variant, named `split_after_watch` (minutes are raw as traded on E, the stored bars are not); a name that did
+   not break out writes nothing, in either split direction. A name whose split is executed but not yet applied, or whose scale is
+   unexplained, sits the entry step out for the night (counted in `entry_split_unresolved`, named in
+   `entry_split_unresolved_tickers`); the look-back retries it once the split is applied.
 3. **Exits.** Every filled entry with a non-mature arm has each of its NON-FINAL arms (of the 15) recomputed in full from stored
    bars; a mature arm is final and is neither recomputed nor overwritten. A split executing after E makes every still-open arm
    `unbookable` (stored fills are raw, stored bars retro-adjusted — the #667 HTF precedent); an arm that settled before the split
    keeps its valid pre-split outcome. A forward window cut at a data hole ends `degraded`, and an entry still open past the
    horizon + 10 sessions is no longer re-walked. Bars are loaded 200 tickers at a time.
 4. **Audit row** with watch count, universe size, the gate funnel, cells per K, new entries by status and reason, exits settled,
-   SIC fetched/known, wall time.
+   SIC fetched/known, wall time, and the entry-step diagnostics: `entry_days_without_watch` (look-back sessions with no watch
+   rows), `entry_split_rescaled` / `entry_split_unresolved` (+ `_tickers`), `minutes_feed_down`.
 
 Group RS needs SIC; the cache fills at most **300 names a night** (watch names first, then by dollar volume), so the first week
 runs with a thin group RS (`grp_pct` NULL where a group has < 10 known members) and the group cells (C2, C6) read False
@@ -122,24 +139,36 @@ until it fills. The SIC is the CURRENT one, not the point-in-time one the backte
   and **tens to a couple of hundred** watch rows for that `scan_date` (the backtest averaged ~210 a night over ~2,000
   universe names); `mi_consolidation_breakout_sic` gains up to 300 rows. (2) The first night a watch name's high clears its
   pivot: **5 entry rows per (name, K)** — a fill or a named abstain — and **15 exit rows per filled entry** the same night
-  (the plan said 12; `len(cb.ARMS)` is 15). (3) Zero Telegram. (4) apollo-execution never imports the module.
+  (the plan said 12; `len(cb.ARMS)` is 15). (3) Zero Telegram. (4) apollo-execution never imports the module. (5) Every
+  minute-variant row carries `feed`, and it reads `sip` (the recorded prod feed; read the first night's values — see deviation 2).
 - **DONE-WHEN:** the first entry has a mature row on every one of its 15 arms, and the review
   `consolidation_breakout_forward_read` (mature C1 primary-arm entries ≥ 30) has fired and been read.
 - **WOULD-FAIL-IF:** watch rows exist and a pivot cross produces no entry row · a `success` run on a session writes 0 watch
   rows · a filled entry has fewer than 15 exit rows after the run that wrote it · the run row is `success` while the audit row
-  lists `STEP ERRORS`.
+  lists `STEP ERRORS` · on `feed = 'sip'` rows, a `minute_daily_mismatch` or `minute_high_below_pivot` share well above the
+  backtest's (it was SIP too) — on SIP that is a broken minute path, not an expected thin-feed artifact.
 
 ## Deviation list — where the forward recorder differs from the backtest
 
 1. **Does NOT share Family A's coil detection.** Family A's coil/flag detectors (`anticipation.py`, `flag_detector.py`
    stages WATCH/TIGHTENING/COILED/TRIGGERED) are STATES of a different family; this setup has its own gates (`cb.explain_watch`)
    and reuses only the cited constants above (his 08-02 "some parameters differ").
-2. **Minute feed.** The backtest's minutes are Alpaca SIP; production reads `ALPACA_DATA_FEED` (iex by default). IEX bars are
-   thinner, so `minute_daily_mismatch` / `minute_high_below_pivot` abstains will run higher than the backtest's and fills can land on
-   different minutes. Every minute-variant row records its `feed`; compare like with like.
+2. **Minute feed.** The backtest's minutes are Alpaca SIP; production reads `ALPACA_DATA_FEED`, which the repo records as **`sip`
+   in prod** (`CHANGELOG.md` "set in prod"; `docs/analysis/realtime_full_cutover_design_2026-07-20.md` "prod ALPACA_DATA_FEED=sip
+   CONFIRMED, both containers"; `docs/setups/magna53_ep.md`) — `iex` is only the default when the variable is unset. So the two
+   feeds should MATCH, and a high `minute_daily_mismatch` / `minute_high_below_pivot` share is a FAILURE signal on a `sip` row
+   (a broken minute path), not a thin-feed artifact. The row's `feed` column is the ground truth (it is written from the job's own
+   environment): read it on the verify night, and if it says `iex`, the thin-bar caveat applies and the share runs higher.
 3. **SIC** is current, not point-in-time, and fills over about a week (above).
-4. **Catch-up.** The spec said "last night's watch rows"; the job looks back 3 sessions so a missed night or a failed minute
-   fetch is written the next night.
+4. **Catch-up covers the ENTRIES, not the watch list.** The spec said "last night's watch rows"; the job looks back 3 sessions
+   so a break day that was missed, or whose minute fetch failed, has its entries written the next night. It does NOT rebuild a
+   missed night's WATCH LIST (`build_watch` builds only tonight): if night N crashes in the watch step, times out, or skips with
+   `no_spy_bar_for_today`, there are no D = N rows, and the breakouts of session N+1 are lost for good (N's own entries are
+   recovered on night N+1). #672's missed-job recovery covers a scheduler-missed slot only. The audit row names it:
+   `entry_days_without_watch` lists the look-back sessions with no watch rows (a missed night, or a genuinely empty one). A
+   rebuild was left out on purpose — a rebuilt D row would carry an ADJUSTED pivot from today's stored bars where a live night
+   stores a raw one, `fill_sic` keys on the wall clock, and a legitimately empty night would re-scan every evening; whether the
+   gap is worth that is the main loop's call.
 5. **Runner-only analyses are not recorded:** the two controls (Family A `SETTLE_RULE`, `walk_arm` "Apollo as it runs today"),
    the cap-not-skip and ATR14-width sensitivities, the 60-session re-walk, the stop-floor sweep (derivable from `width_pct` and
    `adr20`). The 15 `cb.ARMS` are the shadow's arms.
@@ -151,9 +180,14 @@ until it fills. The SIC is the CURRENT one, not the point-in-time one the backte
 8. **Slot.** 17:48 ET, not the spec's 17:50 (taken by `exit_path_shadow` and `chart_axis_shadow`) nor the plan's 17:45.
 9. **Two named edges in the entry stamping.** (a) If the minute fetch fails outright on two CONSECUTIVE nights, E = N is deferred
    twice (it is not the oldest look-back day until night N+2), E = N+1 is stamped against a history that lacks it, and E = N is
-   then written on night N+2 — two `retrigger = 0` rows in one base. A single-night outage is fine (oldest first). (b) A split
-   between D and E is checked AFTER the candidate is built, so a reverse split on a name that passes C0 (close ≥ a rising SMA50,
-   i.e. near-never) becomes an abstained candidate row that enters the stamping history.
+   then written on night N+2 — two `retrigger = 0` rows in one base. A single-night outage is fine (oldest first). (b) *(corrected
+   2026-10-17, review fix)* the split guard used to run AFTER the breakout test, comparing E's split-adjusted bar with D's raw pivot:
+   a forward split hid a real breakout (no candidate, no row) and a reverse one invented a candidate for every K whether or not the
+   price broke out, which then entered the stamping history. Now the pivot is carried into the stored units BEFORE the test
+   (`split_scales`), so both directions are judged like-for-like: a real breakout writes the 20 `split_after_watch` rows and a
+   non-breakout writes nothing. Remaining edge: a split executed but not yet applied, or an unexplained scale, sits the name out
+   for the night (counted, retried by the look-back); if the split is still unapplied when E is the oldest look-back day, that
+   day's candidate is not recorded.
 10. **Steady-state cost.** ~130 breakout candidates a night × ~2.5 filled variants, each open until every arm is mature (the
     `stop_only` control runs to the horizon), is tens of thousands of open entries by month 6. Only non-final arms are recomputed
     and bars load in chunks, but `wall_s` in the audit row is the number to watch against the 900 s budget.
@@ -179,7 +213,7 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
   1.5 a month — so the review's bar of 30 MATURE primary-arm C1 entries is a ~1.5-year wait at that rate. The looser cells
   (holdout trades under the same key: C3 100, C4 285, C5 86, C7 63) accrue 2–9 times faster and are read beside C1; whether the
   bar or the cell is the right thing to wait on is the operator's call, not this file's.
-- IEX-vs-SIP and thin-SIC effects above bias the first weeks; the read states them.
+- The minute feed (the row's `feed` column) and thin-SIC effects above bias the first weeks; the read states them.
 
 ## Change log
 
@@ -202,6 +236,14 @@ Four new tables fill nightly; one audit row a night; ~300 Polygon reference call
 
 A liveness watch (`health_checks._DETECTOR_LIVENESS_TABLES`, key `scan_date`) covers the one failure `audit_wrap` cannot see: a
 `success` run whose writer wrote nothing.
+
+**Review-fix round (same day, before any deploy)**: six findings fixed in the recorder, none touching `consolidation_breakout.py` or
+the runner. (1) The split guard now runs BEFORE the breakout test (deviation 9b). (2) The watch step runs first and 3 empty minute
+batches in a row end the fetch (the forward-shadow section). (3) The accrual predicate counts only primary-arm exits that carry an R
+(a split-voided `unbookable` arm is final but has none). (4) The minute-feed wording follows the repo's record (`sip` in prod,
+deviation 2). (5) The catch-up wording says it recovers entries, not a missed watch list (deviation 4). (6) `MIN_PRICE` is cited as a
+reuse, not as #286-signed. Open for the P4 freeze: `consolidation_breakout.py` lines 15-17 still say "NOTHING here is in the
+registry yet" although ten constants are registered (the module is hash-pinned, so the docstring is changed with the freeze).
 
 **Status**: built, awaiting deploy (market-agent; `db.py` and `scheduler.py` are on the execution image's module list, so a
 follow-up `deploy.sh execution` clears the drift warning — the execution copy only gains DDL/helper definitions and an unused

@@ -581,12 +581,13 @@ GATE_REGISTRY: list[dict] = [
         "value": 5.0,
         "citation": {
             "file": "docs/setups/consolidation_breakout.md",
-            "text": "price floor $5 and median dollar-volume floor $10M (operator-signed 2026-06-15, #286",
+            "text": "price floor $5 (reused `rs_engine.MIN_PRICE`; no sign-off of its own is on record)",
         },
-        "note": "R: a MIRROR of rs_engine.MIN_PRICE (the test asserts equality). The original's only record of the "
-                "operator's 2026-06-15 sign-off (#286) is a code comment in rs_engine.py, which is not a citable "
-                "source file, so this entry cites the setup doc row that states the origin and the reused "
-                "constant. If the sign-off text is ever filed in a document, repoint both this and MIN_DOLLAR_VOL.",
+        "note": "R: a MIRROR of rs_engine.MIN_PRICE (the test asserts equality). The floor is REUSED, not separately "
+                "signed: the only operator sign-off on record (2026-06-15, #286) is on the DOLLAR-VOLUME floor, in a "
+                "code comment in rs_engine.py, which is not a citable source file. This entry therefore cites the "
+                "setup doc row that says exactly that (a reuse, no sign-off of its own) rather than crediting the "
+                "price floor with #286. If a sign-off for the price floor is ever filed in a document, repoint it.",
     },
     {
         "id": "consolidation_breakout.MIN_DOLLAR_VOL",
@@ -596,9 +597,10 @@ GATE_REGISTRY: list[dict] = [
         "value": 10_000_000.0,
         "citation": {
             "file": "docs/setups/consolidation_breakout.md",
-            "text": "price floor $5 and median dollar-volume floor $10M (operator-signed 2026-06-15, #286",
+            "text": "median dollar-volume floor $10M (operator-signed 2026-06-15, #286",
         },
-        "note": "R: a MIRROR of rs_engine.MIN_DOLLAR_VOL (the 20-session median dollar-volume floor); same note as "
-                "MIN_PRICE above.",
+        "note": "R: a MIRROR of rs_engine.MIN_DOLLAR_VOL (the 20-session median dollar-volume floor). The #286 "
+                "sign-off's only text is a code comment in rs_engine.py (not a citable source file), so this entry "
+                "cites the setup doc row that records it; if that text is ever filed in a document, repoint this.",
     },
 ]

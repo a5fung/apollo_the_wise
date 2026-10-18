@@ -266,6 +266,35 @@ class TestReadHelpers:
         assert {"MRNA"} <= got and all(len(series[t][0]) == 150 for t in series)
         assert cal[-1] == WATCH_NIGHT and len(cal) == len([d for d in m.cal if d <= WATCH_NIGHT])
 
+    def test_the_accrual_predicate_does_not_count_a_split_voided_primary_arm(self, env):
+        """`unbookable` is MATURE (final) but carries no R: a base whose primary arm a split voided is not a settled
+        base. Three first-break C1 orh5 fills: one stopped (counts), one trailed (counts), one voided (does not),
+        plus a settled retrigger and a settled non-C1 entry that must not count either."""
+        import yaml
+        from pathlib import Path
+        reg = yaml.safe_load((Path(__file__).resolve().parent.parent / "data_gated_reviews.yaml").read_text())
+        entries = reg["reviews"] if isinstance(reg, dict) else reg
+        review = next(r for r in entries if r["review_id"] == "consolidation_breakout_forward_read")
+
+        async def go():
+            base = TestWriteGuards()._entry
+            c1 = {"C0": True, "C1": True}
+            fill = dict(status="filled", reason=None, fill=10.5, stop=10.0, cells=c1)
+            await db.cb_upsert_entry_rows([
+                base(ticker="AAA", base_id="AAA|x", **fill), base(ticker="BBB", base_id="BBB|x", **fill),
+                base(ticker="CCC", base_id="CCC|x", **fill), base(ticker="DDD", base_id="DDD|x", **fill | {"retrigger": 1}),
+                base(ticker="EEE", base_id="EEE|x", **fill | {"cells": {"C0": True}})])
+            ids = {r["ticker"]: r["id"] for r in await TestWriteGuards()._entries(env)}
+            ex = lambda t, **kw: {"entry_id": ids[t], "arm": cb.PRIMARY_ARM, "status": "stopped", "realized_r": -1.0,
+                                  "pnl_adr": -0.1, "sessions_held": 2, "events": [], "n_fwd": 3, "mature": True,
+                                  "reason": None, "last_bar_date": D(2026, 9, 21)} | kw
+            await db.cb_upsert_exit_rows([
+                ex("AAA"), ex("BBB", status="trailed", realized_r=2.5),
+                ex("CCC", status="unbookable", realized_r=None, pnl_adr=None, sessions_held=None, n_fwd=0),
+                ex("DDD"), ex("EEE")])
+            return await _scalar(env, review["predicate_sql"])
+        assert arun(env, go()) == 2                                     # AAA and BBB; not CCC (voided), DDD, EEE
+
     def test_the_open_entry_work_list_drops_an_entry_only_when_every_arm_is_mature(self, env):
         async def go():
             base = TestWriteGuards()._entry
@@ -395,7 +424,43 @@ class TestTheJobOnRealSql:
         n = arun(env, _scalar(env, review["predicate_sql"]))
         by_id2 = {v["id"]: v for v in fake["entry"].values()}
         want_bases = {(by_id2[eid]["ticker"], by_id2[eid]["pole_date"]) for (eid, arm), x in fake["exit"].items()
-                      if arm == cb.PRIMARY_ARM and x["mature"] and by_id2[eid]["entry_variant"] == "orh5"
+                      if arm == cb.PRIMARY_ARM and x["mature"] and x["realized_r"] is not None
+                      and by_id2[eid]["entry_variant"] == "orh5"
                       and by_id2[eid]["status"] == "filled" and by_id2[eid]["retrigger"] == 0
                       and by_id2[eid]["cells"].get("C1")}
         assert n == len(want_bases) and n >= 1 and review["threshold"] == 30
+
+
+class TestASplitNightOnRealSql:
+    @pytest.mark.parametrize("split_from,split_to,ratio", [(1, 4, 4.0), (4, 1, 0.25)],
+                             ids=["forward_1_for_4", "reverse_4_for_1"])
+    def test_a_split_between_the_watch_night_and_the_break_day_writes_the_named_rows(
+            self, env, monkeypatch, split_from, split_to, ratio):
+        """The split guard's reads (splits after D, the unapplied set, D's stored bar) and the watch row's `close`
+        run for real: the stored bars are put on the post-split scale in SQL, the pivot is still raw from night D."""
+        market = build_market(future=3)
+        r = {x[0]: x for x in market.bars["MRNA"]}[BREAK_DAY]
+        coll = FakeCollector(market, minutes_for={("MRNA", BREAK_DAY): synth_minutes(BREAK_DAY, *r[1:5])},
+                             polygon=lambda p: {"results": {"sic_code": "2836", "type": "CS"}})
+        coll.install(monkeypatch)
+        arun(env, env.load(market))
+
+        async def go():
+            await sh.run_consolidation_breakout_shadow(WATCH_NIGHT)
+            async with env.pool.acquire() as c:
+                w = dict(await c.fetchrow("SELECT * FROM mi_consolidation_breakout_watch WHERE ticker = 'MRNA'"))
+                await c.execute("UPDATE mi_daily_closes SET open_price = open_price / $1, high_price = high_price / $1, "
+                                "low_price = low_price / $1, close = close / $1, volume = (volume * $1)::bigint "
+                                "WHERE ticker = 'MRNA'", ratio)
+                await c.execute("INSERT INTO mi_splits (ticker, execution_date, split_from, split_to, "
+                                "adjustment_applied) VALUES ('MRNA', $1, $2, $3, TRUE)", BREAK_DAY, split_from, split_to)
+            out = await sh.run_consolidation_breakout_shadow(BREAK_DAY)
+            async with env.pool.acquire() as c:
+                rows = [dict(x) for x in await c.fetch("SELECT * FROM mi_consolidation_breakout_entry "
+                                                       "WHERE break_date = $1", BREAK_DAY)]
+            return w, out, rows
+        w, out, rows = arun(env, go())
+        assert len(rows) == 20 and {(x["status"], x["reason"]) for x in rows} == {("abstain", sh.SPLIT_REASON)}
+        assert out["entry_split_rescaled"] == 1 and out["entry_split_unresolved"] == 0 and not coll.minute_calls
+        for x in rows:
+            assert x["pivot"] == pytest.approx(w[f"pivot_{x['k']}"] / ratio)
