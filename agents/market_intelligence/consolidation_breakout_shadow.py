@@ -29,7 +29,8 @@ must not be able to starve it):
      (the runner's spec key + chain key) is stamped; E's regular-hours minutes come from
      `collector.get_alpaca_minute_bars_window`; `cb.entry_variants` + `cb.close_entry` write one row per variant,
      abstains and no-triggers included with a NAMED reason. The 3-session look-back recovers the ENTRIES of a
-     break day the job missed or whose minute fetch failed outright (written the next night). It does NOT rebuild
+     break day the job missed or whose minute fetch RAISED (deferred, no row, written the next night - on the OLDEST
+     look-back day that is counted and named instead, never written as a false `no_minutes`). It does NOT rebuild
      a missed night's WATCH LIST: a night the watch step did not write (a crash, a timeout, a skip with no SPY bar)
      leaves no D row, so the breakouts of the NEXT session are never seen - that gap is named in the audit row's
      `watch_n` and in docs/setups/consolidation_breakout.md (deviation 4), not silently recovered.
@@ -117,8 +118,9 @@ SCAN_CHUNK = 250                   # tickers per to_thread slice: cancellation l
 WALK_TICKER_CHUNK = 200            # tickers per exit-walk slice: their bars are loaded, walked and freed together
 MINUTE_BATCH = 25                  # tickers per Alpaca call: 25 x 390 minute bars = 9,750 fits alpaca-py's 10,000-bar page, so one call
 MINUTE_TIMEOUT_S = 45.0
-MINUTE_EMPTY_STREAK_STOP = 3       # empty batches in a row (each already retried once) = the feed is down: stop asking.
-#                                    3 x MINUTE_BATCH = 75 tickers of nothing; the cost of giving up is unchanged (3 batches x 2 tries)
+MINUTE_ERROR_STREAK_STOP = 3       # batches in a row that RAISED (each already retried once) = the feed is down: stop asking.
+#                                    3 x MINUTE_BATCH = 75 tickers; the cost of giving up is unchanged (3 batches x 2 tries).
+#                                    An EMPTY answer is not an error and never counts (#702: raise_on_error)
 EXIT_CLOSES_BACK_DAYS = 100        # calendar days of pre-entry closes loaded for the SMA10/20 trails
 EXIT_STALE_MARGIN_SESSIONS = 10    # past horizon + this many sessions a still-open entry is no longer re-walked
 
@@ -431,34 +433,48 @@ async def build_watch(today: date, cal: list, cal_index: dict, out: dict) -> Non
 # 4. Entries
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 async def fetch_minutes(e: date, tickers: list, out: Optional[dict] = None) -> tuple:
-    """({ticker: (MinuteBars | None, state)}, outage). `outage` = tickers were asked for and NOT ONE came back with
-    a single bar - a failed fetch (the collector returns {} on any failure), which must never be written as a
-    `no_minutes` abstain. A ticker missing from an otherwise good fetch really had no bars.
+    """({ticker: (MinuteBars | None, state)}, errored). The collector is asked with `raise_on_error=True`, so a
+    RETURNED dict - `{}` included - means Alpaca ANSWERED and a ticker missing from it really had no bars
+    (`no_minutes`, a retryable abstain); a RAISED call (timeout, API error, no credentials) is a failure and is never
+    written as one.
 
-    `MINUTE_EMPTY_STREAK_STOP` empty batches IN A ROW end the fetch (after each batch's one retry) and make it an
-    outage whatever came back before: a hanging feed costs a bounded few minutes instead of the whole budget
-    (20 batches x 2 tries x 45 s). The caller defers the tickers never asked to the next night instead of writing
-    them as `no_minutes` (only on the oldest look-back day, the last chance, are they written). The stop sets `out["minutes_feed_down"]`, so the later look-back days of the same run do not try again."""
+    `errored` = the tickers to DEFER, whole batches: a batch that raised twice (each batch is asked once more), plus -
+    once `MINUTE_ERROR_STREAK_STOP` batches in a row raised, which sets `out["minutes_feed_down"]` so the later
+    look-back days of the same run do not ask again - the tickers never asked. A hanging feed costs a bounded few
+    minutes instead of the whole budget (20 batches x 2 tries x 45 s). The caller writes NO row for an errored ticker
+    on ANY look-back day, the oldest included. Batches that answered before a failure are kept."""
     from agents.market_intelligence import collector
     start = datetime(e.year, e.month, e.day, 9, 30, tzinfo=_ET)
     end = datetime(e.year, e.month, e.day, 16, 0, tzinfo=_ET)
     raw: dict = {}
-    streak, stopped = 0, False
+    answered: set = set()
+    errored: set = set()
+    streak = 0
     for lo in range(0, len(tickers), MINUTE_BATCH):
         batch = tickers[lo:lo + MINUTE_BATCH]
-        got = await collector.get_alpaca_minute_bars_window(batch, start, end, timeout_s=MINUTE_TIMEOUT_S) or {}
-        if not any(got.get(t) for t in batch):         # {} is also what a transient failure returns: ask once more
-            got = await collector.get_alpaca_minute_bars_window(batch, start, end, timeout_s=MINUTE_TIMEOUT_S) or {}
-        raw.update(got)
-        streak = 0 if any(got.get(t) for t in batch) else streak + 1
-        if streak >= MINUTE_EMPTY_STREAK_STOP:
-            stopped = True
-            break
-    if stopped and out is not None:
-        out["minutes_feed_down"] = True
-    got_any = any(raw.get(t) for t in tickers)
-    outage = bool(tickers) and (stopped or not got_any)
-    return {t: minute_bars_from_alpaca(raw.get(t) or [], e) for t in tickers}, outage
+        got, ok = {}, False
+        for attempt in (1, 2):                         # a RAISED batch is asked once more; an empty answer never is
+            try:
+                got = await collector.get_alpaca_minute_bars_window(
+                    batch, start, end, timeout_s=MINUTE_TIMEOUT_S, raise_on_error=True)
+                ok = True
+                break
+            except Exception as ex:  # loud-ok: counted in `errored`, warned here, audited by the caller - never a row
+                logger.warning(f"consolidation_breakout_shadow: minute fetch E={e} batch of {len(batch)} failed "
+                               f"(attempt {attempt}): {type(ex).__name__}: {ex}")
+        if not ok:
+            errored.update(batch)
+            streak += 1
+            if streak >= MINUTE_ERROR_STREAK_STOP:
+                errored.update(tickers[lo + MINUTE_BATCH:])
+                if out is not None:
+                    out["minutes_feed_down"] = True
+                break
+            continue
+        streak = 0
+        raw.update(got or {})
+        answered.update(batch)
+    return {t: minute_bars_from_alpaca(raw.get(t) or [], e) for t in tickers if t in answered}, errored
 
 
 def moved_splits(rows: list) -> list:
@@ -644,19 +660,32 @@ async def record_entries_for(e: date, d: date, cal: list, cal_index: dict, out: 
 
     # minutes for every candidate not split-abstained (`split_t`, above)
     need_min = sorted({c["ticker"] for c in cands if c["ticker"] not in split_t})
-    mins, outage = ({}, False)
+    mins, errored = ({}, set())
     if need_min:
         if out["minutes_feed_down"]:                      # an earlier day of THIS run found the feed down: do not ask again
-            outage = True
+            errored = set(need_min)
         else:
-            mins, outage = await fetch_minutes(e, need_min, out)
-    if outage and not oldest:
-        out["minutes_deferred"] += len(cands)
-        out["minutes_outage_days"].append(e.isoformat())
-        await log_audit_event(AUDIT_MINUTES_EVENT,
-                              f"{e}: Alpaca returned no minute bars for any of {len(need_min)} ticker(s); "
-                              f"{len(cands)} candidate(s) deferred to the next night's catch-up")
-        return
+            mins, errored = await fetch_minutes(e, need_min, out)
+    if errored:
+        # A RAISED fetch writes NO row - on every look-back day, the oldest included: a row would be a false
+        # `no_minutes` abstain for a day that has minutes. (A successful call with no bars for a ticker is NOT here:
+        # that ticker is in `mins` as `no_minutes`, and a later night may overwrite it.) The look-back retries the
+        # deferred candidates tomorrow - except on the OLDEST day, which no later night reads: counted and named.
+        deferred = [c for c in cands if c["ticker"] in errored]
+        cands = [c for c in cands if c["ticker"] not in errored]
+        out["minutes_deferred"] += len(deferred)
+        if oldest:
+            out["minutes_deferred_oldest"] += len(deferred)
+        if deferred:
+            out["minutes_outage_days"].append(e.isoformat())
+            await log_audit_event(
+                AUDIT_MINUTES_EVENT,
+                f"{e}: the Alpaca minute fetch raised for {len(errored)} of {len(need_min)} ticker(s); "
+                f"{len(deferred)} candidate(s) deferred, no row written"
+                + (" - E is the OLDEST look-back day, so no later night retries it" if oldest
+                   else " to the next night's catch-up"))
+        if not cands:
+            return
     rows = []
     for c in cands:
         mb, mstate = mins.get(c["ticker"], (None, "no_minutes"))
@@ -804,7 +833,7 @@ def _new_out(today: date) -> dict:
     return {"date": today.isoformat(), "skipped": None, "timed_out": False, "step_errors": [],
             "entry_candidates": 0, "entry_pole_off_calendar": 0, "entry_day_bar_unusable": 0,
             "entry_rows": 0, "entry_status": Counter(),
-            "entry_reasons": Counter(), "minutes_deferred": 0, "minutes_outage_days": [], "minutes_feed_down": False,
+            "entry_reasons": Counter(), "minutes_deferred": 0, "minutes_deferred_oldest": 0, "minutes_outage_days": [], "minutes_feed_down": False,
             "entry_days_without_watch": [], "entry_split_rescaled": 0, "entry_split_unresolved": 0, "entry_split_unresolved_tickers": [],
             "watch_n": 0, "universe_n": 0, "prefilter_tickers": 0, "sic_errors": 0, "sic_fetched": 0,
             "sic_known": 0, "gate_funnel": {}, "cells_per_k": {}, "groups_ge10": 0, "members_with_group": 0,

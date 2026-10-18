@@ -655,22 +655,76 @@ class TestMinuteFailures:
         run(BREAK_DAY)
         coll.outage_days.clear()
         out = run(m.cal[m.cal.index(BREAK_DAY) + 1])
-        assert len({r["break_date"] for r in store.entry.values()}) == 1 and BREAK_DAY in \
-            {r["break_date"] for r in store.entry.values()}
-        assert out["entry_rows"] >= 20
-        assert all(r["minutes_state"] in ("ok", "n/a") for r in store.entry.values())
+        e17 = [r for r in store.entry.values() if r["break_date"] == BREAK_DAY]
+        assert len(e17) == 20 and out["entry_rows"] >= 20
+        assert all(r["minutes_state"] in ("ok", "n/a") for r in e17)
+        # 09-18 (MRNA breaks out again) has NO minutes provisioned in this world: a successful empty answer, which is
+        # an observation (`no_minutes`, retryable) - the old all-empty-means-outage guess would have deferred it
+        e18 = [r for r in store.entry.values() if r["break_date"] != BREAK_DAY]
+        assert e18 and {r["reason"] for r in e18 if r["entry_variant"] != "close" and r["status"] == "abstain"} == {"no_minutes"}
 
-    def test_an_outage_on_the_oldest_lookback_day_is_written_as_no_minutes_not_dropped_forever(self, world):
+    def test_a_raised_fetch_on_the_oldest_lookback_day_is_deferred_too_never_written_as_no_minutes(self, world):
+        """#702: the collector now RAISES, so "the fetch failed" is known rather than guessed from an empty batch. The old
+        code wrote the oldest day's candidates as `no_minutes` (it could not tell a failure from an empty session); a
+        raised error is not an observation about the day, so NO row is written on any look-back day. The oldest day is
+        the one no later night reads - that loss is counted (`minutes_deferred_oldest`) and named in the audit event."""
         m, store, coll = world
         coll.outage_days.add(BREAK_DAY)
         run(WATCH_NIGHT)
         run(BREAK_DAY)
         run(m.cal[m.cal.index(BREAK_DAY) + 1])          # E = 09-17 is still inside the 3-session look-back, but not oldest
-        assert not store.entry
-        out = run(m.cal[m.cal.index(BREAK_DAY) + 2])    # now 09-17 is the OLDEST of the three: last chance
-        mrna = [r for r in store.entry.values() if r["break_date"] == BREAK_DAY]
-        assert len(mrna) == 20 and out["entry_rows"] >= 20
-        assert {r["reason"] for r in mrna if r["entry_variant"] != "close" and r["status"] == "abstain"} == {"no_minutes"}
+        assert not [r for r in store.entry.values() if r["break_date"] == BREAK_DAY]
+        out = run(m.cal[m.cal.index(BREAK_DAY) + 2])    # now 09-17 is the OLDEST of the three: the last night that reads it
+        assert not [r for r in store.entry.values() if r["break_date"] == BREAK_DAY]       # no row - and no `no_minutes`
+        assert out["minutes_deferred_oldest"] > 0 and out["minutes_deferred"] >= out["minutes_deferred_oldest"]
+        named = [a for a in store.audit if a[0] == sh.AUDIT_MINUTES_EVENT and "OLDEST" in a[1]]
+        assert named and BREAK_DAY.isoformat() in named[-1][1]
+
+    def test_every_minute_call_asks_the_collector_to_raise(self, world):
+        m, store, coll = world
+        run(WATCH_NIGHT)
+        run(BREAK_DAY)
+        assert coll.raise_flags and all(coll.raise_flags)
+
+    def test_a_genuinely_empty_session_is_written_as_no_minutes_and_a_later_fetch_heals_it(self, world):
+        """A SUCCESSFUL call with no bars for the ticker is an observation, not a failure: the retryable `no_minutes`
+        abstain is written (the four minute variants; `close` needs no minutes) and a later night may overwrite it."""
+        m, store, coll = world
+        coll.empty_days.add(BREAK_DAY)
+        run(WATCH_NIGHT)
+        out = run(BREAK_DAY)
+        rows = [r for r in store.entry.values() if r["break_date"] == BREAK_DAY]
+        assert len(rows) == 20 and out["minutes_deferred"] == 0 and not out["minutes_feed_down"]
+        assert {(r["status"], r["reason"]) for r in rows if r["entry_variant"] != "close"} == {("abstain", "no_minutes")}
+        coll.empty_days.clear()                                           # the bars arrive later
+        run(m.cal[m.cal.index(BREAK_DAY) + 1])
+        healed = [r for r in store.entry.values() if r["break_date"] == BREAK_DAY and r["entry_variant"] == "orh5"]
+        assert {r["status"] for r in healed} == {"filled"}
+
+    def test_only_the_batch_that_raised_is_deferred_the_rest_are_written(self, monkeypatch):
+        """MRNA and MRNB are asked in separate batches (MINUTE_BATCH = 1 here); MRNA's batch raises both tries. MRNB is
+        written, MRNA gets NO row (not a `no_minutes`), and the next night's look-back writes it."""
+        monkeypatch.setattr(sh, "MINUTE_BATCH", 1)
+        m = build_market(future=3, clone_mrna=True)
+        store = FakeStore(m)
+        store.install(monkeypatch, sh)
+        mins = {(t, BREAK_DAY): synth_minutes(BREAK_DAY, *{x[0]: x for x in m.bars[t]}[BREAK_DAY][1:5])
+                for t in ("MRNA", "MRNB")}
+        coll = FakeCollector(m, minutes_for=mins, polygon=_polygon, error_tickers={("MRNA", BREAK_DAY)})
+        coll.install(monkeypatch)
+        run(WATCH_NIGHT)
+        out = run(BREAK_DAY)
+
+        def rows_of(t):
+            return [x for x in store.entry.values() if x["ticker"] == t and x["break_date"] == BREAK_DAY]
+        assert len(rows_of("MRNB")) == 20
+        assert {x["status"] for x in rows_of("MRNB") if x["entry_variant"] == "orh5"} == {"filled"}
+        assert rows_of("MRNA") == [] and out["minutes_deferred"] > 0 and out["minutes_deferred_oldest"] == 0
+        assert sum(1 for d, ts in coll.minute_calls if d == BREAK_DAY and ts == ("MRNA",)) == 2      # asked, then once more
+        coll.error_tickers.clear()
+        run(m.cal[m.cal.index(BREAK_DAY) + 1])
+        assert len(rows_of("MRNA")) == 20
+        assert {x["status"] for x in rows_of("MRNA") if x["entry_variant"] == "orh5"} == {"filled"}
 
     def test_a_ticker_missing_from_a_good_fetch_is_a_retryable_no_minutes_abstain_that_later_heals(self, monkeypatch):
         m = build_market(future=3, clone_mrna=True)                 # MRNA and MRNB: two candidates on the same day
@@ -690,9 +744,10 @@ class TestMinuteFailures:
         r2 = {x[0]: x for x in m.bars["MRNA"]}[BREAK_DAY]
         coll.minutes_for[("MRNA", BREAK_DAY)] = synth_minutes(BREAK_DAY, *r2[1:5])      # the bars arrive later
         out = run(m.cal[m.cal.index(BREAK_DAY) + 1])
-        healed = [x for x in store.entry.values() if x["ticker"] == "MRNA" and x["entry_variant"] == "orh5"]
-        assert {x["status"] for x in healed} == {"filled"}
-        assert all(x["retrigger"] == 0 for x in healed if x["break_date"] == BREAK_DAY)  # the retry did not re-stamp the base
+        healed = [x for x in store.entry.values() if x["ticker"] == "MRNA" and x["entry_variant"] == "orh5"
+                  and x["break_date"] == BREAK_DAY]
+        assert healed and {x["status"] for x in healed} == {"filled"}
+        assert all(x["retrigger"] == 0 for x in healed)                               # the retry did not re-stamp the base
         assert out["entry_rows"] >= 20 and a
 
     def test_a_filled_entry_is_never_overwritten_by_a_later_night(self, world):
@@ -727,50 +782,82 @@ class TestAMissedWatchNight:
 
 
 class TestMinuteFeedDown:
-    """A hanging / empty feed costs a bounded few minutes, not the job's whole budget."""
+    """A hanging / failing feed costs a bounded few minutes, not the job's whole budget - and only a RAISED call counts
+    as failing: an EMPTY answer is a genuine empty session (#702, `raise_on_error`)."""
 
     @staticmethod
     def _fetch(monkeypatch, responder, tickers, out=None):
+        """`responder(batch, n)` returns the dict to answer or raises; n = the call number (1-based)."""
         from agents.market_intelligence import collector
         calls = []
 
-        async def fake(batch, start, end, timeout_s=6.0):
+        async def fake(batch, start, end, timeout_s=6.0, *, raise_on_error=False):
+            assert raise_on_error is True                                # the shadow always asks for the raise
             calls.append(tuple(batch))
             return responder(batch, len(calls))
         monkeypatch.setattr(collector, "get_alpaca_minute_bars_window", fake)
         got = asyncio.run(sh.fetch_minutes(BREAK_DAY, tickers, out))
         return got, calls
 
-    def test_three_empty_batches_in_a_row_end_the_fetch_as_an_outage(self, monkeypatch):
+    @staticmethod
+    def _boom(*_a):
+        raise RuntimeError("alpaca down")
+
+    def test_three_raised_batches_in_a_row_end_the_fetch_and_defer_every_ticker(self, monkeypatch):
         tickers = [f"T{i:03d}" for i in range(12 * sh.MINUTE_BATCH)]    # 12 batches
         out = {"minutes_feed_down": False}
-        (mins, outage), calls = self._fetch(monkeypatch, lambda b, n: {}, tickers, out)
-        assert outage is True and out["minutes_feed_down"] is True
-        assert len(calls) == 2 * sh.MINUTE_EMPTY_STREAK_STOP == 6         # 3 batches x (ask + one retry), not 24
-        assert sh.MINUTE_BATCH * sh.MINUTE_EMPTY_STREAK_STOP == 75        # the outage threshold: 75 tickers of nothing
+        (mins, errored), calls = self._fetch(monkeypatch, self._boom, tickers, out)
+        assert out["minutes_feed_down"] is True
+        assert len(calls) == 2 * sh.MINUTE_ERROR_STREAK_STOP == 6         # 3 batches x (ask + one retry), not 24
+        assert sh.MINUTE_BATCH * sh.MINUTE_ERROR_STREAK_STOP == 75        # the outage threshold: 75 tickers that raised
         assert all(len(c) == sh.MINUTE_BATCH for c in calls)
-        assert set(mins) == set(tickers) and {st for _mb, st in mins.values()} == {"no_minutes"}
+        assert errored == set(tickers) and mins == {}                     # the unasked 9 batches are deferred too
 
-    def test_the_stop_is_an_outage_even_when_earlier_batches_were_fine(self, monkeypatch):
-        """Otherwise the tickers never asked would be written as `no_minutes` abstains on a feed that merely died."""
+    def test_the_stop_defers_the_unasked_tickers_but_keeps_the_batches_that_answered(self, monkeypatch):
+        """Batch 1 answers, then the feed dies: batch 1 is written (a real answer), everything after is deferred."""
         tickers = [f"T{i:03d}" for i in range(12 * sh.MINUTE_BATCH)]
         good = synth_minutes(BREAK_DAY, 10.0, 11.0, 9.5, 10.5)
-        (mins, outage), calls = self._fetch(
-            monkeypatch, lambda b, n: {t: good for t in b} if n == 1 else {}, tickers, {"minutes_feed_down": False})
-        assert outage is True
-        assert mins[tickers[0]][1] == "ok" and mins[tickers[-1]][1] == "no_minutes"
 
-    def test_two_empty_batches_then_a_good_one_do_not_stop_the_fetch(self, monkeypatch):
+        def responder(b, n):
+            if n == 1:
+                return {t: good for t in b}
+            raise RuntimeError("alpaca down")
+        out = {"minutes_feed_down": False}
+        (mins, errored), _calls = self._fetch(monkeypatch, responder, tickers, out)
+        assert out["minutes_feed_down"] is True
+        assert set(mins) == set(tickers[:sh.MINUTE_BATCH]) and {st for _mb, st in mins.values()} == {"ok"}
+        assert errored == set(tickers[sh.MINUTE_BATCH:]) and not (errored & set(mins))
+
+    def test_a_batch_that_raises_once_and_then_answers_is_kept(self, monkeypatch):
+        tickers = [f"T{i:03d}" for i in range(sh.MINUTE_BATCH)]
+        good = synth_minutes(BREAK_DAY, 10.0, 11.0, 9.5, 10.5)
+        out = {"minutes_feed_down": False}
+        (mins, errored), calls = self._fetch(
+            monkeypatch, lambda b, n: self._boom() if n == 1 else {t: good for t in b}, tickers, out)
+        assert errored == set() and len(calls) == 2 and out["minutes_feed_down"] is False
+        assert {st for _mb, st in mins.values()} == {"ok"} and set(mins) == set(tickers)
+
+    def test_two_raised_batches_then_a_good_one_do_not_stop_the_fetch(self, monkeypatch):
         tickers = [f"T{i:03d}" for i in range(8 * sh.MINUTE_BATCH)]    # 8 batches
         good = synth_minutes(BREAK_DAY, 10.0, 11.0, 9.5, 10.5)
-        # calls 1-4 are batches 1 and 2 (each asked twice) and return nothing: a streak of TWO, under the stop of 3
+        # calls 1-4 are batches 1 and 2 (each asked twice) and raise: a streak of TWO, under the stop of 3
         out = {"minutes_feed_down": False}
-        (mins, outage), calls = self._fetch(
-            monkeypatch, lambda b, n: {} if n <= 4 else {t: good for t in b}, tickers, out)
-        assert outage is False and out["minutes_feed_down"] is False
-        assert len(calls) == 4 + 6                                       # the 2 failed batches twice, then 6 good ones
+        (mins, errored), calls = self._fetch(
+            monkeypatch, lambda b, n: self._boom() if n <= 4 else {t: good for t in b}, tickers, out)
+        assert out["minutes_feed_down"] is False and len(calls) == 4 + 6   # the 2 failed batches twice, then 6 good ones
+        assert errored == set(tickers[:2 * sh.MINUTE_BATCH])
         assert sum(1 for mb, st in mins.values() if st == "ok") == 6 * sh.MINUTE_BATCH
-        assert [t for t, (mb, st) in mins.items() if st == "no_minutes"] == tickers[:2 * sh.MINUTE_BATCH]
+        assert set(mins) == set(tickers[2 * sh.MINUTE_BATCH:])
+
+    def test_an_empty_answer_is_neither_an_error_nor_retried_nor_a_streak(self, monkeypatch):
+        """The heuristic this replaces read twelve empty batches in a row as a dead feed and deferred. A call that
+        RETURNS means Alpaca answered: every ticker is a `no_minutes` observation, one call per batch, no stop."""
+        tickers = [f"T{i:03d}" for i in range(12 * sh.MINUTE_BATCH)]
+        out = {"minutes_feed_down": False}
+        (mins, errored), calls = self._fetch(monkeypatch, lambda b, n: {}, tickers, out)
+        assert errored == set() and out["minutes_feed_down"] is False
+        assert len(calls) == 12                                          # one ask per batch: no retry of an empty answer
+        assert set(mins) == set(tickers) and {st for _mb, st in mins.values()} == {"no_minutes"}
 
     def test_once_a_day_finds_the_feed_down_the_later_days_of_the_run_do_not_ask_again(self, world, monkeypatch):
         m, store, coll = world
@@ -782,7 +869,7 @@ class TestMinuteFeedDown:
         async def feed_down(e, tickers, out=None):
             calls.append(e)
             out["minutes_feed_down"] = True
-            return {}, True
+            return {}, set(tickers)
         monkeypatch.setattr(sh, "fetch_minutes", feed_down)
         out = run(m.cal[m.cal.index(BREAK_DAY) + 1])                    # look-back: 09-16, 09-17, 09-18
         assert calls == [BREAK_DAY]                                     # 09-18 had candidates too, and did not ask

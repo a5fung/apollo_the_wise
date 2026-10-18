@@ -692,13 +692,21 @@ async def get_index_history(ticker: str, from_date: str, to_date: str) -> list[d
 
 
 async def get_alpaca_minute_bars_window(tickers: list[str], start_et: "datetime", end_et: "datetime",
-                                        timeout_s: float = 6.0) -> dict[str, list[dict]]:
+                                        timeout_s: float = 6.0, *, raise_on_error: bool = False
+                                        ) -> dict[str, list[dict]]:
     """#692 pin reading — OHLCV minute bars in [start_et, end_et) for a small ticker set, from
     the same Alpaca bars + feed (ALPACA_DATA_FEED) the ORB entry reads its 09:30 bar from
     (broker.alpaca_client.get_first_bar), so the price the filter reads is the price the entry
     would trade. Returns `{ticker: [{ts, open, high, low, close, volume}, ...]}` oldest→newest,
     missing symbols omitted. Sibling of `get_alpaca_minute_closes` (which keeps only closes).
-    NEVER raises; `{}` on any failure — the caller treats the window as unreadable (held)."""
+
+    By default NEVER raises; `{}` on any failure — the caller treats the window as unreadable (held).
+    That is the right contract for `ma_filter`'s pin reader, and the wrong one for a caller that must
+    tell "Alpaca failed" from "Alpaca answered and a symbol had no bars" - both come back as `{}` /
+    a missing key. `raise_on_error=True` (#702, the `broker.alpaca_client.get_asset` precedent) makes
+    every failure RAISE after the same warning - an unusable alpaca-py import (ImportError), missing
+    credentials (RuntimeError), a timeout (asyncio.TimeoutError) or an API error - so that a RETURNED
+    dict, `{}` included, means Alpaca answered. Nothing else about the call changes."""
     if not tickers:
         return {}
     try:
@@ -708,11 +716,15 @@ async def get_alpaca_minute_bars_window(tickers: list[str], start_et: "datetime"
         from alpaca.data.enums import DataFeed
     except ImportError as e:
         logger.warning(f"alpaca-py bars import failed: {e}")
+        if raise_on_error:
+            raise
         return {}
     api_key = os.environ.get("ALPACA_PAPER_API_KEY") or os.environ.get("ALPACA_API_KEY", "")
     secret = os.environ.get("ALPACA_PAPER_SECRET_KEY") or os.environ.get("ALPACA_SECRET_KEY", "")
     if not api_key or not secret:
         logger.warning("Alpaca credentials not set; skipping minute-bar window")
+        if raise_on_error:
+            raise RuntimeError("Alpaca credentials not set")
         return {}
     feed = DataFeed.SIP if os.environ.get("ALPACA_DATA_FEED", "iex").lower() == "sip" else DataFeed.IEX
     client = StockHistoricalDataClient(api_key=api_key, secret_key=secret)
@@ -724,8 +736,10 @@ async def get_alpaca_minute_bars_window(tickers: list[str], start_et: "datetime"
             loop.run_in_executor(None, lambda r=req: client.get_stock_bars(r)),
             timeout=timeout_s,
         )
-    except Exception as e:  # loud-ok: the reading degrades to unreadable, never to a verdict
+    except Exception as e:  # loud-ok: the reading degrades to unreadable, never to a verdict (or RAISES: raise_on_error)
         logger.warning(f"Alpaca minute-bar window failed ({len(tickers)} syms): {e}")
+        if raise_on_error:
+            raise
         return {}
     out: dict[str, list[dict]] = {}
     data = getattr(bars, "data", None) or {}

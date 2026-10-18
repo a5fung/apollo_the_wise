@@ -257,18 +257,29 @@ class FakeStore:
 class FakeCollector:
     """Stands in for `collector.get_alpaca_minute_bars_window` and `_polygon_get`."""
 
-    def __init__(self, market: Market, *, minutes_for=None, outage_days=(), polygon=None):
+    def __init__(self, market: Market, *, minutes_for=None, outage_days=(), empty_days=(), error_tickers=(),
+                 polygon=None):
         self.m = market
         self.minutes_for = minutes_for or {}        # {(ticker, date): list of alpaca bars}
-        self.outage_days = set(outage_days)
+        self.outage_days = set(outage_days)         # days the fetch FAILS: raises for `raise_on_error=True`, `{}` otherwise
+        self.empty_days = set(empty_days)           # days Alpaca ANSWERS with nothing (a genuinely empty session)
+        self.error_tickers = set(error_tickers)     # {(ticker, date)}: a batch holding one of them fails
+        self.raise_flags: list = []                 # the `raise_on_error` every call carried
         self.minute_calls: list = []
         self.polygon = polygon
         self.polygon_calls: list = []
 
-    async def get_alpaca_minute_bars_window(self, tickers, start_et, end_et, timeout_s=6.0):
+    async def get_alpaca_minute_bars_window(self, tickers, start_et, end_et, timeout_s=6.0, *, raise_on_error=False):
+        """`collector.get_alpaca_minute_bars_window`: with `raise_on_error=True` a failure RAISES, so a returned dict
+        (`{}` included) means Alpaca answered; with the default a failure is `{}`, as it always was."""
         day = start_et.date()
         self.minute_calls.append((day, tuple(tickers)))
-        if day in self.outage_days:
+        self.raise_flags.append(raise_on_error)
+        if day in self.outage_days or any((t, day) in self.error_tickers for t in tickers):
+            if raise_on_error:
+                raise RuntimeError("alpaca down")
+            return {}
+        if day in self.empty_days:
             return {}
         out = {}
         for t in tickers:

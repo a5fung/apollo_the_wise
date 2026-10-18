@@ -106,10 +106,14 @@ the entries a night, never the watch list.
    stored bars sit the night out.
 2. **Entries.** For each of the last **3** sessions E (oldest first): the previous session's watch rows whose pivot E's daily
    high cleared → candidates → one-trade-per-base stamping against every earlier candidate → E's minutes from
-   `collector.get_alpaca_minute_bars_window` (batches of **25** - 25 x 390 minute bars fit one 10,000-bar page - one retry; **3 empty batches in a row (75 tickers) end the fetch as an outage**,
-   and the later look-back days of the same run do not ask again) → `cb.entry_variants` + `cb.close_entry` → five rows per
-   candidate. A candidate whose minute fetch failed OUTRIGHT (not one ticker returned a bar, or the fetch was stopped) is deferred
-   and written the next night; on the oldest look-back day it is written as `no_minutes` instead. A `no_minutes` row may be
+   `collector.get_alpaca_minute_bars_window(..., raise_on_error=True)` (batches of **25** - 25 x 390 minute bars fit one
+   10,000-bar page; **a RAISED batch is asked once more, and 3 raised batches in a row (75 tickers) end the fetch**, after which the
+   later look-back days of the same run do not ask again) → `cb.entry_variants` + `cb.close_entry` → five rows per candidate.
+   **A returned dict means Alpaca ANSWERED** (#702): a ticker missing from it had no bars and is written as the retryable
+   `no_minutes` abstain, an empty answer is never retried and never counts toward the stop. **A RAISED call is a failure and
+   writes no row, on any look-back day:** a candidate in a batch that raised (or that the stop left unasked) is deferred and written
+   the next night; on the OLDEST look-back day no later night reads it, so it is counted (`minutes_deferred_oldest`) and named in
+   the `..._minutes_unavailable` audit event instead of being written as a false `no_minutes`. A `no_minutes` row may be
    overwritten by a later fetch (and only that row — a fill is never moved).
    **Splits are read before the breakout test.** The pivot was stored raw on night D; the 17:00 pull has since split-adjusted the
    stored bars, so E's bar and the pivot sit on two price scales. For a name with a split in (D, today] the pivot is carried into
@@ -131,7 +135,8 @@ the entries a night, never the watch list.
    horizon + 10 sessions is no longer re-walked. Bars are loaded 200 tickers at a time.
 4. **Audit row** with watch count, universe size, the gate funnel, cells per K, new entries by status and reason, exits settled,
    SIC fetched/known, wall time, and the entry-step diagnostics: `entry_days_without_watch` (look-back sessions with no watch
-   rows), `entry_split_rescaled` / `entry_split_unresolved` (+ `_tickers`), `exit_split_deferred`, `minutes_feed_down`.
+   rows), `entry_split_rescaled` / `entry_split_unresolved` (+ `_tickers`), `exit_split_deferred`, `minutes_deferred` /
+   `minutes_deferred_oldest` / `minutes_outage_days`, and `minutes_feed_down` (now evidence: 3 batches in a row RAISED).
 
 Group RS needs SIC; the cache fills at most **300 names a night** (watch names first, then by dollar volume), so the first week
 runs with a thin group RS (`grp_pct` NULL where a group has < 10 known members) and the group cells (C2, C6) read False
@@ -166,7 +171,7 @@ until it fills. The SIC is the CURRENT one, not the point-in-time one the backte
    environment): read it on the verify night, and if it says `iex`, the thin-bar caveat applies and the share runs higher.
 3. **SIC** is current, not point-in-time, and fills over about a week (above).
 4. **Catch-up covers the ENTRIES, not the watch list.** The spec said "last night's watch rows"; the job looks back 3 sessions
-   so a break day that was missed, or whose minute fetch failed, has its entries written the next night. It does NOT rebuild a
+   so a break day that was missed, or whose minute fetch RAISED, has its entries written the next night. It does NOT rebuild a
    missed night's WATCH LIST (`build_watch` builds only tonight): if night N crashes in the watch step, times out, or skips with
    `no_spy_bar_for_today`, there are no D = N rows, and the breakouts of session N+1 are lost for good (N's own entries are
    recovered on night N+1). #672's missed-job recovery covers a scheduler-missed slot only. The audit row names it:
@@ -183,9 +188,11 @@ until it fills. The SIC is the CURRENT one, not the point-in-time one the backte
    appears LATER between two earlier ones can merge two bases after the fact, which the batch backtest sees and the forward
    record cannot (the spec key is unaffected). Tested and named.
 8. **Slot.** 17:48 ET, not the spec's 17:50 (taken by `exit_path_shadow` and `chart_axis_shadow`) nor the plan's 17:45.
-9. **Two named edges in the entry stamping.** (a) If the minute fetch fails outright on two CONSECUTIVE nights, E = N is deferred
+9. **Two named edges in the entry stamping.** (a) If the minute fetch RAISES on two CONSECUTIVE nights, E = N is deferred
    twice (it is not the oldest look-back day until night N+2), E = N+1 is stamped against a history that lacks it, and E = N is
-   then written on night N+2 — two `retrigger = 0` rows in one base. A single-night outage is fine (oldest first). (b) *(corrected
+   then — if it raises again on N+2 — NEVER written (#702: the oldest day writes no row on a raise; it used to be written as
+   `no_minutes`), counted in `minutes_deferred_oldest`; if it answers on N+2 it is written with `retrigger = 0` beside E = N+1's
+   row — two `retrigger = 0` rows in one base. A single-night outage is fine (oldest first). (b) *(corrected
    2026-10-17, review fix)* the split guard used to run AFTER the breakout test, comparing E's split-adjusted bar with D's raw pivot:
    a forward split hid a real breakout (no candidate, no row) and a reverse one invented a candidate for every K whether or not the
    price broke out, which then entered the stamping history. Now the pivot is carried into the stored units BEFORE the test
@@ -221,6 +228,27 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 - The minute feed (the row's `feed` column) and thin-SIC effects above bias the first weeks; the read states them.
 
 ## Change log
+
+### 2026-10-18 — #702 minute fetch: a raised error defers the batch, an empty answer is a real `no_minutes` (the outage GUESS is replaced by the collector's own error)
+
+**Trigger**: his "Aligned, let's do these tmr" 10-17 on the #702 line's build note. `collector.get_alpaca_minute_bars_window` returned `{}`
+on ANY failure, so `fetch_minutes` guessed an outage from empty batches (a whole fetch with not one bar, or 3 empty batches in a
+row) and, on the oldest look-back day, wrote the guess as a `no_minutes` abstain — a false row for a day that has minutes.
+
+**What**: (1) `get_alpaca_minute_bars_window(..., *, raise_on_error=False)` — additive; `True` re-raises the ImportError / missing
+credentials (RuntimeError) / timeout / API error after the same warning (the `get_asset` precedent), so a RETURNED dict, `{}`
+included, means Alpaca answered. `ma_filter.read_open_window_pin` keeps the default and its never-raises contract (tested). (2)
+`fetch_minutes` asks with `True`: a batch that raises is asked once more, then its tickers are deferred; `MINUTE_ERROR_STREAK_STOP`
+(3) raised batches in a row stop the fetch, defer the unasked tickers and set `minutes_feed_down`; batches that answered earlier are
+kept. (3) `record_entries_for` writes NO row for a deferred ticker on any look-back day, the oldest included — the oldest day's loss
+is counted (`minutes_deferred_oldest`) and named in the audit event. (4) Removed: the empty-batch retry, the empty-batch streak stop
+(`MINUTE_EMPTY_STREAK_STOP`), and the "no ticker returned a bar" outage test — each replaced by the real error path, not dropped.
+**Behaviour changes, named**: a successful call with no bars for EVERY ticker used to be read as an outage (deferred) and is now
+written as retryable `no_minutes` rows; a failure on the oldest day used to be written as `no_minutes` and is now a counted loss. Both
+are the intended reading of an answer versus a failure.
+**Not touched**: `consolidation_breakout.py`, the runner, any entry/stop/exit rule — the backtest is unaffected. No money path.
+**Reversion-flag**: NEW; not a detection-criterion change. **Status**: built on a worktree branch, not deployed. EXPECT / DONE-WHEN /
+WOULD-FAIL-IF: CHANGELOG 2026-10-18 (#702 minute fetch).
 
 ### 2026-10-18 — #704: the shadow reads the splits ingest's recorded verdict instead of re-deriving it (a phantom split is now no split here)
 
@@ -288,7 +316,7 @@ A liveness watch (`health_checks._DETECTOR_LIVENESS_TABLES`, key `scan_date`) co
 
 **Review-fix round (same day, before any deploy)**: six findings fixed in the recorder, none touching `consolidation_breakout.py` or
 the runner. (1) The split guard now runs BEFORE the breakout test (deviation 9b). (2) The watch step runs first and 3 empty minute
-batches in a row end the fetch (the forward-shadow section). (3) The accrual predicate counts only primary-arm exits that carry an R
+batches in a row end the fetch (the forward-shadow section; superseded 2026-10-18: 3 RAISED batches, see the change log). (3) The accrual predicate counts only primary-arm exits that carry an R
 (a split-voided `unbookable` arm is final but has none). (4) The minute-feed wording follows the repo's record (`sip` in prod,
 deviation 2). (5) The catch-up wording says it recovers entries, not a missed watch list (deviation 4). (6) `MIN_PRICE` is cited as a
 reuse, not as #286-signed. Open for the P4 freeze: `consolidation_breakout.py` lines 15-17 still say "NOTHING here is in the

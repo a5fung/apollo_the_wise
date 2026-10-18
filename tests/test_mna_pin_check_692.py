@@ -693,3 +693,97 @@ def test_the_flag_readers_composition_reads_the_scan_dates_bar_from_the_history_
     assert "THR" in seen["args"]
     assert reading.readable and reading.window == "day"
     assert reading.range_pct == pytest.approx(2.3904, abs=1e-3) and reading.pinned is False
+
+
+# ── 5. THE MINUTE-WINDOW READER'S FAILURE CONTRACT (#702 `raise_on_error`) ─────────────────────
+# Default: NEVER raises, `{}` on any failure - the pin reader above holds the name on an unreadable window. The
+# Consolidation Breakout shadow asks with `raise_on_error=True` so "Alpaca failed" and "Alpaca answered, no bars"
+# stop looking alike. Nothing else about the call changes.
+
+class _FakeBars:
+    def __init__(self, data):
+        self.data = data
+
+
+class _SdkBar:
+    def __init__(self, ts, o, h, l, c, v=100):
+        self.timestamp, self.open, self.high, self.low, self.close, self.volume = ts, o, h, l, c, v
+
+
+def _sdk_client(monkeypatch, answer):
+    """Credentials present and alpaca-py's client replaced by one whose `get_stock_bars` is `answer`."""
+    import sys
+    hist = sys.modules["alpaca.data.historical"]     # tests/conftest.py stubs alpaca-py in sys.modules: patch THAT object
+    monkeypatch.setenv("ALPACA_PAPER_API_KEY", "k")
+    monkeypatch.setenv("ALPACA_PAPER_SECRET_KEY", "s")
+
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+        get_stock_bars = staticmethod(answer)
+    monkeypatch.setattr(hist, "StockHistoricalDataClient", _Client)
+
+
+def _window(**kw):
+    from agents.market_intelligence import collector
+    start = datetime(2026, 9, 17, 9, 30, tzinfo=_ET)
+    return _run(collector.get_alpaca_minute_bars_window(["AAA"], start, datetime(2026, 9, 17, 16, 0, tzinfo=_ET),
+                                                        timeout_s=0.05, **kw))
+
+
+def test_missing_credentials_return_empty_by_default_and_raise_on_request(monkeypatch):
+    for name in ("ALPACA_PAPER_API_KEY", "ALPACA_API_KEY", "ALPACA_PAPER_SECRET_KEY", "ALPACA_SECRET_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    assert _window() == {}
+    with pytest.raises(RuntimeError, match="credentials"):
+        _window(raise_on_error=True)
+
+
+def test_an_unusable_alpaca_import_returns_empty_by_default_and_raises_on_request(monkeypatch):
+    import sys
+    monkeypatch.setitem(sys.modules, "alpaca.data.historical", None)             # `from ... import` -> ImportError
+    assert _window() == {}
+    with pytest.raises(ImportError):
+        _window(raise_on_error=True)
+
+
+def test_an_api_error_returns_empty_by_default_and_raises_on_request(monkeypatch):
+    def boom(req):
+        raise RuntimeError("alpaca 503")
+    _sdk_client(monkeypatch, boom)
+    assert _window() == {}
+    with pytest.raises(RuntimeError, match="503"):
+        _window(raise_on_error=True)
+
+
+def test_a_timeout_returns_empty_by_default_and_raises_on_request(monkeypatch):
+    import time
+
+    def slow(req):
+        time.sleep(0.4)                                                           # past the 0.05 s window
+        return _FakeBars({})
+    _sdk_client(monkeypatch, slow)
+    assert _window() == {}
+    with pytest.raises(asyncio.TimeoutError):
+        _window(raise_on_error=True)
+
+
+def test_an_answer_is_the_same_whichever_way_it_is_asked(monkeypatch):
+    """A successful call returns the same dict with or without the flag; an EMPTY answer is `{}` either way (the
+    difference is only that, with the flag, a failure can no longer be mistaken for it)."""
+    ts = datetime(2026, 9, 17, 13, 31, tzinfo=ZoneInfo("UTC"))
+    _sdk_client(monkeypatch, lambda req: _FakeBars({"AAA": [_SdkBar(ts, 1.0, 2.0, 0.5, 1.5)]}))
+    plain, flagged = _window(), _window(raise_on_error=True)
+    assert plain == flagged and list(plain) == ["AAA"] and plain["AAA"][0]["high"] == 2.0
+    _sdk_client(monkeypatch, lambda req: _FakeBars({}))
+    assert _window() == {} and _window(raise_on_error=True) == {}
+
+
+def test_the_pin_reader_still_calls_the_collector_the_never_raises_way():
+    """`ma_filter.read_open_window_pin` (the EP path) is unchanged: it does not pass `raise_on_error`."""
+    mf.reset_headline_day()
+    day = date(2026, 5, 30)
+    with _fetch({"PD": []}) as fetch:
+        _run(mf.read_open_window_pin("PD", day, datetime(2026, 5, 30, 9, 36, tzinfo=_ET)))
+        assert fetch.await_count == 1 and fetch.await_args.kwargs.get("raise_on_error", False) is False
+        assert fetch.await_args.args[0] == ["PD"]
