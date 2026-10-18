@@ -232,7 +232,7 @@ component field is `NULL` when not computable — never a guessed value.
 — same gate (`score_tier in ('HIGH', 'MODERATE')`, i.e. the FINAL settled tier, post-judge-
 override), same low blast radius. **There is no separate `scheduler.py` job** for this shadow
 (mirrors `theme_axis_shadow.py` exactly — neither axis has a dedicated cron entry); both ride
-the existing `ep_scan` job (7:00–10:00 AM ET, every 5 min) through this call site.
+the existing `ep_scan` job (7:00–10:00 AM ET, every 5 min; the 09:00 scan is the morning brief's own call to the same `_ep_scan_job`) through this call site.
 
 **SHADOW INVARIANT** (THE LINE): reads `mi_daily_closes` (read-only) via `get_daily_bars_asof`;
 writes ONLY `mi_structure_axis_shadow` + `mi_audit_log` (on failure); never mutates `r`, never

@@ -1154,6 +1154,10 @@ def _ep_scan_trigger() -> OrTrigger:
     `scripts/check_job_date_sources.registrations` (only parses a literal `CronTrigger(...)`; this was
     already non-daily). Pinned in tests/test_ep_scan_0900_duplicate.py.
 
+    The brief's registration carries `misfire_grace_time=300` (the dropped tick's grace) so the 09:00
+    scan keeps the tolerance it had: at the 1 s default a brief dispatched late is skipped, re-run by
+    the recovery sweep with its Telegrams held, and a 09:00 HIGH never reaches the operator directly.
+
     ⚠ The brief's inline scan is NOT an `ep_scan` ledger row (it runs inside the `morning_briefing`
     audit_wrap, so its ledger trace is the `morning_briefing` row); its product is the
     `mi_ep_scan_log` rows stamped ~09:00:00. Do not wrap it in a second `audit_run`."""
@@ -7491,12 +7495,17 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # Morning briefing: 9:00 AM ET (6:00 AM PT), 30 min before open
+    # Morning briefing: 9:00 AM ET (6:00 AM PT), 30 min before open. It also RUNS the 09:00 EP scan
+    # (`_ep_scan_trigger` has no 09:00 tick), so it carries the grace the dropped tick had: with the
+    # APScheduler default (1 s) a brief that dispatched a moment late would be SKIPPED, the recovery
+    # sweep would re-run it with its Telegrams HELD, and a HIGH first seen at 09:00 would reach the
+    # operator only as a name in the recovery summary (the 09:05 tick sees it as already alerted).
     _scheduler.add_job(
         audit_wrap(_morning_briefing_job, JOB_MORNING_BRIEFING),
         CronTrigger(hour=9, minute=0, day_of_week="mon-fri", timezone="America/New_York"),
         id=JOB_MORNING_BRIEFING,
         replace_existing=True,
+        misfire_grace_time=300,  # = ep_scan's: the 09:00 scan keeps the dropped cron tick's tolerance
     )
 
     # Stop EP scanning at 10:00 AM ET (7:00 AM PT) — extended past open to catch

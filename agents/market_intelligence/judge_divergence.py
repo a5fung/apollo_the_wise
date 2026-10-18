@@ -27,7 +27,7 @@ model's full verdict + rationale to the append-only `mi_judge_divergence` table 
 as ONE line in the existing weekly system review (system_review.py) — consolidate, do not
 proliferate a new digest.
 
-Dedup / cost control: the EP scan re-runs every 5 min (7:00-10:00 ET, ~36 ticks/morning),
+Dedup / cost control: the EP scan re-runs every 5 min (7:00-10:00 ET, ~36 ticks/morning; 09:00 is the morning brief's scan),
 and `_judge_shadow` re-grades every still-alerted candidate on each tick. The CALLER gates
 the trigger on `_audit_dedupe_check(ticker, alert_date, "judge_divergence_check")`
 (ep_detector.py — the same in-memory once-per-ticker-per-day guard the sibling axis

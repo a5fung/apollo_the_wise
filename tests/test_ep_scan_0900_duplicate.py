@@ -15,8 +15,18 @@ trigger):
      (`fires_at_most_daily` is False for an OrTrigger - no `.fields`), slot derivation (no 09:00
      slot exists to be "missed"), and the 10:05 watchdog (counts `ep_scan` success rows - 35 remain)
 
+  4. the 09:00 scan keeps the tolerance the dropped tick had: `morning_briefing` (now the ONLY
+     starter of the 09:00 scan) carries at least `ep_scan`'s misfire grace. At APScheduler's 1 s
+     default a late-dispatched brief is skipped, the recovery sweep re-runs it with its Telegrams
+     HELD, and a 09:00 HIGH never reaches the operator directly (the 09:05 tick sees it as already
+     alerted)
+  5. the SSoT's verify window is the whole 5-minute slot [09:00, 09:05), not the 09:00 minute (the
+     brief's scan stamps `scan_time_et` after its setup), and its documented reversion keeps the
+     brief's scan call
+
 MUTATION (verified RED): restoring `hour="7-9", minute="*/5"` in `_ep_scan_trigger` fails (1), (2)
-and the 35-tick count; making `fires_at_most_daily` admit an OrTrigger fails (3a).
+and the 35-tick count; making `fires_at_most_daily` admit an OrTrigger fails (3a); dropping
+`misfire_grace_time=300` from the `morning_briefing` registration fails (4).
 """
 from __future__ import annotations
 
@@ -176,6 +186,58 @@ async def test_the_brief_runs_exactly_one_scan_before_it_sends():
          patch("agents.market_intelligence.health_checks.run_evening_verify_heartbeat", new=ok):
         await sched._morning_briefing_job()
     assert order == ["scan", "send"], f"the brief's 09:00 scan sequence is {order}"
+
+
+# ── 4. the 09:00 scan keeps the dropped tick's misfire tolerance ──────────────────────────
+
+def test_the_brief_carries_the_dropped_ticks_misfire_grace(monkeypatch):
+    """The brief now STARTS the only 09:00 scan, so its misfire grace is the 09:00 scan's. The dropped
+    tick had `ep_scan`'s 300 s; the brief's registration used the 1 s default. Derived from the
+    registered jobs (the brief's grace is compared to ep_scan's, never to a literal alone)."""
+    _, jobs = _registered_jobs(monkeypatch)
+    brief, scan = jobs["morning_briefing"], jobs["ep_scan"]
+    assert scan.misfire_grace_time == 300
+    assert (brief.misfire_grace_time or 0) >= scan.misfire_grace_time, (
+        f"morning_briefing misfire_grace_time={brief.misfire_grace_time!r} < ep_scan's "
+        f"{scan.misfire_grace_time}: a brief dispatched late is skipped and the 09:00 scan with it")
+    assert brief.misfire_grace_time == 300
+
+
+def test_a_brief_inside_its_grace_is_not_a_recovery_gap(monkeypatch):
+    """Recovery judges a slot only after grace + YOUNG_S, so with 300 s a brief that is merely late
+    (the scheduler is still going to run it) is not yet a gap the sweep could re-run with held sends."""
+    _, jobs = _registered_jobs(monkeypatch)
+    brief = jobs["morning_briefing"]
+    slot = datetime(2026, 10, 19, 9, 0, tzinfo=ET)
+    for secs, expected_young in ((60, True), (300, True), (300 + jr.YOUNG_S + 1, False)):
+        now = slot + timedelta(seconds=secs)
+        disp = jr.classify_slot("morning_briefing", slot, brief.misfire_grace_time or 0, [], now, (), None, jr.BOUND_DEFAULT_S)
+        assert (disp.kind == "young") is expected_young, (secs, disp.kind)
+
+
+# ── 5. the verify window and the documented reversion ─────────────────────────────────────
+
+def _read(rel: str) -> str:
+    from pathlib import Path
+    return (Path(__file__).resolve().parent.parent / rel).read_text(encoding="utf-8")
+
+
+def _entry(text: str, marker: str) -> str:
+    head = text.index(marker)
+    nxt = text.find("\n### ", head + 1)
+    return text[head: nxt if nxt != -1 else len(text)]
+
+
+def test_the_documented_verify_window_and_reversion_match_the_code():
+    """The SSoT (`magna53_ep.md`, the durable owner) records the scan_time_et verify window as the whole
+    5-minute slot - the brief's scan stamps it after its setup, so a one-minute window can read 0 on a
+    healthy day - and the reversion as "restore the cron tick only": removing the brief's scan call
+    would make it race a concurrent scan instead of reading one. (CHANGELOG is deliberately NOT
+    pinned: it is rewritten and graduated, and a prose pin there would redden the suite on rewording.)"""
+    md = _entry(_read("docs/setups/magna53_ep.md"), "### 2026-10-17 — the 09:00 ET EP scan runs ONCE per weekday")
+    assert "[09:00, 09:05)" in md and "not the 09:00 minute" in md
+    rev = next(l for l in md.splitlines() if l.startswith("- **Reversion-flag:**"))
+    assert "AND remove" not in rev and "Leave the brief's own `_ep_scan_job()` call in place" in rev
 
 
 # ── 3. the consumers of the schedule stay correct ─────────────────────────────────────────
