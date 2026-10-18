@@ -1,16 +1,16 @@
-DISCOVERY MINUTE STAGE: 77,620 discovery candidate rows; minute files on disk: 1136 dates (/Users/alvinfung/apollo_data/cb702/minutes); candidates on those dates: 77,620; _done.psv: present (72,986 pairs)
+DISCOVERY MINUTE STAGE: 118,927 discovery candidate rows; minute files on disk: 1140 dates (/Users/alvinfung/apollo_data/cb702/minutes); candidates on those dates: 118,927; _done.psv: present (95,975 pairs)
 [load: 9s]
-[entries + exits + controls: 22s]
+[entries + exits + controls: 44s]
 
-COVERAGE: candidates with minutes fetched 77,620 (by state {'no_rows': 96, 'ok': 77524}); PENDING fetch (skipped, NOT an abstain) 0; files: refetched tickers 0, bad lines 0, truncated 0
-DATA GATE: 939 of 77,620 fetched candidates abstain on the data (1.21%; {'minute_daily_mismatch': 826, 'minute_high_below_pivot': 17, 'no_minutes': 96}) - limit 5%: ok; minute-vs-daily high/low match rate 98.94%
+COVERAGE: candidates with minutes fetched 118,927 (by state {'no_rows': 149, 'ok': 118778}); PENDING fetch (skipped, NOT an abstain) 0; files: refetched tickers 0, bad lines 0, truncated 0
+DATA GATE: 1,448 of 118,927 fetched candidates abstain on the data (1.22%; {'minute_daily_mismatch': 1276, 'minute_high_below_pivot': 23, 'no_minutes': 149}) - limit 5%: ok; minute-vs-daily high/low match rate 98.93%
 ENTRIES (candidate rows x variant; close = the daily stage's rows, joined):
-variant    rows  filled  too_wide  no_trigger  other abstain
-orh1     77,620  62,658     8,779       4,310          1,873
-orh5     77,620  57,441     9,681       9,462          1,036
-orh60    77,620  36,896    12,502      27,277            945
-pivot    77,620  68,214     8,467           0            939
-close    77,620  25,079    15,499      37,042              0
-ARM MATURITY (minute variants; filled walks): p33_s3_t10 mature 225,146 / open mark 63; ctl_family_a_settle mature 225,149 / open mark 60; ctl_apollo_today mature 210,519 / open mark 14,690
-WROTE /Users/alvinfung/apollo_data/cb702/out/trades_discovery.tsv.gz (4,342,550 rows), /Users/alvinfung/apollo_data/cb702/out/entries_discovery.tsv.gz (388,100 rows)
-WALL TIME: 31s total
+variant     rows   filled  too_wide  no_trigger  other abstain
+orh1     118,927   96,982    11,676       7,438          2,831
+orh5     118,927   88,714    12,911      15,699          1,603
+orh60    118,927   56,823    17,083      43,564          1,457
+pivot    118,927  106,265    11,214           0          1,448
+close    118,927   41,193    22,052      55,682              0
+ARM MATURITY (minute variants; filled walks): p33_s3_t10 mature 348,676 / open mark 108; ctl_family_a_settle mature 348,690 / open mark 94; ctl_apollo_today mature 326,447 / open mark 22,337
+WROTE /Users/alvinfung/apollo_data/cb702/out/trades_discovery.tsv.gz (6,751,881 rows), /Users/alvinfung/apollo_data/cb702/out/entries_discovery.tsv.gz (594,635 rows)
+WALL TIME: 54s total

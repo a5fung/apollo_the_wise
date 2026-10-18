@@ -1,5 +1,5 @@
-COVERAGE: holdout candidates with minutes fetched 71,561 (by state {'no_rows': 12, 'ok': 71549}); PENDING fetch (skipped, NOT an abstain) 0
-DATA GATE: 313 of 71,561 fetched candidates abstain on the data (0.44%; {'minute_daily_mismatch': 294, 'minute_high_below_pivot': 7, 'no_minutes': 12}) - limit 5%: ok; minute-vs-daily high/low match rate 99.59%
+COVERAGE: holdout candidates with minutes fetched 109,478 (by state {'no_rows': 16, 'ok': 109462}); PENDING fetch (skipped, NOT an abstain) 0
+DATA GATE: 473 of 109,478 fetched candidates abstain on the data (0.43%; {'minute_daily_mismatch': 446, 'minute_high_below_pivot': 11, 'no_minutes': 16}) - limit 5%: ok; minute-vs-daily high/low match rate 99.59%
 STEP 0 (entries) - HOLDOUT composition from ENTRY-TIME facts only; no day-0 walk, no exit, no outcome
   -- SPEC key (ticker, pole_date, K) --
 cell                 K  variant  candidates  filled  too_wide  other_abstain  no_trigger
@@ -15,6 +15,10 @@ C0                full     orh1        6186    4098      1730             50    
 C0                full     orh5        6186    3645      1861             31         649
 C0                full    orh60        6186    2227      1993             28        1938
 C0                full    pivot        6186    4489      1669             28           0
+C0                  tl     orh1       10554    8413      1118             86         937
+C0                  tl     orh5       10554    7570      1242             51        1691
+C0                  tl    orh60       10554    4806      1572             45        4131
+C0                  tl    pivot       10554    9448      1061             45           0
 C1                  k5     orh1          33      28         0              0           5
 C1                  k5     orh5          33      21         1              0          11
 C1                  k5    orh60          33      17         1              0          15
@@ -27,6 +31,10 @@ C1                full     orh1          33      24         5              0    
 C1                full     orh5          33      19         6              0           8
 C1                full    orh60          33      13         6              0          14
 C1                full    pivot          33      28         5              0           0
+C1                  tl     orh1          43      37         1              0           5
+C1                  tl     orh5          43      31         2              0          10
+C1                  tl    orh60          43      21         2              0          20
+C1                  tl    pivot          43      42         1              0           0
 C2                  k5     orh1           5       4         0              0           1
 C2                  k5     orh5           5       3         0              0           2
 C2                  k5    orh60           5       2         0              0           3
@@ -39,6 +47,10 @@ C2                full     orh1           2       2         0              0    
 C2                full     orh5           2       2         0              0           0
 C2                full    orh60           2       1         0              0           1
 C2                full    pivot           2       2         0              0           0
+C2                  tl     orh1           3       3         0              0           0
+C2                  tl     orh5           3       3         0              0           0
+C2                  tl    orh60           3       2         0              0           1
+C2                  tl    pivot           3       3         0              0           0
 C3                  k5     orh1         100      85         5              2           8
 C3                  k5     orh5         100      71         6              1          22
 C3                  k5    orh60         100      53         5              1          41
@@ -51,6 +63,10 @@ C3                full     orh1          98      74        14              2    
 C3                full     orh5          98      63        16              1          18
 C3                full    orh60          98      45        16              1          36
 C3                full    pivot          98      83        14              1           0
+C3                  tl     orh1         107      92         1              2          12
+C3                  tl     orh5         107      81         4              1          21
+C3                  tl    orh60         107      60         3              1          43
+C3                  tl    pivot         107     105         1              1           0
 C4                  k5     orh1         285     239        21              3          22
 C4                  k5     orh5         285     214        23              3          45
 C4                  k5    orh60         285     145        32              3         105
@@ -63,6 +79,10 @@ C4                full     orh1         258     177        61              4    
 C4                full     orh5         258     156        66              3          33
 C4                full    orh60         258      96        73              3          86
 C4                full    pivot         258     196        59              3           0
+C4                  tl     orh1         317     262        21              3          31
+C4                  tl     orh5         317     231        23              3          60
+C4                  tl    orh60         317     166        30              3         118
+C4                  tl    pivot         317     293        21              3           0
 C5                  k5     orh1          86      73         3              0          10
 C5                  k5     orh5          86      62         4              0          20
 C5                  k5    orh60          86      41         4              0          41
@@ -75,6 +95,10 @@ C5                full     orh1          77      57        14              0    
 C5                full     orh5          77      51        15              0          11
 C5                full    orh60          77      28        17              0          32
 C5                full    pivot          77      63        14              0           0
+C5                  tl     orh1          99      85         2              0          12
+C5                  tl     orh5          99      74         4              0          21
+C5                  tl    orh60          99      50         5              0          44
+C5                  tl    pivot          99      97         2              0           0
 C6                  k5     orh1           7       5         0              0           2
 C6                  k5     orh5           7       3         0              0           4
 C6                  k5    orh60           7       2         0              0           5
@@ -87,6 +111,10 @@ C6                full     orh1           6       4         2              0    
 C6                full     orh5           6       3         2              0           1
 C6                full    orh60           6       2         2              0           2
 C6                full    pivot           6       4         2              0           0
+C6                  tl     orh1           6       5         0              0           1
+C6                  tl     orh5           6       5         0              0           1
+C6                  tl    orh60           6       2         0              0           4
+C6                  tl    pivot           6       6         0              0           0
 C7                  k5     orh1          63      53         2              0           8
 C7                  k5     orh5          63      43         3              0          17
 C7                  k5    orh60          63      35         2              0          26
@@ -99,6 +127,10 @@ C7                full     orh1          67      50         9              0    
 C7                full     orh5          67      41        11              0          15
 C7                full    orh60          67      28        11              0          28
 C7                full    pivot          67      58         9              0           0
+C7                  tl     orh1          76      64         1              0          11
+C7                  tl     orh5          76      55         3              0          18
+C7                  tl    orh60          76      42         2              0          32
+C7                  tl    pivot          76      75         1              0           0
 C1_no_retrace       k5     orh1          61      53         0              0           8
 C1_no_retrace       k5     orh5          61      43         1              0          17
 C1_no_retrace       k5    orh60          61      33         3              0          25
@@ -111,6 +143,10 @@ C1_no_retrace     full     orh1          57      39        10              0    
 C1_no_retrace     full     orh5          57      32        13              0          12
 C1_no_retrace     full    orh60          57      21        14              0          22
 C1_no_retrace     full    pivot          57      48         9              0           0
+C1_no_retrace       tl     orh1          71      60         1              0          10
+C1_no_retrace       tl     orh5          71      50         2              0          19
+C1_no_retrace       tl    orh60          71      36         4              0          31
+C1_no_retrace       tl    pivot          71      70         1              0           0
 C1_no_tightening    k5     orh1         120     102         8              0          10
 C1_no_tightening    k5     orh5         120      87         9              0          24
 C1_no_tightening    k5    orh60         120      63        18              0          39
@@ -123,6 +159,26 @@ C1_no_tightening  full     orh1         123      92        21              0    
 C1_no_tightening  full     orh5         123      75        23              0          25
 C1_no_tightening  full    orh60         123      52        25              0          46
 C1_no_tightening  full    pivot         123     103        20              0           0
+C1_no_tightening    tl     orh1         133     113         7              0          13
+C1_no_tightening    tl     orh5         133      98         8              0          27
+C1_no_tightening    tl    orh60         133      69        15              0          49
+C1_no_tightening    tl    pivot         133     126         7              0           0
+HTF                 k5     orh1         576     464        80              4          28
+HTF                 k5     orh5         576     407        90              2          77
+HTF                 k5    orh60         576     258       108              2         208
+HTF                 k5    pivot         576     495        79              2           0
+HTF                k10     orh1         468     356        83              1          28
+HTF                k10     orh5         468     312        90              1          65
+HTF                k10    orh60         468     196       114              1         157
+HTF                k10    pivot         468     386        81              1           0
+HTF               full     orh1         402     274       107              2          19
+HTF               full     orh5         402     240       114              2          46
+HTF               full    orh60         402     147       125              2         128
+HTF               full    pivot         402     295       105              2           0
+HTF                 tl     orh1         638     527        66              2          43
+HTF                 tl     orh5         638     460        77              1         100
+HTF                 tl    orh60         638     281        85              1         271
+HTF                 tl    pivot         638     572        65              1           0
   -- CHAIN key (poles <= 3 sessions apart = one base) --
 cell                 K  variant  candidates  filled  too_wide  other_abstain  no_trigger
 C0                  k5     orh1        8877    7086      1099             84         608
@@ -137,6 +193,10 @@ C0                full     orh1        6054    3993      1709             48    
 C0                full     orh5        6054    3550      1838             29         637
 C0                full    orh60        6054    2165      1965             26        1898
 C0                full    pivot        6054    4378      1650             26           0
+C0                  tl     orh1        8575    6791       964             75         745
+C0                  tl     orh5        8575    6107      1070             44        1354
+C0                  tl    orh60        8575    3871      1332             40        3332
+C0                  tl    pivot        8575    7613       922             40           0
 C1                  k5     orh1          26      24         0              0           2
 C1                  k5     orh5          26      18         0              0           8
 C1                  k5    orh60          26      14         1              0          11
@@ -149,6 +209,10 @@ C1                full     orh1          33      24         5              0    
 C1                full     orh5          33      19         6              0           8
 C1                full    orh60          33      13         6              0          14
 C1                full    pivot          33      28         5              0           0
+C1                  tl     orh1          38      33         1              0           4
+C1                  tl     orh5          38      27         2              0           9
+C1                  tl    orh60          38      18         2              0          18
+C1                  tl    pivot          38      37         1              0           0
 C2                  k5     orh1           4       4         0              0           0
 C2                  k5     orh5           4       3         0              0           1
 C2                  k5    orh60           4       2         0              0           2
@@ -161,6 +225,10 @@ C2                full     orh1           2       2         0              0    
 C2                full     orh5           2       2         0              0           0
 C2                full    orh60           2       1         0              0           1
 C2                full    pivot           2       2         0              0           0
+C2                  tl     orh1           3       3         0              0           0
+C2                  tl     orh5           3       3         0              0           0
+C2                  tl    orh60           3       2         0              0           1
+C2                  tl    pivot           3       3         0              0           0
 C3                  k5     orh1          83      71         5              2           5
 C3                  k5     orh5          83      60         5              1          17
 C3                  k5    orh60          83      45         5              1          32
@@ -173,6 +241,10 @@ C3                full     orh1          95      71        14              2    
 C3                full     orh5          95      61        16              1          17
 C3                full    orh60          95      45        16              1          33
 C3                full    pivot          95      80        14              1           0
+C3                  tl     orh1          88      76         1              2           9
+C3                  tl     orh5          88      66         4              1          17
+C3                  tl    orh60          88      48         3              1          36
+C3                  tl    pivot          88      86         1              1           0
 C4                  k5     orh1         238     203        18              3          14
 C4                  k5     orh5         238     185        18              3          32
 C4                  k5    orh60         238     127        28              3          80
@@ -185,6 +257,10 @@ C4                full     orh1         255     174        61              4    
 C4                full     orh5         255     153        66              3          33
 C4                full    orh60         255      94        73              3          85
 C4                full    pivot         255     193        59              3           0
+C4                  tl     orh1         260     218        16              3          23
+C4                  tl     orh5         260     194        17              3          46
+C4                  tl    orh60         260     141        25              3          91
+C4                  tl    pivot         260     241        16              3           0
 C5                  k5     orh1          72      64         3              0           5
 C5                  k5     orh5          72      56         3              0          13
 C5                  k5    orh60          72      37         4              0          31
@@ -197,6 +273,10 @@ C5                full     orh1          76      56        14              0    
 C5                full     orh5          76      50        15              0          11
 C5                full    orh60          76      28        17              0          31
 C5                full    pivot          76      62        14              0           0
+C5                  tl     orh1          85      73         2              0          10
+C5                  tl     orh5          85      64         4              0          17
+C5                  tl    orh60          85      43         5              0          37
+C5                  tl    pivot          85      83         2              0           0
 C6                  k5     orh1           5       5         0              0           0
 C6                  k5     orh5           5       3         0              0           2
 C6                  k5    orh60           5       2         0              0           3
@@ -209,6 +289,10 @@ C6                full     orh1           6       4         2              0    
 C6                full     orh5           6       3         2              0           1
 C6                full    orh60           6       2         2              0           2
 C6                full    pivot           6       4         2              0           0
+C6                  tl     orh1           6       5         0              0           1
+C6                  tl     orh5           6       5         0              0           1
+C6                  tl    orh60           6       2         0              0           4
+C6                  tl    pivot           6       6         0              0           0
 C7                  k5     orh1          52      45         2              0           5
 C7                  k5     orh5          52      37         2              0          13
 C7                  k5    orh60          52      29         2              0          21
@@ -221,6 +305,10 @@ C7                full     orh1          66      49         9              0    
 C7                full     orh5          66      40        11              0          15
 C7                full    orh60          66      28        11              0          27
 C7                full    pivot          66      57         9              0           0
+C7                  tl     orh1          64      54         1              0           9
+C7                  tl     orh5          64      46         3              0          15
+C7                  tl    orh60          64      34         2              0          28
+C7                  tl    pivot          64      63         1              0           0
 C1_no_retrace       k5     orh1          49      45         0              0           4
 C1_no_retrace       k5     orh5          49      37         0              0          12
 C1_no_retrace       k5    orh60          49      30         2              0          17
@@ -233,6 +321,10 @@ C1_no_retrace     full     orh1          57      39        10              0    
 C1_no_retrace     full     orh5          57      32        13              0          12
 C1_no_retrace     full    orh60          57      21        14              0          22
 C1_no_retrace     full    pivot          57      48         9              0           0
+C1_no_retrace       tl     orh1          62      53         1              0           8
+C1_no_retrace       tl     orh5          62      44         2              0          16
+C1_no_retrace       tl    orh60          62      33         3              0          26
+C1_no_retrace       tl    pivot          62      61         1              0           0
 C1_no_tightening    k5     orh1          96      83         8              0           5
 C1_no_tightening    k5     orh5          96      72         8              0          16
 C1_no_tightening    k5    orh60          96      51        16              0          29
@@ -245,5 +337,25 @@ C1_no_tightening  full     orh1         120      89        21              0    
 C1_no_tightening  full     orh5         120      73        23              0          24
 C1_no_tightening  full    orh60         120      50        25              0          45
 C1_no_tightening  full    pivot         120     100        20              0           0
-  GO/NO-GO input, SPEC key (plan: C1 primary entry needs >= 30 FILLED holdout trades): orh1: k5=28, k10=23, full=24; orh5: k5=21, k10=19, full=19; orh60: k5=17, k10=13, full=13; pivot: k5=33, k10=30, full=28
-  GO/NO-GO input, CHAIN key (plan: C1 primary entry needs >= 30 FILLED holdout trades): orh1: k5=24, k10=23, full=24; orh5: k5=18, k10=19, full=19; orh60: k5=14, k10=13, full=13; pivot: k5=26, k10=30, full=28
+C1_no_tightening    tl     orh1         110      92         7              0          11
+C1_no_tightening    tl     orh5         110      81         8              0          21
+C1_no_tightening    tl    orh60         110      57        13              0          40
+C1_no_tightening    tl    pivot         110     103         7              0           0
+HTF                 k5     orh1         494     394        75              3          22
+HTF                 k5     orh5         494     347        84              2          61
+HTF                 k5    orh60         494     221        99              2         172
+HTF                 k5    pivot         494     418        74              2           0
+HTF                k10     orh1         454     344        82              1          27
+HTF                k10     orh5         454     302        89              1          62
+HTF                k10    orh60         454     190       112              1         151
+HTF                k10    pivot         454     373        80              1           0
+HTF               full     orh1         395     267       107              2          19
+HTF               full     orh5         395     234       114              2          45
+HTF               full    orh60         395     144       125              2         124
+HTF               full    pivot         395     288       105              2           0
+HTF                 tl     orh1         516     424        57              1          34
+HTF                 tl     orh5         516     371        66              1          78
+HTF                 tl    orh60         516     223        71              1         221
+HTF                 tl    pivot         516     459        56              1           0
+  GO/NO-GO input, SPEC key (plan: C1 primary entry needs >= 30 FILLED holdout trades): orh1: k5=28, k10=23, full=24, tl=37; orh5: k5=21, k10=19, full=19, tl=31; orh60: k5=17, k10=13, full=13, tl=21; pivot: k5=33, k10=30, full=28, tl=42
+  GO/NO-GO input, CHAIN key (plan: C1 primary entry needs >= 30 FILLED holdout trades): orh1: k5=24, k10=23, full=24, tl=33; orh5: k5=18, k10=19, full=19, tl=27; orh60: k5=14, k10=13, full=13, tl=18; pivot: k5=26, k10=30, full=28, tl=37
