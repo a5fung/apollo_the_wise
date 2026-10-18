@@ -1421,7 +1421,20 @@ stagger cards, one at a time.
 
 **Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
-## 2026-10-16 (Fri) CLOSE — 🔴 RESUME HERE. Supersedes the 10-15 close below.
+## 2026-10-17 (Sat) CLOSE — 🔴 RESUME HERE. Supersedes the 10-16 close below.
+
+**Board 26 → 23.** Closed #686 (none hold, Opus MATCH), #679 (outage half to tripwire `perplexity_outage_theme_window_679`), #597 / #698 / #654 (each to a tripwire: `sync_position_gone_first_real_vanish_597` widened, `plus8r_two_share_first_event_698`, `flag_breakout_first_after_close_654`), #283 (wick_fill RETIRED on his word). New: #702 Consolidation Breakout, #703 09:00 double scan, #704 split outcomes. The 25-task board audit rewrote #687 / #655 / #312 / #314 / #333 in place. Server = 61974034 (both + execution, exit 0).
+
+**His rulings Sat:** #655 a renaming merge STORES the merged description ("Yes"; quality-guarded) · close #679 with a tripwire ("Ok") · close #597/#698/#654 the same way + kill wick fill completely · the EP-first hold is LIFTED ("free to focus on other setups and building them to shadow and paper where we see fit"; live still his) · #312 six ladder readings as built, drawdown from the current peak (the ACT step still needs its own yes) · #314 build the parabolic-short B3 shadow · #703 drop the 09:00 ep_scan tick · his note: Qullamaggie's breakout is often a down-sloping TRENDLINE break (shared notes).
+
+**Shipped + deployed Sat:** #655 (c)/(d) + the merged description + `arm_b_merge_rename` lineage · wick fill removed (prod row deprecated/disabled) · #702 P1 module + P1b harvest + P1c trendline + HTF report cell + P2 runner + the forward SHADOW recorder (job 17:48 ET mon-fri; SIC cache seeded on prod) · #314 parabolic-short B3 shadow (inside the 17:15 job; read-only borrow check via the facade; 0 climax candidates in the last 30 days) · #703 OrTrigger · the /simplify pass (7 pinned backtest hashes identical). HTF paper read = NO-GO for now (`htf_breakout_paper_graduation` resolution_2026_10_17).
+
+**#702 state:** discovery 2022-03..2024-12 shows no edge on the primary triple (C0 -0.19 to -0.23R; C1 -0.05R on the trendline, n 79; HTF cell worse; the QQQ phase rule does not separate; median -1R). Holdout C1 ORH5 filled = 31 on the trendline (19-21 horizontal). P4 must: state that the "same sign in discovery" pass bar cannot be met as written, look at stop size (his call), re-print the freeze pins.
+
+**Sun 10-18 (build day):** first #700 review (08:00 ET) → close #700 · first ci_status/selection_replay file → close #313 (ACCEPTED-PARTIAL) · #702 P4 freeze step · #702 minute-fetch outage fix (`raise_on_error`) · #704 split outcomes · his personal Trading Journal tab fixes (separate from Apollo: memory `personal-trading-review-2026`).
+**Mon 10-19:** the pre-registered checks (#333, #697 item 4, #701(c) QRVO, #312 row, #655 guard) + #702 shadow first run 17:48 ET + #703 first single-09:00 day + #314 first 17:15 shadow run.
+
+## 2026-10-16 (Fri) CLOSE — superseded by the 10-17 close above.
 
 **Board 28 → 26.** Closed #693 (second clean full validator pass: 140 calls, 0 errors, 0 cut off, 9 removals; the Mon 10-12 night is the other) and #598 (its DoD met live; the screen arm closed on its own written zero arm — 10 trading days, 0 flag-screen blocks — with the tripwire `flag_mna_screen_first_fire_598` carrying the first real block). No new tasks. Server = 291cb305 (21:15–21:21 ET: `deploy.sh both` exit 0, then `deploy.sh execution` exit 0; symbols grepped in apollo-market AND apollo-execution; `mi_flag_candidates.post_breakout_from` / `days_since_breakout` exist; 0 error rows after boot). main = server + PLAN/probe commits only.
 
