@@ -5234,10 +5234,19 @@ async def initialize_schema() -> None:
                 fetched_at          TIMESTAMPTZ DEFAULT NOW(),
                 applied_at          TIMESTAMPTZ,
                 adjustment_applied  BOOLEAN NOT NULL DEFAULT FALSE,
+                adjustment_outcome  TEXT CHECK (adjustment_outcome IN ('applied', 'phantom', 'skipped_no_data')),
+                applied_factor      DOUBLE PRECISION,
                 PRIMARY KEY (ticker, execution_date)
             );
             CREATE INDEX IF NOT EXISTS idx_splits_unapplied
                 ON mi_splits (execution_date DESC) WHERE adjustment_applied = FALSE;
+            -- #704: the ingest's OWN verdict, written where it decides. `adjustment_applied` says only that the
+            -- row was handled; these say what the handling did to the stored bars. Rows written before the
+            -- columns exist read NULL (see `split_row_factor` for how that is read). In the CREATE above for a
+            -- fresh database; these ALTERs are for the long-lived table (#258 parity).
+            ALTER TABLE mi_splits ADD COLUMN IF NOT EXISTS adjustment_outcome TEXT
+                CHECK (adjustment_outcome IN ('applied', 'phantom', 'skipped_no_data'));
+            ALTER TABLE mi_splits ADD COLUMN IF NOT EXISTS applied_factor DOUBLE PRECISION;
 
             CREATE TABLE IF NOT EXISTS mi_weekly_watchlists (
                 week_ending          DATE NOT NULL,
@@ -12477,31 +12486,132 @@ async def get_unapplied_splits(since: date | None = None, upto: date | None = No
         return [dict(r) for r in rows]
 
 
-async def mark_split_applied(ticker: str, execution_date: date) -> None:
+SPLIT_OUTCOMES = ("applied", "phantom", "skipped_no_data")
+
+
+async def mark_split_applied(ticker: str, execution_date: date, *, outcome: str | None = None,
+                             factor: float | None = None) -> None:
+    """Mark a split row handled. `outcome` / `factor` (#704) record WHAT the handling did to the stored bars:
+    'applied' (history re-fetched and overwritten; `factor` = the factor it was restated by) · 'phantom'
+    (Polygon reported a split that never happened; no bar written) · 'skipped_no_data' (Polygon returned no
+    bars to apply; none written). Both default to None so a caller that does not say leaves the pre-#704 shape
+    (a bare boolean) - `split_row_factor` reads that as a legacy row."""
+    if outcome is not None and outcome not in SPLIT_OUTCOMES:
+        raise ValueError(f"split outcome must be one of {SPLIT_OUTCOMES}, got {outcome!r}")
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
             """
             UPDATE mi_splits
-            SET adjustment_applied = TRUE, applied_at = NOW()
+            SET adjustment_applied = TRUE, applied_at = NOW(),
+                adjustment_outcome = $3, applied_factor = $4
             WHERE ticker = $1 AND execution_date = $2
             """,
-            ticker, execution_date,
+            ticker, execution_date, outcome, factor,
         )
 
 
 async def reset_split_applied(ticker: str, execution_date: date) -> None:
-    """Used by backfill_splits.py to force a re-apply of an already-applied row."""
+    """Used by backfill_splits.py to force a re-apply of an already-applied row. Clears the #704 verdict too:
+    a reset means "decide again", so the old outcome / factor must not outlive the decision they described."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
             """
             UPDATE mi_splits
-            SET adjustment_applied = FALSE, applied_at = NULL
+            SET adjustment_applied = FALSE, applied_at = NULL, adjustment_outcome = NULL, applied_factor = NULL
             WHERE ticker = $1 AND execution_date = $2
             """,
             ticker, execution_date,
         )
+
+
+# -- #704: ONE answer to "did this split move the stored bars, and by how much?" -----------------------
+# `splits_ingest._apply_one` decides phantom vs real (and writes the bars); it now records its verdict on the
+# row. Every consumer that compares a price stored RAW at some past moment (a watch pivot, an HTF entry, a
+# frozen climax level) against `mi_daily_closes` - which the ingest retro-ADJUSTS - asks THIS, never re-derives it.
+# The consumers keep their own policy for what to do with the answer; they share the answer.
+
+def split_row_factor(row: dict) -> Optional[float]:
+    """The factor ONE mi_splits row moved the stored pre-execution bars by (stored = raw x factor); 1.0 when it
+    moved none; None when that cannot be told yet (the row is not applied, or its ratio is unreadable).
+
+      * not applied                                -> None   (the 17:00 ingest has not handled it)
+      * outcome 'phantom' / 'skipped_no_data'      -> 1.0    (the ingest wrote no bar)
+      * outcome 'applied'                          -> `applied_factor` as recorded
+      * outcome NULL with adjustment_applied TRUE  -> split_from / split_to  (a LEGACY row, written before the
+        column existed: the boolean said only "handled", and every consumer read that as a real split at the
+        table's ratio, so that is what is returned; a legacy phantom cannot be told from a real split - the CB
+        shadow's data cross-check in `split_scale` is what degrades it to "sits out")
+      * 'applied' with no usable `applied_factor`  -> split_from / split_to (same table ratio)"""
+    if not row.get("adjustment_applied"):
+        return None
+    outcome = row.get("adjustment_outcome")
+    if outcome in ("phantom", "skipped_no_data"):
+        return 1.0
+    if outcome == "applied":
+        try:
+            f = float(row.get("applied_factor"))
+        except (TypeError, ValueError):
+            f = None
+        if f is not None and 0.0 < f < float("inf"):
+            return f
+    try:
+        sf, st = float(row["split_from"]), float(row["split_to"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return sf / st if sf > 0.0 and st > 0.0 else None
+
+
+def scale_from_split_rows(rows) -> Optional[float]:
+    """The product of `split_row_factor` over `rows` (given order, left to right - the plain product, so
+    the arithmetic is bit-identical to multiplying the table's ratios); 1.0 for no rows; None while ANY row is
+    unreadable / unapplied. The pure core of `stored_price_scale`, for a caller that already holds the rows."""
+    scale = 1.0
+    for r in rows:
+        f = split_row_factor(r)
+        if f is None:
+            return None
+        scale *= f
+    return scale
+
+
+SCALE_UNMOVED_TOL = 1e-9     # a product of ratios (3/7 x 7/3) is 1.0 up to float noise
+
+
+def scale_unmoved(scale: float) -> bool:
+    """True when a `stored_price_scale` / `scale_from_split_rows` value means "no stored bar moved"."""
+    return abs(scale - 1.0) <= SCALE_UNMOVED_TOL
+
+
+_SPLIT_FACTOR_COLS = ("ticker, execution_date, split_from, split_to, adjustment_applied, "
+                      "adjustment_outcome, applied_factor")
+
+
+async def _split_rows_between(ticker: str, since, through=None) -> list[dict]:
+    """mi_splits rows for `ticker` with execution_date in (since, through], oldest first; `through=None` = no
+    upper bound (the pre-#704 `get_split_dates_after` reading)."""
+    clauses, args = ["ticker = $1", "execution_date > $2"], [ticker, since]
+    if through is not None:
+        args.append(through)
+        clauses.append(f"execution_date <= ${len(args)}")
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            f"SELECT {_SPLIT_FACTOR_COLS} FROM mi_splits WHERE " + " AND ".join(clauses)
+            + " ORDER BY execution_date", *args)
+    return [dict(r) for r in rows]
+
+
+async def stored_price_scale(ticker: str, since, through) -> Optional[float]:
+    """#704 - the factor between a price stored RAW on `since` and the same bar in `mi_daily_closes` now:
+    the product of the applied factors of the splits executing in (`since`, `through`]. 1.0 when there is none
+    (or only phantom / no-data rows: the ingest moved no bar). None while any split in the window is unapplied
+    - the stored series is then on two scales and no consumer may compare across it.
+
+    A legacy row (outcome NULL, written before the column) is read as a real split at the table's ratio:
+    see `split_row_factor`."""
+    return scale_from_split_rows(await _split_rows_between(ticker, since, through))
 
 
 async def upsert_ticker_history(
@@ -13455,20 +13565,20 @@ async def mark_htf_breakout_shadow_unbookable(row_id: int, reason: str) -> bool:
     return res.endswith(" 1")
 
 
-async def get_split_dates_after(ticker: str, after_date) -> list:
-    """#667 — split execution dates for `ticker` STRICTLY AFTER `after_date`.
+async def get_split_dates_after(ticker: str, after_date, through=None) -> list:
+    """#667 — the splits for `ticker` STRICTLY AFTER `after_date` (and up to `through`, when given) that moved
+    - or, unapplied, may still move - the stored bars.
 
     Why this exists: `mi_htf_breakout_shadow` stores RAW prices as they stood on the break day,
     while `mi_daily_closes` is retro-ADJUSTED. A split between the two makes any comparison
     nonsense — CRWD 2026-07-01 has entry 778.82 against a break-day low of 191.25 because a 1:4
-    executed on 2026-07-02. Cheap enough to call per ripe row; `mi_splits` is tiny."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT execution_date, split_from, split_to FROM mi_splits "
-            "WHERE ticker=$1 AND execution_date > $2 ORDER BY execution_date",
-            ticker, after_date)
-    return [dict(r) for r in rows]
+    executed on 2026-07-02. Cheap enough to call per ripe row; `mi_splits` is tiny.
+
+    #704: a split the ingest recorded as PHANTOM / 'skipped_no_data' moved no bar (`split_row_factor` 1.0) and is
+    no longer returned - it used to count as a split here while the CB entry step and the parabolic shadow
+    ignored it. The decision itself (settle / defer / unbookable) is `stored_price_scale`'s; this names the
+    splits for the reason string."""
+    return [r for r in await _split_rows_between(ticker, after_date, through) if split_row_factor(r) != 1.0]
 
 
 async def settle_htf_breakout_shadow(row_id: int, *, outcome, realized_r, fwd_mfe_r) -> bool:
@@ -19247,16 +19357,19 @@ async def cb_get_security_types(tickers: list[str]) -> dict[str, str]:
 
 
 async def cb_get_splits_after(tickers: list[str], after_date: date, upto_date: date) -> dict[str, list[dict]]:
-    """{ticker: [{execution_date, split_from, split_to}, ...]} for splits executing STRICTLY after
-    `after_date` and no later than `upto_date` (the batch form of `get_split_dates_after`, #667). The
-    upper bound matters: `mi_splits` also holds ANNOUNCED splits that have not executed yet, and a split
-    next week has changed no stored price."""
+    """{ticker: [{execution_date, split_from, split_to, adjustment_applied, adjustment_outcome, applied_factor},
+    ...]} for splits executing STRICTLY after `after_date` and no later than `upto_date` (the batch form of
+    `get_split_dates_after`, #667). The upper bound matters: `mi_splits` also holds ANNOUNCED splits that have
+    not executed yet, and a split next week has changed no stored price. The ingest's verdict columns (#704)
+    come with the rows so the caller reads them through `scale_from_split_rows` / `split_row_factor` - ONE
+    reading, the one `stored_price_scale` gives. EVERY row is returned, phantoms included: dropping the
+    unmoved ones is the caller's policy."""
     if not tickers:
         return {}
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT ticker, execution_date, split_from, split_to FROM mi_splits "
+            f"SELECT {_SPLIT_FACTOR_COLS} FROM mi_splits "
             "WHERE ticker = ANY($1::text[]) AND execution_date > $2 AND execution_date <= $3 "
             "ORDER BY ticker, execution_date",
             list(tickers), after_date, upto_date)

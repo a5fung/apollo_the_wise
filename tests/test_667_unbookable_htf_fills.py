@@ -30,6 +30,8 @@ same way the impossible capture overstated the win rate.
 """
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from agents.market_intelligence.flag_detector import _htf_settle_from_bars
@@ -98,16 +100,45 @@ def test_the_temporary_abstain_is_still_a_bare_none():
 
 # ── guard 2: the split, and the readout ─────────────────────────────────────────────────
 
+def _split_row(exec_date, split_from=1, split_to=4, *, kind="recorded", **over):
+    """An `mi_splits` row as `db._split_rows_between` returns it. kind: 'recorded' = the ingest's verdict 'applied'
+    (+ the factor it restated by) · 'legacy' = written before the #704 outcome column · 'phantom' = the ingest
+    recorded a split that never happened · 'unapplied' = executed, the 17:00 pull has not handled it."""
+    row = {"ticker": "CRWD", "execution_date": exec_date, "split_from": split_from, "split_to": split_to,
+           "adjustment_applied": True, "adjustment_outcome": None, "applied_factor": None}
+    if kind == "recorded":
+        row.update(adjustment_outcome="applied", applied_factor=split_from / split_to)
+    elif kind == "phantom":
+        row.update(adjustment_outcome="phantom")
+    elif kind == "unapplied":
+        row.update(adjustment_applied=False)
+    return {**row, **over}
+
+
+def _rows_between(rows, seen=None):
+    """A stand-in for `db._split_rows_between` that honours the (since, through] window like the SQL."""
+    async def _fake(ticker, since, through=None):
+        if seen is not None:
+            seen.append((ticker, since, through))
+        return [dict(r) for r in rows if r["execution_date"] > since and (through is None or r["execution_date"] <= through)]
+    return _fake
+
+
 @pytest.mark.asyncio
-async def test_a_split_between_break_and_settle_is_marked_and_the_bars_are_never_fetched(monkeypatch):
+@pytest.mark.parametrize("split_row", [
+    _split_row(date(2026, 7, 2), 1, 4),                              # the real forward split, recorded
+    _split_row(date(2026, 7, 2), 4, 1),                              # a real reverse split, recorded
+    _split_row(date(2026, 7, 2), 1, 4, kind="legacy"),               # written before the column
+], ids=["forward_recorded", "reverse_recorded", "forward_legacy"])
+async def test_a_split_between_break_and_settle_is_marked_and_the_bars_are_never_fetched(monkeypatch, split_row):
     """CRWD 2026-07-01: entry stored 778.82 against a break-day low of 191.25, because a 1:4 split
     executed 2026-07-02. The shadow keeps RAW prices and `mi_daily_closes` is retro-ADJUSTED, so the
     comparison is meaningless — and the old job made it anyway.
 
     Exercised through the real job rather than pinned as source text: it asserts the row is MARKED,
     never SETTLED, and that the bars are **not fetched at all**, which is the part a text pin cannot
-    see (the split check could be called and its result ignored)."""
-    from datetime import date
+    see (the split check could be called and its result ignored). #704: the split is read through the
+    real `stored_price_scale` over the ingest's recorded verdict; a REAL split, either direction, still voids."""
     from agents.market_intelligence import db as dbmod, scheduler as sch
 
     row = {"id": 42, "ticker": "CRWD", "break_date": date(2026, 7, 1), "entry_price": 778.82,
@@ -117,9 +148,8 @@ async def test_a_split_between_break_and_settle_is_marked_and_the_bars_are_never
     async def _ripe(_cutoff):
         return [row]
 
-    async def _splits(ticker, after):
-        assert ticker == "CRWD" and after == date(2026, 7, 1)
-        return [{"execution_date": date(2026, 7, 2), "split_from": 1, "split_to": 4}]
+    seen = []
+    monkeypatch.setattr(dbmod, "_split_rows_between", _rows_between([split_row], seen))
 
     async def _bars(*a, **k):
         calls["bars"] += 1
@@ -132,13 +162,14 @@ async def test_a_split_between_break_and_settle_is_marked_and_the_bars_are_never
         calls["settled"].append(a); return True
 
     monkeypatch.setattr(dbmod, "get_settleable_htf_breakout_shadows", _ripe)
-    monkeypatch.setattr(dbmod, "get_split_dates_after", _splits)
     monkeypatch.setattr(dbmod, "get_anticipation_ohlcv", _bars)
     monkeypatch.setattr(dbmod, "mark_htf_breakout_shadow_unbookable", _mark)
     monkeypatch.setattr(dbmod, "settle_htf_breakout_shadow", _settle)
 
     settled = await sch._htf_breakout_settle_job(date(2026, 9, 18))
 
+    assert seen and all(t == "CRWD" and since == date(2026, 7, 1) and through == date(2026, 9, 18)
+                        for t, since, through in seen), seen       # the window is (break_date, today]
     assert calls["bars"] == 0, "the job fetched adjusted bars to compare against a raw entry"
     assert calls["settled"] == [], "a row spanning a split was settled"
     assert len(calls["marked"]) == 1
@@ -154,7 +185,6 @@ async def test_an_unfillable_row_is_marked_not_settled(monkeypatch):
     """The other guard, end to end through the job: no split, bars fetched, and the settler refuses
     the fill. The row must be MARKED — not settled, and not silently skipped, which would leave it
     re-considered on every run forever."""
-    from datetime import date
     from agents.market_intelligence import db as dbmod, scheduler as sch
 
     row = {"id": 7, "ticker": "CDNA", "break_date": date(2026, 7, 31), "entry_price": 40.47,
@@ -164,8 +194,7 @@ async def test_an_unfillable_row_is_marked_not_settled(monkeypatch):
     async def _ripe(_c):
         return [row]
 
-    async def _splits(*a, **k):
-        return []
+    monkeypatch.setattr(dbmod, "_split_rows_between", _rows_between([]))
 
     async def _ohlcv(*a, **k):
         # db_rows_to_bars input shape — the break day's LOW (40.67) is ABOVE the entry (40.47).
@@ -183,7 +212,6 @@ async def test_an_unfillable_row_is_marked_not_settled(monkeypatch):
         settled_calls.append(a); return True
 
     monkeypatch.setattr(dbmod, "get_settleable_htf_breakout_shadows", _ripe)
-    monkeypatch.setattr(dbmod, "get_split_dates_after", _splits)
     monkeypatch.setattr(dbmod, "get_anticipation_ohlcv", _ohlcv)
     monkeypatch.setattr(dbmod, "mark_htf_breakout_shadow_unbookable", _mark)
     monkeypatch.setattr(dbmod, "settle_htf_breakout_shadow", _settle)
@@ -195,6 +223,82 @@ async def test_an_unfillable_row_is_marked_not_settled(monkeypatch):
         "fill that could not have happened")
     assert len(marked) == 1 and marked[0][0] == 7
     assert "unfillable_entry" in marked[0][1]
+
+
+_FILLABLE_BARS = [
+    {"trade_date": "2026-07-01", "open_price": 770.0, "high_price": 790.0, "low_price": 760.0, "close": 785.0,
+     "volume": 1_000_000},
+    {"trade_date": "2026-07-02", "open_price": 785.0, "high_price": 800.0, "low_price": 775.0, "close": 798.0,
+     "volume": 1_000_000},
+]
+
+
+async def _run_settle_job(monkeypatch, rows, *, today=date(2026, 9, 18)):
+    """The real job over `rows` as the split table, a ripe CRWD row, and canned bars + a canned settler verdict
+    (the settler is not under test here, the split GUARD is). Returns (settled, marked, bars_fetches)."""
+    from agents.market_intelligence import db as dbmod, flag_detector, scheduler as sch
+
+    row = {"id": 42, "ticker": "CRWD", "break_date": date(2026, 7, 1), "entry_price": 778.82,
+           "base_high": 778.82, "stop_loss_price": 720.0, "target_r": 3.0}
+    got = {"bars": 0, "settled": [], "marked": []}
+
+    async def _ripe(_c):
+        return [row]
+
+    async def _ohlcv(*a, **k):
+        got["bars"] += 1
+        return _FILLABLE_BARS
+
+    async def _mark(row_id, reason):
+        got["marked"].append((row_id, reason)); return True
+
+    async def _settle(row_id, **k):
+        got["settled"].append((row_id, k)); return True
+
+    monkeypatch.setattr(dbmod, "get_settleable_htf_breakout_shadows", _ripe)
+    monkeypatch.setattr(dbmod, "_split_rows_between", _rows_between(rows))
+    monkeypatch.setattr(dbmod, "get_anticipation_ohlcv", _ohlcv)
+    monkeypatch.setattr(dbmod, "mark_htf_breakout_shadow_unbookable", _mark)
+    monkeypatch.setattr(dbmod, "settle_htf_breakout_shadow", _settle)
+    monkeypatch.setattr(flag_detector, "_htf_settle_from_bars",
+                        lambda *a, **k: {"outcome": "capture", "realized_r": 3.0, "fwd_mfe_r": 3.4})
+    settled = await sch._htf_breakout_settle_job(today)
+    return settled, got["marked"], got
+
+
+@pytest.mark.asyncio
+async def test_a_recorded_phantom_split_is_no_split_the_row_settles(monkeypatch):
+    """#704: Polygon reported a split that never happened and the ingest wrote no bar (recorded 'phantom'). The stored
+    bars and the raw entry are on the same scale, so the row is as bookable as with no split — it used to be marked
+    unbookable for good on the strength of the row's mere existence, while the CB entry step and the parabolic shadow
+    ignored the same row."""
+    settled, marked, got = await _run_settle_job(monkeypatch, [_split_row(date(2026, 7, 2), kind="phantom")])
+    assert marked == [] and got["bars"] == 1 and len(got["settled"]) == 1 and len(settled) == 1
+
+
+@pytest.mark.asyncio
+async def test_an_unapplied_split_defers_the_row_it_is_neither_marked_nor_settled(monkeypatch):
+    """A split executed and the 17:00 pull has not handled it: the stored bars cannot be read either way. Marking the
+    row unbookable now would be PERMANENT and wrong if the ingest then records a phantom — so it waits for the next run."""
+    settled, marked, got = await _run_settle_job(monkeypatch, [_split_row(date(2026, 7, 2), kind="unapplied")])
+    assert marked == [] and got["settled"] == [] and got["bars"] == 0 and settled == []
+
+
+@pytest.mark.asyncio
+async def test_an_announced_split_that_has_not_executed_changes_nothing(monkeypatch):
+    """The old reading had no upper bound, so a split ANNOUNCED for a future date voided a ripe row although no stored
+    price had moved. The window is (break_date, today]."""
+    settled, marked, got = await _run_settle_job(
+        monkeypatch, [_split_row(date(2026, 12, 1), kind="unapplied")], today=date(2026, 9, 18))
+    assert marked == [] and got["bars"] == 1 and len(settled) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_phantom_beside_a_real_split_still_voids_and_names_the_real_one(monkeypatch):
+    rows = [_split_row(date(2026, 7, 2), 1, 5, kind="phantom"), _split_row(date(2026, 7, 9), 1, 4)]
+    settled, marked, got = await _run_settle_job(monkeypatch, rows)
+    assert settled == [] and got["bars"] == 0 and len(marked) == 1
+    assert "split_1:4_on_2026-07-09" in marked[0][1] and "1:5" not in marked[0][1]
 
 
 @pytest.mark.parametrize("getter", ["get_htf_breakout_shadow_summary",

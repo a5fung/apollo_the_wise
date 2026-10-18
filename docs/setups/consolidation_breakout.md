@@ -113,20 +113,25 @@ the entries a night, never the watch list.
    overwritten by a later fetch (and only that row — a fill is never moved).
    **Splits are read before the breakout test.** The pivot was stored raw on night D; the 17:00 pull has since split-adjusted the
    stored bars, so E's bar and the pivot sit on two price scales. For a name with a split in (D, today] the pivot is carried into
-   the stored units (the scale is read off D's stored close against the close the watch row recorded, snapped to 1.0 — a
-   phantom split moved no bar — or to the split table's factor; anything else is unexplained). A name that then breaks out
+   the stored units (#704: the scale is the splits ingest's OWN recorded verdict, `db.scale_from_split_rows` — the product of
+   the factors it restated the bars by, 1.0 for a split it recorded as a phantom, unknown while any is unapplied; D's stored
+   close against the close the watch row recorded stays as the cross-check, and a reading the data does not bear out is
+   unexplained). A split the ingest recorded as a PHANTOM moved no bar and is no split here at all: the name is treated as
+   unsplit (minutes fetched, variants fill). A split row written BEFORE the outcome column (outcome NULL) is read at the table's
+   ratio, so a legacy phantom fails the cross-check and sits out — that case ages out within the 3-session look-back. A name that then breaks out
    abstains EVERY variant, named `split_after_watch` (minutes are raw as traded on E, the stored bars are not); a name that did
    not break out writes nothing, in either split direction. A name whose split is executed but not yet applied, or whose scale is
    unexplained, sits the entry step out for the night (counted in `entry_split_unresolved`, named in
    `entry_split_unresolved_tickers`); the look-back retries it once the split is applied.
 3. **Exits.** Every filled entry with a non-mature arm has each of its NON-FINAL arms (of the 15) recomputed in full from stored
-   bars; a mature arm is final and is neither recomputed nor overwritten. A split executing after E makes every still-open arm
-   `unbookable` (stored fills are raw, stored bars retro-adjusted — the #667 HTF precedent); an arm that settled before the split
-   keeps its valid pre-split outcome. A forward window cut at a data hole ends `degraded`, and an entry still open past the
+   bars; a mature arm is final and is neither recomputed nor overwritten. A split executing after E that MOVED a stored bar
+   makes every still-open arm `unbookable` (stored fills are raw, stored bars retro-adjusted — the #667 HTF precedent); one the
+   ingest recorded as a phantom is ignored, and one not yet applied defers the entry's walk to the next night
+   (`exit_split_deferred`, no row written); an arm that settled before the split keeps its valid pre-split outcome. A forward window cut at a data hole ends `degraded`, and an entry still open past the
    horizon + 10 sessions is no longer re-walked. Bars are loaded 200 tickers at a time.
 4. **Audit row** with watch count, universe size, the gate funnel, cells per K, new entries by status and reason, exits settled,
    SIC fetched/known, wall time, and the entry-step diagnostics: `entry_days_without_watch` (look-back sessions with no watch
-   rows), `entry_split_rescaled` / `entry_split_unresolved` (+ `_tickers`), `minutes_feed_down`.
+   rows), `entry_split_rescaled` / `entry_split_unresolved` (+ `_tickers`), `exit_split_deferred`, `minutes_feed_down`.
 
 Group RS needs SIC; the cache fills at most **300 names a night** (watch names first, then by dollar volume), so the first week
 runs with a thin group RS (`grp_pct` NULL where a group has < 10 known members) and the group cells (C2, C6) read False
@@ -216,6 +221,28 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 - The minute feed (the row's `feed` column) and thin-SIC effects above bias the first weeks; the read states them.
 
 ## Change log
+
+### 2026-10-18 — #704: the shadow reads the splits ingest's recorded verdict instead of re-deriving it (a phantom split is now no split here)
+
+**Trigger**: the 10-17 /simplify altitude review found three consumers answering "did this split move the stored bars?" three
+ways (this shadow's `split_scale` 2%, the parabolic-short shadow's `RESTATE_TOLERANCE` 0.5%, and `get_split_dates_after` for HTF
+and this shadow's exit guard — any row, phantoms included); his "Aligned, let's do these tmr" 10-17.
+
+**What**: `mi_splits` now carries `adjustment_outcome` (`applied` / `phantom` / `skipped_no_data`) and `applied_factor`, written by
+`splits_ingest._apply_one` at the branch that decides (the bars it applies are unchanged — differential-checked against the
+pre-change module on six fixtures). `db.stored_price_scale(ticker, since, through)` / `db.scale_from_split_rows` is the one reading.
+(1) `split_scale` takes that reading, with its D-close comparison kept as the cross-check; (2) the exit guard and the
+`split_after_watch` abstain count only splits that moved a stored bar. Back-fill: an outcome-NULL row that is applied reads as a
+real split at the table's ratio (what the bare boolean always meant here).
+**Behaviour changes, named**: a recorded PHANTOM no longer abstains the 20 entry rows with `split_after_watch` and no longer
+voids the exit walk (`unbookable`) — it is ignored, as the parabolic shadow always did; a later split still UNAPPLIED defers the
+exit walk (no row, `exit_split_deferred`) where it used to void it for good; a LEGACY phantom (no outcome) now sits the entry out
+(`entry_split_unresolved`) instead of abstaining 20 rows.
+**Not touched**: `consolidation_breakout.py`, the runner, the watch step's own `split_unapplied` gate, any threshold or entry/exit rule —
+the backtest is unaffected. No money path (shadow tables only).
+**Reversion-flag**: NEW; not a detection-criterion change (no admission, pivot, stop or exit rule moved). Reverting = make
+`moved_splits` return its input and `split_scale` ignore the outcome columns (the columns stay).
+**Status**: built on a worktree branch, not deployed. EXPECT / DONE-WHEN / WOULD-FAIL-IF: CHANGELOG 2026-10-18 (#704).
 
 ### 2026-10-17 (evening) — /simplify pass: one copy of the shared plumbing, no behaviour change
 

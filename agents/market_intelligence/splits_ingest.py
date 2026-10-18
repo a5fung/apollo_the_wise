@@ -12,6 +12,9 @@ Pipeline (runs as Phase 0 of nightly_data_pull, before grouped daily fetch):
          - mark_split_applied.
     3. Audit events: split_detected (new row) / split_applied (re-fetch ok) /
        split_apply_failed (per-ticker error) / splits_ingest_summary.
+    4. (#704) Every row it handles carries the ingest's OWN verdict - `adjustment_outcome` 'applied' (+
+       `applied_factor`) / 'phantom' / 'skipped_no_data' - written by `mark_split_applied` at the exact branch that
+       decides it, so a consumer asks `db.stored_price_scale` instead of re-deriving phantom-vs-real from the bars.
 
 The heuristic blocks in rs_engine.py (MAX_1D_RETURN, MAX_PERIOD_RETURN) become
 unnecessary once cached history is split-adjusted. They false-positive on
@@ -45,6 +48,11 @@ LOOKBACK_DAYS = 60
 # reload of 2026-09-24 made it cover a fifth of the table, and flag_detector already reads
 # 262 trading days (~380 calendar). Polygon caps day-aggs at 50000 bars — five years is ~1,260.
 HISTORY_DAYS = 250
+# A MEASURED restatement factor (fresh adjusted close / stored close, same pre-split date) within this fraction of the
+# split table's own ratio IS that ratio (Polygon multiplies history by exactly split_from / split_to; the measured
+# number only differs by the two closes' rounding). Outside it, the measured number is the truth about what moved
+# and is what gets recorded. Same 2% the CB shadow's data cross-check uses (`SPLIT_SCALE_TOL`).
+APPLIED_FACTOR_SNAP_TOL = 0.02
 # Concurrency cap — splits-ingest typically touches < 30 tickers/day; Sem(5)
 # keeps Polygon happy and finishes in seconds.
 _SEM = asyncio.Semaphore(5)
@@ -157,9 +165,27 @@ def _as_split_legs(raw_from, raw_to) -> tuple[int | None, int | None]:
     return (int(legs[0]), int(legs[1]))
 
 
+def _applied_factor(split_from: int, split_to: int, measured: float | None) -> float | None:
+    """The factor recorded for an APPLIED split: the factor the stored pre-split bars were restated by.
+    Unmeasured (no stored close to compare - the first-ever apply, where Polygon's report is trusted) -> the table's
+    ratio split_from / split_to; measured within `APPLIED_FACTOR_SNAP_TOL` of it -> the table's ratio exactly (so a
+    1-for-4 is 0.25, not 0.2503); measured and further off -> the measurement. A degenerate row (a leg below 1, the
+    pre-2026-07-24 truncation class) has no table ratio: the measurement, or None - recording must never stop the apply."""
+    if split_from < 1 or split_to < 1:
+        return measured
+    table = split_from / split_to
+    if measured is None or abs(measured / table - 1.0) <= APPLIED_FACTOR_SNAP_TOL:
+        return table
+    return measured
+
+
 async def _apply_one(split_row: dict) -> tuple[str, bool, int]:
     """Re-fetch + overwrite cached history for one (ticker, execution_date).
-    Returns (ticker, success, n_bars_written)."""
+    Returns (ticker, success, n_bars_written).
+
+    #704: the branch that decides also RECORDS the decision (`mark_split_applied(outcome=, factor=)`): no bars ->
+    'skipped_no_data'; phantom -> 'phantom'; written -> 'applied' + `_applied_factor`. Nothing else here changed -
+    the bars written, the marks, the return values and the audit events are exactly what they were."""
     ticker = split_row["ticker"]
     exec_date = split_row["execution_date"]
     split_from = int(split_row["split_from"])
@@ -179,7 +205,7 @@ async def _apply_one(split_row: dict) -> tuple[str, bool, int]:
                 "split_apply_skipped_no_data",
                 f"{ticker} {exec_date} {split_from}:{split_to} — Polygon returned no bars; marking applied to stop retry",
             )
-            await mark_split_applied(ticker, exec_date)
+            await mark_split_applied(ticker, exec_date, outcome="skipped_no_data")
             return (ticker, False, 0)
 
         # Phantom-split sanity check (AGL 3/31 25:1 incident class). Polygon
@@ -219,6 +245,7 @@ async def _apply_one(split_row: dict) -> tuple[str, bool, int]:
                 break
             prev_date -= timedelta(days=1)
 
+        measured_factor: float | None = None      # stays None when there is no stored close to compare against
         if prev_date in bars_by_date:
             new_close_pre = float(bars_by_date[prev_date]["c"])
             # Query whatever is currently in mi_daily_closes for that date.
@@ -227,6 +254,7 @@ async def _apply_one(split_row: dict) -> tuple[str, bool, int]:
             old_close_pre = await _get_old_close(ticker, prev_date)
             if old_close_pre is not None and old_close_pre > 0 and new_close_pre > 0:
                 adjustment_factor = new_close_pre / old_close_pre
+                measured_factor = adjustment_factor
                 # Tolerance: 10% — adjustment_factor should be very close to
                 # 1.0 for phantoms (same un-adjusted data both reads) or very
                 # close to split_factor for real splits. Tight tolerance is OK
@@ -241,11 +269,12 @@ async def _apply_one(split_row: dict) -> tuple[str, bool, int]:
                     )
                     # Don't write any bars; mark applied so we don't retry every
                     # nightly run. Operator can manually reset if Polygon corrects.
-                    await mark_split_applied(ticker, exec_date)
+                    await mark_split_applied(ticker, exec_date, outcome="phantom")
                     return (ticker, False, 0)
 
         n_written = await upsert_ticker_history(ticker, bars)
-        await mark_split_applied(ticker, exec_date)
+        await mark_split_applied(ticker, exec_date, outcome="applied",
+                                 factor=_applied_factor(split_from, split_to, measured_factor))
         await log_audit_event(
             "split_applied",
             f"{ticker} {exec_date} {split_from}:{split_to} — {n_written} bars overwritten",

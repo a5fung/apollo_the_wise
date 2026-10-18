@@ -35,11 +35,12 @@ must not be able to starve it):
      `watch_n` and in docs/setups/consolidation_breakout.md (deviation 4), not silently recovered.
      A split between D and today is read BEFORE the breakout test (`split_scales`): the pivot is carried into the
      stored bars' units, so a forward and a reverse split are both judged on a like-for-like breakout and a real
-     one abstains every variant by name (`split_after_watch`).
+     one abstains every variant by name (`split_after_watch`). "A split" is what the splits ingest RECORDED as having
+     moved a stored bar (#704, `db.scale_from_split_rows`); a phantom it recorded is no split here at all.
   c. EXITS. Every filled entry with a non-mature arm is walked over EVERY arm in `cb.ARMS` from stored daily bars
      (full recompute each night: restart-safe), day-0 stop-outs booked once by `cb.day0_result_to_outcome`.
-     A split after the break day makes the walk `unbookable` (the #667 HTF precedent: stored fills are raw, stored
-     bars are retro-adjusted).
+     A split after the break day that moved a stored bar makes the walk `unbookable` (the #667 HTF precedent: stored
+     fills are raw, stored bars are retro-adjusted); a recorded phantom does not, and one not yet applied defers it.
   d. ONE audit row, `consolidation_breakout_shadow_run`.
 
 The whole job runs under `BUDGET_S` and FAILS OPEN on timeout (an `..._error` audit row, no raise): every step is
@@ -86,6 +87,9 @@ from agents.market_intelligence.db import (
     cb_upsert_watch_rows,
     get_unapplied_splits,
     log_audit_event,
+    scale_from_split_rows,
+    scale_unmoved,
+    split_row_factor,
 )
 from agents.market_intelligence.execution_client import get_data_feed_name
 from shared.dates import _ET
@@ -457,44 +461,46 @@ async def fetch_minutes(e: date, tickers: list, out: Optional[dict] = None) -> t
     return {t: minute_bars_from_alpaca(raw.get(t) or [], e) for t in tickers}, outage
 
 
+def moved_splits(rows: list) -> list:
+    """The rows of `rows` that moved - or, still unapplied, may yet move - a stored bar: everything the ingest did
+    not record as a PHANTOM / no-data split (`db.split_row_factor` 1.0). A phantom is ignored by the entry step, the
+    exit guard, the HTF settler and the parabolic shadow ALIKE (#704)."""
+    return [s for s in rows if split_row_factor(s) != 1.0]
+
+
 def split_scale(window_splits: list, d_close_now, d_close_watch, watch_date: date) -> Optional[float]:
     """The factor that carries the WATCH NIGHT's pivot into the units of the bars stored NOW, for a ticker with a
     split executing in (D, today]; None when it cannot be told. `watch_date` = D.
 
     The pivot was stored raw on night D; the 17:00 pull has since retro-adjusted the stored bars for every APPLIED
-    split, so E's stored bar and the pivot sit on two price scales. The scale is read OFF THE DATA - D's stored
-    close now over the close the watch row recorded that night - and then snapped to 1.0 (nothing moved: Polygon's
-    PHANTOM splits are marked applied without rewriting a bar, `splits_ingest`) or to the split table's own factor
-    (the product of split_from / split_to). A reading that is neither (within `SPLIT_SCALE_TOL`) is unexplained and
-    returns None, never a guess."""
+    split, so E's stored bar and the pivot sit on two price scales. The factor is the ingest's OWN recorded verdict
+    (#704: `db.scale_from_split_rows` - the product of the applied factors, 1.0 for a PHANTOM / no-data row,
+    None while any row is unapplied), no longer re-derived here. The data stays as this consumer's cross-check: D's
+    stored close now over the close the watch row recorded that night must agree with it (within `SPLIT_SCALE_TOL`),
+    else the reading is unexplained and returns None, never a guess. For a LEGACY row (written before the outcome
+    column, so a phantom cannot be told from a real split) that cross-check is what degrades a pre-column phantom
+    to "sits out" instead of a wrong rescale."""
     try:
-        # The product over the splits executing after D is `cb.raw_factor_for`'s (stored adjusted x factor = RAW, factor
-        # = prod split_to / split_from). The pivot has to go the OTHER way - raw DOWN to the stored scale - so it is fed
-        # the inverse ratio, which keeps the factor the very product this function always computed (no 1 / x round trip).
-        table = cb.raw_factor_for(watch_date, [(s["execution_date"], float(s["split_from"]) / float(s["split_to"]))
-                                               for s in window_splits])
+        h = scale_from_split_rows([s for s in window_splits if s["execution_date"] > watch_date])
         obs = float(d_close_now) / float(d_close_watch)
     except (TypeError, ValueError, ZeroDivisionError, KeyError):
         return None
-    if not (math.isfinite(obs) and math.isfinite(table) and obs > 0.0 and table > 0.0):
+    if h is None or not (math.isfinite(obs) and math.isfinite(h) and obs > 0.0 and h > 0.0):
         return None
-    best = min((1.0, table), key=lambda c: abs(obs / c - 1.0))
-    return best if abs(obs / best - 1.0) <= SPLIT_SCALE_TOL else None
+    return h if abs(obs / h - 1.0) <= SPLIT_SCALE_TOL else None
 
 
-async def split_scales(sp: dict, watch: list, d: date, today: date, e: date, out: dict) -> dict:
-    """{ticker: factor | None} for each watch ticker with a split in (D, today] (`sp`); a ticker without one is
+async def split_scales(sp: dict, watch: list, d: date, e: date, out: dict) -> dict:
+    """{ticker: factor | None} for each watch ticker with a MOVED split in (D, today] (`sp`); a ticker without one is
     absent (factor 1). None = the ticker SITS OUT tonight's entry step, counted and named in the audit row: a split
     executed and NOT yet applied leaves the stored series on two scales (the same reason the watch step drops it),
     and an unexplained scale is never guessed. Both heal: the 3-session look-back retries the day once the split
     is applied."""
     if not sp:
         return {}
-    unapplied = {s["ticker"] for s in await get_unapplied_splits(d + timedelta(days=1), upto=today)}
     d_close = {r[0]: r[5] for r in await cb_get_ticker_bars(sorted(sp), d, d) if r[1] == d and r[5] is not None}
     w_close = {w["ticker"]: w.get("close") for w in watch}
-    scale = {t: (None if t in unapplied else split_scale(ss, d_close.get(t), w_close.get(t), d))
-             for t, ss in sp.items()}
+    scale = {t: split_scale(ss, d_close.get(t), w_close.get(t), d) for t, ss in sp.items()}
     bad = sorted(t for t, v in scale.items() if v is None)
     out["entry_split_rescaled"] += len(scale) - len(bad)
     if bad:
@@ -595,9 +601,13 @@ async def record_entries_for(e: date, d: date, cal: list, cal_index: dict, out: 
     # a real breakout (no candidate, no row), a reverse one invent it (every K, every variant). The pivot is carried
     # into the stored units (`split_scale`); a candidate that then breaks out abstains EVERY variant below
     # (`split_after_watch`: minutes are raw as traded on E, the stored bars are not).
-    sp = await cb_get_splits_after(tickers, d, cal[-1])
-    scale = await split_scales(sp, watch, d, cal[-1], e, out)
-    split_t = {t for t, v in sp.items() if v}
+    # #704: only a split that MOVED a stored bar counts. The ingest records a PHANTOM (Polygon reported a split that
+    # never happened) as such; it left every bar where it was, so the pivot, the breakout test and the minutes all
+    # compare like with like and the name is treated as the unsplit name it is - the same reading the exit guard,
+    # the HTF settler and the parabolic shadow now take (`moved_splits`).
+    sp = {t: rs for t, rs in (await cb_get_splits_after(tickers, d, cal[-1])).items() if moved_splits(rs)}
+    scale = await split_scales(sp, watch, d, e, out)
+    split_t = set(sp)
 
     cands = []
     for w in watch:
@@ -685,8 +695,10 @@ def walk_entry_rows(entry: dict, bars: "cb.DailyBars", cidx, ticker_splits: list
     from the store - a mature row is never overwritten, so recomputing it would only burn time). The walk is the
     runner's: `cb.walk_arms` (a day-0 stop-out is booked ONCE by the module and is every arm's outcome; otherwise
     `walk_exit` per arm with closes_before = the closes through E and the forward window cut at a hole); this
-    function only formats the rows. A split after E makes every open arm `unbookable` (mature: final, never
-    re-walked); an arm that settled BEFORE the split keeps its (valid, pre-split) outcome.
+    function only formats the rows. A split after E that MOVED a stored bar makes every open arm `unbookable`
+    (mature: final, never re-walked); one the ingest recorded as a PHANTOM (#704) is ignored; one still UNAPPLIED
+    returns NO rows (the walk is redone tomorrow). An arm that settled BEFORE the split keeps its (valid,
+    pre-split) outcome.
 
     `cache` (one per chunk, shared by its entries) is a pure DEDUPE: the walk is a function of (ticker's bars, break
     day, fill, stop, day-0 result, adr20, arm), and the K x variant entries of one candidate often share all of them
@@ -697,11 +709,19 @@ def walk_entry_rows(entry: dict, bars: "cb.DailyBars", cidx, ticker_splits: list
     arms = {name: arm for name, arm in cb.ARMS.items() if name not in final}
     later = [s for s in ticker_splits if s["execution_date"] > e_date]
     if later:
-        s = later[0]
-        reason = f"split_{s['split_from']}:{s['split_to']}_on_{s['execution_date']}_after_entry"
-        return [{"entry_id": eid, "arm": name, "status": "unbookable", "realized_r": None, "pnl_adr": None,
-                 "sessions_held": None, "events": [], "n_fwd": 0, "mature": True, "reason": reason,
-                 "last_bar_date": None} for name in arms]
+        # #704: the same reading as the entry step, read once. A later split the ingest recorded as PHANTOM (or
+        # no-data) moved no stored bar - the walk is as bookable as with no split at all. A REAL one still voids
+        # (this consumer's policy: the fill and stop are raw, the stored bars are not). While a later split is still
+        # UNAPPLIED nothing can be said either way: no row tonight, the full recompute tomorrow settles it.
+        scale = scale_from_split_rows(later)
+        if scale is None:
+            return []
+        if not scale_unmoved(scale):
+            s = moved_splits(later)[0]
+            reason = f"split_{s['split_from']}:{s['split_to']}_on_{s['execution_date']}_after_entry"
+            return [{"entry_id": eid, "arm": name, "status": "unbookable", "realized_r": None, "pnl_adr": None,
+                     "sessions_held": None, "events": [], "n_fwd": 0, "mature": True, "reason": reason,
+                     "last_bar_date": None} for name in arms]
     e = bisect.bisect_left(bars.dates, e_date)
     if e >= len(bars) or bars.dates[e] != e_date:
         raise LookupError(f"break-day bar {e_date} missing for {entry['ticker']}")
@@ -765,6 +785,10 @@ async def walk_exits(today: date, cal: list, cal_index: dict, out: dict) -> None
         for eid, tk, msg in errs:
             out["exit_errors"] += 1
             logger.error(f"consolidation_breakout_shadow: exit walk {tk} entry {eid} failed: {msg}")
+        # An entry in the work list always has an open arm, so one that produced neither a row nor an error was
+        # deferred by `walk_entry_rows` (a later split not yet applied): counted, redone tomorrow.
+        out["exit_split_deferred"] += len({e["id"] for e in chunk_e} - {r["entry_id"] for r in rws}
+                                          - {eid for eid, _tk, _m in errs})
         for r in rws:
             out["exit_status"][r["status"]] += 1
             out["exit_mature"] += int(r["mature"])
@@ -785,7 +809,7 @@ def _new_out(today: date) -> dict:
             "watch_n": 0, "universe_n": 0, "prefilter_tickers": 0, "sic_errors": 0, "sic_fetched": 0,
             "sic_known": 0, "gate_funnel": {}, "cells_per_k": {}, "groups_ge10": 0, "members_with_group": 0,
             "phase_data_gap": None, "phases": {}, "bad_bars": 0, "exit_entries_open": 0,
-            "exit_entries_stale": 0, "exit_rows": 0,
+            "exit_entries_stale": 0, "exit_split_deferred": 0, "exit_rows": 0,
             "exit_mature": 0, "exit_status": Counter(), "exit_errors": 0, "wall_s": 0.0}
 
 

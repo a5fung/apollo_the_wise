@@ -363,20 +363,28 @@ class Env:
         self.cands: list[dict] = []
         self.plan: dict = {}
         self.borrow_calls: list = []
+        self.splits: list[dict] = []          # mi_splits rows (#704): the real `db.stored_price_scale` reads them via `_split_rows_between`
         for name in ("get_recent_daily_history", "get_parabolic_short_new_candidates",
-                     "get_parabolic_short_open_episodes", "insert_parabolic_short_shadow_row", "log_audit_event"):
+                     "get_parabolic_short_open_episodes", "insert_parabolic_short_shadow_row", "log_audit_event",
+                     "_split_rows_between"):
             mp.setattr(db, name, getattr(self, name))
 
         async def _enabled(_strategy_id):
             return True
 
         async def _no_pool():
-            raise AssertionError("the shadow reached the real database - only the five faked db.* functions are allowed")
+            raise AssertionError("the shadow reached the real database - only the faked db.* functions are allowed")
         mp.setattr("agents.market_intelligence.strategies.registry.should_run", _enabled)
         mp.setattr(psh, "execution_client", _Facade(self))
         mp.setattr(db, "get_pool", _no_pool)
 
     # -- db
+    async def _split_rows_between(self, ticker, since, through=None):
+        """`db._split_rows_between`: the rows with execution_date in (since, through], oldest first."""
+        return [dict(r) for r in sorted(self.splits, key=lambda r: r["execution_date"])
+                if r["ticker"] == ticker and r["execution_date"] > since
+                and (through is None or r["execution_date"] <= through)]
+
     async def get_recent_daily_history(self, ticker, days, end_date=None):
         rows = [r for r in self.bars[ticker] if end_date is None or r["trade_date"] <= end_date]
         return rows[-days:]
@@ -821,6 +829,50 @@ class TestLifecycle:
         await env.night(2)
         o = env.row("ZZZ", "outcome")
         assert (o["status"], o["reason"]) == ("voided", "void_restated") and o.get("realized_r") is None
+
+    @pytest.mark.parametrize("split_from,split_to,ratio", [(1, 2, 2.0), (2, 1, 0.5)],
+                             ids=["forward_1_for_2", "reverse_2_for_1"])
+    async def test_a_recorded_split_voids_the_episode_by_the_ingests_own_verdict(self, env, split_from, split_to, ratio):
+        """#704: the split table (the ingest's recorded factor) is read FIRST - the void names the factor - and the
+        restated bars are the evidence it is right. Forward and reverse."""
+        env.load("ZZZ", TRIGGER_THEN_TIME_STOP)
+        await env.night(0)
+        env.splits.append({"ticker": "ZZZ", "execution_date": D[1], "split_from": split_from, "split_to": split_to,
+                           "adjustment_applied": True, "adjustment_outcome": "applied",
+                           "applied_factor": split_from / split_to})
+        env.bars["ZZZ"] = [{**b, **{k: b[k] / ratio for k in ("open_price", "high_price", "low_price", "close")}}
+                           for b in env.bars["ZZZ"]]
+        await env.night(1)
+        o = env.row("ZZZ", "outcome")
+        assert (o["status"], o["reason"]) == ("voided", "void_restated") and o.get("realized_r") is None
+        assert o["detail"]["split_scale"] == pytest.approx(split_from / split_to)
+
+    async def test_a_recorded_phantom_split_changes_nothing_the_episode_runs_to_its_normal_end(self, env):
+        """#704: Polygon reported a split that never happened; the ingest wrote no bar and recorded 'phantom'. The
+        episode is as open as with no split row at all (the CB entry step, the CB walk and the HTF settler read the
+        same verdict the same way)."""
+        env.load("ZZZ", TRIGGER_THEN_TIME_STOP)
+        env.splits.append({"ticker": "ZZZ", "execution_date": D[2], "split_from": 1, "split_to": 4,
+                           "adjustment_applied": True, "adjustment_outcome": "phantom", "applied_factor": None})
+        for k in (0, 1, 5):
+            await env.night(k)
+        o = env.row("ZZZ", "outcome")
+        assert (o["status"], o["reason"]) == ("settled", "time_stop")
+
+    async def test_an_unapplied_split_defers_the_episode_without_an_error_until_the_ingest_has_decided(self, env):
+        env.load("ZZZ", TRIGGER_THEN_TIME_STOP)
+        await env.night(0)
+        env.splits.append({"ticker": "ZZZ", "execution_date": D[1], "split_from": 1, "split_to": 4,
+                           "adjustment_applied": False, "adjustment_outcome": None, "applied_factor": None})
+        s = await env.night(1)
+        assert s["deferred"] == [{"ticker": "ZZZ", "reason": "split_unapplied", "climax_date": str(D[0])}]
+        assert s["errors"] == []                                         # `errors` would page; a wait is not a failure
+        assert env.row("ZZZ", "trigger") is None and env.row("ZZZ", "outcome") is None
+        env.splits[0].update(adjustment_applied=True, adjustment_outcome="phantom")      # the 17:00 pull decided
+        s = await env.night(2)
+        assert s["deferred"] == [] and env.row("ZZZ", "trigger")["status"] == "triggered"
+        await env.night(5)
+        assert env.row("ZZZ", "outcome")["reason"] == "time_stop"
 
     async def test_a_trigger_row_the_replay_can_no_longer_reproduce_is_voided_by_name(self, env):
         env.load("ZZZ", TRIGGER_THEN_TIME_STOP)

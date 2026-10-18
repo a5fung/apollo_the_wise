@@ -573,10 +573,31 @@ async def _advance_episode(ep: dict, trade_date: date, summary: dict,
             logger.warning("parabolic_short_shadow: %s %s climax bar missing - not advanced", ticker, d0)
         return
 
+    # #704: the splits ingest's OWN verdict on every split since the levels were frozen (`stored_price_scale`, the
+    # window (armed_on, trade_date]) - the same reading the CB shadow and the HTF settler take. A split the ingest
+    # recorded as PHANTOM moved no bar (1.0) and changes nothing here; one it APPLIED restated the history under
+    # the frozen levels: void, below. One executed and not yet applied leaves the series on two scales tonight -
+    # wait (a deferral, never an `error`, which pages); the 17:00 pull applies it and the next night decides.
+    scale = await db.stored_price_scale(ticker, armed_on, trade_date)
+    if scale is None:
+        if (trade_date - d0).days > STALE_EPISODE_DAYS:
+            await _outcome("voided", OUT_VOID_DATA_GAP, trade_date,
+                           detail={"why": f"a split stayed unapplied {STALE_EPISODE_DAYS}+ days after the climax"})
+        else:
+            summary["deferred"].append({"ticker": ticker, "reason": "split_unapplied", "climax_date": str(d0)})
+            logger.warning("parabolic_short_shadow: %s %s has a split not yet applied - episode not advanced", ticker, d0)
+        return
     stored_high, current_high = ep.get("climax_high"), float(rows[ci]["high_price"])
+    if not db.scale_unmoved(scale):
+        # The ingest restated the history under the frozen arm levels: unbookable - never a made-up R across two
+        # price scales (the consolidation shadow's split guard).
+        await _outcome("voided", OUT_VOID_RESTATED, trade_date,
+                       detail={"stored_climax_high": float(stored_high) if stored_high else None,
+                               "current_climax_high": current_high, "split_scale": scale})
+        return
     if stored_high and abs(current_high / float(stored_high) - 1.0) > RESTATE_TOLERANCE:
-        # A split (or any restatement) moved the bars under the frozen arm levels: unbookable, like the
-        # consolidation shadow's split guard - never a made-up R across two price scales.
+        # Any OTHER restatement (a corrected bar, a split the table never held) moved the bars under the frozen
+        # levels: the same void. The data check stays as the catch-all behind the split table.
         await _outcome("voided", OUT_VOID_RESTATED, trade_date,
                        detail={"stored_climax_high": float(stored_high), "current_climax_high": current_high})
         return

@@ -134,6 +134,30 @@ None currently. Each scan_date computes stage independently from prior scans. Pr
 
 ## Change log (newest first)
 
+### 2026-10-18 — #704: the void-on-restatement guard reads the splits ingest's recorded verdict first (`db.stored_price_scale`); the data check stays as the catch-all
+
+**Trigger**: the 10-17 /simplify altitude review — three consumers answered "did this split move the stored bars?" three ways; this
+one used only the bars (`RESTATE_TOLERANCE` 0.5% on the climax high). His "Aligned, let's do these tmr" 10-17.
+
+**Evidence**: `tests/test_parabolic_short_shadow.py` — a recorded forward and a recorded reverse split (bars restated) void the episode
+`void_restated` with the factor in `detail.split_scale`; a recorded PHANTOM changes nothing (the episode runs to its normal
+`time_stop`); a split still UNAPPLIED defers the episode (a `deferred` entry `split_unapplied`, NOT an `errors` entry — `errors`
+pages) and the next night, once the 17:00 pull has decided, advances it. The ingest's recording is pinned in
+`tests/test_split_refetch_covers_stored_history.py`.
+
+**What**: in `_advance_episode`, before the existing check, `stored_price_scale(ticker, armed_on, trade_date)` (the window the arm
+levels were frozen in): `1.0` → nothing moved, continue; `None` → wait (or, past the 30-day backstop, `void_data_gap`); anything else
+→ `void_restated`. The `RESTATE_TOLERANCE` re-read of the climax high is KEPT behind it as the catch-all for a restatement the split
+table never held (a corrected bar), so today's voids are a strict subset of tomorrow's. Back-fill: an outcome-NULL applied row reads
+as a real split at the table's ratio.
+
+**Anticipated effect**: none on a night with no split. An episode with a recorded phantom is unchanged (it never voided before
+either). A real split now voids by the table even if the re-read were within 0.5% (a 51:50 style split). Shadow telemetry only — no
+arm, trigger, stop or sizing rule moved, no order path.
+
+**Reversion-flag**: NEW; not a detection-criterion change. **Status**: built on a worktree branch, not deployed. EXPECT / DONE-WHEN /
+WOULD-FAIL-IF: CHANGELOG 2026-10-18 (#704).
+
 ### 2026-10-18 — DEPLOYED and verified (status superseding the 10-17 entries below)
 
 **Trigger**: the 10-17 entries below carried a build-time status; the OPEN drift check (live_rules) flagged them as the doc's latest word.

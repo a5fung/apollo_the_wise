@@ -5248,7 +5248,7 @@ async def _htf_breakout_settle_job(today):
     from agents.market_intelligence.flag_detector import _htf_settle_from_bars
     from agents.market_intelligence.db import (
         get_settleable_htf_breakout_shadows, get_anticipation_ohlcv, settle_htf_breakout_shadow,
-        get_split_dates_after, mark_htf_breakout_shadow_unbookable,
+        get_split_dates_after, mark_htf_breakout_shadow_unbookable, scale_unmoved, stored_price_scale,
     )
     ripe = await get_settleable_htf_breakout_shadows(today - timedelta(days=24))
     settled = []
@@ -5261,11 +5261,21 @@ async def _htf_breakout_settle_job(today):
             # silently compare them anyway. CRWD 2026-07-01 is the recorded case: entry 778.82
             # against a break-day low of 191.25, because a 1:4 executed on 2026-07-02.
             # Checked BEFORE fetching bars — no point pulling prices we must not compare.
-            splits = await get_split_dates_after(r["ticker"], r["break_date"])
-            if splits:
-                sp = splits[0]
+            #
+            # #704: ONE reading of "did a split move the stored bars", the splits ingest's own verdict
+            # (`stored_price_scale`, the window (break_date, today] - an ANNOUNCED split not yet executed is no
+            # longer a reason to void). 1.0 = nothing moved (no split, or the ingest recorded a phantom): settle.
+            # None = a split executed and is not applied yet: the bars cannot be read either way, so the row
+            # waits for the next run instead of being marked unbookable for good (it may turn out phantom).
+            # Anything else = a real restatement: unbookable, as before.
+            scale = await stored_price_scale(r["ticker"], r["break_date"], today)
+            if scale is None:
+                continue
+            if not scale_unmoved(scale):
+                splits = await get_split_dates_after(r["ticker"], r["break_date"], today)
+                sp = splits[0] if splits else None
                 reason = (f"split_{sp['split_from']}:{sp['split_to']}_on_{sp['execution_date']}"
-                          f"_between_break_and_settle")
+                          f"_between_break_and_settle" if sp else f"split_scale_{scale:.6g}_between_break_and_settle")
                 if await mark_htf_breakout_shadow_unbookable(r["id"], reason):
                     abstained.append((r["ticker"], reason))
                 continue

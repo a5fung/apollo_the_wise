@@ -39,6 +39,9 @@ CREATE TABLE mi_daily_closes (trade_date DATE NOT NULL, ticker TEXT NOT NULL, cl
 CREATE TABLE mi_splits (ticker TEXT NOT NULL, execution_date DATE NOT NULL, split_from INT NOT NULL,
     split_to INT NOT NULL, polygon_id TEXT, fetched_at TIMESTAMPTZ DEFAULT NOW(), applied_at TIMESTAMPTZ,
     adjustment_applied BOOLEAN NOT NULL DEFAULT FALSE, PRIMARY KEY (ticker, execution_date));
+ALTER TABLE mi_splits ADD COLUMN IF NOT EXISTS adjustment_outcome TEXT
+    CHECK (adjustment_outcome IN ('applied', 'phantom', 'skipped_no_data'));
+ALTER TABLE mi_splits ADD COLUMN IF NOT EXISTS applied_factor DOUBLE PRECISION;
 CREATE TABLE mi_security_types (ticker TEXT PRIMARY KEY, security_type TEXT NOT NULL, exchange TEXT DEFAULT '',
     updated_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE mi_audit_log (id SERIAL PRIMARY KEY, created_at TIMESTAMPTZ DEFAULT NOW(), event_type TEXT NOT NULL,
@@ -336,6 +339,39 @@ class TestReadHelpers:
         assert "EEE" not in default_bound and "AAA" in default_bound      # the original CURRENT_DATE bound still holds
         assert explicit_far == {"AAA", "BBB", "EEE"}                      # an explicit `upto` replaces it, not adds to it
         assert set(after) == {"AAA", "CCC"} and after["AAA"][0]["split_to"] == 4
+
+    def test_the_split_outcome_is_written_read_and_cleared_for_real(self, env):
+        """#704 against a real Postgres: the ingest's verdict goes in with the applied flag, `stored_price_scale` reads
+        the (since, through] window off it, a phantom / no-data row is 1.0, an unapplied row is unknown, a legacy row
+        (no verdict) is read at the table's ratio, and a reset clears the verdict with the flag."""
+        async def go():
+            async with env.pool.acquire() as c:
+                await c.executemany(
+                    "INSERT INTO mi_splits (ticker, execution_date, split_from, split_to, adjustment_applied) "
+                    "VALUES ($1,$2,$3,$4,$5)",
+                    [(t, D(2026, 7, 2), f, to, ap) for t, f, to, ap in
+                     (("FWD", 1, 4, False), ("REV", 4, 1, False), ("PHA", 1, 4, False), ("NOD", 1, 4, False),
+                      ("LEG", 1, 4, True), ("UNA", 1, 4, False))])
+            await db.mark_split_applied("FWD", D(2026, 7, 2), outcome="applied", factor=0.25)
+            await db.mark_split_applied("REV", D(2026, 7, 2), outcome="applied", factor=4.0)
+            await db.mark_split_applied("PHA", D(2026, 7, 2), outcome="phantom")
+            await db.mark_split_applied("NOD", D(2026, 7, 2), outcome="skipped_no_data")
+            scale = {t: await db.stored_price_scale(t, D(2026, 7, 1), D(2026, 9, 18))
+                     for t in ("FWD", "REV", "PHA", "NOD", "LEG", "UNA")}
+            window = (await db.stored_price_scale("FWD", D(2026, 7, 2), D(2026, 9, 18)),      # since is exclusive
+                      await db.stored_price_scale("FWD", D(2026, 7, 1), D(2026, 7, 1)))       # through is inclusive
+            named = {t: [r["execution_date"] for r in await db.get_split_dates_after(t, D(2026, 7, 1))]
+                     for t in ("FWD", "PHA", "NOD", "UNA")}
+            await db.reset_split_applied("FWD", D(2026, 7, 2))
+            async with env.pool.acquire() as c:
+                reset = tuple(await c.fetchrow("SELECT adjustment_applied, adjustment_outcome, applied_factor, "
+                                               "applied_at FROM mi_splits WHERE ticker='FWD'"))
+            return scale, window, named, reset
+        scale, window, named, reset = arun(env, go())
+        assert scale == {"FWD": 0.25, "REV": 4.0, "PHA": 1.0, "NOD": 1.0, "LEG": 0.25, "UNA": None}
+        assert window == (1.0, 1.0)
+        assert named == {"FWD": [D(2026, 7, 2)], "PHA": [], "NOD": [], "UNA": [D(2026, 7, 2)]}
+        assert reset == (False, None, None, None)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════

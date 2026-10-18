@@ -128,6 +128,7 @@ class FakeStore:
         self.exit: dict = {}               # (entry_id, arm) -> row
         self.sic: dict = {}
         self.splits: list = []             # dicts: ticker, execution_date, split_from, split_to, adjustment_applied
+        #                                    (+ #704 adjustment_outcome / applied_factor; absent = a legacy row, outcome NULL)
         self.audit: list = []              # (event_type, summary, detail)
         self._next_id = 1
         self.calls = defaultdict(int)

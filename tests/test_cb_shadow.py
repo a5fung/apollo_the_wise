@@ -48,6 +48,21 @@ def _polygon(path):
     return {"results": {"sic_code": "2836", "sic_description": "biological products", "type": "CS"}}
 
 
+def _real_split(style, exec_date, split_from, split_to, **over):
+    """A REAL split row for MRNA as `mi_splits` holds it. 'recorded' = what the ingest writes since #704 (outcome
+    'applied' + the factor it restated by); 'legacy' = a row written before the column existed (a bare boolean)."""
+    row = {"ticker": "MRNA", "execution_date": exec_date, "split_from": split_from, "split_to": split_to,
+           "adjustment_applied": True, "adjustment_outcome": None, "applied_factor": None}
+    if style == "recorded":
+        row.update(adjustment_outcome="applied", applied_factor=split_from / split_to)
+    return {**row, **over}
+
+
+def _phantom_split(exec_date, split_from=1, split_to=4):
+    """Polygon reported a split that never happened: the ingest recorded 'phantom' and wrote no bar."""
+    return _real_split("recorded", exec_date, split_from, split_to, adjustment_outcome="phantom", applied_factor=None)
+
+
 @pytest.fixture
 def world(monkeypatch):
     m = build_market(future=24)
@@ -437,23 +452,53 @@ class TestExitsAgainstTheOracle:
         # that share (fill, stop, day-0, adr20) walk once per arm, every row still written
         assert 0 < len(calls) < out["exit_rows"]
 
-    def test_a_split_after_the_break_day_makes_the_walk_unbookable_and_final(self, world):
+    @pytest.mark.parametrize("style", ["recorded", "legacy"])
+    @pytest.mark.parametrize("split_from,split_to", [(1, 4), (4, 1)], ids=["forward_1_for_4", "reverse_4_for_1"])
+    def test_a_split_after_the_break_day_makes_the_walk_unbookable_and_final(self, world, style, split_from, split_to):
+        """A REAL split (forward and reverse; the ingest's recorded verdict, and a legacy row written before it)."""
         m, store, _ = world
         run(WATCH_NIGHT)
         run(BREAK_DAY)
-        store.splits.append({"ticker": "MRNA", "execution_date": D(2026, 9, 21), "split_from": 1, "split_to": 4,
-                             "adjustment_applied": True})
+        store.splits.append(_real_split(style, D(2026, 9, 21), split_from, split_to))
         out = run(D(2026, 9, 21))
         rows = list(store.exit.values())
         un = [x for x in rows if x["status"] == "unbookable"]
-        assert un and all(x["mature"] and x["realized_r"] is None and "split_1:4_on_2026-09-21_after_entry" in x["reason"]
-                          for x in un)
+        assert un and all(x["mature"] and x["realized_r"] is None
+                          and f"split_{split_from}:{split_to}_on_2026-09-21_after_entry" in x["reason"] for x in un)
         # a day-0 stop-out was booked on the break day itself (raw fill, raw stop, same session) and is already
         # final - the split cannot touch it; every entry still OPEN when the split executed becomes unbookable
         by_id = {r["id"]: r for r in store.entry.values()}
         for (eid, _arm), x in store.exit.items():
             assert x["status"] == ("stopped_day0" if by_id[eid]["day0_stopped"] else "unbookable")
         assert out["exit_status"]["unbookable"] == len(un) == 17 * 15
+
+    def test_a_recorded_phantom_after_the_break_day_does_not_void_the_walk(self, world):
+        """#704: the ingest recorded a split that never happened and moved no bar. The old guard voided every open arm
+        for ANY row; the walk is as bookable as with no split at all, and the rows are the no-split rows."""
+        m, store, _ = world
+        run(WATCH_NIGHT)
+        run(BREAK_DAY)
+        store.splits.append(_phantom_split(D(2026, 9, 21)))
+        out = run(D(2026, 9, 21))
+        assert out["exit_status"].get("unbookable", 0) == 0 and out["exit_rows"] > 0 and out["exit_split_deferred"] == 0
+        assert not [x for x in store.exit.values() if x["status"] == "unbookable"]
+        by_id = {r["id"]: r for r in store.entry.values()}
+        live = [x for (eid, _a), x in store.exit.items() if not by_id[eid]["day0_stopped"]]
+        assert live and all(x["n_fwd"] >= 1 for x in live)                 # walked forward over the 09-18 / 09-21 bars
+
+    def test_an_unapplied_split_after_the_break_day_defers_the_walk_then_the_applied_verdict_decides(self, world):
+        m, store, _ = world
+        run(WATCH_NIGHT)
+        run(BREAK_DAY)
+        store.splits.append(_real_split("recorded", D(2026, 9, 21), 1, 4, adjustment_applied=False,
+                                        adjustment_outcome=None, applied_factor=None))
+        before = {k: dict(v) for k, v in store.exit.items()}
+        out = run(D(2026, 9, 21))
+        assert out["exit_split_deferred"] == 17 and out["exit_rows"] == 0 and out["exit_status"].get("unbookable", 0) == 0
+        assert store.exit == before                                       # nothing written, nothing voided for good
+        store.splits[0].update(adjustment_applied=True, adjustment_outcome="applied", applied_factor=0.25)
+        out = run(D(2026, 9, 22))
+        assert out["exit_split_deferred"] == 0 and out["exit_status"]["unbookable"] == 17 * 15
 
     def test_a_walk_is_cut_at_a_hole_and_ends_degraded(self, monkeypatch):
         m = build_market(future=12)
@@ -519,13 +564,14 @@ class TestExitWalkEfficiency:
 
 class TestSplitScaleArithmetic:
     def test_the_table_factor_is_the_product_of_from_over_to_exactly(self):
-        """`cb.raw_factor_for` supplies the product; the pivot goes the other way (raw down to stored), so it is fed
-        the inverse ratio and the result is bit-identical to the plain product this function always computed."""
+        """A LEGACY row (applied, no recorded outcome) is read at the table's ratio, and the product over several is
+        bit-identical to the plain product of `split_from / split_to` this function has always computed."""
         import random
         rng = random.Random(5)
         for _ in range(300):
             ss = [{"execution_date": D(2026, 9, 17) + dt.timedelta(days=k), "split_from": rng.randint(1, 20),
-                   "split_to": rng.randint(1, 20)} for k in range(rng.randint(1, 3))]
+                   "split_to": rng.randint(1, 20), "adjustment_applied": True}
+                  for k in range(rng.randint(1, 3))]
             want = 1.0
             for s_ in ss:
                 want *= float(s_["split_from"]) / float(s_["split_to"])
@@ -533,18 +579,32 @@ class TestSplitScaleArithmetic:
             got = sh.split_scale(ss, close_watch * want, close_watch, D(2026, 9, 16))       # the data agrees with the table
             if not 0.0 < want:
                 continue
-            if abs(want - 1.0) <= sh.SPLIT_SCALE_TOL:
-                assert got == pytest.approx(want) or got == 1.0
-            else:
-                assert got == want                                                         # bit-for-bit, not approx
+            assert got == want                                                             # bit-for-bit, not approx
 
     def test_an_unreadable_split_row_is_none_not_a_guess(self):
-        assert sh.split_scale([{"execution_date": D(2026, 9, 17), "split_from": 1, "split_to": 0}], 100.0, 100.0,
-                              D(2026, 9, 16)) is None
-        assert sh.split_scale([{"execution_date": D(2026, 9, 17), "split_from": 1}], 100.0, 100.0,
-                              D(2026, 9, 16)) is None
-        assert sh.split_scale([{"execution_date": D(2026, 9, 17), "split_from": 1, "split_to": 4}], 100.0, None,
-                              D(2026, 9, 16)) is None
+        applied = {"execution_date": D(2026, 9, 17), "adjustment_applied": True}
+        assert sh.split_scale([{**applied, "split_from": 1, "split_to": 0}], 100.0, 100.0, D(2026, 9, 16)) is None
+        assert sh.split_scale([{**applied, "split_from": 1}], 100.0, 100.0, D(2026, 9, 16)) is None
+        assert sh.split_scale([{**applied, "split_from": 1, "split_to": 4}], 100.0, None, D(2026, 9, 16)) is None
+
+    def test_the_scale_is_the_ingests_recorded_verdict_with_the_data_as_the_cross_check(self):
+        """#704: a recorded 'applied' row is read at its `applied_factor`; a recorded PHANTOM is 1.0; an unapplied row
+        is None whatever the data says; and a reading the data does not bear out is None, never a guess."""
+        d = D(2026, 9, 16)
+        row = {"execution_date": D(2026, 9, 17), "split_from": 1, "split_to": 4, "adjustment_applied": True}
+        applied = {**row, "adjustment_outcome": "applied", "applied_factor": 0.25}
+        phantom = {**row, "adjustment_outcome": "phantom", "applied_factor": None}
+        nodata = {**row, "adjustment_outcome": "skipped_no_data"}
+        assert sh.split_scale([applied], 25.0, 100.0, d) == 0.25                    # the bars moved, as recorded
+        assert sh.split_scale([phantom], 100.0, 100.0, d) == 1.0                    # recorded phantom, bars unmoved
+        assert sh.split_scale([nodata], 100.0, 100.0, d) == 1.0
+        assert sh.split_scale([{**applied, "adjustment_applied": False}], 25.0, 100.0, d) is None   # not applied yet
+        assert sh.split_scale([phantom], 25.0, 100.0, d) is None                    # recorded phantom but the bars moved
+        assert sh.split_scale([applied], 100.0, 100.0, d) is None                   # recorded applied but they did not
+        # a LEGACY phantom (no outcome) cannot be told from a real split: the table says 0.25, the data says 1.0 -> sits out
+        assert sh.split_scale([row], 100.0, 100.0, d) is None
+        # the recorded factor beats the table when they differ (a measured restatement that was not the table's ratio)
+        assert sh.split_scale([{**applied, "applied_factor": 0.5}], 50.0, 100.0, d) == 0.5
 
 
 class TestOneTradePerBaseInTheJob:
@@ -739,12 +799,14 @@ def _rescale_bars(m, ratio, when=lambda d: True):
 
 SPLITS = pytest.mark.parametrize("split_from,split_to,ratio", [(1, 4, 4.0), (4, 1, 0.25)],
                                  ids=["forward_1_for_4", "reverse_4_for_1"])
+STYLES = pytest.mark.parametrize("style", ["recorded", "legacy"])      # the ingest's verdict, and a pre-#704 boolean row
 
 
 class TestSplitGuard:
+    @STYLES
     @SPLITS
     def test_a_split_between_the_watch_night_and_the_break_day_abstains_every_variant(self, world, split_from,
-                                                                                      split_to, ratio):
+                                                                                      split_to, ratio, style):
         """Both directions, with the stored bars ACTUALLY on the post-split scale (as the 17:00 pull leaves them)
         and the pivot still raw from night D. Before the breakout test carried the pivot into the stored units, a
         forward split wrote no row at all and a reverse one wrote a row for every K whether or not it broke out."""
@@ -753,8 +815,7 @@ class TestSplitGuard:
         w = dict(store.watch[("MRNA", WATCH_NIGHT)])
         e_bar = {x[0]: x for x in m.bars["MRNA"]}[BREAK_DAY]
         _rescale_bars(m, ratio)
-        store.splits.append({"ticker": "MRNA", "execution_date": BREAK_DAY, "split_from": split_from,
-                             "split_to": split_to, "adjustment_applied": True})
+        store.splits.append(_real_split(style, BREAK_DAY, split_from, split_to))
         out = run(BREAK_DAY)
         rows = [r for r in store.entry.values() if r["break_date"] == BREAK_DAY]
         assert len(rows) == len(store.entry) == 20 and {(r["status"], r["reason"]) for r in rows} == \
@@ -766,9 +827,10 @@ class TestSplitGuard:
             assert r["pivot"] == pytest.approx(w[f"pivot_{r['k']}"] / ratio)
             assert r["gap_pct"] == pytest.approx(e_bar[1] / w[f"pivot_{r['k']}"] - 1.0)
 
+    @STYLES
     @SPLITS
     def test_a_split_on_a_name_that_did_not_break_out_writes_no_row_in_either_direction(self, world, split_from,
-                                                                                        split_to, ratio):
+                                                                                        split_to, ratio, style):
         """The pivot is lifted out of reach (x1.5). On the RAW numbers a reverse split would still read as a break
         (E's stored high is 4x the raw pivot) - the phantom candidate that used to enter the one-trade-per-base
         history; in the stored units neither direction broke out, so neither writes anything."""
@@ -778,23 +840,36 @@ class TestSplitGuard:
         for key in ("pivot_k5", "pivot_k10", "pivot_full", "pivot_tl"):
             w[key] *= 1.5
         _rescale_bars(m, ratio)
-        store.splits.append({"ticker": "MRNA", "execution_date": BREAK_DAY, "split_from": split_from,
-                             "split_to": split_to, "adjustment_applied": True})
+        store.splits.append(_real_split(style, BREAK_DAY, split_from, split_to))
         out = run(BREAK_DAY)
         assert not store.entry and out["entry_candidates"] == 0 and out["entry_rows"] == 0
         assert out["entry_split_rescaled"] == 1 and not coll.minute_calls
 
-    def test_a_phantom_split_that_moved_no_bar_is_read_off_the_data_not_the_table(self, world):
-        """Polygon sometimes reports a split that never happened; `splits_ingest` marks it applied WITHOUT rewriting
-        a bar. The table says 1:4, the stored D close is unchanged: the scale is 1.0 (a table-only rescale would
-        have lifted the pivot x0.25 and missed a real breakout)."""
+    def test_a_recorded_phantom_split_is_no_split_at_all(self, world):
+        """#704. Polygon sometimes reports a split that never happened; `splits_ingest` writes no bar and now RECORDS
+        'phantom'. The entry step reads that one verdict: the name is the unsplit name it is - minutes are fetched, the
+        variants fill like on any other break day, nothing abstains `split_after_watch`. (Before, a phantom was still
+        a "split" here: all twenty rows abstained although no price had moved.)"""
         m, store, coll = world
-        store.splits.append({"ticker": "MRNA", "execution_date": BREAK_DAY, "split_from": 1, "split_to": 4,
-                             "adjustment_applied": True})
+        store.splits.append(_phantom_split(BREAK_DAY))
         run(WATCH_NIGHT)
         out = run(BREAK_DAY)
-        assert len(store.entry) == 20 and {r["reason"] for r in store.entry.values()} == {sh.SPLIT_REASON}
-        assert out["entry_split_rescaled"] == 1 and out["entry_split_unresolved"] == 0
+        assert len(store.entry) == 20 and sh.SPLIT_REASON not in {r["reason"] for r in store.entry.values()}
+        assert {r["status"] for r in store.entry.values() if r["entry_variant"] == "orh5"} == {"filled"}
+        assert coll.minute_calls                                         # the minutes WERE fetched
+        assert out["entry_split_rescaled"] == 0 and out["entry_split_unresolved"] == 0
+        assert out["entry_reasons"].get(sh.SPLIT_REASON, 0) == 0
+
+    def test_a_legacy_phantom_that_moved_no_bar_sits_out_rather_than_being_rescaled_by_the_table(self, world):
+        """A phantom written BEFORE the outcome column cannot be told from a real split by its boolean: the table
+        says 1:4, the stored D close is unchanged. The data cross-check refuses the table's rescale (it would lift the
+        pivot x0.25 and miss a real breakout) and the name sits out, counted and named - the safe degradation."""
+        m, store, coll = world
+        store.splits.append(_real_split("legacy", BREAK_DAY, 1, 4))
+        run(WATCH_NIGHT)
+        out = run(BREAK_DAY)
+        assert not store.entry and not coll.minute_calls
+        assert out["entry_split_unresolved"] == 1 and out["entry_split_rescaled"] == 0
 
     def test_an_unexplained_scale_sits_the_name_out_instead_of_guessing(self, world):
         m, store, coll = world
