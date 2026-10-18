@@ -68,8 +68,8 @@ trendline level (**n = 43 candidates, 31 filled at ORH5, 2 skipped too-wide, 10 
 read, §2); holdout = D 2025-01-01..2026-10-15, untouched until this freeze, joined ONCE by P5.
 
 **Composition (STEP 0, printed before any outcome — spec key, first-break trades; "cand" = breakouts before entry
-abstains, "ORH5" = filled at the primary entry; from `scripts/probes/_cb_backtest/out/step0.txt` and
-`step0_entries.txt`, both pinned):**
+abstains, "ORH5" = filled at the primary entry; from the 10-17 runs' STEP 0 output (`scripts/probes/_cb_backtest/out/
+step0_entries.txt`, entry-time facts only; the summaries are not in the freeze set — the pinned cell table and data are):**
 
 | cell | discovery cand k5 / k10 / full / tl | discovery ORH5 filled k5 / k10 / full / tl | HOLDOUT cand k5 / k10 / full / tl | HOLDOUT ORH5 filled k5 / k10 / full / tl |
 |---|---|---|---|---|
@@ -96,7 +96,8 @@ abstains, "ORH5" = filled at the primary entry; from `scripts/probes/_cb_backtes
   flattest slope that keeps every later high under it; because it sits UNDER the base high, when ORH5 > the line the
   ORH5 entry fills at the range high, not at the line (the entry rule is max(range high, level)).
 - **Holdout maturity, counted from entry-time facts only:** of the 31 C1 `tl` ORH5 fills, 20 have E on or before
-  2026-04-24 (≥ 121 forward sessions in the export — mature whatever happened); the other 11 are mature only if they
+  2026-04-24 (≥ 121 forward sessions in the export — mature unless the walk is cut by a gap in the ticker's own bars,
+which makes it a "degraded" open mark); the other 11 are mature only if they
   reached a terminal exit by 2026-10-16. **So n = 31 is a ceiling and n < 30 is a live outcome (§5, §7).** C0 `tl`
   ORH5: 7,570 fills (2025: 3,761 · 2026: 3,809).
 - Era: one rule set end to end (the module is pinned); the data are the same adjusted export for both splits; SIC
@@ -221,8 +222,10 @@ the "ALL vs ≥ 0.25" row is the plan's floor-sweep robustness check):
   29,390 mature ORH5 walks differ between the two horizons).
 - **Reading:** a wider stop does NOT change the picture. The tight band loses more often but carries the tail share;
   the wide band loses less but has little tail; in ADR units every band is negative at C0 scale and no variant of the
-  width rule flips a sign. The floor-sweep check holds (the ≥ 5R share survives dropping stops under 0.25 ADR). There
-  is no stop question for him from this data (§10).
+  width rule flips a sign there. On C1 (79 trades) dropping the stops under 0.25 ADR moves the mean from −0.05 to about
+  +0.07R on the 56 left — a sign flip inside noise (its interval spans zero), reported, not acted on. The floor-sweep
+  check holds (the ≥ 5R share survives dropping stops under 0.25 ADR). There is no stop question for him from this
+  data (§10).
 
 ### 2.5 The base key (primary = the SPEC key, the plan's rule; chain key reported beside)
 
@@ -298,8 +301,10 @@ deciding. n on every number; open marks counted apart.
 5. **beats C0 on the same triple:** the cell's mean R > C0's mean R AND the cell's ≥ 5R share > C0's ≥ 5R share
    (point estimates; C0 is the baseline cell with ≈ 7,570 fills, so its own interval is tight).
 
-### 5.2 CAN'T TELL — n < 30 mature trades, or none of PASS / FAIL holds.
-### 5.3 FAIL — the interval's upper end < 0, OR (n ≥ 30 and the cell does not beat C0 on mean R).
+### 5.2 CAN'T TELL — n < 30 mature trades (whatever the interval says; it is reported), or none of PASS / FAIL holds.
+### 5.3 FAIL — n ≥ 30 AND (the interval's upper end < 0, OR the cell does not beat C0 on mean R).
+(Precedence, fixed before the read: n decides first — below 30 the verdict is CAN'T TELL even when the interval sits
+wholly below zero; the paper consequence is the same, no paper.)
 
 **The discovery clause — not dropped, re-stated with its consequence.** The plan's bar carried a sixth condition,
 "the same sign in discovery". On the primary triple the primary cell C1 reads NEGATIVE on every level in discovery
@@ -319,9 +324,10 @@ interval's lower end clears zero only at a mean of roughly +0.7R or more, and th
 average above zero only if the setup is broadly positive — not on one or two winners. Discovery's C1 `tl` read (mean
 −0.05, without the top five −0.52) came nowhere near either.
 
-**Chance rate, stated before the data:** C2 and C6 are CAN'T TELL by n (3 and 5 fills). Of the six testable cells, each
-passes condition 2 by chance with probability ≈ 2.5% under a true mean of zero (if the block bootstrap is calibrated),
-so the chance that at least one does is ≈ 14%; condition 3 makes a chance pass far rarer. A pass outside C1 is a
+**Chance rate, stated before the data:** C2 and C6 are CAN'T TELL by n (3 and 5 fills), and C0 cannot pass (condition 5
+compares a cell with C0). Of the five testable cells (C1, C3, C4, C5, C7), each passes condition 2 by chance with
+probability ≈ 2.5% under a true mean of zero (if the block bootstrap is calibrated), so the chance that at least one does
+is ≈ 12%; condition 3 makes a chance pass far rarer. A pass outside C1 is a
 lead (§0). The verdict is about "the setup as tested" — this encoding, this entry, this stop, this exit — never about
 Qullamaggie's pattern.
 
@@ -463,6 +469,6 @@ unpinned, with its reason in `FROZEN_CODE_EXEMPT`). The data and discovery files
 - discovery_report.tsv sha256: `d555303e61d70a248fefc9cb0bf0f40ac1205b1ec8a240b880c6f90b01700124`
 - discovery_report.txt sha256: `fa39e486f2b0f7b6e4a987b4c1554378e6dd5c37a0b9d72fd13e66d11dfa85f7`
 
-- doc body sha256: `d798af44bc070dcb18bee31632a6b5b1be4e66516fd74a1a1e092148ead09d44` — this file above the `<!-- FREEZE -->` marker
+- doc body sha256: `d3adcca7e568a765af7c3338fd4a5d4716ba1e7f24689b568fb30d3bf3fd0593` — this file above the `<!-- FREEZE -->` marker
 - freeze commit: the commit that adds this file on `main` (`git log -- docs/analysis/cb_preregistration_2026-10-18.md`);
   the holdout (P5) runs only after it is on `main`.
