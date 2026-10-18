@@ -24,6 +24,7 @@ import asyncio
 import datetime as dt
 import random
 import re
+from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -411,15 +412,31 @@ class TestExitsAgainstTheOracle:
         m, store, _ = world
         for d in m.cal[m.cal.index(WATCH_NIGHT):m.cal.index(BREAK_DAY) + 8]:
             run(d)
-        calls = []
-        real = cb.walk_exit
+        n_arms = len(cb.ARMS)
+        mature_before = defaultdict(set)                                    # entry id -> arms already final
+        for (eid, arm), x in store.exit.items():
+            if x["mature"]:
+                mature_before[eid].add(arm)
+        open_ids = [v["id"] for v in store.entry.values()
+                    if v["status"] == "filled" and len(mature_before[v["id"]]) < n_arms]
+        assert open_ids and any(0 < len(mature_before[i]) < n_arms for i in open_ids)   # a PARTLY-final entry exists
+        written, calls = [], []
+        real_upsert, real = sh.cb_upsert_exit_rows, cb.walk_exit
+
+        async def spy(rows):
+            written.extend((r["entry_id"], r["arm"]) for r in rows)
+            return await real_upsert(rows)
+        monkeypatch.setattr(sh, "cb_upsert_exit_rows", spy)
         monkeypatch.setattr(cb, "walk_exit", lambda **kw: calls.append(kw["arm"].name) or real(**kw))
         out = run(m.cal[m.cal.index(BREAK_DAY) + 8])
-        assert out["exit_entries_open"] > 0
-        # at most one walk per row written - and strictly fewer here: the K x variant entries of one candidate that
-        # share (fill, stop, day-0, adr20) are walked ONCE per arm (the chunk's walk cache), every row still written
+        assert out["exit_entries_open"] == len(open_ids) and out["exit_errors"] == 0
+        # exactly each open entry's NON-final arms are written - none of the arms that were final before the run
+        assert len(written) == len(set(written)) == out["exit_rows"] == sum(n_arms - len(mature_before[i]) for i in open_ids)
+        assert not [k for k in written if k[1] in mature_before[k[0]]]
+        # ... and the chunk's walk cache computes an identical walk once: the K x variant entries of one candidate
+        # that share (fill, stop, day-0, adr20) walk once per arm, every row still written
         assert 0 < len(calls) < out["exit_rows"]
-        assert len(calls) < out["exit_entries_open"] * len(cb.ARMS)  # ... and fewer than a full re-walk of every entry
+
     def test_a_split_after_the_break_day_makes_the_walk_unbookable_and_final(self, world):
         m, store, _ = world
         run(WATCH_NIGHT)

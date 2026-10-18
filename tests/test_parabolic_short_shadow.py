@@ -1123,6 +1123,34 @@ class TestNextSession:
         assert psh._next_session(date(2026, 9, 4)) == date(2026, 9, 8)             # Fri before Labor Day (Mon 9-7) -> Tue
         assert psh._next_session(date(2026, 11, 25)) == date(2026, 11, 27)         # Wed -> Fri (Thanksgiving Thu 11-26)
 
+    def test_a_calendar_failure_falls_back_to_the_next_weekday_not_the_saturday(self, monkeypatch):
+        # get_market_status fails open (a library error reads ANY date as a trading day, a Saturday included);
+        # _next_session must skip weekends itself or a Friday's next session becomes Saturday and Monday is missed.
+        from agents.market_intelligence import trading_calendar as tc
+
+        def boom():
+            raise RuntimeError("calendar library down")
+        monkeypatch.setattr(tc, "_get_nyse_calendar", boom)
+        assert psh._next_session(date(2026, 10, 16)) == date(2026, 10, 19)         # Fri -> Mon, not Sat
+        assert psh._next_session(date(2026, 10, 15)) == date(2026, 10, 16)         # Thu -> Fri
+        assert psh._next_session(date(2026, 10, 17)) == date(2026, 10, 19)         # Sat -> Mon
+
+    def test_the_friday_probe_set_still_covers_monday_when_the_calendar_is_down(self, monkeypatch):
+        from agents.market_intelligence import earnings_calendar as ecal
+        from agents.market_intelligence import trading_calendar as tc
+        probes = []
+
+        async def fake(ticker, d):
+            probes.append(d)
+            return False, "calendar"
+
+        def boom():
+            raise RuntimeError("calendar library down")
+        monkeypatch.setattr(tc, "_get_nyse_calendar", boom)
+        monkeypatch.setattr(ecal, "is_earnings_day", fake)
+        assert asyncio.run(psh.default_earnings_before_next_open("X", date(2026, 10, 16))) is False
+        assert probes == [date(2026, 10, 17), date(2026, 10, 19)]                  # Sat (the day after) and Mon (a pre-market print)
+
     def test_the_earnings_probe_before_a_holiday_monday_asks_about_the_tuesday(self, monkeypatch):
         from agents.market_intelligence import earnings_calendar as ecal
         probes = []

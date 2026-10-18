@@ -138,8 +138,9 @@ None currently. Each scan_date computes stage independently from prior scans. Pr
 
 The no-overnight-through-earnings probe asked about the day after a held session and "the next weekday"; it now asks about the next NYSE
 TRADING day (`trading_calendar.get_market_status`, the calendar `job_recovery._session_opens_on` counts sessions on), so a session before a
-holiday Monday probes the Tuesday instead of the closed Monday. Shadow-only (no order, no money); a calendar error reads as a trading day
-(`get_market_status` fails open), i.e. the old weekday behaviour. Also: the row-params helper is shared with the consolidation-breakout
+holiday Monday probes the Tuesday instead of the closed Monday. Shadow-only (no order, no money); weekends are skipped before the calendar call
+(`get_market_status` fails open and would read a Saturday as a trading day), so a calendar error falls back to the plain next weekday, the old behaviour
+(test pinned: Friday -> Monday with the calendar library down). Also: the row-params helper is shared with the consolidation-breakout
 writers (`db._row_params`). **Reversion-flag**: NEW.
 
 ### 2026-10-17 — #314 review round: the stop-limit fill model, one open episode per name, a borrow-read retry (same shadow, before first deploy)

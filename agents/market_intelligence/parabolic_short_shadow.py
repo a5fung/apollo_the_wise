@@ -379,12 +379,14 @@ def _borrow_cols(snapshot: dict) -> dict:
 
 def _next_session(d: date) -> date:
     """The next NYSE trading day after `d`: weekends AND exchange holidays skipped, the same calendar
-    `job_recovery._session_opens_on` counts a session on. `get_market_status` fails open on its own (a calendar
-    error reads as a trading day), so a library failure cannot stall this; the bound is only a backstop."""
+    `job_recovery._session_opens_on` counts a session on. Weekends are skipped HERE, before the calendar call
+    (as `_session_opens_on` does): `get_market_status` fails open on a library error and reads a Saturday as a
+    trading day, which would make a Friday's next session Saturday and drop the Monday-morning print. So a
+    calendar failure falls back to the plain next weekday; the loop bound is only a backstop."""
     from agents.market_intelligence.trading_calendar import get_market_status
     n = d + timedelta(days=1)
     for _ in range(10):
-        if get_market_status(n).is_trading_day:
+        if n.weekday() < 5 and get_market_status(n).is_trading_day:
             break
         n += timedelta(days=1)
     return n
