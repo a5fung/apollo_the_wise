@@ -5,7 +5,7 @@
 
 **Phase**: Live (paper). Production-active.
 **Origin**: Pradeep Bonde Episodic Pivot methodology + Marios Stamatoudis adaptation.
-**Code**: `agents/market_intelligence/ep_detector.py`, scheduler 7:00–10:00 ET cron every 5 min.
+**Code**: `agents/market_intelligence/ep_detector.py`, scheduler 7:00–9:55 ET cron every 5 min (`scheduler._ep_scan_trigger`; **09:00 is the morning brief's own scan, not a cron tick** — see the 2026-10-17 change-log entry).
 
 ## Definition
 
@@ -47,7 +47,7 @@ This is the canonical Apollo entry strategy — the highest-volume, highest-conv
 
 ## Detection criteria (current)
 
-EP detection runs every 5 min from 7:00 AM to 10:00 AM ET. Each scan tick evaluates candidates against:
+EP detection runs every 5 min from 7:00 AM to 9:55 AM ET (the 10:00 `ep_scan_stop` closes the window; the 09:31 `ep_scan_open` tick is separate), and the **09:00 scan is the morning brief's own** — the `ep_scan` cron has no 09:00 tick, so one scan starts at 09:00, not two. Each scan tick evaluates candidates against:
 
 ### Filters (any failure → skip)
 
@@ -592,6 +592,17 @@ statements are in the change log entry 2026-10-10 "the DEPTH exit also covers th
 10. **The +8R profit-take sells 1 share of a 2-share position, but a 1-share reach is still a silent no-op and the new branch has no historical event** (2026-10-10, his "go with rec" — change log 2026-10-10 below). VICR, the trigger, held ONE share and is not covered; 0 of 4 two-share live fills ever reached +8R; `too_small_to_split` is never written to `mi_audit_log`; `/partialnow` still refuses 2-share positions. Filed here per CHANGE_PROCESS r7 — the entry carries the numbers and the verify list.
 
 ## Change log (newest first)
+
+### 2026-10-17 — the 09:00 ET EP scan runs ONCE per weekday: the `ep_scan` cron drops its 09:00 tick, the morning brief keeps its own scan (OPERATOR "Ok" 2026-10-17; DUPLICATE-RUN BUG FIX, not a detection-criterion change; BUILT on worktree branch, NOT DEPLOYED)
+
+- **Trigger:** `_morning_briefing_job` (CronTrigger 09:00 ET) calls `_ep_scan_job()` FIRST so the brief reads a fresh scan, and the `ep_scan` job's `CronTrigger(hour="7-9", minute="*/5")` also fired at 09:00:00 — two full scans at the same instant on every weekday (code-read fact; **not measured in prod from this build, no prod access**). Both read `already_alerted` before either has written, and both do the catalyst/LLM work.
+- **Evidence:** the two call sites (`scheduler.py::_morning_briefing_job` and the old `ep_scan` registration). This is not a threshold or gate change, so CHANGE_PROCESS r1/r3 (backtest N>=10, filter-list sign-off) do not apply: no candidate is filtered or admitted differently — the same scan simply runs once instead of twice at 09:00. His "Ok" to the recommendation is the sign-off.
+- **What changed:** `scheduler._ep_scan_trigger()` — an `OrTrigger` of `CronTrigger(hour="7-8", minute="*/5")` and `CronTrigger(hour=9, minute="5-55/5")`, both mon-fri ET. Job id `ep_scan`, `misfire_grace_time=300`, the 07:00-08:55 and 09:05-09:55 ticks, `ep_scan_open` (09:31), `ep_scan_stop` (10:00), the ORB window (`hour == 9 and minute < 45`) and the 10:05 watchdog are untouched. One CronTrigger cannot express it (hour x minute is a cross product).
+- **Consumers derived and checked (all unaffected):** `job_recovery.fires_at_most_daily` (an OrTrigger has no `.fields` -> False -> `ep_scan` stays out of the re-run population, as with the single cron) · `_on_job_missed` (an unscheduled slot cannot misfire) · `_ep_scan_watchdog` (counts `ep_scan` success rows today: 35 remain) · `health_checks` job-liveness (run-DATES) · `scripts/check_job_date_sources.registrations` (non-daily either way). ⚠ **The brief's inline scan is NOT an `ep_scan` ledger row** (it runs inside the `morning_briefing` audit_wrap); its product is the `mi_ep_scan_log` rows stamped ~09:00:00. It never was a ledger row — only the cron tick was — so the 09:00 `ep_scan` row disappears by design.
+- **Residual, stated:** the 09:00 scan now starts only with the brief, whose registration carries APScheduler's default 1 s `misfire_grace_time` (the cron tick had 300 s). A brief that misfires skips the 09:00 scan until the 09:05 tick; `missed_job_recovery` can re-run the brief only before 09:25 (the ORB-quiet window). Not changed here (the brief's registration is not part of this ruling).
+- **Anticipated effect:** `mi_job_runs` `ep_scan` = 35 rows per weekday (was 36), none in [09:00, 09:05) ET; one distinct `scan_time_et` per ticker in the 09:00 minute of `mi_ep_scan_log` (was two); no other EP-scan behaviour changes.
+- **Reversion-flag:** NEW (no prior change to the `ep_scan` schedule). Reversion = restore `CronTrigger(hour="7-9", minute="*/5", ...)` in `_ep_scan_trigger` AND remove the `_ep_scan_job()` call from `_morning_briefing_job` (doing only the first re-creates the duplicate).
+- **Status:** shipped, awaiting field validation — tests `tests/test_ep_scan_0900_duplicate.py` (10). Deploy `market-agent` (`scheduler.py` is exec-loaded; the execution copy gains a definition only — the job is not registered there).
 
 ### 2026-10-11 — #687 / #482 flip-day duty: the replay walkers and the era stamp know the DEPTH exit — a depth-stamped MAGNA53 trade is era E from its ROW, a counterfactual from the toggle's first acting session, never from a date typed today (ANALYSIS / REPLAY CODE ONLY; BUILT on branch `wk1011/depth-era-replays`, NOT DEPLOYED)
 
@@ -2741,7 +2752,7 @@ stands uncorrected; this paragraph exists so the next person doesn't re-trust th
 1.4 number without re-running the faithfulness check.
 
 **Does the band have data by 9:00 AM ET send time? Checked, yes.** The EP scan job runs every
-5 minutes 7:00–10:00 AM ET (`scheduler.py::_ep_scan_job`); the morning briefing sends at a
+5 minutes 7:00–9:55 AM ET (`scheduler.py::_ep_scan_job`; the 09:00 scan is run by the morning brief itself since 2026-10-17); the morning briefing sends at a
 fixed 9:00 AM ET (`CronTrigger(hour=9, minute=0, ...)`, `JOB_MORNING_BRIEFING`). Prod check
 (trailing 15 trading days, read-only): scored rows (`ep_score IS NOT NULL`) start landing at
 7:00–7:20 AM ET on 14 of 15 days, with 5–247 scored rows already recorded before 9:00 AM ET

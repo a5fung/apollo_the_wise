@@ -73,7 +73,7 @@ TradingView-sourced item into a live grade) is a separate CHANGE_PROCESS step wi
 operator sign-off - nothing here does that.
 
 NEVER ON THE LIVE SCAN PATH. This is a POST-HOC job: 10:10 ET, mon-fri - after the scan's last
-tick (09:55 ET; the cron is */5 over hours 7-9), its 10:00 stop, the 10:00 unfilled-order cancel
+tick (09:55 ET; the cron is */5 over 07:00-09:55 except 09:00, which the morning brief scans), its 10:00 stop, the 10:00 unfilled-order cancel
 and the 10:05 scan watchdog, so the before-grade and re-poll buckets are complete, and clear of
 the 12:00-13:00 ET market-hours deploy window. (It was 20:45 ET until 2026-10-10: 3 of 10 captured windows had already rolled
 past the period start by then, and a heavily covered name's 25-slot window spends most of its

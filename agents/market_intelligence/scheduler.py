@@ -22,6 +22,7 @@ _ET = ZoneInfo("America/New_York")
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.events import EVENT_JOB_MISSED
+from apscheduler.triggers.combining import OrTrigger
 from apscheduler.triggers.cron import CronTrigger
 
 from agents.market_intelligence.db import (
@@ -1132,11 +1133,43 @@ async def _evening_briefing_job():
         await notify_job_failure(JOB_EVENING_BRIEFING, str(e))
 
 
+def _ep_scan_trigger() -> OrTrigger:
+    """The `ep_scan` job's schedule: every 5 minutes, Mon-Fri, 07:00-09:55 ET, EXCEPT 09:00.
+
+    WHY 09:00 IS MISSING (operator "Ok" 2026-10-17 — a duplicate-run bug fix, NOT a detection
+    criterion change): `_morning_briefing_job` (CronTrigger 09:00 ET) calls `_ep_scan_job()` FIRST so
+    the brief reads a fresh scan, and the old `hour="7-9", minute="*/5"` cron ALSO fired `ep_scan`
+    at 09:00:00 — two full scans at the same instant (duplicate API/LLM work, and both read
+    `already_alerted` before either has written). The brief keeps its scan; the cron tick is dropped.
+
+    ONE CronTrigger cannot express this (hour x minute is a cross product: 07-09 x */5 includes
+    09:00, and 09:05-09:55 needs its own minute range), hence an OrTrigger of two. Job id, grace
+    time and the 09:05-09:55 + 07:00-08:55 ticks are unchanged; 09:30-09:59 and the 10:00 stop are
+    untouched (`ep_scan_open` 09:31, `ep_scan_stop` 10:00, the ORB window).
+
+    Consumers checked when this changed (all unaffected): `job_recovery.fires_at_most_daily` (an
+    OrTrigger has no `.fields` -> False -> `ep_scan` stays excluded as sub-daily, as with the single
+    cron); `_on_job_missed` (an unscheduled slot cannot misfire); `_ep_scan_watchdog` (counts any
+    `ep_scan` success row today - 35 remain); `health_checks` job-liveness (run-DATES, not rows);
+    `scripts/check_job_date_sources.registrations` (only parses a literal `CronTrigger(...)`; this was
+    already non-daily). Pinned in tests/test_ep_scan_0900_duplicate.py.
+
+    ⚠ The brief's inline scan is NOT an `ep_scan` ledger row (it runs inside the `morning_briefing`
+    audit_wrap, so its ledger trace is the `morning_briefing` row); its product is the
+    `mi_ep_scan_log` rows stamped ~09:00:00. Do not wrap it in a second `audit_run`."""
+    return OrTrigger([
+        CronTrigger(hour="7-8", minute="*/5", day_of_week="mon-fri", timezone="America/New_York"),
+        CronTrigger(hour=9, minute="5-55/5", day_of_week="mon-fri", timezone="America/New_York"),
+    ])
+
+
 async def _morning_briefing_job():
     """Run at 9:00 AM ET (6:00 AM PT). Send morning briefing — EP recap + regime context."""
     logger.info("Sending morning briefing...")
     try:
-        # Run EP scan first so alerts are in DB before briefing reads them
+        # Run EP scan first so alerts are in DB before briefing reads them. This IS the 09:00 ET
+        # scan: the `ep_scan` cron deliberately has no 09:00 tick (`_ep_scan_trigger`, 2026-10-17),
+        # so do not remove this call without restoring that tick.
         await _ep_scan_job()
         await send_morning_briefing()
         await log_job_run(JOB_MORNING_BRIEFING)
@@ -1170,7 +1203,8 @@ async def _morning_briefing_job():
 
 
 async def _ep_scan_job():
-    """Run every 5 minutes 7:00–10:00 AM ET. Scan for EP gaps; HIGH alerts sent immediately.
+    """Run every 5 minutes 7:00–9:55 AM ET, EXCEPT 09:00 (the morning brief runs this scan itself
+    at 09:00 — see `_ep_scan_trigger`). Scan for EP gaps; HIGH alerts sent immediately.
 
     Pre-market new HIGHs: subscribed to bar stream for real-time first-bar ORB entry.
     Post-open new HIGHs: bar already closed, ORB entry triggered inline immediately."""
@@ -7424,17 +7458,13 @@ def start_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
 
-    # EP scan: every 5 minutes 7:00–10:00 AM ET
+    # EP scan: every 5 minutes 7:00–9:55 AM ET EXCEPT 09:00 (see `_ep_scan_trigger`: the morning
+    # brief runs the 09:00 scan itself, so a cron tick at the same instant was a duplicate run).
     # Pre-market HIGHs → bar stream subscription (ORB fires on first bar close)
     # Post-open HIGHs  → ORB entry inline immediately after scan
     _scheduler.add_job(
         audit_wrap(_ep_scan_job, "ep_scan"),
-        CronTrigger(
-            hour="7-9",
-            minute="*/5",
-            day_of_week="mon-fri",
-            timezone="America/New_York",
-        ),
+        _ep_scan_trigger(),
         id="ep_scan",
         replace_existing=True,
         misfire_grace_time=300,  # skip if restart fires this >5 min late
@@ -7785,7 +7815,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # three most heavily covered names) and a busy name's 25-slot window had spent most of its
     # slots on items published AFTER 10:10; (b) it is the earliest slot after which the
     # before-grade and re-poll buckets are complete - the scan's last tick is 09:55 (ep_scan is
-    # */5 over hours 7-9; ep_scan_stop fires at 10:00), the latest grade seen is 09:55, the
+    # */5 over 07:00-09:55 except 09:00, which the morning brief scans; ep_scan_stop fires at 10:00), the latest grade seen is 09:55, the
     # worst grade-to-metrics-row lag seen is ~10 min; (c) it is clear of the 10:00 jobs
     # (ep_scan_stop, rt_miss_digest, orb_window_cleanup, shadow_orb_entry), the
     # 10:05 ep_scan_watchdog and the 12:00-13:00 ET deploy window. The catalyst-downgrade digest
@@ -8509,7 +8539,7 @@ def start_scheduler() -> AsyncIOScheduler:
     # 09:28 ET (#312 Step A, 2026-10-10): BEFORE the 09:31 ORB submits, so the
     # ranking is taken against the pre-entry book (it ran at 09:35 for five
     # months and double-counted the morning's fills — see the job docstring).
-    # Contention: no other once-a-day job fires at :28 (ep_scan is */5, the ORB
+    # Contention: no other once-a-day job fires at :28 (ep_scan is */5 and never at :28, the ORB
     # bar stream wakes at 09:30, ep_scan_open at 09:31). The every-minute
     # execution watchdogs (stuck_fill_watchdog, stop_ack_timeout_watchdog) DO fire
     # at 09:28:00 — exactly as they did at 09:35:00, so the move adds no new
