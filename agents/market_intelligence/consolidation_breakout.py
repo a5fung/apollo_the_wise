@@ -12,9 +12,12 @@ Source of the rules: `docs/methodology/operator_shared_notes.md`, section "2026-
 Qullamaggie's BREAKOUT setup". Plan: `/Users/alvinfung/.claude/plans/soft-singing-hamster.md`.
 MRNA (`tests/fixtures/htf_labelled_bars.psv`) is the canary.
 
-Provenance of every constant (ADR 0013 / Gate 5, `scripts/gate_provenance_registry.py`). NOTHING
-here is in the registry yet — that is P6, with the backtest-chosen values citing the P4
-registration doc. The scan is registry-enumerated, so this module is not scanned until then.
+Provenance of every constant (ADR 0013 / Gate 5, `scripts/gate_provenance_registry.py`). The S- and
+R-class C0 constants ARE registered (P6, 2026-10-17: eight `consolidation_breakout.*` ids plus the two
+`flag_detector` pole-artifact literals this module imports — ten entries). The B-class parameters (the
+pivot keys, the 5-session windows, the RS / group grid thresholds, the phase slope) are deliberately not:
+they cite the P4 registration `docs/analysis/cb_preregistration_2026-10-18.md` (frozen 2026-10-18), and a
+citation is never invented to make an entry pass.
   S = sourced verbatim in operator_shared_notes.md      R = REUSES an existing cited constant
   B = chosen by the backtest, NO source yet — an explicit argument or a named constant here,
       never presented as sourced
