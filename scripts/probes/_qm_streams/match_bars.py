@@ -127,8 +127,13 @@ def main():
     kwcols = [c for c in sm.columns if c.startswith("kw_")]
     lab = pd.concat([ls, lk], ignore_index=True)
     lab["kw_list"] = lab[kwcols].apply(lambda r: ",".join(k[3:] for k in kwcols if r[k] == 1), axis=1)
+    # hq = the cleaner cut (hand-read precision ~3/4): a spoken ticker (tier A) with a chart word within -10/+15 s of the mention;
+    # for Kyna: written about by cashtag / parenthesis (tier A)
+    lab["near_chart"] = pd.to_numeric(lab["near_chart"], errors="coerce").fillna(0)
+    lab["hq"] = (((lab["source"] == "stream") & (lab["tier"] == "A") & (lab["near_chart"] >= 1)) |
+                 ((lab["source"] == "kyna") & (lab["tier"] == "A"))).astype(int)
     lab = lab.sort_values("strength", ascending=False)
-    keep = ["source", "ticker", "ref_date", "where", "tier", "via", "strength", "kw_list", "mentions", "n_chart_kw", "near_chart", "n_images", "image_urls",
+    keep = ["source", "ticker", "ref_date", "where", "tier", "hq", "via", "strength", "kw_list", "mentions", "n_chart_kw", "near_chart", "n_images", "image_urls",
             "watch_era", "status_at_ref", "n_watch_nights", "first_watch", "last_watch", "w_base_len", "w_pole_date", "w_prior_move", "w_base_depth",
             "w_tightening_ratio", "w_tl_slope_pct", "w_tl_interior_touches", "w_trigger_bar_range_adr", "w_inside_day", "w_retrace",
             "w_higher_lows", "breakout_followed", "first_E", "days_ref_to_E", "title", "quote1"]

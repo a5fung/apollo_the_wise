@@ -30,9 +30,9 @@ def main():
     a = ap.parse_args()
     o = a.out
     vs = pd.read_csv(os.path.join(o, "video_status.tsv"), sep="\t", dtype={"upload_date": str})
-    sm = pd.read_csv(os.path.join(o, "stream_moments.tsv"), sep="\t")
-    ky = pd.read_csv(os.path.join(o, "kyna_notes.tsv"), sep="\t")
-    lab = pd.read_csv(os.path.join(o, "labelled_candidates.tsv"), sep="\t")
+    sm = pd.read_csv(os.path.join(o, "stream_moments.tsv"), sep="\t", low_memory=False)
+    ky = pd.read_csv(os.path.join(o, "kyna_notes.tsv"), sep="\t", low_memory=False)
+    lab = pd.read_csv(os.path.join(o, "labelled_candidates.tsv"), sep="\t", low_memory=False)
     meta = json.load(open(os.path.join(o, "kyna_crawl_meta.json")))
     L = []
     P = L.append
@@ -63,12 +63,20 @@ def main():
     fails = vs[vs.status == "fail"]
     for _, r in fails.iterrows():
         P(f"  FAILED {r['id']} {r.upload_date} {r.title[:50]}  <- {r.get('note', '')}")
+    okv = vs[vs.status == "ok"].copy()
+    okv["d"] = pd.to_datetime(okv.upload_date, format="%Y%m%d")
+    P(f"  caption videos by era: before 2021-08 (no bars) {int((okv.d < '2021-08-01').sum())} | 2021-08..2022-03-27 (bars, no watch rows) "
+      f"{int(((okv.d >= '2021-08-01') & (okv.d < '2022-03-28')).sum())} | 2022-03-28 on (watch rows) {int((okv.d >= '2022-03-28').sum())}")
     ok_in_bars = int(sm[sm.bars_window == 1].video.nunique())
     P("")
     P(f"HITS         stream moments {len(sm):,} in {sm.video.nunique()} videos | with a bars window (video >= 2021-08) {int((sm.bars_window==1).sum()):,} "
       f"| in the watch era (>= 2022-03-28) {int(sm.watch_era.isin(['full_window','partial_window','no_ticker_rows']).sum()):,}")
     P(f"             with a C0 base in the 20 sessions before the video {int(sm.c0.sum()):,} | + a chart word {int(((sm.c0==1)&(sm.chart_kw==1)).sum()):,} "
       f"| distinct tickers in those {sm[(sm.c0==1)&(sm.chart_kw==1)].ticker.nunique()}")
+    nb = sm[(sm.bars_window == 0)]
+    nbh = nb[(nb.chart_kw == 1) & (nb.tier == "A") & (nb.near_chart >= 1)]
+    P(f"NO-BARS     {len(nb):,} moments in {nb.video.nunique()} videos before 2021-08 are kept as text (no bars to match); of them {len(nbh):,} are spoken-ticker + chart-word-at-the-mention "
+      f"({nbh.ticker.nunique()} tickers, {nbh.video.nunique()} videos) - matchable only if daily bars + watch nights are extended back before 2021-09-27")
     P(f"KYNA         posts crawled {len(meta)-1} (index + {len(meta)-1}) | paywalled {sum(m.get('paywalled',0) or 0 for m in meta)} | "
       f"dated stream posts {ky[ky.stream_date.notna()].slug.nunique()} | post-ticker rows {len(ky)} ({ky.ticker.nunique()} tickers) | "
       f"image URLs recorded {int(ky.n_images.sum())}")
@@ -88,6 +96,7 @@ def main():
     two = s1[(s1.get("n_chart_kw", 0) >= 2)]
     near = s1[(s1.get("near_chart", 0) >= 1)]
     inb = s1[s1.status_at_ref.isin(["in_base_at_ref", "broke_out_before_ref"])]
+    hq = s1[s1.hq == 1]
     uniq_vt = s1.drop_duplicates(["where"]).shape[0]
     uniq_base = s1.drop_duplicates(["ticker", "w_pole_date"]).shape[0]
     k = lab[lab.source == "kyna"]
@@ -96,9 +105,10 @@ def main():
     P("")
     P("HELD STEP 3 (vision read of the chart at the moment - NOT RUN): frames needed at ~1 frame per moment")
     P(f"  stream moments with a C0 base + chart word: {len(s1)}  (distinct video+time {uniq_vt}; distinct stock-bases {uniq_base})")
+    P(f"    clean cut (spoken ticker + chart word at the mention, tier A): {len(hq)}")
     P(f"    tighter cuts: >= 2 distinct chart words {len(two)} | a chart word within -10/+15 s of the mention {len(near)} | base in place or just broken out {len(inb)}")
     P(f"  Kyna rows with a C0 base + chart word: {len(k)} -> up to {k_imgs} images already posted (URLs only; no frame extraction needed)")
-    for label, cnt in (("all labelled stream moments", len(s1)), ("near-mention cut", len(near)), ("base-in-place cut", len(inb))):
+    for label, cnt in (("all labelled stream moments", len(s1)), ("near-mention cut", len(near)), ("base-in-place cut", len(inb)), ("clean cut (tier A + near)", len(hq))):
         P(f"  price @ {label}: {cnt} frames x ${c_frame:.4f} = ${cnt*c_frame:,.2f}   "
           f"(sonnet-5-5 {src}: ${pr['input']}/${pr['output']} per Mtok; 1 image ~1.6k tok + 450 prompt + 450 out)")
     P("  frame source for stream moments = a short video segment fetch at the timestamp (free, but ~800 h of video is NOT downloaded - only")

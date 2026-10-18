@@ -26,7 +26,8 @@ from collections import Counter, defaultdict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import qmlib  # noqa: E402
 
-DF_HARD = 0.25            # a ticker-shaped token in >= 25% of caption videos is a stream word, not a ticker
+DF_HARD = 0.25            # an ENGLISH word in >= 25% of caption videos is a stream word, not a ticker
+DF_NONDICT = 0.60         # a non-word token (fillers 'gonna', 'ive') needs >= 60%: real tickers (amd, fcx, erx) reach 25-35% legitimately
 CLUSTER_GAP = 45.0        # mentions of one ticker within 45 s are one moment
 WIN = 30.0
 MAX_SPAN = 90.0
@@ -60,6 +61,9 @@ def load_names(out):
     return names
 
 
+NAME_IGNORE = {"nasdaq", "solana", "bitcoin", "ethereum", "dogecoin", "crypto", "microsoft office", "wall street"}
+
+
 def build_aliases(names, dict_words, stop_words):
     core_by_alias = defaultdict(set)
     tick_by_alias = defaultdict(set)
@@ -84,6 +88,8 @@ def build_aliases(names, dict_words, stop_words):
             tick_by_alias[a].add(t)
     out = {}
     for a, ts in tick_by_alias.items():
+        if a in NAME_IGNORE:
+            continue
         if len(core_by_alias[a]) == 1 or all(c.split()[0] == a.split()[0] for c in core_by_alias[a]) and " " not in a:
             out[a] = ts
     return out
@@ -146,7 +152,10 @@ def main():
     for i in cap_videos:
         df.update(set(t for _, t, _ in vt[i]))
     ndoc = max(1, len(cap_videos))
-    stop_words = set(w for w, c in df.items() if c / ndoc >= DF_HARD) | MANUAL_STOP
+    def dictish(w):
+        return w in dict_words or (w.endswith("s") and w[:-1] in dict_words) or (w.endswith("es") and w[:-2] in dict_words)
+
+    stop_words = set(w for w, c in df.items() if (c / ndoc >= DF_HARD and dictish(w)) or c / ndoc >= DF_NONDICT) | MANUAL_STOP
 
     names = load_names(out)
     aliases = build_aliases(names, dict_words, stop_words)
@@ -227,21 +236,23 @@ def main():
                     tier = "N"
                 elif low in stop_words:
                     tier = "C"
-                elif len(low) == 2 or low in dict_words or (low.endswith("s") and low[:-1] in dict_words) or (low.endswith("es") and low[:-2] in dict_words):
+                elif len(low) == 2 or dictish(low):
                     tier = "B"                    # 2-letter tokens are abbreviations as often as tickers: soft like English words
                 else:
                     tier = "A"
-                if tier == "B" and not chart:
-                    continue
-                if tier == "C" and not (caps_any and chart):
-                    continue
-                if via == "spelled" and low in stop_words and not chart:
-                    continue
-                # near window flags (+-10 s of the first mention)
+                # near window flags (-10 s .. +15 s of the first mention)
                 nlo = bisect.bisect_left(times, t1 - 10)
                 nhi = bisect.bisect_right(times, t1 + 15)
                 ntxt = " ".join(x[1] for x in toks[nlo:nhi])
                 nfl = qmlib.kw_flags(ntxt)
+                near = any(nfl[x] for x in qmlib.CHART_KW)
+                # collision tiers: a chart word must sit right at the mention (not just somewhere in the +-30 s window)
+                if tier == "B" and not near:
+                    continue
+                if tier == "C" and not (caps_any and near):
+                    continue
+                if via == "spelled" and low in stop_words and not near:
+                    continue
                 strength = qmlib.kw_strength(fl) + 2 * sum(qmlib.KW_WEIGHT[x] for x in qmlib.CHART_KW if nfl[x]) + math.log2(len(cl) + 1)
                 strength *= {"A": 1.0, "N": 0.7, "B": 0.8, "C": 0.6}[tier]
                 # 1-line quote: +-10 s around the chart keyword nearest the first mention, else the mention
