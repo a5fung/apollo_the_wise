@@ -145,5 +145,5 @@ One mental model — **stocks in play, surfaced from any setup; some Apollo auto
 ## Resolved confirms (2026-05-31, read-only)
 - **RMV Phase-2** (`rmv_phase2_evaluation`, earliest 6/9): a **qualifier on flag candidates** — `rmv_5d/15d` persisted per `mi_flag_candidates` row since Phase-1 (5/9). Phase-2 tests whether RMV-low catches tight setups `_compute_fresh_tightening` MISSES, or is redundant. So it's a tightness *score*, not a standalone trigger. (WS-E)
 - **`mi_stocks_in_play` ingest**: TODAY only `sugar_baby_cohort` (193, all `automation_class=informational`). NOT multi-source — ADR 0004's other source slots are unbuilt. → the core **WS-A** gap.
-- **Parabolic short**: real tables exist (`mi_parabolic_candidates` / `mi_parabolic_exclusions`); `parabolic_short` strategy = shadow. (WS-B, P-low.)
+- **Parabolic short**: real tables exist (`mi_parabolic_candidates` / `mi_parabolic_exclusions`, and since #314 `mi_parabolic_short_shadow` — the forward shadow's arm/trigger/outcome rows, no orders); `parabolic_short` strategy = shadow. (WS-B, P-low.)
 - **Convergence** (sugar-baby × flag): an **alert TAG** (Stage-2 prepend), not a standalone setup — a qualifier-style co-occurrence flag, not its own WS.

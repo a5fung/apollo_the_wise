@@ -68,7 +68,7 @@ setup's criteria, change log and findings.
 | **Consolidation Breakout (#702)** — Qullamaggie's breakout as a SETUP (buys the opening-range high on the breakout day, stops at the low of the day): the definition table with its S/R/B sources, the cells, entries/exits, the forward SHADOW recorder (`mi_consolidation_breakout_*`, job 17:48 ET), the deviation list, the paper-path map | `docs/setups/consolidation_breakout.md` |
 | Undercut & rally | `docs/setups/undercut_rally.md` |
 | Wick fill (**RETIRED 2026-10-17** — history only; operator: "kill wick fill, remove that setup completely") | `docs/setups/wick_fill.md` |
-| Parabolic short | `docs/setups/parabolic_short.md` |
+| Parabolic short — detector + the short-side forward SHADOW (#314: arm / trigger / outcome rows in `mi_parabolic_short_shadow`, inside the 17:15 ET `parabolic_scan` job, read-only borrow check via `execution_client.get_asset`, no orders) | `docs/setups/parabolic_short.md` |
 | Convergence | `docs/setups/convergence.md` |
 | Continuation flag (RETIRED → folded into HTF) | `docs/setups/flag_continuation.md` |
 | Portfolio safeguards | `docs/setups/safeguards.md` |

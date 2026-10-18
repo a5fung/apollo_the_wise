@@ -61,7 +61,7 @@ class ExecutionCallFailed(RuntimeError):
 # absent (see module docstring).
 _CROSS_FNS = frozenset({
     "get_account", "get_position", "get_all_positions", "get_open_orders",
-    "get_stream_status", "get_first_bar",
+    "get_stream_status", "get_first_bar", "get_asset",
     "subscribe_orb_candidate", "reset_bar_stream_daily_state",
     "record_skipped_trade", "trigger_orb_entry", "trigger_lowcap_paper_entry",
     "execute_partial_exit", "sync_positions",
@@ -281,6 +281,22 @@ async def get_stream_status(*args, **kwargs):
     """Trade-stream health (per-mode connection state). Reads execution-local
     stream state, so it must run where the stream lives."""
     return await _dispatch("get_stream_status", _get_stream_status_inprocess, args, kwargs)
+
+
+async def _get_asset_inprocess(symbol: str, account_mode: str | None = None):
+    from agents.market_intelligence.broker import alpaca_client
+    return await alpaca_client.get_asset(symbol, account_mode=account_mode)
+
+
+async def get_asset(symbol: str, account_mode: str | None = None):
+    """READ-ONLY broker asset facts for a symbol (#314 / ADR 0020 card B3): `shortable`,
+    `easy_to_borrow`, `tradable`, `status` ... as a plain dict, or None when Alpaca answered 404 (no such
+    asset). A broker/transport FAILURE RAISES (`ExecutionUnreachable` over the wire, `ExecutionCallFailed`
+    when execution ran it and it raised, the original error in-process) - it is never collapsed into
+    None/False, so "couldn't read the borrow flag" cannot read as "hard to borrow" OR "easy to borrow".
+    The intelligence-side parabolic-short shadow reaches the broker ONLY through this one function."""
+    return await _dispatch("get_asset", _get_asset_inprocess, (symbol,),
+                           {"account_mode": account_mode})
 
 
 def get_data_feed_name() -> str:

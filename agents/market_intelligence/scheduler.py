@@ -3170,17 +3170,41 @@ async def _parabolic_scan_job():
     `unqualified`) to mi_parabolic_candidates so thresholds can be tuned
     against historical scans. Telegram digest only fires on non-empty results
     (parabolas are rare — silence is the expected daily state).
+
+    #314 (ADR 0020 card B3): after the scan, the parabolic-SHORT forward shadow runs in the same job —
+    it arms tonight's climax candidates (post-exclusions), advances every open episode from stored bars,
+    and writes arm / trigger / outcome rows. NO order path (its only broker reach is the read-only
+    `execution_client.get_asset`). It is isolated: a shadow failure pages on its own and the scan's digest
+    still goes out, and a scan failure does not stop open episodes from settling (the shadow reads the
+    persisted candidates and stored bars, not the scan's return value). Imported INSIDE the function —
+    `scheduler.py` is on the execution image's module list and execution must never load it.
     """
     logger.info("Parabolic scan starting...")
+    from agents.market_intelligence.collector import et_today
+    trade_date = et_today()
+    by_stage: dict = {}
     try:
-        from agents.market_intelligence.collector import et_today
-        from agents.market_intelligence.parabolic_detector import (
-            run_parabolic_scan, send_parabolic_digest,
-        )
-        by_stage = await run_parabolic_scan(et_today())
-        await send_parabolic_digest(by_stage)
+        from agents.market_intelligence.parabolic_detector import run_parabolic_scan
+        by_stage = await run_parabolic_scan(trade_date)
     except Exception as e:
         logger.error(f"Parabolic scan failed: {e}", exc_info=True)
+        await notify_job_failure(JOB_PARABOLIC_SCAN, str(e))
+    shadow = None
+    try:
+        from agents.market_intelligence.parabolic_short_shadow import run_parabolic_short_shadow
+        shadow = await run_parabolic_short_shadow(trade_date)
+        if shadow.get("errors"):
+            await notify_job_failure(
+                "parabolic_short_shadow",
+                f"{len(shadow['errors'])} episode error(s): " + " | ".join(shadow["errors"][:3]))
+    except Exception as e:
+        logger.error(f"Parabolic short shadow failed: {e}", exc_info=True)
+        await notify_job_failure("parabolic_short_shadow", str(e))
+    try:
+        from agents.market_intelligence.parabolic_detector import send_parabolic_digest
+        await send_parabolic_digest(by_stage, shadow=shadow)
+    except Exception as e:
+        logger.error(f"Parabolic digest failed: {e}", exc_info=True)
         await notify_job_failure(JOB_PARABOLIC_SCAN, str(e))
 
 

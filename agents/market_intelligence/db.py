@@ -2499,6 +2499,10 @@ async def initialize_schema() -> None:
                 ON mi_parabolic_exclusions(ticker);
         """)
 
+        # #314 / ADR 0020 card B3 — the parabolic-short forward SHADOW (arm / trigger / outcome rows, no
+        # orders). One module-level DDL string (`_PARABOLIC_SHORT_SHADOW_DDL`, end of this file), idempotent.
+        await conn.execute(_PARABOLIC_SHORT_SHADOW_DDL)
+
         # RETIRED 2026-10-17 (operator: "kill wick fill, remove that setup completely") — the
         # table and this DDL are KEPT as history (like the 9M tables); NOTHING writes it any more
         # (the EOD sweep, the settlement job and every reader were removed). docs/setups/wick_fill.md.
@@ -11917,6 +11921,8 @@ async def purge_old_data() -> dict[str, int]:
             # mi_delayed_entry_watch / mi_delayed_entry_trigger deliberately ABSENT —
             # #327 shadow evidence (2026-08-30): the accrual review reads these
             # months later; the evidence must not age out from under it.
+            # mi_parabolic_short_shadow deliberately ABSENT — #314 (2026-10-17), same class: ~1-2
+            # climax episodes a month, and ADR 0020's N>=30 triggered-cohort rung read needs every row.
             "mi_stock_scores": today - timedelta(days=365),
             "mi_themes":       today - timedelta(days=365),
             "mi_fundamental_flags": today - timedelta(days=30),
@@ -19368,3 +19374,140 @@ async def cb_get_sic(tickers: list[str]) -> dict[str, dict]:
             "SELECT ticker, sic_code, sic2, ticker_type, status, fetched_at FROM mi_consolidation_breakout_sic "
             "WHERE ticker = ANY($1::text[])", list(tickers))
     return {r["ticker"]: dict(r) for r in rows}
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════════
+# #314 / ADR 0020 card B3 — PARABOLIC-SHORT forward SHADOW (no money): arm / trigger / outcome rows.
+#
+# Owner doc: docs/setups/parabolic_short.md. The job body is
+# agents/market_intelligence/parabolic_short_shadow.py (runs inside the 17:15 ET parabolic_scan job).
+#
+# ⚠ NOT a trade table: no `account_mode` column, by design. Nothing here is an order, a position or a
+# fill - `entry_price` / `exit_price` are SIMULATED prices replayed from stored daily bars, written by
+# a module with no broker import (deploy gate 5j) that can reach exactly one read-only broker call
+# (`execution_client.get_asset`); no `mi_live_*` / `mi_strategies` row is touched. The borrow columns
+# record which account the READ went to (`borrow_acct`) - telemetry, not a book to filter on.
+#
+# One row per (ticker, climax_date, row_kind): 'arm' (armed, or rejected with a NAMED reason - the data-prep
+# geometry is recorded either way), 'trigger' (the level broke and the borrow check was repeated), 'outcome'
+# (the position settled, or the episode closed without one). INSERT-ONCE: a row is final the moment it exists.
+# Column names avoid the substrings health_checks' inert-sweep discovery treats as experiment parameters.
+# ═════════════════════════════════════════════════════════════════════════════════════════════════
+_PARABOLIC_SHORT_SHADOW_DDL = """
+    CREATE TABLE IF NOT EXISTS mi_parabolic_short_shadow (
+        id               SERIAL PRIMARY KEY,
+        ticker           TEXT NOT NULL,
+        climax_date      DATE NOT NULL,                 -- the climax-flagged scan date D0 (mi_parabolic_candidates.scan_date)
+        row_kind         TEXT NOT NULL CHECK (row_kind IN ('arm', 'trigger', 'outcome')),
+        event_date       DATE NOT NULL,                 -- the night (arm) or the session (trigger / outcome) the row describes
+        status           TEXT NOT NULL,                 -- arm: armed|rejected  trigger: triggered|skipped  outcome: settled|closed_untriggered|voided
+        reason           TEXT,                          -- bounded vocabulary: skip reason or outcome reason
+        climax_high      DOUBLE PRECISION,              -- data prep: high of the climax day
+        climax_low       DOUBLE PRECISION,
+        prior_day_low    DOUBLE PRECISION,              -- the trigger level in force on this row's session (prior session's low)
+        limit_price      DOUBLE PRECISION,              -- stop-limit SHORT limit under the level (stop_limit_buy_price mirrored)
+        atr_14           DOUBLE PRECISION,              -- data prep: 14-session ATR (flag_detector._atr_14) at the climax day
+        stop_buffer      DOUBLE PRECISION,              -- min(3% of climax high, 0.5 x ATR14), dollars
+        stop_price       DOUBLE PRECISION,              -- climax_high + stop_buffer
+        risk_per_share   DOUBLE PRECISION,              -- 1R in dollars: stop_price - entry_price (trigger row)
+        risk_fraction    DOUBLE PRECISION,              -- RECORDED ONLY: half the long book's per-trade risk (constants.RISK_PCT / 2)
+        market_cap       BIGINT,
+        borrow_acct      TEXT,                          -- which Alpaca account the READ went to
+        shortable        BOOLEAN,
+        easy_to_borrow   BOOLEAN,
+        asset_status     TEXT,
+        entry_price      DOUBLE PRECISION,              -- SIMULATED short entry (trigger row)
+        exit_price       DOUBLE PRECISION,
+        exit_date        DATE,
+        sessions_held    INT,
+        flush_taken      BOOLEAN,                       -- covered 1/3 at the first 1R flush
+        flush_price      DOUBLE PRECISION,
+        realized_r       DOUBLE PRECISION,              -- blended position R (1/3 at the flush + the rest at the exit)
+        exit_leg_r       DOUBLE PRECISION,              -- R of the final exit leg alone
+        mfe_r            DOUBLE PRECISION,
+        mae_r            DOUBLE PRECISION,
+        detail           JSONB,
+        created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (ticker, climax_date, row_kind)
+    );
+    CREATE INDEX IF NOT EXISTS idx_parabolic_short_shadow_kind_date
+        ON mi_parabolic_short_shadow(row_kind, event_date DESC);
+"""
+
+PS_SHADOW_COLS = (
+    "ticker", "climax_date", "row_kind", "event_date", "status", "reason",
+    "climax_high", "climax_low", "prior_day_low", "limit_price", "atr_14", "stop_buffer", "stop_price",
+    "risk_per_share", "risk_fraction", "market_cap",
+    "borrow_acct", "shortable", "easy_to_borrow", "asset_status",
+    "entry_price", "exit_price", "exit_date", "sessions_held", "flush_taken", "flush_price",
+    "realized_r", "exit_leg_r", "mfe_r", "mae_r", "detail",
+)
+_PS_SHADOW_JSONB = frozenset({"detail"})
+# Hoisted so scripts/preflight_db_updates.py PREPARES the real statement at deploy time. INSERT-ONCE:
+# DO NOTHING, and RETURNING id is NULL on a conflict - the caller counts an event only when it was new.
+PS_SHADOW_INSERT_SQL = (
+    f"INSERT INTO mi_parabolic_short_shadow ({', '.join(PS_SHADOW_COLS)}) VALUES ("
+    + _jsonb_value_list(PS_SHADOW_COLS, _PS_SHADOW_JSONB)
+    + ") ON CONFLICT (ticker, climax_date, row_kind) DO NOTHING RETURNING id"
+)
+
+
+async def insert_parabolic_short_shadow_row(row: dict) -> bool:
+    """Write one arm / trigger / outcome row. True when the row was NEW, False when it already existed
+    (the row is final once written - a re-run, a catch-up or a replay never overwrites it)."""
+    vals = tuple(
+        (_jsonb_param(row.get(c)) if row.get(c) is not None else None) if c in _PS_SHADOW_JSONB else row.get(c)
+        for c in PS_SHADOW_COLS
+    )
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        new_id = await conn.fetchval(PS_SHADOW_INSERT_SQL, *vals)
+    return new_id is not None
+
+
+async def get_parabolic_short_new_candidates(trade_date: "str | date", lookback_days: int = 7) -> list[dict]:
+    """Climax-stage, NOT-excluded candidates the shadow has not decided yet (no 'arm' row), newest scan
+    first. `lookback_days` is a CALENDAR bound on the scan date only to keep the query small - the
+    shadow itself counts sessions from stored bars and drops anything already past its window. Reads
+    `excluded_reason IS NULL` so an M&A / news-excluded climax (the digest's FILTERED footer) never arms."""
+    if isinstance(trade_date, str):
+        trade_date = date.fromisoformat(trade_date)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT c.ticker, c.scan_date, c.market_cap, c.cap_tier
+              FROM mi_parabolic_candidates c
+             WHERE c.stage = 'climax'
+               AND c.excluded_reason IS NULL
+               AND c.scan_date <= $1
+               AND c.scan_date >= $1 - $2::int
+               AND NOT EXISTS (SELECT 1 FROM mi_parabolic_short_shadow s
+                                WHERE s.ticker = c.ticker AND s.climax_date = c.scan_date
+                                  AND s.row_kind = 'arm')
+             ORDER BY c.scan_date DESC, c.ticker
+            """, trade_date, int(lookback_days))
+    return [dict(r) for r in rows]
+
+
+async def get_parabolic_short_open_episodes() -> list[dict]:
+    """Episodes that are ARMED and have no outcome row yet - the nightly work list. Each carries the arm
+    row's frozen geometry (stop, climax high) and the trigger row's status if one exists. Every episode
+    closes (window 3 sessions + time stop 5 + the shadow's own stale backstop), so this stays small."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT a.ticker, a.climax_date, a.event_date AS armed_on, a.climax_high, a.climax_low,
+                   a.stop_price, a.atr_14, a.stop_buffer, a.risk_fraction, a.market_cap,
+                   t.status AS trigger_status, t.event_date AS trigger_date, t.entry_price AS trigger_entry
+              FROM mi_parabolic_short_shadow a
+              LEFT JOIN mi_parabolic_short_shadow t
+                     ON t.ticker = a.ticker AND t.climax_date = a.climax_date AND t.row_kind = 'trigger'
+             WHERE a.row_kind = 'arm' AND a.status = 'armed'
+               AND NOT EXISTS (SELECT 1 FROM mi_parabolic_short_shadow o
+                                WHERE o.ticker = a.ticker AND o.climax_date = a.climax_date
+                                  AND o.row_kind = 'outcome')
+             ORDER BY a.climax_date, a.ticker
+            """)
+    return [dict(r) for r in rows]

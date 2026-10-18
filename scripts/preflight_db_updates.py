@@ -36,6 +36,7 @@ from agents.market_intelligence.db import (
     LIVE_FILL_CF_INSERT_SQL, SUSTAIN_REJECT_REPLAY_UPSERT_SQL, THEME_RENAME_INSERT_SQL,
     GRADE_CORPUS_INSERT_SQL, UNIVERSE_FLOOR_SHADOW_INSERT_SQL, _TV_NEWS_SHADOW_UPSERT_SQL,
     CB_ENTRY_UPSERT_SQL, CB_EXIT_UPSERT_SQL, CB_SIC_UPSERT_SQL, CB_WATCH_UPSERT_SQL,
+    PS_SHADOW_INSERT_SQL,
     get_pool)
 
 logger = logging.getLogger(__name__)
@@ -441,6 +442,14 @@ SHADOW_WRITER_STATEMENTS: list[tuple[str, str]] = [
     (
         "db.cb_upsert_sic_rows: #702 Consolidation Breakout SIC cache",
         CB_SIC_UPSERT_SQL,
+    ),
+    (
+        # #314 (2026-10-17): the parabolic-short shadow's one writer - arm / trigger / outcome rows, INSERT
+        # ONCE (ON CONFLICT DO NOTHING ... RETURNING id). Nightly inside the 17:15 scan job and fail-open
+        # per episode, so a type-deduction failure (a jsonb param beside plain ones) would leave the table
+        # EMPTY with only a logged error per episode - the silent-recorder case this gate exists for.
+        "db.insert_parabolic_short_shadow_row: #314 parabolic-short shadow arm/trigger/outcome rows",
+        PS_SHADOW_INSERT_SQL,
     ),
 ]
 

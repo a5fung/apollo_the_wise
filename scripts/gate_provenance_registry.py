@@ -603,4 +603,111 @@ GATE_REGISTRY: list[dict] = [
                 "sign-off's only text is a code comment in rs_engine.py (not a citable source file), so this entry "
                 "cites the setup doc row that records it; if that text is ever filed in a document, repoint this.",
     },
+    # ── Parabolic-short forward shadow (#314 card B3, 2026-10-17; owner docs/setups/parabolic_short.md) ──────
+    # Every number below is ADR 0020 section 4 (operator-signed 2026-07-05, Gemini amendments adopted) and is
+    # cited VERBATIM from it. The module's implementation choices (BORROW_ACCOUNT_MODE, the limit buffer,
+    # HISTORY_ROWS, STALE_EPISODE_DAYS, RESTATE_TOLERANCE) are deliberately NOT registered: they shape no
+    # cohort and have no source to cite; they are listed in the setup doc's change log instead.
+    {
+        "id": "parabolic_short_shadow.SHORT_MCAP_FLOOR_USD",
+        "file": "agents/market_intelligence/parabolic_short_shadow.py",
+        "kind": "const",
+        "name": "SHORT_MCAP_FLOOR_USD",
+        "value": 250_000_000,
+        "citation": {
+            "file": "docs/decisions/0020-multi-setup-book.md",
+            "text": "HARD REJECT any short entry below $250M market cap",
+        },
+        "note": "S: the J4 microcap-squeeze floor (Gemini amendment 7/5, adopted). An UNKNOWN market cap also "
+                "rejects (filter:mcap_unknown) - the floor cannot be verified - which is the module's reading, "
+                "recorded in the setup doc.",
+    },
+    {
+        "id": "parabolic_short_shadow.STOP_BUFFER_PCT_CAP",
+        "file": "agents/market_intelligence/parabolic_short_shadow.py",
+        "kind": "const",
+        "name": "STOP_BUFFER_PCT_CAP",
+        "value": 0.03,
+        "citation": {
+            "file": "docs/decisions/0020-multi-setup-book.md",
+            "text": "min(3%, 0.5×ATR14)",
+        },
+        "note": "S: the 3% half of the stop buffer min(3%, 0.5xATR14), read as 3% of the climax high in dollars "
+                "against 0.5 x ATR14 in dollars (the ADR does not spell the units out).",
+    },
+    {
+        "id": "parabolic_short_shadow.STOP_BUFFER_ATR_MULT",
+        "file": "agents/market_intelligence/parabolic_short_shadow.py",
+        "kind": "const",
+        "name": "STOP_BUFFER_ATR_MULT",
+        "value": 0.5,
+        "citation": {
+            "file": "docs/decisions/0020-multi-setup-book.md",
+            "text": "min(3%, 0.5×ATR14)",
+        },
+        "note": "S: the 0.5 x ATR14 half of the same stop buffer.",
+    },
+    {
+        "id": "parabolic_short_shadow.ARM_WINDOW_SESSIONS",
+        "file": "agents/market_intelligence/parabolic_short_shadow.py",
+        "kind": "const",
+        "name": "ARM_WINDOW_SESSIONS",
+        "value": 3,
+        "citation": {
+            "file": "docs/decisions/0020-multi-setup-book.md",
+            "text": "or after 3 unarmed days",
+        },
+        "note": "S, with a READING: the ADR says 'cancel ... after 3 unarmed days'; the module counts 3 SESSIONS "
+                "after the climax day in which the short has not triggered (armed or not). Flagged for the "
+                "operator in the setup doc's change log.",
+    },
+    {
+        "id": "parabolic_short_shadow.TIME_STOP_SESSIONS",
+        "file": "agents/market_intelligence/parabolic_short_shadow.py",
+        "kind": "const",
+        "name": "TIME_STOP_SESSIONS",
+        "value": 5,
+        "citation": {
+            "file": "docs/decisions/0020-multi-setup-book.md",
+            "text": "hard time-stop 5 trading days",
+        },
+        "note": "S, with a READING: the entry session counts as session 1, so the exit is the close of the 5th "
+                "session held. Flagged in the setup doc's change log.",
+    },
+    {
+        "id": "parabolic_short_shadow.FLUSH_COVER_DENOM",
+        "file": "agents/market_intelligence/parabolic_short_shadow.py",
+        "kind": "const",
+        "name": "FLUSH_COVER_DENOM",
+        "value": 3,
+        "citation": {
+            "file": "docs/decisions/0020-multi-setup-book.md",
+            "text": "cover 1/3 on the first",
+        },
+        "note": "S: 'cover 1/3' stored as the denominator (the registry reads literals only).",
+    },
+    {
+        "id": "parabolic_short_shadow.FLUSH_R_MULT",
+        "file": "agents/market_intelligence/parabolic_short_shadow.py",
+        "kind": "const",
+        "name": "FLUSH_R_MULT",
+        "value": 1.0,
+        "citation": {
+            "file": "docs/decisions/0020-multi-setup-book.md",
+            "text": "equivalent flush",
+        },
+        "note": "S: 'the first -1R-equivalent flush', read as price one R below the entry (a favorable 1R move for a short).",
+    },
+    {
+        "id": "parabolic_short_shadow.SHORT_RISK_FRACTION",
+        "file": "agents/market_intelligence/parabolic_short_shadow.py",
+        "kind": "const",
+        "name": "SHORT_RISK_FRACTION",
+        "value": 0.5,
+        "citation": {
+            "file": "docs/decisions/0020-multi-setup-book.md",
+            "text": "R sizes at HALF the long book's per-trade risk",
+        },
+        "note": "S: half the long book's per-trade risk (J4). RECORDED on the arm row only; the shadow sizes nothing.",
+    },
 ]

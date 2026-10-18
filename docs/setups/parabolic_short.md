@@ -1,8 +1,8 @@
 # Parabolic Short
 
-**Phase**: Shadow (telemetry-only). Promotion path: `telemetry_review` per `strategies/registry.py`.
+**Phase**: Shadow (telemetry-only). Promotion path: `telemetry_review` per `strategies/registry.py`; the SHORT-SIDE ladder (SHADOW → PAPER → live-reduced) is ADR 0020 §4 and starts with the forward shadow below.
 **Origin**: Stamatoudis / Quallamaggie methodology — short the climax of a multi-week vertical run, expecting violent mean-reversion.
-**Code**: `agents/market_intelligence/parabolic_detector.py`, scheduler 17:15 ET cron `parabolic_scan`.
+**Code**: `agents/market_intelligence/parabolic_detector.py` (the detector), `agents/market_intelligence/parabolic_short_shadow.py` (the short-side forward shadow, #314), scheduler 17:15 ET cron `parabolic_scan` (runs both). Tables: `mi_parabolic_candidates`, `mi_parabolic_exclusions`, `mi_parabolic_short_shadow`.
 
 ## Definition
 
@@ -74,6 +74,53 @@ The compute function (`compute_parabolic_metrics`, `parabolic_detector.py:198`) 
 - `anticipation` — burst ≥ 3 but climax hard gates fail. Telegram watchlist.
 - `climax` — burst ≥ 3 + climax hard gates pass. Telegram trigger candle.
 
+## Short-side forward SHADOW (#314 — ADR 0020 §4, card B3)
+
+**What it is**: the detector's `climax` rows become *episodes*; each is replayed from stored daily bars (`mi_daily_closes`) as the backside-confirmation short ADR 0020 §4 specifies, and the result is recorded in `mi_parabolic_short_shadow`. **No order, no position, no `mi_strategies` write, no sizing** — `risk_fraction` is a recorded number (`RISK_PCT / 2`), nothing is sized from it. The only broker reach is the read-only `execution_client.get_asset` (the #256 W1 facade; deploy gate 5j). B6 (the direction-aware trade lifecycle that the PAPER rung needs) is **not** part of this and is not started.
+
+**Where it runs**: inside the existing 17:15 ET `parabolic_scan` job, after the scan (and its M&A / news exclusions). Isolated: a shadow crash pages on its own and the scan's digest still goes out; a scan crash does not stop open episodes from settling. Every run writes ONE `parabolic_short_shadow_run` audit row (so a quiet night is distinguishable from a night it did not run).
+
+**The episode** (D0 = the climax-flagged scan date; every count is in TRADING rows of `mi_daily_closes`):
+
+| Step | Rule | Source |
+|---|---|---|
+| Candidate | `stage='climax'` and NOT excluded (`excluded_reason IS NULL`) | detector + `_apply_exclusions` |
+| Decide, once, on D0's night | market cap ≥ **$250M** else `filter:mcap_too_small` (unknown cap → `filter:mcap_unknown`) → borrow check (`shortable` AND `easy_to_borrow`, plus `active`/`tradable`) else a named `borrow:*` / `infra:*` reason → **armed** | ADR §4 (J4 / J2) |
+| Geometry recorded for EVERY decision (armed or rejected) | `climax_high`, `climax_low`, `prior_day_low` (= the climax day's low, the level for session 1), `atr_14` (flag_detector's ATR, persisted), `stop_buffer = min(3% × climax_high, 0.5 × ATR14)`, `stop_price = climax_high + stop_buffer`, `limit_price` (stop-limit SHORT limit, `stop_limit_buy_price` mirrored), `risk_fraction` | ADR §4 + card B3 data prep |
+| Arm window | sessions 1-3 after D0. A resting stop-limit SHORT at the **prior session's low** (it re-sets each session) | ADR §4 |
+| Trigger | a session whose low reaches the level; the borrow check is **repeated**; `trigger` row (`triggered`, or `skipped` + reason and the episode closes) | ADR §4 |
+| Invalidation | a session that **closes** above the climax high before a trigger → `outcome` `closed_untriggered / invalidated` | ADR §4 |
+| Expiry | the 3rd session passing with no trigger → `closed_untriggered / expired_untriggered` | ADR §4 ("3 unarmed days", see Readings) |
+| Management | cover **1/3** at the first flush (price one R below the entry); stop trails to the **prior session's high** daily (only ever down); **time stop** at the close of the 5th session held; no overnight hold into an earnings date; **no adds** | ADR §4 |
+| Settlement | `outcome` row: `realized_r` (blended: 1/3 at +1R + 2/3 at the exit leg), `exit_leg_r`, `mfe_r`, `mae_r`, `sessions_held`, `flush_taken`, `reason` ∈ `stop / trail_stop / time_stop / earnings_exit` | card B3 |
+
+**Daily-bar honesty** (a daily bar cannot order its own events — every choice is the conservative one, and the ambiguity is a flag, not a hidden assumption): a session whose low EQUALS the level triggers (a sell-stop fills on a print at its price); fill at the level when the session opens above it and trades down through it; fill at the open when it gaps to/below the level but inside the limit; **no fill** when it opens below the limit (the arm carries, the level re-sets to that session's low); a gap above the stop exits at the open; when one bar could both stop the position out and take the flush, **the stop is assumed first**; a stop-out on the entry session itself exits at the stop and is flagged `entry_day_ambiguous` (the high may have come before the fill).
+
+**Readings of the ADR the build had to make** (none contradicts the text; each is a constant or one branch — change on the operator's word):
+1. **"after 3 unarmed days"** → the arm lives for 3 SESSIONS after D0 and cancels if it has not triggered (armed or not). `ARM_WINDOW_SESSIONS = 3`.
+2. **"the break of the prior day's low"** → literal and rolling: the level for each session is the PRIOR session's low (the stop trails the same way). The alternative — fixed at the climax day's low — is stricter on sessions 2-3 only.
+3. **"hard time-stop 5 trading days"** → the entry session counts as session 1; exit at the close of the 5th. `TIME_STOP_SESSIONS = 5`.
+4. **"first −1R-equivalent flush"** → price one R BELOW the entry (a favourable 1R move for a short): `entry − 1 × (stop − entry)`.
+5. **"min(3%, 0.5×ATR14)"** → 3% of the climax high, in dollars, against 0.5 × ATR14, in dollars; the smaller buffer wins. No ATR → the 3% stands alone.
+6. **Market cap unknown** → rejected (`filter:mcap_unknown`): the floor cannot be verified, and the floor exists to keep microcap squeezes out.
+7. **"1R sized at half the long book's per-trade risk"** → `risk_fraction = constants.RISK_PCT × 0.5` recorded on the arm row. The regime-scaled resolver is NOT applied (the shadow sizes nothing).
+8. **Borrow account** → `paper` (the shadow phase resolves to no account; the first real rung is PAPER). Recorded per row as `borrow_acct`.
+9. **"no overnight holds through earnings dates"** → `earnings_calendar.is_earnings_day` probed for the day after each held session (and the next weekday on a Friday); an earnings print ON the session also exits one night early (the safe direction). A calendar that cannot answer does NOT force an exit — the unknown sessions are listed in the outcome row's `detail`. Limit: yfinance coverage.
+10. **One decision per candidate, no retries** → a broker/transport error on the borrow read is an `infra:borrow_check_failed` arm row (the cost is one episode, visible and countable), never a silent retry and never "assume easy to borrow".
+
+**Reason vocabulary** (aggregate on `split_part(reason, ':', 1)`): `filter:mcap_too_small`, `filter:mcap_unknown`, `borrow:not_tradable`, `borrow:not_shortable`, `borrow:hard_to_borrow`, `borrow:asset_not_found`, `infra:borrow_check_failed`, `invalidated_before_arm`; outcomes `invalidated`, `expired_untriggered`, `stop`, `trail_stop`, `time_stop`, `earnings_exit`, `trigger_skipped`, `void_restated` (a split moved the bars under the frozen arm levels — no made-up R across two price scales), `void_replay_mismatch`, `void_bad_geometry`, `void_data_gap` (a 30-day backstop so no episode stays open forever).
+
+**Reading the shadow** (the ladder rung is *N ≥ 30 triggered-and-settled episodes with positive expectancy*; each rung is its own CHANGE_PROCESS + operator sign-off, and PAPER is also blocked on B6):
+
+```sql
+-- the funnel: how many climax names reach each step, and why the rest fall out
+SELECT row_kind, status, reason, count(*) FROM mi_parabolic_short_shadow GROUP BY 1,2,3 ORDER BY 1,2,4 DESC;
+-- the rung's number: settled episodes, and what they paid (realized_r is the blended position R)
+SELECT count(*) AS settled, avg(realized_r) AS mean_r, count(*) FILTER (WHERE realized_r > 0) AS winners,
+       percentile_cont(0.5) WITHIN GROUP (ORDER BY realized_r) AS median_r
+  FROM mi_parabolic_short_shadow WHERE row_kind = 'outcome' AND status = 'settled';
+```
+
 ## Stage transitions / hysteresis
 
 None currently. Each scan_date computes stage independently from prior scans. Promotion/demotion fires immediately based on that day's data. (Flag continuation has hysteresis; parabolic doesn't.)
@@ -85,6 +132,18 @@ None currently. Each scan_date computes stage independently from prior scans. Pr
 2. ~~Earnings-day check has fail-soft inconsistency~~ — **resolved 2026-05-08**. All four sites (parabolic, EP boost, EP cooldown bypass, EP MODERATE→HIGH override) now treat yfinance error as "earnings day = True". Defensive direction at each site: parabolic suppresses climax, EP boost fires, cooldown bypasses, override promotes.
 
 ## Change log (newest first)
+
+### 2026-10-17 — #314: the short-side forward SHADOW (ADR 0020 §4, card B3) — arm / trigger / outcome rows, no orders
+
+**Trigger**: operator "Ok" 2026-10-17 to the recommendation to build card B3 now (the EP-first hold was lifted the same day: other setups may go to shadow on their own evidence; live stays his sign-off). ADR 0020 §4 specifies the short mechanics; the detector has accrued climax rows since 2026-05-01 but nothing recorded what the signed short would have done.
+
+**Evidence**: not a threshold change — NO detection criterion, gate or constant of the detector moved (`compute_parabolic_metrics`, the exclusions and every `_*` threshold are byte-identical). Every number of the new module is ADR 0020 §4 (operator-signed 2026-07-05, Gemini amendments adopted) and is cited verbatim in `scripts/gate_provenance_registry.py` (8 entries). Backtest N/A: CHANGE_PROCESS rule 1 governs threshold changes; this is a recorder, and its output IS the forward evidence the ladder's first rung reads. Verified on synthetic bars (`tests/test_parabolic_short_shadow.py`, mutation-checked: 20 of 21 hand-made mutants killed; the 21st — letting the trailing stop move UP — is an equivalent mutant: a prior-session high at/above the live stop would already have stopped the position out) — NOT yet on live data.
+
+**Anticipated effect**: `mi_parabolic_short_shadow` gains one `arm` row per non-excluded climax candidate on the night it is flagged (armed, or rejected with a named reason), a `trigger` row when the prior-day-low break occurs, and one `outcome` row per episode; ONE `parabolic_short_shadow_run` audit row every 17:15 ET run; ONE extra line in the existing parabolic digest only on a night something armed / triggered / settled. The sample rate is UNKNOWN until the first month: the funnel query above says how many climax names survive the $250M floor and the borrow gate — if it is a trickle, the ladder's N ≥ 30 rung is far off and that is itself the finding to bring to the operator.
+
+**Reversion-flag**: NEW (no prior short-side mechanics; ADR 0020 §4 is the first spec).
+
+**Status**: shipped, awaiting field validation — built 2026-10-17, NOT deployed in the build commit. Deploy needs the execution step (`/exec/get_asset` lives on apollo-execution). Open readings of the ADR are listed in the section above for the operator to confirm or change; none blocks the shadow.
 
 ### 2026-07-24 — FL-5 reconcile: doc synced to code
 

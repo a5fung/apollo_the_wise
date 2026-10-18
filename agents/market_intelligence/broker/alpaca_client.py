@@ -789,6 +789,44 @@ async def get_all_positions(
         return []
 
 
+# ── Assets (READ-ONLY) ───────────────────────────────────────────────────────
+
+
+def _is_asset_not_found(e: Exception) -> bool:
+    """True when Alpaca ANSWERED "no such asset" (HTTP 404) - the broker spoke, the symbol is unknown.
+    alpaca-py's APIError carries `status_code`; the string fallback covers a wrapped/re-raised error."""
+    if getattr(e, "status_code", None) == 404:
+        return True
+    s = str(e).lower()
+    return "404" in s or "asset not found" in s or "could not find asset" in s
+
+
+async def get_asset(symbol: str, account_mode: str | None = None) -> dict | None:
+    """READ-ONLY asset lookup (#314, ADR 0020 card B3): the borrow facts the parabolic-short shadow
+    gates on - `shortable` and `easy_to_borrow` (alpaca-py's Asset model; the wrapper was the gap, not
+    the API) - plus `tradable` / `status` / `marginable` for the telemetry row.
+
+    Returns a plain, JSON-serializable dict (it crosses the execution wire), or:
+      * None  - Alpaca answered 404: it has no such asset. That is a BROKER ANSWER, not a failure.
+      * RAISES on any other error - a timeout, a 5xx, missing credentials. "Couldn't read the broker"
+        must NEVER collapse into a default that reads as "not shortable" / "easy to borrow" (the
+        get_all_positions raise_on_error lesson, #184): the caller decides, and a shadow caller records
+        an `infra:` row. No `maybe_alert_api_failure` here on purpose - a handful of nightly shadow
+        reads must not page on their own; the caller logs and audits the failure.
+
+    Touches NO order: this is `client.get_asset`, a GET. account_mode routes to the per-mode client.
+    """
+    try:
+        client = get_trading_client(account_mode)
+        asset = await _sdk(client.get_asset, symbol)
+        return _asset_to_dict(asset)
+    except Exception as e:
+        if _is_asset_not_found(e):
+            return None
+        logger.error(f"Failed to get asset for {symbol}: {e}")
+        raise
+
+
 def _close_qty_str(qty: float) -> str:
     """The `qty` string Alpaca's DELETE /v2/positions/{symbol} takes: whole shares as "2", not
     "2.0" (fractional quantities keep their decimals)."""
@@ -1294,6 +1332,23 @@ def _order_to_dict(order) -> dict:
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "filled_at": order.filled_at.isoformat() if order.filled_at else None,
         "legs": [_order_to_dict(leg) for leg in order.legs] if order.legs else [],
+    }
+
+
+def _asset_to_dict(asset) -> dict:
+    """Convert an Alpaca Asset to a plain dict (enum fields -> lowercase strings, the wire contract
+    `_enum_value` documents). Borrow flags stay tri-state: a missing attribute is None, never coerced to
+    False/True - the caller must see "Alpaca did not say" as different from "Alpaca said no"."""
+    return {
+        "symbol": asset.symbol,
+        "status": _enum_value(getattr(asset, "status", None)),
+        "tradable": getattr(asset, "tradable", None),
+        "shortable": getattr(asset, "shortable", None),
+        "easy_to_borrow": getattr(asset, "easy_to_borrow", None),
+        "marginable": getattr(asset, "marginable", None),
+        "fractionable": getattr(asset, "fractionable", None),
+        "exchange": _enum_value(getattr(asset, "exchange", None)),
+        "asset_class": _enum_value(getattr(asset, "asset_class", None)),
     }
 
 

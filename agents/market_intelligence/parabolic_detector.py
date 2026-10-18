@@ -743,13 +743,40 @@ def _fmt_candidate(r: dict) -> str:
     return f"  • `{ticker}` +{prior:.0f}% from base · {ext50:.1f}× SMA50 · {cap_tier}-cap · burst {score}/4"
 
 
-async def send_parabolic_digest(by_stage: dict[str, list[dict]]) -> None:
+def _fmt_shadow_lines(shadow: Optional[dict]) -> list[str]:
+    """The ONE short-shadow line (#314, ADR 0020 card B3), or [] — only when the shadow ARMED, TRIGGERED or
+    SETTLED something tonight. A rejection, a quiet night or an episode closing untriggered is a table row,
+    not a message: an alert that says nothing is noise. `shadow` is `run_parabolic_short_shadow`'s summary
+    (the key shapes are pinned in tests/test_parabolic_short_shadow.py). Reasons print with spaces — a raw
+    `time_stop` would open an italic in legacy Markdown."""
+    if not shadow:
+        return []
+    parts: list[str] = []
+    armed = shadow.get("armed") or []
+    triggered = shadow.get("triggered") or []
+    settled = shadow.get("settled") or []
+    if armed:
+        parts.append("armed " + ", ".join(f"`{a['ticker']}`" for a in armed[:5]))
+    if triggered:
+        parts.append("triggered " + ", ".join(f"`{t['ticker']}` @ {t['entry']:.2f}" for t in triggered[:5]))
+    if settled:
+        parts.append("settled " + ", ".join(
+            f"`{s['ticker']}` {s['realized_r']:+.1f}R ({str(s['reason']).replace('_', ' ')})" for s in settled[:5]))
+    if not parts:
+        return []
+    return ["Short shadow (simulated, no orders): " + " · ".join(parts)]
+
+
+async def send_parabolic_digest(by_stage: dict[str, list[dict]], shadow: Optional[dict] = None) -> None:
     """Two-section Telegram digest. Suppressed entirely when nothing fired —
     parabolas are rare (Stamatoudis: ~1/month), so silence is the expected
     daily state. Per `feedback_alert_vs_audit`, only ping for terminal/actionable.
 
     Excluded candidates (M&A, news events, manual bans) are appended as a
     transparency footer so the operator can see what was filtered and why.
+
+    `shadow` (#314): the short-shadow summary. It adds ONE line to this same message when something
+    armed / triggered / settled, and by itself lifts the all-quiet suppression — never a second send.
     """
     from agents.market_intelligence.briefing import send_telegram_message
     # Reuse the canonical Markdown escaper (#148; re-homed to briefing.py #121) for
@@ -768,8 +795,9 @@ async def send_parabolic_digest(by_stage: dict[str, list[dict]]) -> None:
         reverse=True,
     )
     excluded = by_stage.get("excluded", [])
-    if not climaxes and not anticipations and not excluded:
-        logger.info("parabolic_scan: zero anticipation, zero climax, zero excluded — digest suppressed")
+    shadow_lines = _fmt_shadow_lines(shadow)
+    if not climaxes and not anticipations and not excluded and not shadow_lines:
+        logger.info("parabolic_scan: zero anticipation, zero climax, zero excluded, no shadow event — digest suppressed")
         return
 
     lines = ["📉 *Parabolic-short scan*"]
@@ -800,7 +828,10 @@ async def send_parabolic_digest(by_stage: dict[str, list[dict]]) -> None:
     # If everything got filtered there's no actionable signal, but we still
     # send the footer so the operator sees the system worked (didn't silently
     # eat OGN-class alerts).
-    if not climaxes and not anticipations:
+    if excluded and not climaxes and not anticipations:
         lines.append("")
         lines.append("_No parabolic-short setups today after filtering._")
+    if shadow_lines:
+        lines.append("")
+        lines.extend(shadow_lines)
     await send_telegram_message("\n".join(lines))
