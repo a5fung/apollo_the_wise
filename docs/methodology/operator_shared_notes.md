@@ -1969,3 +1969,22 @@ bull vs bear phase. Quotes are the article's words (via a page summary).
   never instead of them.
 - **Why it can matter:** a descending line sits BELOW the base high, so it triggers earlier and lower, and the
   stop, the R unit and the failure rate can all differ.
+
+## 2026-10-18 — his note: read the CHARACTER of the base first, then draw the line, then set entry and exit (operator, verbatim)
+
+> *"we should test all combinations; This is where it's difficult, when I watch qullamaggies streams the consolidation
+> varies, if it's tight and flat then base high makes sense, when it's starts wide and then tightens the flag like makes
+> more sense, sometimes not at the base high, etc. it's more art then science"*
+>
+> *"Yes, we need to look at the character of the base, e.g. if there's a larger upper wick and then settles lower and
+> bases, sometimes we ignore part of the wick. This is best judged on a chart and where his streams draws out many of
+> these. So maybe the initial step is to determine the character of the consolidation then from that where to draw the
+> lines and where to put the setup entry and exit"*
+
+- **What it changes in #702:** the breakout level is no longer one fixed rule (base high OR trendline). The order becomes:
+  (1) classify the base's character — tight and flat, wide-then-tightening flag, wick-topped then settling lower, and
+  so on; (2) draw the line by that character, e.g. ignore an outlier upper wick and use the settled highs; (3) then
+  place the entry and the exit.
+- **Where the labels come from:** Qullamaggie's streams, where he draws many of these by hand. Per
+  [[charts-support-never-decide]], a chart read leans; it never decides alone.
+- **Status:** the one-time 2025–26 read waits until this character → line step is built and frozen.
