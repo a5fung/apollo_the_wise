@@ -65,6 +65,8 @@ from agents.market_intelligence.flag_detector import (
     _RANGE_CONTRACTION_MAX,
     _evaluate_fresh_pin,
     _BASE_AGE_MIN_WATCH,
+    _RUNUP_MIN_RATIO,
+    _FLAG_DEPTH_MIN,
 )
 
 def adr20_pct_from_bars(prior_bars) -> Optional[float]:
@@ -125,7 +127,7 @@ PIVOT_KEYS = ("k5", "k10", "full", "tl")   # B: which pivot the cells and the br
                                           #    2026-10-17 note), projected one session ahead — see `_down_trendline`
 TL_TOUCH_TOL = 0.005             # B, TELEMETRY ONLY: a base high within 0.5% under the line is an interior touch
 CELLS = ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7")      # the 8 DECIDING cells
-REPORT_CELLS = ("C1_no_retrace", "C1_no_tightening")            # reported beside C1, never deciding
+REPORT_CELLS = ("C1_no_retrace", "C1_no_tightening", "HTF")     # reported beside C1, never deciding
 
 # ── Entries / exits ─────────────────────────────────────────────────────────────────────────────
 OPENING_RANGE_MINUTES = {"orh1": 1, "orh5": 5, "orh60": 60}   # S: "first 1-minute ... 5-minute ... 60-minute"
@@ -650,9 +652,9 @@ def _ge(x, thr) -> bool:
 
 
 def cell_flags(features: Optional[dict], ctx: dict, *, k: str) -> dict:
-    """C0..C7 (`CELLS`, the 8 DECIDING cells) plus the two REPORTED-only cells (`REPORT_CELLS`:
-    `C1_no_retrace`, `C1_no_tightening` — C1 with that one structure term dropped, shown beside C1
-    and never deciding) as post-hoc flags on one watch row. `k` ("k5" | "k10" | "full" | "tl") selects the
+    """C0..C7 (`CELLS`, the 8 DECIDING cells) plus the three REPORTED-only cells (`REPORT_CELLS`:
+    `C1_no_retrace`, `C1_no_tightening` — C1 with that one structure term dropped — and `HTF`, the
+    high-tight-flag subset of C0; shown beside C1 and never deciding) as post-hoc flags on one watch row. `k` ("k5" | "k10" | "full" | "tl") selects the
     pivot the cell and the breakout use — NO default; the primary is chosen in the discovery read
     (P4). It enters C0 as the plan's "pivot" clause: the chosen pivot must exist (for "tl": there must be
     a down-sloping line that night, `pivot_tl` not None). It no longer has
@@ -693,6 +695,11 @@ def cell_flags(features: Optional[dict], ctx: dict, *, k: str) -> dict:
                               and _ge(rs_best, RS_BEST_PRIMARY) and phase_a),
         "C1_no_tightening": bool(core and features["retrace_ok"]
                                  and _ge(rs_best, RS_BEST_PRIMARY) and phase_a),
+        # the HIGH-TIGHT-FLAG subset of C0, on flag_detector's own signed geometry (a >= 90% pole in its 40-session
+        # window, a flag holding >= 75% of the pole top): reported so HTF bases get #702's entry x exit grid
+        # (his 10-17 ruling lifted the EP-first hold; the HTF paper read re-opens on such a grid, #397)
+        "HTF": bool(c0 and features["pole_high"] / features["pole_low"] >= _RUNUP_MIN_RATIO
+                    and features["base_low"] >= _FLAG_DEPTH_MIN * features["pole_high"]),
     }
 
 

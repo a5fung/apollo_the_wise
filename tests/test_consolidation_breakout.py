@@ -1695,7 +1695,7 @@ class TestRetrace:
             assert not fl["C1_no_retrace"] and not fl["C1_no_tightening"], flag
         # reported cells never join the deciding set
         assert cb.CELLS == ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7")
-        assert cb.REPORT_CELLS == ("C1_no_retrace", "C1_no_tightening")
+        assert cb.REPORT_CELLS == ("C1_no_retrace", "C1_no_tightening", "HTF")
         assert set(cb.CELLS).isdisjoint(cb.REPORT_CELLS)
 
 
@@ -2281,3 +2281,20 @@ def test_adr20_mirror_equals_the_broker_function():
     ]
     for bars in cases:
         assert cb.adr20_pct_from_bars(bars) == real(bars)
+
+
+def test_the_htf_report_cell_uses_flag_detectors_own_geometry():
+    from agents.market_intelligence.flag_detector import _FLAG_DEPTH_MIN, _RUNUP_MIN_RATIO
+    assert "HTF" in cb.REPORT_CELLS and "HTF" not in cb.CELLS
+    base = {"pivot_k5": 10.0, "sma20_ok": True, "sma50_rising": True, "higher_lows": True, "tightening_ok": True,
+            "retrace_ok": True, "prior_move": 1.0}
+    # a 100% pole (20 / 10) holding 80% of its top: an HTF base
+    f = dict(base, pole_high=20.0, pole_low=10.0, base_low=16.0)
+    assert cb.cell_flags(f, {}, k="k5")["HTF"] is True
+    # an 80% pole (18 / 10): not HTF; a 26% pullback (14.8 / 20): not HTF
+    assert cb.cell_flags(dict(f, pole_high=18.0), {}, k="k5")["HTF"] is False
+    assert cb.cell_flags(dict(f, base_low=14.8), {}, k="k5")["HTF"] is False
+    # the boundaries are flag_detector's (>= on both)
+    edge = dict(f, pole_high=10.0 * _RUNUP_MIN_RATIO, base_low=_FLAG_DEPTH_MIN * 10.0 * _RUNUP_MIN_RATIO)
+    assert cb.cell_flags(edge, {}, k="k5")["HTF"] is True
+    assert cb.cell_flags(dict(f, pivot_k5=None), {}, k="k5")["HTF"] is False      # C0 first
