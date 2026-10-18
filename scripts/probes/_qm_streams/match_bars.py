@@ -41,17 +41,20 @@ def load_cands(path):
     return c.sort_values(["base_id", "dd"])
 
 
-def match_one(wg, cg, ref):
-    """wg: watch rows of the ticker (sorted); cg: candidates by base_id dict; ref: date."""
+def match_one(wg, cg, ref, watch_start=None, era_label=None):
+    """wg: watch rows of the ticker (sorted); cg: candidates by base_id dict; ref: date.
+    `watch_start` / `era_label` let the 2016-2022 extension (ext_c0.py) reuse this logic on Alpaca-bar watch rows; the defaults
+    are the production watch era, so the first-pass call sites are unchanged."""
+    ws0 = watch_start or WATCH_START
     r = ref.toordinal()
     out = dict(c0=0, n_watch_nights=0, first_watch="", last_watch="", c0_after10=0, breakout_followed=0, first_E="", days_ref_to_E="",
                n_K_variants="", status_at_ref="")
     for f in FEAT:
         out["w_" + f] = ""
-    if wg is None or ref < WATCH_START:
-        out["watch_era"] = "pre_watch_era" if ref < WATCH_START else "no_ticker_rows"
+    if wg is None or ref < ws0:
+        out["watch_era"] = "pre_watch_era" if ref < ws0 else "no_ticker_rows"
         return out
-    out["watch_era"] = "partial_window" if ref - dt.timedelta(days=WIN_DAYS) < WATCH_START else "full_window"
+    out["watch_era"] = era_label or ("partial_window" if ref - dt.timedelta(days=WIN_DAYS) < ws0 else "full_window")
     inw = wg[(wg["wd"] >= r - WIN_DAYS) & (wg["wd"] <= r)]
     out["c0_after10"] = int(((wg["wd"] > r) & (wg["wd"] <= r + 10)).any())
     if inw.empty:

@@ -22,7 +22,34 @@ Run order (venv with yt-dlp + certifi; set `SSL_CERT_FILE=$(python -c "import ce
    day. -> `stream_moments.tsv`, `kyna_notes.tsv`, `labelled_candidates.tsv`.
 6. `summarize.py` — `summary.txt` incl. the frame count and price of the HELD vision step (pricing table lookup only).
 
-Known limits: captions mis-hear tickers (MDGL is heard "mdgs"; many are lost) and ~half of the 2022 videos have no
+Known limits (first pass): captions mis-hear tickers (MDGL is heard "mdgs"; many are lost) and ~half of the 2022 videos have no
 auto-caption track at all; watch nights start 2022-03-28 so earlier talks are flagged `pre_watch_era` (C0 not assessable,
-not "no base"); videos before 2021-08 have no bars (`no_bars`, text kept). Tickers that are also very common words
-(AI, ON, ALL, NOW...) survive only with CAPS + a chart word. Company-name matching uses current names only.
+not "no base"). Tickers that are also very common words (AI, ON, ALL, NOW...) survive only with CAPS + a chart word.
+The two limits the extension below removes: "videos before 2021-08 have no bars" (Alpaca bars now cover 2016-01 .. 2022-06) and
+"company-name matching uses current names only" (a hand-reviewed allowlist now adds dictionary-word names and two historical ones).
+
+## Extension: 2016-2022 on free Alpaca daily bars (#702 P4b, 2026-10-18)
+
+Bars were fetched by the main loop (`alpaca_all_2016_2022/{raw,split}/b*.csv.gz`, every symbol Alpaca lists, active AND inactive);
+everything here is local and $0. Outputs go to `QM_DIR/ext_2016_2022/` (`summary_ext.txt` first). The first-pass scripts above are
+unchanged except `match_bars.match_one`, which gained two optional arguments (defaults reproduce the old behaviour).
+
+1. `ext_bars.py EXT` - load raw + split bars, drop forward-filled zero-volume rows (Alpaca keeps printing a dormant symbol's last close),
+   identity guard per symbol (hole > 30 sessions, > 70% move without a volume event, overlap vs Polygon), data-derived rename map
+   (SQ -> XYZ). A "break" excludes the NIGHTS whose 130 bars straddle it, not the whole symbol.
+2. `extract_hits_ext.py --out QM_DIR --ext EXT --videos qm_videos.txt` - the first-pass extractor plus: the hand-reviewed allowlist of
+   company names (`ALLOW_UNI` / `ALLOW_BI`, review record `ALIAS_REVIEW`), validation against Alpaca symbols with bars within +-60 days,
+   and three precision rules (year/month words within +-10 s, "tight" next to "stop", "cruise line"). `--legacy` switches every
+   addition off and reproduces `extract_hits.py` exactly (checked: 19,235 moments, 0 differing cells).
+3. `ext_c0.py` (library) + `ext_match.py` - `cb.explain_watch` on Alpaca split bars for talks before 2022-03-28 (the runner's per-night
+   loop, per-bar raw factor = raw close / split close), eligibility reported apart from "no base", first breakout of the base;
+   talks from 2022-03-28 still use the production watch rows. -> `stream_moments_ext.tsv`, `labelled_candidates_ext.tsv`.
+4. `ext_parity.py` - Alpaca-bar C0 vs the production watch table on 2022-05-02..06-30 (96% of passing nights shared, 99.9% same pole).
+5. `summarize_ext.py` - `summary_ext.txt`: counts by era, eligibility, identity guard, precision (hand-read evidence in
+   `hand_read_ext.tsv`, `hand_read_names.tsv`), recall table, top 40, the HELD vision step priced from `pricing_for()`.
+
+Known limits (extension): Alpaca's asset list omits many delisted names (ABMD, TWTR, ATVI...), so a spoken ticker with no Alpaca series
+cannot be matched before 2022-03-28. A reused symbol whose old issuer left before 2021-09-27 is only seen by the hole / jump tests.
+The first-pass `match_one` keys breakouts by pole date while the production candidates use a drift-robust chain id, so for talks on or
+after 2022-03-28 a base whose pole drifted one session can read "no breakout" (97 of 483 both-C0 cases in a spot check differ; two
+inspected were exactly this); the Alpaca path walks forward night by night and is not affected.
