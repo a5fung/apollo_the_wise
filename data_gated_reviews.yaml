@@ -12947,6 +12947,13 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_10_18: >-
+      Sunday review 10-18 flagged "8 rule changes since 2026-08-16 - re-check the question against the live rule". Checked: the
+      changes are exit / entry-execution rules (the 09-06 exit flip, the 10-12 depth exit, the 10-13 era), while this read scores
+      the SELECTION ranking on each alert's own 5-day best high in ADR multiples, which no exit rule touches, so the question
+      still applies as written. Alert volume this week: 1 (BSP 10-14) - fewer and weaker gappers (scored candidates 0-3 a day,
+      max 65), not the Crisis bar (ep_score_separation is ON by default, no override row, so the per-regime 80 does not act).
+      n = 24 of 25, THIN; next: BSP matures 10-21.
     resolution_2026_10_17: >-
       RAN 2026-10-17 (Sat), prod read-only: mi_alert_rank_shadow max alert_date is still 2026-10-14 (303 rows all-time)
       and mi_ep_alerts has no row for 10-15 or 10-16, so no new out-of-sample session landed and nothing matured (BSP
