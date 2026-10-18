@@ -167,6 +167,22 @@ def _summary(name, n=3, tail=""):
     return f"Operator promoted '{name}' ({n} members){tail}"
 
 
+def test_the_writers_summary_and_the_readers_regex_are_one_definition():
+    """`promote_candidate_by_name` writes the summary from `_OPERATOR_PROMOTED_SUMMARY`; the exemption reads the
+    name back with a regex BUILT FROM that format. A reworded summary therefore cannot silently empty the
+    exemption, and the wording the operator sees is pinned here as a literal."""
+    assert te._OPERATOR_PROMOTED_EVENT == "theme_operator_promoted"
+    assert te._OPERATOR_PROMOTED_SUMMARY.format(name="X", n=3) == "Operator promoted 'X' (3 members)" == _summary("X")
+    for name in (PROMO, BIG, "Gold & Silver (Miners)", "O'Reilly-style 'quoted' theme", "AI Capex: Power + Cooling"):
+        for tail in ("", " — already a live theme, left intact"):
+            written = te._OPERATOR_PROMOTED_SUMMARY.format(name=name, n=12) + tail
+            assert te._OPERATOR_PROMOTED_SUMMARY_RE.match(written).group(1) == name
+    assert te._OPERATOR_PROMOTED_SUMMARY_RE.match("Operator promoted 'X' (many members)") is None      # n is a number
+    assert te._OPERATOR_PROMOTED_SUMMARY_RE.match("Operator PROMOTED 'X' (3 members)") is None         # the wording is exact
+    # and the exemption's own SQL asks for exactly the event the writer logs
+    assert f"event_type = '{te._OPERATOR_PROMOTED_EVENT}'" in te._OPERATOR_EXEMPT_SQL
+
+
 MON, TUE, WED, THU, FRI = (date(2026, 10, d) for d in (12, 13, 14, 15, 16))
 SAT, SUN, NEXT_MON = date(2026, 10, 17), date(2026, 10, 18), date(2026, 10, 19)
 

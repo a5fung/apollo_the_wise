@@ -377,9 +377,15 @@ def _borrow_cols(snapshot: dict) -> dict:
 # Earnings: "no overnight holds through earnings dates"
 # ═════════════════════════════════════════════════════════════════════════════════════════════════
 
-def _next_weekday(d: date) -> date:
+def _next_session(d: date) -> date:
+    """The next NYSE trading day after `d`: weekends AND exchange holidays skipped, the same calendar
+    `job_recovery._session_opens_on` counts a session on. `get_market_status` fails open on its own (a calendar
+    error reads as a trading day), so a library failure cannot stall this; the bound is only a backstop."""
+    from agents.market_intelligence.trading_calendar import get_market_status
     n = d + timedelta(days=1)
-    while n.weekday() >= 5:
+    for _ in range(10):
+        if get_market_status(n).is_trading_day:
+            break
         n += timedelta(days=1)
     return n
 
@@ -388,11 +394,12 @@ async def default_earnings_before_next_open(ticker: str, session: date) -> Optio
     """True if an earnings date sits between `session`'s close and the next open; None if unknowable.
 
     `is_earnings_day(ticker, d)` matches earnings on d-1 or d, so asking for d+1 covers "after-close on the
-    session" and, on a Friday, for the next weekday too (Monday pre-market). It also matches an earnings
-    print ON the session (before the open), which exits one night early - the safe direction."""
+    session" and, on a Friday, for the next trading day too (Monday pre-market; Tuesday after a Monday holiday).
+    It also matches an earnings print ON the session (before the open), which exits one night early - the safe
+    direction."""
     from agents.market_intelligence.earnings_calendar import is_earnings_day
     unknown = False
-    for probe in sorted({session + timedelta(days=1), _next_weekday(session)}):
+    for probe in sorted({session + timedelta(days=1), _next_session(session)}):
         try:
             matched, source = await is_earnings_day(ticker, probe)
         except Exception as e:

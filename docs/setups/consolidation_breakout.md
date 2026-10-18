@@ -47,7 +47,7 @@ approved plan, not by the article · **T** = telemetry only, never gates.
 | Higher lows | lowest low of the last 5 sessions > the base low | **S** *"higher lows"*; the 5-session window is **B** | `higher_lows`, `RECENT_WINDOW` |
 | Tightening | mean daily range of the last 5 sessions ÷ the first 5 base sessions ≤ 0.75 | **S** *"tightening range"* · **R** `flag_detector._RANGE_CONTRACTION_MAX` | `tightening_ok` |
 | Retrace | ≤ 50% of the pole's range given back (a C1 term; "C1 without retrace" is reported beside, not deciding) | **R** `anticipation.COIL_HOLD_LIMIT` (Family A's signed hold rule) | `retrace_ok` |
-| Deal-pin guards | median daily range of the last 5 sessions ≥ 0.5% (`deal_pin_median`); the #502 fresh deal-pin layer; a pole-window close jump > 50% on < 2× volume is a data artifact | **R** `flag_detector._DEAL_PIN_RANGE_THRESHOLD`, `_evaluate_fresh_pin`; artifact guard = `docs/setups/htf.md` "Flagpole data-artifact" | `explain_watch`, `POLE_ARTIFACT_JUMP`, `POLE_ARTIFACT_VOL_MULT` |
+| Deal-pin guards | median daily range of the last 5 sessions ≥ 0.5% (`deal_pin_median`); the #502 fresh deal-pin layer; a pole-window close jump > 50% on < 2× volume is a data artifact | **R** `flag_detector._DEAL_PIN_RANGE_THRESHOLD`, `_evaluate_fresh_pin`; artifact guard = `docs/setups/htf.md` "Flagpole data-artifact", its two literals now named `flag_detector._POLE_ARTIFACT_JUMP` / `_POLE_ARTIFACT_VOL_MULT` and imported here | `explain_watch`, `POLE_ARTIFACT_JUMP`, `POLE_ARTIFACT_VOL_MULT` |
 | RS | percentile across the universe at D of the 21 / 63 / 126-session return; rs_best = the max of the three; ≥ 98 | **S** *"the 1 or 2% of stocks that are up the most over these 3 timeframes: 1-month, 3-month, 6-month"* | `RS_HORIZONS`, `RS_BEST_PRIMARY` |
 | Group RS | SIC-2 group = median member 63-session return; groups with < 10 members → NULL; percentile across groups ≥ 80 | his addition; thresholds **B** | `group_returns`, `GROUP_PCT_MIN` |
 | Phase (primary) | QQQ SMA10 > SMA20 and both higher than 1 session ago, at D | his addition — an ATTRIBUTION (operator-forwarded Gemini review, not in the article); the slope window is **B** | `phase_qqq_10_20` |
@@ -106,7 +106,7 @@ the entries a night, never the watch list.
    stored bars sit the night out.
 2. **Entries.** For each of the last **3** sessions E (oldest first): the previous session's watch rows whose pivot E's daily
    high cleared → candidates → one-trade-per-base stamping against every earlier candidate → E's minutes from
-   `collector.get_alpaca_minute_bars_window` (batches of 5, one retry; **3 empty batches in a row end the fetch as an outage**,
+   `collector.get_alpaca_minute_bars_window` (batches of **25** - 25 x 390 minute bars fit one 10,000-bar page - one retry; **3 empty batches in a row (75 tickers) end the fetch as an outage**,
    and the later look-back days of the same run do not ask again) → `cb.entry_variants` + `cb.close_entry` → five rows per
    candidate. A candidate whose minute fetch failed OUTRIGHT (not one ticker returned a bar, or the fetch was stopped) is deferred
    and written the next night; on the oldest look-back day it is written as `no_minutes` instead. A `no_minutes` row may be
@@ -216,6 +216,28 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 - The minute feed (the row's `feed` column) and thin-SIC effects above bias the first weeks; the read states them.
 
 ## Change log
+
+### 2026-10-17 (evening) — /simplify pass: one copy of the shared plumbing, no behaviour change
+
+**What**: reuse / efficiency cleanups only. The backtest's seven pinned outputs (`candidates.tsv`, `discovery_report.tsv`,
+`entries_holdout_composition.tsv` and the decompressed `watch` / `trades_discovery` / `entries_discovery` /
+`close_variant_discovery`) hash identically before and after; the shadow's rows are unchanged.
+- The plumbing the runner and the shadow both need (test symbols, the contiguity test, the breakout test, gap fields, the maturity
+  label, the forward-window cut, the cross-section, the one-trade-per-base stamping, and `walk_arms`) lives ONCE in
+  `consolidation_breakout.py` section 7 and is imported by both; the copy-equality parity tests are gone because there is no second
+  copy to keep equal (the night-by-night vs batch stamping tests stay).
+- `adr20_pct_from_bars` is the real `broker.exit_logic` function, imported under `# exec-boundary-ok:` (pure ladder math, the same reuse
+  `pivot_analysis` / `giveback_shadow` make); it replaces the mirror and its equality test. That is the ONE broker module the pure core
+  loads, so the census test now allows exactly `broker` + `broker.exit_logic`. The shadow itself still imports nothing from `broker/`.
+- The pole-artifact literals (1.50 / 2.0) are named in `flag_detector` and imported here; their two provenance-registry entries moved
+  to `flag_detector.py`.
+- Shadow: `MINUTE_BATCH` 5 -> 25 (the outage threshold is now 75 tickers of empty batches, at the same 3 x 2 calls); the open-entries
+  query is bounded by the stale date with one LEFT JOIN and the stale ones are counted by a second cheap query (`exit_entries_stale`
+  unchanged); one candidate's K x variant entries that share (fill, stop, day-0, ADR) are walked once per arm; the recorded `feed` is
+  `execution_client.get_data_feed_name()` (an unrecognised env value now records `iex`, which is what the fetch used); the unapplied-split
+  tickers come from `get_unapplied_splits(since, upto=)`.
+**Reversion-flag**: NEW. **Status**: built, awaiting deploy (market-agent; `db.py` is on the execution image's module list, as in the
+entry below).
 
 ### 2026-10-17 — NEW: the forward SHADOW recorder (job `consolidation_breakout_shadow`, 17:48 ET mon–fri; tables + review; no order path)
 

@@ -96,6 +96,13 @@ _PIVOT_WALK_ATR_MULT = 0.25     # Stable-anchor ATR component. 0.25 × ATR-14 �
 _RUNUP_LOOKBACK_DAYS = 40       # ~8-wk pole window (spec: C≥1.9×C₄₀ / High₄₀≥1.9×Low₄₀)
 _RUNUP_MIN_RATIO     = 1.90     # pivot_high / 40d_low ≥ 1.9×  (flagpole ≥ 90%)
 _FLAG_DEPTH_MIN      = 0.75     # flag's ABSOLUTE low ≥ 0.75×pivot_high (≤25% pullback — the "tight")
+# Flagpole DATA-ARTIFACT guard (Gemini 6/27; htf.md "Flagpole data-artifact"): a one-session CLOSE jump above
+# `_POLE_ARTIFACT_JUMP`x on LESS than `_POLE_ARTIFACT_VOL_MULT`x the window's mean volume is a split / bad tick, not a
+# pole. Named here (they were inline literals) so the consolidation-breakout module imports them instead of
+# mirroring the numbers. NOT the same rule as the pole-volume confirmation below (a spike day at >= 2.0x), which
+# merely shares the value.
+_POLE_ARTIFACT_JUMP     = 1.50
+_POLE_ARTIFACT_VOL_MULT = 2.0
 # Liquidity / tradability floors (sourced HTF spec; VERIFY 6/28 found the $5M dollar-vol universe floor does
 # NOT cover them). TUNABLE named constants — value + rationale live in docs/setups/htf.md. _HTF_MIN_ADV is a
 # standard liquidity floor (firm). _HTF_MIN_ADR is a STARTING value — 4% is NOT canonical (sources run 3-6%),
@@ -1294,7 +1301,7 @@ def compute_flag_metrics(
         prev_c = float(runup_rows[i - 1]["close"])
         cur_c  = float(runup_rows[i]["close"])
         v      = win_vols[i]                      # already coerced above
-        if prev_c > 0 and cur_c / prev_c > 1.50 and avg_win_vol > 0 and v < 2.0 * avg_win_vol:
+        if prev_c > 0 and cur_c / prev_c > _POLE_ARTIFACT_JUMP and avg_win_vol > 0 and v < _POLE_ARTIFACT_VOL_MULT * avg_win_vol:
             base["reason"] = f"flagpole_data_artifact_{cur_c/prev_c:.1f}x_1d_no_vol"
             return base
         if avg_win_vol > 0 and v >= 2.0 * avg_win_vol:

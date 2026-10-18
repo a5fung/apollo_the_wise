@@ -29,16 +29,25 @@ not his words, and the line is tested BESIDE the horizontal pivots, never instea
 ONLY: it feeds `tl_interior_touches`, which never gates.
 
 Reused (never re-implemented): `anticipation._MA_NEAR_PCT` (R), `anticipation.atr14_pct`,
-`anticipation.COIL_HOLD_LIMIT` (R: the signed Family A hold rule, 0.50), `broker.exit_logic.adr20_pct_from_bars` (mirrored: the execution boundary forbids the import),
+`anticipation.COIL_HOLD_LIMIT` (R: the signed Family A hold rule, 0.50), `broker.exit_logic.adr20_pct_from_bars`
+(imported under the sanctioned `# exec-boundary-ok:` marker - exit_logic is PURE exit-ladder math, no Alpaca client,
+no trade-state I/O, the same reuse `pivot_analysis` / `giveback_shadow` make),
 `flag_detector._DEAL_PIN_RANGE_THRESHOLD` (R), `flag_detector._RANGE_CONTRACTION_MAX` (R),
+`flag_detector._POLE_ARTIFACT_JUMP` / `_POLE_ARTIFACT_VOL_MULT` (R: the pole data-artifact guard's two literals,
+named there so this module imports them),
 `flag_detector._evaluate_fresh_pin` + `_PIN_HISTORY_DAYS` (R: the #502 fresh deal-pin layer, called
 as shipped on the same 40 rows prod feeds it), `constants.ENTRY_SLIPPAGE_PCT` (R).
 MIRRORED, not imported, because `rs_engine` drags asyncpg + httpx into a pure module (the test
 asserts equality against the real thing): `_percentile_ranks`, `MIN_PRICE`, `MIN_DOLLAR_VOL`.
 MIRRORED because the real thing wants DB-shaped dict rows (per-call cost x ~2M watch nights; the
-test asserts equality against it): `flag_detector._flag_resolved_by` -> `_base_resolved`. MIRRORED
-because the rule is an inline literal there, not a constant: the pole data-artifact guard in
-`flag_detector.compute_flag_metrics` -> `_pole_data_artifact`.
+test asserts equality against it): `flag_detector._flag_resolved_by` -> `_base_resolved`. The pole
+data-artifact guard (`flag_detector.compute_flag_metrics`) is mirrored in `_pole_data_artifact` (a
+numpy form of the same rule) over the imported constants.
+
+SHARED PLUMBING (end of file, section 7): the small pure helpers the offline runner and the nightly
+shadow both need (test symbols, the contiguity test, the breakout test, the forward-window cut, the
+cross-section, the one-trade-per-base stamping, the maturity label, `walk_arms`) live here ONCE and are
+imported by both, so a forward row and a backtest row for the same night cannot drift apart.
 
 Index convention: `i` is the session index of the WATCH NIGHT D inside a `DailyBars`. Every
 feature about D uses bars <= i only. The breakout day is E = D + 1 (a later session).
@@ -47,6 +56,7 @@ Units: ADR20 and ATR14 are FRACTIONS of the close (0.05 = 5%) everywhere in this
 from __future__ import annotations
 
 import re
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
 from typing import Optional, Sequence
@@ -58,28 +68,19 @@ from agents.market_intelligence.anticipation import (
     _MA_NEAR_PCT,
     atr14_pct as _anticipation_atr14_pct,
 )
+from agents.market_intelligence.broker.exit_logic import adr20_pct_from_bars  # exec-boundary-ok: exit_logic is PURE exit-ladder math (no Alpaca client, no trade-state I/O) — reusing its tested adr20_pct_from_bars() instead of a mirror copy (F11 discipline), same pattern as pivot_analysis/flag_detector/giveback_shadow
 from agents.market_intelligence.constants import ENTRY_SLIPPAGE_PCT
 from agents.market_intelligence.flag_detector import (
     _DEAL_PIN_RANGE_THRESHOLD,
     _PIN_HISTORY_DAYS,
+    _POLE_ARTIFACT_JUMP as POLE_ARTIFACT_JUMP,
+    _POLE_ARTIFACT_VOL_MULT as POLE_ARTIFACT_VOL_MULT,
     _RANGE_CONTRACTION_MAX,
     _evaluate_fresh_pin,
     _BASE_AGE_MIN_WATCH,
     _RUNUP_MIN_RATIO,
     _FLAG_DEPTH_MIN,
 )
-
-def adr20_pct_from_bars(prior_bars) -> Optional[float]:
-    """MIRROR of `broker.exit_logic.adr20_pct_from_bars` (the execution-boundary check, deploy gate
-    5j / #256 W1, forbids importing broker/ from intelligence code). ADR20% as a FRACTION: the mean
-    daily (high - low) / close over the <= 20 bars given; the last 20 are taken FIRST, then unusable
-    ones dropped; fewer than 10 usable -> None. `tests/test_consolidation_breakout.py` asserts
-    equality with the real function on several inputs."""
-    vals = [(b["h"] - b["l"]) / b["c"] for b in (prior_bars or [])[-20:]
-            if b.get("h") is not None and b.get("l") is not None and b.get("c")]
-    if len(vals) < 10:
-        return None
-    return sum(vals) / len(vals)
 
 
 # ── Structure constants ─────────────────────────────────────────────────────────────────────────
@@ -97,10 +98,9 @@ RS_HORIZONS = (21, 63, 126)      # S: "1-month, 3-month, 6-month" in sessions
 ADR_WINDOW = 20                  # R: exit_logic.adr20_pct_from_bars takes the last 20 bars
 ATR_WINDOW = 14                  # R: anticipation.atr14_pct
 # R: the pole data-artifact guard in flag_detector.compute_flag_metrics (htf.md "Flagpole
-#    data-artifact", Gemini 6/27) — literals there, mirrored here by name: a one-session close jump
-#    > 1.50x on < 2.0x the window's mean volume is a split / bad tick, not a pole.
-POLE_ARTIFACT_JUMP = 1.50
-POLE_ARTIFACT_VOL_MULT = 2.0
+#    data-artifact", Gemini 6/27): a one-session close jump > 1.50x on < 2.0x the window's mean volume
+#    is a split / bad tick, not a pole. `POLE_ARTIFACT_JUMP` / `POLE_ARTIFACT_VOL_MULT` are IMPORTED
+#    above from the detector's named constants (the one place the literals live).
 # The C0 structural gates, in evaluation order — the names `explain_watch` reports. `close_nonpositive`
 # is bad data (a zero close); it is listed so the vocabulary is closed.
 WATCH_GATES = ("history", "prior_move", "close_above_pole_high", "close_nonpositive", "sma50",
@@ -128,6 +128,8 @@ PIVOT_KEYS = ("k5", "k10", "full", "tl")   # B: which pivot the cells and the br
 TL_TOUCH_TOL = 0.005             # B, TELEMETRY ONLY: a base high within 0.5% under the line is an interior touch
 CELLS = ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7")      # the 8 DECIDING cells
 REPORT_CELLS = ("C1_no_retrace", "C1_no_tightening", "HTF")     # reported beside C1, never deciding
+KS = PIVOT_KEYS                                                # the runner's and the shadow's name for the four levels
+CELL_NAMES = CELLS + REPORT_CELLS                              # the 8 deciding + 2 reported-only cells
 
 # ── Entries / exits ─────────────────────────────────────────────────────────────────────────────
 OPENING_RANGE_MINUTES = {"orh1": 1, "orh5": 5, "orh60": 60}   # S: "first 1-minute ... 5-minute ... 60-minute"
@@ -1061,3 +1063,188 @@ def day0_result_to_outcome(entry: dict, adr20: float) -> dict:
     fill, stop, px = float(entry["fill"]), float(entry["stop"]), float(d0["exit_price"])
     kind = "day0_gap" if px < stop else "day0_stop"
     return _outcome("stopped_day0", px - fill, fill - stop, fill, adr20, 0, [(0, kind, px, 1.0)])
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 7. Shared plumbing - ONE definition for the offline runner (`scripts/probes/_cb_backtest/runner.py`) and the
+#    nightly shadow (`consolidation_breakout_shadow.py`). Pure, no I/O. Both import these; neither keeps a copy.
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+POLE_DRIFT_MAX = 3                        # B: poles <= this many sessions apart are ONE base (chain key); the
+#                                           module's own pole-top rule lets the top walk forward while "still extending"
+POLE_BAD_HIGH_X = 1.25                    # data flag, NEVER a gate: pole-bar high above this x max(open, close) is a suspect print
+
+# Exchange test symbols (Nasdaq/NYSE/Arca/Cboe/IEX test securities). `universe_ok` admits an unknown-type ticker by
+# design ("as prod does"), so the callers drop these before it. Fixed list + the Z?ZZ[TC] test family; every one of
+# these is in the export with a fake price and ~no real volume.
+TEST_SYMBOLS = frozenset({"ATEST", "CTEST", "MTEST", "NTEST", "PTEST", "ZTEST",
+                          "ZBZX", "ZEXIT", "ZIEXT", "ZXIET"})
+_TEST_FAMILY = re.compile(r"Z[A-Z]ZZ[TC]")
+
+# A walk's terminal exits; anything else is an OPEN MARK until `is_mature` says otherwise.
+TERMINAL_STATUSES = frozenset({"stopped", "stopped_day0", "trailed", "target", "time_exit"})
+
+
+def resolve_sectype(ticker: str, mi_types: dict, sic_types: dict) -> str:
+    """`mi_security_types` value, else the SIC pull's point-in-time `type`, else "" (unknown, admitted)."""
+    return mi_types.get(ticker) or sic_types.get(ticker) or ""
+
+
+def is_test_symbol(ticker: str) -> bool:
+    """An exchange test security (ZVZZT, NTEST, ...): never a universe member, never in the RS denominator."""
+    return ticker in TEST_SYMBOLS or bool(_TEST_FAMILY.fullmatch(ticker))
+
+
+def contiguous_window_mask(cidx: np.ndarray, window: int) -> np.ndarray:
+    """True at bar i when the `window` bars ending at i are CONSECUTIVE SPY sessions, i.e.
+    cidx[i] - cidx[i-window+1] == window-1 (cidx is strictly ascending, so equality means no session is
+    missing). Everything the module reads at a watch night - the 130-bar history, RS 21/63/126, SMA50, the
+    pole window, ADR20 - sits inside the 130 bars ending at i, so one test here covers all of it. A hole
+    inside the span means a halt, a data gap or a REUSED TICKER (two companies glued into one series)."""
+    n = len(cidx)
+    out = np.zeros(n, dtype=bool)
+    span = window - 1
+    if n > span:
+        c = np.asarray(cidx, dtype=np.int64)
+        out[span:] = (c[span:] - c[:n - span]) == span
+    return out
+
+
+def contiguous_tail(cidx, window: int) -> bool:
+    """`contiguous_window_mask` at its LAST index: do the `window` bars ending at the last one form consecutive
+    SPY sessions? (The nightly shadow tests tonight only.)"""
+    return len(cidx) >= window and bool(contiguous_window_mask(cidx, window)[-1])
+
+
+def fwd_end(cidx: np.ndarray, e: int, hi: int) -> tuple:
+    """(end, cut): exclusive end index of the forward walk that starts after breakout bar `e` and would run to
+    `hi` (exclusive). The walk stops BEFORE the first bar that follows a missing session, so it never reads
+    across a hole (a delisted-and-reused ticker would otherwise be booked on another company's prices); the
+    shortened window makes `walk_exit` end 'degraded' - an unsettled mark that the decisive numbers exclude."""
+    end = min(hi, len(cidx))
+    if end - e >= 2:
+        brk = np.flatnonzero(np.diff(np.asarray(cidx[e:end], dtype=np.int64)) != 1)
+        if len(brk):
+            return e + 1 + int(brk[0]), True
+    return end, False
+
+
+def forward_window(bars: "DailyBars", cidx, e: int, horizon: int) -> tuple:
+    """(fwd, cut): the forward walk input for breakout bar `e` = sessions E+1 .. E+1+horizon (horizon + 1 bars, the
+    module's slice contract), cut before the first missing session. `cidx` None = no hole information (the
+    window is only bounded by the bars)."""
+    end, cut = fwd_end(cidx, e, e + 2 + horizon) if cidx is not None else (min(e + 2 + horizon, len(bars)), False)
+    return bars.slice(e + 1, end), cut
+
+
+def gap_fields(open_e: float, pivot: float, adr20: float) -> tuple:
+    """(gap_open_pct, gap_over_1adr): open(E)/pivot - 1, and open(E) > pivot x (1 + adr20)."""
+    return open_e / pivot - 1.0, bool(open_e > pivot * (1.0 + adr20))
+
+
+def breaks_out(high_e: float, pivot) -> bool:
+    """high(E) > pivot_K(D). A K with no level that night (`pivot` None: "tl" on a night with no down-sloping line)
+    never breaks out - comparing against None would raise, and a missing level must not read as a break."""
+    return pivot is not None and high_e > pivot
+
+
+def is_mature(status: str, n_fwd: int, horizon: int = EXIT_HORIZON) -> bool:
+    """Harvest row 6, per walk. MATURE = the walk reached a terminal exit before the data ended (stopped,
+    stopped_day0, trailed, target, time_exit), or it reached the horizon with >= horizon + 1 forward sessions (the
+    extra session is the next open a trail signal on the horizon session fills at). Anything else - 'degraded'
+    (forward bars ran out), or a 'censored' mark with fewer than horizon + 1 sessions behind it - is an OPEN MARK:
+    recorded, never in a decisive number."""
+    if status in TERMINAL_STATUSES:
+        return True
+    return status == "censored" and n_fwd >= horizon + 1
+
+
+def cross_section_one_date(r21: list, r63: list, r126: list, groups: list) -> tuple:
+    """Cross-section for ONE date over the universe members (parallel lists; None allowed).
+    rs_best = max of the three percentiles, rs_all = min (None if any is None); the group return is
+    `group_returns` over members' r63 (groups < 10 members drop out), grp_pct = `percentile_ranks`
+    of the group medians; a member without a (surviving) group reads None."""
+    p = [percentile_ranks(list(r)) for r in (r21, r63, r126)]
+    rs_best, rs_all = [], []
+    for a, b, c in zip(*p):
+        vals = [x for x in (a, b, c) if x is not None]
+        rs_best.append(max(vals) if vals else None)
+        rs_all.append(min(vals) if len(vals) == 3 else None)
+    member_r63 = defaultdict(list)
+    for g, r in zip(groups, r63):
+        if g is not None:
+            member_r63[g].append(r)
+    gr = group_returns(member_r63)
+    gp = dict(zip(gr.keys(), percentile_ranks(list(gr.values())))) if gr else {}
+    grp = [gp.get(g) if g is not None else None for g in groups]
+    return rs_best, rs_all, grp, len(gr)
+
+
+def stamp_retrigger(cands: list, *, key=None, retrig: str = "retrigger", first: str = "first_") -> None:
+    """ONE TRADE PER BASE (harvest row 1): per (ticker, pole_date, K) the first breakout (by E) is the
+    trade (retrigger=0); later ones retrigger=1. Also `first_<cell>`: within the same base+K, the first
+    breakout where THAT cell held on the watch night - a cell whose flag was off on the base's first
+    break would otherwise lose its valid later entry to the base-level rule (reported beside, not the spec).
+    `key`/`retrig`/`first` let the same stamping run under another base key (see `stamp_base_chain`)."""
+    key = key or (lambda c: (c["ticker"], c["pole_date"], c["K"]))
+    groups = defaultdict(list)
+    for c in cands:
+        groups[key(c)].append(c)
+    for g in groups.values():
+        g.sort(key=lambda c: c["E"])
+        seen = set()
+        for k, c in enumerate(g):
+            c[retrig] = 0 if k == 0 else 1
+            for cell in CELL_NAMES:
+                if c[cell] and cell not in seen:
+                    seen.add(cell)
+                    c[first + cell] = 1
+                else:
+                    c[first + cell] = 0
+
+
+def chain_bases(poles) -> dict:
+    """{(ticker, pole_ci): base_id} from `poles` = iterable of (ticker, pole_ci, pole_date) over EVERY watch row.
+    A ticker's distinct poles, sorted by calendar index, are cut into runs wherever two neighbours are more
+    than POLE_DRIFT_MAX sessions apart; each run is ONE base, id = ticker|pole_date of its earliest pole.
+    Why components over poles, not a walk over breakouts: the module's pole top can drift 1-3 sessions inside
+    ONE consolidation, and (in real data) alternate between two poles from night to night, so a chain that
+    follows breakouts in E order misses the revisit; a component is E-order independent and is a COARSENING of
+    the spec key by construction (same pole_date -> same pole_ci -> same base)."""
+    by_tk = defaultdict(dict)
+    for ticker, pci, pdate in poles:
+        by_tk[ticker][int(pci)] = pdate
+    out = {}
+    for ticker, pm in by_tk.items():
+        base, prev = None, None
+        for pci in sorted(pm):
+            if prev is None or pci - prev > POLE_DRIFT_MAX:
+                base = f"{ticker}|{pm[pci]}"
+            out[(ticker, pci)] = base
+            prev = pci
+    return out
+
+
+def stamp_base_chain(cands: list, base_of: dict) -> None:
+    """Stamp the drift-robust key BESIDE the spec key: `base_id` (from `chain_bases`), `retrigger_chain`,
+    `first_chain_<cell>` - the same one-trade-per-base stamping, keyed (base_id, K). Which key is the
+    decisive population is a P4 ruling, made before the 30-trade go/no-go is read. Raises KeyError if a
+    candidate's pole was not in the watch rows it came from (cannot happen by construction)."""
+    for c in cands:
+        c["base_id"] = base_of[(c["ticker"], int(c["pole_ci"]))]
+    stamp_retrigger(cands, key=lambda c: (c["base_id"], c["K"]), retrig="retrigger_chain", first="first_chain_")
+
+
+def walk_arms(entry: dict, *, closes_before, fwd: DailyBars, adr20: float, horizon: int = EXIT_HORIZON,
+              arms: Optional[dict] = None) -> dict:
+    """{arm name: `walk_exit`-shaped result} for ONE filled entry over `arms` (default: every arm in `ARMS`; the
+    shadow passes only the arms not yet final). A day-0 stop-out is booked ONCE by `day0_result_to_outcome` and is the
+    outcome of EVERY arm (it never reaches the daily walk); otherwise `walk_exit` runs per arm with
+    `closes_before` = the closes through E (the caller guarantees its last is E's own close, `walk_exit`'s CALLER
+    CONTRACT) and `fwd` the forward window. Raw results - each caller formats its own rows."""
+    arms = ARMS if arms is None else arms
+    if entry["day0"]["stopped"]:
+        one = day0_result_to_outcome(entry, adr20)
+        return {name: dict(one) for name in arms}
+    return {name: walk_exit(fill=entry["fill"], stop=entry["stop"], closes_before=closes_before, fwd=fwd, arm=arm,
+                            adr20=adr20, horizon=horizon)
+            for name, arm in arms.items()}

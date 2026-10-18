@@ -548,30 +548,31 @@ GATE_REGISTRY: list[dict] = [
                 "choice, not a sourced number.",
     },
     {
-        "id": "consolidation_breakout.POLE_ARTIFACT_JUMP",
-        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "id": "flag_detector._POLE_ARTIFACT_JUMP",
+        "file": "agents/market_intelligence/flag_detector.py",
         "kind": "const",
-        "name": "POLE_ARTIFACT_JUMP",
+        "name": "_POLE_ARTIFACT_JUMP",
         "value": 1.50,
         "citation": {
             "file": "docs/setups/htf.md",
             "text": ">50% single-day close jump",
         },
-        "note": "R: mirrors the pole data-artifact guard in flag_detector.compute_flag_metrics (an inline literal "
-                "there, hence a named mirror here). A one-session close jump > 1.50x on < 2x the window's volume "
-                "is a split or a bad tick, not a pole.",
+        "note": "The pole data-artifact guard in flag_detector.compute_flag_metrics, named (it was an inline literal; "
+                "consolidation_breakout imports it as POLE_ARTIFACT_JUMP). A one-session close jump > 1.50x on < 2x "
+                "the window's volume is a split or a bad tick, not a pole.",
     },
     {
-        "id": "consolidation_breakout.POLE_ARTIFACT_VOL_MULT",
-        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "id": "flag_detector._POLE_ARTIFACT_VOL_MULT",
+        "file": "agents/market_intelligence/flag_detector.py",
         "kind": "const",
-        "name": "POLE_ARTIFACT_VOL_MULT",
+        "name": "_POLE_ARTIFACT_VOL_MULT",
         "value": 2.0,
         "citation": {
             "file": "docs/setups/htf.md",
             "text": "vol < 2× window avg",
         },
-        "note": "R: the volume half of the same guard (Gemini 6/27, htf.md 'Flagpole data-artifact').",
+        "note": "The volume half of the same guard (Gemini 6/27, htf.md 'Flagpole data-artifact'); "
+                "consolidation_breakout imports it as POLE_ARTIFACT_VOL_MULT.",
     },
     {
         "id": "consolidation_breakout.MIN_PRICE",

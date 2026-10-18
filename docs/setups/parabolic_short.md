@@ -105,7 +105,7 @@ The compute function (`compute_parabolic_metrics`, `parabolic_detector.py:198`) 
 6. **Market cap unknown** → rejected (`filter:mcap_unknown`): the floor cannot be verified, and the floor exists to keep microcap squeezes out.
 7. **"1R sized at half the long book's per-trade risk"** → `risk_fraction = constants.RISK_PCT × 0.5` recorded on the arm row. The regime-scaled resolver is NOT applied (the shadow sizes nothing).
 8. **Borrow account** → `paper` (the shadow phase resolves to no account; the first real rung is PAPER). Recorded per row as `borrow_acct`.
-9. **"no overnight holds through earnings dates"** → `earnings_calendar.is_earnings_day` probed for the day after each held session (and the next weekday on a Friday); an earnings print ON the session also exits one night early (the safe direction). A calendar that cannot answer does NOT force an exit — the unknown sessions are listed in the outcome row's `detail`. Limit: yfinance coverage.
+9. **"no overnight holds through earnings dates"** → `earnings_calendar.is_earnings_day` probed for the day after each held session (and the next NYSE trading day - a Friday before a holiday Monday probes the Tuesday); an earnings print ON the session also exits one night early (the safe direction). A calendar that cannot answer does NOT force an exit — the unknown sessions are listed in the outcome row's `detail`. Limit: yfinance coverage.
 10. **One decision per candidate, written once; a failed borrow READ is retried, not recorded** → rows are insert-once, so a row written the night a read failed would forfeit that climax for good although the arm window still has two nights. While a later night can arm the candidate (sessions since D0 < `ARM_WINDOW_SESSIONS − 1`), an `infra:borrow_check_failed` writes NO row, is counted under `deferred` in that night's `parabolic_short_shadow_run` audit row (not `errors` — that pages), and the candidate is retried; the late arm records the level in force. On the last window night the infra row is written. Never "assume easy to borrow". **Known limit:** if the borrow outage covers nights 0 and 1 AND the 17:15 run is missed on night 2, the candidate goes `stale` on night 3 and is dropped with no row at all (the `deferred` entries in the two audit rows are then the only trace) — a double fault, and the stale drop is the pre-existing behaviour for any missed night. **CHANGED 2026-10-17** (was: "no retries"). The TRIGGER-time borrow check is still one decision: a failed read there is a `skipped` trigger row + `trigger_skipped` outcome.
 11. **"NO adds, ever" → one open episode per name** → a climax on a name that already has an armed episode with no outcome row (waiting OR held) is rejected `episode_already_open` (geometry recorded, no broker read). The step ADVANCES open episodes first and DECIDES candidates second (oldest climax first), so a prior episode that closes on tonight's own bar — e.g. the next day's climax closing above the prior climax high — no longer blocks. Added 2026-10-17 after the build let two back-to-back climax flags arm two episodes on one name (double-counted N, correlated outcomes).
 
@@ -133,6 +133,14 @@ None currently. Each scan_date computes stage independently from prior scans. Pr
 2. ~~Earnings-day check has fail-soft inconsistency~~ — **resolved 2026-05-08**. All four sites (parabolic, EP boost, EP cooldown bypass, EP MODERATE→HIGH override) now treat yfinance error as "earnings day = True". Defensive direction at each site: parabolic suppresses climax, EP boost fires, cooldown bypasses, override promotes.
 
 ## Change log (newest first)
+
+### 2026-10-17 (evening) — /simplify pass: the earnings probe's "next session" is the NYSE calendar's (no detector or threshold change)
+
+The no-overnight-through-earnings probe asked about the day after a held session and "the next weekday"; it now asks about the next NYSE
+TRADING day (`trading_calendar.get_market_status`, the calendar `job_recovery._session_opens_on` counts sessions on), so a session before a
+holiday Monday probes the Tuesday instead of the closed Monday. Shadow-only (no order, no money); a calendar error reads as a trading day
+(`get_market_status` fails open), i.e. the old weekday behaviour. Also: the row-params helper is shared with the consolidation-breakout
+writers (`db._row_params`). **Reversion-flag**: NEW.
 
 ### 2026-10-17 — #314 review round: the stop-limit fill model, one open episode per name, a borrow-read retry (same shadow, before first deploy)
 

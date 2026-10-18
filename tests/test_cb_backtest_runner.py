@@ -781,17 +781,6 @@ class TestMaturity:
         assert a["acct_pct"] == pytest.approx(rn.acct_pct(-1.0, 0.05))
 
 
-def test_account_pct_from_events_equals_the_r_formula_on_both_sizing_regimes():
-    fill = 10.0
-    for width in (0.05, 0.10, 0.02):                                          # 20% cap binds / equal / 1% risk binds
-        risk = fill * width
-        events = [(1, "partial", fill + 1.0, 1 / 3), (5, "trail", fill + 2.0, 2 / 3)]
-        pnl = (1.0 / 3) + (2.0 / 3) * 2.0
-        r = pnl / risk
-        assert rn.acct_pct_from_events(events, fill, width) == pytest.approx(rn.acct_pct(r, width))
-    assert rn.acct_pct_from_events([(0, "day0_stop", 9.5, 1.0)], 10.0, 0.05) == pytest.approx(-0.5 * min(0.20, 0.01 / 0.05) / 10.0)
-
-
 class TestBootstrap:
     def test_deterministic_per_key_and_independent_of_call_order(self):
         rng = np.random.default_rng(3)

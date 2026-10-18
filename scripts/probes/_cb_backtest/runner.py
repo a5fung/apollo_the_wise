@@ -59,28 +59,29 @@ if str(REPO) not in sys.path:
 
 from agents.market_intelligence import anticipation as ant  # noqa: E402  (Family A control: simulate, build_mixed_path)
 from agents.market_intelligence import consolidation_breakout as cb  # noqa: E402
+# The plumbing the nightly shadow shares: ONE definition, in the module (`cb`, section 7). Re-bound here by name so
+# `runner.<name>` keeps working for the callers and tests that read it.
+from agents.market_intelligence.consolidation_breakout import (  # noqa: E402
+    CELL_NAMES, KS, POLE_BAD_HIGH_X, POLE_DRIFT_MAX, breaks_out, chain_bases, contiguous_window_mask,
+    cross_section_one_date, forward_window, gap_fields, is_mature, is_test_symbol, resolve_sectype,
+    stamp_base_chain, stamp_retrigger,
+)
+from agents.market_intelligence.consolidation_breakout import fwd_end  # noqa: E402,F401  (not called here; kept as `runner.fwd_end`)
 
 HERE = Path(__file__).resolve().parent
 WATCH_START = date(2022, 3, 28)          # first watch night D (plan: discovery 2022-03-28 .. 2024-12-31)
 DISCOVERY_END = date(2024, 12, 31)       # D <= this -> discovery; later -> holdout
-KS = cb.PIVOT_KEYS                        # ("k5", "k10", "full", "tl")
 NEW_FETCH_KS = ("tl",)                    # the K added after the first minute pull (#702 P1c): its (ticker, E) pairs not in
 #                                           _done.psv are written to minute_fetch_list_delta.tsv (k5/k10/full were all pulled)
-CELL_NAMES = cb.CELLS + cb.REPORT_CELLS   # 8 deciding + 2 reported-only
 GATE_NAMES = cb.WATCH_GATES
+# The watch-row features / cross-section context copied onto every candidate row, in candidates.tsv column order.
+CAND_FEATURES = ("prior_move", "base_len", "retrace", "base_depth", "tightening_ratio", "pole_sessions",
+                 "median_dollar_vol20", "pole_day_vol_ratio", "pole_max_gap", "atr14", "atr14_slope",
+                 "trigger_bar_range_adr", "inside_day", "rs_best", "rs_all", "grp_pct", "phase_qqq_10_20",
+                 "phase_qqq_10_20_s5", "phase_spy_qqq_50", "apollo_regime")
 # pre-screen windows: P in [i-45, i-10] (explain_watch), pole_low in [P-40, P] -> [i-85, i-10]
 PS_HI_LO, PS_HI_HI = 45, 10
 PS_LOW_LO, PS_LOW_HI = 85, 10
-POLE_DRIFT_MAX = 3                        # poles <= this many sessions apart are ONE base (chain key); the
-#                                           module's own pole-top rule lets the top walk forward while "still extending"
-POLE_BAD_HIGH_X = 1.25                    # data flag: pole-bar high above this x max(open, close) is a suspect print
-
-# Exchange test symbols (Nasdaq/NYSE/Arca/Cboe/IEX test securities). The module's `universe_ok` admits an
-# unknown-type ticker by design ("as prod does"), so the runner drops these before it. Fixed list + the
-# Z?ZZ[TC] test family; every one of these is in the export with a fake price and ~no real volume.
-TEST_SYMBOLS = frozenset({"ATEST", "CTEST", "MTEST", "NTEST", "PTEST", "ZTEST",
-                          "ZBZX", "ZEXIT", "ZIEXT", "ZXIET"})
-_TEST_FAMILY = re.compile(r"Z[A-Z]ZZ[TC]")
 
 _G: dict = {}                             # fork-shared read-only globals for the worker pools
 
@@ -135,44 +136,6 @@ def split_label(d: date) -> str:
     return "discovery" if d <= DISCOVERY_END else "holdout"
 
 
-def resolve_sectype(ticker: str, mi_types: dict, sic_types: dict) -> str:
-    """`mi_security_types` value, else the SIC pull's point-in-time `type`, else "" (unknown, admitted)."""
-    return mi_types.get(ticker) or sic_types.get(ticker) or ""
-
-
-def is_test_symbol(ticker: str) -> bool:
-    """An exchange test security (ZVZZT, NTEST, ...): never a universe member, never in the RS denominator."""
-    return ticker in TEST_SYMBOLS or bool(_TEST_FAMILY.fullmatch(ticker))
-
-
-def contiguous_window_mask(cidx: np.ndarray, window: int) -> np.ndarray:
-    """True at bar i when the `window` bars ending at i are CONSECUTIVE SPY sessions, i.e.
-    cidx[i] - cidx[i-window+1] == window-1 (cidx is strictly ascending, so equality means no session is
-    missing). Everything the module reads at a watch night - the 130-bar history, RS 21/63/126, SMA50, the
-    pole window, ADR20 - sits inside the 130 bars ending at i, so one test here covers all of it. A hole
-    inside the span means a halt, a data gap or a REUSED TICKER (two companies glued into one series)."""
-    n = len(cidx)
-    out = np.zeros(n, dtype=bool)
-    span = window - 1
-    if n > span:
-        c = np.asarray(cidx, dtype=np.int64)
-        out[span:] = (c[span:] - c[:n - span]) == span
-    return out
-
-
-def fwd_end(cidx: np.ndarray, e: int, hi: int) -> tuple:
-    """(end, cut): exclusive end index of the forward walk that starts after breakout bar `e` and would run to
-    `hi` (exclusive). The walk stops BEFORE the first bar that follows a missing session, so it never reads
-    across a hole (a delisted-and-reused ticker would otherwise be booked on another company's prices); the
-    shortened window makes `walk_exit` end 'degraded' - an unsettled mark that the decisive numbers exclude."""
-    end = min(hi, len(cidx))
-    if end - e >= 2:
-        brk = np.flatnonzero(np.diff(np.asarray(cidx[e:end], dtype=np.int64)) != 1)
-        if len(brk):
-            return e + 1 + int(brk[0]), True
-    return end, False
-
-
 def next_bar_status(cidx: np.ndarray, i: int, last_ci: int) -> str:
     """Where is the breakout day E = the ticker's next bar? 'ok' only if it IS the next SPY session.
     'pending' = D is the last session on the calendar (E does not exist yet); 'no_next_bar' = the ticker's
@@ -184,17 +147,6 @@ def next_bar_status(cidx: np.ndarray, i: int, last_ci: int) -> str:
     if i + 1 >= len(cidx):
         return "no_next_bar"
     return "ok" if int(cidx[i + 1]) == ci + 1 else "gap_in_bars"
-
-
-def gap_fields(open_e: float, pivot: float, adr20: float) -> tuple:
-    """(gap_open_pct, gap_over_1adr): open(E)/pivot - 1, and open(E) > pivot x (1 + adr20)."""
-    return open_e / pivot - 1.0, bool(open_e > pivot * (1.0 + adr20))
-
-
-def breaks_out(high_e: float, pivot) -> bool:
-    """high(E) > pivot_K(D). A K with no level that night (`pivot` None: "tl" on a night with no down-sloping line)
-    never breaks out - comparing against None would raise, and a missing level must not read as a break."""
-    return pivot is not None and high_e > pivot
 
 
 def minute_fetch_delta(fetch_rows: list, cands: list, done: "dict | None", ks=NEW_FETCH_KS) -> list:
@@ -211,61 +163,6 @@ def acct_pct(realized_r: float, width_pct: float) -> float:
     """Account-% P&L at the article's sizing (harvest row 9): position = min(20% of account, 1% risk /
     stop width); P&L% of account = position x (pnl/fill) = position x R x width = R x min(0.20 x width, 0.01)."""
     return realized_r * min(0.20 * width_pct, 0.01)
-
-
-def stamp_retrigger(cands: list, *, key=None, retrig: str = "retrigger", first: str = "first_") -> None:
-    """ONE TRADE PER BASE (harvest row 1): per (ticker, pole_date, K) the first breakout (by E) is the
-    trade (retrigger=0); later ones retrigger=1. Also `first_<cell>`: within the same base+K, the first
-    breakout where THAT cell held on the watch night - a cell whose flag was off on the base's first
-    break would otherwise lose its valid later entry to the base-level rule (reported beside, not the spec).
-    `key`/`retrig`/`first` let the same stamping run under another base key (see `stamp_base_chain`)."""
-    key = key or (lambda c: (c["ticker"], c["pole_date"], c["K"]))
-    groups = defaultdict(list)
-    for c in cands:
-        groups[key(c)].append(c)
-    for g in groups.values():
-        g.sort(key=lambda c: c["E"])
-        seen = set()
-        for k, c in enumerate(g):
-            c[retrig] = 0 if k == 0 else 1
-            for cell in CELL_NAMES:
-                if c[cell] and cell not in seen:
-                    seen.add(cell)
-                    c[first + cell] = 1
-                else:
-                    c[first + cell] = 0
-
-
-def chain_bases(poles) -> dict:
-    """{(ticker, pole_ci): base_id} from `poles` = iterable of (ticker, pole_ci, pole_date) over EVERY watch row.
-    A ticker's distinct poles, sorted by calendar index, are cut into runs wherever two neighbours are more
-    than POLE_DRIFT_MAX sessions apart; each run is ONE base, id = ticker|pole_date of its earliest pole.
-    Why components over poles, not a walk over breakouts: the module's pole top can drift 1-3 sessions inside
-    ONE consolidation, and (in real data) alternate between two poles from night to night, so a chain that
-    follows breakouts in E order misses the revisit; a component is E-order independent and is a COARSENING of
-    the spec key by construction (same pole_date -> same pole_ci -> same base)."""
-    by_tk = defaultdict(dict)
-    for ticker, pci, pdate in poles:
-        by_tk[ticker][int(pci)] = pdate
-    out = {}
-    for ticker, pm in by_tk.items():
-        base, prev = None, None
-        for pci in sorted(pm):
-            if prev is None or pci - prev > POLE_DRIFT_MAX:
-                base = f"{ticker}|{pm[pci]}"
-            out[(ticker, pci)] = base
-            prev = pci
-    return out
-
-
-def stamp_base_chain(cands: list, base_of: dict) -> None:
-    """Stamp the drift-robust key BESIDE the spec key: `base_id` (from `chain_bases`), `retrigger_chain`,
-    `first_chain_<cell>` - the same one-trade-per-base stamping, keyed (base_id, K). Which key is the
-    decisive population is a P4 ruling, made before the 30-trade go/no-go is read. Raises KeyError if a
-    candidate's pole was not in the watch rows it came from (cannot happen by construction)."""
-    for c in cands:
-        c["base_id"] = base_of[(c["ticker"], int(c["pole_ci"]))]
-    stamp_retrigger(cands, key=lambda c: (c["base_id"], c["K"]), retrig="retrigger_chain", first="first_chain_")
 
 
 def stamp_overlap_open(cands: list, outcomes: dict) -> None:
@@ -296,27 +193,6 @@ def select_close_variant_candidates(cands: list) -> list:
     """The ONLY rows that ever get an outcome at this stage: DISCOVERY (D <= 2024-12-31). Holdout rows are
     never walked here - their outcomes are joined once, after the P4 freeze (pre-registration)."""
     return [c for c in cands if c["split"] == "discovery"]
-
-
-def cross_section_one_date(r21: list, r63: list, r126: list, groups: list) -> tuple:
-    """Stage-1 cross-section for ONE date over the universe members (parallel lists; None allowed).
-    rs_best = max of the three percentiles, rs_all = min (None if any is None); the group return is
-    `cb.group_returns` over members' r63 (groups < 10 members drop out), grp_pct = `cb.percentile_ranks`
-    of the group medians; a member without a (surviving) group reads None."""
-    p = [cb.percentile_ranks(list(r)) for r in (r21, r63, r126)]
-    rs_best, rs_all = [], []
-    for a, b, c in zip(*p):
-        vals = [x for x in (a, b, c) if x is not None]
-        rs_best.append(max(vals) if vals else None)
-        rs_all.append(min(vals) if len(vals) == 3 else None)
-    member_r63 = defaultdict(list)
-    for g, r in zip(groups, r63):
-        if g is not None:
-            member_r63[g].append(r)
-    gr = cb.group_returns(member_r63)
-    gp = dict(zip(gr.keys(), cb.percentile_ranks(list(gr.values())))) if gr else {}
-    grp = [gp.get(g) if g is not None else None for g in groups]
-    return rs_best, rs_all, grp, len(gr)
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
@@ -575,17 +451,13 @@ def close_variant_rows(ticker: str, bars: "cb.DailyBars", cands: list, cidx: "np
             row[cell] = c[cell]
             row["first_" + cell] = c["first_" + cell]
             row["first_chain_" + cell] = c.get("first_chain_" + cell, "")
-        end, cut = fwd_end(cidx, e, e + 2 + H) if cidx is not None else (min(e + 2 + H, len(bars)), False)
-        fwd = bars.slice(e + 1, end)
+        fwd, cut = forward_window(bars, cidx, e, H)
         row["fwd_hole"] = int(cut)
         row["fwd_bars"] = len(fwd)
         row["fwd_last_date"] = fwd.dates[-1].isoformat() if len(fwd) else ""
         if entry["status"] == "filled":
-            cb_closes = bars.c[:e + 1]
-            assert cb_closes[-1] == bars.c[e]
-            for name, arm in cb.ARMS.items():
-                res = cb.walk_exit(fill=entry["fill"], stop=entry["stop"], closes_before=cb_closes,
-                                   fwd=fwd, arm=arm, adr20=c["adr20"], horizon=H)
+            for name, res in cb.walk_arms(entry, closes_before=bars.c[:e + 1], fwd=fwd, adr20=c["adr20"],
+                                          horizon=H).items():
                 row[f"st_{name}"] = res["status"]
                 row[f"r_{name}"] = res["realized_r"]
                 row[f"adr_{name}"] = res["pnl_adr"]
@@ -796,12 +668,7 @@ def run_daily(args) -> None:
             for cell in CELL_NAMES:
                 c[cell] = w[f"{cell}_{k}"]
             c["C1_s5"] = w[f"C1_s5_{k}"]
-            for f_ in ("prior_move", "base_len", "retrace", "base_depth", "tightening_ratio", "pole_sessions",
-                       "median_dollar_vol20", "pole_day_vol_ratio", "pole_max_gap", "atr14", "atr14_slope",
-                       "trigger_bar_range_adr", "inside_day"):
-                c[f_] = w[f_]
-            for f_ in ("rs_best", "rs_all", "grp_pct", "phase_qqq_10_20", "phase_qqq_10_20_s5",
-                       "phase_spy_qqq_50", "apollo_regime"):
+            for f_ in CAND_FEATURES:
                 c[f_] = w[f_]
             c["pivot_date"] = w[f"pivot_{k}_date"]
             c["pole_hi_over_oc"] = w["pole_hi_over_oc"]
@@ -849,10 +716,7 @@ def run_daily(args) -> None:
                  + list(CELL_NAMES) + ["C1_s5"] + ["first_" + c for c in CELL_NAMES]
                  + ["first_chain_" + c for c in CELL_NAMES]
                  + ["open_E", "high_E", "low_E", "close_E", "vol_E", "adv20_vol_D", "breakout_vol_x"]
-                 + ["prior_move", "base_len", "retrace", "base_depth", "tightening_ratio", "pole_sessions",
-                    "median_dollar_vol20", "pole_day_vol_ratio", "pole_max_gap", "atr14", "atr14_slope",
-                    "trigger_bar_range_adr", "inside_day", "rs_best", "rs_all", "grp_pct", "phase_qqq_10_20",
-                    "phase_qqq_10_20_s5", "phase_spy_qqq_50", "apollo_regime"])
+                 + list(CAND_FEATURES))
     cands.sort(key=lambda c: (c["E"], c["ticker"], c["K"]))
     write_tsv(out / "candidates.tsv", cands, cand_cols)
     write_tsv(out / "gap_in_bars.tsv", gap_rows, ["ticker", "D", "status", "next_bar_date", "expected_E"])
@@ -1057,10 +921,8 @@ APOLLO_ARM = "ctl_apollo_today"
 CONTROL_ARMS = (FAMILY_A_ARM, APOLLO_ARM)
 ALL_ARMS = tuple(cb.ARMS) + CONTROL_ARMS
 FLOORS = ((0.0, "floor_0"), (0.25, "floor_025"), (0.5, "floor_05"), (0.75, "floor_075"), (1.0, "floor_1"))
-TERMINAL_STATUSES = frozenset({"stopped", "stopped_day0", "trailed", "target", "time_exit"})
 DATA_ABSTAINS = ("no_minutes", "minute_daily_mismatch", "minute_high_below_pivot")   # the entry abstains that say "the data disagrees"
 DATA_ABSTAIN_MAX = 0.05                                   # plan Verification: more than 5% of these BLOCKS the read
-NO_DAY0 = {"stopped": False, "exit_price": None, "exit_minute": None}
 BOOT_DRAWS, BOOT_SEED = 2000, 702                         # month-block bootstrap: 2,000 resamples, fixed seed
 FREEZE_MARK = "<!-- FREEZE -->"
 REPORT_NAME = "discovery_report"
@@ -1092,32 +954,6 @@ COMPOSITION_COLS = (["ticker", "D", "E", "K", "split", "variant", "status", "rea
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 # pure helpers (unit-tested)
 # ═════════════════════════════════════════════════════════════════════════════════════════════
-def is_mature(status: str, n_fwd: int, horizon: int = HORIZON) -> bool:
-    """Harvest row 6, per walk. MATURE = the walk reached a terminal exit before the data ended (stopped,
-    stopped_day0, trailed, target, time_exit), or it reached the horizon with >= horizon + 1 forward sessions (the
-    extra session is the next open a trail signal on the horizon session fills at). Anything else - 'degraded'
-    (forward bars ran out), or a 'censored' mark with fewer than horizon + 1 sessions behind it - is an OPEN MARK:
-    recorded, never in a decisive number."""
-    if status in TERMINAL_STATUSES:
-        return True
-    return status == "censored" and n_fwd >= horizon + 1
-
-
-def acct_pct_from_events(events, fill: float, width_pct: float) -> float:
-    """Account-% P&L the spec's way (harvest row 9): position = min(0.20, 0.01 / width); acct_pct = position x pnl /
-    fill, pnl = sum((exit - fill) x fraction) per share. Algebraically equal to `acct_pct(R, width)` (the daily
-    stage's formula); a test pins the two together."""
-    pnl = sum((float(px) - fill) * float(frac) for (_j, _kind, px, frac) in events)
-    return min(0.20, 0.01 / width_pct) * pnl / fill
-
-
-def forward_window(bars: "cb.DailyBars", cidx, e: int, horizon: int) -> tuple:
-    """(fwd, cut): the forward walk input for breakout bar `e` = sessions E+1 .. E+1+horizon (horizon + 1 bars, the
-    module's slice contract), cut before the first missing session exactly as `close_variant_rows` does."""
-    end, cut = fwd_end(cidx, e, e + 2 + horizon) if cidx is not None else (min(e + 2 + horizon, len(bars)), False)
-    return bars.slice(e + 1, end), cut
-
-
 def arm_result(res: dict, *, width: float, n_fwd: int, horizon: int = HORIZON) -> dict:
     """One `walk_exit` / `day0_result_to_outcome` result as a row of the trades table."""
     mature = is_mature(res["status"], n_fwd, horizon)
@@ -1129,20 +965,12 @@ def arm_result(res: dict, *, width: float, n_fwd: int, horizon: int = HORIZON) -
 
 def walk_arms(entry: dict, *, closes_before, fwd: "cb.DailyBars", adr20: float, horizon: int = HORIZON,
               arms: "dict | None" = None) -> dict:
-    """{arm: arm_result} for ONE filled entry. A day-0 stop-out is booked once by the module's own
-    `day0_result_to_outcome` and is the outcome of EVERY arm (it never reaches the daily walk); otherwise
-    `walk_exit` runs per arm with closes_before = closes through E (the caller asserts its last == close(E))."""
-    arms = cb.ARMS if arms is None else arms
+    """{arm: arm_result} for ONE filled entry: the module's shared `cb.walk_arms` (a day-0 stop-out is booked once
+    by `day0_result_to_outcome` and is the outcome of EVERY arm; otherwise `walk_exit` per arm with closes_before =
+    closes through E, whose last is E's own close) with each raw result turned into a trades-table row."""
     width, n_fwd = entry["width_pct"], len(fwd)
-    if entry["day0"]["stopped"]:
-        one = arm_result(cb.day0_result_to_outcome(entry, adr20), width=width, n_fwd=n_fwd, horizon=horizon)
-        return {name: dict(one) for name in arms}
-    out = {}
-    for name, arm in arms.items():
-        res = cb.walk_exit(fill=entry["fill"], stop=entry["stop"], closes_before=closes_before, fwd=fwd, arm=arm,
-                           adr20=adr20, horizon=horizon)
-        out[name] = arm_result(res, width=width, n_fwd=n_fwd, horizon=horizon)
-    return out
+    raw = cb.walk_arms(entry, closes_before=closes_before, fwd=fwd, adr20=adr20, horizon=horizon, arms=arms)
+    return {name: arm_result(res, width=width, n_fwd=n_fwd, horizon=horizon) for name, res in raw.items()}
 
 
 def minute_dicts(mb: "cb.MinuteBars") -> list:
@@ -1479,7 +1307,7 @@ def close_variant_result(c: dict, cv: dict, horizon: int = HORIZON) -> dict:
     width = _opt_float(cv["close_width_pct"])
     ent = {"status": status, "reason": cv["close_reason"] or None, "fill": _opt_float(cv["close_fill"]),
            "stop": _opt_float(cv["close_stop"]), "fill_minute": None, "width_pct": width, "level": c["pivot"],
-           "day0": dict(NO_DAY0)}
+           "day0": dict(cb._NO_DAY0)}
     n_fwd, arms = int(float(cv["fwd_bars"] or 0)), {}
     if status == "filled":
         for name in cb.ARMS:
@@ -1508,7 +1336,6 @@ def evaluate_candidate(c: dict, bars: "cb.DailyBars", cidx: np.ndarray, e: int, 
     assert e >= cb.MIN_HISTORY and int(cidx[e]) - int(cidx[e - cb.MIN_HISTORY]) == cb.MIN_HISTORY, (c["ticker"], e)
     ev = cb.entry_variants(minutes, pivot=c["pivot"], adr20=adr20, day_high=float(bars.h[e]), day_low=float(bars.l[e]))
     closes_before = bars.c[:e + 1]
-    assert closes_before[-1] == bars.c[e]
     fwd, cut = forward_window(bars, cidx, e, horizon)
     fwd60 = None
     cache: dict = {}
@@ -1544,11 +1371,18 @@ def evaluate_candidate(c: dict, bars: "cb.DailyBars", cidx: np.ndarray, e: int, 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 # rows
 # ═════════════════════════════════════════════════════════════════════════════════════════════
-def cand_values(c: dict) -> list:
-    return ([c["ticker"], c["D"], c["E"], c["K"], c["split"], int(c["E"][:4]), c["E"][:7], c["retrigger"],
-             c["retrigger_chain"]] + [c[x] for x in CELL_COLS]
-            + [c["gap_over_1adr"], c["adr20"], c["atr14"], c["median_dollar_vol20"], c["phase_qqq_10_20"],
-               c["phase_qqq_10_20_s5"], c["phase_spy_qqq_50"]])
+def _by_cols(row: dict, cols) -> list:
+    """The row's values in `cols` order, a column the row does not carry (or carries as None) as the empty cell ''.
+    Values stay RAW (floats are not formatted here): `rows_to_text` / `rows_to_gz` apply `_fmt` when writing, the
+    same cell rule `write_tsv` uses, so the bytes written are what the hand-padded rows gave."""
+    return ["" if row.get(col) is None else row[col] for col in cols]
+
+
+def cand_values(c: dict) -> dict:
+    """The candidate-side trades columns (`TRADE_CAND_COLS`) of one candidate, by name."""
+    row = {col: c[col] for col in TRADE_CAND_COLS if col not in ("year", "month")}
+    row["year"], row["month"] = int(c["E"][:4]), c["E"][:7]
+    return row
 
 
 def atr_wide_flag(width, atr14):
@@ -1561,63 +1395,62 @@ def floor_flags(width, adr20) -> list:
     return [("" if width is None else int(width < f * adr20)) for f, _n in FLOORS]
 
 
-def variant_values(c: dict, vr: dict) -> list:
+def variant_values(c: dict, vr: dict) -> dict:
+    """The variant-side trades columns (`TRADE_VAR_COLS`) of one variant of one candidate, by name."""
     ent = vr["entry"]
     width = ent["width_pct"]
-    d0 = int(ent["day0"]["stopped"]) if ent["status"] == "filled" else ""
-    return ([vr["variant"], ent["fill_minute"], width, d0, ent["reason"] or "", atr_wide_flag(width, c["atr14"])]
-            + floor_flags(width, c["adr20"]))
+    row = {"variant": vr["variant"], "fill_minute": ent["fill_minute"], "width_pct": width,
+           "day0_stopped": int(ent["day0"]["stopped"]) if ent["status"] == "filled" else "",
+           "abstain_reason": ent["reason"] or "", "atr14_wide": atr_wide_flag(width, c["atr14"])}
+    row.update(zip((n for _f, n in FLOORS), floor_flags(width, c["adr20"])))
+    return row
 
 
-def _sens_blank(n: int) -> list:
-    return [""] * n
-
-
-def trade_rows_for(c: dict, vr: dict, cv_prefix: list) -> list:
-    """The long trades rows of ONE variant of ONE candidate: one row per arm when filled; ONE row with no arm when it
-    abstained or never triggered (carrying the cap-not-skip columns when it was `too_wide`)."""
-    var = variant_values(c, vr)
-    ent, rows = vr["entry"], []
-    tail = [vr["n_fwd"], vr["hole"]]
+def trade_rows_for(c: dict, vr: dict, cand_row: dict) -> list:
+    """The long trades rows of ONE variant of ONE candidate (each in `TRADE_COLS` order): one row per arm when filled;
+    ONE row with no arm when it abstained or never triggered (carrying the cap-not-skip columns when it was `too_wide`).
+    `cand_row` = `cand_values(c)`. A column a row does not carry stays empty."""
+    ent = vr["entry"]
+    base = {**cand_row, **variant_values(c, vr), "fwd_bars": vr["n_fwd"], "fwd_hole": vr["hole"]}
     if ent["status"] == "filled":
         h60 = vr["sens"].get("h60")
+        rows = []
         for name, a in vr["arms"].items():
-            sens = ([h60["realized_r"], h60["status"], int(h60["mature"])] if (name == cb.PRIMARY_ARM and h60) else ["", "", ""])
-            rows.append(cv_prefix + var + [name, a["status"], a["realized_r"], a["pnl_adr"], a["acct_pct"],
-                                           a["sessions_held"], int(a["mature"]), int(a["open_mark"]), a["beabove"]]
-                        + tail + [a["note"]] + sens + _sens_blank(7))
+            row = {**base, "arm": name, "status": a["status"], "realized_r": a["realized_r"], "pnl_adr": a["pnl_adr"],
+                   "acct_pct": a["acct_pct"], "sessions_held": a["sessions_held"], "mature": int(a["mature"]),
+                   "open_mark": int(a["open_mark"]), "beabove": a["beabove"], "arm_note": a["note"]}
+            if name == cb.PRIMARY_ARM and h60:
+                row.update(r_h60=h60["realized_r"], st_h60=h60["status"], mature_h60=int(h60["mature"]))
+            rows.append(_by_cols(row, TRADE_COLS))
         return rows
+    row = {**base, "status": ent["status"]}
     cap = vr["sens"].get("cap")
-    capv = ([cap["stop"], cap["status"], cap["realized_r"], cap["pnl_adr"], cap["acct_pct"], int(cap["mature"]),
-             cap["sessions_held"]] if cap else _sens_blank(7))
-    return [cv_prefix + var + ["", ent["status"], "", "", "", "", "", "", ""] + tail + [""] + ["", "", ""] + capv]
+    if cap:
+        row.update(cap_stop=cap["stop"], cap_status=cap["status"], cap_realized_r=cap["realized_r"],
+                   cap_pnl_adr=cap["pnl_adr"], cap_acct_pct=cap["acct_pct"], cap_mature=int(cap["mature"]),
+                   cap_sessions_held=cap["sessions_held"])
+    return [_by_cols(row, TRADE_COLS)]
 
 
 def entry_row_for(c: dict, vr: dict, minutes_state: str) -> list:
+    """One entries row (`ENTRY_COLS` order): the candidate's own columns plus the variant's entry and day-0 facts."""
     ent = vr["entry"]
     d0 = ent["day0"]
     filled = ent["status"] == "filled"
-    return ([c["ticker"], c["D"], c["E"], c["K"], c["split"], vr["variant"], ent["status"], ent["reason"] or "",
-             minutes_state, ent["level"], ent["fill"], ent["stop"], ent["width_pct"], ent["fill_minute"],
-             int(d0["stopped"]) if filled else "", d0["exit_price"] if filled else "",
-             d0["exit_minute"] if filled else "", atr_wide_flag(ent["width_pct"], c["atr14"]),
-             c["retrigger"], c["retrigger_chain"], c["base_id"]]
-            + [c["first_" + x] for x in CELL_NAMES] + [c["first_chain_" + x] for x in CELL_NAMES]
-            + [c[x] for x in CELL_COLS] + [c["gap_over_1adr"], c["pole_bad_high"]])
+    row = {**c, "variant": vr["variant"], "status": ent["status"], "reason": ent["reason"] or "",
+           "minutes_state": minutes_state, "level": ent["level"], "fill": ent["fill"], "stop": ent["stop"],
+           "width_pct": ent["width_pct"], "fill_minute": ent["fill_minute"],
+           "day0_stopped": int(d0["stopped"]) if filled else "", "day0_exit_price": d0["exit_price"] if filled else "",
+           "day0_exit_minute": d0["exit_minute"] if filled else "",
+           "atr14_wide": atr_wide_flag(ent["width_pct"], c["atr14"])}
+    return _by_cols(row, ENTRY_COLS)
 
 
 def composition_row_for(c: dict, variant: str, f: dict, minutes_state: str) -> list:
-    return ([c["ticker"], c["D"], c["E"], c["K"], c["split"], variant, f["status"], f["reason"] or "", minutes_state,
-             f["width_pct"], f["fill_minute"], c["retrigger"], c["retrigger_chain"]] + [c[x] for x in CELL_COLS])
-
-
-def rows_to_gz(rows: list) -> bytes:
-    """Rows -> ONE gzip member (mtime 0, so a re-run is byte-identical). Members concatenate into a valid gzip."""
-    buf = io.StringIO()
-    w = csv.writer(buf, delimiter="\t", lineterminator="\n")
-    for r in rows:
-        w.writerow([_fmt(x) for x in r])
-    return gzip.compress(buf.getvalue().encode(), compresslevel=3, mtime=0)
+    """One STEP 0 composition row (`COMPOSITION_COLS` order): entry-time facts only."""
+    row = {**c, "variant": variant, "status": f["status"], "reason": f["reason"] or "", "minutes_state": minutes_state,
+           "width_pct": f["width_pct"], "fill_minute": f["fill_minute"]}
+    return _by_cols(row, COMPOSITION_COLS)
 
 
 def rows_to_text(rows: list) -> str:
@@ -1626,6 +1459,11 @@ def rows_to_text(rows: list) -> str:
     for r in rows:
         w.writerow([_fmt(x) for x in r])
     return buf.getvalue()
+
+
+def rows_to_gz(rows: list) -> bytes:
+    """Rows -> ONE gzip member (mtime 0, so a re-run is byte-identical). Members concatenate into a valid gzip."""
+    return gzip.compress(rows_to_text(rows).encode(), compresslevel=3, mtime=0)
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
@@ -2211,7 +2049,6 @@ def _group_row(g, key_name: str, cell: str, k, v, a, slice_name: str, value, *, 
     s = rstats(gm["realized_r"].to_numpy(dtype=float), gm["pnl_adr"].to_numpy(dtype=float), gm["acct_pct"].to_numpy(dtype=float))
     row = {"key": key_name, "cell": cell, "K": k, "variant": v, "arm": a, "slice": slice_name, "value": value,
            "n_filled": len(g), "n_open": len(g) - s["n"], **{c: s.get(c) for c in STAT_COLS if c in s}}
-    row["n"] = s["n"]
     if ci and s["n"] >= 2:
         row["ci_lo"], row["ci_hi"] = block_bootstrap_ci(gm["realized_r"].to_numpy(dtype=float), gm["month"].astype(str).to_numpy(),
                                                        key=f"{key_name}|{cell}|{k}|{v}|{a}")

@@ -2856,8 +2856,8 @@ async def promote_candidate_by_name(name_query: str, today) -> dict:
             rs_avg=rs_avg, prior_days_active=prior_days_active,
             pct_above_20sma=breadth_above_sma20(_rs_rows))
         await log_audit_event(
-            "theme_operator_promoted",
-            summary=(f"Operator promoted '{t['name']}' ({len(t['tickers'])} members)"
+            _OPERATOR_PROMOTED_EVENT,
+            summary=(_OPERATOR_PROMOTED_SUMMARY.format(name=t["name"], n=len(t["tickers"]))
                      + ("" if wrote else " — already a live theme, left intact")),
             detail=f"query='{q}' candidate='{cand['name']}' final='{t['name']}' "
                    f"tickers={t['tickers']} cand_source={cand.get('source')}")
@@ -2905,6 +2905,11 @@ async def _validate_new_themes_at_birth(
                 detail=f"Removed: {', '.join(stripped)} | kept: {', '.join(validated)}",
             )
     return new_themes
+
+
+# The validator shows the model the first N characters of a theme's thesis (`_validate_theme_membership`); the merge
+# pass sizes the two-description thesis it hands the validator off the same window (`_MERGE_THESIS_HALF_CHARS`).
+_VALIDATOR_THESIS_CHARS = 300
 
 
 async def _validate_theme_membership(
@@ -2995,7 +3000,7 @@ async def _validate_theme_membership(
     thesis_block = ""
     thesis_instruction = ""
     if _thesis and not _is_garbage(_thesis):
-        thesis_block = f"Theme thesis: {_thesis[:300]}\n\n"
+        thesis_block = f"Theme thesis: {_thesis[:_VALIDATOR_THESIS_CHARS]}\n\n"
         thesis_instruction = (
             "Judge against the THESIS above, not the theme name alone: a stock whose "
             "CURRENT driver matches the thesis BELONGS even when its legacy industry "
@@ -8274,17 +8279,23 @@ def _successor_pointers_from_audit_rows(rows) -> tuple[dict[str, str], dict[str,
 # must not absorb it), so the window is then 4 runs; a same-evening re-run is covered either way.
 OPERATOR_PASS1_5_EXEMPT_NIGHTS = 3
 OPERATOR_PROMOTE_LOOKBACK_DAYS = 30   # >= any 3-night window incl. a long weekend + a holiday
-_OPERATOR_PROMOTED_SUMMARY_RE = re.compile(r"^Operator promoted '(.+)' \(\d+ members\)")
+# The audit event and the summary shape `promote_candidate_by_name` WRITES and the exemption READS BACK (it keys on
+# the theme name inside the summary): one definition each, and the regex is built FROM the format, so a reworded
+# summary can no longer silently empty the exemption (tests/test_655c_operator_promoted_exempt.py round-trips them).
+_OPERATOR_PROMOTED_EVENT = "theme_operator_promoted"
+_OPERATOR_PROMOTED_SUMMARY = "Operator promoted '{name}' ({n} members)"
+_OPERATOR_PROMOTED_SUMMARY_RE = re.compile(
+    "^" + re.escape(_OPERATOR_PROMOTED_SUMMARY).replace(re.escape("{name}"), "(.+)").replace(re.escape("{n}"), r"\d+"))
 
 # ONE query for the whole run (not per theme, not per merge pass): the recent promotion rows ('promo',
 # summary + ET date) UNION the distinct engine-night dates ('night'). The counting is done in
 # `_operator_exempt_nights_left` (pure, unit-tested on dates) so the window rule is not buried in SQL.
 # $1 = tonight's theme date, $2 = the lookback start.
-_OPERATOR_EXEMPT_SQL = """
+_OPERATOR_EXEMPT_SQL = f"""
     SELECT 'promo' AS kind, a.summary,
            (a.created_at AT TIME ZONE 'America/New_York')::date AS d
       FROM mi_audit_log a
-     WHERE a.event_type = 'theme_operator_promoted'
+     WHERE a.event_type = '{_OPERATOR_PROMOTED_EVENT}'
        AND (a.created_at AT TIME ZONE 'America/New_York')::date >= $2
        AND (a.created_at AT TIME ZONE 'America/New_York')::date <= $1
     UNION ALL
@@ -9441,10 +9452,10 @@ async def _fold_small_failing_themes(
     return [t for t in all_themes if t["name"] not in removed] + retired_rows
 
 
-# #655 (d): `_validate_theme_membership` shows the model `thesis[:300]`. A merged theme has no
+# #655 (d): `_validate_theme_membership` shows the model `thesis[:_VALIDATOR_THESIS_CHARS]`. A merged theme has no
 # description of its own (the adjudicator returns a merged_name only), so the validation thesis is
-# the two themes' own descriptions side by side; each half gets half of that window.
-_MERGE_THESIS_HALF_CHARS = 148
+# the two themes' own descriptions side by side; each half gets half of that window (less the ' | ' joiner).
+_MERGE_THESIS_HALF_CHARS = (_VALIDATOR_THESIS_CHARS - len(" | ")) // 2          # (300 - 3) // 2 = 148
 
 
 def _merged_validation_thesis(winner: dict, absorbed: dict) -> str | None:
@@ -9465,7 +9476,7 @@ def _merged_validation_thesis(winner: dict, absorbed: dict) -> str | None:
 
 
 async def _carry_protection_to_merged_name(
-    protected: set[tuple[str, str]] | None, old_names: str | list[str] | tuple[str, ...], target_name: str,
+    protected: set[tuple[str, str]] | None, old_names: list[str], target_name: str,
 ) -> set[tuple[str, str]] | None:
     """#655 (d): the operator-protection shield matches `(ticker, theme_name)` against the name the
     validator is called with. Validating under the merged name would silently drop every `/bypass`
@@ -9481,8 +9492,6 @@ async def _carry_protection_to_merged_name(
     stopped protecting from the next Mon/Wed/Fri rescore on. Operator rulings outrank the validator.
     `protected=None` (the run-level prefetch failed) is fetched here; a failed fetch returns None -
     the same fail-open the validator's own fallback has."""
-    if isinstance(old_names, str):
-        old_names = (old_names,)
     sources = set(old_names)
     if protected is None:
         try:
@@ -9690,6 +9699,7 @@ async def _run_thesis_merge_pass(
                         detail=f"union={union} validated={validated} validated_against={validate_name!r} ({validate_basis})",
                     )
                     continue
+                _adopted_note = ""
                 if adopt_merged:
                     winner["name"] = merged_name  # F1 (operator-signed): adjudicator-proposed name
                     # His ruling 2026-10-17 ("Yes"): the merged theme stores the SAME text the
@@ -9711,8 +9721,6 @@ async def _run_thesis_merge_pass(
                     # text (None) reads `empty_description`, the check's own rule for it.
                     _desc_ok, _desc_fail = _check_description_quality(
                         merged_name, list(validated), validate_thesis)
-                    _desc_stored = _desc_ok
-                    _desc_why = "ok" if _desc_ok else _desc_fail
                     if _desc_ok:
                         winner["description"] = validate_thesis
                     else:
@@ -9723,6 +9731,10 @@ async def _run_thesis_merge_pass(
                     # the comment there. A LIST: one winner can win twice in a night, and
                     # overwriting would lose the name the operator actually ruled under.
                     winner.setdefault("arm_b_renamed_from", []).append(old_winner_name)
+                    # Evidence for the verify-live read; the non-adopt paths add nothing (byte-for-byte).
+                    _adopted_note = (f" description_stored={_desc_ok} "
+                                     f"(description quality check: {'ok' if _desc_ok else _desc_fail}) "
+                                     f"lineage_staged={old_winner_name!r}->{merged_name!r}")
                     if old_winner_name in persisted_names:
                         retired_rows.append(_synthetic_retired_row(
                             old_winner_name, today, successor=winner["name"],
@@ -9737,12 +9749,6 @@ async def _run_thesis_merge_pass(
                         note=(f"Auto-retired {today}: thesis-merged into '{winner['name']}' "
                               f"(ADR 0025 Arm B)."),
                     ))
-                # Evidence for the verify-live read; the non-adopt paths add nothing (byte-for-byte).
-                _adopted_note = ""
-                if adopt_merged:
-                    _adopted_note = (f" description_stored={_desc_stored} "
-                                     f"(description quality check: {_desc_why}) "
-                                     f"lineage_staged={old_winner_name!r}->{merged_name!r}")
                 changelog.append({
                     "type": "theme_thesis_merged",
                     "theme": absorbed["name"],

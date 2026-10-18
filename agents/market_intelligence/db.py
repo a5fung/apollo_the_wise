@@ -12444,7 +12444,7 @@ async def upsert_split(
         return result.endswith(" 1")
 
 
-async def get_unapplied_splits(since: date | None = None) -> list[dict]:
+async def get_unapplied_splits(since: date | None = None, upto: date | None = None) -> list[dict]:
     """All split rows where adjustment_applied = FALSE AND execution_date <= today.
 
     Future-dated splits are skipped: Polygon's adjusted=true feed only adjusts
@@ -12453,33 +12453,27 @@ async def get_unapplied_splits(since: date | None = None) -> list[dict]:
     once the split actually executes — leaving mi_daily_closes with mismatched
     pre/post-split bars (ERNA 5/04 incident, 2026-05-07).
 
+    `since` bounds execution_date from below. `upto` (default None = the database's CURRENT_DATE, the
+    original behaviour) bounds it from above with an EXPLICIT date instead: the consolidation-breakout shadow
+    passes its ET session date, which is not the server's date after 8 PM ET.
+
     Ordered by execution_date asc so multiple splits on one ticker apply in
     chronological order.
     """
+    clauses, args = ["adjustment_applied = FALSE"], []
+    if since is not None:
+        args.append(since)
+        clauses.append(f"execution_date >= ${len(args)}")
+    if upto is None:
+        clauses.append("execution_date <= CURRENT_DATE")
+    else:
+        args.append(upto)
+        clauses.append(f"execution_date <= ${len(args)}")
     pool = await get_pool()
     async with pool.acquire() as conn:
-        if since is None:
-            rows = await conn.fetch(
-                """
-                SELECT ticker, execution_date, split_from, split_to
-                FROM mi_splits
-                WHERE adjustment_applied = FALSE
-                  AND execution_date <= CURRENT_DATE
-                ORDER BY execution_date ASC, ticker ASC
-                """
-            )
-        else:
-            rows = await conn.fetch(
-                """
-                SELECT ticker, execution_date, split_from, split_to
-                FROM mi_splits
-                WHERE adjustment_applied = FALSE
-                  AND execution_date >= $1
-                  AND execution_date <= CURRENT_DATE
-                ORDER BY execution_date ASC, ticker ASC
-                """,
-                since,
-            )
+        rows = await conn.fetch(
+            "SELECT ticker, execution_date, split_from, split_to FROM mi_splits WHERE "
+            + " AND ".join(clauses) + " ORDER BY execution_date ASC, ticker ASC", *args)
         return [dict(r) for r in rows]
 
 
@@ -19140,9 +19134,10 @@ CB_SIC_UPSERT_SQL = (
 )
 
 
-def _cb_row_params(row: dict, cols: tuple, *, jsonb_dict=frozenset(), jsonb_list=frozenset()) -> tuple:
-    """One executemany tuple, column order = `cols`. A jsonb dict/list goes through the #216 helpers (the
-    codec encodes it ONCE - never a pre-dumped string); NULL stays NULL."""
+def _row_params(row: dict, cols: tuple, *, jsonb_dict=frozenset(), jsonb_list=frozenset()) -> tuple:
+    """One executemany / fetchval tuple, column order = `cols`. A jsonb dict/list goes through the #216 helpers
+    (the codec encodes it ONCE - never a pre-dumped string); NULL stays NULL. Shared by the consolidation-breakout
+    and parabolic-short shadow writers."""
     out = []
     for c in cols:
         v = row.get(c)
@@ -19154,44 +19149,32 @@ def _cb_row_params(row: dict, cols: tuple, *, jsonb_dict=frozenset(), jsonb_list
     return tuple(out)
 
 
-async def cb_upsert_watch_rows(rows: list[dict]) -> int:
+async def _executemany_rows(sql: str, rows: list[dict], cols: tuple, **jsonb) -> int:
+    """`executemany(sql, one `_row_params` tuple per row)` on a pooled connection; the number of rows written
+    (0 and no connection for an empty list). `jsonb` = `_row_params`' `jsonb_dict=` / `jsonb_list=`."""
     if not rows:
         return 0
-    vals = [_cb_row_params(r, CB_WATCH_COLS, jsonb_dict=_CB_WATCH_JSONB) for r in rows]
+    vals = [_row_params(r, cols, **jsonb) for r in rows]
     pool = await get_pool()
     async with pool.acquire() as conn:
-        await conn.executemany(CB_WATCH_UPSERT_SQL, vals)
+        await conn.executemany(sql, vals)
     return len(rows)
+
+
+async def cb_upsert_watch_rows(rows: list[dict]) -> int:
+    return await _executemany_rows(CB_WATCH_UPSERT_SQL, rows, CB_WATCH_COLS, jsonb_dict=_CB_WATCH_JSONB)
 
 
 async def cb_upsert_entry_rows(rows: list[dict]) -> int:
-    if not rows:
-        return 0
-    vals = [_cb_row_params(r, CB_ENTRY_COLS, jsonb_dict=_CB_ENTRY_JSONB_DICT) for r in rows]
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.executemany(CB_ENTRY_UPSERT_SQL, vals)
-    return len(rows)
+    return await _executemany_rows(CB_ENTRY_UPSERT_SQL, rows, CB_ENTRY_COLS, jsonb_dict=_CB_ENTRY_JSONB_DICT)
 
 
 async def cb_upsert_exit_rows(rows: list[dict]) -> int:
-    if not rows:
-        return 0
-    vals = [_cb_row_params(r, CB_EXIT_COLS, jsonb_list=_CB_EXIT_JSONB_LIST) for r in rows]
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.executemany(CB_EXIT_UPSERT_SQL, vals)
-    return len(rows)
+    return await _executemany_rows(CB_EXIT_UPSERT_SQL, rows, CB_EXIT_COLS, jsonb_list=_CB_EXIT_JSONB_LIST)
 
 
 async def cb_upsert_sic_rows(rows: list[dict]) -> int:
-    if not rows:
-        return 0
-    vals = [_cb_row_params(r, CB_SIC_COLS) for r in rows]
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.executemany(CB_SIC_UPSERT_SQL, vals)
-    return len(rows)
+    return await _executemany_rows(CB_SIC_UPSERT_SQL, rows, CB_SIC_COLS)
 
 
 async def cb_get_calendar(upto: date, limit: int = 400) -> list[date]:
@@ -19263,19 +19246,6 @@ async def cb_get_security_types(tickers: list[str]) -> dict[str, str]:
     return {r["ticker"]: r["security_type"] for r in rows}
 
 
-async def cb_get_unapplied_split_tickers(since: date, upto: date) -> set[str]:
-    """Tickers with a split that EXECUTED in [since, upto] whose adjustment has NOT been applied to
-    `mi_daily_closes` yet: their stored history mixes two price scales, so a watch row computed off it
-    would be a phantom (a reverse split reads as a run-up). They sit out tonight. A split merely ANNOUNCED
-    for a later date (`execution_date > upto`) has changed no stored price and excludes nobody."""
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT DISTINCT ticker FROM mi_splits WHERE execution_date >= $1 AND execution_date <= $2 "
-            "AND adjustment_applied = FALSE", since, upto)
-    return {r["ticker"] for r in rows}
-
-
 async def cb_get_splits_after(tickers: list[str], after_date: date, upto_date: date) -> dict[str, list[dict]]:
     """{ticker: [{execution_date, split_from, split_to}, ...]} for splits executing STRICTLY after
     `after_date` and no later than `upto_date` (the batch form of `get_split_dates_after`, #667). The
@@ -19342,26 +19312,48 @@ async def cb_get_candidate_history(tickers: list[str], before: date) -> list[dic
     return [dict(r) for r in rows]
 
 
-async def cb_get_open_entries(n_arms: int) -> list[dict]:
-    """FILLED entries with fewer than `n_arms` MATURE exit rows - the walk's work list (a mature arm is
-    final), each with `mature_arms`: the arms already final, which the walk does not recompute. Ordered by
-    break_date so the oldest are walked first."""
+CB_OPEN_ENTRIES_SQL = """
+    SELECT e.id, e.ticker, e.watch_date, e.break_date, e.k, e.pole_date, e.entry_variant, e.fill,
+           e.stop, e.width_pct, e.adr20, e.fill_minute, e.day0_stopped, e.day0_exit_price,
+           e.day0_exit_minute,
+           COALESCE(array_agg(x.arm) FILTER (WHERE x.mature), ARRAY[]::text[]) AS mature_arms
+      FROM mi_consolidation_breakout_entry e
+      LEFT JOIN mi_consolidation_breakout_exit x ON x.entry_id = e.id
+     WHERE e.status = 'filled' AND e.break_date >= $2
+     GROUP BY e.id
+    HAVING count(x.arm) FILTER (WHERE x.mature) < $1
+     ORDER BY e.break_date, e.ticker, e.k, e.entry_variant
+"""
+CB_STALE_OPEN_COUNT_SQL = """
+    SELECT count(*) FROM (
+        SELECT e.id
+          FROM mi_consolidation_breakout_entry e
+          LEFT JOIN mi_consolidation_breakout_exit x ON x.entry_id = e.id
+         WHERE e.status = 'filled' AND e.break_date < $2
+         GROUP BY e.id
+        HAVING count(x.arm) FILTER (WHERE x.mature) < $1
+    ) stale
+"""
+
+
+async def cb_get_open_entries(n_arms: int, stale_before: date) -> list[dict]:
+    """FILLED entries broken out on or after `stale_before` with fewer than `n_arms` MATURE exit rows - the walk's
+    work list (a mature arm is final), each with `mature_arms`: the arms already final, which the walk does not
+    recompute. Ordered by break_date so the oldest are walked first. An entry older than `stale_before` is never
+    re-walked (`cb_count_stale_open_entries` counts them for the audit row), so the bound is in the WHERE and the
+    query reads the `break_date` index, not the whole entry history."""
     pool = await get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT e.id, e.ticker, e.watch_date, e.break_date, e.k, e.pole_date, e.entry_variant, e.fill,
-                   e.stop, e.width_pct, e.adr20, e.fill_minute, e.day0_stopped, e.day0_exit_price,
-                   e.day0_exit_minute,
-                   COALESCE((SELECT array_agg(x.arm) FROM mi_consolidation_breakout_exit x
-                              WHERE x.entry_id = e.id AND x.mature), ARRAY[]::text[]) AS mature_arms
-              FROM mi_consolidation_breakout_entry e
-             WHERE e.status = 'filled'
-               AND (SELECT count(*) FROM mi_consolidation_breakout_exit x
-                     WHERE x.entry_id = e.id AND x.mature) < $1
-             ORDER BY e.break_date, e.ticker, e.k, e.entry_variant
-            """, int(n_arms))
+        rows = await conn.fetch(CB_OPEN_ENTRIES_SQL, int(n_arms), stale_before)
     return [dict(r) for r in rows]
+
+
+async def cb_count_stale_open_entries(n_arms: int, stale_before: date) -> int:
+    """How many FILLED entries broken out BEFORE `stale_before` still have fewer than `n_arms` MATURE exit rows:
+    the ones `cb_get_open_entries` no longer returns (a forward window cut at a data hole never matures)."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return int(await conn.fetchval(CB_STALE_OPEN_COUNT_SQL, int(n_arms), stale_before))
 
 
 async def cb_get_sic(tickers: list[str]) -> dict[str, dict]:
@@ -19455,10 +19447,7 @@ PS_SHADOW_INSERT_SQL = (
 async def insert_parabolic_short_shadow_row(row: dict) -> bool:
     """Write one arm / trigger / outcome row. True when the row was NEW, False when it already existed
     (the row is final once written - a re-run, a catch-up or a replay never overwrites it)."""
-    vals = tuple(
-        (_jsonb_param(row.get(c)) if row.get(c) is not None else None) if c in _PS_SHADOW_JSONB else row.get(c)
-        for c in PS_SHADOW_COLS
-    )
+    vals = _row_params(row, PS_SHADOW_COLS, jsonb_dict=_PS_SHADOW_JSONB)
     pool = await get_pool()
     async with pool.acquire() as conn:
         new_id = await conn.fetchval(PS_SHADOW_INSERT_SQL, *vals)

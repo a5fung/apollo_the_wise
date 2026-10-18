@@ -4,15 +4,15 @@ Qullamaggie's breakout as a SETUP in the consolidation family (CLAUDE.md "SETUP 
 `docs/setups/consolidation_breakout.md`). The PURE core is `agents/market_intelligence/consolidation_breakout.py`
 (`cb`) - every decision here (the C0 gates, the cells, the entries, the day-0 walk, the exits) is a call into
 its public functions, never a re-implementation, so a forward row and a backtest row for the same night
-(`scripts/probes/_cb_backtest/runner.py`) cannot drift apart. The only logic THIS file adds is the plumbing the
-runner also has around the module - universe membership, the cross-section, the one-trade-per-base stamping,
-the maturity label, the forward-window cut - re-written as small pure functions and pinned against the runner's
-own by `tests/test_cb_shadow.py`.
+(`scripts/probes/_cb_backtest/runner.py`) cannot drift apart. The plumbing the runner also has around the module -
+universe membership, the cross-section, the one-trade-per-base stamping, the maturity label, the forward-window cut,
+the per-arm walk - is `cb`'s (section 7 of the module), imported by both: there is no second copy to keep equal.
 
 THE LINE. This module is a passive OBSERVER:
   - It writes ONLY `mi_consolidation_breakout_watch` / `_entry` / `_exit` / `_sic` (+ `mi_audit_log` through the
     shared `log_audit_event`). NEVER a trade table, never `mi_strategies`; it imports NOTHING from `broker/`
-    (deploy gate 5j) and has no order path.
+    itself (deploy gate 5j) and has no order path. (The pure core it calls, `cb`, imports exactly one broker module,
+    `broker.exit_logic` - PURE exit-ladder math with no client and no trade-state I/O - under the sanctioned marker.)
   - It is read by NO grading / entry / sizing / ordering / safeguard path.
   - SILENT. No Telegram on any normal night. A crash propagates to `audit_wrap`, whose `notify_job_failure` is
     the one page (Telegram only on a job failure). A quiet night is not an alert.
@@ -54,8 +54,6 @@ import bisect
 import json
 import logging
 import math
-import os
-import re
 import time
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
@@ -65,8 +63,13 @@ from typing import Optional
 import numpy as np
 
 from agents.market_intelligence import consolidation_breakout as cb
+from agents.market_intelligence.consolidation_breakout import (
+    CELL_NAMES, KS, breaks_out, chain_bases, contiguous_tail, cross_section_one_date, forward_window, gap_fields,
+    is_mature, is_test_symbol, resolve_sectype, stamp_base_chain, stamp_retrigger,
+)
 from agents.market_intelligence.db import (
     cb_get_calendar,
+    cb_count_stale_open_entries,
     cb_get_candidate_history,
     cb_get_entry_state,
     cb_get_open_entries,
@@ -75,15 +78,16 @@ from agents.market_intelligence.db import (
     cb_get_splits_after,
     cb_get_ticker_bars,
     cb_get_universe_bars,
-    cb_get_unapplied_split_tickers,
     cb_get_watch_poles,
     cb_get_watch_rows,
     cb_upsert_entry_rows,
     cb_upsert_exit_rows,
     cb_upsert_sic_rows,
     cb_upsert_watch_rows,
+    get_unapplied_splits,
     log_audit_event,
 )
+from agents.market_intelligence.execution_client import get_data_feed_name
 from shared.dates import _ET
 
 logger = logging.getLogger(__name__)
@@ -107,9 +111,10 @@ SIC_ERROR_STREAK_STOP = 5          # consecutive non-404 failures end the fill (
 SIC_FLUSH_EVERY = 50
 SCAN_CHUNK = 250                   # tickers per to_thread slice: cancellation lands between slices
 WALK_TICKER_CHUNK = 200            # tickers per exit-walk slice: their bars are loaded, walked and freed together
-MINUTE_BATCH = 5                   # tickers per Alpaca call (the helper's whole-batch timeout is generous below)
+MINUTE_BATCH = 25                  # tickers per Alpaca call: 25 x 390 minute bars = 9,750 fits alpaca-py's 10,000-bar page, so one call
 MINUTE_TIMEOUT_S = 45.0
-MINUTE_EMPTY_STREAK_STOP = 3       # empty batches in a row (each already retried once) = the feed is down: stop asking
+MINUTE_EMPTY_STREAK_STOP = 3       # empty batches in a row (each already retried once) = the feed is down: stop asking.
+#                                    3 x MINUTE_BATCH = 75 tickers of nothing; the cost of giving up is unchanged (3 batches x 2 tries)
 EXIT_CLOSES_BACK_DAYS = 100        # calendar days of pre-entry closes loaded for the SMA10/20 trails
 EXIT_STALE_MARGIN_SESSIONS = 10    # past horizon + this many sessions a still-open entry is no longer re-walked
 
@@ -118,144 +123,11 @@ RETRYABLE_REASON = "no_minutes"    # the only abstain a later night may overwrit
 SPLIT_REASON = "split_after_watch"
 SPLIT_SCALE_TOL = 0.02             # an observed D-close ratio within 2% of 1.0 or of the split table's factor is that factor
 ENTRY_UNRESOLVED_LIST_MAX = 50     # tickers named in the audit row for the split-unresolved sit-out
-KS = cb.PIVOT_KEYS
-CELL_NAMES = cb.CELLS + cb.REPORT_CELLS             # the 8 deciding + 2 reported-only cells
-POLE_DRIFT_MAX = 3                 # poles <= this many sessions apart are ONE base (the runner's chain key)
-POLE_BAD_HIGH_X = 1.25             # telemetry: a pole-bar high this far over max(open, close) is a suspect print
-
-# Exchange test symbols - the module's `universe_ok` admits an unknown-type ticker "as prod does", so they are
-# dropped before it (MIRROR of runner.TEST_SYMBOLS / _TEST_FAMILY; the test asserts equality).
-TEST_SYMBOLS = frozenset({"ATEST", "CTEST", "MTEST", "NTEST", "PTEST", "ZTEST",
-                          "ZBZX", "ZEXIT", "ZIEXT", "ZXIET"})
-_TEST_FAMILY = re.compile(r"Z[A-Z]ZZ[TC]")
-TERMINAL_STATUSES = frozenset({"stopped", "stopped_day0", "trailed", "target", "time_exit"})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
-# 1. Pure plumbing - small MIRRORS of the runner's, each pinned against it in tests/test_cb_shadow.py
+# 1. Pure plumbing - `cb`'s (section 7 of the module), shared with the runner; only the night-by-night form is here
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
-def is_test_symbol(ticker: str) -> bool:
-    return ticker in TEST_SYMBOLS or bool(_TEST_FAMILY.fullmatch(ticker))
-
-
-def resolve_sectype(ticker: str, mi_types: dict, sic_types: dict) -> str:
-    """`mi_security_types` value, else the SIC cache's `type`, else "" (unknown, admitted - as prod does)."""
-    return mi_types.get(ticker) or sic_types.get(ticker) or ""
-
-
-def contiguous_tail(cidx, window: int) -> bool:
-    """Are the `window` bars ENDING at the last one consecutive SPY sessions? (runner.contiguous_window_mask at
-    its last index.) A hole inside the span is a halt, a data gap or a REUSED TICKER."""
-    n = len(cidx)
-    return n >= window and int(cidx[-1]) - int(cidx[n - window]) == window - 1
-
-
-def breaks_out(high_e: float, pivot) -> bool:
-    """high(E) > pivot_K(D). A K with no level that night (`pivot` None: "tl" with no line) never breaks out."""
-    return pivot is not None and high_e > pivot
-
-
-def gap_fields(open_e: float, pivot: float, adr20: float) -> tuple:
-    """(open(E) / pivot - 1, open(E) > pivot x (1 + adr20))."""
-    return open_e / pivot - 1.0, bool(open_e > pivot * (1.0 + adr20))
-
-
-def is_mature(status: str, n_fwd: int, horizon: int = cb.EXIT_HORIZON) -> bool:
-    """MATURE = the walk reached a terminal exit, or the horizon with >= horizon + 1 forward sessions behind it
-    (the extra one is the next open a trail signal on the horizon session fills at). 'degraded' (the forward
-    bars ran out) and a short 'censored' mark are OPEN MARKS: recorded, never in a decisive number."""
-    if status in TERMINAL_STATUSES:
-        return True
-    return status == "censored" and n_fwd >= horizon + 1
-
-
-def fwd_end(cidx, e: int, hi: int) -> tuple:
-    """(end, cut): exclusive end of the forward walk that starts after bar `e` and would run to `hi`. The walk
-    stops BEFORE the first bar that follows a missing session, so it never reads across a hole; the shortened
-    window makes `walk_exit` end 'degraded'."""
-    end = min(hi, len(cidx))
-    if end - e >= 2:
-        brk = np.flatnonzero(np.diff(np.asarray(cidx[e:end], dtype=np.int64)) != 1)
-        if len(brk):
-            return e + 1 + int(brk[0]), True
-    return end, False
-
-
-def forward_window(bars: "cb.DailyBars", cidx, e: int, horizon: int) -> tuple:
-    """(fwd, cut): sessions E+1 .. E+1+horizon (horizon + 1 bars - the module's slice contract), cut before the
-    first missing session."""
-    end, cut = fwd_end(cidx, e, e + 2 + horizon)
-    return bars.slice(e + 1, end), cut
-
-
-def cross_section_one_date(r21: list, r63: list, r126: list, groups: list) -> tuple:
-    """(rs_best, rs_all, grp_pct, n_groups) over the universe members (parallel lists; None allowed).
-    rs_best = max of the three percentiles, rs_all = min (None if any is None); the group return is
-    `cb.group_returns` over members' r63 (groups < 10 members drop out), grp_pct = `cb.percentile_ranks` of the
-    group medians; a member without a (surviving) group reads None."""
-    p = [cb.percentile_ranks(list(r)) for r in (r21, r63, r126)]
-    rs_best, rs_all = [], []
-    for a, b, c in zip(*p):
-        vals = [x for x in (a, b, c) if x is not None]
-        rs_best.append(max(vals) if vals else None)
-        rs_all.append(min(vals) if len(vals) == 3 else None)
-    member_r63 = defaultdict(list)
-    for g, r in zip(groups, r63):
-        if g is not None:
-            member_r63[g].append(r)
-    gr = cb.group_returns(member_r63)
-    gp = dict(zip(gr.keys(), cb.percentile_ranks(list(gr.values())))) if gr else {}
-    grp = [gp.get(g) if g is not None else None for g in groups]
-    return rs_best, rs_all, grp, len(gr)
-
-
-def stamp_retrigger(cands: list, *, key=None, retrig: str = "retrigger", first: str = "first_") -> None:
-    """ONE TRADE PER BASE: per (ticker, pole_date, K) the first breakout (by E) is the trade (retrigger=0); later
-    ones retrigger=1. Also `first_<cell>`: within the same base+K, the first breakout where THAT cell held on
-    the watch night. MIRROR of runner.stamp_retrigger; `key`/`retrig`/`first` let the chain key reuse it."""
-    key = key or (lambda c: (c["ticker"], c["pole_date"], c["K"]))
-    groups = defaultdict(list)
-    for c in cands:
-        groups[key(c)].append(c)
-    for g in groups.values():
-        g.sort(key=lambda c: c["E"])
-        seen = set()
-        for k, c in enumerate(g):
-            c[retrig] = 0 if k == 0 else 1
-            for cell in CELL_NAMES:
-                if c[cell] and cell not in seen:
-                    seen.add(cell)
-                    c[first + cell] = 1
-                else:
-                    c[first + cell] = 0
-
-
-def chain_bases(poles) -> dict:
-    """{(ticker, pole_ci): base_id} from `poles` = iterable of (ticker, pole_ci, pole_date): a ticker's poles,
-    sorted by calendar index, are cut into runs wherever two neighbours are more than POLE_DRIFT_MAX sessions
-    apart; each run is ONE base, id = ticker|pole_date of its earliest pole. MIRROR of runner.chain_bases."""
-    by_tk = defaultdict(dict)
-    for ticker, pci, pdate in poles:
-        by_tk[ticker][int(pci)] = pdate
-    out = {}
-    for ticker, pm in by_tk.items():
-        base, prev = None, None
-        for pci in sorted(pm):
-            if prev is None or pci - prev > POLE_DRIFT_MAX:
-                base = f"{ticker}|{pm[pci]}"
-            out[(ticker, pci)] = base
-            prev = pci
-    return out
-
-
-def stamp_base_chain(cands: list, base_of: dict) -> None:
-    """The drift-robust key BESIDE the spec key: `base_id`, `retrigger_chain`, `first_chain_<cell>`. MIRROR of
-    runner.stamp_base_chain."""
-    for c in cands:
-        c["base_id"] = base_of[(c["ticker"], int(c["pole_ci"]))]
-    stamp_retrigger(cands, key=lambda c: (c["base_id"], c["K"]), retrig="retrigger_chain", first="first_chain_")
-
-
 def stamp_forward(history: list, new: list, poles) -> None:
     """Stamp the NEW candidates of one breakout day against every earlier candidate of the same tickers - the
     night-by-night form of the runner's batch stamping. `history` + `new` are flat candidate dicts (ticker,
@@ -272,10 +144,6 @@ def stamp_forward(history: list, new: list, poles) -> None:
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # 2. Bars
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
-def _f(v) -> Optional[float]:
-    return float(v) if v is not None else None
-
-
 def build_series(rows: list, ci_of: dict) -> tuple:
     """`rows` = (ticker, trade_date, o, h, l, c, v) sorted by (ticker, date) -> ({ticker: (DailyBars, cidx)},
     stats). A row off the SPY calendar is dropped (it becomes a hole, which contiguity then refuses); a ticker
@@ -384,8 +252,7 @@ def scan_universe(series: dict, *, today_ci: int, mi_types: dict, sic_types: dic
             continue
         counts[gate if feat is None else "pass"] += 1
         members.append({"ticker": ticker, "r21": r21, "r63": r63, "r126": r126, "feat": feat,
-                        "dollar_vol": float(np.median(bars.c[-cb.DOLLAR_VOL_WINDOW:]
-                                                      * bars.v[-cb.DOLLAR_VOL_WINDOW:]))})
+                        "dollar_vol": cb._dollar_vol_median(bars, i)})
     return {"members": members, "counts": counts}
 
 
@@ -507,7 +374,7 @@ async def build_watch(today: date, cal: list, cal_index: dict, out: dict) -> Non
     out["prefilter_tickers"] = len(tickers)
     mi_types = await cb_get_security_types(tickers)
     sic_cache = await cb_get_sic(tickers)
-    unapplied = await cb_get_unapplied_split_tickers(start, today)
+    unapplied = {s["ticker"] for s in await get_unapplied_splits(start, upto=today)}
     series, sstats = await asyncio.to_thread(build_series, rows, cal_index)
     del rows
     out["bad_bars"] = sstats.get("bad_bars", 0)
@@ -559,10 +426,6 @@ async def build_watch(today: date, cal: list, cal_index: dict, out: dict) -> Non
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # 4. Entries
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
-def _feed() -> str:
-    return os.environ.get("ALPACA_DATA_FEED", "iex").lower()
-
-
 async def fetch_minutes(e: date, tickers: list, out: Optional[dict] = None) -> tuple:
     """({ticker: (MinuteBars | None, state)}, outage). `outage` = tickers were asked for and NOT ONE came back with
     a single bar - a failed fetch (the collector returns {} on any failure), which must never be written as a
@@ -594,9 +457,9 @@ async def fetch_minutes(e: date, tickers: list, out: Optional[dict] = None) -> t
     return {t: minute_bars_from_alpaca(raw.get(t) or [], e) for t in tickers}, outage
 
 
-def split_scale(window_splits: list, d_close_now, d_close_watch) -> Optional[float]:
+def split_scale(window_splits: list, d_close_now, d_close_watch, watch_date: date) -> Optional[float]:
     """The factor that carries the WATCH NIGHT's pivot into the units of the bars stored NOW, for a ticker with a
-    split executing in (D, today]; None when it cannot be told.
+    split executing in (D, today]; None when it cannot be told. `watch_date` = D.
 
     The pivot was stored raw on night D; the 17:00 pull has since retro-adjusted the stored bars for every APPLIED
     split, so E's stored bar and the pivot sit on two price scales. The scale is read OFF THE DATA - D's stored
@@ -605,9 +468,11 @@ def split_scale(window_splits: list, d_close_now, d_close_watch) -> Optional[flo
     (the product of split_from / split_to). A reading that is neither (within `SPLIT_SCALE_TOL`) is unexplained and
     returns None, never a guess."""
     try:
-        table = 1.0
-        for s in window_splits:
-            table *= float(s["split_from"]) / float(s["split_to"])
+        # The product over the splits executing after D is `cb.raw_factor_for`'s (stored adjusted x factor = RAW, factor
+        # = prod split_to / split_from). The pivot has to go the OTHER way - raw DOWN to the stored scale - so it is fed
+        # the inverse ratio, which keeps the factor the very product this function always computed (no 1 / x round trip).
+        table = cb.raw_factor_for(watch_date, [(s["execution_date"], float(s["split_from"]) / float(s["split_to"]))
+                                               for s in window_splits])
         obs = float(d_close_now) / float(d_close_watch)
     except (TypeError, ValueError, ZeroDivisionError, KeyError):
         return None
@@ -625,10 +490,10 @@ async def split_scales(sp: dict, watch: list, d: date, today: date, e: date, out
     is applied."""
     if not sp:
         return {}
-    unapplied = await cb_get_unapplied_split_tickers(d + timedelta(days=1), today)
+    unapplied = {s["ticker"] for s in await get_unapplied_splits(d + timedelta(days=1), upto=today)}
     d_close = {r[0]: r[5] for r in await cb_get_ticker_bars(sorted(sp), d, d) if r[1] == d and r[5] is not None}
     w_close = {w["ticker"]: w.get("close") for w in watch}
-    scale = {t: (None if t in unapplied else split_scale(ss, d_close.get(t), w_close.get(t)))
+    scale = {t: (None if t in unapplied else split_scale(ss, d_close.get(t), w_close.get(t), d))
              for t, ss in sp.items()}
     bad = sorted(t for t, v in scale.items() if v is None)
     out["entry_split_rescaled"] += len(scale) - len(bad)
@@ -785,7 +650,7 @@ async def record_entries_for(e: date, d: date, cal: list, cal_index: dict, out: 
     rows = []
     for c in cands:
         mb, mstate = mins.get(c["ticker"], (None, "no_minutes"))
-        rows.extend(entry_rows_for(c, mb, mstate, split=c["ticker"] in split_t, feed=_feed()))
+        rows.extend(entry_rows_for(c, mb, mstate, split=c["ticker"] in split_t, feed=get_data_feed_name()))
     for r in rows:
         out["entry_rows"] += 1
         out["entry_status"][r["status"]] += 1
@@ -815,13 +680,18 @@ def _exit_row(entry_id: int, arm: str, res: dict, n_fwd: int, last_bar: date, no
             "mature": is_mature(res["status"], n_fwd), "reason": note or None, "last_bar_date": last_bar}
 
 
-def walk_entry_rows(entry: dict, bars: "cb.DailyBars", cidx, ticker_splits: list) -> list:
+def walk_entry_rows(entry: dict, bars: "cb.DailyBars", cidx, ticker_splits: list, cache: Optional[dict] = None) -> list:
     """Exit rows for ONE filled entry over every arm in `cb.ARMS` that is NOT already final (`entry["mature_arms"]`,
-    from the store - a mature row is never overwritten, so recomputing it would only burn time). Mirrors the
-    runner's `walk_arms`: a day-0 stop-out is booked ONCE by the module (`day0_result_to_outcome`) and is every arm's
-    outcome; otherwise `walk_exit` per arm with closes_before = the closes through E (asserted) and the forward
-    window cut at a hole. A split after E makes every open arm `unbookable` (mature: final, never re-walked); an arm
-    that settled BEFORE the split keeps its (valid, pre-split) outcome."""
+    from the store - a mature row is never overwritten, so recomputing it would only burn time). The walk is the
+    runner's: `cb.walk_arms` (a day-0 stop-out is booked ONCE by the module and is every arm's outcome; otherwise
+    `walk_exit` per arm with closes_before = the closes through E and the forward window cut at a hole); this
+    function only formats the rows. A split after E makes every open arm `unbookable` (mature: final, never
+    re-walked); an arm that settled BEFORE the split keeps its (valid, pre-split) outcome.
+
+    `cache` (one per chunk, shared by its entries) is a pure DEDUPE: the walk is a function of (ticker's bars, break
+    day, fill, stop, day-0 result, adr20, arm), and the K x variant entries of one candidate often share all of them
+    (k5 / k10 / full pivots coincide; every opening-range variant that breaks above the pivot fills at the same
+    level), so an identical walk is computed once. Each entry still takes only ITS OWN non-final arms."""
     eid, e_date, adr20 = entry["id"], entry["break_date"], entry["adr20"]
     final = set(entry.get("mature_arms") or ())
     arms = {name: arm for name, arm in cb.ARMS.items() if name not in final}
@@ -835,34 +705,33 @@ def walk_entry_rows(entry: dict, bars: "cb.DailyBars", cidx, ticker_splits: list
     e = bisect.bisect_left(bars.dates, e_date)
     if e >= len(bars) or bars.dates[e] != e_date:
         raise LookupError(f"break-day bar {e_date} missing for {entry['ticker']}")
-    closes_before = bars.c[:e + 1]
-    assert closes_before[-1] == bars.c[e]
     fwd, cut = forward_window(bars, cidx, e, cb.EXIT_HORIZON)
     n_fwd = len(fwd)
     last_bar = fwd.dates[-1] if n_fwd else e_date
-    note = "fwd_hole" if cut else ""
     ent = {"status": "filled", "fill": entry["fill"], "stop": entry["stop"],
            "day0": {"stopped": bool(entry["day0_stopped"]), "exit_price": entry["day0_exit_price"],
                     "exit_minute": entry["day0_exit_minute"]}}
-    if ent["day0"]["stopped"]:
-        one = cb.day0_result_to_outcome(ent, adr20)
-        return [_exit_row(eid, name, one, n_fwd, last_bar, "day0_stop") for name in arms]
-    rows = []
-    for name, arm in arms.items():
-        res = cb.walk_exit(fill=entry["fill"], stop=entry["stop"], closes_before=closes_before, fwd=fwd,
-                           arm=arm, adr20=adr20, horizon=cb.EXIT_HORIZON)
-        rows.append(_exit_row(eid, name, res, n_fwd, last_bar, note))
-    return rows
+    note = "day0_stop" if ent["day0"]["stopped"] else ("fwd_hole" if cut else "")
+    key = (entry["ticker"], e_date, entry["fill"], entry["stop"], ent["day0"]["stopped"], ent["day0"]["exit_price"],
+           ent["day0"]["exit_minute"], adr20)
+    cache = {} if cache is None else cache
+    todo = {name: arm for name, arm in arms.items() if (key, name) not in cache}
+    if todo:
+        for name, res in cb.walk_arms(ent, closes_before=bars.c[:e + 1], fwd=fwd, adr20=adr20,
+                                      horizon=cb.EXIT_HORIZON, arms=todo).items():
+            cache[(key, name)] = res
+    return [_exit_row(eid, name, cache[(key, name)], n_fwd, last_bar, note) for name in arms]
 
 
 def _walk_chunk(entries: list, series: dict, splits: dict) -> tuple:
     rows, errors = [], []
+    cache: dict = {}                          # identical walks of one chunk's entries are computed once (walk_entry_rows)
     for ent in entries:
         s = series.get(ent["ticker"])
         try:
             if s is None:
                 raise LookupError(f"no bars for {ent['ticker']}")
-            rows.extend(walk_entry_rows(ent, s[0], s[1], splits.get(ent["ticker"], [])))
+            rows.extend(walk_entry_rows(ent, s[0], s[1], splits.get(ent["ticker"], []), cache))
         except Exception as ex:  # loud-ok: in-band reporting - the error is RETURNED and logger.error'd + counted by walk_exits
             errors.append((ent["id"], ent["ticker"], f"{type(ex).__name__}: {ex}"))
     return rows, errors
@@ -871,13 +740,12 @@ def _walk_chunk(entries: list, series: dict, splits: dict) -> tuple:
 async def walk_exits(today: date, cal: list, cal_index: dict, out: dict) -> None:
     """Step c: every filled entry with a non-mature arm; each of its non-final arms is recomputed in full from
     stored bars (a final arm is not touched)."""
-    entries = await cb_get_open_entries(len(cb.ARMS))
     # An entry older than the horizon + a margin that is STILL not mature can never become so (its forward
-    # window was cut at a data hole): it stays a recorded 'degraded' mark and is no longer re-walked.
+    # window was cut at a data hole): it stays a recorded 'degraded' mark and is no longer re-walked. The
+    # bound is in the query, so the work list never reads the whole entry history; the stale ones are counted.
     stale_before = cal[max(0, len(cal) - (cb.EXIT_HORIZON + EXIT_STALE_MARGIN_SESSIONS))]
-    stale = [e for e in entries if e["break_date"] < stale_before]
-    entries = [e for e in entries if e["break_date"] >= stale_before]
-    out["exit_entries_stale"] = len(stale)
+    entries = await cb_get_open_entries(len(cb.ARMS), stale_before)
+    out["exit_entries_stale"] = await cb_count_stale_open_entries(len(cb.ARMS), stale_before)
     out["exit_entries_open"] = len(entries)
     if not entries:
         return

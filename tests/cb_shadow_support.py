@@ -158,9 +158,11 @@ class FakeStore:
     async def cb_get_security_types(self, tickers):
         return {t: self.m.sectypes[t] for t in tickers if t in self.m.sectypes}
 
-    async def cb_get_unapplied_split_tickers(self, since, upto):
-        return {s["ticker"] for s in self.splits
-                if since <= s["execution_date"] <= upto and not s["adjustment_applied"]}
+    async def get_unapplied_splits(self, since=None, upto=None):
+        """`db.get_unapplied_splits` with an explicit `upto` (the shadow always passes one)."""
+        return [dict(s) for s in sorted(self.splits, key=lambda s: (s["execution_date"], s["ticker"]))
+                if not s["adjustment_applied"] and (since is None or s["execution_date"] >= since)
+                and s["execution_date"] <= upto]
 
     async def cb_get_splits_after(self, tickers, after_date, upto_date):
         out: dict = {}
@@ -206,7 +208,7 @@ class FakeStore:
                                      break_date=v["break_date"], cells=v["cells"]))
         return list(seen.values())
 
-    async def cb_get_open_entries(self, n_arms):
+    def _open_entries(self, n_arms):
         mature = defaultdict(list)
         for (eid, arm), x in self.exit.items():
             if x["mature"]:
@@ -215,6 +217,12 @@ class FakeStore:
                 for v in sorted(self.entry.values(), key=lambda v: (v["break_date"], v["ticker"], v["k"],
                                                                     v["entry_variant"]))
                 if v["status"] == "filled" and len(mature[v["id"]]) < n_arms]
+
+    async def cb_get_open_entries(self, n_arms, stale_before):
+        return [v for v in self._open_entries(n_arms) if v["break_date"] >= stale_before]
+
+    async def cb_count_stale_open_entries(self, n_arms, stale_before):
+        return sum(1 for v in self._open_entries(n_arms) if v["break_date"] < stale_before)
 
     async def cb_upsert_exit_rows(self, rows):
         for r in rows:
@@ -236,9 +244,9 @@ class FakeStore:
 
     # ── wiring ─────────────────────────────────────────────────────────────────────
     NAMES = ("cb_get_calendar", "cb_get_universe_bars", "cb_get_ticker_bars", "cb_get_security_types",
-             "cb_get_unapplied_split_tickers", "cb_get_splits_after", "cb_upsert_watch_rows", "cb_get_watch_rows",
+             "get_unapplied_splits", "cb_get_splits_after", "cb_upsert_watch_rows", "cb_get_watch_rows",
              "cb_get_watch_poles", "cb_upsert_entry_rows", "cb_get_entry_state", "cb_get_candidate_history",
-             "cb_get_open_entries", "cb_upsert_exit_rows", "cb_get_sic", "cb_upsert_sic_rows", "log_audit_event")
+             "cb_get_open_entries", "cb_count_stale_open_entries", "cb_upsert_exit_rows", "cb_get_sic", "cb_upsert_sic_rows", "log_audit_event")
 
     def install(self, monkeypatch, shadow_module) -> None:
         for name in self.NAMES:

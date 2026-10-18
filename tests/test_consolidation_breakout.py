@@ -2269,18 +2269,163 @@ class TestShapesAndPurity:
         assert p.returncode == 0, p.stdout + p.stderr
 
 
-def test_adr20_mirror_equals_the_broker_function():
-    # the module mirrors exit_logic.adr20_pct_from_bars because deploy gate 5j forbids the import
-    from agents.market_intelligence.broker.exit_logic import adr20_pct_from_bars as real
-    cases = [
-        None, [],
-        [{"h": 11.0, "l": 10.0, "c": 10.5}] * 9,
-        [{"h": 11.0 + k * 0.1, "l": 10.0, "c": 10.5 + k * 0.05} for k in range(25)],
-        [{"h": 11.0, "l": 10.0, "c": 10.5}] * 12 + [{"h": None, "l": 9.0, "c": 9.5}] * 3,
-        [{"h": 11.0, "l": 10.0, "c": 0.0}] * 5 + [{"h": 12.0, "l": 11.0, "c": 11.5}] * 15,
-    ]
-    for bars in cases:
-        assert cb.adr20_pct_from_bars(bars) == real(bars)
+def test_adr20_is_the_broker_function_itself_not_a_mirror():
+    # imported under the `# exec-boundary-ok:` marker (exit_logic is pure ladder math); the old mirror and its
+    # equality test are gone, so this pins that a second copy cannot come back unnoticed
+    from agents.market_intelligence.broker import exit_logic
+    assert cb.adr20_pct_from_bars is exit_logic.adr20_pct_from_bars
+    assert cb.adr20_pct_from_bars([{"h": 11.0, "l": 10.0, "c": 10.0}] * 10) == pytest.approx(0.1)
+    assert cb.adr20_pct_from_bars([{"h": 11.0, "l": 10.0, "c": 10.5}] * 9) is None            # fewer than 10 usable
+
+
+def test_the_pole_artifact_literals_are_flag_detectors_named_constants():
+    from agents.market_intelligence import flag_detector as fd
+    assert cb.POLE_ARTIFACT_JUMP is fd._POLE_ARTIFACT_JUMP and cb.POLE_ARTIFACT_VOL_MULT is fd._POLE_ARTIFACT_VOL_MULT
+    assert (cb.POLE_ARTIFACT_JUMP, cb.POLE_ARTIFACT_VOL_MULT) == (1.50, 2.0)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 7. the plumbing the runner and the nightly shadow share (one definition, here)
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+class TestSharedPlumbing:
+    def test_exchange_test_symbols(self):
+        for t in ("ZVZZT", "ZWZZT", "ZXZZT", "ZBZX", "NTEST", "ZTEST", "ZAZZC"):
+            assert cb.is_test_symbol(t) is True, t
+        for t in ("AAPL", "ZZZZ", "TSLA", "ZVZZTX", ""):
+            assert cb.is_test_symbol(t) is False, t
+
+    def test_security_type_falls_back_mi_then_sic_then_unknown(self):
+        assert cb.resolve_sectype("X", {"X": "CS"}, {"X": "ADRC"}) == "CS"
+        assert cb.resolve_sectype("X", {}, {"X": "ADRC"}) == "ADRC"
+        assert cb.resolve_sectype("X", {"X": ""}, {}) == ""
+
+    def test_contiguity_mask_and_tail(self):
+        import random
+        rng = random.Random(1)
+        for _ in range(100):
+            n = rng.randint(100, 200)
+            gaps = [1 if rng.random() > 0.01 else rng.randint(2, 4) for _ in range(n - 1)]
+            cidx = np.cumsum([0] + gaps).astype(np.int64)
+            mask = cb.contiguous_window_mask(cidx, 130)
+            want = [i >= 129 and int(cidx[i]) - int(cidx[i - 129]) == 129 for i in range(n)]       # the definition
+            assert mask.tolist() == want
+            assert cb.contiguous_tail(cidx, 130) == want[-1]
+        assert cb.contiguous_tail(np.arange(129), 130) is False                  # one bar short of the window
+        assert cb.contiguous_tail(np.arange(130), 130) is True
+        assert cb.contiguous_tail(np.array([], dtype=np.int64), 130) is False
+
+    def test_the_forward_walk_stops_before_the_first_bar_after_a_hole(self):
+        import random
+        rng = random.Random(2)
+        for _ in range(200):
+            n = rng.randint(5, 200)
+            gaps = [1 if rng.random() > 0.05 else rng.randint(2, 3) for _ in range(n - 1)]
+            cidx = np.cumsum([0] + gaps).astype(np.int64)
+            e = rng.randint(0, n - 1)
+            hi = e + rng.randint(1, 130)
+            end = min(hi, n)
+            want = (end, False)
+            for j in range(e + 1, end):                                           # the definition, bar by bar
+                if int(cidx[j]) - int(cidx[j - 1]) != 1:
+                    want = (j, True)
+                    break
+            assert cb.fwd_end(cidx, e, hi) == want
+
+    def test_forward_window_is_horizon_plus_one_bars_cut_at_a_hole(self):
+        bars = _closes_only([10.0 + k for k in range(200)])
+        cidx = np.arange(200, dtype=np.int64)
+        fwd, cut = cb.forward_window(bars, cidx, 10, 120)
+        assert (len(fwd), cut) == (121, False) and fwd.dates[0] == bars.dates[11]
+        holed = cidx.copy()
+        holed[50:] += 1                                                           # a missing session before bar 50
+        fwd, cut = cb.forward_window(bars, holed, 10, 120)
+        assert (len(fwd), cut) == (39, True) and fwd.dates[-1] == bars.dates[49]
+        fwd, cut = cb.forward_window(bars, None, 10, 120)                         # no hole information: bars only
+        assert (len(fwd), cut) == (121, False)
+        fwd, cut = cb.forward_window(bars, None, 190, 120)
+        assert (len(fwd), cut) == (9, False)
+
+    def test_breakout_gap_and_maturity_helpers(self):
+        assert cb.breaks_out(10.0, 9.9) is True and cb.breaks_out(9.9, 9.9) is False
+        assert cb.breaks_out(9.0, 9.9) is False and cb.breaks_out(10.0, None) is False
+        gap, over = cb.gap_fields(11.0, 10.0, 0.05)
+        assert gap == pytest.approx(0.10) and over is True
+        gap, over = cb.gap_fields(10.2, 10.0, 0.05)
+        assert gap == pytest.approx(0.02) and over is False
+        for st in ("stopped", "stopped_day0", "trailed", "target", "time_exit"):
+            assert cb.is_mature(st, 0) is True
+        assert cb.is_mature("censored", 121) is True and cb.is_mature("censored", 120) is False
+        assert cb.is_mature("censored", 61, horizon=60) is True
+        assert cb.is_mature("degraded", 500) is False and cb.is_mature("unbookable", 500) is False
+        assert cb.TERMINAL_STATUSES == {"stopped", "stopped_day0", "trailed", "target", "time_exit"}
+
+    def test_one_definition_of_the_names_both_callers_use(self):
+        assert cb.KS == cb.PIVOT_KEYS and cb.CELL_NAMES == cb.CELLS + cb.REPORT_CELLS
+        assert (cb.POLE_DRIFT_MAX, cb.POLE_BAD_HIGH_X) == (3, 1.25)
+        from agents.market_intelligence import consolidation_breakout_shadow as sh
+        from scripts.probes._cb_backtest import runner as rn
+        for name in ("is_test_symbol", "resolve_sectype", "breaks_out", "gap_fields", "is_mature", "forward_window",
+                     "fwd_end", "cross_section_one_date", "stamp_retrigger", "chain_bases", "stamp_base_chain",
+                     "contiguous_window_mask", "KS", "CELL_NAMES", "POLE_DRIFT_MAX", "POLE_BAD_HIGH_X"):
+            assert getattr(rn, name) is getattr(cb, name), name
+        for name in ("is_test_symbol", "resolve_sectype", "breaks_out", "gap_fields", "is_mature", "forward_window",
+                     "cross_section_one_date", "stamp_retrigger", "chain_bases", "stamp_base_chain",
+                     "contiguous_tail", "KS", "CELL_NAMES"):
+            assert getattr(sh, name) is getattr(cb, name), name
+        for name in ("TEST_SYMBOLS", "_TEST_FAMILY", "TERMINAL_STATUSES", "POLE_BAD_HIGH_X", "contiguous_tail"):
+            assert not hasattr(rn, name) or getattr(rn, name) is getattr(cb, name), name     # no second copy in the runner
+            assert not hasattr(sh, name) or getattr(sh, name) is getattr(cb, name), name     # none in the shadow
+
+    def test_cross_section_hand_worked(self):
+        # five members, the first three in group "28", the next two in a group of 2 (< 10 members: it drops out)
+        r21 = [0.10, 0.20, 0.30, None, 0.05]
+        r63 = [0.10, 0.20, 0.30, 0.40, 0.50]
+        r126 = [0.30, 0.20, 0.10, 0.50, None]
+        groups = ["28", "28", "28", "35", "35"]
+        rs_best, rs_all, grp, n_groups = cb.cross_section_one_date(r21, r63, r126, groups)
+        p21, p63, p126 = (cb.percentile_ranks(r) for r in (r21, r63, r126))
+        for k in range(5):
+            vals = [x for x in (p21[k], p63[k], p126[k]) if x is not None]
+            assert rs_best[k] == (max(vals) if vals else None)
+            assert rs_all[k] == (min(vals) if len(vals) == 3 else None)
+        assert rs_all[3] is None and rs_all[4] is None and rs_all[0] is not None            # one None percentile -> None
+        assert n_groups == 0 and grp == [None] * 5                                           # no group reaches 10 members
+
+    def test_stamping_first_break_and_the_chain_key(self):
+        def cand(ticker, pole_ci, e, **cells):
+            c = {"ticker": ticker, "pole_ci": pole_ci, "pole_date": f"2026-01-{pole_ci:02d}", "K": "k5", "E": e}
+            c.update({n: False for n in cb.CELL_NAMES})
+            c.update(cells)
+            return c
+        a, b, d = cand("AAA", 10, "2026-03-02"), cand("AAA", 10, "2026-03-05", C1=True), cand("AAA", 13, "2026-03-09", C1=True)
+        cs = [d, a, b]
+        cb.stamp_retrigger(cs)
+        assert (a["retrigger"], b["retrigger"], d["retrigger"]) == (0, 1, 0)               # d: another pole = another spec base
+        assert (a["first_C1"], b["first_C1"], d["first_C1"]) == (0, 1, 1)                   # b: the first break with C1 held
+        cb.stamp_base_chain(cs, cb.chain_bases([("AAA", 10, a["pole_date"]), ("AAA", 13, d["pole_date"])]))
+        assert {c["base_id"] for c in cs} == {"AAA|" + a["pole_date"]}                      # poles 3 apart = ONE base
+        assert (a["retrigger_chain"], b["retrigger_chain"], d["retrigger_chain"]) == (0, 1, 1)
+        far = cand("AAA", 14, "2026-03-12")
+        assert cb.chain_bases([("AAA", 10, "p10"), ("AAA", 14, "p14")]) == {("AAA", 10): "AAA|p10", ("AAA", 14): "AAA|p14"}
+        assert far["pole_ci"] - 10 > cb.POLE_DRIFT_MAX                                       # 4 apart: two bases
+
+    def test_walk_arms_books_a_day0_stop_once_and_walks_the_rest_per_arm(self):
+        entry = {"status": "filled", "fill": 100.0, "stop": 95.0, "width_pct": 0.05,
+                 "day0": {"stopped": False, "exit_price": None, "exit_minute": None}}
+        rows = _drift_rows(40) + [(50.0, 50.0, 50.0, 50.0)] * 5                    # a late gap-down: stops every arm
+        fwd = _fwd(rows)
+        out = cb.walk_arms(entry, closes_before=BEFORE, fwd=fwd, adr20=ADR)
+        assert list(out) == list(cb.ARMS)
+        for name, arm in cb.ARMS.items():
+            want = cb.walk_exit(fill=100.0, stop=95.0, closes_before=BEFORE, fwd=fwd, arm=arm, adr20=ADR)
+            assert out[name] == want, name
+        only = cb.walk_arms(entry, closes_before=BEFORE, fwd=fwd, adr20=ADR, arms={"stop_only": cb.ARMS["stop_only"]})
+        assert list(only) == ["stop_only"] and only["stop_only"] == out["stop_only"]            # `arms` filters
+        stopped = dict(entry, day0={"stopped": True, "exit_price": 94.0, "exit_minute": 12})
+        d0 = cb.walk_arms(stopped, closes_before=BEFORE, fwd=fwd, adr20=ADR)
+        one = cb.day0_result_to_outcome(stopped, ADR)
+        assert list(d0) == list(cb.ARMS) and all(v == one and v["status"] == "stopped_day0" for v in d0.values())
+        assert len({id(v) for v in d0.values()}) == len(cb.ARMS)                                 # separate dicts per arm
 
 
 def test_the_htf_report_cell_uses_flag_detectors_own_geometry():

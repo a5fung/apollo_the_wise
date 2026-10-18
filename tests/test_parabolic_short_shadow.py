@@ -1112,3 +1112,24 @@ class TestRegistryAndSchema:
         monkeypatch.setattr(db, "get_pool", AsyncMock(return_value=pool))
         await db.purge_old_data()
         assert executed and not any("mi_parabolic_short_shadow" in s for s in executed)
+
+
+class TestNextSession:
+    """The earnings probe after a session's close uses the NYSE calendar, not 'the next weekday'."""
+
+    def test_next_session_skips_weekends_and_exchange_holidays(self):
+        assert psh._next_session(date(2026, 10, 15)) == date(2026, 10, 16)         # Thu -> Fri
+        assert psh._next_session(date(2026, 10, 16)) == date(2026, 10, 19)         # Fri -> Mon
+        assert psh._next_session(date(2026, 9, 4)) == date(2026, 9, 8)             # Fri before Labor Day (Mon 9-7) -> Tue
+        assert psh._next_session(date(2026, 11, 25)) == date(2026, 11, 27)         # Wed -> Fri (Thanksgiving Thu 11-26)
+
+    def test_the_earnings_probe_before_a_holiday_monday_asks_about_the_tuesday(self, monkeypatch):
+        from agents.market_intelligence import earnings_calendar as ecal
+        probes = []
+
+        async def fake(ticker, d):
+            probes.append(d)
+            return False, "calendar"
+        monkeypatch.setattr(ecal, "is_earnings_day", fake)
+        assert asyncio.run(psh.default_earnings_before_next_open("X", date(2026, 9, 4))) is False
+        assert probes == [date(2026, 9, 5), date(2026, 9, 8)]                      # the day after, and the next SESSION

@@ -308,10 +308,15 @@ class TestReadHelpers:
                                            "n_fwd": 1, "mature": mature, "reason": None, "last_bar_date": BREAK_DAY}
             await db.cb_upsert_exit_rows([mk(ids["AAA"], a, True) for a in cb.ARMS]                       # all mature
                                          + [mk(ids["BBB"], a, a != "stop_only") for a in cb.ARMS])        # one open arm
-            return ids, await db.cb_get_open_entries(len(cb.ARMS))
-        ids, work = arun(env, go())
+            work = await db.cb_get_open_entries(len(cb.ARMS), D(2000, 1, 1))
+            after = await db.cb_get_open_entries(len(cb.ARMS), BREAK_DAY + dt.timedelta(days=1))     # BBB now older
+            stale = await db.cb_count_stale_open_entries(len(cb.ARMS), BREAK_DAY + dt.timedelta(days=1))
+            fresh = await db.cb_count_stale_open_entries(len(cb.ARMS), D(2000, 1, 1))
+            return ids, work, after, stale, fresh
+        ids, work, after, stale, fresh = arun(env, go())
         assert [w["ticker"] for w in work] == ["BBB"]              # AAA is final, CCC never filled
         assert sorted(work[0]["mature_arms"]) == sorted(a for a in cb.ARMS if a != "stop_only")   # the walk skips these
+        assert after == [] and stale == 1 and fresh == 0           # the bound moves BBB from the work list to the stale count
 
     def test_the_split_helpers_honour_both_bounds(self, env):
         async def go():
@@ -319,12 +324,17 @@ class TestReadHelpers:
                 await c.executemany("INSERT INTO mi_splits (ticker, execution_date, split_from, split_to, "
                                     "adjustment_applied) VALUES ($1,$2,$3,$4,$5)",
                                     [("AAA", D(2026, 9, 17), 1, 4, False), ("BBB", D(2026, 12, 1), 1, 4, False),
-                                     ("CCC", D(2026, 9, 17), 1, 4, True), ("DDD", D(2026, 1, 5), 1, 2, False)])
-            unapplied = await db.cb_get_unapplied_split_tickers(D(2026, 2, 1), D(2026, 9, 17))
+                                     ("CCC", D(2026, 9, 17), 1, 4, True), ("DDD", D(2026, 1, 5), 1, 2, False),
+                                     ("EEE", D(2099, 1, 1), 1, 4, False)])
+            unapplied = {s["ticker"] for s in await db.get_unapplied_splits(D(2026, 2, 1), upto=D(2026, 9, 17))}
+            default_bound = {s["ticker"] for s in await db.get_unapplied_splits(D(2026, 2, 1))}     # upto=None: CURRENT_DATE
+            explicit_far = {s["ticker"] for s in await db.get_unapplied_splits(D(2026, 2, 1), upto=D(2099, 6, 1))}
             after = await db.cb_get_splits_after(["AAA", "BBB", "CCC", "DDD"], D(2026, 9, 16), D(2026, 9, 18))
-            return unapplied, after
-        unapplied, after = arun(env, go())
+            return unapplied, default_bound, explicit_far, after
+        unapplied, default_bound, explicit_far, after = arun(env, go())
         assert unapplied == {"AAA"}                                       # BBB is announced only; CCC applied; DDD outside
+        assert "EEE" not in default_bound and "AAA" in default_bound      # the original CURRENT_DATE bound still holds
+        assert explicit_far == {"AAA", "BBB", "EEE"}                      # an explicit `upto` replaces it, not adds to it
         assert set(after) == {"AAA", "CCC"} and after["AAA"][0]["split_to"] == 4
 
 

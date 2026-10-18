@@ -2,12 +2,12 @@
 
 What is pinned, and against what:
 
-  1. PARITY with the offline runner (`scripts/probes/_cb_backtest/runner.py`): every small piece of plumbing the
-     shadow re-writes (universe test symbols, the 130-consecutive-session test, the breakout test, gap fields, the
-     maturity label, the forward-window cut, the cross-section, the one-trade-per-base stamping) returns what the
-     runner's own returns on the same inputs - so a forward row and a backtest row for the same night agree. The
-     stamping is also checked INCREMENTAL (night by night, as the job runs) against the runner's BATCH over the whole
-     set. The watch build is checked against the runner's `scan_ticker` on real bars.
+  1. PARITY with the offline runner (`scripts/probes/_cb_backtest/runner.py`): the plumbing both use (test symbols,
+     the contiguity test, the breakout test, gap fields, the maturity label, the forward-window cut, the
+     cross-section, the one-trade-per-base stamping, `walk_arms`) is ONE definition in `consolidation_breakout`
+     (its own tests pin it); what is checked here is the part that is the shadow's alone - the stamping run
+     INCREMENTALLY (night by night, as the job runs) against the BATCH over the whole set - and the watch build
+     against the runner's `scan_ticker` on real bars.
   2. The JOB end to end on an in-memory store (`tests/cb_shadow_support.FakeStore`: the same write guards the SQL
      has) with MRNA - the module's canary - on its REAL calendar: a watch row on 2026-09-16, entries on 2026-09-17,
      exits walked on later nights, each against an ORACLE built straight from the module's public functions.
@@ -69,49 +69,6 @@ def _mrna_bars(m):
 # 1. parity with the runner
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 class TestRunnerParity:
-    def test_test_symbols_are_the_runners(self):
-        assert sh.TEST_SYMBOLS == rn.TEST_SYMBOLS
-        assert sh._TEST_FAMILY.pattern == rn._TEST_FAMILY.pattern
-        for t in ("ZVZZT", "ZWZZT", "ZXZZT", "ZBZX", "NTEST", "AAPL", "ZZZZ", "ZAZZC", "TSLA"):
-            assert sh.is_test_symbol(t) == rn.is_test_symbol(t)
-
-    def test_contiguous_tail_is_the_runners_mask_at_the_last_index(self):
-        rng = random.Random(1)
-        for _ in range(200):
-            n = rng.randint(100, 200)
-            gaps = [1 if rng.random() > 0.01 else rng.randint(2, 4) for _ in range(n - 1)]
-            cidx = np.cumsum([0] + gaps).astype(np.int64)
-            assert sh.contiguous_tail(cidx, 130) == bool(rn.contiguous_window_mask(cidx, 130)[-1])
-        assert sh.contiguous_tail(np.arange(129), 130) is False       # too short
-
-    def test_breakout_gap_and_maturity_helpers_are_the_runners(self):
-        for hi, pv in ((10.0, 9.9), (9.9, 9.9), (9.0, 9.9), (10.0, None)):
-            assert sh.breaks_out(hi, pv) == rn.breaks_out(hi, pv)
-        assert sh.gap_fields(11.0, 10.0, 0.05) == rn.gap_fields(11.0, 10.0, 0.05)
-        assert sh.gap_fields(10.2, 10.0, 0.05) == rn.gap_fields(10.2, 10.0, 0.05)
-        for st in ("stopped", "stopped_day0", "trailed", "target", "time_exit", "censored", "degraded", "unbookable"):
-            for n in (0, 5, 120, 121, 130):
-                assert sh.is_mature(st, n) == rn.is_mature(st, n)
-
-    def test_fwd_end_is_the_runners_on_random_holes(self):
-        rng = random.Random(2)
-        for _ in range(300):
-            n = rng.randint(5, 200)
-            gaps = [1 if rng.random() > 0.05 else rng.randint(2, 3) for _ in range(n - 1)]
-            cidx = np.cumsum([0] + gaps).astype(np.int64)
-            e = rng.randint(0, n - 1)
-            hi = e + rng.randint(1, 130)
-            assert sh.fwd_end(cidx, e, hi) == rn.fwd_end(cidx, e, hi)
-
-    def test_cross_section_is_the_runners(self):
-        rng = random.Random(3)
-        for _ in range(40):
-            n = rng.randint(30, 80)
-            mk = lambda: [None if rng.random() < 0.05 else rng.uniform(-0.5, 2.0) for _ in range(n)]
-            r21, r63, r126 = mk(), mk(), mk()
-            groups = [rng.choice(["28", "35", "73", None, "36"]) for _ in range(n)]
-            assert sh.cross_section_one_date(r21, r63, r126, groups) == rn.cross_section_one_date(r21, r63, r126, groups)
-
     # ── one trade per base ────────────────────────────────────────────────────────────────
     @staticmethod
     def _cand(ticker, pole_ci, k, e_ci, cal_iso, rng):
@@ -132,18 +89,6 @@ class TestRunnerParity:
         return cal_iso, cands
 
     @pytest.mark.parametrize("seed", range(6))
-    def test_stamping_matches_the_runners_batch_functions(self, seed):
-        cal_iso, cands = self._scenario(seed)
-        a = [dict(c) for c in cands]
-        b = [dict(c) for c in cands]
-        poles = {(c["ticker"], c["pole_ci"], c["pole_date"]) for c in cands}
-        rn.stamp_retrigger(a)
-        rn.stamp_base_chain(a, rn.chain_bases(poles))
-        sh.stamp_retrigger(b)
-        sh.stamp_base_chain(b, sh.chain_bases(poles))
-        assert a == b
-
-    @pytest.mark.parametrize("seed", range(6))
     def test_night_by_night_stamping_equals_the_batch_when_no_later_pole_bridges(self, seed):
         """The job stamps each breakout day against the candidates it has already written; the runner stamps the
         whole set at once. They agree whenever the chain key's poles are all known by the time of the candidate
@@ -152,8 +97,8 @@ class TestRunnerParity:
         cal_iso, cands = self._scenario(seed)
         poles = [(c["ticker"], c["pole_ci"], c["pole_date"]) for c in cands]
         batch = [dict(c) for c in cands]
-        rn.stamp_retrigger(batch)
-        rn.stamp_base_chain(batch, rn.chain_bases(set(poles)))
+        cb.stamp_retrigger(batch)
+        cb.stamp_base_chain(batch, cb.chain_bases(set(poles)))
         want = {(c["ticker"], c["pole_date"], c["K"], c["E"]): c for c in batch}
 
         keys = ("retrigger", "retrigger_chain", "base_id") + tuple("first_" + n for n in sh.CELL_NAMES) \
@@ -181,8 +126,8 @@ class TestRunnerParity:
         poles_known_at_c2 = [("AAA", 10, cal_iso[10]), ("AAA", 14, cal_iso[14])]
         all_poles = poles_known_at_c2 + [("AAA", 12, cal_iso[12])]
         batch = [dict(c1), dict(c2)]
-        rn.stamp_retrigger(batch)
-        rn.stamp_base_chain(batch, rn.chain_bases(set(all_poles)))
+        cb.stamp_retrigger(batch)
+        cb.stamp_base_chain(batch, cb.chain_bases(set(all_poles)))
         new = [dict(c2)]
         sh.stamp_forward([dict(c1)], new, poles_known_at_c2)
         assert batch[1]["retrigger_chain"] == 1 and new[0]["retrigger_chain"] == 0       # the known limit
@@ -471,9 +416,10 @@ class TestExitsAgainstTheOracle:
         monkeypatch.setattr(cb, "walk_exit", lambda **kw: calls.append(kw["arm"].name) or real(**kw))
         out = run(m.cal[m.cal.index(BREAK_DAY) + 8])
         assert out["exit_entries_open"] > 0
-        assert len(calls) == out["exit_rows"] > 0                    # exactly one walk per row written ...
+        # at most one walk per row written - and strictly fewer here: the K x variant entries of one candidate that
+        # share (fill, stop, day-0, adr20) are walked ONCE per arm (the chunk's walk cache), every row still written
+        assert 0 < len(calls) < out["exit_rows"]
         assert len(calls) < out["exit_entries_open"] * len(cb.ARMS)  # ... and fewer than a full re-walk of every entry
-
     def test_a_split_after_the_break_day_makes_the_walk_unbookable_and_final(self, world):
         m, store, _ = world
         run(WATCH_NIGHT)
@@ -507,6 +453,81 @@ class TestExitsAgainstTheOracle:
         live = [x for x in store.exit.values() if x["status"] not in ("stopped_day0",)]
         assert live and all(x["last_bar_date"] < m.cal[hole] for x in live if x["status"] == "degraded")
         assert any(x["reason"] == "fwd_hole" for x in live)
+
+
+class TestExitWalkEfficiency:
+    """Pure dedupe + the bounded work list: nothing about WHAT is written changes."""
+
+    @staticmethod
+    def _entry(eid, ticker, e_date, fill=10.5, stop=10.0, adr20=0.05, final=()):
+        return {"id": eid, "ticker": ticker, "break_date": e_date, "fill": fill, "stop": stop, "adr20": adr20,
+                "day0_stopped": False, "day0_exit_price": None, "day0_exit_minute": None, "mature_arms": list(final)}
+
+    def test_identical_walks_are_computed_once_and_each_entry_keeps_its_own_arms(self, monkeypatch):
+        bars = _mrna_bars(build_market(future=24))
+        cidx = np.arange(len(bars), dtype=np.int64)
+        e_date = bars.dates[len(bars) - 60]
+        calls = []
+        real = cb.walk_exit
+
+        def counting(**kw):
+            calls.append((kw["fill"], kw["stop"], kw["arm"].name))
+            return real(**kw)
+        monkeypatch.setattr(cb, "walk_exit", counting)
+        a, b = self._entry(1, "MRNA", e_date), self._entry(2, "MRNA", e_date, final=sorted(cb.ARMS)[:3])
+        other = self._entry(3, "MRNA", e_date, fill=10.6)                               # another fill: its own walk
+        cache: dict = {}
+        ra, rb, ro = (sh.walk_entry_rows(x, bars, cidx, [], cache) for x in (a, b, other))
+        assert len(calls) == 2 * len(cb.ARMS)                                            # a and `other` walk; b rides a's
+        calls.clear()
+        alone = [sh.walk_entry_rows(x, bars, cidx, []) for x in (a, b, other)]           # no cache: the reference rows
+        assert len(calls) == len(cb.ARMS) + (len(cb.ARMS) - 3) + len(cb.ARMS)
+        assert (ra, rb, ro) == tuple(alone)
+        assert {r["arm"] for r in rb} == set(cb.ARMS) - set(sorted(cb.ARMS)[:3])         # b still walks only ITS non-final arms
+        assert len(ra) == len(cb.ARMS) and {r["entry_id"] for r in ra} == {1} and {r["entry_id"] for r in rb} == {2}
+
+    def test_the_work_list_is_bounded_by_the_stale_date_and_the_stale_ones_are_counted(self, world):
+        m, store, _ = world
+        run(WATCH_NIGHT)
+        out = run(BREAK_DAY)
+        assert out["exit_entries_open"] > 0 and out["exit_entries_stale"] == 0
+        # age every entry past the horizon + margin: nothing is walked any more, the unfinished ones are counted
+        unfinished = len(store._open_entries(len(cb.ARMS)))
+        assert unfinished > 0                                          # not vacuous: some entry still has an open arm
+        for r in store.entry.values():
+            r["break_date"] = D(2020, 1, 2)
+        out = run(m.cal[m.cal.index(BREAK_DAY) + 1])
+        assert out["exit_entries_open"] == 0 and out["exit_entries_stale"] == unfinished
+
+
+class TestSplitScaleArithmetic:
+    def test_the_table_factor_is_the_product_of_from_over_to_exactly(self):
+        """`cb.raw_factor_for` supplies the product; the pivot goes the other way (raw down to stored), so it is fed
+        the inverse ratio and the result is bit-identical to the plain product this function always computed."""
+        import random
+        rng = random.Random(5)
+        for _ in range(300):
+            ss = [{"execution_date": D(2026, 9, 17) + dt.timedelta(days=k), "split_from": rng.randint(1, 20),
+                   "split_to": rng.randint(1, 20)} for k in range(rng.randint(1, 3))]
+            want = 1.0
+            for s_ in ss:
+                want *= float(s_["split_from"]) / float(s_["split_to"])
+            close_watch = 100.0
+            got = sh.split_scale(ss, close_watch * want, close_watch, D(2026, 9, 16))       # the data agrees with the table
+            if not 0.0 < want:
+                continue
+            if abs(want - 1.0) <= sh.SPLIT_SCALE_TOL:
+                assert got == pytest.approx(want) or got == 1.0
+            else:
+                assert got == want                                                         # bit-for-bit, not approx
+
+    def test_an_unreadable_split_row_is_none_not_a_guess(self):
+        assert sh.split_scale([{"execution_date": D(2026, 9, 17), "split_from": 1, "split_to": 0}], 100.0, 100.0,
+                              D(2026, 9, 16)) is None
+        assert sh.split_scale([{"execution_date": D(2026, 9, 17), "split_from": 1}], 100.0, 100.0,
+                              D(2026, 9, 16)) is None
+        assert sh.split_scale([{"execution_date": D(2026, 9, 17), "split_from": 1, "split_to": 4}], 100.0, None,
+                              D(2026, 9, 16)) is None
 
 
 class TestOneTradePerBaseInTheJob:
@@ -644,24 +665,26 @@ class TestMinuteFeedDown:
         return got, calls
 
     def test_three_empty_batches_in_a_row_end_the_fetch_as_an_outage(self, monkeypatch):
-        tickers = [f"T{i:02d}" for i in range(60)]                      # 12 batches of 5
+        tickers = [f"T{i:03d}" for i in range(12 * sh.MINUTE_BATCH)]    # 12 batches
         out = {"minutes_feed_down": False}
         (mins, outage), calls = self._fetch(monkeypatch, lambda b, n: {}, tickers, out)
         assert outage is True and out["minutes_feed_down"] is True
         assert len(calls) == 2 * sh.MINUTE_EMPTY_STREAK_STOP == 6         # 3 batches x (ask + one retry), not 24
+        assert sh.MINUTE_BATCH * sh.MINUTE_EMPTY_STREAK_STOP == 75        # the outage threshold: 75 tickers of nothing
+        assert all(len(c) == sh.MINUTE_BATCH for c in calls)
         assert set(mins) == set(tickers) and {st for _mb, st in mins.values()} == {"no_minutes"}
 
     def test_the_stop_is_an_outage_even_when_earlier_batches_were_fine(self, monkeypatch):
         """Otherwise the tickers never asked would be written as `no_minutes` abstains on a feed that merely died."""
-        tickers = [f"T{i:02d}" for i in range(60)]
+        tickers = [f"T{i:03d}" for i in range(12 * sh.MINUTE_BATCH)]
         good = synth_minutes(BREAK_DAY, 10.0, 11.0, 9.5, 10.5)
         (mins, outage), calls = self._fetch(
             monkeypatch, lambda b, n: {t: good for t in b} if n == 1 else {}, tickers, {"minutes_feed_down": False})
         assert outage is True
-        assert mins["T00"][1] == "ok" and mins["T59"][1] == "no_minutes"
+        assert mins[tickers[0]][1] == "ok" and mins[tickers[-1]][1] == "no_minutes"
 
     def test_two_empty_batches_then_a_good_one_do_not_stop_the_fetch(self, monkeypatch):
-        tickers = [f"T{i:02d}" for i in range(40)]                      # 8 batches
+        tickers = [f"T{i:03d}" for i in range(8 * sh.MINUTE_BATCH)]    # 8 batches
         good = synth_minutes(BREAK_DAY, 10.0, 11.0, 9.5, 10.5)
         # calls 1-4 are batches 1 and 2 (each asked twice) and return nothing: a streak of TWO, under the stop of 3
         out = {"minutes_feed_down": False}
@@ -669,8 +692,8 @@ class TestMinuteFeedDown:
             monkeypatch, lambda b, n: {} if n <= 4 else {t: good for t in b}, tickers, out)
         assert outage is False and out["minutes_feed_down"] is False
         assert len(calls) == 4 + 6                                       # the 2 failed batches twice, then 6 good ones
-        assert sum(1 for mb, st in mins.values() if st == "ok") == 30
-        assert [t for t, (mb, st) in mins.items() if st == "no_minutes"] == tickers[:10]
+        assert sum(1 for mb, st in mins.values() if st == "ok") == 6 * sh.MINUTE_BATCH
+        assert [t for t, (mb, st) in mins.items() if st == "no_minutes"] == tickers[:2 * sh.MINUTE_BATCH]
 
     def test_once_a_day_finds_the_feed_down_the_later_days_of_the_run_do_not_ask_again(self, world, monkeypatch):
         m, store, coll = world
@@ -922,7 +945,7 @@ class TestFailureHandling:
     def test_a_crash_propagates_after_the_audit_row_and_the_other_steps_still_ran(self, world, monkeypatch):
         m, store, _ = world
 
-        async def broken(n_arms):
+        async def broken(n_arms, stale_before):
             raise RuntimeError("db down")
         monkeypatch.setattr(sh, "cb_get_open_entries", broken)
         with pytest.raises(RuntimeError, match="db down"):
@@ -950,11 +973,11 @@ class TestFailureHandling:
         real = sh.walk_entry_rows
         calls = {"n": 0}
 
-        def flaky(entry, bars, cidx, splits):
+        def flaky(entry, bars, cidx, splits, cache=None):
             calls["n"] += 1
             if calls["n"] == 1:
                 raise ValueError("bad bars")
-            return real(entry, bars, cidx, splits)
+            return real(entry, bars, cidx, splits, cache)
         monkeypatch.setattr(sh, "walk_entry_rows", flaky)
         out = run(BREAK_DAY)
         assert out["exit_errors"] == 1 and out["exit_rows"] == 18 * 15
@@ -1026,10 +1049,15 @@ class TestCensus:
                         "sys.exit(int('agents.market_intelligence.consolidation_breakout_shadow' in sys.modules))")
         assert r.returncode == 0, r.stdout + r.stderr
 
-    def test_the_module_loads_no_broker_code_and_the_boundary_gate_passes(self):
+    def test_the_module_loads_no_broker_code_beyond_the_pure_exit_math_and_the_boundary_gate_passes(self):
+        """The shadow imports nothing from broker/. The pure core it calls (`cb`) imports exactly ONE broker module -
+        `broker.exit_logic`, pure ladder math with no client and no trade-state I/O, under the `# exec-boundary-ok:`
+        marker - so those two names (the package and the module) are the whole allowed set: an order, a position or
+        a client module appearing here is a leak into the money path."""
         r = self._fresh("import sys; import agents.market_intelligence.consolidation_breakout_shadow; "
-                        "bad = [m for m in sys.modules if m.startswith('agents.market_intelligence.broker')]; "
-                        "print(bad); sys.exit(1 if bad else 0)")
+                        "got = sorted(m for m in sys.modules if m.startswith('agents.market_intelligence.broker')); "
+                        "print(got); sys.exit(0 if got == ['agents.market_intelligence.broker', "
+                        "'agents.market_intelligence.broker.exit_logic'] else 1)")
         assert r.returncode == 0, r.stdout + r.stderr
         import subprocess, sys
         g = subprocess.run([sys.executable, str(REPO / "scripts" / "check_execution_boundary.py"), "check"],
@@ -1075,6 +1103,6 @@ class TestDdlAndStatements:
     def test_jsonb_params_are_codec_ready_dicts_and_lists_never_strings(self):
         from agents.market_intelligence import db
         row = {"events": [(1, "stop", 1.5, 1.0)], "cells": {"C0": True}, "first_cells": None}
-        p = db._cb_row_params(row, ("events", "cells", "first_cells"), jsonb_dict=frozenset({"cells", "first_cells"}),
-                              jsonb_list=frozenset({"events"}))
+        p = db._row_params(row, ("events", "cells", "first_cells"), jsonb_dict=frozenset({"cells", "first_cells"}),
+                           jsonb_list=frozenset({"events"}))
         assert p == ([[1, "stop", 1.5, 1.0]], {"C0": True}, None)
