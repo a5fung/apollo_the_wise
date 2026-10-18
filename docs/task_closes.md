@@ -2258,6 +2258,15 @@ EVIDENCE:
 - **Screen arm, recorded as a ZERO:** 10 trading days 10-05..10-16, 0 flag-detector `mna_filter_fired` rows and 0 flag rows demoted with `mna_filter:` (`scripts/probes/_eve_1016/q598_4.out`), while the board carried 0-2 screened names a night (11 name-nights: HTFL, PURR, KOD, GRAL, IOVA — `q598_6.out`).
 - ⚠ **What the zero cannot show:** a dead screen reads the same zero. The planned positive trace (q5, IOVA released 10-07/10-08) turned out to be the 17:35 COIL scan's screen, not the 17:25 flag scan's, so the flag screen's running is UNPROVEN live. Carried, not dropped: the tripwire `flag_mna_screen_first_fire_598` fires on the first flag-detector block so it is checked against its news on the event.
 
+## #313 — ACCEPTED-PARTIAL on his 10-15 ruling: the weekly selection-replay CI job + its deploy gate are live, and LLM spend is reported against P&L every Sunday (2026-10-18)
+
+BAR: "replay-everything CI runs on every push and per-role LLM spend is reported against P&L on a fixed cadence. WOULD-FAIL-IF: the cost surface exists but nobody can answer 'what did the judge cost us last month' without a manual query."
+
+EVIDENCE:
+- **ACCEPTED-PARTIAL, his ruling 2026-10-15 ("Close on what shipped"):** #313 closes on the selection-replay job + the [5p/7] gate; the judge frozen-cohort eval is covered by the existing [5m/7] judge-eval gate, and the entry-mechanics sim waits until entries are settled — both ruled out of this task. So "replay-everything CI runs on every push" is met as the WEEKLY selection replay feeding the deploy gate, not a per-push run.
+- **The VERIFY-LIVE the ruling named, met Sun 10-18:** the 08:00 ET weekly review wrote `/home/apollo/backups/ci_status/selection_replay.json` (asof 2026-10-18T08:00:24-04:00): status green, "live n=37 exp -0.02R vs calibration +0.95R; n<50: threshold not armed (M3f)". The deploy gate reads it at [5p/7] (shipped 10-14, 8f07f15b; it printed on every deploy since).
+- **Per-role LLM spend against P&L on a fixed cadence:** the same 10-18 review carries "LLM spend vs realised P&L (#313) — last 30 days": $42.71 across 5,546 calls, top callers named, judge-named callers $2.06 (ep_grade_judge $0.57, mgmt_judge $0.33), against the live book $+101 over 7 closed trades — so "what did the judge cost us last month" is answered without a manual query.
+
 ## #700 — the Sunday weekly review is cut to what informs: 4,129 characters against 12,257, every line actionable or informative (2026-10-18)
 
 BAR: "the Sun 10-18 review arrives with every line either actionable or informative (no repeated rows, no unchanged-status block, no unverified anomaly), at well under the 10-11 length, and nothing he relied on is lost (the head's checks still listed). WOULD-FAIL-IF: a section that changed or crossed a bar is missing, or the message is unchanged in length/shape."
