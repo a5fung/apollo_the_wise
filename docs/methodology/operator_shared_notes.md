@@ -1988,3 +1988,24 @@ bull vs bear phase. Quotes are the article's words (via a page summary).
 - **Where the labels come from:** Qullamaggie's streams, where he draws many of these by hand. Per
   [[charts-support-never-decide]], a chart read leans; it never decides alone.
 - **Status:** the one-time 2025–26 read waits until this character → line step is built and frozen.
+
+## 2026-10-18 — two Qullamaggie sources he shared, plus his go-ahead to mine the streams (free steps only)
+
+His words: *"Do the first two for free and hold on 3rd paid."* That means pull and parse the stream transcripts and match
+them to our bars. The frame-reading vision step is HELD until he okays its price. He shared two sources:
+- **Kyna Kosling, "Qullamaggie Stream Notes"** — https://tradingresourcehub.substack.com/p/qullamaggie-stream-notes
+  (his share link: https://share.google/6V10YzfiXjDYdY7Bl).
+  - An index of notes from his streams, June 2020 to December 2023, plus interview notes.
+  - Each linked post carries charts and position discussion; the index itself is free.
+  - Use: a second source of labelled examples (ticker + date + what he said about the base), next to the stream
+    transcripts.
+- **Deepvue, "Find Stocks Like Qullamaggie"** — https://deepvue.com/screener/qullamaggie-screens/ (his share link:
+  https://share.google/yFCEAfWV78OTjashw). Its screens, as the page states them (fetched 10-18):
+  - Continuation base: "Stocks up at least 25% in the past month"; "Weekly volume at least 50% lower than the
+    previous week"; "Trading within ~2% above or below the 10-day SMA".
+  - Episodic pivot: "One-day price move over 7.5%"; "Dollar volume over $100 million".
+  - Top monthly gainers: high AS (absolute strength) rating and a strong ADR.
+  - Pattern names: high tight flags, continuation patterns (triangles, volatility contractions) and EPs.
+  - Use in #702: the volume dry-up week over week and the within-2%-of-SMA10 test are candidate features for the P4b
+    base-character step. They are recorded, never gates, until a read supports them.
+- **His channel**, https://www.youtube.com/@qullamaggie: 588 videos, about 800 hours; auto-captions are downloadable.
