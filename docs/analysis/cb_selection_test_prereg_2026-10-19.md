@@ -57,3 +57,17 @@ Control (a) 8,171 same-month first breaks; control (b) 510.
 - The Jan-2022 pick keeps its single control session; it is 1 of 98.
 - `runner.py` changed for the pre-era run, so the #702 holdout freeze pins no longer match it; the holdout already ran once
   (2026-10-19) and nothing re-reads it.
+
+## RESULT — read once 2026-10-19 (`scripts/probes/_cb_backtest/selection_read.py`, outputs `cb702_pre/out/selection_result.{txt,tsv}`)
+
+**VERDICT (trendline level, 20-session forward return in ADR units): CAN'T TELL — his picks did no better than the average
+base of the same months.** 98 picks averaged +1.01 ADR against +1.10 for 8,150 same-month controls (difference −0.09,
+interval −0.96 .. +0.67). Beside, deciding nothing: the best move within 10 / 20 sessions and the share reaching +5 ADR
+match the controls (+0.21 / −0.03 ADR, +0.8 points); against the OTHER bases of the same tickers his picks did worse on the
+best 20-session move (−1.14 ADR, interval −2.27 .. −0.09), so the stocks he talks about run, but the base he talked about
+was not the better one; the 15 frame-verified picks read −1.24 ADR (CAN'T TELL by n). The median-high level reads the same
+(difference −0.20, interval −0.97 .. +0.55).
+**What it means:** on this test, the bases Qullamaggie discussed while they were still basing broke out no better than
+the bases our detector admits in the same months. The missing edge is not shown to sit in base selection as his stream
+mentions capture it. **What it does not say:** what he actually BOUGHT (a mention is not a trade), or anything outside
+2020–21's bull market.
