@@ -240,5 +240,13 @@ pin are printed by `h60-read --print-pins` after the code lands and pasted here 
 - cb702_pre/out/watch_tl_com.tsv.gz sha256: `8f063d6bc613bcecb9827d8a961525fb589f48882873e2dbe82654eb030700e8`
 - cb702_pre/out/trades_pre_p5.tsv.gz sha256: `07c10b952316b28daf8f6cfff15437efb23b939af74a27b4bb60c5948712ec86`
 - cb702_pre/minutes/_done.psv sha256: `bbb38323a9b5748ed094e45332686804d9804760183d77c7f9ca9c74cdc2dc41`
-- module / runner / constants.py / exit_logic.py / minutes (tree) × 2 / doc body sha256: `<from --print-pins, before the run>`
+- module sha256: `e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b`
+- runner sha256: `1c7f943c58f21b07b60bc86c350b00d31b82a35bbbfecb8cfe39669e1d9a4510`
+- code/constants.py sha256: `72dadd72503a842f593621b0868f908ab99e1d77851330c2842be7797aa99400`
+- code/exit_logic.py sha256: `dd032c0f5115c2d811561d455ad260e8b77559415bde68ae46f4a17eb92b7976`
+- cb702/daily_closes_all.csv.gz sha256: `ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba`
+- cb702_pre/daily_closes_all.csv.gz sha256: `b10eea41775e657939c64e314068cb3c606d23d44de8488649fb67a4ac5ed773`
+- cb702/minutes (tree) sha256: `f1d98fd9d2352c45e90849e18a163b8ca31d2526eb851e5a76dd11ffd79a9fe5`
+- cb702_pre/minutes (tree) sha256: `c019a52c8ed624263bd8b3ef0c36f54c5f77ce3cbee75751c0fd2a3026eeccd8`
+- doc body sha256: `97a29aea34babce0e89ab81b76e375a59a30510820a2a1504ed58a5578fe3979`
 - freeze commit: the commit that adds this file on `main`; the read runs only after it is on `main`.
