@@ -433,7 +433,8 @@ entry step sits the name out on its D-close cross-check (it writes no `split_aft
 the backtest is unaffected. No money path (shadow tables only).
 **Reversion-flag**: NEW; not a detection-criterion change (no admission, pivot, stop or exit rule moved). Reverting = make
 `moved_splits` return its input and `split_scale` ignore the outcome columns (the columns stay).
-**Status**: built on a worktree branch, not deployed. EXPECT / DONE-WHEN / WOULD-FAIL-IF: CHANGELOG 2026-10-18 (#704).
+**Status**: DEPLOYED 2026-10-18 (server 25fabf93; `deploy.sh both` + `execution`); verify on the first split night per
+#704's PLAN line (ETA 10-23). EXPECT / DONE-WHEN / WOULD-FAIL-IF: CHANGELOG 2026-10-18 (#704).
 
 ### 2026-10-17 (evening) — /simplify pass: one copy of the shared plumbing, no behaviour change
 

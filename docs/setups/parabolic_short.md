@@ -159,8 +159,8 @@ is also what a failed Polygon fetch of a real split records, leaving a cliff the
 either), and so is one whose only movers are legacy phantoms (the review of this change caught that the first draft voided those). A real split now voids by the table even if the re-read were within 0.5% (a 51:50 style split). Shadow telemetry only — no
 arm, trigger, stop or sizing rule moved, no order path.
 
-**Reversion-flag**: NEW; not a detection-criterion change. **Status**: built on a worktree branch, not deployed. EXPECT / DONE-WHEN /
-WOULD-FAIL-IF: CHANGELOG 2026-10-18 (#704).
+**Reversion-flag**: NEW; not a detection-criterion change. **Status**: DEPLOYED 2026-10-18 (server 25fabf93; `deploy.sh both` + `execution`); verify on the first split night per
+#704's PLAN line (ETA 10-23). EXPECT / DONE-WHEN / WOULD-FAIL-IF: CHANGELOG 2026-10-18 (#704).
 
 ### 2026-10-18 — DEPLOYED and verified (status superseding the 10-17 entries below)
 
