@@ -2057,3 +2057,6 @@ before the breakout (his "A+ setups") — *"higher qualifier there maybe an opti
   bases did WORST, not best — by both the range ratio (last 5 days vs the base's first 5) and the last 5 days' range in
   ADR units — and it is not explained by stop size (median stop 0.43–0.52 ADR, same-day stop-outs 35–38% in every fifth).
   So our tightness measures may not be what he means by "tight"; to be re-checked under his exit.
+- **His follow-up, same evening (verbatim):** *"The day thing is also correct, it may be a combo and depends"* — the
+  after-3–5-days partial is ALSO his rule; the partial may be a combination of the two (+2R or a number of days) and
+  depends on the stock. So the tests carry all three: +2R, day 3/5, and whichever comes first.
