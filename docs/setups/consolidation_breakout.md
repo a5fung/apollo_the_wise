@@ -244,6 +244,17 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 ## Change log
 
+### 2026-10-19 — #702 P5 HOLDOUT READ: FAIL on the primary — no paper; the forward shadow keeps recording
+
+**What**: the one-time holdout read (2025-01..2026-10-15) on the frozen primary (trendline / ORH5 / low-of-day stop / his
+exit with the stalled breakouts cut), run once 2026-10-19, independently re-derived (VERDICT: MATCH). **C1 FAIL** (−0.72R on
+30, interval [−1.06, −0.35], none ≥5R); C3 / C5 / C7 FAIL; C4 CAN'T TELL (−0.11R on 226, interval spans zero); C2 / C6
+CAN'T TELL by n; C0 −0.13R on 7,531. Discovery's C1 +0.32R is contradicted. Result paragraph + tables:
+`docs/analysis/cb_preregistration_2026-10-18.md` §RESULT (below the freeze marker; the pinned body unchanged).
+**Consequence (registered §0/§5)**: no paper lane. The forward shadow (`consolidation_breakout_shadow`, 17:48 ET) is
+unchanged and keeps accruing; the setup as tested is the trendline breakout bought at the 5-minute opening-range high
+with the day's-low stop, not the pattern. **Reversion-flag**: none (a read, no rule changed). **Status**: complete.
+
 ### 2026-10-18 — #702 P5 prep: the holdout read's primary becomes HIS exit with the stalled breakouts cut (`c3_p33_t20_cut3`) — runner-only, no pinned byte moved, the holdout is runnable and was NOT run
 
 **Trigger**: the operator aligned (2026-10-18) that the holdout read's primary is the registered trendline level with HIS exit —

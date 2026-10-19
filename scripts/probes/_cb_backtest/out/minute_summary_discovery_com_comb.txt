@@ -1,0 +1,16 @@
+DISCOVERY MINUTE STAGE: 94,676 discovery candidate rows; minute files on disk: 1140 dates (/Users/alvinfung/apollo_data/cb702/minutes); candidates on those dates: 94,676; _done.psv: present (153,809 pairs)
+[load: 8s]
+[entries + exits + controls: 34s]
+
+COVERAGE: candidates with minutes fetched 94,676 (by state {'no_rows': 131, 'ok': 94545}); PENDING fetch (skipped, NOT an abstain) 0; files: refetched tickers 0, bad lines 0, truncated 0
+DATA GATE: 1,106 of 94,676 fetched candidates abstain on the data (1.17%; {'minute_daily_mismatch': 975, 'no_minutes': 131}) - limit 5%: ok; minute-vs-daily high/low match rate 98.97%
+ENTRIES (candidate rows x variant; close = the daily stage's rows, joined):
+variant    rows  filled  too_wide  no_trigger  other abstain
+orh1     94,676  78,851     4,505       9,175          2,145
+orh5     94,676  71,203     5,203      17,055          1,215
+orh60    94,676  44,215     8,240      41,111          1,110
+pivot    94,676  89,530     4,040           0          1,106
+close    94,676  50,703    13,467      30,506              0
+ARM MATURITY (minute variants; filled walks): p33_s3_t10 mature 283,717 / open mark 82; ctl_family_a_settle mature 283,747 / open mark 52; ctl_apollo_today mature 265,843 / open mark 17,956
+WROTE /Users/alvinfung/apollo_data/cb702/out/trades_discovery_com_comb.tsv.gz (5,724,006 rows), /Users/alvinfung/apollo_data/cb702/out/entries_discovery_com_comb.tsv.gz (473,380 rows)
+WALL TIME: 43s total

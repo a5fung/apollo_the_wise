@@ -1,0 +1,11 @@
+HOLDOUT P5 STAGE (#702): 30,729 first-break candidate rows (spec key) on tl/com/comb; minute files on disk: 1140 dates (/Users/alvinfung/apollo_data/cb702/minutes); candidates on those dates: 30,729; entry orh5; stop lod; arms c3_p33_t20_cut3, p33_s3_t10, c3_p33_t20, r2_p33_t20
+[load: 8s]
+[entries + P5 walks: 3s]
+COVERAGE: candidates with minutes fetched 30,729 (by state {'no_rows': 8, 'ok': 30721}); PENDING fetch (skipped) 0
+ENTRY (orh5, all levels): abstain minute_daily_mismatch 126; abstain minute_high_below_pivot 6; abstain no_minutes 8; abstain no_opening_range_minutes 24; abstain too_wide 3,373; filled 22,065; no_trigger no_minute_above_level 5,127
+WROTE /Users/alvinfung/apollo_data/cb702/out/trades_holdout_p5.tsv.gz (88,260 rows)
+CROSS-CHECK tl: 7,570 paired p33_s3_t10 rows equal trades_holdout.tsv.gz's orh5 rows (status, maturity, realized R to 1e-09)
+CROSS-CHECK com/comb: no minute-stage table for these levels on the holdout (trades_holdout_com_comb.tsv.gz) - not applicable
+WROTE /Users/alvinfung/apollo_data/cb702/out/p5_report_holdout.tsv (1,500 rows), /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/p5_report_holdout.tsv, /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/p5_report_holdout.txt
+APPENDED 726 P5 rows to /Users/alvinfung/apollo_data/cb702/out/regime_report_holdout.tsv and /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/regime_report_holdout.txt
+WALL TIME: 22s total

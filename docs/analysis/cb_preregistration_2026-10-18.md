@@ -850,3 +850,33 @@ com / comb inputs and the discovery P5 walk, and the doc body pin covers §P5):
 - doc body sha256: `02b8c254749802479a5c6e466a44842160e007324008986d836297d8239908af` — this file above the `<!-- FREEZE -->` marker
 - freeze commit: the commit that adds this file on `main` (`git log -- docs/analysis/cb_preregistration_2026-10-18.md`);
   the holdout (P5) runs only after it is on `main`.
+
+## RESULT — the holdout read, run ONCE 2026-10-19 (below the freeze marker; the pinned body is untouched)
+
+Read: `runner.py holdout` on the pins above (dry-run "freeze check passed" first), 2026-10-19 ~07:00 PT, wall 80 s;
+outputs `DATA/out/trades_holdout_p5.tsv.gz`, `p5_report_holdout.{tsv,txt}`, `regime_report_holdout.tsv`. Independent
+re-derivation (pandas only, written without the runner or the module, `scratchpad/rederive_1019/rederive.py`):
+**VERDICT: MATCH** — n exact, means within 0.001, shares within 0.1 point, for C0/C1/C3/C5 on the primary and C0/C1 on the
+article arm (and the chain-key section). Population: D 2025-01-01..2026-10-15, spec key, ORH5 fills, low-of-day stop,
+mature walks. The staller-cut definition was confirmed by the operator before the read ("yes", 2026-10-19).
+
+**Primary (tl / ORH5 / low-of-day / `c3_p33_t20_cut3`), per deciding cell, on the §5 bars:**
+| cell | n | mean R | 95% CI | ≥5R | without top 5 | ADR P&L | verdict | discovery on the same triple |
+|---|---|---|---|---|---|---|---|---|
+| C1 | 30 | −0.722 | [−1.06, −0.35] | 0.0% | −1.014 | −0.288 | **FAIL** | +0.323 on 79 — contradicts |
+| C3 | 79 | −0.432 | [−0.70, −0.09] | 1.3% | −0.652 | −0.199 | FAIL | −0.028 on 144 |
+| C4 | 226 | −0.112 | [−0.33, +0.05] | 2.7% | −0.423 | −0.102 | CAN'T TELL (interval spans 0; beats C0's mean, not its tail) | — |
+| C5 | 71 | −0.443 | [−0.71, −0.09] | 1.4% | −0.662 | −0.205 | FAIL | +0.509 on 143 — contradicts |
+| C7 | 53 | −0.502 | [−0.85, −0.04] | 1.9% | −0.817 | −0.216 | FAIL | — |
+| C2, C6 | 3, 5 | — | — | — | — | — | CAN'T TELL (n) | — |
+| C0 (baseline, cannot pass) | 7,531 | −0.129 | [−0.25, −0.01] | 2.9% | −0.155 | −0.052 | — | −0.169 on 8,984 |
+
+**The result paragraph (§11 template, FAIL):** C1 on the trendline lost in 2025-26 under his exit with the stallers cut:
+mean −0.72R on 30 trades, interval [−1.06, −0.35], none at ≥5R, ADR P&L −0.29; C0 read −0.13R on 7,531. Discovery had read
+the same triple at +0.32R on 79 (top-5-dependent, 2023 alone), so the holdout contradicts it. This is the setup as tested —
+the trendline breakout bought at the 5-minute opening-range high with the day's-low stop — not the pattern; the grid is
+the next design round's input. **No paper.** The forward shadow keeps recording.
+
+**Beside (never a verdict, §8):** the article arm on the same trades reads C1 −0.757 / C0 −0.129; `com` C1 −0.299 on 30,
+`comb` C1 −0.068 on 19 (n < 30); by Apollo regime the trendline C0 reads Bull −0.07 (5,275), Choppy −0.39 (679),
+Correcting −0.25 (658), Crisis +0.11 (496) — and C1 Bull −0.67 on 25, so a bull tape does not rescue the strict cell.

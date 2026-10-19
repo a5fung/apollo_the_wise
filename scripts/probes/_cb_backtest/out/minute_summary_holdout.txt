@@ -1,0 +1,16 @@
+HOLDOUT MINUTE STAGE: 109,478 holdout candidate rows; minute files on disk: 1140 dates (/Users/alvinfung/apollo_data/cb702/minutes); candidates on those dates: 109,478; _done.psv: present (153,809 pairs)
+[load: 9s]
+[entries + exits + controls: 32s]
+
+COVERAGE: candidates with minutes fetched 109,478 (by state {'no_rows': 16, 'ok': 109462}); PENDING fetch (skipped, NOT an abstain) 0; files: refetched tickers 0, bad lines 0, truncated 0
+DATA GATE: 473 of 109,478 fetched candidates abstain on the data (0.43%; {'minute_daily_mismatch': 446, 'minute_high_below_pivot': 11, 'no_minutes': 16}) - limit 5%: ok; minute-vs-daily high/low match rate 99.59%
+ENTRIES (candidate rows x variant; close = the daily stage's rows, joined):
+variant     rows  filled  too_wide  no_trigger  other abstain
+orh1     109,478  87,624    12,762       8,163            929
+orh5     109,478  79,177    14,072      15,710            519
+orh60    109,478  49,683    18,417      40,901            477
+pivot    109,478  96,881    12,124           0            473
+close    109,478  35,963    21,341      52,174              0
+ARM MATURITY (minute variants; filled walks): p33_s3_t10 mature 311,554 / open mark 1,811; ctl_family_a_settle mature 311,740 / open mark 1,625; ctl_apollo_today mature 290,647 / open mark 22,718
+WROTE /Users/alvinfung/apollo_data/cb702/out/trades_holdout.tsv.gz (6,064,712 rows), /Users/alvinfung/apollo_data/cb702/out/entries_holdout.tsv.gz (547,390 rows)
+WALL TIME: 42s total
