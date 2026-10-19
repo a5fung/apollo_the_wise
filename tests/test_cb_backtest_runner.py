@@ -3092,15 +3092,15 @@ class TestH60Verdicts:
 H60_E1, H60_E2 = 150, 152
 
 
-def _h60_bars():
-    """SPY + X daily bars: flat $10 (h 10.1 / l 9.9), E1 a poke (h 10.30, closes 10.05), E2 the break (o 10.2 h 10.6 l 10.1 c 10.5), then
-    d1 to 10.85 (the +2R partial), d2 flat, d3 to 10.2 (the breakeven stop), flat after - every arm matures."""
+def _h60_bars(deep=False):
+    """SPY + X daily bars: flat $10 (h 10.1 / l 9.9), E1 a poke (h 10.30, closes 10.05), E2 the break (o 10.2 h 10.6 l 10.1 c 10.5; `deep`:
+    l 9.0, an early dip), then d1 to 10.85 (the +2R partial), d2 flat, d3 to 10.2 (the breakeven stop), flat after - every arm matures."""
     n = 300
     d = _weekdays(n, DISCOVERY_START)
     o = np.full(n, 10.0)
     h, l, c = np.full(n, 10.1), np.full(n, 9.9), np.full(n, 10.0)
     o[H60_E1], h[H60_E1], l[H60_E1], c[H60_E1] = 10.0, 10.30, 9.85, 10.05
-    o[H60_E2], h[H60_E2], l[H60_E2], c[H60_E2] = 10.2, 10.6, 10.1, 10.5
+    o[H60_E2], h[H60_E2], l[H60_E2], c[H60_E2] = 10.2, 10.6, (9.0 if deep else 10.1), 10.5
     tail = [(10.55, 10.85, 10.5, 10.8), (10.8, 10.9, 10.6, 10.7), (10.7, 10.75, 10.2, 10.3), (10.3, 10.4, 10.2, 10.3)]
     for j in range(H60_E2 + 1, n):
         oo, hh, ll, cc = tail[j - H60_E2 - 1] if j - H60_E2 - 1 < len(tail) else (10.3, 10.4, 10.2, 10.3)
@@ -3122,10 +3122,24 @@ def _h60_minutes_e1():
     return rows
 
 
-def _h60_minutes_e2():
-    """The break: the 10:00 bar's last minute (29) closes at 10.30 above the line 10.25; minute 30 opens 10.32 (the fill); the day runs to 10.6."""
+def _h60_minutes_e2(deep=False):
+    """The break: the 10:00 bar's last minute (29) closes at 10.30 above the line 10.25; minute 30 opens 10.32 (the fill); the day runs to 10.6.
+    `deep`: minute 5 dips to 9.0 (so `lod` is 12.9% under the fill: too_wide at ADR20 0.10), the 10:00 bar closes UNDER the line and the
+    11:00 bar (minute 89) confirms - its own low 10.1 makes `cbar_low` a 2% stop; minute 90 opens 10.32 (the fill)."""
     rows = []
     for m in range(390):
+        if deep:
+            if m == 5:
+                rows.append((m, 10.15, 10.2, 9.0, 10.1))
+            elif m < 89:
+                rows.append((m, 10.2, 10.24, 10.1, 10.2))
+            elif m == 89:
+                rows.append((m, 10.22, 10.31, 10.2, 10.30))
+            elif m == 90:
+                rows.append((m, 10.32, 10.40, 10.31, 10.35))
+            else:
+                rows.append((m, 10.4, 10.6, 10.35, 10.5))
+            continue
         if m < 29:
             rows.append((m, 10.2, 10.24, 10.1, 10.2))
         elif m == 29:
@@ -3137,10 +3151,11 @@ def _h60_minutes_e2():
     return rows
 
 
-def _h60_tree(tmp_path, monkeypatch):
+def _h60_tree(tmp_path, monkeypatch, deep=False):
     """A cb702 + cb702_pre tree, a repo and the registration doc with matching pins: X's two-row tl base and one com base in discovery; the
-    pinned P5 table written by `p5_walk` itself on the same inputs (the twin of the read); every other pinned file a stub."""
-    bars = _h60_bars()
+    pinned P5 table written by `p5_walk` itself on the same inputs (the twin of the read); every other pinned file a stub. `deep`: the E2
+    variant whose `lod` abstains too_wide while `cbar_low` is narrow."""
+    bars = _h60_bars(deep)
     data, pre = tmp_path / "cb702", tmp_path / "cb702_pre"
     for d in (data, pre):
         (d / "out").mkdir(parents=True)
@@ -3152,7 +3167,7 @@ def _h60_tree(tmp_path, monkeypatch):
     P = H60_E1 - 20
     pole = bars.dates[P].isoformat()
     c1 = _p5_cand(bars, H60_E1, K="tl", pivot=10.25, high_E=10.30, low_E=9.85, open_E=10.0, close_E=10.05)
-    c2 = _p5_cand(bars, H60_E2, K="tl", pivot=10.25, high_E=10.6, low_E=10.1, open_E=10.2, close_E=10.5, retrigger=1, retrigger_chain=1)
+    c2 = _p5_cand(bars, H60_E2, K="tl", pivot=10.25, high_E=10.6, low_E=(9.0 if deep else 10.1), open_E=10.2, close_E=10.5, retrigger=1, retrigger_chain=1)
     for c, e in ((c1, H60_E1), (c2, H60_E2)):
         c["pole_date"] = pole
         c["base_depth"] = 1.0 - float(bars.l[P + 1:e].min()) / float(bars.h[P])
@@ -3171,7 +3186,7 @@ def _h60_tree(tmp_path, monkeypatch):
     rn.write_tsv(data / "out" / "watch_com_comb.tsv.gz", wrows[:1], wcols, gz=True)
     md = data / "minutes"
     fm._append_gz(md / f"{c1['E']}.psv.gz", _minute_lines("X", _h60_minutes_e1()))
-    fm._append_gz(md / f"{c2['E']}.psv.gz", _minute_lines("X", _h60_minutes_e2()))
+    fm._append_gz(md / f"{c2['E']}.psv.gz", _minute_lines("X", _h60_minutes_e2(deep)))
     (md / "_done.psv").write_text(f"{c1['E']}|X|390|ok\n{c2['E']}|X|390|ok\n")
     # the pinned twin: the P5 walk on the first breaks (tl from candidates.tsv, com from candidates_com_comb.tsv)
     rn.p5_walk(rn.p5_inputs(argparse_ns(data), "discovery"), 1, "discovery", lambda *_a: None)
@@ -3180,6 +3195,7 @@ def _h60_tree(tmp_path, monkeypatch):
     for name in ("candidates_tl_com.tsv", "watch_tl_com.tsv.gz", "trades_pre_p5.tsv.gz"):
         (pre / "out" / name).write_text(name)
     (pre / "minutes" / "_done.psv").write_text("")
+    (pre / "daily_closes_all.csv.gz").write_bytes(b"pre export stub")                   # pinned: every walked pre R is read off it
     repo = tmp_path / "repo"
     (repo / "agents" / "market_intelligence" / "broker").mkdir(parents=True)
     (repo / "docs" / "analysis").mkdir(parents=True)
@@ -3214,7 +3230,8 @@ class TestH60Guards:
         assert {"module", "runner", "code/constants.py", "code/exit_logic.py", "cb702/out/candidates.tsv", "cb702/out/candidates_com_comb.tsv",
                 "cb702/out/watch.tsv.gz", "cb702/out/watch_com_comb.tsv.gz", "cb702/out/trades_discovery_p5.tsv.gz", "cb702/out/trades_holdout_p5.tsv.gz",
                 "cb702/minutes/_done.psv", "cb702_pre/out/candidates_tl_com.tsv", "cb702_pre/out/watch_tl_com.tsv.gz", "cb702_pre/out/trades_pre_p5.tsv.gz",
-                "cb702_pre/minutes/_done.psv", "cb702/minutes (tree)", "cb702_pre/minutes (tree)"} == set(files)
+                "cb702_pre/minutes/_done.psv", "cb702/minutes (tree)", "cb702_pre/minutes (tree)", "cb702/daily_closes_all.csv.gz",
+                "cb702_pre/daily_closes_all.csv.gz"} == set(files)
         doc = _h60_doc(tree)
         check = lambda: rn.freeze_check(doc=doc, data=tree["cb702"], repo=tree["repo"], files=files)
         assert check() == []
@@ -3224,6 +3241,15 @@ class TestH60Guards:
         (tree["cb702"] / "minutes" / "2099-01-01.psv.gz").write_bytes(b"new")
         assert any(p.startswith("cb702/minutes (tree) sha256 mismatch") for p in check())
         (tree["cb702"] / "minutes" / "2099-01-01.psv.gz").unlink()
+        export = tree["cb702"] / "daily_closes_all.csv.gz"
+        before = export.read_bytes()
+        export.write_bytes(before + b"\n")                                                     # the export every walked R is read off
+        assert any(p.startswith("cb702/daily_closes_all.csv.gz sha256 mismatch") for p in check())
+        export.write_bytes(before)
+        (tree["cb702_pre"] / "daily_closes_all.csv.gz").write_bytes(b"edited")
+        assert any(p.startswith("cb702_pre/daily_closes_all.csv.gz sha256 mismatch") for p in check())
+        (tree["cb702_pre"] / "daily_closes_all.csv.gz").write_bytes(b"pre export stub")
+        assert check() == []
         doc.write_text(doc.read_text().replace("n=1", "n=2"))
         assert any(p.startswith("doc body sha256 mismatch") for p in check())
         assert rn.freeze_check(doc=None, files=files) == ["registration doc not given (a `files` map needs its own doc)"]
@@ -3259,6 +3285,12 @@ class TestH60Guards:
         with pytest.raises(SystemExit) as ex:                                                              # --period is required
             rn.main(["h60-read", "--data", str(tree["cb702"]), "--data-pre", str(tree["cb702_pre"])])
         assert ex.value.code == 2 and "--period is required" in capsys.readouterr().err
+        doc = tree["repo"] / "docs" / "analysis" / rn.H60_DOC
+        with pytest.raises(SystemExit) as ex:                                                              # --prereg: only with --print-pins / --dry-run
+            _h60_main(tree, "h60-read", "--prereg", str(doc))
+        assert ex.value.code == 2 and "--prereg is honoured only" in capsys.readouterr().err
+        assert _h60_main(tree, "h60-read", "--dry-run", "--prereg", str(doc)) is None and "H60 DRY RUN" in capsys.readouterr().out
+        assert not list(out.glob("trades_discovery_h60*"))
 
     def test_a_freeze_mismatch_refuses_before_anything_is_opened(self, tmp_path, monkeypatch, capsys):
         tree = _h60_tree(tmp_path, monkeypatch)
@@ -3278,7 +3310,6 @@ class TestH60Guards:
     def test_dry_run_counts_only_and_needs_no_export(self, tmp_path, monkeypatch, capsys):
         tree = _h60_tree(tmp_path, monkeypatch)
         _h60_doc(tree)
-        (tree["cb702"] / "daily_closes_all.csv.gz").unlink()
         before = sorted(p.name for p in tree["cb702"].rglob("*"))
 
         def boom(*a, **k):
@@ -3290,10 +3321,11 @@ class TestH60Guards:
         assert "H60 DRY RUN (freeze check passed" in out and "2 bases (tl 1, com 1), 3 rows, 2 (date, ticker) pairs" in out
         assert "pairs NOT logged in _done.psv: 0" in out and "complete" in out and "outputs already on disk: none" in out
         assert sorted(p.name for p in tree["cb702"].rglob("*")) == before and not list((rn.HERE / "out").iterdir())
+        (tree["cb702"] / "daily_closes_all.csv.gz").unlink()                                   # no export at all: the counts need none
         (tree["cb702"] / "out" / "trades_discovery_h60.tsv.gz").write_bytes(b"x")
         _h60_main(tree, "h60-read", "--dry-run", "--no-freeze-check")
         out = capsys.readouterr().out
-        assert "freeze check SKIPPED" in out and "['trades_discovery_h60.tsv.gz'] -> the run would REFUSE (read once)" in out
+        assert "freeze check SKIPPED" in out and "2 bases (tl 1, com 1)" in out and "['trades_discovery_h60.tsv.gz'] -> the run would REFUSE (read once)" in out
 
     def test_missing_minute_pairs_refuse_step0_and_the_read(self, tmp_path, monkeypatch, capsys):
         tree = _h60_tree(tmp_path, monkeypatch)
@@ -3310,6 +3342,36 @@ class TestH60Guards:
         with pytest.raises(SystemExit) as ex:
             _h60_main(tree, "h60-hindsight")
         assert ex.value.code == 2 and "h60_verdict_discovery.txt does not exist" in capsys.readouterr().err
+
+    def test_hindsight_on_any_period_needs_the_deciding_discovery_verdict(self, tmp_path, monkeypatch, capsys):
+        tree = _h60_tree(tmp_path, monkeypatch)
+        (tree["cb702_pre"] / "out" / "h60_verdict_pre.txt").write_text("pre verdict\n")        # the pre verdict alone is not enough
+        for name in ("h60_load_frame", "h60_read_bases"):
+            monkeypatch.setattr(rn, name, lambda *a, **k: (_ for _ in ()).throw(AssertionError("read before the deciding verdict")))
+        with pytest.raises(SystemExit) as ex:
+            rn.main(["h60-hindsight", "--data", str(tree["cb702"]), "--data-pre", str(tree["cb702_pre"]), "--period", "pre"])
+        err = capsys.readouterr().err
+        assert ex.value.code == 2 and "h60_verdict_discovery.txt does not exist" in err and "DECIDING" in err
+        assert not list((tree["cb702_pre"] / "out").glob("h60_hindsight*")) and not list((rn.HERE / "out").iterdir())
+        (tree["cb702"] / "out" / "h60_verdict_discovery.txt").write_text("discovery verdict\n")
+        with pytest.raises(SystemExit) as ex:                                                  # the deciding gate passed; the pre read itself is missing
+            rn.main(["h60-hindsight", "--data", str(tree["cb702"]), "--data-pre", str(tree["cb702_pre"]), "--period", "pre"])
+        assert ex.value.code == 2 and "run h60-read first" in capsys.readouterr().err
+
+    def test_the_stamps_read_each_periods_own_dir(self, tmp_path, monkeypatch):
+        import json
+        tree = _h60_tree(tmp_path, monkeypatch)
+        (tree["cb702_pre"] / "out" / "h60_verdict_pre.json").write_text(json.dumps(
+            {"period": "pre", "windows": {"pre": {"c1_mean_r": 0.3, "delta_c1": -0.1}, "2020-21": {"c1_mean_r": -0.2, "delta_c1": 0.4}}}))
+        (tree["cb702"] / "out" / "h60_verdict_holdout.json").write_text(json.dumps({"period": "holdout", "windows": {"holdout": {"c1_mean_r": 0.1, "delta_c1": 0.2}}}))
+        lines = rn.h60_stamps(tree, "discovery", 0.5, 0.2)
+        assert not any("no verdict file" in ln for ln in lines)
+        assert any(ln.startswith("pre / pre: C1 mean R positive -> agrees; paired delta negative -> contradicts") for ln in lines)
+        assert any(ln.startswith("pre / 2020-21: C1 mean R negative -> contradicts; paired delta positive -> agrees") for ln in lines)
+        assert any(ln.startswith("holdout / holdout: C1 mean R positive -> agrees; paired delta positive -> agrees") for ln in lines)
+        (tree["cb702"] / "out" / "h60_verdict_discovery.json").write_text(json.dumps({"period": "discovery", "windows": {"discovery": {"c1_mean_r": -0.5, "delta_c1": 0.1}}}))
+        lines = rn.h60_stamps(tree, "pre", 0.3, -0.1)                                            # from the pre side: discovery's file is under cb702/out
+        assert any(ln.startswith("discovery / discovery: C1 mean R negative -> contradicts; paired delta positive -> contradicts") for ln in lines)
 
 
 class TestH60Step0Firewall:
@@ -3380,6 +3442,8 @@ class TestH60Read:
         r = p[p.K == "tl"].iloc[0]
         assert r.orh5_status == "filled" and r.orh5_r == pytest.approx(-1.0) and r.h60_status == "filled" and r.h60_E == tree["c2"]["E"] and r.h60_same_day == 0
         assert r.h60_r == pytest.approx(prim.realized_r) and r.h60_first_status == "never_confirmed" and r.orh5_data_abstain == 0
+        cbar = t[(t.entry == "h60") & (t.K == "tl") & (t.stop_variant == "cbar_low") & (t.arm == rn.H60_ARM)].iloc[0]
+        assert r.cbar_status == "filled" and r.cbar_r == pytest.approx(cbar.realized_r) and r.cbar_open == 0
         rep = pd_read(out / "h60_report_discovery.tsv")
         assert list(rep.columns) == rn.H60_REPORT_COLS
         c1 = rep[(rep.cell == "C1") & (rep.K == "tl") & (rep.entry == "h60") & (rep.stop == "lod") & (rep.arm == rn.H60_ARM) & (rep.slice == "all")].iloc[0]
@@ -3431,6 +3495,62 @@ class TestH60Read:
             _h60_main(tree, "h60-read")
         assert ex.value.code == 3 and "TWIN CHECK FAILED" in capsys.readouterr().out
         assert not (tree["cb702"] / "out" / "h60_report_discovery.tsv").exists() and not (tree["cb702"] / "out" / "h60_verdict_discovery.txt").exists()
+
+    def test_a_lod_abstain_still_computes_every_side_stop_and_the_base_enters_the_stop_delta(self, tmp_path, monkeypatch, capsys):
+        """Review defect 1: the registration computes EVERY stop reading on the primary's confirmed day; a side that abstains there is 0R."""
+        tree = _h60_tree(tmp_path, monkeypatch, deep=True)
+        _h60_doc(tree)
+        assert _h60_main(tree, "h60-read") is None
+        capsys.readouterr()
+        out = tree["cb702"] / "out"
+        t = pd_read(out / "trades_discovery_h60.tsv.gz")
+        h = t[(t.entry == "h60") & (t.K == "tl")]
+        lod = h[h.stop_variant == "lod"]
+        assert len(lod) == 1 and lod.status.iloc[0] == "abstain" and lod.abstain_reason.iloc[0] == "too_wide" and int(lod.fill_minute.iloc[0]) == 90
+        cbar = h[(h.stop_variant == "cbar_low") & (h.arm == rn.H60_ARM)]
+        assert len(cbar) == 1 and cbar.stop.iloc[0] == pytest.approx(10.1) and cbar.mature.iloc[0] == 1 and cbar.realized_r.iloc[0] > 0
+        assert set(h[h.stop_variant == "base_low_cap1"].arm.dropna()) == set(rn.H60_ARMS)
+        p = pd_read(out / "h60_pairs_discovery.tsv.gz")
+        r = p[p.K == "tl"].iloc[0]
+        assert r.h60_status == "too_wide" and r.h60_r == 0.0 and r.h60_open == 0
+        assert r.cbar_status == "filled" and r.cbar_r == pytest.approx(cbar.realized_r.iloc[0]) and r.cbar_open == 0
+        df, pf = rn.h60_load_frame(out / "trades_discovery_h60.tsv.gz", out / "h60_pairs_discovery.tsv.gz")
+        _rows, verdicts = rn.h60_report_rows(df, pf, "discovery")
+        sp = verdicts["discovery"]["pairs"]["C1"]["stop"]
+        assert sp["n"] == 1 and sp["mean"] == pytest.approx(cbar.realized_r.iloc[0]) and sp["lod_abstain"] == 1 and sp["cbar_abstain"] == 0
+        ep = verdicts["discovery"]["pairs"]["C1"]
+        assert ep["n"] == 1 and ep["mean"] == pytest.approx(0.0 - r.orh5_r)                      # the entry pair: h60 no trade (0R) vs ORH5
+        txt = (rn.HERE / "out" / "h60_report_discovery.txt").read_text()
+        assert "lod abstains (0R)" in txt
+
+    def test_same_day_needs_both_sides_filled_and_first_day_abstains_are_counted(self):
+        """Review defect 2."""
+        import pandas as pd
+        cells = {c: 0 for c in rn.CELL_COLS}
+        cells.update(C0=1, C1=1)
+        trade = {"ticker": "A", "D": "d", "E": "e", "K": "tl", "period": "discovery", "pole_date": "p", "base": "A|p|tl", "first_E": "2023-03-01",
+                 "first_month": "2023-03", "fill_month": "2023-03", "year": 2023, "row_no": 0, "sessions_since_first": 0, "gap_kind": "",
+                 "early_close": 0, **cells, "own_C1": 1, "gap_over_1adr": 0, "phase_qqq_10_20": 1, "apollo_regime": "", "adr20": 0.1,
+                 "entry": "h60", "window_end": 29, "walk_from": 29, "fill_minute": 30, "fill": 10.3, "level": 10.25, "fill_le_line": 0,
+                 "stop_variant": "lod", "stop": 10.0, "width_pct": 0.03, "width_adr": 0.3, "abstain_reason": None, "status": "stopped",
+                 "arm": rn.H60_ARM, "realized_r": 1.0, "pnl_adr": 0.3, "acct_pct": 0.01, "sessions_held": 3, "mature": 1, "open_mark": 0,
+                 "fill_day_stop": 0, "partial_kind": "r", "partial_session": 1, "beabove": 0, "fwd_bars": 121, "fwd_hole": 0, "year_first": 2023}
+        df = pd.DataFrame([trade])
+        base = {"K": "tl", "period": "discovery", "pole_date": "p", "first_D": "d", "first_E": "2023-03-01", "first_month": "2023-03", "first_year": 2023,
+                "n_rows": 2, **cells, "orh5_status": "filled", "orh5_reason": "", "orh5_data_abstain": 0, "orh5_fill": 10.3, "orh5_r": -1.0,
+                "orh5_adr": -0.3, "orh5_mature": 1, "orh5_open": 0, "h60_E": "e", "h60_row_no": 0, "h60_fill_minute": 30, "h60_adr": 0.2,
+                "h60_mature": 1, "h60_open": 0, "h60_gap_kind": "", "own_C1": 1, "h60_first_status": "filled", "h60_first_r": 0.5,
+                "h60_first_mature": 1, "h60_first_open": 0, "cbar_adr": 0.1, "cbar_mature": 1, "cbar_open": 0, "h60_reason": ""}
+        rows = [dict(base, ticker="A", base="A|p|tl", h60_status="filled", h60_same_day=1, h60_fill=10.5, h60_r=1.0, cbar_status="filled", cbar_r=1.0),
+                dict(base, ticker="B", base="B|p|tl", h60_status="too_wide", h60_same_day=1, h60_fill=None, h60_r=0.0, cbar_status="filled", cbar_r=0.5),
+                dict(base, ticker="C", base="C|p|tl", h60_status="filled", h60_same_day=0, h60_fill=10.4, h60_r=2.0, cbar_status="too_wide", cbar_r=0.0)]
+        pf = pd.DataFrame(rows)
+        _rows, verdicts = rn.h60_report_rows(df, pf, "discovery")
+        p = verdicts["discovery"]["pairs"]["C1"]
+        assert p["same_day_n"] == 1 and p["same_day_mean"] == pytest.approx(2.0) and p["first_day_abstain_n"] == 1 and p["later_n"] == 1
+        assert p["same_day_fill_n"] == 1 and p["same_day_fill_above"] == 1 and p["same_day_fill_median_ratio"] == pytest.approx(10.5 / 10.3)
+        assert p["n"] == 3 and p["stop"]["n"] == 3 and p["stop"]["lod_abstain"] == 1 and p["stop"]["cbar_abstain"] == 1
+        assert p["stop"]["mean"] == pytest.approx((0.0 + 0.5 - 2.0) / 3)                          # per base: cbar - lod, a no-trade side = 0R
 
     def test_the_twin_check_on_two_tables(self, tmp_path, monkeypatch):
         tree = _h60_tree(tmp_path, monkeypatch)
