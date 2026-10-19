@@ -40,3 +40,20 @@ capture; if no, the base itself is not where the edge is.
 - WOULD-FAIL-IF / the confound: a reader of his streams cannot tell a pick from a mention — stocks he talks about may simply
   be stocks already running. Control (b) is there to see it; a positive (a) with a null (b) reads as "his tickers", not
   "his bases".
+
+## Addendum — rulings on the population, made 2026-10-19 AFTER the population report and BEFORE any outcome was read
+
+Population (`apollo_data/cb702_pre/out/selection_population.txt`, build commit 8bdc4f63): 98 of the 330 pick bases have a
+first breakout STRICTLY after the talk on `tl` (2019: 1, 2020: 62, 2021: 34, 2022: 1); 193 broke on or before the talk;
+25 never broke out; 13 lost to the window / the export. Frame-verified subset: 15 (CAN'T TELL by n, reported beside).
+Control (a) 8,171 same-month first breaks; control (b) 510.
+- **The registered rule stands:** a base whose first breakout is on or before the talk is excluded (hindsight), even when it
+  broke, failed and re-formed later. A beside row reports the 165 of those 193 whose LATER break came after the talk —
+  never deciding.
+- **Talk date = the EARLIEST in-base talk.** The latest-talk reading (38 of the 98 would drop) is reported beside.
+- **Controls exclude every talked base** (all 330, kept or lost): a control is a base he did not discuss.
+- **The bootstrap redraws the controls inside their month** (control b: inside the ticker), so the interval carries the
+  controls' noise. **MFE includes E.** These are the read script's choices, adopted as written.
+- The Jan-2022 pick keeps its single control session; it is 1 of 98.
+- `runner.py` changed for the pre-era run, so the #702 holdout freeze pins no longer match it; the holdout already ran once
+  (2026-10-19) and nothing re-reads it.
