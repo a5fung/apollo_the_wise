@@ -1421,7 +1421,35 @@ stagger cards, one at a time.
 
 **Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
-## 2026-10-17 (Sat) CLOSE — 🔴 RESUME HERE. Supersedes the 10-16 close below.
+## 2026-10-18 (Sun) CLOSE — 🔴 RESUME HERE. Supersedes the 10-17 close below.
+
+**Board 23 → 21.** Closed #700 (first weekly review) and #313 (first ci_status file, ACCEPTED-PARTIAL). No new tasks.
+Server = 25fabf93 (both + execution). main is AHEAD with additive #702 research code only (the `com` level, his exit arms,
+the P5 primary; `ARMS` unchanged, so the live shadow's behaviour is unchanged) — no deploy needed for it.
+
+**#702 Consolidation Breakout (the day's main thread):**
+- P4 frozen (morning). His note then reopened the level: read the base's CHARACTER first, then the line.
+- P4b, all $0 data: 588 stream captions + Kyna's notes mined for free, then 58 of Qullamaggie's OWN drawn lines read off
+  stream frames (free Apple Vision OCR screen + free Sonnet agent readers, every line scored against the real bars —
+  `scripts/probes/_qm_streams/vision_*.py`, data in `apollo_data/cb702/qm_streams/vision/`). Paid one-shot vision reads
+  FAILED (42–61%, arrow lines mistaken for trendlines); vision spend $3.08, stopped on his "run free first".
+- His rules captured verbatim in `docs/methodology/operator_shared_notes.md` (10-18): the line sits on the consolidation's
+  CENTER OF MASS and ignores 1–3 bar spikes; sell 1/3 at +2R (or after 3–5 days, "a combo"), breakeven, trail the 10-day
+  (fast stocks) or 20-day; cut stallers (turnover); breakouts do worse in bear/choppy markets.
+- Finding: his line = the base's MEDIAN HIGH (`com`). But on 2022–24 no level, exit or stop turns the broad group positive
+  (2022's bear carries most of the loss); the strict cell C1 (trendline) is +0.32R under his exit — top-5-dependent, 2023
+  alone, chosen after seeing 2022–24. Tight bases did worst.
+- **P5 primary (his "aligned")** = trendline / ORH5 / low-of-day stop / his exit + staller cut (`c3_p33_t20_cut3`), the
+  article arm + `com`/`comb` + year/regime slices beside. Pins re-printed (bf399605); `holdout --dry-run` passes; NOT run.
+- Data: `com` minutes fetched (57,834 pairs) and merged into `cb702/minutes` (backup `cb702/minutes_pre_com_1018`; the raw
+  delta in `cb702/minutes_com_delta_1018`).
+
+**Mon 10-19:** the five pre-registered checks (#333, #697 item 4, #701(c) QRVO, #312 row, #655 guard) + first live runs
+(#702 shadow 17:48 ET, #314 inside 17:15, #703 single 09:00 scan, #704 on the first split night). Evening: confirm the
+staller-cut definition with him (no +1R by the day-3 close → sold at that close), run `runner.py holdout` ONCE, an
+independent re-derivation written without the runner, report. Paper only on a PASS (wiring Sat 10-24, his weekend).
+
+## 2026-10-17 (Sat) CLOSE — superseded by the 10-18 close above.
 
 **Board 26 → 23.** Closed #686 (none hold, Opus MATCH), #679 (outage half to tripwire `perplexity_outage_theme_window_679`), #597 / #698 / #654 (each to a tripwire: `sync_position_gone_first_real_vanish_597` widened, `plus8r_two_share_first_event_698`, `flag_breakout_first_after_close_654`), #283 (wick_fill RETIRED on his word). New: #702 Consolidation Breakout, #703 09:00 double scan, #704 split outcomes. The 25-task board audit rewrote #687 / #655 / #312 / #314 / #333 in place. Server = 61974034 (both + execution, exit 0).
 
