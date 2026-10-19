@@ -1346,7 +1346,7 @@ def argparse_ns(data, **kw):
 # ═══ #702 P4b: K = "com", the center-of-mass level - runner-only, suffixed outputs, the pinned names untouched ═════════
 class TestCenterOfMassK:
     def test_keys_parse_and_the_default_keeps_every_pinned_name(self):
-        assert rn.EXTRA_KS == cb.EXTRA_PIVOT_KEYS == ("com",) and "com" not in rn.KS
+        assert rn.EXTRA_KS == cb.EXTRA_PIVOT_KEYS == ("com", "comb") and not set(rn.EXTRA_KS) & set(rn.KS)
         assert rn.parse_keys(None) == rn.parse_keys("") == rn.KS and rn.out_suffix(rn.KS) == ""
         assert rn.parse_keys("com") == ("com",) and rn.out_suffix(("com",)) == "_com"
         assert rn.parse_keys("k5, com") == ("k5", "com") and rn.out_suffix(("k5", "com")) == "_k5_com"
@@ -1413,6 +1413,233 @@ class TestCenterOfMassK:
         bad = rn.holdout_option_problems(argparse_ns(data, keys="com"), data)
         assert len(bad) == 1 and "--keys com" in bad[0] and "registered levels only" in bad[0]
         assert rn.holdout_option_problems(argparse_ns(data), data) == []
+
+
+# ═══ #702 P4b step 6b: K = "comb" (com, closed at or below the line the night before) + the per-regime table ═════════
+class TestCombK:
+    def _run(self, data, tmp_path, keys, name):
+        out, small = tmp_path / f"out_{name}", tmp_path / f"small_{name}"
+        rn.main(["daily", "--data", str(data), "--out", str(out), "--small-out", str(small), "--workers", "1", "--keys", keys,
+                 "--no-close-variant"])
+        return out, small
+
+    def test_keys_parse_and_the_suffix_follows_the_existing_convention(self):
+        assert rn.parse_keys("com,comb") == ("com", "comb") and rn.out_suffix(("com", "comb")) == "_com_comb"
+        assert rn.parse_keys("comb") == ("comb",) and rn.out_suffix(("comb",)) == "_comb"
+        assert rn.run_keys(argparse_ns("x", keys="com, comb")) == (("com", "comb"), "_com_comb")
+        with pytest.raises(ValueError):
+            rn.parse_keys("comb,comb")
+
+    def test_scan_ticker_adds_the_comb_fields_only_when_comb_is_asked(self):
+        b = _fixture_bars()["MRNA"]
+        cidx = np.arange(len(b))
+        com = rn.scan_ticker("MRNA", b, cidx, [], "CS", 0, extra_keys=("com",))
+        comb = rn.scan_ticker("MRNA", b, cidx, [], "CS", 0, extra_keys=("comb",))
+        both = rn.scan_ticker("MRNA", b, cidx, [], "CS", 0, extra_keys=("com", "comb"))
+        assert not any(k.startswith("pivot_comb") for w in com["watch"] for k in w)          # a com-only run has no comb column
+        for wc, wb, w2 in zip(com["watch"], comb["watch"], both["watch"]):
+            assert wb["pivot_comb"] == wb["pivot_com"] and wb["pivot_comb_idx"] == wb["pivot_com_idx"]
+            assert wb["pivot_comb_date"] == wb["pivot_com_date"] and w2 == wb               # comb alone == com + comb
+            assert {k: v for k, v in wb.items() if not k.startswith("pivot_comb")} == wc    # the com fields are com's own
+
+    def test_comb_fetch_check_passes_a_subset_and_raises_on_a_pair_com_does_not_have(self):
+        com = {("A", "2025-01-02"), ("B", "2025-01-03"), ("C", "2025-01-06")}
+        msg = rn.comb_fetch_check({("A", "2025-01-02")}, com, com)
+        assert "1 comb" in msg and "ALL among com's 3" in msg and "2 com pairs" in msg and "no minute fetch beyond com's" in msg
+        assert "0 comb" in rn.comb_fetch_check(set(), com)
+        with pytest.raises(AssertionError, match="outside com's: 1"):
+            rn.comb_fetch_check({("A", "2025-01-02"), ("Z", "2025-01-02")}, com)
+        with pytest.raises(AssertionError, match="differ from the com level's breaks"):
+            rn.comb_fetch_check({("A", "2025-01-02")}, com, {("A", "2025-01-02")})
+
+    def test_daily_com_comb_one_pass_comb_is_the_closed_at_or_below_subset_of_com(self, tmp_path, capsys):
+        data = TestTrendlineK()._daily_dir(tmp_path, with_done=True)
+        rd = TestTrendlineK()._read
+        out_cc, small_cc = self._run(data, tmp_path, "com,comb", "cc")
+        out_c, _ = self._run(data, tmp_path, "com", "c")
+        out_b, _ = self._run(data, tmp_path, "comb", "b")
+        txt = capsys.readouterr().out
+        # the suffix convention: ONE set of files, the K column carries both levels
+        assert {p.name for p in out_cc.iterdir()} == {"watch_com_comb.tsv.gz", "candidates_com_comb.tsv", "gap_in_bars_com_comb.tsv",
+                                                      "minute_fetch_list_com_comb.tsv", "minute_fetch_list_delta_com_comb.tsv"}
+        assert {p.name for p in small_cc.iterdir()} == {"universe_by_date_com_comb.tsv", "gate_counts_com_comb.tsv",
+                                                        "run_summary_com_comb.txt"}
+        assert "COMB FETCH CHECK" in txt and "ALL among com's" in (small_cc / "run_summary_com_comb.txt").read_text()
+        watch = rd(out_cc / "watch_com_comb.tsv.gz", gz=True)
+        assert {"pivot_com", "pivot_comb", "pivot_comb_date", "C0_com", "C0_comb", "C1_comb", "C1_s5_comb"} <= set(watch[0])
+        # C0_comb is exactly `close(D) <= the com level`; C0_com holds wherever the level exists
+        for r in watch:
+            assert (r["C0_comb"] == "1") is (float(r["close"]) <= float(r["pivot_com"])) and r["C0_com"] == "1"
+        by_night = {(r["ticker"], r["watch_date"]): r for r in watch}
+        cands = rd(out_cc / "candidates_com_comb.tsv")
+        com, comb = [c for c in cands if c["K"] == "com"], [c for c in cands if c["K"] == "comb"]
+        assert com and comb and {c["K"] for c in cands} == {"com", "comb"}
+        pairs = lambda rows: {(c["ticker"], c["E"]) for c in rows}
+        assert pairs(comb) < pairs(com)                                                    # a STRICT subset: some nights closed above the line
+        com_by = {(c["ticker"], c["E"]): c for c in com}
+        for c in comb:
+            w = by_night[(c["ticker"], c["D"])]
+            assert w["C0_comb"] == "1" and c["C0"] == "1" and float(w["close"]) <= float(c["pivot"])    # only nights at or under the line
+            assert c["pivot"] == com_by[(c["ticker"], c["E"])]["pivot"] and c["pivot_date"] == com_by[(c["ticker"], c["E"])]["pivot_date"]
+        dropped = [c for c in com if (c["ticker"], c["E"]) not in pairs(comb)]
+        assert dropped and all(float(by_night[(c["ticker"], c["D"])]["close"]) > float(c["pivot"]) for c in dropped)
+        # the `com` rows are the com-only run's rows, byte for byte; the fetch list is com's (no new fetch)
+        only = rd(out_c / "candidates_com.tsv")
+        assert [dict(c) for c in com] == [dict(c) for c in only]
+        assert (out_cc / "minute_fetch_list_com_comb.tsv").read_bytes() == (out_c / "minute_fetch_list_com.tsv").read_bytes()
+        assert (out_cc / "minute_fetch_list_delta_com_comb.tsv").read_bytes() == (out_c / "minute_fetch_list_delta_com.tsv").read_bytes()
+        # a comb-only run is the comb rows of the two-key run, and its fetch list is the comb pairs
+        b_only = rd(out_b / "candidates_comb.tsv")
+        assert [dict(c) for c in b_only] == [dict(c) for c in comb]
+        assert {(r["ticker"], r["date"]) for r in rd(out_b / "minute_fetch_list_comb.tsv")} == pairs(comb) <= pairs(com)
+
+    def test_a_first_break_from_above_does_not_use_up_the_base_for_the_later_break_from_below(self):
+        """The unstated piece: a comb candidate exists only on a night that closed at or below the line, so one-trade-per-base
+        counts the first break FROM BELOW (a from-above row would be retrigger=0 and push the real one to retrigger=1)."""
+        mk = lambda ticker, E, K="comb": {"ticker": ticker, "pole_date": "p", "K": K, "E": E, **{c: True for c in cb.CELL_NAMES}}
+        cands = [mk("A", "2025-02-05"), mk("A", "2025-02-12")]            # only the from-below nights are comb candidates
+        cb.stamp_retrigger(cands)
+        assert [c["retrigger"] for c in cands] == [0, 1]                 # the first from-below break is the trade
+
+
+def _regime_frame():
+    """A synthetic report frame: 12 filled headline walks of one (K, cell) set, regimes Bull x5 / Choppy x3 / Correcting x1 /
+    missing x2 (+ Crisis x1), two of them still open; C1 holds on 8 of the 12."""
+    import pandas as pd
+    regs = ["Bull"] * 5 + ["Choppy"] * 3 + ["Correcting"] + ["Crisis"] + ["missing"] * 2
+    r = [6.0, -1.0, 0.5, 2.0, -1.0, 5.0, -1.0, 0.3, -1.0, 12.0, -1.0, 0.0]
+    mature = [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0]
+    n = len(regs)
+    df = pd.DataFrame({"K": ["k5"] * n, "variant": ["orh5"] * n, "arm": [cb.PRIMARY_ARM] * n, "retrigger": [0] * n,
+                       "retrigger_chain": [0] * n, "mature": mature, "realized_r": r, "pnl_adr": [x / 3 for x in r],
+                       "acct_pct": [x / 100 for x in r], "regime": regs})
+    for c in cb.CELL_NAMES:
+        df[c] = 0
+    df["C0"] = 1
+    df.loc[:7, "C1"] = 1
+    return df
+
+
+class TestRegimeTable:
+    def test_the_rows_per_regime_add_up_to_the_cell_n_and_use_the_reports_own_statistics(self):
+        df = _regime_frame()
+        rows = rn.regime_report_rows(df)
+        assert all(r["slice"] == "regime" and r["variant"] == "orh5" and r["arm"] == cb.PRIMARY_ARM for r in rows)
+        for key in ("spec", "chain"):
+            for cell, want in (("C0", 12), ("C1", 8)):
+                grp = [r for r in rows if r["key"] == key and r["cell"] == cell and r["K"] == "k5"]
+                allr = next(r for r in grp if r["value"] == "ALL")
+                regs = [r for r in grp if r["value"] != "ALL"]
+                assert [r["value"] for r in regs] == ["Bull", "Choppy", "Correcting", "Crisis", "missing"]
+                assert allr["n_filled"] == want == sum(r["n_filled"] for r in regs)
+                assert allr["n"] == sum(r["n"] for r in regs) and allr["n_open"] == sum(r["n_open"] for r in regs)
+                assert allr["n"] + allr["n_open"] == allr["n_filled"]
+                assert allr["sum_r"] == pytest.approx(sum(r.get("sum_r", 0.0) for r in regs))     # an empty regime carries n=0 only
+        c0 = {r["value"]: r for r in rows if r["key"] == "spec" and r["cell"] == "C0"}
+        assert (c0["Bull"]["n"], c0["Bull"]["mean_r"], c0["Bull"]["share_ge5"]) == (5, pytest.approx(1.3), pytest.approx(0.2))
+        assert (c0["Choppy"]["n"], c0["Choppy"]["n_open"], c0["Choppy"]["share_ge5"]) == (3, 0, pytest.approx(1 / 3))
+        assert (c0["Correcting"]["n"], c0["Correcting"]["n_open"], c0["Correcting"].get("mean_r")) == (0, 1, None)   # its one walk is open
+        assert (c0["Crisis"]["n"], c0["Crisis"]["share_ge5"]) == (1, 1.0)
+        assert (c0["missing"]["n"], c0["missing"]["n_open"], c0["missing"]["share_ge5"]) == (1, 1, 0.0)
+        assert c0["ALL"]["n"] == 10 and c0["ALL"]["n_open"] == 2 and c0["ALL"]["share_ge5"] == pytest.approx(0.3)
+        c1 = {r["value"]: r for r in rows if r["key"] == "spec" and r["cell"] == "C1"}
+        assert c1["Bull"]["n"] == 5 and c1["Choppy"]["n"] == 3 and c1["Correcting"]["n"] == 0 and c1["Crisis"]["n"] == 0
+
+    def test_an_unknown_label_gets_its_own_row_and_an_empty_frame_has_no_rows(self):
+        df = _regime_frame()
+        df.loc[0, "regime"] = "Euphoria"
+        vals = [r["value"] for r in rn.regime_report_rows(df) if r["key"] == "spec" and r["cell"] == "C0"]
+        assert vals == ["ALL", "Bull", "Choppy", "Correcting", "Crisis", "missing", "Euphoria"]
+        assert rn.regime_report_rows(df.iloc[0:0]) == []
+
+    def test_labels_and_the_date_map(self, tmp_path):
+        assert [rn.regime_label(x) for x in ("Bull", " Choppy ", "", None, float("nan"))] == ["Bull", "Choppy", "missing", "missing", "missing"]
+        _write_cands(tmp_path / "c.tsv", [_m_cand(_e_bars()[0], _e_bars()[1], apollo_regime="Bull"),
+                                          _m_cand(_e_bars()[0], _e_bars()[1], D="2023-01-03", apollo_regime="")])
+        got = rn.regime_by_date(tmp_path / "c.tsv")
+        assert got["2023-01-03"] == "missing" and list(got.values()).count("Bull") == 1
+        assert rn.regime_by_date(tmp_path / "nope.tsv") == {}
+
+    def test_report_writes_regime_report_beside_the_pinned_files_and_changes_none_of_them(self, tmp_path, capsys):
+        data, bars, e, cands = _syn_dir(tmp_path, n_cands=3)
+        _close_file(data, bars, e, cands)
+        _write_cands(data / "out" / "candidates.tsv", [dict(c, apollo_regime="Choppy") for c in cands])
+        small = tmp_path / "small"
+        rn.main(["minute", "--data", str(data), "--workers", "1", "--small-out", str(small)])
+        rn.main(["report", "--data", str(data), "--small-out", str(small)])
+        txt = capsys.readouterr().out
+        assert "by regime" in txt
+        out = data / "out"
+        assert (out / "regime_report.tsv").exists() and (small / "regime_report.txt").exists()
+        assert not (out / "regime_report_holdout.tsv").exists()
+        reg = pd_read(out / "regime_report.tsv")
+        assert list(reg.columns) == rn.REGIME_COLS
+        rep = pd_read(out / "discovery_report.tsv")                                      # the full table (the small copy is rounded)
+        head_sel = lambda f: (f.key == "spec") & (f.cell == "C1") & (f.K == "k5") & (f.variant == "orh5") & (f.arm == cb.PRIMARY_ARM)
+        head = rep[head_sel(rep) & (rep.slice == "all")].iloc[0]                         # the report's own headline row
+        mine = reg[head_sel(reg)].set_index("value")
+        assert (mine.loc["ALL", "n"], mine.loc["ALL", "mean_r"], mine.loc["ALL", "n_open"]) == (head.n, head.mean_r, head.n_open)
+        assert head.n == 1 and head.n_open == 0
+        assert mine.loc["Choppy", "n"] == 1 and mine.loc["Bull", "n"] == 0 and mine.loc["missing", "n"] == 0   # the label travelled candidates -> trades table
+        # the run printed the per-regime text and did not touch the report text (a two-run byte-equality is in test_minute_then_report)
+        assert "-- SPEC key" in (small / "regime_report.txt").read_text()
+
+    def test_an_unlabelled_date_reads_missing_and_a_missing_candidates_file_is_said_aloud(self, tmp_path, capsys):
+        data, bars, e, cands = _syn_dir(tmp_path, n_cands=1)
+        _close_file(data, bars, e, cands)
+        small = tmp_path / "small"
+        rn.main(["minute", "--data", str(data), "--workers", "1", "--small-out", str(small)])
+        rn.main(["report", "--data", str(data), "--small-out", str(small)])
+        reg = pd_read(data / "out" / "regime_report.tsv")
+        c1 = reg[(reg.key == "spec") & (reg.cell == "C1") & (reg.K == "k5")].set_index("value")
+        assert c1.loc["missing", "n"] == 1 and c1.loc["Bull", "n"] == 0                 # _m_cand carries apollo_regime=""
+        trades = data / "out" / "trades_discovery.tsv.gz"
+        (data / "out" / "candidates.tsv").rename(data / "out" / "candidates_gone.tsv")
+        capsys.readouterr()
+        rn.main(["report", "--data", str(data), "--small-out", str(small), "--trades", str(trades)])
+        assert "not found or empty" in capsys.readouterr().out
+
+    def test_the_holdout_run_writes_its_own_regime_table_once(self, tmp_path, capsys):
+        data, bars, e, cands = _syn_dir(tmp_path, split="holdout", n_cands=1)
+        _write_cands(data / "out" / "candidates.tsv", [dict(c, apollo_regime="Bull") for c in cands])
+        small = tmp_path / "small"
+        rn.run_minute_stage(argparse_ns(data, small_out=str(small)), "holdout")
+        out = data / "out"
+        assert (out / "regime_report_holdout.tsv").exists() and (small / "regime_report_holdout.txt").exists()
+        assert not (out / "regime_report.tsv").exists()
+        reg = pd_read(out / "regime_report_holdout.tsv")
+        c1 = reg[(reg.key == "spec") & (reg.cell == "C1") & (reg.K == "k5")].set_index("value")
+        assert c1.loc["ALL", "n"] == 1 and c1.loc["Bull", "n"] == 1 and c1.loc["Choppy", "n"] == 0
+        assert sorted(p.name for p in out.glob("*.tsv*")) == ["candidates.tsv", "entries_holdout.tsv.gz", "regime_report_holdout.tsv",
+                                                              "trades_holdout.tsv.gz"]
+        assert "HOLDOUT by regime" in capsys.readouterr().out
+
+    def test_minute_and_report_on_com_comb_write_the_suffixed_files_and_the_regime_table_per_k(self, tmp_path, capsys):
+        """The discovery re-read the main loop will run is `minute --keys com,comb` then `report --keys com,comb`: both stages
+        read `candidates_com_comb.tsv`, write `*_com_comb`, and the regime table carries both K and the suffix."""
+        data, bars, e, cands = _syn_dir(tmp_path, n_cands=1)
+        cs = [dict(_m_cand(bars, e, K=k), pole_date="p", apollo_regime="Choppy") for k in ("com", "comb")]
+        _write_cands(data / "out" / "candidates_com_comb.tsv", cs)
+        small = tmp_path / "small"
+        rn.main(["minute", "--data", str(data), "--workers", "1", "--small-out", str(small), "--keys", "com,comb", "--no-close"])
+        rn.main(["report", "--data", str(data), "--small-out", str(small), "--keys", "com,comb"])
+        capsys.readouterr()
+        out = data / "out"
+        assert {"trades_discovery_com_comb.tsv.gz", "entries_discovery_com_comb.tsv.gz", "discovery_report_com_comb.tsv",
+                "regime_report_com_comb.tsv"} <= {p.name for p in out.iterdir()}
+        assert not (out / "trades_discovery.tsv.gz").exists() and not (out / "regime_report.tsv").exists()   # the pinned names are not written
+        assert (small / "regime_report_com_comb.txt").exists() and (small / "discovery_report_com_comb.txt").exists()
+        assert set(pd_read(out / "trades_discovery_com_comb.tsv.gz").K) == {"com", "comb"}
+        reg = pd_read(out / "regime_report_com_comb.tsv")
+        for k in ("com", "comb"):
+            c1 = reg[(reg.key == "spec") & (reg.cell == "C1") & (reg.K == k)].set_index("value")
+            assert c1.loc["ALL", "n"] == 1 and c1.loc["Choppy", "n"] == 1 and c1.loc["Bull", "n"] == 0
+
+    def test_the_discovery_minute_stage_writes_no_regime_table(self, tmp_path):
+        data, bars, e, cands = _syn_dir(tmp_path, n_cands=1)
+        _close_file(data, bars, e, cands)
+        rn.main(["minute", "--data", str(data), "--workers", "1", "--small-out", str(tmp_path / "small")])
+        assert not list((data / "out").glob("regime_report*")) and not list((tmp_path / "small").glob("regime_report*"))
 
 
 # ═══ end to end: minute -> report, and the holdout engine ═════════════════════════════════════════

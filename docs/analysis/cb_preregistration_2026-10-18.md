@@ -565,14 +565,51 @@ run length is S-class (his words). Gate 5 registers all three (`scripts/gate_pro
    `minute_fetch_list_com.tsv` (136,323 pairs: discovery 71,306 / holdout 65,017; 78,489 already on disk). Whether to pull
    all 57,834 (the C0 rows need them; ~60% of the first pull) or the 5,342 tier-1 pairs (the deciding cells only) is the
    main loop's call; the registration is the same either way.
-2. **The `com` discovery re-read:** `runner.py minute --keys com` then `report --keys com` on the fetched minutes — the
-   same entry (ORH5), stop, arms, keys and report as §2, reported in `discovery_report_com.txt` BESIDE the four levels'
-   report, on the C0..C7 cells. Read with §2's rules: the tail first, the month-block interval, `pnl_adr` beside R; a `com`
+2. **The `com` discovery re-read:** `runner.py minute --keys com,comb` then `report --keys com,comb` on the fetched minutes
+   (`comb` is the primary `com` reading, §P4b.6; the outputs carry the suffix `_com_comb`) — the
+   same entry (ORH5), stop, arms, keys and report as §2, reported in `discovery_report_com_comb.txt` BESIDE the four levels'
+   report, on the C0..C7 cells, with the per-regime table (§P4b.6). Read with §2's rules: the tail first, the month-block interval, `pnl_adr` beside R; a `com`
    number is a LEAD, never a replacement for the registered primary. Before it runs, the daily `com` run is repeated WITH
    the close variant (`daily --keys com`, no `--no-close-variant`) so the CLOSE entry joins as for the other levels.
 3. **The `com` holdout:** NOT part of the registered holdout (`holdout` refuses `--keys`). If the discovery re-read gives a
    reason to read it on 2025–26, that read gets its own registration (level, entry, bar, n) added to this document first.
 4. **The re-pin:** after the fetch, `holdout --print-pins` → §Freeze record (module, runner, minutes tree, doc body).
+
+### P4b.6 `comb` — `com` read only from below, and the per-regime table (registered 2026-10-18 step 6b, BEFORE any `com` outcome)
+
+**Why a second reading.** Under `com` the level sits UNDER the watch night's close on 38% (discovery) / 41% (holdout) of watch
+nights (§P4b.4), so on those nights "breaking out" of it the next day is often just an up day, not a breakout from below. The
+main loop's call (2026-10-18): test BOTH readings; **`comb` is the PRIMARY `com` reading, `com` is reported beside it.**
+
+**Definition (computable; module `cb.comb_fields`, `cb.CLOSED_BELOW_KEYS`, `cb.cell_flags(k="comb")`).** `pivot_comb`(D) =
+`pivot_com`(D) — the same level, the same date fields (`pivot_comb_idx`, `pivot_comb_date`). **C0 additionally requires
+`close(D) <= pivot_comb(D)`** (the stock closed AT OR BELOW the line on the watch night; equality counts), so every other cell
+inherits it. A night that closed above the line is **not a `comb` night: it gets no `comb` candidate** — otherwise its
+first break would consume the base's one trade under the spec key `(ticker, pole_date, "comb")` and push the real
+break-from-below to `retrigger = 1`. The breakout, the entry (ORH5), the stop, the arms and both base keys are `com`'s,
+unchanged. `comb` adds NO threshold (it is a reading of `com`), so Gate 5 registers nothing new.
+
+**No new minute fetch.** The `comb` (ticker, E) pairs are a subset of `com`'s (the same level on fewer nights); the runner's
+daily stage ASSERTS it (`comb_fetch_check`) and writes the check into the run summary, so the `com` fetch of §P4b.5 covers
+`comb`.
+
+**The per-regime table (reported BESIDE, never deciding).** His 2026-10-18 remark: *"breakouts likely wont do as well in bear
+markets, or choppy markets"*. The runner already carries Apollo's daily regime label at D (`apollo_regime`: Bull / Choppy /
+Correcting / Crisis; `missing` = a date with no label). For every (key, cell, K) of the headline table (ORH5, `p33_s3_t10`),
+the table gives n / mean R / share >= 5R per regime (and an `ALL` row = the headline row) over the same mature walks:
+`report` writes `regime_report{suffix}.tsv`, and the `holdout` stage writes `regime_report_holdout.tsv` on its one run
+(NEW files; no pinned output changes by a byte). **It decides nothing:** no regime filter, gate or size change is proposed,
+the primary triple of §3 and every bar of §5 are unchanged, and the non-Bull groups will be SMALL — a read of them states n
+first and is a lead for a later registration, not a result.
+
+**Coverage of the label (measured 2026-10-18 on `small_pulls.psv`, before any outcome): Apollo's daily regime exists only from
+2025-03-03.** 424 labelled dates — Bull 289, Choppy 36, Correcting 42, Crisis 57 (135 non-Bull, 32%) — and NONE in the whole
+discovery window (D 2022-03-28 .. 2024-12-31: all 692 nights read `missing`; the holdout's first 39 nights, 2025-01-02 ..
+2025-02-28, also read `missing`). So the DISCOVERY regime table is, as built, one `missing` column equal to `ALL`: it cannot
+say how `comb` / `com` behave in the 2022 bear or in choppy tape. The split is informative only where the label exists (the
+holdout from 2025-03-03, and any later forward read), and there at n of a few trades per cell. A discovery-era regime split
+needs a rule computed from bars (the report's QQQ 10/20 phase slice and `phase_spy_qqq_50` already exist on every watch night)
+— a separate, declared step that this section does not take.
 
 ## THE LINE
 

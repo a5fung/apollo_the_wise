@@ -2188,7 +2188,7 @@ class TestCenterOfMassLevel:
     P, I, ADR = 140, 170, 0.03          # the synthetic base: typical high 18.0, threshold at T = 1 ADR -> 18.54
 
     def test_the_extra_key_is_outside_ks_and_the_chosen_reading_is_the_median_high(self):
-        assert cb.EXTRA_PIVOT_KEYS == ("com",) and "com" not in cb.KS and cb.KS == cb.PIVOT_KEYS
+        assert cb.EXTRA_PIVOT_KEYS == ("com", "comb") and not set(cb.EXTRA_PIVOT_KEYS) & set(cb.KS) and cb.KS == cb.PIVOT_KEYS
         assert cb.COM_VARIANT == "quantile" and cb.COM_QUANTILE == 0.5 and cb.COM_MAX_RUN == 3
         assert set(cb.COM_VARIANTS) == {"flat_high", "flat_close", "quantile", "tl_filtered", "switch_high", "switch_close"}
         with pytest.raises(ValueError):
@@ -2351,6 +2351,80 @@ CORPUS_PIN = {
     ("HNGE", "2026-06-27"): [("2026-06-12", "2026-06-26", "close_above_pole_high")],
     ("HPE", "2026-06-02"): [("2026-05-18", "2026-06-02", "close_above_pole_high")],
 }
+
+
+class TestCombClosedBelowTheLine:
+    """#702 P4b step 6b: `comb` = `com` on the nights the stock CLOSED AT OR BELOW the level. The condition is C0's, so every
+    cell inherits it; the level and its date fields are `com`'s."""
+
+    LEVEL = 10.0
+
+    def _f(self, close, level=LEVEL, key="comb"):
+        f = _good_features(close=close)
+        f.update({f"pivot_{key}": level, f"pivot_{key}_date": "2026-09-02", f"pivot_{key}_idx": 7})
+        return f
+
+    def test_the_tag_and_the_key_set(self):
+        assert cb.CLOSED_BELOW_KEYS == ("comb",) and set(cb.CLOSED_BELOW_KEYS) <= set(cb.EXTRA_PIVOT_KEYS)
+        assert not set(cb.CLOSED_BELOW_KEYS) & set(cb.KS)                       # the shadow and the pinned backtest never see it
+
+    def test_c0_is_false_above_the_level_true_at_equality_and_below(self):
+        for close, want in ((10.01, False), (10.0, True), (9.99, True), (5.0, True)):
+            fl = cb.cell_flags(self._f(close), _ctx(), k="comb")
+            assert fl["C0"] is want, (close, fl)
+
+    def test_every_cell_inherits_the_condition(self):
+        below = cb.cell_flags(self._f(9.99), _ctx(), k="comb")
+        above = cb.cell_flags(self._f(10.01), _ctx(), k="comb")
+        assert below["C1"] is True and below["C2"] is True and below["HTF"] in (True, False)
+        assert not any(above[c] for c in cb.CELLS + cb.REPORT_CELLS)             # closed above: no cell at all, HTF included
+        # the same row read as `com` (no condition): the cells hold whatever side the close is on
+        for close in (9.99, 10.01):
+            com = cb.cell_flags(self._f(close, key="com"), _ctx(), k="com")
+            assert com["C0"] is True and com["C1"] is True
+
+    def test_a_missing_close_or_level_reads_false_not_an_error(self):
+        f = self._f(9.0)
+        del f["close"]
+        assert cb.cell_flags(f, _ctx(), k="comb")["C0"] is False
+        assert cb.cell_flags(self._f(9.0, level=None), _ctx(), k="comb")["C0"] is False
+        assert cb.cell_flags(None, _ctx(), k="comb") == {c: False for c in cb.CELLS + cb.REPORT_CELLS}
+
+    def test_the_other_levels_have_no_close_condition(self):
+        f = _good_features(close=999.0)                                         # far above every pivot
+        for k in cb.KS:
+            if f.get(f"pivot_{k}") is not None:
+                assert cb.cell_flags(f, _ctx(), k=k)["C0"] is True
+
+    def test_comb_fields_copy_the_com_fields_and_the_key_is_the_com_date(self):
+        bars, idx = _mrna()
+        i = idx["2026-09-16"]
+        f = cb.evaluate_watch(bars, i)
+        f.update(cb.com_level(bars, f["pole_idx"], i, f["adr20"]))
+        before = dict(f)
+        f.update(cb.comb_fields(f))
+        assert (f["pivot_comb"], f["pivot_comb_idx"], f["pivot_comb_date"]) == (f["pivot_com"], f["pivot_com_idx"], f["pivot_com_date"])
+        assert all(f[k] == v for k, v in before.items())                         # nothing else moved
+        assert cb.breakout_key("MRNA", f, "comb") == ("MRNA", f["pivot_com_date"]) == cb.breakout_key("MRNA", f, "com")
+        assert set(cb.comb_fields({})) == {"pivot_comb", "pivot_comb_idx", "pivot_comb_date"}      # a row with no com level: Nones
+        assert all(v is None for v in cb.comb_fields({}).values())
+
+    def test_on_every_mrna_watch_night_c0_comb_is_exactly_the_close_at_or_under_the_com_level(self):
+        bars, _ = _mrna()
+        n = n_below = n_above = 0
+        for i in range(cb.MIN_HISTORY - 1, len(bars)):
+            f = cb.evaluate_watch(bars, i)
+            if f is None:
+                continue
+            f.update(cb.com_level(bars, f["pole_idx"], i, f["adr20"]))
+            f.update(cb.comb_fields(f))
+            c0_comb = cb.cell_flags(f, _ctx(), k="comb")["C0"]
+            assert c0_comb is bool(f["close"] <= f["pivot_com"])
+            assert cb.cell_flags(f, _ctx(), k="com")["C0"] is True                # the com population is the superset
+            n += 1
+            n_below += c0_comb
+            n_above += not c0_comb
+        assert n == 60 and n_below > 0 and n_above > 0                            # the fixture has nights on both sides of the line
 
 
 class TestLabelledCorpus:

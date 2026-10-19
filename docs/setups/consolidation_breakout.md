@@ -44,6 +44,7 @@ approved plan, not by the article · **T** = telemetry only, never gates.
 | Base anchor | the base ends only if a CLOSE (not a wick) goes above high(P) | **R** the shipped HTF `_flag_resolved_by` (#592) | `_base_resolved` |
 | Pivot (K) | `k5` / `k10` / `full` = highest high of the last 5 / 10 / all base sessions (HORIZONTAL levels); `tl` = the down-sloping trendline, projected one session ahead | k5 / k10 / full: **B** (the primary is picked in discovery, then frozen). `tl`: **S** his 2026-10-17 note *"a flag with a down sloping trend line and a breakout of that trend line"* — how the line is anchored and drawn is the #702 P1c reading of that sentence, tested BESIDE the horizontal levels | `PIVOT_KEYS`, `_down_trendline` |
 | Pivot `com` (P4b, runner-only) | the CENTER-OF-MASS level = **the median of the base's daily highs over (P, D]** (bars ≤ D; `pivot_com_date` = the base bar nearest it); a breakout is `high(E) > pivot_com(D)`, same keys and cells as the four above. NOT in `PIVOT_KEYS` / `KS`: the shadow never computes it and no pinned backtest output carries it; the runner computes it on `--keys com` into `*_com` files | **S** his 2026-10-18 rule *"he finds where the center of mass is in the consolidation and ignore the outliers if it's just a short period, meaning a 1-3 bars spike then drop back to the basing area"*; WHICH reading of that sentence (`COM_VARIANT` = `quantile`, `COM_QUANTILE` = 0.5) is **B**, chosen on the plateau of the P4b label read (43 of his 58 drawn lines within 0.5 ADR vs 23 for the best existing level; `docs/analysis/cb_preregistration_2026-10-18.md` §P4b); the spike filter (`COM_MAX_RUN` = 3 **S** his "1-3 bars"; `COM_SPIKE_ADR` = 0.5, `COM_FALLING_SLOPE` = 0.2%/session **B**, the runner-up reading's values) serves the five other readings and is telemetry under the chosen one | `EXTRA_PIVOT_KEYS`, `com_level`, `spike_mask` |
+| Pivot `comb` (P4b step 6b, runner-only) | `com` read only on the nights the stock CLOSED AT OR BELOW the level: `pivot_comb` = `pivot_com` (same level, same date fields) and **C0 additionally requires `close(D) <= pivot_comb(D)`** (equality counts; every cell inherits it). A night that closed above the line gets NO `comb` candidate (else its first break would consume the base's one trade under the spec key). Not in `PIVOT_KEYS` / `KS`; the runner computes it on `--keys comb` (or `--keys com,comb`, one pass, outputs suffixed `_com_comb`) | a reading of `com`, not a new level: no threshold of its own (Gate 5 registers nothing). WHY: `com` sits under the watch night's close on 38% / 41% of nights, where a "breakout" is any up day; the main loop (2026-10-18) made `comb` the PRIMARY `com` reading and `com` the one reported beside it | `EXTRA_PIVOT_KEYS`, `CLOSED_BELOW_KEYS`, `comb_fields`, `cell_flags` |
 | MA surfing | close ≥ SMA50; close ≥ 0.98 × SMA20; SMA50 rising over 10 sessions | **S** *"surfs the rising 10- and 20-day and sometimes the 50-day"* · **R** `anticipation._MA_NEAR_PCT` · 10-session slope **P** | `explain_watch`, `sma20_ok`, `sma50_rising` |
 | Higher lows | lowest low of the last 5 sessions > the base low | **S** *"higher lows"*; the 5-session window is **B** | `higher_lows`, `RECENT_WINDOW` |
 | Tightening | mean daily range of the last 5 sessions ÷ the first 5 base sessions ≤ 0.75 | **S** *"tightening range"* · **R** `flag_detector._RANGE_CONTRACTION_MAX` | `tightening_ok` |
@@ -231,6 +232,37 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 - The minute feed (the row's `feed` column) and thin-SIC effects above bias the first weeks; the read states them.
 
 ## Change log
+
+### 2026-10-18 — #702 P4b step 6b: `comb` (`com`, closed at or below the line the night before) is the primary `com` reading, plus the per-regime table — runner-only, no pinned byte moved
+
+**Trigger**: step 6's `com` level sits under the watch night's close on 38% / 41% of watch nights, so the next-day "breakout" there
+is often just an up day; and the operator (2026-10-18): *"breakouts likely wont do as well in bear markets, or choppy markets"*.
+
+**What**: (1) module: `EXTRA_PIVOT_KEYS = ("com", "comb")`, `CLOSED_BELOW_KEYS = ("comb",)`, `comb_fields` (the three `pivot_comb*`
+fields copy `com`'s), `cell_flags(k="comb")`: C0 additionally needs `close(D) <= pivot_comb` (equality counts, a missing close
+reads False). (2) runner: `--keys comb` / `--keys com,comb` (ONE pass; outputs `*_com_comb`, the `K` column carries both); a `comb`
+candidate exists only on a night that closed at or below the line (the unstated piece: a from-above row would be
+`retrigger = 0` and push the real break-from-below to `retrigger = 1`); the daily stage asserts the `comb` (ticker, E) pairs are a
+subset of `com`'s (`comb_fetch_check`) so no minute fetch beyond `com`'s is needed. (3) the per-regime table: `report` writes
+`regime_report{suffix}.tsv` and the `holdout` stage writes `regime_report_holdout.tsv` on its one run — for every cell row of
+the headline table, n / mean R / share >= 5R per `apollo_regime` (Bull / Choppy / Correcting / Crisis / missing + an `ALL` row);
+the label is joined from the candidates table at read time (the trades layout carries none), and the table is reported
+BESIDE, never deciding. **Coverage caveat, measured: Apollo's regime label exists only from 2025-03-03 (424 dates: Bull 289 / Choppy 36 /
+Correcting 42 / Crisis 57), so every DISCOVERY night (2022-03-28 .. 2024-12-31) and the holdout's first 39 nights read `missing` —
+the discovery table is one `missing` column; a discovery-era regime split would need a bars-based rule (a separate, declared step).** (4) tests: `comb` C0 false above / true at equality and below / every cell inherits it, `comb_fields`,
+C0 on every MRNA watch night, the one-pass `com,comb` daily (strict subset of `com`, `com` rows byte-identical to the `com`-only
+run, same fetch list), the subset assertion (pass + raise), the regime table on a synthetic set (n per regime adds to the cell's n),
+and the report / holdout end to end. (5) docs: this row and entry, preregistration §P4b.6, the runner README.
+
+**Anticipated effect**: none in production — the shadow computes `KS` only. Byte-identical proof: `daily|minute|step0-entries|report`
+on the default keys re-run into a scratch dir, all seven content hashes equal to the pre-change run; `daily --keys com
+--no-close-variant` reproduces `candidates_com.tsv` / `watch_com.tsv.gz` byte for byte. **Freeze consequence**: the module, runner
+and doc-body pins are stale by bytes (as already declared at step 6); `holdout` refuses until the main loop re-pins after the `com`
+minute fetch. **Not decided here**: no regime filter, gate or size change is proposed; the primary triple and every bar are unchanged.
+
+**Reversion-flag**: NEW (additive; no existing level, cell, entry, stop or exit moved). Reverting = drop `comb` from
+`EXTRA_PIVOT_KEYS` and the regime-table calls. **Status**: built on a worktree branch; the `com,comb` discovery re-read waits on the
+`com` minute fetch (main loop); no `com` / `comb` outcome has been read.
 
 ### 2026-10-18 — #702 P4b step 6: a fifth breakout level `com` (the base's median high — where he actually draws the line), runner-only, no pinned byte moved
 

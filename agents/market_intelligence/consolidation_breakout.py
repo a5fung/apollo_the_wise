@@ -29,6 +29,12 @@ cb_preregistration_2026-10-18.md` §P4b; `COM_VARIANT` / `COM_QUANTILE` / `COM_M
 `PIVOT_KEYS` / `KS`: the shadow never computes it and the pinned backtest outputs never carry it; the offline runner
 computes it only on `--keys com`, into `*_com` files. `EXTRA_PIVOT_KEYS` names it.
 
+`comb` (#702 P4b step 6b, 2026-10-18): the SAME level as `com` read only on the nights the stock CLOSED AT OR BELOW it
+(`close(D) <= pivot_comb`) - a level under the watch night's close breaks out on any up-day, which is not a breakout
+from below. It is a reading of `com`, not a new level (`comb_fields` copies the three `pivot_com*` fields), so no threshold
+is added (`CLOSED_BELOW_KEYS` only tags which key carries the condition); it rides on C0 (`cell_flags`), which every other
+cell inherits.
+
 The TRENDLINE breakout level `tl` (#702 P1c): the operator's note of 2026-10-17 (`operator_shared_notes.md`,
 "2026-10-17 — his note on the breakout ENTRY") says he often draws the flag with *"a down sloping trend line and
 a breakout of that trend line"*, which *"may dictate a lower entry than what we call a breakout"*. The line is
@@ -138,7 +144,8 @@ TL_TOUCH_TOL = 0.005             # B, TELEMETRY ONLY: a base high within 0.5% un
 # ── #702 P4b: the CENTER-OF-MASS level `com` (his 2026-10-18 rule) — RUNNER-ONLY, not in PIVOT_KEYS/KS ─────
 # `KS` is what the pinned backtest outputs and the nightly shadow iterate; `com` is computed only when the runner is
 # asked for it (`--keys com`), so adding it moved no existing byte. See `com_level` for the rule and its sources.
-EXTRA_PIVOT_KEYS = ("com",)
+EXTRA_PIVOT_KEYS = ("com", "comb")
+CLOSED_BELOW_KEYS = ("comb",)    # the EXTRA levels whose C0 also needs close(D) <= the level (a structural tag, no threshold)
 COM_VARIANTS = ("flat_high", "flat_close", "quantile", "tl_filtered", "switch_high", "switch_close")
 COM_VARIANT = "quantile"         # B: the chosen reading of "center of mass" (P4b label read, 2026-10-18: the plateau is the
 #                                #    quantile family at q 0.4-0.55; the spike-filtered tops read 1.2 ADR ABOVE his lines)
@@ -489,6 +496,16 @@ def com_level(bars: DailyBars, P: int, i: int, adr20: float, *, variant: str = C
         else:
             _set(flat_close, jc, "flat")
     return out
+
+
+def comb_fields(feat: dict) -> dict:
+    """The `comb` level's three fields ("com, closed below the night before", #702 P4b step 6b): the SAME level and date
+    fields as `com` (`pivot_comb` = `pivot_com`, `pivot_comb_idx` = `pivot_com_idx`, `pivot_comb_date` = `pivot_com_date`),
+    read from a row that already carries `com_level`'s output. The `close(D) <= level` condition is not applied here - it
+    is C0's (`cell_flags`) - so the level is the same number on a night the stock closed above it, and the candidate loop
+    skips that night's `comb` row rather than the level being hidden."""
+    return {"pivot_comb": feat.get("pivot_com"), "pivot_comb_idx": feat.get("pivot_com_idx"),
+            "pivot_comb_date": feat.get("pivot_com_date")}
 
 
 def _base_resolved(c: np.ndarray, P: int, i: int, pole_high: float) -> bool:
@@ -844,14 +861,19 @@ def cell_flags(features: Optional[dict], ctx: dict, *, k: str) -> dict:
     ctx keys: rs_best (max of the three percentiles), rs_all (min of them — carried for the
     caller's "all three >= 98" variant, not read by C0..C7), grp_pct (None -> group cells False),
     phase_qqq_10_20, phase_spy_qqq_50. A missing/None RS reads False for every RS cell.
-    `k` may also be an `EXTRA_PIVOT_KEYS` level ("com", #702 P4b) when the caller computed it (`com_level`); the
-    shadow and the pinned backtest never pass one."""
+    `k` may also be an `EXTRA_PIVOT_KEYS` level ("com" / "comb", #702 P4b) when the caller computed it (`com_level`,
+    `comb_fields`); the shadow and the pinned backtest never pass one. For `k` in `CLOSED_BELOW_KEYS` ("comb") C0
+    additionally needs `close(D) <= pivot` (the stock CLOSED AT OR BELOW the line on the watch night - equality counts; a
+    missing close reads False), so every cell inherits it."""
     if k not in PIVOT_KEYS and k not in EXTRA_PIVOT_KEYS:
         raise ValueError(f"cell_flags: k must be one of {PIVOT_KEYS + EXTRA_PIVOT_KEYS}, got {k!r}")
     if features is None:
         return {name: False for name in CELLS + REPORT_CELLS}
     pivot = features.get(f"pivot_{k}")
     c0 = bool(pivot is not None and pivot > 0.0)
+    if c0 and k in CLOSED_BELOW_KEYS:                # "comb": the stock closed at or below the line on D
+        close = features.get("close")
+        c0 = bool(close is not None and close <= pivot)
     rs_best, grp = ctx.get("rs_best"), ctx.get("grp_pct")
     phase_a = bool(ctx.get("phase_qqq_10_20"))
     phase_b = bool(ctx.get("phase_spy_qqq_50"))

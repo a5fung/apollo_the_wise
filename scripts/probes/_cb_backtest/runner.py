@@ -36,6 +36,18 @@ of the module's four `KS`) INSTEAD of the registered four. Every output then car
 the pinned files, which a default run still writes byte for byte (proved 2026-10-18: the seven content hashes and the
 three other pinned outputs unchanged). `--no-close-variant` (daily) skips the CLOSE-variant walk, so a `--keys com` daily
 run computes no outcome at all.
+
+`--keys comb` (#702 P4b step 6b): `com` read only on the nights the stock CLOSED AT OR BELOW the level (`close(D) <= pivot_com`;
+the condition is C0's, so every cell inherits it). A night that closed above the line is not a `comb` night, so it gets no
+`comb` candidate (else its first break would consume the base's one trade under the spec key). `--keys com,comb` runs both in
+one pass: ONE set of files with the suffix `_com_comb` (`candidates_com_comb.tsv`, `trades_discovery_com_comb.tsv.gz`, ...), the
+`K` column carrying `com` and `comb`. The daily stage asserts the `comb` (ticker, E) pairs are a subset of `com`'s, so no
+minute fetch beyond `com`'s is needed.
+
+Per-regime tables (#702 P4b step 6b; reported beside, never deciding): `report` writes `regime_report{sfx}.tsv` and `holdout`
+writes `regime_report_holdout.tsv` - for every (key, cell, K) of the headline table, n / mean R / share >= 5R per
+`apollo_regime` (Bull / Choppy / Correcting / Crisis / missing) from the same mature walks, joined to D at read time from the
+candidates table; no existing output changes by a byte.
 """
 from __future__ import annotations
 
@@ -80,7 +92,7 @@ WATCH_START = date(2022, 3, 28)          # first watch night D (plan: discovery 
 DISCOVERY_END = date(2024, 12, 31)       # D <= this -> discovery; later -> holdout
 NEW_FETCH_KS = ("tl",)                    # the K added after the first minute pull (#702 P1c): its (ticker, E) pairs not in
 #                                           _done.psv are written to minute_fetch_list_delta.tsv (k5/k10/full were all pulled)
-EXTRA_KS = cb.EXTRA_PIVOT_KEYS            # ("com",): the #702 P4b level, run only on request (`--keys com`), never in a default run
+EXTRA_KS = cb.EXTRA_PIVOT_KEYS            # ("com", "comb"): the #702 P4b levels, run only on request (`--keys com,comb`), never in a default run
 GATE_NAMES = cb.WATCH_GATES
 
 
@@ -361,7 +373,8 @@ def scan_ticker(ticker: str, bars: "cb.DailyBars", cidx: np.ndarray, splits: lis
     130 bars ending at it are consecutive SPY sessions - a night failing only (c) is counted under 'history'
     (the module's own 'history' gate is >= 130 sessions; here it is >= 130 CONSECUTIVE ones).
     `extra_keys` containing "com" adds the P4b center-of-mass level (`cb.com_level`, its `pivot_com*` / `com_*` keys) to
-    every watch row; a default run passes none and the rows are exactly `explain_watch`'s."""
+    every watch row; "comb" computes the same level and adds `pivot_comb*` (`cb.comb_fields`); a default run passes none and
+    the rows are exactly `explain_watch`'s (a `com`-only run carries no `pivot_comb*` column)."""
     n = len(bars)
     fac = factor_by_bar(bars.dates, splits)
     skip = prescreen_skip_mask(bars.h, bars.l) if prescreen else np.zeros(n, dtype=bool)
@@ -395,8 +408,10 @@ def scan_ticker(ticker: str, bars: "cb.DailyBars", cidx: np.ndarray, splits: lis
         feat["pole_ci"] = int(cidx[feat["pole_idx"]])                               # drift-robust base key input
         top = max(float(bars.o[feat["pole_idx"]]), float(bars.c[feat["pole_idx"]]))
         feat["pole_hi_over_oc"] = float(feat["pole_high"]) / top if top > 0 else None   # data flag (bad high print)
-        if "com" in extra_keys:
+        if "com" in extra_keys or "comb" in extra_keys:
             feat.update(cb.com_level(bars, feat["pole_idx"], i, feat["adr20"]))
+        if "comb" in extra_keys:
+            feat.update(cb.comb_fields(feat))
         watch.append(feat)
     return {"ticker": ticker, "uni_ci": np.asarray(uni_ci, dtype=np.int32),
             "rs": np.asarray(rs, dtype=float).reshape(-1, 3), "watch": watch, "counts": counts}
@@ -677,6 +692,7 @@ def run_daily(args) -> None:
     t = time.time()
     cands, nonok = [], Counter()
     gap_rows = []
+    com_ref_pairs: set = set()                    # (ticker, E) of every night the `com` level breaks - what `comb` must be a subset of
     for w in watch_rows:
         tid = tid_of[w["ticker"]]
         a = int(D.start[tid])
@@ -698,6 +714,10 @@ def run_daily(args) -> None:
             pivot = w[f"pivot_{k}"]
             if not breaks_out(float(D.h[e]), pivot):             # also: no tl level that night -> no tl candidate
                 continue
+            if k in cb.CLOSED_BELOW_KEYS:
+                com_ref_pairs.add((w["ticker"], cal[e_ci].isoformat()))      # the com break this night would be (same level)
+                if not w[f"C0_{k}"]:                             # closed ABOVE the line on D: not a comb night, no candidate
+                    continue
             gap_open, over1 = gap_fields(float(D.o[e]), pivot, w["adr20"])
             c = {"ticker": w["ticker"], "D": w["watch_date"], "E": cal[e_ci].isoformat(), "K": k,
                  "pole_date": w["pole_date"], "pole_ci": w["pole_ci"], "pivot": pivot, "adr20": w["adr20"],
@@ -719,6 +739,10 @@ def run_daily(args) -> None:
     stamp_base_chain(cands, chain_bases((w["ticker"], w["pole_ci"], w["pole_date"]) for w in watch_rows))
     # the chain key only ever MERGES bases: a spec retrigger is always a chain retrigger
     assert all(c["retrigger_chain"] == 1 for c in cands if c["retrigger"] == 1), "chain key is not a coarsening"
+    comb_note = ""
+    if "comb" in keys:                            # the minute fetch for comb is a subset of com's: no new fetch is needed
+        comb_note = comb_fetch_check({(c["ticker"], c["E"]) for c in cands if c["K"] == "comb"}, com_ref_pairs,
+                                     {(c["ticker"], c["E"]) for c in cands if c["K"] == "com"} if "com" in keys else None)
     lap("stage 3 breakouts", t)
 
     # ── CLOSE variant, discovery only ─────────────────────────────────────────────────────────
@@ -826,10 +850,15 @@ def run_daily(args) -> None:
         say("  tl vs the horizontal levels - the tl C0 population is a SUBSET (a night with no down-sloping line has no tl level), "
             "so a tl-vs-k5 difference is level AND population:")
         say(tl_population_text(watch_rows))
-    if "com" in keys:
+    if "com" in keys or "comb" in keys:
         say("  com - the center-of-mass level (the median of the base's highs; #702 P4b): where it sits against the watch night's "
             "close and high, per split (a level UNDER the close breaks out on any up-day):")
         say(com_population_text(watch_rows))
+    if "comb" in keys:
+        say("  comb - com, read only on the nights the stock CLOSED AT OR BELOW the level (C0_comb); a night that closed above it "
+            "gets no comb candidate:")
+        say(comb_population_text(watch_rows, cands))
+        say(comb_note)
     say("")
     bad = [w for w in watch_rows if w["pole_hi_over_oc"] is not None and w["pole_hi_over_oc"] > POLE_BAD_HIGH_X]
     say(f"  DATA FLAG: {len(bad):,} watch rows on {len({w['ticker'] for w in bad}):,} tickers have a pole bar whose high is "
@@ -908,12 +937,14 @@ def step0_text(cands: list, keys=KS) -> str:
         lines.append(f"  GO/NO-GO input, {label} (plan: C1 needs >= 30 holdout trades): "
                      + ", ".join(f"{k}: {sum(1 for c in h if c['K'] == k)}" for k in keys)
                      + "   [C1 holdout trades by year, all K: " + ", ".join(f"{y}={n}" for y, n in sorted(by_year.items())) + "]")
-    if "com" in keys:                              # entry-time fact: how often the level is already under the open / close of E
+    for kk in ("com", "comb"):                     # entry-time fact: how often the level is already under the open / close of E
+        if kk not in keys:
+            continue
         for split in ("holdout", "discovery"):
-            rows = [c for c in cands if c["split"] == split and c["K"] == "com" and c["retrigger"] == 0]
+            rows = [c for c in cands if c["split"] == split and c["K"] == kk and c["retrigger"] == 0]
             n_open = sum(1 for c in rows if c["open_E"] > c["pivot"])
             c1 = [c for c in rows if c["C1"]]
-            lines.append(f"  COM LEVEL vs the breakout day, {split}, spec-key trades: {len(rows):,} first breaks; open(E) already above "
+            lines.append(f"  {kk.upper()} LEVEL vs the breakout day, {split}, spec-key trades: {len(rows):,} first breaks; open(E) already above "
                          f"the level on {n_open:,} ({(n_open / len(rows) if rows else 0):.0%}); C1: {len(c1)} first breaks, "
                          f"open above the level on {sum(1 for c in c1 if c['open_E'] > c['pivot'])}")
     flagged = [c for c in cands if int(c["pole_bad_high"])]
@@ -953,6 +984,37 @@ def com_population_text(watch_rows: list) -> str:
                      f"{sum(1 for w in have if w['pivot_com'] < w['pivot_k5']):,}",
                      f"{float(np.median(gap)):.2f}" if gap else ""])
     return table(body, ["split", "watch nights", "com: level", "level < close(D)", "level < k5", "median ADR below pivot_full"])
+
+
+def comb_population_text(watch_rows: list, cands: list) -> str:
+    """The `comb` reading of `com` (#702 P4b step 6b), per split: watch nights with a level, those the stock closed AT OR BELOW
+    it on (C0_comb - the nights `comb` can trade), the share that closed ABOVE it (dropped), and the breakout candidates each
+    reading produced (`com` is counted only when this run carries it)."""
+    body = []
+    for split in ("discovery", "holdout"):
+        ws = [w for w in watch_rows if w["split"] == split]
+        have = [w for w in ws if w.get("pivot_com") is not None]
+        below = sum(1 for w in ws if w.get("C0_comb"))
+        n_comb = sum(1 for c in cands if c["split"] == split and c["K"] == "comb")
+        n_com = sum(1 for c in cands if c["split"] == split and c["K"] == "com")
+        body.append([split, f"{len(ws):,}", f"{len(have):,}", f"{below:,}",
+                     f"{(len(have) - below) / len(have):.0%}" if have else "", f"{n_comb:,}",
+                     f"{n_com:,}" if any(c["K"] == "com" for c in cands) else "-"])
+    return table(body, ["split", "watch nights", "com: level", "closed at/below (comb)", "closed above (dropped)",
+                        "comb candidates", "com candidates"])
+
+
+def comb_fetch_check(comb_pairs: set, com_pairs: set, com_cand_pairs: "set | None" = None) -> str:
+    """The `comb` minute-fetch list is a subset of `com`'s (the same level on fewer nights), so a `com` fetch already covers
+    it. `com_pairs` = every (ticker, E) the com level breaks on (computed whether or not the run carries K=com); when the run
+    carries K=com its own candidate pairs must equal it. Raises AssertionError on a comb pair com does not have."""
+    extra = comb_pairs - com_pairs
+    if extra:
+        raise AssertionError(f"comb fetch pairs outside com's: {len(extra):,} (first {sorted(extra)[:3]}) - a new minute fetch would be needed")
+    if com_cand_pairs is not None and com_cand_pairs != com_pairs:
+        raise AssertionError(f"the K=com candidate pairs ({len(com_cand_pairs):,}) differ from the com level's breaks ({len(com_pairs):,})")
+    return (f"COMB FETCH CHECK: {len(comb_pairs):,} comb (ticker, E) pairs, ALL among com's {len(com_pairs):,} "
+            f"({len(com_pairs) - len(comb_pairs):,} com pairs are nights that closed above the line) - no minute fetch beyond com's")
 
 
 def run_step0(args) -> None:
@@ -1789,6 +1851,13 @@ def run_minute_stage(args, split: str) -> None:
     say(f"WROTE {tp} ({n_t:,} rows), {ep} ({n_e:,} rows)")
     say(f"WALL TIME: {time.time() - T0:.0f}s total")
     (small / f"minute_summary_{split}{sfx}.txt").write_text("\n".join(log) + "\n")
+    if split == "holdout":                        # #702 P4b step 6b: the per-regime table of the ONE holdout run, beside the tables
+        rname = f"regime_report_holdout{sfx}"
+        df, _cuts, _counts = load_report_frame(tp, regime_of={c["D"]: regime_label(c["apollo_regime"]) for c in inp["cands"]})
+        n_reg, reg_text = write_regime_report(df, out / f"{rname}.tsv", small / f"{rname}.txt",
+                                              title="#702 HOLDOUT by regime", src=tp.name)
+        print(reg_text)
+        print(f"WROTE {out / (rname + '.tsv')} ({n_reg:,} rows), {small / (rname + '.txt')}")
 
 
 def step0_text_entries(tally: Counter, keys=KS) -> str:
@@ -2104,11 +2173,14 @@ REPORT_USECOLS = (["ticker", "D", "K", "variant", "arm", "status", "realized_r",
                   + [n for _f, n in FLOORS] + list(CELL_NAMES))
 
 
-def load_report_frame(path: Path) -> tuple:
+def load_report_frame(path: Path, regime_of: "dict | None" = None) -> tuple:
     """(DataFrame, tercile cuts, counts). Reads the trades table in chunks and keeps only what the read uses: the
     NON-RETRIGGER rows (spec key; the chain population is a subset of them), and of those only the rows that carry an
     arm or a `too_wide` abstain. The tercile cuts are taken on the discovery C0 distribution - one row per
-    candidate at the headline entry - BEFORE any filtering to a cell."""
+    candidate at the headline entry - BEFORE any filtering to a cell.
+    `regime_of` ({D: apollo_regime label}, #702 P4b step 6b) adds a `regime` column (D absent from the map -> "missing") for
+    the per-regime table; the trades layout is untouched (the label is joined here, at read time) and nothing the
+    default report writes reads the column."""
     import pandas as pd
     parts, dv, adr = [], [], []
     counts = Counter()
@@ -2121,12 +2193,15 @@ def load_report_frame(path: Path) -> tuple:
         dv.append(one["median_dollar_vol20"].to_numpy(dtype=float))
         adr.append(one["adr20"].to_numpy(dtype=float))
         ch = ch[ch["arm"].notna() | (ch["abstain_reason"] == "too_wide")]
+        if regime_of is not None:
+            ch = ch.assign(regime=ch["D"].map(regime_of).fillna(REGIME_MISSING))
         parts.append(ch.drop(columns=["ticker", "D"]))
-    df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=[c for c in REPORT_USECOLS if c not in ("ticker", "D")])
+    df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(
+        columns=[c for c in REPORT_USECOLS if c not in ("ticker", "D")] + (["regime"] if regime_of is not None else []))
     cuts = {"dv": tercile_cuts(np.concatenate(dv) if dv else []), "adr": tercile_cuts(np.concatenate(adr) if adr else [])}
     df["dv_t"] = tercile_of(df["median_dollar_vol20"], cuts["dv"])
     df["adr_t"] = tercile_of(df["adr20"], cuts["adr"])
-    for c in ("K", "variant", "arm", "month"):
+    for c in ("K", "variant", "arm", "month") + (("regime",) if regime_of is not None else ()):
         df[c] = df[c].astype("category")
     return df, cuts, counts
 
@@ -2167,6 +2242,80 @@ def build_report_rows(df) -> tuple:
                 for (k, v, a, val), g in arm.groupby(["K", "variant", "arm", scol], observed=True):
                     rows.append(_group_row(g, key_name, cell, k, v, a, sname, val, ci=False))
     return rows, too_wide
+
+
+# -- #702 P4b step 6b: the per-regime table (reported BESIDE, never deciding; its own files, no pinned byte moves) ----------
+REGIME_ORDER = ("Bull", "Choppy", "Correcting", "Crisis")      # Apollo's daily regime label (`apollo_regime`)
+REGIME_MISSING = "missing"                                     # a D with no label (blank in small_pulls) or absent from the map
+REGIME_COLS = ["key", "cell", "K", "variant", "arm", "slice", "value"] + STAT_COLS
+
+
+def regime_label(x) -> str:
+    """The table's label for a candidate's `apollo_regime` ("" / None -> "missing")."""
+    x = "" if x is None else str(x).strip()
+    return x if x and x.lower() != "nan" else REGIME_MISSING
+
+
+def regime_by_date(path: Path) -> dict:
+    """{D: regime label} from a candidates table (`apollo_regime` is one value per date - the daily stage stamps it from D).
+    A missing file is an empty map: every row then reads "missing", and the caller says so."""
+    import pandas as pd
+    if not Path(path).exists():
+        return {}
+    d = pd.read_csv(path, sep="\t", usecols=["D", "apollo_regime"], dtype=str, keep_default_na=False).drop_duplicates()
+    return {k: regime_label(v) for k, v in zip(d["D"], d["apollo_regime"])}
+
+
+def regime_report_rows(df) -> list:
+    """The headline table (entry `HEADLINE_VARIANT`, arm `cb.PRIMARY_ARM`) split by `apollo_regime`: for every (key, cell, K) the
+    discovery report already prints, an `ALL` row plus one row per regime (Bull / Choppy / Correcting / Crisis / missing, then any
+    other label seen), each with n (mature walks) / n_open / mean R / share >= 5R and the rest of `STAT_COLS`. The groups are the
+    report's own (`_group_row`, same mature-only rule), so the regime rows' n add up to the `ALL` row and the `ALL` row is the
+    headline row of `build_report_rows`. `df` needs the `regime` column (`load_report_frame(regime_of=...)`)."""
+    rows = []
+    reg = df["regime"].astype(str)
+    regimes = list(REGIME_ORDER) + [REGIME_MISSING] + sorted(set(reg.unique()) - set(REGIME_ORDER) - {REGIME_MISSING})
+    for key_name, col, _label in REPORT_KEYS:
+        kdf = df if col == "retrigger" else df[df["retrigger_chain"] == 0]
+        for cell in CELL_NAMES:
+            ar = kdf[(kdf[cell] == 1) & kdf["arm"].notna() & (kdf["variant"] == HEADLINE_VARIANT) & (kdf["arm"] == cb.PRIMARY_ARM)]
+            for k, gk in ar.groupby("K", observed=True):
+                rows.append(_group_row(gk, key_name, cell, k, HEADLINE_VARIANT, cb.PRIMARY_ARM, "regime", "ALL", ci=False))
+                rk = reg.loc[gk.index].to_numpy()
+                for r_ in regimes:
+                    rows.append(_group_row(gk[rk == r_], key_name, cell, k, HEADLINE_VARIANT, cb.PRIMARY_ARM, "regime", r_, ci=False))
+    return rows
+
+
+def regime_report_text(rows: list, title: str, src: str) -> str:
+    """The regime rows as text, one table per base key: each cell is `n / mean R / share >= 5R` (the SLICES block's format)."""
+    out = [f"{title} - the headline table (entry {HEADLINE_VARIANT}, arm {cb.PRIMARY_ARM}) split by Apollo's daily regime at D. "
+           f"Reported BESIDE the report, never deciding; the non-Bull groups are small. source: {src}.",
+           "A cell is n / mean R / share >= 5R over the MATURE walks; `0` = no walk in that regime. missing = a D with no regime label."]
+    labels = list(dict.fromkeys(r["value"] for r in rows))
+    idx = {(r["key"], r["cell"], r["K"], r["value"]): r for r in rows}
+    for key_name, _col, label in REPORT_KEYS:
+        order = list(dict.fromkeys((r["cell"], r["K"]) for r in rows if r["key"] == key_name))
+        body = []
+        for cell, k in order:
+            line = [cell, k]
+            for lab in labels:
+                r = idx.get((key_name, cell, k, lab))
+                line.append("-" if r is None else ("0" if not r["n"] else f"{r['n']}/{_num(r.get('mean_r'), 2)}/{_pct(r.get('share_ge5'))}"))
+            body.append(line)
+        out.append(f"  -- {label} --")
+        out.append(table(body, ["cell", "K"] + labels) if body else "  (no mature walk)")
+    return "\n".join(out)
+
+
+def write_regime_report(df, out_tsv: Path, out_txt: Path, *, title: str, src: str) -> tuple:
+    """(rows written, text): the per-regime table of one report frame (`load_report_frame(regime_of=...)`) -> `out_tsv` (the rows)
+    and `out_txt` (the text). An empty frame writes the header only."""
+    rows = regime_report_rows(df) if len(df) else []
+    write_tsv(out_tsv, rows, REGIME_COLS)
+    text = regime_report_text(rows, title, src)
+    Path(out_txt).write_text(text + "\n")
+    return len(rows), text
 
 
 def _pct(x):
@@ -2298,7 +2447,11 @@ def run_report(args) -> int:
         return 1
     small.mkdir(parents=True, exist_ok=True)
     out.mkdir(parents=True, exist_ok=True)
-    df, cuts, counts = load_report_frame(src)
+    cand_path = out / f"candidates{sfx}.tsv"
+    regime_of = regime_by_date(cand_path)         # D -> apollo_regime, joined at read time (the trades layout carries none)
+    if not regime_of:
+        print(f"report: {cand_path} not found or empty - every row's regime reads {REGIME_MISSING!r} in the regime table", flush=True)
+    df, cuts, counts = load_report_frame(src, regime_of=regime_of)
     print(f"[read {counts['rows']:,} trade rows, kept {len(df):,}: {time.time() - T0:.0f}s]", flush=True)
     if not len(df):
         msg = f"report: {src.name} has no non-retrigger row carrying an arm or a too_wide abstain - nothing to report"
@@ -2316,6 +2469,11 @@ def run_report(args) -> int:
     (small / f"{name}.txt").write_text(text + "\n")
     print(text)
     print(f"WROTE {full} ({len(rows):,} rows), {small / (name + '.tsv')}, {small / (name + '.txt')}; WALL TIME {time.time() - T0:.0f}s")
+    rname = f"regime_report{sfx}"                 # the per-regime table: its own files, beside the report, never deciding
+    n_reg, reg_text = write_regime_report(df, out / f"{rname}.tsv", small / f"{rname}.txt",
+                                          title="#702 DISCOVERY REPORT by regime", src=src.name)
+    print(reg_text)
+    print(f"WROTE {out / (rname + '.tsv')} ({n_reg:,} rows), {small / (rname + '.txt')}")
     return 0
 
 
@@ -2346,8 +2504,9 @@ def main(argv=None) -> None:
     ap.add_argument("--print-pins", action="store_true", help="holdout: print the footer pin lines for the registration doc and exit")
     ap.add_argument("--prereg", help="holdout: the registration doc (default: the one docs/analysis/cb_preregistration_*.md)")
     ap.add_argument("--keys", help="the breakout levels to run, comma-separated (default: the module's four, k5/k10/full/tl, which "
-                                   "write the pinned files). 'com' = the #702 P4b center-of-mass level: every output then carries "
-                                   "the suffix _com beside the pinned files. holdout REFUSES it")
+                                   "write the pinned files). 'com' = the #702 P4b center-of-mass level; 'comb' = com read only on "
+                                   "the nights the stock closed at or below it. Every output then carries the suffix _<keys> "
+                                   "(_com, _comb, _com_comb) beside the pinned files. holdout REFUSES it")
     ap.add_argument("--no-close-variant", action="store_true",
                     help="daily: skip the CLOSE-variant walk (no outcome of any kind is computed; overlap_open is left blank)")
     args = ap.parse_args(argv)
