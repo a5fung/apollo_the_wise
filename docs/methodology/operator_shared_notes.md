@@ -2111,3 +2111,12 @@ not on its win rate or its result without its best trades. A "mean without the t
 this profile. On his terms (2017–21, every breakout): losses are small (about −1.0R on average), winners 34% — but winners
 average only about +2R and a ≥ 10R trade comes about once per 80 trades, so the outliers do not pay for the losers.
 Analysis: `docs/analysis/cb_2017_21_read_prereg_2026-10-19.md` §Addendum (his outlier point).
+
+## 2026-10-19 — his question on the breakout ENTRY: scout it on intraday bars as price moves into the breakout area (operator, verbatim)
+
+> "on breakouts, should we move to intraday bars to scout for an entry once it's moving into breakout area? I know he uses
+> hourly bars, but 5min to 1hr intraday can show if the breakout is happening"
+
+Asked after the TSLA 2020 example (our rule bought the 2020-05-18 intraday poke above the May triangle line, closed below,
+stopped the same day; his breakout was the 2020-06-01 range expansion). Recorded late (captured 2026-10-19 with the
+hourly-close entry test it motivates; #702).
