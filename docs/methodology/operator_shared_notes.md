@@ -2040,3 +2040,20 @@ Said when told the P4b labelled lines are mostly from 2020–21, one bull market
   results by year (2022 was a bear market) and by Apollo's daily regime label (Bull / Choppy / Correcting / Crisis),
   which exists only from 2025-03-03 — the holdout's non-Bull groups will be small.
 - **Status:** reported beside the verdict, never deciding; any regime gate on paper or live is his call (THE LINE).
+
+## 2026-10-18 — his correction on Qullamaggie's SELL rule: the first third goes at +2R, not after 3–5 days (operator, verbatim)
+
+> *"His sell is to sell 1/3 at 2R then move to break even stop then trail rest at break of 10 or 20d, I recall he
+> mentioned 10d for faster stocks and 20d for slower stocks, also depend how far the are from 10/20."*
+
+Asked "aside from stops, what's the profit take and sell criteria", with his note that Qullamaggie stresses tightness
+before the breakout (his "A+ setups") — *"higher qualifier there maybe an option"*.
+- **What it changes in #702:** the 15 exit arms tested so far sell the first 1/3 (or 1/2) at the CLOSE of day 3 or 5
+  (the 10-17 article's "after 3–5 days"). His rule is a PRICE target: sell 1/3 at +2R, then move the stop to breakeven,
+  then trail the rest to the first break of the 10-day average (faster stocks) or the 20-day (slower stocks).
+- **Open (the build must state how it reads them):** what makes a stock "faster" (e.g. its ADR), and how "how far they are
+  from the 10/20" picks the average.
+- **Measured the same evening (2022–24, registered trendline level, before this exit exists):** the tightest fifth of
+  bases did WORST, not best — by both the range ratio (last 5 days vs the base's first 5) and the last 5 days' range in
+  ADR units — and it is not explained by stop size (median stop 0.43–0.52 ADR, same-day stop-outs 35–38% in every fifth).
+  So our tightness measures may not be what he means by "tight"; to be re-checked under his exit.
