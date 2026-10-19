@@ -405,8 +405,8 @@ is counted (`minutes_deferred_oldest`) and named in the audit event. (4) Removed
 written as retryable `no_minutes` rows; a failure on the oldest day used to be written as `no_minutes` and is now a counted loss. Both
 are the intended reading of an answer versus a failure.
 **Not touched**: `consolidation_breakout.py`, the runner, any entry/stop/exit rule — the backtest is unaffected. No money path.
-**Reversion-flag**: NEW; not a detection-criterion change. **Status**: built on a worktree branch, not deployed. EXPECT / DONE-WHEN /
-WOULD-FAIL-IF: CHANGELOG 2026-10-18 (#702 minute fetch).
+**Reversion-flag**: NEW; not a detection-criterion change. **Status**: DEPLOYED 2026-10-18 (028fddcb is in server 25fabf93);
+the shadow's first live run is Mon 10-19 17:48 ET. EXPECT / DONE-WHEN / WOULD-FAIL-IF: CHANGELOG 2026-10-18 (#702 minute fetch).
 
 ### 2026-10-18 — #704: the shadow reads the splits ingest's recorded verdict instead of re-deriving it (a phantom split is now no split here)
 
