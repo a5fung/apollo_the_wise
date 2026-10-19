@@ -2077,3 +2077,26 @@ before the breakout (his "A+ setups") — *"higher qualifier there maybe an opti
   trade, and on a limited-slot account, because slots are the constraint.
 - **Confirmed 2026-10-19 (his "yes")** to the definition built into the holdout read's primary: a trade that has not
   reached +1R by the close of session 3 after the breakout day (and was not stopped) is sold at that close.
+
+## 2026-10-19 — the breakout article's full text, re-shared by him, and his pointer: "there are additional setups on these stocks" (verbatim)
+
+His words: *"If you look closely, there are additional setups on these stocks."* Then the article's breakout section
+(qullamaggie.com, "My 3 timeless setups"), pasted verbatim — the parts not already quoted in the 2026-10-17 entry:
+> *"If you study thousands of the biggest winning stocks over the past 100 years they tend to move in stair steps. Meaning
+> they will make a 20-50%+ move, pull back and go sideways for a while, then make another move. This is how most leading
+> stocks act."*
+> *"Identify the setups. You need to have a watchlist ready before the market open. You should also probably have alerts set,
+> and know how many shares you want to buy."*
+> *"(on the 60-minute timeframe the first candle is always only 30 minutes, 9.30-10 AM). You can use whatever timeframe or a
+> combination of them. You don't even have to use any intraday chart, just look at the daily chart and enter when the stock
+> is starting to break out."*
+> *"This method can also be traded by anticipating the breakout but I don't find it as effective and more skill and
+> experience is needed."*
+> *"The rest of the position should be trailed with the 10- or the 20-day moving average. Depends on how fast the stock is.
+> If a beginner stick to the 10-day."*
+> *"There are variations of this setup but the premise stays the same. ... this setups also works on the weekly chart and the
+> intraday (1- and 5-minute) charts. On the intraday timeframe this setup is called Holy Grail by some on the daily it can be
+> called a hight tight flags sometimes. It's pretty much flat channels, symmertrical and descending triangles."*
+- **What his pointer adds to #702:** the STAIR STEP — one leading stock gives several breakout setups in a row (move →
+  sideways → move). Each step's base is its own C0 base in our runner (a new pole); what the tests never split is the STEP
+  NUMBER (first base of a run vs the second or third).
