@@ -2100,3 +2100,14 @@ His words: *"If you look closely, there are additional setups on these stocks."*
 - **What his pointer adds to #702:** the STAIR STEP — one leading stock gives several breakout setups in a row (move →
   sideways → move). Each step's base is its own C0 base in our runner (a new pole); what the tests never split is the STEP
   NUMBER (first base of a run vs the second or third).
+
+## 2026-10-19 — his point on how Qullamaggie's breakouts make money: a ~25% win rate, outliers and small losses (operator, verbatim)
+
+> "Qullamaggie claims his winrate is around 25%, his strategy depends on outliers and taking small losses"
+
+Said after the 2017–21 read (#702), whose strict group read +0.28R per trade on 180 with one +54R trade carrying it.
+**What it means for the tests:** an outlier-driven setup is judged on the outliers it catches and the size of its losses,
+not on its win rate or its result without its best trades. A "mean without the top five" bar structurally fails exactly
+this profile. On his terms (2017–21, every breakout): losses are small (about −1.0R on average), winners 34% — but winners
+average only about +2R and a ≥ 10R trade comes about once per 80 trades, so the outliers do not pay for the losers.
+Analysis: `docs/analysis/cb_2017_21_read_prereg_2026-10-19.md` §Addendum (his outlier point).
