@@ -2029,3 +2029,14 @@ NIO 2020-12-24, AMD 2021-12-16), each drawn through a big upper wick:
   higher. The reader took a pointer line (from a news note) for the trendline.
 - **Status:** an input to the P4b character → line rule (step 6). Per [[charts-support-never-decide]], the labelled stream
   lines test the rule; they do not replace it.
+
+## 2026-10-18 — his caution on market regime: breakouts do worse in bear and choppy markets (operator, verbatim)
+
+> *"that is an important point, breakouts likely wont do as well in bear markets, or choppy markets"*
+
+Said when told the P4b labelled lines are mostly from 2020–21, one bull market.
+- **What #702 already carries:** the primary cell C1 buys only when QQQ's 10-day average is above its 20-day and both are
+  rising; C3 is the same cell with no market filter, so the pair shows what the filter is worth. Every read reports
+  results by year (2022 was a bear market) and by Apollo's daily regime label (Bull / Choppy / Correcting / Crisis),
+  which exists only from 2025-03-03 — the holdout's non-Bull groups will be small.
+- **Status:** reported beside the verdict, never deciding; any regime gate on paper or live is his call (THE LINE).
