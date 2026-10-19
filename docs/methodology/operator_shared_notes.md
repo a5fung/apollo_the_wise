@@ -2075,3 +2075,5 @@ before the breakout (his "A+ setups") — *"higher qualifier there maybe an opti
   them — so cutting them costs no tail. Per trade, R barely moves; the gain he names is CAPITAL-DAYS freed (scored next).
 - **What it adds to #702:** a time stop ("no +1R within N days → out") is scored on R per position-day held, not only R per
   trade, and on a limited-slot account, because slots are the constraint.
+- **Confirmed 2026-10-19 (his "yes")** to the definition built into the holdout read's primary: a trade that has not
+  reached +1R by the close of session 3 after the breakout day (and was not stopped) is sold at that close.
