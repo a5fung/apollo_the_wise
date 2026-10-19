@@ -3590,6 +3590,9 @@ def pre_option_problems(args) -> list:
         if val:
             bad.append(f"{flag}: the pre-read reads {'/'.join(PRE_KEYS)} from candidates{out_suffix(PRE_KEYS)}.tsv in full; a partial or "
                        f"altered run would also consume the one run")
+    out = getattr(args, "out", None)
+    if out and Path(out).resolve() != (Path(args.data) / "out").resolve():
+        bad.append("--out: the pre-read reads and writes DATA/out only - the one-run guard looks there, so another dir would sidestep it")
     return bad
 
 

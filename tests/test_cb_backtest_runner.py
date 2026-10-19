@@ -2668,12 +2668,16 @@ class TestPreRead:
 
     def test_options_that_alter_the_registered_form_are_refused(self, tmp_path, capsys):
         data, bars, e = _pre_dir(tmp_path)
-        for extra in (["--keys", "com"], ["--levels", "tl"], ["--limit-dates", "1"], ["--no-close"], ["--no-apollo"]):
+        for extra in (["--keys", "com"], ["--levels", "tl"], ["--limit-dates", "1"], ["--no-close"], ["--no-apollo"],
+                      ["--out", str(tmp_path / "elsewhere")]):
             capsys.readouterr()
             with pytest.raises(SystemExit) as ex:
                 _pre_run(data, tmp_path, *extra)
             assert ex.value.code == 2 and extra[0] in capsys.readouterr().err
-        assert not list((data / "out").glob("trades_*"))
+        assert not list((data / "out").glob("trades_*")) and not (tmp_path / "elsewhere").exists()
+        # DATA/out spelled out is the same place, so it is accepted (the dry run reads it)
+        capsys.readouterr()
+        assert _pre_run(data, tmp_path, "--out", str(data / "out"), "--dry-run") is None
 
     def test_the_run_writes_the_minute_tables_the_p5_table_and_the_verdict_report_and_proves_the_registered_arm(self, tmp_path, capsys):
         data, bars, e = _pre_dir(tmp_path)
