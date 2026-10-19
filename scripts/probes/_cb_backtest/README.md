@@ -60,7 +60,7 @@ python3 scripts/probes/_cb_backtest/runner.py daily         --data DATA --keys c
 python3 scripts/probes/_cb_backtest/runner.py minute        --data DATA [--minutes DIR] [--workers N] [--no-close] [--no-apollo]   # DISCOVERY outcomes
 python3 scripts/probes/_cb_backtest/runner.py step0-entries --data DATA [--minutes DIR]                                           # HOLDOUT composition, NO outcome
 python3 scripts/probes/_cb_backtest/runner.py report        --data DATA                                                          # the DISCOVERY read
-python3 scripts/probes/_cb_backtest/runner.py holdout       --data DATA --dry-run [--no-freeze-check] | --print-pins | (the real run)  # BUILT, NOT RUN
+python3 scripts/probes/_cb_backtest/runner.py holdout       --data DATA --dry-run [--no-freeze-check] | --print-pins | (the real run)  # BUILT, NOT RUN; the real run = the minute engine, then the P5 pass (below)
 ```
 `--minutes` defaults to `DATA/minutes`; `--limit-dates N` takes the first N minute dates on disk (dev). Every decision is still the frozen module's:
 `entry_variants` (four minute entries per K) -> `day0_result_to_outcome` on a day-0 stop-out, else `walk_exit` on EVERY `cb.ARMS` arm
@@ -121,3 +121,36 @@ exactly its own trades (`matched`) instead of a rank; plus the tightness fifths 
 level on its C0 filled population) under the registered row and the best two combos. The read: `docs/analysis/cb_his_exit_2026-10-18.md`.
 Nothing pinned is written: the four default-key stages hash identically before and after the change.
 
+
+---
+
+# P5 — the holdout read's primary: HIS exit with the stalled breakouts cut (#702, 2026-10-18) — the `p5` stage and `holdout`'s second pass
+
+```
+python3 scripts/probes/_cb_backtest/runner.py p5      --data DATA                 # DISCOVERY: the walk + the report (new files only)
+python3 scripts/probes/_cb_backtest/runner.py holdout --data DATA                 # BUILT, NOT RUN: the minute engine, then THIS pass, once
+```
+The arm `c3_p33_t20_cut3` (module: `CUT_EXIT_ARMS`) = `c3_p33_t20` (sell 1/3 at +2R or at the close of session 3, breakeven,
+trail the 20-day, next-open fill) + the stall cut (no +1R by the close of session 3 and not stopped -> everything sold at that
+close; status `time_exit`). The stage walks it with three arms beside it (`p33_s3_t10` the article's, `c3_p33_t20` uncut, `r2_p33_t20`
++2R only) on the `lod` stop at ORH5 over the spec key's first breaks of `tl` (`candidates.tsv`) and of `com` / `comb`
+(`candidates_com_comb.tsv`), through `evaluate_exits(stops=("lod",), arms=P5_ARMS)` - the SAME function on discovery and on the
+holdout. The registered arm inside the table is then compared, per (ticker, D, K), with the minute stage's own table (status, maturity,
+realized R to 1e-9): the discovery run passed on 8,989 `tl` and 17,447 `com` / `comb` rows; a difference exits 3 (and, on discovery,
+blocks the report).
+
+| File | Where | What |
+|---|---|---|
+| `trades_{discovery,holdout}_p5.tsv.gz` | `DATA/out/` | `EXITS_COLS` layout: one row per filled first break x arm (4 arms x `lod`), K in tl / com / comb. The holdout one is written as `.partial` and renamed after every date; it joins `holdout_existing_outputs` (a second run refuses, a crashed run's partial refuses until removed by hand) |
+| `p5_report_{discovery,holdout}.tsv` (+ `.txt`, and a 6-decimal 'all'-slice copy of the `.tsv`, in `out/`) | `DATA/out/`, `out/` | per (key spec / chain, cell C0..C7 + the 3 report cells, K, arm): n, n_open, mean R + month-block interval, shares >= 3/5/10R, mean without the top 5, median, win, ADR P&L, acct %, `n_cut`, `mean_held`; spec key also by year of E, QQQ 10/20 phase and Apollo regime at D (`all` / each label; the label starts 2025-03-03). The text adds the filled-entries table (the STEP 0 counts to reproduce) and THE CUT'S OWN EFFECT (the primary against its uncut twin on the same trades) |
+| `regime_report_holdout.{tsv,txt}` (appended) | `DATA/out/`, `out/` | after the minute stage's own rows, the P5 arm x level rows it does not carry (never a duplicate of its `tl` / `p33_s3_t10` rows) |
+| `p5_summary_{discovery,holdout}.txt` | `out/` | the run log: coverage, the entry tally, the cross-check lines |
+
+Recovery corner: if the holdout's minute pass completes and the P5 pass crashes, the once-only guard refuses a re-run through the CLI
+(the `.partial` / the finished minute tables are on disk); the operator inspects, removes the P5 `.partial`, and calls
+`run_p5_stage(args, "holdout")` directly - the minute tables are not walked twice.
+
+Nothing existing is written: the default-key stages hash identically and the `exits` / `exits-report` outputs are byte-identical
+(the pre-registration §P5 and the SSoT change log carry the proof). The pins gained `candidates_com_comb.tsv`, `watch_com_comb.tsv.gz`,
+`entries_holdout_composition_com_comb.tsv`, `trades_discovery_p5.tsv.gz` and `p5_report_discovery.{tsv,txt}` (the holdout now reads the
+com / comb candidates; the discovery P5 numbers are what the registration quotes).

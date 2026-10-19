@@ -48,6 +48,13 @@ Per-regime tables (#702 P4b step 6b; reported beside, never deciding): `report` 
 writes `regime_report_holdout.tsv` - for every (key, cell, K) of the headline table, n / mean R / share >= 5R per
 `apollo_regime` (Bull / Choppy / Correcting / Crisis / missing) from the same mature walks, joined to D at read time from the
 candidates table; no existing output changes by a byte.
+
+#702 P5 (operator 2026-10-18): the HOLDOUT read's primary exit is HIS rule with the stalled breakouts cut (`cb.CUT_EXIT_ARMS`,
+`c3_p33_t20_cut3`). The `p5` stage walks it - and the article's arm, his rule uncut and the +2R-only arm beside it - on the
+`lod` stop at ORH5 over the spec key's first breaks of `tl` / `com` / `comb` (DISCOVERY only; `trades_discovery_p5.tsv.gz`,
+`p5_report_discovery.{tsv,txt}`, new files); `holdout` runs the SAME function once on the holdout after its minute engine
+(`trades_holdout_p5.tsv.gz`, `p5_report_holdout.{tsv,txt}`, P5 rows appended to `regime_report_holdout`), behind the same
+freeze_check and once-only guard. The registered arm inside the P5 table is proved equal, per trade, to the minute stage's table.
 """
 from __future__ import annotations
 
@@ -1989,13 +1996,17 @@ def partial_facts(events: list, arm: "cb.Arm") -> tuple:
 
 
 def evaluate_exits(c: dict, bars: "cb.DailyBars", cidx: np.ndarray, e: int, minutes: "cb.MinuteBars | None",
-                   horizon: int = HORIZON) -> tuple:
+                   horizon: int = HORIZON, *, stops: tuple = cb.STOP_VARIANTS, arms: "dict | None" = None) -> tuple:
     """One candidate -> (rows in EXITS_COLS order, tally). The headline entry (`cb.entry_variants` exactly as the minute
     stage calls it); a non-fill writes nothing (tallied). A fill is walked under every `cb.stop_variants` reading: an
     unusable stop is ONE row with no arm (`abstain_reason`); a usable one re-runs the module's `day0_walk` on it and walks
     `EXITS_ARMS` through `cb.walk_his_arms`. `base_low` and `range_recent5` are recomputed from the bars with
     `explain_watch`'s own formulas (they are not candidates.tsv columns); `base_low` is cross-checked against the row's
-    `base_depth`."""
+    `base_depth`.
+    #702 P5: `stops` / `arms` narrow the walk (the P5 stage walks the `lod` stop and `P5_ARMS` only, on discovery and on the
+    holdout alike - ONE function, so the discovery numbers the registration quotes come from the code the holdout will run);
+    the defaults are the `exits` stage's, unchanged."""
+    arms = EXITS_ARMS if arms is None else arms
     tally: Counter = Counter()
     adr20 = c["adr20"]
     assert bars.dates[e].isoformat() == c["E"], (c["ticker"], e, c["E"])
@@ -2024,6 +2035,8 @@ def evaluate_exits(c: dict, bars: "cb.DailyBars", cidx: np.ndarray, e: int, minu
     rows = []
     for sv, s in cb.stop_variants(fill=ent["fill"], lod_stop=ent["stop"], pivot=c["pivot"], base_low=base_low,
                                   adr20=adr20).items():
+        if sv not in stops:
+            continue
         tally[("stop", sv, s["reason"] or "ok")] += 1
         if s["reason"]:
             rows.append(_by_cols({**base, "stop_variant": sv, "stop": s["stop"], "width_pct": s["width_pct"],
@@ -2035,10 +2048,10 @@ def evaluate_exits(c: dict, bars: "cb.DailyBars", cidx: np.ndarray, e: int, minu
             assert entry2["day0"] == ent["day0"] and entry2["stop"] == ent["stop"]     # the registered entry, untouched
         target = ent["fill"] + cb.PARTIAL_TARGET_R * (ent["fill"] - s["stop"])
         res = cb.walk_his_arms(entry2, closes_before=closes_before, fwd=fwd, adr20=adr20, minutes=minutes,
-                               horizon=horizon, arms=EXITS_ARMS)
+                               horizon=horizon, arms=arms)
         for name, raw in res.items():
             a = arm_result(raw, width=s["width_pct"], n_fwd=len(fwd), horizon=horizon)
-            kind, sess, tn = partial_facts(raw["events"], EXITS_ARMS[name])
+            kind, sess, tn = partial_facts(raw["events"], arms[name])
             tally[("arm_mature", sv, name, int(a["mature"]))] += 1
             rows.append(_by_cols({**base, "stop_variant": sv, "stop": s["stop"], "width_pct": s["width_pct"],
                                   "abstain_reason": "", "target": target, "arm": name, "status": a["status"],
@@ -2064,7 +2077,7 @@ def _exits_job(date_iso: str) -> tuple:
             continue
         bars, cidx = _ticker_bars(c["ticker"])
         e = locate_breakout_index(cal, cidx, c["E"])
-        r, t = evaluate_exits(c, bars, cidx, e, mb, _G["horizon"])
+        r, t = evaluate_exits(c, bars, cidx, e, mb, _G["horizon"], **_G.get("exits_kw", {}))
         rows.extend(r)
         tally.update(t)
     return rows_to_gz(rows), tally, len(rows)
@@ -2111,7 +2124,7 @@ def run_exits(args) -> None:
     t = time.time()
     D = load_daily(data / "daily_closes_all.csv.gz")
     _G.update(D=D, by_date=by_date, files=files, done=(load_done_pairs(minutes_dir) if minutes_dir.is_dir() else None),
-              bars_cache={}, horizon=HORIZON)
+              bars_cache={}, horizon=HORIZON, exits_kw={})
     say(f"[load: {time.time() - t:.0f}s]")
     t = time.time()
     tp = out / f"trades_discovery_exits{tag}.tsv.gz"
@@ -2427,6 +2440,12 @@ def frozen_files(data: Path, repo: Path = REPO, minutes: "Path | None" = None) -
                  f"{REPORT_NAME}.tsv"):
         out[name] = data / "out" / name
     out[f"{REPORT_NAME}.txt"] = HERE / "out" / f"{REPORT_NAME}.txt"
+    # #702 P5: the holdout now also reads the com / comb candidates (their cell table too) and is registered beside the
+    # entry-time composition of those levels and the discovery P5 walk whose numbers the registration quotes
+    for name in ("candidates_com_comb.tsv", "watch_com_comb.tsv.gz", "entries_holdout_composition_com_comb.tsv",
+                 f"trades_discovery_{P5_NAME}.tsv.gz", "p5_report_discovery.tsv"):
+        out[name] = data / "out" / name
+    out["p5_report_discovery.txt"] = HERE / "out" / "p5_report_discovery.txt"
     return out
 
 
@@ -2506,7 +2525,7 @@ def holdout_option_problems(args, data: Path) -> list:
 
 def holdout_existing_outputs(out: Path) -> list:
     """Holdout outputs already on disk: the final tables, or the `.partial` a crashed run left behind."""
-    return [q for name in ("trades_holdout.tsv.gz", "entries_holdout.tsv.gz")
+    return [q for name in ("trades_holdout.tsv.gz", "entries_holdout.tsv.gz", f"trades_holdout_{P5_NAME}.tsv.gz")
             for q in (Path(out) / name, partial_path(Path(out) / name)) if q.exists()]
 
 
@@ -2538,11 +2557,14 @@ def run_holdout(args) -> int:
     out = data / "out"
     if args.dry_run:
         inp = _setup_minute_inputs(args, "holdout")
+        p5c = p5_candidates(out, "holdout")
         print(f"DRY RUN (freeze check {'SKIPPED' if args.no_freeze_check else 'passed'}): would read {out / 'candidates.tsv'} "
               f"({len(inp['cands']):,} holdout candidate rows), the minute files in {inp['minutes_dir']} "
               f"({len(inp['files'])} dates; {sum(len(v) for v in inp['by_date'].values()):,} candidates on them) and the daily export "
-              f"{data / 'daily_closes_all.csv.gz'}; would write {out / 'trades_holdout.tsv.gz'} and {out / 'entries_holdout.tsv.gz'}. "
-              f"Nothing was opened beyond candidate counts.")
+              f"{data / 'daily_closes_all.csv.gz'}; would write {out / 'trades_holdout.tsv.gz'} and {out / 'entries_holdout.tsv.gz'}; "
+              f"then the P5 stage on {len(p5c):,} first-break rows of {'/'.join(P5_LEVELS)} (candidates.tsv + candidates_com_comb.tsv), "
+              f"writing {out / f'trades_holdout_{P5_NAME}.tsv.gz'}, {out / 'p5_report_holdout.tsv'} and appending to "
+              f"{out / 'regime_report_holdout.tsv'}. Nothing was opened beyond candidate counts.")
         return 0
     existing = holdout_existing_outputs(out)
     if existing:
@@ -2554,7 +2576,7 @@ def run_holdout(args) -> int:
             print(f"REFUSED: the holdout outcomes are joined ONCE and {existing[0]} already exists", file=sys.stderr)
         return 2
     run_minute_stage(args, "holdout")
-    return 0
+    return run_p5_stage(args, "holdout")      # #702 P5: the primary exit (his rule, stalls cut) and the rows beside it, same run
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
@@ -2930,13 +2952,424 @@ def run_report(args) -> int:
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
+# #702 P5 (operator 2026-10-18): the holdout read's PRIMARY = HIS exit with the stalled breakouts cut. The `p5` stage walks it,
+# and the rows reported beside it, on the DISCOVERY first breaks (the numbers the registration quotes); the `holdout` stage
+# walks the SAME function once on the holdout, behind freeze_check. ONE engine (`evaluate_exits`, narrowed to the `lod` stop
+# and `P5_ARMS`), NEW files only (`trades_<split>_p5.tsv.gz`, `p5_report_<split>.{tsv,txt}`): no pinned output and no `exits`
+# output moves. Measurement only - nothing here chooses an exit, a stop or a level; the operator's rulings are the registration's.
+# ═════════════════════════════════════════════════════════════════════════════════════════════
+P5_NAME = "p5"
+P5_PRIMARY = cb.P5_PRIMARY_ARM                                 # tl / ORH5 / lod / this arm / spec key = the registered primary triple
+P5_ARMS = {P5_PRIMARY: cb.CUT_EXIT_ARMS[cb.P5_PRIMARY_ARM],    # his rule + the stall cut (decides)
+           cb.PRIMARY_ARM: cb.ARMS[cb.PRIMARY_ARM],            # the article's arm (the old primary)          - beside
+           "c3_p33_t20": cb.HIS_EXIT_ARMS["c3_p33_t20"],       # his rule without the cut                     - beside
+           "r2_p33_t20": cb.HIS_EXIT_ARMS["r2_p33_t20"]}       # +2R only, no day-3 partial                   - beside
+P5_STOPS = ("lod",)                                            # the stop is the registered one: the low of the day at the fill
+P5_LEVEL_FILES = (("", ("tl",)), ("_com_comb", ("com", "comb")))    # (candidates-file suffix, the levels read from it)
+P5_LEVELS = tuple(k for _sfx, ks in P5_LEVEL_FILES for k in ks)     # tl first: the primary level; com / comb beside
+P5_CELLS = CELL_NAMES                                          # C0..C7 and the three report-only cells
+P5_USECOLS = (["K", "retrigger_chain", "year", "month", "phase_qqq_10_20", "arm", "status", "realized_r", "pnl_adr", "acct_pct",
+               "sessions_held", "mature", "D", "ticker"] + list(P5_CELLS))
+P5_XCHECK_TOL = 1e-9
+
+
+def p5_cols() -> list:
+    return ["key", "cell", "K", "arm", "slice", "value"] + STAT_COLS + ["n_cut", "mean_held"]
+
+
+def p5_candidates(out: Path, split: str) -> list:
+    """The P5 population: the spec key's FIRST breaks of `split` on `tl` (the registered `candidates.tsv`) and on `com` / `comb`
+    (`candidates_com_comb.tsv`). Both files are pinned by the freeze (`frozen_files`)."""
+    cands: list = []
+    for sfx, levels in P5_LEVEL_FILES:
+        cands += exits_population(read_candidates(Path(out) / f"candidates{sfx}.tsv", split,
+                                                  extra_floats=("tightening_ratio", "base_depth")), levels)
+    return cands
+
+
+def p5_inputs(args, split: str) -> dict:
+    data = Path(args.data)
+    out = Path(args.out) if args.out else data / "out"
+    minutes_dir = Path(args.minutes) if args.minutes else data / "minutes"
+    cands = p5_candidates(out, split)
+    files = minute_date_files(minutes_dir) if minutes_dir.is_dir() else {}
+    if args.limit_dates:
+        files = dict(list(files.items())[:args.limit_dates])
+    return {"data": data, "out": out, "minutes_dir": minutes_dir, "cands": cands, "files": files,
+            "by_date": group_by_date(cands, set(files)),
+            "done": load_done_pairs(minutes_dir) if minutes_dir.is_dir() else None}
+
+
+def p5_walk(inp: dict, workers: int, split: str, say) -> tuple:
+    """Walk `P5_ARMS` on the lod stop over every candidate of `inp` -> (trades path, entry tally, rows). The table is written to
+    `<name>.partial` and renamed only after every date is walked (the holdout's `.partial` protocol)."""
+    t = time.time()
+    D = load_daily(inp["data"] / "daily_closes_all.csv.gz")
+    _G.update(D=D, by_date=inp["by_date"], files=inp["files"], done=inp["done"], bars_cache={}, horizon=HORIZON,
+              exits_kw={"stops": P5_STOPS, "arms": P5_ARMS})
+    say(f"[load: {time.time() - t:.0f}s]")
+    t = time.time()
+    tp = inp["out"] / f"trades_{split}_{P5_NAME}.tsv.gz"
+    tpp = partial_path(tp)
+    tally: Counter = Counter()
+    n_rows = 0
+    dates = list(inp["by_date"])
+    try:
+        with open(tpp, "wb") as tf:
+            tf.write(rows_to_gz([EXITS_COLS]))
+            for k, (tg, ty, nr) in enumerate(_pool_map(_exits_job, dates, workers), 1):
+                tf.write(tg)
+                tally.update(ty)
+                n_rows += nr
+                if k % 100 == 0 or k == len(dates):
+                    print(f"  {k}/{len(dates)} dates, {n_rows:,} rows", flush=True)
+    finally:
+        _G["exits_kw"] = {}
+    os.replace(tpp, tp)
+    say(f"[entries + P5 walks: {time.time() - t:.0f}s]")
+    return tp, tally, n_rows
+
+
+def p5_crosscheck(p5_trades: Path, ref_trades: Path, levels) -> tuple:
+    """(rows compared, problems): the registered arm `p33_s3_t10` inside the P5 table against the SAME arm's orh5 spec-key rows
+    of the minute stage's table (`ref_trades`), per (ticker, D, K) on `levels`: every pair present on both sides, and
+    status / mature / realized_r equal. Proves the P5 walk is the registered walk (same fill, stop, day 0, exit) before its
+    other arms are read. A missing reference is reported, not skipped silently."""
+    import pandas as pd
+    if not Path(ref_trades).exists():
+        return 0, [f"reference table {ref_trades} not found"]
+    lv = set(levels)
+    mine = pd.read_csv(p5_trades, sep="\t", usecols=["ticker", "D", "K", "arm", "status", "realized_r", "mature"],
+                       keep_default_na=False, na_values=[""], low_memory=False)
+    mine = mine[(mine["arm"] == cb.PRIMARY_ARM) & mine["K"].isin(lv)]
+    parts = []
+    for ch in pd.read_csv(ref_trades, sep="\t", usecols=["ticker", "D", "K", "variant", "arm", "retrigger", "status", "realized_r", "mature"],
+                          chunksize=500_000, keep_default_na=False, na_values=[""], low_memory=False):
+        ch = ch[(ch["variant"] == HEADLINE_VARIANT) & (ch["arm"] == cb.PRIMARY_ARM) & (ch["retrigger"] == 0) & ch["K"].isin(lv)]
+        parts.append(ch.drop(columns=["variant", "arm", "retrigger"]))
+    ref = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=["ticker", "D", "K", "status", "realized_r", "mature"])
+    j = mine.merge(ref, on=["ticker", "D", "K"], how="outer", suffixes=("", "_ref"), indicator=True)
+    problems = []
+    for side, label in (("left_only", "P5 table only"), ("right_only", "reference table only")):
+        n = int((j["_merge"] == side).sum())
+        if n:
+            problems.append(f"{n:,} (ticker, D, K) rows are in the {label}")
+    both = j[j["_merge"] == "both"]
+    if len(both):
+        bad_s = int((both["status"] != both["status_ref"]).sum())
+        bad_m = int((both["mature"] != both["mature_ref"]).sum())
+        bad_r = int(((both["realized_r"] - both["realized_r_ref"]).abs() > P5_XCHECK_TOL).sum())
+        for n, what in ((bad_s, "status"), (bad_m, "mature"), (bad_r, "realized_r")):
+            if n:
+                problems.append(f"{n:,} of {len(both):,} paired rows differ in {what}")
+    return int(len(both)), problems
+
+
+def p5_regime_map(out: Path) -> dict:
+    """{D: Apollo regime label} from both candidates files (one value per date; blank -> 'missing')."""
+    m: dict = {}
+    for sfx, _levels in P5_LEVEL_FILES:
+        for d, lab in regime_by_date(Path(out) / f"candidates{sfx}.tsv").items():
+            m.setdefault(d, lab)
+    return m
+
+
+def load_p5_frame(path: Path, regime_of: dict):
+    """The P5 table as a DataFrame (every row is a spec-key first break already; an abstain row carries no arm and is dropped)."""
+    import pandas as pd
+    df = pd.read_csv(path, sep="\t", usecols=P5_USECOLS, keep_default_na=False, na_values=[""], low_memory=False)
+    df = df[df["arm"].notna()].copy()
+    df["regime"] = df["D"].map(regime_of).fillna(REGIME_MISSING)
+    for col in ("K", "arm", "month", "regime"):
+        df[col] = df[col].astype("category")
+    return df
+
+
+def _p5_row(g, key_name: str, cell: str, k, a, slice_name: str, value, *, ci: bool) -> dict:
+    """One P5 report row. `_group_row` seeds the bootstrap from (key, cell, K, variant, arm) with variant = the headline entry,
+    exactly as the discovery report and the exits report do - so the registered arm's interval equals the pinned report's."""
+    row = _group_row(g, key_name, cell, k, HEADLINE_VARIANT, a, slice_name, value, ci=ci)
+    row.pop("variant", None)
+    gm = g[g["mature"] == 1]
+    row["n_cut"] = int((gm["status"] == "time_exit").sum())        # a time_exit on these arms is the stall cut, nothing else
+    row["mean_held"] = float(gm["sessions_held"].mean()) if len(gm) else None
+    return row
+
+
+def build_p5_rows(df) -> list:
+    """Every (key, cell, K, arm) of `P5_CELLS` x `P5_LEVELS` x `P5_ARMS` over the MATURE walks: 'all' with the month-block
+    interval under the SPEC key and the CHAIN key (the chain population is a subset), and under the spec key the slices the
+    registration asks for: year, QQQ 10/20 phase (on the mature walks, as the discovery report slices), and Apollo's regime at D
+    ('ALL' plus one row per label; n_open counted, as the regime table does)."""
+    rows: list = []
+    reg = df["regime"].astype(str)
+    labels = list(REGIME_ORDER) + [REGIME_MISSING] + sorted(set(reg.unique()) - set(REGIME_ORDER) - {REGIME_MISSING})
+    for key_name, col, _label in REPORT_KEYS:
+        kdf = df if col == "retrigger" else df[df["retrigger_chain"] == 0]
+        for k in P5_LEVELS:
+            for cell in P5_CELLS:
+                sub = kdf[(kdf["K"] == k) & (kdf[cell] == 1)]
+                for a in P5_ARMS:
+                    g = sub[sub["arm"] == a]
+                    if not len(g):
+                        continue
+                    rows.append(_p5_row(g, key_name, cell, k, a, "all", "", ci=True))
+                    if key_name != "spec":
+                        continue
+                    gm = g[g["mature"] == 1]
+                    for sname, scol in (("year", "year"), ("phase", "phase_qqq_10_20")):
+                        for val, gg in gm.groupby(scol, observed=True):
+                            rows.append(_p5_row(gg, key_name, cell, k, a, sname, val, ci=False))
+                    rows.append(_p5_row(g, key_name, cell, k, a, "regime", "ALL", ci=False))
+                    rg = g["regime"].astype(str).to_numpy()
+                    for lab in labels:
+                        rows.append(_p5_row(g[rg == lab], key_name, cell, k, a, "regime", lab, ci=False))
+    return rows
+
+
+P5_TWIN = "c3_p33_t20"                                         # the primary arm without the cut
+P5_CUT_CELLS = ("C0", "C1", "C3", "C5")
+
+
+def p5_cut_effect(df) -> list:
+    """The cut's own effect per level x cell: the primary arm against its uncut twin (`P5_TWIN`) on the SAME trades (both walks
+    mature, paired on (ticker, D)): how many the cut sold at the session-3 close, and - on all the trades and on the cut ones -
+    the mean R and the mean sessions held under each. The twin differs from the primary only where the cut fires (tested), so
+    this is the cost / gain of cutting and the capital-days freed, nothing else."""
+    out: list = []
+    a_all, b_all = df[df["arm"] == P5_PRIMARY], df[df["arm"] == P5_TWIN]
+    for k in P5_LEVELS:
+        for cell in P5_CUT_CELLS:
+            x = a_all[(a_all["K"] == k) & (a_all[cell] == 1) & (a_all["mature"] == 1)][["ticker", "D", "status", "realized_r", "sessions_held"]]
+            y = b_all[(b_all["K"] == k) & (b_all[cell] == 1) & (b_all["mature"] == 1)][["ticker", "D", "realized_r", "sessions_held"]]
+            m = x.merge(y, on=["ticker", "D"], suffixes=("_cut", "_twin"))
+            if not len(m):
+                continue
+            c = m[m["status"] == "time_exit"]
+            out.append({"K": k, "cell": cell, "n": len(m), "n_cut": len(c),
+                        "r_cut": float(m["realized_r_cut"].mean()), "r_twin": float(m["realized_r_twin"].mean()),
+                        "held_cut": float(m["sessions_held_cut"].mean()), "held_twin": float(m["sessions_held_twin"].mean()),
+                        "cut_r_cut": float(c["realized_r_cut"].mean()) if len(c) else None,
+                        "cut_r_twin": float(c["realized_r_twin"].mean()) if len(c) else None,
+                        "cut_held_cut": float(c["sessions_held_cut"].mean()) if len(c) else None,
+                        "cut_held_twin": float(c["sessions_held_twin"].mean()) if len(c) else None})
+    return out
+
+
+def _p5_line(r: dict, first) -> list:
+    return [first, r["n"], r["n_open"], _num(r.get("mean_r")), _ci(r), _pct(r.get("share_ge5")), _pct(r.get("share_ge10")),
+            _num(r.get("mean_ex_top5")), _num(r.get("mean_pnl_adr")), _pct(r.get("win_rate")), r.get("n_cut", 0),
+            "" if r.get("mean_held") is None else f"{r['mean_held']:.1f}"]
+
+
+P5_HEADER = ["", "n", "open", "mean R", "95% CI", ">=5R", ">=10R", "ex-top5", "pnl_adr", "win", "cut", "held"]
+
+
+def p5_report_text(rows: list, split: str, src: Path, n_rows: int, cut_effect: "list | None" = None) -> str:
+    idx = {(r["key"], r["cell"], r["K"], r["arm"], r["slice"], r["value"]): r for r in rows}
+    out: list = []
+    A = out.append
+    window = ("D 2022-03-28 .. 2024-12-31, DISCOVERY" if split == "discovery" else "D 2025-01-01 .. 2026-10-15, the HOLDOUT, read ONCE")
+    A(f"#702 P5 - the holdout read's PRIMARY (his exit with the stalled breakouts cut: {P5_PRIMARY}) and the rows reported beside it - "
+      f"{window}. Measurement only: nothing here chooses a level, an entry, a stop or an exit.")
+    A(f"source: {src.name}; rows read {n_rows:,}. POPULATION: the spec key's first breaks filled at {HEADLINE_VARIANT} under the registered stop "
+      f"(the low of the day at the fill, no wider than one ADR20), on tl / com / comb. A group is the MATURE walks only (n_open counted, "
+      f"never in a number); month-block bootstrap ({BOOT_DRAWS:,} draws, seed {BOOT_SEED}) 95% interval on the mean R; ADR = mean P&L in "
+      f"ADR20 x price units.")
+    A(f"ARMS: {P5_PRIMARY} = sell 1/3 at +2R or at the close of session 3, whichever first; stop to breakeven; trail the rest to the first "
+      f"close under the 20-day average (filled at the next open); AND if the trade has not reached +{cb.STALL_CUT_R:g}R by the close of "
+      f"session {cb.STALL_CUT_SESSION} (and was not stopped) everything is sold at that close ('cut'; 'held' = mean sessions held). "
+      f"Beside: {cb.PRIMARY_ARM} (the article: 1/3 at the close of session 3, 10-day trail), c3_p33_t20 (the same without the cut), "
+      f"r2_p33_t20 (+2R only, 20-day trail).")
+    A("")
+    A("FILLED ENTRIES per level x cell (the primary arm's n_filled = fills with a walk; the registration's STEP 0 counts for the holdout)")
+    body = []
+    for k in P5_LEVELS:
+        ln = [k]
+        for cell in P5_CELLS:
+            r = idx.get(("spec", cell, k, P5_PRIMARY, "all", ""))
+            ln.append(f"{r['n_filled']:,}" if r else "0")
+        body.append(ln)
+    A(table(body, ["K"] + list(P5_CELLS)))
+    A("")
+    for a in P5_ARMS:
+        head = "PRIMARY" if a == P5_PRIMARY else "BESIDE"
+        for k in P5_LEVELS:
+            body = [_p5_line(r, cell) for cell in P5_CELLS for r in [idx.get(("spec", cell, k, a, "all", ""))] if r]
+            if body:
+                A(f"{head} - arm {a}, level {k}, SPEC key (cell rows; every row is its own population)")
+                A(table(body, ["cell"] + P5_HEADER[1:]))
+                A("")
+    if cut_effect:
+        A(f"THE CUT'S OWN EFFECT - {P5_PRIMARY} against its uncut twin {P5_TWIN} on the SAME mature trades (spec key). 'cut' = trades sold in full at the "
+          f"close of session {cb.STALL_CUT_SESSION}; R = mean R; held = mean sessions held; the twin differs from the primary only where the cut fires")
+
+        def _f(x, nd=2, sign=True):
+            return "" if x is None else (f"{x:+.{nd}f}" if sign else f"{x:.{nd}f}")
+        body = [[f"{r['K']} {r['cell']}", r["n"], r["n_cut"], f"{_f(r['r_cut'], 3)} / {_f(r['r_twin'], 3)}",
+                 f"{_f(r['held_cut'], 1, False)} / {_f(r['held_twin'], 1, False)}",
+                 f"{_f(r['cut_r_cut'], 3)} / {_f(r['cut_r_twin'], 3)}", f"{_f(r['cut_held_cut'], 1, False)} / {_f(r['cut_held_twin'], 1, False)}"]
+                for r in cut_effect]
+        A(table(body, ["level cell", "n", "cut", "all: R cut / twin", "all: held cut / twin", "cut trades: R cut / twin", "cut trades: held cut / twin"]))
+        A("")
+    A(f"CHAIN KEY (poles <= 3 sessions apart = one base; a subset of the spec key), arm {P5_PRIMARY}")
+    for k in P5_LEVELS:
+        body = [_p5_line(r, cell) for cell in P5_CELLS for r in [idx.get(("chain", cell, k, P5_PRIMARY, "all", ""))] if r]
+        if body:
+            A(f"  level {k}")
+            A(table(body, ["cell"] + P5_HEADER[1:]))
+    A("")
+    A(f"SLICES - arm {P5_PRIMARY}, spec key; each cell is n / mean R / share >= 5R over the MATURE walks (regime: all walks, "
+      f"'missing' = a D with no Apollo label - the label starts 2025-03-03); `0` = none")
+    for sname in ("year", "phase", "regime"):
+        for k in P5_LEVELS:
+            vals = list(dict.fromkeys(r["value"] for r in rows if r["slice"] == sname and r["K"] == k and r["arm"] == P5_PRIMARY))
+            if not vals:
+                continue
+            body = []
+            for cell in P5_CELLS:
+                ln = [cell]
+                for v in vals:
+                    r = idx.get(("spec", cell, k, P5_PRIMARY, sname, v))
+                    ln.append("-" if r is None else ("0" if not r["n"] else f"{r['n']}/{_num(r.get('mean_r'), 2)}/{_pct(r.get('share_ge5'))}"))
+                body.append(ln)
+            A(f"  {sname} / level {k}")
+            A(table(body, ["cell"] + [str(v) for v in vals]))
+    return "\n".join(out)
+
+
+def p5_regime_rows(df) -> list:
+    """The P5 arms x levels the holdout's `regime_report_holdout` does not already carry (that table holds the minute stage's
+    `p33_s3_t10` on the registered levels), in its own layout: key spec, `ALL` + one row per regime label."""
+    rows: list = []
+    reg = df["regime"].astype(str)
+    labels = list(REGIME_ORDER) + [REGIME_MISSING] + sorted(set(reg.unique()) - set(REGIME_ORDER) - {REGIME_MISSING})
+    for k in P5_LEVELS:
+        for cell in P5_CELLS:
+            sub = df[(df["K"] == k) & (df[cell] == 1)]
+            for a in P5_ARMS:
+                if k in KS and a == cb.PRIMARY_ARM:
+                    continue
+                g = sub[sub["arm"] == a]
+                if not len(g):
+                    continue
+                rows.append(_group_row(g, "spec", cell, k, HEADLINE_VARIANT, a, "regime", "ALL", ci=False))
+                rg = g["regime"].astype(str).to_numpy()
+                for lab in labels:
+                    rows.append(_group_row(g[rg == lab], "spec", cell, k, HEADLINE_VARIANT, a, "regime", lab, ci=False))
+    return rows
+
+
+def p5_regime_text(rows: list) -> str:
+    out = [f"#702 P5 - the rows beside the minute stage's table: arms {', '.join(P5_ARMS)} on {'/'.join(P5_LEVELS)} (entry {HEADLINE_VARIANT}, "
+           f"lod stop, spec key; the minute stage's own p33_s3_t10 rows on the registered levels are above), split by Apollo's daily regime at D. "
+           f"Reported BESIDE, never deciding; the non-Bull groups are small. A cell is n / mean R / share >= 5R."]
+    labels = list(dict.fromkeys(r["value"] for r in rows))
+    idx = {(r["cell"], r["K"], r["arm"], r["value"]): r for r in rows}
+    order = list(dict.fromkeys((r["cell"], r["K"], r["arm"]) for r in rows))
+    body = []
+    for cell, k, a in order:
+        ln = [cell, k, a]
+        for lab in labels:
+            r = idx.get((cell, k, a, lab))
+            ln.append("-" if r is None else ("0" if not r["n"] else f"{r['n']}/{_num(r.get('mean_r'), 2)}/{_pct(r.get('share_ge5'))}"))
+        body.append(ln)
+    out.append(table(body, ["cell", "K", "arm"] + labels) if body else "  (no mature walk)")
+    return "\n".join(out)
+
+
+def append_regime_report(df, out_tsv: Path, out_txt: Path) -> int:
+    """Append the P5 regime rows to `regime_report_holdout.{tsv,txt}` (the minute stage wrote the file first, in the same run;
+    a missing file is created with its header)."""
+    rows = p5_regime_rows(df) if len(df) else []
+    new = not Path(out_tsv).exists()
+    with open(out_tsv, "a", newline="") as fh:
+        w = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        if new:
+            w.writerow(REGIME_COLS)
+        for r in rows:
+            w.writerow([_fmt(r.get(c)) for c in REGIME_COLS])
+    with open(out_txt, "a") as fh:
+        fh.write(("\n" if not new else "") + p5_regime_text(rows) + "\n")
+    return len(rows)
+
+
+def run_p5_stage(args, split: str) -> int:
+    """`p5` (split='discovery') and the second half of `holdout` (split='holdout', behind freeze_check, after the minute stage):
+    walk `P5_ARMS` on the lod stop over the split's first breaks of tl / com / comb -> `trades_<split>_p5.tsv.gz`, prove the
+    registered arm inside it equals the minute stage's rows (per trade), and write the report. 0 = ok, 3 = the cross-check failed."""
+    T0 = time.time()
+    inp = p5_inputs(args, split)
+    out, small = inp["out"], (Path(args.small_out) if args.small_out else HERE / "out")
+    log: list = []
+
+    def say(msg: str = "") -> None:
+        print(msg, flush=True)
+        log.append(msg)
+
+    by_date = inp["by_date"]
+    say(f"{split.upper()} P5 STAGE (#702): {len(inp['cands']):,} first-break candidate rows (spec key) on {'/'.join(P5_LEVELS)}; minute files "
+        f"on disk: {len(inp['files'])} dates ({inp['minutes_dir']}); candidates on those dates: {sum(len(v) for v in by_date.values()):,}; "
+        f"entry {HEADLINE_VARIANT}; stop {'/'.join(P5_STOPS)}; arms {', '.join(P5_ARMS)}")
+    if not by_date:
+        say("nothing to do: no candidate falls on a date with a minute file (nothing written)")
+        return 0
+    out.mkdir(parents=True, exist_ok=True)
+    small.mkdir(parents=True, exist_ok=True)
+    tp, tally, n_rows = p5_walk(inp, args.workers, split, say)
+    states = {k[1]: n for k, n in tally.items() if k[0] == "minutes_state"}
+    say(f"COVERAGE: candidates with minutes fetched {sum(n for s, n in states.items() if s != 'pending'):,} "
+        f"(by state {dict(sorted(states.items()))}); PENDING fetch (skipped) {states.get('pending', 0):,}")
+    ent = {(k[1], k[2]): n for k, n in tally.items() if k[0] == "entry"}
+    say(f"ENTRY ({HEADLINE_VARIANT}, all levels): " + "; ".join(f"{st}{(' ' + r) if r else ''} {n:,}" for (st, r), n in sorted(ent.items())))
+    say(f"WROTE {tp} ({n_rows:,} rows)")
+    # the registered arm inside this table IS the registered walk: per trade, against the minute stage's own table
+    rc = 0
+    for sfx, levels in P5_LEVEL_FILES:
+        ref = out / (f"trades_{split}{sfx}.tsv.gz")
+        if not ref.exists() and split == "holdout":
+            say(f"CROSS-CHECK {'/'.join(levels)}: no minute-stage table for these levels on the holdout ({ref.name}) - not applicable")
+            continue
+        n_cmp, problems = p5_crosscheck(tp, ref, levels)
+        if problems:
+            rc = 3
+            say(f"CROSS-CHECK {'/'.join(levels)} FAILED against {ref.name}: " + "; ".join(problems))
+        else:
+            say(f"CROSS-CHECK {'/'.join(levels)}: {n_cmp:,} paired {cb.PRIMARY_ARM} rows equal {ref.name}'s {HEADLINE_VARIANT} rows "
+                f"(status, maturity, realized R to {P5_XCHECK_TOL:g})")
+    if rc and split == "discovery":
+        say("the P5 walk is not the registered walk: the report is NOT written")
+        (small / f"p5_summary_{split}.txt").write_text("\n".join(log) + "\n")
+        return rc
+    df = load_p5_frame(tp, p5_regime_map(out))
+    rows = build_p5_rows(df)
+    cols = p5_cols()
+    name = f"p5_report_{split}"
+    write_tsv(out / f"{name}.tsv", rows, cols)
+    compact = [{k: (round(v, 6) if isinstance(v, float) else v) for k, v in r.items()} for r in rows if r["slice"] == "all"]
+    write_tsv(small / f"{name}.tsv", compact, cols)               # the repo-sized copy: 'all' slices, 6 decimals
+    text = p5_report_text(rows, split, tp, n_rows, p5_cut_effect(df))
+    (small / f"{name}.txt").write_text(text + "\n")
+    print(text)
+    say(f"WROTE {out / (name + '.tsv')} ({len(rows):,} rows), {small / (name + '.tsv')}, {small / (name + '.txt')}")
+    if split == "holdout":
+        n_reg = append_regime_report(df, out / "regime_report_holdout.tsv", small / "regime_report_holdout.txt")
+        say(f"APPENDED {n_reg:,} P5 rows to {out / 'regime_report_holdout.tsv'} and {small / 'regime_report_holdout.txt'}")
+    say(f"WALL TIME: {time.time() - T0:.0f}s total")
+    (small / f"p5_summary_{split}.txt").write_text("\n".join(log) + "\n")
+    return rc
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("stage", choices=["daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report"],
+    ap.add_argument("stage", choices=["daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report", "p5"],
                     help="daily = P2a daily stage; minute = DISCOVERY entries/exits/controls; step0-entries = HOLDOUT "
-                         "composition, no outcome; holdout = the minute engine on the HOLDOUT, behind freeze_check (BUILT, "
-                         "NOT RUN); report = the DISCOVERY read; exits / exits-report = #702 his exit (the +2R / day / combo "
-                         "partial x the trail switches x the stop variants) on the DISCOVERY first breaks, NEW files only")
+                         "composition, no outcome; holdout = the minute engine AND the P5 stage on the HOLDOUT, behind "
+                         "freeze_check (BUILT, NOT RUN); report = the DISCOVERY read; exits / exits-report = #702 his exit (the "
+                         "+2R / day / combo partial x the trail switches x the stop variants) on the DISCOVERY first breaks, NEW "
+                         "files only; p5 = #702 P5: his exit with the stalled breakouts cut (the holdout read's primary) and the "
+                         "rows beside it, on the DISCOVERY first breaks of tl / com / comb, NEW files only")
     ap.add_argument("--data", required=True, help="DATA dir (daily_closes_all.csv.gz, small_pulls.psv, ...)")
     ap.add_argument("--out", help="large-output dir (default DATA/out); holdout refuses anything but DATA/out")
     ap.add_argument("--small-out", help="small-summary dir (default scripts/probes/_cb_backtest/out); holdout refuses it")
@@ -2973,6 +3406,14 @@ def main(argv=None) -> None:
         return
     if args.stage == "exits-report":
         rc = run_exits_report(args)
+        if rc:
+            sys.exit(rc)
+        return
+    if args.stage == "p5":
+        if args.keys or args.levels:                # the population is fixed by the registration: tl from candidates.tsv, com / comb from candidates_com_comb.tsv
+            ap.error("p5: --keys / --levels are not options of this stage (it reads tl from candidates.tsv and com / comb from "
+                     "candidates_com_comb.tsv)")
+        rc = run_p5_stage(args, "discovery")
         if rc:
             sys.exit(rc)
         return

@@ -1097,9 +1097,13 @@ class TestHoldoutGuard:
         (data / "cb702_sic.psv").write_text("sic\n")
         for name in ("watch.tsv.gz", "candidates.tsv", "minute_fetch_list.tsv", "gap_in_bars.tsv", "close_variant_discovery.tsv.gz",
                      "trades_discovery.tsv.gz", "entries_discovery.tsv.gz", "entries_holdout_composition.tsv",
-                     "discovery_report.tsv"):
+                     "discovery_report.tsv",
+                     # #702 P5: the com / comb inputs of the holdout's second pass and the discovery P5 walk it quotes
+                     "candidates_com_comb.tsv", "watch_com_comb.tsv.gz", "entries_holdout_composition_com_comb.tsv",
+                     "trades_discovery_p5.tsv.gz", "p5_report_discovery.tsv"):
             (data / "out" / name).write_text(name)
         (rn.HERE / "out" / "discovery_report.txt").write_text("report")
+        (rn.HERE / "out" / "p5_report_discovery.txt").write_text("p5 report")
         (data / "minutes" / "2025-03-03.psv.gz").write_bytes(b"m1")
         return data, repo
 
@@ -1127,6 +1131,17 @@ class TestHoldoutGuard:
         (data / "cb702_sic.psv").write_text("edited")                                         # a data file
         assert any(p.startswith("data/cb702_sic.psv sha256 mismatch") for p in rn.freeze_check(data=data, repo=repo))
         (data / "cb702_sic.psv").write_text("sic\n")
+        # #702 P5: the holdout's second pass reads the com / comb candidates, so those inputs and the discovery P5 walk are pinned
+        for name in ("candidates_com_comb.tsv", "watch_com_comb.tsv.gz", "entries_holdout_composition_com_comb.tsv",
+                     "trades_discovery_p5.tsv.gz", "p5_report_discovery.tsv"):
+            assert f"- {name} sha256: `" in "\n".join(rn.pin_lines(data, repo)), name
+            (data / "out" / name).write_text("edited")
+            assert any(p.startswith(f"{name} sha256 mismatch") for p in rn.freeze_check(data=data, repo=repo)), name
+            (data / "out" / name).write_text(name)
+            assert rn.freeze_check(data=data, repo=repo) == [], name
+        (rn.HERE / "out" / "p5_report_discovery.txt").write_text("edited report")
+        assert any(p.startswith("p5_report_discovery.txt sha256 mismatch") for p in rn.freeze_check(data=data, repo=repo))
+        (rn.HERE / "out" / "p5_report_discovery.txt").write_text("p5 report")
         doc.write_text(doc.read_text().replace("n=1", "n=2"))                                 # the doc body
         assert any(p.startswith("doc body sha256 mismatch") for p in rn.freeze_check(data=data, repo=repo))
 
@@ -1204,8 +1219,8 @@ class TestHoldoutGuard:
         assert all(f"- {k} sha256: `" in "\n".join(rn.pin_lines(data, repo)) for k in rn.FROZEN_CODE)   # --print-pins carries them
 
     def test_every_repo_file_the_outcome_path_computes_with_is_pinned(self):
-        """The pin list is DERIVED, not hand-listed: walk the static call graph from the runner's two worker entry points
-        (`_minute_job`, `_step0_job`) into each repo module they call, and into the repo modules THOSE call, following
+        """The pin list is DERIVED, not hand-listed: walk the static call graph from the runner's worker entry points
+        (`_minute_job`, `_step0_job`, and the exits / P5 stages' `_exits_job`) into each repo module they call, and into the repo modules THOSE call, following
         function-level imports too. Every module reached must be pinned (FROZEN_CODE / the module pin) or exempt with a
         reason. The members are NAMED, so a new import into the outcome path fails here instead of slipping past a count."""
         import ast
@@ -1254,7 +1269,7 @@ class TestHoldoutGuard:
         # runner -> the repo-module names its outcome path touches (cb.X, ant.X, lfc.X, rule_eras.X)
         rtree = ast.parse(Path(rn.__file__).read_text())
         rdefs = {n.name: n for n in rtree.body if isinstance(n, ast.FunctionDef)}
-        seen, todo, attrs = set(), ["_minute_job", "_step0_job"], {}
+        seen, todo, attrs = set(), ["_minute_job", "_step0_job", "_exits_job"], {}          # + the exits / P5 stages' worker
         alias = {"cb": "agents.market_intelligence.consolidation_breakout", "ant": "agents.market_intelligence.anticipation",
                  "lfc": "agents.market_intelligence.live_fill_counterfactuals", "rule_eras": "agents.market_intelligence.rule_eras"}
         while todo:
@@ -1312,6 +1327,7 @@ class TestHoldoutGuard:
                 assert ex.value.code == 2 and "REFUSED" in err and needle in err, (extra, tail, err)
         # the registered form is still accepted: DATA/out spelled out is the same place
         monkeypatch.setattr(rn, "_setup_minute_inputs", lambda *a, **k: {"cands": [], "files": {}, "by_date": {}, "minutes_dir": data / "minutes"})
+        monkeypatch.setattr(rn, "read_candidates", lambda *a, **k: [])       # the dry run counts candidate rows (entry-time facts)
         assert rn.run_holdout(argparse_ns(data, out=str(data / "out"), dry_run=True)) == 0
         assert "DRY RUN (freeze check passed)" in capsys.readouterr().out
         # --print-pins is a read-only helper and stays available
@@ -1323,16 +1339,27 @@ class TestHoldoutGuard:
         self._doc(repo, data)
         ran = []
         monkeypatch.setattr(rn, "run_minute_stage", lambda *a, **k: ran.append(1))
-        assert rn.run_holdout(argparse_ns(data)) == 0 and ran == [1]                     # nothing on disk: it runs
+        monkeypatch.setattr(rn, "run_p5_stage", lambda *a, **k: ran.append(2) or 0)
+        assert rn.run_holdout(argparse_ns(data)) == 0 and ran == [1, 2]                  # nothing on disk: both passes run, in this order
         part = data / "out" / "trades_holdout.tsv.gz.partial"
         part.write_bytes(b"half a run")
         assert rn.holdout_existing_outputs(data / "out") == [part]
-        assert rn.run_holdout(argparse_ns(data)) == 2 and ran == [1]
+        assert rn.run_holdout(argparse_ns(data)) == 2 and ran == [1, 2]
         err = capsys.readouterr().err
         assert "CRASHED holdout run" in err and str(part) in err and "removes it by hand" in err
         part.unlink()
         (data / "out" / "entries_holdout.tsv.gz.partial").write_bytes(b"x")              # either table's partial counts
-        assert rn.run_holdout(argparse_ns(data)) == 2 and ran == [1]
+        assert rn.run_holdout(argparse_ns(data)) == 2 and ran == [1, 2]
+        (data / "out" / "entries_holdout.tsv.gz.partial").unlink()
+        p5 = data / "out" / "trades_holdout_p5.tsv.gz"                                   # #702 P5: the second pass's table counts too
+        p5.write_bytes(b"")
+        assert rn.holdout_existing_outputs(data / "out") == [p5]
+        assert rn.run_holdout(argparse_ns(data)) == 2 and "joined ONCE" in capsys.readouterr().err and ran == [1, 2]
+        p5.unlink()
+        p5part = data / "out" / "trades_holdout_p5.tsv.gz.partial"                       # and so does its crashed run's partial
+        p5part.write_bytes(b"half")
+        assert rn.holdout_existing_outputs(data / "out") == [p5part]
+        assert rn.run_holdout(argparse_ns(data)) == 2 and "CRASHED holdout run" in capsys.readouterr().err and ran == [1, 2]
 
 
 def argparse_ns(data, **kw):
@@ -2082,3 +2109,288 @@ class TestHisExitStage:
         assert len(bad) == 1 and "--levels tl" in bad[0]
         with pytest.raises(SystemExit):
             rn.main(["holdout", "--data", str(data), "--levels", "tl", "--dry-run", "--no-freeze-check"])
+
+
+
+# ═══ #702 P5: the holdout read's primary = his exit with the stalled breakouts cut (`c3_p33_t20_cut3`) + the rows beside it ════
+# a STALLER: after the 5-minute fill (10.3103, stop 10.15, so R = 0.16 and +1R = 10.47) no minute and no daily high through
+# session 3 reaches +1R; session 3 closes at 10.36
+STALL_TAIL = [(10.35, 10.42, 10.25, 10.38), (10.38, 10.45, 10.30, 10.40), (10.40, 10.46, 10.30, 10.36), (10.3, 10.4, 10.2, 10.3)]
+
+
+def _stall_minutes():
+    out = []
+    for m, o, h, l, c in _e_day_minutes():
+        if m == 20:
+            out.append((m, 10.34, 10.40, 10.30, 10.36))
+        elif m > 20:
+            out.append((m, 10.34, 10.38, 10.30, 10.34))
+        else:
+            out.append((m, o, h, l, c))
+    return out
+
+
+def _stall_bars(start=None):
+    bars, e = _e_bars(tail=STALL_TAIL, start=start)
+    bars.h[e], bars.c[e] = 10.40, 10.34                 # the daily bar agrees with the quieter minutes (the data gate)
+    return bars, e
+
+
+def _p5_cand(bars, e, **kw):
+    kw.setdefault("K", "tl")
+    c = _m_cand(bars, e, **kw)
+    P = e - 20
+    c["pole_date"] = bars.dates[P].isoformat()
+    c["base_depth"] = 1.0 - float(bars.l[P + 1:e].min()) / float(bars.h[P])
+    c["tightening_ratio"] = 0.6
+    return c
+
+
+def _p5_dir(tmp_path, *, split="discovery", staller=False):
+    """DATA dir for the P5 stage: a SPY + X daily export, `candidates.tsv` (K = tl) and `candidates_com_comb.tsv` (K = com,
+    comb), one minute session (X's E day) and its `_done.psv`."""
+    start = DISCOVERY_START if split == "discovery" else None
+    bars, e = _stall_bars(start) if staller else _e_bars(start=start)
+    data = tmp_path / "data"
+    (data / "out").mkdir(parents=True)
+    with gzip.open(data / "daily_closes_all.csv.gz", "wt") as fh:
+        for t in ("SPY", "X"):
+            for k in range(len(bars)):
+                fh.write(f"{t},{bars.dates[k].isoformat()},{bars.o[k]},{bars.h[k]},{bars.l[k]},{bars.c[k]},{bars.v[k]}\n")
+    for name, ks in (("candidates.tsv", ("tl",)), ("candidates_com_comb.tsv", ("com", "comb"))):
+        cs = [_p5_cand(bars, e, K=k, split=split) for k in ks]
+        rn.write_tsv(data / "out" / name, cs, list(cs[0].keys()))
+    md = data / "minutes"
+    md.mkdir()
+    fm._append_gz(md / f"{bars.dates[e].isoformat()}.psv.gz", _minute_lines("X", _stall_minutes() if staller else None))
+    (md / "_done.psv").write_text(f"{bars.dates[e].isoformat()}|X|390|ok\n")
+    return data, bars, e
+
+
+def _p5_references(data, small):
+    """The minute stage's own tables (registered levels, then com / comb) - what the P5 stage proves its registered arm against."""
+    for keys in ((), ("--keys", "com,comb")):
+        rn.main(["minute", "--data", str(data), "--workers", "1", "--small-out", str(small), "--no-close", "--no-apollo", *keys])
+
+
+class TestP5Stage:
+    def test_the_arm_set_the_stop_and_the_levels_and_nothing_else_moved(self):
+        assert list(rn.P5_ARMS) == [cb.P5_PRIMARY_ARM, "p33_s3_t10", "c3_p33_t20", "r2_p33_t20"] and rn.P5_PRIMARY == "c3_p33_t20_cut3"
+        assert rn.P5_ARMS[rn.P5_PRIMARY] is cb.CUT_EXIT_ARMS[rn.P5_PRIMARY] and rn.P5_ARMS["p33_s3_t10"] is cb.ARMS["p33_s3_t10"]
+        assert rn.P5_ARMS["c3_p33_t20"] is cb.HIS_EXIT_ARMS["c3_p33_t20"] and rn.P5_ARMS["r2_p33_t20"] is cb.HIS_EXIT_ARMS["r2_p33_t20"]
+        assert rn.P5_STOPS == ("lod",) and rn.P5_LEVELS == ("tl", "com", "comb") and rn.P5_CELLS == cb.CELL_NAMES
+        # the registered arm, the exits stage's arm set and the shadow's arms are untouched
+        assert cb.PRIMARY_ARM == "p33_s3_t10" and len(rn.EXITS_ARMS) == 26 and rn.P5_PRIMARY not in rn.EXITS_ARMS
+        assert len(cb.ARMS) == 15 and rn.P5_PRIMARY not in cb.ARMS and rn.ALL_ARMS == tuple(cb.ARMS) + rn.CONTROL_ARMS
+
+    def test_the_narrowed_walk_is_four_arms_on_the_lod_stop_and_equals_the_full_walks_rows(self):
+        bars, e = _e_bars()
+        cidx = np.arange(len(bars))
+        c = _p5_cand(bars, e)
+        full, _t = rn.evaluate_exits(c, bars, cidx, e, _mb())
+        rows, tally = rn.evaluate_exits(c, bars, cidx, e, _mb(), stops=rn.P5_STOPS, arms=rn.P5_ARMS)
+        col = {n: k for k, n in enumerate(rn.EXITS_COLS)}
+        assert len(full) == 5 * len(rn.EXITS_ARMS) and len(rows) == len(rn.P5_ARMS)            # the default walk is the exits stage's
+        assert {r[col["stop_variant"]] for r in rows} == {"lod"} and [r[col["arm"]] for r in rows] == list(rn.P5_ARMS)
+        assert tally[("stop", "lod", "ok")] == 1 and not [k for k in tally if k[0] == "stop" and k[1] != "lod"]
+        ref = {(r[col["stop_variant"]], r[col["arm"]]): r for r in full}
+        for r in rows:
+            if r[col["arm"]] != rn.P5_PRIMARY:                                                  # the cut arm is not in the exits arms
+                assert r == ref[("lod", r[col["arm"]])]
+        # and the registered row is the minute stage's own
+        ev = {v["variant"]: v for v in rn.evaluate_candidate(c, bars, cidx, e, _mb(), list(bars.dates), len(bars) - 1)}["orh5"]
+        a = ev["arms"][cb.PRIMARY_ARM]
+        prim = next(r for r in rows if r[col["arm"]] == cb.PRIMARY_ARM)
+        assert (prim[col["status"]], prim[col["realized_r"]], prim[col["sessions_held"]]) == (a["status"], a["realized_r"], a["sessions_held"])
+
+    def test_a_staller_is_cut_at_the_day3_close_and_the_uncut_arms_keep_going(self):
+        bars, e = _stall_bars()
+        cidx = np.arange(len(bars))
+        rows, _t = rn.evaluate_exits(_p5_cand(bars, e), bars, cidx, e, _mb(_stall_minutes()), stops=rn.P5_STOPS, arms=rn.P5_ARMS)
+        col = {n: k for k, n in enumerate(rn.EXITS_COLS)}
+        by = {r[col["arm"]]: r for r in rows}
+        fill, stop = by[rn.P5_PRIMARY][col["fill"]], by[rn.P5_PRIMARY][col["stop"]]
+        cut = by[rn.P5_PRIMARY]
+        assert (cut[col["status"]], cut[col["sessions_held"]], cut[col["mature"]], cut[col["partial_kind"]]) == ("time_exit", 3, 1, "")
+        assert cut[col["realized_r"]] == pytest.approx((10.36 - fill) / (fill - stop)) and cut[col["realized_r"]] > 0       # near breakeven
+        assert by["c3_p33_t20"][col["status"]] == "stopped" and by["c3_p33_t20"][col["partial_kind"]] == "session"      # the uncut twin partials and holds on
+        assert fill + (fill - stop) > 10.46                                                    # +1R was never touched through session 3
+
+    def test_a_plus_1r_touch_on_the_breakout_day_after_the_fill_is_not_cut(self):
+        bars, e = _e_bars()                                    # the default minute day prints 10.60 after the fill: past +1R (and +2R)
+        cidx = np.arange(len(bars))
+        rows, _t = rn.evaluate_exits(_p5_cand(bars, e), bars, cidx, e, _mb(), stops=rn.P5_STOPS, arms=rn.P5_ARMS)
+        col = {n: k for k, n in enumerate(rn.EXITS_COLS)}
+        by = {r[col["arm"]]: r for r in rows}
+        assert by[rn.P5_PRIMARY] == [x if k != col["arm"] else rn.P5_PRIMARY for k, x in enumerate(by["c3_p33_t20"])]
+        assert by[rn.P5_PRIMARY][col["status"]] != "time_exit"
+
+    def test_discovery_stage_writes_the_new_files_only_and_proves_the_registered_arm_per_trade(self, tmp_path, capsys):
+        data, bars, e = _p5_dir(tmp_path, staller=True)
+        small = tmp_path / "small"
+        _p5_references(data, small)                                                 # the reference tables the cross-check reads
+        pinned_before = {p.name: p.read_bytes() for p in (data / "out").iterdir()}
+        capsys.readouterr()
+        assert rn.main(["p5", "--data", str(data), "--workers", "1", "--small-out", str(small)]) is None
+        out = capsys.readouterr().out
+        assert "DISCOVERY P5 STAGE" in out and "CROSS-CHECK tl: 1 paired p33_s3_t10 rows equal trades_discovery.tsv.gz" in out
+        assert "CROSS-CHECK com/comb: 2 paired" in out
+        names = {p.name for p in (data / "out").iterdir()}
+        assert {"trades_discovery_p5.tsv.gz", "p5_report_discovery.tsv"} <= names
+        assert {p.name for p in small.iterdir()} >= {"p5_report_discovery.txt", "p5_report_discovery.tsv", "p5_summary_discovery.txt"}
+        for n, b in pinned_before.items():                                          # nothing that existed was rewritten
+            assert (data / "out" / n).read_bytes() == b, n
+        t = pd_read(data / "out" / "trades_discovery_p5.tsv.gz")
+        assert list(t.columns) == rn.EXITS_COLS and set(t.stop_variant) == {"lod"} and set(t.K) == {"tl", "com", "comb"}
+        assert len(t) == 3 * len(rn.P5_ARMS) and set(t.arm) == set(rn.P5_ARMS)
+        cut = t[t.arm == rn.P5_PRIMARY]
+        assert set(cut.status) == {"time_exit"} and set(cut.sessions_held) == {3}
+        rep = pd_read(data / "out" / "p5_report_discovery.tsv")
+        assert list(rep.columns) == rn.p5_cols()
+        r = rep[(rep.key == "spec") & (rep.cell == "C1") & (rep.K == "tl") & (rep.arm == rn.P5_PRIMARY) & (rep.slice == "all")].iloc[0]
+        assert (r.n, r.n_open, r.n_cut, r.mean_held) == (1, 0, 1, 3.0) and r.mean_r > 0
+        txt = (small / "p5_report_discovery.txt").read_text()
+        assert "PRIMARY - arm c3_p33_t20_cut3, level tl" in txt and "BESIDE - arm p33_s3_t10" in txt and "FILLED ENTRIES" in txt
+        assert "SLICES" in txt and "regime / level tl" in txt and "CHAIN KEY" in txt
+        assert "THE CUT'S OWN EFFECT" in txt and "tl C1" in txt.split("THE CUT'S OWN EFFECT")[1].split("CHAIN KEY")[0]
+        # slices carry the year, the QQQ phase and the regime (every discovery night reads 'missing')
+        s = rep[(rep.key == "spec") & (rep.cell == "C0") & (rep.K == "tl") & (rep.arm == rn.P5_PRIMARY)]
+        assert set(s.slice) == {"all", "year", "phase", "regime"} and set(s[s.slice == "regime"].value) >= {"ALL", "Bull", "missing"}
+        assert (s[(s.slice == "regime") & (s.value == "missing")].n.iloc[0], s[(s.slice == "year")].n.iloc[0]) == (1, 1)
+        # the registered arm's row IS the pinned report's row: the same statistics, to the last digit
+        rn.main(["report", "--data", str(data), "--small-out", str(small)])
+        dr = pd_read(data / "out" / "discovery_report.tsv")
+        a = dr[(dr.key == "spec") & (dr.cell == "C1") & (dr.K == "tl") & (dr.variant == "orh5") & (dr.arm == cb.PRIMARY_ARM) & (dr.slice == "all")].iloc[0]
+        b = rep[(rep.key == "spec") & (rep.cell == "C1") & (rep.K == "tl") & (rep.arm == cb.PRIMARY_ARM) & (rep.slice == "all")].iloc[0]
+        for col in rn.STAT_COLS:
+            assert (a[col] == b[col]) or (a[col] != a[col] and b[col] != b[col]), col
+
+    def test_rerunning_the_discovery_stage_is_byte_identical(self, tmp_path, capsys):
+        data, bars, e = _p5_dir(tmp_path, staller=True)
+        small = tmp_path / "small"
+        _p5_references(data, small)
+        rn.main(["p5", "--data", str(data), "--workers", "1", "--small-out", str(small)])
+        first = {n: (data / "out" / n).read_bytes() for n in ("p5_report_discovery.tsv",)}
+        txt = (small / "p5_report_discovery.txt").read_text()
+        first["trades"] = gzip.open(data / "out" / "trades_discovery_p5.tsv.gz").read()
+        rn.main(["p5", "--data", str(data), "--workers", "1", "--small-out", str(small)])
+        assert (data / "out" / "p5_report_discovery.tsv").read_bytes() == first["p5_report_discovery.tsv"]
+        assert gzip.open(data / "out" / "trades_discovery_p5.tsv.gz").read() == first["trades"]
+        assert (small / "p5_report_discovery.txt").read_text() == txt
+
+    def test_a_difference_from_the_minute_stage_is_found_and_blocks_the_discovery_report(self, tmp_path, capsys):
+        data, bars, e = _p5_dir(tmp_path, staller=True)
+        small = tmp_path / "small"
+        _p5_references(data, small)
+        ref = data / "out" / "trades_discovery.tsv.gz"
+        t = pd_read(ref)
+        t.loc[(t.variant == "orh5") & (t.arm == cb.PRIMARY_ARM), "realized_r"] += 0.5          # a tampered reference
+        t.to_csv(ref, sep="\t", index=False, na_rep="", compression="gzip")
+        capsys.readouterr()
+        with pytest.raises(SystemExit) as ex:
+            rn.main(["p5", "--data", str(data), "--workers", "1", "--small-out", str(small)])
+        assert ex.value.code == 3 and "differ in realized_r" in capsys.readouterr().out
+        assert not (data / "out" / "p5_report_discovery.tsv").exists() and not (small / "p5_report_discovery.txt").exists()
+        n, problems = rn.p5_crosscheck(data / "out" / "trades_discovery_p5.tsv.gz", data / "out" / "no_such.tsv.gz", ("tl",))
+        assert n == 0 and "not found" in problems[0]
+
+    def test_the_p5_stage_takes_no_keys_or_levels(self, tmp_path, capsys):
+        data, bars, e = _p5_dir(tmp_path, staller=True)
+        for extra in (["--keys", "com"], ["--levels", "tl"]):
+            with pytest.raises(SystemExit) as ex:
+                rn.main(["p5", "--data", str(data), "--small-out", str(tmp_path / "small"), *extra])
+            assert ex.value.code == 2 and "p5: --keys / --levels are not options" in capsys.readouterr().err
+        assert not list((data / "out").glob("trades_*p5*"))
+
+    def test_the_p5_stage_never_walks_the_holdout(self, tmp_path, capsys):
+        data, bars, e = _p5_dir(tmp_path, split="holdout", staller=True)
+        rn.main(["p5", "--data", str(data), "--workers", "1", "--small-out", str(tmp_path / "small")])
+        assert "nothing to do" in capsys.readouterr().out and not list((data / "out").glob("trades_*p5*"))
+
+    def test_the_holdout_second_pass_walks_the_same_function_beside_the_minute_stage(self, tmp_path, capsys):
+        data, bars, e = _p5_dir(tmp_path, split="holdout", staller=True)
+        small = tmp_path / "small"
+        ns = argparse_ns(data, small_out=str(small))
+        rn.run_minute_stage(ns, "holdout")
+        assert rn.run_p5_stage(ns, "holdout") == 0
+        out = capsys.readouterr().out
+        assert "HOLDOUT P5 STAGE" in out and "CROSS-CHECK tl: 1 paired p33_s3_t10 rows equal trades_holdout.tsv.gz" in out
+        assert "CROSS-CHECK com/comb: no minute-stage table" in out
+        names = {p.name for p in (data / "out").iterdir()}
+        assert {"trades_holdout_p5.tsv.gz", "p5_report_holdout.tsv", "regime_report_holdout.tsv"} <= names
+        assert [q.name for q in rn.holdout_existing_outputs(data / "out")] == ["trades_holdout.tsv.gz", "entries_holdout.tsv.gz",
+                                                                              "trades_holdout_p5.tsv.gz"]
+        assert not list((data / "out").glob("*.partial"))
+        t = pd_read(data / "out" / "trades_holdout_p5.tsv.gz")
+        assert set(t.K) == {"tl", "com", "comb"} and set(t.arm) == set(rn.P5_ARMS) and set(t.stop_variant) == {"lod"}
+        # the regime table: the minute stage's rows first, then the P5 rows it does not carry (never a duplicate)
+        reg = pd_read(data / "out" / "regime_report_holdout.tsv")
+        assert list(reg.columns) == rn.REGIME_COLS
+        mine = reg[reg.arm == rn.P5_PRIMARY]
+        assert set(mine.K) == {"tl", "com", "comb"} and set(mine.slice) == {"regime"} and {"ALL", "Bull", "missing"} <= set(mine.value)
+        assert not reg.duplicated(["key", "cell", "K", "variant", "arm", "slice", "value"]).any()
+        assert len(reg[(reg.K == "tl") & (reg.arm == cb.PRIMARY_ARM)]) > 0                   # the minute stage's own rows are kept
+        assert len(reg[(reg.K == "com") & (reg.arm == cb.PRIMARY_ARM)]) > 0                  # com / comb get the registered arm only here
+        txt = (small / "regime_report_holdout.txt").read_text()
+        assert "#702 HOLDOUT by regime" in txt and "#702 P5 - the rows beside" in txt
+        assert (small / "p5_report_holdout.txt").exists() and (small / "p5_summary_holdout.txt").exists()
+
+    def test_the_holdout_runs_the_minute_stage_then_the_p5_stage_and_returns_the_cross_check_code(self, tmp_path, monkeypatch):
+        data, repo = TestHoldoutGuard()._tree(tmp_path, monkeypatch)
+        monkeypatch.setattr(rn, "REPO", repo)
+        TestHoldoutGuard()._doc(repo, data)
+        order = []
+        monkeypatch.setattr(rn, "run_minute_stage", lambda *a, **k: order.append("minute"))
+        monkeypatch.setattr(rn, "run_p5_stage", lambda *a, **k: order.append("p5") or 3)
+        assert rn.run_holdout(argparse_ns(data)) == 3 and order == ["minute", "p5"]
+
+    def test_the_cuts_own_effect_pairs_the_primary_with_its_uncut_twin_on_the_same_mature_trades(self):
+        import pandas as pd
+        rows = []
+        # four trades on tl: two cut at the day-3 close (the twin holds on and loses more), two identical in both arms,
+        # one of them open (immature) in the twin and so left out of the pairing
+        spec = [("a", "time_exit", 0.3, 3, -1.0, 6), ("b", "time_exit", -0.1, 3, 0.5, 4), ("c", "stopped", -1.0, 1, -1.0, 1),
+                ("d", "trailed", 3.0, 9, 3.0, 9), ("e", "trailed", 1.0, 5, 1.0, 5)]
+        for t, st, r, h, r2, h2 in spec:
+            mature_twin = 0 if t == "e" else 1
+            rows.append({"K": "tl", "arm": rn.P5_PRIMARY, "ticker": t, "D": "2024-03-05", "status": st, "realized_r": r, "sessions_held": h,
+                         "mature": 1})
+            rows.append({"K": "tl", "arm": "c3_p33_t20", "ticker": t, "D": "2024-03-05", "status": "stopped", "realized_r": r2,
+                         "sessions_held": h2, "mature": mature_twin})
+        df = pd.DataFrame(rows)
+        for c in cb.CELL_NAMES:
+            df[c] = 0
+        df["C0"] = 1
+        out = rn.p5_cut_effect(df)
+        assert [(r["K"], r["cell"]) for r in out] == [("tl", "C0")]                       # only the cells that have trades
+        r = out[0]
+        assert (r["n"], r["n_cut"]) == (4, 2)
+        assert r["r_cut"] == pytest.approx((0.3 - 0.1 - 1.0 + 3.0) / 4) and r["r_twin"] == pytest.approx((-1.0 + 0.5 - 1.0 + 3.0) / 4)
+        assert r["held_cut"] == pytest.approx((3 + 3 + 1 + 9) / 4) and r["held_twin"] == pytest.approx((6 + 4 + 1 + 9) / 4)
+        assert (r["cut_r_cut"], r["cut_r_twin"]) == (pytest.approx(0.1), pytest.approx(-0.25))
+        assert (r["cut_held_cut"], r["cut_held_twin"]) == (3.0, 5.0)
+
+    def test_the_p5_regime_rows_skip_what_the_minute_stage_already_carries(self):
+        import pandas as pd
+        n = 6
+        base = {"year": [2025] * n, "month": ["2025-03"] * n, "phase_qqq_10_20": [1] * n, "status": ["stopped"] * n,
+                "realized_r": [1.0, -1.0, -1.0, 0.5, 6.0, -1.0], "mature": [1] * n, "sessions_held": [3] * n,
+                "regime": ["Bull", "Bull", "Choppy", "Crisis", "missing", "Bull"], "retrigger_chain": [0] * n,
+                "D": ["2025-03-05"] * n, "ticker": list("abcdef")}
+        base["pnl_adr"], base["acct_pct"] = [x / 3 for x in base["realized_r"]], [x / 100 for x in base["realized_r"]]
+        frames = []
+        for k in rn.P5_LEVELS:
+            for a in rn.P5_ARMS:
+                frames.append(pd.DataFrame({**base, "K": k, "arm": a}))
+        df = pd.concat(frames, ignore_index=True)
+        for c in cb.CELL_NAMES:
+            df[c] = 0
+        df["C0"] = 1
+        rows = rn.p5_regime_rows(df)
+        assert not [r for r in rows if r["K"] == "tl" and r["arm"] == cb.PRIMARY_ARM]           # the minute stage's rows
+        assert [r for r in rows if r["K"] == "com" and r["arm"] == cb.PRIMARY_ARM]              # com / comb have no other source
+        grp = [r for r in rows if r["K"] == "tl" and r["arm"] == rn.P5_PRIMARY]
+        allr = next(r for r in grp if r["value"] == "ALL")
+        assert allr["n"] == 6 and sum(r["n"] for r in grp if r["value"] != "ALL") == 6
+        assert {r["value"]: r["n"] for r in grp if r["value"] != "ALL"} == {"Bull": 3, "Choppy": 1, "Correcting": 0, "Crisis": 1, "missing": 1}
+        assert "Bull" in rn.p5_regime_text(rows) and "(no mature walk)" in rn.p5_regime_text([])

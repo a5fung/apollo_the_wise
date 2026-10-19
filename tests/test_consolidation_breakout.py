@@ -2972,3 +2972,176 @@ class TestStopVariants:
         assert above["level_m05"]["reason"] == "stop_at_or_above_fill"
         with pytest.raises(ValueError):
             cb.stop_variants(fill=100.0, lod_stop=98.0, pivot=99.5, base_low=90.0, adr20=0.0)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# #702 P5 (operator 2026-10-18): the STALL CUT — `c3_p33_t20_cut3` = `c3_p33_t20` + "no +1R by the close of session 3 (and not
+# stopped) -> sell everything at that close". Same hand-derived frame: fill 100, stop 95 -> R = 5, +1R = 105, +2R = 110.
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _cut():
+    return cb.CUT_EXIT_ARMS[cb.P5_PRIMARY_ARM]
+
+
+# a staller: highs stay under 105 for sessions 1..3, lows above the stop, session 3 closes at 101.5
+STALLER = [(100.5, 103, 98, 101), (101, 104, 99, 102), (102, 104.5, 100, 101.5), (101, 102, 100, 101), (101, 102, 100, 101)]
+
+
+class TestStallCut:
+    def test_the_arm_is_c3_p33_t20_plus_the_cut_and_lives_beside_not_inside_the_other_sets(self):
+        assert list(cb.CUT_EXIT_ARMS) == [cb.P5_PRIMARY_ARM] == ["c3_p33_t20_cut3"]
+        a = _cut()
+        assert (a.stall_cut_session, a.stall_cut_r) == (cb.STALL_CUT_SESSION, cb.STALL_CUT_R) == (3, 1.0)
+        assert dataclasses.replace(a, name="c3_p33_t20", stall_cut_session=None, stall_cut_r=None) == _his("c3_p33_t20")
+        assert (a.partial_trigger, a.partial_r, a.partial_session, a.partial_frac, a.trail_sma, a.breakeven,
+                a.trail_fill) == ("combo", 2.0, 3, 1 / 3, 20, True, "next_open")
+        assert not set(cb.CUT_EXIT_ARMS) & (set(cb.ARMS) | set(cb.HIS_EXIT_ARMS))
+        assert len(cb.ARMS) == 15 and len(cb.HIS_EXIT_ARMS) == 25 and cb.PRIMARY_ARM == "p33_s3_t10"      # nothing else moved
+        assert cb.P5_PRIMARY_ARM != cb.PRIMARY_ARM
+        # every other arm carries no cut
+        assert all((x.stall_cut_session, x.stall_cut_r) == (None, None) for x in [*cb.ARMS.values(), *cb.HIS_EXIT_ARMS.values()])
+
+    def test_arm_validation(self):
+        base = dict(name="x", kind="qm", partial_frac=1 / 3, partial_session=3, trail_sma=20, partial_trigger="combo", partial_r=2.0)
+        cb.Arm(**base, stall_cut_session=3, stall_cut_r=1.0)
+        with pytest.raises(ValueError):
+            cb.Arm(**base, stall_cut_session=3)                                   # the two fields come together
+        with pytest.raises(ValueError):
+            cb.Arm(**base, stall_cut_r=1.0)
+        with pytest.raises(ValueError):
+            cb.Arm("x", "qm", 1 / 3, 3, 20, stall_cut_session=3, stall_cut_r=1.0)  # a session partial walks no day-0 minutes
+        with pytest.raises(ValueError):
+            cb.Arm(**{**base, "kind": "fixed"}, stall_cut_session=3, stall_cut_r=1.0)
+        with pytest.raises(ValueError):
+            cb.Arm(**base, stall_cut_session=0, stall_cut_r=1.0)
+        with pytest.raises(ValueError):
+            cb.Arm(**base, stall_cut_session=3, stall_cut_r=0.0)
+
+    def test_a_staller_is_cut_at_the_day3_close_with_no_partial(self):
+        out = _walk(STALLER, _cut(), day0_peak=101.0)
+        assert out["events"] == [(3, "cut", 101.5, 1.0)]
+        assert out["status"] == "time_exit" and out["sessions_held"] == 3
+        assert out["realized_r"] == pytest.approx(1.5 / 5.0) and out["pnl_adr"] == pytest.approx(1.5 / (100.0 * ADR))
+        assert cb.is_mature(out["status"], 5)                                      # terminal, so a mature number
+        c3 = _walk(STALLER, _his("c3_p33_t20"))
+        assert c3["events"][0] == (3, "partial", 101.5, pytest.approx(1 / 3))      # the uncut twin takes the day-3 partial and holds on
+
+    def test_a_staller_that_closes_under_the_fill_is_cut_at_a_loss_measured_against_the_entry_stop(self):
+        rows = [(99.5, 103, 97, 98), (98, 104, 96, 97), (97, 104.9, 96, 97.5), (97, 99, 96, 97)]
+        out = _walk(rows, _cut(), day0_peak=100.5)
+        assert out["events"] == [(3, "cut", 97.5, 1.0)] and out["realized_r"] == pytest.approx(-2.5 / 5.0)
+
+    def test_a_plus_1r_touch_on_day_2_is_not_cut_and_the_path_is_the_uncut_twins(self):
+        rows = [(100.5, 103, 98, 101), (101, 105, 99, 102), (102, 104, 100, 101.5), (101, 102, 100, 101), (101, 102, 100, 101)]
+        out = _walk(rows, _cut(), day0_peak=101.0)
+        assert out == _walk(rows, _his("c3_p33_t20"))
+        assert out["events"][0] == (3, "partial", 101.5, pytest.approx(1 / 3))
+
+    def test_the_cut_sessions_own_high_counts_even_when_it_closed_back_under(self):
+        rows = [(100.5, 103, 98, 101), (101, 104, 99, 102), (102, 105.0, 100, 101.5), (101, 102, 100, 101)]    # exactly +1R on j=3
+        assert _walk(rows, _cut(), day0_peak=101.0) == _walk(rows, _his("c3_p33_t20"))
+        rows2 = [r if k != 2 else (102, 104.99, 100, 101.5) for k, r in enumerate(rows)]                       # a hair under it
+        assert _walk(rows2, _cut(), day0_peak=101.0)["events"] == [(3, "cut", 101.5, 1.0)]
+
+    def test_a_day0_touch_on_the_minutes_counts_and_a_missing_peak_is_refused(self):
+        assert _walk(STALLER, _cut(), day0_peak=105.0) == _walk(STALLER, _his("c3_p33_t20"))      # +1R on day 0, after the fill
+        assert _walk(STALLER, _cut(), day0_peak=104.99)["events"] == [(3, "cut", 101.5, 1.0)]
+        assert _walk(STALLER, _cut(), day0_peak=float("-inf"))["events"] == [(3, "cut", 101.5, 1.0)]    # no minute after the fill
+        with pytest.raises(ValueError):
+            _walk(STALLER, _cut())                                                   # day 0 unknown: refuse, never guess
+        # a day-0 +2R partial already printed implies the touch (and needs no peak)
+        out = _walk(STALLER, _cut(), day0_partial_px=110.0)
+        assert out["events"][0] == (0, "partial_r", 110.0, pytest.approx(1 / 3)) and not any(e[1] == "cut" for e in out["events"])
+
+    def test_a_stop_on_session_2_is_a_stop_not_a_cut_and_a_stop_on_session_3_books_before_the_cut_is_asked(self):
+        rows = [(100.5, 103, 98, 101), (101, 102, 94, 96), (96, 97, 95, 96)]
+        out = _walk(rows, _cut(), day0_peak=101.0)
+        assert out["events"] == [(2, "stop", 95.0, 1.0)] and out["status"] == "stopped" and out == _walk(rows, _his("c3_p33_t20"))
+        rows3 = [(100.5, 103, 98, 101), (101, 104, 99, 102), (102, 103, 94.5, 96)]
+        out3 = _walk(rows3, _cut(), day0_peak=101.0)
+        assert out3["events"] == [(3, "stop", 95.0, 1.0)] and out3["status"] == "stopped"
+
+    def test_fewer_than_three_forward_sessions_is_an_open_mark_not_a_cut(self):
+        out = _walk(STALLER[:2], _cut(), day0_peak=101.0)
+        assert out["status"] == "degraded" and not any(e[1] == "cut" for e in out["events"])
+
+    def test_a_cut_arm_that_never_cuts_equals_its_uncut_twin_on_random_paths_and_cuts_exactly_the_stallers(self):
+        rng = np.random.default_rng(702)
+        twin, cut = _his("c3_p33_t20"), _cut()
+        n_cut = n_same = 0
+        for _ in range(300):
+            n = 40
+            c = 100 * np.cumprod(1 + rng.normal(0.002, 0.02, n))
+            rows = list(zip(c * (1 + rng.normal(0, 0.004, n)), c * (1 + abs(rng.normal(0.008, 0.008, n))),
+                            c * (1 - abs(rng.normal(0.008, 0.008, n))), c))
+            peak = float(rng.choice([101.0, 104.0, 106.0]))
+            a, b = _walk(rows, cut, day0_peak=peak), _walk(rows, twin)
+            alive_3 = all(min(r[0], r[2]) > 95.0 for r in rows[:3])                        # no stop before / on session 3
+            reached = peak >= 105.0 or any(r[1] >= 105.0 for r in rows[:3])
+            if alive_3 and not reached:
+                n_cut += 1
+                assert a["events"] == [(3, "cut", pytest.approx(rows[2][3]), 1.0)] and a["status"] == "time_exit", rows[:3]
+                assert a["realized_r"] == pytest.approx((rows[2][3] - 100.0) / 5.0)
+            else:
+                n_same += 1
+                assert a == b, (peak, rows[:4])
+        assert n_cut >= 20 and n_same >= 20                                        # both branches were exercised
+
+    def test_registered_and_his_exit_arms_never_emit_a_cut(self):
+        rng = np.random.default_rng(703)
+        for _ in range(40):
+            n = 30
+            c = 100 * np.cumprod(1 + rng.normal(0, 0.02, n))
+            rows = list(zip(c * 0.995, c * 1.01, c * 0.985, c))
+            for a in [*cb.ARMS.values(), *cb.HIS_EXIT_ARMS.values()]:
+                assert not any(e[1] == "cut" for e in _walk(rows, a)["events"])
+
+
+class TestDay0Peak:
+    def test_highest_minute_high_strictly_after_the_fill_minute(self):
+        mins = _target_minutes({5: (102, 109, 101, 103), 6: (102, 104, 101, 103), 20: (102, 107, 101, 103)})
+        assert cb.day0_peak_high(mins, 5) == 107.0                       # minute 5's own 109 (the fill minute) is not read
+        assert cb.day0_peak_high(mins, 4) == 109.0
+        assert cb.day0_peak_high(mins, 389) == float("-inf")             # nothing follows the fill
+        assert cb.day0_peak_high(_target_minutes({}), 5) == 102.0
+
+
+class TestWalkHisArmsStallCut:
+    def _entry(self, minutes):
+        return {"status": "filled", "reason": None, "fill": 100.0, "stop": 95.0, "fill_minute": 5, "width_pct": 0.05,
+                "level": 100.0, "day0": cb.day0_walk(minutes, fill_minute=5, stop=95.0)}
+
+    def _arms(self):
+        return {"c3_p33_t20": _his("c3_p33_t20"), cb.P5_PRIMARY_ARM: _cut()}
+
+    def test_day0_peak_comes_from_the_minutes_after_the_fill(self):
+        calm = _target_minutes({})                                       # every minute at 102: highs 102 < 105
+        out = cb.walk_his_arms(self._entry(calm), closes_before=BEFORE, fwd=_fwd(STALLER), adr20=ADR, minutes=calm, arms=self._arms())
+        assert out[cb.P5_PRIMARY_ARM]["events"] == [(3, "cut", 101.5, 1.0)]
+        assert out["c3_p33_t20"]["events"][0] == (3, "partial", 101.5, pytest.approx(1 / 3))
+        poke = _target_minutes({40: (102, 105.5, 101, 103)})              # +1R (not +2R) on day 0 after the fill
+        out2 = cb.walk_his_arms(self._entry(poke), closes_before=BEFORE, fwd=_fwd(STALLER), adr20=ADR, minutes=poke, arms=self._arms())
+        assert out2[cb.P5_PRIMARY_ARM] == out2["c3_p33_t20"]             # reached: the uncut twin's exact path
+        before_fill = _target_minutes({2: (102, 108, 101, 103)})          # a spike BEFORE the fill minute does not count
+        out3 = cb.walk_his_arms(self._entry(before_fill), closes_before=BEFORE, fwd=_fwd(STALLER), adr20=ADR, minutes=before_fill,
+                                arms=self._arms())
+        assert out3[cb.P5_PRIMARY_ARM]["events"] == [(3, "cut", 101.5, 1.0)]
+
+    def test_a_day0_plus_2r_partial_that_survives_the_day_means_reached(self):
+        mins = _target_minutes({10: (105, 111, 104, 108)})               # +2R on day 0, nothing stops it
+        out = cb.walk_his_arms(self._entry(mins), closes_before=BEFORE, fwd=_fwd(STALLER), adr20=ADR, minutes=mins, arms=self._arms())
+        assert out[cb.P5_PRIMARY_ARM] == out["c3_p33_t20"] and out[cb.P5_PRIMARY_ARM]["events"][0][:2] == (0, "partial_r")
+
+    def test_a_day0_stop_out_is_every_arms_outcome_the_cut_arm_included(self):
+        mins = _target_minutes({8: (96, 97, 94.5, 95)})
+        entry = self._entry(mins)
+        assert entry["day0"]["stopped"]
+        out = cb.walk_his_arms(entry, closes_before=BEFORE, fwd=_fwd(STALLER), adr20=ADR, minutes=mins, arms=self._arms())
+        assert out[cb.P5_PRIMARY_ARM] == out["c3_p33_t20"] and out[cb.P5_PRIMARY_ARM]["status"] == "stopped_day0"
+        mins2 = _target_minutes({10: (105, 111, 104, 108), 20: (101, 102, 99.5, 100)})      # +2R partial, then the breakeven stop
+        out2 = cb.walk_his_arms(self._entry(mins2), closes_before=BEFORE, fwd=_fwd(STALLER), adr20=ADR, minutes=mins2, arms=self._arms())
+        assert out2[cb.P5_PRIMARY_ARM] == out2["c3_p33_t20"] and out2[cb.P5_PRIMARY_ARM]["status"] == "stopped_day0"
+
+    def test_the_cut_arm_needs_the_minutes(self):
+        calm = _target_minutes({})
+        with pytest.raises(ValueError):
+            cb.walk_his_arms(self._entry(calm), closes_before=BEFORE, fwd=_fwd(STALLER), adr20=ADR, minutes=None, arms=self._arms())

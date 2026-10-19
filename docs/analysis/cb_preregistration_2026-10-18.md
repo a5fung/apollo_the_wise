@@ -11,6 +11,13 @@ discovery output match the sha256 pins in §Freeze record (`freeze_check`, the #
 run once `trades_holdout.tsv.gz` exists. Written 2026-10-18 PT (P4 of the approved plan
 `/Users/alvinfung/.claude/plans/soft-singing-hamster.md`).
 
+**UPDATE 2026-10-18 (§P5, before any holdout outcome exists): the EXIT of the primary triple is no longer the article's
+`p33_s3_t10` — on his ruling the holdout read's primary is `tl` / ORH5 / low-of-day stop / `c3_p33_t20_cut3` (his exit with
+the stalled breakouts cut) / spec key. The population, the cells, the PASS / FAIL / CAN'T TELL bars and the 30-trade bar are
+unchanged; `p33_s3_t10` and the other rows of the original grid are reported beside, never deciding. Where §0–§11 below say
+"the primary triple" or `p33_s3_t10` as the deciding exit, read §P5; §2 is the discovery record the original triple was
+chosen on and is kept as written.**
+
 **Blindness, stated precisely.** The daily export (`daily_closes_all.csv.gz`, 20,285 tickers, SPY sessions
 2021-09-27..2026-10-16) and the minute tree (1,140 breakout dates, 95,975 (ticker, E) pairs) hold every price the
 holdout read will use; nobody has joined a holdout outcome to a holdout candidate. The daily stage never walks a
@@ -262,6 +269,9 @@ ADR20(D)** · exit **`p33_s3_t10`** (sell 1/3 at the close of session E+3, move 
 the first close below SMA10 — the trail arms only after the partial — sold at the next session's open) · horizon 120
 sessions · **spec base key**, first break only · MATURE walks only.
 
+**Superseded for the verdict by §P5, exit only:** the deciding exit is `c3_p33_t20_cut3` (his rule, stalled breakouts cut);
+level, entry, stop, horizon, key and maturity are as written in this paragraph.
+
 | cell | definition (every term evaluated on bars ≤ D; phase and RS at D) | deciding? |
 |---|---|---|
 | C0 | universe + prior move ≥ 30% + base 10–45 sessions + a level K exists + close ≥ SMA50 + deal-pin gates + pole-artifact gate | yes (baseline) |
@@ -333,7 +343,8 @@ Qullamaggie's pattern.
 
 **Independent re-derivation (DoD part 1):** from `trades_holdout.tsv.gz` alone, without the runner's code, P5 recomputes
 C1 `tl` ORH5 `p33_s3_t10` spec-key mature **n, mean R and the ≥ 5R share** and must return VERDICT MATCH before any
-number is reported (as #686 did).
+number is reported (as #686 did). **(§P5: the same recomputation, on the P5 primary — arm `c3_p33_t20_cut3`, level `tl`,
+from `trades_holdout_p5.tsv.gz` alone — is the one that must match before the verdict is reported.)**
 
 ## 6. Robustness rows (reported beside every verdict, never deciding)
 
@@ -611,6 +622,171 @@ holdout from 2025-03-03, and any later forward read), and there at n of a few tr
 needs a rule computed from bars (the report's QQQ 10/20 phase slice and `phase_spy_qqq_50` already exist on every watch night)
 — a separate, declared step that this section does not take.
 
+## P5 primary (operator 2026-10-18) — the holdout read's exit becomes HIS rule with the stalled breakouts cut, registered BEFORE any holdout outcome exists
+
+**What this section is.** On 2026-10-18 the operator aligned that the holdout read's PRIMARY is the trendline level (`tl`, as
+registered above) with HIS exit instead of the article's: *sell 1/3 at +2R or at the close of day 3, whichever comes first,
+stop to breakeven, trail the rest to the first close below the 20-day average (filled at the next open), the low-of-day stop
+at the fill, AND cut the stallers — if the trade has not reached +1R by the close of session 3 after the breakout day (and was
+not stopped), sell everything at that close.* This section fixes the new primary triple, the rows reported beside it and the
+expectations BEFORE a single holdout outcome exists: the holdout joins nothing yet (`trades_holdout*.tsv.gz` do not exist),
+and every number below is a 2022–24 discovery number. This section and the pointers to it above are edited into the document
+before any holdout outcome exists and the freeze record is re-printed over them (as §P4b was; §8 forbids edits after the read,
+not this). It replaces §3's EXIT for the verdict and nothing else: the level, the
+phase slope, the entry, the stop rule, the base key, the horizon, the cell table, the 30-trade bar and the bars of §5 stand.
+
+### P5.1 His words and the ruling
+
+His sell rule (`operator_shared_notes.md`, 2026-10-18, verbatim): *"His sell is to sell 1/3 at 2R then move to break even stop
+then trail rest at break of 10 or 20d, I recall he mentioned 10d for faster stocks and 20d for slower stocks, also depend how
+far the are from 10/20."* His follow-up, same evening: *"The day thing is also correct, it may be a combo and depends"* — the
+partial is +2R or the day-3 close, whichever comes first. His point on stalled breakouts, same evening: *"if breakouts have no
+follow through in next few days then it may be better to get out as momentum didn't continue regardless if it isn't stopped"*
+and *"Cut stallers is important because funds are limited, turnover for swing trades is important, holding breakeven for a long
+time has opportunity cost"*. The ruling above (the 20-day trail, the day-3 combo, `+1R` and `session 3` as the stall test)
+is the operator's 2026-10-18 alignment as relayed in the P5 build brief; **the numbers `+1R` and `3` are in the ruling, not in
+his verbatim lines** (his line says "next few days"). None of them was fitted: the discovery read below was made after the
+rule was fixed, with one disclosure — the stall point itself was raised after a same-evening measurement on the registered
+exit (by day 3, 1 in 10 trades still open had never reached +1R and none of the 322 eventual ≥ 5R winners was among them), so
+the idea is not blind to discovery, only its numbers on this arm are.
+
+### P5.2 The new primary triple, and what is reported beside
+
+**Primary triple (every verdict in §5 is on this and nothing else):** level **`tl`** · entry **ORH5** · stop **the low of the
+day at the fill, skipped if wider than ADR20(D)** · exit **`c3_p33_t20_cut3`** · horizon 120 sessions · **spec base key**,
+first break only · MATURE walks only. The exit (module: `CUT_EXIT_ARMS`, `walk_exit(day0_peak=...)`):
+
+- sell 1/3 at fill + 2 × (fill − stop) when a high reaches it (a session that OPENS above it sells at the open; the breakout
+  day is walked on the MINUTES after the fill), **or** at the close of session 3, whichever comes first; the stop moves to the
+  fill (breakeven) from the next bar; the rest trails to the first close under the 20-day average, filled at the next open
+  (the trail is live only after the partial) — exactly the `c3_p33_t20` arm already read in `cb_his_exit_2026-10-18.md`;
+- **the stall cut:** if no high has reached fill + 1 × (fill − stop) by the close of session 3 (E = session 0) and the trade
+  was not stopped, everything is sold at that close — one event `cut`, status `time_exit` (terminal, so a mature number), no
+  day-3 partial. "Reached" = the highest minute high after the fill minute on the breakout day, or any session's high on
+  sessions 1..3 including session 3's own (a high that touched the level and closed back under it is a trade that reached
+  it); the stop is checked first on every session. R is measured against the entry stop, as for every arm. A trade that reaches
+  +1R before session 3 walks the `c3_p33_t20` path unchanged (tested trade by trade, and on the discovery data below: all 8,739
+  uncut `tl` C0 trades equal their twin).
+
+`cb.PRIMARY_ARM` (`p33_s3_t10`), the 15 `cb.ARMS` the shadow iterates and the registered discovery report are unchanged; only
+the holdout read's deciding exit moves.
+
+**Reported beside, never deciding** (all at ORH5, the low-of-day stop, spec key, mature walks; the chain key beside for the
+`all` rows): the article arm **`p33_s3_t10`** (the old primary), **`c3_p33_t20`** (his exit without the cut) and
+**`r2_p33_t20`** (+2R only, 20-day trail), each on **`tl`**, on **`com`** and on **`comb`** (the median-high levels of §P4b),
+over C0..C7 and the three report-only cells; sliced by calendar year of E, by QQQ 10/20 phase at D, and by Apollo's daily
+regime at D (Bull / Choppy / Correcting / Crisis / missing — **the label starts 2025-03-03**, so the 39 holdout nights before
+it and every discovery night read `missing`). The registered minute-stage grid of §3/§6 (the 15 arms, the five entries, the
+controls, `k5` / `k10` / `full`) is still walked by the same holdout run and stays a robustness row.
+
+**Where it runs.** `runner.py holdout` now does two passes in one command, behind the unchanged `freeze_check`: the registered
+minute engine first (unchanged), then the P5 pass — `evaluate_exits` narrowed to the `lod` stop and the four arms above,
+over the holdout first breaks of `tl` (`candidates.tsv`) and of `com` / `comb` (`candidates_com_comb.tsv`) → `trades_holdout_p5.tsv.gz`,
+`p5_report_holdout.{tsv,txt}`, and the P5 regime rows appended to `regime_report_holdout.{tsv,txt}` (the minute stage's own
+`p33_s3_t10` rows on `tl` are not repeated). After both passes the registered arm inside the P5 table is compared, trade by
+trade, with the minute stage's own `trades_holdout.tsv.gz` rows (`CROSS-CHECK`); a difference exits 3. The once-only guard
+covers the new table and its `.partial`: a second run refuses, a crashed run's partial refuses until the operator removes it
+by hand. The same stage runs on discovery (`runner.py p5`) — the numbers below are produced by the code the holdout will run,
+and its cross-check passed there: 8,989 `tl` and 17,447 `com` / `comb` paired `p33_s3_t10` rows equal the pinned minute-stage
+tables (status, maturity, realized R to 1e-9).
+
+### P5.3 The bars — unchanged
+
+§5.1 (PASS: n ≥ 30 mature; interval lower end > 0; mean R without the top five > 0; mean P&L in ADR units > 0; beats C0 on
+the same triple on mean R AND on the ≥ 5R share), §5.2 (CAN'T TELL) and §5.3 (FAIL), with the precedence of §5.3, apply
+word for word to the P5 triple, cell by cell, holdout only. The chance-rate paragraph of §5 stands (five testable cells; C2 and
+C6 are CAN'T TELL by n; C0 cannot pass). A pass outside C1 is a lead (§0). The `com` / `comb` rows and the other three arms
+are never a verdict: reading one of them as a finding is excluded by §8, exactly as the other levels, entries and arms of the
+original grid are.
+
+### P5.4 Discovery on the new triple (2022-03-28 .. 2024-12-31, `tl`, ORH5, low-of-day stop, spec key, mature walks)
+
+Source: `scripts/probes/_cb_backtest/out/p5_report_discovery.{txt,tsv}` (pinned below). "cut" = trades the stall cut sold at the
+session-3 close. ADR = mean P&L in ADR20 × price units; interval = month-block bootstrap, 2,000 draws, seed 702.
+
+| cell | n | mean R | 95% interval | ≥ 5R | ≥ 10R | without top 5 | ADR | win | cut |
+|---|---|---|---|---|---|---|---|---|---|
+| C0 | 8,984 | −0.169 | [−0.28, −0.04] | 2.6% | 0.9% | −0.193 | −0.073 | 30.6% | 250 |
+| **C1** | 79 | **+0.323** | [−0.21, +1.11] | 3.8% | 1.3% | −0.274 | +0.166 | 43.0% | 2 |
+| C2 | 5 | −0.551 | [−1.03, −0.02] | 0.0% | 0.0% | — | −0.353 | 40.0% | 0 |
+| C3 | 144 | −0.028 | [−0.34, +0.44] | 2.1% | 0.7% | −0.365 | −0.002 | 35.4% | 7 |
+| C4 | 371 | −0.077 | [−0.38, +0.39] | 2.2% | 1.1% | −0.410 | −0.096 | 31.8% | 8 |
+| C5 | 143 | +0.509 | [−0.20, +1.57] | 4.2% | 2.1% | −0.253 | +0.134 | 39.9% | 2 |
+| C6 | 15 | +0.143 | [−0.48, +1.02] | 0.0% | 0.0% | −0.688 | +0.029 | 46.7% | 0 |
+| C7 | 101 | +0.106 | [−0.34, +0.75] | 3.0% | 1.0% | −0.365 | +0.062 | 36.6% | 3 |
+| C1_no_retrace (report) | 116 | +0.162 | [−0.23, +0.68] | 2.6% | 0.9% | −0.243 | +0.084 | 44.0% | 4 |
+| C1_no_tightening (report) | 195 | −0.053 | [−0.42, +0.38] | 2.1% | 1.0% | −0.399 | −0.047 | 34.9% | 3 |
+| HTF (report) | 438 | −0.155 | [−0.39, +0.19] | 2.1% | 0.7% | −0.377 | −0.097 | 31.5% | 11 |
+
+**The "same sign in discovery" qualifier (§5), now with its numbers.** Every verdict carries "discovery on the same triple:
+agrees / contradicts (n, mean R)" with these signs: **C1 agrees if the holdout is positive (+0.323, n = 79)**, C5 agrees (+0.509,
+143), C7 agrees (+0.106, 101); C3 (−0.028, 144) and C4 (−0.077, 371) contradict a positive holdout; C2 (5) and C6 (15) are too
+thin to carry a sign (and CAN'T TELL by holdout n). A holdout PASS in a cell whose discovery sign was negative is called **PASS
+(discovery-contradicted)** with the consequence of §5; a PASS where the sign agrees is **PASS (discovery-agrees)** — but
+"agrees" is the sign alone: C1's interval spans zero [−0.21, +1.11], its mean without the five best trades is negative
+(−0.274), and its positive mean comes from one year (below). A holdout PASS needs mean-without-the-top-five > 0, which
+discovery did not show in any cell.
+
+**Beside, on the same trades** (C0 and C1; mean R [interval], ≥ 5R, ADR; full tables for C0..C7, the report cells, `com` and
+`comb` and the chain key are in the report):
+
+| level / cell | `c3_p33_t20_cut3` (primary) | `p33_s3_t10` (article) | `c3_p33_t20` (no cut) | `r2_p33_t20` (+2R only) |
+|---|---|---|---|---|
+| tl / C0 (8,984) | −0.169 [−0.28, −0.04], 2.6%, −0.073 | −0.189 [−0.31, −0.06], 3.6%, −0.087 | −0.170 [−0.29, −0.05], 2.6%, −0.075 | −0.185 [−0.30, −0.06], 2.6%, −0.086 |
+| tl / C1 (79) | +0.323 [−0.21, +1.11], 3.8%, +0.166 | −0.051 [−0.44, +0.49], 3.8%, +0.027 | +0.317 [−0.23, +1.11], 3.8%, +0.162 | +0.338 [−0.19, +1.13], 3.8%, +0.156 |
+| com / C0 (10,738) | −0.184 [−0.29, −0.08], 2.7%, −0.071 | −0.239 [−0.34, −0.13], 3.5%, −0.093 | −0.186 [−0.29, −0.08], 2.7%, −0.072 | −0.186 [−0.30, −0.07], 2.9%, −0.074 |
+| com / C1 (91) | −0.155 [−0.47, +0.20], 3.3%, −0.037 | −0.163 [−0.58, +0.31], 4.4%, −0.030 | −0.160 [−0.46, +0.19], 3.3%, −0.041 | −0.190 [−0.49, +0.16], 3.3%, −0.063 |
+| comb / C0 (6,695) | −0.129 [−0.25, −0.00], 3.0%, −0.052 | −0.144 [−0.28, −0.00], 3.6%, −0.064 | −0.131 [−0.26, −0.00], 3.0%, −0.053 | −0.135 [−0.26, +0.00], 3.2%, −0.056 |
+| comb / C1 (64) | −0.355 [−0.61, −0.05], 1.6%, −0.187 | −0.488 [−0.75, −0.18], 0.0%, −0.206 | −0.361 [−0.61, −0.06], 1.6%, −0.192 | −0.397 [−0.65, −0.11], 1.6%, −0.219 |
+
+**What the cut itself does (`tl`, the primary against its uncut twin on the same trades).** C0: it sells 250 of 8,984 trades
+(2.8%) at the session-3 close; on those trades the cut leaves −0.076R against −0.137R for the twin, which held them 5.3 sessions
+on average against 3.0; over all trades the mean R is unchanged (−0.169 vs −0.170) — the cut costs no R and frees about 2.3
+sessions of capital per cut trade, which is the turnover he named, measured per trade and not on a slot-limited account. **C1:
+the cut fires on 2 of 79 trades, so the C1 verdict is, to within two trades, the `c3_p33_t20` verdict** (+0.323 vs +0.317); the
+holdout's C1 (31 fills) will likewise be cut on few or none. The gain of the combo over the article's arm in C1 is the +2R /
+day-3 combo and the 20-day trail, not the cut.
+
+**By year, C1 `tl` (the cell the paper decision keys on):** the primary reads −0.131 (n = 14) in 2022, **+0.877 (34) in 2023**
+and −0.080 (31) in 2024; the article's arm reads −0.408 / +0.387 / −0.369 on the same trades. So the primary reads above the
+article's arm in each of the three years, but the only positive year is 2023 and the 79-trade positive mean is carried by it.
+The by-year and by-phase tables for every cell are in the report.
+
+### P5.5 Expectations written before the holdout is opened
+
+- **STEP 0 reproduction (entry-time facts, already pinned):** the P5 pass's own `FILLED ENTRIES` table must equal — `tl`: C0
+  7,570 · C1 31 · C2 3 · C3 81 · C4 231 · C5 74 · C6 5 · C7 55 · C1_no_retrace 50 · C1_no_tightening 98 · HTF 460; `com`: 8,821 ·
+  31 · 5 · 85 · 272 · 85 · 8 · 56 · 56 · 124 · 472; `comb`: 5,674 · 19 · 2 · 65 · 228 · 69 · 4 · 41 · 31 · 82 · 383 (the `tl`
+  row from §1's table; the `com` / `comb` rows counted from `entries_holdout_composition_com_comb.tsv`, status and cell columns
+  only). A different count is an alarm.
+- **Expected mature n in C1 `tl`:** at most 31. A cut trade is always mature; a trade still riding the 20-day trail on 2026-10-16
+  with fewer than 121 forward sessions is an open mark, so n < 30 is still a live outcome (CAN'T TELL on n, §5), though the cut
+  and the +2R partial make a terminal exit earlier than under the article's arm.
+- **The baseline:** discovery C0 on this triple ran mean R −0.169, ≥ 5R 2.6%, win 30.6% (`com` −0.184, `comb` −0.129). If the
+  holdout C0 comes in far above that, the first sentence of the result is the regime, and C1 must beat C0 (condition 5).
+- **How often the cut fires:** about 3% of C0 trades; in C1 0 to 3 of ~31. Many more would mean the holdout's breakouts stall
+  far more than discovery's — a finding to report, not a reason to change the rule.
+- **Alarms — HARD, before any outcome is read:** everything in §7, plus a `CROSS-CHECK ... FAILED` line from the P5 pass, a P5
+  `FILLED ENTRIES` table that differs from the counts above, and a `.partial` P5 file on disk.
+
+### P5.6 What this does not answer
+
+- **One bear year and a recovery in discovery; a mostly bull tape in the holdout.** Discovery holds the 2022 bear market and
+  the 2023–24 recovery; C1's positive mean on this arm comes from 2023 alone (+0.877 on 34 of 79 trades; 2022 and 2024 are negative).
+  The holdout is 2025-01 .. 2026-10, largely bull.
+  He said breakouts do worse in bear and choppy markets: Apollo's regime label starts 2025-03-03 (424 labelled dates, 135
+  non-Bull), so the regime split exists on the holdout only and its non-Bull groups will hold a handful of C1 trades — a lead
+  for a later registration, never a result.
+- **The exit's parameters are his words and the ruling, not fitted** (+2R, session 3, +1R, the 20-day average). Whether the
+  10-day for "faster stocks" or his "how far from the 10/20" would read differently is in `cb_his_exit_2026-10-18.md` (≤ 0.01 ADR
+  between the trails); the 20-day is the ruling's choice. The stall test is one reading of "no follow-through in the next few
+  days"; its 3 and its +1R were not varied.
+- **Turnover is measured per trade (mean sessions held), not on a limited-slot account.** No position cap, slot competition
+  with EP or capital curve is modelled (§9); "freed capital" is a count of sessions, not a return.
+- **Slices.** §4's EP-day split and dollar-volume / ADR terciles are produced by the registered `report` for the minute-stage
+  arms; the P5 report carries the slices the ruling names (year, QQQ phase, Apollo regime) and no more.
+- **The pattern vs our encoding, re-entries, execution realism, sizing, group RS** — as §9.
+
 ## THE LINE
 
 Registration only. No strategy, entry or exit rule, stop, size, safeguard or live trade state was changed or is
@@ -619,6 +795,13 @@ signed piece by piece; live is his. No prod query, no ssh, no LLM call, no paid 
 made in writing this; the one code edit is the module's docstring (its registry sentence was stale), proven
 output-neutral by re-running the four backtest stages and matching all seven content hashes before the pins below
 were taken.
+
+§P5 (2026-10-18): the holdout read's new primary exit is a MEASUREMENT choice on his ruling, not a paper or live rule —
+adopting any of it, the stall cut included, is his under CHANGE_PROCESS. The edits it needed are additive (the module's
+`CUT_EXIT_ARMS` / `walk_exit(day0_peak=)`, the runner's `p5` stage and the holdout's second pass) and proven output-neutral:
+the four default-key stages re-run into a scratch directory give the same seven content hashes, and the `exits` /
+`exits-report` outputs are byte-identical. No holdout row was opened; the only holdout invocation was `holdout --dry-run`
+(the freeze check and a count of candidate rows).
 
 <!-- FREEZE -->
 ## Freeze record
@@ -629,11 +812,12 @@ The "doc body" pin covers every byte of this file ABOVE the `<!-- FREEZE -->` ma
 `code/*` pins are the five repo modules the outcome path computes with, derived by
 `tests/test_cb_backtest_runner.py::TestHoldoutGuard` walking the call graph (`db.py` is the one reached module left
 unpinned, with its reason in `FROZEN_CODE_EXEMPT`). The data and discovery files live outside the repo at
-`/Users/alvinfung/apollo_data/cb702/`; the pins fix their exact bytes. Printed by `holdout --print-pins` on
-2026-10-18 after the docstring edit:
+`/Users/alvinfung/apollo_data/cb702/`; the pins fix their exact bytes. Re-printed by `holdout --print-pins` on
+2026-10-18 for the §P5 registration (the `module`, `runner` and `minutes (tree)` pins moved, six pins were added for the
+com / comb inputs and the discovery P5 walk, and the doc body pin covers §P5):
 
-- module sha256: `e4adebdd0d58adaa76ea7c47fc79b713b47050d6cc3e553a956a89c7a4757f7b`
-- runner sha256: `c967db54f78557effef0beae8bc6385e000672d17e256f76f4384e02041bdeeb`
+- module sha256: `e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b`
+- runner sha256: `2b8c63f54d0ca6981c17b45469ea944867324d02c0b7911a6ad30a8f26dcb87b`
 - cell table sha256: `59e757cacb3250066393d0395e4abe89adff3787c34d1f2f7ad5fd5e2f2a5c0b`
 - code/constants.py sha256: `72dadd72503a842f593621b0868f908ab99e1d77851330c2842be7797aa99400`
 - code/anticipation.py sha256: `de50113aad405e16faf2281ab6aeb1640686d1d18cbe912b78b97250efb0a242`
@@ -646,7 +830,7 @@ unpinned, with its reason in `FROZEN_CODE_EXEMPT`). The data and discovery files
 - data/daily_closes_all.csv.gz sha256: `ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba`
 - data/liquid_tickers.txt sha256: `a2c6c27da6555c16b3314808c73150e785c51f7743ec03f2a4d17dc98f47e3f8`
 - data/small_pulls.psv sha256: `b8d37aae5ef85c25bc52479eef7f6b04a8a4e67557caaef7a426d8ae20194643`
-- minutes (tree) sha256: `ab3c1c73fc47b2fabc4cc66cc4b6eb176ff6aac11a81d1bb71fbc17b93b52723`
+- minutes (tree) sha256: `f1d98fd9d2352c45e90849e18a163b8ca31d2526eb851e5a76dd11ffd79a9fe5`
 - candidates.tsv sha256: `b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7`
 - minute_fetch_list.tsv sha256: `981e7c3c794552d19f4afca456c9e581a1a6d9d0c6c8b9f2850e8e881f177e91`
 - gap_in_bars.tsv sha256: `be01de1ea719c9d7754ef9c903bb1bd312c0c8f149517b4d3ecd1f0e2869bb3e`
@@ -656,7 +840,13 @@ unpinned, with its reason in `FROZEN_CODE_EXEMPT`). The data and discovery files
 - entries_holdout_composition.tsv sha256: `e5dbd781922a310aa62a096b7cf46a265ed6710d66d70781a9204c017ceacf9c`
 - discovery_report.tsv sha256: `d555303e61d70a248fefc9cb0bf0f40ac1205b1ec8a240b880c6f90b01700124`
 - discovery_report.txt sha256: `fa39e486f2b0f7b6e4a987b4c1554378e6dd5c37a0b9d72fd13e66d11dfa85f7`
+- candidates_com_comb.tsv sha256: `138149b87eed950d62ca94512b04c408329d18ef9a79779dc51d1a51589fc117`
+- watch_com_comb.tsv.gz sha256: `bc565c9bff60e9538a65d4a9dd3a65c39b6412273414a637d137043d8285017e`
+- entries_holdout_composition_com_comb.tsv sha256: `a61e2a02f5ab43d82550beeb02a24e49b08155a8d3cc4c182526d16e403dadb9`
+- trades_discovery_p5.tsv.gz sha256: `8e906dc8d0242fba972e88d28eccb17c57b6b28d35f5f12fa1292208aa9c1bd4`
+- p5_report_discovery.tsv sha256: `3c788dfd0d0be6efb2e2c94abc897603d6dfb1182727fbc35d9c688754f418d8`
+- p5_report_discovery.txt sha256: `3cdff87fd74b7f6ac88e591055c4af843d76fdd856eab927dc2f961d0ec96f60`
 
-- doc body sha256: `d3adcca7e568a765af7c3338fd4a5d4716ba1e7f24689b568fb30d3bf3fd0593` — this file above the `<!-- FREEZE -->` marker
+- doc body sha256: `02b8c254749802479a5c6e466a44842160e007324008986d836297d8239908af` — this file above the `<!-- FREEZE -->` marker
 - freeze commit: the commit that adds this file on `main` (`git log -- docs/analysis/cb_preregistration_2026-10-18.md`);
   the holdout (P5) runs only after it is on `main`.

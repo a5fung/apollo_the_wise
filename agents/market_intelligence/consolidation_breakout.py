@@ -72,7 +72,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace as _dc_replace
 from datetime import date
 from typing import Optional, Sequence
 
@@ -189,6 +189,17 @@ TRAIL_SPEED_ADR_CUT = 0.0479       # B: "faster" = ADR20 at D ABOVE the top-terc
 TRAIL_DISTANCE_X = (1.0, 2.0)      # B: at the partial, close > SMA10 x (1 + X x ADR20) -> trail the 10-day, else the 20-day
 STOP_HALF_ADR = 0.5                # B: the half-ADR of three stop variants, in the module's ADR unit (ADR20 x the fill)
 STOP_VARIANTS = ("lod", "lod_cap05", "lod_floor05", "level_m05", "base_low")   # see `stop_variants`
+
+# ── #702 P5 (operator 2026-10-18): the STALL CUT — his point on stalled breakouts, built as one runner-only arm ───────────
+# His words (`operator_shared_notes.md`, "his point on stalled breakouts"): *"if breakouts have no follow through in next few
+# days then it may be better to get out as momentum didn't continue regardless if it isn't stopped"* and *"Cut stallers is
+# important because funds are limited, turnover for swing trades is important, holding breakeven for a long time has
+# opportunity cost"*. The two numbers below — "+1R" and "the close of session 3 after the breakout day" — are the operator's
+# 2026-10-18 ruling as relayed in the P5 brief (his verbatim line says "next few days", not a number). Exit parameters are
+# not cohort-shaping and, like `FIXED_TARGET_R`, are not in the provenance registry.
+STALL_CUT_SESSION = 3              # P: the check is made at the CLOSE of session 3 (E = session 0), the `c3` arm's own day — his
+#                                  #    ruling (the P5 brief), his verbatim line only says "next few days"
+STALL_CUT_R = 1.0                  # P: "reached +1R" = a high at fill + 1 x (fill - stop) on day 0 (the minutes after the fill)..session 3
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -1089,6 +1100,10 @@ class Arm:
                                                # decided before the walk; "distance" = at the partial, SMA10 when the close is
                                                # more than trail_dist_x x ADR20 above its SMA10, else SMA20 (`trail_sma` None)
     trail_dist_x: Optional[float] = None       # "distance" only: X in TRAIL_DISTANCE_X
+    # #702 P5 — the stall cut (defaults = no cut = the registered behaviour): a trade that has not touched fill + stall_cut_r x R
+    # by the close of session `stall_cut_session` (and was not stopped) is sold in full at that close
+    stall_cut_session: Optional[int] = None
+    stall_cut_r: Optional[float] = None
 
     def __post_init__(self):
         if self.trail_fill not in TRAIL_FILLS:
@@ -1115,6 +1130,14 @@ class Arm:
                 raise ValueError(f"Arm {self.name!r}: 'distance' needs trail_dist_x > 0, 'speed' must not have one")
         elif self.trail_dist_x is not None:
             raise ValueError(f"Arm {self.name!r}: trail_dist_x needs trail_mode 'distance'")
+        if (self.stall_cut_session is None) != (self.stall_cut_r is None):
+            raise ValueError(f"Arm {self.name!r}: stall_cut_session and stall_cut_r are set together")
+        if self.stall_cut_session is not None:
+            if self.kind != "qm" or self.partial_trigger == "session":
+                # the +1R test reads the breakout day's MINUTES, which only the +R-target / combo arms walk (`walk_his_arms`)
+                raise ValueError(f"Arm {self.name!r}: a stall cut needs kind 'qm' and a 'r_target' / 'combo' partial")
+            if int(self.stall_cut_session) < 1 or not float(self.stall_cut_r) > 0:
+                raise ValueError(f"Arm {self.name!r}: stall_cut_session must be >= 1 and stall_cut_r > 0")
 
 
 def _build_arms() -> dict:
@@ -1163,6 +1186,14 @@ def _build_his_exit_arms() -> dict:
 
 HIS_EXIT_ARMS = _build_his_exit_arms()      # 25 arms; runner-only (`exits` stage). NOT in ARMS: the shadow never walks them.
 
+# #702 P5 (operator 2026-10-18): the holdout read's PRIMARY exit = his rule with the stalled breakouts cut. It IS `c3_p33_t20`
+# (sell 1/3 at +2R or at the close of session 3, whichever comes first; stop to breakeven; trail the rest to the first close
+# under the 20-day, filled at the next open) plus: no +1R by the close of session 3 -> everything sold at that close. Runner-only
+# like HIS_EXIT_ARMS; NOT in ARMS (the shadow) and NOT `PRIMARY_ARM` (the pinned discovery report's headline arm).
+P5_PRIMARY_ARM = "c3_p33_t20_cut3"
+CUT_EXIT_ARMS = {P5_PRIMARY_ARM: _dc_replace(HIS_EXIT_ARMS["c3_p33_t20"], name=P5_PRIMARY_ARM,
+                                              stall_cut_session=STALL_CUT_SESSION, stall_cut_r=STALL_CUT_R)}
+
 
 def stop_variants(*, fill: float, lod_stop: float, pivot: float, base_low: float, adr20: float) -> dict:
     """The five STOP readings of the #702 his-exit read, as REPORTED alternatives (the stop is the operator's call; nothing
@@ -1207,8 +1238,20 @@ def _distance_trail_n(closes_through: np.ndarray, adr20: float, x: float) -> int
 
 
 def walk_exit(*, fill: float, stop: float, closes_before, fwd: DailyBars, arm: Arm, adr20: float,
-              horizon: int = EXIT_HORIZON, day0_partial_px: Optional[float] = None) -> dict:
+              horizon: int = EXIT_HORIZON, day0_partial_px: Optional[float] = None,
+              day0_peak: Optional[float] = None) -> dict:
     """Daily walk from E+1 (`fwd[0]`; session j = 1). E is session 0.
+
+    #702 P5 STALL CUT (`CUT_EXIT_ARMS`; `Arm.stall_cut_session` / `stall_cut_r`, runner-only, every other arm takes the
+    old path): a trade that has not reached fill + stall_cut_r x R by the close of session `stall_cut_session` and was not
+    stopped is sold in full at that close — event `(j, "cut", close, remaining)`, status "time_exit" (terminal, so mature).
+    "Reached" = a high at or above the level on day 0 AFTER the fill (`day0_peak`, the highest minute high after the fill
+    minute, from `day0_peak_high`; required for a cut arm unless `day0_partial_px` says the +R partial already printed on
+    day 0) or the high of any session 1..`stall_cut_session` (including that session's own — a high that touched the level
+    and closed back under it is a trade that reached it). Per session the order is: the stop (a stop-out is booked
+    first), the +R target, the reach test, THEN the cut, then the session partial — so on the cut session a trade that did
+    not reach +1R never takes the day-3 partial (the close is the whole exit), while a trade that did walks exactly the
+    `c3`-arm path (a cut arm that never cuts equals its uncut twin, tested).
 
     #702 HIS EXIT (2026-10-18; `HIS_EXIT_ARMS`, runner-only — every registered arm takes the defaults and runs the same
     path as before): a `partial_trigger` of "r_target" / "combo" adds a +R TARGET = fill + partial_r x risk. Per session,
@@ -1341,6 +1384,16 @@ def walk_exit(*, fill: float, stop: float, closes_before, fwd: DailyBars, arm: A
         if last_before is None:
             raise ValueError("walk_exit: day0_partial_px needs E's close in closes_before")
         _book_r_partial(0, float(day0_partial_px), last_before)
+    # #702 P5 stall cut: has fill + stall_cut_r x R been reached? (day 0 first, then each session's high below)
+    cut_level = (fill + float(arm.stall_cut_r) * risk) if arm.stall_cut_session is not None else None
+    reached = False
+    if cut_level is not None:
+        reached = day0_partial_px is not None and float(day0_partial_px) >= cut_level    # a day-0 +R partial printed at/above it
+        if not reached:
+            if day0_peak is None:
+                raise ValueError(f"walk_exit: the stall-cut arm {arm.name!r} needs day0_peak (day 0's highest minute high "
+                                 f"after the fill) - without it a day-0 touch of the cut level is unknown")
+            reached = float(day0_peak) >= cut_level
     for j in range(1, min(int(horizon), n) + 1):
         oj, lj, cj = float(o[j - 1]), float(l[j - 1]), float(c[j - 1])
         stop_j = stop_now                       # the stop this session is judged against (a partial today raises it from tomorrow)
@@ -1362,6 +1415,16 @@ def walk_exit(*, fill: float, stop: float, closes_before, fwd: DailyBars, arm: A
             _book_r_partial(j, gap_px, cj)
         elif target is not None and not partial_done and float(h[j - 1]) >= target:
             _book_r_partial(j, target, cj)
+        # 1c. #702 P5 stall cut: the reach test reads this session's high; at the cut session's close a trade that never
+        #     reached the level (and survived the stop above) is sold in full — before the session partial, so the day-3
+        #     partial is not taken on a trade that is being cut
+        if cut_level is not None:
+            if not reached and j <= int(arm.stall_cut_session) and float(h[j - 1]) >= cut_level:
+                reached = True
+            if not reached and j == int(arm.stall_cut_session):
+                events.append((j, "cut", cj, remaining))
+                pnl += (cj - fill) * remaining
+                return _outcome("time_exit", pnl, risk, fill, adr20, j, events)
         # 2. the partial, at the close; the breakeven stop rests from the NEXT session
         if (not partial_done and arm.partial_session == j and arm.partial_frac > 0
                 and not (arm.partial_if_profit and not cj > fill)):
@@ -1471,6 +1534,15 @@ def day0_walk_target(minutes: MinuteBars, *, fill: float, fill_minute: int, stop
     return res
 
 
+def day0_peak_high(minutes: MinuteBars, fill_minute: int) -> float:
+    """The highest minute HIGH on the breakout day AFTER the fill minute (the minutes `day0_walk` / `day0_walk_target` walk;
+    the fill minute's own high is not read — its order against the fill is unknown). `-inf` when no minute follows the fill:
+    nothing was reached. The stall cut's day-0 half of "has the trade reached +1R" (`walk_exit(day0_peak=...)`); callers pass
+    it only for a day-0 that did NOT end the trade."""
+    after = minutes.minute > int(fill_minute)
+    return float(minutes.h[after].max()) if after.any() else float("-inf")
+
+
 def day0_target_to_outcome(entry: dict, d0: dict, adr20: float, partial_frac: float) -> dict:
     """A +R target arm whose day 0 ended with nothing left (`day0_walk_target` with `stopped`), in `walk_exit`'s shape:
     status "stopped_day0" (the registered day-0 vocabulary); the events carry the partial, if one was taken
@@ -1520,6 +1592,10 @@ def walk_his_arms(entry: dict, *, closes_before, fwd: DailyBars, adr20: float, m
         d0 = d0_tgt[key]
         if d0["stopped"]:
             out[name] = day0_target_to_outcome(entry, d0, adr20, arm.partial_frac)
+        elif arm.stall_cut_session is not None:      # #702 P5: the cut reads day 0's highest minute high after the fill
+            out[name] = walk_exit(fill=fill, stop=stop, closes_before=closes_before, fwd=fwd, arm=arm, adr20=adr20,
+                                  horizon=horizon, day0_partial_px=d0["partial_price"],
+                                  day0_peak=day0_peak_high(minutes, entry["fill_minute"]))
         else:
             out[name] = walk_exit(fill=fill, stop=stop, closes_before=closes_before, fwd=fwd, arm=arm, adr20=adr20,
                                   horizon=horizon, day0_partial_px=d0["partial_price"])

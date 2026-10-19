@@ -47,6 +47,7 @@ approved plan, not by the article · **T** = telemetry only, never gates.
 | Pivot `comb` (P4b step 6b, runner-only) | `com` read only on the nights the stock CLOSED AT OR BELOW the level: `pivot_comb` = `pivot_com` (same level, same date fields) and **C0 additionally requires `close(D) <= pivot_comb(D)`** (equality counts; every cell inherits it). A night that closed above the line gets NO `comb` candidate (else its first break would consume the base's one trade under the spec key). Not in `PIVOT_KEYS` / `KS`; the runner computes it on `--keys comb` (or `--keys com,comb`, one pass, outputs suffixed `_com_comb`) | a reading of `com`, not a new level: no threshold of its own (Gate 5 registers nothing). WHY: `com` sits under the watch night's close on 38% / 41% of nights, where a "breakout" is any up day; the main loop (2026-10-18) made `comb` the PRIMARY `com` reading and `com` the one reported beside it | `EXTRA_PIVOT_KEYS`, `CLOSED_BELOW_KEYS`, `comb_fields`, `cell_flags` |
 | His exit (runner-only arms) | `HIS_EXIT_ARMS`, 25 arms `<trigger>_p33_<trail>`, walked by the runner's `exits` stage BESIDE the 15 registered arms, never by the shadow: partial trigger `r2` = sell 1/3 at fill + 2 × (fill − stop) (a session whose high reaches it sells AT it, one that OPENS above it sells at the open; on the breakout day the minutes after the fill are walked, `day0_walk_target`), `d3` / `d5` = the close of session 3 / 5 (the registered timing), `c3` / `c5` = whichever comes first; then the stop moves to breakeven (resting from the next bar) and the trail arms (first close under the average, filled at the next open): `t10` / `t20` fixed, `tspd` = the 10-day when ADR20(D) > 0.0479 (his "faster stocks"; the top tercile of the discovery C0 ADR distribution) else the 20-day, `td1` / `td2` = at the partial, the 10-day when the close stands more than 1 / 2 ADR20 above its own 10-day, else the 20-day. A daily bar touching both the stop and the target books the STOP (pessimistic) unless it OPENED above the target. `d3_p33_t10` IS `p33_s3_t10` (tested equal) | **S** his 2026-10-18 correction *"sell 1/3 at 2R then move to break even stop then trail rest at break of 10 or 20d ... 10d for faster stocks and 20d for slower stocks, also depend how far the are from 10/20"* and *"The day thing is also correct, it may be a combo and depends"*; the +2R (`PARTIAL_TARGET_R`) is S; WHICH reading of "faster" (`TRAIL_SPEED_ADR_CUT`) and of "how far" (`TRAIL_DISTANCE_X`) is **B** — two readings of one sentence, both reported, neither chosen; exit parameters are not cohort-shaping and are not in the provenance registry (as `FIXED_TARGET_R`) | `HIS_EXIT_ARMS`, `walk_exit`, `day0_walk_target`, `walk_his_arms`, `PARTIAL_TARGET_R`, `TRAIL_SPEED_ADR_CUT`, `TRAIL_DISTANCE_X` |
 | Stop variants (runner-only) | five readings of the stop, every arm walked under each, REPORTED alternatives: `lod` = the registered low of the day at the fill; `lod_cap05` = max(lod, fill − ½ ADR); `lod_floor05` = min(lod, fill − ½ ADR) (the brief's "floored at 0.5 ADR below the fill" read as a price floor and as a width floor — both run, neither chosen); `level_m05` = the breakout level (the pivot K(D)) − ½ ADR; `base_low` = the base's low. ½ ADR = 0.5 × ADR20 × the fill; each skipped as `too_wide` beyond one ADR20 (the registered rule); R = fill − that stop, so R is not comparable across variants (the read ranks on P&L in ADR units, and a variant that abstains on most trades is compared on its own trades) | the stop is **his** (the article's: *"Stop is always lows of the day"*); the variants are the 2026-10-18 brief's and `STOP_HALF_ADR` is **B** | `stop_variants`, `STOP_VARIANTS`, `STOP_HALF_ADR` |
+| P5 primary exit — the stall cut (runner-only; the HOLDOUT read's deciding exit) | `CUT_EXIT_ARMS` = one arm, `c3_p33_t20_cut3` (`P5_PRIMARY_ARM`): the `c3_p33_t20` arm (sell 1/3 at +2R or at the close of session 3, whichever first; breakeven; trail the 20-day, filled at the next open) **plus** the stall cut — if no high has reached fill + `STALL_CUT_R` (1) × (fill − stop) by the close of session `STALL_CUT_SESSION` (3; E = session 0) and the trade was not stopped, everything is sold at that close (event `cut`, status `time_exit`, terminal so mature, no day-3 partial). "Reached" = the highest minute high after the fill minute on the breakout day (`day0_peak_high`, passed to `walk_exit(day0_peak=)`; a day-0 +R partial implies it) or any session's high on sessions 1..3 including session 3's own; the stop is checked first. A trade that reached it walks the `c3_p33_t20` path unchanged (tested). Walked by the runner's `p5` stage (discovery) and by `holdout`'s second pass, on the `lod` stop, with `p33_s3_t10` / `c3_p33_t20` / `r2_p33_t20` beside it, on `tl` / `com` / `comb`. NOT in `cb.ARMS` (the shadow) and NOT `cb.PRIMARY_ARM` (the pinned discovery report's headline arm, unchanged): only the holdout read's primary moves | **S** his stalled-breakout lines (2026-10-18) *"if breakouts have no follow through in next few days then it may be better to get out as momentum didn't continue regardless if it isn't stopped"* / *"Cut stallers is important because funds are limited, turnover for swing trades is important, holding breakeven for a long time has opportunity cost"*; the **numbers** `+1R` and `session 3`, the 20-day trail and the day-3 combo are the operator's 2026-10-18 ruling as relayed in the P5 brief (his verbatim lines say "next few days"), not fitted; exit parameters are not cohort-shaping and are not in the provenance registry (as `FIXED_TARGET_R`) | `CUT_EXIT_ARMS`, `P5_PRIMARY_ARM`, `STALL_CUT_SESSION`, `STALL_CUT_R`, `Arm.stall_cut_*`, `walk_exit`, `day0_peak_high`, `walk_his_arms` |
 | MA surfing | close ≥ SMA50; close ≥ 0.98 × SMA20; SMA50 rising over 10 sessions | **S** *"surfs the rising 10- and 20-day and sometimes the 50-day"* · **R** `anticipation._MA_NEAR_PCT` · 10-session slope **P** | `explain_watch`, `sma20_ok`, `sma50_rising` |
 | Higher lows | lowest low of the last 5 sessions > the base low | **S** *"higher lows"*; the 5-session window is **B** | `higher_lows`, `RECENT_WINDOW` |
 | Tightening | mean daily range of the last 5 sessions ÷ the first 5 base sessions ≤ 0.75 | **S** *"tightening range"* · **R** `flag_detector._RANGE_CONTRACTION_MAX` | `tightening_ok` |
@@ -94,6 +95,10 @@ C6 (C1 + group ≥ 80) · C7 (SPY + QQQ above their 50-day instead of the 10/20 
   `runner.py exits` on the DISCOVERY first breaks at ORH5 into `trades_discovery_exits_<levels>.tsv.gz` and read by `exits-report`
   into `exits_report_<levels>.{tsv,txt}` — new files beside the pinned ones; the shadow walks `cb.ARMS` only. The read:
   `docs/analysis/cb_his_exit_2026-10-18.md`.
+- **P5 primary (runner-only; operator 2026-10-18):** the HOLDOUT read's deciding exit is `c3_p33_t20_cut3` (definition row above) on
+  the registered `tl` level, ORH5, the low-of-day stop and the spec key; `p33_s3_t10` (the article's arm), `c3_p33_t20`,
+  `r2_p33_t20` and the `com` / `comb` levels are reported beside, never deciding
+  (`docs/analysis/cb_preregistration_2026-10-18.md` §P5). Nothing the shadow records or the registered discovery report prints changed.
 
 ## The forward shadow — what runs, nightly at 17:48 ET (mon–fri)
 
@@ -238,6 +243,48 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 - The minute feed (the row's `feed` column) and thin-SIC effects above bias the first weeks; the read states them.
 
 ## Change log
+
+### 2026-10-18 — #702 P5 prep: the holdout read's primary becomes HIS exit with the stalled breakouts cut (`c3_p33_t20_cut3`) — runner-only, no pinned byte moved, the holdout is runnable and was NOT run
+
+**Trigger**: the operator aligned (2026-10-18) that the holdout read's primary is the registered trendline level with HIS exit —
+sell 1/3 at +2R or at the close of day 3, whichever first, breakeven, trail the rest to the first close under the 20-day average
+(next-open fill), the low-of-day stop — AND cut the stallers (no +1R by the close of session 3 and not stopped → sell everything
+at that close), his words *"Cut stallers is important because funds are limited, turnover for swing trades is important"*
+(`operator_shared_notes.md`).
+
+**What**: (1) module (additive): `STALL_CUT_SESSION` = 3 / `STALL_CUT_R` = 1.0; two `Arm` fields (`stall_cut_session`,
+`stall_cut_r`) defaulting to no cut, validated; `CUT_EXIT_ARMS` (one arm, `c3_p33_t20_cut3`) and `P5_PRIMARY_ARM`; `walk_exit(...,
+day0_peak=)` with the cut step between the +R target and the session partial; `day0_peak_high`; `walk_his_arms` passes the day-0
+peak to a cut arm. `ARMS` (15), `HIS_EXIT_ARMS` (25) and `PRIMARY_ARM` are untouched. (2) runner: `evaluate_exits(stops=, arms=)`
+(defaults = the `exits` stage), the `p5` stage (discovery: `trades_discovery_p5.tsv.gz`, `p5_report_discovery.{tsv,txt}` — the
+primary and the three arms beside it, on `tl` / `com` / `comb`, every cell, spec + chain key, year / QQQ phase / Apollo-regime
+slices, the cut's own effect against the uncut twin), a per-trade cross-check of the registered arm inside the P5 table against the
+minute stage's table, and `holdout`'s SECOND pass (the same function on the holdout: `trades_holdout_p5.tsv.gz`,
+`p5_report_holdout.{tsv,txt}`, P5 rows appended to `regime_report_holdout.{tsv,txt}`); the once-only guard and the dry run cover the
+new table; new pins (`candidates_com_comb.tsv`, `watch_com_comb.tsv.gz`, `entries_holdout_composition_com_comb.tsv`,
+`trades_discovery_p5.tsv.gz`, `p5_report_discovery.{tsv,txt}`). (3) tests: module — the arm, its validation, a staller cut at the
+day-3 close, a +1R touch on day 2 / on session 3's own high / on the day-0 minutes is not cut, a day-0 stop-out unaffected, the
+uncut path equals `c3_p33_t20` on 300 random paths, no registered or his-exit arm ever emits a cut; runner — the narrowed walk, the
+stage end to end, byte-identical re-run, the cross-check, the holdout's second pass and guard, the new pins. (4) the pre-registration
+§P5 (above its freeze marker) and the re-printed freeze record.
+
+**Result (discovery, `tl`, ORH5, spec key — `p5_report_discovery.txt`)**: the new primary reads C0 −0.169R (n = 8,984, interval
+[−0.28, −0.04], 2.6% ≥ 5R), **C1 +0.323R (79, [−0.21, +1.11], 3.8% ≥ 5R, −0.274 without the top five)**, C3 −0.028, C5 +0.509; the
+article's arm on the same trades reads −0.189 / −0.051 / −0.222 / +0.251. The cut sells 250 of the 8,984 C0 trades (2.8%) at the
+session-3 close and leaves the mean R unchanged (−0.169 vs −0.170 uncut) while freeing about 2.3 sessions per cut trade; in C1 it
+fires on 2 of 79, so the C1 read is the `c3_p33_t20` read. The primary reads above the article's arm in each year of C1, but its
+positive mean is 2023's (+0.877 on 34; 2022 −0.131 on 14; 2024 −0.080 on 31). **Nothing is decided**: the bars of the pre-registration are unchanged and the holdout has not been read.
+
+**Anticipated effect**: none in production — the shadow walks `cb.ARMS` only; no table, job or Telegram changes. Byte-identical
+proof: `daily | minute | step0-entries | report` on the default keys re-run into a scratch dir after the change, all seven content
+hashes equal to the pinned set; the `exits` / `exits-report` outputs (`tl` and `com,comb`) re-run into a scratch dir are
+byte-identical. **Freeze consequence**: the module and runner pins moved by bytes (stale since P4b; re-printed in this commit
+with the holdout's `--print-pins`, diff in the commit message); `holdout` is runnable (`--dry-run` passes the freeze check) and was
+NOT run.
+
+**Reversion-flag**: NEW (additive; no existing level, cell, entry, stop or exit moved; the deciding exit of the holdout read moved
+on the operator's ruling, before any holdout outcome existed). Reverting = drop `CUT_EXIT_ARMS` and the P5 stage/pass and restore
+§3's exit in the registration. **Status**: built on a worktree branch; discovery numbers pinned; no holdout row opened.
 
 ### 2026-10-18 — #702 his exit: the +2R / day / combo partial, the 10- or 20-day trail switches and five stop variants, read on 2022–24 — runner-only, no pinned byte moved
 

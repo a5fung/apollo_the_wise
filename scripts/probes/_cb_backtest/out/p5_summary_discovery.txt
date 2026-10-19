@@ -1,0 +1,10 @@
+DISCOVERY P5 STAGE (#702): 35,831 first-break candidate rows (spec key) on tl/com/comb; minute files on disk: 1140 dates (/Users/alvinfung/apollo_data/cb702/minutes); candidates on those dates: 35,831; entry orh5; stop lod; arms c3_p33_t20_cut3, p33_s3_t10, c3_p33_t20, r2_p33_t20
+[load: 10s]
+[entries + P5 walks: 7s]
+COVERAGE: candidates with minutes fetched 35,831 (by state {'no_rows': 49, 'ok': 35782}); PENDING fetch (skipped) 0
+ENTRY (orh5, all levels): abstain minute_daily_mismatch 408; abstain minute_high_below_pivot 2; abstain no_minutes 49; abstain no_opening_range_minutes 33; abstain too_wide 3,367; filled 26,436; no_trigger no_minute_above_level 5,536
+WROTE /Users/alvinfung/apollo_data/cb702/out/trades_discovery_p5.tsv.gz (105,744 rows)
+CROSS-CHECK tl: 8,989 paired p33_s3_t10 rows equal trades_discovery.tsv.gz's orh5 rows (status, maturity, realized R to 1e-09)
+CROSS-CHECK com/comb: 17,447 paired p33_s3_t10 rows equal trades_discovery_com_comb.tsv.gz's orh5 rows (status, maturity, realized R to 1e-09)
+WROTE /Users/alvinfung/apollo_data/cb702/out/p5_report_discovery.tsv (1,656 rows), /Users/alvinfung/apollo_the_wise/.claude/worktrees/agent-a7632b95674752821/scripts/probes/_cb_backtest/out/p5_report_discovery.tsv, /Users/alvinfung/apollo_the_wise/.claude/worktrees/agent-a7632b95674752821/scripts/probes/_cb_backtest/out/p5_report_discovery.txt
+WALL TIME: 38s total
