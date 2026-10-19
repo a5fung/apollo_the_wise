@@ -1,0 +1,10 @@
+PRE-READ (#702): 38,054 first-break rows (tl 17,405, com 20,649), 28,581 pairs, all logged in /Users/alvinfung/apollo_data/cb702_pre/minutes/_done.psv; code: consolidation_breakout.py sha256 e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b, runner.py sha256 2f5609fdb4f26884831009fe0444a6753e61fefdb06998d41ca0be59f1da6703
+[load: 4s]
+[entries + P5 walks: 4s]
+COVERAGE: candidates with minutes fetched 38,054 (by state {'no_rows': 31, 'ok': 38023}); PENDING fetch (skipped) 0
+ENTRY (orh5, all levels): abstain minute_daily_mismatch 103; abstain minute_high_below_pivot 3; abstain no_minutes 31; abstain no_opening_range_minutes 27; abstain too_wide 2,767; filled 28,998; no_trigger no_minute_above_level 6,125
+DATA GATE (orh5): 137 of 38,054 fetched candidates abstain on the data (0.36%; {'minute_daily_mismatch': 103, 'minute_high_below_pivot': 3, 'no_minutes': 31}) - limit 5%: ok; minute-vs-daily high/low match rate 99.73%
+WROTE /Users/alvinfung/apollo_data/cb702_pre/out/trades_pre_p5.tsv.gz (115,992 rows)
+CROSS-CHECK tl/com: 28,998 paired p33_s3_t10 rows equal trades_pre_tl_com.tsv.gz's orh5 rows (status, maturity, realized R to 1e-09)
+WROTE /Users/alvinfung/apollo_data/cb702_pre/out/p5_report_pre.tsv (1,212 rows), /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/p5_report_pre.tsv, /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/p5_report_pre.txt
+WALL TIME: 28s total

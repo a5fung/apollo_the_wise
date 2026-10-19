@@ -244,6 +244,16 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 ## Change log
 
+### 2026-10-19 — #702 the frozen primary read on 2017–21 (his 10x era): CAN'T TELL on C1 — no paper; the next tests are the entry and the stop
+
+**What**: the frozen primary (trendline / ORH5 / low-of-day stop / his exit with the stalled breakouts cut), read once on
+Alpaca 2017-03..2021-12 (pre-registered `docs/analysis/cb_2017_21_read_prereg_2026-10-19.md`). **C1 CAN'T TELL** in the
+whole era (+0.28R on 180, interval −0.24 .. +0.99, −0.29 without the top five) and in 2020–21 alone (+0.45R on 72,
+interval −0.56 .. +2.26); one real +54R trade (Overstock, filed under NXH) carries the mean — without it −0.02R / −0.31R.
+C4 FAIL both windows; C0 break-even (+0.02R). **Consequence (registered)**: no paper; the entry (an hourly-close
+confirmation) and the stop are tested next on 2022–24, confirmed only by the forward shadow. **Reversion-flag**: none (a
+read, no rule changed). **Status**: complete.
+
 ### 2026-10-19 — #702 P5 HOLDOUT READ: FAIL on the primary — no paper; the forward shadow keeps recording
 
 **What**: the one-time holdout read (2025-01..2026-10-15) on the frozen primary (trendline / ORH5 / low-of-day stop / his
