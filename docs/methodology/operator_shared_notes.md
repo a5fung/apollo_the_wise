@@ -2009,3 +2009,23 @@ them to our bars. The frame-reading vision step is HELD until he okays its price
   - Use in #702: the volume dry-up week over week and the within-2%-of-SMA10 test are candidate features for the P4b
     base-character step. They are recorded, never gates, until a read supports them.
 - **His channel**, https://www.youtube.com/@qullamaggie: 588 videos, about 800 hours; auto-captions are downloadable.
+
+## 2026-10-18 — his rule for where the line goes: the consolidation's CENTER OF MASS; short outliers are ignored (operator, verbatim)
+
+Said while reviewing four of Qullamaggie's own drawn lines from his streams (RIOT 2021-04-13, SPOT 2020-08-17,
+NIO 2020-12-24, AMD 2021-12-16), each drawn through a big upper wick:
+
+> *"Yes, not just wick, in these cases he ignore some outlier parts of a daily bar, the way I'll put it is that he finds
+> where the center of mass is in the consolidation and ignore the outliers if it's just a short period, meaning a 1-3 bars
+> spike then drop back to the basing area. The only thing slightly off is the line for SPOT, his line is slight higher,
+> you might've mistaken for another red line which is just a pointer and not a trendline."*
+
+- **What it defines for #702 P4b:** the breakout line sits on the consolidation's center of mass, not on its single
+  highest print. A spike of 1–3 bars that pokes out and then drops back into the basing area is an outlier and is
+  ignored, whether it is a wick or a whole bar.
+- **What it leaves open (the rule step must state it, not assume it):** how "center of mass" is measured on daily bars,
+  and what counts as "back to the basing area".
+- **Correction recorded:** the SPOT 2020-08-17 line read from the frame sits slightly LOW; his real line is a little
+  higher. The reader took a pointer line (from a news note) for the trendline.
+- **Status:** an input to the P4b character → line rule (step 6). Per [[charts-support-never-decide]], the labelled stream
+  lines test the rule; they do not replace it.
