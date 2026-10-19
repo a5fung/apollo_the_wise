@@ -2060,3 +2060,18 @@ before the breakout (his "A+ setups") — *"higher qualifier there maybe an opti
 - **His follow-up, same evening (verbatim):** *"The day thing is also correct, it may be a combo and depends"* — the
   after-3–5-days partial is ALSO his rule; the partial may be a combination of the two (+2R or a number of days) and
   depends on the stock. So the tests carry all three: +2R, day 3/5, and whichever comes first.
+
+## 2026-10-18 — his point on stalled breakouts: cut them for TURNOVER, even when they end near breakeven (operator, verbatim)
+
+> *"The timing thing is interesting because a thinking is that if breakouts have no follow through in next few days then
+> it may be better to get out as momentum didn't continue regardless if it isn't stopped, may be good to see what happens
+> to these stocks that stalled after a breakout"*
+>
+> *"Cut stallers is important because funds are limited, turnover for swing trades is important, holding breakeven for a
+> long time has opportunity cost"*
+
+- **Measured the same evening (2022–24, trendline level, ORH5 entry, the registered exit):** by day 3, 1 in 10 trades
+  still open had never reached +1R; they ended near breakeven (−0.10R), and none of the 322 eventual ≥5R winners was among
+  them — so cutting them costs no tail. Per trade, R barely moves; the gain he names is CAPITAL-DAYS freed (scored next).
+- **What it adds to #702:** a time stop ("no +1R within N days → out") is scored on R per position-day held, not only R per
+  trade, and on a limited-slot account, because slots are the constraint.
