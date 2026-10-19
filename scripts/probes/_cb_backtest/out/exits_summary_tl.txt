@@ -1,0 +1,14 @@
+DISCOVERY EXITS STAGE (#702 his exit): levels tl from candidates.tsv; 12,285 first-break candidate rows (spec key); minute files on disk: 1140 dates (/Users/alvinfung/apollo_data/cb702/minutes); candidates on those dates: 12,285; entry orh5; arms 26 (p33_s3_t10 + 25 his-exit arms) x stops lod/lod_cap05/lod_floor05/level_m05/base_low
+[load: 8s]
+[entries + his-exit walks: 4s]
+COVERAGE: candidates with minutes fetched 12,285 (by state {'no_rows': 16, 'ok': 12269}); PENDING fetch (skipped) 0
+ENTRY (orh5): abstain minute_daily_mismatch 146; abstain minute_high_below_pivot 2; abstain no_minutes 16; abstain no_opening_range_minutes 13; abstain too_wide 1,255; filled 8,989; no_trigger no_minute_above_level 1,864
+STOP VARIANTS (filled entries): usable / too_wide / stop_at_or_above_fill / mature primary-arm walks
+stop         usable  too_wide  at_or_above_fill  mature p33_s3_t10
+lod           8,989         0                 0              8,985
+lod_cap05     8,989         0                 0              8,985
+lod_floor05   8,989         0                 0              8,984
+level_m05     7,840     1,149                 0              7,837
+base_low        755     8,231                 3                755
+WROTE /Users/alvinfung/apollo_data/cb702/out/trades_discovery_exits_tl.tsv.gz (933,995 rows)
+WALL TIME: 14s total

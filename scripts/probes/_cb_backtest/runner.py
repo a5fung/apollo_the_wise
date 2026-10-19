@@ -1395,11 +1395,12 @@ def _opt_float(x):
     return None if x in ("", None) else float(x)
 
 
-def read_candidates(path: Path, split: "str | None" = None) -> list:
+def read_candidates(path: Path, split: "str | None" = None, extra_floats: tuple = ()) -> list:
     """candidates.tsv as typed dicts (Python `float()`, so values equal the daily stage's exactly). `split` keeps one
     side only: the OTHER side's rows are never even typed. THE LABEL IS NOT TRUSTED: every row's `split` must equal
     `split_label(D)` (the daily stage stamps it from D), else ValueError - so a relabelled file can neither carry
-    holdout rows into `minute` (discovery outcomes) nor hide them from `holdout`."""
+    holdout rows into `minute` (discovery outcomes) nor hide them from `holdout`. `extra_floats` (#702 his exit): more
+    columns typed as optional floats (e.g. `tightening_ratio`); the default reads exactly what it always did."""
     out, label_of = [], {}
     with open(path, newline="") as fh:
         for rec in csv.DictReader(fh, delimiter="\t"):
@@ -1413,7 +1414,7 @@ def read_candidates(path: Path, split: "str | None" = None) -> list:
             if split is not None and rec["split"] != split:
                 continue
             c = {k: rec.get(k, "") for k in ("ticker", "D", "E", "K", "split", "pole_date", "base_id", "apollo_regime")}
-            for k in FLOAT_FIELDS:
+            for k in FLOAT_FIELDS + tuple(extra_floats):
                 c[k] = _opt_float(rec.get(k))
             for k in ("retrigger", "retrigger_chain", "pole_bad_high"):
                 c[k] = int(rec.get(k) or 0)
@@ -1918,6 +1919,454 @@ def run_step0_entries(args) -> None:
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
+# #702 "his exit" (operator 2026-10-18): the `exits` and `exits-report` stages. DISCOVERY ONLY (the split is hard-coded;
+# `holdout` refuses `--levels`), the headline entry only, the spec key's first breaks only, NEW files beside the pinned
+# ones (`trades_discovery_exits<tag>.tsv.gz`, `exits_report<tag>.{tsv,txt}`; tag = "_" + the levels walked).
+# ═════════════════════════════════════════════════════════════════════════════════════════════
+EXITS_CELLS = ("C0", "C1", "C3", "C5")                                        # the cells the his-exit read reports (the brief)
+EXITS_ARMS = {cb.PRIMARY_ARM: cb.ARMS[cb.PRIMARY_ARM], **cb.HIS_EXIT_ARMS}    # the registered primary BESIDE the 25 new arms
+EXITS_RANK = "mean_pnl_adr"            # the statistic that orders arm x stop combos: R's unit differs by stop variant (R = fill - stop),
+#                                      # P&L in ADR units does not - the #327 tight-stop lesson. Mean R and the tail are shown beside.
+EXITS_PRIMARY = ("lod", cb.PRIMARY_ARM)                                       # the registered row: the lod stop, p33_s3_t10
+EXITS_FULL_POP_MIN = 0.95              # a combo is ranked only when it kept >= 95% of the registered row's filled entries: a stop
+#                                      # that abstains (too_wide) on most trades reads a DIFFERENT population (the tight bases), and
+#                                      # a better number on it is the population, not the stop - such stops are compared on their
+#                                      # own trades against the registered arm (the `matched` rows), never ranked
+FIFTH_MEASURES = (("range5_adr", "fifth_range5_adr"), ("tightening_ratio", "fifth_tightening"))   # the tightness slice
+EXITS_COLS = (["ticker", "D", "E", "K", "year", "month", "retrigger_chain"] + CELL_COLS
+              + ["adr20", "atr14", "median_dollar_vol20", "phase_qqq_10_20", "gap_over_1adr", "tightening_ratio",
+                 "range_recent5", "range5_adr", "fill", "fill_minute", "stop_variant", "stop", "width_pct", "abstain_reason",
+                 "target", "arm", "status", "realized_r", "pnl_adr", "acct_pct", "sessions_held", "mature", "open_mark",
+                 "partial_kind", "partial_session", "trail_n", "beabove", "fwd_bars", "fwd_hole"])
+
+
+def exits_stat_cols() -> list:
+    """The exits report's TSV layout (`STAT_COLS` is defined with the report section below; read at call time)."""
+    return ["key", "cell", "K", "stop_variant", "arm", "slice", "value"] + STAT_COLS + ["too_wide"]
+
+
+def parse_levels(spec, keys) -> tuple:
+    """`--levels` -> the levels of the run's candidates file the exits stage walks: a comma list drawn from the run's `keys`
+    (default: every one of them). The default-key run names `tl` to read the registered `candidates.tsv` and walk the
+    trendline alone; `--keys com,comb` walks both from `candidates_com_comb.tsv`."""
+    if spec in (None, ""):
+        return tuple(keys)
+    lv = tuple(k.strip() for k in str(spec).split(",") if k.strip())
+    bad = [k for k in lv if k not in keys]
+    if bad or not lv or len(set(lv)) != len(lv):
+        raise ValueError(f"--levels: expected distinct names from the run's keys {tuple(keys)}, got {spec!r}")
+    return lv
+
+
+def exits_tag(levels) -> str:
+    return "_" + "_".join(levels)
+
+
+def base_low_at(bars: "cb.DailyBars", P: int, i: int) -> float:
+    """`explain_watch`'s `base_low`: the lowest low of the base sessions (P, i]."""
+    return float(bars.l[P + 1:i + 1].min())
+
+
+def range_recent5_at(bars: "cb.DailyBars", i: int) -> float:
+    """`explain_watch`'s `range_recent5`: the mean of (high - low) / close over the RECENT_WINDOW sessions ending at i."""
+    w = cb.RECENT_WINDOW
+    rng = (bars.h[i - w + 1:i + 1] - bars.l[i - w + 1:i + 1]) / bars.c[i - w + 1:i + 1]
+    return float(rng.mean())
+
+
+def partial_facts(events: list, arm: "cb.Arm") -> tuple:
+    """(partial_kind, partial_session, trail_n) read off a walk's events: the kind of the FIRST partial ("day0_r" = the +R
+    touch on the breakout day, "r" = the +R touch on a later session, "session" = the close of the arm's session, "" = none),
+    its session, and the trail SMA the walk used (the `trail_n` event of the speed / distance arms, else the arm's own)."""
+    kind, sess, tn = "", "", (arm.trail_sma if arm.trail_sma else "")
+    for j, k, px, _f in events:
+        if k in ("partial", "partial_r") and kind == "":
+            kind = "session" if k == "partial" else ("day0_r" if j == 0 else "r")
+            sess = j
+        elif k == "trail_n":
+            tn = int(px)
+    return kind, sess, tn
+
+
+def evaluate_exits(c: dict, bars: "cb.DailyBars", cidx: np.ndarray, e: int, minutes: "cb.MinuteBars | None",
+                   horizon: int = HORIZON) -> tuple:
+    """One candidate -> (rows in EXITS_COLS order, tally). The headline entry (`cb.entry_variants` exactly as the minute
+    stage calls it); a non-fill writes nothing (tallied). A fill is walked under every `cb.stop_variants` reading: an
+    unusable stop is ONE row with no arm (`abstain_reason`); a usable one re-runs the module's `day0_walk` on it and walks
+    `EXITS_ARMS` through `cb.walk_his_arms`. `base_low` and `range_recent5` are recomputed from the bars with
+    `explain_watch`'s own formulas (they are not candidates.tsv columns); `base_low` is cross-checked against the row's
+    `base_depth`."""
+    tally: Counter = Counter()
+    adr20 = c["adr20"]
+    assert bars.dates[e].isoformat() == c["E"], (c["ticker"], e, c["E"])
+    assert e >= cb.MIN_HISTORY and int(cidx[e]) - int(cidx[e - cb.MIN_HISTORY]) == cb.MIN_HISTORY, (c["ticker"], e)
+    ev = cb.entry_variants(minutes, pivot=c["pivot"], adr20=adr20, day_high=float(bars.h[e]), day_low=float(bars.l[e]))
+    ent = ev[HEADLINE_VARIANT]
+    tally[("entry", ent["status"], ent["reason"] or "")] += 1
+    if ent["status"] != "filled":
+        return [], tally
+    i = e - 1                                                          # the watch night D
+    P = bisect.bisect_left(bars.dates, date.fromisoformat(c["pole_date"]))
+    assert P < i and bars.dates[P].isoformat() == c["pole_date"], (c["ticker"], c["pole_date"])
+    base_low = base_low_at(bars, P, i)
+    if c.get("base_depth") is not None:                                # the row's own number, as a cross-check of P
+        implied = float(bars.h[P]) * (1.0 - float(c["base_depth"]))
+        assert abs(implied - base_low) <= 1e-6 * max(1.0, base_low), (c["ticker"], c["D"], implied, base_low)
+    rr5 = range_recent5_at(bars, i)
+    closes_before = bars.c[:e + 1]
+    fwd, cut = forward_window(bars, cidx, e, horizon)
+    base = {col: c[col] for col in ("ticker", "D", "E", "K", "retrigger_chain", "adr20", "atr14", "median_dollar_vol20",
+                                    "phase_qqq_10_20", "gap_over_1adr", "tightening_ratio") if col in c}
+    base.update(year=int(c["E"][:4]), month=c["E"][:7], range_recent5=rr5, range5_adr=rr5 / adr20, fill=ent["fill"],
+                fill_minute=ent["fill_minute"], fwd_bars=len(fwd), fwd_hole=int(cut))
+    for cell in CELL_COLS:
+        base[cell] = int(bool(c[cell]))
+    rows = []
+    for sv, s in cb.stop_variants(fill=ent["fill"], lod_stop=ent["stop"], pivot=c["pivot"], base_low=base_low,
+                                  adr20=adr20).items():
+        tally[("stop", sv, s["reason"] or "ok")] += 1
+        if s["reason"]:
+            rows.append(_by_cols({**base, "stop_variant": sv, "stop": s["stop"], "width_pct": s["width_pct"],
+                                  "abstain_reason": s["reason"], "status": "abstain"}, EXITS_COLS))
+            continue
+        entry2 = {**ent, "stop": s["stop"], "width_pct": s["width_pct"],
+                  "day0": cb.day0_walk(minutes, fill_minute=ent["fill_minute"], stop=s["stop"])}
+        if sv == "lod":
+            assert entry2["day0"] == ent["day0"] and entry2["stop"] == ent["stop"]     # the registered entry, untouched
+        target = ent["fill"] + cb.PARTIAL_TARGET_R * (ent["fill"] - s["stop"])
+        res = cb.walk_his_arms(entry2, closes_before=closes_before, fwd=fwd, adr20=adr20, minutes=minutes,
+                               horizon=horizon, arms=EXITS_ARMS)
+        for name, raw in res.items():
+            a = arm_result(raw, width=s["width_pct"], n_fwd=len(fwd), horizon=horizon)
+            kind, sess, tn = partial_facts(raw["events"], EXITS_ARMS[name])
+            tally[("arm_mature", sv, name, int(a["mature"]))] += 1
+            rows.append(_by_cols({**base, "stop_variant": sv, "stop": s["stop"], "width_pct": s["width_pct"],
+                                  "abstain_reason": "", "target": target, "arm": name, "status": a["status"],
+                                  "realized_r": a["realized_r"], "pnl_adr": a["pnl_adr"], "acct_pct": a["acct_pct"],
+                                  "sessions_held": a["sessions_held"], "mature": int(a["mature"]),
+                                  "open_mark": int(a["open_mark"]), "partial_kind": kind, "partial_session": sess,
+                                  "trail_n": tn, "beabove": a["beabove"]}, EXITS_COLS))
+    return rows, tally
+
+
+def _exits_job(date_iso: str) -> tuple:
+    """One E date of the exits stage: the minute file once, then every candidate of the date through `evaluate_exits`."""
+    D: Daily = _G["D"]
+    cands = _G["by_date"][date_iso]
+    blocks, _info = read_minute_file(_G["files"][date_iso], {c["ticker"] for c in cands})
+    done, cal = _G["done"], D.cal
+    tally: Counter = Counter()
+    rows = []
+    for c in cands:
+        mb, state = minutes_for(blocks, done, date_iso, c["ticker"])
+        tally[("minutes_state", state)] += 1
+        if state == "pending":
+            continue
+        bars, cidx = _ticker_bars(c["ticker"])
+        e = locate_breakout_index(cal, cidx, c["E"])
+        r, t = evaluate_exits(c, bars, cidx, e, mb, _G["horizon"])
+        rows.extend(r)
+        tally.update(t)
+    return rows_to_gz(rows), tally, len(rows)
+
+
+def exits_population(cands: list, levels) -> list:
+    """The exits stage's population: the spec key's FIRST breaks (`retrigger == 0`; the report drops retriggers anyway and the
+    chain-key population is a subset) on the requested levels."""
+    return [c for c in cands if c["retrigger"] == 0 and c["K"] in levels]
+
+
+def run_exits(args) -> None:
+    """`exits`: his exit (the +2R / day / combo partial, the trail switches) x the stop variants on the DISCOVERY first breaks at
+    the headline entry -> `trades_discovery_exits<tag>.tsv.gz` (NEW; nothing pinned is written)."""
+    T0 = time.time()
+    data = Path(args.data)
+    out = Path(args.out) if args.out else data / "out"
+    small = Path(args.small_out) if args.small_out else HERE / "out"
+    minutes_dir = Path(args.minutes) if args.minutes else data / "minutes"
+    keys, sfx = run_keys(args)
+    levels = parse_levels(getattr(args, "levels", None), keys)
+    tag = exits_tag(levels)
+    log: list = []
+
+    def say(msg: str = "") -> None:
+        print(msg, flush=True)
+        log.append(msg)
+
+    cands = exits_population(read_candidates(out / f"candidates{sfx}.tsv", "discovery",
+                                             extra_floats=("tightening_ratio", "base_depth")), levels)
+    files = minute_date_files(minutes_dir) if minutes_dir.is_dir() else {}
+    if args.limit_dates:
+        files = dict(list(files.items())[:args.limit_dates])
+    by_date = group_by_date(cands, set(files))
+    say(f"DISCOVERY EXITS STAGE (#702 his exit): levels {'/'.join(levels)} from candidates{sfx}.tsv; {len(cands):,} first-break "
+        f"candidate rows (spec key); minute files on disk: {len(files)} dates ({minutes_dir}); candidates on those dates: "
+        f"{sum(len(v) for v in by_date.values()):,}; entry {HEADLINE_VARIANT}; arms {len(EXITS_ARMS)} ({cb.PRIMARY_ARM} + "
+        f"{len(cb.HIS_EXIT_ARMS)} his-exit arms) x stops {'/'.join(cb.STOP_VARIANTS)}")
+    if not by_date:
+        say("nothing to do: no candidate falls on a date with a minute file (nothing written)")
+        return
+    out.mkdir(parents=True, exist_ok=True)
+    small.mkdir(parents=True, exist_ok=True)
+    t = time.time()
+    D = load_daily(data / "daily_closes_all.csv.gz")
+    _G.update(D=D, by_date=by_date, files=files, done=(load_done_pairs(minutes_dir) if minutes_dir.is_dir() else None),
+              bars_cache={}, horizon=HORIZON)
+    say(f"[load: {time.time() - t:.0f}s]")
+    t = time.time()
+    tp = out / f"trades_discovery_exits{tag}.tsv.gz"
+    tpp = partial_path(tp)
+    tally: Counter = Counter()
+    n_rows = 0
+    dates = list(by_date)
+    with open(tpp, "wb") as tf:
+        tf.write(rows_to_gz([EXITS_COLS]))
+        for k, (tg, ty, nr) in enumerate(_pool_map(_exits_job, dates, args.workers), 1):
+            tf.write(tg)
+            tally.update(ty)
+            n_rows += nr
+            if k % 100 == 0 or k == len(dates):
+                print(f"  {k}/{len(dates)} dates, {n_rows:,} rows", flush=True)
+    os.replace(tpp, tp)
+    say(f"[entries + his-exit walks: {time.time() - t:.0f}s]")
+    states = {k[1]: n for k, n in tally.items() if k[0] == "minutes_state"}
+    say(f"COVERAGE: candidates with minutes fetched {sum(n for s, n in states.items() if s != 'pending'):,} "
+        f"(by state {dict(sorted(states.items()))}); PENDING fetch (skipped) {states.get('pending', 0):,}")
+    ent = {(k[1], k[2]): n for k, n in tally.items() if k[0] == "entry"}
+    say(f"ENTRY ({HEADLINE_VARIANT}): " + "; ".join(f"{st}{(' ' + r) if r else ''} {n:,}" for (st, r), n in sorted(ent.items())))
+    body = []
+    for sv in cb.STOP_VARIANTS:
+        ok = tally[("stop", sv, "ok")]
+        tw = tally[("stop", sv, "too_wide")]
+        ab = tally[("stop", sv, "stop_at_or_above_fill")]
+        mat = sum(n for k, n in tally.items() if k[0] == "arm_mature" and k[1] == sv and k[2] == cb.PRIMARY_ARM and k[3] == 1)
+        body.append([sv, f"{ok:,}", f"{tw:,}", f"{ab:,}", f"{mat:,}"])
+    say("STOP VARIANTS (filled entries): usable / too_wide / stop_at_or_above_fill / mature primary-arm walks")
+    say(table(body, ["stop", "usable", "too_wide", "at_or_above_fill", f"mature {cb.PRIMARY_ARM}"]))
+    say(f"WROTE {tp} ({n_rows:,} rows)")
+    say(f"WALL TIME: {time.time() - T0:.0f}s total")
+    (small / f"exits_summary{tag}.txt").write_text("\n".join(log) + "\n")
+
+
+# ── the exits report ─────────────────────────────────────────────────────────────────────────
+EXITS_USECOLS = (["K", "retrigger_chain", "year", "month", "adr20", "range5_adr", "tightening_ratio", "stop_variant",
+                  "abstain_reason", "arm", "status", "realized_r", "pnl_adr", "acct_pct", "mature", "fill", "D", "ticker"]
+                 + list(EXITS_CELLS))
+
+
+def load_exits_frame(path: Path):
+    """The exits table as a DataFrame of what the report reads (every row is a spec-key first break already)."""
+    import pandas as pd
+    df = pd.read_csv(path, sep="\t", usecols=EXITS_USECOLS, keep_default_na=False, na_values=[""], low_memory=False)
+    for col in ("K", "stop_variant", "arm", "month"):
+        df[col] = df[col].astype("category")
+    return df
+
+
+def quintile_cuts(values) -> list:
+    """The four cut points of the fifths of `values` (NaN ignored); [] when there is nothing to cut."""
+    v = np.asarray(values, dtype=float)
+    v = v[np.isfinite(v)]
+    return [float(np.quantile(v, q)) for q in (0.2, 0.4, 0.6, 0.8)] if len(v) else []
+
+
+def fifth_of(x, cuts: list):
+    """1 (lowest fifth) .. 5 for `x` against the cuts; 0 when unknown."""
+    a = np.asarray(x, dtype=float)
+    out = np.ones(len(a), dtype=int)
+    for cut in cuts:
+        out += (a > cut).astype(int)
+    return np.where(np.isfinite(a) & (len(cuts) == 4), out, 0)
+
+
+def _exits_group_row(g, cell: str, k, sv, a, slice_name: str, value, *, ci: bool, too_wide: int = 0) -> dict:
+    row = _group_row(g, "spec", cell, k, HEADLINE_VARIANT, a, slice_name, value, ci=ci)
+    row.update(stop_variant=sv, too_wide=too_wide)
+    row.pop("variant", None)
+    return row
+
+
+def build_exits_rows(df) -> tuple:
+    """(rows, fifth_cuts, best): every (cell, K, stop variant, arm) of EXITS_CELLS over the mature walks ('all' with the
+    month-block interval), the too_wide count of each (cell, K, stop variant), for each stop variant that abstained on
+    some trades the registered arm on exactly ITS usable trades (slice "matched", value = the variant), and the tightness
+    slice (fifths of range_recent5 / ADR20 and of tightening_ratio, cut PER LEVEL on its C0 filled population) under the
+    registered row and the best two NEW combos of that level. `best` = the combos ranked on C0 by `EXITS_RANK` (P&L in
+    ADR units: R's unit changes with the stop) AMONG the full-population combos (`EXITS_FULL_POP_MIN`), written down
+    here before any table is read."""
+    import pandas as pd
+    rows, cuts, best = [], {}, {}
+    for k, kdf in df.groupby("K", observed=True):
+        c0 = kdf[(kdf["C0"] == 1)]
+        one = c0[(c0["stop_variant"] == EXITS_PRIMARY[0]) & (c0["arm"] == EXITS_PRIMARY[1])]      # one row per filled entry
+        cuts[k] = {m: quintile_cuts(one[m].to_numpy(dtype=float)) for m, _s in FIFTH_MEASURES}
+        fifth = {m: pd.Series(fifth_of(kdf[m], cuts[k][m]), index=kdf.index) for m, _s in FIFTH_MEASURES}   # by frame label
+        key = kdf["ticker"].astype(str) + "|" + kdf["D"].astype(str)                                   # one entry = (ticker, D)
+        usable = {sv: set(key[(kdf["stop_variant"] == sv) & kdf["arm"].notna()]) for sv in cb.STOP_VARIANTS}
+        ranked = []
+        for cell in EXITS_CELLS:
+            sub = kdf[kdf[cell] == 1]
+            tw = sub[sub["arm"].isna() & (sub["abstain_reason"] == "too_wide")].groupby("stop_variant", observed=True).size()
+            ar = sub[sub["arm"].notna()]
+            prim = ar[(ar["stop_variant"] == EXITS_PRIMARY[0]) & (ar["arm"] == EXITS_PRIMARY[1])]
+            n_prim = len(prim)
+            for (sv, a), g in ar.groupby(["stop_variant", "arm"], observed=True):
+                r = _exits_group_row(g, cell, k, sv, a, "all", "", ci=True, too_wide=int(tw.get(sv, 0)))
+                rows.append(r)
+                full = n_prim > 0 and len(g) >= EXITS_FULL_POP_MIN * n_prim
+                if cell == "C0" and full and (sv, a) != EXITS_PRIMARY and r["n"] and r.get(EXITS_RANK) is not None:
+                    ranked.append((r[EXITS_RANK], sv, a))
+            for sv in cb.STOP_VARIANTS:                      # the registered arm on the trades this stop variant kept
+                if int(tw.get(sv, 0)) and len(prim):
+                    gm = prim[key.loc[prim.index].isin(usable[sv])]
+                    if len(gm):
+                        rows.append(_exits_group_row(gm, cell, k, EXITS_PRIMARY[0], EXITS_PRIMARY[1], "matched", sv, ci=True))
+        ranked.sort(key=lambda x: (-x[0], x[1], x[2]))
+        best[k] = [(sv, a) for _v, sv, a in ranked[:3]]
+        combos = [EXITS_PRIMARY] + best[k][:2]
+        for cell in ("C0", "C1"):
+            sub = kdf[(kdf[cell] == 1) & kdf["arm"].notna() & (kdf["mature"] == 1)]
+            for sv, a in combos:
+                g = sub[(sub["stop_variant"] == sv) & (sub["arm"] == a)]
+                for m, sname in FIFTH_MEASURES:
+                    f = fifth[m].loc[g.index].to_numpy() if len(g) else np.array([], dtype=int)
+                    for q in range(1, 6):
+                        gq = g[f == q]
+                        if len(gq):
+                            rows.append(_exits_group_row(gq, cell, k, sv, a, sname, q, ci=False))
+    return rows, cuts, best
+
+
+def exits_report_text(rows: list, cuts: dict, best: dict, src: Path, levels, counts: dict) -> str:
+    idx = {(r["cell"], r["K"], r["stop_variant"], r["arm"], r["slice"], r["value"]): r for r in rows}
+    out = []
+    A = out.append
+    A(f"#702 HIS EXIT - DISCOVERY READ (D 2022-03-28 .. 2024-12-31), levels {'/'.join(levels)}. Exploratory: nothing here decides; the "
+      f"stop is the operator's call; the holdout is untouched.")
+    A(f"source: {src.name}; rows read {counts['rows']:,}. POPULATION: the spec key's first breaks filled at {HEADLINE_VARIANT} under the "
+      f"registered stop (the width rule at the fill); every stop variant can only remove a trade (too_wide), never add one.")
+    A(f"ARMS: {cb.PRIMARY_ARM} (registered: 1/3 at the close of session 3, breakeven, SMA10 trail) beside {len(cb.HIS_EXIT_ARMS)} his-exit arms "
+      f"<trigger>_p33_<trail>: trigger r2 = 1/3 at +2R (a gap open above it at the open; day 0 on the minutes), d3 / d5 = the close of "
+      f"session 3 / 5, c3 / c5 = whichever comes first; trail t10 / t20 fixed, tspd = SMA10 when ADR20(D) > {cb.TRAIL_SPEED_ADR_CUT} "
+      f"(his 'faster stocks': the top tercile of the discovery C0 ADR distribution) else SMA20, td1 / td2 = at the partial, SMA10 when "
+      f"the close is more than 1 / 2 ADR20 above its SMA10 else SMA20. The trail is live only after the partial, filled at the next open.")
+    A(f"STOPS: lod = the low of the day at the fill (registered); lod_cap05 = max(lod, fill - 0.5 ADR); lod_floor05 = min(lod, fill - 0.5 ADR); "
+      f"level_m05 = the breakout level (the pivot) - 0.5 ADR; base_low = the base's low; each skipped as too_wide beyond one ADR20. "
+      f"R = fill - that stop, so R is NOT comparable across stops: combos are ranked on {EXITS_RANK} (P&L in ADR units), R and the tail beside.")
+    A(f"A group is the MATURE walks only; month-block bootstrap ({BOOT_DRAWS:,} draws, seed {BOOT_SEED}) 95% interval on the mean R.")
+    A("")
+    cols = ["stop", "arm", "n", "open", "mean pnl_adr", "mean R", "95% CI", ">=5R", ">=10R", "ex-top5", "median", "win", "too_wide"]
+
+    def line(r):
+        return [r["stop_variant"], r["arm"], r["n"], r["n_open"], _num(r.get("mean_pnl_adr")), _num(r.get("mean_r")), _ci(r),
+                _pct(r.get("share_ge5")), _pct(r.get("share_ge10")), _num(r.get("mean_ex_top5")), _num(r.get("median_r")),
+                _pct(r.get("win_rate")), r.get("too_wide", 0)]
+
+    A(f"HEADLINE - per level, the registered row and the best three NEW arm x stop combos (ranked on C0 by {EXITS_RANK} among the combos "
+      f"that kept >= {EXITS_FULL_POP_MIN:.0%} of the registered row's trades - the same population), on C0 and C1")
+    for k in levels:
+        for cell in ("C0", "C1"):
+            body = []
+            for sv, a in [EXITS_PRIMARY] + best.get(k, []):
+                r = idx.get((cell, k, sv, a, "all", ""))
+                if r:
+                    body.append(line(r))
+            if body:
+                A(f"  {cell} / {k}")
+                A(table(body, cols))
+    A("")
+    A("SUBPOPULATION STOPS - a stop that is too_wide on most trades keeps a DIFFERENT population (the bases whose low sits within one ADR "
+      "of the fill); its best arm is shown against the registered arm on exactly the SAME trades ('matched'), never ranked above")
+    for k in levels:
+        for cell in ("C0", "C1"):
+            body = []
+            for sv in cb.STOP_VARIANTS:
+                m = idx.get((cell, k, EXITS_PRIMARY[0], EXITS_PRIMARY[1], "matched", sv))
+                if m is None:
+                    continue
+                rs = [r for key, r in idx.items() if key[:3] == (cell, k, sv) and key[4] == "all" and r["n"]]
+                rs.sort(key=lambda r: (-(r.get(EXITS_RANK) if r.get(EXITS_RANK) is not None else -1e9), r["arm"]))
+                if rs:
+                    body.append(line(rs[0]))
+                    mm = line(m)
+                    mm[1] = f"{mm[1]} (matched)"
+                    body.append(mm)
+            if body:
+                A(f"  {cell} / {k}")
+                A(table(body, cols))
+    A("")
+    A(f"ALL COMBOS - per level and cell ({' / '.join(EXITS_CELLS)}), every stop x arm, sorted by {EXITS_RANK} (the registered row marked *)")
+    for k in levels:
+        for cell in EXITS_CELLS:
+            rs = [r for key, r in idx.items() if key[0] == cell and key[1] == k and key[4] == "all"]
+            rs.sort(key=lambda r: (-(r.get(EXITS_RANK) if r.get(EXITS_RANK) is not None else -1e9), r["stop_variant"], r["arm"]))
+            body = []
+            for r in rs:
+                ln = line(r)
+                if (r["stop_variant"], r["arm"]) == EXITS_PRIMARY:
+                    ln[1] = ln[1] + " *"
+                body.append(ln)
+            if body:
+                A(f"  {cell} / {k}")
+                A(table(body, cols))
+    A("")
+    A("TIGHTNESS - fifths of range_recent5 / ADR20 (the last 5 sessions' mean range in ADR units) and of tightening_ratio (last 5 / first 5), "
+      "cut per level on its C0 filled population; each cell is n / mean R / share >= 5R / mean pnl_adr. Under the registered row and the best "
+      "two new combos. The operator's A+ question: tighter before the breakout = better?")
+    for k in levels:
+        for m, sname in FIFTH_MEASURES:
+            c_ = cuts.get(k, {}).get(m, [])
+            A(f"  {k} {m}: fifth cuts " + (" / ".join(f"{x:.3f}" for x in c_) if c_ else "(none)"))
+            for cell in ("C0", "C1"):
+                body = []
+                for sv, a in [EXITS_PRIMARY] + best.get(k, [])[:2]:
+                    ln = [cell, sv, a]
+                    for q in range(1, 6):
+                        r = idx.get((cell, k, sv, a, sname, q))
+                        ln.append("0" if r is None or not r["n"] else
+                                  f"{r['n']}/{_num(r.get('mean_r'), 2)}/{_pct(r.get('share_ge5'))}/{_num(r.get('mean_pnl_adr'), 2)}")
+                    body.append(ln)
+                A(table(body, ["cell", "stop", "arm", "1 (tightest)", "2", "3", "4", "5 (widest)"]))
+    return "\n".join(out)
+
+
+def run_exits_report(args) -> int:
+    T0 = time.time()
+    data = Path(args.data)
+    out = Path(args.out) if args.out else data / "out"
+    small = Path(args.small_out) if args.small_out else HERE / "out"
+    keys, sfx = run_keys(args)
+    levels = parse_levels(getattr(args, "levels", None), keys)
+    tag = exits_tag(levels)
+    src = Path(args.trades) if args.trades else out / f"trades_discovery_exits{tag}.tsv.gz"
+    if not src.exists():
+        print(f"exits-report: {src} not found - run `exits` first", file=sys.stderr)
+        return 1
+    small.mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)
+    df = load_exits_frame(src)
+    counts = {"rows": len(df)}
+    print(f"[read {len(df):,} rows: {time.time() - T0:.0f}s]", flush=True)
+    name = f"exits_report{tag}"
+    if not len(df):
+        msg = f"exits-report: {src.name} is empty - nothing to report"
+        (small / f"{name}.txt").write_text(msg + "\n")
+        print(msg)
+        return 0
+    rows, cuts, best = build_exits_rows(df)
+    cols = exits_stat_cols()
+    write_tsv(out / f"{name}.tsv", rows, cols)
+    compact = [{k: (round(v, 6) if isinstance(v, float) else v) for k, v in r.items()} for r in rows]
+    write_tsv(small / f"{name}.tsv", compact, cols)
+    text = exits_report_text(rows, cuts, best, src, levels, counts)
+    (small / f"{name}.txt").write_text(text + "\n")
+    print(text)
+    print(f"WROTE {out / (name + '.tsv')} ({len(rows):,} rows), {small / (name + '.tsv')}, {small / (name + '.txt')}; "
+          f"WALL TIME {time.time() - T0:.0f}s")
+    return 0
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════
 # the holdout guard - freeze_check, copied in structure from scripts/probes/_686/preregistered_read.py::freeze_check
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 def sha256_file(p: Path) -> str:
@@ -2049,6 +2498,9 @@ def holdout_option_problems(args, data: Path) -> list:
     if getattr(args, "keys", None):
         bad.append(f"--keys {args.keys}: the holdout reads the registered levels only ({'/'.join(KS)}); a level outside the "
                    f"registration (#702 P4b `com`) is read beside it in its own, separately registered run")
+    if getattr(args, "levels", None):
+        bad.append(f"--levels {args.levels}: an `exits`-stage option (#702 his exit, discovery only); the holdout walks the registered "
+                   f"arms on every registered level")
     return bad
 
 
@@ -2480,10 +2932,11 @@ def run_report(args) -> int:
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("stage", choices=["daily", "minute", "step0-entries", "holdout", "report"],
+    ap.add_argument("stage", choices=["daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report"],
                     help="daily = P2a daily stage; minute = DISCOVERY entries/exits/controls; step0-entries = HOLDOUT "
                          "composition, no outcome; holdout = the minute engine on the HOLDOUT, behind freeze_check (BUILT, "
-                         "NOT RUN); report = the DISCOVERY read")
+                         "NOT RUN); report = the DISCOVERY read; exits / exits-report = #702 his exit (the +2R / day / combo "
+                         "partial x the trail switches x the stop variants) on the DISCOVERY first breaks, NEW files only")
     ap.add_argument("--data", required=True, help="DATA dir (daily_closes_all.csv.gz, small_pulls.psv, ...)")
     ap.add_argument("--out", help="large-output dir (default DATA/out); holdout refuses anything but DATA/out")
     ap.add_argument("--small-out", help="small-summary dir (default scripts/probes/_cb_backtest/out); holdout refuses it")
@@ -2509,8 +2962,20 @@ def main(argv=None) -> None:
                                    "(_com, _comb, _com_comb) beside the pinned files. holdout REFUSES it")
     ap.add_argument("--no-close-variant", action="store_true",
                     help="daily: skip the CLOSE-variant walk (no outcome of any kind is computed; overlap_open is left blank)")
+    ap.add_argument("--levels", help="exits / exits-report: the levels of the run's candidates file to walk, comma-separated "
+                                     "(default: every level of the run's keys). `--levels tl` reads the registered candidates.tsv and "
+                                     "walks the trendline alone; `--keys com,comb` walks both. holdout REFUSES it")
     args = ap.parse_args(argv)
     parse_keys(args.keys)                       # a bad --keys fails here, before any stage opens a file
+    parse_levels(args.levels, parse_keys(args.keys))
+    if args.stage == "exits":
+        run_exits(args)
+        return
+    if args.stage == "exits-report":
+        rc = run_exits_report(args)
+        if rc:
+            sys.exit(rc)
+        return
     if args.stage == "daily":
         if args.step0:
             run_step0(args)

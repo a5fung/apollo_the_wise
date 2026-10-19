@@ -97,3 +97,27 @@ python3 scripts/probes/_cb_backtest/runner.py holdout       --data DATA --dry-ru
 ## The report
 Mature, non-retrigger rows (spec key; the chain key printed beside) grouped by cell x K x variant x arm: n, open marks, mean R with a month-block bootstrap 95% CI (calendar month of E, 2,000 resamples, seed 702 mixed with the group key), share >= 3R / 5R / 10R, mean without the five best, median, win rate, mean `pnl_adr`, mean `acct_pct`; sliced by year, QQQ 10/20 phase at D, gap over 1 ADR, dollar-volume and ADR terciles (cuts on the discovery C0 distribution), and sum of R per month. The headline block (every cell C0..C7 + the two report cells, K = k5 / k10 / full / tl, entry `orh5`, arm `p33_s3_t10`) puts the tail first. Also: too_wide skips per cell, all arms for C0 / C1, the sensitivity table.
 
+---
+
+# His exit (#702, 2026-10-18) — the `exits` and `exits-report` stages (DISCOVERY only, new files only)
+
+```
+python3 scripts/probes/_cb_backtest/runner.py exits        --data DATA --levels tl         # the trendline from the pinned candidates.tsv
+python3 scripts/probes/_cb_backtest/runner.py exits        --data DATA --keys com,comb     # both center-of-mass levels from candidates_com_comb.tsv
+python3 scripts/probes/_cb_backtest/runner.py exits-report --data DATA --levels tl | --keys com,comb
+```
+His correction of the sell rule (sell 1/3 at +2R, breakeven, trail the 10-day for faster stocks / the 20-day for slower, "it may be a
+combo") as 25 arms `cb.HIS_EXIT_ARMS` (`<trigger>_p33_<trail>`: r2 / d3 / d5 / c3 / c5 x t10 / t20 / tspd / td1 / td2), each walked
+under the five `cb.STOP_VARIANTS` (lod = registered, lod_cap05, lod_floor05, level_m05, base_low; each too_wide beyond one ADR),
+beside the registered `p33_s3_t10` — on the spec key's FIRST breaks at the headline entry (orh5), the split hard-coded to discovery
+(`holdout` refuses `--levels`). The +2R touch is read on the MINUTES on the breakout day (`cb.day0_walk_target`) and on daily bars
+after (a bar touching both the stop and the target books the stop unless it opened above the target). `base_low` and `range_recent5`
+are recomputed from the bars with `explain_watch`'s formulas (not candidates.tsv columns; `base_low` is cross-checked against
+`base_depth`). Outputs: `DATA/out/trades_discovery_exits<tag>.tsv.gz` (`EXITS_COLS`: one row per entry x stop variant x arm, an
+abstain row per unusable stop), `DATA/out/exits_report<tag>.tsv` + the repo copies `out/exits_report<tag>.{tsv,txt}` and
+`out/exits_summary<tag>.txt`; tag = `_tl` / `_com_comb`. The report ranks combos on mean P&L in ADR units (R's unit changes with the
+stop) among the combos that kept >= 95% of the registered row's trades; a stop that abstains on most trades gets the registered arm on
+exactly its own trades (`matched`) instead of a rank; plus the tightness fifths (range_recent5 / ADR20 and tightening_ratio, cut per
+level on its C0 filled population) under the registered row and the best two combos. The read: `docs/analysis/cb_his_exit_2026-10-18.md`.
+Nothing pinned is written: the four default-key stages hash identically before and after the change.
+

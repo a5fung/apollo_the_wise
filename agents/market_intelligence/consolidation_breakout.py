@@ -171,6 +171,25 @@ FIXED_TARGET_R = 3.0                 # P: the HTF-shadow-comparable control, +3R
 FIXED_SESSIONS = 12
 PRIMARY_ARM = "p33_s3_t10"
 
+# ── #702 "his exit" (operator 2026-10-18) — RUNNER-ONLY arms, never in `ARMS` (the shadow iterates `ARMS`) ───────────
+# His correction of the sell rule (`operator_shared_notes.md`, "2026-10-18 — his correction on Qullamaggie's SELL rule"):
+# *"sell 1/3 at 2R then move to break even stop then trail rest at break of 10 or 20d, I recall he mentioned 10d for faster
+# stocks and 20d for slower stocks, also depend how far the are from 10/20"*; and his follow-up: *"The day thing is also
+# correct, it may be a combo and depends"*. Three partial triggers x five trail readings = `HIS_EXIT_ARMS` (25), walked by
+# the offline runner (`exits` stage) under `STOP_VARIANTS` as REPORTED alternatives. The stop is his call: nothing here
+# picks one. Exit parameters are not cohort-shaping and, like `FIXED_TARGET_R`, are not in the provenance registry.
+PARTIAL_TARGET_R = 2.0             # S: "sell 1/3 at 2R" — the partial sells at fill + 2 x (fill - stop)
+PARTIAL_TRIGGERS = ("session", "r_target", "combo")   # the close of session N (the article; every registered arm) |
+#                                                     #   the +R touch | whichever of the two comes first
+TRAIL_MODES = ("fixed", "speed", "distance")          # the SMA as given | his "faster stocks" switch | his "how far from
+#                                                     #   the 10/20" switch — two readings of one sentence, both reported
+TRAIL_SPEED_ADR_CUT = 0.0479       # B: "faster" = ADR20 at D ABOVE the top-tercile cut of the discovery C0 distribution at the
+#                                  #    headline entry — the com/comb discovery report's own cut (the four-level report's is
+#                                  #    0.0475; the two differ by population, not by rule)
+TRAIL_DISTANCE_X = (1.0, 2.0)      # B: at the partial, close > SMA10 x (1 + X x ADR20) -> trail the 10-day, else the 20-day
+STOP_HALF_ADR = 0.5                # B: the half-ADR of three stop variants, in the module's ADR unit (ADR20 x the fill)
+STOP_VARIANTS = ("lod", "lod_cap05", "lod_floor05", "level_m05", "base_low")   # see `stop_variants`
+
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # Data shapes
@@ -1060,12 +1079,42 @@ class Arm:
     trail_fill: str = "next_open"
     breakeven: bool = True
     partial_if_profit: bool = False
+    # #702 "his exit" (2026-10-18) — the defaults ARE the registered behaviour; only `HIS_EXIT_ARMS` set them.
+    partial_trigger: str = "session"           # PARTIAL_TRIGGERS: "r_target" = the partial at fill + partial_r x R (a bar
+                                               # whose high reaches it sells at it, a gap open above it at the open; on day 0
+                                               # the minute walk, `day0_walk_target`); "combo" = that OR the session close,
+                                               # whichever comes first
+    partial_r: Optional[float] = None          # the +R target of "r_target" / "combo"
+    trail_mode: str = "fixed"                  # TRAIL_MODES: "speed" = SMA10 when ADR20(D) > TRAIL_SPEED_ADR_CUT else SMA20,
+                                               # decided before the walk; "distance" = at the partial, SMA10 when the close is
+                                               # more than trail_dist_x x ADR20 above its SMA10, else SMA20 (`trail_sma` None)
+    trail_dist_x: Optional[float] = None       # "distance" only: X in TRAIL_DISTANCE_X
 
     def __post_init__(self):
         if self.trail_fill not in TRAIL_FILLS:
             raise ValueError(f"Arm {self.name!r}: trail_fill must be one of {TRAIL_FILLS}, got {self.trail_fill!r}")
         if self.partial_if_profit and (self.partial_session is None or not self.partial_frac > 0):
             raise ValueError(f"Arm {self.name!r}: partial_if_profit needs a partial")
+        if self.partial_trigger not in PARTIAL_TRIGGERS:
+            raise ValueError(f"Arm {self.name!r}: partial_trigger must be one of {PARTIAL_TRIGGERS}, got {self.partial_trigger!r}")
+        if self.partial_trigger != "session":
+            if self.kind != "qm" or not self.partial_frac > 0 or self.partial_r is None or not self.partial_r > 0:
+                raise ValueError(f"Arm {self.name!r}: a {self.partial_trigger!r} partial needs kind 'qm', a partial_frac and partial_r > 0")
+            if self.partial_if_profit:
+                raise ValueError(f"Arm {self.name!r}: partial_if_profit is a session-partial sensitivity only")
+            if (self.partial_session is None) != (self.partial_trigger == "r_target"):
+                raise ValueError(f"Arm {self.name!r}: 'combo' needs a partial_session, 'r_target' must not have one")
+        elif self.partial_r is not None:
+            raise ValueError(f"Arm {self.name!r}: partial_r needs partial_trigger 'r_target' or 'combo'")
+        if self.trail_mode not in TRAIL_MODES:
+            raise ValueError(f"Arm {self.name!r}: trail_mode must be one of {TRAIL_MODES}, got {self.trail_mode!r}")
+        if self.trail_mode != "fixed":
+            if self.kind != "qm" or self.trail_sma is not None:
+                raise ValueError(f"Arm {self.name!r}: a {self.trail_mode!r} trail chooses its own SMA (trail_sma must be None)")
+            if (self.trail_dist_x is None) != (self.trail_mode == "speed") or (self.trail_dist_x is not None and not self.trail_dist_x > 0):
+                raise ValueError(f"Arm {self.name!r}: 'distance' needs trail_dist_x > 0, 'speed' must not have one")
+        elif self.trail_dist_x is not None:
+            raise ValueError(f"Arm {self.name!r}: trail_dist_x needs trail_mode 'distance'")
 
 
 def _build_arms() -> dict:
@@ -1094,15 +1143,84 @@ def _build_arms() -> dict:
 ARMS = _build_arms()
 
 
+def _build_his_exit_arms() -> dict:
+    """#702 "his exit" (2026-10-18): partial trigger {r2 = the +2R touch, d3 / d5 = the close of session 3 / 5 (the
+    registered timing), c3 / c5 = whichever comes first of +2R and that session} x trail {t10, t20 = fixed; tspd = his
+    "faster stocks" switch; td1 / td2 = his "how far from the 10/20" switch at X = 1 / 2 ADR20}, 1/3 partial, breakeven
+    after it, the trail live only after the partial, filled at the next open (the registered sequence). Names read
+    `<trigger>_p33_<trail>`. `d3_p33_t10` IS the registered primary `p33_s3_t10` under another name (tested equal)."""
+    arms = {}
+    triggers = {"r2": ("r_target", None), "d3": ("session", 3), "d5": ("session", 5), "c3": ("combo", 3), "c5": ("combo", 5)}
+    trails = {"t10": ("fixed", SMA_SHORT, None), "t20": ("fixed", SMA_MID, None), "tspd": ("speed", None, None),
+              "td1": ("distance", None, TRAIL_DISTANCE_X[0]), "td2": ("distance", None, TRAIL_DISTANCE_X[1])}
+    for tname, (trigger, sess) in triggers.items():
+        for trname, (mode, sma, x) in trails.items():
+            nm = f"{tname}_p33_{trname}"
+            arms[nm] = Arm(nm, "qm", 1 / 3, sess, sma, partial_trigger=trigger,
+                           partial_r=(None if trigger == "session" else PARTIAL_TARGET_R), trail_mode=mode, trail_dist_x=x)
+    return arms
+
+
+HIS_EXIT_ARMS = _build_his_exit_arms()      # 25 arms; runner-only (`exits` stage). NOT in ARMS: the shadow never walks them.
+
+
+def stop_variants(*, fill: float, lod_stop: float, pivot: float, base_low: float, adr20: float) -> dict:
+    """The five STOP readings of the #702 his-exit read, as REPORTED alternatives (the stop is the operator's call; nothing
+    here chooses). {variant: {"stop", "reason", "width_pct"}}; `reason` None = usable, else the entry's own abstain names
+    (`stop_at_or_above_fill`, `too_wide` = wider than one ADR20, the registered width rule). Half an ADR is
+    `STOP_HALF_ADR x adr20 x fill` (the module's ADR unit, as `pnl_adr` and `width_pct`):
+      lod          the low of the day at the fill (the registered stop; `lod_stop` = the entry's own stop)
+      lod_cap05    the same, never LOWER than half an ADR under the fill — max(lod, fill - 0.5 ADR): the width is capped
+      lod_floor05  the same, never CLOSER than half an ADR — min(lod, fill - 0.5 ADR): the width is floored
+                   (the brief's "floored at 0.5 ADR below the fill" admits both readings; both are run and named)
+      level_m05    the breakout LEVEL (the pivot K(D), not the opening-range level the entry filled at) minus half an ADR
+      base_low     the base's low (`explain_watch`'s `base_low`), mostly wider than one ADR -> `too_wide`
+    R for every variant = fill - that stop."""
+    adr20 = _check_adr(adr20)
+    fill = float(fill)
+    half = STOP_HALF_ADR * adr20 * fill
+    raw = {"lod": float(lod_stop), "lod_cap05": max(float(lod_stop), fill - half),
+           "lod_floor05": min(float(lod_stop), fill - half), "level_m05": float(pivot) - half, "base_low": float(base_low)}
+    out = {}
+    for name in STOP_VARIANTS:
+        s = raw[name]
+        if s >= fill:
+            out[name] = {"stop": s, "reason": "stop_at_or_above_fill", "width_pct": None}
+            continue
+        width = (fill - s) / fill
+        out[name] = {"stop": s, "reason": ("too_wide" if width > adr20 else None), "width_pct": width}
+    return out
+
+
 def _outcome(status: str, pnl: float, risk: float, fill: float, adr20: float, held: int,
              events: list) -> dict:
     return {"status": status, "realized_r": pnl / risk, "pnl_adr": pnl / (fill * adr20),
             "sessions_held": int(held), "events": events}
 
 
+def _distance_trail_n(closes_through: np.ndarray, adr20: float, x: float) -> int:
+    """His "also depend how far they are from the 10/20" (#702 his exit): at the partial, the 10-day when the close stands
+    more than `x` ADR20 above its own SMA10, else the 20-day. `closes_through` = the closes up to and including the
+    partial's session (E's own close when the partial was taken on day 0)."""
+    sma10 = float(closes_through[-SMA_SHORT:].mean())
+    return SMA_SHORT if float(closes_through[-1]) > sma10 * (1.0 + float(x) * adr20) else SMA_MID
+
+
 def walk_exit(*, fill: float, stop: float, closes_before, fwd: DailyBars, arm: Arm, adr20: float,
-              horizon: int = EXIT_HORIZON) -> dict:
+              horizon: int = EXIT_HORIZON, day0_partial_px: Optional[float] = None) -> dict:
     """Daily walk from E+1 (`fwd[0]`; session j = 1). E is session 0.
+
+    #702 HIS EXIT (2026-10-18; `HIS_EXIT_ARMS`, runner-only — every registered arm takes the defaults and runs the same
+    path as before): a `partial_trigger` of "r_target" / "combo" adds a +R TARGET = fill + partial_r x risk. Per session,
+    in order: (0) a session that OPENS at or above the target sells the partial at that open (the open precedes the low);
+    (1) the stop as before, against the stop in force BEFORE this session (a partial today raises it from tomorrow), so a
+    bar that touches both the stop and the target books the STOP for the remainder — pessimistic, the daily bar's order
+    is unknown; (1b) else a high at the target sells the partial AT the target; (2) the session partial ("combo": only
+    when the target has not fired first); then (3) the trail, live only after the partial, with its SMA chosen by
+    `trail_mode`: "speed" before the walk on ADR20 at D (`TRAIL_SPEED_ADR_CUT`), "distance" at the partial on its close
+    (`_distance_trail_n`), each recorded as an event `(j, "trail_n", n, 0.0)`. `day0_partial_px` (from
+    `day0_walk_target`): the +R partial was already taken on day 0 at that price — the walk starts with it booked
+    (`(0, "partial_r", px, frac)`), the breakeven stop resting from session 1 and the trail live.
 
     `closes_before` = the stock's closes UP TO AND INCLUDING E, so SMA10/20 exist from E+1 — the
     #548 defect (`flag_detector._htf_management_replay` omits them) is not copied. R is measured
@@ -1176,25 +1294,74 @@ def walk_exit(*, fill: float, stop: float, closes_before, fwd: DailyBars, arm: A
         return _degraded(c, n, 1.0, 0.0, fill, risk, adr20, events, last_before)
 
     # ── "qm" ───────────────────────────────────────────────────────────────────────────────────
+    cb_arr = np.asarray(closes_before, dtype=float)
     trail_n = arm.trail_sma
+    if arm.trail_mode == "speed":               # his "10d for faster stocks": decided before the walk, on ADR20 at D
+        trail_n = SMA_SHORT if adr20 > TRAIL_SPEED_ADR_CUT else SMA_MID
+        events.append((0, "trail_n", float(trail_n), 0.0))
     cs = None
     n_before = 0
     if trail_n:
-        tail = np.asarray(closes_before, dtype=float)[-trail_n:]
+        tail = cb_arr[-trail_n:]
         n_before = len(tail)
         cs = np.concatenate(([0.0], np.cumsum(np.concatenate((tail, c)))))
     remaining = 1.0
     stop_now = stop0
     partial_done = False
     next_open = arm.trail_fill == "next_open"
+    target = (fill + float(arm.partial_r) * risk) if arm.partial_trigger != "session" else None
+
+    def _pick_distance_trail(j: int) -> None:
+        """"distance": the trail's SMA is chosen on the partial session's close (E's close for a day-0 partial)."""
+        nonlocal trail_n, cs, n_before
+        trail_n = _distance_trail_n(np.concatenate((cb_arr, c[:j])), adr20, arm.trail_dist_x)
+        events.append((j, "trail_n", float(trail_n), 0.0))
+        tail_ = cb_arr[-trail_n:]
+        n_before = len(tail_)
+        cs = np.concatenate(([0.0], np.cumsum(np.concatenate((tail_, c)))))
+
+    def _book_r_partial(j: int, px: float, close_j: float) -> None:
+        """The +R partial at `px` on session j (0 = day 0): booked; the stop moves to breakeven, resting from the NEXT
+        session (the caller's stop check for j has already run against the old stop); the "distance" trail picks its SMA."""
+        nonlocal pnl, remaining, partial_done, stop_now
+        events.append((j, "partial_r", px, arm.partial_frac))
+        pnl += (px - fill) * arm.partial_frac
+        remaining -= arm.partial_frac
+        partial_done = True
+        if arm.breakeven:
+            stop_now = max(stop_now, fill)
+            if stop_now > close_j:              # the session closed under the fill: tomorrow's open takes it
+                events.append((j, "be_above_close", close_j, 0.0))
+        if arm.trail_mode == "distance":
+            _pick_distance_trail(j)
+
+    if day0_partial_px is not None:             # the +R partial was taken on day 0 (`day0_walk_target`)
+        if target is None:
+            raise ValueError(f"walk_exit: day0_partial_px needs a +R target arm, got {arm.name!r}")
+        if last_before is None:
+            raise ValueError("walk_exit: day0_partial_px needs E's close in closes_before")
+        _book_r_partial(0, float(day0_partial_px), last_before)
     for j in range(1, min(int(horizon), n) + 1):
         oj, lj, cj = float(o[j - 1]), float(l[j - 1]), float(c[j - 1])
+        stop_j = stop_now                       # the stop this session is judged against (a partial today raises it from tomorrow)
+        # 0. a +R target arm whose session OPENS at or above the target: the partial at that open (the open precedes the low)
+        gap_px = oj if (target is not None and not partial_done and oj >= target) else None
         # 1. the stop
-        if oj <= stop_now or lj <= stop_now:
-            px = oj if oj <= stop_now else stop_now
-            events.append((j, "stop_gap" if oj < stop_now else "stop", px, remaining))
+        if oj <= stop_j or lj <= stop_j:
+            if gap_px is not None:              # the gap-open partial, then the rest at the stop (its low came after the open)
+                events.append((j, "partial_r", gap_px, arm.partial_frac))
+                pnl += (gap_px - fill) * arm.partial_frac
+                remaining -= arm.partial_frac
+            px = oj if oj <= stop_j else stop_j
+            events.append((j, "stop_gap" if oj < stop_j else "stop", px, remaining))
             pnl += (px - fill) * remaining
             return _outcome("stopped", pnl, risk, fill, adr20, j, events)
+        # 1b. the +R target: at the open when it gapped above it, else AT the target when the high reached it (the stop did
+        #     not — a bar touching both booked the stop above, pessimistic); the breakeven stop rests from the next session
+        if gap_px is not None:
+            _book_r_partial(j, gap_px, cj)
+        elif target is not None and not partial_done and float(h[j - 1]) >= target:
+            _book_r_partial(j, target, cj)
         # 2. the partial, at the close; the breakeven stop rests from the NEXT session
         if (not partial_done and arm.partial_session == j and arm.partial_frac > 0
                 and not (arm.partial_if_profit and not cj > fill)):
@@ -1206,11 +1373,13 @@ def walk_exit(*, fill: float, stop: float, closes_before, fwd: DailyBars, arm: A
                 stop_now = max(stop_now, fill)
                 if stop_now > cj:               # partial sold under the fill: tomorrow's open takes it
                     events.append((j, "be_above_close", cj, 0.0))
+            if arm.trail_mode == "distance":    # #702 his exit: the trail's SMA is chosen on this close
+                _pick_distance_trail(j)
         # 3. the trail: first CLOSE below the SMA (today's close included)
         if arm.partial_if_profit:               # trail arms from the session AFTER the partial session
             trail_live = j > arm.partial_session
-        else:
-            trail_live = partial_done or arm.partial_session is None or arm.trail_before_partial
+        else:                                   # a +R target arm with no session partial still waits for ITS partial
+            trail_live = partial_done or (arm.partial_session is None and target is None) or arm.trail_before_partial
         if trail_n and trail_live:
             pos = n_before + j                  # 1-based position of session j inside cs
             if pos - trail_n >= 0:
@@ -1262,6 +1431,99 @@ def day0_result_to_outcome(entry: dict, adr20: float) -> dict:
     fill, stop, px = float(entry["fill"]), float(entry["stop"]), float(d0["exit_price"])
     kind = "day0_gap" if px < stop else "day0_stop"
     return _outcome("stopped_day0", px - fill, fill - stop, fill, adr20, 0, [(0, kind, px, 1.0)])
+
+
+# ── #702 his exit: day 0 on the minutes for a +R target arm, and the walk over HIS_EXIT_ARMS ──────────────────────────
+_NO_DAY0_TARGET = {"stopped": False, "exit_price": None, "exit_minute": None, "partial_price": None,
+                   "partial_minute": None, "stop_in_force": None}
+
+
+def day0_walk_target(minutes: MinuteBars, *, fill: float, fill_minute: int, stop: float, target: float,
+                     partial_frac: float, breakeven: bool = True) -> dict:
+    """The day-0 walk of a +R TARGET arm (his "sell 1/3 at 2R"): the minutes AFTER the fill minute against the stop AND
+    the target, in minute order — the minutes are on disk, so day 0 is not guessed. Per minute, in order: a minute that
+    OPENS at or above the target sells the partial at its open (the open precedes the low); a low at the stop (or an open
+    under it) exits the remainder at the stop (at the open when it gapped under) — so a minute touching both the stop
+    and the target books the partial at its open only when it OPENED above the target, else the STOP: pessimistic inside
+    the one bar whose order is unknown; else a high at the target sells the partial AT the target. After the partial the
+    breakeven stop max(stop, fill) is live from the NEXT minute (as the daily walk rests it from the next session).
+    Returns {stopped, exit_price, exit_minute, partial_price, partial_minute, stop_in_force}: `stopped` = NOTHING is left
+    after day 0 (a full stop before the partial, or the stop in force after it); `partial_*` = the day-0 partial, if any,
+    whether or not the rest survived the day."""
+    stop_now, fill, target = float(stop), float(fill), float(target)
+    if not stop_now < fill < target:
+        raise ValueError(f"day0_walk_target: need stop {stop} < fill {fill} < target {target}")
+    res = dict(_NO_DAY0_TARGET)
+    partial_done = False
+    for j in np.flatnonzero(minutes.minute > fill_minute).tolist():
+        m, op, hi, lo = int(minutes.minute[j]), float(minutes.o[j]), float(minutes.h[j]), float(minutes.l[j])
+        gap_px = op if (not partial_done and op >= target) else None
+        if lo <= stop_now or op < stop_now:
+            if gap_px is not None:
+                res.update(partial_price=gap_px, partial_minute=m)
+            res.update(stopped=True, exit_price=(op if op < stop_now else stop_now), exit_minute=m, stop_in_force=stop_now)
+            return res
+        if gap_px is not None or (not partial_done and hi >= target):
+            res.update(partial_price=(gap_px if gap_px is not None else target), partial_minute=m)
+            partial_done = True
+            if breakeven:
+                stop_now = max(stop_now, fill)
+    return res
+
+
+def day0_target_to_outcome(entry: dict, d0: dict, adr20: float, partial_frac: float) -> dict:
+    """A +R target arm whose day 0 ended with nothing left (`day0_walk_target` with `stopped`), in `walk_exit`'s shape:
+    status "stopped_day0" (the registered day-0 vocabulary); the events carry the partial, if one was taken
+    (`(0, "partial_r", px, frac)`), then the remainder at the exit — `day0_gap` when the exit printed under the stop in
+    force, else `day0_stop`. With no partial it equals `day0_result_to_outcome` on the same stop."""
+    adr20 = _check_adr(adr20)
+    if not d0.get("stopped"):
+        raise ValueError("day0_target_to_outcome: day 0 did not end the trade")
+    fill, stop, px = float(entry["fill"]), float(entry["stop"]), float(d0["exit_price"])
+    events, pnl, remaining = [], 0.0, 1.0
+    if d0.get("partial_price") is not None:
+        ppx = float(d0["partial_price"])
+        events.append((0, "partial_r", ppx, partial_frac))
+        pnl += (ppx - fill) * partial_frac
+        remaining -= partial_frac
+    events.append((0, "day0_gap" if px < float(d0["stop_in_force"]) else "day0_stop", px, remaining))
+    pnl += (px - fill) * remaining
+    return _outcome("stopped_day0", pnl, fill - stop, fill, adr20, 0, events)
+
+
+def walk_his_arms(entry: dict, *, closes_before, fwd: DailyBars, adr20: float, minutes: Optional[MinuteBars],
+                  horizon: int = EXIT_HORIZON, arms: Optional[dict] = None) -> dict:
+    """{arm name: `walk_exit`-shaped result} for ONE filled entry over `arms` (default `HIS_EXIT_ARMS`), whose `stop` may be
+    any `stop_variants` reading — the caller re-ran `day0_walk` on that stop into `entry["day0"]`. A session-trigger arm
+    (every registered arm, and the d3 / d5 arms of the grid) goes exactly as `walk_arms`: a day-0 stop-out booked once by
+    `day0_result_to_outcome`, else `walk_exit`. A +R target / combo arm walks day 0 on the MINUTES first
+    (`day0_walk_target`, once per distinct (target, frac, breakeven)): nothing left after day 0 -> `day0_target_to_outcome`;
+    a day-0 partial that survived -> `walk_exit(day0_partial_px=...)`; no touch on day 0 -> the plain walk. Raw results —
+    the caller formats its rows."""
+    arms = HIS_EXIT_ARMS if arms is None else arms
+    adr20 = _check_adr(adr20)
+    fill, stop = float(entry["fill"]), float(entry["stop"])
+    one = day0_result_to_outcome(entry, adr20) if entry["day0"]["stopped"] else None
+    d0_tgt: dict = {}
+    out = {}
+    for name, arm in arms.items():
+        if arm.partial_trigger == "session":
+            out[name] = dict(one) if one is not None else walk_exit(
+                fill=fill, stop=stop, closes_before=closes_before, fwd=fwd, arm=arm, adr20=adr20, horizon=horizon)
+            continue
+        if minutes is None:
+            raise ValueError(f"walk_his_arms: arm {name!r} needs the day-0 minutes")
+        key = (float(arm.partial_r), float(arm.partial_frac), bool(arm.breakeven))
+        if key not in d0_tgt:
+            d0_tgt[key] = day0_walk_target(minutes, fill=fill, fill_minute=entry["fill_minute"], stop=stop,
+                                           target=fill + key[0] * (fill - stop), partial_frac=key[1], breakeven=key[2])
+        d0 = d0_tgt[key]
+        if d0["stopped"]:
+            out[name] = day0_target_to_outcome(entry, d0, adr20, arm.partial_frac)
+        else:
+            out[name] = walk_exit(fill=fill, stop=stop, closes_before=closes_before, fwd=fwd, arm=arm, adr20=adr20,
+                                  horizon=horizon, day0_partial_px=d0["partial_price"])
+    return out
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════

@@ -1936,3 +1936,149 @@ class TestTrendlineK:
         assert "orh5: k5=1, k10=1, full=1, tl=1" in step0 and "tl     orh5" in step0
         comp = self._read(hdata / "out" / "entries_holdout_composition.tsv")
         assert {r["K"] for r in comp} == {"k5", "k10", "full", "tl"} and len(comp) == 4 * len(rn.MINUTE_VARIANTS)
+
+
+# ═══ #702 his exit (2026-10-18): the `exits` / `exits-report` stages - discovery only, the headline entry, NEW files ═══════
+class TestHisExitStage:
+    def test_levels_parse_and_the_tag(self):
+        assert rn.parse_levels(None, rn.KS) == rn.KS and rn.parse_levels("tl", rn.KS) == ("tl",)
+        assert rn.parse_levels("com", ("com", "comb")) == ("com",) and rn.exits_tag(("com", "comb")) == "_com_comb"
+        assert rn.exits_tag(("tl",)) == "_tl"
+        with pytest.raises(ValueError):
+            rn.parse_levels("com", rn.KS)                          # not a level of the default candidates file
+        with pytest.raises(ValueError):
+            rn.parse_levels("tl,tl", rn.KS)
+
+    def test_the_arm_set_is_the_registered_primary_beside_the_twenty_five(self):
+        assert list(rn.EXITS_ARMS)[0] == cb.PRIMARY_ARM and len(rn.EXITS_ARMS) == 26
+        assert set(rn.EXITS_ARMS) - {cb.PRIMARY_ARM} == set(cb.HIS_EXIT_ARMS)
+        assert rn.EXITS_PRIMARY == ("lod", cb.PRIMARY_ARM) and rn.EXITS_RANK == "mean_pnl_adr"
+
+    def test_base_low_and_range_recent5_equal_explain_watch_on_the_mrna_canary(self):
+        b = _fixture_bars()["MRNA"]
+        i = b.dates.index(dt.date(2026, 9, 16))
+        f, gate = cb.explain_watch(b, i)
+        assert gate is None
+        assert rn.base_low_at(b, f["pole_idx"], i) == f["base_low"]
+        assert rn.range_recent5_at(b, i) == f["range_recent5"]
+
+    def test_partial_facts(self):
+        r2 = cb.HIS_EXIT_ARMS["r2_p33_td1"]
+        assert rn.partial_facts([(0, "partial_r", 110.0, 1 / 3), (0, "trail_n", 10.0, 0.0), (3, "trail", 101.0, 2 / 3)], r2) == ("day0_r", 0, 10)
+        assert rn.partial_facts([(2, "partial_r", 110.0, 1 / 3), (2, "trail_n", 20.0, 0.0)], r2) == ("r", 2, 20)
+        d3 = cb.HIS_EXIT_ARMS["d3_p33_t20"]
+        assert rn.partial_facts([(3, "partial", 105.0, 1 / 3), (4, "stop", 100.0, 2 / 3)], d3) == ("session", 3, 20)
+        assert rn.partial_facts([(1, "stop", 95.0, 1.0)], d3) == ("", "", 20)
+        assert rn.partial_facts([(1, "stop", 95.0, 1.0)], cb.HIS_EXIT_ARMS["r2_p33_tspd"]) == ("", "", "")
+
+    def _cand(self, bars, e, base_depth=None, **kw):
+        kw.setdefault("K", "tl")
+        c = _m_cand(bars, e, **kw)
+        P = e - 20
+        c["pole_date"] = bars.dates[P].isoformat()
+        c["base_depth"] = (1.0 - float(bars.l[P + 1:e].min()) / float(bars.h[P])) if base_depth is None else base_depth
+        c["tightening_ratio"] = 0.6
+        return c
+
+    def test_evaluate_exits_rows_and_the_registered_row_equals_the_minute_stages(self):
+        bars, e = _e_bars()
+        cidx = np.arange(len(bars))
+        c = self._cand(bars, e)
+        rows, tally = rn.evaluate_exits(c, bars, cidx, e, _mb())
+        assert tally[("entry", "filled", "")] == 1
+        assert len(rows) == 5 * len(rn.EXITS_ARMS)                                    # every stop usable at adr20 0.10
+        col = {n: k for k, n in enumerate(rn.EXITS_COLS)}
+        by = {(r[col["stop_variant"]], r[col["arm"]]): r for r in rows}
+        assert {sv for sv, _a in by} == set(cb.STOP_VARIANTS) and all(r[col["K"]] == "tl" for r in rows)
+        # the registered row: the same fill, stop, day-0 and walk as the minute stage's orh5 / p33_s3_t10
+        ref = {v["variant"]: v for v in rn.evaluate_candidate(c, bars, cidx, e, _mb(), list(bars.dates), len(bars) - 1)}["orh5"]
+        prim = by[("lod", cb.PRIMARY_ARM)]
+        assert prim[col["fill"]] == ref["entry"]["fill"] and prim[col["stop"]] == ref["entry"]["stop"]
+        a = ref["arms"][cb.PRIMARY_ARM]
+        assert (prim[col["status"]], prim[col["realized_r"]], prim[col["sessions_held"]]) == (a["status"], a["realized_r"], a["sessions_held"])
+        assert by[("lod", "d3_p33_t10")][col["realized_r"]] == prim[col["realized_r"]]
+        # the stop variants carry their own stop and the +2R target off it; R is measured against that stop
+        fill = ref["entry"]["fill"]
+        for sv, r in ((sv, by[(sv, "r2_p33_t10")]) for sv in cb.STOP_VARIANTS):
+            assert r[col["target"]] == pytest.approx(fill + 2.0 * (fill - r[col["stop"]]))
+        assert by[("lod_floor05", "r2_p33_t10")][col["stop"]] == pytest.approx(min(ref["entry"]["stop"], fill * (1 - 0.5 * 0.10)))
+        assert by[("level_m05", "r2_p33_t10")][col["stop"]] == pytest.approx(c["pivot"] - 0.5 * 0.10 * fill)
+        assert by[("base_low", "r2_p33_t10")][col["stop"]] == pytest.approx(float(bars.l[e - 19:e].min()))
+        assert prim[col["range_recent5"]] == pytest.approx(rn.range_recent5_at(bars, e - 1)) and prim[col["tightening_ratio"]] == 0.6
+
+    def test_a_too_wide_stop_variant_is_one_abstain_row_and_a_non_fill_writes_nothing(self):
+        bars, e = _e_bars()
+        cidx = np.arange(len(bars))
+        c = self._cand(bars, e, adr20=0.02)                   # the base low (9.9) is 4% under the fill: wider than one ADR
+        rows, tally = rn.evaluate_exits(c, bars, cidx, e, _mb())
+        col = {n: k for k, n in enumerate(rn.EXITS_COLS)}
+        ab = [r for r in rows if r[col["arm"]] == ""]
+        assert len(ab) == 1 and ab[0][col["stop_variant"]] == "base_low" and ab[0][col["abstain_reason"]] == "too_wide"
+        assert len(rows) == 4 * len(rn.EXITS_ARMS) + 1 and tally[("stop", "base_low", "too_wide")] == 1
+        rows, tally = rn.evaluate_exits(c, bars, cidx, e, None)                      # no minutes: the entry abstains
+        assert rows == [] and tally[("entry", "abstain", "no_minutes")] == 1
+
+    def test_a_wrong_pole_date_or_base_depth_is_refused(self):
+        bars, e = _e_bars()
+        cidx = np.arange(len(bars))
+        with pytest.raises(AssertionError):
+            rn.evaluate_exits(self._cand(bars, e, base_depth=0.5), bars, cidx, e, _mb())
+
+    def test_exits_population_is_first_breaks_on_the_levels(self):
+        cs = [{"retrigger": 0, "K": "tl"}, {"retrigger": 1, "K": "tl"}, {"retrigger": 0, "K": "k5"}]
+        assert rn.exits_population(cs, ("tl",)) == [cs[0]] and rn.exits_population(cs, ("tl", "k5")) == [cs[0], cs[2]]
+
+    def _data(self, tmp_path, ks, name="candidates.tsv"):
+        data, bars, e, cands = _syn_dir(tmp_path, n_cands=1)
+        cs = [self._cand(bars, e, K=k) for k in ks]
+        rn.write_tsv(data / "out" / name, cs, list(cs[0].keys()))
+        return data, bars, e, cs
+
+    def test_exits_then_report_write_only_the_new_files(self, tmp_path, capsys):
+        data, bars, e, cs = self._data(tmp_path, ("k5", "tl"))
+        small = tmp_path / "small"
+        rn.main(["exits", "--data", str(data), "--levels", "tl", "--workers", "1", "--small-out", str(small)])
+        out = capsys.readouterr().out
+        assert "DISCOVERY EXITS STAGE" in out and "levels tl" in out and "STOP VARIANTS" in out
+        names = {p.name for p in (data / "out").iterdir()}
+        assert "trades_discovery_exits_tl.tsv.gz" in names and (small / "exits_summary_tl.txt").exists()
+        assert not {"trades_discovery.tsv.gz", "entries_discovery.tsv.gz", "discovery_report.tsv"} & names    # nothing pinned
+        t = pd_read(data / "out" / "trades_discovery_exits_tl.tsv.gz")
+        assert list(t.columns) == rn.EXITS_COLS and set(t.K) == {"tl"} and len(t) == 5 * len(rn.EXITS_ARMS)
+        assert rn.main(["exits-report", "--data", str(data), "--levels", "tl", "--small-out", str(small)]) is None
+        txt = (small / "exits_report_tl.txt").read_text()
+        assert "HEADLINE" in txt and "SUBPOPULATION STOPS" in txt and "TIGHTNESS" in txt and "p33_s3_t10" in txt
+        rep = pd_read(data / "out" / "exits_report_tl.tsv")
+        assert list(rep.columns) == rn.exits_stat_cols() and (small / "exits_report_tl.tsv").exists()
+        r = rep[(rep.cell == "C1") & (rep.K == "tl") & (rep.stop_variant == "lod") & (rep.arm == cb.PRIMARY_ARM) & (rep.slice == "all")].iloc[0]
+        assert r.n == 1 and r.n_open == 0
+        assert set(rep[rep.slice == "all"].arm) == set(rn.EXITS_ARMS)
+        rn.main(["exits-report", "--data", str(data), "--levels", "tl", "--small-out", str(small)])       # deterministic
+        assert (small / "exits_report_tl.txt").read_text() == txt
+
+    def test_the_com_comb_run_reads_its_own_candidates_file(self, tmp_path, capsys):
+        data, bars, e, cs = self._data(tmp_path, ("com", "comb"), name="candidates_com_comb.tsv")
+        small = tmp_path / "small"
+        rn.main(["exits", "--data", str(data), "--keys", "com,comb", "--workers", "1", "--small-out", str(small)])
+        rn.main(["exits-report", "--data", str(data), "--keys", "com,comb", "--small-out", str(small)])
+        capsys.readouterr()
+        t = pd_read(data / "out" / "trades_discovery_exits_com_comb.tsv.gz")
+        assert set(t.K) == {"com", "comb"} and not (data / "out" / "trades_discovery_exits_tl.tsv.gz").exists()
+        assert (small / "exits_report_com_comb.txt").exists() and (data / "out" / "exits_report_com_comb.tsv").exists()
+        rep = pd_read(data / "out" / "exits_report_com_comb.tsv")
+        assert set(rep[rep.slice == "all"].K) == {"com", "comb"}
+
+    def test_the_exits_stage_never_walks_the_holdout(self, tmp_path, capsys):
+        data, bars, e, cands = _syn_dir(tmp_path, split="holdout", n_cands=4)
+        cs = [dict(c, pole_date=bars.dates[e - 20].isoformat()) for c in cands]
+        _write_cands(data / "out" / "candidates.tsv", cs)
+        rn.main(["exits", "--data", str(data), "--levels", "tl", "--workers", "1", "--small-out", str(tmp_path / "small")])
+        assert "nothing to do" in capsys.readouterr().out and not list((data / "out").glob("trades_discovery_exits*"))
+
+    def test_the_holdout_refuses_levels(self, tmp_path):
+        data = tmp_path / "data"
+        (data / "out").mkdir(parents=True)
+        bad = rn.holdout_option_problems(argparse_ns(data, levels="tl"), data)
+        assert len(bad) == 1 and "--levels tl" in bad[0]
+        with pytest.raises(SystemExit):
+            rn.main(["holdout", "--data", str(data), "--levels", "tl", "--dry-run", "--no-freeze-check"])

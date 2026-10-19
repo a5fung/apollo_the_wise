@@ -2683,3 +2683,292 @@ def test_the_htf_report_cell_uses_flag_detectors_own_geometry():
     edge = dict(f, pole_high=10.0 * _RUNUP_MIN_RATIO, base_low=_FLAG_DEPTH_MIN * 10.0 * _RUNUP_MIN_RATIO)
     assert cb.cell_flags(edge, {}, k="k5")["HTF"] is True
     assert cb.cell_flags(dict(f, pivot_k5=None), {}, k="k5")["HTF"] is False      # C0 first
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# #702 "his exit" (operator 2026-10-18): the +2R partial, the combo, the trail switches, the stop variants, day 0 on the
+# minutes. Runner-only arms (HIS_EXIT_ARMS); every registered arm keeps its path (the hash proof covers that end to end,
+# these cases cover the new branches on hand-derived paths: fill 100, stop 95 -> R = 5, target = 110).
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _his(name):
+    return cb.HIS_EXIT_ARMS[name]
+
+
+def _no_trail_n(res):
+    """A result with its `trail_n` telemetry events stripped (the speed / distance arms record the SMA they chose)."""
+    return {**res, "events": [e for e in res["events"] if e[1] != "trail_n"]}
+
+
+def _target_minutes(spec: dict):
+    """390 flat minutes at 102 (o=h=l=c: above the fill 100, under the target 110, so nothing fires by itself), `spec` =
+    {minute: (o, h, l, c)} overrides. The entry fills at minute 5."""
+    o, h, l, c = ([102.0] * 390 for _ in range(4))
+    for m, (oo, hh, ll, cc) in spec.items():
+        o[m], h[m], l[m], c[m] = oo, hh, ll, cc
+    return cb.minute_bars_from_lists(list(range(390)), o, h, l, c, [1.0] * 390)
+
+
+class TestHisExitArms:
+    def test_the_twenty_five_arms_and_the_registered_fifteen_untouched(self):
+        assert len(cb.ARMS) == 15 and len(cb.HIS_EXIT_ARMS) == 25
+        assert not set(cb.HIS_EXIT_ARMS) & set(cb.ARMS)
+        assert sorted(cb.HIS_EXIT_ARMS) == sorted(f"{t}_p33_{tr}" for t in ("r2", "d3", "d5", "c3", "c5")
+                                                  for tr in ("t10", "t20", "tspd", "td1", "td2"))
+        # d3_p33_t10 IS the registered primary under another name
+        assert dataclasses.replace(cb.ARMS[cb.PRIMARY_ARM], name="d3_p33_t10") == _his("d3_p33_t10")
+        r2 = _his("r2_p33_t10")
+        assert (r2.partial_trigger, r2.partial_r, r2.partial_session, r2.partial_frac, r2.trail_sma) == ("r_target", 2.0, None, 1 / 3, 10)
+        c5 = _his("c5_p33_t20")
+        assert (c5.partial_trigger, c5.partial_r, c5.partial_session, c5.trail_sma) == ("combo", 2.0, 5, 20)
+        assert (_his("d5_p33_tspd").trail_mode, _his("d5_p33_tspd").trail_sma) == ("speed", None)
+        assert (_his("r2_p33_td2").trail_mode, _his("r2_p33_td2").trail_dist_x) == ("distance", 2.0)
+        assert all(a.breakeven and a.trail_fill == "next_open" and not a.trail_before_partial for a in cb.HIS_EXIT_ARMS.values())
+        # every registered arm carries the defaults: the session trigger, no target, a fixed trail
+        assert all((a.partial_trigger, a.partial_r, a.trail_mode, a.trail_dist_x) == ("session", None, "fixed", None)
+                   for a in cb.ARMS.values())
+
+    def test_arm_validation(self):
+        with pytest.raises(ValueError):
+            cb.Arm("x", "qm", 1 / 3, None, 10, partial_trigger="r_target")                   # no partial_r
+        with pytest.raises(ValueError):
+            cb.Arm("x", "qm", 1 / 3, 3, 10, partial_trigger="r_target", partial_r=2.0)       # r_target with a session
+        with pytest.raises(ValueError):
+            cb.Arm("x", "qm", 1 / 3, None, 10, partial_trigger="combo", partial_r=2.0)       # combo without a session
+        with pytest.raises(ValueError):
+            cb.Arm("x", "qm", 1 / 3, 3, 10, partial_r=2.0)                                   # a target on a session arm
+        with pytest.raises(ValueError):
+            cb.Arm("x", "qm", 1 / 3, 3, 10, trail_mode="speed")                              # speed keeps trail_sma None
+        with pytest.raises(ValueError):
+            cb.Arm("x", "qm", 1 / 3, 3, None, trail_mode="distance")                         # distance needs X
+        with pytest.raises(ValueError):
+            cb.Arm("x", "qm", 1 / 3, 3, 10, trail_dist_x=1.0)                                # X without distance
+        with pytest.raises(ValueError):
+            cb.Arm("x", "qm", 1 / 3, 3, 10, partial_trigger="nope")
+
+    def test_registered_arms_never_emit_the_new_events(self):
+        rng = np.random.default_rng(702)
+        for _ in range(50):
+            n = 60
+            c = 100 * np.cumprod(1 + rng.normal(0, 0.03, n))
+            rows = list(zip(c * 0.99, c * 1.02, c * 0.97, c))
+            for a in cb.ARMS.values():
+                out = _walk(rows, a)
+                assert not any(e[1] in ("partial_r", "trail_n") for e in out["events"])
+
+
+class TestPlus2RPartial:
+    def test_touch_sells_a_third_at_the_target_and_breakeven_rests_from_the_next_session(self):
+        rows = [(101, 104, 99, 103), (104, 112, 99, 108), (107, 109, 100, 101)]
+        out = _walk(rows, _his("r2_p33_t10"))
+        # j=2: high 112 >= 110 -> 1/3 at 110 (the low 99 is under the fill but above the entry stop 95: the breakeven
+        # rests from j=3); j=3: low 100 = the breakeven stop -> the rest at 100
+        assert out["events"] == [(2, "partial_r", 110.0, pytest.approx(1 / 3)), (3, "stop", 100.0, pytest.approx(2 / 3))]
+        assert out["status"] == "stopped" and out["sessions_held"] == 3
+        assert out["realized_r"] == pytest.approx((10 / 3) / 5.0)
+
+    def test_gap_open_above_the_target_sells_at_the_open(self):
+        rows = [(112, 115, 111, 114), (113, 113, 100.5, 100.8), (101, 102, 100.5, 101.5)]
+        out = _walk(rows, _his("r2_p33_t10"))
+        # j=1: opens 112 >= 110 -> 1/3 at 112; j=2: close 100.8 < SMA10 (100 x 8, 114, 100.8 -> 101.48) -> trail, filled at
+        # j=3's open 101
+        assert out["events"] == [(1, "partial_r", 112.0, pytest.approx(1 / 3)), (3, "trail", 101.0, pytest.approx(2 / 3))]
+        assert out["status"] == "trailed" and out["realized_r"] == pytest.approx((12 / 3 + 1 * 2 / 3) / 5.0)
+
+    def test_a_bar_touching_both_the_stop_and_the_target_books_the_stop(self):
+        out = _walk([(100, 111, 94, 105), (105, 106, 104, 105)], _his("r2_p33_t10"))
+        assert out["events"] == [(1, "stop", 95.0, 1.0)] and out["realized_r"] == pytest.approx(-1.0)
+
+    def test_gap_open_above_the_target_then_the_low_through_the_old_stop_in_the_same_bar(self):
+        out = _walk([(112, 113, 94, 95), (95, 96, 94, 95)], _his("r2_p33_t10"))
+        # the open came first: 1/3 at 112, then the remaining 2/3 at the OLD stop 95 (breakeven rests from tomorrow)
+        assert out["events"] == [(1, "partial_r", 112.0, pytest.approx(1 / 3)), (1, "stop", 95.0, pytest.approx(2 / 3))]
+        assert out["status"] == "stopped" and out["realized_r"] == pytest.approx((12 / 3 - 5 * 2 / 3) / 5.0)
+
+    def test_an_r_target_arm_does_not_trail_before_its_partial(self):
+        rows = [(99.5, 100.5, 96, 97), (97, 98, 96, 97.5), (97, 98, 94, 95)]
+        # j=1 closes 97 under SMA10 (99.7): trail10_only exits at j=2's open; the +2R arm has no partial yet and holds to the stop
+        assert _walk(rows, "trail10_only")["events"][0][1] == "trail"
+        out = _walk(rows, _his("r2_p33_t10"))
+        assert out["events"] == [(3, "stop", 95.0, 1.0)] and out["status"] == "stopped"
+
+    def test_no_touch_within_the_horizon_is_censored_with_the_entry_stop_in_place(self):
+        out = _walk(_drift_rows(121, step=0.05), _his("r2_p33_t10"))           # climbs to ~106, never 110
+        assert out["status"] == "censored" and out["events"] == [(120, "mark", pytest.approx(106.0), 1.0)]
+
+    def test_combo_takes_the_session_close_when_the_target_was_not_touched_and_the_target_when_it_was(self):
+        quiet = [(101, 103, 99, 102), (102, 104, 100, 103), (103, 106, 101, 105), (104, 105, 99.5, 101), (101, 102, 100, 101)]
+        assert _walk(quiet, _his("c3_p33_t10")) == _walk(quiet, cb.PRIMARY_ARM)         # the close of session 3, as registered
+        assert _walk(quiet, _his("c3_p33_t10"))["events"][0] == (3, "partial", 105, pytest.approx(1 / 3))
+        early = [(101, 104, 99, 103), (104, 112, 103, 108), (107, 109, 100, 101)]
+        assert _walk(early, _his("c3_p33_t10")) == _walk(early, _his("r2_p33_t10"))     # +2R on session 2 came first
+        assert _walk(early, _his("c3_p33_t10"))["events"][0] == (2, "partial_r", 110.0, pytest.approx(1 / 3))
+        late = [(101, 103, 99, 102), (102, 104, 100, 103), (103, 106, 101, 105), (106, 112, 105, 111), (110, 111, 100, 101)]
+        assert _walk(late, _his("c3_p33_t10"))["events"][0] == (3, "partial", 105, pytest.approx(1 / 3))   # once only
+        assert _walk(late, _his("c5_p33_t10"))["events"][0] == (4, "partial_r", 110.0, pytest.approx(1 / 3))
+
+    def test_the_partial_session_close_under_the_fill_after_a_gap_partial_marks_be_above_close(self):
+        out = _walk([(112, 113, 98, 99), (99, 100, 98, 99)], _his("r2_p33_t10"))
+        assert out["events"][:2] == [(1, "partial_r", 112.0, pytest.approx(1 / 3)), (1, "be_above_close", 99, 0.0)]
+        # the close 99 is also under SMA10 (99.9): the trail, live from the partial session, fills at the next open 99 -
+        # the same price the breakeven stop would have taken at that open
+        assert out["events"][2] == (2, "trail", 99, pytest.approx(2 / 3)) and out["status"] == "trailed"
+
+
+class TestTrailSwitches:
+    def test_speed_switch_is_the_fixed_arm_it_resolves_to(self):
+        before = [90.0] * 10 + [100.0] * 10
+        rows = [(100, 101, 99.5, 100), (100, 101, 99.5, 100), (100, 101, 99.5, 100), (100.5, 101, 100.2, 97), (97.5, 99, 97.3, 98.5)]
+
+        def walk(arm, adr20):
+            return cb.walk_exit(fill=100.0, stop=95.0, closes_before=before, fwd=_fwd(rows), arm=_his(arm), adr20=adr20)
+        fast = walk("d3_p33_tspd", 0.06)                                       # 0.06 > 0.0479 -> the 10-day
+        slow = walk("d3_p33_tspd", 0.03)                                       # -> the 20-day
+        assert fast["events"][0] == (0, "trail_n", 10.0, 0.0) and slow["events"][0] == (0, "trail_n", 20.0, 0.0)
+        assert _no_trail_n(fast) == walk("d3_p33_t10", 0.06)
+        assert _no_trail_n(slow) == walk("d3_p33_t20", 0.03)
+        assert fast["status"] == "trailed" and slow["status"] == "stopped"         # the two averages disagree on this path
+        assert cb.TRAIL_SPEED_ADR_CUT == 0.0479
+
+    def test_distance_switch_reads_the_partial_close_against_its_sma10(self):
+        rows = [(101, 103, 100, 102), (102, 104, 101, 103), (103, 110, 102, 108), (108, 109, 100.5, 101), (101, 102, 100.5, 101.5)]
+        # at the session-3 partial: SMA10 = (100 x 7 + 102 + 103 + 108) / 10 = 101.3; close 108 > 101.3 x 1.05 (X = 1) but not
+        # > 101.3 x 1.10 (X = 2)
+        d1, d2 = _walk(rows, _his("d3_p33_td1")), _walk(rows, _his("d3_p33_td2"))
+        assert (3, "trail_n", 10.0, 0.0) in d1["events"] and (3, "trail_n", 20.0, 0.0) in d2["events"]
+        assert _no_trail_n(d1) == _walk(rows, _his("d3_p33_t10")) and _no_trail_n(d2) == _walk(rows, _his("d3_p33_t20"))
+        assert d1 != d2                                                       # the choice matters on this path
+
+    def test_distance_switch_on_a_day0_partial_reads_es_close(self):
+        before = [100.0] * 29 + [109.0]                                         # E closed at 109: SMA10 through E = 100.9
+        rows = [(109, 110, 100.5, 101), (101, 102, 100.5, 101.5)]
+        out = cb.walk_exit(fill=100.0, stop=95.0, closes_before=before, fwd=_fwd(rows), arm=_his("r2_p33_td1"), adr20=ADR,
+                           day0_partial_px=110.0)
+        assert out["events"][:2] == [(0, "partial_r", 110.0, pytest.approx(1 / 3)), (0, "trail_n", 10.0, 0.0)]
+        out2 = cb.walk_exit(fill=100.0, stop=95.0, closes_before=before, fwd=_fwd(rows), arm=_his("r2_p33_td2"), adr20=ADR,
+                            day0_partial_px=110.0)
+        assert out2["events"][1] == (0, "trail_n", 20.0, 0.0)
+
+    def test_day0_partial_px_needs_a_target_arm(self):
+        with pytest.raises(ValueError):
+            _walk(_drift_rows(5), cb.PRIMARY_ARM, day0_partial_px=110.0)
+
+
+class TestDay0Target:
+    def _d0(self, spec, **kw):
+        return cb.day0_walk_target(_target_minutes(spec), fill=100.0, fill_minute=5, stop=95.0, target=110.0,
+                                   partial_frac=1 / 3, **kw)
+
+    def test_touch_after_the_fill_sells_at_the_target_then_the_breakeven_stop_ends_the_day(self):
+        d0 = self._d0({10: (105, 111, 104, 108), 20: (101, 102, 99.5, 100)})
+        assert d0 == {"stopped": True, "exit_price": 100.0, "exit_minute": 20, "partial_price": 110.0, "partial_minute": 10,
+                      "stop_in_force": 100.0}
+
+    def test_gap_open_minute_above_the_target_sells_at_its_open(self):
+        d0 = self._d0({10: (112, 113, 111, 112)})
+        assert (d0["partial_price"], d0["partial_minute"], d0["stopped"]) == (112.0, 10, False)
+
+    def test_a_minute_touching_both_books_the_stop_and_no_partial(self):
+        d0 = self._d0({10: (100, 111, 94, 105)})
+        assert d0 == {"stopped": True, "exit_price": 95.0, "exit_minute": 10, "partial_price": None, "partial_minute": None,
+                      "stop_in_force": 95.0}
+
+    def test_a_stop_before_any_touch_equals_the_plain_day0_walk(self):
+        spec = {8: (96, 97, 94.5, 95), 12: (105, 111, 104, 108)}
+        d0 = self._d0(spec)
+        plain = cb.day0_walk(_target_minutes(spec), fill_minute=5, stop=95.0)
+        assert (d0["stopped"], d0["exit_price"], d0["exit_minute"]) == (plain["stopped"], plain["exit_price"], plain["exit_minute"])
+        assert d0["partial_price"] is None
+
+    def test_breakeven_rests_from_the_next_minute_not_the_partial_minute(self):
+        d0 = self._d0({10: (105, 111, 99.5, 108), 11: (101, 102, 100, 101)})
+        assert (d0["partial_minute"], d0["exit_minute"], d0["exit_price"]) == (10, 11, 100.0)
+        assert self._d0({10: (105, 111, 99.5, 108)})["stopped"] is False
+        assert self._d0({10: (105, 111, 99.5, 108), 11: (101, 102, 99.7, 101)}, breakeven=False)["stopped"] is False
+
+    def test_nothing_touched(self):
+        assert self._d0({}) == dict(cb._NO_DAY0_TARGET)
+
+    def test_minutes_before_the_fill_are_ignored_and_bad_inputs_raise(self):
+        assert self._d0({3: (112, 113, 94, 95)})["stopped"] is False
+        with pytest.raises(ValueError):
+            cb.day0_walk_target(_target_minutes({}), fill=100.0, fill_minute=5, stop=95.0, target=99.0, partial_frac=1 / 3)
+
+    def test_day0_target_to_outcome(self):
+        entry = {"fill": 100.0, "stop": 95.0, "fill_minute": 5}
+        d0 = {"stopped": True, "exit_price": 100.0, "exit_minute": 20, "partial_price": 110.0, "partial_minute": 10,
+              "stop_in_force": 100.0}
+        out = cb.day0_target_to_outcome(entry, d0, ADR, 1 / 3)
+        assert out["status"] == "stopped_day0" and out["sessions_held"] == 0
+        assert out["events"] == [(0, "partial_r", 110.0, pytest.approx(1 / 3)), (0, "day0_stop", 100.0, pytest.approx(2 / 3))]
+        assert out["realized_r"] == pytest.approx((10 / 3) / 5.0) and out["pnl_adr"] == pytest.approx((10 / 3) / (100.0 * ADR))
+        gap = cb.day0_target_to_outcome(entry, dict(d0, exit_price=98.0), ADR, 1 / 3)
+        assert gap["events"][1][1] == "day0_gap"
+        plain = {"stopped": True, "exit_price": 94.0, "exit_minute": 8, "partial_price": None, "partial_minute": None,
+                 "stop_in_force": 95.0}
+        same = cb.day0_target_to_outcome(entry, plain, ADR, 1 / 3)
+        ref = cb.day0_result_to_outcome({"status": "filled", "fill": 100.0, "stop": 95.0,
+                                         "day0": {"stopped": True, "exit_price": 94.0, "exit_minute": 8}}, ADR)
+        assert same == ref
+        with pytest.raises(ValueError):
+            cb.day0_target_to_outcome(entry, dict(d0, stopped=False), ADR, 1 / 3)
+
+
+class TestWalkHisArms:
+    def _entry(self, minutes):
+        return {"status": "filled", "reason": None, "fill": 100.0, "stop": 95.0, "fill_minute": 5, "width_pct": 0.05,
+                "level": 100.0, "day0": cb.day0_walk(minutes, fill_minute=5, stop=95.0)}
+
+    def test_session_arms_equal_walk_arms_and_a_day0_touch_feeds_the_target_arms(self):
+        mins = _target_minutes({10: (105, 111, 104, 108)})                   # +2R touched on day 0, nothing stops it
+        entry = self._entry(mins)
+        rows = [(107, 109, 99, 101), (101, 102, 100, 101)]
+        arms = {cb.PRIMARY_ARM: cb.ARMS[cb.PRIMARY_ARM], "d3_p33_t10": _his("d3_p33_t10"), "r2_p33_t10": _his("r2_p33_t10")}
+        out = cb.walk_his_arms(entry, closes_before=BEFORE, fwd=_fwd(rows), adr20=ADR, minutes=mins, arms=arms)
+        ref = cb.walk_arms(entry, closes_before=BEFORE, fwd=_fwd(rows), adr20=ADR, arms={cb.PRIMARY_ARM: cb.ARMS[cb.PRIMARY_ARM]})
+        assert out[cb.PRIMARY_ARM] == ref[cb.PRIMARY_ARM] == out["d3_p33_t10"]
+        r2 = out["r2_p33_t10"]
+        # the day-0 partial is booked at session 0; the breakeven stop (100) takes the rest at session 1's low 99
+        assert r2["events"] == [(0, "partial_r", 110.0, pytest.approx(1 / 3)), (1, "stop", 100.0, pytest.approx(2 / 3))]
+        assert r2["realized_r"] == pytest.approx((10 / 3) / 5.0)
+
+    def test_a_day0_breakeven_stop_after_the_touch_is_booked_once_as_stopped_day0(self):
+        mins = _target_minutes({10: (105, 111, 104, 108), 20: (101, 102, 99.5, 100)})
+        out = cb.walk_his_arms(self._entry(mins), closes_before=BEFORE, fwd=_fwd(_drift_rows(5)), adr20=ADR, minutes=mins,
+                               arms={"r2_p33_t10": _his("r2_p33_t10"), "c3_p33_t20": _his("c3_p33_t20")})
+        assert all(r["status"] == "stopped_day0" and r["realized_r"] == pytest.approx((10 / 3) / 5.0) for r in out.values())
+
+    def test_a_plain_day0_stop_is_every_arms_outcome_and_minutes_are_required_for_target_arms(self):
+        mins = _target_minutes({8: (96, 97, 94.5, 95)})
+        entry = self._entry(mins)
+        assert entry["day0"]["stopped"]
+        out = cb.walk_his_arms(entry, closes_before=BEFORE, fwd=_fwd(_drift_rows(5)), adr20=ADR, minutes=mins)
+        assert set(out) == set(cb.HIS_EXIT_ARMS) and all(r["status"] == "stopped_day0" and r["realized_r"] == pytest.approx(-1.0)
+                                                         for r in out.values())
+        with pytest.raises(ValueError):
+            cb.walk_his_arms(self._entry(_target_minutes({})), closes_before=BEFORE, fwd=_fwd(_drift_rows(5)), adr20=ADR, minutes=None)
+
+    def test_no_day0_touch_is_the_plain_walk(self):
+        mins = _target_minutes({})
+        entry = self._entry(mins)
+        rows = [(104, 112, 103, 108), (107, 109, 100, 101)]
+        out = cb.walk_his_arms(entry, closes_before=BEFORE, fwd=_fwd(rows), adr20=ADR, minutes=mins, arms={"r2_p33_t10": _his("r2_p33_t10")})
+        assert out["r2_p33_t10"] == _walk(rows, _his("r2_p33_t10"))
+
+
+class TestStopVariants:
+    def test_the_five_readings(self):
+        sv = cb.stop_variants(fill=100.0, lod_stop=98.0, pivot=99.5, base_low=90.0, adr20=0.05)
+        assert list(sv) == list(cb.STOP_VARIANTS) == ["lod", "lod_cap05", "lod_floor05", "level_m05", "base_low"]
+        assert sv["lod"] == {"stop": 98.0, "reason": None, "width_pct": pytest.approx(0.02)}
+        assert sv["lod_cap05"]["stop"] == 98.0                                   # max(98, 97.5): the cap does not bind
+        assert sv["lod_floor05"]["stop"] == 97.5                                 # min(98, 97.5): the floor widens it
+        assert sv["level_m05"]["stop"] == pytest.approx(97.0)                    # 99.5 - 0.5 x 0.05 x 100
+        assert sv["base_low"] == {"stop": 90.0, "reason": "too_wide", "width_pct": pytest.approx(0.10)}
+        tight = cb.stop_variants(fill=100.0, lod_stop=99.9, pivot=99.5, base_low=96.0, adr20=0.05)
+        assert tight["lod_cap05"]["stop"] == 99.9 and tight["lod_floor05"]["stop"] == 97.5 and tight["base_low"]["reason"] is None
+        wide = cb.stop_variants(fill=100.0, lod_stop=96.0, pivot=99.5, base_low=90.0, adr20=0.05)
+        assert wide["lod_cap05"]["stop"] == 97.5 and wide["lod_floor05"]["stop"] == 96.0
+        above = cb.stop_variants(fill=100.0, lod_stop=98.0, pivot=103.0, base_low=90.0, adr20=0.05)
+        assert above["level_m05"]["reason"] == "stop_at_or_above_fill"
+        with pytest.raises(ValueError):
+            cb.stop_variants(fill=100.0, lod_stop=98.0, pivot=99.5, base_low=90.0, adr20=0.0)

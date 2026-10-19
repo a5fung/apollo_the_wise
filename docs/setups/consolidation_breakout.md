@@ -45,6 +45,8 @@ approved plan, not by the article · **T** = telemetry only, never gates.
 | Pivot (K) | `k5` / `k10` / `full` = highest high of the last 5 / 10 / all base sessions (HORIZONTAL levels); `tl` = the down-sloping trendline, projected one session ahead | k5 / k10 / full: **B** (the primary is picked in discovery, then frozen). `tl`: **S** his 2026-10-17 note *"a flag with a down sloping trend line and a breakout of that trend line"* — how the line is anchored and drawn is the #702 P1c reading of that sentence, tested BESIDE the horizontal levels | `PIVOT_KEYS`, `_down_trendline` |
 | Pivot `com` (P4b, runner-only) | the CENTER-OF-MASS level = **the median of the base's daily highs over (P, D]** (bars ≤ D; `pivot_com_date` = the base bar nearest it); a breakout is `high(E) > pivot_com(D)`, same keys and cells as the four above. NOT in `PIVOT_KEYS` / `KS`: the shadow never computes it and no pinned backtest output carries it; the runner computes it on `--keys com` into `*_com` files | **S** his 2026-10-18 rule *"he finds where the center of mass is in the consolidation and ignore the outliers if it's just a short period, meaning a 1-3 bars spike then drop back to the basing area"*; WHICH reading of that sentence (`COM_VARIANT` = `quantile`, `COM_QUANTILE` = 0.5) is **B**, chosen on the plateau of the P4b label read (43 of his 58 drawn lines within 0.5 ADR vs 23 for the best existing level; `docs/analysis/cb_preregistration_2026-10-18.md` §P4b); the spike filter (`COM_MAX_RUN` = 3 **S** his "1-3 bars"; `COM_SPIKE_ADR` = 0.5, `COM_FALLING_SLOPE` = 0.2%/session **B**, the runner-up reading's values) serves the five other readings and is telemetry under the chosen one | `EXTRA_PIVOT_KEYS`, `com_level`, `spike_mask` |
 | Pivot `comb` (P4b step 6b, runner-only) | `com` read only on the nights the stock CLOSED AT OR BELOW the level: `pivot_comb` = `pivot_com` (same level, same date fields) and **C0 additionally requires `close(D) <= pivot_comb(D)`** (equality counts; every cell inherits it). A night that closed above the line gets NO `comb` candidate (else its first break would consume the base's one trade under the spec key). Not in `PIVOT_KEYS` / `KS`; the runner computes it on `--keys comb` (or `--keys com,comb`, one pass, outputs suffixed `_com_comb`) | a reading of `com`, not a new level: no threshold of its own (Gate 5 registers nothing). WHY: `com` sits under the watch night's close on 38% / 41% of nights, where a "breakout" is any up day; the main loop (2026-10-18) made `comb` the PRIMARY `com` reading and `com` the one reported beside it | `EXTRA_PIVOT_KEYS`, `CLOSED_BELOW_KEYS`, `comb_fields`, `cell_flags` |
+| His exit (runner-only arms) | `HIS_EXIT_ARMS`, 25 arms `<trigger>_p33_<trail>`, walked by the runner's `exits` stage BESIDE the 15 registered arms, never by the shadow: partial trigger `r2` = sell 1/3 at fill + 2 × (fill − stop) (a session whose high reaches it sells AT it, one that OPENS above it sells at the open; on the breakout day the minutes after the fill are walked, `day0_walk_target`), `d3` / `d5` = the close of session 3 / 5 (the registered timing), `c3` / `c5` = whichever comes first; then the stop moves to breakeven (resting from the next bar) and the trail arms (first close under the average, filled at the next open): `t10` / `t20` fixed, `tspd` = the 10-day when ADR20(D) > 0.0479 (his "faster stocks"; the top tercile of the discovery C0 ADR distribution) else the 20-day, `td1` / `td2` = at the partial, the 10-day when the close stands more than 1 / 2 ADR20 above its own 10-day, else the 20-day. A daily bar touching both the stop and the target books the STOP (pessimistic) unless it OPENED above the target. `d3_p33_t10` IS `p33_s3_t10` (tested equal) | **S** his 2026-10-18 correction *"sell 1/3 at 2R then move to break even stop then trail rest at break of 10 or 20d ... 10d for faster stocks and 20d for slower stocks, also depend how far the are from 10/20"* and *"The day thing is also correct, it may be a combo and depends"*; the +2R (`PARTIAL_TARGET_R`) is S; WHICH reading of "faster" (`TRAIL_SPEED_ADR_CUT`) and of "how far" (`TRAIL_DISTANCE_X`) is **B** — two readings of one sentence, both reported, neither chosen; exit parameters are not cohort-shaping and are not in the provenance registry (as `FIXED_TARGET_R`) | `HIS_EXIT_ARMS`, `walk_exit`, `day0_walk_target`, `walk_his_arms`, `PARTIAL_TARGET_R`, `TRAIL_SPEED_ADR_CUT`, `TRAIL_DISTANCE_X` |
+| Stop variants (runner-only) | five readings of the stop, every arm walked under each, REPORTED alternatives: `lod` = the registered low of the day at the fill; `lod_cap05` = max(lod, fill − ½ ADR); `lod_floor05` = min(lod, fill − ½ ADR) (the brief's "floored at 0.5 ADR below the fill" read as a price floor and as a width floor — both run, neither chosen); `level_m05` = the breakout level (the pivot K(D)) − ½ ADR; `base_low` = the base's low. ½ ADR = 0.5 × ADR20 × the fill; each skipped as `too_wide` beyond one ADR20 (the registered rule); R = fill − that stop, so R is not comparable across variants (the read ranks on P&L in ADR units, and a variant that abstains on most trades is compared on its own trades) | the stop is **his** (the article's: *"Stop is always lows of the day"*); the variants are the 2026-10-18 brief's and `STOP_HALF_ADR` is **B** | `stop_variants`, `STOP_VARIANTS`, `STOP_HALF_ADR` |
 | MA surfing | close ≥ SMA50; close ≥ 0.98 × SMA20; SMA50 rising over 10 sessions | **S** *"surfs the rising 10- and 20-day and sometimes the 50-day"* · **R** `anticipation._MA_NEAR_PCT` · 10-session slope **P** | `explain_watch`, `sma20_ok`, `sma50_rising` |
 | Higher lows | lowest low of the last 5 sessions > the base low | **S** *"higher lows"*; the 5-session window is **B** | `higher_lows`, `RECENT_WINDOW` |
 | Tightening | mean daily range of the last 5 sessions ÷ the first 5 base sessions ≤ 0.75 | **S** *"tightening range"* · **R** `flag_detector._RANGE_CONTRACTION_MAX` | `tightening_ok` |
@@ -88,6 +90,10 @@ C6 (C1 + group ≥ 80) · C7 (SPY + QQQ above their 50-day instead of the 10/20 
   A trail signal fills at the NEXT OPEN (his 2026-09-29 execution ruling). Horizon 120 sessions, then marked and counted censored.
 - **Mature** = a terminal exit, or the 120-session horizon reached with its next open behind it; anything else is an OPEN MARK,
   recorded and never in a decisive number.
+- **His exit (runner-only; 2026-10-18):** the 25 `HIS_EXIT_ARMS` × the five `STOP_VARIANTS` (definition rows above), walked by
+  `runner.py exits` on the DISCOVERY first breaks at ORH5 into `trades_discovery_exits_<levels>.tsv.gz` and read by `exits-report`
+  into `exits_report_<levels>.{tsv,txt}` — new files beside the pinned ones; the shadow walks `cb.ARMS` only. The read:
+  `docs/analysis/cb_his_exit_2026-10-18.md`.
 
 ## The forward shadow — what runs, nightly at 17:48 ET (mon–fri)
 
@@ -232,6 +238,39 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 - The minute feed (the row's `feed` column) and thin-SIC effects above bias the first weeks; the read states them.
 
 ## Change log
+
+### 2026-10-18 — #702 his exit: the +2R / day / combo partial, the 10- or 20-day trail switches and five stop variants, read on 2022–24 — runner-only, no pinned byte moved
+
+**Trigger**: his correction of the sell rule (`operator_shared_notes.md` 2026-10-18): the first third goes at +2R, then breakeven,
+then the 10-day (faster stocks) or 20-day (slower; "also depend how far they are from 10/20") trail — and *"The day thing is also
+correct, it may be a combo and depends"*; plus his A+ question (tightness before the breakout) and the stop variants of the brief.
+
+**What**: (1) module (additive): `PARTIAL_TARGET_R`, `PARTIAL_TRIGGERS`, `TRAIL_MODES`, `TRAIL_SPEED_ADR_CUT`, `TRAIL_DISTANCE_X`,
+`STOP_HALF_ADR`, `STOP_VARIANTS`; four `Arm` fields defaulting to the registered behaviour (`partial_trigger`, `partial_r`,
+`trail_mode`, `trail_dist_x`, validated); guarded branches in `walk_exit` (the +R target: a gap open above it at the open, a high
+at it AT it, both-touched books the stop; the speed / distance SMA choice; `day0_partial_px`); `day0_walk_target`,
+`day0_target_to_outcome`, `walk_his_arms`, `stop_variants`, `HIS_EXIT_ARMS` (25). `ARMS` is still the 15 the shadow iterates.
+(2) runner: `read_candidates(extra_floats=)`, the `exits` / `exits-report` stages, `--levels` (the holdout REFUSES it); discovery
+split hard-coded; new files only. (3) tests: 28 module cases (the touch, the gap-through, both-touched, the combo, the no-trail-
+before-the-partial, both switches, day 0 on the minutes, the stop variants, `d3_p33_t10 == p33_s3_t10`, the registered arms never
+emit the new events) + 12 runner cases (the stage end to end, the registered row equals the minute stage's, holdout refusal).
+(4) the read: `docs/analysis/cb_his_exit_2026-10-18.md`.
+
+**Result (discovery, ORH5, spec key)**: his exit reads a little less bad than the article's day-3 partial on C0, inside the noise
+(`tl` n = 8,985: −0.070 vs −0.087 ADR per trade for the best same-population combo, `c3_p33_t20` on the half-ADR-capped day-low
+stop; interval [−0.29, −0.05]); the +2R partial lowers the ≥ 5R share (2.7% vs 3.6%) and raises the win rate (29% vs 24%); on C1
+`tl` (79) it reads +0.32R vs −0.05R with an interval spanning zero, and worse on `com` / `comb` C1; the wider stops do not help and
+the base-low stop is a tight-base subpopulation (755 of 8,989); the tightest fifth of bases is still the worst fifth under his
+exit. **Nothing is decided**: the primary stays `p33_s3_t10` on the low-of-day stop; the grid is a reported alternative.
+
+**Anticipated effect**: none in production — the shadow walks `cb.ARMS` only; no table, job or Telegram changes. Byte-identical
+proof: `daily | minute | step0-entries | report` on the default keys re-run into a scratch dir before and after the change, all
+seven content hashes equal to the pinned set; every existing `*_com_comb` file in `DATA/out/` hashes identically. **Freeze
+consequence**: the module and runner pins are stale by bytes (the state declared since P4b step 6); `holdout` refuses until the
+main loop re-pins.
+
+**Reversion-flag**: NEW (additive; no existing level, cell, entry, stop or exit moved). Reverting = drop `HIS_EXIT_ARMS` /
+`stop_variants` and the two stages. **Status**: built on a worktree branch; the read is done; no holdout row opened.
 
 ### 2026-10-18 — #702 P4b step 6b: `comb` (`com`, closed at or below the line the night before) is the primary `com` reading, plus the per-regime table — runner-only, no pinned byte moved
 
