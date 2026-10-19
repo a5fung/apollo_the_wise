@@ -56,7 +56,7 @@ def main():
         ax.tick_params(axis="y", colors="white"); ax.yaxis.tick_right()
         ax.set_title(f"#{c['n']}  {c['ticker']}  our daily bars, as shown on {c['screen']}", color="white")
         p = os.path.join(a.out, f"_bars_{c['n']}.png"); fig.savefig(p, facecolor="black", bbox_inches="tight"); plt.close(fig)
-        frame = Image.open(f"{QM}/vision/frames/{c['frame_id']}.png").convert("RGB")
+        frame = Image.open(c.get("frame_path") or f"{QM}/vision/frames/{c['frame_id']}.png").convert("RGB")
         left = frame.crop((0, 55, 1000, 1000)) if c.get("daily_panel", "left") == "left" else frame.resize((1280, 720))
         bars = Image.open(p).convert("RGB")
         h = max(left.height, bars.height)
