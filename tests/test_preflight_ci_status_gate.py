@@ -39,11 +39,17 @@ _spec.loader.exec_module(gate)
 NOW = datetime(2026, 10, 14, 16, 0, tzinfo=timezone.utc)
 
 
-def _write(d: Path, job: str, status: str, age_days: float, detail: str = "d") -> Path:
+def _write_real_now(d: Path, job: str, status: str, age_days: float, detail: str = "d") -> Path:
+    """For the DRY-RUN deploy tests only: the shell gate reads the status against the REAL clock, so a fixture dated off
+    the fixed NOW turns stale a week after NOW and the "fresh red" test starts failing on the calendar (2026-10-19)."""
+    return _write(d, job, status, age_days, detail, now=datetime.now(timezone.utc))
+
+
+def _write(d: Path, job: str, status: str, age_days: float, detail: str = "d", now: datetime = NOW) -> Path:
     d.mkdir(parents=True, exist_ok=True)
     p = d / f"{job}.json"
     p.write_text(json.dumps({"job": job, "status": status,
-                             "asof": (NOW - timedelta(days=age_days)).isoformat(), "detail": detail}))
+                             "asof": (now - timedelta(days=age_days)).isoformat(), "detail": detail}))
     return p
 
 
@@ -291,7 +297,7 @@ def _dry_run(tmp_path: Path, scope: str, *, override: str | None = None,
 def test_dry_run_deploy_a_fresh_red_exits_21_for_the_trading_scopes(tmp_path, scope):
     # source-pin-ok: deploy.sh is shell; the only way to exercise the gate's WIRING (exit code,
     # ordering before the build, the mapped block message) is to run the extracted block.
-    _write(tmp_path / "ci", "selection_replay", "red", 2, "live regressed")
+    _write_real_now(tmp_path / "ci", "selection_replay", "red", 2, "live regressed")
     r = _dry_run(tmp_path, scope)
     assert r.returncode == 21, r.stdout + r.stderr
     assert "DEPLOY BLOCKED" in r.stdout and "REACHED_BUILD" not in r.stdout
@@ -300,7 +306,7 @@ def test_dry_run_deploy_a_fresh_red_exits_21_for_the_trading_scopes(tmp_path, sc
 
 def test_dry_run_deploy_a_fresh_red_does_not_block_orchestrator(tmp_path):
     # source-pin-ok: same wiring check as above, the M4f negative half, run out of the real block.
-    _write(tmp_path / "ci", "selection_replay", "red", 2)
+    _write_real_now(tmp_path / "ci", "selection_replay", "red", 2)
     r = _dry_run(tmp_path, "orchestrator")
     assert r.returncode == 0 and "REACHED_BUILD" in r.stdout, r.stdout + r.stderr
     assert "never blocked" in r.stdout
@@ -311,11 +317,11 @@ def test_dry_run_deploy_warn_states_reach_the_build(tmp_path, fixture):
     # source-pin-ok: wiring check — each WARN state must pass THROUGH the real shell block.
     ci = tmp_path / "ci"
     if fixture == "stale-red":
-        _write(ci, "selection_replay", "red", 8)
+        _write_real_now(ci, "selection_replay", "red", 8)
     elif fixture == "stale-green":
-        _write(ci, "selection_replay", "green", 8)
+        _write_real_now(ci, "selection_replay", "green", 8)
     elif fixture == "green":
-        _write(ci, "selection_replay", "green", 1)
+        _write_real_now(ci, "selection_replay", "green", 1)
     elif fixture == "unreadable":
         ci.mkdir(); (ci / "selection_replay.json").write_text("{broken")
     r = _dry_run(tmp_path, "market-agent")
