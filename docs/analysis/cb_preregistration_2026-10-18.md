@@ -423,6 +423,157 @@ One paragraph per deciding cell, C1 first, in plain words, every number with its
   at −0.05R on 79 trades, so this is single-block evidence from one regime. A paper lane is proposed [build list];
   each piece of its order path needs your sign-off; its forward read decides whether it stays."
 
+## P4b. The CENTER-OF-MASS breakout level `com` — registered 2026-10-18, BEFORE its discovery re-read and before any holdout read
+
+**What this section is.** His 2026-10-18 rule for where the line goes (verbatim, `operator_shared_notes.md` "his rule for
+where the line goes"): *"he finds where the center of mass is in the consolidation and ignore the outliers if it's just a
+short period, meaning a 1-3 bars spike then drop back to the basing area"* — *"not just wick ... he ignore some outlier
+parts of a daily bar"*; earlier the same day: tight and flat → the base high, wide then tightening → the flag line, *"it's
+more art than science"*, *"we should test all combinations"*. Six computable readings of that sentence were scored against
+his 58 drawn lines (the P4b step-5 labels), one was chosen on a plateau, and it is registered here as a FIFTH breakout
+level `com` — an ADDITIVE key the runner computes only on request (`--keys com`), beside the four registered levels, never
+instead of them. **This section fixes the definition before a single `com` outcome exists:** the `com` discovery re-read
+and its holdout read come AFTER the main loop fetches the minutes its breakout days need. Nothing in §0–§11 changes; the
+primary triple of the holdout stays `tl` / ORH5 / low-of-day stop / `p33_s3_t10` / spec key.
+
+**Consequence for the freeze record, stated first.** This step edits the pinned module (`com_level` is additive; the
+existing `explain_watch` return and the four levels are untouched), the pinned runner (`--keys`, suffixed outputs) and this
+document's body. The byte-identical proof below shows the registered outputs are unchanged, but `freeze_check` compares
+BYTES: the `module`, `runner` and `doc body` pins in §Freeze record are stale as of the commit that adds this section, and
+`holdout` refuses until `holdout --print-pins` is re-taken — which is the main loop's step, after the `com` minute fetch
+(the fetch changes the `minutes (tree)` pin as well, so one re-pin covers both). The re-pin is a mechanical act on
+unchanged artefacts: no holdout outcome has been opened.
+
+### P4b.1 Population and method (the label read)
+
+- **Population:** the 58 of 60 labelled bases that carry a top or level line he drew on stream (`labels_p4b.tsv`, step 5,
+  used as given): bar_verified n = 48, eyeball_confirmed n = 10 (the two sources are different populations — the bars
+  check rejects a line drawn THROUGH an ignored wick, so bar_verified leans to wick-touching lines and eyeball_confirmed
+  holds the wick-ignored ones — and they are reported separately, never pooled away); his line flat n = 35, falling n = 23
+  (0 rising). Screens 2019–2023, 56 of 58 in 2020–21: **one bull era, the era the rule was fitted on.** None is in the
+  2025–26 holdout. SPOT 2020-08-17 (p4b_018) is kept and flagged: his correction says his real line is a little higher
+  than the read one.
+- **Comparison:** at the last C0 watch night ≤ the screen date whose base matches (step 5's night), on the bars the frozen
+  module ran on; every reading is computed from bars ≤ that night (no look-ahead), by the module's own `cb.com_level`
+  (the scorer, `scripts/probes/_qm_streams/p4b_com_rule.py`, re-implements no level and asserts the module reproduces
+  step 5's `pivot_full` / `pivot_tl` / ADR20 on all 58 before scoring).
+- **Score:** err = (rule level − his line) / pivot_full / ADR20 at the comparison session — step 5's unit, positive = the
+  rule sits ABOVE his line; a reading with no level that night is a miss. Reported per source and per slope class: median
+  |err|, median err (the bias), share within 0.25 / 0.5 / 1.0 ADR, share of nights the level sits under the night's close.
+- **The grid (every cell is a call into `cb.com_level`):** spike run length L ∈ {1, 2, 3} (his "1-3 bars"), spike height T
+  ∈ {0.5, 0.75, 1, 1.5, 2, ∞ = no filter} ADR20 above the base's typical high (the median high), quantile q ∈ {0.3 … 0.95},
+  character threshold s ∈ {0.05 … 0.5}% of the anchor high per session. Families: `flat_high` (the highest high after the
+  spike runs are ignored), `flat_close` (the highest close of the kept bars), `tl_filtered` (`pivot_tl` on the kept bars),
+  `switch_high` / `switch_close` (his character switch: the filtered line when it falls faster than s, else the flat top),
+  `quantile` (the q-quantile of all base highs — "center of mass" read directly). 262 cells; T = ∞ reproduces the existing
+  levels exactly (asserted). A spike run must END before the watch night to be ignored (it has not "dropped back"
+  otherwise) and may be the pole bar itself.
+- **The pick rule, written before the grid ran** (in the scorer's docstring; ADR 0023 — a plateau, never a point): M =
+  the share of the 58 within 0.5 ADR; SE = the bootstrap SD of M at the best cell (2,000 resamples of the bases, seed 702);
+  plateau = M ≥ M_best − SE; excluded first: a cell whose level sits under close(D) on more than half of the 58 nights (a
+  "breakout" over a level price is already above is any up-day); choice = the simplest family with ≥ 2 adjacent plateau
+  cells, at the centre of its plateau region (ties → the smaller value, then the lower median |err|); the eyeball stratum
+  (n = 10) flags, never vetoes. **Grid extension, declared:** the first run's q grid was {0.5 … 0.95} (the brief's "a
+  HIGH quantile") and its best cell sat on the grid's edge (q = 0.5: M 0.741; q = 0.6: 0.655), so the plateau could not be
+  read; q was extended down to 0.3 and the run repeated with the rule unchanged (both runs' outputs are in the commit).
+
+### P4b.2 Result — the chosen reading and the plateau
+
+| reading | stratum | n | median \|err\| ADR | bias ADR | within 0.25 | within 0.5 | within 1.0 | level < close(D) |
+|---|---|---|---|---|---|---|---|---|
+| **`quantile` q = 0.5 (the median base high) — CHOSEN** | all | 58 | 0.27 | +0.01 | 48% (28) | **74% (43)** | 83% (48) | 50% (29) |
+| | bar_verified | 48 | 0.30 | −0.00 | 44% (21) | 73% (35) | 79% (38) | 54% (26) |
+| | eyeball_confirmed | 10 | 0.12 | +0.02 | 70% (7) | 80% (8) | 100% (10) | 30% (3) |
+| | his line flat | 35 | 0.27 | −0.10 | 46% (16) | 74% (26) | 80% (28) | 43% (15) |
+| | his line falling | 23 | 0.23 | +0.15 | 52% (12) | 74% (17) | 87% (20) | 61% (14) |
+| | all but SPOT | 57 | 0.27 | 0.00 | 49% (28) | 75% (43) | 82% (47) | 51% (29) |
+| `pivot_k5` — the best EXISTING level on M | all | 58 | 0.63 | +0.58 | 16% (9) | 40% (23) | 72% (42) | 0% (0) |
+| | bar_verified | 48 | 0.66 | +0.61 | 10% (5) | 35% (17) | 69% (33) | 0% |
+| | eyeball_confirmed | 10 | 0.37 | +0.36 | 40% (4) | 60% (6) | 90% (9) | 0% |
+| | flat / falling | 35 / 23 | 0.64 / 0.63 | +0.52 / +0.59 | 17% / 13% | 40% (14) / 39% (9) | 71% / 74% | 0% |
+| `pivot_tl` — the registered primary | all | 58 (55 with a line) | 0.68 | +0.58 | 21% (12) | 38% (22) | 71% (41) | 10% (6) |
+| | bar_verified / eyeball | 48 / 10 | 0.72 / 0.38 | +0.59 / +0.10 | 17% / 40% | 33% (16) / 60% (6) | 65% / 100% | 10% / 10% |
+| | flat / falling | 35 / 23 | 0.71 / 0.57 | +0.59 / +0.57 | 20% / 22% | 34% (12) / 43% (10) | 66% / 78% | 6% / 17% |
+| `high_close` / `pivot_k10` / `high_body` / `high_2nd` / `pivot_full` | all | 58 | 0.88 / 0.85 / 1.24 / 1.14 / 1.57 | all positive | 17 / 5 / 16 / 9 / 2% | 28 / 19 / 17 / 12 / 7% | 59 / 60 / 36 / 41 / 24% | 0% |
+| `switch_close` L = 3, T = 0.5, s = 0.1–0.3% — the best non-quantile reading (the runner-up) | all | 58 | 0.44 | +0.35 | 29% (17) | 53% (31) | 83% (48) | 7% (4) |
+| | bar_verified / eyeball | 48 / 10 | 0.43 / 0.48 | +0.36 / +0.21 | 29% / 30% | 54% (26) / 50% (5) | 79% / 100% | 6% / 10% |
+| `flat_high` (the literal "ignore 1–3 bar spikes, take the top"), best cell L = 3, T = 0.5 | all | 58 | 1.24 | +1.24 | 5% (3) | 14% (8) | 40% (23) | 0% |
+| `flat_close` best (L = 3, T = 0.5) / `tl_filtered` best (L = 1, T = 0.5; 47 with a line) / `switch_high` best | all | 58 | 0.68 / 0.53 / 0.60 | +0.68 / +0.40 / +0.54 | 22 / 19 / 22% | 38% (22) / 38% (22) / 41% (24) | 64 / 60 / 72% | 0 / 10 / 9% |
+
+- **The plateau** (M ≥ 0.741 − 0.058 = 0.683): `quantile` q = 0.4 (0.69), 0.45 (0.74), 0.5 (0.74), 0.55 (0.69) — one
+  contiguous region, the only plateau; q = 0.4 and 0.45 are EXCLUDED by the pre-stated close test (the level sits under
+  close(D) on more than half of the 58 nights; q = 0.5 sits under it on exactly half, his own lines on 52%), which leaves
+  {0.5, 0.55} and the centre rule picks **q = 0.5** — the literal "center of mass": the median of the base's daily highs.
+  Runner-up (listed, not chosen): `quantile` q = 0.55 (M 0.69, median |err| 0.27); the best reading outside the family is
+  `switch_close` (L = 3, T = 0.5, s = 0.1–0.3%: M 0.50–0.53, a broad region but 12 bases below the plateau line). His
+  described MECHANISM — ignore a 1–3 bar spike, then take the top — scores worst of all (`flat_high` 14%; the top of the
+  kept bars still sits 1.2 ADR above his line): the spike filter is not what moves the line; the centre is.
+- **Candour on the three readings of the result:** (i) the pick beats the best existing level by 20 of 58 bases within
+  0.5 ADR (43 vs 23) in every stratum, with a bias of +0.01 ADR against +0.58 for every existing level — the existing
+  levels all sit about half an ADR ABOVE where he draws; (ii) the plateau's centre lies between q = 0.45 and 0.5 and the
+  exclusion rule, pre-stated, is what decides 0.5 — had it not been stated the centre rule would have picked 0.45 (M 0.74,
+  the same); (iii) 10 of 58 miss by more than 1 ADR, 8 of them lines drawn well BELOW the base (LCID, FSLY, BYND, RKT,
+  CVNA, DKNG 03-21, MRNA 06-21 / 01-21 — a lower structure or an earlier level, 2.5–4.5 ADR under `pivot_full`) that no
+  base-top rule can reach, and 2 where he drew ABOVE the median (WKHS 10-20, PLTR: tight flat bases where his line is the
+  top). The per-base table is `com_per_base_p4b.tsv`.
+
+### P4b.3 The registered definition (computable; in the module as `cb.com_level` with `COM_VARIANT = "quantile"`, `COM_QUANTILE = 0.5`)
+
+**`pivot_com`(D) = the median of the base's daily highs over the sessions after the pole top, (P, D]** (numpy's linear
+interpolation at the 0.5 quantile; bars ≤ D only; `pivot_com_date` = the base bar whose high is nearest the level, ties →
+the latest; `com_character` = "flat"). A breakout on E = D + 1 is `high(E) > pivot_com(D)`, one trade per base under the
+spec key `(ticker, pole_date, "com")`, exactly as the four registered levels; the cells are the same post-hoc flags
+(`cell_flags(k="com")`, C0 = the level exists). The spike filter (`COM_MAX_RUN` = 3, his "1-3 bars"; `COM_SPIKE_ADR` = 0.5
+and `COM_FALLING_SLOPE` = 0.2%/session, the runner-up's values) stays in the module for the other five readings and is
+telemetry under the chosen one — it gates nothing. The quantile and the variant are B-class (chosen by this read); the
+run length is S-class (his words). Gate 5 registers all three (`scripts/gate_provenance_registry.py`).
+
+### P4b.4 What this does not answer
+
+- **WHERE he draws, not whether trading it pays.** The score is distance to his line; no `com` outcome has been read
+  anywhere (no discovery close-variant walk, no minute entry, no holdout row). The `com` re-read is the next step and is
+  registered below; its result is a lead for the forward read, never a change to §3's primary triple.
+- **One era, one bull tape, 58 bases, 10 of them eyeball.** 2020–21 is 56 of 58 screens; a rule fitted on lines he drew
+  in that tape may sit differently in 2025–26, and the eyeball stratum (the wick-ignored lines the rule is nominally for)
+  is 10 bases — its 80% within 0.5 ADR is 8 lines.
+- **Selection of the labels** (step 5): bar_verified needs ≥ 2 touches and few closes crossing, so wick-ignored lines
+  reach the corpus mostly through the eyeball route; 10 of the 58 lines END more than 5 sessions before the comparison
+  session (their value there is an extrapolation of his line); the SPOT read sits a little low by his own correction.
+- **The level sits UNDER the watch night's close on half the labelled nights (his own lines: 52%).** On the stream he
+  reviews names on or after their breakout day; on a nightly scan the same level is below the close on many nights, and a
+  "breakout" over it is any up-day. The `com` daily run (entry-time facts only, `run_summary_com.txt` / `step0_com.txt`):
+  the level sits under close(D) on 49,542 of 129,985 discovery and 44,709 of 109,961 holdout watch nights (38% / 41%),
+  under `pivot_k5` on 80% / 82%, a median 1.50 ADR under `pivot_full` (his 58 lines: 1.57); the breakout day OPENS above
+  the level on 8,200 of 14,562 discovery and 6,832 of 12,361 holdout spec-key first breaks (56% / 55%); C1 holdout first
+  breaks n = 42 (`tl` 43, `k5` 33), 23 of them opening above the level. So the first break of a base under `com` is often
+  the base's FIRST watch night, i.e. an EARLIER, lower entry than the four registered levels, and on more than half of
+  them the ORH5 entry fills at the opening-range high, not at the level — a property of the setup as encoded, to be read,
+  not a defect to tune away.
+- **The quantile is not his mechanism.** He says "ignore the 1–3 bar spike"; the data says his line is the median high
+  whether or not spikes are filtered. Both are stated; the chosen reading is the one the lines support.
+- **The lines he draws below the base** (8 of 58) are a different object — a longer-range level — that this step neither
+  detects nor scores.
+- **Candidate count and overlap.** `com` breaks out earlier and more often than `tl`; retriggers and the chain key are
+  stamped as for every level, and capacity is not modelled (§9).
+
+### P4b.5 What comes next, registered now
+
+1. **The minute fetch (main loop, on the server):** the (ticker, E) pairs `com`'s breakout days need that
+   `DATA/minutes/_done.psv` (95,975 pairs) does not hold — `DATA/out/minute_fetch_list_delta_com.tsv`: **57,834 pairs over
+   1,140 dates (discovery 30,452 / holdout 27,382; tier 1 = a C1..C7 / report cell true: 5,342)**, `ticker\tdate\ttier`,
+   the format `fetch_minutes.py --list` reads (`--min-tier 1` takes the 5,342). The full `com` list is
+   `minute_fetch_list_com.tsv` (136,323 pairs: discovery 71,306 / holdout 65,017; 78,489 already on disk). Whether to pull
+   all 57,834 (the C0 rows need them; ~60% of the first pull) or the 5,342 tier-1 pairs (the deciding cells only) is the
+   main loop's call; the registration is the same either way.
+2. **The `com` discovery re-read:** `runner.py minute --keys com` then `report --keys com` on the fetched minutes — the
+   same entry (ORH5), stop, arms, keys and report as §2, reported in `discovery_report_com.txt` BESIDE the four levels'
+   report, on the C0..C7 cells. Read with §2's rules: the tail first, the month-block interval, `pnl_adr` beside R; a `com`
+   number is a LEAD, never a replacement for the registered primary. Before it runs, the daily `com` run is repeated WITH
+   the close variant (`daily --keys com`, no `--no-close-variant`) so the CLOSE entry joins as for the other levels.
+3. **The `com` holdout:** NOT part of the registered holdout (`holdout` refuses `--keys`). If the discovery re-read gives a
+   reason to read it on 2025–26, that read gets its own registration (level, entry, bar, n) added to this document first.
+4. **The re-pin:** after the fetch, `holdout --print-pins` → §Freeze record (module, runner, minutes tree, doc body).
+
 ## THE LINE
 
 Registration only. No strategy, entry or exit rule, stop, size, safeguard or live trade state was changed or is

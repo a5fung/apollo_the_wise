@@ -23,6 +23,12 @@ citation is never invented to make an entry pass.
       never presented as sourced
   P = fixed by the approved plan's Definitions table, not by the article
 
+The CENTER-OF-MASS level `com` (#702 P4b, 2026-10-18; `com_level`): his rule that the line goes on the consolidation's
+center of mass, read as the MEDIAN of the base's daily highs (chosen on the P4b label read, `docs/analysis/
+cb_preregistration_2026-10-18.md` §P4b; `COM_VARIANT` / `COM_QUANTILE` / `COM_MAX_RUN` are registered). It is NOT in
+`PIVOT_KEYS` / `KS`: the shadow never computes it and the pinned backtest outputs never carry it; the offline runner
+computes it only on `--keys com`, into `*_com` files. `EXTRA_PIVOT_KEYS` names it.
+
 The TRENDLINE breakout level `tl` (#702 P1c): the operator's note of 2026-10-17 (`operator_shared_notes.md`,
 "2026-10-17 — his note on the breakout ENTRY") says he often draws the flag with *"a down sloping trend line and
 a breakout of that trend line"*, which *"may dictate a lower entry than what we call a breakout"*. The line is
@@ -129,6 +135,21 @@ PIVOT_KEYS = ("k5", "k10", "full", "tl")   # B: which pivot the cells and the br
                                           #    HORIZONTAL levels; "tl" is the down-sloping trendline (S: his
                                           #    2026-10-17 note), projected one session ahead — see `_down_trendline`
 TL_TOUCH_TOL = 0.005             # B, TELEMETRY ONLY: a base high within 0.5% under the line is an interior touch
+# ── #702 P4b: the CENTER-OF-MASS level `com` (his 2026-10-18 rule) — RUNNER-ONLY, not in PIVOT_KEYS/KS ─────
+# `KS` is what the pinned backtest outputs and the nightly shadow iterate; `com` is computed only when the runner is
+# asked for it (`--keys com`), so adding it moved no existing byte. See `com_level` for the rule and its sources.
+EXTRA_PIVOT_KEYS = ("com",)
+COM_VARIANTS = ("flat_high", "flat_close", "quantile", "tl_filtered", "switch_high", "switch_close")
+COM_VARIANT = "quantile"         # B: the chosen reading of "center of mass" (P4b label read, 2026-10-18: the plateau is the
+#                                #    quantile family at q 0.4-0.55; the spike-filtered tops read 1.2 ADR ABOVE his lines)
+COM_QUANTILE = 0.5               # B: the MEDIAN of the base's daily highs over (P, i] — 43 of his 58 lines within 0.5 ADR
+#                                #    (the best existing level, k5, 23 of 58); plateau q in {0.4, 0.45, 0.5, 0.55}
+COM_MAX_RUN = 3                  # S: "a 1-3 bars spike then drop back to the basing area" (operator 2026-10-18) — the spike
+#                                #    filter of the flat_*/tl_filtered/switch_* readings; the chosen reading does not filter
+COM_SPIKE_ADR = 0.5              # B: a bar is a spike when its high stands more than this many ADR20 above the base's typical
+#                                #    high (the median high). The runner-up reading's value (switch_close L=3, T=0.5)
+COM_FALLING_SLOPE = 0.002        # B: the `switch_*` readings only — a filtered line falling faster than this fraction of its
+#                                #    anchor high per session (0.002 = 0.2%/session) is "falling"; else the base is flat
 CELLS = ("C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7")      # the 8 DECIDING cells
 REPORT_CELLS = ("C1_no_retrace", "C1_no_tightening", "HTF")     # reported beside C1, never deciding
 KS = PIVOT_KEYS                                                # the runner's and the shadow's name for the four levels
@@ -316,6 +337,157 @@ def _down_trendline(bars: DailyBars, P: int, i: int) -> dict:
     out.update(pivot_tl=float(pivot), pivot_tl_idx=int(j_star), pivot_tl_date=touch_date,
                tl_touch_idx=int(j_star), tl_touch_date=touch_date,
                tl_touch_is_today=bool(j_star == i), tl_interior_touches=touches)
+    return out
+
+
+_COM_KEYS = ("pivot_com", "pivot_com_idx", "pivot_com_date", "com_variant", "com_character", "com_slope_pct",
+             "com_anchor_idx", "com_typical_high", "com_spike_thr", "com_ignored_bars", "com_ignored_runs",
+             "com_level_flat", "com_level_tl")
+
+
+def spike_mask(h: np.ndarray, P: int, i: int, *, adr20: float, max_run: int = COM_MAX_RUN,
+               spike_adr: float = COM_SPIKE_ADR) -> tuple:
+    """(ignored, typical_high, threshold): which bars of [P, i] are OUTLIER SPIKES under his 2026-10-18 rule.
+
+    typical_high = the MEDIAN of the base's highs over (P, i] (the sessions after the pole top, the window `pivot_full`
+    reads). threshold = typical_high x (1 + spike_adr x adr20): a bar whose high is ABOVE it stands more than
+    `spike_adr` ADR20s over the typical highs. Such bars are grouped into maximal runs of consecutive sessions over
+    [P, i]; a run is IGNORED when it is at most `max_run` bars long AND it ends BEFORE i — the bar after it is back
+    under the threshold inside the base, which is the "then drop back to the basing area" half of the rule. A run that
+    reaches the watch night has not dropped back yet (nothing after it is known), so it is kept; a run longer than
+    `max_run` is a move, not a spike, and is kept. The pole bar P itself can be ignored (a climactic wick that the base
+    then settles under is exactly the outlier he draws through). `ignored` is a bool array over [P, i] (index 0 = P).
+    `spike_adr = inf` ignores nothing (the unfiltered reference)."""
+    adr20 = _check_adr(adr20)
+    seg = np.asarray(h[P:i + 1], dtype=float)
+    base = seg[1:]
+    typical = float(np.median(base)) if len(base) else float(seg[0])
+    thr = typical * (1.0 + float(spike_adr) * adr20)
+    ignored = np.zeros(len(seg), dtype=bool)
+    if not np.isfinite(thr):
+        return ignored, typical, thr
+    spike = seg > thr
+    n = len(seg)
+    j = 0
+    while j < n:
+        if not spike[j]:
+            j += 1
+            continue
+        k = j
+        while k + 1 < n and spike[k + 1]:
+            k += 1
+        if (k - j + 1) <= int(max_run) and k < n - 1:          # short, and a bar after it is back under the threshold
+            ignored[j:k + 1] = True
+        j = k + 1
+    return ignored, typical, thr
+
+
+def _com_tl(h: np.ndarray, P: int, i: int, keep: np.ndarray) -> tuple:
+    """(pivot, anchor A, slope m, touch j*) of the down-sloping line over the KEPT bars of [P, i], drawn exactly as
+    `_down_trendline` draws it on all bars: anchor = the highest kept high (ties -> the earliest), slope = the flattest
+    line from the anchor that keeps every later KEPT high on or under it (ties -> the latest), fewer than
+    `_BASE_AGE_MIN_WATCH` sessions after the anchor -> no line, projected to i + 1, a non-positive projection -> no
+    line. With nothing ignored this IS `_down_trendline` (the tests assert equality)."""
+    seg = np.asarray(h[P:i + 1], dtype=float)
+    idx = np.flatnonzero(keep)
+    if not len(idx):
+        return None, None, None, None
+    a = int(idx[np.argmax(seg[idx])])                            # ties -> the earliest kept bar
+    A = P + a
+    if i - A < _BASE_AGE_MIN_WATCH:
+        return None, A, None, None
+    hp = float(seg[a])
+    later = idx[idx > a]
+    if not len(later):                                            # cannot happen (bar i is never ignored); guard, not a path
+        return None, A, None, None
+    slopes = (seg[later] - hp) / (later - a).astype(float)
+    k = _argmax_last(slopes)
+    m = float(slopes[k])
+    if not m <= 0.0:                                              # NaN guard only (A is the highest kept high)
+        return None, A, None, None
+    pivot = hp + m * (i + 1 - A)
+    if not pivot > 0.0:
+        return None, A, m, None
+    return float(pivot), A, m, P + int(later[k])
+
+
+def com_level(bars: DailyBars, P: int, i: int, adr20: float, *, variant: str = COM_VARIANT,
+              max_run: int = COM_MAX_RUN, spike_adr: float = COM_SPIKE_ADR, quantile: float = COM_QUANTILE,
+              falling_slope: float = COM_FALLING_SLOPE) -> dict:
+    """The CENTER-OF-MASS breakout level `com` (#702 P4b). His rule, verbatim (operator 2026-10-18,
+    `operator_shared_notes.md` "his rule for where the line goes"): *"he finds where the center of mass is in the
+    consolidation and ignore the outliers if it's just a short period, meaning a 1-3 bars spike then drop back to the
+    basing area"* — *"not just wick ... he ignore some outlier parts of a daily bar"*. Bars <= i only; P = the module's
+    pole top; `adr20` = the watch night's ADR20 fraction (the same number `explain_watch` returns).
+
+    Six readings of the sentence were scored against his 58 drawn lines (the P4b label read, `docs/analysis/
+    cb_preregistration_2026-10-18.md` §P4b); `variant` selects one, the module constants carry the chosen one:
+      flat_high    the highest high of the base (P, i] after the spike runs are ignored (`spike_mask`) — a flat line.
+                   Nothing ignored -> `pivot_full`.
+      flat_close   the highest CLOSE of the kept base bars — the line drawn through the bars, not their wicks.
+      quantile     the `quantile` quantile (linear interpolation) of ALL base highs over (P, i] — the center of mass of
+                   the top read directly, no spike filter. Its `pivot_com_idx` is the base bar nearest the level.
+      tl_filtered  `_down_trendline` on the kept bars of [P, i] (anchor = the highest kept high; every later kept high
+                   on or under the line; projected to i + 1). Nothing ignored -> `pivot_tl`. None when the anchor is
+                   under 3 sessions old or the line has fallen through zero (as `pivot_tl`).
+      switch_high  the CHARACTER switch (his 10-18 note: tight and flat -> the base high; wide then tightening -> the
+                   flag line): `tl_filtered` when it exists and falls faster than `falling_slope` x the anchor high
+                   per session ("falling"), else `flat_high` ("flat").
+      switch_close as switch_high with `flat_close` on the flat arm.
+    Returns every `_COM_KEYS` key on every call (the runner derives its columns from the first row): pivot_com (None
+    when the chosen reading has no level that night), pivot_com_idx / _date (the bar the level is read from: the
+    kept high / close for the flat readings, the touch for the line), and TELEMETRY (never gates): com_variant,
+    com_character ("flat" | "falling" | None), com_slope_pct (the filtered line's slope as a fraction of its anchor
+    high per session, <= 0, as `tl_slope_pct`), com_anchor_idx, com_typical_high, com_spike_thr, com_ignored_bars,
+    com_ignored_runs, com_level_flat and com_level_tl (both arms, whichever was chosen)."""
+    if variant not in COM_VARIANTS:
+        raise ValueError(f"com_level: variant must be one of {COM_VARIANTS}, got {variant!r}")
+    h, c = bars.h, bars.c
+    ignored, typical, thr = spike_mask(h, P, i, adr20=adr20, max_run=max_run, spike_adr=spike_adr)
+    keep = ~ignored
+    runs = int(np.sum(ignored[1:] & ~ignored[:-1]) + (1 if len(ignored) and ignored[0] else 0))
+    out = {k: None for k in _COM_KEYS}
+    out.update(com_variant=variant, com_typical_high=typical, com_spike_thr=(float(thr) if np.isfinite(thr) else None),
+               com_ignored_bars=int(ignored.sum()), com_ignored_runs=runs)
+    base_keep = np.flatnonzero(keep[1:]) + (P + 1)               # kept bars of (P, i], as bar indices
+    # the two flat readings over the kept base bars
+    jh = int(base_keep[_argmax_last(h[base_keep])]) if len(base_keep) else None
+    jc = int(base_keep[_argmax_last(c[base_keep])]) if len(base_keep) else None
+    flat_high = float(h[jh]) if jh is not None else None
+    flat_close = float(c[jc]) if jc is not None else None
+    # the filtered line
+    tl_pivot, A, m, j_star = _com_tl(h, P, i, keep)
+    out["com_anchor_idx"] = A
+    out["com_slope_pct"] = (m / float(h[A])) if (m is not None and A is not None and h[A] > 0) else None
+    out["com_level_flat"] = flat_close if variant in ("flat_close", "switch_close") else flat_high
+    out["com_level_tl"] = tl_pivot
+
+    def _set(level, j, character):
+        out.update(pivot_com=(float(level) if level is not None else None),
+                   pivot_com_idx=(int(j) if j is not None and level is not None else None),
+                   pivot_com_date=(bars.dates[j].isoformat() if j is not None and level is not None else None),
+                   com_character=character)
+
+    if variant == "flat_high":
+        _set(flat_high, jh, "flat")
+    elif variant == "flat_close":
+        _set(flat_close, jc, "flat")
+    elif variant == "quantile":
+        base = h[P + 1:i + 1]
+        if len(base):
+            level = float(np.quantile(base, float(quantile)))
+            j = (P + 1) + _argmin_last(np.abs(base - level))
+            _set(level, j, "flat")
+    elif variant == "tl_filtered":
+        _set(tl_pivot, j_star, "falling" if tl_pivot is not None else None)
+    else:                                                        # the character switch
+        falling = tl_pivot is not None and out["com_slope_pct"] is not None and out["com_slope_pct"] < -float(falling_slope)
+        if falling:
+            _set(tl_pivot, j_star, "falling")
+        elif variant == "switch_high":
+            _set(flat_high, jh, "flat")
+        else:
+            _set(flat_close, jc, "flat")
     return out
 
 
@@ -671,9 +843,11 @@ def cell_flags(features: Optional[dict], ctx: dict, *, k: str) -> dict:
 
     ctx keys: rs_best (max of the three percentiles), rs_all (min of them — carried for the
     caller's "all three >= 98" variant, not read by C0..C7), grp_pct (None -> group cells False),
-    phase_qqq_10_20, phase_spy_qqq_50. A missing/None RS reads False for every RS cell."""
-    if k not in PIVOT_KEYS:
-        raise ValueError(f"cell_flags: k must be one of {PIVOT_KEYS}, got {k!r}")
+    phase_qqq_10_20, phase_spy_qqq_50. A missing/None RS reads False for every RS cell.
+    `k` may also be an `EXTRA_PIVOT_KEYS` level ("com", #702 P4b) when the caller computed it (`com_level`); the
+    shadow and the pinned backtest never pass one."""
+    if k not in PIVOT_KEYS and k not in EXTRA_PIVOT_KEYS:
+        raise ValueError(f"cell_flags: k must be one of {PIVOT_KEYS + EXTRA_PIVOT_KEYS}, got {k!r}")
     if features is None:
         return {name: False for name in CELLS + REPORT_CELLS}
     pivot = features.get(f"pivot_{k}")
@@ -710,10 +884,10 @@ def cell_flags(features: Optional[dict], ctx: dict, *, k: str) -> dict:
 
 def breakout_key(ticker: str, features: dict, k: str) -> tuple:
     """One trade per (ticker, pivot date for k). For "tl" the pivot date is the line's TOUCH date."""
-    if k not in PIVOT_KEYS:
-        raise ValueError(f"breakout_key: k must be one of {PIVOT_KEYS}, got {k!r}")
-    pivot_date = features[f"pivot_{k}_date"]
-    if pivot_date is None:                       # only "tl" can: no down-sloping line that night, so no base to key
+    if k not in PIVOT_KEYS and k not in EXTRA_PIVOT_KEYS:
+        raise ValueError(f"breakout_key: k must be one of {PIVOT_KEYS + EXTRA_PIVOT_KEYS}, got {k!r}")
+    pivot_date = features.get(f"pivot_{k}_date")
+    if pivot_date is None:                       # "tl": no down-sloping line that night; "com": not computed on this row
         raise ValueError(f"breakout_key: no {k} pivot on this row")
     return (ticker, pivot_date)
 

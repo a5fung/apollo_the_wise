@@ -2165,6 +2165,172 @@ class TestTrendline:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 6b. #702 P4b: the CENTER-OF-MASS level `com` (his 2026-10-18 rule) - runner-only, never in KS
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+P4B_BARS = Path(__file__).resolve().parent / "fixtures" / "cb_p4b_labelled_bars.psv"
+P4B_LABELS = Path(__file__).resolve().parent / "fixtures" / "cb_p4b_labels.tsv"
+
+
+def _com_synth(spike_len: int, *, spike_at: int = 150, n: int = 200) -> cb.DailyBars:
+    """A pole (bars 100..140 rising to 20) then a flat base (141..170: highs 18, closes 17.6) with a run of `spike_len`
+    bars from `spike_at` whose high pokes to 19.5 (closes 17.9). P = 140, the watch night i = 170."""
+    h = np.full(n, 10.0); l = np.full(n, 9.5); c = np.full(n, 9.8); o = np.full(n, 9.7); v = np.full(n, 1e6)
+    for j in range(100, 141):
+        h[j] = 10 + (j - 100) * 0.25; c[j] = h[j] - 0.1; o[j] = h[j] - 0.3; l[j] = h[j] - 0.4
+    for j in range(141, 171):
+        h[j] = 18.0; c[j] = 17.6; o[j] = 17.5; l[j] = 17.0
+    for j in range(spike_at, spike_at + spike_len):
+        h[j] = 19.5; c[j] = 17.9
+    return cb.daily_bars_from_arrays(_weekdays(n), o, h, l, c, v)
+
+
+class TestCenterOfMassLevel:
+    P, I, ADR = 140, 170, 0.03          # the synthetic base: typical high 18.0, threshold at T = 1 ADR -> 18.54
+
+    def test_the_extra_key_is_outside_ks_and_the_chosen_reading_is_the_median_high(self):
+        assert cb.EXTRA_PIVOT_KEYS == ("com",) and "com" not in cb.KS and cb.KS == cb.PIVOT_KEYS
+        assert cb.COM_VARIANT == "quantile" and cb.COM_QUANTILE == 0.5 and cb.COM_MAX_RUN == 3
+        assert set(cb.COM_VARIANTS) == {"flat_high", "flat_close", "quantile", "tl_filtered", "switch_high", "switch_close"}
+        with pytest.raises(ValueError):
+            cb.com_level(_com_synth(1), self.P, self.I, self.ADR, variant="centre")
+
+    def test_explain_watch_rows_carry_no_com_key_and_cell_flags_take_the_key_only_when_the_level_was_added(self):
+        bars, idx = _mrna()
+        f = cb.evaluate_watch(bars, idx["2026-09-16"])
+        assert not any(k.startswith(("pivot_com", "com_")) for k in f)          # the pinned watch table is untouched
+        assert cb.cell_flags(f, _ctx(), k="com")["C0"] is False                 # no level -> no cell, no TypeError
+        with pytest.raises(ValueError):
+            cb.breakout_key("MRNA", f, "com")
+        f2 = dict(f, **cb.com_level(bars, f["pole_idx"], idx["2026-09-16"], f["adr20"]))
+        assert cb.cell_flags(f2, _ctx(), k="com")["C0"] is True
+        assert cb.breakout_key("MRNA", f2, "com") == ("MRNA", f2["pivot_com_date"])
+        with pytest.raises(ValueError):
+            cb.cell_flags(f2, _ctx(), k="k7")
+
+    def test_with_no_spike_filter_the_readings_are_the_existing_levels_on_every_mrna_watch_night(self):
+        bars, _ = _mrna()
+        n_pass = n_tl = 0
+        for i in range(cb.MIN_HISTORY - 1, len(bars)):
+            f = cb.evaluate_watch(bars, i)
+            if f is None:
+                continue
+            n_pass += 1
+            P, adr = f["pole_idx"], f["adr20"]
+            fh = cb.com_level(bars, P, i, adr, variant="flat_high", spike_adr=float("inf"))
+            assert fh["pivot_com"] == f["pivot_full"] and fh["pivot_com_idx"] == f["pivot_full_idx"] and fh["com_ignored_bars"] == 0
+            assert cb.com_level(bars, P, i, adr, variant="quantile", quantile=1.0)["pivot_com"] == f["pivot_full"]
+            assert cb.com_level(bars, P, i, adr, variant="flat_close", spike_adr=float("inf"))["pivot_com"] == float(bars.c[P + 1:i + 1].max())
+            tl = cb.com_level(bars, P, i, adr, variant="tl_filtered", spike_adr=float("inf"))
+            if f["pivot_tl"] is None:
+                assert tl["pivot_com"] is None
+            else:
+                n_tl += 1
+                assert tl["pivot_com"] == pytest.approx(f["pivot_tl"], rel=1e-12)
+                assert tl["pivot_com_idx"] == f["pivot_tl_idx"] and tl["com_anchor_idx"] == f["tl_anchor_idx"]
+                assert tl["com_slope_pct"] == pytest.approx(f["tl_slope_pct"], abs=1e-15)
+        assert n_pass == 60 and n_tl == 58
+
+    def test_a_one_to_three_bar_spike_that_drops_back_is_ignored_and_a_four_bar_push_is_not(self):
+        for run in (1, 2, 3):
+            out = cb.com_level(_com_synth(run), self.P, self.I, self.ADR, variant="flat_high", max_run=3, spike_adr=1.0)
+            assert out["pivot_com"] == 18.0 and out["com_spike_thr"] == pytest.approx(18.54)
+            # the ignored bars: the spike run AND the pole bar P itself (a 1-bar run at 20.0 that the base settled under)
+            assert out["com_ignored_bars"] == run + 1 and out["com_ignored_runs"] == 2
+        out = cb.com_level(_com_synth(4), self.P, self.I, self.ADR, variant="flat_high", max_run=3, spike_adr=1.0)
+        assert out["pivot_com"] == 19.5 and out["com_ignored_bars"] == 1          # the push is a move, not a spike; only P is ignored
+        # max_run = 1: a 2-bar spike is kept
+        out = cb.com_level(_com_synth(2), self.P, self.I, self.ADR, variant="flat_high", max_run=1, spike_adr=1.0)
+        assert out["pivot_com"] == 19.5
+        # the threshold: at T = 2 ADR (18.0 x 1.06 = 19.08) the 19.5 spike is still a spike; at T = 3 (19.62) it is not
+        assert cb.com_level(_com_synth(1), self.P, self.I, self.ADR, variant="flat_high", spike_adr=2.0)["pivot_com"] == 18.0
+        assert cb.com_level(_com_synth(1), self.P, self.I, self.ADR, variant="flat_high", spike_adr=3.0)["pivot_com"] == 19.5
+
+    def test_a_spike_that_reaches_the_watch_night_has_not_dropped_back_and_is_kept(self):
+        out = cb.com_level(_com_synth(2, spike_at=169), self.P, self.I, self.ADR, variant="flat_high", spike_adr=1.0)
+        assert out["pivot_com"] == 19.5 and out["pivot_com_idx"] == 170
+        ignored, typical, thr = cb.spike_mask(_com_synth(2, spike_at=169).h, self.P, self.I, adr20=self.ADR, spike_adr=1.0)
+        assert not ignored[-1] and not ignored[-2] and ignored[0] and typical == 18.0
+
+    def test_the_median_high_reading(self):
+        bars = _com_synth(1)
+        out = cb.com_level(bars, self.P, self.I, self.ADR)                       # the defaults: quantile 0.5
+        assert out["com_variant"] == "quantile" and out["pivot_com"] == 18.0 == float(np.median(bars.h[self.P + 1:self.I + 1]))
+        assert out["com_character"] == "flat" and self.P < out["pivot_com_idx"] <= self.I
+        assert out["pivot_com_date"] == bars.dates[out["pivot_com_idx"]].isoformat()
+        # a base whose highs step down 0.1 a session: the median sits in the middle of the base, under the recent highs' top
+        h = bars.h.copy()
+        for j in range(141, 171):
+            h[j] = 19.0 - 0.1 * (j - 141)
+        stepped = cb.daily_bars_from_arrays(bars.dates, bars.o, h, bars.l, bars.c, bars.v)
+        out = cb.com_level(stepped, self.P, self.I, self.ADR)
+        assert out["pivot_com"] == pytest.approx(float(np.median(h[141:171])))
+        assert out["pivot_com"] < float(h[141:171].max()) and out["pivot_com"] > float(h[141:171].min())
+        assert cb.com_level(stepped, self.P, self.I, self.ADR, quantile=0.9)["pivot_com"] > out["pivot_com"]
+
+    def test_the_character_switch_flat_vs_falling(self):
+        flat = _com_synth(1)
+        out = cb.com_level(flat, self.P, self.I, self.ADR, variant="switch_high", spike_adr=1.0)
+        assert out["com_character"] == "flat" and out["pivot_com"] == 18.0 == out["com_level_flat"]
+        # a falling flag: base highs 19.0 - 0.2 per session (1.1% of the anchor per session >> the 0.2% threshold)
+        h = flat.h.copy()
+        for j in range(141, 171):
+            h[j] = 19.0 - 0.2 * (j - 141)
+        falling = cb.daily_bars_from_arrays(flat.dates, flat.o, h, flat.l, flat.c, flat.v)
+        out = cb.com_level(falling, self.P, self.I, self.ADR, variant="switch_high", spike_adr=float("inf"))
+        tl = cb._down_trendline(falling, self.P, self.I)
+        assert out["com_character"] == "falling" and out["pivot_com"] == pytest.approx(tl["pivot_tl"]) == out["com_level_tl"]
+        assert out["com_slope_pct"] == pytest.approx(tl["tl_slope_pct"]) and out["com_slope_pct"] < -cb.COM_FALLING_SLOPE
+        # the threshold decides: the same flag reads flat once the threshold is steeper than its slope
+        out = cb.com_level(falling, self.P, self.I, self.ADR, variant="switch_high", spike_adr=float("inf"), falling_slope=0.05)
+        assert out["com_character"] == "flat" and out["pivot_com"] == float(h[141:171].max())
+        out = cb.com_level(falling, self.P, self.I, self.ADR, variant="switch_close", spike_adr=float("inf"), falling_slope=0.05)
+        assert out["com_character"] == "flat" and out["pivot_com"] == float(falling.c[141:171].max())
+
+    def test_every_com_key_is_present_with_plain_json_types_and_later_bars_never_enter(self):
+        bars = _com_synth(1)
+        for variant in cb.COM_VARIANTS:
+            out = cb.com_level(bars, self.P, self.I, self.ADR, variant=variant)
+            assert set(out) == set(cb._COM_KEYS)
+            for k, v in out.items():
+                assert type(v) in (int, float, bool, str, type(None)), (variant, k, type(v))
+            json.dumps(out)
+        longer = cb.daily_bars_from_arrays(list(bars.dates) + _weekdays(len(bars) + 3)[len(bars):],
+                                           list(bars.o) + [20.0] * 3, list(bars.h) + [99.0] * 3, list(bars.l) + [19.0] * 3,
+                                           list(bars.c) + [20.0] * 3, list(bars.v) + [2e6] * 3)
+        for variant in cb.COM_VARIANTS:
+            assert cb.com_level(longer, self.P, self.I, self.ADR, variant=variant) == cb.com_level(bars, self.P, self.I, self.ADR, variant=variant)
+
+    def test_the_labelled_bases_fixture_is_a_regression_pin_of_the_default_reading(self):
+        """Five of his drawn lines (RIOT, SPOT, NIO, AMD, NCLH; bars + derived numbers only, written by
+        scripts/probes/_qm_streams/p4b_com_rule.py --fixture-out on 2026-10-18). The module must still find the same base,
+        the same pivot_full and the same default `com` level - a pin of what it does, not evidence that it is right."""
+        rows = [ln.rstrip("\n").split("|") for ln in P4B_BARS.read_text().splitlines() if ln.strip()]
+        labs = [dict(zip(hdr, ln.split("\t"))) for hdr, ln in
+                [(P4B_LABELS.read_text().splitlines()[0].split("\t"), x) for x in P4B_LABELS.read_text().splitlines()[1:]]]
+        assert len(labs) == 5
+        for lab in labs:
+            mine = [r for r in rows if r[0] == lab["ticker"]]
+            bars = cb.daily_bars_from_arrays([dt.date.fromisoformat(r[1]) for r in mine],
+                                             *[[float(r[k]) for r in mine] for k in (2, 3, 4, 5, 6)])
+            i = [d.isoformat() for d in bars.dates].index(lab["cmp_night"])
+            f = cb.evaluate_watch(bars, i)
+            assert f is not None and f["pole_date"] == lab["pole_date"], lab["base"]
+            assert f["pivot_full"] == pytest.approx(float(lab["pivot_full"]), abs=1e-6)
+            assert f["pivot_k5"] == pytest.approx(float(lab["pivot_k5"]), abs=1e-6)
+            assert f["adr20"] == pytest.approx(float(lab["adr20"]), abs=1e-5)
+            out = cb.com_level(bars, f["pole_idx"], i, f["adr20"])
+            assert out["com_variant"] == lab["com_variant"] == "quantile"
+            assert out["pivot_com"] == pytest.approx(float(lab["com_level"]), abs=1e-6) and out["pivot_com_date"] == lab["com_level_date"]
+            err = (out["pivot_com"] - float(lab["his_line_cmp"])) / f["pivot_full"] / f["adr20"]
+            assert err == pytest.approx(float(lab["com_err_adr"]), abs=2e-3)       # the fixture's adr20 carries 5 dp
+            # the labelled fact the rule was fitted on: on four of the five his line is within 0.15 ADR of the median high, and on
+            # every one the median high is nearer his line than the base high (pivot_full) is
+            assert abs(err) < abs(f["pivot_full"] - float(lab["his_line_cmp"])) / f["pivot_full"] / f["adr20"]
+            if lab["frame_id"] != "p4b_018":                     # SPOT: his real line is a little HIGHER than the read one (his correction)
+                assert abs(err) < 0.15
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
 # 6c. The labelled corpus (change 8)
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 # (ticker, label_date) -> runs of (first night, last night, verdict) over the member's window: the 10 bar

@@ -29,6 +29,13 @@ dropped from the raw-price factor, exchange test symbols are excluded.
 
 Outputs: DATA/out/ (large) and scripts/probes/_cb_backtest/out/ (small summaries, < 1 MB).
 No DB, no network, no prod access. Read-only on DATA except DATA/out/.
+
+`--keys com` (#702 P4b, every stage but `holdout`): run the CENTER-OF-MASS level `cb.com_level` (his 2026-10-18 rule; not one
+of the module's four `KS`) INSTEAD of the registered four. Every output then carries the suffix `_com` (`watch_com.tsv.gz`,
+`candidates_com.tsv`, `minute_fetch_list_com.tsv`, `trades_discovery_com.tsv.gz`, `discovery_report_com.txt`, ...) beside
+the pinned files, which a default run still writes byte for byte (proved 2026-10-18: the seven content hashes and the
+three other pinned outputs unchanged). `--no-close-variant` (daily) skips the CLOSE-variant walk, so a `--keys com` daily
+run computes no outcome at all.
 """
 from __future__ import annotations
 
@@ -73,7 +80,33 @@ WATCH_START = date(2022, 3, 28)          # first watch night D (plan: discovery 
 DISCOVERY_END = date(2024, 12, 31)       # D <= this -> discovery; later -> holdout
 NEW_FETCH_KS = ("tl",)                    # the K added after the first minute pull (#702 P1c): its (ticker, E) pairs not in
 #                                           _done.psv are written to minute_fetch_list_delta.tsv (k5/k10/full were all pulled)
+EXTRA_KS = cb.EXTRA_PIVOT_KEYS            # ("com",): the #702 P4b level, run only on request (`--keys com`), never in a default run
 GATE_NAMES = cb.WATCH_GATES
+
+
+def parse_keys(spec) -> tuple:
+    """`--keys` -> the breakout levels a run uses. None / '' = the module's four (`KS`: what every pinned output carries);
+    otherwise a comma list of names from KS + EXTRA_KS ('com' = the P4b center-of-mass level). Unknown or repeated names
+    raise - a typo must not silently run the default."""
+    if spec in (None, ""):
+        return KS
+    keys = tuple(k.strip() for k in str(spec).split(",") if k.strip())
+    bad = [k for k in keys if k not in KS + EXTRA_KS]
+    if bad or not keys or len(set(keys)) != len(keys):
+        raise ValueError(f"--keys: expected distinct names from {KS + EXTRA_KS}, got {spec!r}")
+    return keys
+
+
+def out_suffix(keys) -> str:
+    """'' for the registered four (every pinned file keeps its name); '_<key>[_<key>]' otherwise, so a `--keys com` run writes
+    `candidates_com.tsv`, `trades_discovery_com.tsv.gz`, ... BESIDE the pinned files and never over them."""
+    return "" if tuple(keys) == KS else "_" + "_".join(keys)
+
+
+def run_keys(args) -> tuple:
+    """(keys, suffix) of a run from its args (`keys` absent -> the default, so the tests' hand-built namespaces still work)."""
+    keys = parse_keys(getattr(args, "keys", None))
+    return keys, out_suffix(keys)
 # The watch-row features / cross-section context copied onto every candidate row, in candidates.tsv column order.
 CAND_FEATURES = ("prior_move", "base_len", "retrace", "base_depth", "tightening_ratio", "pole_sessions",
                  "median_dollar_vol20", "pole_day_vol_ratio", "pole_max_gap", "atr14", "atr14_slope",
@@ -322,11 +355,13 @@ def load_sic(path: Path) -> tuple:
 # pass 1 - per ticker (worker): universe, RS inputs, watch nights
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 def scan_ticker(ticker: str, bars: "cb.DailyBars", cidx: np.ndarray, splits: list, sectype: str,
-                d0_ci: int, *, prescreen: bool = True) -> dict:
+                d0_ci: int, *, prescreen: bool = True, extra_keys: tuple = ()) -> dict:
     """Universe membership + RS inputs + watch features for every night from calendar index `d0_ci`.
     A night is admitted only if (a) the ticker is not an exchange test symbol, (b) `universe_ok`, and (c) the
     130 bars ending at it are consecutive SPY sessions - a night failing only (c) is counted under 'history'
-    (the module's own 'history' gate is >= 130 sessions; here it is >= 130 CONSECUTIVE ones)."""
+    (the module's own 'history' gate is >= 130 sessions; here it is >= 130 CONSECUTIVE ones).
+    `extra_keys` containing "com" adds the P4b center-of-mass level (`cb.com_level`, its `pivot_com*` / `com_*` keys) to
+    every watch row; a default run passes none and the rows are exactly `explain_watch`'s."""
     n = len(bars)
     fac = factor_by_bar(bars.dates, splits)
     skip = prescreen_skip_mask(bars.h, bars.l) if prescreen else np.zeros(n, dtype=bool)
@@ -360,6 +395,8 @@ def scan_ticker(ticker: str, bars: "cb.DailyBars", cidx: np.ndarray, splits: lis
         feat["pole_ci"] = int(cidx[feat["pole_idx"]])                               # drift-robust base key input
         top = max(float(bars.o[feat["pole_idx"]]), float(bars.c[feat["pole_idx"]]))
         feat["pole_hi_over_oc"] = float(feat["pole_high"]) / top if top > 0 else None   # data flag (bad high print)
+        if "com" in extra_keys:
+            feat.update(cb.com_level(bars, feat["pole_idx"], i, feat["adr20"]))
         watch.append(feat)
     return {"ticker": ticker, "uni_ci": np.asarray(uni_ci, dtype=np.int32),
             "rs": np.asarray(rs, dtype=float).reshape(-1, 3), "watch": watch, "counts": counts}
@@ -370,7 +407,8 @@ def _scan_job(t: int) -> dict:
     ticker = D.tickers[t]
     bars, cidx = bars_for(D, t)
     return scan_ticker(ticker, bars, cidx, _G["splits"].get(ticker, []),
-                       resolve_sectype(ticker, _G["mi_types"], _G["sic_types"]), _G["d0_ci"])
+                       resolve_sectype(ticker, _G["mi_types"], _G["sic_types"]), _G["d0_ci"],
+                       extra_keys=_G.get("extra_keys", ()))
 
 
 def _check_job(t: int) -> dict:
@@ -515,6 +553,8 @@ def run_daily(args) -> None:
     small = Path(args.small_out) if args.small_out else HERE / "out"
     out.mkdir(parents=True, exist_ok=True)
     small.mkdir(parents=True, exist_ok=True)
+    keys, sfx = run_keys(args)
+    no_cv = bool(getattr(args, "no_close_variant", False))
     log: list = []
 
     def say(msg: str = "") -> None:
@@ -549,7 +589,8 @@ def run_daily(args) -> None:
 
     # ── pass 1: per ticker ───────────────────────────────────────────────────────────────────
     t = time.time()
-    _G.update(D=D, splits=splits, mi_types=mi_types, sic_types=sic_types, d0_ci=d0_ci)
+    _G.update(D=D, splits=splits, mi_types=mi_types, sic_types=sic_types, d0_ci=d0_ci,
+              extra_keys=tuple(k for k in keys if k in EXTRA_KS))
     tids = list(range(len(D.tickers)))
     if args.limit_tickers:
         keep = set(random.Random(7).sample(tids, args.limit_tickers)) | {D.tid[x] for x in ("MRNA", "OUST", "HPE") if x in D.tid}
@@ -619,7 +660,7 @@ def run_daily(args) -> None:
         row["phase_qqq_10_20_s5"] = phase_a5[j]
         row["apollo_regime"] = regime.get(cal[j], "")
         row["split"] = split_label(cal[j])
-        for k in KS:
+        for k in keys:
             fl = cb.cell_flags(w, ctx, k=k)
             for cell in CELL_NAMES:
                 row[f"{cell}_{k}"] = fl[cell]
@@ -628,8 +669,8 @@ def run_daily(args) -> None:
     base_cols = ["ticker", "watch_date", "ci", "split"] + [k for k in watch_all[0] if k not in ("ticker", "watch_date", "ci")] \
         if watch_all else ["ticker", "watch_date"]
     ctx_cols = ["rs_best", "rs_all", "grp_pct", "phase_qqq_10_20", "phase_qqq_10_20_s5", "phase_spy_qqq_50", "apollo_regime"]
-    cell_cols = [f"{c}_{k}" for k in KS for c in CELL_NAMES + ("C1_s5",)]
-    n_watch = write_tsv(out / "watch.tsv.gz", watch_rows, base_cols + ctx_cols + cell_cols, gz=True)
+    cell_cols = [f"{c}_{k}" for k in keys for c in CELL_NAMES + ("C1_s5",)]
+    n_watch = write_tsv(out / f"watch{sfx}.tsv.gz", watch_rows, base_cols + ctx_cols + cell_cols, gz=True)
     lap("watch rows + cells", t)
 
     # ── candidates (breakouts) ────────────────────────────────────────────────────────────────
@@ -653,7 +694,7 @@ def run_daily(args) -> None:
         e_ci = int(D.ci[e])
         assert e_ci == w["ci"] + 1
         adv20 = float(D.v[a + i - 19:a + i + 1].mean())
-        for k in KS:
+        for k in keys:
             pivot = w[f"pivot_{k}"]
             if not breaks_out(float(D.h[e]), pivot):             # also: no tl level that night -> no tl candidate
                 continue
@@ -682,31 +723,36 @@ def run_daily(args) -> None:
 
     # ── CLOSE variant, discovery only ─────────────────────────────────────────────────────────
     t = time.time()
-    by_tk = defaultdict(list)
-    for c in select_close_variant_candidates(cands):
-        by_tk[tid_of[c["ticker"]]].append(c)
-    items = sorted(by_tk.items())
-    if args.workers > 1:
-        with _pool(args.workers) as p:
-            parts = p.map(_close_job, items, chunksize=8)
+    if no_cv:                                     # `--no-close-variant`: no outcome of any kind is computed in this run
+        cv_rows, n_cv = [], 0
+        for c in cands:
+            c["overlap_open"] = ""
     else:
-        parts = [_close_job(x) for x in items]
-    cv_rows = [r for part in parts for r in part]
-    primary = cb.PRIMARY_ARM
-    outcomes = {}
-    for r in cv_rows:
-        filled = r["close_status"] == "filled"
-        outcomes[(r["ticker"], r["D"], r["K"])] = (filled, r.get(f"held_{primary}", 0) or 0,
-                                                   r.get(f"st_{primary}"))
-    stamp_overlap_open(cands, outcomes)
-    arm_cols = [f"{p}_{n}" for n in cb.ARMS for p in ("st", "r", "adr", "held", "acct", "beabove")]
-    cv_cols = (["ticker", "D", "E", "K", "pole_date", "pivot", "adr20", "retrigger", "retrigger_chain", "base_id",
-                "close_status", "close_reason", "close_fill", "close_stop", "close_width_pct", "fwd_bars",
-                "fwd_last_date", "fwd_hole"]
-               + list(CELL_NAMES) + ["first_" + c for c in CELL_NAMES] + ["first_chain_" + c for c in CELL_NAMES]
-               + arm_cols)
-    n_cv = write_tsv(out / "close_variant_discovery.tsv.gz", cv_rows, cv_cols, gz=True)
-    lap("close variant + 15 exit arms (discovery)", t)
+        by_tk = defaultdict(list)
+        for c in select_close_variant_candidates(cands):
+            by_tk[tid_of[c["ticker"]]].append(c)
+        items = sorted(by_tk.items())
+        if args.workers > 1:
+            with _pool(args.workers) as p:
+                parts = p.map(_close_job, items, chunksize=8)
+        else:
+            parts = [_close_job(x) for x in items]
+        cv_rows = [r for part in parts for r in part]
+        primary = cb.PRIMARY_ARM
+        outcomes = {}
+        for r in cv_rows:
+            filled = r["close_status"] == "filled"
+            outcomes[(r["ticker"], r["D"], r["K"])] = (filled, r.get(f"held_{primary}", 0) or 0,
+                                                       r.get(f"st_{primary}"))
+        stamp_overlap_open(cands, outcomes)
+        arm_cols = [f"{p}_{n}" for n in cb.ARMS for p in ("st", "r", "adr", "held", "acct", "beabove")]
+        cv_cols = (["ticker", "D", "E", "K", "pole_date", "pivot", "adr20", "retrigger", "retrigger_chain", "base_id",
+                    "close_status", "close_reason", "close_fill", "close_stop", "close_width_pct", "fwd_bars",
+                    "fwd_last_date", "fwd_hole"]
+                   + list(CELL_NAMES) + ["first_" + c for c in CELL_NAMES] + ["first_chain_" + c for c in CELL_NAMES]
+                   + arm_cols)
+        n_cv = write_tsv(out / f"close_variant_discovery{sfx}.tsv.gz", cv_rows, cv_cols, gz=True)
+    lap("close variant + 15 exit arms (discovery)" if not no_cv else "close variant SKIPPED (--no-close-variant)", t)
 
     # ── write candidates / fetch list / summaries ──────────────────────────────────────────────
     t = time.time()
@@ -718,20 +764,21 @@ def run_daily(args) -> None:
                  + ["open_E", "high_E", "low_E", "close_E", "vol_E", "adv20_vol_D", "breakout_vol_x"]
                  + list(CAND_FEATURES))
     cands.sort(key=lambda c: (c["E"], c["ticker"], c["K"]))
-    write_tsv(out / "candidates.tsv", cands, cand_cols)
-    write_tsv(out / "gap_in_bars.tsv", gap_rows, ["ticker", "D", "status", "next_bar_date", "expected_E"])
+    write_tsv(out / f"candidates{sfx}.tsv", cands, cand_cols)
+    write_tsv(out / f"gap_in_bars{sfx}.tsv", gap_rows, ["ticker", "D", "status", "next_bar_date", "expected_E"])
     fetch = {}
     for c in cands:
         tier = int(any(c[x] for x in CELL_NAMES if x != "C0"))
         key = (c["ticker"], c["E"])
         fetch[key] = max(fetch.get(key, 0), tier)
     fetch_rows = [{"ticker": k[0], "date": k[1], "tier": v} for k, v in sorted(fetch.items(), key=lambda kv: (kv[0][1], kv[0][0]))]
-    write_tsv(out / "minute_fetch_list.tsv", fetch_rows, ["ticker", "date", "tier"])
+    write_tsv(out / f"minute_fetch_list{sfx}.tsv", fetch_rows, ["ticker", "date", "tier"])
     minutes_dir = Path(args.minutes) if args.minutes else data / "minutes"
     done = load_done_pairs(minutes_dir) if minutes_dir.is_dir() else None
-    delta_rows = minute_fetch_delta(fetch_rows, cands, done)
-    write_tsv(out / "minute_fetch_list_delta.tsv", delta_rows, ["ticker", "date", "tier"])
-    write_tsv(small / "universe_by_date.tsv", uni_rows,
+    delta_ks = NEW_FETCH_KS if sfx == "" else keys        # a `--keys` run: the pairs ITS levels need that are not on disk
+    delta_rows = minute_fetch_delta(fetch_rows, cands, done, ks=delta_ks)
+    write_tsv(out / f"minute_fetch_list_delta{sfx}.tsv", delta_rows, ["ticker", "date", "tier"])
+    write_tsv(small / f"universe_by_date{sfx}.tsv", uni_rows,
               ["date", "universe_n", "members_with_group", "groups_ge10", "watch_rows", "phase_qqq_10_20_s1",
                "phase_qqq_10_20_s5", "phase_spy_qqq_50", "apollo_regime"])
 
@@ -745,7 +792,7 @@ def run_daily(args) -> None:
                        **{str(y): counts.get((y, nm), 0) for y in years}})
     funnel.append({"stage": "TOTAL ticker-nights", "total": sum(tot_by_year.values()),
                    **{str(y): tot_by_year[y] for y in years}})
-    write_tsv(small / "gate_counts.tsv", funnel, ["stage", "total"] + [str(y) for y in years])
+    write_tsv(small / f"gate_counts{sfx}.tsv", funnel, ["stage", "total"] + [str(y) for y in years])
     lap("write outputs", t)
 
     # ── report ─────────────────────────────────────────────────────────────────────────────────
@@ -772,39 +819,52 @@ def run_daily(args) -> None:
         f"median {int(np.median([r['universe_n'] for r in uni_rows])):,} max {max(r['universe_n'] for r in uni_rows):,}; "
         f"watch rows with no group (grp_pct None): {sum(1 for w in watch_rows if w['grp_pct'] is None):,}; "
         f"rs_best None: {sum(1 for w in watch_rows if w['rs_best'] is None):,}")
-    hdr = ["cell"] + [f"{k}" for k in KS]
+    hdr = ["cell"] + [f"{k}" for k in keys]
     say("  watch nights with the cell true (all splits):")
-    say(table([[c] + [sum(1 for w in watch_rows if w[f'{c}_{k}']) for k in KS] for c in CELL_NAMES + ("C1_s5",)], hdr))
-    say("  tl vs the horizontal levels - the tl C0 population is a SUBSET (a night with no down-sloping line has no tl level), "
-        "so a tl-vs-k5 difference is level AND population:")
-    say(tl_population_text(watch_rows))
+    say(table([[c] + [sum(1 for w in watch_rows if w[f'{c}_{k}']) for k in keys] for c in CELL_NAMES + ("C1_s5",)], hdr))
+    if {"k5", "tl"} <= set(keys):
+        say("  tl vs the horizontal levels - the tl C0 population is a SUBSET (a night with no down-sloping line has no tl level), "
+            "so a tl-vs-k5 difference is level AND population:")
+        say(tl_population_text(watch_rows))
+    if "com" in keys:
+        say("  com - the center-of-mass level (the median of the base's highs; #702 P4b): where it sits against the watch night's "
+            "close and high, per split (a level UNDER the close breaks out on any up-day):")
+        say(com_population_text(watch_rows))
     say("")
     bad = [w for w in watch_rows if w["pole_hi_over_oc"] is not None and w["pole_hi_over_oc"] > POLE_BAD_HIGH_X]
     say(f"  DATA FLAG: {len(bad):,} watch rows on {len({w['ticker'] for w in bad}):,} tickers have a pole bar whose high is "
-        f"> {POLE_BAD_HIGH_X}x max(open, close) (a suspect print can become pole_high); C1_k5 nights among them: "
-        f"{sum(1 for w in bad if w['C1_k5'])}")
+        f"> {POLE_BAD_HIGH_X}x max(open, close) (a suspect print can become pole_high); C1_{keys[0]} nights among them: "
+        f"{sum(1 for w in bad if w[f'C1_{keys[0]}'])}")
     say("")
     say(f"BREAKOUT CANDIDATES (high(E) > pivot_K(D)): {len(cands):,} rows "
         f"(spec key {sum(1 for c in cands if c['retrigger'] == 0):,} trades + {sum(1 for c in cands if c['retrigger'] == 1):,} retriggers; "
         f"chain key {sum(1 for c in cands if c['retrigger_chain'] == 0):,} trades + {sum(1 for c in cands if c['retrigger_chain'] == 1):,} retriggers); "
         f"no-E statuses (watch rows, no trade): {dict(nonok)}")
-    say(step0_text(cands))
+    say(step0_text(cands, keys))
     say("")
-    say(f"CLOSE VARIANT (discovery): {n_cv:,} rows; "
-        + str(dict(Counter(r["close_status"] for r in cv_rows)))
-        + f"; walks cross into the holdout period (fwd_last_date > {DISCOVERY_END}): "
-        f"{sum(1 for r in cv_rows if r['close_status'] == 'filled' and r['fwd_last_date'] > DISCOVERY_END.isoformat()):,} filled rows; "
-        f"forward walk cut at a hole (ends 'degraded'): {sum(1 for r in cv_rows if r['close_status'] == 'filled' and r['fwd_hole']):,} filled rows")
+    if no_cv:
+        say("CLOSE VARIANT: SKIPPED (--no-close-variant) - this run computed no outcome; `overlap_open` is blank")
+    else:
+        say(f"CLOSE VARIANT (discovery): {n_cv:,} rows; "
+            + str(dict(Counter(r["close_status"] for r in cv_rows)))
+            + f"; walks cross into the holdout period (fwd_last_date > {DISCOVERY_END}): "
+            f"{sum(1 for r in cv_rows if r['close_status'] == 'filled' and r['fwd_last_date'] > DISCOVERY_END.isoformat()):,} filled rows; "
+            f"forward walk cut at a hole (ends 'degraded'): {sum(1 for r in cv_rows if r['close_status'] == 'filled' and r['fwd_hole']):,} filled rows")
     say(f"MINUTE FETCH LIST: {len(fetch_rows):,} unique (ticker, E) pairs over {len({r['date'] for r in fetch_rows}):,} dates "
         f"(tier 1 = any cell C1..C7/report cells true: {sum(1 for r in fetch_rows if r['tier']):,}; "
-        f"non-retrigger only: {len({(c['ticker'], c['E']) for c in cands if c['retrigger'] == 0}):,})")
-    new_pairs = {(c["ticker"], c["E"]) for c in cands if c["K"] in NEW_FETCH_KS}
-    say(f"MINUTE FETCH DELTA (pairs the {'/'.join(NEW_FETCH_KS)} candidates need that _done.psv does not hold; "
+        f"non-retrigger only: {len({(c['ticker'], c['E']) for c in cands if c['retrigger'] == 0}):,})"
+        + ("" if sfx == "" else "; per era: " + ", ".join(
+            f"{sp} {len({(c['ticker'], c['E']) for c in cands if c['split'] == sp}):,}" for sp in ("discovery", "holdout"))))
+    new_pairs = {(c["ticker"], c["E"]) for c in cands if c["K"] in delta_ks}
+    say(f"MINUTE FETCH DELTA (pairs the {'/'.join(delta_ks)} candidates need that _done.psv does not hold; "
         f"{'no _done.psv under ' + str(minutes_dir) + ' - every pair counts as not fetched' if done is None else format(len(done), ',') + ' pairs in _done.psv'}): "
         f"{len(delta_rows):,} pairs over {len({r['date'] for r in delta_rows}):,} dates "
-        f"(of {len(new_pairs):,} {'/'.join(NEW_FETCH_KS)} pairs; tier 1: {sum(1 for r in delta_rows if r['tier']):,}) -> {out / 'minute_fetch_list_delta.tsv'}")
+        f"(of {len(new_pairs):,} {'/'.join(delta_ks)} pairs; tier 1: {sum(1 for r in delta_rows if r['tier']):,}"
+        + ("" if sfx == "" else "; per era: " + ", ".join(
+            f"{sp} {sum(1 for r in delta_rows if split_label(date.fromisoformat(r['date'])) == sp):,}" for sp in ("discovery", "holdout")))
+        + f") -> {out / f'minute_fetch_list_delta{sfx}.tsv'}")
     say(f"WALL TIME: {time.time() - T0:.0f}s total  " + "  ".join(f"{k}={v:.0f}s" for k, v in timers.items()))
-    (small / "run_summary.txt").write_text("\n".join(log) + "\n")
+    (small / f"run_summary{sfx}.txt").write_text("\n".join(log) + "\n")
 
 
 def counts_total(counts: Counter, gate: str) -> int:
@@ -814,20 +874,20 @@ def counts_total(counts: Counter, gate: str) -> int:
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 # STEP 0 - composition before any outcome
 # ═════════════════════════════════════════════════════════════════════════════════════════════
-def _step0_block(rows: list, retrig: str, first: str) -> str:
+def _step0_block(rows: list, retrig: str, first: str, keys=KS) -> str:
     body = []
     for cell in CELL_NAMES:
         r = [cell]
-        for k in KS:
+        for k in keys:
             sub = [c for c in rows if c["K"] == k and c[cell]]
             tr = [c for c in sub if c[retrig] == 0]
             r += [f"{len(tr)}", f"{sum(1 for c in sub if c[first + cell] == 1)}",
                   f"{sum(1 for c in tr if c['gap_over_1adr'])}"]
         body.append(r)
-    return table(body, ["cell"] + [f"{k}:{x}" for k in KS for x in ("trades", "first", "gap>1adr")])
+    return table(body, ["cell"] + [f"{k}:{x}" for k in keys for x in ("trades", "first", "gap>1adr")])
 
 
-def step0_text(cands: list) -> str:
+def step0_text(cands: list, keys=KS) -> str:
     """n per cell per K, HOLDOUT then DISCOVERY - composition only, no outcome, under BOTH base keys.
     SPEC key = (ticker, pole_date, K): 'trades' = non-retrigger breakouts (the spec's one-trade-per-base rule).
     CHAIN key = poles within POLE_DRIFT_MAX sessions are one base (the pole top drifts 1-3 sessions inside one
@@ -838,16 +898,24 @@ def step0_text(cands: list) -> str:
         rows = [c for c in cands if c["split"] == split]
         lines.append(f"  {split.upper()}: {len(rows):,} candidate rows")
         lines.append(f"  -- SPEC key (ticker, pole_date, K): {sum(1 for c in rows if c['retrigger'] == 0):,} trades --")
-        lines.append(_step0_block(rows, "retrigger", "first_"))
+        lines.append(_step0_block(rows, "retrigger", "first_", keys))
         lines.append(f"  -- CHAIN key (poles <= {POLE_DRIFT_MAX} sessions apart = one base): "
                      f"{sum(1 for c in rows if c['retrigger_chain'] == 0):,} trades --")
-        lines.append(_step0_block(rows, "retrigger_chain", "first_chain_"))
+        lines.append(_step0_block(rows, "retrigger_chain", "first_chain_", keys))
     for label, retrig in (("SPEC key", "retrigger"), ("CHAIN key", "retrigger_chain")):
         h = [c for c in cands if c["split"] == "holdout" and c[retrig] == 0 and c["C1"]]
         by_year = Counter(c["E"][:4] for c in h)
         lines.append(f"  GO/NO-GO input, {label} (plan: C1 needs >= 30 holdout trades): "
-                     + ", ".join(f"{k}: {sum(1 for c in h if c['K'] == k)}" for k in KS)
+                     + ", ".join(f"{k}: {sum(1 for c in h if c['K'] == k)}" for k in keys)
                      + "   [C1 holdout trades by year, all K: " + ", ".join(f"{y}={n}" for y, n in sorted(by_year.items())) + "]")
+    if "com" in keys:                              # entry-time fact: how often the level is already under the open / close of E
+        for split in ("holdout", "discovery"):
+            rows = [c for c in cands if c["split"] == split and c["K"] == "com" and c["retrigger"] == 0]
+            n_open = sum(1 for c in rows if c["open_E"] > c["pivot"])
+            c1 = [c for c in rows if c["C1"]]
+            lines.append(f"  COM LEVEL vs the breakout day, {split}, spec-key trades: {len(rows):,} first breaks; open(E) already above "
+                         f"the level on {n_open:,} ({(n_open / len(rows) if rows else 0):.0%}); C1: {len(c1)} first breaks, "
+                         f"open above the level on {sum(1 for c in c1 if c['open_E'] > c['pivot'])}")
     flagged = [c for c in cands if int(c["pole_bad_high"])]
     c1_flag = [c for c in flagged if c["C1"] and c["retrigger"] == 0]
     lines.append(f"  DATA FLAG (reported, not a gate): pole-bar high > {POLE_BAD_HIGH_X}x max(open, close) on "
@@ -872,9 +940,25 @@ def tl_population_text(watch_rows: list) -> str:
     return table(body, ["split", "watch nights", "C0_k5", "C0_tl", "tl: no line", "tl anchored on a later wick"])
 
 
+def com_population_text(watch_rows: list) -> str:
+    """Where the `com` level (the median of the base's highs, #702 P4b) sits on the watch night, per split: nights with a
+    level, nights where it is UNDER the close (any up-day on E "breaks out"), under the high, and the median distance
+    of the level below `pivot_full` in ADR20 units - the number to put beside any com-vs-k5 comparison."""
+    body = []
+    for split in ("discovery", "holdout"):
+        ws = [w for w in watch_rows if w["split"] == split]
+        have = [w for w in ws if w.get("pivot_com") is not None]
+        gap = [(w["pivot_full"] - w["pivot_com"]) / w["pivot_full"] / w["adr20"] for w in have if w["adr20"] > 0]
+        body.append([split, f"{len(ws):,}", f"{len(have):,}", f"{sum(1 for w in have if w['pivot_com'] < w['close']):,}",
+                     f"{sum(1 for w in have if w['pivot_com'] < w['pivot_k5']):,}",
+                     f"{float(np.median(gap)):.2f}" if gap else ""])
+    return table(body, ["split", "watch nights", "com: level", "level < close(D)", "level < k5", "median ADR below pivot_full"])
+
+
 def run_step0(args) -> None:
     import pandas as pd
-    path = (Path(args.out) if args.out else Path(args.data) / "out") / "candidates.tsv"
+    keys, sfx = run_keys(args)
+    path = (Path(args.out) if args.out else Path(args.data) / "out") / f"candidates{sfx}.tsv"
     df = pd.read_csv(path, sep="\t", keep_default_na=False, dtype=str)
     rows = []
     for rec in df.to_dict("records"):
@@ -883,16 +967,17 @@ def run_step0(args) -> None:
         c["retrigger_chain"] = int(rec["retrigger_chain"])
         c["pole_bad_high"] = int(rec["pole_bad_high"])
         c["gap_over_1adr"] = rec["gap_over_1adr"] == "1"
+        c["open_E"], c["pivot"] = float(rec["open_E"]), float(rec["pivot"])
         for cell in CELL_NAMES:
             c[cell] = rec[cell] == "1"
             c["first_" + cell] = int(rec["first_" + cell])
             c["first_chain_" + cell] = int(rec["first_chain_" + cell])
         rows.append(c)
-    text = step0_text(rows)
+    text = step0_text(rows, keys)
     print(text)
     small = Path(args.small_out) if args.small_out else HERE / "out"
     small.mkdir(parents=True, exist_ok=True)
-    (small / "step0.txt").write_text(text + "\n")
+    (small / f"step0{sfx}.txt").write_text(text + "\n")
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
@@ -1585,7 +1670,7 @@ def _setup_minute_inputs(args, split: str) -> dict:
     data = Path(args.data)
     out = Path(args.out) if args.out else data / "out"
     minutes_dir = Path(args.minutes) if args.minutes else data / "minutes"
-    cands = read_candidates(out / "candidates.tsv", split)
+    cands = read_candidates(out / f"candidates{run_keys(args)[1]}.tsv", split)
     files = minute_date_files(minutes_dir) if minutes_dir.is_dir() else {}
     if args.limit_dates:
         files = dict(list(files.items())[:args.limit_dates])
@@ -1632,6 +1717,7 @@ def run_minute_stage(args, split: str) -> None:
     T0 = time.time()
     inp = _setup_minute_inputs(args, split)
     out, small = inp["out"], (Path(args.small_out) if args.small_out else HERE / "out")
+    sfx = run_keys(args)[1]
     log: list = []
 
     def say(msg: str = "") -> None:
@@ -1653,7 +1739,7 @@ def run_minute_stage(args, split: str) -> None:
     close_map, compute_close = None, False
     if not args.no_close:
         if split == "discovery":
-            cvp = inp["out"] / "close_variant_discovery.tsv.gz"
+            cvp = inp["out"] / f"close_variant_discovery{sfx}.tsv.gz"
             close_map = load_close_variant(cvp) if cvp.exists() else None
             if close_map is None:
                 say(f"  ! {cvp} not found: the CLOSE variant is skipped")
@@ -1663,7 +1749,7 @@ def run_minute_stage(args, split: str) -> None:
               compute_close=compute_close, bars_cache={}, apollo=not args.no_apollo)
     say(f"[load: {time.time() - t:.0f}s]")
     t = time.time()
-    tp, ep = out / f"trades_{split}.tsv.gz", out / f"entries_{split}.tsv.gz"
+    tp, ep = out / f"trades_{split}{sfx}.tsv.gz", out / f"entries_{split}{sfx}.tsv.gz"
     tpp, epp = partial_path(tp), partial_path(ep)
     tally: Counter = Counter()
     n_t = n_e = 0
@@ -1702,17 +1788,17 @@ def run_minute_stage(args, split: str) -> None:
         f"{a} mature {m[1]:,} / open mark {m[0]:,}" for a, m in mat.items() if a in (cb.PRIMARY_ARM, FAMILY_A_ARM, APOLLO_ARM)))
     say(f"WROTE {tp} ({n_t:,} rows), {ep} ({n_e:,} rows)")
     say(f"WALL TIME: {time.time() - T0:.0f}s total")
-    (small / f"minute_summary_{split}.txt").write_text("\n".join(log) + "\n")
+    (small / f"minute_summary_{split}{sfx}.txt").write_text("\n".join(log) + "\n")
 
 
-def step0_text_entries(tally: Counter) -> str:
+def step0_text_entries(tally: Counter, keys=KS) -> str:
     """The go/no-go input: per cell x K x variant - candidates, filled, too_wide, other abstains, no_trigger - under
     BOTH base keys (non-retrigger rows only). Entry-time facts; no outcome exists anywhere in it."""
     lines = ["STEP 0 (entries) - HOLDOUT composition from ENTRY-TIME facts only; no day-0 walk, no exit, no outcome"]
     for key_name, label in (("spec", "SPEC key (ticker, pole_date, K)"), ("chain", "CHAIN key (poles <= 3 sessions apart = one base)")):
         body = []
         for cell in CELL_NAMES:
-            for k in KS:
+            for k in keys:
                 for v in MINUTE_VARIANTS:
                     g = lambda cat: tally.get((cell, k, v, key_name, cat), 0)
                     body.append([cell, k, v, g("candidates"), g("filled"), g("too_wide"), g("other_abstain"), g("no_trigger")])
@@ -1721,7 +1807,7 @@ def step0_text_entries(tally: Counter) -> str:
     for key_name, label in (("spec", "SPEC key"), ("chain", "CHAIN key")):
         parts = []
         for v in MINUTE_VARIANTS:
-            parts.append(f"{v}: " + ", ".join(f"{k}={tally.get(('C1', k, v, key_name, 'filled'), 0)}" for k in KS))
+            parts.append(f"{v}: " + ", ".join(f"{k}={tally.get(('C1', k, v, key_name, 'filled'), 0)}" for k in keys))
         lines.append(f"  GO/NO-GO input, {label} (plan: C1 primary entry needs >= 30 FILLED holdout trades): " + "; ".join(parts))
     return "\n".join(lines)
 
@@ -1732,6 +1818,7 @@ def run_step0_entries(args) -> None:
     T0 = time.time()
     inp = _setup_minute_inputs(args, "holdout")
     out, small = inp["out"], (Path(args.small_out) if args.small_out else HERE / "out")
+    keys, sfx = run_keys(args)
     by_date = inp["by_date"]
     n_c = len(inp["cands"])
     print(f"STEP 0 ENTRIES: {n_c:,} holdout candidate rows; minute files on disk: {len(inp['files'])} dates; "
@@ -1743,7 +1830,7 @@ def run_step0_entries(args) -> None:
     small.mkdir(parents=True, exist_ok=True)
     _G.update(by_date=by_date, files=inp["files"], done=inp["done"])
     tally: Counter = Counter()
-    cp = out / "entries_holdout_composition.tsv"
+    cp = out / f"entries_holdout_composition{sfx}.tsv"
     n_rows = 0
     with open(cp, "w", newline="") as fh:
         fh.write("\t".join(COMPOSITION_COLS) + "\n")
@@ -1754,10 +1841,10 @@ def run_step0_entries(args) -> None:
     states = {k[1]: n for k, n in tally.items() if k[0] == "minutes_state"}
     txt = [f"COVERAGE: holdout candidates with minutes fetched {sum(n for s, n in states.items() if s != 'pending'):,} "
            f"(by state {dict(sorted(states.items()))}); PENDING fetch (skipped, NOT an abstain) {states.get('pending', 0):,}",
-           minute_data_gate(tally)[1], step0_text_entries(tally)]
+           minute_data_gate(tally)[1], step0_text_entries(tally, keys)]
     text = "\n".join(txt)
     print(text)
-    (small / "step0_entries.txt").write_text(text + "\n")
+    (small / f"step0_entries{sfx}.txt").write_text(text + "\n")
     print(f"WROTE {cp} ({n_rows:,} rows, entry-time columns only); WALL TIME {time.time() - T0:.0f}s")
 
 
@@ -1890,6 +1977,9 @@ def holdout_option_problems(args, data: Path) -> list:
     for flag, on in (("--limit-dates", args.limit_dates), ("--no-close", args.no_close), ("--no-apollo", args.no_apollo)):
         if on:
             bad.append(f"{flag}: the holdout is one full run; a partial or altered run would also block the real one")
+    if getattr(args, "keys", None):
+        bad.append(f"--keys {args.keys}: the holdout reads the registered levels only ({'/'.join(KS)}); a level outside the "
+                   f"registration (#702 P4b `com`) is read beside it in its own, separately registered run")
     return bad
 
 
@@ -2092,7 +2182,8 @@ def _ci(row):
     return "" if lo is None or lo != lo else f"[{lo:+.2f}, {hi:+.2f}]"
 
 
-def report_text(df, rows: list, too_wide: dict, cuts: dict, counts: Counter, src: Path) -> str:
+def report_text(df, rows: list, too_wide: dict, cuts: dict, counts: Counter, src: Path, keys=KS) -> str:
+    KS_ = tuple(keys)
     idx = {(r["key"], r["cell"], r["K"], r["variant"], r["arm"], r["slice"], r["value"]): r for r in rows}
     out = []
     A = out.append
@@ -2110,7 +2201,7 @@ def report_text(df, rows: list, too_wide: dict, cuts: dict, counts: Counter, src
         A(f"  -- {label} --")
         body = []
         for cell in CELL_NAMES:
-            for k in KS:
+            for k in KS_:
                 r = idx.get((key_name, cell, k, HEADLINE_VARIANT, cb.PRIMARY_ARM, "all", ""))
                 tw = too_wide.get((key_name, cell, k, HEADLINE_VARIANT), 0)
                 if r is None:
@@ -2125,13 +2216,13 @@ def report_text(df, rows: list, too_wide: dict, cuts: dict, counts: Counter, src
     for key_name, _col, label in REPORT_KEYS[:1]:
         body = []
         for cell in CELL_NAMES:
-            for k in KS:
+            for k in KS_:
                 body.append([cell, k] + [too_wide.get((key_name, cell, k, v), 0) for v in ALL_VARIANTS])
         A(table(body, ["cell", "K"] + list(ALL_VARIANTS)))
     A("")
     A(f"ARMS - entry {HEADLINE_VARIANT}, spec key: every exit arm and both controls (n = mature walks; R in cb units; pnl_adr is the size-free comparison)")
     for cell in ("C0", "C1"):
-        for k in KS:
+        for k in KS_:
             body = []
             for a in ALL_ARMS:
                 r = idx.get(("spec", cell, k, HEADLINE_VARIANT, a, "all", ""))
@@ -2145,7 +2236,7 @@ def report_text(df, rows: list, too_wide: dict, cuts: dict, counts: Counter, src
     A("")
     A(f"SLICES - entry {HEADLINE_VARIANT}, arm {cb.PRIMARY_ARM}, spec key: n / mean R / share >= 5R (by calendar year of E, QQQ 10/20 phase at D, gap over 1 ADR, dollar-volume and ADR terciles)")
     for cell in CELL_NAMES:
-        for k in KS:
+        for k in KS_:
             parts = []
             for sname, _scol in REPORT_SLICES[:-1]:
                 vals = sorted({r["value"] for kk, r in idx.items() if kk[:5] == ("spec", cell, k, HEADLINE_VARIANT, cb.PRIMARY_ARM) and r["slice"] == sname},
@@ -2159,17 +2250,17 @@ def report_text(df, rows: list, too_wide: dict, cuts: dict, counts: Counter, src
             if parts:
                 A(f"  {cell} {k}: " + " | ".join(parts))
     A("")
-    A(f"SUM OF R PER MONTH - C0 and C1, K=k5, entry {HEADLINE_VARIANT}, arm {cb.PRIMARY_ARM}, spec key (full table in the TSV)")
+    A(f"SUM OF R PER MONTH - C0 and C1, K={KS_[0]}, entry {HEADLINE_VARIANT}, arm {cb.PRIMARY_ARM}, spec key (full table in the TSV)")
     for cell in ("C0", "C1"):
         ms = sorted((r["value"], r["sum_r"]) for kk, r in idx.items()
-                    if kk[:5] == ("spec", cell, "k5", HEADLINE_VARIANT, cb.PRIMARY_ARM) and r["slice"] == "month")
+                    if kk[:5] == ("spec", cell, KS_[0], HEADLINE_VARIANT, cb.PRIMARY_ARM) and r["slice"] == "month")
         A(f"  {cell}: " + ("  ".join(f"{m}:{s:+.1f}" for m, s in ms) if ms else "(no mature trade)"))
     A("")
     A(f"SENSITIVITIES - entry {HEADLINE_VARIANT}, arm {cb.PRIMARY_ARM}, spec key; each cell is n / mean R; none of them decides")
     body = []
     base_df = df[(df["variant"] == HEADLINE_VARIANT) & (df["retrigger"] == 0)]
     for cell in CELL_NAMES:
-        for k in KS:
+        for k in KS_:
             sub = base_df[(base_df[cell] == 1) & (base_df["K"] == k)]
             prim = sub[(sub["arm"] == cb.PRIMARY_ARM) & (sub["mature"] == 1)]
             capd = sub[sub["arm"].isna() & (sub["abstain_reason"] == "too_wide") & (sub["cap_mature"] == 1)]
@@ -2199,7 +2290,9 @@ def run_report(args) -> int:
     data = Path(args.data)
     out = Path(args.out) if args.out else data / "out"
     small = Path(args.small_out) if args.small_out else HERE / "out"
-    src = Path(args.trades) if args.trades else out / "trades_discovery.tsv.gz"
+    keys, sfx = run_keys(args)
+    name = f"{REPORT_NAME}{sfx}"
+    src = Path(args.trades) if args.trades else out / f"trades_discovery{sfx}.tsv.gz"
     if not src.exists():
         print(f"report: {src} not found - run `minute` first", file=sys.stderr)
         return 1
@@ -2209,20 +2302,20 @@ def run_report(args) -> int:
     print(f"[read {counts['rows']:,} trade rows, kept {len(df):,}: {time.time() - T0:.0f}s]", flush=True)
     if not len(df):
         msg = f"report: {src.name} has no non-retrigger row carrying an arm or a too_wide abstain - nothing to report"
-        (small / f"{REPORT_NAME}.txt").write_text(msg + "\n")
+        (small / f"{name}.txt").write_text(msg + "\n")
         print(msg)
         return 0
     rows, too_wide = build_report_rows(df)
     cols = ["key", "cell", "K", "variant", "arm", "slice", "value"] + STAT_COLS
-    full = out / f"{REPORT_NAME}.tsv"
+    full = out / f"{name}.tsv"
     write_tsv(full, rows, cols)
     compact = [{k: (round(v, 6) if isinstance(v, float) else v) for k, v in r.items()} for r in rows
                if r["slice"] == "all" and r["n_filled"]]
-    write_tsv(small / f"{REPORT_NAME}.tsv", compact, cols)          # the repo-sized copy: 'all' slices, 6 decimals (< 1 MB)
-    text = report_text(df, rows, too_wide, cuts, counts, src)
-    (small / f"{REPORT_NAME}.txt").write_text(text + "\n")
+    write_tsv(small / f"{name}.tsv", compact, cols)          # the repo-sized copy: 'all' slices, 6 decimals (< 1 MB)
+    text = report_text(df, rows, too_wide, cuts, counts, src, keys)
+    (small / f"{name}.txt").write_text(text + "\n")
     print(text)
-    print(f"WROTE {full} ({len(rows):,} rows), {small / (REPORT_NAME + '.tsv')}, {small / (REPORT_NAME + '.txt')}; WALL TIME {time.time() - T0:.0f}s")
+    print(f"WROTE {full} ({len(rows):,} rows), {small / (name + '.tsv')}, {small / (name + '.txt')}; WALL TIME {time.time() - T0:.0f}s")
     return 0
 
 
@@ -2252,7 +2345,13 @@ def main(argv=None) -> None:
     ap.add_argument("--no-freeze-check", action="store_true", help="holdout: skip the freeze check - ONLY together with --dry-run")
     ap.add_argument("--print-pins", action="store_true", help="holdout: print the footer pin lines for the registration doc and exit")
     ap.add_argument("--prereg", help="holdout: the registration doc (default: the one docs/analysis/cb_preregistration_*.md)")
+    ap.add_argument("--keys", help="the breakout levels to run, comma-separated (default: the module's four, k5/k10/full/tl, which "
+                                   "write the pinned files). 'com' = the #702 P4b center-of-mass level: every output then carries "
+                                   "the suffix _com beside the pinned files. holdout REFUSES it")
+    ap.add_argument("--no-close-variant", action="store_true",
+                    help="daily: skip the CLOSE-variant walk (no outcome of any kind is computed; overlap_open is left blank)")
     args = ap.parse_args(argv)
+    parse_keys(args.keys)                       # a bad --keys fails here, before any stage opens a file
     if args.stage == "daily":
         if args.step0:
             run_step0(args)

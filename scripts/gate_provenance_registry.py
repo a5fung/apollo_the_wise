@@ -604,6 +604,51 @@ GATE_REGISTRY: list[dict] = [
                 "sign-off's only text is a code comment in rs_engine.py (not a citable source file), so this entry "
                 "cites the setup doc row that records it; if that text is ever filed in a document, repoint this.",
     },
+    # ── Consolidation Breakout, #702 P4b (2026-10-18): the CENTER-OF-MASS level `com` ──────────────────────
+    # Runner-only (`--keys com`); not in KS, so the shadow and the pinned backtest outputs never carry it. The two
+    # B-class constants cite the P4b registration (docs/analysis/cb_preregistration_2026-10-18.md §P4b.3, the label
+    # read that chose them); the run length is his verbatim "1-3 bars". COM_SPIKE_ADR / COM_FALLING_SLOPE are the
+    # runner-up reading's parameters and gate nothing under the chosen reading - documented in the setup doc, not here.
+    {
+        "id": "consolidation_breakout.COM_VARIANT",
+        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "kind": "const",
+        "name": "COM_VARIANT",
+        "value": "quantile",
+        "citation": {
+            "file": "docs/analysis/cb_preregistration_2026-10-18.md",
+            "text": "the median of the base's daily highs over the sessions after the pole top, (P, D]",
+        },
+        "note": "B: which reading of his 'center of mass' sentence the `com` level is. Chosen on the P4b plateau (the quantile "
+                "family at q 0.4-0.55 was the only plateau; the spike-filtered tops read 1.2 ADR above his lines).",
+    },
+    {
+        "id": "consolidation_breakout.COM_QUANTILE",
+        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "kind": "const",
+        "name": "COM_QUANTILE",
+        "value": 0.5,
+        "citation": {
+            "file": "docs/analysis/cb_preregistration_2026-10-18.md",
+            "text": "the centre rule picks **q = 0.5** — the literal \"center of mass\": the median of the base's daily highs",
+        },
+        "note": "B: the plateau's centre (q in {0.4, 0.45, 0.5, 0.55} within one bootstrap SE of the best; 0.4 / 0.45 excluded "
+                "by the pre-stated close test). 43 of his 58 lines within 0.5 ADR, against 23 for the best existing level.",
+    },
+    {
+        "id": "consolidation_breakout.COM_MAX_RUN",
+        "file": "agents/market_intelligence/consolidation_breakout.py",
+        "kind": "const",
+        "name": "COM_MAX_RUN",
+        "value": 3,
+        "citation": {
+            "file": "docs/methodology/operator_shared_notes.md",
+            "text": "spike then drop back to the basing area",
+        },
+        "note": "S: his words (2026-10-18): 'a 1-3 bars spike then drop back to the basing area' (the quote wraps a line in "
+                "the notes, so the citation is its second half). The longest run of spike bars the spike filter ignores. Under the CHOSEN reading "
+                "(quantile) the filter is telemetry; it gates the flat_*/tl_filtered/switch_* readings only.",
+    },
     # ── Parabolic-short forward shadow (#314 card B3, 2026-10-17; owner docs/setups/parabolic_short.md) ──────
     # Every number below is ADR 0020 section 4 (operator-signed 2026-07-05, Gemini amendments adopted) and is
     # cited VERBATIM from it. The module's implementation choices (BORROW_ACCOUNT_MODE, the limit buffer,

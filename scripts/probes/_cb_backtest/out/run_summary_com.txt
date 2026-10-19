@@ -1,0 +1,115 @@
+[load: 8s]
+[pass 1 (universe + RS inputs + explain_watch): 12s]
+[stage 1 cross-section: 4s]
+[watch rows + cells: 15s]
+[stage 3 breakouts: 2s]
+[close variant SKIPPED (--no-close-variant): 0s]
+[write outputs: 2s]
+
+DATA INTEGRITY: 6,018 of 20,285 tickers have a missing SPY session inside their span (253,391 holes); a night is admitted only if its 130 bars are consecutive sessions, and a forward walk stops at the first hole; splits executing after 2026-10-16 dropped: 85 of 6954 (not yet in the adjusted series); exchange test symbols excluded: 18 tickers present in the export
+GATE FUNNEL (ticker-nights with D >= 2022-03-28; each night lands in exactly ONE row)
+stage                      nights    share
+universe_fail          10,165,313   81.33%
+prescreen_skip          1,170,593    9.37%
+history                     5,345    0.04%
+prior_move                405,496    3.24%
+close_above_pole_high     223,719    1.79%
+close_nonpositive               0    0.00%
+sma50                     283,581    2.27%
+deal_pin_median             4,764    0.04%
+fresh_pin                     367    0.00%
+pole_artifact                 143    0.00%
+adr_unusable                    0    0.00%
+pass                      239,946    1.92%
+TOTAL ticker-nights    12,499,267  100.00%
+  'history' = universe_ok passed but the 130 bars are NOT consecutive sessions (a hole / reused ticker); universe members (nights) = total - universe_fail - history: 2,328,609;  pre-screen skips are nights the real gate would fail at prior_move (proved by --check-prescreen);  prior_move total incl. skips = 1,576,089
+
+WATCH ROWS: 239,946 (ticker x D) over 3,131 tickers; discovery 129,985 / holdout 109,961
+  universe size per date: min 1,789 median 2,007 max 2,400; watch rows with no group (grp_pct None): 46,770; rs_best None: 0
+  watch nights with the cell true (all splits):
+cell                 com
+C0                239946
+C1                  1279
+C2                   126
+C3                  2675
+C4                  8838
+C5                  2817
+C6                   318
+C7                  1848
+C1_no_retrace       2388
+C1_no_tightening    3545
+HTF                12283
+C1_s5               1413
+  com - the center-of-mass level (the median of the base's highs; #702 P4b): where it sits against the watch night's close and high, per split (a level UNDER the close breaks out on any up-day):
+split      watch nights  com: level  level < close(D)  level < k5  median ADR below pivot_full
+discovery       129,985     129,985            49,542     103,745                         1.50
+holdout         109,961     109,961            44,709      90,209                         1.50
+
+  DATA FLAG: 640 watch rows on 51 tickers have a pole bar whose high is > 1.25x max(open, close) (a suspect print can become pole_high); C1_com nights among them: 11
+
+BREAKOUT CANDIDATES (high(E) > pivot_K(D)): 136,323 rows (spec key 26,923 trades + 109,400 retriggers; chain key 20,558 trades + 115,765 retriggers); no-E statuses (watch rows, no trade): {('gap_in_bars', 'discovery'): 3, ('no_next_bar', 'discovery'): 8, ('no_next_bar', 'holdout'): 19, ('gap_in_bars', 'holdout'): 1, ('pending', 'holdout'): 118}
+STEP 0 - composition (no outcomes). n = breakout candidates, before entry abstains
+  HOLDOUT: 65,017 candidate rows
+  -- SPEC key (ticker, pole_date, K): 12,361 trades --
+cell              com:trades  com:first  com:gap>1adr
+C0                     12361      12361          2277
+C1                        42        105             5
+C2                         7         23             0
+C3                       115        241            10
+C4                       357        784            19
+C5                       109        253             5
+C6                        11         48             0
+C7                        80        184             8
+C1_no_retrace             73        222            13
+C1_no_tightening         163        318            22
+HTF                      651        651            46
+  -- CHAIN key (poles <= 3 sessions apart = one base): 9,450 trades --
+cell              com:trades  com:first  com:gap>1adr
+C0                      9450       9450          1310
+C1                        35        100             5
+C2                         6         22             0
+C3                        93        225             7
+C4                       285        731            12
+C5                        91        236             5
+C6                         9         45             0
+C7                        63        174             6
+C1_no_retrace             60        214            10
+C1_no_tightening         121        297            17
+HTF                      523        542            32
+  DISCOVERY: 71,306 candidate rows
+  -- SPEC key (ticker, pole_date, K): 14,562 trades --
+cell              com:trades  com:first  com:gap>1adr
+C0                     14562      14562          2603
+C1                       112        237             4
+C2                        11         24             1
+C3                       213        387             7
+C4                       548       1289            25
+C5                       209        497             7
+C6                        24         52             2
+C7                       145        286             5
+C1_no_retrace            172        419            14
+C1_no_tightening         273        559            15
+HTF                      626        626            37
+  -- CHAIN key (poles <= 3 sessions apart = one base): 11,108 trades --
+cell              com:trades  com:first  com:gap>1adr
+C0                     11108      11108          1454
+C1                        98        226             2
+C2                        11         24             1
+C3                       187        366             5
+C4                       466       1229            11
+C5                       175        468             3
+C6                        22         50             2
+C7                       124        269             3
+C1_no_retrace            145        397             8
+C1_no_tightening         215        525             7
+HTF                      517        527            25
+  GO/NO-GO input, SPEC key (plan: C1 needs >= 30 holdout trades): com: 42   [C1 holdout trades by year, all K: 2025=24, 2026=18]
+  GO/NO-GO input, CHAIN key (plan: C1 needs >= 30 holdout trades): com: 35   [C1 holdout trades by year, all K: 2025=21, 2026=14]
+  COM LEVEL vs the breakout day, holdout, spec-key trades: 12,361 first breaks; open(E) already above the level on 6,832 (55%); C1: 42 first breaks, open above the level on 23
+  COM LEVEL vs the breakout day, discovery, spec-key trades: 14,562 first breaks; open(E) already above the level on 8,200 (56%); C1: 112 first breaks, open above the level on 50
+  DATA FLAG (reported, not a gate): pole-bar high > 1.25x max(open, close) on 301 candidate rows (37 tickers); non-retrigger C1 trades affected: holdout 1, discovery 0  [column pole_bad_high]
+
+CLOSE VARIANT: SKIPPED (--no-close-variant) - this run computed no outcome; `overlap_open` is blank
+MINUTE FETCH LIST: 136,323 unique (ticker, E) pairs over 1,140 dates (tier 1 = any cell C1..C7/report cells true: 13,349; non-retrigger only: 26,923); per era: discovery 71,306, holdout 65,017
+MINUTE FETCH DELTA (pairs the com candidates need that _done.psv does not hold; 95,975 pairs in _done.psv): 57,834 pairs over 1,140 dates (of 136,323 com pairs; tier 1: 5,342; per era: discovery 30,452, holdout 27,382) -> /Users/alvinfung/apollo_data/cb702/out/minute_fetch_list_delta_com.tsv
+WALL TIME: 45s total  load=8s  pass 1 (universe + RS inputs + explain_watch)=12s  stage 1 cross-section=4s  watch rows + cells=15s  stage 3 breakouts=2s  close variant SKIPPED (--no-close-variant)=0s  write outputs=2s

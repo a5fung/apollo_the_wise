@@ -21,6 +21,7 @@ python3 -m pytest tests/test_cb_backtest_runner.py tests/test_consolidation_brea
 | `close_variant_discovery.tsv.gz` | `DATA/out/` | CLOSE entry + all 15 exit arms (`st_/r_/adr_/held_/acct_/beabove_<arm>`), DISCOVERY rows only; `fwd_hole` = 1 when the forward walk was cut at a missing session (the walk then ends `degraded`) |
 | `minute_fetch_list.tsv` | `DATA/out/` | unique (ticker, E) over all candidates incl. retriggers; `tier` 1 = any of C1..C7 / report cells true on some K |
 | `minute_fetch_list_delta.tsv` | `DATA/out/` | #702 P1c: the (ticker, E) pairs the `tl` candidates need that `DATA/minutes/_done.psv` does not hold (the first pull covered k5/k10/full); same columns and tier as `minute_fetch_list.tsv`, so `fetch_minutes.py --list` reads it unchanged. Not a freeze pin (derivable from two pinned artefacts: `candidates.tsv` and the minute tree). The daily stage prints its size |
+| `*_com.*` (`watch_com.tsv.gz`, `candidates_com.tsv`, `gap_in_bars_com.tsv`, `minute_fetch_list_com.tsv`, `minute_fetch_list_delta_com.tsv`; small: `run_summary_com.txt`, `step0_com.txt`, ...) | `DATA/out/` | **#702 P4b `--keys com`**: the same stage on the CENTER-OF-MASS level only (`cb.com_level`: the median of the base's highs; his 2026-10-18 rule, chosen on the P4b label read — `docs/analysis/cb_preregistration_2026-10-18.md` §P4b). Same layouts as the pinned files plus the `pivot_com*` / `com_*` columns and `C*_com` cells; `minute_fetch_list_delta_com.tsv` = the `com` breakout days whose minutes are not in `_done.psv` (both eras; `fetch_minutes.py --list` reads it as is). `--no-close-variant` skips the CLOSE walk so the run computes no outcome and `overlap_open` is blank. The pinned names are never written by a `--keys` run; `holdout` refuses `--keys` |
 | `gap_in_bars.tsv` | `DATA/out/` | watch rows with no tradable E (`gap_in_bars` / `no_next_bar`); `pending` (D = last session) is only counted |
 
 ## Rules the runner enforces (all asserted)
@@ -53,6 +54,7 @@ python3 -m pytest tests/test_cb_backtest_runner.py tests/test_consolidation_brea
 # P2b — the minute stage (`minute`, `step0-entries`, `holdout`, `report`)
 
 ```
+python3 scripts/probes/_cb_backtest/runner.py daily         --data DATA --keys com [--no-close-variant]                         # #702 P4b: the com level, *_com outputs
 python3 scripts/probes/_cb_backtest/runner.py minute        --data DATA [--minutes DIR] [--workers N] [--no-close] [--no-apollo]   # DISCOVERY outcomes
 python3 scripts/probes/_cb_backtest/runner.py step0-entries --data DATA [--minutes DIR]                                           # HOLDOUT composition, NO outcome
 python3 scripts/probes/_cb_backtest/runner.py report        --data DATA                                                          # the DISCOVERY read

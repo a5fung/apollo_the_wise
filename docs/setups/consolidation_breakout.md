@@ -43,6 +43,7 @@ approved plan, not by the article · **T** = telemetry only, never gates.
 | Base | the sessions after P up to D; 10 to 45 sessions long | **S** *"usually 2 weeks to 2 months"* (10 = two weeks; 45 ≈ two months, rounded up from ~43) | `BASE_MIN_SESSIONS`, `BASE_MAX_SESSIONS` |
 | Base anchor | the base ends only if a CLOSE (not a wick) goes above high(P) | **R** the shipped HTF `_flag_resolved_by` (#592) | `_base_resolved` |
 | Pivot (K) | `k5` / `k10` / `full` = highest high of the last 5 / 10 / all base sessions (HORIZONTAL levels); `tl` = the down-sloping trendline, projected one session ahead | k5 / k10 / full: **B** (the primary is picked in discovery, then frozen). `tl`: **S** his 2026-10-17 note *"a flag with a down sloping trend line and a breakout of that trend line"* — how the line is anchored and drawn is the #702 P1c reading of that sentence, tested BESIDE the horizontal levels | `PIVOT_KEYS`, `_down_trendline` |
+| Pivot `com` (P4b, runner-only) | the CENTER-OF-MASS level = **the median of the base's daily highs over (P, D]** (bars ≤ D; `pivot_com_date` = the base bar nearest it); a breakout is `high(E) > pivot_com(D)`, same keys and cells as the four above. NOT in `PIVOT_KEYS` / `KS`: the shadow never computes it and no pinned backtest output carries it; the runner computes it on `--keys com` into `*_com` files | **S** his 2026-10-18 rule *"he finds where the center of mass is in the consolidation and ignore the outliers if it's just a short period, meaning a 1-3 bars spike then drop back to the basing area"*; WHICH reading of that sentence (`COM_VARIANT` = `quantile`, `COM_QUANTILE` = 0.5) is **B**, chosen on the plateau of the P4b label read (43 of his 58 drawn lines within 0.5 ADR vs 23 for the best existing level; `docs/analysis/cb_preregistration_2026-10-18.md` §P4b); the spike filter (`COM_MAX_RUN` = 3 **S** his "1-3 bars"; `COM_SPIKE_ADR` = 0.5, `COM_FALLING_SLOPE` = 0.2%/session **B**, the runner-up reading's values) serves the five other readings and is telemetry under the chosen one | `EXTRA_PIVOT_KEYS`, `com_level`, `spike_mask` |
 | MA surfing | close ≥ SMA50; close ≥ 0.98 × SMA20; SMA50 rising over 10 sessions | **S** *"surfs the rising 10- and 20-day and sometimes the 50-day"* · **R** `anticipation._MA_NEAR_PCT` · 10-session slope **P** | `explain_watch`, `sma20_ok`, `sma50_rising` |
 | Higher lows | lowest low of the last 5 sessions > the base low | **S** *"higher lows"*; the 5-session window is **B** | `higher_lows`, `RECENT_WINDOW` |
 | Tightening | mean daily range of the last 5 sessions ÷ the first 5 base sessions ≤ 0.75 | **S** *"tightening range"* · **R** `flag_detector._RANGE_CONTRACTION_MAX` | `tightening_ok` |
@@ -230,6 +231,43 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 - The minute feed (the row's `feed` column) and thin-SIC effects above bias the first weeks; the read states them.
 
 ## Change log
+
+### 2026-10-18 — #702 P4b step 6: a fifth breakout level `com` (the base's median high — where he actually draws the line), runner-only, no pinned byte moved
+
+**Trigger**: his 2026-10-18 rule (verbatim in `operator_shared_notes.md`): the line goes on the consolidation's center of
+mass, a 1–3 bar spike that drops back is ignored; and step 5's finding that on 32 of his 58 drawn lines EVERY existing level
+sits above the line (median 5.6%, ~1.5 ADR under `pivot_full`).
+
+**Evidence**: 58 labelled bases (48 bar_verified / 10 eyeball_confirmed; 2019–23, one bull era), scored by
+`scripts/probes/_qm_streams/p4b_com_rule.py` over 262 readings of his sentence, all computed by the module's own
+`cb.com_level`, with the pick rule written before the grid ran (`docs/analysis/cb_preregistration_2026-10-18.md` §P4b).
+The only plateau is the quantile family at q 0.4–0.55; **q = 0.5 (the median base high) puts 43 of 58 lines within 0.5 ADR
+(bar_verified 35 of 48, eyeball 8 of 10, flat 26 of 35, falling 17 of 23), bias +0.01 ADR; the best existing level (k5)
+23 of 58, bias +0.58 ADR; the literal "ignore the spike, take the top" reading 8 of 58 (1.2 ADR above his lines).**
+Runner-up: `switch_close` (filtered flag line when falling, highest kept close when flat) 31 of 58. 10 of 58 miss by over
+1 ADR, 8 of them lines drawn well below the base that no base-top rule reaches.
+
+**What**: (1) module: `EXTRA_PIVOT_KEYS = ("com",)`, `spike_mask` and `com_level` (six readings; the chosen one by default),
+`cell_flags` / `breakout_key` accept the extra key; `explain_watch`, the four levels and `KS` untouched (the shadow iterates
+`KS`). (2) runner: `--keys com` runs the level through `daily` / `minute` / `step0-entries` / `report` into `*_com`
+outputs (`candidates_com.tsv`, `minute_fetch_list_com.tsv` + `_delta_com.tsv` in `fetch_minutes.py`'s format,
+`trades_discovery_com.tsv.gz`, `discovery_report_com.txt`); `--no-close-variant` (daily) computes no outcome; `holdout`
+refuses `--keys`. (3) registry: `COM_VARIANT`, `COM_QUANTILE`, `COM_MAX_RUN`. (4) tests: equivalence (no filter = the
+existing levels on every MRNA watch night), the synthetic spike cases, the character switch, and five of his labelled
+bases as a fixture (`tests/fixtures/cb_p4b_labelled_bars.psv` + `cb_p4b_labels.tsv`, bars and derived numbers only).
+
+**Anticipated effect**: none in production — the shadow computes `KS` only and no table, job or Telegram changes. The
+byte-identical proof: the four stages re-run on the registered levels into a scratch dir, all seven content hashes and the
+four other pinned outputs (`minute_fetch_list.tsv`, `gap_in_bars.tsv`, `minute_fetch_list_delta.tsv`,
+`discovery_report.txt`) identical to the 10-17 run. **Freeze consequence**: the module, runner and doc-body pins are
+stale by bytes (additive code, unchanged outputs); `holdout` refuses until the main loop re-pins after the `com` minute
+fetch (which changes the minutes pin anyway). Under `com` the level sits under the watch night's close on 38% of watch
+nights and the breakout day opens above it on 55% of first breaks (C1 holdout: 23 of 42) — an EARLIER, lower entry than
+the four levels; stated in §P4b.4, to be read, not tuned.
+
+**Reversion-flag**: NEW (additive; no existing level, cell, entry, stop or exit moved). Reverting = drop `--keys` and the
+`com_level` call; nothing else depends on them. **Status**: built on a worktree branch; the `com` discovery re-read waits
+on the minute fetch (main loop); no `com` outcome has been read.
 
 ### 2026-10-18 — #702 minute fetch: a raised error defers the batch, an empty answer is a real `no_minutes` (the outage GUESS is replaced by the collector's own error)
 

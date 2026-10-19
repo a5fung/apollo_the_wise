@@ -1343,6 +1343,78 @@ def argparse_ns(data, **kw):
     return argparse.Namespace(**ns)
 
 
+# ═══ #702 P4b: K = "com", the center-of-mass level - runner-only, suffixed outputs, the pinned names untouched ═════════
+class TestCenterOfMassK:
+    def test_keys_parse_and_the_default_keeps_every_pinned_name(self):
+        assert rn.EXTRA_KS == cb.EXTRA_PIVOT_KEYS == ("com",) and "com" not in rn.KS
+        assert rn.parse_keys(None) == rn.parse_keys("") == rn.KS and rn.out_suffix(rn.KS) == ""
+        assert rn.parse_keys("com") == ("com",) and rn.out_suffix(("com",)) == "_com"
+        assert rn.parse_keys("k5, com") == ("k5", "com") and rn.out_suffix(("k5", "com")) == "_k5_com"
+        for bad in ("k7", "com,com", ",", "tl,"):
+            if bad == "tl,":
+                assert rn.parse_keys(bad) == ("tl",) and rn.out_suffix(("tl",)) == "_tl"      # a subset of KS is NOT the default name
+                continue
+            with pytest.raises(ValueError):
+                rn.parse_keys(bad)
+        assert rn.run_keys(argparse_ns("x")) == (rn.KS, "")                              # a namespace without `keys` = the default
+
+    def test_scan_ticker_adds_the_com_level_only_when_asked(self):
+        b = _fixture_bars()["MRNA"]
+        cidx = np.arange(len(b))
+        plain = rn.scan_ticker("MRNA", b, cidx, [], "CS", 0)
+        com = rn.scan_ticker("MRNA", b, cidx, [], "CS", 0, extra_keys=("com",))
+        assert plain["counts"] == com["counts"] and len(plain["watch"]) == len(com["watch"]) == 60
+        assert not any(k.startswith(("pivot_com", "com_")) for w in plain["watch"] for k in w)
+        for w0, w1 in zip(plain["watch"], com["watch"]):
+            assert {k: v for k, v in w1.items() if not k.startswith(("pivot_com", "com_"))} == w0     # the existing row is identical
+            P, i = w1["pole_idx"], w1["i"]
+            assert w1["pivot_com"] == pytest.approx(float(np.median(b.h[P + 1:i + 1])))                  # the median base high
+            assert w1["com_variant"] == "quantile"
+
+    def test_daily_with_keys_com_writes_suffixed_files_no_outcome_and_the_pinned_names_do_not_appear(self, tmp_path, capsys):
+        data = TestTrendlineK()._daily_dir(tmp_path, with_done=True)
+        small = tmp_path / "small"
+        rn.main(["daily", "--data", str(data), "--workers", "1", "--small-out", str(small), "--keys", "com", "--no-close-variant"])
+        txt = capsys.readouterr().out
+        out = data / "out"
+        assert {p.name for p in out.iterdir()} == {"watch_com.tsv.gz", "candidates_com.tsv", "gap_in_bars_com.tsv",
+                                                   "minute_fetch_list_com.tsv", "minute_fetch_list_delta_com.tsv"}
+        assert {p.name for p in small.iterdir()} == {"universe_by_date_com.tsv", "gate_counts_com.tsv", "run_summary_com.txt"}
+        rd = TestTrendlineK()._read
+        watch = rd(out / "watch_com.tsv.gz", gz=True)
+        cols = set(watch[0])
+        assert {"pivot_com", "pivot_com_date", "com_variant", "com_ignored_bars", "C0_com", "C1_com", "C1_s5_com"} <= cols
+        assert not any(c.endswith(("_k5", "_k10", "_full", "_tl")) for c in cols if c.startswith(("C0", "C1", "C2")))   # cells for com only
+        mrna = next(r for r in watch if r["ticker"] == "MRNA" and r["watch_date"] == "2026-09-16")
+        b = _fixture_bars()["MRNA"]
+        P, i = int(mrna["pole_idx"]), int(mrna["i"])
+        assert float(mrna["pivot_com"]) == pytest.approx(float(np.median(b.h[P + 1:i + 1]))) and mrna["com_variant"] == "quantile"
+        cands = rd(out / "candidates_com.tsv")
+        assert cands and {c["K"] for c in cands} == {"com"} and all(c["overlap_open"] == "" for c in cands)   # no outcome anywhere
+        assert all(float(c["pivot"]) > 0 for c in cands)
+        full = rd(out / "minute_fetch_list_com.tsv")
+        delta = rd(out / "minute_fetch_list_delta_com.tsv")
+        assert list(full[0]) == ["ticker", "date", "tier"] and {(r["ticker"], r["date"]) for r in full} == {(c["ticker"], c["E"]) for c in cands}
+        assert ("MRNA", "2026-09-17") not in {(r["ticker"], r["date"]) for r in delta}       # the fetched pair is not asked again
+        assert {(r["ticker"], r["date"]) for r in delta} == {(r["ticker"], r["date"]) for r in full} - {("MRNA", "2026-09-17")}
+        assert "CLOSE VARIANT: SKIPPED" in txt and "COM LEVEL vs the breakout day" in txt and "per era:" in txt
+        # the composition text for the com run, and the stages that read its candidates by the suffixed name
+        rn.main(["daily", "--data", str(data), "--workers", "1", "--small-out", str(small), "--keys", "com", "--step0"])
+        assert (small / "step0_com.txt").exists() and "com:trades" in (small / "step0_com.txt").read_text()
+        rn.main(["step0-entries", "--data", str(data), "--workers", "1", "--small-out", str(small), "--keys", "com"])
+        assert "nothing to do" in capsys.readouterr().out                                    # no minute file on disk
+        with pytest.raises(SystemExit):
+            rn.main(["report", "--data", str(data), "--small-out", str(small), "--keys", "com"])
+        assert "trades_discovery_com.tsv.gz not found" in capsys.readouterr().err
+
+    def test_the_holdout_refuses_keys(self, tmp_path):
+        data = tmp_path / "data"
+        (data / "out").mkdir(parents=True)
+        bad = rn.holdout_option_problems(argparse_ns(data, keys="com"), data)
+        assert len(bad) == 1 and "--keys com" in bad[0] and "registered levels only" in bad[0]
+        assert rn.holdout_option_problems(argparse_ns(data), data) == []
+
+
 # ═══ end to end: minute -> report, and the holdout engine ═════════════════════════════════════════
 def _close_file(data, bars, e, cands):
     rows = []

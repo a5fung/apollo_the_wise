@@ -1,0 +1,60 @@
+STEP 0 - composition (no outcomes). n = breakout candidates, before entry abstains
+  HOLDOUT: 65,017 candidate rows
+  -- SPEC key (ticker, pole_date, K): 12,361 trades --
+cell              com:trades  com:first  com:gap>1adr
+C0                     12361      12361          2277
+C1                        42        105             5
+C2                         7         23             0
+C3                       115        241            10
+C4                       357        784            19
+C5                       109        253             5
+C6                        11         48             0
+C7                        80        184             8
+C1_no_retrace             73        222            13
+C1_no_tightening         163        318            22
+HTF                      651        651            46
+  -- CHAIN key (poles <= 3 sessions apart = one base): 9,450 trades --
+cell              com:trades  com:first  com:gap>1adr
+C0                      9450       9450          1310
+C1                        35        100             5
+C2                         6         22             0
+C3                        93        225             7
+C4                       285        731            12
+C5                        91        236             5
+C6                         9         45             0
+C7                        63        174             6
+C1_no_retrace             60        214            10
+C1_no_tightening         121        297            17
+HTF                      523        542            32
+  DISCOVERY: 71,306 candidate rows
+  -- SPEC key (ticker, pole_date, K): 14,562 trades --
+cell              com:trades  com:first  com:gap>1adr
+C0                     14562      14562          2603
+C1                       112        237             4
+C2                        11         24             1
+C3                       213        387             7
+C4                       548       1289            25
+C5                       209        497             7
+C6                        24         52             2
+C7                       145        286             5
+C1_no_retrace            172        419            14
+C1_no_tightening         273        559            15
+HTF                      626        626            37
+  -- CHAIN key (poles <= 3 sessions apart = one base): 11,108 trades --
+cell              com:trades  com:first  com:gap>1adr
+C0                     11108      11108          1454
+C1                        98        226             2
+C2                        11         24             1
+C3                       187        366             5
+C4                       466       1229            11
+C5                       175        468             3
+C6                        22         50             2
+C7                       124        269             3
+C1_no_retrace            145        397             8
+C1_no_tightening         215        525             7
+HTF                      517        527            25
+  GO/NO-GO input, SPEC key (plan: C1 needs >= 30 holdout trades): com: 42   [C1 holdout trades by year, all K: 2025=24, 2026=18]
+  GO/NO-GO input, CHAIN key (plan: C1 needs >= 30 holdout trades): com: 35   [C1 holdout trades by year, all K: 2025=21, 2026=14]
+  COM LEVEL vs the breakout day, holdout, spec-key trades: 12,361 first breaks; open(E) already above the level on 6,832 (55%); C1: 42 first breaks, open above the level on 23
+  COM LEVEL vs the breakout day, discovery, spec-key trades: 14,562 first breaks; open(E) already above the level on 8,200 (56%); C1: 112 first breaks, open above the level on 50
+  DATA FLAG (reported, not a gate): pole-bar high > 1.25x max(open, close) on 301 candidate rows (37 tickers); non-retrigger C1 trades affected: holdout 1, discovery 0  [column pole_bad_high]
