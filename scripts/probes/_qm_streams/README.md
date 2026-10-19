@@ -52,3 +52,13 @@ Known limits (extension): Alpaca's asset list omits many delisted names (ABMD, T
 cannot be matched before 2022-03-28. A reused symbol whose old issuer left before 2021-09-27 is only seen by the hole / jump tests.
 `match_bars.load_watch` now keys watch rows by the runner's drift-robust chain id (`cb.chain_bases`), the same key candidates.tsv uses;
 before the 2026-10-18 fix a base whose pole drifted one session read "no breakout" (first pass: 22 -> 40 of 46 labelled now find theirs).
+
+## Step 5 - label join: which level did he draw? (#702 P4b, 2026-10-18)
+
+`p4b_label_join.py` ($0, local files only) joins the 93 hand-drawn lines on 60 labelled bases (`vision/p4b_label_lines.tsv`, used as given)
+to the C0 candidate levels on the last watch night <= the screen date: his line is converted from screen-date price scale to the bar scale
+(divide by r(screen) = raw / split close), projected to the next session in session-index terms, and compared with `pivot_k5/k10/full/tl`
+(from `cb.explain_watch`) plus three settled-high variants over the same window as `pivot_full` (highest close, highest body top,
+second-highest high). Ties between coincident levels are kept as a set (`match_set_*pct`), never resolved by chance. Outputs in
+`vision/p4b_labels/`: `labels_p4b.tsv` (one row per base), `lines_p4b.tsv` (every line), `summary_p4b_labels.txt`, `spot/*.png`.
+No classes and no rule here - step 6 fits the character -> level rule from these rows. Docstring = the full definitions.
