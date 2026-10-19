@@ -26,3 +26,11 @@ test ("Ok", 2026-10-19).
 - Whether he would re-buy the SAME base after a stop (assumed from the TSLA example) or wait for the next base.
 - The entry itself: a re-entry still buys an opening-range high with the day's-low stop, the mechanic that loses 2 in 3
   trades within two days.
+
+## RESULT — read once 2026-10-19 (`scripts/probes/_cb_backtest/reentry_read.py`, output `cb702/out/reentry_read_1019.txt`)
+Base = the runner's one-trade-per-base key (ticker, pole date); "first" = the base's first FILLED trade (10,712 in C0 — a
+base whose first break never filled starts at a repeat break; the registered 8,985 count first breaks, filled or not).
+**VERDICT (discovery, C0, R1): CAN'T TELL — leaning against.** Re-entries: 4,567 trades, mean −0.128R, interval −0.25 ..
++0.01, ≥5R 4.0%, win 25%; per base, adding the re-entry takes the base from −0.19R to −0.25R. Beside: C1 re-entries −0.50R
+(37, interval −0.78 .. −0.16), C3 −0.58R (65). 2025-26, descriptive: C0 re-entries +0.02R (4,124), C1 −1.20R (11).
+**Reading:** a second try at the same base does not rescue the setup as tested; in the strict cells it is worse.
