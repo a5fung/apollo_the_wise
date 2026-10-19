@@ -30,6 +30,12 @@ dropped from the raw-price factor, exchange test symbols are excluded.
 Outputs: DATA/out/ (large) and scripts/probes/_cb_backtest/out/ (small summaries, < 1 MB).
 No DB, no network, no prod access. Read-only on DATA except DATA/out/.
 
+The pre-2022 Alpaca era (#702 selection test, `daily` only; a default run is unchanged by a byte - proved by hashing candidates /
+watch / close-variant against the pinned run): `--raw-close FILE` measures the RAW factor per bar (raw / adjusted) instead of reading
+`cb702_splits.psv`; `--breaks FILE` skips a night whose 130 bars straddle an identity break (counted `identity_break`); `--watch-start` /
+`--watch-end` bound the watch nights D (the export keeps its later bars, so E and its forward sessions exist); `--era-label X` stamps
+`split = X` (so `read_candidates` refuses the file). Outputs of such a run carry NO outcome when `--no-close-variant` is given.
+
 `--keys com` (#702 P4b, every stage but `holdout`): run the CENTER-OF-MASS level `cb.com_level` (his 2026-10-18 rule; not one
 of the module's four `KS`) INSTEAD of the registered four. Every output then carries the suffix `_com` (`watch_com.tsv.gz`,
 `candidates_com.tsv`, `minute_fetch_list_com.tsv`, `trades_discovery_com.tsv.gz`, `discovery_report_com.txt`, ...) beside
@@ -265,6 +271,7 @@ class Daily:
     tid: dict               # ticker -> id
     n_hole_tickers: int = 0  # tickers with >= 1 missing SPY session inside their own span
     n_holes: int = 0         # such missing-session breaks, all tickers
+    raw_c: "np.ndarray | None" = None   # RAW close per flat row (`--raw-close`, the pre-2022 Alpaca era); None = the split list
 
 
 def load_daily(path: Path) -> Daily:
@@ -321,6 +328,63 @@ def bars_for(D: Daily, t: int):
     return cb.daily_bars_from_arrays(dates, D.o[a:b], D.h[a:b], D.l[a:b], D.c[a:b], D.v[a:b]), cidx
 
 
+def load_raw_close(path: Path, D: "Daily") -> np.ndarray:
+    """`--raw-close` (the #702 selection test's Alpaca-era export): a headerless `ticker,date,raw_close` file -> the RAW close of
+    every flat row of `D`, aligned by (ticker, SPY session) so the file's own row order does not matter. The factor per bar is then
+    raw / adjusted - what `factor_by_bar` derives from a split list for the 2022+ export. Asserts every row of `D` has exactly one
+    raw close and the file has no row `D` lacks: a half-aligned factor would silently mis-set the $5 floor."""
+    import pandas as pd
+    df = pd.read_csv(path, header=None, names=["ticker", "d", "c"], dtype={"ticker": str, "c": float}, parse_dates=["d"],
+                     keep_default_na=False)
+    cal_days = np.array([d.toordinal() for d in D.cal], dtype=np.int64)
+    day = df["d"].to_numpy().astype("datetime64[D]").astype(np.int64) + 719163
+    ci = np.searchsorted(cal_days, day)
+    assert ((ci < len(cal_days)) & (cal_days[np.minimum(ci, len(cal_days) - 1)] == day)).all(), "raw-close dates off the SPY calendar"
+    tid = np.array([D.tid.get(t, -1) for t in df["ticker"].tolist()], dtype=np.int64)
+    assert (tid >= 0).all(), "raw-close tickers absent from the export"
+    big = len(cal_days) + 1
+    flat_key = np.repeat(np.arange(len(D.tickers), dtype=np.int64), D.stop - D.start) * big + D.ci.astype(np.int64)
+    assert (np.diff(flat_key) > 0).all(), "export rows are not (ticker, date)-sorted"
+    key = tid * big + ci
+    pos = np.searchsorted(flat_key, key)
+    assert ((pos < len(flat_key)) & (flat_key[np.minimum(pos, len(flat_key) - 1)] == key)).all(), "raw-close row not in the export"
+    assert len(np.unique(pos)) == len(pos) == len(flat_key), \
+        f"raw-close rows ({len(pos):,}) must cover the export's rows ({len(flat_key):,}) exactly once"
+    out = np.empty(len(flat_key))
+    out[pos] = df["c"].to_numpy(dtype=float)
+    assert np.isfinite(out).all() and (out > 0).all(), "non-positive / non-finite raw close"
+    return out
+
+
+def load_breaks(path: Path) -> dict:
+    """`--breaks` (the identity guard of `scripts/probes/_qm_streams/ext_bars.py`): a `symbol_guard.tsv`-shaped table (tab-separated,
+    header, columns `symbol` and `breaks` = 'YYYY-MM-DD:kind;...') -> {symbol: sorted array of break ordinals}. Symbols without a
+    break are absent. Columns are read BY NAME, so a reordered table cannot shift the break column silently."""
+    lines = Path(path).read_text().splitlines()
+    head = lines[0].split("\t")
+    k_sym, k_brk = head.index("symbol"), head.index("breaks")
+    out = {}
+    for ln in lines[1:]:
+        f = ln.split("\t")
+        if len(f) <= k_brk or not f[k_brk]:
+            continue
+        out[f[k_sym]] = np.array(sorted(date.fromisoformat(x.split(":")[0]).toordinal() for x in f[k_brk].split(";")), dtype=np.int64)
+    return out
+
+
+def break_mask(d_ord: np.ndarray, brk: np.ndarray, window: int = cb.MIN_HISTORY) -> np.ndarray:
+    """True at bar i when an identity break falls INSIDE the `window` bars ending at i, i.e. d[i-window+1] < break <= d[i] (a break dated
+    on the window's first bar is the move from the bar BEFORE it, outside the window: `ext_c0.Series.break_in`, the same test). A symbol's
+    series changes hands or is corrupted at a break; a night whose 130 bars straddle one is not evaluated."""
+    n = len(d_ord)
+    out = np.zeros(n, dtype=bool)
+    if n >= window and len(brk):
+        hi = np.searchsorted(brk, d_ord[window - 1:], side="right")
+        lo = np.searchsorted(brk, d_ord[:n - window + 1], side="right")
+        out[window - 1:] = hi - lo > 0
+    return out
+
+
 def load_small(path: Path) -> tuple:
     """small_pulls.psv -> (mi_security_types {ticker: type}, regime {date: label})."""
     sec, reg = {}, {}
@@ -374,31 +438,46 @@ def load_sic(path: Path) -> tuple:
 # pass 1 - per ticker (worker): universe, RS inputs, watch nights
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 def scan_ticker(ticker: str, bars: "cb.DailyBars", cidx: np.ndarray, splits: list, sectype: str,
-                d0_ci: int, *, prescreen: bool = True, extra_keys: tuple = ()) -> dict:
+                d0_ci: int, *, prescreen: bool = True, extra_keys: tuple = (), fac: "np.ndarray | None" = None,
+                breaks: "np.ndarray | None" = None, end_ci: "int | None" = None) -> dict:
     """Universe membership + RS inputs + watch features for every night from calendar index `d0_ci`.
     A night is admitted only if (a) the ticker is not an exchange test symbol, (b) `universe_ok`, and (c) the
     130 bars ending at it are consecutive SPY sessions - a night failing only (c) is counted under 'history'
     (the module's own 'history' gate is >= 130 sessions; here it is >= 130 CONSECUTIVE ones).
     `extra_keys` containing "com" adds the P4b center-of-mass level (`cb.com_level`, its `pivot_com*` / `com_*` keys) to
     every watch row; "comb" computes the same level and adds `pivot_comb*` (`cb.comb_fields`); a default run passes none and
-    the rows are exactly `explain_watch`'s (a `com`-only run carries no `pivot_comb*` column)."""
+    the rows are exactly `explain_watch`'s (a `com`-only run carries no `pivot_comb*` column).
+    Three additive options for the pre-2022 Alpaca era (#702 selection test; all None = the pinned behavior, byte for byte): `fac` = the
+    RAW/adjusted factor per bar (replaces the one `factor_by_bar` derives from `splits`); `breaks` = the symbol's identity-break ordinals
+    (a night with a break inside its 130 bars is counted under 'identity_break', before the 'history' test, as `ext_c0` orders them);
+    `end_ci` = the last calendar index scanned (inclusive). `aux` in the result counts the unknown-security-type universe members."""
     n = len(bars)
-    fac = factor_by_bar(bars.dates, splits)
+    if fac is None:
+        fac = factor_by_bar(bars.dates, splits)
     skip = prescreen_skip_mask(bars.h, bars.l) if prescreen else np.zeros(n, dtype=bool)
     contig = contiguous_window_mask(cidx, cb.MIN_HISTORY)
     test_sym = is_test_symbol(ticker)
     start = int(np.searchsorted(cidx, d0_ci))
+    stop = n if end_ci is None else int(np.searchsorted(cidx, end_ci, side="right"))
+    brk = break_mask(np.array([d.toordinal() for d in bars.dates], dtype=np.int64), breaks) if breaks is not None else None
     counts: Counter = Counter()
+    aux: Counter = Counter()
     uni_ci, rs = [], []
     watch = []
-    for i in range(start, n):
+    for i in range(start, stop):
         yr = bars.dates[i].year
         if test_sym or not cb.universe_ok(bars, i, raw_factor=float(fac[i]), ticker=ticker, security_type=sectype):
             counts[(yr, "universe_fail")] += 1
             continue
+        if brk is not None and brk[i]:
+            counts[(yr, "identity_break")] += 1
+            continue
         if not contig[i]:
             counts[(yr, "history")] += 1
             continue
+        if not sectype:                                 # admitted on an UNKNOWN security type (as prod does): counted, never hidden
+            aux[(yr, "unknown_type_night")] += 1
+            aux[(yr, "unknown_type_ticker")] = 1
         ci = int(cidx[i])
         uni_ci.append(ci)
         rs.append(tuple(np.nan if x is None else x for x in cb.rs_returns(bars, i)))
@@ -421,16 +500,20 @@ def scan_ticker(ticker: str, bars: "cb.DailyBars", cidx: np.ndarray, splits: lis
             feat.update(cb.comb_fields(feat))
         watch.append(feat)
     return {"ticker": ticker, "uni_ci": np.asarray(uni_ci, dtype=np.int32),
-            "rs": np.asarray(rs, dtype=float).reshape(-1, 3), "watch": watch, "counts": counts}
+            "rs": np.asarray(rs, dtype=float).reshape(-1, 3), "watch": watch, "counts": counts, "aux": aux}
 
 
 def _scan_job(t: int) -> dict:
     D: Daily = _G["D"]
     ticker = D.tickers[t]
     bars, cidx = bars_for(D, t)
+    fac = None if D.raw_c is None else D.raw_c[int(D.start[t]):int(D.stop[t])] / bars.c
+    breaks = _G.get("breaks")                            # None = no identity guard (the pinned run)
     return scan_ticker(ticker, bars, cidx, _G["splits"].get(ticker, []),
                        resolve_sectype(ticker, _G["mi_types"], _G["sic_types"]), _G["d0_ci"],
-                       extra_keys=_G.get("extra_keys", ()))
+                       extra_keys=_G.get("extra_keys", ()), fac=fac,
+                       breaks=None if breaks is None else breaks.get(ticker, np.zeros(0, dtype=np.int64)),
+                       end_ci=_G.get("end_ci"))
 
 
 def _check_job(t: int) -> dict:
@@ -590,20 +673,34 @@ def run_daily(args) -> None:
         timers[name] = time.time() - t
         say(f"[{name}: {timers[name]:.0f}s]")
 
+    # The pre-2022 Alpaca-era options (#702 selection test; every one None = the pinned run, byte for byte):
+    era_label = getattr(args, "era_label", None)
+    raw_close = getattr(args, "raw_close", None)
+    breaks_path = getattr(args, "breaks", None)
+    watch_start = date.fromisoformat(args.watch_start) if getattr(args, "watch_start", None) else WATCH_START
+    watch_end = date.fromisoformat(args.watch_end) if getattr(args, "watch_end", None) else None
+    label_of = (lambda d: era_label) if era_label else split_label
+
     t = time.time()
     D = load_daily(data / "daily_closes_all.csv.gz")
     mi_types, regime = load_small(data / "small_pulls.psv")
-    n_splits_all = sum(len(v) for v in load_splits(data / "cb702_splits.psv").values())
-    splits = load_splits(data / "cb702_splits.psv", through=D.cal[-1])       # not splits executing after the data ends
-    n_splits = sum(len(v) for v in splits.values())
+    if raw_close:                                 # the raw factor is measured per bar; there is no split list to apply or to drop
+        D.raw_c = load_raw_close(Path(raw_close), D)
+        splits, n_splits_all, n_splits = {}, 0, 0
+    else:
+        n_splits_all = sum(len(v) for v in load_splits(data / "cb702_splits.psv").values())
+        splits = load_splits(data / "cb702_splits.psv", through=D.cal[-1])       # not splits executing after the data ends
+        n_splits = sum(len(v) for v in splits.values())
     sic_by_tk, sic_types = load_sic(data / "cb702_sic.psv")
+    breaks = load_breaks(Path(breaks_path)) if breaks_path else None
     lap("load", t)
     if args.check_prescreen:
         say(check_prescreen(D, args.check_prescreen, args.workers, data / "liquid_tickers.txt"))
         return
     cal = D.cal
     last_ci = len(cal) - 1
-    d0_ci = bisect.bisect_left(cal, WATCH_START)
+    d0_ci = bisect.bisect_left(cal, watch_start)
+    end_ci = None if watch_end is None else bisect.bisect_right(cal, watch_end) - 1
     spy_i, qqq_i = D.tid["SPY"], D.tid["QQQ"]
     spy, _ = bars_for(D, spy_i)
     qqq, _ = bars_for(D, qqq_i)
@@ -612,7 +709,7 @@ def run_daily(args) -> None:
     # ── pass 1: per ticker ───────────────────────────────────────────────────────────────────
     t = time.time()
     _G.update(D=D, splits=splits, mi_types=mi_types, sic_types=sic_types, d0_ci=d0_ci,
-              extra_keys=tuple(k for k in keys if k in EXTRA_KS))
+              extra_keys=tuple(k for k in keys if k in EXTRA_KS), breaks=breaks, end_ci=end_ci)
     tids = list(range(len(D.tickers)))
     if args.limit_tickers:
         keep = set(random.Random(7).sample(tids, args.limit_tickers)) | {D.tid[x] for x in ("MRNA", "OUST", "HPE") if x in D.tid}
@@ -625,8 +722,10 @@ def run_daily(args) -> None:
     lap("pass 1 (universe + RS inputs + explain_watch)", t)
 
     counts: Counter = Counter()
+    aux: Counter = Counter()
     for r in res:
         counts.update(r["counts"])
+        aux.update(r["aux"])
     watch_all = [w for r in res for w in r["watch"]]
     tid_of = D.tid
 
@@ -681,7 +780,7 @@ def run_daily(args) -> None:
         row.update(ctx)
         row["phase_qqq_10_20_s5"] = phase_a5[j]
         row["apollo_regime"] = regime.get(cal[j], "")
-        row["split"] = split_label(cal[j])
+        row["split"] = label_of(cal[j])
         for k in keys:
             fl = cb.cell_flags(w, ctx, k=k)
             for cell in CELL_NAMES:
@@ -816,6 +915,8 @@ def run_daily(args) -> None:
     # funnel
     years = sorted({y for (y, _g) in counts})
     names = ["universe_fail", "prescreen_skip"] + list(GATE_NAMES) + ["pass"]
+    if breaks is not None:                        # an identity guard was passed: its exclusions are a funnel row of their own
+        names.insert(1, "identity_break")
     funnel = []
     tot_by_year = {y: sum(v for (yy, _g), v in counts.items() if yy == y) for y in years}
     for nm in names:
@@ -824,18 +925,28 @@ def run_daily(args) -> None:
     funnel.append({"stage": "TOTAL ticker-nights", "total": sum(tot_by_year.values()),
                    **{str(y): tot_by_year[y] for y in years}})
     write_tsv(small / f"gate_counts{sfx}.tsv", funnel, ["stage", "total"] + [str(y) for y in years])
+    if raw_close:                                 # the Alpaca-era run: how many universe members carry NO security type (admitted, counted)
+        ayears = sorted({y for (y, _k) in aux})
+        write_tsv(small / f"universe_types{sfx}.tsv",
+                  [{"year": y, "unknown_type_nights": aux.get((y, "unknown_type_night"), 0),
+                    "unknown_type_tickers": aux.get((y, "unknown_type_ticker"), 0)} for y in ayears],
+                  ["year", "unknown_type_nights", "unknown_type_tickers"])
     lap("write outputs", t)
 
     # ── report ─────────────────────────────────────────────────────────────────────────────────
     tot = sum(tot_by_year.values())
-    uni_total = tot - sum(v for (_y, g), v in counts.items() if g in ("universe_fail", "history"))
+    uni_total = tot - sum(v for (_y, g), v in counts.items() if g in ("universe_fail", "history", "identity_break"))
     say("")
     say(f"DATA INTEGRITY: {D.n_hole_tickers:,} of {len(D.tickers):,} tickers have a missing SPY session inside their span "
         f"({D.n_holes:,} holes); a night is admitted only if its 130 bars are consecutive sessions, and a forward "
         f"walk stops at the first hole; splits executing after {cal[-1]} dropped: {n_splits_all - n_splits} of "
         f"{n_splits_all} (not yet in the adjusted series); exchange test symbols excluded: "
         f"{sum(1 for x in D.tickers if is_test_symbol(x))} tickers present in the export")
-    say(f"GATE FUNNEL (ticker-nights with D >= {WATCH_START}; each night lands in exactly ONE row)")
+    if raw_close or breaks is not None or era_label or watch_end is not None:
+        say(f"  ERA OPTIONS: raw factor {'measured per bar from ' + str(raw_close) if raw_close else 'from the split list'}; identity guard "
+            f"{'on (' + format(len(breaks), ',') + ' symbols carry a break)' if breaks is not None else 'off'}; watch nights "
+            f"{watch_start}..{watch_end or 'end of data'}; era label {era_label or 'discovery/holdout'}")
+    say(f"GATE FUNNEL (ticker-nights with D >= {watch_start}; each night lands in exactly ONE row)")
     say(table([[r["stage"], f"{r['total']:,}", f"{r['total'] / tot:.2%}" if tot else ""] for r in funnel],
               ["stage", "nights", "share"]))
     say(f"  'history' = universe_ok passed but the 130 bars are NOT consecutive sessions (a hole / reused ticker); "
@@ -844,8 +955,9 @@ def run_daily(args) -> None:
         f"{counts_total(counts, 'prior_move') + counts_total(counts, 'prescreen_skip'):,}")
     say("")
     say(f"WATCH ROWS: {n_watch:,} (ticker x D) over {len({w['ticker'] for w in watch_rows}):,} tickers; "
-        f"discovery {sum(1 for w in watch_rows if w['split'] == 'discovery'):,} / "
-        f"holdout {sum(1 for w in watch_rows if w['split'] == 'holdout'):,}")
+        + (f"era {era_label} {len(watch_rows):,}" if era_label else
+           f"discovery {sum(1 for w in watch_rows if w['split'] == 'discovery'):,} / "
+           f"holdout {sum(1 for w in watch_rows if w['split'] == 'holdout'):,}"))
     say(f"  universe size per date: min {min(r['universe_n'] for r in uni_rows):,} "
         f"median {int(np.median([r['universe_n'] for r in uni_rows])):,} max {max(r['universe_n'] for r in uni_rows):,}; "
         f"watch rows with no group (grp_pct None): {sum(1 for w in watch_rows if w['grp_pct'] is None):,}; "
@@ -857,7 +969,9 @@ def run_daily(args) -> None:
         say("  tl vs the horizontal levels - the tl C0 population is a SUBSET (a night with no down-sloping line has no tl level), "
             "so a tl-vs-k5 difference is level AND population:")
         say(tl_population_text(watch_rows))
-    if "com" in keys or "comb" in keys:
+    if era_label and ("com" in keys or "comb" in keys):
+        say("  (the com / comb level tables and STEP 0 are discovery-vs-holdout splits; under --era-label every row is one era, so they are not printed)")
+    elif "com" in keys or "comb" in keys:
         say("  com - the center-of-mass level (the median of the base's highs; #702 P4b): where it sits against the watch night's "
             "close and high, per split (a level UNDER the close breaks out on any up-day):")
         say(com_population_text(watch_rows))
@@ -876,7 +990,8 @@ def run_daily(args) -> None:
         f"(spec key {sum(1 for c in cands if c['retrigger'] == 0):,} trades + {sum(1 for c in cands if c['retrigger'] == 1):,} retriggers; "
         f"chain key {sum(1 for c in cands if c['retrigger_chain'] == 0):,} trades + {sum(1 for c in cands if c['retrigger_chain'] == 1):,} retriggers); "
         f"no-E statuses (watch rows, no trade): {dict(nonok)}")
-    say(step0_text(cands, keys))
+    if not era_label:
+        say(step0_text(cands, keys))
     say("")
     if no_cv:
         say("CLOSE VARIANT: SKIPPED (--no-close-variant) - this run computed no outcome; `overlap_open` is blank")
@@ -890,14 +1005,14 @@ def run_daily(args) -> None:
         f"(tier 1 = any cell C1..C7/report cells true: {sum(1 for r in fetch_rows if r['tier']):,}; "
         f"non-retrigger only: {len({(c['ticker'], c['E']) for c in cands if c['retrigger'] == 0}):,})"
         + ("" if sfx == "" else "; per era: " + ", ".join(
-            f"{sp} {len({(c['ticker'], c['E']) for c in cands if c['split'] == sp}):,}" for sp in ("discovery", "holdout"))))
+            f"{sp} {len({(c['ticker'], c['E']) for c in cands if c['split'] == sp}):,}" for sp in ((era_label,) if era_label else ("discovery", "holdout")))))
     new_pairs = {(c["ticker"], c["E"]) for c in cands if c["K"] in delta_ks}
     say(f"MINUTE FETCH DELTA (pairs the {'/'.join(delta_ks)} candidates need that _done.psv does not hold; "
         f"{'no _done.psv under ' + str(minutes_dir) + ' - every pair counts as not fetched' if done is None else format(len(done), ',') + ' pairs in _done.psv'}): "
         f"{len(delta_rows):,} pairs over {len({r['date'] for r in delta_rows}):,} dates "
         f"(of {len(new_pairs):,} {'/'.join(delta_ks)} pairs; tier 1: {sum(1 for r in delta_rows if r['tier']):,}"
         + ("" if sfx == "" else "; per era: " + ", ".join(
-            f"{sp} {sum(1 for r in delta_rows if split_label(date.fromisoformat(r['date'])) == sp):,}" for sp in ("discovery", "holdout")))
+            f"{sp} {sum(1 for r in delta_rows if label_of(date.fromisoformat(r['date'])) == sp):,}" for sp in ((era_label,) if era_label else ("discovery", "holdout"))))
         + f") -> {out / f'minute_fetch_list_delta{sfx}.tsv'}")
     say(f"WALL TIME: {time.time() - T0:.0f}s total  " + "  ".join(f"{k}={v:.0f}s" for k, v in timers.items()))
     (small / f"run_summary{sfx}.txt").write_text("\n".join(log) + "\n")
@@ -3395,10 +3510,23 @@ def main(argv=None) -> None:
                                    "(_com, _comb, _com_comb) beside the pinned files. holdout REFUSES it")
     ap.add_argument("--no-close-variant", action="store_true",
                     help="daily: skip the CLOSE-variant walk (no outcome of any kind is computed; overlap_open is left blank)")
+    ap.add_argument("--watch-start", help="daily: first watch night D, YYYY-MM-DD (default 2022-03-28, the discovery start). With --era-label "
+                                          "only: the #702 selection test's Alpaca-era run")
+    ap.add_argument("--watch-end", help="daily: last watch night D, YYYY-MM-DD (default: every night to the end of the data). The export "
+                                        "keeps its bars past it, so a breakout day E just after it still exists")
+    ap.add_argument("--raw-close", help="daily: a headerless `ticker,date,raw_close` file (one row per row of the export); the RAW factor "
+                                        "is then measured per bar as raw / adjusted instead of read from cb702_splits.psv (the $5 floor)")
+    ap.add_argument("--breaks", help="daily: a symbol_guard.tsv (columns symbol, breaks): a night with an identity break inside its 130 "
+                                     "bars is not evaluated and is counted as 'identity_break' (scripts/probes/_qm_streams/ext_bars.py)")
+    ap.add_argument("--era-label", help="daily: stamp every row's `split` column with this label (e.g. 'pre') instead of discovery/holdout; "
+                                        "read_candidates() then refuses the file, so it cannot feed the discovery or holdout stages")
     ap.add_argument("--levels", help="exits / exits-report: the levels of the run's candidates file to walk, comma-separated "
                                      "(default: every level of the run's keys). `--levels tl` reads the registered candidates.tsv and "
                                      "walks the trendline alone; `--keys com,comb` walks both. holdout REFUSES it")
     args = ap.parse_args(argv)
+    era_opts = [o for o in ("watch_start", "watch_end", "raw_close", "breaks", "era_label") if getattr(args, o)]
+    if era_opts and args.stage != "daily":
+        ap.error(f"--{', --'.join(o.replace('_', '-') for o in era_opts)}: options of the `daily` stage only (the pre-2022 Alpaca-era run)")
     parse_keys(args.keys)                       # a bad --keys fails here, before any stage opens a file
     parse_levels(args.levels, parse_keys(args.keys))
     if args.stage == "exits":

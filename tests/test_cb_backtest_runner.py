@@ -2394,3 +2394,114 @@ class TestP5Stage:
         assert allr["n"] == 6 and sum(r["n"] for r in grp if r["value"] != "ALL") == 6
         assert {r["value"]: r["n"] for r in grp if r["value"] != "ALL"} == {"Bull": 3, "Choppy": 1, "Correcting": 0, "Crisis": 1, "missing": 1}
         assert "Bull" in rn.p5_regime_text(rows) and "(no mature walk)" in rn.p5_regime_text([])
+
+
+# ═══ #702 selection test: the pre-2022 Alpaca-era options of the daily stage ═══════════════════════
+# Every option is additive: with none of them the stage is the pinned one (proved by hashing candidates / watch / close-variant of a default
+# run against the pinned run). What is tested here is what the options add.
+def _era_export(tmp_path, n=330, start=dt.date(2019, 1, 7), names=("AAA", "BBB", "CCC")):
+    """A tiny Alpaca-era data dir: SPY + QQQ + `names` as random walks (~$20, $100M+/day), plus the headerless raw-close file."""
+    import gzip
+    days = _weekdays(n, start)
+    rng = np.random.default_rng(11)
+    daily, raw = [], []
+    for t, scale in [("SPY", 300.0), ("QQQ", 250.0)] + [(x, 20.0) for x in names]:
+        c = scale * np.exp(np.cumsum(rng.normal(0, 0.01, n)))
+        for d, ck in zip(days, c):
+            daily.append(f"{t},{d.isoformat()},{ck:.4f},{ck * 1.01:.4f},{ck * 0.99:.4f},{ck:.4f},5000000")
+            raw.append(f"{t},{d.isoformat()},{ck * 2:.4f}")                                  # raw = 2 x adjusted
+    with gzip.open(tmp_path / "daily_closes_all.csv.gz", "wt") as f:
+        f.write("\n".join(daily) + "\n")
+    with gzip.open(tmp_path / "daily_raw_close.csv.gz", "wt") as f:
+        f.write("\n".join(reversed(raw)) + "\n")                                             # the raw file's row order must not matter
+    (tmp_path / "small_pulls.psv").write_text("")
+    (tmp_path / "cb702_sic.psv").write_text("")
+    return days
+
+
+class TestEraOptions:
+    def test_break_mask_is_the_window_a_night_needs(self):
+        d = np.arange(1000, 1200)
+        assert not rn.break_mask(d, np.array([1000])).any()                    # dated on the window's FIRST bar: the move into it is outside
+        m = rn.break_mask(d, np.array([1001]))
+        assert m[129] and not m[130] and not m[:129].any()                     # inside only for the one window that still holds bar 0 and bar 1
+        m = rn.break_mask(d, np.array([1199]))                                 # on the last bar: inside exactly the last window
+        assert m[199] and not m[198]
+        assert not rn.break_mask(d, np.zeros(0, dtype=np.int64)).any() and not rn.break_mask(d[:100], np.array([1050])).any()
+
+    def test_an_identity_break_nights_are_counted_apart_and_not_universe_members(self):
+        b = _walk(300, 7)
+        base = rn.scan_ticker("BRK", b, np.arange(300), [], "CS", 0)
+        brk = np.array([b.dates[200].toordinal()])
+        r = rn.scan_ticker("BRK", b, np.arange(300), [], "CS", 0, breaks=brk)
+        flagged = sum(v for (y, g), v in r["counts"].items() if g == "identity_break")
+        assert flagged == 100                                                  # nights 200..299 hold the break inside their 130 bars
+        assert len(base["uni_ci"]) - len(r["uni_ci"]) == 100
+        assert sum(r["counts"].values()) == sum(base["counts"].values()) == 300
+        assert not any(g == "identity_break" for (_y, g) in base["counts"])    # no break table = the pinned funnel
+
+    def test_end_ci_stops_the_scan_and_the_raw_factor_replaces_the_split_list(self):
+        b = _walk(300, 8)
+        r = rn.scan_ticker("END", b, np.arange(300), [], "CS", 0, end_ci=200)
+        assert sum(r["counts"].values()) == 201 and int(r["uni_ci"].max()) <= 200
+        sp = [(b.dates[250], 0.1)]
+        via_list = rn.scan_ticker("RVRS", b, np.arange(300), sp, "CS", 0)
+        via_fac = rn.scan_ticker("RVRS", b, np.arange(300), [], "CS", 0, fac=rn.factor_by_bar(b.dates, sp))
+        assert via_list["counts"] == via_fac["counts"] and (via_list["uni_ci"] == via_fac["uni_ci"]).all()
+        none = rn.scan_ticker("LOW", b, np.arange(300), [], "CS", 0, fac=np.full(300, 0.1))      # raw ~ $2 on every bar
+        assert len(none["uni_ci"]) == 0
+
+    def test_unknown_security_type_members_are_counted(self):
+        b = _walk(300, 9)
+        known = rn.scan_ticker("KNOWN", b, np.arange(300), [], "CS", 0)
+        unknown = rn.scan_ticker("UNK", b, np.arange(300), [], "", 0)
+        assert not known["aux"] and len(known["uni_ci"]) == len(unknown["uni_ci"])
+        assert unknown["aux"][(2025, "unknown_type_ticker")] == 1 and unknown["aux"][(2025, "unknown_type_night")] > 0
+        assert sum(v for (y, k), v in unknown["aux"].items() if k == "unknown_type_night") == len(unknown["uni_ci"])
+
+    def test_load_raw_close_aligns_by_ticker_and_session_whatever_the_row_order(self, tmp_path):
+        import gzip
+        days = _era_export(tmp_path, n=40)
+        D = rn.load_daily(tmp_path / "daily_closes_all.csv.gz")
+        raw = rn.load_raw_close(tmp_path / "daily_raw_close.csv.gz", D)
+        assert np.allclose(raw, 2.0 * D.c)                                     # the file said raw = 2 x adjusted on every row
+        assert len(raw) == len(D.c) == 5 * len(days)
+        lines = gzip.open(tmp_path / "daily_raw_close.csv.gz", "rt").read().splitlines()
+        short = tmp_path / "short.csv.gz"
+        with gzip.open(short, "wt") as f:
+            f.write("\n".join(lines[1:]) + "\n")
+        with pytest.raises(AssertionError, match="cover the export"):
+            rn.load_raw_close(short, D)
+
+    def test_load_breaks_reads_columns_by_name(self, tmp_path):
+        p = tmp_path / "g.tsv"
+        p.write_text("n\tbreaks\tsymbol\n9\t2020-03-02:jump;2019-05-01:hole\tAA\n9\t\tBB\n")
+        got = rn.load_breaks(p)
+        assert list(got) == ["AA"] and got["AA"].tolist() == [dt.date(2019, 5, 1).toordinal(), dt.date(2020, 3, 2).toordinal()]
+
+    def test_the_era_options_belong_to_the_daily_stage(self):
+        with pytest.raises(SystemExit):
+            rn.main(["report", "--data", "x", "--era-label", "pre"])
+
+    def test_run_daily_wires_the_era_options_through(self, tmp_path):
+        import argparse
+        import pandas as pd
+        days = _era_export(tmp_path)
+        brk = tmp_path / "symbol_guard.tsv"
+        brk.write_text(f"symbol\tbreaks\nBBB\t{days[250].isoformat()}:jump\n")
+        out, small = tmp_path / "out", tmp_path / "small"
+        ns = argparse.Namespace(data=str(tmp_path), out=str(out), small_out=str(small), keys="tl", no_close_variant=True, check_prescreen=0,
+                                limit_tickers=0, workers=1, minutes=None, raw_close=str(tmp_path / "daily_raw_close.csv.gz"),
+                                breaks=str(brk), watch_start=days[140].isoformat(), watch_end=days[280].isoformat(), era_label="pre")
+        rn.run_daily(ns)
+        u = pd.read_csv(small / "universe_by_date_tl.tsv", sep="\t")
+        assert u["date"].min() >= days[140].isoformat() and u["date"].max() <= days[280].isoformat()
+        g = pd.read_csv(small / "gate_counts_tl.tsv", sep="\t").set_index("stage")
+        assert g.loc["identity_break", "total"] > 0                              # BBB's break, seen from the 130 nights after it
+        assert g.loc["identity_break", "total"] <= 281 - 140                     # only inside the scanned window
+        t = pd.read_csv(small / "universe_types_tl.tsv", sep="\t")
+        assert t["unknown_type_nights"].sum() > 0                                # no small_pulls / SIC row: unknown type, admitted, counted
+        summary = (small / "run_summary_tl.txt").read_text()
+        assert "era label pre" in summary and "era pre " in summary               # the era label, never discovery / holdout
+        assert "identity guard on (1 symbols carry a break)" in summary and "measured per bar" in summary
+        assert (out / "watch_tl.tsv.gz").exists()                                 # (random walks pass no watch gate: the file is just its header)

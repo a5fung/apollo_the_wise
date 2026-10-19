@@ -154,3 +154,21 @@ Nothing existing is written: the default-key stages hash identically and the `ex
 (the pre-registration §P5 and the SSoT change log carry the proof). The pins gained `candidates_com_comb.tsv`, `watch_com_comb.tsv.gz`,
 `entries_holdout_composition_com_comb.tsv`, `trades_discovery_p5.tsv.gz` and `p5_report_discovery.{tsv,txt}` (the holdout now reads the
 com / comb candidates; the discovery P5 numbers are what the registration quotes).
+
+
+# The selection test (#702, 2026-10-19) — are HIS picks better than the average base? Build + population only; the read is written, not run
+
+Registration: `docs/analysis/cb_selection_test_prereg_2026-10-19.md`. Data dir `/Users/alvinfung/apollo_data/cb702_pre/` (outside the repo).
+
+```
+python3 scripts/probes/_cb_backtest/selection_pre.py export        # Alpaca-era export (alp_flat.npz of the P4b extension) -> cb702_pre/
+python3 scripts/probes/_cb_backtest/runner.py daily --data cb702_pre --keys tl,com --no-close-variant --era-label pre \
+    --raw-close cb702_pre/daily_raw_close.csv.gz --breaks cb702_pre/symbol_guard.tsv --watch-start 2017-03-01 --watch-end 2021-12-31 \
+    --out cb702_pre/out --small-out cb702_pre/out/small                                  # the C0 first breaks; NO outcome of any kind
+python3 scripts/probes/_cb_backtest/selection_pre.py join          # picks, controls (a)/(b), selection_population.txt (keys only)
+python3 scripts/probes/_cb_backtest/selection_read.py --data cb702_pre     # THE READ - run only after the population is checked
+```
+The `daily` flags `--raw-close / --breaks / --watch-start / --watch-end / --era-label` are additive (a default run hashes identically:
+`candidates.tsv`, `watch.tsv.gz` and `close_variant_discovery.tsv.gz` of the pinned run). `selection_pre.py join` reads the candidate
+table through a column whitelist that holds no price of the breakout day or later. `selection_read.py` is the only script that opens
+a post-breakout bar; its numbers and verdict rule are in its docstring and `tests/test_cb_selection.py` (synthetic data only).
