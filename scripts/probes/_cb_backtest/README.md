@@ -195,3 +195,30 @@ win rate and n_open. Only the registered primary on `tl` carries a verdict; `com
 of its outputs, or a crashed run's `.partial`, exists (read once). `--keys / --levels / --limit-dates / --no-close / --no-apollo` are refused. The
 additive keywords `read_candidates(era=, where=)` and `run_minute_stage(inp=)` leave every other stage byte for byte as it was (proved against the
 pinned run: the seven `daily` / `minute` / `step0-entries` / `report` content hashes, and `p5` against the registration footer's pins).
+
+---
+
+# #702 h60 — the HOURLY-CLOSE entry read (`h60-step0`, `h60-read`, `h60-hindsight`; registered in `docs/analysis/cb_hourly_entry_prereg_2026-10-19.md`)
+
+```
+python3 scripts/probes/_cb_backtest/runner.py h60-step0     --data cb702 [--data-pre cb702_pre] --period {discovery,pre,holdout}   # entry-time table, no exit
+python3 scripts/probes/_cb_backtest/runner.py h60-read      --data cb702 --print-pins | --period P --dry-run [--no-freeze-check] | --period P   # ONE run per period
+python3 scripts/probes/_cb_backtest/runner.py h60-hindsight --data cb702 --period P                                                   # after the verdict file
+```
+Buy only after a 60-minute bar CLOSES above the row's line (`h60`); fill = the next present minute's open x 1.001; stop `lod` = the lowest minute
+low through the bar's end; exit `c3_p33_t20_cut3`; one trade per base = the FIRST break day on which a bar confirms, over EVERY row under the
+pole (rule (b), spec key); a confirmed day consumes the base whether it fills or abstains `too_wide` / `stop_at_or_above_fill`; a data abstain
+consumes nothing. Day 0 is walked by the module FROM THE FILL MINUTE INCLUSIVE (its functions start at the window's last present minute). On the
+20 early-close dates minutes >= 210 are dropped for the bar entries only. Beside: `h30`, `h5`, `h60_first`, `h60_m025`, `h60_line0`, ORH60; stops
+`cbar_low` (the registered candidate) and `base_low_cap1`; arms `p33_s3_t10`, `r2_p33_t20`; level `com`. 2022-24 decides; 2017-21 (+ 2020-21
+alone) and 2025-26 beside.
+
+The read runs in order and stops at the first failure: the freeze check on every pin below the doc's marker (both data trees; `--print-pins`
+prints the code / tree / doc-body lines for the footer) -> STEP 0 written and EQUAL to the registration's table (`H60_EXPECTED`; the early-close
+share check; <= 5% data abstains; 0 missing minute pairs) -> the ORH5 twin re-walked with `p5_walk` into `trades_<P>_h60twin.tsv.gz` and equal
+in gzip CONTENT to the pinned `trades_<P>_p5.tsv.gz` (exit 3 and no report otherwise) -> the exits (`trades_<P>_h60.tsv.gz`, the `.partial`
+protocol) -> `h60_pairs_<P>.tsv.gz` (one row per base, both sides) -> `h60_report_<P>.{tsv,txt}` + `h60_verdict_<P>.{txt,json}` (the C1 verdict,
+the paired entry / stop bars, the consequence cell, the expectations, the false-pass line; small copies here). Once only per period (the trades
+table, the twin, or a `.partial` refuse); `--keys / --levels / --limit-dates / --no-close / --no-apollo / --trades / --minutes` and another
+`--out` / `--small-out` are refused. STEP 0 on the real dirs (2026-10-19, before any outcome): every column equal to the table in all three
+periods and 2020-21; TSLA 2020-04-30 confirms on exactly one day, 06-01. The build computed no real outcome.

@@ -72,6 +72,14 @@ any (date, ticker) pair of that population is missing from `MINUTES/_done.psv` (
 and while any of its outputs, or a crashed run's `.partial`, exists (read once). `--dry-run` counts candidate rows and pairs and opens no bar
 and no minute row. Every other stage is unchanged (`read_candidates` / `run_minute_stage` only gained keyword arguments whose defaults are
 the old behaviour).
+
+#702 h60 (operator 2026-10-19; docs/analysis/cb_hourly_entry_prereg_2026-10-19.md): the HOURLY-CLOSE entry - buy only after an intraday bar
+CLOSES above the line - `h60-step0 --period P` (the entry-time table: confirmations, fills, abstains, the registered-table check; no exit),
+`h60-read --period P` (the one-run read per period behind the freeze check on every pin of both data trees, STEP 0 equal to the registered
+table, the ORH5 twin re-walked and equal in content to the pinned P5 table; then the exits, the paired bars, the verdict and the consequence
+cell; `--print-pins`, `--dry-run`), `h60-hindsight --period P` (the 39 multibaggers and TSLA, refused until the verdict file exists).
+`--data` = cb702, `--data-pre` = cb702_pre (default the sibling). Every other stage is unchanged (`p5_walk` gained `name=`, `freeze_check` /
+`pin_lines` gained `files=`; the defaults are the old behaviour). BUILT ON SYNTHETIC DATA; the build computed no real outcome.
 """
 from __future__ import annotations
 
@@ -2591,12 +2599,17 @@ def frozen_files(data: Path, repo: Path = REPO, minutes: "Path | None" = None) -
     return out
 
 
-def frozen_hashes(data: Path, repo: Path = REPO, minutes: "Path | None" = None) -> dict:
+def hashes_of(files: dict) -> dict:
+    """{label: sha256} of a {label: path} map - a directory is `sha256_tree`, a missing path None."""
     got = {}
-    for label, p in frozen_files(data, repo, minutes).items():
+    for label, p in files.items():
         p = Path(p)
         got[label] = sha256_tree(p) if p.is_dir() else (sha256_file(p) if p.is_file() else None)
     return got
+
+
+def frozen_hashes(data: Path, repo: Path = REPO, minutes: "Path | None" = None) -> dict:
+    return hashes_of(frozen_files(data, repo, minutes))
 
 
 def find_prereg_doc(repo: Path = REPO) -> tuple:
@@ -2609,10 +2622,15 @@ def find_prereg_doc(repo: Path = REPO) -> tuple:
     return None, f"{len(hits)} registration docs match docs/analysis/cb_preregistration_*.md - pass --prereg"
 
 
-def freeze_check(*, doc: "Path | None" = None, data: Path, repo: Path = REPO, minutes: "Path | None" = None) -> list:
+def freeze_check(*, doc: "Path | None" = None, data: "Path | None" = None, repo: Path = REPO, minutes: "Path | None" = None,
+                 files: "dict | None" = None) -> list:
     """Problems (empty = every frozen artefact matches the registration doc's footer). Refuses on a missing doc, a
-    missing FREEZE marker, a pin the footer does not carry, a pinned file that is missing, and any sha256 mismatch."""
+    missing FREEZE marker, a pin the footer does not carry, a pinned file that is missing, and any sha256 mismatch.
+    `files` (#702 h60): a {footer label: path} map to check INSTEAD of the holdout's `frozen_files` (the h60 registration pins
+    other files under other labels); the default is the holdout's, unchanged."""
     problems: list = []
+    if doc is None and files is not None:
+        return ["registration doc not given (a `files` map needs its own doc)"]
     if doc is None:
         doc, problem = find_prereg_doc(repo)
         if problem:
@@ -2624,7 +2642,7 @@ def freeze_check(*, doc: "Path | None" = None, data: Path, repo: Path = REPO, mi
     if FREEZE_MARK not in text:
         return [f"registration doc has no {FREEZE_MARK} marker"]
     footer = text.split(FREEZE_MARK, 1)[1]
-    got = frozen_hashes(data, repo, minutes)
+    got = frozen_hashes(data, repo, minutes) if files is None else hashes_of(files)
     got["doc body"] = doc_body_sha(text)
     for k, g in got.items():
         m = re.search(rf"(?m)^\s*[-*]?\s*{re.escape(k)}\s+sha256:\s*`?([0-9a-f]{{64}})", footer)
@@ -2637,9 +2655,11 @@ def freeze_check(*, doc: "Path | None" = None, data: Path, repo: Path = REPO, mi
     return problems
 
 
-def pin_lines(data: Path, repo: Path = REPO, minutes: "Path | None" = None) -> list:
-    """The footer lines the registration doc must carry (everything but 'doc body', which P4 hashes last)."""
-    return [f"- {k} sha256: `{h or 'MISSING'}`" for k, h in frozen_hashes(data, repo, minutes).items()]
+def pin_lines(data: Path, repo: Path = REPO, minutes: "Path | None" = None, files: "dict | None" = None) -> list:
+    """The footer lines the registration doc must carry (everything but 'doc body', which P4 hashes last). `files` (#702 h60): the
+    map to pin instead of the holdout's."""
+    got = frozen_hashes(data, repo, minutes) if files is None else hashes_of(files)
+    return [f"- {k} sha256: `{h or 'MISSING'}`" for k, h in got.items()]
 
 
 def holdout_option_problems(args, data: Path) -> list:
@@ -3142,16 +3162,18 @@ def p5_inputs(args, split: str) -> dict:
             "done": load_done_pairs(minutes_dir) if minutes_dir.is_dir() else None}
 
 
-def p5_walk(inp: dict, workers: int, split: str, say) -> tuple:
+def p5_walk(inp: dict, workers: int, split: str, say, name: str = P5_NAME) -> tuple:
     """Walk `P5_ARMS` on the lod stop over every candidate of `inp` -> (trades path, entry tally, rows). The table is written to
-    `<name>.partial` and renamed only after every date is walked (the holdout's `.partial` protocol)."""
+    `<name>.partial` and renamed only after every date is walked (the holdout's `.partial` protocol). `name` (#702 h60): the file
+    tag - the h60 read re-walks the pinned P5 population into `trades_<split>_h60twin.tsv.gz` with this very function and proves it
+    equal in content to `trades_<split>_p5.tsv.gz`; the default is the P5 file, unchanged."""
     t = time.time()
     D = load_daily(inp["data"] / "daily_closes_all.csv.gz")
     _G.update(D=D, by_date=inp["by_date"], files=inp["files"], done=inp["done"], bars_cache={}, horizon=HORIZON,
               exits_kw={"stops": P5_STOPS, "arms": P5_ARMS})
     say(f"[load: {time.time() - t:.0f}s]")
     t = time.time()
-    tp = inp["out"] / f"trades_{split}_{P5_NAME}.tsv.gz"
+    tp = inp["out"] / f"trades_{split}_{name}.tsv.gz"
     tpp = partial_path(tp)
     tally: Counter = Counter()
     n_rows = 0
@@ -3821,9 +3843,1665 @@ def run_pre_read(args) -> int:
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
+# #702 h60 (operator 2026-10-19; docs/analysis/cb_hourly_entry_prereg_2026-10-19.md): the HOURLY-CLOSE entry - buy only after
+# an intraday bar CLOSES above the line - read on 2022-24 (decides), 2017-21 (+ 2020-21 alone) and 2025-26 beside, registered
+# BEFORE any outcome. Three stages: `h60-step0` (the entry-time table; no exit, no daily bar), `h60-read` (the one-run read per
+# period: the freeze check on every pin, STEP 0 against the registered table, the ORH5 twin re-walk against the pinned P5
+# table, then the exits, the report and the verdict), `h60-hindsight` (the 39 multibaggers and TSLA row by row, refused until
+# the period's verdict file exists). Every exit number is the module's (`day0_walk`, `walk_his_arms`); the runner adds the
+# clock-anchored windows, the confirmation, the fill, the stop readings, the one-trade-per-base consumption and the tables.
+# BUILT ON SYNTHETIC DATA ONLY: the build computed no real outcome (`h60-step0` and `--dry-run` / `--print-pins` only).
+# ═════════════════════════════════════════════════════════════════════════════════════════════
+H60_DOC = "cb_hourly_entry_prereg_2026-10-19.md"
+H60_PERIODS = ("discovery", "pre", "holdout")
+H60_LEVELS = ("tl", "com")                               # tl decides; com beside
+H60_LEVEL = "tl"
+H60_PRE_LAST_E = date(2021, 12, 31)                      # 2017-21 = bases whose FIRST-break E is on or before this; the pre file's last day
+#                                                        # (2022-01-03) holds 13 first breaks outside the era and 57 eligible repeats
+H60_WINDOW_2021 = ("2020-21", (2020, 2021))              # the sub-window reported beside on the pre period: first-break E year in 2020 / 2021
+H60_EARLY_CLOSE = frozenset({
+    "2017-07-03", "2017-11-24", "2018-07-03", "2018-11-23", "2018-12-24", "2019-07-03", "2019-11-29", "2019-12-24", "2020-11-27",
+    "2020-12-24", "2021-11-26", "2022-11-25", "2023-07-03", "2023-11-24", "2024-07-03", "2024-11-29", "2024-12-24", "2025-07-03",
+    "2025-11-28", "2025-12-24"})                         # the 13:00 closes (read from the files, matching the exchange's list)
+H60_EARLY_CUT = 210                                      # minutes >= 13:00 on those days are after-hours prints: dropped for the bar entries ONLY
+H60_EARLY_SHARE = 0.25                                   # check 2: a listed date < 25% of its bars at minute >= 210; every other date >= 25%
+H60_BARS = {"h60": 60, "h30": 30, "h5": 5}               # the bar entries: [0,29] first (the article's first candle is 09:30-10:00), then
+#                                                        # every k minutes to the close; h5 from 0 in fives. The LAST window never fills
+H60_ENTRIES = ("h60", "h30", "h5", "h60_first", "h60_m025", "h60_line0", "orh60")
+H60_FIRST_ONLY = ("h60_first", "orh60")                  # tried on the base's FIRST break day only (ORH60 = the registered first-break rule)
+H60_ENTRY = "h60"                                        # the primary: the 60-minute bar on every eligible row of the base
+H60_M025_X = 0.25                                        # h60_m025: close > line x (1 + 0.25 x ADR20 of the confirming row's D) - decides nothing
+H60_STOPS = ("lod", "cbar_low", "base_low_cap1")
+H60_STOP = "lod"                                         # the primary stop: the lowest minute low from 09:30 through the END of the window
+H60_STOP_CANDIDATE = "cbar_low"                          # the registered STOP CANDIDATE: the confirming bar's own low (the paired stop bar)
+H60_ARMS = {cb.P5_PRIMARY_ARM: cb.CUT_EXIT_ARMS[cb.P5_PRIMARY_ARM],     # c3_p33_t20_cut3: his exit with the staller cut (decides)
+            cb.PRIMARY_ARM: cb.ARMS[cb.PRIMARY_ARM],                     # p33_s3_t10: the article                       - beside
+            "r2_p33_t20": cb.HIS_EXIT_ARMS["r2_p33_t20"]}                # +2R only, 20-day trail                          - beside
+H60_ARM = cb.P5_PRIMARY_ARM
+H60_MIN_N = 30                                           # n < 30 mature trades is CAN'T TELL whatever the interval says
+H60_PAIR_MIN_N = 30                                      # the paired bars: >= 30 bases with a trade on at least one side
+H60_TAIL_R, H60_TAIL_TICKERS, H60_TAIL_MONTHS, H60_TAIL_WIDTH_ADR = 10.0, 3, 3, 0.25   # the >= 10R spread rule (stop >= 0.25 ADR20 wide)
+H60_TOP_SHARE = 0.02                                     # "the top-2% share": the sum of R of the top 2% of trades, and its share of the total
+H60_DATA_ABSTAINS = DATA_ABSTAINS + ("no_minute_after_bar",)
+H60_DATA_ABSTAIN_MAX = DATA_ABSTAIN_MAX                  # check 3: <= 5% of the rows the rule actually READS
+H60_TWIN = "h60twin"                                     # the ORH5 twin re-walk: trades_<period>_h60twin.tsv.gz, equal in content to trades_<period>_p5.tsv.gz
+H60_CONSUMING = ("filled", "too_wide", "stop_at_or_above_fill")    # a confirmed day consumes the base whatever these three say
+H60_MULTIBAGGERS = ("LVGO", "TSLA", "PTON", "ZM", "NIO", "PLUG", "ENPH", "FUBO", "ETSY", "CRWD", "DOCU", "NVAX", "BLNK", "SE", "SHOP",
+                    "FSLY", "NET", "DDOG", "NXH", "W", "CVNA", "APPS", "SNAP", "MRNA", "TDOC", "ROKU", "PINS", "UPST", "GME", "AMC",
+                    "DKNG", "FVRR", "PENN", "QS", "SPCE", "TTD", "LULU", "NVDA", "AMD")   # the 2017-21 addendum's 39 (SQ absent from Alpaca)
+H60_TSLA = ("TSLA", "2020-04-30")                        # the layout check: exactly ONE confirmed day among its six rows, printed at STEP 0
+H60_FALSE_PASS = ("Chance of a false pass: three deciding one-sided tests on 2022-24 (the C1 interval, the paired entry delta, the paired "
+                  "stop delta), each ~2.5% under a true zero if the block bootstrap is calibrated -> ~7% that at least one passes by "
+                  "chance; the tail-spread and beat-C0 conditions make a C1 chance pass rarer.")
+# STEP 0 must equal the registration's expected-n table (candidate counts only; `multi` = bases with >= 2 distinct break days;
+# orh5_C1_fills = the published fill count). A difference refuses the read before any exit is walked.
+H60_EXPECTED = {
+    "discovery": {"C0": 12285, "C0_multi": 7672, "C1": 102, "C1_multi": 63, "orh5_C1_fills": 79, "C2": 7, "C3": 183, "C4": 507, "C5": 198,
+                  "C6": 20, "C7": 127, "com_C1": 112, "tl_rows": 41307},
+    "pre": {"C0": 17392, "C0_multi": 11414, "C1": 216, "C1_multi": 129, "orh5_C1_fills": 180, "C2": 16, "C3": 355, "C4": 1252, "C5": 414,
+            "C6": 36, "C7": 305, "com_C1": 245, "tl_rows": 68939},
+    "2020-21": {"C0": 11600, "C0_multi": 7672, "C1": 88, "C1_multi": 49, "orh5_C1_fills": 72, "C2": 8, "C3": 128, "C4": 839, "C5": 202,
+                "C6": 13, "C7": 115},
+    "holdout": {"C0": 10554, "C0_multi": 6564, "C1": 43, "C1_multi": 29, "orh5_C1_fills": 31, "C2": 3, "C3": 107, "C4": 317, "C5": 99,
+                "C6": 6, "C7": 76, "com_C1": 42, "tl_rows": 37917},
+}
+H60_EXPECT_C1_N = (60, 90)                               # expectation (changes no rule): discovery C1 n in 60-90
+H60_EXPECT_FILL_DAY_STOP = 0.25                          # expectation: the C0 share stopped on the fill day under h60 < 25% (ORH5 ~ 35%)
+H60_EXPECT_ORH5_C0 = (-0.17, 0.31, 0.9)                  # expectation: the ORH5 C0 baseline reads -0.17R, win 31%, >= 10R 0.9 per 100
+
+H60_STEP0_COLS = (["ticker", "D", "E", "K", "period", "pole_date", "row_no", "n_rows", "retrigger", "first_E", "sessions_since_first",
+                   "gap_kind", "early_close", "minutes_state", "variant", "status", "reason", "tried", "trade", "window_end", "walk_from",
+                   "fill_minute", "width_pct", "fill_le_line", "lbo_kind", "own_C1"] + CELL_COLS)
+H60_TRADE_COLS = (["ticker", "D", "E", "K", "period", "pole_date", "base", "first_E", "first_month", "fill_month", "year", "row_no",
+                   "sessions_since_first", "gap_kind", "early_close"] + CELL_COLS
+                  + ["own_C1", "gap_over_1adr", "phase_qqq_10_20", "apollo_regime", "adr20", "entry", "window_end", "walk_from",
+                     "fill_minute", "fill", "level", "fill_le_line", "stop_variant", "stop", "width_pct", "width_adr", "abstain_reason",
+                     "status", "arm", "realized_r", "pnl_adr", "acct_pct", "sessions_held", "mature", "open_mark", "fill_day_stop",
+                     "partial_kind", "partial_session", "beabove", "fwd_bars", "fwd_hole"])
+H60_PAIR_COLS = (["ticker", "pole_date", "K", "base", "period", "first_D", "first_E", "first_month", "first_year", "n_rows"] + CELL_COLS
+                 + ["orh5_status", "orh5_reason", "orh5_data_abstain", "orh5_fill", "orh5_r", "orh5_adr", "orh5_mature", "orh5_open",
+                    "h60_status", "h60_reason", "h60_E", "h60_row_no", "h60_fill", "h60_fill_minute", "h60_r", "h60_adr", "h60_mature",
+                    "h60_open", "h60_same_day", "h60_gap_kind", "own_C1", "h60_first_status", "h60_first_r", "h60_first_mature",
+                    "h60_first_open", "cbar_status", "cbar_r", "cbar_adr", "cbar_mature", "cbar_open"])
+H60_STAT_COLS = ["n_filled", "n", "n_open", "mean_r", "ci_lo", "ci_hi", "win_rate", "avg_win", "avg_loss", "median_r", "share_ge5",
+                 "share_ge10", "share_ge20", "sum_r", "top2_sum_r", "top2_share", "mean_pnl_adr", "mean_acct_pct", "fill_day_stop_share",
+                 "median_held", "tail_n", "tail_tickers", "tail_months", "tail_n_nowidth", "tail_tickers_nowidth", "tail_months_nowidth"]
+H60_REPORT_COLS = ["period", "window", "cell", "K", "entry", "stop", "arm", "slice", "value"] + H60_STAT_COLS + ["too_wide", "stop_abstain",
+                                                                                                                 "never_confirmed", "data_abstain",
+                                                                                                                 "verdict", "why"]
+
+
+# ── windows, bars, the confirmation and the fill ─────────────────────────────────────────────────────────────────────────────
+def h60_windows(variant: str, early_close: bool) -> list:
+    """The clock-anchored minute-index windows of a bar entry, in order: [0,29] first (the article's 09:30-10:00 candle), then every
+    k minutes to the close (`h5`: fives from 0). On an early-close day the last window ends at 209. The last window never fills."""
+    k = H60_BARS[variant]
+    last = H60_EARLY_CUT - 1 if early_close else 389
+    ends = list(range(4, last + 1, 5)) if k == 5 else [29] + list(range(29 + k, last + 1, k))
+    out, lo = [], 0
+    for hi in ends:
+        out.append((lo, hi))
+        lo = hi + 1
+    return out
+
+
+def h60_trim(mb: "cb.MinuteBars | None", early_close: bool) -> "cb.MinuteBars | None":
+    """The bar entries' minutes: on a listed early-close day every minute >= 210 is dropped BEFORE any minute check (the fetcher keeps
+    prints stamped to 15:59; after 13:00 they are after-hours trades). Any other day, and the ORH entries, read the minutes as stored."""
+    if mb is None or not early_close:
+        return mb
+    keep = mb.minute < H60_EARLY_CUT
+    if bool(keep.all()):
+        return mb
+    return cb.MinuteBars(mb.minute[keep], mb.o[keep], mb.h[keep], mb.l[keep], mb.c[keep], mb.v[keep])
+
+
+def h60_confirm(mb: "cb.MinuteBars", windows: list, level: float) -> dict:
+    """The FIRST bar of the day whose close is above `level` (strict). A bar's close = the close of the LAST minute present in its
+    window; a window with no minute is no bar. The final window never fills (`last_bar_only`); a confirming window with no present
+    minute after it is `no_minute_after_bar` (a data abstain: the day cannot confirm later, no later minute exists). On a confirmation:
+    `walk_from` = the window's last present minute (the module's day-0 functions start there, so the fill minute is read inclusive),
+    `fill_minute` / `fill_open` = the first present minute after the window and its open, `lod` = the lowest low of the minutes through
+    the window's end, `cbar_low` = the lowest low inside the window."""
+    last_w = len(windows) - 1
+    for w, (lo, hi) in enumerate(windows):
+        pos = np.flatnonzero((mb.minute >= lo) & (mb.minute <= hi))
+        if not len(pos):
+            continue
+        j = int(pos[-1])
+        close = float(mb.c[j])
+        if not close > level:
+            continue
+        base = {"window_end": hi, "walk_from": int(mb.minute[j]), "bar_close": close}
+        if w == last_w:
+            return {"status": "last_bar_only", **base}
+        if j + 1 >= len(mb):
+            return {"status": "no_minute_after_bar", **base}
+        return {"status": "confirmed", **base, "fill_minute": int(mb.minute[j + 1]), "fill_open": float(mb.o[j + 1]),
+                "lod": float(mb.l[:j + 1].min()), "cbar_low": float(mb.l[pos].min())}
+    return {"status": "no_confirm"}
+
+
+def h60_entry(conf: dict, level: float, adr20: float) -> dict:
+    """The entry of a confirmed day in the module's `_entry_row` shape, plus `walk_from`, `window_end`, `bar_close`, `fill_open`,
+    `cbar_low`. Fill = the fill minute's open x (1 + ENTRY_SLIPPAGE_PCT); stop = `lod`. Abstain `stop_at_or_above_fill` when that
+    OPEN <= the stop (the registration: the trigger is the open, tighter than the module's `stop >= fill` by the slippage), else the
+    module's own width rule (`_finish_entry`: `too_wide` beyond one ADR20). A fill at or under the line is legal and taken as is."""
+    fill = conf["fill_open"] * (1.0 + cb.ENTRY_SLIPPAGE_PCT)
+    stop = conf["lod"]
+    extra = {k: conf[k] for k in ("walk_from", "window_end", "bar_close", "fill_open", "cbar_low")}
+    if conf["fill_open"] <= stop:
+        return {**cb._entry_row("abstain", "stop_at_or_above_fill", fill=fill, stop=stop, fill_minute=conf["fill_minute"], level=level), **extra}
+    bad = cb._finish_entry(fill, stop, conf["fill_minute"], level, adr20)
+    if bad is not None:
+        return {**bad, **extra}
+    return {**cb._entry_row("filled", None, fill=fill, stop=stop, fill_minute=conf["fill_minute"], width_pct=(fill - stop) / fill,
+                            level=level), **extra}
+
+
+def h60_stop_readings(entry: dict, base_low: "float | None", adr20: float) -> dict:
+    """The three stop readings of a FILLED h60 entry, each {stop, reason, width_pct}: `lod` (the entry's own); `cbar_low` (the
+    confirming bar's low) with the same two abstains; `base_low_cap1` = max(base low, fill x (1 - ADR20)) - never `too_wide` by
+    construction and never abstains in the registration, but a cap cannot pull a base low that sits at or above the fill under it: that
+    case is `stop_at_or_above_fill` here (it cannot be walked) and is COUNTED in the report, not hidden. `base_low` None (no watch row)
+    reads as the capped level alone."""
+    fill, op = float(entry["fill"]), float(entry["fill_open"])
+    cap = fill * (1.0 - adr20)
+    raw = {"lod": float(entry["stop"]), "cbar_low": float(entry["cbar_low"]),
+           "base_low_cap1": max(float(base_low), cap) if base_low is not None else cap}
+    out = {}
+    for name in H60_STOPS:
+        s = raw[name]
+        if op <= s:
+            out[name] = {"stop": s, "reason": "stop_at_or_above_fill", "width_pct": None}
+            continue
+        width = (fill - s) / fill
+        out[name] = {"stop": s, "reason": ("too_wide" if (name != "base_low_cap1" and width > adr20) else None), "width_pct": width}
+    return out
+
+
+def h60_levels(c: dict) -> dict:
+    """{variant: the level its bars must close above} for one candidate row: the row's own `pivot` (the redrawn line; `com` its level),
+    `h60_m025` the line lifted by 0.25 ADR20 of the row's D, `h60_line0` the FIRST-break night's line projected to this row (stamped by
+    `h60_annotate`; None on `com` and when the first break had no line)."""
+    p = float(c["pivot"])
+    return {"h60": p, "h30": p, "h5": p, "h60_first": p, "h60_m025": p * (1.0 + H60_M025_X * float(c["adr20"])), "h60_line0": c.get("line0")}
+
+
+def _h60_fact(status, reason=None, **kw) -> dict:
+    out = {"status": status, "reason": reason, "window_end": None, "walk_from": None, "fill_minute": None, "width_pct": None,
+           "fill_le_line": None}
+    out.update(kw)
+    return out
+
+
+def h60_row_facts(c: dict, mb_raw: "cb.MinuteBars | None") -> dict:
+    """STEP 0: the ENTRY-TIME facts of every entry variant on one candidate row - {variant: {status, reason, window_end, walk_from,
+    fill_minute, width_pct, fill_le_line}} and nothing else (no fill price, no stop, no day-0, no exit). The bar entries read the
+    trimmed minutes (`h60_trim`) through the module's registered pre-checks (`entry_variants` on those minutes: no_minutes /
+    minute_daily_mismatch / minute_high_below_pivot), then `h60_confirm` + `h60_entry`; `orh60` and `orh5` are the module's own
+    variants on the minutes AS STORED (the registered first-break rules, after-hours prints included). `fill_le_line` = the fill at or
+    under the row's `pivot`."""
+    early = c["E"] in H60_EARLY_CLOSE
+    pivot, adr20 = float(c["pivot"]), float(c["adr20"])
+    out = {}
+    mb = h60_trim(mb_raw, early)
+    pre = cb.entry_variants(mb, pivot=pivot, adr20=adr20, day_high=float(c["high_E"]), day_low=float(c["low_E"]))["pivot"]
+    data = pre["reason"] if pre["status"] == "abstain" and pre["reason"] in DATA_ABSTAINS else None
+    for v, level in h60_levels(c).items():
+        if data is not None:
+            out[v] = _h60_fact("abstain", data)
+            continue
+        if level is None:
+            out[v] = _h60_fact("no_level")
+            continue
+        conf = h60_confirm(mb, h60_windows("h60" if v.startswith("h60") else v, early), float(level))
+        if conf["status"] != "confirmed":
+            out[v] = (_h60_fact("abstain", "no_minute_after_bar", window_end=conf["window_end"], walk_from=conf["walk_from"])
+                      if conf["status"] == "no_minute_after_bar" else
+                      _h60_fact(conf["status"], window_end=conf.get("window_end"), walk_from=conf.get("walk_from")))
+            continue
+        ent = h60_entry(conf, float(level), adr20)
+        out[v] = _h60_fact(ent["status"], ent["reason"], window_end=ent["window_end"], walk_from=ent["walk_from"],
+                           fill_minute=ent["fill_minute"], width_pct=ent["width_pct"], fill_le_line=int(ent["fill"] <= pivot))
+    raw = cb.entry_variants(mb_raw, pivot=pivot, adr20=adr20, day_high=float(c["high_E"]), day_low=float(c["low_E"]))
+    for v in ("orh60", "orh5"):
+        o = raw[v]
+        out[v] = _h60_fact(o["status"], o["reason"], fill_minute=o["fill_minute"], width_pct=o["width_pct"],
+                           fill_le_line=(int(o["fill"] <= pivot) if o["fill"] is not None else None))
+    return out
+
+
+# ── population: every row under the pole, the base's period, the watch-night facts, the consumption rule ─────────────────────
+def h60_sources(period: str) -> list:
+    """[(candidates file name, levels read from it)] of a period: cb702's `candidates.tsv` (tl) and `candidates_com_comb.tsv` (com)
+    for discovery / holdout; the pre file carries both."""
+    return [("candidates_tl_com.tsv", ("tl", "com"))] if period == "pre" else [("candidates.tsv", ("tl",)), ("candidates_com_comb.tsv", ("com",))]
+
+
+def h60_watch_file(period: str, k: str) -> str:
+    if period == "pre":
+        return "watch_tl_com.tsv.gz"
+    return "watch.tsv.gz" if k == "tl" else "watch_com_comb.tsv.gz"
+
+
+def h60_dirs(args) -> dict:
+    """{"cb702": the 2022+ data dir (--data), "cb702_pre": the Alpaca-era dir (--data-pre, default the sibling `cb702_pre`)}."""
+    data = Path(args.data)
+    pre = getattr(args, "data_pre", None)
+    return {"cb702": data, "cb702_pre": Path(pre) if pre else data.parent / "cb702_pre"}
+
+
+def h60_period_dir(dirs: dict, period: str) -> Path:
+    return dirs["cb702_pre"] if period == "pre" else dirs["cb702"]
+
+
+def h60_in_period(first: dict, period: str) -> bool:
+    """A base belongs to the period of its FIRST-break row: the row's split label (cb702; a discovery base keeps its holdout-labelled
+    repeats), or a first-break E inside the era (pre; the 13 first breaks on 2022-01-03 are out)."""
+    if period == "pre":
+        return date.fromisoformat(first["E"]) <= H60_PRE_LAST_E
+    return first["split"] == period
+
+
+def h60_read_bases(out: Path, period: str) -> dict:
+    """{(ticker, pole_date, K): rows in E order} - EVERY row under the pole (rule (b): the runner's own spec key, which never ends a base
+    on an absent night), both split labels read, the base kept when its first break is in the period. The first row carries
+    `retrigger = 0` by the daily stage's stamping (asserted)."""
+    rows: list = []
+    for name, levels in h60_sources(period):
+        kw = {"era": PRE_ERA} if period == "pre" else {"split": None}
+        rows += read_candidates(out / name, extra_floats=("base_depth",), where=lambda rec, lv=levels: rec["K"] in lv, **kw)
+    groups = defaultdict(list)
+    for r in rows:
+        groups[(r["ticker"], r["pole_date"], r["K"])].append(r)
+    keep = {}
+    for key, rs in groups.items():
+        rs.sort(key=lambda r: r["E"])
+        assert rs[0]["retrigger"] == 0, key
+        if h60_in_period(rs[0], period):
+            keep[key] = rs
+    return keep
+
+
+def h60_watch_index(path: Path, k: str) -> dict:
+    """The watch-night facts the read joins: {"row": {(ticker, D): {ci, i, pole_high, base_low, pivot, slope, anchor}}, "nights": {ticker:
+    set of ci with a watch row}, "noline": {(ticker, pole_date): set of ci whose watch row carries no level}}. `slope` / `anchor` only on tl."""
+    import pandas as pd
+    cols = ["ticker", "watch_date", "ci", "i", "pole_date", "pole_high", "base_low", f"pivot_{k}"] + (["tl_slope_pct", "tl_anchor_idx"] if k == "tl" else [])
+    df = pd.read_csv(path, sep="\t", usecols=cols, keep_default_na=False, na_values=[""], low_memory=False)
+    row, nights, noline = {}, defaultdict(set), defaultdict(set)
+    piv = df[f"pivot_{k}"].to_numpy(dtype=float)
+    slope = df["tl_slope_pct"].to_numpy(dtype=float) if k == "tl" else np.full(len(df), np.nan)
+    anchor = df["tl_anchor_idx"].to_numpy(dtype=float) if k == "tl" else np.full(len(df), np.nan)
+    for n, (t, d, ci, i, pole, ph, bl) in enumerate(zip(df["ticker"], df["watch_date"], df["ci"], df["i"], df["pole_date"],
+                                                         df["pole_high"], df["base_low"])):
+        ci = int(ci)
+        row[(t, d)] = {"ci": ci, "i": int(i), "pole_high": float(ph), "base_low": float(bl),
+                       "pivot": None if np.isnan(piv[n]) else float(piv[n]), "slope": None if np.isnan(slope[n]) else float(slope[n]),
+                       "anchor": None if np.isnan(anchor[n]) else int(anchor[n])}
+        nights[t].add(ci)
+        if np.isnan(piv[n]):
+            noline[(t, pole)].add(ci)
+    return {"row": row, "nights": nights, "noline": noline}
+
+
+def h60_anchor_high(w: dict) -> "float | None":
+    """high[A] of a tl watch night from its pivot, slope and anchor: pivot_tl = high[A] x (1 + slope x (i + 1 - A))."""
+    if w.get("pivot") is None or w.get("slope") is None or w.get("anchor") is None:
+        return None
+    den = 1.0 + w["slope"] * (w["i"] + 1 - w["anchor"])
+    return w["pivot"] / den if den > 0 else None
+
+
+def h60_gap_kind(ticker: str, pole: str, ci0: int, ci1: int, widx: dict) -> str:
+    """The absent-night kinds between the first break's watch night (ci0) and this row's (ci1), exclusive: "absent" = a session with no
+    watch row for the ticker at all (the stock failed a gate that night), "no_line" = a watch row of the same pole with no level (a
+    high topped the base's highest high; the line is gone for 3 nights). "" = none. Reported beside, never deciding."""
+    if ci1 - ci0 <= 1:
+        return ""
+    between = range(ci0 + 1, ci1)
+    nights = widx["nights"].get(ticker, set())
+    absent = any(ci not in nights for ci in between)
+    nl = widx["noline"].get((ticker, pole), set())
+    noline = any(ci in nl for ci in between)
+    return "+".join(x for x, on in (("absent", absent), ("no_line", noline)) if on)
+
+
+def h60_annotate(bases: dict, widx_by_k: dict) -> None:
+    """Stamp on every row what the read needs beyond the candidates table: `_ci` / `_i` (the watch night), `pole_high`, `base_low`,
+    `anchor_high`, `line0` (tl: the first-break night's line projected forward, anchor high x (1 + slope0 x sessions since the anchor)),
+    `row_no`, `n_rows`, `first_E`, `first_month`, `sessions_since_first`, `gap_kind`, `_first` (the first-break row's cell flags)."""
+    for (ticker, pole, k), rows in bases.items():
+        widx = widx_by_k[k]
+        w0 = widx["row"][(ticker, rows[0]["D"])]
+        high_a0 = h60_anchor_high(w0) if k == "tl" else None
+        first_cells = {cell: bool(rows[0][cell]) for cell in CELL_COLS}
+        for n, r in enumerate(rows):
+            w = widx["row"][(ticker, r["D"])]
+            r["_ci"], r["_i"] = w["ci"], w["i"]
+            r["pole_high"], r["base_low"] = w["pole_high"], w["base_low"]
+            r["anchor_high"] = h60_anchor_high(w) if k == "tl" else None
+            r["line0"] = (high_a0 * (1.0 + w0["slope"] * (w["i"] + 1 - w0["anchor"]))) if high_a0 is not None else None
+            r["row_no"], r["n_rows"] = n, len(rows)
+            r["first_E"], r["first_month"] = rows[0]["E"], rows[0]["E"][:7]
+            r["sessions_since_first"] = w["ci"] - w0["ci"]
+            r["gap_kind"] = h60_gap_kind(ticker, pole, w0["ci"], w["ci"], widx)
+            r["_first"] = first_cells
+            r["base"] = f"{ticker}|{pole}|{k}"
+
+
+def h60_select(bases: dict, facts: dict) -> dict:
+    """The one trade per base, per entry variant: {(ticker, E, K): {variant: "tried" | "trade"}}. Rows in E order; a data abstain
+    (`no_minutes`, `minute_daily_mismatch`, `minute_high_below_pivot`, `no_minute_after_bar`) is tried and consumes nothing; a day that
+    confirmed - `filled`, or an abstain `too_wide` / `stop_at_or_above_fill` - is the base's trade and consumes it; `no_confirm`,
+    `last_bar_only`, `no_level`, `no_trigger` move to the next row. The first-break-only variants (`h60_first`, `orh60`) try the
+    first row alone."""
+    out: dict = defaultdict(dict)
+    for key, rows in bases.items():
+        for v in H60_ENTRIES:
+            for r in (rows[:1] if v in H60_FIRST_ONLY else rows):
+                f = facts[(r["ticker"], r["E"], r["K"])][v]
+                consumes = f["status"] == "filled" or (f["status"] == "abstain" and f["reason"] in H60_CONSUMING)
+                out[(r["ticker"], r["E"], r["K"])][v] = "trade" if consumes else "tried"
+                if consumes:
+                    break
+    return dict(out)
+
+
+def h60_lbo_kind(rows: list, n: int, variant: str, facts: dict, pick: dict) -> str:
+    """What followed a day whose ONLY confirming bar was the final one (the hole the registration counts, not fixes): a later row of the
+    base confirmed; no row follows - the close ended the base (above the pole high) or not; later rows exist and none confirmed - the
+    high topped the anchor (tl: no line for 3 nights) or the next row's redrawn line sat near that high and was not cleared."""
+    r = rows[n]
+    later = rows[n + 1:]
+    if any(pick.get((x["ticker"], x["E"], x["K"]), {}).get(variant) == "trade" for x in later):
+        return "later_confirmed"
+    if not later:
+        return "ended_base" if (r.get("pole_high") is not None and float(r["close_E"]) > r["pole_high"]) else "no_later_row"
+    if r.get("anchor_high") is not None and float(r["high_E"]) > r["anchor_high"]:
+        return "topped_anchor"
+    return "next_line_not_cleared"
+
+
+# ── the minute inputs of a period ──────────────────────────────────────────────────────────────────────────────────────────────
+def h60_minute_inputs(bases: dict, minutes_dir: Path) -> dict:
+    """The (E, ticker) pairs the population needs, what the minute directory holds of them (`pre_missing_pairs`), and the per-date file map
+    with `os.devnull` for a date whose pairs are all logged `empty` (read as no minutes, never dropped)."""
+    rows = [r for rs in bases.values() for r in rs]
+    pairs = sorted({(r["E"], r["ticker"]) for r in rows})
+    has_dir = minutes_dir.is_dir()
+    on_disk = minute_date_files(minutes_dir) if has_dir else {}
+    done = load_done_pairs(minutes_dir) if has_dir else None
+    missing, lost = pre_missing_pairs(pairs, on_disk, done)
+    files = dict(on_disk)
+    for d in {e for e, _t in pairs} - set(files):
+        files[d] = Path(os.devnull)
+    by_date = group_by_date(rows, set(files))
+    return {"minutes_dir": minutes_dir, "pairs": pairs, "on_disk": on_disk, "done": done, "missing": missing, "lost": lost,
+            "files": files, "by_date": by_date}
+
+
+def _h60_step0_job(date_iso: str) -> tuple:
+    """STEP 0 for one E date: the minute file once, every candidate row of the date through `h60_row_facts` (entry-time facts only; no daily
+    bar is opened, nothing reaches an exit walker). Returns ({(ticker, E, K): {variant: fact}}, minutes_state per row, the early-close
+    tally of the file's wanted blocks: (bars, bars at minute >= 210))."""
+    cands = _G["by_date"][date_iso]
+    blocks, _info = read_minute_file(_G["files"][date_iso], {c["ticker"] for c in cands})
+    done = _G["done"]
+    facts, states = {}, {}
+    n_bars = n_late = 0
+    for t, rows in blocks.items():
+        n_bars += len(rows)
+        n_late += sum(1 for r in rows if int(r[1]) >= H60_EARLY_CUT)
+    for c in cands:
+        mb, state = minutes_for(blocks, done, date_iso, c["ticker"])
+        key = (c["ticker"], c["E"], c["K"])
+        states[key] = state
+        facts[key] = h60_row_facts(c, None if state == "pending" else mb)
+    return facts, states, (n_bars, n_late)
+
+
+def h60_early_close_problems(shares: dict) -> list:
+    """Check 2: every listed date on which minutes were read shows < 25% of its bars at minute >= 210; every other date >= 25%. A date with
+    no bar read is not judged."""
+    bad = []
+    for d, (n, late) in sorted(shares.items()):
+        if not n:
+            continue
+        share = late / n
+        if d in H60_EARLY_CLOSE and share >= H60_EARLY_SHARE:
+            bad.append(f"{d} is a listed early close but {share:.0%} of its bars are at minute >= {H60_EARLY_CUT}")
+        elif d not in H60_EARLY_CLOSE and share < H60_EARLY_SHARE:
+            bad.append(f"{d} is not a listed early close but only {share:.0%} of its bars are at minute >= {H60_EARLY_CUT}")
+    return bad
+
+
+# ── STEP 0: the entry-time table and its check against the registered counts ───────────────────────────────────────────────────
+def h60_windows_of(period: str) -> list:
+    """The report windows of a period: the period itself, plus 2020-21 alone on the pre era (first-break E year)."""
+    return [(period, None)] + ([H60_WINDOW_2021] if period == "pre" else [])
+
+
+def h60_base_in_window(rows: list, years) -> bool:
+    return years is None or int(rows[0]["E"][:4]) in years
+
+
+def h60_step0_rows(bases: dict, facts: dict, states: dict, pick: dict, period: str) -> list:
+    rows_out = []
+    for key, rows in bases.items():
+        for n, r in enumerate(rows):
+            rk = (r["ticker"], r["E"], r["K"])
+            fx, pk = facts[rk], pick.get(rk, {})
+            for v in H60_ENTRIES:
+                f = fx[v]
+                tag = pk.get(v)
+                row = {"ticker": r["ticker"], "D": r["D"], "E": r["E"], "K": r["K"], "period": period, "pole_date": r["pole_date"],
+                       "row_no": n, "n_rows": len(rows), "retrigger": r["retrigger"], "first_E": r["first_E"],
+                       "sessions_since_first": r["sessions_since_first"], "gap_kind": r["gap_kind"],
+                       "early_close": int(r["E"] in H60_EARLY_CLOSE), "minutes_state": states[rk], "variant": v,
+                       "status": f["status"], "reason": f["reason"] or "", "tried": int(tag is not None), "trade": int(tag == "trade"),
+                       "window_end": f["window_end"], "walk_from": f["walk_from"], "fill_minute": f["fill_minute"],
+                       "width_pct": f["width_pct"], "fill_le_line": f["fill_le_line"],
+                       "lbo_kind": h60_lbo_kind(rows, n, v, facts, pick) if f["status"] == "last_bar_only" else "",
+                       "own_C1": int(bool(r["C1"]))}
+                for cell in CELL_COLS:
+                    row[cell] = int(r["_first"][cell])
+                rows_out.append(row)
+    return rows_out
+
+
+def h60_base_outcome(rows: list, facts: dict, pick: dict, variant: str) -> tuple:
+    """(status, reason, the confirming row or None) of a base under a variant from the entry-time facts: the row tagged "trade" (its status
+    `filled` / `too_wide` / `stop_at_or_above_fill`), else `never_confirmed` (every tried row: no_confirm / last_bar_only / no_level /
+    no_trigger / a data abstain) with the reason `data_only` when every tried row was a data abstain."""
+    tried = []
+    for r in rows:
+        tag = pick.get((r["ticker"], r["E"], r["K"]), {}).get(variant)
+        if tag is None:
+            continue
+        f = facts[(r["ticker"], r["E"], r["K"])][variant]
+        if tag == "trade":
+            return ("filled" if f["status"] == "filled" else f["reason"]), f["reason"], r
+        tried.append(f)
+    data_only = bool(tried) and all(f["status"] == "abstain" and f["reason"] in H60_DATA_ABSTAINS for f in tried)
+    return "never_confirmed", ("data_only" if data_only else ""), None
+
+
+def h60_step0_counts(bases: dict, facts: dict, pick: dict, years=None) -> dict:
+    """The registered-table counts of one window (bases whose first-break E year is in `years`, all when None): per cell the bases (tl),
+    the multi-break bases, com C1 bases, the ORH5 C1 fills (the module's orh5 status on the first break), and per cell the h60 outcomes."""
+    c: Counter = Counter()
+    for key, rows in bases.items():
+        if not h60_base_in_window(rows, years):
+            continue
+        k = key[2]
+        first = rows[0]
+        multi = len({r["E"] for r in rows}) >= 2
+        cells = [cell for cell in CELL_COLS if first["_first"][cell]]
+        f5 = facts[(first["ticker"], first["E"], k)]["orh5"]
+        for cell in cells:
+            c[(k, cell)] += 1
+            c[(k, cell + "_multi")] += int(multi)
+            if f5["status"] == "filled":
+                c[(k, cell + "_orh5_fills")] += 1
+            for v in H60_ENTRIES:
+                st, reason, row = h60_base_outcome(rows, facts, pick, v)
+                c[(k, cell, v, st)] += 1
+                if st == "never_confirmed" and reason == "data_only":
+                    c[(k, cell, v, "data_only")] += 1
+                if row is not None:
+                    if row["gap_kind"]:
+                        c[(k, cell, v, "after_gap")] += 1
+                    if row["row_no"] == 0:
+                        c[(k, cell, v, "same_day")] += 1
+    return dict(c)
+
+
+def h60_step0_problems(counts: dict, expected: dict, tl_rows: "int | None") -> list:
+    """Check 5: the STEP 0 counts must equal the registered table (candidate counts). Every key the table carries is compared."""
+    got = {"C0": counts.get(("tl", "C0"), 0), "C0_multi": counts.get(("tl", "C0_multi"), 0), "C1": counts.get(("tl", "C1"), 0),
+           "C1_multi": counts.get(("tl", "C1_multi"), 0), "orh5_C1_fills": counts.get(("tl", "C1_orh5_fills"), 0),
+           "com_C1": counts.get(("com", "C1"), 0), "tl_rows": tl_rows}
+    for cell in ("C2", "C3", "C4", "C5", "C6", "C7"):
+        got[cell] = counts.get(("tl", cell), 0)
+    return [f"{k}: STEP 0 reads {got.get(k)}, the registration's table says {want}" for k, want in expected.items() if got.get(k) != want]
+
+
+def _dist(values: list, cuts: tuple) -> str:
+    """A small histogram of integers over the cut points (`<= c1`, `c1 < x <= c2`, ..., `> cn`)."""
+    v = [x for x in values if x is not None]
+    if not v:
+        return "(none)"
+    parts, lo = [], None
+    for cut in cuts:
+        parts.append(f"{'<= ' + str(cut) if lo is None else str(lo + 1) + '-' + str(cut)}: {sum(1 for x in v if (lo is None or x > lo) and x <= cut)}")
+        lo = cut
+    parts.append(f"> {lo}: {sum(1 for x in v if x > lo)}")
+    return "  ".join(parts) + f"  (n {len(v)}, median {int(np.median(v))})"
+
+
+def h60_step0_text(period: str, bases: dict, facts: dict, states: dict, pick: dict, counts_by_window: dict, problems_by_window: dict,
+                   shares: dict, inp: dict, pinned_fills: "dict | None") -> str:
+    out: list = []
+    A = out.append
+    A(f"#702 h60 STEP 0 - {period}: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under "
+      f"the pole (spec key, rule (b)), the base's period from its FIRST-break row; levels tl (decides) / com (beside).")
+    n_rows = sum(len(rs) for rs in bases.values())
+    A(f"bases {len(bases):,} ({sum(1 for k in bases if k[2] == 'tl'):,} tl / {sum(1 for k in bases if k[2] == 'com'):,} com); rows {n_rows:,}; "
+      f"(E, ticker) pairs {len(inp['pairs']):,}; pairs not logged in _done.psv {len(inp['missing']):,}; logged ok with no file {len(inp['lost']):,}; "
+      f"minutes state {dict(sorted(Counter(states.values()).items()))}")
+    ec = h60_early_close_problems(shares)
+    listed = {d: s for d, s in shares.items() if d in H60_EARLY_CLOSE and s[0]}
+    A(f"EARLY-CLOSE CHECK (check 2): listed dates read {len(listed)} - " + ", ".join(f"{d} {s[1] / s[0]:.0%}" for d, s in sorted(listed.items()))
+      + f"; other dates with < {H60_EARLY_SHARE:.0%} at minute >= {H60_EARLY_CUT}: {sum(1 for d, s in shares.items() if d not in H60_EARLY_CLOSE and s[0] and s[1] / s[0] < H60_EARLY_SHARE)}"
+      + (" -> FAILS: " + "; ".join(ec) if ec else " -> ok"))
+    tried = [(facts[(r['ticker'], r['E'], r['K'])]['h60'], r) for rs in bases.values() for r in rs
+             if pick.get((r['ticker'], r['E'], r['K']), {}).get('h60') is not None and r['K'] == H60_LEVEL]
+    n_da = sum(1 for f, _r in tried if f["status"] == "abstain" and f["reason"] in H60_DATA_ABSTAINS)
+    A(f"DATA-ABSTAIN SHARE (check 3, h60 on tl, the rows the rule READ): {n_da:,} of {len(tried):,} ({(n_da / len(tried) if tried else 0):.2%}; "
+      f"{dict(Counter(f['reason'] for f, _r in tried if f['status'] == 'abstain' and f['reason'] in H60_DATA_ABSTAINS))}) - limit "
+      f"{H60_DATA_ABSTAIN_MAX:.0%}: {'BLOCKS THE READ' if tried and n_da / len(tried) > H60_DATA_ABSTAIN_MAX else 'ok'}")
+    for wname, counts in counts_by_window.items():
+        pr = problems_by_window[wname]
+        A("")
+        A(f"REGISTERED TABLE CHECK (check 5) - window {wname}: " + ("EQUAL to the registration's table" if not pr else "DIFFERS: " + "; ".join(pr)))
+        body = []
+        for cell in CELL_COLS:
+            body.append([cell, counts.get(("tl", cell), 0), counts.get(("tl", cell + "_multi"), 0), counts.get(("tl", cell + "_orh5_fills"), 0),
+                         (pinned_fills or {}).get((wname, cell), "-"), counts.get(("com", cell), 0), counts.get(("com", cell + "_orh5_fills"), 0)])
+        A(table(body, ["cell", "tl bases", "tl multi-break", "ORH5 fills (entry facts)", "ORH5 fills (pinned P5 table)", "com bases", "com ORH5 fills"]))
+        A(f"  h60 (tl) per cell: confirmed+filled / confirmed too_wide / confirmed stop_at_or_above_fill / never confirmed (of which data abstains only) / "
+          f"confirmed on the first break day / confirmed after an absent or no-line night")
+        body = []
+        for cell in CELL_COLS:
+            g = lambda st: counts.get(("tl", cell, "h60", st), 0)
+            body.append([cell, g("filled"), g("too_wide"), g("stop_at_or_above_fill"), f"{g('never_confirmed')} ({g('data_only')})", g("same_day"), g("after_gap")])
+        A(table(body, ["cell", "filled", "too_wide", "saaf", "never (data only)", "first day", "after a gap"]))
+        A("  every entry (tl, C0 / C1): confirmed+filled / too_wide / saaf / never")
+        body = []
+        for v in H60_ENTRIES:
+            ln = [v]
+            for cell in ("C0", "C1"):
+                g = lambda st: counts.get(("tl", cell, v, st), 0)
+                ln.append(f"{g('filled')} / {g('too_wide')} / {g('stop_at_or_above_fill')} / {g('never_confirmed')}")
+            body.append(ln)
+        A(table(body, ["entry", "C0", "C1"]))
+    # per-row facts on tl, h60: the nesting check, last_bar_only kinds, fill-minute and first-to-confirmed distributions, fill at/under the line
+    rows_tl = [r for rs in bases.values() for r in rs if r["K"] == H60_LEVEL]
+    fx = lambda r, v: facts[(r["ticker"], r["E"], r["K"])][v]
+    conf = lambda f: f["status"] == "filled" or (f["status"] == "abstain" and f["reason"] in H60_CONSUMING)
+    nest = sum(1 for r in rows_tl if conf(fx(r, "h60")) and not conf(fx(r, "h30"))) + sum(1 for r in rows_tl if conf(fx(r, "h30")) and not conf(fx(r, "h5")))
+    A("")
+    A(f"NESTING (per row, tl): rows h60 confirms that h30 does not, plus rows h30 confirms that h5 does not: {nest} (must be 0); rows confirmed by "
+      f"h5 {sum(1 for r in rows_tl if conf(fx(r, 'h5')))}, h30 {sum(1 for r in rows_tl if conf(fx(r, 'h30')))}, h60 {sum(1 for r in rows_tl if conf(fx(r, 'h60')))} "
+      f"of {len(rows_tl):,} rows")
+    lbo = Counter(h60_lbo_kind(rs, n, "h60", facts, pick) for rs in bases.values() for n, r in enumerate(rs)
+                  if r["K"] == H60_LEVEL and fx(r, "h60")["status"] == "last_bar_only")
+    A(f"LAST_BAR_ONLY (tl, h60; the hole counted, not fixed): {sum(lbo.values())} rows, by what followed: {dict(sorted(lbo.items()))}")
+    l0 = sum(1 for r in rows_tl if conf(fx(r, "h60_line0")))
+    A(f"h60_line0 (the first-break night's line held) vs the redrawn line: rows confirmed {l0} vs {sum(1 for r in rows_tl if conf(fx(r, 'h60')))}; "
+      f"rows where the two disagree: {sum(1 for r in rows_tl if conf(fx(r, 'h60_line0')) != conf(fx(r, 'h60')))}")
+    trades = [(r, fx(r, "h60")) for r in rows_tl if pick.get((r["ticker"], r["E"], r["K"]), {}).get("h60") == "trade" and fx(r, "h60")["status"] == "filled"]
+    A(f"FILL MINUTE (tl, h60 filled trades, minutes since 09:30): " + _dist([f["fill_minute"] for _r, f in trades], (30, 90, 150, 210, 270, 330)))
+    A(f"FIRST BREAK -> CONFIRMED BREAK (sessions): " + _dist([r["sessions_since_first"] for r, _f in trades], (0, 1, 5, 20)))
+    A(f"FILLED AT OR UNDER THE LINE: {sum(1 for _r, f in trades if f['fill_le_line'])} of {len(trades)}")
+    ts = [(r, fx(r, "h60")) for rs in bases.values() for r in rs if (r["ticker"], r["pole_date"], r["K"]) == (H60_TSLA[0], H60_TSLA[1], "tl")]
+    if ts:
+        picks = [(r["E"], pick.get((r["ticker"], r["E"], r["K"]), {}).get("h60"), f["status"], f["reason"] or "") for r, f in ts]
+        tr = [p for p in picks if p[1] == "trade"]
+        A(f"TSLA {H60_TSLA[1]} (tl): rows " + ", ".join(f"{e} {st}{(' ' + rs) if rs else ''}{' <- TRADE' if tag == 'trade' else ''}" for e, tag, st, rs in picks)
+          + f"; confirmed days: {len(tr)} ({'ONE, as the layout check expects' if len(tr) == 1 else 'NOT one - broken re-try logic or a layout surprise'})")
+    return "\n".join(out)
+
+
+def h60_pinned_fills(out: Path, period: str, bases: dict) -> dict:
+    """{(window, cell): the ORH5 fills the PINNED P5 table carries} for the period's tl bases - the entry status read off the pinned file
+    (a row with the primary arm = a filled entry); no outcome column is read."""
+    import pandas as pd
+    p = out / f"trades_{period}_p5.tsv.gz"
+    if not p.exists():
+        return {}
+    df = pd.read_csv(p, sep="\t", usecols=["ticker", "D", "K", "arm"] + list(CELL_COLS), keep_default_na=False, na_values=[""], low_memory=False)
+    df = df[(df["K"] == H60_LEVEL) & (df["arm"] == H60_ARM)]
+    first = {(rs[0]["ticker"], rs[0]["D"]): rs for key, rs in bases.items() if key[2] == H60_LEVEL}
+    out_: Counter = Counter()
+    for t, d, *cells in df[["ticker", "D"] + list(CELL_COLS)].itertuples(index=False):
+        rs = first.get((t, d))
+        if rs is None:
+            continue
+        for wname, years in h60_windows_of(period):
+            if h60_base_in_window(rs, years):
+                for cell, on in zip(CELL_COLS, cells):
+                    if int(on):
+                        out_[(wname, cell)] += 1
+    return dict(out_)
+
+
+def h60_step0(bases: dict, inp: dict, workers: int, period: str, out: Path, small: Path, pinned_fills: "dict | None") -> dict:
+    """Run STEP 0 (the per-date job, the selection, the counts, the checks) and write `h60_step0_<period>.tsv.gz` + `.txt`. Returns
+    {facts, states, pick, counts (by window), problems (by window), shares, text, data_share, early_problems}."""
+    _G.update(by_date=inp["by_date"], files=inp["files"], done=inp["done"])
+    facts, states, shares = {}, {}, {}
+    for d, (fx, st, share) in zip(list(inp["by_date"]), _pool_map(_h60_step0_job, list(inp["by_date"]), workers)):
+        facts.update(fx)
+        states.update(st)
+        shares[d] = share
+    pick = h60_select(bases, facts)
+    tl_rows = sum(len(rs) for key, rs in bases.items() if key[2] == H60_LEVEL)
+    counts, problems = {}, {}
+    for wname, years in h60_windows_of(period):
+        counts[wname] = h60_step0_counts(bases, facts, pick, years)
+        exp = H60_EXPECTED.get(wname, {})
+        problems[wname] = h60_step0_problems(counts[wname], {k: v for k, v in exp.items() if k != "tl_rows"}, None)
+    rows = h60_step0_rows(bases, facts, states, pick, period)
+    out.mkdir(parents=True, exist_ok=True)
+    small.mkdir(parents=True, exist_ok=True)
+    write_tsv(out / f"h60_step0_{period}.tsv.gz", rows, H60_STEP0_COLS, gz=True)
+    text = h60_step0_text(period, bases, facts, states, pick, counts, problems, shares, inp, pinned_fills)
+    text += f"\nTL ROWS of the period's bases: {tl_rows:,} (the registration's row count is by row LABEL / file: see the read's header)\n"
+    (small / f"h60_step0_{period}.txt").write_text(text + "\n")
+    (out / f"h60_step0_{period}.txt").write_text(text + "\n")
+    tried = [facts[(r['ticker'], r['E'], r['K'])]['h60'] for rs in bases.values() for r in rs
+             if pick.get((r['ticker'], r['E'], r['K']), {}).get('h60') is not None and r['K'] == H60_LEVEL]
+    n_da = sum(1 for f in tried if f["status"] == "abstain" and f["reason"] in H60_DATA_ABSTAINS)
+    return {"facts": facts, "states": states, "pick": pick, "counts": counts, "problems": problems, "shares": shares, "text": text,
+            "data_share": (n_da / len(tried)) if tried else 0.0, "early_problems": h60_early_close_problems(shares), "tl_rows": tl_rows}
+
+
+def h60_label_rows(out: Path, period: str) -> "int | None":
+    """The registration's `tl` row count: rows LABELLED with the period in cb702's candidates.tsv, or every tl row of the pre file."""
+    name, levels = h60_sources(period)[0]
+    p = out / name
+    if not p.exists():
+        return None
+    n = 0
+    with open(p, newline="") as fh:
+        for rec in csv.DictReader(fh, delimiter="\t"):
+            if rec["K"] == H60_LEVEL and (period == "pre" or rec["split"] == period):
+                n += 1
+    return n
+
+
+# ── the exits ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+def h60_walk(entry: dict, mb: "cb.MinuteBars", bars: "cb.DailyBars", cidx, e: int, adr20: float, stop: float, width: float,
+             walk_from: int) -> tuple:
+    """(fwd, cut, {arm: (arm_result, partial facts)}) of one filled entry on one stop: the module's `day0_walk` from `walk_from` (the
+    confirming window's last present minute, so the fill minute's own low is read against the stop first) and `walk_his_arms` over
+    `H60_ARMS` with closes through E and the forward window of E - exactly as the P5 walk wires them."""
+    closes_before = bars.c[:e + 1]
+    fwd, cut = forward_window(bars, cidx, e, HORIZON)
+    entry2 = {**entry, "status": "filled", "reason": None, "stop": stop, "width_pct": width, "fill_minute": walk_from,
+              "day0": cb.day0_walk(mb, fill_minute=walk_from, stop=stop)}
+    res = cb.walk_his_arms(entry2, closes_before=closes_before, fwd=fwd, adr20=adr20, minutes=mb, horizon=HORIZON, arms=H60_ARMS)
+    out = {}
+    for name, raw in res.items():
+        a = arm_result(raw, width=width, n_fwd=len(fwd), horizon=HORIZON)
+        out[name] = (a, partial_facts(raw["events"], H60_ARMS[name]))
+    return fwd, cut, out
+
+
+def _h60_trade_base(c: dict, period: str, variant: str) -> dict:
+    row = {"ticker": c["ticker"], "D": c["D"], "E": c["E"], "K": c["K"], "period": period, "pole_date": c["pole_date"], "base": c["base"],
+           "first_E": c["first_E"], "first_month": c["first_month"], "fill_month": c["E"][:7], "year": int(c["E"][:4]), "row_no": c["row_no"],
+           "sessions_since_first": c["sessions_since_first"], "gap_kind": c["gap_kind"], "early_close": int(c["E"] in H60_EARLY_CLOSE),
+           "own_C1": int(bool(c["C1"])), "gap_over_1adr": int(bool(c["gap_over_1adr"])), "phase_qqq_10_20": int(bool(c["phase_qqq_10_20"])),
+           "apollo_regime": c.get("apollo_regime", ""), "adr20": c["adr20"], "entry": variant}
+    for cell in CELL_COLS:
+        row[cell] = int(c["_first"][cell])
+    return row
+
+
+def h60_exit_rows(c: dict, variants: list, mb_raw: "cb.MinuteBars | None", bars: "cb.DailyBars", cidx, e: int, period: str) -> tuple:
+    """The trades rows (H60_TRADE_COLS order) of one row's chosen variants: the entry re-derived from the minutes (the same `h60_confirm` /
+    `h60_entry` STEP 0 ran, on the trimmed minutes), the stop readings (every reading on `h60`; `lod` on the others), the walks. An abstain
+    is ONE row with no arm. `orh60` = the module's own variant on the stored minutes (its stop, its day 0)."""
+    assert bars.dates[e].isoformat() == c["E"], (c["ticker"], e, c["E"])
+    assert e >= cb.MIN_HISTORY and int(cidx[e]) - int(cidx[e - cb.MIN_HISTORY]) == cb.MIN_HISTORY, (c["ticker"], e)
+    early = c["E"] in H60_EARLY_CLOSE
+    adr20 = float(c["adr20"])
+    mb = h60_trim(mb_raw, early)
+    rows, tally = [], Counter()
+    levels = h60_levels(c)
+    pivot = float(c["pivot"])
+    for v in variants:
+        base = _h60_trade_base(c, period, v)
+        if v == "orh60":
+            ent = cb.entry_variants(mb_raw, pivot=pivot, adr20=adr20, day_high=float(c["high_E"]), day_low=float(c["low_E"]))["orh60"]
+            if ent["status"] != "filled":
+                rows.append(_by_cols({**base, "stop_variant": H60_STOP, "status": ent["status"], "abstain_reason": ent["reason"] or "",
+                                      "fill_minute": ent["fill_minute"], "fill": ent["fill"], "stop": ent["stop"], "level": ent["level"],
+                                      "width_pct": ent["width_pct"]}, H60_TRADE_COLS))
+                tally[(v, H60_STOP, ent["status"], ent["reason"] or "")] += 1
+                continue
+            readings = {H60_STOP: {"stop": ent["stop"], "reason": None, "width_pct": ent["width_pct"]}}
+            walk_from, mb_v = ent["fill_minute"], mb_raw
+        else:
+            conf = h60_confirm(mb, h60_windows("h60" if v.startswith("h60") else v, early), float(levels[v]))
+            assert conf["status"] == "confirmed", (c["ticker"], c["E"], v, conf["status"])      # STEP 0 chose this row: it confirms
+            ent = h60_entry(conf, float(levels[v]), adr20)
+            base.update(window_end=ent["window_end"], walk_from=ent["walk_from"])
+            if ent["status"] != "filled":
+                rows.append(_by_cols({**base, "stop_variant": H60_STOP, "status": "abstain", "abstain_reason": ent["reason"],
+                                      "fill_minute": ent["fill_minute"], "fill": ent["fill"], "stop": ent["stop"], "level": ent["level"],
+                                      "width_pct": ent["width_pct"], "fill_le_line": int(ent["fill"] <= pivot)}, H60_TRADE_COLS))
+                tally[(v, H60_STOP, "abstain", ent["reason"])] += 1
+                continue
+            all_ = h60_stop_readings(ent, c.get("base_low"), adr20)
+            readings = all_ if v == H60_ENTRY else {H60_STOP: all_[H60_STOP]}
+            walk_from, mb_v = ent["walk_from"], mb
+        common = {**base, "fill_minute": ent["fill_minute"], "fill": ent["fill"], "level": ent["level"], "fill_le_line": int(ent["fill"] <= pivot)}
+        for sv, s in readings.items():
+            if s["reason"]:
+                rows.append(_by_cols({**common, "stop_variant": sv, "stop": s["stop"], "width_pct": s["width_pct"], "status": "abstain",
+                                      "abstain_reason": s["reason"]}, H60_TRADE_COLS))
+                tally[(v, sv, "abstain", s["reason"])] += 1
+                continue
+            fwd, cut, res = h60_walk(ent, mb_v, bars, cidx, e, adr20, s["stop"], s["width_pct"], walk_from)
+            tally[(v, sv, "filled", "")] += 1
+            for name, (a, (kind, sess, _tn)) in res.items():
+                rows.append(_by_cols({**common, "stop_variant": sv, "stop": s["stop"], "width_pct": s["width_pct"], "width_adr": s["width_pct"] / adr20,
+                                      "abstain_reason": "", "arm": name, "status": a["status"], "realized_r": a["realized_r"], "pnl_adr": a["pnl_adr"],
+                                      "acct_pct": a["acct_pct"], "sessions_held": a["sessions_held"], "mature": int(a["mature"]),
+                                      "open_mark": int(a["open_mark"]), "fill_day_stop": int(a["status"] == "stopped_day0"), "partial_kind": kind,
+                                      "partial_session": sess, "beabove": a["beabove"], "fwd_bars": len(fwd), "fwd_hole": int(cut)}, H60_TRADE_COLS))
+    return rows, tally
+
+
+def _h60_exit_job(date_iso: str) -> tuple:
+    D: Daily = _G["D"]
+    cands = _G["by_date"][date_iso]
+    todo = [(c, sorted(v for v, tag in _G["pick"].get((c["ticker"], c["E"], c["K"]), {}).items() if tag == "trade")) for c in cands]
+    todo = [(c, vs) for c, vs in todo if vs]
+    if not todo:
+        return rows_to_gz([]), Counter()
+    blocks, _info = read_minute_file(_G["files"][date_iso], {c["ticker"] for c, _v in todo})
+    done, cal = _G["done"], D.cal
+    rows, tally = [], Counter()
+    for c, vs in todo:
+        mb, _state = minutes_for(blocks, done, date_iso, c["ticker"])
+        bars, cidx = _ticker_bars(c["ticker"])
+        e = locate_breakout_index(cal, cidx, c["E"])
+        r, t = h60_exit_rows(c, vs, mb, bars, cidx, e, _G["period"])
+        rows.extend(r)
+        tally.update(t)
+    return rows_to_gz(rows), tally
+
+
+def h60_exits(bases: dict, inp: dict, pick: dict, D: "Daily", workers: int, period: str, out: Path, say) -> tuple:
+    """Walk the chosen trades -> `trades_<period>_h60.tsv.gz` (the `.partial` protocol). Returns (path, tally)."""
+    t = time.time()
+    _G.update(D=D, by_date=inp["by_date"], files=inp["files"], done=inp["done"], pick=pick, period=period, bars_cache={})
+    tp = out / f"trades_{period}_h60.tsv.gz"
+    tpp = partial_path(tp)
+    tally: Counter = Counter()
+    dates = list(inp["by_date"])
+    n = 0
+    with open(tpp, "wb") as tf:
+        tf.write(rows_to_gz([H60_TRADE_COLS]))
+        for k, (tg, ty) in enumerate(_pool_map(_h60_exit_job, dates, workers), 1):
+            tf.write(tg)
+            tally.update(ty)
+            n += sum(ty.values())
+            if k % 100 == 0 or k == len(dates):
+                print(f"  {k}/{len(dates)} dates, {n:,} entries walked or abstained", flush=True)
+    os.replace(tpp, tp)
+    say(f"[h60 exits: {time.time() - t:.0f}s]")
+    return tp, tally
+
+
+# ── the ORH5 twin: the pinned P5 population re-walked, equal in content to the pinned table ─────────────────────────────────────
+def h60_twin_inputs(args, dirs: dict, period: str) -> dict:
+    """The P5 population of the period, exactly as `p5` / `holdout` / `pre-read` build it."""
+    d = h60_period_dir(dirs, period)
+    ns = argparse.Namespace(data=str(d), out=None, minutes=None, limit_dates=0)
+    if period == "pre":
+        return pre_complete(pre_inputs(ns))
+    return p5_inputs(ns, period)
+
+
+def gz_content_sha(path: Path) -> str:
+    h = hashlib.sha256()
+    with gzip.open(path, "rb") as fh:
+        while True:
+            b = fh.read(1 << 24)
+            if not b:
+                break
+            h.update(b)
+    return h.hexdigest()
+
+
+def h60_twin_check(twin: Path, pinned: Path) -> list:
+    """Check 4: the re-walked twin against the pinned P5 table - the gzip CONTENT equal (every row, every column), else the per-row
+    differences in status / mature / realized R (1e-9) / the abstain rows are named. A missing pinned table is a problem."""
+    if not pinned.exists():
+        return [f"pinned twin {pinned} not found"]
+    if gz_content_sha(twin) == gz_content_sha(pinned):
+        return []
+    import pandas as pd
+    cols = ["ticker", "D", "K", "stop_variant", "abstain_reason", "arm", "status", "realized_r", "mature"]
+    a = pd.read_csv(twin, sep="\t", usecols=cols, keep_default_na=False, na_values=[""], low_memory=False)
+    b = pd.read_csv(pinned, sep="\t", usecols=cols, keep_default_na=False, na_values=[""], low_memory=False)
+    keys = ["ticker", "D", "K", "stop_variant", "arm"]
+    for df in (a, b):
+        df["arm"] = df["arm"].fillna("")
+    j = a.merge(b, on=keys, how="outer", suffixes=("", "_ref"), indicator=True)
+    problems = [f"content differs (sha {gz_content_sha(twin)[:12]} vs pinned {gz_content_sha(pinned)[:12]})"]
+    for side, label in (("left_only", "re-walk only"), ("right_only", "pinned table only")):
+        n = int((j["_merge"] == side).sum())
+        if n:
+            problems.append(f"{n:,} rows in the {label}")
+    both = j[j["_merge"] == "both"]
+    if len(both):
+        for col, what in (("status", "status"), ("mature", "mature"), ("abstain_reason", "abstain_reason")):
+            n = int((both[col].fillna("") != both[col + "_ref"].fillna("")).sum())
+            if n:
+                problems.append(f"{n:,} of {len(both):,} paired rows differ in {what}")
+        r = both[["realized_r", "realized_r_ref"]].to_numpy(dtype=float)
+        n = int(((np.abs(r[:, 0] - r[:, 1]) > P5_XCHECK_TOL) & ~(np.isnan(r[:, 0]) & np.isnan(r[:, 1]))).sum())
+        if n:
+            problems.append(f"{n:,} of {len(both):,} paired rows differ in realized_r")
+    return problems
+
+
+# ── the pairs table (one row per base, both sides) ─────────────────────────────────────────────────────────────────────────────
+def h60_load_twin_side(twin: Path) -> dict:
+    """{(ticker, D, K): {fill, r, adr, mature, open}} of the twin's primary-arm rows (ORH5 filled first breaks)."""
+    import pandas as pd
+    df = pd.read_csv(twin, sep="\t", usecols=["ticker", "D", "K", "arm", "fill", "realized_r", "pnl_adr", "mature"], keep_default_na=False,
+                     na_values=[""], low_memory=False)
+    df = df[df["arm"] == H60_ARM]
+    return {(t, d, k): {"fill": f, "r": r, "adr": a, "mature": int(m), "open": int(not m)}
+            for t, d, k, f, r, a, m in df[["ticker", "D", "K", "fill", "realized_r", "pnl_adr", "mature"]].itertuples(index=False)}
+
+
+def h60_load_trade_side(trades: Path) -> dict:
+    """{(ticker, E, K, entry, stop): {fill, fill_minute, r, adr, mature, open}} of the h60 table's primary-arm rows."""
+    import pandas as pd
+    df = pd.read_csv(trades, sep="\t", usecols=["ticker", "E", "K", "entry", "stop_variant", "arm", "fill", "fill_minute", "realized_r", "pnl_adr",
+                                                 "mature"], keep_default_na=False, na_values=[""], low_memory=False)
+    df = df[df["arm"] == H60_ARM]
+    return {(t, e, k, v, sv): {"fill": f, "fill_minute": fm, "r": r, "adr": a, "mature": int(m), "open": int(not m)}
+            for t, e, k, v, sv, f, fm, r, a, m in df[["ticker", "E", "K", "entry", "stop_variant", "fill", "fill_minute", "realized_r", "pnl_adr",
+                                                       "mature"]].itertuples(index=False)}
+
+
+def h60_pair_rows(bases: dict, facts: dict, pick: dict, twin_side: dict, trade_side: dict, period: str) -> list:
+    rows = []
+    for key, rs in bases.items():
+        first = rs[0]
+        t, pole, k = key
+        f5 = facts[(t, first["E"], k)]["orh5"]
+        orh = twin_side.get((t, first["D"], k))
+        row = {"ticker": t, "pole_date": pole, "K": k, "base": first["base"], "period": period, "first_D": first["D"], "first_E": first["E"], "first_month": first["first_month"],
+               "first_year": int(first["E"][:4]), "n_rows": len(rs),
+               "orh5_status": f5["status"], "orh5_reason": f5["reason"] or "",
+               "orh5_data_abstain": int(f5["status"] == "abstain" and f5["reason"] in DATA_ABSTAINS),
+               "orh5_fill": orh["fill"] if orh else None, "orh5_r": (orh["r"] if orh else 0.0), "orh5_adr": (orh["adr"] if orh else 0.0),
+               "orh5_mature": (orh["mature"] if orh else ""), "orh5_open": (orh["open"] if orh else 0)}
+        for cell in CELL_COLS:
+            row[cell] = int(first["_first"][cell])
+        st, reason, r60 = h60_base_outcome(rs, facts, pick, "h60")
+        side = trade_side.get((t, r60["E"], k, "h60", "lod")) if r60 is not None else None
+        row.update(h60_status=st, h60_reason=reason or "", h60_E=(r60["E"] if r60 is not None else ""), h60_row_no=(r60["row_no"] if r60 is not None else ""),
+                   h60_fill=(side["fill"] if side else None), h60_fill_minute=(side["fill_minute"] if side else None),
+                   h60_r=(side["r"] if side else 0.0), h60_adr=(side["adr"] if side else 0.0), h60_mature=(side["mature"] if side else ""),
+                   h60_open=(side["open"] if side else 0), h60_same_day=(int(r60["row_no"] == 0) if r60 is not None else ""),
+                   h60_gap_kind=(r60["gap_kind"] if r60 is not None else ""), own_C1=(int(bool(r60["C1"])) if r60 is not None else ""))
+        stf, _rf, rf = h60_base_outcome(rs, facts, pick, "h60_first")
+        sf = trade_side.get((t, rf["E"], k, "h60_first", "lod")) if rf is not None else None
+        row.update(h60_first_status=stf, h60_first_r=(sf["r"] if sf else 0.0), h60_first_mature=(sf["mature"] if sf else ""), h60_first_open=(sf["open"] if sf else 0))
+        cb_ = trade_side.get((t, r60["E"], k, "h60", "cbar_low")) if r60 is not None else None
+        row.update(cbar_status=("filled" if cb_ else ("abstain" if side else st)), cbar_r=(cb_["r"] if cb_ else 0.0), cbar_adr=(cb_["adr"] if cb_ else 0.0),
+                   cbar_mature=(cb_["mature"] if cb_ else ""), cbar_open=(cb_["open"] if cb_ else 0))
+        rows.append(row)
+    return rows
+
+
+# ── the report: statistics, the bars, the paired bars, the consequence ─────────────────────────────────────────────────────────
+def h60_stats(g, key: str, ci: bool = True) -> dict:
+    """The per-group statistics over the MATURE walks of a frame of primary-arm rows (`n_filled` = every walk, `n_open` the open marks):
+    the registration's columns. The interval: `block_bootstrap_ci` on the FILL month (2,000 draws, seed 702, stream keyed on `key`)."""
+    gm = g[g["mature"] == 1]
+    r = gm["realized_r"].to_numpy(dtype=float)
+    n = len(r)
+    out = {"n_filled": int(len(g)), "n": n, "n_open": int(len(g) - n)}
+    if n == 0:
+        return out
+    srt = np.sort(r)[::-1]
+    k_top = max(1, int(np.ceil(H60_TOP_SHARE * n)))
+    wins, losses = r[r > 0], r[r <= 0]
+    tail = gm[(gm["realized_r"] >= H60_TAIL_R)]
+    tail_w = tail[tail["width_adr"] >= H60_TAIL_WIDTH_ADR]
+    out.update(mean_r=float(r.mean()), median_r=float(np.median(r)), win_rate=float((r > 0).mean()),
+               avg_win=(float(wins.mean()) if len(wins) else None), avg_loss=(float(losses.mean()) if len(losses) else None),
+               share_ge5=float((r >= 5).mean()), share_ge10=float((r >= 10).mean()), share_ge20=float((r >= 20).mean()), sum_r=float(r.sum()),
+               top2_sum_r=float(srt[:k_top].sum()), top2_share=(float(srt[:k_top].sum() / r.sum()) if r.sum() != 0 else None),
+               mean_pnl_adr=float(gm["pnl_adr"].to_numpy(dtype=float).mean()), mean_acct_pct=float(gm["acct_pct"].to_numpy(dtype=float).mean()),
+               fill_day_stop_share=float(gm["fill_day_stop"].to_numpy(dtype=float).mean()),
+               median_held=float(np.median(gm["sessions_held"].to_numpy(dtype=float))),
+               tail_n=int(len(tail_w)), tail_tickers=int(tail_w["ticker"].nunique()), tail_months=int(tail_w["fill_month"].nunique()),
+               tail_n_nowidth=int(len(tail)), tail_tickers_nowidth=int(tail["ticker"].nunique()), tail_months_nowidth=int(tail["fill_month"].nunique()))
+    if ci and n >= 2:
+        out["ci_lo"], out["ci_hi"] = block_bootstrap_ci(r, gm["fill_month"].astype(str).to_numpy(), key=key)
+    return out
+
+
+def h60_verdict(row: dict, base: "dict | None", min_n: int = H60_MIN_N) -> tuple:
+    """(verdict, why) on the registration's bars, n first. PASS = n >= 30 AND the interval's lower end > 0 AND ADR P&L > 0 AND beats C0 on
+    mean R AND on the >= 5R share AND the >= 10R trades (stop >= 0.25 ADR20 wide) come from >= 3 tickers AND >= 3 fill months. FAIL = n >= 30
+    AND (upper end < 0 OR not above C0 on mean R). Else CAN'T TELL; when the tail is the ONLY miss: "CAN'T TELL (positive, no tail)"."""
+    n = int(row.get("n") or 0)
+    if n < min_n:
+        return "CAN'T TELL", f"n = {n} < {min_n}"
+    if base is None or not _num_ok(base.get("mean_r")):
+        return "CAN'T TELL", "no C0 row to compare with"
+    mean, lo, hi = row.get("mean_r"), row.get("ci_lo"), row.get("ci_hi")
+    fails = []
+    if _num_ok(hi) and hi < 0:
+        fails.append("interval upper end < 0")
+    if not (_num_ok(mean) and mean > base["mean_r"]):
+        fails.append("does not beat C0 on mean R")
+    if fails:
+        return "FAIL", "; ".join(fails)
+    unmet = []
+    if not (_num_ok(lo) and lo > 0):
+        unmet.append("interval spans 0")
+    if not (_num_ok(row.get("mean_pnl_adr")) and row["mean_pnl_adr"] > 0):
+        unmet.append("ADR P&L <= 0")
+    if not (_num_ok(row.get("share_ge5")) and _num_ok(base.get("share_ge5")) and row["share_ge5"] > base["share_ge5"]):
+        unmet.append("does not beat C0's >= 5R share")
+    tail_ok = int(row.get("tail_tickers") or 0) >= H60_TAIL_TICKERS and int(row.get("tail_months") or 0) >= H60_TAIL_MONTHS
+    if not tail_ok:
+        unmet.append(f">= 10R trades from {row.get('tail_tickers') or 0} tickers / {row.get('tail_months') or 0} months (need {H60_TAIL_TICKERS} / {H60_TAIL_MONTHS})")
+    if not unmet:
+        return "PASS", "every bar met"
+    if len(unmet) == 1 and not tail_ok:
+        return "CAN'T TELL (positive, no tail)", unmet[0]
+    return "CAN'T TELL", "; ".join(unmet)
+
+
+def h60_pair_ci(deltas, months, key: str) -> dict:
+    """The month-block interval of a paired delta (blocks = the first break's month)."""
+    d = np.asarray(deltas, dtype=float)
+    out = {"n": int(len(d)), "mean": (float(d.mean()) if len(d) else None)}
+    if len(d) >= 2:
+        out["lo"], out["hi"] = block_bootstrap_ci(d, np.asarray(months).astype(str), key=key)
+    return out
+
+
+def h60_pair_verdict(ci: dict, min_n: int = H60_PAIR_MIN_N) -> str:
+    """win | loss | can't tell | n < 30 on a paired entry interval."""
+    if ci["n"] < min_n:
+        return f"can't tell (n = {ci['n']} < {min_n})"
+    lo, hi = ci.get("lo"), ci.get("hi")
+    if _num_ok(lo) and lo > 0:
+        return "win"
+    if _num_ok(hi) and hi < 0:
+        return "loss"
+    return "can't tell"
+
+
+def h60_stop_verdict(ci: dict, adr_delta: "float | None", min_n: int = H60_PAIR_MIN_N) -> str:
+    """`cbar_low` is carried forward when its paired R interval's lower end > 0 AND its ADR P&L delta > 0; else `lod` stays."""
+    if ci["n"] >= min_n and _num_ok(ci.get("lo")) and ci["lo"] > 0 and _num_ok(adr_delta) and adr_delta > 0:
+        return H60_STOP_CANDIDATE
+    return H60_STOP
+
+
+def h60_consequence(verdict: str, pair: str, c0_pair_lo) -> str:
+    """The registration's consequence table, cell by cell."""
+    v = "PASS" if verdict == "PASS" else ("FAIL" if verdict == "FAIL" else "CAN'T TELL")
+    p = pair if pair in ("win", "loss") else "can't tell"
+    if v == "PASS":
+        return {"win": "RECORD; next tests under h60",
+                "can't tell": "RECORD; next tests under h60; 'not separated from ORH5 on the same bases' is reported",
+                "loss": "LEAD only (recorded, no claim: ORH5 made more on the same bases); next tests under ORH5"}[p]
+    if v == "CAN'T TELL":
+        if p == "win":
+            return "LEAD (recorded); next tests under h60"
+        if p == "can't tell":
+            lead = _num_ok(c0_pair_lo) and c0_pair_lo > 0
+            return (f"LEAD only because the C0 paired interval's lower end > 0 ({c0_pair_lo:+.3f}); next tests under ORH5" if lead else
+                    f"not recorded (the C0 paired interval's lower end is {('%+.3f' % c0_pair_lo) if _num_ok(c0_pair_lo) else 'unknown'}, not > 0); next tests under ORH5")
+        return "not recorded; next tests under ORH5"
+    return {"win": "not recorded; 'loses less than ORH5' reported; next tests under ORH5"}.get(p, "not recorded; next tests under ORH5")
+
+
+def h60_sign(x) -> str:
+    return "unknown" if not _num_ok(x) else ("positive" if x > 0 else ("negative" if x < 0 else "zero"))
+
+
+H60_SLICES = (("year", "year"), ("phase", "phase_qqq_10_20"), ("gap_over_1adr", "gap_over_1adr"), ("regime", "apollo_regime"))
+
+
+def h60_report_rows(df, pairs, period: str) -> tuple:
+    """(rows, verdicts): every (window, cell, K, entry, stop, arm) over the mature walks with the interval ('all'), the slices on the primary
+    triple, the own-C1 and no-gap restricted C1 rows, the verdict stamped on the tl / h60 / lod / primary rows; `verdicts` = {window: the
+    C1 verdict row and the paired results}."""
+    import pandas as pd
+    rows: list = []
+    verdicts: dict = {}
+    for wname, years in h60_windows_of(period):
+        sub = df if years is None else df[df["year_first"].isin(years)]
+        psub = pairs if years is None else pairs[pairs["first_year"].isin(years)]
+        arm_rows = sub[sub["arm"].notna()]
+        idx: dict = {}
+        for (k, v, sv, a), g in arm_rows.groupby(["K", "entry", "stop_variant", "arm"], observed=True):
+            for cell in CELL_COLS:
+                gc = g[g[cell] == 1]
+                if not len(gc):
+                    continue
+                ab = sub[(sub["K"] == k) & (sub["entry"] == v) & (sub["stop_variant"] == sv) & sub["arm"].isna() & (sub[cell] == 1)]
+                s = h60_stats(gc, key=f"h60|{period}|{wname}|{cell}|{k}|{v}|{sv}|{a}")
+                r = {"period": period, "window": wname, "cell": cell, "K": k, "entry": v, "stop": sv, "arm": a, "slice": "all", "value": "",
+                     **s, "too_wide": int((ab["abstain_reason"] == "too_wide").sum()),
+                     "stop_abstain": int((ab["abstain_reason"] == "stop_at_or_above_fill").sum())}
+                idx[(cell, k, v, sv, a)] = r
+                rows.append(r)
+                if (k, v, sv, a) == (H60_LEVEL, H60_ENTRY, H60_STOP, H60_ARM):
+                    gm = gc[gc["mature"] == 1]
+                    for sname, scol in H60_SLICES:
+                        if sname == "regime" and period != "holdout":
+                            continue
+                        for val, gg in gm.groupby(scol, observed=True):
+                            rows.append({"period": period, "window": wname, "cell": cell, "K": k, "entry": v, "stop": sv, "arm": a, "slice": sname,
+                                         "value": val, **h60_stats(gg, key="", ci=False)})
+                    if cell == "C1":
+                        for sname, mask in (("own_C1", gc["own_C1"] == 1), ("no_gap", gc["gap_kind"] == "")):
+                            gg = gc[mask]
+                            rows.append({"period": period, "window": wname, "cell": cell, "K": k, "entry": v, "stop": sv, "arm": a, "slice": sname,
+                                         "value": "", **h60_stats(gg, key=f"h60|{period}|{wname}|{cell}|{k}|{v}|{sv}|{a}|{sname}")})
+        # never confirmed / data abstains per cell (from the pairs table) on the primary rows
+        for cell in CELL_COLS:
+            pc = psub[(psub["K"] == H60_LEVEL) & (psub[cell] == 1)]
+            r = idx.get((cell, H60_LEVEL, H60_ENTRY, H60_STOP, H60_ARM))
+            if r is None and len(pc):
+                r = {"period": period, "window": wname, "cell": cell, "K": H60_LEVEL, "entry": H60_ENTRY, "stop": H60_STOP, "arm": H60_ARM, "slice": "all",
+                     "value": "", "n_filled": 0, "n": 0, "n_open": 0, "too_wide": int((pc["h60_status"] == "too_wide").sum()),
+                     "stop_abstain": int((pc["h60_status"] == "stop_at_or_above_fill").sum())}
+                idx[(cell, H60_LEVEL, H60_ENTRY, H60_STOP, H60_ARM)] = r
+                rows.append(r)
+            if r is not None:
+                r["never_confirmed"] = int((pc["h60_status"] == "never_confirmed").sum())
+                r["data_abstain"] = int((pc["h60_reason"] == "data_only").sum())
+        base = idx.get(("C0", H60_LEVEL, H60_ENTRY, H60_STOP, H60_ARM))
+        for cell in CELL_COLS:
+            r = idx.get((cell, H60_LEVEL, H60_ENTRY, H60_STOP, H60_ARM))
+            if r is None:
+                continue
+            if cell == "C0":
+                r["verdict"], r["why"] = "baseline", ""
+            elif cell in PRE_DECIDING:
+                r["verdict"], r["why"] = h60_verdict(r, base)
+            else:
+                r["verdict"], r["why"] = "report", ""
+        # the paired bars
+        pv: dict = {}
+        for cell in ("C1", "C0"):
+            pc = psub[(psub["K"] == H60_LEVEL) & (psub[cell] == 1)]
+            keep = pc[(pc["orh5_data_abstain"] == 0) & (pc["orh5_open"] == 0) & (pc["h60_open"] == 0)]
+            traded = keep[(keep["orh5_status"] == "filled") | (keep["h60_status"] == "filled")]
+            d = traded["h60_r"].to_numpy(dtype=float) - traded["orh5_r"].to_numpy(dtype=float)
+            ci = h60_pair_ci(d, traded["first_month"], key=f"h60pair|{period}|{wname}|{cell}|entry")
+            same = traded[traded["h60_same_day"] == 1]
+            later = traded[(traded["h60_same_day"] == 0) & (traded["h60_status"] == "filled")]
+            never = keep[(keep["orh5_status"] == "filled") & (keep["h60_status"] == "never_confirmed")]
+            kf = keep[(keep["h60_first_open"] == 0)]
+            tf = kf[(kf["orh5_status"] == "filled") | (kf["h60_first_status"] == "filled")]
+            df_ = tf["h60_first_r"].to_numpy(dtype=float) - tf["orh5_r"].to_numpy(dtype=float)
+            ci_f = h60_pair_ci(df_, tf["first_month"], key=f"h60pair|{period}|{wname}|{cell}|entry_first")
+            same_f = same[same["orh5_status"] == "filled"]
+            above = same_f[same_f["h60_fill"].astype(float) > same_f["orh5_fill"].astype(float)]
+            pv[cell] = {"n": ci["n"], "mean": ci["mean"], "lo": ci.get("lo"), "hi": ci.get("hi"), "verdict": h60_pair_verdict(ci),
+                        "excluded_open": int(((pc["orh5_open"] == 1) | (pc["h60_open"] == 1)).sum()),
+                        "excluded_data": int((pc["orh5_data_abstain"] == 1).sum()),
+                        "same_day_n": int(len(same)), "same_day_mean": (float((same["h60_r"] - same["orh5_r"]).mean()) if len(same) else None),
+                        "later_n": int(len(later)), "later_mean": (float((later["h60_r"] - later["orh5_r"]).mean()) if len(later) else None),
+                        "never_n": int(len(never)), "never_orh5_mean": (float(never["orh5_r"].mean()) if len(never) else None),
+                        "share_orh5": (float((keep["orh5_status"] == "filled").mean()) if len(keep) else None),
+                        "share_h60": (float((keep["h60_status"] == "filled").mean()) if len(keep) else None),
+                        "first_n": ci_f["n"], "first_mean": ci_f["mean"], "first_lo": ci_f.get("lo"), "first_hi": ci_f.get("hi"),
+                        "first_verdict": h60_pair_verdict(ci_f),
+                        "ge5_orh5": int((traded["orh5_r"] >= 5).sum()), "ge5_h60": int((traded["h60_r"] >= 5).sum()),
+                        "ge5_both": int(((traded["orh5_r"] >= 5) & (traded["h60_r"] >= 5)).sum()),
+                        "ge10_orh5": int((traded["orh5_r"] >= 10).sum()), "ge10_h60": int((traded["h60_r"] >= 10).sum()),
+                        "ge10_both": int(((traded["orh5_r"] >= 10) & (traded["h60_r"] >= 10)).sum()),
+                        "same_day_fill_n": int(len(same_f)), "same_day_fill_above": int(len(above)),
+                        "same_day_fill_median_ratio": (float(np.median(same_f["h60_fill"].astype(float) / same_f["orh5_fill"].astype(float))) if len(same_f) else None)}
+            # the paired stop (under h60): cbar_low - lod on the bases h60 filled
+            ps = pc[(pc["h60_status"] == "filled") & (pc["h60_open"] == 0) & (pc["cbar_open"] == 0) & (pc["orh5_data_abstain"] == 0)]
+            ds = ps["cbar_r"].to_numpy(dtype=float) - ps["h60_r"].to_numpy(dtype=float)
+            cis = h60_pair_ci(ds, ps["first_month"], key=f"h60pair|{period}|{wname}|{cell}|stop")
+            adr_d = float((ps["cbar_adr"].to_numpy(dtype=float) - ps["h60_adr"].to_numpy(dtype=float)).mean()) if len(ps) else None
+            pv[cell]["stop"] = {"n": cis["n"], "mean": cis["mean"], "lo": cis.get("lo"), "hi": cis.get("hi"), "adr_delta": adr_d,
+                                "carry": h60_stop_verdict(cis, adr_d), "cbar_abstain": int((ps["cbar_status"] == "abstain").sum())}
+        c1 = idx.get(("C1", H60_LEVEL, H60_ENTRY, H60_STOP, H60_ARM)) or {"n": 0, "verdict": "CAN'T TELL", "why": "n = 0 < 30"}
+        verdicts[wname] = {"c1": c1, "c0": base, "pairs": pv, "idx": idx}
+    return rows, verdicts
+
+
+def _h60_line(r: dict, first) -> list:
+    g = r.get
+    return [first, g("n_filled", 0), g("n", 0), g("n_open", 0), _num(g("mean_r")), _ci(r), _pct(g("win_rate")), _num(g("avg_win"), 2), _num(g("avg_loss"), 2),
+            "" if g("share_ge5") is None else f"{100 * g('share_ge5'):.1f}", "" if g("share_ge10") is None else f"{100 * g('share_ge10'):.1f}",
+            "" if g("share_ge20") is None else f"{100 * g('share_ge20'):.1f}", _num(g("sum_r"), 1), _num(g("mean_pnl_adr")), _num(g("mean_acct_pct"), 4),
+            _pct(g("fill_day_stop_share")), "" if g("median_held") is None else f"{g('median_held'):.0f}",
+            "" if g("tail_n") is None else f"{g('tail_n')}: {g('tail_tickers')}t/{g('tail_months')}m ({g('tail_n_nowidth')} no width rule)",
+            _pct(g("top2_share")), g("too_wide", 0), g("stop_abstain", 0), g("never_confirmed", ""), g("verdict", ""), g("why", "")]
+
+
+H60_HEADER = ["cell", "fills", "n", "open", "mean R", "95% CI", "win", "avg win", "avg loss", ">=5R/100", ">=10R/100", ">=20R/100", "total R",
+              "pnl_adr", "acct%", "fill-day stop", "med held", ">=10R spread", "top-2% share", "too_wide", "saaf", "never", "VERDICT", "why"]
+
+
+def h60_report_text(period: str, rows: list, verdicts: dict, notes: list, twin_c0: "dict | None", stamps: list, df) -> str:
+    out: list = []
+    A = out.append
+    decides = period == "discovery"
+    A(f"#702 h60 - the HOURLY-CLOSE entry read on {period} ({'2022-03-28..2024-12-31, DECIDES' if decides else ('2017-21, beside (and 2020-21 alone)' if period == 'pre' else '2025-01..2026-10, descriptive only')}). "
+      f"Registered before any outcome: docs/analysis/{H60_DOC}. Measurement only: nothing here switches the deciding entry, a stop outside the stop bar, "
+      f"a cell, a period, the horizon, the n floor, the seed or the draw count.")
+    A(f"POPULATION: every row under the pole (spec key, rule (b)); the base's ONE trade = the first break day on which a 60-minute bar closed above the "
+      f"row's line and the next minute's open could fill; cell + period from the FIRST-break row, the day's facts from the CONFIRMING row. Entry h60, stop "
+      f"lod (the day's low through the bar's end), exit {H60_ARM} (sell 1/3 at +2R or the session-3 close, breakeven, 20-day trail, stallers cut at the "
+      f"session-3 close), level tl (decides) / com (beside). A group is the MATURE walks only; an open mark is counted, never in a number.")
+    A(f"INTERVAL RECIPE (check 6 reproduces it with no runner code): month-block bootstrap of the mean - blocks = calendar months (the FILL month for a "
+      f"cell's trades; the FIRST-break month for a paired delta), 2,000 resamples of as many blocks as there are months, with replacement, each resample's "
+      f"mean = sum of the drawn blocks' R / their trade count; the 2.5 / 97.5 percentiles (numpy.percentile, linear); generator "
+      f"numpy.random.default_rng([702, zlib.crc32(key)]) with key 'h60|<period>|<window>|<cell>|<K>|<entry>|<stop>|<arm>' for a cell and "
+      f"'h60pair|<period>|<window>|<cell>|entry' / '|entry_first' / '|stop' for the paired deltas (the stream is drawn as integers(0, n_months, size=(2000, n_months))).")
+    for n_ in notes:
+        A(n_)
+    A("")
+    for wname, years in h60_windows_of(period):
+        v = verdicts.get(wname)
+        if v is None:
+            continue
+        idx, c1, pv = v["idx"], v["c1"], v["pairs"]
+        A(f"========== WINDOW {wname}{'' if years is None else ' (first-break E in ' + '/'.join(map(str, years)) + ')'} ==========")
+        # expectations first
+        c0 = idx.get(("C0", H60_LEVEL, H60_ENTRY, H60_STOP, H60_ARM)) or {}
+        exp = []
+        fds = c0.get("fill_day_stop_share")
+        exp.append(("MET" if _num_ok(fds) and fds < H60_EXPECT_FILL_DAY_STOP else "MISSED") +
+                   f": the C0 share stopped on the fill day under h60 reads {_pct(fds)} (expected < {H60_EXPECT_FILL_DAY_STOP:.0%}; ORH5 ~ 35%)")
+        if decides:
+            n1 = int(c1.get("n") or 0)
+            exp.append(("MET" if H60_EXPECT_C1_N[0] <= n1 <= H60_EXPECT_C1_N[1] else "MISSED") + f": C1 n reads {n1} (expected {H60_EXPECT_C1_N[0]}-{H60_EXPECT_C1_N[1]})")
+        p1 = pv.get("C1", {})
+        sd_n, sd_ab, sd_ratio = p1.get("same_day_fill_n", 0), p1.get("same_day_fill_above", 0), p1.get("same_day_fill_median_ratio")
+        exp.append(("MET" if sd_n and _num_ok(sd_ratio) and sd_ratio > 1.0 else ("MISSED" if sd_n else "NO SAME-DAY PAIR")) +
+                   f": on the {sd_n} same-day C1 pairs the h60 fill sits above ORH5's on {sd_ab} (median fill ratio {('%.4f' % sd_ratio) if _num_ok(sd_ratio) else '-'}; "
+                   f"the reading chosen for 'sits above': the MEDIAN pair's h60 fill is above ORH5's)")
+        if twin_c0 is not None and years is None:
+            m, w, t10 = twin_c0.get("mean_r"), twin_c0.get("win_rate"), twin_c0.get("share_ge10")
+            exp.append(f"ORH5 C0 BASELINE from the twin: mean R {_num(m, 2)}, win {_pct(w)}, >= 10R {('%.1f' % (100 * t10)) if _num_ok(t10) else '-'} per 100 "
+                       f"(the registration's numbers: {H60_EXPECT_ORH5_C0[0]:+.2f}R, {H60_EXPECT_ORH5_C0[1]:.0%}, {H60_EXPECT_ORH5_C0[2]} per 100 on discovery)")
+        missed = [e for e in exp if e.startswith("MISSED")]
+        A("EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):")
+        for e in missed + [e for e in exp if not e.startswith("MISSED")]:
+            A("  " + e)
+        A("")
+        A(f"VERDICT TABLE - level {H60_LEVEL}, entry {H60_ENTRY}, stop {H60_STOP}, arm {H60_ARM}, SPEC key, mature walks (C1 decides on 2022-24; every other row "
+          f"is its own population; the >= 10R spread counts trades whose stop is >= {H60_TAIL_WIDTH_ADR} ADR20 wide: tickers/months)")
+        body = [_h60_line(idx[(cell, H60_LEVEL, H60_ENTRY, H60_STOP, H60_ARM)], cell) for cell in PRE_CELL_ORDER if (cell, H60_LEVEL, H60_ENTRY, H60_STOP, H60_ARM) in idx]
+        A(table(body, H60_HEADER))
+        tail2 = c1.get("tail_tickers_nowidth"), c1.get("tail_months_nowidth")
+        A(f"  C1 >= 10R spread, the 2-and-2 reading (beside): {'met' if int(c1.get('tail_tickers') or 0) >= 2 and int(c1.get('tail_months') or 0) >= 2 else 'not met'} "
+          f"with the width rule; without it {tail2[0]} tickers / {tail2[1]} months")
+        for sname, label in (("own_C1", "C1 restricted to confirmations whose OWN watch night still passed C1 (his regime caution)"),
+                             ("no_gap", "C1 restricted to confirmations with no absent / no-line night since the first break")):
+            rr = [r for r in rows if r["window"] == wname and r["cell"] == "C1" and r["slice"] == sname and r["K"] == H60_LEVEL and r["entry"] == H60_ENTRY and r["stop"] == H60_STOP and r["arm"] == H60_ARM]
+            if rr:
+                r = dict(rr[0])
+                r["verdict"], r["why"] = h60_verdict(r, c0 if c0.get("n") else None)
+                A(f"  {label}:")
+                A(table([_h60_line(r, "C1*")], H60_HEADER))
+        A("")
+        A("PAIRED ENTRY BAR - per base delta = R(h60) - R(ORH5), no trade = 0R; excluded: an open mark on either side, an ORH5 first break that was a data abstain; "
+          "month-block interval on the FIRST-break month; C1 decides, C0 = the mechanism at scale")
+        body = []
+        for cell in ("C1", "C0"):
+            p = pv.get(cell)
+            if p is None:
+                continue
+            body.append([cell, p["n"], _num(p["mean"]), _ci({"ci_lo": p.get("lo"), "ci_hi": p.get("hi")}), p["verdict"], p["excluded_open"], p["excluded_data"],
+                         f"{p['same_day_n']} / {_num(p['same_day_mean'], 2)}", f"{p['later_n']} / {_num(p['later_mean'], 2)}",
+                         f"{p['never_n']} / {_num(p['never_orh5_mean'], 2)}", f"{_pct(p['share_orh5'])} / {_pct(p['share_h60'])}",
+                         f"{p['first_n']} / {_num(p['first_mean'])} {_ci({'ci_lo': p.get('first_lo'), 'ci_hi': p.get('first_hi')})} {p['first_verdict']}",
+                         f"{p['ge5_orh5']} / {p['ge5_h60']} / {p['ge5_both']}", f"{p['ge10_orh5']} / {p['ge10_h60']} / {p['ge10_both']}"])
+        A(table(body, ["cell", "n bases", "mean delta", "95% CI", "paired verdict", "excl open", "excl ORH5 data", "same day: n / delta", "later row: n / delta",
+                       "h60 never: n / ORH5 R", "traded by ORH5 / h60", "h60_first delta", ">=5R ORH5 / h60 / both", ">=10R ORH5 / h60 / both"]))
+        A("")
+        A(f"PAIRED STOP BAR (under h60) - delta = R({H60_STOP_CANDIDATE}) - R({H60_STOP}) per base; carried forward only when the interval's lower end > 0 AND the ADR P&L delta > 0")
+        body = []
+        for cell in ("C1", "C0"):
+            p = pv.get(cell, {}).get("stop")
+            if p:
+                body.append([cell, p["n"], _num(p["mean"]), _ci({"ci_lo": p.get("lo"), "ci_hi": p.get("hi")}), _num(p["adr_delta"]), p["cbar_abstain"], p["carry"]])
+        A(table(body, ["cell", "n bases", "mean delta R", "95% CI", "ADR P&L delta", "cbar_low abstains", "stop carried"]))
+        A("")
+        if decides and years is None:
+            c0p = pv.get("C0", {})
+            A(f"C1 VERDICT: {c1.get('verdict')} ({c1.get('why')}); paired entry: {pv.get('C1', {}).get('verdict')}; paired stop: carry {pv.get('C1', {}).get('stop', {}).get('carry')}")
+            A(f"CONSEQUENCE (the registration's table): {h60_consequence(str(c1.get('verdict')), str(pv.get('C1', {}).get('verdict')), c0p.get('lo'))}; "
+              f"whatever is recorded carries the stop {pv.get('C1', {}).get('stop', {}).get('carry')}")
+            A(H60_FALSE_PASS)
+        else:
+            A(f"STAMP (decides nothing): C1 mean R {h60_sign(c1.get('mean_r'))} ({_num(c1.get('mean_r'))}, n {c1.get('n')}), paired delta "
+              f"{h60_sign(pv.get('C1', {}).get('mean'))} ({_num(pv.get('C1', {}).get('mean'))}); bars read as a label only: {c1.get('verdict')} ({c1.get('why')})")
+        for s in stamps:
+            A("  " + s)
+        A("")
+        A("BESIDE - every entry on the lod stop, the primary arm, per cell (tl); then h60 x every stop x every arm (C0 / C1); then com")
+        for v_ in H60_ENTRIES:
+            body = [_h60_line(idx[(cell, H60_LEVEL, v_, H60_STOP, H60_ARM)], cell) for cell in PRE_CELL_ORDER if (cell, H60_LEVEL, v_, H60_STOP, H60_ARM) in idx]
+            if body:
+                A(f"  entry {v_} / tl / lod / {H60_ARM}")
+                A(table(body, H60_HEADER))
+        for cell in ("C0", "C1"):
+            body = [_h60_line(idx[(cell, H60_LEVEL, H60_ENTRY, sv, a)], f"{sv} / {a}") for sv in H60_STOPS for a in H60_ARMS if (cell, H60_LEVEL, H60_ENTRY, sv, a) in idx]
+            if body:
+                A(f"  {cell} / tl / h60: stop x arm")
+                A(table(body, ["stop / arm"] + H60_HEADER[1:]))
+        body = [_h60_line(idx[(cell, "com", H60_ENTRY, H60_STOP, H60_ARM)], cell) for cell in PRE_CELL_ORDER if (cell, "com", H60_ENTRY, H60_STOP, H60_ARM) in idx]
+        if body:
+            A(f"  level com / h60 / lod / {H60_ARM} (beside, never a verdict)")
+            A(table(body, H60_HEADER))
+        A("")
+        A(f"SLICES - tl / h60 / lod / {H60_ARM}, spec key; each cell is n / mean R / share >= 5R over the mature walks (phase and gap over 1 ADR AT THE CONFIRMATION)")
+        for sname, _scol in H60_SLICES:
+            rr = [r for r in rows if r["window"] == wname and r["slice"] == sname and r["K"] == H60_LEVEL and r["entry"] == H60_ENTRY and r["stop"] == H60_STOP and r["arm"] == H60_ARM]
+            if not rr:
+                continue
+            vals = sorted({r["value"] for r in rr}, key=str)
+            body = []
+            for cell in PRE_CELL_ORDER:
+                ln = [cell]
+                for val in vals:
+                    m = [r for r in rr if r["cell"] == cell and r["value"] == val]
+                    ln.append("-" if not m else ("0" if not m[0]["n"] else f"{m[0]['n']}/{_num(m[0].get('mean_r'), 2)}/{_pct(m[0].get('share_ge5'))}"))
+                body.append(ln)
+            A(f"  {sname}")
+            A(table(body, ["cell"] + [str(x) for x in vals]))
+        A("")
+        if df is not None:
+            prim = df[(df["K"] == H60_LEVEL) & (df["entry"] == H60_ENTRY) & (df["stop_variant"] == H60_STOP) & (df["arm"] == H60_ARM) & (df["mature"] == 1)]
+            prim = prim if years is None else prim[prim["year_first"].isin(years)]
+            for cell in ("C1", "C0"):
+                g = prim[prim[cell] == 1]
+                A(f"DISTRIBUTIONS {cell} (tl / h60 / lod / {H60_ARM}, mature): fill minute " + _dist([int(x) for x in g["fill_minute"].to_numpy(dtype=float)], (30, 90, 150, 210, 270, 330))
+                  + "; first break -> confirmed (sessions) " + _dist([int(x) for x in g["sessions_since_first"].to_numpy(dtype=float)], (0, 1, 5, 20)))
+                big = g[g["realized_r"] >= H60_TAIL_R].sort_values("realized_r", ascending=False)
+                A(f"  >= 10R trades ({len(big)}): " + ("; ".join(f"{t} {e} {r:+.1f}R stop {w:.2f} ADR" for t, e, r, w in big[["ticker", "E", "realized_r", "width_adr"]].itertuples(index=False)) if len(big) else "none"))
+        A("")
+    return "\n".join(out)
+
+
+def h60_load_frame(trades: Path, pairs: Path) -> tuple:
+    """(trades frame with `year_first`, pairs frame) for the report."""
+    import pandas as pd
+    df = pd.read_csv(trades, sep="\t", keep_default_na=False, na_values=[""], low_memory=False)
+    df["year_first"] = df["first_E"].astype(str).str[:4].astype(int)
+    for col in ("K", "entry", "stop_variant", "fill_month", "first_month"):
+        df[col] = df[col].astype("category")
+    pf = pd.read_csv(pairs, sep="\t", keep_default_na=False, na_values=[""], low_memory=False)
+    return df, pf
+
+
+# ── the guards ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+def h60_frozen_files(dirs: dict, repo: Path = REPO) -> dict:
+    """{footer label: path} of the h60 freeze: the data pins with the labels the registration's footer carries, the code pins (the module,
+    this runner incl. the h60 code, constants.py, exit_logic.py) and the two minute trees. The doc body is hashed by `freeze_check`."""
+    d, p = Path(dirs["cb702"]), Path(dirs["cb702_pre"])
+    out = {"module": Path(repo) / "agents" / "market_intelligence" / "consolidation_breakout.py", "runner": Path(__file__).resolve(),
+           "code/constants.py": Path(repo) / FROZEN_CODE["code/constants.py"], "code/exit_logic.py": Path(repo) / FROZEN_CODE["code/exit_logic.py"]}
+    for name in ("candidates.tsv", "candidates_com_comb.tsv", "watch.tsv.gz", "watch_com_comb.tsv.gz", "trades_discovery_p5.tsv.gz", "trades_holdout_p5.tsv.gz"):
+        out[f"cb702/out/{name}"] = d / "out" / name
+    out["cb702/minutes/_done.psv"] = d / "minutes" / "_done.psv"
+    for name in ("candidates_tl_com.tsv", "watch_tl_com.tsv.gz", "trades_pre_p5.tsv.gz"):
+        out[f"cb702_pre/out/{name}"] = p / "out" / name
+    out["cb702_pre/minutes/_done.psv"] = p / "minutes" / "_done.psv"
+    out["cb702/minutes (tree)"] = d / "minutes"
+    out["cb702_pre/minutes (tree)"] = p / "minutes"
+    return out
+
+
+def h60_doc_path(args, repo: "Path | None" = None) -> Path:
+    """The h60 registration doc: `--prereg`, else `docs/analysis/<H60_DOC>` under the repo (looked up at call time)."""
+    pre = getattr(args, "prereg", None)
+    return Path(pre) if pre else Path(REPO if repo is None else repo) / "docs" / "analysis" / H60_DOC
+
+
+def h60_option_problems(args, data: Path) -> list:
+    """Options the one-run read may not carry (as `pre_option_problems`): anything that moves the inputs or outputs, narrows the run, or
+    swaps a table. `--minutes` too: the trees are pinned under the data dirs and those are the ones read."""
+    bad = []
+    for flag, val in (("--keys", getattr(args, "keys", None)), ("--levels", getattr(args, "levels", None)), ("--limit-dates", getattr(args, "limit_dates", 0)),
+                      ("--no-close", getattr(args, "no_close", False)), ("--no-apollo", getattr(args, "no_apollo", False)),
+                      ("--trades", getattr(args, "trades", None)), ("--minutes", getattr(args, "minutes", None))):
+        if val:
+            bad.append(f"{flag}: the h60 read runs in its registered form only (every row of tl and com, the pinned minute trees, the registered tables)")
+    out = getattr(args, "out", None)
+    if out and Path(out).resolve() != (Path(data) / "out").resolve():
+        bad.append(f"--out {out} is not DATA/out ({Path(data) / 'out'}): the pinned inputs and the once-only check live there")
+    so = getattr(args, "small_out", None)
+    if so and Path(so).resolve() != (HERE / "out").resolve():
+        bad.append(f"--small-out {so} is not {HERE / 'out'}")
+    return bad
+
+
+def h60_existing_outputs(out: Path, period: str) -> list:
+    """The once-only guard: the period's trades table, the twin, or the `.partial` a crashed run left behind."""
+    return [q for name in (f"trades_{period}_h60.tsv.gz", f"trades_{period}_{H60_TWIN}.tsv.gz")
+            for q in (Path(out) / name, partial_path(Path(out) / name)) if q.exists()]
+
+
+def h60_prepare(args, dirs: dict, period: str) -> dict:
+    """The population and its minute inputs, annotated - what both `h60-step0` and `h60-read` start from. Opens no daily bar."""
+    d = h60_period_dir(dirs, period)
+    out = Path(getattr(args, "out", None) or d / "out")
+    bases = h60_read_bases(out, period)
+    widx = {k: h60_watch_index(out / h60_watch_file(period, k), k) for k in H60_LEVELS if any(key[2] == k for key in bases)}
+    h60_annotate(bases, widx)
+    inp = h60_minute_inputs(bases, d / "minutes")
+    return {"data": d, "out": out, "bases": bases, "inp": inp, "label_rows": h60_label_rows(out, period)}
+
+
+def run_h60_step0(args) -> int:
+    """`h60-step0 --period P`: the entry-time table of a period, written and printed; no exit, no daily export. Allowed on the real dirs."""
+    T0 = time.time()
+    period = getattr(args, "period", None)
+    if period not in H60_PERIODS:
+        print(f"REFUSED: --period is required: one of {H60_PERIODS}", file=sys.stderr)
+        return 2
+    dirs = h60_dirs(args)
+    prep = h60_prepare(args, dirs, period)
+    small = Path(args.small_out) if getattr(args, "small_out", None) else HERE / "out"
+    bases, inp = prep["bases"], prep["inp"]
+    if inp["missing"] or inp["lost"]:
+        print(f"REFUSED: {len(inp['missing']):,} of {len(inp['pairs']):,} (date, ticker) pairs are not logged in {inp['minutes_dir'] / '_done.psv'}"
+              + (f"; {len(inp['lost']):,} more are logged ok on a date that has no minute file" if inp["lost"] else "") + ". STEP 0 reads every row or none", file=sys.stderr)
+        return 2
+    res = h60_step0(bases, inp, args.workers, period, prep["out"], small, h60_pinned_fills(prep["out"], period, bases))
+    print(res["text"])
+    tl_rows = H60_EXPECTED.get(period, {}).get("tl_rows")
+    print(f"TL ROWS by label / file: {prep['label_rows']} (the registration's table: {tl_rows}) -> {'EQUAL' if prep['label_rows'] == tl_rows else 'DIFFERS'}")
+    print(f"WROTE {prep['out'] / f'h60_step0_{period}.tsv.gz'}, {small / f'h60_step0_{period}.txt'}; WALL TIME {time.time() - T0:.0f}s")
+    return 0
+
+
+def h60_stamps(out: Path, period: str, c1_mean, delta_mean) -> list:
+    """The agrees / contradicts stamps against the other periods' verdict files, when they exist (the sign of mean R and of the delta)."""
+    import json
+    lines = []
+    for other in H60_PERIODS:
+        if other == period:
+            continue
+        p = Path(out) / f"h60_verdict_{other}.json"
+        if not p.exists():
+            lines.append(f"{other}: no verdict file yet (not run) - no stamp")
+            continue
+        o = json.loads(p.read_text())
+        for wname, rec in o.get("windows", {}).items():
+            a = "agrees" if h60_sign(rec.get("c1_mean_r")) == h60_sign(c1_mean) else "contradicts"
+            b = "agrees" if h60_sign(rec.get("delta_c1")) == h60_sign(delta_mean) else "contradicts"
+            lines.append(f"{other} / {wname}: C1 mean R {h60_sign(rec.get('c1_mean_r'))} -> {a}; paired delta {h60_sign(rec.get('delta_c1'))} -> {b} (decides nothing)")
+    return lines
+
+
+def run_h60_read(args) -> int:
+    """`h60-read --period P` - BUILT, NOT RUN. exit 2 on: a refused option, a freeze problem, missing minute pairs, outputs (or a crashed run's
+    `.partial`) that exist, STEP 0 not equal to the registered table, the early-close or the data-abstain check failing; exit 3 when the twin
+    re-walk differs from the pinned P5 table (no report written). `--print-pins` prints the footer lines; `--dry-run` counts only."""
+    T0 = time.time()
+    dirs = h60_dirs(args)
+    data = dirs["cb702"]
+    if getattr(args, "print_pins", False):
+        doc = h60_doc_path(args)
+        lines = pin_lines(data, REPO, files=h60_frozen_files(dirs, REPO))
+        lines.append(f"- doc body sha256: `{doc_body_sha(doc.read_text(encoding='utf-8')) if doc.is_file() else 'MISSING'}`")
+        print("\n".join(lines))
+        return 0
+    period = getattr(args, "period", None)
+    if period not in H60_PERIODS:
+        print(f"REFUSED: --period is required: one of {H60_PERIODS}", file=sys.stderr)
+        return 2
+    bad = h60_option_problems(args, data)
+    if bad:
+        print("REFUSED: the h60 read runs only in its registered form:", file=sys.stderr)
+        for b in bad:
+            print(f"  - {b}", file=sys.stderr)
+        return 2
+    dry, no_fc = getattr(args, "dry_run", False), getattr(args, "no_freeze_check", False)
+    if no_fc and not dry:
+        print("REFUSED: --no-freeze-check is honoured only together with --dry-run", file=sys.stderr)
+        return 2
+    if not no_fc:
+        problems = freeze_check(doc=h60_doc_path(args), data=data, repo=REPO, files=h60_frozen_files(dirs, REPO))
+        if problems:
+            print("REFUSED: the freeze check failed - the read is not opened:", file=sys.stderr)
+            for p in problems:
+                print(f"  - {p}", file=sys.stderr)
+            return 2
+    prep = h60_prepare(args, dirs, period)
+    out, bases, inp = prep["out"], prep["bases"], prep["inp"]
+    small = HERE / "out"
+    existing = h60_existing_outputs(out, period)
+    if dry:
+        print(f"H60 DRY RUN (freeze check {'SKIPPED' if no_fc else 'passed'}; counts only - no daily bar, minute row or outcome was opened): period {period}: "
+              f"{len(bases):,} bases ({', '.join(f'{k} {sum(1 for key in bases if key[2] == k):,}' for k in H60_LEVELS)}), {sum(len(rs) for rs in bases.values()):,} rows, "
+              f"{len(inp['pairs']):,} (date, ticker) pairs; pairs NOT logged in _done.psv: {len(inp['missing']):,}, logged ok with no file: {len(inp['lost']):,} -> "
+              f"{'the run would REFUSE' if (inp['missing'] or inp['lost']) else 'complete'}; outputs already on disk: {[q.name for q in existing] or 'none'}"
+              f"{' -> the run would REFUSE (read once)' if existing else ''}. Would write {out / f'trades_{period}_h60.tsv.gz'}, the twin "
+              f"{out / f'trades_{period}_{H60_TWIN}.tsv.gz'}, {out / f'h60_pairs_{period}.tsv.gz'}, {out / f'h60_report_{period}.tsv'}, "
+              f"{out / f'h60_verdict_{period}.txt'} and the small copies under {small}.")
+        return 0
+    if existing:
+        crashed = [q for q in existing if q.name.endswith(".partial")]
+        if crashed:
+            print(f"REFUSED: {crashed[0]} is what a CRASHED h60 run left behind - it holds some outcomes. The read is run ONCE per period: the operator "
+                  f"inspects it and removes it by hand before any re-run", file=sys.stderr)
+        else:
+            print(f"REFUSED: the h60 outcomes are read ONCE per period and {existing[0]} already exists", file=sys.stderr)
+        return 2
+    if not bases:
+        print(f"REFUSED: no base of {period} in {out}", file=sys.stderr)
+        return 2
+    if inp["missing"] or inp["lost"]:
+        print(f"REFUSED: {len(inp['missing']):,} of {len(inp['pairs']):,} (date, ticker) pairs are not logged in {inp['minutes_dir'] / '_done.psv'}"
+              + (f"; {len(inp['lost']):,} more are logged ok on a date that has no minute file" if inp["lost"] else "") + ". A partial read is never run", file=sys.stderr)
+        return 2
+    out.mkdir(parents=True, exist_ok=True)
+    small.mkdir(parents=True, exist_ok=True)
+    log: list = []
+
+    def say(msg: str = "") -> None:
+        print(msg, flush=True)
+        log.append(msg)
+
+    say(f"H60 READ (#702): period {period}; {len(bases):,} bases, {sum(len(rs) for rs in bases.values()):,} rows, {len(inp['pairs']):,} pairs all logged; "
+        f"freeze check {'SKIPPED' if no_fc else 'passed'}; code: module sha256 {sha256_file(Path(cb.__file__))}, runner sha256 {sha256_file(Path(__file__))}")
+    # STEP 0 first - written and checked before any exit is walked
+    t = time.time()
+    s0 = h60_step0(bases, inp, args.workers, period, out, small, h60_pinned_fills(out, period, bases))
+    say(f"[STEP 0: {time.time() - t:.0f}s]")
+    print(s0["text"])
+    gate_lines = []
+    tl_rows = H60_EXPECTED.get(period, {}).get("tl_rows")
+    gate_lines.append(f"TL ROWS by label / file: {prep['label_rows']} (the registration's table: {tl_rows}) -> {'EQUAL' if prep['label_rows'] == tl_rows else 'DIFFERS'}")
+    refuse = []
+    if prep["label_rows"] != tl_rows:
+        refuse.append(gate_lines[-1])
+    for wname, pr in s0["problems"].items():
+        refuse += [f"{wname}: {p}" for p in pr]
+    if s0["early_problems"]:
+        refuse += s0["early_problems"]
+    if s0["data_share"] > H60_DATA_ABSTAIN_MAX:
+        refuse.append(f"data-abstain share {s0['data_share']:.2%} > {H60_DATA_ABSTAIN_MAX:.0%}")
+    for g in gate_lines:
+        say(g)
+    if refuse:
+        say("REFUSED before any exit: STEP 0 does not pass the registered checks: " + "; ".join(refuse))
+        (small / f"h60_summary_{period}.txt").write_text("\n".join(log) + "\n")
+        return 2
+    say("STEP 0 CHECKS: the registered table EQUAL in every window; early-close check ok; data-abstain share "
+        f"{s0['data_share']:.2%} <= {H60_DATA_ABSTAIN_MAX:.0%}; 0 missing pairs")
+    # the ORH5 twin: the pinned P5 population re-walked, equal in content to the pinned table
+    t = time.time()
+    tin = h60_twin_inputs(args, dirs, period)
+    twin, _tally, n_tw = p5_walk(tin, args.workers, period, say, name=H60_TWIN)
+    pinned = out / f"trades_{period}_p5.tsv.gz"
+    tw_problems = h60_twin_check(twin, pinned)
+    if tw_problems:
+        say(f"TWIN CHECK FAILED - the ORH5 re-walk ({twin.name}, {n_tw:,} rows) is not the pinned {pinned.name}: " + "; ".join(tw_problems) + " - the report is NOT written")
+        (small / f"h60_summary_{period}.txt").write_text("\n".join(log) + "\n")
+        return 3
+    say(f"TWIN CHECK: {twin.name} ({n_tw:,} rows) equals {pinned.name} in content (sha256 {gz_content_sha(twin)[:12]}) [{time.time() - t:.0f}s]")
+    # the exits
+    tp, tally = h60_exits(bases, inp, s0["pick"], _G["D"], args.workers, period, out, say)
+    ent = Counter()
+    for (v, sv, st, rs), n in tally.items():
+        ent[(v, sv, st + ((" " + rs) if rs else ""))] += n
+    say("ENTRIES WALKED (entry / stop: status n): " + "; ".join(f"{v}/{sv} {st} {n:,}" for (v, sv, st), n in sorted(ent.items())))
+    say(f"WROTE {tp}")
+    # the pairs table
+    pairs_rows = h60_pair_rows(bases, s0["facts"], s0["pick"], h60_load_twin_side(twin), h60_load_trade_side(tp), period)
+    pp = out / f"h60_pairs_{period}.tsv.gz"
+    write_tsv(pp, pairs_rows, H60_PAIR_COLS, gz=True)
+    say(f"WROTE {pp} ({len(pairs_rows):,} bases)")
+    # the report
+    df, pf = h60_load_frame(tp, pp)
+    rows, verdicts = h60_report_rows(df, pf, period)
+    twin_c0 = None
+    try:
+        import pandas as pd
+        tw = pd.read_csv(twin, sep="\t", usecols=["K", "arm", "C0", "realized_r", "mature"], keep_default_na=False, na_values=[""], low_memory=False)
+        tw = tw[(tw["K"] == H60_LEVEL) & (tw["arm"] == H60_ARM) & (tw["C0"] == 1) & (tw["mature"] == 1)]
+        r = tw["realized_r"].to_numpy(dtype=float)
+        twin_c0 = {"mean_r": float(r.mean()), "win_rate": float((r > 0).mean()), "share_ge10": float((r >= 10).mean())} if len(r) else None
+    except Exception as exc:                       # the baseline line is informative only; the twin itself was checked above
+        say(f"  ! ORH5 C0 baseline not read from the twin: {exc!r}")
+    main_w = verdicts.get(period, {})
+    stamps = h60_stamps(out, period, main_w.get("c1", {}).get("mean_r"), main_w.get("pairs", {}).get("C1", {}).get("mean"))
+    notes = [f"DATA CHECKS: freeze {'SKIPPED' if no_fc else 'passed'}; STEP 0 equal to the registered table; early-close ok; data-abstain share "
+             f"{s0['data_share']:.2%}; twin equal in content to {pinned.name}; rows walked {sum(tally.values()):,}"]
+    text = h60_report_text(period, rows, verdicts, notes, twin_c0, stamps, df)
+    name = f"h60_report_{period}"
+    write_tsv(out / f"{name}.tsv", rows, H60_REPORT_COLS)
+    compact = [{k: (round(v, 6) if isinstance(v, float) else v) for k, v in r.items()} for r in rows if r["slice"] in ("all", "own_C1", "no_gap")]
+    write_tsv(small / f"{name}.tsv", compact, H60_REPORT_COLS)
+    (small / f"{name}.txt").write_text(text + "\n")
+    (out / f"{name}.txt").write_text(text + "\n")
+    print(text)
+    # the verdict file (the hindsight gate) and its machine-readable sidecar
+    import json
+    vj = {"period": period, "windows": {}}
+    vlines = [f"#702 h60 C1 VERDICT FILE - period {period} - written {time.strftime('%Y-%m-%d')}"]
+    for wname, v in verdicts.items():
+        c1, pv = v["c1"], v["pairs"]
+        p1 = pv.get("C1", {})
+        vj["windows"][wname] = {"c1_verdict": c1.get("verdict"), "c1_why": c1.get("why"), "c1_n": c1.get("n"), "c1_mean_r": c1.get("mean_r"),
+                                "c1_ci": [c1.get("ci_lo"), c1.get("ci_hi")], "delta_c1": p1.get("mean"), "delta_c1_ci": [p1.get("lo"), p1.get("hi")],
+                                "pair_verdict_c1": p1.get("verdict"), "stop_carry_c1": p1.get("stop", {}).get("carry"),
+                                "delta_c0_lo": pv.get("C0", {}).get("lo"),
+                                "consequence": (h60_consequence(str(c1.get("verdict")), str(p1.get("verdict")), pv.get("C0", {}).get("lo")) if period == "discovery" else "decides nothing")}
+        w = vj["windows"][wname]
+        vlines.append(f"{wname}: C1 {w['c1_verdict']} ({w['c1_why']}); n {w['c1_n']}; mean R {_num(w['c1_mean_r'])} {_ci({'ci_lo': w['c1_ci'][0], 'ci_hi': w['c1_ci'][1]})}; "
+                      f"paired entry {w['pair_verdict_c1']} (delta {_num(w['delta_c1'])}); stop carried {w['stop_carry_c1']}; consequence: {w['consequence']}")
+    (out / f"h60_verdict_{period}.json").write_text(json.dumps(vj, indent=1) + "\n")
+    (out / f"h60_verdict_{period}.txt").write_text("\n".join(vlines) + "\n")
+    (small / f"h60_verdict_{period}.txt").write_text("\n".join(vlines) + "\n")
+    say(f"WROTE {out / (name + '.tsv')} ({len(rows):,} rows), {small / (name + '.txt')}, {out / f'h60_verdict_{period}.txt'}")
+    say(f"WALL TIME: {time.time() - T0:.0f}s total")
+    (small / f"h60_summary_{period}.txt").write_text("\n".join(log) + "\n")
+    return 0
+
+
+# ── hindsight (after the verdict): the 39 multibaggers and TSLA row by row ─────────────────────────────────────────────────────
+def h60_hindsight_rows(pf, years) -> tuple:
+    """(per-ticker rows, the two totals) of the multibaggers' C0 tl bases in the window under h60 vs ORH5, from the pairs table: n (filled),
+    mean R, total R, fill-day stop share (needs the trades table: passed as `fill_day` columns on the pairs frame by the caller), >= 5R / >= 10R."""
+    sub = pf[(pf["K"] == H60_LEVEL) & (pf["C0"] == 1) & pf["ticker"].isin(H60_MULTIBAGGERS)]
+    if years is not None:
+        sub = sub[sub["first_year"].isin(years)]
+    rows = []
+
+    def side(g, pre):
+        f = g[(g[pre + "_status"] == "filled") & (g[pre + "_mature"] == 1)]
+        r = f[pre + "_r"].to_numpy(dtype=float)
+        return {"n": int(len(f)), "mean_r": (float(r.mean()) if len(r) else None), "sum_r": float(r.sum()), "ge5": int((r >= 5).sum()), "ge10": int((r >= 10).sum()),
+                "fill_day_stop": (float(f[pre + "_fill_day_stop"].to_numpy(dtype=float).mean()) if len(f) and (pre + "_fill_day_stop") in f else None)}
+    for t, g in sub.groupby("ticker"):
+        a, b = side(g, "h60"), side(g, "orh5")
+        rows.append({"ticker": t, "bases": int(len(g)), **{"h60_" + k: v for k, v in a.items()}, **{"orh5_" + k: v for k, v in b.items()}})
+    tot = {"ticker": "ALL", "bases": int(len(sub)), **{"h60_" + k: v for k, v in side(sub, "h60").items()}, **{"orh5_" + k: v for k, v in side(sub, "orh5").items()}}
+    return rows, tot
+
+
+def run_h60_hindsight(args) -> int:
+    """`h60-hindsight --period P`: refused until `h60_verdict_<P>.txt` exists (the verdict is read first; hindsight never decides)."""
+    T0 = time.time()
+    period = getattr(args, "period", None)
+    if period not in H60_PERIODS:
+        print(f"REFUSED: --period is required: one of {H60_PERIODS}", file=sys.stderr)
+        return 2
+    dirs = h60_dirs(args)
+    d = h60_period_dir(dirs, period)
+    out = Path(getattr(args, "out", None) or d / "out")
+    small = Path(args.small_out) if getattr(args, "small_out", None) else HERE / "out"
+    gate = out / f"h60_verdict_{period}.txt"
+    if not gate.exists():
+        print(f"REFUSED: {gate} does not exist - the hindsight tables are written only AFTER the period's C1 verdict (check 1)", file=sys.stderr)
+        return 2
+    tp, pp = out / f"trades_{period}_h60.tsv.gz", out / f"h60_pairs_{period}.tsv.gz"
+    if not tp.exists() or not pp.exists():
+        print(f"REFUSED: {tp} / {pp} missing - run h60-read first", file=sys.stderr)
+        return 2
+    import pandas as pd
+    df, pf = h60_load_frame(tp, pp)
+    prim = df[(df["K"] == H60_LEVEL) & (df["entry"] == H60_ENTRY) & (df["stop_variant"] == H60_STOP) & (df["arm"] == H60_ARM)]
+    fds = {b: int(x) for b, x in prim[["base", "fill_day_stop"]].itertuples(index=False)}
+    pf["h60_fill_day_stop"] = pf["base"].map(fds)
+    twin = out / f"trades_{period}_{H60_TWIN}.tsv.gz"
+    if twin.exists():
+        tw = pd.read_csv(twin, sep="\t", usecols=["ticker", "D", "K", "arm", "status"], keep_default_na=False, na_values=[""], low_memory=False)
+        tw = tw[(tw["arm"] == H60_ARM)]
+        fd5 = {(t, dd, k): int(s == "stopped_day0") for t, dd, k, s in tw[["ticker", "D", "K", "status"]].itertuples(index=False)}
+        pf["orh5_fill_day_stop"] = [fd5.get((t, dd, k)) for t, dd, k in zip(pf["ticker"], pf["first_D"], pf["K"])]
+    lines = [f"#702 h60 HINDSIGHT - period {period} (descriptive; written AFTER the verdict; naming winners afterwards always looks good; decides nothing)"]
+    all_rows = []
+    for wname, years in h60_windows_of(period):
+        rows, tot = h60_hindsight_rows(pf, years)
+        for r in rows + [tot]:
+            r["window"] = wname
+        all_rows += rows + [tot]
+        lines.append(f"THE 39 MULTIBAGGERS, C0 tl bases, window {wname}: h60 vs ORH5 (n filled & mature / mean R / total R / fill-day stop share / >= 5R / >= 10R)")
+        body = [[r["ticker"], r["bases"], f"{r['h60_n']} / {_num(r['h60_mean_r'], 2)} / {_num(r['h60_sum_r'], 1)} / {_pct(r['h60_fill_day_stop'])} / {r['h60_ge5']} / {r['h60_ge10']}",
+                 f"{r['orh5_n']} / {_num(r['orh5_mean_r'], 2)} / {_num(r['orh5_sum_r'], 1)} / {_pct(r['orh5_fill_day_stop'])} / {r['orh5_ge5']} / {r['orh5_ge10']}"]
+                for r in rows + [tot]]
+        lines.append(table(body, ["ticker", "bases", "h60", "ORH5"]))
+    tsla = pf[(pf["ticker"] == H60_TSLA[0]) & (pf["K"] == H60_LEVEL)].sort_values("first_E")
+    lines.append("TSLA, every tl base row by row: first break (ORH5's day) -> status / R; h60's confirmed day -> status / R")
+    body = [[r.pole_date, r.first_E, f"{r.orh5_status} / {_num(r.orh5_r, 2)}", f"{r.h60_E or '-'} ({r.h60_status}) / {_num(r.h60_r, 2)}", int(r.C1)] for r in tsla.itertuples()]
+    lines.append(table(body, ["pole", "first E", "ORH5", "h60", "C1"]) if body else "  (no TSLA base in this period)")
+    text = "\n".join(lines)
+    cols = ["window", "ticker", "bases"] + [p + k for p in ("h60_", "orh5_") for k in ("n", "mean_r", "sum_r", "fill_day_stop", "ge5", "ge10")]
+    write_tsv(out / f"h60_hindsight_{period}.tsv", all_rows, cols)
+    write_tsv(small / f"h60_hindsight_{period}.tsv", all_rows, cols)
+    (small / f"h60_hindsight_{period}.txt").write_text(text + "\n")
+    (out / f"h60_hindsight_{period}.txt").write_text(text + "\n")
+    print(text)
+    print(f"WROTE {out / f'h60_hindsight_{period}.tsv'}, {small / f'h60_hindsight_{period}.txt'}; WALL TIME {time.time() - T0:.0f}s")
+    return 0
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("stage", choices=["daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report", "p5", "pre-read"],
+    ap.add_argument("stage", choices=["daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report", "p5", "pre-read",
+                                      "h60-step0", "h60-read", "h60-hindsight"],
                     help="daily = P2a daily stage; minute = DISCOVERY entries/exits/controls; step0-entries = HOLDOUT "
                          "composition, no outcome; holdout = the minute engine AND the P5 stage on the HOLDOUT, behind "
                          "freeze_check (BUILT, NOT RUN); report = the DISCOVERY read; exits / exits-report = #702 his exit (the "
@@ -3832,7 +5510,10 @@ def main(argv=None) -> None:
                          "rows beside it, on the DISCOVERY first breaks of tl / com / comb, NEW files only; pre-read = #702 the "
                          "frozen primary read ONCE on the pre-2022 Alpaca era (candidates_tl_com.tsv, 2017-21; --data cb702_pre): "
                          "the minute engine and the P5 walk on its first breaks, the §5 verdict per cell for the whole era and "
-                         "2020-21 alone; refuses while any minute pair is unfetched (BUILT, NOT RUN)")
+                         "2020-21 alone; refuses while any minute pair is unfetched (BUILT, NOT RUN); h60-step0 / h60-read / h60-hindsight = "
+                         "#702 the HOURLY-CLOSE entry read (docs/analysis/cb_hourly_entry_prereg_2026-10-19.md; --period required): the "
+                         "entry-time table, the one-run read per period behind the freeze / STEP 0 / twin checks, the hindsight tables "
+                         "after the verdict (BUILT ON SYNTHETIC DATA; NOT RUN)")
     ap.add_argument("--data", required=True, help="DATA dir (daily_closes_all.csv.gz, small_pulls.psv, ...)")
     ap.add_argument("--out", help="large-output dir (default DATA/out); holdout refuses anything but DATA/out")
     ap.add_argument("--small-out", help="small-summary dir (default scripts/probes/_cb_backtest/out); holdout refuses it")
@@ -3868,6 +5549,9 @@ def main(argv=None) -> None:
                                      "bars is not evaluated and is counted as 'identity_break' (scripts/probes/_qm_streams/ext_bars.py)")
     ap.add_argument("--era-label", help="daily: stamp every row's `split` column with this label (e.g. 'pre') instead of discovery/holdout; "
                                         "read_candidates() then refuses the file, so it cannot feed the discovery or holdout stages")
+    ap.add_argument("--period", choices=list(H60_PERIODS), help="h60-step0 / h60-read / h60-hindsight: the period (discovery decides; pre = "
+                                                                "2017-21 and 2020-21 alone; holdout = 2025-26, descriptive)")
+    ap.add_argument("--data-pre", help="h60 stages: the Alpaca-era data dir (default: the sibling `cb702_pre` of --data); the freeze check pins both trees")
     ap.add_argument("--levels", help="exits / exits-report: the levels of the run's candidates file to walk, comma-separated "
                                      "(default: every level of the run's keys). `--levels tl` reads the registered candidates.tsv and "
                                      "walks the trendline alone; `--keys com,comb` walks both. holdout REFUSES it")
@@ -3895,6 +5579,11 @@ def main(argv=None) -> None:
         return
     if args.stage == "pre-read":
         rc = run_pre_read(args)
+        if rc:
+            sys.exit(rc)
+        return
+    if args.stage in ("h60-step0", "h60-read", "h60-hindsight"):
+        rc = {"h60-step0": run_h60_step0, "h60-read": run_h60_read, "h60-hindsight": run_h60_hindsight}[args.stage](args)
         if rc:
             sys.exit(rc)
         return
