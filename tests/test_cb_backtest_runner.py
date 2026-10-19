@@ -2396,6 +2396,348 @@ class TestP5Stage:
         assert "Bull" in rn.p5_regime_text(rows) and "(no mature walk)" in rn.p5_regime_text([])
 
 
+# ═══ #702 pre-read: the frozen primary read ONCE on the pre-2022 Alpaca era (SYNTHETIC data only: no real outcome) ═══════════
+PRE_START = dt.date(2019, 1, 7)             # a pre-era candidate's D must lie in 2017-03-01 .. 2021-12-31 (the pre-read checks it)
+
+
+def _pre_dir(tmp_path, *, staller=True, minutes="ok", extra_rows=()):
+    """DATA dir of the pre-read: a SPY + X daily export in the era, `candidates_tl_com.tsv` (rows stamped split = pre: the first breaks
+    of tl and com on X's E day, plus `extra_rows`), the minute session of that day. minutes: 'ok' = file + `_done.psv`; 'none' = no minute
+    directory; 'nodone' = the file but no `_done.psv`; 'short' = a `_done.psv` that does not log X; 'lost' = X logged ok, no date file;
+    'empty' = X logged empty, no date file."""
+    bars, e = _stall_bars(PRE_START) if staller else _e_bars(start=PRE_START)
+    data = tmp_path / "data"
+    (data / "out").mkdir(parents=True)
+    with gzip.open(data / "daily_closes_all.csv.gz", "wt") as fh:
+        for t in ("SPY", "X"):
+            for k in range(len(bars)):
+                fh.write(f"{t},{bars.dates[k].isoformat()},{bars.o[k]},{bars.h[k]},{bars.l[k]},{bars.c[k]},{bars.v[k]}\n")
+    cs = [_p5_cand(bars, e, K=k, split="pre") for k in ("tl", "com")] + [dict(c, split="pre") for c in extra_rows]
+    rn.write_tsv(data / "out" / "candidates_tl_com.tsv", cs, list(cs[0].keys()))
+    day = bars.dates[e].isoformat()
+    md = data / "minutes"
+    if minutes != "none":
+        md.mkdir()
+        if minutes in ("ok", "nodone", "short"):
+            fm._append_gz(md / f"{day}.psv.gz", _minute_lines("X", _stall_minutes() if staller else None))
+        done = {"ok": f"{day}|X|390|ok\n", "short": f"{day}|OTHER|390|ok\n", "lost": f"{day}|X|390|ok\n", "empty": f"{day}|X|0|empty\n"}
+        if minutes in done:
+            (md / "_done.psv").write_text(done[minutes])
+    return data, bars, e
+
+
+def _pre_run(data, tmp_path, *extra):
+    return rn.main(["pre-read", "--data", str(data), "--workers", "1", "--small-out", str(tmp_path / "small"), *extra])
+
+
+def _pre_frame():
+    """Trades of the P5 table's layout (primary + the three beside arms on tl and com), 2019-2021: 240 plain C0 trades at about -0.55R, 40
+    C1 trades in 2019 at -1R, and 40 C1 trades in 2020 at +1R with four 6R winners - so the whole era's C1 straddles zero while 2020-21's
+    C1 clears every bar."""
+    import pandas as pd
+    rows = []
+    n = 0
+
+    def add(year, month, r, c1):
+        nonlocal n
+        n += 1
+        rows.append({"ticker": f"T{n}", "D": f"{year}-{month:02d}-05", "year": year, "month": f"{year}-{month:02d}", "phase_qqq_10_20": n % 2,
+                     "status": "stopped" if r < 0 else "trailed", "realized_r": r, "pnl_adr": r / 3, "acct_pct": r / 100, "mature": 1,
+                     "sessions_held": 4, "retrigger_chain": 0, "regime": "missing", "C0": 1, "C1": int(c1), "HTF": int(c1 and year == 2020)})
+    for i in range(240):                                                     # 36 months x 6-7 trades; 70% -1R, 30% +0.5R
+        add(2019 + (i % 36) // 12, 1 + i % 12, 0.5 if i % 10 < 3 else -1.0, False)
+    for i in range(40):
+        add(2019, 1 + i % 12, -1.0, True)
+    for i in range(40):
+        add(2020, 1 + i % 12, 6.0 if i < 4 else 1.0, True)
+    base = pd.DataFrame(rows)
+    frames = [base.assign(K=k, arm=a) for k in rn.PRE_KEYS for a in rn.P5_ARMS]
+    df = pd.concat(frames, ignore_index=True)
+    for c in cb.CELL_NAMES:
+        if c not in df:
+            df[c] = 0
+    for col in ("K", "arm", "month", "regime"):
+        df[col] = df[col].astype("category")
+    return df
+
+
+class TestPreReadVerdicts:
+    BASE = {"n": 300, "mean_r": -0.2, "share_ge5": 0.02}
+
+    def _cell(self, **kw):
+        row = {"n": 30, "mean_r": 0.5, "ci_lo": 0.1, "ci_hi": 0.9, "mean_ex_top5": 0.2, "mean_pnl_adr": 0.1, "share_ge5": 0.05}
+        row.update(kw)
+        return rn.cell_verdict(row, self.BASE)
+
+    def test_all_five_bars_met_is_a_pass_and_each_miss_is_named(self):
+        assert self._cell() == ("PASS", "all five bars met")
+        v, why = self._cell(ci_lo=-0.1)
+        assert v == "CAN'T TELL" and why == "interval spans 0"                               # beats C0 but the interval spans zero
+        assert self._cell(mean_ex_top5=-0.1)[1] == "mean without the top 5 <= 0"
+        assert self._cell(mean_pnl_adr=0.0)[1] == "ADR P&L <= 0"
+        assert self._cell(share_ge5=0.02)[0:2] == ("CAN'T TELL", "does not beat C0's >= 5R share")    # beats C0's mean, not its tail: neither PASS nor FAIL
+        assert self._cell(ci_lo=-0.1, mean_ex_top5=-0.1, mean_pnl_adr=-1, share_ge5=0.0)[1] == (
+            "interval spans 0; mean without the top 5 <= 0; ADR P&L <= 0; does not beat C0's >= 5R share")
+
+    def test_n_decides_first_even_when_the_interval_sits_wholly_below_zero(self):
+        v, why = self._cell(n=29, ci_lo=-2.0, ci_hi=-1.0, mean_r=-1.5)
+        assert (v, why) == ("CAN'T TELL", "n = 29 < 30")
+        assert self._cell(n=30, ci_lo=-2.0, ci_hi=-1.0, mean_r=-1.5)[0] == "FAIL"           # the same row at n = 30 is a FAIL
+
+    def test_fail_on_the_upper_end_or_on_not_beating_c0_and_never_both_with_a_pass(self):
+        assert self._cell(ci_lo=-2.0, ci_hi=-0.1, mean_r=-0.1) == ("FAIL", "interval upper end < 0")      # -0.1 beats C0's -0.2: the interval alone fails it
+        v, why = self._cell(mean_r=-0.3, ci_lo=-0.9, ci_hi=0.4)                              # the "beats C0" arm: the interval spans zero
+        assert (v, why) == ("FAIL", "does not beat C0 on mean R")
+        assert self._cell(mean_r=-0.2)[0] == "FAIL"                                          # equal to C0 does not beat it
+        assert self._cell(mean_r=-0.5, ci_hi=-0.1)[1] == "interval upper end < 0; does not beat C0 on mean R"
+        grid = [self._cell(mean_r=m, ci_lo=lo, ci_hi=lo + 0.8, share_ge5=s)[0] for m in (-0.5, 0.0, 0.5) for lo in (-0.9, -0.4, 0.1) for s in (0.0, 0.05)]
+        assert set(grid) == {"PASS", "FAIL", "CAN'T TELL"}
+
+    def test_missing_numbers_never_pass(self):
+        assert rn.cell_verdict({"n": 40, "mean_r": 0.5, "ci_lo": float("nan"), "ci_hi": float("nan"), "mean_ex_top5": 0.2,
+                                "mean_pnl_adr": 0.1, "share_ge5": 0.05}, self.BASE) == ("CAN'T TELL", "interval spans 0")
+        assert rn.cell_verdict({"n": 40, "mean_r": 0.5}, None) == ("CAN'T TELL", "no C0 row to compare with")
+        assert rn.cell_verdict({"n": 0}, self.BASE)[0] == "CAN'T TELL"
+
+    def test_the_cell_order_is_c1_first_and_covers_the_p5_cells(self):
+        assert rn.PRE_CELL_ORDER[0] == "C1" and set(rn.PRE_CELL_ORDER) == set(rn.P5_CELLS) and len(rn.PRE_CELL_ORDER) == len(rn.P5_CELLS)
+        assert rn.PRE_DECIDING == ("C1", "C2", "C3", "C4", "C5", "C6", "C7") and rn.PRE_MIN_N == 30
+        assert rn.PRE_KEYS == ("tl", "com") and rn.PRE_LEVEL == "tl" and rn.PRE_ERA == "pre"
+
+    def test_the_two_windows_each_read_c1_against_their_own_c0(self):
+        rows = rn.build_pre_rows(_pre_frame())
+        assert {r["window"] for r in rows} == {"era", "2020-21"} and not [r for r in rows if r["slice"] == "regime"]
+        key = lambda w, cell, k="tl", a=rn.P5_PRIMARY, s="all", v="": next(  # noqa: E731
+            r for r in rows if (r["window"], r["key"], r["cell"], r["K"], r["arm"], r["slice"], r["value"]) == (w, "spec", cell, k, a, s, v))
+        era, his = key("era", "C1"), key("2020-21", "C1")
+        assert (era["n"], his["n"]) == (80, 40) and (key("era", "C0")["n"], key("2020-21", "C0")["n"]) == (320, 196)
+        assert his["verdict"] == "PASS" and his["why"] == "all five bars met" and his["ci_lo"] > 0 and his["share_ge5"] == pytest.approx(0.1)
+        assert era["verdict"] == "CAN'T TELL" and "interval spans 0" in era["why"] and era["mean_r"] > key("era", "C0")["mean_r"]
+        assert key("era", "C0")["verdict"] == "baseline" and key("2020-21", "C0")["why"] == ""
+        assert key("2020-21", "HTF")["verdict"] == "report" and key("2020-21", "HTF")["why"] == ""      # a report cell is never judged
+        # a verdict sits on the registered primary only: not on com, the beside arms, the chain key or a slice
+        for r in rows:
+            if r["verdict"]:
+                assert (r["key"], r["K"], r["arm"], r["slice"]) == ("spec", "tl", rn.P5_PRIMARY, "all"), r
+        assert {r["slice"] for r in rows} == {"all", "year", "phase"}
+        assert {r["value"] for r in rows if r["window"] == "2020-21" and r["slice"] == "year"} == {2020, 2021}
+        assert {r["value"] for r in rows if r["window"] == "era" and r["slice"] == "year"} == {2019, 2020, 2021}
+
+    def test_a_large_random_table_with_every_cell_open_marks_and_missing_numbers_builds_and_every_verdict_re_derives(self):
+        import pandas as pd
+        rng = np.random.default_rng(702)
+        n = 6000
+        yr = rng.choice([2017, 2018, 2019, 2020, 2021, 2022], n, p=[.15, .15, .2, .2, .2, .1])
+        mo = rng.integers(1, 13, n)
+        r = np.where(rng.random(n) < 0.7, -1.0, rng.exponential(2.0, n))
+        base = pd.DataFrame({"ticker": [f"T{i}" for i in range(n)], "D": [f"{y}-{m:02d}-05" for y, m in zip(yr, mo)], "year": yr,
+                             "month": [f"{y}-{m:02d}" for y, m in zip(yr, mo)], "phase_qqq_10_20": rng.integers(0, 2, n),
+                             "status": np.where(r < 0, "stopped", "trailed"), "realized_r": r, "pnl_adr": np.where(rng.random(n) < 0.02, np.nan, r / 3),
+                             "acct_pct": r / 100, "mature": (rng.random(n) < 0.97).astype(int), "sessions_held": rng.integers(1, 30, n),
+                             "retrigger_chain": 0, "regime": "missing"})
+        c0 = rng.random(n) < 0.9
+        flags = {"C0": c0}
+        for c in ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C1_no_retrace", "C1_no_tightening", "HTF"):
+            flags[c] = c0 & (rng.random(n) < (0.5 if c in ("C3", "C4", "C5", "C7", "C1_no_retrace", "C1_no_tightening", "HTF") else 0.15))
+        for c, v in flags.items():
+            base[c] = v.astype(int)
+        df = pd.concat([base.assign(K=k, arm=a) for k in rn.PRE_KEYS for a in rn.P5_ARMS], ignore_index=True)
+        for col in ("K", "arm", "month", "regime"):
+            df[col] = df[col].astype("category")
+        rows = rn.build_pre_rows(df)
+        text = rn.pre_report_text(rows, Path("t.tsv.gz"), len(df), [])
+        idx = {(r_["window"], r_["key"], r_["cell"], r_["K"], r_["arm"], r_["slice"], r_["value"]): r_ for r_ in rows}
+        for w in ("era", "2020-21"):
+            c0row = idx[(w, "spec", "C0", "tl", rn.P5_PRIMARY, "all", "")]
+            assert c0row["verdict"] == "baseline"
+            for cell in rn.PRE_DECIDING:
+                row = idx[(w, "spec", cell, "tl", rn.P5_PRIMARY, "all", "")]
+                assert (row["verdict"], row["why"]) == rn.cell_verdict(row, c0row) and row["verdict"] in ("PASS", "FAIL", "CAN'T TELL")
+        assert sum(1 for r_ in rows if r_["verdict"] in ("PASS", "FAIL", "CAN'T TELL")) == 2 * len(rn.PRE_DECIDING)
+        assert text.count("VERDICT - ") == 2 and "year / the whole era" in text
+        assert {r_["value"] for r_ in rows if r_["window"] == "2020-21" and r_["slice"] == "year"} == {2020, 2021}
+        assert not [r_ for r_ in rows if r_["window"] == "2020-21" and r_["slice"] == "year" and r_["value"] in (2017, 2018, 2019, 2022)]
+
+    def test_the_report_text_puts_c1_first_marks_the_beside_rows_and_slices_years_on_the_era_only(self):
+        rows = rn.build_pre_rows(_pre_frame())
+        text = rn.pre_report_text(rows, Path("trades_pre_p5.tsv.gz"), 1234, ["CROSS-CHECK note", "DATA GATE note"])
+        assert "CROSS-CHECK note" in text and "DATA GATE note" in text and "C1 decides" in text
+        era_block = text.split("VERDICT - the whole era")[1].split("VERDICT - 2020-21 alone")[0]
+        his_block = text.split("VERDICT - 2020-21 alone")[1].split("BESIDE")[0]
+        assert era_block.index("C1 ") < era_block.index("C0 ") and "CAN'T TELL" in era_block and "baseline" in era_block
+        assert "PASS" in his_block and "all five bars met" in his_block
+        assert "BESIDE (never a verdict)" in text and "arm p33_s3_t10, level tl" in text and "arm c3_p33_t20_cut3, level com" in text
+        assert "year / the whole era (D 2017-03-01 .. 2021-12-31) / level tl" in text and "year / 2020-21 alone" not in text
+        assert "phase / 2020-21 alone" in text
+
+
+class TestPreRead:
+    def test_the_era_file_is_read_only_with_its_label_and_every_other_stage_still_refuses_it(self, tmp_path, capsys):
+        data, bars, e = _pre_dir(tmp_path)
+        path = data / "out" / "candidates_tl_com.tsv"
+        assert len(rn.read_candidates(path, era="pre")) == 2
+        with pytest.raises(ValueError, match="relabelled or is stale"):                      # no era: the label must equal split_label(D)
+            rn.read_candidates(path)
+        with pytest.raises(ValueError, match="alternatives"):
+            rn.read_candidates(path, "discovery", era="pre")
+        bars2, e2 = _e_bars(start=DISCOVERY_START)
+        _write_cands(tmp_path / "disc.tsv", [_m_cand(bars2, e2, K="tl")])                    # a discovery-labelled file is not the era file
+        with pytest.raises(ValueError, match="not the era label 'pre'"):
+            rn.read_candidates(tmp_path / "disc.tsv", era="pre")
+        # a wrong label is refused BEFORE `where` can drop the row
+        _write_cands(tmp_path / "mixed.tsv", [_m_cand(bars2, e2, K="tl", split="pre"), _m_cand(bars2, e2, K="tl", split="discovery")])
+        with pytest.raises(ValueError, match="not the era label"):
+            rn.read_candidates(tmp_path / "mixed.tsv", era="pre", where=lambda rec: rec["split"] == "pre")
+        (data / "out" / "candidates.tsv").write_bytes(path.read_bytes())
+        for stage in ("minute", "p5"):                                                        # `minute` and `p5` read candidates.tsv: a pre-labelled one fails
+            with pytest.raises(ValueError, match="relabelled or is stale"):
+                rn.main([stage, "--data", str(data), "--workers", "1", "--small-out", str(tmp_path / "small")])
+        assert not list((data / "out").glob("trades_*"))
+
+    def test_the_population_is_the_first_breaks_of_tl_and_com_inside_the_era(self, tmp_path):
+        bars, e = _stall_bars(PRE_START)
+        retrig = _p5_cand(bars, e, K="tl", split="pre", retrigger=1)
+        other = _p5_cand(bars, e, K="k5", split="pre")
+        data, bars, e = _pre_dir(tmp_path, extra_rows=[retrig, other])
+        inp = rn.pre_inputs(rn.argparse.Namespace(data=str(data), out=None, minutes=None))
+        assert sorted(c["K"] for c in inp["cands"]) == ["com", "tl"] and all(c["retrigger"] == 0 for c in inp["cands"])
+        assert inp["pairs"] == [(bars.dates[e].isoformat(), "X")] and inp["missing"] == [] and inp["lost"] == []
+        late = _p5_cand(*_e_bars(), K="tl", split="pre")                                       # a 2025 D wearing the pre label
+        data2, _b, _e = _pre_dir(tmp_path / "two", extra_rows=[late])
+        with pytest.raises(ValueError, match="outside 2017-03-01..2021-12-31"):
+            rn.pre_inputs(rn.argparse.Namespace(data=str(data2), out=None, minutes=None))
+
+    def test_it_refuses_while_a_pair_is_missing_prints_the_count_and_writes_nothing(self, tmp_path, capsys):
+        for mode, expect in (("none", "minute directory: ABSENT"),                                           # no minute directory at all
+                             ("nodone", "1 of 1 first-break (date, ticker) pairs are not logged in"),       # a date file but no `_done.psv`
+                             ("short", "1 of 1 first-break (date, ticker) pairs are not logged in"),        # a log that does not hold X
+                             ("lost", "1 more are logged ok on a date that has no minute file")):           # logged ok, the rows are gone
+            sub = tmp_path / mode
+            sub.mkdir()
+            data, bars, e = _pre_dir(sub, minutes=mode)
+            before = sorted(p.name for p in (data / "out").iterdir())
+            capsys.readouterr()
+            with pytest.raises(SystemExit) as ex:
+                _pre_run(data, sub)
+            err = capsys.readouterr().err
+            assert ex.value.code == 2 and err.startswith("REFUSED") and expect in err and "A partial read is never run" in err, (mode, err)
+            if mode != "lost":
+                assert "1 of 1 first-break (date, ticker) pairs are not logged in" in err
+            else:
+                assert "0 of 1 first-break (date, ticker) pairs are not logged in" in err
+            assert sorted(p.name for p in (data / "out").iterdir()) == before and not (sub / "small").exists()
+
+    def test_a_date_whose_pairs_are_all_logged_empty_is_read_as_no_minutes_not_dropped(self, tmp_path, capsys):
+        data, bars, e = _pre_dir(tmp_path, minutes="empty")
+        assert _pre_run(data, tmp_path) is None
+        out = capsys.readouterr().out
+        assert "no_rows" in out and "n = 0 < 30" in out and "CROSS-CHECK tl/com: 0 paired" in out
+        assert (data / "out" / "trades_pre_p5.tsv.gz").exists() and (data / "out" / "p5_report_pre.tsv").exists()
+
+    def test_a_second_run_and_a_crashed_runs_partial_are_refused(self, tmp_path, capsys):
+        data, bars, e = _pre_dir(tmp_path)
+        assert _pre_run(data, tmp_path) is None
+        capsys.readouterr()
+        with pytest.raises(SystemExit) as ex:
+            _pre_run(data, tmp_path)
+        assert ex.value.code == 2 and "joined ONCE" in capsys.readouterr().err
+        for name in ("trades_pre_p5.tsv.gz", "trades_pre_tl_com.tsv.gz", "entries_pre_tl_com.tsv.gz"):
+            (data / "out" / name).unlink()
+        crashed = data / "out" / "trades_pre_p5.tsv.gz.partial"
+        crashed.write_bytes(b"half")
+        with pytest.raises(SystemExit) as ex:
+            _pre_run(data, tmp_path)
+        assert ex.value.code == 2 and "CRASHED pre-read" in capsys.readouterr().err
+        assert [q.name for q in rn.pre_existing_outputs(data / "out")] == ["trades_pre_p5.tsv.gz.partial"]
+
+    def test_the_dry_run_counts_only_opens_no_bar_and_writes_nothing(self, tmp_path, capsys):
+        data, bars, e = _pre_dir(tmp_path, minutes="none")
+        (data / "daily_closes_all.csv.gz").unlink()                                          # a dry run must not need the export
+        before = sorted(p.name for p in data.rglob("*"))
+        assert _pre_run(data, tmp_path, "--dry-run") is None
+        out = capsys.readouterr().out
+        assert "PRE-READ DRY RUN" in out and "2 first-break rows (tl 1, com 1)" in out and "needing 1 (date, ticker) pairs on 1 breakout dates" in out
+        assert "minute directory" in out and "ABSENT" in out and "pairs NOT logged in _done.psv: 1" in out and "the run would REFUSE (no partial read)" in out
+        assert sorted(p.name for p in data.rglob("*")) == before and not (tmp_path / "small").exists()
+        # complete minutes: the same dry run reads "complete"; existing outputs are named and the run would refuse
+        data2, bars, e = _pre_dir(tmp_path / "two")
+        (data2 / "out" / "trades_pre_p5.tsv.gz").write_bytes(b"x")
+        _pre_run(data2, tmp_path / "two", "--dry-run")
+        out = capsys.readouterr().out
+        assert "-> complete;" in out and "['trades_pre_p5.tsv.gz'] -> the run would REFUSE (read once)" in out
+
+    def test_options_that_alter_the_registered_form_are_refused(self, tmp_path, capsys):
+        data, bars, e = _pre_dir(tmp_path)
+        for extra in (["--keys", "com"], ["--levels", "tl"], ["--limit-dates", "1"], ["--no-close"], ["--no-apollo"]):
+            capsys.readouterr()
+            with pytest.raises(SystemExit) as ex:
+                _pre_run(data, tmp_path, *extra)
+            assert ex.value.code == 2 and extra[0] in capsys.readouterr().err
+        assert not list((data / "out").glob("trades_*"))
+
+    def test_the_run_writes_the_minute_tables_the_p5_table_and_the_verdict_report_and_proves_the_registered_arm(self, tmp_path, capsys):
+        data, bars, e = _pre_dir(tmp_path)
+        pinned = {p.name: p.read_bytes() for p in (data / "out").iterdir()}
+        minutes_before = {p.name: p.read_bytes() for p in (data / "minutes").iterdir()}
+        assert _pre_run(data, tmp_path) is None
+        out = capsys.readouterr().out
+        assert "PRE MINUTE STAGE" in out and "CROSS-CHECK tl/com: 2 paired p33_s3_t10 rows equal trades_pre_tl_com.tsv.gz" in out
+        assert "DATA GATE (orh5)" in out and "VERDICT - the whole era" in out and "VERDICT - 2020-21 alone" in out
+        names = {p.name for p in (data / "out").iterdir()}
+        assert {"trades_pre_tl_com.tsv.gz", "entries_pre_tl_com.tsv.gz", "trades_pre_p5.tsv.gz", "p5_report_pre.tsv"} <= names
+        assert {p.name for p in (tmp_path / "small").iterdir()} >= {"p5_report_pre.txt", "p5_report_pre.tsv", "p5_summary_pre.txt",
+                                                                    "minute_summary_pre_tl_com.txt"}
+        for n, b in pinned.items():                                                          # the inputs are read-only
+            assert (data / "out" / n).read_bytes() == b, n
+        assert {p.name: p.read_bytes() for p in (data / "minutes").iterdir()} == minutes_before
+        t = pd_read(data / "out" / "trades_pre_p5.tsv.gz")
+        assert list(t.columns) == rn.EXITS_COLS and set(t.K) == {"tl", "com"} and set(t.arm) == set(rn.P5_ARMS) and set(t.stop_variant) == {"lod"}
+        m = pd_read(data / "out" / "trades_pre_tl_com.tsv.gz")
+        assert set(m.split) == {"pre"} and set(m.K) == {"tl", "com"} and (m.retrigger == 0).all()
+        rep = pd_read(data / "out" / "p5_report_pre.tsv")
+        assert list(rep.columns) == rn.pre_cols() and set(rep.window) == {"era"}               # E is in 2019: the 2020-21 window is empty
+        c1 = rep[(rep.key == "spec") & (rep.cell == "C1") & (rep.K == "tl") & (rep.arm == rn.P5_PRIMARY) & (rep.slice == "all") & (rep.window == "era")].iloc[0]
+        assert c1.verdict == "CAN'T TELL" and c1.why == "n = 1 < 30" and c1.n == 1 and c1.n_cut == 1        # the staller is cut at the day-3 close
+        txt = (tmp_path / "small" / "p5_report_pre.txt").read_text()
+        block = txt.split("VERDICT - the whole era")[1].split("VERDICT - 2020-21 alone")[0]
+        assert block.index("C1 ") < block.index("C0 ") and "survivorship" in txt and "n = 0 < 30" in txt     # 2020-21: no walk
+        compact = pd_read(tmp_path / "small" / "p5_report_pre.tsv")
+        assert set(compact.slice) == {"all"} and 0 < len(compact) <= len(rep)
+
+    def test_a_failed_cross_check_exits_3_and_the_report_says_do_not_read(self, tmp_path, capsys, monkeypatch):
+        data, bars, e = _pre_dir(tmp_path)
+        monkeypatch.setattr(rn, "p5_crosscheck", lambda *a, **k: (2, ["1 of 2 paired rows differ in realized_r"]))
+        with pytest.raises(SystemExit) as ex:
+            _pre_run(data, tmp_path)
+        assert ex.value.code == 3
+        assert "FAILED against trades_pre_tl_com.tsv.gz - DO NOT READ THE VERDICTS" in (tmp_path / "small" / "p5_report_pre.txt").read_text()
+
+    def test_the_stage_runs_the_minute_engine_then_the_p5_walk_on_the_same_inputs(self, tmp_path, monkeypatch, capsys):
+        data, bars, e = _pre_dir(tmp_path)
+        calls = []
+        real_minute, real_walk = rn.run_minute_stage, rn.p5_walk
+
+        def minute(a, split, inp=None):
+            calls.append(("minute", split, a.keys, a.no_close, a.no_apollo, len(inp["cands"]), sorted(inp["by_date"])))
+            return real_minute(a, split, inp)
+
+        def walk(inp, workers, split, say):
+            calls.append(("p5", split, len(inp["cands"]), sorted(inp["by_date"])))
+            return real_walk(inp, workers, split, say)
+        monkeypatch.setattr(rn, "run_minute_stage", minute)
+        monkeypatch.setattr(rn, "p5_walk", walk)
+        _pre_run(data, tmp_path)
+        day = bars.dates[e].isoformat()
+        assert calls == [("minute", "pre", "tl,com", False, False, 2, [day]), ("p5", "pre", 2, [day])]
+
+    def test_a_default_run_of_the_other_stages_is_unchanged_by_the_new_keywords(self):
+        import inspect
+        assert inspect.signature(rn.read_candidates).parameters["era"].default is None
+        assert inspect.signature(rn.read_candidates).parameters["where"].default is None
+        assert inspect.signature(rn.run_minute_stage).parameters["inp"].default is None
+        assert rn.P5_LEVEL_FILES == (("", ("tl",)), ("_com_comb", ("com", "comb")))              # the p5 / holdout inputs are not re-pointed
+
+
 # ═══ #702 selection test: the pre-2022 Alpaca-era options of the daily stage ═══════════════════════
 # Every option is additive: with none of them the stage is the pinned one (proved by hashing candidates / watch / close-variant of a default
 # run against the pinned run). What is tested here is what the options add.

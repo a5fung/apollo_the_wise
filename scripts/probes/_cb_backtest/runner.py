@@ -61,6 +61,17 @@ candidates table; no existing output changes by a byte.
 `p5_report_discovery.{tsv,txt}`, new files); `holdout` runs the SAME function once on the holdout after its minute engine
 (`trades_holdout_p5.tsv.gz`, `p5_report_holdout.{tsv,txt}`, P5 rows appended to `regime_report_holdout`), behind the same
 freeze_check and once-only guard. The registered arm inside the P5 table is proved equal, per trade, to the minute stage's table.
+
+#702 pre-read (operator 2026-10-19; docs/analysis/cb_2017_21_read_prereg_2026-10-19.md): `pre-read --data /Users/alvinfung/apollo_data/cb702_pre`
+reads the frozen primary ONCE on the pre-2022 Alpaca era (`out/candidates_tl_com.tsv`, rows stamped `split = pre`, D 2017-03-01 .. 2021-12-31).
+It is the holdout's chain on that file's first breaks of `tl` (decides) and `com` (beside): the registered minute engine
+(`trades_pre_tl_com.tsv.gz`, `entries_pre_tl_com.tsv.gz`), the P5 walk (`trades_pre_p5.tsv.gz`), the per-trade cross-check of the registered
+arm (exit 3 on a difference), then `p5_report_pre.{tsv,txt}` (DATA/out and the small-summary dir): per cell the §5 PASS / CAN'T TELL / FAIL
+for the whole era and for 2020-21 alone, C1 first, with the by-year and QQQ-phase slices. It REFUSES (exit 2, the count printed) while
+any (date, ticker) pair of that population is missing from `MINUTES/_done.psv` (the fetch lands later in DATA/minutes) - no partial read -
+and while any of its outputs, or a crashed run's `.partial`, exists (read once). `--dry-run` counts candidate rows and pairs and opens no bar
+and no minute row. Every other stage is unchanged (`read_candidates` / `run_minute_stage` only gained keyword arguments whose defaults are
+the old behaviour).
 """
 from __future__ import annotations
 
@@ -1517,22 +1528,36 @@ def _opt_float(x):
     return None if x in ("", None) else float(x)
 
 
-def read_candidates(path: Path, split: "str | None" = None, extra_floats: tuple = ()) -> list:
+def read_candidates(path: Path, split: "str | None" = None, extra_floats: tuple = (), era: "str | None" = None,
+                    where=None) -> list:
     """candidates.tsv as typed dicts (Python `float()`, so values equal the daily stage's exactly). `split` keeps one
     side only: the OTHER side's rows are never even typed. THE LABEL IS NOT TRUSTED: every row's `split` must equal
     `split_label(D)` (the daily stage stamps it from D), else ValueError - so a relabelled file can neither carry
     holdout rows into `minute` (discovery outcomes) nor hide them from `holdout`. `extra_floats` (#702 his exit): more
-    columns typed as optional floats (e.g. `tightening_ratio`); the default reads exactly what it always did."""
+    columns typed as optional floats (e.g. `tightening_ratio`); the default reads exactly what it always did.
+    #702 pre-read (the pre-2022 Alpaca-era file, every row stamped `split = <era>` by the daily stage's `--era-label`): `era`
+    replaces the `split_label(D)` rule by "every row carries exactly that label" (a file with an era label is still refused
+    without `era`, and a discovery / holdout file is refused with it); `where(rec)` drops a raw row BEFORE it is typed, after
+    its label has been checked (the pre-read keeps the first breaks of tl / com only)."""
+    if era is not None and split is not None:
+        raise ValueError("read_candidates: `era` and `split` are alternatives")
     out, label_of = [], {}
     with open(path, newline="") as fh:
         for rec in csv.DictReader(fh, delimiter="\t"):
             d = rec["D"]
-            if d not in label_of:
-                label_of[d] = split_label(date.fromisoformat(d))
-            if rec["split"] != label_of[d]:
-                raise ValueError(f"{path}: row {rec['ticker']} D={d} K={rec.get('K')} is labelled split={rec['split']!r} but "
-                                 f"D falls in the {label_of[d]!r} period (D <= {DISCOVERY_END} is discovery): the file was "
-                                 f"relabelled or is stale - refusing to read it")
+            if era is not None:
+                if rec["split"] != era:
+                    raise ValueError(f"{path}: row {rec['ticker']} D={d} K={rec.get('K')} is labelled split={rec['split']!r}, not the "
+                                     f"era label {era!r}: this is not that era's file - refusing to read it")
+            else:
+                if d not in label_of:
+                    label_of[d] = split_label(date.fromisoformat(d))
+                if rec["split"] != label_of[d]:
+                    raise ValueError(f"{path}: row {rec['ticker']} D={d} K={rec.get('K')} is labelled split={rec['split']!r} but "
+                                     f"D falls in the {label_of[d]!r} period (D <= {DISCOVERY_END} is discovery): the file was "
+                                     f"relabelled or is stale - refusing to read it")
+            if where is not None and not where(rec):
+                continue
             if split is not None and rec["split"] != split:
                 continue
             c = {k: rec.get(k, "") for k in ("ticker", "D", "E", "K", "split", "pole_date", "base_id", "apollo_regime")}
@@ -1896,11 +1921,13 @@ def minute_data_gate(tally: Counter) -> tuple:
                    f"minute-vs-daily high/low match rate {match:.2%}")
 
 
-def run_minute_stage(args, split: str) -> None:
+def run_minute_stage(args, split: str, inp: "dict | None" = None) -> None:
     """`minute` (split='discovery') and `holdout` (split='holdout', behind freeze_check): every candidate of the split
-    whose minutes are on disk -> entries, day-0, every exit arm, the controls, the sensitivities."""
+    whose minutes are on disk -> entries, day-0, every exit arm, the controls, the sensitivities.
+    #702 pre-read: `inp` (the shape `_setup_minute_inputs` returns) is the pre-era population the caller already read and
+    checked for completeness (split='pre'); None = the registered inputs, read here as always."""
     T0 = time.time()
-    inp = _setup_minute_inputs(args, split)
+    inp = _setup_minute_inputs(args, split) if inp is None else inp
     out, small = inp["out"], (Path(args.small_out) if args.small_out else HERE / "out")
     sfx = run_keys(args)[1]
     log: list = []
@@ -3476,15 +3503,333 @@ def run_p5_stage(args, split: str) -> int:
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
+# #702 pre-read (operator 2026-10-19: "during the period 2020-2021 qullamaggie 10x his portfolio"): the FROZEN primary - level tl, ORH5,
+# the low-of-day stop, `c3_p33_t20_cut3`, spec key, first break per base - read on the pre-2022 Alpaca era (D 2017-03-01 .. 2021-12-31),
+# registered in docs/analysis/cb_2017_21_read_prereg_2026-10-19.md BEFORE any outcome. The holdout's own chain, once, on the era's
+# first breaks of tl (decides) and com (beside): the registered minute engine (`run_minute_stage`, split 'pre'), the P5 walk
+# (`p5_walk`), the registered arm's per-trade cross-check against the minute stage, then the §5 verdict per cell for the whole era and
+# for 2020-21 alone. BUILT, NOT RUN: it refuses while ONE candidate pair is missing from `_done.psv` (no partial read).
+# ═════════════════════════════════════════════════════════════════════════════════════════════
+PRE_ERA = "pre"                                                # the daily stage's `--era-label` on cb702_pre/out/candidates_tl_com.tsv
+PRE_KEYS = ("tl", "com")                                       # tl = the registered level (decides); com beside
+PRE_FIRST, PRE_LAST = date(2017, 3, 1), date(2021, 12, 31)     # the era's watch nights D (selection_pre.WATCH_FIRST / WATCH_LAST)
+PRE_LEVEL = PRE_KEYS[0]
+PRE_MIN_N = 30                                                 # §5.2: n < 30 mature trades is CAN'T TELL whatever the interval says
+PRE_DECIDING = ("C1", "C2", "C3", "C4", "C5", "C6", "C7")      # C1 decides; C0 is the baseline (cannot pass); the rest are report cells
+PRE_CELL_ORDER = ("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C0", "C1_no_retrace", "C1_no_tightening", "HTF")     # C1 first
+PRE_WINDOWS = (("era", "the whole era (D 2017-03-01 .. 2021-12-31)", None),
+               ("2020-21", "2020-21 alone (breakout day E in 2020 or 2021: his 10x years)", (2020, 2021)))
+PRE_REPORT = "p5_report_pre"
+
+
+def pre_cols() -> list:
+    return ["window"] + p5_cols() + ["verdict", "why"]
+
+
+def pre_first_breaks(rec: dict) -> bool:
+    """Raw-row filter of the pre-read: the spec key's first break on the pre-read's levels (what `exits_population` keeps)."""
+    return rec["K"] in PRE_KEYS and int(rec.get("retrigger") or 0) == 0
+
+
+def pre_missing_pairs(pairs: list, on_disk: dict, done: "dict | None") -> tuple:
+    """(missing, lost) over the population's (date, ticker) pairs: those `_done.psv` does not log as fetched (every one when the
+    log is absent), and those it logs `ok` on a date that has no minute file (their rows are gone). Either makes the read partial."""
+    log = done or {}
+    missing = [p for p in pairs if p not in log]
+    lost = [p for p in pairs if p in log and log[p] != "empty" and p[0] not in on_disk]
+    return missing, lost
+
+
+def pre_inputs(args) -> dict:
+    """The pre-read's population and what the minute directory holds of it: the era file's first breaks of tl / com (the label is
+    checked on every row, and every D must lie in the era), the pairs they need, and the pairs missing (see `pre_missing_pairs`).
+    Opens no daily bar and no minute row."""
+    data = Path(args.data)
+    out = Path(args.out) if args.out else data / "out"
+    minutes_dir = Path(args.minutes) if args.minutes else data / "minutes"
+    path = out / f"candidates{out_suffix(PRE_KEYS)}.tsv"
+    cands = exits_population(read_candidates(path, era=PRE_ERA, extra_floats=("tightening_ratio", "base_depth"),
+                                             where=pre_first_breaks), PRE_KEYS)
+    outside = [c for c in cands if not PRE_FIRST <= date.fromisoformat(c["D"]) <= PRE_LAST]
+    if outside:
+        raise ValueError(f"{path}: {len(outside):,} rows have a watch night D outside {PRE_FIRST}..{PRE_LAST} "
+                         f"(first: {outside[0]['ticker']} D={outside[0]['D']}): this is not the pre-read's file")
+    has_dir = minutes_dir.is_dir()
+    on_disk = minute_date_files(minutes_dir) if has_dir else {}
+    done = load_done_pairs(minutes_dir) if has_dir else None
+    pairs = sorted({(c["E"], c["ticker"]) for c in cands})
+    missing, lost = pre_missing_pairs(pairs, on_disk, done)
+    return {"data": data, "out": out, "minutes_dir": minutes_dir, "cands": cands, "pairs": pairs, "on_disk": on_disk, "done": done,
+            "missing": missing, "lost": lost, "path": path}
+
+
+def pre_complete(inp: dict) -> dict:
+    """The complete inputs the minute and P5 stages take (`_setup_minute_inputs`' shape), once nothing is missing. A date with no minute
+    file is one whose every pair is logged `empty` (the fetcher writes no file for it): it is read as no minutes, never dropped."""
+    files = dict(inp["on_disk"])
+    for d in {e for e, _t in inp["pairs"]} - set(files):
+        files[d] = Path(os.devnull)
+    by_date = group_by_date(inp["cands"], set(files))
+    assert sum(len(v) for v in by_date.values()) == len(inp["cands"])
+    return {**inp, "files": files, "by_date": by_date}
+
+
+def pre_existing_outputs(out: Path) -> list:
+    """Pre-read outputs already on disk: the final tables, or the `.partial` a crashed run left behind."""
+    sfx = out_suffix(PRE_KEYS)
+    return [q for name in (f"trades_{PRE_ERA}{sfx}.tsv.gz", f"entries_{PRE_ERA}{sfx}.tsv.gz", f"trades_{PRE_ERA}_{P5_NAME}.tsv.gz")
+            for q in (Path(out) / name, partial_path(Path(out) / name)) if q.exists()]
+
+
+def pre_option_problems(args) -> list:
+    """Options the one pre-read may not carry: it runs in its registered form (the registered minute engine in full, both levels)."""
+    bad = []
+    for flag, val in (("--keys", getattr(args, "keys", None)), ("--levels", getattr(args, "levels", None)),
+                      ("--limit-dates", getattr(args, "limit_dates", 0)), ("--no-close", getattr(args, "no_close", False)),
+                      ("--no-apollo", getattr(args, "no_apollo", False))):
+        if val:
+            bad.append(f"{flag}: the pre-read reads {'/'.join(PRE_KEYS)} from candidates{out_suffix(PRE_KEYS)}.tsv in full; a partial or "
+                       f"altered run would also consume the one run")
+    return bad
+
+
+def _num_ok(x) -> bool:
+    return x is not None and x == x
+
+
+def cell_verdict(row: dict, base: "dict | None", min_n: int = PRE_MIN_N) -> tuple:
+    """(verdict, why) of one deciding cell on the §5 bars of cb_preregistration_2026-10-18.md, word for word, with the precedence of
+    §5.3 (n decides first). `row` and `base` are P5 report rows (spec key, slice all) of the cell and of C0 on the SAME level, arm and
+    window. PASS = n >= 30 mature AND the month-block interval's lower end > 0 AND mean R without the top five > 0 AND mean P&L in ADR
+    units > 0 AND the cell beats C0 on mean R AND on the >= 5R share. FAIL = n >= 30 AND (the interval's upper end < 0 OR the cell does
+    not beat C0 on mean R). Otherwise CAN'T TELL: n < 30, or n >= 30 with the interval spanning zero / a bar not met. The two
+    outcomes with n >= 30 cannot both hold (PASS needs lower > 0 and a higher mean than C0)."""
+    n = int(row.get("n") or 0)
+    if n < min_n:
+        return "CAN'T TELL", f"n = {n} < {min_n}"
+    if base is None or not _num_ok(base.get("mean_r")):
+        return "CAN'T TELL", "no C0 row to compare with"
+    mean, lo, hi = row.get("mean_r"), row.get("ci_lo"), row.get("ci_hi")
+    fails = []
+    if _num_ok(hi) and hi < 0:
+        fails.append("interval upper end < 0")
+    if not (_num_ok(mean) and mean > base["mean_r"]):
+        fails.append("does not beat C0 on mean R")
+    if fails:
+        return "FAIL", "; ".join(fails)
+    unmet = []
+    if not (_num_ok(lo) and lo > 0):
+        unmet.append("interval spans 0")
+    if not (_num_ok(row.get("mean_ex_top5")) and row["mean_ex_top5"] > 0):
+        unmet.append("mean without the top 5 <= 0")
+    if not (_num_ok(row.get("mean_pnl_adr")) and row["mean_pnl_adr"] > 0):
+        unmet.append("ADR P&L <= 0")
+    if not (_num_ok(row.get("share_ge5")) and _num_ok(base.get("share_ge5")) and row["share_ge5"] > base["share_ge5"]):
+        unmet.append("does not beat C0's >= 5R share")
+    return ("CAN'T TELL", "; ".join(unmet)) if unmet else ("PASS", "all five bars met")
+
+
+def stamp_pre_verdicts(rows: list) -> None:
+    """Fill `verdict` / `why` on every row: the §5 verdict on the registered primary only (level tl, arm `P5_PRIMARY`, spec key, slice all)
+    for C1..C7 against C0 of the same window; C0 = baseline, the report cells = report; every other row (com, the other arms, the chain
+    key, the slices) carries none - reading one as a finding is excluded by §P5.3 / §8."""
+    idx = {(r["window"], r["key"], r["cell"], r["K"], r["arm"], r["slice"], r["value"]): r for r in rows}
+    for r in rows:
+        r["verdict"], r["why"] = "", ""
+        if not (r["key"] == "spec" and r["slice"] == "all" and r["K"] == PRE_LEVEL and r["arm"] == P5_PRIMARY):
+            continue
+        if r["cell"] == "C0":
+            r["verdict"] = "baseline"
+        elif r["cell"] in PRE_DECIDING:
+            r["verdict"], r["why"] = cell_verdict(r, idx.get((r["window"], "spec", "C0", PRE_LEVEL, P5_PRIMARY, "all", "")))
+        else:
+            r["verdict"] = "report"
+
+
+def build_pre_rows(df) -> list:
+    """The P5 rows (`build_p5_rows`) of each window - the whole era, then 2020-21 alone (E in 2020 / 2021) - with the verdicts stamped. The
+    Apollo-regime slice is dropped: its label starts 2025-03-03, so every pre-era night reads 'missing'."""
+    rows: list = []
+    for name, _label, years in PRE_WINDOWS:
+        sub = df if years is None else df[df["year"].isin(years)]
+        if not len(sub):
+            continue
+        rows += [{"window": name, **r} for r in build_p5_rows(sub) if r["slice"] != "regime"]
+    stamp_pre_verdicts(rows)
+    return rows
+
+
+def pre_report_text(rows: list, src: Path, n_rows: int, notes: list) -> str:
+    idx = {(r["window"], r["key"], r["cell"], r["K"], r["arm"], r["slice"], r["value"]): r for r in rows}
+    out: list = []
+    A = out.append
+    A(f"#702 PRE-READ - the frozen primary ({PRE_LEVEL} / {HEADLINE_VARIANT} / the low-of-day stop / {P5_PRIMARY} / spec key, first break per base) read on "
+      f"D 2017-03-01 .. 2021-12-31, the years he 10x'd, and on 2020-21 alone. Registered before any outcome: docs/analysis/cb_2017_21_read_prereg_2026-10-19.md. "
+      f"Measurement only: nothing here chooses a level, an entry, a stop or an exit.")
+    A(f"source: {src.name}; rows read {n_rows:,}. POPULATION: the era's spec-key first breaks filled at {HEADLINE_VARIANT} under the registered stop on "
+      f"{'/'.join(PRE_KEYS)}; a group is the MATURE walks only (n_open counted, never in a number); month-block bootstrap ({BOOT_DRAWS:,} draws, seed {BOOT_SEED}) "
+      f"95% interval on the mean R; ADR = mean P&L in ADR20 x price units; years are the calendar year of the breakout day E.")
+    A(f"BARS (§5 of cb_preregistration_2026-10-18.md, word for word): PASS = n >= {PRE_MIN_N} mature AND interval lower end > 0 AND mean R without the top 5 > 0 AND "
+      f"ADR P&L > 0 AND beats C0 on mean R and on the >= 5R share; FAIL = n >= {PRE_MIN_N} AND (interval upper end < 0 OR does not beat C0 on mean R); else CAN'T TELL "
+      f"(n decides first). C1 decides; C0 is the baseline and cannot pass; com, the other arms, the chain key and the report cells are never a verdict.")
+    A("NOT ANSWERED: Alpaca's symbol list omits many delisted names (survivorship), so a PASS is weaker than it looks and a FAIL is not explained by it; "
+      "his discretion (what he chose, his sizing, adds) is not modelled; an edge that lives in one exceptional bull market is a regime bet.")
+    for n_ in notes:
+        A(n_)
+    A("")
+    for wname, wlabel, _years in PRE_WINDOWS:
+        body = []
+        for cell in PRE_CELL_ORDER:
+            r = idx.get((wname, "spec", cell, PRE_LEVEL, P5_PRIMARY, "all", ""))
+            if r:
+                body.append([cell, f"{r['n_filled']:,}", r["n"], r["n_open"], _num(r.get("mean_r")), _ci(r), _pct(r.get("share_ge5")),
+                             _pct(r.get("share_ge10")), _num(r.get("mean_ex_top5")), _num(r.get("mean_pnl_adr")), _pct(r.get("win_rate")),
+                             r["verdict"], r["why"]])
+            elif cell in PRE_DECIDING:                      # a deciding cell with no walk in this window is shown, not left out
+                body.append([cell, "0", 0, 0, "", "", "", "", "", "", "", *cell_verdict({"n": 0}, None)])
+        A(f"VERDICT - {wlabel}; level {PRE_LEVEL}, arm {P5_PRIMARY}, SPEC key (C1 decides; every row is its own population)")
+        A(table(body, ["cell", "fills", "n", "open", "mean R", "95% CI", ">=5R", ">=10R", "ex-top5", "pnl_adr", "win", "VERDICT", "why"]))
+        A("")
+    for wname, wlabel, _years in PRE_WINDOWS:
+        for k in PRE_KEYS:
+            for a in P5_ARMS:
+                if k == PRE_LEVEL and a == P5_PRIMARY:
+                    continue
+                body = [_p5_line(r, cell) for cell in PRE_CELL_ORDER for r in [idx.get((wname, "spec", cell, k, a, "all", ""))] if r]
+                if body:
+                    A(f"BESIDE (never a verdict) - {wlabel}; arm {a}, level {k}, SPEC key")
+                    A(table(body, ["cell"] + P5_HEADER[1:]))
+                    A("")
+    A(f"SLICES - arm {P5_PRIMARY}, spec key; each cell is n / mean R / share >= 5R over the MATURE walks; `0` = none")
+    for sname in ("year", "phase"):
+        for wname, wlabel, _years in PRE_WINDOWS:
+            if sname == "year" and wname != "era":
+                continue
+            for k in PRE_KEYS:
+                vals = sorted({r["value"] for r in rows if r["window"] == wname and r["slice"] == sname and r["K"] == k and r["arm"] == P5_PRIMARY},
+                              key=str)
+                if not vals:
+                    continue
+                body = []
+                for cell in PRE_CELL_ORDER:
+                    ln = [cell]
+                    for v in vals:
+                        r = idx.get((wname, "spec", cell, k, P5_PRIMARY, sname, v))
+                        ln.append("-" if r is None else ("0" if not r["n"] else f"{r['n']}/{_num(r.get('mean_r'), 2)}/{_pct(r.get('share_ge5'))}"))
+                    body.append(ln)
+                A(f"  {sname} / {wlabel} / level {k}" + (" (phase 1 = the QQQ 10/20 rule on)" if sname == "phase" else ""))
+                A(table(body, ["cell"] + [str(v) for v in vals]))
+    return "\n".join(out)
+
+
+def run_pre_read(args) -> int:
+    """`pre-read` - BUILT, NOT RUN. exit 2 on: an option that alters the registered form, any pair of the population missing from
+    `_done.psv` (the count is printed; no partial read), outputs (or a crashed run's `.partial`) that already exist; exit 3 when the
+    registered arm inside the P5 table differs from the minute stage's rows. `--dry-run` counts candidate rows and pairs only."""
+    T0 = time.time()
+    bad = pre_option_problems(args)
+    if bad:
+        print("REFUSED: the pre-read runs only in its registered form:", file=sys.stderr)
+        for b in bad:
+            print(f"  - {b}", file=sys.stderr)
+        return 2
+    inp = pre_inputs(args)
+    out, minutes_dir = inp["out"], inp["minutes_dir"]
+    small = Path(args.small_out) if args.small_out else HERE / "out"
+    pairs, missing, lost = inp["pairs"], inp["missing"], inp["lost"]
+    existing = pre_existing_outputs(out)
+    by_k = Counter(c["K"] for c in inp["cands"])
+    dates = sorted({e for e, _t in pairs})
+    state = ("ABSENT" if not minutes_dir.is_dir() else
+             f"{len(inp['on_disk'])} date files, _done.psv " + (f"logs {len(inp['done']):,} pairs" if inp["done"] is not None else "ABSENT"))
+    if args.dry_run:
+        print(f"PRE-READ DRY RUN (counts only: no daily bar, minute row or outcome was opened): read {inp['path']}: "
+              f"{len(inp['cands']):,} first-break rows ({', '.join(f'{k} {by_k[k]:,}' for k in PRE_KEYS)}) needing {len(pairs):,} (date, ticker) "
+              f"pairs on {len(dates):,} breakout dates ({dates[0] if dates else '-'} .. {dates[-1] if dates else '-'}); minute directory "
+              f"{minutes_dir}: {state}; pairs NOT logged in _done.psv: {len(missing):,}, logged ok on a date with no file: {len(lost):,} -> "
+              f"{'the run would REFUSE (no partial read)' if (missing or lost) else 'complete'}; outputs already on disk: "
+              f"{[q.name for q in existing] or 'none'}{' -> the run would REFUSE (read once)' if existing else ''}. Would write "
+              f"{out / f'trades_{PRE_ERA}{out_suffix(PRE_KEYS)}.tsv.gz'} (the minute stage), {out / f'trades_{PRE_ERA}_{P5_NAME}.tsv.gz'}, "
+              f"{out / (PRE_REPORT + '.tsv')} and {small / (PRE_REPORT + '.tsv')}, {small / (PRE_REPORT + '.txt')}.")
+        return 0
+    if existing:
+        crashed = [q for q in existing if q.name.endswith(".partial")]
+        if crashed:
+            print(f"REFUSED: {crashed[0]} is what a CRASHED pre-read left behind - it holds some outcomes. The pre-read is run ONCE: "
+                  f"the operator inspects it and removes it by hand before any re-run", file=sys.stderr)
+        else:
+            print(f"REFUSED: the pre-read outcomes are joined ONCE and {existing[0]} already exists", file=sys.stderr)
+        return 2
+    if not inp["cands"]:
+        print(f"REFUSED: {inp['path']} holds no first-break row of {'/'.join(PRE_KEYS)}", file=sys.stderr)
+        return 2
+    if missing or lost:
+        print(f"REFUSED: {len(missing):,} of {len(pairs):,} first-break (date, ticker) pairs are not logged in {minutes_dir / '_done.psv'} "
+              f"(minute directory: {state})" + (f"; {len(lost):,} more are logged ok on a date that has no minute file" if lost else "") +
+              ". A partial read is never run: finish the minute fetch first", file=sys.stderr)
+        return 2
+    inp = pre_complete(inp)
+    out.mkdir(parents=True, exist_ok=True)
+    small.mkdir(parents=True, exist_ok=True)
+    log: list = []
+
+    def say(msg: str = "") -> None:
+        print(msg, flush=True)
+        log.append(msg)
+
+    say(f"PRE-READ (#702): {len(inp['cands']):,} first-break rows ({', '.join(f'{k} {by_k[k]:,}' for k in PRE_KEYS)}), {len(pairs):,} pairs, all logged "
+        f"in {minutes_dir / '_done.psv'}; code: consolidation_breakout.py sha256 {sha256_file(Path(cb.__file__))}, runner.py sha256 {sha256_file(Path(__file__))}")
+    margs = argparse.Namespace(**vars(args))
+    margs.keys, margs.no_close, margs.no_apollo, margs.limit_dates = ",".join(PRE_KEYS), False, False, 0
+    run_minute_stage(margs, PRE_ERA, inp)                       # the registered minute engine, on the era's first breaks
+    tp, tally, n_rows = p5_walk(inp, args.workers, PRE_ERA, say)
+    states = {k[1]: n for k, n in tally.items() if k[0] == "minutes_state"}
+    say(f"COVERAGE: candidates with minutes fetched {sum(n for s, n in states.items() if s != 'pending'):,} "
+        f"(by state {dict(sorted(states.items()))}); PENDING fetch (skipped) {states.get('pending', 0):,}")
+    ent = {(k[1], k[2]): n for k, n in tally.items() if k[0] == "entry"}
+    say(f"ENTRY ({HEADLINE_VARIANT}, all levels): " + "; ".join(f"{st}{(' ' + r) if r else ''} {n:,}" for (st, r), n in sorted(ent.items())))
+    gate = Counter()
+    for k, n in tally.items():
+        if k[0] == "entry":
+            gate[("data_abstain", k[2] if k[2] in DATA_ABSTAINS else "none")] += n
+    gate_text = minute_data_gate(gate)[1].replace("DATA GATE", f"DATA GATE ({HEADLINE_VARIANT})")
+    say(gate_text)
+    say(f"WROTE {tp} ({n_rows:,} rows)")
+    ref = out / f"trades_{PRE_ERA}{out_suffix(PRE_KEYS)}.tsv.gz"
+    n_cmp, problems = p5_crosscheck(tp, ref, PRE_KEYS)
+    rc = 3 if problems else 0
+    cross = (f"CROSS-CHECK {'/'.join(PRE_KEYS)} FAILED against {ref.name} - DO NOT READ THE VERDICTS: " + "; ".join(problems) if problems else
+             f"CROSS-CHECK {'/'.join(PRE_KEYS)}: {n_cmp:,} paired {cb.PRIMARY_ARM} rows equal {ref.name}'s {HEADLINE_VARIANT} rows "
+             f"(status, maturity, realized R to {P5_XCHECK_TOL:g})")
+    say(cross)
+    df = load_p5_frame(tp, {})
+    rows = build_pre_rows(df)
+    cols = pre_cols()
+    write_tsv(out / f"{PRE_REPORT}.tsv", rows, cols)
+    compact = [{k: (round(v, 6) if isinstance(v, float) else v) for k, v in r.items()} for r in rows if r["slice"] == "all"]
+    write_tsv(small / f"{PRE_REPORT}.tsv", compact, cols)         # the repo-sized copy: 'all' slices, 6 decimals
+    text = pre_report_text(rows, tp, n_rows, [cross, gate_text])
+    (small / f"{PRE_REPORT}.txt").write_text(text + "\n")
+    print(text)
+    say(f"WROTE {out / (PRE_REPORT + '.tsv')} ({len(rows):,} rows), {small / (PRE_REPORT + '.tsv')}, {small / (PRE_REPORT + '.txt')}")
+    say(f"WALL TIME: {time.time() - T0:.0f}s total")
+    (small / f"p5_summary_{PRE_ERA}.txt").write_text("\n".join(log) + "\n")
+    return rc
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("stage", choices=["daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report", "p5"],
+    ap.add_argument("stage", choices=["daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report", "p5", "pre-read"],
                     help="daily = P2a daily stage; minute = DISCOVERY entries/exits/controls; step0-entries = HOLDOUT "
                          "composition, no outcome; holdout = the minute engine AND the P5 stage on the HOLDOUT, behind "
                          "freeze_check (BUILT, NOT RUN); report = the DISCOVERY read; exits / exits-report = #702 his exit (the "
                          "+2R / day / combo partial x the trail switches x the stop variants) on the DISCOVERY first breaks, NEW "
                          "files only; p5 = #702 P5: his exit with the stalled breakouts cut (the holdout read's primary) and the "
-                         "rows beside it, on the DISCOVERY first breaks of tl / com / comb, NEW files only")
+                         "rows beside it, on the DISCOVERY first breaks of tl / com / comb, NEW files only; pre-read = #702 the "
+                         "frozen primary read ONCE on the pre-2022 Alpaca era (candidates_tl_com.tsv, 2017-21; --data cb702_pre): "
+                         "the minute engine and the P5 walk on its first breaks, the §5 verdict per cell for the whole era and "
+                         "2020-21 alone; refuses while any minute pair is unfetched (BUILT, NOT RUN)")
     ap.add_argument("--data", required=True, help="DATA dir (daily_closes_all.csv.gz, small_pulls.psv, ...)")
     ap.add_argument("--out", help="large-output dir (default DATA/out); holdout refuses anything but DATA/out")
     ap.add_argument("--small-out", help="small-summary dir (default scripts/probes/_cb_backtest/out); holdout refuses it")
@@ -3500,7 +3845,7 @@ def main(argv=None) -> None:
                     help="minute: do not walk the 'Apollo as it runs today' control (its frame is an adaptation - see apollo_walk_inputs). "
                          "holdout REFUSES it: the control is on or off in the pinned runner, decided before the freeze")
     ap.add_argument("--trades", help="report: the trades table (default DATA/out/trades_discovery.tsv.gz)")
-    ap.add_argument("--dry-run", action="store_true", help="holdout: print what would be read and exit")
+    ap.add_argument("--dry-run", action="store_true", help="holdout / pre-read: print what would be read (candidate and pair counts only) and exit")
     ap.add_argument("--no-freeze-check", action="store_true", help="holdout: skip the freeze check - ONLY together with --dry-run")
     ap.add_argument("--print-pins", action="store_true", help="holdout: print the footer pin lines for the registration doc and exit")
     ap.add_argument("--prereg", help="holdout: the registration doc (default: the one docs/analysis/cb_preregistration_*.md)")
@@ -3542,6 +3887,11 @@ def main(argv=None) -> None:
             ap.error("p5: --keys / --levels are not options of this stage (it reads tl from candidates.tsv and com / comb from "
                      "candidates_com_comb.tsv)")
         rc = run_p5_stage(args, "discovery")
+        if rc:
+            sys.exit(rc)
+        return
+    if args.stage == "pre-read":
+        rc = run_pre_read(args)
         if rc:
             sys.exit(rc)
         return

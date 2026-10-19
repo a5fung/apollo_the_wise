@@ -172,3 +172,26 @@ The `daily` flags `--raw-close / --breaks / --watch-start / --watch-end / --era-
 `candidates.tsv`, `watch.tsv.gz` and `close_variant_discovery.tsv.gz` of the pinned run). `selection_pre.py join` reads the candidate
 table through a column whitelist that holds no price of the breakout day or later. `selection_read.py` is the only script that opens
 a post-breakout bar; its numbers and verdict rule are in its docstring and `tests/test_cb_selection.py` (synthetic data only).
+
+---
+
+# #702 pre-read — the frozen primary on 2017-21 (`pre-read`; BUILT, NOT RUN)
+
+Registered in `docs/analysis/cb_2017_21_read_prereg_2026-10-19.md` (before any outcome). One command, read ONCE, after the minute fetch for
+`cb702_pre/out/minute_fetch_list_tl_com.tsv` has landed in `cb702_pre/minutes/` (`<date>.psv.gz` + `_done.psv`, the `cb702/minutes` layout):
+
+```
+python3 scripts/probes/_cb_backtest/runner.py pre-read --data /Users/alvinfung/apollo_data/cb702_pre --dry-run   # counts only: rows, pairs, pairs missing
+python3 scripts/probes/_cb_backtest/runner.py pre-read --data /Users/alvinfung/apollo_data/cb702_pre             # THE READ (the holdout's two passes took 80 s)
+```
+It reads `out/candidates_tl_com.tsv` (rows stamped `split = pre`, D 2017-03-01 .. 2021-12-31) at the spec key's FIRST breaks of `tl` (decides)
+and `com` (beside), and runs the holdout's chain on them: the registered minute engine (`trades_pre_tl_com.tsv.gz`, `entries_pre_tl_com.tsv.gz`),
+the P5 walk (`trades_pre_p5.tsv.gz`: `c3_p33_t20_cut3` primary, the article arm, the uncut twin and +2R-only beside), the per-trade cross-check of the
+registered arm against the minute stage (exit 3 on a difference, the report then says DO NOT READ), then `p5_report_pre.{tsv,txt}` (DATA/out, and a
+copy in `out/` here): per cell C1..C7 (C1 first) the §5 PASS / CAN'T TELL / FAIL (n decides first; C0 = baseline; report cells never judged) for the
+whole era and for 2020-21 alone, with the by-year and QQQ-phase slices, mean R + month-block 95% interval, >= 5R, >= 10R, without the top 5, ADR P&L,
+win rate and n_open. Only the registered primary on `tl` carries a verdict; `com`, the other arms and the chain key are reported beside.
+**It refuses (exit 2, count printed) while any (date, ticker) pair of that population is missing from `_done.psv`** (no partial read), and while any
+of its outputs, or a crashed run's `.partial`, exists (read once). `--keys / --levels / --limit-dates / --no-close / --no-apollo` are refused. The
+additive keywords `read_candidates(era=, where=)` and `run_minute_stage(inp=)` leave every other stage byte for byte as it was (proved against the
+pinned run: the seven `daily` / `minute` / `step0-entries` / `report` content hashes, and `p5` against the registration footer's pins).
