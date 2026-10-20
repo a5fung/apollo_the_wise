@@ -150,13 +150,15 @@ stop to the entry price after the third).
 | Comparison (per trade, same fills) | 2022–24 C1 (n = 79) | 2017–21 C1 (n = 180) | 2025–26 C1 (n = 30) | 2022–24 C0 (n = 8,983) |
 |---|---|---|---|---|
 | `pp_wbe` − `pp` (decides) | −0.12R (−0.16 .. −0.08) loss | −0.12R (−0.19 .. −0.05) | −0.07R (−0.16 .. +0.00) | +0.00R (−0.03 .. +0.04) |
-| `pp` − `A` (his ruling's effect) | +0.06R (+0.00 .. +0.22), 1 trade differs | — | — | −0.00R, 111 differ |
+| `pp` − `A` (his ruling's effect) | +0.06R — ONE trade differs, not evidence | — | — | −0.00R, 111 differ (net zero) |
 | `pp_s0` − `pp` (stop left at the original) | −0.14R (−0.19 .. −0.10) | — | — | −0.00R |
 
 - **Why the stop change loses on the strict group:** after a third at +2R, the entry-price stop locks +0.67R on a trade that
   falls back; the original stop gives it back to zero. On C1 the fall-backs outnumber the trades that dip below cost and run.
 - **TSLA 2020-06-01 (hourly-close fill, beside):** `A` −0.17R; under `pp` (his ruling) NO day-3 sale below cost, the 06-05 dip
   survives, a third at +2R on session 5, trailed 44 sessions: **+18.5R**. The ruling alone fixes his example.
+- `pp` is adopted on his RULING, not on its numbers: it changed exactly one 2022–24 strict-group trade (and 111 of 8,984 at
+  scale, net zero), so its +0.06R on C1 is one trade moving a mean.
 - The C1 cell under `pp_wbe`: CAN'T TELL (2022–24, interval spans zero, ≥ 10R from 1 ticker / 1 month); 2025–26 FAIL.
 - Expectations: 2022–24 C0 Δ ≥ 0 MET (+0.0021); the hourly-close fills' C0 Δ MISSED (−0.018, beside); median sessions held MET.
 
