@@ -2120,3 +2120,18 @@ Analysis: `docs/analysis/cb_2017_21_read_prereg_2026-10-19.md` §Addendum (his o
 Asked after the TSLA 2020 example (our rule bought the 2020-05-18 intraday poke above the May triangle line, closed below,
 stopped the same day; his breakout was the 2020-06-01 range expansion). Recorded late (captured 2026-10-19 with the
 hourly-close entry test it motivates; #702).
+
+## 2026-10-19 — his rulings on the partial and the stop after it (operator, verbatim)
+
+Asked whether his "sell a third after 3–5 days" applies only when the trade is in profit (TSLA 2020-06-01: our day-3 rule
+sold a third BELOW cost on 06-04, moved the stop to cost, and the 06-05 dip took the rest out before the run to $68):
+
+> "Yes, and maybe we need to vary the stop adjustment, can we try adjusting stop so the whole trade is breakeven after
+> taking the partial?"
+
+**What it means:** (1) the day-based third is sold only when the trade is in profit; (2) after the partial, the stop goes
+where the WHOLE trade nets zero, not to the entry price: with a third sold at price p and two thirds left, stop =
+fill − (p − fill) / 2, never below the original stop. A third at +2R puts that stop at fill − 1R — the original stop. His
+follow-ups: *"Wait , with 2r profit the original stop will be breakeven for the trade"* and *"This makes more sense given
+original stop is where the pattern would fail"* — the stop belongs where the PATTERN fails, not at the entry price. Test:
+`docs/analysis/cb_exit_partial_prereg_2026-10-19.md` (#702).
