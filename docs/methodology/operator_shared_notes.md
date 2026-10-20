@@ -2135,3 +2135,14 @@ fill − (p − fill) / 2, never below the original stop. A third at +2R puts th
 follow-ups: *"Wait , with 2r profit the original stop will be breakeven for the trade"* and *"This makes more sense given
 original stop is where the pattern would fail"* — the stop belongs where the PATTERN fails, not at the entry price. Test:
 `docs/analysis/cb_exit_partial_prereg_2026-10-19.md` (#702).
+
+## 2026-10-20 — HTFL named as a high-tight-flag breakout (operator, verbatim)
+
+> "Did we catch htfl htf breakout today?"
+
+HTFL 2026-10-20: +9.0% to $55.59 (high $56.30) on 2.9M shares (~2x), clearing the 10-06 high $54.32 after a ~21-session base
+under a ~117% run-up. **Our two readings that night:** the HTF stage board (#697) held HTFL at WATCH (`close_vs_pivot_+6.5%`)
+— no TRIGGERED, because the #146 licence needs a TIGHTENING-or-better label in the last 5 days and HTFL's last TIGHTENING was
+10-06: the base was reset to INVALIDATED five times in October (10-01, 10-07, 10-08, 10-14, 10-16) by closes just under the
+20-day average (by $0.03–$1.34). The consolidation-breakout shadow (#702) caught it: trendline level, ORH5 filled $52.30, stop
+$51.00, close $55.59. Recorded as a labelled HTF example for the detector (a tuning datum, not a trade question).
