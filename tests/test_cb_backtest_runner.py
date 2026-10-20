@@ -1002,6 +1002,25 @@ def test_forward_window_is_what_close_variant_rows_walks():
 
 
 # ═══ the STEP 0 firewall ═════════════════════════════════════════════════════════════════════════
+def _write_export(data, bars):
+    """The SPY + X daily export (`daily_closes_all.csv.gz`) of `bars` under `data`."""
+    with gzip.open(data / "daily_closes_all.csv.gz", "wt") as fh:
+        for t in ("SPY", "X"):
+            for k in range(len(bars)):
+                fh.write(f"{t},{bars.dates[k].isoformat()},{bars.o[k]},{bars.h[k]},{bars.l[k]},{bars.c[k]},{bars.v[k]}\n")
+
+
+def _disarm(monkeypatch, names, msg, owner=rn):
+    """Replace each of `names` (a name on `owner`, or an (owner, name) pair) with a stub that raises AssertionError(msg): the stage under
+    test must not reach it. Returns the stub."""
+    def boom(*a, **k):
+        raise AssertionError(msg)
+    for item in names:
+        o, name = item if isinstance(item, tuple) else (owner, item)
+        monkeypatch.setattr(o, name, boom)
+    return boom
+
+
 def _write_cands(path, cands):
     cols = (["ticker", "D", "E", "K", "split", "pole_date", "base_id", "apollo_regime", "pivot", "adr20", "high_E", "low_E",
              "open_E", "close_E", "atr14", "median_dollar_vol20", "retrigger", "retrigger_chain", "pole_bad_high"]
@@ -1016,10 +1035,7 @@ def _syn_dir(tmp_path, *, split="discovery", n_cands=1, with_done=True):
     bars, e = _e_bars(start=DISCOVERY_START if split == "discovery" else None)
     data = tmp_path / "data"
     (data / "out").mkdir(parents=True)
-    with gzip.open(data / "daily_closes_all.csv.gz", "wt") as fh:
-        for t in ("SPY", "X"):
-            for k in range(len(bars)):
-                fh.write(f"{t},{bars.dates[k].isoformat()},{bars.o[k]},{bars.h[k]},{bars.l[k]},{bars.c[k]},{bars.v[k]}\n")
+    _write_export(data, bars)
     cands = [_m_cand(bars, e, split=split, K=k) for k in ("k5", "k10", "full", "tl")[:n_cands]]
     for c in cands:
         c["pole_date"] = "p"
@@ -1038,13 +1054,10 @@ class TestStep0Firewall:
     def test_step0_never_reaches_a_walker_and_writes_no_outcome_column(self, tmp_path, monkeypatch, capsys):
         data, bars, e, cands = _syn_dir(tmp_path, split="holdout", n_cands=3)
 
-        def boom(*a, **k):
-            raise AssertionError("STEP 0 reached an outcome walker")
         from agents.market_intelligence import live_fill_counterfactuals as lfc
-        for owner, name in ((cb, "walk_exit"), (cb, "day0_result_to_outcome"), (ant, "simulate"), (lfc, "walk_arm"),
-                            (rn, "walk_arms"), (rn, "family_a_control"), (rn, "apollo_control"), (rn, "cap_sensitivity"),
-                            (rn, "evaluate_candidate"), (rn, "load_daily"), (rn, "close_variant_rows")):
-            monkeypatch.setattr(owner, name, boom)
+        _disarm(monkeypatch, ((cb, "walk_exit"), (cb, "day0_result_to_outcome"), (ant, "simulate"), (lfc, "walk_arm"),
+                              (rn, "walk_arms"), (rn, "family_a_control"), (rn, "apollo_control"), (rn, "cap_sensitivity"),
+                              (rn, "evaluate_candidate"), (rn, "load_daily"), (rn, "close_variant_rows")), "STEP 0 reached an outcome walker")
         rn.main(["step0-entries", "--data", str(data), "--workers", "1", "--small-out", str(tmp_path / "small")])
         txt = capsys.readouterr().out
         comp = (data / "out" / "entries_holdout_composition.tsv").read_text().splitlines()
@@ -1166,10 +1179,7 @@ class TestHoldoutGuard:
         data, repo = self._tree(tmp_path, monkeypatch)
         monkeypatch.setattr(rn, "REPO", repo)
 
-        def boom(*a, **k):
-            raise AssertionError("the holdout was opened")
-        for name in ("read_candidates", "load_daily", "run_minute_stage", "_setup_minute_inputs"):
-            monkeypatch.setattr(rn, name, boom)
+        _disarm(monkeypatch, ("read_candidates", "load_daily", "run_minute_stage", "_setup_minute_inputs"), "the holdout was opened")
         with pytest.raises(SystemExit) as ex:                                                  # no registration doc at all
             rn.main(["holdout", "--data", str(data)])
         assert ex.value.code == 2 and "REFUSED" in capsys.readouterr().err
@@ -1313,10 +1323,7 @@ class TestHoldoutGuard:
         other = tmp_path / "elsewhere"
         other.mkdir()
 
-        def boom(*a, **k):
-            raise AssertionError("the holdout was opened")
-        for name in ("read_candidates", "load_daily", "run_minute_stage", "_setup_minute_inputs"):
-            monkeypatch.setattr(rn, name, boom)
+        _disarm(monkeypatch, ("read_candidates", "load_daily", "run_minute_stage", "_setup_minute_inputs"), "the holdout was opened")
         for extra, needle in ((["--out", str(other)], "--out"), (["--small-out", str(other)], "--small-out"),
                               (["--limit-dates", "3"], "--limit-dates"), (["--no-close"], "--no-close"),
                               (["--no-apollo"], "--no-apollo")):
@@ -2153,10 +2160,7 @@ def _p5_dir(tmp_path, *, split="discovery", staller=False):
     bars, e = _stall_bars(start) if staller else _e_bars(start=start)
     data = tmp_path / "data"
     (data / "out").mkdir(parents=True)
-    with gzip.open(data / "daily_closes_all.csv.gz", "wt") as fh:
-        for t in ("SPY", "X"):
-            for k in range(len(bars)):
-                fh.write(f"{t},{bars.dates[k].isoformat()},{bars.o[k]},{bars.h[k]},{bars.l[k]},{bars.c[k]},{bars.v[k]}\n")
+    _write_export(data, bars)
     for name, ks in (("candidates.tsv", ("tl",)), ("candidates_com_comb.tsv", ("com", "comb"))):
         cs = [_p5_cand(bars, e, K=k, split=split) for k in ks]
         rn.write_tsv(data / "out" / name, cs, list(cs[0].keys()))
@@ -2408,10 +2412,7 @@ def _pre_dir(tmp_path, *, staller=True, minutes="ok", extra_rows=()):
     bars, e = _stall_bars(PRE_START) if staller else _e_bars(start=PRE_START)
     data = tmp_path / "data"
     (data / "out").mkdir(parents=True)
-    with gzip.open(data / "daily_closes_all.csv.gz", "wt") as fh:
-        for t in ("SPY", "X"):
-            for k in range(len(bars)):
-                fh.write(f"{t},{bars.dates[k].isoformat()},{bars.o[k]},{bars.h[k]},{bars.l[k]},{bars.c[k]},{bars.v[k]}\n")
+    _write_export(data, bars)
     cs = [_p5_cand(bars, e, K=k, split="pre") for k in ("tl", "com")] + [dict(c, split="pre") for c in extra_rows]
     rn.write_tsv(data / "out" / "candidates_tl_com.tsv", cs, list(cs[0].keys()))
     day = bars.dates[e].isoformat()
@@ -3160,10 +3161,7 @@ def _h60_tree(tmp_path, monkeypatch, deep=False):
     for d in (data, pre):
         (d / "out").mkdir(parents=True)
         (d / "minutes").mkdir()
-    with gzip.open(data / "daily_closes_all.csv.gz", "wt") as fh:
-        for t in ("SPY", "X"):
-            for k in range(len(bars)):
-                fh.write(f"{t},{bars.dates[k].isoformat()},{bars.o[k]},{bars.h[k]},{bars.l[k]},{bars.c[k]},{bars.v[k]}\n")
+    _write_export(data, bars)
     P = H60_E1 - 20
     pole = bars.dates[P].isoformat()
     c1 = _p5_cand(bars, H60_E1, K="tl", pivot=10.25, high_E=10.30, low_E=9.85, open_E=10.0, close_E=10.05)
@@ -3298,10 +3296,7 @@ class TestH60Guards:
         p = tree["cb702"] / "out" / "candidates.tsv"
         p.write_text(p.read_text() + "\n")
 
-        def boom(*a, **k):
-            raise AssertionError("the read was opened")
-        for name in ("h60_prepare", "load_daily", "p5_walk", "h60_exits", "read_candidates"):
-            monkeypatch.setattr(rn, name, boom)
+        _disarm(monkeypatch, ("h60_prepare", "load_daily", "p5_walk", "h60_exits", "read_candidates"), "the read was opened")
         with pytest.raises(SystemExit) as ex:
             _h60_main(tree, "h60-read")
         err = capsys.readouterr().err
@@ -3312,10 +3307,7 @@ class TestH60Guards:
         _h60_doc(tree)
         before = sorted(p.name for p in tree["cb702"].rglob("*"))
 
-        def boom(*a, **k):
-            raise AssertionError("opened")
-        for name in ("load_daily", "p5_walk", "h60_exits", "h60_step0"):
-            monkeypatch.setattr(rn, name, boom)
+        _disarm(monkeypatch, ("load_daily", "p5_walk", "h60_exits", "h60_step0"), "opened")
         assert _h60_main(tree, "h60-read", "--dry-run") is None
         out = capsys.readouterr().out
         assert "H60 DRY RUN (freeze check passed" in out and "2 bases (tl 1, com 1), 3 rows, 2 (date, ticker) pairs" in out
@@ -3346,8 +3338,7 @@ class TestH60Guards:
     def test_hindsight_on_any_period_needs_the_deciding_discovery_verdict(self, tmp_path, monkeypatch, capsys):
         tree = _h60_tree(tmp_path, monkeypatch)
         (tree["cb702_pre"] / "out" / "h60_verdict_pre.txt").write_text("pre verdict\n")        # the pre verdict alone is not enough
-        for name in ("h60_load_frame", "h60_read_bases"):
-            monkeypatch.setattr(rn, name, lambda *a, **k: (_ for _ in ()).throw(AssertionError("read before the deciding verdict")))
+        _disarm(monkeypatch, ("h60_load_frame", "h60_read_bases"), "read before the deciding verdict")
         with pytest.raises(SystemExit) as ex:
             rn.main(["h60-hindsight", "--data", str(tree["cb702"]), "--data-pre", str(tree["cb702_pre"]), "--period", "pre"])
         err = capsys.readouterr().err
@@ -3378,11 +3369,8 @@ class TestH60Step0Firewall:
     def test_step0_never_reaches_a_walker_writes_entry_time_columns_only_and_equals_the_table(self, tmp_path, monkeypatch, capsys):
         tree = _h60_tree(tmp_path, monkeypatch)
 
-        def boom(*a, **k):
-            raise AssertionError("STEP 0 reached an outcome walker")
-        for owner, name in ((cb, "walk_exit"), (cb, "day0_result_to_outcome"), (cb, "walk_his_arms"), (cb, "day0_walk_target"), (rn, "h60_walk"),
-                            (rn, "h60_exit_rows"), (rn, "load_daily"), (rn, "p5_walk"), (rn, "evaluate_exits")):
-            monkeypatch.setattr(owner, name, boom)
+        _disarm(monkeypatch, ((cb, "walk_exit"), (cb, "day0_result_to_outcome"), (cb, "walk_his_arms"), (cb, "day0_walk_target"), (rn, "h60_walk"),
+                              (rn, "h60_exit_rows"), (rn, "load_daily"), (rn, "p5_walk"), (rn, "evaluate_exits")), "STEP 0 reached an outcome walker")
         assert _h60_main(tree, "h60-step0") is None
         txt = capsys.readouterr().out
         assert "REGISTERED TABLE CHECK (check 5) - window discovery: EQUAL" in txt and "NESTING (per row, tl)" in txt and ": 0 (must be 0)" in txt
@@ -3474,10 +3462,7 @@ class TestH60Read:
         _h60_doc(tree)
         monkeypatch.setitem(rn.H60_EXPECTED["discovery"], "C1", 5)
 
-        def boom(*a, **k):
-            raise AssertionError("an exit or the twin was walked")
-        monkeypatch.setattr(rn, "h60_exits", boom)
-        monkeypatch.setattr(rn, "p5_walk", boom)
+        _disarm(monkeypatch, ("h60_exits", "p5_walk"), "an exit or the twin was walked")
         with pytest.raises(SystemExit) as ex:
             _h60_main(tree, "h60-read")
         assert ex.value.code == 2 and "REFUSED before any exit" in capsys.readouterr().out
@@ -3488,9 +3473,7 @@ class TestH60Read:
         _h60_doc(tree)
         monkeypatch.setattr(rn, "h60_twin_check", lambda *a, **k: ["3 of 4 paired rows differ in realized_r"])
 
-        def boom(*a, **k):
-            raise AssertionError("an exit was walked")
-        monkeypatch.setattr(rn, "h60_exits", boom)
+        _disarm(monkeypatch, ("h60_exits",), "an exit was walked")
         with pytest.raises(SystemExit) as ex:
             _h60_main(tree, "h60-read")
         assert ex.value.code == 3 and "TWIN CHECK FAILED" in capsys.readouterr().out
@@ -3685,7 +3668,7 @@ class TestExitReadMechanics:
             assert rn.exitpb_compare_module(f"seed{seed}", ref, res["A"]) == []
             statuses.add(res["A"]["status"])
             for name, r in res.items():                    # every arm: the invariants the registration's WOULD-FAIL-IF lines name
-                f = rn.exitpb_facts(r["events"], fill, stop)
+                f = rn.exitpb_facts(r["events"], fill)
                 if rn.EXITPB_ARMS[name].profit_gated and f["partial_kind"] == "session":
                     assert f["partial_px"] > fill
                 if rn.EXITPB_ARMS[name].stop_rule == "wbe" and f["stop_to"] is not None:
@@ -3716,7 +3699,7 @@ class TestExitReadMechanics:
         fwd, _c = cb.forward_window(bars, np.arange(len(bars)), e, rn.HORIZON)
         mod = cb.walk_exit(fill=XP_FILL, stop=XP_STOP, closes_before=bars.c[:e + 1], fwd=fwd, arm=cb.ARMS["p33_s3_t10_ifprofit"], adr20=0.10)
         assert mod["events"][-1][0] == 5 and mod["sessions_held"] == 5
-        f = rn.exitpb_facts(res["pp"]["events"], XP_FILL, XP_STOP)
+        f = rn.exitpb_facts(res["pp"]["events"], XP_FILL)
         assert f == {"partial_kind": "", "partial_session": "", "partial_px": None, "stop_to": None, "exit_kind": "trail", "exit_px": 10.30, "exit_session": 4,
                      "stopped_after_third_le_fill": 0, "beabove": 0, "beabove_kind": ""}
 
@@ -3735,7 +3718,7 @@ class TestExitReadMechanics:
             assert _ev(res[name], "stop_to") == [(3, "stop_to", pytest.approx(wbe_stop), 0.0)]
             assert res[name]["events"][-1][:2] == (5, "stop") and res[name]["events"][-1][2] == pytest.approx(wbe_stop) and res[name]["status"] == "stopped"
             assert res[name]["realized_r"] == pytest.approx(0.0, abs=1e-12)          # the whole trade nets zero at that stop
-            f = rn.exitpb_facts(res[name]["events"], XP_FILL, XP_STOP)
+            f = rn.exitpb_facts(res[name]["events"], XP_FILL)
             assert (f["partial_kind"], f["partial_session"], f["partial_px"], f["stop_to"], f["stopped_after_third_le_fill"]) == ("session", 3, 10.46, pytest.approx(wbe_stop), 1)
         s0 = res["pp_s0"]
         assert _ev(s0, "stop_to") == [(3, "stop_to", XP_STOP, 0.0)] and not any(ev[1] == "stop" and ev[0] in (4, 5) for ev in s0["events"])
@@ -3746,7 +3729,7 @@ class TestExitReadMechanics:
         for name in ("A", "wbe"):
             assert _ev(res[name], "partial") == [(3, "partial", 10.28, rn.EXITPB_BASE.partial_frac)] and _ev(res[name], "stop_to") == [(3, "stop_to", XP_FILL, 0.0)]
             assert _ev(res[name], "be_above_close") == [(3, "be_above_close", 10.28, 0.0)]
-            assert rn.exitpb_facts(res[name]["events"], XP_FILL, XP_STOP)["beabove_kind"] == "session"
+            assert rn.exitpb_facts(res[name]["events"], XP_FILL)["beabove_kind"] == "session"
         for name in ("pp", "pp_wbe", "pp_s0"):
             assert _ev(res[name], "partial") == [] and _ev(res[name], "be_above_close") == [], name
         assert _ev(res["pp5_wbe"], "partial") == [(4, "partial", 10.40, rn.EXITPB_BASE.partial_frac)]
@@ -3798,7 +3781,7 @@ class TestExitReadMechanics:
             r = res[name]
             assert r["status"] == "stopped_day0" and _ev_is(r["events"][-1], 0, "day0_stop", XP_STOP, 2 / 3), name
             assert r["realized_r"] == pytest.approx(0.0, abs=1e-12)
-            f = rn.exitpb_facts(r["events"], XP_FILL, XP_STOP)
+            f = rn.exitpb_facts(r["events"], XP_FILL)
             assert f["exit_px"] <= XP_STOP and f["stop_to"] == XP_STOP and f["partial_kind"] == "day0_r"
         assert res["A"]["status"] == "stopped_day0" and res["A"]["events"][-1][2] == XP_FILL        # A was out at the fill on minute 30 already
 
@@ -3855,7 +3838,7 @@ class TestExitReadMechanics:
         res, ref = _xp_walk(XP_PROFIT_TAIL)
         a = res["A"]
         ar = rn.arm_result(a, width=(XP_FILL - XP_STOP) / XP_FILL, n_fwd=121, horizon=rn.HORIZON)
-        af = rn.exitpb_facts(a["events"], XP_FILL, XP_STOP)
+        af = rn.exitpb_facts(a["events"], XP_FILL)
         pinned = {"status": "stopped", "mature": 1, "sessions_held": 4, "partial_kind": "session", "partial_session": "3", "beabove": 0,
                   "fwd_bars": 121, "fwd_hole": 0, "realized_r": a["realized_r"]}
         assert rn.exitpb_compare_pinned("k", pinned, ar, af, 121, False) == []
@@ -3935,7 +3918,7 @@ class TestExitReadReport:
         problems, lines = rn.exitpb_self_checks(df, "discovery")
         assert problems == [] and any(ln.startswith("(a) pp-family session thirds on a close <= the fill: 0") for ln in lines)
         assert any(ln.startswith("(g) TSLA 2020-06-01: not in this period") for ln in lines)
-        txt = rn.exitpb_report_text("discovery", rrows, deltas, verdicts, ["DATA CHECKS: synthetic"], lines, ["pre: no verdict file yet (not run) - no stamp"])
+        txt = rn.exitpb_report_text("discovery", rrows, verdicts, ["DATA CHECKS: synthetic"], lines, ["pre: no verdict file yet (not run) - no stamp"])
         assert "THE DECIDING EXIT BAR" in txt and "C1 VERDICT on the stop change: win" in txt and "CONSEQUENCE (the registration's table): win -> pp_wbe" in txt
         assert "EXPECTATIONS" in txt and "CELL VERDICT under pp_wbe" in txt and "BE_ABOVE_CLOSE by kind" in txt and "IMPLEMENTATION CHECKS" in txt and "INTERVAL RECIPE" in txt
         assert "ENTRY h60" not in txt                                                          # no hourly-close rows in this table
@@ -4058,10 +4041,7 @@ class TestExitReadStage:
         assert ex.value.code == 2 and "--period is required" in capsys.readouterr().err
         assert not list(out.glob("*exitpb*")) and not list((rn.HERE / "out").glob("*exitpb*"))
         # the dry run: counts off the pinned tables; no daily bar, minute row or walker
-        def boom(*a, **k):
-            raise AssertionError("opened")
-        for name in ("load_daily", "exitpb_parity", "exitpb_walk_all", "exitpb_walk_arms", "read_minute_file"):
-            monkeypatch.setattr(rn, name, boom)
+        _disarm(monkeypatch, ("load_daily", "exitpb_parity", "exitpb_walk_all", "exitpb_walk_arms", "read_minute_file"), "opened")
         before = sorted(p.name for p in tree["cb702"].rglob("*"))
         assert _xp_main(tree, "--dry-run") is None
         o = capsys.readouterr().out
@@ -4087,11 +4067,7 @@ class TestExitReadStage:
         p = tree["cb702"] / "out" / "trades_discovery_h60.tsv.gz"
         p.write_bytes(p.read_bytes() + b"\n")
 
-        def boom(*a, **k):
-            raise AssertionError("the read was opened")
-        for name in ("load_daily", "exitpb_parity", "exitpb_walk_all"):
-            monkeypatch.setattr(rn, name, boom)
-        monkeypatch.setattr(rn, "exitpb_pinned_trades", boom)
+        _disarm(monkeypatch, ("load_daily", "exitpb_parity", "exitpb_walk_all", "exitpb_pinned_trades"), "the read was opened")
         with pytest.raises(SystemExit) as ex:
             _xp_main(tree)
         err = capsys.readouterr().err
@@ -4101,8 +4077,7 @@ class TestExitReadStage:
         monkeypatch.setattr(rn, "REPO", tree2["repo"])
         monkeypatch.setattr(rn, "HERE", tmp_path / "b" / "hereroot")
         (tree2["cb702"] / "minutes" / "_done.psv").write_text(f"{tree2['c1']['E']}|X|390|ok\n")       # the E2 pair (the h60 fill) is no longer logged
-        for name in ("load_daily", "exitpb_parity", "exitpb_walk_all"):
-            monkeypatch.setattr(rn, name, boom)
+        _disarm(monkeypatch, ("load_daily", "exitpb_parity", "exitpb_walk_all"), "the read was opened")
         with pytest.raises(SystemExit) as ex:
             _xp_main(tree2, "--parity-only")
         assert ex.value.code == 2 and "1 of 2 (date, ticker) pairs are not logged" in capsys.readouterr().err

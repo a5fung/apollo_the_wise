@@ -115,6 +115,7 @@ from pathlib import Path
 import numpy as np
 
 REPO = Path(__file__).resolve().parents[3]
+MODULE_REL = Path("agents/market_intelligence/consolidation_breakout.py")      # the module the registered reads pin, relative to the repo
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
@@ -669,6 +670,13 @@ def write_tsv(path: Path, rows: list, cols: list, gz: bool = False) -> int:
         for r in rows:
             w.writerow([_fmt(r.get(c)) for c in cols])
     return len(rows)
+
+
+def read_tsv(path: Path, **kw):
+    """A tab-separated table with no NA guessing (`""` is the one missing value), the way the pre-read, h60 and exit-read stages load a
+    pinned table; `kw` carries `usecols`."""
+    import pandas as pd
+    return pd.read_csv(path, sep="\t", keep_default_na=False, na_values=[""], low_memory=False, **kw)
 
 
 def table(rows: list, header: list) -> str:
@@ -1894,6 +1902,12 @@ def partial_path(p: Path) -> Path:
     return Path(str(p) + ".partial")
 
 
+def existing_outputs(out: Path, names: tuple) -> list:
+    """The once-only guards' scan: of each of `names` under `out`, the final file and the `.partial` a crashed run left behind, whichever
+    exists - in `names` order (the first hit is the one a refusal prints)."""
+    return [q for name in names for q in (Path(out) / name, partial_path(Path(out) / name)) if q.exists()]
+
+
 def _setup_minute_inputs(args, split: str) -> dict:
     data = Path(args.data)
     out = Path(args.out) if args.out else data / "out"
@@ -2586,7 +2600,7 @@ def frozen_files(data: Path, repo: Path = REPO, minutes: "Path | None" = None) -
     """{footer label: path} - everything the holdout read rests on. A label is the key the registration doc's footer
     must carry as `<label> sha256: <hex>`; `holdout --print-pins` prints the current lines for P4 to paste."""
     data = Path(data)
-    out = {"module": Path(repo) / "agents" / "market_intelligence" / "consolidation_breakout.py",
+    out = {"module": Path(repo) / MODULE_REL,
            "runner": Path(__file__).resolve(),
            "cell table": data / "out" / "watch.tsv.gz"}            # the cells are post-hoc flags on this one table
     for label, rel in FROZEN_CODE.items():                         # the code and constants the controls and the fills use
@@ -2697,8 +2711,7 @@ def holdout_option_problems(args, data: Path) -> list:
 
 def holdout_existing_outputs(out: Path) -> list:
     """Holdout outputs already on disk: the final tables, or the `.partial` a crashed run left behind."""
-    return [q for name in ("trades_holdout.tsv.gz", "entries_holdout.tsv.gz", f"trades_holdout_{P5_NAME}.tsv.gz")
-            for q in (Path(out) / name, partial_path(Path(out) / name)) if q.exists()]
+    return existing_outputs(out, ("trades_holdout.tsv.gz", "entries_holdout.tsv.gz", f"trades_holdout_{P5_NAME}.tsv.gz"))
 
 
 def run_holdout(args) -> int:
@@ -3572,6 +3585,22 @@ def pre_missing_pairs(pairs: list, on_disk: dict, done: "dict | None") -> tuple:
     return missing, lost
 
 
+def minute_inputs(rows: list, minutes_dir: Path) -> dict:
+    """The (E, ticker) pairs `rows` need, what the minute directory holds of them (`pre_missing_pairs`), and the per-date file map with
+    `os.devnull` for a date whose pairs are all logged `empty` (the fetcher writes no file for it: read as no minutes, never dropped) -
+    the one chain under the pre-read, the h60 read and the exit read."""
+    pairs = sorted({(r["E"], r["ticker"]) for r in rows})
+    has_dir = minutes_dir.is_dir()
+    on_disk = minute_date_files(minutes_dir) if has_dir else {}
+    done = load_done_pairs(minutes_dir) if has_dir else None
+    missing, lost = pre_missing_pairs(pairs, on_disk, done)
+    files = dict(on_disk)
+    for d in {e for e, _t in pairs} - set(files):
+        files[d] = Path(os.devnull)
+    return {"minutes_dir": minutes_dir, "pairs": pairs, "on_disk": on_disk, "done": done, "missing": missing, "lost": lost, "files": files,
+            "by_date": group_by_date(rows, set(files))}
+
+
 def pre_inputs(args) -> dict:
     """The pre-read's population and what the minute directory holds of it: the era file's first breaks of tl / com (the label is
     checked on every row, and every D must lie in the era), the pairs they need, and the pairs missing (see `pre_missing_pairs`).
@@ -3586,31 +3615,20 @@ def pre_inputs(args) -> dict:
     if outside:
         raise ValueError(f"{path}: {len(outside):,} rows have a watch night D outside {PRE_FIRST}..{PRE_LAST} "
                          f"(first: {outside[0]['ticker']} D={outside[0]['D']}): this is not the pre-read's file")
-    has_dir = minutes_dir.is_dir()
-    on_disk = minute_date_files(minutes_dir) if has_dir else {}
-    done = load_done_pairs(minutes_dir) if has_dir else None
-    pairs = sorted({(c["E"], c["ticker"]) for c in cands})
-    missing, lost = pre_missing_pairs(pairs, on_disk, done)
-    return {"data": data, "out": out, "minutes_dir": minutes_dir, "cands": cands, "pairs": pairs, "on_disk": on_disk, "done": done,
-            "missing": missing, "lost": lost, "path": path}
+    return {"data": data, "out": out, "cands": cands, "path": path, **minute_inputs(cands, minutes_dir)}
 
 
 def pre_complete(inp: dict) -> dict:
-    """The complete inputs the minute and P5 stages take (`_setup_minute_inputs`' shape), once nothing is missing. A date with no minute
-    file is one whose every pair is logged `empty` (the fetcher writes no file for it): it is read as no minutes, never dropped."""
-    files = dict(inp["on_disk"])
-    for d in {e for e, _t in inp["pairs"]} - set(files):
-        files[d] = Path(os.devnull)
-    by_date = group_by_date(inp["cands"], set(files))
-    assert sum(len(v) for v in by_date.values()) == len(inp["cands"])
-    return {**inp, "files": files, "by_date": by_date}
+    """The complete inputs the minute and P5 stages take (`_setup_minute_inputs`' shape), once nothing is missing: `minute_inputs` already
+    mapped a date with no minute file to `os.devnull`, so every row is grouped (asserted), none dropped."""
+    assert sum(len(v) for v in inp["by_date"].values()) == len(inp["cands"])
+    return inp
 
 
 def pre_existing_outputs(out: Path) -> list:
     """Pre-read outputs already on disk: the final tables, or the `.partial` a crashed run left behind."""
     sfx = out_suffix(PRE_KEYS)
-    return [q for name in (f"trades_{PRE_ERA}{sfx}.tsv.gz", f"entries_{PRE_ERA}{sfx}.tsv.gz", f"trades_{PRE_ERA}_{P5_NAME}.tsv.gz")
-            for q in (Path(out) / name, partial_path(Path(out) / name)) if q.exists()]
+    return existing_outputs(out, (f"trades_{PRE_ERA}{sfx}.tsv.gz", f"entries_{PRE_ERA}{sfx}.tsv.gz", f"trades_{PRE_ERA}_{P5_NAME}.tsv.gz"))
 
 
 def pre_option_problems(args) -> list:
@@ -4137,9 +4155,8 @@ def h60_read_bases(out: Path, period: str) -> dict:
 def h60_watch_index(path: Path, k: str) -> dict:
     """The watch-night facts the read joins: {"row": {(ticker, D): {ci, i, pole_high, base_low, pivot, slope, anchor}}, "nights": {ticker:
     set of ci with a watch row}, "noline": {(ticker, pole_date): set of ci whose watch row carries no level}}. `slope` / `anchor` only on tl."""
-    import pandas as pd
     cols = ["ticker", "watch_date", "ci", "i", "pole_date", "pole_high", "base_low", f"pivot_{k}"] + (["tl_slope_pct", "tl_anchor_idx"] if k == "tl" else [])
-    df = pd.read_csv(path, sep="\t", usecols=cols, keep_default_na=False, na_values=[""], low_memory=False)
+    df = read_tsv(path, usecols=cols)
     row, nights, noline = {}, defaultdict(set), defaultdict(set)
     piv = df[f"pivot_{k}"].to_numpy(dtype=float)
     slope = df["tl_slope_pct"].to_numpy(dtype=float) if k == "tl" else np.full(len(df), np.nan)
@@ -4236,20 +4253,8 @@ def h60_lbo_kind(rows: list, n: int, variant: str, facts: dict, pick: dict) -> s
 
 # ── the minute inputs of a period ──────────────────────────────────────────────────────────────────────────────────────────────
 def h60_minute_inputs(bases: dict, minutes_dir: Path) -> dict:
-    """The (E, ticker) pairs the population needs, what the minute directory holds of them (`pre_missing_pairs`), and the per-date file map
-    with `os.devnull` for a date whose pairs are all logged `empty` (read as no minutes, never dropped)."""
-    rows = [r for rs in bases.values() for r in rs]
-    pairs = sorted({(r["E"], r["ticker"]) for r in rows})
-    has_dir = minutes_dir.is_dir()
-    on_disk = minute_date_files(minutes_dir) if has_dir else {}
-    done = load_done_pairs(minutes_dir) if has_dir else None
-    missing, lost = pre_missing_pairs(pairs, on_disk, done)
-    files = dict(on_disk)
-    for d in {e for e, _t in pairs} - set(files):
-        files[d] = Path(os.devnull)
-    by_date = group_by_date(rows, set(files))
-    return {"minutes_dir": minutes_dir, "pairs": pairs, "on_disk": on_disk, "done": done, "missing": missing, "lost": lost,
-            "files": files, "by_date": by_date}
+    """`minute_inputs` over every row of every base."""
+    return minute_inputs([r for rs in bases.values() for r in rs], minutes_dir)
 
 
 def _h60_step0_job(date_iso: str) -> tuple:
@@ -4368,11 +4373,12 @@ def h60_step0_counts(bases: dict, facts: dict, pick: dict, years=None) -> dict:
     return dict(c)
 
 
-def h60_step0_problems(counts: dict, expected: dict, tl_rows: "int | None") -> list:
-    """Check 5: the STEP 0 counts must equal the registered table (candidate counts). Every key the table carries is compared."""
+def h60_step0_problems(counts: dict, expected: dict) -> list:
+    """Check 5: the STEP 0 counts must equal the registered table (candidate counts). Every key the table carries is compared - but
+    `tl_rows`, which the caller leaves out (the row count is by label / file: `h60_label_rows`)."""
     got = {"C0": counts.get(("tl", "C0"), 0), "C0_multi": counts.get(("tl", "C0_multi"), 0), "C1": counts.get(("tl", "C1"), 0),
            "C1_multi": counts.get(("tl", "C1_multi"), 0), "orh5_C1_fills": counts.get(("tl", "C1_orh5_fills"), 0),
-           "com_C1": counts.get(("com", "C1"), 0), "tl_rows": tl_rows}
+           "com_C1": counts.get(("com", "C1"), 0)}
     for cell in ("C2", "C3", "C4", "C5", "C6", "C7"):
         got[cell] = counts.get(("tl", cell), 0)
     return [f"{k}: STEP 0 reads {got.get(k)}, the registration's table says {want}" for k, want in expected.items() if got.get(k) != want]
@@ -4392,7 +4398,9 @@ def _dist(values: list, cuts: tuple) -> str:
 
 
 def h60_step0_text(period: str, bases: dict, facts: dict, states: dict, pick: dict, counts_by_window: dict, problems_by_window: dict,
-                   shares: dict, inp: dict, pinned_fills: "dict | None") -> str:
+                   shares: dict, inp: dict, pinned_fills: "dict | None", tried: list, data_abstains: list, early_problems: list) -> str:
+    """`tried` = the h60 facts of the tl rows the rule READ; `data_abstains` = those of them that abstained on a data reason;
+    `early_problems` = `h60_early_close_problems(shares)` - all three computed once, in `h60_step0`."""
     out: list = []
     A = out.append
     A(f"#702 h60 STEP 0 - {period}: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under "
@@ -4401,16 +4409,13 @@ def h60_step0_text(period: str, bases: dict, facts: dict, states: dict, pick: di
     A(f"bases {len(bases):,} ({sum(1 for k in bases if k[2] == 'tl'):,} tl / {sum(1 for k in bases if k[2] == 'com'):,} com); rows {n_rows:,}; "
       f"(E, ticker) pairs {len(inp['pairs']):,}; pairs not logged in _done.psv {len(inp['missing']):,}; logged ok with no file {len(inp['lost']):,}; "
       f"minutes state {dict(sorted(Counter(states.values()).items()))}")
-    ec = h60_early_close_problems(shares)
     listed = {d: s for d, s in shares.items() if d in H60_EARLY_CLOSE and s[0]}
     A(f"EARLY-CLOSE CHECK (check 2): listed dates read {len(listed)} - " + ", ".join(f"{d} {s[1] / s[0]:.0%}" for d, s in sorted(listed.items()))
       + f"; other dates with < {H60_EARLY_SHARE:.0%} at minute >= {H60_EARLY_CUT}: {sum(1 for d, s in shares.items() if d not in H60_EARLY_CLOSE and s[0] and s[1] / s[0] < H60_EARLY_SHARE)}"
-      + (" -> FAILS: " + "; ".join(ec) if ec else " -> ok"))
-    tried = [(facts[(r['ticker'], r['E'], r['K'])]['h60'], r) for rs in bases.values() for r in rs
-             if pick.get((r['ticker'], r['E'], r['K']), {}).get('h60') is not None and r['K'] == H60_LEVEL]
-    n_da = sum(1 for f, _r in tried if f["status"] == "abstain" and f["reason"] in H60_DATA_ABSTAINS)
+      + (" -> FAILS: " + "; ".join(early_problems) if early_problems else " -> ok"))
+    n_da = len(data_abstains)
     A(f"DATA-ABSTAIN SHARE (check 3, h60 on tl, the rows the rule READ): {n_da:,} of {len(tried):,} ({(n_da / len(tried) if tried else 0):.2%}; "
-      f"{dict(Counter(f['reason'] for f, _r in tried if f['status'] == 'abstain' and f['reason'] in H60_DATA_ABSTAINS))}) - limit "
+      f"{dict(Counter(f['reason'] for f in data_abstains))}) - limit "
       f"{H60_DATA_ABSTAIN_MAX:.0%}: {'BLOCKS THE READ' if tried and n_da / len(tried) > H60_DATA_ABSTAIN_MAX else 'ok'}")
     for wname, counts in counts_by_window.items():
         pr = problems_by_window[wname]
@@ -4468,11 +4473,10 @@ def h60_step0_text(period: str, bases: dict, facts: dict, states: dict, pick: di
 def h60_pinned_fills(out: Path, period: str, bases: dict) -> dict:
     """{(window, cell): the ORH5 fills the PINNED P5 table carries} for the period's tl bases - the entry status read off the pinned file
     (a row with the primary arm = a filled entry); no outcome column is read."""
-    import pandas as pd
     p = out / f"trades_{period}_p5.tsv.gz"
     if not p.exists():
         return {}
-    df = pd.read_csv(p, sep="\t", usecols=["ticker", "D", "K", "arm"] + list(CELL_COLS), keep_default_na=False, na_values=[""], low_memory=False)
+    df = read_tsv(p, usecols=["ticker", "D", "K", "arm"] + list(CELL_COLS))
     df = df[(df["K"] == H60_LEVEL) & (df["arm"] == H60_ARM)]
     first = {(rs[0]["ticker"], rs[0]["D"]): rs for key, rs in bases.items() if key[2] == H60_LEVEL}
     out_: Counter = Counter()
@@ -4490,7 +4494,7 @@ def h60_pinned_fills(out: Path, period: str, bases: dict) -> dict:
 
 def h60_step0(bases: dict, inp: dict, workers: int, period: str, out: Path, small: Path, pinned_fills: "dict | None") -> dict:
     """Run STEP 0 (the per-date job, the selection, the counts, the checks) and write `h60_step0_<period>.tsv.gz` + `.txt`. Returns
-    {facts, states, pick, counts (by window), problems (by window), shares, text, data_share, early_problems}."""
+    {facts, pick, problems (by window), text, data_share, early_problems} - what the callers read."""
     _G.update(by_date=inp["by_date"], files=inp["files"], done=inp["done"])
     facts, states, shares = {}, {}, {}
     for d, (fx, st, share) in zip(list(inp["by_date"]), _pool_map(_h60_step0_job, list(inp["by_date"]), workers)):
@@ -4503,20 +4507,21 @@ def h60_step0(bases: dict, inp: dict, workers: int, period: str, out: Path, smal
     for wname, years in h60_windows_of(period):
         counts[wname] = h60_step0_counts(bases, facts, pick, years)
         exp = H60_EXPECTED.get(wname, {})
-        problems[wname] = h60_step0_problems(counts[wname], {k: v for k, v in exp.items() if k != "tl_rows"}, None)
+        problems[wname] = h60_step0_problems(counts[wname], {k: v for k, v in exp.items() if k != "tl_rows"})
     rows = h60_step0_rows(bases, facts, states, pick, period)
     out.mkdir(parents=True, exist_ok=True)
     small.mkdir(parents=True, exist_ok=True)
     write_tsv(out / f"h60_step0_{period}.tsv.gz", rows, H60_STEP0_COLS, gz=True)
-    text = h60_step0_text(period, bases, facts, states, pick, counts, problems, shares, inp, pinned_fills)
+    tried = [facts[(r['ticker'], r['E'], r['K'])]['h60'] for rs in bases.values() for r in rs
+             if pick.get((r['ticker'], r['E'], r['K']), {}).get('h60') is not None and r['K'] == H60_LEVEL]
+    data_abstains = [f for f in tried if f["status"] == "abstain" and f["reason"] in H60_DATA_ABSTAINS]
+    early_problems = h60_early_close_problems(shares)
+    text = h60_step0_text(period, bases, facts, states, pick, counts, problems, shares, inp, pinned_fills, tried, data_abstains, early_problems)
     text += f"\nTL ROWS of the period's bases: {tl_rows:,} (the registration's row count is by row LABEL / file: see the read's header)\n"
     (small / f"h60_step0_{period}.txt").write_text(text + "\n")
     (out / f"h60_step0_{period}.txt").write_text(text + "\n")
-    tried = [facts[(r['ticker'], r['E'], r['K'])]['h60'] for rs in bases.values() for r in rs
-             if pick.get((r['ticker'], r['E'], r['K']), {}).get('h60') is not None and r['K'] == H60_LEVEL]
-    n_da = sum(1 for f in tried if f["status"] == "abstain" and f["reason"] in H60_DATA_ABSTAINS)
-    return {"facts": facts, "states": states, "pick": pick, "counts": counts, "problems": problems, "shares": shares, "text": text,
-            "data_share": (n_da / len(tried)) if tried else 0.0, "early_problems": h60_early_close_problems(shares), "tl_rows": tl_rows}
+    return {"facts": facts, "pick": pick, "problems": problems, "text": text,
+            "data_share": (len(data_abstains) / len(tried)) if tried else 0.0, "early_problems": early_problems}
 
 
 def h60_label_rows(out: Path, period: str) -> "int | None":
@@ -4693,10 +4698,9 @@ def h60_twin_check(twin: Path, pinned: Path) -> list:
         return [f"pinned twin {pinned} not found"]
     if gz_content_sha(twin) == gz_content_sha(pinned):
         return []
-    import pandas as pd
     cols = ["ticker", "D", "K", "stop_variant", "abstain_reason", "arm", "status", "realized_r", "mature"]
-    a = pd.read_csv(twin, sep="\t", usecols=cols, keep_default_na=False, na_values=[""], low_memory=False)
-    b = pd.read_csv(pinned, sep="\t", usecols=cols, keep_default_na=False, na_values=[""], low_memory=False)
+    a = read_tsv(twin, usecols=cols)
+    b = read_tsv(pinned, usecols=cols)
     keys = ["ticker", "D", "K", "stop_variant", "arm"]
     for df in (a, b):
         df["arm"] = df["arm"].fillna("")
@@ -4722,9 +4726,7 @@ def h60_twin_check(twin: Path, pinned: Path) -> list:
 # ── the pairs table (one row per base, both sides) ─────────────────────────────────────────────────────────────────────────────
 def h60_load_twin_side(twin: Path) -> dict:
     """{(ticker, D, K): {fill, r, adr, mature, open}} of the twin's primary-arm rows (ORH5 filled first breaks)."""
-    import pandas as pd
-    df = pd.read_csv(twin, sep="\t", usecols=["ticker", "D", "K", "arm", "fill", "realized_r", "pnl_adr", "mature"], keep_default_na=False,
-                     na_values=[""], low_memory=False)
+    df = read_tsv(twin, usecols=["ticker", "D", "K", "arm", "fill", "realized_r", "pnl_adr", "mature"])
     df = df[df["arm"] == H60_ARM]
     return {(t, d, k): {"fill": f, "r": r, "adr": a, "mature": int(m), "open": int(not m)}
             for t, d, k, f, r, a, m in df[["ticker", "D", "K", "fill", "realized_r", "pnl_adr", "mature"]].itertuples(index=False)}
@@ -4734,9 +4736,8 @@ def h60_load_trade_side(trades: Path) -> dict:
     """{(ticker, E, K, entry, stop): {status "filled", fill, fill_minute, r, adr, mature, open} | {status "abstain", reason}} of the h60
     table: the primary-arm rows (a walked trade) and the abstain rows (a stop reading that could not be taken), so every side's status is
     read off ITS OWN rows."""
-    import pandas as pd
-    df = pd.read_csv(trades, sep="\t", usecols=["ticker", "E", "K", "entry", "stop_variant", "arm", "abstain_reason", "fill", "fill_minute",
-                                                 "realized_r", "pnl_adr", "mature"], keep_default_na=False, na_values=[""], low_memory=False)
+    df = read_tsv(trades, usecols=["ticker", "E", "K", "entry", "stop_variant", "arm", "abstain_reason", "fill", "fill_minute",
+                                  "realized_r", "pnl_adr", "mature"])
     out = {}
     for t, e, k, v, sv, reason in df[df["arm"].isna()][["ticker", "E", "K", "entry", "stop_variant", "abstain_reason"]].itertuples(index=False):
         out[(t, e, k, v, sv)] = {"status": "abstain", "reason": ("" if reason != reason else str(reason))}
@@ -5178,12 +5179,11 @@ def h60_report_text(period: str, rows: list, verdicts: dict, notes: list, twin_c
 
 def h60_load_frame(trades: Path, pairs: Path) -> tuple:
     """(trades frame with `year_first`, pairs frame) for the report."""
-    import pandas as pd
-    df = pd.read_csv(trades, sep="\t", keep_default_na=False, na_values=[""], low_memory=False)
+    df = read_tsv(trades)
     df["year_first"] = df["first_E"].astype(str).str[:4].astype(int)
     for col in ("K", "entry", "stop_variant", "fill_month", "first_month"):
         df[col] = df[col].astype("category")
-    pf = pd.read_csv(pairs, sep="\t", keep_default_na=False, na_values=[""], low_memory=False)
+    pf = read_tsv(pairs)
     return df, pf
 
 
@@ -5193,7 +5193,7 @@ def h60_frozen_files(dirs: dict, repo: Path = REPO) -> dict:
     this runner incl. the h60 code, constants.py, exit_logic.py), the two daily exports and the two minute trees. The doc body is hashed by
     `freeze_check`."""
     d, p = Path(dirs["cb702"]), Path(dirs["cb702_pre"])
-    out = {"module": Path(repo) / "agents" / "market_intelligence" / "consolidation_breakout.py", "runner": Path(__file__).resolve(),
+    out = {"module": Path(repo) / MODULE_REL, "runner": Path(__file__).resolve(),
            "code/constants.py": Path(repo) / FROZEN_CODE["code/constants.py"], "code/exit_logic.py": Path(repo) / FROZEN_CODE["code/exit_logic.py"],
            "cb702/daily_closes_all.csv.gz": d / "daily_closes_all.csv.gz",            # every walked R is read off these two exports
            "cb702_pre/daily_closes_all.csv.gz": p / "daily_closes_all.csv.gz"}
@@ -5208,10 +5208,11 @@ def h60_frozen_files(dirs: dict, repo: Path = REPO) -> dict:
     return out
 
 
-def h60_doc_path(args, repo: "Path | None" = None) -> Path:
-    """The h60 registration doc: `--prereg`, else `docs/analysis/<H60_DOC>` under the repo (looked up at call time)."""
+def registration_doc_path(args, name: str) -> Path:
+    """A one-run read's registration doc (`H60_DOC` / `EXITPB_DOC`): `--prereg`, else `docs/analysis/<name>` under the repo (looked up at
+    call time)."""
     pre = getattr(args, "prereg", None)
-    return Path(pre) if pre else Path(REPO if repo is None else repo) / "docs" / "analysis" / H60_DOC
+    return Path(pre) if pre else Path(REPO) / "docs" / "analysis" / name
 
 
 def h60_option_problems(args, data: Path) -> list:
@@ -5234,8 +5235,7 @@ def h60_option_problems(args, data: Path) -> list:
 
 def h60_existing_outputs(out: Path, period: str) -> list:
     """The once-only guard: the period's trades table, the twin, or the `.partial` a crashed run left behind."""
-    return [q for name in (f"trades_{period}_h60.tsv.gz", f"trades_{period}_{H60_TWIN}.tsv.gz")
-            for q in (Path(out) / name, partial_path(Path(out) / name)) if q.exists()]
+    return existing_outputs(out, (f"trades_{period}_h60.tsv.gz", f"trades_{period}_{H60_TWIN}.tsv.gz"))
 
 
 def h60_prepare(args, dirs: dict, period: str) -> dict:
@@ -5301,7 +5301,7 @@ def run_h60_read(args) -> int:
     dirs = h60_dirs(args)
     data = dirs["cb702"]
     if getattr(args, "print_pins", False):
-        doc = h60_doc_path(args)
+        doc = registration_doc_path(args, H60_DOC)
         lines = pin_lines(data, REPO, files=h60_frozen_files(dirs, REPO))
         lines.append(f"- doc body sha256: `{doc_body_sha(doc.read_text(encoding='utf-8')) if doc.is_file() else 'MISSING'}`")
         print("\n".join(lines))
@@ -5325,7 +5325,7 @@ def run_h60_read(args) -> int:
         print("REFUSED: --no-freeze-check is honoured only together with --dry-run", file=sys.stderr)
         return 2
     if not no_fc:
-        problems = freeze_check(doc=h60_doc_path(args), data=data, repo=REPO, files=h60_frozen_files(dirs, REPO))
+        problems = freeze_check(doc=registration_doc_path(args, H60_DOC), data=data, repo=REPO, files=h60_frozen_files(dirs, REPO))
         if problems:
             print("REFUSED: the freeze check failed - the read is not opened:", file=sys.stderr)
             for p in problems:
@@ -5422,8 +5422,7 @@ def run_h60_read(args) -> int:
     rows, verdicts = h60_report_rows(df, pf, period)
     twin_c0 = None
     try:
-        import pandas as pd
-        tw = pd.read_csv(twin, sep="\t", usecols=["K", "arm", "C0", "realized_r", "mature"], keep_default_na=False, na_values=[""], low_memory=False)
+        tw = read_tsv(twin, usecols=["K", "arm", "C0", "realized_r", "mature"])
         tw = tw[(tw["K"] == H60_LEVEL) & (tw["arm"] == H60_ARM) & (tw["C0"] == 1) & (tw["mature"] == 1)]
         r = tw["realized_r"].to_numpy(dtype=float)
         twin_c0 = {"mean_r": float(r.mean()), "win_rate": float((r > 0).mean()), "share_ge10": float((r >= 10).mean())} if len(r) else None
@@ -5510,14 +5509,13 @@ def run_h60_hindsight(args) -> int:
     if not tp.exists() or not pp.exists():
         print(f"REFUSED: {tp} / {pp} missing - run h60-read first", file=sys.stderr)
         return 2
-    import pandas as pd
     df, pf = h60_load_frame(tp, pp)
     prim = df[(df["K"] == H60_LEVEL) & (df["entry"] == H60_ENTRY) & (df["stop_variant"] == H60_STOP) & (df["arm"] == H60_ARM)]
     fds = {b: int(x) for b, x in prim[["base", "fill_day_stop"]].itertuples(index=False)}
     pf["h60_fill_day_stop"] = pf["base"].map(fds)
     twin = out / f"trades_{period}_{H60_TWIN}.tsv.gz"
     if twin.exists():
-        tw = pd.read_csv(twin, sep="\t", usecols=["ticker", "D", "K", "arm", "status"], keep_default_na=False, na_values=[""], low_memory=False)
+        tw = read_tsv(twin, usecols=["ticker", "D", "K", "arm", "status"])
         tw = tw[(tw["arm"] == H60_ARM)]
         fd5 = {(t, dd, k): int(s == "stopped_day0") for t, dd, k, s in tw[["ticker", "D", "K", "status"]].itertuples(index=False)}
         pf["orh5_fill_day_stop"] = [fd5.get((t, dd, k)) for t, dd, k in zip(pf["ticker"], pf["first_D"], pf["K"])]
@@ -5798,7 +5796,7 @@ def exitpb_walk_arms(entry: dict, *, closes_before, fwd: "cb.DailyBars", adr20: 
     return out
 
 
-def exitpb_facts(events: list, fill: float, stop0: float) -> dict:
+def exitpb_facts(events: list, fill: float) -> dict:
     """The event-derived columns of one walk: the third (kind as `partial_facts` names it - day0_r / r / session / '' -, its session and
     price), the stop resting after it (`stop_to`), the exit (the last event: kind, price, session), whether the trade was stopped after
     its third at or below the fill, and the kind of third a `be_above_close` followed ('session' or 'r')."""
@@ -5862,21 +5860,6 @@ def _exitpb_trade(rec: dict, period: str, entry: str, **extra) -> dict:
         t[cell] = int(rec.get(cell) or 0)
     t.update(extra)
     return t
-
-
-def exitpb_minute_inputs(trades: list, minutes_dir: Path) -> dict:
-    """The (E, ticker) pairs the fills need and what the minute directory holds of them (`pre_missing_pairs`; a date with no file maps
-    to os.devnull so a lost pair is named, never dropped)."""
-    pairs = sorted({(t["E"], t["ticker"]) for t in trades})
-    has_dir = minutes_dir.is_dir()
-    on_disk = minute_date_files(minutes_dir) if has_dir else {}
-    done = load_done_pairs(minutes_dir) if has_dir else None
-    missing, lost = pre_missing_pairs(pairs, on_disk, done)
-    files = dict(on_disk)
-    for d in {e for e, _t in pairs} - set(files):
-        files[d] = Path(os.devnull)
-    return {"minutes_dir": minutes_dir, "pairs": pairs, "on_disk": on_disk, "done": done, "missing": missing, "lost": lost, "files": files,
-            "by_date": group_by_date(trades, set(files))}
 
 
 def exitpb_trade_key(t: dict) -> str:
@@ -5970,7 +5953,7 @@ def exitpb_reach_text(reach: Counter, period: str) -> str:
 
 def exitpb_row(t: dict, arm: ExitArm, raw: dict, n_fwd: int, cut: bool) -> list:
     a = arm_result(raw, width=t["width_pct"], n_fwd=n_fwd, horizon=HORIZON)
-    f = exitpb_facts(raw["events"], t["fill"], t["stop"])
+    f = exitpb_facts(raw["events"], t["fill"])
     row = {k: v for k, v in t.items() if k != "_pinned"}
     row.update(arm=arm.name, session_rule=arm.session_rule, stop_rule=arm.stop_rule, status=a["status"], realized_r=a["realized_r"],
                pnl_adr=a["pnl_adr"], acct_pct=a["acct_pct"], sessions_held=a["sessions_held"], mature=int(a["mature"]), open_mark=int(a["open_mark"]),
@@ -6007,7 +5990,7 @@ def _exitpb_job(date_iso: str) -> tuple:
                                arms=(ctl if mode == "parity" else arms))
         a = res[EXITPB_CONTROL]
         ar = arm_result(a, width=t["width_pct"], n_fwd=len(fwd), horizon=HORIZON)
-        af = exitpb_facts(a["events"], t["fill"], t["stop"])
+        af = exitpb_facts(a["events"], t["fill"])
         problems += exitpb_compare_pinned(key, t["_pinned"], ar, af, len(fwd), cut)
         if mode == "parity":
             entry2 = {"status": "filled", "reason": None, "fill": t["fill"], "stop": t["stop"], "width_pct": t["width_pct"], "fill_minute": t["walk_from"],
@@ -6164,8 +6147,7 @@ def exitpb_self_checks(df, period: str) -> tuple:
 
 # ── the report ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 def exitpb_load_frame(path: Path):
-    import pandas as pd
-    df = pd.read_csv(path, sep="\t", keep_default_na=False, na_values=[""], low_memory=False)
+    df = read_tsv(path)
     df["tkey"] = df["ticker"].astype(str) + "|" + df["E"].astype(str) + "|" + df["K"].astype(str) + "|" + df["entry"].astype(str)
     for col in ("K", "entry", "arm", "fill_month"):
         df[col] = df[col].astype("category")
@@ -6326,7 +6308,7 @@ def exitpb_stamps(dirs: dict, period: str, c1_delta_mean) -> list:
     return lines
 
 
-def exitpb_report_text(period: str, rows: list, deltas: list, verdicts: dict, notes: list, check_lines: list, stamps: list) -> str:
+def exitpb_report_text(period: str, rows: list, verdicts: dict, notes: list, check_lines: list, stamps: list) -> str:
     out: list = []
     A = out.append
     decides = period == "discovery"
@@ -6438,7 +6420,7 @@ def exitpb_frozen_files(dirs: dict, repo: Path = REPO) -> dict:
     per data dir, both daily exports, both minute trees, the candidates files, the module, this runner. The doc body is hashed by
     `freeze_check`."""
     d, p = Path(dirs["cb702"]), Path(dirs["cb702_pre"])
-    out = {"module": Path(repo) / "agents" / "market_intelligence" / "consolidation_breakout.py", "runner": Path(__file__).resolve(),
+    out = {"module": Path(repo) / MODULE_REL, "runner": Path(__file__).resolve(),
            "cb702/daily_closes_all.csv.gz": d / "daily_closes_all.csv.gz", "cb702_pre/daily_closes_all.csv.gz": p / "daily_closes_all.csv.gz"}
     for name in ("candidates.tsv", "candidates_com_comb.tsv", f"trades_discovery_{P5_NAME}.tsv.gz", f"trades_holdout_{P5_NAME}.tsv.gz",
                  "trades_discovery_h60.tsv.gz", "trades_holdout_h60.tsv.gz"):
@@ -6450,14 +6432,9 @@ def exitpb_frozen_files(dirs: dict, repo: Path = REPO) -> dict:
     return out
 
 
-def exitpb_doc_path(args, repo: "Path | None" = None) -> Path:
-    pre = getattr(args, "prereg", None)
-    return Path(pre) if pre else Path(REPO if repo is None else repo) / "docs" / "analysis" / EXITPB_DOC
-
-
 def exitpb_module_problem(repo: Path = REPO) -> "str | None":
     """The registration's hard pin: the module must equal `EXITPB_MODULE_SHA` (the live shadow's module), footer or no footer."""
-    p = Path(repo) / "agents" / "market_intelligence" / "consolidation_breakout.py"
+    p = Path(repo) / MODULE_REL
     if not p.is_file():
         return f"module missing: {p}"
     got = sha256_file(p)
@@ -6468,8 +6445,7 @@ def exitpb_module_problem(repo: Path = REPO) -> "str | None":
 
 def exitpb_existing_outputs(out: Path, period: str) -> list:
     """The once-only guard: the period's new trades table, or the `.partial` a crashed run left behind."""
-    p = Path(out) / f"trades_{period}_{EXITPB_NAME}.tsv.gz"
-    return [q for q in (p, partial_path(p)) if q.exists()]
+    return existing_outputs(out, (f"trades_{period}_{EXITPB_NAME}.tsv.gz",))
 
 
 def exitpb_prepare(dirs: dict, period: str) -> dict:
@@ -6478,7 +6454,7 @@ def exitpb_prepare(dirs: dict, period: str) -> dict:
     d = h60_period_dir(dirs, period)
     out = d / "out"
     trades = exitpb_pinned_trades(out, period)
-    return {"data": d, "out": out, "trades": trades, "inp": exitpb_minute_inputs(trades, d / "minutes")}
+    return {"data": d, "out": out, "trades": trades, "inp": minute_inputs(trades, d / "minutes")}
 
 
 def run_exit_read(args) -> int:
@@ -6492,7 +6468,7 @@ def run_exit_read(args) -> int:
     dirs = h60_dirs(args)
     data = dirs["cb702"]
     if getattr(args, "print_pins", False):
-        doc = exitpb_doc_path(args)
+        doc = registration_doc_path(args, EXITPB_DOC)
         lines = pin_lines(data, REPO, files=exitpb_frozen_files(dirs, REPO))
         lines.append(f"- doc body sha256: `{doc_body_sha(doc.read_text(encoding='utf-8')) if doc.is_file() else 'MISSING'}`")
         print("\n".join(lines))
@@ -6520,7 +6496,7 @@ def run_exit_read(args) -> int:
         print(f"REFUSED: {mp_}", file=sys.stderr)
         return 2
     if not no_fc and not parity_only:
-        problems = freeze_check(doc=exitpb_doc_path(args), data=data, repo=REPO, files=exitpb_frozen_files(dirs, REPO))
+        problems = freeze_check(doc=registration_doc_path(args, EXITPB_DOC), data=data, repo=REPO, files=exitpb_frozen_files(dirs, REPO))
         if problems:
             print("REFUSED: the freeze check failed - the read is not opened:", file=sys.stderr)
             for p in problems:
@@ -6564,7 +6540,7 @@ def run_exit_read(args) -> int:
 
     say(f"EXIT READ (#702){' - PARITY ONLY' if parity_only else ''}: period {period}; {len(trades):,} pinned fills ({pop}) on {len(inp['by_date']):,} dates, "
         f"{len(inp['pairs']):,} pairs all logged; freeze check {'NOT RUN (parity only)' if parity_only else ('SKIPPED' if no_fc else 'passed')}; module sha256 "
-        f"{sha256_file(Path(REPO) / 'agents' / 'market_intelligence' / 'consolidation_breakout.py')} (registered), runner sha256 {sha256_file(Path(__file__))}")
+        f"{sha256_file(Path(REPO) / MODULE_REL)} (registered), runner sha256 {sha256_file(Path(__file__))}")
     # pass 1: parity, before any new-arm number
     pc, problems, reach = exitpb_parity(prep, args.workers, say)
     n_par = sum(pc.values())
@@ -6606,7 +6582,7 @@ def run_exit_read(args) -> int:
     stamps = exitpb_stamps(dirs, period, d1.get("mean"))
     notes = [f"DATA CHECKS: freeze {'SKIPPED' if no_fc else 'passed'}; module {EXITPB_MODULE_SHA[:12]}... equal; parity P1 / P2 {n_par:,} fills, 0 mismatches; "
              f"implementation checks passed; rows walked {sum(n for k, n in tally.items() if k[0] == 'walked'):,} x {len(EXITPB_ARMS)} arms"]
-    text = exitpb_report_text(period, rows, deltas, verdicts, notes, check_lines, stamps)
+    text = exitpb_report_text(period, rows, verdicts, notes, check_lines, stamps)
     name = f"{EXITPB_NAME}_report_{period}"
     write_tsv(out / f"{name}.tsv", rows, EXITPB_REPORT_COLS)
     write_tsv(out / f"{EXITPB_NAME}_deltas_{period}.tsv", deltas, EXITPB_DELTA_COLS)
