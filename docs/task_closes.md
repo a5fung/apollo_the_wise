@@ -2332,3 +2332,20 @@ EVIDENCE:
 - **One pre-registered read on the new block:** run ONCE 2026-10-17 07:41 PT on the 07:39 read-only pull (`scripts/probes/_686/out/686_*`): 75 rows on 14 scan dates, STEP 0 no alarms, 12 runners. It names which hold: **none.** 0 of 63 features CONFIRMED and neither reversed lead confirmed, each with n, sign and p (ADR % 20 vs 55, 10.0% vs 18.2%, wrong sign, p 0.978; dollar volume 30 vs 45, 13.3% vs 17.8%, wrong sign, p 0.724; L1 p 0.669; L2 p 0.319). Report-only: HOLDS `PRE_repeat_scored_90d` (p 0.026), AGAINST `PRE_prev_close`.
 - **Independent check:** Opus re-derivation from the registration text, without the read's code (`scripts/probes/_686/verify/rederive_out.txt`): VERDICT MATCH on every number; p's differ by sampling noise only.
 - **One-paragraph proposal for his ruling:** `docs/analysis/686_results_2026-10-17.md` §"The proposal": no change to the score or admission is supported; the repeat-scored draw is named as a lead for a third block. Nothing waits on him unless he wants the separate 9-of-12 finding (runners that never scored HIGH) looked into.
+
+## #702 — the consolidation breakout: the holdout verdict is in and the forward shadow records breakouts; research continues as #705 (2026-10-20)
+
+BAR: "(1) a holdout verdict per cell (pass / can't tell / fail on the frozen bar) with a VERDICT MATCH independent re-derivation, written into the registration doc; (2) the shadow job writes watch rows nightly in prod and, on the first night a watch name's high clears its pivot, an entry row (fill or named abstain) plus 12 exit rows."
+
+EVIDENCE:
+- **(1) Holdout verdict per cell, re-derived, written into the registration doc:** the one-time holdout read ran 2026-10-19 on the frozen
+  primary: C1 FAIL (−0.72R on 30, interval −1.06 .. −0.35), C3 / C5 / C7 FAIL, C4 CAN'T TELL, C2 / C6 CAN'T TELL by n, C0 −0.13R on 7,531;
+  independent re-derivation VERDICT MATCH; written in `docs/analysis/cb_preregistration_2026-10-18.md` §RESULT (below the freeze marker).
+- **(2) Watch rows nightly in prod:** `consolidation_breakout_shadow` 17:48 ET success 10-19 (143 watch rows) and 10-20 (157), one
+  `consolidation_breakout_shadow_run` audit row each, no step errors.
+- **(2) First pivot-cross night = 10-20:** 88 of the 88 watch names (10-19) whose 10-20 high cleared a pivot have entry rows — 0 crossed with no
+  entry (the WOULD-FAIL-IF reads clean); 1,175 entry rows (813 filled, 172 named abstains e.g. `too_wide`, 190 `no_trigger`); every one of the 813
+  filled entries carries 15 exit rows — one per `cb.ARMS` arm. The DoD's "12 exit rows" miscounted the arm set (15 since the 10-17 build), so
+  every registered arm was walked, none fewer. Example: HTFL (his named HTF breakout) ORH5 filled $52.30, stop $51.00, 15 exit rows.
+- ⚠ **What this close cannot show:** any forward OUTCOME — the forward read (`consolidation_breakout_forward_read`, 30 settled C1 entries,
+  earliest 11-23) and the remaining research are carried by #705; nothing was dropped.

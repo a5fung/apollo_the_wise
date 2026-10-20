@@ -16035,5 +16035,5 @@ reviews:
       phase - for C1 and for C0 on the same entry and exit - and the same table for the backtest's holdout. Report the abstain
       share by reason (a high minute_daily_mismatch share on feed = sip rows flags a broken minute path) before any R. Then bring the operator ONE decision: paper yes/no for this setup
       on its own evidence, with the cell and entry it would use. Live is his sign-off and not asked here.
-    cross_refs: ["task #702", "docs/setups/consolidation_breakout.md", "docs/methodology/operator_shared_notes.md", "scripts/probes/_cb_backtest/README.md"]
+    cross_refs: ["task #705 (continues #702)", "docs/setups/consolidation_breakout.md", "docs/methodology/operator_shared_notes.md", "scripts/probes/_cb_backtest/README.md"]
     zero_verdict: "2026-10-17 WAITING — born with the recorder: the tables are empty until the first deploy night; a mature C1 primary-arm exit needs a C1 breakout and then the primary walk to terminate (trail or stop), typically 2-6 weeks after the break."
