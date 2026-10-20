@@ -1,0 +1,140 @@
+== now
+now_et	latest_theme_night
+2026-10-20 09:47:08.583364	2026-10-19
+(1 row)
+== 1. THE WINDOW OF EACH FOLD (the two later theme nights; a fold is complete when both exist)
+fold_night	dissolved_theme	home	later_night_1	later_night_2	window_ends	later_nights_seen	window_complete	latest_night
+2026-10-12	Alternative Asset Managers & Private Markets Platforms	Wealth Management & Retail Brokerage Platforms	2026-10-13	2026-10-14	2026-10-14	2	t	2026-10-19
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	2026-10-13	2026-10-14	2026-10-14	2	t	2026-10-19
+2026-10-12	Emerging Medical Device Innovators Breakout	Medical Device Mean-Reversion & Rotation Recovery	2026-10-13	2026-10-14	2026-10-14	2	t	2026-10-19
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	2026-10-13	2026-10-14	2026-10-14	2	t	2026-10-19
+2026-10-12	Functional Beverage & Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	2026-10-13	2026-10-14	2026-10-14	2	t	2026-10-19
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	2026-10-13	2026-10-14	2026-10-14	2	t	2026-10-19
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	2026-10-14	2026-10-15	2026-10-15	2	t	2026-10-19
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	2026-10-14	2026-10-15	2026-10-15	2	t	2026-10-19
+2026-10-14	Functional Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	2026-10-15	2026-10-16	2026-10-16	2	t	2026-10-19
+2026-10-14	Off-Price & Specialty Retail Consumer Rotation	U.S. Apparel & Fashion Recovery	2026-10-15	2026-10-16	2026-10-16	2	t	2026-10-19
+2026-10-15	Cloud Data Storage & Analytics Infrastructure	Cloud Application Delivery & Observability Infrastructure	2026-10-16	2026-10-19	2026-10-19	2	t	2026-10-19
+2026-10-15	Consumer Franchise Operators: Fitness & Quick-Service	Franchised Auto Dealership Groups	2026-10-16	2026-10-19	2026-10-19	2	t	2026-10-19
+2026-10-15	Enterprise Information Management & Infrastructure Engineering Software	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	2026-10-16	2026-10-19	2026-10-19	2	t	2026-10-19
+2026-10-15	RF, Microwave & Power Semiconductor Specialists	AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)	2026-10-16	2026-10-19	2026-10-19	2	t	2026-10-19
+2026-10-16	Casual Footwear & Athletic Lifestyle Brands	Cruise Lines & Leisure Travel Rebound	2026-10-19		2026-10-19	1	f	2026-10-19
+2026-10-16	Off-Price & Branded Apparel/Footwear Retail Rotation	Specialty Apparel & Mall-Based Specialty Retail Strength	2026-10-19		2026-10-19	1	f	2026-10-19
+(16 rows)
+== 2a. THE BAR. n moved, n undone (strict = pre-registered; wide = sensitivity). Read the bar on line 1.
+population	moves	folds	undone_strict	pct_strict	bar_strict	undone_wide	pct_wide	bar_wide	undone_narrow	pct_narrow	bar_narrow
+1 COMPLETE window (2 later theme nights seen) - THE BAR IS READ HERE	21	14	11	52.4	BAR MET (>= 1 in 3)	11	52.4	BAR MET (>= 1 in 3)	11	52.4	BAR MET (>= 1 in 3)
+2 ALL moves (censored ones are a floor)	24	16	13	54.2	BAR MET (>= 1 in 3)	13	54.2	BAR MET (>= 1 in 3)	13	54.2	BAR MET (>= 1 in 3)
+3 CENSORED only (fewer than 2 later nights seen)	3	2	2	66.7	BAR MET (>= 1 in 3)	2	66.7	BAR MET (>= 1 in 3)	2	66.7	BAR MET (>= 1 in 3)
+(3 rows)
+== 2b. SPLIT BY CAUSE (exclusive; with_pass1_5_loop = the returning theme or the dissolved one was absorbed by Pass 1.5 again inside the window)
+population	cause	moves	with_pass1_5_loop
+COMPLETE	not undone	10	0
+COMPLETE	validation removal	6	0
+COMPLETE	promote lane re-mint	3	2
+COMPLETE	unexplained re-mint	2	0
+ALL	not undone	11	0
+ALL	validation removal	8	0
+ALL	promote lane re-mint	3	2
+ALL	unexplained re-mint	2	0
+(8 rows)
+== 2c. EVERY CAUSE THAT TOUCHED A MOVE (not exclusive; a move can be in several)
+population	moves	any_validation_removal	any_strict_remint	both	any_rehome_move_out	any_existing_theme_holding_2plus	any_pass1_5_loop	stock_in_no_theme_at_latest_night
+COMPLETE	21	6	9	4	0	2	2	4
+ALL	24	8	9	4	0	2	2	5
+(2 rows)
+== 2d. BY FOLD NIGHT
+fold_night	window_complete	folds	moves	undone_strict	undone_wide
+2026-10-12	t	6	9	4	4
+2026-10-13	t	2	4	4	4
+2026-10-14	t	2	2	2	2
+2026-10-15	t	4	6	1	1
+2026-10-16	f	2	3	2	2
+(5 rows)
+== 3. PER DISSOLVED THEME (fold level)
+fold_night	dissolved_theme	home	members	moved	moves_undone	moves_validation_removed	strict_remints	existing_themes_holding_2plus	pass1_5_loop	later_nights_seen	window_complete
+2026-10-12	Alternative Asset Managers & Private Markets Platforms	Wealth Management & Retail Brokerage Platforms	2	1	0	0				2	t
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	3	2	0	0				2	t
+2026-10-12	Emerging Medical Device Innovators Breakout	Medical Device Mean-Reversion & Rotation Recovery	3	1	0	0				2	t
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	3	2	2	2				2	t
+2026-10-12	Functional Beverage & Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	2	1	0	0				2	t
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	2	2	2	0	Orthopedic & Spinal Surgery Devices @2026-10-13 [unexplained]			2	t
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	3	2	2	1	Diagnostic Testing & Lab Equipment Re-Rating @2026-10-14 [promote lane]			2	t
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	3	2	2	2	Enterprise Information Management & Infrastructure Engineering Software @2026-10-14 [promote lane]	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS @2026-10-15		2	t
+2026-10-14	Functional Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	2	1	1	0	Functional Energy Drink Brands @2026-10-15 [promote lane]		Functional Energy Drink Brands -> Non-Alcoholic Beverages & Energy Drinks @2026-10-16	2	t
+2026-10-14	Off-Price & Specialty Retail Consumer Rotation	U.S. Apparel & Fashion Recovery	2	1	1	0	Off-Price & Specialty Retail Consumer Rotation @2026-10-15 [promote lane]; Specialty Apparel & Mall-Based Specialty Retail Strength @2026-10-16 [unexplained]		Off-Price & Specialty Retail Consumer Rotation -> Specialty Apparel & Mall-Based Specialty Retail Strength @2026-10-16	2	t
+2026-10-15	Cloud Data Storage & Analytics Infrastructure	Cloud Application Delivery & Observability Infrastructure	2	1	0	0				2	t
+2026-10-15	Consumer Franchise Operators: Fitness & Quick-Service	Franchised Auto Dealership Groups	2	1	1	1	Consumer Franchise Operators: Fitness & Quick-Service @2026-10-16 [promote lane]			2	t
+2026-10-15	Enterprise Information Management & Infrastructure Engineering Software	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	3	2	0	0				2	t
+2026-10-15	RF, Microwave & Power Semiconductor Specialists	AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)	2	2	0	0				2	t
+2026-10-16	Casual Footwear & Athletic Lifestyle Brands	Cruise Lines & Leisure Travel Rebound	2	1	1	1				1	f
+2026-10-16	Off-Price & Branded Apparel/Footwear Retail Rotation	Specialty Apparel & Mall-Based Specialty Retail Strength	3	2	1	1				1	f
+(16 rows)
+== 3b. PER MOVE (the rows behind every count above)
+fold_night	dissolved_theme	home	stock	later_nights_seen	undone	undone_wide	undone_narrow	cause	validation_removed_et	rehomed_out_et	strict_remints	loose_only_themes_holding_2plus	pass1_5_loop	stock_sits_in_at_latest_night
+2026-10-12	Alternative Asset Managers & Private Markets Platforms	Wealth Management & Retail Brokerage Platforms	PAX	2	f	f	f	not undone						Wealth Management & Retail Brokerage Platforms [12]
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	DXCM	2	f	f	f	not undone						Medical Device Mean-Reversion & Rotation Recovery [18]
+2026-10-12	Diabetes Management Devices (CGM, Insulin Pumps & Delivery)	Medical Device Mean-Reversion & Rotation Recovery	MMED	2	f	f	f	not undone						
+2026-10-12	Emerging Medical Device Innovators Breakout	Medical Device Mean-Reversion & Rotation Recovery	ATEC	2	f	f	f	not undone						Orthopedic & Spinal Surgery Devices [4]
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	BOX	2	t	t	t	validation removal	2026-10-14 17:02:30					Cloud Content, Nonprofit & SMB Software Re-Rating [4]
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	DBX	2	t	t	t	validation removal	2026-10-14 17:02:30					Cloud Content, Nonprofit & SMB Software Re-Rating [4]
+2026-10-12	Functional Beverage & Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	COCO	2	f	f	f	not undone						
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	CNMD	2	t	t	t	unexplained re-mint			Orthopedic & Spinal Surgery Devices @2026-10-13 [unexplained, 4 members]			Orthopedic & Spinal Surgery Devices [4]
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	SIBN	2	t	t	t	unexplained re-mint			Orthopedic & Spinal Surgery Devices @2026-10-13 [unexplained, 4 members]			Orthopedic & Spinal Surgery Devices [4]
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	MDLN	2	t	t	t	promote lane re-mint			Diagnostic Testing & Lab Equipment Re-Rating @2026-10-14 [promote lane, 3 members, gate promote:birth/pass_rs_level]			Diagnostic Testing & Lab Equipment Re-Rating [3]; Medical Device Mean-Reversion & Rotation Recovery [18]
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	OMCL	2	t	t	t	validation removal	2026-10-14 17:04:20		Diagnostic Testing & Lab Equipment Re-Rating @2026-10-14 [promote lane, 3 members, gate promote:birth/pass_rs_level]			Diagnostic Testing & Lab Equipment Re-Rating [3]
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	BSY	2	t	t	t	validation removal	2026-10-14 17:04:07		Enterprise Information Management & Infrastructure Engineering Software @2026-10-14 [promote lane, 3 members, gate promote:birth/pass_rs_level]	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS @2026-10-15		AI-Powered Enterprise Analytics & Intelligent Workflow SaaS [17]
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	OTEX	2	t	t	t	validation removal	2026-10-14 17:04:07		Enterprise Information Management & Infrastructure Engineering Software @2026-10-14 [promote lane, 3 members, gate promote:birth/pass_rs_level]	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS @2026-10-15		AI-Powered Enterprise Analytics & Intelligent Workflow SaaS [17]
+2026-10-14	Functional Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	CELH	2	t	t	t	promote lane re-mint			Functional Energy Drink Brands @2026-10-15 [promote lane, 3 members, gate promote:birth/pass_rs_rising]		Functional Energy Drink Brands -> Non-Alcoholic Beverages & Energy Drinks @2026-10-16	Non-Alcoholic Beverages & Energy Drinks [8]
+2026-10-14	Off-Price & Specialty Retail Consumer Rotation	U.S. Apparel & Fashion Recovery	BBWI	2	t	t	t	promote lane re-mint			Off-Price & Specialty Retail Consumer Rotation @2026-10-15 [promote lane, 3 members, gate promote:birth/pass_rs_rising]; Specialty Apparel & Mall-Based Specialty Retail Strength @2026-10-16 [unexplained, 9 members, gate promote:join/join->Specialty Apparel & Mall-Based Specialty Retail Strength@1.0]		Off-Price & Specialty Retail Consumer Rotation -> Specialty Apparel & Mall-Based Specialty Retail Strength @2026-10-16	Specialty Apparel & Mall-Based Specialty Retail Strength [8]
+2026-10-15	Cloud Data Storage & Analytics Infrastructure	Cloud Application Delivery & Observability Infrastructure	SNOW	2	f	f	f	not undone						Cloud Application Delivery & Observability Infrastructure [4]
+2026-10-15	Consumer Franchise Operators: Fitness & Quick-Service	Franchised Auto Dealership Groups	VVV	2	t	t	t	validation removal	2026-10-16 17:04:28		Consumer Franchise Operators: Fitness & Quick-Service @2026-10-16 [promote lane, 3 members, gate promote:birth/pass_rs_level]			Auto Aftermarket, Powertrain & Preventive Maintenance Services [4]
+2026-10-15	Enterprise Information Management & Infrastructure Engineering Software	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	BSY	2	f	f	f	not undone						AI-Powered Enterprise Analytics & Intelligent Workflow SaaS [17]
+2026-10-15	Enterprise Information Management & Infrastructure Engineering Software	AI-Powered Enterprise Analytics & Intelligent Workflow SaaS	OTEX	2	f	f	f	not undone						AI-Powered Enterprise Analytics & Intelligent Workflow SaaS [17]
+2026-10-15	RF, Microwave & Power Semiconductor Specialists	AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)	MTSI	2	f	f	f	not undone						
+2026-10-15	RF, Microwave & Power Semiconductor Specialists	AI Semiconductor Manufacturing Supply Chain (Capex, Foundry & Assembly)	ON	2	f	f	f	not undone						
+2026-10-16	Casual Footwear & Athletic Lifestyle Brands	Cruise Lines & Leisure Travel Rebound	AS	1	t	t	t	validation removal	2026-10-19 17:02:46					Apparel & Lifestyle Brands Momentum (Specialty Retail, Scrubs, Sportswear) [3]
+2026-10-16	Off-Price & Branded Apparel/Footwear Retail Rotation	Specialty Apparel & Mall-Based Specialty Retail Strength	RL	1	f	f	f	not undone						Specialty Apparel & Mall-Based Specialty Retail Strength [8]
+2026-10-16	Off-Price & Branded Apparel/Footwear Retail Rotation	Specialty Apparel & Mall-Based Specialty Retail Strength	SHOE	1	t	t	t	validation removal	2026-10-19 17:03:53					
+(24 rows)
+== 4a. ROW (a) fold vs validator: each moved stock the description validator later removed, the tape number the fold used, and the validator reason
+fold_night	dissolved_theme	home	stock	validator_removed_et	validator_weekday	fold_test	tape_corr_when_folded	validator_reason	removal_count	window_complete
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	BOX	2026-10-14 17:02:30	Wed	tape	0.651	Description 'Cloud content management, file collaboration' does not match theme	1	t
+2026-10-12	Enterprise Unstructured Data Storage Infrastructure	Cloud Contact Center & CCaaS Communication Platforms	DBX	2026-10-14 17:02:30	Wed	tape	0.511	Description 'Cloud file storage, content collaboration platform' does not match theme	1	t
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	OMCL	2026-10-14 17:04:20	Wed	tape	0.435	Description 'Healthcare / Health Information Services — Hospital medication & supply automation systems' does not match theme	1	t
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	BSY	2026-10-14 17:04:07	Wed	tape	0.569	Description 'Technology / Software - Application — Infrastructure engineering software solutions' does not match theme	1	t
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	OTEX	2026-10-14 17:04:07	Wed	tape	0.757	Description 'Technology / Software - Application — Enterprise information management software, content services' does not match theme	1	t
+2026-10-15	Consumer Franchise Operators: Fitness & Quick-Service	Franchised Auto Dealership Groups	VVV	2026-10-16 17:04:28	Fri	tape	0.387	Description 'Consumer Cyclical / Auto & Truck Dealerships — Automotive oil changes & preventive maintenance retail' does not match theme	1	t
+2026-10-16	Casual Footwear & Athletic Lifestyle Brands	Cruise Lines & Leisure Travel Rebound	AS	2026-10-19 17:02:46	Mon	tape	0.371	Description 'Consumer Cyclical / Leisure — Sports equipment, apparel, footwear manufacturing & sales' does not match theme	1	f
+2026-10-16	Off-Price & Branded Apparel/Footwear Retail Rotation	Specialty Apparel & Mall-Based Specialty Retail Strength	SHOE	2026-10-19 17:03:53	Mon	tape	0.525	Description 'Consumer Cyclical / Apparel Retail — Retail footwear stores, shoes & sandals' does not match theme	1	f
+(8 rows)
+== 4b. ROW (a) counts, and homes whose roster the validator tried to mass-remove inside the window
+moves	removed_by_the_description_validator	complete_window_moves	complete_window_removed	homes_hit_by_the_mass_removal_tripwire
+24	8	21	6	0
+(1 row)
+== 5a. ROW (b) promote-lane and other re-mints: each returning theme, who wrote it, the birth-gate verdict, the G3 read that night
+fold_night	dissolved_theme	home	returning_theme	returned_night	written_by	source_column	members	written_et	written_after_the_fold_step_that_night	strict	birth_gate_verdict	g3_pass_that_night	cohesion	random_p95	fold_window_complete
+2026-10-12	Orthopedic Surgical Devices & Instruments	Medical Device Mean-Reversion & Rotation Recovery	Orthopedic & Spinal Surgery Devices	2026-10-13	unexplained	live	4	17:06:59	t	t		true	0.420	0.175	t
+2026-10-13	Diagnostic Testing & Lab Equipment Re-Rating	Medical Device Mean-Reversion & Rotation Recovery	Diagnostic Testing & Lab Equipment Re-Rating	2026-10-14	promote lane	shadow_promoted	3	17:11:20	t	t	promote:birth/pass_rs_level	false	0.086	0.294	t
+2026-10-13	Enterprise Information Management & Infrastructure Engineering Software	Enterprise HR & Workforce Management SaaS	Enterprise Information Management & Infrastructure Engineering Software	2026-10-14	promote lane	shadow_promoted	3	17:11:20	t	t	promote:birth/pass_rs_level	false	-0.003	0.281	t
+2026-10-14	Functional Energy Drink Brands	Non-Alcoholic Beverages & Energy Drinks	Functional Energy Drink Brands	2026-10-15	promote lane	shadow_promoted	3	17:09:21	t	t	promote:birth/pass_rs_rising	false	0.197	0.215	t
+2026-10-14	Off-Price & Specialty Retail Consumer Rotation	U.S. Apparel & Fashion Recovery	Off-Price & Specialty Retail Consumer Rotation	2026-10-15	promote lane	shadow_promoted	3	17:09:23	t	t	promote:birth/pass_rs_rising	false	0.152	0.222	t
+2026-10-14	Off-Price & Specialty Retail Consumer Rotation	U.S. Apparel & Fashion Recovery	Specialty Apparel & Mall-Based Specialty Retail Strength	2026-10-16	unexplained	live	9	17:10:22	t	t	promote:join/join->Specialty Apparel & Mall-Based Specialty Retail Strength@1.0	true	0.337	0.190	t
+2026-10-15	Consumer Franchise Operators: Fitness & Quick-Service	Franchised Auto Dealership Groups	Consumer Franchise Operators: Fitness & Quick-Service	2026-10-16	promote lane	shadow_promoted	3	17:11:50	t	t	promote:birth/pass_rs_level	false	0.175	0.303	t
+(7 rows)
+== 5b. ROW (b) the nightly picture: G3 failing themes the promote lane wrote AFTER the fold step (the free night), and how many are re-mints of folded themes
+night	g3_fails	fails_whose_row_the_promote_lane_wrote	of_those_written_after_the_fold_step	of_those_a_re_mint_of_a_folded_theme	fails_whose_row_the_engine_wrote
+2026-10-12	9	3	3	3	6
+2026-10-13	8	1	1	1	7
+2026-10-14	8	4	4	3	4
+2026-10-15	10	5	5	2	5
+2026-10-16	17	7	7	1	10
+(5 rows)
+== 5c. birth-gate rows per night and how many were unreadable (truncated), so a missing verdict above can be told from no verdict
+night	gate_rows	gate_rows_unreadable_truncated
+2026-10-12	2	0
+2026-10-13	2	0
+2026-10-14	2	0
+2026-10-15	2	0
+2026-10-16	2	0
+(5 rows)
