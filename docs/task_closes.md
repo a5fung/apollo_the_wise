@@ -2346,6 +2346,7 @@ EVIDENCE:
 - **(2) First pivot-cross night = 10-20:** 88 of the 88 watch names (10-19) whose 10-20 high cleared a pivot have entry rows — 0 crossed with no
   entry (the WOULD-FAIL-IF reads clean); 1,175 entry rows (813 filled, 172 named abstains e.g. `too_wide`, 190 `no_trigger`); every one of the 813
   filled entries carries 15 exit rows — one per `cb.ARMS` arm. The DoD's "12 exit rows" miscounted the arm set (15 since the 10-17 build), so
-  every registered arm was walked, none fewer. Example: HTFL (his named HTF breakout) ORH5 filled $52.30, stop $51.00, 15 exit rows.
+  every registered arm was walked, none fewer. **The 12-vs-15 basis put to him 2026-10-20 (advisor): "its done-list said 12 exit records
+  per entry; the shadow writes 15, one per registered exit rule ... OK to keep it closed on that basis?" — his answer: *"Ok"*.** Example: HTFL (his named HTF breakout) ORH5 filled $52.30, stop $51.00, 15 exit rows.
 - ⚠ **What this close cannot show:** any forward OUTCOME — the forward read (`consolidation_breakout_forward_read`, 30 settled C1 entries,
   earliest 11-23) and the remaining research are carried by #705; nothing was dropped.
