@@ -40,8 +40,10 @@ NOW = datetime(2026, 10, 14, 16, 0, tzinfo=timezone.utc)
 
 
 def _write_real_now(d: Path, job: str, status: str, age_days: float, detail: str = "d") -> Path:
-    """For the DRY-RUN deploy tests only: the shell gate reads the status against the REAL clock, so a fixture dated off
-    the fixed NOW turns stale a week after NOW and the "fresh red" test starts failing on the calendar (2026-10-19)."""
+    """For EVERY test that runs `gate.main` or the dry-run shell gate: both read the status against the REAL clock, so a
+    fixture dated off the fixed NOW turns stale a week after NOW and the "fresh red" tests start failing on the calendar
+    (2026-10-19: the dry-run tests; 2026-10-20: `test_main_exit_codes_log_and_audit_json` and the remaining dry-run tests).
+    Tests that call `decide` / `read_status` with an explicit `now=NOW` keep `_write`."""
     return _write(d, job, status, age_days, detail, now=datetime.now(timezone.utc))
 
 
@@ -206,7 +208,7 @@ def test_audit_payload_names_the_event_scope_job_and_reason(tmp_path):
 
 
 def test_main_exit_codes_log_and_audit_json(tmp_path, monkeypatch, capsys):
-    _write(tmp_path / "ci", "selection_replay", "red", 1, "live regressed")
+    _write_real_now(tmp_path / "ci", "selection_replay", "red", 1, "live regressed")
     log = tmp_path / "logs" / "ci_override.log"
     monkeypatch.delenv(gate.ENV_OVERRIDE, raising=False)
     assert gate.main(["--scope", "market-agent", "--dir", str(tmp_path / "ci"), "--log-file", str(log)]) == gate.EXIT_BLOCK
@@ -376,7 +378,7 @@ def test_dry_run_deploy_a_status_dir_that_cannot_be_created_warns_loudly_but_nev
 def test_dry_run_deploy_override_passes_logs_and_relays_the_audit_row(tmp_path):
     # source-pin-ok: wiring check — the override's three LOUD outputs (banner, logs/ line, the
     # docker-exec'd audit relay) are produced by the shell block, not by the Python alone.
-    _write(tmp_path / "ci", "selection_replay", "red", 1, "live regressed")
+    _write_real_now(tmp_path / "ci", "selection_replay", "red", 1, "live regressed")
     r = _dry_run(tmp_path, "execution", override="hotfix stop-ack, operator 10-14")
     assert r.returncode == 0 and "REACHED_BUILD" in r.stdout, r.stdout + r.stderr
     assert "CI GATE OVERRIDDEN" in r.stdout and "hotfix stop-ack, operator 10-14" in r.stdout
@@ -396,7 +398,7 @@ def test_dry_run_deploy_a_crash_inside_the_gate_is_loud_but_never_blocks(tmp_pat
     # deploy.sh treated ANY non-zero as a block, so an unforeseen exception in the gate (a
     # PermissionError from one stat()) exited 21 under 'a status is RED', and CI_OVERRIDE — which
     # is evaluated inside the crashed script — could not rescue it.
-    _write(tmp_path / "ci", "selection_replay", "green", 1)
+    _write_real_now(tmp_path / "ci", "selection_replay", "green", 1)
     r = _dry_run(tmp_path, scope, crash_gate=True)
     assert r.returncode == 0 and "REACHED_BUILD" in r.stdout, r.stdout + r.stderr
     assert "CI GATE ERROR" in r.stdout and "NOT blocking" in r.stdout
@@ -407,7 +409,7 @@ def test_dry_run_deploy_a_crash_inside_the_gate_is_loud_but_never_blocks(tmp_pat
 def test_dry_run_deploy_a_real_red_still_blocks_when_the_gate_runs_normally(tmp_path):
     # source-pin-ok: the other half of the crash test — exit 3 must still map to 21, and the
     # crash path above must not have loosened the real block.
-    _write(tmp_path / "ci", "selection_replay", "red", 1)
+    _write_real_now(tmp_path / "ci", "selection_replay", "red", 1)
     r = _dry_run(tmp_path, "market-agent")
     assert r.returncode == 21 and "CI GATE ERROR" not in r.stdout
 
@@ -418,7 +420,7 @@ def test_dry_run_deploy_a_block_after_an_execution_drift_pull_restates_the_owed_
     # source-pin-ok: wiring check. A blocked deploy has already pulled; the CI_OVERRIDE retry pulls
     # nothing (BEFORE_PULL == AFTER_PULL), so the #324 drift warning and the closing 'NOT DONE' line
     # never print again and apollo-execution is left on stale code (the LZB silent-dark class).
-    _write(tmp_path / "ci", "selection_replay", "red", 1)
+    _write_real_now(tmp_path / "ci", "selection_replay", "red", 1)
     r = _dry_run(tmp_path, "market-agent", exec_drift=True)
     assert r.returncode == 21, r.stdout + r.stderr
     assert "EXECUTION-RUNTIME DRIFT" in r.stdout and "bash scripts/deploy.sh execution" in r.stdout
@@ -428,7 +430,7 @@ def test_dry_run_deploy_a_block_after_an_execution_drift_pull_restates_the_owed_
 def test_dry_run_deploy_a_block_without_drift_does_not_mention_it(tmp_path):
     # source-pin-ok: negative half — and proves `${EXEC_DRIFT:-0}` survives `set -u` when the
     # variable was never bound (a deploy whose pull changed nothing).
-    _write(tmp_path / "ci", "selection_replay", "red", 1)
+    _write_real_now(tmp_path / "ci", "selection_replay", "red", 1)
     r = _dry_run(tmp_path, "market-agent")
     assert r.returncode == 21, r.stdout + r.stderr
     assert "EXECUTION-RUNTIME DRIFT" not in r.stdout
