@@ -1,0 +1,25 @@
+period	entry	cell	K	delta	x	y	n	n_excluded_open	n_differ	mean	ci_lo	ci_hi	verdict	deciding
+pre	orh5	C1	tl	pp_wbe-pp	pp_wbe	pp	180	0	58	-0.122051	-0.185447	-0.05175	loss	1
+pre	orh5	C1	tl	pp-A	pp	A	180	0	0	0.0	0.0	0.0	can't tell	0
+pre	orh5	C1	tl	pp_wbe-A	pp_wbe	A	180	0	58	-0.122051	-0.183826	-0.054733	loss	0
+pre	orh5	C1	tl	pp_s0-pp	pp_s0	pp	180	0	58	-0.141549	-0.202765	-0.072264	loss	0
+pre	orh5	C1	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	180	0	0	0.0	0.0	0.0	can't tell	0
+pre	orh5	C1	tl	wbe-A	wbe	A	180	0	58	-0.122051	-0.184926	-0.058153	loss	0
+pre	orh5	C0	tl	pp_wbe-pp	pp_wbe	pp	13362	6	2817	0.011245	-0.015762	0.036979	can't tell	1
+pre	orh5	C0	tl	pp-A	pp	A	13363	5	168	0.000863	-0.002049	0.003839	can't tell	0
+pre	orh5	C0	tl	pp_wbe-A	pp_wbe	A	13362	6	2965	0.012109	-0.014508	0.039071	can't tell	0
+pre	orh5	C0	tl	pp_s0-pp	pp_s0	pp	13362	6	2855	0.014198	-0.014734	0.043826	can't tell	0
+pre	orh5	C0	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	13362	6	48	0.000255	-0.00093	0.001468	can't tell	0
+pre	orh5	C0	tl	wbe-A	wbe	A	13362	6	2797	0.01136	-0.01338	0.040061	can't tell	0
+pre	h60	C1	tl	pp_wbe-pp	pp_wbe	pp	180	0	50	-0.103789	-0.165581	-0.021301	loss	0
+pre	h60	C1	tl	pp-A	pp	A	180	0	3	0.09783	-0.014809	0.331996	can't tell	0
+pre	h60	C1	tl	pp_wbe-A	pp_wbe	A	180	0	53	-0.005959	-0.16087	0.249071	can't tell	0
+pre	h60	C1	tl	pp_s0-pp	pp_s0	pp	180	0	50	-0.123475	-0.189508	-0.043866	loss	0
+pre	h60	C1	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	180	0	1	-0.002891	-0.009521	0.0	can't tell	0
+pre	h60	C1	tl	wbe-A	wbe	A	180	0	50	-0.103789	-0.165379	-0.023507	loss	0
+pre	h60	C0	tl	pp_wbe-pp	pp_wbe	pp	13751	4	2857	0.038922	0.004292	0.071544	win	0
+pre	h60	C0	tl	pp-A	pp	A	13751	4	202	-0.000494	-0.004256	0.003289	can't tell	0
+pre	h60	C0	tl	pp_wbe-A	pp_wbe	A	13751	4	3049	0.038428	0.001473	0.073098	win	0
+pre	h60	C0	tl	pp_s0-pp	pp_s0	pp	13750	5	2887	0.040551	0.004731	0.075537	win	0
+pre	h60	C0	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	13751	4	42	9.6e-05	-0.001097	0.001315	can't tell	0
+pre	h60	C0	tl	wbe-A	wbe	A	13751	4	2847	0.038549	0.005217	0.072966	win	0

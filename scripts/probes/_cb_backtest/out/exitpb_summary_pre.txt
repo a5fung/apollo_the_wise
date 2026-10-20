@@ -1,0 +1,23 @@
+EXIT READ (#702): period pre; 60,202 pinned fills (h60/com 17,449, h60/tl 13,755, orh5/com 15,630, orh5/tl 13,368) on 1,214 dates, 28,698 pairs all logged; freeze check passed; module sha256 e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b (registered), runner sha256 f69ea2807136340f2a2023f0aa81fd02a9879880a29f963f75b10248dd351caf
+[parity: 8s]
+PARITY: P2 h60/com: 17,449 match, 0 mismatch; P2 h60/tl: 13,755 match, 0 mismatch; P1 orh5/com: 15,630 match, 0 mismatch; P1 orh5/tl: 13,368 match, 0 mismatch (status, maturity, sessions held, third kind and session, be_above_close, forward window, R to 1e-09; and the module's own walk event for event)
+REACH from the control's rows (entry / level / cell: fills, mature, thirds (day0_r / r / session), stopped after the third at the fill, at or below it, session thirds at or below the fill, movable = trades the pp / pp_wbe rules can change)
+  h60 / tl / C0: fills 13,755, mature 13,751, thirds 4,765 (1,055 / 2,503 / 1,207), stopped after the third at cost 2,591, at or below the fill 3,130, session thirds <= fill 203, movable 3,193
+  h60 / tl / C1: fills 180, mature 180, thirds 67 (8 / 42 / 17), stopped after the third at cost 48, at or below the fill 53, session thirds <= fill 3, movable 53
+  orh5 / tl / C0: fills 13,368, mature 13,363, thirds 4,677 (1,379 / 2,248 / 1,050), stopped after the third at cost 2,548, at or below the fill 3,081, session thirds <= fill 170, movable 3,123
+  orh5 / tl / C1: fills 180, mature 180, thirds 71 (21 / 36 / 14), stopped after the third at cost 56, at or below the fill 58, session thirds <= fill 0, movable 58
+[exit walks: 6s]
+WROTE /Users/alvinfung/apollo_data/cb702_pre/out/trades_pre_exitpb.tsv.gz (60,202 fills x 6 arms)
+  (a) pp-family session thirds on a close <= the fill: 0 (must be 0)
+  (b) wbe-family stop_to levels off max(stop0, min(fill, fill - (p - fill)/2)) or below stop0: 0 of 59895 (must be 0)
+  (c) wbe / stop0 day-0 thirds stopped on day 0 above stop0: 0 (must be 0)
+  (d) pp differs from A on a trade A stopped or cut with no third: 0 of 39783 (must be 0)
+  (d) pp_wbe differs from A on a trade A stopped or cut with no third: 0 of 39783 (must be 0)
+  (d) wbe differs from A on a trade A stopped or cut with no third: 0 of 39783 (must be 0)
+  (d) pp_s0 differs from A on a trade A stopped or cut with no third: 0 of 39783 (must be 0)
+  (d) pp5_wbe differs from A on a trade A stopped or cut with no third: 0 of 39783 (must be 0)
+  (e) pp differs from A on a trade A trailed out after a +2R or above-fill session third: 0 of 6170 (must be 0)
+  (f) cells where the pp_wbe >= 10R count is below A's: 0 (must be 0)
+  (g) TSLA 2020-06-01 under pp_wbe: third r session 5, status trailed after 44 sessions, R +18.527 (must be: no session-3 third, not stopped on session 4)
+WROTE /Users/alvinfung/apollo_data/cb702_pre/out/exitpb_report_pre.tsv (264 rows), /Users/alvinfung/apollo_data/cb702_pre/out/exitpb_deltas_pre.tsv (24 rows), /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/exitpb_report_pre.txt, /Users/alvinfung/apollo_data/cb702_pre/out/exitpb_verdict_pre.txt
+WALL TIME: 20s total

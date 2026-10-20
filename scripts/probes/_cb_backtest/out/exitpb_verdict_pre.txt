@@ -1,0 +1,2 @@
+#702 EXIT READ VERDICT FILE - period pre - written 2026-10-19
+C1 delta(pp_wbe - pp): loss (n 180, mean -0.1221 [-0.19, -0.05]); C0: can't tell (n 13362, mean +0.0112 [-0.02, +0.04]); C1 cell under pp_wbe: CAN'T TELL (interval spans 0; does not beat C0's >= 5R share; >= 10R trades from 2 tickers / 2 months (need 3 / 3)); consequence: decides nothing; carried exit: None

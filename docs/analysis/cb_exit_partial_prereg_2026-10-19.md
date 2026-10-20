@@ -136,3 +136,29 @@ appended below this record.
 - cb702/minutes (tree) sha256: `f1d98fd9d2352c45e90849e18a163b8ca31d2526eb851e5a76dd11ffd79a9fe5`
 - cb702_pre/minutes (tree) sha256: `c019a52c8ed624263bd8b3ef0c36f54c5f77ce3cbee75751c0fd2a3026eeccd8`
 - doc body sha256: `e4e6bbc472ece9791f3d233b48d014f8f049a19514455ef8dfed60189bb53d80`
+
+## RESULT — read once per period 2026-10-19 (code at 8e272100; `runner.py exit-read`; reports `scripts/probes/_cb_backtest/out/exitpb_report_{discovery,pre,holdout}.txt`)
+
+Freeze check passed; parity P1 + P2 0 mismatches on all three periods (147,604 rows); every WOULD-FAIL-IF self-check clean.
+Independent re-derivation (pandas, no runner code): C1 Δ(`pp_wbe` − `pp`) −0.1214R on n = 79 (23 differing), interval
+−0.16 .. −0.08; C0 +0.0021R on 8,983 (1,762 differing) — **MATCH**.
+
+**VERDICT (2022–24, C1): his whole-trade-breakeven stop LOSES** — Δ(`pp_wbe` − `pp`) = −0.12R per trade (−0.16 .. −0.08) on 79;
+at scale (C0) no difference (+0.00R on 8,983). **Carried exit = `pp`** (his ruling: the day-based third only in profit; the
+stop to the entry price after the third).
+
+| Comparison (per trade, same fills) | 2022–24 C1 (n = 79) | 2017–21 C1 (n = 180) | 2025–26 C1 (n = 30) | 2022–24 C0 (n = 8,983) |
+|---|---|---|---|---|
+| `pp_wbe` − `pp` (decides) | −0.12R (−0.16 .. −0.08) loss | −0.12R (−0.19 .. −0.05) | −0.07R (−0.16 .. +0.00) | +0.00R (−0.03 .. +0.04) |
+| `pp` − `A` (his ruling's effect) | +0.06R (+0.00 .. +0.22), 1 trade differs | — | — | −0.00R, 111 differ |
+| `pp_s0` − `pp` (stop left at the original) | −0.14R (−0.19 .. −0.10) | — | — | −0.00R |
+
+- **Why the stop change loses on the strict group:** after a third at +2R, the entry-price stop locks +0.67R on a trade that
+  falls back; the original stop gives it back to zero. On C1 the fall-backs outnumber the trades that dip below cost and run.
+- **TSLA 2020-06-01 (hourly-close fill, beside):** `A` −0.17R; under `pp` (his ruling) NO day-3 sale below cost, the 06-05 dip
+  survives, a third at +2R on session 5, trailed 44 sessions: **+18.5R**. The ruling alone fixes his example.
+- The C1 cell under `pp_wbe`: CAN'T TELL (2022–24, interval spans zero, ≥ 10R from 1 ticker / 1 month); 2025–26 FAIL.
+- Expectations: 2022–24 C0 Δ ≥ 0 MET (+0.0021); the hourly-close fills' C0 Δ MISSED (−0.018, beside); median sessions held MET.
+
+**Consequence (registered table, loss):** `pp` is the exit of every next registration (the breakout-day quality rule, the
+stair-step number); `pp_wbe` is not adopted. Paper: nothing from this read.

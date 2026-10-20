@@ -1,0 +1,23 @@
+EXIT READ (#702): period discovery; 47,548 pinned fills (h60/com 11,850, h60/tl 9,262, orh5/com 10,746, orh5/comb 6,701, orh5/tl 8,989) on 702 dates, 20,402 pairs all logged; freeze check passed; module sha256 e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b (registered), runner sha256 f69ea2807136340f2a2023f0aa81fd02a9879880a29f963f75b10248dd351caf
+[parity: 11s]
+PARITY: P2 h60/com: 11,850 match, 0 mismatch; P2 h60/tl: 9,262 match, 0 mismatch; P1 orh5/com: 10,746 match, 0 mismatch; P1 orh5/comb: 6,701 match, 0 mismatch; P1 orh5/tl: 8,989 match, 0 mismatch (status, maturity, sessions held, third kind and session, be_above_close, forward window, R to 1e-09; and the module's own walk event for event)
+REACH from the control's rows (entry / level / cell: fills, mature, thirds (day0_r / r / session), stopped after the third at the fill, at or below it, session thirds at or below the fill, movable = trades the pp / pp_wbe rules can change) - the registration's line beside
+  h60 / tl / C0: fills 9,262, mature 9,257, thirds 2,930 (725 / 1,526 / 679), stopped after the third at cost 1,576, at or below the fill 2,001, session thirds <= fill 134, movable 2,043
+  h60 / tl / C1: fills 78, mature 78, thirds 27 (6 / 14 / 7), stopped after the third at cost 18, at or below the fill 21, session thirds <= fill 1, movable 21
+  orh5 / tl / C0: fills 8,989, mature 8,984, thirds 2,878 (860 / 1,425 / 593), stopped after the third at cost 1,547, at or below the fill 1,943, session thirds <= fill 112, movable 1,984  | registration: mature 8,984 (=), third 2,874 (reads 2,878), stopped_after_third_le_fill 1,943 (=), session_third_le_fill 112 (=)
+  orh5 / tl / C1: fills 79, mature 79, thirds 34 (12 / 17 / 5), stopped after the third at cost 21, at or below the fill 24, session thirds <= fill 1, movable 24  | registration: fills 79 (=), third 34 (=), third_day0_r 12 (=), third_r 17 (=), third_session 5 (=), stopped_after_third_le_fill 24 (=), session_third_le_fill 1 (=)
+[exit walks: 4s]
+WROTE /Users/alvinfung/apollo_data/cb702/out/trades_discovery_exitpb.tsv.gz (47,548 fills x 6 arms)
+  (a) pp-family session thirds on a close <= the fill: 0 (must be 0)
+  (b) wbe-family stop_to levels off max(stop0, min(fill, fill - (p - fill)/2)) or below stop0: 0 of 44526 (must be 0)
+  (c) wbe / stop0 day-0 thirds stopped on day 0 above stop0: 0 (must be 0)
+  (d) pp differs from A on a trade A stopped or cut with no third: 0 of 32344 (must be 0)
+  (d) pp_wbe differs from A on a trade A stopped or cut with no third: 0 of 32344 (must be 0)
+  (d) wbe differs from A on a trade A stopped or cut with no third: 0 of 32344 (must be 0)
+  (d) pp_s0 differs from A on a trade A stopped or cut with no third: 0 of 32344 (must be 0)
+  (d) pp5_wbe differs from A on a trade A stopped or cut with no third: 0 of 32344 (must be 0)
+  (e) pp differs from A on a trade A trailed out after a +2R or above-fill session third: 0 of 3993 (must be 0)
+  (f) cells where the pp_wbe >= 10R count is below A's: 0 (must be 0)
+  (g) TSLA 2020-06-01: not in this period (the pre period's check)
+WROTE /Users/alvinfung/apollo_data/cb702/out/exitpb_report_discovery.tsv (220 rows), /Users/alvinfung/apollo_data/cb702/out/exitpb_deltas_discovery.tsv (24 rows), /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/exitpb_report_discovery.txt, /Users/alvinfung/apollo_data/cb702/out/exitpb_verdict_discovery.txt
+WALL TIME: 20s total

@@ -1,0 +1,23 @@
+EXIT READ (#702): period holdout; 39,854 pinned fills (h60/com 10,027, h60/tl 7,762, orh5/com 8,821, orh5/comb 5,674, orh5/tl 7,570) on 448 dates, 17,303 pairs all logged; freeze check passed; module sha256 e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b (registered), runner sha256 f69ea2807136340f2a2023f0aa81fd02a9879880a29f963f75b10248dd351caf
+[parity: 11s]
+PARITY: P2 h60/com: 10,027 match, 0 mismatch; P2 h60/tl: 7,762 match, 0 mismatch; P1 orh5/com: 8,821 match, 0 mismatch; P1 orh5/comb: 5,674 match, 0 mismatch; P1 orh5/tl: 7,570 match, 0 mismatch (status, maturity, sessions held, third kind and session, be_above_close, forward window, R to 1e-09; and the module's own walk event for event)
+REACH from the control's rows (entry / level / cell: fills, mature, thirds (day0_r / r / session), stopped after the third at the fill, at or below it, session thirds at or below the fill, movable = trades the pp / pp_wbe rules can change)
+  h60 / tl / C0: fills 7,762, mature 7,716, thirds 2,561 (633 / 1,315 / 613), stopped after the third at cost 1,379, at or below the fill 1,740, session thirds <= fill 96, movable 1,760
+  h60 / tl / C1: fills 37, mature 36, thirds 11 (4 / 6 / 1), stopped after the third at cost 7, at or below the fill 9, session thirds <= fill 1, movable 9
+  orh5 / tl / C0: fills 7,570, mature 7,531, thirds 2,453 (690 / 1,252 / 511), stopped after the third at cost 1,276, at or below the fill 1,610, session thirds <= fill 93, movable 1,634
+  orh5 / tl / C1: fills 31, mature 30, thirds 8 (0 / 6 / 2), stopped after the third at cost 4, at or below the fill 6, session thirds <= fill 1, movable 6
+[exit walks: 3s]
+WROTE /Users/alvinfung/apollo_data/cb702/out/trades_holdout_exitpb.tsv.gz (39,854 fills x 6 arms)
+  (a) pp-family session thirds on a close <= the fill: 0 (must be 0)
+  (b) wbe-family stop_to levels off max(stop0, min(fill, fill - (p - fill)/2)) or below stop0: 0 of 38233 (must be 0)
+  (c) wbe / stop0 day-0 thirds stopped on day 0 above stop0: 0 (must be 0)
+  (d) pp differs from A on a trade A stopped or cut with no third: 0 of 26768 (must be 0)
+  (d) pp_wbe differs from A on a trade A stopped or cut with no third: 0 of 26768 (must be 0)
+  (d) wbe differs from A on a trade A stopped or cut with no third: 0 of 26768 (must be 0)
+  (d) pp_s0 differs from A on a trade A stopped or cut with no third: 0 of 26768 (must be 0)
+  (d) pp5_wbe differs from A on a trade A stopped or cut with no third: 0 of 26768 (must be 0)
+  (e) pp differs from A on a trade A trailed out after a +2R or above-fill session third: 0 of 3545 (must be 0)
+  (f) cells where the pp_wbe >= 10R count is below A's: 0 (must be 0)
+  (g) TSLA 2020-06-01: not in this period (the pre period's check)
+WROTE /Users/alvinfung/apollo_data/cb702/out/exitpb_report_holdout.tsv (192 rows), /Users/alvinfung/apollo_data/cb702/out/exitpb_deltas_holdout.tsv (24 rows), /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/exitpb_report_holdout.txt, /Users/alvinfung/apollo_data/cb702/out/exitpb_verdict_holdout.txt
+WALL TIME: 18s total

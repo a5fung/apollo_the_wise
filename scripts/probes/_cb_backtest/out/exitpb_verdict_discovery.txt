@@ -1,0 +1,2 @@
+#702 EXIT READ VERDICT FILE - period discovery - written 2026-10-19
+C1 delta(pp_wbe - pp): loss (n 79, mean -0.1214 [-0.16, -0.08]); C0: can't tell (n 8983, mean +0.0021 [-0.03, +0.04]); C1 cell under pp_wbe: CAN'T TELL (interval spans 0; >= 10R trades from 1 tickers / 1 months (need 3 / 3)); consequence: loss -> pp (his ruling stands; the stop goes to the entry price after the third); carried exit: pp

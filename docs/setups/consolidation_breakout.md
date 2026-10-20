@@ -244,6 +244,16 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 ## Change log
 
+### 2026-10-19 — #702 his exit, two parts: the day-based third ONLY IN PROFIT is adopted (his ruling); the whole-trade-breakeven stop after the third LOSES — the next tests carry `pp`
+
+**What**: pre-registered `docs/analysis/cb_exit_partial_prereg_2026-10-19.md`, frozen, read once per period, re-derivation
+MATCH. His ruling ("Yes": the day-3 third sells only in profit) replaces `A` = `c3_p33_t20_cut3` with `pp`. His proposal (after
+the third, the stop where the whole trade nets zero = the original stop after a +2R third) tested against the entry-price
+stop on the same 79 C1 trades of 2022–24: −0.12R per trade (−0.16 .. −0.08) — a loss, also −0.12R on 2017–21; neutral at
+scale (C0 +0.00R on 8,983). TSLA 2020-06-01 under `pp`: +18.5R (was −0.17R). **Consequence (registered)**: `pp` is the exit
+of the next registrations; runner-only, no live or paper change; the shadow keeps its 15 arms until a recorder build.
+**Reversion-flag**: none. **Status**: complete.
+
 ### 2026-10-19 — #702 the hourly-close entry (`h60`) read: C1 FAIL on 2022–24 and it LOSES to ORH5 on the same bases — not recorded
 
 **What**: buy only after a 60-minute bar closes above the line (fill at the next minute's open, low-of-day stop, first

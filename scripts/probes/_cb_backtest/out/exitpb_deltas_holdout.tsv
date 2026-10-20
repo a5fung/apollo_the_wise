@@ -1,0 +1,25 @@
+period	entry	cell	K	delta	x	y	n	n_excluded_open	n_differ	mean	ci_lo	ci_hi	verdict	deciding
+holdout	orh5	C1	tl	pp_wbe-pp	pp_wbe	pp	30	1	4	-0.068675	-0.156025	0.0	can't tell	1
+holdout	orh5	C1	tl	pp-A	pp	A	30	1	1	-0.029994	-0.089982	0.0	can't tell	0
+holdout	orh5	C1	tl	pp_wbe-A	pp_wbe	A	30	1	5	-0.098669	-0.178406	0.0	can't tell	0
+holdout	orh5	C1	tl	pp_s0-pp	pp_s0	pp	30	1	4	-0.068675	-0.157569	0.0	can't tell	0
+holdout	orh5	C1	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	30	1	0	0.0	0.0	0.0	can't tell	0
+holdout	orh5	C1	tl	wbe-A	wbe	A	30	1	4	-0.068675	-0.156028	0.0	can't tell	0
+holdout	orh5	C0	tl	pp_wbe-pp	pp_wbe	pp	7522	48	1430	0.000897	-0.022073	0.027521	can't tell	1
+holdout	orh5	C0	tl	pp-A	pp	A	7531	39	92	0.000118	-0.003801	0.005044	can't tell	0
+holdout	orh5	C0	tl	pp_wbe-A	pp_wbe	A	7522	48	1514	0.001015	-0.023651	0.027714	can't tell	0
+holdout	orh5	C0	tl	pp_s0-pp	pp_s0	pp	7522	48	1452	-0.000256	-0.025411	0.026331	can't tell	0
+holdout	orh5	C0	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	7522	48	21	0.000463	-0.000892	0.00174	can't tell	0
+holdout	orh5	C0	tl	wbe-A	wbe	A	7522	48	1422	0.001436	-0.020046	0.027061	can't tell	0
+holdout	h60	C1	tl	pp_wbe-pp	pp_wbe	pp	36	1	8	-0.110868	-0.170719	-0.04042	loss	0
+holdout	h60	C1	tl	pp-A	pp	A	36	1	1	-0.026312	-0.076802	0.0	can't tell	0
+holdout	h60	C1	tl	pp_wbe-A	pp_wbe	A	36	1	9	-0.137179	-0.206781	-0.050035	loss	0
+holdout	h60	C1	tl	pp_s0-pp	pp_s0	pp	36	1	8	-0.110868	-0.166885	-0.041129	loss	0
+holdout	h60	C1	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	36	1	0	0.0	0.0	0.0	can't tell	0
+holdout	h60	C1	tl	wbe-A	wbe	A	36	1	8	-0.110868	-0.167683	-0.037206	loss	0
+holdout	h60	C0	tl	pp_wbe-pp	pp_wbe	pp	7707	55	1554	-0.007742	-0.031994	0.024972	can't tell	0
+holdout	h60	C0	tl	pp-A	pp	A	7714	48	93	-0.001009	-0.00349	0.001809	can't tell	0
+holdout	h60	C0	tl	pp_wbe-A	pp_wbe	A	7707	55	1636	-0.008752	-0.033592	0.022722	can't tell	0
+holdout	h60	C0	tl	pp_s0-pp	pp_s0	pp	7706	56	1577	-0.003999	-0.032416	0.028382	can't tell	0
+holdout	h60	C0	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	7707	55	23	0.000762	-3.4e-05	0.001565	can't tell	0
+holdout	h60	C0	tl	wbe-A	wbe	A	7709	53	1543	-0.007485	-0.032076	0.022553	can't tell	0

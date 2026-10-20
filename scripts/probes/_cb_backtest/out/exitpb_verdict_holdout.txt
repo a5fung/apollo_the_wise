@@ -1,0 +1,2 @@
+#702 EXIT READ VERDICT FILE - period holdout - written 2026-10-19
+C1 delta(pp_wbe - pp): can't tell (n 30, mean -0.0687 [-0.16, +0.00]); C0: can't tell (n 7522, mean +0.0009 [-0.02, +0.03]); C1 cell under pp_wbe: FAIL (interval upper end < 0; does not beat C0 on mean R); consequence: decides nothing; carried exit: None

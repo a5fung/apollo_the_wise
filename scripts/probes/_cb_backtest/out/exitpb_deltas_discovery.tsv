@@ -1,0 +1,25 @@
+period	entry	cell	K	delta	x	y	n	n_excluded_open	n_differ	mean	ci_lo	ci_hi	verdict	deciding
+discovery	orh5	C1	tl	pp_wbe-pp	pp_wbe	pp	79	0	23	-0.12144	-0.161827	-0.083663	loss	1
+discovery	orh5	C1	tl	pp-A	pp	A	79	0	1	0.060518	0.0	0.217313	can't tell	0
+discovery	orh5	C1	tl	pp_wbe-A	pp_wbe	A	79	0	24	-0.060922	-0.145548	0.080176	can't tell	0
+discovery	orh5	C1	tl	pp_s0-pp	pp_s0	pp	79	0	23	-0.144738	-0.188868	-0.097237	loss	0
+discovery	orh5	C1	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	79	0	1	-0.060005	-0.209135	0.0	can't tell	0
+discovery	orh5	C1	tl	wbe-A	wbe	A	79	0	23	-0.12144	-0.160193	-0.083643	loss	0
+discovery	orh5	C0	tl	pp_wbe-pp	pp_wbe	pp	8983	6	1762	0.002068	-0.032326	0.041025	can't tell	1
+discovery	orh5	C0	tl	pp-A	pp	A	8984	5	111	-0.000357	-0.003457	0.002731	can't tell	0
+discovery	orh5	C0	tl	pp_wbe-A	pp_wbe	A	8983	6	1863	0.001711	-0.032372	0.04169	can't tell	0
+discovery	orh5	C0	tl	pp_s0-pp	pp_s0	pp	8983	6	1797	-5e-06	-0.033967	0.038782	can't tell	0
+discovery	orh5	C0	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	8983	6	20	-0.000711	-0.002046	0.000388	can't tell	0
+discovery	orh5	C0	tl	wbe-A	wbe	A	8983	6	1752	0.002324	-0.031134	0.043255	can't tell	0
+discovery	h60	C1	tl	pp_wbe-pp	pp_wbe	pp	78	0	19	-0.085591	-0.138525	-0.038501	loss	0
+discovery	h60	C1	tl	pp-A	pp	A	78	0	1	-0.009031	-0.027806	0.0	can't tell	0
+discovery	h60	C1	tl	pp_wbe-A	pp_wbe	A	78	0	20	-0.094622	-0.144703	-0.044624	loss	0
+discovery	h60	C1	tl	pp_s0-pp	pp_s0	pp	78	0	20	0.104019	-0.120912	0.413024	can't tell	0
+discovery	h60	C1	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	78	0	1	0.011871	0.0	0.036317	can't tell	0
+discovery	h60	C1	tl	wbe-A	wbe	A	78	0	19	-0.085591	-0.135525	-0.037016	loss	0
+discovery	h60	C0	tl	pp_wbe-pp	pp_wbe	pp	9256	6	1797	-0.0184	-0.047882	0.012164	can't tell	0
+discovery	h60	C0	tl	pp-A	pp	A	9257	5	133	0.001448	-0.001279	0.004817	can't tell	0
+discovery	h60	C0	tl	pp_wbe-A	pp_wbe	A	9256	6	1915	-0.016952	-0.047288	0.015645	can't tell	0
+discovery	h60	C0	tl	pp_s0-pp	pp_s0	pp	9256	6	1828	-0.020157	-0.052001	0.014454	can't tell	0
+discovery	h60	C0	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	9256	6	36	-0.001351	-0.003595	0.000394	can't tell	0
+discovery	h60	C0	tl	wbe-A	wbe	A	9256	6	1782	-0.018928	-0.047181	0.013383	can't tell	0
