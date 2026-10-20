@@ -1421,7 +1421,30 @@ stagger cards, one at a time.
 
 **Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
-## 2026-10-18 (Sun) CLOSE — 🔴 RESUME HERE. Supersedes the 10-17 close below.
+## 2026-10-19 (Mon) CLOSE — 🔴 RESUME HERE. Supersedes the 10-18 close below.
+
+- **Board 21 → 21** (no closes, no new tasks). Server 25fabf93; main ecc9d3a6 is ahead with #702 RESEARCH code and docs only
+  (runner + tests + analysis docs; the live module and shadow are unchanged — no deploy needed).
+- **Checks today:** #703 day 1 of 3 PASS (one 09:00 scan); #210 week bar met (3 readable rows; DoD ~20, verify 12-07); #312
+  Monday dark row verified (verify 10-26); #701 (c) verified (stale-bar skip names the 9; verify 10-23 for (b)); #697 item-4
+  scan 1 of 3 clean, 0 stamped (verify Wed 10-21); #333 annual leg first night 13/13 (verify Tue 10-20: first annual
+  period-end comparison); #702 shadow first run 143 watch rows, no entry yet; #314 nightly row; #704 first split night
+  verdicts recorded — the three consumers' actions NOT yet read.
+- **#702 research today (each pre-registered, frozen, read once, re-derived MATCH):** 2017–21 read CAN'T TELL (one +54R
+  Overstock trade carries C1); the hourly-close entry FAILS on 2022–24 and loses to ORH5 on the same bases; his exit:
+  the day-3 third only in profit ADOPTED (his ruling; TSLA 06-01 −0.17R → +18.5R), the whole-trade-breakeven stop LOSES
+  (−0.12R per trade on C1) → carried exit = `pp`. Docs: `docs/analysis/cb_2017_21_read_prereg_2026-10-19.md`,
+  `cb_hourly_entry_prereg_2026-10-19.md`, `cb_exit_partial_prereg_2026-10-19.md`; his words in `operator_shared_notes.md`.
+- **His instruction (10-19):** *"reserve more major building for weekend"* — weekdays = verifies + small items; regroup with
+  him before launching the next build. Weekend (Sat 10-24): the shared registered-read scaffold + golden harness (before
+  the next freeze), the two remaining tests under ORH5 + `pp` (breakout-day quality at the confirming bar; the stair-step
+  number), recording `pp` in the forward shadow. All on the #702 line.
+- **Tue 10-20:** #703 day 2; #333 annual period-end comparison; #655 (verify 10-20); #697 scan 2; read #704's consumers.
+- **Housekeeping:** idle worktrees under `.claude/worktrees/` (today's: agent-a5798ac0…, agent-ad064651…, agent-a2a10105…,
+  agent-a7702f20…) can be removed. Server copy of the 2017–21 minutes at `/home/apollo/cbpre_1019_minutes` (laptop copy at
+  `apollo_data/cb702_pre/minutes`).
+
+## 2026-10-18 (Sun) CLOSE — superseded by the 10-19 close above.
 
 **Board 23 → 21.** Closed #700 (first weekly review) and #313 (first ci_status file, ACCEPTED-PARTIAL). No new tasks.
 Server = 25fabf93 (both + execution). main is AHEAD with additive #702 research code only (the `com` level, his exit arms,
