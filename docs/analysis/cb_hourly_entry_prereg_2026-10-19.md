@@ -250,3 +250,30 @@ pin are printed by `h60-read --print-pins` after the code lands and pasted here 
 - cb702_pre/minutes (tree) sha256: `c019a52c8ed624263bd8b3ef0c36f54c5f77ce3cbee75751c0fd2a3026eeccd8`
 - doc body sha256: `97a29aea34babce0e89ab81b76e375a59a30510820a2a1504ed58a5578fe3979`
 - freeze commit: the commit that adds this file on `main`; the read runs only after it is on `main`.
+
+## RESULT — read once per period 2026-10-19 (code at f725cb73; `runner.py h60-read`; reports `scripts/probes/_cb_backtest/out/h60_report_{discovery,pre,holdout}.txt`, hindsight `h60_hindsight_pre.txt`)
+
+Freeze check passed; the ORH5 twins equal the pinned tables; data abstains 3.17% / 0.70% / 0.98% (limit 5%). Independent
+re-derivation (pandas, no runner code): C1 n = 78, mean −0.314R, ≥ 5R 1.3%; C0 n = 9,257, mean −0.164R; the paired entry Δ on
+C1 = −0.55R on 91 bases — **MATCH**.
+
+**VERDICT (2022–24 decides): C1 FAIL; paired entry LOSS; stop: `lod` stays.**
+
+| Period | C1 n | Mean R | 95% interval | ≥ 10R trades | Paired Δ vs ORH5 (same bases) | Verdict |
+|---|---|---|---|---|---|---|
+| 2022–24 (decides) | 78 | −0.31 | −0.55 .. −0.04 | 0 | −0.55R on 91 (−1.26 .. −0.05): loss | FAIL |
+| 2017–21 (beside) | 180 | +0.59 | −0.15 .. +1.61 | — | +0.28R: can't tell | CAN'T TELL |
+| 2020–21 (beside) | 74 | +0.51 | −0.45 .. +1.81 | — | +0.07R: can't tell | CAN'T TELL |
+| 2025–26 (descriptive) | 36 | −0.36 | −0.73 .. +0.14 | — | +0.22R: can't tell | FAIL (not beating C0) |
+
+- **The mechanism did not move:** the share stopped out on the fill day in C0 is 35.7% under the hourly close (expected
+  < 25%; ORH5 ≈ 35%) — waiting for an hourly close above the line does not avoid the same-day shakeout. At scale (C0) the
+  hourly close and ORH5 are the same: paired Δ +0.00R on 10,595 bases (−0.05 .. +0.06).
+- The stop bar: `cbar_low` − `lod` = −0.11R on 82 C1 bases (−0.29 .. +0.06) → `lod` stays.
+- TSLA (pole 2020-04-30) entered on 06-01 as he did, and ended −0.17R under the primary exit; its 2020-06-29 base entered
+  06-30 at +8.68R where ORH5 had no trade.
+- Beside (hindsight, decides nothing): the 39 multibaggers 2020–21 — h60 355 trades +0.92R (+328R) vs ORH5 352 trades +1.06R
+  (+375R); fill-day stop 32.4% vs 35.2%.
+
+**Consequence (registered table, FAIL × loss):** not recorded; the next tests run under ORH5 — (2) a breakout-day quality
+rule read at the confirming bar (range and volume so far), (3) the stair-step number; each registered on its own first.

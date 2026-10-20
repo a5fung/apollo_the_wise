@@ -244,6 +244,16 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 ## Change log
 
+### 2026-10-19 — #702 the hourly-close entry (`h60`) read: C1 FAIL on 2022–24 and it LOSES to ORH5 on the same bases — not recorded
+
+**What**: buy only after a 60-minute bar closes above the line (fill at the next minute's open, low-of-day stop, first
+confirmed break per base), pre-registered `docs/analysis/cb_hourly_entry_prereg_2026-10-19.md` and frozen before the read.
+**C1 FAIL** on 2022–24 (−0.31R on 78, interval −0.55 .. −0.04, no ≥ 10R trade); paired vs ORH5 on the same 91 bases −0.55R
+(a loss); the same-day stop-out share did not fall (35.7% vs ORH5's ~35%). 2017–21 CAN'T TELL (+0.59R on 180), 2025–26
+descriptive FAIL. Independent re-derivation MATCH. **Consequence (registered)**: not recorded; next tests under ORH5 (a
+breakout-day quality rule at the confirming bar; the stair-step number). **Reversion-flag**: none (a read, no rule changed).
+**Status**: complete.
+
 ### 2026-10-19 — #702 the frozen primary read on 2017–21 (his 10x era): CAN'T TELL on C1 — no paper; the next tests are the entry and the stop
 
 **What**: the frozen primary (trendline / ORH5 / low-of-day stop / his exit with the stalled breakouts cut), read once on
