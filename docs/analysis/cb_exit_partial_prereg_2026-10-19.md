@@ -119,3 +119,20 @@ pin before it opens a file and refuses on any mismatch): `trades_{discovery,hold
 (cb702/out), `trades_pre_p5.tsv.gz` + `trades_pre_h60.tsv.gz` (cb702_pre/out), both `daily_closes_all.csv.gz`, both minute
 trees, the candidates files, `consolidation_breakout.py` (must equal `e14027be…`), the runner, the doc body. The RESULT is
 appended below this record.
+
+- module sha256: `e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b`
+- runner sha256: `f69ea2807136340f2a2023f0aa81fd02a9879880a29f963f75b10248dd351caf`
+- cb702/daily_closes_all.csv.gz sha256: `ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba`
+- cb702_pre/daily_closes_all.csv.gz sha256: `b10eea41775e657939c64e314068cb3c606d23d44de8488649fb67a4ac5ed773`
+- cb702/out/candidates.tsv sha256: `b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7`
+- cb702/out/candidates_com_comb.tsv sha256: `138149b87eed950d62ca94512b04c408329d18ef9a79779dc51d1a51589fc117`
+- cb702/out/trades_discovery_p5.tsv.gz sha256: `8e906dc8d0242fba972e88d28eccb17c57b6b28d35f5f12fa1292208aa9c1bd4`
+- cb702/out/trades_holdout_p5.tsv.gz sha256: `557a4152809aae22bb964653097a1684cfcedd8269777c69443227c9e794b673`
+- cb702/out/trades_discovery_h60.tsv.gz sha256: `f0be23d6932e5dc9ea3f8b10e668dfd604ec6f8702032fb455a2992898ba01c8`
+- cb702/out/trades_holdout_h60.tsv.gz sha256: `acc2c5cb4686f5ee04688607fc344a2086038af803e8e2e70d645d6abf494fa9`
+- cb702_pre/out/candidates_tl_com.tsv sha256: `4ee9e04ca80f82fc02f1659b078263f9dcd1b197c395733a5f389367277268e6`
+- cb702_pre/out/trades_pre_p5.tsv.gz sha256: `07c10b952316b28daf8f6cfff15437efb23b939af74a27b4bb60c5948712ec86`
+- cb702_pre/out/trades_pre_h60.tsv.gz sha256: `b561742f27c192191d800f870aac2421b86514e4197406524f6df2c4fbbc3d1f`
+- cb702/minutes (tree) sha256: `f1d98fd9d2352c45e90849e18a163b8ca31d2526eb851e5a76dd11ffd79a9fe5`
+- cb702_pre/minutes (tree) sha256: `c019a52c8ed624263bd8b3ef0c36f54c5f77ce3cbee75751c0fd2a3026eeccd8`
+- doc body sha256: `e4e6bbc472ece9791f3d233b48d014f8f049a19514455ef8dfed60189bb53d80`
