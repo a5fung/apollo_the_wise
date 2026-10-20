@@ -3573,3 +3573,637 @@ class TestH60Read:
         assert rn.P5_LEVEL_FILES == (("", ("tl",)), ("_com_comb", ("com", "comb")))
         assert rn.H60_ARMS[rn.H60_ARM] is cb.CUT_EXIT_ARMS[cb.P5_PRIMARY_ARM] and rn.H60_ARMS["p33_s3_t10"] is cb.ARMS["p33_s3_t10"]
         assert len(rn.H60_MULTIBAGGERS) == 39 and len(set(rn.H60_MULTIBAGGERS)) == 39 and len(rn.H60_EARLY_CLOSE) == 20
+
+
+# ═══ #702 exit read: his partial and the stop after it (SYNTHETIC data only; the build computed no real outcome) ════════════════════
+XP_FILL, XP_STOP = 10.30, 10.10            # R = 0.20: +1R = 10.50, +2R = 10.70; the default minute day (`_e_day_minutes`) prints 10.60 after the fill
+
+
+def _xp_bars(tail, hist=10.0, n=200, e=150, start=DISCOVERY_START):
+    """Flat history at `hist` (h +0.1 / l -0.1), E (o 10.20 h 10.60 l 10.10 c 10.55), then `tail` (o, h, l, c) per session, then the last
+    tail bar repeated. `hist` sets the 20-day: 10.0 keeps every close in the 10.2-10.5 range above it; 10.5 puts a 10.25 close under it."""
+    d = _weekdays(n, start)
+    o = np.full(n, hist)
+    h, l, c = np.full(n, hist + 0.1), np.full(n, hist - 0.1), np.full(n, hist)
+    o[e], h[e], l[e], c[e] = 10.20, 10.60, 10.10, 10.55
+    for j in range(1, n - e):
+        o[e + j], h[e + j], l[e + j], c[e + j] = tail[j - 1] if j <= len(tail) else tail[-1]
+    return cb.daily_bars_from_arrays(d, o, h, l, c, np.full(n, 1e6)), e
+
+
+def _xp_walk(tail, *, hist=10.0, minutes=None, fill=XP_FILL, stop=XP_STOP, fill_minute=7, arms=None):
+    """{arm: raw result} of the copy over `tail`, plus the module's own walk of the control (`ref`)."""
+    bars, e = _xp_bars(tail, hist=hist)
+    mb = _mb(minutes)
+    fwd, _cut = cb.forward_window(bars, np.arange(len(bars)), e, rn.HORIZON)
+    res = rn.exitpb_walk_arms({"fill": fill, "stop": stop, "fill_minute": fill_minute}, closes_before=bars.c[:e + 1], fwd=fwd, adr20=0.10,
+                              minutes=mb, horizon=rn.HORIZON, arms=arms)
+    entry2 = {"status": "filled", "reason": None, "fill": fill, "stop": stop, "width_pct": (fill - stop) / fill, "fill_minute": fill_minute,
+              "day0": cb.day0_walk(mb, fill_minute=fill_minute, stop=stop)}
+    ref = cb.walk_his_arms(entry2, closes_before=bars.c[:e + 1], fwd=fwd, adr20=0.10, minutes=mb, horizon=rn.HORIZON,
+                           arms={rn.EXITPB_BASE.name: rn.EXITPB_BASE})[rn.EXITPB_BASE.name]
+    return res, ref
+
+
+def _ev(res, kind):
+    return [e for e in res["events"] if e[1] == kind]
+
+
+def _ev_is(ev, j, kind, px, frac):
+    """One event against (session, kind, price, fraction) - the price to 1e-9 (a +2R target is fill + 2 x R in floating point)."""
+    return ev[0] == j and ev[1] == kind and ev[2] == pytest.approx(px, abs=1e-9) and ev[3] == pytest.approx(frac, abs=1e-12)
+
+
+XP_GOLDEN_TAIL = [(10.40, 10.55, 10.35, 10.50), (10.45, 10.50, 10.30, 10.40), (10.35, 10.40, 10.20, 10.25), (10.30, 10.35, 10.15, 10.20),
+                  (10.20, 10.25, 10.12, 10.18)]      # +1R on d1 (no +2R); d3 closes 10.25 <= the fill and under a 10.5 history's 20-day; d4 opens 10.30
+XP_PROFIT_TAIL = [(10.40, 10.52, 10.35, 10.45), (10.45, 10.50, 10.35, 10.42), (10.42, 10.50, 10.35, 10.46), (10.40, 10.42, 10.25, 10.30),
+                  (10.30, 10.35, 10.21, 10.30), (10.30, 10.35, 10.25, 10.30)]   # +1R on d1; d3 closes 10.46 > fill; d4 dips to 10.25; d5 to 10.21
+
+
+class TestExitReadMechanics:
+    def test_the_arm_set_and_the_shared_mechanics(self):
+        assert list(rn.EXITPB_ARMS) == ["A", "pp", "pp_wbe", "wbe", "pp_s0", "pp5_wbe"]
+        assert rn.EXITPB_ARMS["A"].session_rule == "always" and rn.EXITPB_ARMS["A"].stop_rule == "entry"
+        assert rn.EXITPB_ARMS["pp_wbe"].session_rule == "profit_only" and rn.EXITPB_ARMS["pp_wbe"].stop_rule == "wbe"
+        assert rn.EXITPB_ARMS["pp5_wbe"].session_rule == "profit_3to5" and rn.EXITPB_ARMS["pp_s0"].stop_rule == "stop0"
+        assert rn.EXITPB_BASE is cb.CUT_EXIT_ARMS[cb.P5_PRIMARY_ARM] and rn.EXITPB_LEG_FIRST == 3 and rn.EXITPB_LEG_LAST == 5
+        assert rn.EXITPB_MODULE_SHA == "e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b"
+        assert rn.EXITPB_DELTAS[0] == ("pp_wbe", "pp") and rn.EXITPB_PRIMARY == "pp_wbe" and rn.EXITPB_RULED == "pp" and rn.EXITPB_CONTROL == "A"
+        with pytest.raises(ValueError):
+            rn.ExitArm("x", "sometimes", "entry")
+        with pytest.raises(ValueError):
+            rn.ExitArm("x", "always", "fill")
+        # the stop formula: the whole-trade breakeven, never below stop0, never above the fill (a below-cost third caps at the fill)
+        f, s0 = XP_FILL, XP_STOP
+        assert rn.exitpb_stop_after_third("wbe", s0, s0, f, f + 0.16) == pytest.approx(f - 0.08)
+        assert rn.exitpb_stop_after_third("wbe", s0, s0, f, f + 0.40) == pytest.approx(s0)          # +2R: exactly stop0
+        assert rn.exitpb_stop_after_third("wbe", s0, s0, f, f + 0.90) == pytest.approx(s0)          # a gap far above: still stop0
+        assert rn.exitpb_stop_after_third("wbe", s0, s0, f, f - 0.05) == pytest.approx(f)           # below cost: the fill, as A
+        assert rn.exitpb_stop_after_third("entry", s0, s0, f, f - 0.05) == pytest.approx(f) and rn.exitpb_stop_after_third("stop0", s0, s0, f, f + 0.9) == s0
+        assert rn.exitpb_session_leg("always", 3, f - 1, f) and not rn.exitpb_session_leg("always", 4, f + 1, f)
+        assert not rn.exitpb_session_leg("profit_only", 3, f, f) and rn.exitpb_session_leg("profit_only", 3, f + 0.01, f) and not rn.exitpb_session_leg("profit_only", 4, f + 1, f)
+        assert rn.exitpb_session_leg("profit_3to5", 5, f + 0.01, f) and not rn.exitpb_session_leg("profit_3to5", 6, f + 1, f) and not rn.exitpb_session_leg("profit_3to5", 2, f + 1, f)
+
+    def test_the_copy_with_every_flag_off_is_the_module_walk_event_for_event(self):
+        tails = {"breakeven_stop": [(10.60, 10.85, 10.50, 10.80), (10.70, 10.75, 10.25, 10.70), (9.50, 9.60, 9.40, 9.50)],   # the default: +2R then a gap under the fill
+                 "golden": XP_GOLDEN_TAIL, "profit": XP_PROFIT_TAIL, "staller": STALL_TAIL,
+                 "trail": [(10.60, 10.85, 10.50, 10.80), (10.70, 10.75, 10.55, 10.60), (10.55, 10.60, 10.45, 10.50), (10.40, 10.45, 10.30, 10.35),
+                           (10.30, 10.35, 10.20, 10.25), (10.20, 10.25, 10.15, 10.20)]}
+        seen = set()
+        for name, tail in tails.items():
+            for hist in (10.0, 10.5):
+                for minutes in (None, _stall_minutes()):
+                    res, ref = _xp_walk(tail, hist=hist, minutes=minutes)
+                    assert rn.exitpb_compare_module(name, ref, res["A"]) == [], (name, hist, res["A"]["events"], ref["events"])
+                    assert [e for e in res["A"]["events"] if e[1] != "stop_to"] == ref["events"]
+                    seen.add(res["A"]["status"])
+        assert {"stopped", "trailed", "time_exit"} <= seen
+        # and a fuzz: random daily series and minute days
+        rng = np.random.default_rng(702)
+        statuses = set()
+        for seed in range(60):
+            n, e = 200, 150
+            c = 10.0 * np.exp(np.cumsum(rng.normal(0.001, 0.03, n)))
+            o = c * (1 + rng.normal(0, 0.01, n))
+            h = np.maximum(o, c) * (1 + rng.uniform(0, 0.03, n))
+            l = np.minimum(o, c) * (1 - rng.uniform(0, 0.03, n))
+            bars = cb.daily_bars_from_arrays(_weekdays(n), o, h, l, c, np.full(n, 1e6))
+            fill = float(o[e]) * 1.01
+            stop = fill * (1 - rng.uniform(0.01, 0.06))
+            px, mins = fill, []
+            for m in range(390):
+                px *= 1 + rng.normal(0, 0.002)
+                mo, mc = px, px * (1 + rng.normal(0, 0.001))
+                mins.append((m, mo, max(mo, mc) * (1 + rng.uniform(0, 0.002)), min(mo, mc) * (1 - rng.uniform(0, 0.002)), mc))
+            mb = _mb(mins)
+            fwd, _cut = cb.forward_window(bars, np.arange(n), e, rn.HORIZON)
+            res = rn.exitpb_walk_arms({"fill": fill, "stop": stop, "fill_minute": 7}, closes_before=bars.c[:e + 1], fwd=fwd, adr20=0.05, minutes=mb)
+            entry2 = {"status": "filled", "reason": None, "fill": fill, "stop": stop, "width_pct": (fill - stop) / fill, "fill_minute": 7,
+                      "day0": cb.day0_walk(mb, fill_minute=7, stop=stop)}
+            ref = cb.walk_his_arms(entry2, closes_before=bars.c[:e + 1], fwd=fwd, adr20=0.05, minutes=mb, horizon=rn.HORIZON,
+                                   arms={rn.EXITPB_BASE.name: rn.EXITPB_BASE})[rn.EXITPB_BASE.name]
+            assert rn.exitpb_compare_module(f"seed{seed}", ref, res["A"]) == []
+            statuses.add(res["A"]["status"])
+            for name, r in res.items():                    # every arm: the invariants the registration's WOULD-FAIL-IF lines name
+                f = rn.exitpb_facts(r["events"], fill, stop)
+                if rn.EXITPB_ARMS[name].profit_gated and f["partial_kind"] == "session":
+                    assert f["partial_px"] > fill
+                if rn.EXITPB_ARMS[name].stop_rule == "wbe" and f["stop_to"] is not None:
+                    assert f["stop_to"] == pytest.approx(max(stop, min(fill, fill - (f["partial_px"] - fill) / 2)), abs=1e-12) and f["stop_to"] >= stop
+                if rn.EXITPB_ARMS[name].stop_rule == "stop0" and f["stop_to"] is not None:
+                    assert f["stop_to"] == stop
+                if rn.EXITPB_ARMS[name].stop_rule != "entry" and r["status"] == "stopped_day0" and f["partial_kind"] == "day0_r":
+                    assert f["exit_px"] <= stop + 1e-12
+                if f["partial_kind"]:
+                    assert f["stop_to"] is not None or r["status"] == "stopped"      # a third that leaves a resting stop records it
+        assert len(statuses) >= 3
+
+    def test_the_golden_everything_sells_at_the_session_4_open_under_pp(self):
+        """Reached +1R, the session-3 close <= the fill and under the 20-day -> pp sells EVERYTHING at the session-4 open (the trail is live
+        from session 3 whether or not the third sold); A sells its third at that close and the rest at the same open."""
+        res, _ref = _xp_walk(XP_GOLDEN_TAIL, hist=10.5)
+        for name in ("pp", "pp_wbe", "pp_s0", "pp5_wbe"):
+            r = res[name]
+            assert _ev(r, "partial") == [] and _ev(r, "partial_r") == [] and _ev(r, "cut") == [], name
+            assert r["events"][-1] == (4, "trail", 10.30, 1.0) and r["status"] == "trailed" and r["sessions_held"] == 4, (name, r["events"])
+            assert r["realized_r"] == pytest.approx((10.30 - XP_FILL) / 0.20)
+        a = res["A"]
+        assert _ev(a, "partial") == [(3, "partial", 10.25, rn.EXITPB_BASE.partial_frac)] and _ev(a, "stop_to") == [(3, "stop_to", XP_FILL, 0.0)]
+        assert _ev(a, "be_above_close") == [(3, "be_above_close", 10.25, 0.0)] and a["events"][-1] == (4, "trail", 10.30, pytest.approx(2 / 3))
+        assert res["wbe"]["events"][-1] == a["events"][-1] and _ev(res["wbe"], "stop_to") == [(3, "stop_to", XP_FILL, 0.0)]   # a below-cost third caps at the fill
+        # the discriminator: under the module's own `partial_if_profit` (trail from session 4) the sale would land at the session-5 open
+        bars, e = _xp_bars(XP_GOLDEN_TAIL, hist=10.5)
+        fwd, _c = cb.forward_window(bars, np.arange(len(bars)), e, rn.HORIZON)
+        mod = cb.walk_exit(fill=XP_FILL, stop=XP_STOP, closes_before=bars.c[:e + 1], fwd=fwd, arm=cb.ARMS["p33_s3_t10_ifprofit"], adr20=0.10)
+        assert mod["events"][-1][0] == 5 and mod["sessions_held"] == 5
+        f = rn.exitpb_facts(res["pp"]["events"], XP_FILL, XP_STOP)
+        assert f == {"partial_kind": "", "partial_session": "", "partial_px": None, "stop_to": None, "exit_kind": "trail", "exit_px": 10.30, "exit_session": 4,
+                     "stopped_after_third_le_fill": 0, "beabove": 0, "beabove_kind": ""}
+
+    def test_a_session_3_third_in_profit_the_wbe_formula_the_cap_and_the_stop0_arm(self):
+        res, _ref = _xp_walk(XP_PROFIT_TAIL)
+        for name, r in res.items():                        # every arm sells the third at the session-3 close 10.46 (> the fill)
+            assert _ev(r, "partial") == [(3, "partial", 10.46, rn.EXITPB_BASE.partial_frac)], name
+            assert _ev(r, "be_above_close") == []
+        wbe_stop = max(XP_STOP, min(XP_FILL, XP_FILL - (10.46 - XP_FILL) / 2))
+        assert wbe_stop == pytest.approx(10.22)
+        for name in ("A", "pp"):
+            assert _ev(res[name], "stop_to") == [(3, "stop_to", XP_FILL, 0.0)]
+            assert res[name]["events"][-1] == (4, "stop", XP_FILL, pytest.approx(2 / 3)) and res[name]["status"] == "stopped"
+            assert res[name]["realized_r"] == pytest.approx((0.16 / 3) / 0.20)
+        for name in ("pp_wbe", "wbe", "pp5_wbe"):
+            assert _ev(res[name], "stop_to") == [(3, "stop_to", pytest.approx(wbe_stop), 0.0)]
+            assert res[name]["events"][-1][:2] == (5, "stop") and res[name]["events"][-1][2] == pytest.approx(wbe_stop) and res[name]["status"] == "stopped"
+            assert res[name]["realized_r"] == pytest.approx(0.0, abs=1e-12)          # the whole trade nets zero at that stop
+            f = rn.exitpb_facts(res[name]["events"], XP_FILL, XP_STOP)
+            assert (f["partial_kind"], f["partial_session"], f["partial_px"], f["stop_to"], f["stopped_after_third_le_fill"]) == ("session", 3, 10.46, pytest.approx(wbe_stop), 1)
+        s0 = res["pp_s0"]
+        assert _ev(s0, "stop_to") == [(3, "stop_to", XP_STOP, 0.0)] and not any(ev[1] == "stop" and ev[0] in (4, 5) for ev in s0["events"])
+        # a below-cost session-3 third: A and wbe sell it (wbe's stop caps at the fill = A's), the pp family skips it; pp5_wbe takes session 4's close
+        tail = [XP_PROFIT_TAIL[0], XP_PROFIT_TAIL[1], (10.42, 10.50, 10.27, 10.28), (10.35, 10.45, 10.30, 10.40), (10.40, 10.45, 10.30, 10.35)]
+        res, ref = _xp_walk(tail)
+        assert rn.exitpb_compare_module("x", ref, res["A"]) == []
+        for name in ("A", "wbe"):
+            assert _ev(res[name], "partial") == [(3, "partial", 10.28, rn.EXITPB_BASE.partial_frac)] and _ev(res[name], "stop_to") == [(3, "stop_to", XP_FILL, 0.0)]
+            assert _ev(res[name], "be_above_close") == [(3, "be_above_close", 10.28, 0.0)]
+            assert rn.exitpb_facts(res[name]["events"], XP_FILL, XP_STOP)["beabove_kind"] == "session"
+        for name in ("pp", "pp_wbe", "pp_s0"):
+            assert _ev(res[name], "partial") == [] and _ev(res[name], "be_above_close") == [], name
+        assert _ev(res["pp5_wbe"], "partial") == [(4, "partial", 10.40, rn.EXITPB_BASE.partial_frac)]
+        assert _ev(res["pp5_wbe"], "stop_to") == [(4, "stop_to", pytest.approx(max(XP_STOP, XP_FILL - 0.05)), 0.0)]
+        # no close above the fill in sessions 3..5: pp5_wbe takes no session third at all, the +2R leg stays armed and fires on a later gap
+        tail = [XP_PROFIT_TAIL[0], XP_PROFIT_TAIL[1], (10.42, 10.50, 10.27, 10.28), (10.28, 10.30, 10.20, 10.25), (10.25, 10.30, 10.20, 10.28),
+                (10.25, 10.30, 10.20, 10.28), (10.80, 10.90, 10.75, 10.85)]
+        res, _ref = _xp_walk(tail)
+        for name in ("pp", "pp_wbe", "pp_s0", "pp5_wbe"):
+            assert _ev(res[name], "partial") == [] and _ev(res[name], "partial_r") == [(7, "partial_r", 10.80, rn.EXITPB_BASE.partial_frac)], name
+        assert _ev(res["pp_wbe"], "stop_to") == [(7, "stop_to", XP_STOP, 0.0)]       # a gap-open third above +2R: the wbe stop is stop0
+        assert _ev(res["pp"], "stop_to") == [(7, "stop_to", XP_FILL, 0.0)]
+
+    def test_day0_plus_2r_third_the_wbe_family_keeps_stop0_and_a_day0_stop_nets_zero(self):
+        """A day-0 +2R third (10.70) then a dip to the fill: the entry-price family is stopped at the fill on day 0; the wbe / stop0 family
+        keeps stop0 on day 0 (`day0_walk_target(breakeven=False)`) and walks on with the stop at stop0 (the formula at +2R)."""
+        mins = []
+        for m in range(390):
+            if m < 7:
+                mins.append((m, 10.25, 10.28, 10.20, 10.25))
+            elif m == 7:
+                mins.append((m, 10.29, 10.35, 10.28, 10.34))
+            elif m < 20:
+                mins.append((m, 10.34, 10.40, 10.30, 10.38))
+            elif m == 20:
+                mins.append((m, 10.40, 10.72, 10.38, 10.68))      # +2R printed at 10.70
+            elif m == 30:
+                mins.append((m, 10.40, 10.42, 10.28, 10.35))      # the dip: through the fill 10.30, not through stop0 10.10
+            else:
+                mins.append((m, 10.40, 10.45, 10.35, 10.40))
+        tail = [(10.40, 10.45, 10.12, 10.40), (10.40, 10.45, 10.35, 10.40), (10.40, 10.45, 10.35, 10.42)]
+        res, ref = _xp_walk(tail, minutes=mins)
+        assert rn.exitpb_compare_module("d0", ref, res["A"]) == []
+        for name in ("A", "pp"):
+            r = res[name]
+            assert r["status"] == "stopped_day0" and _ev_is(r["events"][0], 0, "partial_r", 10.70, rn.EXITPB_BASE.partial_frac)
+            assert r["events"][1] == (0, "stop_to", XP_FILL, 0.0) and _ev_is(r["events"][2], 0, "day0_stop", XP_FILL, 2 / 3)
+            assert r["realized_r"] == pytest.approx((0.40 / 3) / 0.20)
+        for name in ("pp_wbe", "wbe", "pp_s0", "pp5_wbe"):
+            r = res[name]
+            assert r["status"] != "stopped_day0" and _ev_is(r["events"][0], 0, "partial_r", 10.70, rn.EXITPB_BASE.partial_frac), name
+            assert r["events"][1] == (0, "stop_to", XP_STOP, 0.0) and not any(ev[1] == "be_above_close" for ev in r["events"])
+            assert not any(ev[1] in ("stop", "stop_gap") and ev[0] == 1 for ev in r["events"])      # d1's dip to 10.12 stays above stop0
+        # the same day with a later minute through stop0: the wbe family ends the day at stop0 and nets exactly zero (at +2R the two coincide)
+        mins2 = [((r[0], 10.40, 10.42, 10.05, 10.20) if r[0] == 40 else r) for r in mins]
+        res, ref = _xp_walk(tail, minutes=mins2)
+        assert rn.exitpb_compare_module("d0b", ref, res["A"]) == []
+        for name in ("pp_wbe", "wbe", "pp_s0", "pp5_wbe"):
+            r = res[name]
+            assert r["status"] == "stopped_day0" and _ev_is(r["events"][-1], 0, "day0_stop", XP_STOP, 2 / 3), name
+            assert r["realized_r"] == pytest.approx(0.0, abs=1e-12)
+            f = rn.exitpb_facts(r["events"], XP_FILL, XP_STOP)
+            assert f["exit_px"] <= XP_STOP and f["stop_to"] == XP_STOP and f["partial_kind"] == "day0_r"
+        assert res["A"]["status"] == "stopped_day0" and res["A"]["events"][-1][2] == XP_FILL        # A was out at the fill on minute 30 already
+
+    def test_identity_on_no_third_trades_on_the_cut_and_on_a_trailed_profitable_third(self):
+        # (d) stopped before any third: every arm equals the control event for event
+        res, ref = _xp_walk([(10.20, 10.25, 10.05, 10.10)])
+        assert res["A"]["status"] == "stopped" and _ev(res["A"], "partial") == [] and _ev(res["A"], "partial_r") == []
+        for name, r in res.items():
+            assert r["events"] == res["A"]["events"] and r["realized_r"] == res["A"]["realized_r"], name
+        # the staller cut: identical across arms
+        res, ref = _xp_walk(STALL_TAIL, minutes=_stall_minutes())
+        assert rn.exitpb_compare_module("cut", ref, res["A"]) == [] and res["A"]["status"] == "time_exit"
+        for name, r in res.items():
+            assert r["events"] == res["A"]["events"] and r["realized_r"] == pytest.approx(res["A"]["realized_r"]), name
+        # (e) trailed out after a +2R third: pp (and pp_wbe, whose lower stop was never touched) equal the control
+        tail = [(10.60, 10.85, 10.50, 10.80), (10.70, 10.75, 10.55, 10.60), (10.55, 10.60, 10.45, 10.50), (10.40, 10.45, 10.35, 10.38),
+                (10.30, 10.35, 10.32, 10.34), (10.20, 10.25, 10.15, 10.20)]
+        res, ref = _xp_walk(tail, hist=10.4)
+        assert res["A"]["status"] == "trailed" and len(_ev(res["A"], "partial_r")) == 1 and _ev_is(_ev(res["A"], "partial_r")[0], 1, "partial_r", 10.70, rn.EXITPB_BASE.partial_frac)
+        for name in ("pp", "pp_wbe", "pp5_wbe"):
+            assert res[name]["realized_r"] == pytest.approx(res["A"]["realized_r"]) and res[name]["sessions_held"] == res["A"]["sessions_held"], name
+        assert [e for e in res["pp"]["events"] if e[1] != "stop_to"] == [e for e in res["A"]["events"] if e[1] != "stop_to"]
+
+    def test_tsla_2020_06_01_mechanics_on_a_synthetic_replica_of_its_bars(self):
+        """His example, replicated from the bars already shown (not an outcome claim): fill $58.37 at the 10:00 bar, stop $56.94. A sells a
+        third at the 06-04 close $57.63 (below cost), moves the stop to cost and is taken out on the 06-05 dip to $57.75 at -0.17R; pp_wbe
+        takes NO third on 06-04 and is NOT stopped on 06-05, then sells its third into the 06-08 gap above +2R with the stop at stop0."""
+        fill, stop = 58.368309999999994, 56.94
+        tsla = [(59.65, 60.58, 58.07, 58.77), (59.21, 59.86, 58.67, 58.86), (59.33, 59.72, 57.23, 57.63), (58.52, 59.10, 57.75, 59.04),
+                (61.27, 63.33, 60.61, 63.33), (62.67, 63.63, 61.60, 62.71), (66.13, 68.50, 65.50, 68.34), (66.01, 67.93, 64.80, 64.86),
+                (65.33, 65.87, 60.84, 62.35)]
+        n, e = 200, 150
+        o = np.full(n, 55.0)
+        h, l, c = np.full(n, 55.5), np.full(n, 54.5), np.full(n, 55.0)
+        o[e], h[e], l[e], c[e] = 57.2, 59.93, 56.94, 59.87
+        for j in range(1, n - e):
+            o[e + j], h[e + j], l[e + j], c[e + j] = tsla[j - 1] if j <= len(tsla) else (62.0, 62.5, 61.5, 62.0)
+        bars = cb.daily_bars_from_arrays(_weekdays(n, dt.date(2019, 11, 1)), o, h, l, c, np.full(n, 1e8))
+        mins = [(m, 58.31 if m == 30 else 58.40, 58.60, 58.20, 58.40) for m in range(390)]      # flat day 0: no +2R, never near the stop
+        mb = _mb(mins)
+        fwd, _cut = cb.forward_window(bars, np.arange(n), e, rn.HORIZON)
+        res = rn.exitpb_walk_arms({"fill": fill, "stop": stop, "fill_minute": 29}, closes_before=bars.c[:e + 1], fwd=fwd, adr20=0.045, minutes=mb)
+        a = res["A"]
+        assert _ev(a, "partial") == [(3, "partial", 57.63, rn.EXITPB_BASE.partial_frac)] and _ev(a, "be_above_close") == [(3, "be_above_close", 57.63, 0.0)]
+        assert a["events"][-1] == (4, "stop", fill, pytest.approx(2 / 3)) and a["realized_r"] == pytest.approx(-0.17230386494061592)
+        pw = res["pp_wbe"]
+        assert not any(ev[1] == "partial" and ev[0] == 3 for ev in pw["events"])                  # no third on 06-04 (close 57.63 < 58.37)
+        assert not any(ev[1] in ("stop", "stop_gap") and ev[0] == 4 for ev in pw["events"])        # not stopped on 06-05 (low 57.75 > 56.94)
+        assert _ev(pw, "partial_r") == [(5, "partial_r", 61.27, rn.EXITPB_BASE.partial_frac)] and _ev(pw, "stop_to") == [(5, "stop_to", stop, 0.0)]
+        assert pw["realized_r"] > 2.0 and pw["status"] == "trailed"
+        assert res["pp"]["realized_r"] > 2.0 and _ev(res["pp"], "stop_to") == [(5, "stop_to", fill, 0.0)]
+
+    def test_parity_fails_on_a_tampered_row_and_on_a_tampered_module_result(self):
+        res, ref = _xp_walk(XP_PROFIT_TAIL)
+        a = res["A"]
+        ar = rn.arm_result(a, width=(XP_FILL - XP_STOP) / XP_FILL, n_fwd=121, horizon=rn.HORIZON)
+        af = rn.exitpb_facts(a["events"], XP_FILL, XP_STOP)
+        pinned = {"status": "stopped", "mature": 1, "sessions_held": 4, "partial_kind": "session", "partial_session": "3", "beabove": 0,
+                  "fwd_bars": 121, "fwd_hole": 0, "realized_r": a["realized_r"]}
+        assert rn.exitpb_compare_pinned("k", pinned, ar, af, 121, False) == []
+        assert rn.exitpb_compare_pinned("k", dict(pinned, realized_r=a["realized_r"] + 0.5), ar, af, 121, False) == [f"k: realized_r copy {a['realized_r']!r} vs pinned {a['realized_r'] + 0.5!r}"]
+        assert any("partial_kind" in p for p in rn.exitpb_compare_pinned("k", dict(pinned, partial_kind="r"), ar, af, 121, False))
+        assert any("sessions_held" in p for p in rn.exitpb_compare_pinned("k", dict(pinned, sessions_held=5), ar, af, 121, False))
+        assert any("fwd_hole" in p for p in rn.exitpb_compare_pinned("k", pinned, ar, af, 121, True))
+        assert rn.exitpb_compare_module("k", ref, a) == []
+        bad = dict(ref, events=ref["events"][1:])
+        assert any("events vs the module's" in p for p in rn.exitpb_compare_module("k", bad, a))
+        bad = dict(ref, events=[(j, k, p + 1e-6, f) if k == "partial" else (j, k, p, f) for j, k, p, f in ref["events"]])
+        assert any("event (" in p for p in rn.exitpb_compare_module("k", bad, a))
+        assert any("realized_r" in p for p in rn.exitpb_compare_module("k", dict(ref, realized_r=ref["realized_r"] + 1e-6), a))
+
+
+def _xp_frame(rows):
+    import pandas as pd
+    base = {"ticker": "A", "D": "2023-03-01", "E": "2023-03-02", "K": "tl", "period": "discovery", "entry": "orh5", "year": 2023, "fill_month": "2023-03",
+            "retrigger_chain": 0, "pole_date": "", "base": "", "first_E": "", "first_month": "", "row_no": "", "own_C1": "", "early_close": 0,
+            **{c: 0 for c in rn.CELL_COLS}, "C0": 1, "C1": 1, "gap_over_1adr": 0, "phase_qqq_10_20": 1, "adr20": 0.10, "fill": XP_FILL, "fill_minute": 7,
+            "walk_from": 7, "stop": XP_STOP, "width_pct": 0.02, "width_adr": 0.3, "target": 10.70, "arm": "A", "session_rule": "always", "stop_rule": "entry",
+            "status": "stopped", "realized_r": 0.0, "pnl_adr": 0.0, "acct_pct": 0.0, "sessions_held": 4, "mature": 1, "open_mark": 0, "fill_day_stop": 0,
+            "partial_kind": "", "partial_session": None, "partial_px": None, "stop_to": None, "exit_kind": "stop", "exit_px": XP_FILL, "exit_session": 4,
+            "stopped_after_third_le_fill": 0, "beabove": 0, "beabove_kind": "", "fwd_bars": 121, "fwd_hole": 0}
+    out = []
+    for r in rows:
+        d = dict(base, **r)
+        d["tkey"] = f"{d['ticker']}|{d['E']}|{d['K']}|{d['entry']}"
+        out.append(d)
+    df = pd.DataFrame(out, columns=rn.EXITPB_TRADE_COLS + ["tkey"])
+    for col in ("K", "entry", "arm", "fill_month"):
+        df[col] = df[col].astype("category")
+    return df
+
+
+def _xp_trade(ticker, month, r_by_arm, **kw):
+    """One trade's six rows: {arm: R | (R, extra cols)} - extras default to the control's shape."""
+    rows = []
+    for arm, spec in r_by_arm.items():
+        r, extra = (spec, {}) if not isinstance(spec, tuple) else spec
+        a = rn.EXITPB_ARMS[arm]
+        rows.append({"ticker": ticker, "fill_month": month, "E": f"{month}-15", "arm": arm, "session_rule": a.session_rule, "stop_rule": a.stop_rule,
+                     "realized_r": r, "pnl_adr": r * 0.3, **kw, **extra})
+    return rows
+
+
+class TestExitReadReport:
+    def test_deltas_verdicts_consequence_and_expectations_on_a_hand_built_table(self):
+        third = {"partial_kind": "r", "partial_session": 1, "partial_px": 10.70, "stop_to": XP_FILL, "status": "trailed", "exit_kind": "trail", "exit_px": 11.0}
+        rows = []
+        months = ["2023-01", "2023-02", "2023-03", "2023-04", "2023-05", "2023-06"]
+        for k in range(36):                                # 36 trades: pp_wbe beats pp by +0.5R on every one, A = pp
+            m = months[k % 6]
+            rows += _xp_trade(f"T{k}", m, {"A": (1.0 + k * 0.01, third), "pp": (1.0 + k * 0.01, third), "pp_wbe": (1.5 + k * 0.01, dict(third, stop_to=XP_STOP)),
+                                           "wbe": 1.2, "pp_s0": (1.1, dict(third, stop_to=XP_STOP)), "pp5_wbe": (1.5 + k * 0.01, dict(third, stop_to=XP_STOP))})
+        rows += _xp_trade("OPEN", "2023-01", {"A": 0.3, "pp": 0.3, "pp_wbe": (0.3, {"mature": 0, "open_mark": 1, "status": "censored"}), "wbe": 0.3, "pp_s0": 0.3, "pp5_wbe": 0.3})
+        df = _xp_frame(rows)
+        rrows, deltas, verdicts = rn.exitpb_report_rows(df, "discovery")
+        v = verdicts["orh5"]
+        d1 = v["deltas"][("C1", "pp_wbe", "pp")]
+        assert d1["n"] == 36 and d1["n_excluded_open"] == 1 and d1["n_differ"] == 36 and d1["mean"] == pytest.approx(0.5) and d1["verdict"] == "win"
+        assert d1["lo"] == pytest.approx(0.5) and d1["hi"] == pytest.approx(0.5)
+        assert v["deltas"][("C1", "pp", "A")]["mean"] == pytest.approx(0.0) and v["deltas"][("C1", "pp", "A")]["n_differ"] == 0
+        assert v["deltas"][("C0", "pp_wbe", "pp")]["n"] == 36 and v["deltas"][("C0", "wbe", "A")]["verdict"] in ("win", "loss", "can't tell")
+        dec = [d for d in deltas if d["deciding"]]
+        assert len(dec) == 2 and {d["cell"] for d in dec} == {"C1", "C0"} and all(d["delta"] == "pp_wbe-pp" and d["entry"] == "orh5" for d in dec)
+        c1 = v["c1"]
+        assert c1["n"] == 36 and c1["n_filled"] == 37 and c1["n_open"] == 1 and c1["n_third"] == 36 and c1["n_third_r"] == 36 and c1["n_ge10"] == 0
+        assert c1["n_ge10_a"] == 0 and c1["share_third"] == pytest.approx(1.0) and c1["n_beabove_session"] == 0
+        assert c1["verdict"] == "FAIL" and c1["why"] == "does not beat C0 on mean R"       # C0 is the same population here: nothing beats it (the bars: a FAIL)
+        assert rn.exitpb_consequence("win", -0.1) == ("pp_wbe", "win -> pp_wbe") and rn.exitpb_consequence("loss", 0.5)[0] == "pp"
+        assert rn.exitpb_consequence("can't tell", -0.01)[0] == "pp" and rn.exitpb_consequence("can't tell", 0.01)[0] == "pp_wbe"
+        assert rn.exitpb_consequence("can't tell (n = 3 < 30)", None)[0] == "pp_wbe"
+        exp = rn.exitpb_expectations(v)
+        assert exp[0].startswith("MET: C0 delta(pp_wbe - pp) point estimate +0.5000R on 36 trades")
+        assert exp[1].startswith("MET: C1 median sessions held") and exp[2].startswith("MET: C0 median sessions held")
+        problems, lines = rn.exitpb_self_checks(df, "discovery")
+        assert problems == [] and any(ln.startswith("(a) pp-family session thirds on a close <= the fill: 0") for ln in lines)
+        assert any(ln.startswith("(g) TSLA 2020-06-01: not in this period") for ln in lines)
+        txt = rn.exitpb_report_text("discovery", rrows, deltas, verdicts, ["DATA CHECKS: synthetic"], lines, ["pre: no verdict file yet (not run) - no stamp"])
+        assert "THE DECIDING EXIT BAR" in txt and "C1 VERDICT on the stop change: win" in txt and "CONSEQUENCE (the registration's table): win -> pp_wbe" in txt
+        assert "EXPECTATIONS" in txt and "CELL VERDICT under pp_wbe" in txt and "BE_ABOVE_CLOSE by kind" in txt and "IMPLEMENTATION CHECKS" in txt and "INTERVAL RECIPE" in txt
+        assert "ENTRY h60" not in txt                                                          # no hourly-close rows in this table
+        for x, y in rn.EXITPB_DELTAS:                                                          # every registered delta appears, C1 and C0
+            assert f"C1 {x} - {y}" in txt and f"C0 {x} - {y}" in txt
+
+    def test_the_self_checks_catch_each_broken_implementation(self):
+        third_sess = {"partial_kind": "session", "partial_session": 3, "partial_px": 10.46, "stop_to": 10.22, "status": "stopped", "exit_kind": "stop", "exit_px": 10.22,
+                      "stopped_after_third_le_fill": 1}
+        ok = _xp_trade("T1", "2023-01", {"A": (0.27, dict(third_sess, stop_to=XP_FILL, exit_px=XP_FILL)), "pp": (0.27, dict(third_sess, stop_to=XP_FILL, exit_px=XP_FILL)),
+                                         "pp_wbe": (0.0, third_sess), "wbe": (0.0, third_sess), "pp_s0": (0.1, dict(third_sess, stop_to=XP_STOP, status="trailed", exit_kind="trail", exit_px=10.3)),
+                                         "pp5_wbe": (0.0, third_sess)})
+        assert rn.exitpb_self_checks(_xp_frame(ok), "discovery")[0] == []
+        # (a) a pp-family session third at or below the fill
+        bad = [dict(r, partial_px=XP_FILL) if r["arm"] == "pp" else r for r in ok]
+        p, _l = rn.exitpb_self_checks(_xp_frame(bad), "discovery")
+        assert any(x.startswith("(a) 1 pp-family session thirds") for x in p)
+        # (b) a wbe stop_to off the formula
+        bad = [dict(r, stop_to=10.25) if r["arm"] == "pp_wbe" else r for r in ok]
+        p, _l = rn.exitpb_self_checks(_xp_frame(bad), "discovery")
+        assert any(x.startswith("(b) 1 wbe-family stop_to levels") for x in p)
+        # (c) a wbe / stop0 day-0 third stopped on day 0 above stop0
+        bad = [dict(r, status="stopped_day0", partial_kind="day0_r", partial_session=0, partial_px=10.70, exit_kind="day0_stop", exit_px=XP_FILL, stop_to=XP_STOP) if r["arm"] == "pp_s0" else r for r in ok]
+        p, _l = rn.exitpb_self_checks(_xp_frame(bad), "discovery")
+        assert any(x.startswith("(c) 1 wbe / stop0 trades") for x in p)
+        # (d) a no-third trade A stopped where pp_wbe differs; (e) A trailed after a +2R third where pp differs
+        nothird = _xp_trade("T2", "2023-02", {"A": -1.0, "pp": -1.0, "pp_wbe": -0.5, "wbe": -1.0, "pp_s0": -1.0, "pp5_wbe": -1.0})
+        p, _l = rn.exitpb_self_checks(_xp_frame(ok + nothird), "discovery")
+        assert any(x.startswith("(d) pp_wbe: 1 trades") for x in p) and not any(x.startswith("(d) wbe") for x in p)
+        tr = {"partial_kind": "r", "partial_session": 2, "partial_px": 10.70, "stop_to": XP_FILL, "status": "trailed", "exit_kind": "trail", "exit_px": 11.0}
+        trailed = _xp_trade("T3", "2023-02", {"A": (3.0, tr), "pp": (2.5, tr), "pp_wbe": (3.0, dict(tr, stop_to=XP_STOP)), "wbe": (3.0, dict(tr, stop_to=XP_STOP)),
+                                              "pp_s0": (3.0, dict(tr, stop_to=XP_STOP)), "pp5_wbe": (3.0, dict(tr, stop_to=XP_STOP))})
+        p, _l = rn.exitpb_self_checks(_xp_frame(ok + trailed), "discovery")
+        assert any(x.startswith("(e) pp: 1 trades") for x in p)
+        # (f) a pp_wbe >= 10R count below A's
+        big = _xp_trade("T4", "2023-03", {"A": (12.0, tr), "pp": (12.0, tr), "pp_wbe": (9.0, dict(tr, stop_to=XP_STOP)), "wbe": (12.0, dict(tr, stop_to=XP_STOP)),
+                                          "pp_s0": (12.0, dict(tr, stop_to=XP_STOP)), "pp5_wbe": (12.0, dict(tr, stop_to=XP_STOP))})
+        p, _l = rn.exitpb_self_checks(_xp_frame(ok + big), "discovery")
+        assert any(x.startswith("(f) the pp_wbe >= 10R count is below A's") for x in p)
+        # (g) the pre period needs the TSLA hourly-close fill, with no session-3 third and no session-4 stop under pp_wbe
+        p, l = rn.exitpb_self_checks(_xp_frame(ok), "pre")
+        assert any(x.startswith("(g) the TSLA 2020-06-01 hourly-close fill is not in the table") for x in p)
+        tsla_ok = _xp_trade("TSLA", "2020-06", {"A": (-0.17, dict(third_sess, partial_px=57.63, stop_to=58.37, exit_px=58.37)), "pp": 2.5,
+                                                "pp_wbe": (2.5, dict(tr, partial_px=61.23, stop_to=56.94)), "wbe": 1.0, "pp_s0": 2.5, "pp5_wbe": 2.5},
+                            E="2020-06-01", entry="h60", fill=58.37, stop=56.94)
+        p, l = rn.exitpb_self_checks(_xp_frame(tsla_ok), "pre")
+        assert p == [] and any(x.startswith("(g) TSLA 2020-06-01 under pp_wbe: third r session 2, status trailed") for x in l)
+        tsla_bad = _xp_trade("TSLA", "2020-06", {"A": -0.17, "pp": -0.17, "pp_wbe": (-0.17, dict(third_sess, partial_px=57.63, stop_to=56.94, exit_px=56.94)),
+                                                 "wbe": 1.0, "pp_s0": 2.5, "pp5_wbe": 2.5}, E="2020-06-01", entry="h60", fill=58.37, stop=56.94)
+        p, _l = rn.exitpb_self_checks(_xp_frame(tsla_bad), "pre")
+        assert any(x.startswith("(g) TSLA 2020-06-01 under pp_wbe took the session-3 third") for x in p)
+
+
+# ── the stage, end to end on the h60 synthetic tree (its pinned P5 table + its own hourly-close table) ─────────────────────────────
+def _xp_tree(tmp_path, monkeypatch):
+    """The h60 tree, its hourly-close read run (so `trades_discovery_h60.tsv.gz` exists), the two other periods' h60 tables stubbed, the
+    stub module's sha registered, and the exit registration doc with matching pins."""
+    tree = _h60_tree(tmp_path, monkeypatch)
+    _h60_doc(tree)
+    _h60_main(tree, "h60-read")
+    assert (tree["cb702"] / "out" / "trades_discovery_h60.tsv.gz").exists()
+    (tree["cb702"] / "out" / "trades_holdout_h60.tsv.gz").write_bytes(b"holdout h60 stub")
+    (tree["cb702_pre"] / "out" / "trades_pre_h60.tsv.gz").write_bytes(b"pre h60 stub")
+    monkeypatch.setattr(rn, "EXITPB_MODULE_SHA", rn.sha256_file(tree["repo"] / "agents" / "market_intelligence" / "consolidation_breakout.py"))
+    doc = tree["repo"] / "docs" / "analysis" / rn.EXITPB_DOC
+    doc.write_text("Method / population. Bars. What the read may NOT do. n=1.\n" + rn.FREEZE_MARK + "\n## Freeze record\n")
+    pins = rn.pin_lines(tree["cb702"], tree["repo"], files=rn.exitpb_frozen_files(tree, tree["repo"])) + [f"- doc body sha256: `{rn.doc_body_sha(doc.read_text())}`"]
+    doc.write_text(doc.read_text() + "\n".join(pins) + "\n")
+    tree["doc"] = doc
+    return tree
+
+
+def _xp_main(tree, *extra, period="discovery"):
+    return rn.main(["exit-read", "--data", str(tree["cb702"]), "--data-pre", str(tree["cb702_pre"]), "--period", period, "--workers", "1", *extra])
+
+
+class TestExitReadStage:
+    def test_the_freeze_map_is_the_docs_pin_list_and_every_edit_refuses(self, tmp_path, monkeypatch):
+        tree = _xp_tree(tmp_path, monkeypatch)
+        files = rn.exitpb_frozen_files(tree, tree["repo"])
+        assert set(files) == {"module", "runner", "cb702/daily_closes_all.csv.gz", "cb702_pre/daily_closes_all.csv.gz", "cb702/out/candidates.tsv",
+                              "cb702/out/candidates_com_comb.tsv", "cb702/out/trades_discovery_p5.tsv.gz", "cb702/out/trades_holdout_p5.tsv.gz",
+                              "cb702/out/trades_discovery_h60.tsv.gz", "cb702/out/trades_holdout_h60.tsv.gz", "cb702_pre/out/candidates_tl_com.tsv",
+                              "cb702_pre/out/trades_pre_p5.tsv.gz", "cb702_pre/out/trades_pre_h60.tsv.gz", "cb702/minutes (tree)", "cb702_pre/minutes (tree)"}
+        check = lambda: rn.freeze_check(doc=tree["doc"], data=tree["cb702"], repo=tree["repo"], files=files)
+        assert check() == []
+        for rel in ("cb702/out/trades_discovery_h60.tsv.gz", "cb702_pre/out/trades_pre_h60.tsv.gz", "cb702/out/trades_discovery_p5.tsv.gz"):
+            p = files[rel]
+            before = p.read_bytes()
+            p.write_bytes(before + b"\n")
+            assert any(x.startswith(f"{rel} sha256 mismatch") for x in check()), rel
+            p.write_bytes(before)
+        (tree["cb702_pre"] / "minutes" / "2099-01-01.psv.gz").write_bytes(b"new")
+        assert any(x.startswith("cb702_pre/minutes (tree) sha256 mismatch") for x in check())
+        (tree["cb702_pre"] / "minutes" / "2099-01-01.psv.gz").unlink()
+        assert check() == []
+        tree["doc"].write_text(tree["doc"].read_text().replace("n=1", "n=2"))
+        assert any(x.startswith("doc body sha256 mismatch") for x in check())
+        # the module is hard-pinned, footer or no footer
+        assert rn.exitpb_module_problem(tree["repo"]) is None
+        monkeypatch.setattr(rn, "EXITPB_MODULE_SHA", "0" * 64)
+        assert "is not the registered" in rn.exitpb_module_problem(tree["repo"])
+
+    def test_options_once_only_pins_dry_run_and_the_module_pin(self, tmp_path, monkeypatch, capsys):
+        tree = _xp_tree(tmp_path, monkeypatch)
+        out = tree["cb702"] / "out"
+        assert _xp_main(tree, "--print-pins") is None
+        pins = capsys.readouterr().out
+        for lab in ("module", "runner", "cb702/out/trades_discovery_h60.tsv.gz", "cb702_pre/out/trades_pre_p5.tsv.gz", "cb702/minutes (tree)", "cb702_pre/minutes (tree)", "doc body"):
+            assert f"- {lab} sha256: `" in pins, lab
+        assert "MISSING" not in pins
+        for extra in (["--keys", "com"], ["--levels", "tl"], ["--limit-dates", "1"], ["--no-close"], ["--no-apollo"], ["--minutes", str(tree["cb702"] / "minutes")],
+                      ["--out", str(tmp_path / "elsewhere")], ["--small-out", str(tmp_path / "elsewhere")], ["--no-freeze-check"], ["--prereg", str(tree["doc"])],
+                      ["--parity-only", "--no-freeze-check"]):
+            with pytest.raises(SystemExit) as ex:
+                _xp_main(tree, *extra)
+            assert ex.value.code == 2 and "REFUSED" in capsys.readouterr().err, extra
+        with pytest.raises(SystemExit) as ex:                                                           # --period is required
+            rn.main(["exit-read", "--data", str(tree["cb702"]), "--data-pre", str(tree["cb702_pre"])])
+        assert ex.value.code == 2 and "--period is required" in capsys.readouterr().err
+        assert not list(out.glob("*exitpb*")) and not list((rn.HERE / "out").glob("*exitpb*"))
+        # the dry run: counts off the pinned tables; no daily bar, minute row or walker
+        def boom(*a, **k):
+            raise AssertionError("opened")
+        for name in ("load_daily", "exitpb_parity", "exitpb_walk_all", "exitpb_walk_arms", "read_minute_file"):
+            monkeypatch.setattr(rn, name, boom)
+        before = sorted(p.name for p in tree["cb702"].rglob("*"))
+        assert _xp_main(tree, "--dry-run") is None
+        o = capsys.readouterr().out
+        assert "EXIT-READ DRY RUN (freeze check passed" in o and "4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1)" in o
+        assert "pairs NOT logged in _done.psv: 0" in o and "complete" in o and "outputs already on disk: none" in o
+        assert sorted(p.name for p in tree["cb702"].rglob("*")) == before
+        assert _xp_main(tree, "--dry-run", "--prereg", str(tree["doc"])) is None and "EXIT-READ DRY RUN" in capsys.readouterr().out
+        (out / "trades_discovery_exitpb.tsv.gz").write_bytes(b"x")
+        (tree["cb702"] / "daily_closes_all.csv.gz").unlink()                                             # no export at all: the counts need none
+        assert _xp_main(tree, "--dry-run", "--no-freeze-check") is None
+        o = capsys.readouterr().out
+        assert "freeze check SKIPPED" in o and "['trades_discovery_exitpb.tsv.gz'] -> the run would REFUSE (read once)" in o
+        (out / "trades_discovery_exitpb.tsv.gz").unlink()
+        # a module that is not the registered one refuses even the dry run
+        monkeypatch.setattr(rn, "EXITPB_MODULE_SHA", "0" * 64)
+        with pytest.raises(SystemExit) as ex:
+            _xp_main(tree, "--dry-run", "--no-freeze-check")
+        assert ex.value.code == 2 and "consolidation_breakout.py was edited" in capsys.readouterr().err
+
+    def test_a_freeze_mismatch_or_a_missing_pair_refuses_before_anything_is_opened(self, tmp_path, monkeypatch, capsys):
+        tree = _xp_tree(tmp_path, monkeypatch)
+        tree2 = _xp_tree(tmp_path / "b", monkeypatch)                                                  # built before the walkers are disarmed
+        p = tree["cb702"] / "out" / "trades_discovery_h60.tsv.gz"
+        p.write_bytes(p.read_bytes() + b"\n")
+
+        def boom(*a, **k):
+            raise AssertionError("the read was opened")
+        for name in ("load_daily", "exitpb_parity", "exitpb_walk_all"):
+            monkeypatch.setattr(rn, name, boom)
+        monkeypatch.setattr(rn, "exitpb_pinned_trades", boom)
+        with pytest.raises(SystemExit) as ex:
+            _xp_main(tree)
+        err = capsys.readouterr().err
+        assert ex.value.code == 2 and "freeze check failed" in err and "cb702/out/trades_discovery_h60.tsv.gz sha256 mismatch" in err
+        monkeypatch.undo()
+        monkeypatch.setattr(rn, "EXITPB_MODULE_SHA", rn.sha256_file(tree2["repo"] / "agents" / "market_intelligence" / "consolidation_breakout.py"))
+        monkeypatch.setattr(rn, "REPO", tree2["repo"])
+        monkeypatch.setattr(rn, "HERE", tmp_path / "b" / "hereroot")
+        (tree2["cb702"] / "minutes" / "_done.psv").write_text(f"{tree2['c1']['E']}|X|390|ok\n")       # the E2 pair (the h60 fill) is no longer logged
+        for name in ("load_daily", "exitpb_parity", "exitpb_walk_all"):
+            monkeypatch.setattr(rn, name, boom)
+        with pytest.raises(SystemExit) as ex:
+            _xp_main(tree2, "--parity-only")
+        assert ex.value.code == 2 and "1 of 2 (date, ticker) pairs are not logged" in capsys.readouterr().err
+
+    def test_end_to_end_parity_only_then_the_read_then_once_only(self, tmp_path, monkeypatch, capsys):
+        tree = _xp_tree(tmp_path, monkeypatch)
+        out = tree["cb702"] / "out"
+        pinned_before = {p.name: p.read_bytes() for p in out.iterdir()}
+        # parity only: the control alone, nothing written
+        assert _xp_main(tree, "--parity-only") is None
+        o = capsys.readouterr().out
+        assert "PARITY ONLY" in o and "PARITY: P2 h60/com: 1 match, 0 mismatch; P2 h60/tl: 1 match, 0 mismatch; P1 orh5/com: 1 match, 0 mismatch; P1 orh5/tl: 1 match, 0 mismatch" in o
+        assert "REACH from the control's rows" in o and "orh5 / tl / C1: fills 1, mature 1" in o and "no new-arm number computed; nothing written" in o
+        assert "freeze check NOT RUN (parity only)" in o
+        assert {p.name: p.read_bytes() for p in out.iterdir()} == pinned_before and not list((rn.HERE / "out").glob("*exitpb*"))
+        # the read
+        assert _xp_main(tree) is None
+        o = capsys.readouterr().out
+        assert "PARITY: P2 h60/com: 1 match" in o and "IMPLEMENTATION CHECKS" in o and "THE DECIDING EXIT BAR" in o and "CONSEQUENCE (the registration's table)" in o
+        for n, b in pinned_before.items():
+            assert (out / n).read_bytes() == b, n
+        names = {p.name for p in out.iterdir()}
+        assert {"trades_discovery_exitpb.tsv.gz", "exitpb_report_discovery.tsv", "exitpb_report_discovery.txt", "exitpb_deltas_discovery.tsv",
+                "exitpb_verdict_discovery.txt", "exitpb_verdict_discovery.json"} <= names and not list(out.glob("*.partial"))
+        assert {p.name for p in (rn.HERE / "out").iterdir()} >= {"exitpb_report_discovery.txt", "exitpb_report_discovery.tsv", "exitpb_deltas_discovery.tsv",
+                                                                 "exitpb_verdict_discovery.txt", "exitpb_summary_discovery.txt"}
+        t = pd_read(out / "trades_discovery_exitpb.tsv.gz")
+        assert list(t.columns) == rn.EXITPB_TRADE_COLS and len(t) == 4 * len(rn.EXITPB_ARMS) and set(t.arm) == set(rn.EXITPB_ARMS)
+        assert set(zip(t.entry, t.K)) == {("orh5", "tl"), ("orh5", "com"), ("h60", "tl"), ("h60", "com")}
+        h = t[(t.entry == "h60") & (t.K == "tl")]
+        assert (h.walk_from == 29).all() and (h.fill_minute == 30).all() and h.fill.iloc[0] == pytest.approx(10.32 * 1.001)
+        a = h[h.arm == "A"].iloc[0]
+        pinned = pd_read(out / "trades_discovery_h60.tsv.gz")
+        pa = pinned[(pinned.entry == "h60") & (pinned.K == "tl") & (pinned.stop_variant == "lod") & (pinned.arm == rn.EXITPB_BASE.name)].iloc[0]
+        assert (a.status, int(a.mature), int(a.sessions_held), a.partial_kind) == (pa.status, int(pa.mature), int(pa.sessions_held), pa.partial_kind)
+        assert a.realized_r == pytest.approx(pa.realized_r, abs=1e-9) and a.partial_px == pytest.approx(pa.fill + 2 * (pa.fill - pa.stop)) and a.stop_to == pytest.approx(pa.fill)
+        w = h[h.arm == "pp_wbe"].iloc[0]                                                               # the +2R third: the wbe stop IS stop0; the d3 dip to 10.2 no longer stops it,
+        assert w.stop_to == pytest.approx(pa.stop) and w.status == "trailed" and int(w.sessions_held) > 4   # the rest trails out later at 10.3 (under the 20-day)
+        assert w.realized_r == pytest.approx(((w.partial_px - pa.fill) / 3 + (10.3 - pa.fill) * 2 / 3) / (pa.fill - pa.stop))
+        o5 = t[(t.entry == "orh5") & (t.K == "tl")]
+        assert (o5.status == "stopped_day0").all() and (o5.realized_r == -1.0).all()                 # the ORH5 poke: stopped on day 0 under every arm
+        p5 = pd_read(out / "trades_discovery_p5.tsv.gz")
+        assert p5[(p5.K == "tl") & (p5.arm == rn.EXITPB_BASE.name)].realized_r.iloc[0] == -1.0
+        rep = pd_read(out / "exitpb_report_discovery.tsv")
+        assert list(rep.columns) == rn.EXITPB_REPORT_COLS
+        c1 = rep[(rep.entry == "orh5") & (rep.cell == "C1") & (rep.arm == "pp_wbe") & (rep.slice == "all")].iloc[0]
+        assert c1.verdict == "CAN'T TELL" and c1.why == "n = 1 < 30" and c1.n == 1
+        d = pd_read(out / "exitpb_deltas_discovery.tsv")
+        assert list(d.columns) == rn.EXITPB_DELTA_COLS and len(d) == 2 * 2 * len(rn.EXITPB_DELTAS)
+        dd = d[(d.entry == "orh5") & (d.cell == "C1") & (d.deciding == 1)].iloc[0]
+        assert dd.delta == "pp_wbe-pp" and dd.n == 1 and dd.verdict.startswith("can't tell (n = 1 < 30)")
+        v = (out / "exitpb_verdict_discovery.txt").read_text()
+        assert "C1 delta(pp_wbe - pp): can't tell (n = 1 < 30)" in v and "consequence:" in v and "carried exit: pp_wbe" in v
+        import json
+        vj = json.loads((out / "exitpb_verdict_discovery.json").read_text())
+        assert vj["carried_exit"] == "pp_wbe" and vj["delta_c1"]["n"] == 1
+        # read once: a second run is refused, a crashed run's .partial too; parity-only still runs (it writes nothing)
+        with pytest.raises(SystemExit) as ex:
+            _xp_main(tree)
+        assert ex.value.code == 2 and "read ONCE per period" in capsys.readouterr().err
+        assert _xp_main(tree, "--parity-only") is None
+        capsys.readouterr()
+        for q in rn.exitpb_existing_outputs(out, "discovery"):
+            q.unlink()
+        (out / "trades_discovery_exitpb.tsv.gz.partial").write_bytes(b"half")
+        with pytest.raises(SystemExit) as ex:
+            _xp_main(tree)
+        assert ex.value.code == 2 and "CRASHED exit read" in capsys.readouterr().err
+        (out / "trades_discovery_exitpb.tsv.gz.partial").unlink()
+        # a tampered pinned row: parity fails, exit 3, nothing written (parity-only and the read alike; the earlier read's reports stay as they were)
+        left_behind = {p.name: p.read_bytes() for p in out.iterdir()}
+        pinned.loc[(pinned.entry == "h60") & (pinned.K == "tl") & (pinned.stop_variant == "lod") & (pinned.arm == rn.EXITPB_BASE.name), "realized_r"] += 0.5
+        pinned.to_csv(out / "trades_discovery_h60.tsv.gz", sep="\t", index=False, na_rep="", compression="gzip")
+        with pytest.raises(SystemExit) as ex:
+            _xp_main(tree, "--parity-only")
+        assert ex.value.code == 3 and "PARITY FAILED: 1 mismatches" in capsys.readouterr().out
+        tree["doc"].write_text(tree["doc"].read_text().split(rn.FREEZE_MARK)[0] + rn.FREEZE_MARK + "\n## Freeze record\n"
+                               + "\n".join(rn.pin_lines(tree["cb702"], tree["repo"], files=rn.exitpb_frozen_files(tree, tree["repo"]))
+                                           + [f"- doc body sha256: `{rn.doc_body_sha(tree['doc'].read_text())}`"]) + "\n")
+        with pytest.raises(SystemExit) as ex:
+            _xp_main(tree)
+        assert ex.value.code == 3 and "PARITY FAILED" in capsys.readouterr().out
+        assert {p.name: p.read_bytes() for p in out.iterdir() if p.name != "trades_discovery_h60.tsv.gz"} == {k: v for k, v in left_behind.items() if k != "trades_discovery_h60.tsv.gz"}
+        assert not (out / "trades_discovery_exitpb.tsv.gz").exists() and not list(out.glob("*.partial"))
+
+    def test_an_implementation_check_failure_keeps_the_table_and_writes_no_report(self, tmp_path, monkeypatch, capsys):
+        tree = _xp_tree(tmp_path, monkeypatch)
+        monkeypatch.setattr(rn, "exitpb_self_checks", lambda df, period: (["(a) 1 pp-family session thirds sold on a close at or below the fill"], ["(a) ..."]))
+        with pytest.raises(SystemExit) as ex:
+            _xp_main(tree)
+        assert ex.value.code == 3 and "IMPLEMENTATION CHECK FAILED (1)" in capsys.readouterr().out
+        out = tree["cb702"] / "out"
+        assert (out / "trades_discovery_exitpb.tsv.gz").exists() and not (out / "exitpb_report_discovery.tsv").exists() and not (out / "exitpb_verdict_discovery.txt").exists()
+
+    def test_the_existing_stages_are_unchanged_by_the_exit_read(self, capsys):
+        import inspect
+        assert inspect.signature(rn.p5_walk).parameters["name"].default == rn.P5_NAME
+        assert inspect.signature(rn.freeze_check).parameters["files"].default is None and inspect.signature(rn.pin_lines).parameters["files"].default is None
+        assert list(rn.P5_ARMS) == [cb.P5_PRIMARY_ARM, "p33_s3_t10", "c3_p33_t20", "r2_p33_t20"] and rn.P5_ARMS[rn.P5_PRIMARY] is cb.CUT_EXIT_ARMS[cb.P5_PRIMARY_ARM]
+        assert list(rn.H60_ARMS) == [cb.P5_PRIMARY_ARM, "p33_s3_t10", "r2_p33_t20"] and len(rn.EXITS_ARMS) == 26 and rn.ALL_ARMS == tuple(cb.ARMS) + rn.CONTROL_ARMS
+        assert rn.EXITPB_PERIODS == rn.H60_PERIODS and rn.EXITPB_BASE is rn.P5_ARMS[rn.P5_PRIMARY]
+        with pytest.raises(SystemExit) as ex:                                                           # the stage is on the CLI: it gets as far as its own --period check
+            rn.main(["exit-read", "--data", "/nonexistent"])
+        assert ex.value.code == 2 and "--period is required" in capsys.readouterr().err

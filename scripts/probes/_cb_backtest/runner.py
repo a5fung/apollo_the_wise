@@ -80,6 +80,16 @@ table, the ORH5 twin re-walked and equal in content to the pinned P5 table; then
 cell; `--print-pins`, `--dry-run`), `h60-hindsight --period P` (the 39 multibaggers and TSLA, refused until the verdict file exists).
 `--data` = cb702, `--data-pre` = cb702_pre (default the sibling). Every other stage is unchanged (`p5_walk` gained `name=`, `freeze_check` /
 `pin_lines` gained `files=`; the defaults are the old behaviour). BUILT ON SYNTHETIC DATA; the build computed no real outcome.
+
+#702 exit read (operator 2026-10-19; docs/analysis/cb_exit_partial_prereg_2026-10-19.md): his partial and the stop after it - the day-based
+third only in profit (`pp`, his ruling), then the WHOLE-TRADE breakeven stop (`pp_wbe`, his proposal, the test) against the entry-price
+stop. `exit-read --period P` walks six arms on a RUNNER-SIDE copy of `walk_exit`'s qm path (`exitpb_walk`, two flags) over the pinned P5
+fills (ORH5; decides on tl) and the pinned hourly-close fills (descriptive), read off the pinned tables themselves; before any new-arm
+number the copy with every flag off is proved equal to the pinned rows (P1 / P2) and to the module's own walk event for event (exit 3,
+nothing written, on a mismatch); then the deciding per-trade delta pp_wbe - pp on C1 (C0 beside), the cell verdict under pp_wbe, the
+registration's consequence row, the expectations and the WOULD-FAIL-IF implementation checks. `--print-pins`, `--dry-run`, `--parity-only`
+(the control alone, match counts, nothing written). The module is hard-pinned to `EXITPB_MODULE_SHA`. Every other stage is unchanged
+(nothing existing was edited). BUILT ON SYNTHETIC DATA; the build computed no real outcome.
 """
 from __future__ import annotations
 
@@ -5539,10 +5549,1099 @@ def run_h60_hindsight(args) -> int:
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
+# #702 EXIT READ (operator 2026-10-19; docs/analysis/cb_exit_partial_prereg_2026-10-19.md): his partial and the stop after it. The
+# day-based third sells only in profit (`pp` - his RULING, adopted, not tested); after a third the stop goes where the WHOLE trade nets
+# zero (`pp_wbe` - his PROPOSAL, the test) instead of to the entry price. Every arm walks the SAME fills as the pinned P5 tables (ORH5,
+# the deciding population) and, descriptively, the pinned hourly-close fills; only the exit changes, so the comparison is per trade.
+# The arms run on a RUNNER-SIDE COPY of `walk_exit`'s qm path (`exitpb_walk`) with two flags - the session-leg rule and the
+# post-third stop rule - dispatched like `walk_his_arms` on the module's own day-0 functions; the module stays byte-identical (its
+# sha256 is hard-checked against `EXITPB_MODULE_SHA`). Before any new-arm number exists the copy with every flag off is proved equal,
+# per trade, to the pinned P5 rows (P1) and to the pinned hourly-close rows (P2), and to the module's own walk event for event (the
+# `stop_to` events the copy adds are excluded); a mismatch exits 3 and writes nothing. BUILT ON SYNTHETIC DATA; the build computed
+# no real outcome (`--parity-only` walks the control alone and prints the match counts).
+# ═════════════════════════════════════════════════════════════════════════════════════════════
+EXITPB_DOC = "cb_exit_partial_prereg_2026-10-19.md"
+EXITPB_NAME = "exitpb"                                         # the file tag: trades_<period>_exitpb.tsv.gz, exitpb_report_<period>.*
+EXITPB_PERIODS = H60_PERIODS                                   # discovery decides; pre beside; holdout descriptive
+EXITPB_MODULE_SHA = "e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b"   # the registration: the module MUST equal it
+EXITPB_BASE = cb.CUT_EXIT_ARMS[cb.P5_PRIMARY_ARM]              # c3_p33_t20_cut3: the mechanics every arm shares (1/3; the +2R leg; the
+#                                                              # session-3 leg; the 20-day trail at the next open; the +1R-by-session-3 cut)
+EXITPB_SESSION_RULES = ("always", "profit_only", "profit_3to5")   # the session leg: the session-3 close whatever the price (A) | only a
+#                                                              # session-3 close ABOVE the fill (his ruling) | the FIRST close in 3..5 above it
+EXITPB_STOP_RULES = ("entry", "wbe", "stop0")                  # after a third sold at p: max(stop, fill) | max(stop0, min(fill, fill - (p -
+#                                                              # fill) / 2)) - the whole-trade breakeven | the stop stays at stop0
+EXITPB_LEG_FIRST = int(EXITPB_BASE.partial_session)            # 3: the session leg's session, and the session the pp-family trail goes live
+EXITPB_LEG_LAST = 5                                            # `profit_3to5`: the last session of its window
+EXITPB_LEVEL = H60_LEVEL                                       # tl: the registered level (com / comb rows are walked for parity and kept beside)
+EXITPB_ENTRIES = ("orh5", "h60")                               # orh5 = the pinned P5 fills (decides); h60 = the pinned hourly-close fills (descriptive)
+EXITPB_ENTRY = "orh5"
+EXITPB_MIN_N = H60_PAIR_MIN_N                                  # 30: the n floor of the deciding delta and of a cell verdict
+EXITPB_TOL = P5_XCHECK_TOL                                     # 1e-9: parity on realized R; the stop_to formula check (relative)
+EXITPB_CONTROL, EXITPB_RULED, EXITPB_PRIMARY = "A", "pp", "pp_wbe"
+EXITPB_DELTAS = (("pp_wbe", "pp"), ("pp", "A"), ("pp_wbe", "A"), ("pp_s0", "pp"), ("pp5_wbe", "pp_wbe"), ("wbe", "A"))   # (x, y): R(x) - R(y); the first DECIDES
+EXITPB_DELTA_CELLS = ("C1", "C0")                              # C1 decides; C0 = the mechanism at scale (breaks a C1 can't-tell)
+EXITPB_TSLA = ("TSLA", "2020-06-01")                           # the WOULD-FAIL-IF mechanics check on the pre period's hourly-close fills
+EXITPB_REACH_DOC = {"discovery": {"C1": {"fills": 79, "third": 34, "third_day0_r": 12, "third_r": 17, "third_session": 5, "stopped_after_third_le_fill": 24,
+                                         "session_third_le_fill": 1},
+                                  "C0": {"mature": 8984, "third": 2874, "stopped_after_third_le_fill": 1943, "session_third_le_fill": 112}}}
+#                                                              # the registration's reach line from A's rows ("stopped AT COST after the third" there = stopped
+#                                                              # after the third at or below the fill here, a gap under the fill included) - printed beside, never a gate
+EXITPB_TRADE_COLS = (["ticker", "D", "E", "K", "period", "entry", "year", "fill_month", "retrigger_chain", "pole_date", "base", "first_E",
+                      "first_month", "row_no", "own_C1", "early_close"] + CELL_COLS
+                     + ["gap_over_1adr", "phase_qqq_10_20", "adr20", "fill", "fill_minute", "walk_from", "stop", "width_pct", "width_adr", "target",
+                        "arm", "session_rule", "stop_rule", "status", "realized_r", "pnl_adr", "acct_pct", "sessions_held", "mature", "open_mark",
+                        "fill_day_stop", "partial_kind", "partial_session", "partial_px", "stop_to", "exit_kind", "exit_px", "exit_session",
+                        "stopped_after_third_le_fill", "beabove", "beabove_kind", "fwd_bars", "fwd_hole"])
+EXITPB_STAT_COLS = H60_STAT_COLS + ["n_third", "n_third_day0_r", "n_third_r", "n_third_session", "share_third", "n_stopped_after_third_le_fill",
+                                    "share_stopped_after_third_le_fill", "n_beabove_session", "n_beabove_r", "n_ge10", "n_ge10_a", "n_ge10_both"]
+EXITPB_REPORT_COLS = ["period", "entry", "cell", "K", "arm", "slice", "value"] + EXITPB_STAT_COLS + ["verdict", "why"]
+EXITPB_DELTA_COLS = ["period", "entry", "cell", "K", "delta", "x", "y", "n", "n_excluded_open", "n_differ", "mean", "ci_lo", "ci_hi", "verdict", "deciding"]
+
+
+@dataclass(frozen=True)
+class ExitArm:
+    """One arm of the exit read: the shared mechanics of `EXITPB_BASE` plus the two registered flags."""
+    name: str
+    session_rule: str
+    stop_rule: str
+
+    def __post_init__(self):
+        if self.session_rule not in EXITPB_SESSION_RULES:
+            raise ValueError(f"ExitArm {self.name!r}: session_rule must be one of {EXITPB_SESSION_RULES}, got {self.session_rule!r}")
+        if self.stop_rule not in EXITPB_STOP_RULES:
+            raise ValueError(f"ExitArm {self.name!r}: stop_rule must be one of {EXITPB_STOP_RULES}, got {self.stop_rule!r}")
+
+    @property
+    def profit_gated(self) -> bool:
+        """The pp family: the session third needs a close above the fill; the trail is live from session 3 whether or not it sold."""
+        return self.session_rule != "always"
+
+    @property
+    def day0_breakeven(self) -> bool:
+        """Day 0 on the minutes: the stop moves to the fill after a day-0 third only under the entry-price rule (`A`, `pp`); the wbe /
+        stop0 family keeps stop0 (a +2R third gives exactly stop0 under the wbe formula)."""
+        return self.stop_rule == "entry"
+
+
+EXITPB_ARMS = {"A": ExitArm("A", "always", "entry"),                 # the control = c3_p33_t20_cut3 exactly (P1 / P2 prove it)
+               "pp": ExitArm("pp", "profit_only", "entry"),          # his ruling: the session-3 third only on a close above the fill
+               "pp_wbe": ExitArm("pp_wbe", "profit_only", "wbe"),    # PRIMARY: pp + his proposal, the whole-trade breakeven stop
+               "wbe": ExitArm("wbe", "always", "wbe"),               # beside: A's partial rule + the wbe stop (a below-cost third caps at the fill)
+               "pp_s0": ExitArm("pp_s0", "profit_only", "stop0"),    # beside: pp with the stop left at stop0 after ANY third, day 0 included
+               "pp5_wbe": ExitArm("pp5_wbe", "profit_3to5", "wbe")}  # beside: the FIRST close in sessions 3..5 above the fill, then the wbe stop
+
+
+def exitpb_stop_after_third(rule: str, stop_now: float, stop0: float, fill: float, px: float) -> float:
+    """The stop resting from the NEXT session after a third sold at `px`: `entry` = max(stop, fill) (the module's breakeven); `wbe` =
+    max(stop0, min(fill, fill - (px - fill) / 2)) - the level at which the two thirds left lose exactly what the third made, never below
+    the original stop, never above the fill (a below-cost third caps at the fill, i.e. as `entry`); `stop0` = the original stop."""
+    if rule == "entry":
+        return max(stop_now, fill)
+    if rule == "wbe":
+        return max(stop0, min(fill, fill - (px - fill) / 2.0))
+    if rule == "stop0":
+        return stop0
+    raise ValueError(f"exitpb_stop_after_third: unknown stop rule {rule!r}")
+
+
+def exitpb_session_leg(rule: str, j: int, close_j: float, fill: float) -> bool:
+    """Does the session leg sell the third at the close of session j? `always`: session 3 whatever the price (the module's combo partial);
+    `profit_only`: session 3 only on a close ABOVE the fill; `profit_3to5`: the first close in sessions 3..5 above the fill."""
+    if rule == "always":
+        return j == EXITPB_LEG_FIRST
+    if rule == "profit_only":
+        return j == EXITPB_LEG_FIRST and close_j > fill
+    if rule == "profit_3to5":
+        return EXITPB_LEG_FIRST <= j <= EXITPB_LEG_LAST and close_j > fill
+    raise ValueError(f"exitpb_session_leg: unknown session rule {rule!r}")
+
+
+def exitpb_walk(*, fill: float, stop: float, closes_before, fwd: "cb.DailyBars", arm: ExitArm, adr20: float, horizon: int = HORIZON,
+                day0_partial_px: "float | None" = None, day0_peak: "float | None" = None) -> dict:
+    """The runner-side copy of `cb.walk_exit`'s qm path for `EXITPB_BASE` (a combo +2R / session-3 third of 1/3, the 20-day trail filled
+    at the next open, the +1R-by-session-3 stall cut, horizon 120), with the two registered flags. Per session the module's order is
+    kept: the gap partial, the stop in force BEFORE the session, the +2R leg, the reach / cut test, the session leg, the trail.
+    What the flags change: (1) the session leg sells per `arm.session_rule` (`exitpb_session_leg`); (2) after ANY third the stop rests
+    per `arm.stop_rule` (`exitpb_stop_after_third`) from the next session, and the copy emits `(j, "stop_to", level, 0.0)` after every
+    third (the level in force from the next session, even when it is stop0 itself - the pp_s0 arm, a +2R third under wbe); an event
+    `(j, "be_above_close", close, 0.0)` follows whenever that level sits above the session's close (the module's hidden one-day time
+    stop; under the pp family the +2R kind remains and is counted); (3) the trail: `partial_done` under `always` (the module's own
+    expression for this arm) and `partial_done or j >= 3` for the pp family - the session-3 close itself is tested against the 20-day
+    whether or not the third sold, and a signal then sells EVERYTHING left at the next open. With every flag off (`A`) the walk is the
+    module's, event for event but for the `stop_to` events (P1 / P2, and `exitpb_compare_module`). Day 0 is the caller's
+    (`exitpb_walk_arms`): `day0_partial_px` = the day-0 +2R third already taken, `day0_peak` = day 0's highest minute high after the fill."""
+    adr20 = cb._check_adr(adr20)
+    risk = float(fill) - float(stop)
+    if not risk > 0:
+        raise ValueError(f"exitpb_walk: stop {stop} must be below fill {fill}")
+    base = EXITPB_BASE
+    fill, stop0 = float(fill), float(stop)
+    o, h, l, c = fwd.o, fwd.h, fwd.l, fwd.c
+    n = len(c)
+    events: list = []
+    pnl = 0.0
+    last_before = float(np.asarray(closes_before, dtype=float)[-1]) if len(closes_before) else None
+    cb_arr = np.asarray(closes_before, dtype=float)
+    trail_n = int(base.trail_sma)
+    tail = cb_arr[-trail_n:]
+    n_before = len(tail)
+    cs = np.concatenate(([0.0], np.cumsum(np.concatenate((tail, c)))))
+    remaining = 1.0
+    stop_now = stop0
+    partial_done = False
+    frac = base.partial_frac
+    target = fill + float(base.partial_r) * risk
+
+    def _after_third(j: int, px: float, close_j: float) -> None:
+        nonlocal stop_now
+        stop_now = exitpb_stop_after_third(arm.stop_rule, stop_now, stop0, fill, px)
+        events.append((j, "stop_to", stop_now, 0.0))
+        if stop_now > close_j:                  # the session closed under the resting stop: tomorrow's open takes it
+            events.append((j, "be_above_close", close_j, 0.0))
+
+    def _book_r_partial(j: int, px: float, close_j: float) -> None:
+        nonlocal pnl, remaining, partial_done
+        events.append((j, "partial_r", px, frac))
+        pnl += (px - fill) * frac
+        remaining -= frac
+        partial_done = True
+        _after_third(j, px, close_j)
+
+    if day0_partial_px is not None:
+        if last_before is None:
+            raise ValueError("exitpb_walk: day0_partial_px needs E's close in closes_before")
+        _book_r_partial(0, float(day0_partial_px), last_before)
+    cut_level = fill + float(base.stall_cut_r) * risk
+    reached = day0_partial_px is not None and float(day0_partial_px) >= cut_level
+    if not reached:
+        if day0_peak is None:
+            raise ValueError("exitpb_walk: the stall cut needs day0_peak (day 0's highest minute high after the fill)")
+        reached = float(day0_peak) >= cut_level
+    cut_session = int(base.stall_cut_session)
+    for j in range(1, min(int(horizon), n) + 1):
+        oj, lj, cj = float(o[j - 1]), float(l[j - 1]), float(c[j - 1])
+        stop_j = stop_now                       # the stop this session is judged against (a third today moves it from tomorrow)
+        gap_px = oj if (not partial_done and oj >= target) else None
+        if oj <= stop_j or lj <= stop_j:        # 1. the stop (a gap-open third first: its open came before the low)
+            if gap_px is not None:
+                events.append((j, "partial_r", gap_px, frac))
+                pnl += (gap_px - fill) * frac
+                remaining -= frac
+            px = oj if oj <= stop_j else stop_j
+            events.append((j, "stop_gap" if oj < stop_j else "stop", px, remaining))
+            pnl += (px - fill) * remaining
+            return cb._outcome("stopped", pnl, risk, fill, adr20, j, events)
+        if gap_px is not None:                  # 1b. the +2R leg: at the open when it gapped above, else AT the target
+            _book_r_partial(j, gap_px, cj)
+        elif not partial_done and float(h[j - 1]) >= target:
+            _book_r_partial(j, target, cj)
+        if not reached and j <= cut_session and float(h[j - 1]) >= cut_level:    # 1c. the reach test, then the cut
+            reached = True
+        if not reached and j == cut_session:
+            events.append((j, "cut", cj, remaining))
+            pnl += (cj - fill) * remaining
+            return cb._outcome("time_exit", pnl, risk, fill, adr20, j, events)
+        if not partial_done and exitpb_session_leg(arm.session_rule, j, cj, fill):   # 2. the session leg, at the close
+            events.append((j, "partial", cj, frac))
+            pnl += (cj - fill) * frac
+            remaining -= frac
+            partial_done = True
+            _after_third(j, cj, cj)
+        trail_live = partial_done if not arm.profit_gated else (partial_done or j >= EXITPB_LEG_FIRST)   # 3. the trail
+        if trail_live:
+            pos = n_before + j
+            if pos - trail_n >= 0:
+                sma = (cs[pos] - cs[pos - trail_n]) / trail_n
+                if cj < sma and j < n:          # the remainder sells at the next open; no next open falls through to the mark
+                    opx = float(o[j])
+                    events.append((j + 1, "trail", opx, remaining))
+                    pnl += (opx - fill) * remaining
+                    return cb._outcome("censored" if j == int(horizon) else "trailed", pnl, risk, fill, adr20, j + 1, events)
+        if j == int(horizon):                   # 4. the horizon
+            events.append((j, "mark", cj, remaining))
+            pnl += (cj - fill) * remaining
+            return cb._outcome("censored", pnl, risk, fill, adr20, j, events)
+    return cb._degraded(c, n, remaining, pnl, fill, risk, adr20, events, last_before)
+
+
+def exitpb_walk_arms(entry: dict, *, closes_before, fwd: "cb.DailyBars", adr20: float, minutes: "cb.MinuteBars", horizon: int = HORIZON,
+                     arms: "dict | None" = None) -> dict:
+    """{arm name: `walk_exit`-shaped result} for ONE filled entry {fill, stop, fill_minute} over `arms` (default `EXITPB_ARMS`), dispatched
+    as `walk_his_arms` dispatches a +R-target arm: day 0 on the MINUTES through the module's own `day0_walk_target` (once per breakeven
+    flag: True for the entry-price family, False for the wbe / stop0 family), nothing left after day 0 -> `day0_target_to_outcome`
+    (a day-0 third then gets its `stop_to` = the stop in force when the day ended), else `exitpb_walk` with the day-0 third and
+    `day0_peak_high`. `fill_minute` is the minute the day-0 walk starts AFTER (ORH5: the fill minute; the hourly-close fills: `walk_from`)."""
+    arms = EXITPB_ARMS if arms is None else arms
+    adr20 = cb._check_adr(adr20)
+    base = EXITPB_BASE
+    fill, stop = float(entry["fill"]), float(entry["stop"])
+    target = fill + float(base.partial_r) * (fill - stop)
+    d0: dict = {}
+    peak = None
+    out = {}
+    for name, arm in arms.items():
+        be = arm.day0_breakeven
+        if be not in d0:
+            d0[be] = cb.day0_walk_target(minutes, fill=fill, fill_minute=entry["fill_minute"], stop=stop, target=target,
+                                         partial_frac=base.partial_frac, breakeven=be)
+        r = d0[be]
+        if r["stopped"]:
+            res = cb.day0_target_to_outcome(entry, r, adr20, base.partial_frac)
+            if r.get("partial_price") is not None:
+                res["events"] = res["events"][:1] + [(0, "stop_to", float(r["stop_in_force"]), 0.0)] + res["events"][1:]
+            out[name] = res
+            continue
+        if peak is None:
+            peak = cb.day0_peak_high(minutes, entry["fill_minute"])
+        out[name] = exitpb_walk(fill=fill, stop=stop, closes_before=closes_before, fwd=fwd, arm=arm, adr20=adr20, horizon=horizon,
+                                day0_partial_px=r["partial_price"], day0_peak=peak)
+    return out
+
+
+def exitpb_facts(events: list, fill: float, stop0: float) -> dict:
+    """The event-derived columns of one walk: the third (kind as `partial_facts` names it - day0_r / r / session / '' -, its session and
+    price), the stop resting after it (`stop_to`), the exit (the last event: kind, price, session), whether the trade was stopped after
+    its third at or below the fill, and the kind of third a `be_above_close` followed ('session' or 'r')."""
+    kind, sess, _tn = partial_facts(events, EXITPB_BASE)
+    px, stop_to, beabove_kind = None, None, ""
+    for _j, k, p, _f in events:
+        if k in ("partial", "partial_r") and px is None:
+            px = float(p)
+        elif k == "stop_to":
+            stop_to = float(p)
+        elif k == "be_above_close":
+            beabove_kind = "session" if kind == "session" else "r"
+    if events:
+        ej, ek, ep, _ef = events[-1]
+        exit_kind, exit_px, exit_session = ek, float(ep), int(ej)
+    else:
+        exit_kind, exit_px, exit_session = "", None, None
+    stopped_le = int(kind != "" and exit_kind in ("stop", "stop_gap", "day0_stop", "day0_gap") and exit_px is not None and exit_px <= fill + EXITPB_TOL)
+    return {"partial_kind": kind, "partial_session": sess, "partial_px": px, "stop_to": stop_to, "exit_kind": exit_kind, "exit_px": exit_px,
+            "exit_session": exit_session, "stopped_after_third_le_fill": stopped_le,
+            "beabove": int(any(ev[1] == "be_above_close" for ev in events)), "beabove_kind": beabove_kind}
+
+
+# ── the pinned populations ───────────────────────────────────────────────────────────────────────────────────────────────────────
+def exitpb_pinned_trades(out: Path, period: str) -> list:
+    """One dict per FILLED trade of the period's two pinned tables: the P5 table's control rows (`c3_p33_t20_cut3` on the lod stop;
+    entry orh5; every level) and the hourly-close table's h60 / lod / control rows (entry h60; every level). The fill, its stop, the
+    minute the day-0 walk starts after, ADR20 and the entry-time facts are read; the pinned OUTCOME columns ride along under
+    `_pinned` for the parity check and nothing else reads them."""
+    trades: list = []
+    ctl = EXITPB_BASE.name
+    p5 = Path(out) / f"trades_{period}_{P5_NAME}.tsv.gz"
+    with gzip.open(p5, "rt", newline="") as fh:
+        for rec in csv.DictReader(fh, delimiter="\t"):
+            if rec["arm"] != ctl or rec["stop_variant"] != "lod":
+                continue
+            trades.append(_exitpb_trade(rec, period, "orh5", walk_from=int(rec["fill_minute"]), fill_month=rec["E"][:7],
+                                        pole_date="", base="", first_E="", first_month="", row_no="", own_C1="",
+                                        retrigger_chain=int(rec.get("retrigger_chain") or 0)))
+    h60 = Path(out) / f"trades_{period}_h60.tsv.gz"
+    with gzip.open(h60, "rt", newline="") as fh:
+        for rec in csv.DictReader(fh, delimiter="\t"):
+            if rec["arm"] != ctl or rec["stop_variant"] != H60_STOP or rec["entry"] != H60_ENTRY:
+                continue
+            trades.append(_exitpb_trade(rec, period, "h60", walk_from=int(rec["walk_from"]), fill_month=rec["fill_month"],
+                                        pole_date=rec["pole_date"], base=rec["base"], first_E=rec["first_E"], first_month=rec["first_month"],
+                                        row_no=int(rec["row_no"]), own_C1=int(rec["own_C1"]), retrigger_chain=""))
+    return trades
+
+
+def _exitpb_trade(rec: dict, period: str, entry: str, **extra) -> dict:
+    fill, stop, adr20, width = float(rec["fill"]), float(rec["stop"]), float(rec["adr20"]), float(rec["width_pct"])
+    t = {"ticker": rec["ticker"], "D": rec["D"], "E": rec["E"], "K": rec["K"], "period": period, "entry": entry, "year": int(rec["E"][:4]),
+         "early_close": int(rec["E"] in H60_EARLY_CLOSE), "gap_over_1adr": int(rec.get("gap_over_1adr") or 0),
+         "phase_qqq_10_20": int(rec.get("phase_qqq_10_20") or 0), "adr20": adr20, "fill": fill, "fill_minute": int(rec["fill_minute"]),
+         "stop": stop, "width_pct": width, "width_adr": width / adr20, "target": fill + float(EXITPB_BASE.partial_r) * (fill - stop),
+         "_pinned": {"status": rec["status"], "mature": int(rec["mature"]), "sessions_held": int(rec["sessions_held"]),
+                     "partial_kind": rec["partial_kind"], "partial_session": rec["partial_session"], "realized_r": float(rec["realized_r"]),
+                     "beabove": int(rec["beabove"]), "fwd_bars": int(rec["fwd_bars"]), "fwd_hole": int(rec["fwd_hole"])}}
+    for cell in CELL_COLS:
+        t[cell] = int(rec.get(cell) or 0)
+    t.update(extra)
+    return t
+
+
+def exitpb_minute_inputs(trades: list, minutes_dir: Path) -> dict:
+    """The (E, ticker) pairs the fills need and what the minute directory holds of them (`pre_missing_pairs`; a date with no file maps
+    to os.devnull so a lost pair is named, never dropped)."""
+    pairs = sorted({(t["E"], t["ticker"]) for t in trades})
+    has_dir = minutes_dir.is_dir()
+    on_disk = minute_date_files(minutes_dir) if has_dir else {}
+    done = load_done_pairs(minutes_dir) if has_dir else None
+    missing, lost = pre_missing_pairs(pairs, on_disk, done)
+    files = dict(on_disk)
+    for d in {e for e, _t in pairs} - set(files):
+        files[d] = Path(os.devnull)
+    return {"minutes_dir": minutes_dir, "pairs": pairs, "on_disk": on_disk, "done": done, "missing": missing, "lost": lost, "files": files,
+            "by_date": group_by_date(trades, set(files))}
+
+
+def exitpb_trade_key(t: dict) -> str:
+    return f"{t['ticker']}|{t['E']}|{t['K']}|{t['entry']}"
+
+
+# ── the parity checks ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+def exitpb_compare_pinned(key: str, pinned: dict, ar: dict, facts: dict, n_fwd: int, cut: bool) -> list:
+    """P1 / P2: the copy with every flag off against the pinned row - status, maturity, sessions held, the third's kind and session, the
+    be_above_close flag, the forward window, and realized R to 1e-9."""
+    bad = []
+
+    def _sess(x) -> str:                        # the third's session: '' or an integer, however the table spelled it ('3' / '3.0')
+        return "" if x in ("", None) else str(int(float(x)))
+    for col, mine in (("status", ar["status"]), ("mature", int(ar["mature"])), ("sessions_held", int(ar["sessions_held"])),
+                      ("partial_kind", facts["partial_kind"]), ("partial_session", _sess(facts["partial_session"])), ("beabove", int(facts["beabove"])),
+                      ("fwd_bars", n_fwd), ("fwd_hole", int(cut))):
+        theirs = _sess(pinned[col]) if col == "partial_session" else pinned[col]
+        if str(mine) != str(theirs):
+            bad.append(f"{key}: {col} copy {mine!r} vs pinned {theirs!r}")
+    if abs(float(ar["realized_r"]) - float(pinned["realized_r"])) > EXITPB_TOL:
+        bad.append(f"{key}: realized_r copy {ar['realized_r']!r} vs pinned {pinned['realized_r']!r}")
+    return bad
+
+
+def exitpb_compare_module(key: str, ref: dict, copy: dict) -> list:
+    """The copy with every flag off against the module's own walk of the same entry: the same status, sessions held, realized R and
+    events (the copy's `stop_to` events excluded)."""
+    import math
+    bad = []
+    mine = [ev for ev in copy["events"] if ev[1] != "stop_to"]
+    theirs = list(ref["events"])
+    if len(mine) != len(theirs):
+        bad.append(f"{key}: {len(mine)} events vs the module's {len(theirs)}")
+    else:
+        for a, b in zip(mine, theirs):
+            if a[0] != b[0] or a[1] != b[1] or not math.isclose(float(a[2]), float(b[2]), rel_tol=1e-12, abs_tol=1e-12) or a[3] != b[3]:
+                bad.append(f"{key}: event {a} vs the module's {b}")
+                break
+    if copy["status"] != ref["status"] or int(copy["sessions_held"]) != int(ref["sessions_held"]):
+        bad.append(f"{key}: status / sessions_held {copy['status']} / {copy['sessions_held']} vs the module's {ref['status']} / {ref['sessions_held']}")
+    if not math.isclose(float(copy["realized_r"]), float(ref["realized_r"]), rel_tol=1e-12, abs_tol=1e-12):
+        bad.append(f"{key}: realized_r {copy['realized_r']!r} vs the module's {ref['realized_r']!r}")
+    return bad
+
+
+def exitpb_reach_facts(t: dict, ar: dict, facts: dict) -> Counter:
+    """The registration's reach line, from the control's own rows: per (entry, K, cell) the fills, the mature walks, the thirds by kind,
+    the trades stopped after the third at the fill (`at_cost`) / at or below it, the session thirds at or below the fill, and the
+    `movable` trades (either of the last two: the only ones the pp / pp_wbe rules can change)."""
+    c: Counter = Counter()
+    kind = facts["partial_kind"]
+    at_cost = int(kind != "" and facts["exit_kind"] in ("stop", "day0_stop") and facts["exit_px"] is not None
+                  and abs(facts["exit_px"] - t["fill"]) <= EXITPB_TOL)
+    sess_le = int(kind == "session" and facts["partial_px"] is not None and facts["partial_px"] <= t["fill"])
+    for cell in CELL_COLS:
+        if not t[cell]:
+            continue
+        k = (t["entry"], t["K"], cell)
+        c[k + ("fills",)] += 1
+        c[k + ("mature",)] += int(ar["mature"])
+        if kind:
+            c[k + ("third",)] += 1
+            c[k + ("third_" + kind,)] += 1
+        c[k + ("stopped_after_third_at_cost",)] += at_cost
+        c[k + ("stopped_after_third_le_fill",)] += facts["stopped_after_third_le_fill"]
+        c[k + ("session_third_le_fill",)] += sess_le
+        c[k + ("movable",)] += int(bool(sess_le or facts["stopped_after_third_le_fill"]))
+    return c
+
+
+def exitpb_reach_text(reach: Counter, period: str) -> str:
+    doc = EXITPB_REACH_DOC.get(period, {})
+    lines = [f"REACH from the control's rows (entry / level / cell: fills, mature, thirds (day0_r / r / session), stopped after the third at the "
+             f"fill, at or below it, session thirds at or below the fill, movable = trades the pp / pp_wbe rules can change)"
+             + (" - the registration's line beside" if doc else "")]
+    keys = sorted({k[:3] for k in reach})
+    for entry, k, cell in keys:
+        if cell not in ("C1", "C0") or k != EXITPB_LEVEL:
+            continue
+        g = lambda m: reach.get((entry, k, cell, m), 0)
+        ln = (f"  {entry} / {k} / {cell}: fills {g('fills'):,}, mature {g('mature'):,}, thirds {g('third'):,} ({g('third_day0_r'):,} / {g('third_r'):,} / "
+              f"{g('third_session'):,}), stopped after the third at cost {g('stopped_after_third_at_cost'):,}, at or below the fill "
+              f"{g('stopped_after_third_le_fill'):,}, session thirds <= fill {g('session_third_le_fill'):,}, movable {g('movable'):,}")
+        d = doc.get(cell) if entry == EXITPB_ENTRY else None
+        if d:
+            ln += "  | registration: " + ", ".join(f"{kk} {v:,} ({'=' if g(kk) == v else 'reads ' + format(g(kk), ',')})" for kk, v in d.items())
+        lines.append(ln)
+    return "\n".join(lines)
+
+
+def exitpb_row(t: dict, arm: ExitArm, raw: dict, n_fwd: int, cut: bool) -> list:
+    a = arm_result(raw, width=t["width_pct"], n_fwd=n_fwd, horizon=HORIZON)
+    f = exitpb_facts(raw["events"], t["fill"], t["stop"])
+    row = {k: v for k, v in t.items() if k != "_pinned"}
+    row.update(arm=arm.name, session_rule=arm.session_rule, stop_rule=arm.stop_rule, status=a["status"], realized_r=a["realized_r"],
+               pnl_adr=a["pnl_adr"], acct_pct=a["acct_pct"], sessions_held=a["sessions_held"], mature=int(a["mature"]), open_mark=int(a["open_mark"]),
+               fill_day_stop=int(a["status"] == "stopped_day0"), fwd_bars=n_fwd, fwd_hole=int(cut), **f)
+    return _by_cols(row, EXITPB_TRADE_COLS)
+
+
+def _exitpb_job(date_iso: str) -> tuple:
+    """One fill date: the minute file once, every pinned fill of the date through the copy. `_G["exitpb_mode"]` 'parity' = the control
+    alone against the pinned row and the module's walk (no new-arm number); 'full' = every arm, the parity check repeated on the control.
+    Returns (rows gzip member, tally, problems, reach counter)."""
+    D: Daily = _G["D"]
+    trades = _G["by_date"][date_iso]
+    blocks, _info = read_minute_file(_G["files"][date_iso], {t["ticker"] for t in trades})
+    done, cal = _G["done"], D.cal
+    mode, arms = _G["exitpb_mode"], _G["exitpb_arms"]
+    rows, tally, problems, reach = [], Counter(), [], Counter()
+    ctl = {EXITPB_CONTROL: EXITPB_ARMS[EXITPB_CONTROL]}
+    for t in trades:
+        mb, state = minutes_for(blocks, done, date_iso, t["ticker"])
+        key = exitpb_trade_key(t)
+        if mb is None:
+            problems.append(f"{key}: minutes {state} - a pinned fill whose breakout-day minutes cannot be read")
+            tally[("minutes", state)] += 1
+            continue
+        if t["entry"] == "h60":
+            mb = h60_trim(mb, t["E"] in H60_EARLY_CLOSE)
+        bars, cidx = _ticker_bars(t["ticker"])
+        e = locate_breakout_index(cal, cidx, t["E"])
+        closes_before = bars.c[:e + 1]
+        fwd, cut = forward_window(bars, cidx, e, HORIZON)
+        entry = {"fill": t["fill"], "stop": t["stop"], "fill_minute": t["walk_from"]}
+        res = exitpb_walk_arms(entry, closes_before=closes_before, fwd=fwd, adr20=t["adr20"], minutes=mb, horizon=HORIZON,
+                               arms=(ctl if mode == "parity" else arms))
+        a = res[EXITPB_CONTROL]
+        ar = arm_result(a, width=t["width_pct"], n_fwd=len(fwd), horizon=HORIZON)
+        af = exitpb_facts(a["events"], t["fill"], t["stop"])
+        problems += exitpb_compare_pinned(key, t["_pinned"], ar, af, len(fwd), cut)
+        if mode == "parity":
+            entry2 = {"status": "filled", "reason": None, "fill": t["fill"], "stop": t["stop"], "width_pct": t["width_pct"], "fill_minute": t["walk_from"],
+                      "day0": cb.day0_walk(mb, fill_minute=t["walk_from"], stop=t["stop"])}
+            ref = cb.walk_his_arms(entry2, closes_before=closes_before, fwd=fwd, adr20=t["adr20"], minutes=mb, horizon=HORIZON,
+                                   arms={EXITPB_BASE.name: EXITPB_BASE})[EXITPB_BASE.name]
+            problems += exitpb_compare_module(key, ref, a)
+            reach.update(exitpb_reach_facts(t, ar, af))
+            tally[("parity", t["entry"], t["K"])] += 1
+            continue
+        for name, raw in res.items():
+            rows.append(exitpb_row(t, arms[name], raw, len(fwd), cut))
+        tally[("walked", t["entry"], t["K"])] += 1
+    return rows_to_gz(rows), tally, problems, reach
+
+
+def exitpb_parity(prep: dict, workers: int, say) -> tuple:
+    """Pass 1: the control alone over every pinned fill of the period -> (counts per (entry, K), problems, reach). Opens the daily export
+    and the minute files; computes NO new-arm number and writes nothing."""
+    t0 = time.time()
+    if "D" not in _G or _G.get("exitpb_data") != str(prep["data"]):
+        _G.update(D=load_daily(prep["data"] / "daily_closes_all.csv.gz"), exitpb_data=str(prep["data"]))
+    inp = prep["inp"]
+    _G.update(by_date=inp["by_date"], files=inp["files"], done=inp["done"], bars_cache={}, exitpb_mode="parity", exitpb_arms=EXITPB_ARMS)
+    tally: Counter = Counter()
+    problems: list = []
+    reach: Counter = Counter()
+    dates = list(inp["by_date"])
+    for k, (_gz, ty, pr, rc) in enumerate(_pool_map(_exitpb_job, dates, workers), 1):
+        tally.update(ty)
+        problems += pr
+        reach.update(rc)
+        if k % 200 == 0 or k == len(dates):
+            print(f"  parity {k}/{len(dates)} dates, {sum(n for kk, n in tally.items() if kk[0] == 'parity'):,} fills", flush=True)
+    counts = {kk[1:]: n for kk, n in tally.items() if kk[0] == "parity"}
+    say(f"[parity: {time.time() - t0:.0f}s]")
+    return counts, problems, reach
+
+
+def exitpb_walk_all(prep: dict, workers: int, period: str, say) -> tuple:
+    """Pass 2: every arm over every pinned fill -> (trades path, tally, problems). Written to `.partial` and renamed only after every
+    date is walked (the once-only protocol)."""
+    t0 = time.time()
+    if "D" not in _G or _G.get("exitpb_data") != str(prep["data"]):
+        _G.update(D=load_daily(prep["data"] / "daily_closes_all.csv.gz"), exitpb_data=str(prep["data"]))
+    inp = prep["inp"]
+    _G.update(by_date=inp["by_date"], files=inp["files"], done=inp["done"], bars_cache={}, exitpb_mode="full", exitpb_arms=EXITPB_ARMS)
+    tp = prep["out"] / f"trades_{period}_{EXITPB_NAME}.tsv.gz"
+    tpp = partial_path(tp)
+    tally: Counter = Counter()
+    problems: list = []
+    dates = list(inp["by_date"])
+    with open(tpp, "wb") as tf:
+        tf.write(rows_to_gz([EXITPB_TRADE_COLS]))
+        for k, (gz, ty, pr, _rc) in enumerate(_pool_map(_exitpb_job, dates, workers), 1):
+            tf.write(gz)
+            tally.update(ty)
+            problems += pr
+            if k % 200 == 0 or k == len(dates):
+                print(f"  walk {k}/{len(dates)} dates, {sum(n for kk, n in tally.items() if kk[0] == 'walked'):,} fills x {len(EXITPB_ARMS)} arms", flush=True)
+    if problems:                                # the control differed mid-walk: the table is not a read
+        tpp.unlink()
+        return None, tally, problems
+    os.replace(tpp, tp)
+    say(f"[exit walks: {time.time() - t0:.0f}s]")
+    return tp, tally, problems
+
+
+# ── the self-checks (the registration's WOULD-FAIL-IF lines, on the written table) ─────────────────────────────────────────────
+def exitpb_self_checks(df, period: str) -> tuple:
+    """(problems, lines): every WOULD-FAIL-IF of the registration that the table can decide. A problem = a broken implementation: the
+    report is not written. `df` = `exitpb_load_frame`'s frame."""
+    problems, lines = [], []
+    arm = df["arm"].astype(str)
+    pk = df["partial_kind"].fillna("").astype(str)
+    gated = arm.map(lambda n: EXITPB_ARMS[n].profit_gated).astype(bool)
+    wbe = arm.map(lambda n: EXITPB_ARMS[n].stop_rule == "wbe").astype(bool)
+    nobe = arm.map(lambda n: EXITPB_ARMS[n].stop_rule != "entry").astype(bool)
+    # (a) a pp-family session third on a close <= the fill
+    bad = df[gated & (pk == "session") & (df["partial_px"].astype(float) <= df["fill"].astype(float))]
+    lines.append(f"(a) pp-family session thirds on a close <= the fill: {len(bad)} (must be 0)")
+    if len(bad):
+        problems.append(f"(a) {len(bad)} pp-family session thirds sold on a close at or below the fill")
+    # (b) a wbe-family stop_to off the formula or below stop0
+    w = df[wbe & df["stop_to"].notna()]
+    if len(w):
+        fill, s0, px, st = (w[c].to_numpy(dtype=float) for c in ("fill", "stop", "partial_px", "stop_to"))
+        formula = np.maximum(s0, np.minimum(fill, fill - (px - fill) / 2.0))
+        off = (np.abs(st - formula) > EXITPB_TOL * np.maximum(1.0, np.abs(formula))) | (st < s0 - EXITPB_TOL)
+        n_off = int(off.sum())
+    else:
+        n_off = 0
+    lines.append(f"(b) wbe-family stop_to levels off max(stop0, min(fill, fill - (p - fill)/2)) or below stop0: {n_off} of {len(w)} (must be 0)")
+    if n_off:
+        problems.append(f"(b) {n_off} wbe-family stop_to levels are not the registered formula")
+    # (c) a wbe / stop0 trade with a day-0 third that ended stopped_day0 above stop0
+    bad = df[nobe & (df["status"] == "stopped_day0") & (pk == "day0_r") & (df["exit_px"].astype(float) > df["stop"].astype(float) + EXITPB_TOL)]
+    lines.append(f"(c) wbe / stop0 day-0 thirds stopped on day 0 above stop0: {len(bad)} (must be 0)")
+    if len(bad):
+        problems.append(f"(c) {len(bad)} wbe / stop0 trades with a day-0 third were stopped on day 0 above stop0")
+    # (d) a trade the control stopped or cut with NO third: every arm equals it;  (e) the control trailed out after a +2R third or an
+    #     above-fill session third: pp equals it
+    A = df[arm == EXITPB_CONTROL].set_index("tkey")
+    apk = A["partial_kind"].fillna("").astype(str)
+    idx_d = A.index[(apk == "") & A["status"].isin(("stopped", "stopped_day0", "time_exit"))]
+    for name in EXITPB_ARMS:
+        if name == EXITPB_CONTROL:
+            continue
+        X = df[arm == name].set_index("tkey").reindex(idx_d)
+        n_bad = int(((X["realized_r"].astype(float) - A.loc[idx_d, "realized_r"].astype(float)).abs() > EXITPB_TOL).sum() + X["realized_r"].isna().sum())
+        lines.append(f"(d) {name} differs from A on a trade A stopped or cut with no third: {n_bad} of {len(idx_d)} (must be 0)")
+        if n_bad:
+            problems.append(f"(d) {name}: {n_bad} trades A stopped or cut with no third have a different R")
+    idx_e = A.index[(A["status"] == "trailed") & (apk.isin(("day0_r", "r")) | ((apk == "session") & (A["partial_px"].astype(float) > A["fill"].astype(float))))]
+    PP = df[arm == EXITPB_RULED].set_index("tkey").reindex(idx_e)
+    n_bad = int(((PP["realized_r"].astype(float) - A.loc[idx_e, "realized_r"].astype(float)).abs() > EXITPB_TOL).sum() + PP["realized_r"].isna().sum())
+    lines.append(f"(e) pp differs from A on a trade A trailed out after a +2R or above-fill session third: {n_bad} of {len(idx_e)} (must be 0)")
+    if n_bad:
+        problems.append(f"(e) pp: {n_bad} trades A trailed out after a +2R / above-fill third have a different R")
+    # (f) the primary's >= 10R count never below the control's (per cell, the deciding entry and level, mature walks)
+    PW = df[arm == EXITPB_PRIMARY].set_index("tkey")
+    short = []
+    for cell in CELL_COLS:
+        for ent in EXITPB_ENTRIES:
+            sel_a = A[(A["entry"].astype(str) == ent) & (A["K"].astype(str) == EXITPB_LEVEL) & (A[cell] == 1) & (A["mature"] == 1)]
+            sel_p = PW[(PW["entry"].astype(str) == ent) & (PW["K"].astype(str) == EXITPB_LEVEL) & (PW[cell] == 1) & (PW["mature"] == 1)]
+            na, npw = int((sel_a["realized_r"].astype(float) >= H60_TAIL_R).sum()), int((sel_p["realized_r"].astype(float) >= H60_TAIL_R).sum())
+            if npw < na:
+                short.append(f"{ent} {cell}: pp_wbe {npw} < A {na}")
+    lines.append(f"(f) cells where the pp_wbe >= 10R count is below A's: {len(short)} (must be 0){(': ' + '; '.join(short)) if short else ''}")
+    if short:
+        problems.append(f"(f) the pp_wbe >= 10R count is below A's in {len(short)} cells")
+    # (g) TSLA 2020-06-01 on the hourly-close fills (the pre period): no third on 06-04 (session 3), not stopped on 06-05 (session 4)
+    if period == "pre":
+        row = df[(df["ticker"] == EXITPB_TSLA[0]) & (df["E"] == EXITPB_TSLA[1]) & (df["K"].astype(str) == EXITPB_LEVEL) & (df["entry"].astype(str) == "h60")
+                 & (arm == EXITPB_PRIMARY)]
+        if not len(row):
+            lines.append("(g) TSLA 2020-06-01 hourly-close fill: NOT FOUND (must exist)")
+            problems.append("(g) the TSLA 2020-06-01 hourly-close fill is not in the table")
+        else:
+            r = row.iloc[0]
+            kind, sess = str(r["partial_kind"]) if r["partial_kind"] == r["partial_kind"] else "", r["partial_session"]
+            third_d4 = kind == "session" and int(float(sess)) == 3
+            stopped_d5 = r["status"] == "stopped" and int(r["sessions_held"]) == 4
+            lines.append(f"(g) TSLA 2020-06-01 under pp_wbe: third {kind or 'none'}{(' session ' + str(int(float(sess)))) if kind else ''}, "
+                         f"status {r['status']} after {int(r['sessions_held'])} sessions, R {float(r['realized_r']):+.3f} "
+                         f"(must be: no session-3 third, not stopped on session 4)")
+            if third_d4 or stopped_d5:
+                problems.append("(g) TSLA 2020-06-01 under pp_wbe took the session-3 third or was stopped on session 4")
+    else:
+        lines.append("(g) TSLA 2020-06-01: not in this period (the pre period's check)")
+    return problems, lines
+
+
+# ── the report ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+def exitpb_load_frame(path: Path):
+    import pandas as pd
+    df = pd.read_csv(path, sep="\t", keep_default_na=False, na_values=[""], low_memory=False)
+    df["tkey"] = df["ticker"].astype(str) + "|" + df["E"].astype(str) + "|" + df["K"].astype(str) + "|" + df["entry"].astype(str)
+    for col in ("K", "entry", "arm", "fill_month"):
+        df[col] = df[col].astype("category")
+    return df
+
+
+def exitpb_group_stats(g, a_r: dict, key: str, ci: bool = True) -> dict:
+    """`h60_stats` (the registration's columns, the interval on the FILL month) plus the thirds by kind, the share stopped after the third at
+    or below the fill, the be_above_close counts by kind and the >= 10R overlap with the control on the SAME trades."""
+    s = h60_stats(g, key, ci)
+    gm = g[g["mature"] == 1]
+    n = len(gm)
+    kinds = gm["partial_kind"].fillna("").astype(str)
+    bk = gm["beabove_kind"].fillna("").astype(str)
+    s.update(n_third=int((kinds != "").sum()), n_third_day0_r=int((kinds == "day0_r").sum()), n_third_r=int((kinds == "r").sum()),
+             n_third_session=int((kinds == "session").sum()), share_third=(float((kinds != "").mean()) if n else None),
+             n_stopped_after_third_le_fill=int(gm["stopped_after_third_le_fill"].astype(int).sum()),
+             share_stopped_after_third_le_fill=(float(gm["stopped_after_third_le_fill"].astype(float).mean()) if n else None),
+             n_beabove_session=int((bk == "session").sum()), n_beabove_r=int((bk == "r").sum()))
+    r = gm["realized_r"].to_numpy(dtype=float)
+    ra = np.array([a_r.get(k, np.nan) for k in gm["tkey"]], dtype=float) if n else np.zeros(0)
+    with np.errstate(invalid="ignore"):
+        s.update(n_ge10=int((r >= H60_TAIL_R).sum()), n_ge10_a=int(np.nansum(ra >= H60_TAIL_R)), n_ge10_both=int(((r >= H60_TAIL_R) & (ra >= H60_TAIL_R)).sum()))
+    return s
+
+
+def exitpb_delta(gx, gy, key: str) -> dict:
+    """R(x) - R(y) per trade on the SAME fills, both walks mature (a trade with an open mark on either arm is excluded and counted); the
+    month-block interval on the FILL month; the verdict on the n floor (`h60_pair_verdict`: lower end > 0 win, upper end < 0 loss)."""
+    m = gx[["tkey", "mature", "realized_r", "fill_month"]].merge(gy[["tkey", "mature", "realized_r"]], on="tkey", suffixes=("_x", "_y"))
+    both = m[(m["mature_x"] == 1) & (m["mature_y"] == 1)]
+    d = both["realized_r_x"].to_numpy(dtype=float) - both["realized_r_y"].to_numpy(dtype=float)
+    ci = h60_pair_ci(d, both["fill_month"].astype(str).to_numpy(), key=key)
+    return {**ci, "n_excluded_open": int(len(m) - len(both)), "n_differ": int((np.abs(d) > EXITPB_TOL).sum()), "verdict": h60_pair_verdict(ci, EXITPB_MIN_N)}
+
+
+def exitpb_consequence(c1_verdict: str, c0_hi) -> tuple:
+    """The registration's consequence table: (the exit carried into every next registration, the row's text)."""
+    if c1_verdict == "win":
+        return EXITPB_PRIMARY, "win -> pp_wbe"
+    if c1_verdict == "loss":
+        return EXITPB_RULED, "loss -> pp (his ruling stands; the stop goes to the entry price after the third)"
+    if _num_ok(c0_hi) and c0_hi < 0:
+        return EXITPB_RULED, f"can't tell, and C0's interval upper end {c0_hi:+.3f} < 0 -> pp"
+    return EXITPB_PRIMARY, f"can't tell -> pp_wbe (his proposal, not shown worse at scale: C0 upper end {('%+.3f' % c0_hi) if _num_ok(c0_hi) else 'unknown'})"
+
+
+def exitpb_report_rows(df, period: str) -> tuple:
+    """(rows, deltas, verdicts): per (entry, cell, K = tl, arm) the statistics over the mature walks with the interval ('all'), the year
+    slice on the control and the primary (orh5), the cell verdict under the primary (orh5 / tl) against C0 under the primary; every
+    registered delta on C1 and C0 per entry; `verdicts` = {entry: {"c1": the primary's C1 row, "c0": ..., "deltas": {...}}}."""
+    rows, deltas, verdicts = [], [], {}
+    arm_s = df["arm"].astype(str)
+    for ent in EXITPB_ENTRIES:
+        sub = df[(df["entry"].astype(str) == ent) & (df["K"].astype(str) == EXITPB_LEVEL)]
+        if not len(sub):
+            continue
+        A = sub[arm_s[sub.index] == EXITPB_CONTROL]
+        a_r = {k: float(r) for k, r, m in zip(A["tkey"], A["realized_r"], A["mature"]) if int(m) == 1}
+        idx: dict = {}
+        for name in EXITPB_ARMS:
+            g_arm = sub[arm_s[sub.index] == name]
+            for cell in CELL_COLS:
+                g = g_arm[g_arm[cell] == 1]
+                if not len(g):
+                    continue
+                r = {"period": period, "entry": ent, "cell": cell, "K": EXITPB_LEVEL, "arm": name, "slice": "all", "value": "",
+                     **exitpb_group_stats(g, a_r, key=f"exitpb|{period}|{ent}|{cell}|{EXITPB_LEVEL}|{name}")}
+                idx[(cell, name)] = r
+                rows.append(r)
+                if ent == EXITPB_ENTRY and name in (EXITPB_CONTROL, EXITPB_PRIMARY):
+                    gm = g[g["mature"] == 1]
+                    for val, gg in gm.groupby("year"):
+                        rows.append({"period": period, "entry": ent, "cell": cell, "K": EXITPB_LEVEL, "arm": name, "slice": "year", "value": int(val),
+                                     **exitpb_group_stats(gg, a_r, key="", ci=False)})
+        base = idx.get(("C0", EXITPB_PRIMARY))
+        for cell in CELL_COLS:
+            r = idx.get((cell, EXITPB_PRIMARY))
+            if r is None:
+                continue
+            if cell == "C0":
+                r["verdict"], r["why"] = "baseline", ""
+            elif cell in PRE_DECIDING and ent == EXITPB_ENTRY:
+                r["verdict"], r["why"] = h60_verdict(r, base, EXITPB_MIN_N)
+            else:
+                r["verdict"], r["why"] = "report", ""
+        dv: dict = {}
+        for cell in EXITPB_DELTA_CELLS:
+            for x, y in EXITPB_DELTAS:
+                gx = sub[(arm_s[sub.index] == x) & (sub[cell] == 1)]
+                gy = sub[(arm_s[sub.index] == y) & (sub[cell] == 1)]
+                d = exitpb_delta(gx, gy, key=f"exitpb_delta|{period}|{ent}|{cell}|{EXITPB_LEVEL}|{x}-{y}")
+                deciding = int(ent == EXITPB_ENTRY and (x, y) == EXITPB_DELTAS[0])
+                dv[(cell, x, y)] = d
+                deltas.append({"period": period, "entry": ent, "cell": cell, "K": EXITPB_LEVEL, "delta": f"{x}-{y}", "x": x, "y": y, "n": d["n"],
+                               "n_excluded_open": d["n_excluded_open"], "n_differ": d["n_differ"], "mean": d.get("mean"), "ci_lo": d.get("lo"),
+                               "ci_hi": d.get("hi"), "verdict": d["verdict"], "deciding": deciding})
+        verdicts[ent] = {"c1": idx.get(("C1", EXITPB_PRIMARY)) or {"n": 0, "verdict": "CAN'T TELL", "why": "n = 0 < 30"},
+                         "c0": base, "deltas": dv, "idx": idx}
+    return rows, deltas, verdicts
+
+
+def exitpb_expectations(v: dict) -> list:
+    """The registration's two expectations (fixed before the run; a missed one changes no rule and is reported first): C0 delta(pp_wbe -
+    pp) >= 0 at the point estimate; the median sessions held under pp_wbe >= A's (reported on C1 and on C0)."""
+    exp = []
+    d = v["deltas"].get(("C0", EXITPB_PRIMARY, EXITPB_RULED), {})
+    m = d.get("mean")
+    exp.append(("MET" if _num_ok(m) and m >= 0 else ("MISSED" if _num_ok(m) else "NO DATA")) +
+               f": C0 delta(pp_wbe - pp) point estimate {('%+.4f' % m) if _num_ok(m) else '-'}R on {d.get('n', 0):,} trades (expected >= 0: it keeps runners the "
+               f"entry-price stop took out and costs only on trades that fall from the third to the original stop)")
+    for cell in EXITPB_DELTA_CELLS:
+        p, a = v["idx"].get((cell, EXITPB_PRIMARY), {}), v["idx"].get((cell, EXITPB_CONTROL), {})
+        hp, ha = p.get("median_held"), a.get("median_held")
+        exp.append(("MET" if _num_ok(hp) and _num_ok(ha) and hp >= ha else ("MISSED" if _num_ok(hp) and _num_ok(ha) else "NO DATA")) +
+                   f": {cell} median sessions held under pp_wbe {('%.0f' % hp) if _num_ok(hp) else '-'} vs A's {('%.0f' % ha) if _num_ok(ha) else '-'} (expected >=)")
+    return exp
+
+
+def _exitpb_line(r: dict, first) -> list:
+    g = r.get
+    return [first, g("n_filled", 0), g("n", 0), g("n_open", 0), _num(g("mean_r")), _ci(r), _pct(g("win_rate")), _num(g("avg_win"), 2), _num(g("avg_loss"), 2),
+            "" if g("share_ge5") is None else f"{100 * g('share_ge5'):.1f}", "" if g("share_ge10") is None else f"{100 * g('share_ge10'):.1f}",
+            "" if g("share_ge20") is None else f"{100 * g('share_ge20'):.1f}", _num(g("sum_r"), 1), _pct(g("top2_share")), _num(g("mean_pnl_adr")),
+            "" if g("median_held") is None else f"{g('median_held'):.0f}",
+            "" if g("n") is None else f"{g('n_third', 0)} ({g('n_third_day0_r', 0)}/{g('n_third_r', 0)}/{g('n_third_session', 0)})",
+            _pct(g("share_stopped_after_third_le_fill")), f"{g('n_beabove_session', 0)}/{g('n_beabove_r', 0)}",
+            "" if g("n") is None else f"{g('n_ge10', 0)} / A {g('n_ge10_a', 0)} / both {g('n_ge10_both', 0)}",
+            "" if g("tail_n") is None else f"{g('tail_n')}: {g('tail_tickers')}t/{g('tail_months')}m", g("verdict", ""), g("why", "")]
+
+
+EXITPB_HEADER = ["cell", "fills", "n", "open", "mean R", "95% CI", "win", "avg win", "avg loss", ">=5R/100", ">=10R/100", ">=20R/100", "total R",
+                 "top-2% share", "pnl_adr", "med held", "thirds (d0/r/sess)", "stopped after third <= fill", "beabove sess/r", ">=10R vs A",
+                 ">=10R spread", "VERDICT", "why"]
+
+
+def _exitpb_delta_line(cell: str, x: str, y: str, d: dict) -> list:
+    return [f"{cell} {x} - {y}", d["n"], d["n_excluded_open"], d["n_differ"], _num(d.get("mean"), 4), _ci({"ci_lo": d.get("lo"), "ci_hi": d.get("hi")}), d["verdict"]]
+
+
+EXITPB_DELTA_HEADER = ["delta", "n trades", "excl open", "n differing", "mean delta R", "95% CI", "verdict"]
+
+
+def exitpb_stamps(dirs: dict, period: str, c1_delta_mean) -> list:
+    """The other periods' deciding-delta sign against this one's, when their verdict files exist (decides nothing)."""
+    import json
+    lines = []
+    for other in EXITPB_PERIODS:
+        if other == period:
+            continue
+        p = h60_period_dir(dirs, other) / "out" / f"{EXITPB_NAME}_verdict_{other}.json"
+        if not p.exists():
+            lines.append(f"{other}: no verdict file yet (not run) - no stamp")
+            continue
+        o = json.loads(p.read_text())
+        m = o.get("delta_c1", {}).get("mean")
+        lines.append(f"{other}: C1 delta(pp_wbe - pp) {h60_sign(m)} ({_num(m, 4)}) -> {'agrees' if h60_sign(m) == h60_sign(c1_delta_mean) else 'contradicts'} (decides nothing)")
+    return lines
+
+
+def exitpb_report_text(period: str, rows: list, deltas: list, verdicts: dict, notes: list, check_lines: list, stamps: list) -> str:
+    out: list = []
+    A = out.append
+    decides = period == "discovery"
+    A(f"#702 EXIT READ - his partial and the stop after it, on {period} ({'2022-03-28..2024-12-31, DECIDES' if decides else ('2017-21, beside' if period == 'pre' else '2025-01..2026-10, descriptive only')}). "
+      f"Registered before any outcome: docs/analysis/{EXITPB_DOC}. Measurement only: nothing here switches the deciding comparison, the primary arm, the entry, "
+      f"the stop, a cell, a period, the horizon, the seed, the draw count, the n floor or the open-mark exclusion.")
+    A(f"POPULATION: the pinned P5 fills (level {EXITPB_LEVEL}, entry ORH5, the low-of-day stop no wider than one ADR20, the spec key's first break per base) - "
+      f"every arm walks the SAME fills, so the comparison is per trade; the pinned hourly-close fills (entry h60) are walked beside, descriptively. A group is "
+      f"the MATURE walks only; an open mark is counted, never in a number. ARMS: A = {EXITPB_BASE.name} (the control: the session-3 third whatever the "
+      f"price, stop to the fill after any third); pp = his RULING (the session-3 third only on a close above the fill, else skipped, the +2R leg stays "
+      f"armed; stop to the fill after a third); pp_wbe = the PRIMARY: pp + his PROPOSAL (after a third sold at p the stop rests at max(stop0, min(fill, "
+      f"fill - (p - fill)/2)), the whole-trade breakeven); beside: wbe (A's partial rule + the wbe stop), pp_s0 (pp with the stop left at stop0 after any "
+      f"third), pp5_wbe (the first close in sessions 3-5 above the fill, then the wbe stop). Common to all: 1/3; the +2R leg (day 0 on the minutes); "
+      f"the +1R-by-session-3 cut; the 20-day trail filled at the next open; R against the entry stop; horizon 120. The pp-family trail is live from "
+      f"session 3 whether or not the third sold.")
+    A(f"INTERVAL RECIPE (the independent re-derivation reproduces it with no runner code): month-block bootstrap of the mean - blocks = the FILL month "
+      f"(E's month), {BOOT_DRAWS:,} resamples of as many blocks as there are months, with replacement, each resample's mean = sum of the drawn blocks' "
+      f"values / their trade count; the 2.5 / 97.5 percentiles (numpy.percentile, linear); generator numpy.random.default_rng([{BOOT_SEED}, "
+      f"zlib.crc32(key)]) with key 'exitpb|<period>|<entry>|<cell>|{EXITPB_LEVEL}|<arm>' for a cell's R and 'exitpb_delta|<period>|<entry>|<cell>|"
+      f"{EXITPB_LEVEL}|<x>-<y>' for a per-trade delta R(x) - R(y) (both walks mature); the stream is drawn as integers(0, n_months, size=({BOOT_DRAWS}, n_months)). "
+      f"The deciding delta: pp_wbe - pp on C1, n floor {EXITPB_MIN_N}; lower end > 0 = wbe WINS, upper end < 0 = wbe LOSES, else can't tell; C0 the same, read "
+      f"when C1 can't tell.")
+    for n_ in notes:
+        A(n_)
+    A("")
+    for ent in EXITPB_ENTRIES:
+        v = verdicts.get(ent)
+        if v is None:
+            continue
+        idx, dv = v["idx"], v["deltas"]
+        A(f"========== ENTRY {ent} / level {EXITPB_LEVEL}{' - DECIDES' if (ent == EXITPB_ENTRY and decides) else (' - the ORH5 fills, beside' if ent == EXITPB_ENTRY else ' - the hourly-close fills, DESCRIPTIVE')} ==========")
+        exp = exitpb_expectations(v)
+        A("EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):")
+        for e in [e for e in exp if e.startswith("MISSED")] + [e for e in exp if not e.startswith("MISSED")]:
+            A("  " + e)
+        A("")
+        A("THE DECIDING EXIT BAR - per trade delta = R(pp_wbe) - R(pp) on the SAME fills (the ruled rule with vs without his stop); a trade with an open mark "
+          "on either arm excluded and counted; 'n differing' = trades whose R differs at all")
+        body = [_exitpb_delta_line(cell, EXITPB_PRIMARY, EXITPB_RULED, dv[(cell, EXITPB_PRIMARY, EXITPB_RULED)]) for cell in EXITPB_DELTA_CELLS
+                if (cell, EXITPB_PRIMARY, EXITPB_RULED) in dv]
+        A(table(body, EXITPB_DELTA_HEADER))
+        d1, d0 = dv.get(("C1", EXITPB_PRIMARY, EXITPB_RULED), {}), dv.get(("C0", EXITPB_PRIMARY, EXITPB_RULED), {})
+        if ent == EXITPB_ENTRY and decides:
+            carried, text = exitpb_consequence(d1.get("verdict", "can't tell"), d0.get("hi"))
+            A(f"C1 VERDICT on the stop change: {d1.get('verdict')} (n {d1.get('n')}, mean {_num(d1.get('mean'), 4)} {_ci({'ci_lo': d1.get('lo'), 'ci_hi': d1.get('hi')})}); "
+              f"C0: {d0.get('verdict')} (n {d0.get('n')}, mean {_num(d0.get('mean'), 4)} {_ci({'ci_lo': d0.get('lo'), 'ci_hi': d0.get('hi')})})")
+            A(f"CONSEQUENCE (the registration's table): {text}; the exit carried into every next registration = {carried}; pp replaces A in every case "
+              f"(his ruling); paper: nothing from this read.")
+        else:
+            A(f"STAMP (decides nothing): C1 delta(pp_wbe - pp) {h60_sign(d1.get('mean'))} ({_num(d1.get('mean'), 4)}, n {d1.get('n')}, {d1.get('verdict')}); "
+              f"C0 {h60_sign(d0.get('mean'))} ({_num(d0.get('mean'), 4)}, n {d0.get('n')}, {d0.get('verdict')})")
+        if ent == EXITPB_ENTRY:
+            for s in stamps:
+                A("  " + s)
+        A("")
+        A("REPORTED, NEVER DECIDING - every registered delta per trade (x - y), C1 and C0")
+        body = [_exitpb_delta_line(cell, x, y, dv[(cell, x, y)]) for cell in EXITPB_DELTA_CELLS for x, y in EXITPB_DELTAS if (cell, x, y) in dv]
+        A(table(body, EXITPB_DELTA_HEADER))
+        A("")
+        A(f"CELL VERDICT under pp_wbe (whether the SETUP passes with his exit; the hourly-close read's bars word for word: PASS = n >= {EXITPB_MIN_N}, interval lower end > 0, "
+          f"ADR P&L > 0, beats C0 under the same exit on mean R AND the >= 5R share, >= 10R trades from >= {H60_TAIL_TICKERS} tickers AND >= {H60_TAIL_MONTHS} months "
+          f"counting only stops >= {H60_TAIL_WIDTH_ADR} ADR20 wide; FAIL = n >= {EXITPB_MIN_N} AND (upper end < 0 OR not beating C0 on mean R); else CAN'T TELL)"
+          + ("" if ent == EXITPB_ENTRY else " - labels only on the hourly-close fills"))
+        body = [_exitpb_line(idx[(cell, EXITPB_PRIMARY)], cell) for cell in PRE_CELL_ORDER if (cell, EXITPB_PRIMARY) in idx]
+        A(table(body, EXITPB_HEADER))
+        A("")
+        A("PER ARM x CELL (mature walks; 'thirds' = trades that sold a third, by kind: the day-0 +2R touch / a later +2R touch / the session close; "
+          "'stopped after third <= fill' = share of the mature walks stopped after their third at or below the fill; 'beabove' = be_above_close counts by the "
+          "kind of third it followed (session / +2R); '>=10R vs A' = the arm's >= 10R trades, A's on the same trades, and the overlap)")
+        for name in EXITPB_ARMS:
+            body = [_exitpb_line(idx[(cell, name)], cell) for cell in PRE_CELL_ORDER if (cell, name) in idx]
+            if body:
+                A(f"  arm {name} ({'PRIMARY' if name == EXITPB_PRIMARY else ('his ruling' if name == EXITPB_RULED else ('control' if name == EXITPB_CONTROL else 'beside'))}; "
+                  f"session leg {EXITPB_ARMS[name].session_rule}, stop after the third {EXITPB_ARMS[name].stop_rule})")
+                A(table(body, EXITPB_HEADER))
+        A("")
+        if ent == EXITPB_ENTRY:
+            A("BE_ABOVE_CLOSE by kind (A's registration counts: 2022-24 C1 1 / C0 112 session kind, C1 1 / C0 27 +2R kind; 2017-21 0 / 170 and 0 / 48): "
+              "session third sold below cost / +2R third on a bar closing under the fill - impossible under pp_wbe and pp5_wbe, the +2R kind remains under pp")
+            body = [[f"{cell} {name}", idx[(cell, name)].get("n_beabove_session", 0), idx[(cell, name)].get("n_beabove_r", 0)]
+                    for cell in EXITPB_DELTA_CELLS for name in EXITPB_ARMS if (cell, name) in idx]
+            A(table(body, ["cell arm", "session kind", "+2R kind"]))
+            A("")
+            A(f"SLICES - year, arms A and pp_wbe (orh5 / {EXITPB_LEVEL}); each cell is n / mean R / share >= 5R over the mature walks")
+            for name in (EXITPB_CONTROL, EXITPB_PRIMARY):
+                rr = [r for r in rows if r["entry"] == ent and r["slice"] == "year" and r["arm"] == name]
+                if not rr:
+                    continue
+                vals = sorted({r["value"] for r in rr})
+                body = []
+                for cell in PRE_CELL_ORDER:
+                    ln = [cell]
+                    for val in vals:
+                        m = [r for r in rr if r["cell"] == cell and r["value"] == val]
+                        ln.append("-" if not m else ("0" if not m[0]["n"] else f"{m[0]['n']}/{_num(m[0].get('mean_r'), 2)}/{_pct(m[0].get('share_ge5'))}"))
+                    body.append(ln)
+                A(f"  arm {name}")
+                A(table(body, ["cell"] + [str(x) for x in vals]))
+            A("")
+    A("IMPLEMENTATION CHECKS (the registration's WOULD-FAIL-IF lines, on this table; every one must hold or the report is not written):")
+    for ln in check_lines:
+        A("  " + ln)
+    return "\n".join(out)
+
+
+# ── the guards and the stage ─────────────────────────────────────────────────────────────────────────────────────────────────────
+def exitpb_frozen_files(dirs: dict, repo: Path = REPO) -> dict:
+    """{footer label: path} of the exit read's freeze - the registration's pin list: both pinned P5 tables and both hourly-close tables
+    per data dir, both daily exports, both minute trees, the candidates files, the module, this runner. The doc body is hashed by
+    `freeze_check`."""
+    d, p = Path(dirs["cb702"]), Path(dirs["cb702_pre"])
+    out = {"module": Path(repo) / "agents" / "market_intelligence" / "consolidation_breakout.py", "runner": Path(__file__).resolve(),
+           "cb702/daily_closes_all.csv.gz": d / "daily_closes_all.csv.gz", "cb702_pre/daily_closes_all.csv.gz": p / "daily_closes_all.csv.gz"}
+    for name in ("candidates.tsv", "candidates_com_comb.tsv", f"trades_discovery_{P5_NAME}.tsv.gz", f"trades_holdout_{P5_NAME}.tsv.gz",
+                 "trades_discovery_h60.tsv.gz", "trades_holdout_h60.tsv.gz"):
+        out[f"cb702/out/{name}"] = d / "out" / name
+    for name in ("candidates_tl_com.tsv", f"trades_pre_{P5_NAME}.tsv.gz", "trades_pre_h60.tsv.gz"):
+        out[f"cb702_pre/out/{name}"] = p / "out" / name
+    out["cb702/minutes (tree)"] = d / "minutes"
+    out["cb702_pre/minutes (tree)"] = p / "minutes"
+    return out
+
+
+def exitpb_doc_path(args, repo: "Path | None" = None) -> Path:
+    pre = getattr(args, "prereg", None)
+    return Path(pre) if pre else Path(REPO if repo is None else repo) / "docs" / "analysis" / EXITPB_DOC
+
+
+def exitpb_module_problem(repo: Path = REPO) -> "str | None":
+    """The registration's hard pin: the module must equal `EXITPB_MODULE_SHA` (the live shadow's module), footer or no footer."""
+    p = Path(repo) / "agents" / "market_intelligence" / "consolidation_breakout.py"
+    if not p.is_file():
+        return f"module missing: {p}"
+    got = sha256_file(p)
+    if got != EXITPB_MODULE_SHA:
+        return f"module sha256 {got[:12]}... is not the registered {EXITPB_MODULE_SHA[:12]}... - consolidation_breakout.py was edited; the read does not open"
+    return None
+
+
+def exitpb_existing_outputs(out: Path, period: str) -> list:
+    """The once-only guard: the period's new trades table, or the `.partial` a crashed run left behind."""
+    p = Path(out) / f"trades_{period}_{EXITPB_NAME}.tsv.gz"
+    return [q for q in (p, partial_path(p)) if q.exists()]
+
+
+def exitpb_prepare(dirs: dict, period: str) -> dict:
+    """The period's pinned fills and their minute inputs. Opens the two pinned trades tables and the minute directory's log; no daily
+    bar and no minute row."""
+    d = h60_period_dir(dirs, period)
+    out = d / "out"
+    trades = exitpb_pinned_trades(out, period)
+    return {"data": d, "out": out, "trades": trades, "inp": exitpb_minute_inputs(trades, d / "minutes")}
+
+
+def run_exit_read(args) -> int:
+    """`exit-read --period P` - BUILT, NOT RUN. exit 2 on: a refused option, the module not equal to the registered sha, a freeze problem,
+    missing minute pairs, outputs (or a crashed run's `.partial`) that exist, `--prereg` on a real run; exit 3 when the parity check (P1 /
+    P2, and the copy against the module) or an implementation check fails (no report written). `--print-pins` prints the footer lines;
+    `--dry-run` counts only (the pinned tables, no daily bar or minute row); `--parity-only` runs pass 1 alone - the control on every
+    pinned fill, the match / mismatch counts and the reach line printed - computes no new-arm number and writes nothing (the footer
+    freeze check is not run for it: the footer carries no pins before the freeze commit; the module sha is still hard-checked)."""
+    T0 = time.time()
+    dirs = h60_dirs(args)
+    data = dirs["cb702"]
+    if getattr(args, "print_pins", False):
+        doc = exitpb_doc_path(args)
+        lines = pin_lines(data, REPO, files=exitpb_frozen_files(dirs, REPO))
+        lines.append(f"- doc body sha256: `{doc_body_sha(doc.read_text(encoding='utf-8')) if doc.is_file() else 'MISSING'}`")
+        print("\n".join(lines))
+        return 0
+    period = getattr(args, "period", None)
+    if period not in EXITPB_PERIODS:
+        print(f"REFUSED: --period is required: one of {EXITPB_PERIODS}", file=sys.stderr)
+        return 2
+    dry, no_fc, parity_only = getattr(args, "dry_run", False), getattr(args, "no_freeze_check", False), getattr(args, "parity_only", False)
+    if getattr(args, "prereg", None) and not dry:
+        print(f"REFUSED: --prereg is honoured only with --print-pins or --dry-run - the read pins the registration doc at docs/analysis/{EXITPB_DOC} itself",
+              file=sys.stderr)
+        return 2
+    bad = h60_option_problems(args, data)
+    if bad:
+        print("REFUSED: the exit read runs only in its registered form:", file=sys.stderr)
+        for b in bad:
+            print(f"  - {b}", file=sys.stderr)
+        return 2
+    if no_fc and not dry:
+        print("REFUSED: --no-freeze-check is honoured only together with --dry-run", file=sys.stderr)
+        return 2
+    mp_ = exitpb_module_problem(REPO)
+    if mp_:
+        print(f"REFUSED: {mp_}", file=sys.stderr)
+        return 2
+    if not no_fc and not parity_only:
+        problems = freeze_check(doc=exitpb_doc_path(args), data=data, repo=REPO, files=exitpb_frozen_files(dirs, REPO))
+        if problems:
+            print("REFUSED: the freeze check failed - the read is not opened:", file=sys.stderr)
+            for p in problems:
+                print(f"  - {p}", file=sys.stderr)
+            return 2
+    prep = exitpb_prepare(dirs, period)
+    out, trades, inp = prep["out"], prep["trades"], prep["inp"]
+    small = HERE / "out"
+    existing = exitpb_existing_outputs(out, period)
+    counts = Counter((t["entry"], t["K"]) for t in trades)
+    pop = ", ".join(f"{e}/{k} {n:,}" for (e, k), n in sorted(counts.items()))
+    if dry:
+        print(f"EXIT-READ DRY RUN (freeze check {'SKIPPED' if no_fc else 'passed'}; module sha {EXITPB_MODULE_SHA[:12]}... ok; counts only - no daily bar, minute row "
+              f"or outcome was opened): period {period}: {len(trades):,} pinned fills ({pop}) on {len(inp['by_date']):,} dates, {len(inp['pairs']):,} (date, ticker) "
+              f"pairs; pairs NOT logged in _done.psv: {len(inp['missing']):,}, logged ok with no file: {len(inp['lost']):,} -> "
+              f"{'the run would REFUSE' if (inp['missing'] or inp['lost']) else 'complete'}; outputs already on disk: {[q.name for q in existing] or 'none'}"
+              f"{' -> the run would REFUSE (read once)' if existing else ''}. Would write {out / f'trades_{period}_{EXITPB_NAME}.tsv.gz'}, "
+              f"{out / f'{EXITPB_NAME}_report_{period}.tsv'}, {out / f'{EXITPB_NAME}_deltas_{period}.tsv'}, {out / f'{EXITPB_NAME}_verdict_{period}.txt'} and the small "
+              f"copies under {small}; arms {', '.join(EXITPB_ARMS)}.")
+        return 0
+    if not trades:
+        print(f"REFUSED: no pinned fill of {period} in {out}", file=sys.stderr)
+        return 2
+    if inp["missing"] or inp["lost"]:
+        print(f"REFUSED: {len(inp['missing']):,} of {len(inp['pairs']):,} (date, ticker) pairs are not logged in {inp['minutes_dir'] / '_done.psv'}"
+              + (f"; {len(inp['lost']):,} more are logged ok on a date that has no minute file" if inp["lost"] else "") + ". A partial read is never run", file=sys.stderr)
+        return 2
+    if existing and not parity_only:
+        crashed = [q for q in existing if q.name.endswith(".partial")]
+        if crashed:
+            print(f"REFUSED: {crashed[0]} is what a CRASHED exit read left behind - it holds some outcomes. The read is run ONCE per period: the operator "
+                  f"inspects it and removes it by hand before any re-run", file=sys.stderr)
+        else:
+            print(f"REFUSED: the exit read's outcomes are read ONCE per period and {existing[0]} already exists", file=sys.stderr)
+        return 2
+    log: list = []
+
+    def say(msg: str = "") -> None:
+        print(msg, flush=True)
+        log.append(msg)
+
+    say(f"EXIT READ (#702){' - PARITY ONLY' if parity_only else ''}: period {period}; {len(trades):,} pinned fills ({pop}) on {len(inp['by_date']):,} dates, "
+        f"{len(inp['pairs']):,} pairs all logged; freeze check {'NOT RUN (parity only)' if parity_only else ('SKIPPED' if no_fc else 'passed')}; module sha256 "
+        f"{sha256_file(Path(REPO) / 'agents' / 'market_intelligence' / 'consolidation_breakout.py')} (registered), runner sha256 {sha256_file(Path(__file__))}")
+    # pass 1: parity, before any new-arm number
+    pc, problems, reach = exitpb_parity(prep, args.workers, say)
+    n_par = sum(pc.values())
+    if problems:
+        say(f"PARITY FAILED: {len(problems):,} mismatches over {n_par:,} fills - the copy is not the registered walk; nothing is written. First 20:")
+        for p in problems[:20]:
+            say("  - " + p)
+        if not parity_only:
+            small.mkdir(parents=True, exist_ok=True)
+            (small / f"{EXITPB_NAME}_summary_{period}.txt").write_text("\n".join(log) + "\n")
+        return 3
+    say("PARITY: " + "; ".join(f"P{1 if e == 'orh5' else 2} {e}/{k}: {n:,} match, 0 mismatch" for (e, k), n in sorted(pc.items()))
+        + f" (status, maturity, sessions held, third kind and session, be_above_close, forward window, R to {EXITPB_TOL:g}; and the module's own walk event for event)")
+    say(exitpb_reach_text(reach, period))
+    if parity_only:
+        say(f"WALL TIME: {time.time() - T0:.0f}s total (no new-arm number computed; nothing written)")
+        return 0
+    out.mkdir(parents=True, exist_ok=True)
+    small.mkdir(parents=True, exist_ok=True)
+    # pass 2: every arm
+    tp, tally, problems = exitpb_walk_all(prep, args.workers, period, say)
+    if problems or tp is None:
+        say(f"PARITY FAILED in the full walk: {len(problems):,} mismatches - nothing kept")
+        (small / f"{EXITPB_NAME}_summary_{period}.txt").write_text("\n".join(log) + "\n")
+        return 3
+    say(f"WROTE {tp} ({sum(n for k, n in tally.items() if k[0] == 'walked'):,} fills x {len(EXITPB_ARMS)} arms)")
+    df = exitpb_load_frame(tp)
+    cp, check_lines = exitpb_self_checks(df, period)
+    for ln in check_lines:
+        say("  " + ln)
+    if cp:
+        say(f"IMPLEMENTATION CHECK FAILED ({len(cp)}): " + "; ".join(cp) + " - the report is NOT written (the table stays for inspection; the operator removes it by hand before any re-run)")
+        (small / f"{EXITPB_NAME}_summary_{period}.txt").write_text("\n".join(log) + "\n")
+        return 3
+    rows, deltas, verdicts = exitpb_report_rows(df, period)
+    main_v = verdicts.get(EXITPB_ENTRY, {})
+    d1 = main_v.get("deltas", {}).get(("C1", EXITPB_PRIMARY, EXITPB_RULED), {})
+    d0 = main_v.get("deltas", {}).get(("C0", EXITPB_PRIMARY, EXITPB_RULED), {})
+    stamps = exitpb_stamps(dirs, period, d1.get("mean"))
+    notes = [f"DATA CHECKS: freeze {'SKIPPED' if no_fc else 'passed'}; module {EXITPB_MODULE_SHA[:12]}... equal; parity P1 / P2 {n_par:,} fills, 0 mismatches; "
+             f"implementation checks passed; rows walked {sum(n for k, n in tally.items() if k[0] == 'walked'):,} x {len(EXITPB_ARMS)} arms"]
+    text = exitpb_report_text(period, rows, deltas, verdicts, notes, check_lines, stamps)
+    name = f"{EXITPB_NAME}_report_{period}"
+    write_tsv(out / f"{name}.tsv", rows, EXITPB_REPORT_COLS)
+    write_tsv(out / f"{EXITPB_NAME}_deltas_{period}.tsv", deltas, EXITPB_DELTA_COLS)
+    compact = [{k: (round(v, 6) if isinstance(v, float) else v) for k, v in r.items()} for r in rows if r["slice"] == "all"]
+    write_tsv(small / f"{name}.tsv", compact, EXITPB_REPORT_COLS)
+    write_tsv(small / f"{EXITPB_NAME}_deltas_{period}.tsv", [{k: (round(v, 6) if isinstance(v, float) else v) for k, v in r.items()} for r in deltas], EXITPB_DELTA_COLS)
+    (small / f"{name}.txt").write_text(text + "\n")
+    (out / f"{name}.txt").write_text(text + "\n")
+    print(text)
+    import json
+    c1 = main_v.get("c1", {})
+    carried, ctext = exitpb_consequence(d1.get("verdict", "can't tell"), d0.get("hi")) if period == "discovery" else (None, "decides nothing")
+    vj = {"period": period, "delta_c1": {k: d1.get(k) for k in ("n", "mean", "lo", "hi", "verdict", "n_excluded_open", "n_differ")},
+          "delta_c0": {k: d0.get(k) for k in ("n", "mean", "lo", "hi", "verdict", "n_excluded_open", "n_differ")},
+          "cell_c1_pp_wbe": {"n": c1.get("n"), "mean_r": c1.get("mean_r"), "ci": [c1.get("ci_lo"), c1.get("ci_hi")], "verdict": c1.get("verdict"), "why": c1.get("why")},
+          "consequence": ctext, "carried_exit": carried}
+    vlines = [f"#702 EXIT READ VERDICT FILE - period {period} - written {time.strftime('%Y-%m-%d')}",
+              f"C1 delta(pp_wbe - pp): {d1.get('verdict')} (n {d1.get('n')}, mean {_num(d1.get('mean'), 4)} {_ci({'ci_lo': d1.get('lo'), 'ci_hi': d1.get('hi')})}); "
+              f"C0: {d0.get('verdict')} (n {d0.get('n')}, mean {_num(d0.get('mean'), 4)} {_ci({'ci_lo': d0.get('lo'), 'ci_hi': d0.get('hi')})}); "
+              f"C1 cell under pp_wbe: {c1.get('verdict')} ({c1.get('why')}); consequence: {ctext}; carried exit: {carried}"]
+    (out / f"{EXITPB_NAME}_verdict_{period}.json").write_text(json.dumps(vj, indent=1) + "\n")
+    (out / f"{EXITPB_NAME}_verdict_{period}.txt").write_text("\n".join(vlines) + "\n")
+    (small / f"{EXITPB_NAME}_verdict_{period}.txt").write_text("\n".join(vlines) + "\n")
+    say(f"WROTE {out / (name + '.tsv')} ({len(rows):,} rows), {out / f'{EXITPB_NAME}_deltas_{period}.tsv'} ({len(deltas):,} rows), {small / (name + '.txt')}, "
+        f"{out / f'{EXITPB_NAME}_verdict_{period}.txt'}")
+    say(f"WALL TIME: {time.time() - T0:.0f}s total")
+    (small / f"{EXITPB_NAME}_summary_{period}.txt").write_text("\n".join(log) + "\n")
+    return 0
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("stage", choices=["daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report", "p5", "pre-read",
-                                      "h60-step0", "h60-read", "h60-hindsight"],
+                                      "h60-step0", "h60-read", "h60-hindsight", "exit-read"],
                     help="daily = P2a daily stage; minute = DISCOVERY entries/exits/controls; step0-entries = HOLDOUT "
                          "composition, no outcome; holdout = the minute engine AND the P5 stage on the HOLDOUT, behind "
                          "freeze_check (BUILT, NOT RUN); report = the DISCOVERY read; exits / exits-report = #702 his exit (the "
@@ -5554,7 +6653,10 @@ def main(argv=None) -> None:
                          "2020-21 alone; refuses while any minute pair is unfetched (BUILT, NOT RUN); h60-step0 / h60-read / h60-hindsight = "
                          "#702 the HOURLY-CLOSE entry read (docs/analysis/cb_hourly_entry_prereg_2026-10-19.md; --period required): the "
                          "entry-time table, the one-run read per period behind the freeze / STEP 0 / twin checks, the hindsight tables "
-                         "after the verdict (BUILT ON SYNTHETIC DATA; NOT RUN)")
+                         "after the verdict (BUILT ON SYNTHETIC DATA; NOT RUN); exit-read = #702 his partial and the stop after it "
+                         "(docs/analysis/cb_exit_partial_prereg_2026-10-19.md; --period required): the six exit arms on the pinned P5 fills "
+                         "and the pinned hourly-close fills, behind the freeze check and the parity of the runner-side walk copy with the "
+                         "pinned rows; --parity-only = the control alone, match counts, nothing written (BUILT ON SYNTHETIC DATA; NOT RUN)")
     ap.add_argument("--data", required=True, help="DATA dir (daily_closes_all.csv.gz, small_pulls.psv, ...)")
     ap.add_argument("--out", help="large-output dir (default DATA/out); holdout refuses anything but DATA/out")
     ap.add_argument("--small-out", help="small-summary dir (default scripts/probes/_cb_backtest/out); holdout refuses it")
@@ -5590,8 +6692,11 @@ def main(argv=None) -> None:
                                      "bars is not evaluated and is counted as 'identity_break' (scripts/probes/_qm_streams/ext_bars.py)")
     ap.add_argument("--era-label", help="daily: stamp every row's `split` column with this label (e.g. 'pre') instead of discovery/holdout; "
                                         "read_candidates() then refuses the file, so it cannot feed the discovery or holdout stages")
-    ap.add_argument("--period", choices=list(H60_PERIODS), help="h60-step0 / h60-read / h60-hindsight: the period (discovery decides; pre = "
+    ap.add_argument("--period", choices=list(H60_PERIODS), help="h60-step0 / h60-read / h60-hindsight / exit-read: the period (discovery decides; pre = "
                                                                 "2017-21 and 2020-21 alone; holdout = 2025-26, descriptive)")
+    ap.add_argument("--parity-only", action="store_true", help="exit-read: pass 1 alone - the control arm re-walked by the copy on every pinned fill "
+                                                               "against the pinned rows and the module's own walk; prints the match / mismatch counts "
+                                                               "and the reach line; computes no new-arm number and writes nothing")
     ap.add_argument("--data-pre", help="h60 stages: the Alpaca-era data dir (default: the sibling `cb702_pre` of --data); the freeze check pins both trees")
     ap.add_argument("--levels", help="exits / exits-report: the levels of the run's candidates file to walk, comma-separated "
                                      "(default: every level of the run's keys). `--levels tl` reads the registered candidates.tsv and "
@@ -5623,8 +6728,8 @@ def main(argv=None) -> None:
         if rc:
             sys.exit(rc)
         return
-    if args.stage in ("h60-step0", "h60-read", "h60-hindsight"):
-        rc = {"h60-step0": run_h60_step0, "h60-read": run_h60_read, "h60-hindsight": run_h60_hindsight}[args.stage](args)
+    if args.stage in ("h60-step0", "h60-read", "h60-hindsight", "exit-read"):
+        rc = {"h60-step0": run_h60_step0, "h60-read": run_h60_read, "h60-hindsight": run_h60_hindsight, "exit-read": run_exit_read}[args.stage](args)
         if rc:
             sys.exit(rc)
         return
