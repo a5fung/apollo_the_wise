@@ -262,15 +262,15 @@ C1 = −0.55R on 91 bases — **MATCH**.
 | Period | C1 n | Mean R | 95% interval | ≥ 10R trades | Paired Δ vs ORH5 (same bases) | Verdict |
 |---|---|---|---|---|---|---|
 | 2022–24 (decides) | 78 | −0.31 | −0.55 .. −0.04 | 0 | −0.55R on 91 (−1.26 .. −0.05): loss | FAIL |
-| 2017–21 (beside) | 180 | +0.59 | −0.15 .. +1.61 | — | +0.28R: can't tell | CAN'T TELL |
-| 2020–21 (beside) | 74 | +0.51 | −0.45 .. +1.81 | — | +0.07R: can't tell | CAN'T TELL |
-| 2025–26 (descriptive) | 36 | −0.36 | −0.73 .. +0.14 | — | +0.22R: can't tell | FAIL (not beating C0) |
+| 2017–21 (beside) | 180 | +0.59 | −0.15 .. +1.61 | 2.8 per 100 (tail spread 3 tickers / 3 months met) | +0.28R: can't tell | CAN'T TELL |
+| 2020–21 (beside) | 74 | +0.51 | −0.45 .. +1.81 | 4.1 per 100 | +0.07R: can't tell | CAN'T TELL |
+| 2025–26 (descriptive) | 36 | −0.36 | −0.73 .. +0.14 | 0 | +0.22R: can't tell | FAIL (not beating C0) |
 
 - **The mechanism did not move:** the share stopped out on the fill day in C0 is 35.7% under the hourly close (expected
   < 25%; ORH5 ≈ 35%) — waiting for an hourly close above the line does not avoid the same-day shakeout. At scale (C0) the
   hourly close and ORH5 are the same: paired Δ +0.00R on 10,595 bases (−0.05 .. +0.06).
 - The stop bar: `cbar_low` − `lod` = −0.11R on 82 C1 bases (−0.29 .. +0.06) → `lod` stays.
-- TSLA (pole 2020-04-30) entered on 06-01 as he did, and ended −0.17R under the primary exit; its 2020-06-29 base entered
+- TSLA (pole 2020-04-30) entered on 06-01 as he did ($58.37, stop $56.94), sold a third at the day-3 close and was stopped on the day-4 dip, −0.17R, before the run that followed; its 2020-06-29 base entered
   06-30 at +8.68R where ORH5 had no trade.
 - Beside (hindsight, decides nothing): the 39 multibaggers 2020–21 — h60 355 trades +0.92R (+328R) vs ORH5 352 trades +1.06R
   (+375R); fill-day stop 32.4% vs 35.2%.
