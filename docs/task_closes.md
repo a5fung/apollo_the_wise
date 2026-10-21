@@ -2350,3 +2350,17 @@ EVIDENCE:
   per entry; the shadow writes 15, one per registered exit rule ... OK to keep it closed on that basis?" — his answer: *"Ok"*.** Example: HTFL (his named HTF breakout) ORH5 filled $52.30, stop $51.00, 15 exit rows.
 - ⚠ **What this close cannot show:** any forward OUTCOME — the forward read (`consolidation_breakout_forward_read`, 30 settled C1 entries,
   earliest 11-23) and the remaining research are carried by #705; nothing was dropped.
+
+## #703 — one EP scan at 09:00 ET on weekdays; the brief keeps its own scan (2026-10-21)
+
+BAR: "one EP scan per weekday at 09:00 ET (mi_job_runs / mi_ep_scan_log show a single 09:00 tick) while the morning brief still reports that tick's alerts."
+
+EVIDENCE:
+- **A single 09:00 tick, three consecutive weekdays (Mon 10-19 .. Wed 10-21, prod):** 35 `ep_scan` runs each day with none starting in [09:00, 09:05) (08:55
+  then 09:05); exactly ONE distinct `scan_time_et` in [09:00, 09:05) each day — 09:00:00, 174 / 86 / 102 rows — written by `morning_briefing` 09:00 success;
+  no `jobs_missed` row; the 10:05 ET `ep_scan_watchdog` log reads "35 scans ran ... OK" all three days (it pages only on 0 scans).
+- **The brief still reports that tick's alerts:** the brief ran AFTER its own 09:00 scan each day ("Morning briefing sent" 09:00:11–16, watchlist 4 items), so
+  the tick it reads is the one it just ran.
+- ⚠ **What this close cannot show:** a NEW alert originating at the 09:00 tick itself — none occurred 10-19..10-21 (the alerts came from the 07:00–08:40 ticks:
+  IRON, MANE, SMCI, SPCX). The change removed only the duplicate 5-minute tick and did not touch the brief's path (it calls `_ep_scan_job()` itself). Put to him
+  2026-10-21: "OK to close #703 on that basis" — his answer: *"ok"*.
