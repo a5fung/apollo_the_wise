@@ -2240,3 +2240,9 @@ Counts behind it (the primary, trendline level): every breakout (C0) ~3,300 a ye
 week) and ~2,800 a year in 2017–21 (~53 a week); the strict group (C1) only ~29–37 a year — yet C1 shows no edge and kept
 just 10 of the 352 trades on the 39 known 2020–21 multibaggers. So a FILTER has been selecting the wrong things; a RATING
 that picks the best few a week from all breakouts is the untested alternative (#705).
+> "yes, we should also have some secondary indicators to test, like group themes, etc." (2026-10-21, on the A+ rating)
+
+**Ruled:** #705's round-2 read is ONE A+ rating (the two single-feature reads become its ingredients), plus SECONDARY indicators
+tested on top of it — group strength and themes first. Data reach: industry-group strength (`grp_pct`, the group's 3-month
+return percentile) exists in every era, so it is testable on 2017–21 and 2022–24; the theme engine's history starts 2026-03-19
+(151 nights), so themes can only be read on 2026 breakouts (descriptive) and recorded forward by the shadow.
