@@ -2228,3 +2228,15 @@ populations (PLAN #314).
 **The dilution rule, as he reads it:** count the shares that warrants and convertibles turn into once the run-up crosses
 their exercise / conversion price (the "hidden" share count not visible in shares outstanding), and the holders who will
 sell them — measured point-in-time BEFORE the climax. A completed offering is after the fact and is not the signal.
+
+## 2026-10-21 — his idea: RANK breakouts like EPs and trade only the A+ ones (operator, verbatim)
+
+> "idea, for breakouts we'll also need ranking similar to what we try to do with EPs, but breakouts are going to be more
+> common and we need a rating system to select the best ones. I recall the backtest showed 8000+ breakouts (?), that is way
+> too many trades even in a 5yr period, let alone 1 or 2 yr. We need to focus on the A+ setups per Qullamaggie, he
+> definitely doesn't trade all however many thousands breakouts per year."
+
+Counts behind it (the primary, trendline level): every breakout (C0) ~3,300 a year in 2022–24 (8,989 in 2.75 years, ~63 a
+week) and ~2,800 a year in 2017–21 (~53 a week); the strict group (C1) only ~29–37 a year — yet C1 shows no edge and kept
+just 10 of the 352 trades on the 39 known 2020–21 multibaggers. So a FILTER has been selecting the wrong things; a RATING
+that picks the best few a week from all breakouts is the untested alternative (#705).
