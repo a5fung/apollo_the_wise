@@ -2213,3 +2213,11 @@ Shared by the operator to *"glean rules that can help with our short setup"* (co
   exercise: combine the traits you admire). Trading is probabilities; tail risk is always near (Taleb). **Every blow-up
   started from one small, seemingly meaningless decision that compounded** — be vigilant. Act with intention; don't tie
   identity to the outcome.
+
+### His ruling on it (2026-10-20, verbatim)
+> "Yes, but let's do this in weekend. Also, his play is to short small caps, out filters are mainly for EPs, we haven't
+> tested small caps for parabolic shorts"
+
+Our parabolic-short floors (close >= $5, $10M dollar volume, cap >= $250M) came from the EP lane; small caps — where his
+dilution / identifiable-seller rules live — have never been tested for parabolic shorts. The weekend replay reads both
+populations (PLAN #314).
