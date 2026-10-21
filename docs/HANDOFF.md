@@ -1421,7 +1421,27 @@ stagger cards, one at a time.
 
 **Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
-## 2026-10-19 (Mon) CLOSE — 🔴 RESUME HERE. Supersedes the 10-18 close below.
+## 2026-10-20 (Tue) CLOSE — 🔴 RESUME HERE. Supersedes the 10-19 close below.
+
+- **Board 21 → 21:** closed #702 (DoD met — holdout verdict 10-19; the shadow's first pivot-cross night 10-20: all 88 crossing
+  names got entries, every fill 15 exit rows; his "Ok" on the 12-vs-15 basis), opened #705 (round 2 of the breakout research).
+  Server 25fabf93; main ahead with research code / docs / plan only — no deploy needed.
+- **Checks today:** #703 day 2 PASS + no watchdog page either day (day 3 Wed 10-21 → close); #655 Mon guard check PASS, row (a)
+  re-read 8 of 24 (exactly 1 in 3) → HIS RULING "yes": the fold runs the description check on moved stocks (build Sat); #704
+  first split night clean (7 applied at the right factor, no consumer touched; waits on the first phantom); #697 scan 2 of 3
+  clean (0 stamped; scan 3 Wed); #333 every check of the 10-16/10-17 changes read (verify back to the 11-30 accrual).
+- **HTFL 10-20** (his named HTF breakout): the breakout shadow bought it (ORH5 $52.30, stop $51.00, close $55.59); the HTF board
+  held WATCH (no TIGHTENING licence in 5 days after five SMA20 invalidations) — recorded on #697 as a labelled miss.
+- **His short-seller excerpt** (book interview, captured as rule notes in `operator_shared_notes.md`; map in
+  `docs/analysis/parabolic_short_vs_shared_short_rules_2026-10-20.md`): his rulings — weekend; test SMALL CAPS too (our
+  floors came from the EP lane); the dilution rule = STEALTH dilution on the horizon (warrants / convertibles the run-up puts
+  in the money), not a recent offering. All on the #314 line.
+- **Weekend Sat 10-24:** #705 (scaffold + golden harness, then the two reads under ORH5 + `pp`; the shadow recorder dated
+  10-31 if needed), #655 fold fix, #314 five-year replay (two populations, the selection reads, 3- vs 5-day time stop) —
+  each pre-registered first. Regroup with him before launching builds.
+- **Wed 10-21:** #703 day 3 + close (with the watchdog line), #697 scan 3, #540 verify-date.
+
+## 2026-10-19 (Mon) CLOSE — superseded by the 10-20 close above.
 
 - **Board 21 → 21** (no closes, no new tasks). Server 25fabf93; main ecc9d3a6 is ahead with #702 RESEARCH code and docs only
   (runner + tests + analysis docs; the live module and shadow are unchanged — no deploy needed).
