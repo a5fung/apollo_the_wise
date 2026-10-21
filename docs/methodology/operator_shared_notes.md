@@ -2146,3 +2146,70 @@ under a ~117% run-up. **Our two readings that night:** the HTF stage board (#697
 10-06: the base was reset to INVALIDATED five times in October (10-01, 10-07, 10-08, 10-14, 10-16) by closes just under the
 20-day average (by $0.03–$1.34). The consolidation-breakout shadow (#702) caught it: trendline level, ORH5 filled $52.30, stop
 $51.00, close $55.59. Recorded as a labelled HTF example for the detector (a tuning datum, not a trade question).
+
+## 2026-10-20 — a short-seller's method (book excerpt, a trader interview he shared; NOTES + short quotes, not the full text) — part 1
+
+Shared by the operator to *"glean rules that can help with our short setup"* (complement to the parabolic short, #314 /
+`docs/setups/parabolic_short.md`). Interviewee: Russo (small-cap short seller who later traded longs and large caps).
+
+**The rules as he states them (part 1):**
+- **Timing a parabolic short:** wait for *"total capitulation — volume and price accelerating to stratospheric levels"*;
+  short *"in the rough vicinity of what will be the top and then use risk management"*. He was stopped out the day BEFORE
+  the top on MGT (2016) at an acceptable loss and re-shorted the next day — sizing + stops keep you in the game for the
+  day that matters.
+- **Entry day mechanics (MGT):** on the top day the stock was *"losing momentum"*; it came within 20 cents of his stop,
+  then turned down slowly, then faster → he **added** and **moved the stop to the day's high**; when the stock went
+  **negative on the day** he shorted more; then it collapsed. Adds and stop-tightening happen together.
+- **Selection is the edge** (his partner beat him by avoiding marginal trades).
+- **Catalyst first:** find the exact minute the rally began and the news issued then. A short candidate rallies on news
+  that *"superficially sounds bullish but, upon closer examination, is insignificant"* (fluff; e.g. "100% revenue
+  growth" while still losing the same money). **Avoid** real news: a swing from net losses to profits, genuinely positive
+  trial results — *"you don't want to be short, no matter how much the stock is up"*. **No identifiable news = worry,
+  don't short** (*"What am I missing?"*).
+- **Bearish fundamentals:** low cash / high burn / excessive debt (a raise is likely and dilutive); **hidden share
+  overhang** in the capital structure (convertible debt, warrants — e.g. 10M outstanding but 40M convertible); an
+  **identifiable seller**: convertible holders at $3 when the stock runs from $2 to $5 on huge volume will convert and
+  sell; a known hedge fund behind the deal is itself a bearish confirmation.
+- **Frequency / process:** ~2–3 qualifying shorts a week; quality over quantity (the best 1–2 a day); research 7–9 a.m.
+  before the open; skip a trade whose research is unfinished.
+- **"Broken short" → long:** the news and filings say short but the stock keeps rising: a GRADUAL trend (no capitulation
+  phase), price breaks that rebound, a **tight intraday consolidation then a new high of day** (1- and 5-minute bars).
+  Heuristic: where would a good mid-tier short seller's stop be? If it is breached (especially after late morning) the
+  trapped shorts fuel it — *"Not here; not today"* means it is a long. A stop-out of longs followed by a new high (VRPX
+  2021) = *"go-time on the upside"*.
+- **Shape:** shorts that work go *"straight up and then straight down"*; consolidations on the way up mark broken shorts.
+- **Exits / holding:** longs exit on a trailing stop or when they go parabolic (then often flip short); **shorts last 1–3
+  days — longer is a red flag.**
+- **Large caps (e.g. TSLA):** no dilution / identifiable seller; wait for an obvious news-triggered parabolic move, then
+  judge the news and the technical nature of the rally. (Part 1 ends mid-answer.)
+
+### Parts 2–3 (same excerpt; notes + short quotes)
+- **Large caps:** the same parabolic short *"in a more legitimate company"*; no identifiable seller, so it is the news +
+  the technical nature of the rally. **Longs mirror the shorts — a capitulation trade** (a month-long rally reversed in two
+  days → mean reversion); a true capitulation looks like **gap-down openings on increasingly high volume for several days**
+  (April 2025 tariffs: three days). **Capitulation buys are rare; capitulation shorts are common.** If early, the stop
+  protects and he tries again.
+- **Biggest winners (2021): parabolic meme-stock shorts** (GME twice, AMC, DWAC). GME: long at 120 as a broken short, out
+  170; short ~350 and held through his stop to the $500+ overnight high — *"I wouldn't recommend following my actions in
+  this trade"* (a broken rule that happened to work).
+- **Pyramiding (since 2020):** after the first short, wait for the chart to give a reason to lower the stop; instead of
+  cutting risk, ADD so the risk stays the same (~1%); repeat until profits are taken or stopped. *"This pyramiding strategy
+  significantly increased the ratio of my average win to my average loss."* Reactive: wait for the signal, move the stop,
+  size the add.
+- **His two −$50M losses = rule breaks:** (1) shorting SPY with NO parabolic move (*"not a strategy-based trade ... stupid
+  trade due to overconfidence"*), held as it ground to new highs; (2) Carvana: shorted *"one stage too early"*, rode it up,
+  added, out at breakeven three months later, then **re-entered without the conditions and without a risk budget**, and
+  exited after an earnings gap to a year-plus high (*"another broken short"*). Lessons he draws: only the setup; a risk
+  budget on every trade; a gap to new highs on real news = out.
+- **Risk:** 0.5–2% per trade — 1% typical mid/large cap, up to 2% on an A+ trade in a liquid stock; **size = risk ÷ stop
+  distance** (a volatile stock gets a wide stop and a small size). A winner makes roughly 2x the risk on average. Win rate
+  71% since 2018, plus a high win/loss ratio from the pyramid — *"I am very selective."*
+- **Process:** the edge is high-level concepts that *"rhyme"*; small-cap shorting still works (a mentee trades it). An
+  analyst alerts him only to obvious setups; *"reactive rather than predictive"*; the best trades *"fit all the boxes"* and
+  look almost too good to be true.
+
+### Part 4 (end of the excerpt)
+- Wait for the market's signal; build your own method from other traders' ideas, never a copy (his 2016 "Robo-trader"
+  exercise: combine the traits you admire). Trading is probabilities; tail risk is always near (Taleb). **Every blow-up
+  started from one small, seemingly meaningless decision that compounded** — be vigilant. Act with intention; don't tie
+  identity to the outcome.
