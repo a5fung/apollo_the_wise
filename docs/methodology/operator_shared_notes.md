@@ -2221,3 +2221,10 @@ Shared by the operator to *"glean rules that can help with our short setup"* (co
 Our parabolic-short floors (close >= $5, $10M dollar volume, cap >= $250M) came from the EP lane; small caps — where his
 dilution / identifiable-seller rules live — have never been tested for parabolic shorts. The weekend replay reads both
 populations (PLAN #314).
+> "This is relevant to the dilution point" · "And it's not recent offering, the whole idea is stealth dilution that is in
+> the horizon. Offering is after the fact" · "Eg warrants that the run up will unlock and convert to shares is the exact
+> example given"
+
+**The dilution rule, as he reads it:** count the shares that warrants and convertibles turn into once the run-up crosses
+their exercise / conversion price (the "hidden" share count not visible in shares outstanding), and the holders who will
+sell them — measured point-in-time BEFORE the climax. A completed offering is after the fact and is not the signal.
