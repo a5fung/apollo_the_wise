@@ -95,7 +95,8 @@ APLUS_EXPECTED = {
 }
 EXP_TOL, RHO_TOL = 1e-4, 1e-3
 
-# the exitpb table's columns that are OUTCOMES - never read before STEP 0 and the checks; never read by a dry run
+# the exitpb table's columns that are OUTCOMES - opened ONLY after STEP 0 and every check (`aplus_body`); never by a dry run, never by a
+# check: the fills frame is read by `FILL_COLS` (usecols), so no feature can read one - check 1 (b) asserts that absence structurally
 OUTCOME_COLS = ("status", "realized_r", "pnl_adr", "acct_pct", "sessions_held", "fill_day_stop", "partial_kind", "partial_session", "partial_px",
                 "stop_to", "exit_kind", "exit_px", "exit_session", "stopped_after_third_le_fill", "beabove", "beabove_kind", "fwd_bars", "fwd_hole")
 FILL_COLS = ["ticker", "D", "E", "K", "entry", "arm", "fill", "fill_minute", "fill_month", "adr20", "width_adr", "stop", "mature", "open_mark",
@@ -103,7 +104,7 @@ FILL_COLS = ["ticker", "D", "E", "K", "entry", "arm", "fill", "fill_minute", "fi
 # the candidates columns read - `base_id` and every E-day column (open_E, high_E, low_E, close_E, vol_E, breakout_vol_x) are NOT among them
 CAND_COLS = ["ticker", "D", "E", "K", "split", "retrigger", "pole_date", "pole_ci", "adv20_vol_D", "prior_move", "base_len", "base_depth",
              "tightening_ratio", "atr14_slope", "rs_best", "rs_all", "grp_pct", "phase_qqq_10_20"]
-CAND_LOOKAHEAD_COLS = ["open_E", "high_E", "low_E", "close_E", "vol_E", "breakout_vol_x"]       # joined back ONLY for check 1's shuffle
+CAND_LOOKAHEAD_COLS = ["open_E", "high_E", "low_E", "close_E", "vol_E", "breakout_vol_x"]       # read ONLY by check 1 (b)'s source shuffle
 WATCH_COLS = ["ticker", "watch_date", "close", "pole_date", "pole_ci", "pole_high", "range_recent5", "range_early5", "adr20"]
 P5_COLS = ["ticker", "D", "E", "K", "arm", "stop_variant", "range5_adr"]
 P5_ARM, P5_STOP = "c3_p33_t20_cut3", "lod"
@@ -217,10 +218,11 @@ def read_outcomes(path) -> dict:
             t[["ticker", "D", "E", "K", "status", "realized_r", "pnl_adr", "mature"]].itertuples(index=False)}
 
 
-def read_cands(path, label_of):
+def read_cands(path, label_of, extra: tuple = ()):
     """The candidates file's tl rows by `CAND_COLS` (never `base_id`, never an E-day column). THE LABEL IS NOT TRUSTED: every row's `split`
-    must equal `label_of(D)`, else ValueError."""
-    c = read_table(path, CAND_COLS)
+    must equal `label_of(D)`, else ValueError. `extra`: further columns, read ONLY by check 1's shuffled rebuild (the look-ahead columns,
+    permuted before any feature is computed) - never by the run."""
+    c = read_table(path, list(dict.fromkeys(list(CAND_COLS) + list(extra))))
     bad = [(t, d, s) for t, d, s in c[["ticker", "D", "split"]].itertuples(index=False) if s != label_of(d)]
     if bad:
         t, d, s = bad[0]
@@ -903,16 +905,20 @@ def period_paths(ctx: rr.Ctx, period: str) -> dict:
            "p5": pdir / "out" / f"trades_{period}_p5.tsv.gz", "export": pdir / "daily_closes_all.csv.gz", "profile": p / "out" / PROFILE_NAME,
            "minutes": pdir / "minutes"}
     if period == "holdout":
+        # the trailing 2022-24 fills that pool the first holdout weeks live in the DISCOVERY tables - the exitpb AND the P5 table (the runner
+        # writes every P5 table per split: `trades_holdout_p5` holds no D <= 2024-12-31, so a pool-only row's range5_adr is in the other file)
         out["pool_fills"] = d / "out" / "trades_discovery_exitpb.tsv.gz"
+        out["pool_p5"] = d / "out" / "trades_discovery_p5.tsv.gz"
     return out
 
 
 def aplus_frozen(ctx: rr.Ctx) -> dict:
     """The registration's pin list: the profile, the three exitpb tables (the holdout's sealed - pinned so the confirm read runs on the same
     bytes), the three P5 tables, both candidates files, both watch tables, both exports, both `_done.psv`, both minute trees, the module,
-    the re-derivation module (the runner, this scaffold and the spec module are added by the driver)."""
+    the re-derivation module, the golden fixtures module (the runner, this scaffold and the spec module are added by the driver)."""
     d, p = ctx.dirs["cb702"], ctx.dirs["cb702_pre"]
     files = {"module": ctx.repo / ctx.rt.MODULE_REL, "rederivation module": Path(__file__).resolve().parent / "aplus_rederive.py",
+             "golden fixtures module": Path(__file__).resolve().parent / "aplus_fixtures.py",     # data check 4 runs it inside the read: pinned too
              "cb702_pre/out/aplus_intraday_profile.tsv": p / "out" / PROFILE_NAME}
     for name in ("trades_discovery_exitpb.tsv.gz", "trades_holdout_exitpb.tsv.gz", "trades_discovery_p5.tsv.gz", "trades_holdout_p5.tsv.gz",
                  "candidates.tsv", "watch.tsv.gz"):
@@ -943,7 +949,9 @@ def _refuse(*lines) -> None:
 
 def aplus_prepare(ctx: rr.Ctx) -> dict:
     """The period's population (feature columns only) joined to the candidates / watch / P5 rows, the minute log, the files the body opens.
-    Opens no daily bar and no minute row. The sealed era's artefacts on disk during `aplus-read` are a broken run (check 10): refused."""
+    Opens no daily bar and no minute row. The sealed era's artefacts on disk during `aplus-read` are a broken run (check 10): refused.
+    The holdout: the trailing 2022-24 fills (E on or after the first eligible E minus 45 days) come from the DISCOVERY exitpb and their P5
+    rows from the DISCOVERY P5 table (the tables are per split) - pool-only members, never flagged."""
     period = ctx.period
     if period in APLUS_PERIODS:
         broken = holdout_artefacts(ctx)
@@ -974,11 +982,18 @@ def aplus_prepare(ctx: rr.Ctx) -> dict:
     inp = rt.minute_inputs(rows, ctx.minutes)
     opens = [paths["fills"], paths["watch"], paths["p5"], paths["export"], paths["profile"]]
     if period == "holdout":
-        opens.append(paths["pool_fills"])
+        # the pool-only rows' P5 rows are in the discovery P5 table (per-split tables); a key in both tables is a data defect, refused
+        pool_p5 = read_p5(paths["pool_p5"])
+        both = p5.keys() & pool_p5.keys()
+        if both:
+            raise ValueError(f"{paths['p5']} and {paths['pool_p5']}: {len(both)} keys in BOTH P5 tables (first {sorted(both)[0]}) - the per-split "
+                             f"tables overlap; refusing to read them")
+        p5.update(pool_p5)
+        opens += [paths["pool_fills"], paths["pool_p5"]]
     eligible_rows = [r for r, ok in zip(rows, fills["eligible"]) if ok]
     return {"rows": eligible_rows, "inp": inp, "path": paths["cands"], "opens": tuple(opens), "fills": fills, "cands": cands,
             "watch_rows": watch_rows, "watch_poles": watch_poles, "p5": p5, "paths": paths, "n_joined": n_joined, "n_dropped": n_dropped,
-            "period": period}
+            "period": period, "label_of": label_of}
 
 
 def _f(x):
@@ -1348,31 +1363,48 @@ def check3_join(cols: dict, feats: dict, prep: dict, ctx: rr.Ctx, profile_sha: s
     return p, lines
 
 
+SHUFFLE_COLS = CAND_LOOKAHEAD_COLS + ["base_id"]          # the candidates columns the run never reads: permuted at the SOURCE by check 1 (b)
+
+
+def shuffled_rebuild(ctx: rr.Ctx, prep: dict, feats: dict) -> dict:
+    """Check 1 (b) and check 9 (b): the run REBUILT on a candidates frame that carries the six E-day columns and `base_id`, every one
+    permuted (one seed-702 permutation of the frame's rows) BEFORE any feature is computed - the run's own frame never holds them, so a
+    feature that read one moves here and nowhere else. Every feature is rebuilt (`build_features`, no minute perturbation) and the engine
+    re-run. Cached on `feats` - both checks read the same copy. Returns {"cols", "res", "n_cands"}."""
+    if "_shuffled" in feats:
+        return feats["_shuffled"]
+    cands = read_cands(prep["paths"]["cands"], prep["label_of"], extra=tuple(SHUFFLE_COLS))
+    rng = np.random.default_rng([SAMPLE_SEED, zlib.crc32(b"aplus_check1_columns")])
+    perm = rng.permutation(len(cands))
+    for k in SHUFFLE_COLS:
+        cands[k] = cands[k].to_numpy()[perm]
+    f2 = build_features(ctx, dict(prep, cands=cands), lambda *a: None, with_perturbation=False)
+    feats["_shuffled"] = {"cols": f2["cols"], "res": rate_population(f2["cols"]), "n_cands": int(len(cands))}
+    return feats["_shuffled"]
+
+
 def check1_lookahead(cols: dict, res: dict, feats: dict, prep: dict, ctx: rr.Ctx) -> tuple:
     """WOULD-FAIL-IF 1: (a) every window survived the randomisation of its own minutes from the fill minute on (computed in the minute pass);
-    (b) the E-day columns of the candidates (open_E .. breakout_vol_x) joined back and SHUFFLED leave every score, cutoff and flag identical
-    (the outcome columns are not in the frame at all before the checks); (c) PER FILL (50 sampled + every A+ fill), with every ticker's
-    h / l / c / v after THAT fill's D randomised, the fill's score, cutoff and flag are identical."""
+    (b) the E-day columns of the candidates (open_E .. breakout_vol_x, and base_id) permuted at the SOURCE - in the candidates frame, before
+    any feature is computed - and every feature rebuilt leave every score, cutoff and flag identical; the outcome columns are never loaded
+    (the fills frame is read by FILL_COLS), asserted on the frame - an absent column cannot be read, and shuffling it would be the identity;
+    (c) PER FILL (50 sampled + every A+ fill), with every ticker's h / l / c / v after THAT fill's D randomised, the fill's score, cutoff and
+    flag are identical."""
     p, lines = [], []
     if feats["pert_ok"] != feats["n_blocks_ok"]:
         p.append(f"check 1: {feats['n_blocks_ok'] - feats['pert_ok']} windows changed when the minutes from the fill minute on were randomised")
     lines.append(f"check 1 (a): {feats['pert_ok']:,} of {feats['n_blocks_ok']:,} windows identical under the per-fill minute randomisation")
-    # (b) the look-ahead columns shuffled
-    la = read_table(prep["paths"]["cands"], ["ticker", "D", "E", "K"] + CAND_LOOKAHEAD_COLS)
-    la = la[la["K"] == POP_K]
-    lam = {(a, b, c, d): tuple(rest) for a, b, c, d, *rest in la[["ticker", "D", "E", "K"] + CAND_LOOKAHEAD_COLS].itertuples(index=False)}
-    rng = np.random.default_rng([SAMPLE_SEED, zlib.crc32(b"aplus_check1_columns")])
-    n = len(cols["E"])
-    perm = rng.permutation(n)
-    cols2 = dict(cols)
-    vals = [lam.get((cols["ticker"][i], cols["D"][i], cols["E"][i], cols["K"][i]), (None,) * len(CAND_LOOKAHEAD_COLS)) for i in range(n)]
-    for j, k in enumerate(CAND_LOOKAHEAD_COLS):
-        cols2[k] = [vals[perm[i]][j] for i in range(n)]
-    res2 = rate_population(cols2)
-    diff = _res_diff(res, res2)
+    # (b) the look-ahead columns shuffled at the source, the features rebuilt; the outcome columns absent from the frame
+    sh = shuffled_rebuild(ctx, prep, feats)
+    diff = _res_diff(res, sh["res"])
     if diff:
-        p.append(f"check 1 (b): {diff} under the E-day column shuffle")
-    lines.append(f"check 1 (b): the E-day columns {CAND_LOOKAHEAD_COLS} joined and shuffled - every score, cutoff and flag identical")
+        p.append(f"check 1 (b): {diff} with the E-day columns permuted in the candidates frame and every feature rebuilt")
+    oc_in = sorted((set(prep["fills"].columns) | set(FILL_COLS)) & set(OUTCOME_COLS))
+    if oc_in:
+        p.append(f"check 1 (b): the fills frame / FILL_COLS carry the outcome columns {oc_in} - a feature could read an outcome")
+    lines.append(f"check 1 (b): {SHUFFLE_COLS} permuted in the candidates frame ({sh['n_cands']:,} rows) before any feature was computed, every "
+                 f"feature rebuilt, the engine re-run - every score, cutoff and flag identical; the fills frame carries no outcome column "
+                 f"(usecols = FILL_COLS: an absent column cannot be read)")
     # (c) per-fill export randomisation after D
     el = np.flatnonzero(np.asarray(cols["eligible"], dtype=bool))
     ap = np.flatnonzero(res["flag"][("core", N_DECIDES)] == FLAG_APLUS)
@@ -1584,42 +1616,57 @@ def check7_shuffle(cols: dict, res: dict) -> tuple:
     return p, ["check 7 (shuffle invariance): every A+ set unchanged under a seed-702 shuffle of the input rows"]
 
 
-def check9_stair(cols: dict, feats: dict, prep: dict, ctx: rr.Ctx) -> tuple:
-    """WOULD-FAIL-IF 9: for 50 fills (seed 702) `stair_n` recomputed from a watch copy whose rows of that ticker with watch_date > D carry
-    randomised pole_ci / pole_date is unchanged; and every stair_n recomputed from a candidates re-read that CARRIES `base_id` (shuffled)
-    is unchanged - the column is never read (the run's own usecols exclude it)."""
+def check9_stair(cols: dict, feats: dict, prep: dict, ctx: rr.Ctx, every_fill: bool = False) -> tuple:
+    """WOULD-FAIL-IF 9: (a) for 50 fills (seed 702) PLUS every fill the FULL-FILE chain moves (a pole first seen after D bridging two bases -
+    the doc discloses 1 of 22,357 on 2017-21, AMRSQ 2021-08-26; the one place a chain reader that leaks later nights shows, so a sample
+    alone would see it with probability 50 / n), `stair_n` recomputed from a watch copy whose rows of that ticker with watch_date > D carry
+    randomised pole_ci / pole_date is unchanged; the moved count is printed (a zero is visible). `every_fill`: the whole frame - the suite
+    runs it so on the golden tree ("every fill of the golden fixtures"; the real population holds no fixture fill). (b) `base_id` is never
+    read: absent from the run's usecols and frame (structural), AND the run rebuilt on a candidates frame that CARRIES base_id permuted
+    (check 1 (b)'s source shuffle) leaves every stair_n unchanged (behavioural)."""
     rt = ctx.rt
     n = len(cols["E"])
+    full_chain: dict = {}
+    at_d: dict = {}
+    moved = []
+    for i in range(n):                                                      # moved = the full-file count differs from the chain-at-D count, BOTH
+        t, D, pci = cols["ticker"][i], cols["D"][i], cols["pole_ci"][i]      # recomputed here (never against the stored value: a reader of the full
+        if pci is None:                                                     # file stores the full count, which would hide the fill from the sample)
+            continue
+        ch = full_chain.get(t)
+        if ch is None:
+            ch = full_chain[t] = chain_at_d(prep["watch_poles"].get(t, []), "9999-12-31", rt.POLE_DRIFT_MAX)   # every watch row, later nights included
+        cd = at_d.get((t, D))
+        if cd is None:
+            cd = at_d[(t, D)] = chain_at_d(prep["watch_poles"].get(t, []), D, rt.POLE_DRIFT_MAX)
+        rows_t = feats["per_ticker_rows"].get(t, [])
+        if stair_n_of(t, cols["E_ci"][i], int(pci), rows_t, ch, feats["first_e_ci"]) != stair_n_of(t, cols["E_ci"][i], int(pci), rows_t, cd, feats["first_e_ci"]):
+            moved.append(i)
     el = np.flatnonzero(np.asarray(cols["eligible"], dtype=bool))
-    sample = sample_rows(el, CHECK9_SAMPLE, "check9")
+    sample = np.arange(n) if every_fill else np.unique(np.concatenate((sample_rows(el, CHECK9_SAMPLE, "check9"), np.asarray(moved, dtype=np.int64))))
     rng = np.random.default_rng([SAMPLE_SEED, zlib.crc32(b"aplus_check9")])
     bad = 0
     for i in sample:
         t, D = cols["ticker"][i], cols["D"][i]
+        if cols["pole_ci"][i] is None:
+            continue
         poles = [(d, int(rng.integers(0, 10_000)), f"rnd-{int(rng.integers(0, 10**6))}") if d > D else (d, pci, pdt) for d, pci, pdt in prep["watch_poles"].get(t, [])]
         chain = chain_at_d(poles, D, rt.POLE_DRIFT_MAX)
-        sn = stair_n_of(t, cols["E_ci"][i], cols["pole_ci"][i], feats["per_ticker_rows"].get(t, []), chain, feats["first_e_ci"])
+        sn = stair_n_of(t, cols["E_ci"][i], int(cols["pole_ci"][i]), feats["per_ticker_rows"].get(t, []), chain, feats["first_e_ci"])
         if sn != cols["stair_n"][i]:
             bad += 1
     p = [f"check 9: {bad} of {len(sample)} stair_n changed when the watch rows after D were randomised"] if bad else []
-    c2 = read_table(prep["paths"]["cands"], ["ticker", "D", "E", "K", "retrigger", "pole_ci", "base_id"])
-    c2 = c2[c2["K"] == POP_K].copy()
-    c2["base_id"] = c2["base_id"].to_numpy()[rng.permutation(len(c2))]
-    ex = feats["ex"]
-    ptr = defaultdict(list)
-    for t, e, pci, rtg in c2[["ticker", "E", "pole_ci", "retrigger"]].itertuples(index=False):
-        if int(rtg) == 0 and e in ex.cal_ci:
-            ptr[t].append((ex.cal_ci[e], int(pci)))
-    bad2 = 0
-    for i in range(n):
-        t = cols["ticker"][i]
-        chain = feats["chain_cache"][(t, cols["D"][i])]
-        if stair_n_of(t, cols["E_ci"][i], cols["pole_ci"][i], ptr.get(t, []), chain, feats["first_e_ci"]) != cols["stair_n"][i]:
-            bad2 += 1
+    # (b) base_id: never in the run's usecols / frame; the rebuild on a frame carrying it permuted changes no stair_n
+    if "base_id" in CAND_COLS or "base_id" in prep["cands"].columns:
+        p.append("check 9: base_id is in the run's candidates usecols / frame - the column must never be read")
+    sh = shuffled_rebuild(ctx, prep, feats)
+    bad2 = sum(1 for i in range(n) if sh["cols"]["stair_n"][i] != cols["stair_n"][i])
     if bad2:
-        p.append(f"check 9: {bad2} stair_n changed when recomputed from a candidates frame carrying a shuffled base_id")
-    return p, [f"check 9 (concept 5): {len(sample)} fills unchanged with the watch rows after D randomised; every stair_n unchanged from a frame with "
-               f"base_id present and shuffled (the run's usecols: {CAND_COLS} - no base_id)"]
+        p.append(f"check 9: {bad2} stair_n changed when the run was rebuilt on a candidates frame carrying a permuted base_id")
+    which = f"every one of the {n:,} rows" if every_fill else f"{len(sample)} fills (50 sampled + the {len(moved)} the full-file chain moves)"
+    return p, [f"check 9 (concept 5): {which} unchanged with the watch rows after D randomised; the full-file chain moves {len(moved)} fills "
+               f"(their stored stair_n is the chain at D's); base_id absent from the run's usecols ({CAND_COLS}) and frame, and every stair_n "
+               f"unchanged when the run is rebuilt on a frame carrying it permuted"]
 
 
 def check12_scales(cols: dict, res: dict, feats: dict) -> tuple:

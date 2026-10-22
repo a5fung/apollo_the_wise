@@ -23,7 +23,10 @@ from scripts.probes._cb_backtest import registered_read as rr
 from scripts.probes._cb_backtest import runner as rn
 from scripts.probes._cb_backtest import fetch_minutes as fm
 
-ERA_START = {"discovery": dt.date(2023, 1, 2), "pre": dt.date(2019, 1, 7), "holdout": dt.date(2025, 1, 6)}
+# the holdout calendar starts in 2024 so day E's pool (sessions 130..149) STRADDLES the year end: 16 pool members with D <= 2024-12-31 are
+# discovery-split rows (the real per-split layout: their exitpb AND P5 rows live in the discovery tables), 4 fall in the 2025-01-02 / 03
+# week (in the holdout table, outside the era: the dropped edge fills), the rest are eligible
+ERA_START = {"discovery": dt.date(2023, 1, 2), "pre": dt.date(2019, 1, 7), "holdout": dt.date(2024, 6, 24)}
 LINEAR_PINS = {m: m / 390 for m in ap.PROFILE_PINS}
 
 
@@ -88,8 +91,11 @@ def write_tree(d: Path, period: str, rows: list, cal: list, extra_watch_after_d:
         cands.append({"ticker": r.ticker, "D": r.D, "E": r.E, "K": "tl", "split": label(r.D), "retrigger": 0, "pole_date": cal[p_ci], "pole_ci": p_ci, "pivot": r.fill / 1.001,
                       "adr20": r.adr20, "adv20_vol_D": r.adv20, "prior_move": r.prior_move, "base_len": r.base_len, "base_depth": r.base_depth,
                       "tightening_ratio": r.tightening_ratio, "atr14_slope": r.atr14_slope, "rs_best": r.rs_best, "rs_all": r.rs_all, "grp_pct": r.grp_pct,
-                      "phase_qqq_10_20": 1, "base_id": f"{r.ticker}|{cal[p_ci]}", "open_E": r.close_d, "high_E": r.fill + 1.0, "low_E": 99.0, "close_E": r.close_d * 1.02,
-                      "vol_E": 12345.0, "breakout_vol_x": 1.5})
+                      "phase_qqq_10_20": 1, "base_id": f"{r.ticker}|{cal[p_ci]}",
+                      # the E-day columns the run never reads, DISTINCT per row so check 1 (b)'s permutation moves them
+                      "open_E": r.close_d + 0.001 * r.E_ci, "high_E": r.fill + 1.0 + 0.01 * r.fill_minute, "low_E": 99.0 - 0.001 * r.E_ci,
+                      "close_E": r.close_d * (1.02 + 0.01 * (r.E_ci % 13)) + 0.001 * r.fill_minute, "vol_E": 10000.0 + 37.0 * r.E_ci + r.fill_minute,
+                      "breakout_vol_x": 1.5 + 0.01 * (r.E_ci % 11)})
         watch.append({"ticker": r.ticker, "watch_date": r.D, "ci": d_ci, "close": r.close_d, "pole_date": cal[p_ci], "pole_ci": p_ci, "pole_high": 100.0,
                       "range_recent5": r.tightening_ratio * 0.02, "range_early5": 0.02, "adr20": r.adr20})
         for j in range(1, (r.stair_n or 0) + 1):                     # the extra first breaks that make the member's stair step
@@ -103,17 +109,20 @@ def write_tree(d: Path, period: str, rows: list, cal: list, extra_watch_after_d:
                           "range_recent5": 0.02, "range_early5": 0.02, "adr20": r.adr20})
     rn.write_tsv(d / "out" / ("candidates_tl_com.tsv" if pre else "candidates.tsv"), cands, ccols)
     rn.write_tsv(d / "out" / ("watch_tl_com.tsv.gz" if pre else "watch.tsv.gz"), watch, wcols, gz=True)
-    # the P5 and exitpb tables
-    p5 = [{"ticker": r.ticker, "D": r.D, "E": r.E, "K": "tl", "arm": ap.P5_ARM, "stop_variant": "lod", "range5_adr": r.range5_adr, "fill": r.fill, "fill_minute": r.fill_minute,
-           "realized_r": r.realized_r} for r in rows]
-    rn.write_tsv(d / "out" / f"trades_{period}_p5.tsv.gz", p5, list(p5[0].keys()) if p5 else ["ticker", "D", "E", "K", "arm", "stop_variant", "range5_adr"], gz=True)
+    # the P5 and exitpb tables - PER SPLIT, as the runner writes them (a cb702 tree carries both; the pre tree its own)
+    p5cols = ["ticker", "D", "E", "K", "arm", "stop_variant", "range5_adr", "fill", "fill_minute", "realized_r"]
     ecols = ap.FILL_COLS + ["status", "realized_r", "pnl_adr", "acct_pct", "sessions_held"]
-    ex = [{"ticker": r.ticker, "D": r.D, "E": r.E, "K": "tl", "entry": "orh5", "arm": "pp", "fill": r.fill, "fill_minute": r.fill_minute, "fill_month": r.E[:7],
-           "adr20": r.adr20, "width_adr": r.width_adr, "stop": r.stop, "mature": r.mature, "open_mark": 1 - r.mature, "early_close": int(r.E in rn.H60_EARLY_CLOSE),
-           "phase_qqq_10_20": 1, "status": "stopped" if r.realized_r < 0 else "trail", "realized_r": r.realized_r, "pnl_adr": r.pnl_adr, "acct_pct": 0.0, "sessions_held": 5}
-          for r in rows]
-    ex += [dict(e, arm="A", realized_r=e["realized_r"] + 0.5) for e in ex[:3]]                 # another arm's rows: never the population
-    rn.write_tsv(d / "out" / f"trades_{period}_exitpb.tsv.gz", ex, ecols, gz=True)
+    for split in (("pre",) if pre else ("discovery", "holdout")):
+        srows = [r for r in rows if label(r.D) == split]
+        p5 = [{"ticker": r.ticker, "D": r.D, "E": r.E, "K": "tl", "arm": ap.P5_ARM, "stop_variant": "lod", "range5_adr": r.range5_adr, "fill": r.fill,
+               "fill_minute": r.fill_minute, "realized_r": r.realized_r} for r in srows]
+        rn.write_tsv(d / "out" / f"trades_{split}_p5.tsv.gz", p5, p5cols, gz=True)
+        ex = [{"ticker": r.ticker, "D": r.D, "E": r.E, "K": "tl", "entry": "orh5", "arm": "pp", "fill": r.fill, "fill_minute": r.fill_minute, "fill_month": r.E[:7],
+               "adr20": r.adr20, "width_adr": r.width_adr, "stop": r.stop, "mature": r.mature, "open_mark": 1 - r.mature, "early_close": int(r.E in rn.H60_EARLY_CLOSE),
+               "phase_qqq_10_20": 1, "status": "stopped" if r.realized_r < 0 else "trail", "realized_r": r.realized_r, "pnl_adr": r.pnl_adr, "acct_pct": 0.0,
+               "sessions_held": 5} for r in srows]
+        ex += [dict(e, arm="A", realized_r=e["realized_r"] + 0.5) for e in ex[:3]]             # another arm's rows: never the population
+        rn.write_tsv(d / "out" / f"trades_{split}_exitpb.tsv.gz", ex, ecols, gz=True)
     # the minutes
     by_e = {}
     for r in rows:
@@ -159,14 +168,15 @@ def aplus_tree(tmp_path, monkeypatch, period: str = "discovery", rows: "list | N
     pointed at the synthetic facts (the profile's sha / pins / tally, the census targets)."""
     cal = fx.set_calendar(ERA_START[period])
     rows = rows if rows is not None else fx.golden_rows(e2_rs=40, with_f6=False)     # the files meet check 3 (rs_best never missing); E2's boundary is in-memory
+    label = (lambda D: "pre") if period == "pre" else (lambda D: rn.split_label(dt.date.fromisoformat(D)))
     for r in rows:
         if r.stair_n is None:                                              # a file cannot express "unrated on concept 5" for one fill of a day: F2 reads 0 here
             r.stair_n = 0
+        r.eligible = (period == "pre" or label(r.D) == period) and ap.week_in_era(r.E, period)
+    table_rows = [r for r in rows if period == "pre" or label(r.D) == period]       # the rows of the period's OWN table (the rest pool from the other split)
     data, pre = tmp_path / "cb702", tmp_path / "cb702_pre"
     d = pre if period == "pre" else data
     write_tree(d, period, rows, cal, **kw)
-    if period == "holdout":                                                # the confirm read pools the discovery table (empty here)
-        _empty_exitpb(data / "out" / "trades_discovery_exitpb.tsv.gz")
     other = data if period == "pre" else pre
     _stub_dir(other, "discovery" if period == "pre" else "pre")
     if period != "pre":
@@ -192,18 +202,20 @@ def aplus_tree(tmp_path, monkeypatch, period: str = "discovery", rows: "list | N
     (rn.HERE / "out").mkdir(parents=True)
     ap.clear_export_cache()
     rr.clear_daily_cache()
-    tree = {"cb702": data, "cb702_pre": pre, "repo": repo, "rows": rows, "cal": cal, "period": period, "dir": d}
+    tree = {"cb702": data, "cb702_pre": pre, "repo": repo, "rows": rows, "table_rows": table_rows, "cal": cal, "period": period, "dir": d}
     doc(tree)
     return tree
 
 
-def expected_for(rows: list, period: str) -> dict:
-    """The synthetic census targets the test is sure of by construction (the equality the real doc pins is on real counts)."""
+def expected_for(rows: list, period: str, table_rows: "list | None" = None) -> dict:
+    """The synthetic census targets the test is sure of by construction (the equality the real doc pins is on real counts). `table_rows`: the
+    rows of the period's own table (joined / dropped count those; the pool-only rows of the other split are in `rows` only)."""
+    table_rows = rows if table_rows is None else table_rows
     el = [r for r in rows if r.eligible]
     fms = [r.fill_minute for r in el]
     thin = sum(1 for r in el if sum(1 for q in rows if r.E_ci - 20 <= q.E_ci <= r.E_ci - 1) < ap.POOL_FLOOR)      # the pool members' own thin pools
     early = [r for r in el if r.E in rn.H60_EARLY_CLOSE]
-    return {"joined": len(rows), "fills": len(el), "open": sum(1 - r.mature for r in el), "weeks": len({ap.iso_week(r.E) for r in el}), "dropped": len(rows) - len(el),
+    return {"joined": len(table_rows), "fills": len(el), "open": sum(1 - r.mature for r in el), "weeks": len({ap.iso_week(r.E) for r in el}), "dropped": len(table_rows) - len(el),
             "c5_unrated": 0, "thin": thin, "fm_min": min(fms), "fm_max": max(fms), "fm_at5": sum(1 for x in fms if x == 5), "fm_ge210": sum(1 for x in fms if x >= 210),
             "zero_vol": tuple(sorted((r.ticker, r.E) for r in el if r.vol_sofar is None)), "early": len(early), "early_ge210": sum(1 for r in early if r.fill_minute >= 210),
             "exp_missing": 0,
@@ -245,10 +257,10 @@ def main(tree, stage, *extra, period="unset"):
 def set_expected(monkeypatch, tree: dict, **over) -> dict:
     """The synthetic census targets AND the synthetic table's own C0 integers (the registered 13,363 / 165 ... describe the real tables; a run
     whose table disagrees with its pinned integers stops - `test_the_c0_integers_must_describe_the_table`)."""
-    exp = expected_for(tree["rows"], tree["period"])
+    exp = expected_for(tree["rows"], tree["period"], tree.get("table_rows"))
     exp.update(over)
     monkeypatch.setattr(ap, "APLUS_EXPECTED", {**ap.APLUS_EXPECTED, tree["period"]: exp})
-    mature = [r for r in tree["rows"] if r.mature]
+    mature = [r for r in tree.get("table_rows", tree["rows"]) if r.mature]         # C0 = the period's OWN table (edge fills in, the other split's pool rows out)
     r = np.array([x.realized_r for x in mature], dtype=float)
     c0 = {"n": len(mature), "ge10": int((r >= 10).sum()), "mean_r": round(float(r.mean()), 3), "ge5_per100": round(float(100 * (r >= 5).mean()), 2),
           "ge10_per100": round(float(100 * (r >= 10).mean()), 3)}
@@ -463,7 +475,7 @@ class TestTree:
                       "cb702/out/trades_holdout_p5.tsv.gz", "cb702/out/candidates.tsv", "cb702_pre/out/candidates_tl_com.tsv", "cb702/out/watch.tsv.gz",
                       "cb702_pre/out/watch_tl_com.tsv.gz", "cb702/daily_closes_all.csv.gz", "cb702_pre/daily_closes_all.csv.gz", "cb702/minutes/_done.psv",
                       "cb702_pre/minutes/_done.psv", "cb702/minutes (tree)", "cb702_pre/minutes (tree)", "module", "runner", "scaffold", "spec module",
-                      "rederivation module", "doc body"):
+                      "rederivation module", "golden fixtures module", "doc body"):
             assert f"- {label} sha256: `" in pins, label
         assert "MISSING" not in pins
 
@@ -472,6 +484,13 @@ class TestTree:
         set_expected(monkeypatch, tree)
         boom = lambda *a, **k: (_ for _ in ()).throw(AssertionError("an outcome column was opened"))     # noqa: E731
         monkeypatch.setattr(ap, "read_outcomes", boom)
+        real_read = ap.read_table
+
+        def guarded(path, usecols):                                           # NO reader of the dry run or the self-check names an outcome column
+            if usecols is None or set(usecols) & set(ap.OUTCOME_COLS):
+                raise AssertionError(f"an outcome column was opened: {path} {usecols}")
+            return real_read(path, usecols)
+        monkeypatch.setattr(ap, "read_table", guarded)
         before = sorted(p.as_posix() for p in tmp_path.rglob("*"))
         assert main(tree, "aplus-read", "--dry-run") is None
         out = capsys.readouterr().out
@@ -546,15 +565,52 @@ class TestTree:
         assert not list((tree["cb702"] / "out").glob("*aplus*"))
 
     def test_the_confirm_read_runs_on_record_and_pools_the_discovery_table(self, tmp_path, monkeypatch, capsys):
+        """The sealed read on the REAL per-split layout: 16 of day E's pool members are discovery-split rows (their exitpb AND P5 rows in the
+        discovery tables), 4 are the 2025-01-02 / 03 edge fills (in the holdout table, outside the era) - all 20 pool-only, never flagged;
+        the read joins every one and reaches VERDICT MATCH. (Before the fix the pool-only rows read 'P5: no row' and the confirm read exited 3.)"""
         tree = aplus_tree(tmp_path, monkeypatch, period="holdout")
         exp = set_expected(monkeypatch, tree)
+        assert len(tree["rows"]) == 128 and exp["joined"] == 112 and exp["fills"] == 108 and exp["dropped"] == 4       # 16 discovery-split + 4 edge
+        d_p5, d_ex = rn.read_tsv(tree["cb702"] / "out" / "trades_discovery_p5.tsv.gz"), rn.read_tsv(tree["cb702"] / "out" / "trades_discovery_exitpb.tsv.gz")
+        assert len(d_p5) == 16 and (d_p5["D"] <= "2024-12-31").all() and (d_ex["D"] <= "2024-12-31").all()
+        assert (rn.read_tsv(tree["cb702"] / "out" / "trades_holdout_p5.tsv.gz")["D"] > "2024-12-31").all()
         v = {"verdict": "PASS", "paired": {"reading": "separates"}, "grp": {"reading": "ADDS"}, "rows": {}}
         (tree["cb702_pre"] / "out" / "aplus_verdict_pre.json").write_text(json.dumps(v))
         (tree["cb702"] / "out" / "aplus_verdict_discovery.json").write_text(json.dumps(v))
-        assert main(tree, "aplus-confirm", "--dry-run") is None and "STEP 0 PASSED" in capsys.readouterr().out
+        assert main(tree, "aplus-confirm", "--dry-run", "--self-check") is None
+        o = capsys.readouterr().out
+        assert "STEP 0 PASSED" in o and "SELF-CHECK PASSED" in o and "check 3 (join): 128 rows (108 eligible)" in o
         assert main(tree, "aplus-confirm") is None
-        assert "VERDICT MATCH" in capsys.readouterr().out and (tree["cb702"] / "out" / "aplus_verdict_holdout.json").exists()
-        assert exp["fills"] == len(tree["rows"])
+        o = capsys.readouterr().out
+        assert "VERDICT MATCH" in o and "re-derivation: 128 rows (108 eligible)" in o and (tree["cb702"] / "out" / "aplus_verdict_holdout.json").exists()
+        t = rn.read_tsv(tree["cb702"] / "out" / "trades_holdout_aplus.tsv.gz")
+        pool_only = t[t["eligible"] == 0]
+        assert len(t) == 128 and len(pool_only) == 20 and pool_only["flag_core_n3"].isna().all() and pool_only["range5_adr"].notna().all()   # FLAG_POOL = ""
+        assert set(pool_only["ticker"]) == {f"P{i:02d}" for i in range(20)}
+
+    def test_the_confirm_read_fails_check3_when_a_pool_only_p5_row_is_missing(self, tmp_path, monkeypatch, capsys):
+        """The blocker's shape: a pool-only member whose P5 row is NOT in the discovery P5 table -> 'P5: no row', exit 3, nothing written."""
+        tree = aplus_tree(tmp_path, monkeypatch, period="holdout")
+        set_expected(monkeypatch, tree)
+        p5 = tree["cb702"] / "out" / "trades_discovery_p5.tsv.gz"
+        t = rn.read_tsv(p5)
+        t[t["ticker"] != "P03"].to_csv(p5, sep="\t", index=False, na_rep="", compression="gzip")
+        doc(tree)
+        v = {"verdict": "PASS", "paired": {"reading": "separates"}, "grp": {"reading": "ADDS"}, "rows": {}}
+        (tree["cb702_pre"] / "out" / "aplus_verdict_pre.json").write_text(json.dumps(v))
+        (tree["cb702"] / "out" / "aplus_verdict_discovery.json").write_text(json.dumps(v))
+        with pytest.raises(SystemExit) as ex:
+            main(tree, "aplus-confirm")
+        o = capsys.readouterr().out
+        assert ex.value.code == 3 and "IMPLEMENTATION CHECK FAILED" in o and "P5: no row for ('P03'" in o
+        assert not (tree["cb702"] / "out" / "aplus_verdict_holdout.json").exists() and not (tree["cb702"] / "out" / "trades_holdout_aplus.tsv.gz").exists()
+        # a key in BOTH per-split P5 tables is a data defect: refused before any feature
+        h5 = tree["cb702"] / "out" / "trades_holdout_p5.tsv.gz"
+        import pandas as pd
+        pd.concat([rn.read_tsv(h5), t[t["ticker"] == "P05"]]).to_csv(h5, sep="\t", index=False, na_rep="", compression="gzip")
+        doc(tree)
+        with pytest.raises(ValueError, match="keys in BOTH P5 tables"):
+            ap.aplus_prepare(rr.resolve(ap.APLUS_CONFIRM, ns(tree), rn))
 
     def test_the_profile_stage_builds_the_pin_refuses_a_rebuild_and_a_mismatch(self, tmp_path, monkeypatch, capsys):
         tree = aplus_tree(tmp_path, monkeypatch, period="pre")
@@ -661,21 +717,40 @@ class TestFailingCases:
         p5, _ = ap.check5_breakout_inputs(cols, res, feats, prep, ctx)
         assert any("check 5" in x for x in p5)
 
-    def test_check1b_a_scorer_that_reads_an_e_day_column(self, tmp_path, monkeypatch):
+    @pytest.mark.parametrize("col, concept", [("close_E", "exp_up_adr"), ("vol_E", "vol_sofar_x")])
+    def test_check1b_a_feature_that_reads_an_e_day_column(self, tmp_path, monkeypatch, col, concept):
+        """The realistic break: the usecols widened by an E-day column and a FEATURE built from it (concept 6 against E's close; concept 7 from
+        E's full-day volume - the look-ahead the doc excludes). The run itself is self-consistent; only the source shuffle moves it."""
         tree = aplus_tree(tmp_path, monkeypatch)
-        ctx, prep, feats, cols, res = _feats(tree, with_perturbation=False)
-        real = ap.rate_population
+        monkeypatch.setattr(ap, "CAND_COLS", ap.CAND_COLS + [col])
+        real = ap.build_features
 
-        def broken(c, *a, **k):
-            r = real(c, *a, **k)
-            ce = c.get("close_E")
-            if ce is not None:                                                # a reader that leans on close_E when it is there
-                for N in ap.NS:
-                    r["flag"][("core", N)] = np.where(np.asarray([x is not None and x > 100.5 for x in ce]), "rest", r["flag"][("core", N)])
-            return r
-        monkeypatch.setattr(ap, "rate_population", broken)
+        def broken(ctx, prep, say, with_perturbation=True):
+            out = real(ctx, prep, say, with_perturbation)
+            c = out["cols"]
+            la = {(r.ticker, r.D, r.E, r.K): getattr(r, col) for r in prep["cands"][["ticker", "D", "E", "K", col]].itertuples(index=False)}
+            v = [la.get((c["ticker"][i], c["D"][i], c["E"][i], c["K"][i])) for i in range(len(c["E"]))]
+            if concept == "exp_up_adr":
+                c[concept] = [ap.exp_up_adr_of(c["fill"][i], v[i], c["adr20"][i]) for i in range(len(v))]
+            else:
+                c[concept] = [None if v[i] is None else v[i] / c["adv20_vol_D"][i] for i in range(len(v))]
+            return out
+        monkeypatch.setattr(ap, "build_features", broken)
+        ctx, prep, feats, cols, res = _feats(tree, with_perturbation=False)
+        assert col in prep["cands"].columns
         p, _ = ap.check1_lookahead(cols, res, feats, prep, ctx)
-        assert any("check 1 (b)" in x for x in p)
+        assert any("check 1 (b)" in x and "permuted" in x for x in p), p
+
+    def test_check1b_an_outcome_column_in_the_fills_usecols(self, tmp_path, monkeypatch):
+        """The outcome columns are never loaded (FILL_COLS); a widened usecols is caught on the frame - the one way a feature could read one."""
+        tree = aplus_tree(tmp_path, monkeypatch)
+        ctx, prep, feats, cols, res = _feats(tree)
+        assert ap.check1_lookahead(cols, res, feats, prep, ctx)[0] == []
+        monkeypatch.setattr(ap, "FILL_COLS", ap.FILL_COLS + ["realized_r"])
+        ctx, prep, feats, cols, res = _feats(tree, with_perturbation=False)
+        assert "realized_r" in prep["fills"].columns
+        p, _ = ap.check1_lookahead(cols, res, feats, prep, ctx)
+        assert any("check 1 (b)" in x and "outcome columns ['realized_r']" in x for x in p), p
 
     def test_check1c_a_feature_that_reads_past_d(self, tmp_path, monkeypatch):
         tree = aplus_tree(tmp_path, monkeypatch)
@@ -756,10 +831,36 @@ class TestFailingCases:
     def test_check9_a_stair_step_that_disagrees_with_the_chain_at_d(self, tmp_path, monkeypatch):
         tree = aplus_tree(tmp_path, monkeypatch, extra_watch_after_d=True)
         ctx, prep, feats, cols, res = _feats(tree, with_perturbation=False)
-        assert ap.check9_stair(cols, feats, prep, ctx)[0] == []
+        p, lines = ap.check9_stair(cols, feats, prep, ctx)
+        assert p == [] and "the full-file chain moves 0 fills" in lines[0]
         cols["stair_n"] = [None if x is None else x + 1 for x in cols["stair_n"]]
         p, _ = ap.check9_stair(cols, feats, prep, ctx)
-        assert any("check 9" in x for x in p)
+        assert any("check 9" in x and "randomised" in x for x in p) and any("permuted base_id" in x for x in p)
+
+    def test_check9_a_chain_reader_that_leaks_a_later_night(self, tmp_path, monkeypatch):
+        """A later watch night whose pole BRIDGES two of the ticker's bases (the AMRSQ shape): the full-file chain moves that fill, so check 9
+        adds it to the sample and names the count; a `stair_n` taken from the full-file chain then disagrees with the chain at D."""
+        tree = aplus_tree(tmp_path, monkeypatch, extra_watch_after_d=True)
+        ctx, prep, feats, cols, res = _feats(tree, with_perturbation=False)
+        i = cols["ticker"].index("P10")                                      # stair_n 1: one earlier base (its pole 30 + 10 sessions before its own)
+        t, D = cols["ticker"][i], cols["D"][i]
+        own = int(cols["pole_ci"][i])
+        other = min(pci for _e, pci in feats["per_ticker_rows"][t] if pci != own)
+        assert cols["stair_n"][i] == 1 and other < own
+        bridge = [(cols["E"][i], c, f"bridge-{c}") for c in range(other + 3, own, 3)]     # poles <= 3 apart from the earlier base to the own: ONE base
+        prep["watch_poles"][t] = sorted(prep["watch_poles"][t] + bridge)
+        p, lines = ap.check9_stair(cols, feats, prep, ctx)
+        assert p == [] and "the full-file chain moves 1 fills" in lines[0]
+        cols["stair_n"][i] = 0                                              # what a reader of the full-file chain stores: the bridged bases are one, minus its own
+        p, _ = ap.check9_stair(cols, feats, prep, ctx)
+        assert any("check 9: 1 of" in x and "randomised" in x for x in p), p
+
+    def test_check9_base_id_in_the_usecols(self, tmp_path, monkeypatch):
+        tree = aplus_tree(tmp_path, monkeypatch)
+        monkeypatch.setattr(ap, "CAND_COLS", ap.CAND_COLS + ["base_id"])
+        ctx, prep, feats, cols, res = _feats(tree, with_perturbation=False)
+        p, _ = ap.check9_stair(cols, feats, prep, ctx)
+        assert any("base_id is in the run's candidates usecols" in x for x in p)
 
     def test_check12_a_scale_that_disagrees_with_the_export(self, tmp_path, monkeypatch):
         tree = aplus_tree(tmp_path, monkeypatch)
@@ -811,10 +912,13 @@ class TestLookAhead:
         tree = aplus_tree(tmp_path, monkeypatch, extra_watch_after_d=True)
         ctx, prep, feats, cols, res = _feats(tree)
         for fn in (lambda: ap.check1_lookahead(cols, res, feats, prep, ctx), lambda: ap.check2_later_fills(cols, res), lambda: ap.check5_breakout_inputs(cols, res, feats, prep, ctx),
-                   lambda: ap.check6_pool(cols, res), lambda: ap.check7_shuffle(cols, res), lambda: ap.check9_stair(cols, feats, prep, ctx),
+                   lambda: ap.check6_pool(cols, res), lambda: ap.check7_shuffle(cols, res),
+                   lambda: ap.check9_stair(cols, feats, prep, ctx, every_fill=True),             # the doc's "every fill of the golden fixtures"
                    lambda: ap.check12_scales(cols, res, feats), lambda: ap.check3_join(cols, feats, prep, ctx, ap.PROFILE_SHA_EXPECTED)):
             p, lines = fn()
             assert p == [] and lines
+        assert f"every one of the {len(cols['E'])} rows" in ap.check9_stair(cols, feats, prep, ctx, every_fill=True)[1][0]
+        assert "feature rebuilt" in ap.check1_lookahead(cols, res, feats, prep, ctx)[1][1] and feats["_shuffled"]["n_cands"] == len(prep["cands"])
 
     def test_the_perturbed_export_randomises_only_after_d(self, tmp_path, monkeypatch):
         tree = aplus_tree(tmp_path, monkeypatch)
