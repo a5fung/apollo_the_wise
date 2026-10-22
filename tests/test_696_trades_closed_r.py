@@ -25,7 +25,7 @@ def _parse(raw):
 
 def test_closed_line_renders_realized_r_and_no_attempts_suffix():
     lines = fmt_closed_line(_VICR_400, parse_exits=_parse)
-    assert lines[0] == "  ✅ *VICR* $+76 · +7.3R (19d) · Oct 07"
+    assert lines[0] == "  ✅ *VICR* $+76 · +7.3R · +35.8% (19d) · Oct 07"   # #706: the % win/loss beside $ and R
     assert "attempt" not in "\n".join(lines)
 
 
@@ -48,7 +48,12 @@ def test_no_risk_unit_renders_no_r_never_a_made_up_one():
                    dict(_VICR_400, entry_shares=None),               # no shares
                    stripped):                                        # columns not selected
         assert sd.trade_realized_r(broken) is None
-        assert fmt_closed_line(broken, parse_exits=_parse)[0] == "  ✅ *VICR* $+76 (19d) · Oct 07"
+        # #706: the % win/loss needs entry price + shares only (no stop), so it survives a missing
+        # stop and is omitted — like the R — when there are no shares.
+        has_pct = broken.get("entry_shares") is not None
+        want = ("  ✅ *VICR* $+76 · +35.8% (19d) · Oct 07" if has_pct
+                else "  ✅ *VICR* $+76 (19d) · Oct 07")
+        assert fmt_closed_line(broken, parse_exits=_parse)[0] == want
 
 
 def test_orb_low_fallback_and_losing_trade_sign():

@@ -5,6 +5,7 @@ trade's REALIZED R, taken from `sell_discipline.trade_realized_r` — the same h
 sell-discipline record uses, so /trades and the sell-discipline report can never disagree.
 A trade with no valid R frame (no risk unit / no shares) renders WITHOUT an R, never a
 made-up one. The old '· N attempt(s)' suffix is gone (operator 2026-10-07: it added bulk).
+#706 adds the trade's % win/loss right after the R (`$+76 · +7.3R · +35.8% (19d)`).
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ import logging
 from typing import Callable
 
 from agents.market_intelligence.sell_discipline import trade_realized_r
+from agents.market_intelligence.trade_stats import fmt_pct, trade_return_pct
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +51,13 @@ def fmt_closed_line(r: dict, *, parse_exits: Callable = parse_exits) -> list[str
     date_suffix = f" · {closed_at.strftime('%b %d')}" if closed_at else ""
     realized_r = trade_realized_r(r)
     r_str = f" · {realized_r:+.1f}R" if realized_r is not None else ""
+    # #706: the trade's % win/loss beside the $ and the R — total_pnl over entry cost, the same
+    # frame the R uses (trade_stats.trade_return_pct). Omitted, like the R, when it cannot be
+    # computed (no entry price / shares): never a made-up one.
+    ret_pct = trade_return_pct(r)
+    pct_str = f" · {fmt_pct(ret_pct, signed=True)}" if ret_pct is not None else ""
     out = [
-        f"  {emoji} *{r['ticker']}* ${pnl:+,.0f}{r_str} ({hold}d){date_suffix}",
+        f"  {emoji} *{r['ticker']}* ${pnl:+,.0f}{r_str}{pct_str} ({hold}d){date_suffix}",
         f"      {entry_str} → {exit_str} · {reason} · score {score:.0f}",
     ]
     # ⚠ EVERY LEG, not just the last one (operator 2026-08-08). The two lines above

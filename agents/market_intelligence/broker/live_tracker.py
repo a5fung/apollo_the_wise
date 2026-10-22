@@ -475,6 +475,60 @@ def _is_window_duplicate_reason(reason) -> bool:
     return reason == WINDOW_DUPLICATE or reason.startswith(WINDOW_DUPLICATE + ":")
 
 
+# ── #706: send each skip LINE once per ET day ────────────────────────────────
+# `process_new_alerts_live` evaluates EVERY HIGH alert on every call, and it is called from the
+# bar stream (once per first-bar arrival — i.e. once per subscribed ticker) AND the 09:31 cron
+# fallback. A name that is skipped for the same reason on each evaluation therefore reappeared
+# in a fresh grouped digest each time (2026-10-21: SPCX twice, 10 s apart). Message-only: the
+# evaluation, the skip row and the result list are untouched (a recovered gap can still enter on
+# a later evaluation); only the digest LINE for a (ticker, reason class) already sent today is
+# held back.
+#
+#   key   = (ET day, ticker, reason CLASS) where the class is the vocabulary's aggregation key
+#           `category:code` (skip_reasons.py) — the free-form detail after it ("$1.24 vs $0.83")
+#           is dropped, so a number that moved does not resend, while a CHANGED reason
+#           ("filter:atr_too_high" -> "block:max_positions") is a new key and does.
+#   reset = the ET day: the day is part of the key, and keys of earlier days are dropped on
+#           each call (a day 2 evaluation starts empty). Both entry paths run in the one
+#           execution process (trigger_orb_entry -> _orb_monitor_job crosses to apollo-execution,
+#           as does the bar stream), so one in-memory set covers both.
+#   restart = the set is process memory: an execution-container restart mid-day empties it, and
+#           that day's already-sent skips can show once more. A repeat after a restart is the
+#           accepted failure (the old behaviour); a swallowed first line never is.
+#   send failure = the claim is released, so the next evaluation retries the line.
+_skip_digest_sent: set[tuple[date, str, str]] = set()
+
+
+def _skip_reason_class(reason) -> str:
+    """`category:code` of a stored skip reason ('setup:stop_too_wide: ORB $1.24 …' ->
+    'setup:stop_too_wide'). A free-form / legacy reason with no ':' is its whole stripped text."""
+    if not isinstance(reason, str) or not reason.strip():
+        return "no_reason"
+    return ":".join(p.strip() for p in reason.split(":", 2)[:2])
+
+
+def _claim_unsent_skips(digest_results: list[dict], today: date):
+    """(fresh results to send, claimed keys). Claims synchronously (no await between the check and
+    the add), so two overlapping evaluations cannot both send the same line."""
+    for k in [k for k in _skip_digest_sent if k[0] < today]:
+        _skip_digest_sent.discard(k)
+    fresh: list[dict] = []
+    claimed: list[tuple[date, str, str]] = []
+    for r in digest_results:
+        key = (today, str(r.get("ticker")), _skip_reason_class(r.get("reason")))
+        if key in _skip_digest_sent:
+            continue
+        _skip_digest_sent.add(key)
+        claimed.append(key)
+        fresh.append(r)
+    return fresh, claimed
+
+
+def _reset_skip_digest_dedupe() -> None:
+    """Forget every sent skip line (tests; never called in production)."""
+    _skip_digest_sent.clear()
+
+
 # The day's HIGH-alert board — ⚠ BYTE-IDENTICAL to the pre-#533 inline query and it
 # must stay that way (pinned by tests/test_533_slot_ranking.py): with the
 # `ep_slot_rank_rs` toggle OFF this query's own row order IS the acting order, so
@@ -786,17 +840,23 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         r for r in skipped_results
         if not _is_window_duplicate_reason(r.get("reason"))
     ]
+    # #706: a (ticker, reason class) already announced today is not announced again.
+    digest_results, _claimed = _claim_unsent_skips(digest_results, today)
     if digest_results:
         bullets = "\n".join(
             f"• `{r['ticker']}` — {humanize(r.get('reason'))}"
             for r in digest_results
         )
+        _sent_ok = False
         try:
-            await send_telegram_message(
+            _sent_ok = bool(await send_telegram_message(
                 f"{strategy_mode_prefix(_magna53_mode)}⏭️ *ORB skips ({today}, {len(digest_results)})*\n{bullets}"
-            )
+            ))
         except Exception as e:
             logger.error(f"ORB grouped-skip Telegram failed — {e}")
+        if not _sent_ok:
+            # The line did not go out: release the claim so the next evaluation retries it.
+            _skip_digest_sent.difference_update(_claimed)
 
     return results
 

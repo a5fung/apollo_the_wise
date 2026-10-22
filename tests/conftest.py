@@ -129,6 +129,20 @@ def _663_reset_ep_scan_module_state():
     yield
 
 
+# ─── #706: no test inherits the ORB skip digest's "already sent today" set ─────────────────────
+# live_tracker holds a process-memory set of (ET day, ticker, reason class) skip lines it has
+# already announced (the bar-stream + 09:31-cron double digest fix). Several suites drive
+# process_new_alerts_live with the same fixed date and tickers, so a line one test sent would be
+# swallowed in the next. Reset before every test, for the module only if already imported.
+@_pytest.fixture(autouse=True)
+def _706_reset_orb_skip_digest_dedupe():
+    _lt = sys.modules.get("agents.market_intelligence.broker.live_tracker")
+    _reset = getattr(_lt, "_reset_skip_digest_dedupe", None)
+    if callable(_reset):
+        _reset()
+    yield
+
+
 # ─── Shared asyncpg pool mock builder ──────────────────────────────────────
 # Origin: 3 test files rolling their own near-identical version
 # (test_ep_scan_watchdog, test_downgrade_digest, test_sync_positions_safety_guard).

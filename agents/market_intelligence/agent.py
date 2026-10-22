@@ -834,6 +834,7 @@ class MarketIntelligenceAgent(BaseAgent):
             """Return combined trade summary: live (Alpaca) + paper trades."""
             from agents.market_intelligence.db import get_pool
             from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2): same read names, body unchanged
+            from agents.market_intelligence.trade_stats import open_position_stats, trade_return_pct
 
             pool = await get_pool()
             result = {"live": None, "paper": None}
@@ -861,16 +862,28 @@ class MarketIntelligenceAgent(BaseAgent):
                     """)
                     recent_closed = await conn.fetch("""
                         SELECT ticker, alert_date, entry_price, total_pnl,
-                               hold_days, exits, catalyst_quality, ep_score
+                               hold_days, exits, catalyst_quality, ep_score,
+                               entry_shares  -- #706: the % win/loss frame
                         FROM mi_live_trades
                         WHERE status = 'closed'
                         ORDER BY closed_at DESC LIMIT 3
                     """)
 
+                # Get account equity (fetched BEFORE the positions: #706 divides each position's
+                # market value by it). Same default account the positions below are read from, so
+                # numerator and denominator come from one account. Fresh per request, never cached.
+                try:
+                    account = await alpaca.get_account()
+                    equity = account["equity"]
+                except Exception as e:
+                    logger.warning(f"/trades/summary: account equity fetch failed: {e}")
+                    equity = None
+
                 # Fetch current prices from Alpaca for unrealized P&L
                 open_details = []
                 for t in open_trades:
                     t = dict(t)
+                    pos = None
                     try:
                         pos = await alpaca.get_position(t["ticker"])
                         if pos:
@@ -886,15 +899,23 @@ class MarketIntelligenceAgent(BaseAgent):
                         t["current_price"] = None
                         t["unrealized_pnl"] = 0
                         t["market_value"] = 0
+                    # #706: the dashboard's two open-position stats — % None when not computable.
+                    _st = open_position_stats(
+                        side=(pos or {}).get("side"),
+                        market_value=(pos or {}).get("market_value"),
+                        current_price=(pos or {}).get("current_price"),
+                        stop_price=t.get("stop_price"),
+                        equity=equity,
+                    )
+                    t["side"] = _st["side"]
+                    t["position_pct_of_equity"] = _st["position_pct"]
+                    t["stop_pct"] = _st["stop_pct"]
                     open_details.append(t)
-
-                # Get account equity
-                try:
-                    account = await alpaca.get_account()
-                    equity = account["equity"]
-                except Exception as e:
-                    logger.warning(f"/trades/summary: account equity fetch failed: {e}")
-                    equity = None
+                recent_closed_out = []
+                for _r in recent_closed:
+                    _rd = dict(_r)
+                    _rd["return_pct"] = trade_return_pct(_rd)  # #706
+                    recent_closed_out.append(_rd)
 
                 closed_count = (stats["winners"] or 0) + (stats["losers"] or 0)
                 result["live"] = {
@@ -906,7 +927,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     "realized_pnl": float(stats["realized_pnl"] or 0),
                     "equity": equity,
                     "open_positions": open_details,
-                    "recent_closed": [dict(r) for r in recent_closed],
+                    "recent_closed": recent_closed_out,
                 }
             except Exception as e:
                 logger.warning(f"/trades/summary: live trades summary failed: {e}")
@@ -7032,6 +7053,7 @@ class MarketIntelligenceAgent(BaseAgent):
         """Inline keyboard detail: /trades_detail {view} [{date}]"""
         from agents.market_intelligence.collector import last_trading_day
         from agents.market_intelligence.closed_trade_line import fmt_closed_line, parse_exits
+        from agents.market_intelligence.trade_stats import fmt_size_stop_lines, open_position_stats
 
         parts = request.task.strip().split()
         view = parts[1].lower() if len(parts) > 1 else "summary"
@@ -7109,6 +7131,19 @@ class MarketIntelligenceAgent(BaseAgent):
                     """, relevant_tickers)
                     ticker_history = {h["ticker"]: dict(h) for h in hist_rows}
 
+            # #706: the account's equity — the denominator of every open position's "% of
+            # equity". ONE broker read per render, from the LIVE account (the book this page
+            # shows; the no-arg form resolves to the legacy global mode = paper), fetched now and
+            # never cached, so the % can never rest on a stale equity. Failure -> None -> every
+            # position's % prints "—" (never a number off a guessed denominator).
+            equity: float | None = None
+            if open_rows:
+                try:
+                    _acct = await alpaca.get_account(account_mode="live")
+                    equity = float(_acct["equity"])
+                except Exception as e:
+                    logger.warning(f"/trades: live account equity fetch failed — % of equity shows '—': {e}")
+
             # Fetch live prices per position (fire-and-forget fallback on failure)
             enriched = []
             unreal_total = 0.0
@@ -7127,6 +7162,15 @@ class MarketIntelligenceAgent(BaseAgent):
                     d["current_price"] = None
                     d["unrealized_pnl"] = 0
                     d["market_value"] = 0
+                # #706: the broker's own side / market value / price. A position the broker did
+                # not return has none of them, so its stats are "—" (not 0%).
+                d["stats"] = open_position_stats(
+                    side=(pos or {}).get("side"),
+                    market_value=(pos or {}).get("market_value"),
+                    current_price=(pos or {}).get("current_price"),
+                    stop_price=d.get("stop_price"),
+                    equity=equity,
+                )
                 unreal_total += float(d["unrealized_pnl"] or 0)
                 enriched.append(d)
 
@@ -7135,7 +7179,8 @@ class MarketIntelligenceAgent(BaseAgent):
 
             if enriched:
                 lines.append("")
-                lines.append(f"*Open ({len(enriched)})* · unreal ${unreal_total:+,.0f}")
+                _eq_str = f"${equity:,.0f}" if equity is not None else "—"
+                lines.append(f"*Open ({len(enriched)})* · unreal ${unreal_total:+,.0f} · equity {_eq_str}")
                 for p in enriched:
                     ticker = p["ticker"]
                     entry = p.get("entry_price")
@@ -7162,11 +7207,14 @@ class MarketIntelligenceAgent(BaseAgent):
 
                     entry_str = f"${entry:.2f}" if entry else "?"
                     current_str = f"${current:.2f}" if current else "?"
-                    stop_str = f"${stop:.2f}" if stop else "?"
                     pct_str = ""
                     if entry and current:
                         pct = (current - entry) / entry * 100
                         pct_str = f" ({pct:+.1f}%)"
+                    # #706: size as % of equity + the stop's % from here (two plain lines).
+                    size_stop = "\n".join(fmt_size_stop_lines(
+                        shares=shares, market_value=mkt_val, stop_price=stop, stats=p["stats"],
+                    ))
 
                     hist = ticker_history.get(ticker)
                     prior_bits: list[str] = []
@@ -7198,7 +7246,7 @@ class MarketIntelligenceAgent(BaseAgent):
                     lines.append(
                         f"  {pnl_emoji} *{ticker}* · {hold}d{flag_str}\n"
                         f"      Entry {entry_str} → Now {current_str}{pct_str}\n"
-                        f"      {shares:.0f} sh · ${mkt_val:,.0f} · Stop {stop_str}\n"
+                        f"{size_stop}\n"
                         f"      Unreal ${unreal:+,.0f}"
                         + (f" · Real ${realized:+,.0f}" if realized else "")
                         + prior_str
