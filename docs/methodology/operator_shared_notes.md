@@ -2263,3 +2263,10 @@ never deciding (#705).
 corrected.) **Used as:** base length is NOT rewarded on its own. What the rating scores is volatility CONTRACTING OVER THE
 BASE (tightening over time — e.g. the ATR / daily range falling from the base's early part to its late part); a long base that
 stays wide and loose scores badly. Base length alone is reported beside, never deciding (#705).
+
+His follow-ups (verbatim): *"Long bases I meant"* · *"Volatility contraction can be fractal, what I mean is that you can see it
+contract over months, weeks, days and or intraday. So a long base will see contract over weeks with highs and lows tightening, then
+daily bars also tightening, etc. Not a hard rule but pattern should be visible"* ("Fractal not factual" — his correction).
+**Used as:** contraction is read at SEVERAL SCALES and the rating rewards it being visible at more of them — weekly (the weekly
+bars' highs and lows converging across the base), daily (the last days' ranges smaller than the base's earlier ones), and the
+successive pullbacks inside the base getting shallower; intraday is not available before the fill. A score, never a hard gate.
