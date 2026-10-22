@@ -1,4 +1,4 @@
-# #705 — the A+ RATING for breakouts: rank them and take only the best few a week — pre-registration (2026-10-21; revised 2026-10-22 after review, again the same day after the recheck, and a third time the same day for his rulings on base length and fractal contraction; BEFORE any rating outcome)
+# #705 — the A+ RATING for breakouts: rank them and take only the best few a week — pre-registration (2026-10-21; revised 2026-10-22 after review, again the same day after the recheck, a third time the same day for his rulings on base length and fractal contraction, and a final time the same day for his answers on the six asks — concepts 6–7 re-specified over every minute before the fill; BEFORE any rating outcome)
 
 **Why.** The operator (2026-10-21): *"for breakouts we'll also need ranking similar to what we try to do with EPs, but breakouts are
 going to be more common and we need a rating system to select the best ones ... We need to focus on the A+ setups per Qullamaggie, he
@@ -7,6 +7,14 @@ test, like group themes, etc."*. Every breakout our rules find (C0) runs about 3
 (medians; 76 in 2025–26); the strict FILTER (C1) keeps ~30 a year, shows no edge, and dropped 342 of the 352 trades on the 39 known
 2020–21 multibaggers. This read asks whether a RATING that picks the top few a week from all breakouts does better than taking them
 all. $0; no paper, no live.
+
+**ORH5 fills at ANY time of day (his 10-22 answer to ask 4, verbatim: *"what does it mean not later in the day? Unlike EPs, breakout
+can happen anytime."*).** The entry (`consolidation_breakout.py::_entry_one`) sets the level = max(the highs of minutes 0..4, the
+pivot) and fills at the FIRST minute m ≥ 5 whose high exceeds it — any minute through 15:59 (minute 389): `fill_minute` runs 5..389
+in both deciding tables (median minute 19 / 20; a third of the fills in minutes 5–9, a tenth after 13:00 — the distribution under
+Periods). So the two breakout-day concepts (6 range so far, 7 volume so far) are read over EVERY present minute of E BEFORE the
+fill minute — minutes 0..fill_minute−1, never the fill minute itself — whatever the hour, and the volume is read against a pinned
+intraday profile (how much a normal day has traded by that minute), not against the day's whole ADV.
 
 ## Method / population
 
@@ -25,11 +33,19 @@ the base's daily bars are read only through D).
 | 3 | RS leadership on 1/3/6 months | `rs_best` (candidates: the best of the 21 / 63 / 126-session return percentiles across the universe on D) | higher | D |
 | 4 | the run-up before the base | `prior_move` (candidates: pole high ÷ pole low − 1) | higher | D |
 | 5 | the stair-step number | `stair_n` = the count of DISTINCT bases among the same ticker's `K = tl`, `retrigger = 0` candidate rows (filled or not, abstained or not) whose E′ lies in [E − 120, E − 1] SPY sessions, from the same candidates file, EXCLUDING the fill's own base. The base of every such row, and of the fill, = its `pole_ci` mapped through the chain built AT D: `cb.chain_bases` over the pinned watch table's rows of that ticker with `watch_date ≤ D` (`pole_ci`, `pole_date`; poles ≤ 3 sessions apart are one base, `POLE_DRIFT_MAX`). The candidates' pre-stamped `base_id` is NEVER read — it comes from a chain over EVERY watch row, later nights included (the recheck measured that chain moving 1 of 22,357 fills: AMRSQ 2021-08-26, 3 → 4, a pole first seen on 2021-08-31 bridged the 06-25 and 07-02 bases); the figures "17,405 first breaks over 14,379 chains" (pre) are that full-file chain's. A resumption of the same base is the same base, his stair step is a new pole | lower (fewer prior bases = EARLIER in the run = better — his lean, 2026-10-22, verbatim: *"I'm not exactly sure, but I feel earlier the breakout the better. Later breakouts, may run out of momentum."* His uncertainty is disclosed; the REVERSED orientation is a side row, reported beside, never deciding) | D (= E − 1; the watch rows ≤ D) |
-| 6 | breakout-day range so far | `range_open5_adr` = (max high − min low over the PRESENT minutes 0..4 of E) ÷ (the first present minute's open × `adr20`), from the minute file | higher (a range-expansion day; "lower" would select tight stops and inflate R — the #327 class) | the fill |
-| 7 | breakout-day volume so far | `open_drive` = Σ volume over minutes 0..4 of E ÷ `adv20_vol_D` (candidates: the mean of the 20 daily volumes ending D). A RANK input only: SIP regular-hours minutes over a daily ADV20 that for 2022+ (Polygon) counts extended hours — not a calibrated "× normal" | higher | the fill |
+| 6 | breakout-day range so far | `range_sofar_adr` = (max high − min low over the PRESENT minutes 0..fill_minute−1 of E) ÷ (the first present minute's open × `adr20`), from the minute file — the window ends the minute BEFORE the fill, whatever the hour (his 10-22 answer). Bounded by the stop: every minute before the fill has a high ≤ the ORH5 level ≤ the fill, and the stop = the lowest low THROUGH the fill minute (`_entry_one`), so range so far ≤ the stop width in price — a FRACTION of the stop width, never more; the A+ group is therefore also read in ADR P&L units (deviations row) | higher (a range-expansion day; "lower" would select tight stops and inflate R — the #327 class) | the fill |
+| 7 | breakout-day volume so far, ON PACE | `vol_sofar_x` = Σ volume over the PRESENT minutes 0..fill_minute−1 of E ÷ (`adv20_vol_D` × PROFILE(`fill_minute`)), where `adv20_vol_D` = the mean of the 20 daily volumes ending D (candidates) and PROFILE(m) = the pinned share of a normal day's regular-session volume traded BEFORE minute m (the U-shaped intraday profile; its build in the PROFILE block below) — i.e. the day's volume on pace as a multiple of normal, comparable across fill minutes; PROFILE(fill_minute) is stored per fill as `prof_m`. A RANK input only: SIP regular-hours minutes over a daily ADV20 that for 2022+ (Polygon) counts extended hours — not a calibrated "× normal". A window whose Σ volume is 0 → missing (a fill on zero volume is a data defect: 3 / 0 fills, named below) | higher | the fill |
 
-  Every fill's `fill_minute` is ≥ 5 in all three tables (min 5), so minutes 0..4 are strictly before every fill. A minute absent from
-  0..4 contributes 0 volume and nothing to the range; no minute present → both breakout-day inputs missing. The window of concept 5
+  **The breakout-day windows (concepts 6–7):** minutes 0..fill_minute−1 of E — every present minute strictly BEFORE the fill minute
+  (`fill_minute` ≥ 5 always: the ORH5 level needs minutes 0..4; min 5, max 389 in both deciding tables). A minute absent from the
+  window contributes 0 volume and nothing to the range (7,448 / 5,082 fills have at least one absent minute inside their window —
+  thin names; minute 0 itself is absent for 123 / 93, which is why "the first present minute's open" is the denominator); no minute
+  present → both inputs missing (0 / 0 fills — every population pair is in its E file with ≥ 1 minute before the fill, check 3).
+  Σ volume over the window = 0 → concept 7 missing and the fill UNRATED (3 fills in 2017–21: RUBI 2020-06-23 — 376 bars, every
+  volume 0, split-artefact prices, the week it became MGNI — ABTC 2021-02-25, ABTC 2021-03-02; 0 in 2022–24; counted). A fill on
+  one of the era's listed early-close sessions (`H60_EARLY_CLOSE` in `runner.py`: 100 / 89 fills, of which 1 / 1 filled at minute
+  ≥ 210, i.e. on the after-hours prints the file keeps past a 13:00 close) reads the minutes AS STORED — exactly as the ORH5 entry
+  that filled it did — against the full-day profile; counted, never trimmed. The window of concept 5
   starts before the candidates file for 505 fills (2017–21) / 1,778 (2022–24) — those fills are unrated on that concept only (counted).
   Market phase (`phase_qqq_10_20`) is NOT a rank input: it is an A+ SPLIT (below; RULED "Ok" 2026-10-22). NOT in the score, each an
   "alone" row beside (deviations table below): `base_len` (RULED 2026-10-22: never deciding), `range5_adr` (the P5 table's 5-session
@@ -37,9 +53,33 @@ the base's daily bars are read only through D).
   over the 14 sessions ending P+1 — its denominator is the POLE's volatility, not the base's early part; a positive ratio, lower =
   tighter) and `rs_all`.
 
+- **PROFILE — the pinned intraday volume profile, concept 7's denominator (pinned BEFORE any outcome; measured 10-22, minute
+  volumes only, no outcome column read).** ONE constant for every era — both minute trees come from the same fetcher (Alpaca SIP,
+  regular hours, `fetch_minutes.py`) and the sealed era is not read to build it. **Built** by `runner.py aplus-profile --data-pre
+  cb702_pre` → `cb702_pre/out/aplus_intraday_profile.tsv` (a pin: its sha256 is taken by `--print-pins` into the freeze record; every
+  reader READS it, no check ever rebuilds it). **Pairs:** every (date, ticker) block of the 2017–21 minute tree logged `ok` in
+  `_done.psv` (126,811), MINUS 9 whose regular-session volume is 0, MINUS 937 on the era's 11 listed early-close sessions
+  (`H60_EARLY_CLOSE`: the files keep after-hours prints to 15:59 past a 13:00 close, so that day's shape is not a session's), MINUS
+  the 13,258 remaining pairs that are a 2017–21 POPULATION fill's own (E, ticker) → **112,607 pairs** (check-2 equality targets, with
+  the three subtractions). Why the population is out: no fill's own minutes — before OR after its fill — sit in the constant it is
+  compared with, so check 1's randomisation of the minutes from the fill on cannot reach it by DATA, not only by declaration; the
+  2022–24 and 2025–26 fills are in the other tree. Measured and disclosed: the profile over all 126,802 non-zero pairs is within
+  0.0013 of this one at every listed minute (0.3358 vs 0.3346 at minute 120) — the choice is look-ahead hygiene, not numeric.
+  Residual, disclosed: OTHER tickers' full days from a fill's own date are in it (one date ≈ 100 of the 112,607 pairs). **Formula,
+  per pair:** a 390-slot per-minute volume vector (an absent minute = 0); CUM(m) = Σ volume over minutes < m ÷ Σ over minutes
+  0..389, for m = 0..390 (CUM(0) = 0, CUM(390) = 1); **PROFILE(m) = the pointwise MEDIAN of CUM(m) across the pairs, UNSMOOTHED**
+  (`numpy.median`, float64; a pointwise median of non-decreasing curves is non-decreasing — measured monotone — so nothing is
+  smoothed). **File format, byte-for-byte:** the header line `m<TAB>profile`, then 391 rows `m<TAB>%.10f` for m = 0..390, `\n`
+  line ends, nothing else. **Equality targets (to 1e-6):** PROFILE(5) = 0.029973, (10) = 0.045943, (30) = 0.105939, (60) =
+  0.189745, (120) = 0.334574, (210) = 0.503368, (300) = 0.661951, (389) = 0.971481; PROFILE(0) = 0 and PROFILE(390) = 1 exactly.
+  In words: a fill at minute 5 is read against 3.0% of a normal day's volume, at minute 30 against 10.6%, at minute 120 against
+  33.5%, at the last minute against 97.1% — `vol_sofar_x` is the day's volume ON PACE as a multiple of ADV20. Built on
+  breakout-ATTEMPT days (the only minute data held), not the whole market — a rank input, where only the profile's dependence on
+  `fill_minute` matters. PROFILE(m) = 0 can occur only below minute 1; a fill reads m ≥ 5, so it never divides by zero.
+
 - **Concept 1, the three scales — the spec (his 10-22 fractal ruling; intraday is NOT one of them: the base's own intraday bars
   (P..D) are in no pinned table, so an intraday contraction over the base cannot be read before the fill — said, not scored;
-  E's minutes 0..4 are used only as concepts 6–7, range and volume so far. MONTHS are not a separate scale either: no base
+  E's minutes before the fill are used only as concepts 6–7, range and volume so far. MONTHS are not a separate scale either: no base
   exceeds 45 sessions (`BASE_MAX_SESSIONS = 45`, `consolidation_breakout.py` line 105, about two months), so no base holds even
   three monthly blocks and the weekly reading across the whole base is the longest scale the data can read — a mechanical
   reason, like `atr14_slope`'s, not an ask).** The base = the ticker's rows of the pinned daily export (`daily_closes_all.csv.gz`:
@@ -69,7 +109,8 @@ the base's daily bars are read only through D).
     61% / 56% of the population) without a pullback reading is capped at 2/3 on THIS concept (1/7 of the score; 0.63 at a 0.9
     daily percentile); one with two completed pullbacks (about 16% of short bases: 1,322 / 847 fills) can reach 5/6 (0.77 at 0.9
     per scale); base length is not rewarded by itself.
-    Concept 1 is therefore never missing while the daily scale's floor holds. The swing rule and the 0.5 are "Put to him" items 1–2.
+    Concept 1 is therefore never missing while the daily scale's floor holds. The swing rule and the 0.5 were asks 1–2: RULED yes
+    2026-10-22 (*"Rest is ok"*).
   - **Disclosed, these two readings:** no weekly or pullback reading exists in any pinned table; they were computed for the first
     time by this registration's feature census (counts above; no outcome column was read or joined — `scripts/probes/_cb_backtest/`
     holds no copy; the census is re-run by data check 2). Their look-ahead guard is checks 1 and 12. The first pullback (from the
@@ -142,39 +183,35 @@ the base's daily bars are read only through D).
   `base_depth` (shallower = better), `atr14_slope` (lower = better) and `rs_all` (higher) alone.
 - **The reversed-orientation row (beside, never deciding):** the CORE score with concept 5 flipped (more prior bases = better),
   N = 3, same pool, cutoff and cap — the sensitivity row for his stated uncertainty on the stair step; reported next to the core.
-- **Deviations from his 10-21 ruling and the proposal he said yes to — each with its reason** (the ones still open are collected
-  in "Put to him before the freeze" below):
+- **Deviations from his 10-21 ruling and the proposal he said yes to — each with its reason** (every one RULED or CHANGED by
+  2026-10-22; the six asks are the settled list below):
 
 | item | ruling / proposal | here | why |
 |---|---|---|---|
 | stair-step number | an ingredient | an ingredient, oriented EARLIER = better (his 10-22 lean, verbatim in the table); the reversed orientation a side row | RULED 2026-10-22 (PLAN #705; `docs/methodology/operator_shared_notes.md` §2026-10-22); his uncertainty is disclosed in the cell, so the reverse row is reported beside, never deciding |
 | base length | "a longer base rates higher" (the 10-21 draft's placeholder) | OUT of the score; an alone row beside, never deciding; not a next-registration candidate | RULED 2026-10-22, verbatim: *"Ok. On line bases, volatility has to be contracting over time, tightening, if base is long but wide and loose, that's not good"* · *"Long bases I meant"* — length is not rewarded by itself; what is scored is contraction over the base (concept 1) |
-| contraction | one concept = `tightening_ratio` + `range5_adr` (the second-revision cell) | one concept, THREE scales (weekly, daily, pullbacks), the mean of the scale percentiles with a missing scale 0.5 | RULED 2026-10-22, verbatim: *"Volatility contraction can be fractal, what I mean is that you can see it contract over months, weeks, days and or intraday. So a long base will see contract over weeks with highs and lows tightening, then daily bars also tightening, etc. Not a hard rule but pattern should be visible"*; the swing rule and the 0.5 are this doc's mapping of his words → "Put to him" 1–2 |
-| breakout-day range so far | kept, at the confirming bar | kept, at ORH5 = minutes 0..4 | at ORH5 it is close to the low-of-day stop width (`width_adr`), which scales R mechanically — so the A+ group is also read in ADR P&L units (ADR P&L > 0 is in PASS; its median stop width vs C0's is an expectation) |
+| contraction | one concept = `tightening_ratio` + `range5_adr` (the second-revision cell) | one concept, THREE scales (weekly, daily, pullbacks), the mean of the scale percentiles with a missing scale 0.5 | RULED 2026-10-22, verbatim: *"Volatility contraction can be fractal, what I mean is that you can see it contract over months, weeks, days and or intraday. So a long base will see contract over weeks with highs and lows tightening, then daily bars also tightening, etc. Not a hard rule but pattern should be visible"*; the swing rule and the 0.5 (asks 1–2) RULED yes 2026-10-22 — *"Rest is ok"* |
+| breakout-day range so far | kept, at the confirming bar; the 10-22 draft then read it at ORH5 = minutes 0..4 (ask 4) | kept, over EVERY present minute before the fill (0..fill_minute−1), whatever the hour | CHANGED by him 2026-10-22, verbatim: *"4. what does it mean not later in the day? Unlike EPs, breakout can happen anytime."* — a breakout fills at any minute, so the window runs to the fill. It never exceeds the low-of-day stop width (`width_adr`), which scales R mechanically — so the A+ group is also read in ADR P&L units (ADR P&L > 0 is in PASS; its median stop width vs C0's is an expectation). A later fill has a longer window, so this concept leans later while the fill-order cap leans earlier — the fill_minute mix is reported, no direction expected |
+| breakout-day volume so far | the first 5 minutes ÷ ADV20 (the 10-22 draft) | every present minute before the fill ÷ (ADV20 × PROFILE(fill_minute)) — the pinned intraday profile | the same answer: a fill at minute 300 has had 300 minutes to trade, so only a by-minute profile makes a late fill comparable with an early one (`docs/methodology/operator_shared_notes.md` §2026-10-22: the volume is compared with how much a normal day has traded by that minute) |
 | market phase | an ingredient | an A+ split | RULED 2026-10-22 — his "Ok" to "market condition used as a split of the result, not a scored input"; it is also a binary equal for nearly every fill in a pool, so it carries no rank |
-| `range5_adr` | his 10-21 word "tightness / range contraction" | out of the core; an alone row | a LEVEL (the last 5 sessions' range in ADR units) says "tight now", not "tighter than before" — his 10-22 ruling scores contraction over TIME, and a level would double-count the daily scale → "Put to him" 3 |
+| `range5_adr` | his 10-21 word "tightness / range contraction" | out of the core; an alone row | a LEVEL (the last 5 sessions' range in ADR units) says "tight now", not "tighter than before" — his 10-22 ruling scores contraction over TIME, and a level would double-count the daily scale; ask 3 RULED yes 2026-10-22 — *"Rest is ok"* |
 | `base_depth`, `atr14_slope` | not named | not in the core; alone rows | not his list: `base_depth` is a retracement level, not a contraction; `atr14_slope`'s denominator is ATR14 over the 14 sessions ending P+1 (the pole's own volatility, code line 690 of `consolidation_breakout.py`), so it reads the run-up, not the base's early part — a mechanical reason, not an ask |
-| themes | a 2026 descriptive read + forward | forward-only | the history is mutable and un-captured (above) |
-| `rs_best` over `rs_all` | "his 1/3/6-month leaders" | `rs_best` | his scan is three separate lists; a name near the top of ANY one is a candidate; `rs_all` alone beside |
+| themes | a 2026 descriptive read + forward | forward-only | the history is mutable and un-captured (above); ask 5 RULED yes 2026-10-22 — *"Rest is ok"* |
+| `rs_best` over `rs_all` | "his 1/3/6-month leaders" | `rs_best` | his scan is three separate lists; a name near the top of ANY one is a candidate; `rs_all` alone beside; ask 6 RULED yes 2026-10-22 — *"Rest is ok"* |
 | `grp_pct` | secondary, every era | secondary on the grp-present subset, with its own bar (adds / subtracts / can't tell) and a recording-only consequence | missing for 32% / 19% of fills; in the core it would score a third of the trades on a different formula; the bar makes it a TESTED indicator (DoD (2)) without letting it move a cell |
 
-- **Put to him before the freeze (yes / no each; nothing here is decided by this doc — his answers are written into the rows they
-  name in the freeze commit, before the pins are taken). Only this doc's OWN mappings of his words are asked; what he has ruled
-  (stair-step direction, base length out, phase as a split, contraction fractal) is not re-asked. ⚠ A "no" on ANY item has no
-  pinned alternative: it REOPENS that row for a re-spec and a fresh recheck BEFORE the freeze; the freeze commit carries only "yes"
-  answers or re-reviewed rows (the base-length "no" of 10-22 needed exactly this — a full re-spec, not a line edit).**
-  1. Pullbacks as the third scale of concept 1, read VCP-style from the pole top (the first pullback = pole top → first trough, so
-     it overlaps `base_depth` when that trough is the base low), by the pinned swing rule (two lower highs before, two not-higher
-     after; completed pullbacks only) — our reading of his *"etc."*; weekly and daily are his words.
-  2. A scale a base cannot show (too short for three weekly blocks, fewer than two completed pullbacks, or a thin pool) counts 0.5,
-     so a short base without a pullback reading is capped at 2/3 on this one concept (0.63 at a 0.9 daily percentile; one with
-     two completed pullbacks — about 16% of short bases — can reach 5/6) and contraction visible at more scales ranks higher —
-     the alternative (score a base on the scales it has) rewards no scale count at all. Yes = 0.5.
-  3. `range5_adr` (a LEVEL of tightness) out of the core, an alone row — his 10-22 words score contraction over time.
-  4. Breakout-day range so far read at ORH5 (minutes 0..4), not at the confirming bar — the fill IS at ORH5; a later bar would read
-     after the entry.
-  5. Themes forward-only, the 2026 descriptive read dropped — the theme history is mutable and un-captured.
-  6. `rs_best` (the best of the 1 / 3 / 6-month ranks) in the score, `rs_all` (all three) only beside — his scan is three lists.
+- **The six asks — SETTLED 2026-10-22 (his answer, verbatim: *"4. what does it mean not later in the day? Unlike EPs, breakout can
+  happen anytime. Rest is ok"* — `docs/methodology/operator_shared_notes.md` §2026-10-22). Nothing is left to put to him before
+  the freeze. The block's rule stands: a changed item is re-specified and rechecked before the pins are taken, never line-edited.**
+  1. Pullbacks as the third scale of concept 1 by the pinned swing rule (our reading of his *"etc."*) — **RULED yes** (*"Rest is ok"*).
+  2. A scale a base cannot show counts 0.5 (contraction visible at more scales ranks higher) — **RULED yes** (*"Rest is ok"*).
+  3. `range5_adr` (a LEVEL of tightness) out of the core, an alone row — **RULED yes** (*"Rest is ok"*).
+  4. Breakout-day range so far read at ORH5 (minutes 0..4) — **CHANGED**: a breakout fills at any time of day, so concepts 6 AND 7
+     are re-specified over every present minute of E before the fill minute (the rows above, the PROFILE block, the input table,
+     checks 1, 2, 3, 5 and 11, the RECORD). The re-spec is this pass; the recheck of the re-specified rows (concepts 6–7, the
+     PROFILE block) is the one item left before the pins.
+  5. Themes forward-only, the 2026 descriptive read dropped — **RULED yes** (*"Rest is ok"*).
+  6. `rs_best` (the best of the 1 / 3 / 6-month ranks) in the score, `rs_all` only beside — **RULED yes** (*"Rest is ok"*).
 
 - **Disclosed — what has already been read that touches this score:** (a) 10-18, 2022–24, C0 `tl`: the TIGHTEST fifth of bases did
   WORST under both exits, by the range ratio (`tightening_ratio`, now concept 1's daily scale) and by the 5-session range in ADR
@@ -206,7 +243,8 @@ the base's daily bars are read only through D).
 | `range5_adr` (alone row) | `out/trades_{pre,discovery,holdout}_p5.tsv.gz`, rows `K = tl`, `arm = c3_p33_t20_cut3`, `stop_variant = lod` (one per fill, (ticker, D, E, K) unique) | `range5_adr` (= `range_recent5` ÷ `adr20` at D, 1e-9) | (ticker, D, E, K) |
 | its cross-check, and `tightening_ratio`'s | `out/watch.tsv.gz` · `cb702_pre/out/watch_tl_com.tsv.gz` | `range_recent5`, `range_early5`, `adr20`, `pole_high` | (ticker, watch_date = D) |
 | daily volume + the session calendar | `daily_closes_all.csv.gz` (no header: ticker, date, o, h, l, c, v) | `v` for `vol_dry5`; the SPY rows = the session calendar (2016-01-04..2022-06-30 pre; 2021-09-27..2026-10-16) | (ticker, date) |
-| the first 5 minutes of E | `minutes/<E>.psv.gz` (`ticker|minute|o|h|l|c|v`, minute 0 = 09:30; the LAST gzip member per (date, ticker) is the row set, as every reader keeps it); `minutes/_done.psv` | minutes 0..4: `o`, `h`, `l`, `v` | (E, ticker) |
+| E's minutes before the fill (concepts 6–7) | `minutes/<E>.psv.gz` (`ticker|minute|o|h|l|c|v`, minute 0 = 09:30, 389 = 15:59, regular hours only — `fetch_minutes.py`; the LAST gzip member per (date, ticker) is the row set, as every reader keeps it); `minutes/_done.psv` | the present minutes 0..fill_minute−1: `o` (the first present minute's), `h`, `l`, `v`; `fill_minute` from the fills table | (E, ticker, minute < fill_minute) |
+| the intraday volume profile (concept 7's denominator) | `cb702_pre/out/aplus_intraday_profile.tsv` (built by `aplus-profile` per the PROFILE block; a pin, one constant for every era) | `profile` at `m = fill_minute` → `prof_m` | fill_minute |
 | the 39 (hindsight) | the list, in full: LVGO, TSLA, PTON, ZM, NIO, PLUG, ENPH, FUBO, ETSY, CRWD, DOCU, NVAX, BLNK, SE, SHOP, FSLY, NET, DDOG, NXH, W, CVNA, APPS, SNAP, MRNA, TDOC, ROKU, PINS, UPST, GME, AMC, DKNG, FVRR, PENN, QS, SPCE, TTD, LULU, NVDA, AMD (the 2017–21 addendum's; SQ absent from Alpaca) | — | ticker |
 
 - **Periods, counts (from the pinned tables, population only):**
@@ -223,6 +261,17 @@ the base's daily bars are read only through D).
   every fill; the base-row equality (`base_len` + 1 rows) holds for every fill. The 2025–26 numbers are taken at the confirm read
   (not computed now).
 
+  **`fill_minute` — the minute of the ORH5 fill (minutes since 09:30), per era, counts from the pinned tables, so he can see the
+  breakouts land across the day (features only; equality targets of check 2; the sealed era's mix is taken at the confirm read):**
+
+| era (fills) | 09:35–09:39 (5–9) | 09:40–09:44 (10–14) | 09:45–09:59 (15–29) | 10:00–10:29 (30–59) | 10:30–11:29 (60–119) | 11:30–12:29 (120–179) | 12:30–13:29 (180–239) | 13:30–14:29 (240–299) | 14:30–15:29 (300–359) | 15:30–15:59 (360–389) | median · quartiles · 90th |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2017–21 (13,359) | 4,355 (32.6%) | 1,396 (10.4%) | 2,111 (15.8%) | 1,760 (13.2%) | 1,544 (11.6%) | 693 (5.2%) | 510 (3.8%) | 429 (3.2%) | 335 (2.5%) | 226 (1.7%) | 19 · 7–70 · 196 |
+| 2022–24 (8,989) | 2,811 (31.3%) | 960 (10.7%) | 1,428 (15.9%) | 1,300 (14.5%) | 970 (10.8%) | 449 (5.0%) | 311 (3.5%) | 320 (3.6%) | 280 (3.1%) | 160 (1.8%) | 20 · 8–70 · 210 |
+
+  2,040 / 1,295 fills are at minute 5 itself (the first eligible minute); 1,213 / 902 (9% / 10%) fill after 13:00 (minute ≥ 210);
+  the two eras' shapes are alike (a third in the first five eligible minutes, a quarter after 10:30).
+
   Week = the ISO week of E (never D: a Monday fill's D is the prior Friday); a week belongs to the era of its MONDAY; the cap is
   counted inside each era's own table. **Both deciding eras are read ONCE each and BOTH decide**; neither fitted the score.
   **2025–26 is SEALED for the rating: no A+ row, score or cutoff is computed on it in this read** (`periods = ("pre", "discovery")`).
@@ -231,7 +280,8 @@ the base's daily bars are read only through D).
 - **Open marks** (`open_mark = 1`; 5 / 5 / 39 fills): ranked, in the pool, and they take an A+ slot (the slot is decided at the fill);
   excluded from every outcome number ("mature" only) and counted.
 - **Missing values:** `rs_best`, `prior_move`, `base_len`, `tightening_ratio`, `adv20_vol_D`, `range5_adr` have zero missing in the
-  joined rows (check 3); `grp_pct` as above; a missing minute as above; `wk_ratio` and `pb_ratio` missing only by their stated
+  joined rows (check 3); `grp_pct` as above; a missing minute and a zero-volume window as above (3 / 0 fills unrated on concept
+  7); `wk_ratio` and `pb_ratio` missing only by their stated
   rules (the counts above); a feature missing is NEVER read as 0 (check 8) — a missing SCALE of concept 1 is 0.5 by the pinned
   combining rule, the only place a missing value carries a number.
 
@@ -243,6 +293,10 @@ shared scaffold; a failure exits non-zero and writes no report).
    verdict JSONs and prints the table cell, nothing else.
 2. STEP 0, written and read before any outcome: per period the fills / open marks / weeks / dropped edge fills / concept-5-unrated
    / thin-pool counts AND concept 1's per-scale counts (weekly present, pullbacks present, each scale's floor strips, both / neither)
+   AND the breakout-day window counts (the `fill_minute` table under Periods: every bin, min 5, max 389; fills with an absent
+   minute inside the window 7,448 / 5,082; minute 0 absent 123 / 93; zero-volume windows 3 / 0 by name; early-close fills 100 /
+   89, of which 1 / 1 at minute ≥ 210) AND the profile build's tally (126,811 ok pairs − 9 zero-volume − 937 early-close − 13,258
+   population = 112,607) with its eight pinned values (to 1e-6) and the file's sha against the pin
    — they must EQUAL the tables above; then the rated / unrated / capped counts, the pool sizes (min, median), and the A+ n (an
    expectation, not an equality).
 3. Join: joined rows = 13,368 → 13,359 after the 2022-01-03 drop / 8,989 (at the confirm read: 7,570 joined, 7,547 after the
@@ -250,7 +304,9 @@ shared scaffold; a failure exits non-zero and writes no report).
    (`rs_best`, `prior_move`, `base_len`, `tightening_ratio`, `adv20_vol_D`, `range5_adr`); `vol_dry5`, `wk_ratio` and `pb_ratio`
    missing only by their stated rules (the counts printed); the base's export rows = `base_len` + 1 for every fill and `h` at
    `pole_date` = the watch row's `pole_high`; every E on the SPY calendar; (ticker, E) unique; the P5 filter yields exactly one
-   row per fill; the exitpb filter yields exactly one row per fill.
+   row per fill; the exitpb filter yields exactly one row per fill; every population (E, ticker) is a block in its E minute file
+   with ≥ 1 present minute before `fill_minute` (0 / 0 missing) and `fill_minute` ≥ 5; the profile file has exactly 391 rows
+   m = 0..390, is non-decreasing, PROFILE(0) = 0, PROFILE(390) = 1, and its sha256 equals the pin.
 4. The golden synthetic fixtures (check 8 below) pass on the committed code.
 5. WOULD-FAIL-IF checks 1–2, 5–7, 9 and 12 run on the real inputs (they read features and the flag, never an outcome number) and
    pass.
@@ -295,12 +351,14 @@ shared scaffold; a failure exits non-zero and writes no report).
 - Reported per era × N × score (core; +grp; the core with concept 5 reversed; each alone row, the three scale-alone rows included): n, win rate, average win / loss,
   mean R and interval, ≥ 5R / ≥ 10R / ≥ 20R per 100, total R, ADR P&L, the median stop width in ADR vs C0's, the unrated / capped
   counts, the share of weeks with fewer than N A+ (after burn-in), the A+ group's weekday and `fill_minute` mix against C0's (the
-  fill-order cap structurally favours Monday and early-minute fills — fine forward, but visible), the phase split; the paired Δ
+  fill-order cap structurally favours Monday and early-minute fills, while concept 6's longer window before a later fill favours
+  later ones — two opposite pulls, so NO direction is expected on the mix; it is reported — fine forward, but visible), the share
+  of A+ fills on early-close sessions and with a zero-volume window (counted), the phase split; the paired Δ
   for the core (A+ vs REST) and for +grp (vs the core A+, grp-present subset, its own key) — no other row gets one.
 - **Expectations, fixed now (a miss is reported first and changes NO rule):** A+ n 520–760 / 300–435 (the cutoff admits about 3
   a week on average BEFORE the cap; a cap of 3 in fill order on a Poisson-3 week keeps ≈ 2.3, and clustered weeks — 3 to 530 fills
   in 2017–21 — lower it further; the top of the range is 3 × weeks); the A+ median stop width in ADR ≥ C0's (concept 6 pulls toward
-  wide opening ranges); weeks with fewer than 3 A+ ≤ 40% after the first 4 weeks of each era; C0 under `pp` reads as published
+  a wide range before the fill, which never exceeds the stop width); weeks with fewer than 3 A+ ≤ 40% after the first 4 weeks of each era; C0 under `pp` reads as published
   (mean R +0.025 / −0.169; ≥ 10R 1.235 / 0.946 per 100); the A+ group's share of bases ≥ 15 sessions ABOVE C0's 39% / 44%
   (the 0.5 rule caps short bases on concept 1 — expected, visible, and a miss changes no rule); among the fills that CARRY the
   reading, the A+ group's median `wk_ratio` and `pb_ratio` below the population's, computed the same way (0.86 / 0.90 and 0.73 /
@@ -316,7 +374,10 @@ shared scaffold; a failure exits non-zero and writes no report).
   mean R and the ≥ 5R share makes each rarer. **The paired Δ is NOT part of PASS:** it is a veto ("picks worse", ≈ 2.5% by chance
   per era) and decides only the CAN'T TELL × CAN'T TELL cell, where a chance LEAD needs "separates" in both eras (≈ 0.06%).
 - **WOULD-FAIL-IF (a broken implementation) — every check runs (`aplus-read --self-check`, also inside the real run):**
-  1. **Look-ahead invariance:** with every minute ≥ 5 of every E file replaced by random values AND every E-day-or-later column
+  1. **Look-ahead invariance:** with, PER FILL, every minute ≥ that fill's own `fill_minute` of its (E, ticker) rows replaced by
+     random values (a single cut at minute 5 would not test a fill at minute 200; the fill minute itself is in the randomised
+     set), the pinned profile file READ as is (never rebuilt from the perturbed minutes — it holds no population pair, by
+     construction), AND every E-day-or-later column
      (`open_E`, `high_E`, `low_E`, `close_E`, `vol_E`, `breakout_vol_x`, every outcome column) shuffled, every score, cutoff and
      A+ flag is identical; AND, PER FILL — for each sampled fill (check 2's 50 plus every A+ fill) — with a copy of the daily
      export in which every ticker's `h`, `l`, `c`, `v` on every row dated after THAT fill's D is randomised (the rows `vol_dry5`,
@@ -329,9 +390,14 @@ shared scaffold; a failure exits non-zero and writes no report).
   3. **Population:** check 3 of the data checks; the outcome columns of every A+ row equal the pinned exitpb rows (`realized_r`
      to 1e-9) — read, never re-walked.
   4. **Counts:** A+ unique by (ticker, E); per ISO week A+ = min(N, fills at or above the cutoff that week); never more than N.
-  5. **Breakout-day inputs recomputed from the minute files** for every A+ fill: Σ v over minute index 0..4 and max h − min l
-     over the present minutes 0..4 equal the stored values; the denominator is the stored `adv20_vol_D` (never recomputed with E's
-     volume); the window never reaches the fill minute.
+  5. **Breakout-day inputs recomputed from the minute files** for every A+ fill: Σ v over the present minutes 0..fill_minute−1 and
+     max h − min l over them equal the stored values (1e-9); the denominator is the stored `adv20_vol_D` × PROFILE(`fill_minute`)
+     read from the pinned file (never recomputed with E's volume; the stored `prof_m` equals the file's row); the stored
+     `fill_minute` equals the fills table's. **The positive discriminator — what a reader that includes the fill minute
+     produces:** the same two numbers recomputed over 0..fill_minute (the window extended by the fill minute itself) must DIFFER
+     from the stored ones for EVERY A+ fill on the range (the fill minute's high exceeds the level, which every earlier high is at
+     or below, so the max high rises strictly) and for every A+ fill whose fill minute carries volume on Σ v — asserted per fill,
+     the counts printed; an A+ fill for which the extended window changes neither number fails the check.
   6. **Pool:** each fill's pool count = the number of population fills with E′ in [E − 20, E − 1] sessions; ≥ 30 for every rated
      fill; every fill's week = the ISO week of its own E (asserted per row).
   7. **Shuffle invariance:** the A+ set is unchanged when the input rows are shuffled (seed 702).
@@ -339,7 +405,10 @@ shared scaffold; a failure exits non-zero and writes no report).
      3-A+ week:** (a) day E: hand-set feature values for a pool of 40 synthetic fills over 20 sessions plus 6 fills on E with known
      oriented percentiles (every scale of concept 1 included, from hand-set daily bars so `wk_ratio` and `pb_ratio` are computed by
      the real code: a base with 3 full blocks and 2 completed pullbacks, one with 2 blocks (weekly missing), one with a single
-     completed pullback (pullbacks missing)), a known 12th-highest reference score, exactly 3 A+ in fill order and a 4th
+     completed pullback (pullbacks missing)), hand-set minute bars for two fills at different fill minutes (5 and 200) so the
+     two breakout-day windows differ in length and `vol_sofar_x` divides by two different PROFILE values of a hand-set profile
+     file (and one fill with a zero-volume window, unrated on concept 7), a known 12th-highest reference score, exactly 3 A+ in
+     fill order and a 4th
      above-cutoff fill capped; the same inputs with every direction flipped (every scale's too) must invert the A+ set; a fill with
      concept 5 missing must score as the mean of the present concepts (never 0); a fill with a missing SCALE must carry 0.5 for it
      (never 0, never the mean of the present scales); and one grp-missing fill that is rated under the core and unrated under
@@ -363,7 +432,10 @@ shared scaffold; a failure exits non-zero and writes no report).
       recompute every feature (concept 1's three
       scales from the candidates row's `pole_date` / `base_len` and the daily export's base rows, the daily scale also from the
       candidates column; concepts 2–4 from the daily export / candidates; 5 from the ticker's watch rows ≤ D and its candidate
-      rows, the chain built at D; 6–7 from the minute files; the alone-row features from candidates / P5), the pool percentiles
+      rows, the chain built at D; 6–7 from the minute files over the present minutes 0..fill_minute−1, 7 against a profile
+      RE-DERIVED independently from the 2017–21 tree by the PROFILE block's rule (pandas; the same tally 126,811 / 9 / 937 /
+      13,258 / 112,607 and every PROFILE(m) equal to the pinned file to 1e-9 — the profile is a pinned input our code built, so it
+      is reproduced, not trusted); the alone-row features from candidates / P5), the pool percentiles
       (per scale for concept 1, the 0.5 rule), the reference scores, the cutoffs, the cap, and the A+ SET; MATCH first requires the
       identical (ticker, E) A+ set per era and per N for the core, for +grp and for the reversed-concept-5 row; only then n /
       mean R / interval / the two paired Δs (the core's and +grp's, same seed keys) / every PASS component (≥ 5R share, ADR P&L,
@@ -392,14 +464,17 @@ or `close` on ANY base row means both scales are missing and the row is flagged,
 `base_len` + 1) and `high_price` at `pole_date` (must equal `pole_high`) checks, each of which also makes both scales missing and
 flags the row — checked, not assumed)**; `mi_daily_closes.volume` for `vol_dry5` (the
 ten sessions ending D) and for `adv20_vol_D` (the mean of the 20 volumes ending D — the shadow stores no ADV today, the recorder
-computes it); minutes 0..4 of E from the minutes the entry step already fetches; `stair_n` by the SAME chain-at-D remap as the
+computes it); every minute of E before the entry's own `fill_minute` (the minutes the entry step already holds through the fill
+— a zero-volume window leaves concept 7 missing, as in the read) and PROFILE(fill_minute) from the SAME pinned profile file
+shipped with the recorder (its sha256 checked against the freeze record when the recorder loads it); `stair_n` by the SAME chain-at-D remap as the
 read — `cb.chain_bases` over the stored watch rows of the ticker with `scan_date ≤ D` (`pole_ci` = the calendar index of
 `pole_date`), the ticker's earlier `k = 'tl'`, `retrigger = 0` entry rows of ANY status and entry variant (filled, no-trigger or
 abstain — the read counts candidate rows "filled or not"; the five variant rows of one break share a pole, one base per pole) with
 `break_date` in [E − 120, E − 1], mapped through it by their own poles (NOT their stored `base_id`, which each night stamped on
 that night's chain) — unrated for its first 120 sessions, the pool thin for its first 20. It stores on the entry
-row the score, the cutoff, the pool size, the seven concepts' inputs (nine numbers: the three scale readings of concept 1 with
-their missing flags, `vol_dry5`, `rs_best`, `prior_move`, `stair_n`, `range_open5_adr`, `open_drive`), the week's A+ count and
+row the score, the cutoff, the pool size, the seven concepts' inputs (ten numbers: the three scale readings of concept 1 with
+their missing flags, `vol_dry5`, `rs_best`, `prior_move`, `stair_n`, `range_sofar_adr`, `vol_sofar_x`, `prof_m` = PROFILE(the
+entry's `fill_minute`)), the week's A+ count and
 the flag (new columns), plus the +grp score, cutoff and flag beside if +grp's consequence fires: a recorder change inside (c), no
 order path, no money. **Paper is a proposal TO HIM only after the sealed 2025–26 read PASSES; live is his sign-off (THE
 LINE).** The step that applies this table is `aplus-verdict`, run only when both verdict files exist.
@@ -426,8 +501,9 @@ LINE).** The step that applies this table is `aplus-verdict`, run only when both
 
 - Switch N, the 20-session window, the pool floor, the member rule, the cutoff rule, the cap order, the tie-break, the week rule,
   an ingredient or a direction, the seed, the draw count, the n floor, the open-mark rule or the +grp recipe — after this
-  registration, for any reason. Settle a "Put to him" item AFTER the freeze (his six answers go into the freeze commit, before the
-  pins are taken; a "no" reopens the row for a re-spec and a recheck first — never a line edit). Compute any A+ row on 2025–26
+  registration, for any reason. Reopen a settled ask (the six were answered 2026-10-22 and written into the rows they name before
+  the pins; ask 4's re-spec is concepts 6–7 and the PROFILE block — rechecked, never line-edited). Rebuild or re-source the
+  profile after the pins (one constant, one file, one sha). Compute any A+ row on 2025–26
   before the consequence table calls for it. Read the hindsight file before both verdict files exist. Run a period twice. Edit
   this document above the marker after the freeze commit. A side row (N = 1 / 5, `+grp` beyond its recording consequence, the
   core with concept 5 reversed, an alone row or a scale-alone row, the HINDSIGHT top-N) is never a finding.
@@ -435,8 +511,9 @@ LINE).** The step that applies this table is `aplus-verdict`, run only when both
 ## What this does not answer
 
 - Whether his A+ is these ingredients at all (how he reads a chart); weights other than equal; the entry and the stop (held at
-  ORH5 + low of day — concept 6 is read knowing it sits near the stop width); the intraday scale of his fractal (not available
-  before the fill); survivorship in 2017–21 (Alpaca's symbol list);
+  ORH5 + low of day — concept 6 is read knowing it never exceeds the stop width); the intraday scale of his fractal (not available
+  before the fill); survivorship in 2017–21 (Alpaca's symbol list); what a "normal" day's volume profile is for the whole market
+  (the pinned profile is a typical breakout-ATTEMPT day's, the only minute data held — a rank denominator, not a market fact);
   themes (forward only); sizing, slots, turnover.
 
 ## Revisions 2026-10-22 (the review of the 10-21 draft; every finding, what changed)
@@ -562,12 +639,39 @@ OLD numbering, where the stair step was concept 6; the body above the marker is 
 
 Fourth pass 2026-10-22: the third recheck's minors applied.
 
+## Final pass 2026-10-22 (his answers on the six asks; what changed)
+
+His answer, verbatim: *"4. what does it mean not later in the day? Unlike EPs, breakout can happen anytime. Rest is ok"*
+(`docs/methodology/operator_shared_notes.md` §2026-10-22).
+1. **Asks 1, 2, 3, 5, 6 — RULED yes** (*"Rest is ok"*): the rows they name say RULED with his words; the ask block is a settled
+   list; nothing is left to put to him.
+2. **Ask 4 — CHANGED.** The draft read the breakout day's range and volume over minutes 0..4 as if every fill were at 09:35; ORH5
+   fills at the FIRST minute ≥ 5 above the level, any time to 15:59 (`_entry_one`; median minute 19 / 20, 9% / 10% of fills after
+   13:00 — the `fill_minute` table under Periods, counts only). Concepts 6–7 now read EVERY present minute of E before the fill
+   minute (0..fill_minute−1, never the fill minute): `range_sofar_adr` (bounded by the stop width — every earlier high is at or
+   below the level and the stop is the lowest low through the fill minute; direction kept, higher), and `vol_sofar_x` = volume so
+   far ÷ (ADV20 × PROFILE(fill_minute)), PROFILE a pinned intraday cumulative-volume profile: the 2017–21 tree's ok pairs minus
+   the zero-volume, early-close and population pairs (126,811 − 9 − 937 − 13,258 = 112,607), the unsmoothed pointwise median,
+   the file format byte-for-byte and eight values pinned to 1e-6, built by `aplus-profile` into the pins, one constant for every
+   era. A zero-volume window → concept 7 missing (3 / 0 fills, named). Follow-through: the top-of-doc note, the input table,
+   check 1 (per-fill randomisation from the fill minute on; the profile read, never rebuilt), check 2 (the new equality targets),
+   check 3, check 5 (now with a positive discriminator: the window extended by the fill minute must change both numbers), check 8
+   (two fill minutes and a zero-volume fill in the fixture), check 11 (the profile re-derived), the RECORD (ten stored numbers; the
+   recorder reads the same file), the expectations (no direction on the fill_minute mix: concept 6 leans later, the cap earlier),
+   "may NOT do" and "does not answer".
+3. **Left before the pins, per the ask block's own rule:** the recheck of the re-specified rows (concepts 6–7, the PROFILE block);
+   everything else is settled. Rejected: a profile over ALL pairs (within 0.0013 of the pinned one, but a fill's own later minutes
+   would sit in its denominator); trimming an early-close fill's window at 13:00 (the entry that filled it read the minutes as
+   stored); a smoothed profile (the median is monotone as measured, so smoothing would only move it); a profile per era (both
+   trees are the same fetcher's SIP minutes, and one constant keeps the sealed era unread).
+
 <!-- FREEZE -->
 ## Freeze record
 
-The doc body pin covers every byte above the `<!-- FREEZE -->` marker; the six "Put to him before the freeze" items are settled (his
-yes / no written into the rows they name; a "no" re-specs and rechecks the row first) before the pin is taken. Pins (sha256) printed by `aplus-read --print-pins` and pasted here in the commit that precedes the run; the RESULT is
-appended below this record. Pinned: `cb702/out/trades_discovery_exitpb.tsv.gz`, `cb702_pre/out/trades_pre_exitpb.tsv.gz`,
+The doc body pin covers every byte above the `<!-- FREEZE -->` marker; the six asks were settled 2026-10-22 (his answers written
+into the rows they name; ask 4's re-spec = concepts 6–7 and the PROFILE block, rechecked before the pin is taken). Pins (sha256) printed by `aplus-read --print-pins` and pasted here in the commit that precedes the run; the RESULT is
+appended below this record. Pinned: `cb702_pre/out/aplus_intraday_profile.tsv` (built by `aplus-profile` BEFORE the pins are
+printed; its tally and eight values are check-2 equality targets), `cb702/out/trades_discovery_exitpb.tsv.gz`, `cb702_pre/out/trades_pre_exitpb.tsv.gz`,
 `cb702/out/trades_holdout_exitpb.tsv.gz` (sealed — pinned so the later confirmation read runs on the same bytes),
 `cb702/out/trades_discovery_p5.tsv.gz`, `cb702_pre/out/trades_pre_p5.tsv.gz`, `cb702/out/trades_holdout_p5.tsv.gz`,
 `cb702/out/candidates.tsv`, `cb702_pre/out/candidates_tl_com.tsv`, `cb702/out/watch.tsv.gz`, `cb702_pre/out/watch_tl_com.tsv.gz`,
