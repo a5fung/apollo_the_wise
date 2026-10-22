@@ -225,3 +225,39 @@ agrees/contradicts stamps read from each other period's own out dir; small copie
 `--prereg` on a real run are refused. `h60-hindsight` needs the DECIDING discovery verdict file and the period's own. STEP 0 on the real dirs
 (2026-10-19, before any outcome): every column equal to the table in all three periods and 2020-21; TSLA 2020-04-30 confirms on exactly one day,
 06-01. The build computed no real outcome.
+
+---
+
+# #705 (a) — the shared registered-read scaffold (`registered_read.py`) + the golden-bytes harness (2026-10-24; synthetic only)
+
+The four finished one-run reads (`holdout`, `pre-read`, `h60-read`, `exit-read`) each copied the same plumbing, and the copies drifted:
+`h60-read --out` was checked against cb702/out while the pre period READ cb702_pre/out; `exit-read` ignored `--out`; the pre-read had no
+freeze. **They stay as they are** (their freeze records pin the runner that ran them). Every read built after them is a
+`rr.RegisteredRead` registered in `runner.REGISTERED_READS` and run by ONE driver, `rr.run_registered_read(spec, args, runner)`:
+
+```python
+spec = rr.RegisteredRead(name="quality-read", tag="quality", doc="cb_quality_prereg_<date>.md",      # doc=None = DECLARED no freeze
+                         frozen=lambda ctx: {...footer label: path...}, prepare=..., outputs=lambda ctx: (f"trades_{ctx.period}_quality.tsv.gz",),
+                         dry_run=..., body=..., periods=("discovery", "pre", "holdout"),
+                         hard_pins=(("module", lambda ctx: ctx.repo / rn.MODULE_REL, "<sha256>"),))
+runner.REGISTERED_READS[spec.name] = spec            # `python3 runner.py quality-read --data cb702 --period discovery [--print-pins | --dry-run]`
+```
+The driver resolves data / out / small / minutes / period ONCE into a `Ctx` (`ctx.data` = the dir the period reads; `ctx.out` is checked
+against `ctx.data / "out"` and is the only out dir the body sees) and runs `spec.order`: `--print-pins` → `--period` → `--prereg` only
+with pins / dry run → the refused options + `--out` / `--small-out` → `--no-freeze-check` only with `--dry-run` → the hard pins (footer or
+no footer, even dry) → **the freeze check before any file is opened** (a `doc=None` read logs `freeze check NONE DECLARED`) → `prepare`
+(the population + `minute_inputs`; no bar, no minute row) and the once-only scan → `--dry-run` → once-only / `.partial` → empty
+population → missing pairs → `body(ctx, prep, say)`. A `rr.Verdict` is written as `<tag>_verdict_<period>.{json,txt}` (out) + `.txt` (small);
+an int is the exit code (3 = the read's own check failed, nothing more written); the run log lands in `<tag>_summary_<period>.txt`.
+Refusals go to stderr with exit 2 and print the spec's `Messages` verbatim. `ctx.partial_write(name)` is the `.partial` protocol.
+Speed helpers for the next reads (not retrofitted into the finished stages): `rr.sha256_file` (streaming; `runner.sha256_file` now
+delegates to it, the identical digest), `rr.load_daily_cached(path, runner.load_daily)` (one slot keyed by path / size / mtime),
+`rr.read_watch_index(path, k)` (the watch table by `usecols` + explicit dtypes in chunks; values equal to `h60_watch_index`'s).
+Tests: `tests/test_cb_backtest_registered_read.py` (a demo read, registered in the tests only, walks every path).
+
+**The golden-bytes harness** `tests/test_cb_backtest_golden.py` pins, on synthetic data, the exact stdout / stderr / exit code and every
+written file (gzip tables by content) of `daily`, `minute`, `step0-entries`, `report`, `exits` / `exits-report`, `p5` and of every path of
+the four finished reads (pins, dry runs, each refusal, the freeze mismatch, once-only / `.partial`, the full synthetic run). Only the
+volatile tokens are normalised (`<TMP>`, `<N>s` wall times, `<SHA64>` / `<SHA12>...`, `written <DATE>`); it fails on a one-byte change.
+Pins: `tests/fixtures/cb_backtest_golden/<scenario>.golden` (the header line binds; the text below it is the diff). Re-pin ONLY for an
+intended output change, in its own reviewed commit: `CB_GOLDEN_UPDATE=1 python3 -m pytest tests/test_cb_backtest_golden.py`.

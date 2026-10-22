@@ -1,0 +1,876 @@
+==== GOLDEN ARTEFACT dry_run/exit | bytes=1 | sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9 | text
+0
+==== GOLDEN ARTEFACT dry_run/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT dry_run/stdout | bytes=630 | sha256=9cac898c31693570351684d8ba4643d5eadd708921b02963617eb721362ba531 | text
+EXIT-READ DRY RUN (freeze check passed; module sha <SHA12>... ok; counts only - no daily bar, minute row or outcome was opened): period discovery: 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 (date, ticker) pairs; pairs NOT logged in _done.psv: 0, logged ok with no file: 0 -> complete; outputs already on disk: none. Would write <TMP>/cb702/out/trades_discovery_exitpb.tsv.gz, <TMP>/cb702/out/exitpb_report_discovery.tsv, <TMP>/cb702/out/exitpb_deltas_discovery.tsv, <TMP>/cb702/out/exitpb_verdict_discovery.txt and the small copies under <TMP>/hereroot/out; arms A, pp, pp_wbe, wbe, pp_s0, pp5_wbe.
+
+==== GOLDEN ARTEFACT exit_read/cb702/out/exitpb_deltas_discovery.tsv | bytes=2063 | sha256=d1722c539b3fabc6b63f6ad3fc324fb78f5fb584f3e43f4abef2e185640506a6 | text
+period	entry	cell	K	delta	x	y	n	n_excluded_open	n_differ	mean	ci_lo	ci_hi	verdict	deciding
+discovery	orh5	C1	tl	pp_wbe-pp	pp_wbe	pp	1	0	0	0.0			can't tell (n = 1 < 30)	1
+discovery	orh5	C1	tl	pp-A	pp	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C1	tl	pp_wbe-A	pp_wbe	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C1	tl	pp_s0-pp	pp_s0	pp	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C1	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C1	tl	wbe-A	wbe	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C0	tl	pp_wbe-pp	pp_wbe	pp	1	0	0	0.0			can't tell (n = 1 < 30)	1
+discovery	orh5	C0	tl	pp-A	pp	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C0	tl	pp_wbe-A	pp_wbe	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C0	tl	pp_s0-pp	pp_s0	pp	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C0	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C0	tl	wbe-A	wbe	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	h60	C1	tl	pp_wbe-pp	pp_wbe	pp	1	0	1	-0.08776195438230305			can't tell (n = 1 < 30)	0
+discovery	h60	C1	tl	pp-A	pp	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	h60	C1	tl	pp_wbe-A	pp_wbe	A	1	0	1	-0.08776195438230305			can't tell (n = 1 < 30)	0
+discovery	h60	C1	tl	pp_s0-pp	pp_s0	pp	1	0	1	-0.08776195438230305			can't tell (n = 1 < 30)	0
+discovery	h60	C1	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	h60	C1	tl	wbe-A	wbe	A	1	0	1	-0.08776195438230305			can't tell (n = 1 < 30)	0
+discovery	h60	C0	tl	pp_wbe-pp	pp_wbe	pp	1	0	1	-0.08776195438230305			can't tell (n = 1 < 30)	0
+discovery	h60	C0	tl	pp-A	pp	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	h60	C0	tl	pp_wbe-A	pp_wbe	A	1	0	1	-0.08776195438230305			can't tell (n = 1 < 30)	0
+discovery	h60	C0	tl	pp_s0-pp	pp_s0	pp	1	0	1	-0.08776195438230305			can't tell (n = 1 < 30)	0
+discovery	h60	C0	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	h60	C0	tl	wbe-A	wbe	A	1	0	1	-0.08776195438230305			can't tell (n = 1 < 30)	0
+
+==== GOLDEN ARTEFACT exit_read/cb702/out/exitpb_report_discovery.tsv | bytes=6282 | sha256=84cd17e8c5cbbed0bcfe3e2f73f3365cfcbe380a1618b8ec1d7ae9afcb7ed8d4 | text
+period	entry	cell	K	arm	slice	value	n_filled	n	n_open	mean_r	ci_lo	ci_hi	win_rate	avg_win	avg_loss	median_r	share_ge5	share_ge10	share_ge20	sum_r	top2_sum_r	top2_share	mean_pnl_adr	mean_acct_pct	fill_day_stop_share	median_held	tail_n	tail_tickers	tail_months	tail_n_nowidth	tail_tickers_nowidth	tail_months_nowidth	n_third	n_third_day0_r	n_third_r	n_third_session	share_third	n_stopped_after_third_le_fill	share_stopped_after_third_le_fill	n_beabove_session	n_beabove_r	n_ge10	n_ge10_a	n_ge10_both	verdict	why
+discovery	orh5	C0	tl	A	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C0	tl	A	year	2023	1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C1	tl	A	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C1	tl	A	year	2023	1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C0	tl	pp	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C1	tl	pp	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C0	tl	pp_wbe	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0	baseline	
+discovery	orh5	C0	tl	pp_wbe	year	2023	1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C1	tl	pp_wbe	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0	CAN'T TELL	n = 1 < 30
+discovery	orh5	C1	tl	pp_wbe	year	2023	1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C0	tl	wbe	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C1	tl	wbe	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C0	tl	pp_s0	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C1	tl	pp_s0	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C0	tl	pp5_wbe	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C1	tl	pp5_wbe	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.2536487902341553	-0.0050729758046831	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	h60	C0	tl	A	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	1	0	1	0	1.0	1	1.0	0	0	0	0	0		
+discovery	h60	C1	tl	A	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	1	0	1	0	1.0	1	1.0	0	0	0	0	0		
+discovery	h60	C0	tl	pp	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	1	0	1	0	1.0	1	1.0	0	0	0	0	0		
+discovery	h60	C1	tl	pp	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	1	0	1	0	1.0	1	1.0	0	0	0	0	0		
+discovery	h60	C0	tl	pp_wbe	all		1	1	0	0.5789047122843636			1.0	0.5789047122843636		0.5789047122843636	0.0	0.0	0.0	0.5789047122843636	0.5789047122843636	1.0	0.1290698965117576	0.0025813979302351	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0	baseline	
+discovery	h60	C1	tl	pp_wbe	all		1	1	0	0.5789047122843636			1.0	0.5789047122843636		0.5789047122843636	0.0	0.0	0.0	0.5789047122843636	0.5789047122843636	1.0	0.1290698965117576	0.0025813979302351	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0	report	
+discovery	h60	C0	tl	wbe	all		1	1	0	0.5789047122843636			1.0	0.5789047122843636		0.5789047122843636	0.0	0.0	0.0	0.5789047122843636	0.5789047122843636	1.0	0.1290698965117576	0.0025813979302351	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
+discovery	h60	C1	tl	wbe	all		1	1	0	0.5789047122843636			1.0	0.5789047122843636		0.5789047122843636	0.0	0.0	0.0	0.5789047122843636	0.5789047122843636	1.0	0.1290698965117576	0.0025813979302351	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
+discovery	h60	C0	tl	pp_s0	all		1	1	0	0.5789047122843636			1.0	0.5789047122843636		0.5789047122843636	0.0	0.0	0.0	0.5789047122843636	0.5789047122843636	1.0	0.1290698965117576	0.0025813979302351	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
+discovery	h60	C1	tl	pp_s0	all		1	1	0	0.5789047122843636			1.0	0.5789047122843636		0.5789047122843636	0.0	0.0	0.0	0.5789047122843636	0.5789047122843636	1.0	0.1290698965117576	0.0025813979302351	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
+discovery	h60	C0	tl	pp5_wbe	all		1	1	0	0.5789047122843636			1.0	0.5789047122843636		0.5789047122843636	0.0	0.0	0.0	0.5789047122843636	0.5789047122843636	1.0	0.1290698965117576	0.0025813979302351	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
+discovery	h60	C1	tl	pp5_wbe	all		1	1	0	0.5789047122843636			1.0	0.5789047122843636		0.5789047122843636	0.0	0.0	0.0	0.5789047122843636	0.5789047122843636	1.0	0.1290698965117576	0.0025813979302351	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
+
+==== GOLDEN ARTEFACT exit_read/cb702/out/exitpb_report_discovery.txt | bytes=23650 | sha256=51d9ea9057e18c24c8735df36b4061e9e2f9963a6d0b1330e9e318b8d60de449 | text
+#702 EXIT READ - his partial and the stop after it, on discovery (2022-03-28..2024-12-31, DECIDES). Registered before any outcome: docs/analysis/cb_exit_partial_prereg_2026-10-19.md. Measurement only: nothing here switches the deciding comparison, the primary arm, the entry, the stop, a cell, a period, the horizon, the seed, the draw count, the n floor or the open-mark exclusion.
+POPULATION: the pinned P5 fills (level tl, entry ORH5, the low-of-day stop no wider than one ADR20, the spec key's first break per base) - every arm walks the SAME fills, so the comparison is per trade; the pinned hourly-close fills (entry h60) are walked beside, descriptively. A group is the MATURE walks only; an open mark is counted, never in a number. ARMS: A = c3_p33_t20_cut3 (the control: the session-3 third whatever the price, stop to the fill after any third); pp = his RULING (the session-3 third only on a close above the fill, else skipped, the +2R leg stays armed; stop to the fill after a third); pp_wbe = the PRIMARY: pp + his PROPOSAL (after a third sold at p the stop rests at max(stop0, min(fill, fill - (p - fill)/2)), the whole-trade breakeven); beside: wbe (A's partial rule + the wbe stop), pp_s0 (pp with the stop left at stop0 after any third), pp5_wbe (the first close in sessions 3-5 above the fill, then the wbe stop). Common to all: 1/3; the +2R leg (day 0 on the minutes); the +1R-by-session-3 cut; the 20-day trail filled at the next open; R against the entry stop; horizon 120. The pp-family trail is live from session 3 whether or not the third sold.
+INTERVAL RECIPE (the independent re-derivation reproduces it with no runner code): month-block bootstrap of the mean - blocks = the FILL month (E's month), 2,000 resamples of as many blocks as there are months, with replacement, each resample's mean = sum of the drawn blocks' values / their trade count; the 2.5 / 97.5 percentiles (numpy.percentile, linear); generator numpy.random.default_rng([702, zlib.crc32(key)]) with key 'exitpb|<period>|<entry>|<cell>|tl|<arm>' for a cell's R and 'exitpb_delta|<period>|<entry>|<cell>|tl|<x>-<y>' for a per-trade delta R(x) - R(y) (both walks mature); the stream is drawn as integers(0, n_months, size=(2000, n_months)). The deciding delta: pp_wbe - pp on C1, n floor 30; lower end > 0 = wbe WINS, upper end < 0 = wbe LOSES, else can't tell; C0 the same, read when C1 can't tell.
+DATA CHECKS: freeze passed; module <SHA12>... equal; parity P1 / P2 4 fills, 0 mismatches; implementation checks passed; rows walked 4 x 6 arms
+
+========== ENTRY orh5 / level tl - DECIDES ==========
+EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):
+  MET: C0 delta(pp_wbe - pp) point estimate +0.0000R on 1 trades (expected >= 0: it keeps runners the entry-price stop took out and costs only on trades that fall from the third to the original stop)
+  MET: C1 median sessions held under pp_wbe 0 vs A's 0 (expected >=)
+  MET: C0 median sessions held under pp_wbe 0 vs A's 0 (expected >=)
+
+THE DECIDING EXIT BAR - per trade delta = R(pp_wbe) - R(pp) on the SAME fills (the ruled rule with vs without his stop); a trade with an open mark on either arm excluded and counted; 'n differing' = trades whose R differs at all
+delta           n trades  excl open  n differing  mean delta R  95% CI                  verdict
+C1 pp_wbe - pp         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_wbe - pp         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 VERDICT on the stop change: can't tell (n = 1 < 30) (n 1, mean +0.0000 ); C0: can't tell (n = 1 < 30) (n 1, mean +0.0000 )
+CONSEQUENCE (the registration's table): can't tell -> pp_wbe (his proposal, not shown worse at scale: C0 upper end unknown); the exit carried into every next registration = pp_wbe; pp replaces A in every case (his ruling); paper: nothing from this read.
+  pre: no verdict file yet (not run) - no stamp
+  holdout: no verdict file yet (not run) - no stamp
+
+REPORTED, NEVER DECIDING - every registered delta per trade (x - y), C1 and C0
+delta                n trades  excl open  n differing  mean delta R  95% CI                  verdict
+C1 pp_wbe - pp              1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp - A                   1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp_wbe - A               1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp_s0 - pp               1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp5_wbe - pp_wbe         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 wbe - A                  1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_wbe - pp              1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp - A                   1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_wbe - A               1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_s0 - pp               1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp5_wbe - pp_wbe         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 wbe - A                  1          0            0       +0.0000          can't tell (n = 1 < 30)
+
+CELL VERDICT under pp_wbe (whether the SETUP passes with his exit; the hourly-close read's bars word for word: PASS = n >= 30, interval lower end > 0, ADR P&L > 0, beats C0 under the same exit on mean R AND the >= 5R share, >= 10R trades from >= 3 tickers AND >= 3 months counting only stops >= 0.25 ADR20 wide; FAIL = n >= 30 AND (upper end < 0 OR not beating C0 on mean R); else CAN'T TELL)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread     VERDICT         why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m  CAN'T TELL  n = 1 < 30
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m    baseline            
+
+PER ARM x CELL (mature walks; 'thirds' = trades that sold a third, by kind: the day-0 +2R touch / a later +2R touch / the session close; 'stopped after third <= fill' = share of the mature walks stopped after their third at or below the fill; 'beabove' = be_above_close counts by the kind of third it followed (session / +2R); '>=10R vs A' = the arm's >= 10R trades, A's on the same trades, and the overlap)
+  arm A (control; session leg always, stop after the third entry)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp (his ruling; session leg profit_only, stop after the third entry)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp_wbe (PRIMARY; session leg profit_only, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread     VERDICT         why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m  CAN'T TELL  n = 1 < 30
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m    baseline            
+  arm wbe (beside; session leg always, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp_s0 (beside; session leg profit_only, stop after the third stop0)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp5_wbe (beside; session leg profit_3to5, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+
+BE_ABOVE_CLOSE by kind (A's registration counts: 2022-24 C1 1 / C0 112 session kind, C1 1 / C0 27 +2R kind; 2017-21 0 / 170 and 0 / 48): session third sold below cost / +2R third on a bar closing under the fill - impossible under pp_wbe and pp5_wbe, the +2R kind remains under pp
+cell arm    session kind  +2R kind
+C1 A                   0         0
+C1 pp                  0         0
+C1 pp_wbe              0         0
+C1 wbe                 0         0
+C1 pp_s0               0         0
+C1 pp5_wbe             0         0
+C0 A                   0         0
+C0 pp                  0         0
+C0 pp_wbe              0         0
+C0 wbe                 0         0
+C0 pp_s0               0         0
+C0 pp5_wbe             0         0
+
+SLICES - year, arms A and pp_wbe (orh5 / tl); each cell is n / mean R / share >= 5R over the mature walks
+  arm A
+cell                      2023
+C1                1/-1.00/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/-1.00/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+  arm pp_wbe
+cell                      2023
+C1                1/-1.00/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/-1.00/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+
+========== ENTRY h60 / level tl - the hourly-close fills, DESCRIPTIVE ==========
+EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):
+  MISSED: C0 delta(pp_wbe - pp) point estimate -0.0878R on 1 trades (expected >= 0: it keeps runners the entry-price stop took out and costs only on trades that fall from the third to the original stop)
+  MET: C1 median sessions held under pp_wbe 17 vs A's 3 (expected >=)
+  MET: C0 median sessions held under pp_wbe 17 vs A's 3 (expected >=)
+
+THE DECIDING EXIT BAR - per trade delta = R(pp_wbe) - R(pp) on the SAME fills (the ruled rule with vs without his stop); a trade with an open mark on either arm excluded and counted; 'n differing' = trades whose R differs at all
+delta           n trades  excl open  n differing  mean delta R  95% CI                  verdict
+C1 pp_wbe - pp         1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp_wbe - pp         1          0            1       -0.0878          can't tell (n = 1 < 30)
+STAMP (decides nothing): C1 delta(pp_wbe - pp) negative (-0.0878, n 1, can't tell (n = 1 < 30)); C0 negative (-0.0878, n 1, can't tell (n = 1 < 30))
+
+REPORTED, NEVER DECIDING - every registered delta per trade (x - y), C1 and C0
+delta                n trades  excl open  n differing  mean delta R  95% CI                  verdict
+C1 pp_wbe - pp              1          0            1       -0.0878          can't tell (n = 1 < 30)
+C1 pp - A                   1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp_wbe - A               1          0            1       -0.0878          can't tell (n = 1 < 30)
+C1 pp_s0 - pp               1          0            1       -0.0878          can't tell (n = 1 < 30)
+C1 pp5_wbe - pp_wbe         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 wbe - A                  1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp_wbe - pp              1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp - A                   1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_wbe - A               1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp_s0 - pp               1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp5_wbe - pp_wbe         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 wbe - A                  1          0            1       -0.0878          can't tell (n = 1 < 30)
+
+CELL VERDICT under pp_wbe (whether the SETUP passes with his exit; the hourly-close read's bars word for word: PASS = n >= 30, interval lower end > 0, ADR P&L > 0, beats C0 under the same exit on mean R AND the >= 5R share, >= 10R trades from >= 3 tickers AND >= 3 months counting only stops >= 0.25 ADR20 wide; FAIL = n >= 30 AND (upper end < 0 OR not beating C0 on mean R); else CAN'T TELL) - labels only on the hourly-close fills
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread   VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m    report     
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m  baseline     
+
+PER ARM x CELL (mature walks; 'thirds' = trades that sold a third, by kind: the day-0 +2R touch / a later +2R touch / the session close; 'stopped after third <= fill' = share of the mature walks stopped after their third at or below the fill; 'beabove' = be_above_close counts by the kind of third it followed (session / +2R); '>=10R vs A' = the arm's >= 10R trades, A's on the same trades, and the overlap)
+  arm A (control; session leg always, stop after the third entry)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7        100.0%   +0.149         3           1 (0/1/0)                       100.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7        100.0%   +0.149         3           1 (0/1/0)                       100.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp (his ruling; session leg profit_only, stop after the third entry)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7        100.0%   +0.149         3           1 (0/1/0)                       100.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7        100.0%   +0.149         3           1 (0/1/0)                       100.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp_wbe (PRIMARY; session leg profit_only, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread   VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m    report     
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m  baseline     
+  arm wbe (beside; session leg always, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp_s0 (beside; session leg profit_only, stop after the third stop0)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp5_wbe (beside; session leg profit_3to5, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+
+IMPLEMENTATION CHECKS (the registration's WOULD-FAIL-IF lines, on this table; every one must hold or the report is not written):
+  (a) pp-family session thirds on a close <= the fill: 0 (must be 0)
+  (b) wbe-family stop_to levels off max(stop0, min(fill, fill - (p - fill)/2)) or below stop0: 0 of 6 (must be 0)
+  (c) wbe / stop0 day-0 thirds stopped on day 0 above stop0: 0 (must be 0)
+  (d) pp differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp_wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp_s0 differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp5_wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (e) pp differs from A on a trade A trailed out after a +2R or above-fill session third: 0 of 1 (must be 0)
+  (f) cells where the pp_wbe >= 10R count is below A's: 0 (must be 0)
+  (g) TSLA 2020-06-01: not in this period (the pre period's check)
+
+==== GOLDEN ARTEFACT exit_read/cb702/out/exitpb_verdict_discovery.json | bytes=595 | sha256=949ec2bc9bcbf9e7bf4ea6d368657e9e8f690e826be8f36f0480bce5c0eb7889 | text
+{
+ "period": "discovery",
+ "delta_c1": {
+  "n": 1,
+  "mean": 0.0,
+  "lo": null,
+  "hi": null,
+  "verdict": "can't tell (n = 1 < 30)",
+  "n_excluded_open": 0,
+  "n_differ": 0
+ },
+ "delta_c0": {
+  "n": 1,
+  "mean": 0.0,
+  "lo": null,
+  "hi": null,
+  "verdict": "can't tell (n = 1 < 30)",
+  "n_excluded_open": 0,
+  "n_differ": 0
+ },
+ "cell_c1_pp_wbe": {
+  "n": 1,
+  "mean_r": -1.0,
+  "ci": [
+   null,
+   null
+  ],
+  "verdict": "CAN'T TELL",
+  "why": "n = 1 < 30"
+ },
+ "consequence": "can't tell -> pp_wbe (his proposal, not shown worse at scale: C0 upper end unknown)",
+ "carried_exit": "pp_wbe"
+}
+
+==== GOLDEN ARTEFACT exit_read/cb702/out/exitpb_verdict_discovery.txt | bytes=349 | sha256=fc29b55b645862f98d3284cb96a154e204bf7d5bfa984aad63285b67dbfaba32 | text
+#702 EXIT READ VERDICT FILE - period discovery - written <DATE>
+C1 delta(pp_wbe - pp): can't tell (n = 1 < 30) (n 1, mean +0.0000 ); C0: can't tell (n = 1 < 30) (n 1, mean +0.0000 ); C1 cell under pp_wbe: CAN'T TELL (n = 1 < 30); consequence: can't tell -> pp_wbe (his proposal, not shown worse at scale: C0 upper end unknown); carried exit: pp_wbe
+
+==== GOLDEN ARTEFACT exit_read/cb702/out/trades_discovery_exitpb.tsv.gz | bytes=8662 | sha256=353cb0630066f6a0bbd90aefcdf647e372ece91cc022fc4d8296d127fd62c857 | text
+ticker	D	E	K	period	entry	year	fill_month	retrigger_chain	pole_date	base	first_E	first_month	row_no	own_C1	early_close	C0	C1	C2	C3	C4	C5	C6	C7	C1_no_retrace	C1_no_tightening	HTF	C1_s5	gap_over_1adr	phase_qqq_10_20	adr20	fill	fill_minute	walk_from	stop	width_pct	width_adr	target	arm	session_rule	stop_rule	status	realized_r	pnl_adr	acct_pct	sessions_held	mature	open_mark	fill_day_stop	partial_kind	partial_session	partial_px	stop_to	exit_kind	exit_px	exit_session	stopped_after_third_le_fill	beabove	beabove_kind	fwd_bars	fwd_hole
+X	2023-07-28	2023-07-31	com	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.1101	10	10	10.0	0.010890099999010812	0.10890099999010812	10.330299999999998	A	always	entry	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.1101	10	10	10.0	0.010890099999010812	0.10890099999010812	10.330299999999998	pp	profit_only	entry	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.1101	10	10	10.0	0.010890099999010812	0.10890099999010812	10.330299999999998	pp_wbe	profit_only	wbe	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.1101	10	10	10.0	0.010890099999010812	0.10890099999010812	10.330299999999998	wbe	always	wbe	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.1101	10	10	10.0	0.010890099999010812	0.10890099999010812	10.330299999999998	pp_s0	profit_only	stop0	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.1101	10	10	10.0	0.010890099999010812	0.10890099999010812	10.330299999999998	pp5_wbe	profit_3to5	wbe	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	h60	2023	2023-07		2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	0	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.06005	30	29	9.85	0.02087961789454334	0.20879617894543337	10.480150000000002	A	always	entry	trailed	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	10.480150000000002	10.06005	trail	10.3	19	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	h60	2023	2023-07		2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	0	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.06005	30	29	9.85	0.02087961789454334	0.20879617894543337	10.480150000000002	pp	profit_only	entry	trailed	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	10.480150000000002	10.06005	trail	10.3	19	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	h60	2023	2023-07		2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	0	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.06005	30	29	9.85	0.02087961789454334	0.20879617894543337	10.480150000000002	pp_wbe	profit_only	wbe	trailed	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	10.480150000000002	9.85	trail	10.3	19	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	h60	2023	2023-07		2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	0	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.06005	30	29	9.85	0.02087961789454334	0.20879617894543337	10.480150000000002	wbe	always	wbe	trailed	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	10.480150000000002	9.85	trail	10.3	19	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	h60	2023	2023-07		2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	0	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.06005	30	29	9.85	0.02087961789454334	0.20879617894543337	10.480150000000002	pp_s0	profit_only	stop0	trailed	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	10.480150000000002	9.85	trail	10.3	19	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	h60	2023	2023-07		2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	0	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.06005	30	29	9.85	0.02087961789454334	0.20879617894543337	10.480150000000002	pp5_wbe	profit_3to5	wbe	trailed	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	10.480150000000002	9.85	trail	10.3	19	0	0		121	0
+X	2023-07-28	2023-07-31	tl	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.26025	10	10	10.0	0.025364879023415533	0.2536487902341553	10.780749999999998	A	always	entry	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	tl	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.26025	10	10	10.0	0.025364879023415533	0.2536487902341553	10.780749999999998	pp	profit_only	entry	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	tl	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.26025	10	10	10.0	0.025364879023415533	0.2536487902341553	10.780749999999998	pp_wbe	profit_only	wbe	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	tl	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.26025	10	10	10.0	0.025364879023415533	0.2536487902341553	10.780749999999998	wbe	always	wbe	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	tl	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.26025	10	10	10.0	0.025364879023415533	0.2536487902341553	10.780749999999998	pp_s0	profit_only	stop0	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	tl	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.26025	10	10	10.0	0.025364879023415533	0.2536487902341553	10.780749999999998	pp5_wbe	profit_3to5	wbe	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-08-01	2023-08-02	tl	discovery	h60	2023	2023-08		2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	1	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.330319999999999	30	29	10.1	0.022295533923440802	0.22295533923440802	10.790959999999997	A	always	entry	stopped	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	10.790959999999997	10.330319999999999	stop	10.330319999999999	3	1	0		121	0
+X	2023-08-01	2023-08-02	tl	discovery	h60	2023	2023-08		2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	1	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.330319999999999	30	29	10.1	0.022295533923440802	0.22295533923440802	10.790959999999997	pp	profit_only	entry	stopped	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	10.790959999999997	10.330319999999999	stop	10.330319999999999	3	1	0		121	0
+X	2023-08-01	2023-08-02	tl	discovery	h60	2023	2023-08		2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	1	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.330319999999999	30	29	10.1	0.022295533923440802	0.22295533923440802	10.790959999999997	pp_wbe	profit_only	wbe	trailed	0.5789047122843636	0.12906989651175765	0.0025813979302351533	17	1	0	0	r	1	10.790959999999997	10.1	trail	10.3	17	0	0		121	0
+X	2023-08-01	2023-08-02	tl	discovery	h60	2023	2023-08		2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	1	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.330319999999999	30	29	10.1	0.022295533923440802	0.22295533923440802	10.790959999999997	wbe	always	wbe	trailed	0.5789047122843636	0.12906989651175765	0.0025813979302351533	17	1	0	0	r	1	10.790959999999997	10.1	trail	10.3	17	0	0		121	0
+X	2023-08-01	2023-08-02	tl	discovery	h60	2023	2023-08		2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	1	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.330319999999999	30	29	10.1	0.022295533923440802	0.22295533923440802	10.790959999999997	pp_s0	profit_only	stop0	trailed	0.5789047122843636	0.12906989651175765	0.0025813979302351533	17	1	0	0	r	1	10.790959999999997	10.1	trail	10.3	17	0	0		121	0
+X	2023-08-01	2023-08-02	tl	discovery	h60	2023	2023-08		2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	1	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.330319999999999	30	29	10.1	0.022295533923440802	0.22295533923440802	10.790959999999997	pp5_wbe	profit_3to5	wbe	trailed	0.5789047122843636	0.12906989651175765	0.0025813979302351533	17	1	0	0	r	1	10.790959999999997	10.1	trail	10.3	17	0	0		121	0
+
+==== GOLDEN ARTEFACT exit_read/exit | bytes=1 | sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9 | text
+0
+==== GOLDEN ARTEFACT exit_read/hereroot/out/exitpb_deltas_discovery.tsv | bytes=1975 | sha256=b8e18cea0526e79a18e3a5e27a2e759b67209e05033794b6264f8deedbfd8a2c | text
+period	entry	cell	K	delta	x	y	n	n_excluded_open	n_differ	mean	ci_lo	ci_hi	verdict	deciding
+discovery	orh5	C1	tl	pp_wbe-pp	pp_wbe	pp	1	0	0	0.0			can't tell (n = 1 < 30)	1
+discovery	orh5	C1	tl	pp-A	pp	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C1	tl	pp_wbe-A	pp_wbe	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C1	tl	pp_s0-pp	pp_s0	pp	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C1	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C1	tl	wbe-A	wbe	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C0	tl	pp_wbe-pp	pp_wbe	pp	1	0	0	0.0			can't tell (n = 1 < 30)	1
+discovery	orh5	C0	tl	pp-A	pp	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C0	tl	pp_wbe-A	pp_wbe	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C0	tl	pp_s0-pp	pp_s0	pp	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C0	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	orh5	C0	tl	wbe-A	wbe	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	h60	C1	tl	pp_wbe-pp	pp_wbe	pp	1	0	1	-0.087762			can't tell (n = 1 < 30)	0
+discovery	h60	C1	tl	pp-A	pp	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	h60	C1	tl	pp_wbe-A	pp_wbe	A	1	0	1	-0.087762			can't tell (n = 1 < 30)	0
+discovery	h60	C1	tl	pp_s0-pp	pp_s0	pp	1	0	1	-0.087762			can't tell (n = 1 < 30)	0
+discovery	h60	C1	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	h60	C1	tl	wbe-A	wbe	A	1	0	1	-0.087762			can't tell (n = 1 < 30)	0
+discovery	h60	C0	tl	pp_wbe-pp	pp_wbe	pp	1	0	1	-0.087762			can't tell (n = 1 < 30)	0
+discovery	h60	C0	tl	pp-A	pp	A	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	h60	C0	tl	pp_wbe-A	pp_wbe	A	1	0	1	-0.087762			can't tell (n = 1 < 30)	0
+discovery	h60	C0	tl	pp_s0-pp	pp_s0	pp	1	0	1	-0.087762			can't tell (n = 1 < 30)	0
+discovery	h60	C0	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	1	0	0	0.0			can't tell (n = 1 < 30)	0
+discovery	h60	C0	tl	wbe-A	wbe	A	1	0	1	-0.087762			can't tell (n = 1 < 30)	0
+
+==== GOLDEN ARTEFACT exit_read/hereroot/out/exitpb_report_discovery.tsv | bytes=4476 | sha256=89e964e45898ad7783d261cdd823c555ada943e5d7fa88f04c6892b663e99389 | text
+period	entry	cell	K	arm	slice	value	n_filled	n	n_open	mean_r	ci_lo	ci_hi	win_rate	avg_win	avg_loss	median_r	share_ge5	share_ge10	share_ge20	sum_r	top2_sum_r	top2_share	mean_pnl_adr	mean_acct_pct	fill_day_stop_share	median_held	tail_n	tail_tickers	tail_months	tail_n_nowidth	tail_tickers_nowidth	tail_months_nowidth	n_third	n_third_day0_r	n_third_r	n_third_session	share_third	n_stopped_after_third_le_fill	share_stopped_after_third_le_fill	n_beabove_session	n_beabove_r	n_ge10	n_ge10_a	n_ge10_both	verdict	why
+discovery	orh5	C0	tl	A	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.253649	-0.005073	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C1	tl	A	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.253649	-0.005073	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C0	tl	pp	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.253649	-0.005073	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C1	tl	pp	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.253649	-0.005073	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C0	tl	pp_wbe	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.253649	-0.005073	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0	baseline	
+discovery	orh5	C1	tl	pp_wbe	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.253649	-0.005073	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0	CAN'T TELL	n = 1 < 30
+discovery	orh5	C0	tl	wbe	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.253649	-0.005073	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C1	tl	wbe	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.253649	-0.005073	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C0	tl	pp_s0	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.253649	-0.005073	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C1	tl	pp_s0	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.253649	-0.005073	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C0	tl	pp5_wbe	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.253649	-0.005073	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	orh5	C1	tl	pp5_wbe	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.253649	-0.005073	1.0	0.0	0	0	0	0	0	0	0	0	0	0	0.0	0	0.0	0	0	0	0	0		
+discovery	h60	C0	tl	A	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	1	0	1	0	1.0	1	1.0	0	0	0	0	0		
+discovery	h60	C1	tl	A	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	1	0	1	0	1.0	1	1.0	0	0	0	0	0		
+discovery	h60	C0	tl	pp	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	1	0	1	0	1.0	1	1.0	0	0	0	0	0		
+discovery	h60	C1	tl	pp	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	1	0	1	0	1.0	1	1.0	0	0	0	0	0		
+discovery	h60	C0	tl	pp_wbe	all		1	1	0	0.578905			1.0	0.578905		0.578905	0.0	0.0	0.0	0.578905	0.578905	1.0	0.12907	0.002581	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0	baseline	
+discovery	h60	C1	tl	pp_wbe	all		1	1	0	0.578905			1.0	0.578905		0.578905	0.0	0.0	0.0	0.578905	0.578905	1.0	0.12907	0.002581	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0	report	
+discovery	h60	C0	tl	wbe	all		1	1	0	0.578905			1.0	0.578905		0.578905	0.0	0.0	0.0	0.578905	0.578905	1.0	0.12907	0.002581	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
+discovery	h60	C1	tl	wbe	all		1	1	0	0.578905			1.0	0.578905		0.578905	0.0	0.0	0.0	0.578905	0.578905	1.0	0.12907	0.002581	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
+discovery	h60	C0	tl	pp_s0	all		1	1	0	0.578905			1.0	0.578905		0.578905	0.0	0.0	0.0	0.578905	0.578905	1.0	0.12907	0.002581	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
+discovery	h60	C1	tl	pp_s0	all		1	1	0	0.578905			1.0	0.578905		0.578905	0.0	0.0	0.0	0.578905	0.578905	1.0	0.12907	0.002581	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
+discovery	h60	C0	tl	pp5_wbe	all		1	1	0	0.578905			1.0	0.578905		0.578905	0.0	0.0	0.0	0.578905	0.578905	1.0	0.12907	0.002581	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
+discovery	h60	C1	tl	pp5_wbe	all		1	1	0	0.578905			1.0	0.578905		0.578905	0.0	0.0	0.0	0.578905	0.578905	1.0	0.12907	0.002581	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
+
+==== GOLDEN ARTEFACT exit_read/hereroot/out/exitpb_report_discovery.txt | bytes=23650 | sha256=51d9ea9057e18c24c8735df36b4061e9e2f9963a6d0b1330e9e318b8d60de449 | text
+#702 EXIT READ - his partial and the stop after it, on discovery (2022-03-28..2024-12-31, DECIDES). Registered before any outcome: docs/analysis/cb_exit_partial_prereg_2026-10-19.md. Measurement only: nothing here switches the deciding comparison, the primary arm, the entry, the stop, a cell, a period, the horizon, the seed, the draw count, the n floor or the open-mark exclusion.
+POPULATION: the pinned P5 fills (level tl, entry ORH5, the low-of-day stop no wider than one ADR20, the spec key's first break per base) - every arm walks the SAME fills, so the comparison is per trade; the pinned hourly-close fills (entry h60) are walked beside, descriptively. A group is the MATURE walks only; an open mark is counted, never in a number. ARMS: A = c3_p33_t20_cut3 (the control: the session-3 third whatever the price, stop to the fill after any third); pp = his RULING (the session-3 third only on a close above the fill, else skipped, the +2R leg stays armed; stop to the fill after a third); pp_wbe = the PRIMARY: pp + his PROPOSAL (after a third sold at p the stop rests at max(stop0, min(fill, fill - (p - fill)/2)), the whole-trade breakeven); beside: wbe (A's partial rule + the wbe stop), pp_s0 (pp with the stop left at stop0 after any third), pp5_wbe (the first close in sessions 3-5 above the fill, then the wbe stop). Common to all: 1/3; the +2R leg (day 0 on the minutes); the +1R-by-session-3 cut; the 20-day trail filled at the next open; R against the entry stop; horizon 120. The pp-family trail is live from session 3 whether or not the third sold.
+INTERVAL RECIPE (the independent re-derivation reproduces it with no runner code): month-block bootstrap of the mean - blocks = the FILL month (E's month), 2,000 resamples of as many blocks as there are months, with replacement, each resample's mean = sum of the drawn blocks' values / their trade count; the 2.5 / 97.5 percentiles (numpy.percentile, linear); generator numpy.random.default_rng([702, zlib.crc32(key)]) with key 'exitpb|<period>|<entry>|<cell>|tl|<arm>' for a cell's R and 'exitpb_delta|<period>|<entry>|<cell>|tl|<x>-<y>' for a per-trade delta R(x) - R(y) (both walks mature); the stream is drawn as integers(0, n_months, size=(2000, n_months)). The deciding delta: pp_wbe - pp on C1, n floor 30; lower end > 0 = wbe WINS, upper end < 0 = wbe LOSES, else can't tell; C0 the same, read when C1 can't tell.
+DATA CHECKS: freeze passed; module <SHA12>... equal; parity P1 / P2 4 fills, 0 mismatches; implementation checks passed; rows walked 4 x 6 arms
+
+========== ENTRY orh5 / level tl - DECIDES ==========
+EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):
+  MET: C0 delta(pp_wbe - pp) point estimate +0.0000R on 1 trades (expected >= 0: it keeps runners the entry-price stop took out and costs only on trades that fall from the third to the original stop)
+  MET: C1 median sessions held under pp_wbe 0 vs A's 0 (expected >=)
+  MET: C0 median sessions held under pp_wbe 0 vs A's 0 (expected >=)
+
+THE DECIDING EXIT BAR - per trade delta = R(pp_wbe) - R(pp) on the SAME fills (the ruled rule with vs without his stop); a trade with an open mark on either arm excluded and counted; 'n differing' = trades whose R differs at all
+delta           n trades  excl open  n differing  mean delta R  95% CI                  verdict
+C1 pp_wbe - pp         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_wbe - pp         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 VERDICT on the stop change: can't tell (n = 1 < 30) (n 1, mean +0.0000 ); C0: can't tell (n = 1 < 30) (n 1, mean +0.0000 )
+CONSEQUENCE (the registration's table): can't tell -> pp_wbe (his proposal, not shown worse at scale: C0 upper end unknown); the exit carried into every next registration = pp_wbe; pp replaces A in every case (his ruling); paper: nothing from this read.
+  pre: no verdict file yet (not run) - no stamp
+  holdout: no verdict file yet (not run) - no stamp
+
+REPORTED, NEVER DECIDING - every registered delta per trade (x - y), C1 and C0
+delta                n trades  excl open  n differing  mean delta R  95% CI                  verdict
+C1 pp_wbe - pp              1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp - A                   1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp_wbe - A               1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp_s0 - pp               1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp5_wbe - pp_wbe         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 wbe - A                  1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_wbe - pp              1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp - A                   1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_wbe - A               1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_s0 - pp               1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp5_wbe - pp_wbe         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 wbe - A                  1          0            0       +0.0000          can't tell (n = 1 < 30)
+
+CELL VERDICT under pp_wbe (whether the SETUP passes with his exit; the hourly-close read's bars word for word: PASS = n >= 30, interval lower end > 0, ADR P&L > 0, beats C0 under the same exit on mean R AND the >= 5R share, >= 10R trades from >= 3 tickers AND >= 3 months counting only stops >= 0.25 ADR20 wide; FAIL = n >= 30 AND (upper end < 0 OR not beating C0 on mean R); else CAN'T TELL)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread     VERDICT         why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m  CAN'T TELL  n = 1 < 30
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m    baseline            
+
+PER ARM x CELL (mature walks; 'thirds' = trades that sold a third, by kind: the day-0 +2R touch / a later +2R touch / the session close; 'stopped after third <= fill' = share of the mature walks stopped after their third at or below the fill; 'beabove' = be_above_close counts by the kind of third it followed (session / +2R); '>=10R vs A' = the arm's >= 10R trades, A's on the same trades, and the overlap)
+  arm A (control; session leg always, stop after the third entry)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp (his ruling; session leg profit_only, stop after the third entry)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp_wbe (PRIMARY; session leg profit_only, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread     VERDICT         why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m  CAN'T TELL  n = 1 < 30
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m    baseline            
+  arm wbe (beside; session leg always, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp_s0 (beside; session leg profit_only, stop after the third stop0)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp5_wbe (beside; session leg profit_3to5, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+
+BE_ABOVE_CLOSE by kind (A's registration counts: 2022-24 C1 1 / C0 112 session kind, C1 1 / C0 27 +2R kind; 2017-21 0 / 170 and 0 / 48): session third sold below cost / +2R third on a bar closing under the fill - impossible under pp_wbe and pp5_wbe, the +2R kind remains under pp
+cell arm    session kind  +2R kind
+C1 A                   0         0
+C1 pp                  0         0
+C1 pp_wbe              0         0
+C1 wbe                 0         0
+C1 pp_s0               0         0
+C1 pp5_wbe             0         0
+C0 A                   0         0
+C0 pp                  0         0
+C0 pp_wbe              0         0
+C0 wbe                 0         0
+C0 pp_s0               0         0
+C0 pp5_wbe             0         0
+
+SLICES - year, arms A and pp_wbe (orh5 / tl); each cell is n / mean R / share >= 5R over the mature walks
+  arm A
+cell                      2023
+C1                1/-1.00/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/-1.00/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+  arm pp_wbe
+cell                      2023
+C1                1/-1.00/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/-1.00/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+
+========== ENTRY h60 / level tl - the hourly-close fills, DESCRIPTIVE ==========
+EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):
+  MISSED: C0 delta(pp_wbe - pp) point estimate -0.0878R on 1 trades (expected >= 0: it keeps runners the entry-price stop took out and costs only on trades that fall from the third to the original stop)
+  MET: C1 median sessions held under pp_wbe 17 vs A's 3 (expected >=)
+  MET: C0 median sessions held under pp_wbe 17 vs A's 3 (expected >=)
+
+THE DECIDING EXIT BAR - per trade delta = R(pp_wbe) - R(pp) on the SAME fills (the ruled rule with vs without his stop); a trade with an open mark on either arm excluded and counted; 'n differing' = trades whose R differs at all
+delta           n trades  excl open  n differing  mean delta R  95% CI                  verdict
+C1 pp_wbe - pp         1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp_wbe - pp         1          0            1       -0.0878          can't tell (n = 1 < 30)
+STAMP (decides nothing): C1 delta(pp_wbe - pp) negative (-0.0878, n 1, can't tell (n = 1 < 30)); C0 negative (-0.0878, n 1, can't tell (n = 1 < 30))
+
+REPORTED, NEVER DECIDING - every registered delta per trade (x - y), C1 and C0
+delta                n trades  excl open  n differing  mean delta R  95% CI                  verdict
+C1 pp_wbe - pp              1          0            1       -0.0878          can't tell (n = 1 < 30)
+C1 pp - A                   1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp_wbe - A               1          0            1       -0.0878          can't tell (n = 1 < 30)
+C1 pp_s0 - pp               1          0            1       -0.0878          can't tell (n = 1 < 30)
+C1 pp5_wbe - pp_wbe         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 wbe - A                  1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp_wbe - pp              1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp - A                   1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_wbe - A               1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp_s0 - pp               1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp5_wbe - pp_wbe         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 wbe - A                  1          0            1       -0.0878          can't tell (n = 1 < 30)
+
+CELL VERDICT under pp_wbe (whether the SETUP passes with his exit; the hourly-close read's bars word for word: PASS = n >= 30, interval lower end > 0, ADR P&L > 0, beats C0 under the same exit on mean R AND the >= 5R share, >= 10R trades from >= 3 tickers AND >= 3 months counting only stops >= 0.25 ADR20 wide; FAIL = n >= 30 AND (upper end < 0 OR not beating C0 on mean R); else CAN'T TELL) - labels only on the hourly-close fills
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread   VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m    report     
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m  baseline     
+
+PER ARM x CELL (mature walks; 'thirds' = trades that sold a third, by kind: the day-0 +2R touch / a later +2R touch / the session close; 'stopped after third <= fill' = share of the mature walks stopped after their third at or below the fill; 'beabove' = be_above_close counts by the kind of third it followed (session / +2R); '>=10R vs A' = the arm's >= 10R trades, A's on the same trades, and the overlap)
+  arm A (control; session leg always, stop after the third entry)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7        100.0%   +0.149         3           1 (0/1/0)                       100.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7        100.0%   +0.149         3           1 (0/1/0)                       100.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp (his ruling; session leg profit_only, stop after the third entry)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7        100.0%   +0.149         3           1 (0/1/0)                       100.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7        100.0%   +0.149         3           1 (0/1/0)                       100.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp_wbe (PRIMARY; session leg profit_only, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread   VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m    report     
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m  baseline     
+  arm wbe (beside; session leg always, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp_s0 (beside; session leg profit_only, stop after the third stop0)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp5_wbe (beside; session leg profit_3to5, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+
+IMPLEMENTATION CHECKS (the registration's WOULD-FAIL-IF lines, on this table; every one must hold or the report is not written):
+  (a) pp-family session thirds on a close <= the fill: 0 (must be 0)
+  (b) wbe-family stop_to levels off max(stop0, min(fill, fill - (p - fill)/2)) or below stop0: 0 of 6 (must be 0)
+  (c) wbe / stop0 day-0 thirds stopped on day 0 above stop0: 0 (must be 0)
+  (d) pp differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp_wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp_s0 differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp5_wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (e) pp differs from A on a trade A trailed out after a +2R or above-fill session third: 0 of 1 (must be 0)
+  (f) cells where the pp_wbe >= 10R count is below A's: 0 (must be 0)
+  (g) TSLA 2020-06-01: not in this period (the pre period's check)
+
+==== GOLDEN ARTEFACT exit_read/hereroot/out/exitpb_summary_discovery.txt | bytes=3016 | sha256=2d82d27a947e706d16e3ee7c5b188b8c03835179a9cfa68279b67913c1c921ea | text
+EXIT READ (#702): period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check passed; module sha256 <SHA64> (registered), runner sha256 <SHA64>
+[parity: <N>s]
+PARITY: P2 h60/com: 1 match, 0 mismatch; P2 h60/tl: 1 match, 0 mismatch; P1 orh5/com: 1 match, 0 mismatch; P1 orh5/tl: 1 match, 0 mismatch (status, maturity, sessions held, third kind and session, be_above_close, forward window, R to 1e-09; and the module's own walk event for event)
+REACH from the control's rows (entry / level / cell: fills, mature, thirds (day0_r / r / session), stopped after the third at the fill, at or below it, session thirds at or below the fill, movable = trades the pp / pp_wbe rules can change) - the registration's line beside
+  h60 / tl / C0: fills 1, mature 1, thirds 1 (0 / 1 / 0), stopped after the third at cost 1, at or below the fill 1, session thirds <= fill 0, movable 1
+  h60 / tl / C1: fills 1, mature 1, thirds 1 (0 / 1 / 0), stopped after the third at cost 1, at or below the fill 1, session thirds <= fill 0, movable 1
+  orh5 / tl / C0: fills 1, mature 1, thirds 0 (0 / 0 / 0), stopped after the third at cost 0, at or below the fill 0, session thirds <= fill 0, movable 0  | registration: mature 8,984 (reads 1), third 2,874 (reads 0), stopped_after_third_le_fill 1,943 (reads 0), session_third_le_fill 112 (reads 0)
+  orh5 / tl / C1: fills 1, mature 1, thirds 0 (0 / 0 / 0), stopped after the third at cost 0, at or below the fill 0, session thirds <= fill 0, movable 0  | registration: fills 79 (reads 1), third 34 (reads 0), third_day0_r 12 (reads 0), third_r 17 (reads 0), third_session 5 (reads 0), stopped_after_third_le_fill 24 (reads 0), session_third_le_fill 1 (reads 0)
+[exit walks: <N>s]
+WROTE <TMP>/cb702/out/trades_discovery_exitpb.tsv.gz (4 fills x 6 arms)
+  (a) pp-family session thirds on a close <= the fill: 0 (must be 0)
+  (b) wbe-family stop_to levels off max(stop0, min(fill, fill - (p - fill)/2)) or below stop0: 0 of 6 (must be 0)
+  (c) wbe / stop0 day-0 thirds stopped on day 0 above stop0: 0 (must be 0)
+  (d) pp differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp_wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp_s0 differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp5_wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (e) pp differs from A on a trade A trailed out after a +2R or above-fill session third: 0 of 1 (must be 0)
+  (f) cells where the pp_wbe >= 10R count is below A's: 0 (must be 0)
+  (g) TSLA 2020-06-01: not in this period (the pre period's check)
+WROTE <TMP>/cb702/out/exitpb_report_discovery.tsv (28 rows), <TMP>/cb702/out/exitpb_deltas_discovery.tsv (24 rows), <TMP>/hereroot/out/exitpb_report_discovery.txt, <TMP>/cb702/out/exitpb_verdict_discovery.txt
+WALL TIME: <N>s total
+
+==== GOLDEN ARTEFACT exit_read/hereroot/out/exitpb_verdict_discovery.txt | bytes=349 | sha256=fc29b55b645862f98d3284cb96a154e204bf7d5bfa984aad63285b67dbfaba32 | text
+#702 EXIT READ VERDICT FILE - period discovery - written <DATE>
+C1 delta(pp_wbe - pp): can't tell (n = 1 < 30) (n 1, mean +0.0000 ); C0: can't tell (n = 1 < 30) (n 1, mean +0.0000 ); C1 cell under pp_wbe: CAN'T TELL (n = 1 < 30); consequence: can't tell -> pp_wbe (his proposal, not shown worse at scale: C0 upper end unknown); carried exit: pp_wbe
+
+==== GOLDEN ARTEFACT exit_read/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT exit_read/stdout | bytes=26729 | sha256=2911c2b151d64074f150f9f3b0cb780188e02e2cdd953fbe6af82dbd8a342358 | text
+EXIT READ (#702): period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check passed; module sha256 <SHA64> (registered), runner sha256 <SHA64>
+  parity 2/2 dates, 4 fills
+[parity: <N>s]
+PARITY: P2 h60/com: 1 match, 0 mismatch; P2 h60/tl: 1 match, 0 mismatch; P1 orh5/com: 1 match, 0 mismatch; P1 orh5/tl: 1 match, 0 mismatch (status, maturity, sessions held, third kind and session, be_above_close, forward window, R to 1e-09; and the module's own walk event for event)
+REACH from the control's rows (entry / level / cell: fills, mature, thirds (day0_r / r / session), stopped after the third at the fill, at or below it, session thirds at or below the fill, movable = trades the pp / pp_wbe rules can change) - the registration's line beside
+  h60 / tl / C0: fills 1, mature 1, thirds 1 (0 / 1 / 0), stopped after the third at cost 1, at or below the fill 1, session thirds <= fill 0, movable 1
+  h60 / tl / C1: fills 1, mature 1, thirds 1 (0 / 1 / 0), stopped after the third at cost 1, at or below the fill 1, session thirds <= fill 0, movable 1
+  orh5 / tl / C0: fills 1, mature 1, thirds 0 (0 / 0 / 0), stopped after the third at cost 0, at or below the fill 0, session thirds <= fill 0, movable 0  | registration: mature 8,984 (reads 1), third 2,874 (reads 0), stopped_after_third_le_fill 1,943 (reads 0), session_third_le_fill 112 (reads 0)
+  orh5 / tl / C1: fills 1, mature 1, thirds 0 (0 / 0 / 0), stopped after the third at cost 0, at or below the fill 0, session thirds <= fill 0, movable 0  | registration: fills 79 (reads 1), third 34 (reads 0), third_day0_r 12 (reads 0), third_r 17 (reads 0), third_session 5 (reads 0), stopped_after_third_le_fill 24 (reads 0), session_third_le_fill 1 (reads 0)
+  walk 2/2 dates, 4 fills x 6 arms
+[exit walks: <N>s]
+WROTE <TMP>/cb702/out/trades_discovery_exitpb.tsv.gz (4 fills x 6 arms)
+  (a) pp-family session thirds on a close <= the fill: 0 (must be 0)
+  (b) wbe-family stop_to levels off max(stop0, min(fill, fill - (p - fill)/2)) or below stop0: 0 of 6 (must be 0)
+  (c) wbe / stop0 day-0 thirds stopped on day 0 above stop0: 0 (must be 0)
+  (d) pp differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp_wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp_s0 differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp5_wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (e) pp differs from A on a trade A trailed out after a +2R or above-fill session third: 0 of 1 (must be 0)
+  (f) cells where the pp_wbe >= 10R count is below A's: 0 (must be 0)
+  (g) TSLA 2020-06-01: not in this period (the pre period's check)
+#702 EXIT READ - his partial and the stop after it, on discovery (2022-03-28..2024-12-31, DECIDES). Registered before any outcome: docs/analysis/cb_exit_partial_prereg_2026-10-19.md. Measurement only: nothing here switches the deciding comparison, the primary arm, the entry, the stop, a cell, a period, the horizon, the seed, the draw count, the n floor or the open-mark exclusion.
+POPULATION: the pinned P5 fills (level tl, entry ORH5, the low-of-day stop no wider than one ADR20, the spec key's first break per base) - every arm walks the SAME fills, so the comparison is per trade; the pinned hourly-close fills (entry h60) are walked beside, descriptively. A group is the MATURE walks only; an open mark is counted, never in a number. ARMS: A = c3_p33_t20_cut3 (the control: the session-3 third whatever the price, stop to the fill after any third); pp = his RULING (the session-3 third only on a close above the fill, else skipped, the +2R leg stays armed; stop to the fill after a third); pp_wbe = the PRIMARY: pp + his PROPOSAL (after a third sold at p the stop rests at max(stop0, min(fill, fill - (p - fill)/2)), the whole-trade breakeven); beside: wbe (A's partial rule + the wbe stop), pp_s0 (pp with the stop left at stop0 after any third), pp5_wbe (the first close in sessions 3-5 above the fill, then the wbe stop). Common to all: 1/3; the +2R leg (day 0 on the minutes); the +1R-by-session-3 cut; the 20-day trail filled at the next open; R against the entry stop; horizon 120. The pp-family trail is live from session 3 whether or not the third sold.
+INTERVAL RECIPE (the independent re-derivation reproduces it with no runner code): month-block bootstrap of the mean - blocks = the FILL month (E's month), 2,000 resamples of as many blocks as there are months, with replacement, each resample's mean = sum of the drawn blocks' values / their trade count; the 2.5 / 97.5 percentiles (numpy.percentile, linear); generator numpy.random.default_rng([702, zlib.crc32(key)]) with key 'exitpb|<period>|<entry>|<cell>|tl|<arm>' for a cell's R and 'exitpb_delta|<period>|<entry>|<cell>|tl|<x>-<y>' for a per-trade delta R(x) - R(y) (both walks mature); the stream is drawn as integers(0, n_months, size=(2000, n_months)). The deciding delta: pp_wbe - pp on C1, n floor 30; lower end > 0 = wbe WINS, upper end < 0 = wbe LOSES, else can't tell; C0 the same, read when C1 can't tell.
+DATA CHECKS: freeze passed; module <SHA12>... equal; parity P1 / P2 4 fills, 0 mismatches; implementation checks passed; rows walked 4 x 6 arms
+
+========== ENTRY orh5 / level tl - DECIDES ==========
+EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):
+  MET: C0 delta(pp_wbe - pp) point estimate +0.0000R on 1 trades (expected >= 0: it keeps runners the entry-price stop took out and costs only on trades that fall from the third to the original stop)
+  MET: C1 median sessions held under pp_wbe 0 vs A's 0 (expected >=)
+  MET: C0 median sessions held under pp_wbe 0 vs A's 0 (expected >=)
+
+THE DECIDING EXIT BAR - per trade delta = R(pp_wbe) - R(pp) on the SAME fills (the ruled rule with vs without his stop); a trade with an open mark on either arm excluded and counted; 'n differing' = trades whose R differs at all
+delta           n trades  excl open  n differing  mean delta R  95% CI                  verdict
+C1 pp_wbe - pp         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_wbe - pp         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 VERDICT on the stop change: can't tell (n = 1 < 30) (n 1, mean +0.0000 ); C0: can't tell (n = 1 < 30) (n 1, mean +0.0000 )
+CONSEQUENCE (the registration's table): can't tell -> pp_wbe (his proposal, not shown worse at scale: C0 upper end unknown); the exit carried into every next registration = pp_wbe; pp replaces A in every case (his ruling); paper: nothing from this read.
+  pre: no verdict file yet (not run) - no stamp
+  holdout: no verdict file yet (not run) - no stamp
+
+REPORTED, NEVER DECIDING - every registered delta per trade (x - y), C1 and C0
+delta                n trades  excl open  n differing  mean delta R  95% CI                  verdict
+C1 pp_wbe - pp              1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp - A                   1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp_wbe - A               1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp_s0 - pp               1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp5_wbe - pp_wbe         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 wbe - A                  1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_wbe - pp              1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp - A                   1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_wbe - A               1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_s0 - pp               1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp5_wbe - pp_wbe         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 wbe - A                  1          0            0       +0.0000          can't tell (n = 1 < 30)
+
+CELL VERDICT under pp_wbe (whether the SETUP passes with his exit; the hourly-close read's bars word for word: PASS = n >= 30, interval lower end > 0, ADR P&L > 0, beats C0 under the same exit on mean R AND the >= 5R share, >= 10R trades from >= 3 tickers AND >= 3 months counting only stops >= 0.25 ADR20 wide; FAIL = n >= 30 AND (upper end < 0 OR not beating C0 on mean R); else CAN'T TELL)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread     VERDICT         why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m  CAN'T TELL  n = 1 < 30
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m    baseline            
+
+PER ARM x CELL (mature walks; 'thirds' = trades that sold a third, by kind: the day-0 +2R touch / a later +2R touch / the session close; 'stopped after third <= fill' = share of the mature walks stopped after their third at or below the fill; 'beabove' = be_above_close counts by the kind of third it followed (session / +2R); '>=10R vs A' = the arm's >= 10R trades, A's on the same trades, and the overlap)
+  arm A (control; session leg always, stop after the third entry)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp (his ruling; session leg profit_only, stop after the third entry)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp_wbe (PRIMARY; session leg profit_only, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread     VERDICT         why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m  CAN'T TELL  n = 1 < 30
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m    baseline            
+  arm wbe (beside; session leg always, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp_s0 (beside; session leg profit_only, stop after the third stop0)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp5_wbe (beside; session leg profit_3to5, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI   win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  -1.000          0.0%              -1.00       0.0        0.0        0.0     -1.0        100.0%   -0.254         0           0 (0/0/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+
+BE_ABOVE_CLOSE by kind (A's registration counts: 2022-24 C1 1 / C0 112 session kind, C1 1 / C0 27 +2R kind; 2017-21 0 / 170 and 0 / 48): session third sold below cost / +2R third on a bar closing under the fill - impossible under pp_wbe and pp5_wbe, the +2R kind remains under pp
+cell arm    session kind  +2R kind
+C1 A                   0         0
+C1 pp                  0         0
+C1 pp_wbe              0         0
+C1 wbe                 0         0
+C1 pp_s0               0         0
+C1 pp5_wbe             0         0
+C0 A                   0         0
+C0 pp                  0         0
+C0 pp_wbe              0         0
+C0 wbe                 0         0
+C0 pp_s0               0         0
+C0 pp5_wbe             0         0
+
+SLICES - year, arms A and pp_wbe (orh5 / tl); each cell is n / mean R / share >= 5R over the mature walks
+  arm A
+cell                      2023
+C1                1/-1.00/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/-1.00/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+  arm pp_wbe
+cell                      2023
+C1                1/-1.00/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/-1.00/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+
+========== ENTRY h60 / level tl - the hourly-close fills, DESCRIPTIVE ==========
+EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):
+  MISSED: C0 delta(pp_wbe - pp) point estimate -0.0878R on 1 trades (expected >= 0: it keeps runners the entry-price stop took out and costs only on trades that fall from the third to the original stop)
+  MET: C1 median sessions held under pp_wbe 17 vs A's 3 (expected >=)
+  MET: C0 median sessions held under pp_wbe 17 vs A's 3 (expected >=)
+
+THE DECIDING EXIT BAR - per trade delta = R(pp_wbe) - R(pp) on the SAME fills (the ruled rule with vs without his stop); a trade with an open mark on either arm excluded and counted; 'n differing' = trades whose R differs at all
+delta           n trades  excl open  n differing  mean delta R  95% CI                  verdict
+C1 pp_wbe - pp         1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp_wbe - pp         1          0            1       -0.0878          can't tell (n = 1 < 30)
+STAMP (decides nothing): C1 delta(pp_wbe - pp) negative (-0.0878, n 1, can't tell (n = 1 < 30)); C0 negative (-0.0878, n 1, can't tell (n = 1 < 30))
+
+REPORTED, NEVER DECIDING - every registered delta per trade (x - y), C1 and C0
+delta                n trades  excl open  n differing  mean delta R  95% CI                  verdict
+C1 pp_wbe - pp              1          0            1       -0.0878          can't tell (n = 1 < 30)
+C1 pp - A                   1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 pp_wbe - A               1          0            1       -0.0878          can't tell (n = 1 < 30)
+C1 pp_s0 - pp               1          0            1       -0.0878          can't tell (n = 1 < 30)
+C1 pp5_wbe - pp_wbe         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C1 wbe - A                  1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp_wbe - pp              1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp - A                   1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 pp_wbe - A               1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp_s0 - pp               1          0            1       -0.0878          can't tell (n = 1 < 30)
+C0 pp5_wbe - pp_wbe         1          0            0       +0.0000          can't tell (n = 1 < 30)
+C0 wbe - A                  1          0            1       -0.0878          can't tell (n = 1 < 30)
+
+CELL VERDICT under pp_wbe (whether the SETUP passes with his exit; the hourly-close read's bars word for word: PASS = n >= 30, interval lower end > 0, ADR P&L > 0, beats C0 under the same exit on mean R AND the >= 5R share, >= 10R trades from >= 3 tickers AND >= 3 months counting only stops >= 0.25 ADR20 wide; FAIL = n >= 30 AND (upper end < 0 OR not beating C0 on mean R); else CAN'T TELL) - labels only on the hourly-close fills
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread   VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m    report     
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m  baseline     
+
+PER ARM x CELL (mature walks; 'thirds' = trades that sold a third, by kind: the day-0 +2R touch / a later +2R touch / the session close; 'stopped after third <= fill' = share of the mature walks stopped after their third at or below the fill; 'beabove' = be_above_close counts by the kind of third it followed (session / +2R); '>=10R vs A' = the arm's >= 10R trades, A's on the same trades, and the overlap)
+  arm A (control; session leg always, stop after the third entry)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7        100.0%   +0.149         3           1 (0/1/0)                       100.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7        100.0%   +0.149         3           1 (0/1/0)                       100.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp (his ruling; session leg profit_only, stop after the third entry)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7        100.0%   +0.149         3           1 (0/1/0)                       100.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7        100.0%   +0.149         3           1 (0/1/0)                       100.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp_wbe (PRIMARY; session leg profit_only, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread   VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m    report     
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m  baseline     
+  arm wbe (beside; session leg always, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp_s0 (beside; session leg profit_only, stop after the third stop0)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+  arm pp5_wbe (beside; session leg profit_3to5, stop after the third wbe)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  top-2% share  pnl_adr  med held  thirds (d0/r/sess)  stopped after third <= fill  beabove sess/r        >=10R vs A  >=10R spread  VERDICT  why
+C1        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+C0        1  1     0  +0.579          100.0%    +0.58                 0.0        0.0        0.0     +0.6        100.0%   +0.129        17           1 (0/1/0)                         0.0%             0/0  0 / A 0 / both 0      0: 0t/0m              
+
+IMPLEMENTATION CHECKS (the registration's WOULD-FAIL-IF lines, on this table; every one must hold or the report is not written):
+  (a) pp-family session thirds on a close <= the fill: 0 (must be 0)
+  (b) wbe-family stop_to levels off max(stop0, min(fill, fill - (p - fill)/2)) or below stop0: 0 of 6 (must be 0)
+  (c) wbe / stop0 day-0 thirds stopped on day 0 above stop0: 0 (must be 0)
+  (d) pp differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp_wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp_s0 differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (d) pp5_wbe differs from A on a trade A stopped or cut with no third: 0 of 2 (must be 0)
+  (e) pp differs from A on a trade A trailed out after a +2R or above-fill session third: 0 of 1 (must be 0)
+  (f) cells where the pp_wbe >= 10R count is below A's: 0 (must be 0)
+  (g) TSLA 2020-06-01: not in this period (the pre period's check)
+WROTE <TMP>/cb702/out/exitpb_report_discovery.tsv (28 rows), <TMP>/cb702/out/exitpb_deltas_discovery.tsv (24 rows), <TMP>/hereroot/out/exitpb_report_discovery.txt, <TMP>/cb702/out/exitpb_verdict_discovery.txt
+WALL TIME: <N>s total
+
+==== GOLDEN ARTEFACT parity_only/exit | bytes=1 | sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9 | text
+0
+==== GOLDEN ARTEFACT parity_only/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT parity_only/stdout | bytes=2006 | sha256=ef803cfd53f9399cf7b725ce1ebcd4f58b3ecac7692062f0de9da7fb2ab20306 | text
+EXIT READ (#702) - PARITY ONLY: period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check NOT RUN (parity only); module sha256 <SHA64> (registered), runner sha256 <SHA64>
+bars: 600 rows / 2 tickers / 300 sessions 2023-01-02..2024-02-23 (<N>s); 0 tickers have a missing session inside their span (0 holes)
+  parity 2/2 dates, 4 fills
+[parity: <N>s]
+PARITY: P2 h60/com: 1 match, 0 mismatch; P2 h60/tl: 1 match, 0 mismatch; P1 orh5/com: 1 match, 0 mismatch; P1 orh5/tl: 1 match, 0 mismatch (status, maturity, sessions held, third kind and session, be_above_close, forward window, R to 1e-09; and the module's own walk event for event)
+REACH from the control's rows (entry / level / cell: fills, mature, thirds (day0_r / r / session), stopped after the third at the fill, at or below it, session thirds at or below the fill, movable = trades the pp / pp_wbe rules can change) - the registration's line beside
+  h60 / tl / C0: fills 1, mature 1, thirds 1 (0 / 1 / 0), stopped after the third at cost 1, at or below the fill 1, session thirds <= fill 0, movable 1
+  h60 / tl / C1: fills 1, mature 1, thirds 1 (0 / 1 / 0), stopped after the third at cost 1, at or below the fill 1, session thirds <= fill 0, movable 1
+  orh5 / tl / C0: fills 1, mature 1, thirds 0 (0 / 0 / 0), stopped after the third at cost 0, at or below the fill 0, session thirds <= fill 0, movable 0  | registration: mature 8,984 (reads 1), third 2,874 (reads 0), stopped_after_third_le_fill 1,943 (reads 0), session_third_le_fill 112 (reads 0)
+  orh5 / tl / C1: fills 1, mature 1, thirds 0 (0 / 0 / 0), stopped after the third at cost 0, at or below the fill 0, session thirds <= fill 0, movable 0  | registration: fills 79 (reads 1), third 34 (reads 0), third_day0_r 12 (reads 0), third_r 17 (reads 0), third_session 5 (reads 0), stopped_after_third_le_fill 24 (reads 0), session_third_le_fill 1 (reads 0)
+WALL TIME: <N>s total (no new-arm number computed; nothing written)
+
+==== GOLDEN ARTEFACT print_pins/exit | bytes=1 | sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9 | text
+0
+==== GOLDEN ARTEFACT print_pins/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT print_pins/stdout | bytes=765 | sha256=dbf94da7e8a9ab434eb8045fe4dc4b2ec0bb22817054975cf921ffdd37eb8e8d | text
+- module sha256: `<SHA64>`
+- runner sha256: `<SHA64>`
+- cb702/daily_closes_all.csv.gz sha256: `<SHA64>`
+- cb702_pre/daily_closes_all.csv.gz sha256: `<SHA64>`
+- cb702/out/candidates.tsv sha256: `<SHA64>`
+- cb702/out/candidates_com_comb.tsv sha256: `<SHA64>`
+- cb702/out/trades_discovery_p5.tsv.gz sha256: `<SHA64>`
+- cb702/out/trades_holdout_p5.tsv.gz sha256: `<SHA64>`
+- cb702/out/trades_discovery_h60.tsv.gz sha256: `<SHA64>`
+- cb702/out/trades_holdout_h60.tsv.gz sha256: `<SHA64>`
+- cb702_pre/out/candidates_tl_com.tsv sha256: `<SHA64>`
+- cb702_pre/out/trades_pre_p5.tsv.gz sha256: `<SHA64>`
+- cb702_pre/out/trades_pre_h60.tsv.gz sha256: `<SHA64>`
+- cb702/minutes (tree) sha256: `<SHA64>`
+- cb702_pre/minutes (tree) sha256: `<SHA64>`
+- doc body sha256: `<SHA64>`
+
+==== GOLDEN ARTEFACT refuse_module_pin_dry_run/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_module_pin_dry_run/stderr | bytes=130 | sha256=96662142c131dae3922937181af04709830db94c8ab7a91893e8266931754f4d | text
+REFUSED: module sha256 <SHA12>... is not the registered <SHA12>... - consolidation_breakout.py was edited; the read does not open
+
+==== GOLDEN ARTEFACT refuse_module_pin_dry_run/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_once_only/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_once_only/stderr | bytes=125 | sha256=e686470571ab8670507549655248e0d2b1b6284f802a3e685f76c5e9f0dcc641 | text
+REFUSED: the exit read's outcomes are read ONCE per period and <TMP>/cb702/out/trades_discovery_exitpb.tsv.gz already exists
+
+==== GOLDEN ARTEFACT refuse_once_only/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_out/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_out/stderr | bytes=171 | sha256=eea2039735ac84abb5a2b37fd4ddd9bed43b7c56e4219b4fc15135040549af18 | text
+REFUSED: the exit read runs only in its registered form:
+  - --out <TMP>/elsewhere is not DATA/out (<TMP>/cb702/out): the pinned inputs and the once-only check live there
+
+==== GOLDEN ARTEFACT refuse_out/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_parity_only_no_freeze_check/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_parity_only_no_freeze_check/stderr | bytes=68 | sha256=d6e26f65fdf0e15c13156cb161c5690c69cbc8ec757abc8adfbced796a8d3a7c | text
+REFUSED: --no-freeze-check is honoured only together with --dry-run
+
+==== GOLDEN ARTEFACT refuse_parity_only_no_freeze_check/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_partial/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_partial/stderr | bytes=229 | sha256=0db1f521bf0fc33e3bc8df69d22cad90f46178f1775dd3dcfc61e3f403081239 | text
+REFUSED: <TMP>/cb702/out/trades_discovery_exitpb.tsv.gz.partial is what a CRASHED exit read left behind - it holds some outcomes. The read is run ONCE per period: the operator inspects it and removes it by hand before any re-run
+
+==== GOLDEN ARTEFACT refuse_partial/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_prereg/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_prereg/stderr | bytes=164 | sha256=d426fdf6bc0894e261a857fae795d0ec38ac2f6a2c9effc50009d54231605823 | text
+REFUSED: --prereg is honoured only with --print-pins or --dry-run - the read pins the registration doc at docs/analysis/cb_exit_partial_prereg_2026-10-19.md itself
+
+==== GOLDEN ARTEFACT refuse_prereg/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_small_out/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_small_out/stderr | bytes=115 | sha256=30b5c47ee413b6f228a83e584ddfa90c07a32158145b4dc88e963689b816583a | text
+REFUSED: the exit read runs only in its registered form:
+  - --small-out <TMP>/elsewhere is not <TMP>/hereroot/out
+
+==== GOLDEN ARTEFACT refuse_small_out/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+

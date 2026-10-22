@@ -129,6 +129,7 @@ from agents.market_intelligence.consolidation_breakout import (  # noqa: E402
     stamp_base_chain, stamp_retrigger,
 )
 from agents.market_intelligence.consolidation_breakout import fwd_end  # noqa: E402,F401  (not called here; kept as `runner.fwd_end`)
+from scripts.probes._cb_backtest import registered_read as rr  # noqa: E402  (#705 (a): the shared registered-read scaffold + speed helpers)
 
 HERE = Path(__file__).resolve().parent
 WATCH_START = date(2022, 3, 28)          # first watch night D (plan: discovery 2022-03-28 .. 2024-12-31)
@@ -2557,7 +2558,8 @@ def run_exits_report(args) -> int:
 # the holdout guard - freeze_check, copied in structure from scripts/probes/_686/preregistered_read.py::freeze_check
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 def sha256_file(p: Path) -> str:
-    return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+    """Streamed since #705 (a) (`hashlib.file_digest`): the identical digest without reading a 270 MB export whole."""
+    return rr.sha256_file(Path(p))
 
 
 def _is_minute_data_file(p: Path) -> bool:
@@ -6614,10 +6616,23 @@ def run_exit_read(args) -> int:
 
 
 # ═════════════════════════════════════════════════════════════════════════════════════════════
+# #705 (a): the registered-read registry. A read built after the four finished ones is a `rr.RegisteredRead` registered here by its
+# stage name; `main()` dispatches it to the ONE driver (freeze map + --print-pins, option refusals with --out checked against the dir
+# the period READS, --dry-run, once-only + .partial, the verdict files). The four finished stages above are NOT migrated: their freeze
+# records pin the runner that ran them, and tests/test_cb_backtest_golden.py pins their every byte.
+# ═════════════════════════════════════════════════════════════════════════════════════════════
+REGISTERED_READS: dict = {}
+
+
+def run_registered_read(spec: "rr.RegisteredRead", args) -> int:
+    """Run a registered read with THIS module as the runtime (HERE / REPO / freeze_check / pin_lines / existing_outputs / minute_inputs ...)."""
+    return rr.run_registered_read(spec, args, sys.modules[__name__])
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("stage", choices=["daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report", "p5", "pre-read",
-                                      "h60-step0", "h60-read", "h60-hindsight", "exit-read"],
+                                      "h60-step0", "h60-read", "h60-hindsight", "exit-read"] + sorted(REGISTERED_READS),
                     help="daily = P2a daily stage; minute = DISCOVERY entries/exits/controls; step0-entries = HOLDOUT "
                          "composition, no outcome; holdout = the minute engine AND the P5 stage on the HOLDOUT, behind "
                          "freeze_check (BUILT, NOT RUN); report = the DISCOVERY read; exits / exits-report = #702 his exit (the "
@@ -6668,8 +6683,9 @@ def main(argv=None) -> None:
                                      "bars is not evaluated and is counted as 'identity_break' (scripts/probes/_qm_streams/ext_bars.py)")
     ap.add_argument("--era-label", help="daily: stamp every row's `split` column with this label (e.g. 'pre') instead of discovery/holdout; "
                                         "read_candidates() then refuses the file, so it cannot feed the discovery or holdout stages")
-    ap.add_argument("--period", choices=list(H60_PERIODS), help="h60-step0 / h60-read / h60-hindsight / exit-read: the period (discovery decides; pre = "
-                                                                "2017-21 and 2020-21 alone; holdout = 2025-26, descriptive)")
+    periods = list(H60_PERIODS) + [p for s in REGISTERED_READS.values() for p in s.periods if p not in H60_PERIODS]
+    ap.add_argument("--period", choices=list(dict.fromkeys(periods)), help="h60-step0 / h60-read / h60-hindsight / exit-read: the period (discovery decides; pre = "
+                                                                           "2017-21 and 2020-21 alone; holdout = 2025-26, descriptive)")
     ap.add_argument("--parity-only", action="store_true", help="exit-read: pass 1 alone - the control arm re-walked by the copy on every pinned fill "
                                                                "against the pinned rows and the module's own walk; prints the match / mismatch counts "
                                                                "and the reach line; computes no new-arm number and writes nothing")
@@ -6683,6 +6699,11 @@ def main(argv=None) -> None:
         ap.error(f"--{', --'.join(o.replace('_', '-') for o in era_opts)}: options of the `daily` stage only (the pre-2022 Alpaca-era run)")
     parse_keys(args.keys)                       # a bad --keys fails here, before any stage opens a file
     parse_levels(args.levels, parse_keys(args.keys))
+    if args.stage in REGISTERED_READS:          # #705 (a): a read on the shared scaffold
+        rc = run_registered_read(REGISTERED_READS[args.stage], args)
+        if rc:
+            sys.exit(rc)
+        return
     if args.stage == "exits":
         run_exits(args)
         return

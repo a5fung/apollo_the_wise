@@ -1,0 +1,7 @@
+{
+ "system": "Darwin",
+ "machine": "arm64",
+ "python": "3.14.6",
+ "numpy": "2.5.1",
+ "pandas": "3.0.3"
+}

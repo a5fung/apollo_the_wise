@@ -1,0 +1,1071 @@
+==== GOLDEN ARTEFACT dry_run/exit | bytes=1 | sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9 | text
+0
+==== GOLDEN ARTEFACT dry_run/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT dry_run/stdout | bytes=564 | sha256=9ff7aeb4d621d941c9a1e08fa1b5e2344cff40c247ade43e82604948d5f9bd23 | text
+H60 DRY RUN (freeze check passed; counts only - no daily bar, minute row or outcome was opened): period discovery: 2 bases (tl 1, com 1), 3 rows, 2 (date, ticker) pairs; pairs NOT logged in _done.psv: 0, logged ok with no file: 0 -> complete; outputs already on disk: none. Would write <TMP>/cb702/out/trades_discovery_h60.tsv.gz, the twin <TMP>/cb702/out/trades_discovery_h60twin.tsv.gz, <TMP>/cb702/out/h60_pairs_discovery.tsv.gz, <TMP>/cb702/out/h60_report_discovery.tsv, <TMP>/cb702/out/h60_verdict_discovery.txt and the small copies under <TMP>/hereroot/out.
+
+==== GOLDEN ARTEFACT dry_run_prereg/exit | bytes=1 | sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9 | text
+0
+==== GOLDEN ARTEFACT dry_run_prereg/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT dry_run_prereg/stdout | bytes=564 | sha256=9ff7aeb4d621d941c9a1e08fa1b5e2344cff40c247ade43e82604948d5f9bd23 | text
+H60 DRY RUN (freeze check passed; counts only - no daily bar, minute row or outcome was opened): period discovery: 2 bases (tl 1, com 1), 3 rows, 2 (date, ticker) pairs; pairs NOT logged in _done.psv: 0, logged ok with no file: 0 -> complete; outputs already on disk: none. Would write <TMP>/cb702/out/trades_discovery_h60.tsv.gz, the twin <TMP>/cb702/out/trades_discovery_h60twin.tsv.gz, <TMP>/cb702/out/h60_pairs_discovery.tsv.gz, <TMP>/cb702/out/h60_report_discovery.tsv, <TMP>/cb702/out/h60_verdict_discovery.txt and the small copies under <TMP>/hereroot/out.
+
+==== GOLDEN ARTEFACT h60_read/cb702/out/h60_pairs_discovery.tsv.gz | bytes=1094 | sha256=37d2309cfb10d0bd01fd1f3988792d2eb3529e519551c0fc1204183c0f11d209 | text
+ticker	pole_date	K	base	period	first_D	first_E	first_month	first_year	n_rows	C0	C1	C2	C3	C4	C5	C6	C7	C1_no_retrace	C1_no_tightening	HTF	C1_s5	orh5_status	orh5_reason	orh5_data_abstain	orh5_fill	orh5_r	orh5_adr	orh5_mature	orh5_open	h60_status	h60_reason	h60_E	h60_row_no	h60_fill	h60_fill_minute	h60_r	h60_adr	h60_mature	h60_open	h60_same_day	h60_gap_kind	own_C1	h60_first_status	h60_first_r	h60_first_mature	h60_first_open	cbar_status	cbar_r	cbar_adr	cbar_mature	cbar_open
+X	2023-07-03	tl	X|2023-07-03|tl	discovery	2023-07-28	2023-07-31	2023-07	2023	2	1	1	0	0	0	0	0	0	0	0	0	0	filled		0	10.26025	-1.0	-0.2536487902341553	1	0	filled		2023-08-02	1	10.33032	30	0.6666666666666666	0.1486368928229386	1	0	0	absent	1	never_confirmed	0.0		0	filled	0.6666666666666666	0.1486368928229386	1	0
+X	2023-07-03	com	X|2023-07-03|com	discovery	2023-07-28	2023-07-31	2023-07	2023	1	1	1	0	0	0	0	0	0	0	0	0	0	filled		0	10.1101	-1.0	-0.1089009999901081	1	0	filled		2023-07-31	0	10.06005	30	1.4282313734825025	0.2982092534331347	1	0	1		1	filled	1.4282313734825025	1	0	filled	1.4282313734825025	0.2982092534331347	1	0
+
+==== GOLDEN ARTEFACT h60_read/cb702/out/h60_report_discovery.tsv | bytes=19237 | sha256=5f8f2065c2366966213832ceea4ea5ecfe8d726b54b601ba852aea173fba1009 | text
+period	window	cell	K	entry	stop	arm	slice	value	n_filled	n	n_open	mean_r	ci_lo	ci_hi	win_rate	avg_win	avg_loss	median_r	share_ge5	share_ge10	share_ge20	sum_r	top2_sum_r	top2_share	mean_pnl_adr	mean_acct_pct	fill_day_stop_share	median_held	tail_n	tail_tickers	tail_months	tail_n_nowidth	tail_tickers_nowidth	tail_months_nowidth	too_wide	stop_abstain	never_confirmed	data_abstain	verdict	why
+discovery	discovery	C0	com	h30	lod	c3_p33_t20_cut3	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h30	lod	c3_p33_t20_cut3	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h30	lod	p33_s3_t10	all		1	1	0	1.9358089343806977			1.0	1.9358089343806977		1.9358089343806977	0.0	0.0	0.0	1.9358089343806977	1.9358089343806977	1.0	0.4041895086671209	0.0080837901733424	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h30	lod	p33_s3_t10	all		1	1	0	1.9358089343806977			1.0	1.9358089343806977		1.9358089343806977	0.0	0.0	0.0	1.9358089343806977	1.9358089343806977	1.0	0.4041895086671209	0.0080837901733424	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h30	lod	r2_p33_t20	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h30	lod	r2_p33_t20	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h5	lod	c3_p33_t20_cut3	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.059691552228866	-0.0011938310445773	1.0	0.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h5	lod	c3_p33_t20_cut3	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.059691552228866	-0.0011938310445773	1.0	0.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h5	lod	p33_s3_t10	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.059691552228866	-0.0011938310445773	1.0	0.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h5	lod	p33_s3_t10	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.059691552228866	-0.0011938310445773	1.0	0.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h5	lod	r2_p33_t20	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.059691552228866	-0.0011938310445773	1.0	0.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h5	lod	r2_p33_t20	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.059691552228866	-0.0011938310445773	1.0	0.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	base_low_cap1	c3_p33_t20_cut3	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.159094636706577	-0.0031818927341315	0.0	1.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	base_low_cap1	c3_p33_t20_cut3	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.159094636706577	-0.0031818927341315	0.0	1.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	base_low_cap1	p33_s3_t10	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.159094636706577	-0.0031818927341315	0.0	1.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	base_low_cap1	p33_s3_t10	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.159094636706577	-0.0031818927341315	0.0	1.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	base_low_cap1	r2_p33_t20	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.159094636706577	-0.0031818927341315	0.0	1.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	base_low_cap1	r2_p33_t20	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.159094636706577	-0.0031818927341315	0.0	1.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	cbar_low	c3_p33_t20_cut3	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	cbar_low	c3_p33_t20_cut3	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	cbar_low	p33_s3_t10	all		1	1	0	1.9358089343806977			1.0	1.9358089343806977		1.9358089343806977	0.0	0.0	0.0	1.9358089343806977	1.9358089343806977	1.0	0.4041895086671209	0.0080837901733424	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	cbar_low	p33_s3_t10	all		1	1	0	1.9358089343806977			1.0	1.9358089343806977		1.9358089343806977	0.0	0.0	0.0	1.9358089343806977	1.9358089343806977	1.0	0.4041895086671209	0.0080837901733424	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	cbar_low	r2_p33_t20	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	cbar_low	r2_p33_t20	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	lod	c3_p33_t20_cut3	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	lod	c3_p33_t20_cut3	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	lod	p33_s3_t10	all		1	1	0	1.9358089343806977			1.0	1.9358089343806977		1.9358089343806977	0.0	0.0	0.0	1.9358089343806977	1.9358089343806977	1.0	0.4041895086671209	0.0080837901733424	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	lod	p33_s3_t10	all		1	1	0	1.9358089343806977			1.0	1.9358089343806977		1.9358089343806977	0.0	0.0	0.0	1.9358089343806977	1.9358089343806977	1.0	0.4041895086671209	0.0080837901733424	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	lod	r2_p33_t20	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	lod	r2_p33_t20	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60_first	lod	c3_p33_t20_cut3	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60_first	lod	c3_p33_t20_cut3	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60_first	lod	p33_s3_t10	all		1	1	0	1.9358089343806977			1.0	1.9358089343806977		1.9358089343806977	0.0	0.0	0.0	1.9358089343806977	1.9358089343806977	1.0	0.4041895086671209	0.0080837901733424	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60_first	lod	p33_s3_t10	all		1	1	0	1.9358089343806977			1.0	1.9358089343806977		1.9358089343806977	0.0	0.0	0.0	1.9358089343806977	1.9358089343806977	1.0	0.4041895086671209	0.0080837901733424	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60_first	lod	r2_p33_t20	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60_first	lod	r2_p33_t20	all		1	1	0	1.4282313734825025			1.0	1.4282313734825025		1.4282313734825025	0.0	0.0	0.0	1.4282313734825025	1.4282313734825025	1.0	0.2982092534331347	0.0059641850686626	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h30	lod	c3_p33_t20_cut3	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h30	lod	c3_p33_t20_cut3	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h30	lod	p33_s3_t10	all		1	1	0	-0.1316429315734545			0.0		-0.1316429315734545	-0.1316429315734545	0.0	0.0	0.0	-0.1316429315734545	-0.1316429315734545	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h30	lod	p33_s3_t10	all		1	1	0	-0.1316429315734545			0.0		-0.1316429315734545	-0.1316429315734545	0.0	0.0	0.0	-0.1316429315734545	-0.1316429315734545	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h30	lod	r2_p33_t20	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h30	lod	r2_p33_t20	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h5	lod	c3_p33_t20_cut3	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h5	lod	c3_p33_t20_cut3	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h5	lod	p33_s3_t10	all		1	1	0	-0.1316429315734545			0.0		-0.1316429315734545	-0.1316429315734545	0.0	0.0	0.0	-0.1316429315734545	-0.1316429315734545	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h5	lod	p33_s3_t10	all		1	1	0	-0.1316429315734545			0.0		-0.1316429315734545	-0.1316429315734545	0.0	0.0	0.0	-0.1316429315734545	-0.1316429315734545	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h5	lod	r2_p33_t20	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h5	lod	r2_p33_t20	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	base_low_cap1	c3_p33_t20_cut3	all		1	1	0	-0.0631245836109218			0.0		-0.0631245836109218	-0.0631245836109218	0.0	0.0	0.0	-0.0631245836109218	-0.0631245836109218	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	base_low_cap1	c3_p33_t20_cut3	all		1	1	0	-0.0631245836109218			0.0		-0.0631245836109218	-0.0631245836109218	0.0	0.0	0.0	-0.0631245836109218	-0.0631245836109218	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	base_low_cap1	p33_s3_t10	all		1	1	0	-0.0631245836109218			0.0		-0.0631245836109218	-0.0631245836109218	0.0	0.0	0.0	-0.0631245836109218	-0.0631245836109218	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	base_low_cap1	p33_s3_t10	all		1	1	0	-0.0631245836109218			0.0		-0.0631245836109218	-0.0631245836109218	0.0	0.0	0.0	-0.0631245836109218	-0.0631245836109218	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	base_low_cap1	r2_p33_t20	all		1	1	0	-0.0631245836109218			0.0		-0.0631245836109218	-0.0631245836109218	0.0	0.0	0.0	-0.0631245836109218	-0.0631245836109218	1.0	-0.0293504944667715	-0.0005870098893354	0.0	120.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	base_low_cap1	r2_p33_t20	all		1	1	0	-0.0631245836109218			0.0		-0.0631245836109218	-0.0631245836109218	0.0	0.0	0.0	-0.0631245836109218	-0.0631245836109218	1.0	-0.0293504944667715	-0.0005870098893354	0.0	120.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	cbar_low	c3_p33_t20_cut3	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	cbar_low	c3_p33_t20_cut3	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	cbar_low	p33_s3_t10	all		1	1	0	-0.1316429315734545			0.0		-0.1316429315734545	-0.1316429315734545	0.0	0.0	0.0	-0.1316429315734545	-0.1316429315734545	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	cbar_low	p33_s3_t10	all		1	1	0	-0.1316429315734545			0.0		-0.1316429315734545	-0.1316429315734545	0.0	0.0	0.0	-0.1316429315734545	-0.1316429315734545	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	cbar_low	r2_p33_t20	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	cbar_low	r2_p33_t20	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	lod	c3_p33_t20_cut3	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0	0	0	baseline	
+discovery	discovery	C0	tl	h60	lod	c3_p33_t20_cut3	year	2023	1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0						
+discovery	discovery	C0	tl	h60	lod	c3_p33_t20_cut3	phase	1	1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0						
+discovery	discovery	C0	tl	h60	lod	c3_p33_t20_cut3	gap_over_1adr	0	1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0						
+discovery	discovery	C1	tl	h60	lod	c3_p33_t20_cut3	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0	0	0	CAN'T TELL	n = 1 < 30
+discovery	discovery	C1	tl	h60	lod	c3_p33_t20_cut3	year	2023	1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0						
+discovery	discovery	C1	tl	h60	lod	c3_p33_t20_cut3	phase	1	1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0						
+discovery	discovery	C1	tl	h60	lod	c3_p33_t20_cut3	gap_over_1adr	0	1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0						
+discovery	discovery	C1	tl	h60	lod	c3_p33_t20_cut3	own_C1		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0						
+discovery	discovery	C1	tl	h60	lod	c3_p33_t20_cut3	no_gap		0	0	0																													
+discovery	discovery	C0	tl	h60	lod	p33_s3_t10	all		1	1	0	-0.1316429315734545			0.0		-0.1316429315734545	-0.1316429315734545	0.0	0.0	0.0	-0.1316429315734545	-0.1316429315734545	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	lod	p33_s3_t10	all		1	1	0	-0.1316429315734545			0.0		-0.1316429315734545	-0.1316429315734545	0.0	0.0	0.0	-0.1316429315734545	-0.1316429315734545	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	lod	r2_p33_t20	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	lod	r2_p33_t20	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60_line0	lod	c3_p33_t20_cut3	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60_line0	lod	c3_p33_t20_cut3	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60_line0	lod	p33_s3_t10	all		1	1	0	-0.1316429315734545			0.0		-0.1316429315734545	-0.1316429315734545	0.0	0.0	0.0	-0.1316429315734545	-0.1316429315734545	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60_line0	lod	p33_s3_t10	all		1	1	0	-0.1316429315734545			0.0		-0.1316429315734545	-0.1316429315734545	0.0	0.0	0.0	-0.1316429315734545	-0.1316429315734545	1.0	-0.0293504944667715	-0.0005870098893354	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60_line0	lod	r2_p33_t20	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60_line0	lod	r2_p33_t20	all		1	1	0	0.6666666666666666			1.0	0.6666666666666666		0.6666666666666666	0.0	0.0	0.0	0.6666666666666666	0.6666666666666666	1.0	0.1486368928229386	0.0029727378564587	0.0	3.0	0	0	0	0	0	0	0	0				
+
+==== GOLDEN ARTEFACT h60_read/cb702/out/h60_report_discovery.txt | bytes=17872 | sha256=45f7043dede786d0c9400a8060dac8c9e115efe24bd36e6a72026d441156433d | text
+#702 h60 - the HOURLY-CLOSE entry read on discovery (2022-03-28..2024-12-31, DECIDES). Registered before any outcome: docs/analysis/cb_hourly_entry_prereg_2026-10-19.md. Measurement only: nothing here switches the deciding entry, a stop outside the stop bar, a cell, a period, the horizon, the n floor, the seed or the draw count.
+POPULATION: every row under the pole (spec key, rule (b)); the base's ONE trade = the first break day on which a 60-minute bar closed above the row's line and the next minute's open could fill; cell + period from the FIRST-break row, the day's facts from the CONFIRMING row. Entry h60, stop lod (the day's low through the bar's end), exit c3_p33_t20_cut3 (sell 1/3 at +2R or the session-3 close, breakeven, 20-day trail, stallers cut at the session-3 close), level tl (decides) / com (beside). A group is the MATURE walks only; an open mark is counted, never in a number.
+INTERVAL RECIPE (check 6 reproduces it with no runner code): month-block bootstrap of the mean - blocks = calendar months (the FILL month for a cell's trades; the FIRST-break month for a paired delta), 2,000 resamples of as many blocks as there are months, with replacement, each resample's mean = sum of the drawn blocks' R / their trade count; the 2.5 / 97.5 percentiles (numpy.percentile, linear); generator numpy.random.default_rng([702, zlib.crc32(key)]) with key 'h60|<period>|<window>|<cell>|<K>|<entry>|<stop>|<arm>' for a cell and 'h60pair|<period>|<window>|<cell>|entry' / '|entry_first' / '|stop' for the paired deltas (the stream is drawn as integers(0, n_months, size=(2000, n_months))).
+DATA CHECKS: freeze passed; STEP 0 equal to the registered table; early-close ok; data-abstain share 0.00%; twin equal in content to trades_discovery_p5.tsv.gz; rows walked 12
+
+========== WINDOW discovery ==========
+EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):
+  MISSED: C1 n reads 1 (expected 60-90)
+  MET: the C0 share stopped on the fill day under h60 reads 0.0% (expected < 25%; ORH5 ~ 35%)
+  NO SAME-DAY PAIR: on the 0 same-day C1 pairs the h60 fill sits above ORH5's on 0 (median fill ratio -; the reading chosen for 'sits above': the MEDIAN pair's h60 fill is above ORH5's)
+  ORH5 C0 BASELINE from the twin: mean R -1.00, win 0.0%, >= 10R 0.0 per 100 (the registration's numbers: -0.17R, 31%, 0.9 per 100 on discovery)
+
+VERDICT TABLE - level tl, entry h60, stop lod, arm c3_p33_t20_cut3, SPEC key, mature walks (C1 decides on 2022-24; every other row is its own population; the >= 10R spread counts trades whose stop is >= 0.25 ADR20 wide: tickers/months)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0  CAN'T TELL  n = 1 < 30
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0    baseline            
+  C1 >= 10R spread, the 2-and-2 reading (beside): not met with the width rule; without it 0 tickers / 0 months
+  C1 restricted to confirmations whose OWN watch night still passed C1 (his regime caution):
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+C1*       1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0         CAN'T TELL  n = 1 < 30
+  C1 restricted to confirmations with no absent / no-line night since the first break:
+cell  fills  n  open  mean R  95% CI  win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr  acct%  fill-day stop  med held  >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+C1*       0  0     0                                                                                                                                                               0     0         CAN'T TELL  n = 0 < 30
+
+PAIRED ENTRY BAR - per base delta = R(h60) - R(ORH5), no trade = 0R; excluded: an open mark on either side, an ORH5 first break that was a data abstain; month-block interval on the FIRST-break month; C1 decides, C0 = the mechanism at scale
+cell  n bases  mean delta  95% CI           paired verdict  excl open  excl ORH5 data  same day (both filled): n / delta  first-day abstains  later row: n / delta  h60 never: n / ORH5 R  traded by ORH5 / h60                      h60_first delta  >=5R ORH5 / h60 / both  >=10R ORH5 / h60 / both
+C1          1      +1.667          can't tell (n = 1 < 30)          0               0                               0 /                    0             1 / +1.67                   0 /        100.0% / 100.0%  1 / +1.000  can't tell (n = 1 < 30)               0 / 0 / 0                0 / 0 / 0
+C0          1      +1.667          can't tell (n = 1 < 30)          0               0                               0 /                    0             1 / +1.67                   0 /        100.0% / 100.0%  1 / +1.000  can't tell (n = 1 < 30)               0 / 0 / 0                0 / 0 / 0
+
+PAIRED STOP BAR (under h60) - delta = R(cbar_low) - R(lod) per base on the primary's confirmed day (a stop that abstained there = 0R; the entry bar's exclusions; bases with a trade on at least one side); carried forward only when the interval's lower end > 0 AND the ADR P&L delta > 0
+cell  n bases  mean delta R  95% CI  ADR P&L delta  cbar_low abstains (0R)  lod abstains (0R)  stop carried
+C1          1        +0.000                 +0.000                       0                  0           lod
+C0          1        +0.000                 +0.000                       0                  0           lod
+
+C1 VERDICT: CAN'T TELL (n = 1 < 30); paired entry: can't tell (n = 1 < 30); paired stop: carry lod
+CONSEQUENCE (the registration's table): not recorded (the C0 paired interval's lower end is unknown, not > 0); next tests under ORH5; whatever is recorded carries the stop lod
+Chance of a false pass: three deciding one-sided tests on 2022-24 (the C1 interval, the paired entry delta, the paired stop delta), each ~2.5% under a true zero if the block bootstrap is calibrated -> ~7% that at least one passes by chance; the tail-spread and beat-C0 conditions make a C1 chance pass rarer.
+  pre: no verdict file yet (not run) - no stamp
+  holdout: no verdict file yet (not run) - no stamp
+
+BESIDE - every entry on the lod stop, the primary arm, per cell (tl); then h60 x every stop x every arm (C0 / C1); then com
+  entry h60 / tl / lod / c3_p33_t20_cut3
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0  CAN'T TELL  n = 1 < 30
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0    baseline            
+  entry h30 / tl / lod / c3_p33_t20_cut3
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+  entry h5 / tl / lod / c3_p33_t20_cut3
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+  entry h60_line0 / tl / lod / c3_p33_t20_cut3
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+  C0 / tl / h60: stop x arm
+stop / arm                       fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never   VERDICT  why
+lod / c3_p33_t20_cut3                1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0  baseline     
+lod / p33_s3_t10                     1  1     0  -0.132            0.0%              -0.13       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+lod / r2_p33_t20                     1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+cbar_low / c3_p33_t20_cut3           1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+cbar_low / p33_s3_t10                1  1     0  -0.132            0.0%              -0.13       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+cbar_low / r2_p33_t20                1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+base_low_cap1 / c3_p33_t20_cut3      1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+base_low_cap1 / p33_s3_t10           1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+base_low_cap1 / r2_p33_t20           1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%       120  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+  C1 / tl / h60: stop x arm
+stop / arm                       fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+lod / c3_p33_t20_cut3                1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0  CAN'T TELL  n = 1 < 30
+lod / p33_s3_t10                     1  1     0  -0.132            0.0%              -0.13       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+lod / r2_p33_t20                     1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+cbar_low / c3_p33_t20_cut3           1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+cbar_low / p33_s3_t10                1  1     0  -0.132            0.0%              -0.13       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+cbar_low / r2_p33_t20                1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+base_low_cap1 / c3_p33_t20_cut3      1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+base_low_cap1 / p33_s3_t10           1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+base_low_cap1 / r2_p33_t20           1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%       120  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+  level com / h60 / lod / c3_p33_t20_cut3 (beside, never a verdict)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never  VERDICT  why
+C1        1  1     0  +1.428          100.0%    +1.43                 0.0        0.0        0.0     +1.4   +0.298  +0.0060           0.0%        19  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+C0        1  1     0  +1.428          100.0%    +1.43                 0.0        0.0        0.0     +1.4   +0.298  +0.0060           0.0%        19  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+
+SLICES - tl / h60 / lod / c3_p33_t20_cut3, spec key; each cell is n / mean R / share >= 5R over the mature walks (phase and gap over 1 ADR AT THE CONFIRMATION)
+  year
+cell                      2023
+C1                1/+0.67/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/+0.67/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+  phase
+cell                         1
+C1                1/+0.67/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/+0.67/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+  gap_over_1adr
+cell                         0
+C1                1/+0.67/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/+0.67/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+
+DISTRIBUTIONS C1 (tl / h60 / lod / c3_p33_t20_cut3, mature): fill minute <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30); first break -> confirmed (sessions) <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+  >= 10R trades (0): none
+DISTRIBUTIONS C0 (tl / h60 / lod / c3_p33_t20_cut3, mature): fill minute <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30); first break -> confirmed (sessions) <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+  >= 10R trades (0): none
+
+
+==== GOLDEN ARTEFACT h60_read/cb702/out/h60_verdict_discovery.json | bytes=506 | sha256=3d4f8bdd3254e58500524d761a584804ea65f9a0f0a27cf47a57c72af1c98b5a | text
+{
+ "period": "discovery",
+ "windows": {
+  "discovery": {
+   "c1_verdict": "CAN'T TELL",
+   "c1_why": "n = 1 < 30",
+   "c1_n": 1,
+   "c1_mean_r": 0.6666666666666666,
+   "c1_ci": [
+    null,
+    null
+   ],
+   "delta_c1": 1.6666666666666665,
+   "delta_c1_ci": [
+    null,
+    null
+   ],
+   "pair_verdict_c1": "can't tell (n = 1 < 30)",
+   "stop_carry_c1": "lod",
+   "delta_c0_lo": null,
+   "consequence": "not recorded (the C0 paired interval's lower end is unknown, not > 0); next tests under ORH5"
+  }
+ }
+}
+
+==== GOLDEN ARTEFACT h60_read/cb702/out/h60_verdict_discovery.txt | bytes=298 | sha256=03a4e85ca4a9fb189a0cdf499f56626b2a30dedf5acf44511117cbb49e707a81 | text
+#702 h60 C1 VERDICT FILE - period discovery - written <DATE>
+discovery: C1 CAN'T TELL (n = 1 < 30); n 1; mean R +0.667 ; paired entry can't tell (n = 1 < 30) (delta +1.667); stop carried lod; consequence: not recorded (the C0 paired interval's lower end is unknown, not > 0); next tests under ORH5
+
+==== GOLDEN ARTEFACT h60_read/cb702/out/trades_discovery_h60.tsv.gz | bytes=12463 | sha256=b7ce3649b4f6bd2c1460923c0664e080b61a179b270bd78d7ed04ce369651b0f | text
+ticker	D	E	K	period	pole_date	base	first_E	first_month	fill_month	year	row_no	sessions_since_first	gap_kind	early_close	C0	C1	C2	C3	C4	C5	C6	C7	C1_no_retrace	C1_no_tightening	HTF	C1_s5	own_C1	gap_over_1adr	phase_qqq_10_20	apollo_regime	adr20	entry	window_end	walk_from	fill_minute	fill	level	fill_le_line	stop_variant	stop	width_pct	width_adr	abstain_reason	status	arm	realized_r	pnl_adr	acct_pct	sessions_held	mature	open_mark	fill_day_stop	partial_kind	partial_session	beabove	fwd_bars	fwd_hole
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h30	29	29	30	10.06005	10.02	0	lod	9.85	0.02087961789454334	0.20879617894543337		trailed	c3_p33_t20_cut3	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h30	29	29	30	10.06005	10.02	0	lod	9.85	0.02087961789454334	0.20879617894543337		trailed	p33_s3_t10	1.9358089343806977	0.4041895086671209	0.008083790173342419	9	1	0	0	session	3	0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h30	29	29	30	10.06005	10.02	0	lod	9.85	0.02087961789454334	0.20879617894543337		trailed	r2_p33_t20	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h5	4	4	5	10.06005	10.02	0	lod	10.0	0.0059691552228866036	0.05969155222886603		stopped_day0	c3_p33_t20_cut3	-1.0	-0.05969155222886604	-0.0011938310445773208	0	1	0	1			0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h5	4	4	5	10.06005	10.02	0	lod	10.0	0.0059691552228866036	0.05969155222886603		stopped_day0	p33_s3_t10	-1.0	-0.05969155222886604	-0.0011938310445773208	0	1	0	1			0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h5	4	4	5	10.06005	10.02	0	lod	10.0	0.0059691552228866036	0.05969155222886603		stopped_day0	r2_p33_t20	-1.0	-0.05969155222886604	-0.0011938310445773208	0	1	0	1			0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.06005	10.02	0	lod	9.85	0.02087961789454334	0.20879617894543337		trailed	c3_p33_t20_cut3	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.06005	10.02	0	lod	9.85	0.02087961789454334	0.20879617894543337		trailed	p33_s3_t10	1.9358089343806977	0.4041895086671209	0.008083790173342419	9	1	0	0	session	3	0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.06005	10.02	0	lod	9.85	0.02087961789454334	0.20879617894543337		trailed	r2_p33_t20	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.06005	10.02	0	cbar_low	9.85	0.02087961789454334	0.20879617894543337		trailed	c3_p33_t20_cut3	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.06005	10.02	0	cbar_low	9.85	0.02087961789454334	0.20879617894543337		trailed	p33_s3_t10	1.9358089343806977	0.4041895086671209	0.008083790173342419	9	1	0	0	session	3	0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.06005	10.02	0	cbar_low	9.85	0.02087961789454334	0.20879617894543337		trailed	r2_p33_t20	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.06005	10.02	0	base_low_cap1	9.9	0.0159094636706577	0.159094636706577		stopped	c3_p33_t20_cut3	-1.0	-0.15909463670657703	-0.0031818927341315407	1	1	0	0			0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.06005	10.02	0	base_low_cap1	9.9	0.0159094636706577	0.159094636706577		stopped	p33_s3_t10	-1.0	-0.15909463670657703	-0.0031818927341315407	1	1	0	0			0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.06005	10.02	0	base_low_cap1	9.9	0.0159094636706577	0.159094636706577		stopped	r2_p33_t20	-1.0	-0.15909463670657703	-0.0031818927341315407	1	1	0	0			0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60_first	29	29	30	10.06005	10.02	0	lod	9.85	0.02087961789454334	0.20879617894543337		trailed	c3_p33_t20_cut3	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60_first	29	29	30	10.06005	10.02	0	lod	9.85	0.02087961789454334	0.20879617894543337		trailed	p33_s3_t10	1.9358089343806977	0.4041895086671209	0.008083790173342419	9	1	0	0	session	3	0	121	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	2023-07	2023	0	0		0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60_first	29	29	30	10.06005	10.02	0	lod	9.85	0.02087961789454334	0.20879617894543337		trailed	r2_p33_t20	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	0	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h30	29	29	30	10.330319999999999	10.25	0	lod	10.1	0.022295533923440802	0.22295533923440802		stopped	c3_p33_t20_cut3	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	0	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h30	29	29	30	10.330319999999999	10.25	0	lod	10.1	0.022295533923440802	0.22295533923440802		stopped	p33_s3_t10	-0.1316429315734545	-0.029350494466771508	-0.0005870098893354303	4	1	0	0	session	3	1	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h30	29	29	30	10.330319999999999	10.25	0	lod	10.1	0.022295533923440802	0.22295533923440802		stopped	r2_p33_t20	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	0	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h5	29	29	30	10.330319999999999	10.25	0	lod	10.1	0.022295533923440802	0.22295533923440802		stopped	c3_p33_t20_cut3	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	0	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h5	29	29	30	10.330319999999999	10.25	0	lod	10.1	0.022295533923440802	0.22295533923440802		stopped	p33_s3_t10	-0.1316429315734545	-0.029350494466771508	-0.0005870098893354303	4	1	0	0	session	3	1	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h5	29	29	30	10.330319999999999	10.25	0	lod	10.1	0.022295533923440802	0.22295533923440802		stopped	r2_p33_t20	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	0	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.330319999999999	10.25	0	lod	10.1	0.022295533923440802	0.22295533923440802		stopped	c3_p33_t20_cut3	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	0	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.330319999999999	10.25	0	lod	10.1	0.022295533923440802	0.22295533923440802		stopped	p33_s3_t10	-0.1316429315734545	-0.029350494466771508	-0.0005870098893354303	4	1	0	0	session	3	1	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.330319999999999	10.25	0	lod	10.1	0.022295533923440802	0.22295533923440802		stopped	r2_p33_t20	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	0	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.330319999999999	10.25	0	cbar_low	10.1	0.022295533923440802	0.22295533923440802		stopped	c3_p33_t20_cut3	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	0	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.330319999999999	10.25	0	cbar_low	10.1	0.022295533923440802	0.22295533923440802		stopped	p33_s3_t10	-0.1316429315734545	-0.029350494466771508	-0.0005870098893354303	4	1	0	0	session	3	1	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.330319999999999	10.25	0	cbar_low	10.1	0.022295533923440802	0.22295533923440802		stopped	r2_p33_t20	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	0	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.330319999999999	10.25	0	base_low_cap1	9.85	0.04649613951939524	0.4649613951939524		stopped	c3_p33_t20_cut3	-0.06312458361092183	-0.029350494466771508	-0.0005870098893354303	4	1	0	0	session	3	1	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.330319999999999	10.25	0	base_low_cap1	9.85	0.04649613951939524	0.4649613951939524		stopped	p33_s3_t10	-0.06312458361092183	-0.029350494466771508	-0.0005870098893354303	4	1	0	0	session	3	1	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60	29	29	30	10.330319999999999	10.25	0	base_low_cap1	9.85	0.04649613951939524	0.4649613951939524		censored	r2_p33_t20	-0.06312458361092183	-0.029350494466771508	-0.0005870098893354303	120	1	0	0			0	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60_line0	29	29	30	10.330319999999999	10.25	0	lod	10.1	0.022295533923440802	0.22295533923440802		stopped	c3_p33_t20_cut3	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	0	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60_line0	29	29	30	10.330319999999999	10.25	0	lod	10.1	0.022295533923440802	0.22295533923440802		stopped	p33_s3_t10	-0.1316429315734545	-0.029350494466771508	-0.0005870098893354303	4	1	0	0	session	3	1	121	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	2023-08	2023	1	2	absent	0	1	1	0	0	0	0	0	0	0	0	0	0	1	0	1		0.1	h60_line0	29	29	30	10.330319999999999	10.25	0	lod	10.1	0.022295533923440802	0.22295533923440802		stopped	r2_p33_t20	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	0	121	0
+
+==== GOLDEN ARTEFACT h60_read/cb702/out/trades_discovery_h60twin.tsv.gz | bytes=2723 | sha256=0270c0875335ff1ade0acdbcd6a5b3f3684e923b58e58c71b62ba823730f6d37 | text
+ticker	D	E	K	year	month	retrigger_chain	C0	C1	C2	C3	C4	C5	C6	C7	C1_no_retrace	C1_no_tightening	HTF	C1_s5	adr20	atr14	median_dollar_vol20	phase_qqq_10_20	gap_over_1adr	tightening_ratio	range_recent5	range5_adr	fill	fill_minute	stop_variant	stop	width_pct	abstain_reason	target	arm	status	realized_r	pnl_adr	acct_pct	sessions_held	mature	open_mark	partial_kind	partial_session	trail_n	beabove	fwd_bars	fwd_hole
+X	2023-07-28	2023-07-31	com	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.1101	10	lod	10.0	0.010890099999010812		10.330299999999998	c3_p33_t20_cut3	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0			20	0	121	0
+X	2023-07-28	2023-07-31	com	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.1101	10	lod	10.0	0.010890099999010812		10.330299999999998	p33_s3_t10	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0			10	0	121	0
+X	2023-07-28	2023-07-31	com	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.1101	10	lod	10.0	0.010890099999010812		10.330299999999998	c3_p33_t20	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0			20	0	121	0
+X	2023-07-28	2023-07-31	com	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.1101	10	lod	10.0	0.010890099999010812		10.330299999999998	r2_p33_t20	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0			20	0	121	0
+X	2023-07-28	2023-07-31	tl	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.26025	10	lod	10.0	0.025364879023415533		10.780749999999998	c3_p33_t20_cut3	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0			20	0	121	0
+X	2023-07-28	2023-07-31	tl	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.26025	10	lod	10.0	0.025364879023415533		10.780749999999998	p33_s3_t10	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0			10	0	121	0
+X	2023-07-28	2023-07-31	tl	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.26025	10	lod	10.0	0.025364879023415533		10.780749999999998	c3_p33_t20	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0			20	0	121	0
+X	2023-07-28	2023-07-31	tl	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.26025	10	lod	10.0	0.025364879023415533		10.780749999999998	r2_p33_t20	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0			20	0	121	0
+
+==== GOLDEN ARTEFACT h60_read/exit | bytes=1 | sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9 | text
+0
+==== GOLDEN ARTEFACT h60_read/hereroot/out/h60_report_discovery.tsv | bytes=13219 | sha256=a4ef9dbb60a0bc23d4b2810072aa8833e1ebdb03a813cd0c8bea757c22313f23 | text
+period	window	cell	K	entry	stop	arm	slice	value	n_filled	n	n_open	mean_r	ci_lo	ci_hi	win_rate	avg_win	avg_loss	median_r	share_ge5	share_ge10	share_ge20	sum_r	top2_sum_r	top2_share	mean_pnl_adr	mean_acct_pct	fill_day_stop_share	median_held	tail_n	tail_tickers	tail_months	tail_n_nowidth	tail_tickers_nowidth	tail_months_nowidth	too_wide	stop_abstain	never_confirmed	data_abstain	verdict	why
+discovery	discovery	C0	com	h30	lod	c3_p33_t20_cut3	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h30	lod	c3_p33_t20_cut3	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h30	lod	p33_s3_t10	all		1	1	0	1.935809			1.0	1.935809		1.935809	0.0	0.0	0.0	1.935809	1.935809	1.0	0.40419	0.008084	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h30	lod	p33_s3_t10	all		1	1	0	1.935809			1.0	1.935809		1.935809	0.0	0.0	0.0	1.935809	1.935809	1.0	0.40419	0.008084	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h30	lod	r2_p33_t20	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h30	lod	r2_p33_t20	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h5	lod	c3_p33_t20_cut3	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.059692	-0.001194	1.0	0.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h5	lod	c3_p33_t20_cut3	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.059692	-0.001194	1.0	0.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h5	lod	p33_s3_t10	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.059692	-0.001194	1.0	0.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h5	lod	p33_s3_t10	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.059692	-0.001194	1.0	0.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h5	lod	r2_p33_t20	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.059692	-0.001194	1.0	0.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h5	lod	r2_p33_t20	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.059692	-0.001194	1.0	0.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	base_low_cap1	c3_p33_t20_cut3	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.159095	-0.003182	0.0	1.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	base_low_cap1	c3_p33_t20_cut3	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.159095	-0.003182	0.0	1.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	base_low_cap1	p33_s3_t10	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.159095	-0.003182	0.0	1.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	base_low_cap1	p33_s3_t10	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.159095	-0.003182	0.0	1.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	base_low_cap1	r2_p33_t20	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.159095	-0.003182	0.0	1.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	base_low_cap1	r2_p33_t20	all		1	1	0	-1.0			0.0		-1.0	-1.0	0.0	0.0	0.0	-1.0	-1.0	1.0	-0.159095	-0.003182	0.0	1.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	cbar_low	c3_p33_t20_cut3	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	cbar_low	c3_p33_t20_cut3	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	cbar_low	p33_s3_t10	all		1	1	0	1.935809			1.0	1.935809		1.935809	0.0	0.0	0.0	1.935809	1.935809	1.0	0.40419	0.008084	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	cbar_low	p33_s3_t10	all		1	1	0	1.935809			1.0	1.935809		1.935809	0.0	0.0	0.0	1.935809	1.935809	1.0	0.40419	0.008084	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	cbar_low	r2_p33_t20	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	cbar_low	r2_p33_t20	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	lod	c3_p33_t20_cut3	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	lod	c3_p33_t20_cut3	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	lod	p33_s3_t10	all		1	1	0	1.935809			1.0	1.935809		1.935809	0.0	0.0	0.0	1.935809	1.935809	1.0	0.40419	0.008084	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	lod	p33_s3_t10	all		1	1	0	1.935809			1.0	1.935809		1.935809	0.0	0.0	0.0	1.935809	1.935809	1.0	0.40419	0.008084	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60	lod	r2_p33_t20	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60	lod	r2_p33_t20	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60_first	lod	c3_p33_t20_cut3	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60_first	lod	c3_p33_t20_cut3	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60_first	lod	p33_s3_t10	all		1	1	0	1.935809			1.0	1.935809		1.935809	0.0	0.0	0.0	1.935809	1.935809	1.0	0.40419	0.008084	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60_first	lod	p33_s3_t10	all		1	1	0	1.935809			1.0	1.935809		1.935809	0.0	0.0	0.0	1.935809	1.935809	1.0	0.40419	0.008084	0.0	9.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	com	h60_first	lod	r2_p33_t20	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	com	h60_first	lod	r2_p33_t20	all		1	1	0	1.428231			1.0	1.428231		1.428231	0.0	0.0	0.0	1.428231	1.428231	1.0	0.298209	0.005964	0.0	19.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h30	lod	c3_p33_t20_cut3	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h30	lod	c3_p33_t20_cut3	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h30	lod	p33_s3_t10	all		1	1	0	-0.131643			0.0		-0.131643	-0.131643	0.0	0.0	0.0	-0.131643	-0.131643	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h30	lod	p33_s3_t10	all		1	1	0	-0.131643			0.0		-0.131643	-0.131643	0.0	0.0	0.0	-0.131643	-0.131643	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h30	lod	r2_p33_t20	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h30	lod	r2_p33_t20	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h5	lod	c3_p33_t20_cut3	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h5	lod	c3_p33_t20_cut3	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h5	lod	p33_s3_t10	all		1	1	0	-0.131643			0.0		-0.131643	-0.131643	0.0	0.0	0.0	-0.131643	-0.131643	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h5	lod	p33_s3_t10	all		1	1	0	-0.131643			0.0		-0.131643	-0.131643	0.0	0.0	0.0	-0.131643	-0.131643	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h5	lod	r2_p33_t20	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h5	lod	r2_p33_t20	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	base_low_cap1	c3_p33_t20_cut3	all		1	1	0	-0.063125			0.0		-0.063125	-0.063125	0.0	0.0	0.0	-0.063125	-0.063125	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	base_low_cap1	c3_p33_t20_cut3	all		1	1	0	-0.063125			0.0		-0.063125	-0.063125	0.0	0.0	0.0	-0.063125	-0.063125	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	base_low_cap1	p33_s3_t10	all		1	1	0	-0.063125			0.0		-0.063125	-0.063125	0.0	0.0	0.0	-0.063125	-0.063125	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	base_low_cap1	p33_s3_t10	all		1	1	0	-0.063125			0.0		-0.063125	-0.063125	0.0	0.0	0.0	-0.063125	-0.063125	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	base_low_cap1	r2_p33_t20	all		1	1	0	-0.063125			0.0		-0.063125	-0.063125	0.0	0.0	0.0	-0.063125	-0.063125	1.0	-0.02935	-0.000587	0.0	120.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	base_low_cap1	r2_p33_t20	all		1	1	0	-0.063125			0.0		-0.063125	-0.063125	0.0	0.0	0.0	-0.063125	-0.063125	1.0	-0.02935	-0.000587	0.0	120.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	cbar_low	c3_p33_t20_cut3	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	cbar_low	c3_p33_t20_cut3	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	cbar_low	p33_s3_t10	all		1	1	0	-0.131643			0.0		-0.131643	-0.131643	0.0	0.0	0.0	-0.131643	-0.131643	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	cbar_low	p33_s3_t10	all		1	1	0	-0.131643			0.0		-0.131643	-0.131643	0.0	0.0	0.0	-0.131643	-0.131643	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	cbar_low	r2_p33_t20	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	cbar_low	r2_p33_t20	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	lod	c3_p33_t20_cut3	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0	0	0	baseline	
+discovery	discovery	C1	tl	h60	lod	c3_p33_t20_cut3	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0	0	0	CAN'T TELL	n = 1 < 30
+discovery	discovery	C1	tl	h60	lod	c3_p33_t20_cut3	own_C1		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0						
+discovery	discovery	C1	tl	h60	lod	c3_p33_t20_cut3	no_gap		0	0	0																													
+discovery	discovery	C0	tl	h60	lod	p33_s3_t10	all		1	1	0	-0.131643			0.0		-0.131643	-0.131643	0.0	0.0	0.0	-0.131643	-0.131643	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	lod	p33_s3_t10	all		1	1	0	-0.131643			0.0		-0.131643	-0.131643	0.0	0.0	0.0	-0.131643	-0.131643	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60	lod	r2_p33_t20	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60	lod	r2_p33_t20	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60_line0	lod	c3_p33_t20_cut3	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60_line0	lod	c3_p33_t20_cut3	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60_line0	lod	p33_s3_t10	all		1	1	0	-0.131643			0.0		-0.131643	-0.131643	0.0	0.0	0.0	-0.131643	-0.131643	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60_line0	lod	p33_s3_t10	all		1	1	0	-0.131643			0.0		-0.131643	-0.131643	0.0	0.0	0.0	-0.131643	-0.131643	1.0	-0.02935	-0.000587	0.0	4.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C0	tl	h60_line0	lod	r2_p33_t20	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+discovery	discovery	C1	tl	h60_line0	lod	r2_p33_t20	all		1	1	0	0.666667			1.0	0.666667		0.666667	0.0	0.0	0.0	0.666667	0.666667	1.0	0.148637	0.002973	0.0	3.0	0	0	0	0	0	0	0	0				
+
+==== GOLDEN ARTEFACT h60_read/hereroot/out/h60_report_discovery.txt | bytes=17872 | sha256=45f7043dede786d0c9400a8060dac8c9e115efe24bd36e6a72026d441156433d | text
+#702 h60 - the HOURLY-CLOSE entry read on discovery (2022-03-28..2024-12-31, DECIDES). Registered before any outcome: docs/analysis/cb_hourly_entry_prereg_2026-10-19.md. Measurement only: nothing here switches the deciding entry, a stop outside the stop bar, a cell, a period, the horizon, the n floor, the seed or the draw count.
+POPULATION: every row under the pole (spec key, rule (b)); the base's ONE trade = the first break day on which a 60-minute bar closed above the row's line and the next minute's open could fill; cell + period from the FIRST-break row, the day's facts from the CONFIRMING row. Entry h60, stop lod (the day's low through the bar's end), exit c3_p33_t20_cut3 (sell 1/3 at +2R or the session-3 close, breakeven, 20-day trail, stallers cut at the session-3 close), level tl (decides) / com (beside). A group is the MATURE walks only; an open mark is counted, never in a number.
+INTERVAL RECIPE (check 6 reproduces it with no runner code): month-block bootstrap of the mean - blocks = calendar months (the FILL month for a cell's trades; the FIRST-break month for a paired delta), 2,000 resamples of as many blocks as there are months, with replacement, each resample's mean = sum of the drawn blocks' R / their trade count; the 2.5 / 97.5 percentiles (numpy.percentile, linear); generator numpy.random.default_rng([702, zlib.crc32(key)]) with key 'h60|<period>|<window>|<cell>|<K>|<entry>|<stop>|<arm>' for a cell and 'h60pair|<period>|<window>|<cell>|entry' / '|entry_first' / '|stop' for the paired deltas (the stream is drawn as integers(0, n_months, size=(2000, n_months))).
+DATA CHECKS: freeze passed; STEP 0 equal to the registered table; early-close ok; data-abstain share 0.00%; twin equal in content to trades_discovery_p5.tsv.gz; rows walked 12
+
+========== WINDOW discovery ==========
+EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):
+  MISSED: C1 n reads 1 (expected 60-90)
+  MET: the C0 share stopped on the fill day under h60 reads 0.0% (expected < 25%; ORH5 ~ 35%)
+  NO SAME-DAY PAIR: on the 0 same-day C1 pairs the h60 fill sits above ORH5's on 0 (median fill ratio -; the reading chosen for 'sits above': the MEDIAN pair's h60 fill is above ORH5's)
+  ORH5 C0 BASELINE from the twin: mean R -1.00, win 0.0%, >= 10R 0.0 per 100 (the registration's numbers: -0.17R, 31%, 0.9 per 100 on discovery)
+
+VERDICT TABLE - level tl, entry h60, stop lod, arm c3_p33_t20_cut3, SPEC key, mature walks (C1 decides on 2022-24; every other row is its own population; the >= 10R spread counts trades whose stop is >= 0.25 ADR20 wide: tickers/months)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0  CAN'T TELL  n = 1 < 30
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0    baseline            
+  C1 >= 10R spread, the 2-and-2 reading (beside): not met with the width rule; without it 0 tickers / 0 months
+  C1 restricted to confirmations whose OWN watch night still passed C1 (his regime caution):
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+C1*       1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0         CAN'T TELL  n = 1 < 30
+  C1 restricted to confirmations with no absent / no-line night since the first break:
+cell  fills  n  open  mean R  95% CI  win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr  acct%  fill-day stop  med held  >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+C1*       0  0     0                                                                                                                                                               0     0         CAN'T TELL  n = 0 < 30
+
+PAIRED ENTRY BAR - per base delta = R(h60) - R(ORH5), no trade = 0R; excluded: an open mark on either side, an ORH5 first break that was a data abstain; month-block interval on the FIRST-break month; C1 decides, C0 = the mechanism at scale
+cell  n bases  mean delta  95% CI           paired verdict  excl open  excl ORH5 data  same day (both filled): n / delta  first-day abstains  later row: n / delta  h60 never: n / ORH5 R  traded by ORH5 / h60                      h60_first delta  >=5R ORH5 / h60 / both  >=10R ORH5 / h60 / both
+C1          1      +1.667          can't tell (n = 1 < 30)          0               0                               0 /                    0             1 / +1.67                   0 /        100.0% / 100.0%  1 / +1.000  can't tell (n = 1 < 30)               0 / 0 / 0                0 / 0 / 0
+C0          1      +1.667          can't tell (n = 1 < 30)          0               0                               0 /                    0             1 / +1.67                   0 /        100.0% / 100.0%  1 / +1.000  can't tell (n = 1 < 30)               0 / 0 / 0                0 / 0 / 0
+
+PAIRED STOP BAR (under h60) - delta = R(cbar_low) - R(lod) per base on the primary's confirmed day (a stop that abstained there = 0R; the entry bar's exclusions; bases with a trade on at least one side); carried forward only when the interval's lower end > 0 AND the ADR P&L delta > 0
+cell  n bases  mean delta R  95% CI  ADR P&L delta  cbar_low abstains (0R)  lod abstains (0R)  stop carried
+C1          1        +0.000                 +0.000                       0                  0           lod
+C0          1        +0.000                 +0.000                       0                  0           lod
+
+C1 VERDICT: CAN'T TELL (n = 1 < 30); paired entry: can't tell (n = 1 < 30); paired stop: carry lod
+CONSEQUENCE (the registration's table): not recorded (the C0 paired interval's lower end is unknown, not > 0); next tests under ORH5; whatever is recorded carries the stop lod
+Chance of a false pass: three deciding one-sided tests on 2022-24 (the C1 interval, the paired entry delta, the paired stop delta), each ~2.5% under a true zero if the block bootstrap is calibrated -> ~7% that at least one passes by chance; the tail-spread and beat-C0 conditions make a C1 chance pass rarer.
+  pre: no verdict file yet (not run) - no stamp
+  holdout: no verdict file yet (not run) - no stamp
+
+BESIDE - every entry on the lod stop, the primary arm, per cell (tl); then h60 x every stop x every arm (C0 / C1); then com
+  entry h60 / tl / lod / c3_p33_t20_cut3
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0  CAN'T TELL  n = 1 < 30
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0    baseline            
+  entry h30 / tl / lod / c3_p33_t20_cut3
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+  entry h5 / tl / lod / c3_p33_t20_cut3
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+  entry h60_line0 / tl / lod / c3_p33_t20_cut3
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+  C0 / tl / h60: stop x arm
+stop / arm                       fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never   VERDICT  why
+lod / c3_p33_t20_cut3                1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0  baseline     
+lod / p33_s3_t10                     1  1     0  -0.132            0.0%              -0.13       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+lod / r2_p33_t20                     1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+cbar_low / c3_p33_t20_cut3           1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+cbar_low / p33_s3_t10                1  1     0  -0.132            0.0%              -0.13       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+cbar_low / r2_p33_t20                1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+base_low_cap1 / c3_p33_t20_cut3      1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+base_low_cap1 / p33_s3_t10           1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+base_low_cap1 / r2_p33_t20           1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%       120  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+  C1 / tl / h60: stop x arm
+stop / arm                       fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+lod / c3_p33_t20_cut3                1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0  CAN'T TELL  n = 1 < 30
+lod / p33_s3_t10                     1  1     0  -0.132            0.0%              -0.13       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+lod / r2_p33_t20                     1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+cbar_low / c3_p33_t20_cut3           1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+cbar_low / p33_s3_t10                1  1     0  -0.132            0.0%              -0.13       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+cbar_low / r2_p33_t20                1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+base_low_cap1 / c3_p33_t20_cut3      1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+base_low_cap1 / p33_s3_t10           1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+base_low_cap1 / r2_p33_t20           1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%       120  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+  level com / h60 / lod / c3_p33_t20_cut3 (beside, never a verdict)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never  VERDICT  why
+C1        1  1     0  +1.428          100.0%    +1.43                 0.0        0.0        0.0     +1.4   +0.298  +0.0060           0.0%        19  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+C0        1  1     0  +1.428          100.0%    +1.43                 0.0        0.0        0.0     +1.4   +0.298  +0.0060           0.0%        19  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+
+SLICES - tl / h60 / lod / c3_p33_t20_cut3, spec key; each cell is n / mean R / share >= 5R over the mature walks (phase and gap over 1 ADR AT THE CONFIRMATION)
+  year
+cell                      2023
+C1                1/+0.67/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/+0.67/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+  phase
+cell                         1
+C1                1/+0.67/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/+0.67/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+  gap_over_1adr
+cell                         0
+C1                1/+0.67/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/+0.67/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+
+DISTRIBUTIONS C1 (tl / h60 / lod / c3_p33_t20_cut3, mature): fill minute <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30); first break -> confirmed (sessions) <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+  >= 10R trades (0): none
+DISTRIBUTIONS C0 (tl / h60 / lod / c3_p33_t20_cut3, mature): fill minute <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30); first break -> confirmed (sessions) <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+  >= 10R trades (0): none
+
+
+==== GOLDEN ARTEFACT h60_read/hereroot/out/h60_summary_discovery.txt | bytes=1007 | sha256=79592a2223f7a2f7acd169cb1afe12733bebb4212ae7c755bdec377b41b537e5 | text
+H60 READ (#702): period discovery; 2 bases, 3 rows, 2 pairs all logged; freeze check passed; code: module sha256 <SHA64>, runner sha256 <SHA64>
+[STEP 0: <N>s]
+TL ROWS by label / file: 2 (the registration's table: 2) -> EQUAL
+STEP 0 CHECKS: the registered table EQUAL in every window; early-close check ok; data-abstain share 0.00% <= 5%; 0 missing pairs
+[load: <N>s]
+[entries + P5 walks: <N>s]
+TWIN CHECK: trades_discovery_h60twin.tsv.gz (8 rows) equals trades_discovery_p5.tsv.gz in content (sha256 0270c0875335) [<N>s]
+[h60 exits: <N>s]
+ENTRIES WALKED (entry / stop: status n): h30/lod filled 2; h5/lod filled 2; h60/base_low_cap1 filled 2; h60/cbar_low filled 2; h60/lod filled 2; h60_first/lod filled 1; h60_line0/lod filled 1
+WROTE <TMP>/cb702/out/trades_discovery_h60.tsv.gz
+WROTE <TMP>/cb702/out/h60_pairs_discovery.tsv.gz (2 bases)
+WROTE <TMP>/cb702/out/h60_report_discovery.tsv (80 rows), <TMP>/hereroot/out/h60_report_discovery.txt, <TMP>/cb702/out/h60_verdict_discovery.txt
+WALL TIME: <N>s total
+
+==== GOLDEN ARTEFACT h60_read/hereroot/out/h60_verdict_discovery.txt | bytes=298 | sha256=03a4e85ca4a9fb189a0cdf499f56626b2a30dedf5acf44511117cbb49e707a81 | text
+#702 h60 C1 VERDICT FILE - period discovery - written <DATE>
+discovery: C1 CAN'T TELL (n = 1 < 30); n 1; mean R +0.667 ; paired entry can't tell (n = 1 < 30) (delta +1.667); stop carried lod; consequence: not recorded (the C0 paired interval's lower end is unknown, not > 0); next tests under ORH5
+
+==== GOLDEN ARTEFACT h60_read/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT h60_read/stdout | bytes=23860 | sha256=144e986f4a58956148c1a38861b421b7914be59811747647e3f3b5fc5406564e | text
+H60 READ (#702): period discovery; 2 bases, 3 rows, 2 pairs all logged; freeze check passed; code: module sha256 <SHA64>, runner sha256 <SHA64>
+[STEP 0: <N>s]
+#702 h60 STEP 0 - discovery: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under the pole (spec key, rule (b)), the base's period from its FIRST-break row; levels tl (decides) / com (beside).
+bases 2 (1 tl / 1 com); rows 3; (E, ticker) pairs 2; pairs not logged in _done.psv 0; logged ok with no file 0; minutes state {'ok': 3}
+EARLY-CLOSE CHECK (check 2): listed dates read 0 - ; other dates with < 25% at minute >= 210: 0 -> ok
+DATA-ABSTAIN SHARE (check 3, h60 on tl, the rows the rule READ): 0 of 2 (0.00%; {}) - limit 5%: ok
+
+REGISTERED TABLE CHECK (check 5) - window discovery: EQUAL to the registration's table
+cell              tl bases  tl multi-break  ORH5 fills (entry facts)  ORH5 fills (pinned P5 table)  com bases  com ORH5 fills
+C0                       1               1                         1                             1          1               1
+C1                       1               1                         1                             1          1               1
+C2                       0               0                         0                             -          0               0
+C3                       0               0                         0                             -          0               0
+C4                       0               0                         0                             -          0               0
+C5                       0               0                         0                             -          0               0
+C6                       0               0                         0                             -          0               0
+C7                       0               0                         0                             -          0               0
+C1_no_retrace            0               0                         0                             -          0               0
+C1_no_tightening         0               0                         0                             -          0               0
+HTF                      0               0                         0                             -          0               0
+C1_s5                    0               0                         0                             -          0               0
+  h60 (tl) per cell: confirmed+filled / confirmed too_wide / confirmed stop_at_or_above_fill / never confirmed (of which data abstains only) / confirmed on the first break day / confirmed after an absent or no-line night
+cell              filled  too_wide  saaf  never (data only)  first day  after a gap
+C0                     1         0     0              0 (0)          0            1
+C1                     1         0     0              0 (0)          0            1
+C2                     0         0     0              0 (0)          0            0
+C3                     0         0     0              0 (0)          0            0
+C4                     0         0     0              0 (0)          0            0
+C5                     0         0     0              0 (0)          0            0
+C6                     0         0     0              0 (0)          0            0
+C7                     0         0     0              0 (0)          0            0
+C1_no_retrace          0         0     0              0 (0)          0            0
+C1_no_tightening       0         0     0              0 (0)          0            0
+HTF                    0         0     0              0 (0)          0            0
+C1_s5                  0         0     0              0 (0)          0            0
+  every entry (tl, C0 / C1): confirmed+filled / too_wide / saaf / never
+entry                 C0             C1
+h60        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h30        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h5         1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h60_first  0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_m025   0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_line0  1 / 0 / 0 / 0  1 / 0 / 0 / 0
+orh60      0 / 0 / 0 / 1  0 / 0 / 0 / 1
+
+NESTING (per row, tl): rows h60 confirms that h30 does not, plus rows h30 confirms that h5 does not: 0 (must be 0); rows confirmed by h5 1, h30 1, h60 1 of 2 rows
+LAST_BAR_ONLY (tl, h60; the hole counted, not fixed): 0 rows, by what followed: {}
+h60_line0 (the first-break night's line held) vs the redrawn line: rows confirmed 1 vs 1; rows where the two disagree: 0
+FILL MINUTE (tl, h60 filled trades, minutes since 09:30): <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30)
+FIRST BREAK -> CONFIRMED BREAK (sessions): <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+FILLED AT OR UNDER THE LINE: 0 of 1
+TL ROWS of the period's bases: 2 (the registration's row count is by row LABEL / file: see the read's header)
+
+TL ROWS by label / file: 2 (the registration's table: 2) -> EQUAL
+STEP 0 CHECKS: the registered table EQUAL in every window; early-close check ok; data-abstain share 0.00% <= 5%; 0 missing pairs
+bars: 600 rows / 2 tickers / 300 sessions 2023-01-02..2024-02-23 (<N>s); 0 tickers have a missing session inside their span (0 holes)
+[load: <N>s]
+  1/1 dates, 8 rows
+[entries + P5 walks: <N>s]
+TWIN CHECK: trades_discovery_h60twin.tsv.gz (8 rows) equals trades_discovery_p5.tsv.gz in content (sha256 0270c0875335) [<N>s]
+  2/2 dates, 12 entries walked or abstained
+[h60 exits: <N>s]
+ENTRIES WALKED (entry / stop: status n): h30/lod filled 2; h5/lod filled 2; h60/base_low_cap1 filled 2; h60/cbar_low filled 2; h60/lod filled 2; h60_first/lod filled 1; h60_line0/lod filled 1
+WROTE <TMP>/cb702/out/trades_discovery_h60.tsv.gz
+WROTE <TMP>/cb702/out/h60_pairs_discovery.tsv.gz (2 bases)
+#702 h60 - the HOURLY-CLOSE entry read on discovery (2022-03-28..2024-12-31, DECIDES). Registered before any outcome: docs/analysis/cb_hourly_entry_prereg_2026-10-19.md. Measurement only: nothing here switches the deciding entry, a stop outside the stop bar, a cell, a period, the horizon, the n floor, the seed or the draw count.
+POPULATION: every row under the pole (spec key, rule (b)); the base's ONE trade = the first break day on which a 60-minute bar closed above the row's line and the next minute's open could fill; cell + period from the FIRST-break row, the day's facts from the CONFIRMING row. Entry h60, stop lod (the day's low through the bar's end), exit c3_p33_t20_cut3 (sell 1/3 at +2R or the session-3 close, breakeven, 20-day trail, stallers cut at the session-3 close), level tl (decides) / com (beside). A group is the MATURE walks only; an open mark is counted, never in a number.
+INTERVAL RECIPE (check 6 reproduces it with no runner code): month-block bootstrap of the mean - blocks = calendar months (the FILL month for a cell's trades; the FIRST-break month for a paired delta), 2,000 resamples of as many blocks as there are months, with replacement, each resample's mean = sum of the drawn blocks' R / their trade count; the 2.5 / 97.5 percentiles (numpy.percentile, linear); generator numpy.random.default_rng([702, zlib.crc32(key)]) with key 'h60|<period>|<window>|<cell>|<K>|<entry>|<stop>|<arm>' for a cell and 'h60pair|<period>|<window>|<cell>|entry' / '|entry_first' / '|stop' for the paired deltas (the stream is drawn as integers(0, n_months, size=(2000, n_months))).
+DATA CHECKS: freeze passed; STEP 0 equal to the registered table; early-close ok; data-abstain share 0.00%; twin equal in content to trades_discovery_p5.tsv.gz; rows walked 12
+
+========== WINDOW discovery ==========
+EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):
+  MISSED: C1 n reads 1 (expected 60-90)
+  MET: the C0 share stopped on the fill day under h60 reads 0.0% (expected < 25%; ORH5 ~ 35%)
+  NO SAME-DAY PAIR: on the 0 same-day C1 pairs the h60 fill sits above ORH5's on 0 (median fill ratio -; the reading chosen for 'sits above': the MEDIAN pair's h60 fill is above ORH5's)
+  ORH5 C0 BASELINE from the twin: mean R -1.00, win 0.0%, >= 10R 0.0 per 100 (the registration's numbers: -0.17R, 31%, 0.9 per 100 on discovery)
+
+VERDICT TABLE - level tl, entry h60, stop lod, arm c3_p33_t20_cut3, SPEC key, mature walks (C1 decides on 2022-24; every other row is its own population; the >= 10R spread counts trades whose stop is >= 0.25 ADR20 wide: tickers/months)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0  CAN'T TELL  n = 1 < 30
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0    baseline            
+  C1 >= 10R spread, the 2-and-2 reading (beside): not met with the width rule; without it 0 tickers / 0 months
+  C1 restricted to confirmations whose OWN watch night still passed C1 (his regime caution):
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+C1*       1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0         CAN'T TELL  n = 1 < 30
+  C1 restricted to confirmations with no absent / no-line night since the first break:
+cell  fills  n  open  mean R  95% CI  win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr  acct%  fill-day stop  med held  >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+C1*       0  0     0                                                                                                                                                               0     0         CAN'T TELL  n = 0 < 30
+
+PAIRED ENTRY BAR - per base delta = R(h60) - R(ORH5), no trade = 0R; excluded: an open mark on either side, an ORH5 first break that was a data abstain; month-block interval on the FIRST-break month; C1 decides, C0 = the mechanism at scale
+cell  n bases  mean delta  95% CI           paired verdict  excl open  excl ORH5 data  same day (both filled): n / delta  first-day abstains  later row: n / delta  h60 never: n / ORH5 R  traded by ORH5 / h60                      h60_first delta  >=5R ORH5 / h60 / both  >=10R ORH5 / h60 / both
+C1          1      +1.667          can't tell (n = 1 < 30)          0               0                               0 /                    0             1 / +1.67                   0 /        100.0% / 100.0%  1 / +1.000  can't tell (n = 1 < 30)               0 / 0 / 0                0 / 0 / 0
+C0          1      +1.667          can't tell (n = 1 < 30)          0               0                               0 /                    0             1 / +1.67                   0 /        100.0% / 100.0%  1 / +1.000  can't tell (n = 1 < 30)               0 / 0 / 0                0 / 0 / 0
+
+PAIRED STOP BAR (under h60) - delta = R(cbar_low) - R(lod) per base on the primary's confirmed day (a stop that abstained there = 0R; the entry bar's exclusions; bases with a trade on at least one side); carried forward only when the interval's lower end > 0 AND the ADR P&L delta > 0
+cell  n bases  mean delta R  95% CI  ADR P&L delta  cbar_low abstains (0R)  lod abstains (0R)  stop carried
+C1          1        +0.000                 +0.000                       0                  0           lod
+C0          1        +0.000                 +0.000                       0                  0           lod
+
+C1 VERDICT: CAN'T TELL (n = 1 < 30); paired entry: can't tell (n = 1 < 30); paired stop: carry lod
+CONSEQUENCE (the registration's table): not recorded (the C0 paired interval's lower end is unknown, not > 0); next tests under ORH5; whatever is recorded carries the stop lod
+Chance of a false pass: three deciding one-sided tests on 2022-24 (the C1 interval, the paired entry delta, the paired stop delta), each ~2.5% under a true zero if the block bootstrap is calibrated -> ~7% that at least one passes by chance; the tail-spread and beat-C0 conditions make a C1 chance pass rarer.
+  pre: no verdict file yet (not run) - no stamp
+  holdout: no verdict file yet (not run) - no stamp
+
+BESIDE - every entry on the lod stop, the primary arm, per cell (tl); then h60 x every stop x every arm (C0 / C1); then com
+  entry h60 / tl / lod / c3_p33_t20_cut3
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0  CAN'T TELL  n = 1 < 30
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0    baseline            
+  entry h30 / tl / lod / c3_p33_t20_cut3
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+  entry h5 / tl / lod / c3_p33_t20_cut3
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+  entry h60_line0 / tl / lod / c3_p33_t20_cut3
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never  VERDICT  why
+C1        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+C0        1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+  C0 / tl / h60: stop x arm
+stop / arm                       fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never   VERDICT  why
+lod / c3_p33_t20_cut3                1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0  baseline     
+lod / p33_s3_t10                     1  1     0  -0.132            0.0%              -0.13       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+lod / r2_p33_t20                     1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+cbar_low / c3_p33_t20_cut3           1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+cbar_low / p33_s3_t10                1  1     0  -0.132            0.0%              -0.13       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+cbar_low / r2_p33_t20                1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+base_low_cap1 / c3_p33_t20_cut3      1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+base_low_cap1 / p33_s3_t10           1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+base_low_cap1 / r2_p33_t20           1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%       120  0: 0t/0m (0 no width rule)        100.0%         0     0                      
+  C1 / tl / h60: stop x arm
+stop / arm                       fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never     VERDICT         why
+lod / c3_p33_t20_cut3                1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0      0  CAN'T TELL  n = 1 < 30
+lod / p33_s3_t10                     1  1     0  -0.132            0.0%              -0.13       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+lod / r2_p33_t20                     1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+cbar_low / c3_p33_t20_cut3           1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+cbar_low / p33_s3_t10                1  1     0  -0.132            0.0%              -0.13       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+cbar_low / r2_p33_t20                1  1     0  +0.667          100.0%    +0.67                 0.0        0.0        0.0     +0.7   +0.149  +0.0030           0.0%         3  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+base_low_cap1 / c3_p33_t20_cut3      1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+base_low_cap1 / p33_s3_t10           1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%         4  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+base_low_cap1 / r2_p33_t20           1  1     0  -0.063            0.0%              -0.06       0.0        0.0        0.0     -0.1   -0.029  -0.0006           0.0%       120  0: 0t/0m (0 no width rule)        100.0%         0     0                               
+  level com / h60 / lod / c3_p33_t20_cut3 (beside, never a verdict)
+cell  fills  n  open  mean R  95% CI     win  avg win  avg loss  >=5R/100  >=10R/100  >=20R/100  total R  pnl_adr    acct%  fill-day stop  med held                >=10R spread  top-2% share  too_wide  saaf  never  VERDICT  why
+C1        1  1     0  +1.428          100.0%    +1.43                 0.0        0.0        0.0     +1.4   +0.298  +0.0060           0.0%        19  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+C0        1  1     0  +1.428          100.0%    +1.43                 0.0        0.0        0.0     +1.4   +0.298  +0.0060           0.0%        19  0: 0t/0m (0 no width rule)        100.0%         0     0                     
+
+SLICES - tl / h60 / lod / c3_p33_t20_cut3, spec key; each cell is n / mean R / share >= 5R over the mature walks (phase and gap over 1 ADR AT THE CONFIRMATION)
+  year
+cell                      2023
+C1                1/+0.67/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/+0.67/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+  phase
+cell                         1
+C1                1/+0.67/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/+0.67/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+  gap_over_1adr
+cell                         0
+C1                1/+0.67/0.0%
+C2                           -
+C3                           -
+C4                           -
+C5                           -
+C6                           -
+C7                           -
+C0                1/+0.67/0.0%
+C1_no_retrace                -
+C1_no_tightening             -
+HTF                          -
+
+DISTRIBUTIONS C1 (tl / h60 / lod / c3_p33_t20_cut3, mature): fill minute <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30); first break -> confirmed (sessions) <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+  >= 10R trades (0): none
+DISTRIBUTIONS C0 (tl / h60 / lod / c3_p33_t20_cut3, mature): fill minute <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30); first break -> confirmed (sessions) <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+  >= 10R trades (0): none
+
+WROTE <TMP>/cb702/out/h60_report_discovery.tsv (80 rows), <TMP>/hereroot/out/h60_report_discovery.txt, <TMP>/cb702/out/h60_verdict_discovery.txt
+WALL TIME: <N>s total
+
+==== GOLDEN ARTEFACT hindsight/cb702/out/h60_hindsight_discovery.tsv | bytes=190 | sha256=ff1b4c29ddb24c41e7017dc3465dbfb845b58b42d337887338f672ac1406a20d | text
+window	ticker	bases	h60_n	h60_mean_r	h60_sum_r	h60_fill_day_stop	h60_ge5	h60_ge10	orh5_n	orh5_mean_r	orh5_sum_r	orh5_fill_day_stop	orh5_ge5	orh5_ge10
+discovery	ALL	0	0		0.0		0	0	0		0.0		0	0
+
+==== GOLDEN ARTEFACT hindsight/cb702/out/h60_hindsight_discovery.txt | bytes=545 | sha256=8bb061a5aad60f9c2234e5197a022da8c3abe3aed5cb3c8c951ccfffa5128ee4 | text
+#702 h60 HINDSIGHT - period discovery (descriptive; written AFTER the verdict; naming winners afterwards always looks good; decides nothing)
+THE 39 MULTIBAGGERS, C0 tl bases, window discovery: h60 vs ORH5 (n filled & mature / mean R / total R / fill-day stop share / >= 5R / >= 10R)
+ticker  bases                     h60                    ORH5
+ALL         0  0 /  / +0.0 /  / 0 / 0  0 /  / +0.0 /  / 0 / 0
+TSLA, every tl base row by row: first break (ORH5's day) -> status / R; h60's confirmed day -> status / R
+  (no TSLA base in this period)
+
+==== GOLDEN ARTEFACT hindsight/exit | bytes=1 | sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9 | text
+0
+==== GOLDEN ARTEFACT hindsight/hereroot/out/h60_hindsight_discovery.tsv | bytes=190 | sha256=ff1b4c29ddb24c41e7017dc3465dbfb845b58b42d337887338f672ac1406a20d | text
+window	ticker	bases	h60_n	h60_mean_r	h60_sum_r	h60_fill_day_stop	h60_ge5	h60_ge10	orh5_n	orh5_mean_r	orh5_sum_r	orh5_fill_day_stop	orh5_ge5	orh5_ge10
+discovery	ALL	0	0		0.0		0	0	0		0.0		0	0
+
+==== GOLDEN ARTEFACT hindsight/hereroot/out/h60_hindsight_discovery.txt | bytes=545 | sha256=8bb061a5aad60f9c2234e5197a022da8c3abe3aed5cb3c8c951ccfffa5128ee4 | text
+#702 h60 HINDSIGHT - period discovery (descriptive; written AFTER the verdict; naming winners afterwards always looks good; decides nothing)
+THE 39 MULTIBAGGERS, C0 tl bases, window discovery: h60 vs ORH5 (n filled & mature / mean R / total R / fill-day stop share / >= 5R / >= 10R)
+ticker  bases                     h60                    ORH5
+ALL         0  0 /  / +0.0 /  / 0 / 0  0 /  / +0.0 /  / 0 / 0
+TSLA, every tl base row by row: first break (ORH5's day) -> status / R; h60's confirmed day -> status / R
+  (no TSLA base in this period)
+
+==== GOLDEN ARTEFACT hindsight/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT hindsight/stdout | bytes=659 | sha256=35908eb5f4e84b441513769282ac09df2960f8b547cbcc037c6dca77a4aa2dd3 | text
+#702 h60 HINDSIGHT - period discovery (descriptive; written AFTER the verdict; naming winners afterwards always looks good; decides nothing)
+THE 39 MULTIBAGGERS, C0 tl bases, window discovery: h60 vs ORH5 (n filled & mature / mean R / total R / fill-day stop share / >= 5R / >= 10R)
+ticker  bases                     h60                    ORH5
+ALL         0  0 /  / +0.0 /  / 0 / 0  0 /  / +0.0 /  / 0 / 0
+TSLA, every tl base row by row: first break (ORH5's day) -> status / R; h60's confirmed day -> status / R
+  (no TSLA base in this period)
+WROTE <TMP>/cb702/out/h60_hindsight_discovery.tsv, <TMP>/hereroot/out/h60_hindsight_discovery.txt; WALL TIME <N>s
+
+==== GOLDEN ARTEFACT print_pins/exit | bytes=1 | sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9 | text
+0
+==== GOLDEN ARTEFACT print_pins/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT print_pins/stdout | bytes=913 | sha256=f363cc9c74f57113c46fbab077367a560c512b1d478b855acc44aaddadc9a7c8 | text
+- module sha256: `<SHA64>`
+- runner sha256: `<SHA64>`
+- code/constants.py sha256: `<SHA64>`
+- code/exit_logic.py sha256: `<SHA64>`
+- cb702/daily_closes_all.csv.gz sha256: `<SHA64>`
+- cb702_pre/daily_closes_all.csv.gz sha256: `<SHA64>`
+- cb702/out/candidates.tsv sha256: `<SHA64>`
+- cb702/out/candidates_com_comb.tsv sha256: `<SHA64>`
+- cb702/out/watch.tsv.gz sha256: `<SHA64>`
+- cb702/out/watch_com_comb.tsv.gz sha256: `<SHA64>`
+- cb702/out/trades_discovery_p5.tsv.gz sha256: `<SHA64>`
+- cb702/out/trades_holdout_p5.tsv.gz sha256: `<SHA64>`
+- cb702/minutes/_done.psv sha256: `<SHA64>`
+- cb702_pre/out/candidates_tl_com.tsv sha256: `<SHA64>`
+- cb702_pre/out/watch_tl_com.tsv.gz sha256: `<SHA64>`
+- cb702_pre/out/trades_pre_p5.tsv.gz sha256: `<SHA64>`
+- cb702_pre/minutes/_done.psv sha256: `<SHA64>`
+- cb702/minutes (tree) sha256: `<SHA64>`
+- cb702_pre/minutes (tree) sha256: `<SHA64>`
+- doc body sha256: `<SHA64>`
+
+==== GOLDEN ARTEFACT refuse_freeze_mismatch/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_freeze_mismatch/stderr | bytes=174 | sha256=ebcc0187911ff7e5d7f37dfaec00e5f701fa4a2bf312d16efa357391cc68a1c9 | text
+REFUSED: the freeze check failed - the read is not opened:
+  - cb702/out/candidates.tsv sha256 mismatch: footer <SHA12>... vs now <SHA12>... - the frozen artefact was edited
+
+==== GOLDEN ARTEFACT refuse_freeze_mismatch/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_hindsight_before_verdict/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_hindsight_before_verdict/stderr | bytes=172 | sha256=8a93bd2553db9a2d1d2f105cf811dbe26214bbc6f89be223897f84e36f78ec50 | text
+REFUSED: <TMP>/cb702/out/h60_verdict_discovery.txt does not exist - the hindsight tables (any period) are written only AFTER the DECIDING 2022-24 verdict is read (check 1)
+
+==== GOLDEN ARTEFACT refuse_hindsight_before_verdict/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_keys/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_keys/stderr | bytes=188 | sha256=a1ec78652709f835ef89047f22f6f31317befa3f3dda52e35c55520ab6aa5a95 | text
+REFUSED: the h60 read runs only in its registered form:
+  - --keys: the h60 read runs in its registered form only (every row of tl and com, the pinned minute trees, the registered tables)
+
+==== GOLDEN ARTEFACT refuse_keys/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_minutes/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_minutes/stderr | bytes=191 | sha256=5c4168791e204bd1a39750366df2b02c0f9478eceb505a94a4fcd7849c342092 | text
+REFUSED: the h60 read runs only in its registered form:
+  - --minutes: the h60 read runs in its registered form only (every row of tl and com, the pinned minute trees, the registered tables)
+
+==== GOLDEN ARTEFACT refuse_minutes/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_no_freeze_check/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_no_freeze_check/stderr | bytes=68 | sha256=d6e26f65fdf0e15c13156cb161c5690c69cbc8ec757abc8adfbced796a8d3a7c | text
+REFUSED: --no-freeze-check is honoured only together with --dry-run
+
+==== GOLDEN ARTEFACT refuse_no_freeze_check/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_no_period/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_no_period/stderr | bytes=70 | sha256=6f1151d166b45151b6ea3dccb494fb993992cbc3e40c4fb1230155d3513c2125 | text
+REFUSED: --period is required: one of ('discovery', 'pre', 'holdout')
+
+==== GOLDEN ARTEFACT refuse_no_period/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_once_only/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_once_only/stderr | bytes=114 | sha256=c990498d35696c1d2c920143b7851791aee15a57f9af35f08ccd5f0d63bebfee | text
+REFUSED: the h60 outcomes are read ONCE per period and <TMP>/cb702/out/trades_discovery_h60.tsv.gz already exists
+
+==== GOLDEN ARTEFACT refuse_once_only/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_out/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_out/stderr | bytes=170 | sha256=59b60e2f808eaefe1ee1cec5eec0a130ce69ed45c86568625b37db87e3b658a6 | text
+REFUSED: the h60 read runs only in its registered form:
+  - --out <TMP>/elsewhere is not DATA/out (<TMP>/cb702/out): the pinned inputs and the once-only check live there
+
+==== GOLDEN ARTEFACT refuse_out/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_partial/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_partial/stderr | bytes=224 | sha256=ee8af41fa09c0601797c1c9a9e57d4f7f0ed84dffa5360e28cb870aaff5be1d7 | text
+REFUSED: <TMP>/cb702/out/trades_discovery_h60.tsv.gz.partial is what a CRASHED h60 run left behind - it holds some outcomes. The read is run ONCE per period: the operator inspects it and removes it by hand before any re-run
+
+==== GOLDEN ARTEFACT refuse_partial/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_prereg/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_prereg/stderr | bytes=164 | sha256=0b1cf60d9edb2d6f2180c2f4e70085b115569bd262d34b8915c453fcd7a00e98 | text
+REFUSED: --prereg is honoured only with --print-pins or --dry-run - the read pins the registration doc at docs/analysis/cb_hourly_entry_prereg_2026-10-19.md itself
+
+==== GOLDEN ARTEFACT refuse_prereg/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT step0/cb702/out/h60_step0_discovery.tsv.gz | bytes=3280 | sha256=9e777feee39fccae7995faa2a87d2c249ee59f0afc9472caa0659b7597fb1258 | text
+ticker	D	E	K	period	pole_date	row_no	n_rows	retrigger	first_E	sessions_since_first	gap_kind	early_close	minutes_state	variant	status	reason	tried	trade	window_end	walk_from	fill_minute	width_pct	fill_le_line	lbo_kind	own_C1	C0	C1	C2	C3	C4	C5	C6	C7	C1_no_retrace	C1_no_tightening	HTF	C1_s5
+X	2023-07-28	2023-07-31	tl	discovery	2023-07-03	0	2	0	2023-07-31	0		0	ok	h60	no_confirm		1	0							1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-07-28	2023-07-31	tl	discovery	2023-07-03	0	2	0	2023-07-31	0		0	ok	h30	no_confirm		1	0							1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-07-28	2023-07-31	tl	discovery	2023-07-03	0	2	0	2023-07-31	0		0	ok	h5	no_confirm		1	0							1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-07-28	2023-07-31	tl	discovery	2023-07-03	0	2	0	2023-07-31	0		0	ok	h60_first	no_confirm		1	0							1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-07-28	2023-07-31	tl	discovery	2023-07-03	0	2	0	2023-07-31	0		0	ok	h60_m025	no_confirm		1	0							1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-07-28	2023-07-31	tl	discovery	2023-07-03	0	2	0	2023-07-31	0		0	ok	h60_line0	no_confirm		1	0							1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-07-28	2023-07-31	tl	discovery	2023-07-03	0	2	0	2023-07-31	0		0	ok	orh60	no_trigger	no_minute_above_level	1	0							1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	1	2	1	2023-07-31	2	absent	0	ok	h60	filled		1	1	29	29	30	0.022295533923440802	0		1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	1	2	1	2023-07-31	2	absent	0	ok	h30	filled		1	1	29	29	30	0.022295533923440802	0		1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	1	2	1	2023-07-31	2	absent	0	ok	h5	filled		1	1	29	29	30	0.022295533923440802	0		1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	1	2	1	2023-07-31	2	absent	0	ok	h60_first	filled		0	0	29	29	30	0.022295533923440802	0		1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	1	2	1	2023-07-31	2	absent	0	ok	h60_m025	no_confirm		1	0							1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	1	2	1	2023-07-31	2	absent	0	ok	h60_line0	filled		1	1	29	29	30	0.022295533923440802	0		1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-08-01	2023-08-02	tl	discovery	2023-07-03	1	2	1	2023-07-31	2	absent	0	ok	orh60	no_trigger	no_minute_above_level	0	0							1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	0	1	0	2023-07-31	0		0	ok	h60	filled		1	1	29	29	30	0.02087961789454334	0		1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	0	1	0	2023-07-31	0		0	ok	h30	filled		1	1	29	29	30	0.02087961789454334	0		1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	0	1	0	2023-07-31	0		0	ok	h5	filled		1	1	4	4	5	0.0059691552228866036	0		1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	0	1	0	2023-07-31	0		0	ok	h60_first	filled		1	1	29	29	30	0.02087961789454334	0		1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	0	1	0	2023-07-31	0		0	ok	h60_m025	no_confirm		1	0							1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	0	1	0	2023-07-31	0		0	ok	h60_line0	no_level		1	0							1	1	1	0	0	0	0	0	0	0	0	0	0
+X	2023-07-28	2023-07-31	com	discovery	2023-07-03	0	1	0	2023-07-31	0		0	ok	orh60	no_trigger	no_minute_above_level	1	0							1	1	1	0	0	0	0	0	0	0	0	0	0
+
+==== GOLDEN ARTEFACT step0/cb702/out/h60_step0_discovery.txt | bytes=4783 | sha256=22ecba7f8c6ae503770befdb295c082409f3a57332fffe9599c33f1dd2a67042 | text
+#702 h60 STEP 0 - discovery: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under the pole (spec key, rule (b)), the base's period from its FIRST-break row; levels tl (decides) / com (beside).
+bases 2 (1 tl / 1 com); rows 3; (E, ticker) pairs 2; pairs not logged in _done.psv 0; logged ok with no file 0; minutes state {'ok': 3}
+EARLY-CLOSE CHECK (check 2): listed dates read 0 - ; other dates with < 25% at minute >= 210: 0 -> ok
+DATA-ABSTAIN SHARE (check 3, h60 on tl, the rows the rule READ): 0 of 2 (0.00%; {}) - limit 5%: ok
+
+REGISTERED TABLE CHECK (check 5) - window discovery: EQUAL to the registration's table
+cell              tl bases  tl multi-break  ORH5 fills (entry facts)  ORH5 fills (pinned P5 table)  com bases  com ORH5 fills
+C0                       1               1                         1                             1          1               1
+C1                       1               1                         1                             1          1               1
+C2                       0               0                         0                             -          0               0
+C3                       0               0                         0                             -          0               0
+C4                       0               0                         0                             -          0               0
+C5                       0               0                         0                             -          0               0
+C6                       0               0                         0                             -          0               0
+C7                       0               0                         0                             -          0               0
+C1_no_retrace            0               0                         0                             -          0               0
+C1_no_tightening         0               0                         0                             -          0               0
+HTF                      0               0                         0                             -          0               0
+C1_s5                    0               0                         0                             -          0               0
+  h60 (tl) per cell: confirmed+filled / confirmed too_wide / confirmed stop_at_or_above_fill / never confirmed (of which data abstains only) / confirmed on the first break day / confirmed after an absent or no-line night
+cell              filled  too_wide  saaf  never (data only)  first day  after a gap
+C0                     1         0     0              0 (0)          0            1
+C1                     1         0     0              0 (0)          0            1
+C2                     0         0     0              0 (0)          0            0
+C3                     0         0     0              0 (0)          0            0
+C4                     0         0     0              0 (0)          0            0
+C5                     0         0     0              0 (0)          0            0
+C6                     0         0     0              0 (0)          0            0
+C7                     0         0     0              0 (0)          0            0
+C1_no_retrace          0         0     0              0 (0)          0            0
+C1_no_tightening       0         0     0              0 (0)          0            0
+HTF                    0         0     0              0 (0)          0            0
+C1_s5                  0         0     0              0 (0)          0            0
+  every entry (tl, C0 / C1): confirmed+filled / too_wide / saaf / never
+entry                 C0             C1
+h60        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h30        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h5         1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h60_first  0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_m025   0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_line0  1 / 0 / 0 / 0  1 / 0 / 0 / 0
+orh60      0 / 0 / 0 / 1  0 / 0 / 0 / 1
+
+NESTING (per row, tl): rows h60 confirms that h30 does not, plus rows h30 confirms that h5 does not: 0 (must be 0); rows confirmed by h5 1, h30 1, h60 1 of 2 rows
+LAST_BAR_ONLY (tl, h60; the hole counted, not fixed): 0 rows, by what followed: {}
+h60_line0 (the first-break night's line held) vs the redrawn line: rows confirmed 1 vs 1; rows where the two disagree: 0
+FILL MINUTE (tl, h60 filled trades, minutes since 09:30): <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30)
+FIRST BREAK -> CONFIRMED BREAK (sessions): <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+FILLED AT OR UNDER THE LINE: 0 of 1
+TL ROWS of the period's bases: 2 (the registration's row count is by row LABEL / file: see the read's header)
+
+
+==== GOLDEN ARTEFACT step0/exit | bytes=1 | sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9 | text
+0
+==== GOLDEN ARTEFACT step0/hereroot/out/h60_step0_discovery.txt | bytes=4783 | sha256=22ecba7f8c6ae503770befdb295c082409f3a57332fffe9599c33f1dd2a67042 | text
+#702 h60 STEP 0 - discovery: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under the pole (spec key, rule (b)), the base's period from its FIRST-break row; levels tl (decides) / com (beside).
+bases 2 (1 tl / 1 com); rows 3; (E, ticker) pairs 2; pairs not logged in _done.psv 0; logged ok with no file 0; minutes state {'ok': 3}
+EARLY-CLOSE CHECK (check 2): listed dates read 0 - ; other dates with < 25% at minute >= 210: 0 -> ok
+DATA-ABSTAIN SHARE (check 3, h60 on tl, the rows the rule READ): 0 of 2 (0.00%; {}) - limit 5%: ok
+
+REGISTERED TABLE CHECK (check 5) - window discovery: EQUAL to the registration's table
+cell              tl bases  tl multi-break  ORH5 fills (entry facts)  ORH5 fills (pinned P5 table)  com bases  com ORH5 fills
+C0                       1               1                         1                             1          1               1
+C1                       1               1                         1                             1          1               1
+C2                       0               0                         0                             -          0               0
+C3                       0               0                         0                             -          0               0
+C4                       0               0                         0                             -          0               0
+C5                       0               0                         0                             -          0               0
+C6                       0               0                         0                             -          0               0
+C7                       0               0                         0                             -          0               0
+C1_no_retrace            0               0                         0                             -          0               0
+C1_no_tightening         0               0                         0                             -          0               0
+HTF                      0               0                         0                             -          0               0
+C1_s5                    0               0                         0                             -          0               0
+  h60 (tl) per cell: confirmed+filled / confirmed too_wide / confirmed stop_at_or_above_fill / never confirmed (of which data abstains only) / confirmed on the first break day / confirmed after an absent or no-line night
+cell              filled  too_wide  saaf  never (data only)  first day  after a gap
+C0                     1         0     0              0 (0)          0            1
+C1                     1         0     0              0 (0)          0            1
+C2                     0         0     0              0 (0)          0            0
+C3                     0         0     0              0 (0)          0            0
+C4                     0         0     0              0 (0)          0            0
+C5                     0         0     0              0 (0)          0            0
+C6                     0         0     0              0 (0)          0            0
+C7                     0         0     0              0 (0)          0            0
+C1_no_retrace          0         0     0              0 (0)          0            0
+C1_no_tightening       0         0     0              0 (0)          0            0
+HTF                    0         0     0              0 (0)          0            0
+C1_s5                  0         0     0              0 (0)          0            0
+  every entry (tl, C0 / C1): confirmed+filled / too_wide / saaf / never
+entry                 C0             C1
+h60        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h30        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h5         1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h60_first  0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_m025   0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_line0  1 / 0 / 0 / 0  1 / 0 / 0 / 0
+orh60      0 / 0 / 0 / 1  0 / 0 / 0 / 1
+
+NESTING (per row, tl): rows h60 confirms that h30 does not, plus rows h30 confirms that h5 does not: 0 (must be 0); rows confirmed by h5 1, h30 1, h60 1 of 2 rows
+LAST_BAR_ONLY (tl, h60; the hole counted, not fixed): 0 rows, by what followed: {}
+h60_line0 (the first-break night's line held) vs the redrawn line: rows confirmed 1 vs 1; rows where the two disagree: 0
+FILL MINUTE (tl, h60 filled trades, minutes since 09:30): <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30)
+FIRST BREAK -> CONFIRMED BREAK (sessions): <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+FILLED AT OR UNDER THE LINE: 0 of 1
+TL ROWS of the period's bases: 2 (the registration's row count is by row LABEL / file: see the read's header)
+
+
+==== GOLDEN ARTEFACT step0/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT step0/stdout | bytes=4958 | sha256=216f34a81ddbedfd51691a3b670abd6eef5fffd15618e8add453a1510b28d8e1 | text
+#702 h60 STEP 0 - discovery: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under the pole (spec key, rule (b)), the base's period from its FIRST-break row; levels tl (decides) / com (beside).
+bases 2 (1 tl / 1 com); rows 3; (E, ticker) pairs 2; pairs not logged in _done.psv 0; logged ok with no file 0; minutes state {'ok': 3}
+EARLY-CLOSE CHECK (check 2): listed dates read 0 - ; other dates with < 25% at minute >= 210: 0 -> ok
+DATA-ABSTAIN SHARE (check 3, h60 on tl, the rows the rule READ): 0 of 2 (0.00%; {}) - limit 5%: ok
+
+REGISTERED TABLE CHECK (check 5) - window discovery: EQUAL to the registration's table
+cell              tl bases  tl multi-break  ORH5 fills (entry facts)  ORH5 fills (pinned P5 table)  com bases  com ORH5 fills
+C0                       1               1                         1                             1          1               1
+C1                       1               1                         1                             1          1               1
+C2                       0               0                         0                             -          0               0
+C3                       0               0                         0                             -          0               0
+C4                       0               0                         0                             -          0               0
+C5                       0               0                         0                             -          0               0
+C6                       0               0                         0                             -          0               0
+C7                       0               0                         0                             -          0               0
+C1_no_retrace            0               0                         0                             -          0               0
+C1_no_tightening         0               0                         0                             -          0               0
+HTF                      0               0                         0                             -          0               0
+C1_s5                    0               0                         0                             -          0               0
+  h60 (tl) per cell: confirmed+filled / confirmed too_wide / confirmed stop_at_or_above_fill / never confirmed (of which data abstains only) / confirmed on the first break day / confirmed after an absent or no-line night
+cell              filled  too_wide  saaf  never (data only)  first day  after a gap
+C0                     1         0     0              0 (0)          0            1
+C1                     1         0     0              0 (0)          0            1
+C2                     0         0     0              0 (0)          0            0
+C3                     0         0     0              0 (0)          0            0
+C4                     0         0     0              0 (0)          0            0
+C5                     0         0     0              0 (0)          0            0
+C6                     0         0     0              0 (0)          0            0
+C7                     0         0     0              0 (0)          0            0
+C1_no_retrace          0         0     0              0 (0)          0            0
+C1_no_tightening       0         0     0              0 (0)          0            0
+HTF                    0         0     0              0 (0)          0            0
+C1_s5                  0         0     0              0 (0)          0            0
+  every entry (tl, C0 / C1): confirmed+filled / too_wide / saaf / never
+entry                 C0             C1
+h60        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h30        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h5         1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h60_first  0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_m025   0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_line0  1 / 0 / 0 / 0  1 / 0 / 0 / 0
+orh60      0 / 0 / 0 / 1  0 / 0 / 0 / 1
+
+NESTING (per row, tl): rows h60 confirms that h30 does not, plus rows h30 confirms that h5 does not: 0 (must be 0); rows confirmed by h5 1, h30 1, h60 1 of 2 rows
+LAST_BAR_ONLY (tl, h60; the hole counted, not fixed): 0 rows, by what followed: {}
+h60_line0 (the first-break night's line held) vs the redrawn line: rows confirmed 1 vs 1; rows where the two disagree: 0
+FILL MINUTE (tl, h60 filled trades, minutes since 09:30): <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30)
+FIRST BREAK -> CONFIRMED BREAK (sessions): <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+FILLED AT OR UNDER THE LINE: 0 of 1
+TL ROWS of the period's bases: 2 (the registration's row count is by row LABEL / file: see the read's header)
+
+TL ROWS by label / file: 2 (the registration's table: 2) -> EQUAL
+WROTE <TMP>/cb702/out/h60_step0_discovery.tsv.gz, <TMP>/hereroot/out/h60_step0_discovery.txt; WALL TIME <N>s
+
