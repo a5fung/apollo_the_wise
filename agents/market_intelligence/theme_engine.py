@@ -8215,20 +8215,25 @@ def _cap_order_children_after_parents(themes: list[dict], sub_theme_parents: "di
     emitted: set[int] = set()        # indices already placed
     out: list[dict] = []
 
-    def _emit(i: int) -> None:
-        if i in emitted:
+    def _emit(i: int, anchor: int, visiting: set[int]) -> None:
+        # `anchor` = the index the loop is placing: every ancestor listed AFTER it is pulled ahead, so a
+        # grandparent ranked between the grandchild and the parent comes first too (2026-10-22 review:
+        # comparing against the current node instead left the middle theme ahead of its own parent);
+        # `visiting` stops a link cycle from recursing.
+        if i in emitted or i in visiting:
             return
+        visiting.add(i)
         t = themes[i]
         sg = _sector_group(t["name"])
         parent = _cap_parent_in_group(t["name"], sg[0], sub_theme_parents) if sg else None
-        if parent is not None and parent in first_idx and first_idx[parent] > i:
-            _emit(first_idx[parent])   # the later parent (and its own later ancestors) come first
-        if i not in emitted:           # a cycle can place `i` inside the recursive call
+        if parent is not None and parent in first_idx and first_idx[parent] > anchor:
+            _emit(first_idx[parent], anchor, visiting)   # the later parent (and its later ancestors) first
+        if i not in emitted:
             emitted.add(i)
             out.append(t)
 
     for i in range(len(themes)):
-        _emit(i)
+        _emit(i, i, set())
     return out
 
 

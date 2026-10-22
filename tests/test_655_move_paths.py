@@ -166,6 +166,17 @@ def test_order_emits_every_theme_exactly_once_even_on_a_link_cycle_and_a_chain()
     assert [t["name"] for t in out] == [PARENT, CHILD, EPS]
 
 
+def test_order_a_grandparent_ranked_between_the_grandchild_and_the_parent_still_comes_first():
+    """2026-10-22 review: a three-level family in one keyword group, ranked grandchild > peer > grandparent >
+    parent. Every ancestor listed after the theme being placed is pulled ahead of it, so the family stays in
+    family order and the middle theme never takes a slot ahead of its own parent (on a6521c17 the order was
+    [CHILD, EPS, DRILLERS, PARENT])."""
+    themes = [_t(EPS, EP_MEMBERS, 80), _t(DRILLERS, DRILLER_MEMBERS, 78), _t(PARENT, PARENT_MEMBERS, 75),
+              _t(CHILD, CHILD_MEMBERS, 70)]
+    out = te._cap_order_children_after_parents(themes, {EPS: CHILD, CHILD: PARENT})
+    assert [t["name"] for t in out] == [PARENT, CHILD, EPS, DRILLERS]
+
+
 def test_order_a_child_waits_for_the_first_occurrence_of_a_duplicated_parent_name():
     """The 10-07 shape: a re-minted namesake. Index-based, so a same-name shell ahead of the child
     counts as the parent being ahead (the child keeps its place)."""

@@ -133,7 +133,8 @@ async def test_event_name_is_the_registered_constant():
 
 @pytest.mark.asyncio
 async def test_guard_members_do_not_block_the_keep(audit):
-    """Cooldown / exclusion members are not JUDGED (they neither count toward the 3 nor block):
+    """Exclusion members are not JUDGED (they neither count toward the 3 nor block); a cooldown from the target
+    counts as judged since 2026-10-24 (`_cooldown_refused`):
     3 judged noise + 1 operator-excluded -> still kept, judged == 3."""
     third = ["QA", "QB", "QC", "QX"]
     out = await _run(_themes(third), _ctx(noise=third), theme_exclusions={TANKER: {"QX"}})
