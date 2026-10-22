@@ -2279,3 +2279,33 @@ successive pullbacks inside the base getting shallower; intraday is not availabl
 tightness snapshot out of the score; themes recorded forward only; best-of-1/3/6-month strength in the score). 4 — a breakout can
 happen at ANY time of day, so the breakout-day range and volume are read over every minute BEFORE the entry fills, whenever it
 fills (not just the first five minutes); the volume is compared with how much a normal day has traded by that minute.
+
+## 2026-10-22 — AMRX: three entries EARLIER than our breakout entry (operator, verbatim, with his marked chart)
+
+> "Btw, I got alert on this anticipation entry and looked at the chart, I'd probably enter the breakout a day earlier if trading breakout or even earlier if trading u&r or tight days anticipating breakout. I've marked up the chart myself for your reference."
+
+(Replying to the 10-22 Family A digest: *"Confirm entry fired today (1) — base-high breakout + volume (control arm, SHADOW) · AMRX buy 20.48 · stop 18.79 (-8.3%)"*.)
+
+**🖼 Image:** `docs/methodology/operator_shared_charts/2026-10-22_amrx_family_a_entries/01_chart_marked.png` — his labels: *"Second inside day, vol contracted"*, *"Reclaim 10/20ma"*, *"Flag breakout day"*, plus a down-sloping line drawn from the 9-21 high.
+
+**His marks on the bars** (from `mi_daily_closes`; volume as a multiple of the prior 20-day average):
+
+| Date | His label | Bar | Note |
+|---|---|---|---|
+| 10-14 / 10-15 | (the undercut) | lows 18.86 / 18.79 | below the 10-08 low 18.97: the "U" of U&R |
+| 10-16, 10-19 | "Second inside day, vol contracted" | 10-16 h 19.39 l 18.94 (inside 10-15), 10-19 h 19.45 l 18.95 | volume 0.70x and 0.69x |
+| 10-20 | "Reclaim 10/20ma" | close 19.84 over 10-day 19.53 and 20-day 19.81 | volume 1.82x: the "R" of U&R |
+| 10-21 | "Flag breakout day" | open 19.90, close 20.20, through his drawn line | volume 1.56x |
+| 10-22 | (our confirm entry) | buy 20.48 (the base high), stop 18.785 (the base low) | volume 1.68x |
+
+**What our system said:**
+- The anticipation board (`mi_anticipation_consolidation`, anchor 09-28) held AMRX as `post_runup` and never `coiled`. On the 10-22 evaluation it showed no pullback shape and a tight-close streak of 0. So the in-coil "anticipate" arm never fired, and only the confirm arm fired, on 10-22.
+- The consolidation breakout watch (#705's detector, `mi_consolidation_breakout_watch`) never listed AMRX. Its run-up was 16.56 (09-16 low) to 21.175 (09-21 high), +27.9%, under the 30% prior-move minimum (`PRIOR_MOVE_MIN = 0.30`).
+- Same stop for comparison only (the stop is his to set; entries-and-exits-are-undetermined): with the 18.785 base-low stop, a buy near 19.45 (above the second inside day, 10-20) risks 3.4%, near 19.90 (10-21) risks 5.6%, and ours at 20.48 risks 8.3%.
+
+**Used as:** a labelled Family A example. It names THREE separate setups, each earlier than our base-high breakout, and each needs its own buy point and stop (SETUP vs FAMILY):
+1. tight days (inside days on contracting volume), bought in anticipation;
+2. undercut and reclaim (U&R) of the 10/20-day averages;
+3. the flag/trendline break, which maps to the existing `pivot_tl` level in `consolidation_breakout.explain_watch`.
+
+The example feeds #705's entry question after the A+ read. It is not a verdict on the stock, and it is not a rule (htf-tweets-are-a-tuning-corpus).
