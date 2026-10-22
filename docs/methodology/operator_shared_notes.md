@@ -2286,6 +2286,8 @@ fills (not just the first five minutes); the volume is compared with how much a 
 
 (Replying to the 10-22 Family A digest: *"Confirm entry fired today (1) — base-high breakout + volume (control arm, SHADOW) · AMRX buy 20.48 · stop 18.79 (-8.3%)"*.)
 
+His follow-up (verbatim): *"I only saw amrx after I got the alert it's a consolidation entry, so one of our system caught it, I just marked up the chart after the fact"*. **So AMRX is a CAUGHT name entered late, not a miss:** the anticipation board found it, and he marked the chart after its alert. The gap is the entry timing (one to two days earlier), not detection of the stock.
+
 **🖼 Image:** `docs/methodology/operator_shared_charts/2026-10-22_amrx_family_a_entries/01_chart_marked.png` — his labels: *"Second inside day, vol contracted"*, *"Reclaim 10/20ma"*, *"Flag breakout day"*, plus a down-sloping line drawn from the 9-21 high.
 
 **His marks on the bars** (from `mi_daily_closes`; volume as a multiple of the prior 20-day average):
