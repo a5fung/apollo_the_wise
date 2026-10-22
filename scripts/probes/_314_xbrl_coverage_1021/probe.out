@@ -1,0 +1,74 @@
+{
+ "population": "top 60 run-up small caps 2025-26 (peak close < $10, >= 3x the 60-session low)",
+ "n": 60,
+ "mapped_to_cik": 40,
+ "facts_200": 40,
+ "coverage": {
+  "warrants_outstanding": 12,
+  "warrant_exercise_price": 18,
+  "convertible_conversion_price": 7,
+  "convertible_shares": 1,
+  "convertible_debt": 15,
+  "shares_outstanding": 34
+ }
+}
+NIMU 0000720762 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-08-14'}
+BSGM None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+NINE 0001532286 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-08-05'}
+AZUL 0001432364 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2019-04-30'}
+CPHI 0001106644 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': '2023-08-14', 'convertible_shares': '2023-08-14', 'convertible_debt': '2023-03-30', 'shares_outstanding': '2026-08-14'}
+OPEN 0001801169 200 {'warrants_outstanding': '2021-08-11', 'warrant_exercise_price': '2024-02-15', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': '2026-02-19', 'shares_outstanding': '2026-08-04'}
+NUAI 0002028336 200 {'warrants_outstanding': None, 'warrant_exercise_price': '2026-08-14', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-08-14'}
+CAST 0001633369 200 {'warrants_outstanding': '2026-07-20', 'warrant_exercise_price': None, 'convertible_conversion_price': '2026-07-20', 'convertible_shares': None, 'convertible_debt': '2026-09-28', 'shares_outstanding': None}
+HLEO 0001953988 200 {'warrants_outstanding': None, 'warrant_exercise_price': '2026-02-17', 'convertible_conversion_price': '2025-05-05', 'convertible_shares': None, 'convertible_debt': '2026-03-30', 'shares_outstanding': '2026-09-14'}
+QTI 0001844505 200 {'warrants_outstanding': '2026-08-12', 'warrant_exercise_price': '2024-03-25', 'convertible_conversion_price': '2022-11-14', 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-08-12'}
+CCCXW None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+USDEW 0002080215 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': '2026-09-09', 'shares_outstanding': None}
+INNI 0001098482 200 {'warrants_outstanding': None, 'warrant_exercise_price': '2013-04-15', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2013-11-12'}
+AFDG None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+RXT 0001810019 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-08-10'}
+ENTO None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+DAIC 0002033770 200 {'warrants_outstanding': '2026-04-23', 'warrant_exercise_price': '2026-09-25', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-10-02'}
+AGGI None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+CCXIW 0002074973 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+CIFRW None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+MOBBW 0001898643 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-03-23'}
+DFDVW 0001805526 200 {'warrants_outstanding': None, 'warrant_exercise_price': '2026-03-30', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': '2025-05-14', 'shares_outstanding': '2026-08-13'}
+BREA None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+KNW None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+ZYBT 0001975641 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-04-28'}
+XHLD 0002030954 200 {'warrants_outstanding': None, 'warrant_exercise_price': '2026-08-10', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-09-10'}
+EDSA 0001540159 200 {'warrants_outstanding': '2026-08-13', 'warrant_exercise_price': '2026-08-13', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-08-13'}
+PLAG 0001117057 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': '2016-04-14', 'shares_outstanding': '2026-08-14'}
+STAK 0002002453 200 {'warrants_outstanding': None, 'warrant_exercise_price': '2026-10-21', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-10-21'}
+ABVE None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+ANL 0001944552 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+SKBL None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+GRYP None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+EYEN None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+MTC 0001742518 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': '2026-04-02', 'convertible_shares': None, 'convertible_debt': '2026-04-02', 'shares_outstanding': '2026-04-02'}
+EVTV None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+VVPR None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+ATNF None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+RVMDW 0001628171 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-08-05'}
+SLNH 0000064463 200 {'warrants_outstanding': '2026-08-13', 'warrant_exercise_price': '2026-03-30', 'convertible_conversion_price': '2026-03-30', 'convertible_shares': None, 'convertible_debt': '2024-04-01', 'shares_outstanding': '2026-08-13'}
+AIIO 0001932737 200 {'warrants_outstanding': '2026-06-26', 'warrant_exercise_price': '2025-03-31', 'convertible_conversion_price': '2026-06-26', 'convertible_shares': None, 'convertible_debt': '2026-06-26', 'shares_outstanding': None}
+DOMH 0000012239 200 {'warrants_outstanding': '2026-08-11', 'warrant_exercise_price': '2026-03-31', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-08-11'}
+ANTE None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+LESL 0001821806 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-08-12'}
+STFS 0002003061 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2025-11-12'}
+PTNM None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+FMST 0001935418 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-06-30'}
+TMDE 0002009714 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-05-15'}
+FTEL None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+QHUOY None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+CRMLW 0001951089 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-09-25'}
+PROK 0001850270 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+MI 0001958713 200 {'warrants_outstanding': '2024-05-16', 'warrant_exercise_price': '2026-05-01', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': '2026-03-10', 'shares_outstanding': '2026-05-01'}
+SDEV 0001389545 200 {'warrants_outstanding': '2026-07-30', 'warrant_exercise_price': '2026-07-30', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': '2019-08-07', 'shares_outstanding': '2026-07-30'}
+LCFYW 0001875547 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2025-11-12'}
+SATLW 0001874315 200 {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': '2026-08-06', 'shares_outstanding': '2022-05-16'}
+LIXT None None {'warrants_outstanding': None, 'warrant_exercise_price': None, 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': None}
+INHD 0001961847 200 {'warrants_outstanding': None, 'warrant_exercise_price': '2026-08-18', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': None, 'shares_outstanding': '2026-08-18'}
+EOSEW 0001805077 200 {'warrants_outstanding': '2024-05-14', 'warrant_exercise_price': '2026-02-26', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': '2024-03-04', 'shares_outstanding': '2026-08-05'}
+AREBW 0001648087 200 {'warrants_outstanding': '2023-04-14', 'warrant_exercise_price': '2025-01-29', 'convertible_conversion_price': None, 'convertible_shares': None, 'convertible_debt': '2025-08-13', 'shares_outstanding': '2026-08-10'}
