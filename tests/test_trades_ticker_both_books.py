@@ -125,12 +125,26 @@ def _make_agent():
 def _run(task, ticker=None):
     from agents.market_intelligence import agent as agent_mod
     from agents.market_intelligence import constants
+    from agents.market_intelligence import execution_client
     from shared.models import AgentRequest
     pool, seen_sql = _fake_db()
+
+    # #706: the open rows now read the broker (position + account equity, per row's own book).
+    # Hermetic: one live position for ZZOP (50 sh @ $20 = $1,000 of a $100,000 account); the paper
+    # rows get no position, so their stats print as dashes. NEVER the real broker.
+    async def _get_position(ticker, account_mode=None):
+        if (ticker, account_mode) == ("ZZOP", "live"):
+            return {"current_price": 20.0, "market_value": 1_000.0, "side": "long", "unrealized_pl": 0.0}
+        return None
+
+    async def _get_account(account_mode=None):
+        return {"equity": 100_000.0}
 
     async def go():
         with patch.object(agent_mod, "get_pool", new=AsyncMock(return_value=pool)), \
              patch.object(constants, "LIVE_TRADING_ENABLED", True), \
+             patch.object(execution_client, "get_position", new=_get_position), \
+             patch.object(execution_client, "get_account", new=_get_account), \
              patch.dict(sys.modules, {
                  "agents.market_intelligence.backtester.tracker": _real_formatter_module()}):
             req = AgentRequest(task=task, user_id=1, conversation_id="t")
@@ -142,21 +156,23 @@ def _run(task, ticker=None):
 
 
 # The pre-change output of `_run("my trades")` on this fixture, captured from the unmodified handler
-# (main @ 182d21b7) BEFORE the edit. The no-ticker list must never drift from it.
+# (main @ 182d21b7) BEFORE the edit. The no-ticker list must never drift from it — EXCEPT the two
+# deliberate #706 additions: the closed rows' % win/loss and the open row's size/stop line.
 GOLDEN_NO_TICKER_LIST = '''*Live Trade History (Alpaca · real money)*
 
 ❌ *ZZLV* Oct 09 gap=22.5% score=80
   ORB entry=$10.00 stop=$8.00 ×100
   10:20 (stop_hit) 100sh @$8.00 P&L $-200
-  *Total P&L: $-200.00* (1d)
+  *Total P&L: $-200.00* · -20.0% (1d)
 ❌ *ZZBO* Oct 02 gap=15.5% score=88
   ORB entry=$10.00 stop=$8.00 ×100
   10:20 (stop_hit) 100sh @$8.00 P&L $-200
-  *Total P&L: $-200.00* (1d)
+  *Total P&L: $-200.00* · -20.0% (1d)
 🟡 *ZZOP* Oct 01 gap=22.5% score=80
   ORB entry=$20.00 stop=$18.00 ×50
   ↗ open
   Open — 5d  Stop: $18.00
+  1.0% of $100,000 equity · 10.0% to stop
 
 *Totals:* 41 traded · 2 open · 36 closed (33% win) · P&L $+1,234.50 · 9 filtered'''
 

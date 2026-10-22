@@ -478,11 +478,11 @@ def _is_window_duplicate_reason(reason) -> bool:
 # ── #706: send each skip LINE once per ET day ────────────────────────────────
 # `process_new_alerts_live` evaluates EVERY HIGH alert on every call, and it is called from the
 # bar stream (once per first-bar arrival — i.e. once per subscribed ticker) AND the 09:31 cron
-# fallback. A name that is skipped for the same reason on each evaluation therefore reappeared
-# in a fresh grouped digest each time (2026-10-21: SPCX twice, 10 s apart). Message-only: the
-# evaluation, the skip row and the result list are untouched (a recovered gap can still enter on
-# a later evaluation); only the digest LINE for a (ticker, reason class) already sent today is
-# held back.
+# fallback. Two evaluations that OVERLAP (both pass the per-ticker "already has a row today"
+# check below before either has written its skip row) both run the pipeline and each sent its
+# own grouped digest (2026-10-21: SPCX twice, 10 s apart). Message-only: the evaluation, the
+# skip row and the result list are untouched; only the digest LINE for a (ticker, reason class)
+# already announced today is held back.
 #
 #   key   = (ET day, ticker, reason CLASS) where the class is the vocabulary's aggregation key
 #           `category:code` (skip_reasons.py) — the free-form detail after it ("$1.24 vs $0.83")
@@ -490,13 +490,23 @@ def _is_window_duplicate_reason(reason) -> bool:
 #           ("filter:atr_too_high" -> "block:max_positions") is a new key and does.
 #   reset = the ET day: the day is part of the key, and keys of earlier days are dropped on
 #           each call (a day 2 evaluation starts empty). Both entry paths run in the one
-#           execution process (trigger_orb_entry -> _orb_monitor_job crosses to apollo-execution,
-#           as does the bar stream), so one in-memory set covers both.
-#   restart = the set is process memory: an execution-container restart mid-day empties it, and
-#           that day's already-sent skips can show once more. A repeat after a restart is the
-#           accepted failure (the old behaviour); a swallowed first line never is.
-#   send failure = the claim is released, so the next evaluation retries the line.
+#           execution process and one event loop (the bar stream is a task on it; the cron
+#           arrives as an HTTP call into it), so one in-memory set covers both.
+#   lock  = `claim + send` is ONE critical section. An overlapping evaluation that reaches the
+#           digest while the first is still sending WAITS for its result, then re-checks: sent ->
+#           it adds nothing; failed -> it claims and sends the line itself. Without the lock the
+#           second one would pass over the first's claim, the first's send could then fail and
+#           release it, and NOBODY would send the line.
+#   send failure = the claim is released, so an evaluation WAITING on the lock retries the line.
+#           ⚠ That is the only retry there is: a LATER, non-overlapping call never reaches the
+#           digest for a ticker that already has today's skip row (the per-ticker existence
+#           check returns None for any status), so a send that failed with no overlapping
+#           evaluation is not retried — exactly as before #706.
+#   restart = the set is process memory: a restart empties it. A repeat after a restart needs a
+#           skip path that wrote no row (the existence check stops every other re-evaluation);
+#           that repeat is the accepted failure direction — a swallowed first line never is.
 _skip_digest_sent: set[tuple[date, str, str]] = set()
+_skip_digest_lock = asyncio.Lock()
 
 
 def _skip_reason_class(reason) -> str:
@@ -508,8 +518,8 @@ def _skip_reason_class(reason) -> str:
 
 
 def _claim_unsent_skips(digest_results: list[dict], today: date):
-    """(fresh results to send, claimed keys). Claims synchronously (no await between the check and
-    the add), so two overlapping evaluations cannot both send the same line."""
+    """(fresh results to send, claimed keys). Pure bookkeeping on `_skip_digest_sent`; callers
+    hold `_skip_digest_lock` across this AND the send so the claim cannot be passed over."""
     for k in [k for k in _skip_digest_sent if k[0] < today]:
         _skip_digest_sent.discard(k)
     fresh: list[dict] = []
@@ -524,9 +534,35 @@ def _claim_unsent_skips(digest_results: list[dict], today: date):
     return fresh, claimed
 
 
+async def _send_skip_digest(digest_results: list[dict], today: date, mode_prefix: str) -> None:
+    """Send the grouped skip digest for the lines not yet announced today (see the block above).
+    A failed send releases its claim; the lock makes that release reach a waiting evaluation."""
+    if not digest_results:
+        return
+    async with _skip_digest_lock:
+        fresh, claimed = _claim_unsent_skips(digest_results, today)
+        if not fresh:
+            return
+        bullets = "\n".join(
+            f"• `{r['ticker']}` — {humanize(r.get('reason'))}"
+            for r in fresh
+        )
+        sent_ok = False
+        try:
+            sent_ok = bool(await send_telegram_message(
+                f"{mode_prefix}⏭️ *ORB skips ({today}, {len(fresh)})*\n{bullets}"
+            ))
+        except Exception as e:
+            logger.error(f"ORB grouped-skip Telegram failed — {e}")
+        if not sent_ok:
+            _skip_digest_sent.difference_update(claimed)
+
+
 def _reset_skip_digest_dedupe() -> None:
-    """Forget every sent skip line (tests; never called in production)."""
+    """Forget every sent skip line and start a fresh lock (tests; never called in production)."""
+    global _skip_digest_lock
     _skip_digest_sent.clear()
+    _skip_digest_lock = asyncio.Lock()
 
 
 # The day's HIGH-alert board — ⚠ BYTE-IDENTICAL to the pre-#533 inline query and it
@@ -840,23 +876,13 @@ async def process_new_alerts_live(today: date | None = None, trigger: str = "cro
         r for r in skipped_results
         if not _is_window_duplicate_reason(r.get("reason"))
     ]
-    # #706: a (ticker, reason class) already announced today is not announced again.
-    digest_results, _claimed = _claim_unsent_skips(digest_results, today)
-    if digest_results:
-        bullets = "\n".join(
-            f"• `{r['ticker']}` — {humanize(r.get('reason'))}"
-            for r in digest_results
-        )
-        _sent_ok = False
-        try:
-            _sent_ok = bool(await send_telegram_message(
-                f"{strategy_mode_prefix(_magna53_mode)}⏭️ *ORB skips ({today}, {len(digest_results)})*\n{bullets}"
-            ))
-        except Exception as e:
-            logger.error(f"ORB grouped-skip Telegram failed — {e}")
-        if not _sent_ok:
-            # The line did not go out: release the claim so the next evaluation retries it.
-            _skip_digest_sent.difference_update(_claimed)
+    # #706: a (ticker, reason class) already announced today is not announced again. The digest is
+    # message-only and runs AFTER every order was submitted, so nothing in it may stop `results`
+    # reaching the caller.
+    try:
+        await _send_skip_digest(digest_results, today, strategy_mode_prefix(_magna53_mode))
+    except Exception as e:
+        logger.error(f"ORB skip digest failed (the orders above are unaffected) — {e}", exc_info=True)
 
     return results
 

@@ -834,7 +834,7 @@ class MarketIntelligenceAgent(BaseAgent):
             """Return combined trade summary: live (Alpaca) + paper trades."""
             from agents.market_intelligence.db import get_pool
             from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2): same read names, body unchanged
-            from agents.market_intelligence.trade_stats import open_position_stats, trade_return_pct
+            from agents.market_intelligence.trade_stats import read_open_position_stats, trade_return_pct
 
             pool = await get_pool()
             result = {"live": None, "paper": None}
@@ -855,7 +855,8 @@ class MarketIntelligenceAgent(BaseAgent):
                         SELECT id, ticker, alert_date, ep_score, entry_price,
                                remaining_shares, stop_price, hard_stop, hold_days,
                                position_size, risk_dollars, total_pnl,
-                               partial_taken, breakeven_active, catalyst_quality
+                               partial_taken, breakeven_active, catalyst_quality,
+                               account_mode  -- #706: each position is read from + sized against ITS account
                         FROM mi_live_trades
                         WHERE status = 'filled' AND remaining_shares > 0
                         ORDER BY alert_date ASC
@@ -869,9 +870,8 @@ class MarketIntelligenceAgent(BaseAgent):
                         ORDER BY closed_at DESC LIMIT 3
                     """)
 
-                # Get account equity (fetched BEFORE the positions: #706 divides each position's
-                # market value by it). Same default account the positions below are read from, so
-                # numerator and denominator come from one account. Fresh per request, never cached.
+                # Top-level `equity`: the legacy no-arg account, exactly as before #706 (field meaning
+                # unchanged). It is NOT the denominator of the per-position %.
                 try:
                     account = await alpaca.get_account()
                     equity = account["equity"]
@@ -879,37 +879,30 @@ class MarketIntelligenceAgent(BaseAgent):
                     logger.warning(f"/trades/summary: account equity fetch failed: {e}")
                     equity = None
 
-                # Fetch current prices from Alpaca for unrealized P&L
+                # Current prices + the #706 stats. This table holds BOTH books, so each position is
+                # read from — and its market value divided by the equity of — ITS OWN account
+                # (`account_mode`), one account read per distinct mode, fresh per request. (The
+                # no-arg get_position/get_account resolve to the legacy global mode = paper on prod:
+                # a real-money row would have been read against the paper book.)
+                open_trades = [dict(t) for t in open_trades]
+                _items, equity_by_mode = await read_open_position_stats(
+                    open_trades, get_position=alpaca.get_position, get_account=alpaca.get_account,
+                    default_mode=None,   # a NULL account_mode keeps the legacy default
+                )
                 open_details = []
-                for t in open_trades:
-                    t = dict(t)
-                    pos = None
-                    try:
-                        pos = await alpaca.get_position(t["ticker"])
-                        if pos:
-                            t["current_price"] = pos["current_price"]
-                            t["unrealized_pnl"] = pos["unrealized_pl"]
-                            t["market_value"] = pos["market_value"]
-                        else:
-                            t["current_price"] = None
-                            t["unrealized_pnl"] = 0
-                            t["market_value"] = 0
-                    except Exception as e:
-                        logger.debug(f"/trades/summary: position fetch failed for {t['ticker']}: {e}")
+                for t, _it in zip(open_trades, _items):
+                    pos = _it["pos"]
+                    if pos:
+                        t["current_price"] = pos.get("current_price")
+                        t["unrealized_pnl"] = pos.get("unrealized_pl")
+                        t["market_value"] = pos.get("market_value")
+                    else:
                         t["current_price"] = None
                         t["unrealized_pnl"] = 0
                         t["market_value"] = 0
-                    # #706: the dashboard's two open-position stats — % None when not computable.
-                    _st = open_position_stats(
-                        side=(pos or {}).get("side"),
-                        market_value=(pos or {}).get("market_value"),
-                        current_price=(pos or {}).get("current_price"),
-                        stop_price=t.get("stop_price"),
-                        equity=equity,
-                    )
-                    t["side"] = _st["side"]
-                    t["position_pct_of_equity"] = _st["position_pct"]
-                    t["stop_pct"] = _st["stop_pct"]
+                    t["side"] = _it["stats"]["side"]
+                    t["position_pct_of_equity"] = _it["stats"]["position_pct"]
+                    t["stop_pct"] = _it["stats"]["stop_pct"]   # % lost if stopped from the current price
                     open_details.append(t)
                 recent_closed_out = []
                 for _r in recent_closed:
@@ -926,6 +919,8 @@ class MarketIntelligenceAgent(BaseAgent):
                     "win_rate": (stats["winners"] / closed_count * 100) if closed_count > 0 else 0,
                     "realized_pnl": float(stats["realized_pnl"] or 0),
                     "equity": equity,
+                    # #706: the denominators the position %s used (a NULL account_mode row = the legacy default)
+                    "equity_by_mode": {(k or "default"): v for k, v in equity_by_mode.items()},
                     "open_positions": open_details,
                     "recent_closed": recent_closed_out,
                 }
@@ -4564,7 +4559,26 @@ class MarketIntelligenceAgent(BaseAgent):
 
         is_skipped = lambda r: r["status"] not in ("open", "closed", "filled", "order_placed", "pending_confirmation", "confirmed")
 
-        for r in rows:
+        # #706: size-of-equity + stop % for every FILLED live row, each read from and measured
+        # against ITS OWN account (the ticker view mixes the live and paper books, so the row's
+        # `account_mode`; the list views are the live book by their WHERE). One account read per
+        # distinct mode, fresh, never cached. The EOD-sim paper table has no broker -> no stats.
+        from agents.market_intelligence.trade_stats import (
+            fmt_pct, fmt_stat_line, read_open_position_stats, trade_return_pct,
+        )
+        _stat_idx = [i for i, r in enumerate(rows) if LIVE_TRADING_ENABLED and r["status"] == "filled"]
+        _stats_by_idx: dict[int, tuple[dict, float | None]] = {}
+        if _stat_idx:
+            from agents.market_intelligence import execution_client as alpaca  # facade (#256 W1-s2)
+            _items, _eq_by_mode = await read_open_position_stats(
+                [{"ticker": rows[i]["ticker"], "stop_price": rows[i]["stop_price"],
+                  "account_mode": (rows[i]["account_mode"] if tag_rows else "live")} for i in _stat_idx],
+                get_position=alpaca.get_position, get_account=alpaca.get_account, default_mode="live",
+            )
+            for i, _it in zip(_stat_idx, _items):
+                _stats_by_idx[i] = (_it["stats"], _eq_by_mode.get(_it["mode"]))
+
+        for _i, r in enumerate(rows):
             is_open = r["status"] in open_statuses
             pnl_positive = (r["total_pnl"] or 0) > 0
             status_emoji = "🟡" if is_open else ("✅" if pnl_positive else ("⊘" if is_skipped(r) else "❌"))
@@ -4597,10 +4611,17 @@ class MarketIntelligenceAgent(BaseAgent):
 
             # Summary
             if not is_open:
-                lines.append(f"  *Total P&L: ${r['total_pnl']:+,.2f}* ({r['hold_days']}d)")
+                # #706: the trade's % win/loss beside the $ (omitted when there is no entry/shares
+                # frame — e.g. the EOD-sim paper table — never a made-up one).
+                _ret = trade_return_pct(r)
+                _ret_str = f" · {fmt_pct(_ret, signed=True)}" if _ret is not None else ""
+                lines.append(f"  *Total P&L: ${r['total_pnl']:+,.2f}*{_ret_str} ({r['hold_days']}d)")
             else:
                 stop_str = f"  Stop: ${r['stop_price']:.2f}" if r["stop_price"] else ""
                 lines.append(f"  Open — {r['hold_days']}d{stop_str}")
+                _st = _stats_by_idx.get(_i)
+                if _st is not None:
+                    lines.append(fmt_stat_line(stats=_st[0], equity=_st[1]))
 
         # Totals footer
         t = totals
@@ -7053,7 +7074,7 @@ class MarketIntelligenceAgent(BaseAgent):
         """Inline keyboard detail: /trades_detail {view} [{date}]"""
         from agents.market_intelligence.collector import last_trading_day
         from agents.market_intelligence.closed_trade_line import fmt_closed_line, parse_exits
-        from agents.market_intelligence.trade_stats import fmt_size_stop_lines, open_position_stats
+        from agents.market_intelligence.trade_stats import fmt_size_stop_lines, read_open_position_stats
 
         parts = request.task.strip().split()
         view = parts[1].lower() if len(parts) > 1 else "summary"
@@ -7131,29 +7152,21 @@ class MarketIntelligenceAgent(BaseAgent):
                     """, relevant_tickers)
                     ticker_history = {h["ticker"]: dict(h) for h in hist_rows}
 
-            # #706: the account's equity — the denominator of every open position's "% of
-            # equity". ONE broker read per render, from the LIVE account (the book this page
-            # shows; the no-arg form resolves to the legacy global mode = paper), fetched now and
-            # never cached, so the % can never rest on a stale equity. Failure -> None -> every
-            # position's % prints "—" (never a number off a guessed denominator).
-            equity: float | None = None
-            if open_rows:
-                try:
-                    _acct = await alpaca.get_account(account_mode="live")
-                    equity = float(_acct["equity"])
-                except Exception as e:
-                    logger.warning(f"/trades: live account equity fetch failed — % of equity shows '—': {e}")
+            # #706: every open position is read from the LIVE account (this page is the real-money
+            # book, #447) and divided by that account's equity — ONE account read per render, fresh
+            # and never cached (the no-arg form resolves to the legacy global mode = paper). A failed
+            # read -> None -> that position's % prints "—", never a number off a guessed denominator.
+            _items, _equity_by_mode = await read_open_position_stats(
+                [dict(r) for r in open_rows],
+                get_position=alpaca.get_position, get_account=alpaca.get_account, default_mode="live",
+            )
+            equity = _equity_by_mode.get("live")
 
-            # Fetch live prices per position (fire-and-forget fallback on failure)
             enriched = []
             unreal_total = 0.0
-            for r in open_rows:
+            for r, _it in zip(open_rows, _items):
                 d = dict(r)
-                try:
-                    pos = await alpaca.get_position(d["ticker"], account_mode="live")
-                except Exception as e:
-                    logger.debug(f"/trades: live-price fetch failed for {d['ticker']}: {e}")
-                    pos = None
+                pos = _it["pos"]
                 if pos:
                     d["current_price"] = pos.get("current_price")
                     d["unrealized_pnl"] = pos.get("unrealized_pl") or 0
@@ -7162,15 +7175,9 @@ class MarketIntelligenceAgent(BaseAgent):
                     d["current_price"] = None
                     d["unrealized_pnl"] = 0
                     d["market_value"] = 0
-                # #706: the broker's own side / market value / price. A position the broker did
-                # not return has none of them, so its stats are "—" (not 0%).
-                d["stats"] = open_position_stats(
-                    side=(pos or {}).get("side"),
-                    market_value=(pos or {}).get("market_value"),
-                    current_price=(pos or {}).get("current_price"),
-                    stop_price=d.get("stop_price"),
-                    equity=equity,
-                )
+                # The broker's own side / market value / price (via the shared reader). A position the
+                # broker did not return has none of them, so its stats are "—" (not 0%).
+                d["stats"] = _it["stats"]
                 unreal_total += float(d["unrealized_pnl"] or 0)
                 enriched.append(d)
 
