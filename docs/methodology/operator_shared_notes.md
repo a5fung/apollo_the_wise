@@ -2270,3 +2270,12 @@ daily bars also tightening, etc. Not a hard rule but pattern should be visible"*
 **Used as:** contraction is read at SEVERAL SCALES and the rating rewards it being visible at more of them — weekly (the weekly
 bars' highs and lows converging across the base), daily (the last days' ranges smaller than the base's earlier ones), and the
 successive pullbacks inside the base getting shallower; intraday is not available before the fill. A score, never a hard gate.
+
+## 2026-10-22 — his answers on the A+ rating's six mapped choices (operator, verbatim)
+
+> "4. what does it mean not later in the day? Unlike EPs, breakout can happen anytime. Rest is ok"
+
+**Used as:** 1, 2, 3, 5, 6 — yes (pullbacks as the third tightening scale; a missing scale counts as middling; the single
+tightness snapshot out of the score; themes recorded forward only; best-of-1/3/6-month strength in the score). 4 — a breakout can
+happen at ANY time of day, so the breakout-day range and volume are read over every minute BEFORE the entry fills, whenever it
+fills (not just the first five minutes); the volume is compared with how much a normal day has traded by that minute.
