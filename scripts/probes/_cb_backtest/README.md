@@ -276,3 +276,24 @@ for the code, `<SHA64>` / `<SHA12>...` for anything else); it fails on a one-byt
 pandas (major.minor) differ from `PINNED_ON.json`, a difference is an XFAIL naming the gap rather than a red. Pins:
 `tests/fixtures/cb_backtest_golden/<scenario>.golden` (the header line binds; the text below it is the diff). Re-pin ONLY for an intended
 output change, in its own reviewed commit: `CB_GOLDEN_UPDATE=1 python3 -m pytest tests/test_cb_backtest_golden.py`.
+
+# #705 (b) — the A+ RATING read (`aplus-profile`, `aplus-read`, `aplus-confirm`, `aplus-hindsight`, `aplus-verdict`; registered in `docs/analysis/cb_aplus_rating_prereg_2026-10-21.md`; BUILT ON SYNTHETIC DATA, NOT RUN)
+
+`aplus_read.py` (the spec module, pinned by the scaffold), `aplus_rederive.py` (the independent pandas re-derivation, pinned by name),
+`aplus_fixtures.py` (the golden days E / E2 / E3, run inside the read as data check 4); tests in `tests/test_cb_backtest_aplus.py`.
+
+```
+R="python3 scripts/probes/_cb_backtest/runner.py"; D=/Users/alvinfung/apollo_data/cb702; P=/Users/alvinfung/apollo_data/cb702_pre
+$R aplus-profile --data $D --data-pre $P                         # DONE 2026-10-22: cb702_pre/out/aplus_intraday_profile.tsv, sha 0a5bf816...bedb = EXPECTED (a pin; refuses a rebuild)
+$R aplus-read --data $D --data-pre $P --print-pins                # the footer lines -> pasted under <!-- FREEZE --> in the commit that precedes the run
+$R aplus-read --data $D --data-pre $P --period pre --dry-run [--no-freeze-check]        # STEP 0 census only (no outcome opened); DONE: every target met
+$R aplus-read --data $D --data-pre $P --period discovery --dry-run [--no-freeze-check]  # DONE: every target met
+$R aplus-read --data $D --data-pre $P --period pre --dry-run --self-check               # + the rating counts and every WOULD-FAIL-IF check (no outcome)
+$R aplus-read --data $D --data-pre $P --period pre                # THE READ, once: STEP 0 -> checks -> outcomes -> bars -> re-derivation MATCH -> verdict
+$R aplus-read --data $D --data-pre $P --period discovery          # the second deciding era, once
+$R aplus-verdict --data $D --data-pre $P                          # the consequence cell (both verdict files)
+$R aplus-hindsight --data $D --data-pre $P --period pre|discovery # the 39 + the within-week top-N, after BOTH verdicts
+$R aplus-confirm --data $D --data-pre $P --period holdout         # the sealed 2025-26 read, once, only on RECORD
+```
+Outputs: `DATA/out/trades_<period>_aplus.tsv.gz` (every feature, percentile, score, cutoff and flag per fill), `aplus_report_<period>.{tsv,txt}`,
+`aplus_verdict_<period>.{json,txt}` (DATA/out; the txt and the run log `aplus_summary_<period>.txt` here under `out/`), `aplus_hindsight_<period>.*`.

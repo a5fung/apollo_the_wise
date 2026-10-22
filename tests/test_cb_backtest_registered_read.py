@@ -257,7 +257,7 @@ class TestDriver:
         """`main()` dispatches the registry before the built-in branches: a spec called `h60-read` would silently replace the finished read."""
         tree = _demo_tree(tmp_path, monkeypatch)
         assert set(rn.BUILTIN_STAGES) == {"daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report", "p5", "pre-read",
-                                          "h60-step0", "h60-read", "h60-hindsight", "exit-read"}
+                                          "h60-step0", "h60-read", "h60-hindsight", "exit-read", "aplus-profile", "aplus-verdict"}
         monkeypatch.setitem(rn.REGISTERED_READS, "h60-read", demo_spec(name="h60-read"))
         for argv in (["h60-read", "--data", str(tree["cb702"]), "--period", "discovery", "--print-pins"], ["daily", "--data", str(tree["cb702"])]):
             with pytest.raises(SystemExit) as ex:
@@ -587,8 +587,10 @@ class TestDriver:
         head = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("DEMO-READ (registered read #705)")]
         assert len(head) == 1 and "freeze check NONE DECLARED" in head[0]
 
-    def test_nothing_is_registered_in_the_shipped_runner(self):
-        assert rn.REGISTERED_READS == {}
+    def test_only_the_aplus_reads_are_registered_in_the_shipped_runner(self):
+        """#705 (b): the three A+ reads are the first registered reads; nothing else rides the registry."""
+        assert set(rn.REGISTERED_READS) == {"aplus-read", "aplus-confirm", "aplus-hindsight"}
+        assert all(isinstance(s, rr.RegisteredRead) and s.name == k for k, s in rn.REGISTERED_READS.items())
 
 
 # ═══ the speed / memory helpers ══════════════════════════════════════════════════════════════════════════════════════════════════

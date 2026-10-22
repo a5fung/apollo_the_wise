@@ -6626,7 +6626,14 @@ def run_exit_read(args) -> int:
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 REGISTERED_READS: dict = {}
 BUILTIN_STAGES = ("daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report", "p5", "pre-read",
-                  "h60-step0", "h60-read", "h60-hindsight", "exit-read")           # a registered read may not wear one of these names
+                  "h60-step0", "h60-read", "h60-hindsight", "exit-read",
+                  "aplus-profile", "aplus-verdict")                                # a registered read may not wear one of these names
+# #705 (b): the A+ rating (docs/analysis/cb_aplus_rating_prereg_2026-10-21.md) - `aplus-read` / `aplus-confirm` / `aplus-hindsight` are
+# registered reads on the scaffold (their bodies live in aplus_read.py, the pinned `spec module`); `aplus-profile` (the pinned intraday
+# volume profile, built BEFORE the pins) and `aplus-verdict` (the consequence cell) are plain stages dispatched below. The module reaches
+# every helper here through the runtime namespace, so it imports no runner code at import time. BUILT ON SYNTHETIC DATA; no real outcome.
+from scripts.probes._cb_backtest import aplus_read as _aplus  # noqa: E402
+REGISTERED_READS.update(_aplus.REGISTERED)
 
 
 def run_registered_read(spec: "rr.RegisteredRead", args) -> int:
@@ -6697,6 +6704,8 @@ def main(argv=None) -> None:
                                                                "against the pinned rows and the module's own walk; prints the match / mismatch counts "
                                                                "and the reach line; computes no new-arm number and writes nothing")
     ap.add_argument("--data-pre", help="h60 stages: the Alpaca-era data dir (default: the sibling `cb702_pre` of --data); the freeze check pins both trees")
+    ap.add_argument("--self-check", action="store_true", help="aplus-read / aplus-confirm, ONLY together with --dry-run: the STEP 0 rating counts and every "
+                                                               "WOULD-FAIL-IF check on the inputs (features and the flag; no outcome column opened; nothing written)")
     ap.add_argument("--levels", help="exits / exits-report: the levels of the run's candidates file to walk, comma-separated "
                                      "(default: every level of the run's keys). `--levels tl` reads the registered candidates.tsv and "
                                      "walks the trendline alone; `--keys com,comb` walks both. holdout REFUSES it")
@@ -6706,8 +6715,15 @@ def main(argv=None) -> None:
         ap.error(f"--{', --'.join(o.replace('_', '-') for o in era_opts)}: options of the `daily` stage only (the pre-2022 Alpaca-era run)")
     parse_keys(args.keys)                       # a bad --keys fails here, before any stage opens a file
     parse_levels(args.levels, parse_keys(args.keys))
+    if getattr(args, "self_check", False) and not args.dry_run:
+        ap.error("--self-check is honoured only together with --dry-run (the real run runs the same checks itself)")
     if args.stage in REGISTERED_READS:          # #705 (a): a read on the shared scaffold
         rc = run_registered_read(REGISTERED_READS[args.stage], args)
+        if rc:
+            sys.exit(rc)
+        return
+    if args.stage in ("aplus-profile", "aplus-verdict"):     # #705 (b): the profile build (before the pins) and the consequence cell
+        rc = {"aplus-profile": _aplus.run_profile, "aplus-verdict": _aplus.run_verdict}[args.stage](args, sys.modules[__name__])
         if rc:
             sys.exit(rc)
         return

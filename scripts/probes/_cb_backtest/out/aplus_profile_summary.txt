@@ -1,0 +1,12 @@
+APLUS-PROFILE: tree /Users/alvinfung/apollo_data/cb702_pre/minutes; population 13,359 (E, ticker) pairs after the edge rule; early-close sessions 20 listed
+  profile: 1/1219 dates, 50 pairs [0s]
+  profile: 201/1219 dates, 8,317 pairs [2s]
+  profile: 401/1219 dates, 21,148 pairs [4s]
+  profile: 601/1219 dates, 34,990 pairs [7s]
+  profile: 801/1219 dates, 46,713 pairs [9s]
+  profile: 1001/1219 dates, 99,696 pairs [21s]
+  profile: 1201/1219 dates, 125,085 pairs [27s]
+tally: ok pairs 126,811 - zero-volume 9 - early-close 937 - population 13,258 = kept 112,607 (registered {'ok': 126811, 'zero': 9, 'early': 937, 'population': 13258, 'kept': 112607})
+values: PROFILE(5) = 0.029973 (pinned 0.029973, ok); PROFILE(10) = 0.045943 (pinned 0.045943, ok); PROFILE(30) = 0.105939 (pinned 0.105939, ok); PROFILE(60) = 0.189745 (pinned 0.189745, ok); PROFILE(120) = 0.334574 (pinned 0.334574, ok); PROFILE(210) = 0.503368 (pinned 0.503368, ok); PROFILE(300) = 0.661951 (pinned 0.661951, ok); PROFILE(389) = 0.971481 (pinned 0.971481, ok)
+monotone True; PROFILE(0) = np.float64(0.0), PROFILE(390) = np.float64(1.0)
+sha256 0a5bf816ed8d1e241aa80bb8db17012923ad9a8cad7222433a6df9268fa4bedb = EXPECTED; WROTE /Users/alvinfung/apollo_data/cb702_pre/out/aplus_intraday_profile.tsv; WALL TIME 29s
