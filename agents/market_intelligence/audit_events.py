@@ -367,6 +367,21 @@ THEME_SMALL_FADING_RETIRE_ERROR = "theme_small_fading_retire_error"
 # row for that theme (a kept theme is not dropped, so it has no cap-rejection to record).
 THEME_SECTOR_CAP_KEPT_DISTINCT = "theme_sector_cap_kept_distinct"
 
+# ── #655 direction (2026-10-24, his ruling 2026-10-21 "Ok"): a theme is never absorbed into its own
+# sub-theme. In the Pass-2 sector cap a sub-theme SITS UNDER its same-group parent: processed after it,
+# holding no cap slot, never a target. ONE row per child per merge pass naming the parent it sits under
+# — the positive observable for the 10-19 shape (the newborn 'Petroleum Refiners' child out-scored its
+# parent and the parent was absorbed into it). Merge 1 and 2 can each write one (count distinct children).
+THEME_SECTOR_CAP_CHILD_UNDER_PARENT = "theme_sector_cap_child_under_parent"
+
+# ── #655 move paths (2026-10-24, his rulings 2026-10-20 / 10-21 "yes"): a stock the sector cap or the
+# fail-only fold would MOVE first passes the same description check an ordinary new member gets, and a
+# stock the check refuses is NOT moved. ONE row per refused (stock, target) — written by
+# `_validate_theme_membership` in its `removable` mode in place of `ticker_revalidated_out`: the stock was
+# never a member of the target, so the #214 name guard (>= 3 `ticker_revalidated_out` rows a day = a mass
+# eviction of that NAME for 30 days) must not read a refused cohort as the target's name being wrong.
+THEME_MOVE_REJECTED_BY_DESCRIPTION = "theme_move_rejected_by_description"
+
 # ── #655 fail-only fold of small themes (2026-10-10, operator "ok"; behind `theme_small_fold`, DEFAULT
 # ON). FOLDED: one row per folded theme (theme, home, moved, released, the theme's G3 reading). RAN: one
 # row per night that had a 2-3-member theme — the counts, so a zero-fold night is distinguishable from a

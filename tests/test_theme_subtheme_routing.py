@@ -671,6 +671,12 @@ async def test_sector_cap_int_groups_unchanged(monkeypatch):
 
     monkeypatch.setattr(te, "_comove_verdict", lambda tk, basket, ctx: SimpleNamespace(
         admit=True, corr=0.9, overlap=60, basket_n=len(basket), reason="stub"))
+
+    # #655 move paths (2026-10-24): the tape's admits then pass the description check — admit-all
+    # here so the test still locks the cap STRUCTURE alone (the check: tests/test_655_move_paths.py).
+    async def _validator_admits_all(theme_name, tickers, changelog, protected=None, removable=None, **kw):
+        return list(tickers)
+    monkeypatch.setattr(te, "_validate_theme_membership", _validator_admits_all)
     themes = [
         {"name": "Permian Oil Producers", "tickers": ["A1", "A2", "A3"], "score": 90, "stage": "Nascent"},
         {"name": "LNG Export Infrastructure", "tickers": ["B1", "B2", "B3"], "score": 80, "stage": "Nascent"},

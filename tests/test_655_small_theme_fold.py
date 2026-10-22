@@ -175,6 +175,14 @@ def _wire(monkeypatch, ex, *, toggle=True):
     scores = {tk: {"rs": float(50 + (i % 50)), "sector": None} for i, tk in enumerate(ex)}
     load = AsyncMock(return_value=(_ctx(ex), scores, {}))
     monkeypatch.setattr(te, "_load_small_fold_g3_context", load)
+
+    # #655 move paths (2026-10-24): the fold runs the description check on every mover (one call per
+    # home). Admit-all here — these tests isolate the TAPE decision; the check is tested in
+    # tests/test_655_move_paths.py.
+    async def _validator_admits_all(theme_name, tickers, changelog, protected=None, removable=None, **kw):
+        assert removable and set(removable) <= set(tickers)
+        return list(tickers)
+    monkeypatch.setattr(te, "_validate_theme_membership", _validator_admits_all)
     monkeypatch.setattr(te, "_read_small_fold_toggle", AsyncMock(return_value=toggle))
     monkeypatch.setattr(te, "_read_parent_pass_industries",
                         AsyncMock(return_value={tk: "gas" for tk in ex}))

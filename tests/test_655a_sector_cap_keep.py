@@ -69,10 +69,21 @@ def audit(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def _validator_must_not_run(monkeypatch):
-    async def fake(*a, **kw):
-        raise AssertionError("the cap never hands a pair to the LLM validator (fail closed)")
+def _validator_only_sees_tape_admits(monkeypatch):
+    """The cap never hands an UNJUDGED or tape-rejected pair to the LLM validator (fail closed,
+    2026-09-25). Since 2026-10-24 (#655 move paths) a TAPE-ADMITTED mover does reach it — in the
+    moved-stock mode, `removable` = exactly the tape's admits — so this fixture admits all and
+    pins that contract; the description-check behaviour itself is tested in
+    tests/test_655_move_paths.py."""
+    calls: list[dict] = []
+
+    async def fake(theme_name, tickers, changelog, protected=None, removable=None, **kw):
+        assert removable, "the cap calls the validator only with tape-admitted movers"
+        assert set(removable) <= set(tickers)
+        calls.append({"theme": theme_name, "tickers": list(tickers), "removable": set(removable)})
+        return list(tickers)
     monkeypatch.setattr(te, "_validate_theme_membership", fake)
+    return calls
 
 
 def _rows(audit, event):
@@ -132,9 +143,10 @@ async def test_guard_members_do_not_block_the_keep(audit):
 
 
 @pytest.mark.asyncio
-async def test_one_passing_member_keeps_todays_absorb_path(audit):
+async def test_one_passing_member_keeps_todays_absorb_path(audit, _validator_only_sees_tape_admits):
     """A theme with a member that co-moves with the top theme is NOT kept: the passer is absorbed,
-    the theme is capped away, and no kept row exists."""
+    the theme is capped away, and no kept row exists. The description check (admit-all here) saw
+    exactly the one tape admit, once."""
     third = ["QA", "QB", "XCO"]
     out = await _run(_themes(third), _ctx(noise=["QA", "QB"], riders=["XCO"]))
     names = {t["name"] for t in out}
@@ -142,6 +154,7 @@ async def test_one_passing_member_keeps_todays_absorb_path(audit):
     assert "XCO" in next(t for t in out if t["name"] == TANKER)["tickers"]
     assert _rows(audit, KEPT_EVENT) == []
     assert len(_rows(audit, "theme_sector_cap_absorbed")) == 1
+    assert [c["removable"] for c in _validator_only_sees_tape_admits] == [{"XCO"}]
 
 
 @pytest.mark.asyncio

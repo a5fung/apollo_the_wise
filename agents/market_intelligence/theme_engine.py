@@ -22,7 +22,7 @@ import logging
 import re
 import os
 from datetime import date, timedelta
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, NamedTuple
 
 import anthropic
@@ -90,7 +90,8 @@ from agents.market_intelligence.audit_events import (
     THEME_PARENT_PASS_RAN, THEME_PARENT_PASS_LINKED, THEME_PARENT_PASS_DISTINCT,
     THEME_PARENT_PASS_INVERTED, THEME_PARENT_PASS_ERROR,
     THEME_RETIRED_SMALL_FADING, THEME_SMALL_FADING_RETIRE_ERROR,
-    THEME_SECTOR_CAP_KEPT_DISTINCT,
+    THEME_SECTOR_CAP_KEPT_DISTINCT, THEME_SECTOR_CAP_CHILD_UNDER_PARENT,
+    THEME_MOVE_REJECTED_BY_DESCRIPTION,
     THEME_SMALL_FOLDED, THEME_SMALL_FOLD_RAN, THEME_SMALL_FOLD_ERROR,
     THEME_PASS1_5_OPERATOR_EXEMPT, THEME_PASS1_5_OPERATOR_EXEMPT_ERROR,
 )
@@ -134,6 +135,10 @@ _MASS_REMOVAL_SUMMARY_FMT = (
     "'{theme}': validation flagged {n_flagged}/{n_members} members "
     "— name likely narrower than the cluster (#214)"
 )
+# #655 move paths: a stock a move path would admit but the description check refuses. Deliberately NOT
+# the removal shape above — the #214 matcher's LIKE pattern must not count a refused cohort as an
+# eviction of the target's name (the stock was never a member).
+_MOVE_REJECTED_SUMMARY_FMT = "{tk} not moved into '{theme}' — description check refused it (#655)"
 
 # Stop-words to ignore when comparing theme names for fuzzy exclusion matching
 _THEME_NAME_STOP = {"and", "the", "of", "in", "for", "a", "an", "with", "by", "at", "&", "-"}
@@ -2920,11 +2925,30 @@ async def _validate_theme_membership(
     dissolve_flagged_pair: bool = False,
     thesis: str | None = None,
     mass_flag_out: dict | None = None,
+    removable: set[str] | None = None,
 ) -> list[str]:
     """
     Ask Claude (THEME_MODEL = Sonnet) whether each stock's description is consistent
     with the theme. Removes stocks that clearly don't belong. Runs Mon/Wed/Fri during
     re-scoring.
+
+    removable (#655 move paths, 2026-10-24 — his rulings 2026-10-20 "yes" / 10-21 "Yes"): the
+    MOVED-STOCK mode, the fifth and sixth callers (the Pass-2 sector cap's `_admit_rehomed_members`
+    and the fail-only fold's `_apply_fold_description_check`). `tickers` is the TARGET's current
+    roster PLUS the stocks the move path would admit, and ONLY the names in `removable` may be
+    refused — the model sees the whole roster, exactly the prompt an ordinary new member gets
+    (judged in the context of the theme's existing members, thesis-aware), but a verdict on an
+    EXISTING member is context, not a removal: those members are not being moved and the
+    Mon/Wed/Fri rescore owns them. A refused mover is NOT moved (the caller leaves it where it was)
+    and gets the same 14-day cooldown on the target an ordinary rejected new member gets, so the
+    next night's tape cannot re-propose the pair — but NOT the eviction records, because it was
+    never a member: it writes `theme_move_rejected_by_description` instead of
+    `ticker_revalidated_out` (the #214 name guard counts >= 3 of those a day as a mass eviction of
+    the TARGET's name for 30 days) and a `theme_move_rejected` changelog line instead of
+    `ticker_revalidated_out` (the funnel row counts those as F4 removals), and the mass-removal
+    tripwire is not consulted (a refused cohort is not a name-is-wrong signal about the target).
+    The fail direction is the function's own: an LLM error keeps every input, which for a move
+    path is tonight's tape-only admission. None (every pre-existing caller) is byte-identical.
 
     thesis (#368, 2026-08-04): the theme's OWN description/thesis, when the caller
     has one. Without it the validator judges static business descriptions against
@@ -2946,7 +2970,8 @@ async def _validate_theme_membership(
     `_rescore_existing_theme` passes it — see the four-caller note below. Passing None (the
     default) is byte-identical to the pre-2026-08-26 behavior.
 
-    ⚠ Scoped to the RESCORE caller on purpose. The other three callers keep stripping:
+    ⚠ Scoped to the RESCORE caller on purpose. The other callers keep stripping (the two
+    `removable` move-path callers refuse movers, never members — see above):
       * `_validate_new_themes_at_birth` (#266) — a theme being born has no lineage to
         preserve and its members are a proposal, not a cohort with history; the validator's
         own min-survivor guard already keeps small/born-bad themes intact.
@@ -3082,6 +3107,10 @@ async def _validate_theme_membership(
         result = json.loads(raw)
         remove_val = result.get("remove") or []  # guard against "remove": null
         to_remove = {tk.upper() for tk in remove_val if isinstance(tk, str)}
+        # #655 move paths: only the movers may be refused — a verdict on the existing roster is
+        # context the model was shown, never a removal here (`removable` in the docstring).
+        if removable is not None:
+            to_remove &= {tk.upper() for tk in removable}
 
         # ── Mass-removal tripwire (#214) — AUDIT-ONLY, no behavior change ───
         # When validation flags >=50% of a theme's members (and >=3 names), the
@@ -3091,8 +3120,10 @@ async def _validate_theme_membership(
         # NAME was the defect). Surface that signature for the operator instead
         # of letting it masquerade as a generic cooldowns_per_day L2 anomaly.
         # Removals still proceed unchanged — validation-prompt behavior changes
-        # are #215's gated lane.
-        if len(to_remove) >= max(3, len(tickers) // 2):
+        # are #215's gated lane. Not consulted in the moved-stock mode: refused movers were never
+        # members, so they say nothing about the TARGET's name (and the row would block that
+        # name for 30 days in `_name_recently_mass_evicted`).
+        if removable is None and len(to_remove) >= max(3, len(tickers) // 2):
             await log_audit_event(
                 "validation_mass_removal_name_suspect",
                 summary=_MASS_REMOVAL_SUMMARY_FMT.format(
@@ -3169,22 +3200,43 @@ async def _validate_theme_membership(
             for tk in to_remove:
                 if tk in tickers:
                     desc = TICKER_DESC.get(tk, "")
-                    changelog.append({
-                        "type": "ticker_revalidated_out",
-                        "theme": theme_name,
-                        "ticker": tk,
-                        "reason": f"description inconsistent with theme '{theme_name}'",
-                    })
-                    logger.info(
-                        f"Theme '{theme_name}': removed {tk} — description '{desc}' "
-                        f"does not match theme"
-                    )
-                    # Persistent audit record — survives image rebuilds, queryable from Telegram
-                    await log_audit_event(
-                        "ticker_revalidated_out",
-                        summary=_REMOVAL_SUMMARY_FMT.format(tk=tk, theme=theme_name),
-                        detail=f"Description: '{desc}' — validation ({THEME_MODEL}) flagged as not matching theme",
-                    )
+                    if removable is not None:
+                        # #655 move paths: a REFUSED MOVER, not an evicted member — its own
+                        # records (docstring: the #214 name guard and the funnel's F4 count both
+                        # read the eviction shapes). The cooldown below is the same.
+                        changelog.append({
+                            "type": "theme_move_rejected",
+                            "theme": theme_name,
+                            "ticker": tk,
+                            "reason": f"description inconsistent with theme '{theme_name}'",
+                        })
+                        logger.info(
+                            f"Theme '{theme_name}': NOT moving {tk} in — description '{desc}' "
+                            f"does not match theme (#655 move check)"
+                        )
+                        await log_audit_event(
+                            THEME_MOVE_REJECTED_BY_DESCRIPTION,
+                            summary=_MOVE_REJECTED_SUMMARY_FMT.format(tk=tk, theme=theme_name),
+                            detail=(f"Description: '{desc}' — validation ({THEME_MODEL}) flagged as not "
+                                    f"matching theme; the move path left it where it was"),
+                        )
+                    else:
+                        changelog.append({
+                            "type": "ticker_revalidated_out",
+                            "theme": theme_name,
+                            "ticker": tk,
+                            "reason": f"description inconsistent with theme '{theme_name}'",
+                        })
+                        logger.info(
+                            f"Theme '{theme_name}': removed {tk} — description '{desc}' "
+                            f"does not match theme"
+                        )
+                        # Persistent audit record — survives image rebuilds, queryable from Telegram
+                        await log_audit_event(
+                            "ticker_revalidated_out",
+                            summary=_REMOVAL_SUMMARY_FMT.format(tk=tk, theme=theme_name),
+                            detail=f"Description: '{desc}' — validation ({THEME_MODEL}) flagged as not matching theme",
+                        )
                     # Write 14-day cooldown so the stock can't be re-assigned immediately
                     count = await add_validation_cooldown(
                         tk, theme_name,
@@ -8082,8 +8134,72 @@ def _tape_judged(verdicts: dict[str, dict]) -> int:
 def _cap_keep_distinct(judged: int, admitted: list[str], already: list[str]) -> bool:
     """#655 (a) — pure. The replay's keep rule, ported exactly: at least `SECTOR_CAP_KEEP_MIN_JUDGED`
     members judged by the tape (`_tape_judged`), NONE admitted, and none already sitting in the
-    target."""
+    target. Since 2026-10-24 `admitted` is what survives BOTH tests (tape, then the description
+    check): a theme the tape would move but the description check refuses whole is kept as its own
+    theme — it keeps its home instead of being glued in and stripped out (the 10-15 apparel shape)."""
     return judged >= SECTOR_CAP_KEEP_MIN_JUDGED and not admitted and not already
+
+
+# ── #655 DIRECTION (his ruling 2026-10-21, "Ok"): a theme is NEVER absorbed into its own sub-theme ──
+# The rule, named: "A SUB-THEME SITS UNDER ITS PARENT IN THE SECTOR CAP." In Pass 2 a theme whose
+# `sub_theme_parents` parent falls in the SAME keyword group (a) is processed AFTER that parent (never
+# ahead of it in the slot race, whatever its score), (b) holds no cap slot while its parent is kept
+# (the parent keeps the group slot, the child rides under it — the routing verdict's own picture),
+# and (c) is never a capped theme's target — not its own parent's, not anyone's. Only when the parent
+# is NOT kept (capped away, or an empty shell) is the child an ordinary theme at its own position.
+# Pass 1 already coexists parent/child (both directions), Pass 1.5 never absorbs a child and now
+# never absorbs a parent into its child, and Arm B refuses parent/child pairs (theme_merge_arm gate
+# 3a) — so every absorption path honours the direction. The per-family (biotech) branch is untouched:
+# it has no absorption target, so its analogue is a drop, which the ruling did not cover.
+#
+# THE 10-19 CASE: 'Petroleum Refiners (Independent Refining & Marketing)' (CVI, DINO, MPC, PSX) was
+# born and routed PARENT_CHILD under 'Oil & Gas Price Rally…' (containment 1.00) in Pass 1, then
+# out-scored its parent in Pass 2's score-ordered slot race (oil_gas, cap 2): the child took slot 1,
+# another theme slot 2, and the PARENT was capped and absorbed into its own child (`theme_orphan_sub`
+# then logged the parent gone); drillers / E&Ps / tankers followed it in on tape co-movement over the
+# next two nights and Wednesday's description check removed 18 of them (`cooldowns_per_day` 36 vs
+# median 11, 10-21). Tests: tests/test_655_move_paths.py (the replay, RED on the parent commit).
+
+def _cap_parent_in_group(name: str, group: str, sub_theme_parents: "dict[str, str] | None") -> str | None:
+    """PURE. The parent this theme SITS UNDER for the cap: its `sub_theme_parents` parent, when that
+    parent's name falls in the same keyword group. A parent in another group (or in none) competes
+    in its own group, so its child is an ordinary theme here. Keyed on `sub_theme_parents` alone —
+    the dict Pass 1 and 1.5 already read, which Route A mutates live in the same merge call."""
+    parent = (sub_theme_parents or {}).get(name)
+    if not parent or parent == name:
+        return None
+    pg = _sector_group(parent)
+    return parent if pg is not None and pg[0] == group else None
+
+
+def _cap_order_children_after_parents(themes: list[dict], sub_theme_parents: "dict[str, str] | None") -> list[dict]:
+    """PURE. Pass 2's processing order: score order (the input), except that a sub-theme whose
+    same-group parent comes LATER in the list is moved to directly after that parent, so a child
+    never takes its parent's cap slot ahead of it. A child whose parent is absent (or in another
+    group) keeps its place. Index-based, not name-based (a re-minted namesake can share a name —
+    the 10-07 shape): a child waits for the FIRST occurrence of its parent's name. Every theme is
+    emitted exactly once — a link cycle or a never-emitted parent cannot lose a theme."""
+    first_idx: dict[str, int] = {}
+    for i, t in enumerate(themes):
+        first_idx.setdefault(t["name"], i)
+    deferred: dict[str, list[dict]] = {}     # parent name -> children waiting for it
+    emitted: set[str] = set()
+    out: list[dict] = []
+    for i, t in enumerate(themes):
+        sg = _sector_group(t["name"])
+        parent = _cap_parent_in_group(t["name"], sg[0], sub_theme_parents) if sg else None
+        if parent is not None and parent in first_idx and first_idx[parent] > i and parent not in emitted:
+            deferred.setdefault(parent, []).append(t)
+            continue
+        stack = [t]
+        while stack:
+            cur = stack.pop(0)
+            out.append(cur)
+            emitted.add(cur["name"])
+            stack = deferred.pop(cur["name"], []) + stack   # a child's own waiting children follow it
+    for rest in deferred.values():   # unreachable in practice; never lose a theme
+        out.extend(rest)
+    return out
 
 
 async def _admit_rehomed_members(
@@ -8117,6 +8233,18 @@ async def _admit_rehomed_members(
     not moved here is not lost for good: the normal assignment funnel can still admit it on a
     later night, through the full test. With no context at all, nothing moves.
 
+    **Then the description check (#655 move paths, 2026-10-24 — his ruling 2026-10-21 "Yes").**
+    Every member the TAPE admits also passes the same description check an ordinary new member
+    gets: ONE batched `_validate_theme_membership` call per absorb (the target's roster plus the
+    admitted movers, `removable` = the movers — the same function, in its moved-stock mode), never
+    a call per stock. A mover the check refuses is NOT moved: it stays with its source, which is
+    then kept-distinct / dropped exactly as a tape reject leaves it today, and it carries the
+    ordinary 14-day cooldown on the target (added to the run's `cooldown_set` too, so merge 2 and
+    the fold do not re-judge the pair tonight). Neither 09-25 objection applies: unjudged pairs
+    still never reach the validator, and the fail-open on an LLM error keeps the tape's admits,
+    which is tonight's tape-only behaviour, not a blind union; the moved-stock mode refuses only
+    the movers and writes no eviction record under the target's name.
+
     Writes ONE audit row per absorb: `theme_sector_cap_absorbed` (>= 1 member admitted; the
     summary carries the `'source' -> 'target'` pointer the engine-drop retire path reads),
     `theme_sector_cap_kept_distinct` (#655 (a): >= 3 members judged, none passed, none already in
@@ -8128,7 +8256,6 @@ async def _admit_rehomed_members(
     """
     target_name = target["name"]
     source_name = source["name"]
-    del changelog, protected  # kept in the signature for the call sites; unused since fail-closed
     existing: list[str] = list(target.get("tickers") or [])
     existing_set = set(existing)
     candidates = [tk for tk in (source.get("tickers") or []) if tk not in existing_set]
@@ -8174,11 +8301,31 @@ async def _admit_rehomed_members(
         else:   # exclusion / cooldown
             verdicts[tk] = {"path": path, "verdict": "reject"}
 
+    # #655 move paths: the description check on the tape's admits (docstring). ONE call per absorb.
+    tape_admitted = list(admitted)
+    desc_rejected: list[str] = []
+    if admitted:
+        validated = await _validate_theme_membership(
+            target_name, existing + admitted, changelog if changelog is not None else [],
+            protected=protected, thesis=target.get("description"), removable=set(admitted),
+        )
+        kept = set(validated)
+        desc_rejected = [tk for tk in admitted if tk not in kept]
+        for tk in admitted:
+            refused = tk in desc_rejected
+            verdicts[tk]["description"] = "reject" if refused else "admit"
+            if refused:
+                verdicts[tk]["verdict"] = "reject"
+        admitted = [tk for tk in admitted if tk not in desc_rejected]
+        if desc_rejected and isinstance(cooldown_set, set):
+            cooldown_set.update((tk, target_name) for tk in desc_rejected)
+
     detail = json.dumps({
         "source": source_name, "target": target_name, "group": group,
         "bar": ASSIGN_COMOVE_BAR, "context": comove_ctx is not None,
         "already_in_target": already, "admitted": admitted,
         "rejected": [tk for tk in candidates if tk not in admitted],
+        "tape_admitted": tape_admitted, "description_rejected": desc_rejected,
         "members": verdicts,
     })
     judged_n = _tape_judged(verdicts)
@@ -8188,13 +8335,17 @@ async def _admit_rehomed_members(
         # theme is KEPT (the caller leaves it out of the group's slot count). ONE row per merge pass
         # (two on a split night, when the merge re-runs — count distinct themes), replacing
         # the not_absorbed row; no "'a' -> 'b'" arrow, so no retire path reads it as a successor.
+        # Since 2026-10-24 "none admitted" counts the description check (`_cap_keep_distinct`).
         await log_audit_event(
             THEME_SECTOR_CAP_KEPT_DISTINCT,
             summary=(f"Pass2: '{source_name}' kept distinct from '{target_name}' — {judged_n} of "
-                     f"{len(candidates)} member(s) judged, none co-moves (sector group '{group}')"),
+                     f"{len(candidates)} member(s) judged, none admitted (tape passed "
+                     f"{len(tape_admitted)}, description check refused {len(desc_rejected)}; "
+                     f"sector group '{group}')"),
             detail=json.dumps({
                 "source": source_name, "target": target_name, "group": group,
                 "judged": judged_n, "passed": 0, "bar": ASSIGN_COMOVE_BAR,
+                "tape_admitted": tape_admitted, "description_rejected": desc_rejected,
                 "members": verdicts,
             }),
         )
@@ -8384,7 +8535,10 @@ async def _merge_overlapping_themes(
     the new cluster instead — the existing theme keeps its identity.
 
     sub_theme_parents: mapping of sub-theme name → parent theme name. A sub-theme is
-    allowed to overlap with its parent — never merged back in.
+    allowed to overlap with its parent — never merged back in. #655 direction (2026-10-24):
+    a theme is never absorbed into its own sub-theme either — Pass 1.5 skips such a target, and
+    in the Pass-2 sector cap a sub-theme sits UNDER its same-group parent (processed after it,
+    no slot while the parent is kept, never a target) — the section at `_cap_parent_in_group`.
 
     subtheme_ctx: ADR 0032 Phase 2 Route A context (make_subtheme_route_ctx).
     None or disabled (THEME_SUBTHEME_ARM off — the default) ⇒ every Route-A
@@ -8393,9 +8547,10 @@ async def _merge_overlapping_themes(
 
     comove_ctx / changelog / protected / cooldown_set / theme_exclusions (2026-09-25): the
     run's membership-test inputs, handed to `_admit_rehomed_members` for every member the
-    Pass-2 sector cap would move into a group's top theme. Without them (every pre-fix caller)
-    the cap still runs the test — the tape cannot judge, so the validator decides — a member is
-    never moved on a blind union again.
+    Pass-2 sector cap would move into a group's top theme. Without a context nothing is moved
+    (fail closed). Since 2026-10-24 a tape-admitted member also passes the description check
+    (`_validate_theme_membership`, moved-stock mode; `changelog` and `protected` feed it) —
+    a member is never moved on a blind union again.
 
     operator_exempt (#655 (c), 2026-10-17): Pass 1.5 does not absorb a theme whose exact name is in
     `operator_exempt.nights_left` (the operator promoted it within its last 3 theme nights). None
@@ -8613,6 +8768,12 @@ async def _merge_overlapping_themes(
             if target.get("score", 0) < t_score:
                 skipped_targets.append((target["name"], f"direction:target_score={target.get('score',0)}<t_score={t_score}"))
                 continue
+            # #655 direction (his ruling 2026-10-21): a theme is never absorbed into its OWN
+            # sub-theme — a child that out-scores a small parent is not its absorber (a child
+            # itself is never absorbed here: the `continue` at the top of this loop).
+            if sub_theme_parents and sub_theme_parents.get(target["name"]) == t["name"]:
+                skipped_targets.append((target["name"], "direction:target_is_own_subtheme"))
+                continue
             # When t is an existing protected theme, only dissolve it into
             # another existing protected theme. New clusters must not absorb
             # established themes (the original protection contract).
@@ -8686,8 +8847,11 @@ async def _merge_overlapping_themes(
     # --- Pass 2: Sector cap — keep top N per broad sector group ---
     sector_counts: dict[str, int] = {}
     final: list[dict] = []
+    # #655 direction (the section header above `_cap_parent_in_group`): a sub-theme sits UNDER its
+    # same-group parent — processed after it, holding no slot, never a target.
+    under_parent: set[str] = set()   # children kept under a parent this pass (never a top-theme target)
 
-    for t in after_overlap:  # already sorted by score desc
+    for t in _cap_order_children_after_parents(after_overlap, sub_theme_parents):  # score order, children after parents
         result = _sector_group(t["name"])
         if result is None:
             final.append(t)
@@ -8722,6 +8886,29 @@ async def _merge_overlapping_themes(
                 )
             continue
 
+        parent = _cap_parent_in_group(t["name"], group, sub_theme_parents)
+        if parent is not None and any(f["name"] == parent and f.get("tickers") for f in final):
+            # #655 direction: the parent is kept (a slot, or kept distinct) with a roster -> the
+            # child sits under it: no slot of its own, never a target, roster untouched. A child
+            # whose parent was NOT kept (capped away / an empty shell) falls through as an
+            # ordinary theme at its own position — it was ordered after its parent, so it is
+            # judged against the group's real kept top like any other.
+            final.append(t)
+            under_parent.add(t["name"])
+            logger.info(
+                f"Theme merge (sector cap): '{t['name']}' sits under its parent '{parent}' "
+                f"(sector group '{group}') — no cap slot, never a target (#655 direction)"
+            )
+            await log_audit_event(
+                THEME_SECTOR_CAP_CHILD_UNDER_PARENT,
+                summary=(f"Pass2: '{t['name']}' sits under its parent '{parent}' "
+                         f"(sector group '{group}') — no cap slot, never a target"),
+                detail=json.dumps({"child": t["name"], "parent": parent, "group": group,
+                                   "child_tickers": list(t.get("tickers") or []),
+                                   "child_score": t.get("score", 0)}),
+            )
+            continue
+
         count = sector_counts.get(group, 0)
         if count < max_for_group:
             final.append(t)
@@ -8737,10 +8924,15 @@ async def _merge_overlapping_themes(
         else:
             # Absorb into the top theme of this sector group (if any kept): the first kept group
             # member that HAS a roster and is not this theme's own name — a capped theme is never
-            # its own target, and an empty shell is no basket to be judged against.
+            # its own target, and an empty shell is no basket to be judged against. #655 direction:
+            # a child sitting under its parent is never a target, and a theme is never absorbed
+            # into its own sub-theme (the ordering already puts a child after its parent; the
+            # guard states the rule so no later reordering can break it).
             top_theme = next(
                 (f for f in final
                  if f.get("tickers") and f["name"] != t["name"]
+                 and f["name"] not in under_parent
+                 and (sub_theme_parents or {}).get(f["name"]) != t["name"]
                  and (sg := _sector_group(f["name"])) is not None and sg[0] == group),
                 None,
             )
@@ -9224,6 +9416,12 @@ class SmallFold:
     industry_overlap: float
     word_similarity: float
     home_members: int
+    description_refused: list[str] = field(default_factory=list)   # #655 move paths: movers the description check refused (now in `released`)
+
+
+def _small_fold_need(n_members: int) -> int:
+    """The fold's own bar, one definition: at least half the members pass — 1 of 2, 2 of 3."""
+    return (n_members + 1) // 2
 
 
 def _small_fold_member_verdict(tk: str, home: dict, ctx: "ComoveContext",
@@ -9289,7 +9487,7 @@ def plan_small_theme_folds(
         if not homes:
             counts["no_home"] += 1
             continue
-        need = (len(s_tk) + 1) // 2   # at least half: 1 of 2, 2 of 3
+        need = _small_fold_need(len(s_tk))   # at least half: 1 of 2, 2 of 3
         best = None
         for h in homes:
             excluded = _get_excluded_tickers_for_theme(h["name"], theme_exclusions)
@@ -9319,6 +9517,65 @@ def plan_small_theme_folds(
         ))
         counts["folded"] += 1
     return folds, counts
+
+
+async def _apply_fold_description_check(
+    folds: list[SmallFold],
+    by_name: dict[str, dict],
+    changelog: list[dict],
+    protected: "set[tuple[str, str]] | None",
+    cooldown_set: "set[tuple[str, str]] | None",
+) -> tuple[list[SmallFold], dict[str, int]]:
+    """#655 move paths (his ruling 2026-10-20, "yes"): every stock the fold would MOVE first passes
+    the same description check an ordinary new member gets — `_validate_theme_membership` in its
+    moved-stock mode, ONE batched call per HOME (the home's roster plus every mover bound for it
+    tonight, `removable` = those movers), never a call per stock or per fold. A mover the check
+    refuses is RELEASED instead of moved (it goes back to the pool exactly as a tape reject does) and
+    carries the ordinary 14-day cooldown on that home (added to the run's `cooldown_set` too). The
+    fold's own rule is then re-read with the refusal counted — "at least half pass" (`_small_fold_need`)
+    now means pass the tape AND the description check — and a theme left under the bar is NOT
+    dissolved tonight: it keeps its home (`desc_check_unfolded`); no second-best home is tried (that
+    would be a second call). The validator's fail-open (an LLM error keeps every input) leaves
+    tonight's fold the tape-only fold, as before this check. Returns (folds, counts)."""
+    movers_by_home: dict[str, list[str]] = {}
+    for f in folds:
+        if not f.moved:
+            continue                     # nothing moves (passers already sit in the home): nothing to check
+        bound = movers_by_home.setdefault(f.home, [])
+        bound.extend(tk for tk in f.moved if tk not in bound)
+    counts = {"desc_checked": sum(len(v) for v in movers_by_home.values()),
+              "desc_refused": 0, "desc_check_unfolded": 0}
+    refused_by_home: dict[str, set[str]] = {}
+    for home_name, movers in movers_by_home.items():
+        home = by_name[home_name]
+        roster = list(home.get("tickers") or [])
+        validated = await _validate_theme_membership(
+            home_name, roster + movers, changelog, protected=protected,
+            thesis=home.get("description"), removable=set(movers),
+        )
+        kept = set(validated)
+        refused_by_home[home_name] = {tk for tk in movers if tk not in kept}
+        if refused_by_home[home_name] and isinstance(cooldown_set, set):
+            cooldown_set.update((tk, home_name) for tk in refused_by_home[home_name])
+    out: list[SmallFold] = []
+    for f in folds:
+        refused = [tk for tk in f.moved if tk in refused_by_home.get(f.home, set())]
+        for tk in f.moved:
+            f.verdicts[tk]["description"] = "reject" if tk in refused else "admit"
+            if tk in refused:
+                f.verdicts[tk]["pass"] = False
+        if not refused:
+            out.append(f)
+            continue
+        counts["desc_refused"] += len(refused)
+        moved = [tk for tk in f.moved if tk not in refused]
+        if len(moved) + len(f.already_in_home) < _small_fold_need(len(f.members)):
+            counts["desc_check_unfolded"] += 1
+            logger.info(f"Small-theme fold (#655): '{f.theme}' NOT folded into '{f.home}' — the description "
+                        f"check refused {refused}, under the half bar; it keeps its home tonight")
+            continue
+        out.append(replace(f, moved=moved, released=f.released + refused, description_refused=refused))
+    return out, counts
 
 
 async def _load_small_fold_g3_context(board: list[dict], today: date):
@@ -9407,6 +9664,9 @@ async def _fold_small_failing_themes(
     )
 
     by_name = {t["name"]: t for t in live}
+    # #655 move paths: the description check on every mover, one call per home (the helper's docstring).
+    folds, desc_counts = await _apply_fold_description_check(folds, by_name, changelog, protected, cooldown_set)
+    counts.update(desc_counts)
     removed: set[str] = set()
     retired_rows: list[dict] = []
     for f in folds:
@@ -9425,6 +9685,7 @@ async def _fold_small_failing_themes(
                     "home_pick": {"shared": f.shared, "industry_overlap": f.industry_overlap,
                                   "word_similarity": f.word_similarity, "home_members": f.home_members},
                     "bar": ASSIGN_COMOVE_BAR, "verdicts": f.verdicts,
+                    "description_refused": f.description_refused,
                 }, default=str),
             )
         except Exception as e:  # loud-ok: the row IS the fold's evidence — a fold that cannot be recorded does not happen tonight
@@ -9440,7 +9701,9 @@ async def _fold_small_failing_themes(
                 note=(f"Auto-retired {today}: folded into '{f.home}' — {len(f.members)} members "
                       f"failing the random-basket test (G3); moved {', '.join(f.moved) or 'none'}"
                       f"{' (already there: ' + ', '.join(f.already_in_home) + ')' if f.already_in_home else ''}"
-                      f"; released {', '.join(f.released) or 'none'} (#655 fold).")))
+                      f"; released {', '.join(f.released) or 'none'}"
+                      f"{' (description check refused: ' + ', '.join(f.description_refused) + ')' if f.description_refused else ''}"
+                      f" (#655 fold).")))
         changelog.append({"type": "theme_retired", "theme": f.theme, "tickers": f.members,
                           "via": "small_fold", "into": f.home, "moved": f.moved, "released": f.released})
         logger.info(f"Theme '{f.theme}' folded into '{f.home}' (#655): moved {f.moved}, released {f.released}")

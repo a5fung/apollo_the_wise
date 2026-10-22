@@ -72,11 +72,14 @@ def audit(monkeypatch):
 
 @pytest.fixture
 def validator_admits_all(monkeypatch):
-    """The LLM validator, patched to keep every member — isolates the TAPE in the tests below."""
-    calls: list[tuple[str, list[str]]] = []
+    """The LLM validator, patched to keep every member — isolates the TAPE in the tests below.
+    Records each call as (theme, tickers shown, the `removable` movers): since 2026-10-24 (#655
+    move paths) the cap hands the TAPE'S ADMITS to the validator in its moved-stock mode — and
+    never a tape-rejected or unjudged pair."""
+    calls: list[tuple[str, list[str], set[str]]] = []
 
-    async def fake(theme_name, tickers, changelog, protected=None, **kw):
-        calls.append((theme_name, list(tickers)))
+    async def fake(theme_name, tickers, changelog, protected=None, removable=None, **kw):
+        calls.append((theme_name, list(tickers), set(removable or ())))
         return list(tickers)
 
     monkeypatch.setattr(te, "_validate_theme_membership", fake)
@@ -111,8 +114,10 @@ async def test_sector_cap_absorb_passes_the_tape(audit, validator_admits_all):
     assert "ATO" not in tanker["tickers"], tanker["tickers"]
     assert "XCO" in tanker["tickers"], tanker["tickers"]
     assert set(TANKER_MEMBERS) <= set(tanker["tickers"])
-    # every member the tape could judge was judged by the tape — the validator was not consulted
-    assert validator_admits_all == []
+    # every member the tape could judge was judged by the tape; the validator (the #655 description
+    # check, 2026-10-24) then saw ONLY the tape's admit, once, against the target's roster — never
+    # the tape-rejected pair
+    assert validator_admits_all == [(TANKER, TANKER_MEMBERS + ["XCO"], {"XCO"})]
 
 
 def _validator_must_not_run(monkeypatch):
@@ -133,12 +138,12 @@ async def test_sector_cap_moves_nothing_without_a_context(audit, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_sector_cap_unjudgeable_pair_is_not_moved(audit, monkeypatch):
+async def test_sector_cap_unjudgeable_pair_is_not_moved(audit, validator_admits_all):
     """A pair the tape cannot judge (no price history) is not moved and never reaches the
-    validator; the judgeable ones are still decided by the tape."""
+    validator; the judgeable ones are still decided by the tape (and only the tape's admit goes
+    on to the description check)."""
     ctx = _synthetic_ctx()
     del ctx.excess["ATO"]  # ATO: no_history → unjudgeable
-    _validator_must_not_run(monkeypatch)
     out = await te._merge_overlapping_themes(_themes(), {}, protected_names=set(), comove_ctx=ctx)
     tanker = next(t for t in out if t["name"] == TANKER)
     assert "ATO" not in tanker["tickers"]     # unjudgeable: not moved
@@ -148,6 +153,8 @@ async def test_sector_cap_unjudgeable_pair_is_not_moved(audit, monkeypatch):
     import json as _json
     detail = _json.loads(absorbed[0].kwargs.get("detail") or absorbed[0].args[2])
     assert detail["members"]["ATO"]["path"] == "unjudgeable"
+    assert [c[2] for c in validator_admits_all] == [{"XCO"}]
+    assert "ATO" not in validator_admits_all[0][1] and "SR" not in validator_admits_all[0][1]
 
 
 @pytest.mark.asyncio
