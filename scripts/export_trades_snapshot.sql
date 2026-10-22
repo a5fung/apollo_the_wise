@@ -43,7 +43,26 @@ SELECT COALESCE(json_agg(t), '[]'::json) FROM (
            highest_price_seen::float8 AS highest_price_seen,
            (CASE WHEN jsonb_typeof(exits) = 'string'
                  THEN (exits #>> '{}')::jsonb
-                 ELSE exits END -> -1 ->> 'price')::float8 AS exit_price
+                 ELSE exits END -> -1 ->> 'price')::float8 AS exit_price,
+           -- #706 (his 2026-10-21 stats; the repo went PRIVATE 2026-10-22, so the account figures may be exported):
+           -- side from the ORIGINAL stop's geometry (never assumed): below the entry = long, above = short.
+           CASE WHEN COALESCE(hard_stop, orb_low) < entry_price THEN 'long'
+                WHEN COALESCE(hard_stop, orb_low) > entry_price THEN 'short' END AS side,
+           -- open rows only: the latest stored close (the export runs 23:30Z, after the close) and the shares still held
+           -- (entry minus every exit leg's shares), so a sold third does not inflate the size
+           CASE WHEN status = 'filled' THEN (SELECT d.close FROM mi_daily_closes d WHERE d.ticker = mi_live_trades.ticker
+                                             ORDER BY d.trade_date DESC LIMIT 1)::float8 END AS current_price,
+           CASE WHEN status = 'filled' THEN (SELECT d.trade_date FROM mi_daily_closes d WHERE d.ticker = mi_live_trades.ticker
+                                             ORDER BY d.trade_date DESC LIMIT 1) END AS current_price_date,
+           CASE WHEN status = 'filled' THEN (
+               (SELECT d.close FROM mi_daily_closes d WHERE d.ticker = mi_live_trades.ticker ORDER BY d.trade_date DESC LIMIT 1)
+               * (entry_shares - COALESCE((SELECT sum((x ->> 'shares')::float8)
+                                           FROM jsonb_array_elements(CASE WHEN jsonb_typeof(exits) = 'string'
+                                                                          THEN (exits #>> '{}')::jsonb ELSE exits END) x), 0))
+           )::float8 END AS market_value,
+           -- the account's latest equity snapshot (per account_mode), the denominator /trades uses for its own book
+           (SELECT e.equity FROM mi_account_equity_snapshots e WHERE e.account_mode = mi_live_trades.account_mode
+             ORDER BY e.snapshot_date DESC, e.created_at DESC LIMIT 1)::float8 AS account_equity
     FROM mi_live_trades
     WHERE status IN ('filled', 'closed', 'stopped')
       AND account_mode = 'live'   -- #480: LIVE book only. Without this, dual-account
