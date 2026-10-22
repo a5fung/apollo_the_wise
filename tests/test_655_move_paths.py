@@ -136,11 +136,13 @@ def test_fixture_names_are_all_in_the_oil_gas_group():
         assert te._sector_group(name) == ("oil_gas", 2), name
 
 
-def test_order_moves_a_child_to_directly_after_its_same_group_parent():
+def test_order_pulls_a_later_parent_up_to_its_child_with_the_child_directly_after():
+    """The parent takes the rank the family earned (the child's), the child right behind it — the
+    unrelated themes keep their relative order behind the family."""
     themes = [_t(CHILD, CHILD_MEMBERS, 80), _t(DRILLERS, DRILLER_MEMBERS, 75), _t(PARENT, PARENT_MEMBERS, 70),
               _t(EPS, EP_MEMBERS, 60)]
     out = te._cap_order_children_after_parents(themes, {CHILD: PARENT})
-    assert [t["name"] for t in out] == [DRILLERS, PARENT, CHILD, EPS]
+    assert [t["name"] for t in out] == [PARENT, CHILD, DRILLERS, EPS]
 
 
 def test_order_is_the_input_order_when_the_parent_is_absent_in_another_group_or_already_ahead():
@@ -218,29 +220,28 @@ async def _merge_1019(themes, ctx, *, sub_parents=None, route_a=True, cooldown_s
 async def test_1019_replay_the_parent_is_never_absorbed_into_its_own_child(audit, validator_admits_all):
     """10-19 (`theme_sector_cap_absorbed` source = the parent, target = its newborn child): child 80 >
     drillers 75 > parent 70 > E&Ps 60, oil_gas cap 2. Before: child slot 1, drillers slot 2, the
-    PARENT capped and absorbed into the child, the E&Ps judged against the child. After: the child
-    sits under its parent — drillers slot 1, parent slot 2, child kept with no slot — and the E&Ps,
-    the third real theme, are judged against the group's real kept top (the drillers), never the child."""
+    PARENT capped and absorbed into the child, the E&Ps judged against the child. After: the parent
+    holds the slot the child earned (slot 1), the child sits under it with no slot, the drillers are
+    slot 2, and the E&Ps — the third real theme — are judged against the group's real kept top (the
+    parent, which they co-move with, so they join IT), never the child."""
     themes = [_t(CHILD, CHILD_MEMBERS, 80), _t(DRILLERS, DRILLER_MEMBERS, 75),
               _t(PARENT, PARENT_MEMBERS, 70, "Mainstream"), _t(EPS, EP_MEMBERS, 60)]
     ctx = _ctx({"oil": PARENT_MEMBERS + EP_MEMBERS, "rigs": DRILLER_MEMBERS})
     out, sub_parents, calls = await _merge_1019(themes, ctx)
     assert calls == [(PARENT, CHILD)] and sub_parents == {CHILD: PARENT}       # Route A fired, as on 10-19
     by_name = {t["name"]: t for t in out}
-    assert PARENT in by_name and set(by_name[PARENT]["tickers"]) == set(PARENT_MEMBERS), [t["name"] for t in out]
+    assert PARENT in by_name and set(by_name[PARENT]["tickers"]) == set(PARENT_MEMBERS + EP_MEMBERS), [t["name"] for t in out]
     assert CHILD in by_name and set(by_name[CHILD]["tickers"]) == set(CHILD_MEMBERS)
     assert by_name[CHILD]["parent_theme"] == PARENT
-    # drillers slot 1, parent slot 2, the child under it, the E&Ps kept distinct against the drillers
-    assert [t["name"] for t in out] == [DRILLERS, PARENT, CHILD, EPS]
+    # parent slot 1 (the family's rank), the child under it, drillers slot 2, the E&Ps absorbed into the parent
+    assert [t["name"] for t in out] == [PARENT, CHILD, DRILLERS]
     # the positive observable: one child-under-parent row naming both
     under = _rows(audit, CHILD_UNDER)
     assert len(under) == 1 and (_detail(under[0])["child"], _detail(under[0])["parent"]) == (CHILD, PARENT)
     assert "->" not in _summary(under[0])                 # never read as a successor pointer
-    # no cap row has the parent as a source or the child as a target
-    for c in _rows(audit, ABSORBED) + _rows(audit, NOT_ABSORBED) + _rows(audit, THEME_SECTOR_CAP_KEPT_DISTINCT):
-        d = _detail(c)
-        assert d["source"] != PARENT and d["target"] != CHILD, d
-        assert d["target"] == DRILLERS, d                 # the E&Ps were judged against the real top
+    # no cap row has the parent or the child as a source, or the child as a target
+    rows = _rows(audit, ABSORBED) + _rows(audit, NOT_ABSORBED) + _rows(audit, THEME_SECTOR_CAP_KEPT_DISTINCT)
+    assert [(_detail(c)["source"], _detail(c)["target"]) for c in rows] == [(EPS, PARENT)]
     assert not (set(EP_MEMBERS) & set(by_name[CHILD]["tickers"]))
 
 
@@ -273,18 +274,19 @@ async def test_a_prior_night_child_link_sits_under_its_parent_too(audit, validat
     ctx = _ctx({"oil": PARENT_MEMBERS, "rigs": DRILLER_MEMBERS})
     out, _sp, calls = await _merge_1019(themes, ctx, sub_parents={CHILD: PARENT}, route_a=False)
     assert calls == []
-    assert [t["name"] for t in out] == [DRILLERS, PARENT, CHILD]
+    assert [t["name"] for t in out] == [PARENT, CHILD, DRILLERS]
     assert len(_rows(audit, CHILD_UNDER)) == 1 and _rows(audit, ABSORBED) == []
 
 
 @pytest.mark.asyncio
 async def test_a_child_whose_parent_was_capped_away_is_an_ordinary_theme(audit, validator_admits_all):
-    """Three themes above the parent: the parent is capped (its members do not co-move with the top,
-    so it is kept distinct here) — a kept-distinct parent still has a roster in `final`, so the child
+    """The family's best rank is past the cap (two unrelated themes above the child, the parent below
+    it): the parent is pulled up to the child's rank, capped there, and — its members do not co-move
+    with the top — kept distinct; a kept-distinct parent still has a roster in `final`, so the child
     sits under it. Then the empty-shell case: a parent emptied upstream is no roof — the child goes
     through the cap on its own and is judged against the real top like any other theme."""
-    themes = [_t(CHILD, CHILD_MEMBERS, 80), _t(DRILLERS, DRILLER_MEMBERS, 78), _t("Oilfield Services", ["A", "B", "C"], 76),
-              _t(PARENT, PARENT_MEMBERS, 70, "Mainstream")]
+    themes = [_t(DRILLERS, DRILLER_MEMBERS, 90), _t("Oilfield Services", ["A", "B", "C"], 85),
+              _t(CHILD, CHILD_MEMBERS, 80), _t(PARENT, PARENT_MEMBERS, 70, "Mainstream")]
     ctx = _ctx({"oil": PARENT_MEMBERS, "rigs": DRILLER_MEMBERS, "svc": ["A", "B", "C"]})
     out, _sp, _c = await _merge_1019(themes, ctx, sub_parents={CHILD: PARENT}, route_a=False)
     names = [t["name"] for t in out]
@@ -644,3 +646,162 @@ async def test_plain_mode_is_byte_identical(audit, monkeypatch):
     assert out == ["MU", "WDC"] and cooldowns == [("SNDK", "AI Memory & Storage")]
     assert [c.args[0] for c in audit.await_args_list] == ["ticker_revalidated_out", "validation_cooldown_triggered"]
     assert changelog[0]["type"] == "ticker_revalidated_out"
+
+
+# ═══════════════ REVIEW FIXES 2026-10-24 (adversarial review of ecf479d3 — each RED on that commit) ═══════════════
+
+from agents.market_intelligence.theme_merge_arm import family_of  # noqa: E402
+
+SVC = "Oilfield Services & Equipment"
+SVC_MEMBERS = ["SLB", "HAL", "BKR"]
+
+
+def test_order_pulls_a_later_parent_up_to_its_childs_index_the_child_directly_after():
+    """F4/F6 — 'the parent keeps the group slot': the slot the FAMILY earned (its best member's rank).
+    A parent listed after its same-group child is pulled UP to the child's index, the child right
+    behind it — never the child pushed DOWN to the parent's rank (which let two unrelated themes take
+    both slots and the whole family be absorbed into a peer)."""
+    themes = [_t(CHILD, CHILD_MEMBERS, 80), _t(DRILLERS, DRILLER_MEMBERS, 78), _t(SVC, SVC_MEMBERS, 76),
+              _t(PARENT, PARENT_MEMBERS, 70)]
+    assert [t["name"] for t in te._cap_order_children_after_parents(themes, {CHILD: PARENT})] == \
+        [PARENT, CHILD, DRILLERS, SVC]
+    # two children ahead of the parent: the parent takes the BEST child's index, both children follow
+    two = [_t(CHILD, CHILD_MEMBERS, 80), _t(EPS, EP_MEMBERS, 79), _t(DRILLERS, DRILLER_MEMBERS, 78),
+           _t(PARENT, PARENT_MEMBERS, 70)]
+    assert [t["name"] for t in te._cap_order_children_after_parents(two, {CHILD: PARENT, EPS: PARENT})] == \
+        [PARENT, CHILD, EPS, DRILLERS]
+
+
+@pytest.mark.asyncio
+async def test_1019_replay_with_two_themes_between_child_and_parent_the_family_keeps_its_slot(audit, validator_admits_all):
+    """F4/F6 — the 10-19 shape with the parent's real rank unknown: child 80 > drillers 78 > services
+    76 > parent 70 (oil_gas, cap 2), Route A firing in the same call, everything co-moving (an oil
+    rally) and the description check admitting all (its fail-open on an LLM error). On ecf479d3 the
+    child was pushed down to rank 4: drillers + services took both slots, the PARENT was absorbed into
+    the drillers (majors and refiners inside a rig theme) and the child followed. Now the parent holds
+    the slot the child earned, the child sits under it, and the services are judged against the parent."""
+    themes = [_t(CHILD, CHILD_MEMBERS, 80), _t(DRILLERS, DRILLER_MEMBERS, 78), _t(SVC, SVC_MEMBERS, 76),
+              _t(PARENT, PARENT_MEMBERS, 70, "Mainstream")]
+    ctx = _ctx({"oil": PARENT_MEMBERS + DRILLER_MEMBERS + SVC_MEMBERS})
+    out, sub_parents, calls = await _merge_1019(themes, ctx)
+    assert calls == [(PARENT, CHILD)] and sub_parents == {CHILD: PARENT}
+    names = [t["name"] for t in out]
+    assert names == [PARENT, CHILD, DRILLERS], names                       # parent slot 1, child under, drillers slot 2
+    by_name = {t["name"]: t for t in out}
+    assert set(PARENT_MEMBERS) <= set(by_name[PARENT]["tickers"]) and set(SVC_MEMBERS) <= set(by_name[PARENT]["tickers"])
+    assert set(by_name[CHILD]["tickers"]) == set(CHILD_MEMBERS) and by_name[CHILD]["parent_theme"] == PARENT
+    under = _rows(audit, CHILD_UNDER)
+    assert len(under) == 1 and _detail(under[0])["child"] == CHILD
+    absorbed = _rows(audit, ABSORBED)
+    assert [(_detail(c)["source"], _detail(c)["target"]) for c in absorbed] == [(SVC, PARENT)]
+    for c in absorbed + _rows(audit, NOT_ABSORBED) + _rows(audit, THEME_SECTOR_CAP_KEPT_DISTINCT):
+        assert _detail(c)["source"] not in (PARENT, CHILD) and _detail(c)["target"] != CHILD
+
+
+@pytest.mark.asyncio
+async def test_a_child_ranked_past_the_cap_sits_under_its_kept_parent_instead_of_folding_into_the_top(audit, validator_admits_all):
+    """F8 — DECLARED behaviour (the ruling: 'sits under its parent or folds into it'): a same-group child
+    ranked PAST the cap behind a kept parent sits under it with no slot, where the pre-change cap
+    absorbed it into the group's TOP theme (its parent only when the parent happened to be the top).
+    A cap-2 group can therefore carry its two kept themes plus their sub-themes — the cap counts
+    families, not slices. The observable: `theme_sector_cap_child_under_parent` rows on ordinary nights."""
+    themes = [_t(PARENT, PARENT_MEMBERS, 90, "Mainstream"), _t(DRILLERS, DRILLER_MEMBERS, 80), _t(CHILD, CHILD_MEMBERS, 70)]
+    ctx = _ctx({"oil": PARENT_MEMBERS, "rigs": DRILLER_MEMBERS})
+    out = await te._merge_overlapping_themes(themes, {}, protected_names={PARENT, CHILD}, sub_theme_parents={CHILD: PARENT},
+                                             comove_ctx=ctx, changelog=[])
+    assert [t["name"] for t in out] == [PARENT, DRILLERS, CHILD]
+    assert len(_rows(audit, CHILD_UNDER)) == 1 and _rows(audit, ABSORBED) == [] and validator_admits_all == []
+
+
+@pytest.mark.asyncio
+async def test_cap_kept_distinct_survives_the_next_pass_on_the_refusals_cooldown(audit, monkeypatch):
+    """F1 — merge 2 of a split night, and every night for the next 14 days: the three refused pairs
+    now sit in `cooldown_set` (the DB row `get_cooldown_set` reloads), so `_membership_path` routes
+    them 'cooldown' and the tape never sees them. On ecf479d3 only tape-judged members counted, so
+    judged fell to 0 and the theme was DROPPED homeless on pass 2 — the 10-15 outcome one night late.
+    A refusal on record counts as judged: the theme is kept distinct again, with no validator call."""
+    prompts, cooldowns = _wire_real_validator(monkeypatch, ["QA", "QB", "QC"])
+    third = ["QA", "QB", "QC"]
+    ctx = _ctx({"tank": TANKER_MEMBERS + third})
+    cooldown_set: set = set()
+    out1 = await _cap(_cap_themes(third), ctx, protected=set(), changelog=[], cooldown_set=cooldown_set)
+    assert UTILITIES in {t["name"] for t in out1} and cooldown_set == {(tk, TANKER) for tk in third}
+    audit.reset_mock()
+    out2 = await _cap(_cap_themes(third), ctx, protected=set(), changelog=[], cooldown_set=cooldown_set)
+    by_name = {t["name"]: t for t in out2}
+    assert set(by_name) == {TANKER, REFINERS, UTILITIES}, sorted(by_name)
+    assert set(by_name[UTILITIES]["tickers"]) == set(third) and set(by_name[TANKER]["tickers"]) == set(TANKER_MEMBERS)
+    kept = _rows(audit, THEME_SECTOR_CAP_KEPT_DISTINCT)
+    assert len(kept) == 1 and _rows(audit, NOT_ABSORBED) == [] and _rows(audit, ABSORBED) == []
+    d = _detail(kept[0])
+    assert (d["judged"], d["judged_tape"], d["judged_cooldown"], d["passed"]) == (3, 0, 3, 0)
+    assert all(d["members"][tk]["path"] == "cooldown" for tk in third)
+    assert "on cooldown 3" in _summary(kept[0])
+    assert len(prompts) == 1 and len(cooldowns) == 3                       # pass 1 only; a pair on cooldown never reaches the validator
+
+
+@pytest.mark.asyncio
+async def test_unchanged_biotech_per_family_branch_keeps_pure_score_order_for_a_parent_child_pair(audit):
+    """F2/F7 — the per-family (biotech) branch is byte-identical: it has no absorption target, so the
+    direction rule has nothing to protect there and the ruling did not cover it. A same-family child
+    that out-scores its parent keeps the family slot and the parent is dropped, as on the parent commit
+    (`_cap_parent_in_group` returns None for a per-family group, so no reorder and no sits-under)."""
+    parent = "Oncology Biotech: Clinical-Stage Cancer Therapeutics"
+    child = "Oncology Biotech: ADC Cancer Drug Developers"
+    assert te._sector_group(parent) == te._sector_group(child) == ("biotech", te.PER_FAMILY_CAP)
+    assert family_of(parent) == family_of(child) == "oncology"
+    assert te._cap_parent_in_group(child, "biotech", {child: parent}) is None
+    themes = [_t(child, ["A1", "A2", "A3"], 90), _t(parent, ["B1", "B2", "B3", "B4", "B5", "B6", "B7"], 80, "Mainstream")]
+    out = await te._merge_overlapping_themes(themes, {}, protected_names={parent, child}, sub_theme_parents={child: parent})
+    assert [t["name"] for t in out] == [child]
+    dropped = _rows(audit, "theme_sector_cap_dropped")
+    assert len(dropped) == 1 and _summary(dropped[0]).startswith(f"'{parent}' dropped") and "slot taken" in _summary(dropped[0])
+    assert _rows(audit, CHILD_UNDER) == []
+
+
+@pytest.mark.asyncio
+async def test_fold_never_dissolves_a_parent_into_its_own_sub_theme(audit, monkeypatch):
+    """F3 — the fail-only fold is a move path too: a 3-member parent failing the random-basket test,
+    whose only ecosystem home is its own sub-theme (holding the parent's two riders, so it ranks first
+    by shared members). The link is `sub_theme_parents` — a prior-night child does NOT carry
+    `parent_theme` mid-pipeline (#471). On ecf479d3 the parent was folded into its child and retired
+    with the child as its successor. Now: not folded, counted under its own reason."""
+    ex = _excess_multi({"R1": "A", "R2": "B"}, contras=["C1"], n_factors=2)
+    _wire(monkeypatch, ex)
+    from agents.market_intelligence import theme_ecosystems
+    child = {"name": "Gas Producers Child", "stage": "Accelerating", "tickers": HOME + ["R1", "R2"], "description": ""}
+    parent = {"name": "Gas Parent", "stage": "Mainstream", "tickers": ["R1", "R2", "C1"]}
+    monkeypatch.setattr(theme_ecosystems, "load_ecosystem_assignments",
+                        AsyncMock(return_value={child["name"]: "E-ENERGY", parent["name"]: "E-ENERGY"}))
+    out = await te._fold_small_failing_themes([child, parent], {child["name"], parent["name"]}, [], TODAY,
+                                              theme_exclusions=None, cooldown_set=set(), protected=set(),
+                                              sub_theme_parents={child["name"]: parent["name"]})
+    assert [(t["name"], t["stage"]) for t in out] == [(child["name"], "Accelerating"), (parent["name"], "Mainstream")]
+    assert next(t for t in out if t["name"] == parent["name"])["tickers"] == ["R1", "R2", "C1"]
+    assert _rows(audit, THEME_SMALL_FOLDED) == []
+    ran = _detail(_rows(audit, THEME_SMALL_FOLD_RAN)[0])["counts"]
+    assert (ran["g3_fail"], ran["folded"], ran["no_home_own_subtheme"], ran["no_home"]) == (1, 0, 1, 0)
+
+
+@pytest.mark.asyncio
+async def test_fold_a_child_still_folds_into_its_own_parent(audit, monkeypatch):
+    """The other direction is a ruled outcome ('sits under its parent OR folds into it'): a failing
+    2-member child whose parent is its home folds into the parent as before."""
+    _wire(monkeypatch, _excess(["RIDE"], ["NOIS"]))
+    small = {"name": "Gas Pair", "stage": "Nascent", "tickers": ["RIDE", "NOIS"]}
+    out = await te._fold_small_failing_themes([_home(), small], {"Gas Producers", "Gas Pair"}, [], TODAY,
+                                              theme_exclusions=None, cooldown_set=set(), protected=set(),
+                                              sub_theme_parents={"Gas Pair": "Gas Producers"})
+    assert {t["name"] for t in out if t["stage"] != "Retired"} == {"Gas Producers"}
+    assert len(_rows(audit, THEME_SMALL_FOLDED)) == 1
+
+
+@pytest.mark.asyncio
+async def test_removable_mode_refuses_a_mover_even_when_the_target_has_one_member(audit, monkeypatch):
+    """F9 — the validator's minimum-survivor guard is for the REMOVAL mode (never prune a theme below
+    2). In the moved-stock mode a refusal never shrinks the target's roster, so the guard must not
+    admit a refused mover into a 1-member target (on ecf479d3 it did: no cooldown, no refusal record)."""
+    prompts, cooldowns = _wire_real_validator(monkeypatch, ["XCO"])
+    out = await te._validate_theme_membership("Crude Tanker Shipping", ["FRO", "XCO"], [], protected=set(), removable={"XCO"})
+    assert out == ["FRO"] and cooldowns == [("XCO", "Crude Tanker Shipping")]
+    assert len(_rows(audit, MOVE_REJECTED)) == 1 and len(prompts) == 1

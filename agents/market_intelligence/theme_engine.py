@@ -3185,8 +3185,11 @@ async def _validate_theme_membership(
         # 2 members): the removal proceeds so the CALLER can dissolve the theme
         # on validation evidence instead of the pair living forever behind this
         # guard. A ≥3-member theme is never dissolved here (narrow by design).
+        # #655 move paths (2026-10-24 review fix): the guard is for the REMOVAL mode. In the
+        # moved-stock mode a refusal never shrinks the target's roster (only movers are refusable),
+        # so a 1-member target must not admit a refused mover through it.
         survivable = [t for t in tickers if t not in to_remove]
-        if len(survivable) < PRUNE_MIN_TICKERS:
+        if removable is None and len(survivable) < PRUNE_MIN_TICKERS:
             if not (dissolve_flagged_pair and len(tickers) == 2 and to_remove):
                 logger.warning(
                     f"Theme '{theme_name}': re-validation would drop below {PRUNE_MIN_TICKERS} tickers — skipping removals"
@@ -8131,26 +8134,49 @@ def _tape_judged(verdicts: dict[str, dict]) -> int:
     return sum(1 for v in verdicts.values() if v.get("path") == "tape")
 
 
+def _cooldown_refused(verdicts: dict[str, dict]) -> int:
+    """#655 move paths (2026-10-24 review fix): members carrying a live 14-day cooldown FROM THIS
+    TARGET (path "cooldown" — `_membership_path` keys the pair on the target's name). A cooldown is a
+    refusal on record — the description check refused the move, the target's rescore evicted the
+    stock, or the assignment funnel refused it as a new member — so for the keep rule it is a judged
+    "does not belong", not an unjudged pair."""
+    return sum(1 for v in verdicts.values() if v.get("path") == "cooldown")
+
+
 def _cap_keep_distinct(judged: int, admitted: list[str], already: list[str]) -> bool:
-    """#655 (a) — pure. The replay's keep rule, ported exactly: at least `SECTOR_CAP_KEEP_MIN_JUDGED`
-    members judged by the tape (`_tape_judged`), NONE admitted, and none already sitting in the
-    target. Since 2026-10-24 `admitted` is what survives BOTH tests (tape, then the description
-    check): a theme the tape would move but the description check refuses whole is kept as its own
-    theme — it keeps its home instead of being glued in and stripped out (the 10-15 apparel shape)."""
+    """#655 (a) — pure. The replay's keep rule: at least `SECTOR_CAP_KEEP_MIN_JUDGED` members JUDGED,
+    NONE admitted, and none already sitting in the target. Since 2026-10-24 `admitted` is what
+    survives BOTH tests (tape, then the description check): a theme the tape would move but the
+    description check refuses whole is kept as its own theme — it keeps its home instead of being
+    glued in and stripped out (the 10-15 apparel shape). `judged` = `_tape_judged` + `_cooldown_refused`
+    (the 2026-10-24 review fix, a WIDENING of the 10-09 wording "judged by the tape"): the refusal
+    writes a 14-day cooldown on the pair, so on merge 2 of a split night and on every night after,
+    the same members reach the cap on the 'cooldown' path and the tape never sees them — counting
+    tape verdicts alone dropped the kept theme homeless one pass later (the outcome the 10-21 ruling
+    "keeps its current home" forbids). Side effect, declared: a cohort whose members all carry
+    cooldowns from a PRIOR rescore eviction by the target is now kept distinct instead of dropped."""
     return judged >= SECTOR_CAP_KEEP_MIN_JUDGED and not admitted and not already
 
 
 # ── #655 DIRECTION (his ruling 2026-10-21, "Ok"): a theme is NEVER absorbed into its own sub-theme ──
-# The rule, named: "A SUB-THEME SITS UNDER ITS PARENT IN THE SECTOR CAP." In Pass 2 a theme whose
-# `sub_theme_parents` parent falls in the SAME keyword group (a) is processed AFTER that parent (never
-# ahead of it in the slot race, whatever its score), (b) holds no cap slot while its parent is kept
-# (the parent keeps the group slot, the child rides under it — the routing verdict's own picture),
-# and (c) is never a capped theme's target — not its own parent's, not anyone's. Only when the parent
-# is NOT kept (capped away, or an empty shell) is the child an ordinary theme at its own position.
-# Pass 1 already coexists parent/child (both directions), Pass 1.5 never absorbs a child and now
-# never absorbs a parent into its child, and Arm B refuses parent/child pairs (theme_merge_arm gate
-# 3a) — so every absorption path honours the direction. The per-family (biotech) branch is untouched:
-# it has no absorption target, so its analogue is a drop, which the ruling did not cover.
+# The rule, named: "A SUB-THEME SITS UNDER ITS PARENT IN THE SECTOR CAP; THE PARENT HOLDS THE SLOT THE
+# FAMILY EARNED." In Pass 2 a theme whose `sub_theme_parents` parent falls in the SAME keyword group
+# (a) is processed directly AFTER that parent: a parent listed BELOW its child is pulled UP to the
+# child's index (the family competes at its best member's rank and the PARENT takes the slot the child
+# would have held — "the parent keeps the group slot"; never the child pushed DOWN to the parent's
+# rank, which on review let two unrelated themes take both slots and the whole family be absorbed
+# into a peer); (b) holds no cap slot while its parent is kept with a roster (the child rides under
+# it — the routing verdict's own picture — whatever its own rank, so a cap-2 group carries its kept
+# themes PLUS their sub-themes; before this a child ranked past the cap was absorbed into the group's
+# TOP theme, its parent only by coincidence); and (c) is never a capped theme's target — not its own
+# parent's, not anyone's. Only when the parent is NOT kept (absorbed, or an empty shell) is the child
+# an ordinary theme, judged at the family's rank. Pass 1 already coexists parent/child (both
+# directions), Pass 1.5 never absorbs a child and now never absorbs a parent into its child, the
+# fail-only fold never dissolves a parent into its own sub-theme (`plan_small_theme_folds`), and Arm B
+# refuses parent/child pairs (theme_merge_arm gate 3a) — so every absorption path honours the
+# direction. The per-family (biotech) branch is byte-identical: `_cap_parent_in_group` returns None
+# for a `PER_FAMILY_CAP` group, so neither the reorder nor the sits-under branch reaches it (it has no
+# absorption target — its analogue is a drop, which the ruling did not cover).
 #
 # THE 10-19 CASE: 'Petroleum Refiners (Independent Refining & Marketing)' (CVI, DINO, MPC, PSX) was
 # born and routed PARENT_CHILD under 'Oil & Gas Price Rally…' (containment 1.00) in Pass 1, then
@@ -8169,36 +8195,40 @@ def _cap_parent_in_group(name: str, group: str, sub_theme_parents: "dict[str, st
     if not parent or parent == name:
         return None
     pg = _sector_group(parent)
-    return parent if pg is not None and pg[0] == group else None
+    if pg is None or pg[0] != group or pg[1] == PER_FAMILY_CAP:
+        return None   # per-family (biotech) groups keep pure score order — the branch is untouched
+    return parent
 
 
 def _cap_order_children_after_parents(themes: list[dict], sub_theme_parents: "dict[str, str] | None") -> list[dict]:
-    """PURE. Pass 2's processing order: score order (the input), except that a sub-theme whose
-    same-group parent comes LATER in the list is moved to directly after that parent, so a child
-    never takes its parent's cap slot ahead of it. A child whose parent is absent (or in another
-    group) keeps its place. Index-based, not name-based (a re-minted namesake can share a name —
-    the 10-07 shape): a child waits for the FIRST occurrence of its parent's name. Every theme is
-    emitted exactly once — a link cycle or a never-emitted parent cannot lose a theme."""
+    """PURE. Pass 2's processing order: score order (the input), except that a same-group parent
+    listed LATER than its sub-theme is pulled UP to the child's index, the child directly after it
+    (ancestors first along a chain), so the family competes at its best member's rank and the parent
+    takes the slot the child would have held. A child whose parent is absent, in another group or
+    already ahead keeps its place. Index-based, not name-based (a re-minted namesake can share a name
+    — the 10-07 shape): the FIRST occurrence of the parent's name is the parent. Every theme is
+    emitted exactly once — a link cycle cannot lose or duplicate a theme (an emitted name is never
+    pulled again, and each pull moves to a strictly later index, so the walk terminates)."""
     first_idx: dict[str, int] = {}
     for i, t in enumerate(themes):
         first_idx.setdefault(t["name"], i)
-    deferred: dict[str, list[dict]] = {}     # parent name -> children waiting for it
-    emitted: set[str] = set()
+    emitted: set[int] = set()        # indices already placed
     out: list[dict] = []
-    for i, t in enumerate(themes):
+
+    def _emit(i: int) -> None:
+        if i in emitted:
+            return
+        t = themes[i]
         sg = _sector_group(t["name"])
         parent = _cap_parent_in_group(t["name"], sg[0], sub_theme_parents) if sg else None
-        if parent is not None and parent in first_idx and first_idx[parent] > i and parent not in emitted:
-            deferred.setdefault(parent, []).append(t)
-            continue
-        stack = [t]
-        while stack:
-            cur = stack.pop(0)
-            out.append(cur)
-            emitted.add(cur["name"])
-            stack = deferred.pop(cur["name"], []) + stack   # a child's own waiting children follow it
-    for rest in deferred.values():   # unreachable in practice; never lose a theme
-        out.extend(rest)
+        if parent is not None and parent in first_idx and first_idx[parent] > i:
+            _emit(first_idx[parent])   # the later parent (and its own later ancestors) come first
+        if i not in emitted:           # a cycle can place `i` inside the recursive call
+            emitted.add(i)
+            out.append(t)
+
+    for i in range(len(themes)):
+        _emit(i)
     return out
 
 
@@ -8328,23 +8358,26 @@ async def _admit_rehomed_members(
         "tape_admitted": tape_admitted, "description_rejected": desc_rejected,
         "members": verdicts,
     })
-    judged_n = _tape_judged(verdicts)
+    judged_tape, judged_cooldown = _tape_judged(verdicts), _cooldown_refused(verdicts)
+    judged_n = judged_tape + judged_cooldown   # a refusal on record counts (`_cap_keep_distinct`)
     if _cap_keep_distinct(judged_n, admitted, already):
-        # #655 (a): the tape judged enough of this theme's members and not one moves with the
-        # group's top theme — the cap's "same sector" premise is a keyword coincidence, so the
-        # theme is KEPT (the caller leaves it out of the group's slot count). ONE row per merge pass
-        # (two on a split night, when the merge re-runs — count distinct themes), replacing
-        # the not_absorbed row; no "'a' -> 'b'" arrow, so no retire path reads it as a successor.
-        # Since 2026-10-24 "none admitted" counts the description check (`_cap_keep_distinct`).
+        # #655 (a): enough of this theme's members were judged (the tape, or a refusal on record
+        # from this target) and not one moves with the group's top theme — the cap's "same sector"
+        # premise is a keyword coincidence, so the theme is KEPT (the caller leaves it out of the
+        # group's slot count). ONE row per merge pass (two on a split night, when the merge re-runs
+        # — count distinct themes), replacing the not_absorbed row; no "'a' -> 'b'" arrow, so no
+        # retire path reads it as a successor. Since 2026-10-24 "none admitted" counts the
+        # description check, and "judged" counts a cooldown from the target (`_cap_keep_distinct`).
         await log_audit_event(
             THEME_SECTOR_CAP_KEPT_DISTINCT,
             summary=(f"Pass2: '{source_name}' kept distinct from '{target_name}' — {judged_n} of "
                      f"{len(candidates)} member(s) judged, none admitted (tape passed "
-                     f"{len(tape_admitted)}, description check refused {len(desc_rejected)}; "
-                     f"sector group '{group}')"),
+                     f"{len(tape_admitted)}, description check refused {len(desc_rejected)}, "
+                     f"on cooldown {judged_cooldown}; sector group '{group}')"),
             detail=json.dumps({
                 "source": source_name, "target": target_name, "group": group,
-                "judged": judged_n, "passed": 0, "bar": ASSIGN_COMOVE_BAR,
+                "judged": judged_n, "judged_tape": judged_tape, "judged_cooldown": judged_cooldown,
+                "passed": 0, "bar": ASSIGN_COMOVE_BAR,
                 "tape_admitted": tape_admitted, "description_rejected": desc_rejected,
                 "members": verdicts,
             }),
@@ -8889,10 +8922,11 @@ async def _merge_overlapping_themes(
         parent = _cap_parent_in_group(t["name"], group, sub_theme_parents)
         if parent is not None and any(f["name"] == parent and f.get("tickers") for f in final):
             # #655 direction: the parent is kept (a slot, or kept distinct) with a roster -> the
-            # child sits under it: no slot of its own, never a target, roster untouched. A child
-            # whose parent was NOT kept (capped away / an empty shell) falls through as an
-            # ordinary theme at its own position — it was ordered after its parent, so it is
-            # judged against the group's real kept top like any other.
+            # child sits under it: no slot of its own, never a target, roster untouched — whatever
+            # the child's own rank (a child past the cap is no longer absorbed into the group's
+            # top; the section header above `_cap_parent_in_group`). A child whose parent was NOT
+            # kept (absorbed / an empty shell) falls through as an ordinary theme, judged at the
+            # family's rank against the group's real kept top like any other.
             final.append(t)
             under_parent.add(t["name"])
             logger.info(
@@ -9451,16 +9485,26 @@ def plan_small_theme_folds(
     cooldown_set: "set[tuple[str, str]] | None" = None,
     protected: "set[tuple[str, str]] | frozenset" = frozenset(),
     skip_names: "set[str] | frozenset" = frozenset(),
+    sub_theme_parents: "dict[str, str] | None" = None,
 ) -> tuple[list[SmallFold], dict[str, int]]:
     """PURE, deterministic, no DB: the #655 fail-only fold decision (section header above), ported
     from `scripts/probes/_655_scope/a4_fold.py` (`--min505`, scope 'fail', mode 'majority').
     `board` = tonight's live themes (non-Retired, with members) in a fixed order; `g3_fail` = the
     names whose G3 verdict tonight is a FAIL (an unjudgeable theme is not in it); `usable` = tickers
     with a real price reading (theme_correctness.usable_set). Every decision reads the PRE-fold
-    board. Returns (folds, counts) — counts by outcome over the 2-3-member population."""
+    board. Returns (folds, counts) — counts by outcome over the 2-3-member population.
+
+    sub_theme_parents (#655 direction, 2026-10-24 review fix): the night's sub-theme links (child
+    name -> parent name). A theme is NEVER dissolved into its own sub-theme — the fold is a move path
+    too, and a child holding the parent's members ranks FIRST by shared members. Keyed on this dict,
+    not on the child's `parent_theme` (a prior-night child does not carry it mid-pipeline, #471).
+    A theme whose only homes are its own sub-themes counts under `no_home_own_subtheme`; the other
+    direction (a child folding into its parent) stays allowed — the ruling's "folds into it"."""
     from agents.market_intelligence.theme_ecosystems import E_UNASSIGNED  # cycle: function-level
     counts = {"small": 0, "g3_fail": 0, "folded": 0, "skipped_renamed": 0,
-              "skipped_protected": 0, "no_ecosystem": 0, "no_home": 0, "members_fail_test": 0}
+              "skipped_protected": 0, "no_ecosystem": 0, "no_home": 0, "no_home_own_subtheme": 0,
+              "members_fail_test": 0}
+    links = sub_theme_parents or {}
     folds: list[SmallFold] = []
     for s in board:
         if not _is_small_fold_candidate(s):
@@ -9484,8 +9528,10 @@ def plan_small_theme_folds(
                  if h["name"] != s["name"] and eco_map.get(h["name"]) == code
                  and len(h.get("tickers") or []) >= SMALL_FOLD_HOME_MIN_MEMBERS
                  and sum(1 for m in h["tickers"] if m in usable) >= SMALL_FOLD_HOME_MIN_HISTORY]
+        own_children = [h for h in homes if links.get(h["name"]) == s["name"]]
+        homes = [h for h in homes if links.get(h["name"]) != s["name"]]   # #655 direction (docstring)
         if not homes:
-            counts["no_home"] += 1
+            counts["no_home_own_subtheme" if own_children else "no_home"] += 1
             continue
         need = _small_fold_need(len(s_tk))   # at least half: 1 of 2, 2 of 3
         best = None
@@ -9609,11 +9655,14 @@ async def _fold_small_failing_themes(
     theme_exclusions: "dict[str, set[str]] | None",
     cooldown_set: "set[tuple[str, str]] | None",
     protected: "set[tuple[str, str]] | None",
+    sub_theme_parents: "dict[str, str] | None" = None,
 ) -> list[dict]:
     """#655 fail-only fold (section header above). Returns `all_themes` with each folded theme
     removed, its moved members appended to its home, and — for an incumbent — a synthetic Retired
     row pointing at the home. No 2-3-member theme on the board, or toggle OFF -> the list is
-    returned untouched with no read. Any unreadable input -> nothing folds, said in the RAN row."""
+    returned untouched with no read. Any unreadable input -> nothing folds, said in the RAN row.
+    `sub_theme_parents` = the night's sub-theme links, so a theme is never dissolved into its own
+    sub-theme (`plan_small_theme_folds`); None = no links known (every pre-existing test caller)."""
     live = [t for t in all_themes if t.get("stage") != "Retired" and (t.get("tickers") or [])]
     small = [t for t in live if _is_small_fold_candidate(t)]
     if not small:
@@ -9661,6 +9710,7 @@ async def _fold_small_failing_themes(
         board, g3_fail, ctx, usable, eco_map, industries or {},
         theme_exclusions=theme_exclusions, cooldown_set=cooldown_set, protected=protected,
         skip_names={t["name"] for t in board if t.get("renamed_from")},
+        sub_theme_parents=sub_theme_parents,
     )
 
     by_name = {t["name"]: t for t in live}
@@ -11297,9 +11347,13 @@ async def run_theme_engine(
     # today's splits to reconcile every continuing child, not just ones merged
     # again this run.
     prior_sub_parents.update(this_run_sub_parents)
+    # #655 direction: the links the fold (Step 4d) reads. Merge 2 below takes a NEW dict and Route A
+    # mutates THAT one live, so after a split night the complete set is `combined_sub_parents`.
+    tonight_sub_parents: dict[str, str] = prior_sub_parents
 
     if new_sub_themes:
         combined_sub_parents = {**prior_sub_parents, **this_run_sub_parents}
+        tonight_sub_parents = combined_sub_parents
         await _emit_pipeline_diagnostic(
             all_themes + new_sub_themes, "after_split", sub_theme_parents=combined_sub_parents
         )
@@ -11346,6 +11400,7 @@ async def run_theme_engine(
         all_themes = await _fold_small_failing_themes(
             all_themes, {t["name"] for t in existing if t.get("stage") != "Retired"}, changelog, today,
             theme_exclusions=theme_exclusions, cooldown_set=cooldown_set, protected=protected_set,
+            sub_theme_parents=tonight_sub_parents,   # #655 direction: never into its own sub-theme
         )
     except Exception as e:  # loud-ok: a failed pass must not take the nightly down; audited + logged, nothing folded
         logger.error(f"Small-theme fold pass FAILED — nothing folded tonight: {type(e).__name__}: {e}",
