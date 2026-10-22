@@ -2254,3 +2254,12 @@ return percentile) exists in every era, so it is testable on 2017–21 and 2022�
 **Used as:** the A+ rating's stair-step ingredient is oriented EARLIER = BETTER (the first / second base of a run ranks above a later
 one), registered as his stated lean with his uncertainty disclosed; the reverse orientation is reported beside as a sensitivity row,
 never deciding (#705).
+
+## 2026-10-22 — his ruling on base LENGTH in the A+ rating (operator, verbatim)
+
+> "Ok. On line bases, volatility has to be contracting over time, tightening, if base is long but wide and loose, that's not good"
+
+(Replying to: market condition used as a SPLIT of the result, not a scored input — "Ok"; and "a longer base rates higher" —
+corrected.) **Used as:** base length is NOT rewarded on its own. What the rating scores is volatility CONTRACTING OVER THE
+BASE (tightening over time — e.g. the ATR / daily range falling from the base's early part to its late part); a long base that
+stays wide and loose scores badly. Base length alone is reported beside, never deciding (#705).
