@@ -2246,3 +2246,11 @@ that picks the best few a week from all breakouts is the untested alternative (#
 tested on top of it — group strength and themes first. Data reach: industry-group strength (`grp_pct`, the group's 3-month
 return percentile) exists in every era, so it is testable on 2017–21 and 2022–24; the theme engine's history starts 2026-03-19
 (151 nights), so themes can only be read on 2026 breakouts (descriptive) and recorded forward by the shadow.
+
+## 2026-10-22 — his lean on the stair-step number (which base in a run) for the A+ rating (operator, verbatim)
+
+> "I'm not exactly sure, but I feel earlier the breakout the better. Later breakouts, may run out of momentum."
+
+**Used as:** the A+ rating's stair-step ingredient is oriented EARLIER = BETTER (the first / second base of a run ranks above a later
+one), registered as his stated lean with his uncertainty disclosed; the reverse orientation is reported beside as a sensitivity row,
+never deciding (#705).
