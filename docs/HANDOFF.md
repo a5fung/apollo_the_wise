@@ -1421,7 +1421,24 @@ stagger cards, one at a time.
 
 **Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
-## 2026-10-20 (Tue) CLOSE — 🔴 RESUME HERE. Supersedes the 10-19 close below.
+## 2026-10-21 (Wed) CLOSE — 🔴 RESUME HERE. Supersedes the 10-20 close below.
+
+- **Board 21 → 22:** closed #703 (single 09:00 scan, three weekdays; the 09:00-tick-alert case unexercised, his "ok"); opened #706
+  (his `/trades` + dashboard stats + the duplicate ORB skip message) and #707 (the trading knowledge vault — on his signed carryover
+  "i sign off"). Server 25fabf93; main ahead with docs / plan / research code only — no deploy needed.
+- **Checks:** #540 still no broker rejection (verify → its 11-30 deadline); #697 item 4 DONE-WHEN met (first stamps LIFE + HTFL;
+  verify → Fri 10-23 Flag Bases render); the SPCX duplicate skip message traced to two callers (bar stream + 09:31 fallback) → #706.
+- **L2 cooldown anomaly (36 vs 11):** the sector cap absorbed the broad oil & gas theme INTO its own newborn 4-stock refiners
+  sub-theme (score order), tape co-movement admitted drillers / E&Ps, Wednesday's description check removed 18. HIS RULING: Saturday's
+  #655 build = direction (never absorb into a sub-theme of itself) + the description check on both move paths. Expect Friday's rescore
+  to strip the 8 tankers absorbed tonight.
+- **His ideas recorded:** breakouts need an A+ RATING (rank, top few a week) with secondary indicators (group strength every era;
+  themes from 2026-03 only) — #705's round-2 read, a fixed pre-named score; the knowledge vault (#707).
+- **Weekend plan + drop order:** the WEEKEND PLAN section in PLAN.md (Fri prep / Sat / Sun; breakouts + HTF first, parabolic review
+  last). Friday early starts only on his ask, before the 8 PM PT capacity reset. The stale September week plan was retired (its
+  "Standing — waits on the operator" block kept; `operator_asks.py` reads it).
+
+## 2026-10-20 (Tue) CLOSE — superseded by the 10-21 close above.
 
 - **Board 21 → 21:** closed #702 (DoD met — holdout verdict 10-19; the shadow's first pivot-cross night 10-20: all 88 crossing
   names got entries, every fill 15 exit rows; his "Ok" on the 12-vs-15 basis), opened #705 (round 2 of the breakout research).
