@@ -2558,8 +2558,11 @@ def run_exits_report(args) -> int:
 # the holdout guard - freeze_check, copied in structure from scripts/probes/_686/preregistered_read.py::freeze_check
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 def sha256_file(p: Path) -> str:
-    """Streamed since #705 (a) (`hashlib.file_digest`): the identical digest without reading a 270 MB export whole."""
-    return rr.sha256_file(Path(p))
+    """Streamed since #705 (a) (`hashlib.file_digest`): the identical digest without reading a 270 MB export whole. Kept HERE, not
+    delegated to the scaffold: the four finished reads' freeze records pin this runner, and the hash their freeze rests on must live
+    inside what they pin."""
+    with open(p, "rb") as fh:
+        return hashlib.file_digest(fh, "sha256").hexdigest()
 
 
 def _is_minute_data_file(p: Path) -> bool:
@@ -6622,6 +6625,8 @@ def run_exit_read(args) -> int:
 # records pin the runner that ran them, and tests/test_cb_backtest_golden.py pins their every byte.
 # ═════════════════════════════════════════════════════════════════════════════════════════════
 REGISTERED_READS: dict = {}
+BUILTIN_STAGES = ("daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report", "p5", "pre-read",
+                  "h60-step0", "h60-read", "h60-hindsight", "exit-read")           # a registered read may not wear one of these names
 
 
 def run_registered_read(spec: "rr.RegisteredRead", args) -> int:
@@ -6631,8 +6636,10 @@ def run_registered_read(spec: "rr.RegisteredRead", args) -> int:
 
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("stage", choices=["daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report", "p5", "pre-read",
-                                      "h60-step0", "h60-read", "h60-hindsight", "exit-read"] + sorted(REGISTERED_READS),
+    clash = sorted(set(REGISTERED_READS) & set(BUILTIN_STAGES))
+    if clash:                                   # a registered read named after a finished stage would replace its guards with the scaffold's
+        ap.error(f"registered read(s) {clash} carry the name of a built-in stage - the finished stages are not replaced; rename the read")
+    ap.add_argument("stage", choices=list(BUILTIN_STAGES) + sorted(REGISTERED_READS),
                     help="daily = P2a daily stage; minute = DISCOVERY entries/exits/controls; step0-entries = HOLDOUT "
                          "composition, no outcome; holdout = the minute engine AND the P5 stage on the HOLDOUT, behind "
                          "freeze_check (BUILT, NOT RUN); report = the DISCOVERY read; exits / exits-report = #702 his exit (the "

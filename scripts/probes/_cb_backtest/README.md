@@ -228,12 +228,13 @@ agrees/contradicts stamps read from each other period's own out dir; small copie
 
 ---
 
-# #705 (a) — the shared registered-read scaffold (`registered_read.py`) + the golden-bytes harness (2026-10-24; synthetic only)
+# #705 (a) — the shared registered-read scaffold (`registered_read.py`) + the golden-bytes harness (2026-10-24, synthetic only; the review fixes 2026-10-21)
 
 The four finished one-run reads (`holdout`, `pre-read`, `h60-read`, `exit-read`) each copied the same plumbing, and the copies drifted:
 `h60-read --out` was checked against cb702/out while the pre period READ cb702_pre/out; `exit-read` ignored `--out`; the pre-read had no
-freeze. **They stay as they are** (their freeze records pin the runner that ran them). Every read built after them is a
-`rr.RegisteredRead` registered in `runner.REGISTERED_READS` and run by ONE driver, `rr.run_registered_read(spec, args, runner)`:
+freeze. **They stay as they are** (their freeze records pin the runner that ran them; `runner.sha256_file` keeps its own streaming body for
+that reason). Every read built after them is a `rr.RegisteredRead` registered in `runner.REGISTERED_READS` (never under a built-in stage's
+name - `main()` refuses the clash) and run by ONE driver, `rr.run_registered_read(spec, args, runner)`:
 
 ```python
 spec = rr.RegisteredRead(name="quality-read", tag="quality", doc="cb_quality_prereg_<date>.md",      # doc=None = DECLARED no freeze
@@ -242,22 +243,36 @@ spec = rr.RegisteredRead(name="quality-read", tag="quality", doc="cb_quality_pre
                          hard_pins=(("module", lambda ctx: ctx.repo / rn.MODULE_REL, "<sha256>"),))
 runner.REGISTERED_READS[spec.name] = spec            # `python3 runner.py quality-read --data cb702 --period discovery [--print-pins | --dry-run]`
 ```
-The driver resolves data / out / small / minutes / period ONCE into a `Ctx` (`ctx.data` = the dir the period reads; `ctx.out` is checked
-against `ctx.data / "out"` and is the only out dir the body sees) and runs `spec.order`: `--print-pins` → `--period` → `--prereg` only
-with pins / dry run → the refused options + `--out` / `--small-out` → `--no-freeze-check` only with `--dry-run` → the hard pins (footer or
-no footer, even dry) → **the freeze check before any file is opened** (a `doc=None` read logs `freeze check NONE DECLARED`) → `prepare`
-(the population + `minute_inputs`; no bar, no minute row) and the once-only scan → `--dry-run` → once-only / `.partial` → empty
-population → missing pairs → `body(ctx, prep, say)`. A `rr.Verdict` is written as `<tag>_verdict_<period>.{json,txt}` (out) + `.txt` (small);
-an int is the exit code (3 = the read's own check failed, nothing more written); the run log lands in `<tag>_summary_<period>.txt`.
-Refusals go to stderr with exit 2 and print the spec's `Messages` verbatim. `ctx.partial_write(name)` is the `.partial` protocol.
-Speed helpers for the next reads (not retrofitted into the finished stages): `rr.sha256_file` (streaming; `runner.sha256_file` now
-delegates to it, the identical digest), `rr.load_daily_cached(path, runner.load_daily)` (one slot keyed by path / size / mtime),
-`rr.read_watch_index(path, k)` (the watch table by `usecols` + explicit dtypes in chunks; values equal to `h60_watch_index`'s).
+**The guards are not opt-out.** `order` must carry every check (a permutation of `rr.DEFAULT_ORDER` that keeps the driver's chain); a spec
+that drops `freeze`, `once_only`, `dry_run` or any other is a `ValueError` at construction. The driver resolves data / out / small /
+minutes / period ONCE into a `Ctx` (`ctx.data` = the dir the period reads; `ctx.out` is checked against `ctx.data / "out"` and is the only
+out dir the body sees; `--minutes` is checked against `ctx.data / "minutes"` whether or not the spec lists it) and runs: `--print-pins` →
+`--period` → `--prereg` only with pins / dry run → the refused options + `--out` / `--small-out` / `--minutes` → `--no-freeze-check` only
+with `--dry-run` → the hard pins (footer or no footer, even dry) → **the freeze check before any file is opened**, on `rr.frozen_map(spec,
+ctx)` = the spec's `frozen(ctx)` PLUS what the driver pins itself: the runner, the scaffold (`registered_read.py`) and the body's own module
+when it is neither (`spec module`) - the registration doc's footer must carry those lines too (`--print-pins` prints them); a `doc=None`
+read logs `freeze check NONE DECLARED`, a doc with an empty map is refused → `prepare` (returns `rows`, `inp` = `minute_inputs` or None,
+optionally `path` and `opens`; **the driver refuses when the freeze map does not cover the minute directory, the candidates file or any
+`opens` path** - a freeze that pins nothing the read opens is no freeze) and the once-only scan over `outputs(ctx)` (non-empty, or a
+`ValueError`) **and the verdict files** (out + small) → `--dry-run` → once-only / `.partial` → empty population → missing pairs → one last
+check that the freeze passed → `body(ctx, prep, say)`. A `rr.Verdict` is written through the `.partial` protocol as
+`<tag>_verdict_<period>.{json,txt}` (out) + `.txt` (small); an int is the exit code (3 = the read's own check failed, nothing more written);
+`None` is logged as a defect of the read (exit 3, no verdict); the run log lands in `<tag>_summary_<period>.txt`. Refusals go to stderr with
+exit 2 and print the spec's `Messages` verbatim. `ctx.partial_write(name, under=None)` is the `.partial` protocol.
+Speed helpers for the next reads (not retrofitted into the finished stages): `rr.sha256_file` (streaming; the identical digest),
+`rr.load_daily_cached(path, runner.load_daily)` (one slot keyed by path / size / mtime), `rr.read_candidates_cached(path,
+runner.read_candidates, **kw)` (one slot keyed by path / size / mtime / the keywords - a `where` hits by identity, so define it at module
+level), `rr.read_watch_index(path, k)` (the watch table by `usecols` + explicit dtypes in chunks; values equal to `h60_watch_index`'s).
 Tests: `tests/test_cb_backtest_registered_read.py` (a demo read, registered in the tests only, walks every path).
 
 **The golden-bytes harness** `tests/test_cb_backtest_golden.py` pins, on synthetic data, the exact stdout / stderr / exit code and every
-written file (gzip tables by content) of `daily`, `minute`, `step0-entries`, `report`, `exits` / `exits-report`, `p5` and of every path of
-the four finished reads (pins, dry runs, each refusal, the freeze mismatch, once-only / `.partial`, the full synthetic run). Only the
-volatile tokens are normalised (`<TMP>`, `<N>s` wall times, `<SHA64>` / `<SHA12>...`, `written <DATE>`); it fails on a one-byte change.
-Pins: `tests/fixtures/cb_backtest_golden/<scenario>.golden` (the header line binds; the text below it is the diff). Re-pin ONLY for an
-intended output change, in its own reviewed commit: `CB_GOLDEN_UPDATE=1 python3 -m pytest tests/test_cb_backtest_golden.py`.
+written file (gzip tables by content; a deleted file as `<DELETED>`) of `daily` (incl. the pre-2022 era options), `minute`, `step0-entries`,
+`report`, `exits` / `exits-report`, `p5` and of every path of the four finished reads (pins, dry runs, each refusal incl. no `--period` and
+`--small-out`, the freeze mismatch, `--parity-only` on a mismatched footer, once-only / `.partial`, missing pairs, the empty population, the
+STEP 0 refusal, every exit-3 path - the h60 twin, the exit read's parity and implementation checks, the pre-read's P5 cross-check - and the
+full synthetic run). Only the volatile tokens are normalised (`<TMP>`, `<N>s` wall times, `written <DATE>`, and a sha256: `<SHA:relpath>`
+for a file under the test root - so `--print-pins` pins WHICH file each label hashes - `<SHA:runner>` / `<SHA:scaffold>` / `<SHA:cb_module>`
+for the code, `<SHA64>` / `<SHA12>...` for anything else); it fails on a one-byte change. On a platform whose system / machine / numpy /
+pandas (major.minor) differ from `PINNED_ON.json`, a difference is an XFAIL naming the gap rather than a red. Pins:
+`tests/fixtures/cb_backtest_golden/<scenario>.golden` (the header line binds; the text below it is the diff). Re-pin ONLY for an intended
+output change, in its own reviewed commit: `CB_GOLDEN_UPDATE=1 python3 -m pytest tests/test_cb_backtest_golden.py`.

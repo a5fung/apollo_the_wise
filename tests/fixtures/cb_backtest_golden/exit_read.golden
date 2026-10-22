@@ -2,8 +2,8 @@
 0
 ==== GOLDEN ARTEFACT dry_run/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
 
-==== GOLDEN ARTEFACT dry_run/stdout | bytes=630 | sha256=9cac898c31693570351684d8ba4643d5eadd708921b02963617eb721362ba531 | text
-EXIT-READ DRY RUN (freeze check passed; module sha <SHA12>... ok; counts only - no daily bar, minute row or outcome was opened): period discovery: 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 (date, ticker) pairs; pairs NOT logged in _done.psv: 0, logged ok with no file: 0 -> complete; outputs already on disk: none. Would write <TMP>/cb702/out/trades_discovery_exitpb.tsv.gz, <TMP>/cb702/out/exitpb_report_discovery.tsv, <TMP>/cb702/out/exitpb_deltas_discovery.tsv, <TMP>/cb702/out/exitpb_verdict_discovery.txt and the small copies under <TMP>/hereroot/out; arms A, pp, pp_wbe, wbe, pp_s0, pp5_wbe.
+==== GOLDEN ARTEFACT dry_run/stdout | bytes=748 | sha256=fc266248730ce1b98381bb859bc68da5d0694924c7f5710d3cad9075b1c7c002 | text
+EXIT-READ DRY RUN (freeze check passed; module sha <SHA12:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py>... ok; counts only - no daily bar, minute row or outcome was opened): period discovery: 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 (date, ticker) pairs; pairs NOT logged in _done.psv: 0, logged ok with no file: 0 -> complete; outputs already on disk: none. Would write <TMP>/cb702/out/trades_discovery_exitpb.tsv.gz, <TMP>/cb702/out/exitpb_report_discovery.tsv, <TMP>/cb702/out/exitpb_deltas_discovery.tsv, <TMP>/cb702/out/exitpb_verdict_discovery.txt and the small copies under <TMP>/hereroot/out; arms A, pp, pp_wbe, wbe, pp_s0, pp5_wbe.
 
 ==== GOLDEN ARTEFACT exit_read/cb702/out/exitpb_deltas_discovery.tsv | bytes=2063 | sha256=d1722c539b3fabc6b63f6ad3fc324fb78f5fb584f3e43f4abef2e185640506a6 | text
 period	entry	cell	K	delta	x	y	n	n_excluded_open	n_differ	mean	ci_lo	ci_hi	verdict	deciding
@@ -63,11 +63,11 @@ discovery	h60	C1	tl	pp_s0	all		1	1	0	0.5789047122843636			1.0	0.5789047122843636
 discovery	h60	C0	tl	pp5_wbe	all		1	1	0	0.5789047122843636			1.0	0.5789047122843636		0.5789047122843636	0.0	0.0	0.0	0.5789047122843636	0.5789047122843636	1.0	0.1290698965117576	0.0025813979302351	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
 discovery	h60	C1	tl	pp5_wbe	all		1	1	0	0.5789047122843636			1.0	0.5789047122843636		0.5789047122843636	0.0	0.0	0.0	0.5789047122843636	0.5789047122843636	1.0	0.1290698965117576	0.0025813979302351	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
 
-==== GOLDEN ARTEFACT exit_read/cb702/out/exitpb_report_discovery.txt | bytes=23650 | sha256=51d9ea9057e18c24c8735df36b4061e9e2f9963a6d0b1330e9e318b8d60de449 | text
+==== GOLDEN ARTEFACT exit_read/cb702/out/exitpb_report_discovery.txt | bytes=23768 | sha256=8afb5f8891ae25c1a1ee63305f1ecb8dabe79563f9145c93f85c2a8905caecec | text
 #702 EXIT READ - his partial and the stop after it, on discovery (2022-03-28..2024-12-31, DECIDES). Registered before any outcome: docs/analysis/cb_exit_partial_prereg_2026-10-19.md. Measurement only: nothing here switches the deciding comparison, the primary arm, the entry, the stop, a cell, a period, the horizon, the seed, the draw count, the n floor or the open-mark exclusion.
 POPULATION: the pinned P5 fills (level tl, entry ORH5, the low-of-day stop no wider than one ADR20, the spec key's first break per base) - every arm walks the SAME fills, so the comparison is per trade; the pinned hourly-close fills (entry h60) are walked beside, descriptively. A group is the MATURE walks only; an open mark is counted, never in a number. ARMS: A = c3_p33_t20_cut3 (the control: the session-3 third whatever the price, stop to the fill after any third); pp = his RULING (the session-3 third only on a close above the fill, else skipped, the +2R leg stays armed; stop to the fill after a third); pp_wbe = the PRIMARY: pp + his PROPOSAL (after a third sold at p the stop rests at max(stop0, min(fill, fill - (p - fill)/2)), the whole-trade breakeven); beside: wbe (A's partial rule + the wbe stop), pp_s0 (pp with the stop left at stop0 after any third), pp5_wbe (the first close in sessions 3-5 above the fill, then the wbe stop). Common to all: 1/3; the +2R leg (day 0 on the minutes); the +1R-by-session-3 cut; the 20-day trail filled at the next open; R against the entry stop; horizon 120. The pp-family trail is live from session 3 whether or not the third sold.
 INTERVAL RECIPE (the independent re-derivation reproduces it with no runner code): month-block bootstrap of the mean - blocks = the FILL month (E's month), 2,000 resamples of as many blocks as there are months, with replacement, each resample's mean = sum of the drawn blocks' values / their trade count; the 2.5 / 97.5 percentiles (numpy.percentile, linear); generator numpy.random.default_rng([702, zlib.crc32(key)]) with key 'exitpb|<period>|<entry>|<cell>|tl|<arm>' for a cell's R and 'exitpb_delta|<period>|<entry>|<cell>|tl|<x>-<y>' for a per-trade delta R(x) - R(y) (both walks mature); the stream is drawn as integers(0, n_months, size=(2000, n_months)). The deciding delta: pp_wbe - pp on C1, n floor 30; lower end > 0 = wbe WINS, upper end < 0 = wbe LOSES, else can't tell; C0 the same, read when C1 can't tell.
-DATA CHECKS: freeze passed; module <SHA12>... equal; parity P1 / P2 4 fills, 0 mismatches; implementation checks passed; rows walked 4 x 6 arms
+DATA CHECKS: freeze passed; module <SHA12:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py>... equal; parity P1 / P2 4 fills, 0 mismatches; implementation checks passed; rows walked 4 x 6 arms
 
 ========== ENTRY orh5 / level tl - DECIDES ==========
 EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):
@@ -366,11 +366,11 @@ discovery	h60	C1	tl	pp_s0	all		1	1	0	0.578905			1.0	0.578905		0.578905	0.0	0.0	0
 discovery	h60	C0	tl	pp5_wbe	all		1	1	0	0.578905			1.0	0.578905		0.578905	0.0	0.0	0.0	0.578905	0.578905	1.0	0.12907	0.002581	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
 discovery	h60	C1	tl	pp5_wbe	all		1	1	0	0.578905			1.0	0.578905		0.578905	0.0	0.0	0.0	0.578905	0.578905	1.0	0.12907	0.002581	0.0	17.0	0	0	0	0	0	0	1	0	1	0	1.0	0	0.0	0	0	0	0	0		
 
-==== GOLDEN ARTEFACT exit_read/hereroot/out/exitpb_report_discovery.txt | bytes=23650 | sha256=51d9ea9057e18c24c8735df36b4061e9e2f9963a6d0b1330e9e318b8d60de449 | text
+==== GOLDEN ARTEFACT exit_read/hereroot/out/exitpb_report_discovery.txt | bytes=23768 | sha256=8afb5f8891ae25c1a1ee63305f1ecb8dabe79563f9145c93f85c2a8905caecec | text
 #702 EXIT READ - his partial and the stop after it, on discovery (2022-03-28..2024-12-31, DECIDES). Registered before any outcome: docs/analysis/cb_exit_partial_prereg_2026-10-19.md. Measurement only: nothing here switches the deciding comparison, the primary arm, the entry, the stop, a cell, a period, the horizon, the seed, the draw count, the n floor or the open-mark exclusion.
 POPULATION: the pinned P5 fills (level tl, entry ORH5, the low-of-day stop no wider than one ADR20, the spec key's first break per base) - every arm walks the SAME fills, so the comparison is per trade; the pinned hourly-close fills (entry h60) are walked beside, descriptively. A group is the MATURE walks only; an open mark is counted, never in a number. ARMS: A = c3_p33_t20_cut3 (the control: the session-3 third whatever the price, stop to the fill after any third); pp = his RULING (the session-3 third only on a close above the fill, else skipped, the +2R leg stays armed; stop to the fill after a third); pp_wbe = the PRIMARY: pp + his PROPOSAL (after a third sold at p the stop rests at max(stop0, min(fill, fill - (p - fill)/2)), the whole-trade breakeven); beside: wbe (A's partial rule + the wbe stop), pp_s0 (pp with the stop left at stop0 after any third), pp5_wbe (the first close in sessions 3-5 above the fill, then the wbe stop). Common to all: 1/3; the +2R leg (day 0 on the minutes); the +1R-by-session-3 cut; the 20-day trail filled at the next open; R against the entry stop; horizon 120. The pp-family trail is live from session 3 whether or not the third sold.
 INTERVAL RECIPE (the independent re-derivation reproduces it with no runner code): month-block bootstrap of the mean - blocks = the FILL month (E's month), 2,000 resamples of as many blocks as there are months, with replacement, each resample's mean = sum of the drawn blocks' values / their trade count; the 2.5 / 97.5 percentiles (numpy.percentile, linear); generator numpy.random.default_rng([702, zlib.crc32(key)]) with key 'exitpb|<period>|<entry>|<cell>|tl|<arm>' for a cell's R and 'exitpb_delta|<period>|<entry>|<cell>|tl|<x>-<y>' for a per-trade delta R(x) - R(y) (both walks mature); the stream is drawn as integers(0, n_months, size=(2000, n_months)). The deciding delta: pp_wbe - pp on C1, n floor 30; lower end > 0 = wbe WINS, upper end < 0 = wbe LOSES, else can't tell; C0 the same, read when C1 can't tell.
-DATA CHECKS: freeze passed; module <SHA12>... equal; parity P1 / P2 4 fills, 0 mismatches; implementation checks passed; rows walked 4 x 6 arms
+DATA CHECKS: freeze passed; module <SHA12:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py>... equal; parity P1 / P2 4 fills, 0 mismatches; implementation checks passed; rows walked 4 x 6 arms
 
 ========== ENTRY orh5 / level tl - DECIDES ==========
 EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):
@@ -547,8 +547,8 @@ IMPLEMENTATION CHECKS (the registration's WOULD-FAIL-IF lines, on this table; ev
   (f) cells where the pp_wbe >= 10R count is below A's: 0 (must be 0)
   (g) TSLA 2020-06-01: not in this period (the pre period's check)
 
-==== GOLDEN ARTEFACT exit_read/hereroot/out/exitpb_summary_discovery.txt | bytes=3016 | sha256=2d82d27a947e706d16e3ee7c5b188b8c03835179a9cfa68279b67913c1c921ea | text
-EXIT READ (#702): period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check passed; module sha256 <SHA64> (registered), runner sha256 <SHA64>
+==== GOLDEN ARTEFACT exit_read/hereroot/out/exitpb_summary_discovery.txt | bytes=3137 | sha256=00f57aaacbb76f10f1015d0820de2bcbf25f860c81d61aa7eee159b535baab98 | text
+EXIT READ (#702): period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check passed; module sha256 <SHA:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py> (registered), runner sha256 <SHA:runner>
 [parity: <N>s]
 PARITY: P2 h60/com: 1 match, 0 mismatch; P2 h60/tl: 1 match, 0 mismatch; P1 orh5/com: 1 match, 0 mismatch; P1 orh5/tl: 1 match, 0 mismatch (status, maturity, sessions held, third kind and session, be_above_close, forward window, R to 1e-09; and the module's own walk event for event)
 REACH from the control's rows (entry / level / cell: fills, mature, thirds (day0_r / r / session), stopped after the third at the fill, at or below it, session thirds at or below the fill, movable = trades the pp / pp_wbe rules can change) - the registration's line beside
@@ -578,8 +578,8 @@ C1 delta(pp_wbe - pp): can't tell (n = 1 < 30) (n 1, mean +0.0000 ); C0: can't t
 
 ==== GOLDEN ARTEFACT exit_read/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
 
-==== GOLDEN ARTEFACT exit_read/stdout | bytes=26729 | sha256=2911c2b151d64074f150f9f3b0cb780188e02e2cdd953fbe6af82dbd8a342358 | text
-EXIT READ (#702): period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check passed; module sha256 <SHA64> (registered), runner sha256 <SHA64>
+==== GOLDEN ARTEFACT exit_read/stdout | bytes=26968 | sha256=a44a40c66b3c75b45ad294af8132e96036134a8a2063a4155cb12673df77e433 | text
+EXIT READ (#702): period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check passed; module sha256 <SHA:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py> (registered), runner sha256 <SHA:runner>
   parity 2/2 dates, 4 fills
 [parity: <N>s]
 PARITY: P2 h60/com: 1 match, 0 mismatch; P2 h60/tl: 1 match, 0 mismatch; P1 orh5/com: 1 match, 0 mismatch; P1 orh5/tl: 1 match, 0 mismatch (status, maturity, sessions held, third kind and session, be_above_close, forward window, R to 1e-09; and the module's own walk event for event)
@@ -605,7 +605,7 @@ WROTE <TMP>/cb702/out/trades_discovery_exitpb.tsv.gz (4 fills x 6 arms)
 #702 EXIT READ - his partial and the stop after it, on discovery (2022-03-28..2024-12-31, DECIDES). Registered before any outcome: docs/analysis/cb_exit_partial_prereg_2026-10-19.md. Measurement only: nothing here switches the deciding comparison, the primary arm, the entry, the stop, a cell, a period, the horizon, the seed, the draw count, the n floor or the open-mark exclusion.
 POPULATION: the pinned P5 fills (level tl, entry ORH5, the low-of-day stop no wider than one ADR20, the spec key's first break per base) - every arm walks the SAME fills, so the comparison is per trade; the pinned hourly-close fills (entry h60) are walked beside, descriptively. A group is the MATURE walks only; an open mark is counted, never in a number. ARMS: A = c3_p33_t20_cut3 (the control: the session-3 third whatever the price, stop to the fill after any third); pp = his RULING (the session-3 third only on a close above the fill, else skipped, the +2R leg stays armed; stop to the fill after a third); pp_wbe = the PRIMARY: pp + his PROPOSAL (after a third sold at p the stop rests at max(stop0, min(fill, fill - (p - fill)/2)), the whole-trade breakeven); beside: wbe (A's partial rule + the wbe stop), pp_s0 (pp with the stop left at stop0 after any third), pp5_wbe (the first close in sessions 3-5 above the fill, then the wbe stop). Common to all: 1/3; the +2R leg (day 0 on the minutes); the +1R-by-session-3 cut; the 20-day trail filled at the next open; R against the entry stop; horizon 120. The pp-family trail is live from session 3 whether or not the third sold.
 INTERVAL RECIPE (the independent re-derivation reproduces it with no runner code): month-block bootstrap of the mean - blocks = the FILL month (E's month), 2,000 resamples of as many blocks as there are months, with replacement, each resample's mean = sum of the drawn blocks' values / their trade count; the 2.5 / 97.5 percentiles (numpy.percentile, linear); generator numpy.random.default_rng([702, zlib.crc32(key)]) with key 'exitpb|<period>|<entry>|<cell>|tl|<arm>' for a cell's R and 'exitpb_delta|<period>|<entry>|<cell>|tl|<x>-<y>' for a per-trade delta R(x) - R(y) (both walks mature); the stream is drawn as integers(0, n_months, size=(2000, n_months)). The deciding delta: pp_wbe - pp on C1, n floor 30; lower end > 0 = wbe WINS, upper end < 0 = wbe LOSES, else can't tell; C0 the same, read when C1 can't tell.
-DATA CHECKS: freeze passed; module <SHA12>... equal; parity P1 / P2 4 fills, 0 mismatches; implementation checks passed; rows walked 4 x 6 arms
+DATA CHECKS: freeze passed; module <SHA12:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py>... equal; parity P1 / P2 4 fills, 0 mismatches; implementation checks passed; rows walked 4 x 6 arms
 
 ========== ENTRY orh5 / level tl - DECIDES ==========
 EXPECTATIONS (fixed before the run; a missed one is reported first and changes NO rule):
@@ -784,13 +784,121 @@ IMPLEMENTATION CHECKS (the registration's WOULD-FAIL-IF lines, on this table; ev
 WROTE <TMP>/cb702/out/exitpb_report_discovery.tsv (28 rows), <TMP>/cb702/out/exitpb_deltas_discovery.tsv (24 rows), <TMP>/hereroot/out/exitpb_report_discovery.txt, <TMP>/cb702/out/exitpb_verdict_discovery.txt
 WALL TIME: <N>s total
 
+==== GOLDEN ARTEFACT implementation_check_failed/cb702/out/trades_discovery_exitpb.tsv.gz | bytes=8662 | sha256=353cb0630066f6a0bbd90aefcdf647e372ece91cc022fc4d8296d127fd62c857 | text
+ticker	D	E	K	period	entry	year	fill_month	retrigger_chain	pole_date	base	first_E	first_month	row_no	own_C1	early_close	C0	C1	C2	C3	C4	C5	C6	C7	C1_no_retrace	C1_no_tightening	HTF	C1_s5	gap_over_1adr	phase_qqq_10_20	adr20	fill	fill_minute	walk_from	stop	width_pct	width_adr	target	arm	session_rule	stop_rule	status	realized_r	pnl_adr	acct_pct	sessions_held	mature	open_mark	fill_day_stop	partial_kind	partial_session	partial_px	stop_to	exit_kind	exit_px	exit_session	stopped_after_third_le_fill	beabove	beabove_kind	fwd_bars	fwd_hole
+X	2023-07-28	2023-07-31	com	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.1101	10	10	10.0	0.010890099999010812	0.10890099999010812	10.330299999999998	A	always	entry	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.1101	10	10	10.0	0.010890099999010812	0.10890099999010812	10.330299999999998	pp	profit_only	entry	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.1101	10	10	10.0	0.010890099999010812	0.10890099999010812	10.330299999999998	pp_wbe	profit_only	wbe	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.1101	10	10	10.0	0.010890099999010812	0.10890099999010812	10.330299999999998	wbe	always	wbe	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.1101	10	10	10.0	0.010890099999010812	0.10890099999010812	10.330299999999998	pp_s0	profit_only	stop0	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.1101	10	10	10.0	0.010890099999010812	0.10890099999010812	10.330299999999998	pp5_wbe	profit_3to5	wbe	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	h60	2023	2023-07		2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	0	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.06005	30	29	9.85	0.02087961789454334	0.20879617894543337	10.480150000000002	A	always	entry	trailed	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	10.480150000000002	10.06005	trail	10.3	19	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	h60	2023	2023-07		2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	0	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.06005	30	29	9.85	0.02087961789454334	0.20879617894543337	10.480150000000002	pp	profit_only	entry	trailed	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	10.480150000000002	10.06005	trail	10.3	19	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	h60	2023	2023-07		2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	0	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.06005	30	29	9.85	0.02087961789454334	0.20879617894543337	10.480150000000002	pp_wbe	profit_only	wbe	trailed	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	10.480150000000002	9.85	trail	10.3	19	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	h60	2023	2023-07		2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	0	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.06005	30	29	9.85	0.02087961789454334	0.20879617894543337	10.480150000000002	wbe	always	wbe	trailed	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	10.480150000000002	9.85	trail	10.3	19	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	h60	2023	2023-07		2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	0	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.06005	30	29	9.85	0.02087961789454334	0.20879617894543337	10.480150000000002	pp_s0	profit_only	stop0	trailed	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	10.480150000000002	9.85	trail	10.3	19	0	0		121	0
+X	2023-07-28	2023-07-31	com	discovery	h60	2023	2023-07		2023-07-03	X|2023-07-03|com	2023-07-31	2023-07	0	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.06005	30	29	9.85	0.02087961789454334	0.20879617894543337	10.480150000000002	pp5_wbe	profit_3to5	wbe	trailed	1.4282313734825025	0.2982092534331347	0.005964185068662695	19	1	0	0	r	2	10.480150000000002	9.85	trail	10.3	19	0	0		121	0
+X	2023-07-28	2023-07-31	tl	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.26025	10	10	10.0	0.025364879023415533	0.2536487902341553	10.780749999999998	A	always	entry	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	tl	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.26025	10	10	10.0	0.025364879023415533	0.2536487902341553	10.780749999999998	pp	profit_only	entry	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	tl	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.26025	10	10	10.0	0.025364879023415533	0.2536487902341553	10.780749999999998	pp_wbe	profit_only	wbe	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	tl	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.26025	10	10	10.0	0.025364879023415533	0.2536487902341553	10.780749999999998	wbe	always	wbe	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	tl	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.26025	10	10	10.0	0.025364879023415533	0.2536487902341553	10.780749999999998	pp_s0	profit_only	stop0	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-07-28	2023-07-31	tl	discovery	orh5	2023	2023-07	0							0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.26025	10	10	10.0	0.025364879023415533	0.2536487902341553	10.780749999999998	pp5_wbe	profit_3to5	wbe	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0	1					day0_stop	10.0	0	0	0		121	0
+X	2023-08-01	2023-08-02	tl	discovery	h60	2023	2023-08		2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	1	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.330319999999999	30	29	10.1	0.022295533923440802	0.22295533923440802	10.790959999999997	A	always	entry	stopped	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	10.790959999999997	10.330319999999999	stop	10.330319999999999	3	1	0		121	0
+X	2023-08-01	2023-08-02	tl	discovery	h60	2023	2023-08		2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	1	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.330319999999999	30	29	10.1	0.022295533923440802	0.22295533923440802	10.790959999999997	pp	profit_only	entry	stopped	0.6666666666666666	0.14863689282293865	0.0029727378564587737	3	1	0	0	r	1	10.790959999999997	10.330319999999999	stop	10.330319999999999	3	1	0		121	0
+X	2023-08-01	2023-08-02	tl	discovery	h60	2023	2023-08		2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	1	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.330319999999999	30	29	10.1	0.022295533923440802	0.22295533923440802	10.790959999999997	pp_wbe	profit_only	wbe	trailed	0.5789047122843636	0.12906989651175765	0.0025813979302351533	17	1	0	0	r	1	10.790959999999997	10.1	trail	10.3	17	0	0		121	0
+X	2023-08-01	2023-08-02	tl	discovery	h60	2023	2023-08		2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	1	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.330319999999999	30	29	10.1	0.022295533923440802	0.22295533923440802	10.790959999999997	wbe	always	wbe	trailed	0.5789047122843636	0.12906989651175765	0.0025813979302351533	17	1	0	0	r	1	10.790959999999997	10.1	trail	10.3	17	0	0		121	0
+X	2023-08-01	2023-08-02	tl	discovery	h60	2023	2023-08		2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	1	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.330319999999999	30	29	10.1	0.022295533923440802	0.22295533923440802	10.790959999999997	pp_s0	profit_only	stop0	trailed	0.5789047122843636	0.12906989651175765	0.0025813979302351533	17	1	0	0	r	1	10.790959999999997	10.1	trail	10.3	17	0	0		121	0
+X	2023-08-01	2023-08-02	tl	discovery	h60	2023	2023-08		2023-07-03	X|2023-07-03|tl	2023-07-31	2023-07	1	1	0	1	1	0	0	0	0	0	0	0	0	0	0	0	1	0.1	10.330319999999999	30	29	10.1	0.022295533923440802	0.22295533923440802	10.790959999999997	pp5_wbe	profit_3to5	wbe	trailed	0.5789047122843636	0.12906989651175765	0.0025813979302351533	17	1	0	0	r	1	10.790959999999997	10.1	trail	10.3	17	0	0		121	0
+
+==== GOLDEN ARTEFACT implementation_check_failed/exit | bytes=1 | sha256=4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce | text
+3
+==== GOLDEN ARTEFACT implementation_check_failed/hereroot/out/exitpb_summary_discovery.txt | bytes=2182 | sha256=961ee260e3869c85b678ba6a3d52e0f30cad9f7e9168ca90e0d3d06dcebba356 | text
+EXIT READ (#702): period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check passed; module sha256 <SHA:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py> (registered), runner sha256 <SHA:runner>
+[parity: <N>s]
+PARITY: P2 h60/com: 1 match, 0 mismatch; P2 h60/tl: 1 match, 0 mismatch; P1 orh5/com: 1 match, 0 mismatch; P1 orh5/tl: 1 match, 0 mismatch (status, maturity, sessions held, third kind and session, be_above_close, forward window, R to 1e-09; and the module's own walk event for event)
+REACH from the control's rows (entry / level / cell: fills, mature, thirds (day0_r / r / session), stopped after the third at the fill, at or below it, session thirds at or below the fill, movable = trades the pp / pp_wbe rules can change) - the registration's line beside
+  h60 / tl / C0: fills 1, mature 1, thirds 1 (0 / 1 / 0), stopped after the third at cost 1, at or below the fill 1, session thirds <= fill 0, movable 1
+  h60 / tl / C1: fills 1, mature 1, thirds 1 (0 / 1 / 0), stopped after the third at cost 1, at or below the fill 1, session thirds <= fill 0, movable 1
+  orh5 / tl / C0: fills 1, mature 1, thirds 0 (0 / 0 / 0), stopped after the third at cost 0, at or below the fill 0, session thirds <= fill 0, movable 0  | registration: mature 8,984 (reads 1), third 2,874 (reads 0), stopped_after_third_le_fill 1,943 (reads 0), session_third_le_fill 112 (reads 0)
+  orh5 / tl / C1: fills 1, mature 1, thirds 0 (0 / 0 / 0), stopped after the third at cost 0, at or below the fill 0, session thirds <= fill 0, movable 0  | registration: fills 79 (reads 1), third 34 (reads 0), third_day0_r 12 (reads 0), third_r 17 (reads 0), third_session 5 (reads 0), stopped_after_third_le_fill 24 (reads 0), session_third_le_fill 1 (reads 0)
+[exit walks: <N>s]
+WROTE <TMP>/cb702/out/trades_discovery_exitpb.tsv.gz (4 fills x 6 arms)
+  (a) ...
+IMPLEMENTATION CHECK FAILED (1): (a) 1 pp-family session thirds sold on a close at or below the fill - the report is NOT written (the table stays for inspection; the operator removes it by hand before any re-run)
+
+==== GOLDEN ARTEFACT implementation_check_failed/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT implementation_check_failed/stdout | bytes=2245 | sha256=9d639596e41c3eaaff9c1fa0c6cc82cf3cbc10ee99c1c3c6566dbce9e50fe472 | text
+EXIT READ (#702): period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check passed; module sha256 <SHA:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py> (registered), runner sha256 <SHA:runner>
+  parity 2/2 dates, 4 fills
+[parity: <N>s]
+PARITY: P2 h60/com: 1 match, 0 mismatch; P2 h60/tl: 1 match, 0 mismatch; P1 orh5/com: 1 match, 0 mismatch; P1 orh5/tl: 1 match, 0 mismatch (status, maturity, sessions held, third kind and session, be_above_close, forward window, R to 1e-09; and the module's own walk event for event)
+REACH from the control's rows (entry / level / cell: fills, mature, thirds (day0_r / r / session), stopped after the third at the fill, at or below it, session thirds at or below the fill, movable = trades the pp / pp_wbe rules can change) - the registration's line beside
+  h60 / tl / C0: fills 1, mature 1, thirds 1 (0 / 1 / 0), stopped after the third at cost 1, at or below the fill 1, session thirds <= fill 0, movable 1
+  h60 / tl / C1: fills 1, mature 1, thirds 1 (0 / 1 / 0), stopped after the third at cost 1, at or below the fill 1, session thirds <= fill 0, movable 1
+  orh5 / tl / C0: fills 1, mature 1, thirds 0 (0 / 0 / 0), stopped after the third at cost 0, at or below the fill 0, session thirds <= fill 0, movable 0  | registration: mature 8,984 (reads 1), third 2,874 (reads 0), stopped_after_third_le_fill 1,943 (reads 0), session_third_le_fill 112 (reads 0)
+  orh5 / tl / C1: fills 1, mature 1, thirds 0 (0 / 0 / 0), stopped after the third at cost 0, at or below the fill 0, session thirds <= fill 0, movable 0  | registration: fills 79 (reads 1), third 34 (reads 0), third_day0_r 12 (reads 0), third_r 17 (reads 0), third_session 5 (reads 0), stopped_after_third_le_fill 24 (reads 0), session_third_le_fill 1 (reads 0)
+  walk 2/2 dates, 4 fills x 6 arms
+[exit walks: <N>s]
+WROTE <TMP>/cb702/out/trades_discovery_exitpb.tsv.gz (4 fills x 6 arms)
+  (a) ...
+IMPLEMENTATION CHECK FAILED (1): (a) 1 pp-family session thirds sold on a close at or below the fill - the report is NOT written (the table stays for inspection; the operator removes it by hand before any re-run)
+
+==== GOLDEN ARTEFACT parity_failed_parity_only/exit | bytes=1 | sha256=4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce | text
+3
+==== GOLDEN ARTEFACT parity_failed_parity_only/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT parity_failed_parity_only/stdout | bytes=689 | sha256=564be23351a39bd884f454bc9d32fc9fcd18141ce95801ba8becb95aeed20c80 | text
+EXIT READ (#702) - PARITY ONLY: period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check NOT RUN (parity only); module sha256 <SHA:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py> (registered), runner sha256 <SHA:runner>
+  parity 2/2 dates, 4 fills
+[parity: <N>s]
+PARITY FAILED: 2 mismatches over 4 fills - the copy is not the registered walk; nothing is written. First 20:
+  - X|2023-07-31|com|h60: realized_r copy 1.4282313734825025 vs pinned 1.9282313734825025
+  - X|2023-08-02|tl|h60: realized_r copy 0.6666666666666666 vs pinned 1.1666666666666665
+
+==== GOLDEN ARTEFACT parity_failed_read/exit | bytes=1 | sha256=4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce | text
+3
+==== GOLDEN ARTEFACT parity_failed_read/hereroot/out/exitpb_summary_discovery.txt | bytes=632 | sha256=eb5183f94bc19a922b6969823f49dca9536ead587f7b7784aacdf07df6b7e6b1 | text
+EXIT READ (#702): period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check passed; module sha256 <SHA:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py> (registered), runner sha256 <SHA:runner>
+[parity: <N>s]
+PARITY FAILED: 2 mismatches over 4 fills - the copy is not the registered walk; nothing is written. First 20:
+  - X|2023-07-31|com|h60: realized_r copy 1.4282313734825025 vs pinned 1.9282313734825025
+  - X|2023-08-02|tl|h60: realized_r copy 0.6666666666666666 vs pinned 1.1666666666666665
+
+==== GOLDEN ARTEFACT parity_failed_read/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT parity_failed_read/stdout | bytes=660 | sha256=40678e3734f461a5f90c2cf80102ae3e8e66837b885cc0213117d06d12087639 | text
+EXIT READ (#702): period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check passed; module sha256 <SHA:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py> (registered), runner sha256 <SHA:runner>
+  parity 2/2 dates, 4 fills
+[parity: <N>s]
+PARITY FAILED: 2 mismatches over 4 fills - the copy is not the registered walk; nothing is written. First 20:
+  - X|2023-07-31|com|h60: realized_r copy 1.4282313734825025 vs pinned 1.9282313734825025
+  - X|2023-08-02|tl|h60: realized_r copy 0.6666666666666666 vs pinned 1.1666666666666665
+
 ==== GOLDEN ARTEFACT parity_only/exit | bytes=1 | sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9 | text
 0
 ==== GOLDEN ARTEFACT parity_only/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
 
-==== GOLDEN ARTEFACT parity_only/stdout | bytes=2006 | sha256=ef803cfd53f9399cf7b725ce1ebcd4f58b3ecac7692062f0de9da7fb2ab20306 | text
-EXIT READ (#702) - PARITY ONLY: period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check NOT RUN (parity only); module sha256 <SHA64> (registered), runner sha256 <SHA64>
+==== GOLDEN ARTEFACT parity_only/stdout | bytes=2127 | sha256=555f22bebcb3a60dce548a76dd5005bdad9a36887acb218f25296de6efdad77d | text
+EXIT READ (#702) - PARITY ONLY: period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check NOT RUN (parity only); module sha256 <SHA:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py> (registered), runner sha256 <SHA:runner>
 bars: 600 rows / 2 tickers / 300 sessions 2023-01-02..2024-02-23 (<N>s); 0 tickers have a missing session inside their span (0 holes)
+  parity 2/2 dates, 4 fills
+[parity: <N>s]
+PARITY: P2 h60/com: 1 match, 0 mismatch; P2 h60/tl: 1 match, 0 mismatch; P1 orh5/com: 1 match, 0 mismatch; P1 orh5/tl: 1 match, 0 mismatch (status, maturity, sessions held, third kind and session, be_above_close, forward window, R to 1e-09; and the module's own walk event for event)
+REACH from the control's rows (entry / level / cell: fills, mature, thirds (day0_r / r / session), stopped after the third at the fill, at or below it, session thirds at or below the fill, movable = trades the pp / pp_wbe rules can change) - the registration's line beside
+  h60 / tl / C0: fills 1, mature 1, thirds 1 (0 / 1 / 0), stopped after the third at cost 1, at or below the fill 1, session thirds <= fill 0, movable 1
+  h60 / tl / C1: fills 1, mature 1, thirds 1 (0 / 1 / 0), stopped after the third at cost 1, at or below the fill 1, session thirds <= fill 0, movable 1
+  orh5 / tl / C0: fills 1, mature 1, thirds 0 (0 / 0 / 0), stopped after the third at cost 0, at or below the fill 0, session thirds <= fill 0, movable 0  | registration: mature 8,984 (reads 1), third 2,874 (reads 0), stopped_after_third_le_fill 1,943 (reads 0), session_third_le_fill 112 (reads 0)
+  orh5 / tl / C1: fills 1, mature 1, thirds 0 (0 / 0 / 0), stopped after the third at cost 0, at or below the fill 0, session thirds <= fill 0, movable 0  | registration: fills 79 (reads 1), third 34 (reads 0), third_day0_r 12 (reads 0), third_r 17 (reads 0), third_session 5 (reads 0), stopped_after_third_le_fill 24 (reads 0), session_third_le_fill 1 (reads 0)
+WALL TIME: <N>s total (no new-arm number computed; nothing written)
+
+==== GOLDEN ARTEFACT parity_only_mismatched_footer/exit | bytes=1 | sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9 | text
+0
+==== GOLDEN ARTEFACT parity_only_mismatched_footer/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT parity_only_mismatched_footer/stdout | bytes=1993 | sha256=73d0c13807f5f25af6fb70eca58a91e38221f0e672fe61a7c2b68c1a69afd9f1 | text
+EXIT READ (#702) - PARITY ONLY: period discovery; 4 pinned fills (h60/com 1, h60/tl 1, orh5/com 1, orh5/tl 1) on 2 dates, 2 pairs all logged; freeze check NOT RUN (parity only); module sha256 <SHA:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py> (registered), runner sha256 <SHA:runner>
   parity 2/2 dates, 4 fills
 [parity: <N>s]
 PARITY: P2 h60/com: 1 match, 0 mismatch; P2 h60/tl: 1 match, 0 mismatch; P1 orh5/com: 1 match, 0 mismatch; P1 orh5/tl: 1 match, 0 mismatch (status, maturity, sessions held, third kind and session, be_above_close, forward window, R to 1e-09; and the module's own walk event for event)
@@ -805,30 +913,52 @@ WALL TIME: <N>s total (no new-arm number computed; nothing written)
 0
 ==== GOLDEN ARTEFACT print_pins/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
 
-==== GOLDEN ARTEFACT print_pins/stdout | bytes=765 | sha256=dbf94da7e8a9ab434eb8045fe4dc4b2ec0bb22817054975cf921ffdd37eb8e8d | text
-- module sha256: `<SHA64>`
-- runner sha256: `<SHA64>`
-- cb702/daily_closes_all.csv.gz sha256: `<SHA64>`
-- cb702_pre/daily_closes_all.csv.gz sha256: `<SHA64>`
-- cb702/out/candidates.tsv sha256: `<SHA64>`
-- cb702/out/candidates_com_comb.tsv sha256: `<SHA64>`
-- cb702/out/trades_discovery_p5.tsv.gz sha256: `<SHA64>`
-- cb702/out/trades_holdout_p5.tsv.gz sha256: `<SHA64>`
-- cb702/out/trades_discovery_h60.tsv.gz sha256: `<SHA64>`
-- cb702/out/trades_holdout_h60.tsv.gz sha256: `<SHA64>`
-- cb702_pre/out/candidates_tl_com.tsv sha256: `<SHA64>`
-- cb702_pre/out/trades_pre_p5.tsv.gz sha256: `<SHA64>`
-- cb702_pre/out/trades_pre_h60.tsv.gz sha256: `<SHA64>`
+==== GOLDEN ARTEFACT print_pins/stdout | bytes=1724 | sha256=d8557609288c5f1c0ecc076a85c26febfa16611d8cbc42ab6a63a3a29a3157f4 | text
+- module sha256: `<SHA:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py>`
+- runner sha256: `<SHA:runner>`
+- cb702/daily_closes_all.csv.gz sha256: `<SHA:b/cb702/daily_closes_all.csv.gz|cb702/daily_closes_all.csv.gz>`
+- cb702_pre/daily_closes_all.csv.gz sha256: `<SHA:b/cb702_pre/daily_closes_all.csv.gz|cb702_pre/daily_closes_all.csv.gz>`
+- cb702/out/candidates.tsv sha256: `<SHA:b/cb702/out/candidates.tsv|cb702/out/candidates.tsv>`
+- cb702/out/candidates_com_comb.tsv sha256: `<SHA:b/cb702/out/candidates_com_comb.tsv|cb702/out/candidates_com_comb.tsv>`
+- cb702/out/trades_discovery_p5.tsv.gz sha256: `<SHA:b/cb702/out/trades_discovery_h60twin.tsv.gz|b/cb702/out/trades_discovery_p5.tsv.gz|cb702/out/trades_discovery_h60twin.tsv.gz|cb702/out/trades_discovery_p5.tsv.gz>`
+- cb702/out/trades_holdout_p5.tsv.gz sha256: `<SHA:b/cb702/out/trades_holdout_p5.tsv.gz|cb702/out/trades_holdout_p5.tsv.gz>`
+- cb702/out/trades_discovery_h60.tsv.gz sha256: `<SHA:b/cb702/out/trades_discovery_h60.tsv.gz|cb702/out/trades_discovery_h60.tsv.gz>`
+- cb702/out/trades_holdout_h60.tsv.gz sha256: `<SHA:b/cb702/out/trades_holdout_h60.tsv.gz|cb702/out/trades_holdout_h60.tsv.gz>`
+- cb702_pre/out/candidates_tl_com.tsv sha256: `<SHA:b/cb702_pre/out/candidates_tl_com.tsv|cb702_pre/out/candidates_tl_com.tsv>`
+- cb702_pre/out/trades_pre_p5.tsv.gz sha256: `<SHA:b/cb702_pre/out/trades_pre_p5.tsv.gz|cb702_pre/out/trades_pre_p5.tsv.gz>`
+- cb702_pre/out/trades_pre_h60.tsv.gz sha256: `<SHA:b/cb702_pre/out/trades_pre_h60.tsv.gz|cb702_pre/out/trades_pre_h60.tsv.gz>`
 - cb702/minutes (tree) sha256: `<SHA64>`
 - cb702_pre/minutes (tree) sha256: `<SHA64>`
 - doc body sha256: `<SHA64>`
 
+==== GOLDEN ARTEFACT refuse_freeze_mismatch/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_freeze_mismatch/stderr | bytes=226 | sha256=d62d84a44b44496b7486393586e453ec94184ef9259164296a0a045110558e36 | text
+REFUSED: the freeze check failed - the read is not opened:
+  - cb702/out/candidates.tsv sha256 mismatch: footer <SHA12:b/cb702/out/candidates.tsv>... vs now <SHA12:cb702/out/candidates.tsv>... - the frozen artefact was edited
+
+==== GOLDEN ARTEFACT refuse_freeze_mismatch/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_missing_pairs/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_missing_pairs/stderr | bytes=116 | sha256=2575ee1e4b5a39250cf42d26529945b142c4075bd340d0c6c55ba43c1e024eee | text
+REFUSED: 1 of 2 (date, ticker) pairs are not logged in <TMP>/b/cb702/minutes/_done.psv. A partial read is never run
+
+==== GOLDEN ARTEFACT refuse_missing_pairs/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
 ==== GOLDEN ARTEFACT refuse_module_pin_dry_run/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
 2
-==== GOLDEN ARTEFACT refuse_module_pin_dry_run/stderr | bytes=130 | sha256=96662142c131dae3922937181af04709830db94c8ab7a91893e8266931754f4d | text
-REFUSED: module sha256 <SHA12>... is not the registered <SHA12>... - consolidation_breakout.py was edited; the read does not open
+==== GOLDEN ARTEFACT refuse_module_pin_dry_run/stderr | bytes=248 | sha256=e1d7f9da1c8019e874d2a55a17f962f4a40a0dbf83fcc37013d228274a236702 | text
+REFUSED: module sha256 <SHA12:b/repo/agents/market_intelligence/consolidation_breakout.py|repo/agents/market_intelligence/consolidation_breakout.py>... is not the registered <SHA12>... - consolidation_breakout.py was edited; the read does not open
 
 ==== GOLDEN ARTEFACT refuse_module_pin_dry_run/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_no_period/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_no_period/stderr | bytes=70 | sha256=6f1151d166b45151b6ea3dccb494fb993992cbc3e40c4fb1230155d3513c2125 | text
+REFUSED: --period is required: one of ('discovery', 'pre', 'holdout')
+
+==== GOLDEN ARTEFACT refuse_no_period/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
 
 ==== GOLDEN ARTEFACT refuse_once_only/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
 2

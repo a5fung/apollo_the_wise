@@ -1,15 +1,18 @@
 """#705 (a) - tests for scripts/probes/_cb_backtest/registered_read.py: the shared 'registered read' scaffold and its speed helpers.
 
-A DEMO read (registered here only, never in the runner's `main`) exercises every path of the driver on synthetic data: the freeze
-pass / fail before any file is opened, `--out` checked against the dir THE PERIOD READS (the h60 hole) and honoured by the body (the
-exit-read hole), once-only + `.partial`, dry-run, the verdict files, the hard pins, the refusal texts verbatim, a declared "no freeze",
-and `main()` dispatching from the registry. No real outcome: every number here is a synthetic bar.
+A DEMO read (registered here only, never in the runner's `main`) exercises every path of the driver on synthetic data: the guards that
+cannot be dropped, the freeze pass / fail before any file is opened (the scaffold and the body's module pinned by the driver), a freeze map
+that does not cover what the read opens, `--out` / `--minutes` checked against the dir THE PERIOD READS (the h60 hole) and `--out` honoured
+by the body (the exit-read hole), once-only over the tables AND the verdict files + `.partial`, dry-run, the hard pins, the refusal texts
+verbatim, a declared "no freeze", a read named after a built-in stage, and `main()` dispatching from the registry. No real outcome: every
+number here is a synthetic bar.
 """
 from __future__ import annotations
 
 import dataclasses
 import hashlib
 import json
+import shutil
 import time
 from pathlib import Path
 
@@ -26,7 +29,8 @@ except ImportError:                                          # pragma: no cover
 
 DEMO_COLS = ["ticker", "D", "E", "K", "period", "break_over_line"]
 DEMO_MODULE_SHA = hashlib.sha256(b"# module\n").hexdigest()
-DEMO_STATE: dict = {}                                        # {"crash": True} = the body dies mid-write; {"fail": True} = the body's own check fails
+DEMO_STATE: dict = {}                                        # {"crash": True} = the body dies mid-write; {"fail": True} = the body's own check fails;
+                                                             # {"none": True} = the body returns nothing; {"bad_lines": True} = the verdict txt cannot be written
 
 
 # ═══ the demo read ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -38,11 +42,15 @@ def demo_frozen(ctx: rr.Ctx) -> dict:
             "cb702/minutes (tree)": d / "minutes", "cb702_pre/minutes (tree)": p / "minutes"}
 
 
+def demo_where(rec) -> bool:
+    return rec["K"] == "tl" and int(rec.get("retrigger") or 0) == 0
+
+
 def demo_prepare(ctx: rr.Ctx) -> dict:
     path = ctx.out / "candidates.tsv"
     kw = {"era": "pre"} if ctx.period == "pre" else {"split": ctx.period}
-    rows = rn.read_candidates(path, extra_floats=("base_depth",), where=lambda rec: rec["K"] == "tl" and int(rec.get("retrigger") or 0) == 0, **kw)
-    return {"rows": rows, "inp": rn.minute_inputs(rows, ctx.minutes), "path": path}
+    rows = rr.read_candidates_cached(path, rn.read_candidates, extra_floats=("base_depth",), where=demo_where, **kw)
+    return {"rows": rows, "inp": rn.minute_inputs(rows, ctx.minutes), "path": path, "opens": (ctx.data / "daily_closes_all.csv.gz",)}
 
 
 def demo_outputs(ctx: rr.Ctx) -> tuple:
@@ -57,7 +65,7 @@ def demo_dry_run(ctx: rr.Ctx, prep: dict, existing: list) -> str:
             f"under {ctx.out} and {ctx.small}.")
 
 
-def demo_body(ctx: rr.Ctx, prep: dict, say) -> "rr.Verdict | int":
+def demo_body(ctx: rr.Ctx, prep: dict, say) -> "rr.Verdict | int | None":
     rows = [[c["ticker"], c["D"], c["E"], c["K"], ctx.period, c["high_E"] - c["pivot"]] for c in prep["rows"]]
     name = demo_outputs(ctx)[0]
     with ctx.partial_write(name) as fh:
@@ -69,9 +77,11 @@ def demo_body(ctx: rr.Ctx, prep: dict, say) -> "rr.Verdict | int":
     if DEMO_STATE.get("fail"):
         say("DEMO CHECK FAILED: the report is NOT written")
         return 3
+    if DEMO_STATE.get("none"):
+        return None
     mean = sum(r[-1] for r in rows) / len(rows)
-    return rr.Verdict({"period": ctx.period, "n": len(rows), "mean_break": mean},
-                      (f"DEMO VERDICT FILE - period {ctx.period} - written {time.strftime('%Y-%m-%d')}", f"n {len(rows)}; mean break over the line {mean:.4f}"))
+    lines = (f"DEMO VERDICT FILE - period {ctx.period} - written {time.strftime('%Y-%m-%d')}", f"n {len(rows)}; mean break over the line {mean:.4f}")
+    return rr.Verdict({"period": ctx.period, "n": len(rows), "mean_break": mean}, (object(),) if DEMO_STATE.get("bad_lines") else lines)
 
 
 def demo_spec(**over) -> rr.RegisteredRead:
@@ -110,6 +120,7 @@ def _demo_tree(tmp_path, monkeypatch) -> dict:
     monkeypatch.setattr(rn, "HERE", tmp_path / "hereroot")
     (rn.HERE / "out").mkdir(parents=True)
     DEMO_STATE.clear()
+    rr.clear_daily_cache()
     tree["repo"] = repo
     return tree
 
@@ -120,10 +131,11 @@ def _ns(tree, **kw):
 
 
 def _doc(tree, spec, body="Method / population. What this does not answer. n=1.\n") -> Path:
+    """The registration doc with the footer the driver will check: the map the DRIVER uses (the spec's plus the scaffold / the body's module)."""
     doc = tree["repo"] / "docs" / "analysis" / spec.doc
     doc.write_text(body + rn.FREEZE_MARK + "\n## Freeze record\n")
     ctx = rr.resolve(spec, _ns(tree), rn)
-    pins = rn.pin_lines(tree["cb702"], tree["repo"], files=spec.frozen(ctx)) + [f"- doc body sha256: `{rn.doc_body_sha(doc.read_text())}`"]
+    pins = rn.pin_lines(tree["cb702"], tree["repo"], files=rr.frozen_map(spec, ctx)) + [f"- doc body sha256: `{rn.doc_body_sha(doc.read_text())}`"]
     doc.write_text(doc.read_text() + "\n".join(pins) + "\n")
     return doc
 
@@ -148,14 +160,32 @@ class TestSpec:
         with pytest.raises(ValueError, match="unknown or repeated"):
             demo_spec(order=("print_pins", "nope"))
         with pytest.raises(ValueError, match="unknown or repeated"):
-            demo_spec(order=("freeze", "freeze", "prepare"))
-        with pytest.raises(ValueError, match="need `prepare` before"):
-            demo_spec(order=("dry_run", "prepare"))
-        with pytest.raises(ValueError, match="need `prepare` before"):
-            demo_spec(order=("freeze", "once_only"))                                  # no prepare at all: the once-only scan has nothing to read
-        with pytest.raises(ValueError, match="BEFORE prepare"):
-            demo_spec(order=("prepare", "freeze", "dry_run"))
-        assert demo_spec(order=("freeze", "prepare", "dry_run")).order == ("freeze", "prepare", "dry_run")   # a read may drop checks it has no use for
+            demo_spec(order=rr.DEFAULT_ORDER + ("freeze",))
+        with pytest.raises(ValueError, match="frozen / prepare / outputs / body are callables"):
+            demo_spec(body=None)
+
+    @pytest.mark.parametrize("dropped", rr.DEFAULT_ORDER)
+    def test_every_guard_is_required_dropping_any_one_is_an_error(self, dropped):
+        """The review's hole: a spec could leave out dry_run, no_freeze_check, freeze, options or once_only and run quieter. No longer."""
+        order = tuple(c for c in rr.DEFAULT_ORDER if c != dropped)
+        with pytest.raises(ValueError, match=rf"drops the guard\(s\) \['{dropped}'\]"):
+            demo_spec(order=order)
+        with pytest.raises(ValueError, match="drops the guard"):                   # a read with no periods still carries the (no-op) period check
+            demo_spec(order=order, periods=())
+
+    def test_the_order_keeps_the_drivers_chain(self):
+        def swapped(a, b):
+            o = list(rr.DEFAULT_ORDER)
+            i, j = o.index(a), o.index(b)
+            o[i], o[j] = o[j], o[i]
+            return tuple(o)
+        for a, b in rr.ORDER_RULES:
+            with pytest.raises(ValueError, match=f"{a} before {b}"):
+                demo_spec(order=swapped(a, b))
+        with pytest.raises(ValueError, match="print_pins runs first"):
+            demo_spec(order=swapped("print_pins", "period"))
+        # the slack the chain leaves is harmless: hard pins before the options, the two population checks before empty's sibling
+        assert demo_spec(order=swapped("hard_pins", "prereg")).order[2] == "hard_pins"
 
     def test_the_context_is_resolved_once_from_the_period(self, tmp_path, monkeypatch):
         tree = _demo_tree(tmp_path, monkeypatch)
@@ -171,6 +201,31 @@ class TestSpec:
         c = rr.resolve(demo_spec(periods=()), ns, rn)
         assert c.dirs["cb702_pre"] == tree["cb702"].parent / "cb702_pre" and c.period is None and c.data == tree["cb702"]
 
+    def test_the_driver_pins_the_runner_the_scaffold_and_the_bodys_module(self, tmp_path, monkeypatch):
+        tree = _demo_tree(tmp_path, monkeypatch)
+        spec = demo_spec()
+        files = rr.frozen_map(spec, rr.resolve(spec, _ns(tree), rn))
+        assert files["runner"] == Path(rn.__file__).resolve() and files["scaffold"] == Path(rr.__file__).resolve()
+        assert files["spec module"] == Path(__file__).resolve()                     # the demo body lives here
+        assert set(demo_frozen(rr.resolve(spec, _ns(tree), rn))) < set(files)
+        # a spec may carry the driver's labels only at the driver's paths
+        bad = demo_spec(frozen=lambda ctx: dict(demo_frozen(ctx), scaffold=ctx.repo / rn.MODULE_REL))
+        with pytest.raises(ValueError, match="frozen label 'scaffold' points at"):
+            rr.frozen_map(bad, rr.resolve(bad, _ns(tree), rn))
+        # a body whose module lives in the runner adds no third label; a body with no source file is refused
+        in_runner = demo_spec(body=rn.run_holdout)
+        assert "spec module" not in rr.frozen_map(in_runner, rr.resolve(in_runner, _ns(tree), rn))
+        import functools
+        partial = demo_spec(body=functools.partial(demo_body))
+        with pytest.raises(ValueError, match="source file cannot be determined"):
+            rr.frozen_map(partial, rr.resolve(partial, _ns(tree), rn))
+        # a doc with an empty map is refused; doc=None is the declared way
+        empty = demo_spec(frozen=lambda ctx: {})
+        with pytest.raises(ValueError, match="frozen\\(ctx\\) is empty"):
+            rr.frozen_map(empty, rr.resolve(empty, _ns(tree), rn))
+        declared = demo_spec(frozen=lambda ctx: {}, doc=None, hard_pins=())
+        assert set(rr.frozen_map(declared, rr.resolve(declared, _ns(tree), rn))) == {"runner", "scaffold", "spec module"}
+
 
 # ═══ the driver ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 class TestDriver:
@@ -183,7 +238,7 @@ class TestDriver:
         monkeypatch.setitem(rn.REGISTERED_READS, spec.name, spec)
         assert _main(tree, "--print-pins", period=None) is None                      # before the period check
         pins = capsys.readouterr().out
-        for label in demo_frozen(rr.resolve(spec, _ns(tree), rn)):
+        for label in list(demo_frozen(rr.resolve(spec, _ns(tree), rn))) + ["scaffold", "spec module"]:
             assert f"- {label} sha256: `" in pins, label
         assert "- doc body sha256: `MISSING`" in pins and "MISSING`" in pins.splitlines()[-1]
         _doc(tree, spec)
@@ -197,6 +252,17 @@ class TestDriver:
         with pytest.raises(SystemExit):
             rn.main(["h60-read", "--data", str(tree["cb702"]), "--period", "era-y"])
         assert "invalid choice: 'era-y'" in capsys.readouterr().err
+
+    def test_a_read_named_after_a_built_in_stage_is_refused_before_any_dispatch(self, tmp_path, monkeypatch, capsys):
+        """`main()` dispatches the registry before the built-in branches: a spec called `h60-read` would silently replace the finished read."""
+        tree = _demo_tree(tmp_path, monkeypatch)
+        assert set(rn.BUILTIN_STAGES) == {"daily", "minute", "step0-entries", "holdout", "report", "exits", "exits-report", "p5", "pre-read",
+                                          "h60-step0", "h60-read", "h60-hindsight", "exit-read"}
+        monkeypatch.setitem(rn.REGISTERED_READS, "h60-read", demo_spec(name="h60-read"))
+        for argv in (["h60-read", "--data", str(tree["cb702"]), "--period", "discovery", "--print-pins"], ["daily", "--data", str(tree["cb702"])]):
+            with pytest.raises(SystemExit) as ex:
+                rn.main(argv)
+            assert ex.value.code == 2 and "registered read(s) ['h60-read'] carry the name of a built-in stage" in capsys.readouterr().err
 
     def test_the_freeze_runs_before_any_file_is_opened_and_every_edit_refuses(self, tmp_path, monkeypatch, capsys):
         tree = _demo_tree(tmp_path, monkeypatch)
@@ -235,6 +301,71 @@ class TestDriver:
         assert ex.value.code == 2 and "only together with --dry-run" in capsys.readouterr().err
         assert not list((tree["cb702"] / "out").glob("*demo*")) and not list((rn.HERE / "out").iterdir())
 
+    def test_an_edit_of_the_scaffold_or_of_the_bodys_module_refuses(self, tmp_path, monkeypatch, capsys):
+        """The guard code is pinned by the driver itself: a copy of registered_read.py edited after the freeze commit is a mismatch."""
+        tree = _demo_tree(tmp_path, monkeypatch)
+        copy = tmp_path / "registered_read_copy.py"
+        shutil.copy(rr.__file__, copy)
+        monkeypatch.setattr(rr, "SCAFFOLD_PATH", copy)
+        spec = demo_spec()
+        _doc(tree, spec)
+        assert _run(spec, tree, dry_run=True) == 0 and "freeze check passed" in capsys.readouterr().out
+        T._disarm(monkeypatch, ("load_daily",), "the read was opened")
+        copy.write_bytes(copy.read_bytes() + b"\n# edited\n")
+        assert _run(spec, tree) == 2
+        err = capsys.readouterr().err
+        assert "freeze check failed" in err and "scaffold sha256 mismatch" in err and "the frozen artefact was edited" in err
+        assert _run(spec, tree, dry_run=True) == 2 and "scaffold sha256 mismatch" in capsys.readouterr().err
+        # the body's module: the doc pinned a different file under `spec module`
+        copy.write_bytes(copy.read_bytes()[:-len(b"\n# edited\n")])
+        assert _run(spec, tree, dry_run=True) == 0
+        capsys.readouterr()
+        body_copy = tmp_path / "demo_body_copy.py"
+        body_copy.write_text("def body(ctx, prep, say):\n    return 3\n")
+        ns = {}
+        exec(compile(body_copy.read_text(), str(body_copy), "exec"), {"__file__": str(body_copy)}, ns)   # a body whose source is another file
+        import types
+        mod = types.ModuleType("demo_body_copy")
+        mod.__file__ = str(body_copy)
+        fn = ns["body"]
+        fn.__module__ = mod.__name__
+        import sys
+        monkeypatch.setitem(sys.modules, mod.__name__, mod)
+        elsewhere = demo_spec(body=fn)
+        files = rr.frozen_map(elsewhere, rr.resolve(elsewhere, _ns(tree), rn))
+        assert files["spec module"] == body_copy.resolve()
+        assert _run(elsewhere, tree) == 2 and "spec module sha256 mismatch" in capsys.readouterr().err
+
+    def test_a_freeze_map_that_does_not_cover_what_the_read_opens_refuses(self, tmp_path, monkeypatch, capsys):
+        """The pre-read's hole: a freeze that passes because it pins nothing the read opens. The minute tree, the candidates file and what the
+        body declares it opens must each be a pinned file or lie inside a pinned directory."""
+        tree = _demo_tree(tmp_path, monkeypatch)
+        thin = demo_spec(frozen=lambda ctx: {"module": ctx.repo / rn.MODULE_REL, "runner": Path(rn.__file__).resolve(),
+                                             "cb702/out/candidates.tsv": ctx.dirs["cb702"] / "out" / "candidates.tsv",
+                                             "cb702/daily_closes_all.csv.gz": ctx.dirs["cb702"] / "daily_closes_all.csv.gz"})
+        _doc(tree, thin)
+        T._disarm(monkeypatch, ("load_daily",), "the read was opened")
+        for kw in ({}, {"dry_run": True}):
+            assert _run(thin, tree, **kw) == 2, kw
+            err = capsys.readouterr().err
+            assert err.startswith("REFUSED: the freeze map of the demo-read does not cover the minute directory ") and str(tree["cb702"] / "minutes") in err
+        # the pin covers the tree: an edit after the freeze is caught where it was not before (probe (d) of the review)
+        full = demo_spec(frozen=lambda ctx: dict(thin.frozen(ctx), **{"cb702/minutes (tree)": ctx.dirs["cb702"] / "minutes"}))
+        _doc(tree, full)
+        assert _run(full, tree, dry_run=True) == 0
+        capsys.readouterr()
+        (tree["cb702"] / "minutes" / "_done.psv").write_text("2099-01-01|OTHER|390|ok\n")
+        assert _run(full, tree) == 2 and "cb702/minutes (tree) sha256 mismatch" in capsys.readouterr().err
+        # a candidates file read from a dir the map does not pin; an input the body opens that is not pinned
+        no_cands = demo_spec(frozen=lambda ctx: {k: v for k, v in full.frozen(ctx).items() if k != "cb702/out/candidates.tsv"})
+        _doc(tree, no_cands)
+        assert _run(no_cands, tree, dry_run=True) == 2 and "does not cover the candidates file" in capsys.readouterr().err
+        no_export = demo_spec(frozen=lambda ctx: {k: v for k, v in full.frozen(ctx).items() if k != "cb702/daily_closes_all.csv.gz"})
+        _doc(tree, no_export)
+        assert _run(no_export, tree, dry_run=True) == 2 and "does not cover an input the body opens," in capsys.readouterr().err
+        declared = demo_spec(doc=None, hard_pins=(), frozen=thin.frozen)              # a declared no-freeze read has no map to cover anything
+        assert _run(declared, tree, dry_run=True) == 0
+
     def test_out_is_checked_against_the_dir_the_period_reads_and_the_body_writes_there(self, tmp_path, monkeypatch, capsys):
         """The h60 hole: `--out cb702/out` passed the check and the pre period read cb702_pre/out. The exit-read hole: `--out` ignored."""
         tree = _demo_tree(tmp_path, monkeypatch)
@@ -251,6 +382,16 @@ class TestDriver:
         assert _run(spec, tree, period="pre", out=str(pre_out)) == 0                 # the real pre run, --out spelled out
         assert (pre_out / "trades_pre_demo.tsv.gz").exists() and (pre_out / "demo_verdict_pre.json").exists()
         assert not list(disc_out.glob("*demo*"))                                     # nothing of the pre period landed in cb702/out
+
+    def test_minutes_is_checked_against_the_periods_tree_whatever_the_spec_refuses(self, tmp_path, monkeypatch, capsys):
+        tree = _demo_tree(tmp_path, monkeypatch)
+        spec = demo_spec(refused=tuple(d for d in rr.REFUSED_DEFAULT if d != "minutes"))          # a spec that forgot --minutes
+        _doc(tree, spec)
+        assert _run(spec, tree, period="pre", minutes=str(tree["cb702"] / "minutes"), dry_run=True) == 2
+        err = capsys.readouterr().err
+        assert f"--minutes {tree['cb702'] / 'minutes'} is not {tree['cb702_pre'] / 'minutes'} (the minute tree the period 'pre' reads" in err
+        assert _run(spec, tree, period="pre", minutes=str(tree["cb702_pre"] / "minutes"), dry_run=True) == 0   # the period's own tree, spelled out
+        assert _run(demo_spec(), tree, period="pre", minutes=str(tree["cb702_pre"] / "minutes"), dry_run=True) == 2   # the default spec refuses any
 
     def test_option_refusals_print_the_specs_own_words(self, tmp_path, monkeypatch, capsys):
         tree = _demo_tree(tmp_path, monkeypatch)
@@ -271,6 +412,12 @@ class TestDriver:
         assert _run(spec, tree, no_freeze_check=True) == 2 and capsys.readouterr().err.strip() == "NOPE: the skip flag is for dry runs"
         assert _run(spec, tree, dry_run=True, no_freeze_check=True) == 0 and "freeze check SKIPPED" in capsys.readouterr().out
         assert rr.option_problems(spec, rr.resolve(spec, _ns(tree, out=str(tree["cb702"] / "out"), small_out=str(rn.HERE / "out")), rn)) == []
+        # belt and braces: the freeze check itself refuses the skip flag without --dry-run, and the driver refuses a body the freeze never reached
+        ctx = rr.resolve(spec, _ns(tree, no_freeze_check=True), rn)
+        assert rr._check_freeze(spec, ctx, {}) == 2 and capsys.readouterr().err.strip() == "NOPE: the skip flag is for dry runs"
+        monkeypatch.setitem(rr.CHECKS, "freeze", lambda spec, ctx, state: None)       # a freeze check that forgot to run
+        assert _run(spec, tree) == 2 and capsys.readouterr().err.startswith("REFUSED: the freeze check did not pass before the body (not run)")
+        assert not list((tree["cb702"] / "out").glob("*demo*"))
 
     def test_hard_pins_refuse_footer_or_no_footer_even_a_dry_run(self, tmp_path, monkeypatch, capsys):
         tree = _demo_tree(tmp_path, monkeypatch)
@@ -307,6 +454,7 @@ class TestDriver:
         assert _main(tree) is None
         o = capsys.readouterr().out
         assert o.startswith("DEMO-READ (registered read #705): period discovery; 1 rows; 1 pairs all logged; freeze check passed; code: module sha256 ")
+        assert f", scaffold sha256 {rr.sha256_file(rr.__file__)}" in o.splitlines()[0]
         assert "WROTE " in o and "demo_verdict_discovery.json" in o and "WALL TIME:" in o
         t = T.pd_read(out / "trades_discovery_demo.tsv.gz")
         assert list(t.columns) == DEMO_COLS and len(t) == 1 and t.break_over_line.iloc[0] == pytest.approx(10.60 - 10.25)
@@ -317,22 +465,30 @@ class TestDriver:
         assert (small / "demo_verdict_discovery.txt").read_text() == vt
         summary = (small / "demo_summary_discovery.txt").read_text()
         assert summary.startswith("DEMO-READ (registered read #705)") and "WALL TIME" in summary
-        assert not list(out.glob("*.partial"))
+        assert not list(out.glob("*.partial")) and not list(small.glob("*.partial"))
         with pytest.raises(SystemExit) as ex:                                        # read once
             _main(tree)
         assert ex.value.code == 2 and "demo-read's outcomes are read ONCE per period and" in capsys.readouterr().err
         assert _main(tree, period="pre") is None                                     # another period is another once
         assert (tree["cb702_pre"] / "out" / "demo_verdict_pre.txt").exists()
         capsys.readouterr()
+        # the verdict files are in the once-only set: the table gone, a verdict left behind (out, then small alone) still refuses
         (out / "trades_discovery_demo.tsv.gz").unlink()
+        with pytest.raises(SystemExit) as ex:
+            _main(tree)
+        assert ex.value.code == 2 and f"read ONCE per period and {out / 'demo_verdict_discovery.json'} already exists" in capsys.readouterr().err
+        (out / "demo_verdict_discovery.json").unlink()
+        (out / "demo_verdict_discovery.txt").unlink()
+        with pytest.raises(SystemExit) as ex:
+            _main(tree)
+        assert ex.value.code == 2 and f"and {small / 'demo_verdict_discovery.txt'} already exists" in capsys.readouterr().err
+        (small / "demo_verdict_discovery.txt").unlink()
         (out / "trades_discovery_demo.tsv.gz.partial").write_bytes(b"half")
         with pytest.raises(SystemExit) as ex:
             _main(tree)
         err = capsys.readouterr().err
         assert ex.value.code == 2 and "is what a CRASHED demo-read left behind" in err and "removes it by hand" in err
         (out / "trades_discovery_demo.tsv.gz.partial").unlink()
-        for q in out.glob("demo_verdict_*"):
-            q.unlink()
         DEMO_STATE["crash"] = True                                                   # the body dies mid-write: the .partial stays, no final table
         with pytest.raises(RuntimeError, match="worker died"):
             _main(tree)
@@ -342,6 +498,16 @@ class TestDriver:
         with pytest.raises(SystemExit) as ex:
             _main(tree)
         assert ex.value.code == 2 and "CRASHED demo-read" in capsys.readouterr().err
+        (out / "trades_discovery_demo.tsv.gz.partial").unlink()
+        # a crash while the verdict is written leaves the verdict's .partial, which refuses too (the .partial protocol covers the verdict files)
+        DEMO_STATE["bad_lines"] = True
+        with pytest.raises(TypeError):
+            _main(tree)
+        assert (out / "demo_verdict_discovery.json").exists() and (out / "demo_verdict_discovery.txt.partial").exists() and not (out / "demo_verdict_discovery.txt").exists()
+        DEMO_STATE.clear()
+        with pytest.raises(SystemExit) as ex:
+            _main(tree)
+        assert ex.value.code == 2 and f"{out / 'demo_verdict_discovery.txt.partial'} is what a CRASHED demo-read left behind" in capsys.readouterr().err
 
     def test_a_body_returning_3_writes_the_summary_and_no_verdict(self, tmp_path, monkeypatch, capsys):
         tree = _demo_tree(tmp_path, monkeypatch)
@@ -353,6 +519,37 @@ class TestDriver:
         assert (out / "trades_discovery_demo.tsv.gz").exists() and not list(out.glob("demo_verdict_*")) and not list(small.glob("demo_verdict_*"))
         assert "DEMO CHECK FAILED" in (small / "demo_summary_discovery.txt").read_text()
         DEMO_STATE.clear()
+
+    def test_a_body_returning_nothing_is_a_logged_defect_exit_3(self, tmp_path, monkeypatch, capsys):
+        tree = _demo_tree(tmp_path, monkeypatch)
+        spec = demo_spec()
+        _doc(tree, spec)
+        DEMO_STATE["none"] = True
+        assert _run(spec, tree) == 3
+        out, small = tree["cb702"] / "out", rn.HERE / "out"
+        o = capsys.readouterr().out
+        assert "BODY RETURNED NOTHING: the demo-read returns a Verdict or an exit code - no verdict is written" in o
+        assert (out / "trades_discovery_demo.tsv.gz").exists() and not list(out.glob("demo_verdict_*"))
+        assert "BODY RETURNED NOTHING" in (small / "demo_summary_discovery.txt").read_text()
+        DEMO_STATE.clear()
+
+    def test_prepare_must_name_its_keys_and_outputs_may_not_be_empty(self, tmp_path, monkeypatch, capsys):
+        """A prepare that returns its minute inputs under another name would silently disable the missing-pairs guard; a read with no
+        once-only table would have nothing to read once."""
+        tree = _demo_tree(tmp_path, monkeypatch)
+        renamed = demo_spec(prepare=lambda ctx: {k if k != "inp" else "inputs": v for k, v in demo_prepare(ctx).items()})
+        _doc(tree, renamed)
+        (tree["cb702"] / "minutes" / "_done.psv").write_text("2099-01-01|OTHER|390|ok\n")
+        _doc(tree, renamed)
+        with pytest.raises(ValueError, match="prepare must return 'inp'"):
+            _run(renamed, tree)
+        no_rows = demo_spec(prepare=lambda ctx: {k: v for k, v in demo_prepare(ctx).items() if k != "rows"})
+        with pytest.raises(ValueError, match="prepare must return 'rows'"):
+            _run(no_rows, tree, dry_run=True, no_freeze_check=True)
+        none = demo_spec(outputs=lambda ctx: ())
+        with pytest.raises(ValueError, match=r"outputs\(ctx\) is empty"):
+            _run(none, tree, dry_run=True, no_freeze_check=True)
+        assert not list((tree["cb702"] / "out").glob("*demo*"))
 
     def test_missing_pairs_and_an_empty_population_refuse(self, tmp_path, monkeypatch, capsys):
         tree = _demo_tree(tmp_path, monkeypatch)
@@ -381,13 +578,14 @@ class TestDriver:
         spec = demo_spec(doc=None, hard_pins=())
         assert _run(spec, tree, print_pins=True) == 0
         pins = capsys.readouterr().out
-        assert "- module sha256: `" in pins and "doc body" not in pins
+        assert "- module sha256: `" in pins and "- scaffold sha256: `" in pins and "doc body" not in pins
         assert _run(spec, tree, dry_run=True) == 0 and "DEMO DRY RUN (freeze check NONE DECLARED" in capsys.readouterr().out
         assert _run(spec, tree, prereg=str(tmp_path / "d.md"), dry_run=True) == 2 and "this read declares no freeze" in capsys.readouterr().err
         assert _run(spec, tree, no_freeze_check=True) == 2                           # still only with --dry-run
         capsys.readouterr()
         assert _run(spec, tree) == 0
-        assert "freeze check NONE DECLARED" in capsys.readouterr().out.splitlines()[0]
+        head = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("DEMO-READ (registered read #705)")]
+        assert len(head) == 1 and "freeze check NONE DECLARED" in head[0]
 
     def test_nothing_is_registered_in_the_shipped_runner(self):
         assert rn.REGISTERED_READS == {}
@@ -422,6 +620,35 @@ class TestHelpers:
         assert rr.load_daily_cached(a, loader)["n"] == 4
         rr.clear_daily_cache()
         assert rr.load_daily_cached(a, loader)["n"] == 5
+
+    def test_read_candidates_cached_equals_read_candidates_and_hits_on_the_same_keywords(self, tmp_path, capsys):
+        rr.clear_daily_cache()
+        bars, e = T._e_bars(start=T.DISCOVERY_START)
+        cands = [T._p5_cand(bars, e, K=k) for k in ("tl", "com")] + [T._p5_cand(bars, e, K="tl", retrigger=1)]
+        p = tmp_path / "candidates.tsv"
+        rn.write_tsv(p, cands, list(cands[0].keys()))
+        calls = []
+
+        def reader(path, **kw):
+            calls.append(kw)
+            return rn.read_candidates(path, **kw)
+        kw = dict(split="discovery", extra_floats=("base_depth",), where=demo_where)
+        want = rn.read_candidates(p, **kw)
+        got = rr.read_candidates_cached(p, reader, **kw)
+        assert got == want and len(got) == 1 and got[0]["K"] == "tl"
+        again = rr.read_candidates_cached(p, reader, **kw)
+        assert again == want and again is not got and again[0] is got[0] and len(calls) == 1     # a hit: a new list over the same rows
+        assert "candidates: candidates.tsv unchanged since the last parse" in capsys.readouterr().out
+        got.append("x")                                                                          # the caller's list is its own
+        assert len(rr.read_candidates_cached(p, reader, **kw)) == 1 and len(calls) == 1
+        assert len(rr.read_candidates_cached(p, reader, split="discovery", extra_floats=("base_depth",), where=lambda r: r["K"] == "com")) == 1
+        assert len(calls) == 2                                                                   # another `where`: a miss (identity)
+        assert rr.read_candidates_cached(p, reader, **kw) == want and len(calls) == 3           # one slot: evicted
+        p.write_text(p.read_text() + "")
+        import os
+        os.utime(p, ns=(p.stat().st_atime_ns, p.stat().st_mtime_ns + 1_000_000))              # the file touched: re-read
+        assert rr.read_candidates_cached(p, reader, **kw) == want and len(calls) == 4
+        rr.clear_daily_cache()
 
     def test_read_watch_index_equals_h60_watch_index_on_a_synthetic_table(self, tmp_path):
         rng = np.random.default_rng(702)

@@ -1,0 +1,296 @@
+==== GOLDEN ARTEFACT daily_era/era/out/candidates_tl.tsv | bytes=868 | sha256=af6886c194ac7962549d39c2fc26640820e3752e5202e3a95ae9664867316d41 | text
+ticker	D	E	K	pole_date	pole_ci	pivot	pivot_date	adr20	gap_open_pct	gap_over_1adr	retrigger	retrigger_chain	base_id	overlap_open	split	pole_hi_over_oc	pole_bad_high	C0	C1	C2	C3	C4	C5	C6	C7	C1_no_retrace	C1_no_tightening	HTF	C1_s5	first_C0	first_C1	first_C2	first_C3	first_C4	first_C5	first_C6	first_C7	first_C1_no_retrace	first_C1_no_tightening	first_HTF	first_chain_C0	first_chain_C1	first_chain_C2	first_chain_C3	first_chain_C4	first_chain_C5	first_chain_C6	first_chain_C7	first_chain_C1_no_retrace	first_chain_C1_no_tightening	first_chain_HTF	open_E	high_E	low_E	close_E	vol_E	adv20_vol_D	breakout_vol_x	prior_move	base_len	retrace	base_depth	tightening_ratio	pole_sessions	median_dollar_vol20	pole_day_vol_ratio	pole_max_gap	atr14	atr14_slope	trigger_bar_range_adr	inside_day	rs_best	rs_all	grp_pct	phase_qqq_10_20	phase_qqq_10_20_s5	phase_spy_qqq_50	apollo_regime
+
+==== GOLDEN ARTEFACT daily_era/era/out/gap_in_bars_tl.tsv | bytes=41 | sha256=c5ab3c9e221ccb2d757605f8ea387eff564dc02687ae32e86cf7fd95bd14ac71 | text
+ticker	D	status	next_bar_date	expected_E
+
+==== GOLDEN ARTEFACT daily_era/era/out/minute_fetch_list_delta_tl.tsv | bytes=17 | sha256=2c52eb03581881dcf6a760bf00e16460ed7d03c7335c4d61ef713939fad15166 | text
+ticker	date	tier
+
+==== GOLDEN ARTEFACT daily_era/era/out/minute_fetch_list_tl.tsv | bytes=17 | sha256=2c52eb03581881dcf6a760bf00e16460ed7d03c7335c4d61ef713939fad15166 | text
+ticker	date	tier
+
+==== GOLDEN ARTEFACT daily_era/era/out/watch_tl.tsv.gz | bytes=208 | sha256=7073770760988cb79e2941ed3af1eed184328bfd831670e82b92ba19a4c897fa | text
+ticker	watch_date	rs_best	rs_all	grp_pct	phase_qqq_10_20	phase_qqq_10_20_s5	phase_spy_qqq_50	apollo_regime	C0_tl	C1_tl	C2_tl	C3_tl	C4_tl	C5_tl	C6_tl	C7_tl	C1_no_retrace_tl	C1_no_tightening_tl	HTF_tl	C1_s5_tl
+
+==== GOLDEN ARTEFACT daily_era/exit | bytes=1 | sha256=5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9 | text
+0
+==== GOLDEN ARTEFACT daily_era/small/gate_counts_tl.tsv | bytes=306 | sha256=70c12b7b6e85d2cc7c01e57d64f713143f5471248b1fcf5d6c43bb6b08effb95 | text
+stage	total	2019	2020
+universe_fail	0	0	0
+identity_break	31	7	24
+prescreen_skip	674	578	96
+history	0	0	0
+prior_move	0	0	0
+close_above_pole_high	0	0	0
+close_nonpositive	0	0	0
+sma50	0	0	0
+deal_pin_median	0	0	0
+fresh_pin	0	0	0
+pole_artifact	0	0	0
+adr_unusable	0	0	0
+pass	0	0	0
+TOTAL ticker-nights	705	585	120
+
+==== GOLDEN ARTEFACT daily_era/small/run_summary_tl.txt | bytes=3277 | sha256=b60f1a5ed40b0be1e018ec2d76f70fc67f3a15f6cda43b97b60d807dda7a6f42 | text
+[load: <N>s]
+[pass 1 (universe + RS inputs + explain_watch): <N>s]
+[stage 1 cross-section: <N>s]
+[watch rows + cells: <N>s]
+[stage 3 breakouts: <N>s]
+[close variant SKIPPED (--no-close-variant): <N>s]
+[write outputs: <N>s]
+
+DATA INTEGRITY: 0 of 5 tickers have a missing SPY session inside their span (0 holes); a night is admitted only if its 130 bars are consecutive sessions, and a forward walk stops at the first hole; splits executing after 2020-04-10 dropped: 0 of 0 (not yet in the adjusted series); exchange test symbols excluded: 0 tickers present in the export
+  ERA OPTIONS: raw factor measured per bar from <TMP>/era/daily_raw_close.csv.gz; identity guard on (1 symbols carry a break); watch nights 2019-07-22..2020-02-03; era label pre
+GATE FUNNEL (ticker-nights with D >= 2019-07-22; each night lands in exactly ONE row)
+stage                  nights    share
+universe_fail               0    0.00%
+identity_break             31    4.40%
+prescreen_skip            674   95.60%
+history                     0    0.00%
+prior_move                  0    0.00%
+close_above_pole_high       0    0.00%
+close_nonpositive           0    0.00%
+sma50                       0    0.00%
+deal_pin_median             0    0.00%
+fresh_pin                   0    0.00%
+pole_artifact               0    0.00%
+adr_unusable                0    0.00%
+pass                        0    0.00%
+TOTAL ticker-nights       705  100.00%
+  'history' = universe_ok passed but the 130 bars are NOT consecutive sessions (a hole / reused ticker); universe members (nights) = total - universe_fail - history: 674;  pre-screen skips are nights the real gate would fail at prior_move (proved by --check-prescreen);  prior_move total incl. skips = 674
+
+WATCH ROWS: 0 (ticker x D) over 0 tickers; era pre 0
+  universe size per date: min 4 median 5 max 5; watch rows with no group (grp_pct None): 0; rs_best None: 0
+  watch nights with the cell true (all splits):
+cell              tl
+C0                 0
+C1                 0
+C2                 0
+C3                 0
+C4                 0
+C5                 0
+C6                 0
+C7                 0
+C1_no_retrace      0
+C1_no_tightening   0
+HTF                0
+C1_s5              0
+
+  DATA FLAG: 0 watch rows on 0 tickers have a pole bar whose high is > 1.25x max(open, close) (a suspect print can become pole_high); C1_tl nights among them: 0
+
+BREAKOUT CANDIDATES (high(E) > pivot_K(D)): 0 rows (spec key 0 trades + 0 retriggers; chain key 0 trades + 0 retriggers); no-E statuses (watch rows, no trade): {}
+
+CLOSE VARIANT: SKIPPED (--no-close-variant) - this run computed no outcome; `overlap_open` is blank
+MINUTE FETCH LIST: 0 unique (ticker, E) pairs over 0 dates (tier 1 = any cell C1..C7/report cells true: 0; non-retrigger only: 0); per era: pre 0
+MINUTE FETCH DELTA (pairs the tl candidates need that _done.psv does not hold; no _done.psv under <TMP>/era/minutes - every pair counts as not fetched): 0 pairs over 0 dates (of 0 tl pairs; tier 1: 0; per era: pre 0) -> <TMP>/era/out/minute_fetch_list_delta_tl.tsv
+WALL TIME: <N>s total  load=<N>s  pass 1 (universe + RS inputs + explain_watch)=<N>s  stage 1 cross-section=<N>s  watch rows + cells=<N>s  stage 3 breakouts=<N>s  close variant SKIPPED (--no-close-variant)=<N>s  write outputs=<N>s
+
+==== GOLDEN ARTEFACT daily_era/small/universe_by_date_tl.tsv | bytes=3793 | sha256=e2a18a3d942b1add2bba8ec43105feb0be54a97e2c279c9bb1eab9faae69bb08 | text
+date	universe_n	members_with_group	groups_ge10	watch_rows	phase_qqq_10_20_s1	phase_qqq_10_20_s5	phase_spy_qqq_50	apollo_regime
+2019-07-22	5	0	0	0	1	1	1	
+2019-07-23	5	0	0	0	0	1	1	
+2019-07-24	5	0	0	0	0	1	1	
+2019-07-25	5	0	0	0	1	1	0	
+2019-07-26	5	0	0	0	1	1	0	
+2019-07-29	5	0	0	0	1	1	0	
+2019-07-30	5	0	0	0	1	1	0	
+2019-07-31	5	0	0	0	1	1	0	
+2019-08-01	5	0	0	0	1	1	0	
+2019-08-02	5	0	0	0	1	1	0	
+2019-08-05	5	0	0	0	1	1	0	
+2019-08-06	5	0	0	0	1	1	0	
+2019-08-07	5	0	0	0	1	1	0	
+2019-08-08	5	0	0	0	0	1	0	
+2019-08-09	5	0	0	0	0	0	0	
+2019-08-12	5	0	0	0	0	0	0	
+2019-08-13	5	0	0	0	0	0	0	
+2019-08-14	5	0	0	0	0	0	0	
+2019-08-15	5	0	0	0	0	0	0	
+2019-08-16	5	0	0	0	0	0	0	
+2019-08-19	5	0	0	0	0	0	0	
+2019-08-20	5	0	0	0	0	0	0	
+2019-08-21	5	0	0	0	0	0	0	
+2019-08-22	5	0	0	0	0	0	0	
+2019-08-23	5	0	0	0	0	0	0	
+2019-08-26	5	0	0	0	0	0	0	
+2019-08-27	5	0	0	0	0	0	0	
+2019-08-28	5	0	0	0	0	0	0	
+2019-08-29	5	0	0	0	0	0	0	
+2019-08-30	5	0	0	0	0	0	0	
+2019-09-02	5	0	0	0	0	0	0	
+2019-09-03	5	0	0	0	0	0	0	
+2019-09-04	5	0	0	0	0	0	0	
+2019-09-05	5	0	0	0	0	0	0	
+2019-09-06	5	0	0	0	0	0	0	
+2019-09-09	5	0	0	0	0	0	0	
+2019-09-10	5	0	0	0	0	0	0	
+2019-09-11	5	0	0	0	0	0	0	
+2019-09-12	5	0	0	0	0	0	0	
+2019-09-13	5	0	0	0	0	0	0	
+2019-09-16	5	0	0	0	0	0	0	
+2019-09-17	5	0	0	0	0	0	0	
+2019-09-18	5	0	0	0	0	0	0	
+2019-09-19	5	0	0	0	0	0	0	
+2019-09-20	5	0	0	0	0	0	0	
+2019-09-23	5	0	0	0	1	1	1	
+2019-09-24	5	0	0	0	1	1	0	
+2019-09-25	5	0	0	0	1	1	0	
+2019-09-26	5	0	0	0	0	1	0	
+2019-09-27	5	0	0	0	1	1	0	
+2019-09-30	5	0	0	0	0	1	0	
+2019-10-01	5	0	0	0	0	0	0	
+2019-10-02	5	0	0	0	1	1	0	
+2019-10-03	5	0	0	0	1	1	0	
+2019-10-04	5	0	0	0	1	1	0	
+2019-10-07	5	0	0	0	1	1	0	
+2019-10-08	5	0	0	0	1	1	0	
+2019-10-09	5	0	0	0	0	1	0	
+2019-10-10	5	0	0	0	0	1	0	
+2019-10-11	5	0	0	0	0	0	0	
+2019-10-14	5	0	0	0	1	0	0	
+2019-10-15	5	0	0	0	1	0	0	
+2019-10-16	5	0	0	0	0	1	0	
+2019-10-17	5	0	0	0	0	0	0	
+2019-10-18	5	0	0	0	0	0	0	
+2019-10-21	5	0	0	0	0	0	0	
+2019-10-22	5	0	0	0	0	0	0	
+2019-10-23	5	0	0	0	0	0	0	
+2019-10-24	5	0	0	0	0	0	0	
+2019-10-25	5	0	0	0	0	0	0	
+2019-10-28	5	0	0	0	0	0	0	
+2019-10-29	5	0	0	0	0	0	0	
+2019-10-30	5	0	0	0	0	0	0	
+2019-10-31	5	0	0	0	0	0	0	
+2019-11-01	5	0	0	0	0	0	0	
+2019-11-04	5	0	0	0	0	0	0	
+2019-11-05	5	0	0	0	0	0	0	
+2019-11-06	5	0	0	0	0	0	1	
+2019-11-07	5	0	0	0	0	0	1	
+2019-11-08	5	0	0	0	0	0	1	
+2019-11-11	5	0	0	0	0	0	1	
+2019-11-12	5	0	0	0	0	0	1	
+2019-11-13	5	0	0	0	1	1	1	
+2019-11-14	5	0	0	0	1	1	0	
+2019-11-15	5	0	0	0	1	1	0	
+2019-11-18	5	0	0	0	1	1	0	
+2019-11-19	5	0	0	0	1	1	0	
+2019-11-20	5	0	0	0	1	1	0	
+2019-11-21	5	0	0	0	1	1	0	
+2019-11-22	5	0	0	0	1	1	0	
+2019-11-25	5	0	0	0	1	1	0	
+2019-11-26	5	0	0	0	1	1	0	
+2019-11-27	5	0	0	0	0	1	0	
+2019-11-28	5	0	0	0	0	1	0	
+2019-11-29	5	0	0	0	0	0	0	
+2019-12-02	5	0	0	0	0	0	0	
+2019-12-03	5	0	0	0	0	0	0	
+2019-12-04	5	0	0	0	0	0	0	
+2019-12-05	5	0	0	0	0	0	0	
+2019-12-06	5	0	0	0	0	0	0	
+2019-12-09	5	0	0	0	0	0	0	
+2019-12-10	5	0	0	0	0	0	0	
+2019-12-11	5	0	0	0	0	0	0	
+2019-12-12	5	0	0	0	0	0	0	
+2019-12-13	5	0	0	0	0	0	0	
+2019-12-16	5	0	0	0	0	0	0	
+2019-12-17	5	0	0	0	0	0	0	
+2019-12-18	5	0	0	0	0	0	0	
+2019-12-19	5	0	0	0	0	0	0	
+2019-12-20	5	0	0	0	0	0	0	
+2019-12-23	4	0	0	0	0	0	0	
+2019-12-24	4	0	0	0	0	0	0	
+2019-12-25	4	0	0	0	0	0	0	
+2019-12-26	4	0	0	0	0	0	0	
+2019-12-27	4	0	0	0	0	0	0	
+2019-12-30	4	0	0	0	0	0	0	
+2019-12-31	4	0	0	0	1	0	0	
+2020-01-01	4	0	0	0	1	0	0	
+2020-01-02	4	0	0	0	0	0	0	
+2020-01-03	4	0	0	0	0	0	0	
+2020-01-06	4	0	0	0	0	0	0	
+2020-01-07	4	0	0	0	0	0	0	
+2020-01-08	4	0	0	0	0	0	0	
+2020-01-09	4	0	0	0	0	0	0	
+2020-01-10	4	0	0	0	0	0	0	
+2020-01-13	4	0	0	0	0	0	0	
+2020-01-14	4	0	0	0	0	0	0	
+2020-01-15	4	0	0	0	0	0	0	
+2020-01-16	4	0	0	0	0	0	0	
+2020-01-17	4	0	0	0	0	0	0	
+2020-01-20	4	0	0	0	0	0	0	
+2020-01-21	4	0	0	0	0	0	0	
+2020-01-22	4	0	0	0	0	0	0	
+2020-01-23	4	0	0	0	0	0	0	
+2020-01-24	4	0	0	0	0	0	0	
+2020-01-27	4	0	0	0	0	0	0	
+2020-01-28	4	0	0	0	0	0	1	
+2020-01-29	4	0	0	0	1	0	1	
+2020-01-30	4	0	0	0	1	0	1	
+2020-01-31	4	0	0	0	1	1	1	
+2020-02-03	4	0	0	0	1	1	1	
+
+==== GOLDEN ARTEFACT daily_era/small/universe_types_tl.tsv | bytes=67 | sha256=a8ed2dd36ec1dc49c3ba02498d5160deb42b1a40bfd30072b5dbbe6577e3dc9a | text
+year	unknown_type_nights	unknown_type_tickers
+2019	578	5
+2020	96	4
+
+==== GOLDEN ARTEFACT daily_era/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT daily_era/stdout | bytes=3413 | sha256=78b832e60e3e9a155f955f254cd9d3b6fbd4bcda0ac5d17f7d5f6a0b46cb75ca | text
+bars: 1,650 rows / 5 tickers / 330 sessions 2019-01-07..2020-04-10 (<N>s); 0 tickers have a missing session inside their span (0 holes)
+[load: <N>s]
+[pass 1 (universe + RS inputs + explain_watch): <N>s]
+[stage 1 cross-section: <N>s]
+[watch rows + cells: <N>s]
+[stage 3 breakouts: <N>s]
+[close variant SKIPPED (--no-close-variant): <N>s]
+[write outputs: <N>s]
+
+DATA INTEGRITY: 0 of 5 tickers have a missing SPY session inside their span (0 holes); a night is admitted only if its 130 bars are consecutive sessions, and a forward walk stops at the first hole; splits executing after 2020-04-10 dropped: 0 of 0 (not yet in the adjusted series); exchange test symbols excluded: 0 tickers present in the export
+  ERA OPTIONS: raw factor measured per bar from <TMP>/era/daily_raw_close.csv.gz; identity guard on (1 symbols carry a break); watch nights 2019-07-22..2020-02-03; era label pre
+GATE FUNNEL (ticker-nights with D >= 2019-07-22; each night lands in exactly ONE row)
+stage                  nights    share
+universe_fail               0    0.00%
+identity_break             31    4.40%
+prescreen_skip            674   95.60%
+history                     0    0.00%
+prior_move                  0    0.00%
+close_above_pole_high       0    0.00%
+close_nonpositive           0    0.00%
+sma50                       0    0.00%
+deal_pin_median             0    0.00%
+fresh_pin                   0    0.00%
+pole_artifact               0    0.00%
+adr_unusable                0    0.00%
+pass                        0    0.00%
+TOTAL ticker-nights       705  100.00%
+  'history' = universe_ok passed but the 130 bars are NOT consecutive sessions (a hole / reused ticker); universe members (nights) = total - universe_fail - history: 674;  pre-screen skips are nights the real gate would fail at prior_move (proved by --check-prescreen);  prior_move total incl. skips = 674
+
+WATCH ROWS: 0 (ticker x D) over 0 tickers; era pre 0
+  universe size per date: min 4 median 5 max 5; watch rows with no group (grp_pct None): 0; rs_best None: 0
+  watch nights with the cell true (all splits):
+cell              tl
+C0                 0
+C1                 0
+C2                 0
+C3                 0
+C4                 0
+C5                 0
+C6                 0
+C7                 0
+C1_no_retrace      0
+C1_no_tightening   0
+HTF                0
+C1_s5              0
+
+  DATA FLAG: 0 watch rows on 0 tickers have a pole bar whose high is > 1.25x max(open, close) (a suspect print can become pole_high); C1_tl nights among them: 0
+
+BREAKOUT CANDIDATES (high(E) > pivot_K(D)): 0 rows (spec key 0 trades + 0 retriggers; chain key 0 trades + 0 retriggers); no-E statuses (watch rows, no trade): {}
+
+CLOSE VARIANT: SKIPPED (--no-close-variant) - this run computed no outcome; `overlap_open` is blank
+MINUTE FETCH LIST: 0 unique (ticker, E) pairs over 0 dates (tier 1 = any cell C1..C7/report cells true: 0; non-retrigger only: 0); per era: pre 0
+MINUTE FETCH DELTA (pairs the tl candidates need that _done.psv does not hold; no _done.psv under <TMP>/era/minutes - every pair counts as not fetched): 0 pairs over 0 dates (of 0 tl pairs; tier 1: 0; per era: pre 0) -> <TMP>/era/out/minute_fetch_list_delta_tl.tsv
+WALL TIME: <N>s total  load=<N>s  pass 1 (universe + RS inputs + explain_watch)=<N>s  stage 1 cross-section=<N>s  watch rows + cells=<N>s  stage 3 breakouts=<N>s  close variant SKIPPED (--no-close-variant)=<N>s  write outputs=<N>s
+

@@ -1102,33 +1102,33 @@ WALL TIME: <N>s total
 0
 ==== GOLDEN ARTEFACT print_pins/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
 
-==== GOLDEN ARTEFACT print_pins/stdout | bytes=1087 | sha256=90c6c2d414de7c16eadcaa77344b46c8fd848bbb30cf2f2b1c8396cbb83ba972 | text
-- module sha256: `<SHA64>`
-- runner sha256: `<SHA64>`
-- cell table sha256: `<SHA64>`
-- code/constants.py sha256: `<SHA64>`
-- code/anticipation.py sha256: `<SHA64>`
-- code/live_fill_counterfactuals.py sha256: `<SHA64>`
-- code/rule_eras.py sha256: `<SHA64>`
-- code/exit_logic.py sha256: `<SHA64>`
-- data/cb702_sic.psv sha256: `<SHA64>`
-- data/daily_closes_all.csv.gz sha256: `<SHA64>`
+==== GOLDEN ARTEFACT print_pins/stdout | bytes=1936 | sha256=90ab622212ccc48d6c2ef95b31c1aa5fcf9a10d492c67d354d4514e7a8e43083 | text
+- module sha256: `<SHA:repo/agents/market_intelligence/consolidation_breakout.py>`
+- runner sha256: `<SHA:runner>`
+- cell table sha256: `<SHA:data/out/watch.tsv.gz>`
+- code/constants.py sha256: `<SHA:repo/agents/market_intelligence/constants.py>`
+- code/anticipation.py sha256: `<SHA:repo/agents/market_intelligence/anticipation.py>`
+- code/live_fill_counterfactuals.py sha256: `<SHA:repo/agents/market_intelligence/live_fill_counterfactuals.py>`
+- code/rule_eras.py sha256: `<SHA:repo/agents/market_intelligence/rule_eras.py>`
+- code/exit_logic.py sha256: `<SHA:repo/agents/market_intelligence/broker/exit_logic.py>`
+- data/cb702_sic.psv sha256: `<SHA:data/cb702_sic.psv>`
+- data/daily_closes_all.csv.gz sha256: `<SHA:data/daily_closes_all.csv.gz>`
 - minutes (tree) sha256: `<SHA64>`
-- candidates.tsv sha256: `<SHA64>`
-- minute_fetch_list.tsv sha256: `<SHA64>`
-- gap_in_bars.tsv sha256: `<SHA64>`
-- close_variant_discovery.tsv.gz sha256: `<SHA64>`
-- trades_discovery.tsv.gz sha256: `<SHA64>`
-- entries_discovery.tsv.gz sha256: `<SHA64>`
-- entries_holdout_composition.tsv sha256: `<SHA64>`
-- discovery_report.tsv sha256: `<SHA64>`
-- discovery_report.txt sha256: `<SHA64>`
-- candidates_com_comb.tsv sha256: `<SHA64>`
-- watch_com_comb.tsv.gz sha256: `<SHA64>`
-- entries_holdout_composition_com_comb.tsv sha256: `<SHA64>`
-- trades_discovery_p5.tsv.gz sha256: `<SHA64>`
-- p5_report_discovery.tsv sha256: `<SHA64>`
-- p5_report_discovery.txt sha256: `<SHA64>`
+- candidates.tsv sha256: `<SHA:data/out/candidates.tsv>`
+- minute_fetch_list.tsv sha256: `<SHA:data/out/minute_fetch_list.tsv>`
+- gap_in_bars.tsv sha256: `<SHA:data/out/gap_in_bars.tsv>`
+- close_variant_discovery.tsv.gz sha256: `<SHA:data/out/close_variant_discovery.tsv.gz>`
+- trades_discovery.tsv.gz sha256: `<SHA:data/out/trades_discovery.tsv.gz>`
+- entries_discovery.tsv.gz sha256: `<SHA:data/out/entries_discovery.tsv.gz>`
+- entries_holdout_composition.tsv sha256: `<SHA:data/out/entries_holdout_composition.tsv>`
+- discovery_report.tsv sha256: `<SHA:data/out/discovery_report.tsv>`
+- discovery_report.txt sha256: `<SHA:hereroot/out/discovery_report.txt>`
+- candidates_com_comb.tsv sha256: `<SHA:data/out/candidates_com_comb.tsv>`
+- watch_com_comb.tsv.gz sha256: `<SHA:data/out/watch_com_comb.tsv.gz>`
+- entries_holdout_composition_com_comb.tsv sha256: `<SHA:data/out/entries_holdout_composition_com_comb.tsv>`
+- trades_discovery_p5.tsv.gz sha256: `<SHA:data/out/trades_discovery_p5.tsv.gz>`
+- p5_report_discovery.tsv sha256: `<SHA:data/out/p5_report_discovery.tsv>`
+- p5_report_discovery.txt sha256: `<SHA:hereroot/out/p5_report_discovery.txt>`
 
 ==== GOLDEN ARTEFACT refuse_after_the_run/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
 2
@@ -1139,9 +1139,9 @@ REFUSED: the holdout outcomes are joined ONCE and <TMP>/data/out/trades_holdout.
 
 ==== GOLDEN ARTEFACT refuse_freeze_mismatch/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
 2
-==== GOLDEN ARTEFACT refuse_freeze_mismatch/stderr | bytes=171 | sha256=815d4f2da2d3c00e1cb31d4e0ade9795c82c4bc8b59aa4cd2cb8d5fa3aeaaf64 | text
+==== GOLDEN ARTEFACT refuse_freeze_mismatch/stderr | bytes=190 | sha256=a26ee8ac0ee0d2e66d02e4da6f3ceb099d23dc18943fade028751bb57a9463a1 | text
 REFUSED: the freeze check failed - the holdout is not opened:
-  - data/cb702_sic.psv sha256 mismatch: footer <SHA12>... vs now <SHA12>... - the frozen artefact was edited
+  - data/cb702_sic.psv sha256 mismatch: footer <SHA12>... vs now <SHA12:data/cb702_sic.psv>... - the frozen artefact was edited
 
 ==== GOLDEN ARTEFACT refuse_freeze_mismatch/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
 
@@ -1176,6 +1176,14 @@ REFUSED: the holdout runs only in its registered form:
   - --no-apollo: the holdout is one full run; a partial or altered run would also block the real one
 
 ==== GOLDEN ARTEFACT refuse_no_apollo/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_no_close/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_no_close/stderr | bytes=155 | sha256=a77eb909137f99f13ae4deb460435857542532232c2679d5fffd4a6da9b649e9 | text
+REFUSED: the holdout runs only in its registered form:
+  - --no-close: the holdout is one full run; a partial or altered run would also block the real one
+
+==== GOLDEN ARTEFACT refuse_no_close/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
 
 ==== GOLDEN ARTEFACT refuse_no_freeze_check/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
 2

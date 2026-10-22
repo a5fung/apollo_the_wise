@@ -523,8 +523,8 @@ DISTRIBUTIONS C0 (tl / h60 / lod / c3_p33_t20_cut3, mature): fill minute <= 30: 
   >= 10R trades (0): none
 
 
-==== GOLDEN ARTEFACT h60_read/hereroot/out/h60_summary_discovery.txt | bytes=1007 | sha256=79592a2223f7a2f7acd169cb1afe12733bebb4212ae7c755bdec377b41b537e5 | text
-H60 READ (#702): period discovery; 2 bases, 3 rows, 2 pairs all logged; freeze check passed; code: module sha256 <SHA64>, runner sha256 <SHA64>
+==== GOLDEN ARTEFACT h60_read/hereroot/out/h60_summary_discovery.txt | bytes=1020 | sha256=6445ce3968a18fcfa85eb9438211af674c24bd8810d2c71cff323075d80cd222 | text
+H60 READ (#702): period discovery; 2 bases, 3 rows, 2 pairs all logged; freeze check passed; code: module sha256 <SHA:cb_module>, runner sha256 <SHA:runner>
 [STEP 0: <N>s]
 TL ROWS by label / file: 2 (the registration's table: 2) -> EQUAL
 STEP 0 CHECKS: the registered table EQUAL in every window; early-close check ok; data-abstain share 0.00% <= 5%; 0 missing pairs
@@ -544,8 +544,8 @@ discovery: C1 CAN'T TELL (n = 1 < 30); n 1; mean R +0.667 ; paired entry can't t
 
 ==== GOLDEN ARTEFACT h60_read/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
 
-==== GOLDEN ARTEFACT h60_read/stdout | bytes=23860 | sha256=144e986f4a58956148c1a38861b421b7914be59811747647e3f3b5fc5406564e | text
-H60 READ (#702): period discovery; 2 bases, 3 rows, 2 pairs all logged; freeze check passed; code: module sha256 <SHA64>, runner sha256 <SHA64>
+==== GOLDEN ARTEFACT h60_read/stdout | bytes=23873 | sha256=827fa982621d957d2f8ca5ef6f6c19204ef72ffd429d5faf125c29c430ae9fd2 | text
+H60 READ (#702): period discovery; 2 bases, 3 rows, 2 pairs all logged; freeze check passed; code: module sha256 <SHA:cb_module>, runner sha256 <SHA:runner>
 [STEP 0: <N>s]
 #702 h60 STEP 0 - discovery: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under the pole (spec key, rule (b)), the base's period from its FIRST-break row; levels tl (decides) / com (beside).
 bases 2 (1 tl / 1 com); rows 3; (E, ticker) pairs 2; pairs not logged in _done.psv 0; logged ok with no file 0; minutes state {'ok': 3}
@@ -784,33 +784,33 @@ WROTE <TMP>/cb702/out/h60_hindsight_discovery.tsv, <TMP>/hereroot/out/h60_hindsi
 0
 ==== GOLDEN ARTEFACT print_pins/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
 
-==== GOLDEN ARTEFACT print_pins/stdout | bytes=913 | sha256=f363cc9c74f57113c46fbab077367a560c512b1d478b855acc44aaddadc9a7c8 | text
-- module sha256: `<SHA64>`
-- runner sha256: `<SHA64>`
-- code/constants.py sha256: `<SHA64>`
-- code/exit_logic.py sha256: `<SHA64>`
-- cb702/daily_closes_all.csv.gz sha256: `<SHA64>`
-- cb702_pre/daily_closes_all.csv.gz sha256: `<SHA64>`
-- cb702/out/candidates.tsv sha256: `<SHA64>`
-- cb702/out/candidates_com_comb.tsv sha256: `<SHA64>`
-- cb702/out/watch.tsv.gz sha256: `<SHA64>`
-- cb702/out/watch_com_comb.tsv.gz sha256: `<SHA64>`
-- cb702/out/trades_discovery_p5.tsv.gz sha256: `<SHA64>`
-- cb702/out/trades_holdout_p5.tsv.gz sha256: `<SHA64>`
-- cb702/minutes/_done.psv sha256: `<SHA64>`
-- cb702_pre/out/candidates_tl_com.tsv sha256: `<SHA64>`
-- cb702_pre/out/watch_tl_com.tsv.gz sha256: `<SHA64>`
-- cb702_pre/out/trades_pre_p5.tsv.gz sha256: `<SHA64>`
-- cb702_pre/minutes/_done.psv sha256: `<SHA64>`
+==== GOLDEN ARTEFACT print_pins/stdout | bytes=1449 | sha256=dd891b3d73d14541f126cd1dda54d9cdbd1f7168de1c480379c94cb7fd2ae5cb | text
+- module sha256: `<SHA:repo/agents/market_intelligence/consolidation_breakout.py>`
+- runner sha256: `<SHA:runner>`
+- code/constants.py sha256: `<SHA:repo/agents/market_intelligence/constants.py>`
+- code/exit_logic.py sha256: `<SHA:repo/agents/market_intelligence/broker/exit_logic.py>`
+- cb702/daily_closes_all.csv.gz sha256: `<SHA:cb702/daily_closes_all.csv.gz>`
+- cb702_pre/daily_closes_all.csv.gz sha256: `<SHA:cb702_pre/daily_closes_all.csv.gz>`
+- cb702/out/candidates.tsv sha256: `<SHA:cb702/out/candidates.tsv>`
+- cb702/out/candidates_com_comb.tsv sha256: `<SHA:cb702/out/candidates_com_comb.tsv>`
+- cb702/out/watch.tsv.gz sha256: `<SHA:cb702/out/watch.tsv.gz>`
+- cb702/out/watch_com_comb.tsv.gz sha256: `<SHA:cb702/out/watch_com_comb.tsv.gz>`
+- cb702/out/trades_discovery_p5.tsv.gz sha256: `<SHA:cb702/out/trades_discovery_p5.tsv.gz>`
+- cb702/out/trades_holdout_p5.tsv.gz sha256: `<SHA:cb702/out/trades_holdout_p5.tsv.gz>`
+- cb702/minutes/_done.psv sha256: `<SHA:cb702/minutes/_done.psv>`
+- cb702_pre/out/candidates_tl_com.tsv sha256: `<SHA:cb702_pre/out/candidates_tl_com.tsv>`
+- cb702_pre/out/watch_tl_com.tsv.gz sha256: `<SHA:cb702_pre/out/watch_tl_com.tsv.gz>`
+- cb702_pre/out/trades_pre_p5.tsv.gz sha256: `<SHA:cb702_pre/out/trades_pre_p5.tsv.gz>`
+- cb702_pre/minutes/_done.psv sha256: `<SHA:cb702_pre/minutes/_done.psv>`
 - cb702/minutes (tree) sha256: `<SHA64>`
 - cb702_pre/minutes (tree) sha256: `<SHA64>`
 - doc body sha256: `<SHA64>`
 
 ==== GOLDEN ARTEFACT refuse_freeze_mismatch/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
 2
-==== GOLDEN ARTEFACT refuse_freeze_mismatch/stderr | bytes=174 | sha256=ebcc0187911ff7e5d7f37dfaec00e5f701fa4a2bf312d16efa357391cc68a1c9 | text
+==== GOLDEN ARTEFACT refuse_freeze_mismatch/stderr | bytes=199 | sha256=23e401f17a018fb7cf78427a9752154c7778c6926a18843a067a2a6d24b003d2 | text
 REFUSED: the freeze check failed - the read is not opened:
-  - cb702/out/candidates.tsv sha256 mismatch: footer <SHA12>... vs now <SHA12>... - the frozen artefact was edited
+  - cb702/out/candidates.tsv sha256 mismatch: footer <SHA12>... vs now <SHA12:cb702/out/candidates.tsv>... - the frozen artefact was edited
 
 ==== GOLDEN ARTEFACT refuse_freeze_mismatch/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
 
@@ -836,6 +836,20 @@ REFUSED: the h60 read runs only in its registered form:
   - --minutes: the h60 read runs in its registered form only (every row of tl and com, the pinned minute trees, the registered tables)
 
 ==== GOLDEN ARTEFACT refuse_minutes/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_missing_pairs/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_missing_pairs/stderr | bytes=114 | sha256=d99a209a8a201d1df4ec06f8fd3fd9a968f5b648ca6bb7bce6155fefc1ab9ee4 | text
+REFUSED: 1 of 2 (date, ticker) pairs are not logged in <TMP>/cb702/minutes/_done.psv. A partial read is never run
+
+==== GOLDEN ARTEFACT refuse_missing_pairs/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_missing_pairs_step0/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_missing_pairs_step0/stderr | bytes=117 | sha256=efcf0ca1267bc45ccf378f5d6b86c5a8c98aa1fdfb92d1210b8ca660823dd961 | text
+REFUSED: 1 of 2 (date, ticker) pairs are not logged in <TMP>/cb702/minutes/_done.psv. STEP 0 reads every row or none
+
+==== GOLDEN ARTEFACT refuse_missing_pairs_step0/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
 
 ==== GOLDEN ARTEFACT refuse_no_freeze_check/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
 2
@@ -879,6 +893,187 @@ REFUSED: <TMP>/cb702/out/trades_discovery_h60.tsv.gz.partial is what a CRASHED h
 REFUSED: --prereg is honoured only with --print-pins or --dry-run - the read pins the registration doc at docs/analysis/cb_hourly_entry_prereg_2026-10-19.md itself
 
 ==== GOLDEN ARTEFACT refuse_prereg/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_small_out/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_small_out/stderr | bytes=114 | sha256=649172678fbe4a51eb84bef941327611f8a08aa9cd7b2adf233d1dcd82fbeab9 | text
+REFUSED: the h60 read runs only in its registered form:
+  - --small-out <TMP>/elsewhere is not <TMP>/hereroot/out
+
+==== GOLDEN ARTEFACT refuse_small_out/stdout | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_step0_differs/cb702/out/h60_step0_discovery.txt | bytes=4810 | sha256=e665b8289b4ee3fc5c165d57b74800878ccb5407f903dde267b94f0cd658aa8b | text
+#702 h60 STEP 0 - discovery: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under the pole (spec key, rule (b)), the base's period from its FIRST-break row; levels tl (decides) / com (beside).
+bases 2 (1 tl / 1 com); rows 3; (E, ticker) pairs 2; pairs not logged in _done.psv 0; logged ok with no file 0; minutes state {'ok': 3}
+EARLY-CLOSE CHECK (check 2): listed dates read 0 - ; other dates with < 25% at minute >= 210: 0 -> ok
+DATA-ABSTAIN SHARE (check 3, h60 on tl, the rows the rule READ): 0 of 2 (0.00%; {}) - limit 5%: ok
+
+REGISTERED TABLE CHECK (check 5) - window discovery: DIFFERS: C1: STEP 0 reads 1, the registration's table says 5
+cell              tl bases  tl multi-break  ORH5 fills (entry facts)  ORH5 fills (pinned P5 table)  com bases  com ORH5 fills
+C0                       1               1                         1                             1          1               1
+C1                       1               1                         1                             1          1               1
+C2                       0               0                         0                             -          0               0
+C3                       0               0                         0                             -          0               0
+C4                       0               0                         0                             -          0               0
+C5                       0               0                         0                             -          0               0
+C6                       0               0                         0                             -          0               0
+C7                       0               0                         0                             -          0               0
+C1_no_retrace            0               0                         0                             -          0               0
+C1_no_tightening         0               0                         0                             -          0               0
+HTF                      0               0                         0                             -          0               0
+C1_s5                    0               0                         0                             -          0               0
+  h60 (tl) per cell: confirmed+filled / confirmed too_wide / confirmed stop_at_or_above_fill / never confirmed (of which data abstains only) / confirmed on the first break day / confirmed after an absent or no-line night
+cell              filled  too_wide  saaf  never (data only)  first day  after a gap
+C0                     1         0     0              0 (0)          0            1
+C1                     1         0     0              0 (0)          0            1
+C2                     0         0     0              0 (0)          0            0
+C3                     0         0     0              0 (0)          0            0
+C4                     0         0     0              0 (0)          0            0
+C5                     0         0     0              0 (0)          0            0
+C6                     0         0     0              0 (0)          0            0
+C7                     0         0     0              0 (0)          0            0
+C1_no_retrace          0         0     0              0 (0)          0            0
+C1_no_tightening       0         0     0              0 (0)          0            0
+HTF                    0         0     0              0 (0)          0            0
+C1_s5                  0         0     0              0 (0)          0            0
+  every entry (tl, C0 / C1): confirmed+filled / too_wide / saaf / never
+entry                 C0             C1
+h60        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h30        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h5         1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h60_first  0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_m025   0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_line0  1 / 0 / 0 / 0  1 / 0 / 0 / 0
+orh60      0 / 0 / 0 / 1  0 / 0 / 0 / 1
+
+NESTING (per row, tl): rows h60 confirms that h30 does not, plus rows h30 confirms that h5 does not: 0 (must be 0); rows confirmed by h5 1, h30 1, h60 1 of 2 rows
+LAST_BAR_ONLY (tl, h60; the hole counted, not fixed): 0 rows, by what followed: {}
+h60_line0 (the first-break night's line held) vs the redrawn line: rows confirmed 1 vs 1; rows where the two disagree: 0
+FILL MINUTE (tl, h60 filled trades, minutes since 09:30): <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30)
+FIRST BREAK -> CONFIRMED BREAK (sessions): <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+FILLED AT OR UNDER THE LINE: 0 of 1
+TL ROWS of the period's bases: 2 (the registration's row count is by row LABEL / file: see the read's header)
+
+
+==== GOLDEN ARTEFACT refuse_step0_differs/exit | bytes=1 | sha256=d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35 | text
+2
+==== GOLDEN ARTEFACT refuse_step0_differs/hereroot/out/h60_step0_discovery.txt | bytes=4810 | sha256=e665b8289b4ee3fc5c165d57b74800878ccb5407f903dde267b94f0cd658aa8b | text
+#702 h60 STEP 0 - discovery: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under the pole (spec key, rule (b)), the base's period from its FIRST-break row; levels tl (decides) / com (beside).
+bases 2 (1 tl / 1 com); rows 3; (E, ticker) pairs 2; pairs not logged in _done.psv 0; logged ok with no file 0; minutes state {'ok': 3}
+EARLY-CLOSE CHECK (check 2): listed dates read 0 - ; other dates with < 25% at minute >= 210: 0 -> ok
+DATA-ABSTAIN SHARE (check 3, h60 on tl, the rows the rule READ): 0 of 2 (0.00%; {}) - limit 5%: ok
+
+REGISTERED TABLE CHECK (check 5) - window discovery: DIFFERS: C1: STEP 0 reads 1, the registration's table says 5
+cell              tl bases  tl multi-break  ORH5 fills (entry facts)  ORH5 fills (pinned P5 table)  com bases  com ORH5 fills
+C0                       1               1                         1                             1          1               1
+C1                       1               1                         1                             1          1               1
+C2                       0               0                         0                             -          0               0
+C3                       0               0                         0                             -          0               0
+C4                       0               0                         0                             -          0               0
+C5                       0               0                         0                             -          0               0
+C6                       0               0                         0                             -          0               0
+C7                       0               0                         0                             -          0               0
+C1_no_retrace            0               0                         0                             -          0               0
+C1_no_tightening         0               0                         0                             -          0               0
+HTF                      0               0                         0                             -          0               0
+C1_s5                    0               0                         0                             -          0               0
+  h60 (tl) per cell: confirmed+filled / confirmed too_wide / confirmed stop_at_or_above_fill / never confirmed (of which data abstains only) / confirmed on the first break day / confirmed after an absent or no-line night
+cell              filled  too_wide  saaf  never (data only)  first day  after a gap
+C0                     1         0     0              0 (0)          0            1
+C1                     1         0     0              0 (0)          0            1
+C2                     0         0     0              0 (0)          0            0
+C3                     0         0     0              0 (0)          0            0
+C4                     0         0     0              0 (0)          0            0
+C5                     0         0     0              0 (0)          0            0
+C6                     0         0     0              0 (0)          0            0
+C7                     0         0     0              0 (0)          0            0
+C1_no_retrace          0         0     0              0 (0)          0            0
+C1_no_tightening       0         0     0              0 (0)          0            0
+HTF                    0         0     0              0 (0)          0            0
+C1_s5                  0         0     0              0 (0)          0            0
+  every entry (tl, C0 / C1): confirmed+filled / too_wide / saaf / never
+entry                 C0             C1
+h60        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h30        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h5         1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h60_first  0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_m025   0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_line0  1 / 0 / 0 / 0  1 / 0 / 0 / 0
+orh60      0 / 0 / 0 / 1  0 / 0 / 0 / 1
+
+NESTING (per row, tl): rows h60 confirms that h30 does not, plus rows h30 confirms that h5 does not: 0 (must be 0); rows confirmed by h5 1, h30 1, h60 1 of 2 rows
+LAST_BAR_ONLY (tl, h60; the hole counted, not fixed): 0 rows, by what followed: {}
+h60_line0 (the first-break night's line held) vs the redrawn line: rows confirmed 1 vs 1; rows where the two disagree: 0
+FILL MINUTE (tl, h60 filled trades, minutes since 09:30): <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30)
+FIRST BREAK -> CONFIRMED BREAK (sessions): <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+FILLED AT OR UNDER THE LINE: 0 of 1
+TL ROWS of the period's bases: 2 (the registration's row count is by row LABEL / file: see the read's header)
+
+
+==== GOLDEN ARTEFACT refuse_step0_differs/hereroot/out/h60_summary_discovery.txt | bytes=370 | sha256=7cd8a74ebb39a1ec93351bfa39fba024ff59298326d75f46fa3cd3974b7bba8a | text
+H60 READ (#702): period discovery; 2 bases, 3 rows, 2 pairs all logged; freeze check passed; code: module sha256 <SHA:cb_module>, runner sha256 <SHA:runner>
+[STEP 0: <N>s]
+TL ROWS by label / file: 2 (the registration's table: 2) -> EQUAL
+REFUSED before any exit: STEP 0 does not pass the registered checks: discovery: C1: STEP 0 reads 1, the registration's table says 5
+
+==== GOLDEN ARTEFACT refuse_step0_differs/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT refuse_step0_differs/stdout | bytes=5180 | sha256=1eee598c616a1e377fa6b1fca4e59eb8801fcdb1a81e7b137b95c122256075b8 | text
+H60 READ (#702): period discovery; 2 bases, 3 rows, 2 pairs all logged; freeze check passed; code: module sha256 <SHA:cb_module>, runner sha256 <SHA:runner>
+[STEP 0: <N>s]
+#702 h60 STEP 0 - discovery: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under the pole (spec key, rule (b)), the base's period from its FIRST-break row; levels tl (decides) / com (beside).
+bases 2 (1 tl / 1 com); rows 3; (E, ticker) pairs 2; pairs not logged in _done.psv 0; logged ok with no file 0; minutes state {'ok': 3}
+EARLY-CLOSE CHECK (check 2): listed dates read 0 - ; other dates with < 25% at minute >= 210: 0 -> ok
+DATA-ABSTAIN SHARE (check 3, h60 on tl, the rows the rule READ): 0 of 2 (0.00%; {}) - limit 5%: ok
+
+REGISTERED TABLE CHECK (check 5) - window discovery: DIFFERS: C1: STEP 0 reads 1, the registration's table says 5
+cell              tl bases  tl multi-break  ORH5 fills (entry facts)  ORH5 fills (pinned P5 table)  com bases  com ORH5 fills
+C0                       1               1                         1                             1          1               1
+C1                       1               1                         1                             1          1               1
+C2                       0               0                         0                             -          0               0
+C3                       0               0                         0                             -          0               0
+C4                       0               0                         0                             -          0               0
+C5                       0               0                         0                             -          0               0
+C6                       0               0                         0                             -          0               0
+C7                       0               0                         0                             -          0               0
+C1_no_retrace            0               0                         0                             -          0               0
+C1_no_tightening         0               0                         0                             -          0               0
+HTF                      0               0                         0                             -          0               0
+C1_s5                    0               0                         0                             -          0               0
+  h60 (tl) per cell: confirmed+filled / confirmed too_wide / confirmed stop_at_or_above_fill / never confirmed (of which data abstains only) / confirmed on the first break day / confirmed after an absent or no-line night
+cell              filled  too_wide  saaf  never (data only)  first day  after a gap
+C0                     1         0     0              0 (0)          0            1
+C1                     1         0     0              0 (0)          0            1
+C2                     0         0     0              0 (0)          0            0
+C3                     0         0     0              0 (0)          0            0
+C4                     0         0     0              0 (0)          0            0
+C5                     0         0     0              0 (0)          0            0
+C6                     0         0     0              0 (0)          0            0
+C7                     0         0     0              0 (0)          0            0
+C1_no_retrace          0         0     0              0 (0)          0            0
+C1_no_tightening       0         0     0              0 (0)          0            0
+HTF                    0         0     0              0 (0)          0            0
+C1_s5                  0         0     0              0 (0)          0            0
+  every entry (tl, C0 / C1): confirmed+filled / too_wide / saaf / never
+entry                 C0             C1
+h60        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h30        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h5         1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h60_first  0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_m025   0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_line0  1 / 0 / 0 / 0  1 / 0 / 0 / 0
+orh60      0 / 0 / 0 / 1  0 / 0 / 0 / 1
+
+NESTING (per row, tl): rows h60 confirms that h30 does not, plus rows h30 confirms that h5 does not: 0 (must be 0); rows confirmed by h5 1, h30 1, h60 1 of 2 rows
+LAST_BAR_ONLY (tl, h60; the hole counted, not fixed): 0 rows, by what followed: {}
+h60_line0 (the first-break night's line held) vs the redrawn line: rows confirmed 1 vs 1; rows where the two disagree: 0
+FILL MINUTE (tl, h60 filled trades, minutes since 09:30): <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30)
+FIRST BREAK -> CONFIRMED BREAK (sessions): <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+FILLED AT OR UNDER THE LINE: 0 of 1
+TL ROWS of the period's bases: 2 (the registration's row count is by row LABEL / file: see the read's header)
+
+TL ROWS by label / file: 2 (the registration's table: 2) -> EQUAL
+REFUSED before any exit: STEP 0 does not pass the registered checks: discovery: C1: STEP 0 reads 1, the registration's table says 5
 
 ==== GOLDEN ARTEFACT step0/cb702/out/h60_step0_discovery.tsv.gz | bytes=3280 | sha256=9e777feee39fccae7995faa2a87d2c249ee59f0afc9472caa0659b7597fb1258 | text
 ticker	D	E	K	period	pole_date	row_no	n_rows	retrigger	first_E	sessions_since_first	gap_kind	early_close	minutes_state	variant	status	reason	tried	trade	window_end	walk_from	fill_minute	width_pct	fill_le_line	lbo_kind	own_C1	C0	C1	C2	C3	C4	C5	C6	C7	C1_no_retrace	C1_no_tightening	HTF	C1_s5
@@ -1068,4 +1263,196 @@ TL ROWS of the period's bases: 2 (the registration's row count is by row LABEL /
 
 TL ROWS by label / file: 2 (the registration's table: 2) -> EQUAL
 WROTE <TMP>/cb702/out/h60_step0_discovery.tsv.gz, <TMP>/hereroot/out/h60_step0_discovery.txt; WALL TIME <N>s
+
+==== GOLDEN ARTEFACT twin_failed/cb702/out/h60_step0_discovery.txt | bytes=4783 | sha256=22ecba7f8c6ae503770befdb295c082409f3a57332fffe9599c33f1dd2a67042 | text
+#702 h60 STEP 0 - discovery: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under the pole (spec key, rule (b)), the base's period from its FIRST-break row; levels tl (decides) / com (beside).
+bases 2 (1 tl / 1 com); rows 3; (E, ticker) pairs 2; pairs not logged in _done.psv 0; logged ok with no file 0; minutes state {'ok': 3}
+EARLY-CLOSE CHECK (check 2): listed dates read 0 - ; other dates with < 25% at minute >= 210: 0 -> ok
+DATA-ABSTAIN SHARE (check 3, h60 on tl, the rows the rule READ): 0 of 2 (0.00%; {}) - limit 5%: ok
+
+REGISTERED TABLE CHECK (check 5) - window discovery: EQUAL to the registration's table
+cell              tl bases  tl multi-break  ORH5 fills (entry facts)  ORH5 fills (pinned P5 table)  com bases  com ORH5 fills
+C0                       1               1                         1                             1          1               1
+C1                       1               1                         1                             1          1               1
+C2                       0               0                         0                             -          0               0
+C3                       0               0                         0                             -          0               0
+C4                       0               0                         0                             -          0               0
+C5                       0               0                         0                             -          0               0
+C6                       0               0                         0                             -          0               0
+C7                       0               0                         0                             -          0               0
+C1_no_retrace            0               0                         0                             -          0               0
+C1_no_tightening         0               0                         0                             -          0               0
+HTF                      0               0                         0                             -          0               0
+C1_s5                    0               0                         0                             -          0               0
+  h60 (tl) per cell: confirmed+filled / confirmed too_wide / confirmed stop_at_or_above_fill / never confirmed (of which data abstains only) / confirmed on the first break day / confirmed after an absent or no-line night
+cell              filled  too_wide  saaf  never (data only)  first day  after a gap
+C0                     1         0     0              0 (0)          0            1
+C1                     1         0     0              0 (0)          0            1
+C2                     0         0     0              0 (0)          0            0
+C3                     0         0     0              0 (0)          0            0
+C4                     0         0     0              0 (0)          0            0
+C5                     0         0     0              0 (0)          0            0
+C6                     0         0     0              0 (0)          0            0
+C7                     0         0     0              0 (0)          0            0
+C1_no_retrace          0         0     0              0 (0)          0            0
+C1_no_tightening       0         0     0              0 (0)          0            0
+HTF                    0         0     0              0 (0)          0            0
+C1_s5                  0         0     0              0 (0)          0            0
+  every entry (tl, C0 / C1): confirmed+filled / too_wide / saaf / never
+entry                 C0             C1
+h60        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h30        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h5         1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h60_first  0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_m025   0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_line0  1 / 0 / 0 / 0  1 / 0 / 0 / 0
+orh60      0 / 0 / 0 / 1  0 / 0 / 0 / 1
+
+NESTING (per row, tl): rows h60 confirms that h30 does not, plus rows h30 confirms that h5 does not: 0 (must be 0); rows confirmed by h5 1, h30 1, h60 1 of 2 rows
+LAST_BAR_ONLY (tl, h60; the hole counted, not fixed): 0 rows, by what followed: {}
+h60_line0 (the first-break night's line held) vs the redrawn line: rows confirmed 1 vs 1; rows where the two disagree: 0
+FILL MINUTE (tl, h60 filled trades, minutes since 09:30): <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30)
+FIRST BREAK -> CONFIRMED BREAK (sessions): <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+FILLED AT OR UNDER THE LINE: 0 of 1
+TL ROWS of the period's bases: 2 (the registration's row count is by row LABEL / file: see the read's header)
+
+
+==== GOLDEN ARTEFACT twin_failed/cb702/out/trades_discovery_h60twin.tsv.gz | bytes=2723 | sha256=0270c0875335ff1ade0acdbcd6a5b3f3684e923b58e58c71b62ba823730f6d37 | text
+ticker	D	E	K	year	month	retrigger_chain	C0	C1	C2	C3	C4	C5	C6	C7	C1_no_retrace	C1_no_tightening	HTF	C1_s5	adr20	atr14	median_dollar_vol20	phase_qqq_10_20	gap_over_1adr	tightening_ratio	range_recent5	range5_adr	fill	fill_minute	stop_variant	stop	width_pct	abstain_reason	target	arm	status	realized_r	pnl_adr	acct_pct	sessions_held	mature	open_mark	partial_kind	partial_session	trail_n	beabove	fwd_bars	fwd_hole
+X	2023-07-28	2023-07-31	com	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.1101	10	lod	10.0	0.010890099999010812		10.330299999999998	c3_p33_t20_cut3	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0			20	0	121	0
+X	2023-07-28	2023-07-31	com	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.1101	10	lod	10.0	0.010890099999010812		10.330299999999998	p33_s3_t10	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0			10	0	121	0
+X	2023-07-28	2023-07-31	com	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.1101	10	lod	10.0	0.010890099999010812		10.330299999999998	c3_p33_t20	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0			20	0	121	0
+X	2023-07-28	2023-07-31	com	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.1101	10	lod	10.0	0.010890099999010812		10.330299999999998	r2_p33_t20	stopped_day0	-1.0	-0.10890099999010812	-0.0021780199998021623	0	1	0			20	0	121	0
+X	2023-07-28	2023-07-31	tl	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.26025	10	lod	10.0	0.025364879023415533		10.780749999999998	c3_p33_t20_cut3	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0			20	0	121	0
+X	2023-07-28	2023-07-31	tl	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.26025	10	lod	10.0	0.025364879023415533		10.780749999999998	p33_s3_t10	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0			10	0	121	0
+X	2023-07-28	2023-07-31	tl	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.26025	10	lod	10.0	0.025364879023415533		10.780749999999998	c3_p33_t20	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0			20	0	121	0
+X	2023-07-28	2023-07-31	tl	2023	2023-07	0	1	1	0	0	0	0	0	0	0	0	0	0	0.1	0.05	50000000.0	1	0	0.6	0.019999999999999928	0.19999999999999926	10.26025	10	lod	10.0	0.025364879023415533		10.780749999999998	r2_p33_t20	stopped_day0	-1.0	-0.2536487902341553	-0.005072975804683107	0	1	0			20	0	121	0
+
+==== GOLDEN ARTEFACT twin_failed/exit | bytes=1 | sha256=4e07408562bedb8b60ce05c1decfe3ad16b72230967de01f640b7e4729b49fce | text
+3
+==== GOLDEN ARTEFACT twin_failed/hereroot/out/h60_step0_discovery.txt | bytes=4783 | sha256=22ecba7f8c6ae503770befdb295c082409f3a57332fffe9599c33f1dd2a67042 | text
+#702 h60 STEP 0 - discovery: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under the pole (spec key, rule (b)), the base's period from its FIRST-break row; levels tl (decides) / com (beside).
+bases 2 (1 tl / 1 com); rows 3; (E, ticker) pairs 2; pairs not logged in _done.psv 0; logged ok with no file 0; minutes state {'ok': 3}
+EARLY-CLOSE CHECK (check 2): listed dates read 0 - ; other dates with < 25% at minute >= 210: 0 -> ok
+DATA-ABSTAIN SHARE (check 3, h60 on tl, the rows the rule READ): 0 of 2 (0.00%; {}) - limit 5%: ok
+
+REGISTERED TABLE CHECK (check 5) - window discovery: EQUAL to the registration's table
+cell              tl bases  tl multi-break  ORH5 fills (entry facts)  ORH5 fills (pinned P5 table)  com bases  com ORH5 fills
+C0                       1               1                         1                             1          1               1
+C1                       1               1                         1                             1          1               1
+C2                       0               0                         0                             -          0               0
+C3                       0               0                         0                             -          0               0
+C4                       0               0                         0                             -          0               0
+C5                       0               0                         0                             -          0               0
+C6                       0               0                         0                             -          0               0
+C7                       0               0                         0                             -          0               0
+C1_no_retrace            0               0                         0                             -          0               0
+C1_no_tightening         0               0                         0                             -          0               0
+HTF                      0               0                         0                             -          0               0
+C1_s5                    0               0                         0                             -          0               0
+  h60 (tl) per cell: confirmed+filled / confirmed too_wide / confirmed stop_at_or_above_fill / never confirmed (of which data abstains only) / confirmed on the first break day / confirmed after an absent or no-line night
+cell              filled  too_wide  saaf  never (data only)  first day  after a gap
+C0                     1         0     0              0 (0)          0            1
+C1                     1         0     0              0 (0)          0            1
+C2                     0         0     0              0 (0)          0            0
+C3                     0         0     0              0 (0)          0            0
+C4                     0         0     0              0 (0)          0            0
+C5                     0         0     0              0 (0)          0            0
+C6                     0         0     0              0 (0)          0            0
+C7                     0         0     0              0 (0)          0            0
+C1_no_retrace          0         0     0              0 (0)          0            0
+C1_no_tightening       0         0     0              0 (0)          0            0
+HTF                    0         0     0              0 (0)          0            0
+C1_s5                  0         0     0              0 (0)          0            0
+  every entry (tl, C0 / C1): confirmed+filled / too_wide / saaf / never
+entry                 C0             C1
+h60        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h30        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h5         1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h60_first  0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_m025   0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_line0  1 / 0 / 0 / 0  1 / 0 / 0 / 0
+orh60      0 / 0 / 0 / 1  0 / 0 / 0 / 1
+
+NESTING (per row, tl): rows h60 confirms that h30 does not, plus rows h30 confirms that h5 does not: 0 (must be 0); rows confirmed by h5 1, h30 1, h60 1 of 2 rows
+LAST_BAR_ONLY (tl, h60; the hole counted, not fixed): 0 rows, by what followed: {}
+h60_line0 (the first-break night's line held) vs the redrawn line: rows confirmed 1 vs 1; rows where the two disagree: 0
+FILL MINUTE (tl, h60 filled trades, minutes since 09:30): <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30)
+FIRST BREAK -> CONFIRMED BREAK (sessions): <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+FILLED AT OR UNDER THE LINE: 0 of 1
+TL ROWS of the period's bases: 2 (the registration's row count is by row LABEL / file: see the read's header)
+
+
+==== GOLDEN ARTEFACT twin_failed/hereroot/out/h60_summary_discovery.txt | bytes=659 | sha256=fb4a087c2729123f4559d05b8746e4aaa899e8223baff4058c14622b2cdda61d | text
+H60 READ (#702): period discovery; 2 bases, 3 rows, 2 pairs all logged; freeze check passed; code: module sha256 <SHA:cb_module>, runner sha256 <SHA:runner>
+[STEP 0: <N>s]
+TL ROWS by label / file: 2 (the registration's table: 2) -> EQUAL
+STEP 0 CHECKS: the registered table EQUAL in every window; early-close check ok; data-abstain share 0.00% <= 5%; 0 missing pairs
+[load: <N>s]
+[entries + P5 walks: <N>s]
+TWIN CHECK FAILED - the ORH5 re-walk (trades_discovery_h60twin.tsv.gz, 8 rows) is not the pinned trades_discovery_p5.tsv.gz: content differs (sha 0270c0875335 vs pinned cb677a6a2968); 2 of 8 paired rows differ in realized_r - the report is NOT written
+
+==== GOLDEN ARTEFACT twin_failed/stderr | bytes=0 | sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 | text
+
+==== GOLDEN ARTEFACT twin_failed/stdout | bytes=5596 | sha256=f84cedec3bb7af88b83aa7ed432efd9c3934b8b87a5f2293b365358735187b5e | text
+H60 READ (#702): period discovery; 2 bases, 3 rows, 2 pairs all logged; freeze check passed; code: module sha256 <SHA:cb_module>, runner sha256 <SHA:runner>
+[STEP 0: <N>s]
+#702 h60 STEP 0 - discovery: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under the pole (spec key, rule (b)), the base's period from its FIRST-break row; levels tl (decides) / com (beside).
+bases 2 (1 tl / 1 com); rows 3; (E, ticker) pairs 2; pairs not logged in _done.psv 0; logged ok with no file 0; minutes state {'ok': 3}
+EARLY-CLOSE CHECK (check 2): listed dates read 0 - ; other dates with < 25% at minute >= 210: 0 -> ok
+DATA-ABSTAIN SHARE (check 3, h60 on tl, the rows the rule READ): 0 of 2 (0.00%; {}) - limit 5%: ok
+
+REGISTERED TABLE CHECK (check 5) - window discovery: EQUAL to the registration's table
+cell              tl bases  tl multi-break  ORH5 fills (entry facts)  ORH5 fills (pinned P5 table)  com bases  com ORH5 fills
+C0                       1               1                         1                             1          1               1
+C1                       1               1                         1                             1          1               1
+C2                       0               0                         0                             -          0               0
+C3                       0               0                         0                             -          0               0
+C4                       0               0                         0                             -          0               0
+C5                       0               0                         0                             -          0               0
+C6                       0               0                         0                             -          0               0
+C7                       0               0                         0                             -          0               0
+C1_no_retrace            0               0                         0                             -          0               0
+C1_no_tightening         0               0                         0                             -          0               0
+HTF                      0               0                         0                             -          0               0
+C1_s5                    0               0                         0                             -          0               0
+  h60 (tl) per cell: confirmed+filled / confirmed too_wide / confirmed stop_at_or_above_fill / never confirmed (of which data abstains only) / confirmed on the first break day / confirmed after an absent or no-line night
+cell              filled  too_wide  saaf  never (data only)  first day  after a gap
+C0                     1         0     0              0 (0)          0            1
+C1                     1         0     0              0 (0)          0            1
+C2                     0         0     0              0 (0)          0            0
+C3                     0         0     0              0 (0)          0            0
+C4                     0         0     0              0 (0)          0            0
+C5                     0         0     0              0 (0)          0            0
+C6                     0         0     0              0 (0)          0            0
+C7                     0         0     0              0 (0)          0            0
+C1_no_retrace          0         0     0              0 (0)          0            0
+C1_no_tightening       0         0     0              0 (0)          0            0
+HTF                    0         0     0              0 (0)          0            0
+C1_s5                  0         0     0              0 (0)          0            0
+  every entry (tl, C0 / C1): confirmed+filled / too_wide / saaf / never
+entry                 C0             C1
+h60        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h30        1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h5         1 / 0 / 0 / 0  1 / 0 / 0 / 0
+h60_first  0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_m025   0 / 0 / 0 / 1  0 / 0 / 0 / 1
+h60_line0  1 / 0 / 0 / 0  1 / 0 / 0 / 0
+orh60      0 / 0 / 0 / 1  0 / 0 / 0 / 1
+
+NESTING (per row, tl): rows h60 confirms that h30 does not, plus rows h30 confirms that h5 does not: 0 (must be 0); rows confirmed by h5 1, h30 1, h60 1 of 2 rows
+LAST_BAR_ONLY (tl, h60; the hole counted, not fixed): 0 rows, by what followed: {}
+h60_line0 (the first-break night's line held) vs the redrawn line: rows confirmed 1 vs 1; rows where the two disagree: 0
+FILL MINUTE (tl, h60 filled trades, minutes since 09:30): <= 30: 1  31-90: 0  91-150: 0  151-210: 0  211-270: 0  271-330: 0  > 330: 0  (n 1, median 30)
+FIRST BREAK -> CONFIRMED BREAK (sessions): <= 0: 0  1-1: 0  2-5: 1  6-20: 0  > 20: 0  (n 1, median 2)
+FILLED AT OR UNDER THE LINE: 0 of 1
+TL ROWS of the period's bases: 2 (the registration's row count is by row LABEL / file: see the read's header)
+
+TL ROWS by label / file: 2 (the registration's table: 2) -> EQUAL
+STEP 0 CHECKS: the registered table EQUAL in every window; early-close check ok; data-abstain share 0.00% <= 5%; 0 missing pairs
+bars: 600 rows / 2 tickers / 300 sessions 2023-01-02..2024-02-23 (<N>s); 0 tickers have a missing session inside their span (0 holes)
+[load: <N>s]
+  1/1 dates, 8 rows
+[entries + P5 walks: <N>s]
+TWIN CHECK FAILED - the ORH5 re-walk (trades_discovery_h60twin.tsv.gz, 8 rows) is not the pinned trades_discovery_p5.tsv.gz: content differs (sha 0270c0875335 vs pinned cb677a6a2968); 2 of 8 paired rows differ in realized_r - the report is NOT written
 
