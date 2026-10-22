@@ -773,3 +773,28 @@ printed; its tally and eight values are check-2 equality targets), `cb702/out/tr
 `cb702/out/candidates.tsv`, `cb702_pre/out/candidates_tl_com.tsv`, `cb702/out/watch.tsv.gz`, `cb702_pre/out/watch_tl_com.tsv.gz`,
 `cb702/daily_closes_all.csv.gz`, `cb702_pre/daily_closes_all.csv.gz`, `cb702/minutes/_done.psv`, `cb702_pre/minutes/_done.psv`,
 the two minute trees, the module, the runner, the scaffold (`registered_read.py`), the doc body.
+
+- module sha256: `e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b`
+- rederivation module sha256: `c739fe3a195a9e63a0e32ac25dc66f7a45a75db5569c16108401b06faa929aba`
+- golden fixtures module sha256: `ce300ef608b1050e5f28e5d3d6d165ee7b3f233415db2a583a239b5c80f45647`
+- cb702_pre/out/aplus_intraday_profile.tsv sha256: `0a5bf816ed8d1e241aa80bb8db17012923ad9a8cad7222433a6df9268fa4bedb`
+- cb702/out/trades_discovery_exitpb.tsv.gz sha256: `e6a24c019bd13a49d33cf9961c7abef7c112441a4679b2f926288d0dc26929f9`
+- cb702/out/trades_holdout_exitpb.tsv.gz sha256: `ace5977e570b42542e5dc5af1eef9b1fa0d2dbe994d9121aa9320c03f5a5bfe0`
+- cb702/out/trades_discovery_p5.tsv.gz sha256: `8e906dc8d0242fba972e88d28eccb17c57b6b28d35f5f12fa1292208aa9c1bd4`
+- cb702/out/trades_holdout_p5.tsv.gz sha256: `557a4152809aae22bb964653097a1684cfcedd8269777c69443227c9e794b673`
+- cb702/out/candidates.tsv sha256: `b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7`
+- cb702/out/watch.tsv.gz sha256: `59e757cacb3250066393d0395e4abe89adff3787c34d1f2f7ad5fd5e2f2a5c0b`
+- cb702_pre/out/trades_pre_exitpb.tsv.gz sha256: `a5bbad8804c0bc6869237a3943f14c8844759b1de8199ea3e470fee797322bbb`
+- cb702_pre/out/trades_pre_p5.tsv.gz sha256: `07c10b952316b28daf8f6cfff15437efb23b939af74a27b4bb60c5948712ec86`
+- cb702_pre/out/candidates_tl_com.tsv sha256: `4ee9e04ca80f82fc02f1659b078263f9dcd1b197c395733a5f389367277268e6`
+- cb702_pre/out/watch_tl_com.tsv.gz sha256: `8f063d6bc613bcecb9827d8a961525fb589f48882873e2dbe82654eb030700e8`
+- cb702/daily_closes_all.csv.gz sha256: `ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba`
+- cb702_pre/daily_closes_all.csv.gz sha256: `b10eea41775e657939c64e314068cb3c606d23d44de8488649fb67a4ac5ed773`
+- cb702/minutes/_done.psv sha256: `cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178`
+- cb702_pre/minutes/_done.psv sha256: `bbb38323a9b5748ed094e45332686804d9804760183d77c7f9ca9c74cdc2dc41`
+- cb702/minutes (tree) sha256: `f1d98fd9d2352c45e90849e18a163b8ca31d2526eb851e5a76dd11ffd79a9fe5`
+- cb702_pre/minutes (tree) sha256: `c019a52c8ed624263bd8b3ef0c36f54c5f77ce3cbee75751c0fd2a3026eeccd8`
+- runner sha256: `bb62adfd7c8e827fa63d174ec4fc55b48c667d9d79c03cb33d389558795d6875`
+- scaffold sha256: `28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449`
+- spec module sha256: `e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee`
+- doc body sha256: `c38f6e183e41c875731c87972e9a0cc4300c4dc256519ee9aa3df163ce66f847`
