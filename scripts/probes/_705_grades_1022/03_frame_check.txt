@@ -1,91 +1,92 @@
-## 0. Frames: manifest 2184 grades frames | cutter log ok 1487 | on disk 1487 | OCR'd 1485 | + prior-batch frames of graded pairs 50 (OCR'd 51)
-## 1. OCR extraction (1535 frames)
-- re-read agrees with the earlier partial screen on 400/400 tickers and 400/400 dates
-- daily tab found: original crop 1266/1535 (82.5%) | with the full-frame '-1D/-D/XXXX Daily' fallback 1459/1535 (95.0%)
-- screen date: taskbar 1413 | fallback to the video upload date 122 (of which taskbar read implausible/out of 0-30 d before upload: 0)
-- 'ADR x,y%' read: 1490/1535 | price axis found: 1515/1535 | frames with an off-grid price tag: 1337/1535
-- upload date minus taskbar date (days), 1413 frames: 0d:1366, 1d:33, 2d:8, 4d:2, 5d:3, 7d:1  -> same day 96.7%
+## 0. Frames: manifest 2184 grades frames | cutter log ok 2184 | on disk 2184 | OCR'd 2184 | + prior-batch frames of graded pairs 50 (OCR'd 51)
+## 1. OCR extraction (2234 frames)
+- re-read agrees with the earlier partial screen on 386/400 tickers and 388/400 dates
+- daily tab found: original crop 1939/2234 (86.8%) | with the full-frame '-1D/-D/XXXX Daily' fallback 2160/2234 (96.7%)
+- screen date: taskbar 2212 | fallback to the video upload date 22 (of which taskbar read implausible/out of 0-30 d before upload: 18)
+- 'ADR x,y%' read: 2174/2234 | price axis found: 2206/2234 | frames with an off-grid price tag: 1947/2234
+- upload date minus taskbar date (days), 2212 frames: 0d:2129, 1d:54, 2d:11, 4d:4, 5d:11, 7d:3  -> same day 96.2%
 
 ## 2. Rebuild from our bars (true on-screen ticker + 10 random wrong tickers per frame)
-- frames with a readable screen ticker + our bars on the screen date: 1186/1535  (no ticker read 33, ticker not in our bars on that date 316)
+- frames with a readable screen ticker + our bars on the screen date: 2002/2234  (no ticker read 5, ticker not in our bars on that date 227)
 
-## 3. ADR definition + tolerance, from the 539 caption==screen frames (daily tab, taskbar date, ADR read)
-- formula a: mean((H-L)/C) x100: |OCR-ours| median 0.11, p75 0.30, p90 0.79; signed (OCR minus ours, nearest end) median +0.08; within 0.3 75% | 0.6 86% | 1.0 94% (n=539)
-    nearest end session: screen-date session 307, prior session 232
-- formula b: (mean(H/L)-1) x100  [TC2000 / Qullamaggie ADR%]: |OCR-ours| median 0.07, p75 0.16, p90 0.27; signed (OCR minus ours, nearest end) median -0.05; within 0.3 92% | 0.6 97% | 1.0 98% (n=539)
-    nearest end session: screen-date session 276, prior session 263
+## 3. ADR definition + tolerance, from the 896 caption==screen frames (daily tab, taskbar date, ADR read)
+- formula a: mean((H-L)/C) x100: |OCR-ours| median 0.11, p75 0.33, p90 0.88; signed (OCR minus ours, nearest end) median +0.08; within 0.3 74% | 0.6 85% | 1.0 91% (n=896)
+    nearest end session: screen-date session 519, prior session 377
+- formula b: (mean(H/L)-1) x100  [TC2000 / Qullamaggie ADR%]: |OCR-ours| median 0.07, p75 0.17, p90 0.30; signed (OCR minus ours, nearest end) median -0.05; within 0.3 90% | 0.6 96% | 1.0 98% (n=896)
+    nearest end session: screen-date session 440, prior session 456
 - FORMULA USED (lower median error on the matched frames): b  (H/L form); signed offset shown above decides if 0.6 is fair
-- tolerance 0.3: true-ticker match 91.7% (494/539; 95% CI 89.0-93.7%) | WRONG-ticker false match 4.9% (730/14829; 95% CI 4.6-5.3%)
-- tolerance 0.6: true-ticker match 97.2% (524/539; 95% CI 95.5-98.3%) | WRONG-ticker false match 9.2% (1371/14829; 95% CI 8.8-9.7%)
-- tolerance 1.0: true-ticker match 98.3% (530/539; 95% CI 96.9-99.1%) | WRONG-ticker false match 15.2% (2248/14829; 95% CI 14.6-15.7%)
+- tolerance 0.3: true-ticker match 89.7% (804/896; 95% CI 87.6-91.6%) | WRONG-ticker false match 5.3% (1139/21621; 95% CI 5.0-5.6%)
+- tolerance 0.6: true-ticker match 95.6% (857/896; 95% CI 94.1-96.8%) | WRONG-ticker false match 9.5% (2046/21621; 95% CI 9.1-9.9%)
+- tolerance 1.0: true-ticker match 97.9% (877/896; 95% CI 96.7-98.6%) | WRONG-ticker false match 15.2% (3282/21621; 95% CI 14.7-15.7%)
 - TOLERANCE USED: 0.6 (fixed in advance by the task; the table above is the justification, not a re-tune)
 
-## 4. Match rates: POSITIVE control (caption==screen, n=539) | all frames with a daily tab + bars (n=1153) | NEGATIVE control: random wrong ticker (n=15278 draws, 1535 frames)
-- a: ADR: positive 97.2% (524/539; 95% CI 95.5-98.3%) | all-daily 95.3% (1099/1153; 95% CI 93.9-96.4%) | FALSE-MATCH 9.0% (1371/15278; 95% CI 8.5-9.4%)
-- b: any axis label in raw range: positive 98.9% (533/539; 95% CI 97.6-99.5%) | all-daily 96.1% (1108/1153; 95% CI 94.8-97.1%) | FALSE-MATCH 18.3% (2792/15278; 95% CI 17.7-18.9%)
--    b-tag: off-grid price tag only: positive 95.5% (515/539; 95% CI 93.5-97.0%) | all-daily 88.4% (1019/1153; 95% CI 86.4-90.1%) | FALSE-MATCH 1.7% (260/15278; 95% CI 1.5-1.9%)
--    b-tick: round ticks only: positive 91.3% (492/539; 95% CI 88.6-93.4%) | all-daily 89.7% (1034/1153; 95% CI 87.8-91.3%) | FALSE-MATCH 18.0% (2751/15278; 95% CI 17.4-18.6%)
-- a OR b  [spec CONFIRMED rule, before the daily-tab gate]: positive 100.0% (539/539; 95% CI 99.3-100.0%) | all-daily 99.1% (1143/1153; 95% CI 98.4-99.5%) | FALSE-MATCH 25.5% (3901/15278; 95% CI 24.8-26.2%)
-- a OR b-tag: positive 99.8% (538/539; 95% CI 99.0-100.0%) | all-daily 98.7% (1138/1153; 95% CI 97.9-99.2%) | FALSE-MATCH 10.5% (1610/15278; 95% CI 10.1-11.0%)
-- a AND b-tag: positive 92.9% (501/539; 95% CI 90.5-94.8%) | all-daily 85.0% (980/1153; 95% CI 82.8-86.9%) | FALSE-MATCH 0.1% (21/15278; 95% CI 0.1-0.2%)
-- a AND b: positive 96.1% (518/539; 95% CI 94.1-97.4%) | all-daily 92.3% (1064/1153; 95% CI 90.6-93.7%) | FALSE-MATCH 1.7% (262/15278; 95% CI 1.5-1.9%)
-- frames with a daily tab but NO price axis found (price check cannot fire): 8/1153
-- CONFIRMED RULE USED FOR LABELS: spec rule's false match 25.5% is NOT small (> 5% pre-declared): CONFIRMED tightened to 'adr_and_any' (false match 1.7%, positive 96.1%); the spec rule is kept as a column 'confirmed_spec'
+## 4. Match rates: POSITIVE control (caption==screen, n=896) | all frames with a daily tab + bars (n=1944) | NEGATIVE control: random wrong ticker (n=22218 draws, 2234 frames)
+- a: ADR: positive 95.6% (857/896; 95% CI 94.1-96.8%) | all-daily 93.4% (1816/1944; 95% CI 92.2-94.4%) | FALSE-MATCH 9.2% (2046/22218; 95% CI 8.8-9.6%)
+- b: any axis label in raw range: positive 98.2% (880/896; 95% CI 97.1-98.9%) | all-daily 95.0% (1847/1944; 95% CI 94.0-95.9%) | FALSE-MATCH 18.4% (4084/22218; 95% CI 17.9-18.9%)
+-    b-tag: off-grid price tag only: positive 91.7% (822/896; 95% CI 89.8-93.4%) | all-daily 86.7% (1686/1944; 95% CI 85.1-88.2%) | FALSE-MATCH 1.7% (384/22218; 95% CI 1.6-1.9%)
+-    b-tick: round ticks only: positive 91.7% (822/896; 95% CI 89.8-93.4%) | all-daily 89.7% (1743/1944; 95% CI 88.2-90.9%) | FALSE-MATCH 18.1% (4016/22218; 95% CI 17.6-18.6%)
+- a OR b  [spec CONFIRMED rule, before the daily-tab gate]: positive 99.9% (895/896; 95% CI 99.4-100.0%) | all-daily 98.6% (1917/1944; 95% CI 98.0-99.0%) | FALSE-MATCH 25.8% (5732/22218; 95% CI 25.2-26.4%)
+- a OR b-tag: positive 99.8% (894/896; 95% CI 99.2-99.9%) | all-daily 98.0% (1905/1944; 95% CI 97.3-98.5%) | FALSE-MATCH 10.8% (2389/22218; 95% CI 10.4-11.2%)
+- a AND b-tag: positive 87.6% (785/896; 95% CI 85.3-89.6%) | all-daily 82.2% (1597/1944; 95% CI 80.4-83.8%) | FALSE-MATCH 0.2% (41/22218; 95% CI 0.1-0.3%)
+- a AND b: positive 94.0% (842/896; 95% CI 92.2-95.4%) | all-daily 89.8% (1746/1944; 95% CI 88.4-91.1%) | FALSE-MATCH 1.8% (398/22218; 95% CI 1.6-2.0%)
+- frames with a daily tab but NO price axis found (price check cannot fire): 20/1944
+- CONFIRMED RULE USED FOR LABELS: spec rule's false match 25.8% is NOT small (> 5% pre-declared): CONFIRMED tightened to 'adr_and_any' (false match 1.8%, positive 94.0%); the spec rule is kept as a column 'confirmed_spec'
 
 ## 5. CONFIRMED frames
-- all: confirmed (used rule) 69.3% (1064/1535; 95% CI 67.0-71.6%) | spec rule 1143 | daily tab 1459 | a alone 1129 | b alone 1136
-- grades frames: confirmed (used rule) 69.2% (1027/1485; 95% CI 66.8-71.5%) | spec rule 1104 | daily tab 1409 | a alone 1090 | b alone 1099
-- date source taskbar: n=1413, confirmed 1026 (72.6%)
-- date source ref_date: n=122, confirmed 38 (31.1%)
-- caption ticker == screen ticker: 44.7% (672/1502; 95% CI 42.2-47.3%) of frames where both are read
-- among agreeing frames: confirmed 535/672 (79.6%)
-- disagreeing frames 830: confirmed on the SCREEN ticker 529 (63.7%); the CAPTION ticker also passes the same checks on 35/574 (evaluable) -> low = the screen read is the right one
-    different ticker | screen confirmed=True: 383
-    different ticker | screen confirmed=False: 220
-    two characters off | screen confirmed=True: 55
-    caption is a substring of screen (or vice versa)  e.g. DOG->DDOG | screen confirmed=True: 49
-    one character off | screen confirmed=True: 42
-    caption is a substring of screen (or vice versa)  e.g. DOG->DDOG | screen confirmed=False: 33
-    two characters off | screen confirmed=False: 25
-    one character off | screen confirmed=False: 23
-- most common CONFIRMED caption->screen swaps: SC->SE x6, TDOG->TDOC x5, CLH->NCLH x5, NVX->NVAX x4, LDP->BLDP x4, CCL->RCL x4, HEQ->AGQ x4, OCTA->OKTA x4, RCL->NCLH x3, PRE->TSLA x3, DOG->DDOG x2, DLA->NTLA x2, GENE->NTLA x2, RESI->REZI x2, AIR->RRD x2, TX->BNTX x2, DAL->AAL x2, SPC->SPCE x2, MRNA->BNTX x2, SILO->Z x2, MST->MSTR x2, RDNT->ARKK x2, ICLN->TAN x2, NUGT->GLD x2, BLDP->PLUG x2
-    e.g. caption is a substring of screen (or vice versa)  e.g. DOG->DDOG: FMC->FMCI, DOG->DDOG*, HT->HTBX, BX->HTBX, MACK->MAC*, CRS->CRSR, XP->EXPI, LDP->BLDP*, TX->BNTX*, CLH->NCLH*, VR->UNVR, FNG->FNGU, CLH->NCLH*, DDDD->DDD*   (* = screen ticker confirmed)
-    e.g. two characters off: CCL->NCLH*, DELL->QDEL*, GPT->NET*, CRU->CURO, GME->GMBL*, DLA->NTLA*, MGA->MJ*, RCL->NCLH*, UEC->URG*, IBB->XBI*, SLV->USEV, RCL->NCLH*, JD->SE, MD->Z   (* = screen ticker confirmed)
-    e.g. different ticker: WOLF->TSLA*, ROKU->SEDG*, WLL->IASAX, TDOC->LVGO*, FSLY->LI, APPS->Z*, CRWD->MDB*, CVNA->ENPH*, CLVS->KETX, MMM->SAVE, SDA->AXDX, CME->GMBL*, APP->W*, CTIC->ACIA   (* = screen ticker confirmed)
+- all: confirmed (used rule) 78.2% (1746/2234; 95% CI 76.4-79.8%) | spec rule 1917 | daily tab 2160 | a alone 1871 | b alone 1893
+- grades frames: confirmed (used rule) 78.0% (1703/2184; 95% CI 76.2-79.7%) | spec rule 1870 | daily tab 2110 | a alone 1826 | b alone 1848
+- date source taskbar: n=2212, confirmed 1733 (78.3%)
+- date source ref_date: n=22, confirmed 13 (59.1%)
+- caption ticker == screen ticker: 44.8% (998/2229; 95% CI 42.7-46.8%) of frames where both are read
+- among agreeing frames: confirmed 848/998 (85.0%)
+- disagreeing frames 1231: confirmed on the SCREEN ticker 898 (72.9%); the CAPTION ticker also passes the same checks on 47/932 (evaluable) -> low = the screen read is the right one
+    different ticker | screen confirmed=True: 659
+    different ticker | screen confirmed=False: 245
+    two characters off | screen confirmed=True: 92
+    caption is a substring of screen (or vice versa)  e.g. DOG->DDOG | screen confirmed=True: 85
+    one character off | screen confirmed=True: 62
+    one character off | screen confirmed=False: 32
+    two characters off | screen confirmed=False: 31
+    caption is a substring of screen (or vice versa)  e.g. DOG->DDOG | screen confirmed=False: 25
+- most common CONFIRMED caption->screen swaps: NVX->NVAX x10, LDP->BLDP x8, SC->SE x7, FMC->FMCI x6, TDOG->TDOC x6, NICM->NKLA x6, CCL->RCL x5, CLH->NCLH x5, HEQ->AGQ x5, OCTA->OKTA x4, PRE->TSLA x4, BLDP->FCEL x3, RCL->NCLH x3, HPI->AHPI x3, SPC->SPCE x3, SILO->Z x3, UAL->SAVE x3, BLDP->PLUG x3, NVDA->AMD x3, DOG->DDOG x2, DLA->NTLA x2, GENE->NTLA x2, RESI->REZI x2, AIR->RRD x2, TX->BNTX x2
+    e.g. caption is a substring of screen (or vice versa)  e.g. DOG->DDOG: FMC->FMCI*, DOG->DDOG*, HT->HTBX*, BX->HTBX, MACK->MAC*, CRS->CRSR, XP->EXPI*, LDP->BLDP*, TX->BNTX*, CLH->NCLH*, VR->UNVR*, FNG->FNGU, CLH->NCLH*, DDDD->DDD*   (* = screen ticker confirmed)
+    e.g. two characters off: CCL->NCLH*, DELL->QDEL*, GPT->NET*, CRU->CURO*, GME->GMBL*, DLA->NTLA*, MGA->MJ*, RCL->NCLH*, UEC->URG*, IBB->XBI*, SLV->USEV, RCL->NCLH*, JD->SE, MD->Z   (* = screen ticker confirmed)
+    e.g. different ticker: WOLF->TSLA*, ROKU->SEDG*, WLL->IASAX, TDOC->LVGO*, FSLY->LI, APPS->Z*, CRWD->MDB*, CVNA->ENPH*, CLVS->KETX, MMM->SAVE, SDA->AXDX*, CME->GMBL*, APP->W*, CTIC->ACIA   (* = screen ticker confirmed)
     e.g. one character off: TDOG->TDOC*, NVX->NVAX*, ACRO->AKRO, RESI->REZI*, RESI->REZI*, DAL->AAL, CCL->RCL*, UAL->AAL*, DAL->AAL*, DAL->AAL*, CCL->RCL*, SC->SE, SC->SE*, TRIP->TRIB*   (* = screen ticker confirmed)
 
 - by screen-date year: frames | daily tab | our bars exist | a | b | confirmed(used) | confirmed(spec) | upload-date fallback
-    2017: 134 | 130 | 66 | 62 | 58 | 54 | 64 | 4
-    2019: 100 | 62 | 46 | 41 | 35 | 32 | 37 | 100
-    2020: 824 | 802 | 674 | 638 | 658 | 614 | 653 | 18
-    2021: 428 | 419 | 355 | 347 | 345 | 329 | 347 | 0
-    2022: 27 | 27 | 26 | 24 | 23 | 21 | 26 | 0
-    2023: 22 | 19 | 19 | 17 | 17 | 14 | 16 | 0
-- no daily tab read (tab hidden by a broadcast overlay / unreadable): 76 frames, 33 with our bars; of those ADR AND price both match for 28 (NOT confirmed: the spec requires the tab; would add 28 frames if the tab gate were dropped, false-match unchanged at the a-AND-b level)
-- on-screen ticker NOT in our bars on that date (delisted, renamed, or too new (<20 sessions): the era files carry today's survivors): 316 frames, 186 tickers; most frequent: GBTC 27, SQ 11, FMCI 8, SAVE 8, NKLA 6, PLL 5, SPWR 5, TWTR 5, FNGU 4, TID 4, INPX 4, CHK 4  -> UNVERIFIABLE, not failed
-- caption==screen frames the used rule does NOT confirm (27): g_0021 AMD 2020-08-06 adr_read=5.1 diff=0.02 price_ok=0 tag_ok=0 axes=1; g_0055 TSLA 2021-03-23 adr_read=7.4 diff=2.88 price_ok=1 tag_ok=1 axes=2; g_0066 ERX 2022-11-03 adr_read=5.6 diff=0.18 price_ok=0 tag_ok=0 axes=1; g_0244 TSLA 2021-03-03 adr_read=5.1 diff=1.16 price_ok=1 tag_ok=1 axes=1; g_0298 DM 2020-12-28 adr_read=15.9 diff=5.99 price_ok=1 tag_ok=1 axes=2; g_0338 AMC 2021-06-03 adr_read=22.8 diff=1.85 price_ok=1 tag_ok=1 axes=2; g_0449 GME 2021-03-08 adr_read=29.1 diff=1.5 price_ok=1 tag_ok=1 axes=2; g_0492 IGC 2020-08-13 adr_read=20.9 diff=1.82 price_ok=1 tag_ok=0 axes=2; g_0507 WB 2017-11-24 adr_read=- diff= price_ok=1 tag_ok=1 axes=1; g_0531 QBTS 2023-06-01 adr_read=26.4 diff=0.66 price_ok=1 tag_ok=1 axes=1; g_0535 CVNA 2023-06-01 adr_read=15.3 diff=0.15 price_ok=0 tag_ok=0 axes=1; g_0592 UCTT 2017-02-26 adr_read=3.23 diff=0.0 price_ok=0 tag_ok=0 axes=1; g_0726 GME 2021-03-08 adr_read=29.1 diff=1.5 price_ok=1 tag_ok=1 axes=2; g_0740 OGI 2021-03-19 adr_read=12.8 diff=0.12 price_ok=0 tag_ok=0 axes=2
+    2017: 205 | 200 | 169 | 161 | 149 | 142 | 166 | 4
+    2018: 6 | 6 | 3 | 2 | 2 | 2 | 2 | 0
+    2019: 157 | 127 | 126 | 108 | 91 | 76 | 90 | 18
+    2020: 1201 | 1176 | 1096 | 1027 | 1063 | 983 | 1065 | 0
+    2021: 585 | 574 | 533 | 502 | 522 | 482 | 522 | 0
+    2022: 41 | 41 | 40 | 38 | 36 | 34 | 40 | 0
+    2023: 39 | 36 | 35 | 33 | 30 | 27 | 32 | 0
+- no daily tab read (tab hidden by a broadcast overlay / unreadable): 74 frames, 58 with our bars; of those ADR AND price both match for 46 (NOT confirmed: the spec requires the tab; would add 46 frames if the tab gate were dropped, false-match unchanged at the a-AND-b level)
+- on-screen ticker NOT in our bars on that date (delisted, renamed, or too new (<20 sessions): the era files carry today's survivors): 227 frames, 114 tickers; most frequent: GBTC 41, GSX 8, INPX 8, FNGU 7, SPWR 6, TBIO 4, TID 4, XXII 3, SNOW 3, CCIV 3, FSR 3, OXCM 3  -> UNVERIFIABLE, not failed
+- caption==screen frames the used rule does NOT confirm (62): g_0021 AMD 2020-08-06 adr_read=5.1 diff=0.02 price_ok=0 tag_ok=0 axes=1; g_0033 KIRK 2021-01-12 adr_read=- diff= price_ok=0 tag_ok=0 axes=2; g_0055 TSLA 2021-03-23 adr_read=7.4 diff=2.88 price_ok=1 tag_ok=1 axes=2; g_0066 ERX 2022-11-03 adr_read=5.6 diff=0.18 price_ok=0 tag_ok=0 axes=1; g_0244 TSLA 2021-03-03 adr_read=5.1 diff=1.16 price_ok=1 tag_ok=1 axes=1; g_0298 DM 2020-12-28 adr_read=15.9 diff=5.99 price_ok=1 tag_ok=1 axes=2; g_0338 AMC 2021-06-03 adr_read=22.8 diff=1.85 price_ok=1 tag_ok=1 axes=2; g_0369 PLL 2021-04-14 adr_read=10.1 diff=0.77 price_ok=1 tag_ok=1 axes=2; g_0449 GME 2021-03-08 adr_read=29.1 diff=1.5 price_ok=1 tag_ok=1 axes=2; g_0455 CHK 2019-12-27 adr_read=3.1|8.1 diff=0.01 price_ok=0 tag_ok=0 axes=1; g_0492 IGC 2020-08-13 adr_read=20.9 diff=1.82 price_ok=1 tag_ok=0 axes=2; g_0507 WB 2017-11-24 adr_read=- diff= price_ok=1 tag_ok=1 axes=1; g_0531 QBTS 2023-06-01 adr_read=26.4 diff=0.66 price_ok=1 tag_ok=1 axes=1; g_0535 CVNA 2023-06-01 adr_read=15.3 diff=0.15 price_ok=0 tag_ok=0 axes=1
 - positive control g_0000: ticker TSLA 2020-05-20 (taskbar) daily=1 bars=1 ADR read 5.6 diff 0.0 | a=1 b=1 tag=1 -> confirmed=1
 - positive control g_0204: ticker VKTX 2023-06-09 (taskbar) daily=1 bars=1 ADR read 6.7 diff 0.08 | a=1 b=1 tag=1 -> confirmed=1
-- positive control g_0203: ticker IMGN 2017-01-22 (ref_date) daily=1 bars=0 ADR read 10 diff  | a= b= tag= -> confirmed=0
-- caption != screen, screen CONFIRMED (529): the on-screen ticker is itself named in the captions within 3 min of the frame in 134 (25%); nearest mention is BEFORE the frame in 107, AFTER in 25 (median offset -3 s) -> the caption names a neighbouring chart
-- screen tickers that sit behind the most different captions (stuck / reference chart): TSLA x26, NCLH x14, AGQ x13, SE x10, NVAX x9, BLDP x9, AMD x9, TDOC x8, INO x8, MRNA x8
+- positive control g_0203: ticker IMGN 2017-01-22 (ref_date) daily=1 bars=1 ADR read 10 diff 0.05 | a=1 b=1 tag=1 -> confirmed=1
+- caption != screen, screen CONFIRMED (898): the on-screen ticker is itself named in the captions within 3 min of the frame in 215 (24%); nearest mention is BEFORE the frame in 173, AFTER in 38 (median offset -3 s) -> the caption names a neighbouring chart
+- screen tickers that sit behind the most different captions (stuck / reference chart): TSLA x33, NVAX x21, BLDP x17, MRNA x15, AGQ x15, SE x15, AMD x15, NCLH x14, BNTX x12, TDOC x11
 
 ## 6. LABEL SET
 - window: grade words were matched on the extraction window (mention -30 s .. +30 s) and the frame is cut at mention+3 s, so the first moment's words lie in [-33, +27] s of the frame; a LATER moment of the same pair borrows the frame only if its mention is within +-30 s of the frame time.
   justification: gap from a ticker mention to the next DIFFERENT-ticker mention in the same video (n=19,718): median 58 s, p25 18 s, p10 4 s; 34% of mentions are followed by another ticker inside 30 s (the chart may already have changed) -> the window is kept at the caption half-width, no wider
-- graded moments 2472 | status: attributed/own 1056, no_frame 744, in_window_unverifiable_no_bars/own 314, out_of_window 110, in_window_checks_failed/own 87, attributed/borrowed 78, in_window_no_daily_tab/own 66, in_window_unverifiable_no_bars/borrowed 14, in_window_no_daily_tab/borrowed 2, in_window_checks_failed/borrowed 1
-- ATTRIBUTED labels 1134/2472 (45.9%) -> grades_labels.tsv (screen_ticker filled); the rest are unattributed
-- attributed by grade: bought 810, not_yet 211, best 94, bought,not_yet 14, best,bought 4, best,not_yet 1
-- attributed, grade words exploded: bought 828, not_yet 226, best 99
+- graded moments 2472 | status: attributed/own 1739, in_window_unverifiable_no_bars/own 226, in_window_checks_failed/own 195, out_of_window 133, attributed/borrowed 91, in_window_no_daily_tab/own 63, in_window_unverifiable_no_bars/borrowed 11, in_window_checks_failed/borrowed 10, in_window_no_daily_tab/borrowed 4
+- ATTRIBUTED labels 854/2472 (34.5%) -> grades_labels.tsv (screen_ticker filled); the rest are unattributed
+- attributed by grade: bought 662, not_yet 125, best 59, best,bought 4, bought,not_yet 3, best,not_yet 1
+- attributed, grade words exploded: bought 669, not_yet 129, best 64
 - all moments by grade: bought 1996, not_yet 305, best 142, bought,not_yet 21, best,bought 7, best,not_yet 1
-- attributed with caption == screen ticker: 539/1134; caption != screen: 595 (the grade moves to the screen ticker)
-- CLEAN SUBSET (triple agreement: caption == screen == confirmed): 539 labels ('triple_agree' = 1); the other attributed labels move the grade to a different ticker than the caption named
-- attributed via own-pair frame 1056 | borrowed same-video frame 78
-- attributed by date source: taskbar 1094, ref_date 40
-- distinct (video, screen ticker) attributed 914
-- unattributed by reason: no_frame 744, in_window_unverifiable_no_bars 328, out_of_window 110, in_window_checks_failed 88, in_window_no_daily_tab 68
-    in_window_unverifiable_no_bars: 328 moments; the OCR'd on-screen ticker equals the caption ticker on 95 of them (two independent reads agree, but our bars cannot / did not confirm) - NOT attributed
-    in_window_no_daily_tab: 68 moments; the OCR'd on-screen ticker equals the caption ticker on 16 of them (two independent reads agree, but our bars cannot / did not confirm) - NOT attributed
-    in_window_checks_failed: 88 moments; the OCR'd on-screen ticker equals the caption ticker on 27 of them (two independent reads agree, but our bars cannot / did not confirm) - NOT attributed
+- attributed with caption == screen ticker: 854/854; caption != screen: 0 (the grade moves to the screen ticker)
+- CLEAN SUBSET (triple agreement: caption == screen == confirmed): 854 labels ('triple_agree' = 1); the other attributed labels move the grade to a different ticker than the caption named
+- attributed via own-pair frame 844 | borrowed same-video frame 10
+- attributed by date source: taskbar 847, ref_date 7
+- distinct (video, screen ticker) attributed 848
+- unattributed by reason: in_window_unverifiable_no_bars 237, in_window_checks_failed 205, out_of_window 133, in_window_no_daily_tab 67
+    in_window_unverifiable_no_bars: 237 moments; the OCR'd on-screen ticker equals the caption ticker on 62 of them (two independent reads agree, but our bars cannot / did not confirm) - NOT attributed
+    in_window_no_daily_tab: 67 moments; the OCR'd on-screen ticker equals the caption ticker on 27 of them (two independent reads agree, but our bars cannot / did not confirm) - NOT attributed
+    in_window_checks_failed: 205 moments; the OCR'd on-screen ticker equals the caption ticker on 65 of them (two independent reads agree, but our bars cannot / did not confirm) - NOT attributed
 
 Files: /Users/alvinfung/apollo_data/cb702/qm_streams/vision/grades_labels.tsv, /Users/alvinfung/apollo_data/cb702/qm_streams/vision/grades_frame_check.tsv, /Users/alvinfung/apollo_data/cb702/qm_streams/vision/grades_frame_ocr_s*.jsonl (OCR cache)

@@ -26,7 +26,11 @@ VIS = "/Users/alvinfung/apollo_data/cb702/qm_streams/vision"
 HERE = os.path.dirname(os.path.abspath(__file__))
 QS = os.path.join(os.path.dirname(HERE), "_qm_streams")
 OCR_PY = "/Users/alvinfung/apollo_data/venvs/ocr/bin/python"
-CB_A = "/Users/alvinfung/apollo_data/cb702_pre"
+CB_A = "/Users/alvinfung/apollo_data/cb702_pre_v2"   # 10-23: the rebuilt 2017-21 file (delisted names in, duplicates out); was cb702_pre
+# a symbol the rebuild dropped as a duplicate of another resolves to the kept one (same company, same raw closes)
+CB_A_ALIASES = ["/Users/alvinfung/apollo_data/cb702_pre_v2/dedupe_applied.tsv",
+                "/Users/alvinfung/apollo_data/cb702_pre/survivorship_1023/merged_trial2/refetch_dropped.tsv",
+                "/Users/alvinfung/apollo_data/cb702/qm_streams/ext_2016_2022/rename_map.tsv"]   # the 2022-overlap rename map (old symbol -> today's)
 CB_B = "/Users/alvinfung/apollo_data/cb702"
 ERA_A_LAST = "2022-06-30"
 TOL_PRICE = (0.99, 1.01)
@@ -337,7 +341,15 @@ class Era:
         od = np.argsort(self.d, kind="stable")
         self.by_date = od
         self.ds = self.d[od]
-        cnt = collections.Counter(self.d.tolist()) if False else None
+        if name == "A":                                   # aliases only for symbols with no rows of their own
+            na = 0
+            for f in CB_A_ALIASES:
+                for r in csv.DictReader(open(f), delimiter="\t"):
+                    drop = r.get("dropped_symbol") or r.get("symbol") or r.get("polygon_ticker")
+                    keep = r.get("kept_symbol") or r.get("alpaca_symbol") or (r.get("reason", "").split("_of_")[-1].split("(")[0] if "_of_" in r.get("reason", "") else "")
+                    if drop and keep and drop not in self.tcode and keep in self.tcode:
+                        self.tcode[drop] = self.tcode[keep]; na += 1
+            print(f"era A: {na} duplicate-symbol aliases resolve to the kept symbol", flush=True)
         ud, uc = np.unique(self.d, return_counts=True)
         self.cal = ud[uc >= 500]                          # market calendar: dates with a full cross-section
         print(f"era {name}: {len(df):,} rows, {len(uniq):,} tickers, {time.time() - t0:.0f}s", flush=True)
