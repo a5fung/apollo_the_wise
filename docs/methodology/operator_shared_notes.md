@@ -2377,3 +2377,22 @@ words on his streams.
 - **Next (#705, measurement only):** does a real breakout — the base high cleared, on an expansion day — follow through more
   than matched ordinary stocks, and sooner? And for our triggers: when did the stock actually clear its base high relative to
   our entry?
+
+## 2026-10-22 — where the edge comes from (operator, verbatim)
+
+> "The edge comes from which breakout to pick (the A+ setups), but also positive risk v reward, taking small losses and making huge returns when right"
+
+**Used as:** the edge has TWO parts, and both must be tested together.
+1. **Selection:** the A+ setups.
+2. **Asymmetric risk / reward:** small losses, huge returns when right.
+
+**What the data already says about part 2 on our breakouts** (`cb_r_decomposition_2026-10-22.md`):
+- The losses ARE small (about −1R each).
+- The huge returns never come: a trade lasts a median 1 session (6–9 if the stop does not take it), while the big moves arrive
+  5–6 weeks after the fill.
+- Even on the hindsight winners (the 39), the current stop and exit kept 7.7% of the move.
+
+So part 2 fails on HOLDING, not on loss size. Without part 1, holding longer only earns what any stock of that volatility earns
+(the matched control). That is why the next read measures both on the same A+ set — his stream grades:
+- do they move more than ordinary stocks;
+- and what stop / hold keeps the move while the losses stay small (registered before any outcome).
