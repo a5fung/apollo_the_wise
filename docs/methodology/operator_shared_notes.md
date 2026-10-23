@@ -2546,3 +2546,13 @@ the exit rule is his call.
 - **Alpaca's backtest skill:** a reproducible-run workflow on the same Alpaca data, with the same blind spots: its universe is
   today's assets and it does not adjust spin-offs. We borrow its data fingerprint, fee schedule and buy-and-hold benchmark; it does
   not fix the data.
+
+## 2026-10-23 evening — after the Track A fit FAIL (#705)
+
+> "We need to continue and figure this out, the truth is qullamaggie used these setups to achieve 10x return in a year, in fact his ~10yr record consist of multiple 100%+ years. This works, we need to figure it out"
+
+> "If we hit 1/66, if those 66 are real, why we miss them is the question"
+
+> "Also, his record is audited, the returns are real, this means we can put the trades back together and achieve the same returns when looking back in those periods, that should be a fact"
+
+Recorded as the standing frame for #705: the setups work (audited record); a backtest that fails to reproduce it is measuring our model of the method, not the method. Next read: replay his own stream-confirmed calls under his own rules (PLAN #705, Sat 10-24).
