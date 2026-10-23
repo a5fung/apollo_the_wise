@@ -2449,3 +2449,17 @@ is the next read after the big-winner recall.
 - the real-breakout entry with its own stop;
 - stops beyond 1 ADR and the structural base-low stop;
 - each against the same stop on matched ordinary stocks.
+
+## 2026-10-22 — the trade count itself is a problem (operator, verbatim)
+
+> "That is ridiculous amount, qullamaggie or any human definitely didn't trade that many breakouts, that in itself is an issue, we need to cut out 90% of the trades"
+
+(Replying to: 13,363 breakout trades in 2017–21 (~53 a week), 8,984 in 2022–24 (~63 a week).)
+
+**Used as:** the target population is about a tenth of C0, around 5 a week.
+- **Already tried:** the A+ score's top 3 a week (534 / 288 trades — CAN'T TELL) and the strict C1 cell (180 / 79 — CAN'T TELL /
+  FAIL).
+- **His own breakout definition cuts close to 90% by itself:** the base high cleared on an expansion day (R2 in
+  `cb_breakout_definition_2026-10-22.md`) is 1,582 / 927 entries, about 6 a week. It has not yet been tested with its own stop.
+  It leads the next read.
+- The graded stream picks follow.
