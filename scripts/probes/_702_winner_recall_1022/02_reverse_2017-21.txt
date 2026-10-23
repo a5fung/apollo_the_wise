@@ -1,0 +1,2 @@
+  [x200] reverse view: 13368 judgeable fills (E in the watch window and E <= last session - 83; 0 later fills unjudgeable): in a big-winner catch window 482 (3.6%); anywhere in [trough-20, peak] of a big winner 1473 (11.0%)
+  [x150] reverse view: 13368 judgeable fills (E in the watch window and E <= last session - 83; 0 later fills unjudgeable): in a big-winner catch window 1400 (10.5%); anywhere in [trough-20, peak] of a big winner 5323 (39.8%)

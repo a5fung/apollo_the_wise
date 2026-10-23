@@ -1,0 +1,12 @@
+== 2022-24
+  raw close = adjusted x split factor from cb702_splits.psv: 1712 splits applied on 3062 tickers
+  export loaded: 821 sessions 2021-09-27..2024-12-31; 10s
+  watch out/watch.tsv.gz: 239,946 rows, kept 129,985 (cut 2024-12-31); nights 2022-03-31..2024-12-31; cols ['C0_tl']
+  watch out/watch_com.tsv.gz: 239,946 rows, kept 129,985 (cut 2024-12-31); nights 2022-03-31..2024-12-31; cols ['C0_com']
+  watch coverage idx 129..820 (2022-03-31..2024-12-31); 129,985 (ticker, night) keys
+  trades pp/orh5/tl/C0: 8989 rows, kept 8961 (E <= cut); mature 8956; retrigger rows 1654; E 2022-04-01..2024-12-31
+  entry tables ORH5 filled C0 (E <= cut): 159617 rows; per K {'com': 53225, 'comb': 17856, 'full': 7987, 'k10': 20295, 'k5': 29069, 'tl': 31185}
+  [x200] 414 episodes; covered 409; watched 186; triggered 155; validation on covered nights {'in_table_pass': 1684, 'in_table_fail': 2, 'not_in_table_fail': 10502, 'not_in_table_pass': 7} (in_table_fail + not_in_table_pass should be ~0); 1s
+  [x150] 2381 episodes; covered 2351; watched 828; triggered 516; validation on covered nights {'in_table_pass': 6903, 'in_table_fail': 10, 'not_in_table_fail': 58913, 'not_in_table_pass': 45} (in_table_fail + not_in_table_pass should be ~0); 5s
+  [x200] reverse view: 7791 judgeable fills (E in the watch window and E <= last session - 83; 1170 later fills unjudgeable): in a big-winner catch window 182 (2.3%); anywhere in [trough-20, peak] of a big winner 527 (6.8%)
+  [x150] reverse view: 7791 judgeable fills (E in the watch window and E <= last session - 83; 1170 later fills unjudgeable): in a big-winner catch window 615 (7.9%); anywhere in [trough-20, peak] of a big winner 2448 (31.4%)

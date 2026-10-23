@@ -1,0 +1,11 @@
+== 2017-21
+  raw close from daily_raw_close.csv.gz: 10,320,661 cells
+  export loaded: 1635 sessions 2016-01-04..2022-06-30; 13s
+  watch out/watch_tl_com.tsv.gz: 192,897 rows, kept 192,897 (cut None); nights 2017-03-01..2021-12-31; cols ['C0_tl', 'C0_com']
+  watch coverage idx 291..1510 (2017-03-01..2021-12-31); 192,897 (ticker, night) keys
+  trades pp/orh5/tl/C0: 13368 rows, kept 13368 (E <= cut); mature 13363; retrigger rows 2352; E 2017-03-02..2022-01-03
+  entry tables ORH5 filled C0 (E <= cut): 28998 rows; per K {'com': 15630, 'tl': 13368}
+  [x200] 994 episodes; covered 986; watched 391; triggered 310; validation on covered nights {'in_table_pass': 4284, 'in_table_fail': 0, 'not_in_table_fail': 23491, 'not_in_table_pass': 0} (in_table_fail + not_in_table_pass should be ~0); 3s
+  [x150] 4182 episodes; covered 4108; watched 1546; triggered 1021; validation on covered nights {'in_table_pass': 16149, 'in_table_fail': 0, 'not_in_table_fail': 99642, 'not_in_table_pass': 30} (in_table_fail + not_in_table_pass should be ~0); 8s
+  [x200] reverse view: 13368 judgeable fills (E in the watch window and E <= last session - 83; 0 later fills unjudgeable): in a big-winner catch window 482 (3.6%); anywhere in [trough-20, peak] of a big winner 1473 (11.0%)
+  [x150] reverse view: 13368 judgeable fills (E in the watch window and E <= last session - 83; 0 later fills unjudgeable): in a big-winner catch window 1400 (10.5%); anywhere in [trough-20, peak] of a big winner 5323 (39.8%)

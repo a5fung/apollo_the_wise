@@ -1,0 +1,9 @@
+== 2017-21
+  export /Users/alvinfung/apollo_data/cb702_pre/daily_closes_all.csv.gz: 10,320,661 rows, kept 10,320,661 (cut None); dates 2016-01-04..2022-06-30; 9,944 tickers; 2s
+  calendar 1635 sessions (2016-01-04..2022-06-30); wide (1635, 9944)
+  era trough window 2017-03-01..2021-12-31 (idx 291..1510)
+  symbol_guard: 578 tickers with an identity break
+  raw close from daily_raw_close.csv.gz: 10,320,661 cells
+  tickers: 9944; ticker regex ok 9779; security type CS/ADRC/unknown and not a test symbol 6622
+  [x200] {'cand_tickers': 751, 'qualifying_sessions': 16402, 'episodes': 1015, 'window_cut': 0, 'artifact_jump': 18, 'identity_break': 11, 'split_flag': 0, 'extended': 346, 'ext_truncated': 0, 'trough_moved': 587, 'lower_close_univ_fail': 100, 'lower_close_pre10': 187, 'sectype_unknown': 86}; wrote /Users/alvinfung/apollo_data/cb702_pre/out/wrecall_episodes_2017-21_x200.tsv.gz: 1015 episodes, excluded 21, kept 994; classes (primary, kept): {'measurable_breakout': 489, 'late_base': 408, 'ep_gap': 89, 'other': 4, 'no_consolidation': 4}; 2s
+  [x150] {'cand_tickers': 1879, 'qualifying_sessions': 91081, 'episodes': 4210, 'window_cut': 0, 'artifact_jump': 24, 'identity_break': 15, 'split_flag': 0, 'extended': 1462, 'ext_truncated': 0, 'trough_moved': 2899, 'lower_close_univ_fail': 322, 'lower_close_pre10': 542, 'sectype_unknown': 379}; wrote /Users/alvinfung/apollo_data/cb702_pre/out/wrecall_episodes_2017-21_x150.tsv.gz: 4210 episodes, excluded 28, kept 4182; classes (primary, kept): {'late_base': 2064, 'measurable_breakout': 1864, 'ep_gap': 162, 'other': 71, 'no_consolidation': 21}; 7s
