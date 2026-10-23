@@ -1,0 +1,10 @@
+Pager usage is off.
+                   bucket                   |  n   | bases | pct_broke_out_first | pct_failed_first | pct_neither 
+--------------------------------------------+------+-------+---------------------+------------------+-------------
+ 0 reference: first WATCH+ row of each base | 1686 |  1686 |                59.8 |             36.1 |         4.2
+ 1 kill, under the 20-day by < 0.5%         |   81 |    69 |                38.3 |             50.6 |        11.1
+ 2 kill, 0.5-1%                             |   87 |    78 |                33.3 |             57.5 |         9.2
+ 3 kill, 1-2%                               |  129 |   114 |                33.3 |             55.0 |        11.6
+ 4 kill, 2% or more                         |  901 |   349 |                15.5 |             67.4 |        17.1
+(5 rows)
+

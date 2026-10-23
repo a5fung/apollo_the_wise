@@ -2147,6 +2147,11 @@ under a ~117% run-up. **Our two readings that night:** the HTF stage board (#697
 20-day average (by $0.03–$1.34). The consolidation-breakout shadow (#702) caught it: trendline level, ORH5 filled $52.30, stop
 $51.00, close $55.59. Recorded as a labelled HTF example for the detector (a tuning datum, not a trade question).
 
+**2026-10-22 correction (the #697 read, `docs/analysis/htf_sma20_kill_htfl_2026-10-22.md`):** three of the five October kills
+were shallow (−0.04% to −0.46% under the 20-day average) and two deep (−2.70%, −3.75%). Re-scored with the rule loosened
+by 0.5–2%, HTFL's 10-20 breakout STILL reads WATCH: the 5 days before it hold no TIGHTENING label at any tolerance, because
+the base stopped reading tight after 10-01. The 20-day rule was not the deciding gate.
+
 ## 2026-10-20 — a short-seller's method (book excerpt, a trader interview he shared; NOTES + short quotes, not the full text) — part 1
 
 Shared by the operator to *"glean rules that can help with our short setup"* (complement to the parabolic short, #314 /
