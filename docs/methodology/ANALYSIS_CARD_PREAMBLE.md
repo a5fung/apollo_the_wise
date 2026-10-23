@@ -88,3 +88,14 @@ authority**. Analysis produces evidence and recommendations. It never flips anyt
 
 `docs/methodology/analysis_standard.md` §6 — the decision it serves, method and population,
 the numbers with n, **what this does not answer**, and THE LINE where relevant. Gate 6 enforces it.
+
+
+## Name the quantity exactly as computed (2026-10-22)
+
+Every plain-words claim must name the quantity the way the code computed it. A time to REACH a gain is never called the move's
+"start". A share that is forced by geometry is never cited as evidence. Verifier logic lenses check this explicitly: for each
+plain-words sentence in the lead, which computed number backs it, and does the sentence describe that number or an adjacent one?
+
+On 2026-10-22 two such sentences passed two verifiers and reached the operator:
+- "the move starts 5–6 weeks later" — it was a reach-time;
+- "98.6% cleared the base high first, as he says" — it was mechanical.

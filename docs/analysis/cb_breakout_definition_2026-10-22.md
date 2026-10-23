@@ -13,11 +13,13 @@ point of breakout is that it has broken the consolidation period and enter the e
 after then the entry is not a breakout by definition."* Earlier: *"on breakout day, we're not looking for tightness, we're looking
 for the opposite, range expansion (up)"*; breakouts *"can happen anytime"* in the day.
 
-> **⚠ SCOPE CORRECTION (2026-10-22, his question: "What is the comparison measuring? … we're trying to buy a stock at the precise
-> moment it gives the best risk to reward").** Every breakout-vs-ordinary-stock comparison here measures the stock's DRIFT over
-> 5–60 sessions in ADR units. It does NOT measure risk / reward at the entry moment with the tight stop (how often the stock gets
-> to +2R / +5R / +10R before the stop, against the same stop on non-breakout moments). So "no edge" and "the cause is selection"
-> below hold for drift only. Risk / reward at the moment is unmeasured and is the next read.
+> **⚠ SCOPE (updated 2026-10-22, after the stop / re-entry read):** the breakout-vs-ordinary-stock comparisons on this page
+> measure the stock's DRIFT over 5–60 sessions. Risk / reward AT THE ENTRY with the stop was measured the same night in
+> `cb_entry_stop_retry_2026-10-22.md`. On daily bars, entered at the breakout close with the same stop on both sides, the breakout
+> reaches +5R before its stop no more often than matched ordinary stocks: 17.8% vs 18.7% (1-ADR stop, 2017–21), 13.6% vs 13.7%
+> (2022–24), and 14.8% vs 14.9% / 10.4% vs 10.4% at 1.5 ADR. What is NOT measured: the intraday (opening-range) entry against a
+> control, and any FILTERED subset (his A+ / graded picks). So the plain-words lead below means "on daily bars, the unfiltered
+> breakout entry carries no drift or race edge over ordinary stocks" — not "breakouts have no edge" (his 10-22 correction).
 
 ## 0. The answer, in plain words (rewritten 2026-10-22 after two independent verifiers and a main-loop check; §V lists every correction; the definitions in §D were frozen before the build)
 
@@ -30,8 +32,8 @@ for the opposite, range expansion (up)"*; breakouts *"can happen anytime"* in th
     cleared, not waiting for it.
   - That big movers cleared the base high first is close to forced by the geometry. The +5 ADR mark sits about 4 ADR above the
     base high, so it is not evidence either way.
-- **(2) Does a REAL breakout, by his definition, follow through more than ordinary stocks? No — not in the direction that
-  pays.** Every row below is the finer match (same day, same volatility decile, same prior 3-month strength).
+- **(2) Does a REAL breakout, by his definition, follow through more than ordinary stocks? On daily bars and unfiltered, no — not in
+  the direction that pays** (and no race edge at the same stop, per the scope note above; filtered subsets are untested). Every row below is the finer match (same day, same volatility decile, same prior 3-month strength).
   - **R1, a close above the base high, entered at that close:**
     - the share reaching +5 ADR within 60 sessions is +1.1 / +0.6 points over the matched control, intervals spanning zero;
     - mean returns are no different at 1 / 5 / 20 sessions;

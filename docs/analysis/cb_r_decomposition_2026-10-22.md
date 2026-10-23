@@ -11,16 +11,18 @@ window crosses the cut are excluded from the path numbers and said so). The regi
 His question, verbatim: *"Just based on the R backtest, it's hard to tell what exactly is the problem. Are we trading bad
 setups? Entry exit wrong? What is the cause."*
 
-> **⚠ SCOPE CORRECTION (2026-10-22, his question: "What is the comparison measuring? … we're trying to buy a stock at the precise
-> moment it gives the best risk to reward").** Every breakout-vs-ordinary-stock comparison here measures the stock's DRIFT over
-> 5–60 sessions in ADR units. It does NOT measure risk / reward at the entry moment with the tight stop (how often the stock gets
-> to +2R / +5R / +10R before the stop, against the same stop on non-breakout moments). So "no edge" and "the cause is selection"
-> below hold for drift only. Risk / reward at the moment is unmeasured and is the next read.
+> **⚠ SCOPE (updated 2026-10-22, after the stop / re-entry read):** the breakout-vs-ordinary-stock comparisons on this page
+> measure the stock's DRIFT over 5–60 sessions. Risk / reward AT THE ENTRY with the stop was measured the same night in
+> `cb_entry_stop_retry_2026-10-22.md`. On daily bars, entered at the breakout close with the same stop on both sides, the breakout
+> reaches +5R before its stop no more often than matched ordinary stocks: 17.8% vs 18.7% (1-ADR stop, 2017–21), 13.6% vs 13.7%
+> (2022–24), and 14.8% vs 14.9% / 10.4% vs 10.4% at 1.5 ADR. What is NOT measured: the intraday (opening-range) entry against a
+> control, and any FILTERED subset (his A+ / graded picks). So the plain-words lead below means "on daily bars, the unfiltered
+> breakout entry carries no drift or race edge over ordinary stocks" — not "breakouts have no edge" (his 10-22 correction).
 
 ## 0. The answer, in plain words (rewritten 2026-10-22 after two independent verifiers; their corrections are listed in §8)
 
-- **The main cause is SELECTION: after the breakout day, these stocks move like any liquid stock of the same volatility on the
-  same day.** This holds at every horizon measured (§2, matched on the same E date and ADR decile, from E's close):
+- **On daily bars, the unfiltered breakout entry carries no drift edge: after the breakout day, these stocks move like any liquid stock
+  of the same volatility on the same day** (and, per the scope note above, no race edge at the same stop). This holds at every horizon measured (§2, matched on the same E date and ADR decile, from E's close):
   - next 5 sessions: +0.151 vs +0.146 ADR (2017–21), −0.120 vs −0.129 (2022–24), intervals spanning zero;
   - next 20 sessions: +0.48 vs +0.43 and −0.23 vs −0.22;
   - share reaching +5 ADR within 60: 43% vs 42% and 35% vs 36%;
