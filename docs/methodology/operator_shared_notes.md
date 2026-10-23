@@ -2488,3 +2488,15 @@ is the next read after the big-winner recall.
   That is the 2020 V-bottom: leaders broke out while the lagging averages still pointed down. In 2022–24 direction made no
   difference (−0.17R both ways).
 - So lagging trend readings mislabel a V-bottom, and a trend filter built on them would have cut the best breakouts.
+
+## 2026-10-22 — the recall goal (operator, verbatim)
+
+> "I wouldn't expect to catch 100% , that's not the goal, but the really good setup ones we shouldn't miss or stopped before the run, even if we need to retry"
+
+**Used as:** the goal is NOT full recall. It is that the really good setups are (1) watched, and (2) held when the run comes —
+re-entering after a stop if needed.
+- A retry rule is judged on the good-setup winners caught and held, AGAINST what the retries cost on the false breakouts.
+- The next read measures exactly that: entry at the real breakout, stop variants, and up to two retries. It runs on (a) the
+  measurable-breakout doublers and (b) every real breakout, with matched ordinary stocks given the same rules.
+- The baseline from the recall check: 28 / 17 in at half-way of 481 / 258. Counting every fill, not just the first, 49 / 20
+  were in at half-way — retries already show up.
