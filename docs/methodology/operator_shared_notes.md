@@ -2475,3 +2475,16 @@ is the next read after the big-winner recall.
 - The QQQ 10-over-20 and QQQ-over-50-day readings split the wrong way or barely.
 - So "trade less in a bear phase" would have cut 2020's best trades. Sizing by phase is his call (THE LINE). The phase stays a
   reported split in every read.
+
+## 2026-10-22 — "uptrend / downtrend", not "bull / bear" (operator, verbatim)
+
+> "Better phrasing should be uptrend vs downtrend instead of bull/bear, under 200d but trending up can still be uptrend"
+
+**Used as:**
+- The market split is named by TREND DIRECTION, uptrend / downtrend, never bull / bear.
+- A market under its 200-day but turning up can be an uptrend.
+- **Re-measured by direction** (`scripts/probes/_702_race_1022/03_market_trend_split.txt`): in 2017–21 the trades taken while
+  SPY's 50-day average was FALLING did best (+0.57R per trade, 2.5 big winners per 100, n = 2,147) vs −0.08R when it was rising.
+  That is the 2020 V-bottom: leaders broke out while the lagging averages still pointed down. In 2022–24 direction made no
+  difference (−0.17R both ways).
+- So lagging trend readings mislabel a V-bottom, and a trend filter built on them would have cut the best breakouts.

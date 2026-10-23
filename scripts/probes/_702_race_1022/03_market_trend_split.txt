@@ -1,0 +1,12 @@
+2017-21 SPY 50-day rising = downtrend: n 2,147 (16%), mean R +0.572, >=10R per 100 2.52, win 39%
+2017-21 SPY 50-day rising = uptrend: n 11,216 (84%), mean R -0.079, >=10R per 100 0.99, win 34%
+2017-21 SPY 20-day rising = downtrend: n 2,529 (19%), mean R +0.163, >=10R per 100 1.74, win 36%
+2017-21 SPY 20-day rising = uptrend: n 10,834 (81%), mean R -0.007, >=10R per 100 1.12, win 34%
+2017-21 under the 200-day AND 50-day rising: n 286 (2%), mean R +0.334, >=10R per 100 2.80, win 39%
+2017-21 under the 200-day AND 50-day falling: n 1,368 (10%), mean R +0.529, >=10R per 100 1.97, win 41%
+2022-24 SPY 50-day rising = downtrend: n 1,723 (19%), mean R -0.167, >=10R per 100 0.87, win 32%
+2022-24 SPY 50-day rising = uptrend: n 7,261 (81%), mean R -0.170, >=10R per 100 0.96, win 31%
+2022-24 SPY 20-day rising = downtrend: n 2,817 (31%), mean R -0.149, >=10R per 100 1.06, win 32%
+2022-24 SPY 20-day rising = uptrend: n 6,167 (69%), mean R -0.178, >=10R per 100 0.89, win 31%
+2022-24 under the 200-day AND 50-day rising: n 1,404 (16%), mean R -0.210, >=10R per 100 0.71, win 33%
+2022-24 under the 200-day AND 50-day falling: n 804 (9%), mean R +0.038, >=10R per 100 1.24, win 35%
