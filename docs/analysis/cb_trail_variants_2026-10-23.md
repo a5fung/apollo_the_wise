@@ -13,6 +13,20 @@ filter to less breakouts, trade reasonable amount and have better way to keep wi
 the exit is what loses the winners: the 1-ADR stop with two retries holds 44–48% of the good-setup doublers to half their move but keeps a
 median 5–7% of the gain, because the third sold at +2R and the first close under the 20-day end the trades.
 
+> **⚠ OPERATOR CORRECTION (2026-10-23): the OPLN "worst trade" is NOT a loss.** OPLN is OPENLANE, formerly KAR Auction Services.
+> On 2019-06-28 KAR completed its spin-off of IAA, Inc. The −62% open ($62.08 → $23.66 on 7× volume) is the spin-off distribution,
+> which the split-adjusted export does not adjust — the same artifact class as ZWS and BEP. Holders kept roughly the whole value as IAA
+> shares. I had read its volume spike as a real repricing; the spike was the spin-off itself.
+>
+> **Read every OPLN figure below as an artifact.** The real worst trades are one-session gaps of about −7 to −10 R:
+> - 2017–21 (`pp` / 20 · X3 · P0): BMA 2019-08-09 −9.7 R (the Argentine primary-election crash), AVIR 2021-09-30 −5.2 / −10.1 R,
+>   FG 2020-05-21 −9.1 R (to check: the FGL / FNF merger closed then);
+> - 2022–24: APPS −5.8 / −9.8 R, EXPE −7.1 R (both earnings).
+>
+> So a gap through the stop costs about −10 R at worst on real trades, not −34 R. The account-view drawdowns that include OPLN and ZWS
+> overstate the swing. Spin-offs and special distributions are an open data gap in every read on this export: the export adjusts
+> splits, not distributions.
+
 ## 0. What this grid can and cannot say — read before any number
 
 - **The doublers (P-win) say what a cell HOLDS, never whether it pays.** They were chosen after the fact (a +100% move began with a measurable

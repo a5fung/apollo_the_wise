@@ -233,6 +233,12 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 (`max_positions`) with the EP lanes. None of it is touched by this build.
 
 ## Known limitations / open questions
+- **Spin-offs and special distributions are NOT adjusted in the daily export (found 2026-10-23, his catch).** The export
+  (Alpaca, split-adjusted) adjusts splits only, so a spin-off reads as a one-session crash: OPLN (KAR Auction → IAA spin-off,
+  2019-06-28, −62%), ZWS (Zurn, 2021-10), BEP (the BEPC distribution, 2020-07). Every replay on this export books those as stop-through
+  losses — −34 R on OPLN — and they inflate the worst-trade and drawdown figures. A corporate-action screen (spin-off / special
+  distribution dates) is needed before any worst-loss or drawdown figure is quoted as real. Until then such gaps are flagged by hand.
+
 
 - The primary K, the primary entry and the cell ladder are chosen in the backtest's discovery read and then frozen; this file's
   definitions change only through that path (CHANGE_PROCESS).
