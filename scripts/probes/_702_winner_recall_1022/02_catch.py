@@ -23,6 +23,8 @@ ERAS = {
     "2022-24": dict(data="/Users/alvinfung/apollo_data/cb702", cut="2024-12-31", watch=["out/watch.tsv.gz", "out/watch_com.tsv.gz"], wstart="2022-03-31", wend="2024-12-31",
                     trades="out/trades_discovery_exitpb.tsv.gz", entries=["out/entries_discovery.tsv.gz", "out/entries_discovery_com_comb.tsv.gz"]),
 }
+out_dir, LOG_DIR, PRE_OUT = ep01.out_dir, ep01.LOG_DIR, ep01.PRE_OUT       # optional re-run switches (CB_PRE_DIR / CB_PRE_OUT / CB_PRE_LOG), read once in 01_episodes.py
+ERAS["2017-21"]["data"] = ep01.ERAS["2017-21"]["data"]
 MIN_PRICE, MIN_DV, HIST = 5.0, 10_000_000.0, 130
 PRE_WIN = 20                 # the window before the trough for episodes without a measurable breakout
 NEAR = 5
@@ -146,7 +148,7 @@ def run(era, cfg):
 
     for tag in ("x200", "x150"):
         t1 = time.time()
-        ep = pd.read_csv(f"{data}/out/wrecall_episodes_{era}_{tag}.tsv.gz", sep="\t", keep_default_na=False, na_values=[""])
+        ep = pd.read_csv(f"{out_dir(era, data)}/wrecall_episodes_{era}_{tag}.tsv.gz", sep="\t", keep_default_na=False, na_values=[""])
         ep = ep[ep.excluded == 0].reset_index(drop=True)
         out_rows = []; night_rows = []
         val = dict(in_table_pass=0, in_table_fail=0, not_in_table_fail=0, not_in_table_pass=0)
@@ -220,15 +222,15 @@ def run(era, cfg):
             row["any_fill_t20_to_p"] = int(g is not None and ((g.ci >= max(tt - PRE_WIN, 0)) & (g.ci <= pp_)).any())
             out_rows.append(row)
         out = pd.DataFrame(out_rows)
-        out.to_csv(f"{data}/out/wrecall_catch_{era}_{tag}.tsv.gz", sep="\t", index=False, float_format="%.7g")
-        pd.DataFrame(night_rows).to_csv(f"{data}/out/wrecall_nights_{era}_{tag}.tsv.gz", sep="\t", index=False)
+        out.to_csv(f"{out_dir(era, data)}/wrecall_catch_{era}_{tag}.tsv.gz", sep="\t", index=False, float_format="%.7g")
+        pd.DataFrame(night_rows).to_csv(f"{out_dir(era, data)}/wrecall_nights_{era}_{tag}.tsv.gz", sep="\t", index=False)
         log(f"  [{tag}] {len(out)} episodes; covered {int(out.covered.sum())}; watched {int(out.watched.sum())}; triggered {int(out.triggered.sum())}; "
             f"validation on covered nights {val} (in_table_fail + not_in_table_pass should be ~0); {time.time()-t1:.0f}s")
 
     # ── the reverse view: of our fills, how many sit inside a big-winner episode's catch window ─────
     rev = []
     for tag in ("x200", "x150"):
-        c = pd.read_csv(f"{data}/out/wrecall_catch_{era}_{tag}.tsv.gz", sep="\t", usecols=["ticker", "win_start", "win_end", "t", "p"])
+        c = pd.read_csv(f"{out_dir(era, data)}/wrecall_catch_{era}_{tag}.tsv.gz", sep="\t", usecols=["ticker", "win_start", "win_end", "t", "p"])
         wins = {}
         for r in c.itertuples(index=False):
             wins.setdefault(r.ticker, []).append((int(r.win_start), int(r.win_end), int(r.t), int(r.p)))
@@ -239,15 +241,16 @@ def run(era, cfg):
         line = (f"  [{tag}] reverse view: {len(judge)} judgeable fills (E in the watch window and E <= last session - {REV_MARGIN}; {n_unj} later fills unjudgeable): "
                 f"in a big-winner catch window {int(inwin.sum())} ({100*inwin.mean():.1f}%); anywhere in [trough-20, peak] of a big winner {int(inrun.sum())} ({100*inrun.mean():.1f}%)")
         log(line); rev.append(line)
-    with open(f"{HERE}/02_reverse_{era}.txt", "w") as fh:
+    with open(f"{LOG_DIR}/02_reverse_{era}.txt", "w") as fh:
         fh.write("\n".join(rev) + "\n")
 
 
 if __name__ == "__main__":
     eras = sys.argv[1:] or list(ERAS)
+    assert (not (PRE_OUT or LOG_DIR != HERE)) or eras == ["2017-21"], "CB_PRE_OUT / CB_PRE_LOG re-run the 2017-21 era only"
     for era in eras:
         log(f"== {era}")
         run(era, ERAS[era])
-        with open(f"{HERE}/02_catch_{era}.txt", "w") as fh:
+        with open(f"{LOG_DIR}/02_catch_{era}.txt", "w") as fh:
             fh.write("\n".join(log_lines) + "\n")
         log_lines.clear()

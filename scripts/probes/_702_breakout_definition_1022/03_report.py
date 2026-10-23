@@ -4,11 +4,19 @@ step-2 tables. Writes 03_report.md (every table; n on every row) and 03_numbers.
 was used to build them). Matching + intervals exactly as yesterday's 03_report.py (cells on the entry day, deciles cut on the entry
 set; month-block bootstrap, seed 702, 2,000)."""
 from __future__ import annotations
-import json
+import json, os, sys
 import numpy as np, pandas as pd
 
 HERE = "/Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022"
 DATA = {"2017-21": "/Users/alvinfung/apollo_data/cb702_pre/out", "2022-24": "/Users/alvinfung/apollo_data/cb702/out"}
+# optional re-run switches, 2017-21 only (all unset = unchanged): CB_PRE_OUT = the dir holding the bdef_* tables (default cb702_pre/out), CB_PRE_LOG = where
+# 03_report.md / 03_numbers.json go (default HERE); an era argument limits the run
+PRE_OUT, LOG_DIR = os.environ.get("CB_PRE_OUT"), os.environ.get("CB_PRE_LOG", HERE)
+if PRE_OUT:
+    DATA["2017-21"] = PRE_OUT
+if sys.argv[1:]:
+    DATA = {k: v for k, v in DATA.items() if k in sys.argv[1:]}
+assert (not (PRE_OUT or LOG_DIR != HERE)) or list(DATA) == ["2017-21"], "CB_PRE_OUT / CB_PRE_LOG re-run the 2017-21 era only"
 SEED, NB = 702, 2000
 L: list[str] = []; NUM: dict = {}
 
@@ -202,9 +210,9 @@ def main():
             if len(ent) < 10:
                 p(f"**{label}: n = {len(ent)} — too few to judge; no table.**"); p(); continue
             matched_table(label, ent, ctl, pre, acol, rcol, era)
-    with open(f"{HERE}/03_report.md", "w") as fh:
+    with open(f"{LOG_DIR}/03_report.md", "w") as fh:
         fh.write("\n".join(L) + "\n")
-    with open(f"{HERE}/03_numbers.json", "w") as fh:
+    with open(f"{LOG_DIR}/03_numbers.json", "w") as fh:
         json.dump(NUM, fh, indent=1, default=float)
     print("\n".join(L))
 

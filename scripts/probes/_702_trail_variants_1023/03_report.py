@@ -1,10 +1,12 @@
 """#705 Track B — step 3: the tables, from 02_numbers_<era>.json (no bar is re-read). Writes 03_report.md (every table, n on every row) and
 03_headline.json (the numbers the doc's lead quotes)."""
-import json
+import json, os, sys
 import numpy as np
 
 HERE = "/Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023"
-ERAS = ("2017-21", "2022-24")
+ERAS = tuple(sys.argv[1:]) or ("2017-21", "2022-24")      # optional: an era argument limits the run
+LOG_DIR = os.environ.get("CB_PRE_LOG", HERE)             # optional re-run switch (2017-21 only): where 02_numbers_<era>.json is read and the report is written
+assert LOG_DIR == HERE or ERAS == ("2017-21",), "CB_PRE_LOG re-runs the 2017-21 era only"
 out, head = [], {}
 
 
@@ -39,7 +41,7 @@ def cname(G):
 
 
 for era in ERAS:
-    J = json.load(open(f"{HERE}/02_numbers_{era}.json"))
+    J = json.load(open(f"{LOG_DIR}/02_numbers_{era}.json"))
     head[era] = {}
     W, R, C = J["win"], J["r1"], J["ctl"]
     cells = J["cells"]; G_ = J["grid"]
@@ -116,6 +118,6 @@ for era in ERAS:
                             R2_T0=dict(n=G["R2_T0_complete"]["entries"]["n"], tpw=G["R2_T0_complete"]["entries"]["trades_per_week"], r_trade=G["R2_T0_complete"]["entries"]["r_per_trade"], r_trade_ctl=G["R2_T0_complete"]["control"]["r_per_trade"],
                                        diff=G["R2_T0_complete"]["diff"]["r_per_base"], any5_diff=G["R2_T0_complete"]["diff"]["any5"], worst=G["R2_T0_complete"]["entries"]["trade_r"]["worst"], p5=G["R2_T0_complete"]["entries"]["trade_r"]["p5"]),
                             R2_T2=dict(n=G["R2_T2_complete"]["entries"]["n"], diff=G["R2_T2_complete"]["diff"]["r_per_base"], any5_diff=G["R2_T2_complete"]["diff"]["any5"]))
-open(f"{HERE}/03_report.md", "w").write("\n".join(out) + "\n")
-json.dump(head, open(f"{HERE}/03_headline.json", "w"), indent=1)
+open(f"{LOG_DIR}/03_report.md", "w").write("\n".join(out) + "\n")
+json.dump(head, open(f"{LOG_DIR}/03_headline.json", "w"), indent=1)
 print(f"wrote {len(out)} lines")

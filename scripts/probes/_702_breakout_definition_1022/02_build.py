@@ -14,7 +14,7 @@ Per era (2017-21 = cb702_pre, 2022-24 = cb702) writes under DATA/out/:
 HARD SCOPE: the cb702 export is cut at 2024-12-31 at load (asserted); any window past the last readable session is flagged incomplete.
 Nothing under DATA is modified or deleted; the runner is never imported. Same code path measures entries and control (one function)."""
 from __future__ import annotations
-import re, sys, time
+import os, re, sys, time
 import numpy as np, pandas as pd
 
 HERE = "/Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022"
@@ -24,6 +24,17 @@ ERAS = {
     "2022-24": dict(data="/Users/alvinfung/apollo_data/cb702", fills="out/r_decomp_fills_2022-24.tsv.gz", watch="out/watch.tsv.gz",
                     entries="out/entries_discovery.tsv.gz", splits="cb702_splits.psv", cut="2024-12-31"),
 }
+# optional re-run switches, 2017-21 only (#705 v2 re-run; all unset = unchanged): CB_PRE_DIR = the data dir (inputs, incl. DATA/out/r_decomp_* and
+# the watch / entries tables), CB_PRE_OUT = where the bdef_* tables are written (default DATA/out), CB_PRE_LOG = where the checks file goes (default HERE)
+PRE_OUT, LOG_DIR = os.environ.get("CB_PRE_OUT"), os.environ.get("CB_PRE_LOG", HERE)
+if os.environ.get("CB_PRE_DIR"):
+    ERAS["2017-21"]["data"] = os.environ["CB_PRE_DIR"]
+
+
+def out_dir(era, data):
+    return PRE_OUT if (era == "2017-21" and PRE_OUT) else f"{data}/out"
+
+
 MIN_PRICE, MIN_DV, HIST = 5.0, 10_000_000.0, 130
 TICK_RE = re.compile(r"^[A-Z]{1,5}$")
 HOR = (1, 5, 20, 60)
@@ -180,7 +191,7 @@ def build(era, cfg):
         f"complete_60 agree: {int((f.cl_c60 == f.complete_60).sum())} of {len(f)}")
     # s* from the FILL (yesterday's first_5adr) is kept for Question A; s* from the close is cl_first5
     assert not f.columns.duplicated().any(), "duplicate columns in the fills table"
-    f.to_csv(f"{data}/out/bdef_fills_{era}.tsv.gz", sep="\t", index=False, float_format="%.7g")
+    f.to_csv(f"{out_dir(era, data)}/bdef_fills_{era}.tsv.gz", sep="\t", index=False, float_format="%.7g")
     log(f"  wrote bdef_fills_{era}: {len(f)} rows; s_c found {int((sc >= 0).sum())}, none within 60 (complete) {int(((sc < 0) & (f.sc_complete == 1)).sum())}, "
         f"unknown (window cut) {int(((sc < 0) & (f.sc_complete == 0)).sum())}; s_c = 0 (E itself) {int((sc == 0).sum())}")
     log(f"  R3 on E: range ok {int(f.e_range_ok.sum())}, close-location ok {int(f.e_loc_ok.sum())}, volume ok {int(f.e_vol_ok.sum())} (vol50 known {int(f.e_vol50_known.sum())}); all three {int(f.e_exp.sum())}")
@@ -220,7 +231,7 @@ def build(era, cfg):
         r = pd.concat([r, m.reset_index(drop=True)], axis=1)
     keep = [c for c in r.columns if not c.startswith(("mfe", "mae", "ret5_", "ret20_", "ret60_", "first_", "day0_", "complete_", "e_"))]
     assert not r[keep].columns.duplicated().any(), "duplicate columns in the R1 table"
-    r[keep].to_csv(f"{data}/out/bdef_r1_{era}.tsv.gz", sep="\t", index=False, float_format="%.7g")
+    r[keep].to_csv(f"{out_dir(era, data)}/bdef_r1_{era}.tsv.gz", sep="\t", index=False, float_format="%.7g")
     log(f"  wrote bdef_r1_{era}: {len(r)} rows; R2 (all three) {int(r.r2_exp.sum())}; range ok {int(r.r2_range_ok.sum())}, loc ok {int(r.r2_loc_ok.sum())}, vol ok {int(r.r2_vol_ok.sum())}; "
         f"s_c = 0 share {100*(r.s_c==0).mean():.1f}%; median s_c {r.s_c.median():.0f}")
 
@@ -245,7 +256,7 @@ def build(era, cfg):
     m = F.measure_rows(kv.ci.to_numpy(), kv.tj.to_numpy(), kv.adr20.to_numpy(float), "close", "cl_")
     kv = pd.concat([kv.reset_index(drop=True), m.reset_index(drop=True)], axis=1)
     assert not kv.columns.duplicated().any(), "duplicate columns in the K table"
-    kv.to_csv(f"{data}/out/bdef_kvar_{era}.tsv.gz", sep="\t", index=False, float_format="%.7g")
+    kv.to_csv(f"{out_dir(era, data)}/bdef_kvar_{era}.tsv.gz", sep="\t", index=False, float_format="%.7g")
     log(f"  wrote bdef_kvar_{era}: {len(kv)} rows")
 
     # ── the control: the union of entry days ───────────────────────────────────────────────────
@@ -271,7 +282,7 @@ def build(era, cfg):
             row.update(F.measure(ti, js, a, variant, pre))
         rows.append(pd.DataFrame(row))
     ctl = pd.concat(rows, ignore_index=True)
-    ctl.to_csv(f"{data}/out/bdef_control_{era}.tsv.gz", sep="\t", index=False, float_format="%.6g")
+    ctl.to_csv(f"{out_dir(era, data)}/bdef_control_{era}.tsv.gz", sep="\t", index=False, float_format="%.6g")
     log(f"  wrote bdef_control_{era}: {len(ctl):,} rows over {len(days)} days (mean {len(ctl)/len(days):.0f}); excluded as an entry / watch ticker {n_excl:,}; {time.time()-t0:.0f}s")
     # cross-check the control against yesterday's on the shared E dates (same rows, same numbers)
     yc = pd.read_csv(f"{data}/out/r_decomp_control_{era}.tsv.gz", sep="\t", usecols=["E", "ticker", "adr20", "ret20_adr_close", "mfe60_adr_close", "complete_60"])
@@ -285,7 +296,8 @@ def build(era, cfg):
 
 if __name__ == "__main__":
     eras = sys.argv[1:] or list(ERAS)
+    assert (not (PRE_OUT or LOG_DIR != HERE)) or eras == ["2017-21"], "CB_PRE_OUT / CB_PRE_LOG re-run the 2017-21 era only"
     for era in eras:
         build(era, ERAS[era])
-    with open(f"{HERE}/02_build_checks{'_' + '_'.join(eras) if len(eras) < len(ERAS) else ''}.txt", "w") as fh:
+    with open(f"{LOG_DIR}/02_build_checks{'_' + '_'.join(eras) if len(eras) < len(ERAS) else ''}.txt", "w") as fh:
         fh.write("\n".join(checks) + "\n")

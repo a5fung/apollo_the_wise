@@ -6,7 +6,7 @@ before the session, the +2R leg, the reach / stall cut, the session-3 leg (profi
 session 3) filled at the next open, the 120-session mark. HARD SCOPE: the cb702 export is cut at 2024-12-31 at load (asserted);
 nothing past the last readable session is ever read (the mark uses the last readable close)."""
 from __future__ import annotations
-import re, time
+import os, re, time
 import numpy as np, pandas as pd
 
 HORIZON = 120
@@ -25,6 +25,17 @@ ERAS = {
     "2022-24": dict(data="/Users/alvinfung/apollo_data/cb702", cut="2024-12-31", watch_lo="2022-03-28", watch_hi="2024-12-31",
                     trades="out/trades_discovery_exitpb.tsv.gz"),
 }
+
+# optional re-run switches, 2017-21 only (#705 v2 re-run; all unset = unchanged): CB_PRE_DIR = the data dir, CB_PRE_OUT = where the generated tables
+# (esr_* written here; wrecall_* / bdef_* read here) live (default DATA/out), CB_PRE_LOG = where the logs / numbers / sample files go (default this dir)
+HERE = "/Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022"
+PRE_OUT, LOG_DIR = os.environ.get("CB_PRE_OUT"), os.environ.get("CB_PRE_LOG", HERE)
+if os.environ.get("CB_PRE_DIR"):
+    ERAS["2017-21"]["data"] = os.environ["CB_PRE_DIR"]
+
+
+def out_dir(era, data):
+    return PRE_OUT if (era == "2017-21" and PRE_OUT) else f"{data}/out"
 
 
 def log(s, sink: list | None = None):

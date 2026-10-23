@@ -13,7 +13,7 @@ from __future__ import annotations
 import json, os, sys, time
 import numpy as np, pandas as pd
 sys.path.insert(0, "/Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022")
-from esr_lib import (Frame, ERAS, STOPS, HORIZON, walk_chain, month_block_ci, account_view, log, TICK_RE)
+from esr_lib import (Frame, ERAS, STOPS, HORIZON, walk_chain, month_block_ci, account_view, log, TICK_RE, out_dir, PRE_OUT, LOG_DIR)
 
 HERE = "/Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022"
 VARIANTS = ("close", "nopen")
@@ -97,8 +97,8 @@ def build(era):
     F = Frame(data, cfg["cut"], sink)
     last = F.last
     # ── P-win: the covered measurable-breakout doublers ───────────────────────────────────────────
-    ep = pd.read_csv(f"{data}/out/wrecall_episodes_{era}_x200.tsv.gz", sep="\t")
-    ca = pd.read_csv(f"{data}/out/wrecall_catch_{era}_x200.tsv.gz", sep="\t", usecols=["ticker", "t", "covered", "triggered", "still_in_s50", "kept_half_episode", "kept_share_episode"])
+    ep = pd.read_csv(f"{out_dir(era, data)}/wrecall_episodes_{era}_x200.tsv.gz", sep="\t")
+    ca = pd.read_csv(f"{out_dir(era, data)}/wrecall_catch_{era}_x200.tsv.gz", sep="\t", usecols=["ticker", "t", "covered", "triggered", "still_in_s50", "kept_half_episode", "kept_share_episode"])
     ep = ep[(ep.class_p == "measurable_breakout") & (ep.excluded == 0)].merge(ca, on=["ticker", "t"], how="left")
     assert ep.covered.notna().all()
     win = ep[ep.covered == 1].reset_index(drop=True).copy()
@@ -111,7 +111,7 @@ def build(era):
     log(f"  P-win: {len(win)} covered measurable-breakout doublers; b+120 past the last session {int((win.complete120==0).sum())}; "
         f"ext_truncated {int(win.ext_truncated.sum())}; the published catch: triggered {int(win.triggered.sum())}, still in at s50 {int(win.still_in_s50.fillna(0).sum())}, kept half {int(win.kept_half_episode.fillna(0).sum())}", sink)
     # ── P-all: the R1 real breakouts ───────────────────────────────────────────────────────────────
-    r1 = pd.read_csv(f"{data}/out/bdef_r1_{era}.tsv.gz", sep="\t", low_memory=False)
+    r1 = pd.read_csv(f"{out_dir(era, data)}/bdef_r1_{era}.tsv.gz", sep="\t", low_memory=False)
     r1 = r1.reset_index(drop=True).copy()
     r1["tj"] = r1.ticker.map(F.tpos).astype(int)
     assert (r1.entry_date.to_numpy() == F.cal.to_numpy()[r1.t.to_numpy()]).all()
@@ -122,7 +122,7 @@ def build(era):
     log(f"  P-all: R1 {len(r1)} rows over {r1.t.nunique()} days ({r1.entry_date.min()}..{r1.entry_date.max()}); R2 {int(r1.r2_exp.sum())}; "
         f"complete (t+120 <= last) {int(r1.complete120.sum())} / R2 {int(r1[r1.complete120==1].r2_exp.sum())}; base_len median {r1.base_len.median():.0f}", sink)
     # ── P-ctl: the matched control rows on the R1 entry days ───────────────────────────────────────
-    ctl = pd.read_csv(f"{data}/out/bdef_control_{era}.tsv.gz", sep="\t", usecols=["t", "ticker", "adr20", "ret63", "dv"])
+    ctl = pd.read_csv(f"{out_dir(era, data)}/bdef_control_{era}.tsv.gz", sep="\t", usecols=["t", "ticker", "adr20", "ret63", "dv"])
     ctl = ctl[ctl.t.isin(set(r1.entry_date))].reset_index(drop=True)
     ctl["ci"] = ctl.t.map(F.cidx).astype(int); ctl["tj"] = ctl.ticker.map(F.tpos).astype(int)
     ctl["proxy_hi"] = F.PHI[ctl.ci, ctl.tj]; ctl["proxy_lo"] = F.PLO[ctl.ci, ctl.tj]
@@ -296,27 +296,29 @@ def build(era):
     W = pd.concat(win_rows, ignore_index=True)
     for c in ("t", "s50", "p", "close_t", "close_p", "gain", "adr20_bprev", "L_p", "base_high_p", "base_low_p", "complete120"):
         W[c] = win[c].to_numpy()[W.base]
-    W.to_csv(f"{data}/out/esr_win_{era}{SFX}.tsv.gz", sep="\t", index=False, float_format="%.7g")
+    W.to_csv(f"{out_dir(era, data)}/esr_win_{era}{SFX}.tsv.gz", sep="\t", index=False, float_format="%.7g")
     R = pd.concat(r1_rows, ignore_index=True)
     for c in ("t", "entry_date", "r2_exp", "adr_t1", "ret63_t1", "pivot_full", "base_low", "base_len", "complete120", "proxy_lo"):
         R[c] = r1[c].to_numpy()[R.base]
-    R.to_csv(f"{data}/out/esr_r1_{era}{SFX}.tsv.gz", sep="\t", index=False, float_format="%.7g")
+    R.to_csv(f"{out_dir(era, data)}/esr_r1_{era}{SFX}.tsv.gz", sep="\t", index=False, float_format="%.7g")
     CT = pd.concat(ctl_parts, ignore_index=True)
     for c in MEAS + ["f_fill", "f_stop0"]:
         CT[c] = CT[c].astype("float32")
     CT["ticker"] = ctl.ticker.to_numpy()[CT.base]
-    CT.to_parquet(f"{data}/out/esr_ctl_{era}{SFX}.parquet", index=False)
+    CT.to_parquet(f"{out_dir(era, data)}/esr_ctl_{era}{SFX}.parquet", index=False)
     SM = pd.concat(samp_rows, ignore_index=True)
-    SM.to_csv(f"{data}/out/esr_ctlsample_{era}{SFX}.tsv.gz", sep="\t", index=False, float_format="%.7g")
-    pd.DataFrame({es: cells[es]["sample"] for es in ("R1",)} | {"ent_index_R1": cells["R1"]["ent_index"]}).to_csv(f"{HERE}/02_sample_R1_{era}{SFX}.tsv", sep="\t", index=False)
-    pd.DataFrame({"R2": cells["R2"]["sample"], "ent_index_R2": cells["R2"]["ent_index"]}).to_csv(f"{HERE}/02_sample_R2_{era}{SFX}.tsv", sep="\t", index=False)
+    SM.to_csv(f"{out_dir(era, data)}/esr_ctlsample_{era}{SFX}.tsv.gz", sep="\t", index=False, float_format="%.7g")
+    pd.DataFrame({es: cells[es]["sample"] for es in ("R1",)} | {"ent_index_R1": cells["R1"]["ent_index"]}).to_csv(f"{LOG_DIR}/02_sample_R1_{era}{SFX}.tsv", sep="\t", index=False)
+    pd.DataFrame({"R2": cells["R2"]["sample"], "ent_index_R2": cells["R2"]["ent_index"]}).to_csv(f"{LOG_DIR}/02_sample_R2_{era}{SFX}.tsv", sep="\t", index=False)
     log(f"  wrote esr_win ({len(W)} rows), esr_r1 ({len(R)}), esr_ctl ({len(CT):,}), esr_ctlsample ({len(SM)})", sink)
-    with open(f"{HERE}/02_numbers_{era}{SFX}.json", "w") as fh:
+    with open(f"{LOG_DIR}/02_numbers_{era}{SFX}.json", "w") as fh:
         json.dump(numbers, fh, indent=1, default=lambda o: float(o) if isinstance(o, (np.floating, np.integer)) else str(o))
-    with open(f"{HERE}/02_build_{era}{SFX}.log", "w") as fh:
+    with open(f"{LOG_DIR}/02_build_{era}{SFX}.log", "w") as fh:
         fh.write("\n".join(sink) + "\n")
 
 
 if __name__ == "__main__":
-    for era in (sys.argv[1:] or list(ERAS)):
+    eras = sys.argv[1:] or list(ERAS)
+    assert (not (PRE_OUT or LOG_DIR != HERE)) or eras == ["2017-21"], "CB_PRE_OUT / CB_PRE_LOG re-run the 2017-21 era only"
+    for era in eras:
         build(era)

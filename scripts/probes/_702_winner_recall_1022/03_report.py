@@ -2,11 +2,24 @@
 """#705 big-winner recall, step 3: the tables (markdown, n on every row) from the step-1/2 tables. Writes HERE/03_report.md and
 HERE/03_numbers.json. Read-only on DATA."""
 from __future__ import annotations
-import json
+import json, os, sys
 import numpy as np, pandas as pd
 
 HERE = "/Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022"
 DATA = {"2017-21": "/Users/alvinfung/apollo_data/cb702_pre", "2022-24": "/Users/alvinfung/apollo_data/cb702"}
+# optional re-run switches, 2017-21 only (all unset = unchanged): CB_PRE_DIR data dir, CB_PRE_OUT the step-1/2 tables (default DATA/out), CB_PRE_LOG logs + report; an era argument limits the run
+PRE_OUT, LOG_DIR = os.environ.get("CB_PRE_OUT"), os.environ.get("CB_PRE_LOG", HERE)
+if os.environ.get("CB_PRE_DIR"):
+    DATA["2017-21"] = os.environ["CB_PRE_DIR"]
+if sys.argv[1:]:
+    DATA = {k: v for k, v in DATA.items() if k in sys.argv[1:]}
+assert (not (PRE_OUT or LOG_DIR != HERE)) or list(DATA) == ["2017-21"], "CB_PRE_OUT / CB_PRE_LOG re-run the 2017-21 era only"
+
+
+def out_dir(era):
+    return PRE_OUT if (era == "2017-21" and PRE_OUT) else f"{DATA[era]}/out"
+
+
 VAR = {"p": "primary: longest window, span <= 5 ADR60, sideways", "s4": "span <= 4 ADR60", "s7": "span <= 7 ADR60", "a20": "unit ADR20(b-1), span <= 5",
        "nosw": "no sideways rule", "shortL": "SHORTEST window (post hoc, added after the first build)"}
 GATES_PLAIN = {"universe_sectype": "not a common stock / ADR", "universe_price": "raw close under $5", "universe_dv": "under $10M median dollar volume",
@@ -137,9 +150,9 @@ def main():
     for tag, name in (("x200", "the +100% set (close at least doubled from the trough within 63 sessions)"), ("x150", "the +50% sensitivity set")):
         w(f"## {name}\n")
         for era in DATA:
-            e = pd.read_csv(f"{DATA[era]}/out/wrecall_episodes_{era}_{tag}.tsv.gz", sep="\t", keep_default_na=False, na_values=[""])
+            e = pd.read_csv(f"{out_dir(era)}/wrecall_episodes_{era}_{tag}.tsv.gz", sep="\t", keep_default_na=False, na_values=[""])
             e = e[e.excluded == 0].reset_index(drop=True)
-            c = pd.read_csv(f"{DATA[era]}/out/wrecall_catch_{era}_{tag}.tsv.gz", sep="\t", keep_default_na=False, na_values=[""])
+            c = pd.read_csv(f"{out_dir(era)}/wrecall_catch_{era}_{tag}.tsv.gz", sep="\t", keep_default_na=False, na_values=[""])
             assert len(c) == len(e)
             composition(e, era, tag)
             w(f"### {era}, {tag} — what we did\n")
@@ -164,18 +177,18 @@ def main():
                     w()
             # the reverse view
         for era in DATA:
-            for line in open(f"{HERE}/02_reverse_{era}.txt"):
+            for line in open(f"{LOG_DIR}/02_reverse_{era}.txt"):
                 if f"[{tag}]" in line:
                     w(f"Reverse view, {era}: " + line.strip().split("reverse view: ")[1] + "\n")
     # the validation counts from the step-2 logs
     w("## Validation of the gate rebuild (from 02_catch_<era>.txt)\n")
     for era in DATA:
-        for line in open(f"{HERE}/02_catch_{era}.txt"):
+        for line in open(f"{LOG_DIR}/02_catch_{era}.txt"):
             if "validation on covered nights" in line:
                 w(f"- {era}: " + line.strip())
-    with open(f"{HERE}/03_report.md", "w") as fh:
+    with open(f"{LOG_DIR}/03_report.md", "w") as fh:
         fh.write("\n".join(out) + "\n")
-    with open(f"{HERE}/03_numbers.json", "w") as fh:
+    with open(f"{LOG_DIR}/03_numbers.json", "w") as fh:
         json.dump(NUM, fh, indent=1, default=float)
     print("\n".join(out))
 

@@ -1,0 +1,17 @@
+ok   winner_recall 01_episodes: ERAS data dirs
+ok   winner_recall 01_episodes: out_dir = DATA/out, both eras
+ok   winner_recall 01_episodes: log dir = HERE
+ok   winner_recall 02_catch: ERAS data dirs
+ok   winner_recall 02_catch: out_dir / log dir
+ok   winner_recall 03_report: DATA, out_dir, log dir
+ok   breakout_definition 02_build: ERAS data dirs
+ok   breakout_definition 02_build: out_dir / log dir
+ok   breakout_definition 03_report: DATA (already ends in /out), log dir
+ok   entry_stop_retry esr_lib: ERAS data dirs
+ok   entry_stop_retry esr_lib: out_dir / log dir
+ok   entry_stop_retry 02_build: log dir = HERE
+ok   trail_variants trail_lib: ERAS data dirs (shared with esr_lib)
+ok   trail_variants 02_build: log dir = HERE, entry-stop-retry dir = PREV, no table-dir override
+ok   _702_entry_stop_retry_1022 03_report.py (source): LOG_DIR defaults to HERE, ERAS default both eras
+ok   _702_trail_variants_1023 03_report.py (source): LOG_DIR defaults to HERE, ERAS default both eras
+ALL DEFAULTS UNCHANGED

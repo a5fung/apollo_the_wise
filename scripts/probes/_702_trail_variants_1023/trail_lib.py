@@ -9,7 +9,7 @@ import sys
 import numpy as np, pandas as pd
 sys.path.insert(0, "/Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022")
 from esr_lib import (Frame, ERAS, HORIZON, PARTIAL_R, PARTIAL_FRAC, STALL_R, STALL_SESSION, RETRY_WINDOW, STATUS,   # noqa: F401
-                     stop_levels, retry_entries, race, month_block_ci, account_view, log, TICK_RE)
+                     stop_levels, retry_entries, race, month_block_ci, account_view, log, TICK_RE, out_dir, PRE_OUT)   # out_dir / PRE_OUT: the optional 2017-21 re-run switches (CB_PRE_DIR / CB_PRE_OUT), read once in esr_lib
 
 TRIGGERS = ("X1", "X2", "X3", "X4")
 PARTIALS = ("P1", "P0")
@@ -314,8 +314,8 @@ def matched_means(ent_keys, ctl_keys_tuple, ctl_vals: pd.DataFrame, cols):
 # ── the populations, loaded exactly as 02_build.py of the 10-22 read loads them (copied; the asserts are the same) ────────────────────
 def load_pops(era: str, F: Frame, sink=None, seed: int = 702):
     cfg = ERAS[era]; data = cfg["data"]; last = F.last
-    ep = pd.read_csv(f"{data}/out/wrecall_episodes_{era}_x200.tsv.gz", sep="\t")
-    ca = pd.read_csv(f"{data}/out/wrecall_catch_{era}_x200.tsv.gz", sep="\t", usecols=["ticker", "t", "covered", "triggered", "still_in_s50", "kept_half_episode", "kept_share_episode"])
+    ep = pd.read_csv(f"{out_dir(era, data)}/wrecall_episodes_{era}_x200.tsv.gz", sep="\t")
+    ca = pd.read_csv(f"{out_dir(era, data)}/wrecall_catch_{era}_x200.tsv.gz", sep="\t", usecols=["ticker", "t", "covered", "triggered", "still_in_s50", "kept_half_episode", "kept_share_episode"])
     ep = ep[(ep.class_p == "measurable_breakout") & (ep.excluded == 0)].merge(ca, on=["ticker", "t"], how="left")
     assert ep.covered.notna().all()
     win = ep[ep.covered == 1].reset_index(drop=True).copy()
@@ -326,7 +326,7 @@ def load_pops(era: str, F: Frame, sink=None, seed: int = 702):
     assert np.allclose(F.C[win.t, win.tj], win.close_t, rtol=1e-5)
     win["complete120"] = ((win.b_p + HORIZON) <= last).astype(int)
     log(f"  P-win: {len(win)} covered measurable-breakout doublers; b+120 past the last session {int((win.complete120==0).sum())}", sink)
-    r1 = pd.read_csv(f"{data}/out/bdef_r1_{era}.tsv.gz", sep="\t", low_memory=False).reset_index(drop=True).copy()
+    r1 = pd.read_csv(f"{out_dir(era, data)}/bdef_r1_{era}.tsv.gz", sep="\t", low_memory=False).reset_index(drop=True).copy()
     r1["tj"] = r1.ticker.map(F.tpos).astype(int)
     assert (r1.entry_date.to_numpy() == F.cal.to_numpy()[r1.t.to_numpy()]).all()
     assert np.allclose(F.C[r1.t, r1.tj], r1.c_t, rtol=1e-5) and np.allclose(F.ADR[r1.t - 1, r1.tj], r1.adr_t1, rtol=1e-4)
@@ -334,7 +334,7 @@ def load_pops(era: str, F: Frame, sink=None, seed: int = 702):
     r1["complete120"] = ((r1.t + HORIZON) <= last).astype(int)
     r1 = pd.concat([r1, pd.DataFrame({"proxy_lo": F.PLO[r1.t, r1.tj], "proxy_hi": F.PHI[r1.t, r1.tj]})], axis=1)
     log(f"  P-all: R1 {len(r1)} rows over {r1.t.nunique()} days ({r1.entry_date.min()}..{r1.entry_date.max()}); R2 {int(r1.r2_exp.sum())}; complete {int(r1.complete120.sum())} / R2 {int(r1[r1.complete120==1].r2_exp.sum())}", sink)
-    ctl = pd.read_csv(f"{data}/out/bdef_control_{era}.tsv.gz", sep="\t", usecols=["t", "ticker", "adr20", "ret63", "dv"])
+    ctl = pd.read_csv(f"{out_dir(era, data)}/bdef_control_{era}.tsv.gz", sep="\t", usecols=["t", "ticker", "adr20", "ret63", "dv"])
     ctl = ctl[ctl.t.isin(set(r1.entry_date))].reset_index(drop=True)
     ctl["ci"] = ctl.t.map(F.cidx).astype(int); ctl["tj"] = ctl.ticker.map(F.tpos).astype(int)
     ctl["proxy_hi"] = F.PHI[ctl.ci, ctl.tj]; ctl["proxy_lo"] = F.PLO[ctl.ci, ctl.tj]

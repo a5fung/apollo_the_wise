@@ -1,0 +1,36 @@
+PASS  winner_recall/wrecall_episodes_2017-21_x200.tsv.gz  decompressed bytes
+PASS  winner_recall/wrecall_catch_2017-21_x200.tsv.gz  decompressed bytes
+PASS  winner_recall/wrecall_nights_2017-21_x200.tsv.gz  decompressed bytes
+PASS  winner_recall/wrecall_episodes_2017-21_x150.tsv.gz  decompressed bytes
+PASS  winner_recall/wrecall_catch_2017-21_x150.tsv.gz  decompressed bytes
+PASS  winner_recall/wrecall_nights_2017-21_x150.tsv.gz  decompressed bytes
+PASS  winner_recall/01_episodes_2017-21.txt  text equal after masking timings and data paths
+PASS  winner_recall/02_catch_2017-21.txt  text equal after masking timings and data paths
+PASS  winner_recall/02_reverse_2017-21.txt  byte-equal
+PASS  winner_recall/03_numbers.json  json equal (2017-21 part)
+PASS  winner_recall/03_report.md  all 206 lines found in order in the cited report (0 missing)
+PASS  breakout_definition/bdef_fills_2017-21.tsv.gz  decompressed bytes
+PASS  breakout_definition/bdef_r1_2017-21.tsv.gz  decompressed bytes
+PASS  breakout_definition/bdef_kvar_2017-21.tsv.gz  decompressed bytes
+PASS  breakout_definition/bdef_control_2017-21.tsv.gz  decompressed bytes
+PASS  breakout_definition/02_build_checks_2017-21.txt  text equal after masking timings and data paths
+PASS  breakout_definition/03_numbers.json  json equal (2017-21 part)
+PASS  breakout_definition/03_report.md  section '# 2017-21' equal
+PASS  entry_stop_retry/esr_win_2017-21.tsv.gz  decompressed bytes
+PASS  entry_stop_retry/esr_r1_2017-21.tsv.gz  decompressed bytes
+PASS  entry_stop_retry/esr_ctlsample_2017-21.tsv.gz  decompressed bytes
+PASS  entry_stop_retry/esr_ctl_2017-21.parquet  sha256
+PASS  entry_stop_retry/02_numbers_2017-21.json  json equal
+PASS  entry_stop_retry/02_sample_R1_2017-21.tsv  byte-equal
+PASS  entry_stop_retry/02_sample_R2_2017-21.tsv  byte-equal
+PASS  entry_stop_retry/03_headline.json  json equal (2017-21 part)
+PASS  entry_stop_retry/03_report.md  section '## 2017-21' equal
+PASS  trail_variants/trail_win_2017-21.tsv.gz  decompressed bytes
+PASS  trail_variants/trail_r1_2017-21.tsv.gz  decompressed bytes
+PASS  trail_variants/trail_ctlsample_2017-21.tsv.gz  decompressed bytes
+PASS  trail_variants/trail_ctlmatch_2017-21.parquet  sha256
+PASS  trail_variants/02_numbers_2017-21.json  json equal
+PASS  trail_variants/03_headline.json  json equal (2017-21 part)
+PASS  trail_variants/03_report.md  section '## 2017-21' equal
+
+PARITY: 34 of 34 files identical  -> ALL PASS

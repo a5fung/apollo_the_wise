@@ -1,10 +1,12 @@
 """#705 entry/stop/retry — step 3: the tables, from 02_numbers_<era>.json (no bar is re-read). Writes 03_report.md (every table, n on every
 row) and 03_headline.json (the numbers the doc's lead quotes)."""
-import json, sys
+import json, os, sys
 import numpy as np
 
 HERE = "/Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022"
-ERAS = ("2017-21", "2022-24")
+ERAS = tuple(sys.argv[1:]) or ("2017-21", "2022-24")      # optional: an era argument limits the run
+LOG_DIR = os.environ.get("CB_PRE_LOG", HERE)             # optional re-run switch (2017-21 only): where 02_numbers_<era>.json is read and the report is written
+assert LOG_DIR == HERE or ERAS == ("2017-21",), "CB_PRE_LOG re-runs the 2017-21 era only"
 STOPS = ("S1", "S2", "S3", "S4")
 STOP_NAME = {"S1": "S1 breakout-day low", "S2": "S2 entry − 1.0 ADR", "S3": "S3 entry − 1.5 ADR", "S4": "S4 base low"}
 out, head = [], {}
@@ -41,7 +43,7 @@ def qs(qv, d=2):
 
 for era in ERAS:
     try:
-        J = json.load(open(f"{HERE}/02_numbers_{era}.json"))
+        J = json.load(open(f"{LOG_DIR}/02_numbers_{era}.json"))
     except FileNotFoundError:
         continue
     head[era] = {}
@@ -127,6 +129,6 @@ for era in ERAS:
                             rows.append([STOP_NAME[s], f"T{T}", f"n = {a['n']} trades", f"{a['total_pct']:+.0f}%", f"{a['max_dd_pct']:.0f}%", f"{a['open_median']:.0f} / {a['open_max']:.0f}", f"n = {b['n']}", f"{b['total_pct']:+.0f}%", f"{b['max_dd_pct']:.0f}%", (f"{c['entries']['r_top5_share']*100:.0f}%" if (np.isfinite(c['entries']['r_top5_share']) and a['total_r'] > 0) else "— (total R not positive)")])
                     tbl(["stop", "retries", "entries' trades", "total return", "worst drawdown", "positions open at once: median / max", "matched-sample control trades", "its total return", "its worst drawdown", "5 best trades' summed R ÷ total R (only where the total is positive)"], rows)
 
-json.dump(head, open(f"{HERE}/03_headline.json", "w"), indent=1)
-open(f"{HERE}/03_report.md", "w").write("\n".join(out) + "\n")
+json.dump(head, open(f"{LOG_DIR}/03_headline.json", "w"), indent=1)
+open(f"{LOG_DIR}/03_report.md", "w").write("\n".join(out) + "\n")
 print(f"wrote 03_report.md ({len(out)} lines) and 03_headline.json for {list(head)}")

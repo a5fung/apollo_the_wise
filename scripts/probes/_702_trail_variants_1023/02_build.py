@@ -9,13 +9,17 @@ trades per cell), trail_ctlmatch_<era>.parquet (the matched control means per en
 02_numbers_<era>.json (every reported number) and 02_build_<era>.log. HARD SCOPE: the export is cut at 2024-12-31 at load (asserted in
 esr_lib); nothing under DATA is modified or deleted; the runner is never imported; no network; no subagent."""
 from __future__ import annotations
-import json, sys, time
+import json, os, sys, time
 import numpy as np, pandas as pd
 HERE = "/Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023"
 PREV = "/Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022"
+# optional re-run switches, 2017-21 only (#705 v2 re-run; all unset = unchanged; CB_PRE_DIR / CB_PRE_OUT are read in esr_lib): CB_PRE_LOG = where
+# 02_numbers_<era>.json and the log go (default HERE), CB_PRE_ESR = where the entry-stop-retry read's 02_sample_* / 02_numbers_*.json are read (default PREV)
+LOG_DIR = os.environ.get("CB_PRE_LOG", HERE)
+PREV_DIR = os.environ.get("CB_PRE_ESR", PREV)
 sys.path.insert(0, HERE)
 from trail_lib import (Frame, ERAS, HORIZON, walk_chain_v, add_sma, load_pops, summarize, matched_means, month_block_ci, account_view, log,
-                       all_cells, cell_key)
+                       all_cells, cell_key, out_dir, PRE_OUT)
 
 STOP, VARIANT = "S2", "close"
 BASE = (20, "X1", "P1")
@@ -80,12 +84,13 @@ def build(era):
     win, r1, ctl, cells = load_pops(era, F, sink)
     # the saved seed-702 control draw of the 10-22 read must be the one re-derived here (same control rows, same order)
     for es in ("R1", "R2"):
-        saved = pd.read_csv(f"{PREV}/02_sample_{es}_{era}.tsv", sep="\t")
+        saved = pd.read_csv(f"{PREV_DIR}/02_sample_{es}_{era}.tsv", sep="\t")
         assert np.array_equal(saved[es].to_numpy(), cells[es]["sample"]) and np.array_equal(saved[f"ent_index_{es}"].to_numpy(), cells[es]["ent_index"]), f"the saved {es} control draw differs"
-    assert len(ctl) == (2096517 if era == "2017-21" else 1469399), len(ctl)
+    n_ctl = json.load(open(f"{PREV_DIR}/02_numbers_{era}.json"))["ctl"]["n"] if PREV_DIR != PREV else (2096517 if era == "2017-21" else 1469399)   # a re-run: the control size of THAT run's entry-stop-retry read
+    assert len(ctl) == n_ctl, len(ctl)
     log(f"  the saved seed-702 control draws (R1 {len(cells['R1']['sample'])}, R2 {len(cells['R2']['sample'])}) re-derived equal; control n {len(ctl):,}", sink)
     sample_ids = np.unique(np.concatenate([cells["R1"]["sample"], cells["R2"]["sample"]])); sample_ids = sample_ids[sample_ids >= 0]
-    ref = json.load(open(f"{PREV}/02_numbers_{era}.json"))["grid"]["S2_close"]
+    ref = json.load(open(f"{PREV_DIR}/02_numbers_{era}.json"))["grid"]["S2_close"]
     numbers = dict(era=era, sessions=len(F.cal), cal_first=F.cal[0], cal_last=F.cal[-1], last_idx=int(last), stop=STOP, variant=VARIANT,
                    win=dict(n=int(len(win)), complete120=int(win.complete120.sum()), ext_truncated=int(win.ext_truncated.sum()), pub_triggered=int(win.triggered.sum()),
                             pub_still_in_s50=int(win.still_in_s50.fillna(0).sum()), pub_kept_half=int(win.kept_half_episode.fillna(0).sum()), gain_med=float(win.gain.median()),
@@ -233,23 +238,25 @@ def build(era):
     W = pd.concat(win_rows, ignore_index=True)
     for c in ("t", "s50", "p", "close_t", "close_p", "gain", "adr20_bprev", "L_p", "base_high_p", "base_low_p", "complete120"):
         W[c] = win[c].to_numpy()[W.base]
-    W.to_csv(f"{data}/out/trail_win_{era}.tsv.gz", sep="\t", index=False, float_format="%.7g")
+    W.to_csv(f"{out_dir(era, data)}/trail_win_{era}.tsv.gz", sep="\t", index=False, float_format="%.7g")
     R = pd.concat(r1_rows, ignore_index=True)
     for c in ("t", "entry_date", "r2_exp", "adr_t1", "ret63_t1", "pivot_full", "base_low", "base_len", "complete120"):
         R[c] = r1[c].to_numpy()[R.base]
-    R.to_csv(f"{data}/out/trail_r1_{era}.tsv.gz", sep="\t", index=False, float_format="%.7g")
+    R.to_csv(f"{out_dir(era, data)}/trail_r1_{era}.tsv.gz", sep="\t", index=False, float_format="%.7g")
     SM = pd.concat(samp_rows, ignore_index=True)
     SM["ci"] = ctl.ci.to_numpy()[SM.base]; SM["complete120"] = ctl.complete120.to_numpy()[SM.base]
-    SM.to_csv(f"{data}/out/trail_ctlsample_{era}.tsv.gz", sep="\t", index=False, float_format="%.7g")
+    SM.to_csv(f"{out_dir(era, data)}/trail_ctlsample_{era}.tsv.gz", sep="\t", index=False, float_format="%.7g")
     MR = pd.concat(match_rows, ignore_index=True)
-    MR.to_parquet(f"{data}/out/trail_ctlmatch_{era}.parquet", index=False)
+    MR.to_parquet(f"{out_dir(era, data)}/trail_ctlmatch_{era}.parquet", index=False)
     log(f"  wrote trail_win ({len(W)} rows), trail_r1 ({len(R)}), trail_ctlsample ({len(SM)}), trail_ctlmatch ({len(MR)})", sink)
-    with open(f"{HERE}/02_numbers_{era}.json", "w") as fh:
+    with open(f"{LOG_DIR}/02_numbers_{era}.json", "w") as fh:
         json.dump(numbers, fh, indent=1, default=lambda o: float(o) if isinstance(o, (np.floating, np.integer)) else str(o))
-    with open(f"{HERE}/02_build_{era}.log", "w") as fh:
+    with open(f"{LOG_DIR}/02_build_{era}.log", "w") as fh:
         fh.write("\n".join(sink) + "\n")
 
 
 if __name__ == "__main__":
-    for era in (sys.argv[1:] or list(ERAS)):
+    eras = sys.argv[1:] or list(ERAS)
+    assert (not (PRE_OUT or LOG_DIR != HERE or PREV_DIR != PREV)) or eras == ["2017-21"], "CB_PRE_OUT / CB_PRE_LOG / CB_PRE_ESR re-run the 2017-21 era only"
+    for era in eras:
         build(era)

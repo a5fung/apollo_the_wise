@@ -10,7 +10,7 @@ Per era (2017-21 = cb702_pre, 2022-24 = cb702) and per factor (2.0 = the +100% s
 HARD SCOPE: the cb702 export is cut at 2024-12-31 at load (asserted). Nothing under DATA is modified or deleted; the runner is never
 imported; no network."""
 from __future__ import annotations
-import re, sys, time
+import os, re, sys, time
 import numpy as np, pandas as pd
 sys.path.insert(0, "/Users/alvinfung/apollo_the_wise")
 from agents.market_intelligence.consolidation_breakout import is_test_symbol as cb_is_test   # noqa: E402  (the frozen module; one helper)
@@ -22,6 +22,17 @@ ERAS = {
     "2022-24": dict(data="/Users/alvinfung/apollo_data/cb702", cut="2024-12-31", era_start="2022-03-28", era_end="2024-12-31",
                     guard=None, splits="cb702_splits.psv", raw_close=None),
 }
+# optional re-run switches, 2017-21 only (#705 v2 re-run; all unset = unchanged): CB_PRE_DIR = the data dir, CB_PRE_OUT = where the tables are
+# written (default DATA/out), CB_PRE_LOG = where the run log goes (default HERE)
+PRE_OUT, LOG_DIR = os.environ.get("CB_PRE_OUT"), os.environ.get("CB_PRE_LOG", HERE)
+if os.environ.get("CB_PRE_DIR"):
+    ERAS["2017-21"]["data"] = os.environ["CB_PRE_DIR"]
+
+
+def out_dir(era, data):
+    return PRE_OUT if (era == "2017-21" and PRE_OUT) else f"{data}/out"
+
+
 MIN_PRICE, MIN_DV, HIST = 5.0, 10_000_000.0, 130
 TICK_RE = re.compile(r"^[A-Z]{1,5}$")
 QWIN = 63                 # the qualifying window (t, t+63]
@@ -314,7 +325,7 @@ def build(era, cfg):
         for col in ("b_date", "base_start_date"):
             if col in df: df[col] = df[col].fillna("")
         df["excluded"] = ((df.artifact_jump == 1) | (df.identity_break == 1)).astype(int)
-        out = f"{data}/out/wrecall_episodes_{era}_{tag}.tsv.gz"
+        out = f"{out_dir(era, data)}/wrecall_episodes_{era}_{tag}.tsv.gz"
         df.to_csv(out, sep="\t", index=False, float_format="%.7g")
         kept = df[df.excluded == 0]
         log(f"  [{tag}] {cnt}; wrote {out}: {len(df)} episodes, excluded {int(df.excluded.sum())}, kept {len(kept)}; "
@@ -323,9 +334,10 @@ def build(era, cfg):
 
 if __name__ == "__main__":
     eras = sys.argv[1:] or list(ERAS)
+    assert (not (PRE_OUT or LOG_DIR != HERE)) or eras == ["2017-21"], "CB_PRE_OUT / CB_PRE_LOG re-run the 2017-21 era only"
     for era in eras:
         log(f"== {era}")
         build(era, ERAS[era])
-        with open(f"{HERE}/01_episodes_{era}.txt", "w") as fh:
+        with open(f"{LOG_DIR}/01_episodes_{era}.txt", "w") as fh:
             fh.write("\n".join(log_lines) + "\n")
         log_lines.clear()
