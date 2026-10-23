@@ -48,7 +48,8 @@ that read. Nothing about the rule is new; every choice below is the parent's, ci
   seven looks better than it is.
 - **2025–26 is not unread in general** (parent Disclosed (d)). The P5, exitpb and h60 reads and the regime report already show it
   by cell, and the C1 / C3 cells gate on `rs_best ≥ RS_BEST_PRIMARY`. So an RS cut of 2025–26 HAS been seen: a threshold gate,
-  not this weekly top-3 rank. No `alone_c3` score, cutoff or flag has been computed there.
+  not this weekly top-3 rank. No `alone_c3` OUTCOME has been read there. Its score, cutoff and flag WERE computed once,
+  features only, by the build's dry run (2026-10-22, STEP 0 below); no outcome column was opened.
 - **`rs_best` is stored at 0.1 resolution, so it ties.**
   - Measured on the deciding eras: 840 / 714 distinct values, and the top 4% of fills hold only 6 distinct values (100.0 down to
     99.5; 0.6–0.7% of fills sit at 100.0).
@@ -59,6 +60,22 @@ that read. Nothing about the rule is new; every choice below is the parent's, ci
     the stair-step row.
   - It is kept unchanged: altering the tie rule now would be a new rule tested on the same data that selected it.
   - STEP 0 prints, as features only, how many fills sit exactly at their cutoff's value.
+
+## STEP 0 as measured by the dry run (features only, 2026-10-22, before the freeze; no outcome opened)
+
+- The five pinned holdout counts are equal: 7,570 joined / 7,547 fills / 39 open marks / 93 ISO weeks / 23 excluded. Mature is
+  7,508.
+- **A+ n = 172 — BELOW the inherited expectation of 215–279** (capped 73, rest 7,302, unrated 0, thin pool 0). 61% of weeks
+  after burn-in hold fewer than 3 A+.
+- **47 fills sit exactly at their cutoff member's `rs_best` value, and all 47 are REST** (the tie property disclosed above,
+  live on this table).
+- `rs_best` census: 693 distinct values; 44 fills (0.58%) at 100.0; the top 4% (314 fills) hold 7 distinct values (100.0 down
+  to 99.4).
+- The rule is NOT changed for any of this. The expectation miss is recorded here before the freeze, and the bar is applied at
+  whatever n the read finds.
+- The chance figure at n = 172: the outlier bar needs ≥ 5 big winners (5 × 7,531 = 37,655 ≥ 2 × 89 × 172 = 30,616; 4 is
+  30,124, which fails). A random subset at C0's rate (Poisson mean 2.03) reaches 5 with P ≈ 5.6%, before the interval and C0
+  conditions, which make a chance PASS rarer.
 
 ## Bar (the parent's PASS bar with the 2025–26 numbers; parent §Bars)
 
@@ -138,4 +155,6 @@ No further registration is named here. A new rating idea is a new registration o
 (Pins printed by the stage's `--print-pins` — that output is authoritative for the list — and pasted here in the commit that precedes the run: the runner, the scaffold, the
 spec module, the re-derivation module, the golden fixtures module, `trades_holdout_exitpb.tsv.gz`,
 `trades_discovery_exitpb.tsv.gz`, `trades_holdout_p5.tsv.gz`, `trades_discovery_p5.tsv.gz`, `candidates.tsv`, `watch.tsv.gz`,
-`daily_closes_all.csv.gz` and the doc body above the marker.)
+`daily_closes_all.csv.gz` and the doc body above the marker. The build adds `aplus_read.py` ("aplus module" — the engine it
+imports, byte-equal to the A+ freeze's spec module) and its own fixtures module; the P5 and watch tables are pinned but never opened;
+no minute tree or profile is read.)
