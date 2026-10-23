@@ -1,0 +1,25 @@
+== 2017-21
+  export: 10,320,661 rows, kept 10,320,661 (cut None); 2016-01-04..2022-06-30 = 1635 sessions; 9,944 tickers; 2s
+  wide (1635, 9944); frame built 10s
+  published pp rows: 13363; fill_day_stop 4920; day-0 third 1379
+  parity set (no day-0 stop / third, exit inside the readable bars): n = 7335
+  realized_r within 1e-3 (the published fill is 6-digit text on float32 bars; max abs diff 9.46e-01, p99 2.2e-05): 7334 of 7335 (99.99%); exit_session equal: 7334 (99.99%)
+  mismatches 1: I cut / published did not 0; published cut / I did not 1; other 0
+    status stopped: n = 5599, R match 100.00%
+    status time_exit: n = 449, R match 99.78%
+    status trailed: n = 1287, R match 100.00%
+    partial none: n = 4174, R match 99.98%
+    partial r: n = 2283, R match 100.00%
+    partial session: n = 878, R match 100.00%
+== 2022-24
+  export: 13,830,569 rows, kept 8,619,626 (cut 2024-12-31); 2021-09-27..2024-12-31 = 821 sessions; 15,702 tickers; 4s
+  wide (821, 15702); frame built 10s
+  published pp rows: 8984; fill_day_stop 3341; day-0 third 857
+  parity set (no day-0 stop / third, exit inside the readable bars): n = 4905
+  realized_r within 1e-3 (the published fill is 6-digit text on float32 bars; max abs diff 2.47e-04, p99 2.0e-05): 4905 of 4905 (100.00%); exit_session equal: 4905 (100.00%)
+    status stopped: n = 3932, R match 100.00%
+    status time_exit: n = 250, R match 100.00%
+    status trailed: n = 723, R match 100.00%
+    partial none: n = 3009, R match 100.00%
+    partial r: n = 1422, R match 100.00%
+    partial session: n = 474, R match 100.00%

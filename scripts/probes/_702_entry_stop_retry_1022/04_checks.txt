@@ -1,0 +1,22 @@
+== 2017-21
+  (a) naive pp re-walk, R1: 400 random trades, mismatches beyond text rounding and not a float32 knife edge 0; knife-edge ties (a bar exactly at the target / stop / fill at float32 precision) 0; max |ΔR| 1.8e-05
+  (a) naive pp re-walk, control sample: 400 random trades, mismatches beyond text rounding and not a float32 knife edge 0; knife-edge ties (a bar exactly at the target / stop / fill at float32 precision) 0; max |ΔR| 4.1e-05
+  (a) naive pp re-walk, P-win: 400 random trades, mismatches beyond text rounding and not a float32 knife edge 0; knife-edge ties (a bar exactly at the target / stop / fill at float32 precision) 0; max |ΔR| 5.1e-05
+  (b) retry rule, R1: 38536 retries checked, 0 not the first close above the base high within 20 sessions of a stop; stopped chains with an unused retry (none expected) 0
+  (b) retry rule, P-win: 1613 retries checked, 0 not the first close above the base high within 20 sessions of a stop; stopped chains with an unused retry (none expected) 0
+  (c) P-win S1 close T2: still in at s50 207 (report 207); kept ≥ half 10 (report 10); kept ≥ quarter 111 (report 111)
+  (c) P-win S2 close T0: still in at s50 117 (report 117); kept ≥ half 4 (report 4); kept ≥ quarter 69 (report 69)
+  (d) race on 300 random R1 S2 first trades, 3 thresholds each: mismatches 0
+  (e) nopen fill = the next session's open: 200 of 200; close fill = the breakout close: 200 of 200
+  (f) S2 close T0 R1 complete, matched control mean R per base by merge: +0.0464 (report +0.0464); entries +0.0518 (report +0.0518); n 9239 (report 9239); fell back to decile 100 (report 100)
+== 2022-24
+  (a) naive pp re-walk, R1: 400 random trades, mismatches beyond text rounding and not a float32 knife edge 0; knife-edge ties (a bar exactly at the target / stop / fill at float32 precision) 0; max |ΔR| 2.5e-05
+  (a) naive pp re-walk, control sample: 400 random trades, mismatches beyond text rounding and not a float32 knife edge 0; knife-edge ties (a bar exactly at the target / stop / fill at float32 precision) 0; max |ΔR| 5.5e-05
+  (a) naive pp re-walk, P-win: 400 random trades, mismatches beyond text rounding and not a float32 knife edge 0; knife-edge ties (a bar exactly at the target / stop / fill at float32 precision) 0; max |ΔR| 9.6e-05
+  (b) retry rule, R1: 20875 retries checked, 0 not the first close above the base high within 20 sessions of a stop; stopped chains with an unused retry (none expected) 0
+  (b) retry rule, P-win: 825 retries checked, 0 not the first close above the base high within 20 sessions of a stop; stopped chains with an unused retry (none expected) 0
+  (c) P-win S1 close T2: still in at s50 112 (report 112); kept ≥ half 9 (report 9); kept ≥ quarter 64 (report 64)
+  (c) P-win S2 close T0: still in at s50 78 (report 78); kept ≥ half 5 (report 5); kept ≥ quarter 43 (report 43)
+  (d) race on 300 random R1 S2 first trades, 3 thresholds each: mismatches 0
+  (e) nopen fill = the next session's open: 200 of 200; close fill = the breakout close: 200 of 200
+  (f) S2 close T0 R1 complete, matched control mean R per base by merge: -0.0925 (report -0.0925); entries -0.1131 (report -0.1131); n 4457 (report 4457); fell back to decile 26 (report 30)
