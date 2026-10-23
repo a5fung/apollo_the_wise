@@ -2364,3 +2364,16 @@ words on his streams.
   1. do the bases he bought or called best beat the ones he said were not ready yet, and the average base (selection);
   2. does our tightness measure separate his "not ready yet" bases from his "bought" ones (whether our numbers see the
      tightness he sees; detection, no outcome).
+
+## 2026-10-22 — what a breakout IS (operator, verbatim, on the R decomposition)
+
+> "\"When a big move comes, it starts 5–6 weeks after entry\" this points to wrong entry, the whole point of breakout is that it has broken the consolidation period and enter the expansion phase, if this is happening 5-6 weeks after then the entry is not a breakout by definition"
+
+**Used as:** a DEFINITION. A breakout = the stock leaves the consolidation and enters the EXPANSION phase.
+- A trigger after which the stock behaves like any ordinary stock for weeks, and moves (if at all) 5–6 weeks later, is not a
+  breakout. It fired early or on the wrong level.
+- So the decomposition's "selection" finding is re-read as an ENTRY-DEFINITION finding: our trigger (the trendline level, ORH5)
+  is not catching the moment the base breaks into expansion.
+- **Next (#705, measurement only):** does a real breakout — the base high cleared, on an expansion day — follow through more
+  than matched ordinary stocks, and sooner? And for our triggers: when did the stock actually clear its base high relative to
+  our entry?
