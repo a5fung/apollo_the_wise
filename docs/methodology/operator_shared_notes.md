@@ -2429,3 +2429,23 @@ measure is risk / reward AT THE ENTRY MOMENT:
 
 The "no edge" statements so far are about drift only. Whether the breakout moment gives better risk / reward is UNMEASURED. It
 is the next read after the big-winner recall.
+
+## 2026-10-22 — getting stopped out is a stop / re-entry / timing problem, not "no edge in breakouts" (operator, verbatim)
+
+> "If the issue is getting stopped out to really it's either a stop placement problem or a reentry problem, or entry timing but not that there's no edge in breakouts which is my point"
+
+**Used as:** a correction of my framing. "No edge in breakouts" overstated what was measured. What IS measured, and what is not:
+
+| Lever | Tested so far | Result |
+|---|---|---|
+| Stop placement | low-of-day, ½-ADR cap / floor, level − ½ ADR, base low — all capped at 1 ADR (`cb_his_exit_2026-10-18.md`) | all read the same as the day-low stop |
+| Stop placement | wider than 1 ADR, or structural (the base low uncapped) | NOT TESTED |
+| Re-entry | one / two / every re-break after a stop (`cb_reentry_prereg_2026-10-19.md`) | does not rescue it in 2022–24 (re-entries −0.13R), on OUR trigger |
+| Entry timing | hourly-close confirmation (`cb_hourly_entry_prereg_2026-10-19.md`) | FAIL / same as ORH5 |
+| Entry timing | the real breakout (base high cleared, expansion day) WITH ITS OWN STOP | NOT TESTED (only as drift) |
+| The moment | the stop-relative race vs ordinary stocks with the same stop | NOT TESTED (breakouts alone sit at the coin-flip line) |
+
+**Next (#705):** the untested rows, measured together on the same bases:
+- the real-breakout entry with its own stop;
+- stops beyond 1 ADR and the structural base-low stop;
+- each against the same stop on matched ordinary stocks.
