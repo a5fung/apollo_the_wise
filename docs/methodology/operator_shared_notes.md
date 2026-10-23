@@ -2336,3 +2336,16 @@ population.
 
 **Used as:** an open question for him — how to test HIS chart read of A+ (his eye as ground truth) against our measures. It is
 not a rule change, and the registered RS-alone read is unaffected unless he says otherwise.
+
+## 2026-10-22 — his labels are Qullamaggie's own (operator, verbatim, on my ask that he grade charts)
+
+> "Didn't we already have all the setups discuss be qullamaggie directly on his streams, why you need me to label charts? The whole point is to quantify his system, what better labels then his own"
+
+**Used as:** the ask for him to grade charts is WITHDRAWN. The ground truth for "what an A+ setup is" is Qullamaggie's own
+words on his streams.
+- **Already read once** (`docs/analysis/cb_selection_test_prereg_2026-10-19.md` RESULT): the 98 bases he DISCUSSED while they
+  were still basing broke out no better than the average base of the same months (+1.01 vs +1.10 ADR over 20 sessions, CAN'T
+  TELL).
+- **That read's own limit is the next step:** a mention is not a trade. The stricter label is the subset he said he BOUGHT (or
+  called his best). The captions carry those words, e.g. FCX 2023-01-26 *"I bought when it broke out of this flag"*. That subset
+  is to be extracted from the captions (no outcome read) and tested as its own pre-registered read.
