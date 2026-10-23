@@ -2349,3 +2349,18 @@ words on his streams.
 - **That read's own limit is the next step:** a mention is not a trade. The stricter label is the subset he said he BOUGHT (or
   called his best). The captions carry those words, e.g. FCX 2023-01-26 *"I bought when it broke out of this flag"*. That subset
   is to be extracted from the captions (no outcome read) and tested as its own pre-registered read.
+
+## 2026-10-22 — Qullamaggie grades on stream (operator, verbatim)
+
+> "He often say it's A+ or not, or say it needs a free more days to tighten etc."
+
+**Used as:** the stream captions carry Qullamaggie's own GRADES, not just mentions. That makes them the label set for A+.
+- **A first $0 look at the raw caption text** (rolling captions repeat lines about 3×; not yet de-duplicated):
+  - "few more days" appears on 580 caption lines and "needs to tighten" / "need to tighten" on 134;
+  - "I bought" on 3,398 and "I'm long" on 390;
+  - "A plus" / "A+" only on 15, so he rarely says the letter grade aloud in the captions.
+- **Next (#705):** extract each graded moment (ticker, talk date, grade: bought / best / not yet — "needs a few more days" or
+  "needs to tighten" / passed), outcome-free. Then pre-register two reads before any outcome:
+  1. do the bases he bought or called best beat the ones he said were not ready yet, and the average base (selection);
+  2. does our tightness measure separate his "not ready yet" bases from his "bought" ones (whether our numbers see the
+     tightness he sees; detection, no outcome).
