@@ -2364,3 +2364,18 @@ EVIDENCE:
 - ⚠ **What this close cannot show:** a NEW alert originating at the 09:00 tick itself — none occurred 10-19..10-21 (the alerts came from the 07:00–08:40 ticks:
   IRON, MANE, SMCI, SPCX). The change removed only the duplicate 5-minute tick and did not touch the brief's path (it calls `_ep_scan_job()` itself). Put to him
   2026-10-21: "OK to close #703 on that basis" — his answer: *"ok"*.
+
+## #697 — high-tight-flag detection fixes: reach repairs, universe carry, one-day hold, the #146 page, post-breakout state, corpus (2026-10-23)
+
+BAR: "items 1, 2 and 5 deployed and verified live — the Friday 10-23 watchlist renders a non-empty 'Flag Bases' section when the board has TIGHTENING-or-better names, `flag_digest_sent` rows exist for each digest sent, a WATCH name absent from a night's scan universe still gets a row, and a downgrade holds exactly one day — AND the item 3 page is in front of him with n stated; items 4 and 6 shipped or explicitly deferred by him."
+
+EVIDENCE:
+- **Source:** prod, read-only, Fri 10-23 after the 17:25 ET scan and the 18:00 ET Friday watchlist; checker report `scripts/probes/_verify_1023/task_697.md`; the hold check re-run by the main loop.
+- **Friday 10-23 watchlist renders a non-empty Flag Bases section:** the rendered text (a no-send render of the live pipeline, persist off) shows "Flag Bases — TRIGGERED / COILED / TIGHTENING (watch only) (2)" with IOVA and CAI; `mi_weekly_watchlists` holds both FLAG rows (generated 18:00:26 ET); the board held exactly those two TIGHTENING names. Baseline: 0 FLAG rows on 09-25 / 10-02 / 10-09 (the section had rendered empty since 08-02).
+- **`flag_digest_sent` for each digest sent:** 5 digest nights derived from the stage table alone (COILED on 10-13 / 10-14 / 10-15; KOD and CAI entries 10-21 / 10-22) — 5 `flag_digest_sent` rows, all `telegram: sent`, 0 `flag_digest_sent_error`.
+- **A WATCH name absent from the scan universe still gets a row:** `verify_carry_live.sql` on 10 scan dates 10-12..10-23 — 7–10 carry-tag rows a night (the old code wrote none), `b_violator` empty on all 10.
+- **A downgrade holds exactly one day:** `verify_hold_live.sql` d0 = 10-12, re-run by the main loop: after_hold 3, **violators 0**, fingerprint 3, first_holds 2, 10 scan dates (KOD 10-09 → released 10-12; GRAL and IOVA COILED-held one night each, no re-hold).
+- **Item 3 page in front of him with n stated:** `docs/analysis/146_detection_page_2026-10-11.md` (444 trading days; 42 TRIGGERED reads → 143); his ruling "UNPARK #146, with separate buckets" (commits 7694efff / 2468e869).
+- **Items 4 and 6 shipped:** item 4 — `_697_item4/verify_live.sql` d0 = 10-19, 5 scans, 0 violations, 6 `ok_stamped` (HTFL, LIFE: days since breakout 1 → 2 → 3); item 6 — `tests/fixtures/htf_labelled.py` `label_kind` with GH / HNGE / HPE, 74 tests pass.
+- ⚠ **What this close cannot show:** the #146 `triggered_from` check — no raw TRIGGERED row has occurred since 10-11 — so that watch moves to its own line, **#146** (ETA 11-06), not dropped.
+

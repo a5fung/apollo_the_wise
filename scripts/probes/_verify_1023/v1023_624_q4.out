@@ -1,0 +1,72 @@
+Pager usage is off.
+=== Q4-1 NULL-cap gappers stamped quality_filter: the reason text (could a sub-cap name hide here?)
+ scan_date  | ticker |                       reason                       | max_gap |  pc   | rows 
+------------+--------+----------------------------------------------------+---------+-------+------
+ 2026-10-12 | LQDA   | quality filter: filter:atr_too_high: 23.7% > 15.0% |    11.1 | 27.38 |    1
+ 2026-10-12 | SVRN   | quality filter: filter:atr_too_high: 27.7% > 15.0% |    14.8 | 44.00 |   28
+ 2026-10-13 | MMEDV  | quality filter: filter:adv_no_data                 |    25.7 | 19.10 |    3
+ 2026-10-13 | SUNS   | quality filter: filter:adv_too_low: $598,517       |    10.0 |  5.79 |    1
+ 2026-10-14 | AEHL   | quality filter: filter:atr_too_high: 16.0% > 15.0% |   219.3 |  8.55 |   38
+ 2026-10-14 | GRML   | quality filter: filter:atr_too_high: 32.8% > 15.0% |    43.8 |  5.54 |   38
+ 2026-10-14 | LQDA   | quality filter: filter:atr_too_high: 24.5% > 15.0% |    54.1 | 26.81 |   38
+ 2026-10-14 | RGC    | quality filter: filter:adv_too_low: $697,383       |    14.0 |  8.19 |    2
+ 2026-10-14 | VEEA   | quality filter: filter:atr_too_high: 22.9% > 15.0% |    12.7 |  5.20 |    6
+ 2026-10-15 | FMFC   | quality filter: filter:adv_too_low: $46,639        |    36.4 |  5.52 |    8
+ 2026-10-15 | NRXS   | quality filter: filter:adv_too_low: $682,500       |    13.6 |  6.53 |    7
+ 2026-10-15 | NTWK   | quality filter: filter:adv_too_low: $551,912       |    13.7 |  6.49 |    6
+ 2026-10-15 | RPGL   | quality filter: filter:adv_too_low: $401,375       |    11.0 | 15.49 |    1
+ 2026-10-16 | AEHL   | quality filter: filter:atr_too_high: 28.1% > 15.0% |    13.5 | 11.42 |   33
+ 2026-10-16 | PMI    | quality filter: filter:atr_too_high: 24.6% > 15.0% |    25.0 | 10.00 |   35
+ 2026-10-19 | RPGL   | quality filter: filter:adv_too_low: $836,928       |    20.9 |  6.89 |   37
+ 2026-10-19 | SKIN   | quality filter: filter:adv_too_low: $214,806       |    18.2 | 10.56 |   15
+ 2026-10-20 | MF     | quality filter: filter:adv_too_low: $790,775       |    17.1 | 10.50 |    2
+ 2026-10-20 | SSTI   | quality filter: filter:adv_too_low: $494,196       |    10.3 |  8.28 |    1
+ 2026-10-20 | TANH   | quality filter: filter:adv_too_low: $476,509       |    10.2 | 10.20 |    1
+ 2026-10-21 | CCG    | quality filter: filter:adv_too_low: $121,694       |    24.1 |  5.55 |    4
+ 2026-10-21 | RTSN   | quality filter: filter:adv_no_data                 |    10.3 | 16.18 |    1
+ 2026-10-22 | RZAI   | quality filter: filter:atr_too_high: 22.9% > 15.0% |    10.1 | 11.14 |    3
+ 2026-10-22 | TCX    | quality filter: filter:adv_too_low: $557,830       |    21.5 |  9.49 |    4
+ 2026-10-23 | RPGL   | quality filter: filter:adv_too_low: $965,374       |    18.8 |  6.08 |    1
+(25 rows)
+
+=== Q4-2 judge fallback event baseline: per ISO week, 09-14 .. 10-23
+     wk     |          event_type           | count 
+------------+-------------------------------+-------
+ 2026-09-28 | judge_divergence_check_failed |     1
+ 2026-10-05 | judge_divergence_check_failed |     1
+ 2026-10-05 | judge_verdict_truncated       |     1
+ 2026-10-19 | judge_divergence_check_failed |     1
+ 2026-10-19 | judge_verdict_truncated       |     1
+(5 rows)
+
+=== Q4-3 live alerts per ISO week 09-14..10-23 by tier (baseline volume of the live path)
+     wk     | score_tier | count 
+------------+------------+-------
+ 2026-09-14 | HIGH       |     4
+ 2026-09-14 | MODERATE   |     1
+ 2026-09-21 | HIGH       |     2
+ 2026-09-21 | MODERATE   |     1
+ 2026-09-21 | none       |     1
+ 2026-09-28 | HIGH       |     3
+ 2026-10-05 | HIGH       |     6
+ 2026-10-05 | MODERATE   |     4
+ 2026-10-12 | MODERATE   |     1
+ 2026-10-19 | HIGH       |     4
+ 2026-10-19 | MODERATE   |     1
+(11 rows)
+
+=== Q4-4 heartbeat id gaps: any weekday 10-12..10-23 without a heartbeat row?
+     d      | hb_rows 
+------------+---------
+ 2026-10-12 |       1
+ 2026-10-13 |       1
+ 2026-10-14 |       1
+ 2026-10-15 |       1
+ 2026-10-16 |       1
+ 2026-10-19 |       1
+ 2026-10-20 |       1
+ 2026-10-21 |       1
+ 2026-10-22 |       1
+ 2026-10-23 |       1
+(10 rows)
+

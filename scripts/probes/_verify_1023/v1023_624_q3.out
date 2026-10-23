@@ -1,0 +1,97 @@
+Pager usage is off.
+=== Q3-1 blind-spot test: gappers (gap>=10, price>=5) per scan day by market-cap bucket, distinct tickers
+ scan_date  | cap_null | cap_lt500m | cap_ge500m | total 
+------------+----------+------------+------------+-------
+ 2026-10-12 |        7 |          0 |          4 |    11
+ 2026-10-13 |        5 |          1 |          1 |     7
+ 2026-10-14 |        8 |          0 |          4 |    10
+ 2026-10-15 |        5 |          2 |          5 |    12
+ 2026-10-16 |        3 |          0 |          1 |     4
+ 2026-10-19 |        6 |          0 |          6 |    11
+ 2026-10-20 |        5 |          1 |          4 |    10
+ 2026-10-21 |        7 |          5 |          2 |    12
+ 2026-10-22 |        6 |          0 |          5 |    11
+ 2026-10-23 |        6 |          0 |          6 |    10
+(10 rows)
+
+=== Q3-1b same, but how the cap_null gappers were stamped (stage), 10-22 and 10-23 and ran days
+ scan_date  |  reject_stage  | names 
+------------+----------------+-------
+ 2026-10-19 | duplicate      |     1
+ 2026-10-19 | quality_filter |     2
+ 2026-10-19 | rvol_gate      |     1
+ 2026-10-19 | universe_floor |     2
+ 2026-10-20 | extension      |     1
+ 2026-10-20 | gap_floor      |     1
+ 2026-10-20 | quality_filter |     3
+ 2026-10-20 | universe_floor |     1
+ 2026-10-21 | duplicate      |     2
+ 2026-10-21 | extension      |     1
+ 2026-10-21 | quality_filter |     2
+ 2026-10-21 | rvol_gate      |     2
+ 2026-10-22 | extension      |     1
+ 2026-10-22 | quality_filter |     2
+ 2026-10-22 | rvol_gate      |     1
+ 2026-10-22 | universe_floor |     3
+ 2026-10-23 | duplicate      |     1
+ 2026-10-23 | extension      |     2
+ 2026-10-23 | quality_filter |     1
+ 2026-10-23 | rvol_gate      |     3
+(20 rows)
+
+=== Q3-2 live alerts this week with scan-log market cap (is any live alert sub-500M?)
+  id   | ticker | alert_date | score_tier |  det_et  |  cre_et  | min_cap_m 
+-------+--------+------------+------------+----------+----------+-----------
+ 12507 | BSP    | 2026-10-14 | MODERATE   | 09:40:00 | 09:40:06 |     24049
+ 12508 | IRON   | 2026-10-19 | HIGH       | 07:20:00 | 07:20:03 |      2182
+ 12509 | MANE   | 2026-10-19 | HIGH       | 08:40:00 | 08:40:13 |      4547
+ 12510 | SMCI   | 2026-10-21 | HIGH       | 07:00:02 | 07:00:15 |     21332
+ 12511 | SPCX   | 2026-10-21 | HIGH       | 08:40:00 | 08:40:30 |   1948135
+ 12512 | SBAC   | 2026-10-23 | MODERATE   | 08:35:00 | 08:35:03 |     18925
+(6 rows)
+
+=== Q3-3 live trades since 10-08: status, skip reason, timing
+ id  | ticker | alert_date | signal_type | account_mode | status  |                                            skip                                            | entry_attempt |   created_et   |   filled_et    | entry  
+-----+--------+------------+-------------+--------------+---------+--------------------------------------------------------------------------------------------+---------------+----------------+----------------+--------
+ 415 | WOLF   | 2026-10-08 | magna53     | live         | skipped | setup:gap_below_floor: rt 8.8% < 9% floor (alert said 18.0%, last $34.13 vs prev close $31 |             1 | 10-08 09:31:00 |                |       
+ 419 | HUM    | 2026-10-09 | magna53     | live         | closed  |                                                                                            |             1 | 10-09 09:31:00 | 10-09 09:31:33 | 452.00
+ 422 | IRON   | 2026-10-19 | magna53     | live         | filled  |                                                                                            |             1 | 10-19 09:31:00 | 10-19 09:31:07 |  73.91
+ 423 | MANE   | 2026-10-19 | magna53     | live         | skipped | setup:gap_below_floor: rt 6.5% < 9% floor (alert said 9.3%, last $115.86 vs prev close $10 |             1 | 10-19 09:31:00 |                |       
+ 424 | SMCI   | 2026-10-21 | magna53     | live         | closed  | block:r3_reentry_disabled                                                                  |             1 | 10-21 09:31:10 | 10-21 09:31:23 |  36.54
+ 425 | SPCX   | 2026-10-21 | magna53     | live         | skipped | setup:gap_below_floor: rt 8.8% < 9% floor (alert said 9.0%, last $160.85 vs prev close $14 |             1 | 10-21 09:31:10 |                |       
+(6 rows)
+
+=== Q3-4 judge rows 10-19 07:20 (truncated / divergence-failed): which ticker?
+  id   |      t_et      |          event_type           |                                     s                                      |                                         d                                          
+-------+----------------+-------------------------------+----------------------------------------------------------------------------+------------------------------------------------------------------------------------
+ 58210 | 10-19 07:20:32 | judge_verdict_truncated       | IRON                                                                       | holistic judge hit max_tokens=3000; verdict discarded, our score's alert tier kept
+ 58211 | 10-19 07:20:32 | judge_divergence_check_failed | IRON 2026-10-19: 2nd-model call failed/timed out (model=claude-sonnet-5-5) | 
+(2 rows)
+
+=== Q3-5 any scan/grade error-ish audit events 09:25-09:50 ET this week and last (counts by type)
+ event_type | count 
+------------+-------
+(0 rows)
+
+=== Q3-6 lane graded sub-ORB: the lane ticks that fell in 09:30-09:45 ET (lane grading concurrent with live ORB window), per day
+     d      |                            ticks                            
+------------+-------------------------------------------------------------
+ 2026-10-15 | 09:30:1c/1g 09:31:1c/1g 09:35:1c/1g 09:40:1c/1g 09:45:1c/1g
+ 2026-10-21 | 09:30:2c/2g 09:31:1c/1g 09:35:2c/2g 09:40:1c/1g
+(2 rows)
+
+=== Q3-7 tick audit rows vs scan ticks: for each lane-day, scan ticks on which a cap-only name existed vs lane tick rows
+ scan_date  | scan_ticks_with_cap_only | lane_tick_rows 
+------------+--------------------------+----------------
+ 2026-10-12 |                        1 |              1
+ 2026-10-13 |                        4 |              4
+ 2026-10-14 |                        0 |              0
+ 2026-10-15 |                       21 |             21
+ 2026-10-16 |                        0 |              0
+ 2026-10-19 |                       28 |             28
+ 2026-10-20 |                       15 |             15
+ 2026-10-21 |                       34 |             34
+ 2026-10-22 |                        0 |              0
+ 2026-10-23 |                        0 |              0
+(10 rows)
+

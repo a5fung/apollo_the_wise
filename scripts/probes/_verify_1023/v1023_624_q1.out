@@ -1,0 +1,295 @@
+Pager usage is off.
+Output format is aligned.
+=== Q1-0 now ET
+       now_et        
+---------------------
+ 2026-10-23 18:17:44
+(1 row)
+
+=== Q1-1 every heartbeat row ever (compact)
+  id   |      t_et      |     d      |   v   | scr | cap | reached | graded | hi | ord | miss |  en  
+-------+----------------+------------+-------+-----+-----+---------+--------+----+-----+------+------
+ 55862 | 10-12 18:15:00 | 2026-10-12 | ran   | 213 | 1   | 1       | 1      | 0  | 0   | []   | true
+ 56375 | 10-13 18:15:00 | 2026-10-13 | ran   | 218 | 1   | 1       | 1      | 0  | 0   | []   | true
+ 56936 | 10-14 18:15:00 | 2026-10-14 | quiet | 205 | 0   | 0       | 0      | 0  | 0   | []   | true
+ 57548 | 10-15 18:15:00 | 2026-10-15 | ran   | 248 | 2   | 2       | 2      | 0  | 0   | []   | true
+ 58059 | 10-16 18:15:00 | 2026-10-16 | quiet | 258 | 0   | 0       | 0      | 0  | 0   | []   | true
+ 58863 | 10-19 18:15:00 | 2026-10-19 | ran   | 456 | 1   | 1       | 1      | 0  | 0   | []   | true
+ 59385 | 10-20 18:15:00 | 2026-10-20 | ran   | 253 | 1   | 1       | 1      | 0  | 0   | []   | true
+ 60070 | 10-21 18:15:00 | 2026-10-21 | ran   | 350 | 6   | 6       | 6      | 0  | 0   | []   | true
+ 60600 | 10-22 18:15:00 | 2026-10-22 | quiet | 192 | 0   | 0       | 0      | 0  | 0   | []   | true
+ 61213 | 10-23 18:15:00 | 2026-10-23 | quiet | 252 | 0   | 0       | 0      | 0  | 0   | []   | true
+(10 rows)
+
+=== Q1-2 verdict tally
+ verdict | count 
+---------+-------
+ quiet   |     4
+ ran     |     6
+(2 rows)
+
+=== Q1-3 lane error rows ever (any lowcap/paper_lane/smallcap error event)
+ id | t_et | event_type | left 
+----+------+------------+------
+(0 rows)
+
+=== Q1-4 lowcap-ish event types since 10-10 (counts)
+            event_type             | count |  first_et   |   last_et   
+-----------------------------------+-------+-------------+-------------
+ lowcap_lane_replay_recorded       |    10 | 10-12 18:15 | 10-23 18:15
+ lowcap_lane_signal_recorded       |     1 | 10-19 09:30 | 10-19 09:30
+ lowcap_paper_lane_heartbeat       |    10 | 10-12 18:15 | 10-23 18:15
+ lowcap_paper_lane_replay_recorded |    10 | 10-12 18:15 | 10-23 18:15
+ lowcap_paper_lane_tick            |   103 | 10-12 09:50 | 10-21 09:50
+(5 rows)
+
+=== Q1-5 lane tick rows per ET day: count, first, last, total errors (parsed from detail)
+     d      | ticks | first_et | last_et | errs | graded_sum | max_cands 
+------------+-------+----------+---------+------+------------+-----------
+ 2026-10-12 |     1 | 09:50    | 09:50   |    0 |          1 |         1
+ 2026-10-13 |     4 | 07:00    | 07:20   |    0 |          4 |         1
+ 2026-10-15 |    21 | 08:20    | 09:55   |    0 |         21 |         1
+ 2026-10-19 |    28 | 07:00    | 09:15   |    0 |         28 |         1
+ 2026-10-20 |    15 | 07:05    | 08:20   |    0 |         15 |         1
+ 2026-10-21 |    34 | 07:00    | 09:50   |    0 |         46 |         3
+(6 rows)
+
+=== Q1-6 lane table rows (all)
+ id  | ticker | alert_date |   strategy_id    |       fg       |       lg       | score_tier | ep_score |   reject_stage    |                  rr                  | gap  | mcap_m | catalyst_quality | llm_catalyst_quality | judge_tier | lane_rule_version 
+-----+--------+------------+------------------+----------------+----------------+------------+----------+-------------------+--------------------------------------+------+--------+------------------+----------------------+------------+-------------------
+   1 | ALLT   | 2026-10-12 | magna53_smallcap | 10-12 09:50:00 | 10-12 09:50:00 |            |          | post_grade_filter | routine catalyst, gap 9.1%           |  9.1 |    451 | routine          | routine              |            | paper_v1
+   2 | GOSS   | 2026-10-13 | magna53_smallcap | 10-13 07:00:01 | 10-13 07:20:00 |            |          | post_grade_filter | routine catalyst, gap 9.8%           |  9.8 |     57 | routine          | routine              |            | paper_v1
+   6 | OPI    | 2026-10-15 | magna53_smallcap | 10-15 08:20:00 | 10-15 09:35:00 |            |          | post_grade_filter | pre-mkt volume 100 < 25,000 shares   | 13.1 |    291 | routine          | routine              |            | paper_v1
+  23 | BETR   | 2026-10-15 | magna53_smallcap | 10-15 09:40:00 | 10-15 09:55:00 |            |     33.8 | score_bar         | score 34 < bar 65 (catalyst=routine) | 11.1 |    177 | routine          | routine              |            | paper_v1
+  27 | IMUX   | 2026-10-19 | magna53_smallcap | 10-19 07:00:01 | 10-19 09:15:00 |            |          | post_grade_filter | routine catalyst, gap 9.9%           |  9.9 |     95 | routine          | routine              |            | paper_v1
+  55 | MPLT   | 2026-10-20 | magna53_smallcap | 10-20 07:05:00 | 10-20 08:20:00 |            |          | post_grade_filter | pre-mkt volume 410 < 25,000 shares   | 17.9 |    445 | routine          | routine              |            | paper_v1
+  70 | BNC    | 2026-10-21 | magna53_smallcap | 10-21 07:00:02 | 10-21 09:40:00 |            |     33.8 | score_bar         | score 34 < bar 65 (catalyst=routine) |  9.2 |    249 | routine          | routine              |            | paper_v1
+  90 | QUAD   | 2026-10-21 | magna53_smallcap | 10-21 08:40:00 | 10-21 09:25:00 |            |          | post_grade_filter | routine catalyst, gap 9.8%           |  9.8 |    492 | routine          | routine              |            | paper_v1
+ 107 | DUOT   | 2026-10-21 | magna53_smallcap | 10-21 09:25:00 | 10-21 09:25:00 |            |          | post_grade_filter | routine catalyst, gap 10.3%          | 10.3 |    183 | routine          | routine              |            | paper_v1
+ 110 | USDE   | 2026-10-21 | magna53_smallcap | 10-21 09:30:00 | 10-21 09:30:00 |            |          | post_grade_filter | routine catalyst, gap 11.0%          | 11.0 |    284 | routine          | routine              |            | paper_v1
+ 112 | GRRR   | 2026-10-21 | magna53_smallcap | 10-21 09:35:00 | 10-21 09:35:00 |            |          | post_grade_filter | routine catalyst, gap 10.1%          | 10.1 |    224 | routine          | routine              |            | paper_v1
+ 115 | VOGX   | 2026-10-21 | magna53_smallcap | 10-21 09:50:00 | 10-21 09:50:00 |            |          | post_grade_filter | routine catalyst, gap 10.6%          | 10.6 |    288 | routine          | routine              |            | paper_v1
+(12 rows)
+
+=== Q1-7 mi_ep_alerts rows matching a lane ticker+date (must be 0)
+ id | ticker | alert_date | score_tier 
+----+--------+------------+------------
+(0 rows)
+
+=== Q1-8 mi_ep_alerts by date/tier since 10-05 (live-path baseline)
+ alert_date | score_tier | count 
+------------+------------+-------
+ 2026-10-05 | MODERATE   |     3
+ 2026-10-06 | HIGH       |     3
+ 2026-10-07 | HIGH       |     1
+ 2026-10-08 | HIGH       |     1
+ 2026-10-09 | HIGH       |     1
+ 2026-10-09 | MODERATE   |     1
+ 2026-10-14 | MODERATE   |     1
+ 2026-10-19 | HIGH       |     2
+ 2026-10-21 | HIGH       |     2
+ 2026-10-23 | MODERATE   |     1
+(10 rows)
+
+=== Q1-9 trades: any smallcap/lowcap signal_type ever; trades since 10-12 by account/signal/status
+ account_mode | signal_type | status | count 
+--------------+-------------+--------+-------
+(0 rows)
+
+ account_mode | signal_type | status  | count 
+--------------+-------------+---------+-------
+ live         | magna53     | closed  |     1
+ live         | magna53     | filled  |     1
+ live         | magna53     | skipped |     2
+(3 rows)
+
+=== Q1-9b trades whose ticker is a lane ticker; newest 6 trades
+ id  | ticker | signal_type | account_mode |  status   | alert_date |    c_et     
+-----+--------+-------------+--------------+-----------+------------+-------------
+ 425 | SPCX   | magna53     | live         | skipped   | 2026-10-21 | 10-21 09:31
+ 424 | SMCI   | magna53     | live         | closed    | 2026-10-21 | 10-21 09:31
+ 423 | MANE   | magna53     | live         | skipped   | 2026-10-19 | 10-19 09:31
+ 422 | IRON   | magna53     | live         | filled    | 2026-10-19 | 10-19 09:31
+ 419 | HUM    | magna53     | live         | closed    | 2026-10-09 | 10-09 09:31
+ 415 | WOLF   | magna53     | live         | skipped   | 2026-10-08 | 10-08 09:31
+ 190 | GRRR   | magna53     | paper        | cancelled | 2026-06-02 | 06-02 09:31
+(7 rows)
+
+=== Q1-10 per-day: screened / cap-only names (heartbeat SQL verbatim) since 10-05
+ scan_date  | screened |            cap_only            
+------------+----------+--------------------------------
+ 2026-10-05 |      309 | {ARTV,INTT}
+ 2026-10-06 |      337 | {}
+ 2026-10-07 |      190 | {LWAY}
+ 2026-10-08 |      193 | {NAKA,RNA}
+ 2026-10-09 |      272 | {}
+ 2026-10-12 |      213 | {ALLT}
+ 2026-10-13 |      218 | {GOSS}
+ 2026-10-14 |      205 | {}
+ 2026-10-15 |      248 | {BETR,OPI}
+ 2026-10-16 |      258 | {}
+ 2026-10-19 |      456 | {IMUX}
+ 2026-10-20 |      253 | {MPLT}
+ 2026-10-21 |      350 | {BNC,DUOT,GRRR,QUAD,USDE,VOGX}
+ 2026-10-22 |      192 | {}
+ 2026-10-23 |      252 | {}
+(15 rows)
+
+=== Q1-11 INDEPENDENT of the heartbeat classification: sub-500M, price>=5, gap>=5 names on the scan log since 10-19, any stage, one row per name-day
+ scan_date  | ticker | mcap_m |  pc   | max_gap | rows |     stages     |                          fr                          | first_tick | last_tick 
+------------+--------+--------+-------+---------+------+----------------+------------------------------------------------------+------------+-----------
+ 2026-10-19 | IMUX   |     95 |  6.97 |     9.9 |   28 | quality_filter | quality filter: filter:mcap_too_small: $95M < $500M  | 07:00      | 09:15
+ 2026-10-20 | MPLT   |    445 |  8.00 |    17.9 |   15 | quality_filter | quality filter: filter:mcap_too_small: $445M < $500M | 07:05      | 08:20
+ 2026-10-21 | BNC    |    249 |  5.10 |    13.6 |   33 | quality_filter | quality filter: filter:mcap_too_small: $249M < $500M | 07:00      | 09:40
+ 2026-10-21 | DUOT   |    183 |  5.80 |    10.3 |    1 | quality_filter | quality filter: filter:mcap_too_small: $183M < $500M | 09:25      | 09:25
+ 2026-10-21 | GRRR   |    224 |  7.44 |    10.1 |    1 | quality_filter | quality filter: filter:mcap_too_small: $224M < $500M | 09:35      | 09:35
+ 2026-10-21 | QUAD   |    492 |  9.56 |     9.8 |    9 | quality_filter | quality filter: filter:mcap_too_small: $492M < $500M | 08:40      | 09:25
+ 2026-10-21 | USDE   |    284 | 10.67 |    11.0 |    1 | quality_filter | quality filter: filter:mcap_too_small: $284M < $500M | 09:30      | 09:30
+ 2026-10-21 | VOGX   |    288 | 18.75 |    10.6 |    1 | quality_filter | quality filter: filter:mcap_too_small: $288M < $500M | 09:50      | 09:50
+(8 rows)
+
+=== Q1-12 ... and which of those name-days exist in the lane table
+ alert_date | ticker |   reject_stage    
+------------+--------+-------------------
+ 2026-10-19 | IMUX   | post_grade_filter
+ 2026-10-20 | MPLT   | post_grade_filter
+ 2026-10-21 | BNC    | score_bar
+ 2026-10-21 | DUOT   | post_grade_filter
+ 2026-10-21 | GRRR   | post_grade_filter
+ 2026-10-21 | QUAD   | post_grade_filter
+ 2026-10-21 | USDE   | post_grade_filter
+ 2026-10-21 | VOGX   | post_grade_filter
+(8 rows)
+
+=== Q1-13 scan log coverage per day since 10-12: rows, ticks, first/last created ET, rows after 18:15 ET
+ scan_date  | nrows | ticks | first_et | last_et  
+------------+-------+-------+----------+----------
+ 2026-10-12 |  2436 |    38 | 07:00:01 | 09:55:04
+ 2026-10-13 |  2422 |    38 | 07:00:02 | 09:55:04
+ 2026-10-14 |  2295 |    38 | 07:00:02 | 09:55:08
+ 2026-10-15 |  2590 |    38 | 07:00:02 | 09:55:10
+ 2026-10-16 |  3158 |    38 | 07:00:02 | 09:55:04
+ 2026-10-19 |  5439 |    37 | 07:00:02 | 09:55:09
+ 2026-10-20 |  2918 |    37 | 07:00:02 | 09:55:07
+ 2026-10-21 |  3572 |    37 | 07:00:02 | 09:55:09
+ 2026-10-22 |  2246 |    37 | 07:00:02 | 09:55:12
+ 2026-10-23 |  2929 |    37 | 07:00:00 | 09:55:06
+(10 rows)
+
+=== Q1-14 mi_ep_scan_log mcap_too_small-stamped rows per day since 10-05 (is the stamp still being written?)
+ scan_date  | stamped_rows | stamped_names | subcap_rows | subcap_names 
+------------+--------------+---------------+-------------+--------------
+ 2026-10-05 |           43 |             2 |          43 |            2
+ 2026-10-06 |            0 |             0 |           0 |            0
+ 2026-10-07 |            5 |             1 |           5 |            1
+ 2026-10-08 |           31 |             2 |          31 |            2
+ 2026-10-09 |            0 |             0 |           0 |            0
+ 2026-10-12 |            1 |             1 |           1 |            1
+ 2026-10-13 |            4 |             1 |           4 |            1
+ 2026-10-14 |            0 |             0 |           0 |            0
+ 2026-10-15 |           21 |             2 |          21 |            2
+ 2026-10-16 |            0 |             0 |           0 |            0
+ 2026-10-19 |           28 |             1 |          28 |            1
+ 2026-10-20 |           15 |             1 |          15 |            1
+ 2026-10-21 |           46 |             6 |          46 |            6
+ 2026-10-22 |            0 |             0 |           0 |            0
+ 2026-10-23 |            0 |             0 |           0 |            0
+(15 rows)
+
+=== Q1-15 strategy row
+   strategy_id    | phase  | enabled | live_real_enabled | position_size_multiplier | max_concurrent_positions | profit_trigger_r | breakeven_arm_r |          updated_at           
+------------------+--------+---------+-------------------+--------------------------+--------------------------+------------------+-----------------+-------------------------------
+ magna53_smallcap | paper  | t       | f                 |                      1.0 |                        5 |              8.0 |             3.0 | 2026-10-10 18:51:20.322432+00
+ magna53_lowcap   | shadow | t       | f                 |                      1.0 |                          |                  |                 | 2026-09-05 01:26:32.837123+00
+ magna53          | live   | t       | t                 |                      1.0 |                          |              8.0 |             3.0 | 2026-09-07 01:41:24.691695+00
+(3 rows)
+
+=== Q1-16 job runs lowcap since 10-12 ET
+   id   |       job_id       |     st_et      |  dur  | status  | err 
+--------+--------------------+----------------+-------+---------+-----
+ 227403 | lowcap_lane_replay | 10-12 18:15:00 | 0.057 | success | 
+ 229691 | lowcap_lane_replay | 10-13 18:15:00 | 0.113 | success | 
+ 231979 | lowcap_lane_replay | 10-14 18:15:00 | 0.063 | success | 
+ 234266 | lowcap_lane_replay | 10-15 18:15:00 | 0.081 | success | 
+ 236559 | lowcap_lane_replay | 10-16 18:15:00 | 0.057 | success | 
+ 239009 | lowcap_lane_replay | 10-19 18:15:00 | 0.124 | success | 
+ 241296 | lowcap_lane_replay | 10-20 18:15:00 | 0.067 | success | 
+ 243583 | lowcap_lane_replay | 10-21 18:15:00 | 0.338 | success | 
+ 245614 | lowcap_lane_replay | 10-22 18:15:00 | 0.372 | success | 
+ 247903 | lowcap_lane_replay | 10-23 18:15:00 | 0.275 | success | 
+(10 rows)
+
+=== Q1-17 EP scan job durations inside ORB window (09:25-09:50 ET), this week vs baseline
+    job_id    |     d      | runs | avg_s | max_s | nonsuccess 
+--------------+------------+------+-------+-------+------------
+ 9m_ep_scan   | 2026-10-01 |    5 |   0.0 |   0.1 |          0
+ ep_scan      | 2026-10-01 |    5 |  15.7 |  38.3 |          0
+ ep_scan_open | 2026-10-01 |    1 |  21.2 |  21.2 |          0
+ 9m_ep_scan   | 2026-10-02 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-02 |    5 |  11.0 |  22.7 |          0
+ ep_scan_open | 2026-10-02 |    1 |   3.7 |   3.7 |          0
+ 9m_ep_scan   | 2026-10-05 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-05 |    5 |  20.1 |  27.0 |          0
+ ep_scan_open | 2026-10-05 |    1 |  17.2 |  17.2 |          0
+ 9m_ep_scan   | 2026-10-06 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-06 |    5 |   9.8 |  22.4 |          0
+ ep_scan_open | 2026-10-06 |    1 |   4.4 |   4.4 |          0
+ 9m_ep_scan   | 2026-10-07 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-07 |    5 |  12.9 |  46.7 |          0
+ ep_scan_open | 2026-10-07 |    1 |   2.6 |   2.6 |          0
+ 9m_ep_scan   | 2026-10-08 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-08 |    5 |   7.6 |  16.9 |          0
+ ep_scan_open | 2026-10-08 |    1 |   5.0 |   5.0 |          0
+ 9m_ep_scan   | 2026-10-09 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-09 |    5 |   9.4 |  22.2 |          0
+ ep_scan_open | 2026-10-09 |    1 |   5.8 |   5.8 |          0
+ 9m_ep_scan   | 2026-10-12 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-12 |    5 |   5.3 |  11.4 |          0
+ ep_scan_open | 2026-10-12 |    1 |   3.9 |   3.9 |          0
+ 9m_ep_scan   | 2026-10-13 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-13 |    5 |   2.2 |   2.6 |          0
+ ep_scan_open | 2026-10-13 |    1 |  12.6 |  12.6 |          0
+ 9m_ep_scan   | 2026-10-14 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-14 |    5 |  10.0 |  20.1 |          0
+ ep_scan_open | 2026-10-14 |    1 |  10.4 |  10.4 |          0
+ 9m_ep_scan   | 2026-10-15 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-15 |    5 |   9.8 |  21.8 |          0
+ ep_scan_open | 2026-10-15 |    1 |   3.8 |   3.8 |          0
+ 9m_ep_scan   | 2026-10-16 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-16 |    5 |   5.6 |   9.9 |          0
+ ep_scan_open | 2026-10-16 |    1 |   2.9 |   2.9 |          0
+ 9m_ep_scan   | 2026-10-19 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-19 |    5 |   9.2 |  15.5 |          0
+ ep_scan_open | 2026-10-19 |    1 |  13.5 |  13.5 |          0
+ 9m_ep_scan   | 2026-10-20 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-20 |    5 |  11.3 |  36.4 |          0
+ ep_scan_open | 2026-10-20 |    1 |   2.7 |   2.7 |          0
+ 9m_ep_scan   | 2026-10-21 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-21 |    5 |   6.8 |   9.4 |          0
+ ep_scan_open | 2026-10-21 |    1 |  10.6 |  10.6 |          0
+ 9m_ep_scan   | 2026-10-22 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-22 |    5 |  12.2 |  23.9 |          0
+ ep_scan_open | 2026-10-22 |    1 |  18.0 |  18.0 |          0
+ 9m_ep_scan   | 2026-10-23 |    5 |   0.0 |   0.0 |          0
+ ep_scan      | 2026-10-23 |    5 |   9.4 |  25.3 |          0
+ ep_scan_open | 2026-10-23 |    1 |  25.8 |  25.8 |          0
+(51 rows)
+
+=== Q1-18 timeout / late-grade / lane-slot events since 10-12 (counts by type)
+               event_type               | count |      f      |      l      
+----------------------------------------+-------+-------------+-------------
+ judge_divergence_check_failed          |     1 | 10-19 07:20 | 10-19 07:20
+ judge_named_theme_candidates_evaluated |     9 | 10-12 18:20 | 10-22 18:20
+ judge_named_themes_extracted           |     3 | 10-14 18:20 | 10-21 18:20
+ judge_signal_trace                     |    12 | 10-14 09:40 | 10-23 08:35
+ judge_verdict_truncated                |     1 | 10-19 07:20 | 10-19 07:20
+ rehome_skipped_unjudgeable             |     2 | 10-22 17:01 | 10-22 17:01
+ stop_ack_timeout_remediated            |     1 | 10-12 09:00 | 10-12 09:00
+ theme_rehome_judged                    |   179 | 10-12 17:06 | 10-23 17:07
+(8 rows)
+
+=== Q1-19 safeguard rows lowcap
+ safeguard | account_mode | state | last_transition_at | last_evaluation_at | last_drawdown_pct | last_peak | last_peak_date | updated_at 
+-----------+--------------+-------+--------------------+--------------------+-------------------+-----------+----------------+------------
+(0 rows)
+

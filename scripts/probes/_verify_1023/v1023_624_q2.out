@@ -1,0 +1,75 @@
+Pager usage is off.
+=== Q2-1 shadow lane signals: total, sessions, per-day since 10-12
+ total | sessions | tickers |  first_d   |   last_d   
+-------+----------+---------+------------+------------
+    20 |       14 |      16 | 2026-09-09 | 2026-10-19
+(1 row)
+
+ scan_date  | n | tickers 
+------------+---+---------
+ 2026-10-19 | 1 | RPGL
+(1 row)
+
+=== Q2-2 shadow lane replays: outcome counts, settled, tickers, tail events, eras
+   outcome   | n  | tickers | meets_3r | meets_4r 
+-------------+----+---------+----------+----------
+ no_trade    |  6 |       5 |        0 |        0
+ settled     | 11 |      11 |        0 |        0
+ unscoreable |  3 |       3 |        0 |        0
+(3 rows)
+
+ total | settled | settled_tickers | tail_ge3r | mean_r | replay_exit_era 
+-------+---------+-----------------+-----------+--------+-----------------
+    19 |      10 |              10 |         0 | -0.400 | era_d
+     1 |       1 |               1 |         0 | -1.000 | era_e
+(2 rows)
+
+ last_session | last_recorded 
+--------------+---------------
+ 2026-10-19   | 10-19 18:15
+(1 row)
+
+=== Q2-3 shadow signals vs replays: signals with no replay row (should be only same-day / pending)
+ scan_date  | no_replay | n 
+------------+-----------+---
+ 2026-10-05 |         0 | 1
+ 2026-10-19 |         0 | 1
+(2 rows)
+
+=== Q2-4 paper lane replays (all rows, key cols)
+ ticker | session_date | signal_id |    entry_status    |   outcome   |            final_reason            |     realized_r      | replay_exit_era |   rec_et    
+--------+--------------+-----------+--------------------+-------------+------------------------------------+---------------------+-----------------+-------------
+ ALLT   | 2026-10-12   |         1 | window_out_of_orb  | no_trade    | window_out_of_orb                  |                     | era_d           | 10-12 18:15
+ GOSS   | 2026-10-13   |         2 | abstain            | unscoreable | entry_window_gaps:1_of_29          |                     | era_e           | 10-13 18:15
+ OPI    | 2026-10-15   |         6 | no_930_bar_for_orb | unscoreable | no_930_bar_for_orb                 |                     | era_e           | 10-15 18:15
+ BETR   | 2026-10-15   |        23 | no_entry           | no_trade    | triggered_above_limit_never_filled |                     | era_e           | 10-15 18:15
+ IMUX   | 2026-10-19   |        27 | abstain            | unscoreable | entry_window_gaps:11_of_29         |                     | era_e           | 10-19 18:15
+ MPLT   | 2026-10-20   |        55 | abstain            | unscoreable | entry_window_gaps:15_of_29         |                     | era_e           | 10-20 18:15
+ BNC    | 2026-10-21   |        70 | no_entry           | no_trade    | never_crossed_orb_high             |                     | era_e           | 10-21 18:15
+ QUAD   | 2026-10-21   |        90 | abstain            | unscoreable | entry_window_gaps:18_of_29         |                     | era_e           | 10-21 18:15
+ DUOT   | 2026-10-21   |       107 | filled             | settled     | stop_hit                           |                  -1 | era_e           | 10-21 18:15
+ USDE   | 2026-10-21   |       110 | no_entry           | no_trade    | never_crossed_orb_high             |                     | era_e           | 10-21 18:15
+ GRRR   | 2026-10-21   |       112 | filled             | settled     | sma_trail_stop                     | 0.05770340450086415 | era_e           | 10-21 18:15
+ VOGX   | 2026-10-21   |       115 | window_out_of_orb  | no_trade    | window_out_of_orb                  |                     | era_e           | 10-21 18:15
+(12 rows)
+
+=== Q2-5 yesterday and today audit rows of replay jobs and heartbeat (full summary)
+  id   |      t_et      |            event_type             |                                                                                                          left                                                                                                          
+-------+----------------+-----------------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 58861 | 10-19 18:15:00 | lowcap_lane_replay_recorded       | 20 lane signal(s) in window, 1 candidate(s) processed: 1 written (1 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: magna53_depth_exit[live] on since 2026-10-13 — depth
+ 58862 | 10-19 18:15:00 | lowcap_paper_lane_replay_recorded | 5 lane signal(s) in window, 1 candidate(s) processed: 1 written (0 settled, 0 no_trade, 1 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: magna53_depth_exit[paper] on since 2026-10-13 — depth
+ 58863 | 10-19 18:15:00 | lowcap_paper_lane_heartbeat       | 2026-10-19 ran: 456 screened by the live scan, 1 turned away only by the $500M floor, 1 graded by the lane, 0 HIGH, 0 paper order(s)
+ 59383 | 10-20 18:15:00 | lowcap_lane_replay_recorded       | 20 lane signal(s) in window, 0 candidate(s) processed: 0 written (0 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: exit rule not read (no candidates)
+ 59384 | 10-20 18:15:00 | lowcap_paper_lane_replay_recorded | 6 lane signal(s) in window, 1 candidate(s) processed: 1 written (0 settled, 0 no_trade, 1 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: magna53_depth_exit[paper] on since 2026-10-13 — depth
+ 59385 | 10-20 18:15:00 | lowcap_paper_lane_heartbeat       | 2026-10-20 ran: 253 screened by the live scan, 1 turned away only by the $500M floor, 1 graded by the lane, 0 HIGH, 0 paper order(s)
+ 60068 | 10-21 18:15:00 | lowcap_lane_replay_recorded       | 20 lane signal(s) in window, 0 candidate(s) processed: 0 written (0 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: exit rule not read (no candidates)
+ 60069 | 10-21 18:15:00 | lowcap_paper_lane_replay_recorded | 12 lane signal(s) in window, 6 candidate(s) processed: 6 written (0 settled, 3 no_trade, 1 unscoreable, 2 open, 0 at horizon), 0 pending, 0 error(s); exit rule: magna53_depth_exit[paper] on since 2026-10-13 — depth
+ 60070 | 10-21 18:15:00 | lowcap_paper_lane_heartbeat       | 2026-10-21 ran: 350 screened by the live scan, 6 turned away only by the $500M floor, 6 graded by the lane, 0 HIGH, 0 paper order(s)
+ 60598 | 10-22 18:15:00 | lowcap_lane_replay_recorded       | 20 lane signal(s) in window, 0 candidate(s) processed: 0 written (0 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: exit rule not read (no candidates)
+ 60599 | 10-22 18:15:00 | lowcap_paper_lane_replay_recorded | 12 lane signal(s) in window, 2 candidate(s) processed: 1 written (1 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 1 pending, 0 error(s); exit rule: magna53_depth_exit[paper] on since 2026-10-13 — depth
+ 60600 | 10-22 18:15:00 | lowcap_paper_lane_heartbeat       | 2026-10-22 quiet: 192 screened by the live scan, 0 turned away only by the $500M floor, 0 graded by the lane, 0 HIGH, 0 paper order(s)
+ 61211 | 10-23 18:15:00 | lowcap_lane_replay_recorded       | 20 lane signal(s) in window, 0 candidate(s) processed: 0 written (0 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: exit rule not read (no candidates)
+ 61212 | 10-23 18:15:00 | lowcap_paper_lane_replay_recorded | 12 lane signal(s) in window, 1 candidate(s) processed: 1 written (1 settled, 0 no_trade, 0 unscoreable, 0 open, 0 at horizon), 0 pending, 0 error(s); exit rule: magna53_depth_exit[paper] on since 2026-10-13 — depth
+ 61213 | 10-23 18:15:00 | lowcap_paper_lane_heartbeat       | 2026-10-23 quiet: 252 screened by the live scan, 0 turned away only by the $500M floor, 0 graded by the lane, 0 HIGH, 0 paper order(s)
+(15 rows)
+
