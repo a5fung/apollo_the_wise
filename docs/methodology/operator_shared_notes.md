@@ -2316,3 +2316,23 @@ His follow-up (verbatim): *"I only saw amrx after I got the alert it's a consoli
 3. the flag/trendline break, which maps to the existing `pivot_tl` level in `consolidation_breakout.explain_watch`.
 
 The example feeds #705's entry question after the A+ read. It is not a verdict on the stock, and it is not a rule (htf-tweets-are-a-tuning-corpus).
+
+## 2026-10-22 — what A+ means (operator, verbatim, replying to the #705 rating result)
+
+> "A+ setup according to qullamaggie is based on the chart and technicals, tightness, etc."
+
+(Replying to: his seven-ingredient A+ score read CAN'T TELL in 2017–21 and 2022–24 and is not recorded; the plan's rule names RS
+leadership alone as the next test.)
+
+**What the data already says about tightness** (read, not new; `docs/analysis/cb_aplus_rating_prereg_2026-10-21.md` RESULT):
+- The score was built from his chart words: contraction at weekly, daily and pullback scale, volume dry-up, and upward expansion
+  on the breakout day.
+- Measured alone, tightness was among the weakest ingredients in both eras: contraction 0.79 / 0.76 big winners (≥ 10R) per
+  100 against 1.235 / 0.946 for all breakouts. The 5-day range in ADR alone gave 0.82 / 0.36.
+- 10-18: the tightest fifth of bases did WORST.
+
+So either our numbers do not capture the tightness he sees on a chart, or tightness alone does not pick the outliers in this
+population.
+
+**Used as:** an open question for him — how to test HIS chart read of A+ (his eye as ground truth) against our measures. It is
+not a rule change, and the registered RS-alone read is unaffected unless he says otherwise.
