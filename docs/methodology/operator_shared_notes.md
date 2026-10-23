@@ -2401,3 +2401,17 @@ So part 2 fails on HOLDING, not on loss size. Without part 1, holding longer onl
 (the matched control). That is why the next read measures both on the same A+ set — his stream grades:
 - do they move more than ordinary stocks;
 - and what stop / hold keeps the move while the losses stay small (registered before any outcome).
+
+## 2026-10-22 — false breakouts, and the recall check he asked for (operator, verbatim)
+
+> "If the big moves really does come 5-6 weeks later then we just need to figure out how to but the real breakout as the big moves is already measured to be there"
+> "False breakout happen, that's why we take tight stop losses"
+> "We need to check of the big winners in a period, how many have a measurable breakout and how many do we catch"
+
+**Used as:** a RECALL read, outcome-first, a detection question.
+- Take the big winners of a period, then ask: how many began with a measurable breakout (a consolidation, then a break above
+  it)? How many did our detector watch and trigger on? And what did our tight stop do to the ones we caught?
+- False breakouts are expected; the tight stop is what makes them cheap. The read measures what the same stop does to the real
+  ones.
+- (The "5–6 weeks" in his first line was my wrong wording — it is the time to REACH a +5 ADR gain, not when the move starts.
+  Corrected in the docs.)
