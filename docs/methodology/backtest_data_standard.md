@@ -14,9 +14,12 @@ symbols, and 8.35% of admitted universe nights have no security type. **Era B (2
 gate** but 57 of its 8,984 published trades depend on sealed 2025 bars and it had no identity guard until today. Every
 2017-21 number is labelled *survivors only* until the delisted refetch and the dedupe land.
 
-**2026-10-23 update — a rebuilt era A passes the data gate.** `apollo_data/cb702_pre_v2/` (the delisted refetch + the dedupe + the
+**2026-10-23 update — a rebuilt era A clears every check that runs on the file alone.** `apollo_data/cb702_pre_v2/` (the delisted refetch + the dedupe + the
 type join, `scripts/probes/_705_survivorship_1023/08_build_v2.py`) passes S0, G1–G7 and G9 (`cb702_pre_v2/audit_1023/verdict.txt`);
-G8 is checked per trade list. `cb702_pre` itself is unchanged (its files are hash-pinned by two freezes). **No read has been re-run on
+the verdict still reads REFUSED on G8, which needs a trade list and runs with each read. G10 (overlap parity, a REPORT) stays at
+95.8% against its ≥ 98% target: the residue is symbol naming (110 B tickers that A carries under today's symbol, e.g. ABC = COR, and 85
+the other way) plus 439 tickers on the universe's edge where Alpaca's volume runs ~3% above Polygon's — a company-keyed parity needs
+the FIGI key and is parked with that rebuild. `cb702_pre` itself is unchanged (its files are hash-pinned by two freezes). **No read has been re-run on
 v2 yet**, so every published 2017-21 number still carries the *survivors only* label.
 
 **The two exports** (read-only; format `ticker,date,open,high,low,close,volume`, no header):
