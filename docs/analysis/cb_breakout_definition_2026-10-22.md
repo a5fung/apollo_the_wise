@@ -13,6 +13,12 @@ point of breakout is that it has broken the consolidation period and enter the e
 after then the entry is not a breakout by definition."* Earlier: *"on breakout day, we're not looking for tightness, we're looking
 for the opposite, range expansion (up)"*; breakouts *"can happen anytime"* in the day.
 
+> **⚠ SCOPE CORRECTION (2026-10-22, his question: "What is the comparison measuring? … we're trying to buy a stock at the precise
+> moment it gives the best risk to reward").** Every breakout-vs-ordinary-stock comparison here measures the stock's DRIFT over
+> 5–60 sessions in ADR units. It does NOT measure risk / reward at the entry moment with the tight stop (how often the stock gets
+> to +2R / +5R / +10R before the stop, against the same stop on non-breakout moments). So "no edge" and "the cause is selection"
+> below hold for drift only. Risk / reward at the moment is unmeasured and is the next read.
+
 ## 0. The answer, in plain words (rewritten 2026-10-22 after two independent verifiers and a main-loop check; §V lists every correction; the definitions in §D were frozen before the build)
 
 - **(1) Was our trigger early? Yes, by his definition.**

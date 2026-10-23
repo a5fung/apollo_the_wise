@@ -11,6 +11,12 @@ window crosses the cut are excluded from the path numbers and said so). The regi
 His question, verbatim: *"Just based on the R backtest, it's hard to tell what exactly is the problem. Are we trading bad
 setups? Entry exit wrong? What is the cause."*
 
+> **⚠ SCOPE CORRECTION (2026-10-22, his question: "What is the comparison measuring? … we're trying to buy a stock at the precise
+> moment it gives the best risk to reward").** Every breakout-vs-ordinary-stock comparison here measures the stock's DRIFT over
+> 5–60 sessions in ADR units. It does NOT measure risk / reward at the entry moment with the tight stop (how often the stock gets
+> to +2R / +5R / +10R before the stop, against the same stop on non-breakout moments). So "no edge" and "the cause is selection"
+> below hold for drift only. Risk / reward at the moment is unmeasured and is the next read.
+
 ## 0. The answer, in plain words (rewritten 2026-10-22 after two independent verifiers; their corrections are listed in §8)
 
 - **The main cause is SELECTION: after the breakout day, these stocks move like any liquid stock of the same volatility on the
