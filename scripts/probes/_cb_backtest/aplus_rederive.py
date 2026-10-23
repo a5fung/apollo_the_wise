@@ -394,3 +394,101 @@ def rederive(paths: dict, period: str, pool_only_min_e, early_close: set, drift_
     population = {(e, t) for t, e in zip(pf["ticker"], pf["E"]) if _in_era(e, "pre")}
     pv, tally = profile_from_tree(Path(pre_minutes), set(early_close), population, log)
     return {"aplus": aplus, "core": core, "paired": pr, "grp": gd, "profile": {"values": pv, "tally": tally}, "n_rows": int(len(f))}
+
+
+# ═══ #705 (c): the RS-leadership-ALONE re-derivation (rs-alone-read, spec check 8) ═══════════════════════════════════════════════════════
+ALONE_FILL_COLS = ["ticker", "D", "E", "K", "entry", "arm", "fill_minute", "fill_month", "width_adr", "mature"]
+ALONE_OUTCOME_COLS = ["realized_r", "pnl_adr"]
+
+
+def spy_calendar(path) -> list:
+    """The sorted SPY session dates of the daily export - the ticker and date columns only, in chunks (the export is not date-ordered)."""
+    dates = []
+    for df in pd.read_csv(path, header=None, usecols=[0, 1], names=["ticker", "date"], dtype=str, keep_default_na=False, chunksize=2_000_000):
+        dates += df.loc[df["ticker"] == "SPY", "date"].tolist()
+    return sorted(dates)
+
+
+def rederive_alone_c3(paths: dict, period: str, c0: dict, outcomes: bool = True, log=print) -> dict:
+    """The `alone_c3` A+ set (RS leadership, `rs_best` alone, N = 3) computed ITSELF from the source files with pandas - no runner code, no shared
+    arithmetic - and, with `outcomes`, n / mean R / the PASS interval / the paired interval / every PASS component. `outcomes=False` (the dry run's
+    self-check) opens no outcome column: the A+ set, every eligible fill's score and cutoff only.
+
+    The pool of a fill on E = every fill (the period's table AND, for the sealed era, the trailing fills of the discovery table, pool-only) with E' in
+    [E - 20, E - 1] on the SPY calendar; the fill's pct = (worse + 0.5 x equal) / |S|; a member's reference score = (average rank - 1) / (|S| - 1) against
+    the pool minus itself; the cutoff = the 12th-highest reference score; A+ = pct >= cutoff and fewer than 3 A+ already taken in the ISO week, in
+    (E, fill_minute, ticker) order. Returns {"aplus": {(ticker, E)}, "score": {(ticker, E): pct}, "cutoff": {...}, "core": stats, "paired": {...}}."""
+    cols = ALONE_FILL_COLS + (ALONE_OUTCOME_COLS if outcomes else [])
+    f = _read(paths["fills"], cols)
+    f = f[(f["arm"] == "pp") & (f["entry"] == "orh5") & (f["K"] == "tl")].copy()
+    if outcomes:
+        r0 = f.loc[f["mature"] == 1, "realized_r"].to_numpy(dtype=float)               # C0 = every mature row of the table, the edge fills included
+        c0 = dict(c0, mean_r_exact=float(r0.mean()) if len(r0) else float("nan"), ge5_exact=float(100 * (r0 >= 5).mean()) if len(r0) else float("nan"))
+    f["eligible"] = [_in_era(e, period) for e in f["E"]]
+    if period == "pre":
+        f = f[f["eligible"]]
+    if period == "holdout":
+        first = f.loc[f["eligible"], "E"].min()
+        cut = (dt.date.fromisoformat(first) - dt.timedelta(days=45)).isoformat()           # its own pool-only boundary: any cut >= 20 sessions is the same
+        g = _read(paths["pool_fills"], cols)
+        g = g[(g["arm"] == "pp") & (g["entry"] == "orh5") & (g["K"] == "tl") & (g["E"] >= cut)].copy()
+        g["eligible"] = False
+        f = pd.concat([g, f], ignore_index=True)
+    f = f.sort_values(["E", "fill_minute", "ticker"]).reset_index(drop=True)
+    log(f"  re-derivation (alone_c3): {len(f):,} rows ({int(f['eligible'].sum()):,} eligible)")
+    cal = spy_calendar(paths["export"])
+    ci_of = {d: k for k, d in enumerate(cal)}
+    f["E_ci"] = f["E"].map(ci_of).astype(int)
+    cc = _read(paths["cands"], ["ticker", "D", "E", "K", "rs_best"])
+    cc = cc[cc["K"] == "tl"]
+    f = f.merge(cc, on=["ticker", "D", "E", "K"], how="left", validate="one_to_one")
+    vals = pd.to_numeric(f["rs_best"], errors="coerce").to_numpy(dtype=float)
+    E_ci = f["E_ci"].to_numpy()
+    el = f["eligible"].to_numpy()
+    score, cutoff = np.full(len(f), np.nan), np.full(len(f), np.nan)
+    for e in sorted(set(E_ci[el])):
+        day = np.flatnonzero(E_ci == e)
+        pool = np.flatnonzero((E_ci >= e - POOL) & (E_ci <= e - 1))
+        S = pd.Series(vals[pool]).dropna()
+        n = len(S)
+        if n >= FLOOR:
+            score[day] = [pct_against(S, x) if x == x else np.nan for x in vals[day]]
+        if n - 1 >= FLOOR:
+            ref = np.sort(((S.rank(method="average") - 1) / (n - 1)).to_numpy())[::-1]
+            if len(ref) >= RANK[3]:
+                cutoff[day] = ref[RANK[3] - 1]
+    taken, chosen = defaultdict(int), set()
+    weeks = [_week(e) for e in f["E"]]
+    for i in range(len(f)):
+        if not el[i]:
+            continue
+        if score[i] == score[i] and cutoff[i] == cutoff[i] and score[i] >= cutoff[i] and taken[weeks[i]] < 3:
+            taken[weeks[i]] += 1
+            chosen.add((f["ticker"].iat[i], f["E"].iat[i]))
+    out = {"aplus": chosen, "n_rows": int(len(f)),
+           "score": {(f["ticker"].iat[i], f["E"].iat[i]): float(score[i]) for i in np.flatnonzero(el)},
+           "cutoff": {(f["ticker"].iat[i], f["E"].iat[i]): float(cutoff[i]) for i in np.flatnonzero(el)}}
+    if not outcomes:
+        return out
+    key3 = {(f["ticker"].iat[i], f["E"].iat[i]): i for i in range(len(f))}
+    ap_idx = np.array(sorted(key3[k] for k in chosen), dtype=int)
+    mat = (f["mature"].to_numpy() == 1) & el
+    a = ap_idx[mat[ap_idx]] if len(ap_idx) else ap_idx
+    r = f["realized_r"].to_numpy(dtype=float)
+    core = {"n": int(len(a))}
+    if len(a):
+        ra = r[a]
+        wa = f["width_adr"].to_numpy(dtype=float)[a]
+        tail = ra >= TAIL_R
+        tw = tail & (wa >= TAIL_W)
+        core.update(mean_r=float(ra.mean()), ge5_per100=float(100 * (ra >= 5).mean()), mean_pnl_adr=float(f["pnl_adr"].to_numpy(dtype=float)[a].mean()),
+                    count_ge10=int(tail.sum()), tail_tickers=int(f["ticker"].iloc[a[tw]].nunique()), tail_months=int(f["fill_month"].iloc[a[tw]].nunique()))
+        core["ci_lo"], core["ci_hi"] = boot_ci(ra, f["fill_month"].to_numpy()[a].astype(str), f"aplus|{period}|3|alone_c3") if len(a) >= 2 else (float("nan"), float("nan"))
+        core["verdict"] = verdict(core, c0)
+    rated = ~np.isnan(score) & ~np.isnan(cutoff) & el & mat
+    in_ap = np.zeros(len(f), dtype=bool)
+    in_ap[ap_idx] = True
+    rest = np.flatnonzero(rated & ~in_ap)
+    months = f["fill_month"].to_numpy().astype(str)
+    out.update(core=core, paired=paired(r[a], months[a], r[rest], months[rest], f"aplus_pair|{period}|3|alone_c3"))
+    return out

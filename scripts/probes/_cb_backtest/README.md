@@ -297,3 +297,25 @@ $R aplus-confirm --data $D --data-pre $P --period holdout         # the sealed 2
 ```
 Outputs: `DATA/out/trades_<period>_aplus.tsv.gz` (every feature, percentile, score, cutoff and flag per fill), `aplus_report_<period>.{tsv,txt}`,
 `aplus_verdict_<period>.{json,txt}` (DATA/out; the txt and the run log `aplus_summary_<period>.txt` here under `out/`), `aplus_hindsight_<period>.*`.
+
+# #705 (c) — RS LEADERSHIP ALONE, the one read on the sealed 2025-26 (`rs-alone-read`; registered in `docs/analysis/cb_rs_alone_prereg_2026-10-22.md`; BUILT ON SYNTHETIC DATA, NOT RUN)
+
+The A+ rating read came back CAN'T TELL x CAN'T TELL (not recorded) and its registered rule NAMED `alone_c3` (concept 3, `rs_best` on its own) as
+the one further read, on the still-sealed 2025-26. `rs_alone_read.py` (the spec module, pinned by the scaffold; the stage and its checks),
+`rs_alone_fixtures.py` (the golden TIE days T1 / T2 / T3 by hand, run inside the read as check 9), `aplus_rederive.rederive_alone_c3` (the independent
+pandas path), tests in `tests/test_cb_rs_alone.py`. `aplus_read.py` is imported as the engine and pinned (`aplus module`); it is byte-identical to the A+ freeze.
+
+```
+R="python3 scripts/probes/_cb_backtest/runner.py"; D=/Users/alvinfung/apollo_data/cb702; P=/Users/alvinfung/apollo_data/cb702_pre
+$R rs-alone-read --data $D --data-pre $P --period holdout --print-pins                       # the footer lines -> pasted under <!-- FREEZE --> in the commit that precedes the run
+$R rs-alone-read --data $D --data-pre $P --period holdout --dry-run --no-freeze-check        # STEP 0 only (features; no outcome column opened); needs --no-freeze-check until the pins are pasted
+$R rs-alone-read --data $D --data-pre $P --period holdout --dry-run --self-check --no-freeze-check   # + checks 4 (b)(c), 5, 6, 9 and the re-derivation's A+ SET / scores / cutoffs (no outcome)
+$R rs-alone-read --data $D --data-pre $P --period holdout    # THE READ, once: precondition -> STEP 0 -> checks -> outcomes -> bar + paired veto -> re-derivation MATCH -> verdict
+```
+Computes ONE score on 2025-26: `rate_population` (the A+ read's engine) with `SPECS["alone_c3"]` at N = 3, every other feature column padded with None; it
+opens the holdout and discovery exitpb tables (feature columns), `candidates.tsv` (`rs_best` only) and the SPY dates of the export (no price, no volume).
+The doc's watch / P5 pins are kept though this score opens neither. Precondition (exit 3, nothing written): both A+ verdict JSONs exist, `consequence()`
+reads NOT RECORDED, `next_registration()` returns `alone_c3`, and no `aplus_*holdout*` artefact is on disk. STEP 0 equality targets: 7,570 joined / 7,547
+fills / 39 open / 93 weeks / 23 excluded; printed: the `rs_best` census, the fills tied with their cutoff member, rated / unrated / thin, A+ / capped /
+rest. Outputs (never an `aplus_*holdout*` name): `DATA/out/trades_holdout_rs_alone.tsv.gz`, `rs_alone_report_holdout.{tsv,txt}`,
+`rs_alone_verdict_holdout.{json,txt}` (the txt, the report copies and the run log `rs_alone_summary_holdout.txt` here under `out/`); each refuses a second run.

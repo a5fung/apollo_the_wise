@@ -6634,6 +6634,10 @@ BUILTIN_STAGES = ("daily", "minute", "step0-entries", "holdout", "report", "exit
 # every helper here through the runtime namespace, so it imports no runner code at import time. BUILT ON SYNTHETIC DATA; no real outcome.
 from scripts.probes._cb_backtest import aplus_read as _aplus  # noqa: E402
 REGISTERED_READS.update(_aplus.REGISTERED)
+# #705 (c): `rs-alone-read` (docs/analysis/cb_rs_alone_prereg_2026-10-22.md) - the parent's `alone_c3` row on the sealed 2025-26, once; a registered read
+# on the same scaffold, its own artefact names (`rs_alone_*`, never `aplus_*holdout*`). BUILT ON SYNTHETIC DATA; no real outcome.
+from scripts.probes._cb_backtest import rs_alone_read as _rs_alone  # noqa: E402
+REGISTERED_READS.update(_rs_alone.REGISTERED)
 
 
 def run_registered_read(spec: "rr.RegisteredRead", args) -> int:
@@ -6704,8 +6708,9 @@ def main(argv=None) -> None:
                                                                "against the pinned rows and the module's own walk; prints the match / mismatch counts "
                                                                "and the reach line; computes no new-arm number and writes nothing")
     ap.add_argument("--data-pre", help="h60 stages: the Alpaca-era data dir (default: the sibling `cb702_pre` of --data); the freeze check pins both trees")
-    ap.add_argument("--self-check", action="store_true", help="aplus-read / aplus-confirm, ONLY together with --dry-run: the STEP 0 rating counts and every "
-                                                               "WOULD-FAIL-IF check on the inputs (features and the flag; no outcome column opened; nothing written)")
+    ap.add_argument("--self-check", action="store_true", help="aplus-read / aplus-confirm / rs-alone-read, ONLY together with --dry-run: the STEP 0 rating counts "
+                                                               "and every WOULD-FAIL-IF check on the inputs (features and the flag; no outcome column opened; "
+                                                               "nothing written)")
     ap.add_argument("--levels", help="exits / exits-report: the levels of the run's candidates file to walk, comma-separated "
                                      "(default: every level of the run's keys). `--levels tl` reads the registered candidates.tsv and "
                                      "walks the trendline alone; `--keys com,comb` walks both. holdout REFUSES it")

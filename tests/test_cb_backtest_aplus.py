@@ -994,5 +994,6 @@ class TestPieces:
 
 
 def test_the_registry_holds_the_three_aplus_reads_and_the_two_plain_stages():
-    assert set(rn.REGISTERED_READS) == {"aplus-read", "aplus-confirm", "aplus-hindsight"} and {"aplus-profile", "aplus-verdict"} <= set(rn.BUILTIN_STAGES)
+    # (c) adds `rs-alone-read` (the RS-leadership-alone read on the sealed era; tests/test_cb_rs_alone.py): the A+ reads themselves are the same three
+    assert set(rn.REGISTERED_READS) == {"aplus-read", "aplus-confirm", "aplus-hindsight", "rs-alone-read"} and {"aplus-profile", "aplus-verdict"} <= set(rn.BUILTIN_STAGES)
     assert ap.APLUS_READ.periods == ("pre", "discovery") and ap.APLUS_CONFIRM.periods == ("holdout",) and ap.APLUS_READ.order == rr.DEFAULT_ORDER

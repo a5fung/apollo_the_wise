@@ -588,8 +588,8 @@ class TestDriver:
         assert len(head) == 1 and "freeze check NONE DECLARED" in head[0]
 
     def test_only_the_aplus_reads_are_registered_in_the_shipped_runner(self):
-        """#705 (b): the three A+ reads are the first registered reads; nothing else rides the registry."""
-        assert set(rn.REGISTERED_READS) == {"aplus-read", "aplus-confirm", "aplus-hindsight"}
+        """#705 (b): the three A+ reads are the first registered reads; (c) adds the RS-alone read on the sealed era; nothing else rides the registry."""
+        assert set(rn.REGISTERED_READS) == {"aplus-read", "aplus-confirm", "aplus-hindsight", "rs-alone-read"}
         assert all(isinstance(s, rr.RegisteredRead) and s.name == k for k, s in rn.REGISTERED_READS.items())
 
 
