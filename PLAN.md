@@ -77,7 +77,7 @@ myself.
 
 Friday = prep so the weekend is pure build + run (his: "maximize build time, get new setups (breakouts, HTF) as ready as possible, clean
 up backlog"; Friday early starts only on his ask, before the 8 PM PT capacity reset). One heavy card at a time + one small one beside it.
-- **Fri:** pre-register #705's two reads and #314's replay (before any outcome); free SEC XBRL coverage probe for warrants / convertibles on
+- **Fri (his 10-22: "We can continue build tmr as we had a reset" — builds continue Friday beside the eight verifies):** #705's stop × retry read results (running), then the graded-stream-picks extraction; #314's replay pre-registration. WAS: pre-register #705's two reads and #314's replay (before any outcome); free SEC XBRL coverage probe for warrants / convertibles on
   small caps (#314 stealth dilution); build #706 (Sonnet); read Friday's verify-due lines (#704, #624, #701, #695, #491, #314).
 - **Sat:** the shared registered-read scaffold + golden harness (#705 (a), Fable; serves #705 and #314); #655 fold fix (Sonnet); #706
   review + deploy; Opus reviews on each.
