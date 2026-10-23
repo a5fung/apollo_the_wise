@@ -71,6 +71,15 @@ that read. Nothing about the rule is new; every choice below is the parent's, ci
   live on this table).
 - `rs_best` census: 693 distinct values; 44 fills (0.58%) at 100.0; the top 4% (314 fills) hold 7 distinct values (100.0 down
   to 99.4).
+- **The ties bite the same in every era; the low n is the inherited expectation's.** An independent count over the two
+  deciding eras, already read (`scripts/probes/_cb_backtest/rs_alone_ties_deciding_check.py`, no runner code; its calendar is
+  the era's fill dates, and it reproduces the read's A+ counts to within 2%: 500 vs 510, 283 vs 289), found:
+  - ties at the cutoff are 94 of 13,323 rated in 2017–21 and 59 of 8,912 in 2022–24 — 7.1 and 6.6 per 1,000, every one
+    below the cutoff — against 47 of 7,547 (6.2 per 1,000) here;
+  - the A+ rate is the same as in 2022–24: 172 over 93 weeks is 1.85 a week, and 289 over 2022–24's ~156 weeks is 1.85;
+  - the inherited 215–279 (2.3–3.0 a week) was set for the core before any read, and missed on 2022–24 too (288 against
+    300–435).
+  So the named winner and this test stand on the same footing.
 - The rule is NOT changed for any of this. The expectation miss is recorded here before the freeze, and the bar is applied at
   whatever n the read finds.
 - The chance figure at n = 172: the outlier bar needs ≥ 5 big winners (5 × 7,531 = 37,655 ≥ 2 × 89 × 172 = 30,616; 4 is
@@ -158,3 +167,20 @@ spec module, the re-derivation module, the golden fixtures module, `trades_holdo
 `daily_closes_all.csv.gz` and the doc body above the marker. The build adds `aplus_read.py` ("aplus module" — the engine it
 imports, byte-equal to the A+ freeze's spec module) and its own fixtures module; the P5 and watch tables are pinned but never opened;
 no minute tree or profile is read.)
+
+Pinned 2026-10-22 (printed by `rs-alone-read --print-pins` on the final bytes):
+
+- aplus module sha256: `e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee`
+- rederivation module sha256: `ed792d8eee739568f9a65e24e70c2cd0409d78d3767332df2447bbf1f54fe1dc`
+- golden fixtures module sha256: `45cda77a8456520156de6a7c2e5ad531bdd4cf48c8f9f9f57e8cf5c4e008769e`
+- cb702/out/trades_discovery_exitpb.tsv.gz sha256: `e6a24c019bd13a49d33cf9961c7abef7c112441a4679b2f926288d0dc26929f9`
+- cb702/out/trades_holdout_exitpb.tsv.gz sha256: `ace5977e570b42542e5dc5af1eef9b1fa0d2dbe994d9121aa9320c03f5a5bfe0`
+- cb702/out/trades_discovery_p5.tsv.gz sha256: `8e906dc8d0242fba972e88d28eccb17c57b6b28d35f5f12fa1292208aa9c1bd4`
+- cb702/out/trades_holdout_p5.tsv.gz sha256: `557a4152809aae22bb964653097a1684cfcedd8269777c69443227c9e794b673`
+- cb702/out/candidates.tsv sha256: `b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7`
+- cb702/out/watch.tsv.gz sha256: `59e757cacb3250066393d0395e4abe89adff3787c34d1f2f7ad5fd5e2f2a5c0b`
+- cb702/daily_closes_all.csv.gz sha256: `ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba`
+- runner sha256: `213cbe6ddf0ff05555a11c347efd14bfa37f99096fd83961e9f5127f6c7c8dcf`
+- scaffold sha256: `28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449`
+- spec module sha256: `b4212b41a2317c6fa72b91bf94429de69ac97bb4460e4ad2bd944d87a520bb66`
+- doc body sha256: `b995940a4345b8b2b7aa50b0319207aada68cf782ba6d7861e6c114e619787d4`
