@@ -1421,6 +1421,47 @@ stagger cards, one at a time.
 
 **Standing (⚠ SUPERSEDED 2026-10-10 — capacity is back to full, Fable available):** Fable 93% for the week — Opus/Sonnet only. Saturday 10-10 is overloaded — #327 H6–H9 and the #694 tie-breaker test are $0 and could move to Thu/Fri.
 
+## 2026-10-22 (Thu) CLOSE — 🔴 RESUME HERE. Supersedes the 10-21 close below.
+
+- **Board 22 → 22** (no closes, no new tasks). Server 0a76e61b after tonight's deploy (`deploy.sh market-agent` then `deploy.sh execution`,
+  21:17–21:28 ET, both exit 0, the box held 2.2–2.8 GB free; a 4 GB swapfile was added after the noon deploy froze the box).
+  - #706 deployed: the rendered `/trades` was checked against the broker on IRON.
+  - #655 deployed: its checks run on Friday's rescore.
+  - main is ahead with the /simplify cleanups to #655 / #706 (behaviour-identical, suite green). They ship with the next `deploy.sh
+    market-agent`.
+- **#705 (breakout setup), today's reads, all $0, each verified by two independent agents (corrections applied in the docs):**
+  - (1) **The A+ rating:** frozen and read once per era. CAN'T TELL × CAN'T TELL → not recorded. The rule named RS-alone as the next
+    test; that test is frozen (`2df57aa9`) but HELD, not run, on his breakout ruling.
+  - (2) **R decomposition** (`cb_r_decomposition_2026-10-22.md`).
+  - (3) **His breakout definition** (`cb_breakout_definition_2026-10-22.md`): our trigger is early — the base high is cleared later on
+    70–76% of fills.
+  - (4) **His math check:** +2R before the stop on only 31% / 27% of trades (break-even 33%).
+  - (5) **Market-trend split:** say uptrend / downtrend, not bull / bear. Lagging averages mislabel the 2020 V-bottom.
+  - (6) **Big-winner recall** (`cb_big_winner_recall_2026-10-22.md`): half to two thirds of the doublers start as a measurable breakout.
+    We watched under half, and the stop ended 3 in 4 of our triggers before half the move.
+  - (7) **Stop × re-entry** (`cb_entry_stop_retry_2026-10-22.md`): a 1-ADR stop with 2 retries holds ~45% of the good doublers to half
+    their move, but the exit keeps a median 5%, and every real breakout's book is flat / losing like matched stocks.
+  - **Scope:** the "no edge" statements are DRIFT plus the daily-bar race, unfiltered. He rejected "no edge in breakouts"; the docs
+    say so.
+- **His rulings / words today** (all in `operator_shared_notes.md`):
+  - AMRX belongs to the breakout setup. His 30% vs 25% fork is open on #705 — do not re-raise.
+  - The labels are Qullamaggie's own stream grades (A+ / "needs a few more days"). His chart-grading ask is withdrawn.
+  - A breakout = leaving the consolidation into expansion.
+  - The edge = selection + asymmetric risk / reward.
+  - Cut ~90% of the trades.
+  - Attack from both ends: Track A fewer breakouts, Track B keep winners with small losses — one combined registered test on the
+    sealed 2025–26.
+  - Trail variants: decisive break / quick reclaim.
+- **Fri 10-23 (builds continue, his word):**
+  - the 8 verify-dues: #697 Flag Bases render, #706 dashboard + first skip morning, #314, #491, #624, #695, #701, #704;
+  - the trail-variant read (Track B);
+  - the caption extraction of Qullamaggie's graded moments (Track A, outcome-free);
+  - #314's replay plan fixes (survivorship blockers).
+  - Check capacity before launching the two workflows (today ≈ 3M+ subagent tokens).
+- **Sat–Sun:** the combined test's registration; the #314 replay; the #707 vault planning with him.
+- **Lessons:** [[prove-two-numbers-measure-the-same-thing]] — I called a reach-time "the move starts 5–6 weeks later", he built on it.
+  [[dont-defend-the-status-quo-with-cost]] — "no edge in breakouts" overstated a drift-only measure.
+
 ## 2026-10-21 (Wed) CLOSE — 🔴 RESUME HERE. Supersedes the 10-20 close below.
 
 - **Board 21 → 22:** closed #703 (single 09:00 scan, three weekdays; the 09:00-tick-alert case unexercised, his "ok"); opened #706
