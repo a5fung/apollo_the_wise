@@ -14,6 +14,11 @@ symbols, and 8.35% of admitted universe nights have no security type. **Era B (2
 gate** but 57 of its 8,984 published trades depend on sealed 2025 bars and it had no identity guard until today. Every
 2017-21 number is labelled *survivors only* until the delisted refetch and the dedupe land.
 
+**2026-10-23 update — a rebuilt era A passes the data gate.** `apollo_data/cb702_pre_v2/` (the delisted refetch + the dedupe + the
+type join, `scripts/probes/_705_survivorship_1023/08_build_v2.py`) passes S0, G1–G7 and G9 (`cb702_pre_v2/audit_1023/verdict.txt`);
+G8 is checked per trade list. `cb702_pre` itself is unchanged (its files are hash-pinned by two freezes). **No read has been re-run on
+v2 yet**, so every published 2017-21 number still carries the *survivors only* label.
+
 **The two exports** (read-only; format `ticker,date,open,high,low,close,volume`, no header):
 
 | | era A | era B |
@@ -46,6 +51,7 @@ Status words: **confirmed** = measured and real; **suspected** = measured but th
 | impact | **Population and tail.** Of 552 liquid runners in the overlap (close ≥ 2× a liquid start-day close within 60 sessions), **146 absent from A = 26.4%**; ≥3×: 30 of 98; ≥4×: 11 of 43. Names NOT covered by A (snapshot 2021-12-31, n=547): median total return to last bar −29.1%, 24.3% lost ≥ 80%; covered (n=2,605): −10.9%, 8.9%. So A lacks about a quarter of the big runners (recall ceiling, P1) AND under-represents blow-ups — every per-trade R, drawdown and stop-out on A is flattered in an unknown direction. RS percentiles: 122 of B's 8,763 overlap watch nights change side of the 98 line under A's denominator (net +106 = +7.0%) | — |
 | check | `universe_check.py` KNOWN-GONE + IMPACT (`gone_list.tsv`, `liquid_per_session_by_month.tsv`, `ended_by_year_{A,B}.tsv`); `pit_lint.py overlap` | |
 | fix | the delisted refetch (`scripts/probes/_705_survivorship_1023/01_fetch_delisted.py`, FIGI/CIK sidecar) → rebuild A → rerun; **acceptance = the known-gone missing rate falls to the 9% control level and `ended_by_year_A` reads roughly flat 130–200/yr back to 2016** | |
+| result (10-23) | **met on `cb702_pre_v2`:** known-gone missing 29 of 513 = 5.7%; liquid names per session v2/B 0.979–0.995; liquid names ending by year 2016–22H1: 90 / 129 / 141 / 122 / 109 / 174 / 94 (was 4 / 6 / 46 / 117 / 105 / …). Recall per COMPANY (a rename covered under today's symbol counts): 98% of the known-gone list, 96% of the 808 liquid 2022 names absent by symbol; 5 names Alpaca has no bars for (ARIS AXNX INBX MSPR NXU). Identity on the 2022 overlap: 585 of 590 refetched names within 1% of Polygon's close; outside: SUM, TEF, BBBY (×1.10 — the symbol was reused in 2025), ELP, TGI | `refetch: 03_recall_check.py`, `05_recall_by_company.py` |
 
 ### F2 — Duplicate companies: one company under two symbols
 
@@ -210,7 +216,7 @@ Each check carries a case it MUST find. **Reported here as they stand today, not
 | **FB = META** (one company, two symbols, byte-identical) | F2 | `duplicate_series_check.py` lists the pair; `universe_check.py` dup_pairs lists it | A: **found** (1,620 identical days; switch 2022-06-09 within one session of the public date). B: correctly NOT a twin (B's META before 2022-06-09 is a different instrument) |
 | **planted twins in B's own file** (AAPL copied as AAPLX exact; NVDA ×1.00004; MSFT ×10 price ÷10 volume) | F2 | all three found, nothing else | **found 3 of 3, 0 false** — so B's zero is a real zero |
 | **selftests** (`universe_check.py --selftest` plants 5 defects; `duplicate_series_check.py --selftest`; `price_integrity_check.py --selftest` injects one defect per check; `security_type_check.py --selftest` the name classifier; `pit_lint.py chain` reproduces the documented bridging-pole case) | all | every planted defect found by its own check | universe 10 of 10; duplicate pass; price pass; security pass; chain fires on the synthetic case |
-| **TWTR present in era A after the refetch** (and ATVI, MRO, X, WBA — the 334 gone names) | F1 | `gone_list.tsv` status `in_primary` for TWTR; known-gone missing rate ≈ 9% | **cannot run yet** (the refetch is in flight); today TWTR is `missing`. This is the refetch's acceptance test |
+| **TWTR present in era A after the refetch** (and ATVI, MRO, X, WBA — the 334 gone names) | F1 | `gone_list.tsv` status `in_primary` for TWTR; known-gone missing rate ≈ 9% | **PASS on `cb702_pre_v2` (10-23):** TWTR, ATVI, EA, X carry all 1,635 sessions; known-gone missing 5.7% |
 | **DWT** (3× inverse crude ETN, untyped) | F5 | `security_type_check.py` U2 names it; **after the operator rules, 0 admitted nights** | **detected, NOT excluded**: 628 admitted nights, in the hand-verified list of 23. Exclusion from the backtest universe is the operator's fork (§5); today it stays, as prod admits it |
 | **the existing `symbol_guard.tsv`** | F3 | `universe_check.py` breaks test reproduces it | **578 of 578 symbols reproduced**, 0 only on either side |
 | **ZVZZT and the test symbols** | F6 | `[test_symbol]` lists them in B; the universe admits none | 15 tickers listed; 0 trades in any population |
@@ -236,7 +242,7 @@ Two columns on purpose: the left is data pipeline work that needs no ruling; the
 
 | fix | owner | what it changes | acceptance (the control that flips) |
 |---|---|---|---|
-| **Delisted refetch** (`01_fetch_delisted.py`, in flight) back to 2016-01-04, FIGI/CIK sidecar `records.tsv` | data pipeline (me) | era A gains the ~334 gone names + their blow-ups and runners; `ended_by_year_A` flattens | TWTR `in_primary`; known-gone missing rate ≈ 9%; liquid ratio ≥ 0.97 |
+| **Delisted refetch** (`01_fetch_delisted.py`, DONE 10-23: 3,226 symbols, 2.18M bars) back to 2016-01-04, FIGI/CIK sidecar `records.tsv` | data pipeline (me) | era A gains the ~334 gone names + their blow-ups and runners; `ended_by_year_A` flattens | TWTR `in_primary`; known-gone missing rate ≈ 9%; liquid ratio ≥ 0.97 |
 | **Rebuild era A keyed by FIGI/CIK + date**, symbol as label; rename map; dedupe (strict + scaled) | data pipeline | G3 → 0 pairs; G4 liquid mismatches → 0; joins to labelled EPs hit the right company; n and tail counts no longer inflated 1.5–2.7% | `duplicate_series_check` 0/0/0; FB=META collapses to one series with the switch date |
 | **Type join** from `records.tsv` + a point-in-time Polygon reference pull for the 419 in-export unknowns | data pipeline (needs network, $0) | G6 ≤ 2%; refetched names arrive typed | unknown share on the rebuilt A ≤ 2% |
 | **Fetch era B raw closes once** | data pipeline ($0) | the vendor-booked-factor check runs on B | DISCONTINUOUS list for B exists |
@@ -344,3 +350,19 @@ A completeness pass over §1–§6 and the scripts: problem families the taxonom
     G8.
 - **Moved out of the repo:** the two large flag files (`A_flags.tsv` 5.3 MB, `B_flags.tsv` 18 MB) are in
   `apollo_data/audit_runs_2026-10-23/`; `run_all.sh` regenerates them.
+
+## What the first rebuild taught (2026-10-23)
+
+- **Alpaca serves a renamed company's whole history under BOTH its old and its new symbol** (ABB and ABBNY, IDRA and ACGN). A refetch by
+  old symbols re-adds them: 549 of the 3,226 refetched symbols were twins of a series the export already carried (395 strict, 152 at a
+  later split scale). Run the duplicate lens on every merged trial BEFORE trusting a merge; drop the refetched twin.
+- **Inside a scaled twin the raw closes are equal** (ratio 1.000 on 15 of 16 pairs checked; AQB / XON the exception); only the later
+  reverse-split scale differs, so either copy gives the same returns and the same $5 floor.
+- **A refetch carries Alpaca's zero-volume forward-fill rows** (99,172 here): apply the export's own row rules (`ext_bars.build`) to
+  any new rows, never append raw.
+- **Alpaca's split-adjusted and raw feeds disagree on ~130 rows** (mostly blank-check companies): keep only the keys both carry.
+- **`run_all.sh` silently used the 2022-24 window for any label other than A or B** — a trial of era A read only Mar–Jun 2022 and
+  looked clean. Fixed: an unknown label now needs WATCH_START and WATCH_END.
+- **The identity guard re-derived over the merged arrays matched the original for every untouched symbol (0 differences)** — keep
+  that parity assert in every rebuild; it is what proves the build path did not change.
+

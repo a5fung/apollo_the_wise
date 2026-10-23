@@ -7,7 +7,7 @@
 #   era-dir      directory holding daily_closes_all.csv.gz and whichever sidecars exist: daily_raw_close.csv.gz (measured raw close),
 #                symbol_guard.tsv (identity breaks), cb702_splits.psv, cb702_sic.psv, small_pulls.psv, minutes/, out/{entries,candidates,
 #                watch,trades}*.tsv*  — a missing sidecar skips the flag that needs it and the summary says so
-#   label        A | B | any short name. A/B set the watch-window defaults (A 2017-03-01..2021-12-31, B 2022-03-28..2024-12-31)
+#   label        A | B | any short name (then WATCH_START + WATCH_END are required). A/B set the watch-window defaults (A 2017-03-01..2021-12-31, B 2022-03-28..2024-12-31)
 #   richer-dir   the export that still carries delisted names (era B when auditing era A): enables the pair checks + the overlap
 #
 # Env:  OUT=<dir>        where consoles and TSVs go (default: a dated dir under $TMPDIR)      CUTOFF=2024-12-31 (the scripts refuse later)
@@ -43,7 +43,10 @@ WATCH=$(first "$ERA_DIR"/out/watch_tl_com.tsv.gz "$ERA_DIR"/out/watch.tsv.gz)
 TRADES="${TRADES:-$(first "$ERA_DIR"/out/trades_*exitpb.tsv.gz)}"
 case "$LABEL" in
   A) WS="${WATCH_START:-2017-03-01}"; WE="${WATCH_END:-2021-12-31}" ;;
-  *) WS="${WATCH_START:-2022-03-28}"; WE="${WATCH_END:-2024-12-31}" ;;
+  B) WS="${WATCH_START:-2022-03-28}"; WE="${WATCH_END:-2024-12-31}" ;;
+  *) # an unknown label used to fall back to the B window silently (a trial run of era A read only Mar-Jun 2022, 2026-10-23)
+     { [ -n "${WATCH_START:-}" ] && [ -n "${WATCH_END:-}" ]; } || { echo "label '$LABEL' is not A or B: set WATCH_START and WATCH_END"; exit 1; }
+     WS="$WATCH_START"; WE="$WATCH_END" ;;
 esac
 # Hand-verified non-common instruments that pass the universe filters in era A (security_type_check U2; a person confirmed each
 # against price level and dates — the classifier only PROPOSES). Reported as a count; exclusion is the operator's fork (standard §5).
