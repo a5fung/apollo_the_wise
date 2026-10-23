@@ -29,8 +29,26 @@ EVERY CHOICE BELOW WAS FIXED BEFORE THE FIRST RUN (this header is the record):
 - ERA: screen_date <= 2022-01-03 (era A's last E) -> era A (cb702_pre_v2, the rebuilt 2017-21 file); later -> era B
   (cb702, 2022-24, discovery rows only, every row with a date after 2024-12-31 dropped AT READ and asserted). A label whose
   window does not fully sit inside the era's E range [first E, last E] is `coverage = partial`; one whose window does not
-  touch it is `coverage = none` (22 labels before 2017-03-02; the 2022-01..03 gap between the eras). Join rates are quoted
-  over full + partial coverage, with full-only beside. `none` is a coverage fact, never a miss.
+  touch it is `coverage = none` (the 6 labels of 2017-01, before the first E 2017-03-02; the 13 of 2022-01..02, the gap
+  between the eras). Join rates are quoted over full + partial coverage, with full-only beside. `none` is a coverage fact,
+  never a miss.
+- DISTINCT EVENTS (round 2 wording of the round-1 rule): an event carrying several labels takes, for the position table, the
+  delta of the label CLOSEST to E (|delta| smallest, the later label on a tie); round 1 printed the first label in file order
+  (reported beside). Neither reaches 60% on any arm, so the target rule's verdict does not depend on it.
+- PLACEBO (the round-1 code's three conditions, written out in round 2 after the recount could not reproduce the n from the
+  prose): the symbols are those with a BOUGHT label and coverage != none in era A (200); t runs over the sessions whose whole
+  window [t-10, t+20] sits inside the era's E range (indices Emin+10 .. Emax-20); t is excluded when it is within +-20
+  sessions of ANY attributed label of that symbol, any grade; t needs a watch row of the symbol in [t-10, t+20] and a tl
+  event in the same window (the nearest one, same tie rule, is the delta).
+- WATCH STATE "same base NOT yet broken at s0" (round 2 wording): round 1 keyed the base on the candidate rows' `pole_date`
+  column equal to the watch row's pole_date; a drifted pole (the module re-dates a pole by a day) makes the same base look
+  unbroken under that key. Round 2 prints BOTH: the pole_date key (round 1) and the drift-robust `base_id` key.
+- ADDED IN ROUND 2 (2026-10-23, after the two checkers' reports; outcome-free; no choice of the round-1 join changed — these
+  are counts the registration needs that the round-1 output did not print): (11) the label TIMING of every positive event
+  (bought or best) — at least one positive label said ON OR BEFORE E, only after E, at least one strictly before; the
+  2017-20 / 2021 split; (12) the same-day NEGATIVES on the graded dates, with the rows that belong to a LABELLED base
+  excluded and counted; (13) the readiness contrast's populations at the label date s0; (14) where the grade phrase sits —
+  in the ticker's own caption line or only in the surrounding window (reads `graded_moments.tsv`, pinned).
 - TARGET DECISION RULE (applied to the joined BOUGHT labels, era A, full + partial coverage; thresholds fixed now):
   * >= 60% with delta >= +1  -> the filter's target is a PRE-BREAKOUT STATE (decision time = the watch night D);
   * >= 60% with delta in [-2, +1] -> the target is the BREAKOUT DAY (decision time = E);
@@ -61,6 +79,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import os
+import re
 import sys
 from collections import Counter, defaultdict
 from datetime import date
@@ -89,6 +108,13 @@ BDEF_R1 = {"A": f"{A_OLD}/out/bdef_r1_2017-21.tsv.gz", "B": f"{B}/out/bdef_r1_20
 BDEF_FILLS = {"A": f"{A_OLD}/out/bdef_fills_2017-21.tsv.gz", "B": f"{B}/out/bdef_fills_2022-24.tsv.gz"}
 EXPORT_A = f"{A}/daily_closes_all.csv.gz"
 SIC = {"A": f"{A}/cb702_sic.psv", "B": f"{B}/cb702_sic.psv"}
+MOMENTS = f"{B}/qm_streams/vision/graded_moments.tsv"   # round 2: the caption line (`quote`, 220 chars) per graded moment
+# the grade phrases exactly as 02_graded_moments.py matched them over the caption WINDOW; here re-applied to the ticker's own
+# caption line only (section 14) — an upper bound on "the phrase is in the window only", since the quote is cut at 220 chars
+GRADE_RX = {"best": r"\b(best|perfect|textbook|beautiful) (setup|set up|chart|flag|base)s?\b|\ba[ -]?plus\b",
+            "bought": r"\bi (bought|added|got in|took a (starter|position)|entered)\b|\bi'?m (long|in it)\b",
+            "not_yet": r"\bneeds? (a )?(few |couple )?(more )?(days|weeks)\b|\bneeds? to tighten\b|\bnot (quite )?ready\b|\btoo (loose|wide|extended)\b"}
+FIT_LAST_E = "2020-12-31"            # the fit set's last E (era A); 2021 is the hold-out
 
 CUT_B = "2024-12-31"                 # nothing dated after this is kept from any era-B file
 ERA_A_LAST_E = "2022-01-03"          # era A's last breakout day; a later screen date is era B
@@ -307,15 +333,22 @@ def main() -> int:
         rec["c0_tl_at_s0"] = int(watch[e].at[wr, "C0_tl"]) if wr is not None else -1
         rec["base_len_at_s0"] = watch[e].at[wr, "base_len"] if wr is not None else ""
         rec["no_break_yet"] = -1
+        rec["no_break_yet_base"] = -1
         if wr is not None:
             pd_ = watch[e].at[wr, "pole_date"]
             arr = ev.get((e, "tl", L.sym))
             broke = False
+            broke_base = False
             if arr is not None:
                 ie, pos = arr
                 m = ie <= i0
                 broke = bool((cand[e].loc[pos[m], "pole_date"] == pd_).any())
+                # round 2, the drift-robust key: the base_ids any tl row of the symbol carries under this pole_date, then any
+                # tl event of those base_ids with E <= s0 (a pole re-dated by a day keeps its base_id)
+                bids = set(cand[e].loc[pos[cand[e].loc[pos, "pole_date"].to_numpy() == pd_], "base_id"])
+                broke_base = bool(cand[e].loc[pos[m], "base_id"].isin(bids).any()) if bids else broke
             rec["no_break_yet"] = int(not broke)
+            rec["no_break_yet_base"] = int(not broke_base)
         # nearest event per K
         for k in (("tl", "com") if e == "A" else ("tl", "com", "k5", "k10", "full")):
             arr = ev.get((e, k, L.sym))
@@ -428,7 +461,7 @@ def main() -> int:
         before = int((d >= 1).sum()); on = int((d == 0).sum()); after = int((d <= -1).sum())
         band = int(((d >= ON_BAND[0]) & (d <= ON_BAND[1])).sum()); band2 = int(((d >= ON_BAND_WIDE[0]) & (d <= ON_BAND_WIDE[1])).sum())
         print(f"- {title}: n = {n} | label BEFORE the breakout (delta >= +1) {pct(before, n)} | ON it (delta = 0) {pct(on, n)} | AFTER it (delta <= -1) {pct(after, n)}"
-              f" | within [-1, +1] {pct(band, n)} | within [-2, +1] {pct(band2, n)} | median delta {float(d.median()):+.0f} | quartiles {float(d.quantile(.25)):+.0f}..{float(d.quantile(.75)):+.0f}")
+              f" | within [-1, +1] {pct(band, n)} | within [-2, +1] {pct(band2, n)} | median delta {float(d.median()):+.1f} | quartiles {float(d.quantile(.25)):+.1f}..{float(d.quantile(.75)):+.1f}")
         print(f"    histogram (delta: n): " + " ".join(f"{k:+d}:{v}" for k, v in sorted(Counter(d).items())))
 
     for e in ("A", "B"):
@@ -437,10 +470,16 @@ def main() -> int:
             split(g.delta_tl, f"era {e} {name} vs nearest tl event (first breaks and retriggers)")
             g2 = g[g.delta_first_tl.ne("")]
             split(g2.delta_first_tl, f"era {e} {name} vs nearest FIRST BREAK (retrigger = 0) in the window")
-    print("- the same for the distinct (era, sym, E) events (a label-dense stock counts once per event):")
+    print("- the same for the distinct (era, sym, E) events (a label-dense stock counts once per event); the event's delta = the label"
+          " CLOSEST to E (|delta| smallest, the later label on a tie); round 1's 'first label in file order' beside:")
     for e in ("A", "B"):
-        g = Jc[(Jc.era == e) & (Jc.is_bought == 1) & Jc.matched].drop_duplicates(["sym", "E_tl"])
-        split(g.delta_tl, f"era {e} bought, distinct events")
+        g = Jc[(Jc.era == e) & (Jc.is_bought == 1) & Jc.matched].copy()
+        g["_d"] = g.delta_tl.astype(int)
+        g["_a"] = g._d.abs()
+        g["_n"] = -g._d
+        gc = g.sort_values(["_a", "_n"], kind="stable").drop_duplicates(["sym", "E_tl"])
+        split(gc.delta_tl, f"era {e} bought, distinct events (closest label)")
+        split(g.drop_duplicates(["sym", "E_tl"]).delta_tl, f"era {e} bought, distinct events (first label in file order, round 1)")
 
     # 3b. placebo: the same symbols on every OTHER session near one of their bases — what a random "near a base" date reads
     print(f"\n## 3b. PLACEBO — every session t of the same symbols (era A) with a watch row in [t-{W_BACK}, t+{W_FWD}] and a tl event in that window,"
@@ -455,11 +494,13 @@ def main() -> int:
                 lab_idx[s].append(s_idx(cal["A"], i))
         deltas = []
         n_sessions = 0
+        n_syms_used = 0
         for s in syms:
             arr = ev.get(("A", "tl", s))
             wd = wdates["A"].get(s)
             if arr is None or not wd:
                 continue
+            n_syms_used += 1
             ie, _ = arr
             li = np.array(lab_idx[s])
             for t in range(e_range["A"][0] + W_BACK, e_range["A"][1] - W_FWD + 1):
@@ -475,7 +516,11 @@ def main() -> int:
                     order = np.lexsort((-dd, np.abs(dd)))
                     deltas.append(int(dd[order[0]]))
         if deltas:
-            split(pd.Series(deltas), f"placebo for the {name} symbols' near-a-base sessions ({n_sessions} sessions, {len(deltas)} with a tl event in the window)")
+            split(pd.Series(deltas), f"placebo for the {name} symbols' near-a-base sessions ({len(syms)} symbols with a {name} label and coverage, {n_syms_used} with a watch row and a tl event;"
+                  f" t in [Emin+{W_BACK}, Emax-{W_FWD}], t not within +-{W_FWD} of ANY attributed label of the symbol; {n_sessions} sessions, {len(deltas)} with a tl event in the window)")
+            if name == "bought":
+                placebo_hist = Counter(deltas)
+                placebo_n = len(deltas)
 
     # the target decision rule
     print(f"\n## 4. TARGET DECISION RULE (fixed in the header; applied to era A bought labels, full + partial coverage)")
@@ -491,6 +536,13 @@ def main() -> int:
     else:
         verdict = "NEITHER reaches 60% -> both reported; the registration takes the breakout-day target with state features read at D"
     print(f"- n = {n} | share with delta >= +1 (label before our breakout) {sh_before:.1%} | share in [-2, +1] (on the breakout day) {sh_on:.1%} -> {verdict}")
+    # round 2: the labels' excess over the placebo, per delta (what the timing actually shows beyond a random near-a-base date)
+    hist = Counter(d)
+    exp = {k: placebo_hist.get(k, 0) / placebo_n * n for k in range(-W_BACK, W_FWD + 1)}
+    print(f"- against the placebo (expected = placebo share x {n}): before (delta >= +1) {int((d >= 1).sum())} vs {sum(v for k, v in exp.items() if k >= 1):.1f} expected"
+          f" | on (0) {hist.get(0, 0)} vs {exp[0]:.1f} | after (<= -1) {int((d <= -1).sum())} vs {sum(v for k, v in exp.items() if k <= -1):.1f}"
+          f" | one session early (+1) {hist.get(1, 0)} vs {exp[1]:.1f} | two early (+2) {hist.get(2, 0)} vs {exp[2]:.1f}"
+          f" | the excess sits at delta 0 only: {hist.get(0, 0) - exp[0]:+.1f} labels")
     gr = g[g.delta_r1.ne("")]
     if len(gr):
         dr = gr.delta_r1.astype(int)
@@ -509,9 +561,14 @@ def main() -> int:
             n = len(g)
             w0 = int((g.watch_at_s0 == 1).sum())
             nb = int(((g.watch_at_s0 == 1) & (g.no_break_yet == 1)).sum())
+            nbb = int(((g.watch_at_s0 == 1) & (g.no_break_yet_base == 1)).sum())
             c0 = int(((g.watch_at_s0 == 1) & (g.c0_tl_at_s0 == 1)).sum())
-            print(f"- era {e} {name:8s}: n = {n} | watch row AT s0 {pct(w0, n)} | of those: a tl line exists (C0_tl = 1) {c0}; same base NOT yet broken at s0 {pct(nb, n)}"
+            print(f"- era {e} {name:8s}: n = {n} | watch row AT s0 {pct(w0, n)} | of those: a tl line exists (C0_tl = 1) {c0}; same base NOT yet broken at s0 {pct(nb, n)} (pole_date key, round 1)"
+                  f" / {pct(nbb, n)} (base_id key, drift-robust)"
                   f" | watch row anywhere in the window {pct(int((g.watch_in_window == 1).sum()), n)} | unmatched but in a base in the window {int(((g.watch_in_window == 1) & ~g.matched).sum())}")
+            dr = g[(g.watch_at_s0 == 1) & (g.no_break_yet == 1) & (g.no_break_yet_base == 0)]
+            if len(dr):
+                print(f"    unbroken under the pole_date key but already broken under base_id (a drifted pole): {sorted(zip(dr.frame_id, dr.sym))}")
 
     # ------------------------------------------------------------------ 6. R1 / R2 membership of the matched events
     print("\n## 6. R1 / R2 membership of the matched tl events (bdef flags, descriptive; era A's bdef is on the OLD export -> three-valued)")
@@ -542,7 +599,7 @@ def main() -> int:
         g = me[me.era == e]
         gb = g[g.bought > 0]
         print(f"- era {e}: distinct (sym, E) events {len(g)} (bought {len(gb)}, not_yet {int((g.not_yet > 0).sum())}, best {int((g.best > 0).sum())})"
-              f" | distinct bases (sym, base_id) {len(g.drop_duplicates(['sym', 'base_id']))} | distinct chains {len(g.drop_duplicates(['sym', 'chain']))}"
+              f" | distinct bases (sym, base_id — the drift-robust key) {len(g.drop_duplicates(['sym', 'base_id']))}"
               f" | distinct symbols {g.sym.nunique()} | labels per event: 1: {int((g.labels == 1).sum())}, 2: {int((g.labels == 2).sum())}, 3+: {int((g.labels >= 3).sum())}"
               f" | C1 among bought events {int(gb.C1.sum())}")
         for name, gg in (("bought events", gb), ("not_yet events", g[g.not_yet > 0])):
@@ -598,9 +655,113 @@ def main() -> int:
               f" | D {p.D_tl if p.E_tl else '-'} pole {p.pole_date_tl if p.E_tl else '-'}"
               f" | frame {FRAMES if not p.frame_id.startswith('b1_') else f'{B}/qm_streams/vision/frames'}/{p.frame_id}.png")
 
+    # ================================================================== ROUND 2 (2026-10-23) — counts the registration needs
+    # ------------------------------------------------------------------ 11. label timing per POSITIVE event (bought or best)
+    print("\n## 11. Label timing per POSITIVE event (bought or best; the positive labels' deltas only — a not_yet label on the same event does not count)"
+          f"\n#     ON OR BEFORE = at least one positive label with delta >= 0 (said on or before E); POST-E ONLY = every positive label after E (hindsight);"
+          f"\n#     STRICTLY BEFORE = at least one positive label with delta >= +1. Fit = E <= {FIT_LAST_E}; hold-out = 2021 (era A); era B = the 2022-23 check")
+    Jp = Jc[Jc.matched & ((Jc.is_bought == 1) | (Jc.is_best == 1))].copy()
+    Jp["_d"] = Jp.delta_tl.astype(int)
+    Jp["_z"] = (Jp._d == 0).astype(int)
+    tim = Jp.groupby(["era", "sym", "E_tl"]).agg(dmin=("_d", "min"), dmax=("_d", "max"), at0=("_z", "max")).reset_index()
+    tim["fit"] = tim.E_tl <= FIT_LAST_E
+    timing_keys = {}
+    for e in ("A", "B"):
+        g = tim[tim.era == e]
+        onb, post, strict = g.dmax >= 0, g.dmax < 0, g.dmax >= 1
+        f = g.fit
+        sp = (lambda m: f" ({int((m & f).sum())} fit / {int((m & ~f).sum())} 2021)") if e == "A" else (lambda m: "")
+        print(f"- era {e}: positive events {len(g)}{sp(g.dmax == g.dmax) if e == 'A' else ' (all in the 2022-23 check)'}"
+              f" | ON OR BEFORE E {int(onb.sum())}{sp(onb)} | POST-E ONLY {int(post.sum())}{sp(post)} | STRICTLY BEFORE {int(strict.sum())}{sp(strict)}"
+              f" | a positive label exactly AT delta 0 {int(g.at0.sum())}")
+        timing_keys[e] = {"onb": set(zip(g.sym[onb], g.E_tl[onb])), "post": set(zip(g.sym[post], g.E_tl[post]))}
+    # bought-only, for the record
+    gb_ = Jp[Jp.is_bought == 1].groupby(["era", "sym", "E_tl"])._d.max().reset_index()
+    print(f"- bought-only events: era A {int((gb_.era == 'A').sum())}, on-or-before {int(((gb_.era == 'A') & (gb_._d >= 0)).sum())}, post-E only {int(((gb_.era == 'A') & (gb_._d < 0)).sum())}"
+          f" | era B {int((gb_.era == 'B').sum())}, on-or-before {int(((gb_.era == 'B') & (gb_._d >= 0)).sum())}")
+
+    # ------------------------------------------------------------------ 12. the same-day NEGATIVES on the graded dates, labelled bases excluded
+    print("\n## 12. Same-day negatives: every OTHER tl row on the dates of the positive events; rows whose (sym, base_id) carries ANY matched label of ANY grade"
+          "\n#     are EXCLUDED and counted (a labelled base is not 'not shown on stream'); the not_yet events and the post-E-only positives among them named")
+    lab_bases = {e: set(zip(me.loc[me.era == e, "sym"], me.loc[me.era == e, "base_id"])) for e in ("A", "B")}
+    ny_keys = {e: set(zip(me.loc[(me.era == e) & (me.not_yet > 0), "sym"], me.loc[(me.era == e) & (me.not_yet > 0), "E_tl"])) for e in ("A", "B")}
+    for e in ("A", "B"):
+        c = cand[e][cand[e].K == "tl"]
+        for title, poskeys in (("ALL positive events (round 1's GRADED)", timing_keys[e]["onb"] | timing_keys[e]["post"]),
+                               ("positive events ON OR BEFORE E (round 2's GRADED)", timing_keys[e]["onb"])):
+            dates = {E for _, E in poskeys}
+            on = c[c.E.isin(dates)]
+            isp = np.array([(t, E) in poskeys for t, E in zip(on.ticker, on.E)])
+            oth = on[~isp]
+            lb = np.array([(t, b) in lab_bases[e] for t, b in zip(oth.ticker, oth.base_id)]) if len(oth) else np.array([], dtype=bool)
+            isny = np.array([(t, E) in ny_keys[e] for t, E in zip(oth.ticker, oth.E)]) if len(oth) else np.array([], dtype=bool)
+            ispost = np.array([(t, E) in timing_keys[e]["post"] for t, E in zip(oth.ticker, oth.E)]) if len(oth) else np.array([], dtype=bool)
+            fitm = (oth.E <= FIT_LAST_E).to_numpy() if len(oth) else np.array([], dtype=bool)
+            sp = (lambda m: f" (fit {int((m & fitm).sum())} / 2021 {int((m & ~fitm).sum())})") if e == "A" else (lambda m: "")
+            print(f"- era {e}, {title}: {len(poskeys)} events on {len(dates)} dates | other tl rows on those dates {len(oth)}{sp(np.ones(len(oth), dtype=bool))}"
+                  f" | on a LABELLED base, excluded {int(lb.sum())}{sp(lb)}; of them not_yet events {int((lb & isny).sum())},"
+                  f" post-E-only positive events {int((lb & ispost).sum())}"
+                  f" | NEGATIVES {int((~lb).sum())}{sp(~lb)}")
+
+    # ------------------------------------------------------------------ 13. the readiness contrast's populations (state at the label date s0)
+    print("\n## 13. Readiness contrast populations (the state he was looking at = the watch row at s0; a label with no watch row at s0 cannot be scored there)")
+    for e in ("A", "B"):
+        for name, col in (("bought", "is_bought"), ("not_yet", "is_not_yet"), ("best", "is_best")):
+            g = Jc[(Jc.era == e) & (Jc[col] == 1)]
+            if len(g) == 0:
+                continue
+            print(f"- era {e} {name:8s}: labels with coverage {len(g)} | a watch row at s0 {int((g.watch_at_s0 == 1).sum())} (with a tl line {int(((g.watch_at_s0 == 1) & (g.c0_tl_at_s0 == 1)).sum())})"
+                  f" | matched labels {int(g.matched.sum())}, of which delta in {{0, +1}} (scorable at D of the matched event with at most one session of drift) {int(g.loc[g.matched, 'delta_tl'].astype(int).isin([0, 1]).sum())}")
+    ga = me[me.era == "A"]
+    bb = set(zip(ga.loc[ga.bought > 0, "sym"], ga.loc[ga.bought > 0, "base_id"]))
+    ny = ga[ga.not_yet > 0]
+    print(f"- era A not_yet events {len(ny)}: share a base (sym, base_id) with a bought event {sum((s, b) in bb for s, b in zip(ny.sym, ny.base_id))}")
+    both = ga[(ga.bought > 0) & (ga.not_yet > 0)]
+    print(f"- era A events carrying BOTH a bought and a not_yet label: {len(both)} — the order of the two labels (screen date, stream time):")
+    order = Counter()
+
+    def secs(ts: str) -> int:
+        p = [int(x) for x in ts.split(":")]
+        return p[0] * 3600 + p[1] * 60 + p[2] if len(p) == 3 else p[0] * 60 + p[1]
+
+    for r in both.itertuples():
+        g = Jc[(Jc.era == "A") & (Jc.sym == r.sym) & (Jc.E_tl == r.E_tl)]
+        nyl = g[g.is_not_yet == 1]
+        bl = g[g.is_bought == 1]
+        same_frame = bool(set(nyl.frame_id) & set(bl.frame_id))
+        same_moment = any(x.vid == y.vid and abs(secs(x.ts) - secs(y.ts)) <= 300 for x in nyl.itertuples() for y in bl.itertuples())
+        first_ny_date = min(nyl.screen_date)
+        later_buy = any(x.screen_date > first_ny_date for x in bl.itertuples())
+        kind = ("one caption window graded both (mixed)" if same_frame else "the same stream moment (within 5 min)" if same_moment
+                else "a bought label on a LATER date than the not_yet call" if later_buy else "not_yet after every bought label")
+        order[kind] += 1
+        print(f"    {r.sym} E {r.E_tl}: not_yet {[(x.screen_date, x.ts) for x in nyl.itertuples()]} | bought {[(x.screen_date, x.ts) for x in bl.itertuples()]} -> {kind}")
+    print(f"    summary: {dict(order)}")
+
+    # ------------------------------------------------------------------ 14. where the grade phrase sits
+    print("\n## 14. Grade-phrase attribution: 02_graded_moments.py matched the phrase over the caption WINDOW around the ticker's line; here the same"
+          " regex is re-applied to the ticker's OWN caption line (`quote`, cut at 220 chars) — 'window only' is therefore an UPPER bound")
+    mo = pd.read_csv(MOMENTS, sep="\t", dtype=str, keep_default_na=False)
+    assert not mo.duplicated(["video", "ts", "ticker"]).any()
+    qmap = {(v, t, c): q for v, t, c, q in zip(mo.video, mo.ts, mo.ticker, mo.quote)}
+    att = pd.read_csv(LABELS, sep="\t", dtype=str, keep_default_na=False)
+    att = att[att.status == "attributed"]
+    inq = {g: [0, 0, 0] for g in GRADE_RX}
+    for v, t, c, gr in zip(att.vid, att.ts, att.caption_ticker, att.grade):
+        q = qmap.get((v, t, c))
+        for g in gr.split(","):
+            inq[g][0] += 1
+            if q is None:
+                inq[g][2] += 1
+            elif re.search(GRADE_RX[g], q.lower()):
+                inq[g][1] += 1
+    for g in ("bought", "not_yet", "best"):
+        n_, q_, miss = inq[g]
+        print(f"- {g:8s}: labels {n_} | phrase in the ticker's own caption line {q_} ({100.0 * q_ / n_:.1f}%) | only in the surrounding window (upper bound) {n_ - q_ - miss} | no moment row {miss}")
+
     # ------------------------------------------------------------------ pins
     print("\n## Pins (sha256)")
-    for name, path in [("labels", LABELS), ("cal_A", CAL_A), ("cal_B", CAL_B), ("cand_A", CAND_A), ("cand_B", CAND_B), ("cand_B_com", CAND_B_COM),
+    for name, path in [("labels", LABELS), ("moments", MOMENTS), ("cal_A", CAL_A), ("cal_B", CAL_B), ("cand_A", CAND_A), ("cand_B", CAND_B), ("cand_B_com", CAND_B_COM),
                        ("watch_A", WATCH_A), ("watch_B", WATCH_B), ("bdef_r1_A", BDEF_R1["A"]), ("bdef_r1_B", BDEF_R1["B"]),
                        ("bdef_fills_A", BDEF_FILLS["A"]), ("bdef_fills_B", BDEF_FILLS["B"]), ("export_A", EXPORT_A)] + [(f"alias_{i}", f) for i, f in enumerate(ALIASES)] + [("this_script", __file__)]:
         print(f"- {name}: {sha(path)}  {path}")

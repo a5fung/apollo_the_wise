@@ -45,53 +45,59 @@
 - all grades: era A 506/805 (62.9%) | era B 12/30 (40.0%)
 
 ## 3. Position of the matched labels relative to our breakout day E (delta = idx(E) - idx(s0); >0 = label BEFORE the breakout)
-- era A bought vs nearest tl event (first breaks and retriggers): n = 392 | label BEFORE the breakout (delta >= +1) 163/392 (41.6%) | ON it (delta = 0) 113/392 (28.8%) | AFTER it (delta <= -1) 116/392 (29.6%) | within [-1, +1] 162/392 (41.3%) | within [-2, +1] 179/392 (45.7%) | median delta +0 | quartiles -1..+5
+- era A bought vs nearest tl event (first breaks and retriggers): n = 392 | label BEFORE the breakout (delta >= +1) 163/392 (41.6%) | ON it (delta = 0) 113/392 (28.8%) | AFTER it (delta <= -1) 116/392 (29.6%) | within [-1, +1] 162/392 (41.3%) | within [-2, +1] 179/392 (45.7%) | median delta +0.0 | quartiles -1.0..+5.0
     histogram (delta: n): -10:3 -9:12 -8:7 -7:6 -6:9 -5:5 -4:21 -3:12 -2:17 -1:24 +0:113 +1:25 +2:7 +3:12 +4:11 +5:11 +6:11 +7:4 +8:9 +9:10 +10:5 +11:6 +12:10 +13:3 +14:8 +15:4 +16:5 +17:4 +18:4 +19:4 +20:10
-- era A bought vs nearest FIRST BREAK (retrigger = 0) in the window: n = 334 | label BEFORE the breakout (delta >= +1) 170/334 (50.9%) | ON it (delta = 0) 33/334 (9.9%) | AFTER it (delta <= -1) 131/334 (39.2%) | within [-1, +1] 78/334 (23.4%) | within [-2, +1] 89/334 (26.6%) | median delta +1 | quartiles -3..+10
+- era A bought vs nearest FIRST BREAK (retrigger = 0) in the window: n = 334 | label BEFORE the breakout (delta >= +1) 170/334 (50.9%) | ON it (delta = 0) 33/334 (9.9%) | AFTER it (delta <= -1) 131/334 (39.2%) | within [-1, +1] 78/334 (23.4%) | within [-2, +1] 89/334 (26.6%) | median delta +1.0 | quartiles -3.0..+10.0
     histogram (delta: n): -10:5 -9:8 -8:13 -7:15 -6:9 -5:8 -4:14 -3:16 -2:11 -1:32 +0:33 +1:13 +2:5 +3:11 +4:10 +5:10 +6:11 +7:4 +8:8 +9:10 +10:6 +11:11 +12:13 +13:5 +14:11 +15:6 +16:5 +17:5 +18:5 +19:8 +20:13
-- era A not_yet vs nearest tl event (first breaks and retriggers): n = 86 | label BEFORE the breakout (delta >= +1) 43/86 (50.0%) | ON it (delta = 0) 23/86 (26.7%) | AFTER it (delta <= -1) 20/86 (23.3%) | within [-1, +1] 38/86 (44.2%) | within [-2, +1] 43/86 (50.0%) | median delta +0 | quartiles +0..+4
+- era A not_yet vs nearest tl event (first breaks and retriggers): n = 86 | label BEFORE the breakout (delta >= +1) 43/86 (50.0%) | ON it (delta = 0) 23/86 (26.7%) | AFTER it (delta <= -1) 20/86 (23.3%) | within [-1, +1] 38/86 (44.2%) | within [-2, +1] 43/86 (50.0%) | median delta +0.5 | quartiles +0.0..+3.8
     histogram (delta: n): -8:1 -7:1 -6:1 -4:4 -3:2 -2:5 -1:6 +0:23 +1:9 +2:6 +3:6 +4:2 +5:4 +7:4 +8:3 +10:1 +12:2 +14:2 +17:1 +18:2 +20:1
-- era A not_yet vs nearest FIRST BREAK (retrigger = 0) in the window: n = 69 | label BEFORE the breakout (delta >= +1) 40/69 (58.0%) | ON it (delta = 0) 6/69 (8.7%) | AFTER it (delta <= -1) 23/69 (33.3%) | within [-1, +1] 15/69 (21.7%) | within [-2, +1] 18/69 (26.1%) | median delta +3 | quartiles -2..+7
+- era A not_yet vs nearest FIRST BREAK (retrigger = 0) in the window: n = 69 | label BEFORE the breakout (delta >= +1) 40/69 (58.0%) | ON it (delta = 0) 6/69 (8.7%) | AFTER it (delta <= -1) 23/69 (33.3%) | within [-1, +1] 15/69 (21.7%) | within [-2, +1] 18/69 (26.1%) | median delta +3.0 | quartiles -2.0..+7.0
     histogram (delta: n): -10:2 -9:1 -8:1 -7:2 -5:2 -4:4 -3:3 -2:3 -1:5 +0:6 +1:4 +2:1 +3:6 +4:2 +5:6 +7:4 +8:5 +11:1 +12:1 +13:2 +14:2 +15:1 +17:1 +18:3 +20:1
-- era A best vs nearest tl event (first breaks and retriggers): n = 32 | label BEFORE the breakout (delta >= +1) 12/32 (37.5%) | ON it (delta = 0) 9/32 (28.1%) | AFTER it (delta <= -1) 11/32 (34.4%) | within [-1, +1] 14/32 (43.8%) | within [-2, +1] 16/32 (50.0%) | median delta +0 | quartiles -1..+2
+- era A best vs nearest tl event (first breaks and retriggers): n = 32 | label BEFORE the breakout (delta >= +1) 12/32 (37.5%) | ON it (delta = 0) 9/32 (28.1%) | AFTER it (delta <= -1) 11/32 (34.4%) | within [-1, +1] 14/32 (43.8%) | within [-2, +1] 16/32 (50.0%) | median delta +0.0 | quartiles -1.2..+2.0
     histogram (delta: n): -9:1 -7:1 -6:1 -5:2 -3:1 -2:2 -1:3 +0:9 +1:2 +2:3 +4:1 +5:1 +7:1 +9:2 +11:1 +14:1
-- era A best vs nearest FIRST BREAK (retrigger = 0) in the window: n = 30 | label BEFORE the breakout (delta >= +1) 12/30 (40.0%) | ON it (delta = 0) 2/30 (6.7%) | AFTER it (delta <= -1) 16/30 (53.3%) | within [-1, +1] 2/30 (6.7%) | within [-2, +1] 4/30 (13.3%) | median delta -2 | quartiles -6..+6
+- era A best vs nearest FIRST BREAK (retrigger = 0) in the window: n = 30 | label BEFORE the breakout (delta >= +1) 12/30 (40.0%) | ON it (delta = 0) 2/30 (6.7%) | AFTER it (delta <= -1) 16/30 (53.3%) | within [-1, +1] 2/30 (6.7%) | within [-2, +1] 4/30 (13.3%) | median delta -2.0 | quartiles -5.8..+5.8
     histogram (delta: n): -9:2 -7:5 -6:1 -5:1 -3:5 -2:2 +0:2 +2:2 +4:1 +5:1 +6:1 +7:1 +9:2 +11:1 +12:1 +14:1 +20:1
-- era B bought vs nearest tl event (first breaks and retriggers): n = 10 | label BEFORE the breakout (delta >= +1) 6/10 (60.0%) | ON it (delta = 0) 2/10 (20.0%) | AFTER it (delta <= -1) 2/10 (20.0%) | within [-1, +1] 4/10 (40.0%) | within [-2, +1] 5/10 (50.0%) | median delta +1 | quartiles +0..+5
+- era B bought vs nearest tl event (first breaks and retriggers): n = 10 | label BEFORE the breakout (delta >= +1) 6/10 (60.0%) | ON it (delta = 0) 2/10 (20.0%) | AFTER it (delta <= -1) 2/10 (20.0%) | within [-1, +1] 4/10 (40.0%) | within [-2, +1] 5/10 (50.0%) | median delta +1.0 | quartiles +0.0..+5.2
     histogram (delta: n): -8:1 -2:1 +0:2 +1:2 +3:1 +6:1 +12:1 +14:1
-- era B bought vs nearest FIRST BREAK (retrigger = 0) in the window: n = 10 | label BEFORE the breakout (delta >= +1) 6/10 (60.0%) | ON it (delta = 0) 0/10 (0.0%) | AFTER it (delta <= -1) 4/10 (40.0%) | within [-1, +1] 2/10 (20.0%) | within [-2, +1] 3/10 (30.0%) | median delta +1 | quartiles -6..+5
+- era B bought vs nearest FIRST BREAK (retrigger = 0) in the window: n = 10 | label BEFORE the breakout (delta >= +1) 6/10 (60.0%) | ON it (delta = 0) 0/10 (0.0%) | AFTER it (delta <= -1) 4/10 (40.0%) | within [-1, +1] 2/10 (20.0%) | within [-2, +1] 3/10 (30.0%) | median delta +1.0 | quartiles -5.8..+5.2
     histogram (delta: n): -10:1 -8:1 -7:1 -2:1 +1:2 +3:1 +6:1 +12:1 +14:1
 - era B not_yet vs nearest tl event (first breaks and retriggers): n = 0
 - era B not_yet vs nearest FIRST BREAK (retrigger = 0) in the window: n = 0
-- era B best vs nearest tl event (first breaks and retriggers): n = 2 | label BEFORE the breakout (delta >= +1) 0/2 (0.0%) | ON it (delta = 0) 1/2 (50.0%) | AFTER it (delta <= -1) 1/2 (50.0%) | within [-1, +1] 1/2 (50.0%) | within [-2, +1] 1/2 (50.0%) | median delta -4 | quartiles -6..-2
+- era B best vs nearest tl event (first breaks and retriggers): n = 2 | label BEFORE the breakout (delta >= +1) 0/2 (0.0%) | ON it (delta = 0) 1/2 (50.0%) | AFTER it (delta <= -1) 1/2 (50.0%) | within [-1, +1] 1/2 (50.0%) | within [-2, +1] 1/2 (50.0%) | median delta -4.0 | quartiles -6.0..-2.0
     histogram (delta: n): -8:1 +0:1
-- era B best vs nearest FIRST BREAK (retrigger = 0) in the window: n = 2 | label BEFORE the breakout (delta >= +1) 1/2 (50.0%) | ON it (delta = 0) 0/2 (0.0%) | AFTER it (delta <= -1) 1/2 (50.0%) | within [-1, +1] 0/2 (0.0%) | within [-2, +1] 0/2 (0.0%) | median delta +4 | quartiles -1..+10
+- era B best vs nearest FIRST BREAK (retrigger = 0) in the window: n = 2 | label BEFORE the breakout (delta >= +1) 1/2 (50.0%) | ON it (delta = 0) 0/2 (0.0%) | AFTER it (delta <= -1) 1/2 (50.0%) | within [-1, +1] 0/2 (0.0%) | within [-2, +1] 0/2 (0.0%) | median delta +4.5 | quartiles -0.8..+9.8
     histogram (delta: n): -6:1 +15:1
-- the same for the distinct (era, sym, E) events (a label-dense stock counts once per event):
-- era A bought, distinct events: n = 297 | label BEFORE the breakout (delta >= +1) 108/297 (36.4%) | ON it (delta = 0) 100/297 (33.7%) | AFTER it (delta <= -1) 89/297 (30.0%) | within [-1, +1] 136/297 (45.8%) | within [-2, +1] 151/297 (50.8%) | median delta +0 | quartiles -1..+3
+- the same for the distinct (era, sym, E) events (a label-dense stock counts once per event); the event's delta = the label CLOSEST to E (|delta| smallest, the later label on a tie); round 1's 'first label in file order' beside:
+- era A bought, distinct events (closest label): n = 297 | label BEFORE the breakout (delta >= +1) 103/297 (34.7%) | ON it (delta = 0) 110/297 (37.0%) | AFTER it (delta <= -1) 84/297 (28.3%) | within [-1, +1] 150/297 (50.5%) | within [-2, +1] 163/297 (54.9%) | median delta +0.0 | quartiles -1.0..+2.0
+    histogram (delta: n): -10:2 -9:10 -8:5 -7:4 -6:6 -5:3 -4:16 -3:7 -2:13 -1:18 +0:110 +1:22 +2:7 +3:8 +4:8 +5:10 +6:5 +7:4 +8:5 +9:6 +10:2 +11:4 +12:5 +13:2 +14:3 +15:2 +16:1 +17:2 +18:1 +19:1 +20:5
+- era A bought, distinct events (first label in file order, round 1): n = 297 | label BEFORE the breakout (delta >= +1) 108/297 (36.4%) | ON it (delta = 0) 100/297 (33.7%) | AFTER it (delta <= -1) 89/297 (30.0%) | within [-1, +1] 136/297 (45.8%) | within [-2, +1] 151/297 (50.8%) | median delta +0.0 | quartiles -1.0..+3.0
     histogram (delta: n): -10:3 -9:10 -8:5 -7:4 -6:6 -5:4 -4:18 -3:7 -2:15 -1:17 +0:100 +1:19 +2:5 +3:10 +4:7 +5:8 +6:8 +7:4 +8:6 +9:7 +10:2 +11:2 +12:6 +13:2 +14:3 +15:3 +16:1 +17:3 +18:2 +19:4 +20:6
-- era B bought, distinct events: n = 10 | label BEFORE the breakout (delta >= +1) 6/10 (60.0%) | ON it (delta = 0) 2/10 (20.0%) | AFTER it (delta <= -1) 2/10 (20.0%) | within [-1, +1] 4/10 (40.0%) | within [-2, +1] 5/10 (50.0%) | median delta +1 | quartiles +0..+5
+- era B bought, distinct events (closest label): n = 10 | label BEFORE the breakout (delta >= +1) 6/10 (60.0%) | ON it (delta = 0) 2/10 (20.0%) | AFTER it (delta <= -1) 2/10 (20.0%) | within [-1, +1] 4/10 (40.0%) | within [-2, +1] 5/10 (50.0%) | median delta +1.0 | quartiles +0.0..+5.2
+    histogram (delta: n): -8:1 -2:1 +0:2 +1:2 +3:1 +6:1 +12:1 +14:1
+- era B bought, distinct events (first label in file order, round 1): n = 10 | label BEFORE the breakout (delta >= +1) 6/10 (60.0%) | ON it (delta = 0) 2/10 (20.0%) | AFTER it (delta <= -1) 2/10 (20.0%) | within [-1, +1] 4/10 (40.0%) | within [-2, +1] 5/10 (50.0%) | median delta +1.0 | quartiles +0.0..+5.2
     histogram (delta: n): -8:1 -2:1 +0:2 +1:2 +3:1 +6:1 +12:1 +14:1
 
 ## 3b. PLACEBO — every session t of the same symbols (era A) with a watch row in [t-10, t+20] and a tl event in that window, excluding sessions within +-20 of any label of that symbol: the delta of the nearest tl event (what a random near-a-base date reads; the labels' 'on' share is signal only if it exceeds this)
-- placebo for the bought symbols' near-a-base sessions (51884 sessions, 42781 with a tl event in the window): n = 42781 | label BEFORE the breakout (delta >= +1) 23145/42781 (54.1%) | ON it (delta = 0) 5775/42781 (13.5%) | AFTER it (delta <= -1) 13861/42781 (32.4%) | within [-1, +1] 10917/42781 (25.5%) | within [-2, +1] 12743/42781 (29.8%) | median delta +1 | quartiles -2..+8
+- placebo for the bought symbols' near-a-base sessions (200 symbols with a bought label and coverage, 158 with a watch row and a tl event; t in [Emin+10, Emax-20], t not within +-20 of ANY attributed label of the symbol; 51884 sessions, 42781 with a tl event in the window): n = 42781 | label BEFORE the breakout (delta >= +1) 23145/42781 (54.1%) | ON it (delta = 0) 5775/42781 (13.5%) | AFTER it (delta <= -1) 13861/42781 (32.4%) | within [-1, +1] 10917/42781 (25.5%) | within [-2, +1] 12743/42781 (29.8%) | median delta +1.0 | quartiles -2.0..+8.0
     histogram (delta: n): -10:749 -9:1006 -8:1069 -7:1157 -6:1255 -5:1394 -4:1482 -3:1617 -2:1826 -1:2306 +0:5775 +1:2836 +2:2031 +3:1673 +4:1529 +5:1423 +6:1310 +7:1195 +8:1105 +9:1033 +10:973 +11:914 +12:886 +13:862 +14:826 +15:805 +16:783 +17:770 +18:747 +19:729 +20:715
-- placebo for the not_yet symbols' near-a-base sessions (24735 sessions, 19999 with a tl event in the window): n = 19999 | label BEFORE the breakout (delta >= +1) 10909/19999 (54.5%) | ON it (delta = 0) 2713/19999 (13.6%) | AFTER it (delta <= -1) 6377/19999 (31.9%) | within [-1, +1] 5103/19999 (25.5%) | within [-2, +1] 5928/19999 (29.6%) | median delta +1 | quartiles -2..+8
+- placebo for the not_yet symbols' near-a-base sessions (91 symbols with a not_yet label and coverage, 83 with a watch row and a tl event; t in [Emin+10, Emax-20], t not within +-20 of ANY attributed label of the symbol; 24735 sessions, 19999 with a tl event in the window): n = 19999 | label BEFORE the breakout (delta >= +1) 10909/19999 (54.5%) | ON it (delta = 0) 2713/19999 (13.6%) | AFTER it (delta <= -1) 6377/19999 (31.9%) | within [-1, +1] 5103/19999 (25.5%) | within [-2, +1] 5928/19999 (29.6%) | median delta +1.0 | quartiles -2.0..+8.0
     histogram (delta: n): -10:336 -9:470 -8:500 -7:537 -6:575 -5:638 -4:677 -3:744 -2:825 -1:1075 +0:2713 +1:1315 +2:941 +3:773 +4:707 +5:659 +6:609 +7:559 +8:518 +9:494 +10:461 +11:440 +12:424 +13:409 +14:397 +15:384 +16:376 +17:374 +18:363 +19:355 +20:351
 
 ## 4. TARGET DECISION RULE (fixed in the header; applied to era A bought labels, full + partial coverage)
 - n = 392 | share with delta >= +1 (label before our breakout) 41.6% | share in [-2, +1] (on the breakout day) 45.7% -> NEITHER reaches 60% -> both reported; the registration takes the breakout-day target with state features read at D
+- against the placebo (expected = placebo share x 392): before (delta >= +1) 163 vs 212.1 expected | on (0) 113 vs 52.9 | after (<= -1) 116 vs 127.0 | one session early (+1) 25 vs 26.0 | two early (+2) 7 vs 18.6 | the excess sits at delta 0 only: +60.1 labels
 - second anchor, the R1 day (his definition: the first close above the base high; n = 109 of the 392 with an R1 row): label before the R1 day 89.9% | in [-2, +1] 11.0% | after 7.3% | median delta to the R1 day +14
     histogram (delta to the R1 day: n): -6:1 -3:1 -2:1 -1:5 +0:3 +1:3 +2:3 +3:4 +4:6 +5:3 +7:3 +8:3 +9:7 +10:8 +11:2 +13:1 +14:4 +15:4 +16:3 +17:2 +18:1 +19:2 +20:1 +21:3 +22:2 +23:2 +27:3 +28:1 +29:4 +30:1 +31:1 +32:1 +33:2 +34:3 +35:1 +36:2 +37:2 +40:1 +44:1 +45:1 +48:2 +50:1 +51:1 +53:1 +55:1 +64:1
     R1 day's offset from our E (sessions; 0 = the base high was closed above on E itself): 0: 20 | 1-5: 38 | 6-20: 29 | >20: 22
 
 ## 5. Watch state on the screen date (a watch row = the stock passed our C0 structural gates that night)
-- era A bought  : n = 624 | watch row AT s0 176/624 (28.2%) | of those: a tl line exists (C0_tl = 1) 153; same base NOT yet broken at s0 39/624 (6.2%) | watch row anywhere in the window 448/624 (71.8%) | unmatched but in a base in the window 56
-- era A not_yet : n = 128 | watch row AT s0 50/128 (39.1%) | of those: a tl line exists (C0_tl = 1) 50; same base NOT yet broken at s0 13/128 (10.2%) | watch row anywhere in the window 97/128 (75.8%) | unmatched but in a base in the window 11
-- era A best    : n = 60 | watch row AT s0 17/60 (28.3%) | of those: a tl line exists (C0_tl = 1) 15; same base NOT yet broken at s0 4/60 (6.7%) | watch row anywhere in the window 38/60 (63.3%) | unmatched but in a base in the window 6
-- era B bought  : n = 28 | watch row AT s0 8/28 (28.6%) | of those: a tl line exists (C0_tl = 1) 8; same base NOT yet broken at s0 5/28 (17.9%) | watch row anywhere in the window 14/28 (50.0%) | unmatched but in a base in the window 4
-- era B not_yet : n = 0 | watch row AT s0 0/0 | of those: a tl line exists (C0_tl = 1) 0; same base NOT yet broken at s0 0/0 | watch row anywhere in the window 0/0 | unmatched but in a base in the window 0
-- era B best    : n = 3 | watch row AT s0 1/3 (33.3%) | of those: a tl line exists (C0_tl = 1) 1; same base NOT yet broken at s0 0/3 (0.0%) | watch row anywhere in the window 2/3 (66.7%) | unmatched but in a base in the window 0
+- era A bought  : n = 624 | watch row AT s0 176/624 (28.2%) | of those: a tl line exists (C0_tl = 1) 153; same base NOT yet broken at s0 39/624 (6.2%) (pole_date key, round 1) / 33/624 (5.3%) (base_id key, drift-robust) | watch row anywhere in the window 448/624 (71.8%) | unmatched but in a base in the window 56
+    unbroken under the pole_date key but already broken under base_id (a drifted pole): [('g_0679', 'SHOP'), ('g_0919', 'PINS'), ('g_1362', 'AMD'), ('g_1405', 'VIR'), ('g_1634', 'CMCM'), ('g_1686', 'HUYA')]
+- era A not_yet : n = 128 | watch row AT s0 50/128 (39.1%) | of those: a tl line exists (C0_tl = 1) 50; same base NOT yet broken at s0 13/128 (10.2%) (pole_date key, round 1) / 13/128 (10.2%) (base_id key, drift-robust) | watch row anywhere in the window 97/128 (75.8%) | unmatched but in a base in the window 11
+- era A best    : n = 60 | watch row AT s0 17/60 (28.3%) | of those: a tl line exists (C0_tl = 1) 15; same base NOT yet broken at s0 4/60 (6.7%) (pole_date key, round 1) / 4/60 (6.7%) (base_id key, drift-robust) | watch row anywhere in the window 38/60 (63.3%) | unmatched but in a base in the window 6
+- era B bought  : n = 28 | watch row AT s0 8/28 (28.6%) | of those: a tl line exists (C0_tl = 1) 8; same base NOT yet broken at s0 5/28 (17.9%) (pole_date key, round 1) / 5/28 (17.9%) (base_id key, drift-robust) | watch row anywhere in the window 14/28 (50.0%) | unmatched but in a base in the window 4
+- era B not_yet : n = 0 | watch row AT s0 0/0 | of those: a tl line exists (C0_tl = 1) 0; same base NOT yet broken at s0 0/0 (pole_date key, round 1) / 0/0 (base_id key, drift-robust) | watch row anywhere in the window 0/0 | unmatched but in a base in the window 0
+- era B best    : n = 3 | watch row AT s0 1/3 (33.3%) | of those: a tl line exists (C0_tl = 1) 1; same base NOT yet broken at s0 0/3 (0.0%) (pole_date key, round 1) / 0/3 (0.0%) (base_id key, drift-robust) | watch row anywhere in the window 2/3 (66.7%) | unmatched but in a base in the window 0
 
 ## 6. R1 / R2 membership of the matched tl events (bdef flags, descriptive; era A's bdef is on the OLD export -> three-valued)
 - era A bought  : distinct events 297 | R1 69 | published fill without R1 within 60 26 | not in the fill population 202 | R2 (expansion day) 17 | labels 392
@@ -104,11 +110,11 @@
 - era B base rate over every published fill: R1 5530/8956 (61.7%) | R2 1076/8956 (12.0%)
 
 ## 7. Distinct breakout events marked, and the same-day population (the 'which breakout to pick' denominator)
-- era A: distinct (sym, E) events 388 (bought 297, not_yet 80, best 30) | distinct bases (sym, base_id) 288 | distinct chains 199 | distinct symbols 147 | labels per event: 1: 308, 2: 54, 3+: 26 | C1 among bought events 11
+- era A: distinct (sym, E) events 388 (bought 297, not_yet 80, best 30) | distinct bases (sym, base_id — the drift-robust key) 288 | distinct symbols 147 | labels per event: 1: 308, 2: 54, 3+: 26 | C1 among bought events 11
     bought events (n = 297): OTHER tl events the same day — all rows median 146 (mean 162.7); first breaks median 29 (mean 40.9) | tl events in the ISO week — all rows median 651, first breaks median 147
     not_yet events (n = 80): OTHER tl events the same day — all rows median 122 (mean 132.0); first breaks median 26 (mean 31.9) | tl events in the ISO week — all rows median 605, first breaks median 142
     era A weekly stream over every ISO week with an event: all tl rows median 205 a week (n = 254 weeks); first breaks median 53
-- era B: distinct (sym, E) events 12 (bought 10, not_yet 0, best 2) | distinct bases (sym, base_id) 11 | distinct chains 11 | distinct symbols 10 | labels per event: 1: 12, 2: 0, 3+: 0 | C1 among bought events 1
+- era B: distinct (sym, E) events 12 (bought 10, not_yet 0, best 2) | distinct bases (sym, base_id — the drift-robust key) 11 | distinct symbols 10 | labels per event: 1: 12, 2: 0, 3+: 0 | C1 among bought events 1
     bought events (n = 10): OTHER tl events the same day — all rows median 44 (mean 55.9); first breaks median 17 (mean 16.2) | tl events in the ISO week — all rows median 183, first breaks median 60
     era B weekly stream over every ISO week with an event: all tl rows median 243 a week (n = 145 weeks); first breaks median 73
 
@@ -139,8 +145,50 @@
 - b1_00: ROKU (ROKU) screen 2021-06-16 (s0 2021-06-16) grade not_yet era A | matched E 2021-06-18 delta 2 | retrigger 1 | watch at s0 0 no_break_yet -1 | R1 not_in_fill_population R2 -1 | D 2021-06-17 pole 2021-04-14 | frame /Users/alvinfung/apollo_data/cb702/qm_streams/vision/frames/b1_00.png
 - g_0957: MDGL (MDGL) screen 2023-01-26 (s0 2023-01-26) grade bought era B | matched E 2023-01-24 delta -2 | retrigger 1 | watch at s0 1 no_break_yet 0 | R1 not_in_fill_population R2 -1 | D 2023-01-23 pole 2022-12-22 | frame /Users/alvinfung/apollo_data/cb702/qm_streams/vision/frames_grades/g_0957.png
 
+## 11. Label timing per POSITIVE event (bought or best; the positive labels' deltas only — a not_yet label on the same event does not count)
+#     ON OR BEFORE = at least one positive label with delta >= 0 (said on or before E); POST-E ONLY = every positive label after E (hindsight);
+#     STRICTLY BEFORE = at least one positive label with delta >= +1. Fit = E <= 2020-12-31; hold-out = 2021 (era A); era B = the 2022-23 check
+- era A: positive events 323 (228 fit / 95 2021) | ON OR BEFORE E 236 (170 fit / 66 2021) | POST-E ONLY 87 (58 fit / 29 2021) | STRICTLY BEFORE 127 (90 fit / 37 2021) | a positive label exactly AT delta 0 119
+- era B: positive events 12 (all in the 2022-23 check) | ON OR BEFORE E 9 | POST-E ONLY 3 | STRICTLY BEFORE 6 | a positive label exactly AT delta 0 3
+- bought-only events: era A 297, on-or-before 216, post-E only 81 | era B 10, on-or-before 8
+
+## 12. Same-day negatives: every OTHER tl row on the dates of the positive events; rows whose (sym, base_id) carries ANY matched label of ANY grade
+#     are EXCLUDED and counted (a labelled base is not 'not shown on stream'); the not_yet events and the post-E-only positives among them named
+- era A, ALL positive events (round 1's GRADED): 323 events on 193 dates | other tl rows on those dates 29237 (fit 19138 / 2021 10099) | on a LABELLED base, excluded 704 (fit 450 / 2021 254); of them not_yet events 36, post-E-only positive events 0 | NEGATIVES 28533 (fit 18688 / 2021 9845)
+- era A, positive events ON OR BEFORE E (round 2's GRADED): 236 events on 156 dates | other tl rows on those dates 23598 (fit 15377 / 2021 8221) | on a LABELLED base, excluded 654 (fit 418 / 2021 236); of them not_yet events 33, post-E-only positive events 45 | NEGATIVES 22944 (fit 14959 / 2021 7985)
+- era B, ALL positive events (round 1's GRADED): 12 events on 8 dates | other tl rows on those dates 471 | on a LABELLED base, excluded 7; of them not_yet events 0, post-E-only positive events 0 | NEGATIVES 464
+- era B, positive events ON OR BEFORE E (round 2's GRADED): 9 events on 7 dates | other tl rows on those dates 352 | on a LABELLED base, excluded 9; of them not_yet events 0, post-E-only positive events 2 | NEGATIVES 343
+
+## 13. Readiness contrast populations (the state he was looking at = the watch row at s0; a label with no watch row at s0 cannot be scored there)
+- era A bought  : labels with coverage 624 | a watch row at s0 176 (with a tl line 153) | matched labels 392, of which delta in {0, +1} (scorable at D of the matched event with at most one session of drift) 138
+- era A not_yet : labels with coverage 128 | a watch row at s0 50 (with a tl line 50) | matched labels 86, of which delta in {0, +1} (scorable at D of the matched event with at most one session of drift) 32
+- era A best    : labels with coverage 60 | a watch row at s0 17 (with a tl line 15) | matched labels 32, of which delta in {0, +1} (scorable at D of the matched event with at most one session of drift) 11
+- era B bought  : labels with coverage 28 | a watch row at s0 8 (with a tl line 8) | matched labels 10, of which delta in {0, +1} (scorable at D of the matched event with at most one session of drift) 4
+- era B best    : labels with coverage 3 | a watch row at s0 1 (with a tl line 1) | matched labels 2, of which delta in {0, +1} (scorable at D of the matched event with at most one session of drift) 1
+- era A not_yet events 80: share a base (sym, base_id) with a bought event 27
+- era A events carrying BOTH a bought and a not_yet label: 12 — the order of the two labels (screen date, stream time):
+    AMC E 2021-06-17: not_yet [('2021-06-14', '0:20:13')] | bought [('2021-06-17', '2:16:29'), ('2021-06-09', '2:32:04'), ('2021-06-11', '1:58:38')] -> a bought label on a LATER date than the not_yet call
+    FSLY E 2020-10-01: not_yet [('2020-10-01', '0:56:22')] | bought [('2020-10-01', '0:57:39')] -> the same stream moment (within 5 min)
+    LRN E 2020-08-05: not_yet [('2020-08-05', '0:58:22')] | bought [('2020-08-05', '0:58:22')] -> one caption window graded both (mixed)
+    MRNA E 2020-04-15: not_yet [('2020-04-23', '0:27:13')] | bought [('2020-04-17', '0:07:17'), ('2020-04-20', '0:18:01')] -> not_yet after every bought label
+    MRNA E 2020-09-29: not_yet [('2020-09-29', '0:45:33')] | bought [('2020-09-28', '0:06:21')] -> not_yet after every bought label
+    MRNA E 2021-01-21: not_yet [('2021-01-20', '0:31:18')] | bought [('2021-01-07', '0:20:24')] -> not_yet after every bought label
+    OPK E 2020-08-06: not_yet [('2020-08-05', '0:58:16')] | bought [('2020-08-05', '0:58:16')] -> one caption window graded both (mixed)
+    RCL E 2021-03-15: not_yet [('2021-03-03', '0:09:54')] | bought [('2021-03-15', '0:30:03')] -> a bought label on a LATER date than the not_yet call
+    SAVE E 2020-09-16: not_yet [('2020-09-16', '2:13:11')] | bought [('2020-09-15', '0:28:54')] -> not_yet after every bought label
+    TSLA E 2021-02-08: not_yet [('2021-02-09', '0:06:58')] | bought [('2021-02-08', '0:09:45')] -> not_yet after every bought label
+    WKHS E 2020-07-20: not_yet [('2020-07-15', '2:18:57')] | bought [('2020-06-24', '1:16:53'), ('2020-07-01', '0:05:26'), ('2020-07-20', '0:19:54')] -> a bought label on a LATER date than the not_yet call
+    XYZ E 2021-04-08: not_yet [('2021-03-26', '1:28:47')] | bought [('2021-04-07', '0:49:05')] -> a bought label on a LATER date than the not_yet call
+    summary: {'a bought label on a LATER date than the not_yet call': 4, 'the same stream moment (within 5 min)': 1, 'one caption window graded both (mixed)': 2, 'not_yet after every bought label': 5}
+
+## 14. Grade-phrase attribution: 02_graded_moments.py matched the phrase over the caption WINDOW around the ticker's line; here the same regex is re-applied to the ticker's OWN caption line (`quote`, cut at 220 chars) — 'window only' is therefore an UPPER bound
+- bought  : labels 669 | phrase in the ticker's own caption line 350 (52.3%) | only in the surrounding window (upper bound) 319 | no moment row 0
+- not_yet : labels 129 | phrase in the ticker's own caption line 58 (45.0%) | only in the surrounding window (upper bound) 71 | no moment row 0
+- best    : labels 64 | phrase in the ticker's own caption line 35 (54.7%) | only in the surrounding window (upper bound) 29 | no moment row 0
+
 ## Pins (sha256)
 - labels: f4116fd99a1b7db88a74b88a7278aa6e434cf8788b7003af8bbc39e72ac2269a  /Users/alvinfung/apollo_data/cb702/qm_streams/vision/grades_labels.tsv
+- moments: f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0  /Users/alvinfung/apollo_data/cb702/qm_streams/vision/graded_moments.tsv
 - cal_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0  /Users/alvinfung/apollo_data/cb702_pre_v2/sessions.txt
 - cal_B: a17d991a25a1b6b6977c388f352213142868635f94c2010813a7a0f8ef79d2be  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/spy_sessions_eraB_le_2024-12-31.txt
 - cand_A: 3c5a66dc3052d0a284cbfee8202f74deb4e5bb75c74565dd8147df015e1baa5a  /Users/alvinfung/apollo_data/cb702_pre_v2/out/candidates_tl_com.tsv
@@ -156,6 +204,6 @@
 - alias_0: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64  /Users/alvinfung/apollo_data/cb702_pre_v2/dedupe_applied.tsv
 - alias_1: 6e325eccfe159cdce596deff2261caffcd3113be632c0a4bf83a9974b5751dd0  /Users/alvinfung/apollo_data/cb702_pre/survivorship_1023/merged_trial2/refetch_dropped.tsv
 - alias_2: 02653560aa435762870dc90b0ef0d2fd7ab803a518f9e8c89772bcdd4fb34a57  /Users/alvinfung/apollo_data/cb702/qm_streams/ext_2016_2022/rename_map.tsv
-- this_script: 4ff17ee08e2e67de6035272170c6ad18c8a4702c2932a48e107c7f2dd6fceaec  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_track_a_1023/01_join_labels.py
-- out labels_joined.tsv: 13df295286e6ba0369a0fd7fb53102dffe58500fd84e49196fdb78d34895d9a3
+- this_script: 7fc6452c0ad58350afd74917091a827121402e3c1ae8576a607697f0da47cb88  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_track_a_1023/01_join_labels.py
+- out labels_joined.tsv: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b
 - out matched_events.tsv: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc
