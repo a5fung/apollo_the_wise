@@ -2533,3 +2533,16 @@ the exit rule is his call.
   - the day-3 stall cut's interplay with the stop width.
 - **Where they meet:** Track A's filter × Track B's exit, pre-registered with its bars and read ONCE on the sealed 2025–26.
 - The filter, the exit and anything live are his call (THE LINE).
+
+## 2026-10-23 — a standing data standard for backtests (operator, verbatim)
+
+> "let's look we're still fiding issues, let's take a moment to categorize problems we know or potential ones we don't know and verify the data, and do so for future runs as well. Let's document this, and this should be in our trading brain/doc once we have it, how to best run backtests. Btw, we discussed alpaca's backtest api, any use here?"
+
+**Used as:** a standing standard, not a one-off fix.
+- `docs/methodology/backtest_data_standard.md`, plus reusable checks in `scripts/backtest_data_audit/`, being written by the
+  2026-10-23 audit workflow. It holds the taxonomy of known and potential data problems and a STEP 0 data gate every registered
+  read must pass.
+- It moves into the trading knowledge vault (#707) when that exists.
+- **Alpaca's backtest skill:** a reproducible-run workflow on the same Alpaca data, with the same blind spots: its universe is
+  today's assets and it does not adjust spin-offs. We borrow its data fingerprint, fee schedule and buy-and-hold benchmark; it does
+  not fix the data.
