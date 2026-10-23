@@ -2369,6 +2369,11 @@ words on his streams.
 
 > "\"When a big move comes, it starts 5–6 weeks after entry\" this points to wrong entry, the whole point of breakout is that it has broken the consolidation period and enter the expansion phase, if this is happening 5-6 weeks after then the entry is not a breakout by definition"
 
+**⚠ Correction (10-22, mine):** the line he quoted was MY wording, and it was wrong. The 26–28 sessions are when the stock
+REACHED a +5 ADR gain, not when its move began. A 5-ADR gain takes weeks to build at any starting point. His conclusion that
+our trigger is early was tested on its own and holds (the base high is cleared later on 70–76% of fills), but the 5–6 weeks
+is not evidence for it.
+
 **Used as:** a DEFINITION. A breakout = the stock leaves the consolidation and enters the EXPANSION phase.
 - A trigger after which the stock behaves like any ordinary stock for weeks, and moves (if at all) 5–6 weeks later, is not a
   breakout. It fired early or on the wrong level.
@@ -2388,8 +2393,8 @@ words on his streams.
 
 **What the data already says about part 2 on our breakouts** (`cb_r_decomposition_2026-10-22.md`):
 - The losses ARE small (about −1R each).
-- The huge returns never come: a trade lasts a median 1 session (6–9 if the stop does not take it), while the big moves arrive
-  5–6 weeks after the fill.
+- The huge returns never come: a trade lasts a median 1 session (6–9 if the stop does not take it), while a 5-ADR gain takes
+  5–6 weeks to build (the time to REACH it, not when it starts).
 - Even on the hindsight winners (the 39), the current stop and exit kept 7.7% of the move.
 
 So part 2 fails on HOLDING, not on loss size. Without part 1, holding longer only earns what any stock of that volatility earns

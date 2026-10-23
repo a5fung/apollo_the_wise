@@ -22,8 +22,9 @@ setups? Entry exit wrong? What is the cause."*
     a small lift, roughly 8% relative) and 10.2% vs 10.4% (2022–24).
 
   So the C0 breakout, as detected, does not pick stocks that follow through more than ordinary stocks.
-- **The big moves come weeks later, long after our trades are over.** Where a breakout's stock did make a 5-ADR move, it started
-  a median 26 / 28 sessions after the fill (5–6 weeks; 10-ADR moves 38–40 sessions). A trade lasts a median 1 session; one
+- **The big gains take weeks to build, and our trades are over in days.** Where a breakout's stock did gain 5 ADR, it REACHED
+  that mark a median 26 / 28 sessions after the fill (5–6 weeks; 10 ADR at 38–40 sessions). This is when the gain was complete,
+  not when the move began (corrected 10-22; the first wording said "started", which was wrong). A trade lasts a median 1 session; one
   the stop did not take lasts a median 6–9 sessions. So the stop and the exit both end the trade long before the move:
   - of every 100 big moves, the original stop fired first on 56 / 58 (bin B);
   - of the big moves the stop did NOT take, the exit still lost 81–85% (bin C, mostly out before the move began);
@@ -230,7 +231,7 @@ on stream**. Do the bases he said he bought or called his best, against the ones
 follow through more than matched ordinary stocks in the first 5 / 20 sessions after the breakout? It is pre-registered before
 any outcome (PLAN #705). Only if a selector shows an edge does the stop / hold question become worth a read. That read: on the
 selected fills, stops 1 / 1.5 / 2 ADR under the fill (the big movers' pre-move pullback is a median about 1.1–1.4 ADR) and a
-hold long enough to reach a move that comes a median 5–6 weeks after the fill, scored in ADR and account percent.
+hold long enough to keep a gain that takes a median 5–6 weeks to build, scored in ADR and account percent.
 
 ## 8. Verification (2026-10-22): two independent verifiers, then the main loop
 
@@ -238,7 +239,7 @@ hold long enough to reach a move that comes a median 5–6 weeks after the fill,
   reproduce exactly. The low-touch counts differ by ≤ 7 (a touch convention).
 - **Logic audit:** the waterfall is correct as a first-to-fire partition (no leak, no double count, units right). It flagged as
   BLOCKING that the first draft read the bin order as a cost ranking ("the stop is the biggest cost"). The lead above is
-  rewritten: of the stop survivors the exit loses 81–85%, and the moves arrive weeks after the trades end.
+  rewritten: of the stop survivors the exit loses 81–85%, and the gains take weeks to build after trades that end in days.
 - **Material:** the draft's "the big movers pull back 2–4 ADR" was unmeasured. The 2.8 / 3.9 ADR figure was the worst low of ALL
   fills over 60 sessions. The big movers' own pre-move pullback is a median about 1.1–1.4 ADR: 55% / 61% beyond 1 ADR, 28% / 37%
   beyond 2 ADR.
