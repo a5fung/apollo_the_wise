@@ -2415,3 +2415,17 @@ So part 2 fails on HOLDING, not on loss size. Without part 1, holding longer onl
   ones.
 - (The "5–6 weeks" in his first line was my wrong wording — it is the time to REACH a +5 ADR gain, not when the move starts.
   Corrected in the docs.)
+
+## 2026-10-22 — what the comparison must measure (operator, verbatim)
+
+> "What is the comparison measuring? We're not trying to pick winners over a year or two year, we're trying to buy a stock at the precise moment it gives the best risk to reward. We don't care about what the stock does outside this period."
+
+**Used as:** a correction to the yardstick. The breakout-vs-ordinary-stock comparison in the R decomposition and the breakout
+read measured the stock's DRIFT over 5–60 sessions (ADR units). That is the wrong question for a timing strategy. The right
+measure is risk / reward AT THE ENTRY MOMENT:
+- from the exact entry, with the same tight stop, how often and how far the stock gets (+2R / +5R / +10R) BEFORE the stop;
+- compared with the same stop geometry placed on non-breakout moments: matched ordinary stocks on the same day, and the same
+  stock on other days of its base.
+
+The "no edge" statements so far are about drift only. Whether the breakout moment gives better risk / reward is UNMEASURED. It
+is the next read after the big-winner recall.
