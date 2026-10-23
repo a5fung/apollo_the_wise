@@ -406,8 +406,17 @@ def check(record: "dict | None", live: dict) -> tuple[bool, list[str]]:
         if k == "judge_model" and "judge_model_source_pin" in record:
             return record["judge_model_source_pin"]
         return record.get(k)
+    def _same(k):
+        # 2026-10-23: a committed pin moved TO the model the passing eval actually ran on
+        # (`judge_model`) names an evaluated grade surface, so it is not a change — the
+        # "fallback pin behind" nudge asks for exactly that move, and requiring a new paid run
+        # to re-grade a model that already passed would be paperwork, not evidence. Any OTHER
+        # pin still fails (claude-opus-6 here: never evaluated).
+        if k == "judge_model" and "judge_model_source_pin" in record:
+            return live[k] in (record["judge_model_source_pin"], record.get("judge_model"))
+        return _recorded(k) == live[k]
     mismatches = [f"  {k}: record={_recorded(k)!r} live={live[k]!r}"
-                  for k in live if _recorded(k) != live[k]]
+                  for k in live if not _same(k)]
     if not record.get("pass"):
         mismatches.insert(0, "  record.pass is not true — the last eval run FAILED")
     if mismatches:

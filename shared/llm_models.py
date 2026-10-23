@@ -126,13 +126,13 @@ from shared.dates import et_today as _et_today
 # never auto-edited) ──────────────────────────────────────────────────────────
 SONNET_PIN = "claude-sonnet-4-6"
 HAIKU_PIN = "claude-haiku-4-5-20251001"
-OPUS_PIN = "claude-opus-5"   # bumped 2026-08-03 (operator-confirmed) after the judge-robustness
-                             # eval PASSED 36/36 on claude-opus-5 — every hard trap class, every
-                             # degradation class, and every positive control at 1.0. The resolver
-                             # had already moved live grading to opus-5 on 7/31; this aligns the
-                             # committed FAIL-SAFE FLOOR with what production actually runs, so a
-                             # resolver failure now falls back to a model that has been evaluated
-                             # rather than one that has not. Prior pin: claude-opus-4-8.
+OPUS_PIN = "claude-opus-5-5"   # bumped 2026-10-23 on the nightly "fallback pin behind" nudge he forwarded:
+                               # the resolver has served opus-5-5 for 30 days (adopted 09-22, judges adapted
+                               # and verified live 09-23, #683) and the judge-robustness eval PASSED 36/36 on
+                               # claude-opus-5-5 on 2026-10-03 (scripts/evals/judge_eval_pass_record.json),
+                               # so the FAIL-SAFE FLOOR again names an evaluated model that production runs.
+                               # No live binding moves (every role resolves from the cache; no role holds).
+                               # Prior pins: claude-opus-5 (2026-08-03, after its own 36/36), claude-opus-4-8.
 
 # ── Tiers (raw model ids) — PLAIN LITERAL ALIASES, never auto-edited or
 # resolver-bound. See AUTO-RESOLUTION above for why these specifically must
@@ -143,6 +143,7 @@ OPUS = OPUS_PIN
 
 # Legacy ids — kept for pricing historical spend rows / deliberate pins only.
 SONNET_5 = "claude-sonnet-5"
+OPUS_5 = "claude-opus-5"   # the opus pin 08-03..10-23 — kept to price its historical spend rows at $5/$25
 
 # claude-sonnet-5 bills at $2/$10 — this is its STANDARD rate, not a discount.
 # It launched as "introductory pricing through 2026-08-31" with a scheduled rise to $3/$15 on
@@ -157,6 +158,7 @@ SONNET_5 = "claude-sonnet-5"
 # 8% of the bill while the operator was asking why spend kept rising.
 
 SONNET_4_5 = "claude-sonnet-4-5"
+OPUS_4_8 = "claude-opus-4-8"   # the opus pin before 08-03 — priced explicitly since the tier fallback is now opus-5-5's $4/$20
 OPUS_4_7 = "claude-opus-4-7"
 OPUS_4_6 = "claude-opus-4-6"
 
@@ -441,8 +443,8 @@ PRICING_PER_MTOK: dict[str, dict[str, float]] = {
     SONNET_4_5: {"input": 3.00, "output": 15.00},
     HAIKU:      {"input": 1.00, "output": 5.00},
     HAIKU_PIN:  {"input": 1.00, "output": 5.00},
-    OPUS:       {"input": 5.00, "output": 25.00},
-    OPUS_PIN:   {"input": 5.00, "output": 25.00},
+    OPUS_5:     {"input": 5.00, "output": 25.00},   # OPUS / OPUS_PIN (= claude-opus-5-5) are priced by their explicit entry below
+    OPUS_4_8:   {"input": 5.00, "output": 25.00},
     OPUS_4_7:   {"input": 5.00, "output": 25.00},
     OPUS_4_6:   {"input": 5.00, "output": 25.00},
     # claude-sonnet-5 was MISSING here and fell through to the sonnet-tier rate ($3/$15).

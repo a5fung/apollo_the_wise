@@ -24,10 +24,10 @@ from shared.model_resolver import TierResolution
 # ─── The gate constraint: constants stay plain literals ─────────────────────
 
 def test_tier_constants_are_plain_literal_pins():
-    # OPUS_PIN bumped to claude-opus-5 on 2026-08-03 (operator-confirmed) after the
-    # judge-robustness eval passed 36/36 on it. The pin is the committed FAIL-SAFE FLOOR, so this
+    # OPUS_PIN bumped to claude-opus-5-5 on 2026-10-23 (the "fallback pin behind" nudge; its
+    # judge-robustness eval passed 36/36 on 2026-10-03). The pin is the committed FAIL-SAFE FLOOR, so this
     # assertion is meant to move WITH a deliberate bump and to fail loudly on an accidental one.
-    assert llm_models.OPUS == llm_models.OPUS_PIN == "claude-opus-5"
+    assert llm_models.OPUS == llm_models.OPUS_PIN == "claude-opus-5-5"
     assert llm_models.SONNET == llm_models.SONNET_PIN == "claude-sonnet-4-6"
     assert llm_models.HAIKU == llm_models.HAIKU_PIN == "claude-haiku-4-5-20251001"
 
@@ -166,16 +166,17 @@ def test_tier_of_none_for_unparseable():
 # ─── pricing_for ─────────────────────────────────────────────────────────────
 
 def test_pricing_for_exact_match():
-    assert llm_models.pricing_for(llm_models.OPUS) == {"input": 5.00, "output": 25.00}
+    assert llm_models.pricing_for(llm_models.OPUS) == {"input": 4.00, "output": 20.00, "cache_read_mult": 0.05}
+    assert llm_models.pricing_for(llm_models.OPUS_5) == {"input": 5.00, "output": 25.00}   # the previous pin's history
     assert llm_models.pricing_for(llm_models.SONNET) == {"input": 3.00, "output": 15.00}
     assert llm_models.pricing_for("sonar-pro") == {"input": 3.00, "output": 15.00}
 
 
 def test_pricing_for_unpinned_release_falls_back_to_tier_rate():
-    # claude-opus-5 is not a key in PRICING_PER_MTOK — must price at opus's
+    # claude-opus-6 is not a key in PRICING_PER_MTOK — must price at opus's
     # rate, NOT silently fall to DEFAULT_PRICING_PER_MTOK ($3/$15, the Sonnet
     # rate) which would understate a real Opus call's cost.
-    price = llm_models.pricing_for("claude-opus-5")
+    price = llm_models.pricing_for("claude-opus-6")
     assert price == llm_models.PRICING_PER_MTOK[llm_models.OPUS_PIN]
     assert price != llm_models.DEFAULT_PRICING_PER_MTOK
 
@@ -204,7 +205,7 @@ def test_opus_5_5_prices_at_its_published_rate_with_its_cache_discount():
     # 1M cache-read tokens at 0.05x of $4 = $0.20; the other models keep 0.1x. (No uncached input
     # here: Anthropic's input_tokens excludes cached tokens, so it is passed as 0.)
     assert abs(_cost_for_call("claude-opus-5-5", 0, 0, 0, 1_000_000) - 0.20) < 1e-9
-    assert abs(_cost_for_call(llm_models.OPUS_PIN, 0, 0, 0, 1_000_000) - 0.50) < 1e-9
+    assert abs(_cost_for_call(llm_models.OPUS_5, 0, 0, 0, 1_000_000) - 0.50) < 1e-9
 
 
 def test_uncached_input_is_billed_alongside_cache_tokens_in_both_writers():
