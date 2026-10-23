@@ -1,0 +1,30 @@
+== 2017-21
+  population pp/orh5/tl/C0: 13368 fills, 13363 mature, mean R 0.0254, >=10R 165 -> MATCH vs published (13368, 13363, 0.0254, 165)
+  duplicates in the population: (ticker, D) 0, (ticker, E) 0; retrigger_chain = 1 rows 2352
+  yesterday's per-fill table: 13363 rows, all in the population: True; realized_r equal: True
+  watch rows 192,897, duplicate (ticker, watch_date): 0
+  fills without a watch row: 0; watch adr20 == table adr20 within 1e-5 relative (yesterday's table is 6-digit text): 13363 of 13363
+  pivot_full >= pivot_tl on every fill: True; pivot_full >= pivot_k10 >= pivot_k5: True
+  fill vs base high: fill >= pivot_full on 1098 (8.2%); E's close > pivot_full on 1548 (11.6%)
+  distance below base high (ADR20_D): quartiles [0.412, 1.163, 2.139], mean 1.403, p10/p90 [0.035, 3.13]
+  entry table K values: ['com', 'tl']; ORH5 filled C0 retrigger=0 per K: {'com': 15630, 'tl': 13368}
+  K = tl rows vs the population: {'both': 13363, 'right_only': 5, 'left_only': 0}
+  fill equal between entry table and trades table: True
+    K = com: n 15630, duplicate (ticker, E) 0, E range 2017-03-02..2022-01-03, bases shared with tl (ticker, D): 7251
+    K = tl: n 13368, duplicate (ticker, E) 0, E range 2017-03-02..2022-01-03, bases shared with tl (ticker, D): 13368
+== 2022-24
+  population pp/orh5/tl/C0: 8989 fills, 8984 mature, mean R -0.1691, >=10R 85 -> MATCH vs published (8989, 8984, -0.1691, 85)
+  duplicates in the population: (ticker, D) 0, (ticker, E) 0; retrigger_chain = 1 rows 1658
+  yesterday's per-fill table: 8956 rows, all in the population: True; realized_r equal: True
+  watch rows 239,946, duplicate (ticker, watch_date): 0
+  fills without a watch row: 0; watch adr20 == table adr20 within 1e-5 relative (yesterday's table is 6-digit text): 8956 of 8956
+  pivot_full >= pivot_tl on every fill: True; pivot_full >= pivot_k10 >= pivot_k5: True
+  fill vs base high: fill >= pivot_full on 703 (7.8%); E's close > pivot_full on 1016 (11.3%)
+  distance below base high (ADR20_D): quartiles [0.46, 1.259, 2.228], mean 1.476, p10/p90 [0.047, 3.251]
+  entry table K values: ['full', 'k10', 'k5', 'tl']; ORH5 filled C0 retrigger=0 per K: {'full': 4100, 'k10': 7280, 'k5': 9034, 'tl': 8989}
+  K = tl rows vs the population: {'both': 8984, 'right_only': 5, 'left_only': 0}
+  fill equal between entry table and trades table: True
+    K = full: n 4100, duplicate (ticker, E) 0, E range 2022-04-01..2025-01-02, bases shared with tl (ticker, D): 1487
+    K = k10: n 7280, duplicate (ticker, E) 0, E range 2022-04-01..2025-01-02, bases shared with tl (ticker, D): 3322
+    K = k5: n 9034, duplicate (ticker, E) 0, E range 2022-04-01..2025-01-02, bases shared with tl (ticker, D): 4860
+    K = tl: n 8989, duplicate (ticker, E) 0, E range 2022-04-01..2025-01-02, bases shared with tl (ticker, D): 8989

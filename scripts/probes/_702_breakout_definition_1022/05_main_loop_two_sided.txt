@@ -1,0 +1,4 @@
+2017-21 R2 expansion n = 1,564: up +5 ADR 44.9% vs 41.1% | down -3 ADR 58.1% vs 51.9% | down -5 ADR 31.7% vs 28.0% | mean 60-session return +0.92 vs +0.92 ADR
+2017-21 R1 not R2 n = 7,617: up +5 ADR 43.3% vs 42.9% | down -3 ADR 50.7% vs 50.3% | down -5 ADR 28.0% vs 26.8% | mean 60-session return +1.31 vs +1.11 ADR
+2022-24 R2 expansion n = 922: up +5 ADR 35.5% vs 34.6% | down -3 ADR 61.9% vs 60.7% | down -5 ADR 38.4% vs 35.5% | mean 60-session return +0.09 vs -0.02 ADR
+2022-24 R1 not R2 n = 3,985: up +5 ADR 35.1% vs 34.6% | down -3 ADR 61.9% vs 61.1% | down -5 ADR 37.5% vs 36.3% | mean 60-session return -0.14 vs -0.16 ADR

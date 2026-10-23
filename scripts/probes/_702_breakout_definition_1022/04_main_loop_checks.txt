@@ -1,0 +1,12 @@
+== 2017-21: R1 table cl_ columns 13 (one set = 13), duplicates 0
+  (1) pivot_full == max high over (P, D] on 300 random fills: mismatches 0
+  (2a) s_c recomputed from raw closes on 300 fills: mismatches 0; >= 5 ADR from E close: mismatches 0
+  (2b) ADR20 at t-1 and the R2 flag recomputed from raw bars on 300 R1 rows: mismatches 0; >= 5 ADR from the R1 close: mismatches 0
+  (3) R2 >= 5 ADR within 60, finer match via merge: n = 1582, entries 44.88%, control 41.78%, difference +3.10 pts (report: 2017-21 +3.02 / 2022-24 +0.85)
+      R2 reaching +5 ADR by session 5: n = 1557, entries 4.62%, control 2.32% (report: 4.63 vs 2.28 / 3.83 vs 2.12)
+== 2022-24: R1 table cl_ columns 13 (one set = 13), duplicates 0
+  (1) pivot_full == max high over (P, D] on 300 random fills: mismatches 0
+  (2a) s_c recomputed from raw closes on 300 fills: mismatches 0; >= 5 ADR from E close: mismatches 0
+  (2b) ADR20 at t-1 and the R2 flag recomputed from raw bars on 300 R1 rows: mismatches 0; >= 5 ADR from the R1 close: mismatches 0
+  (3) R2 >= 5 ADR within 60, finer match via merge: n = 927, entries 35.60%, control 34.53%, difference +1.07 pts (report: 2017-21 +3.02 / 2022-24 +0.85)
+      R2 reaching +5 ADR by session 5: n = 1066, entries 3.85%, control 2.09% (report: 4.63 vs 2.28 / 3.83 vs 2.12)
