@@ -8207,8 +8207,8 @@ def _cap_order_children_after_parents(themes: list[dict], sub_theme_parents: "di
     takes the slot the child would have held. A child whose parent is absent, in another group or
     already ahead keeps its place. Index-based, not name-based (a re-minted namesake can share a name
     — the 10-07 shape): the FIRST occurrence of the parent's name is the parent. Every theme is
-    emitted exactly once — a link cycle cannot lose or duplicate a theme (an emitted name is never
-    pulled again, and each pull moves to a strictly later index, so the walk terminates)."""
+    emitted exactly once — a link cycle cannot lose or duplicate a theme (an emitted index is never
+    placed again, and the `visiting` set stops a link cycle from recursing, so the walk terminates)."""
     first_idx: dict[str, int] = {}
     for i, t in enumerate(themes):
         first_idx.setdefault(t["name"], i)
@@ -8237,6 +8237,22 @@ def _cap_order_children_after_parents(themes: list[dict], sub_theme_parents: "di
     return out
 
 
+async def _description_refused_movers(target_name: str, roster: "list[str]", movers: "list[str]", changelog: list,
+                                      *, protected, thesis, cooldown_set) -> "set[str]":
+    """#655: the ONE description check both move paths (the sector cap's absorb and the small-theme fold) run on the stocks
+    they move: the validator in moved-stock mode (`removable` = the movers, so no existing member can be removed), the
+    movers it refused returned, and each refusal added to the in-memory cooldown so a later merge the same night does not
+    re-check the same pair (the F1 fix). SSoT: docs/architecture/theme_engine.md (#655)."""
+    validated = await _validate_theme_membership(
+        target_name, roster + movers, changelog, protected=protected, thesis=thesis, removable=set(movers),
+    )
+    kept = set(validated)
+    refused = {tk for tk in movers if tk not in kept}
+    if refused and isinstance(cooldown_set, set):
+        cooldown_set.update((tk, target_name) for tk in refused)
+    return refused
+
+
 async def _admit_rehomed_members(
     target: dict,
     source: dict,
@@ -8249,7 +8265,7 @@ async def _admit_rehomed_members(
 ) -> _RehomeResult:
     """The membership test for a member the SECTOR CAP would move from `source` into `target`
     (2026-09-25 bug fix — SR/ATO). Returns the members admitted; `target["tickers"]` is NOT
-    mutated here except when the validator removes an EXISTING member (see below).
+    mutated here (#655: the description check runs in moved-stock mode, so it cannot remove an existing member).
 
     The 09-24 defect: Pass 2 unioned the whole roster of a theme whose NAME matched a keyword
     group into the group's top theme — no ticker overlap, no verdict, no validator, no audit row.
@@ -8340,20 +8356,17 @@ async def _admit_rehomed_members(
     tape_admitted = list(admitted)
     desc_rejected: list[str] = []
     if admitted:
-        validated = await _validate_theme_membership(
-            target_name, existing + admitted, changelog if changelog is not None else [],
-            protected=protected, thesis=target.get("description"), removable=set(admitted),
+        refused_set = await _description_refused_movers(
+            target_name, existing, admitted, changelog if changelog is not None else [],
+            protected=protected, thesis=target.get("description"), cooldown_set=cooldown_set,
         )
-        kept = set(validated)
-        desc_rejected = [tk for tk in admitted if tk not in kept]
+        desc_rejected = [tk for tk in admitted if tk in refused_set]
         for tk in admitted:
-            refused = tk in desc_rejected
+            refused = tk in refused_set
             verdicts[tk]["description"] = "reject" if refused else "admit"
             if refused:
                 verdicts[tk]["verdict"] = "reject"
-        admitted = [tk for tk in admitted if tk not in desc_rejected]
-        if desc_rejected and isinstance(cooldown_set, set):
-            cooldown_set.update((tk, target_name) for tk in desc_rejected)
+        admitted = [tk for tk in admitted if tk not in refused_set]
 
     detail = json.dumps({
         "source": source_name, "target": target_name, "group": group,
@@ -9533,7 +9546,7 @@ def plan_small_theme_folds(
                  if h["name"] != s["name"] and eco_map.get(h["name"]) == code
                  and len(h.get("tickers") or []) >= SMALL_FOLD_HOME_MIN_MEMBERS
                  and sum(1 for m in h["tickers"] if m in usable) >= SMALL_FOLD_HOME_MIN_HISTORY]
-        own_children = [h for h in homes if links.get(h["name"]) == s["name"]]
+        own_children = any(links.get(h["name"]) == s["name"] for h in homes)
         homes = [h for h in homes if links.get(h["name"]) != s["name"]]   # #655 direction (docstring)
         if not homes:
             counts["no_home_own_subtheme" if own_children else "no_home"] += 1
@@ -9600,14 +9613,10 @@ async def _apply_fold_description_check(
     for home_name, movers in movers_by_home.items():
         home = by_name[home_name]
         roster = list(home.get("tickers") or [])
-        validated = await _validate_theme_membership(
-            home_name, roster + movers, changelog, protected=protected,
-            thesis=home.get("description"), removable=set(movers),
+        refused_by_home[home_name] = await _description_refused_movers(
+            home_name, roster, movers, changelog, protected=protected,
+            thesis=home.get("description"), cooldown_set=cooldown_set,
         )
-        kept = set(validated)
-        refused_by_home[home_name] = {tk for tk in movers if tk not in kept}
-        if refused_by_home[home_name] and isinstance(cooldown_set, set):
-            cooldown_set.update((tk, home_name) for tk in refused_by_home[home_name])
     out: list[SmallFold] = []
     for f in folds:
         refused = [tk for tk in f.moved if tk in refused_by_home.get(f.home, set())]

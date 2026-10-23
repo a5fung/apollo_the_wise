@@ -14,7 +14,7 @@ import logging
 from typing import Callable
 
 from agents.market_intelligence.sell_discipline import trade_realized_r
-from agents.market_intelligence.trade_stats import fmt_pct, trade_return_pct
+from agents.market_intelligence.trade_stats import fmt_return_suffix
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +54,7 @@ def fmt_closed_line(r: dict, *, parse_exits: Callable = parse_exits) -> list[str
     # #706: the trade's % win/loss beside the $ and the R — total_pnl over entry cost, the same
     # frame the R uses (trade_stats.trade_return_pct). Omitted, like the R, when it cannot be
     # computed (no entry price / shares): never a made-up one.
-    ret_pct = trade_return_pct(r)
-    pct_str = f" · {fmt_pct(ret_pct, signed=True)}" if ret_pct is not None else ""
+    pct_str = fmt_return_suffix(r)
     out = [
         f"  {emoji} *{r['ticker']}* ${pnl:+,.0f}{r_str}{pct_str} ({hold}d){date_suffix}",
         f"      {entry_str} → {exit_str} · {reason} · score {score:.0f}",

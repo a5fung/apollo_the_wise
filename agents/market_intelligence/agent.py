@@ -4564,7 +4564,7 @@ class MarketIntelligenceAgent(BaseAgent):
         # `account_mode`; the list views are the live book by their WHERE). One account read per
         # distinct mode, fresh, never cached. The EOD-sim paper table has no broker -> no stats.
         from agents.market_intelligence.trade_stats import (
-            fmt_pct, fmt_stat_line, read_open_position_stats, trade_return_pct,
+            fmt_return_suffix, fmt_stat_line, read_open_position_stats,
         )
         _stat_idx = [i for i, r in enumerate(rows) if LIVE_TRADING_ENABLED and r["status"] == "filled"]
         _stats_by_idx: dict[int, tuple[dict, float | None]] = {}
@@ -4613,8 +4613,7 @@ class MarketIntelligenceAgent(BaseAgent):
             if not is_open:
                 # #706: the trade's % win/loss beside the $ (omitted when there is no entry/shares
                 # frame — e.g. the EOD-sim paper table — never a made-up one).
-                _ret = trade_return_pct(r)
-                _ret_str = f" · {fmt_pct(_ret, signed=True)}" if _ret is not None else ""
+                _ret_str = fmt_return_suffix(r)
                 lines.append(f"  *Total P&L: ${r['total_pnl']:+,.2f}*{_ret_str} ({r['hold_days']}d)")
             else:
                 stop_str = f"  Stop: ${r['stop_price']:.2f}" if r["stop_price"] else ""

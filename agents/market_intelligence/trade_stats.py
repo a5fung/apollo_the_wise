@@ -119,9 +119,14 @@ def fmt_stop_pct(v: Optional[float]) -> str:
     if v is None:
         return "—"
     r = round(v, 1)
-    if r < 0:
-        return f"through stop by {abs(r):.1f}%"
-    return f"{abs(r):.1f}% to stop"          # abs: round() can leave -0.0, which prints '-0.0%'
+    return f"through stop by {fmt_pct(-r)}" if r < 0 else f"{fmt_pct(r)} to stop"   # fmt_pct never prints '-0.0%'
+
+
+def fmt_return_suffix(trade: dict) -> str:
+    """' · +4.2%' — a closed trade's % win/loss as the suffix both /trades views append; '' when
+    `trade_return_pct` cannot compute it (no entry / shares frame): never a made-up one."""
+    ret = trade_return_pct(trade)
+    return f" · {fmt_pct(ret, signed=True)}" if ret is not None else ""
 
 
 def fmt_size_stop_lines(
@@ -185,13 +190,14 @@ async def read_open_position_stats(
             logger.debug(f"#706 open-position stats: position read failed for {r.get('ticker')} (mode={mode}): {e}")
             pos = None
         pos = pos or None
+        p = pos or {}
         items.append({
             "mode": mode,
             "pos": pos,
             "stats": open_position_stats(
-                side=(pos or {}).get("side"),
-                market_value=(pos or {}).get("market_value"),
-                current_price=(pos or {}).get("current_price"),
+                side=p.get("side"),
+                market_value=p.get("market_value"),
+                current_price=p.get("current_price"),
                 stop_price=r.get("stop_price"),
                 equity=equity_by_mode.get(mode),
             ),
