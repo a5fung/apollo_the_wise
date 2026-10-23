@@ -2500,3 +2500,18 @@ re-entering after a stop if needed.
   measurable-breakout doublers and (b) every real breakout, with matched ordinary stocks given the same rules.
 - The baseline from the recall check: 28 / 17 in at half-way of 481 / 258. Counting every fill, not just the first, 49 / 20
   were in at half-way — retries already show up.
+
+## 2026-10-22 — trail variants as the stop (operator, verbatim)
+
+> "On trailing the 10/20, we can test a decisive break vs quick reclaim, close below, etc. as stop"
+
+**Used as:** the next EXIT read, after the stop / re-entry read showed the exit keeps a median 5% of the good-setup winners' moves.
+It tests trail variants on the 10- and 20-day, each fixed numerically before any outcome:
+- (a) the first close below (today's rule);
+- (b) a DECISIVE break: a close below by ≥ 0.5 ADR, or two closes in a row below;
+- (c) a QUICK RECLAIM forgiven: a close below exits only if no close back above it within 2 sessions;
+- (d) an intraday low below, the tighter end.
+
+Beside them, the +2R third sold or not. It runs on the same populations and harness as `cb_entry_stop_retry_2026-10-22.md`:
+the good-setup doublers (held / kept), every real breakout vs matched ordinary stocks given the same rules. It is a measurement;
+the exit rule is his call.
