@@ -1,0 +1,45 @@
+#705 A+ HINDSIGHT - period pre (descriptive; written AFTER both verdicts; naming winners afterwards always looks good; decides nothing)
+HINDSIGHT within-week top-1: n 252 (mature 252), mean R 0.177, >= 10R 5; shares 100 fills with the forward A+ set (N = 1: 144)
+HINDSIGHT within-week top-3: n 756 (mature 754), mean R 0.007, >= 10R 8; shares 417 fills with the forward A+ set (N = 3: 534)
+HINDSIGHT within-week top-5: n 1254 (mature 1252), mean R 0.086, >= 10R 14; shares 718 fills with the forward A+ set (N = 5: 928)
+THE 39 (hindsight; the 2017-21 list - a ticker absent from this period's table shows 0 fills):
+ticker  fills  A+ (N=3)  mean R  total R  >=10R
+LVGO        7         0   -0.29     -2.0      0
+TSLA       17         4    2.73     46.4      1
+PTON       10         0    0.51      5.1      0
+ZM          7         1   -0.14     -1.0      0
+NIO         7         0    0.26      1.8      0
+PLUG        4         2   14.79     59.2      1
+ENPH       20         1    0.16      3.2      0
+FUBO        4         0   -0.70     -2.8      0
+ETSY       25         3   -0.19     -4.7      0
+CRWD       15         0    0.49      7.3      0
+DOCU       14         1   -0.53     -7.4      0
+NVAX       13         2    0.49      6.4      0
+BLNK        9         1   -0.54     -4.9      0
+SE         17         0    2.25     38.3      2
+SHOP       27         4    3.02     81.4      2
+FSLY        8         0    3.99     31.9      1
+NET        10         0    1.07     10.7      0
+DDOG       11         0    1.87     20.6      1
+NXH        17         3    3.65     62.1      1
+W          17         1   -0.69    -11.7      0
+CVNA       20         0    0.08      1.6      0
+APPS        8         2    1.72     13.8      0
+SNAP       15         1   -0.53     -8.0      0
+MRNA       19         1    2.44     46.4      2
+TDOC       29         2   -0.25     -7.3      0
+ROKU       19         0    0.49      9.4      0
+PINS       15         0    0.84     12.7      0
+UPST        3         1   -0.44     -1.3      0
+GME        10         1    5.30     53.0      1
+AMC        22         4    1.54     33.9      1
+DKNG        6         0   -1.00     -6.0      0
+FVRR       10         1    2.84     28.4      2
+PENN       16         2   -0.09     -1.5      0
+QS          5         0   -0.58     -2.9      0
+SPCE        9         0    0.63      5.7      0
+TTD        20         0   -0.34     -6.8      0
+LULU        7         0   -0.61     -4.3      0
+NVDA       18         1    0.20      3.6      1
+AMD        17         2    1.17     19.8      1

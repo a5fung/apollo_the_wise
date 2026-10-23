@@ -1,0 +1,44 @@
+APLUS-READ (registered read #705): period discovery; 8,989 rows; 8,989 pairs all logged; freeze check passed; code: module sha256 e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b, runner sha256 bb62adfd7c8e827fa63d174ec4fc55b48c667d9d79c03cb33d389558795d6875, scaffold sha256 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449
+export: 20,285 tickers / 1270 sessions 2021-09-27..2026-10-16 [load: 11s]
+features at D: 8,989 rows [11s]
+  minutes: 1/669 dates [11s]
+  minutes: 201/669 dates [14s]
+  minutes: 401/669 dates [16s]
+  minutes: 601/669 dates [18s]
+minute windows: 8,989 rows; bad lines 0, refetched blocks 0, truncated files 0 [19s]
+STEP 0 (discovery, features only, no outcome column opened): joined 8,989 -> fills 8,989 after the edge rule (0 dropped / excluded; pool-only rows 0); open marks 5; ISO weeks 145; unrated on concept 5: 1,778; thin pool (< 30): 77; pool size min 0 / median 269.0
+  concept 1 scales: weekly present 3,919 (floor strips 79); pullbacks present 4,138 (floor strips 49); both 3,291; neither 4,223
+  fill_minute: 5-9:2811 10-14:960 15-29:1428 30-59:1300 60-119:970 120-179:449 180-239:311 240-299:320 300-359:280 360-389:160; min 5 max 389; at 5: 1,295; >= 210: 902; median 20.0 quartiles 8.0-70.0 90th 210.0
+  windows: an absent minute inside 5,082; minute 0 absent 93; zero-volume windows 0 []; no block 0; early-close fills 89 of which >= 210: 1
+  concept 6: exp_up_adr missing 0; <= 0: 370; median 0.4347 quartiles 0.2371-0.6859; Spearman with width_adr 0.417, with fill_minute 0.026
+  grp_pct present 7,291
+  equality targets checked: 35 (absent_any, both, c5_unrated, dropped, early, early_ge210, exp_le0, exp_median, exp_missing, exp_q1, exp_q3, fills, fm_at5, fm_bins, fm_ge210, fm_max, fm_median, fm_min, fm_p90, fm_q1, fm_q3, grp_present, joined, min0_absent, neither, open, pb_floor_strip, pb_present, rho_fm, rho_width, thin, weeks, wk_floor_strip, wk_present, zero_vol)
+  profile aplus_intraday_profile.tsv: format, endpoints, monotone and the eight pinned values ok; sha256 = EXPECTED
+  STEP 0 rating counts, core N = 1: A+ 79, capped 72, rest 8761, unrated 77 (expectation (300, 435)); pool size min 0 / median 269.0
+  STEP 0 rating counts, core N = 3: A+ 288, capped 181, rest 8443, unrated 77 (expectation (300, 435)); pool size min 0 / median 269.0
+  STEP 0 rating counts, core N = 5: A+ 500, capped 234, rest 8178, unrated 77 (expectation (300, 435)); pool size min 0 / median 269.0
+  check 3 (join): 8,989 rows (8,989 eligible); the six D-night inputs complete; close at D = the export's c at D for every row; base rows = base_len + 1 and h at P = pole_high for every row; blocks ok 8,989; profile 0a5bf816ed8d... = EXPECTED; vol_dry5 missing 0, wk_ratio missing 5,070, pb_ratio missing 4,851 (by their stated rules)
+  check 1 (a): 8,989 of 8,989 windows identical under the per-fill minute randomisation
+  check 1 (b): ['open_E', 'high_E', 'low_E', 'close_E', 'vol_E', 'breakout_vol_x', 'base_id'] permuted in the candidates frame (79,224 rows) before any feature was computed, every feature rebuilt, the engine re-run - every score, cutoff and flag identical; the fills frame carries no outcome column (usecols = FILL_COLS: an absent column cannot be read)
+  check 1 (c): 336 fills (50 sampled + 288 A+) - score, cutoff and flag identical with every row after the fill's D randomised
+  check 2 (later-fill removal): 50 A+ fills - score, cutoff and flag unchanged
+  check 4 (counts): 2359 week x row pairs asserted - A+ unique by (ticker, E); per week A+ = min(N, fills at or above the cutoff); never more than N
+  check 5 (concept 6): 288 A+ fills recomputed from the table's fill / adr20 and the watch close at D - equal; with close_E in place of close_D the number differs for every one of the 287 A+ fills whose close_E != close_D
+  check 5 (concept 7, the beside row): 288 A+ fills recomputed from the minute files over 0..fill_minute-1 - equal; the window extended by the fill minute changes the range for every A+ fill and the volume sum for every A+ fill with volume on the fill minute (0 fill minutes carry no volume)
+  check 6 (pool): pool counts equal an independent count; every rated fill's pool >= 30; every week = the ISO week of E
+  check 7 (shuffle invariance): every A+ set unchanged under a seed-702 shuffle of the input rows
+  check 9 (concept 5): 50 fills (50 sampled + the 0 the full-file chain moves) unchanged with the watch rows after D randomised; the full-file chain moves 0 fills (their stored stair_n is the chain at D's); base_id absent from the run's usecols (['ticker', 'D', 'E', 'K', 'split', 'retrigger', 'pole_date', 'pole_ci', 'adv20_vol_D', 'prior_move', 'base_len', 'base_depth', 'tightening_ratio', 'atr14_slope', 'rs_best', 'rs_all', 'grp_pct', 'phase_qqq_10_20']) and frame, and every stair_n unchanged when the run is rebuilt on a frame carrying it permuted
+  check 12 (concept 1's scales): 480 fills (200 sampled + 288 A+) - base rows = base_len + 1, h at P = pole_high, wk_ratio / pb_ratio / tightening_ratio recomputed equal the stored values, no block past D, the same numbers with every row after D randomised
+  check 4 (golden fixtures E / E2 / E3 on the committed code): pass
+  re-derivation: 8,989 rows (8,989 eligible)
+  re-derivation profile: 1/1219 dates
+  re-derivation profile: 201/1219 dates
+  re-derivation profile: 401/1219 dates
+  re-derivation profile: 601/1219 dates
+  re-derivation profile: 801/1219 dates
+  re-derivation profile: 1001/1219 dates
+  re-derivation profile: 1201/1219 dates
+RE-DERIVATION (pandas, no runner code) [160s]: VERDICT MATCH
+WROTE /Users/alvinfung/apollo_data/cb702/out/trades_discovery_aplus.tsv.gz (8,989 rows), /Users/alvinfung/apollo_data/cb702/out/aplus_report_discovery.tsv (21 rows), /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/aplus_report_discovery.txt
+WROTE /Users/alvinfung/apollo_data/cb702/out/aplus_verdict_discovery.json, /Users/alvinfung/apollo_data/cb702/out/aplus_verdict_discovery.txt, /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/aplus_verdict_discovery.txt
+WALL TIME: 270s total

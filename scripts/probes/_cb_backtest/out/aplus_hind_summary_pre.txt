@@ -1,0 +1,3 @@
+APLUS-HINDSIGHT (registered read #705): period pre; 13,359 rows; freeze check passed; code: module sha256 e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b, runner sha256 bb62adfd7c8e827fa63d174ec4fc55b48c667d9d79c03cb33d389558795d6875, scaffold sha256 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449
+WROTE /Users/alvinfung/apollo_data/cb702_pre/out/aplus_hindsight_pre.tsv (2301 rows), /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/aplus_hindsight_pre.txt
+WALL TIME: 5s total

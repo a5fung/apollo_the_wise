@@ -798,3 +798,58 @@ the two minute trees, the module, the runner, the scaffold (`registered_read.py`
 - scaffold sha256: `28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449`
 - spec module sha256: `e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee`
 - doc body sha256: `c38f6e183e41c875731c87972e9a0cc4300c4dc256519ee9aa3df163ce66f847`
+
+## RESULT — read once per era 2026-10-22 (freeze `0d80a8d1`; `runner.py aplus-read`, then `aplus-verdict`, then `aplus-hindsight`; reports `scripts/probes/_cb_backtest/out/aplus_{report,verdict,hindsight}_{pre,discovery}.txt`)
+
+Freeze check passed. STEP 0 equalled every registered count in both eras, every implementation check (1–12) passed, and the
+independent re-derivation (pandas, no runner code) reads **VERDICT MATCH** in both eras.
+
+**VERDICT: CAN'T TELL (2017–21) × CAN'T TELL (2022–24). The paired bar reads "can't tell" in both, so the rating is NOT RECORDED.**
+In neither era did the fixed score pick a weekly set whose big-winner rate or mean R beats the population at the registered bar.
+
+| Era | A+ n (N = 3) | mean R [95%] | ≥ 10R per 100 (C0) | ≥ 10R trades: tickers / months | ADR P&L | paired A+ − REST | +grp vs core | verdict |
+|---|---|---|---|---|---|---|---|---|
+| 2017–21 | 534 | +0.127 [−0.11, +0.39] | 1.12 (1.235) | 6: 5 / 5 | +0.023 | +0.107 [−0.15, +0.40], can't tell | +0.080 [−0.15, +0.33], CAN'T TELL | CAN'T TELL |
+| 2022–24 | 288 | −0.168 [−0.41, +0.09] | 0.35 (0.946) | 1: 1 / 1 | −0.078 | −0.002 [−0.22, +0.25], can't tell | +0.123 [−0.13, +0.38], CAN'T TELL | CAN'T TELL |
+
+**Consequence (registered; applied by `aplus-verdict`):** the forward shadow records neither the core score nor +grp. **The next
+registration is NAMED: `alone_c3`, concept 3 = RS leadership (`rs_best`, the best of the 1-, 3- and 6-month percentiles) on
+its own.** Two alone rows meet the 3-ticker / 3-month spread in both eras: c3, with a two-era mean of 1.75 ≥ 10R per 100, and
+c7, with 1.26. c3 has the higher mean. It is registered on its own and tested once on the still-sealed 2025–26 table, which
+is unread for this score (Disclosed (d)).
+
+**The seven concepts alone (beside; N = 3; never a finding except through the naming rule above):**
+
+| Row | 2017–21 mean R | 2017–21 ≥ 10R / 100 (spread) | 2022–24 mean R | 2022–24 ≥ 10R / 100 (spread) |
+|---|---|---|---|---|
+| c1 contraction (fractal) | +0.031 | 0.79 (3t / 3m) | −0.102 | 0.76 (1t / 1m) |
+| c2 volume dry-up | −0.056 | 1.23 (4t / 4m) | −0.001 | 0.74 (1t / 1m) |
+| **c3 RS leadership** | +0.193 | **1.76 (7t / 5m)** | +0.266 | **1.74 (4t / 4m)** |
+| c4 prior move | +0.363 [+0.09, +0.69] | 1.68 (7t / 7m) | −0.058 | 0.96 (2t / 2m) |
+| c5 stair-step | n = 6 (see below) | 0.00 | n = 13 | 7.69 (1t / 1m) |
+| c6 expansion up at the fill | +0.064 | 1.00 (5t / 4m) | −0.071 | 0.38 (1t / 1m) |
+| c7 volume so far vs a normal day | +0.238 | 1.52 (6t / 6m) | −0.006 | 0.99 (3t / 3m) |
+
+**Expectations missed (reported first; they change no rule):**
+- 2022–24 A+ n was 288, below the expected 300–435.
+- The share of weeks after burn-in with fewer than 3 A+ was 0.502 / 0.546, higher than expected.
+- The A+ share of bases ≥ 15 sessions was not above C0's (0.363 vs 0.387; 0.354 vs 0.436).
+
+The C0 baselines reproduced as published in both eras.
+
+**Disclosed after the read — the stair-step concept alone was not measurable.** `alone_c5` filled only 6 / 13 fills.
+
+- **Cause.** Under the pinned mid-rank percentile with leave-one-out reference scores, a fill whose discrete `stair_n` sits
+  above the pool middle (pct p > 0.5) scores below every reference member tied with it. A tied member's pct is
+  p + (p − ½)/(n − 1). So a fill tied with ≥ 12 members at a top value never reaches the cutoff.
+- **Scope.** This affects only a discrete feature, and concept 5 is the only one.
+- **Effect inside the core.** The shift is at most 0.0018 (2017–21) / 0.0012 (2022–24) of the 7-concept score. Bounded on the
+  output file, at most 2 + 2 fills in 2017–21 and 0 in 2022–24 sit within that margin of their cutoff, so the core verdict
+  cannot move.
+- **Effect on the naming rule.** c5 met the spread in neither era, so c5 was not a contender under this formula. A stair-step
+  test on its own would need a tie rule written for a discrete feature, in a new registration.
+
+**HINDSIGHT (descriptive, written after both verdicts; decides nothing):**
+- The within-week top-3 by hindsight: mean R +0.007 (2017–21) / −0.136 (2022–24).
+- Of the 39 names on the 2017–21 big-winner list, the forward A+ rule flagged at least one fill of 22 in 2017–21 (41 A+
+  fills) and of 12 in 2022–24.

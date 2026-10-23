@@ -244,6 +244,33 @@ multiplier** to ≤ 1% of the account at the article's sizing (position = min(20
 
 ## Change log
 
+### 2026-10-22 — #705 his A+ rating read (a fixed score, the best 3 a week): CAN'T TELL in both 2017–21 and 2022–24, so it is not recorded; RS leadership alone is named as the next test
+
+**What**: the pre-registration `docs/analysis/cb_aplus_rating_prereg_2026-10-21.md` was frozen at `0d80a8d1` and read once
+per era, with re-derivation VERDICT MATCH.
+- **The score:** seven concepts from his notes, ranked against the prior 20 sessions' breakouts:
+  - fractal contraction;
+  - volume dry-up;
+  - RS leadership;
+  - prior move;
+  - stair-step, earlier = better;
+  - upward expansion at the fill;
+  - volume so far against a normal day.
+- **2017–21:** 534 A+ fills, mean +0.13R [−0.11, +0.39], 1.12 ≥ 10R per 100 against 1.235 for all breakouts.
+- **2022–24:** 288 A+ fills, mean −0.17R [−0.41, +0.09], 0.35 ≥ 10R per 100 against 0.95.
+- **Paired A+ − REST:** can't tell in both eras.
+- **+grp** (the group-strength secondary): can't tell in both eras.
+
+**Consequence (registered)**:
+- The shadow records nothing new.
+- The next registration is `alone_c3`, RS leadership alone. It had the highest two-era big-winner rate that also spread across
+  ≥ 3 tickers and months in both eras: 1.76 / 1.74 per 100. It will be tested once on the sealed 2025–26 table.
+- Disclosed: the stair-step concept alone could not be measured (a tie effect of the pinned percentile on a discrete value). It
+  is negligible inside the core (at most 4 fills near a cutoff).
+- No live or paper change.
+
+**Reversion-flag**: none (a read; no rule changed). **Status**: complete.
+
 ### 2026-10-19 — #702 his exit, two parts: the day-based third ONLY IN PROFIT is adopted (his ruling); the whole-trade-breakeven stop after the third LOSES — the next tests carry `pp`
 
 **What**: pre-registered `docs/analysis/cb_exit_partial_prereg_2026-10-19.md`, frozen, read once per period, re-derivation

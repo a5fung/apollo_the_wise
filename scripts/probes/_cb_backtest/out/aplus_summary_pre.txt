@@ -1,0 +1,46 @@
+APLUS-READ (registered read #705): period pre; 13,359 rows; 13,359 pairs all logged; freeze check passed; code: module sha256 e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b, runner sha256 bb62adfd7c8e827fa63d174ec4fc55b48c667d9d79c03cb33d389558795d6875, scaffold sha256 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449
+export: 9,944 tickers / 1635 sessions 2016-01-04..2022-06-30 [load: 6s]
+features at D: 13,359 rows [7s]
+  minutes: 1/1176 dates [7s]
+  minutes: 201/1176 dates [8s]
+  minutes: 401/1176 dates [9s]
+  minutes: 601/1176 dates [10s]
+  minutes: 801/1176 dates [12s]
+  minutes: 1001/1176 dates [16s]
+minute windows: 13,359 rows; bad lines 0, refetched blocks 0, truncated files 0 [18s]
+STEP 0 (pre, features only, no outcome column opened): joined 13,368 -> fills 13,359 after the edge rule (9 dropped / excluded; pool-only rows 0); open marks 5; ISO weeks 253; unrated on concept 5: 505; thin pool (< 30): 36; pool size min 0 / median 287.0
+  concept 1 scales: weekly present 5,166 (floor strips 346); pullbacks present 5,713 (floor strips 234); both 4,391; neither 6,871
+  fill_minute: 5-9:4355 10-14:1396 15-29:2111 30-59:1760 60-119:1544 120-179:693 180-239:510 240-299:429 300-359:335 360-389:226; min 5 max 389; at 5: 2,040; >= 210: 1,213; median 19.0 quartiles 7.0-70.0 90th 196.0
+  windows: an absent minute inside 7,448; minute 0 absent 123; zero-volume windows 3 [('ABTC', '2021-02-25'), ('ABTC', '2021-03-02'), ('RUBI', '2020-06-23')]; no block 0; early-close fills 100 of which >= 210: 1
+  concept 6: exp_up_adr missing 0; <= 0: 458; median 0.4307 quartiles 0.2390-0.6758; Spearman with width_adr 0.427, with fill_minute 0.054
+  grp_pct present 9,059
+  equality targets checked: 35 (absent_any, both, c5_unrated, dropped, early, early_ge210, exp_le0, exp_median, exp_missing, exp_q1, exp_q3, fills, fm_at5, fm_bins, fm_ge210, fm_max, fm_median, fm_min, fm_p90, fm_q1, fm_q3, grp_present, joined, min0_absent, neither, open, pb_floor_strip, pb_present, rho_fm, rho_width, thin, weeks, wk_floor_strip, wk_present, zero_vol)
+  profile aplus_intraday_profile.tsv: format, endpoints, monotone and the eight pinned values ok; sha256 = EXPECTED
+  STEP 0 rating counts, core N = 1: A+ 144, capped 113, rest 13063, unrated 39 (expectation (520, 760)); pool size min 0 / median 287.0
+  STEP 0 rating counts, core N = 3: A+ 534, capped 228, rest 12558, unrated 39 (expectation (520, 760)); pool size min 0 / median 287.0
+  STEP 0 rating counts, core N = 5: A+ 928, capped 353, rest 12039, unrated 39 (expectation (520, 760)); pool size min 0 / median 287.0
+  check 3 (join): 13,359 rows (13,359 eligible); the six D-night inputs complete; close at D = the export's c at D for every row; base rows = base_len + 1 and h at P = pole_high for every row; blocks ok 13,359; profile 0a5bf816ed8d... = EXPECTED; vol_dry5 missing 0, wk_ratio missing 8,193, pb_ratio missing 7,646 (by their stated rules)
+  check 1 (a): 13,359 of 13,359 windows identical under the per-fill minute randomisation
+  check 1 (b): ['open_E', 'high_E', 'low_E', 'close_E', 'vol_E', 'breakout_vol_x', 'base_id'] permuted in the candidates frame (68,939 rows) before any feature was computed, every feature rebuilt, the engine re-run - every score, cutoff and flag identical; the fills frame carries no outcome column (usecols = FILL_COLS: an absent column cannot be read)
+  check 1 (c): 583 fills (50 sampled + 534 A+) - score, cutoff and flag identical with every row after the fill's D randomised
+  check 2 (later-fill removal): 50 A+ fills - score, cutoff and flag unchanged
+  check 4 (counts): 4140 week x row pairs asserted - A+ unique by (ticker, E); per week A+ = min(N, fills at or above the cutoff); never more than N
+  check 5 (concept 6): 534 A+ fills recomputed from the table's fill / adr20 and the watch close at D - equal; with close_E in place of close_D the number differs for every one of the 533 A+ fills whose close_E != close_D
+  check 5 (concept 7, the beside row): 534 A+ fills recomputed from the minute files over 0..fill_minute-1 - equal; the window extended by the fill minute changes the range for every A+ fill and the volume sum for every A+ fill with volume on the fill minute (1 fill minutes carry no volume)
+  check 6 (pool): pool counts equal an independent count; every rated fill's pool >= 30; every week = the ISO week of E
+  check 7 (shuffle invariance): every A+ set unchanged under a seed-702 shuffle of the input rows
+  check 9 (concept 5): 51 fills (50 sampled + the 1 the full-file chain moves) unchanged with the watch rows after D randomised; the full-file chain moves 1 fills (their stored stair_n is the chain at D's); base_id absent from the run's usecols (['ticker', 'D', 'E', 'K', 'split', 'retrigger', 'pole_date', 'pole_ci', 'adv20_vol_D', 'prior_move', 'base_len', 'base_depth', 'tightening_ratio', 'atr14_slope', 'rs_best', 'rs_all', 'grp_pct', 'phase_qqq_10_20']) and frame, and every stair_n unchanged when the run is rebuilt on a frame carrying it permuted
+  check 12 (concept 1's scales): 730 fills (200 sampled + 534 A+) - base rows = base_len + 1, h at P = pole_high, wk_ratio / pb_ratio / tightening_ratio recomputed equal the stored values, no block past D, the same numbers with every row after D randomised
+  check 4 (golden fixtures E / E2 / E3 on the committed code): pass
+  re-derivation: 13,359 rows (13,359 eligible)
+  re-derivation profile: 1/1219 dates
+  re-derivation profile: 201/1219 dates
+  re-derivation profile: 401/1219 dates
+  re-derivation profile: 601/1219 dates
+  re-derivation profile: 801/1219 dates
+  re-derivation profile: 1001/1219 dates
+  re-derivation profile: 1201/1219 dates
+RE-DERIVATION (pandas, no runner code) [175s]: VERDICT MATCH
+WROTE /Users/alvinfung/apollo_data/cb702_pre/out/trades_pre_aplus.tsv.gz (13,359 rows), /Users/alvinfung/apollo_data/cb702_pre/out/aplus_report_pre.tsv (21 rows), /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/aplus_report_pre.txt
+WROTE /Users/alvinfung/apollo_data/cb702_pre/out/aplus_verdict_pre.json, /Users/alvinfung/apollo_data/cb702_pre/out/aplus_verdict_pre.txt, /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/aplus_verdict_pre.txt
+WALL TIME: 352s total

@@ -1,0 +1,3 @@
+#705 A+ RATING VERDICT FILE - period pre - written 2026-10-22
+core N = 3: CAN'T TELL (interval spans 0; does not beat C0's >= 5R share (2.809 vs 3.472 per 100); >= 10R rate not twice C0's (6 x 13363 = 80178 < 2 x 165 x 534 = 176220)); n 534, mean R 0.1267 [-0.108, 0.395], >= 5R 2.809 / 100, >= 10R 6 (5t / 5m), ADR P&L 0.0227
+paired A+ minus REST: can't tell [-0.151, 0.395]; +grp: CAN'T TELL [-0.146, 0.334]; re-derivation: VERDICT MATCH
