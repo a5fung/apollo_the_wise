@@ -1,0 +1,170 @@
+## labels: file rows 2472 | attributed 854
+- grade strings {'bought': 662, 'best': 59, 'not_yet': 125, 'best,bought': 4, 'best,not_yet': 1, 'bought,not_yet': 3}
+- exploded {'bought': 669, 'best': 64, 'not_yet': 129} | distinct tickers 283 | distinct (ticker, screen_date) 832
+- screen dates 2017-01-24 2023-06-09 | by year {'2017': 41, '2019': 34, '2020': 485, '2021': 251, '2022': 23, '2023': 20}
+- era split {'B': 43, 'A': 811}
+- export symbols A 12532 B (<=2024-12-31) 15702
+## symbol resolution {'A': {'refetch_dropped': 15, 'own': 783, 'rename_map': 13}, 'B': {'own': 43}}
+    ('A', 'refetch_dropped') [('AHPI', 'AHPIQ'), ('DPW', 'NILE'), ('MOXC', 'ABTS'), ('NXTD', 'LGMK'), ('SI', 'SICP'), ('WTRH', 'ASAP')]
+    ('A', 'rename_map') [('CHK', 'EXE'), ('EXPI', 'AGNT'), ('PKI', 'RVTY'), ('SGH', 'PENG'), ('SQ', 'XYZ')]
+## events era A K=com: rows 134376 first breaks 24492 E 2017-03-02..2022-01-03
+## events era A K=tl: rows 81015 first breaks 20650 E 2017-03-02..2022-01-03
+## events era B K=com: rows 71218 first breaks 14530 E 2022-04-01..2024-12-31
+## events era B K=full: rows 11866 first breaks 6544 E 2022-04-01..2024-12-31
+## events era B K=k10: rows 27299 first breaks 10175 E 2022-04-01..2024-12-31
+## events era B K=k5: rows 38322 first breaks 12143 E 2022-04-01..2024-12-31
+## events era B K=tl: rows 41200 first breaks 12250 E 2022-04-01..2024-12-31
+- tl E index range {'A': (292, 1511), 'B': (130, 820)} 2017-03-02 2022-01-03 2022-04-01 2024-12-31
+## watch era A: rows 227004 (not on calendar 0) tickers ever 3226 | (ticker,date) with >1 row: 0
+## watch era B: rows 129985 (not on calendar 0) tickers ever 2463 | (ticker,date) with >1 row: 0
+- watch rows for the 264 resolved label symbols era A: 25212
+- watch rows for the 34 resolved label symbols era B: 2938
+## s0 mapped from a non-session date {'A': 9}
+- coverage era A: labels 811 {'full': 776, 'partial': 29, 'none': 6}
+    coverage none by month [('2017-01', 6)]
+- coverage era B: labels 43 {'full': 22, 'partial': 8, 'none': 13}
+    coverage none by month [('2022-01', 7), ('2022-02', 6)]
+## FUNNEL (watch-row-in-window mode W1: watch_date in [s0-10,s0+20])
+- era A: labels 811 {'never_watched': 87, 'matched': 506, 'no_watchrow_in_window': 140, 'watchrow_no_tl_event': 72, 'none': 6} | matched-with-no-watch-row-in-window 0
+- era B: labels 43 {'matched': 12, 'watchrow_no_tl_event': 4, 'no_watchrow_in_window': 9, 'never_watched': 5, 'none': 13} | matched-with-no-watch-row-in-window 0
+## FUNNEL (watch-row-in-window mode W2: watch_date in [s0-11,s0+19] i.e. D=E-1 for E in window)
+- era A: labels 811 {'never_watched': 87, 'matched': 506, 'no_watchrow_in_window': 144, 'watchrow_no_tl_event': 68, 'none': 6} | matched-with-no-watch-row-in-window 0
+- era B: labels 43 {'matched': 12, 'watchrow_no_tl_event': 4, 'no_watchrow_in_window': 9, 'never_watched': 5, 'none': 13} | matched-with-no-watch-row-in-window 0
+- era A never-watched labels 87 symbols 51 | not in SIC file / no type 84
+   top [('TNA', 7), ('XOP', 5), ('LGMK', 4), ('TQQQ', 4), ('TAN', 4), ('QQQ', 4), ('IGV', 4), ('SPXL', 3), ('SOXL', 3), ('GDX', 2), ('SMH', 2), ('NRGU', 2)]
+- era B never-watched labels 5 symbols 5 | not in SIC file / no type 4
+   top [('CWEB', 1), ('MVST', 1), ('KWEB', 1), ('ERX', 1), ('NRGU', 1)]
+## JOIN RATE (tl): era grade | matched/n | full-only | >1 event | nearest retrigger | first break in window
+- A bought  : 392/624 (62.8%) | full-only 384/601 | >1 event 339 | nearest retrigger 190 | first break in window 334
+- A not_yet : 86/128 (67.2%) | full-only 84/124 | >1 event 77 | nearest retrigger 44 | first break in window 69
+- A best    : 32/60 (53.3%) | full-only 32/58 | >1 event 29 | nearest retrigger 19 | first break in window 30
+- B bought  : 10/28 (35.7%) | full-only 9/20 | >1 event 8 | nearest retrigger 3 | first break in window 10
+- B not_yet : 0/0 (-) | full-only 0/0 | >1 event 0 | nearest retrigger 0 | first break in window 0
+- B best    : 2/3 (66.7%) | full-only 2/3 | >1 event 2 | nearest retrigger 2 | first break in window 2
+- all labels era A: 506/805 (62.9%)
+- all labels era B: 12/30 (40.0%)
+## JOIN RATE other levels
+- A K=com bought: 412/624
+- A K=com not_yet: 88/128
+- B K=com bought: 12/28
+- B K=com not_yet: 0/0
+- B K=k5 bought: 13/28
+- B K=k5 not_yet: 0/0
+- B K=k10 bought: 9/28
+- B K=k10 not_yet: 0/0
+- B K=full bought: 9/28
+- B K=full not_yet: 0/0
+## POSITION relative to E (delta>0 = label BEFORE breakout)
+- A bought nearest tl event: n = 392 | BEFORE(>=+1) 163 (41.6%) | ON(0) 113 (28.8%) | AFTER(<=-1) 116 (29.6%) | within[-1,+1] 162 | within[-2,+1] 179 (45.7%) | median +0.0 quartiles -1.0..+5.0
+    hist -10:3 -9:12 -8:7 -7:6 -6:9 -5:5 -4:21 -3:12 -2:17 -1:24 +0:113 +1:25 +2:7 +3:12 +4:11 +5:11 +6:11 +7:4 +8:9 +9:10 +10:5 +11:6 +12:10 +13:3 +14:8 +15:4 +16:5 +17:4 +18:4 +19:4 +20:10
+- A bought nearest FIRST BREAK: n = 334 | BEFORE(>=+1) 170 (50.9%) | ON(0) 33 (9.9%) | AFTER(<=-1) 131 (39.2%) | within[-1,+1] 78 | within[-2,+1] 89 (26.6%) | median +1.0 quartiles -3.0..+10.0
+    hist -10:5 -9:8 -8:13 -7:15 -6:9 -5:8 -4:14 -3:16 -2:11 -1:32 +0:33 +1:13 +2:5 +3:11 +4:10 +5:10 +6:11 +7:4 +8:8 +9:10 +10:6 +11:11 +12:13 +13:5 +14:11 +15:6 +16:5 +17:5 +18:5 +19:8 +20:13
+- A not_yet nearest tl event: n = 86 | BEFORE(>=+1) 43 (50.0%) | ON(0) 23 (26.7%) | AFTER(<=-1) 20 (23.3%) | within[-1,+1] 38 | within[-2,+1] 43 (50.0%) | median +0.5 quartiles +0.0..+3.8
+    hist -8:1 -7:1 -6:1 -4:4 -3:2 -2:5 -1:6 +0:23 +1:9 +2:6 +3:6 +4:2 +5:4 +7:4 +8:3 +10:1 +12:2 +14:2 +17:1 +18:2 +20:1
+- A not_yet nearest FIRST BREAK: n = 69 | BEFORE(>=+1) 40 (58.0%) | ON(0) 6 (8.7%) | AFTER(<=-1) 23 (33.3%) | within[-1,+1] 15 | within[-2,+1] 18 (26.1%) | median +3.0 quartiles -2.0..+7.0
+    hist -10:2 -9:1 -8:1 -7:2 -5:2 -4:4 -3:3 -2:3 -1:5 +0:6 +1:4 +2:1 +3:6 +4:2 +5:6 +7:4 +8:5 +11:1 +12:1 +13:2 +14:2 +15:1 +17:1 +18:3 +20:1
+- A best nearest tl event: n = 32 | BEFORE(>=+1) 12 (37.5%) | ON(0) 9 (28.1%) | AFTER(<=-1) 11 (34.4%) | within[-1,+1] 14 | within[-2,+1] 16 (50.0%) | median +0.0 quartiles -1.2..+2.0
+    hist -9:1 -7:1 -6:1 -5:2 -3:1 -2:2 -1:3 +0:9 +1:2 +2:3 +4:1 +5:1 +7:1 +9:2 +11:1 +14:1
+- A best nearest FIRST BREAK: n = 30 | BEFORE(>=+1) 12 (40.0%) | ON(0) 2 (6.7%) | AFTER(<=-1) 16 (53.3%) | within[-1,+1] 2 | within[-2,+1] 4 (13.3%) | median -2.0 quartiles -5.8..+5.8
+    hist -9:2 -7:5 -6:1 -5:1 -3:5 -2:2 +0:2 +2:2 +4:1 +5:1 +6:1 +7:1 +9:2 +11:1 +12:1 +14:1 +20:1
+- B bought nearest tl event: n = 10 | BEFORE(>=+1) 6 (60.0%) | ON(0) 2 (20.0%) | AFTER(<=-1) 2 (20.0%) | within[-1,+1] 4 | within[-2,+1] 5 (50.0%) | median +1.0 quartiles +0.0..+5.2
+    hist -8:1 -2:1 +0:2 +1:2 +3:1 +6:1 +12:1 +14:1
+- B bought nearest FIRST BREAK: n = 10 | BEFORE(>=+1) 6 (60.0%) | ON(0) 0 (0.0%) | AFTER(<=-1) 4 (40.0%) | within[-1,+1] 2 | within[-2,+1] 3 (30.0%) | median +1.0 quartiles -5.8..+5.2
+    hist -10:1 -8:1 -7:1 -2:1 +1:2 +3:1 +6:1 +12:1 +14:1
+- B not_yet nearest tl event: n = 0
+- B not_yet nearest FIRST BREAK: n = 0
+- B best nearest tl event: n = 2 | BEFORE(>=+1) 0 (0.0%) | ON(0) 1 (50.0%) | AFTER(<=-1) 1 (50.0%) | within[-1,+1] 1 | within[-2,+1] 1 (50.0%) | median -4.0 quartiles -6.0..-2.0
+    hist -8:1 +0:1
+- B best nearest FIRST BREAK: n = 2 | BEFORE(>=+1) 1 (50.0%) | ON(0) 0 (0.0%) | AFTER(<=-1) 1 (50.0%) | within[-1,+1] 0 | within[-2,+1] 0 (0.0%) | median +4.5 quartiles -0.8..+9.8
+    hist -6:1 +15:1
+## DISTINCT bought events (stock,E): delta rule is undefined in the doc -> variants
+- era A distinct (stock,E) bought events: 297
+-   A distinct events, delta of first label in file order: n = 297 | BEFORE(>=+1) 108 (36.4%) | ON(0) 100 (33.7%) | AFTER(<=-1) 89 (30.0%) | within[-1,+1] 136 | within[-2,+1] 151 (50.8%) | median +0.0 quartiles -1.0..+3.0
+    hist -10:3 -9:10 -8:5 -7:4 -6:6 -5:4 -4:18 -3:7 -2:15 -1:17 +0:100 +1:19 +2:5 +3:10 +4:7 +5:8 +6:8 +7:4 +8:6 +9:7 +10:2 +11:2 +12:6 +13:2 +14:3 +15:3 +16:1 +17:3 +18:2 +19:4 +20:6
+-   A distinct events, delta of the label closest to E: n = 297 | BEFORE(>=+1) 103 (34.7%) | ON(0) 110 (37.0%) | AFTER(<=-1) 84 (28.3%) | within[-1,+1] 150 | within[-2,+1] 163 (54.9%) | median +0.0 quartiles -1.0..+2.0
+    hist -10:2 -9:10 -8:5 -7:4 -6:6 -5:3 -4:16 -3:7 -2:13 -1:18 +0:110 +1:22 +2:7 +3:8 +4:8 +5:10 +6:5 +7:4 +8:5 +9:6 +10:2 +11:4 +12:5 +13:2 +14:3 +15:2 +16:1 +17:2 +18:1 +19:1 +20:5
+-   A distinct (event,delta) pairs: n = 383 | BEFORE(>=+1) 162 (42.3%) | ON(0) 110 (28.7%) | AFTER(<=-1) 111 (29.0%) | within[-1,+1] 157 | within[-2,+1] 174 (45.4%) | median +0.0 quartiles -1.0..+5.5
+    hist -10:3 -9:11 -8:6 -7:6 -6:9 -5:5 -4:21 -3:11 -2:17 -1:22 +0:110 +1:25 +2:7 +3:12 +4:11 +5:11 +6:10 +7:4 +8:9 +9:10 +10:5 +11:6 +12:10 +13:3 +14:8 +15:4 +16:5 +17:4 +18:4 +19:4 +20:10
+-   A distinct events, delta = max over labels: n = 297 | BEFORE(>=+1) 116 (39.1%) | ON(0) 100 (33.7%) | AFTER(<=-1) 81 (27.3%) | within[-1,+1] 137 | within[-2,+1] 150 (50.5%) | median +0.0 quartiles -1.0..+4.0
+    hist -10:2 -9:10 -8:5 -7:4 -6:6 -5:3 -4:15 -3:7 -2:13 -1:16 +0:100 +1:21 +2:5 +3:9 +4:7 +5:5 +6:9 +7:3 +8:6 +9:5 +10:4 +11:2 +12:7 +13:2 +14:4 +15:4 +16:4 +17:4 +18:2 +19:3 +20:10
+-   A distinct events, delta = min over labels: n = 297 | BEFORE(>=+1) 102 (34.3%) | ON(0) 102 (34.3%) | AFTER(<=-1) 93 (31.3%) | within[-1,+1] 140 | within[-2,+1] 151 (50.8%) | median +0.0 quartiles -2.0..+2.0
+    hist -10:3 -9:11 -8:4 -7:6 -6:9 -5:4 -4:19 -3:10 -2:11 -1:16 +0:102 +1:22 +2:7 +3:8 +4:7 +5:10 +6:5 +7:4 +8:5 +9:6 +10:2 +11:4 +12:5 +13:2 +14:3 +15:2 +16:1 +17:2 +18:1 +19:1 +20:5
+- era B distinct (stock,E) bought events: 10
+-   B distinct events, delta of first label in file order: n = 10 | BEFORE(>=+1) 6 (60.0%) | ON(0) 2 (20.0%) | AFTER(<=-1) 2 (20.0%) | within[-1,+1] 4 | within[-2,+1] 5 (50.0%) | median +1.0 quartiles +0.0..+5.2
+    hist -8:1 -2:1 +0:2 +1:2 +3:1 +6:1 +12:1 +14:1
+-   B distinct events, delta of the label closest to E: n = 10 | BEFORE(>=+1) 6 (60.0%) | ON(0) 2 (20.0%) | AFTER(<=-1) 2 (20.0%) | within[-1,+1] 4 | within[-2,+1] 5 (50.0%) | median +1.0 quartiles +0.0..+5.2
+    hist -8:1 -2:1 +0:2 +1:2 +3:1 +6:1 +12:1 +14:1
+-   B distinct (event,delta) pairs: n = 10 | BEFORE(>=+1) 6 (60.0%) | ON(0) 2 (20.0%) | AFTER(<=-1) 2 (20.0%) | within[-1,+1] 4 | within[-2,+1] 5 (50.0%) | median +1.0 quartiles +0.0..+5.2
+    hist -8:1 -2:1 +0:2 +1:2 +3:1 +6:1 +12:1 +14:1
+-   B distinct events, delta = max over labels: n = 10 | BEFORE(>=+1) 6 (60.0%) | ON(0) 2 (20.0%) | AFTER(<=-1) 2 (20.0%) | within[-1,+1] 4 | within[-2,+1] 5 (50.0%) | median +1.0 quartiles +0.0..+5.2
+    hist -8:1 -2:1 +0:2 +1:2 +3:1 +6:1 +12:1 +14:1
+-   B distinct events, delta = min over labels: n = 10 | BEFORE(>=+1) 6 (60.0%) | ON(0) 2 (20.0%) | AFTER(<=-1) 2 (20.0%) | within[-1,+1] 4 | within[-2,+1] 5 (50.0%) | median +1.0 quartiles +0.0..+5.2
+    hist -8:1 -2:1 +0:2 +1:2 +3:1 +6:1 +12:1 +14:1
+## WATCH STATE at s0  (doc: A bought 624: at 176, tl 153, not-yet-broken 39, anywhere 448 | not_yet 128: 50/50/13/97 | best 60: 17/15/4/38 | B bought 28: 8/8/5/14)
+- A bought: {'n': 624, 'at': 176, 'withtl': 153, 'nb_V1': 94, 'nb_V1_c0tl': 83, 'nb_V3': 32, 'nb_V4_at': 38, 'anyw': 448}
+- A not_yet: {'n': 128, 'at': 50, 'withtl': 50, 'nb_V1': 27, 'nb_V1_c0tl': 27, 'nb_V3': 17, 'nb_V4_at': 21, 'anyw': 97}
+- A best: {'n': 60, 'at': 17, 'withtl': 15, 'nb_V1': 10, 'nb_V1_c0tl': 8, 'nb_V3': 1, 'nb_V4_at': 6, 'anyw': 38}
+- B bought: {'n': 28, 'at': 8, 'withtl': 8, 'nb_V1': 5, 'nb_V1_c0tl': 5, 'nb_V3': 4, 'nb_V4_at': 4, 'anyw': 14}
+- B not_yet: {'n': 0, 'at': 0, 'withtl': 0, 'nb_V1': 0, 'nb_V1_c0tl': 0, 'nb_V3': 0, 'nb_V4_at': 0, 'anyw': 0}
+- B best: {'n': 3, 'at': 1, 'withtl': 1, 'nb_V1': 0, 'nb_V1_c0tl': 0, 'nb_V3': 0, 'nb_V4_at': 0, 'anyw': 2}
+## SAME-DAY / WEEK population
+- era A weekly stream: weeks 254 | all tl rows median 205 | first breaks median 53 (first-break median over weeks with >=1 first break: 53, n=254)
+- era B weekly stream: weeks 145 | all tl rows median 243 | first breaks median 73 (first-break median over weeks with >=1 first break: 73, n=145)
+- A bought events n=297: OTHER tl rows same day median 146 mean 162.7 | first-break others (self excluded if first) median 29 mean 40.9 | first breaks that day incl self median 30 mean 41.4
+    ISO week: all rows (incl self) median 651 mean 752.3 | excl self median 650 | first breaks in week median 147
+- A not_yet events n=80: OTHER tl rows same day median 122 mean 132.0 | first-break others (self excluded if first) median 26 mean 31.9 | first breaks that day incl self median 26 mean 32.4
+    ISO week: all rows (incl self) median 605 mean 649.7 | excl self median 604 | first breaks in week median 142
+- B bought events n=10: OTHER tl rows same day median 44 mean 55.9 | first-break others (self excluded if first) median 17 mean 16.2 | first breaks that day incl self median 18 mean 16.9
+    ISO week: all rows (incl self) median 183 mean 237.0 | excl self median 182 | first breaks in week median 60
+## DISTINCT EVENTS (era A / era B)
+- era A: distinct (sym,E) events 388 | by grade {'bought': 297, 'not_yet': 80, 'best': 30} | bought&not_yet both 12 | distinct bases 288 | stocks 147 | labels/event {1: 308, 3: 26, 2: 54} (tokens: {1: 304, 3: 26, 2: 58})
+    bought events 297: by E-year {'2017': 7, '2019': 8, '2020': 205, '2021': 77} | distinct days 180 | ISO weeks 88 | C1 11
+    C1 share of tl stream 927/81015 = 1.14% ; among bought events 3.7%
+- era B: distinct (sym,E) events 12 | by grade {'bought': 10, 'best': 2} | bought&not_yet both 0 | distinct bases 11 | stocks 10 | labels/event {1: 12} (tokens: {1: 12})
+    bought events 10: by E-year {'2022': 1, '2023': 9} | distinct days 8 | ISO weeks 6 | C1 1
+    C1 share of tl stream 392/41200 = 0.95% ; among bought events 10.0%
+## PLACEBO (era A, symbols with a bought label): sessions t with a watch row in [t-10,t+20] and a tl event in [t-10,t+20], t not within +-20 of any label of that symbol
+- [any attributed label of the symbol excluded; watch window W1] bought symbols 205: sessions with a watch row 53266, with a tl event 43822
+-   placebo (any attributed label of the symbol excluded; W1): n = 43822 | BEFORE(>=+1) 23704 (54.1%) | ON(0) 5882 (13.4%) | AFTER(<=-1) 14236 (32.5%) | within[-1,+1] 11131 | within[-2,+1] 12996 (29.7%) | median +1.0 quartiles -2.0..+8.0
+    hist -10:772 -9:1048 -8:1107 -7:1193 -6:1290 -5:1433 -4:1521 -3:1656 -2:1865 -1:2351 +0:5882 +1:2898 +2:2079 +3:1713 +4:1562 +5:1454 +6:1337 +7:1218 +8:1129 +9:1057 +10:997 +11:939 +12:910 +13:885 +14:848 +15:827 +16:805 +17:791 +18:768 +19:751 +20:736
+- [any attributed label of the symbol excluded; watch window W2] bought symbols 205: sessions with a watch row 53261, with a tl event 44033
+-   placebo (any attributed label of the symbol excluded; W2): n = 44033 | BEFORE(>=+1) 23704 (53.8%) | ON(0) 5882 (13.4%) | AFTER(<=-1) 14447 (32.8%) | within[-1,+1] 11131 | within[-2,+1] 12996 (29.5%) | median +1.0 quartiles -2.0..+8.0
+    hist -10:983 -9:1048 -8:1107 -7:1193 -6:1290 -5:1433 -4:1521 -3:1656 -2:1865 -1:2351 +0:5882 +1:2898 +2:2079 +3:1713 +4:1562 +5:1454 +6:1337 +7:1218 +8:1129 +9:1057 +10:997 +11:939 +12:910 +13:885 +14:848 +15:827 +16:805 +17:791 +18:768 +19:751 +20:736
+- [only bought labels excluded; watch window W1] bought symbols 205: sessions with a watch row 54841, with a tl event 45274
+-   placebo (only bought labels excluded; W1): n = 45274 | BEFORE(>=+1) 24463 (54.0%) | ON(0) 6128 (13.5%) | AFTER(<=-1) 14683 (32.4%) | within[-1,+1] 11592 | within[-2,+1] 13526 (29.9%) | median +1.0 quartiles -2.0..+8.0
+    hist -10:789 -9:1070 -8:1136 -7:1224 -6:1328 -5:1480 -4:1571 -3:1707 -2:1934 -1:2444 +0:6128 +1:3020 +2:2164 +3:1775 +4:1619 +5:1507 +6:1379 +7:1259 +8:1167 +9:1090 +10:1028 +11:964 +12:934 +13:905 +14:867 +15:846 +16:826 +17:808 +18:785 +19:769 +20:751
+- [only bought labels excluded; watch window W2] bought symbols 205: sessions with a watch row 54834, with a tl event 45490
+-   placebo (only bought labels excluded; W2): n = 45490 | BEFORE(>=+1) 24463 (53.8%) | ON(0) 6128 (13.5%) | AFTER(<=-1) 14899 (32.8%) | within[-1,+1] 11592 | within[-2,+1] 13526 (29.7%) | median +1.0 quartiles -2.0..+8.0
+    hist -10:1005 -9:1070 -8:1136 -7:1224 -6:1328 -5:1480 -4:1571 -3:1707 -2:1934 -1:2444 +0:6128 +1:3020 +2:2164 +3:1775 +4:1619 +5:1507 +6:1379 +7:1259 +8:1167 +9:1090 +10:1028 +11:964 +12:934 +13:905 +14:867 +15:846 +16:826 +17:808 +18:785 +19:769 +20:751
+## POSITIVE CONTROLS
+- g_0466: SQM screen 2017-10-05 grade bought era A s0 2017-10-05 | nearest tl event E 2017-10-05 delta +0 retrigger 0 base SQM|2017-09-19 | watch row at s0: [('2017-09-20', 1)] | confirm_adr 1 confirm_price 1 daily_tab 1 triple_agree 1 dt_s -2.9 pair own ocr SQM
+- b1_00: ROKU screen 2021-06-16 grade not_yet era A s0 2021-06-16 | nearest tl event E 2021-06-18 delta +2 retrigger 1 base ROKU|2021-04-14 | watch row at s0: None | confirm_adr 1 confirm_price 1 daily_tab 1 triple_agree 1 dt_s -2.7 pair own ocr ROKU
+- g_0957: MDGL screen 2023-01-26 grade bought era B s0 2023-01-26 | nearest tl event E 2023-01-24 delta -2 retrigger 1 base MDGL|2022-12-22 | watch row at s0: [('2022-12-22', 1)] | confirm_adr 1 confirm_price 1 daily_tab 1 triple_agree 1 dt_s -2.4 pair own ocr MDGL
+## FIRST-BREAK DEFINITION SENSITIVITY: doc first break = retrigger==0 ; chain-first = retrigger_chain==0 (retrigger==0 & chain==1 = a drift re-fire of the same line)
+- A bought nearest CHAIN-FIRST break: n = 331 | BEFORE(>=+1) 172 (52.0%) | ON(0) 26 (7.9%) | AFTER(<=-1) 133 (40.2%) | within[-1,+1] 72 | within[-2,+1] 84 (25.4%) | median +1.0 quartiles -3.0..+11.0
+    hist -10:8 -9:7 -8:13 -7:14 -6:9 -5:11 -4:15 -3:11 -2:12 -1:33 +0:26 +1:13 +2:5 +3:11 +4:10 +5:10 +6:11 +7:4 +8:8 +9:11 +10:5 +11:13 +12:13 +13:5 +14:11 +15:6 +16:5 +17:5 +18:5 +19:8 +20:13
+   A bought matched 392: nearest event retrigger==1 190 (48.5%) | retrigger_chain==1 201 (51.3%)
+   A weekly CHAIN-FIRST median 43 (doc first-break 53/73) ; chain-first rows 17014
+   A bought events: same-day OTHER chain-first median 26 mean 33.9
+- B bought nearest CHAIN-FIRST break: n = 10 | BEFORE(>=+1) 6 (60.0%) | ON(0) 0 (0.0%) | AFTER(<=-1) 4 (40.0%) | within[-1,+1] 2 | within[-2,+1] 3 (30.0%) | median +1.0 quartiles -5.8..+5.2
+    hist -10:1 -8:1 -7:1 -2:1 +1:2 +3:1 +6:1 +12:1 +14:1
+   B bought matched 10: nearest event retrigger==1 3 (30.0%) | retrigger_chain==1 3 (30.0%)
+   B weekly CHAIN-FIRST median 59 (doc first-break 53/73) ; chain-first rows 10046
+   B bought events: same-day OTHER chain-first median 13 mean 12.9
+## SECOND PASS (after reading the design script): no_break_yet variants, placebo range, chain count, never-watched union
+- no_break_yet A bought: V5 (pole_date column key) 39 | V6 (drift-robust base_id) 33   [doc 39/13/4/5/0]
+- no_break_yet A not_yet: V5 (pole_date column key) 13 | V6 (drift-robust base_id) 13   [doc 39/13/4/5/0]
+- no_break_yet A best: V5 (pole_date column key) 4 | V6 (drift-robust base_id) 4   [doc 39/13/4/5/0]
+- no_break_yet B bought: V5 (pole_date column key) 5 | V6 (drift-robust base_id) 5   [doc 39/13/4/5/0]
+- no_break_yet B best: V5 (pole_date column key) 0 | V6 (drift-robust base_id) 0   [doc 39/13/4/5/0]
+- placebo, t restricted to [Emin+10, Emax-20], any attributed label excluded, bought symbols with coverage (200): sessions 51884, with event 42781   [doc 51,884 / 42,781]
+-   placebo restricted: n = 42781 | BEFORE(>=+1) 23145 (54.1%) | ON(0) 5775 (13.5%) | AFTER(<=-1) 13861 (32.4%) | within[-1,+1] 10917 | within[-2,+1] 12743 (29.8%) | median +1.0 quartiles -2.0..+8.0
+    hist -10:749 -9:1006 -8:1069 -7:1157 -6:1255 -5:1394 -4:1482 -3:1617 -2:1826 -1:2306 +0:5775 +1:2836 +2:2031 +3:1673 +4:1529 +5:1423 +6:1310 +7:1195 +8:1105 +9:1033 +10:973 +11:914 +12:886 +13:862 +14:826 +15:805 +16:783 +17:770 +18:747 +19:729 +20:715
+- not_yet-symbol placebo: sessions 24735, with event 19999   [txt 24,735 / 19,999]
+-   not_yet placebo restricted: n = 19999 | BEFORE(>=+1) 10909 (54.5%) | ON(0) 2713 (13.6%) | AFTER(<=-1) 6377 (31.9%) | within[-1,+1] 5103 | within[-2,+1] 5928 (29.6%) | median +1.0 quartiles -2.0..+8.0
+    hist -10:336 -9:470 -8:500 -7:537 -6:575 -5:638 -4:677 -3:744 -2:825 -1:1075 +0:2713 +1:1315 +2:941 +3:773 +4:707 +5:659 +6:609 +7:559 +8:518 +9:494 +10:461 +11:440 +12:424 +13:409 +14:397 +15:384 +16:376 +17:374 +18:363 +19:355 +20:351
+- era A: distinct (sym, retrigger_chain FLAG value) = 199 ; distinct (sym, base_id) = 288 ; distinct symbols = 147   [doc chains 199 / 11]
+- era B: distinct (sym, retrigger_chain FLAG value) = 11 ; distinct (sym, base_id) = 11 ; distinct symbols = 10   [doc chains 199 / 11]
+- never-watched symbols, union of both eras: 54   [doc 53]
+- watch rows era A for the union of resolved label symbols (283): 26558   [txt 26558 / 16118]
+- watch rows era B for the union of resolved label symbols (283): 16118   [txt 26558 / 16118]
