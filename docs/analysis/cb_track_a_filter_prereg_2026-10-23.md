@@ -660,3 +660,24 @@ round 2.
 | I1–I3 | the whitelist names its files and the columns the fit prints (C1, base_len, the phase columns, apollo_regime, split); the shuffle test split into a pre-fit AUC band and a post-subset hold-out check (chance about 0.66), plus a look-ahead test on bars after D; bootstrap strata by `retrigger` with weights fixed at 132 / 104 | §5 guards, §6 unit and mix |
 | nits | title / status round 3; CAN'T TELL "otherwise"; the chance figure's conservatism; 13 of the 15 positive-and-not-yet events positive (MRNA, ROKU post-E-only); 72 → 75; the mix counts re-verified; the pin record names `84a19c0c`; the script's §12 label and one-decimal medians | throughout; script |
 
+
+## RESULT — the frozen fit, run once 2026-10-23 after the freeze commit `d254cf5a` (printout `scripts/probes/_705_track_a_1023/02_fit_filter.txt`)
+
+- **BAR VERDICT: FAIL** — 1 of the 66 hold-out (2021) positive events flagged TAKE at N = 6 (FAIL ≤ 1; chance alone 0.87); fit set 4 of
+  170 (plus 4 CAPPED); era B 0 of 9; N = 8 beside: 2 of 66. Plateau FAILS (every neighbour 0–3). Recounted independently from
+  `fit_take.tsv` by the main loop: 170 / 66 positives, 1 TAKE on the hold-out, 4 TAKE + 4 CAPPED on the fit set, 2 at N = 8.
+- **Guards:** look-ahead PASS (500 rows); pre-fit shuffle PASS (every feature's mean AUC in [0.48, 0.52]); post-subset shuffle PASS
+  (mean 0.275 ≤ 1.5); every population assert passed.
+- **Subset chosen:** `rs_best` (fit AUC 0.781, hold-out 0.720), `prior_move` (0.735 / 0.727), `pole_day_vol_ratio` (0.666 / 0.538),
+  `wk_ratio` (0.591 / 0.597). Against their fixed direction, reported not flipped: `base_depth` 0.371 (his picks sit in DEEPER bases than
+  the day's other breakouts), `dist_level_adr` 0.466, `pb_ratio` 0.499.
+- **Why a real separation still fails the bar (descriptive, main loop, from `fit_take.tsv`; not a verdict):** his picks rank high on
+  the score but not at the extreme — the median hold-out pick sits at the 75th percentile of its day's breakouts (fit set 84th);
+  18 of 66 are in the top 10% of their day, 6 of 66 in the top 1.3%. The registered cap — 6 a week out of 372 trendline crossings a
+  week in 2021 — keeps about the top 1.3%, so it misses almost all of them. Read from the hold-out after the verdict, so any wider cap
+  is a NEW registration for data not yet read, never a re-read of 2021.
+- **Readiness contrast:** none — at the label date the not-yet calls (n 43) and the bought calls (n 176) score the same
+  (P(bought above not-yet) 0.511).
+- **Consequence (§7, fixed before the run):** FAIL → **his R2 definition (the base high cleared on an expansion day) is the PRIMARY
+  filter of the ONE combined sealed test**; the label fit's table is reported to him. The sanity read (§6) stays registered and
+  runs under its own freeze.

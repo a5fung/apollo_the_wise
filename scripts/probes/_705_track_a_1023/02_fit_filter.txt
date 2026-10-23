@@ -1,0 +1,262 @@
+# #705 Track A — 02_fit_filter (THE REGISTERED FIT)
+# registration: docs/analysis/cb_track_a_filter_prereg_2026-10-23.md §5; directions fixed; the module's readings R-a..R-i are in its header
+
+## Pins (sha256)
+- labels_joined: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/labels_joined.tsv
+- matched_events: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/matched_events.tsv
+- moments: f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0  /Users/alvinfung/apollo_data/cb702/qm_streams/vision/graded_moments.tsv
+- cand_A: 3c5a66dc3052d0a284cbfee8202f74deb4e5bb75c74565dd8147df015e1baa5a  /Users/alvinfung/apollo_data/cb702_pre_v2/out/candidates_tl_com.tsv
+- cand_B: b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7  /Users/alvinfung/apollo_data/cb702/out/candidates.tsv
+- cand_B_com: 07c24ccea7dae4488428cb2f8fb6302c49c1090106f8a3cb6f13a6413a4ac6b3  /Users/alvinfung/apollo_data/cb702/out/candidates_com.tsv
+- watch_A: 976c19cd51a71637789817851e9b84d86504270b60f306e5a720b0915810cf43  /Users/alvinfung/apollo_data/cb702_pre_v2/out/watch_tl_com.tsv.gz
+- watch_B: 59e757cacb3250066393d0395e4abe89adff3787c34d1f2f7ad5fd5e2f2a5c0b  /Users/alvinfung/apollo_data/cb702/out/watch.tsv.gz
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d  /Users/alvinfung/apollo_data/cb702_pre_v2/daily_closes_all.csv.gz
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba  /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz
+- flags_A: 5358e31dc1b27d25c5143bdfca7a98b91a6c7a2d5b1da6c9c9d9ed9c55474c1d  /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/price/A_flags.tsv
+- flags_B: 8bf843859afb70ea59edf6f11cda12160020936c8df3e978b6a819590ea5c3d5  /Users/alvinfung/apollo_data/audit_runs_2026-10-23/B_flags.tsv
+- join_script: 6889819c41342c60831b0d62b277d47b677e4deaeab3443cbdde7a05d56b112c  
+- fit_module: 3fca7bf4f26ffcdf7152ddc9d4180c295aafe29067591def812fcc6884f38d27  
+- aplus_read: e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee  
+- registered_read: 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449  
+- doc_body: 4ad0d14e2092c9dc51225978871a900c3ad87d72504ae6a3126f7f51cd2d627e  <- live sha256 of the doc text above `<!-- FREEZE -->` = the value the freeze commit must pin (any later edit above the marker changes it and the real run refuses)
+- freeze record: every pin above is written under the FREEZE marker
+
+## Reads (GUARD 1 — every file through the whitelist; columns exactly as listed)
+- labels_joined: 854 rows kept | columns ['vid', 'ts', 'screen_ticker', 'sym', 's0', 'era', 'coverage', 'grade', 'is_bought', 'is_not_yet', 'is_best', 'watch_at_s0', 'c0_tl_at_s0', 'delta_tl', 'E_tl', 'base_id_tl']
+- matched_events: 400 rows kept | columns ['era', 'sym', 'E_tl', 'bought', 'not_yet', 'best', 'base_id']
+- moments: 2472 rows kept | columns ['video', 'ts', 'ticker', 'quote']
+- cand_A: 81015 rows kept | columns ['ticker', 'D', 'E', 'K', 'base_id', 'pole_date', 'retrigger', 'retrigger_chain', 'pivot', 'adr20', 'C1', 'base_len', 'phase_qqq_10_20', 'phase_qqq_10_20_s5', 'phase_spy_qqq_50', 'apollo_regime', 'split', 'tightening_ratio', 'base_depth', 'retrace', 'prior_move', 'pole_day_vol_ratio', 'rs_best', 'grp_pct', 'trigger_bar_range_adr']
+- watch_A: 227004 rows kept | columns ['ticker', 'watch_date', 'split', 'pole_date', 'base_len', 'adr20', 'close', 'pivot_tl', 'pole_high', 'pole_low_date', 'tightening_ratio', 'base_depth', 'retrace', 'prior_move', 'pole_day_vol_ratio', 'rs_best', 'grp_pct', 'trigger_bar_range_adr']
+- export_A: 4232147 rows kept | columns ['ticker', 'date', 'h', 'l', 'c', 'v']
+- flags_A: 93 rows kept | columns ['klass', 'ticker', 'date']
+- cand_B: 41200 rows kept | dropped at read {'not_discovery': 109478, 'dated_after_cut': 240} | columns ['ticker', 'D', 'E', 'K', 'base_id', 'pole_date', 'retrigger', 'retrigger_chain', 'pivot', 'adr20', 'C1', 'base_len', 'phase_qqq_10_20', 'phase_qqq_10_20_s5', 'phase_spy_qqq_50', 'apollo_regime', 'split', 'tightening_ratio', 'base_depth', 'retrace', 'prior_move', 'pole_day_vol_ratio', 'rs_best', 'grp_pct', 'trigger_bar_range_adr']
+- cand_B_com: 0 rows kept | dropped at read {'not_discovery': 65017, 'dated_after_cut': 88} | columns ['ticker', 'D', 'E', 'K', 'base_id', 'pole_date', 'retrigger', 'retrigger_chain', 'pivot', 'adr20', 'C1', 'base_len', 'phase_qqq_10_20', 'phase_qqq_10_20_s5', 'phase_spy_qqq_50', 'apollo_regime', 'split', 'tightening_ratio', 'base_depth', 'retrace', 'prior_move', 'pole_day_vol_ratio', 'rs_best', 'grp_pct', 'trigger_bar_range_adr']
+- watch_B: 129985 rows kept | dropped at read {'dropped_after_cut_or_holdout': 109961} | columns ['ticker', 'watch_date', 'split', 'pole_date', 'base_len', 'adr20', 'close', 'pivot_tl', 'pole_high', 'pole_low_date', 'tightening_ratio', 'base_depth', 'retrace', 'prior_move', 'pole_day_vol_ratio', 'rs_best', 'grp_pct', 'trigger_bar_range_adr']
+- export_B: 1765509 rows kept | dropped at read {'dated_after_cut': 5210943} | columns ['ticker', 'date', 'h', 'l', 'c', 'v']
+- flags_B: 67 rows kept | dropped at read {'dated_after_cut': 0} | columns ['klass', 'ticker', 'date']
+- whitelist: 12 reads, every one inside its entry; no E-day, forward or outcome column on any entry (FORBIDDEN checked at import)
+- era B candidates_com.tsv: 0 tl rows (it carries `com` only; read for the pinned dropped-at-read counts)
+
+## Populations (asserted; the registration's numbers)
+- at0_A: 119
+- at0_B: 3
+- cal_A: 1635
+- cal_B: 821
+- cand_B_after_cut: 328
+- cand_B_not_discovery: 174495
+- excl_A: 410
+- excl_B: 7
+- excl_fit: 270
+- excl_hold: 140
+- first_A: 20650
+- first_B: 12250
+- graded_dates_A: 156
+- graded_dates_B: 7
+- neg_A: 23188
+- neg_B: 345
+- neg_fit: 15107
+- neg_hold: 8081
+- neg_hold_2022: 0
+- own_best: 35
+- own_bought: 350
+- own_not_yet: 58
+- pos_A: 236
+- pos_B: 9
+- pos_fit: 170
+- pos_hold: 66
+- pos_hold_2022: 0
+- posny_A: 15
+- posny_bought_A: 12
+- post_A: 87
+- post_B: 3
+- post_fit: 58
+- post_hold: 29
+- ready_b_ev: 138
+- ready_b_s0: 176
+- ready_b_s0_tl: 153
+- ready_ny_ev: 25
+- ready_ny_ev_all: 32
+- ready_ny_s0: 43
+- ready_ny_s0_all: 50
+- rows_2021: 23632
+- rows_hold_2022_01_03: 85
+- rows_hold_A: 23717
+- stream_A: 81015
+- stream_B: 41200
+- strict_A: 127
+- strict_B: 6
+- strict_fit: 90
+- strict_hold: 37
+- watch_B_dropped: 109961
+- every population equals the registration (§2h, §4, §5)
+
+## Feature computation
+- era A: 81015 rows in 9s | export rows dated after the cut dropped at read 0 | calendar 1635 sessions 2016-01-04..2022-06-30 | DISCONTINUOUS events in the flags 93 (dated after the cut, dropped 0) | rule hits {'disc_rs_best': 15, 'disc_grp_pct': 3}
+- era B: 41200 rows in 9s | export rows dated after the cut dropped at read 5210943 | calendar 821 sessions 2021-09-27..2024-12-31 | DISCONTINUOUS events in the flags 67 (dated after the cut, dropped 0) | rule hits {'disc_rs_best': 9, 'disc_grp_pct': 6}
+- base rows != base_len + 1 or h at P != pole_high (wk_ratio / pb_ratio missing, counted): era A 0, era B 0
+- DISCONTINUOUS rule (reading R-b; the group-aggregate exclusion is NOT applied — the pinned grp_pct is a whole-universe cross-section off the whitelist)
+    era A: rows with a present value set MISSING — rs_best 15, grp_pct 3, prior_move 0; rows affected on any 15 (of them in the fit/check populations 0)
+    era B: rows with a present value set MISSING — rs_best 9, grp_pct 6, prior_move 0; rows affected on any 9 (of them in the fit/check populations 0)
+
+## Coverage — non-missing values per feature (the population columns pool positives and negatives; no class split)
+  feature               | dir    | tag | A stream       | A fit pop      | A 2021 pop   | B stream       | B check pop | DISC-set-missing A / B
+  ----------------------+--------+-----+----------------+----------------+--------------+----------------+-------------+-----------------------
+  tightening_ratio      | lower  | S   | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | n/a                   
+  wk_ratio              | lower  | S   | 56840 of 81015 | 11329 of 15277 | 5510 of 8147 | 28507 of 41200 | 235 of 354  | n/a                   
+  pb_ratio              | lower  | S   | 52062 of 81015 | 10820 of 15277 | 4851 of 8147 | 26052 of 41200 | 227 of 354  | n/a                   
+  base_depth            | lower  | S   | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | n/a                   
+  retrace               | lower  | R/B | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | n/a                   
+  prior_move            | higher | S/B | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | 0 / 0                 
+  pole_day_vol_ratio    | higher | B   | 80972 of 81015 | 15273 of 15277 | 8146 of 8147 | 41166 of 41200 | 354 of 354  | n/a                   
+  rs_best               | higher | S   | 81000 of 81015 | 15277 of 15277 | 8147 of 8147 | 41191 of 41200 | 354 of 354  | 15 / 9                
+  grp_pct               | higher | S/B | 57080 of 81015 | 11421 of 15277 | 5919 of 8147 | 33135 of 41200 | 290 of 354  | 3 / 6                 
+  vol_dry5              | lower  | S   | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | n/a                   
+  dist_level_adr        | lower  | S/B | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | n/a                   
+  trigger_bar_range_adr | lower  | B   | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | n/a                   
+- readiness nights at s0 (not-yet 50 + bought 176 pooled, 226 nights): tightening_ratio 226, wk_ratio 155, pb_ratio 158, base_depth 226, retrace 226, prior_move 226, pole_day_vol_ratio 226, rs_best 226, grp_pct 162, vol_dry5 226, dist_level_adr 203, trigger_bar_range_adr 226
+
+## GUARD 4 — look-ahead test (bars, watch rows and flag dates after D replaced with noise; features must be identical)
+- era A: 250 rows checked (seed 702) -> 0 differ
+- era B: 250 rows checked (seed 703) -> 0 differ
+- PASS: 500 rows, every feature identical with everything after D replaced
+
+## GUARD 2 — shuffle before the fit: positive flag permuted within each fit E date, 200 permutations, seed 702; band [0.48, 0.52]
+    tightening_ratio 0.5001 | wk_ratio 0.4999 | pb_ratio 0.5023 | base_depth 0.4993 | retrace 0.4988 | prior_move 0.4996 | pole_day_vol_ratio 0.4999 | rs_best 0.5003 | grp_pct 0.4985 | vol_dry5 0.5012 | dist_level_adr 0.4992 | trigger_bar_range_adr 0.5018
+    PASS — every feature's shuffled mean AUC lies in the band
+
+## THE SCREEN — within-day AUC on the FIT set (E <= 2020-12-31): 170 positive events vs 15107 same-day negatives
+    tightening_ratio        lower  better (S  ) AUC 0.5329 | n 170 positives scored, 0 missing, 0 with no negative value that day, 15107 negative values
+    wk_ratio                lower  better (S  ) AUC 0.5915 | n 80 positives scored, 90 missing, 0 with no negative value that day, 11249 negative values
+    pb_ratio                lower  better (S  ) AUC 0.4988 | n 99 positives scored, 71 missing, 0 with no negative value that day, 10721 negative values
+    base_depth              lower  better (S  ) AUC 0.3714 | n 170 positives scored, 0 missing, 0 with no negative value that day, 15107 negative values
+    retrace                 lower  better (R/B) AUC 0.5393 | n 170 positives scored, 0 missing, 0 with no negative value that day, 15107 negative values
+    prior_move              higher better (S/B) AUC 0.7350 | n 170 positives scored, 0 missing, 0 with no negative value that day, 15107 negative values
+    pole_day_vol_ratio      higher better (B  ) AUC 0.6659 | n 170 positives scored, 0 missing, 0 with no negative value that day, 15103 negative values
+    rs_best                 higher better (S  ) AUC 0.7806 | n 170 positives scored, 0 missing, 0 with no negative value that day, 15107 negative values
+    grp_pct                 higher better (S/B) AUC 0.5206 | n 113 positives scored, 57 missing, 0 with no negative value that day, 11308 negative values
+    vol_dry5                lower  better (S  ) AUC 0.5373 | n 170 positives scored, 0 missing, 0 with no negative value that day, 15107 negative values
+    dist_level_adr          lower  better (S/B) AUC 0.4665 | n 170 positives scored, 0 missing, 0 with no negative value that day, 15107 negative values
+    trigger_bar_range_adr   lower  better (B  ) AUC 0.5412 | n 170 positives scored, 0 missing, 0 with no negative value that day, 15107 negative values
+
+## THE SUBSET — fit AUC >= 0.58, descending, at most 5; below 0.5 = against the fixed direction, excluded
+- chosen: ['rs_best', 'prior_move', 'pole_day_vol_ratio', 'wk_ratio']
+- against the fixed direction (reported, never flipped): [('pb_ratio', np.float64(0.4988)), ('base_depth', np.float64(0.3714)), ('dist_level_adr', np.float64(0.4665))]
+
+## GUARD 3 — the registered subset's TAKE flags (N = 6) on the 2021 positive flags permuted within each E date, 200 permutations: mean count 0.275 (must be <= 1.5; chance about 0.66)
+    PASS
+
+## SCORE / CAP / TAKE (subset ['rs_best', 'prior_move', 'pole_day_vol_ratio', 'wk_ratio']; pool = every tl row with E' in [E-20, E-1], floor 30, a missing feature 0.5; cutoff = the 24th-highest reference score; cap 6 a week in (E, ticker) order)
+- era A: rows 81015 | TAKE 1103 | CAPPED 524 | PASS 79363 | UNRATED 25 (strict reading R-a beside: 51 rows with fewer than 24 members carrying every chosen feature)
+    TAKE per ISO week over 254 weeks: median 6.0, max 6, weeks at the cap 128 | pool size median 1832
+    TAKE rows: C1 121 (11.0%; stream 1.1%) | first breaks 192 (17.4%; stream 25.5%)
+- era B: rows 41200 | TAKE 605 | CAPPED 319 | PASS 40185 | UNRATED 91 (strict reading R-a beside: 91 rows with fewer than 24 members carrying every chosen feature)
+    TAKE per ISO week over 145 weeks: median 5.0, max 6, weeks at the cap 64 | pool size median 1270
+    TAKE rows: C1 75 (12.4%; stream 1.0%) | first breaks 123 (20.3%; stream 29.7%)
+- the 2021 no-information rate: sum min(6, rows in the week) / 23632 tl rows with E in 2021 = 1.32% -> 0.87 of 66 expected (beside: the hold-out set also holds 85 rows of 2022-01-03, 0 of them positive); chance on the 66's own weeks 0.66; P(>= 5 | Poisson 0.87) = 0.20%
+
+## RECALL — the share of positive events flagged TAKE (N = 6 decides; 4 and 8 beside)
+- fit 2017-20: N=4: 3 of 170 | N=6: 4 of 170 (CAPPED 4, UNRATED 0) | N=8: 9 of 170
+- hold-out 2021: N=4: 1 of 66 | N=6: 1 of 66 (CAPPED 0, UNRATED 0) | N=8: 2 of 66
+- era B 2022-23: N=4: 0 of 9 | N=6: 0 of 9 (CAPPED 1, UNRATED 0) | N=8: 0 of 9
+
+- the 12 AUCs on the fit set and the two check sets (fixed directions)
+    feature                 dir                       fit                   hold                      B
+    tightening_ratio        lower  0.533 (n 170; skip 0/0) 0.528 (n 66; skip 0/0)  0.449 (n 9; skip 0/0)
+    wk_ratio                lower  0.591 (n 80; skip 90/0) 0.597 (n 38; skip 28/0)  0.467 (n 6; skip 3/0)
+    pb_ratio                lower  0.499 (n 99; skip 71/0) 0.482 (n 33; skip 33/0)  0.549 (n 5; skip 4/0)
+    base_depth              lower  0.371 (n 170; skip 0/0) 0.353 (n 66; skip 0/0)  0.603 (n 9; skip 0/0)
+    retrace                 lower  0.539 (n 170; skip 0/0) 0.475 (n 66; skip 0/0)  0.610 (n 9; skip 0/0)
+    prior_move              higher 0.735 (n 170; skip 0/0) 0.727 (n 66; skip 0/0)  0.589 (n 9; skip 0/0)
+    pole_day_vol_ratio      higher 0.666 (n 170; skip 0/0) 0.538 (n 66; skip 0/0)  0.580 (n 9; skip 0/0)
+    rs_best                 higher 0.781 (n 170; skip 0/0) 0.720 (n 66; skip 0/0)  0.702 (n 9; skip 0/0)
+    grp_pct                 higher 0.521 (n 113; skip 57/0) 0.488 (n 43; skip 23/0)  0.495 (n 9; skip 0/0)
+    vol_dry5                lower  0.537 (n 170; skip 0/0) 0.531 (n 66; skip 0/0)  0.466 (n 9; skip 0/0)
+    dist_level_adr          lower  0.466 (n 170; skip 0/0) 0.409 (n 66; skip 0/0)  0.394 (n 9; skip 0/0)
+    trigger_bar_range_adr   lower  0.541 (n 170; skip 0/0) 0.519 (n 66; skip 0/0)  0.355 (n 9; skip 0/0)
+    (n = positive events scored; skip = positives with a missing value / with no negative carrying a value that day)
+
+## PLATEAU — every neighbour must flag at least max(4, ceil(0.75 x 1)) = 4 of the 66 hold-out events at N = 6 (one-sided)
+- screen 0.56: subset ['rs_best', 'prior_move', 'pole_day_vol_ratio', 'wk_ratio'] -> 1 flagged -> BELOW
+- screen 0.60: subset ['rs_best', 'prior_move', 'pole_day_vol_ratio'] -> 3 flagged -> BELOW
+- without rs_best: subset ['prior_move', 'pole_day_vol_ratio', 'wk_ratio'] -> 0 flagged -> BELOW
+- without prior_move: subset ['rs_best', 'pole_day_vol_ratio', 'wk_ratio'] -> 1 flagged -> BELOW
+- without pole_day_vol_ratio: subset ['rs_best', 'prior_move', 'wk_ratio'] -> 1 flagged -> BELOW
+- without wk_ratio: subset ['rs_best', 'prior_move', 'pole_day_vol_ratio'] -> 3 flagged -> BELOW
+- plateau: FAILS
+
+## BAR VERDICT (decided on the 2021 hold-out, in events): FAIL — 1 of 66 hold-out events flagged (<= 1)
+    PASS >= 5 of 66 with the plateau and >= 1 of the 9 era-B events | FAIL <= 1 or an empty subset | CAN'T TELL otherwise. The bar is coarse: one event moves a verdict at its edges.
+
+## BESIDE (descriptive, never deciding)
+- recall on the post-E-only events (hindsight): fit 2 of 58 | 2021 1 of 29 | era B 1 of 3
+- recall on the strictly-before events (clean of E): fit 3 of 90 | 2021 0 of 37 | era B 0 of 6
+- share of era-A not-yet EVENTS (all) flagged TAKE: 1 of 80 (descriptive; not the readiness contrast)
+- share of era-A not-yet events carrying no positive label flagged TAKE: 1 of 65 (descriptive; not the readiness contrast)
+- era A by year of E: 2017: TAKE 202, positives flagged 1 of 6 | 2018: TAKE 219, positives flagged 0 of 0 | 2019: TAKE 241, positives flagged 2 of 8 | 2020: TAKE 244, positives flagged 1 of 156 | 2021: TAKE 193, positives flagged 1 of 66 | 2022: TAKE 4, positives flagged 0 of 0
+    by phase_qqq_10_20 at D: '0': rows 24029, TAKE 485, positives flagged 3 of 70 | '1': rows 56986, TAKE 618, positives flagged 2 of 166
+    by phase_qqq_10_20_s5 at D: '0': rows 22063, TAKE 432, positives flagged 2 of 65 | '1': rows 58952, TAKE 671, positives flagged 3 of 171
+    by phase_spy_qqq_50 at D: '0': rows 13112, TAKE 298, positives flagged 0 of 39 | '1': rows 67903, TAKE 805, positives flagged 5 of 197
+    by apollo_regime: n/a (empty for every row)
+- era B by year of E: 2022: TAKE 187, positives flagged 0 of 1 | 2023: TAKE 194, positives flagged 0 of 8 | 2024: TAKE 224, positives flagged 0 of 0
+    by phase_qqq_10_20 at D: '0': rows 21169, TAKE 306, positives flagged 0 of 1 | '1': rows 20031, TAKE 299, positives flagged 0 of 8
+    by phase_qqq_10_20_s5 at D: '0': rows 19727, TAKE 293, positives flagged 0 of 1 | '1': rows 21473, TAKE 312, positives flagged 0 of 8
+    by phase_spy_qqq_50 at D: '0': rows 12575, TAKE 208, positives flagged 0 of 1 | '1': rows 28625, TAKE 397, positives flagged 0 of 8
+    by apollo_regime: n/a (empty for every row)
+
+- AUCs on the delta-0 subset (a positive label exactly on E; the only timing signal) against the same-day negatives
+    feature                 dir                         A                      B
+    tightening_ratio        lower  0.520 (n 119; skip 0/0)  0.809 (n 3; skip 0/0)
+    wk_ratio                lower  0.599 (n 63; skip 56/0)  0.552 (n 3; skip 0/0)
+    pb_ratio                lower  0.549 (n 69; skip 50/0)  0.866 (n 2; skip 1/0)
+    base_depth              lower  0.395 (n 119; skip 0/0)  0.374 (n 3; skip 0/0)
+    retrace                 lower  0.542 (n 119; skip 0/0)  0.447 (n 3; skip 0/0)
+    prior_move              higher 0.728 (n 119; skip 0/0)  0.667 (n 3; skip 0/0)
+    pole_day_vol_ratio      higher 0.614 (n 119; skip 0/0)  0.716 (n 3; skip 0/0)
+    rs_best                 higher 0.794 (n 119; skip 0/0)  0.807 (n 3; skip 0/0)
+    grp_pct                 higher 0.514 (n 82; skip 37/0)  0.351 (n 3; skip 0/0)
+    vol_dry5                lower  0.494 (n 119; skip 0/0)  0.358 (n 3; skip 0/0)
+    dist_level_adr          lower  0.506 (n 119; skip 0/0)  0.567 (n 3; skip 0/0)
+    trigger_bar_range_adr   lower  0.569 (n 119; skip 0/0)  0.481 (n 3; skip 0/0)
+    (n = positive events scored; skip = positives with a missing value / with no negative carrying a value that day)
+- AUCs on the own-line subset (the positive grade's phrase in the ticker's own caption line)
+    feature                 dir                       fit                   hold                      B
+    tightening_ratio        lower  0.552 (n 97; skip 0/0) 0.550 (n 37; skip 0/0)  0.488 (n 5; skip 0/0)
+    wk_ratio                lower  0.595 (n 48; skip 49/0) 0.534 (n 19; skip 18/0)  0.534 (n 4; skip 1/0)
+    pb_ratio                lower  0.546 (n 55; skip 42/0) 0.464 (n 17; skip 20/0)  0.605 (n 3; skip 2/0)
+    base_depth              lower  0.335 (n 97; skip 0/0) 0.385 (n 37; skip 0/0)  0.508 (n 5; skip 0/0)
+    retrace                 lower  0.514 (n 97; skip 0/0) 0.501 (n 37; skip 0/0)  0.432 (n 5; skip 0/0)
+    prior_move              higher 0.755 (n 97; skip 0/0) 0.701 (n 37; skip 0/0)  0.498 (n 5; skip 0/0)
+    pole_day_vol_ratio      higher 0.677 (n 97; skip 0/0) 0.562 (n 37; skip 0/0)  0.470 (n 5; skip 0/0)
+    rs_best                 higher 0.779 (n 97; skip 0/0) 0.708 (n 37; skip 0/0)  0.641 (n 5; skip 0/0)
+    grp_pct                 higher 0.489 (n 61; skip 36/0) 0.560 (n 26; skip 11/0)  0.275 (n 5; skip 0/0)
+    vol_dry5                lower  0.513 (n 97; skip 0/0) 0.566 (n 37; skip 0/0)  0.259 (n 5; skip 0/0)
+    dist_level_adr          lower  0.501 (n 97; skip 0/0) 0.407 (n 37; skip 0/0)  0.473 (n 5; skip 0/0)
+    trigger_bar_range_adr   lower  0.551 (n 97; skip 0/0) 0.521 (n 37; skip 0/0)  0.355 (n 5; skip 0/0)
+    (n = positive events scored; skip = positives with a missing value / with no negative carrying a value that day)
+- AUCs on the base-level reading (every tl row of a GRADED base positive; reading R-h)
+    feature                 dir                       fit                   hold                      B
+    tightening_ratio        lower  0.568 (n 762; skip 0/0) 0.538 (n 338; skip 0/0) 0.576 (n 42; skip 0/0)
+    wk_ratio                lower  0.574 (n 489; skip 273/0) 0.551 (n 240; skip 98/0) 0.444 (n 31; skip 11/0)
+    pb_ratio                lower  0.522 (n 499; skip 263/0) 0.552 (n 209; skip 129/0) 0.717 (n 21; skip 21/0)
+    base_depth              lower  0.330 (n 762; skip 0/0) 0.313 (n 338; skip 0/0) 0.498 (n 42; skip 0/0)
+    retrace                 lower  0.510 (n 762; skip 0/0) 0.406 (n 338; skip 0/0) 0.568 (n 42; skip 0/0)
+    prior_move              higher 0.748 (n 762; skip 0/0) 0.705 (n 338; skip 0/0) 0.621 (n 42; skip 0/0)
+    pole_day_vol_ratio      higher 0.678 (n 762; skip 0/0) 0.555 (n 338; skip 0/0) 0.613 (n 42; skip 0/0)
+    rs_best                 higher 0.763 (n 762; skip 0/0) 0.659 (n 338; skip 0/0) 0.736 (n 42; skip 0/0)
+    grp_pct                 higher 0.510 (n 479; skip 283/0) 0.458 (n 219; skip 119/0) 0.445 (n 42; skip 0/0)
+    vol_dry5                lower  0.553 (n 762; skip 0/0) 0.514 (n 338; skip 0/0) 0.547 (n 42; skip 0/0)
+    dist_level_adr          lower  0.525 (n 762; skip 0/0) 0.486 (n 338; skip 0/0) 0.504 (n 42; skip 0/0)
+    trigger_bar_range_adr   lower  0.542 (n 762; skip 0/0) 0.506 (n 338; skip 0/0) 0.367 (n 42; skip 0/0)
+    (n = positive events scored; skip = positives with a missing value / with no negative carrying a value that day)
+- base-level recall fit: 30 of 762 rows
+- base-level recall 2021: 12 of 338 rows
+- base-level recall era B: 2 of 42 rows
+
+## READINESS CONTRAST (outcome-free; the state he was looking at; expected: the not-yet side scores LOWER)
+- at s0 (reading R-d): not-yet n 43, median 0.705, mean 0.668 vs bought n 176, median 0.711, mean 0.677 -> P(bought scores above not-yet) 0.511
+    beside: the 50 not-yet before the 15-event exclusion n 50, median 0.711, mean 0.679 (pair AUC 0.493); bought with a trendline at s0 n 153, median 0.725, mean 0.686 (pair AUC vs the 43 0.527); pool size at s0 min 165
+- beside, at the matched event's D (delta 0 or +1): not-yet n 25, median 0.741, mean 0.737 vs bought n 138, median 0.686, mean 0.670 -> pair AUC 0.370; the 32 before the exclusion n 32, median 0.753, mean 0.742 (pair AUC 0.363)
+
+- TAKE table written: /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/fit_take.tsv (122215 rows; a blank pct = a missing feature counted 0.5)
+
+(26s)
