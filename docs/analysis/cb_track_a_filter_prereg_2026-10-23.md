@@ -1,6 +1,6 @@
 # #705 Track A — the breakout FILTER built from Qullamaggie's own stream grades: pre-registration (2026-10-23, round 3)
 
-**Status: DRAFT — not frozen. Round 3 (round 2's recheck returned FIX on three blockers; round 3's recheck on two one-line edits, applied — `verify/recheck_round3.md`). Round 2 came after two independent checkers returned FIX on round 1 (`scripts/probes/_705_track_a_1023/verify/
+**Status: FROZEN 2026-10-23 for the FIT (the doc body above the freeze marker and the fit module are pinned below; `02_fit_filter.py` refuses to run if either changes). The sanity read and the combined test are registered here but each gets its own freeze before it runs. Round 3 (round 2's recheck returned FIX on three blockers; round 3's recheck on two one-line edits, applied — `verify/recheck_round3.md`). Round 2 came after two independent checkers returned FIX on round 1 (`scripts/probes/_705_track_a_1023/verify/
 logic_report.md`, `recount_report.md`; every fix and where it landed is listed at the end). OUTCOME-FREE so far: no forward return, R,
 P&L, stop, exit or bar after a breakout day has been read for any event named here. Every era-B file was read with its rows dated after
 2024-12-31 DROPPED AT READ and asserted (candidates: 328 rows dated after the cut and 174,495 holdout rows; watch: 109,961 rows that
@@ -304,9 +304,12 @@ era A negatives 23,188 (15,107 fit / 8,081 hold-out), era B 345.**
   `base_len` is NOT a candidate (his 10-22 ruling: length is not rewarded on its own); it is a split beside. `atr14_slope` is not a
   candidate (its denominator is the pole's volatility, A+ registration). Market phase is a split, never an input (ruled 10-22).
   **Corporate actions inside a feature's window (the data standard's F4 / step 4):** the features with a RETURN window — `rs_best`
-  (the 1/3/6-month returns to D), `grp_pct` (the group's 63-session return; the group aggregate excludes DISCONTINUOUS tickers) and
+  (the 1/3/6-month returns to D), `grp_pct` (the group's 63-session return, used AS STORED in the watch row — its group aggregate still includes any
+  DISCONTINUOUS ticker, since recomputing it needs the SIC file and each night's universe, both outside the whitelist; only the
+  event's own-ticker rule here applies) and
   `prior_move` (pole low → pole high) — are MISSING for an event whose ticker has a G5 DISCONTINUOUS event dated inside that window
-  (the era's `price/<label>_flags.tsv` DISCONTINUOUS rows: v2's audit for era A, `runs_2026-10-23/run_all_B` for era B); a missing
+  (the G5 DISCONTINUOUS rows: era A `cb702_pre_v2/audit_1023/price/A_flags.tsv`, 93 pairs; era B
+  `apollo_data/audit_runs_2026-10-23/B_flags.tsv`, 67 pairs — both pinned in the freeze record); a missing
   feature is skipped in that event's AUC and counts 0.5 in its score; the count of events affected is printed. The other nine
   features have no return window.
 
@@ -369,15 +372,36 @@ era A negatives 23,188 (15,107 fit / 8,081 hold-out), era B 345.**
 - **The fit module's own guards (round 3):**
   1. **Whitelist.** It reads only these files: `track_a_1023/labels_joined.tsv`, `matched_events.tsv`, `vision/graded_moments.tsv`
      (the own-line beside row), each era's candidates and watch tables (§9 pins), the daily export bars dated ≤ D, and each era's
-     G5 DISCONTINUOUS flags (`price/<label>_flags.tsv`). From the candidates / watch tables only `ticker, D, E, K, base_id, pole_date,
+     G5 DISCONTINUOUS flags (the two files named in the corporate-actions note above). From the candidates / watch tables only `ticker, D, E, K, base_id, pole_date,
      retrigger, retrigger_chain, pivot, adr20, C1, base_len, phase_qqq_10_20, phase_qqq_10_20_s5, phase_spy_qqq_50, apollo_regime,
      split` (the last for era B's discovery cut) plus the twelve features' named inputs; it asserts no other column is read.
   2. **Shuffle test, before the fit:** the positive flag permuted within each E date, 200 permutations, seed 702 — the mean fit-set
      AUC of every feature must lie in [0.48, 0.52], else the module stops (a leak or a bug).
   3. **Shuffle test, after the subset is chosen and before the hold-out is read:** the REAL subset scored with the 2021 positive flags
      permuted within each E date, 200 permutations — the mean hold-out count must be ≤ 1.5 (chance expects about 0.66), else stop.
-  4. **Look-ahead test:** every feature recomputed after every bar dated > D is replaced with noise must be identical to the
-     original (a shuffle of labels cannot catch a feature that reads bars after D).
+  4. **Look-ahead test (scope as built):** on a 500-row sample, everything the module computes itself from bars — `wk_ratio`,
+     `pb_ratio`, `vol_dry5`, the DISCONTINUOUS windows and the watch-row lookup — is recomputed after every bar dated > D is replaced
+     with noise and must be identical (a shuffle of labels cannot catch a feature that reads bars after D). The other eight features
+     are read exactly as the pinned watch row at D stores them; their point-in-time guarantee is the detector's own slice test and
+     `rs_returns`, not this test.
+- **Readings the fit module chose where this text was ambiguous (recorded before the freeze; the reviewer accepted all but R-b, R-c,
+  R-j, which are now written into the text above or here):**
+  - R-a (§5.4–5.5): every pool member is rated; a missing value or a feature under the |S| ≥ 30 floor counts 0.5; UNRATED = a pool
+    under 24 members. The strict A+ rule (a member counts only with every chosen feature present) is printed beside as a count.
+  - R-b (corporate actions): the return windows are rs_best (D−126, D], grp_pct (D−63, D], prior_move (pole_low_date, pole_date];
+    every flagged row counts, liquid or not.
+  - R-c (flag files): as named in the corporate-actions note (the repo's `run_all_B` folder holds console output only).
+  - R-d (readiness): s0 is treated as the watch night D; its pool is the tl rows with E′ in [s0 − 19, s0].
+  - R-e (plateau, leave-one-out): the subset rule is re-run without that feature, so a sixth qualifying feature can enter; an empty
+    neighbour flags 0 events.
+  - R-f (subset): an AUC tie breaks by this section's table order (#1 … #12).
+  - R-g (own-line beside row): at least one of the event's on-or-before-E positive labels has its own grade's phrase in its own
+    caption line, keyed (vid, ts, screen_ticker).
+  - R-h (base-level beside row): the bases of the 236 / 9 positives; negatives = the other rows on those dates minus the rows the
+    round-3 rule excludes.
+  - R-i (calendar): the SPY calendar is derived from each export's SPY rows (1,635 / 821 sessions, asserted).
+  - R-j (the bar's denominator): 23,632 = tl rows with E in calendar 2021; the hold-out set is E > 2020-12-31 as in the join, which
+    adds 2022-01-03 (85 rows, 0 positives, 0 negatives — asserted, `pos_hold_2022 = neg_hold_2022 = 0`).
 - **What the fit may NOT do:** fit weights; fit directions; add a feature outside the 12; read any outcome column, any forward flag,
   any bar after D for a feature, any minute; change the window, the pool, N, the cutoff rank, the thresholds, the plateau's event rule or the positive
   class after seeing a result; run on 2025–26.
@@ -569,7 +593,17 @@ the marker is pinned in that commit). Round 1's script and doc were committed in
 - join printout `01_join_labels.txt` (round 3b): `5779b82bd954aa00f7294d52bc55afe0fe7478f4a58d8e0df9a1f10913b1d1f9` (round 3: `3b90134e…4793`)
 - out labels_joined.tsv (round 2; one column added): `d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b` (round 1: `13df2952…95a3`)
 - out matched_events.tsv (byte-identical to round 1): `4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc`
-- doc body sha256: (taken in the freeze commit)
+- **FIT FREEZE (2026-10-23, the commit that adds these lines; the real fit runs only after it):**
+  - doc body sha256 (the bytes above `<!-- FREEZE -->`): `4ad0d14e2092c9dc51225978871a900c3ad87d72504ae6a3126f7f51cd2d627e`
+  - fit_module `scripts/probes/_705_track_a_1023/02_fit_filter.py`: `3fca7bf4f26ffcdf7152ddc9d4180c295aafe29067591def812fcc6884f38d27`
+  - its tests `test_02_fit_filter.py` (90 pass): `463e6d78f05323b236d60f616130ff3fa17ff0f850fb8764fe907fbb8860db34`
+  - export_B `cb702/daily_closes_all.csv.gz`: `ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba`
+  - flags_A `cb702_pre_v2/audit_1023/price/A_flags.tsv`: `5358e31dc1b27d25c5143bdfca7a98b91a6c7a2d5b1da6c9c9d9ed9c55474c1d`
+  - flags_B `apollo_data/audit_runs_2026-10-23/B_flags.tsv`: `8bf843859afb70ea59edf6f11cda12160020936c8df3e978b6a819590ea5c3d5`
+  - aplus_read `scripts/probes/_cb_backtest/aplus_read.py` (imported read-only): `e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee`
+  - registered_read `scripts/probes/_cb_backtest/registered_read.py` (imported read-only): `28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449`
+  - join_script `01_join_labels.py` as the module reads it: `6889819c41342c60831b0d62b277d47b677e4deaeab3443cbdde7a05d56b112c`
+  - review of the module: `scripts/probes/_705_track_a_1023/verify/review_fit_module.md` (Opus, FIX → fixes 1–6 applied: doc §5 text, two code guards, 37 tests)
 
 ## Revisions 2026-10-23 round 2 — each checker fix and where it landed
 

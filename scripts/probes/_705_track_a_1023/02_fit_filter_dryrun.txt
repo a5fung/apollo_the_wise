@@ -1,0 +1,123 @@
+# #705 Track A — 02_fit_filter (DRY RUN: no AUC, no score against labels, no recall, no shuffle on real labels)
+# registration: docs/analysis/cb_track_a_filter_prereg_2026-10-23.md §5; directions fixed; the module's readings R-a..R-i are in its header
+
+## Pins (sha256)
+- labels_joined: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/labels_joined.tsv
+- matched_events: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/matched_events.tsv
+- moments: f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0  /Users/alvinfung/apollo_data/cb702/qm_streams/vision/graded_moments.tsv
+- cand_A: 3c5a66dc3052d0a284cbfee8202f74deb4e5bb75c74565dd8147df015e1baa5a  /Users/alvinfung/apollo_data/cb702_pre_v2/out/candidates_tl_com.tsv
+- cand_B: b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7  /Users/alvinfung/apollo_data/cb702/out/candidates.tsv
+- cand_B_com: 07c24ccea7dae4488428cb2f8fb6302c49c1090106f8a3cb6f13a6413a4ac6b3  /Users/alvinfung/apollo_data/cb702/out/candidates_com.tsv
+- watch_A: 976c19cd51a71637789817851e9b84d86504270b60f306e5a720b0915810cf43  /Users/alvinfung/apollo_data/cb702_pre_v2/out/watch_tl_com.tsv.gz
+- watch_B: 59e757cacb3250066393d0395e4abe89adff3787c34d1f2f7ad5fd5e2f2a5c0b  /Users/alvinfung/apollo_data/cb702/out/watch.tsv.gz
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d  /Users/alvinfung/apollo_data/cb702_pre_v2/daily_closes_all.csv.gz
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba  /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz
+- flags_A: 5358e31dc1b27d25c5143bdfca7a98b91a6c7a2d5b1da6c9c9d9ed9c55474c1d  /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/price/A_flags.tsv
+- flags_B: 8bf843859afb70ea59edf6f11cda12160020936c8df3e978b6a819590ea5c3d5  /Users/alvinfung/apollo_data/audit_runs_2026-10-23/B_flags.tsv
+- join_script: 6889819c41342c60831b0d62b277d47b677e4deaeab3443cbdde7a05d56b112c  
+- fit_module: 3fca7bf4f26ffcdf7152ddc9d4180c295aafe29067591def812fcc6884f38d27  
+- aplus_read: e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee  
+- registered_read: 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449  
+- doc_body: 4ad0d14e2092c9dc51225978871a900c3ad87d72504ae6a3126f7f51cd2d627e  <- live sha256 of the doc text above `<!-- FREEZE -->` = the value the freeze commit must pin (any later edit above the marker changes it and the real run refuses)
+- freeze record: every pin above is written under the FREEZE marker
+
+## Reads (GUARD 1 — every file through the whitelist; columns exactly as listed)
+- labels_joined: 854 rows kept | columns ['vid', 'ts', 'screen_ticker', 'sym', 's0', 'era', 'coverage', 'grade', 'is_bought', 'is_not_yet', 'is_best', 'watch_at_s0', 'c0_tl_at_s0', 'delta_tl', 'E_tl', 'base_id_tl']
+- matched_events: 400 rows kept | columns ['era', 'sym', 'E_tl', 'bought', 'not_yet', 'best', 'base_id']
+- moments: 2472 rows kept | columns ['video', 'ts', 'ticker', 'quote']
+- cand_A: 81015 rows kept | columns ['ticker', 'D', 'E', 'K', 'base_id', 'pole_date', 'retrigger', 'retrigger_chain', 'pivot', 'adr20', 'C1', 'base_len', 'phase_qqq_10_20', 'phase_qqq_10_20_s5', 'phase_spy_qqq_50', 'apollo_regime', 'split', 'tightening_ratio', 'base_depth', 'retrace', 'prior_move', 'pole_day_vol_ratio', 'rs_best', 'grp_pct', 'trigger_bar_range_adr']
+- watch_A: 227004 rows kept | columns ['ticker', 'watch_date', 'split', 'pole_date', 'base_len', 'adr20', 'close', 'pivot_tl', 'pole_high', 'pole_low_date', 'tightening_ratio', 'base_depth', 'retrace', 'prior_move', 'pole_day_vol_ratio', 'rs_best', 'grp_pct', 'trigger_bar_range_adr']
+- export_A: 4232147 rows kept | columns ['ticker', 'date', 'h', 'l', 'c', 'v']
+- flags_A: 93 rows kept | columns ['klass', 'ticker', 'date']
+- cand_B: 41200 rows kept | dropped at read {'not_discovery': 109478, 'dated_after_cut': 240} | columns ['ticker', 'D', 'E', 'K', 'base_id', 'pole_date', 'retrigger', 'retrigger_chain', 'pivot', 'adr20', 'C1', 'base_len', 'phase_qqq_10_20', 'phase_qqq_10_20_s5', 'phase_spy_qqq_50', 'apollo_regime', 'split', 'tightening_ratio', 'base_depth', 'retrace', 'prior_move', 'pole_day_vol_ratio', 'rs_best', 'grp_pct', 'trigger_bar_range_adr']
+- cand_B_com: 0 rows kept | dropped at read {'not_discovery': 65017, 'dated_after_cut': 88} | columns ['ticker', 'D', 'E', 'K', 'base_id', 'pole_date', 'retrigger', 'retrigger_chain', 'pivot', 'adr20', 'C1', 'base_len', 'phase_qqq_10_20', 'phase_qqq_10_20_s5', 'phase_spy_qqq_50', 'apollo_regime', 'split', 'tightening_ratio', 'base_depth', 'retrace', 'prior_move', 'pole_day_vol_ratio', 'rs_best', 'grp_pct', 'trigger_bar_range_adr']
+- watch_B: 129985 rows kept | dropped at read {'dropped_after_cut_or_holdout': 109961} | columns ['ticker', 'watch_date', 'split', 'pole_date', 'base_len', 'adr20', 'close', 'pivot_tl', 'pole_high', 'pole_low_date', 'tightening_ratio', 'base_depth', 'retrace', 'prior_move', 'pole_day_vol_ratio', 'rs_best', 'grp_pct', 'trigger_bar_range_adr']
+- export_B: 1765509 rows kept | dropped at read {'dated_after_cut': 5210943} | columns ['ticker', 'date', 'h', 'l', 'c', 'v']
+- flags_B: 67 rows kept | dropped at read {'dated_after_cut': 0} | columns ['klass', 'ticker', 'date']
+- whitelist: 12 reads, every one inside its entry; no E-day, forward or outcome column on any entry (FORBIDDEN checked at import)
+- era B candidates_com.tsv: 0 tl rows (it carries `com` only; read for the pinned dropped-at-read counts)
+
+## Populations (asserted; the registration's numbers)
+- at0_A: 119
+- at0_B: 3
+- cal_A: 1635
+- cal_B: 821
+- cand_B_after_cut: 328
+- cand_B_not_discovery: 174495
+- excl_A: 410
+- excl_B: 7
+- excl_fit: 270
+- excl_hold: 140
+- first_A: 20650
+- first_B: 12250
+- graded_dates_A: 156
+- graded_dates_B: 7
+- neg_A: 23188
+- neg_B: 345
+- neg_fit: 15107
+- neg_hold: 8081
+- neg_hold_2022: 0
+- own_best: 35
+- own_bought: 350
+- own_not_yet: 58
+- pos_A: 236
+- pos_B: 9
+- pos_fit: 170
+- pos_hold: 66
+- pos_hold_2022: 0
+- posny_A: 15
+- posny_bought_A: 12
+- post_A: 87
+- post_B: 3
+- post_fit: 58
+- post_hold: 29
+- ready_b_ev: 138
+- ready_b_s0: 176
+- ready_b_s0_tl: 153
+- ready_ny_ev: 25
+- ready_ny_ev_all: 32
+- ready_ny_s0: 43
+- ready_ny_s0_all: 50
+- rows_2021: 23632
+- rows_hold_2022_01_03: 85
+- rows_hold_A: 23717
+- stream_A: 81015
+- stream_B: 41200
+- strict_A: 127
+- strict_B: 6
+- strict_fit: 90
+- strict_hold: 37
+- watch_B_dropped: 109961
+- every population equals the registration (§2h, §4, §5)
+
+## Feature computation
+- era A: 81015 rows in 9s | export rows dated after the cut dropped at read 0 | calendar 1635 sessions 2016-01-04..2022-06-30 | DISCONTINUOUS events in the flags 93 (dated after the cut, dropped 0) | rule hits {'disc_rs_best': 15, 'disc_grp_pct': 3}
+- era B: 41200 rows in 9s | export rows dated after the cut dropped at read 5210943 | calendar 821 sessions 2021-09-27..2024-12-31 | DISCONTINUOUS events in the flags 67 (dated after the cut, dropped 0) | rule hits {'disc_rs_best': 9, 'disc_grp_pct': 6}
+- base rows != base_len + 1 or h at P != pole_high (wk_ratio / pb_ratio missing, counted): era A 0, era B 0
+- DISCONTINUOUS rule (reading R-b; the group-aggregate exclusion is NOT applied — the pinned grp_pct is a whole-universe cross-section off the whitelist)
+    era A: rows with a present value set MISSING — rs_best 15, grp_pct 3, prior_move 0; rows affected on any 15 (of them in the fit/check populations 0)
+    era B: rows with a present value set MISSING — rs_best 9, grp_pct 6, prior_move 0; rows affected on any 9 (of them in the fit/check populations 0)
+
+## Coverage — non-missing values per feature (the population columns pool positives and negatives; no class split)
+  feature               | dir    | tag | A stream       | A fit pop      | A 2021 pop   | B stream       | B check pop | DISC-set-missing A / B
+  ----------------------+--------+-----+----------------+----------------+--------------+----------------+-------------+-----------------------
+  tightening_ratio      | lower  | S   | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | n/a                   
+  wk_ratio              | lower  | S   | 56840 of 81015 | 11329 of 15277 | 5510 of 8147 | 28507 of 41200 | 235 of 354  | n/a                   
+  pb_ratio              | lower  | S   | 52062 of 81015 | 10820 of 15277 | 4851 of 8147 | 26052 of 41200 | 227 of 354  | n/a                   
+  base_depth            | lower  | S   | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | n/a                   
+  retrace               | lower  | R/B | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | n/a                   
+  prior_move            | higher | S/B | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | 0 / 0                 
+  pole_day_vol_ratio    | higher | B   | 80972 of 81015 | 15273 of 15277 | 8146 of 8147 | 41166 of 41200 | 354 of 354  | n/a                   
+  rs_best               | higher | S   | 81000 of 81015 | 15277 of 15277 | 8147 of 8147 | 41191 of 41200 | 354 of 354  | 15 / 9                
+  grp_pct               | higher | S/B | 57080 of 81015 | 11421 of 15277 | 5919 of 8147 | 33135 of 41200 | 290 of 354  | 3 / 6                 
+  vol_dry5              | lower  | S   | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | n/a                   
+  dist_level_adr        | lower  | S/B | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | n/a                   
+  trigger_bar_range_adr | lower  | B   | 81015 of 81015 | 15277 of 15277 | 8147 of 8147 | 41200 of 41200 | 354 of 354  | n/a                   
+- readiness nights at s0 (not-yet 50 + bought 176 pooled, 226 nights): tightening_ratio 226, wk_ratio 155, pb_ratio 158, base_depth 226, retrace 226, prior_move 226, pole_day_vol_ratio 226, rs_best 226, grp_pct 162, vol_dry5 226, dist_level_adr 203, trigger_bar_range_adr 226
+
+## GUARD 4 — look-ahead test (bars, watch rows and flag dates after D replaced with noise; features must be identical)
+- era A: 250 rows checked (seed 702) -> 0 differ
+- era B: 250 rows checked (seed 703) -> 0 differ
+- PASS: 500 rows, every feature identical with everything after D replaced
+
+## DRY RUN ends here: no AUC, no score against labels, no recall, no shuffle on real labels was computed. (18s)
