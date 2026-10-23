@@ -1,0 +1,35 @@
+ticker   gap_date                           name    gap  prev_close  dollar_drop n_new_listings                                                                                                             new_listings up_gap_reverted_next_day
+  MYGN 2019-11-05 Myriad Genetics, Inc. Common S -0.393       35.10        13.80              8 APXT(Apex Treasury Corporation Cl, $9.78)|APXTW(Apex Treasury Corporation Wa, $1.00)|AVPT(AvePoint, Inc. Class A Comm...                     None
+   APT 2020-03-13           Alpha Pro Tech, Ltd. -0.287       14.79         4.24              3 DFPHU(DFP Healthcare Acquisitions , $10.20)|ELVN(Enliven Therapeutics, Inc. C, $60.00)|FCNCP(First Citizens BancShare...                     None
+  OSUR 2020-08-06 OraSure Technologies, Inc. Com -0.259       19.58         5.06             24 AFIB(ACUTUS MED INC Common Stock, $26.50)|BOWXU(BowX Acquisition Corp. Unit, $10.03)|CMPI(Checkmate Pharmaceuticals, ...                     None
+  OSPN 2020-08-12      OneSpan Inc. Common Stock -0.295       31.20         9.19              8 BEKE(KE Holdings Inc. American De, $37.44)|BUFR(FT Vest Laddered Buffer ETF, $20.10)|DUAL(North Shore Dual Share Clas...                     None
+   GME 2021-02-02         GameStop Corp. Class A -0.374       56.25        21.06              8 AAC.U(Ares Acquisition Corporation, $10.40)|CUEN(CUENTAS INC COM PAR $, $50.31)|FEBZ(TrueShares Structured Outcom, $2...                     None
+  DRNA 2021-08-06 Dicerna Pharmaceuticals, Inc.  -0.305       37.92        11.55             16 BOAT(SonicShares Global Shipping , $24.49)|CLAQR(CleanTech Acquisition Corp. , $0.23)|GPCOR(Golden Path Acquisition C...                     None
+  AVIR 2021-10-19 Atea Pharmaceuticals, Inc. Com -0.724       40.60        29.40              9 ALPP(Alpine 4 Holdings, Inc. Cl A, $32.56)|BITO(ProShares Bitcoin ETF, $41.94)|CNTX(Context Therapeutics Inc. Co, $5....                     None
+   BMA 2019-08-12               Banco Macro S.A. -0.423       76.48        32.32              1                                                                              WTREP(Watford Holdings Ltd. 8.5% C, $25.00)                     None
+  HRTX 2020-06-29 Heron Therapeutics, Inc. Commo -0.343       19.82         6.80              4 CGRO(CoreValues Alpha Greater Chi, $9.80)|INVZ(Innoviz Technologies Ltd. Or, $9.80)|SAK(Saratoga Investment Corp. 7.,...                     None
+  OPLN 2019-06-28                  OPENLANE, Inc -0.619       62.08        38.42             10 ADPT(Adaptive Biotechnologies Cor, $40.30)|BBIO(BridgeBio Pharma, Inc. Commo, $27.55)|BSTZ(BlackRock Science and Tech...                     None
+  QDEL 2020-11-09 QuidelOrtho Corporation Common -0.286      283.45        81.04              7 ADOCU(Edoc Acquisition Corp. Unit, $10.10)|ALVO(Alvotech Ordinary Shares, $9.75)|BALY(Bally's Corporation, $27.90)|GI...                     None
+  TVRD 2017-06-30 Tvardi Therapeutics, Inc. Comm -0.260      918.36       238.68             11 ABLG(Abacus FCF International Lea, $25.46)|BY(Byline Bancorp, Inc. Common , $20.05)|CISN(Cision Ltd. Ordinary Share, ...                     None
+   DWT 2020-03-10 VelocityShares 3x Inverse Crud -0.259       17.20         4.46              2                                 DFNS.U(LGL Systems Acquisition Corp, $10.30)|DFPHU(DFP Healthcare Acquisitions , $10.20)                     None
+  FOSL 2021-01-28 Fossil Group, Inc. Common Stoc -0.273       23.66         6.47             24 CAHCU(CA Healthcare Acquisition Co, $10.16)|CDRO(Codere Online Luxembourg, S., $10.24)|CDROW(Codere Online Luxembourg...                     None
+  ARCT 2020-12-29 Arcturus Therapeutics Holdings -0.409       92.42        37.81             13 AVDG(AVDR US LargeCap ESG ETF, $25.08)|CBTG(Cabot Growth ETF, $25.25)|GNOG(Golden Nugget Online Gaming,, $22.55)|GSPY...                     None
+  TVRD 2021-04-29 Tvardi Therapeutics, Inc. Comm -0.435      928.44       403.69             18 ALTI(AlTi Global, Inc. Class A Co, $9.75)|AVAH(Aveanna Healthcare Holdings , $11.53)|BETR(Better Home & Finance Holdi...                     None
+   ZWS 2021-10-05 Zurn Elkay Water Solutions Cor -0.502       64.95        32.60             20 AAGR(AFRICAN AGRICULTURE HLDGS IN, $9.80)|APMI(Corgi AMAT 2x Daily ETF, $9.62)|BRLS(Borealis Foods Inc. Class A , $9....                     None
+  LYFT 2023-02-10 Lyft, Inc. Class A Common Stoc -0.313       16.22         5.07             12 BLACU(?, $10.16)|EFCpC(?, $24.72)|ENLT(Enlight Renewable Energy Ltd, $17.75)|HSAI(Hesai Group American Deposit, $21.0...                     None
+  SMCI 2024-10-30 Super Micro Computer, Inc. Com -0.291       49.12        14.27             20 ECGw(?, $49.00)|FLG(Flagstar Bank, National Asso, $10.61)|FLGpA(?, $21.33)|FLGpU(?, $39.64)|GELS(Gelteq Limited Ordin...                     None
+   ALT 2022-09-14   Altimmune, Inc. Common Stock -0.415       20.38         8.45             32 AGNCL(AGNC Investment Corp. Deposi, $22.16)|AMPX(Amprius Technologies, Inc., $10.00)|ATEST(?, $24.96)|BUYW(Main BuyWr...                     None
+  APPS 2023-05-25 Digital Turbine, Inc. Common S -0.367       14.43         5.29             14 AIDB(?, $24.54)|ATMU(Atmus Filtration Technologie, $21.65)|ATS(ATS Corporation, $43.11)|BINC(iShares Flexible Income ...                     None
+  HCAT 2022-08-05 Health Catalyst, Inc Common St -0.288       18.27         5.26             15 ACACW(?, $0.05)|BRSH(?, $53.75)|BRSHW(?, $0.44)|DVND(Touchstone Dividend Select E, $25.17)|EFSH(?, $33238.64)|MEGL(Ma...                     None
+  NERV 2022-10-17 Minerva Neurosciences, Inc Com -0.670       13.43         9.00              7 BBLU(EA Bridgeway Blue Chip ETF, $10.06)|ERNA(Ernexa Therapeutics Inc. Com, $1845.00)|GSD(Global Systems Dynamics Inc...                     None
+   PGY 2024-11-12 Pagaya Technologies Ltd. Class -0.274       16.89         4.62             13 ACOG(Alpha Cognition Inc. Common , $5.70)|BHST(BioHarvest Sciences Inc. Com, $5.75)|CRWL(GraniteShares ETF Trust Gran...                     None
+
+UP gaps: 101 | reverted next day (bad-print suspects): 7
+ticker   gap_date                           name   gap  prev_close
+  NVAX 2020-02-28     Novavax, Inc. Common Stock 0.266       11.80
+  MARA 2020-12-28 MARA Holdings, Inc. Common Sto 0.282       10.92
+ AHPIQ 2021-08-12 ALLIED HEALTHCARE PRODS INC CO 0.277       12.69
+  TULP 2021-12-30 Bloomia Holdings, Inc. Common  0.308       23.04
+  ZKIN 2021-03-24 ZK International Group Co., Lt 0.323       77.21
+   LAB 2020-08-26 Standard BioTools Inc. Common  0.308        8.79
+  AKRO 2024-03-04                              ? 0.277       27.81

@@ -1,0 +1,3 @@
+2017-21: trades 13,363; trades with a >=25% one-session open gap inside the hold 35 (down 6, up 35); distinct events 39
+2022-24: trades 8,984; trades with a >=25% one-session open gap inside the hold 23 (down 4, up 19); distinct events 19
+events file: 58
