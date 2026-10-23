@@ -1,6 +1,6 @@
-# #705 Track A — the breakout FILTER built from Qullamaggie's own stream grades: pre-registration (2026-10-23, round 2)
+# #705 Track A — the breakout FILTER built from Qullamaggie's own stream grades: pre-registration (2026-10-23, round 3)
 
-**Status: DRAFT — not frozen. Round 2 after two independent checkers returned FIX on round 1 (`scripts/probes/_705_track_a_1023/verify/
+**Status: DRAFT — not frozen. Round 3 (round 2's recheck returned FIX on three blockers; round 3's recheck on two one-line edits, applied — `verify/recheck_round3.md`). Round 2 came after two independent checkers returned FIX on round 1 (`scripts/probes/_705_track_a_1023/verify/
 logic_report.md`, `recount_report.md`; every fix and where it landed is listed at the end). OUTCOME-FREE so far: no forward return, R,
 P&L, stop, exit or bar after a breakout day has been read for any event named here. Every era-B file was read with its rows dated after
 2024-12-31 DROPPED AT READ and asserted (candidates: 328 rows dated after the cut and 174,495 holdout rows; watch: 109,961 rows that
@@ -241,13 +241,16 @@ not-yet 58 of 129 (71); best 35 of 64 (29).
 - **So the registered target is the breakout EVENT (stock, E) — a tl line-crossing, first break or retrigger — labelled POSITIVE when
   a "bought" or "best" label said ON OR BEFORE E marks it** (the nearest-event join; era A 236 events, era B 9), **with every input
   read from bars dated ≤ D = E − 1 (the watch night).** The flag applies the moment the line breaks on E, before any fill. An event
-  whose only positive labels came AFTER E (87 / 3) is NEITHER positive NOR negative: it leaves both classes and is reported beside
-  (its labels were said about a stock already worth showing — after-the-fact selection, §1.4f). The R2 expansion shape is NOT an
+  whose only positive labels came AFTER E (87 / 3) LEAVES THE POSITIVE CLASS and is reported beside (its labels were said about a stock
+  already worth showing — after-the-fact selection, §1.4f); **on a graded date it stays a NEGATIVE unless its base carried a label said
+  on or before its E** (27 in era A — 19 fit / 8 hold-out — and 1 in era B are among the negatives: a label said later cannot move a
+  row out of the control, §4). The R2 expansion shape is NOT an
   input (it needs E's close) and is no longer a split inside the fit.
 - **"not_yet" is the not-ready side of the same state label**, not an outcome arm: it enters only the readiness contrast in §5, and
   §6 carries no not-yet row. **"best" (n = 30 events in era A) is reported beside bought, never its own arm;** it is merged into the
   positive class. **An event carrying a positive (bought or best) and a not-yet label (15 in era A, 12 of them with a bought label) is
-  POSITIVE and is EXCLUDED from the not-yet set of the readiness contrast — not because every such pair is "a not-ready call he then acted on" (that fits 4 of the
+  EXCLUDED from the not-yet set of the readiness contrast; it is POSITIVE when a positive label was said on or before E (13 of the
+  15 — MRNA 2020-04-15 and ROKU 2020-08-04 carry only post-E positive labels and follow the post-E-only rule above) — not because every such pair is "a not-ready call he then acted on" (that fits 4 of the
   12; in 8 the not-ready call came at the same moment as or after the bought label, §2h), but because a bought event cannot stand
   on the not-ready side whatever the order of the two remarks.**
 - Why not his R1 day as the target: 89.9% of his bought labels precede it. A filter that waits for the base-high close would be
@@ -264,10 +267,13 @@ over-estimate. **Exclusion rule (round 3): a same-day row whose (stock, `base_id
 BEFORE that row's own E — a not-yet event, a post-E-only positive, a second crossing of a labelled base — is EXCLUDED from the
 negatives and from UNGRADED and counted** (era A: 410 of 23,598 rows on the 156 graded dates, 29 of them not-yet events and 18
 post-E-only positives → 23,188 negatives, 15,107 fit / 8,081 hold-out; era B 7 of 352 → 345). A label said only after the row's E
-does NOT exclude it: round 2 did, and 244 rows (148 fit / 96 hold-out, on 98 bases — 72 of them later labelled bought or best) left
+does NOT exclude it: round 2 did, and 244 rows (148 fit / 96 hold-out, on 98 bases — 75 of them later labelled bought or best, 3 of those also not-yet) left
 the control because he showed the stock later, plausibly because it worked; that is hindsight in the comparison (the round-2 rule
 is printed beside: 654 → 22,944). A labelled base is not "not shown on stream", and a not-yet event is a
-state he judged NOT READY, which is neither a negative (he did not reject the base) nor a positive.
+state he judged NOT READY: a not-yet event whose call came on or before its E is excluded (29 in era A); one whose call came only
+AFTER its E stays a negative (4 in era A: LYFT 2021-03-03, NNDM 2020-12-21, PLUG 2020-07-21, TPIC 2020-10-07), for the same reason a
+post-E-only positive does (27 in era A, 1 in era B). **The fit and sanity modules ASSERT the populations before any fit or walk:
+era A negatives 23,188 (15,107 fit / 8,081 hold-out), era B 345.**
 
 ## 5. The registered FILTER (to be fitted after the freeze; outcome-free throughout — no forward flag of any kind is read in the fit)
 
@@ -325,8 +331,8 @@ state he judged NOT READY, which is neither a negative (he did not reject the ba
      N = 6 is his "5–7"; N = 4 and N = 8 are reported beside, never deciding.
   6. **Plateau (decision 0023's convention: a pick whose neighbours collapse is an artefact):** the subset is re-derived at screen
      thresholds 0.56 and 0.60 and with each chosen feature left out in turn; the filter is frozen only if every neighbour flags, at
-     N = 6, at least 4 of the 66 hold-out events and no fewer than the registered subset's count minus one (stated in events, round
-     3: at these counts round 2's "within 25% relative" is a one-event tolerance anyway). **With ONE chosen feature leave-one-out is
+     N = 6, at least max(4, ⌈0.75 c⌉) of the 66 hold-out events, c = the registered subset's count (round 2's "within 25%" stated in
+     events, ONE-SIDED in round 3: a neighbour that flags more never fails the plateau). **With ONE chosen feature leave-one-out is
      undefined: its neighbours are the two thresholds plus the subset with the next-ranked feature (fit AUC ≥ 0.50) swapped in; if
      no such feature exists the plateau is CAN'T TELL.** A spike is reported as CAN'T TELL.
 - **What the fit measures (printed, outcome-free):** the 12 AUCs on fit and check sets with n; the chosen subset; TAKE per week
@@ -354,17 +360,26 @@ state he judged NOT READY, which is neither a negative (he did not reject the ba
   **1.32%** (2021 runs a median 372 tl rows a week, not the 2017–21 205 round 2 used — its "≈ 3% / ≈ 9% / about 6 events" was about
   2× off). A filter with no information flags **0.87 of the 66** on average. **PASS** = at least **5 of 66** flagged (chance alone
   reaches 5 with probability 0.2%, Poisson mean 0.87) with the plateau holding and at least 1 of the 9 era-B check events flagged;
-  **FAIL** = at most **1 of 66** (what chance gives 78% of the time), or an empty subset; **CAN'T TELL** = 2–4. Round 2's 3× bar would
+  **FAIL** = at most **1 of 66** (what chance gives 78% of the time), or an empty subset; **CAN'T TELL** otherwise (2–4 flagged, or ≥ 5 with none of the 9 era-B events). The 0.2% is conservative: the 2021
+  positives sit in heavy weeks, so chance would flag about 0.66 of them, not 0.87 (base clustering — 66 events on 59 bases — pulls
+  slightly the other way). Round 2's 3× bar would
   have passed on 3 events, which chance reaches 5.8% of the time; the bar was raised to 5 before any fit, for that reason alone.
   **The bar stays coarse — one event moves a verdict at its edges, and that is said with the result.** A PASS freezes the filter (its code, subset and pins written under the marker); otherwise his R2
   definition is the combined test's filter (§7).
-- **The fit module's own guards (round 3):** it loads only a WHITELIST of columns — from the candidates / watch tables `ticker, D,
-  E, K, base_id, pole_date, retrigger, retrigger_chain, pivot, adr20` plus the twelve features' named inputs, from the daily export
-  bars dated ≤ D — and asserts no other column is read; before the real fit it runs a SHUFFLE TEST (the positive flag permuted within
-  each E date, 200 permutations, seed 702): the mean AUC of every feature must lie in [0.48, 0.52] and the chosen-subset hold-out
-  count must average ≤ 1.5 events, else the module stops (a leak or a bug).
+- **The fit module's own guards (round 3):**
+  1. **Whitelist.** It reads only these files: `track_a_1023/labels_joined.tsv`, `matched_events.tsv`, `vision/graded_moments.tsv`
+     (the own-line beside row), each era's candidates and watch tables (§9 pins), the daily export bars dated ≤ D, and each era's
+     G5 DISCONTINUOUS flags (`price/<label>_flags.tsv`). From the candidates / watch tables only `ticker, D, E, K, base_id, pole_date,
+     retrigger, retrigger_chain, pivot, adr20, C1, base_len, phase_qqq_10_20, phase_qqq_10_20_s5, phase_spy_qqq_50, apollo_regime,
+     split` (the last for era B's discovery cut) plus the twelve features' named inputs; it asserts no other column is read.
+  2. **Shuffle test, before the fit:** the positive flag permuted within each E date, 200 permutations, seed 702 — the mean fit-set
+     AUC of every feature must lie in [0.48, 0.52], else the module stops (a leak or a bug).
+  3. **Shuffle test, after the subset is chosen and before the hold-out is read:** the REAL subset scored with the 2021 positive flags
+     permuted within each E date, 200 permutations — the mean hold-out count must be ≤ 1.5 (chance expects about 0.66), else stop.
+  4. **Look-ahead test:** every feature recomputed after every bar dated > D is replaced with noise must be identical to the
+     original (a shuffle of labels cannot catch a feature that reads bars after D).
 - **What the fit may NOT do:** fit weights; fit directions; add a feature outside the 12; read any outcome column, any forward flag,
-  any bar after D for a feature, any minute; change the window, the pool, N, the cutoff rank, the thresholds, the 25% or the positive
+  any bar after D for a feature, any minute; change the window, the pool, N, the cutoff rank, the thresholds, the plateau's event rule or the positive
   class after seeing a result; run on 2025–26.
 
 ## 6. The SANITY READ — do the labelled breakouts carry edge? (registered, NOT run; runs after the fit is frozen)
@@ -372,16 +387,18 @@ state he judged NOT READY, which is neither a negative (he did not reject the ba
 - **Populations (per era).** GRADED = the positive events with ≥ 1 bought / best label said ON OR BEFORE E (era A **236**; era B
   **9**). UNGRADED = every other tl row on the same E dates with the labelled-base rows excluded (§4, round-3 rule; era A **23,188** on 156
   dates, era B **345** on 7 dates; the exact n re-printed by the module). **No not-yet arm** (a state, not an outcome arm — §3). **Beside,
-  descriptive, never deciding:** the 87 / 3 post-E-only events (expected to read BETTER than GRADED because they were selected
+  descriptive, never deciding:** the 87 / 3 post-E-only events (27 / 1 of them also sit in UNGRADED, §3; expected to read BETTER than GRADED because they were selected
   after the fact — a reading of the size of the hindsight bias, which is why they are not in the deciding arm); the 127 / 6
   strictly-before events (the only subset clean of E's bar); the R2 share of GRADED vs UNGRADED (the bdef flag, three-valued in
   era A) — a share, with no outcome row of its own. The matching is the same-day population itself (§4); no ordinary-stock control.
 - **Unit and mix (round 3).** Every event is walked INDEPENDENTLY — a base with several crossings contributes several walks, and
   overlapping walks of one base are allowed, in both arms alike (Track B trades once per base; this read does not). The arms differ in
-  mix by construction — GRADED about 1.26 events per base and 44% retriggers, UNGRADED about 2.72 per base and 76% retriggers (the
-  round-2 recheck's counts; the module re-prints them) — so **the DECIDING difference is computed separately among first breaks and
+  mix by construction — GRADED about 1.26 events per base and 44% retriggers, UNGRADED 2.72 per base and 76.0% retriggers on 8,540
+  bases (re-verified under the round-3 rule; the module re-prints them) — so **the DECIDING difference is computed separately among first breaks and
   among retriggers and combined with GRADED's own first-break / retrigger shares as weights** (UNGRADED reweighted to GRADED's mix;
-  an abstained event stays in its group; the bootstrap redraws months and recomputes the weighted difference inside each resample).
+  strata by `retrigger` (not `retrigger_chain`); the weights FIXED at GRADED's full-sample shares, 132 first breaks / 104 retriggers
+  of 236, and not re-estimated inside a resample; an abstained event stays in its group; the bootstrap redraws months and recomputes
+  the weighted difference inside each resample).
   **Beside, never deciding:** the raw (unweighted) difference and a one-event-per-base reading (each base's first event in the arm).
 - **Entry (fully stated here; Track B's §D mechanics with the LEVEL replaced):** at E's CLOSE when close(E) > pivot_tl(D) — the
   module's trendline value projected to E, `high[A] + m × (E − A)`, the level the high cleared; else the event ABSTAINS (0 R, counted
@@ -526,7 +543,7 @@ Recording the primary filter's flag in the forward shadow is a recorder change (
 <!-- FREEZE -->
 ## Freeze record
 
-Pins (sha256) printed by `01_join_labels.py` on 2026-10-23 (round 2 run; the join's inputs and outputs; the fit module `02_fit_filter.py`
+Pins (sha256) printed by `01_join_labels.py` on 2026-10-23 (round 3 run, commit `84a19c0c`; the join's inputs and outputs; the fit module `02_fit_filter.py`
 and the sanity module do not exist yet — their pins are added here in the freeze commit that precedes each run, and the doc body above
 the marker is pinned in that commit). Round 1's script and doc were committed in `81c39f6b`, round 2 in `530ff2a0`, round 3 in the commit after it; every round's
 `labels_joined.tsv` / `matched_events.tsv` hashes are printed above, and no outcome column exists in either.
@@ -548,8 +565,8 @@ the marker is pinned in that commit). Round 1's script and doc were committed in
 - alias dedupe_applied.tsv: `223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64`
 - alias refetch_dropped.tsv: `6e325eccfe159cdce596deff2261caffcd3113be632c0a4bf83a9974b5751dd0`
 - alias rename_map.tsv: `02653560aa435762870dc90b0ef0d2fd7ab803a518f9e8c89772bcdd4fb34a57`
-- join script `01_join_labels.py` (round 3, §12 rule only): `6b1dfb5761390eb56a9d0998e52a2a667bec263c15de23d4e0266f7de8e89c97` (round 2: `7fc6452c…cb88`; round 1: `4ff17ee0…ceac`)
-- join printout `01_join_labels.txt` (round 3): `3b90134ea509045fd83c29f8319df7cadf1b6aa98bf0b6992114d46092504793`
+- join script `01_join_labels.py` (round 3b: §12 rule + one label and the one-decimal medians): `6889819c41342c60831b0d62b277d47b677e4deaeab3443cbdde7a05d56b112c` (round 3: `6b1dfb57…9c97`; round 2: `7fc6452c…cb88`; round 1: `4ff17ee0…ceac`)
+- join printout `01_join_labels.txt` (round 3b): `5779b82bd954aa00f7294d52bc55afe0fe7478f4a58d8e0df9a1f10913b1d1f9` (round 3: `3b90134e…4793`)
 - out labels_joined.tsv (round 2; one column added): `d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b` (round 1: `13df2952…95a3`)
 - out matched_events.tsv (byte-identical to round 1): `4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc`
 - doc body sha256: (taken in the freeze commit)
@@ -591,7 +608,7 @@ byte-identical to round 1; `labels_joined.tsv` gained one column. The two checke
 
 | fix | what changed | where |
 |---|---|---|
-| P1 | the same-day exclusion counts a label only if it was said ON OR BEFORE the excluded row's own E (round 2 counted a label at any time, so 244 rows — 72 bases later labelled bought or best — left the control for what happened after their breakout day). Era A 410 excluded → **23,188** negatives (15,107 fit / 8,081 hold-out); era B 7 → **345**; the round-2 numbers printed beside. Recomputed by the join (`01_join_labels.py` §12, outcome-free) and equal to the recheck's own count | §0, §2h table, §4, §5 fit sets, §6 populations; script §12 |
+| P1 | the same-day exclusion counts a label only if it was said ON OR BEFORE the excluded row's own E (round 2 counted a label at any time, so 244 rows — 75 bases later labelled bought or best — left the control for what happened after their breakout day). Era A 410 excluded → **23,188** negatives (15,107 fit / 8,081 hold-out); era B 7 → **345**; the round-2 numbers printed beside. Recomputed by the join (`01_join_labels.py` §12, outcome-free) and equal to the recheck's own count | §0, §2h table, §4, §5 fit sets, §6 populations; script §12 |
 | P2 | §6 states the unit (every event walked independently, overlapping walks of one base allowed in both arms) and makes the DECIDING difference mix-reweighted (first breaks and retriggers separately, combined with GRADED's shares); raw difference and one-event-per-base reading beside | §6 unit-and-mix bullet, §6 bar |
 | P3 | the fit's bar in EVENTS from the true 2021 no-information rate (1.32%, 0.87 of 66 expected): PASS ≥ 5 of 66 (chance 0.2%), FAIL ≤ 1 (chance gives that 78% of the time), CAN'T TELL 2–4; the plateau in events (every neighbour ≥ 4 and ≥ the registered count − 1). Round 2's 3× bar would have passed on 3 events (chance 5.8%), so it was raised before any fit | §5 bar, §5.6 |
 | small | readiness-contrast populations 43 / 25 (the 15 events carrying a positive AND a not-yet label leave the not-yet set — 12 with bought, the rest best; round 2 said 12 and 50 / 32); the not-yet TAKE share renamed (it is not the readiness contrast); the fit module's column whitelist and shuffle test registered; the join printout pinned | §2h, §3, §5 |
@@ -599,3 +616,13 @@ byte-identical to round 1; `labels_joined.tsv` gained one column. The two checke
 Not changed by round 3: the positive class (236 / 9), the features and directions, the pool, N = 6, the cutoff rank, the exit cells,
 the sanity read's bar thresholds, the join's window and tie rule. `labels_joined.tsv` and `matched_events.tsv` are byte-identical to
 round 2.
+
+## Revisions 2026-10-23 round 3b — the round-3 recheck (`verify/recheck_round3.md`): two one-line blockers, three module fixes, nits
+
+| fix | what changed | where |
+|---|---|---|
+| B1 | a post-E-only event (27 era A / 1 era B) and a not-yet event whose call came after its E (4) stay NEGATIVES on a graded date — the prose had said "neither class", which a module built from it would have turned back into P1's hindsight; both modules assert 23,188 (15,107 / 8,081) and 345 | §3, §4, §6 beside |
+| B2 | plateau = every neighbour ≥ max(4, ⌈0.75 c⌉), one-sided — round 2's 25% stated in events (round 3's "c − 1" was stricter above 7 events while claiming to be the same rule) | §5.6, may-not list |
+| I1–I3 | the whitelist names its files and the columns the fit prints (C1, base_len, the phase columns, apollo_regime, split); the shuffle test split into a pre-fit AUC band and a post-subset hold-out check (chance about 0.66), plus a look-ahead test on bars after D; bootstrap strata by `retrigger` with weights fixed at 132 / 104 | §5 guards, §6 unit and mix |
+| nits | title / status round 3; CAN'T TELL "otherwise"; the chance figure's conservatism; 13 of the 15 positive-and-not-yet events positive (MRNA, ROKU post-E-only); 72 → 75; the mix counts re-verified; the pin record names `84a19c0c`; the script's §12 label and one-decimal medians | throughout; script |
+

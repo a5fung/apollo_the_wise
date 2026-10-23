@@ -548,7 +548,7 @@ def main() -> int:
         dr = gr.delta_r1.astype(int)
         print(f"- second anchor, the R1 day (his definition: the first close above the base high; n = {len(gr)} of the {n} with an R1 row): "
               f"label before the R1 day {float((dr >= 1).mean()):.1%} | in [-2, +1] {float(((dr >= -2) & (dr <= 1)).mean()):.1%} | after {float((dr <= -1).mean()):.1%}"
-              f" | median delta to the R1 day {float(dr.median()):+.0f}")
+              f" | median delta to the R1 day {float(dr.median()):+.1f}")
         print(f"    histogram (delta to the R1 day: n): " + " ".join(f"{k:+d}:{v}" for k, v in sorted(Counter(dr).items())))
         off = gr.r1_off_from_E.astype(int)
         print(f"    R1 day's offset from our E (sessions; 0 = the base high was closed above on E itself): 0: {int((off == 0).sum())} | 1-5: {int(((off >= 1) & (off <= 5)).sum())} | 6-20: {int(((off >= 6) & (off <= 20)).sum())} | >20: {int((off > 20).sum())}")
@@ -623,7 +623,7 @@ def main() -> int:
                 g = Jc[(Jc.era == e) & (Jc[gcol] == 1)]
                 m = g[col].ne("")
                 dd = g.loc[m, f"delta_{k}"].astype(int)
-                print(f"- era {e} K={k:4s} {name:8s}: matched {pct(int(m.sum()), len(g))} | before {int((dd >= 1).sum())} / on {int((dd == 0).sum())} / after {int((dd <= -1).sum())} | median delta {float(dd.median()) if len(dd) else float('nan'):+.0f}")
+                print(f"- era {e} K={k:4s} {name:8s}: matched {pct(int(m.sum()), len(g))} | before {int((dd >= 1).sum())} / on {int((dd == 0).sum())} / after {int((dd <= -1).sum())} | median delta {float(dd.median()) if len(dd) else float('nan'):+.1f}")
 
     # ------------------------------------------------------------------ 9. wide distribution (beside; the window was not re-tuned)
     print(f"\n## 9. Nearest tl event within [-{WIDE}, +{WIDE}] for EVERY label with coverage (beside; the window above was fixed first)")
@@ -693,7 +693,7 @@ def main() -> int:
     for e in ("A", "B"):
         c = cand[e][cand[e].K == "tl"]
         for title, poskeys in (("ALL positive events (round 1's GRADED)", timing_keys[e]["onb"] | timing_keys[e]["post"]),
-                               ("positive events ON OR BEFORE E (round 2's GRADED)", timing_keys[e]["onb"])):
+                               ("positive events ON OR BEFORE E (the GRADED arm)", timing_keys[e]["onb"])):
             dates = {E for _, E in poskeys}
             on = c[c.E.isin(dates)]
             isp = np.array([(t, E) in poskeys for t, E in zip(on.ticker, on.E)])

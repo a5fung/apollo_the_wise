@@ -86,7 +86,7 @@
 ## 4. TARGET DECISION RULE (fixed in the header; applied to era A bought labels, full + partial coverage)
 - n = 392 | share with delta >= +1 (label before our breakout) 41.6% | share in [-2, +1] (on the breakout day) 45.7% -> NEITHER reaches 60% -> both reported; the registration takes the breakout-day target with state features read at D
 - against the placebo (expected = placebo share x 392): before (delta >= +1) 163 vs 212.1 expected | on (0) 113 vs 52.9 | after (<= -1) 116 vs 127.0 | one session early (+1) 25 vs 26.0 | two early (+2) 7 vs 18.6 | the excess sits at delta 0 only: +60.1 labels
-- second anchor, the R1 day (his definition: the first close above the base high; n = 109 of the 392 with an R1 row): label before the R1 day 89.9% | in [-2, +1] 11.0% | after 7.3% | median delta to the R1 day +14
+- second anchor, the R1 day (his definition: the first close above the base high; n = 109 of the 392 with an R1 row): label before the R1 day 89.9% | in [-2, +1] 11.0% | after 7.3% | median delta to the R1 day +14.0
     histogram (delta to the R1 day: n): -6:1 -3:1 -2:1 -1:5 +0:3 +1:3 +2:3 +3:4 +4:6 +5:3 +7:3 +8:3 +9:7 +10:8 +11:2 +13:1 +14:4 +15:4 +16:3 +17:2 +18:1 +19:2 +20:1 +21:3 +22:2 +23:2 +27:3 +28:1 +29:4 +30:1 +31:1 +32:1 +33:2 +34:3 +35:1 +36:2 +37:2 +40:1 +44:1 +45:1 +48:2 +50:1 +51:1 +53:1 +55:1 +64:1
     R1 day's offset from our E (sessions; 0 = the base high was closed above on E itself): 0: 20 | 1-5: 38 | 6-20: 29 | >20: 22
 
@@ -119,19 +119,19 @@
     era B weekly stream over every ISO week with an event: all tl rows median 243 a week (n = 145 weeks); first breaks median 73
 
 ## 8. Join rate by breakout level K (same window; tl is the registered level; the others are read beside)
-- era A K=tl   bought  : matched 392/624 (62.8%) | before 163 / on 113 / after 116 | median delta +0
-- era A K=tl   not_yet : matched 86/128 (67.2%) | before 43 / on 23 / after 20 | median delta +0
-- era A K=com  bought  : matched 412/624 (66.0%) | before 162 / on 141 / after 109 | median delta +0
-- era A K=com  not_yet : matched 88/128 (68.8%) | before 34 / on 32 / after 22 | median delta +0
-- era B K=tl   bought  : matched 10/28 (35.7%) | before 6 / on 2 / after 2 | median delta +1
+- era A K=tl   bought  : matched 392/624 (62.8%) | before 163 / on 113 / after 116 | median delta +0.0
+- era A K=tl   not_yet : matched 86/128 (67.2%) | before 43 / on 23 / after 20 | median delta +0.5
+- era A K=com  bought  : matched 412/624 (66.0%) | before 162 / on 141 / after 109 | median delta +0.0
+- era A K=com  not_yet : matched 88/128 (68.8%) | before 34 / on 32 / after 22 | median delta +0.0
+- era B K=tl   bought  : matched 10/28 (35.7%) | before 6 / on 2 / after 2 | median delta +1.0
 - era B K=tl   not_yet : matched 0/0 | before 0 / on 0 / after 0 | median delta +nan
-- era B K=com  bought  : matched 12/28 (42.9%) | before 8 / on 3 / after 1 | median delta +2
+- era B K=com  bought  : matched 12/28 (42.9%) | before 8 / on 3 / after 1 | median delta +1.5
 - era B K=com  not_yet : matched 0/0 | before 0 / on 0 / after 0 | median delta +nan
-- era B K=k5   bought  : matched 13/28 (46.4%) | before 9 / on 2 / after 2 | median delta +1
+- era B K=k5   bought  : matched 13/28 (46.4%) | before 9 / on 2 / after 2 | median delta +1.0
 - era B K=k5   not_yet : matched 0/0 | before 0 / on 0 / after 0 | median delta +nan
-- era B K=k10  bought  : matched 9/28 (32.1%) | before 5 / on 2 / after 2 | median delta +1
+- era B K=k10  bought  : matched 9/28 (32.1%) | before 5 / on 2 / after 2 | median delta +1.0
 - era B K=k10  not_yet : matched 0/0 | before 0 / on 0 / after 0 | median delta +nan
-- era B K=full bought  : matched 9/28 (32.1%) | before 6 / on 1 / after 2 | median delta +2
+- era B K=full bought  : matched 9/28 (32.1%) | before 6 / on 1 / after 2 | median delta +2.0
 - era B K=full not_yet : matched 0/0 | before 0 / on 0 / after 0 | median delta +nan
 
 ## 9. Nearest tl event within [-60, +60] for EVERY label with coverage (beside; the window above was fixed first)
@@ -156,9 +156,9 @@
 #     (sym, base_id) carries a matched label of any grade said ON OR BEFORE that row's own E (s0 <= E) - a label said later would drop the row
 #     because of what happened after its breakout day (hindsight). The round-2 rule (a label at any time) is printed beside, not used.
 - era A, ALL positive events (round 1's GRADED): 323 events on 193 dates | other tl rows on those dates 29237 (fit 19138 / 2021 10099) | on a LABELLED base, excluded 449 (fit 296 / 2021 153); of them not_yet events 30, post-E-only positive events 0 | NEGATIVES 28788 (fit 18842 / 2021 9946) || beside, the round-2 rule (a label at ANY time): excluded 704 (fit 450 / 2021 254), negatives 28533 (fit 18688 / 2021 9845); rows excluded under it only because of a LATER label 255 (fit 154 / 2021 101)
-- era A, positive events ON OR BEFORE E (round 2's GRADED): 236 events on 156 dates | other tl rows on those dates 23598 (fit 15377 / 2021 8221) | on a LABELLED base, excluded 410 (fit 270 / 2021 140); of them not_yet events 29, post-E-only positive events 18 | NEGATIVES 23188 (fit 15107 / 2021 8081) || beside, the round-2 rule (a label at ANY time): excluded 654 (fit 418 / 2021 236), negatives 22944 (fit 14959 / 2021 7985); rows excluded under it only because of a LATER label 244 (fit 148 / 2021 96)
+- era A, positive events ON OR BEFORE E (the GRADED arm): 236 events on 156 dates | other tl rows on those dates 23598 (fit 15377 / 2021 8221) | on a LABELLED base, excluded 410 (fit 270 / 2021 140); of them not_yet events 29, post-E-only positive events 18 | NEGATIVES 23188 (fit 15107 / 2021 8081) || beside, the round-2 rule (a label at ANY time): excluded 654 (fit 418 / 2021 236), negatives 22944 (fit 14959 / 2021 7985); rows excluded under it only because of a LATER label 244 (fit 148 / 2021 96)
 - era B, ALL positive events (round 1's GRADED): 12 events on 8 dates | other tl rows on those dates 471 | on a LABELLED base, excluded 6; of them not_yet events 0, post-E-only positive events 0 | NEGATIVES 465 || beside, the round-2 rule (a label at ANY time): excluded 7, negatives 464; rows excluded under it only because of a LATER label 1
-- era B, positive events ON OR BEFORE E (round 2's GRADED): 9 events on 7 dates | other tl rows on those dates 352 | on a LABELLED base, excluded 7; of them not_yet events 0, post-E-only positive events 1 | NEGATIVES 345 || beside, the round-2 rule (a label at ANY time): excluded 9, negatives 343; rows excluded under it only because of a LATER label 2
+- era B, positive events ON OR BEFORE E (the GRADED arm): 9 events on 7 dates | other tl rows on those dates 352 | on a LABELLED base, excluded 7; of them not_yet events 0, post-E-only positive events 1 | NEGATIVES 345 || beside, the round-2 rule (a label at ANY time): excluded 9, negatives 343; rows excluded under it only because of a LATER label 2
 
 ## 13. Readiness contrast populations (the state he was looking at = the watch row at s0; a label with no watch row at s0 cannot be scored there)
 - era A bought  : labels with coverage 624 | a watch row at s0 176 (with a tl line 153) | matched labels 392, of which delta in {0, +1} (scorable at D of the matched event with at most one session of drift) 138
@@ -205,6 +205,6 @@
 - alias_0: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64  /Users/alvinfung/apollo_data/cb702_pre_v2/dedupe_applied.tsv
 - alias_1: 6e325eccfe159cdce596deff2261caffcd3113be632c0a4bf83a9974b5751dd0  /Users/alvinfung/apollo_data/cb702_pre/survivorship_1023/merged_trial2/refetch_dropped.tsv
 - alias_2: 02653560aa435762870dc90b0ef0d2fd7ab803a518f9e8c89772bcdd4fb34a57  /Users/alvinfung/apollo_data/cb702/qm_streams/ext_2016_2022/rename_map.tsv
-- this_script: 6b1dfb5761390eb56a9d0998e52a2a667bec263c15de23d4e0266f7de8e89c97  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_track_a_1023/01_join_labels.py
+- this_script: 6889819c41342c60831b0d62b277d47b677e4deaeab3443cbdde7a05d56b112c  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_track_a_1023/01_join_labels.py
 - out labels_joined.tsv: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b
 - out matched_events.tsv: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc
