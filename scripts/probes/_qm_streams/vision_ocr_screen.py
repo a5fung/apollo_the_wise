@@ -57,9 +57,16 @@ def ocr(path, box=None, scale=1):
 
 
 def screen(path):
+    # 2026-10-23 fix (Track A verifier): the crop boxes were hard-coded for 1920x1080, so 1280x720 frames (118 of them, mostly 2019)
+    # cropped the wrong pixels and lost the tab and the taskbar date. Boxes are now scaled to the frame's own size.
+    from PIL import Image
+    with Image.open(path) as im:
+        fw, fh = im.size
+    sx, sy = fw / 1920, fh / 1080
+    box = lambda x0, y0, x1, y1: (int(x0 * sx), int(y0 * sy), int(x1 * sx), int(y1 * sy))
     w, h = 1920, 1080
-    top, _, _ = ocr(path, box=(0, 58, 300, 112), scale=5)             # top-left: the "TICKER-1D" tab + the "+ TICKER" header
-    bot, _, _ = ocr(path, box=(1700, 1040, 1920, 1080), scale=4)      # the Windows taskbar clock
+    top, _, _ = ocr(path, box=box(0, 58, 300, 112), scale=round(5 / sx) if sx < 1 else 5)        # the "TICKER-1D" tab + header
+    bot, _, _ = ocr(path, box=box(1700, 1040, 1920, 1080), scale=round(4 / sx) if sx < 1 else 4)  # the Windows taskbar clock
     tabs = [m.group(1) for t, x, y in top for m in TAB.finditer(t.replace(" ", ""))]
     skip = {"NYSE", "NASDAQ", "ADR", "TI", "AMEX", "ARCA", "BATS", "NEW", "D", "W", "M", "H", "X"}
     hdrs = [m.group(1) for t, x, y in top for m in [HDR.match(t.strip())] if m and m.group(1) not in skip]
