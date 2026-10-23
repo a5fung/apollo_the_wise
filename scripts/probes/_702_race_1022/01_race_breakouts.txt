@@ -1,0 +1,12 @@
+2017-21: n = 13,263 fills (complete 60-session windows); published mean R of these +0.025
+  +1R before the stop: 42.4% (break-even needs 50.0%); stop first 57.6% (same-session ties 176); neither in 60 0.0% (marked +0.00R); day-0 hits 2924 -> target-or-stop expected R -0.151
+  +2R before the stop: 30.9% (break-even needs 33.3%); stop first 69.1% (same-session ties 106); neither in 60 0.0% (marked +0.68R); day-0 hits 1100 -> target-or-stop expected R -0.073
+  +3R before the stop: 24.6% (break-even needs 25.0%); stop first 75.4% (same-session ties 61); neither in 60 0.0% (marked +1.25R); day-0 hits 481 -> target-or-stop expected R -0.015
+  +5R before the stop: 17.7% (break-even needs 16.7%); stop first 82.1% (same-session ties 19); neither in 60 0.2% (marked +2.18R); day-0 hits 125 -> target-or-stop expected R +0.071
+  +10R before the stop: 9.7% (break-even needs 9.1%); stop first 88.7% (same-session ties 2); neither in 60 1.6% (marked +4.41R); day-0 hits 10 -> target-or-stop expected R +0.154
+2022-24: n = 7,973 fills (complete 60-session windows); published mean R of these -0.206
+  +1R before the stop: 39.2% (break-even needs 50.0%); stop first 60.8% (same-session ties 119); neither in 60 0.0% (marked +0.00R); day-0 hits 1672 -> target-or-stop expected R -0.217
+  +2R before the stop: 27.0% (break-even needs 33.3%); stop first 73.0% (same-session ties 61); neither in 60 0.0% (marked +0.00R); day-0 hits 601 -> target-or-stop expected R -0.191
+  +3R before the stop: 20.3% (break-even needs 25.0%); stop first 79.7% (same-session ties 32); neither in 60 0.0% (marked +1.99R); day-0 hits 253 -> target-or-stop expected R -0.189
+  +5R before the stop: 13.5% (break-even needs 16.7%); stop first 86.4% (same-session ties 6); neither in 60 0.1% (marked +2.48R); day-0 hits 66 -> target-or-stop expected R -0.188
+  +10R before the stop: 6.9% (break-even needs 9.1%); stop first 92.2% (same-session ties 1); neither in 60 1.0% (marked +3.69R); day-0 hits 4 -> target-or-stop expected R -0.199
