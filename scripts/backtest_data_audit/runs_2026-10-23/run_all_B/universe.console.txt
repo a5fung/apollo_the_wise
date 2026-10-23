@@ -1,0 +1,56 @@
+[B] /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz: 8,619,626 rows kept <= 2024-12-31; 5,210,943 later rows dropped at read (sealed, never examined); 0 unparsable dates; 15,702 symbols; 821 sessions 2021-09-27..2024-12-31
+
+== INTEGRITY [B] ==
+  duplicate (ticker,date) keys: 0 rows of 8,619,626 on 0 symbols
+  high<low or open/close outside [low,high]: 0 rows of 8,619,626 on 0 symbols
+  non-positive price: 39 rows of 8,619,626 on 2 symbols
+  NaN in OHLCV: 0 rows of 8,619,626 on 0 symbols
+  weekend bars: 0 rows of 8,619,626 on 0 symbols
+  business days with no bar from any symbol: 31 (US holidays expected, ~9-10 a year): 2021-11-25, 2021-12-24, 2022-01-17, 2022-02-21, 2022-04-15, 2022-05-30, 2022-06-20, 2022-07-04, 2022-09-05, 2022-11-24, 2022-12-26, 2023-01-02, 2023-01-16, 2023-02-20, 2023-04-07, 2023-05-29, 2023-06-19, 2023-07-04, 2023-09-04, 2023-11-23, 2023-12-25, 2024-01-01, 2024-01-15, 2024-02-19, 2024-03-29, 2024-05-27, 2024-06-19, 2024-07-04, 2024-09-02, 2024-11-28, 2024-12-25
+
+== COVERAGE [B] ==
+label  year  sessions  tickers_ever  per_day_median  per_day_min  per_day_max  liquid_per_day_median(dv>=2e+06,px>=2)  liquid_min  liquid_max
+    B  2021        68         11499           10492        10140        10647                                    4692        4220        5144
+    B  2022       251         12616           10705        10361        10946                                    4427        3185        5382
+    B  2023       250         12535           10359        10076        10752                                    4096        3221        4694
+    B  2024       252         12349           10367        10227        10698                                    4259        3722        5012
+  thin sessions (symbols printed < 60% of the prior-21-session median): 0 of 821: 
+  symbols by LAST-bar year, all symbols (the final year is mostly 'still alive'): 2021:361, 2022:1294, 2023:1698, 2024:12349
+  symbols whose last bar is before 2024-12-23 (stopped printing), by year of last bar:
+      ended_all  ended_non_derivative  ended_liquid_non_deriv(last60 median dv,px)
+year                                                                              
+2021        361                   244                                           93
+2022       1294                   842                                          196
+2023       1698                  1082                                          141
+2024       1487                   919                                          129
+
+== STALE / CARRIED BARS [B] ==
+  zero-volume rows: 99,612 of 8,619,626 (1.156%) on 1,779 symbols
+  carried closes (volume 0 and close == previous close): 5,180 rows on 334 symbols
+  frozen copies (OHLCV identical to the previous bar, volume > 0): 4,727 rows on 791 symbols
+  flat bars (O=H=L=C, volume > 0): 409,553 rows on 6,859 symbols
+  symbols with a carried run >= 3 sessions: 23; longest run 807; symbols whose LAST bar is a carried bar: 11
+  zero-volume rows by year: 2021:5664, 2022:31697, 2023:35700, 2024:26551
+
+== DUPLICATE COMPANIES [B] (byte-identical OHLCV on one date under >= 2 symbols) ==
+  duplicate ticker-days: 2,626 second copies in 4,856 identical rows (2,460 pairs); persistent pairs (>= 20 shared days): 0
+  second copies per session: median 3, max 49 over 506 sessions with any; liquid second copies (dv>=2e+06): 0 ticker-days = 0.00% of all liquid ticker-days
+  largest pairs: 
+  triples+ (a third symbol on the same bar): 1,024 rows
+
+== NON-EQUITY ITEMS IN THE UNIVERSE [B] (window 2021-09-27..2022-06-30) ==
+  security type known for 4,229 of 4,499 liquid symbols (94.0%); by type: CS 2958, ETF 906, UNKNOWN 270, ADRC 198, FUND 77, ETV 39, PFD 31, ETN 10, SP 7, UNIT 2, WARRANT 1  <- a symbol with NO type is admitted as unknown (every re-fetched delisted name will be one unless its Polygon type is added)
+  liquid symbols in window: 4,499; flagged non-equity by suffix/parent/test-symbol/security-type map: 1,259; by --assets name keywords: 1,109; either: 1,367 = 30.4% of liquid symbols, 37.1% of liquid dollar volume (keyword match is a heuristic; 'Fund'/'Index'/'Unit' also hit some operating companies)
+
+== IDENTITY BREAKS [B] ==
+/Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/universe_check.py:296: RuntimeWarning: divide by zero encountered in divide
+  ret = np.where(sp, c / np.r_[np.nan, c[:-1]] - 1.0, np.nan)
+/Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/universe_check.py:296: RuntimeWarning: invalid value encountered in divide
+  ret = np.where(sp, c / np.r_[np.nan, c[:-1]] - 1.0, np.nan)
+  holes > 30 sessions: 717 on 397 symbols | holes 10..30: 5,209 on 1,277 symbols
+  >70% one-session moves: 8,536 on 2,237 symbols; with a volume event (kept as a genuine shock): 3,553; flagged jump (no volume event, or a split/spin on the day): 4,983 on 974 symbols
+  short holes with a price x2 / x0.5 AND dollar-volume x10 / x0.1 regime change: 47
+  symbols with >= 1 break (hole or jump) by this script: 1,292 of 15,702
+  wrote <OUT>/universe/symbol_guard_B.tsv (1,292 symbols with a break) - pass to the runner as --breaks for this export
+
+flagged rows: 13,352 -> <OUT>/universe/flagged_rows.tsv  (by check: stale:flat_bar 5,897, breaks:jump 4,983, nonequity:in_universe 1,367, breaks:hole 717, stale:frozen_copy 285, breaks:short_hole_level_shift 47, integrity:no_session 31, stale:carried_run 23, integrity:non-positive 2)  [8s]

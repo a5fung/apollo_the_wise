@@ -1,0 +1,4 @@
+flip	nights	tickers
+adjusted>=5 but RAW<5 (adjusted floor ADMITS, raw floor excludes)	16459	223
+RAW>=5 but adjusted<5 (adjusted floor EXCLUDES a real >=$5 stock)	3242	15
+both pass (base)	2495313	3821

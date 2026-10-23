@@ -1,0 +1,98 @@
+check	metric	value
+ohlc	rows (n)	10320661
+ohlc	high < max(open, close)	0
+ohlc	low > min(open, close)	0
+ohlc	high < low	0
+ohlc	non-positive price rows / distinct tickers	0 / 0
+ohlc	NaN in o/h/l/c/v	0
+ohlc	duplicate (ticker, date) rows	0
+ohlc	rows off the calendar ticker's sessions	0
+ohlc	NOTE	zero violations in a whole export is unusual for vendor bars (cause unverified, possibly clamped upstream); this check cannot see a bad high or low that still covers open and close (see wick)
+level	close >= $1000: rows / tickers	199388 / 431
+level	close >= $100000: rows / tickers	21039 / 115
+level	close >= $1e+09: rows / tickers	0 / 0
+level	close < $0.01: rows / tickers	19 / 3
+level	close quantiles p50 / p99 / p99.9 / max	27.62 / 4690 / 3.023e+05 / 7.088e+08
+level	tickers whose max adjusted close >= $1000 (n of all)	431 of 9944
+level	NOTE	adjusted levels are not tradable prices: any absolute-price rule (close >= $5, price band) needs the RAW close; percent signals are unaffected
+adj_event	listed splits in file / inside the export window (<= 2024-12-31)	6954 / 3864
+adj_event	rows with a raw close / total rows	10320661 / 10320661
+gap	events (open gap or close-to-close >= 25%) all / liquid	22205 / 2999
+gap	  open-gap >= 25% / close-to-close >= 25% / down(cc<=-25%) / up(cc>=+25%)	9211 / 18544 / 6202 / 12342
+gap	  class known_adjustment_event: all / liquid	220 / 33
+gap	  class open_gap_reverted_same_day: all / liquid	1515 / 46
+gap	  class reverted_next_session: all / liquid	2079 / 173
+gap	  class reverted_within_5: all / liquid	2582 / 294
+gap	  class persistent: all / liquid	15690 / 2447
+gap	  class no_next_bar: all / liquid	119 / 6
+gap	  events whose prior bar is a zero-volume fill (stale base): all / liquid	0 / 0
+gap	  events spanning >1 session (prior bar missing days): all / liquid	1586 / 52
+gap	  class reverted_next_session AND no volume event (volume < 2x its 20-session median; strongest bad-print suspects): all / liquid	432 / 38
+gap	  class reverted_within_5 AND no volume event (volume < 2x its 20-session median; strongest bad-print suspects): all / liquid	415 / 73
+adj_event	[psv] material events / liquid	107 / 21
+adj_event	[psv]   adjusted close continuous (|close/prior close - 1| < 35%): all / liquid	105 / 21
+adj_event	[psv]   DISCONTINUOUS: all / liquid	2 / 0
+adj_event	[psv]   of those, jump equals to/fr (the listed factor): 	0
+adj_event	[psv]   of those, jump equals fr/to (the inverse): 	0
+adj_event	[psv]   of those, neither (post-reverse-split dump or other): 	2
+adj_event	[raw_step] material events / liquid	1106 / 189
+adj_event	[raw_step]   adjusted close continuous (|close/prior close - 1| < 35%): all / liquid	1031 / 165
+adj_event	[raw_step]   DISCONTINUOUS: all / liquid	75 / 24
+adj_event	[raw_step]   discontinuous with raw price moving < 50% (a factor booked on a non-split move)	45
+splitlike	close ratios within 5% of 2,3,4,5,10,20 or reciprocals, no known event within one bar, prior bar not a zero-volume fill: all / liquid	647 / 78
+splitlike	  of those volume-confirmed (volume re-levels by ~1/ratio for 10 sessions): all / liquid	25 / 8
+splitlike	  distinct tickers (all)	510
+spinoff	persistent >=25% close-to-close drops (<50% recovered by +5 sessions), volume >= 2x the 20-session median, one-session gap: all / liquid	3630 / 709
+spinoff	  MECHANICAL subset (|close/open-1| < 8% and |close(+5)/close-1| < 15%): all / liquid	597 / 142
+spinoff	  child-listing match rate, real window vs placebo window 20 sessions earlier (n=3630)	0.161 vs 0.171  -> a match is NOT discriminating
+spinoff	  vendor-booked adjustment events with a >=25% down move: n / pass the mechanical test	102 / 33  (vs 0.164 of all candidates)
+spinoff	control OPLN:2019-06-28	FLAGGED as MECHANICAL candidate (rc=-0.597, go=-0.619)
+spinoff	control ZWS:2021-10-05	FLAGGED as MECHANICAL candidate (rc=-0.491, go=-0.502)
+spinoff	control BEP:2020-07-30	FLAGGED as vendor-booked factor with a broken series (rc=-0.815, go=-0.797)
+calendar	calendar sessions (SPY) / first / last	1635 / 2016-01-04 / 2022-06-30
+calendar	tickers / with >=1 interior missing session	9944 / 4074
+calendar	interior missing sessions / expected sessions in ticker spans	503456 / 10824117
+calendar	tickers starting after the first session (listing or ticker-start seam)	4761
+calendar	tickers ending before the last session (delisted, renamed, or the export dropped them)	2384
+calendar	holes with 1 missing	107674
+calendar	holes with 2 missing	33381
+calendar	holes with 3-5 missing	28245
+calendar	holes with 6-20 missing	11387
+calendar	holes with >20 missing	1516
+calendar	holes (>=1 missing session) all / liquid-at-the-time	182203 / 165
+calendar	holes of >=5 missing sessions all / liquid-at-the-time	17544 / 73
+calendar	sessions with <90% of the local (21-session) median ticker count	0 of 1635
+calendar	tickers per session min / median / max	5094 / 6304 / 7626
+volume	zero-volume rows / distinct tickers	0 / 0
+volume	  flat fill (o=h=l=c) / non-flat	0 / 0
+volume	  zero volume AND close != prior close: rows	0
+volume	  zero volume with close >= $100 (adjusted-volume underflow at a huge price level)	0
+volume	  zero volume, non-flat, close < $100 (a printed range with no volume)	0
+volume	rows with volume < 0 / NaN	0 / 0
+wick	high >= 1.25x max(o,c) or low <= min(o,c)/1.25: rows	7739
+wick	high >= 1.5x max(o,c) or low <= min(o,c)/1.5: rows	1440
+wick	high >= 2.0x max(o,c) or low <= min(o,c)/2.0: rows	249
+wick	  >=1.5x with volume > 0: rows / liquid	1440 / 57
+test_symbol	tickers / rows	0 / 0  []
+duplicate	rows (volume >= 1000) sharing an identical (date, o, h, l, c, v) with another ticker	75640
+duplicate	ticker pairs with >=10 identical days / pairs with any	72 / 82
+duplicate	  distinct tickers inside those pairs	141
+duplicate	  examples	INT=WKC(1635d); EYES=VANI(1633d); IAC=PPLI(1623d); FB=META(1620d); ATYR=LIFE(1600d); KLDW=KNO(1580d); AORT=CRY(1525d); FDIV=HISF(1410d); TOT=TTE(1369d); ADEA=XPER(1348d); BBHY=JPHY(1251d); FIXX=QTTB(1071d)
+exposure	liquid ticker-days (denominator) / distinct liquid tickers	2,755,017 / 3,457
+exposure	within 130 sessions after an interior missing-session hole on a liquid name (a 130-CONSECUTIVE-session history rule drops these)	4,762 liquid ticker-days = 0.173%
+exposure	within 126 sessions after an adjustment event whose adjusted series is discontinuous (return windows spanning it are wrong)	2,829 liquid ticker-days = 0.103%
+exposure	within 126 sessions after a MECHANICAL spin-off candidate	16,808 liquid ticker-days = 0.610%
+exposure	rows of a ticker inside an identical-series pair (the same company counted twice)	23,137 liquid ticker-days = 0.840%
+exposure	adjusted close >= $1000 (raw-price rules cannot be applied to this price)	16,694 liquid ticker-days = 0.606%
+exposure	within 60 sessions after a reverted (bad-print suspect) one-session move >= 25%	20,020 liquid ticker-days = 0.727%
+compare	overlap window / sessions	2021-09-27 .. 2022-06-30 / 192
+compare	(ticker,date) rows in both / only A / only B	1302551 / 139025 / 738936
+compare	tickers in both / only here / only there	7460 / 1009 / 5472
+compare	for tickers present in both: bars only here / only there	10971 (170 tickers) / 11022 (541 tickers)
+compare	  of the 'only there' bars, share with zero volume (a no-trade fill the other export omits)	0.888 (n=11022)
+compare	rows with close ratio within 0.1% / 1%	0.9810 / 0.9844  (n=1302551)
+compare	tickers whose median close ratio is off by >1% (adjustment-epoch or identity difference)	116 of 7460
+compare	  ratio_drifts_in_window_identity_or_event	42
+compare	  constant_ratio_unexplained	41
+compare	  explained_by_listed_later_splits	33
+compare	  NOTE	the epoch explanation uses listed splits dated after the overlap and <= cutoff only; constant unexplained ratios are usually splits after the cutoff (not tested here)

@@ -1,0 +1,109 @@
+[B] /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz: 8,619,626 rows kept (<= 2024-12-31), 5,210,943 later rows dropped unread, 15,702 tickers, 2021-09-27..2024-12-31  (4s)
+  sectype table: 14,102 tickers; 'liquid' now also requires type CS / ADRC / unknown (the study's rule)
+== ohlc
+  [ohlc] rows (n): 8619626
+  [ohlc] high < max(open, close): 0
+  [ohlc] low > min(open, close): 0
+  [ohlc] high < low: 0
+  [ohlc] non-positive price rows / distinct tickers: 39 / 2
+  [ohlc] NaN in o/h/l/c/v: 0
+  [ohlc] duplicate (ticker, date) rows: 0
+  [ohlc] rows off the calendar ticker's sessions: 0
+  [ohlc] NOTE: zero violations in a whole export is unusual for vendor bars (cause unverified, possibly clamped upstream); this check cannot see a bad high or low that still covers open and close (see wick)
+== level (split-adjusted price levels)
+  [level] close >= $1000: rows / tickers: 110576 / 376
+  [level] close >= $100000: rows / tickers: 23130 / 90
+  [level] close >= $1e+09: rows / tickers: 1924 / 4
+  [level] close < $0.01: rows / tickers: 9616 / 465
+  [level] close quantiles p50 / p99 / p99.9 / max: 23.81 / 1728 / 3.277e+06 / 1.774e+13
+  [level] tickers whose max adjusted close >= $1000 (n of all): 376 of 15702
+  [level] NOTE: adjusted levels are not tradable prices: any absolute-price rule (close >= $5, price band) needs the RAW close; percent signals are unaffected
+  [adj_event] listed splits in file / inside the export window (<= 2024-12-31): 6954 / 3864
+== gap (one-session moves >= 25%)
+  [gap] events (open gap or close-to-close >= 25%) all / liquid: 88830 / 1891
+  [gap]   open-gap >= 25% / close-to-close >= 25% / down(cc<=-25%) / up(cc>=+25%): 53668 / 66320 / 27082 / 39238
+  [gap]   class known_adjustment_event: all / liquid: 383 / 15
+  [gap]   class open_gap_reverted_same_day: all / liquid: 11843 / 32
+  [gap]   class reverted_next_session: all / liquid: 12038 / 77
+  [gap]   class reverted_within_5: all / liquid: 9699 / 134
+  [gap]   class persistent: all / liquid: 54077 / 1622
+  [gap]   class no_next_bar: all / liquid: 790 / 11
+  [gap]   events whose prior bar is a zero-volume fill (stale base): all / liquid: 419 / 0
+  [gap]   events spanning >1 session (prior bar missing days): all / liquid: 19636 / 17
+  [gap]   class reverted_next_session AND no volume event (volume < 2x its 20-session median; strongest bad-print suspects): all / liquid: 5098 / 8
+  [gap]   class reverted_within_5 AND no volume event (volume < 2x its 20-session median; strongest bad-print suspects): all / liquid: 3667 / 19
+== adj_event (is the adjusted series continuous across every known adjustment?)
+  [adj_event] [psv] material events / liquid: 1452 / 103
+  [adj_event] [psv]   adjusted close continuous (|close/prior close - 1| < 35%): all / liquid: 1385 / 100
+  [adj_event] [psv]   DISCONTINUOUS: all / liquid: 67 / 3
+  [adj_event] [psv]   of those, jump equals to/fr (the listed factor): : 8
+  [adj_event] [psv]   of those, jump equals fr/to (the inverse): : 0
+  [adj_event] [psv]   of those, neither (post-reverse-split dump or other): : 59
+== splitlike (split-sized close ratios with no known event)
+  [splitlike] close ratios within 5% of 2,3,4,5,10,20 or reciprocals, no known event within one bar, prior bar not a zero-volume fill: all / liquid: 2929 / 60
+  [splitlike]   of those volume-confirmed (volume re-levels by ~1/ratio for 10 sessions): all / liquid: 77 / 5
+  [splitlike]   distinct tickers (all): 1381
+== spinoff (candidates; an earnings crash also qualifies)
+  [spinoff] persistent >=25% close-to-close drops (<50% recovered by +5 sessions), volume >= 2x the 20-session median, one-session gap: all / liquid: 8462 / 569
+  [spinoff]   MECHANICAL subset (|close/open-1| < 8% and |close(+5)/close-1| < 15%): all / liquid: 947 / 135
+  [spinoff]   child-listing match rate, real window vs placebo window 20 sessions earlier (n=8462): 0.213 vs 0.214  -> a match is NOT discriminating
+  [spinoff]   vendor-booked adjustment events with a >=25% down move: n / pass the mechanical test: 102 / 9  (vs 0.112 of all candidates)
+  positive controls:
+  [spinoff] control OPLN:2019-06-28: NOT_IN_EXPORT_RANGE
+  [spinoff] control ZWS:2021-10-05: NOT_TESTABLE_no_prior_bar (the ticker starts that day: a rename/listing seam, not a gap)
+  [spinoff] control BEP:2020-07-30: NOT_IN_EXPORT_RANGE
+== calendar (missing sessions against the calendar ticker)
+  [calendar] calendar sessions (SPY) / first / last: 821 / 2021-09-27 / 2024-12-31
+  [calendar] tickers / with >=1 interior missing session: 15702 / 4178
+  [calendar] interior missing sessions / expected sessions in ticker spans: 509245 / 9128871
+  [calendar] tickers starting after the first session (listing or ticker-start seam): 5486
+  [calendar] tickers ending before the last session (delisted, renamed, or the export dropped them): 5025
+  [calendar] holes with 1 missing: 102790
+  [calendar] holes with 2 missing: 35970
+  [calendar] holes with 3-5 missing: 34848
+  [calendar] holes with 6-20 missing: 13447
+  [calendar] holes with >20 missing: 1490
+  [calendar] holes (>=1 missing session) all / liquid-at-the-time: 188545 / 48
+  [calendar] holes of >=5 missing sessions all / liquid-at-the-time: 22202 / 9
+  [calendar] sessions with <90% of the local (21-session) median ticker count: 0 of 821
+  [calendar] tickers per session min / median / max: 10076 / 10476 / 10946
+== volume
+  [volume] zero-volume rows / distinct tickers: 99612 / 1779
+  [volume]   flat fill (o=h=l=c) / non-flat: 76931 / 22681
+  [volume]   zero volume AND close != prior close: rows: 94173
+  [volume]   zero volume with close >= $100 (adjusted-volume underflow at a huge price level): 26607
+  [volume]   zero volume, non-flat, close < $100 (a printed range with no volume): 23
+  [volume] rows with volume < 0 / NaN: 0 / 0
+== wick (bad high/low ticks)
+  [wick] high >= 1.25x max(o,c) or low <= min(o,c)/1.25: rows: 37786
+  [wick] high >= 1.5x max(o,c) or low <= min(o,c)/1.5: rows: 12492
+  [wick] high >= 2.0x max(o,c) or low <= min(o,c)/2.0: rows: 3522
+  [wick]   >=1.5x with volume > 0: rows / liquid: 12478 / 59
+== test symbols
+  [test_symbol] tickers / rows: 15 / 5712  ['ATEST', 'CTEST', 'MTEST', 'NTEST', 'PTEST', 'ZBZX', 'ZCZZT', 'ZIEXT', 'ZJZZT', 'ZTEST', 'ZTST', 'ZVZZC', 'ZVZZT', 'ZWZZT', 'ZXZZT']
+== duplicate series (byte-identical bars under two symbols)
+  [duplicate] rows (volume >= 1000) sharing an identical (date, o, h, l, c, v) with another ticker: 266
+  [duplicate] ticker pairs with >=10 identical days / pairs with any: 0 / 130
+  [duplicate]   distinct tickers inside those pairs: 0
+  [duplicate]   examples: 
+== exposure (share of liquid ticker-days)
+  [exposure] liquid ticker-days (denominator) / distinct liquid tickers: 1,677,436 / 3,631
+  [exposure] within 130 sessions after an interior missing-session hole on a liquid name (a 130-CONSECUTIVE-session history rule drops these): 2,588 liquid ticker-days = 0.154%
+  [exposure] within 126 sessions after an adjustment event whose adjusted series is discontinuous (return windows spanning it are wrong): 126 liquid ticker-days = 0.008%
+  [exposure] within 126 sessions after a MECHANICAL spin-off candidate: 13,935 liquid ticker-days = 0.831%
+  [exposure] adjusted close >= $1000 (raw-price rules cannot be applied to this price): 9,316 liquid ticker-days = 0.555%
+  [exposure] within 60 sessions after a reverted (bad-print suspect) one-session move >= 25%: 7,896 liquid ticker-days = 0.471%
+== compare with A
+  [compare] overlap window / sessions: 2021-09-27 .. 2022-06-30 / 192
+  [compare] (ticker,date) rows in both / only B / only A: 1302551 / 738936 / 139025
+  [compare] tickers in both / only here / only there: 7460 / 5472 / 1009
+  [compare] for tickers present in both: bars only here / only there: 11022 (541 tickers) / 10971 (170 tickers)
+  [compare]   of the 'only there' bars, share with zero volume (a no-trade fill the other export omits): 0.000 (n=10971)
+  [compare] rows with close ratio within 0.1% / 1%: 0.9812 / 0.9844  (n=1302551)
+  [compare] tickers whose median close ratio is off by >1% (adjustment-epoch or identity difference): 116 of 7460
+  [compare]   ratio_drifts_in_window_identity_or_event: 42
+  [compare]   constant_ratio_unexplained: 41
+  [compare]   explained_by_listed_later_splits: 33
+  [compare]   NOTE: the epoch explanation uses listed splits dated after the overlap and <= cutoff only; constant unexplained ratios are usually splits after the cutoff (not tested here)
+wrote runs_2026-10-23/B_flags.tsv (157819 rows) and B_summary.tsv (91 lines)
+done in 21s

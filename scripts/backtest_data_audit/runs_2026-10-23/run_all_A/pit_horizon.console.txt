@@ -1,0 +1,7 @@
+HORIZON /Users/alvinfung/apollo_data/cb702_pre/out/candidates_tl_com.tsv: first breaks (spec key) with E <= 2024-12-31: 17,405; walk window 120 + 1 sessions
+  export ends inside the window (open marks by construction): 0
+  walk window reaches past 2024-12-31 (a discovery R can hold sealed-era prices; L7): 0 (0.00%)
+  ticker's bars END inside the window while the export runs on (delisted / acquired / renamed): 315 (1.81% of the 17,405 with a full window) by K {'tl': 315}
+  a missing session inside the window (fwd_end cuts there -> 'degraded' unless exited first): 29 by K {'tl': 29}
+  a symbol identity break falls INSIDE the walk window (not cut by fwd_end): 12
+flagged rows: 356 -> <OUT>/pit/pit_horizon_A.tsv

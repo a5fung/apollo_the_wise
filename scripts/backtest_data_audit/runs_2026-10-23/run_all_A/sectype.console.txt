@@ -1,0 +1,133 @@
+constants: identical to agents/market_intelligence/consolidation_breakout.py
+ERA A: 10,320,661 bars (<= 2024-12-31) / 9,944 tickers; export last session 2022-06-30; off-calendar bars 0
+  raw close: MEASURED per bar from daily_raw_close.csv.gz (10,320,661 of 10,320,661 bars matched)
+  type sources: mi_security_types 14,102 tickers (snapshot 2026-10-16, exchange-listed only); SIC pull 3,942 tickers; Alpaca assets 33,319 symbols
+
+[U0] WATCH WINDOW 2017-03-01..2021-12-31: ticker-nights 7,839,884; regex+not-test+130-consecutive+$10M-median-dollar-volume (no price test) 2,543,650; + RAW close >= $5 = 2,498,555 universe-member nights on 3,824 tickers (BEFORE the security-type filter)
+     regex-EXCLUDED (liquid, >= $5) nights: 8,866 on 10 tickers (examples: BF.A, BF.B, BRK.A, BRK.B, CCIV.U, HEI.A, MOG.A, PBR.A)
+
+[U1] RESOLVED SECURITY TYPE of every price+liquidity-passing ticker (nights = universe-member nights BEFORE the type filter)
+resolved_type  admitted_by_type_filter  tickers  nights
+           CS                     True     2398 1738590
+          ETF                    False      721  450076
+      UNKNOWN                     True      419  169143
+         ADRC                     True      202  118404
+          ETV                    False       35   18587
+         FUND                    False       38    2330
+          ETN                    False        6     771
+          ETS                    False        1     375
+         UNIT                    False        2     194
+           SP                    False        2      85
+  ADMITTED by the type filter: 3,019 tickers / 2,026,137 nights;  EXCLUDED by type: 805 tickers / 472,418 nights
+  UNKNOWN type admitted (no mi, no SIC type): 419 tickers = 13.9% of admitted tickers; 169,143 nights = 8.3% of admitted nights
+  type source of ADMITTED nights: mi=1,821,996, none=169,143, sic=34,998
+
+[U2] NAME CLASS (Alpaca/Polygon asset name) of ADMITTED tickers  [COMMON? = no non-common cue in the name; NO_NAME = symbol not in the asset list]
+  nights:
+resolved_type       ADRC       CS  UNKNOWN
+name_class                                
+ADR                74101        0     5623
+COMMON?            44303  1737917   125800
+ETF                    0        0     2466
+ETN                    0        0     1313
+LEVERAGED_INVERSE      0        0      184
+NOTE_DEBT              0        0        2
+NO_NAME                0        0    33250
+PREFERRED              0        8        0
+SPAC_SHELL             0      665      496
+SPAC_UNIT              0        0        9
+  tickers:
+resolved_type      ADRC    CS  UNKNOWN
+name_class                            
+ADR                 129     0       10
+COMMON?              73  2394      276
+ETF                   0     0       11
+ETN                   0     0        3
+LEVERAGED_INVERSE     0     0        2
+NOTE_DEBT             0     0        1
+NO_NAME               0     0      113
+PREFERRED             0     1        0
+SPAC_SHELL            0     3        2
+SPAC_UNIT             0     0        1
+  ADMITTED but NAMED like a non-common instrument (ETF/ETN/FUND/LEVERAGED_INVERSE/NOTE_DEBT/PREFERRED/RIGHT/SPAC_UNIT/WARRANT): 19 tickers / 3,982 nights = 0.20% of admitted nights; of these UNTYPED 18, typed CS/ADRC 1
+    ETF                  11 tickers    2,466 nights   e.g. EV(UNKNOWN,1006), KEM(UNKNOWN,768), ERUS(UNKNOWN,410), BSCK(UNKNOWN,96), RESI(UNKNOWN,81), BSJL(UNKNOWN,30)
+    ETN                   3 tickers    1,313 nights   e.g. UWT(UNKNOWN,684), DWT(UNKNOWN,628), MRRL(UNKNOWN,1)
+    LEVERAGED_INVERSE     2 tickers      184 nights   e.g. GASL(UNKNOWN,92), RUSL(UNKNOWN,92)
+    NOTE_DEBT             1 tickers        2 nights   e.g. FRLG(UNKNOWN,2)
+    PREFERRED             1 tickers        8 nights   e.g. APTS(CS,8)
+    SPAC_UNIT             1 tickers        9 nights   e.g. WTRU(UNKNOWN,9)
+
+[U3] mi_security_types vs SIC-pull type DISAGREE across the admit line on 0 admitted tickers (0 nights); both sources present on 2,253 admitted tickers
+[U4] ADMITTED tickers on OTC today / active-but-not-tradable in the Alpaca asset list: 49 tickers / 10,854 nights (0.54% of admitted nights); not in the asset list at all: 113 tickers / 33,250 nights
+[U5] ADMITTED tickers whose 130-bar history holds a SPAC trust-price phase (flat ~$10 AND below the $10M liquidity floor): 48 tickers; 1,528 member nights carry one in their history, 40 are themselves trust-price nights; typed CS/ADRC 42, UNKNOWN 6;  e.g. SPCE(CS,138), JOBY(CS,109), LCID(CS,67), MAPS(CS,65), SKIL(CS,64), MVST(CS,62), XCRA(UNKNOWN,62), ALIT(CS,57), SPRU(CS,56), UP(CS,55)
+[U6] ADMITTED 5-letter U/W/R-suffix instruments (units/warrants/rights passing ^[A-Z]{1,5}$): 0 tickers / 0 nights
+[U6b] EXCLUDED-by-type tickers that pass regex + $5 + $10M and whose ONLY barrier is the type: 805 tickers / 472,418 nights = 18.9% of all price+liquidity-passing nights; of them 5-letter U/W/R-suffix (unit/warrant/right look-alikes) 0
+[U7] EXCLUDED-by-type but named like an operating company / common units (possible FALSE exclusion; symbol re-use or REIT/MLP typed FUND/UNIT/SP): 11 tickers / 1,250 nights  e.g. DHC(FUND,766), MNR(UNIT,187), ILPT(FUND,102), TYG(FUND,63), BTX(FUND,60), BST(FUND,21), GDV(FUND,18), BCAT(FUND,13)
+[U8] ADMITTED tickers with an identity break (symbol_guard) AFTER some of their member nights: 49 of 3,019 tickers; 18,344 of 2,026,137 admitted nights (0.91%) are dated before the last break, so their type is the LATER holder's; break kinds {'hole': 23, 'jump': 44}; of these UNKNOWN-typed 12, typed CS/ADRC 37
+
+FLAGGED admitted tickers: 511 of 3,019 (202,523 of 2,026,137 nights = 10.0%) -> flagged_tickers_A.tsv
+  flag counts (tickers / nights):
+    UNKNOWN_TYPE_ADMITTED                      419 tickers   169,143 nights
+    IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS    49 tickers    30,331 nights
+    SPAC_SHELL_PHASE_IN_130BAR_HISTORY          48 tickers     4,358 nights
+    OTC_TODAY                                   44 tickers     9,201 nights
+    NAME_SAYS_ETF_UNTYPED                       11 tickers     2,466 nights
+    NAME_SAYS_SPAC_SHELL                         5 tickers     1,161 nights
+    OTC_TODAY_FOREIGN_SUFFIX                     3 tickers     1,561 nights
+    NAME_SAYS_ETN_UNTYPED                        3 tickers     1,313 nights
+    NAME_SAYS_LEVERAGED_INVERSE_UNTYPED          2 tickers       184 nights
+    ACTIVE_BUT_NOT_TRADABLE                      2 tickers        92 nights
+    SIC_6770_BLANK_CHECK                         1 tickers       201 nights
+    NAME_SAYS_SPAC_UNIT_UNTYPED                  1 tickers         9 nights
+    NAME_SAYS_PREFERRED                          1 tickers         8 nights
+    NAME_SAYS_NOTE_DEBT_UNTYPED                  1 tickers         2 nights
+
+[by year] universe-member nights (before type filter) / admitted by type / unknown-typed / on a flagged ticker:
+year  member_nights  admitted_by_type  unknown_type  flagged  unknown_share_of_admitted  flagged_share_of_admitted
+2017         378333            314101         36502    42441                     0.1162                     0.1351
+2018         496676            408414         50607    57279                     0.1239                     0.1402
+2019         495546            403922         38053    43931                     0.0942                     0.1088
+2020         531877            422134         27017    32763                     0.0640                     0.0776
+2021         596123            477566         16964    26109                     0.0355                     0.0547
+
+[IMPACT] watch_tl_com.tsv.gz [all rows], watch_date 2017-03-01..2021-12-31: 192,897 rows on 2,679 tickers (counts only, no outcome read)
+                                            group  tickers_in_group   rows  share_of_rows
+                                     ALL_ADMITTED              3019 192897         1.0000
+                                         ANY_FLAG               511  20087         0.1041
+                          ACTIVE_BUT_NOT_TRADABLE                 2     18         0.0001
+IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS                49   2545         0.0132
+                            NAME_SAYS_ETF_UNTYPED                11    187         0.0010
+                            NAME_SAYS_ETN_UNTYPED                 3    182         0.0009
+              NAME_SAYS_LEVERAGED_INVERSE_UNTYPED                 2     19         0.0001
+                      NAME_SAYS_NOTE_DEBT_UNTYPED                 1      0         0.0000
+                              NAME_SAYS_PREFERRED                 1      0         0.0000
+                             NAME_SAYS_SPAC_SHELL                 5     53         0.0003
+                      NAME_SAYS_SPAC_UNIT_UNTYPED                 1      0         0.0000
+                                        OTC_TODAY                47   1443         0.0075
+                         OTC_TODAY_FOREIGN_SUFFIX                 3     22         0.0001
+                             SIC_6770_BLANK_CHECK                 1      0         0.0000
+               SPAC_SHELL_PHASE_IN_130BAR_HISTORY                48    714         0.0037
+                            UNKNOWN_TYPE_ADMITTED               419  16925         0.0877
+                              VERIFIED_NON_COMMON                23    204         0.0011
+                                     UNKNOWN_TYPE               419  16925         0.0877
+
+[P1] $5 FLOOR UNITS (nights in the watch window passing regex/test/130-consecutive/$10M-dollar-volume):
+    adjusted>=5 but RAW<5 (adjusted floor ADMITS, raw floor excludes)              16,459 nights   223 tickers
+    RAW>=5 but adjusted<5 (adjusted floor EXCLUDES a real >=$5 stock)               3,242 nights    15 tickers
+    both pass (base)                                                            2,495,313 nights 3,821 tickers
+    adjusted-admits/raw-excludes top: GRPN(730), EXE(699), VEON(533), MFA(449), IVR(425)
+    raw/adjusted steps within a ticker: > 5%: 1,101 on 880 tickers (splits); 0.1%-5%: 10 (dividend-sized: ~0 means the adjusted series is SPLIT-adjusted only); < 0.1%: 918,994 (rounding noise); factor range 5.64e-09..96; bars with |factor-1| > 0.1%: 1,629,299 (15.8%)
+    EXTREME raw/adjusted factors (< 1e-3 or > 1e3): 120,511 bars on 238 tickers (repeated reverse splits; adjusted prices of 1e5 and up) -- the floor must be read on RAW; e.g. ABTC, ACHV, ACON, AEHL, AEMD, AGPU, AGRX, AHT
+
+[P2] 5-bar median close*volume after / before 1,084 split steps: within 1.5x either way 41.4% (control, same tickers 40 bars later, n=1,019: 56.3%); splits where the ratio moves like the split itself (volume NOT adjusted, within 1.3x of 1/step) 43 of 1,084 (4.0%); over-adjusted (ratio within 1.3x of the step) 104; median ratio 1.374 (control 0.982)
+     BIG steps (>= 4x either way) n=651: dollar volume continuous (ratio within 1.5x) 199; moves like 1/step (volume NOT adjusted) 6; moves like the step (adjusted twice) 34; none of the three 412; median ratio 1.839
+     forward splits n=360: median ratio 0.974;  reverse splits n=724: median ratio 1.826
+
+[P1x] CROSS-EXPORT OVERLAP 2021-09-27..2022-06-30: 1,302,551 (ticker,date) bars on 7,460 tickers; this export raw = MEASURED, --vs raw = DERIVED
+     SAME COMPANY (>= 90% of overlap days have daily returns within 0.2% of each other): 7,344 tickers; DIFFERENT COMPANY on the same symbol (symbol reuse across the two exports): 116 tickers
+     SAME-COMPANY raw-close agreement: 1,296,471 bars on 7,344 tickers; |raw1/raw2 - 1| > 1%: 721 bars (0.056%) on 276 tickers;  > 10%: 278 bars on 13 tickers;  $5-floor decision differs: 61 bars on 9 tickers (BBLG, CXDO, DSX, GPMT, IRS, NTRB, NWG, SKIN, TPST)
+     DIFFERENT-COMPANY symbols: 116 tickers / 6,080 bars; of which both sides >= $5 raw on 4,068 bars; examples: ACGLP, ACH, ALACU, ALLR, ALTA, AOTG, ARD, ASRVP, B, BITI, BNY, BOCH
+     SAME-COMPANY ADJUSTED-close agreement: |a1/a2 - 1| > 1% on 15,090 bars (1.164%) on 362 tickers (two providers, adjusted to the same 2026-10-16 date: a level gap here is a split-handling difference)
+
+Outputs -> <OUT>/sectype
+GATE FAIL: unknown-type share of admitted nights 8.35% > 2.00% -- resolve types point-in-time before reading this export

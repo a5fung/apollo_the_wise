@@ -1,0 +1,145 @@
+== duplicate-series check: A  file=/Users/alvinfung/apollo_data/cb702_pre/daily_closes_all.csv.gz  cut=2024-12-31  tol=0.0001  min_run=5  window=8
+bars=10,320,661  symbols=9,944  sessions=1,635  first=2016-01-04  last=2022-06-30
+TEST 1 strict twins: matched row-pairs (any class)=40,846  exact=40,826  pairs with >=2 matched days=179
+                    pairs  matched_days  exact_days  median_longest_run
+klass                                                                  
+coincidence_short     107           113          93                 0.0
+coincidence_sparse      1            11          11                11.0
+diverged_after_run      2          1194        1194               522.5
+partial_overlap         3           571         571                28.0
+retired_symbol         41         23083       23083               280.0
+twin_to_window_end     25         15874       15874               165.0
+spac_like confirmed pairs (first 20 matched closes in $9.50-$10.60 and the history starts inside the window)=25
+CONFIRMED strict pairs=71  matched days=40,722  of which match >=90% of their overlap=68
+-- largest confirmed pairs by matched days (top 25)
+sym_a sym_b              klass retired_symbol  n_match  longest_run  share_of_overlap first_match last_match spac_like                              name_hint
+ EYES  VANI twin_to_window_end                    1635         1635          1.000000  2016-01-04 2022-06-30     False etf_vs_company_conflict(symbol reused)
+  INT   WKC twin_to_window_end                    1635         1635          1.000000  2016-01-04 2022-06-30     False etf_vs_company_conflict(symbol reused)
+ ATYR  LIFE twin_to_window_end                    1634         1047          1.000000  2016-01-04 2022-06-30     False                           names_differ
+ KLDW   KNO twin_to_window_end                    1624         1107          1.000000  2016-01-04 2022-06-30     False                       same_issuer_name
+  IAC  PPLI twin_to_window_end                    1623         1623          1.000000  2016-01-21 2022-06-30     False                           names_differ
+   FB  META     retired_symbol             FB     1620         1620          1.000000  2016-01-04 2022-06-08     False etf_vs_company_conflict(symbol reused)
+ AORT   CRY     retired_symbol            CRY     1525         1525          1.000000  2016-01-04 2022-01-21     False etf_vs_company_conflict(symbol reused)
+ FDIV  HISF     retired_symbol           FDIV     1524          722          1.000000  2016-01-04 2022-02-25     False                           names_differ
+  TOT   TTE     retired_symbol            TOT     1369         1369          1.000000  2016-01-04 2021-06-10     False etf_vs_company_conflict(symbol reused)
+ BBHY  JPHY twin_to_window_end                    1358         1188          1.000000  2016-09-19 2022-06-30     False                           names_differ
+ ADEA  XPER twin_to_window_end                    1348         1348          1.000000  2017-02-23 2022-06-30     False                           names_differ
+ FIXX  QTTB twin_to_window_end                    1073         1073          1.000000  2018-03-28 2022-06-30     False etf_vs_company_conflict(symbol reused)
+ BIOS  OPCH diverged_after_run                    1027         1027          0.947417  2016-01-04 2020-01-31     False                           spac_wording
+  ECA   OVV     retired_symbol            ECA     1022         1022          1.000000  2016-01-04 2020-01-24     False                           names_differ
+ PRTO  TARA     retired_symbol           PRTO     1012         1012          1.000000  2016-01-04 2020-01-09     False etf_vs_company_conflict(symbol reused)
+ DGSE   ELA     retired_symbol           DGSE      981          454          1.000000  2016-01-04 2019-12-17     False                           names_differ
+ NEWM  TDAY     retired_symbol           NEWM      978          978          1.000000  2016-01-04 2019-11-19     False                           names_differ
+ AIFC  ARCI     retired_symbol           ARCI      920          815          1.000000  2016-01-04 2019-09-10     False                           spac_wording
+ AETI  SLNG     retired_symbol           AETI      887          309          1.000000  2016-01-04 2019-07-26     False                           names_differ
+  DHC   SNH     retired_symbol            SNH      881          881          1.000000  2016-07-01 2019-12-31     False                           names_differ
+ MFCB   SRL     retired_symbol           MFCB      827          529          1.000000  2016-02-16 2019-06-03     False                           names_differ
+ EDGE  PDSB     retired_symbol           EDGE      805          805          1.000000  2016-01-04 2019-03-15     False etf_vs_company_conflict(symbol reused)
+ PGEN   XON     retired_symbol            XON      771          771          1.000000  2017-01-09 2020-01-31     False                           names_differ
+ FONE  NXTG     retired_symbol           FONE      731           57          1.000000  2016-01-04 2019-05-29     False etf_vs_company_conflict(symbol reused)
+ AIFC   JAN twin_to_window_end                     706          681          1.000000  2019-09-11 2022-06-30     False                           names_differ
+strict excess (double-counted) rows=40,722 of 10,320,661 bars = 0.3946%
+TEST 2 scaled twins (price-scale copies): rows scanned=1,457,255; pairs=27
+                     pairs  scaled_days
+kind                                   
+scaled_twin_full        26        19720
+scaled_twin_partial      1          256
+sym_a sym_b                kind  n_scaled_days  overlap_days  price_factor_a_over_b  log_dollar_vol_ratio first_scaled last_scaled
+  RCD  RSPD    scaled_twin_full           1632          1632               3.000000          0.000000e+00   2016-01-04  2022-06-30
+ ONTX  TRAW    scaled_twin_full           1528          1528               0.040000          6.709909e-04   2016-06-01  2022-06-30
+ EYEG  KPRX    scaled_twin_full           1460          1460               0.002778          8.298803e-03   2016-01-04  2021-11-05
+ INTL  SNEX    scaled_twin_full           1133          1133               7.593694          4.811750e-06   2016-01-04  2020-07-02
+ MGNI  RUBI    scaled_twin_full           1131          1131               0.000017          3.973908e-02   2016-01-04  2020-06-30
+  CUR  PALI    scaled_twin_full            961           961               0.000222          2.315213e-02   2016-01-04  2019-10-31
+ KOOL  THMO    scaled_twin_full            920           920               0.022222          2.118423e-03   2016-03-07  2019-10-31
+ GLOW  TWAV    scaled_twin_full            904           904               0.001667          2.342731e-02   2016-01-04  2020-03-06
+ APEX  CHKE    scaled_twin_full            875           875              30.000000         -2.511616e-04   2016-01-04  2019-06-26
+ FRTX  VICL    scaled_twin_full            821           821              45.000000         -1.558240e-03   2016-05-27  2019-08-30
+ ATHE  PRAN    scaled_twin_full            818           818              10.000000         -1.828781e-04   2016-01-04  2019-04-08
+ BCIC  KCAP    scaled_twin_full            816           816              10.000000         -3.958140e-05   2016-01-04  2019-04-01
+ ENLV  ORPN    scaled_twin_full            808           808              15.000000         -2.532455e-03   2016-01-04  2019-03-25
+ VISL  XGTI    scaled_twin_full            792           792            1200.000000         -3.320926e-03   2016-01-04  2019-03-04
+  ALN  PLAG    scaled_twin_full            666           666               0.100000          2.523677e-03   2016-01-04  2018-09-28
+ PARA   VII    scaled_twin_full            653           653           10000.000000         -5.650635e-02   2016-01-05  2022-06-22
+ CNSY  CYTX    scaled_twin_full            635           635           18750.000000         -6.073128e-02   2016-01-07  2019-07-26
+ PHIO  RXII    scaled_twin_full            548           548            5940.000000         -5.411413e-02   2016-01-07  2018-11-16
+ AIIO  ESSC    scaled_twin_full            537           537             200.000000         -1.773707e-03   2020-03-20  2022-06-30
+ MRKR  TPIV    scaled_twin_full            489           489              10.000000         -1.027301e-04   2016-11-08  2018-10-17
+ SEGG  TDAC    scaled_twin_full            486           486            1400.000000         -5.275132e-03   2018-06-13  2021-10-29
+ SPRU    XL    scaled_twin_full            383           383               8.000000         -8.965243e-07   2020-12-22  2022-06-30
+ MSTX  SVRA    scaled_twin_full            332           332              10.000000         -9.052301e-05   2016-01-04  2017-04-27
+  AQB   XON scaled_twin_partial            256          1025              20.000000         -4.301058e+00   2016-01-04  2017-01-06
+ FEAC  FIRY    scaled_twin_full            164           164               0.050000          8.615906e-06   2020-04-27  2020-12-16
+ HIND  RSLS    scaled_twin_full            147           148               4.000000         -8.004271e-02   2021-06-16  2022-06-22
+ DGLY  KUST    scaled_twin_full             81            81               0.006667          1.711483e-01   2016-07-08  2022-06-24
+scaled-twin excess rows=19,976
+TEST 3 ohlc_only (equal O/H/L/C, range >= 1%, volume differs, >= 5 days, not already found): pairs=1
+sym_a sym_b  n_match first_match last_match       med_dv
+ APTV  DLPH        9  2017-11-17 2017-12-04 203789659.92
+TOTAL excess rows (strict + scaled, union)=60,698 = 0.5881% of bars
+-- per year
+         bars  excess_rows  strict_pairs_active  strict_excess_rows  scaled_pairs_active
+2016  1330227        10112                   29                5847                   22
+2017  1427081        11577                   31                6872                   21
+2018  1537143        11891                   35                7324                   20
+2019  1598763         8981                   34                6290                   17
+2020  1662343         6363                   30                4850                   11
+2021  1830345         8307                   40                6623                    9
+2022   934759         3467                   29                2916                    7
+-- breakout-scale rows [gap>=10% & $vol>=1M]  total=18,106  double-counted=266  share=1.4691%
+      rows  excess   share
+year                      
+2016  1273      33  0.0259
+2017  1358      57  0.0420
+2018  1703      45  0.0264
+2019  1844      31  0.0168
+2020  6862      54  0.0079
+2021  3636      41  0.0113
+2022  1430       5  0.0035
+-- breakout-scale rows [ret>=15% & $vol>=1M]  total=28,244  double-counted=395  share=1.3985%
+       rows  excess   share
+year                       
+2016   1976      60  0.0304
+2017   1922      69  0.0359
+2018   2389      68  0.0285
+2019   2640      43  0.0163
+2020  10813      71  0.0066
+2021   5778      73  0.0126
+2022   2726      11  0.0040
+-- breakout-scale rows [ret>=50% & $vol>=1M]  total=2,325  double-counted=56  share=2.4086%
+      rows  excess   share
+year                      
+2016   167      12  0.0719
+2017   205      14  0.0683
+2018   215       9  0.0419
+2019   267       6  0.0225
+2020   793       5  0.0063
+2021   487       8  0.0164
+2022   191       2  0.0105
+== SEAM check {'window': '2021-09-27..2022-06-30', 'symbols_a': 8299, 'symbols_b': 12391, 'shared_rows': 1302551, 'agree_within_1pct_rows': 1282206, 'rows_over_0p1pct': 24568, 'symbols_shared': 7460, 'symbols_all_agree': 7058, 'symbols_with_mismatch': 402}
+                         symbols   rows
+kind                                   
+constant_scale_mismatch       71  12349
+disagree_varying              35   5582
+partly_disagree              296  50714
+   t   n  n_agree  n_over_0p1pct    med_lr        sd_lr                    kind  factor_a_over_b
+ ACH 192        0            192  1.118138 2.004271e-01        disagree_varying         3.059151
+ LTL 192      191              6  0.000005 1.330291e-03         partly_disagree         1.000005
+ MDU 192        0            192  0.966940 3.481326e-06 constant_scale_mismatch         2.629885
+ MGF 192      182             10  0.000000 3.585397e-01         partly_disagree         1.000000
+ MMM 192        0            192  0.178983 2.209353e-07 constant_scale_mismatch         1.196000
+MMTM 192      191              5  0.000000 1.245063e-03         partly_disagree         1.000000
+ MTA 192      191              1  0.000000 1.303988e-03         partly_disagree         1.000000
+MTNB 192      190              2  0.000000 2.756646e-01         partly_disagree         1.000000
+MVRL 192      191              7  0.000000 2.608369e-03         partly_disagree         1.000000
+MYPS 192      187              5  0.000000 3.676666e-01         partly_disagree         1.000000
+NEXT 192      191              1  0.000000 7.718660e-04         partly_disagree         1.000000
+ NGG 192        0            192  0.105853 1.256406e-02        disagree_varying         1.111659
+NMTC 192      191              1  0.000000 1.586265e-03         partly_disagree         1.000000
+NORW 192      167             25  0.000000 2.483984e-01         partly_disagree         1.000000
+NRGD 192        0            192 -2.302585 2.212616e-06 constant_scale_mismatch         0.100000
+NULC 192      191              6  0.000000 1.848715e-03         partly_disagree         1.000000
+OCCI 192       14            178  0.102210 3.032377e-02         partly_disagree         1.107616
+OMQS 192      191              4  0.000000 1.030873e-03         partly_disagree         1.000000
+OPEN 192        0            192  0.032790 3.450667e-06 constant_scale_mismatch         1.033333
+ OSG 192        0            192  1.923123 3.110355e-01        disagree_varying         6.842293

@@ -1,0 +1,1 @@
+selftest OK: exact twin, near twin 0.005%, 3-day coincidence, different-volume negative, retired symbol + switch date, scaled x25 twin, excess count, sealed guard

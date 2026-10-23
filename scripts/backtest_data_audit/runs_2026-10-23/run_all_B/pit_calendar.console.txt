@@ -1,0 +1,18 @@
+CALENDAR /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz: 1,270 SPY sessions 2021-09-27..2026-10-16
+  2021: 68 sessions (NYSE 252) partial year
+  2022: 251 sessions (NYSE 251) ok
+  2023: 250 sessions (NYSE 250) ok
+  2024: 252 sessions (NYSE 252) ok
+  2025: 250 sessions (NYSE 250) ok
+  2026: 199 sessions (NYSE ?) partial year
+  unscheduled closure 2025-01-09: absent (right)
+  early-close (13:00) days in range: 10; on the calendar: 10
+  bars dated off SPY's calendar: 0
+  minutes 2022-11-25: 13,978 bars, 289 at >= 13:00 (2.1%) on 89 tickers
+  minutes 2023-07-03: 32,560 bars, 1,618 at >= 13:00 (5.0%) on 166 tickers
+  minutes 2023-11-24: 8,340 bars, 340 at >= 13:00 (4.1%) on 47 tickers
+  minutes 2024-07-03: 19,080 bars, 1,246 at >= 13:00 (6.5%) on 101 tickers
+  minutes 2024-11-29: 39,188 bars, 1,996 at >= 13:00 (5.1%) on 229 tickers
+  minutes 2024-12-24: 22,130 bars, 1,792 at >= 13:00 (8.1%) on 116 tickers
+  MINUTE TREE: on early-close days 7,281 of 135,276 minute bars (5.4%) are after-hours prints the minute engine treats as the session (ticker-days 748)
+flagged rows: 748 -> <OUT>/pit/pit_calendar_B.tsv

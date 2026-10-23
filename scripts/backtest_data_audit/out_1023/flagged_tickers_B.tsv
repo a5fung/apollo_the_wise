@@ -1,0 +1,27 @@
+ticker	resolved_type	type_source	mi_type	mi_mic	sic_type	sic_code	name_class	name	assets_status	name_holder	assets_exchange	assets_tradable	admitted_by_type_filter	member_nights	first_member	last_member	median_raw_close	median_dv20_musd	spac_like_nights	spac_in_prior130_nights	flag_list
+BXSL	CS	mi	CS	XNYS	CS		FUND	Blackstone Secured Lending Fund	active	current	NYSE	True	True	644	2022-05-17	2024-12-31	27.62	19.8	0	0	NAME_SAYS_FUND_BUT_TYPED_CS
+MDRX	CS	sic			CS	7373	COMMON?	VERADIGM INC COM	active	current	OTC	False	True	423	2022-03-31	2024-02-28	14.63	15.1	0	0	OTC_TODAY
+SBNY	CS	sic			CS		COMMON?	SIGNATURE BK NEW YORK N Y	active	current	OTC	False	True	237	2022-03-31	2023-03-10	168.37	147.1	0	0	OTC_TODAY
+MGI	CS	sic			CS	7389	NO_NAME			none			True	152	2022-03-31	2023-05-31	10.62	24.5	9	103	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+IPOF	CS	sic			CS	6770	NO_NAME			none			True	122	2022-03-31	2022-10-14	10.0	18.9	0	0	SIC_6770_BLANK_CHECK
+PSTH	CS	sic			CS	6770	COMMON?	Pershing Square Tontine Holdings, Ltd.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	79	2022-03-31	2022-07-25	19.9	15.9	0	0	SIC_6770_BLANK_CHECK
+WE	CS	sic			CS	6770	NO_NAME			none			True	67	2022-04-27	2022-08-17	5.74	41.3	0	0	SIC_6770_BLANK_CHECK
+GGPI	CS	sic			CS	6770	NO_NAME			none			True	58	2022-03-31	2022-06-23	10.41	25.4	0	0	SIC_6770_BLANK_CHECK
+APTS	CS	sic			CS	6798	PREFERRED	Preferred Apartment Communities, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	58	2022-03-31	2022-06-23	24.91	46.4	0	0	NAME_SAYS_PREFERRED_BUT_TYPED_CS
+ASZ	CS	sic			CS	6770	NO_NAME			none			True	48	2022-06-15	2022-10-11	9.78	13.1	23	48	SIC_6770_BLANK_CHECK;SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+IEA	CS	sic			CS	6770	NO_NAME			none			True	38	2022-03-31	2022-10-06	14.3	11.1	0	0	SIC_6770_BLANK_CHECK
+HOLO	CS	mi	CS	XNAS	CS	7370	COMMON?	MicroCloud Hologram Inc. Ordinary Shares	active	current	NASDAQ	False	True	25	2024-02-21	2024-10-16	6.61	53.8	0	0	ACTIVE_BUT_NOT_TRADABLE
+ALCC	CS	sic			CS	4911	NO_NAME			none			True	23	2023-08-02	2024-05-09	12.81	11.6	3	23	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+APEN	CS	sic			CS	3841	NO_NAME			none			True	21	2023-02-06	2023-03-20	9.93	10.3	16	16	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+TBLT	CS	sic			CS	3420	COMMON?	TOUGHBUILT INDS INC Common Stock	active	current	OTC	False	True	18	2022-07-21	2022-08-18	6.52	45.2	0	0	OTC_TODAY
+HUDI	CS	mi	CS	XNAS	CS		COMMON?	Huadi International Group Co., Ltd. Ordinary Shares	active	current	NASDAQ	False	True	14	2022-11-15	2022-12-05	7.47	11.1	0	0	ACTIVE_BUT_NOT_TRADABLE
+MSDL	CS	mi	CS	XNYS	CS		FUND	Morgan Stanley Direct Lending Fund	active	current	NYSE	True	True	12	2024-11-11	2024-11-26	20.45	10.9	0	0	NAME_SAYS_FUND_BUT_TYPED_CS
+SV	CS	sic			CS	3433	NO_NAME			none			True	8	2022-04-21	2022-05-02	9.96	13.8	0	8	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+TTOO	CS	sic			CS	3841	COMMON?	T2 BIOSYSTEMS INC COM PAR $0.001	active	current	OTC	False	True	8	2023-10-13	2023-10-24	6.22	14.6	0	0	OTC_TODAY
+MLGO	CS	mi	CS	XNAS	CS	7371	COMMON?	MicroAlgo, Inc. Class A Ordinary Shares	active	current	NASDAQ	False	True	7	2024-06-28	2024-07-09	10.34	27.1	0	0	ACTIVE_BUT_NOT_TRADABLE
+AUS	CS	sic			CS	7990	NO_NAME			none			True	6	2022-07-14	2022-07-25	9.78	11.8	6	6	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+VXRT	CS	sic			CS	2836	COMMON?	Vaxart, Inc Common Stock	active	current	OTC	False	True	5	2022-03-31	2022-04-06	5.08	11.9	0	0	OTC_TODAY
+AAN	CS	sic			CS	7359	NO_NAME			none			True	5	2024-09-27	2024-10-03	9.99	10.4	5	5	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+CVII	CS	sic			CS	6770	NO_NAME			none			True	3	2023-04-19	2023-05-08	10.17	11.0	3	3	SIC_6770_BLANK_CHECK;SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+TOP	CS	mi	CS	XNAS	CS		COMMON?	TOP Financial Group Limited Class A Ordinary Shares	active	current	NASDAQ	False	True	3	2023-05-10	2023-05-12	9.13	22.5	0	0	ACTIVE_BUT_NOT_TRADABLE
+ATXI	CS	sic			CS	2834	COMMON?	Avenue Therapeutics, Inc. Common Stock	active	current	OTC	False	True	2	2022-10-05	2022-10-06	7.38	15.4	0	0	OTC_TODAY

@@ -1,0 +1,4 @@
+CHAIN KEY /Users/alvinfung/apollo_data/cb702/out/candidates.tsv: 118,687 candidates (E <= 2024-12-31); batch first breaks (retrigger_chain 0) 36,298
+  label differs from the point-in-time chain key: 0 ()
+  i.e. 0 breakouts a live system would have taken as a base's FIRST break are dropped by the batch key (0.00% of the batch first breaks)
+flagged rows: 0 -> <OUT>/pit/pit_chain_B.tsv

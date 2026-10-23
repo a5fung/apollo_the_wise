@@ -1,0 +1,175 @@
+[A] /Users/alvinfung/apollo_data/cb702_pre/daily_closes_all.csv.gz: 10,320,661 rows kept <= 2024-12-31; 0 later rows dropped at read (sealed, never examined); 0 unparsable dates; 9,944 symbols; 1,635 sessions 2016-01-04..2022-06-30
+[B] /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz: 8,619,626 rows kept <= 2024-12-31; 5,210,943 later rows dropped at read (sealed, never examined); 0 unparsable dates; 15,702 symbols; 821 sessions 2021-09-27..2024-12-31
+
+== INTEGRITY [A] ==
+  duplicate (ticker,date) keys: 0 rows of 10,320,661 on 0 symbols
+  high<low or open/close outside [low,high]: 0 rows of 10,320,661 on 0 symbols
+  non-positive price: 0 rows of 10,320,661 on 0 symbols
+  NaN in OHLCV: 0 rows of 10,320,661 on 0 symbols
+  weekend bars: 0 rows of 10,320,661 on 0 symbols
+  business days with no bar from any symbol: 59 (US holidays expected, ~9-10 a year): 2016-01-18, 2016-02-15, 2016-03-25, 2016-05-30, 2016-07-04, 2016-09-05, 2016-11-24, 2016-12-26, 2017-01-02, 2017-01-16, 2017-02-20, 2017-04-14, 2017-05-29, 2017-07-04, 2017-09-04, 2017-11-23, 2017-12-25, 2018-01-01, 2018-01-15, 2018-02-19, 2018-03-30, 2018-05-28, 2018-07-04, 2018-09-03, 2018-11-22, 2018-12-05, 2018-12-25, 2019-01-01, 2019-01-21, 2019-02-18, 2019-04-19, 2019-05-27, 2019-07-04, 2019-09-02, 2019-11-28, 2019-12-25, 2020-01-01, 2020-01-20, 2020-02-17, 2020-04-10, 2020-05-25, 2020-07-03, 2020-09-07, 2020-11-26, 2020-12-25, 2021-01-01, 2021-01-18, 2021-02-15, 2021-04-02, 2021-05-31, 2021-07-05, 2021-09-06, 2021-11-25, 2021-12-24, 2022-01-17, 2022-02-21, 2022-04-15, 2022-05-30, 2022-06-20
+
+== COVERAGE [A] ==
+label  year  sessions  tickers_ever  per_day_median  per_day_min  per_day_max  liquid_per_day_median(dv>=2e+06,px>=2)  liquid_min  liquid_max
+    A  2016       252          5811            5284         5094         5546                                    2764        2417        3383
+    A  2017       251          6269            5667         5472         5975                                    2997        2544        3543
+    A  2018       251          6801            6124         5533         6390                                    3260        2338        3878
+    A  2019       252          7189            6345         6219         6500                                    3228        2766        3870
+    A  2020       253          7647            6533         6386         6910                                    3470        3195        4177
+    A  2021       252          8375            7314         6908         7548                                    4055        2791        4532
+    A  2022       124          8077            7540         7414         7626                                    3961        3468        4353
+  thin sessions (symbols printed < 60% of the prior-21-session median): 0 of 1635: 
+  symbols by LAST-bar year, all symbols (the final year is mostly 'still alive'): 2016:53, 2017:45, 2018:177, 2019:390, 2020:542, 2021:660, 2022:8077
+  symbols whose last bar is before 2022-06-23 (stopped printing), by year of last bar:
+      ended_all  ended_non_derivative  ended_liquid_non_deriv(last60 median dv,px)
+year                                                                              
+2016         53                    29                                            4
+2017         45                    24                                            6
+2018        177                   155                                           46
+2019        390                   349                                          117
+2020        542                   454                                          105
+2021        660                   513                                          144
+2022        286                   215                                           78
+
+== STALE / CARRIED BARS [A] ==
+  zero-volume rows: 0 of 10,320,661 (0.000%) on 0 symbols
+  carried closes (volume 0 and close == previous close): 0 rows on 0 symbols
+  frozen copies (OHLCV identical to the previous bar, volume > 0): 508 rows on 264 symbols
+  flat bars (O=H=L=C, volume > 0): 236,262 rows on 4,834 symbols
+  symbols with a carried run >= 3 sessions: 0; longest run 0; symbols whose LAST bar is a carried bar: 0
+  zero-volume rows by year: none
+
+== DUPLICATE COMPANIES [A] (byte-identical OHLCV on one date under >= 2 symbols) ==
+  duplicate ticker-days: 40,822 second copies in 81,640 identical rows (158 pairs); persistent pairs (>= 20 shared days): 71
+  second copies per session: median 25, max 33 over 1,635 sessions with any; liquid second copies (dv>=2e+06): 17,967 ticker-days = 0.33% of all liquid ticker-days
+  largest pairs: EYES=VANI 1635d; INT=WKC 1635d; ATYR=LIFE 1634d; KLDW=KNO 1624d; IAC=PPLI 1623d; FB=META 1620d; AORT=CRY 1525d; FDIV=HISF 1524d; TOT=TTE 1369d; BBHY=JPHY 1358d
+  triples+ (a third symbol on the same bar): 12 rows
+
+== NON-EQUITY ITEMS IN THE UNIVERSE [A] (window 2021-09-27..2022-06-30) ==
+  security type known for 3,765 of 3,900 liquid symbols (96.5%); by type: CS 2537, ETF 911, ADRC 182, UNKNOWN 135, FUND 81, ETV 40, ETN 8, SP 3, WARRANT 2, UNIT 1  <- a symbol with NO type is admitted as unknown (every re-fetched delisted name will be one unless its Polygon type is added)
+  liquid symbols in window: 3,900; flagged non-equity by suffix/parent/test-symbol/security-type map: 1,171; by --assets name keywords: 1,138; either: 1,289 = 33.1% of liquid symbols, 36.6% of liquid dollar volume (keyword match is a heuristic; 'Fund'/'Index'/'Unit' also hit some operating companies)
+
+== IDENTITY BREAKS [A] ==
+  holes > 30 sessions: 809 on 398 symbols | holes 10..30: 4,618 on 969 symbols
+  >70% one-session moves: 1,717 on 1,005 symbols; with a volume event (kept as a genuine shock): 1,409; flagged jump (no volume event, or a split/spin on the day): 339 on 260 symbols
+  short holes with a price x2 / x0.5 AND dollar-volume x10 / x0.1 regime change: 14
+  symbols with >= 1 break (hole or jump) by this script: 578 of 9,944
+  vs --guard: guard flags 578 symbols; this script 578; both 578; only guard 0; only this script 0
+  of the 0 symbols only this script flags, 0 have a median dollar volume >= 2e+06
+  wrote /private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/d30e3944-e07e-4b44-97de-010acba78d0b/scratchpad/uc_final/symbol_guard_A.tsv (578 symbols with a break) - pass to the runner as --breaks for this export
+
+== INTEGRITY [B] ==
+  duplicate (ticker,date) keys: 0 rows of 8,619,626 on 0 symbols
+  high<low or open/close outside [low,high]: 0 rows of 8,619,626 on 0 symbols
+  non-positive price: 39 rows of 8,619,626 on 2 symbols
+  NaN in OHLCV: 0 rows of 8,619,626 on 0 symbols
+  weekend bars: 0 rows of 8,619,626 on 0 symbols
+  business days with no bar from any symbol: 31 (US holidays expected, ~9-10 a year): 2021-11-25, 2021-12-24, 2022-01-17, 2022-02-21, 2022-04-15, 2022-05-30, 2022-06-20, 2022-07-04, 2022-09-05, 2022-11-24, 2022-12-26, 2023-01-02, 2023-01-16, 2023-02-20, 2023-04-07, 2023-05-29, 2023-06-19, 2023-07-04, 2023-09-04, 2023-11-23, 2023-12-25, 2024-01-01, 2024-01-15, 2024-02-19, 2024-03-29, 2024-05-27, 2024-06-19, 2024-07-04, 2024-09-02, 2024-11-28, 2024-12-25
+
+== COVERAGE [B] ==
+label  year  sessions  tickers_ever  per_day_median  per_day_min  per_day_max  liquid_per_day_median(dv>=2e+06,px>=2)  liquid_min  liquid_max
+    B  2021        68         11499           10492        10140        10647                                    4692        4220        5144
+    B  2022       251         12616           10705        10361        10946                                    4427        3185        5382
+    B  2023       250         12535           10359        10076        10752                                    4096        3221        4694
+    B  2024       252         12349           10367        10227        10698                                    4259        3722        5012
+  thin sessions (symbols printed < 60% of the prior-21-session median): 0 of 821: 
+  symbols by LAST-bar year, all symbols (the final year is mostly 'still alive'): 2021:361, 2022:1294, 2023:1698, 2024:12349
+  symbols whose last bar is before 2024-12-23 (stopped printing), by year of last bar:
+      ended_all  ended_non_derivative  ended_liquid_non_deriv(last60 median dv,px)
+year                                                                              
+2021        361                   244                                           93
+2022       1294                   846                                          200
+2023       1698                  1094                                          150
+2024       1487                   925                                          135
+
+== STALE / CARRIED BARS [B] ==
+  zero-volume rows: 99,612 of 8,619,626 (1.156%) on 1,779 symbols
+  carried closes (volume 0 and close == previous close): 5,180 rows on 334 symbols
+  frozen copies (OHLCV identical to the previous bar, volume > 0): 4,727 rows on 791 symbols
+  flat bars (O=H=L=C, volume > 0): 409,553 rows on 6,859 symbols
+  symbols with a carried run >= 3 sessions: 23; longest run 807; symbols whose LAST bar is a carried bar: 11
+  zero-volume rows by year: 2021:5664, 2022:31697, 2023:35700, 2024:26551
+
+== DUPLICATE COMPANIES [B] (byte-identical OHLCV on one date under >= 2 symbols) ==
+  duplicate ticker-days: 2,626 second copies in 4,856 identical rows (2,460 pairs); persistent pairs (>= 20 shared days): 0
+  second copies per session: median 3, max 49 over 506 sessions with any; liquid second copies (dv>=2e+06): 0 ticker-days = 0.00% of all liquid ticker-days
+  largest pairs: 
+  triples+ (a third symbol on the same bar): 1,024 rows
+
+== NON-EQUITY ITEMS IN THE UNIVERSE [B] (window 2021-09-27..2022-06-30) ==
+  security type known for 3,697 of 4,499 liquid symbols (82.2%); by type: CS 2468, ETF 892, UNKNOWN 802, ADRC 178, FUND 76, ETV 39, PFD 30, ETN 9, SP 3, WARRANT 1, UNIT 1  <- a symbol with NO type is admitted as unknown (every re-fetched delisted name will be one unless its Polygon type is added)
+  liquid symbols in window: 4,499; flagged non-equity by suffix/parent/test-symbol/security-type map: 1,238; by --assets name keywords: 1,109; either: 1,347 = 29.9% of liquid symbols, 37.0% of liquid dollar volume (keyword match is a heuristic; 'Fund'/'Index'/'Unit' also hit some operating companies)
+
+== IDENTITY BREAKS [B] ==
+/Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/universe_check.py:296: RuntimeWarning: divide by zero encountered in divide
+  ret = np.where(sp, c / np.r_[np.nan, c[:-1]] - 1.0, np.nan)
+/Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/universe_check.py:296: RuntimeWarning: invalid value encountered in divide
+  ret = np.where(sp, c / np.r_[np.nan, c[:-1]] - 1.0, np.nan)
+  holes > 30 sessions: 717 on 397 symbols | holes 10..30: 5,209 on 1,277 symbols
+  >70% one-session moves: 8,536 on 2,237 symbols; with a volume event (kept as a genuine shock): 3,553; flagged jump (no volume event, or a split/spin on the day): 4,994 on 984 symbols
+  short holes with a price x2 / x0.5 AND dollar-volume x10 / x0.1 regime change: 47
+  symbols with >= 1 break (hole or jump) by this script: 1,302 of 15,702
+  wrote /private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/d30e3944-e07e-4b44-97de-010acba78d0b/scratchpad/uc_final/symbol_guard_B.tsv (1,302 symbols with a break) - pass to the runner as --breaks for this export
+
+== OVERLAP [A vs B] window 2021-09-27..2022-06-30 ==
+  symbols with a bar in the window: A 8,299 | B 12,391 | both 7,460 | only A 839 | only B 4,931
+  only A: 839 symbols, 1.87% of A's window dollar volume; liquid (>=60 bars, dv>=2e+06, px>=2) 165 of 3,900 liquid A symbols = 4.2%, 1.8% of liquid dollar volume
+  only B: 4,931 symbols, 5.39% of B's window dollar volume; liquid (>=60 bars, dv>=2e+06, px>=2) 816 of 4,499 liquid B symbols = 18.1%, 5.0% of liquid dollar volume
+  liquid names per session (median by month; dv>=2e+06, px>=2; includes ETFs/warrants in both):
+            A     B  ratio
+date                      
+2021-09  4084  4793  0.852
+2021-10  3892  4541  0.857
+2021-11  4116  4819  0.854
+2021-12  4094  4770  0.858
+2022-01  4104  4790  0.857
+2022-02  3937  4603  0.855
+2022-03  3985  4612  0.864
+2022-04  3924  4532  0.866
+2022-05  3942  4581  0.861
+2022-06  3883  4477  0.867
+  RENAME-AWARE: of A's 165 liquid only-A symbols, 138 are the same bars under another symbol in B; 27 are genuinely absent from B (0.5% of A's liquid window dollar volume)
+  RENAME-AWARE: of B's 816 liquid only-B symbols, 157 are the same bars under another symbol in A; 659 are genuinely absent from A (3.5% of B's liquid window dollar volume)
+  rename pairs found: 580 A-only->B symbol, 660 B-only->A symbol (e.g. CYCN->KRSA; PNM->TXNM; EDAP->FOCL; RYI->RYZ; HTBI->HTB; RYE->RSPG; CPLP->CCEC; JAGG->BBAG)
+
+== IDENTITY ACROSS EXPORTS [A vs B] same symbol, same dates ==
+  common symbols with >= 20 shared days: 7,316; same 7,167; scale_or_basis_only 85; MISMATCH_different_series 50; undetermined 14
+  MISMATCH_different_series: 50 symbols = 0.86% of shared dollar volume; liquid (shared-day median dv>=2e+06) 27
+  scale_or_basis_only: 85 symbols = 0.73% of shared dollar volume; liquid (shared-day median dv>=2e+06) 46
+  undetermined: 14 symbols = 0.00% of shared dollar volume; liquid (shared-day median dv>=2e+06) 2
+  largest mismatches by dollar volume: META(corr 0.82, ratio 21.8); B(corr -0.01, ratio 0.467); BNY(corr 0.24, ratio 3.98); DOC(corr 0.70, ratio 1.88); HR(corr 0.53, ratio 1.05); COHR(corr 0.83, ratio 0.245); LOGC(corr 0.28, ratio 84.2); SKIN(corr 0.21, ratio 1); COR(corr 0.00, ratio 0.779); JOYY(corr 0.64, ratio 1.6); ACH(corr 0.17, ratio 3.06); DXJ(corr 0.07, ratio 1)
+  side of the mismatch (a break in that side's own series): break_in_A: 4 (1 liquid); break_in_B: 23 (11 liquid); no_break_visible_either_side: 23 (15 liquid)
+  mismatches with NO break in A's own series: 46 of 50 -> in A these are a different company under the same symbol that no hole/jump guard can see (it is a symbol-label difference, not a corrupted series)
+  GUARD RECALL on this independent sample: the guard flags 4 of 50 mismatched symbols (8.0%); of the 4 with a break on the A side, 4 flagged
+  volume A/B on 1,302,338 shared ticker-days: median 1.034, p5 1.000, p95 1.240; identical volume on 13.7% of rows
+  close A/B: exactly equal on 94.95% of 1,302,551 shared rows; within 0.5% on 98.37%
+
+== KNOWN-GONE LIST [B names whose last bar is before the cutoff, liquid in the overlap] vs [A] ==
+  B liquid in window (2021-09-27..2022-06-30; >= 60 bars, median dv >= 2e+06, median px >= 2): 4,499; of which warrant/unit/right/preferred/non-CS by heuristic: 1,238 (excluded below)
+status                    in_primary  missing  renamed_in_primary  total  share_not_in_primary
+bucket                                                                                        
+ALIVE_at_cutoff(control)        2414      247                  71   2732                 0.090
+gone_2022                         24       50                  15     89                 0.562
+gone_2023                         12      142                  27    181                 0.785
+gone_2024                          8      119                  22    149                 0.799
+gone_inside_overlap               73       24                  13    110                 0.218
+  of the 529 known-gone names, 118 have a probable successor symbol in B (a rename, not a death); excluding them: 411 deaths, missing/partial in A 282 = 68.6%
+  Alpaca assets-list status of the known-gone names that are NOT in the primary export: absent_from_assets_list 334, active 1 | of those IN the primary export: inactive 95, active 22
+  KNOWN-GONE liquid names: 529; missing or only partly in A: 335 = 63.3% ; their share of the gone group's window dollar volume: 56.6%
+  CONTROL (still alive at the cutoff, liquid in the window): 2,732; missing/partial in A: 247 = 9.0%  -> the gap is a LOWER bound on survivorship: the control still contains names that died in 2025-26 (sealed, unobservable here) plus listing/identity noise
+  gone INSIDE the overlap (primary was still live): 110 names, in primary 86 = 78.2% ; gone AFTER the primary ended: 419, in primary 25.8%
+
+== IMPACT [B prices; every figure is descriptive, <= cutoff 2024-12-31; NOT a tradable return] ==
+  snapshot 2021-12-31: 3,152 liquid names; end = last bar <= cutoff
+                        group    n  median_ret  mean_ret  share<=-80%  share<=-50%  share>=+100%  share>=+300%
+           covered by primary 2605      -0.109     0.005        0.089        0.240         0.068         0.010
+       NOT covered by primary  547      -0.291    -0.224        0.243        0.366         0.033         0.007
+  of which gone before cutoff  315      -0.122    -0.124        0.229        0.314         0.044         0.013
+               gone & covered  187       0.000    -0.107        0.123        0.176         0.011         0.000
+  RUNNERS: names in B that closed >= x2 of a liquid start-day close within 60 sessions, start in window: 582 (30 dropped for an identity break in B itself); remaining 552; covered by A: 406; NOT covered: 146 = 26.4%  (a runner the primary export never saw cannot be recalled by anything built on it)
+  of the 98 runners reaching x3+: covered 68, NOT covered 30 = 30.6%
+  of the 43 runners reaching x4+: covered 32, NOT covered 11 = 25.6%
+  uncovered runners (best multiple, start): VIEW x5.0 2022-05-11; SOPA x4.9 2021-12-17; DAWN x4.6 2022-05-27; AXDX x4.6 2022-06-08; RELI x4.4 2021-11-22; BHAT x4.4 2022-06-22; REV x4.3 2022-06-10; VLD x4.1 2022-06-29; GTHX x4.1 2022-06-14; PBTS x4.1 2022-04-14; NVTA x4.1 2022-06-16; FMTX x4.0 2022-06-16; GRTX x3.9 2021-12-01; VERV x3.7 2022-06-16; MDVL x3.5 2022-04-06
+  cumulative death rate of the 3,152 snapshot-liquid names (last bar before year end): by 2022: 189 (6.0%), by 2023: 359 (11.4%), by 2024: 502 (15.9%)
+
+flagged rows: 20,929 -> /private/tmp/claude-501/-Users-alvinfung-apollo-the-wise/d30e3944-e07e-4b44-97de-010acba78d0b/scratchpad/uc_final/flagged_rows.tsv  (by check: stale:flat_bar 9,552, breaks:jump 5,333, nonequity:in_universe 2,636, breaks:hole 1,526, overlap:only_B 659, gone:missing_from_primary 335, stale:frozen_copy 333, impact:uncovered_runner 146, integrity:no_session 90, identity_x:price_basis_diverges 85, dups:company_two_symbols 71, breaks:short_hole_level_shift 61, identity_x:different_series 50, overlap:only_A 27, stale:carried_run 23, integrity:non-positive 2)  [31s]

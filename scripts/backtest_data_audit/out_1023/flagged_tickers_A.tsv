@@ -1,0 +1,512 @@
+ticker	resolved_type	type_source	mi_type	mi_mic	sic_type	sic_code	name_class	name	assets_status	name_holder	assets_exchange	assets_tradable	admitted_by_type_filter	member_nights	first_member	last_member	median_raw_close	median_dv20_musd	spac_like_nights	spac_in_prior130_nights	identity_breaks	nights_before_last_break	flag_list
+STL	UNKNOWN	none					COMMON?	Sterling Bancorp	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1220	2017-03-01	2021-12-31	21.75	39.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+TRN	CS	mi	CS	XNYS	CS	3743	COMMON?	Trinity Industries, Inc.	active	current	NYSE	True	True	1220	2017-03-01	2021-12-31	26.62	27.7	0	0	2018-11-01:jump	423	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+RTX	CS	mi	CS	XNYS	CS	3724	COMMON?	RTX Corporation	active	current	NYSE	True	True	1220	2017-03-01	2021-12-31	119.28	502.9	0	0	2020-04-03:jump	779	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+CIT	UNKNOWN	none					COMMON?	CIT Group Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1220	2017-03-01	2021-12-31	47.66	46.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+FNF	CS	mi	CS	XNYS	CS	6361	COMMON?	Fidelity National Financial, Inc.	active	current	NYSE	True	True	1220	2017-03-01	2021-12-31	39.64	58.9	0	0	2017-10-02:jump	149	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+SBNY	CS	sic			CS		COMMON?	SIGNATURE BK NEW YORK N Y	active	current	OTC	False	True	1220	2017-03-01	2021-12-31	130.33	60.3	0	0		0	OTC_TODAY
+CNK	CS	mi	CS	XNYS	CS	7830	COMMON?	Cinemark Holdings, Inc.	active	current	NYSE	True	True	1220	2017-03-01	2021-12-31	35.02	53.4	0	0	2020-03-19:jump	768	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+FRCB	UNKNOWN	none					COMMON?	FIRST REP BK SAN FRANCISCO CALIF NEW COM	active	current	OTC	False	True	1220	2017-03-01	2021-12-31	101.54	118.2	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+CNX	CS	mi	CS	XNYS	CS	1311	COMMON?	CNX Resources Corporation	active	current	NYSE	True	True	1220	2017-03-01	2021-12-31	13.16	43.1	0	0	2017-11-29:jump	190	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+MBT	UNKNOWN	none					ADR	Mobile TeleSystems Public Joint Stock Company American Depos	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1220	2017-03-01	2021-12-31	8.86	27.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+XLNX	UNKNOWN	none					COMMON?	Xilinx, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1220	2017-03-01	2021-12-31	94.29	277.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+CONE	UNKNOWN	none					COMMON?	CyrusOne Inc Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1220	2017-03-01	2021-12-31	63.06	60.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+ABBNY	UNKNOWN	none					ADR	ABB LTD American Depositary Receipts - Sponsored	active	current	OTC	False	True	1220	2017-03-01	2021-12-31	23.99	43.4	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY_FOREIGN_SUFFIX
+NVS	ADRC	mi	ADRC	XNYS	ADRC		COMMON?	Novartis AG	active	current	NYSE	True	True	1220	2017-03-01	2021-12-31	85.94	151.8	0	0	2019-04-09:jump	530	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+NUAN	UNKNOWN	none					COMMON?	Nuance Communications, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1220	2017-03-01	2021-12-31	17.41	46.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+BBL	UNKNOWN	none					ADR	BHP Group Plc American Depositary Shares (Each representing 	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1220	2017-03-01	2021-12-31	43.81	61.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+FLR	CS	mi	CS	XNYS	CS	1600	COMMON?	Fluor Corporation	active	current	NYSE	True	True	1218	2017-03-01	2021-12-31	27.96	54.7	0	0	2020-03-19:jump	766	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+QVCAQ	UNKNOWN	none					COMMON?	QVC GROUP INC COM SER A	active	current	OTC	False	True	1210	2017-03-01	2021-12-31	13.12	51.3	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+KSU	UNKNOWN	none					COMMON?	Kansas City Southern	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1207	2017-03-01	2021-12-13	122.13	144.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+HRC	UNKNOWN	none					COMMON?	HILL-ROM HOLDINGS, INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1206	2017-03-01	2021-12-10	97.32	43.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+MDRX	CS	sic			CS	7373	COMMON?	VERADIGM INC COM	active	current	OTC	False	True	1204	2017-03-01	2021-12-31	12.25	22.3	0	0		0	OTC_TODAY
+UFS	UNKNOWN	none					COMMON?	DOMTAR CORPORATION (New)	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1197	2017-03-01	2021-11-29	40.86	26.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+SC	UNKNOWN	none					COMMON?	SANTANDER CONSUMER USA HOLDINGS INC	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1191	2017-03-01	2021-12-29	20.32	25.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+SITC	CS	mi	CS	XNYS	CS	6798	COMMON?	SITE Centers Corp. Common Shares	active	current	NYSE	True	True	1183	2017-03-01	2021-12-31	12.84	22.1	0	0	2018-07-02:jump	337	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+ARI	CS	mi	CS	XNYS	CS	6798	COMMON?	APOLLO COMMERCIAL REAL ESTATE FINANCE, INC.	active	current	NYSE	True	True	1178	2017-03-01	2021-12-31	18.17	19.0	0	0	2020-03-25:jump	771	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+PSXP	UNKNOWN	none					COMMON?	PHILLIPS 66 PARTNERS LP	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1171	2017-03-01	2021-12-31	48.74	17.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+CSOD	UNKNOWN	none					COMMON?	Cornerstone OnDemand, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1166	2017-03-01	2021-10-14	45.58	23.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+STMP	UNKNOWN	none					COMMON?	Stamps.com Inc.  Common Stock ($0.001 Par Value)	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1158	2017-03-01	2021-10-04	187.45	58.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+XEC	UNKNOWN	none					COMMON?	CIMAREX ENERGY CO	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1156	2017-03-01	2021-09-30	68.69	94.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+VER	UNKNOWN	none					COMMON?	VEREIT, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1151	2017-03-01	2021-10-29	8.27	74.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+GRA	UNKNOWN	none					COMMON?	W.R. Grace & Co.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1149	2017-03-01	2021-09-21	68.66	35.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+DBI	CS	mi	CS	XNYS	CS	5661	COMMON?	Designer Brands Inc.	active	current	NYSE	True	True	1146	2017-03-01	2021-12-31	17.96	27.4	0	0	2020-03-19:jump	766	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+ATH	UNKNOWN	none					COMMON?	Athene Holding Ltd. Class A Common Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1145	2017-06-16	2021-12-31	45.85	60.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+PVG	UNKNOWN	none					COMMON?	PRETIUM RESOURCES INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1140	2017-03-01	2021-12-31	9.61	15.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+QTS	UNKNOWN	none					COMMON?	QTS REALTY TRUST, INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1135	2017-03-01	2021-08-31	52.65	25.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+PFPT	UNKNOWN	none					COMMON?	Proofpoint, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1134	2017-03-01	2021-08-30	115.08	66.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+MXIM	UNKNOWN	none					COMMON?	Maxim Integrated Products, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1131	2017-03-01	2021-08-25	58.03	132.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+ARNA	UNKNOWN	none					COMMON?	Arena Pharmaceuticals, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1121	2017-06-30	2021-12-31	48.91	27.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+WRI	UNKNOWN	none					COMMON?	Weingarten Realty Investors	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1115	2017-03-01	2021-08-03	28.83	25.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+XLRN	UNKNOWN	none					COMMON?	Acceleron Pharma Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1113	2017-03-06	2021-11-19	49.86	19.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+ALXN	UNKNOWN	none					COMMON?	Alexion Pharmaceuticals, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1105	2017-03-01	2021-07-20	119.78	226.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+RPAI	UNKNOWN	none					COMMON?	RETAIL PROPERTIES OF AMERICA, INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1102	2017-03-01	2021-10-21	12.21	19.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+PRAH	UNKNOWN	none					COMMON?	PRA Health Sciences, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1092	2017-03-01	2021-06-30	98.09	44.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+STAY	UNKNOWN	none					COMMON?	Extended Stay America, Inc. Paired Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1081	2017-03-01	2021-06-15	17.15	30.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+CLGX	UNKNOWN	none					COMMON?	Corelogic, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1073	2017-03-01	2021-06-03	46.07	24.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+FLIR	UNKNOWN	none					COMMON?	FLIR Systems, Inc. (DE) Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1059	2017-03-01	2021-05-13	48.49	47.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+NAV	UNKNOWN	none					COMMON?	Navistar International	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1053	2017-03-01	2021-06-30	34.61	19.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+GWPH	UNKNOWN	none					ADR	GW Pharmaceuticals Plc American Depositary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1052	2017-03-01	2021-05-04	126.1	49.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+MGLN	UNKNOWN	none					COMMON?	Magellan Health, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1052	2017-03-06	2021-12-31	78.41	15.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+MDP	UNKNOWN	none					COMMON?	Meredith Corporation	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1046	2017-03-01	2021-12-01	52.45	21.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+RP	UNKNOWN	none					COMMON?	RealPage, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1043	2017-03-01	2021-04-21	58.15	36.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+IPHI	UNKNOWN	none					COMMON?	Inphi Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1042	2017-03-01	2021-04-20	45.26	41.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+WDR	UNKNOWN	none					COMMON?	Waddell & Reed Financial, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1042	2017-03-01	2021-04-30	18.07	17.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+VAR	UNKNOWN	none					COMMON?	Varian Medical Systems, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1038	2017-03-01	2021-04-14	119.62	86.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+CXP	UNKNOWN	none					COMMON?	COLUMBIA PROPERTY TRUST, INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1032	2017-03-01	2021-12-07	21.0	14.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+GME	CS	mi	CS	XNYS	CS	5734	COMMON?	GameStop Corp. Class A	active	current	NYSE	True	True	1027	2017-03-01	2021-12-31	16.19	56.5	0	0	2021-01-27:jump;2021-02-24:jump	810	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+CVA	UNKNOWN	none					COMMON?	Covanta Holding Corporation	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1025	2017-03-01	2021-11-29	15.35	13.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+SINA	UNKNOWN	none					COMMON?	SINA Corporation Ordinary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1022	2017-03-01	2021-03-22	58.79	47.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+ACIA	UNKNOWN	none					COMMON?	Acacia Communications, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1006	2017-03-01	2021-02-26	51.91	28.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+EV	UNKNOWN	none					ETF	Mast Global Battery Recycling & Production ETF	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	1006	2017-03-01	2021-02-26	46.78	31.4	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETF_UNTYPED
+FMBI	UNKNOWN	none					COMMON?	First Midwest Bancorp, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	998	2017-03-01	2021-12-31	21.68	13.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+ZGNX	UNKNOWN	none					COMMON?	Zogenix, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	991	2017-09-20	2021-12-31	38.25	20.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+CLDR	UNKNOWN	none					COMMON?	Cloudera, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	991	2017-10-31	2021-10-07	12.43	40.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+BIP	CS	mi	CS	XNYS	CS		COMMON?	Brookfield Infrastructure Partners L.P. Limited Partnership 	active	current	NYSE	True	True	989	2017-03-01	2021-12-31	44.0	13.1	0	0	2020-03-31:jump	574	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+WLL	CS	sic			CS	1311	COMMON?	Whiting Petroleum Corporation	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	982	2017-03-01	2021-12-31	27.73	105.9	0	0	2020-03-13:jump;2020-09-02:jump	688	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+CXO	UNKNOWN	none					COMMON?	CONCHO RESOURCES INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	978	2017-03-01	2021-01-15	112.08	176.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+CHL	UNKNOWN	none					COMMON?	China Mobile Limited	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	973	2017-03-01	2021-01-08	45.82	37.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+PE	UNKNOWN	none					COMMON?	PARSLEY ENERGY INC	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	972	2017-03-01	2021-01-12	19.08	109.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+TIF	UNKNOWN	none					COMMON?	Tiffany & Co.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	971	2017-03-01	2021-01-06	104.18	166.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+CMD	UNKNOWN	none					COMMON?	Cantel Medical Corporation	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	970	2017-06-12	2021-06-01	78.0	20.2	0	0	2016-12-05:hole	0	UNKNOWN_TYPE_ADMITTED
+TCO	UNKNOWN	none					COMMON?	Taubman Centers Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	965	2017-03-01	2020-12-28	50.78	29.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+HDS	UNKNOWN	none					COMMON?	HD Supply Holdings, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	963	2017-03-01	2020-12-23	39.54	66.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+MIK	UNKNOWN	none					COMMON?	The Michaels Companies, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	959	2017-03-01	2021-04-14	15.88	37.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+CEO	UNKNOWN	none					COMMON?	CNOOC Limited	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	956	2017-03-01	2021-02-11	147.36	15.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+DNKN	UNKNOWN	none					COMMON?	Dunkin' Brands Group, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	956	2017-03-01	2020-12-14	69.36	59.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+KL	UNKNOWN	none					COMMON?	Kirkland Lake Gold Ltd Ordinary	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	955	2018-02-21	2021-12-31	39.05	60.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+CATM	UNKNOWN	none					COMMON?	Cardtronics plc Class A Ordinary Shares (UK)	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	939	2017-03-01	2021-06-18	30.62	14.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+MYL	UNKNOWN	none					COMMON?	Mylan N.V. Ordinary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	937	2017-03-01	2020-11-16	29.95	146.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+WMGI	UNKNOWN	none					COMMON?	Wright Medical Group N.V. Ordinary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	933	2017-03-01	2020-11-10	28.14	33.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+CTB	UNKNOWN	none					COMMON?	Cooper Tire & Rubber Co.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	918	2017-03-01	2021-06-04	33.56	18.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+IMMU	UNKNOWN	none					COMMON?	Immunomedics, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	913	2017-03-01	2020-10-22	16.66	36.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+AMTD	ADRC	mi	ADRC	XNYS			ADR	AMTD IDEA Group American Depositary Shares, each representin	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	907	2017-03-01	2020-10-05	49.59	125.7	0	0	2022-01-31:hole;2022-01-31:jump;2022-02-23:jump	907	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+ETFC	UNKNOWN	none					COMMON?	E*TRADE Financial Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	905	2017-03-01	2020-10-01	46.52	126.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+NBL	UNKNOWN	none					COMMON?	Noble Energy Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	901	2017-03-01	2020-10-02	24.73	129.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+DLPH	UNKNOWN	none					COMMON?	Delphi Technologies PLC Ordinary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	901	2017-03-01	2020-10-01	21.74	34.0	0	0	2017-12-05:jump	194	UNKNOWN_TYPE_ADMITTED;IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+WPX	UNKNOWN	none					COMMON?	WPX Energy, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	901	2017-03-01	2021-01-06	12.06	85.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+TCF	UNKNOWN	none					COMMON?	TCF Financial Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	900	2017-11-08	2021-06-08	25.9	32.5	0	0	2019-08-01:jump	433	UNKNOWN_TYPE_ADMITTED;IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+WUBA	UNKNOWN	none					COMMON?	58.COM INC	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	895	2017-03-01	2020-09-17	60.26	58.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+LOGM	UNKNOWN	none					COMMON?	LogMeIn, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	882	2017-03-01	2020-08-28	85.97	57.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+CRC	CS	mi	CS	XNYS	CS	1311	COMMON?	California Resources Corporation	active	current	NYSE	True	True	878	2017-03-01	2021-12-31	19.13	30.5	0	0	2020-10-28:hole;2020-10-28:jump	746	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+LM	UNKNOWN	none					COMMON?	Legg Mason, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	862	2017-03-01	2020-07-31	37.75	33.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+USCR	UNKNOWN	none					COMMON?	U.S. Concrete, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	845	2017-03-01	2021-08-25	58.0	17.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+IBKC	UNKNOWN	none					COMMON?	IBERIABANK Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	841	2017-03-01	2020-07-01	76.35	27.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+PTLA	UNKNOWN	none					COMMON?	Portola Pharmaceuticals, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	841	2017-03-01	2020-07-01	30.81	33.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+CBPO	UNKNOWN	none					COMMON?	China Biologic Products Holdings, Inc. Ordinary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	840	2017-03-01	2021-04-20	97.12	16.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+TECD	UNKNOWN	none					COMMON?	Tech Data Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	839	2017-03-01	2020-06-29	97.85	37.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+TSU	UNKNOWN	none					COMMON?	TIM Participacoes S.A.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	836	2017-03-01	2020-10-12	16.06	16.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+EQM	UNKNOWN	none					COMMON?	EQM Midstream Partners, LP	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	830	2017-03-01	2020-06-16	50.37	26.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+WBC	UNKNOWN	none					COMMON?	WABCO HOLDINGS INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	817	2017-03-01	2020-05-28	132.73	54.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+FIT	UNKNOWN	none					COMMON?	Fitbit, Inc. Class A common stock	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	814	2017-03-01	2021-01-13	6.19	31.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+MYOK	UNKNOWN	none					COMMON?	MyoKardia, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	805	2017-08-18	2020-11-16	53.85	19.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+AGN	UNKNOWN	none					COMMON?	Allergan plc	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	804	2017-03-01	2020-05-08	174.28	469.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+PMT	CS	mi	CS	XNYS	CS	6798	COMMON?	PennyMac Mortgage Investment Trust	active	current	NYSE	True	True	796	2017-12-11	2021-12-31	19.38	16.5	0	0	2020-03-25:jump	348	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+MLNX	UNKNOWN	none					COMMON?	Mellanox Technologies, Ltd. Ordinary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	794	2017-03-01	2020-04-24	84.35	38.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+CY	UNKNOWN	none					COMMON?	Cypress Semiconductor Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	787	2017-03-01	2020-04-15	16.17	89.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+HMSY	UNKNOWN	none					COMMON?	HMS Holdings Corp (DE)	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	782	2017-08-02	2021-03-31	30.42	16.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+RTN	UNKNOWN	none					COMMON?	Raytheon Company	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	779	2017-03-01	2020-04-02	186.02	314.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+GWB	UNKNOWN	none					COMMON?	Great Western Bancorp, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	771	2017-03-01	2021-12-31	34.44	12.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+BPY	UNKNOWN	none					COMMON?	Brookfield Property Partners L.P. Limited Partnership Units	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	771	2018-04-18	2021-07-26	18.39	25.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+KEM	UNKNOWN	none					ETF	KraneShares Dynamic Emerging Markets Strategy ETF	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	768	2017-05-25	2020-06-12	19.4	23.7	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETF_UNTYPED
+PEGI	UNKNOWN	none					COMMON?	Pattern Energy Group Inc. Class A Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	765	2017-03-01	2020-03-13	21.82	18.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+INXN	UNKNOWN	none					COMMON?	Interxion Holding N.V.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	764	2017-03-01	2020-03-12	63.31	29.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+ZAYO	UNKNOWN	none					COMMON?	Zayo Group Holdings, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	760	2017-03-01	2020-03-06	34.05	86.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+HOME	UNKNOWN	none					COMMON?	At Home Group Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	754	2017-12-18	2021-07-22	22.23	31.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+DNB	CS	sic			CS	7320	COMMON?	Dun & Bradstreet Holdings, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	740	2017-03-01	2021-12-31	111.52	42.0	0	0	2020-07-01:hole	489	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+LPT	UNKNOWN	none					COMMON?	Liberty Property Trust	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	737	2017-03-01	2020-02-03	43.73	38.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+MGY	CS	mi	CS	XNYS	CS	1311	COMMON?	Magnolia Oil & Gas Corporation Class A Common Stock	active	current	NYSE	True	True	736	2018-09-20	2021-12-31	11.71	15.0	0	3		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+WCG	UNKNOWN	none					COMMON?	Wellcare Health Plans, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	730	2017-03-01	2020-01-23	242.3	101.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+MDCO	UNKNOWN	none					COMMON?	Medicines Company (The) Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	717	2017-03-01	2020-01-03	34.81	35.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+SNH	UNKNOWN	none					COMMON?	Senior Housing Properties Trust Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	715	2017-03-01	2019-12-31	16.31	24.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+GWR	UNKNOWN	none					COMMON?	Genesee & Wyoming Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	713	2017-03-01	2019-12-27	79.85	36.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+CRZO	UNKNOWN	none					COMMON?	Carrizo Oil & Gas, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	709	2017-03-01	2019-12-20	16.2	48.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+VIAB	UNKNOWN	none					COMMON?	Viacom Inc. Class B Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	697	2017-03-01	2019-12-04	29.71	143.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+DOW	CS	mi	CS	XNYS	CS	2821	COMMON?	Dow Inc.	active	current	NYSE	True	True	695	2017-03-01	2021-12-31	56.57	267.3	0	0	2019-04-02:hole	129	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+CELG	UNKNOWN	none					COMMON?	Celgene Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	688	2017-03-01	2019-11-20	94.7	537.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+GLUU	UNKNOWN	none					COMMON?	Glu Mobile Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	685	2018-06-15	2021-04-28	7.75	22.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+PRTYQ	UNKNOWN	none					COMMON?	PARTY CITY HOLDCO INC Common Stock	active	current	OTC	False	True	685	2017-10-24	2021-12-31	8.93	14.4	0	0	2020-03-19:jump	422	UNKNOWN_TYPE_ADMITTED;OTC_TODAY;IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+UWT	UNKNOWN	none					ETN	VelocityShares3x Long Crude Oil ETNs linked to the S&P GSCI 	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	684	2017-06-16	2020-03-05	16.04	104.3	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETN_UNTYPED
+BPL	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	674	2017-03-01	2019-10-31	41.11	37.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+MDSO	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	671	2017-03-01	2019-10-28	74.96	37.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+BID	CS	mi	CS	XNAS			SPAC_SHELL	Tribeca Strategic Acquisition Corp. Class A Ordinary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	653	2017-03-01	2019-10-02	48.93	20.4	0	0		0	NAME_SAYS_SPAC_SHELL
+CZZ	UNKNOWN	none					COMMON?	Cosan Limited	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	648	2017-03-01	2021-03-05	13.92	13.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+SFLY	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	647	2017-03-01	2019-09-24	50.0	34.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+FNSR	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	646	2017-03-01	2019-09-23	21.98	48.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+TRCO	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	643	2017-03-01	2019-09-18	40.86	40.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+TSS	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	642	2017-03-01	2019-09-17	86.66	119.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+WAGE	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	630	2017-03-01	2019-08-29	51.28	17.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+VSM	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	628	2017-04-07	2019-10-04	37.88	19.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+DWT	UNKNOWN	none					ETN	VelocityShares 3x Inverse Crude Oil ETNs linked to the S&P G	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	628	2017-06-16	2020-04-02	8.91	71.5	0	0	2020-03-09:jump	609	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETN_UNTYPED;IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+CBM	UNKNOWN	none					COMMON?	Cambrex Corporation	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	620	2017-03-01	2019-12-03	53.45	17.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+PRSP	UNKNOWN	none					COMMON?	Perspecta Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	609	2018-12-04	2021-05-06	23.08	20.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+DATA	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	609	2017-03-01	2019-07-31	93.65	74.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+FDC	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	606	2017-03-01	2019-07-26	18.43	142.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+QEP	UNKNOWN	none					COMMON?	QEP RESOURCES, INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	605	2017-03-01	2019-07-30	9.22	46.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+MSGN	UNKNOWN	none					COMMON?	MSG Networks Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	602	2017-03-01	2021-04-23	21.1	12.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+CSFL	UNKNOWN	none					COMMON?	CenterState Bank Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	601	2017-09-29	2020-06-05	24.69	15.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+ADSW	UNKNOWN	none					COMMON?	Advanced Disposal Services, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	597	2017-06-01	2020-10-29	30.29	24.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+AXE	UNKNOWN	none					COMMON?	Anixter International Inc	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	596	2017-03-01	2020-06-19	76.3	13.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+DCT	CS	sic			CS	7372	COMMON?	Duck Creek Technologies, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	593	2017-03-01	2021-12-31	53.65	26.0	0	0	2020-08-14:hole	373	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+RHT	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	592	2017-03-01	2019-07-08	142.1	243.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+ECA	UNKNOWN	none					COMMON?	EnCana Corporation	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	584	2017-03-01	2019-09-23	10.84	115.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+FSCT	UNKNOWN	none					COMMON?	ForeScout Technologies, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	575	2018-05-04	2020-08-14	32.67	18.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+ONCE	UNKNOWN	none					COMMON?	Spark Therapeutics, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	575	2017-03-01	2019-12-16	77.61	35.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+EFII	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	575	2017-03-01	2019-07-22	33.67	16.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+SPCE	CS	mi	CS	XNYS	CS	4700	COMMON?	Virgin Galactic Holdings, Inc.	active	current	NYSE	True	True	575	2019-09-20	2021-12-31	19.84	234.4	8	138		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+GPOR	CS	mi	CS	XNYS	CS	1311	COMMON?	Gulfport Energy Corporation	active	current	NYSE	True	True	574	2017-03-01	2019-06-18	11.16	43.6	0	0	2020-03-13:jump;2021-05-18:hole;2021-05-18:jump	574	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+BMS	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	573	2017-03-01	2019-06-10	46.55	29.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+VAL	CS	mi	CS	XNYS	CS	1381	COMMON?	Valaris Limited	active	current	NYSE	True	True	570	2017-03-01	2021-12-31	6.74	76.4	0	0	2021-05-03:hole;2021-05-03:jump	533	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+TVPT	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	566	2017-03-01	2019-05-30	15.41	19.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+JAG	UNKNOWN	none					COMMON?	Jagged Peak Energy Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	552	2017-08-11	2020-01-09	11.82	14.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+DRNA	UNKNOWN	none					COMMON?	Dicerna Pharmaceuticals, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	551	2018-09-25	2021-12-27	22.37	16.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+BT	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	549	2017-03-01	2019-09-13	16.16	13.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+XON	UNKNOWN	none					COMMON?	Intrexon Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	547	2017-03-01	2019-08-27	15.33	17.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+AIMT	UNKNOWN	none					COMMON?	Aimmune Therapeutics, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	545	2017-10-25	2020-10-12	24.85	15.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+GG	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	537	2017-03-01	2019-04-17	13.06	92.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+ELLI	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	536	2017-03-01	2019-04-16	94.85	38.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+ALDR	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	532	2017-03-01	2019-10-21	13.79	13.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+RDC	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	532	2017-03-01	2019-04-10	13.76	39.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+TIVO	UNKNOWN	none					COMMON?	TiVo Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	530	2017-03-01	2020-04-07	14.0	12.2	0	0	2016-09-08:jump	0	UNKNOWN_TYPE_ADMITTED
+ARRS	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	527	2017-03-01	2019-04-03	27.06	35.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+SRNE	UNKNOWN	none					COMMON?	SORRENTO THERAPEUTICS INC Common Stock	active	current	OTC	False	True	526	2018-01-23	2021-12-27	7.55	42.5	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+IDTI	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	524	2017-03-01	2019-03-29	31.66	41.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+MBFI	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	518	2017-03-01	2019-03-21	44.27	17.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+MNTA	UNKNOWN	none					COMMON?	Momenta Pharmaceuticals, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	513	2017-03-01	2020-09-30	20.8	15.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+LEXEA	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	508	2017-05-22	2019-07-26	45.34	15.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+NGL	CS	mi	CS	XNYS			COMMON?	NGL ENERGY PARTNERS LP	active	current	NYSE	True	True	507	2017-03-01	2020-06-23	12.35	12.1	0	0	2020-03-19:jump	496	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+NTRI	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	504	2017-03-07	2019-03-07	43.53	26.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+BMCH	UNKNOWN	none					COMMON?	BMC Stock Holdings, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	504	2017-03-15	2020-12-31	23.38	13.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+AMAG	UNKNOWN	none					COMMON?	AMAG Pharmaceuticals, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	499	2017-03-01	2020-11-13	19.25	15.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+TSG	UNKNOWN	none					COMMON?	The Stars Group Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	495	2018-05-16	2020-05-04	19.89	35.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+ATHN	UNKNOWN	none					SPAC_SHELL	Athena Technology Acquisition Corp.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	491	2017-03-01	2019-02-11	134.15	66.7	0	0	2021-05-07:hole;2021-05-07:jump	491	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_SPAC_SHELL;IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+EGRX	UNKNOWN	none					COMMON?	EAGLE PHARMACEUTICALS INC Common Stock	active	current	OTC	False	True	491	2017-03-01	2020-04-08	59.14	16.0	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+INST	CS	sic			CS	7372	COMMON?	Instructure Holdings, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	485	2017-08-11	2020-03-23	42.0	16.1	0	0	2021-07-22:hole	485	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+VVC	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	484	2017-03-01	2019-01-31	66.77	27.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+TSRO	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	476	2017-03-01	2019-01-18	73.88	77.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+TLND	UNKNOWN	none					ADR	Talend S.A. American Depositary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	472	2017-11-28	2021-07-29	50.27	13.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+REN	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	468	2017-03-01	2019-02-28	32.4	18.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+VCRA	UNKNOWN	none					COMMON?	VOCERA COMMUNICATIONS,  INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	468	2018-07-06	2021-12-31	38.81	12.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+ESL	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	467	2017-03-01	2019-03-13	86.7	15.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+SHPG	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	466	2017-03-01	2019-01-04	164.61	157.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+XL	UNKNOWN	none					COMMON?	XL Fleet Corp.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	463	2017-03-01	2021-11-17	41.9	75.9	0	0	2020-12-22:hole	387	UNKNOWN_TYPE_ADMITTED;IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+SCG	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	463	2017-03-01	2018-12-31	43.17	68.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+FBR	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	460	2017-03-01	2019-01-03	16.9	17.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+IMPV	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	459	2017-03-01	2019-01-09	46.3	15.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+ESRX	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	457	2017-03-01	2018-12-20	72.42	274.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+EEP	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	455	2017-03-01	2018-12-19	13.81	21.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+DVMT	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	452	2017-03-14	2018-12-27	78.38	112.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+NG	CS	mi	CS	XASE	CS	1040	COMMON?	NovaGold Resources Inc.	active	current	AMEX	True	True	451	2017-03-01	2021-04-01	8.85	17.4	0	0	2020-03-17:jump	190	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+XOG	UNKNOWN	none					COMMON?	Extraction Oil & Gas, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	448	2017-04-19	2021-11-01	13.77	20.4	0	0	2021-01-21:hole;2021-01-21:jump	431	UNKNOWN_TYPE_ADMITTED;IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+AABA	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	448	2017-12-20	2019-10-02	70.26	543.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+MDLA	UNKNOWN	none					COMMON?	Medallia, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	447	2020-01-23	2021-10-28	30.48	48.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+CJ	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	444	2017-09-07	2019-07-17	23.39	18.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+TCP	UNKNOWN	none					COMMON?	TC Pipelines LP	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	441	2017-05-09	2021-03-02	33.68	12.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+EDR	CS	sic			CS	7900	COMMON?	Endeavor Group Holdings, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	436	2017-03-01	2021-12-31	37.5	21.0	0	0	2021-04-29:hole	393	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+ORBK	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	427	2017-03-01	2019-02-19	55.33	18.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+BEP	CS	mi	CS	XNYS	CS		COMMON?	Brookfield Renewable Partners L.P.	active	current	NYSE	True	True	425	2019-11-15	2021-12-31	45.06	17.1	0	0	2020-07-30:jump	135	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+LOXO	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	424	2017-04-10	2019-02-14	126.69	44.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+GOV	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	422	2017-03-01	2018-12-31	16.68	13.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+PF	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	419	2017-03-01	2018-10-25	59.37	75.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+ERUS	UNKNOWN	none					ETF	iShares MSCI Russia ETF	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	410	2017-03-08	2020-04-16	33.48	12.1	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETF_UNTYPED
+EVHC	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	408	2017-03-01	2018-10-10	44.66	101.0	0	0	2016-12-02:jump	0	UNKNOWN_TYPE_ADMITTED
+EPZM	UNKNOWN	none					COMMON?	Epizyme, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	406	2017-06-12	2021-05-18	14.29	12.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+KLXI	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	406	2017-03-01	2018-10-08	61.92	22.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+KRA	UNKNOWN	none					COMMON?	Kraton Corporation	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	402	2017-03-01	2021-12-31	44.09	12.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+LTXB	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	398	2017-04-21	2019-10-31	41.26	12.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+VRT	CS	mi	CS	XNYS	CS	3679	COMMON?	Vertiv Holdings Co Class A Common Stock	active	current	NYSE	True	True	397	2020-06-08	2021-12-31	21.16	62.9	0	8		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+WORK	UNKNOWN	none					COMMON?	Slack Technologies, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	396	2019-12-23	2021-07-20	31.99	318.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+SRCI	UNKNOWN	none					COMMON?	SRC Energy Inc	inactive	LAST holder of a delisted symbol (reuse risk)	AMEX	False	True	391	2017-09-07	2019-09-18	8.88	26.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+OAK	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	387	2017-03-01	2019-09-27	44.15	13.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+HDP	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	385	2017-05-18	2019-01-02	18.06	15.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+ENLK	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	383	2017-03-01	2019-01-25	15.87	12.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+DPLO	UNKNOWN	none					COMMON?	DIPLOMAT PHARMACY, INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	382	2017-03-01	2019-03-22	20.05	14.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+GGP	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	377	2017-03-01	2018-08-27	21.68	138.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+VXRT	CS	sic			CS	2836	COMMON?	Vaxart, Inc Common Stock	active	current	OTC	False	True	373	2020-06-29	2021-12-31	7.15	46.5	0	0		0	OTC_TODAY
+ANDX	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	372	2018-02-05	2019-07-29	40.89	24.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+EVER	CS	mi	CS	XNAS	CS	7370	COMMON?	EverQuote, Inc. Class A Common Stock	active	current	NASDAQ	True	True	372	2017-03-15	2021-03-19	38.41	14.6	0	0	2018-06-28:hole	36	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+FET	CS	mi	CS	XNYS	CS	3533	COMMON?	Forum Energy Technologies, Inc.	active	current	NYSE	True	True	365	2017-03-01	2018-11-21	14.05	13.5	0	0	2020-03-13:jump	365	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+FCB	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	364	2017-03-01	2018-12-31	49.35	15.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+NXTM	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	362	2017-03-01	2019-02-21	27.56	14.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+CORE	UNKNOWN	none					COMMON?	Core Mark Holding Co Inc Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	359	2017-03-01	2021-09-01	34.46	12.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+MDXG	CS	mi	CS	XNAS			COMMON?	MiMedx Group, Inc Common Stock	active	current	NASDAQ	True	True	358	2017-04-27	2021-09-29	12.12	19.0	0	0	2020-11-04:hole;2020-11-04:jump	337	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+GHDX	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	354	2018-06-14	2019-11-07	67.31	26.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+ILG	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	344	2017-04-24	2018-08-31	29.32	34.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+CAVM	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	340	2017-03-01	2018-07-05	73.52	61.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+CNST	UNKNOWN	none					COMMON?	Constellation Pharmaceuticals, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	338	2019-11-19	2021-07-14	31.32	14.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+PPD	UNKNOWN	none					COMMON?	PPD, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	335	2020-08-11	2021-12-07	38.58	45.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+DWDP	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	309	2018-03-09	2019-05-31	59.32	632.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+SVU	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	308	2017-08-02	2018-10-19	19.82	19.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+TERP	UNKNOWN	none					COMMON?	TerraForm Power, Inc. Class A Common Stock NEW	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	305	2017-10-23	2020-07-30	16.75	15.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+CARB	UNKNOWN	none					COMMON?	Carbonite, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	300	2017-06-26	2019-12-23	25.57	13.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+COTV	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	298	2017-03-03	2018-08-24	35.77	13.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+PVTL	UNKNOWN	none					COMMON?	Pivotal Software, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	297	2018-10-23	2019-12-27	15.6	23.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+DM	CS	sic			CS	3559	COMMON?	Desktop Metal, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	290	2017-09-27	2021-12-30	13.95	28.6	0	0	2020-12-10:hole	156	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+CBL	CS	mi	CS	XNYS	CS	6798	COMMON?	CBL & Associates Properties, Inc.	active	current	NYSE	True	True	285	2017-03-01	2018-08-03	8.09	26.8	0	0	2021-11-02:hole;2021-11-02:jump	285	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+ETP	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	284	2017-03-01	2018-10-18	19.21	114.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+FPRX	UNKNOWN	none					COMMON?	Five Prime Therapeutics, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	281	2017-03-01	2021-04-15	25.46	14.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+SICP	UNKNOWN	none					COMMON?	Silvergate Capital Corporation Class A Common Stock	active	current	OTC	False	True	277	2020-11-25	2021-12-31	113.21	140.1	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+ESIO	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	277	2017-11-08	2019-02-01	20.42	16.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+PNK	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	275	2017-05-19	2018-10-12	31.19	13.0	0	0	2016-04-29:jump	0	UNKNOWN_TYPE_ADMITTED
+CAJPY	UNKNOWN	none					ADR	Canon Inc. American Depositary Receipts - Sponsored	active	current	OTC	False	True	273	2018-02-01	2020-10-08	28.74	12.3	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY_FOREIGN_SUFFIX
+APHA	UNKNOWN	none					COMMON?	Aphria Inc. Common Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	273	2019-05-13	2021-04-30	6.85	30.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+WIFI	UNKNOWN	none					COMMON?	Boingo Wireless, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	271	2017-11-08	2021-04-26	23.09	13.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+VEDL	UNKNOWN	none					COMMON?	Vedanta Limited  American Depostary Shares (Each representin	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	267	2017-05-19	2021-11-08	15.28	12.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+CTRL	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	267	2017-07-21	2019-06-28	27.61	13.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+AMRSQ	UNKNOWN	none					COMMON?	Amyris, Inc. Com New	active	current	OTC	False	True	266	2018-10-10	2021-12-31	13.82	44.8	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+APU	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	265	2017-03-01	2019-08-21	35.02	12.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+ADMS	UNKNOWN	none					COMMON?	Adamas Pharmaceuticals, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	262	2017-08-31	2021-11-05	26.36	20.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+WP	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	258	2018-07-20	2019-07-30	96.59	219.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+VRTU	UNKNOWN	none					COMMON?	Virtusa Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	255	2017-03-10	2021-02-10	48.76	13.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+LXFT	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	241	2017-03-01	2019-06-13	57.7	13.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+APTI	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	239	2017-11-27	2019-01-09	34.56	17.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+EXE	CS	mi	CS	XNAS	CS	1311	COMMON?	Expand Energy Corporation Common Stock	active	current	NASDAQ	True	True	236	2017-03-01	2021-12-31	14.77	85.2	0	0	2020-03-13:jump;2021-02-10:hole;2021-02-10:jump	139	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+CLNS	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	236	2017-07-18	2018-06-22	11.03	42.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+AKS	UNKNOWN	none					COMMON?	AK Steel Holding Corp.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	235	2017-03-01	2018-07-30	5.9	98.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+SYNT	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	233	2017-03-01	2018-10-09	28.47	13.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+GNMK	UNKNOWN	none					COMMON?	GenMark Diagnostics, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	231	2020-03-20	2021-04-21	14.0	17.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+ALIT	CS	mi	CS	XNYS	CS	7389	COMMON?	Alight, Inc.	active	current	NYSE	True	True	222	2021-01-21	2021-12-31	10.46	21.1	0	57		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+EGOV	UNKNOWN	none					COMMON?	NIC Inc Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	221	2017-06-23	2021-04-20	22.91	11.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+CHSP	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	219	2017-03-17	2019-07-19	28.61	11.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+RARX	UNKNOWN	none					COMMON?	Ra Pharmaceuticals, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	217	2019-01-02	2020-04-01	46.11	23.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+MINI	UNKNOWN	none					COMMON?	Mobile Mini, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	215	2018-02-27	2020-06-30	37.66	11.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+BDXA	UNKNOWN	none					COMMON?	Becton, Dickinson and Company Depositary Shares, each Repres	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	213	2017-11-21	2020-04-30	59.11	15.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+ENBL	UNKNOWN	none					COMMON?	ENABLE MIDSTREAM PARTNERS, LP	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	212	2018-06-06	2021-07-12	10.13	12.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+QCP	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	207	2017-05-09	2018-07-26	17.97	12.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+PSTH	CS	sic			CS	6770	COMMON?	Pershing Square Tontine Holdings, Ltd.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	201	2021-03-18	2021-12-31	20.25	41.2	0	0		0	SIC_6770_BLANK_CHECK
+SMCI	CS	mi	CS	XNAS	CS	3571	COMMON?	Super Micro Computer, Inc. Common Stock	active	current	NASDAQ	True	True	199	2017-05-16	2021-04-23	26.04	10.9	0	0	2020-01-14:hole;2020-01-14:jump	119	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+SPRU	CS	mi	CS	XNYS			COMMON?	Spruce Power Holding Corporation	active	current	NYSE	True	True	199	2020-12-31	2021-11-17	7.25	55.0	0	56		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+LJPC	UNKNOWN	none					COMMON?	La Jolla Pharmaceutical Company Common Stock (DE)	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	198	2017-03-10	2018-09-12	30.66	14.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+PRNB	UNKNOWN	none					COMMON?	Principia Biopharma Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	198	2019-12-13	2020-09-25	62.99	19.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+CBLK	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	197	2018-11-06	2019-10-07	16.34	15.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+CBPX	UNKNOWN	none					COMMON?	CONTINENTAL BUILDING PRODUCTS, INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	197	2017-04-25	2020-01-31	29.74	13.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+LCID	CS	mi	CS	XNAS	CS	3711	COMMON?	Lucid Group, Inc. Common Stock	active	current	NASDAQ	True	True	196	2021-03-25	2021-12-31	24.02	376.0	0	67		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+LVGO	UNKNOWN	none					COMMON?	Livongo Health, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	192	2020-01-29	2020-10-29	65.19	213.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+PLBY	CS	mi	CS	XNAS	CS	5900	COMMON?	Playboy, Inc. Common Stock	active	current	NASDAQ	True	True	192	2021-03-31	2021-12-31	30.36	30.5	0	55		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+WLH	UNKNOWN	none					COMMON?	WILLIAM LYON HOMES	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	188	2017-09-29	2020-02-05	24.16	11.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+TAHO	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	187	2017-03-01	2018-07-03	5.71	20.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+IRLA	UNKNOWN	none					COMMON?	IRulya Therapeutics Inc. Common Stock	active	current	NASDAQ	True	True	186	2020-01-07	2021-12-31	49.0	14.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+ECYT	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	180	2017-10-20	2018-12-20	16.41	19.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+ARQL	UNKNOWN	none					COMMON?	ArQule, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	177	2018-07-06	2020-01-15	9.13	17.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+SUNWQ	UNKNOWN	none					COMMON?	SUNWORKS INC COM NEW	active	current	OTC	False	True	172	2020-11-20	2021-11-22	10.03	27.9	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+MCFE	UNKNOWN	none					COMMON?	McAfee Corp. Class A Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	172	2021-04-29	2021-12-31	25.66	25.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+SEND	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	172	2018-05-25	2019-01-31	35.0	27.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+APPHQ	UNKNOWN	none					COMMON?	AppHarvest, Inc. Common Stock	active	current	OTC	False	True	170	2021-02-04	2021-11-24	15.38	20.9	0	42		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY;SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+VSLR	UNKNOWN	none					COMMON?	VIVINT SOLAR, INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	168	2019-08-15	2020-10-07	10.4	17.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+ANDV	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	165	2018-02-05	2018-09-28	137.55	203.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+MVST	CS	mi	CS	XNAS	CS	3690	COMMON?	Microvast Holdings, Inc. Common Stock	active	current	NASDAQ	True	True	163	2021-02-25	2021-12-13	10.08	14.8	0	62		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+NYRT	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	162	2017-03-01	2017-12-04	8.62	15.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+BEL	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	161	2018-08-24	2019-04-16	24.8	17.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+RRD	UNKNOWN	none					COMMON?	RR Donnelley & Sons Co.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	156	2017-03-01	2021-12-31	12.04	14.8	0	0	2016-10-03:jump	0	UNKNOWN_TYPE_ADMITTED
+RAVN	UNKNOWN	none					COMMON?	Raven Industries, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	156	2020-12-16	2021-10-21	57.41	12.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+PTRAQ	UNKNOWN	none					COMMON?	PROTERRA INC COM	active	current	OTC	False	True	148	2021-06-03	2021-12-31	10.63	20.2	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+LTRPA	UNKNOWN	none					COMMON?	Liberty TripAdvisor Holdings, Inc. Series A Common Stock	active	current	OTC	False	True	141	2017-03-01	2021-04-06	13.75	10.8	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+SOGO	UNKNOWN	none					ADR	Sogou Inc. American Depositary Shares, each representing one	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	138	2018-05-21	2020-12-28	8.69	18.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+MCRN	UNKNOWN	none					COMMON?	Milacron Holdings Corp.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	138	2017-10-10	2019-11-20	16.87	13.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+JOBY	CS	mi	CS	XNYS	CS	3721	COMMON?	Joby Aviation, Inc.	active	current	NYSE	True	True	132	2021-05-20	2021-12-31	9.35	19.7	5	109		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+NGHC	UNKNOWN	none					COMMON?	National General Holdings Corp Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	132	2018-11-26	2020-12-31	34.0	22.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+AEVA	CS	mi	CS	XNAS	CS	3714	COMMON?	Aeva Technologies, Inc. Common Stock	active	current	NASDAQ	True	True	132	2021-04-01	2021-12-31	9.59	14.8	0	38		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+ATNXQ	UNKNOWN	none					COMMON?	ATHENEX INC COM NEW	active	current	OTC	False	True	128	2019-06-25	2021-05-19	14.2	12.0	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+TUSK	CS	mi	CS	XNAS			COMMON?	Mammoth Energy Services, Inc. Common Stock	active	current	NASDAQ	True	True	126	2018-03-15	2018-10-17	33.39	13.0	0	0	2020-03-20:jump	126	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+NAVG	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	124	2018-08-31	2019-04-24	69.78	13.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+KNL	UNKNOWN	none					COMMON?	Knoll, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	121	2017-03-01	2021-07-19	23.96	12.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+FIG	CS	mi	CS	XNYS	CS	7372	COMMON?	Figma, Inc.	active	current	NYSE	True	True	116	2017-03-01	2017-12-26	7.95	17.3	0	0	2022-05-17:hole;2022-05-17:jump	116	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+MAPS	CS	mi	CS	XNAS			COMMON?	WM Technology, Inc. Class A Common Stock	active	current	OTC	False	True	115	2020-12-23	2021-12-09	15.25	13.2	0	65		0	OTC_TODAY;SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+ASTS	CS	mi	CS	XNAS	CS	4899	COMMON?	AST SpaceMobile, Inc. Class A Common Stock	active	current	NASDAQ	True	True	113	2021-06-10	2021-12-16	10.78	13.0	0	10		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+SHLM	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	111	2017-08-14	2018-08-01	42.9	11.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+BKS	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	109	2017-07-14	2019-07-15	6.68	11.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+AYR	UNKNOWN	none					COMMON?	Aircastle Limited	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	109	2018-05-24	2020-03-27	32.0	14.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+CISN	UNKNOWN	none					COMMON?	Cision Ltd. Ordinary Share	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	105	2018-06-25	2020-01-30	10.12	14.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+NSR	UNKNOWN	none					COMMON?	Nomad Royalty Company Ltd.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	105	2017-03-01	2017-08-07	33.25	15.7	0	0	2021-08-31:hole;2021-08-31:jump	105	UNKNOWN_TYPE_ADMITTED;IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+CRAY	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	104	2019-03-27	2019-09-24	34.69	14.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+PGNX	UNKNOWN	none					COMMON?	Progenics Pharmaceuticals Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	103	2017-03-01	2018-10-09	8.22	12.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+ALOG	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	99	2017-06-27	2018-06-22	83.75	17.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+LOGC	UNKNOWN	none					COMMON?	CONTEXTLOGIC HLDGS INC COM	active	current	OTC	False	True	97	2021-06-23	2021-11-16	6.87	293.7	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+HMNY	UNKNOWN	none					COMMON?	Helios and Matheson Analytics Inc. Common Stock	active	current	OTC	False	True	96	2017-09-29	2018-02-26	9.43	52.5	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+BSCK	UNKNOWN	none					ETF	Invesco BulletShares 2020 Corporate Bond ETF	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	96	2018-12-24	2020-11-09	21.16	12.0	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETF_UNTYPED
+BPYU	UNKNOWN	none					COMMON?	Brookfield Property REIT Inc. Class A Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	95	2020-09-02	2021-07-26	17.24	12.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+GASL	UNKNOWN	none					LEVERAGED_INVERSE	Direxion Daily Natural Gas Related Bull 3X Shares	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	92	2019-09-20	2020-02-05	7.34	15.6	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_LEVERAGED_INVERSE_UNTYPED
+RUSL	UNKNOWN	none					LEVERAGED_INVERSE	Direxion Daily Russia Bull 2X Shares	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	92	2017-03-01	2020-03-27	44.41	12.0	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_LEVERAGED_INVERSE_UNTYPED
+BSCL	UNKNOWN	none					COMMON?	BILI Social International, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	OTC	False	True	82	2020-03-19	2021-12-15	21.16	11.8	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+IIN	UNKNOWN	none					COMMON?	Intricon Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	81	2018-08-06	2018-11-28	53.75	16.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+RESI	UNKNOWN	none					ETF	Kelly Residential & Apartment Real Estate ETF	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	81	2017-03-20	2021-01-11	12.47	11.4	0	0	2022-01-13:hole	81	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETF_UNTYPED;IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+NBLX	UNKNOWN	none					COMMON?	Noble Midstream Partners LP Common Units Representing Limite	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	80	2018-05-22	2021-03-25	26.01	10.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+ORBC	UNKNOWN	none					COMMON?	ORBCOMM Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	80	2021-01-19	2021-06-18	11.16	15.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+SKIL	CS	mi	CS	XNYS			COMMON?	Skillsoft Corp.	active	current	NYSE	True	True	80	2020-10-26	2021-06-25	10.07	14.5	5	64		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+CBB	UNKNOWN	none					COMMON?	Cincinnati Bell Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	79	2020-01-31	2021-02-12	14.74	12.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+EIDX	UNKNOWN	none					COMMON?	Eidos Therapeutics, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	79	2019-12-06	2021-01-25	88.71	11.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+SIR	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	77	2017-05-05	2018-12-31	19.48	15.5	0	0	2018-12-28:jump	75	UNKNOWN_TYPE_ADMITTED;IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+BPFH	UNKNOWN	none					COMMON?	Boston Private Financial Holdings, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	77	2021-01-14	2021-05-25	13.77	14.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+CVRR	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	75	2018-05-17	2018-08-31	22.35	18.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+KDMN	UNKNOWN	none					COMMON?	Kadmon Holdings, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	75	2020-06-23	2021-11-08	8.73	23.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+WIMI	CS	mi	CS	XNAS			COMMON?	WiMi Hologram Cloud Inc. Class B Ordinary Shares	active	current	NASDAQ	False	True	75	2021-01-25	2021-05-17	7.57	26.0	0	0		0	ACTIVE_BUT_NOT_TRADABLE
+ZAGG	UNKNOWN	none					COMMON?	ZAGG Inc Common Stock (Delaware)	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	74	2017-09-29	2018-02-12	19.12	13.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+WEB	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	74	2018-05-30	2018-10-10	25.6	13.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+ARLP	CS	mi	CS	XNAS	CS	1221	COMMON?	Alliance Resource Partners, L.P. Common Units representing L	active	current	NASDAQ	True	True	74	2018-05-23	2019-11-27	18.68	11.1	0	0	2020-03-19:jump	74	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+FTSV	UNKNOWN	none					COMMON?	Forty Seven, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	73	2019-12-20	2020-04-06	44.81	27.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+NEWM	UNKNOWN	none					COMMON?	NEW MEDIA INVESTMENT GROUP INC	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	72	2018-06-22	2019-11-19	8.71	12.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+KANG	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	71	2018-04-02	2018-07-11	20.04	12.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+CYOU	UNKNOWN	none					COMMON?	Changyou.com Limited American Depository Share	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	71	2017-05-18	2017-12-07	38.96	11.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+CKH	UNKNOWN	none					COMMON?	Seacor Holdings Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	69	2018-04-25	2021-02-18	42.45	13.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+AZREF	UNKNOWN	none					COMMON?	AZURE PWR GLOBAL LTD EQUITY SHARES (Mauritius)	active	current	OTC	False	True	68	2021-01-08	2021-07-06	30.7	11.5	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY_FOREIGN_SUFFIX
+MEET	UNKNOWN	none					COMMON?	The Meet Group, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	67	2017-03-20	2020-06-04	5.92	13.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+GLOG	UNKNOWN	none					COMMON?	GASLOG LTD	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	64	2017-08-04	2021-03-25	17.65	10.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+VIE	UNKNOWN	none					COMMON?	Viela Bio, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	63	2020-05-28	2021-03-12	48.96	25.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+MARK	UNKNOWN	none					COMMON?	Remark Holdings Inc Common Stock	active	current	OTC	False	True	63	2017-11-30	2018-03-02	8.97	17.2	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+TLRA	UNKNOWN	none					COMMON?	Telaria, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	62	2019-08-27	2020-03-23	9.96	11.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+XCRA	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	62	2018-03-08	2018-06-14	12.12	13.7	0	62		0	UNKNOWN_TYPE_ADMITTED;SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+QTNA	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	62	2019-03-21	2019-06-18	24.23	20.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+GNOG	UNKNOWN	none					COMMON?	Golden Nugget Online Gaming, Inc. Class A Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	60	2021-07-07	2021-10-25	17.82	18.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+LTCH	UNKNOWN	none					COMMON?	LATCH INC Common Stock	active	current	OTC	False	True	57	2021-07-08	2021-10-27	11.84	11.1	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+FSKR	UNKNOWN	none					COMMON?	FS KKR Capital Corp. II	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	57	2020-12-18	2021-06-16	19.25	12.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+RST	UNKNOWN	none					COMMON?	ROSETTA STONE INC	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	55	2020-07-29	2020-10-14	29.87	19.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+UP	CS	mi	CS	XNYS			COMMON?	Wheels Up Experience Inc.	active	current	NYSE	True	True	55	2021-07-26	2021-11-17	7.57	15.5	0	55		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+INDI	CS	mi	CS	XNAS	CS	3674	COMMON?	indie Semiconductor, Inc. Class A Common Stock	active	current	NASDAQ	True	True	55	2021-06-15	2021-12-31	11.88	13.3	0	4		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+CALA	UNKNOWN	none					COMMON?	CALITHERA BIOSCIENCES INC Common Stock	active	current	OTC	False	True	54	2017-03-28	2017-11-30	15.03	11.9	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+SGHC	CS	mi	CS	XNYS	CS		COMMON?	Super Group (SGHC) Limited	active	current	NYSE	True	True	53	2021-06-01	2021-12-30	10.26	14.4	0	41		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+ACHR	CS	mi	CS	XNYS	CS	3721	COMMON?	Archer Aviation Inc.	active	current	NYSE	True	True	53	2021-09-10	2021-12-31	6.64	13.4	2	53		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+QADA	UNKNOWN	none					COMMON?	QAD Inc. Class A Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	52	2021-07-09	2021-11-04	87.4	12.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+MTSC	UNKNOWN	none					COMMON?	MTS Systems Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	51	2019-08-19	2021-04-06	58.54	20.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+FRTA	UNKNOWN	none					COMMON?	Forterra, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	50	2020-09-25	2021-04-15	23.3	13.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+TYPE	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	50	2017-09-13	2019-10-10	19.8	11.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+GMBL	UNKNOWN	none					COMMON?	Esports Entertainment Group Inc. Com Par $0.001	active	current	OTC	False	True	49	2021-02-22	2021-04-30	15.39	23.8	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+ACHN	UNKNOWN	none					COMMON?	Achison Inc. Common Class A	inactive	LAST holder of a delisted symbol (reuse risk)	OTC	False	True	49	2019-10-29	2020-01-27	6.2	13.5	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+VLP	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	49	2018-10-29	2019-01-09	42.04	25.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+NVTS	CS	mi	CS	XNAS	CS	3674	COMMON?	Navitas Semiconductor Corporation Common Stock	active	current	NASDAQ	True	True	48	2021-10-20	2021-12-31	16.32	29.7	0	48		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+BBIG	UNKNOWN	none					COMMON?	VINCO VENTURES INC Common Stock	active	current	OTC	False	True	47	2021-06-09	2021-11-01	6.41	213.9	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+CURI	CS	mi	CS	XNAS			COMMON?	CuriosityStream Inc. Class A Common Stock	active	current	NASDAQ	True	True	47	2021-02-16	2021-04-22	15.22	16.8	0	37		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+MTGE	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	44	2017-05-19	2018-06-28	19.85	12.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+DCUD	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	44	2017-03-01	2019-08-14	50.24	14.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+PSDO	UNKNOWN	none					COMMON?	Presidio, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	43	2019-08-29	2019-12-18	16.57	11.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+ARQQ	CS	mi	CS	XNAS	CS		COMMON?	Arqit Quantum Inc. Ordinary Shares	active	current	NASDAQ	True	True	43	2021-11-01	2021-12-31	23.86	15.8	0	43		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+TGP	UNKNOWN	none					COMMON?	Teekay LNG Partners L.P.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	43	2021-10-19	2021-12-28	16.91	13.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+XOXO	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	41	2018-10-08	2018-12-20	34.6	11.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+TE	CS	mi	CS	XNYS	CS	3674	COMMON?	T1 Energy Inc.	active	current	NYSE	True	True	40	2021-08-24	2021-12-31	11.13	13.0	0	40		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+SYKE	UNKNOWN	none					COMMON?	Sykes Enterprises, Incorporated Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	40	2021-07-01	2021-08-26	53.66	23.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+ATTU	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	39	2019-01-31	2019-03-27	23.33	15.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+LDL	UNKNOWN	none					COMMON?	Lydall, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	38	2021-07-01	2021-08-24	61.3	19.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+TMC	CS	mi	CS	XNAS	CS	1000	COMMON?	TMC the metals company Inc. Common Stock	active	current	NASDAQ	True	True	38	2021-01-22	2021-10-01	10.21	11.2	0	11		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+GCMG	CS	mi	CS	XNAS	CS	6282	COMMON?	GCM Grosvenor Inc. Class A Common Stock	active	current	NASDAQ	True	True	37	2020-12-18	2021-07-13	10.45	15.8	0	18		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+LABL	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	37	2018-03-05	2019-04-16	50.0	16.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+TOWR	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	37	2019-07-26	2019-09-17	30.87	14.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+AUR	CS	mi	CS	XNAS	CS	7373	COMMON?	Aurora Innovation, Inc. Class A Common Stock	active	current	NASDAQ	True	True	36	2021-11-10	2021-12-31	12.01	30.4	0	35		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+CLCT	UNKNOWN	none					COMMON?	Collectors Universe, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	36	2020-12-15	2021-02-05	76.38	21.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+BRSS	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	36	2019-04-25	2019-07-15	43.44	16.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+MOBL	UNKNOWN	none					COMMON?	MobileIron, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	35	2020-10-12	2020-11-30	7.02	13.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+SCR	UNKNOWN	none					COMMON?	Score Media and Gaming Inc. Class A Subordinate Voting Share	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	35	2021-08-30	2021-10-18	34.89	26.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+SPRT	UNKNOWN	none					COMMON?	Support.com, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	34	2021-07-28	2021-09-14	8.89	48.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+AGC	UNKNOWN	none					COMMON?	Altimeter Growth Corp. Class A Ordinary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	34	2021-10-05	2021-12-01	12.76	29.7	0	0	2020-12-01:hole;2020-12-01:jump	0	UNKNOWN_TYPE_ADMITTED
+EIGI	UNKNOWN	none					COMMON?	Endurance International Group Holdings, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	34	2020-11-16	2021-02-10	9.47	10.9	10	9		0	UNKNOWN_TYPE_ADMITTED;SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+NIHD	UNKNOWN	none					COMMON?	NII Holdings, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	33	2018-08-10	2018-12-03	5.47	14.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+RESN	UNKNOWN	none					COMMON?	Resonant Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	32	2021-01-19	2021-03-11	6.3	14.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+EEQ	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	32	2018-10-05	2018-12-19	10.82	11.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+AHPIQ	UNKNOWN	none					COMMON?	ALLIED HEALTHCARE PRODS INC COM NEW	active	current	OTC	False	True	31	2021-07-27	2021-09-08	9.31	29.9	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+AKCA	UNKNOWN	none					COMMON?	Akcea Therapeutics, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	31	2019-03-11	2020-10-09	18.14	11.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+STBZ	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	30	2018-05-25	2018-07-09	34.23	19.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+SNR	UNKNOWN	none					COMMON?	NEW SENIOR INVESTMENT GROUP INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	30	2021-07-09	2021-08-23	9.15	17.7	0	0	2018-11-15:jump	0	UNKNOWN_TYPE_ADMITTED
+BSJL	UNKNOWN	none					ETF	Invesco BulletShares 2021 High Yield Corporate Bond ETF	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	30	2020-03-09	2020-04-20	21.97	13.0	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETF_UNTYPED
+FUSE	CS	mi	CS	XNAS			COMMON?	Fusemachines Inc. Common stock	active	current	NASDAQ	True	True	30	2021-02-19	2021-04-01	10.36	21.9	0	29		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+WAAS	UNKNOWN	none					COMMON?	AquaVenture Holdings Limited	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	29	2020-01-14	2020-03-27	26.97	12.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+STML	UNKNOWN	none					COMMON?	Stemline Therapeutics, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	25	2019-08-22	2020-06-09	11.91	15.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+IPOA	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	25	2019-09-20	2019-10-25	10.6	17.8	8	25		0	UNKNOWN_TYPE_ADMITTED;SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+OPAD	CS	mi	CS	XNAS	CS	6531	COMMON?	Offerpad Solutions Inc. Class A Common Stock	active	current	NASDAQ	True	True	25	2021-09-17	2021-10-21	8.5	20.7	0	25		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+BPTH	UNKNOWN	none					COMMON?	BIO-PATH HLDGS INC COM PAR $0.001 NEW	active	current	OTC	False	True	25	2019-03-15	2019-04-18	19.39	26.3	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+STFC	UNKNOWN	none					COMMON?	State Auto Financial Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	25	2021-07-26	2021-08-27	50.0	13.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+OPB	UNKNOWN	none					COMMON?	Opus Bank Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	24	2020-02-10	2020-03-13	25.54	16.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+PL	CS	mi	CS	XNYS	CS	3663	COMMON?	Planet Labs PBC	active	current	NYSE	True	True	24	2021-11-29	2021-12-31	7.02	35.5	0	24		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+AMBP	CS	mi	CS	XNYS	CS		COMMON?	Ardagh Metal Packaging S.A.	active	current	NYSE	True	True	24	2021-09-15	2021-12-31	10.04	10.9	0	24		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+BSJK	UNKNOWN	none					ETF	Invesco BulletShares 2020 High Yield Corporate Bond ETF	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	24	2019-01-18	2020-04-09	22.95	12.5	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETF_UNTYPED
+NRE	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	24	2019-03-04	2019-08-02	17.03	11.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+CNXM	UNKNOWN	none					COMMON?	CNX Midstream Partners LP	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	24	2020-03-09	2020-04-09	8.11	13.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+WAIR	UNKNOWN	none					COMMON?	WESCO Aircraft Holdings Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	23	2019-08-30	2019-10-04	10.97	11.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+CPLG	UNKNOWN	none					COMMON?	CorePoint Lodging Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	22	2021-12-01	2021-12-31	15.52	13.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+SPIR	CS	mi	CS	XNYS	CS	4899	COMMON?	Spire Global, Inc.	active	current	NYSE	True	True	22	2021-09-29	2021-10-28	6.11	13.7	0	22		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+BCAB	CS	mi	CS	XNAS			COMMON?	BioAtla, Inc. Common Stock	active	current	OTC	False	True	22	2021-06-29	2021-10-04	33.41	10.4	0	0		0	OTC_TODAY
+NILE	UNKNOWN	none					COMMON?	BITNILE HOLDINGS INC COM	inactive	LAST holder of a delisted symbol (reuse risk)	OTC	False	True	22	2017-12-13	2021-02-22	5.3	38.3	0	0	2019-08-06:jump;2020-01-02:jump	5	UNKNOWN_TYPE_ADMITTED;OTC_TODAY;IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+BSTC	UNKNOWN	none					COMMON?	BioSpecifics Technologies Corp. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	21	2020-11-02	2020-12-01	88.34	14.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+BSCJ	UNKNOWN	none					ETF	Invesco BulletShares 2019 Corporate Bond ETF	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	21	2018-12-27	2019-01-30	21.09	11.8	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETF_UNTYPED
+EQGP	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	21	2018-12-11	2019-01-10	19.96	11.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+INVZ	CS	mi	CS	XNAS			COMMON?	Innoviz Technologies Ltd. Ordinary shares	active	current	NASDAQ	True	True	21	2021-04-21	2021-12-20	6.42	11.2	0	1		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+SLDP	CS	mi	CS	XNAS	CS	3690	COMMON?	Solid Power, Inc. Class A Common Stock	active	current	NASDAQ	True	True	20	2021-12-03	2021-12-31	9.87	31.3	0	20		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+GCAP	UNKNOWN	none					COMMON?	Gain Capital Holdings, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	19	2018-01-11	2018-02-07	8.0	19.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+HUD	UNKNOWN	none					COMMON?	Hudson Ltd. Class A Common Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	19	2020-09-02	2020-09-29	7.58	15.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+IVCRQ	UNKNOWN	none					COMMON?	INVACARE CORP Common Stock	active	current	OTC	False	True	19	2017-07-31	2017-10-12	14.0	10.9	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+LORL	UNKNOWN	none					COMMON?	Loral Space and Communications, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	19	2021-02-25	2021-03-23	44.27	12.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+CRCM	UNKNOWN	none					COMMON?	CARE.COM, INC.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	19	2019-01-17	2020-01-22	15.12	11.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+OXFD	UNKNOWN	none					COMMON?	Oxford Immunotec Global PLC Ordinary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	19	2021-01-22	2021-02-18	21.92	22.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+DSPG	UNKNOWN	none					COMMON?	DSP Group, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	18	2021-09-13	2021-10-06	21.8	13.8	0	0		0	UNKNOWN_TYPE_ADMITTED
+VRPX	UNKNOWN	none					COMMON?	Virpax Pharmaceuticals, Inc. Common Stock	active	current	OTC	False	True	17	2021-08-30	2021-09-22	11.6	13.4	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+TSC	UNKNOWN	none					COMMON?	TriState Capital Holdings, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	17	2018-10-24	2021-11-22	29.88	11.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+HUDI	CS	mi	CS	XNAS	CS		COMMON?	Huadi International Group Co., Ltd. Ordinary Shares	active	current	NASDAQ	False	True	17	2021-11-02	2021-11-24	20.81	18.1	0	0		0	ACTIVE_BUT_NOT_TRADABLE
+IOTS	UNKNOWN	none					COMMON?	Adesto Technologies Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	17	2020-03-05	2020-03-27	10.97	15.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+NOVNQ	UNKNOWN	none					COMMON?	NVN Liquidation, Inc. Common Stock	active	current	OTC	False	True	17	2021-06-18	2021-07-13	10.06	11.7	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+ATIP	UNKNOWN	none					COMMON?	ATI PHYSICAL THERAPY INC Class A Common Stock	active	current	OTC	False	True	17	2021-06-14	2021-07-07	9.35	16.1	2	17		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY;SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+ZIXI	UNKNOWN	none					COMMON?	Zix Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	17	2019-05-13	2019-06-05	9.25	12.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+BNBX	CS	mi	CS	XNAS			COMMON?	BNB Plus Corp. Common Stock	active	current	OTC	False	True	16	2021-01-26	2021-02-17	11.08	12.0	0	0	2017-06-26:hole;2017-12-20:hole;2018-09-25:hole;2018-12-21:hole;2019-07-18:hole	0	OTC_TODAY
+PAND	UNKNOWN	none					COMMON?	Pandion Therapeutics Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	16	2021-03-10	2021-03-31	60.0	13.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+BCEL	UNKNOWN	none					COMMON?	ATRECA INC CL A COM	active	current	OTC	False	True	16	2021-07-12	2021-08-04	7.86	10.9	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+HIFR	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	16	2018-11-01	2018-11-23	21.25	14.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+SRTA	CS	mi	CS	XNAS			COMMON?	Strata Critical Medical, Inc. Class A Common Stock	active	current	NASDAQ	True	True	16	2021-06-24	2021-10-12	10.39	11.8	0	1		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+SOLY	UNKNOWN	none					COMMON?	Soliton, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	15	2021-05-24	2021-06-14	22.35	14.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+IBDL	UNKNOWN	none					ETF	iShares iBonds Dec 2020 Term Corporate ETF	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	15	2020-03-24	2020-04-14	25.12	10.9	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETF_UNTYPED
+BKSY	CS	mi	CS	XNYS	CS	3663	COMMON?	BlackSky Technology Inc.	active	current	NYSE	True	True	14	2021-09-17	2021-10-06	10.61	12.7	0	14		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+KBNT	UNKNOWN	none					COMMON?	Kubient, Inc. Common Stock	active	current	OTC	False	True	14	2021-02-26	2021-03-17	7.21	11.2	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+IBDM	UNKNOWN	none					ETF	iShares iBonds Dec 2021 Term Corporate ETF	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	14	2020-03-30	2021-02-11	24.76	10.4	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETF_UNTYPED
+HIPO	CS	mi	CS	XNYS	CS	6331	COMMON?	Hippo Holdings Inc.	active	current	NYSE	True	True	14	2021-08-31	2021-09-22	5.27	13.6	0	14		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+HLG	UNKNOWN	none					ADR	Hailiang Education Group Inc. American Depositary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	14	2018-04-12	2018-05-01	80.98	11.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+GIX	CS	mi	CS	XNAS			COMMON?	GigCapital9 Corp. Class A Ordinary Share	active	current	NASDAQ	True	True	14	2020-12-24	2021-01-25	10.93	14.3	0	14		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+PAE	UNKNOWN	none					COMMON?	PAE Incorporated Class A Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	14	2021-11-05	2021-11-24	9.93	13.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+CIFR	CS	mi	CS	XNAS	CS	6199	COMMON?	Cipher Digital Inc. Common Stock	active	current	NASDAQ	True	True	14	2021-10-25	2021-11-11	8.81	13.0	0	14		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+LN	UNKNOWN	none					COMMON?	LINE Corporation	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	13	2017-03-06	2019-11-26	37.01	10.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+EBSB	UNKNOWN	none					COMMON?	Meridian Bancorp, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	13	2021-05-07	2021-05-25	21.3	12.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+DOVA	UNKNOWN	none					COMMON?	Dova Pharmaceuticals, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	12	2019-10-04	2019-10-21	28.14	11.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+CELU	CS	mi	CS	XNAS			COMMON?	Celularity Inc. Class A Common Stock	active	current	NASDAQ	True	True	12	2021-01-21	2021-02-05	10.22	10.4	0	12		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+GRUB	UNKNOWN	none					ADR	Just Eat Takeaway.com N.V. American Depositary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	11	2021-12-16	2021-12-31	10.76	26.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+EGL	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	10	2018-09-25	2018-10-08	34.99	11.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+KEYW	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	10	2019-05-06	2019-05-17	11.27	10.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+DSSI	UNKNOWN	none					COMMON?	Diamond S Shipping Inc. Common Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	10	2020-05-06	2020-05-19	10.34	10.9	0	0		0	UNKNOWN_TYPE_ADMITTED
+TACO	CS	mi	CS	XNAS			SPAC_SHELL	Berto Acquisition Corp. Ordinary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	10	2021-12-17	2021-12-31	12.45	20.5	0	0		0	NAME_SAYS_SPAC_SHELL
+RNW	CS	mi	CS	XNAS	CS		COMMON?	ReNew Energy Global plc Class A Ordinary Shares	active	current	NASDAQ	True	True	10	2021-10-15	2021-11-02	8.84	10.1	0	10		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+COBZ	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	10	2018-07-09	2018-07-20	21.7	11.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+NXEO	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	10	2018-10-05	2018-10-18	11.53	11.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+OMP	UNKNOWN	none					COMMON?	Oasis Midstream Partners LP Common Units Representing Limite	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	10	2021-06-30	2021-07-14	23.36	11.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+TTOO	CS	sic			CS	3841	COMMON?	T2 BIOSYSTEMS INC COM PAR $0.001	active	current	OTC	False	True	9	2018-06-15	2018-06-27	8.16	11.3	0	0		0	OTC_TODAY
+WBX	CS	mi	CS	XNYS			COMMON?	Wallbox N.V.	active	current	NYSE	True	True	9	2021-11-15	2021-11-26	15.0	11.2	0	9		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+NFH	UNKNOWN	none					COMMON?	New Frontier Health Corporation Ordinary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	9	2021-12-20	2021-12-31	11.46	13.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+LEAF	UNKNOWN	none					COMMON?	Leaf Group Ltd.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	9	2021-04-07	2021-06-11	9.05	11.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+HTGMQ	UNKNOWN	none					COMMON?	HTG MOLECULAR DIAGNOSTICS INC COM	active	current	OTC	False	True	9	2017-04-10	2017-04-21	5.81	11.9	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+WTRU	UNKNOWN	none					SPAC_UNIT	Essential Utilities, Inc.6.00% Tangible Equity Units	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	9	2019-11-01	2019-11-13	58.6	14.7	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_SPAC_UNIT_UNTYPED
+APTS	CS	sic			CS	6798	PREFERRED	Preferred Apartment Communities, Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	8	2017-12-08	2017-12-27	20.41	10.2	0	0		0	NAME_SAYS_PREFERRED_BUT_TYPED_CS
+ARKO	CS	mi	CS	XNAS			COMMON?	ARKO Corp. Common Stock	active	current	NASDAQ	True	True	8	2021-03-29	2021-04-08	9.96	10.2	0	8		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+ISCA	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	8	2019-10-08	2019-10-17	45.09	12.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+SRAX	UNKNOWN	none					COMMON?	SRAX INC Common Stock	active	current	OTC	False	True	8	2017-12-12	2017-12-21	5.67	10.5	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+GBNK	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	7	2018-06-12	2018-06-20	32.15	10.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+FOA	CS	mi	CS	XNYS			COMMON?	Finance of America Companies Inc.	active	current	NYSE	True	True	7	2021-06-18	2021-07-02	7.63	10.4	0	6		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+VYNT	UNKNOWN	none					COMMON?	Vyant Bio, Inc. Common Stock	active	current	OTC	False	True	6	2021-02-24	2021-03-03	6.11	11.3	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+VSI	UNKNOWN	none					COMMON?	Vitamin Shoppe Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	6	2018-09-04	2018-10-01	10.32	10.1	0	0		0	UNKNOWN_TYPE_ADMITTED
+DTV	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	6	2019-09-23	2019-09-30	58.02	13.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+WBK	UNKNOWN	none					COMMON?	Westpac Banking Corporation	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	6	2018-12-28	2019-01-07	17.43	10.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+AQ	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	6	2019-05-29	2019-06-05	13.12	11.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+HOFV	UNKNOWN	none					COMMON?	HALL OF FAME RESORT & ENTMT CO Common Stock	active	current	OTC	False	True	6	2021-03-24	2021-03-31	5.55	11.3	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+TEUM	UNKNOWN	none					COMMON?	Pareteum Corporation Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	OTC	False	True	5	2019-03-15	2019-05-06	5.18	12.7	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+GNBC	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	5	2018-02-21	2018-02-27	22.9	10.6	0	0		0	UNKNOWN_TYPE_ADMITTED
+SAMA	UNKNOWN	none					SPAC_SHELL	Schultze Special Purpose Acquisition Corp. II Class A Common	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	5	2020-12-11	2020-12-17	13.08	13.4	0	5	2021-11-29:hole	5	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_SPAC_SHELL;IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS;SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+HPR	UNKNOWN	none					COMMON?	HighPoint Resources Corporation	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	4	2020-12-09	2020-12-14	12.23	10.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+BV	CS	mi	CS	XNYS	CS	0700	COMMON?	BrightView Holdings, Inc. Common Stock	active	current	NYSE	True	True	4	2017-12-20	2017-12-26	5.45	10.2	0	0	2018-06-28:hole	4	IDENTITY_BREAK_AFTER_NIGHTS_TYPE_IS_LATER_HOLDERS
+NRDY	CS	mi	CS	XNYS			COMMON?	Nerdy Inc.	active	current	NYSE	True	True	4	2021-09-27	2021-09-30	10.03	10.7	0	4		0	SPAC_SHELL_PHASE_IN_130BAR_HISTORY
+EHIC	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	4	2019-03-15	2019-03-20	12.29	11.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+MUDS	UNKNOWN	none					COMMON?	Mudrick Capital Acquisition Corporation II Class A Common St	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	4	2021-08-27	2021-09-01	9.85	11.1	0	0	2021-01-29:hole	0	UNKNOWN_TYPE_ADMITTED
+MLNT	UNKNOWN	none					COMMON?	Melinta Therapeutics, Inc. Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	4	2019-07-05	2019-07-10	5.95	12.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+OSB	UNKNOWN	none					COMMON?	Norbord Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	4	2020-11-30	2020-12-03	38.95	11.0	0	0		0	UNKNOWN_TYPE_ADMITTED
+GSUM	UNKNOWN	none					ADR	Gridsum Holding Inc. American Depositary Shares	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	3	2018-02-02	2018-02-06	11.41	12.2	0	0		0	UNKNOWN_TYPE_ADMITTED
+OMN	UNKNOWN	none					COMMON?	OMNOVA Solutions Inc.	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	2	2019-08-07	2019-08-08	10.02	10.5	0	0		0	UNKNOWN_TYPE_ADMITTED
+HCAC	CS	mi	CS	XNAS			SPAC_SHELL	Hall Chadwick Acquisition Corp Class A Ordinary Shares	active	current	NASDAQ	True	True	2	2020-12-18	2020-12-21	19.39	73.5	0	0	2017-08-01:hole;2019-04-16:hole	0	NAME_SAYS_SPAC_SHELL
+HABT	UNKNOWN	none					COMMON?	The Habit Restaurants, Inc. Class A Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	2	2020-03-17	2020-03-18	13.91	12.4	0	0		0	UNKNOWN_TYPE_ADMITTED
+FRLG	UNKNOWN	none					NOTE_DEBT	Large Cap Growth Index-Linked Exchange Traded Notes due 2028	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	2	2020-06-16	2020-06-17	152.05	10.3	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_NOTE_DEBT_UNTYPED
+BCLI	UNKNOWN	none					COMMON?	Brainstorm Cell Therapeutics Inc. Common Stock	active	current	OTC	False	True	1	2020-07-23	2020-07-23	15.83	11.6	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+DRYS	UNKNOWN	none					NO_NAME		inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1	2017-10-25	2017-10-25	5.0	11.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+AEGN	UNKNOWN	none					COMMON?	Aegion Corp Common Stock	inactive	LAST holder of a delisted symbol (reuse risk)	NASDAQ	False	True	1	2021-03-15	2021-03-15	28.52	10.7	0	0		0	UNKNOWN_TYPE_ADMITTED
+VISL	UNKNOWN	none					COMMON?	VISLINK TECHNOLOGIES INC Common Stock	active	current	OTC	False	True	1	2021-02-17	2021-02-17	5.06	41.5	0	0		0	UNKNOWN_TYPE_ADMITTED;OTC_TODAY
+CHU	UNKNOWN	none					COMMON?	China Unicom (HONG KONG) Limited	inactive	LAST holder of a delisted symbol (reuse risk)	NYSE	False	True	1	2017-08-30	2017-08-30	14.59	10.3	0	0		0	UNKNOWN_TYPE_ADMITTED
+MRRL	UNKNOWN	none					ETN	ETRACS Monthly Pay 2xLeveraged Mortgage REIT ETN Series B du	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	1	2020-03-13	2020-03-13	5.89	10.3	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETN_UNTYPED
+BSJJ	UNKNOWN	none					ETF	Invesco BulletShares 2019 High Yield Corporate Bond ETF	inactive	LAST holder of a delisted symbol (reuse risk)	ARCA	False	True	1	2019-01-18	2019-01-18	24.0	10.9	0	0		0	UNKNOWN_TYPE_ADMITTED;NAME_SAYS_ETF_UNTYPED

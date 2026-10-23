@@ -1,0 +1,12 @@
+OVERLAP 2022-03-28..2022-06-30 (66 sessions), history from 2021-09-27; era A 8,299 tickers, era B 12,391 tickers in the window
+  vectorised universe vs cb.universe_ok on 4,000 random rows: era A 0 disagreements, era B 0
+  REPRODUCTION: era B rs_best recomputed here vs the pinned watch.tsv.gz: 8,763 of 8,763 watch nights equal (0 watch nights not universe members here)
+  universe members per night (median over 66 nights): era A 1,873, era B 2,072; in both 1,736; only A 135; only B 335
+  member-nights in B not in A: absent_from_era_A_export 20,962 (420 tickers), A_fails_universe 238 (8 tickers), no_bar_that_day_in_A 9 (1 tickers)
+  member-nights in A not in B: absent_from_era_B_export 4,379 (86 tickers), B_fails_universe 3,933 (351 tickers), no_bar_that_day_in_B 312 (12 tickers)
+  rs_best on the 109,239 member-nights in both: A - B median +0.30, mean +0.19, |diff| >= 1.0 pct-pt 13.0%, >= 2.0 0.4%
+    rs_best >= 95: A 11,341 / B 10,576 member-nights; A-only 802, B-only 37 (of B's 10,576: 0.3% drop out under A's denominator)
+    rs_best >= 98: A 4,869 / B 4,455 member-nights; A-only 447, B-only 33 (of B's 4,455: 0.7% drop out under A's denominator)
+    rs_best >= 99: A 2,571 / B 2,373 member-nights; A-only 252, B-only 54 (of B's 2,373: 2.3% drop out under A's denominator)
+  vendor agreement on 451,515 common ticker-days: |high diff| > 0.5% 1.55%, |low diff| > 0.5% 1.53%, |close diff| > 0.1% 1.92%; volume A/B median 1.031 (P10 1.000, P90 1.177); universe membership differs on 4,171 common ticker-days
+flagged rows: 30,313 -> <OUT>/pit/pit_overlap.tsv

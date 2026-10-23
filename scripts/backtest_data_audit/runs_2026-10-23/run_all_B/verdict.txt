@@ -1,0 +1,16 @@
+
+STEP 0 DATA GATE — verdict for export label B (consoles in <OUT>)
+  S0 selftests                PASS    4 of 4 selftests pass
+  G1 bar integrity            PASS    0 dup keys / 0 OHLC / 0 NaN / 0 weekend; test symbols in the export: 15 tickers / 5712 rows (universe excludes them)
+  G2 universe completeness    REPORT  no richer export given: survivorship not measurable (pass the richer export as arg 3)
+  G3 duplicate companies      PASS    confirmed strict pairs 0 (0 duplicate rows); scaled twins 0; universe_check persistent pairs (>= 20 days) 0 (PASS = 0 / 0 / 0)
+  G4 identity                 PASS    breaks file written: <OUT>/universe/symbol_guard_B.tsv — pass it as --breaks to the runner
+  G5 corporate actions        PASS    controls — OPLN:2019-06-28: NOT_IN_EXPORT_RANGE; ZWS:2021-10-05: NOT_TESTABLE_no_prior_bar; BEP:2020-07-30: NOT_IN_EXPORT_RANGE; discontinuous adjustment events (all/liquid): 67/3 → the RS/return exclusion list
+  G6 security type            PASS    untyped admitted nights 0.0% (0 of nights; 0 tickers) — PASS <= 2%; hand-verified non-common: 23 tickers / 0 rows (count only — exclusion is the operator's fork); universe_check tripwire: 6.0% of 4,499 liquid symbols untyped (over 5%)
+  G7 point-in-time lint       PASS    33 items (12 confirmed, 4 suspected, 17 ruled out); 16 unguarded; anchors missing 0
+  G8 sealed-trade dependence  REFUSE  of 8,984 trades: 28 entered after the cutoff, 57 holds run past the last kept bar (PASS = 0 / 0, else censor and print the count beside the headline)
+  G9 calendar + early close   PASS    sessions per year match NYSE (5 years); after-hours minute bars on early-close days: 7,281 of 135,276 (5.4%) → print beside every fill statistic until F1 is fixed
+  G10 overlap parity          REPORT  overlap not run (needs the richer era dir)
+  W2 exit-slippage cost       REPORT  n 8,961 fills, median stop width 1.91%: 0.1% per exit leg = 0.052R median / 0.067R mean / 0.121R at P90 — quote every R at 0 / 0.1 / 0.2%
+
+VERDICT: REFUSED by 1 gate(s): G8 sealed-trade dependence — no registered read opens an outcome on this export until each passes.

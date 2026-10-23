@@ -46,6 +46,7 @@ strategy, entry/exit discipline, sizing, targets, safeguards or live trade state
 | How a setup change may be made | `docs/setups/CHANGE_PROCESS.md` |
 | **How analysis is done here** | **`docs/methodology/analysis_standard.md`** |
 | **The preamble every analysis card gets verbatim** | **`docs/methodology/ANALYSIS_CARD_PREAMBLE.md`** |
+| **Backtest data: what can be wrong, the STEP 0 data gate, how a backtest is run** | **`docs/methodology/backtest_data_standard.md`** (checks: `scripts/backtest_data_audit/README.md`) |
 | Evidence-gated review triggers | `data_gated_reviews.yaml` |
 | Compressed history | `CHANGELOG.md` |
 | Cross-machine bootstrap | `docs/HANDOFF.md` |

@@ -1,0 +1,45 @@
+== duplicate-series check: B  file=/Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz  cut=2024-12-31  tol=0.0001  min_run=5  window=8
+bars=8,619,626  symbols=15,701  sessions=821  first=2021-09-27  last=2024-12-31
+TEST 1 strict twins: matched row-pairs (any class)=3,329  exact=3,149  pairs with >=2 matched days=3,099
+                   pairs  matched_days  exact_days  median_longest_run
+klass                                                                 
+coincidence_short   3096          3314        3134                 0.0
+coincidence_thin       3            15          15                 2.0
+spac_like confirmed pairs (first 20 matched closes in $9.50-$10.60 and the history starts inside the window)=0
+CONFIRMED strict pairs=0  matched days=0  of which match >=90% of their overlap=0
+-- largest confirmed pairs by matched days (top 25)
+Empty DataFrame
+Columns: [sym_a, sym_b, klass, retired_symbol, n_match, longest_run, share_of_overlap, first_match, last_match, spac_like, name_hint]
+Index: []
+strict excess (double-counted) rows=0 of 8,619,626 bars = 0.0000%
+TEST 2 scaled twins (price-scale copies): rows scanned=1,207,695; pairs=0
+scaled-twin excess rows=0
+TEST 3 ohlc_only (equal O/H/L/C, range >= 1%, volume differs, >= 5 days, not already found): pairs=0
+TOTAL excess rows (strict + scaled, union)=0 = 0.0000% of bars
+-- per year
+         bars
+2021   710910
+2022  2688778
+2023  2598234
+2024  2621704
+-- breakout-scale rows [gap>=10% & $vol>=1M]  total=15,765  double-counted=0  share=0.0000%
+      rows  excess  share
+year                     
+2021  1039       0    0.0
+2022  4096       0    0.0
+2023  4488       0    0.0
+2024  6142       0    0.0
+-- breakout-scale rows [ret>=15% & $vol>=1M]  total=26,429  double-counted=0  share=0.0000%
+      rows  excess  share
+year                     
+2021  1530       0    0.0
+2022  7573       0    0.0
+2023  7516       0    0.0
+2024  9810       0    0.0
+-- breakout-scale rows [ret>=50% & $vol>=1M]  total=3,255  double-counted=0  share=0.0000%
+      rows  excess  share
+year                     
+2021   174       0    0.0
+2022   708       0    0.0
+2023   975       0    0.0
+2024  1398       0    0.0

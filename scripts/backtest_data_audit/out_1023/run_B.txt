@@ -1,0 +1,113 @@
+constants: identical to agents/market_intelligence/consolidation_breakout.py
+ERA B: 8,619,626 bars (<= 2024-12-31) / 15,702 tickers; export last session 2026-10-16; off-calendar bars 0
+  raw close: DERIVED from the split list cb702_splits.psv (6,869 splits <= 2026-10-16, 1,941 tickers in export)
+  type sources: mi_security_types 14,102 tickers (snapshot 2026-10-16, exchange-listed only); SIC pull 3,942 tickers; Alpaca assets 33,319 symbols
+
+[U0] WATCH WINDOW 2022-03-28..2024-12-31: ticker-nights 7,288,324; regex+not-test+130-consecutive+$10M-median-dollar-volume (no price test) 1,754,621; + RAW close >= $5 = 1,707,783 universe-member nights on 3,966 tickers (BEFORE the security-type filter)
+     regex-EXCLUDED (liquid, >= $5) nights: 487 on 10 tickers (examples: APOpA, BACpL, FRCpM, JPMpL, KKRpC, NEEpO, NEEpP, NEEpQ)
+
+[U1] RESOLVED SECURITY TYPE of every price+liquidity-passing ticker (nights = universe-member nights BEFORE the type filter)
+resolved_type  admitted_by_type_filter  tickers  nights
+           CS                     True     2877 1262700
+          ETF                    False      814  344744
+         ADRC                     True      194   76592
+          ETV                    False       37   16274
+          ETN                    False       12    4200
+         FUND                    False       19    2142
+          ETS                    False        5     896
+           SP                    False        5     192
+      WARRANT                    False        1      30
+         UNIT                    False        1      11
+          PFD                    False        1       2
+  ADMITTED by the type filter: 3,071 tickers / 1,339,292 nights;  EXCLUDED by type: 895 tickers / 368,491 nights
+  UNKNOWN type admitted (no mi, no SIC type): 0 tickers = 0.0% of admitted tickers; 0 nights = 0.0% of admitted nights
+  type source of ADMITTED nights: mi=1,202,425, sic=136,867
+
+[U2] NAME CLASS (Alpaca/Polygon asset name) of ADMITTED tickers  [COMMON? = no non-common cue in the name; NO_NAME = symbol not in the asset list]
+  nights:
+resolved_type   ADRC       CS
+name_class                   
+ADR            45692        0
+COMMON?        26273  1106229
+FUND               0      656
+NO_NAME         4627   155757
+PREFERRED          0       58
+  tickers:
+resolved_type  ADRC    CS
+name_class               
+ADR             105     0
+COMMON?          62  2319
+FUND              0     2
+NO_NAME          27   555
+PREFERRED         0     1
+  ADMITTED but NAMED like a non-common instrument (ETF/ETN/FUND/LEVERAGED_INVERSE/NOTE_DEBT/PREFERRED/RIGHT/SPAC_UNIT/WARRANT): 3 tickers / 714 nights = 0.05% of admitted nights; of these UNTYPED 0, typed CS/ADRC 3
+    FUND                  2 tickers      656 nights   e.g. BXSL(CS,644), MSDL(CS,12)
+    PREFERRED             1 tickers       58 nights   e.g. APTS(CS,58)
+
+[U3] mi_security_types vs SIC-pull type DISAGREE across the admit line on 0 admitted tickers (0 nights); both sources present on 2,508 admitted tickers
+[U4] ADMITTED tickers on OTC today / active-but-not-tradable in the Alpaca asset list: 10 tickers / 742 nights (0.06% of admitted nights); not in the asset list at all: 582 tickers / 160,384 nights
+[U5] ADMITTED tickers whose 130-bar history holds a SPAC trust-price phase (flat ~$10 AND below the $10M liquidity floor): 8 tickers; 212 member nights carry one in their history, 65 are themselves trust-price nights; typed CS/ADRC 8, UNKNOWN 0;  e.g. MGI(CS,103), ASZ(CS,48), ALCC(CS,23), APEN(CS,16), SV(CS,8), AUS(CS,6), AAN(CS,5), CVII(CS,3)
+[U6] ADMITTED 5-letter U/W/R-suffix instruments (units/warrants/rights passing ^[A-Z]{1,5}$): 0 tickers / 0 nights
+[U6b] EXCLUDED-by-type tickers that pass regex + $5 + $10M and whose ONLY barrier is the type: 895 tickers / 368,491 nights = 21.6% of all price+liquidity-passing nights; of them 5-letter U/W/R-suffix (unit/warrant/right look-alikes) 1 (DJTWW:WARRANT)
+[U7] EXCLUDED-by-type but named like an operating company / common units (possible FALSE exclusion; symbol re-use or REIT/MLP typed FUND/UNIT/SP): 6 tickers / 120 nights  e.g. DXYZ(FUND,29), ECC(FUND,29), BMEZ(FUND,25), BSTZ(FUND,15), ILPT(FUND,11), RTLR(UNIT,11)
+
+FLAGGED admitted tickers: 26 of 3,071 (2,086 of 1,339,292 nights = 0.2%) -> flagged_tickers_B.tsv
+  flag counts (tickers / nights):
+    SPAC_SHELL_PHASE_IN_130BAR_HISTORY           8 tickers       266 nights
+    SIC_6770_BLANK_CHECK                         7 tickers       415 nights
+    OTC_TODAY                                    6 tickers       693 nights
+    ACTIVE_BUT_NOT_TRADABLE                      4 tickers        49 nights
+    NAME_SAYS_FUND                               2 tickers       656 nights
+    NAME_SAYS_PREFERRED                          1 tickers        58 nights
+
+[by year] universe-member nights (before type filter) / admitted by type / unknown-typed / on a flagged ticker:
+year  member_nights  admitted_by_type  unknown_type  flagged  unknown_share_of_admitted  flagged_share_of_admitted
+2022         474741            372453             0     1110                        0.0                     0.0030
+2023         595717            469901             0      615                        0.0                     0.0013
+2024         637325            496938             0      361                        0.0                     0.0007
+
+[IMPACT] watch.tsv.gz [all rows], watch_date 2022-03-28..2024-12-31: 129,985 rows on 2,463 tickers (counts only, no outcome read)
+                             group  tickers_in_group   rows  share_of_rows
+                      ALL_ADMITTED              3071 129985         1.0000
+                          ANY_FLAG                26     86         0.0007
+           ACTIVE_BUT_NOT_TRADABLE                 4      0         0.0000
+                    NAME_SAYS_FUND                 2      0         0.0000
+               NAME_SAYS_PREFERRED                 1      0         0.0000
+                         OTC_TODAY                 6     33         0.0003
+              SIC_6770_BLANK_CHECK                 7     37         0.0003
+SPAC_SHELL_PHASE_IN_130BAR_HISTORY                 8     16         0.0001
+               VERIFIED_NON_COMMON                 5      0         0.0000
+                      UNKNOWN_TYPE                 0      0         0.0000
+
+[IMPACT] entries_discovery.tsv.gz [K=='tl' and variant=='orh5' and retrigger_chain==0 and status=='filled'], D 2022-03-28..2024-12-31: 7,330 rows on 2,097 tickers (counts only, no outcome read)
+                             group  tickers_in_group  rows  share_of_rows
+                      ALL_ADMITTED              3071  7330         1.0000
+                          ANY_FLAG                26     7         0.0010
+           ACTIVE_BUT_NOT_TRADABLE                 4     0         0.0000
+                    NAME_SAYS_FUND                 2     0         0.0000
+               NAME_SAYS_PREFERRED                 1     0         0.0000
+                         OTC_TODAY                 6     2         0.0003
+              SIC_6770_BLANK_CHECK                 7     4         0.0005
+SPAC_SHELL_PHASE_IN_130BAR_HISTORY                 8     1         0.0001
+               VERIFIED_NON_COMMON                 5     0         0.0000
+                      UNKNOWN_TYPE                 0     0         0.0000
+
+[P1] $5 FLOOR UNITS (nights in the watch window passing regex/test/130-consecutive/$10M-dollar-volume):
+    adjusted>=5 but RAW<5 (adjusted floor ADMITS, raw floor excludes)              13,338 nights   178 tickers
+    RAW>=5 but adjusted<5 (adjusted floor EXCLUDES a real >=$5 stock)               1,860 nights    12 tickers
+    both pass (base)                                                            1,705,923 nights 3,964 tickers
+    adjusted-admits/raw-excludes top: TLRY(668), FUBO(602), DNA(599), FCEL(598), NKLA(446)
+    raw/adjusted steps within a ticker: > 5%: 1,479 on 1,231 tickers (splits); 0.1%-5%: 70 (dividend-sized: ~0 means the adjusted series is SPLIT-adjusted only); < 0.1%: 7 (rounding noise); factor range 7.41e-13..50; bars with |factor-1| > 0.1%: 967,203 (11.2%)
+    EXTREME raw/adjusted factors (< 1e-3 or > 1e3): 89,115 bars on 203 tickers (repeated reverse splits; adjusted prices of 1e5 and up) -- the floor must be read on RAW; e.g. ACON, ADD, ADTX, AEHL, AEMD, AGFY, AGRI, AGRX
+
+[P2] 5-bar median close*volume after / before 1,465 split steps: within 1.5x either way 30.6% (control, same tickers 40 bars later, n=1,296: 46.1%); splits where the ratio moves like the split itself (volume NOT adjusted, within 1.3x of 1/step) 21 of 1,465 (1.4%); over-adjusted (ratio within 1.3x of the step) 97; median ratio 1.740 (control 0.912)
+     BIG steps (>= 4x either way) n=1,223: dollar volume continuous (ratio within 1.5x) 315; moves like 1/step (volume NOT adjusted) 1; moves like the step (adjusted twice) 58; none of the three 849; median ratio 2.179
+     forward splits n=235: median ratio 0.939;  reverse splits n=1,230: median ratio 2.231
+
+[P1x] CROSS-EXPORT OVERLAP 2021-09-27..2022-06-30: 1,302,551 (ticker,date) bars on 7,460 tickers; this export raw = DERIVED, --vs raw = MEASURED
+     SAME COMPANY (>= 90% of overlap days have daily returns within 0.2% of each other): 7,344 tickers; DIFFERENT COMPANY on the same symbol (symbol reuse across the two exports): 116 tickers
+     SAME-COMPANY raw-close agreement: 1,296,471 bars on 7,344 tickers; |raw1/raw2 - 1| > 1%: 724 bars (0.056%) on 277 tickers;  > 10%: 278 bars on 13 tickers;  $5-floor decision differs: 61 bars on 9 tickers (BBLG, CXDO, DSX, GPMT, IRS, NTRB, NWG, SKIN, TPST)
+     DIFFERENT-COMPANY symbols: 116 tickers / 6,080 bars; of which both sides >= $5 raw on 4,068 bars; examples: ACGLP, ACH, ALACU, ALLR, ALTA, AOTG, ARD, ASRVP, B, BITI, BNY, BOCH
+     SAME-COMPANY ADJUSTED-close agreement: |a1/a2 - 1| > 1% on 15,093 bars (1.164%) on 363 tickers (two providers, adjusted to the same 2026-10-16 date: a level gap here is a split-handling difference)
+
+Outputs -> scripts/backtest_data_audit/out_1023

@@ -1,0 +1,24 @@
+CALENDAR /Users/alvinfung/apollo_data/cb702_pre/daily_closes_all.csv.gz: 1,635 SPY sessions 2016-01-04..2022-06-30
+  2016: 252 sessions (NYSE 252) ok
+  2017: 251 sessions (NYSE 251) ok
+  2018: 251 sessions (NYSE 251) ok
+  2019: 252 sessions (NYSE 252) ok
+  2020: 253 sessions (NYSE 253) ok
+  2021: 252 sessions (NYSE 252) ok
+  2022: 124 sessions (NYSE 251) partial year
+  unscheduled closure 2018-12-05: absent (right)
+  early-close (13:00) days in range: 12; on the calendar: 12
+  bars dated off SPY's calendar: 0
+  minutes 2017-07-03: 7,366 bars, 145 at >= 13:00 (2.0%) on 40 tickers
+  minutes 2017-11-24: 11,485 bars, 190 at >= 13:00 (1.7%) on 70 tickers
+  minutes 2018-07-03: 13,729 bars, 236 at >= 13:00 (1.7%) on 77 tickers
+  minutes 2018-11-23: 3,719 bars, 96 at >= 13:00 (2.6%) on 21 tickers
+  minutes 2018-12-24: 630 bars, 6 at >= 13:00 (1.0%) on 4 tickers
+  minutes 2019-07-03: 11,415 bars, 339 at >= 13:00 (3.0%) on 59 tickers
+  minutes 2019-11-29: 11,554 bars, 170 at >= 13:00 (1.5%) on 65 tickers
+  minutes 2019-12-24: 16,677 bars, 297 at >= 13:00 (1.8%) on 99 tickers
+  minutes 2020-11-27: 44,620 bars, 2,483 at >= 13:00 (5.6%) on 241 tickers
+  minutes 2020-12-24: 37,728 bars, 1,482 at >= 13:00 (3.9%) on 230 tickers
+  minutes 2021-11-26: 5,779 bars, 284 at >= 13:00 (4.9%) on 31 tickers
+  MINUTE TREE: on early-close days 5,728 of 164,702 minute bars (3.5%) are after-hours prints the minute engine treats as the session (ticker-days 937)
+flagged rows: 937 -> <OUT>/pit/pit_calendar_A.tsv

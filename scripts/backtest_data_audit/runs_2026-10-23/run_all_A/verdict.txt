@@ -1,0 +1,16 @@
+
+STEP 0 DATA GATE — verdict for export label A (consoles in <OUT>)
+  S0 selftests                PASS    4 of 4 selftests pass
+  G1 bar integrity            PASS    0 dup keys / 0 OHLC / 0 NaN / 0 weekend; test symbols in the export: 0 tickers / 0 rows (universe excludes them)
+  G2 universe completeness    REFUSE  liquid names per session, A/richer = 0.852..0.867 over 10 months (PASS >= 0.97); known-gone names 514, missing/partial 323 = 62.8% (control level ~9%)
+  G3 duplicate companies      REFUSE  confirmed strict pairs 71 (40,722 duplicate rows); scaled twins 27; universe_check persistent pairs (>= 20 days) 71 (PASS = 0 / 0 / 0)
+  G4 identity                 PASS    breaks file written: <OUT>/universe/symbol_guard_A.tsv; different company on the same symbol vs the richer export: 50 symbols, 27 liquid (0.86% of shared $vol) — recorded floor until FIGI-keyed — pass it as --breaks to the runner
+  G5 corporate actions        PASS    controls — OPLN:2019-06-28: FLAGGED; ZWS:2021-10-05: FLAGGED; BEP:2020-07-30: FLAGGED; discontinuous adjustment events (all/liquid): 2/0, 75/24 → the RS/return exclusion list
+  G6 security type            REFUSE  untyped admitted nights 8.3% (169,143 of nights; 419 tickers) — PASS <= 2%; hand-verified non-common: 23 tickers / 204 rows (count only — exclusion is the operator's fork); universe_check tripwire: 1.9% of 3,900 liquid symbols untyped (under 5%)
+  G7 point-in-time lint       PASS    33 items (12 confirmed, 4 suspected, 17 ruled out); 16 unguarded; anchors missing 0
+  G8 sealed-trade dependence  PASS    of 13,363 trades: 0 entered after the cutoff, 0 holds run past the last kept bar (PASS = 0 / 0, else censor and print the count beside the headline)
+  G9 calendar + early close   PASS    sessions per year match NYSE (7 years); after-hours minute bars on early-close days: 5,728 of 164,702 (3.5%) → print beside every fill statistic until F1 is fixed
+  G10 overlap parity          REPORT  members per night A 1,873 / B 2,072, in both 1,736 = 83.8% of B (target >= 98% after the rebuild); only-A 135, only-B 335; vendor: |high diff| > 0.5% 1.55%, |low diff| > 0.5% 1.53%, |close diff| > 0.1% 1.92%; volume A/B median 1.031 (P10 1.000, P90 1.177)
+  W2 exit-slippage cost       REPORT  n 13,368 fills, median stop width 1.86%: 0.1% per exit leg = 0.054R median / 0.067R mean / 0.120R at P90 — quote every R at 0 / 0.1 / 0.2%
+
+VERDICT: REFUSED by 3 gate(s): G2 universe completeness, G3 duplicate companies, G6 security type — no registered read opens an outcome on this export until each passes.

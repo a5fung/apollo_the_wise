@@ -1,0 +1,84 @@
+[T] /var/folders/jz/1q5pr8t56hx0t30c2km112lw0000gn/T/tmp99v7mna0/x.csv.gz: 710 rows kept (<= 2024-12-31), 0 later rows dropped unread, 6 tickers, 2020-01-01..2020-06-16  (0s)
+== ohlc
+  [ohlc] rows (n): 710
+  [ohlc] high < max(open, close): 1
+  [ohlc] low > min(open, close): 0
+  [ohlc] high < low: 1
+  [ohlc] non-positive price rows / distinct tickers: 0 / 0
+  [ohlc] NaN in o/h/l/c/v: 0
+  [ohlc] duplicate (ticker, date) rows: 0
+  [ohlc] rows off the calendar ticker's sessions: 0
+== level (split-adjusted price levels)
+  [level] close >= $1000: rows / tickers: 0 / 0
+  [level] close >= $100000: rows / tickers: 0 / 0
+  [level] close >= $1e+09: rows / tickers: 0 / 0
+  [level] close < $0.01: rows / tickers: 0 / 0
+  [level] close quantiles p50 / p99 / p99.9 / max: 49.96 / 58.39 / 60.95 / 66.37
+  [level] tickers whose max adjusted close >= $1000 (n of all): 0 of 6
+  [level] NOTE: adjusted levels are not tradable prices: any absolute-price rule (close >= $5, price band) needs the RAW close; percent signals are unaffected
+== gap (one-session moves >= 25%)
+  [gap] events (open gap or close-to-close >= 25%) all / liquid: 4 / 4
+  [gap]   open-gap >= 25% / close-to-close >= 25% / down(cc<=-25%) / up(cc>=+25%): 4 / 4 / 3 / 1
+  [gap]   class known_adjustment_event: all / liquid: 0 / 0
+  [gap]   class open_gap_reverted_same_day: all / liquid: 0 / 0
+  [gap]   class reverted_next_session: all / liquid: 1 / 1
+  [gap]   class reverted_within_5: all / liquid: 0 / 0
+  [gap]   class persistent: all / liquid: 3 / 3
+  [gap]   class no_next_bar: all / liquid: 0 / 0
+  [gap]   events whose prior bar is a zero-volume fill (stale base): all / liquid: 0 / 0
+  [gap]   events spanning >1 session (prior bar missing days): all / liquid: 0 / 0
+  [gap]   class reverted_next_session AND no volume event (volume < 2x its 20-session median; strongest bad-print suspects): all / liquid: 1 / 1
+  [gap]   class reverted_within_5 AND no volume event (volume < 2x its 20-session median; strongest bad-print suspects): all / liquid: 0 / 0
+== adj_event (is the adjusted series continuous across every known adjustment?)
+  [adj_event] events: none (pass --splits and/or --raw-close)
+== splitlike (split-sized close ratios with no known event)
+  [splitlike] close ratios within 5% of 2,3,4,5,10,20 or reciprocals, no known event within one bar, prior bar not a zero-volume fill: all / liquid: 1 / 1
+  [splitlike]   of those volume-confirmed (volume re-levels by ~1/ratio for 10 sessions): all / liquid: 1 / 1
+  [splitlike]   distinct tickers (all): 1
+== spinoff (candidates; an earnings crash also qualifies)
+  [spinoff] persistent >=25% close-to-close drops (<50% recovered by +5 sessions), volume >= 2x the 20-session median, one-session gap: all / liquid: 0 / 0
+  [spinoff]   MECHANICAL subset (|close/open-1| < 8% and |close(+5)/close-1| < 15%): all / liquid: 0 / 0
+  [spinoff]   child-listing match rate, real window vs placebo window 20 sessions earlier (n=0): nan vs nan  -> a match is discriminating
+  positive controls:
+== calendar (missing sessions against the calendar ticker)
+  [calendar] calendar sessions (SPY) / first / last: 120 / 2020-01-01 / 2020-06-16
+  [calendar] tickers / with >=1 interior missing session: 6 / 1
+  [calendar] interior missing sessions / expected sessions in ticker spans: 10 / 720
+  [calendar] tickers starting after the first session (listing or ticker-start seam): 0
+  [calendar] tickers ending before the last session (delisted, renamed, or the export dropped them): 0
+  [calendar] holes with 1 missing: 0
+  [calendar] holes with 2 missing: 0
+  [calendar] holes with 3-5 missing: 0
+  [calendar] holes with 6-20 missing: 1
+  [calendar] holes with >20 missing: 0
+  [calendar] holes (>=1 missing session) all / liquid-at-the-time: 1 / 1
+  [calendar] holes of >=5 missing sessions all / liquid-at-the-time: 1 / 1
+  [calendar] sessions with <90% of the local (21-session) median ticker count: 10 of 120 e.g. 2020-02-26=5 vs 6
+  [calendar] tickers per session min / median / max: 5 / 6 / 6
+== volume
+  [volume] zero-volume rows / distinct tickers: 0 / 0
+  [volume]   flat fill (o=h=l=c) / non-flat: 0 / 0
+  [volume]   zero volume AND close != prior close: rows: 0
+  [volume]   zero volume with close >= $100 (adjusted-volume underflow at a huge price level): 0
+  [volume]   zero volume, non-flat, close < $100 (a printed range with no volume): 0
+  [volume] rows with volume < 0 / NaN: 0 / 0
+== wick (bad high/low ticks)
+  [wick] high >= 1.25x max(o,c) or low <= min(o,c)/1.25: rows: 0
+  [wick] high >= 1.5x max(o,c) or low <= min(o,c)/1.5: rows: 0
+  [wick] high >= 2.0x max(o,c) or low <= min(o,c)/2.0: rows: 0
+== test symbols
+  [test_symbol] tickers / rows: 1 / 120  ['ZTEST']
+== duplicate series (byte-identical bars under two symbols)
+  [duplicate] rows (volume >= 1000) sharing an identical (date, o, h, l, c, v) with another ticker: 240
+  [duplicate] ticker pairs with >=10 identical days / pairs with any: 1 / 1
+  [duplicate]   distinct tickers inside those pairs: 2
+  [duplicate]   examples: DUPA=DUPB(120d)
+== exposure (share of liquid ticker-days)
+  [exposure] liquid ticker-days (denominator) / distinct liquid tickers: 650 / 6
+  [exposure] within 130 sessions after an interior missing-session hole on a liquid name (a 130-CONSECUTIVE-session history rule drops these): 70 liquid ticker-days = 10.769%
+  [exposure] rows of a ticker inside an identical-series pair (the same company counted twice): 220 liquid ticker-days = 33.846%
+  [exposure] adjusted close >= $1000 (raw-price rules cannot be applied to this price): 0 liquid ticker-days = 0.000%
+  [exposure] within 60 sessions after a reverted (bad-print suspect) one-session move >= 25%: 60 liquid ticker-days = 9.231%
+wrote /var/folders/jz/1q5pr8t56hx0t30c2km112lw0000gn/T/tmp99v7mna0/T_flags.tsv (9 rows) and T_summary.tsv (67 lines)
+done in 0s
+SELFTEST OK

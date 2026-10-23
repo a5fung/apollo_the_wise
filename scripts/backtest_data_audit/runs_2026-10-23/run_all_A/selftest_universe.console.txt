@@ -1,0 +1,160 @@
+[P] /var/folders/jz/1q5pr8t56hx0t30c2km112lw0000gn/T/uc_selftest_4cijfjs2/P.csv: 14,760 rows kept <= 2024-12-31; 0 later rows dropped at read (sealed, never examined); 0 unparsable dates; 37 symbols; 400 sessions 2020-01-02..2021-07-14
+[Q] /var/folders/jz/1q5pr8t56hx0t30c2km112lw0000gn/T/uc_selftest_4cijfjs2/Q.csv: 14,610 rows kept <= 2024-12-31; 0 later rows dropped at read (sealed, never examined); 0 unparsable dates; 37 symbols; 400 sessions 2020-01-02..2021-07-14
+
+== INTEGRITY [P] ==
+  duplicate (ticker,date) keys: 0 rows of 14,760 on 0 symbols
+  high<low or open/close outside [low,high]: 0 rows of 14,760 on 0 symbols
+  non-positive price: 0 rows of 14,760 on 0 symbols
+  NaN in OHLCV: 0 rows of 14,760 on 0 symbols
+  weekend bars: 0 rows of 14,760 on 0 symbols
+  business days with no bar from any symbol: 0 (US holidays expected, ~9-10 a year): 
+
+== COVERAGE [P] ==
+label  year  sessions  tickers_ever  per_day_median  per_day_min  per_day_max  liquid_per_day_median(dv>=2e+06,px>=2)  liquid_min  liquid_max
+    P  2020       261            37              37           36           37                                      37          36          37
+    P  2021       139            37              37           37           37                                      35          35          36
+  thin sessions (symbols printed < 60% of the prior-21-session median): 0 of 400: 
+  symbols by LAST-bar year, all symbols (the final year is mostly 'still alive'): 2021:37
+  symbols whose last bar is before 2021-07-07 (stopped printing), by year of last bar:
+Empty DataFrame
+Columns: [ended_all, ended_non_derivative, ended_liquid_non_deriv(last60 median dv,px)]
+Index: []
+
+== STALE / CARRIED BARS [P] ==
+  zero-volume rows: 100 of 14,760 (0.678%) on 1 symbols
+  carried closes (volume 0 and close == previous close): 100 rows on 1 symbols
+  frozen copies (OHLCV identical to the previous bar, volume > 0): 0 rows on 0 symbols
+  flat bars (O=H=L=C, volume > 0): 0 rows on 0 symbols
+  symbols with a carried run >= 3 sessions: 1; longest run 100; symbols whose LAST bar is a carried bar: 1
+  zero-volume rows by year: 2021:100
+
+== DUPLICATE COMPANIES [P] (byte-identical OHLCV on one date under >= 2 symbols) ==
+  duplicate ticker-days: 400 second copies in 800 identical rows (1 pairs); persistent pairs (>= 20 shared days): 1
+  second copies per session: median 1, max 1 over 400 sessions with any; liquid second copies (dv>=2e+06): 400 ticker-days = 2.77% of all liquid ticker-days
+  largest pairs: DUP1=DUP2 400d
+  triples+ (a third symbol on the same bar): 0 rows
+
+== NON-EQUITY ITEMS IN THE UNIVERSE [P] (window 2020-01-02..2021-07-14) ==
+  liquid symbols in window: 36; flagged non-equity by suffix/parent/test-symbol/security-type map: 0; by --assets name keywords: 0; either: 0 = 0.0% of liquid symbols, 0.0% of liquid dollar volume (keyword match is a heuristic; 'Fund'/'Index'/'Unit' also hit some operating companies)
+
+== IDENTITY BREAKS [P] ==
+  holes > 30 sessions: 1 on 1 symbols | holes 10..30: 0 on 0 symbols
+  >70% one-session moves: 2 on 2 symbols; with a volume event (kept as a genuine shock): 0; flagged jump (no volume event, or a split/spin on the day): 2 on 2 symbols
+  short holes with a price x2 / x0.5 AND dollar-volume x10 / x0.1 regime change: 0
+  symbols with >= 1 break (hole or jump) by this script: 2 of 37
+  wrote /var/folders/jz/1q5pr8t56hx0t30c2km112lw0000gn/T/uc_selftest_4cijfjs2/symbol_guard_P.tsv (2 symbols with a break) - pass to the runner as --breaks for this export
+
+== INTEGRITY [Q] ==
+  duplicate (ticker,date) keys: 0 rows of 14,610 on 0 symbols
+  high<low or open/close outside [low,high]: 0 rows of 14,610 on 0 symbols
+  non-positive price: 0 rows of 14,610 on 0 symbols
+  NaN in OHLCV: 0 rows of 14,610 on 0 symbols
+  weekend bars: 0 rows of 14,610 on 0 symbols
+  business days with no bar from any symbol: 0 (US holidays expected, ~9-10 a year): 
+
+== COVERAGE [Q] ==
+label  year  sessions  tickers_ever  per_day_median  per_day_min  per_day_max  liquid_per_day_median(dv>=2e+06,px>=2)  liquid_min  liquid_max
+    Q  2020       261            37              37           36           37                                      37          35          37
+    Q  2021       139            36              36           36           36                                      34          34          35
+  thin sessions (symbols printed < 60% of the prior-21-session median): 0 of 400: 
+  symbols by LAST-bar year, all symbols (the final year is mostly 'still alive'): 2020:1, 2021:36
+  symbols whose last bar is before 2021-07-07 (stopped printing), by year of last bar:
+      ended_all  ended_non_derivative  ended_liquid_non_deriv(last60 median dv,px)
+year                                                                              
+2020          1                     1                                            1
+
+== STALE / CARRIED BARS [Q] ==
+  zero-volume rows: 100 of 14,610 (0.684%) on 1 symbols
+  carried closes (volume 0 and close == previous close): 100 rows on 1 symbols
+  frozen copies (OHLCV identical to the previous bar, volume > 0): 0 rows on 0 symbols
+  flat bars (O=H=L=C, volume > 0): 0 rows on 0 symbols
+  symbols with a carried run >= 3 sessions: 1; longest run 100; symbols whose LAST bar is a carried bar: 1
+  zero-volume rows by year: 2021:100
+
+== DUPLICATE COMPANIES [Q] (byte-identical OHLCV on one date under >= 2 symbols) ==
+  none
+
+== NON-EQUITY ITEMS IN THE UNIVERSE [Q] (window 2020-01-02..2021-07-14) ==
+  liquid symbols in window: 36; flagged non-equity by suffix/parent/test-symbol/security-type map: 0; by --assets name keywords: 0; either: 0 = 0.0% of liquid symbols, 0.0% of liquid dollar volume (keyword match is a heuristic; 'Fund'/'Index'/'Unit' also hit some operating companies)
+
+== IDENTITY BREAKS [Q] ==
+  holes > 30 sessions: 1 on 1 symbols | holes 10..30: 0 on 0 symbols
+  >70% one-session moves: 2 on 2 symbols; with a volume event (kept as a genuine shock): 0; flagged jump (no volume event, or a split/spin on the day): 2 on 2 symbols
+  short holes with a price x2 / x0.5 AND dollar-volume x10 / x0.1 regime change: 0
+  symbols with >= 1 break (hole or jump) by this script: 2 of 37
+  wrote /var/folders/jz/1q5pr8t56hx0t30c2km112lw0000gn/T/uc_selftest_4cijfjs2/symbol_guard_Q.tsv (2 symbols with a break) - pass to the runner as --breaks for this export
+
+== OVERLAP [P vs Q] window 2020-01-02..2021-07-14 ==
+  symbols with a bar in the window: P 37 | Q 37 | both 35 | only P 2 | only Q 2
+  only P: 2 symbols, 5.37% of P's window dollar volume; liquid (>=60 bars, dv>=2e+06, px>=2) 2 of 36 liquid P symbols = 5.6%, 5.4% of liquid dollar volume
+  only Q: 2 symbols, 4.45% of Q's window dollar volume; liquid (>=60 bars, dv>=2e+06, px>=2) 2 of 36 liquid Q symbols = 5.6%, 4.5% of liquid dollar volume
+  liquid names per session (median by month; dv>=2e+06, px>=2; includes ETFs/warrants in both):
+          P   Q  ratio
+date                  
+2020-01  37  37  1.000
+2020-02  37  37  1.000
+2020-03  37  37  1.000
+2020-04  37  37  1.000
+2020-05  37  37  1.000
+2020-06  37  37  1.000
+2020-07  37  37  1.000
+2020-08  36  36  1.000
+2020-09  36  36  1.000
+2020-10  36  36  1.000
+2020-11  36  36  1.000
+2020-12  36  36  1.000
+2021-01  36  35  1.029
+2021-02  36  35  1.029
+2021-03  35  34  1.029
+2021-04  35  34  1.029
+2021-05  35  34  1.029
+2021-06  35  34  1.029
+2021-07  35  34  1.029
+  RENAME-AWARE: of P's 2 liquid only-P symbols, 2 are the same bars under another symbol in Q; 0 are genuinely absent from Q (0.0% of P's liquid window dollar volume)
+  RENAME-AWARE: of Q's 2 liquid only-Q symbols, 1 are the same bars under another symbol in P; 1 are genuinely absent from P (2.0% of Q's liquid window dollar volume)
+  rename pairs found: 2 P-only->Q symbol, 1 Q-only->P symbol (e.g. OLDNM->NEWNM)
+
+== IDENTITY ACROSS EXPORTS [P vs Q] same symbol, same dates ==
+  common symbols with >= 20 shared days: 35; same 34; MISMATCH_different_series 1
+  MISMATCH_different_series: 1 symbols = 2.43% of shared dollar volume; liquid (shared-day median dv>=2e+06) 1
+  scale_or_basis_only: 0 symbols = 0.00% of shared dollar volume; liquid (shared-day median dv>=2e+06) 0
+  undetermined: 0 symbols = 0.00% of shared dollar volume; liquid (shared-day median dv>=2e+06) 0
+  largest mismatches by dollar volume: MISM(corr 0.00, ratio 0.76)
+  side of the mismatch (a break in that side's own series): no_break_visible_either_side: 1 (1 liquid)
+  mismatches with NO break in P's own series: 1 of 1 -> in P these are a different company under the same symbol that no hole/jump guard can see (it is a symbol-label difference, not a corrupted series)
+  volume P/Q on 13,860 shared ticker-days: median 1.000, p5 1.000, p95 1.000; identical volume on 94.3% of rows
+  close P/Q: exactly equal on 97.13% of 13,960 shared rows; within 0.5% on 97.23%
+
+== KNOWN-GONE LIST [Q names whose last bar is before the cutoff, liquid in the overlap] vs [P] ==
+  Q liquid in window (2020-01-02..2021-07-14; >= 60 bars, median dv >= 2e+06, median px >= 2): 36; of which warrant/unit/right/preferred/non-CS by heuristic: 0 (excluded below)
+status                    in_primary  missing  renamed_in_primary  total  share_not_in_primary
+bucket                                                                                        
+ALIVE_at_cutoff(control)          34        0                   1     35                   0.0
+gone_inside_overlap                0        1                   0      1                   1.0
+  of the 1 known-gone names, 0 have a probable successor symbol in Q (a rename, not a death); excluding them: 1 deaths, missing/partial in P 1 = 100.0%
+  KNOWN-GONE liquid names: 1; missing or only partly in P: 1 = 100.0% ; their share of the gone group's window dollar volume: 100.0%
+  CONTROL (still alive at the cutoff, liquid in the window): 35; missing/partial in P: 0 = 0.0%  -> the gap is a LOWER bound on survivorship: the control still contains names that died in 2025-26 (sealed, unobservable here) plus listing/identity noise
+  gone INSIDE the overlap (primary was still live): 1 names, in primary 0 = 0.0% ; gone AFTER the primary ended: 0, in primary nan%
+
+== IMPACT [Q prices; every figure is descriptive, <= cutoff 2024-12-31; NOT a tradable return] ==
+  snapshot 2020-12-01: 36 liquid names; end = last bar <= cutoff
+                        group  n  median_ret  mean_ret  share<=-80%  share<=-50%  share>=+100%  share>=+300%
+           covered by primary 35      -0.021    -0.007          0.0          0.0           0.0           0.0
+       NOT covered by primary  1       0.065     0.065          0.0          0.0           0.0           0.0
+  of which gone before cutoff  1       0.065     0.065          0.0          0.0           0.0           0.0
+  RUNNERS: names in Q that closed >= x2 of a liquid start-day close within 60 sessions, start in window: 1 (1 dropped for an identity break in Q itself); remaining 0; covered by P: 0; NOT covered: 0 = 0.0%  (a runner the primary export never saw cannot be recalled by anything built on it)
+  uncovered runners (best multiple, start): 
+  cumulative death rate of the 36 snapshot-liquid names (last bar before year end): 
+
+flagged rows: 12 -> /var/folders/jz/1q5pr8t56hx0t30c2km112lw0000gn/T/uc_selftest_4cijfjs2/flagged_rows.tsv  (by check: breaks:jump 4, stale:carried_run 2, breaks:hole 2, dups:company_two_symbols 1, overlap:only_Q 1, identity_x:different_series 1, gone:missing_from_primary 1)  [0s]
+  selftest ok   duplicate company found
+  selftest ok   clean symbols not flagged as duplicates
+  selftest ok   40-session hole found
+  selftest ok   unexplained x3 jump found
+  selftest ok   carried zero-volume run found
+  selftest ok   gone name missing from primary
+  selftest ok   renamed name NOT called missing
+  selftest ok   clean symbols NOT called missing
+  selftest ok   different company on one symbol found
+  selftest ok   clean symbols not a cross-export mismatch
+SELFTEST PASS

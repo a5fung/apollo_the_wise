@@ -1,0 +1,52 @@
+run_all.sh  2026-10-23T16:42:20Z  label=B  export=/Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz  richer=none  cutoff=2024-12-31  out=<OUT>
+sidecars: raw=none guard=none splits=/Users/alvinfung/apollo_data/cb702/cb702_splits.psv sic=/Users/alvinfung/apollo_data/cb702/cb702_sic.psv small=/Users/alvinfung/apollo_data/cb702/small_pulls.psv assets=/Users/alvinfung/apollo_data/cb702/qm_streams/alpaca_all_2016_2022/assets.tsv
+          minutes=/Users/alvinfung/apollo_data/cb702/minutes entries=/Users/alvinfung/apollo_data/cb702/out/entries_discovery.tsv.gz candidates=/Users/alvinfung/apollo_data/cb702/out/candidates.tsv watch=/Users/alvinfung/apollo_data/cb702/out/watch.tsv.gz trades=/Users/alvinfung/apollo_data/cb702/out/trades_discovery_exitpb.tsv.gz
+watch window: 2022-03-28 .. 2024-12-31   FAST=0
+export sha256: ccc0097fe535cb8d  size: 269000037
+== [selftest_universe] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/universe_check.py --selftest
+   rc=0  (1s)  -> <OUT>/selftest_universe.console.txt
+== [selftest_duplicate] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/duplicate_series_check.py --selftest
+   rc=0  (0s)  -> <OUT>/selftest_duplicate.console.txt
+== [selftest_price] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/price_integrity_check.py --selftest
+   rc=0  (0s)  -> <OUT>/selftest_price.console.txt
+== [selftest_sectype] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/security_type_check.py --selftest
+   rc=0  (0s)  -> <OUT>/selftest_sectype.console.txt
+== [universe] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/universe_check.py --export /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz --label B --cutoff 2024-12-31 --out-dir <OUT>/universe --splits /Users/alvinfung/apollo_data/cb702/cb702_splits.psv --sic /Users/alvinfung/apollo_data/cb702/cb702_sic.psv --small-pulls /Users/alvinfung/apollo_data/cb702/small_pulls.psv --assets /Users/alvinfung/apollo_data/cb702/qm_streams/alpaca_all_2016_2022/assets.tsv
+   rc=0  (9s)  -> <OUT>/universe.console.txt
+== [duplicate] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/duplicate_series_check.py /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz --label B --out <OUT>/dup --cut 2024-12-31 --assets /Users/alvinfung/apollo_data/cb702/qm_streams/alpaca_all_2016_2022/assets.tsv
+   rc=0  (12s)  -> <OUT>/duplicate.console.txt
+== [price] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/price_integrity_check.py --export /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz --label B --out-dir <OUT>/price --cutoff 2024-12-31 --splits /Users/alvinfung/apollo_data/cb702/cb702_splits.psv --sectype /Users/alvinfung/apollo_data/cb702/small_pulls.psv
+   rc=0  (18s)  -> <OUT>/price.console.txt
+== [sectype] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/security_type_check.py --export /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz --era B --splits /Users/alvinfung/apollo_data/cb702/cb702_splits.psv --small /Users/alvinfung/apollo_data/cb702/small_pulls.psv --sic /Users/alvinfung/apollo_data/cb702/cb702_sic.psv --assets /Users/alvinfung/apollo_data/cb702/qm_streams/alpaca_all_2016_2022/assets.tsv --watch-start 2022-03-28 --watch-end 2024-12-31 --cutoff 2024-12-31 --max-unknown-share 0.02 --verified-real UWT,DWT,GASL,RUSL,MRRL,FRLG,BSCJ,BSCK,BSJJ,BSJK,BSJL,IBDL,IBDM,ERUS,WTRU,BDXA,PSTH,AGC,IPOA,TACO,SAMA,MUDS,HCAC --impact /Users/alvinfung/apollo_data/cb702/out/watch.tsv.gz::::watch_date --out <OUT>/sectype
+   rc=0  (19s)  -> <OUT>/sectype.console.txt
+== [pit_lint] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/pit_lint.py lint --out <OUT>/pit
+   rc=0  (0s)  -> <OUT>/pit_lint.console.txt
+== [pit_calendar] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/pit_lint.py calendar --export /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz --label B --out <OUT>/pit --minutes /Users/alvinfung/apollo_data/cb702/minutes
+   rc=0  (3s)  -> <OUT>/pit_calendar.console.txt
+== [pit_inputs] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/pit_lint.py inputs --data /Users/alvinfung/apollo_data/cb702 --start 2022-03-28 --end 2024-12-31 --label B --out <OUT>/pit --assets /Users/alvinfung/apollo_data/cb702/qm_streams/alpaca_all_2016_2022/assets.tsv
+   rc=0  (8s)  -> <OUT>/pit_inputs.console.txt
+== [pit_horizon] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/pit_lint.py horizon --data /Users/alvinfung/apollo_data/cb702 --candidates /Users/alvinfung/apollo_data/cb702/out/candidates.tsv --k tl --through 2024-12-31 --label B --out <OUT>/pit
+   rc=0  (4s)  -> <OUT>/pit_horizon.console.txt
+== [pit_chain] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/pit_lint.py chain --watch /Users/alvinfung/apollo_data/cb702/out/watch.tsv.gz --candidates /Users/alvinfung/apollo_data/cb702/out/candidates.tsv --through 2024-12-31 --label B --out <OUT>/pit
+   rc=0  (2s)  -> <OUT>/pit_chain.console.txt
+== [pit_entries] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/pit_lint.py entries --entries /Users/alvinfung/apollo_data/cb702/out/entries_discovery.tsv.gz --k tl --through 2024-12-31 --label B --out <OUT>/pit --minutes /Users/alvinfung/apollo_data/cb702/minutes --candidates /Users/alvinfung/apollo_data/cb702/out/candidates.tsv
+   rc=0  (19s)  -> <OUT>/pit_entries.console.txt
+== [trade_impact] python3 /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/trade_impact.py --flags <OUT>/price/B_flags.tsv --export /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz --trades /Users/alvinfung/apollo_data/cb702/out/trades_discovery_exitpb.tsv.gz --label B --cutoff 2024-12-31 --kind c0
+   rc=0  (5s)  -> <OUT>/trade_impact.console.txt
+
+step rc table:
+  selftest_universe    rc=0
+  selftest_duplicate   rc=0
+  selftest_price       rc=0
+  selftest_sectype     rc=0
+  universe             rc=0
+  duplicate            rc=0
+  price                rc=0
+  sectype              rc=0
+  pit_lint             rc=0
+  pit_calendar         rc=0
+  pit_inputs           rc=0
+  pit_horizon          rc=0
+  pit_chain            rc=0
+  pit_entries          rc=0
+  trade_impact         rc=0

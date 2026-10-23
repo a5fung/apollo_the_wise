@@ -1,0 +1,8 @@
+INPUTS /Users/alvinfung/apollo_data/cb702: universe member-nights 2022-03-28..2024-12-31: 1,339,292 on 3,071 tickers
+  N2 no security type (admitted as unknown): 0 tickers, 0 member-nights (0.00%)
+  N2 type source per member ticker: {'mi': 2510, 'sic_pull': 561}
+  N2 member tickers whose CURRENT asset-list name reads as a fund / ETF / ETN / leveraged product: 3 tickers, 901 member-nights; of them with no type: 0
+  N1 no SIC code (no group -> every group cell False): 411 tickers, 155,934 member-nights (11.64%)
+  N1 SIC 'as of' date per member ticker: 2026-10-16 1,993, 2026-10-15 10, 2022-04-04 8; other dates 1,060 -> every night reads the industry the symbol had on its as-of date, not the one it had that night
+  N5 export symbols the ticker regex excludes outright: 563 (e.g. AAMpA, AAMpB, ABRpD, ABRpE, ABRpF, ACPpA, ACRpC, ACRpD)
+flagged rows: 414 -> <OUT>/pit/pit_inputs_B.tsv

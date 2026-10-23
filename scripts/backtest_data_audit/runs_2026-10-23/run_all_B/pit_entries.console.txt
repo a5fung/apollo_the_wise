@@ -1,0 +1,12 @@
+ENTRIES /Users/alvinfung/apollo_data/cb702/out/entries_discovery.tsv.gz: 206,000 rows (E <= 2024-12-31); first breaks 61,250
+  orh5: n 12,250; filled 8,961; minute_daily_mismatch 145 (1.18%); minute_high_below_pivot 2 (0.02%); no_minutes 16; too_wide 1,250
+  orh1: n 12,250; filled 9,894; minute_daily_mismatch 145 (1.18%); minute_high_below_pivot 2 (0.02%); no_minutes 16; too_wide 1,148
+  W2 orh5 filled first breaks n 8,961: stop width median 1.91% (P10 0.83%, P90 4.06%); 0.1% of price per side = 0.052 R median, 0.067 R mean, 0.121 R at P90 (per exit leg; a round trip with 0.1% more on entry doubles it)
+  W3 fills AT the level + 0.1% (the minute opened at/below it): 6,581 of 8,961 (73.4%); the rest at the minute's open (gapped over)
+  F1 filled first breaks with E on a 13:00-close day: 89 of 8,961
+  L4 the stop IS the fill minute's own low (below every earlier low, or the first minute): 35 of 8,961 checked (0.4%); where an earlier low exists (35) the stop sits a median 0.12% of price (0.06 x the median width) under the low known before that minute
+  W3 at-level fills (6,581): the fill minute's high runs a median 0.11% above the level (P75 0.24%, P90 0.47%); in R at the median width: median 0.06 R, P90 0.24 R - the room a stop-market order has to fill above level + 0.1%
+  F1 of the checked fills on an early-close E, minutes at >= 13:00 present: 89
+  F6 filled orh5 first breaks whose minute and daily bars sit on DIFFERENT price scales (one ratio for high and low, >= 0.1% off): 3 of 8,872 compared (0.03%); offset median 0.92%, max 0.92%; as R at each trade's own width: median 0.24 R, max 0.29 R (the fill/stop are on the minute scale, every forward daily bar on the other)
+  L5 the 145 orh5 minute_daily_mismatch abstains, by which side disagrees by > 1%: minute_high_above_daily+daily_low_below_minutes 110, daily_high_above_minutes+minute_low_below_daily 23, minute_low_below_daily 7, minute_high_above_daily 3, daily_high_above_minutes 2
+flagged rows: 272 -> <OUT>/pit/pit_entries_B.tsv
