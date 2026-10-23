@@ -2463,3 +2463,15 @@ is the next read after the big-winner recall.
   `cb_breakout_definition_2026-10-22.md`) is 1,582 / 927 entries, about 6 a week. It has not yet been tested with its own stop.
   It leads the next read.
 - The graded stream picks follow.
+
+## 2026-10-22 — bull / bear split (operator, verbatim)
+
+> "We also split bull bear periods right? Breakouts tend to fail during bear phase, which should mean we either size down or reduce trading, this may affect R for the strategy"
+
+**Measured the same night** (`scripts/probes/_702_race_1022/02_market_phase_split.txt`; C0 trades, the market read at D):
+- **No simple market filter separates them consistently.** In 2017–21 the best breakouts came while SPY was BELOW its 200-day:
+  +0.50R per trade, 2.1 big winners (≥ 10R) per 100, n = 1,654 — the 2020 rebound. Above it: −0.04R, 1.1 per 100.
+- In 2022–24, below the 200-day was a little worse: −0.21R vs −0.15R.
+- The QQQ 10-over-20 and QQQ-over-50-day readings split the wrong way or barely.
+- So "trade less in a bear phase" would have cut 2020's best trades. Sizing by phase is his call (THE LINE). The phase stays a
+  reported split in every read.

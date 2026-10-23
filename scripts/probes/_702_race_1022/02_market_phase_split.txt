@@ -1,0 +1,12 @@
+2017-21 QQQ 10 > 20-day = bear: n 4,301 (32%), mean R +0.096, >=10R per 100 1.44, win 35%
+2017-21 QQQ 10 > 20-day = bull: n 9,062 (68%), mean R -0.008, >=10R per 100 1.14, win 34%
+2017-21 QQQ above 50-day = bear: n 1,992 (15%), mean R +0.045, >=10R per 100 1.46, win 35%
+2017-21 QQQ above 50-day = bull: n 11,371 (85%), mean R +0.022, >=10R per 100 1.20, win 35%
+2017-21 SPY above 200-day = bear: n 1,654 (12%), mean R +0.495, >=10R per 100 2.12, win 41%
+2017-21 SPY above 200-day = bull: n 11,709 (88%), mean R -0.041, >=10R per 100 1.11, win 34%
+2022-24 QQQ 10 > 20-day = bear: n 4,805 (53%), mean R -0.147, >=10R per 100 0.98, win 31%
+2022-24 QQQ 10 > 20-day = bull: n 4,179 (47%), mean R -0.195, >=10R per 100 0.91, win 30%
+2022-24 QQQ above 50-day = bear: n 2,505 (28%), mean R -0.060, >=10R per 100 1.16, win 33%
+2022-24 QQQ above 50-day = bull: n 6,479 (72%), mean R -0.211, >=10R per 100 0.86, win 30%
+2022-24 SPY above 200-day = bear: n 3,061 (34%), mean R -0.214, >=10R per 100 0.69, win 32%
+2022-24 SPY above 200-day = bull: n 5,923 (66%), mean R -0.146, >=10R per 100 1.08, win 30%
