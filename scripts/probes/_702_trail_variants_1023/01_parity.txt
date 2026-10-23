@@ -1,0 +1,27 @@
+== 2017-21
+  export: 10,320,661 rows, kept 10,320,661 (cut None); 2016-01-04..2022-06-30 = 1635 sessions; 9,944 tickers; 2s
+  wide (1635, 9944); frame built 11s
+  (a) SMA20 rebuilt from the close frame == F.SMA bit for bit: True; SMA10 built the same way: finite cells 9,590,607 (SMA20 9,306,260)
+  P-win: 481 covered measurable-breakout doublers; b+120 past the last session 0
+  P-all: R1 9281 rows over 1102 days (2017-03-03..2022-03-29); R2 1582; complete 9239 / R2 1575
+  P-ctl: 2,096,517 control rows on the R1 days; without a readable 20-session proxy 0 (dropped)
+  cells R1: n entries 9281; sample drawn 9281
+  cells R2: n entries 1582; sample drawn 1582
+  (b) P-win: S2 close T2 chain, esr_lib.walk_chain vs walk_chain_v(20, X1, P1): rows 797 vs 797; 36 shared columns equal (NaN = NaN): True; 0s
+  (b) R1: S2 close T2 chain, esr_lib.walk_chain vs walk_chain_v(20, X1, P1): rows 16386 vs 16386; 36 shared columns equal (NaN = NaN): True; 0s
+  (b) control subsample: S2 close T2 chain, esr_lib.walk_chain vs walk_chain_v(20, X1, P1): rows 400122 vs 400122; 36 shared columns equal (NaN = NaN): True; 1s
+  (d) published pp rows re-walked through walk_v: n = 7335; realized_r within 1e-3: 7334; exit_session equal: 7334 (10-22 read: 7334 / 7335)
+== 2022-24
+  export: 13,830,569 rows, kept 8,619,626 (cut 2024-12-31); 2021-09-27..2024-12-31 = 821 sessions; 15,702 tickers; 4s
+  wide (821, 15702); frame built 12s
+  (a) SMA20 rebuilt from the close frame == F.SMA bit for bit: True; SMA10 built the same way: finite cells 7,888,914 (SMA20 7,620,988)
+  P-win: 258 covered measurable-breakout doublers; b+120 past the last session 60
+  P-all: R1 5530 rows over 641 days (2022-04-01..2024-12-31); R2 1076; complete 4457 / R2 845
+  P-ctl: 1,469,399 control rows on the R1 days; without a readable 20-session proxy 0 (dropped)
+  cells R1: n entries 5530; sample drawn 5530
+  cells R2: n entries 1076; sample drawn 1076
+  (b) P-win: S2 close T2 chain, esr_lib.walk_chain vs walk_chain_v(20, X1, P1): rows 416 vs 416; 36 shared columns equal (NaN = NaN): True; 0s
+  (b) R1: S2 close T2 chain, esr_lib.walk_chain vs walk_chain_v(20, X1, P1): rows 9543 vs 9543; 36 shared columns equal (NaN = NaN): True; 0s
+  (b) control subsample: S2 close T2 chain, esr_lib.walk_chain vs walk_chain_v(20, X1, P1): rows 389249 vs 389249; 36 shared columns equal (NaN = NaN): True; 1s
+  (d) published pp rows re-walked through walk_v: n = 4905; realized_r within 1e-3: 4905; exit_session equal: 4905 (10-22 read: 4905 / 4905)
+PARITY PASS
