@@ -2515,3 +2515,21 @@ It tests trail variants on the 10- and 20-day, each fixed numerically before any
 Beside them, the +2R third sold or not. It runs on the same populations and harness as `cb_entry_stop_retry_2026-10-22.md`:
 the good-setup doublers (held / kept), every real breakout vs matched ordinary stocks given the same rules. It is a measurement;
 the exit rule is his call.
+
+## 2026-10-22 — attack from both ends (operator, verbatim)
+
+> "We need to attack from both ends, we need to filter to less breakouts, trade reasonable amount and have better way to keep winners without taking major losses"
+
+**Used as:** the breakout work runs as TWO tracks that meet in one registered test.
+- **Track A — fewer, better breakouts** (about 5–7 a week, not 55):
+  - Qullamaggie's graded stream picks as the labels: what his A+ and "not yet" bases look like;
+  - his own definition (the base high cleared on an expansion day, ~6–7 a week);
+  - the held RS-leadership read;
+  - not missing the good ones: the 50-day and 30%-run-up gates that blocked half the doublers.
+- **Track B — keep the winners, keep losses small:**
+  - the trail variants (decisive break / quick reclaim / close / intraday);
+  - the +2R third or not;
+  - the re-entry that holds about 45% of the good doublers to half their move;
+  - the day-3 stall cut's interplay with the stop width.
+- **Where they meet:** Track A's filter × Track B's exit, pre-registered with its bars and read ONCE on the sealed 2025–26.
+- The filter, the exit and anything live are his call (THE LINE).
