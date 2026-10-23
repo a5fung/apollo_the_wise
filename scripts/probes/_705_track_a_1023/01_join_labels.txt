@@ -152,12 +152,13 @@
 - era B: positive events 12 (all in the 2022-23 check) | ON OR BEFORE E 9 | POST-E ONLY 3 | STRICTLY BEFORE 6 | a positive label exactly AT delta 0 3
 - bought-only events: era A 297, on-or-before 216, post-E only 81 | era B 10, on-or-before 8
 
-## 12. Same-day negatives: every OTHER tl row on the dates of the positive events; rows whose (sym, base_id) carries ANY matched label of ANY grade
-#     are EXCLUDED and counted (a labelled base is not 'not shown on stream'); the not_yet events and the post-E-only positives among them named
-- era A, ALL positive events (round 1's GRADED): 323 events on 193 dates | other tl rows on those dates 29237 (fit 19138 / 2021 10099) | on a LABELLED base, excluded 704 (fit 450 / 2021 254); of them not_yet events 36, post-E-only positive events 0 | NEGATIVES 28533 (fit 18688 / 2021 9845)
-- era A, positive events ON OR BEFORE E (round 2's GRADED): 236 events on 156 dates | other tl rows on those dates 23598 (fit 15377 / 2021 8221) | on a LABELLED base, excluded 654 (fit 418 / 2021 236); of them not_yet events 33, post-E-only positive events 45 | NEGATIVES 22944 (fit 14959 / 2021 7985)
-- era B, ALL positive events (round 1's GRADED): 12 events on 8 dates | other tl rows on those dates 471 | on a LABELLED base, excluded 7; of them not_yet events 0, post-E-only positive events 0 | NEGATIVES 464
-- era B, positive events ON OR BEFORE E (round 2's GRADED): 9 events on 7 dates | other tl rows on those dates 352 | on a LABELLED base, excluded 9; of them not_yet events 0, post-E-only positive events 2 | NEGATIVES 343
+## 12. Same-day negatives: every OTHER tl row on the dates of the positive events. ROUND 3 RULE (registered): a row is EXCLUDED only if its
+#     (sym, base_id) carries a matched label of any grade said ON OR BEFORE that row's own E (s0 <= E) - a label said later would drop the row
+#     because of what happened after its breakout day (hindsight). The round-2 rule (a label at any time) is printed beside, not used.
+- era A, ALL positive events (round 1's GRADED): 323 events on 193 dates | other tl rows on those dates 29237 (fit 19138 / 2021 10099) | on a LABELLED base, excluded 449 (fit 296 / 2021 153); of them not_yet events 30, post-E-only positive events 0 | NEGATIVES 28788 (fit 18842 / 2021 9946) || beside, the round-2 rule (a label at ANY time): excluded 704 (fit 450 / 2021 254), negatives 28533 (fit 18688 / 2021 9845); rows excluded under it only because of a LATER label 255 (fit 154 / 2021 101)
+- era A, positive events ON OR BEFORE E (round 2's GRADED): 236 events on 156 dates | other tl rows on those dates 23598 (fit 15377 / 2021 8221) | on a LABELLED base, excluded 410 (fit 270 / 2021 140); of them not_yet events 29, post-E-only positive events 18 | NEGATIVES 23188 (fit 15107 / 2021 8081) || beside, the round-2 rule (a label at ANY time): excluded 654 (fit 418 / 2021 236), negatives 22944 (fit 14959 / 2021 7985); rows excluded under it only because of a LATER label 244 (fit 148 / 2021 96)
+- era B, ALL positive events (round 1's GRADED): 12 events on 8 dates | other tl rows on those dates 471 | on a LABELLED base, excluded 6; of them not_yet events 0, post-E-only positive events 0 | NEGATIVES 465 || beside, the round-2 rule (a label at ANY time): excluded 7, negatives 464; rows excluded under it only because of a LATER label 1
+- era B, positive events ON OR BEFORE E (round 2's GRADED): 9 events on 7 dates | other tl rows on those dates 352 | on a LABELLED base, excluded 7; of them not_yet events 0, post-E-only positive events 1 | NEGATIVES 345 || beside, the round-2 rule (a label at ANY time): excluded 9, negatives 343; rows excluded under it only because of a LATER label 2
 
 ## 13. Readiness contrast populations (the state he was looking at = the watch row at s0; a label with no watch row at s0 cannot be scored there)
 - era A bought  : labels with coverage 624 | a watch row at s0 176 (with a tl line 153) | matched labels 392, of which delta in {0, +1} (scorable at D of the matched event with at most one session of drift) 138
@@ -204,6 +205,6 @@
 - alias_0: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64  /Users/alvinfung/apollo_data/cb702_pre_v2/dedupe_applied.tsv
 - alias_1: 6e325eccfe159cdce596deff2261caffcd3113be632c0a4bf83a9974b5751dd0  /Users/alvinfung/apollo_data/cb702_pre/survivorship_1023/merged_trial2/refetch_dropped.tsv
 - alias_2: 02653560aa435762870dc90b0ef0d2fd7ab803a518f9e8c89772bcdd4fb34a57  /Users/alvinfung/apollo_data/cb702/qm_streams/ext_2016_2022/rename_map.tsv
-- this_script: 7fc6452c0ad58350afd74917091a827121402e3c1ae8576a607697f0da47cb88  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_track_a_1023/01_join_labels.py
+- this_script: 6b1dfb5761390eb56a9d0998e52a2a667bec263c15de23d4e0266f7de8e89c97  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_track_a_1023/01_join_labels.py
 - out labels_joined.tsv: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b
 - out matched_events.tsv: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc

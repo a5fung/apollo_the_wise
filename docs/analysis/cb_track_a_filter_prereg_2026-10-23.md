@@ -36,8 +36,9 @@ needs a few more days to tighten etc."*
   breakout day ("I bought" said when the stock was already worth showing). **The positive class and the deciding arm of the sanity
   read are now the 236 events with at least one bought / best label said ON or BEFORE E (170 in the 2017–20 fit set, 66 in the 2021
   hold-out; era B 9 of 12).** The 87 post-E-only events and the 127 strictly-before events (90 / 37) are reported beside. The
-  same-day negatives drop every row that belongs to a base he labelled in any grade (654 of 23,598 rows on the 156 graded dates;
-  22,944 negatives remain).
+  same-day negatives drop a row only when its base carries a label (any grade) said ON OR BEFORE that row's own breakout day
+  (round 3; 410 of 23,598 rows on the 156 graded dates; 23,188 negatives remain) — round 2 dropped a row for a label said at any
+  time (654 → 22,944), which let a LATER label remove stocks that went on to be worth showing: hindsight in the control.
 - **What is registered (nothing run yet):** (1) a FROZEN FILTER — ≤ 5 features chosen from his labels against the OTHER breakouts of
   the same day, equal weights, directions fixed before the fit (from his words where tagged S, this registration's choice where
   tagged B), a trailing-pool percentile score and a weekly cap of 6 (his 5–7 a week against a stream of 53 first breaks / 205
@@ -207,19 +208,22 @@ not; fit = E ≤ 2020-12-31, hold-out = 2021):
 | A 2017–21 | n = 323 (228 fit / 95 hold-out) | **236 (170 / 66)** | 87 (58 / 29) | 127 (90 / 37) | 119 |
 | B 2022–23 | n = 12 | **9** | 3 | 6 | 3 |
 
-**Same-day negatives** (every OTHER tl row on the positive events' E dates; a row whose (stock, `base_id`) carries ANY matched label
-of ANY grade is excluded — a base he labelled is not "not shown on stream"):
+**Same-day negatives** (every OTHER tl row on the positive events' E dates; **round 3 rule:** a row whose (stock, `base_id`) carries a
+matched label of any grade said ON OR BEFORE that row's own E is excluded — a base he had already labelled is not "not shown on
+stream"; a label said only AFTER the row's E does not exclude it, since that would drop the row for what happened later; the round-2
+rule — a label at any time — beside):
 
-| era · positive set | events · dates | other tl rows on those dates | excluded: on a labelled base | of them not-yet events · post-E-only positives | NEGATIVES |
-|---|---|---|---|---|---|
-| A · all 323 (round 1's GRADED) | 323 · 193 | n = 29,237 (19,138 fit / 10,099 hold-out) | 704 (450 / 254) | 36 · 0 | 28,533 (18,688 / 9,845) |
-| **A · on-or-before 236 (round 2's GRADED)** | 236 · 156 | n = 23,598 (15,377 / 8,221) | **654 (418 / 236)** | 33 · 45 | **22,944 (14,959 / 7,985)** |
-| B · all 12 | 12 · 8 | n = 471 | 7 | 0 · 0 | 464 |
-| **B · on-or-before 9** | 9 · 7 | n = 352 | 9 | 0 · 2 | **343** |
+| era · positive set | events · dates | other tl rows on those dates | excluded (round 3: base labelled on or before the row's E) | of them not-yet events · post-E-only positives | NEGATIVES (round 3) | round-2 rule beside: excluded → negatives |
+|---|---|---|---|---|---|---|
+| A · all 323 (round 1's GRADED) | 323 · 193 | n = 29,237 (19,138 fit / 10,099 hold-out) | 449 (296 / 153) | 30 · 0 | 28,788 (18,842 / 9,946) | 704 → 28,533 |
+| **A · on-or-before 236 (the GRADED arm)** | 236 · 156 | n = 23,598 (15,377 / 8,221) | **410 (270 / 140)** | 29 · 18 | **23,188 (15,107 / 8,081)** | 654 → 22,944; 244 rows dropped only for a LATER label |
+| B · all 12 | 12 · 8 | n = 471 | 6 | 0 · 0 | 465 | 7 → 464 |
+| **B · on-or-before 9** | 9 · 7 | n = 352 | 7 | 0 · 1 | **345** | 9 → 343 |
 
-**Readiness-contrast populations** (§5): not-yet labels with a watch row at s0 50 of 128 (all 50 with a trendline); bought 176 of
-624 (153); best 17 of 60 (15). Not-yet labels whose matched event is 0 or 1 session after the label (scorable at the event's D with at
-most one session of drift) 32 of 86; bought 138 of 392. 27 of the 80 not-yet events share a base with a bought event. Of the 12 events
+**Readiness-contrast populations** (§5): not-yet labels with a watch row at s0 50 of 128 (all 50 with a trendline) — **43 once the
+labels on the 15 events that also carry a positive (bought or best) label leave the not-yet set (§3)**; bought 176 of 624 (153); best
+17 of 60 (15). Not-yet labels whose matched event is 0 or 1 session after the label (scorable at the event's D with at most one
+session of drift) 32 of 86 — **25 after the same exclusion**; bought 138 of 392. 27 of the 80 not-yet events share a base with a bought event. Of the 12 events
 carrying both labels: in 4 the bought label came on a LATER date than the not-ready call (AMC, RCL, WKHS, XYZ; AMC and WKHS also carry
 bought labels before it); in 1 the two labels are 77 seconds apart in one stream (FSLY); in 2 one caption window was graded both (LRN,
 OPK — a mixed window, not a reassessment); in 5 the not-ready call came AFTER every bought label (MRNA ×3, SAVE, TSLA).
@@ -242,8 +246,8 @@ not-yet 58 of 129 (71); best 35 of 64 (29).
   input (it needs E's close) and is no longer a split inside the fit.
 - **"not_yet" is the not-ready side of the same state label**, not an outcome arm: it enters only the readiness contrast in §5, and
   §6 carries no not-yet row. **"best" (n = 30 events in era A) is reported beside bought, never its own arm;** it is merged into the
-  positive class. **An event carrying both a bought and a not-yet label (12 in era A) is POSITIVE (he bought it) and is EXCLUDED from
-  the not-yet set of the readiness contrast — not because every such pair is "a not-ready call he then acted on" (that fits 4 of the
+  positive class. **An event carrying a positive (bought or best) and a not-yet label (15 in era A, 12 of them with a bought label) is
+  POSITIVE and is EXCLUDED from the not-yet set of the readiness contrast — not because every such pair is "a not-ready call he then acted on" (that fits 4 of the
   12; in 8 the not-ready call came at the same moment as or after the bought label, §2h), but because a bought event cannot stand
   on the not-ready side whatever the order of the two remarks.**
 - Why not his R1 day as the target: 89.9% of his bought labels precede it. A filter that waits for the base-high close would be
@@ -256,10 +260,13 @@ universe rules** (median 146 a day in era A), NOT matched ordinary stocks. Why: 
 decision is made among the day's breakouts, so the contrast that answers it is labelled-vs-unlabelled within the day. Within-day
 comparison also removes the market day (phase, breadth) from every feature. Stated plainly: **"ungraded" means not shown on stream,
 not rejected** — some ungraded breakouts are ones he would have bought; this makes the fit's separation an UNDER-estimate, never an
-over-estimate. **Exclusion rule (round 2): a same-day row whose (stock, `base_id`) carries any matched label of any grade — a
-not-yet event, a post-E-only positive, a second crossing of a labelled base — is EXCLUDED from the negatives and from UNGRADED and
-counted** (era A: 654 of 23,598 rows on the 156 graded dates, 33 of them not-yet events and 45 post-E-only positives → 22,944
-negatives, 14,959 fit / 7,985 hold-out; era B 9 of 352 → 343). A labelled base is not "not shown on stream", and a not-yet event is a
+over-estimate. **Exclusion rule (round 3): a same-day row whose (stock, `base_id`) carries a matched label of any grade said ON OR
+BEFORE that row's own E — a not-yet event, a post-E-only positive, a second crossing of a labelled base — is EXCLUDED from the
+negatives and from UNGRADED and counted** (era A: 410 of 23,598 rows on the 156 graded dates, 29 of them not-yet events and 18
+post-E-only positives → 23,188 negatives, 15,107 fit / 8,081 hold-out; era B 7 of 352 → 345). A label said only after the row's E
+does NOT exclude it: round 2 did, and 244 rows (148 fit / 96 hold-out, on 98 bases — 72 of them later labelled bought or best) left
+the control because he showed the stock later, plausibly because it worked; that is hindsight in the comparison (the round-2 rule
+is printed beside: 654 → 22,944). A labelled base is not "not shown on stream", and a not-yet event is a
 state he judged NOT READY, which is neither a negative (he did not reject the base) nor a positive.
 
 ## 5. The registered FILTER (to be fitted after the freeze; outcome-free throughout — no forward flag of any kind is read in the fit)
@@ -299,9 +306,9 @@ state he judged NOT READY, which is neither a negative (he did not reject the ba
 
 - **The fit — the only fitted object is the SUBSET (≤ 5 of the 12).**
   1. **FIT set:** the positive events (bought ∪ best, ≥ 1 positive label on or before E) with E in 2017-03-02..2020-12-31 — **170
-     events** — against the 14,959 same-day negatives of those dates (§4). **CHECK sets:** (i) the 2021 positive events — **66** —
-     against their 7,985 negatives (the hold-out with power); (ii) the 2022–23 positive events on `cb702` — **9** (8 bought + 1 best)
-     against 343 negatives (the check the task named — direction only at that n, said so). **Beside, never deciding:** recall on the
+     events** — against the 15,107 same-day negatives of those dates (§4). **CHECK sets:** (i) the 2021 positive events — **66** —
+     against their 8,081 negatives (the hold-out with power); (ii) the 2022–23 positive events on `cb702` — **9** (8 bought + 1 best)
+     against 345 negatives (the check the task named — direction only at that n, said so). **Beside, never deciding:** recall on the
      post-E-only events (58 fit / 29 hold-out / 3 era B) and on the strictly-before events (90 / 37 / 6).
   2. **Screen statistic:** within-day AUC = the mean over positive events of the feature's percentile among that day's negative tl
      rows (ties half, the event itself and every excluded labelled-base row out of the denominator), in the fixed direction; 0.5 =
@@ -317,13 +324,15 @@ state he judged NOT READY, which is neither a negative (he did not reject the ba
      (Mon–Sun by E) in (E, ticker A→Z) order; at-or-above after the week's six = CAPPED; fewer than 24 rated members = UNRATED.
      N = 6 is his "5–7"; N = 4 and N = 8 are reported beside, never deciding.
   6. **Plateau (decision 0023's convention: a pick whose neighbours collapse is an artefact):** the subset is re-derived at screen
-     thresholds 0.56 and 0.60 and with each chosen feature left out in turn; the filter is frozen only if the 2021 hold-out recall at
-     N = 6 under every neighbour lies within 25% (relative) of the registered subset's. **With ONE chosen feature leave-one-out is
+     thresholds 0.56 and 0.60 and with each chosen feature left out in turn; the filter is frozen only if every neighbour flags, at
+     N = 6, at least 4 of the 66 hold-out events and no fewer than the registered subset's count minus one (stated in events, round
+     3: at these counts round 2's "within 25% relative" is a one-event tolerance anyway). **With ONE chosen feature leave-one-out is
      undefined: its neighbours are the two thresholds plus the subset with the next-ranked feature (fit AUC ≥ 0.50) swapped in; if
      no such feature exists the plateau is CAN'T TELL.** A spike is reported as CAN'T TELL.
 - **What the fit measures (printed, outcome-free):** the 12 AUCs on fit and check sets with n; the chosen subset; TAKE per week
   (expected ≤ 6, median printed); **recall = the share of positive events flagged TAKE** on the fit set, the 2021 hold-out and the
-  2022–23 check; the same for the not-yet events (the readiness contrast — expected LOWER than bought's); the share of TAKE events
+  2022–23 check; beside, the share of not-yet EVENTS flagged TAKE (descriptive — this is not the readiness contrast, which is
+  scored at the label date s0 below); the share of TAKE events
   that are C1 and first breaks vs retriggers; the by-year and by-phase splits. **Beside rows, each with n:** recall on the
   post-E-only and strictly-before events; the AUCs on the delta-0 subset (119 events — the on-the-day cluster, the only timing
   signal; derived from `labels_joined.tsv`'s `delta_tl` on the positive labels); the AUCs on the events whose positive label's
@@ -332,20 +341,28 @@ state he judged NOT READY, which is neither a negative (he did not reject the ba
   aggregate it must reproduce is 350 / 58 / 35); the base-level reading (every event of a labelled base positive). **No forward flag (R1, R2, fill, outcome) is read
   anywhere in the fit.**
 - **The readiness contrast (outcome-free; the state he was looking at):** the score computed at the LABEL date s0 for every not-yet
-  label with a watch row at s0 (50 of 128, all with a trendline) against the score at s0 for every bought label with a watch row at
+  label with a watch row at s0 (43 of 128 after the 15 positive-and-not-yet events leave the set; 50 before) against the score at s0 for every bought label with a watch row at
   s0 (176 of 624; 153 with a trendline) — the same moment on both sides (the night he spoke), so neither side is scored on a state
   from after its own label. **Named asymmetry:** the fit scores a positive EVENT at D = E − 1, while this contrast scores a LABEL at
-  s0; the two agree only for a label said the session before our break. Beside: the 32 not-yet labels whose matched event is 0 or 1
+  s0; the two agree only for a label said the session before our break. Beside: the 25 not-yet labels (32 before the same exclusion) whose matched event is 0 or 1
   session later, scored at that event's D (the fit's own moment, with at most one session of drift) against the 138 bought labels
-  of the same kind. Expected: the not-yet side scores lower; the 12 both-label events stay out of the not-yet set (§3). Only 27 of
+  of the same kind. Expected: the not-yet side scores lower; the 15 positive-and-not-yet events stay out of the not-yet set (§3). Only 27 of
   the 80 not-yet events share a base with a bought event, so this is a contrast of STATES he judged ready vs not ready, not a
   same-base pairing.
-- **The fit's own bar (outcome-free; decided on the 2021 hold-out, n = 66 positive events):** the no-information rate = TAKE share of
-  the 2021 stream (about 6 of 205 a week ≈ 3%). **PASS** = positive recall ≥ 3× the no-information rate (≈ 9%) with the plateau
-  holding and the 2022–23 recall ≥ its own no-information rate; **FAIL** = recall ≤ 1.5× (≈ 4.5%), or an empty subset; **CAN'T TELL**
-  otherwise. **At n = 66 the bar is coarse: 9% is about 6 events and 4.5% about 3 — a one-event swing can move the verdict, and that
-  is said with the result.** A PASS freezes the filter (its code, subset and pins written under the marker); otherwise his R2
+- **The fit's own bar (outcome-free; decided on the 2021 hold-out, n = 66 positive events) — stated in EVENTS (round 3):** the
+  no-information rate = the largest share of the 2021 stream a 6-a-week cap can flag = Σ min(6, rows in the week) ÷ 23,632 tl rows =
+  **1.32%** (2021 runs a median 372 tl rows a week, not the 2017–21 205 round 2 used — its "≈ 3% / ≈ 9% / about 6 events" was about
+  2× off). A filter with no information flags **0.87 of the 66** on average. **PASS** = at least **5 of 66** flagged (chance alone
+  reaches 5 with probability 0.2%, Poisson mean 0.87) with the plateau holding and at least 1 of the 9 era-B check events flagged;
+  **FAIL** = at most **1 of 66** (what chance gives 78% of the time), or an empty subset; **CAN'T TELL** = 2–4. Round 2's 3× bar would
+  have passed on 3 events, which chance reaches 5.8% of the time; the bar was raised to 5 before any fit, for that reason alone.
+  **The bar stays coarse — one event moves a verdict at its edges, and that is said with the result.** A PASS freezes the filter (its code, subset and pins written under the marker); otherwise his R2
   definition is the combined test's filter (§7).
+- **The fit module's own guards (round 3):** it loads only a WHITELIST of columns — from the candidates / watch tables `ticker, D,
+  E, K, base_id, pole_date, retrigger, retrigger_chain, pivot, adr20` plus the twelve features' named inputs, from the daily export
+  bars dated ≤ D — and asserts no other column is read; before the real fit it runs a SHUFFLE TEST (the positive flag permuted within
+  each E date, 200 permutations, seed 702): the mean AUC of every feature must lie in [0.48, 0.52] and the chosen-subset hold-out
+  count must average ≤ 1.5 events, else the module stops (a leak or a bug).
 - **What the fit may NOT do:** fit weights; fit directions; add a feature outside the 12; read any outcome column, any forward flag,
   any bar after D for a feature, any minute; change the window, the pool, N, the cutoff rank, the thresholds, the 25% or the positive
   class after seeing a result; run on 2025–26.
@@ -353,12 +370,19 @@ state he judged NOT READY, which is neither a negative (he did not reject the ba
 ## 6. The SANITY READ — do the labelled breakouts carry edge? (registered, NOT run; runs after the fit is frozen)
 
 - **Populations (per era).** GRADED = the positive events with ≥ 1 bought / best label said ON OR BEFORE E (era A **236**; era B
-  **9**). UNGRADED = every other tl row on the same E dates with the labelled-base rows excluded (§4; era A **22,944** on 156 dates,
-  era B **343** on 7 dates; the exact n re-printed by the module). **No not-yet arm** (a state, not an outcome arm — §3). **Beside,
+  **9**). UNGRADED = every other tl row on the same E dates with the labelled-base rows excluded (§4, round-3 rule; era A **23,188** on 156
+  dates, era B **345** on 7 dates; the exact n re-printed by the module). **No not-yet arm** (a state, not an outcome arm — §3). **Beside,
   descriptive, never deciding:** the 87 / 3 post-E-only events (expected to read BETTER than GRADED because they were selected
   after the fact — a reading of the size of the hindsight bias, which is why they are not in the deciding arm); the 127 / 6
   strictly-before events (the only subset clean of E's bar); the R2 share of GRADED vs UNGRADED (the bdef flag, three-valued in
   era A) — a share, with no outcome row of its own. The matching is the same-day population itself (§4); no ordinary-stock control.
+- **Unit and mix (round 3).** Every event is walked INDEPENDENTLY — a base with several crossings contributes several walks, and
+  overlapping walks of one base are allowed, in both arms alike (Track B trades once per base; this read does not). The arms differ in
+  mix by construction — GRADED about 1.26 events per base and 44% retriggers, UNGRADED about 2.72 per base and 76% retriggers (the
+  round-2 recheck's counts; the module re-prints them) — so **the DECIDING difference is computed separately among first breaks and
+  among retriggers and combined with GRADED's own first-break / retrigger shares as weights** (UNGRADED reweighted to GRADED's mix;
+  an abstained event stays in its group; the bootstrap redraws months and recomputes the weighted difference inside each resample).
+  **Beside, never deciding:** the raw (unweighted) difference and a one-event-per-base reading (each base's first event in the arm).
 - **Entry (fully stated here; Track B's §D mechanics with the LEVEL replaced):** at E's CLOSE when close(E) > pivot_tl(D) — the
   module's trendline value projected to E, `high[A] + m × (E − A)`, the level the high cleared; else the event ABSTAINS (0 R, counted
   in the per-100 denominator on both sides, never dropped). **Stop:** entry × (1 − 1.0 × ADR20(D)), ADR20 the watch row's 20-day
@@ -404,8 +428,8 @@ state he judged NOT READY, which is neither a negative (he did not reject the ba
   reported with and without), W2 (the slippage rows), W3 (not applicable, said), F1 (no minutes used). Corporate actions: any trade
   containing a G5 DISCONTINUOUS event (OPLN, ZWS, BEP …) is flagged and the worst-trade figure is quoted with and without it.
 - **Bar (era A decides; era B, n = 9, is descriptive):** needs ≥ 100 GRADED entries, else CAN'T TELL. **PASS** = under `pp` at T0
-  the GRADED − UNGRADED difference has its interval above zero on ≥ 5R per 100 events AND on mean R per event; **FAIL** = the
-  mean-R difference's interval has upper end < 0; **CAN'T TELL** otherwise. `A20_X3_P0`, T2, the per-100-entries rows and every
+  the mix-reweighted GRADED − UNGRADED difference has its interval above zero on ≥ 5R per 100 events AND on mean R per event;
+  **FAIL** = that mean-R difference's interval has upper end < 0; **CAN'T TELL** otherwise. `A20_X3_P0`, T2, the per-100-entries rows and every
   beside row are reported, never deciding.
 - **Expectations, written now:** GRADED ≥ 5R per 100 events above UNGRADED's (the UNGRADED rate about the R1 population's 1.4–3.9
   per 100 by cell); the post-E-only events above GRADED (hindsight); the worst GRADED trade a one-session gap of about −7 to −10 R as
@@ -504,9 +528,8 @@ Recording the primary filter's flag in the forward shadow is a recorder change (
 
 Pins (sha256) printed by `01_join_labels.py` on 2026-10-23 (round 2 run; the join's inputs and outputs; the fit module `02_fit_filter.py`
 and the sanity module do not exist yet — their pins are added here in the freeze commit that precedes each run, and the doc body above
-the marker is pinned in that commit). Round 1's script and doc were committed in `81c39f6b`; round 2 is written but not committed by
-this card (the brief forbids commits), so the "fixed before the first run" claim in the script header rests on that commit's date and
-on the recount's 0-of-854 agreement, not on a hash of the pre-run file.
+the marker is pinned in that commit). Round 1's script and doc were committed in `81c39f6b`, round 2 in `530ff2a0`, round 3 in the commit after it; every round's
+`labels_joined.tsv` / `matched_events.tsv` hashes are printed above, and no outcome column exists in either.
 
 - labels: `f4116fd99a1b7db88a74b88a7278aa6e434cf8788b7003af8bbc39e72ac2269a`
 - moments `vision/graded_moments.tsv` (round 2, §2h): `f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0`
@@ -525,7 +548,8 @@ on the recount's 0-of-854 agreement, not on a hash of the pre-run file.
 - alias dedupe_applied.tsv: `223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64`
 - alias refetch_dropped.tsv: `6e325eccfe159cdce596deff2261caffcd3113be632c0a4bf83a9974b5751dd0`
 - alias rename_map.tsv: `02653560aa435762870dc90b0ef0d2fd7ab803a518f9e8c89772bcdd4fb34a57`
-- join script `01_join_labels.py` (round 2): `7fc6452c0ad58350afd74917091a827121402e3c1ae8576a607697f0da47cb88` (round 1: `4ff17ee0…ceac`)
+- join script `01_join_labels.py` (round 3, §12 rule only): `6b1dfb5761390eb56a9d0998e52a2a667bec263c15de23d4e0266f7de8e89c97` (round 2: `7fc6452c…cb88`; round 1: `4ff17ee0…ceac`)
+- join printout `01_join_labels.txt` (round 3): `3b90134ea509045fd83c29f8319df7cadf1b6aa98bf0b6992114d46092504793`
 - out labels_joined.tsv (round 2; one column added): `d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b` (round 1: `13df2952…95a3`)
 - out matched_events.tsv (byte-identical to round 1): `4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc`
 - doc body sha256: (taken in the freeze commit)
@@ -562,3 +586,16 @@ Two kinds, said on each: **(a)** a round-1 rule written out as the code actually
 What round 2 did NOT change: the join window, the nearest-event tie rule, the era split, the target rule and its thresholds, the
 12 features and their directions, the pool, N = 6, the cutoff rank, the exit cells, the bars' thresholds. `matched_events.tsv` is
 byte-identical to round 1; `labels_joined.tsv` gained one column. The two checkers' reports are the record of why.
+
+## Revisions 2026-10-23 round 3 — the recheck's three blockers and its small items (applied by the main loop)
+
+| fix | what changed | where |
+|---|---|---|
+| P1 | the same-day exclusion counts a label only if it was said ON OR BEFORE the excluded row's own E (round 2 counted a label at any time, so 244 rows — 72 bases later labelled bought or best — left the control for what happened after their breakout day). Era A 410 excluded → **23,188** negatives (15,107 fit / 8,081 hold-out); era B 7 → **345**; the round-2 numbers printed beside. Recomputed by the join (`01_join_labels.py` §12, outcome-free) and equal to the recheck's own count | §0, §2h table, §4, §5 fit sets, §6 populations; script §12 |
+| P2 | §6 states the unit (every event walked independently, overlapping walks of one base allowed in both arms) and makes the DECIDING difference mix-reweighted (first breaks and retriggers separately, combined with GRADED's shares); raw difference and one-event-per-base reading beside | §6 unit-and-mix bullet, §6 bar |
+| P3 | the fit's bar in EVENTS from the true 2021 no-information rate (1.32%, 0.87 of 66 expected): PASS ≥ 5 of 66 (chance 0.2%), FAIL ≤ 1 (chance gives that 78% of the time), CAN'T TELL 2–4; the plateau in events (every neighbour ≥ 4 and ≥ the registered count − 1). Round 2's 3× bar would have passed on 3 events (chance 5.8%), so it was raised before any fit | §5 bar, §5.6 |
+| small | readiness-contrast populations 43 / 25 (the 15 events carrying a positive AND a not-yet label leave the not-yet set — 12 with bought, the rest best; round 2 said 12 and 50 / 32); the not-yet TAKE share renamed (it is not the readiness contrast); the fit module's column whitelist and shuffle test registered; the join printout pinned | §2h, §3, §5 |
+
+Not changed by round 3: the positive class (236 / 9), the features and directions, the pool, N = 6, the cutoff rank, the exit cells,
+the sanity read's bar thresholds, the join's window and tie rule. `labels_joined.tsv` and `matched_events.tsv` are byte-identical to
+round 2.

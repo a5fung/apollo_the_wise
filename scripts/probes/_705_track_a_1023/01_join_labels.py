@@ -681,9 +681,14 @@ def main() -> int:
           f" | era B {int((gb_.era == 'B').sum())}, on-or-before {int(((gb_.era == 'B') & (gb_._d >= 0)).sum())}")
 
     # ------------------------------------------------------------------ 12. the same-day NEGATIVES on the graded dates, labelled bases excluded
-    print("\n## 12. Same-day negatives: every OTHER tl row on the dates of the positive events; rows whose (sym, base_id) carries ANY matched label of ANY grade"
-          "\n#     are EXCLUDED and counted (a labelled base is not 'not shown on stream'); the not_yet events and the post-E-only positives among them named")
+    print("\n## 12. Same-day negatives: every OTHER tl row on the dates of the positive events. ROUND 3 RULE (registered): a row is EXCLUDED only if its"
+          "\n#     (sym, base_id) carries a matched label of any grade said ON OR BEFORE that row's own E (s0 <= E) - a label said later would drop the row"
+          "\n#     because of what happened after its breakout day (hindsight). The round-2 rule (a label at any time) is printed beside, not used.")
     lab_bases = {e: set(zip(me.loc[me.era == e, "sym"], me.loc[me.era == e, "base_id"])) for e in ("A", "B")}
+    lab_first = {}                                         # (era, sym, base_id) -> the earliest session date a matched label was said on that base
+    for r in M.itertuples():
+        k = (r.era, r.sym, r.base_id_tl)
+        lab_first[k] = min(lab_first.get(k, r.s0), r.s0)
     ny_keys = {e: set(zip(me.loc[(me.era == e) & (me.not_yet > 0), "sym"], me.loc[(me.era == e) & (me.not_yet > 0), "E_tl"])) for e in ("A", "B")}
     for e in ("A", "B"):
         c = cand[e][cand[e].K == "tl"]
@@ -693,7 +698,8 @@ def main() -> int:
             on = c[c.E.isin(dates)]
             isp = np.array([(t, E) in poskeys for t, E in zip(on.ticker, on.E)])
             oth = on[~isp]
-            lb = np.array([(t, b) in lab_bases[e] for t, b in zip(oth.ticker, oth.base_id)]) if len(oth) else np.array([], dtype=bool)
+            lb_any = np.array([(t, b) in lab_bases[e] for t, b in zip(oth.ticker, oth.base_id)]) if len(oth) else np.array([], dtype=bool)
+            lb = np.array([lab_first.get((e, t, b), "9999") <= E for t, b, E in zip(oth.ticker, oth.base_id, oth.E)]) if len(oth) else np.array([], dtype=bool)
             isny = np.array([(t, E) in ny_keys[e] for t, E in zip(oth.ticker, oth.E)]) if len(oth) else np.array([], dtype=bool)
             ispost = np.array([(t, E) in timing_keys[e]["post"] for t, E in zip(oth.ticker, oth.E)]) if len(oth) else np.array([], dtype=bool)
             fitm = (oth.E <= FIT_LAST_E).to_numpy() if len(oth) else np.array([], dtype=bool)
@@ -701,7 +707,9 @@ def main() -> int:
             print(f"- era {e}, {title}: {len(poskeys)} events on {len(dates)} dates | other tl rows on those dates {len(oth)}{sp(np.ones(len(oth), dtype=bool))}"
                   f" | on a LABELLED base, excluded {int(lb.sum())}{sp(lb)}; of them not_yet events {int((lb & isny).sum())},"
                   f" post-E-only positive events {int((lb & ispost).sum())}"
-                  f" | NEGATIVES {int((~lb).sum())}{sp(~lb)}")
+                  f" | NEGATIVES {int((~lb).sum())}{sp(~lb)}"
+                  f" || beside, the round-2 rule (a label at ANY time): excluded {int(lb_any.sum())}{sp(lb_any)}, negatives {int((~lb_any).sum())}{sp(~lb_any)};"
+                  f" rows excluded under it only because of a LATER label {int((lb_any & ~lb).sum())}{sp(lb_any & ~lb)}")
 
     # ------------------------------------------------------------------ 13. the readiness contrast's populations (state at the label date s0)
     print("\n## 13. Readiness contrast populations (the state he was looking at = the watch row at s0; a label with no watch row at s0 cannot be scored there)")
