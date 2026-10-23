@@ -1,0 +1,2 @@
+moments scanned 20,244; graded 2,472; by grade {'bought': 1996, 'not_yet': 305, 'best': 142, 'bought,not_yet': 21, 'best,bought': 7, 'best,not_yet': 1}
+graded (video, ticker) pairs 2,235; already framed 51; frames to cut 2,184; videos 429
