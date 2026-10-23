@@ -1,0 +1,15 @@
+== 2017-21
+  export /Users/alvinfung/apollo_data/cb702_pre/daily_closes_all.csv.gz: 10,320,661 rows, kept 10,320,661 (cut None); dates 2016-01-04..2022-06-30; 9,944 tickers; 2s
+  calendar = SPY sessions: 1635 (2016-01-04..2022-06-30); off-calendar bars dropped 0
+  wide frames (1635, 9944); 4s
+  rolling features done; 8s
+  population: 13368 fills, 13363 mature (published 13363)
+  fills whose E lies AFTER the export cut (no bar of theirs is read; they keep their published realized_r but carry no path): 0 (E dates [])
+  E is the session after D for 13363 of 13363 fills (others: [np.int64(1)])
+  CHECK fill inside E's daily bar (+-1%): 13363 of 13363 (100.00%); exceptions: []
+  CHECK my ADR20 at D vs the table's adr20: median rel diff 1.21e-07, p99 7.24e-07, within 1%: 13363 of 13363; NaN 0
+  CHECK pnl_adr == realized_r x width_adr: max abs diff 5.33e-15
+  CHECK width_adr == (fill-stop)/(adr20*fill): max abs diff 3.74e-14
+  wrote /Users/alvinfung/apollo_data/cb702_pre/out/r_decomp_fills_2017-21.tsv.gz: 13363 rows; complete_20 13363, complete_60 13363
+  wrote /Users/alvinfung/apollo_data/cb702_pre/out/r_decomp_control_2017-21.tsv.gz: 2,233,746 control rows over 1176 E dates (mean 1899 per E); excluded as a fill/watch ticker: 189,924
+  CHECK breakouts passing my price/dollar-volume filter at D (adjusted close): 13337 of 13363

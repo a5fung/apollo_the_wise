@@ -1,0 +1,26 @@
+== 2017-21: 361212 rows; arms ['A', 'pp', 'pp5_wbe', 'pp_s0', 'pp_wbe', 'wbe']; entries ['h60', 'orh5']; K ['com', 'tl']; status ['degraded', 'stopped', 'stopped_day0', 'time_exit', 'trailed']
+  pp/orh5/tl/C0 rows 13368; retrigger_chain values {0.0: 11016, 1.0: 2352}; row_no {}
+  filled 13368  mature 13363  open_mark 5  E range 2017-03-02..2022-01-03
+  mean R 0.0254  >=10R 165  >=5R 464  share>=10 1.235/100  fill_day_stop share 0.3682
+  PUBLISHED n_filled 13368 n 13363 meanR 0.0254 ge10 165 -> MATCH
+  status counts (mature): {'stopped': 6380, 'stopped_day0': 4920, 'trailed': 1614, 'time_exit': 449}
+  exit_kind counts: {'stop': 5570, 'day0_stop': 4040, 'trail': 1614, 'day0_gap': 880, 'stop_gap': 810, 'cut': 449}
+  exit_session: min 0 max 96; sessions_held min 0 max 96; fwd_bars min 0
+  width_adr quartiles [0.315, 0.453, 0.632]; adr20 deciles [0.025, 0.0298, 0.0336, 0.0374, 0.0412, 0.0455, 0.0511, 0.0593, 0.0744]
+  sample row: {'ticker': 'AGN', 'D': '2017-03-01', 'E': '2017-03-02', 'fill': 247.52060666666665, 'stop': 245.54, 'width_adr': 0.3526529694153649, 'adr20': 0.0226902525988324, 'status': 'stopped_day0', 'realized_r': -1.0, 'exit_kind': 'day0_stop', 'exit_px': 245.54, 'exit_session': 0, 'sessions_held': 0, 'fill_day_stop': 1, 'partial_kind': nan, 'partial_session': nan, 'fwd_bars': 121}
+  fill_day_stop==1: exit_session values {0: 4920} sessions_held {0: 4920}
+  stopped (not day0): sessions_held - exit_session diff values {0: 6380}
+  censored rows: 0 exit_session {} sessions_held {}
+== 2022-24: 285288 rows; arms ['A', 'pp', 'pp5_wbe', 'pp_s0', 'pp_wbe', 'wbe']; entries ['h60', 'orh5']; K ['com', 'comb', 'tl']; status ['degraded', 'stopped', 'stopped_day0', 'time_exit', 'trailed']
+  pp/orh5/tl/C0 rows 8989; retrigger_chain values {0.0: 7330, 1.0: 1659}; row_no {}
+  filled 8989  mature 8984  open_mark 5  E range 2022-04-01..2025-01-02
+  mean R -0.1691  >=10R 85  >=5R 231  share>=10 0.946/100  fill_day_stop share 0.3719
+  PUBLISHED n_filled 8989 n 8984 meanR -0.1691 ge10 85 -> MATCH
+  status counts (mature): {'stopped': 4448, 'stopped_day0': 3341, 'trailed': 945, 'time_exit': 250}
+  exit_kind counts: {'stop': 3652, 'day0_stop': 2617, 'trail': 945, 'stop_gap': 796, 'day0_gap': 724, 'cut': 250}
+  exit_session: min 0 max 81; sessions_held min 0 max 81; fwd_bars min 0
+  width_adr quartiles [0.333, 0.476, 0.652]; adr20 deciles [0.0242, 0.0286, 0.0324, 0.0359, 0.04, 0.0451, 0.0512, 0.0587, 0.072]
+  sample row: {'ticker': 'ABNB', 'D': '2022-03-31', 'E': '2022-04-01', 'fill': 177.6807175, 'stop': 173.06, 'width_adr': 0.4949296261326297, 'adr20': 0.0525443068279507, 'status': 'stopped_day0', 'realized_r': -1.0, 'exit_kind': 'day0_stop', 'exit_px': 173.06, 'exit_session': 0, 'sessions_held': 0, 'fill_day_stop': 1, 'partial_kind': nan, 'partial_session': nan, 'fwd_bars': 121}
+  fill_day_stop==1: exit_session values {0: 3341} sessions_held {0: 3341}
+  stopped (not day0): sessions_held - exit_session diff values {0: 4448}
+  censored rows: 0 exit_session {} sessions_held {}

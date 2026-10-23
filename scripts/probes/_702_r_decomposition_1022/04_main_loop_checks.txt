@@ -1,0 +1,6 @@
+2017-21 +5 ADR: big movers 5,756; B 3194 C 2077 D 485; of the 2,562 the stop did not take, the exit lost 81.1%; the move starts a median 26 sessions after the fill; stop survivors held a median 7 sessions; all fills held a median 1
+2017-21 +10 ADR: big movers 1,855; B 1013 C 712 D 130; of the 842 the stop did not take, the exit lost 84.6%; the move starts a median 40 sessions after the fill; stop survivors held a median 9 sessions; all fills held a median 1
+2017-21: 5-session close return from E close (ADR decile match), n = 13,363: breakouts +0.151 vs control +0.146, difference +0.005 [-0.054, +0.063]
+2022-24 +5 ADR: big movers 2,829; B 1642 C 979 D 208; of the 1,187 the stop did not take, the exit lost 82.5%; the move starts a median 28 sessions after the fill; stop survivors held a median 6 sessions; all fills held a median 1
+2022-24 +10 ADR: big movers 808; B 474 C 274 D 60; of the 334 the stop did not take, the exit lost 82.0%; the move starts a median 38 sessions after the fill; stop survivors held a median 8 sessions; all fills held a median 1
+2022-24: 5-session close return from E close (ADR decile match), n = 8,889: breakouts -0.120 vs control -0.129, difference +0.009 [-0.043, +0.062]
