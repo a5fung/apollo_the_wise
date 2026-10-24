@@ -1,0 +1,133 @@
+filled rows per entry set: {'level': 37978, 'level_tc': 38142, 'orh5': 31287, 'orh5_cap': 33792, 'orh5_tc': 31476}
+
+(1) HEADLINE
+  V0 his calls | n=174 mean=+0.639 >=10R/100=+1.1 max=+71.62 win=35.1% | n=174 mean=+0.639 >=10R/100=+1.1 max=+71.62 win=35.1% | OK
+  V0 control | n=17948 mean=+0.120 >=10R/100=+1.7 max=+57.78 win=27.9% | n=17948 mean=+0.120 >=10R/100=+1.7 max=+57.78 win=27.9% | OK
+  V1 his calls | n=216 mean=+0.930 >=10R/100=+2.8 max=+135.03 win=21.8% | n=216 mean=+0.930 >=10R/100=+2.8 max=+135.03 win=21.8% | OK
+  V1 control | n=21869 mean=+0.528 >=10R/100=+3.0 max=+589.98 win=18.0% | n=21869 mean=+0.528 >=10R/100=+3.0 max=+589.98 win=18.0% | OK
+  V3 his calls | n=272 mean=+0.322 >=10R/100=+0.7 max=+71.62 win=33.5% | n=272 mean=+0.322 >=10R/100=+0.7 max=+71.62 win=33.5% | OK
+  V3 control | n=22981 mean=+0.090 >=10R/100=+1.6 max=+117.97 win=27.7% | n=22981 mean=+0.090 >=10R/100=+1.6 max=+117.97 win=27.7% | OK
+  COMBINED his calls | n=398 mean=+0.445 >=10R/100=+2.5 max=+135.03 win=19.8% | n=398 mean=+0.445 >=10R/100=+2.5 max=+135.03 win=19.8% | OK
+  COMBINED control | n=29916 mean=+0.346 >=10R/100=+2.7 max=+589.98 win=18.2% | n=29916 mean=+0.346 >=10R/100=+2.7 max=+589.98 win=18.2% | OK
+
+bars loaded for 2546 tickers; calendar 1635
+
+(2) ACCOUNT CURVE (his calls)
+  V0 | 2020 47.9% 2021 25.3% final 1.850 dd 19.1% entered 146 skip_room 28 skip_stock 0 | 2020 47.9% 2021 25.3% final 1.850 dd 19.1% entered 146 skip_room 28 skip_stock 0 | OK
+  V1 | 2020 28.6% 2021 0.8% final 1.268 dd 18.0% entered 187 skip_room 29 skip_stock 0 | 2020 28.6% 2021 0.8% final 1.268 dd 18.0% entered 187 skip_room 29 skip_stock 0 | OK
+  V3 | 2020 30.1% 2021 27.5% final 1.631 dd 19.1% entered 214 skip_room 58 skip_stock 0 | 2020 30.1% 2021 27.5% final 1.631 dd 19.1% entered 214 skip_room 58 skip_stock 0 | OK
+  V4 | 2020 62.8% 2021 26.2% final 2.044 dd 20.7% entered 130 skip_room 44 skip_stock 0 | 2020 62.8% 2021 26.2% final 2.044 dd 20.7% entered 130 skip_room 44 skip_stock 0 | OK
+  COMBINED | 2020 38.5% 2021 13.7% final 1.507 dd 22.0% entered 263 skip_room 134 skip_stock 1 | 2020 38.5% 2021 13.7% final 1.507 dd 22.0% entered 263 skip_room 134 skip_stock 1 | OK
+  stored curve last value V0 1.849919 mine 1.849919
+  stored curve last value V1 1.268367 mine 1.268367
+  stored curve last value V3 1.6308 mine 1.6308
+  stored curve last value V4 2.044018 mine 2.044018
+  stored curve last value COMBINED 1.507044 mine 1.507044
+
+(3) BAND (200 re-derived draws)
+  V0 2020 return | p5 -0.134 p50 +0.024 p95 +0.325 share 1.0% | p5 -0.134 p50 +0.024 p95 +0.325 share 1.0% | OK
+  V0 2021 return | p5 -0.064 p50 +0.051 p95 +0.231 share 3.5% | p5 -0.064 p50 +0.051 p95 +0.231 share 3.5% | OK
+  V0 final equity | p5 +0.847 p50 +1.111 p95 +1.441 share 0.5% | p5 +0.847 p50 +1.111 p95 +1.441 share 0.5% | OK
+  V0 max drawdown (higher = WORSE) | p5 +0.080 p50 +0.126 p95 +0.207 share 11.5% | p5 +0.080 p50 +0.126 p95 +0.207 share 11.5% | OK
+   dd draws within 1e-4 of his: [] his np.float64(0.1913280586381645) stored his 0.19132798118803884
+  V1 2020 return | p5 -0.119 p50 +0.017 p95 +0.252 share 5.0% | p5 -0.119 p50 +0.017 p95 +0.252 share 5.0% | OK
+  V1 2021 return | p5 -0.058 p50 +0.036 p95 +0.229 share 67.5% | p5 -0.058 p50 +0.036 p95 +0.229 share 67.5% | OK
+  V1 final equity | p5 +0.865 p50 +1.083 p95 +1.418 share 16.5% | p5 +0.865 p50 +1.083 p95 +1.418 share 16.5% | OK
+  V1 max drawdown (higher = WORSE) | p5 +0.074 p50 +0.116 p95 +0.201 share 8.0% | p5 +0.074 p50 +0.116 p95 +0.201 share 8.0% | OK
+  V3 2020 return | p5 -0.169 p50 +0.055 p95 +0.374 share 10.5% | p5 -0.169 p50 +0.055 p95 +0.374 share 10.5% | OK
+  V3 2021 return | p5 -0.102 p50 +0.045 p95 +0.307 share 6.0% | p5 -0.102 p50 +0.045 p95 +0.307 share 6.0% | OK
+  V3 final equity | p5 +0.832 p50 +1.136 p95 +1.706 share 5.5% | p5 +0.832 p50 +1.136 p95 +1.706 share 5.5% | OK
+  V3 max drawdown (higher = WORSE) | p5 +0.102 p50 +0.162 p95 +0.271 share 24.5% | p5 +0.102 p50 +0.162 p95 +0.271 share 24.5% | OK
+  V4 2020 return | p5 -0.163 p50 +0.038 p95 +0.382 share 1.0% | p5 -0.163 p50 +0.038 p95 +0.382 share 1.0% | OK
+  V4 2021 return | p5 -0.093 p50 +0.049 p95 +0.262 share 4.5% | p5 -0.093 p50 +0.049 p95 +0.262 share 4.5% | OK
+  V4 final equity | p5 +0.834 p50 +1.119 p95 +1.587 share 0.5% | p5 +0.834 p50 +1.119 p95 +1.587 share 0.5% | OK
+  V4 max drawdown (higher = WORSE) | p5 +0.101 p50 +0.154 p95 +0.255 share 18.0% | p5 +0.101 p50 +0.154 p95 +0.255 share 18.0% | OK
+  COMBINED 2020 return | p5 -0.190 p50 +0.020 p95 +0.368 share 4.5% | p5 -0.190 p50 +0.020 p95 +0.368 share 4.5% | OK
+  COMBINED 2021 return | p5 -0.156 p50 +0.021 p95 +0.374 share 22.0% | p5 -0.156 p50 +0.021 p95 +0.374 share 22.0% | OK
+  COMBINED final equity | p5 +0.785 p50 +1.062 p95 +1.759 share 10.0% | p5 +0.785 p50 +1.062 p95 +1.759 share 10.0% | OK
+  COMBINED max drawdown (higher = WORSE) | p5 +0.122 p50 +0.202 p95 +0.292 share 39.0% | p5 +0.122 p50 +0.202 p95 +0.292 share 39.0% | OK
+legs->R consistency: 172675 0 0 0
+
+(5) CHAIN RECONSTRUCTION
+  V3 his: chains differing from chains.tsv: 0; distinct re-entry trades 114 (already a his call: 16), passed_not_filled 28, reentry_1 86, reentry_2 42 | his: re-entry trades 114, passed_not_filled 28, reentry_1 86, reentry_2 42 | OK
+  V3 ctl: invalid chains 0; skipped-filled rows 206, unfilled rows passed 3987 (sum 4193) | ctl: passed_control_rule 254, passed_not_filled 3939 (sum 4193) | OK
+  COMBINED his: chains differing from chains.tsv: 0; distinct re-entry trades 202 (already a his call: 22), passed_not_filled 12, reentry_1 135, reentry_2 90 | his: re-entry trades 202, passed_not_filled 12, reentry_1 135, reentry_2 90 | OK
+  COMBINED ctl: invalid chains 0; skipped-filled rows 283, unfilled rows passed 1594 (sum 1877) | ctl: passed_control_rule 290, passed_not_filled 1587 (sum 1877) | OK
+
+(4) V1 CONTROL EXTREMES
+  V1 ctl mature trades: 21860 max 589.979805 min -93.79156749
+  5 LARGEST
+   ticker   E           R       fill      stop      width%   fill_min first_bar stop==fill-min-low  own_low  status        exit legs
+   NBR      2020-05-21    +589.98     22.332    22.289   0.194        0         0  True               True     trailed       3:partial:0.333333:38.630000;15:trail:0.666667:52.600000
+   JMIA     2020-11-18    +567.32     17.778    17.760   0.100        0         0  True               True     trailed       3:partial:0.333333:30.140000;9:trail:0.666667:26.710000
+   MAC      2020-06-03    +426.41      7.768     7.760   0.100        0         0  True               True     trailed       3:partial:0.333333:13.130000;7:trail:0.666667:10.050000
+   OCUL     2020-11-04    +421.05     10.961    10.945   0.146        0         0  True               True     trailed       3:partial:0.333333:12.550000;37:trail:0.666667:20.240000
+   CYRX     2020-08-21    +380.80     35.285    35.240   0.128        0         0  True               True     trailed       3:partial:0.333333:51.510000;12:trail:0.666667:53.020000
+  5 SMALLEST
+   ticker   E           R       fill      stop      width%   fill_min first_bar stop==fill-min-low  own_low  status        exit legs
+   WIX      2020-08-03     -93.79    294.394   294.100   0.100        0         0  True               True     stopped       3:stop_gap:1.000000:266.810000
+   RBC      2021-02-16     -44.18    187.077   186.890   0.100        0         0  True               True     stopped_day0  0:day0_gap:1.000000:178.820000
+   MYGN     2019-10-16     -35.76     29.990    29.840   0.500        5         0  False              False    stopped       3:partial:0.333333:31.280000;14:stop_gap:0.666667:21.300000
+   ALLK     2020-07-27     -30.96     84.184    84.100   0.100        0         0  True               True     stopped_day0  0:day0_gap:1.000000:81.580000
+   CSII     2020-06-08     -30.40     41.872    41.830   0.100        0         0  True               True     stopped_day0  0:day0_gap:1.000000:40.600000
+  all 10: fill_minute==0: 9 | width% max: 0.5 | width% median of V1 ctl: 0.88
+  stop width < 0.2% of fill: 3891 trades (17.8%), |R|>20: 201 of 400 such trades overall; R>=10: 208 of 665
+  stop width < 0.5% of fill: 7478 trades (34.2%), |R|>20: 305 of 400 such trades overall; R>=10: 375 of 665
+  fill in minute 0: 12041 of 21860; |R|>20 in minute 0: 352 of 400; R>=10 in minute 0: 484 of 665
+  sum of R: all 11545.0 | minute 0: 9426.8 | other: 2118.2
+  mean R: all 0.528 | minute 0: 0.783 | not minute 0: 0.216
+
+
+claim | printout | yours | match
+headline V0 his calls | n=174 mean=+0.639 >=10R/100=+1.1 max=+71.62 win=35.1% | n=174 mean=+0.639 >=10R/100=+1.1 max=+71.62 win=35.1% | OK
+headline V0 control | n=17948 mean=+0.120 >=10R/100=+1.7 max=+57.78 win=27.9% | n=17948 mean=+0.120 >=10R/100=+1.7 max=+57.78 win=27.9% | OK
+headline V1 his calls | n=216 mean=+0.930 >=10R/100=+2.8 max=+135.03 win=21.8% | n=216 mean=+0.930 >=10R/100=+2.8 max=+135.03 win=21.8% | OK
+headline V1 control | n=21869 mean=+0.528 >=10R/100=+3.0 max=+589.98 win=18.0% | n=21869 mean=+0.528 >=10R/100=+3.0 max=+589.98 win=18.0% | OK
+headline V3 his calls | n=272 mean=+0.322 >=10R/100=+0.7 max=+71.62 win=33.5% | n=272 mean=+0.322 >=10R/100=+0.7 max=+71.62 win=33.5% | OK
+headline V3 control | n=22981 mean=+0.090 >=10R/100=+1.6 max=+117.97 win=27.7% | n=22981 mean=+0.090 >=10R/100=+1.6 max=+117.97 win=27.7% | OK
+headline COMBINED his calls | n=398 mean=+0.445 >=10R/100=+2.5 max=+135.03 win=19.8% | n=398 mean=+0.445 >=10R/100=+2.5 max=+135.03 win=19.8% | OK
+headline COMBINED control | n=29916 mean=+0.346 >=10R/100=+2.7 max=+589.98 win=18.2% | n=29916 mean=+0.346 >=10R/100=+2.7 max=+589.98 win=18.2% | OK
+account V0 | 2020 47.9% 2021 25.3% final 1.850 dd 19.1% entered 146 skip_room 28 skip_stock 0 | 2020 47.9% 2021 25.3% final 1.850 dd 19.1% entered 146 skip_room 28 skip_stock 0 | OK
+account V1 | 2020 28.6% 2021 0.8% final 1.268 dd 18.0% entered 187 skip_room 29 skip_stock 0 | 2020 28.6% 2021 0.8% final 1.268 dd 18.0% entered 187 skip_room 29 skip_stock 0 | OK
+account V3 | 2020 30.1% 2021 27.5% final 1.631 dd 19.1% entered 214 skip_room 58 skip_stock 0 | 2020 30.1% 2021 27.5% final 1.631 dd 19.1% entered 214 skip_room 58 skip_stock 0 | OK
+account V4 | 2020 62.8% 2021 26.2% final 2.044 dd 20.7% entered 130 skip_room 44 skip_stock 0 | 2020 62.8% 2021 26.2% final 2.044 dd 20.7% entered 130 skip_room 44 skip_stock 0 | OK
+account COMBINED | 2020 38.5% 2021 13.7% final 1.507 dd 22.0% entered 263 skip_room 134 skip_stock 1 | 2020 38.5% 2021 13.7% final 1.507 dd 22.0% entered 263 skip_room 134 skip_stock 1 | OK
+stored daily curve account_his.tsv last value vs my final, V0 | 1.849919 | 1.849919 | OK
+stored daily curve account_his.tsv last value vs my final, V1 | 1.268367 | 1.268367 | OK
+stored daily curve account_his.tsv last value vs my final, V3 | 1.630800 | 1.630800 | OK
+stored daily curve account_his.tsv last value vs my final, V4 | 2.044018 | 2.044018 | OK
+stored daily curve account_his.tsv last value vs my final, COMBINED | 1.507044 | 1.507044 | OK
+band V0 2020 return | p5 -0.134 p50 +0.024 p95 +0.325 share 1.0% | p5 -0.134 p50 +0.024 p95 +0.325 share 1.0% | OK
+band parity vs FIRST read's STORED V0 band (5 pctiles + his + share), 2020 return | stored his 0.479065 p5 -0.1337 share 0.01 | his 0.479065 p5 -0.1337 share 0.01  (max pctile diff 7.2e-08, his diff 3.9e-08) | OK
+band V0 2021 return | p5 -0.064 p50 +0.051 p95 +0.231 share 3.5% | p5 -0.064 p50 +0.051 p95 +0.231 share 3.5% | OK
+band parity vs FIRST read's STORED V0 band (5 pctiles + his + share), 2021 return | stored his 0.253390 p5 -0.0636 share 0.035 | his 0.253390 p5 -0.0636 share 0.035  (max pctile diff 4.4e-08, his diff 1.1e-07) | OK
+band V0 final equity | p5 +0.847 p50 +1.111 p95 +1.441 share 0.5% | p5 +0.847 p50 +1.111 p95 +1.441 share 0.5% | OK
+band parity vs FIRST read's STORED V0 band (5 pctiles + his + share), final equity | stored his 1.849919 p5 +0.8466 share 0.005 | his 1.849919 p5 +0.8466 share 0.005  (max pctile diff 8.8e-08, his diff 2.2e-07) | OK
+band V0 max drawdown (higher = WORSE) | p5 +0.080 p50 +0.126 p95 +0.207 share 11.5% | p5 +0.080 p50 +0.126 p95 +0.207 share 11.5% | OK
+band parity vs FIRST read's STORED V0 band (5 pctiles + his + share), max drawdown (higher = WORSE) | stored his 0.191328 p5 +0.0805 share 0.115 | his 0.191328 p5 +0.0805 share 0.115  (max pctile diff 3.7e-08, his diff 7.7e-08) | OK
+band V1 2020 return | p5 -0.119 p50 +0.017 p95 +0.252 share 5.0% | p5 -0.119 p50 +0.017 p95 +0.252 share 5.0% | OK
+band V1 2021 return | p5 -0.058 p50 +0.036 p95 +0.229 share 67.5% | p5 -0.058 p50 +0.036 p95 +0.229 share 67.5% | OK
+band V1 final equity | p5 +0.865 p50 +1.083 p95 +1.418 share 16.5% | p5 +0.865 p50 +1.083 p95 +1.418 share 16.5% | OK
+band V1 max drawdown (higher = WORSE) | p5 +0.074 p50 +0.116 p95 +0.201 share 8.0% | p5 +0.074 p50 +0.116 p95 +0.201 share 8.0% | OK
+band V3 2020 return | p5 -0.169 p50 +0.055 p95 +0.374 share 10.5% | p5 -0.169 p50 +0.055 p95 +0.374 share 10.5% | OK
+band V3 2021 return | p5 -0.102 p50 +0.045 p95 +0.307 share 6.0% | p5 -0.102 p50 +0.045 p95 +0.307 share 6.0% | OK
+band V3 final equity | p5 +0.832 p50 +1.136 p95 +1.706 share 5.5% | p5 +0.832 p50 +1.136 p95 +1.706 share 5.5% | OK
+band V3 max drawdown (higher = WORSE) | p5 +0.102 p50 +0.162 p95 +0.271 share 24.5% | p5 +0.102 p50 +0.162 p95 +0.271 share 24.5% | OK
+band V4 2020 return | p5 -0.163 p50 +0.038 p95 +0.382 share 1.0% | p5 -0.163 p50 +0.038 p95 +0.382 share 1.0% | OK
+band V4 2021 return | p5 -0.093 p50 +0.049 p95 +0.262 share 4.5% | p5 -0.093 p50 +0.049 p95 +0.262 share 4.5% | OK
+band V4 final equity | p5 +0.834 p50 +1.119 p95 +1.587 share 0.5% | p5 +0.834 p50 +1.119 p95 +1.587 share 0.5% | OK
+band V4 max drawdown (higher = WORSE) | p5 +0.101 p50 +0.154 p95 +0.255 share 18.0% | p5 +0.101 p50 +0.154 p95 +0.255 share 18.0% | OK
+band COMBINED 2020 return | p5 -0.190 p50 +0.020 p95 +0.368 share 4.5% | p5 -0.190 p50 +0.020 p95 +0.368 share 4.5% | OK
+band COMBINED 2021 return | p5 -0.156 p50 +0.021 p95 +0.374 share 22.0% | p5 -0.156 p50 +0.021 p95 +0.374 share 22.0% | OK
+band COMBINED final equity | p5 +0.785 p50 +1.062 p95 +1.759 share 10.0% | p5 +0.785 p50 +1.062 p95 +1.759 share 10.0% | OK
+band COMBINED max drawdown (higher = WORSE) | p5 +0.122 p50 +0.202 p95 +0.292 share 39.0% | p5 +0.122 p50 +0.202 p95 +0.292 share 39.0% | OK
+FORK COMBINED 2020 / 2021 / band share (user-stated) | 2020 38.5%, 2021 13.7%, band share 10.0% | 2020 38.5%, 2021 13.7%, band share 10.0% (20 of 200) | OK
+FORK verdict (printout: both-years arm not met, band arm not met -> NEXT GAPS) | - yearly return >= +50% in BOTH 2020 and 2021: 2020 38.5%, 2; - the same-day band at or above his final equity (1.507) in  -> NEXT GAPS | years>=50% in both: False; share<=5%: False -> NEXT GAPS | OK
+trade table: legs sum to 1, R recomputed from legs, width = (fill-stop)/fill, every filled row (all 5 entry sets) | (asserted in the run) | 172675 rows; legs!=1: 0; R off (rel 1e-4): 0; width off: 0 | OK
+V3 his chains rebuilt independently (stop-out -> next filled break, exit day < E2 <= E+20, max 2) | his: re-entry trades 114, passed_not_filled 28, reentry_1 86, reentry_2 42 | chains differing from chains.tsv: 0; distinct re-entry trades 114 (already a his call: 16), passed_not_filled 28, reentry_1 86, reentry_2 42 | OK
+V3 control chains: structure valid + total rows passed | ctl: passed_control_rule 254, passed_not_filled 3939 (sum 4193) | invalid chains 0; skipped-filled rows 206, unfilled rows passed 3987 (sum 4193) | OK
+COMBINED his chains rebuilt independently (stop-out -> next filled break, exit day < E2 <= E+20, max 2) | his: re-entry trades 202, passed_not_filled 12, reentry_1 135, reentry_2 90 | chains differing from chains.tsv: 0; distinct re-entry trades 202 (already a his call: 22), passed_not_filled 12, reentry_1 135, reentry_2 90 | OK
+COMBINED control chains: structure valid + total rows passed | ctl: passed_control_rule 290, passed_not_filled 1587 (sum 1877) | invalid chains 0; skipped-filled rows 283, unfilled rows passed 1594 (sum 1877) | OK
+V1 control max R / worst R | +589.98 / -93.79 | +589.98 / -93.79 | OK
+
+MISMATCHES: 0 of 50

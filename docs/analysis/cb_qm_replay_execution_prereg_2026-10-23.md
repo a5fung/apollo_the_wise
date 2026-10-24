@@ -431,4 +431,4 @@ Any outcome the stopped run printed is recorded as seen.
   - V3: 114 re-entry trades at a lower mean R (+0.32 per trade) and 58 skipped for no room.
 - **Read with it:** these variants were chosen after the first read's fills were seen; none is validated. The registered next
   gaps, in his words and the operator's: stop placement beyond one ADR / the structural stop, adds / pyramiding, exit timing,
-  market exposure, and the EPs and parabolic shorts in his record. Independent recount: running (`verify/recount_exec/`).
+  market exposure, and the EPs and parabolic shorts in his record. Independent recount (Sonnet, `verify/recount_exec/recount_exec.py` + `_out.txt`, from the stored trades, simulation re-implemented): 50 of 50 checks match. The V1 control extremes are the minute-0 own-low stop: 9 of the 10 largest |R| fill in minute 0 with a stop of 0.1–0.2% (six are the 0.1% slippage alone); minute-0 fills are 352 of the 400 trades beyond ±20R. In the account these trades are cap-bound, so the account and band are the comparable numbers.
