@@ -2568,3 +2568,7 @@ The north star for #705 / #707 (2026-10-23): rebuild Qullamaggie's own setup dat
 > "Slight correction, goal is to build trading knowledge brain and successfully trade those setups and strategies profitably. His database is just the starting point, proven to work, we want to rebuild it, extract knowledge, build on top of it, improve it and trade it profitably"
 
 Corrected north star (supersedes the line above): the GOAL is a trading knowledge brain that trades these setups and strategies profitably. Qullamaggie's database is the proven STARTING POINT: rebuild it → extract the knowledge → build on top of it → improve it → trade it profitably.
+
+> "I'm not sure how accurate that is, he buys orb high and states this many times and wrote this in his own webpage" (10-23, on my claim that he buys EPs after the gap day)
+
+Correction recorded: a stream label's date is when he TALKED about a trade, not when he bought it. EPs are bought at the opening-range high on the gap day (his own page and streams); the labels tell us which EPs he took, not when.
