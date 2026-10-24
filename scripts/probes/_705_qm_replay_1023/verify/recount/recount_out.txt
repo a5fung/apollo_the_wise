@@ -1,0 +1,37 @@
+1. EVENT/TRADE STATS
+  his events (unique ticker,E): 236 | rows with both flags is_his&is_ctl: 0
+  his entry_status: {'filled': 174, 'no_trigger': 42, 'abstain': 20} | reason: {'': 174, 'no_minute_above_level': 42, 'too_wide': 20}
+  HIS: filled(arm rows)=174 mature=174 mean=+0.6386 win=35.06% (61/174) >=10R=2 (1.15/100) >=5R=10 (5.75/100) max=+71.62 worst=-2.67 median=-1.000
+  CTL: filled(arm rows)=17948 mature=17939 mean=+0.1202 win=27.94% (5012/17939) >=10R=302 (1.68/100) >=5R=937 (5.22/100) max=+57.78 worst=-35.76 median=-1.000
+  control events: 23188 | his arm-rows uniqueness (ticker,E): 0 dups
+
+5. BY YEAR OF E (his)
+  2017: filled mature n=5 mean=+1.8318
+  2019: filled mature n=7 mean=+0.0075
+  2020: filled mature n=112 mean=+0.9989
+  2021: filled mature n=50 mean=-0.1993
+  by-year events: {'2017': 6, '2019': 8, '2020': 156, '2021': 66}
+
+2. ENTRY FACTS (his, era A, orh5)
+  too_wide=20  no_minute_above_level=42
+  LIST no_minute_above_level (ticker E): SIG 2019-10-28; AMD 2020-02-05; CCL 2020-05-22; CCL 2020-05-27; LUV 2020-05-27; MRNA 2020-06-04; DKNG 2020-06-16; ETSY 2020-06-16; DKNG 2020-06-22; MRNA 2020-07-10; MRNA 2020-07-15; SHOP 2020-07-21; NIO 2020-07-23; JD 2020-07-28; DXCM 2020-07-29; SHOP 2020-07-29; SPOT 2020-08-04; MRNA 2020-08-05; BNTX 2020-08-10; MRNA 2020-08-12; AMD 2020-08-21; FSLY 2020-08-21; BLDP 2020-08-24; CCL 2020-08-25; MDB 2020-09-22; NVDA 2020-10-01; CVNA 2020-10-16; BILI 2020-11-05; BLDP 2020-12-09; NCLH 2020-12-29; NILE 2020-12-29; ACB 2021-01-06; FSLY 2021-01-06; PINS 2021-01-21; PLUG 2021-02-01; ROKU 2021-02-04; MSTR 2021-02-25; MSTR 2021-04-14; CLF 2021-04-22; CCL 2021-04-26; AMAT 2021-04-27; OVV 2021-04-29
+  LIST too_wide (ticker E width%): AMD 2017-03-20 4.7; LAKE 2020-03-13 15.4; AMD 2020-06-09 6.0; TSLA 2020-06-29 6.2; TDOC 2020-07-30 6.6; SHOP 2020-08-25 4.6; AAL 2020-09-16 6.5; SAVE 2020-09-16 5.9; AGNT 2020-10-01 8.9; PTON 2020-11-05 7.1; BLDP 2020-11-16 5.6; COUP 2020-11-19 5.8; CSIQ 2020-11-25 6.7; FSLY 2020-12-10 9.6; UBER 2020-12-21 6.3; SIG 2021-01-05 8.1; AMD 2021-01-11 3.9; DKNG 2021-01-27 7.9; CRC 2021-10-13 5.0; XPEV 2021-11-11 5.6
+
+calendar: SPY dates 1635 == sessions.txt 1635 identical: True
+
+4. RE-ENTRIES
+  tl candidates: 81015
+  stopped out=134 (stopped 84 + stopped_day0 50); with later break of same base after exit within 20 sessions of E=91; such breaks=358; of them his calls=33
+
+3. ACCOUNT SIM (primary: 1% risk, 20% cap, 30%/stock at cost, skip if no room, prior-close MTM sizing)
+  trades in table (his, filled, mature, arm): 174 | sum realized_r: 111.121
+  trades whose legs do not sum to 1 or whose leg-R != realized_r (tol 1e-4): 0
+  primary           final=1.850 dd=19.1% | 2017:+0.5% 2018:+0.0% 2019:+0.0% 2020:+47.9% 2021:+25.3% 2022:-0.8% | {'entered': 146, 'cap_bound_entered': 126, 'max_open': 7, 'skipped_no_room': 28, 'trimmed_stock_limit': 8, 'concurrent_same_ticker': 8} open_left=0
+  room_trim         final=1.847 dd=19.1% | 2017:+0.5% 2018:+0.0% 2019:+0.0% 2020:+47.4% 2021:+25.6% 2022:-0.8% | {'entered': 156, 'cap_bound_entered': 135, 'max_open': 9, 'trimmed_room': 14, 'skipped_no_room': 18, 'trimmed_stock_limit': 8, 'concurrent_same_ticker': 5} open_left=0
+  same_ticker_skip  final=1.904 dd=19.1% | 2017:+0.5% 2018:+0.0% 2019:+0.0% 2020:+52.3% 2021:+25.3% 2022:-0.8% | {'entered': 139, 'cap_bound_entered': 119, 'max_open': 6, 'skipped_no_room': 27, 'skipped_same_ticker': 8} open_left=0
+  risk_0.5          final=1.567 dd=14.7% | 2017:+0.6% 2018:+0.0% 2019:-0.1% 2020:+30.9% 2021:+19.8% 2022:-0.5% | {'entered': 155, 'cap_bound_entered': 67, 'max_open': 9, 'skipped_no_room': 19, 'concurrent_same_ticker': 7, 'trimmed_stock_limit': 4} open_left=0
+  risk_0.25         final=1.278 dd=9.6% | 2017:+1.1% 2018:+0.0% 2019:+0.1% 2020:+16.2% 2021:+8.9% 2022:-0.2% | {'entered': 167, 'cap_bound_entered': 13, 'max_open': 11, 'concurrent_same_ticker': 7, 'trimmed_stock_limit': 1, 'skipped_no_room': 7} open_left=0
+  cap_10            final=1.434 dd=13.7% | 2017:+0.3% 2018:+0.0% 2019:+0.1% 2020:+24.0% 2021:+15.7% 2022:-0.4% | {'entered': 169, 'cap_bound_entered': 164, 'max_open': 11, 'concurrent_same_ticker': 8, 'skipped_no_room': 5} open_left=0
+  cap_30            final=2.044 dd=20.7% | 2017:+0.8% 2018:+0.0% 2019:-0.3% 2020:+62.8% 2021:+26.2% 2022:-1.0% | {'entered': 130, 'cap_bound_entered': 75, 'max_open': 6, 'skipped_no_room': 44, 'trimmed_stock_limit': 7, 'concurrent_same_ticker': 6} open_left=0
+
+  daily-curve compare vs account_his.tsv primary: days theirs=1216 mine=1216 common=1216; max abs diff=0.000000 at 2021-02-10; days with |diff|>0.001: 0

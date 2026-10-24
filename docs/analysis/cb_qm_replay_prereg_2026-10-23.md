@@ -485,4 +485,4 @@ The inline mention of the marker inside §11 was reworded before the pins were t
   - The 20-day trail and selling on day 5 lift the mean (+0.82 / +0.83R) but not the curve.
 - **Era B (descriptive):** 9 calls, all losers (−0.94R mean).
 - **What this cannot show:** his full P&L (these are 236 stream-confirmed breakout calls; his record also holds EPs, parabolic
-  shorts, adds and the trades never mentioned on stream). Independent recount: running (`verify/recount/`).
+  shorts, adds and the trades never mentioned on stream). Independent recount (Sonnet, `verify/recount/recount.py` + `recount_out.txt`, from the stored trade tables, not the module): every headline number matches exactly, incl. the account curve on all 1,216 days. The 42 calls that never cross our level include MRNA ×5, SHOP ×2, DKNG ×2, NVDA, AMD, ETSY, SPOT, NIO, JD, FSLY; the 20 skipped as too wide include TSLA 2020-06-29, PTON, SHOP, COUP, FSLY (stop widths 3.9–15.4% of the fill).
