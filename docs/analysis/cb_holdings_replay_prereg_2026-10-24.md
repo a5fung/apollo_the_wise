@@ -478,3 +478,17 @@ above the marker after that changes `doc_body`, and the run refuses.
 - minutes_EP_used: 7854578cff34f90e3cfe4038899b9f70a4dcc037cb5e669f5f9d5fe5b5546e6b
 - minutes_EP2_used: 9656330d98339fe8a9692f9c85b47a2702e509090e058c266f2473b2607433ce
 - doc_body: 69510e1a3092e1c74b9869342a24b624500ca65c814410ae7cf2348f71384b58
+
+## RESULT — the one real run, 2026-10-24 after the freeze commit (printout `scripts/probes/_705_holdings_1024/02_replay.txt`)
+
+- **HIS BAR: PASS.** The deciding account (his trades read off the 'A - Positions' panel, 262 dated buys, his rules with the speed
+  trail at the 30% cap) over 2020-01-27..2022-06-14 (602 sessions): total +263.5% vs QQQ +26.5% and SPY +15.6% (price only);
+  Sharpe 1.50 vs QQQ 0.48; max drawdown −24.2% vs QQQ −31.8%; beta 0.01; alpha +62.4% a year, t 2.31. By year 2020 +162.7%,
+  2021 +46.8%, 2022 −5.8% (QQQ −31.3% in that span). Every beside exit / sizing config also passes (t 2.36–2.67).
+- **Selection is real:** his breakout-dated buys alone 3.60× vs the same-day random breakout band (median 1.07×, 95th pct 1.66×,
+  0 of 200 draws at or above him). Per trade +1.06R (n = 205), win rate 37%, 2.9 of every 100 trades at ≥ 10R.
+- **His own exits (the panel's sell dates, beside):** 14.1× (+1,306%; per trade +2.03R) — his exits beat our rule set by far.
+- **Read with it (the registered limits):** only buys still held at the next stream are visible, so trades bought and sold
+  between two streams are missing — an upward bias; without the 47 fills that contradict the panel clock the account reads +145.6%,
+  Sharpe 1.32, t 1.95 (just under the bar's 2.0). The EP-dated buys alone do not pass (+15.2%, t 0.92, n = 43); 2021 alone has
+  t 0.96. Independent recount: running.

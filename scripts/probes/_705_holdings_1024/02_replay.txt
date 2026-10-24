@@ -1,0 +1,184 @@
+# #705 HOLDINGS 02 — his panel entries under his rules vs the market (THE REGISTERED REPLAY)
+# registration: docs/analysis/cb_holdings_replay_prereg_2026-10-24.md
+- the first and second reads' pins re-checked (labels, events, candidates, exports, calendar, flags, the frozen modules and tests, the cb module = `runner.EXITPB_MODULE_SHA`): no drift
+
+## Populations (asserted against the registration §2)
+- dated: 344
+- deciding: 294
+- deciding_A: 277
+- deciding_B: 17
+- deciding_flicker: 91
+- entries: 1874
+- in_window: 262
+- in_window_EP: 43
+- in_window_both: 7
+- in_window_breakout: 212
+- initial: 13
+- non_initial: 1861
+- same_day_rebuy: 30
+- same_day_rebuy_deciding: 2
+- same_day_rebuy_in_window: 2
+- same_day_rebuy_undated: 28
+- undated: 1517
+- entries without bars (no event): 117
+- every population equals the registration
+- same-day band pool (beside): 22,660 era-A tl rows on 151 of his breakout buy days (2,537 tickers, loaded with his)
+
+## Loads (era B: every row dated after 2024-12-31 dropped at read)
+- daily exports loaded in 7s: era A 3,881,161 of 12,005,007 rows kept (2,740 tickers, calendar 2016-01-04..2022-06-30); era B 63,175 of 13,830,569 rows kept (81 tickers, calendar 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- unified calendar: 2,264 sessions 2016-01-04..2024-12-31; the exports agree on their overlap (192 sessions)
+- QQQ / SPY closes stitched at era A's last session (overlap within 0.5%, asserted); dividends excluded
+- deciding window 2020-01-27..2022-06-14: 602 sessions
+- fetch logs: era A 149,587 pairs, era B 80,858 (dropped after the cut 72,951), EP tree 196, EP2 tree (the pre-freeze fetch) 39; date files A 1,219, B 1,140, EP 48, EP2 36
+
+## Per-event facts (outcome-free: bars up to D, fetch logs, the identity guard)
+- DECIDING in window: n = 262; by setup EP 43, both 7, breakout 212; by era A 254, B 8
+    walkable 258; not walkable: history_not_contiguous 4
+    minutes (fetch logs): not_walkable 4, ok/A 213, ok/B 7, ok/EP 11, ok/EP2 27; identity break in (E-130, E] 0; KEEP (walked in the real run) 258
+    forward sessions in the export < 121 (an open walk marks at the export's last bar) 8; QQQ at D up 162 / mixed 40 / down 56; flickers 88; retriggers 151; still held at the last stream 0
+- deciding, all years: n = 292; by setup EP 58, both 7, breakout 227; by era A 275, B 17
+    walkable 286; not walkable: history_not_contiguous 6
+    minutes (fetch logs): not_walkable 6, ok/A 224, ok/B 11, ok/EP 12, ok/EP2 39; identity break in (E-130, E] 0; KEEP (walked in the real run) 286
+    forward sessions in the export < 121 (an open walk marks at the export's last bar) 8; QQQ at D up 185 / mixed 42 / down 59; flickers 91; retriggers 163; still held at the last stream 4
+- dated, wider than the cap: n = 50; by setup EP 17, both 3, breakout 30; by era A 36, B 14
+    walkable 48; not walkable: history_not_contiguous 2
+    minutes (fetch logs): missing 13, not_walkable 2, ok/A 26, ok/B 7, ok/EP 2; identity break in (E-130, E] 0; KEEP (walked in the real run) 35
+    forward sessions in the export < 121 (an open walk marks at the export's last bar) 1; QQQ at D up 28 / mixed 9 / down 11; flickers 6; retriggers 25; still held at the last stream 5
+- undated (beside): n = 1372; by setup undated 1372; by era A 1304, B 68
+    walkable 1144; not walkable: history_not_contiguous 116, no_bar_on_E 26, ticker_not_in_export 86
+    minutes (fetch logs): n/a 1093, n/a/A 48, n/a/B 3, not_walkable 228; identity break in (E-130, E] 22; KEEP (walked in the real run) 1122
+    forward sessions in the export < 121 (an open walk marks at the export's last bar) 73; QQQ at D up 677 / mixed 181 / down 286; flickers 475; retriggers 0; still held at the last stream 4
+- deciding, in the window: forward window shorter than the horizon 8 - a hole in its sessions 1, its bars end before the export's last session (delisting / merger) 4, the export's end 3; LK 2020-02-18 (last bar 2020-06-26), LVGO 2020-09-25 (last bar 2020-10-29), APHA 2021-01-06 (last bar 2021-04-30), APHA 2021-02-10 (last bar 2021-04-30), APHA 2021-03-02 (last bar 2021-04-30), SNAP 2022-02-04 (last bar 2022-06-30), DDOG 2022-02-10 (last bar 2022-06-30), UPST 2022-02-16 (last bar 2022-06-30)
+- deciding, all years: forward window shorter than the horizon 8 - a hole in its sessions 1, its bars end before the export's last session (delisting / merger) 4, the export's end 3; LK 2020-02-18 (last bar 2020-06-26), LVGO 2020-09-25 (last bar 2020-10-29), APHA 2021-01-06 (last bar 2021-04-30), APHA 2021-02-10 (last bar 2021-04-30), APHA 2021-03-02 (last bar 2021-04-30), SNAP 2022-02-04 (last bar 2022-06-30), DDOG 2022-02-10 (last bar 2022-06-30), UPST 2022-02-16 (last bar 2022-06-30)
+- same-day re-buys (F4; out of every account, not walked, listed beside): 30 - APPS 2019-10-04 #136 after #135 (undated; flat at -), APPS 2019-10-04 #142 after #135 (undated; flat at -), APPS 2019-10-09 #153 after #150 (undated; flat at -), APPS 2019-10-17 #169 after #165 (undated; flat at -), PBR 2019-10-22 #185 after #183 (undated; flat at -), PBR 2019-10-22 #192 after #183 (undated; flat at -), APT 2020-03-05 #425 after #421 (undated; flat at -), GAN 2020-05-29 #619 after #616 (undated; flat at -), CCL 2020-06-08 #648 after #643 (undated; flat at -), NCLH 2020-07-15 #730 after #728 (undated; flat at -), TWLO 2020-08-18 #843 after #840 (undated; flat at -), ADPT 2020-09-21 #901 after #895 (undated; flat at -), BLNK 2020-09-21 #902 after #896 (undated; flat at -), CVNA 2020-09-21 #903 after #897 (undated; flat at -), GME 2020-09-21 #904 after #898 (undated; flat at -), NTRA 2020-09-21 #905 after #899 (undated; flat at -), PCVX 2020-09-21 #906 after #900 (undated; flat at -), LI 2020-10-14 #943 after #940 (undated; flat at -), U 2020-10-16 #950 after #946 (undated; flat at -), U 2020-10-21 #962 after #960 (undated; flat at -), LI 2020-10-21 #963 after #961 (undated; flat at -), UI 2020-10-21 #964 after #957 (undated; flat at -), QS 2020-12-10 #1065 after #1062 (undated; flat at -), NXTD 2020-12-30 #1108 after #1102 (undated; flat at -), PLUG 2021-02-03 #1217 after #1211 (breakout; flat at 10:55), FCX 2021-04-13 #1385 after #1383 (undated; flat at -), SNAP 2021-06-11 #1463 after #1462 (breakout; flat at 11:51), LI 2023-05-19 #1848 after #1846 (undated; flat at -), LI 2023-05-19 #1849 after #1846 (undated; flat at -), IOT 2023-06-09 #1861 after #1860 (undated; flat at -)
+- panel clocks on E (F3, the timeline; read against the fill minute in the run, F5): in the window held before 09:35 9 (TSLA 2020-04-14 09:32, UAL 2020-05-27 09:34, DXCM 2020-07-29 09:32, PINS 2020-07-31 09:31, SHOP 2020-08-26 09:32, TTD 2020-08-26 09:32, KOLD 2022-04-19 09:33, LAC 2022-04-21 09:30, TSLA 2022-04-21 09:30); flat at an in-session snapshot on E 92; first seen in session on E 172
+- deciding-window ADR20 at D: median 6.3%, above the speed cut 4.79% (the 10-day trail) 199 of 258
+- deciding-window buy days 185, names 132; by year 2020 149, 2021 102, 2022 11; by month max 27 entries
+- deciding entries with NO minute file in any tree: 0 (in the window 0) -> written to /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/replay_missing_minutes.tsv = the fetch before the freeze; any still missing at the run abstain `no_minutes` and are counted
+- same-day band (beside): 151 era-A breakout buy days in the window carry his 212 breakout entries; the pool is drawn from `candidates_tl_com.tsv` (K = tl) on those days in the real run, minus names he held that day
+
+## Pins (sha256) — every value below goes under the doc's freeze marker line before the real run
+- labels_joined: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b
+- matched_events: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc
+- moments: f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0
+- cand_A: 3c5a66dc3052d0a284cbfee8202f74deb4e5bb75c74565dd8147df015e1baa5a
+- cand_B: b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0
+- guard_A: 876a75ec6d51744579c1ea2744c1b529cbd941355ef12eb8f0451bbe7ba1af08
+- guard_A_audit: 729741b4cfc5759b6ea5d81da6afdd36c11d806bbcad845964b2b37c72d94057
+- guard_B: b6cb81b6c4a1f415defc5adcf236402d93cd654c33736aa0b120b78c357b5650
+- flags_A: 5358e31dc1b27d25c5143bdfca7a98b91a6c7a2d5b1da6c9c9d9ed9c55474c1d
+- flags_B: 8bf843859afb70ea59edf6f11cda12160020936c8df3e978b6a819590ea5c3d5
+- verdict_A: 02cbb1c0106101cb12e8d5deb9448051ae3ced67966ac11d2475d06f26538de3
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178
+- panel: 2f3c5ee919fcb510c0ba31f4cb82d736c75fe3705d6d94fd16776d2a74835012
+- calendar_cache: 47111a051ac101f12818fb1b2e300fd61ff953673db1286e7f1c2cbbe291b610
+- lexicon: c7fb05ac383ff63f8f76702cec07ad1c08c517dbfb7a0843ee9a96a7d1e5105f
+- dedupe_A: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64
+- ep_A: 59f196e5aa45a35eb7d98e1a1147ac4925e9f4967a17863e039659eed6c9dc46
+- ep_B: 160401c752ff0b8d3d3f2ad7a1eff63d6c36d285aaa34c6e5ca00b737b68ee3c
+- entries: 6a0dda2da7932b6d54f122594df817215c1237636629f3ce6efa7cef1b9bdabf
+- exits: 1ed76a2806091f7d56726c56e6b2a389dfa2e96db24c382d4296da096529b50f
+- snapshots: a8987fce15fa1a968010b4290c249f2c62de24d18d1b71bca4b9b0c4f507caff
+- control: 193a5b985b1d979d59b2d09e67a8caeb4fac9d4073f54b84b1f7315d69d15ccc
+- timeline_printout: cbc08080f82705b6fb4e2fd2970166113b5c0f35ab646ca2226d2344cea6a6ac
+- panel_read_printout: cee0fca158007117fa4370511cbbce4a3d1da6ca6760f8792885988ecd1b9ad3
+- done_EP: 0eb3548afe46feecf785e27b4b2e0839d5392c71bf4d67a1789f75e40c6ac735
+- done_EP2: f8255199e52f0fa14aebcec5d50a407a1a52ac7c8b6cd4129bf41aa2f8cc591a
+- runner: 213cbe6ddf0ff05555a11c347efd14bfa37f99096fd83961e9f5127f6c7c8dcf
+- registered_read: 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449
+- cb_module: e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b
+- constants: 72dadd72503a842f593621b0868f908ab99e1d77851330c2842be7797aa99400
+- fit_module: 3fca7bf4f26ffcdf7152ddc9d4180c295aafe29067591def812fcc6884f38d27
+- join_script: 6889819c41342c60831b0d62b277d47b677e4deaeab3443cbdde7a05d56b112c
+- aplus_read: e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee
+- trade_impact: 9b7cce415479c1abfda422c432c6de1f3a6d591f298a1167fa637a578051e146
+- replay_module: c44785889670b31f3e9baf1ac0e1563aeacfefacc5de5ef426ee7b15724e7bfa
+- replay_tests: 37c918a08329b138f6c37c5787af3c95e0ea2abeceb100209cd0f5f0dd0a96ad
+- exec_module: 346516fb4c236cc552103032163b790d030b10a536e83c70d4cf2390c3f9f485
+- exec_tests: 6ce013bb1d7f1521e8083d014e4221fc837f30c59f9c5e00fbc023344d1a1949
+- timeline_module: e91e3f4dd8d7bc29664cfeccd2fe6b8ec7a5f906a25281bd338f3fe62d2bfee7
+- timeline_tests: 920085c4fecd2b2ea4799b939f16a30a2f1b271fc199149419c2ed0f0df029af
+- holdings_module: 4275d72f82aaf66c7c24372afe48e0b503dedb51e2c7715d8fbd26c4372e9ce9
+- holdings_tests: eee66bf08ef8f70c5da66b4aeec0f626f592ca327dcfc7c6c0c6fd1943a0b75f
+- panel_reader: 14a9764f883aa5516a85da47346871247eabfbcb514ce03c8e602175cbf2a230
+- first_doc_body: aaaadd295aba5a9de534a738410ebe391ac4993637faa7ead0cab78e2b7a9dab
+- second_doc_body: 329ac865f814de0909332ff516ea5d52dea525fbef7b5fdcf1c9208a521143fe
+- minutes_A_used: d6098818f6d3310d4cf498709cd8f9b574fc42eed201b6d99aa2e455516c9abd
+- minutes_B_used: 3d892a04acc4c587507255a2e15d78f570f9f13076cb6719d7173f473d79317c
+- minutes_EP_used: 7854578cff34f90e3cfe4038899b9f70a4dcc037cb5e669f5f9d5fe5b5546e6b
+- minutes_EP2_used: 9656330d98339fe8a9692f9c85b47a2702e509090e058c266f2473b2607433ce
+- doc_body: 69510e1a3092e1c74b9869342a24b624500ca65c814410ae7cf2348f71384b58
+- freeze record: every pin above is written under the freeze marker line
+
+## THE WALK
+- his_entry_abstain_too_wide: 48
+- his_entry_filled: 1368
+- his_entry_no_trigger_no_minute_above_level: 27
+- his_minutes_ok: 321
+
+## G8 — this read's own trade list through trade_impact.py (before any number)
+- era A: entered after the cutoff 0, holds past the last bar 0 (207 trades)
+- era B: entered after the cutoff 0, holds past the last bar 0 (12 trades)
+
+## ACCOUNTS — the deciding window 2020-01-27..2022-06-14 (start 1.0 in cash; his sizing; no margin)
+- deciding (d3_p33_tspd, cap_30) <- DECIDING: final 3.635 | by year 2020 162.7%, 2021 46.8%, 2022 -5.8% | max DD 24.2% | entered 166, skipped no room 39, per-stock limit 0 (trimmed 1), cap-bound 85, concurrent same stock 2 | max open 6, max gross 98.6%
+- primary_exit_cap30 (p33_s3_t10, cap_30): final 3.726 | by year 2020 167.3%, 2021 45.9%, 2022 -4.5% | max DD 24.2% | entered 166, skipped no room 39, per-stock limit 0 (trimmed 1), cap-bound 85, concurrent same stock 2 | max open 6, max gross 98.6%
+- speed_cap20 (d3_p33_tspd, primary): final 3.651 | by year 2020 141.1%, 2021 58.3%, 2022 -4.4% | max DD 21.6% | entered 182, skipped no room 23, per-stock limit 0 (trimmed 1), cap-bound 144, concurrent same stock 2 | max open 6, max gross 96.2%
+- primary_exit_cap20 (p33_s3_t10, primary): final 3.655 | by year 2020 143.8%, 2021 55.3%, 2022 -3.5% | max DD 21.6% | entered 184, skipped no room 21, per-stock limit 0 (trimmed 1), cap-bound 145, concurrent same stock 2 | max open 6, max gross 96.2%
+- panel_exit (the panel's own exits, cap_30; fills {'panel_exit_close_fill': 53, 'panel_exit': 205}): final 14.065 | by year 2020 400.6%, 2021 245.2%, 2022 -18.6% | max DD 29.8% | entered 151, skipped no room 106, per-stock limit 1 (trimmed 0), cap-bound 60, concurrent same stock 2 | max open 5, max gross 100.0%
+
+## THE DECIDING READOUT — vs QQQ / SPY over 2020-01-27..2022-06-14 (04_vs_market.py's formulas; price only, dividends excluded)
+- DECIDING (d3_p33_tspd, cap_30): total +263.5% (QQQ +26.5%, SPY +15.6%) | CAGR 71.6% | max DD -24.2% (QQQ -31.8%) | Sharpe 1.50 (QQQ 0.48) | beta 0.01 | alpha +62.4%/yr, t 2.31 | 602 sessions
+- HIS BAR (alpha t >= 2.0 AND total > QQQ AND total > SPY AND Sharpe > QQQ's): **PASS**
+- beside (deciding nothing):
+    primary_exit_cap30: total +272.6% (QQQ +26.5%, SPY +15.6%) | CAGR 73.4% | max DD -24.2% (QQQ -31.8%) | Sharpe 1.53 (QQQ 0.48) | beta -0.00 | alpha +63.5%/yr, t 2.36 | 602 sessions -> bar met
+    speed_cap20: total +265.1% (QQQ +26.5%, SPY +15.6%) | CAGR 72.0% | max DD -21.6% (QQQ -31.8%) | Sharpe 1.74 (QQQ 0.48) | beta 0.03 | alpha +59.7%/yr, t 2.66 | 602 sessions -> bar met
+    primary_exit_cap20: total +265.5% (QQQ +26.5%, SPY +15.6%) | CAGR 72.0% | max DD -21.6% (QQQ -31.8%) | Sharpe 1.74 (QQQ 0.48) | beta 0.02 | alpha +59.9%/yr, t 2.67 | 602 sessions -> bar met
+    panel_exit: total +1306.5% (QQQ +26.5%, SPY +15.6%) | CAGR 202.4% | max DD -29.8% (QQQ -31.8%) | Sharpe 2.32 (QQQ 0.48) | beta 0.15 | alpha +122.0%/yr, t 3.53 | 602 sessions -> bar met
+    deciding config, breakout-dated only (n = 219): final 3.535 | total +253.5% (QQQ +26.5%, SPY +15.6%) | CAGR 69.7% | max DD -26.8% (QQQ -31.8%) | Sharpe 1.50 (QQQ 0.48) | beta -0.00 | alpha +60.9%/yr, t 2.32 | 602 sessions
+    deciding config, EP-dated only (n = 43): final 1.152 | total +15.2% (QQQ +26.5%, SPY +15.6%) | CAGR 6.1% | max DD -8.2% (QQQ -31.8%) | Sharpe 0.62 (QQQ 0.48) | beta 0.02 | alpha +6.2%/yr, t 0.92 | 602 sessions
+    deciding config, without flickers (n = 174): final 5.385 | total +438.5% (QQQ +26.5%, SPY +15.6%) | CAGR 102.3% | max DD -18.5% (QQQ -31.8%) | Sharpe 2.03 (QQQ 0.48) | beta -0.02 | alpha +78.1%/yr, t 3.14 | 602 sessions
+    deciding config, first breaks only (n = 111): final 2.433 | total +143.3% (QQQ +26.5%, SPY +15.6%) | CAGR 45.1% | max DD -21.9% (QQQ -31.8%) | Sharpe 1.35 (QQQ 0.48) | beta -0.06 | alpha +42.8%/yr, t 2.13 | 602 sessions
+    deciding config, 2020 alone: total +162.7% (QQQ +43.9%, SPY +15.7%) | CAGR 179.3% | max DD -22.6% (QQQ -28.6%) | Sharpe 2.18 (QQQ 1.24) | beta -0.08 | alpha +120.8%/yr, t 2.17 | 237 sessions
+    deciding config, 2021 alone: total +44.9% (QQQ +28.6%, SPY +28.7%) | CAGR 44.9% | max DD -24.2% (QQQ -10.9%) | Sharpe 1.17 (QQQ 1.48) | beta 0.30 | alpha +36.4%/yr, t 0.96 | 252 sessions
+    deciding config, 2022 alone: total -5.3% (QQQ -31.3%, SPY -21.7%) | CAGR -11.5% | max DD -5.5% (QQQ -31.4%) | Sharpe -2.22 (QQQ -2.28) | beta 0.02 | alpha -10.3%/yr, t -1.25 | 113 sessions
+
+## PANEL CLOCK vs OUR FILL (F5, beside, deciding nothing) — the deciding window's dated entries, ORH5 fill minute vs the panel's clock on E (same minute = ambiguous, not counted)
+- all: filled 205; fill BEFORE a flat full snapshot on E 30; fill AFTER the first holding snapshot on E 17 (held before 09:35: 6); contradicting either way 47; day-0 stop before the first holding snapshot on E 8; day-0 stop on an entry first seen after E 16
+- breakout / both: filled 185; fill BEFORE a flat full snapshot on E 26; fill AFTER the first holding snapshot on E 14 (held before 09:35: 5); contradicting either way 40; day-0 stop before the first holding snapshot on E 4; day-0 stop on an entry first seen after E 15
+- EP: filled 20; fill BEFORE a flat full snapshot on E 4; fill AFTER the first holding snapshot on E 3 (held before 09:35: 1); contradicting either way 7; day-0 stop before the first holding snapshot on E 4; day-0 stop on an entry first seen after E 1
+- deciding config WITHOUT the 47 contradicting fills: final 2.456 | by year 2020 75.6%, 2021 43.9%, 2022 -2.8% | max DD 23.0% | entered 132, skipped no room 26, per-stock limit 0 (trimmed 0), cap-bound 73, concurrent same stock 0 | max open 5, max gross 96.6%
+    total +145.6% (QQQ +26.5%, SPY +15.6%) | CAGR 45.7% | max DD -23.0% (QQQ -31.8%) | Sharpe 1.32 (QQQ 0.48) | beta 0.14 | alpha +41.0%/yr, t 1.95 | 602 sessions -> bar not met (beside)
+
+## PER TRADE — the deciding window, the deciding arm (filled + mature; R at 0 / 0.1 / 0.2% exit slippage)
+  group                            | n   | >=5R/100 | >=10R/100 | >=20R/100 | max R  | worst R | win   | mean R | median R | sum R  | mean R @0.1% | @0.2% 
+  ---------------------------------+-----+----------+-----------+-----------+--------+---------+-------+--------+----------+--------+--------------+-------
+  all                              | 205 | +13.7    | +2.9      | +1.0      | +48.98 | -9.36   | 37.1% | +1.055 | -1.000   | +216.2 | +1.017       | +0.978
+  breakout                         | 185 | +14.1    | +2.7      | +1.1      | +48.98 | -9.36   | 38.4% | +1.089 | -1.000   | +201.4 | +1.049       | +1.009
+  EP                               | 20  | +10.0    | +5.0      | +0.0      | +11.37 | -1.01   | 25.0% | +0.741 | -1.000   | +14.8  | +0.719       | +0.698
+  flickers                         | 70  | +1.4     | +0.0      | +0.0      | +5.91  | -9.36   | 10.0% | -0.838 | -1.000   | -58.6  | -0.875       | -0.912
+  retriggers                       | 127 | +13.4    | +3.1      | +0.8      | +26.91 | -9.36   | 38.6% | +0.879 | -1.000   | +111.7 | +0.840       | +0.800
+  era A                            | 197 | +14.2    | +3.0      | +1.0      | +48.98 | -9.36   | 37.1% | +1.119 | -1.000   | +220.4 | +1.081       | +1.043
+  era B                            | 8   | +0.0     | +0.0      | +0.0      | +0.44  | -1.00   | 37.5% | -0.519 | -1.000   | -4.2   | -0.572       | -0.624
+  primary exit p33_s3_t10 (beside) | 205 | +13.7    | +2.9      | +1.0      | +48.98 | -9.36   | 37.1% | +1.076 | -1.000   | +220.5 | +1.037       | +0.999
+  panel exits (beside)             | 258 | +15.9    | +7.0      | +3.1      | +91.75 | -9.33   | 48.4% | +2.030 | -0.012   | +523.8 | +1.995       | +1.960
+- not mature (open mark / degraded at the export's end or a break): 0, booked R sum 0.0
+
+## BESIDE — other spans and populations (deciding config; deciding nothing)
+- deciding, all years 2017-2023 (n = 292, filled 219): final 3.707 | by year 2017 -0.2%, 2018 0.0%, 2019 -2.8%, 2020 161.4%, 2021 46.8%, 2022 -6.5%, 2023 6.4% | max DD 24.2% | entered 180, skipped no room 39, per-stock limit 0 (trimmed 1), cap-bound 92, concurrent same stock 2 | max open 6, max gross 98.6%
+- deciding + dated wider than the cap (n = 342, filled 246): final 4.586 | by year 2017 6.3%, 2018 -0.9%, 2019 -13.7%, 2020 161.4%, 2021 72.1%, 2022 -3.2%, 2023 15.8% | max DD 22.9% | entered 205, skipped no room 41, per-stock limit 0 (trimmed 1), cap-bound 108, concurrent same stock 2 | max open 6, max gross 98.6%
+- deciding + undated (open fill, one-ADR stop) (n = 1664, filled 1341): final 20.530 | by year 2017 25.1%, 2018 -0.7%, 2019 38.0%, 2020 264.6%, 2021 86.3%, 2022 43.9%, 2023 22.6% | max DD 28.1% | entered 587, skipped no room 753, per-stock limit 1 (trimmed 17), cap-bound 77, concurrent same stock 44 | max open 14, max gross 99.8%
+- 2022-11 .. 2023 tail alone (n = 9, filled 4): final 1.056 | by year 2017 0.0%, 2018 0.0%, 2019 0.0%, 2020 0.0%, 2021 0.0%, 2022 -0.8%, 2023 6.4% | max DD 3.6% | entered 4, skipped no room 0, per-stock limit 0 (trimmed 0), cap-bound 1, concurrent same stock 0 | max open 2, max gross 41.7%
+
+## SAME-DAY BAND (beside) — 200 draws, seed 702, key `holdings|band|A`: other tl breakouts on his era-A breakout buy days
+- pool: 22,660 tl rows on 151 days -> 22,189 walkable control events (per day min 4, median 120, max 622); excluded his_name_that_day 471
+- his breakout-dated entries alone (n = 212): final 3.602; the band's final equity p5 0.788 / p25 0.925 / p50 1.074 / p75 1.267 / p95 1.656; draws at or above his 0.0%; days short of events 0
+    2020: his 125.6% | band p5 -18.3% p50 4.1% p95 37.9%
+    2021: his 61.4% | band p5 -14.5% p50 1.4% p95 30.5%
+    2022: his -1.1% | band p5 -1.9% p50 -0.5% p95 0.3%
+
+## Outputs written under /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/replay: trades.tsv.gz, g8_A.tsv, g8_B.tsv, g8_A_impact.txt, g8_B_impact.txt, account_his.tsv, account_band.tsv, market.tsv
