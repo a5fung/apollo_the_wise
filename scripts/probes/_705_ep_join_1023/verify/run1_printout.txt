@@ -1,0 +1,92 @@
+# #705 EP JOIN 01 (outcome-free). Every choice fixed in the script header before the first run.
+# EP event (primary): open(E) >= close(E-1) x 1.09 AND v(E) >= 3 x mean v(E-20..E-1) AND raw close(E-1) >= $5 AND median $vol(E-20..E-1) >= $10M AND ticker/type universe AND no adjustment flag / identity break on E
+# join window E in [s0-10, s0+5] sessions; delta = idx(E) - idx(s0): >0 label BEFORE the gap day, 0 ON it, <0 AFTER it; tie -> the earlier E
+- constants asserted against source: ep_detector _MIN_GAP_PCT_DEFAULT 9.0 · MIN_PREV_CLOSE 5.0 · MAX_EXTENSION_PCT 50 · cb.MIN_PRICE 5.0 · cb.MIN_DOLLAR_VOL 10,000,000 · cb.MIN_HISTORY 130 · historical_scan gap 10 / rvol 2.0 · backtester MIN_ADV_DOLLAR_VOLUME 1,000,000
+
+## 0. Labels: positive (bought or best) 729 | breakout-matched 435 | UNMATCHED 294 (era A 263, era B 31)
+- calendars: A 1635 sessions 2016-01-04..2022-06-30 | B 821 sessions 2021-09-27..2024-12-31 | the two daily files overlap 2021-09-27..2022-06-30
+- side inputs: typed symbols A 3942 / B 3942 (untyped admitted) | adjustment/discontinuous flags loaded (only klasses ['discontinuous_across_known_adjustment', 'known_adjustment_event']) A 268 / B 383 pairs | identity-break symbols A 667 / B 1292
+- era B split list: 6869 splits through 2026-10-16 (the export's last session — DISCLOSED post-cut input: split dates/ratios only); 3005 of them execute after 2024-12-31
+
+## 1A. Era A daily file: {'rows_read': 12005007, 'rows_off_calendar_dropped': 0, 'rows_kept': 12005007, 'symbols': 12532}
+- wide table + primary: {'rows_with_prior_bar_not_prev_session': 211391, 'rows_gap_ge_wide_any': 155792, 'rows_gap_ge_wide_dirty_or_short_baseline': 23602, 'rows_gap_ge_9_vr_ge_3_but_dirty_baseline': 1555, 'wide_rows': 132190, 'primary_events': 3378, 'primary_excl_adj_flag': 1, 'primary_excl_identity_break': 2, 'primary_if_liq_1m': 6057, 'primary_price_verdict_differs_under_2024_split_cut': 0}
+- PRIMARY EP events: 3,378 on 1235 days, 1613 symbols; E range 2016-02-02..2022-06-29; per year {'2016': 326, '2017': 378, '2018': 455, '2019': 484, '2020': 773, '2021': 707, '2022': 255}; median per day 2
+- beside, within the primary events: gap >= 10% 2868 | vr20_med >= 2 3378 | vr20_mean >= 10 612 | vr50_mean >= 3 3011 (vr50 missing 104) | ext_ok (<50%) 3270 | hist >= 130 3103
+- the $1M floor instead of $10M would admit 2,679 more events (6,057 total)
+
+## 1B. Era B daily file: {'rows_read': 13830569, 'rows_dropped_after_cut': 5210943, 'rows_off_calendar_dropped': 0, 'rows_kept': 8619626, 'symbols': 15702}
+- wide table + primary: {'rows_with_prior_bar_not_prev_session': 188545, 'rows_gap_ge_wide_any': 182523, 'rows_gap_ge_wide_dirty_or_short_baseline': 66529, 'rows_gap_ge_9_vr_ge_3_but_dirty_baseline': 5462, 'wide_rows': 115994, 'primary_events': 1964, 'primary_excl_adj_flag': 1, 'primary_excl_identity_break': 0, 'primary_if_liq_1m': 3297, 'primary_price_verdict_differs_under_2024_split_cut': 5}
+- PRIMARY EP events: 1,964 on 633 days, 1089 symbols; E range 2021-10-25..2024-12-31; per year {'2021': 146, '2022': 508, '2023': 527, '2024': 783}; median per day 2
+- beside, within the primary events: gap >= 10% 1700 | vr20_med >= 2 1964 | vr20_mean >= 10 260 | vr50_mean >= 3 1699 (vr50 missing 128) | ext_ok (<50%) 1935 | hist >= 130 1628
+- the $1M floor instead of $10M would admit 1,333 more events (3,297 total)
+
+## 2. Join of the positive labels to EP events (window [s0-10, s0+5]; nearest |delta|, tie -> earlier E)
+- era A unmatched positive labels n = 263 | EP coverage {'full': 263} | EP-eligible E range 2016-02-02..2022-06-29
+- era B unmatched positive labels n = 31 | EP coverage {'full': 31} | EP-eligible E range 2021-10-25..2024-12-31
+
+### 2a. The 294 UNMATCHED positive labels against PRIMARY EP events
+- era A: matched to an EP event 25/263 (9.5%) | distinct (sym, E) events 19 | labels with > 1 event in the window 5 | bought 25 · best 0
+- era A position of the label vs the EP day: n = 25 | label BEFORE the gap day (delta >= +1) 3 | ON it (0) 3 | AFTER it (delta <= -1) 19 | median delta -6.0 | histogram (delta: n) -10:2 -9:3 -8:3 -7:2 -6:4 -5:1 -4:1 -1:3 +0:3 +1:1 +2:1 +4:1
+    matched events' gap %: median 13.4 (quartiles 11.2..17.7) | vr20_mean median 4.3 | median $vol20 median $302M | ext5 >= 50% (would fail the live extension cap) 6 | hist < 130 4
+    matched (sym, E, delta): TEVA@2017-09-11(-1), OLED@2019-10-31(-5), TLRY@2020-03-26(+4), EXE@2020-04-24(+2), EXE@2020-04-24(+1), DKNG@2020-04-27(-10), DKNG@2020-04-27(-8), MELI@2020-05-06(+0), NVAX@2020-07-07(-10), SRNE@2020-08-05(-7), DKNG@2020-09-02(-9), DKNG@2020-09-02(-8), DKNG@2020-09-02(-6), NIO@2020-10-14(-6), NIO@2020-10-14(-7), XPEV@2020-11-05(-8), MRNA@2020-11-30(+0), FUBO@2020-12-22(-1), QS@2020-12-22(-9), NFLX@2021-01-20(-1), GME@2021-01-26(-6), UPST@2021-03-18(-9), GME@2021-05-26(-4), TTD@2021-11-08(+0)
+- era B: matched to an EP event 1/31 (3.2%) | distinct (sym, E) events 1 | labels with > 1 event in the window 0 | bought 1 · best 0
+- era B position of the label vs the EP day: n = 1 | label BEFORE the gap day (delta >= +1) 0 | ON it (0) 0 | AFTER it (delta <= -1) 1 | median delta -3.0 | histogram (delta: n) -3:1
+    matched events' gap %: median 22.5 (quartiles 22.5..22.5) | vr20_mean median 4.5 | median $vol20 median $604M | ext5 >= 50% (would fail the live extension cap) 0 | hist < 130 1
+    matched (sym, E, delta): KWEB@2022-03-16(-3)
+
+### 2b. Variants beside (the same join, the event set re-defined; per era: matched labels of the 294)
+- era A (n = 263): primary 25 | gap10 24 | vrmed2 38 | vr10 1 | vr50_3 29 | liq1m 29 | ext_ok 20 | hist130 21 | the $1M floor admits 4 more labels than $10M
+- era B (n = 31): primary 1 | gap10 1 | vrmed2 1 | vr10 0 | vr50_3 1 | liq1m 1 | ext_ok 1 | hist130 0 | the $1M floor admits 0 more labels than $10M
+
+### 2c. Overlap beside: the 435 BREAKOUT-MATCHED positive labels that also have a primary EP event in the EP window
+- era A: 52/423 (12.3%) | distinct events 33; of those, EP day == our breakout day E_tl 10
+- era B: 3/12 (25.0%) | distinct events 3; of those, EP day == our breakout day E_tl 0
+
+## 3. CLASSIFICATION LADDER of the 294 (first match, in the header's order) — per label and per distinct (sym, s0)
+- era A (labels 263; distinct (sym, s0) 259): a_EP_matched 25 (24) | b_symbol_not_in_file 0 (0) | c_not_in_universe 53 (52) | d_breakout_outside_window 94 (94) | e_parabolic_runup 1 (1) | f_subfloor_gap_day 19 (19) | g_nothing 71 (69)
+    not-in-universe reasons (most frequent failing component per label): {'raw_price_lt_5': 36, 'median_dollar_vol_lt_10M': 17}
+    symbols: [('LGMK', 4), ('UAVS', 3), ('WKHS', 2), ('NILE', 2), ('CUTR', 2), ('CLDX', 2), ('HCCH', 2), ('GORO', 1), ('BIOC', 1), ('MDJH', 1), ('SLS', 1), ('PLUG', 1), ('CVA', 1), ('TMCI', 1), ('NIO', 1), ('OPK', 1), ('IBIO', 1), ('ASAP', 1), ('PENG', 1), ('IMGN', 1), ('GGB', 1), ('IGC', 1), ('HEXO', 1), ('ACB', 1), ('AYTU', 1), ('GEVO', 1), ('LGCY', 1), ('TRVG', 1), ('EDC', 1), ('NMR', 1), ('YVR', 1), ('IDEX', 1), ('VBIV', 1), ('AXU', 1), ('EMAN', 1), ('WLL', 1), ('ICD', 1), ('POLA', 1), ('UEC', 1), ('RIOT', 1), ('QEP', 1), ('DELT', 1), ('CTRL', 1)]
+    sub-floor gap days: failing terms {'vol': 3, 'gap,vol': 13, 'gap': 3}; gap % median 6.2, vr20 median 1.3
+    parabolic: [('CRSR', '2020-11-24')]
+- era B (labels 31; distinct (sym, s0) 31): a_EP_matched 1 (1) | b_symbol_not_in_file 0 (0) | c_not_in_universe 4 (4) | d_breakout_outside_window 6 (6) | e_parabolic_runup 0 (0) | f_subfloor_gap_day 6 (6) | g_nothing 14 (14)
+    not-in-universe reasons (most frequent failing component per label): {'raw_price_lt_5': 2, 'median_dollar_vol_lt_10M': 2}
+    symbols: [('MVST', 1), ('TDW', 1), ('SOUN', 1), ('APLD', 1)]
+    sub-floor gap days: failing terms {'gap,vol': 6}; gap % median 6.1, vr20 median 1.2
+- independent flags (not first-match), per era, on the 294: EP matched | breakout within +-60 | parabolic at s0 (ext5 >= 50%) | run10 >= 50% | sub-floor gap in window | universe ok on some session
+    era A: 25 | 115 | 12 | 25 | 100 | 210
+    era B: 1 | 7 | 1 | 2 | 12 | 27
+
+## 4. Minute-fetch list (ticker|date|tier|era): tier 0 = EP days matched to any positive label, tier 1 = the other primary EP events of those days
+- era A done list: 149587 rows read, 0 dated after 2024-12-31 dropped, 149587 (ticker, date) pairs kept (status {'ok': 149476, 'empty': 111})
+- era B done list: 153809 rows read, 72951 dated after 2024-12-31 dropped, 80858 (ticker, date) pairs kept (status {'ok': 80747, 'empty': 111})
+- tier 0: 54 pairs (era A 50, B 4; on 49 days; 20 carry a breakout-UNMATCHED label) | tier 1 (all other EP events of those days): 189 | total 243 (cap 5000)
+- already fetched (in the era's done list, any status): tier 0 9 of 54 | tier 1 38 of 189
+- FETCH LIST written: 196 pairs (tier 0 45, tier 1 151; era A 157, era B 39; 48 dates; max date 2023-06-08) -> /Users/alvinfung/apollo_data/cb702/qm_streams/ep_join_1023/ep_minute_fetch_list.psv
+
+## 5. Pins (sha256)
+- labels_joined: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/labels_joined.tsv
+- daily_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d  /Users/alvinfung/apollo_data/cb702_pre_v2/daily_closes_all.csv.gz
+- raw_A: f978db45074e9109178a1755c232fa1e684a6f83dab96ab007a26b12008f1444  /Users/alvinfung/apollo_data/cb702_pre_v2/daily_raw_close.csv.gz
+- daily_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba  /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz
+- splits_B: 3199d06d5fb7dcd52ebd34e8c71e148b45ec0ca4a15f7f03ea1b715718882b0b  /Users/alvinfung/apollo_data/cb702/cb702_splits.psv
+- cal_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0  /Users/alvinfung/apollo_data/cb702_pre_v2/sessions.txt
+- cal_B: a17d991a25a1b6b6977c388f352213142868635f94c2010813a7a0f8ef79d2be  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/spy_sessions_eraB_le_2024-12-31.txt
+- sic_A: 0e476c4422d56648d615c48d941edb971a348dfb99821023116d0fd98e617346  /Users/alvinfung/apollo_data/cb702_pre_v2/cb702_sic.psv
+- sic_B: 0e476c4422d56648d615c48d941edb971a348dfb99821023116d0fd98e617346  /Users/alvinfung/apollo_data/cb702/cb702_sic.psv
+- flags_A: 5358e31dc1b27d25c5143bdfca7a98b91a6c7a2d5b1da6c9c9d9ed9c55474c1d  /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/price/A_flags.tsv
+- flags_B: 8bf843859afb70ea59edf6f11cda12160020936c8df3e978b6a819590ea5c3d5  /Users/alvinfung/apollo_data/audit_runs_2026-10-23/B_flags.tsv
+- guard_A: 729741b4cfc5759b6ea5d81da6afdd36c11d806bbcad845964b2b37c72d94057  /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/universe/symbol_guard_A.tsv
+- guard_B: b6cb81b6c4a1f415defc5adcf236402d93cd654c33736aa0b120b78c357b5650  /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/runs_2026-10-23/universe/symbol_guard_B.tsv
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6  /Users/alvinfung/apollo_data/cb702_pre_v2/minutes/_done.psv
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178  /Users/alvinfung/apollo_data/cb702/minutes/_done.psv
+- ep_detector: 189b93ecf4300227a530cb74344d0df36a03449eb67fd5a378e7ada27cffacb5  /Users/alvinfung/apollo_the_wise/agents/market_intelligence/ep_detector.py
+- historical_scan: 4858e8f320d660876e8d2bdc843fec675cc3a1d6954497aec682c20ae2092790  /Users/alvinfung/apollo_the_wise/agents/market_intelligence/backtester/historical_scan.py
+- bt_filters: 9192be05fa5950afb9f6d3e12fba82b53839c7b746f638396a8dd86a1eae5f59  /Users/alvinfung/apollo_the_wise/agents/market_intelligence/backtester/filters.py
+- this script: 22dc649a258f5d1ed8a47cae4b71bcb474b3352c2e4169cfea8b5eb6a3785577
+- output ep_events_A.tsv.gz: f29c4662ed4de4a179fcbe477025b519d1eba90ef934aa13dd2b1436f5f75a12
+- output ep_events_B.tsv.gz: f775eb1a10196f46526ad62a8a61a771112e450c20348c453e1d0481fe04c0fb
+- output ep_fetch_tier0_labels.tsv: a6447fddf716a2d90ccda4d8f003666064ec4c783b03958611b77b3fbdefafd8
+- output ep_minute_fetch_list.psv: 3edb9e01a807e0fe9661524d6a7c2c69f853ea63ca22ac7b046b552b3c3a1702
+- output ep_wide_A.tsv.gz: b696f83462c51bbe11b5d8edd1fe96739fce609161fda25ab93e5e40c83a2374
+- output ep_wide_B.tsv.gz: e22b2bc2fd6770ba6fc04c714ee073b45b0ce821e274086887db11708c1ae1d9
+- output labels_ep_joined.tsv: 0d1e369a297edf34237506ab568ae41a2f77e693143b9faa803db0d550f87dd3

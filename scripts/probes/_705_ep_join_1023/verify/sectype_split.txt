@@ -1,0 +1,8 @@
+era A primary EP events: n 3378 | CS 2344 | ADRC 152 | UNTYPED 882 (26%) | of the untyped, 5-letter tickers ending W/U (warrant/unit shape) 0 | other typed 0
+era A tier-1 controls to fetch: n 116 | CS 79 | ADRC 4 | UNTYPED 33 (28%) | of the untyped, 5-letter tickers ending W/U (warrant/unit shape) 0 | other typed 0
+era B primary EP events: n 1964 | CS 1765 | ADRC 111 | UNTYPED 88 (4%) | of the untyped, 5-letter tickers ending W/U (warrant/unit shape) 0 | other typed 0
+era B tier-1 controls to fetch: n 35 | CS 16 | ADRC 17 | UNTYPED 2 (6%) | of the untyped, 5-letter tickers ending W/U (warrant/unit shape) 0 | other typed 0
+era A label-matched EP events (distinct): 19 | typed CS/ADRC 18 | UNTYPED 1 -> ['SRNE']
+era B label-matched EP events (distinct): 1 | typed CS/ADRC 0 | UNTYPED 1 -> ['KWEB']
+era A: labels with an EP event within +-60: 60; a flat spread over the 121 sessions puts 7.9 in the 16-session window [-10, +5]; observed 25
+era B: labels with an EP event within +-60: 11; a flat spread over the 121 sessions puts 1.5 in the 16-session window [-10, +5]; observed 1
