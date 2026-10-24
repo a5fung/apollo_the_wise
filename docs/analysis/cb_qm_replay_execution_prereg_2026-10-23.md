@@ -419,3 +419,16 @@ Any outcome the stopped run printed is recorded as seen.
 - minutes_A_used: eae318e06d192fcfa4042a1f18efe5338d018185be3c4b7a56284af8b8577643  the 584 minute date files the walk set opens
 - minutes_B_used: fe83918a9f5d318cc1bd50e0390cded203ac721eab3b68dbb1d9dcfa382ccde8  the 50 minute date files the walk set opens
 - doc_body: 329ac865f814de0909332ff516ea5d52dea525fbef7b5fdcf1c9208a521143fe  this registration's text above its marker line
+
+## RESULT — the one real run, 2026-10-23 after the freeze commit (printout `scripts/probes/_705_qm_replay_1023/02_execution_variants.txt`)
+
+- **Registered verdict: NEXT GAPS.** COMBINED (V1 + V2 + V3 + V4) at 1% risk / 30% cap: 2020 +38.5%, 2021 +13.7%, final 1.507;
+  the same-day band at or above it in 10.0% of draws. Baseline parity held (V0 re-walked = the first read, day by day).
+- **The fixes as written made his calls WORSE, except the size cap:** V0 (his rules) 1.850 → V1 buy-stop at the level 1.268, V2
+  TC2000 ADR 1.838, V3 re-entries 1.631, **V4 30% cap 2.044** (the only gain), COMBINED 1.507.
+  - V1 fills 216 of 236 (42 more), but the win rate falls to 21.8% and 2021 to +0.8%: the extra fills are mostly gap-and-fade
+    opens. The control's V1 row (max +590R, worst −94R) is the minute-0 own-low stop convention at work (§1.4b) — not a result.
+  - V3: 114 re-entry trades at a lower mean R (+0.32 per trade) and 58 skipped for no room.
+- **Read with it:** these variants were chosen after the first read's fills were seen; none is validated. The registered next
+  gaps, in his words and the operator's: stop placement beyond one ADR / the structural stop, adds / pyramiding, exit timing,
+  market exposure, and the EPs and parabolic shorts in his record. Independent recount: running (`verify/recount_exec/`).
