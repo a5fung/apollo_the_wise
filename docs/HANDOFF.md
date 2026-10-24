@@ -6,6 +6,22 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
+## 2026-10-23 (Fri) CLOSE
+
+**2026-10-23 (Fri): CLOSE run on his word.** (This section mirrors the machine-local pickup memory.)
+
+- **Board 22 → 22. Server 0d78e80c.** Undeployed on main: the Opus fallback pin → opus-5-5 + the judge-eval gate accepting the evaluated model (CLAUDE.md 10-23 entry). Weekend deploys are unrestricted; deploy one service at a time and poll the box.
+- **Data:** the rebuilt 2017–21 file `apollo_data/cb702_pre_v2/` (delisted refetch + dedupe + types) clears every file-only gate check; `cb702_pre` is untouched (pinned). Minute trees complete for it; EP-day minutes in `cb702/minutes_ep_1023/`.
+- **#705 — his frame now (operator notes 10-23):** Qullamaggie's three setups are proven profitable (audited); a replay that misses it = OUR implementation defect, never "no edge". North star = a trading brain that trades them profitably; his database is the starting point. [[qullamaggie-setups-are-proven-profitable]] [[rebuild-qullamaggies-setup-database]]
+  - Track A fit (frozen): FAIL — cap of 6/week on every crossing was a 98% cut; base depth encoded backwards.
+  - Qullamaggie replay (frozen, run once, recounted): his 236 calls under his rules 1.85× 2017–21 (2020 +48%, 2021 +25%), beating 99.5% of same-day pick sets; verdict EXECUTION / data.
+  - Execution-fix replay (frozen, recounted 50/50): fixes as written made it worse except the 30% cap (2.04×); verdict NEXT GAPS: structural stop, adds/pyramiding, exit timing, market exposure, EPs, parabolic shorts.
+  - EP prep: 26 of his 294 unmatched buy calls sit on an EP gap day; EPs are bought at the gap-day ORH (his correction — a stream label dates the TALK, not the buy).
+  - The sealed 2025–26 combined test is ON HOLD until an execution model reproduces his calls.
+- **#491:** the 15-night test failed its cohort goal; U2 fix drafted in worktree `.claude/worktrees/wf_2f1dda4d-9e8-2` (16 tests) — Sat: Opus review, merge, deploy `both` + `execution`, file its EXPECT block.
+- **Sat 10-24:** #491 U2 ship; #705 replay round 3 (the named next gaps, pre-registered from his words) + the EP replay registration. **Sun 10-25:** #314 parabolic replay round 3 on v2; the data-corrected repeat of the 2017–21 runner reads; #707 vault plan for him.
+- **Open his-call items: none to raise.** The AMRX 30% fork sits on #705 — do not re-raise.
+
 ## 1. THE transition fact — what does and does NOT cross machines
 
 | Surface | Location | Crosses to laptop? |
