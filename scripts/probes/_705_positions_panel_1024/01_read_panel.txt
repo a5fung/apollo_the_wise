@@ -1,0 +1,52 @@
+#705 positions panel read (2026-10-24 11:45) - frames dir /Users/alvinfung/apollo_data/cb702/qm_streams/vision/frames_grades: 2184 frames, OCR'd 2184
+out: /Users/alvinfung/apollo_data/cb702/qm_streams/vision/positions_panel_grades.jsonl
+
+## REFERENCE (checked by eye by the caller)
+- g_0814 2019-11-12 1280x720: exact (edit distance 0) | 17 symbols, 17 rows | footer '15 of 17 iswra in Pesorul WwiLat' -> 15/17 total OK | note: the caller's list says QLED; the screen (enlarged) and all 8 OCR variants show OLED = Universal Display, which traded 2019-11-12 at 199.09-208.01 (+2.3%, the panel shows about +2.9% at 09:44 ET); QLED has no bars at all - a transcription slip | against the caller's list as written: near (edit distance 1)
+- g_1657 2020-06-15 1920x1080: exact (edit distance 0) | 19 symbols, 19 rows | footer '17 of 19 Items in Personal WatchList' -> 17/19 total OK
+- g_1985 2021-04-07 1920x1080: exact (edit distance 0) | 16 symbols, 16 rows | footer '20 Items in Personal WatchLiat Last Sort' -> 20/20 total OK
+- g_0957 2023-01-26 1920x1080: exact (edit distance 0) | 8 symbols, 8 rows | footer '7 of 8 Items in Personal WatchLst Last S' -> 7/8 total OK
+- tally: exact 4 | symbols right 60/60 (list length minus edit distance) | footer total right 4/4
+
+## HAND CHECK (by eye on the enlarged panel crop, this card)
+- g_1645 2018-08-29 1920x1080: exact (edit distance 0) | 16 symbols, 16 rows | footer '16 Items in Personal WatchList Last Sort' -> 16/16 total OK | note: 2018 has one video: same list as dev frame g_1641, whose output was seen - not blind
+- g_1835 2019-10-23 1280x720: wrong (edit distance 2) | 12 symbols, 12 rows | footer '[11 cf 12 Isvnd in Pesonal WitchLet Laz ' -> 11/12 total OK | got KV ACAD TEVA RETA APPS ENDP RLGY PBR ICP BRZU MIK MNK | expected IGV ACAD TEVA RETA APPS ENDP RLGY PBR JCP BRZU MIK MNK | note: 1st symbol IGV by eye (IGV/KGV unsure)
+- g_1998 2019-10-25 1280x720: near (edit distance 1) | 13 symbols, 13 rows | footer '12 of +7 isн 2. Риcoлаl Wvcla' -> 12/17 total OK | got ENDP MNK BRZU PBR ACAD JCP MIK RLGY KV PLUG TEVA APPS USLV | expected ENDP MNK BRZU PBR ACAD JCP MIK RLGY IGV PLUG TEVA APPS USLV | note: scrolled; IGV as above
+- g_1951 2020-01-16 1280x720: near (edit distance 1) | 23 symbols, 23 rows | footer '10 ct 22 tarek in Parsseal WaschLiz Lact' -> 10/22 TOTAL MISMATCH (eye 23), first number misread (eye 19) | got BYND TEUM TSLA TDOC APPS LX STNE BABA HTHT DXCM ONTX AXSM FB SE AVLR RADA BE PLUG FCEL CTST VSTM OCGN MNK | expected BYND TEUM TSLA TDOC APPS LK STNE BABA HTHT DXCM ONTX AXSM FB SE AVLR RADA BE PLUG FCEL CTST VSTM OCGN MNK | note: 1280x720 2020; header 'A - |' + Select Conditions row; first footer number unsure
+- g_0007 2020-08-13 1920x1080: exact (edit distance 0) | 15 symbols, 15 rows | footer '4 of 15 Items in Personal WatchList Last' -> 4/15 total OK
+- g_2179 2020-10-08 1920x1080: exact (edit distance 0) | 19 symbols, 19 rows | footer 'ms in Personal WatchList Last Sorted 05:' -> None/None TOTAL MISMATCH (eye 19) | note: the broadcast caption ('youtube') covers the start of the footer
+- g_1829 2021-04-27 1920x1080: exact (edit distance 0) | 12 symbols, 12 rows | footer '12 Items In Personal WatchLiat Last Sort' -> 12/12 total OK
+- g_0309 2021-01-20 1920x1080: exact (edit distance 0) | 19 symbols, 19 rows | footer '19 Items in Porsonal WatchList Last Sort' -> 19/19 total OK
+- g_2153 2022-01-12 1920x1080: exact (edit distance 0) | 8 symbols, 8 rows | footer '4 of 8 Items in Personal WatchList LastS' -> 4/8 total OK | note: mouse cursor over the F row
+- g_0533 2023-06-01 1920x1080: exact (edit distance 0) | 9 symbols, 9 rows | footer '#9 of 9 Items in Personal WatchList Last' -> 9/9 total OK
+- tally: exact 7, near 2, wrong 1 | symbols right 142/146 (list length minus edit distance) | footer total right 8/10
+
+## RUN over 2184 frames
+- panel found, by year (taskbar date, else the video's upload date) and resolution:
+    2017 1920x1080: 6/204 (3%)
+    2018 1920x1080: 6/6 (100%)
+    2019 1280x720: 153/156 (98%)
+    2020 1280x720: 23/24 (96%)
+    2020 1920x1080: 1109/1143 (97%)
+    2021 1920x1080: 566/571 (99%)
+    2022 1920x1080: 41/41 (100%)
+    2023 1920x1080: 39/39 (100%)
+- by year: 2017 6/204 (3%) | 2018 6/6 (100%) | 2019 153/156 (98%) | 2020 1132/1167 (97%) | 2021 566/571 (99%) | 2022 41/41 (100%) | 2023 39/39 (100%)
+- found 1943/2184 (89.0%); visible rows: median 16, min 0, max 29
+- footer total read on 1912/1943; visible rows < footer total (list scrolled / cut) 577 (30%) | equal 1273 (67%) | more rows than the total 62 (3%)
+- rows 28076: unanimous 24940, not_in_bars 1765, majority 892, corrected_vote 291, corrected_lookalike 140, unread 41, ink_shape_I 7
+- frames with every row read and none corrected / outside our bars: 650/1943
+- footer line not found 21; Sym column from the grid lines 1941/1943; 'Positions' visible in the header 999/1943
+- most frequent reads not in our bars: GBTC 719, ETHE 200, GSX 121, SBE 91, FEAC 49, INAQ 48, WRTC 48, APXT 46, TVIX 41, ETCG 39, OPES 35, THCB 31, ACTC 31, KV 31, CIIC 29, HVBTF 18, SHLL 18, UGAZ 16, HTZ 11, CCIV 10
+- most frequent corrections: AFPS->APPS 70, ERZU->BRZU 47, ENOP->ENDP 43, FBR->PBR 34, BAEA->BABA 24, ICP->JCP 20, ELDP->BLDP 15, DOS->DDS 12, KOO->KOD 12, MINK->MNK 11, OXCM->DXCM 10, SDRL->SORL 10, MNX->MNK 9, DXOM->DXCM 9, DOOG->DDOG 9, ADPS->APPS 7, BLOM->BLCM 6, COS->CCS 6, EMA->BMA 6, ARPS->APPS 5
+- frames showing a 'B - Positions' list (NOT read: A-only rule): 2017 33
+- not found 241; A-like tokens seen there but rejected: 
+
+## KNOWN FAILURE MODES (from the reference + hand checks and the run)
+- 1280x720 frames (2019 - Jan 2020, 180 frames): ~6 px text; a look-alike read can be another real ticker (SDRL->SORL, DDS->COS->CCS, BW->EW, LK->LX, IGV->KV) - the lexicon cannot catch a wrong read that is itself a ticker; 3 of 4 hand-check misses are here. Every row keeps its votes / 'was' / 'how' so these can be re-judged; the '% Change' cell is already OCR'd (passPct) for a later check against that day's bar
+- 1280x720 footer counts: digits misread (30 of 31 -> 20 of 31, 19 of 23 -> 10 of 22): the 'of M' total is more reliable than the first number
+- a real ticker missing from our bars is left as read and flagged not_in_bars (GBTC/ETHE OTC trusts, renamed: GSX, SPACs) - never corrected
+- the header must be on screen: a pop-up (Messages) over the 'A -' header, a full-screen chart, or a layout without the right-hand column -> panel_found false (counted as not found, not misread)
+- broadcast caption over the footer ('Type !start', 'youtube', 'qullamaggie.com'): total_n unknown; caption glyphs inside the list are dropped by height
+- 2017: the list is 'B - Positions' (33 frames) or absent; not read under the A-only rule
+- a row half-hidden at the top / bottom of a scrolled list is read when possible and flagged 'partial'
