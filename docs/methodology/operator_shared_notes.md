@@ -2564,3 +2564,7 @@ Standing rule from this (2026-10-23): for breakouts, EPs and parabolic shorts al
 > "what he shared is that he has compiled charts of his setups (thousands and thousands) into a database, studied them and gain confidence on his setups. THis is what I'm trying to do with charts, with rules, with backtest, etc. We're trying to recreate his knowledge base as a basis of our trading for apollo"
 
 The north star for #705 / #707 (2026-10-23): rebuild Qullamaggie's own setup database — thousands of charts of each setup, studied until the rules are trusted — as the basis of Apollo's trading. Charts, rules and backtests are three views of that one database.
+
+> "Slight correction, goal is to build trading knowledge brain and successfully trade those setups and strategies profitably. His database is just the starting point, proven to work, we want to rebuild it, extract knowledge, build on top of it, improve it and trade it profitably"
+
+Corrected north star (supersedes the line above): the GOAL is a trading knowledge brain that trades these setups and strategies profitably. Qullamaggie's database is the proven STARTING POINT: rebuild it → extract the knowledge → build on top of it → improve it → trade it profitably.
