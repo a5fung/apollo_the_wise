@@ -2389,3 +2389,15 @@ EVIDENCE:
 - **WOULD-FAIL-IF checked:** the scope keeps Apollo's code docs out of the vault (§2, §5 "stays in Apollo") and moves the 74 machine-local lessons in (§5).
 - ⚠ **What this close cannot show:** the build itself — carried by **#708** (phase 1, 10-31/11-01), not dropped.
 
+## #708 — trading knowledge vault: build phase 1, setups first (2026-10-24)
+
+BAR: "the vault repo exists privately, opens in Obsidian, every moved page cites its source, and the index links each moved section."
+
+EVIDENCE:
+- **Exists privately:** https://github.com/a5fung/trading-vault — `gh repo view` reads visibility PRIVATE; commits 7787bbb (phase 1) and ee09cc9 (all lessons); local `~/trading_vault`.
+- **Opens in Obsidian:** Obsidian 1.14.5 installed from its official release (notarized, Dynalist Inc.); he opened the folder as a vault — his answer: *"opens"*.
+- **Every moved page cites its source:** the three setup pages + the consolidation family carry 262 citations, checked line by line against the verbatim copy of his notes (Opus check `CHECK_phase1.md`: 0 problems after its fixes); the six sources are byte-identical to Apollo with sha256 in `sources/operator_notes/SOURCE.md`; the 71 lessons are byte-identical to the memory notes after the stated normalisation (`CHECK_lessons.md`); the database records every input path + sha256 in `database/BUILD.md`.
+- **The index links each moved section:** `index.md` links setups/, families/, database/, sources/, lessons/README.md (73 entries = the 73 lesson files) and the empty-for-now sections.
+- **WOULD-FAIL-IF checked:** no page copies an Apollo code doc (check 3 PASS: links only); no lesson stays only in machine-local memory — all 71 moved; the one note deliberately kept local is his personal-trading review, by his standing rule that his own trades stay in ~/trading_review (stated in `lessons/README.md`).
+- ⚠ **What this close cannot show:** phases 2–3 (rulings, methods, tests, principles, the ingest + lint routine) — carried by **#709**, not dropped.
+
