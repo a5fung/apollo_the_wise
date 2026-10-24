@@ -2578,3 +2578,7 @@ Correction recorded: a stream label's date is when he TALKED about a trade, not 
 > "Iirc the bottom right of his screen is a stock list of his holding, can you verify?" (2026-10-24)
 
 VERIFIED the same day on stream frames: the bottom-right TC2000 panel is the list "A - Positions" — titled so on 2019-11-12 (APPS frame: YINN, PBR, ENDP, RLGY, BABA, DXCM, TEVA, TDOC, MNK, BLDP, JD, MU, QLED, IPHI, APPS, FCEL, SE; "15 of 17 items") and 2021-04-07 (TDOC frame: AMAT, AAL, LRCX, TSM, SOXL, ALB, JETS, RBLX, TWTR, TQQQ, CLF, FCX, HOFV, NTLA, TIGR, SI; "20 items"); the same "A -" panel on 2020-06-15 (SHOP frame, 19 items, SHOP among them the day he said he bought it) and 2023-01-26 (MDGL frame, 8 items). It holds ETFs as well (TQQQ, SOXL, TNA, JETS, YINN). So every stream frame carries a snapshot of his holdings — the fullest record of his trades the streams hold.
+
+> "The vault is living as in we will continue to build on it, and to it, at lessons, trading results, charts and setups, etc." (2026-10-24)
+
+Standing rule from this: the vault is not a one-time migration. Every new lesson, trading result (each registered read's verdict), chart he shares and setup change goes INTO the vault as it is made — Apollo keeps only the implementation.

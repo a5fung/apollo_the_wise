@@ -76,6 +76,8 @@ Work routes to the model that fits it; each carries its own responsibility. Stan
 
 **On-demand reconcile:** "**where do we stand**" (or similar) = run `python scripts/check_plan.py --today` + read `next-session-pickup` for in-flight context, then report true state (done / in-flight / slipped). One file, one command. (Avoid colliding triggers like "sync"/"status" — those map to trade-state commands here.)
 
+**Vault (operator 2026-10-24, "the vault is living"):** every new lesson, read verdict, shared chart and setup change also goes into `~/trading_vault` (private `a5fung/trading-vault`) as it is made — Apollo keeps the implementation.
+
 **Capture:** "**track it**" / "**track this**" = add it as a `PLAN.md` line immediately — under a project, with an `ETA` + `status` (**Miscellaneous** if no home; **propose a NEW project** if a genuine big-rock). Also route to `data_gated_reviews.yaml` if evidence-gated, or a memory if it's a fact/feedback — confirm back WHERE + the #. Default to over-capturing.
 
 **EVERY task gets a project + ETA + ACTIONABLE DETAIL + a CLEAR OUTCOME AT CREATION — and the OUTCOME half is a GATE now (operator 2026-09-10: *"is dod required for every task?"*). It was not: 21 of 66 open tasks stated nothing checkable, two of them already `deployed`.** That is the hole under the close gate — a task with no criterion closes on prose. `check_plan._dod_required_gate` FAILS the commit on any task without a `DoD:` / `VERIFY-LIVE =` / `VERIFY:`, and it shares ONE extractor (`close_bar_for`) with the close gate so a task cannot satisfy creation and then be unclosable. All 21 were backfilled the same day, so the gate was born green rather than as a warning nobody reads.
