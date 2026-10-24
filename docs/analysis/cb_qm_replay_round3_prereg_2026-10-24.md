@@ -385,3 +385,15 @@ variant's per-trade R. After a STOPPED run they are deleted unread.
 - minutes_A_used: b6a99cdf084ad42c1a4d846e05d10b48404f8225499253583ff78170e95b592a  the 193 minute date files the walk set opens
 - minutes_B_used: d548f85679b9ded20bfa4650c45535d685d820d4dd2040fce84d01bae7b2b652  the 8 minute date files the walk set opens
 - doc_body: 8d9b248c19e12db941a556a3c7cbcfb4df578dda2325f2daad1f6d9a5f243cdb  this registration's text above its marker line
+
+## RESULT — the one real run, 2026-10-24 after the freeze commit (printout `scripts/probes/_705_qm_replay_1023/03_round3.txt`)
+
+- **Registered verdict: NEXT GAPS.** COMBINED (base-low stop + speed trail + QQQ sizing, 30% cap): 2020 +16.6%, 2021 +7.9%, final
+  1.305 (the band arm met at 5.0%, the curve arm not). Baseline parity held (B0 = the first read's 30%-cap row, 2.044).
+- **Per lever, his calls, account at the 30% cap (B0 2.044):** the base-low stop 1.427 (wider stops = smaller positions); the speed
+  trail 2.201 (the only registered gain); QQQ sizing 1.532 (his calls in mixed markets were his best, and it halved them).
+  Beside: the 20-day trail 1.865; no partial, 10-day trail on the whole 2.196 (2021 +37.8%); **2× margin on his rules 2.306 (2020
+  +74.5%, 2021 +32.8%)**; adds on a new high after the partial 1.241 (on COMBINED).
+- **Read with it:** chosen after the first two reads; nothing here is validated. The registered next gaps: the EPs and parabolic
+  shorts in his record, the trades he never mentioned on stream, and adds / margin (still beside until his answer). Independent
+  recount: running.

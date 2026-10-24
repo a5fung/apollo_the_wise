@@ -1,0 +1,421 @@
+# #705 QM replay — 03_round3 (THE REGISTERED READ)
+# registration: docs/analysis/cb_qm_replay_round3_prereg_2026-10-24.md
+- pins re-checked: the Track A inputs, the cb module, the frozen first replay (module c4478588…, tests 37c918a0…, doc body aaaadd29…), the frozen second read (module 346516fb…, tests 6ce013bb…, doc body 329ac865…): no drift; both reads' outputs are on disk (hashed below, not parsed)
+
+## Loads (the first read's loader; era B: every row dated after 2024-12-31 dropped at read)
+- daily exports loaded in 7s: era A 3,661,906 of 12,005,007 rows kept (2,548 tickers, calendar 2016-01-04..2022-06-30); era B 192,250 of 13,830,569 rows kept (247 tickers, calendar 2021-09-27..2024-12-31), rows dated after 2024-12-31 DROPPED AT READ 5,210,943 (asserted: max date kept 2024-12-31 <= 2024-12-31)
+
+## Populations (asserted against the Track A registration)
+- at0_A: 119
+- at0_and_strict_A: 10
+- cal_A: 1635
+- cal_B: 821
+- cand_B_after_cut: 240
+- cand_B_not_discovery: 109478
+- excl_A: 410
+- excl_B: 7
+- first_A: 20650
+- first_B: 12250
+- graded_dates_A: 156
+- graded_dates_B: 7
+- neg_A: 23188
+- neg_B: 345
+- neg_fit: 15107
+- neg_hold: 8081
+- on_E_only_A: 109
+- pos_A: 236
+- pos_B: 9
+- pos_first_A: 132
+- pos_fit: 170
+- pos_hold: 66
+- pos_retrig_A: 104
+- post_A: 87
+- post_B: 3
+- stream_A: 81015
+- stream_B: 41200
+- strict_A: 127
+- strict_B: 6
+- every population equals the registration
+
+### era A
+  year of E | his calls n | first breaks | retriggers | control n | control first breaks | post-E-only n (beside)
+  ----------+-------------+--------------+------------+-----------+----------------------+-----------------------
+  2017      | 6           | 6            | 0          | 223       | 77                   | 1                     
+  2019      | 8           | 6            | 2          | 446       | 77                   | 0                     
+  2020      | 156         | 80           | 76         | 14438     | 3370                 | 57                    
+  2021      | 66          | 40           | 26         | 8081      | 2051                 | 29                    
+  all       | 236         | 132          | 104        | 23188     | 5575                 | 87                    
+- his calls on 156 dates; per date: 1 call(s) on 107 dates, 2 call(s) on 30 dates, 3 call(s) on 12 dates, 4 call(s) on 5 dates, 5 call(s) on 1 dates, 8 call(s) on 1 dates
+- his calls sit on 188 bases (188 first-of-base events, the one-event-per-base reading); strictly-before subset 127; post-E-only events also in the control 27
+- dates whose control holds fewer events than his calls that day: 0
+- QQQ at D (close vs its 10- and 20-day averages; outcome-free): his up 163, mixed 35, down 38, unknown 0; control up 17282, mixed 3123, down 2783, unknown 0
+- minute coverage from the fetch log (`_done.psv` status; no minute file opened): his ok 236 / empty 0 (abstains `no_minutes`) / MISSING 0; control ok 23188 / empty 0 (abstains `no_minutes`) / MISSING 0; post ok 87 / empty 0 (abstains `no_minutes`) / MISSING 0
+- identity break inside (E - 130, E] (excluded, counted): his 0, control 0, post 0; a break AFTER E is forward information, read in the real run only, where it CUTS the walk's forward window at the session before it (never an exclusion)
+- his calls by timing: strictly before E 127, resting ONLY on a label said on E 109 (= 236 - 127); carrying an on-E label 119, of which 10 also carry one strictly before
+- events on a 13:00-close day (ORH fills there read the minutes as stored; fills after 13:00 counted in the real run): his 2, control 133
+- the walk set after the two data exclusions: his 236 of 236, control 23188 of 23188, post-E-only 87 of 87
+- events whose E + 121 sessions run past the era's last session 2022-06-30 (calendar only): 0
+
+### era B
+  year of E | his calls n | first breaks | retriggers | control n | control first breaks | post-E-only n (beside)
+  ----------+-------------+--------------+------------+-----------+----------------------+-----------------------
+  2022      | 1           | 0            | 1          | 78        | 21                   | 0                     
+  2023      | 8           | 6            | 2          | 267       | 85                   | 3                     
+  all       | 9           | 6            | 3          | 345       | 106                  | 3                     
+- his calls on 7 dates; per date: 1 call(s) on 5 dates, 2 call(s) on 2 dates
+- his calls sit on 9 bases (9 first-of-base events, the one-event-per-base reading); strictly-before subset 6; post-E-only events also in the control 1
+- dates whose control holds fewer events than his calls that day: 0
+- QQQ at D (close vs its 10- and 20-day averages; outcome-free): his up 8, mixed 0, down 1, unknown 0; control up 267, mixed 0, down 78, unknown 0
+- minute coverage from the fetch log (`_done.psv` status; no minute file opened): his ok 9 / empty 0 (abstains `no_minutes`) / MISSING 0; control ok 345 / empty 0 (abstains `no_minutes`) / MISSING 0; post ok 3 / empty 0 (abstains `no_minutes`) / MISSING 0
+- identity break inside (E - 130, E] (excluded, counted): his 0, control 0, post 0; a break AFTER E is forward information, read in the real run only, where it CUTS the walk's forward window at the session before it (never an exclusion)
+- events on a 13:00-close day (ORH fills there read the minutes as stored; fills after 13:00 counted in the real run): his 0, control 0
+- the walk set after the two data exclusions: his 9 of 9, control 345 of 345, post-E-only 3 of 3
+- events whose E + 121 sessions run past the era's last session 2024-12-31 (calendar only): 0
+
+## The base low at D (outcome-free: daily bars up to D; the module's `explain_watch` formula, lowest low over (P, D])
+- cross-check against the candidate's stored base_depth (= 1 - base_low / high(P), tolerance 1e-06 relative): mismatches 0 of 23,840 events
+- era A his (n = 236): a stop at the base low, measured from the LEVEL, in ADR20 units: median 2.28, 90th pct 4.18; wider than 1 / 2 / 3 ADR: 88.1% / 60.2% / 28.4%; base low AT OR ABOVE the level 0 (under W1 such an event abstains when its base low is at or above the FILL, else fills with a stop under 0.1% wide); within 0.25 ADR under the level or above it 2 (only among these can a W1 stop be under 0.25 ADR from the fill: the near-zero-stop re-read, §5)
+- era A ctl (n = 23,188): a stop at the base low, measured from the LEVEL, in ADR20 units: median 2.81, 90th pct 4.88; wider than 1 / 2 / 3 ADR: 94.3% / 74.0% / 44.6%; base low AT OR ABOVE the level 56 (under W1 such an event abstains when its base low is at or above the FILL, else fills with a stop under 0.1% wide); within 0.25 ADR under the level or above it 130 (only among these can a W1 stop be under 0.25 ADR from the fill: the near-zero-stop re-read, §5)
+- era A post (n = 87): a stop at the base low, measured from the LEVEL, in ADR20 units: median 2.96, 90th pct 5.70; wider than 1 / 2 / 3 ADR: 97.7% / 86.2% / 49.4%; base low AT OR ABOVE the level 0 (under W1 such an event abstains when its base low is at or above the FILL, else fills with a stop under 0.1% wide); within 0.25 ADR under the level or above it 0 (only among these can a W1 stop be under 0.25 ADR from the fill: the near-zero-stop re-read, §5)
+- era B his (n = 9): a stop at the base low, measured from the LEVEL, in ADR20 units: median 2.69, 90th pct 5.01; wider than 1 / 2 / 3 ADR: 88.9% / 55.6% / 44.4%; base low AT OR ABOVE the level 0 (under W1 such an event abstains when its base low is at or above the FILL, else fills with a stop under 0.1% wide); within 0.25 ADR under the level or above it 0 (only among these can a W1 stop be under 0.25 ADR from the fill: the near-zero-stop re-read, §5)
+- era B ctl (n = 345): a stop at the base low, measured from the LEVEL, in ADR20 units: median 2.55, 90th pct 5.25; wider than 1 / 2 / 3 ADR: 91.6% / 69.6% / 39.4%; base low AT OR ABOVE the level 0 (under W1 such an event abstains when its base low is at or above the FILL, else fills with a stop under 0.1% wide); within 0.25 ADR under the level or above it 0 (only among these can a W1 stop be under 0.25 ADR from the fill: the near-zero-stop re-read, §5)
+- era B post (n = 3): a stop at the base low, measured from the LEVEL, in ADR20 units: median 2.95, 90th pct 5.17; wider than 1 / 2 / 3 ADR: 100.0% / 66.7% / 33.3%; base low AT OR ABOVE the level 0 (under W1 such an event abstains when its base low is at or above the FILL, else fills with a stop under 0.1% wide); within 0.25 ADR under the level or above it 0 (only among these can a W1 stop be under 0.25 ADR from the fill: the near-zero-stop re-read, §5)
+
+## W2's speed cut and W3's market state (outcome-free: ADR20 and QQQ at D)
+- era A his (n = 236): ADR20 at D above 4.79% (W2 trails the 10-day) 181 (76.7%), else the 20-day 55; QQQ at D: up 163 (W3 risk 1%), mixed 35 (0.5%), down 38 (0.5%; W3b: no trade), unknown 0 (0.5%)
+- era A ctl (n = 23,188): ADR20 at D above 4.79% (W2 trails the 10-day) 8339 (36.0%), else the 20-day 14849; QQQ at D: up 17282 (W3 risk 1%), mixed 3123 (0.5%), down 2783 (0.5%; W3b: no trade), unknown 0 (0.5%)
+- era B his (n = 9): ADR20 at D above 4.79% (W2 trails the 10-day) 4 (44.4%), else the 20-day 5; QQQ at D: up 8 (W3 risk 1%), mixed 0 (0.5%), down 1 (0.5%; W3b: no trade), unknown 0 (0.5%)
+- era B ctl (n = 345): ADR20 at D above 4.79% (W2 trails the 10-day) 117 (33.9%), else the 20-day 228; QQQ at D: up 267 (W3 risk 1%), mixed 0 (0.5%), down 78 (0.5%; W3b: no trade), unknown 0 (0.5%)
+- the base low reproduces the candidate's stored base_depth on every event (asserted)
+- the minute date files the walk set opens (era A 193, era B 8) hash to the first read's pins: the walk set is the first read's
+
+## Pins (sha256) — every value below goes under the doc's freeze marker line before the real run
+- labels_joined: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/labels_joined.tsv
+- matched_events: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/matched_events.tsv
+- moments: f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0  /Users/alvinfung/apollo_data/cb702/qm_streams/vision/graded_moments.tsv
+- cand_A: 3c5a66dc3052d0a284cbfee8202f74deb4e5bb75c74565dd8147df015e1baa5a  /Users/alvinfung/apollo_data/cb702_pre_v2/out/candidates_tl_com.tsv
+- cand_B: b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7  /Users/alvinfung/apollo_data/cb702/out/candidates.tsv
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d  /Users/alvinfung/apollo_data/cb702_pre_v2/daily_closes_all.csv.gz
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba  /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0  /Users/alvinfung/apollo_data/cb702_pre_v2/sessions.txt
+- guard_A: 876a75ec6d51744579c1ea2744c1b529cbd941355ef12eb8f0451bbe7ba1af08  /Users/alvinfung/apollo_data/cb702_pre_v2/symbol_guard.tsv
+- guard_A_audit: 729741b4cfc5759b6ea5d81da6afdd36c11d806bbcad845964b2b37c72d94057  /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/universe/symbol_guard_A.tsv
+- guard_B: b6cb81b6c4a1f415defc5adcf236402d93cd654c33736aa0b120b78c357b5650  /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/runs_2026-10-23/universe/symbol_guard_B.tsv
+- flags_A: 5358e31dc1b27d25c5143bdfca7a98b91a6c7a2d5b1da6c9c9d9ed9c55474c1d  /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/price/A_flags.tsv
+- flags_B: 8bf843859afb70ea59edf6f11cda12160020936c8df3e978b6a819590ea5c3d5  /Users/alvinfung/apollo_data/audit_runs_2026-10-23/B_flags.tsv
+- verdict_A: 02cbb1c0106101cb12e8d5deb9448051ae3ced67966ac11d2475d06f26538de3  /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/verdict.txt
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6  /Users/alvinfung/apollo_data/cb702_pre_v2/minutes/_done.psv
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178  /Users/alvinfung/apollo_data/cb702/minutes/_done.psv
+- first_trades: 6526b2f41c93178b5f3f59de9851514d21730b82d3e8dd18bd982d8cd2c27156  /Users/alvinfung/apollo_data/cb702/qm_streams/qm_replay_1023/trades.tsv.gz
+- first_account_his: 8932011eb9571bd1107df286af0e49673eac483a4a98cff053feedb8d565ccad  /Users/alvinfung/apollo_data/cb702/qm_streams/qm_replay_1023/account_his.tsv
+- first_account_band: 6d02bd226d55d769c0b9f573bbe744c53bfdf7b78e2b066e008914ee8a4ec44a  /Users/alvinfung/apollo_data/cb702/qm_streams/qm_replay_1023/account_band.tsv
+- first_printout: 3fc01120f8f8002e9da7d183cbc1685475d214f9c0e3db72815847b048a1817f  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_qm_replay_1023/01_replay.txt
+- second_trades: f7ddad7a51a3907c3addf4e0269759cce8101e54adb898e4d6e1103b67e14767  /Users/alvinfung/apollo_data/cb702/qm_streams/qm_exec_1023/trades.tsv.gz
+- second_chains: fad70d5c2aef78d057ceebf14fd679c17576e9327f6814f1b0f501bbe17ca5ed  /Users/alvinfung/apollo_data/cb702/qm_streams/qm_exec_1023/chains.tsv
+- second_account_his: 2a9eceb5a045429ddb0209cdbe25961cb3c47cd32959e12e7717c04ee05736cb  /Users/alvinfung/apollo_data/cb702/qm_streams/qm_exec_1023/account_his.tsv
+- second_account_band: 6c7b074b300c8ac30e90e0628cd2e6788c1013982ad2544789467b2669eb7b80  /Users/alvinfung/apollo_data/cb702/qm_streams/qm_exec_1023/account_band.tsv
+- second_printout: 5fe24f66859f643d15dee2836867377a6a7c9a2bc97549fe0129d752cb32c6c2  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_qm_replay_1023/02_execution_variants.txt
+- runner: 213cbe6ddf0ff05555a11c347efd14bfa37f99096fd83961e9f5127f6c7c8dcf  /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/runner.py
+- registered_read: 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449  /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/registered_read.py
+- cb_module: e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b  /Users/alvinfung/apollo_the_wise/agents/market_intelligence/consolidation_breakout.py
+- constants: 72dadd72503a842f593621b0868f908ab99e1d77851330c2842be7797aa99400  /Users/alvinfung/apollo_the_wise/agents/market_intelligence/constants.py
+- fit_module: 3fca7bf4f26ffcdf7152ddc9d4180c295aafe29067591def812fcc6884f38d27  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_track_a_1023/02_fit_filter.py
+- join_script: 6889819c41342c60831b0d62b277d47b677e4deaeab3443cbdde7a05d56b112c  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_track_a_1023/01_join_labels.py
+- aplus_read: e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee  /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/aplus_read.py
+- trade_impact: 9b7cce415479c1abfda422c432c6de1f3a6d591f298a1167fa637a578051e146  /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/trade_impact.py
+- replay_module: c44785889670b31f3e9baf1ac0e1563aeacfefacc5de5ef426ee7b15724e7bfa  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_qm_replay_1023/01_replay.py
+- replay_tests: 37c918a08329b138f6c37c5787af3c95e0ea2abeceb100209cd0f5f0dd0a96ad  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_qm_replay_1023/test_01_replay.py
+- exec_module: 346516fb4c236cc552103032163b790d030b10a536e83c70d4cf2390c3f9f485  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_qm_replay_1023/02_execution_variants.py
+- exec_tests: 6ce013bb1d7f1521e8083d014e4221fc837f30c59f9c5e00fbc023344d1a1949  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_qm_replay_1023/test_02_execution_variants.py
+- round3_module: cbddc0b134b5862da539589f4d72d8a74ea6109041d9bc9716b2ca3fc6a94a8f  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_qm_replay_1023/03_round3.py
+- round3_tests: 6f09a89e72042440fbdd20abe1d74e4b59f5c69ee554bd7dc6645c275ce43492  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_qm_replay_1023/test_03_round3.py
+- first_doc_body: aaaadd295aba5a9de534a738410ebe391ac4993637faa7ead0cab78e2b7a9dab  the first registration's text above its marker (frozen)
+- second_doc_body: 329ac865f814de0909332ff516ea5d52dea525fbef7b5fdcf1c9208a521143fe  the second registration's text above its marker line (frozen)
+- minutes_A_used: b6a99cdf084ad42c1a4d846e05d10b48404f8225499253583ff78170e95b592a  the 193 minute date files the walk set opens
+- minutes_B_used: d548f85679b9ded20bfa4650c45535d685d820d4dd2040fce84d01bae7b2b652  the 8 minute date files the walk set opens
+- doc_body: 8d9b248c19e12db941a556a3c7cbcfb4df578dda2325f2daad1f6d9a5f243cdb  this registration's text above its marker line
+- freeze record: every pin above is written under the freeze marker line
+
+## The walk
+- A_forward_window_cut_at_a_break 33, A_minute_truncated 0, A_minutes_ok 23,484, B_minute_truncated 0, B_minutes_ok 356
+
+## G8 — trade_impact.py on the union of every trade of this read (every stop x exit, adds included, each written as its own trade from its own entry date), run BEFORE any number below
+- era A: entered after the cutoff 0, holds past the last bar kept 0 (registered: both 0, asserted)
+- era B: entered after the cutoff 0, holds past the last bar kept 0 (censored: a walk not mature is in no number)
+
+## BASELINE PARITY — B0 re-walked equals the first read's cap_30 row (asserted before any variant number)
+- trades: every ORH5 entry and every p33_s3_t10 AND p33_s3_t20 walk of the 23,840 events equal `trades.tsv.gz`; his cap_30 curve equals `account_his.tsv` day by day through the first read's simulate AND through simulate3 (final 2.044 = the registered 2.044; 2020 62.8%, 2021 26.2%); the band's five percentiles and share equal `account_band.tsv` (cap_30); re-entry count (134, 91, 358, 33); date-matched mean R +0.543 [-0.132, +1.424]; every walked ORH5 fill is at minute 5 or later
+
+## Entry facts per stop set (era A)
+- lod his: abstain:too_wide 20, filled: 174, no_trigger:no_minute_above_level 42
+- lod ctl: abstain:minute_daily_mismatch 39, abstain:minute_high_below_pivot 2, abstain:no_opening_range_minutes 13, abstain:too_wide 1502, filled: 17948, no_trigger:no_minute_above_level 3684
+- lod post: abstain:too_wide 8, filled: 61, no_trigger:no_minute_above_level 18
+- base_low his: filled: 194, no_trigger:no_minute_above_level 42
+- base_low ctl: abstain:minute_daily_mismatch 39, abstain:minute_high_below_pivot 2, abstain:no_opening_range_minutes 13, abstain:stop_at_or_above_fill 2, filled: 19448, no_trigger:no_minute_above_level 3684
+- base_low post: filled: 69, no_trigger:no_minute_above_level 18
+- lod_floor1 his: filled: 194, no_trigger:no_minute_above_level 42
+- lod_floor1 ctl: abstain:minute_daily_mismatch 39, abstain:minute_high_below_pivot 2, abstain:no_opening_range_minutes 13, filled: 19450, no_trigger:no_minute_above_level 3684
+- lod_floor1 post: filled: 69, no_trigger:no_minute_above_level 18
+- lod his: fills 174; stop width in ADR20 median 0.46, 10th pct 0.23, 90th pct 0.83; wider than 1 ADR 0; stopped on day 0 50
+- lod ctl: fills 17948; stop width in ADR20 median 0.44, 10th pct 0.22, 90th pct 0.78; wider than 1 ADR 0; stopped on day 0 6597
+- base_low his: fills 194; stop width in ADR20 median 2.48, 10th pct 1.19, 90th pct 4.09; wider than 1 ADR 183; stopped on day 0 2
+- base_low ctl: fills 19448; stop width in ADR20 median 3.01, 10th pct 1.53, 90th pct 5.15; wider than 1 ADR 18846; stopped on day 0 93
+- lod_floor1 his: fills 194; stop width in ADR20 median 1.00, 10th pct 1.00, 90th pct 1.01; wider than 1 ADR 113; stopped on day 0 10
+- lod_floor1 ctl: fills 19450; stop width in ADR20 median 1.00, 10th pct 1.00, 90th pct 1.00; wider than 1 ADR 9941; stopped on day 0 981
+- his calls the baseline skipped as too wide (20), and what the other stop sets do with them: AMD 2017-03-20 (lod too_wide 1.1 ADR, base_low filled 2.9 ADR, lod_floor1 filled 1.1 ADR); LAKE 2020-03-13 (lod too_wide 1.0 ADR, base_low filled 1.4 ADR, lod_floor1 filled 1.0 ADR); AMD 2020-06-09 (lod too_wide 1.5 ADR, base_low filled 3.1 ADR, lod_floor1 filled 1.5 ADR); TSLA 2020-06-29 (lod too_wide 1.5 ADR, base_low filled 2.5 ADR, lod_floor1 filled 1.5 ADR); TDOC 2020-07-30 (lod too_wide 1.3 ADR, base_low filled 2.0 ADR, lod_floor1 filled 1.3 ADR); SHOP 2020-08-25 (lod too_wide 1.1 ADR, base_low filled 1.7 ADR, lod_floor1 filled 1.1 ADR); AAL 2020-09-16 (lod too_wide 1.1 ADR, base_low filled 2.3 ADR, lod_floor1 filled 1.1 ADR); SAVE 2020-09-16 (lod too_wide 1.2 ADR, base_low filled 4.4 ADR, lod_floor1 filled 1.2 ADR); AGNT 2020-10-01 (lod too_wide 1.1 ADR, base_low filled 2.6 ADR, lod_floor1 filled 1.1 ADR); PTON 2020-11-05 (lod too_wide 1.2 ADR, base_low filled 2.3 ADR, lod_floor1 filled 1.2 ADR); BLDP 2020-11-16 (lod too_wide 1.1 ADR, base_low filled 2.8 ADR, lod_floor1 filled 1.1 ADR); COUP 2020-11-19 (lod too_wide 1.1 ADR, base_low filled 4.3 ADR, lod_floor1 filled 1.1 ADR); CSIQ 2020-11-25 (lod too_wide 1.0 ADR, base_low filled 3.6 ADR, lod_floor1 filled 1.0 ADR); FSLY 2020-12-10 (lod too_wide 1.4 ADR, base_low filled 5.5 ADR, lod_floor1 filled 1.4 ADR); UBER 2020-12-21 (lod too_wide 1.5 ADR, base_low filled 1.2 ADR, lod_floor1 filled 1.5 ADR); SIG 2021-01-05 (lod too_wide 1.5 ADR, base_low filled 2.9 ADR, lod_floor1 filled 1.5 ADR); AMD 2021-01-11 (lod too_wide 1.3 ADR, base_low filled 2.8 ADR, lod_floor1 filled 1.3 ADR); DKNG 2021-01-27 (lod too_wide 1.4 ADR, base_low filled 3.9 ADR, lod_floor1 filled 1.4 ADR); CRC 2021-10-13 (lod too_wide 1.3 ADR, base_low filled 2.5 ADR, lod_floor1 filled 1.3 ADR); XPEV 2021-11-11 (lod too_wide 1.1 ADR, base_low filled 1.6 ADR, lod_floor1 filled 1.1 ADR)
+- the baseline's ORH5 stop (inherited by W2 / W3): his fills whose stop is the fill minute's own low (the minute made a new low of the day; print-only, the second read's flag) 0 of 174; fills in minute 0: 0 (asserted)
+- the baseline's ORH5 stop (inherited by W2 / W3): ctl fills whose stop is the fill minute's own low (the minute made a new low of the day; print-only, the second read's flag) 103 of 17948; fills in minute 0: 0 (asserted)
+- W1's stop never reads a minute (daily bars up to D); W1b's lod_prior reads minutes 09:30 .. the minute before the fill
+
+## HEADLINE — per trade R, tail first (era A; mature trades; exit slippage 0). R = fill - the variant's entry stop: W1 / W1b / COMBINED are in a WIDER unit (the stop width in ADR20 is printed beside); the account and the band are the comparable numbers
+  variant  | group                                      | events n | trades n | mature n | >=5R /100 trades | >=10R /100 | >=20R /100 | max R   | worst R | win rate | mean R | median R | >=10R /100 events | mean R /event
+  ---------+--------------------------------------------+----------+----------+----------+------------------+------------+------------+---------+---------+----------+--------+----------+-------------------+--------------
+  B0       | his calls                                  | 236      | 174      | 174      | +5.7             | +1.1       | +0.6       | +71.62  | -2.67   | 35.1%    | +0.639 | -1.000   | +0.8              | +0.471       
+  B0       | control (same day)                         | 23188    | 17948    | 17939    | +5.2             | +1.7       | +0.4       | +57.78  | -35.76  | 27.9%    | +0.120 | -1.000   | +1.3              | +0.093       
+  W1       | his calls                                  | 236      | 194      | 194      | +0.5             | +0.5       | +0.0       | +13.32  | -1.13   | 52.6%    | +0.207 | +0.014   | +0.4              | +0.170       
+  W1       | control (same day)                         | 23188    | 19448    | 19434    | +0.3             | +0.1       | +0.0       | +21.33  | -4.01   | 51.4%    | +0.101 | +0.006   | +0.0              | +0.085       
+  W1b      | his calls                                  | 236      | 194      | 194      | +1.5             | +0.5       | +0.0       | +13.73  | -2.24   | 48.5%    | +0.302 | -0.036   | +0.4              | +0.249       
+  W1b      | control (same day)                         | 23188    | 19450    | 19437    | +1.8             | +0.2       | +0.1       | +48.57  | -9.01   | 46.5%    | +0.170 | -0.071   | +0.2              | +0.143       
+  W2       | his calls                                  | 236      | 174      | 174      | +5.7             | +1.1       | +1.1       | +71.62  | -2.67   | 35.1%    | +0.804 | -1.000   | +0.8              | +0.593       
+  W2       | control (same day)                         | 23188    | 17948    | 17939    | +5.3             | +1.9       | +0.5       | +63.05  | -35.76  | 27.9%    | +0.123 | -1.000   | +1.5              | +0.095       
+  W2_t20   | his calls                                  | 236      | 174      | 174      | +5.2             | +2.9       | +1.7       | +58.85  | -2.67   | 35.1%    | +0.821 | -1.000   | +2.1              | +0.606       
+  W2_t20   | control (same day)                         | 23188    | 17948    | 17938    | +5.2             | +1.9       | +0.4       | +100.96 | -35.76  | 27.9%    | +0.115 | -1.000   | +1.5              | +0.089       
+  W2b      | his calls                                  | 236      | 174      | 174      | +7.5             | +2.3       | +0.6       | +102.59 | -5.09   | 25.3%    | +0.722 | -1.000   | +1.7              | +0.532       
+  W2b      | control (same day)                         | 23188    | 17948    | 17939    | +6.2             | +2.5       | +0.7       | +162.25 | -57.95  | 20.2%    | +0.139 | -1.000   | +1.9              | +0.107       
+  W3b      | his calls (QQQ-down dropped 28)            | 208      | 146      | 146      | +6.8             | +1.4       | +0.7       | +71.62  | -2.67   | 36.3%    | +0.784 | -1.000   | +1.0              | +0.550       
+  W3b      | control (same day) (QQQ-down dropped 2207) | 20981    | 15741    | 15732    | +5.2             | +1.7       | +0.4       | +57.78  | -35.76  | 27.7%    | +0.116 | -1.000   | +1.3              | +0.087       
+  COMBINED | his calls                                  | 236      | 194      | 194      | +1.5             | +1.0       | +0.0       | +13.32  | -1.13   | 52.6%    | +0.254 | +0.014   | +0.8              | +0.208       
+  COMBINED | control (same day)                         | 23188    | 19448    | 19433    | +0.4             | +0.0       | +0.0       | +18.43  | -4.01   | 51.2%    | +0.103 | +0.005   | +0.0              | +0.086       
+- W3 / W4m_B0 change only the sizing: their per-trade numbers are B0's; W4m_C / W4a_C / W4ma_C: COMBINED's (an add is its own trade in the account only)
+- stop width in ADR20 units (his filled trades): W1 his: median 2.48, 90th pct 4.09, under 1 ADR 6%; W1b his: median 1.00, 90th pct 1.01, under 1 ADR 42%; COMBINED his: median 2.48, 90th pct 4.09, under 1 ADR 6%
+
+### beside — the near-zero-stop re-read (the second read's R16): the same rows over trades whose stop is at least 0.25 x our ADR20 wide. A base low just under the fill makes 1R a fraction of a percent and a 5% move reads as 50R; the account bounds such a trade by the cap, the per-trade rows and the interval do not. B0 for scale; decides nothing
+  variant  | group                                 | events n | trades n | mature n | >=5R /100 trades | >=10R /100 | >=20R /100 | max R  | worst R | win rate | mean R | median R | >=10R /100 events | mean R /event
+  ---------+---------------------------------------+----------+----------+----------+------------------+------------+------------+--------+---------+----------+--------+----------+-------------------+--------------
+  B0       | his calls (stop >= 0.25 ADR)          | 150      | 150      | 150      | +4.7             | +0.0       | +0.0       | +9.41  | -1.70   | 36.0%    | +0.182 | -1.000   | +0.0              | +0.182       
+  B0       | control (same day) (stop >= 0.25 ADR) | 15440    | 15440    | 15431    | +5.1             | +1.4       | +0.3       | +55.84 | -18.66  | 30.3%    | +0.134 | -1.000   | +1.4              | +0.134       
+  W1       | his calls (stop >= 0.25 ADR)          | 194      | 194      | 194      | +0.5             | +0.5       | +0.0       | +13.32 | -1.13   | 52.6%    | +0.207 | +0.014   | +0.5              | +0.207       
+  W1       | control (same day) (stop >= 0.25 ADR) | 19422    | 19422    | 19408    | +0.3             | +0.1       | +0.0       | +21.33 | -4.01   | 51.4%    | +0.102 | +0.006   | +0.1              | +0.102       
+  W1b      | his calls (stop >= 0.25 ADR)          | 194      | 194      | 194      | +1.5             | +0.5       | +0.0       | +13.73 | -2.24   | 48.5%    | +0.302 | -0.036   | +0.5              | +0.302       
+  W1b      | control (same day) (stop >= 0.25 ADR) | 19450    | 19450    | 19437    | +1.8             | +0.2       | +0.1       | +48.57 | -9.01   | 46.5%    | +0.170 | -0.071   | +0.2              | +0.170       
+  COMBINED | his calls (stop >= 0.25 ADR)          | 194      | 194      | 194      | +1.5             | +1.0       | +0.0       | +13.32 | -1.13   | 52.6%    | +0.254 | +0.014   | +1.0              | +0.254       
+  COMBINED | control (same day) (stop >= 0.25 ADR) | 19422    | 19422    | 19407    | +0.4             | +0.0       | +0.0       | +18.43 | -4.01   | 51.3%    | +0.104 | +0.005   | +0.0              | +0.104       
+- trades removed as narrower than 0.25 ADR: B0 his 24 of 174; B0 ctl 2508 of 17948; W1 his 0 of 194; W1 ctl 26 of 19448; W1b his 0 of 194; W1b ctl 0 of 19450; COMBINED his 0 of 194; COMBINED ctl 26 of 19448
+- B0: trades NOT mature (booked in the account at their last close, in no per-trade number): his 0 (degraded 0; summed booked R +0.00); ctl 9 (degraded 9; summed booked R +30.13)
+- W1: trades NOT mature (booked in the account at their last close, in no per-trade number): his 0 (degraded 0; summed booked R +0.00); ctl 14 (degraded 14; summed booked R +36.37)
+- W1b: trades NOT mature (booked in the account at their last close, in no per-trade number): his 0 (degraded 0; summed booked R +0.00); ctl 13 (degraded 13; summed booked R +68.78)
+- W2: trades NOT mature (booked in the account at their last close, in no per-trade number): his 0 (degraded 0; summed booked R +0.00); ctl 9 (degraded 9; summed booked R +30.13)
+- W2_t20: trades NOT mature (booked in the account at their last close, in no per-trade number): his 0 (degraded 0; summed booked R +0.00); ctl 10 (degraded 10; summed booked R +115.59)
+- W2b: trades NOT mature (booked in the account at their last close, in no per-trade number): his 0 (degraded 0; summed booked R +0.00); ctl 9 (degraded 9; summed booked R +31.77)
+- W3b: trades NOT mature (booked in the account at their last close, in no per-trade number): his 0 (degraded 0; summed booked R +0.00); ctl 9 (degraded 9; summed booked R +30.13)
+- COMBINED: trades NOT mature (booked in the account at their last close, in no per-trade number): his 0 (degraded 0; summed booked R +0.00); ctl 15 (degraded 15; summed booked R +37.01)
+- exit slippage 0.1% per leg, mean R: B0 his +0.596; B0 ctl +0.053; W1 his +0.199; W1 ctl +0.091; W1b his +0.285; W1b ctl +0.144; W2 his +0.762; W2 ctl +0.056; W2_t20 his +0.779; W2_t20 ctl +0.048; W2b his +0.680; W2b ctl +0.072; W3b his +0.741; W3b ctl +0.048; COMBINED his +0.245; COMBINED ctl +0.093
+- exit slippage 0.2% per leg, mean R: B0 his +0.554; B0 ctl -0.014; W1 his +0.191; W1 ctl +0.081; W1b his +0.268; W1b ctl +0.119; W2 his +0.720; W2 ctl -0.011; W2_t20 his +0.737; W2_t20 ctl -0.019; W2b his +0.637; W2b ctl +0.005; W3b his +0.698; W3b ctl -0.021; COMBINED his +0.237; COMBINED ctl +0.083
+
+### beside — COMBINED and B0 on the splits (per trade)
+  variant  | group                   | events n | trades n | mature n | >=5R /100 trades | >=10R /100 | >=20R /100 | max R  | worst R | win rate | mean R | median R | >=10R /100 events | mean R /event
+  ---------+-------------------------+----------+----------+----------+------------------+------------+------------+--------+---------+----------+--------+----------+-------------------+--------------
+  B0       | his first breaks        | 132      | 94       | 94       | +7.4             | +2.1       | +1.1       | +71.62 | -2.33   | 35.1%    | +1.046 | -1.000   | +1.5              | +0.745       
+  B0       | his retriggers          | 104      | 80       | 80       | +3.8             | +0.0       | +0.0       | +9.41  | -2.67   | 35.0%    | +0.160 | -1.000   | +0.0              | +0.123       
+  B0       | his strictly-before     | 127      | 87       | 87       | +8.0             | +2.3       | +1.1       | +71.62 | -2.33   | 33.3%    | +1.106 | -1.000   | +1.6              | +0.757       
+  B0       | his one event per base  | 188      | 138      | 138      | +5.8             | +1.4       | +0.7       | +71.62 | -2.67   | 38.4%    | +0.798 | -1.000   | +1.1              | +0.586       
+  B0       | control first breaks    | 5575     | 4252     | 4248     | +5.3             | +1.8       | +0.4       | +38.73 | -22.59  | 29.5%    | +0.167 | -1.000   | +1.4              | +0.127       
+  B0       | control retriggers      | 17613    | 13696    | 13691    | +5.2             | +1.7       | +0.4       | +57.78 | -35.76  | 27.4%    | +0.106 | -1.000   | +1.3              | +0.082       
+  B0       | post-E-only (hindsight) | 87       | 61       | 61       | +19.7            | +8.2       | +3.3       | +41.12 | -3.25   | 41.0%    | +2.213 | -1.000   | +5.7              | +1.552       
+  B0       | his QQQ up at D         | 163      | 121      | 121      | +4.1             | +0.0       | +0.0       | +9.91  | -2.67   | 30.6%    | +0.024 | -1.000   | +0.0              | +0.018       
+  B0       | his QQQ mixed at D      | 35       | 25       | 25       | +20.0            | +8.0       | +4.0       | +71.62 | -1.00   | 64.0%    | +4.462 | +0.674   | +5.7              | +3.187       
+  B0       | his QQQ down at D       | 38       | 28       | 28       | +0.0             | +0.0       | +0.0       | +4.41  | -1.26   | 28.6%    | -0.119 | -1.000   | +0.0              | -0.087       
+  B0       | control QQQ up at D     | 17282    | 13363    | 13357    | +5.1             | +1.6       | +0.4       | +57.78 | -35.76  | 27.3%    | +0.094 | -1.000   | +1.3              | +0.072       
+  B0       | control QQQ mixed at D  | 3123     | 2378     | 2375     | +6.0             | +2.0       | +0.3       | +55.84 | -5.89   | 29.8%    | +0.244 | -1.000   | +1.5              | +0.186       
+  B0       | control QQQ down at D   | 2783     | 2207     | 2207     | +5.4             | +1.8       | +0.4       | +49.73 | -12.61  | 30.0%    | +0.148 | -1.000   | +1.4              | +0.117       
+  COMBINED | his first breaks        | 132      | 109      | 109      | +2.8             | +1.8       | +0.0       | +13.32 | -1.13   | 54.1%    | +0.383 | +0.055   | +1.5              | +0.316       
+  COMBINED | his retriggers          | 104      | 85       | 85       | +0.0             | +0.0       | +0.0       | +1.44  | -1.00   | 50.6%    | +0.088 | +0.001   | +0.0              | +0.072       
+  COMBINED | his strictly-before     | 127      | 102      | 102      | +2.9             | +2.0       | +0.0       | +13.32 | -1.13   | 52.0%    | +0.375 | +0.021   | +1.6              | +0.301       
+  COMBINED | his one event per base  | 188      | 158      | 158      | +1.9             | +1.3       | +0.0       | +13.32 | -1.13   | 53.2%    | +0.282 | +0.032   | +1.1              | +0.237       
+  COMBINED | control first breaks    | 5575     | 4706     | 4699     | +0.4             | +0.1       | +0.0       | +17.07 | -3.39   | 50.7%    | +0.124 | +0.003   | +0.1              | +0.105       
+  COMBINED | control retriggers      | 17613    | 14742    | 14734    | +0.3             | +0.0       | +0.0       | +18.43 | -4.01   | 51.4%    | +0.096 | +0.006   | +0.0              | +0.080       
+  COMBINED | post-E-only (hindsight) | 87       | 69       | 69       | +0.0             | +0.0       | +0.0       | +4.17  | -1.00   | 50.7%    | +0.290 | +0.017   | +0.0              | +0.230       
+  COMBINED | his QQQ up at D         | 163      | 131      | 131      | +0.8             | +0.0       | +0.0       | +5.46  | -1.13   | 51.1%    | +0.076 | +0.003   | +0.0              | +0.061       
+  COMBINED | his QQQ mixed at D      | 35       | 30       | 30       | +6.7             | +6.7       | +0.0       | +13.32 | -1.00   | 70.0%    | +1.134 | +0.108   | +5.7              | +0.972       
+  COMBINED | his QQQ down at D       | 38       | 33       | 33       | +0.0             | +0.0       | +0.0       | +3.51  | -1.00   | 42.4%    | +0.159 | -0.022   | +0.0              | +0.138       
+  COMBINED | control QQQ up at D     | 17282    | 14381    | 14370    | +0.3             | +0.0       | +0.0       | +16.28 | -2.94   | 50.7%    | +0.082 | +0.003   | +0.0              | +0.069       
+  COMBINED | control QQQ mixed at D  | 3123     | 2628     | 2625     | +0.5             | +0.1       | +0.0       | +18.43 | -3.39   | 54.0%    | +0.174 | +0.018   | +0.1              | +0.147       
+  COMBINED | control QQQ down at D   | 2783     | 2439     | 2438     | +0.7             | +0.0       | +0.0       | +17.07 | -4.01   | 51.5%    | +0.146 | +0.010   | +0.0              | +0.128       
+
+## By year of E (era A; per trade: n mature / mean R / >=10R per 100)
+  variant  | group | 2017               | 2019               | 2020                 | 2021               
+  ---------+-------+--------------------+--------------------+----------------------+--------------------
+  B0       | his   | 5 / +1.832 / 20.0  | 7 / +0.007 / 0.0   | 112 / +0.999 / 0.9   | 50 / -0.199 / 0.0  
+  B0       | ctl   | 157 / -0.054 / 1.3 | 373 / -0.015 / 2.1 | 11074 / +0.078 / 1.6 | 6335 / +0.207 / 1.9
+  W1       | his   | 6 / +0.300 / 0.0   | 7 / +0.024 / 0.0   | 126 / +0.285 / 0.8   | 55 / +0.041 / 0.0  
+  W1       | ctl   | 172 / -0.094 / 0.0 | 403 / +0.124 / 0.0 | 11951 / +0.084 / 0.1 | 6908 / +0.135 / 0.1
+  W1b      | his   | 6 / +0.070 / 0.0   | 7 / +0.045 / 0.0   | 126 / +0.424 / 0.8   | 55 / +0.082 / 0.0  
+  W1b      | ctl   | 172 / -0.047 / 0.0 | 403 / +0.148 / 0.2 | 11952 / +0.159 / 0.2 | 6910 / +0.196 / 0.3
+  W2       | his   | 5 / +7.978 / 20.0  | 7 / +0.007 / 0.0   | 112 / +1.002 / 0.9   | 50 / -0.244 / 0.0  
+  W2       | ctl   | 157 / -0.197 / 0.6 | 373 / -0.037 / 1.9 | 11074 / +0.091 / 1.8 | 6335 / +0.197 / 2.2
+  W2_t20   | his   | 5 / +7.978 / 20.0  | 7 / +0.417 / 0.0   | 112 / +1.063 / 3.6   | 50 / -0.379 / 0.0  
+  W2_t20   | ctl   | 157 / -0.212 / 0.6 | 373 / -0.082 / 1.9 | 11073 / +0.103 / 1.9 | 6335 / +0.155 / 2.1
+  W2b      | his   | 5 / +2.310 / 20.0  | 7 / +0.097 / 0.0   | 112 / +1.129 / 2.7   | 50 / -0.261 / 0.0  
+  W2b      | ctl   | 157 / -0.025 / 1.9 | 373 / +0.015 / 3.5 | 11074 / +0.095 / 2.3 | 6335 / +0.226 / 2.7
+  W3b      | his   | 5 / +1.832 / 20.0  | 7 / +0.007 / 0.0   | 94 / +1.147 / 1.1    | 40 / -0.065 / 0.0  
+  W3b      | ctl   | 157 / -0.054 / 1.3 | 373 / -0.015 / 2.1 | 10109 / +0.059 / 1.5 | 5093 / +0.246 / 2.0
+  COMBINED | his   | 6 / +1.575 / 16.7  | 7 / +0.024 / 0.0   | 126 / +0.301 / 0.8   | 55 / +0.030 / 0.0  
+  COMBINED | ctl   | 172 / -0.116 / 0.0 | 403 / +0.124 / 0.0 | 11950 / +0.088 / 0.0 | 6908 / +0.132 / 0.1
+
+## HIS minus CONTROL, DATE-MATCHED (era A; per filled mature trade in the cell (date of E, first break / retrigger); month-block, 2,000 resamples, seed 702; B0 uses the first read's key and reproduces it; W3's line IS B0's)
+- B0 (his 174 / control 17939 mature trades): mean R +0.543 [-0.132, +1.424]; >=10R per 100 -0.75 [-2.08, +1.55] | cells uncovered 0 (0 of his), resamples dropped 0
+- W1 (his 194 / control 19434 mature trades): mean R +0.113 [-0.036, +0.313]; >=10R per 100 +0.44 [-0.17, +1.71] | cells uncovered 0 (0 of his), resamples dropped 0
+- W1b (his 194 / control 19437 mature trades): mean R +0.159 [-0.055, +0.430]; >=10R per 100 +0.30 [-0.33, +1.43] | cells uncovered 0 (0 of his), resamples dropped 0
+- W2 (his 174 / control 17939 mature trades): mean R +0.713 [-0.082, +1.933]; >=10R per 100 -0.87 [-2.38, +1.28] | cells uncovered 0 (0 of his), resamples dropped 0
+- W2_t20 (his 174 / control 17938 mature trades): mean R +0.752 [-0.140, +1.889]; >=10R per 100 +0.78 [-1.94, +4.55] | cells uncovered 0 (0 of his), resamples dropped 0
+- W2b (his 174 / control 17939 mature trades): mean R +0.610 [-0.220, +1.957]; >=10R per 100 -0.16 [-2.31, +2.45] | cells uncovered 0 (0 of his), resamples dropped 0
+- W3b (his 146 / control 15732 mature trades): mean R +0.677 [-0.038, +1.740]; >=10R per 100 -0.59 [-2.14, +1.76] | cells uncovered 0 (0 of his), resamples dropped 0
+- COMBINED (his 194 / control 19433 mature trades): mean R +0.155 [-0.027, +0.394]; >=10R per 100 +0.93 [-0.17, +2.84] | cells uncovered 0 (0 of his), resamples dropped 0
+- beside, W1 over stops >= 0.25 ADR only (his 194 / control 19408): mean R +0.112 [-0.033, +0.306] (decides nothing)
+- beside, W1b over stops >= 0.25 ADR only (his 194 / control 19437): mean R +0.159 [-0.054, +0.407] (decides nothing)
+- beside, COMBINED over stops >= 0.25 ADR only (his 194 / control 19407): mean R +0.153 [-0.023, +0.397] (decides nothing)
+
+## ACCOUNT CURVE — his calls, chronological (era A; start 1.0; every variant at the 30% cap: 1% risk unless W3, 30% position cap, 30% per stock at cost; no margin unless W4m)
+  variant         | stop       | exit         | sizing        | gross max | 2017 return | 2018 return | 2019 return | 2020 return | 2021 return | 2022 (exits only) | final equity | max drawdown | trades offered | of them adds | not offered (QQQ down) | entered | at 1% / at 0.5% | skipped no room | skipped stock limit | trimmed to the stock limit | cap bound | max open | max gross | deepest cash
+  ----------------+------------+--------------+---------------+-----------+-------------+-------------+-------------+-------------+-------------+-------------------+--------------+--------------+----------------+--------------+------------------------+---------+-----------------+-----------------+---------------------+----------------------------+-----------+----------+-----------+-------------
+  B0              | lod        | p33_s3_t10   | flat          | 1x        | 0.8%        | 0.0%        | -0.3%       | 62.8%       | 26.2%       | -1.0%             | 2.044        | 20.7%        | 174            | 0            | 0                      | 130     | 130 / 0         | 44              | 0                   | 6                          | 75        | 6        | 99.1%     | +0.006      
+  W1              | base_low   | p33_s3_t10   | flat          | 1x        | 1.6%        | 0.0%        | 0.2%        | 23.2%       | 14.2%       | -0.3%             | 1.427        | 8.9%         | 194            | 0            | 0                      | 182     | 182 / 0         | 12              | 0                   | 0                          | 1         | 14       | 96.6%     | +0.000      
+  W1b (beside)    | lod_floor1 | p33_s3_t10   | flat          | 1x        | 0.2%        | 0.0%        | 0.5%        | 46.9%       | 19.3%       | -1.0%             | 1.746        | 14.0%        | 194            | 0            | 0                      | 157     | 157 / 0         | 37              | 0                   | 5                          | 6         | 8        | 96.7%     | +0.003      
+  W2              | lod        | d3_p33_tspd  | flat          | 1x        | 8.0%        | 0.0%        | -0.3%       | 63.6%       | 26.2%       | -1.0%             | 2.201        | 20.7%        | 174            | 0            | 0                      | 130     | 130 / 0         | 44              | 0                   | 6                          | 75        | 6        | 99.1%     | +0.007      
+  W2_t20 (beside) | lod        | p33_s3_t20   | flat          | 1x        | 8.0%        | 0.0%        | 2.1%        | 51.5%       | 12.8%       | -1.0%             | 1.865        | 30.3%        | 174            | 0            | 0                      | 122     | 122 / 0         | 52              | 0                   | 5                          | 69        | 6        | 98.2%     | +0.007      
+  W2b (beside)    | lod        | trail10_only | flat          | 1x        | 1.6%        | 0.0%        | 0.2%        | 58.2%       | 37.8%       | -1.0%             | 2.196        | 28.1%        | 174            | 0            | 0                      | 117     | 117 / 0         | 57              | 0                   | 1                          | 66        | 4        | 100.0%    | +0.000      
+  W3              | lod        | p33_s3_t10   | qqq           | 1x        | 0.8%        | 0.0%        | -0.3%       | 29.7%       | 18.7%       | -1.0%             | 1.532        | 16.5%        | 174            | 0            | 0                      | 142     | 93 / 49         | 32              | 0                   | 4                          | 60        | 7        | 91.1%     | +0.003      
+  W3b (beside)    | lod        | p33_s3_t10   | qqq_drop_down | 1x        | 0.8%        | 0.0%        | -0.3%       | 36.3%       | 24.8%       | -1.0%             | 1.691        | 13.9%        | 146            | 0            | 28                     | 120     | 95 / 25         | 26              | 0                   | 2                          | 59        | 6        | 96.7%     | +0.011      
+  COMBINED        | base_low   | d3_p33_tspd  | qqq           | 1x        | 3.9%        | 0.0%        | 0.2%        | 16.6%       | 7.9%        | -0.3%             | 1.305        | 8.1%         | 194            | 0            | 0                      | 187     | 124 / 63        | 7               | 0                   | 0                          | 0         | 16       | 95.4%     | +0.029      
+  W4m_B0 (beside) | lod        | p33_s3_t10   | flat          | 2x        | 0.8%        | 0.0%        | -0.3%       | 74.5%       | 32.8%       | -1.0%             | 2.306        | 21.1%        | 174            | 0            | 0                      | 166     | 166 / 0         | 8               | 0                   | 8                          | 99        | 11       | 190.9%    | -1.634      
+  W4m_C (beside)  | base_low   | d3_p33_tspd  | qqq           | 2x        | 3.9%        | 0.0%        | 0.2%        | 19.1%       | 7.9%        | -0.3%             | 1.333        | 8.8%         | 194            | 0            | 0                      | 194     | 131 / 63        | 0               | 0                   | 0                          | 0         | 20       | 133.0%    | -0.457      
+  W4a_C (beside)  | base_low   | d3_p33_tspd  | qqq           | 1x        | 9.2%        | 0.0%        | -0.6%       | 5.9%        | 8.4%        | -0.3%             | 1.241        | 20.9%        | 263            | 69           | 0                      | 233     | 162 / 71        | 30              | 0                   | 2                          | 2         | 18       | 98.8%     | +0.001      
+  W4ma_C (beside) | base_low   | d3_p33_tspd  | qqq           | 2x        | 9.2%        | 0.0%        | -0.6%       | 8.5%        | 6.5%        | -0.3%             | 1.249        | 21.0%        | 263            | 69           | 0                      | 263     | 192 / 71        | 0               | 0                   | 4                          | 2         | 24       | 169.1%    | -0.937      
+- B0: year-end equity 2017 1.008, 2018 1.008, 2019 1.005, 2020 1.636, 2021 2.065, 2022 2.044; entered per year 2017 5, 2019 7, 2020 76, 2021 42; skipped per year 2020 36, 2021 8
+- W1: year-end equity 2017 1.016, 2018 1.016, 2019 1.018, 2020 1.254, 2021 1.432, 2022 1.427; entered per year 2017 6, 2019 7, 2020 114, 2021 55; skipped per year 2020 12
+- W1b: year-end equity 2017 1.002, 2018 1.002, 2019 1.007, 2020 1.479, 2021 1.764, 2022 1.746; entered per year 2017 6, 2019 7, 2020 94, 2021 50; skipped per year 2020 32, 2021 5
+- W2: year-end equity 2017 1.080, 2018 1.080, 2019 1.077, 2020 1.762, 2021 2.223, 2022 2.201; entered per year 2017 5, 2019 7, 2020 76, 2021 42; skipped per year 2020 36, 2021 8
+- W2_t20: year-end equity 2017 1.080, 2018 1.080, 2019 1.103, 2020 1.671, 2021 1.884, 2022 1.865; entered per year 2017 5, 2019 7, 2020 68, 2021 42; skipped per year 2020 44, 2021 8
+- W2b: year-end equity 2017 1.016, 2018 1.016, 2019 1.017, 2020 1.609, 2021 2.218, 2022 2.196; entered per year 2017 5, 2019 7, 2020 64, 2021 41; skipped per year 2020 48, 2021 9
+- W3: year-end equity 2017 1.008, 2018 1.008, 2019 1.005, 2020 1.303, 2021 1.547, 2022 1.532; entered per year 2017 5, 2019 7, 2020 83, 2021 47; skipped per year 2020 29, 2021 3
+- W3b: year-end equity 2017 1.008, 2018 1.008, 2019 1.005, 2020 1.369, 2021 1.708, 2022 1.691; entered per year 2017 5, 2019 7, 2020 71, 2021 37; skipped per year 2020 23, 2021 3
+- COMBINED: year-end equity 2017 1.039, 2018 1.039, 2019 1.041, 2020 1.214, 2021 1.309, 2022 1.305; entered per year 2017 6, 2019 7, 2020 119, 2021 55; skipped per year 2020 7
+- W4m_B0: year-end equity 2017 1.008, 2018 1.008, 2019 1.005, 2020 1.753, 2021 2.329, 2022 2.306; entered per year 2017 5, 2019 7, 2020 105, 2021 49; skipped per year 2020 7, 2021 1
+- W4m_C: year-end equity 2017 1.039, 2018 1.039, 2019 1.041, 2020 1.240, 2021 1.338, 2022 1.333; entered per year 2017 6, 2019 7, 2020 126, 2021 55; skipped per year 
+- W4a_C: year-end equity 2017 1.092, 2018 1.092, 2019 1.085, 2020 1.149, 2021 1.245, 2022 1.241; entered per year 2017 7, 2019 9, 2020 146, 2021 71; skipped per year 2020 24, 2021 6
+- W4ma_C: year-end equity 2017 1.092, 2018 1.092, 2019 1.085, 2020 1.177, 2021 1.254, 2022 1.249; entered per year 2017 7, 2019 9, 2020 170, 2021 77; skipped per year 
+- W4a adds on the base_low x d3_p33_tspd trades (every group): no_new_high 1666, no_partial 976, no_room 10992, ok 6369; his calls' adds 69
+
+### beside — every stop x every exit at the 30% cap, flat 1% risk (his calls; decides nothing)
+  stop       | exit         | his trades | mean R | >=10R /100 | 2020  | 2021  | final equity | max drawdown
+  -----------+--------------+------------+--------+------------+-------+-------+--------------+-------------
+  lod        | p33_s3_t10   | 174        | +0.639 | 1.1        | 62.8% | 26.2% | 2.044        | 20.7%       
+  lod        | p33_s3_t20   | 174        | +0.821 | 2.9        | 51.5% | 12.8% | 1.865        | 30.3%       
+  lod        | trail10_only | 174        | +0.722 | 2.3        | 58.2% | 37.8% | 2.196        | 28.1%       
+  lod        | d3_p33_tspd  | 174        | +0.804 | 1.1        | 63.6% | 26.2% | 2.201        | 20.7%       
+  base_low   | p33_s3_t10   | 194        | +0.207 | 0.5        | 23.2% | 14.2% | 1.427        | 8.9%        
+  base_low   | p33_s3_t20   | 194        | +0.268 | 1.0        | 28.1% | 13.4% | 1.590        | 10.9%       
+  base_low   | trail10_only | 194        | +0.224 | 0.5        | 23.7% | 19.2% | 1.502        | 13.0%       
+  base_low   | d3_p33_tspd  | 194        | +0.254 | 1.0        | 26.5% | 12.6% | 1.548        | 9.6%        
+  lod_floor1 | p33_s3_t10   | 194        | +0.302 | 0.5        | 46.9% | 19.3% | 1.746        | 14.0%       
+  lod_floor1 | p33_s3_t20   | 194        | +0.425 | 1.5        | 51.3% | 19.4% | 1.973        | 18.9%       
+  lod_floor1 | trail10_only | 194        | +0.269 | 0.5        | 34.9% | 19.0% | 1.613        | 22.1%       
+  lod_floor1 | d3_p33_tspd  | 194        | +0.354 | 1.0        | 45.7% | 17.1% | 1.822        | 15.7%       
+
+## CONTROL BAND — the first read's 200 same-day draws (seed 702, key `qm_replay|band|A|same-day (registered)`), each drawn control event mapped to its trade under the variant (its add too under W4a)
+  variant  | year / measure                | his calls | control 5th pct | control median | control 95th pct | share of draws >= his (for max drawdown: as deep or DEEPER, i.e. worse)
+  ---------+-------------------------------+-----------+-----------------+----------------+------------------+------------------------------------------------------------------------
+  B0       | 2020 return                   | +0.628    | -0.163          | +0.038         | +0.382           | 1.0%                                                                   
+  B0       | 2021 return                   | +0.262    | -0.093          | +0.049         | +0.262           | 4.5%                                                                   
+  B0       | final equity                  | +2.044    | +0.834          | +1.119         | +1.587           | 0.5%                                                                   
+  B0       | max drawdown (higher = WORSE) | +0.207    | +0.101          | +0.154         | +0.255           | 18.0%                                                                  
+  W1       | 2020 return                   | +0.232    | -0.033          | +0.078         | +0.204           | 3.0%                                                                   
+  W1       | 2021 return                   | +0.142    | -0.005          | +0.079         | +0.195           | 18.5%                                                                  
+  W1       | final equity                  | +1.427    | +1.014          | +1.187         | +1.340           | 2.0%                                                                   
+  W1       | max drawdown (higher = WORSE) | +0.089    | +0.056          | +0.077         | +0.120           | 29.5%                                                                  
+  W1b      | 2020 return                   | +0.469    | -0.093          | +0.132         | +0.415           | 2.0%                                                                   
+  W1b      | 2021 return                   | +0.193    | -0.059          | +0.072         | +0.255           | 12.5%                                                                  
+  W1b      | final equity                  | +1.746    | +0.921          | +1.230         | +1.614           | 1.5%                                                                   
+  W1b      | max drawdown (higher = WORSE) | +0.140    | +0.092          | +0.135         | +0.226           | 44.5%                                                                  
+  W2       | 2020 return                   | +0.636    | -0.155          | +0.045         | +0.404           | 1.0%                                                                   
+  W2       | 2021 return                   | +0.262    | -0.098          | +0.047         | +0.250           | 5.0%                                                                   
+  W2       | final equity                  | +2.201    | +0.843          | +1.112         | +1.507           | 0.5%                                                                   
+  W2       | max drawdown (higher = WORSE) | +0.207    | +0.103          | +0.155         | +0.265           | 20.0%                                                                  
+  W2_t20   | 2020 return                   | +0.515    | -0.160          | +0.072         | +0.387           | 2.0%                                                                   
+  W2_t20   | 2021 return                   | +0.128    | -0.101          | +0.041         | +0.248           | 20.0%                                                                  
+  W2_t20   | final equity                  | +1.865    | +0.834          | +1.092         | +1.536           | 2.5%                                                                   
+  W2_t20   | max drawdown (higher = WORSE) | +0.303    | +0.117          | +0.172         | +0.283           | 2.5%                                                                   
+  W2b      | 2020 return                   | +0.582    | -0.181          | +0.080         | +0.537           | 3.5%                                                                   
+  W2b      | 2021 return                   | +0.378    | -0.129          | +0.025         | +0.247           | 1.5%                                                                   
+  W2b      | final equity                  | +2.196    | +0.806          | +1.154         | +1.740           | 1.5%                                                                   
+  W2b      | max drawdown (higher = WORSE) | +0.281    | +0.127          | +0.183         | +0.304           | 8.0%                                                                   
+  W3       | 2020 return                   | +0.297    | -0.171          | +0.037         | +0.301           | 5.5%                                                                   
+  W3       | 2021 return                   | +0.187    | -0.078          | +0.045         | +0.262           | 10.5%                                                                  
+  W3       | final equity                  | +1.532    | +0.839          | +1.119         | +1.490           | 4.0%                                                                   
+  W3       | max drawdown (higher = WORSE) | +0.165    | +0.094          | +0.148         | +0.236           | 34.5%                                                                  
+  W3b      | 2020 return                   | +0.363    | -0.156          | +0.038         | +0.306           | 3.0%                                                                   
+  W3b      | 2021 return                   | +0.248    | -0.068          | +0.045         | +0.271           | 7.5%                                                                   
+  W3b      | final equity                  | +1.691    | +0.836          | +1.112         | +1.475           | 1.0%                                                                   
+  W3b      | max drawdown (higher = WORSE) | +0.139    | +0.090          | +0.139         | +0.234           | 51.0%                                                                  
+  COMBINED | 2020 return                   | +0.166    | -0.033          | +0.063         | +0.171           | 6.0%                                                                   
+  COMBINED | 2021 return                   | +0.079    | -0.024          | +0.063         | +0.193           | 38.0%                                                                  
+  COMBINED | final equity                  | +1.305    | +0.990          | +1.137         | +1.299           | 5.0%                                                                   
+  COMBINED | max drawdown (higher = WORSE) | +0.081    | +0.049          | +0.070         | +0.105           | 28.0%                                                                  
+  W4m_B0   | 2020 return                   | +0.745    | -0.217          | +0.026         | +0.392           | 0.5%                                                                   
+  W4m_B0   | 2021 return                   | +0.328    | -0.075          | +0.075         | +0.326           | 5.0%                                                                   
+  W4m_B0   | final equity                  | +2.306    | +0.784          | +1.133         | +1.587           | 0.0%                                                                   
+  W4m_B0   | max drawdown (higher = WORSE) | +0.211    | +0.122          | +0.179         | +0.304           | 35.0%                                                                  
+  W4m_C    | 2020 return                   | +0.191    | -0.033          | +0.065         | +0.178           | 3.5%                                                                   
+  W4m_C    | 2021 return                   | +0.079    | -0.024          | +0.066         | +0.186           | 37.0%                                                                  
+  W4m_C    | final equity                  | +1.333    | +0.976          | +1.137         | +1.298           | 3.0%                                                                   
+  W4m_C    | max drawdown (higher = WORSE) | +0.088    | +0.055          | +0.074         | +0.113           | 25.5%                                                                  
+  W4a_C    | 2020 return                   | +0.059    | -0.060          | +0.084         | +0.362           | 59.0%                                                                  
+  W4a_C    | 2021 return                   | +0.084    | -0.066          | +0.056         | +0.309           | 41.5%                                                                  
+  W4a_C    | final equity                  | +1.241    | +0.942          | +1.178         | +1.699           | 38.0%                                                                  
+  W4a_C    | max drawdown (higher = WORSE) | +0.209    | +0.086          | +0.117         | +0.179           | 2.5%                                                                   
+  W4ma_C   | 2020 return                   | +0.085    | -0.075          | +0.111         | +0.390           | 57.5%                                                                  
+  W4ma_C   | 2021 return                   | +0.065    | -0.076          | +0.071         | +0.357           | 51.5%                                                                  
+  W4ma_C   | final equity                  | +1.249    | +0.925          | +1.218         | +1.746           | 44.0%                                                                  
+  W4ma_C   | max drawdown (higher = WORSE) | +0.210    | +0.104          | +0.143         | +0.216           | 6.0%                                                                   
+
+## THE FORK (registered before any outcome; era A, COMBINED = W1 + W2 + W3 at the 30% cap: the base-low stop, the speed trail, QQQ sizing; applied to his calls and to the control)
+- yearly return >= +50% in BOTH 2020 and 2021: 2020 16.6%, 2021 7.9% -> not met
+- the same-day band at or above his final equity (1.305) in 5.0% of 200 draws (needs <= 5%) -> MET
+- VERDICT: **NEXT GAPS** — these three levers do not explain the shortfall on their own: the next gaps to test are the EPs and parabolic shorts in his record; the trades he never mentioned on stream; adds / margin if still beside (his rule, 10-23: a replay that does not reproduce his years is a defect in our implementation, never 'the setup does not work')
+- read with it: every variant here was chosen AFTER the first two reads (the stop-out count, the 20-day trail's mean, the 30%-cap row, the market splits); a variant that helps must still be validated on calls not used here. W4 (margin, adds) is beside and decides nothing in any reading.
+- BESIDE (decides nothing): COMBINED on the 127 strictly-before calls (clean of E's bar): yearly 2017 4.7%, 2018 0.0%, 2019 -0.5%, 2020 11.3%, 2021 7.6%, final 1.248; their own same-day band (the first read's strictly-before draws) at or above it in 6.0%
+
+## Era B (descriptive; 9 calls, 345 control events)
+  variant  | group | events n | trades n | mature n | >=5R /100 trades | >=10R /100 | >=20R /100 | max R  | worst R | win rate | mean R | median R | >=10R /100 events | mean R /event
+  ---------+-------+----------+----------+----------+------------------+------------+------------+--------+---------+----------+--------+----------+-------------------+--------------
+  B0       | his   | 9        | 9        | 9        | +0.0             | +0.0       | +0.0       | -0.45  | -1.00   | 0.0%     | -0.939 | -1.000   | +0.0              | -0.939       
+  B0       | ctl   | 345      | 279      | 279      | +3.2             | +1.1       | +0.0       | +19.62 | -10.14  | 21.5%    | -0.242 | -1.000   | +0.9              | -0.196       
+  W1       | his   | 9        | 9        | 9        | +0.0             | +0.0       | +0.0       | +2.39  | -0.57   | 22.2%    | +0.085 | -0.233   | +0.0              | +0.085       
+  W1       | ctl   | 345      | 301      | 301      | +0.0             | +0.0       | +0.0       | +3.57  | -1.22   | 41.9%    | -0.076 | -0.048   | +0.0              | -0.066       
+  W1b      | his   | 9        | 9        | 9        | +0.0             | +0.0       | +0.0       | +4.92  | -1.19   | 22.2%    | +0.008 | -1.000   | +0.0              | +0.008       
+  W1b      | ctl   | 345      | 301      | 301      | +0.7             | +0.0       | +0.0       | +7.31  | -4.13   | 36.9%    | -0.158 | -0.331   | +0.0              | -0.138       
+  W2       | his   | 9        | 9        | 9        | +0.0             | +0.0       | +0.0       | -0.45  | -1.00   | 0.0%     | -0.939 | -1.000   | +0.0              | -0.939       
+  W2       | ctl   | 345      | 279      | 279      | +2.9             | +1.4       | +0.0       | +18.45 | -10.14  | 21.5%    | -0.252 | -1.000   | +1.2              | -0.204       
+  W2_t20   | his   | 9        | 9        | 9        | +0.0             | +0.0       | +0.0       | -0.45  | -1.00   | 0.0%     | -0.939 | -1.000   | +0.0              | -0.939       
+  W2_t20   | ctl   | 345      | 279      | 279      | +3.2             | +1.4       | +0.0       | +18.45 | -10.14  | 21.5%    | -0.260 | -1.000   | +1.2              | -0.210       
+  W2b      | his   | 9        | 9        | 9        | +0.0             | +0.0       | +0.0       | -0.49  | -1.00   | 0.0%     | -0.944 | -1.000   | +0.0              | -0.944       
+  W2b      | ctl   | 345      | 279      | 279      | +4.3             | +1.4       | +0.7       | +26.19 | -15.63  | 14.7%    | -0.346 | -1.000   | +1.2              | -0.280       
+  W3b      | his   | 8        | 8        | 8        | +0.0             | +0.0       | +0.0       | -0.45  | -1.00   | 0.0%     | -0.932 | -1.000   | +0.0              | -0.932       
+  W3b      | ctl   | 284      | 218      | 218      | +4.1             | +1.4       | +0.0       | +19.62 | -10.14  | 20.2%    | -0.146 | -1.000   | +1.1              | -0.112       
+  COMBINED | his   | 9        | 9        | 9        | +0.0             | +0.0       | +0.0       | +2.39  | -0.57   | 22.2%    | +0.064 | -0.233   | +0.0              | +0.064       
+  COMBINED | ctl   | 345      | 301      | 301      | +0.0             | +0.0       | +0.0       | +3.57  | -1.22   | 41.9%    | -0.085 | -0.048   | +0.0              | -0.074       
+- era B his B0: 9 trades, yearly 2022 -0.3%, 2023 -5.6%, final 0.941, max drawdown 5.9%
+- era B his W1: 9 trades, yearly 2022 -0.2%, 2023 1.0%, final 1.007, max drawdown 2.2%
+- era B his W1b: 9 trades, yearly 2022 -0.7%, 2023 0.6%, final 0.999, max drawdown 4.4%
+- era B his W2: 9 trades, yearly 2022 -0.3%, 2023 -5.6%, final 0.941, max drawdown 5.9%
+- era B his W2_t20: 9 trades, yearly 2022 -0.3%, 2023 -5.6%, final 0.941, max drawdown 5.9%
+- era B his W2b: 9 trades, yearly 2022 -0.3%, 2023 -5.7%, final 0.940, max drawdown 6.0%
+- era B his W3: 9 trades, yearly 2022 -0.3%, 2023 -5.6%, final 0.941, max drawdown 5.9%
+- era B his W3b: 8 trades, yearly 2023 -5.6%, final 0.944, max drawdown 5.6%
+- era B his COMBINED: 9 trades, yearly 2022 -0.1%, 2023 0.8%, final 1.007, max drawdown 2.2%
+- era B his W4m_B0: 9 trades, yearly 2022 -0.3%, 2023 -5.6%, final 0.941, max drawdown 5.9%
+- era B his W4m_C: 9 trades, yearly 2022 -0.1%, 2023 0.8%, final 1.007, max drawdown 2.2%
+- era B his W4a_C: 11 trades, yearly 2022 -0.1%, 2023 3.3%, final 1.032, max drawdown 3.7%
+- era B his W4ma_C: 11 trades, yearly 2022 -0.1%, 2023 3.3%, final 1.032, max drawdown 3.7%
+
+(36s)
