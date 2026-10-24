@@ -1,0 +1,38 @@
+calendar 2016-01-04..2024-12-31 (2264 sessions); window 2020-01-27..2022-06-14 = 602 sessions
+QQQ: era A vs era B closes on 192 overlapping sessions, max rel dev 0.00000
+SPY: era A vs era B closes on 192 overlapping sessions, max rel dev 0.00072
+deciding account: final 3.635 | 2020 162.7%, 2021 46.8%, 2022 -5.8% | max DD 24.2% | entered 166, skipped no room 39, per-stock limit 0 (trimmed 1), cap-bound 85 | last leg 2022-04-21 | max curve diff 6.038642662975491e-05
+readout: total +263.5% (QQQ +26.5%, SPY +15.6%) | CAGR 71.6% | max DD -24.2% (QQQ -31.8%) | Sharpe 1.50 (QQQ 0.48) | beta 0.01 | alpha +62.4%/yr, t 2.31 | 602 sessions
+
+readout with era B's QQQ / SPY closes preferred in the overlap: total +263.5% (QQQ +26.5%, SPY +15.6%) | CAGR 71.6% | max DD -24.2% (QQQ -31.8%) | Sharpe 1.50 (QQQ 0.48) | beta 0.01 | alpha +62.4%/yr, t 2.31 | 602 sessions
+without 47: final 2.456 total +145.6% (QQQ +26.5%, SPY +15.6%) | CAGR 45.7% | max DD -23.0% (QQQ -31.8%) | Sharpe 1.32 (QQQ 0.48) | beta 0.14 | alpha +41.0%/yr, t 1.95 | 602 sessions
+n 205, mean R +1.055, win 37.1%, median -1.000, max +48.98, worst -9.36, sum +216.2
+his final 3.602 (178 filled); band n 200 p5 0.788 / p25 0.925 / p50 1.074 / p75 1.267 / p95 1.656; draws >= his 0.0% (max draw 1.912)
+
+SENSITIVITY (account re-run without the trades; every later size / room / skip re-decided)
+top 3 by account $ pnl: [('LCID', '2021-10-25', 'R +26.91', 'pnl +72.6% of start'), ('APT', '2020-02-21', 'R +48.98', 'pnl +48.9% of start'), ('JMIA', '2020-11-18', 'R +9.01', 'pnl +21.4% of start')]
+top 3 by realized R (entered): [('APT', '2020-02-21', 'R +48.98', 'pnl +48.9%'), ('LCID', '2021-10-25', 'R +26.91', 'pnl +72.6%'), ('CODX', '2020-07-16', 'R +12.80', 'pnl +19.5%')]
+top 3 by realized R (all 205 filled): [('APT', '2020-02-21', 'R +48.98', 'entered'), ('LCID', '2021-10-25', 'R +26.91', 'entered'), ('CODX', '2020-07-16', 'R +12.80', 'entered')]
+baseline (all 166 entered)                     final 3.635 | total +263.5% | Sharpe 1.50 | alpha +62.4%/yr | t 2.31 | bar PASS
+drop best 1 (by account $ pnl)                 final 2.950 | total +195.0% | Sharpe 1.32 | alpha +53.4%/yr | t 2.03 | bar PASS
+drop best 3 (by account $ pnl)                 final 1.811 | total  +81.1% | Sharpe 0.95 | alpha +27.9%/yr | t 1.38 | bar FAIL
+drop best 1 (by realized R, entered)           final 2.430 | total +143.0% | Sharpe 1.28 | alpha +40.6%/yr | t 1.89 | bar FAIL
+drop best 3 (by realized R, entered)           final 1.846 | total  +84.6% | Sharpe 0.98 | alpha +28.6%/yr | t 1.43 | bar FAIL
+
+
+claim | printout | yours | match
+(1) deciding account d3_p33_tspd cap_30: final / years / maxDD / entered / skipped / cap-bound | final3.635 | by year 2020 162.7%, 2021 46.8%, 2022 -5.8% | max DD 24.2% | entered 166, skipped no room 39, per-stock limit 0 (trimmed 1), cap-bound 85 | final 3.635 | 2020 162.7%, 2021 46.8%, 2022 -5.8% | max DD 24.2% | entered 166, skipped no room 39, per-stock limit 0 (trimmed 1), cap-bound 85 | OK
+(1b) stored daily curve account_his.tsv 'deciding' vs mine (same dates, max abs equity diff) | 565 rows, last 3.634611 | 565 rows, last 3.634641; same dates True; max |diff| 6.04e-05 | OK
+(2) readout total / Sharpe / beta / alpha / t vs QQQ, SPY (own OLS) | total +263.5% (QQQ +26.5%, SPY +15.6%) | CAGR 71.6% | max DD -24.2% (QQQ -31.8%) | Sharpe 1.50 (QQQ 0.48) | beta 0.01 | alpha +62.4%/yr, t 2.31 | 602 sessions | total +263.5% (QQQ +26.5%, SPY +15.6%) | CAGR 71.6% | max DD -24.2% (QQQ -31.8%) | Sharpe 1.50 (QQQ 0.48) | beta 0.01 | alpha +62.4%/yr, t 2.31 | 602 sessions | OK
+(2b) bar verdict (alpha t>=2, total>QQQ, total>SPY, Sharpe>QQQ's) | PASS | PASS (t 2.308, total 2.6346 vs 0.2651/0.1557, Sharpe 1.500 vs 0.480) | OK
+(2c) stored market.tsv 'deciding' row vs mine (total, Sharpe, beta, alpha, t; max abs diff) | total 2.634611 t 2.308355 | total 2.634641 t 2.308330; max |diff| 3.0e-05 | OK
+(2d) same readout with QQQ / SPY taken from the era-B export for 2021-09-27 on | (A-first stitch as run) | total +263.5%, QQQ +26.5%, SPY +15.6%, Sharpe 1.50, t 2.31, bar PASS | OK
+(3a) contradicting fills (fill before a flat full snapshot, or after the first holding snapshot, on E) | 47 | 47 (before flat 30, after held 17) | OK
+(3b) deciding config WITHOUT them: total / t / Sharpe | total +145.6% (QQQ +26.5%, SPY +15.6%) | CAGR 45.7% | max DD -23.0% (QQQ -31.8%) | Sharpe 1.32 (QQQ 0.48) | beta 0.14 | alpha +41.0%/yr, t 1.95 | 602 sessions | total +145.6% (QQQ +26.5%, SPY +15.6%) | CAGR 45.7% | max DD -23.0% (QQQ -31.8%) | Sharpe 1.32 (QQQ 0.48) | beta 0.14 | alpha +41.0%/yr, t 1.95 | 602 sessions | OK
+(4) per-trade, deciding arm, in window, filled (all mature: statuses stopped/stopped_day0/trailed) | n 205, mean R +1.055, win 37.1%, median -1.000, max +48.98, worst -9.36, sum +216.2 | n 205, mean R +1.055, win 37.1%, median -1.000, max +48.98, worst -9.36, sum +216.2 | OK
+(5) band: his breakout-only final vs 200 stored draws (control trades are not stored: draws not re-derivable) | final 3.602; the band's final equity p5 0.788 / p25 0.925 / p50 1.074 / p75 1.267 / p95 1.656; draws at or above his 0.0%; days short of events 0 | his final 3.602 (178 filled); band n 200 p5 0.788 / p25 0.925 / p50 1.074 / p75 1.267 / p95 1.656; draws >= his 0.0% (max draw 1.912) | OK
+(extra) beside primary_exit_cap30: final / t vs stored curve + market.tsv | last 3.7260, t 2.362 | final 3.7261, t 2.362; curve max|diff| 6.5e-05 | OK
+(extra) beside speed_cap20: final / t vs stored curve + market.tsv | last 3.6508, t 2.658 | final 3.6509, t 2.658; curve max|diff| 7.5e-05 | OK
+(extra) beside primary_exit_cap20: final / t vs stored curve + market.tsv | last 3.6546, t 2.670 | final 3.6546, t 2.670; curve max|diff| 7.8e-05 | OK
+
+MISMATCHES: 0 of 13

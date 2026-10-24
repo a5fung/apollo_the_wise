@@ -491,4 +491,4 @@ above the marker after that changes `doc_body`, and the run refuses.
 - **Read with it (the registered limits):** only buys still held at the next stream are visible, so trades bought and sold
   between two streams are missing — an upward bias; without the 47 fills that contradict the panel clock the account reads +145.6%,
   Sharpe 1.32, t 1.95 (just under the bar's 2.0). The EP-dated buys alone do not pass (+15.2%, t 0.92, n = 43); 2021 alone has
-  t 0.96. Independent recount: running.
+  t 0.96. **Independent recount (Sonnet, `verify/recount/recount.py` + `recount_out.txt`): 13 of 13 claims match. Sensitivity: the pass rests on the biggest winners — without the single best trade by R (APT +49R) t 1.89; without the best by dollars (LCID +27R) t 2.03; without the best three, total +81–85%, Sharpe 0.95–0.98 (still above QQQ's 0.48 and both totals), t 1.38–1.43.** That is the strategy's shape (a few large winners carry the year), and it is also why one window of 262 buys cannot carry a t above 2 on its own.
