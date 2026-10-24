@@ -21,7 +21,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from tests.conftest import make_mock_pool
+from tests.conftest import make_mock_pool, stub_promotion_guards
 
 from agents.market_intelligence import coverage_probe as cp
 from agents.market_intelligence import db as dbmod
@@ -38,6 +38,7 @@ def _birth_gate_off(monkeypatch):
     pins keep exercising the byte-identical legacy path without a real DB read
     (fail-closed OFF is the production default until the operator signs the flip)."""
     monkeypatch.setattr(te, "get_theme_birth_gate_mode", AsyncMock(return_value="off"))
+    stub_promotion_guards(monkeypatch)   # #491 U2: no cooldown / exclusion bars a member
 
 
 def _run(coro):

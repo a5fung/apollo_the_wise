@@ -46,7 +46,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from tests.conftest import make_mock_pool
+from tests.conftest import make_mock_pool, stub_promotion_guards
 
 from agents.market_intelligence import db as dbmod
 from agents.market_intelligence import theme_birth_gate as tbg
@@ -372,6 +372,7 @@ def _wire_promote(monkeypatch, cands, *, mode, prior_rows=None, rs_rows=None, pr
     monkeypatch.setattr(te, "_canonicalize_theme_names", AsyncMock(return_value=0))
     monkeypatch.setattr(te, "log_audit_event", AsyncMock())
     monkeypatch.setattr(te, "get_theme_birth_gate_mode", AsyncMock(return_value=mode))
+    stub_promotion_guards(monkeypatch)   # #491 U2: no cooldown / exclusion bars a member
     monkeypatch.setattr(te, "get_active_themes", AsyncMock(return_value=[]))
     monkeypatch.setattr(te, "_map_ecosystems_nonfatal", AsyncMock())
     from agents.market_intelligence import briefing as _brief

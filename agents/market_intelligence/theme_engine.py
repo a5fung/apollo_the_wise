@@ -2517,6 +2517,52 @@ async def _map_ecosystems_nonfatal(themes: list[dict], ctx: str) -> None:
         logger.warning(f"[{ctx}] ecosystem mapping pass failed (non-fatal): {e}")
 
 
+# #491 U2 (2026-10-23) — the nightly shadow promotion honours the cooldown / exclusion wall.
+# The wall stays the one `_hard_guard_refusal`; this is only the promotion's own loop over it.
+_PROMOTE_GUARD_EVENT = "promote_member_skipped"
+_PROMOTE_GUARD_WHY = {
+    "cooldown": "an active 14-day cooldown from this theme (a re-homing move or a validation removal)",
+    "exclusion": "an operator exclusion on this theme",
+}
+
+
+def _strip_guarded_promotion_members(
+    themes: list[dict],
+    cooldown_set: "set[tuple[str, str]] | None",
+    theme_exclusions: "dict[str, set[str]] | None",
+) -> list[dict]:
+    """#491 U2 — remove from each cohort about to graduate every member the engine's hard guards bar
+    from THAT theme (`_hard_guard_refusal`: an operator exclusion, then a live cooldown from the
+    theme's own name). Called AFTER `_canonicalize_theme_names` — the cooldown is keyed on the LIVE
+    name and canonicalization converges a cohort to it only by matching the FULL ticker set, so
+    stripping first would leave the cohort under its shadow name and the wall would never match.
+
+    Rewrites each theme's `tickers` in place (a theme that lost members also gets
+    `guard_refused` = how many) and returns one refusal per removed (theme, ticker) —
+    `{"theme", "ticker", "reason", "source", "kept"}` — for the audit rows. Nothing removed ⇒ the
+    themes are untouched (the byte-identical path). Why: the rehome pass moves a stock OUT of its
+    home and writes the cooldown, but the nightly promotion re-graduated the SAME cohort the next
+    night, moved stock included — 4 of 32 moves bounced straight back (MKSI 10-07, PAYX/YUM 10-16,
+    CXM 10-21). Pure of I/O."""
+    refusals: list[dict] = []
+    for t in themes:
+        excluded = _get_excluded_tickers_for_theme(t["name"], theme_exclusions)
+        kept: list[str] = []
+        dropped: list[tuple[str, str]] = []
+        for tk in t["tickers"]:
+            why = _hard_guard_refusal(tk, t["name"], excluded, cooldown_set)
+            if why:
+                dropped.append((tk, why))
+            else:
+                kept.append(tk)
+        if dropped:
+            t["tickers"] = kept
+            t["guard_refused"] = len(dropped)
+            refusals.extend({"theme": t["name"], "ticker": tk, "reason": why,
+                             "source": t.get("source"), "kept": len(kept)} for tk, why in dropped)
+    return refusals
+
+
 async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> int:
     """#226 — graduate shadow theme cohorts into the LIVE `mi_themes` table (operator 2026-06-28:
     "we need to graduate this ASAP" — the missing promo path was the gap that let cohorts sit idle).
@@ -2528,7 +2574,14 @@ async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> i
 
     Runs AFTER `_save_themes` in the nightly pull; the live DELETE is source='live'-scoped so it can't
     clobber promoted rows, and the ON CONFLICT update is guarded (WHERE source='shadow_promoted') so it
-    never overwrites a native live theme that happens to share a canonicalized name. Returns # promoted."""
+    never overwrites a native live theme that happens to share a canonicalized name. Returns # promoted.
+
+    #491 U2 (2026-10-23): a member the engine's hard guards bar from the cohort's (canonical) name —
+    an active cooldown (the rehome pass's 14-day `rehome:` wall, or a validation removal's) or an
+    operator exclusion — is left out of the write (`_strip_guarded_promotion_members`, audit
+    `promote_member_skipped`); a cohort left under `_PROMOTE_MIN_MEMBERS` by that is not graduated
+    (the same floor, no 2-member half-state). The operator's `/promotetheme` is not filtered — it is
+    his ruling."""
     from agents.market_intelligence.db import (
         get_shadow_theme_candidates, resolve_auto_promote_sources,
     )
@@ -2559,6 +2612,12 @@ async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> i
     if not cohorts:
         logger.info("[promote] no shadow cohort met the >=%d-member bar", _PROMOTE_MIN_MEMBERS)
         return 0
+    # #491 U2: the cooldown + exclusion wall, read ONCE per run, BEFORE the pool connection is held
+    # (each reader takes its own). Deliberately NOT wrapped: a failed read must stop the run loudly
+    # (scheduler step 5d turns the raise into a `shadow_promotion_failed` audit row) — an empty-set
+    # fallback would silently drop the wall on a bad DB night.
+    guard_cooldowns = await get_cooldown_set()
+    guard_exclusions = await get_all_theme_exclusions()
     pool = await get_pool()
     async with pool.acquire() as conn:
         # "description" mirrors thesis for the ecosystem mapper —
@@ -2572,6 +2631,27 @@ async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> i
                    # read by no other consumer (upsert/canonicalize ignore it).
                    "source": c.get("source")} for c in cohorts]
         await _canonicalize_theme_names(conn, themes, today)
+        # #491 U2: strip the barred members AFTER canonicalization (the cooldown is keyed on the live
+        # name) and BEFORE every lookup below, so the birth gate, the RS average, the breadth, the
+        # description check, the write and the ecosystem mapper all see the stripped list.
+        guard_refusals = _strip_guarded_promotion_members(themes, guard_cooldowns, guard_exclusions)
+        n_guard_held = 0
+        if guard_refusals:
+            held = [t for t in themes
+                    if t.get("guard_refused") and len(t["tickers"]) < _PROMOTE_MIN_MEMBERS]
+            n_guard_held = len(held)
+            held_names = {t["name"] for t in held}
+            for r in guard_refusals:
+                is_held = r["theme"] in held_names
+                await log_audit_event(
+                    _PROMOTE_GUARD_EVENT,
+                    summary=f"'{r['theme']}' promotion left out {r['ticker']}: {_PROMOTE_GUARD_WHY[r['reason']]}"
+                            + (" — the cohort is then under the member floor and is not graduated"
+                               if is_held else ""),
+                    detail=json.dumps({**r, "path": r["reason"], "floor": _PROMOTE_MIN_MEMBERS,
+                                       "held_below_floor": is_held}))
+            held_ids = {id(t) for t in held}
+            themes = [t for t in themes if id(t) not in held_ids]
         # #655 bug E (2026-10-04): `stage` rides on this row so the birth gate below can tell a
         # LIVE prior from an auto-retire TOMBSTONE (stage 'Retired', tickers []). Same query,
         # same single fetch — the THREE-fetch sequence test_theme_birth_gate.py pins is unchanged.
@@ -2723,7 +2803,9 @@ async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> i
         await log_audit_event(
             "shadow_themes_promoted",
             summary=f"Graduated {n} shadow cohort(s) into live mi_themes ({len(new_grads)} new)"
-                    + (f" — {n_gated_out} held at the birth gate" if n_gated_out else ""),
+                    + (f" — {n_gated_out} held at the birth gate" if n_gated_out else "")
+                    + (f" — {n_guard_held} held under the member floor after a cooldown/exclusion strip"
+                       if n_guard_held else ""),
             detail=f"promoted={[t['name'] for t in themes]} new={new_grads}"
                    + (f" gated={[o['name'] for o in _gate_outcomes if o['outcome'] != 'birth']}"
                       if n_gated_out else ""))
@@ -2738,8 +2820,10 @@ async def promote_shadow_themes(today, changelog: list[dict] | None = None) -> i
     # Gate-held cohorts are a DELIBERATE hold, not a silent failure — subtract
     # them before the zero-writes alarm (n_gated_out is always 0 in modes
     # 'off' AND 'observe', so both conditions are byte-identical to today; in
-    # 'dedup_only' it counts first-crossing `join` verdicts only).
-    if len(cohorts) - n_gated_out > 0 and n == 0:
+    # 'dedup_only' it counts first-crossing `join` verdicts only). Same for the cohorts
+    # #491 U2 held under the member floor (n_guard_held is 0 whenever no member was under a
+    # cooldown / exclusion — byte-identical then).
+    if len(cohorts) - n_gated_out - n_guard_held > 0 and n == 0:
         await log_audit_event(
             "shadow_promotion_silent_failure",
             summary=f"{len(cohorts)} shadow cohort(s) qualified but 0 graduated",
@@ -6057,20 +6141,34 @@ def _comove_reason(corr: float | None, used: int) -> str:
     return "comoves" if corr >= ASSIGN_COMOVE_BAR else "below_bar"
 
 
+def _hard_guard_refusal(ticker: str, theme_name: str, excluded: "set[str]",
+                        cooldown_set: "set[tuple[str, str]] | None") -> "str | None":
+    """PURE: the two HARD guards on a (ticker, theme) pair, in their one order — "exclusion" (an
+    operator ban on the theme, `_get_excluded_tickers_for_theme`), then "cooldown" (a live
+    validation / re-homing cooldown FROM that theme, `db.get_cooldown_set`); None = neither bars it.
+    The ONE definition: `_membership_path` (sector-cap re-homing, the #655 fold) and the nightly
+    shadow promotion (`_strip_guarded_promotion_members`, #491 U2) all call it, so the wall cannot
+    be copied wrong in one of them."""
+    if ticker in excluded:
+        return "exclusion"
+    if cooldown_set and (ticker, theme_name) in cooldown_set:
+        return "cooldown"
+    return None
+
+
 def _membership_path(ticker: str, target_name: str, target_tickers: "list[str]",
                      ctx: ComoveContext | None, excluded: "set[str]",
                      cooldown_set: "set[tuple[str, str]] | None") -> "tuple[str, ComoveVerdict | None]":
     """PURE: the ONE 'may this ticker join that theme' rule the sector cap's re-homing
     (`_admit_rehomed_members`) and the #655 fold (`_small_fold_member_verdict`) both apply: the two
-    hard guards first (an operator exclusion; a live validation cooldown from the target), then the
-    tape (`_comove_verdict`). A pair the tape cannot judge never passes. Returns (path, verdict):
-    "exclusion" / "cooldown" with no verdict, "tape" with the judged `ComoveVerdict` (admit or
-    reject), "unjudgeable" with the unjudged verdict (None = no context at all). Each caller builds
-    its OWN audit-row shape from this — those rows are operator-queried and stay byte-identical."""
-    if ticker in excluded:
-        return "exclusion", None
-    if cooldown_set and (ticker, target_name) in cooldown_set:
-        return "cooldown", None
+    hard guards first (`_hard_guard_refusal` — an operator exclusion; a live validation cooldown from
+    the target), then the tape (`_comove_verdict`). A pair the tape cannot judge never passes. Returns
+    (path, verdict): "exclusion" / "cooldown" with no verdict, "tape" with the judged `ComoveVerdict`
+    (admit or reject), "unjudgeable" with the unjudged verdict (None = no context at all). Each caller
+    builds its OWN audit-row shape from this — those rows are operator-queried and stay byte-identical."""
+    refusal = _hard_guard_refusal(ticker, target_name, excluded, cooldown_set)
+    if refusal:
+        return refusal, None
     cv = _comove_verdict(ticker, target_tickers, ctx)
     if cv is not None and cv.admit is not None:
         return "tape", cv

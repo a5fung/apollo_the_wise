@@ -185,6 +185,8 @@ async def test_580_nightly_promote_breadth_per_cohort_from_the_batched_rows(monk
     conn.fetch = AsyncMock(side_effect=[[], [], batched])
     conn.execute = AsyncMock(return_value="INSERT 0 1")
     monkeypatch.setattr(te, "get_theme_birth_gate_mode", AsyncMock(return_value="off"))
+    from tests.conftest import stub_promotion_guards
+    stub_promotion_guards(monkeypatch)   # #491 U2: no cooldown / exclusion bars a member
     monkeypatch.setattr(dbmod, "resolve_auto_promote_sources", AsyncMock(return_value={"shadow_v2"}))
     monkeypatch.setattr(dbmod, "get_shadow_theme_candidates", AsyncMock(return_value=[
         {"name": "Bitcoin Miners Pivoting to AI/HPC", "tickers": cohort_a, "thesis": "t",

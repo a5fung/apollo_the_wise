@@ -163,6 +163,20 @@ def make_mock_pool():
     return pool, conn
 
 
+def stub_promotion_guards(monkeypatch, cooldowns=None, exclusions=None):
+    """#491 U2 (2026-10-23): `theme_engine.promote_shadow_themes` reads the cooldown set and the
+    theme exclusions once per run (the wall that keeps a re-homed stock out of its source theme).
+    Every harness that drives the nightly promote pins both here — default EMPTY = no pair is
+    barred, the pre-change behaviour — so no test reaches a real DB for them. Returns the two
+    mocks `(get_cooldown_set, get_all_theme_exclusions)`."""
+    from agents.market_intelligence import theme_engine as _te
+    cd = AsyncMock(return_value=set(cooldowns or ()))
+    ex = AsyncMock(return_value=dict(exclusions or {}))
+    monkeypatch.setattr(_te, "get_cooldown_set", cd)
+    monkeypatch.setattr(_te, "get_all_theme_exclusions", ex)
+    return cd, ex
+
+
 # ─── Shared fake httpx.AsyncClient builder ─────────────────────────────────
 # Origin: test_execution_transport.py's two F18 pairs + test_telegram_market_task_
 # fallback.py's fake each hand-rolled a near-identical `async with httpx.AsyncClient

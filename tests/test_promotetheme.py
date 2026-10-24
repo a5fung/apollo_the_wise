@@ -20,6 +20,8 @@ def _birth_gate_off(monkeypatch):
     these pre-gate promote pins exercise the byte-identical legacy path without
     a real DB read (fail-closed OFF is the production default)."""
     monkeypatch.setattr(te, "get_theme_birth_gate_mode", AsyncMock(return_value="off"))
+    from tests.conftest import stub_promotion_guards
+    stub_promotion_guards(monkeypatch)   # #491 U2: no cooldown / exclusion bars a member
 
 _TODAY = _dt.date(2026, 6, 29)
 

@@ -269,6 +269,8 @@ async def test_promote_folds_graduation_into_changelog(monkeypatch):
     from tests.conftest import make_mock_pool
 
     monkeypatch.setattr(te, "get_theme_birth_gate_mode", AsyncMock(return_value="off"))
+    from tests.conftest import stub_promotion_guards
+    stub_promotion_guards(monkeypatch)   # #491 U2: no cooldown / exclusion bars a member
     pool, conn = make_mock_pool()
     conn.fetch = AsyncMock(side_effect=[[], [], []])
     conn.execute = AsyncMock(return_value="INSERT 0 1")
