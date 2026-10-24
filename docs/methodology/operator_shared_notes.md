@@ -2556,3 +2556,7 @@ the exit rule is his call.
 > "Also, his record is audited, the returns are real, this means we can put the trades back together and achieve the same returns when looking back in those periods, that should be a fact"
 
 Recorded as the standing frame for #705: the setups work (audited record); a backtest that fails to reproduce it is measuring our model of the method, not the method. Next read: replay his own stream-confirmed calls under his own rules (PLAN #705, Sat 10-24).
+
+> "on your point about qullamaggie using 3 setups (breakouts, EP, parabolic shorts), which is true, but each one of the setup is high profitiable for him over multiple years, so the fact is that the setups work (at least in the past), so our backtest should show the same, if not that it's something wrong with our implementation and interpretation, not that it's not profitable given his returns using these setups are a historical audited fact"
+
+Standing rule from this (2026-10-23): for breakouts, EPs and parabolic shorts alike, a backtest that does not reproduce profit over his years is a defect in OUR implementation or interpretation to be found — never a finding that the setup does not work.
