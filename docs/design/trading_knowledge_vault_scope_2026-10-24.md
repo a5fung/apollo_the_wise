@@ -1,7 +1,6 @@
 # Trading knowledge vault — scope (#707, 2026-10-24)
 
-**Status: SCOPE for his ruling.** Nothing is migrated yet. The forks he decides are in §8; everything else is a proposal he can
-strike.
+**Status: RULED 2026-10-24** — his *"ok"* to all four §8 recommendations. The build is #708 (phase 1, 10-31 / 11-01).
 
 ## 1. The goal, in his words
 

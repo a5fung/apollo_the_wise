@@ -2379,3 +2379,13 @@ EVIDENCE:
 - **Items 4 and 6 shipped:** item 4 — `_697_item4/verify_live.sql` d0 = 10-19, 5 scans, 0 violations, 6 `ok_stamped` (HTFL, LIFE: days since breakout 1 → 2 → 3); item 6 — `tests/fixtures/htf_labelled.py` `label_kind` with GH / HNGE / HPE, 74 tests pass.
 - ⚠ **What this close cannot show:** the #146 `triggered_from` check — no raw TRIGGERED row has occurred since 10-11 — so that watch moves to its own line, **#146** (ETA 11-06), not dropped.
 
+## #707 — trading knowledge vault: the initial planning (2026-10-24)
+
+BAR: "a scope doc in `docs/design/` with the vault structure, the migration list (what moves, what stays in Apollo), the ingest and lint routine, how Apollo references it, and a dated implementation plan he has ruled on."
+
+EVIDENCE:
+- **Scope doc in `docs/design/`:** `docs/design/trading_knowledge_vault_scope_2026-10-24.md` (commit of 10-24) — §3 the vault structure, §5 the migration list (what moves; what stays in Apollo: code docs, architecture, PLAN, runbooks, probe code — linked, never copied), §6 the ingest and lint routine (Karpathy LLM-wiki pattern), §7 how Apollo references it (a pinned commit of a private repo), §9 a dated plan (10-31/11-01 skeleton + migration; 11-07/08 the setup database v1; 11-14/15 ingest + lint).
+- **He ruled on it:** 2026-10-24, on the four §8 forks put to him (own private repo; notes + short quotes for external material; large assets in a local data folder with hashes; setups first) — his answer: *"ok"*.
+- **WOULD-FAIL-IF checked:** the scope keeps Apollo's code docs out of the vault (§2, §5 "stays in Apollo") and moves the 74 machine-local lessons in (§5).
+- ⚠ **What this close cannot show:** the build itself — carried by **#708** (phase 1, 10-31/11-01), not dropped.
+
