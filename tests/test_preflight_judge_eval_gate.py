@@ -452,3 +452,17 @@ def test_envelope_changed_line_prints_before_the_rubric_line(tmp_path, monkeypat
     first_line = out.strip().splitlines()[0]
     assert "ENVELOPE CHANGED" in first_line
     assert "unchanged" not in first_line.lower()
+
+
+def test_a_pin_moved_to_the_model_the_passing_eval_graded_passes():
+    """2026-10-23: the record attests two values for judge_model — the source pin the gate saw and the model the
+    eval ran on. Pinning to either is unchanged; any other pin, a record missing judge_model, and every other
+    key still refuse."""
+    rec = _rec(judge_model="claude-opus-5-5", judge_model_source_pin="claude-opus-5")
+    assert gate.check(rec, {**LIVE, "judge_model": "claude-opus-5-5"})[0] is True
+    assert gate.check(rec, {**LIVE, "judge_model": "claude-opus-5"})[0] is True
+    ok, msgs = gate.check(rec, {**LIVE, "judge_model": "claude-opus-6"})
+    assert ok is False and any("'claude-opus-5' or 'claude-opus-5-5'" in m for m in msgs)
+    no_model = {k: v for k, v in rec.items() if k != "judge_model"}
+    assert gate.check(no_model, {**LIVE, "judge_model": None})[0] is False   # a missing value is never a match
+

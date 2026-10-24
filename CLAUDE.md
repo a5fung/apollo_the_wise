@@ -267,9 +267,9 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 
 ## Changes Made — Recent
 
-### 2026-09-23 — a model release can no longer break the judges: transport adapts, canary gates adoption
+### 2026-10-23 — the Opus fallback pin names the evaluated model; the judge-eval gate accepts it
 
-- 🔴 **opus-5-5 rejected forced `tool_choice` and `thinking: disabled` (HTTP 400); both judges failed open.** Fix: ONE factory `shared/llm_client.py` (`make_async_anthropic`/`make_anthropic`) — every production client goes through it (AST-gated, `tests/test_llm_client_factory_population.py`); a rejected feature is rewritten (forced tool → structured output + synthesized `tool_use`; thinking-off → `between_tools` on 5.5, else dropped + headroom, #693) and remembered per model. The nightly refresh now CANARIES a release through the adapter before adopting it; a failure keeps the last working id and Telegrams the exact error.
+- `OPUS_PIN` → `claude-opus-5-5` (the 30-day "fallback pin behind" nudge); the deploy gate `preflight_judge_eval_gate.py` now also accepts a committed pin equal to the model the passing eval graded (`judge_model`, opus-5-5, 36/36 on 10-03) — any other pin, rubric, prompt, corpus or a failed record still refuses (tested). No live binding moves (all roles resolve from the cache). `claude-opus-5` / `claude-opus-4-8` priced explicitly at $5/$25; an unlisted release now prices at its family's highest listed rate (never the pin's, never a cache discount). Undeployed — rides the next deploy; verify = the gate passes at deploy and `mi_model_resolution` shows the judge binding unchanged.
 
 Older entries → `CHANGELOG.md` (search any concept).
 

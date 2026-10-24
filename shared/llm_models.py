@@ -19,8 +19,8 @@ Rules:
     a binding inside an unrelated refactor.
 
 Pricing tables (core/spend.py, agents/.../spend_tracker.py) key off these
-constants so a tier bump re-prices spend logging automatically; ids kept ONLY
-for pricing historical rows live in the LEGACY section. Use `pricing_for(id)`
+constants; every id that ever ran keeps its own explicit rate (the LEGACY section),
+and an unlisted release prices at its family's highest listed rate (pricing_for). Use `pricing_for(id)`
 rather than a raw dict `.get` anywhere the id MIGHT be an auto-resolved release
 not yet in the table (see AUTO-RESOLUTION below) — a raw `.get` silently
 mis-prices an unrecognised id at DEFAULT_PRICING_PER_MTOK.
@@ -126,13 +126,8 @@ from shared.dates import et_today as _et_today
 # never auto-edited) ──────────────────────────────────────────────────────────
 SONNET_PIN = "claude-sonnet-4-6"
 HAIKU_PIN = "claude-haiku-4-5-20251001"
-OPUS_PIN = "claude-opus-5-5"   # bumped 2026-10-23 on the nightly "fallback pin behind" nudge he forwarded:
-                               # the resolver has served opus-5-5 for 30 days (adopted 09-22, judges adapted
-                               # and verified live 09-23, #683) and the judge-robustness eval PASSED 36/36 on
-                               # claude-opus-5-5 on 2026-10-03 (scripts/evals/judge_eval_pass_record.json),
-                               # so the FAIL-SAFE FLOOR again names an evaluated model that production runs.
-                               # No live binding moves (every role resolves from the cache; no role holds).
-                               # Prior pins: claude-opus-5 (2026-08-03, after its own 36/36), claude-opus-4-8.
+OPUS_PIN = "claude-opus-5-5"   # 2026-10-23: the model production runs AND the passing judge eval graded
+                               # (36/36 on 10-03, scripts/evals/judge_eval_pass_record.json). Earlier pins: the legacy group.
 
 # ── Tiers (raw model ids) — PLAIN LITERAL ALIASES, never auto-edited or
 # resolver-bound. See AUTO-RESOLUTION above for why these specifically must
@@ -143,7 +138,6 @@ OPUS = OPUS_PIN
 
 # Legacy ids — kept for pricing historical spend rows / deliberate pins only.
 SONNET_5 = "claude-sonnet-5"
-OPUS_5 = "claude-opus-5"   # the opus pin 08-03..10-23 — kept to price its historical spend rows at $5/$25
 
 # claude-sonnet-5 bills at $2/$10 — this is its STANDARD rate, not a discount.
 # It launched as "introductory pricing through 2026-08-31" with a scheduled rise to $3/$15 on
@@ -158,7 +152,10 @@ OPUS_5 = "claude-opus-5"   # the opus pin 08-03..10-23 — kept to price its his
 # 8% of the bill while the operator was asking why spend kept rising.
 
 SONNET_4_5 = "claude-sonnet-4-5"
-OPUS_4_8 = "claude-opus-4-8"   # the opus pin before 08-03 — priced explicitly since the tier fallback is now opus-5-5's $4/$20
+# Each of these was the opus pin once; they stay so old spend rows price at their own $5/$25 (the opus
+# tier fallback is now opus-5-5's $4/$20, which would under-price them).
+OPUS_5 = "claude-opus-5"
+OPUS_4_8 = "claude-opus-4-8"
 OPUS_4_7 = "claude-opus-4-7"
 OPUS_4_6 = "claude-opus-4-6"
 
@@ -420,17 +417,15 @@ JUDGE_NAMED_THEMES_MODEL = effective_model("JUDGE_NAMED_THEMES_MODEL")
 # Both spend tables (core/spend.py orchestrator-side, agents/.../spend_tracker.py
 # market-agent-side) import this. The 2026-06-09 stale-rate bug (Haiku 0.80/4.00,
 # Opus 15/75) existed precisely because the rates lived in two hand-typed copies.
-# Verified against the live model catalog 2026-06-09; tier rows re-verified
-# against the 2026-07 catalog (opus-5 $5/$25, sonnet-5 sticker $3/$15 — the
-# sonnet-5 intro discount through 2026-08-31 is deliberately NOT modeled, so
-# spend is over- not under-stated during the intro window).
+# Verified against the live model catalog 2026-06-09; the opus tier row is the explicit
+# "claude-opus-5-5" entry below ($4/$20, verified 2026-09-25); sonnet-5's own note is by its entry.
 #
-# AUTO-RESOLUTION NOTE: SONNET/HAIKU/OPUS are the same literal as their *_PIN
-# (see AUTO-RESOLUTION above — the duplicate key is harmless, same value) so
-# a direct `.get` on THOSE names always hits. The gap is a RESOLVED_ROLES
+# AUTO-RESOLUTION NOTE: SONNET/HAIKU are the same literal as their *_PIN (the
+# duplicate key is harmless, same value) and OPUS / OPUS_PIN are the explicit
+# "claude-opus-5-5" entry, so a direct `.get` on THOSE names always hits. The gap is a RESOLVED_ROLES
 # role's live id (e.g. effective_model("JUDGE_MODEL") returning a genuinely
 # newer opus release not yet in this table) — a raw `.get(model, DEFAULT)`
-# would silently price a $5/$25 Opus call at the $3/$15 default. Call sites
+# would silently price an Opus call at the $3/$15 default. Call sites
 # that log spend for a RESOLVED_ROLES role's id MUST use `pricing_for(id)`
 # below, not a raw dict `.get`. LIMIT, stated plainly: a new release that
 # changes its TIER's PRICE (not just its id) is mispriced by pricing_for's
@@ -443,7 +438,7 @@ PRICING_PER_MTOK: dict[str, dict[str, float]] = {
     SONNET_4_5: {"input": 3.00, "output": 15.00},
     HAIKU:      {"input": 1.00, "output": 5.00},
     HAIKU_PIN:  {"input": 1.00, "output": 5.00},
-    OPUS_5:     {"input": 5.00, "output": 25.00},   # OPUS / OPUS_PIN (= claude-opus-5-5) are priced by their explicit entry below
+    OPUS_5:     {"input": 5.00, "output": 25.00},
     OPUS_4_8:   {"input": 5.00, "output": 25.00},
     OPUS_4_7:   {"input": 5.00, "output": 25.00},
     OPUS_4_6:   {"input": 5.00, "output": 25.00},
@@ -502,11 +497,13 @@ def cost_for_call(model_id: str, input_tokens: int, output_tokens: int,
 def pricing_for(model_id: str) -> dict[str, float]:
     """$/MTok {input, output} for `model_id`. Exact match first (covers every
     literal id already in PRICING_PER_MTOK, current + historical). Falls back
-    to the id's PARSED TIER's pin rate for a genuine tracked-family release
-    that isn't in the table yet (e.g. a fresh effective_model("JUDGE_MODEL")
-    resolution) — same $/tier as the pin, the best available estimate
-    (models.list carries no pricing) and LOGGED every time so a stale rate
-    table doesn't stay a silent mis-price. Final fallback:
+    to the HIGHEST {input, output} among the table's own entries of the id's PARSED
+    family for a genuine tracked-family release that isn't in the table yet (e.g. a
+    fresh effective_model("JUDGE_MODEL") resolution, or a rollback to an old id) —
+    over-state, never under-state (models.list carries no pricing), never inherits a
+    cache discount, and is independent of which id the fail-safe pin names (2026-10-23:
+    pinning the cheaper opus-5-5 had re-priced every unlisted opus at its $4/$20).
+    LOGGED every time so a stale rate table doesn't stay a silent mis-price. Final fallback:
     DEFAULT_PRICING_PER_MTOK, for ids in no recognised family at all.
 
     No dated special cases: claude-sonnet-5's $2/$10 is its standard rate. It used to carry a
@@ -517,17 +514,18 @@ def pricing_for(model_id: str) -> dict[str, float]:
     if exact is not None:
         return exact
     parsed = _parse_model_id(model_id)
-    tier_pin = _TIER_PINS.get(parsed.family) if parsed else None
-    tier_price = PRICING_PER_MTOK.get(tier_pin) if tier_pin else None
-    if tier_price is not None:
+    family = [v for k, v in PRICING_PER_MTOK.items()
+              if parsed and (p := _parse_model_id(k)) and p.family == parsed.family]
+    if family:
+        price = {"input": max(v["input"] for v in family), "output": max(v["output"] for v in family)}
         import logging
         logging.getLogger(__name__).warning(
             "llm_models.pricing_for: %r not in PRICING_PER_MTOK — pricing at "
-            "its %s-tier rate (%s) as the best available estimate; add an "
-            "explicit entry once the real rate for this id is confirmed.",
-            model_id, parsed.family, tier_pin,
+            "the %s family's highest listed rate (%s) as the best available estimate; "
+            "add an explicit entry once the real rate for this id is confirmed.",
+            model_id, parsed.family, price,
         )
-        return tier_price
+        return price
     return DEFAULT_PRICING_PER_MTOK
 
 # Perplexity per-request search fee in USD. Published 2026-06-25: sonar-pro

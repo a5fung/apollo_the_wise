@@ -112,24 +112,3 @@ def test_the_gate_compares_its_source_pin_to_the_recorded_source_pin_not_the_eva
     ok3, _ = check(legacy, live)       # an old record without the key falls back to judge_model
     assert not ok3
 
-
-def test_the_gate_accepts_the_pin_moved_to_the_model_the_eval_ran_on():
-    """2026-10-23: bumping the fallback pin TO the evaluated model (the nightly "fallback pin
-    behind" nudge) is not a grade-surface change — the passing run graded that model. A pin to
-    any model the eval did not run on still fails, and so does any other key."""
-    import sys
-    from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-    from preflight_judge_eval_gate import check
-    live = {"rubric_version": "v", "rubric_hash": "h", "catalyst_grade_prompt_version": "g",
-            "judge_model": "claude-opus-5-5", "corpus_sha1": "c"}
-    rec = {**live, "judge_model": "claude-opus-5-5", "judge_model_source_pin": "claude-opus-5",
-           "pass": True, "run_at": "2026-10-03"}
-    ok, _ = check(rec, live)
-    assert ok
-    ok2, msgs = check(rec, {**live, "judge_model": "claude-opus-6"})
-    assert not ok2 and any("judge_model" in m for m in msgs)
-    ok3, _ = check(rec, {**live, "rubric_hash": "other"})
-    assert not ok3
-    ok4, _ = check({**rec, "pass": False}, live)
-    assert not ok4

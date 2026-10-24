@@ -397,26 +397,22 @@ def check(record: "dict | None", live: dict) -> tuple[bool, list[str]]:
         return False, ["no pass record (scripts/evals/judge_eval_pass_record.json missing) — "
                        "run the judge robustness eval first"]
     waiver = record.get("waiver")
-    def _recorded(k):
-        # 2026-10-03: the eval runs on the RESOLVED judge model (claude-opus-5-5 since 09-23), and
-        # `judge_model` in the record says so — model_resolution.check_judge_eval_divergence needs
-        # that truth. This gate reads source and sees only the tier's FALLBACK PIN, so the record
-        # also carries what this gate saw at the passing run (`judge_model_source_pin`), and the
-        # gate compares like with like. Records written before that key fall back to judge_model.
+    def _accepted(k):
+        """The recorded values that count as unchanged for key k; the first is the one reported.
+        2026-10-03: the eval runs on the RESOLVED judge model (claude-opus-5-5 since 09-23), and
+        `judge_model` in the record says so — model_resolution.check_judge_eval_divergence needs
+        that truth. This gate reads source and sees only the tier's FALLBACK PIN, so the record
+        also carries what this gate saw at the passing run (`judge_model_source_pin`), and the
+        gate compares like with like. Records written before that key fall back to judge_model.
+        2026-10-23: a committed pin moved TO the model the passing eval actually ran on also names
+        an evaluated grade surface — the "fallback pin behind" nudge asks for exactly that move, and
+        a new paid run to re-grade a model that already passed would be paperwork, not evidence.
+        Any OTHER pin still fails (claude-opus-6 in the tests: never evaluated)."""
         if k == "judge_model" and "judge_model_source_pin" in record:
-            return record["judge_model_source_pin"]
-        return record.get(k)
-    def _same(k):
-        # 2026-10-23: a committed pin moved TO the model the passing eval actually ran on
-        # (`judge_model`) names an evaluated grade surface, so it is not a change — the
-        # "fallback pin behind" nudge asks for exactly that move, and requiring a new paid run
-        # to re-grade a model that already passed would be paperwork, not evidence. Any OTHER
-        # pin still fails (claude-opus-6 here: never evaluated).
-        if k == "judge_model" and "judge_model_source_pin" in record:
-            return live[k] in (record["judge_model_source_pin"], record.get("judge_model"))
-        return _recorded(k) == live[k]
-    mismatches = [f"  {k}: record={_recorded(k)!r} live={live[k]!r}"
-                  for k in live if not _same(k)]
+            return tuple(v for v in (record["judge_model_source_pin"], record.get("judge_model")) if v is not None)
+        return (record.get(k),)
+    mismatches = [f"  {k}: record={' or '.join(map(repr, _accepted(k)))} live={live[k]!r}"
+                  for k in live if live[k] not in _accepted(k)]
     if not record.get("pass"):
         mismatches.insert(0, "  record.pass is not true — the last eval run FAILED")
     if mismatches:

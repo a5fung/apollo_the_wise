@@ -24,9 +24,7 @@ from shared.model_resolver import TierResolution
 # ─── The gate constraint: constants stay plain literals ─────────────────────
 
 def test_tier_constants_are_plain_literal_pins():
-    # OPUS_PIN bumped to claude-opus-5-5 on 2026-10-23 (the "fallback pin behind" nudge; its
-    # judge-robustness eval passed 36/36 on 2026-10-03). The pin is the committed FAIL-SAFE FLOOR, so this
-    # assertion is meant to move WITH a deliberate bump and to fail loudly on an accidental one.
+    # The committed FAIL-SAFE FLOOR: this assertion moves WITH a deliberate bump and fails loudly on an accidental one.
     assert llm_models.OPUS == llm_models.OPUS_PIN == "claude-opus-5-5"
     assert llm_models.SONNET == llm_models.SONNET_PIN == "claude-sonnet-4-6"
     assert llm_models.HAIKU == llm_models.HAIKU_PIN == "claude-haiku-4-5-20251001"
@@ -177,7 +175,7 @@ def test_pricing_for_unpinned_release_falls_back_to_tier_rate():
     # rate, NOT silently fall to DEFAULT_PRICING_PER_MTOK ($3/$15, the Sonnet
     # rate) which would understate a real Opus call's cost.
     price = llm_models.pricing_for("claude-opus-6")
-    assert price == llm_models.PRICING_PER_MTOK[llm_models.OPUS_PIN]
+    assert price == {"input": 5.00, "output": 25.00}   # the opus family's highest listed rate, no cache discount
     assert price != llm_models.DEFAULT_PRICING_PER_MTOK
 
 

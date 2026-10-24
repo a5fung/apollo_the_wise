@@ -21,6 +21,12 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ERA_DIR="${1:?era-dir}"; LABEL="${2:?label}"; RICH_DIR="${3:-}"
 APOLLO_DATA="${APOLLO_DATA:-$HOME/apollo_data}"
 CUTOFF="${CUTOFF:-2024-12-31}"
+case "$LABEL" in                                   # before any output dir exists, so a refused label leaves nothing behind
+  A) WS="${WATCH_START:-2017-03-01}"; WE="${WATCH_END:-2021-12-31}" ;;
+  B) WS="${WATCH_START:-2022-03-28}"; WE="${WATCH_END:-2024-12-31}" ;;
+  *) WS="${WATCH_START:?label $LABEL is not A or B: set WATCH_START and WATCH_END}"
+     WE="${WATCH_END:?label $LABEL is not A or B: set WATCH_START and WATCH_END}" ;;
+esac
 OUT="${OUT:-${TMPDIR:-/tmp}/backtest_data_audit_${LABEL}_$(date +%Y%m%d_%H%M%S)}"
 mkdir -p "$OUT"/{universe,dup,price,sectype,pit}
 EXPORT="$ERA_DIR/daily_closes_all.csv.gz"
@@ -41,13 +47,6 @@ ENTRIES=$(first "$ERA_DIR"/out/entries_pre_tl_com.tsv.gz "$ERA_DIR"/out/entries_
 CANDS=$(first "$ERA_DIR"/out/candidates_tl_com.tsv "$ERA_DIR"/out/candidates.tsv)
 WATCH=$(first "$ERA_DIR"/out/watch_tl_com.tsv.gz "$ERA_DIR"/out/watch.tsv.gz)
 TRADES="${TRADES:-$(first "$ERA_DIR"/out/trades_*exitpb.tsv.gz)}"
-case "$LABEL" in
-  A) WS="${WATCH_START:-2017-03-01}"; WE="${WATCH_END:-2021-12-31}" ;;
-  B) WS="${WATCH_START:-2022-03-28}"; WE="${WATCH_END:-2024-12-31}" ;;
-  *) # an unknown label used to fall back to the B window silently (a trial run of era A read only Mar-Jun 2022, 2026-10-23)
-     { [ -n "${WATCH_START:-}" ] && [ -n "${WATCH_END:-}" ]; } || { echo "label '$LABEL' is not A or B: set WATCH_START and WATCH_END"; exit 1; }
-     WS="$WATCH_START"; WE="$WATCH_END" ;;
-esac
 # Hand-verified non-common instruments that pass the universe filters in era A (security_type_check U2; a person confirmed each
 # against price level and dates — the classifier only PROPOSES). Reported as a count; exclusion is the operator's fork (standard §5).
 VERIFIED_REAL="UWT,DWT,GASL,RUSL,MRRL,FRLG,BSCJ,BSCK,BSJJ,BSJK,BSJL,IBDL,IBDM,ERUS,WTRU,BDXA,PSTH,AGC,IPOA,TACO,SAMA,MUDS,HCAC"
