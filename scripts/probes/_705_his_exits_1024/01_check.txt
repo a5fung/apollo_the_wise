@@ -1,0 +1,164 @@
+# #705 HIS EXITS 01 — CHECK on the 2021-22 buys (ONE run; the chosen rule decides, every other rule beside)
+# registration: docs/analysis/cb_his_exits_study_2026-10-24.md
+- freeze: every pin incl. doc_body 50d7a8f96ca5… sits under the marker line; CHOSEN: B1_time5
+- the holdings replay's pins re-checked (exports, candidates, labels, guards, the frozen modules; the holdings module and tests = its freeze record): no drift
+- loaded in 7s: entries 1744, deciding account 262 (the registration's 262, asserted by the holdings loader), walkable 258; last stream asof 2023-12-15
+- selected: E in 2021-01-04..2022-06-14: n = 113; by year 2021 102, 2022 11
+- the walk: check_entry_abstain_too_wide 13, check_entry_filled 88, check_entry_no_trigger_no_minute_above_level 8, check_minutes_ok 109
+- parity with the frozen holdings replay (speed trail, E <= 2022-06-14): 88 filled entries equal in realized R (1e-9) and sessions held
+- walk_x parity with cb.walk_exit on the plain 20-day trail: 88 filled entries equal (status, realized R to 1e-9, sessions)
+
+## ACCOUNTS — CHECK 2021-22: buys with E in 2021-01-04..2022-06-14 (n = 113), cap_30 sizing from 2021-01-04; the market comparison over the window's 365 sessions (open walks marked at its last close); recovery = (ln rule - ln speed) / (ln panel - ln speed) on the final equity
+- speed -> panel ln-gap +0.794 (speed final 1.330, panel final 2.942)
+  rule                  | tag    | final | recovery | yearly                  | max DD | Sharpe | alpha t | total vs QQQ/SPY  | bar | entered/skipped | n   | sum R  | mean R | win | >=5R
+  ----------------------+--------+-------+----------+-------------------------+--------+--------+---------+-------------------+-----+-----------------+-----+--------+--------+-----+-----
+  d3_p33_tspd           | ours   | 1.330 | 0        | 2021 41.1% 2022 -5.8%   | 24.2%  | 0.79   | 0.98    | +33% vs -11%/+1%  | not | 77/11           | 88  | +66.0  | +0.750 | 38% | 9   
+  p33_s3_t10            | beside | 1.349 | +0.02    | 2021 41.2% 2022 -4.5%   | 24.2%  | 0.82   | 1.01    | +35% vs -11%/+1%  | not | 77/11           | 88  | +68.2  | +0.775 | 38% | 9   
+  S1_r2_p33_tspd        | S      | 1.632 | +0.26    | 2021 72.8% 2022 -5.6%   | 21.4%  | 1.36   | 1.68    | +63% vs -11%/+1%  | not | 76/12           | 88  | +58.6  | +0.666 | 42% | 6   
+  S2_hold_t20           | S      | 1.403 | +0.07    | 2021 48.9% 2022 -5.8%   | 43.7%  | 0.75   | 0.94    | +40% vs -11%/+1%  | not | 61/27           | 88  | +61.5  | +0.698 | 25% | 8   
+  S3_c3_p33_tspd_cut3   | S      | 1.335 | +0.00    | 2021 41.3% 2022 -5.5%   | 19.4%  | 0.90   | 1.12    | +33% vs -11%/+1%  | not | 80/8            | 88  | +60.6  | +0.688 | 43% | 6   
+  S4_d3profit_p33_tspd  | S      | 1.314 | -0.01    | 2021 39.5% 2022 -5.8%   | 24.8%  | 0.76   | 0.94    | +31% vs -11%/+1%  | not | 77/11           | 88  | +64.1  | +0.729 | 38% | 9   
+  B1_time5              | B      | 1.444 | +0.10    | 2021 50.6% 2022 -4.1%   | 22.9%  | 1.09   | 1.34    | +44% vs -11%/+1%  | not | 79/9            | 88  | +48.0  | +0.546 | 34% | 6   
+  B2_time5_unless2R_t10 | B      | 1.422 | +0.08    | 2021 50.1% 2022 -5.2%   | 33.4%  | 0.84   | 1.04    | +42% vs -11%/+1%  | not | 71/17           | 88  | +77.4  | +0.880 | 27% | 9   
+  panel_exit            | his    | 2.942 | 1        | 2021 261.4% 2022 -18.6% | 29.8%  | 1.76   | 2.21    | +194% vs -11%/+1% | met | 77/31           | 109 | +147.9 | +1.357 | 39% | 14  
+
+## THE CHECK READOUT
+- CHOSEN B1_time5 [B]: final 1.444 vs the speed trail 1.330 vs his panel exits 2.942; recovery +0.10 (bar >= 0.25 and beats the speed trail) -> **FAIL**
+    market: total +44.4% (QQQ -10.8%, SPY +1.3%) | CAGR 28.9% | max DD -22.9% (QQQ -31.8%) | Sharpe 1.09 (QQQ -0.20) | beta 0.11 | alpha +29.5%/yr, t 1.34 | 365 sessions -> his bar not met (beside; the window is 2021-22, not the registered one)
+    speed: total +33.0% (QQQ -10.8%, SPY +1.3%) | CAGR 21.8% | max DD -24.2% (QQQ -31.8%) | Sharpe 0.79 (QQQ -0.20) | beta 0.13 | alpha +25.2%/yr, t 0.98 | 365 sessions; panel: total +194.2% (QQQ -10.8%, SPY +1.3%) | CAGR 110.7% | max DD -29.8% (QQQ -31.8%) | Sharpe 1.76 (QQQ -0.20) | beta 0.40 | alpha +88.3%/yr, t 2.21 | 365 sessions
+    per trade: chosen mean R +0.546 (sum +48.0) vs speed +0.750 (+66.0) vs panel +1.357 (+147.9)
+- beside: the best rule on 2021-22 by recovery is S1_r2_p33_tspd (+0.26) — a post-hoc reading, it decides nothing
+
+## BESIDE — without the 3 entries with the highest panel R: TLRY 2021-02-02, MARA 2021-02-08, LCID 2021-10-25
+
+## ACCOUNTS — CHECK without the top 3: buys with E in 2021-01-04..2022-06-14 (n = 110), cap_30 sizing from 2021-01-04; the market comparison over the window's 365 sessions (open walks marked at its last close); recovery = (ln rule - ln speed) / (ln panel - ln speed) on the final equity
+- speed -> panel ln-gap +0.497 (speed final 1.056, panel final 1.736)
+  rule                  | tag    | final | recovery | yearly                  | max DD | Sharpe | alpha t | total vs QQQ/SPY | bar | entered/skipped | n   | sum R | mean R | win | >=5R
+  ----------------------+--------+-------+----------+-------------------------+--------+--------+---------+------------------+-----+-----------------+-----+-------+--------+-----+-----
+  d3_p33_tspd           | ours   | 1.056 | 0        | 2021 12.1% 2022 -5.8%   | 24.9%  | 0.28   | 0.36    | +6% vs -11%/+1%  | not | 74/11           | 85  | +34.8 | +0.410 | 36% | 7   
+  p33_s3_t10            | beside | 1.071 | +0.03    | 2021 12.1% 2022 -4.5%   | 24.3%  | 0.32   | 0.40    | +7% vs -11%/+1%  | not | 74/11           | 85  | +37.0 | +0.435 | 36% | 7   
+  S1_r2_p33_tspd        | S      | 1.291 | +0.40    | 2021 36.6% 2022 -5.6%   | 18.3%  | 0.92   | 1.14    | +29% vs -11%/+1% | not | 75/10           | 85  | +31.6 | +0.371 | 41% | 5   
+  S2_hold_t20           | S      | 1.060 | +0.01    | 2021 12.5% 2022 -5.8%   | 38.2%  | 0.29   | 0.38    | +6% vs -11%/+1%  | not | 62/23           | 85  | +29.8 | +0.351 | 24% | 7   
+  S3_c3_p33_tspd_cut3   | S      | 1.076 | +0.04    | 2021 13.9% 2022 -5.5%   | 17.7%  | 0.36   | 0.47    | +8% vs -11%/+1%  | not | 79/6            | 85  | +33.5 | +0.394 | 42% | 5   
+  S4_d3profit_p33_tspd  | S      | 1.037 | -0.04    | 2021 10.0% 2022 -5.8%   | 25.7%  | 0.22   | 0.29    | +4% vs -11%/+1%  | not | 74/11           | 85  | +33.0 | +0.388 | 36% | 7   
+  B1_time5              | B      | 1.154 | +0.18    | 2021 20.3% 2022 -4.1%   | 22.9%  | 0.53   | 0.66    | +15% vs -11%/+1% | not | 77/8            | 85  | +20.8 | +0.245 | 33% | 4   
+  B2_time5_unless2R_t10 | B      | 1.048 | -0.02    | 2021 10.6% 2022 -5.2%   | 30.5%  | 0.25   | 0.33    | +5% vs -11%/+1%  | not | 69/16           | 85  | +38.4 | +0.451 | 26% | 7   
+  panel_exit            | his    | 1.736 | 1        | 2021 115.0% 2022 -19.3% | 30.2%  | 1.08   | 1.39    | +74% vs -11%/+1% | not | 79/26           | 106 | +68.2 | +0.644 | 37% | 11  
+
+## BESIDE — breakout-dated only (n = 89)
+
+## ACCOUNTS — CHECK breakout-dated: buys with E in 2021-01-04..2022-06-14 (n = 89), cap_30 sizing from 2021-01-04; the market comparison over the window's 365 sessions (open walks marked at its last close); recovery = (ln rule - ln speed) / (ln panel - ln speed) on the final equity
+- speed -> panel ln-gap +0.635 (speed final 1.506, panel final 2.842)
+  rule                  | tag    | final | recovery | yearly                  | max DD | Sharpe | alpha t | total vs QQQ/SPY  | bar | entered/skipped | n  | sum R  | mean R | win | >=5R
+  ----------------------+--------+-------+----------+-------------------------+--------+--------+---------+-------------------+-----+-----------------+----+--------+--------+-----+-----
+  d3_p33_tspd           | ours   | 1.506 | 0        | 2021 55.1% 2022 -2.9%   | 26.8%  | 1.08   | 1.33    | +51% vs -11%/+1%  | not | 67/13           | 80 | +66.5  | +0.831 | 39% | 9   
+  p33_s3_t10            | beside | 1.527 | +0.02    | 2021 55.1% 2022 -1.6%   | 26.8%  | 1.11   | 1.37    | +53% vs -11%/+1%  | not | 67/13           | 80 | +68.7  | +0.858 | 39% | 9   
+  S1_r2_p33_tspd        | S      | 1.644 | +0.14    | 2021 68.9% 2022 -2.7%   | 22.7%  | 1.40   | 1.73    | +64% vs -11%/+1%  | not | 69/11           | 80 | +60.3  | +0.754 | 44% | 6   
+  S2_hold_t20           | S      | 1.386 | -0.13    | 2021 44.3% 2022 -3.9%   | 45.5%  | 0.74   | 0.92    | +39% vs -11%/+1%  | not | 55/25           | 80 | +62.1  | +0.777 | 26% | 7   
+  S3_c3_p33_tspd_cut3   | S      | 1.503 | -0.00    | 2021 54.4% 2022 -2.6%   | 21.7%  | 1.23   | 1.51    | +50% vs -11%/+1%  | not | 72/8            | 80 | +62.3  | +0.778 | 45% | 6   
+  S4_d3profit_p33_tspd  | S      | 1.496 | -0.01    | 2021 54.1% 2022 -2.9%   | 27.4%  | 1.06   | 1.31    | +50% vs -11%/+1%  | not | 66/14           | 80 | +64.6  | +0.808 | 39% | 9   
+  B1_time5              | B      | 1.400 | -0.12    | 2021 41.6% 2022 -1.2%   | 25.9%  | 1.04   | 1.27    | +40% vs -11%/+1%  | not | 72/8            | 80 | +46.0  | +0.574 | 35% | 5   
+  B2_time5_unless2R_t10 | B      | 1.432 | -0.08    | 2021 46.6% 2022 -2.3%   | 35.0%  | 0.87   | 1.07    | +43% vs -11%/+1%  | not | 64/16           | 80 | +79.0  | +0.987 | 28% | 9   
+  panel_exit            | his    | 2.842 | 1        | 2021 242.8% 2022 -17.1% | 34.6%  | 1.76   | 2.21    | +184% vs -11%/+1% | met | 66/22           | 89 | +146.2 | +1.643 | 40% | 13  
+
+## BESIDE — 2021 alone (n = 102)
+
+## ACCOUNTS — CHECK 2021: buys with E in 2021-01-04..2021-12-31 (n = 102), cap_30 sizing from 2021-01-04; the market comparison over the window's 252 sessions (open walks marked at its last close); recovery = (ln rule - ln speed) / (ln panel - ln speed) on the final equity
+- speed -> panel ln-gap +0.892 (speed final 1.396, panel final 3.408)
+  rule                  | tag    | final | recovery | yearly                 | max DD | Sharpe | alpha t | total vs QQQ/SPY   | bar | entered/skipped | n  | sum R  | mean R | win | >=5R
+  ----------------------+--------+-------+----------+------------------------+--------+--------+---------+--------------------+-----+-----------------+----+--------+--------+-----+-----
+  d3_p33_tspd           | ours   | 1.396 | 0        | 2021 41.1% 2022 -1.1%  | 24.2%  | 1.11   | 0.91    | +41% vs +29%/+29%  | not | 67/11           | 78 | +72.1  | +0.925 | 38% | 9   
+  p33_s3_t10            | beside | 1.413 | +0.01    | 2021 41.2% 2022 0.0%   | 24.2%  | 1.11   | 0.92    | +41% vs +29%/+29%  | not | 67/11           | 78 | +73.8  | +0.946 | 38% | 9   
+  S1_r2_p33_tspd        | S      | 1.709 | +0.23    | 2021 72.8% 2022 -1.1%  | 21.4%  | 1.82   | 1.58    | +73% vs +29%/+29%  | not | 67/11           | 78 | +65.3  | +0.837 | 45% | 6   
+  S2_hold_t20           | S      | 1.458 | +0.05    | 2021 48.9% 2022 -2.1%  | 43.7%  | 1.02   | 0.78    | +49% vs +29%/+29%  | not | 53/25           | 78 | +68.5  | +0.878 | 26% | 8   
+  S3_c3_p33_tspd_cut3   | S      | 1.397 | +0.00    | 2021 41.3% 2022 -1.1%  | 19.4%  | 1.28   | 1.05    | +41% vs +29%/+29%  | not | 70/8            | 78 | +66.2  | +0.849 | 45% | 6   
+  S4_d3profit_p33_tspd  | S      | 1.380 | -0.01    | 2021 39.5% 2022 -1.1%  | 24.8%  | 1.08   | 0.88    | +39% vs +29%/+29%  | not | 67/11           | 78 | +70.3  | +0.901 | 38% | 9   
+  B1_time5              | B      | 1.503 | +0.08    | 2021 50.6% 2022 -0.2%  | 22.9%  | 1.45   | 1.26    | +51% vs +29%/+29%  | not | 69/9            | 78 | +52.4  | +0.672 | 36% | 6   
+  B2_time5_unless2R_t10 | B      | 1.494 | +0.08    | 2021 50.1% 2022 -0.4%  | 33.4%  | 1.14   | 0.95    | +50% vs +29%/+29%  | not | 62/16           | 78 | +84.7  | +1.086 | 29% | 9   
+  panel_exit            | his    | 3.408 | 1        | 2021 261.4% 2022 -5.7% | 29.8%  | 2.54   | 2.19    | +261% vs +29%/+29% | met | 68/30           | 98 | +172.9 | +1.765 | 42% | 14  
+
+## BESIDE — 2022 alone (n = 11)
+
+## ACCOUNTS — CHECK 2022: buys with E in 2022-01-03..2022-06-14 (n = 11), cap_30 sizing from 2022-01-03; the market comparison over the window's 113 sessions (open walks marked at its last close); recovery = (ln rule - ln speed) / (ln panel - ln speed) on the final equity
+- speed -> panel ln-gap -0.098 (speed final 0.952, panel final 0.863)
+  rule                  | tag    | final | recovery | yearly      | max DD | Sharpe | alpha t | total vs QQQ/SPY  | bar | entered/skipped | n  | sum R | mean R | win | >=5R
+  ----------------------+--------+-------+----------+-------------+--------+--------+---------+-------------------+-----+-----------------+----+-------+--------+-----+-----
+  d3_p33_tspd           | ours   | 0.952 | 0        | 2022 -4.8%  | 4.8%   | -2.10  | -1.22   | -5% vs -31%/-22%  | not | 10/0            | 10 | -6.2  | -0.615 | 30% | 0   
+  p33_s3_t10            | beside | 0.955 | -0.03    | 2022 -4.5%  | 4.5%   | -1.99  | -1.15   | -5% vs -31%/-22%  | not | 10/0            | 10 | -5.6  | -0.565 | 30% | 0   
+  S1_r2_p33_tspd        | S      | 0.955 | -0.02    | 2022 -4.5%  | 4.5%   | -2.02  | -1.19   | -5% vs -31%/-22%  | not | 9/1             | 10 | -6.7  | -0.667 | 20% | 0   
+  S2_hold_t20           | S      | 0.962 | -0.11    | 2022 -3.8%  | 3.8%   | -1.80  | -0.94   | -4% vs -31%/-22%  | not | 8/2             | 10 | -7.1  | -0.706 | 20% | 0   
+  S3_c3_p33_tspd_cut3   | S      | 0.955 | -0.03    | 2022 -4.5%  | 4.5%   | -2.08  | -1.19   | -4% vs -31%/-22%  | not | 10/0            | 10 | -5.6  | -0.562 | 30% | 0   
+  S4_d3profit_p33_tspd  | S      | 0.952 | -0.00    | 2022 -4.8%  | 4.8%   | -2.10  | -1.22   | -5% vs -31%/-22%  | not | 10/0            | 10 | -6.2  | -0.615 | 30% | 0   
+  B1_time5              | B      | 0.961 | -0.09    | 2022 -3.9%  | 3.9%   | -1.88  | -0.99   | -4% vs -31%/-22%  | not | 10/0            | 10 | -4.4  | -0.440 | 20% | 0   
+  B2_time5_unless2R_t10 | B      | 0.952 | +0.01    | 2022 -4.8%  | 4.8%   | -2.13  | -1.18   | -5% vs -31%/-22%  | not | 9/1             | 10 | -7.3  | -0.728 | 10% | 0   
+  panel_exit            | his    | 0.863 | 1        | 2022 -13.7% | 13.9%  | -1.90  | -1.24   | -14% vs -31%/-22% | not | 9/1             | 11 | -25.0 | -2.276 | 9%  | 0   
+
+## DESCRIPTION — 2021-22 deciding buys (E in 2021-01-04..2022-06-14) — read for the first time here
+- entries 109: ORH5 filled 88 (the description's main set), unfilled 21 (beside, on the panel account's close-fill proxy: the buy day's close + 0.1%, one ADR20 wide)
+- PARTIALS ARE INVISIBLE: the panel shows presence only, so 'his exit' is the last share's exit and his R is the whole position at it; the window [exit_lo, exit_hi] is the last stream holding and the first not holding — every R below is a RANGE over it, never a point
+
+### filled: n = 88
+- sessions held to his exit window's END (exit_hi): 0 (E itself) 18, 1-2 24, 3-5 13, 6-10 18, 11-20 12, >20 3 | median 3, p25 1, p75 6
+- sessions to the window's START (exit_lo): 0 (E itself) 25, 1-2 24, 3-5 11, 6-10 15, 11-20 10, >20 3; window length 0 sessions 66, 1: 14, >1: 8; truncated by the data 0
+- R at his exit (RANGE): at the close of exit_lo median -0.38 [p25 -1.02, p75 +1.68]; at the close of exit_hi median -0.39 [p25 -1.07, p75 +1.68]; mean +1.68 .. +1.60; sum +148.2 .. +140.6
+    the band of closes inside the window: min median -0.51, max median -0.13; share of windows whose band straddles 0: 10%
+    his exits with R(exit_hi) <= -1 (a stop would have done it): 28; in (-1, 0): 24; [0, 2): 14; [2, 5): 9; >= 5: 13; >= 10: 7
+- markers vs his window (first occurrence: before / within / after / never):
+    first close below the 10-day                                  : before  14 | within  22 | after  52 | never   0
+    first close below the 20-day                                  : before   7 | within  26 | after  55 | never   0
+    first close below the 5-day                                   : before  24 | within  23 | after  41 | never   0
+    first red close (close below the prior close)                 : before  44 | within  21 | after  23 | never   0
+    first close below the prior session's low                     : before  23 | within  25 | after  40 | never   0
+    +2R first reached (high)                                      : before  37 | within   8 | after  23 | never  20
+    +3R first reached                                             : before  33 | within   7 | after  22 | never  26
+    first close below the breakout level                          : before   8 | within  25 | after  48 | never   7
+    first gap-down day (open <= prior close - 0.5 ADR20)          : before  14 | within   6 | after  64 | never   4
+    first big up day (close >= prior close + 1.5 ADR20)           : before  16 | within   1 | after  48 | never  23
+    first extension (close >= 10-day x (1 + 2.0 ADR20))           : before  27 | within   3 | after  36 | never  22
+- inside his window (any session of it, sessions >= 1): gapdown 10 of 88, upday 3 of 88, newhigh 22 of 88, extension 11 of 88 | windows that are E itself only (no session >= 1): 18
+- the stall (no +1R by the close of session 3): 24 of 88; of those his exit_hi <= 3: 20, 4-5: 2, > 5: 2; their R(exit_hi) median -1.27; the not-stalled: n 64, exit_hi median 5, R(exit_hi) median +0.59
+- the 3-5 day count: exit_hi in 3-5: 13; the window overlaps 3-5: 18; exit_hi > 5 33; of those with exit_hi > 5, R(exit_hi) median +2.23, >= 5R 11
+- the fast / slow split (ADR20 at D above 4.79% -> the 10-day): fast 66, exit_hi median fast 3 / slow 3
+- OUR deciding exit (the speed trail, last leg) vs his window: before 24 | inside 37 | after 27
+    before n  24: ours by status {'trailed': 4, 'stopped_day0': 11, 'stopped': 9}; our sessions median 1; his exit_hi median 6; our R mean -0.25 vs his R(exit_hi) mean +2.33 (R(exit_lo) +2.24)
+    inside n  37: ours by status {'stopped': 16, 'stopped_day0': 18, 'trailed': 3}; our sessions median 1; his exit_hi median 1; our R mean +0.02 vs his R(exit_hi) mean -0.47 (R(exit_lo) -0.06)
+    after  n  27: ours by status {'trailed': 15, 'stopped': 12}; our sessions median 8; his exit_hi median 4; our R mean +2.64 vs his R(exit_hi) mean +3.78 (R(exit_lo) +3.57)
+    ours out while his book still held it: 24 — our stop did it 20 (day 0: 11), our trail 4; our day-3 third before his window: 43
+- TOP TAIL: the 9 trades where his exit beats ours most (his R(exit_hi) - our R; sum of the gap +108.5 of the whole set's +74.6):
+    MARA 2021-02-08 his [+22.1..+22.1]R in 6-6s vs ours -1.0R@0s stopped_day0; RIOT 2021-02-08 his [+22.0..+22.0]R in 20-20s vs ours -1.0R@0s stopped_day0; TLRY 2021-02-02 his [+27.1..+27.1]R in 6-6s vs ours +5.3R@9s trailed; MARA 2021-10-11 his [+12.0..+12.0]R in 25-25s vs ours -1.0R@1s stopped; AMC 2021-02-22 his [+5.7..+5.7]R in 1-1s vs ours -1.0R@0s stopped_day0; SICP 2021-01-22 his [+16.9..+16.9]R in 13-13s vs ours +10.5R@22s trailed; LAC 2021-09-30 his [+4.3..+4.3]R in 78-78s vs ours -1.0R@3s stopped; FUTU 2021-02-09 his [+3.6..+3.6]R in 1-1s vs ours -1.0R@3s stopped; BB 2021-06-02 his [+3.5..+3.5]R in 1-1s vs ours -1.0R@0s stopped_day0
+    top vs rest — his exit_hi median 6 vs 3; our exit session 1 vs 2; ours stopped 78% vs 75%; ours trailed 22% vs 25%; max R reached by exit_hi +23.64 vs +1.82; ADR20 12.6% vs 5.6%; fast 100% vs 72%; flicker 22% vs 38%; retrigger 56% vs 67%; EP 11% vs 9%; first close below the 10-day AFTER his window 67% vs 58%; stalled 0% vs 30%
+    the bottom tail (ours beats his most, 9): BILI 2021-06-25 his [-0.9..-3.9]R in 3-6s vs ours -0.8R@4s; BTBT 2021-01-28 his [+0.6..+0.6]R in 6-6s vs ours +3.8R@7s; FCX 2021-04-06 his [-4.4..-4.4]R in 1-1s vs ours -1.0R@0s; APPS 2021-03-22 his [-4.5..-4.5]R in 2-2s vs ours -1.0R@0s; BNTX 2021-09-23 his [-4.9..-4.9]R in 3-3s vs ours -1.0R@1s; FTNT 2022-04-21 his [-3.6..-5.5]R in 0-1s vs ours -1.0R@0s; MDB 2021-12-27 his [-6.5..-6.5]R in 5-5s vs ours -1.0R@1s; LAC 2022-04-21 his [-8.3..-9.3]R in 0-1s vs ours -1.0R@0s; NXH 2021-01-22 his [+0.7..+0.7]R in 1-1s vs ours +10.7R@19s
+- per trade on this set, every rule (filled, all statuses; R at 0 slippage): name | tag | n | mean R | sum R | win | >=5R | median sessions | exits inside his window
+    d3_p33_tspd                | base |  88 | +0.750 | +66.0 | 38% |   9 | 2 | 37
+    S1_r2_p33_tspd             | S    |  88 | +0.666 | +58.6 | 42% |   6 | 2 | 37
+    S2_hold_t20                | S    |  88 | +0.698 | +61.5 | 25% |   8 | 2 | 35
+    S3_c3_p33_tspd_cut3        | S    |  88 | +0.688 | +60.6 | 43% |   6 | 2 | 37
+    S4_d3profit_p33_tspd       | S    |  88 | +0.729 | +64.1 | 38% |   9 | 2 | 37
+    B1_time5                   | B    |  88 | +0.546 | +48.0 | 34% |   6 | 2 | 35
+    B2_time5_unless2R_t10      | B    |  88 | +0.880 | +77.4 | 27% |   9 | 2 | 35
+    his panel exit (R at exit_hi) | his  |  88 | +1.598 | +140.6 | 41% |  13 | 3 | -
+
+### unfilled (close-fill proxy): n = 21
+- sessions held to his exit window's END (exit_hi): 0 (E itself) 5, 1-2 8, 3-5 2, 6-10 3, 11-20 2, >20 1 | median 1, p25 1, p75 6
+- sessions to the window's START (exit_lo): 0 (E itself) 6, 1-2 7, 3-5 3, 6-10 2, 11-20 2, >20 1; window length 0 sessions 15, 1: 5, >1: 1; truncated by the data 0
+- R at his exit (RANGE): at the close of exit_lo median -0.01 [p25 -1.45, p75 +0.38]; at the close of exit_hi median -0.02 [p25 -0.92, p75 +0.09]; mean +0.50 .. +0.35; sum +10.6 .. +7.3
+    the band of closes inside the window: min median -0.02, max median -0.01; share of windows whose band straddles 0: 5%
+    his exits with R(exit_hi) <= -1 (a stop would have done it): 5; in (-1, 0): 10; [0, 2): 5; [2, 5): 0; >= 5: 1; >= 10: 1
+- markers vs his window (first occurrence: before / within / after / never):
+    first close below the 10-day                                  : before   3 | within   5 | after  13 | never   0
+    first close below the 20-day                                  : before   0 | within   4 | after  17 | never   0
+    first close below the 5-day                                   : before   6 | within   2 | after  13 | never   0
+    first red close (close below the prior close)                 : before   8 | within   6 | after   7 | never   0
+    first close below the prior session's low                     : before   7 | within   1 | after  13 | never   0
+    +2R first reached (high)                                      : before   6 | within   0 | after   8 | never   7
+    +3R first reached                                             : before   4 | within   0 | after   9 | never   8
+    first close below the breakout level                          : before   8 | within   4 | after   9 | never   0
+    first gap-down day (open <= prior close - 0.5 ADR20)          : before   3 | within   5 | after  12 | never   1
+    first big up day (close >= prior close + 1.5 ADR20)           : before   5 | within   0 | after  15 | never   1
+    first extension (close >= 10-day x (1 + 2.0 ADR20))           : before   7 | within   3 | after  10 | never   1
+- inside his window (any session of it, sessions >= 1): gapdown 6 of 21, upday 0 of 21, newhigh 3 of 21, extension 4 of 21 | windows that are E itself only (no session >= 1): 5
+- the stall (no +1R by the close of session 3): 9 of 21; of those his exit_hi <= 3: 7, 4-5: 1, > 5: 1; their R(exit_hi) median -0.88; the not-stalled: n 12, exit_hi median 2, R(exit_hi) median +0.04
+- the 3-5 day count: exit_hi in 3-5: 2; the window overlaps 3-5: 3; exit_hi > 5 6; of those with exit_hi > 5, R(exit_hi) median +0.48, >= 5R 1
+- the fast / slow split (ADR20 at D above 4.79% -> the 10-day): fast 13, exit_hi median fast 1 / slow 1
+
+## Outputs: /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/his_exits/trades_check_2021_22.tsv, describe_rows_2021_22.tsv

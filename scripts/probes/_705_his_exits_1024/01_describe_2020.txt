@@ -1,0 +1,76 @@
+# #705 HIS EXITS 01 — DESCRIBE 2020 (the fit years' deciding buys; the 2021-22 outcomes are not computed here)
+# registration: docs/analysis/cb_his_exits_study_2026-10-24.md
+- the holdings replay's pins re-checked (exports, candidates, labels, guards, the frozen modules; the holdings module and tests = its freeze record): no drift
+- loaded in 7s: entries 1744, deciding account 262 (the registration's 262, asserted by the holdings loader), walkable 258; last stream asof 2023-12-15
+- selected: E in 2020-01-27..2020-12-31: n = 149; walked by year 2020 149 (2021: 102 and 2022: 11 deciding buys exist and are NOT walked)
+- the walk: fit_entry_abstain_too_wide 18, fit_entry_filled 117, fit_entry_no_trigger_no_minute_above_level 14, fit_minutes_ok 149
+- parity with the frozen holdings replay (speed trail, E <= 2020-12-31): 117 filled entries equal in realized R (1e-9) and sessions held
+- walk_x parity with cb.walk_exit on the plain 20-day trail: 117 filled entries equal (status, realized R to 1e-9, sessions)
+
+## DESCRIPTION — 2020 deciding buys (E in 2020-01-27..2020-12-31)
+- entries 149: ORH5 filled 117 (the description's main set), unfilled 32 (beside, on the panel account's close-fill proxy: the buy day's close + 0.1%, one ADR20 wide)
+- PARTIALS ARE INVISIBLE: the panel shows presence only, so 'his exit' is the last share's exit and his R is the whole position at it; the window [exit_lo, exit_hi] is the last stream holding and the first not holding — every R below is a RANGE over it, never a point
+
+### filled: n = 117
+- sessions held to his exit window's END (exit_hi): 0 (E itself) 16, 1-2 33, 3-5 23, 6-10 21, 11-20 14, >20 10 | median 3, p25 1, p75 9
+- sessions to the window's START (exit_lo): 0 (E itself) 24, 1-2 36, 3-5 18, 6-10 16, 11-20 13, >20 10; window length 0 sessions 74, 1: 25, >1: 18; truncated by the data 0
+- R at his exit (RANGE): at the close of exit_lo median +0.30 [p25 -0.70, p75 +2.45]; at the close of exit_hi median +0.58 [p25 -0.93, p75 +2.57]; mean +2.39 .. +2.59; sum +279.3 .. +303.3
+    the band of closes inside the window: min median +0.16, max median +0.79; share of windows whose band straddles 0: 9%
+    his exits with R(exit_hi) <= -1 (a stop would have done it): 29; in (-1, 0): 20; [0, 2): 33; [2, 5): 14; >= 5: 21; >= 10: 7
+- markers vs his window (first occurrence: before / within / after / never):
+    first close below the 10-day                                  : before  21 | within  39 | after  57 | never   0
+    first close below the 20-day                                  : before  10 | within  28 | after  79 | never   0
+    first close below the 5-day                                   : before  35 | within  36 | after  46 | never   0
+    first red close (close below the prior close)                 : before  55 | within  39 | after  23 | never   0
+    first close below the prior session's low                     : before  39 | within  33 | after  45 | never   0
+    +2R first reached (high)                                      : before  58 | within  12 | after  40 | never   7
+    +3R first reached                                             : before  51 | within   9 | after  48 | never   9
+    first close below the breakout level                          : before  12 | within  24 | after  51 | never  30
+    first gap-down day (open <= prior close - 0.5 ADR20)          : before  21 | within   6 | after  88 | never   2
+    first big up day (close >= prior close + 1.5 ADR20)           : before  20 | within   3 | after  82 | never  12
+    first extension (close >= 10-day x (1 + 2.0 ADR20))           : before  32 | within   6 | after  69 | never  10
+- inside his window (any session of it, sessions >= 1): gapdown 9 of 117, upday 6 of 117, newhigh 29 of 117, extension 13 of 117 | windows that are E itself only (no session >= 1): 16
+- the stall (no +1R by the close of session 3): 21 of 117; of those his exit_hi <= 3: 16, 4-5: 0, > 5: 5; their R(exit_hi) median -1.18; the not-stalled: n 96, exit_hi median 4, R(exit_hi) median +1.04
+- the 3-5 day count: exit_hi in 3-5: 23; the window overlaps 3-5: 29; exit_hi > 5 45; of those with exit_hi > 5, R(exit_hi) median +2.45, >= 5R 16
+- the fast / slow split (ADR20 at D above 4.79% -> the 10-day): fast 97, exit_hi median fast 3 / slow 3
+- OUR deciding exit (the speed trail, last leg) vs his window: before 33 | inside 55 | after 29
+    before n  33: ours by status {'stopped': 9, 'trailed': 10, 'stopped_day0': 14}; our sessions median 1; his exit_hi median 13; our R mean +0.92 vs his R(exit_hi) mean +3.31 (R(exit_lo) +3.72)
+    inside n  55: ours by status {'stopped_day0': 17, 'stopped': 32, 'trailed': 6}; our sessions median 1; his exit_hi median 2; our R mean +0.14 vs his R(exit_hi) mean +0.41 (R(exit_lo) +0.47)
+    after  n  29: ours by status {'trailed': 17, 'stopped': 12}; our sessions median 8; his exit_hi median 2; our R mean +3.87 vs his R(exit_hi) mean +5.92 (R(exit_lo) +4.51)
+    ours out while his book still held it: 33 — our stop did it 23 (day 0: 14), our trail 10; our day-3 third before his window: 56
+- TOP TAIL: the 12 trades where his exit beats ours most (his R(exit_hi) - our R; sum of the gap +159.5 of the whole set's +153.1):
+    APT 2020-02-21 his [+40.0..+91.7]R in 3-4s vs ours +49.0R@11s trailed; W 2020-07-27 his [+43.2..+28.8]R in 23-25s vs ours -1.0R@0s stopped_day0; PDD 2020-05-08 his [+24.0..+24.0]R in 45-45s vs ours +5.2R@13s trailed; QDEL 2020-11-05 his [+1.3..+1.3]R in 1-1s vs ours -9.4R@2s stopped; VIR 2020-06-19 his [+0.6..+8.9]R in 1-4s vs ours -1.0R@0s stopped_day0; BILI 2020-06-08 his [+7.4..+7.4]R in 25-25s vs ours -1.0R@0s stopped_day0; TSLA 2020-06-01 his [+5.9..+7.6]R in 17-18s vs ours -0.1R@4s stopped; NIO 2020-09-29 his [+16.4..+16.4]R in 20-20s vs ours +9.4R@20s trailed; TWTR 2020-09-22 his [+7.6..+7.6]R in 22-22s vs ours +0.7R@28s stopped; ARCT 2020-07-09 his [-3.3..+5.1]R in 0-3s vs ours -1.0R@0s stopped_day0; MRNA 2020-06-30 his [+5.1..+5.1]R in 10-10s vs ours -1.0R@1s stopped; ROKU 2020-07-31 his [+0.2..+4.4]R in 0-2s vs ours -1.0R@0s stopped_day0
+    top vs rest — his exit_hi median 14 vs 3; our exit session 2 vs 2; ours stopped 75% vs 71%; ours trailed 25% vs 29%; max R reached by exit_hi +12.04 vs +2.92; ADR20 5.9% vs 6.7%; fast 83% vs 83%; flicker 33% vs 32%; retrigger 83% vs 56%; EP 0% vs 11%; first close below the 10-day AFTER his window 33% vs 50%; stalled 17% vs 18%
+    the bottom tail (ours beats his most, 12): TTD 2020-10-29 his [-3.1..-3.1]R in 1-1s vs ours -1.0R@1s; DOCU 2020-12-04 his [-1.1..-3.2]R in 0-3s vs ours -1.0R@0s; CHGG 2020-05-05 his [+1.9..+2.0]R in 21-22s vs ours +4.3R@10s; ACB 2020-06-23 his [-1.9..-3.3]R in 0-2s vs ours -1.0R@0s; DOYU 2020-08-24 his [+3.2..+3.2]R in 8-8s vs ours +6.0R@9s; INO 2020-04-23 his [-1.9..-4.1]R in 5-6s vs ours -1.0R@0s; MDB 2020-07-08 his [-0.6..-4.2]R in 2-4s vs ours -1.0R@2s; TTD 2020-07-31 his [+4.4..+0.6]R in 6-7s vs ours +4.3R@8s; BE 2020-06-30 his [+7.5..+7.5]R in 20-20s vs ours +11.4R@19s; MDB 2020-09-21 his [+0.8..+0.8]R in 3-3s vs ours +5.8R@22s; BE 2020-08-13 his [+2.5..+2.5]R in 16-16s vs ours +8.3R@12s; CODX 2020-07-16 his [+1.8..+1.8]R in 2-2s vs ours +12.8R@18s
+- per trade on this set, every rule (filled, all statuses; R at 0 slippage): name | tag | n | mean R | sum R | win | >=5R | median sessions | exits inside his window
+    d3_p33_tspd                | base | 117 | +1.284 | +150.3 | 37% |  19 | 2 | 55
+    S1_r2_p33_tspd             | S    | 117 | +0.917 | +107.3 | 50% |  11 | 1 | 56
+    S2_hold_t20                | S    | 117 | +1.582 | +185.1 | 33% |  12 | 2 | 47
+    S3_c3_p33_tspd_cut3        | S    | 117 | +0.871 | +101.9 | 50% |  11 | 1 | 55
+    S4_d3profit_p33_tspd       | S    | 117 | +1.637 | +191.5 | 38% |  20 | 2 | 54
+    his panel exit (R at exit_hi) | his  | 117 | +2.593 | +303.3 | 58% |  21 | 3 | -
+
+### unfilled (close-fill proxy): n = 32
+- sessions held to his exit window's END (exit_hi): 0 (E itself) 3, 1-2 9, 3-5 2, 6-10 5, 11-20 10, >20 3 | median 7, p25 2, p75 18
+- sessions to the window's START (exit_lo): 0 (E itself) 3, 1-2 11, 3-5 2, 6-10 4, 11-20 9, >20 3; window length 0 sessions 22, 1: 4, >1: 6; truncated by the data 0
+- R at his exit (RANGE): at the close of exit_lo median -0.02 [p25 -0.80, p75 +3.70]; at the close of exit_hi median -0.01 [p25 -0.76, p75 +3.70]; mean +2.44 .. +2.27; sum +78.2 .. +72.5
+    the band of closes inside the window: min median -0.02, max median -0.01; share of windows whose band straddles 0: 3%
+    his exits with R(exit_hi) <= -1 (a stop would have done it): 7; in (-1, 0): 10; [0, 2): 4; [2, 5): 5; >= 5: 6; >= 10: 3
+- markers vs his window (first occurrence: before / within / after / never):
+    first close below the 10-day                                  : before  13 | within   7 | after  12 | never   0
+    first close below the 20-day                                  : before   5 | within   6 | after  21 | never   0
+    first close below the 5-day                                   : before  16 | within   9 | after   7 | never   0
+    first red close (close below the prior close)                 : before  20 | within   7 | after   5 | never   0
+    first close below the prior session's low                     : before  16 | within   7 | after   9 | never   0
+    +2R first reached (high)                                      : before  14 | within   0 | after  13 | never   5
+    +3R first reached                                             : before  10 | within   1 | after  13 | never   8
+    first close below the breakout level                          : before  13 | within   5 | after   5 | never   9
+    first gap-down day (open <= prior close - 0.5 ADR20)          : before  10 | within   9 | after  12 | never   1
+    first big up day (close >= prior close + 1.5 ADR20)           : before  10 | within   2 | after  17 | never   3
+    first extension (close >= 10-day x (1 + 2.0 ADR20))           : before  16 | within   1 | after  12 | never   3
+- inside his window (any session of it, sessions >= 1): gapdown 9 of 32, upday 4 of 32, newhigh 5 of 32, extension 8 of 32 | windows that are E itself only (no session >= 1): 3
+- the stall (no +1R by the close of session 3): 14 of 32; of those his exit_hi <= 3: 7, 4-5: 0, > 5: 7; their R(exit_hi) median -0.70; the not-stalled: n 18, exit_hi median 12, R(exit_hi) median +2.17
+- the 3-5 day count: exit_hi in 3-5: 2; the window overlaps 3-5: 4; exit_hi > 5 18; of those with exit_hi > 5, R(exit_hi) median +2.89, >= 5R 6
+- the fast / slow split (ADR20 at D above 4.79% -> the 10-day): fast 23, exit_hi median fast 6 / slow 9
+
+## Outputs: /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/his_exits/describe_rows_2020.tsv
