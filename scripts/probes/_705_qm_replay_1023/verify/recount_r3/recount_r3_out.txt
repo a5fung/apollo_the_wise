@@ -1,0 +1,141 @@
+filled rows per (stop, arm): {('base_low', 'd3_p33_tspd'): 19692, ('base_low', 'p33_s3_t10'): 19692, ('base_low', 'p33_s3_t20'): 19692, ('base_low', 'trail10_only'): 19692, ('lod', 'd3_p33_tspd'): 18165, ('lod', 'p33_s3_t10'): 18165, ('lod', 'p33_s3_t20'): 18165, ('lod', 'trail10_only'): 18165, ('lod_floor1', 'd3_p33_tspd'): 19694, ('lod_floor1', 'p33_s3_t10'): 19694, ('lod_floor1', 'p33_s3_t20'): 19694, ('lod_floor1', 'trail10_only'): 19694}
+
+(1) ACCOUNT CURVE (his calls, 30% cap, 30% per stock)
+  B0 | 2020 62.8% 2021 26.2% final 2.044 dd 20.7% entered 130 skip_room 44 skip_stock 0 | 2020 62.8% 2021 26.2% final 2.044 dd 20.7% entered 130 skip_room 44 skip_stock 0 | OK
+     rest | 2017 0.8% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 130 / 0 trimmed 6 capbound 75 maxopen 6 maxgross 99.1% mincash +0.006 | 2017 0.8% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 130 / 0 trimmed 6 capbound 75 maxopen 6 maxgross 99.1% mincash +0.006 | OK
+     daily curve: 1216/1216 days, max |diff| 6.6e-07
+  W1 | 2020 23.2% 2021 14.2% final 1.427 dd 8.9% entered 182 skip_room 12 skip_stock 0 | 2020 23.2% 2021 14.2% final 1.427 dd 8.9% entered 182 skip_room 12 skip_stock 0 | OK
+     rest | 2017 1.6% 2018 0.0% 2019 0.2% 2022 -0.3% offered 194 1%/0.5% 182 / 0 trimmed 0 capbound 1 maxopen 14 maxgross 96.6% mincash +0.000 | 2017 1.6% 2018 0.0% 2019 0.2% 2022 -0.3% offered 194 1%/0.5% 182 / 0 trimmed 0 capbound 1 maxopen 14 maxgross 96.6% mincash +0.000 | OK
+     daily curve: 1219/1219 days, max |diff| 1.4e-07
+  W2 | 2020 63.6% 2021 26.2% final 2.201 dd 20.7% entered 130 skip_room 44 skip_stock 0 | 2020 63.6% 2021 26.2% final 2.201 dd 20.7% entered 130 skip_room 44 skip_stock 0 | OK
+     rest | 2017 8.0% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 130 / 0 trimmed 6 capbound 75 maxopen 6 maxgross 99.1% mincash +0.007 | 2017 8.0% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 130 / 0 trimmed 6 capbound 75 maxopen 6 maxgross 99.1% mincash +0.007 | OK
+     daily curve: 1216/1216 days, max |diff| 8.1e-07
+  W2b | 2020 58.2% 2021 37.8% final 2.196 dd 28.1% entered 117 skip_room 57 skip_stock 0 | 2020 58.2% 2021 37.8% final 2.196 dd 28.1% entered 117 skip_room 57 skip_stock 0 | OK
+     rest | 2017 1.6% 2018 0.0% 2019 0.2% 2022 -1.0% offered 174 1%/0.5% 117 / 0 trimmed 1 capbound 66 maxopen 4 maxgross 100.0% mincash +0.000 | 2017 1.6% 2018 0.0% 2019 0.2% 2022 -1.0% offered 174 1%/0.5% 117 / 0 trimmed 1 capbound 66 maxopen 4 maxgross 100.0% mincash +0.000 | OK
+     daily curve: 1216/1216 days, max |diff| 8.5e-10
+  W3 | 2020 29.7% 2021 18.7% final 1.532 dd 16.5% entered 142 skip_room 32 skip_stock 0 | 2020 29.7% 2021 18.7% final 1.532 dd 16.5% entered 142 skip_room 32 skip_stock 0 | OK
+     rest | 2017 0.8% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 93 / 49 trimmed 4 capbound 60 maxopen 7 maxgross 91.1% mincash +0.003 | 2017 0.8% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 93 / 49 trimmed 4 capbound 60 maxopen 7 maxgross 91.1% mincash +0.003 | OK
+     daily curve: 1216/1216 days, max |diff| 2.9e-07
+  COMBINED | 2020 16.6% 2021 7.9% final 1.305 dd 8.1% entered 187 skip_room 7 skip_stock 0 | 2020 16.6% 2021 7.9% final 1.305 dd 8.1% entered 187 skip_room 7 skip_stock 0 | OK
+     rest | 2017 3.9% 2018 0.0% 2019 0.2% 2022 -0.3% offered 194 1%/0.5% 124 / 63 trimmed 0 capbound 0 maxopen 16 maxgross 95.4% mincash +0.029 | 2017 3.9% 2018 0.0% 2019 0.2% 2022 -0.3% offered 194 1%/0.5% 124 / 63 trimmed 0 capbound 0 maxopen 16 maxgross 95.4% mincash +0.029 | OK
+     daily curve: 1219/1219 days, max |diff| 1.1e-07
+  W4m_B0 | 2020 74.5% 2021 32.8% final 2.306 dd 21.1% entered 166 skip_room 8 skip_stock 0 | 2020 74.5% 2021 32.8% final 2.306 dd 21.1% entered 166 skip_room 8 skip_stock 0 | OK
+     rest | 2017 0.8% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 166 / 0 trimmed 8 capbound 99 maxopen 11 maxgross 190.9% mincash -1.634 | 2017 0.8% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 166 / 0 trimmed 8 capbound 99 maxopen 11 maxgross 190.9% mincash -1.634 | OK
+     daily curve: 1216/1216 days, max |diff| 7.4e-07
+
+(2) BAND (200 re-derived draws)
+  B0 2020 return | p5 -0.163 p50 +0.038 p95 +0.382 share 1.0% | p5 -0.163 p50 +0.038 p95 +0.382 share 1.0% | OK
+  B0 2021 return | p5 -0.093 p50 +0.049 p95 +0.262 share 4.5% | p5 -0.093 p50 +0.049 p95 +0.262 share 4.5% | OK
+  B0 final equity | p5 +0.834 p50 +1.119 p95 +1.587 share 0.5% | p5 +0.834 p50 +1.119 p95 +1.587 share 0.5% | OK
+  B0 max drawdown (higher = WORSE) | p5 +0.101 p50 +0.154 p95 +0.255 share 18.0% | p5 +0.101 p50 +0.154 p95 +0.255 share 18.0% | OK
+  W1 2020 return | p5 -0.033 p50 +0.078 p95 +0.204 share 3.0% | p5 -0.033 p50 +0.078 p95 +0.204 share 3.0% | OK
+  W1 2021 return | p5 -0.005 p50 +0.079 p95 +0.195 share 18.5% | p5 -0.005 p50 +0.079 p95 +0.195 share 18.5% | OK
+  W1 final equity | p5 +1.014 p50 +1.187 p95 +1.340 share 2.0% | p5 +1.014 p50 +1.187 p95 +1.340 share 2.0% | OK
+  W1 max drawdown (higher = WORSE) | p5 +0.056 p50 +0.077 p95 +0.120 share 29.5% | p5 +0.056 p50 +0.077 p95 +0.120 share 29.5% | OK
+  W2 2020 return | p5 -0.155 p50 +0.045 p95 +0.404 share 1.0% | p5 -0.155 p50 +0.045 p95 +0.404 share 1.0% | OK
+  W2 2021 return | p5 -0.098 p50 +0.047 p95 +0.250 share 5.0% | p5 -0.098 p50 +0.047 p95 +0.250 share 5.0% | OK
+  W2 final equity | p5 +0.843 p50 +1.112 p95 +1.507 share 0.5% | p5 +0.843 p50 +1.112 p95 +1.507 share 0.5% | OK
+  W2 max drawdown (higher = WORSE) | p5 +0.103 p50 +0.155 p95 +0.265 share 20.0% | p5 +0.103 p50 +0.155 p95 +0.265 share 20.0% | OK
+  W2b 2020 return | p5 -0.181 p50 +0.080 p95 +0.537 share 3.5% | p5 -0.181 p50 +0.080 p95 +0.537 share 3.5% | OK
+  W2b 2021 return | p5 -0.129 p50 +0.025 p95 +0.247 share 1.5% | p5 -0.129 p50 +0.025 p95 +0.247 share 1.5% | OK
+  W2b final equity | p5 +0.806 p50 +1.154 p95 +1.740 share 1.5% | p5 +0.806 p50 +1.154 p95 +1.740 share 1.5% | OK
+  W2b max drawdown (higher = WORSE) | p5 +0.127 p50 +0.183 p95 +0.304 share 8.0% | p5 +0.127 p50 +0.183 p95 +0.304 share 8.0% | OK
+  W3 2020 return | p5 -0.171 p50 +0.037 p95 +0.301 share 5.5% | p5 -0.171 p50 +0.037 p95 +0.301 share 5.5% | OK
+  W3 2021 return | p5 -0.078 p50 +0.045 p95 +0.262 share 10.5% | p5 -0.078 p50 +0.045 p95 +0.262 share 10.5% | OK
+  W3 final equity | p5 +0.839 p50 +1.119 p95 +1.490 share 4.0% | p5 +0.839 p50 +1.119 p95 +1.490 share 4.0% | OK
+  W3 max drawdown (higher = WORSE) | p5 +0.094 p50 +0.148 p95 +0.236 share 34.5% | p5 +0.094 p50 +0.148 p95 +0.236 share 34.5% | OK
+  COMBINED 2020 return | p5 -0.033 p50 +0.063 p95 +0.171 share 6.0% | p5 -0.033 p50 +0.063 p95 +0.171 share 6.0% | OK
+  COMBINED 2021 return | p5 -0.024 p50 +0.063 p95 +0.193 share 38.0% | p5 -0.024 p50 +0.063 p95 +0.193 share 38.0% | OK
+  COMBINED final equity | p5 +0.990 p50 +1.137 p95 +1.299 share 5.0% | p5 +0.990 p50 +1.137 p95 +1.299 share 5.0% | OK
+  COMBINED max drawdown (higher = WORSE) | p5 +0.049 p50 +0.070 p95 +0.105 share 28.0% | p5 +0.049 p50 +0.070 p95 +0.105 share 28.0% | OK
+  W4m_B0 2020 return | p5 -0.217 p50 +0.026 p95 +0.392 share 0.5% | p5 -0.217 p50 +0.026 p95 +0.392 share 0.5% | OK
+  W4m_B0 2021 return | p5 -0.075 p50 +0.075 p95 +0.326 share 5.0% | p5 -0.075 p50 +0.075 p95 +0.326 share 5.0% | OK
+  W4m_B0 final equity | p5 +0.784 p50 +1.133 p95 +1.587 share 0.0% | p5 +0.784 p50 +1.133 p95 +1.587 share 0.0% | OK
+  W4m_B0 max drawdown (higher = WORSE) | p5 +0.122 p50 +0.179 p95 +0.304 share 35.0% | p5 +0.122 p50 +0.179 p95 +0.304 share 35.0% | OK
+
+(3) FORK: his COMBINED final np.float64(1.3046671575970519) | top-14 band finals: [1.608385, 1.483723, 1.371681, 1.361818, 1.347603, 1.337747, 1.327377, 1.311573, 1.310385, 1.305514, 1.298359, 1.297103, 1.295687, 1.286436]
+   draws >= his: 10 | the next draw below his: 1.298358528870078 | draws within 1e-3 of his: [1.30551]
+
+(4) W3: his calls by QQQ state at D
+   all 236 calls by state: {'up': 163, 'down': 38, 'mixed': 35}
+   up     calls 163 | filled 121 (mature 121) | mean R under B0 +0.024 | sum R +2.9 | win 31%
+   mixed  calls  35 | filled  25 (mature 25) | mean R under B0 +4.462 | sum R +111.5 | win 64%
+   down   calls  38 | filled  28 (mature 28) | mean R under B0 -0.119 | sum R -3.3 | win 29%
+   mixed: top 3 trades [(71.61776237, 'SOL', '2020-12-14'), (13.1588623, 'SHOP', '2017-03-08'), (7.277607388, 'SHOP', '2020-06-15')] | mean R without the top 1: 1.664 | without top 3: 0.886 | winners: 16 of 25
+   not-up (mixed+down): filled mature 53 mean R +2.042 sum R +108.2
+   B0: entered 130; equity-fraction gained by state (sum of val*return, not compounded):
+             n    val    pnl  meanR
+     q                             
+     down   24  0.381  0.011  0.029
+     mixed  19  0.348  1.174  5.469
+     up     87  0.378 -0.141 -0.082
+     by year x state pnl: {('2017', False): -0.023, ('2017', True): 0.031, ('2019', False): -0.003, ('2020', False): 0.011, ('2020', True): 1.204, ('2021', False): -0.125, ('2021', True): -0.05}
+   W3: entered 142; equity-fraction gained by state (sum of val*return, not compounded):
+             n    val    pnl  meanR
+     q                             
+     down   25  0.220 -0.009 -0.012
+     mixed  24  0.211  0.617  4.518
+     up     93  0.328 -0.077 -0.068
+     by year x state pnl: {('2017', False): -0.023, ('2017', True): 0.031, ('2019', False): -0.003, ('2020', False): 0.008, ('2020', True): 0.581, ('2021', False): -0.058, ('2021', True): -0.004}
+   not-up filled by year: Counter({'2020': 32, '2021': 20, '2017': 1})  up by year: Counter({'2020': 80, '2021': 30, '2019': 7, '2017': 4})
+   mean R (not-up, up) by year: {'2020': (np.float64(2.971), np.float64(0.21)), '2021': (np.float64(-0.0), np.float64(-0.332))}
+   B0's 10 biggest winners by state: Counter({'mixed': 5, 'up': 5}) [('SOL', '2020-12-14', 71.6, 'mixed'), ('SHOP', '2017-03-08', 13.2, 'mixed'), ('RCL', '2020-05-26', 9.9, 'up'), ('NIO', '2020-09-29', 9.4, 'up'), ('SHOP', '2020-06-15', 7.3, 'mixed'), ('TSLA', '2020-08-12', 6.4, 'mixed'), ('FSLR', '2020-08-04', 5.9, 'up'), ('NET', '2020-11-24', 5.5, 'up'), ('TLRY', '2021-02-02', 5.3, 'mixed'), ('PDD', '2020-05-08', 5.2, 'up')]
+
+
+claim | printout | yours | match
+account B0 (2020 / 2021 / final / dd / entered / skipped) | 2020 62.8% 2021 26.2% final 2.044 dd 20.7% entered 130 skip_room 44 skip_stock 0 | 2020 62.8% 2021 26.2% final 2.044 dd 20.7% entered 130 skip_room 44 skip_stock 0 | OK
+account B0 (other printed columns) | 2017 0.8% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 130 / 0 trimmed 6 capbound 75 maxopen 6 maxgross 99.1% mincash +0.006 | 2017 0.8% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 130 / 0 trimmed 6 capbound 75 maxopen 6 maxgross 99.1% mincash +0.006 | OK
+B0 daily curve vs stored account_his.tsv (1216 days) | 1216 days, last 2.044018 | 1216 days matched, max |diff| 6.6e-07, last 2.044018 | OK
+account W1 (2020 / 2021 / final / dd / entered / skipped) | 2020 23.2% 2021 14.2% final 1.427 dd 8.9% entered 182 skip_room 12 skip_stock 0 | 2020 23.2% 2021 14.2% final 1.427 dd 8.9% entered 182 skip_room 12 skip_stock 0 | OK
+account W1 (other printed columns) | 2017 1.6% 2018 0.0% 2019 0.2% 2022 -0.3% offered 194 1%/0.5% 182 / 0 trimmed 0 capbound 1 maxopen 14 maxgross 96.6% mincash +0.000 | 2017 1.6% 2018 0.0% 2019 0.2% 2022 -0.3% offered 194 1%/0.5% 182 / 0 trimmed 0 capbound 1 maxopen 14 maxgross 96.6% mincash +0.000 | OK
+W1 daily curve vs stored account_his.tsv (1219 days) | 1219 days, last 1.426661 | 1219 days matched, max |diff| 1.4e-07, last 1.426661 | OK
+account W2 (2020 / 2021 / final / dd / entered / skipped) | 2020 63.6% 2021 26.2% final 2.201 dd 20.7% entered 130 skip_room 44 skip_stock 0 | 2020 63.6% 2021 26.2% final 2.201 dd 20.7% entered 130 skip_room 44 skip_stock 0 | OK
+account W2 (other printed columns) | 2017 8.0% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 130 / 0 trimmed 6 capbound 75 maxopen 6 maxgross 99.1% mincash +0.007 | 2017 8.0% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 130 / 0 trimmed 6 capbound 75 maxopen 6 maxgross 99.1% mincash +0.007 | OK
+W2 daily curve vs stored account_his.tsv (1216 days) | 1216 days, last 2.200787 | 1216 days matched, max |diff| 8.1e-07, last 2.200787 | OK
+account W2b (2020 / 2021 / final / dd / entered / skipped) | 2020 58.2% 2021 37.8% final 2.196 dd 28.1% entered 117 skip_room 57 skip_stock 0 | 2020 58.2% 2021 37.8% final 2.196 dd 28.1% entered 117 skip_room 57 skip_stock 0 | OK
+account W2b (other printed columns) | 2017 1.6% 2018 0.0% 2019 0.2% 2022 -1.0% offered 174 1%/0.5% 117 / 0 trimmed 1 capbound 66 maxopen 4 maxgross 100.0% mincash +0.000 | 2017 1.6% 2018 0.0% 2019 0.2% 2022 -1.0% offered 174 1%/0.5% 117 / 0 trimmed 1 capbound 66 maxopen 4 maxgross 100.0% mincash +0.000 | OK
+W2b daily curve vs stored account_his.tsv (1216 days) | 1216 days, last 2.195993 | 1216 days matched, max |diff| 8.5e-10, last 2.195993 | OK
+account W3 (2020 / 2021 / final / dd / entered / skipped) | 2020 29.7% 2021 18.7% final 1.532 dd 16.5% entered 142 skip_room 32 skip_stock 0 | 2020 29.7% 2021 18.7% final 1.532 dd 16.5% entered 142 skip_room 32 skip_stock 0 | OK
+account W3 (other printed columns) | 2017 0.8% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 93 / 49 trimmed 4 capbound 60 maxopen 7 maxgross 91.1% mincash +0.003 | 2017 0.8% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 93 / 49 trimmed 4 capbound 60 maxopen 7 maxgross 91.1% mincash +0.003 | OK
+W3 daily curve vs stored account_his.tsv (1216 days) | 1216 days, last 1.531598 | 1216 days matched, max |diff| 2.9e-07, last 1.531599 | OK
+account COMBINED (2020 / 2021 / final / dd / entered / skipped) | 2020 16.6% 2021 7.9% final 1.305 dd 8.1% entered 187 skip_room 7 skip_stock 0 | 2020 16.6% 2021 7.9% final 1.305 dd 8.1% entered 187 skip_room 7 skip_stock 0 | OK
+account COMBINED (other printed columns) | 2017 3.9% 2018 0.0% 2019 0.2% 2022 -0.3% offered 194 1%/0.5% 124 / 63 trimmed 0 capbound 0 maxopen 16 maxgross 95.4% mincash +0.029 | 2017 3.9% 2018 0.0% 2019 0.2% 2022 -0.3% offered 194 1%/0.5% 124 / 63 trimmed 0 capbound 0 maxopen 16 maxgross 95.4% mincash +0.029 | OK
+COMBINED daily curve vs stored account_his.tsv (1219 days) | 1219 days, last 1.304667 | 1219 days matched, max |diff| 1.1e-07, last 1.304667 | OK
+account W4m_B0 (2020 / 2021 / final / dd / entered / skipped) | 2020 74.5% 2021 32.8% final 2.306 dd 21.1% entered 166 skip_room 8 skip_stock 0 | 2020 74.5% 2021 32.8% final 2.306 dd 21.1% entered 166 skip_room 8 skip_stock 0 | OK
+account W4m_B0 (other printed columns) | 2017 0.8% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 166 / 0 trimmed 8 capbound 99 maxopen 11 maxgross 190.9% mincash -1.634 | 2017 0.8% 2018 0.0% 2019 -0.3% 2022 -1.0% offered 174 1%/0.5% 166 / 0 trimmed 8 capbound 99 maxopen 11 maxgross 190.9% mincash -1.634 | OK
+W4m_B0 daily curve vs stored account_his.tsv (1216 days) | 1216 days, last 2.305922 | 1216 days matched, max |diff| 7.4e-07, last 2.305923 | OK
+band B0 2020 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.628 p5 -0.163 p50 +0.038 p95 +0.382 share 1.0% | his +0.628 p5 -0.163 p50 +0.038 p95 +0.382 share 1.0% [stored file match True] | OK
+band B0 2021 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.262 p5 -0.093 p50 +0.049 p95 +0.262 share 4.5% | his +0.262 p5 -0.093 p50 +0.049 p95 +0.262 share 4.5% [stored file match True] | OK
+band B0 final equity (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +2.044 p5 +0.834 p50 +1.119 p95 +1.587 share 0.5% | his +2.044 p5 +0.834 p50 +1.119 p95 +1.587 share 0.5% [stored file match True] | OK
+band B0 max drawdown (higher = WORSE) (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.207 p5 +0.101 p50 +0.154 p95 +0.255 share 18.0% | his +0.207 p5 +0.101 p50 +0.154 p95 +0.255 share 18.0% [stored file match True] | OK
+band W1 2020 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.232 p5 -0.033 p50 +0.078 p95 +0.204 share 3.0% | his +0.232 p5 -0.033 p50 +0.078 p95 +0.204 share 3.0% [stored file match True] | OK
+band W1 2021 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.142 p5 -0.005 p50 +0.079 p95 +0.195 share 18.5% | his +0.142 p5 -0.005 p50 +0.079 p95 +0.195 share 18.5% [stored file match True] | OK
+band W1 final equity (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +1.427 p5 +1.014 p50 +1.187 p95 +1.340 share 2.0% | his +1.427 p5 +1.014 p50 +1.187 p95 +1.340 share 2.0% [stored file match True] | OK
+band W1 max drawdown (higher = WORSE) (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.089 p5 +0.056 p50 +0.077 p95 +0.120 share 29.5% | his +0.089 p5 +0.056 p50 +0.077 p95 +0.120 share 29.5% [stored file match True] | OK
+band W2 2020 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.636 p5 -0.155 p50 +0.045 p95 +0.404 share 1.0% | his +0.636 p5 -0.155 p50 +0.045 p95 +0.404 share 1.0% [stored file match True] | OK
+band W2 2021 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.262 p5 -0.098 p50 +0.047 p95 +0.250 share 5.0% | his +0.262 p5 -0.098 p50 +0.047 p95 +0.250 share 5.0% [stored file match True] | OK
+band W2 final equity (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +2.201 p5 +0.843 p50 +1.112 p95 +1.507 share 0.5% | his +2.201 p5 +0.843 p50 +1.112 p95 +1.507 share 0.5% [stored file match True] | OK
+band W2 max drawdown (higher = WORSE) (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.207 p5 +0.103 p50 +0.155 p95 +0.265 share 20.0% | his +0.207 p5 +0.103 p50 +0.155 p95 +0.265 share 20.0% [stored file match True] | OK
+band W2b 2020 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.582 p5 -0.181 p50 +0.080 p95 +0.537 share 3.5% | his +0.582 p5 -0.181 p50 +0.080 p95 +0.537 share 3.5% [stored file match True] | OK
+band W2b 2021 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.378 p5 -0.129 p50 +0.025 p95 +0.247 share 1.5% | his +0.378 p5 -0.129 p50 +0.025 p95 +0.247 share 1.5% [stored file match True] | OK
+band W2b final equity (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +2.196 p5 +0.806 p50 +1.154 p95 +1.740 share 1.5% | his +2.196 p5 +0.806 p50 +1.154 p95 +1.740 share 1.5% [stored file match True] | OK
+band W2b max drawdown (higher = WORSE) (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.281 p5 +0.127 p50 +0.183 p95 +0.304 share 8.0% | his +0.281 p5 +0.127 p50 +0.183 p95 +0.304 share 8.0% [stored file match True] | OK
+band W3 2020 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.297 p5 -0.171 p50 +0.037 p95 +0.301 share 5.5% | his +0.297 p5 -0.171 p50 +0.037 p95 +0.301 share 5.5% [stored file match True] | OK
+band W3 2021 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.187 p5 -0.078 p50 +0.045 p95 +0.262 share 10.5% | his +0.187 p5 -0.078 p50 +0.045 p95 +0.262 share 10.5% [stored file match True] | OK
+band W3 final equity (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +1.532 p5 +0.839 p50 +1.119 p95 +1.490 share 4.0% | his +1.532 p5 +0.839 p50 +1.119 p95 +1.490 share 4.0% [stored file match True] | OK
+band W3 max drawdown (higher = WORSE) (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.165 p5 +0.094 p50 +0.148 p95 +0.236 share 34.5% | his +0.165 p5 +0.094 p50 +0.148 p95 +0.236 share 34.5% [stored file match True] | OK
+band COMBINED 2020 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.166 p5 -0.033 p50 +0.063 p95 +0.171 share 6.0% | his +0.166 p5 -0.033 p50 +0.063 p95 +0.171 share 6.0% [stored file match True] | OK
+band COMBINED 2021 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.079 p5 -0.024 p50 +0.063 p95 +0.193 share 38.0% | his +0.079 p5 -0.024 p50 +0.063 p95 +0.193 share 38.0% [stored file match True] | OK
+band COMBINED final equity (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +1.305 p5 +0.990 p50 +1.137 p95 +1.299 share 5.0% | his +1.305 p5 +0.990 p50 +1.137 p95 +1.299 share 5.0% [stored file match True] | OK
+band COMBINED max drawdown (higher = WORSE) (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.081 p5 +0.049 p50 +0.070 p95 +0.105 share 28.0% | his +0.081 p5 +0.049 p50 +0.070 p95 +0.105 share 28.0% [stored file match True] | OK
+band W4m_B0 2020 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.745 p5 -0.217 p50 +0.026 p95 +0.392 share 0.5% | his +0.745 p5 -0.217 p50 +0.026 p95 +0.392 share 0.5% [stored file match True] | OK
+band W4m_B0 2021 return (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.328 p5 -0.075 p50 +0.075 p95 +0.326 share 5.0% | his +0.328 p5 -0.075 p50 +0.075 p95 +0.326 share 5.0% [stored file match True] | OK
+band W4m_B0 final equity (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +2.306 p5 +0.784 p50 +1.133 p95 +1.587 share 0.0% | his +2.306 p5 +0.784 p50 +1.133 p95 +1.587 share 0.0% [stored file match True] | OK
+band W4m_B0 max drawdown (higher = WORSE) (his / p5 / p50 / p95 / share; + stored account_band.tsv to 1e-6) | his +0.211 p5 +0.122 p50 +0.179 p95 +0.304 share 35.0% | his +0.211 p5 +0.122 p50 +0.179 p95 +0.304 share 35.0% [stored file match True] | OK
+FORK COMBINED 2020 / 2021 / band share | 2020 16.6%, 2021 7.9%, band share 5.0% | 2020 16.6%, 2021 7.9%, band share 5.0% (10 of 200) | OK
+FORK verdict | years not met; band MET (5.0% <= 5%) -> NEXT GAPS | years>=50% both: False; band<=5%: True -> NEXT GAPS | OK
+W3: his calls with QQQ up at D, under B0 | calls 163, filled 121, mature 121, win 30.6%, mean R +0.024 | calls 163, filled 121, mature 121, win 30.6%, mean R +0.024 | OK
+W3: his calls with QQQ mixed at D, under B0 | calls 35, filled 25, mature 25, win 64.0%, mean R +4.462 | calls 35, filled 25, mature 25, win 64.0%, mean R +4.462 | OK
+W3: his calls with QQQ down at D, under B0 | calls 38, filled 28, mature 28, win 28.6%, mean R -0.119 | calls 38, filled 28, mature 28, win 28.6%, mean R -0.119 | OK
+
+MISMATCHES: 0 of 54

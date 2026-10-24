@@ -397,3 +397,10 @@ variant's per-trade R. After a STOPPED run they are deleted unread.
 - **Read with it:** chosen after the first two reads; nothing here is validated. The registered next gaps: the EPs and parabolic
   shorts in his record, the trades he never mentioned on stream, and adds / margin (still beside until his answer). Independent
   recount: running.
+
+## Addendum 2026-10-24 — against holding the market (descriptive; his bar: "real alpha and strong market outperformance")
+
+`scripts/probes/_705_qm_replay_1023/04_vs_market.{py,txt}`, from the stored daily curves (no re-walk): 2017-03..2021-12, the best
+curve (his rules, 30% cap, 2× margin) +132% vs QQQ +204% and SPY +101% (price only), Sharpe 0.85 vs 1.13, beta 0.15, alpha 16% a
+year with t ≈ 1.5; 2020–21 +129% vs QQQ +84%, Sharpe 1.31 vs 1.22, alpha 40% a year, t ≈ 1.6. Real alpha is not shown at t < 2 and
+the full window trails QQQ (2017–19 hold 12 of his calls; the account sits mostly in cash then).
