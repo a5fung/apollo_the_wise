@@ -6,7 +6,7 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-10-23 (Fri) CLOSE
+## 2026-10-23 (Fri) CLOSE — 🔴 RESUME HERE. Supersedes the 10-22 close below.
 
 **2026-10-23 (Fri): CLOSE run on his word.** (This section mirrors the machine-local pickup memory.)
 
