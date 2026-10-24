@@ -2574,3 +2574,7 @@ Corrected north star (supersedes the line above): the GOAL is a trading knowledg
 Correction recorded: a stream label's date is when he TALKED about a trade, not when he bought it. EPs are bought at the opening-range high on the gap day (his own page and streams); the labels tell us which EPs he took, not when.
 
 > "ok" (2026-10-24, on the four vault forks: own private repo; notes + short quotes for external material; large assets in a local data folder with hashes; setups first) — recorded in `docs/design/trading_knowledge_vault_scope_2026-10-24.md`; the build is #708.
+
+> "Iirc the bottom right of his screen is a stock list of his holding, can you verify?" (2026-10-24)
+
+VERIFIED the same day on stream frames: the bottom-right TC2000 panel is the list "A - Positions" — titled so on 2019-11-12 (APPS frame: YINN, PBR, ENDP, RLGY, BABA, DXCM, TEVA, TDOC, MNK, BLDP, JD, MU, QLED, IPHI, APPS, FCEL, SE; "15 of 17 items") and 2021-04-07 (TDOC frame: AMAT, AAL, LRCX, TSM, SOXL, ALB, JETS, RBLX, TWTR, TQQQ, CLF, FCX, HOFV, NTLA, TIGR, SI; "20 items"); the same "A -" panel on 2020-06-15 (SHOP frame, 19 items, SHOP among them the day he said he bought it) and 2023-01-26 (MDGL frame, 8 items). It holds ETFs as well (TQQQ, SOXL, TNA, JETS, YINN). So every stream frame carries a snapshot of his holdings — the fullest record of his trades the streams hold.
