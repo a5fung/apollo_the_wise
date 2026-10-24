@@ -2582,3 +2582,9 @@ VERIFIED the same day on stream frames: the bottom-right TC2000 panel is the lis
 > "The vault is living as in we will continue to build on it, and to it, at lessons, trading results, charts and setups, etc." (2026-10-24)
 
 Standing rule from this: the vault is not a one-time migration. Every new lesson, trading result (each registered read's verdict), chart he shares and setup change goes INTO the vault as it is made — Apollo keeps only the implementation.
+
+> "Either way weneed to reverse engineer his rules" (2026-10-24, on whether to test more stops on his panel trades)
+
+> "we can infer the buy and sell dates based on when the stock appears and when the stock disappears from the list. And once we are able to lock down the date, we can infer the buy point based on the chart pattern, assuming he's using some form of his rules to enter. We're not going to be exact, but we should be in the ballpark based on that." (2026-10-24)
+
+Method from this (#705): his rules are INFERRED FROM HIS TRADES, not tested one by one from his words. The positions list dates each buy (first appearance) and sell (disappearance); on the dated day, the chart pattern places the buy point, assuming some form of his own entry rules. Ballpark accuracy is the bar, not exactness. His words cross-check the inference.
