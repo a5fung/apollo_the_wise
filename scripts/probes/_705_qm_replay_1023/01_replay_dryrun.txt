@@ -1,0 +1,121 @@
+# #705 QM replay — 01_replay (DRY RUN: no minute file opened, no entry / exit function called, no outcome computed)
+# registration: docs/analysis/cb_qm_replay_prereg_2026-10-23.md
+- Track A pins re-checked (labels, events, candidates, exports, calendar, flags, the frozen fit module, the join script, aplus_read, registered_read, the cb module = `runner.EXITPB_MODULE_SHA`): no drift
+
+## Loads (era B: every row dated after 2024-12-31 dropped at read)
+- daily exports loaded in 6s: era A 3,661,906 of 12,005,007 rows kept (2,548 tickers, calendar 2016-01-04..2022-06-30); era B 192,250 of 13,830,569 rows kept (247 tickers, calendar 2021-09-27..2024-12-31), rows dated after 2024-12-31 DROPPED AT READ 5,210,943 (asserted: max date kept 2024-12-31 <= 2024-12-31)
+- era B candidates: discovery split only, D and E <= 2024-12-31 (dropped at read: not discovery 109,478, dated after the cut 240); era B fetch-log rows dated after the cut dropped at read 72,951
+- identity-break files: era A `cb702_pre_v2/symbol_guard.tsv` (667 symbols with a break; equal to the audit's `symbol_guard_A.tsv`: True), era B `runs_2026-10-23/universe/symbol_guard_B.tsv` (1292 symbols)
+- era A STEP 0 verdict (`cb702_pre_v2/audit_1023/verdict.txt`, pinned):
+    S0 selftests                PASS    4 of 4 selftests pass
+    G1 bar integrity            PASS    0 dup keys / 0 OHLC / 0 NaN / 0 weekend; test symbols in the export: 0 tickers / 0 rows (universe excludes them)
+    G2 universe completeness    PASS    liquid names per session, A/richer = 0.979..0.995 over 10 months (PASS >= 0.97); known-gone names 513, missing/partial 29 = 
+    G3 duplicate companies      PASS    confirmed strict pairs 0 (0 duplicate rows); scaled twins 0; universe_check persistent pairs (>= 20 days) 0 (PASS = 0 / 0 / 
+    G4 identity                 PASS    breaks file written: /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/universe/symbol_guard_A.tsv; different company on 
+    G5 corporate actions        PASS    controls — OPLN:2019-06-28: FLAGGED; ZWS:2021-10-05: FLAGGED; BEP:2020-07-30: FLAGGED; discontinuous adjustment events (all/
+    G6 security type            PASS    untyped admitted nights 0.3% (6,134 of nights; 18 tickers) — PASS <= 2%; universe_check tripwire: 0.7% of 4,466 liquid symbo
+    G7 point-in-time lint       PASS    33 items (12 confirmed, 4 suspected, 17 ruled out); 16 unguarded; anchors missing 0
+    G8 sealed-trade dependence  REPORT  no trade list given (TRADES=...) — run trade_impact.py on every list you quote
+    G9 calendar + early close   PASS    sessions per year match NYSE (7 years); minute tree not scanned (FAST=1 or no minutes dir)
+    G10 overlap parity          REPORT  members per night A 2,135 / B 2,072, in both 1,984 = 95.8% of B (target >= 98% after the rebuild); only-A 146, only-B 86; ve
+
+## Populations (asserted against the Track A registration)
+- at0_A: 119
+- at0_and_strict_A: 10
+- cal_A: 1635
+- cal_B: 821
+- cand_B_after_cut: 240
+- cand_B_not_discovery: 109478
+- excl_A: 410
+- excl_B: 7
+- first_A: 20650
+- first_B: 12250
+- graded_dates_A: 156
+- graded_dates_B: 7
+- neg_A: 23188
+- neg_B: 345
+- neg_fit: 15107
+- neg_hold: 8081
+- on_E_only_A: 109
+- pos_A: 236
+- pos_B: 9
+- pos_first_A: 132
+- pos_fit: 170
+- pos_hold: 66
+- pos_retrig_A: 104
+- post_A: 87
+- post_B: 3
+- stream_A: 81015
+- stream_B: 41200
+- strict_A: 127
+- strict_B: 6
+- every population equals the registration
+
+### era A
+  year of E | his calls n | first breaks | retriggers | control n | control first breaks | post-E-only n (beside)
+  ----------+-------------+--------------+------------+-----------+----------------------+-----------------------
+  2017      | 6           | 6            | 0          | 223       | 77                   | 1                     
+  2019      | 8           | 6            | 2          | 446       | 77                   | 0                     
+  2020      | 156         | 80           | 76         | 14438     | 3370                 | 57                    
+  2021      | 66          | 40           | 26         | 8081      | 2051                 | 29                    
+  all       | 236         | 132          | 104        | 23188     | 5575                 | 87                    
+- his calls on 156 dates; per date: 1 call(s) on 107 dates, 2 call(s) on 30 dates, 3 call(s) on 12 dates, 4 call(s) on 5 dates, 5 call(s) on 1 dates, 8 call(s) on 1 dates
+- his calls sit on 188 bases (188 first-of-base events, the one-event-per-base reading); strictly-before subset 127; post-E-only events also in the control 27
+- dates whose control holds fewer events than his calls that day: 0
+- QQQ at D (close vs its 10- and 20-day averages; outcome-free): his up 163, mixed 35, down 38, unknown 0; control up 17282, mixed 3123, down 2783, unknown 0
+- minute coverage from the fetch log (`_done.psv` status; no minute file opened): his ok 236 / empty 0 (abstains `no_minutes`) / MISSING 0; control ok 23188 / empty 0 (abstains `no_minutes`) / MISSING 0; post ok 87 / empty 0 (abstains `no_minutes`) / MISSING 0
+- identity break inside (E - 130, E] (excluded, counted): his 0, control 0, post 0; a break AFTER E is forward information, read in the real run only, where it CUTS the walk's forward window at the session before it (never an exclusion)
+- his calls by timing: strictly before E 127, resting ONLY on a label said on E 109 (= 236 - 127); carrying an on-E label 119, of which 10 also carry one strictly before
+- events on a 13:00-close day (ORH fills there read the minutes as stored; fills after 13:00 counted in the real run): his 2, control 133
+- the walk set after the two data exclusions: his 236 of 236, control 23188 of 23188, post-E-only 87 of 87
+- events whose E + 121 sessions run past the era's last session 2022-06-30 (calendar only): 0
+
+### era B
+  year of E | his calls n | first breaks | retriggers | control n | control first breaks | post-E-only n (beside)
+  ----------+-------------+--------------+------------+-----------+----------------------+-----------------------
+  2022      | 1           | 0            | 1          | 78        | 21                   | 0                     
+  2023      | 8           | 6            | 2          | 267       | 85                   | 3                     
+  all       | 9           | 6            | 3          | 345       | 106                  | 3                     
+- his calls on 7 dates; per date: 1 call(s) on 5 dates, 2 call(s) on 2 dates
+- his calls sit on 9 bases (9 first-of-base events, the one-event-per-base reading); strictly-before subset 6; post-E-only events also in the control 1
+- dates whose control holds fewer events than his calls that day: 0
+- QQQ at D (close vs its 10- and 20-day averages; outcome-free): his up 8, mixed 0, down 1, unknown 0; control up 267, mixed 0, down 78, unknown 0
+- minute coverage from the fetch log (`_done.psv` status; no minute file opened): his ok 9 / empty 0 (abstains `no_minutes`) / MISSING 0; control ok 345 / empty 0 (abstains `no_minutes`) / MISSING 0; post ok 3 / empty 0 (abstains `no_minutes`) / MISSING 0
+- identity break inside (E - 130, E] (excluded, counted): his 0, control 0, post 0; a break AFTER E is forward information, read in the real run only, where it CUTS the walk's forward window at the session before it (never an exclusion)
+- events on a 13:00-close day (ORH fills there read the minutes as stored; fills after 13:00 counted in the real run): his 0, control 0
+- the walk set after the two data exclusions: his 9 of 9, control 345 of 345, post-E-only 3 of 3
+- events whose E + 121 sessions run past the era's last session 2024-12-31 (calendar only): 0
+
+## Pins (sha256) — every value below goes under `<!-- FREEZE -->` in the doc before the real run
+- labels_joined: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/labels_joined.tsv
+- matched_events: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/matched_events.tsv
+- moments: f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0  /Users/alvinfung/apollo_data/cb702/qm_streams/vision/graded_moments.tsv
+- cand_A: 3c5a66dc3052d0a284cbfee8202f74deb4e5bb75c74565dd8147df015e1baa5a  /Users/alvinfung/apollo_data/cb702_pre_v2/out/candidates_tl_com.tsv
+- cand_B: b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7  /Users/alvinfung/apollo_data/cb702/out/candidates.tsv
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d  /Users/alvinfung/apollo_data/cb702_pre_v2/daily_closes_all.csv.gz
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba  /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0  /Users/alvinfung/apollo_data/cb702_pre_v2/sessions.txt
+- guard_A: 876a75ec6d51744579c1ea2744c1b529cbd941355ef12eb8f0451bbe7ba1af08  /Users/alvinfung/apollo_data/cb702_pre_v2/symbol_guard.tsv
+- guard_A_audit: 729741b4cfc5759b6ea5d81da6afdd36c11d806bbcad845964b2b37c72d94057  /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/universe/symbol_guard_A.tsv
+- guard_B: b6cb81b6c4a1f415defc5adcf236402d93cd654c33736aa0b120b78c357b5650  /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/runs_2026-10-23/universe/symbol_guard_B.tsv
+- flags_A: 5358e31dc1b27d25c5143bdfca7a98b91a6c7a2d5b1da6c9c9d9ed9c55474c1d  /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/price/A_flags.tsv
+- flags_B: 8bf843859afb70ea59edf6f11cda12160020936c8df3e978b6a819590ea5c3d5  /Users/alvinfung/apollo_data/audit_runs_2026-10-23/B_flags.tsv
+- verdict_A: 02cbb1c0106101cb12e8d5deb9448051ae3ced67966ac11d2475d06f26538de3  /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/verdict.txt
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6  /Users/alvinfung/apollo_data/cb702_pre_v2/minutes/_done.psv
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178  /Users/alvinfung/apollo_data/cb702/minutes/_done.psv
+- runner: 213cbe6ddf0ff05555a11c347efd14bfa37f99096fd83961e9f5127f6c7c8dcf  /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/runner.py
+- registered_read: 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449  /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/registered_read.py
+- cb_module: e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b  /Users/alvinfung/apollo_the_wise/agents/market_intelligence/consolidation_breakout.py
+- constants: 72dadd72503a842f593621b0868f908ab99e1d77851330c2842be7797aa99400  /Users/alvinfung/apollo_the_wise/agents/market_intelligence/constants.py
+- fit_module: 3fca7bf4f26ffcdf7152ddc9d4180c295aafe29067591def812fcc6884f38d27  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_track_a_1023/02_fit_filter.py
+- join_script: 6889819c41342c60831b0d62b277d47b677e4deaeab3443cbdde7a05d56b112c  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_track_a_1023/01_join_labels.py
+- aplus_read: e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee  /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/aplus_read.py
+- trade_impact: 9b7cce415479c1abfda422c432c6de1f3a6d591f298a1167fa637a578051e146  /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/trade_impact.py
+- replay_module: c44785889670b31f3e9baf1ac0e1563aeacfefacc5de5ef426ee7b15724e7bfa  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_qm_replay_1023/01_replay.py
+- replay_tests: 37c918a08329b138f6c37c5787af3c95e0ea2abeceb100209cd0f5f0dd0a96ad  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_qm_replay_1023/test_01_replay.py
+- minutes_A_used: b6a99cdf084ad42c1a4d846e05d10b48404f8225499253583ff78170e95b592a  the 193 minute date files the walk set opens
+- minutes_B_used: d548f85679b9ded20bfa4650c45535d685d820d4dd2040fce84d01bae7b2b652  the 8 minute date files the walk set opens
+- doc_body: aaaadd295aba5a9de534a738410ebe391ac4993637faa7ead0cab78e2b7a9dab  the doc text above the marker
+- freeze record: every pin above is written under the FREEZE marker
+
+## DRY RUN ends here: no minute file opened, no entry / exit / R / return computed. (8s)
