@@ -1,0 +1,112 @@
+# #705 HOLDINGS 01 — his positions panel -> holdings timeline -> buy dating -> positive control (OUTCOME-FREE: no bar after a buy day, no minute file, no replay outcome file)
+# registration: docs/analysis/cb_holdings_replay_prereg_2026-10-24.md
+# rules: window cap 10 sessions decides; the LATEST event in the window dates the buy; full = footer, else the list ends >= 1.5 row pitches above the panel bottom; an exit needs two consecutive full snapshots without the name; blips (one-stream absences) filled; flickers (one-stream sightings, exit within 5 sessions) flagged, dated ones decide
+
+## Frames -> snapshots
+- frames 3,342: panel found (list A or the 2017 B list) 2,977 in 534 videos; no panel 365
+- duplicate uploads (F1): 17 videos on 13 dates repeat another video's frames (same clock read, stream time, list, rows read, footer); 70 frames dropped, 10 leftover frames joined to the kept copy's stream -> 2,907 snapshots in 517 streams; 2017 'B - Positions' frames 24
+- order (F1): each date's frames by ET clock across videos = the video's clock fitted to stream time (median of clock read - stream time; 21 clock reads off the fit by > 2 min, all treated as misreads); videos with no clock read 7 (sharing a date with another video: 0); dates whose videos interleave after the clock order 1
+- full flag: footer equals rows 2,009 | footer above rows (scrolled) 751 | geometry full 73 | geometry reaches the bottom 74 | no rows and no footer 0
+- clock context unknown, read as in-session (widest window) 142; videos whose frames carry two taskbar dates (the mode taken) 2
+- blips filled (a name absent from one full stream, present either side) 125 (of which over a footer-consistent absence - footer total = rows read, the name not among them - 118); single-frame drops cancelled (a name absent from one full snapshot, seen again before the next full one) 229; pending exits at the end (absent from the last full snapshot only) 0
+- look-alike guard (F2): 18 renames (the reader suggested the held name 8, % cell mismatch 9, % mismatch with two candidates settled by the nearest % read 1; the first sighting s scrolled 2); ambiguous, not renamed 0
+    2019-10-01 p_e49j7sjdMFE_a 07:23 (pre) read ASPS -> held APPS [mismatch_kept]; APPS first read in g_1624 07:35 (in, full)
+    2019-10-17 g_0901 09:32 (in) read ASPS -> held APPS [mismatch_kept]; APPS first read in g_0902 09:38 (in, full)
+    2019-10-17 g_0900 09:31 (in) read ASPS -> held APPS [mismatch_kept]; APPS first read in g_0901 09:32 (in, full)
+    2019-11-04 g_1205 09:31 (in) read ID -> held JD [suggested]; JD first read in g_1206 10:05 (in, full)
+    2019-12-27 g_0457 09:28 (pre) read LX -> held UX [mismatch_kept]; UX first read in g_0458 09:41 (in, scrolled)
+    2020-01-02 p_1X0J9XbF7I4_a 09:08 (in) read LX -> held LK [suggested]; LK first read in g_0543 09:26 (pre, scrolled)
+    2020-08-04 g_1378 10:45 (in) read BIL -> held BILI [suggested]; BILI first read in p_YYFwzNZkRDI_a 09:17 (pre, full)
+    2020-08-04 g_1377 10:45 (in) read BIL -> held BILI [suggested]; BILI first read in g_1378 10:45 (in, full)
+    2020-08-04 g_1376 10:44 (in) read BIL -> held BILI [suggested]; BILI first read in g_1377 10:45 (in, full)
+    2020-08-04 g_1375 10:44 (in) read BIL -> held BILI [suggested]; BILI first read in g_1376 10:44 (in, full)
+    2020-08-04 p_WfpvTnScSE8_z 10:42 (in) read BIL -> held BILI [suggested]; BILI first read in g_1375 10:44 (in, full)
+    2020-10-13 g_0116 10:07 (in) read U -> held UI [mismatch_kept]; UI first read in g_0117 10:07 (in, full)
+    2020-10-13 p_HGCjKEnCbzw_z 10:51 (in) read UI -> held U [mismatch_kept]; U first read in p_wMbFuyfL7Xw_a 09:23 (pre, full)
+    2020-10-14 g_2052 09:52 (in) read U -> held UI [mismatch_kept]; UI first read in g_2053 09:52 (in, full)
+    2020-10-14 p_wMbFuyfL7Xw_z 10:33 (in) read U -> held UI [mismatch_kept]; UI first read in p_G6sgZlSqPGI_a 09:21 (pre, full)
+    2021-02-03 g_0443 10:02 (in) read SO -> held SQ [suggested]; SQ first read in g_0444 10:28 (in, full)
+    2021-11-05 g_0259 10:43 (in) read CC -> held CCJ [mismatch_kept]; CCJ first read in p_uYkzHI4_2H0_a 09:23 (pre, full)
+    2021-11-29 p_QDYyiDbeVmU_a 09:24 (pre) read UI -> held LI [mismatch_kept_nearest_pct]; LI first read in p_QDYyiDbeVmU_z 10:21 (in, full)
+- full snapshots 2,082 of 2,907; streams with >= 1 full snapshot 435 of 517
+- resolution: last 1280x720 stream date 2020-01-23; first all-1920x1080 stream date in 2020 2020-01-27 (the deciding window's start candidate; its end = the last stream before the first >30-day gap after 2022-01-01)
+
+## The timeline by year (stream date year)
+  year | streams | stream dates | snapshots | full | distinct holdings | entries | initial | flickers | exits | median days between streams | max gap
+  -----+---------+--------------+-----------+------+-------------------+---------+---------+----------+-------+-----------------------------+--------
+  2017 | 11      | 11           | 33        | 8    | 92                | 81      | 13      | 4        | 46    | 6                           | 164    
+  2018 | 1       | 1            | 8         | 8    | 16                | 16      | 0       | 0        | 48    | -                           | -      
+  2019 | 39      | 39           | 223       | 125  | 133               | 198     | 0       | 82       | 184   | 1                           | 18     
+  2020 | 218     | 216          | 1535      | 1018 | 337               | 803     | 0       | 304      | 814   | 1                           | 6      
+  2021 | 177     | 177          | 887       | 706  | 246               | 583     | 0       | 211      | 589   | 1                           | 28     
+  2022 | 59      | 59           | 159       | 157  | 90                | 132     | 0       | 51       | 139   | 1                           | 142    
+  2023 | 12      | 12           | 62        | 60   | 38                | 48      | 0       | 7        | 41    | 3                           | 175    
+- totals: entries 1874 (initial 13, flickers 659, inverted windows 34), exits 1861 (inverted 38), still held at the last snapshot 13
+
+## Entry windows (sessions; non-initial entries)
+- 1: 1158; 2: 251; 3-5: 173; 6-10: 128; 11-20: 63; 21-60: 40; 61+: 48 | median 1
+- within the cap (10 sessions): 1710 of 1861
+
+## Symbol join (distinct panel names)
+- 684 names: in a candidate stream directly 436, via alias 14 (aliases: signature 504, dedupe 70), bars but never a candidate (ETFs, leveraged, thin) 153, no bars at all 81
+- undated for no bars (81 names): ACTC, ADAS, ADPS, ALNAC, ALQA, ATT, AVEK, BIJ, BIOP, BUN, CCIV, CIC, CIIC, CKMU, CNAB, CNBX, CUXT, DGAZ, DKYS, DTTD, DVVI, DXEM, ELDE, ENDH, ENOP, ETCG, ETRE, FNMA, GJSIU, GOLV, GRTC, HET, HVBTF, IBV, ICP, IFTS, IUCO, KBV, KSV, KV ...
+- undated as never a candidate (147 names): AAAD, ABUS, ACR, ACST, AESE, AGRX, AIKI, ANTE, AOR, APTS, APVO, ARKG, ARKK, AYTU, BAS, BIL, BLCM, BLPH, BMRA, BNKU, BTX, CAW, CEI, CLXT, CMPS, CMTA, COOL, COPX, CPHI, CREX, CTST, DCFC, DIDI, DWACW, EDC, EIDO, EIGR, EMAN, ETHE, EWZ ...
+- streams: era A tl 81,015 events (of 81,015 tl rows), era B tl discovery 41,200 (not discovery dropped 0; after 2024-12-31 dropped 38,024); EP primary era A 3,281, era B 1,656
+
+## Buy dating (non-initial entries; the latest event in the window)
+  year | entries | breakout | EP | both | undated | DECIDES (dated, window <= cap) | of which flickers | dated, wider than cap | undated: no bars | undated: never candidate | undated: no event | window touches Q1-2022 hole
+  -----+---------+----------+----+------+---------+--------------------------------+-------------------+-----------------------+------------------+--------------------------+-------------------+----------------------------
+  2017 | 81      | 7        | 3  | 1    | 70      | 3                              | 0                 | 8                     | 11               | 16                       | 43                | 0                          
+  2018 | 16      | 7        | 4  | 2    | 3       | 0                              | 0                 | 13                    | 0                | 2                        | 1                 | 0                          
+  2019 | 198     | 14       | 9  | 0    | 175     | 16                             | 3                 | 7                     | 25               | 34                       | 116               | 0                          
+  2020 | 803     | 125      | 20 | 6    | 652     | 151                            | 45                | 0                     | 52               | 129                      | 471               | 0                          
+  2021 | 583     | 88       | 22 | 1    | 472     | 104                            | 37                | 7                     | 28               | 136                      | 308               | 0                          
+  2022 | 132     | 10       | 5  | 0    | 117     | 13                             | 6                 | 2                     | 0                | 41                       | 76                | 73                         
+  2023 | 48      | 8        | 12 | 0    | 28      | 7                              | 0                 | 13                    | 1                | 2                        | 25                | 0                          
+  all  | 1861    | 259      | 75 | 10   | 1517    | 294                            | 91                | 50                    | 117              | 360                      | 1040              | 73                         
+- dated entries 344; windows holding more than one event 96, where the earliest event differs from the latest 90
+- DECIDING population: 294 entries, 153 names, 211 buy days, by era A 277 / B 17; retriggers among the breakout-dated 165; flickers 91; by setup EP 58, both 7, breakout 229
+- in the deciding window 2020-01-27..2022-06-14: 264 deciding entries, by setup EP 43, both 7, breakout 214; 133 panel names, 185 buy days
+    first sighting of the 264: in session on E 172, after E's close (closed on E or pre-market the next session) 75, a session or more after E 17 - only buys still held at a snapshot are seen (survival conditioning)
+    leave the panel by E's close (exit window ends on E): 42 of 264 (EP-dated 11 of 43)
+    F3 held on E before 09:35 ET (no ORH5 fill can precede it): 9 - TSLA 2020-04-14 09:32, UAL 2020-05-27 09:34, DXCM 2020-07-29 09:32, PINS 2020-07-31 09:31, SHOP 2020-08-26 09:32, TTD 2020-08-26 09:32, KOLD 2022-04-19 09:33, LAC 2022-04-21 09:30, TSLA 2022-04-21 09:30
+    F3 flat at a full snapshot on E: 185 (in session 94, at >= 10:00 50, at >= 10:30 29); first seen in session on E 172; bracketed on both sides within E 53
+    a name's later entry dated to the SAME E as its earlier one (the replay classifies it `same_day_rebuy`, F4): 2 - PLUG 2021-02-03 (#1211 then #1217, flat at 10:55), SNAP 2021-06-11 (#1462 then #1463, flat at 11:51)
+- deciding entries by first-sighting resolution: 1280x720 18, 1920x1080 276; by year: 2017 3, 2019 16, 2020 151, 2021 104, 2022 13, 2023 7
+- exits of the deciding entries: panel exit seen 290, still held at the last snapshot 4; exit window median 1.0 sessions
+- initial holdings 13: the last one leaves the panel on 2017-08-23; never seen to leave 0 ()
+- snapshot span 2017-01-27 .. 2023-12-15; first full snapshot 2017-01-27; stream-date gaps over 30 days: 2017-03-13->2017-08-24, 2017-08-31->2017-10-03, 2017-10-12->2018-08-29, 2018-08-29->2019-10-01, 2022-06-14->2022-11-03, 2022-11-17->2023-01-26, 2023-01-26->2023-05-18, 2023-06-09->2023-12-01
+
+## Positive control: his 236 stream calls (labels on or before E; strict = said strictly before E)
+- all 236: ever in the panel 206 (87%); seen in E..E+20 135 (57%); a panel entry whose window holds E 33 (14%); DATED ON E by the rule 29 (12%) (earliest rule 27); deciding 31 (13%)
+- strictly-before 127: ever in the panel 108 (85%); seen in E..E+20 58 (46%); a panel entry whose window holds E 9 (7%); DATED ON E by the rule 7 (6%) (earliest rule 8); deciding 7 (6%)
+- nearest snapshot at or after E: same session 224, 1 session 2, 2-5 3, 6-20 3, over 20 4, none 0
+- dated day minus E (sessions) for calls whose window holds E and is dated: +0: 29, +1: 1, +4: 1, +9: 1, +101: 1
+- the holding entry's setup for those calls: both 1, breakout 32, no entry 203
+- every call classified (one class each): open_entry_before_E 75, held_before_E_no_entry 53, in_panel_elsewhere 35, never_in_panel 30, dated_on_E 29, seen_after_E_only 10, window_holds_E_dated_elsewhere 4
+- calls where the panel already held the name at E (75): the open entry's setup both 1, breakout 27, undated 47; its window ended 1-5 sessions before E 49, 6-20 16, over 20 10
+
+## Outputs
+- snapshots: /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/snapshots.tsv (2,907 rows)
+- entries: /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/entries.tsv (1,874 rows)
+- exits: /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/exits.tsv (1,861 rows)
+- control: /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/control.tsv (236 rows)
+
+## Pins (sha256) — inputs, then outputs; the replay pins them again
+- panel: 2f3c5ee919fcb510c0ba31f4cb82d736c75fe3705d6d94fd16776d2a74835012  /Users/alvinfung/apollo_data/cb702/qm_streams/vision/positions_panel_all.jsonl
+- calendar_cache: 47111a051ac101f12818fb1b2e300fd61ff953673db1286e7f1c2cbbe291b610  /Users/alvinfung/apollo_data/cb702/qm_streams/vision/positions_pct_calendar.pkl.gz
+- lexicon: c7fb05ac383ff63f8f76702cec07ad1c08c517dbfb7a0843ee9a96a7d1e5105f  /Users/alvinfung/apollo_data/cb702/qm_streams/vision/positions_ticker_lexicon_v2.tsv
+- dedupe_A: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64  /Users/alvinfung/apollo_data/cb702_pre_v2/dedupe_applied.tsv
+- cand_A: 3c5a66dc3052d0a284cbfee8202f74deb4e5bb75c74565dd8147df015e1baa5a  /Users/alvinfung/apollo_data/cb702_pre_v2/out/candidates_tl_com.tsv
+- cand_B: b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7  /Users/alvinfung/apollo_data/cb702/out/candidates.tsv
+- ep_A: 59f196e5aa45a35eb7d98e1a1147ac4925e9f4967a17863e039659eed6c9dc46  /Users/alvinfung/apollo_data/cb702/qm_streams/ep_join_1023/ep_events_A.tsv.gz
+- ep_B: 160401c752ff0b8d3d3f2ad7a1eff63d6c36d285aaa34c6e5ca00b737b68ee3c  /Users/alvinfung/apollo_data/cb702/qm_streams/ep_join_1023/ep_events_B.tsv.gz
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0  /Users/alvinfung/apollo_data/cb702_pre_v2/sessions.txt
+- labels_joined: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/labels_joined.tsv
+- matched_events: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/matched_events.tsv
+- moments: f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0  /Users/alvinfung/apollo_data/cb702/qm_streams/vision/graded_moments.tsv
+- snapshots: a8987fce15fa1a968010b4290c249f2c62de24d18d1b71bca4b9b0c4f507caff  /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/snapshots.tsv
+- entries: 6a0dda2da7932b6d54f122594df817215c1237636629f3ce6efa7cef1b9bdabf  /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/entries.tsv
+- exits: 1ed76a2806091f7d56726c56e6b2a389dfa2e96db24c382d4296da096529b50f  /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/exits.tsv
+- control: 193a5b985b1d979d59b2d09e67a8caeb4fac9d4073f54b84b1f7315d69d15ccc  /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/control.tsv
+- timeline_module: e91e3f4dd8d7bc29664cfeccd2fe6b8ec7a5f906a25281bd338f3fe62d2bfee7  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_holdings_1024/01_timeline.py

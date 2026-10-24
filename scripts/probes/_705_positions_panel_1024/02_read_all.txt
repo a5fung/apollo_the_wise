@@ -1,0 +1,88 @@
+#705 positions panel read, both folders (2026-10-24 12:46) - /Users/alvinfung/apollo_data/cb702/qm_streams/vision/frames_grades,/Users/alvinfung/apollo_data/cb702/qm_streams/vision/frames_positions
+frames 3342, OCR'd 3342 (grades 2184, positions 1158); out: /Users/alvinfung/apollo_data/cb702/qm_streams/vision/positions_panel_all.jsonl
+
+## FRAMES READ, by year (taskbar date, else the upload / grade date) - panel found / frames, list A / B
+- positions: found 1015/1158 (87.7%) | 2017 8/110 (7%) B 5 | 2018 2/2 (100%) | 2019 70/80 (88%) 720p 78 | 2020 422/440 (96%) 720p 28 | 2021 364/376 (97%) | 2022 126/126 (100%) | 2023 23/24 (96%)
+- grades: found 1962/2184 (89.8%) | 2017 25/204 (12%) B 19 | 2018 6/6 (100%) | 2019 153/156 (98%) 720p 156 | 2020 1132/1167 (97%) 720p 24 | 2021 566/571 (99%) | 2022 41/41 (100%) | 2023 39/39 (100%)
+- all: found 2977/3342 (89.1%) | 2017 33/314 (11%) B 24 | 2018 8/8 (100%) | 2019 223/236 (94%) 720p 234 | 2020 1554/1607 (97%) 720p 52 | 2021 930/947 (98%) | 2022 167/167 (100%) | 2023 62/63 (98%)
+- positions videos 579: panel on both frames 485, on one 45, on neither 49
+- list B (2017 'B - Positions') frames: 24 (positions 5)
+
+## % CHANGE CHECK (each row's % cell vs its symbol's move in our bars)
+- rule: the frame's context is voted by its rows - an exact close-to-close session (cell within 0.15 pp) explaining >= half the rows, else (where the clock allows) a session's low-high range vs the prior close (within 0.3 pp) explaining >= 60%
+- replacement rule: only against an exact close-to-close session; the symbol read must be open to doubt (1280x720, or the reads disagree) and every % variant must agree; the ONE alternative within 0.02 pp in the first tier with any (tier 1 other reads of the same pixels, tier 2 look-alikes within the lexicon cap, tier 3 1280x720 look-alikes to 1.75); it REPLACES only from tier 1, on a non-zero cell, and when (alternatives searched) x (chance a wrong symbol matches within 0.02 pp = 0.00411, from the null) <= 0.1; a lone tier-2/3 match is recorded as a suggestion (weak), not applied (on the null it was as common as on the real date). In-session range frames: never replaced, a lone passing tier-1 read is a suggestion. A symbol with no bars stays as read (no_bars), replaced only under the same rule.
+- bars: 251494 (symbol, session) pairs (cache); renamed-symbol aliases found by matching closes 486 (e.g. FB->META, SQ->XYZ)
+- rows 41042: % cell read 39103 | unread 963 | variants disagree 974 | no sign 2
+- frames by context: clock_agrees 2778, R 2604, X-1 287, none 58, R-1 9, X 5, clock_disagrees 3  (X = close-to-close of the frame's session, X-1 = of the session before, R = in-session range, R-1 = range of the session before)
+- row results: ok 34355, no_bars 3244, no_pct 1939, mismatch_kept 1099, no_context 391, mismatch_ambiguous 11, fixed 3
+- replacement attempts and outcomes: ambiguous_X 11, attempt_R 69, attempt_X 163, attempt_nb_R 51, attempt_nb_X 29, attempt_t1_R 25, attempt_t1_X 9, attempt_t1_nb_R 2, attempt_t1_nb_X 0, fix_X 3, fix_X_t1 3, suggest_R 21, suggest_nb_R 1, weak_X 29, weak_nb_X 9
+- replacements made (3): LX->LK 2, PLUS->PLUG 1
+- suggestions NOT applied (60): LX->LK (weak) 10, CHK->BHK (weak) 6, BIL->BILI (suggest) 6, OD->QD (weak) 3, ASPS->APPS (suggest) 3, ID->JD (suggest) 2, DHI->IHI (suggest) 2, TGA->TSLA (suggest) 2, YINN->WING (weak) 2, UNM->URNM (suggest) 2, KV->IGV (weak) 2, OLED->ONEQ (weak) 1, BLDP->BHP (weak) 1, SO->SQ (suggest) 1, CCK->CCXI (weak) 1, DHI->HI (suggest) 1, MU->MX (weak) 1, PLUS->PLUG (suggest) 1, COOP->COUP (suggest) 1, OO->QD (weak) 1
+- no_bars holdings kept 3244 rows: GBTC 966, FNGU 373, ETHE 301, GSX 150, SBE 123, NXTD 99, VTIQ 72, FEAC 69, TVIX 68, FSR 62, INAQ 59, WRTC 59, ETCG 58, APXT 55, OPES 44, CIIC 42, THCB 39, ACTC 38, GOEV 38, ANTE 37
+- mismatch kept, most frequent: LX 34, ZS 31, Z 26, VIR 25, LAC 21, OCGN 20, PDD 20, BTX 18, COUP 18, MRNA 16, FSLY 16, TTD 15, CHK 15, FVRR 14, JNUG 14
+- calibration X (1920x1080 rows whose reads all agree, 2580): |cell - bars| <= 0.02 pp 2366 (91.7%), <= 0.15 pp 2482 (96.2%), <= 1 pp 2559, median 0.003
+- calibration R (1920x1080 rows whose reads all agree, 30352): |cell - bars| <= 0.02 pp 29212 (96.2%), <= 0.3 pp 29676 (97.8%), <= 1 pp 30162, median 0.000
+- null (40 sessions earlier): a read matches its own symbol's change within 0.02 pp by chance 14/3408 (p_fix 0.00411); within 0.15 pp 96/3408; inside a range 16743/31406
+- null vs real, X: replacements per attempt null 1/661 (0.2%) vs real 3/163 (1.8%) -> chance replacements expected among the real ones ~0.2 of 3
+- null vs real, X no-bars reads: replacements per attempt null 0/33 (0.0%) vs real 0/29 (0.0%) -> chance replacements expected among the real ones ~0.0 of 0
+- null vs real, R: replacements per attempt null 0/508 (0.0%) vs real 0/69 (0.0%) -> chance replacements expected among the real ones ~0.0 of 0
+- null vs real, R no-bars reads: replacements per attempt null 0/71 (0.0%) vs real 0/51 (0.0%) -> chance replacements expected among the real ones ~0.0 of 0
+- a lone matching alternative (applied or not) per attempt, by tier, null vs real: R_t1 null 15/508 real 21/69; X_t1 null 1/661 real 3/163; X_t2 null 40/661 real 23/163; X_t3 null 78/661 real 6/163; nb_R_t1 null 1/71 real 1/51; nb_X_t2 null 5/33 real 6/29; nb_X_t3 null 4/33 real 3/29
+- attempts with a tier-1 alternative at all (other reads of the same pixels that are tickers trading that week): R null 47 real 25; X null 33 real 9; nb_R null 2 real 2; nb_X null 0 real 0
+- null replacements by tier: fix_X_t1 1 | real: fix_X_t1 3
+- null frames with a context at all: 1126/2963
+
+## POSITIVE TEST (the v14 hand-check misreads at 1280x720 the % check should fix)
+- g_1951 LX->LK: FIXED | sym LK was LX how corrected_pct pct -1.46 (pct_read) check fixed ref [-1.463, -1.463] amb None suggest None  | ctx X:2020-01-15 votes {'R:2020-01-16': 11, 'R:2020-01-15': 15, 'X:2020-01-15': 11, 'X:2020-01-16': 1} clock 15:27 pre
+- g_1835 KV->IGV: NOT fixed | sym KV was None how not_in_bars pct None (pct_unread) check no_pct ref None amb None suggest None  | ctx R:2019-10-23 votes {'R:2019-10-23': 3, 'R:2019-10-22': 5, 'X:2019-10-22': 2} clock 15:26 pre
+- g_1998 KV->IGV: NOT fixed | sym KV was None how not_in_bars pct 2.4 (pct_read) check no_bars ref None amb None suggest IGV weak (tier 3, 128 searched) | ctx X:2019-10-24 votes {'X:2019-10-24': 6, 'R:2019-10-24': 7, 'R:2019-10-25': 4} clock  
+
+## REGRESSION vs the v14 grades read (positions_panel_grades.jsonl)
+- same 2163, found changed (list B) 19, changed by the % check only 2
+
+## REFERENCE (grades, checked by eye by the caller)
+- g_0814 2019-11-12 1280x720 list A: exact (edit distance 0; before the % check exact, 0) | 17 symbols, 17 rows | footer '15 of 17 iswra in Pesorul WwiLat' -> 15/17 total OK | % context R:2019-11-12 (clock 15:44, in) | % checks {'ok': 9, 'no_pct': 8} | note: the caller's list says QLED; the screen (enlarged) and all 8 OCR variants show OLED = Universal Display, which traded 2019-11-12 at 199.09-208.01 (+2.3%, the panel shows about +2.9% at 09:44 ET); QLED has no bars at all - a transcription slip
+- g_1657 2020-06-15 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 19 symbols, 19 rows | footer '17 of 19 Items in Personal WatchList' -> 17/19 total OK | % context R:2020-06-15 (clock 16:13, in) | % checks {'ok': 19}
+- g_1985 2021-04-07 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 16 symbols, 16 rows | footer '20 Items in Personal WatchLiat Last Sort' -> 20/20 total OK | % context R:2021-04-07 (clock 15:20, pre) | % checks {'ok': 15, 'no_pct': 1}
+- g_0957 2023-01-26 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 8 symbols, 8 rows | footer '7 of 8 Items in Personal WatchLst Last S' -> 7/8 total OK | % context R:2023-01-26 (clock 15:57, in) | % checks {'ok': 7, 'no_pct': 1}
+- tally: exact 4 | symbols right 60/60 (list length minus edit distance) | footer total right 4/4
+
+## HAND CHECK v14 (grades frames, re-graded on the v15 read)
+- g_1645 2018-08-29 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 16 symbols, 16 rows | footer '16 Items in Personal WatchList Last Sort' -> 16/16 total OK | % context X:2018-08-28 (clock 14:21, pre) | % checks {'ok': 15, 'no_bars': 1} | note: 2018 has one video: same list as dev frame g_1641, whose output was seen - not blind
+- g_1835 2019-10-23 1280x720 list A: wrong (edit distance 2; before the % check wrong, 2) | 12 symbols, 12 rows | footer '[11 cf 12 Isvnd in Pesonal WitchLet Laz ' -> 11/12 total OK | % context R:2019-10-23 (clock 15:26, pre) | % checks {'no_pct': 7, 'ok': 3, 'mismatch_kept': 2} | got KV ACAD TEVA RETA APPS ENDP RLGY PBR ICP BRZU MIK MNK | expected IGV ACAD TEVA RETA APPS ENDP RLGY PBR JCP BRZU MIK MNK | note: 1st symbol IGV by eye (IGV/KGV unsure)
+- g_1998 2019-10-25 1280x720 list A: near (edit distance 1; before the % check near, 1) | 13 symbols, 13 rows | footer '12 of +7 isн 2. Риcoлаl Wvcla' -> 12/17 total OK | % context X:2019-10-24 (clock -, -) | % checks {'no_pct': 5, 'ok': 6, 'mismatch_kept': 1, 'no_bars': 1} | got ENDP MNK BRZU PBR ACAD JCP MIK RLGY KV PLUG TEVA APPS USLV | expected ENDP MNK BRZU PBR ACAD JCP MIK RLGY IGV PLUG TEVA APPS USLV | note: scrolled; IGV as above
+- g_1951 2020-01-16 1280x720 list A: exact (edit distance 0; before the % check near, 1) | 23 symbols, 23 rows | footer '10 ct 22 tarek in Parsseal WaschLiz Lact' -> 10/22 TOTAL MISMATCH (eye 23) | % context X:2020-01-15 (clock 15:27, pre) | % checks {'no_pct': 7, 'mismatch_kept': 3, 'ok': 11, 'fixed': 1, 'no_bars': 1} | % fixes LX->LK | note: 1280x720 2020; header 'A - |' + Select Conditions row; first footer number unsure
+- g_0007 2020-08-13 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 15 symbols, 15 rows | footer '4 of 15 Items in Personal WatchList Last' -> 4/15 total OK | % context R:2020-08-13 (clock 15:59, in) | % checks {'ok': 13, 'no_bars': 2}
+- g_2179 2020-10-08 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 19 symbols, 19 rows | footer 'ms in Personal WatchList Last Sorted 05:' -> None/None TOTAL MISMATCH (eye 19) | % context R:2020-10-08 (clock 17:08, in) | % checks {'no_bars': 1, 'ok': 18} | note: the broadcast caption ('youtube') covers the start of the footer
+- g_1829 2021-04-27 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 12 symbols, 12 rows | footer '12 Items In Personal WatchLiat Last Sort' -> 12/12 total OK | % context R:2021-04-27 (clock 16:46, in) | % checks {'ok': 12}
+- g_0309 2021-01-20 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 19 symbols, 19 rows | footer '19 Items in Porsonal WatchList Last Sort' -> 19/19 total OK | % context R:2021-01-20 (clock 15:50, in) | % checks {'ok': 16, 'no_bars': 3}
+- g_2153 2022-01-12 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 8 symbols, 8 rows | footer '4 of 8 Items in Personal WatchList LastS' -> 4/8 total OK | % context R:2022-01-12 (clock 15:25, pre) | % checks {'ok': 7, 'no_pct': 1} | note: mouse cursor over the F row
+- g_0533 2023-06-01 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 9 symbols, 9 rows | footer '#9 of 9 Items in Personal WatchList Last' -> 9/9 total OK | % context R:2023-06-01 (clock 16:10, in) | % checks {'ok': 9}
+- tally: exact 8, wrong 1, near 1 | symbols right 143/146 (list length minus edit distance) | footer total right 8/10
+
+## B-LIST CHECK (frames_positions, 2017 'B - Positions', written down before the analysis)
+- p_yU-cNgKw508_z 2017-08-30 1920x1080 list B: exact (edit distance 0; before the % check exact, 0) | 15 symbols, 15 rows | footer '15 Items in Personal WatchLat Last Sorte' -> 15/15 total OK | % context X:2017-08-29 (clock 11:36, pre) | % checks {'ok': 11, 'mismatch_kept': 2, 'no_bars': 2} | note: 2017-08-30
+- p_dIbyUDoRx_s_z 2017-10-03 1920x1080 list B: near (edit distance 1; before the % check near, 1) | 20 symbols, 20 rows | footer '1 of 24 Items In Personal WatchList Last' -> 1/24 total OK | % context X:2017-10-02 (clock 11:37, pre) | % checks {'ok': 20} | got CRMD DRYS ZGNX SRPT PIRS AGEN EIGR GTHX FCEL SGH CUTR HMNY OSTK EXTR PAM ESIO SINA SEDG LL SUPV | expected CRMD DRYS ZGNX SRPT PIRS AGEN EIGR GTHX FCEL SGH CUTR HMNY OSTK EXTR PAM ESIO SINA SEDG LL SUPV FIT | note: 2017-10-03; scrolled, the last row is half hidden (FIT by eye)
+- tally: exact 1, near 1 | symbols right 35/36 (list length minus edit distance) | footer total right 2/2
+
+## BLIND HAND CHECK (frames_positions, 10 frames, written down from fixed crops before any v15 output)
+- p_ixK4VHeFjDI_a 2017-02-11 1920x1080: exact (no positions list on screen; panel_found False) | note: 2017-02-11: the top-right list is '3 S' (PLX MDCO TSLA); no positions list on screen
+- p_NG3YO4WEAR0_z 2017-03-02 1920x1080: exact (no positions list on screen; panel_found False) | note: 2017-03-02: list '2' is the active tab (OSUR TDW ANET ...); 'B - P..' is an inactive tab
+- p_Wb_R-YqKoR0_z 2019-11-06 1280x720 list None: wrong (edit distance 16; before the % check wrong, 16) | 0 symbols, 0 rows | footer '' -> None/None TOTAL MISMATCH (eye 16) | % context None (clock -, -) | % checks {} | got  | expected ENDP MNK BRZU RLGY MU OLED TDOC TEVA PBR JD APPS YINN IPHI BABA XNET AGRX | note: 1280x720; % cells of the red rows unreadable by eye
+- p_Nb1NvTY5Ulk_a 2020-06-19 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 20 symbols, 20 rows | footer '24 Items in Personal WatchList L' -> 24/24 total OK | % context R:2020-06-19 (clock 15:22, pre) | % checks {'mismatch_kept': 2, 'ok': 17, 'no_bars': 1} | note: scrolled: 20 of 24 visible; 09:22 ET pre-market
+- p_N9n9_WUB5V0_a 2020-11-09 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 10 symbols, 10 rows | footer '10 Items in Personal WatchList Last Sort' -> 10/10 total OK | % context R:2020-11-09 (clock 15:28, pre) | % checks {'ok': 7, 'mismatch_kept': 1, 'no_bars': 2} | note: 09:28 ET pre-market (vaccine day)
+- p_Na2y_RrKZZI_a 2020-04-30 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 16 symbols, 16 rows | footer '16 Items In Personal WatchList' -> 16/16 total OK | % context X:2020-04-29 (clock 15:18, pre) | % checks {'mismatch_kept': 4, 'ok': 12}
+- p_siYpCaiuPKg_a 2021-02-12 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 19 symbols, 19 rows | footer '19 Items in Porsonal WatchList Last Sort' -> 19/19 total OK | % context R:2021-02-12 (clock 15:20, pre) | % checks {'ok': 16, 'no_bars': 3} | note: broadcast caption over the bottom of the screen
+- p_u3k9-2pjcvs_a 2021-11-03 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 20 symbols, 20 rows | footer '2 of 20 Items in Personal Watchlist Last' -> 2/20 total OK | % context R:2021-11-03 (clock 14:21, pre) | % checks {'ok': 16, 'no_pct': 2, 'no_bars': 1, 'mismatch_kept': 1}
+- p_K4PzGs13b-4_a 2022-04-29 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 4 symbols, 4 rows | footer '4 Items in Personal WatchList Last Sorte' -> 4/4 total OK | % context R:2022-04-29 (clock 15:29, pre) | % checks {'ok': 4}
+- p_HpTbfp7GE-o_z 2022-02-07 1920x1080 list A: exact (edit distance 0; before the % check exact, 0) | 9 symbols, 9 rows | footer '9 Items in Personal WatchLat Last Sorted' -> 9/9 total OK | % context R:2022-02-07 (clock 15:51, in) | % checks {'ok': 9}
+- tally: exact 9, wrong 1 | symbols right 98/114 (list length minus edit distance) | footer total right 7/8
+
+## KNOWN FAILURE MODES
+- in-session frames can only be bounded by the day's low-high range (our bars are daily): a misread whose look-alike moved inside a similar range is not caught, and a replacement there is weaker evidence than one against an exact close-to-close session
+- pre-market frames with TC2000's pre-market data on show the pre-market move, which our bars do not carry: they read as the session's range (approximately right near the open) or as no context
+- a symbol with no bars (GBTC / ETHE before 2024, SPACs, renamed / delisted names our files lack) cannot be checked: it stays as read, flagged no_bars
+- 1280x720 % cells misread digits (ACAD's -1.63% read -1.03%, which matched ACA within 0.15 pp): a replacement needs every % variant to agree AND a match within 0.02 pp AND a small enough search; a 1920x1080 read all variants agree on is never replaced - a mismatch there is kept (mismatch_kept: a misread % cell, or a name whose bars belong to another company under today's symbol)
+- the frame's context is voted by its own rows: a frame with one or two readable rows, or a pre-market frame with the pre-market data on, may get no context (no_context: nothing checked)
+- replacements are made only from tier 1 against an exact close-to-close session (on this run: 3/9 such attempts matched vs 1/33 on the null -> ~91% right); an in-session tier-1 match is only a suggestion (21/25 vs 15/47 on the null -> ~60% right) and a tier-2/3 look-alike match too (X tier 2: 23/163 vs 40/661) - suggestions carry pct_suggest / pct_suggest_why on the row
+- 1280x720 column header AND footer garbled beyond the regexes ('TegiSym', 'Pieg Sm' / 'Pessorul Wiihat'): panel not found - the blind-check miss p_Wb_R-YqKoR0_z (a 16-row list); 2017: a 'B - Positions' panel whose own header line Vision drops (only the tab label read) is not found (p_yU-cNgKw508_a)
