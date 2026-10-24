@@ -1,0 +1,159 @@
+# #705 HIS TRADE LIST v2 — 01_census (outcome-free). Every choice fixed in the script header before the first run.
+# unit = (video, caption ticker) pair with a bought-graded moment; s0 = last era session <= upload date; window E in [s0-10, s0+2]; delta = idx(E) - idx(s0) (<0 event BEFORE the talk); nearest |delta|, tie -> earlier E; STRICT = phrase in the ticker's own caption line
+- bought regex asserted equal to 01_grade_phrases.py and 02_graded_moments.py: \bi (bought|added|got in|took a (starter|position)|entered)\b|\bi'?m (long|in it)\b
+
+## 0. Videos: 588 listed | status {'ok': 495, 'nocaps': 90, 'fail': 3} | upload span 2017-01-22..2023-12-15
+- caption files 495 | bought-phrase hits 2871 in 447 videos (01_grade_phrases.py: 2871 in 447)
+- graded moments 2472 | bought-graded 2024 (by year {'2023': 40, '2022': 39, '2020': 1175, '2017': 197, '2021': 409, '2019': 158, '2018': 6}) | own-line 1027
+- distinct bought (video, ticker) pairs 1828 | strict (own line) 954
+- 854 attributed labels: pairs any grade 848 | bought pairs 664 | the 236 recomputed: era A 236, era B 9 | attributed pairs carrying a 236 event 304
+- calendars: A 1635 sessions 2016-01-04..2022-06-30 | B 821 sessions 2021-09-27..2024-12-31
+- stream sessions s0: era A 423 dates, era B 39 | pairs by era {'B': 74, 'A': 1754} | no-grade mention pairs (beside) 11474
+- era A export symbols 12532 (one pass, cached) | era B universe symbols with a bar <= 2024-12-31: 15701 of 20284 | era B export rows dated after the cut dropped at the price pass: 5210943
+- era A events: tl rows 81015 (first breaks 20650; E 2017-03-02..2022-01-03) | EP primary 3378 (E 2016-02-02..2022-06-29)
+- era B events: tl rows 41200 (first breaks 12250; E 2022-04-01..2024-12-31); era B rows dropped at read {'not_discovery': 37917, 'dated_after_cut': 107} | EP primary 1964 (E 2021-10-25..2024-12-31)
+
+## 1. CENSUS per upload year (counts only). 'event in window' = a tl breakout or primary EP event of the resolved ticker in [s0-10, s0+2]
+year  videos  with_caps  phrase_hits  bought_moments  pairs  in_854_any  in_854_bought  in_236  own_line  resolve  event_any  event_tl  event_ep  strict_resolve  strict_event_any  strict_tl  strict_ep  strict_both_sameday  strict_neither_nocov
+2016       0          0            0               0      0           0              0       0         0        0          0         0         0               0                 0          0          0                    0                     0
+2017      58         57          363             197    183          36             36       8        84      138          9         6         3              61                 4          3          1                    0                     0
+2018       2          2           20               6      6           0              0       0         2        5          3         1         2               1                 0          0          0                    0                     0
+2019      41         38          203             158    143          30             30      12        68      121         18        15         3              53                10          8          2                    0                     0
+2020     219        214         1596            1175   1034         404            398     200       536      865        410       360        88             455               236        210         46                    6                     0
+2021     189        145          581             409    388         163            160      55       219      335        137       120        34             192                77         69         18                    0                     0
+2022      64         29           48              39     37          22             22       1        22       37          5         4         1              22                 3          2          1                    0                     0
+2023      12         10           60              40     37          18             18       7        23       36         12         8         7              23                 6          6          1                    0                     0
+ all     588        495         2871            2024   1828         673            664     283       954     1537        594       514       138             807               336        298         69                    6                     0
+- columns: videos = listed uploads that year; with_caps = an auto-caption track; phrase_hits = bought-phrase hits in the whole caption text; bought_moments = ticker-matched moments whose +-30 s window carries the phrase; pairs = distinct (video, ticker) of those; in_854_* = the pair has a frame-attributed label (any grade / bought); in_236 = the pair's attributed label sits on one of the 236 events; own_line = STRICT arm; resolve = the ticker has a bar in the window; event_* = nearest tl / EP event in the window exists; strict_* = the same on the STRICT pairs; strict_neither_nocov = strict pairs whose window lies outside both event ranges
+- setup class, all pairs: {'neither': 1234, 'breakout': 456, 'ep': 80, 'both': 58} | strict: {'breakout': 267, 'neither': 618, 'ep': 38, 'both': 31}
+- 'neither' reasons, all pairs: {'no_event': 943, 'unresolved': 152, 'no_bar_in_window': 139} | strict: {'no_event': 471, 'unresolved': 70, 'no_bar_in_window': 77}
+- era A symbol resolution of the pairs: {'own': 1537, 'refetch_dropped.tsv': 27, 'unresolved': 152, 'rename_map.tsv': 27, 'dedupe_applied.tsv': 11} | era B: {'own': 74}
+- unresolved tickers (most frequent): [('GBTC', 37), ('TDOG', 10), ('NICM', 7), ('GSX', 7), ('XXII', 6), ('DIP', 4), ('OCTA', 4), ('FNGU', 4), ('JUNE', 3), ('SILO', 3), ('AVS', 3), ('PCS', 3), ('ASIA', 3), ('WAR', 2), ('TEND', 2), ('SBC', 2), ('PLT', 2), ('MASK', 2), ('PTL', 2), ('OCT', 2), ('PMA', 1), ('PHD', 1), ('SORN', 1), ('SINO', 1), ('LIAM', 1)]
+- STRICT pairs with a tl event: nearest is a retrigger 215 of 298; > 1 tl event in the window 240; > 1 EP event 19
+- STRICT delta histogram, tl (delta: n; <0 = the event came BEFORE the talk): -10:9 -9:15 -8:9 -7:11 -6:9 -5:8 -4:20 -3:9 -2:26 -1:34 +0:122 +1:17 +2:9
+    nearest tl event within +-60 (beside): 522 of 807 resolved strict pairs | inside the window 290 | 3..10 sessions AFTER the talk 57 | 11..60 after 109 | 11..20 before 41 | 21..60 before 25
+- STRICT delta histogram, ep (delta: n; <0 = the event came BEFORE the talk): -10:2 -9:5 -8:1 -7:2 -6:3 -5:6 -4:2 -3:6 -2:8 -1:13 +0:15 +1:5 +2:1
+    nearest ep event within +-60 (beside): 253 of 807 resolved strict pairs | inside the window 69 | 3..10 sessions AFTER the talk 14 | 11..60 after 59 | 11..20 before 28 | 21..60 before 83
+- BESIDE windows (strict pairs with an event; counts only, never deciding): [-20, +2] tl 360, ep 98, any 395 | [-10, +5] tl 319, ep 78, any 358 || primary [-10, +2] tl 298, ep 69, any 336
+
+## 2. The v2 TRADE list: one row per (symbol, E, setup); STRICT = at least one mention with the phrase in the ticker's own caption line
+- STRICT: 295 trades (249 breakout, 46 EP; same-day EP+breakout pairs 9) | already among the 236: 100 | carrying a frame-attributed bought label: 184 | NEW vs the 236 (breakout rows not in it): 149 | NEW vs the 854 (no attributed label): 111
+setup       breakout  ep  total
+event_year                     
+2017               3   1      4
+2019               8   2     10
+2020             170  29    199
+2021              61  12     73
+2022               2   1      3
+2023               5   1      6
+all              249  46    295
+- WIDE (beside): 489 trades (401 breakout, 88 EP; same-day EP+breakout pairs 20) | already among the 236: 151 | carrying a frame-attributed bought label: 286 | NEW vs the 236 (breakout rows not in it): 250 | NEW vs the 854 (no attributed label): 203
+setup       breakout  ep  total
+event_year                     
+2017               6   3      9
+2018               1   2      3
+2019              15   3     18
+2020             270  52    322
+2021              99  21    120
+2022               4   1      5
+2023               6   6     12
+all              401  88    489
+- STRICT breakout rows by era: {'A': 242, 'B': 7} | retrigger share 180/249 (72.3%) | by |delta| (0 / 1-2 / 3-5 / 6-10): 127 / 67 / 24 / 31
+- STRICT trades per symbol: 109 symbols; most frequent [('MRNA', 13), ('FSLY', 12), ('BLDP', 8), ('SHOP', 8), ('DKNG', 7), ('PINS', 7), ('CRWD', 7), ('ROKU', 6), ('PDD', 6), ('FCX', 6), ('AMD', 5), ('WKHS', 5), ('TTD', 5), ('TWLO', 4), ('TSLA', 4)]
+
+## 3. POSITIVE CONTROL — the 854's frame-attributed BOUGHT pairs (664) through the same stages
+- stage: phrase in the window 664 (100%, by construction) -> own line 363/664 (54.7%) -> resolves 664/664 (100.0%) -> event in window: tl 278/664 (41.9%), EP 67/664 (10.1%), any 319/664 (48.0%)
+- STRICT arm on the 854 bought pairs: own line 363 -> event in window any 187/363 (51.5%) = 187/664 (28.2%) of all 854 bought pairs (the window ceiling stated in advance: Track A bought labels with delta <= +2 were 261/624 = 41.8%; own line 350/669 = 52.3%)
+- REGISTERED BAR (event agreement): 854 bought pairs whose Track A join placed a tl event with delta <= +2: 263; v2 found a tl event for 263 (none for 0: the join's window [-10, +20] vs v2's [-10, +2] with a different tie rule) | SAME E 254/263 (96.6%) | bar >= 80% -> PASS
+- the 236 events in the v2 breakout list: STRICT 97 of 236 | WIDE 147 of 236
+    label delta <= 2 (inside v2's window): 152 events | in v2 STRICT 89 | WIDE only 44 | missed 19
+    label delta >= 3 (outside v2's window by design): 84 events | in v2 STRICT 8 | WIDE only 6 | missed 70
+    (a 236 event can be reached by v2 only through a pair whose s0 is within 2 sessions after E or 10 before it; the join read labels up to 20 sessions before E)
+
+## 4. FRAME READS AS A PRECISION CHECK — bought moments whose on-screen ticker was CONFIRMED (status attributed or moved_unverified): P(caption == screen)
+- confirmed bought moments 1473 | caption == screen overall 669/1473 (45.4%)
+- own line    : n 755 | caption == screen 350/755 (46.4%)
+- window only : n 718 | caption == screen 319/718 (44.4%)
+- event in window     : n 542 | caption == screen 324/542 (59.8%)
+- no event (resolved) : n 745 | caption == screen 345/745 (46.3%)
+- unresolved / no bar : n 186 | caption == screen 0/186 (0.0%)
+- own line AND event    : n 291 | caption == screen 179/291 (61.5%)
+- own line, no event    : n 374 | caption == screen 171/374 (45.7%)
+- window only AND event : n 251 | caption == screen 145/251 (57.8%)
+- window only, no event : n 371 | caption == screen 174/371 (46.9%)
+- caveat: caption != screen is an UPPER bound on the spoken ticker being wrong (the chart on screen may be a neighbour while he speaks of the named stock; 7 of 20 moved quotes read by hand belonged to the spoken ticker, 03_frame_check.py); it is the best $0 ground truth available at this scale
+- own-line moments whose confirmed screen ticker differs (most frequent caption->screen): [('TDOG->TDOC', 4), ('OCTA->OKTA', 3), ('UAL->SAVE', 3), ('LDP->BLDP', 3), ('SC->SE', 3), ('PRE->TSLA', 3), ('FMC->FMCI', 3), ('HEQ->AGQ', 3), ('BLD->BLDP', 2), ('DOC->TDOC', 2), ('MSTR->SI', 2), ('IO->NIO', 2), ('III->TSLA', 2), ('MRNA->SPY', 2), ('PRE->PINS', 2), ('CCL->RCL', 2), ('NICM->NKLA', 2), ('NVX->NVAX', 2), ('AVS->UAVS', 2), ('HCM->DXCM', 2)]
+
+## 5. PLANTED WRONG-TICKER CONTROL — 10 random wrong tickers per STRICT resolved pair (seed 1024; bar on s0, close >= $5, close x volume >= $10M on s0)
+- draws 8070 on 807 strict resolved pairs (pairs skipped for a thin pool: 0) | pool sizes: era A median 2463 tickers per s0, era B 2771
+- FALSE-MATCH rate (a wrong ticker has an event in the window): tl any row 1566/8070 (19.4%) | tl first break present 940/8070 (11.6%) | EP 115/8070 (1.4%) | any 1640/8070 (20.3%)
+- the STRICT resolved pairs' own rate: tl 298/807 (36.9%) | EP 69/807 (8.6%) | any 336/807 (41.6%) -> lift over a wrong ticker: tl x1.90, EP x6.00
+- BESIDE, merely MENTIONED (ticker-matched pairs with no grade, resolved): n 9617 | tl 2535/9617 (26.4%) | EP 550/9617 (5.7%) | any 2894/9617 (30.1%)  (he talks about stocks that are moving: the gap between this and the wrong-ticker rate is topic selection, the gap between this and the strict pairs is the bought phrase)
+
+## 6. HAND-CHECK SAMPLE — 30 STRICT pairs with an event and NO frame-attributed label, stratified by upload year x setup (seed 1024)
+- population 146 pairs | cells {'2017/breakout': 2, '2017/ep': 1, '2019/breakout': 5, '2019/ep': 1, '2020/both': 9, '2020/breakout': 76, '2020/ep': 9, '2021/both': 7, '2021/breakout': 27, '2021/ep': 5, '2022/breakout': 1, '2023/both': 1, '2023/breakout': 2} | drawn 30 -> /Users/alvinfung/apollo_data/cb702/qm_streams/his_trades_v2/hand_check_30.tsv (url opens 15 s before the moment; verdict / why blank)
+     1. MDCO  breakout E_tl 2017-03-08 E_ep -          | https://youtu.be/TFiGVNT5als?t=821 | 2017-03-07 | "immediate follow through let see the third of oh this one yeah same news as mdco and just straight up since over 100 hey na i actually um so"
+     2. GPRO  ep       E_tl -          E_ep 2017-08-04 | https://youtu.be/r33ro5WdPjY?t=48 | 2017-08-08 | "so let start with my current positions and yesterday trades so i have im long gopro from since earnings day and well i think you can go to 1"
+     3. ACAD  breakout E_tl 2019-10-21 E_ep -          | https://youtu.be/y090kik4xFA?t=180 | 2019-10-21 | "uh i bought some mik uh near the open i also bought some acad i bought 20000 mik at uh 10 average i had some slippage i wanted to get get it"
+     4. POOL  ep       E_tl -          E_ep 2019-10-17 | https://youtu.be/FcXJZ3Y98YU?t=444 | 2019-10-17 | "i bought halfsize drc you this brazil we starting to come out with still bull flag in a pool flag or whatever you wanna call this big short "
+     5. CELH  both     E_tl 2020-11-05 E_ep 2020-11-12 | https://youtu.be/xv4off5Vyfk?t=302 | 2020-11-18 | "net i bought some like half size gbtc is going straight up bldp grinding higher celsius building higher lows in the 60minute tan looks like "
+     6. DKNG  breakout E_tl 2020-06-22 E_ep -          | https://youtu.be/6fsq62nKgH0?t=276 | 2020-07-01 | "faster mover yeah heavy all of my lungs look great with i must short something yeah im short draftkings that more mrna is gapping down again"
+     7. TWLO  breakout E_tl 2020-12-11 E_ep -          | https://youtu.be/BGkpQm5DZ5M?t=2718 | 2020-12-24 | "mdb twilio they all broke out like four to six weeks ago toku this is the one i bought and sold because it was really slow and it still slow"
+     8. NCLH  breakout E_tl 2020-07-13 E_ep -          | https://youtu.be/GAUMqB_R1bE?t=2007 | 2020-07-15 | "no i bought save not then clh i must have said wrong i bought save but i got i got stopped out of it i took a loss on it um yeah no i didnt "
+     9. MRNA  breakout E_tl 2020-10-12 E_ep -          | https://youtu.be/HGCjKEnCbzw?t=1114 | 2020-10-13 | "symbol vxrt okay yeah looks decent theyre all the same sector mrna yesterday and srna vxrt today i took a starter on sock sole took out the "
+    10. AVLR  breakout E_tl 2020-07-31 E_ep -          | https://youtu.be/KsozMIjFBis?t=212 | 2020-07-31 | "fairly well tdoc gapping up a little avlr gapping up peloton you know pretty much everything im long is gapping up so that nice uh yeah noth"
+    11. TTD   breakout E_tl 2020-07-31 E_ep -          | https://youtu.be/KsozMIjFBis?t=2423 | 2020-07-31 | "and many of the shorts i bought today the stocks i bought today theyre all momentum leaders let see i bought ttd it the same principle but l"
+    12. NTR   breakout E_tl 2020-09-14 E_ep -          | https://youtu.be/_JvCQKA9xXU?t=3860 | 2020-09-23 | "it it a position trade not nothing big i bought it in my interactive broker account where i also have lac like these are like tiny positions"
+    13. FSLY  breakout E_tl 2020-12-10 E_ep -          | https://youtu.be/_hA8y2WiujU?t=5244 | 2020-12-08 | "oh dq nice nice fastly pen this oh pen is triggering im not gonna do it i mean so many things already i bought silo yesterday and oh qs is c"
+    14. TTD   breakout E_tl 2020-08-03 E_ep -          | https://youtu.be/aTIADs82W_k?t=899 | 2020-08-07 | "they just need more sideways im kind of happy that the two stocks that reported earnings that i im long that theyre gapping enough that ttd "
+    15. SPOT  breakout E_tl 2020-05-19 E_ep -          | https://youtu.be/foGdZubGoGA?t=1745 | 2020-05-21 | "it broke out that why i bought it um yeah no problem yeah i was thinking about adding spotify for a short list uh i just dont think it up en"
+    16. BILI  breakout E_tl 2020-08-24 E_ep -          | https://youtu.be/gIJPs1a4cC8?t=2026 | 2020-08-24 | "correct entry on bili 42.87 right here right here where it broke highs of the 60minute candle that where i bought it"
+    17. FSLY  breakout E_tl 2020-08-24 E_ep -          | https://youtu.be/gIJPs1a4cC8?t=3126 | 2020-08-24 | "tqq this one keeps going lower that good tou i bought today but this one is acting not that great gbtc holding up well fastly is fading a bi"
+    18. TTD   breakout E_tl 2020-08-26 E_ep -          | https://youtu.be/vTxXrU5jjAk?t=1212 | 2020-08-26 | "okay i bought a bunch of shopify so far and some ttd"
+    19. ESTC  breakout E_tl 2020-10-06 E_ep -          | https://youtu.be/wMbFuyfL7Xw?t=2040 | 2020-10-14 | "that low but crowdstrike didnt retest the low uh and since then you know i just built with positions i bought fastly csd estc twitter all of"
+    20. HI    breakout E_tl 2020-07-02 E_ep -          | https://youtu.be/zxqFTq59gZU?t=414 | 2020-07-02 | "could be a scenario were gonna risk fifty cents a dollar potentially make 20 30 on the upside or h i bought some late day yesterday it surfi"
+    21. FUBO  ep       E_tl -          E_ep 2020-12-22 | https://youtu.be/wLYBzP4qRjY?t=6217 | 2020-12-22 | "literally i nailed it three times the entries at least not the exits the entries i need fuel cell i nailed mara fubo peliton riot all of the"
+    22. APHA  both     E_tl 2021-01-07 E_ep 2021-01-15 | https://youtu.be/rhn_USs7vWA?t=371 | 2021-01-15 | "so i really stopped my apha until ray stopped aggressively they are both up like like tilray up what 80 85 from no tilray i bought it down h"
+    23. PEN   breakout E_tl 2021-02-24 E_ep -          | https://youtu.be/4NWSjDX9plk?t=3790 | 2021-03-10 | "that the thing there are some things that are you know looking like i bought this uber i wish i had bought the pen i wish id bought this one"
+    24. FCX   breakout E_tl 2021-03-11 E_ep -          | https://youtu.be/5-Y6oXm32OE?t=184 | 2021-03-12 | "well see i also bought ual but that one i got stopped out of that one faded back into the range uber is holding up nicely fcx i bought holdi"
+    25. NIO   breakout E_tl 2021-01-08 E_ep -          | https://youtu.be/GUVurDIMKrI?t=1514 | 2021-01-11 | "and my risk is like 12 on it so no nio im long in io why would i be short then i o it sitting it hitting new highs oh never mind it reversed"
+    26. SKLZ  breakout E_tl 2021-01-12 E_ep -          | https://youtu.be/jCvLY7F8g80?t=131 | 2021-01-20 | "i was thinking about rebuying tqqq also but i was like nah ill just buy one of them uh sklz gapping up xp one i bought yesterday it just bre"
+    27. LCID  ep       E_tl -          E_ep 2021-01-12 | https://youtu.be/0udk9grGeqE?t=3391 | 2021-01-13 | "crazy town right here it had like 200 million share days after they announced theyre gonna merge with lucid motors so that so i bought this "
+    28. LMT   breakout E_tl 2022-04-11 E_ep -          | https://youtu.be/bnPcAPjdAz4?t=575 | 2022-04-12 | "on uranium ura urm i rebought a few days ago looks like theyre having some follow through now lmt i bought it last week to lhx2 let see yeah"
+    29. CVNA  both     E_tl 2023-05-30 E_ep 2023-06-08 | https://youtu.be/SLhbpNuHegw?t=3437 | 2023-06-08 | "im gonna cut the stream soon i dont really see much more to do here got that little i sold you know i sold some uh carvana in premarket and "
+    30. PDD   breakout E_tl 2023-01-26 E_ep -          | https://youtu.be/GdMs1y_RTnM?t=2053 | 2023-01-26 | "yin also same trade both of the flag break here and then i added on this day here was it on this day i dont remember pdd i bought it here fu"
+
+## 7. MINUTE COVERAGE — is the day-0 minute file of each v2 (symbol, E) already fetched? (`_done.psv` status, any; no minute file opened; era B rows after the cut dropped)
+- done_A: 149587 rows, 0 dated after 2024-12-31 dropped
+- done_B: 153809 rows, 72951 dated after 2024-12-31 dropped
+- STRICT: 295 trades | minutes already fetched 286/295 (96.9%) | by setup: breakout 249/249 (100.0%), ep 37/46 (80.4%)
+- WIDE-only: 194 trades | minutes already fetched 176/194 (90.7%) | by setup: breakout 152/152 (100.0%), ep 24/42 (57.1%)
+- FETCH LIST (tier 0 = strict, tier 1 = wide-only): 27 (symbol, E) pairs, 24 dates, era {'A': 25, 'B': 2} -> /Users/alvinfung/apollo_data/cb702/qm_streams/his_trades_v2/v2_minute_fetch_list.psv
+
+## Pins (sha256)
+- video_status: 9f7a7e4cb1fd8ae5eb69a4daa4eb9eec7f9e969341249d41ffa469cb1bf9c692  /Users/alvinfung/apollo_data/cb702/qm_streams/video_status.tsv
+- moments: f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0  /Users/alvinfung/apollo_data/cb702/qm_streams/vision/graded_moments.tsv
+- labels: f4116fd99a1b7db88a74b88a7278aa6e434cf8788b7003af8bbc39e72ac2269a  /Users/alvinfung/apollo_data/cb702/qm_streams/vision/grades_labels.tsv
+- labels_joined: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/labels_joined.tsv
+- stream_moments: 7cd53c671f425f71e44ecd70472564df125780bf2e1a55c92b51f5caecea7104  /Users/alvinfung/apollo_data/cb702/qm_streams/stream_moments.tsv
+- stream_moments_ext: e670bafbe27d17c3a2066a7a2caf4af9d24d55bb603123d7016747e92315f93c  /Users/alvinfung/apollo_data/cb702/qm_streams/ext_2016_2022/stream_moments_ext.tsv
+- cal_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0  /Users/alvinfung/apollo_data/cb702_pre_v2/sessions.txt
+- cal_B: a17d991a25a1b6b6977c388f352213142868635f94c2010813a7a0f8ef79d2be  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/spy_sessions_eraB_le_2024-12-31.txt
+- cand_A: 3c5a66dc3052d0a284cbfee8202f74deb4e5bb75c74565dd8147df015e1baa5a  /Users/alvinfung/apollo_data/cb702_pre_v2/out/candidates_tl_com.tsv
+- cand_B: b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7  /Users/alvinfung/apollo_data/cb702/out/candidates.tsv
+- ep_A: 59f196e5aa45a35eb7d98e1a1147ac4925e9f4967a17863e039659eed6c9dc46  /Users/alvinfung/apollo_data/cb702/qm_streams/ep_join_1023/ep_events_A.tsv.gz
+- ep_B: 160401c752ff0b8d3d3f2ad7a1eff63d6c36d285aaa34c6e5ca00b737b68ee3c  /Users/alvinfung/apollo_data/cb702/qm_streams/ep_join_1023/ep_events_B.tsv.gz
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d  /Users/alvinfung/apollo_data/cb702_pre_v2/daily_closes_all.csv.gz
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba  /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz
+- universe_B: 47919b4d6afbb1279981fb640a3bb193e628538c6167f06a97b41c177bd88742  /Users/alvinfung/apollo_data/cb702/qm_streams/universe_dates.pkl
+- alias_dedupe: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64  /Users/alvinfung/apollo_data/cb702_pre_v2/dedupe_applied.tsv
+- alias_refetch: 6e325eccfe159cdce596deff2261caffcd3113be632c0a4bf83a9974b5751dd0  /Users/alvinfung/apollo_data/cb702_pre/survivorship_1023/merged_trial2/refetch_dropped.tsv
+- alias_rename: 02653560aa435762870dc90b0ef0d2fd7ab803a518f9e8c89772bcdd4fb34a57  /Users/alvinfung/apollo_data/cb702/qm_streams/ext_2016_2022/rename_map.tsv
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6  /Users/alvinfung/apollo_data/cb702_pre_v2/minutes/_done.psv
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178  /Users/alvinfung/apollo_data/cb702/minutes/_done.psv
+- done_ep: 0eb3548afe46feecf785e27b4b2e0839d5392c71bf4d67a1789f75e40c6ac735  /Users/alvinfung/apollo_data/cb702/minutes_ep_1023/_done.psv
+- grade_script: 7e3320e8ff26bde4dadfb75d5e983e79a0c1af4bf7e72dcf07e0e9963330b4c2  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_grades_1022/02_graded_moments.py
+- phrase_script: c238fa0d75214f9a0a9f8709348ab46b32668cc8b2fdc8001596f8ad1797b45f  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_grades_1022/01_grade_phrases.py
+- this_script: f22cde7924820e0a0ffb2ddd41f4b8b7713e4874e350de781879ef657112a5f8  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_his_trades_v2_1024/01_census.py
+
+Files: /Users/alvinfung/apollo_data/cb702/qm_streams/his_trades_v2/census.tsv, /Users/alvinfung/apollo_data/cb702/qm_streams/his_trades_v2/pairs_v2.tsv, /Users/alvinfung/apollo_data/cb702/qm_streams/his_trades_v2/trades_v2.tsv, /Users/alvinfung/apollo_data/cb702/qm_streams/his_trades_v2/hand_check_30.tsv
