@@ -2560,3 +2560,7 @@ Recorded as the standing frame for #705: the setups work (audited record); a bac
 > "on your point about qullamaggie using 3 setups (breakouts, EP, parabolic shorts), which is true, but each one of the setup is high profitiable for him over multiple years, so the fact is that the setups work (at least in the past), so our backtest should show the same, if not that it's something wrong with our implementation and interpretation, not that it's not profitable given his returns using these setups are a historical audited fact"
 
 Standing rule from this (2026-10-23): for breakouts, EPs and parabolic shorts alike, a backtest that does not reproduce profit over his years is a defect in OUR implementation or interpretation to be found — never a finding that the setup does not work.
+
+> "what he shared is that he has compiled charts of his setups (thousands and thousands) into a database, studied them and gain confidence on his setups. THis is what I'm trying to do with charts, with rules, with backtest, etc. We're trying to recreate his knowledge base as a basis of our trading for apollo"
+
+The north star for #705 / #707 (2026-10-23): rebuild Qullamaggie's own setup database — thousands of charts of each setup, studied until the rules are trusted — as the basis of Apollo's trading. Charts, rules and backtests are three views of that one database.
