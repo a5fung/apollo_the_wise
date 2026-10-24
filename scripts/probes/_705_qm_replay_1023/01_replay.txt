@@ -1,0 +1,339 @@
+# #705 QM replay — 01_replay (THE REGISTERED REPLAY)
+# registration: docs/analysis/cb_qm_replay_prereg_2026-10-23.md
+- Track A pins re-checked (labels, events, candidates, exports, calendar, flags, the frozen fit module, the join script, aplus_read, registered_read, the cb module = `runner.EXITPB_MODULE_SHA`): no drift
+
+## Loads (era B: every row dated after 2024-12-31 dropped at read)
+- daily exports loaded in 7s: era A 3,661,906 of 12,005,007 rows kept (2,548 tickers, calendar 2016-01-04..2022-06-30); era B 192,250 of 13,830,569 rows kept (247 tickers, calendar 2021-09-27..2024-12-31), rows dated after 2024-12-31 DROPPED AT READ 5,210,943 (asserted: max date kept 2024-12-31 <= 2024-12-31)
+- era B candidates: discovery split only, D and E <= 2024-12-31 (dropped at read: not discovery 109,478, dated after the cut 240); era B fetch-log rows dated after the cut dropped at read 72,951
+- identity-break files: era A `cb702_pre_v2/symbol_guard.tsv` (667 symbols with a break; equal to the audit's `symbol_guard_A.tsv`: True), era B `runs_2026-10-23/universe/symbol_guard_B.tsv` (1292 symbols)
+- era A STEP 0 verdict (`cb702_pre_v2/audit_1023/verdict.txt`, pinned):
+    S0 selftests                PASS    4 of 4 selftests pass
+    G1 bar integrity            PASS    0 dup keys / 0 OHLC / 0 NaN / 0 weekend; test symbols in the export: 0 tickers / 0 rows (universe excludes them)
+    G2 universe completeness    PASS    liquid names per session, A/richer = 0.979..0.995 over 10 months (PASS >= 0.97); known-gone names 513, missing/partial 29 = 
+    G3 duplicate companies      PASS    confirmed strict pairs 0 (0 duplicate rows); scaled twins 0; universe_check persistent pairs (>= 20 days) 0 (PASS = 0 / 0 / 
+    G4 identity                 PASS    breaks file written: /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/universe/symbol_guard_A.tsv; different company on 
+    G5 corporate actions        PASS    controls — OPLN:2019-06-28: FLAGGED; ZWS:2021-10-05: FLAGGED; BEP:2020-07-30: FLAGGED; discontinuous adjustment events (all/
+    G6 security type            PASS    untyped admitted nights 0.3% (6,134 of nights; 18 tickers) — PASS <= 2%; universe_check tripwire: 0.7% of 4,466 liquid symbo
+    G7 point-in-time lint       PASS    33 items (12 confirmed, 4 suspected, 17 ruled out); 16 unguarded; anchors missing 0
+    G8 sealed-trade dependence  REPORT  no trade list given (TRADES=...) — run trade_impact.py on every list you quote
+    G9 calendar + early close   PASS    sessions per year match NYSE (7 years); minute tree not scanned (FAST=1 or no minutes dir)
+    G10 overlap parity          REPORT  members per night A 2,135 / B 2,072, in both 1,984 = 95.8% of B (target >= 98% after the rebuild); only-A 146, only-B 86; ve
+
+## Populations (asserted against the Track A registration)
+- at0_A: 119
+- at0_and_strict_A: 10
+- cal_A: 1635
+- cal_B: 821
+- cand_B_after_cut: 240
+- cand_B_not_discovery: 109478
+- excl_A: 410
+- excl_B: 7
+- first_A: 20650
+- first_B: 12250
+- graded_dates_A: 156
+- graded_dates_B: 7
+- neg_A: 23188
+- neg_B: 345
+- neg_fit: 15107
+- neg_hold: 8081
+- on_E_only_A: 109
+- pos_A: 236
+- pos_B: 9
+- pos_first_A: 132
+- pos_fit: 170
+- pos_hold: 66
+- pos_retrig_A: 104
+- post_A: 87
+- post_B: 3
+- stream_A: 81015
+- stream_B: 41200
+- strict_A: 127
+- strict_B: 6
+- every population equals the registration
+
+### era A
+  year of E | his calls n | first breaks | retriggers | control n | control first breaks | post-E-only n (beside)
+  ----------+-------------+--------------+------------+-----------+----------------------+-----------------------
+  2017      | 6           | 6            | 0          | 223       | 77                   | 1                     
+  2019      | 8           | 6            | 2          | 446       | 77                   | 0                     
+  2020      | 156         | 80           | 76         | 14438     | 3370                 | 57                    
+  2021      | 66          | 40           | 26         | 8081      | 2051                 | 29                    
+  all       | 236         | 132          | 104        | 23188     | 5575                 | 87                    
+- his calls on 156 dates; per date: 1 call(s) on 107 dates, 2 call(s) on 30 dates, 3 call(s) on 12 dates, 4 call(s) on 5 dates, 5 call(s) on 1 dates, 8 call(s) on 1 dates
+- his calls sit on 188 bases (188 first-of-base events, the one-event-per-base reading); strictly-before subset 127; post-E-only events also in the control 27
+- dates whose control holds fewer events than his calls that day: 0
+- QQQ at D (close vs its 10- and 20-day averages; outcome-free): his up 163, mixed 35, down 38, unknown 0; control up 17282, mixed 3123, down 2783, unknown 0
+- minute coverage from the fetch log (`_done.psv` status; no minute file opened): his ok 236 / empty 0 (abstains `no_minutes`) / MISSING 0; control ok 23188 / empty 0 (abstains `no_minutes`) / MISSING 0; post ok 87 / empty 0 (abstains `no_minutes`) / MISSING 0
+- identity break inside (E - 130, E] (excluded, counted): his 0, control 0, post 0; a break AFTER E is forward information, read in the real run only, where it CUTS the walk's forward window at the session before it (never an exclusion)
+- his calls by timing: strictly before E 127, resting ONLY on a label said on E 109 (= 236 - 127); carrying an on-E label 119, of which 10 also carry one strictly before
+- events on a 13:00-close day (ORH fills there read the minutes as stored; fills after 13:00 counted in the real run): his 2, control 133
+- the walk set after the two data exclusions: his 236 of 236, control 23188 of 23188, post-E-only 87 of 87
+- events whose E + 121 sessions run past the era's last session 2022-06-30 (calendar only): 0
+
+### era B
+  year of E | his calls n | first breaks | retriggers | control n | control first breaks | post-E-only n (beside)
+  ----------+-------------+--------------+------------+-----------+----------------------+-----------------------
+  2022      | 1           | 0            | 1          | 78        | 21                   | 0                     
+  2023      | 8           | 6            | 2          | 267       | 85                   | 3                     
+  all       | 9           | 6            | 3          | 345       | 106                  | 3                     
+- his calls on 7 dates; per date: 1 call(s) on 5 dates, 2 call(s) on 2 dates
+- his calls sit on 9 bases (9 first-of-base events, the one-event-per-base reading); strictly-before subset 6; post-E-only events also in the control 1
+- dates whose control holds fewer events than his calls that day: 0
+- QQQ at D (close vs its 10- and 20-day averages; outcome-free): his up 8, mixed 0, down 1, unknown 0; control up 267, mixed 0, down 78, unknown 0
+- minute coverage from the fetch log (`_done.psv` status; no minute file opened): his ok 9 / empty 0 (abstains `no_minutes`) / MISSING 0; control ok 345 / empty 0 (abstains `no_minutes`) / MISSING 0; post ok 3 / empty 0 (abstains `no_minutes`) / MISSING 0
+- identity break inside (E - 130, E] (excluded, counted): his 0, control 0, post 0; a break AFTER E is forward information, read in the real run only, where it CUTS the walk's forward window at the session before it (never an exclusion)
+- events on a 13:00-close day (ORH fills there read the minutes as stored; fills after 13:00 counted in the real run): his 0, control 0
+- the walk set after the two data exclusions: his 9 of 9, control 345 of 345, post-E-only 3 of 3
+- events whose E + 121 sessions run past the era's last session 2024-12-31 (calendar only): 0
+
+## Pins (sha256) — every value below goes under `<!-- FREEZE -->` in the doc before the real run
+- labels_joined: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/labels_joined.tsv
+- matched_events: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc  /Users/alvinfung/apollo_data/cb702/qm_streams/track_a_1023/matched_events.tsv
+- moments: f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0  /Users/alvinfung/apollo_data/cb702/qm_streams/vision/graded_moments.tsv
+- cand_A: 3c5a66dc3052d0a284cbfee8202f74deb4e5bb75c74565dd8147df015e1baa5a  /Users/alvinfung/apollo_data/cb702_pre_v2/out/candidates_tl_com.tsv
+- cand_B: b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7  /Users/alvinfung/apollo_data/cb702/out/candidates.tsv
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d  /Users/alvinfung/apollo_data/cb702_pre_v2/daily_closes_all.csv.gz
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba  /Users/alvinfung/apollo_data/cb702/daily_closes_all.csv.gz
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0  /Users/alvinfung/apollo_data/cb702_pre_v2/sessions.txt
+- guard_A: 876a75ec6d51744579c1ea2744c1b529cbd941355ef12eb8f0451bbe7ba1af08  /Users/alvinfung/apollo_data/cb702_pre_v2/symbol_guard.tsv
+- guard_A_audit: 729741b4cfc5759b6ea5d81da6afdd36c11d806bbcad845964b2b37c72d94057  /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/universe/symbol_guard_A.tsv
+- guard_B: b6cb81b6c4a1f415defc5adcf236402d93cd654c33736aa0b120b78c357b5650  /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/runs_2026-10-23/universe/symbol_guard_B.tsv
+- flags_A: 5358e31dc1b27d25c5143bdfca7a98b91a6c7a2d5b1da6c9c9d9ed9c55474c1d  /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/price/A_flags.tsv
+- flags_B: 8bf843859afb70ea59edf6f11cda12160020936c8df3e978b6a819590ea5c3d5  /Users/alvinfung/apollo_data/audit_runs_2026-10-23/B_flags.tsv
+- verdict_A: 02cbb1c0106101cb12e8d5deb9448051ae3ced67966ac11d2475d06f26538de3  /Users/alvinfung/apollo_data/cb702_pre_v2/audit_1023/verdict.txt
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6  /Users/alvinfung/apollo_data/cb702_pre_v2/minutes/_done.psv
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178  /Users/alvinfung/apollo_data/cb702/minutes/_done.psv
+- runner: 213cbe6ddf0ff05555a11c347efd14bfa37f99096fd83961e9f5127f6c7c8dcf  /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/runner.py
+- registered_read: 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449  /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/registered_read.py
+- cb_module: e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b  /Users/alvinfung/apollo_the_wise/agents/market_intelligence/consolidation_breakout.py
+- constants: 72dadd72503a842f593621b0868f908ab99e1d77851330c2842be7797aa99400  /Users/alvinfung/apollo_the_wise/agents/market_intelligence/constants.py
+- fit_module: 3fca7bf4f26ffcdf7152ddc9d4180c295aafe29067591def812fcc6884f38d27  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_track_a_1023/02_fit_filter.py
+- join_script: 6889819c41342c60831b0d62b277d47b677e4deaeab3443cbdde7a05d56b112c  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_track_a_1023/01_join_labels.py
+- aplus_read: e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee  /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/aplus_read.py
+- trade_impact: 9b7cce415479c1abfda422c432c6de1f3a6d591f298a1167fa637a578051e146  /Users/alvinfung/apollo_the_wise/scripts/backtest_data_audit/trade_impact.py
+- replay_module: c44785889670b31f3e9baf1ac0e1563aeacfefacc5de5ef426ee7b15724e7bfa  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_qm_replay_1023/01_replay.py
+- replay_tests: 37c918a08329b138f6c37c5787af3c95e0ea2abeceb100209cd0f5f0dd0a96ad  /Users/alvinfung/apollo_the_wise/scripts/probes/_705_qm_replay_1023/test_01_replay.py
+- minutes_A_used: b6a99cdf084ad42c1a4d846e05d10b48404f8225499253583ff78170e95b592a  the 193 minute date files the walk set opens
+- minutes_B_used: d548f85679b9ded20bfa4650c45535d685d820d4dd2040fce84d01bae7b2b652  the 8 minute date files the walk set opens
+- doc_body: aaaadd295aba5a9de534a738410ebe391ac4993637faa7ead0cab78e2b7a9dab  the doc text above the marker
+- freeze record: every pin above is written under the FREEZE marker
+
+## The walk
+- A_forward_window_cut_at_a_break 33, A_minute_truncated 0, A_minutes_ok 23,484, B_minute_truncated 0, B_minutes_ok 356
+- forward windows CUT at an identity break after E (the session before the break is the last one read; no event excluded): 33
+    A FLR E 2019-10-16 (control): break 2020-03-19; primary walk stopped_day0 (mature)
+    A FLR E 2019-10-21 (control): break 2020-03-19; primary walk stopped_day0 (mature)
+    A FLR E 2019-10-22 (control): break 2020-03-19; ORH5 abstain
+    A FLR E 2019-10-28 (control): break 2020-03-19; primary walk stopped (mature)
+    A NG E 2020-02-18 (control): break 2020-03-17; primary walk stopped (mature)
+    A BEP E 2020-06-16 (control): break 2020-07-30; ORH5 no_trigger
+    A BEP E 2020-06-22 (control): break 2020-07-30; ORH5 no_trigger
+    A AAN E 2020-06-29 (control): break 2020-12-01; primary walk stopped (mature)
+    A BEP E 2020-07-15 (control): break 2020-07-30; primary walk stopped (mature)
+    A AAN E 2020-07-23 (control): break 2020-12-01; primary walk trailed (mature)
+    A AAN E 2020-07-27 (control): break 2020-12-01; primary walk trailed (mature)
+    A AAN E 2020-07-28 (control): break 2020-12-01; primary walk stopped_day0 (mature)
+    A AAN E 2020-07-29 (control): break 2020-12-01; ORH5 abstain
+    A AAN E 2020-09-03 (control): break 2020-12-01; primary walk stopped_day0 (mature)
+    A AAN E 2020-09-22 (control): break 2020-12-01; primary walk stopped (mature)
+    A AAN E 2020-09-23 (control): break 2020-12-01; primary walk stopped_day0 (mature)
+    A AAN E 2020-09-28 (control): break 2020-12-01; primary walk stopped (mature)
+    A AAN E 2020-09-29 (control): break 2020-12-01; ORH5 no_trigger
+    A AAN E 2020-10-08 (control): break 2020-12-01; primary walk stopped (mature)
+    A GME E 2020-10-08 (control): break 2021-01-27; ORH5 abstain
+    A AAN E 2020-10-09 (control): break 2020-12-01; ORH5 no_trigger
+    A AAN E 2020-10-16 (control): break 2020-12-01; primary walk stopped (mature)
+    A AAN E 2020-11-13 (control): break 2020-12-01; primary walk stopped_day0 (mature)
+    A AAN E 2020-11-16 (control): break 2020-12-01; ORH5 no_trigger
+    A GME E 2020-11-16 (control): break 2021-01-27; ORH5 abstain
+    A GME E 2020-11-19 (control): break 2021-01-27; primary walk trailed (mature)
+    A GME E 2020-11-23 (control): break 2021-01-27; primary walk stopped (mature)
+    A GME E 2020-11-24 (control): break 2021-01-27; ORH5 no_trigger
+    A GME E 2020-11-25 (control): break 2021-01-27; primary walk stopped (mature)
+    A GME E 2020-11-27 (control): break 2021-01-27; primary walk stopped (mature)
+    A GME E 2020-12-17 (control): break 2021-01-27; primary walk trailed (mature)
+    A GME E 2020-12-21 (control): break 2021-01-27; ORH5 no_trigger
+    A GME E 2021-01-11 (control): break 2021-01-27; primary walk stopped_day0 (mature)
+
+## G8 — trade_impact.py on THIS read's trade list (ORH5, p33_s3_t10), run BEFORE any number below
+- era A: entered after the cutoff 0, holds past the last bar kept 0 (registered: both 0, asserted)
+- era B: entered after the cutoff 0, holds past the last bar kept 0 (censored: a walk not mature is in no number)
+
+## Entry facts (ORH5)
+- era A his: abstain:too_wide 20, filled: 174, no_trigger:no_minute_above_level 42 | fills after 13:00 on a 13:00-close day 0
+- era A ctl: abstain:minute_daily_mismatch 39, abstain:minute_high_below_pivot 2, abstain:no_opening_range_minutes 13, abstain:too_wide 1502, filled: 17948, no_trigger:no_minute_above_level 3684 | fills after 13:00 on a 13:00-close day 0
+- era A post: abstain:too_wide 8, filled: 61, no_trigger:no_minute_above_level 18 | fills after 13:00 on a 13:00-close day 0
+- era B his: filled: 9 | fills after 13:00 on a 13:00-close day 0
+- era B ctl: abstain:minute_daily_mismatch 5, abstain:too_wide 22, filled: 279, no_trigger:no_minute_above_level 39 | fills after 13:00 on a 13:00-close day 0
+- era B post: abstain:minute_daily_mismatch 1, filled: 2 | fills after 13:00 on a 13:00-close day 0
+
+## HEADLINE — per trade R, tail first (ORH5 · low-of-day stop · p33_s3_t10; mature walks; exit slippage 0)
+
+### era A (decides)
+  group                           | events n | filled n | mature n | >=5R /100 trades | >=10R /100 | >=20R /100 | max R  | worst R | win rate | mean R | median R | >=10R /100 events | mean R /event
+  --------------------------------+----------+----------+----------+------------------+------------+------------+--------+---------+----------+--------+----------+-------------------+--------------
+  HIS calls                       | 236      | 174      | 174      | +5.7             | +1.1       | +0.6       | +71.62 | -2.67   | 35.1%    | +0.639 | -1.000   | +0.8              | +0.471       
+  control (same day)              | 23188    | 17948    | 17939    | +5.2             | +1.7       | +0.4       | +57.78 | -35.76  | 27.9%    | +0.120 | -1.000   | +1.3              | +0.093       
+  HIS first breaks                | 132      | 94       | 94       | +7.4             | +2.1       | +1.1       | +71.62 | -2.33   | 35.1%    | +1.046 | -1.000   | +1.5              | +0.745       
+  HIS retriggers                  | 104      | 80       | 80       | +3.8             | +0.0       | +0.0       | +9.41  | -2.67   | 35.0%    | +0.160 | -1.000   | +0.0              | +0.123       
+  control first breaks            | 5575     | 4252     | 4248     | +5.3             | +1.8       | +0.4       | +38.73 | -22.59  | 29.5%    | +0.167 | -1.000   | +1.4              | +0.127       
+  control retriggers              | 17613    | 13696    | 13691    | +5.2             | +1.7       | +0.4       | +57.78 | -35.76  | 27.4%    | +0.106 | -1.000   | +1.3              | +0.082       
+  HIS strictly-before (beside)    | 127      | 87       | 87       | +8.0             | +2.3       | +1.1       | +71.62 | -2.33   | 33.3%    | +1.106 | -1.000   | +1.6              | +0.757       
+  HIS one event per base (beside) | 188      | 138      | 138      | +5.8             | +1.4       | +0.7       | +71.62 | -2.67   | 38.4%    | +0.798 | -1.000   | +1.1              | +0.586       
+  post-E-only (hindsight, beside) | 87       | 61       | 61       | +19.7            | +8.2       | +3.3       | +41.12 | -3.25   | 41.0%    | +2.213 | -1.000   | +5.7              | +1.552       
+- exit slippage 0.1% per leg: his mean R +0.596, >=10R /100 +1.1; control mean R +0.053, >=10R /100 +1.6
+- exit slippage 0.2% per leg: his mean R +0.554, >=10R /100 +1.1; control mean R -0.014, >=10R /100 +1.6
+- his calls: filled walks NOT mature (degraded = the bars ended inside the horizon, a delisting / buyout / a cut at an identity break; booked in the account at their last close, in no per-trade number above): 0 (degraded 0, of them cut at an identity break 0; other open marks 0); their summed booked R +0.00
+- control: filled walks NOT mature (degraded = the bars ended inside the horizon, a delisting / buyout / a cut at an identity break; booked in the account at their last close, in no per-trade number above): 9 (degraded 9, of them cut at an identity break 0; other open marks 0); their summed booked R +30.13
+- post-E-only: filled walks NOT mature (degraded = the bars ended inside the horizon, a delisting / buyout / a cut at an identity break; booked in the account at their last close, in no per-trade number above): 0 (degraded 0, of them cut at an identity break 0; other open marks 0); their summed booked R +0.00
+
+### era B (descriptive, n small)
+  group                           | events n | filled n | mature n | >=5R /100 trades | >=10R /100 | >=20R /100 | max R  | worst R | win rate | mean R | median R | >=10R /100 events | mean R /event
+  --------------------------------+----------+----------+----------+------------------+------------+------------+--------+---------+----------+--------+----------+-------------------+--------------
+  HIS calls                       | 9        | 9        | 9        | +0.0             | +0.0       | +0.0       | -0.45  | -1.00   | 0.0%     | -0.939 | -1.000   | +0.0              | -0.939       
+  control (same day)              | 345      | 279      | 279      | +3.2             | +1.1       | +0.0       | +19.62 | -10.14  | 21.5%    | -0.242 | -1.000   | +0.9              | -0.196       
+  HIS first breaks                | 6        | 6        | 6        | +0.0             | +0.0       | +0.0       | -0.45  | -1.00   | 0.0%     | -0.909 | -1.000   | +0.0              | -0.909       
+  HIS retriggers                  | 3        | 3        | 3        | +0.0             | +0.0       | +0.0       | -1.00  | -1.00   | 0.0%     | -1.000 | -1.000   | +0.0              | -1.000       
+  control first breaks            | 106      | 80       | 80       | +3.8             | +0.0       | +0.0       | +6.90  | -3.11   | 17.5%    | -0.446 | -1.000   | +0.0              | -0.336       
+  control retriggers              | 239      | 199      | 199      | +3.0             | +1.5       | +0.0       | +19.62 | -10.14  | 23.1%    | -0.161 | -1.000   | +1.3              | -0.134       
+  HIS strictly-before (beside)    | 6        | 6        | 6        | +0.0             | +0.0       | +0.0       | -0.45  | -1.00   | 0.0%     | -0.909 | -1.000   | +0.0              | -0.909       
+  HIS one event per base (beside) | 9        | 9        | 9        | +0.0             | +0.0       | +0.0       | -0.45  | -1.00   | 0.0%     | -0.939 | -1.000   | +0.0              | -0.939       
+  post-E-only (hindsight, beside) | 3        | 2        | 2        | +0.0             | +0.0       | +0.0       | -1.00  | -1.00   | 0.0%     | -1.000 | -1.000   | +0.0              | -0.667       
+- exit slippage 0.1% per leg: his mean R -0.984, >=10R /100 +0.0; control mean R -0.310, >=10R /100 +1.1
+- exit slippage 0.2% per leg: his mean R -1.029, >=10R /100 +0.0; control mean R -0.378, >=10R /100 +1.1
+- his calls: filled walks NOT mature (degraded = the bars ended inside the horizon, a delisting / buyout / a cut at an identity break; booked in the account at their last close, in no per-trade number above): 0 (degraded 0, of them cut at an identity break 0; other open marks 0); their summed booked R +0.00
+- control: filled walks NOT mature (degraded = the bars ended inside the horizon, a delisting / buyout / a cut at an identity break; booked in the account at their last close, in no per-trade number above): 0 (degraded 0, of them cut at an identity break 0; other open marks 0); their summed booked R +0.00
+- post-E-only: filled walks NOT mature (degraded = the bars ended inside the horizon, a delisting / buyout / a cut at an identity break; booked in the account at their last close, in no per-trade number above): 0 (degraded 0, of them cut at an identity break 0; other open marks 0); their summed booked R +0.00
+
+## HIS minus CONTROL (era A; DATE-MATCHED: each control trade weighted to his trades in its own (date, first-break / retrigger) cell; month-block, 2,000 resamples, seed 702, one draw of months for every difference)
+- cells (date, stratum) holding his filled mature trades: 139; NOT covered by a control trade (dropped, counted): 0 cells, 0 of his 174 trades; his trades matched 174
+- the stratum-only beside: weights fixed at his filled mature trades' shares, first breaks 94 (0.540), retriggers 80 (0.460), pooled across dates; the pooled beside: no weighting
+- mean R: DATE-MATCHED +0.543 [-0.132, +1.424] | beside: stratum-only +0.500 [-0.193, +1.415], pooled +0.518 [-0.176, +1.409] | months 29, resamples dropped 0 / 0 / 0
+- >=5R /100: DATE-MATCHED +0.232 [-2.545, +3.368] | beside: stratum-only +0.495 [-2.496, +3.745], pooled +0.524 [-2.288, +3.624] | months 29, resamples dropped 0 / 0 / 0
+- >=10R /100: DATE-MATCHED -0.750 [-2.084, +1.550] | beside: stratum-only -0.576 [-1.912, +1.570], pooled -0.534 [-1.840, +1.729] | months 29, resamples dropped 0 / 0 / 0
+
+## By year of E (era A; primary)
+  group        | events n | filled n | mature n | >=5R /100 trades | >=10R /100 | >=20R /100 | max R  | worst R | win rate | mean R | median R | >=10R /100 events | mean R /event
+  -------------+----------+----------+----------+------------------+------------+------------+--------+---------+----------+--------+----------+-------------------+--------------
+  2017 his     | 6        | 5        | 5        | +20.0            | +20.0      | +0.0       | +13.16 | -1.00   | 20.0%    | +1.832 | -1.000   | +16.7             | +1.526       
+  2017 control | 223      | 157      | 157      | +5.1             | +1.3       | +0.6       | +23.10 | -5.89   | 20.4%    | -0.054 | -1.000   | +0.9              | -0.038       
+  2019 his     | 8        | 7        | 7        | +0.0             | +0.0       | +0.0       | +3.92  | -1.00   | 28.6%    | +0.007 | -1.000   | +0.0              | +0.007       
+  2019 control | 446      | 373      | 373      | +6.2             | +2.1       | +0.5       | +28.18 | -35.76  | 24.7%    | -0.015 | -1.000   | +1.8              | -0.013       
+  2020 his     | 156      | 112      | 112      | +7.1             | +0.9       | +0.9       | +71.62 | -2.67   | 38.4%    | +0.999 | -1.000   | +0.6              | +0.717       
+  2020 control | 14438    | 11079    | 11074    | +5.0             | +1.6       | +0.4       | +55.84 | -18.66  | 27.3%    | +0.078 | -1.000   | +1.2              | +0.060       
+  2021 his     | 66       | 50       | 50       | +2.0             | +0.0       | +0.0       | +5.26  | -1.88   | 30.0%    | -0.199 | -1.000   | +0.0              | -0.151       
+  2021 control | 8081     | 6339     | 6335     | +5.5             | +1.9       | +0.5       | +57.78 | -15.49  | 29.4%    | +0.207 | -1.000   | +1.5              | +0.162       
+
+## By QQQ at D (era A; up = above BOTH its 10- and 20-day averages)
+  group           | events n | filled n | mature n | >=5R /100 trades | >=10R /100 | >=20R /100 | max R  | worst R | win rate | mean R | median R | >=10R /100 events | mean R /event
+  ----------------+----------+----------+----------+------------------+------------+------------+--------+---------+----------+--------+----------+-------------------+--------------
+  up his          | 163      | 121      | 121      | +4.1             | +0.0       | +0.0       | +9.91  | -2.67   | 30.6%    | +0.024 | -1.000   | +0.0              | +0.018       
+  up control      | 17282    | 13363    | 13357    | +5.1             | +1.6       | +0.4       | +57.78 | -35.76  | 27.3%    | +0.094 | -1.000   | +1.3              | +0.072       
+  mixed his       | 35       | 25       | 25       | +20.0            | +8.0       | +4.0       | +71.62 | -1.00   | 64.0%    | +4.462 | +0.674   | +5.7              | +3.187       
+  mixed control   | 3123     | 2378     | 2375     | +6.0             | +2.0       | +0.3       | +55.84 | -5.89   | 29.8%    | +0.244 | -1.000   | +1.5              | +0.186       
+  down his        | 38       | 28       | 28       | +0.0             | +0.0       | +0.0       | +4.41  | -1.26   | 28.6%    | -0.119 | -1.000   | +0.0              | -0.087       
+  down control    | 2783     | 2207     | 2207     | +5.4             | +1.8       | +0.4       | +49.73 | -12.61  | 30.0%    | +0.148 | -1.000   | +1.4              | +0.117       
+  unknown his     | 0        | 0        | 0        | -                | -          | -          | -      | -       | -        | -      | -        | -                 | -            
+  unknown control | 0        | 0        | 0        | -                | -          | -          | -      | -       | -        | -      | -        | -                 | -            
+
+## BESIDE — the other exits and entries (era A; never deciding)
+  group                    | events n | filled n | mature n | >=5R /100 trades | >=10R /100 | >=20R /100 | max R   | worst R | win rate | mean R | median R | >=10R /100 events | mean R /event
+  -------------------------+----------+----------+----------+------------------+------------+------------+---------+---------+----------+--------+----------+-------------------+--------------
+  orh5 p33_s3_t10 his      | 236      | 174      | 174      | +5.7             | +1.1       | +0.6       | +71.62  | -2.67   | 35.1%    | +0.639 | -1.000   | +0.8              | +0.471       
+  orh5 p33_s3_t10 control  | 23188    | 17948    | 17939    | +5.2             | +1.7       | +0.4       | +57.78  | -35.76  | 27.9%    | +0.120 | -1.000   | +1.3              | +0.093       
+  orh5 p33_s3_t20 his      | 236      | 174      | 174      | +5.2             | +2.9       | +1.7       | +58.85  | -2.67   | 35.1%    | +0.821 | -1.000   | +2.1              | +0.606       
+  orh5 p33_s3_t20 control  | 23188    | 17948    | 17938    | +5.2             | +1.9       | +0.4       | +100.96 | -35.76  | 27.9%    | +0.115 | -1.000   | +1.5              | +0.089       
+  orh5 p33_s5_t10 his      | 236      | 174      | 174      | +6.9             | +1.7       | +0.6       | +75.03  | -2.67   | 29.9%    | +0.663 | -1.000   | +1.3              | +0.489       
+  orh5 p33_s5_t10 control  | 23188    | 17948    | 17939    | +5.9             | +2.0       | +0.5       | +108.91 | -35.03  | 23.9%    | +0.129 | -1.000   | +1.5              | +0.100       
+  orh5 p33_s5_t20 his      | 236      | 174      | 174      | +5.7             | +2.9       | +1.7       | +62.26  | -2.67   | 29.9%    | +0.834 | -1.000   | +2.1              | +0.615       
+  orh5 p33_s5_t20 control  | 23188    | 17948    | 17938    | +5.9             | +2.1       | +0.5       | +100.42 | -35.03  | 23.8%    | +0.113 | -1.000   | +1.6              | +0.087       
+  orh5 p50_s3_t10 his      | 236      | 174      | 174      | +5.7             | +1.1       | +0.6       | +56.13  | -2.67   | 35.1%    | +0.567 | -1.000   | +0.8              | +0.418       
+  orh5 p50_s3_t10 control  | 23188    | 17948    | 17939    | +5.0             | +1.4       | +0.3       | +56.17  | -24.67  | 28.4%    | +0.117 | -1.000   | +1.1              | +0.090       
+  orh5 p50_s3_t20 his      | 236      | 174      | 174      | +4.6             | +2.9       | +1.7       | +46.56  | -2.67   | 35.1%    | +0.704 | -1.000   | +2.1              | +0.519       
+  orh5 p50_s3_t20 control  | 23188    | 17948    | 17938    | +5.0             | +1.6       | +0.3       | +76.86  | -24.67  | 28.4%    | +0.112 | -1.000   | +1.2              | +0.087       
+  orh5 p50_s5_t10 his      | 236      | 174      | 174      | +7.5             | +1.7       | +0.6       | +61.25  | -2.67   | 30.5%    | +0.630 | -1.000   | +1.3              | +0.464       
+  orh5 p50_s5_t10 control  | 23188    | 17948    | 17939    | +5.9             | +1.8       | +0.4       | +82.25  | -23.57  | 24.2%    | +0.126 | -1.000   | +1.4              | +0.097       
+  orh5 p50_s5_t20 his      | 236      | 174      | 174      | +6.3             | +2.9       | +1.1       | +51.67  | -2.67   | 30.5%    | +0.758 | -1.000   | +2.1              | +0.559       
+  orh5 p50_s5_t20 control  | 23188    | 17948    | 17938    | +5.8             | +1.9       | +0.4       | +76.85  | -23.57  | 24.1%    | +0.113 | -1.000   | +1.5              | +0.088       
+  orh5 pp his              | 236      | 174      | 174      | +3.4             | +2.9       | +1.7       | +56.29  | -2.73   | 43.7%    | +0.873 | -1.000   | +2.1              | +0.643       
+  orh5 pp control          | 23188    | 17948    | 17938    | +4.0             | +1.3       | +0.3       | +62.43  | -37.97  | 36.0%    | +0.073 | -1.000   | +1.0              | +0.057       
+  orh1 p33_s3_t10 his      | 236      | 194      | 194      | +7.2             | +2.1       | +0.5       | +71.62  | -3.98   | 28.9%    | +0.643 | -1.000   | +1.7              | +0.528       
+  orh1 p33_s3_t10 control  | 23188    | 19694    | 19685    | +5.6             | +2.3       | +0.7       | +155.88 | -35.76  | 23.5%    | +0.145 | -1.000   | +1.9              | +0.123       
+  orh60 p33_s3_t10 his     | 236      | 102      | 102      | +2.9             | +1.0       | +0.0       | +18.18  | -2.67   | 46.1%    | +0.462 | -0.558   | +0.4              | +0.200       
+  orh60 p33_s3_t10 control | 23188    | 11733    | 11725    | +4.0             | +0.9       | +0.2       | +83.85  | -12.03  | 36.8%    | +0.160 | -1.000   | +0.5              | +0.081       
+
+- his trades holding a G5 DISCONTINUOUS event: 0; worst trade with them -2.67R, without -2.67R
+- RE-ENTRIES (counted, never walked): of 134 his-call trades stopped out, 91 have a later break of the same base after the exit day and within 20 sessions of E (358 such breaks; 33 of them are themselves his calls)
+
+## ACCOUNT CURVE — his calls, chronological (era A; start 1.0; PRIMARY = his sizing: 1% risk, 20% position cap, 30% per stock at cost, no margin)
+  config           | risk   | cap | stock limit | room | same ticker | exit slip | 2017 return | 2018 return | 2019 return | 2020 return | 2021 return | 2022 (exits only) | final equity | max drawdown | entered | skipped no room | skipped stock limit | trimmed to the stock limit | skipped same ticker | concurrent same ticker | cap bound | max open | max gross
+  -----------------+--------+-----+-------------+------+-------------+-----------+-------------+-------------+-------------+-------------+-------------+-------------------+--------------+--------------+---------+-----------------+---------------------+----------------------------+---------------------+------------------------+-----------+----------+----------
+  primary          | 0.01   | 0.2 | 0.3         | skip | allow       | 0.0       | 0.5%        | 0.0%        | 0.0%        | 47.9%       | 25.3%       | -0.8%             | 1.850        | 19.1%        | 146     | 28              | 0                   | 8                          | 0                   | 8                      | 126       | 7        | 99.7%    
+  risk_0.25        | 0.0025 | 0.2 | 0.3         | skip | allow       | 0.0       | 1.1%        | 0.0%        | 0.1%        | 16.2%       | 8.9%        | -0.2%             | 1.278        | 9.6%         | 167     | 7               | 0                   | 0                          | 0                   | 7                      | 13        | 11       | 97.9%    
+  risk_0.5         | 0.005  | 0.2 | 0.3         | skip | allow       | 0.0       | 0.6%        | 0.0%        | -0.1%       | 30.9%       | 19.8%       | -0.5%             | 1.567        | 14.7%        | 155     | 19              | 0                   | 3                          | 0                   | 7                      | 67        | 9        | 98.1%    
+  cap_10           | 0.01   | 0.1 | 0.3         | skip | allow       | 0.0       | 0.3%        | 0.0%        | 0.1%        | 24.0%       | 15.7%       | -0.4%             | 1.434        | 13.7%        | 169     | 5               | 0                   | 0                          | 0                   | 8                      | 164       | 11       | 92.3%    
+  cap_30           | 0.01   | 0.3 | 0.3         | skip | allow       | 0.0       | 0.8%        | 0.0%        | -0.3%       | 62.8%       | 26.2%       | -1.0%             | 2.044        | 20.7%        | 130     | 44              | 0                   | 6                          | 0                   | 6                      | 75        | 6        | 99.1%    
+  room_trim        | 0.01   | 0.2 | 0.3         | trim | allow       | 0.0       | 0.5%        | 0.0%        | 0.0%        | 47.4%       | 25.6%       | -0.8%             | 1.847        | 19.1%        | 156     | 18              | 0                   | 5                          | 0                   | 5                      | 135       | 9        | 100.0%   
+  same_ticker_skip | 0.01   | 0.2 | 0.3         | skip | skip        | 0.0       | 0.5%        | 0.0%        | 0.0%        | 52.3%       | 25.3%       | -0.8%             | 1.904        | 19.1%        | 139     | 27              | 0                   | 0                          | 8                   | 0                      | 119       | 6        | 93.3%    
+  exit_slip_0.1    | 0.01   | 0.2 | 0.3         | skip | allow       | 0.001     | 0.4%        | 0.0%        | -0.1%       | 45.6%       | 24.3%       | -0.8%             | 1.801        | 19.6%        | 146     | 28              | 0                   | 8                          | 0                   | 8                      | 126       | 7        | 99.8%    
+- primary: equity at each year end 2017 1.005, 2018 1.005, 2019 1.006, 2020 1.488, 2021 1.864, 2022 1.850; trades entered per year 2017 5, 2019 7, 2020 87, 2021 47; skipped per year 2020 25, 2021 3
+
+- beside (primary config): his calls under the other exits / entries, and the post-E-only events
+  walk                                            | 2017 return | 2018 return | 2019 return | 2020 return | 2021 return | final equity | max drawdown | entered
+  ------------------------------------------------+-------------+-------------+-------------+-------------+-------------+--------------+--------------+--------
+  orh5 p33_s3_t10                                 | 0.5%        | 0.0%        | 0.0%        | 47.9%       | 25.3%       | 1.850        | 19.1%        | 146    
+  orh5 p33_s3_t20                                 | 5.4%        | 0.0%        | 2.3%        | 47.7%       | 11.5%       | 1.762        | 23.8%        | 138    
+  orh5 p33_s5_t10                                 | 0.5%        | 0.0%        | 0.4%        | 54.3%       | 26.8%       | 1.960        | 21.1%        | 142    
+  orh5 p33_s5_t20                                 | 5.4%        | 0.0%        | 2.7%        | 47.3%       | 12.7%       | 1.782        | 25.7%        | 134    
+  orh5 p50_s3_t10                                 | 0.4%        | 0.0%        | -0.2%       | 48.0%       | 19.8%       | 1.762        | 15.2%        | 151    
+  orh5 p50_s3_t20                                 | 4.0%        | 0.0%        | 1.5%        | 49.3%       | 9.0%        | 1.705        | 19.3%        | 145    
+  orh5 p50_s5_t10                                 | 0.4%        | 0.0%        | 0.4%        | 58.4%       | 22.8%       | 1.945        | 18.0%        | 146    
+  orh5 p50_s5_t20                                 | 4.0%        | 0.0%        | 2.1%        | 48.9%       | 12.3%       | 1.761        | 21.7%        | 140    
+  orh5 pp                                         | 5.0%        | 0.0%        | -0.3%       | 47.0%       | 14.4%       | 1.748        | 23.4%        | 142    
+  orh1 p33_s3_t10                                 | 1.4%        | 0.0%        | -0.2%       | 46.7%       | 26.5%       | 1.862        | 19.5%        | 165    
+  orh60 p33_s3_t10                                | 0.8%        | 0.0%        | 0.1%        | 37.9%       | 11.5%       | 1.552        | 13.8%        | 88     
+  post-E-only events (hindsight), ORH5 p33_s3_t10 | 2.0%        | 0.0%        | 0.0%        | 37.4%       | 42.4%       | 1.993        | 12.3%        | 58     
+
+## CONTROL BAND — the same simulation on 200 draws of same-day control events, the same count per day (seed 702)
+- same-day (registered): draw facts none short
+- same-day, mix-matched (beside): draw facts none short
+  band                           | config           | year / measure                | his calls | control 5th pct | control median | control 95th pct | share of draws >= his (for max drawdown: draws as deep or DEEPER, i.e. worse)
+  -------------------------------+------------------+-------------------------------+-----------+-----------------+----------------+------------------+------------------------------------------------------------------------------
+  same-day (registered)          | primary          | 2017 return                   | +0.005    | -0.018          | -0.006         | +0.020           | 23.0%                                                                        
+  same-day (registered)          | primary          | 2018 return                   | +0.000    | -0.000          | +0.000         | +0.008           | 95.0%                                                                        
+  same-day (registered)          | primary          | 2019 return                   | +0.000    | -0.026          | -0.003         | +0.070           | 43.0%                                                                        
+  same-day (registered)          | primary          | 2020 return                   | +0.479    | -0.134          | +0.024         | +0.325           | 1.0%                                                                         
+  same-day (registered)          | primary          | 2021 return                   | +0.253    | -0.064          | +0.051         | +0.231           | 3.5%                                                                         
+  same-day (registered)          | primary          | final equity                  | +1.850    | +0.847          | +1.111         | +1.441           | 0.5%                                                                         
+  same-day (registered)          | primary          | max drawdown (higher = WORSE) | +0.191    | +0.080          | +0.126         | +0.207           | 11.5%                                                                        
+  same-day (registered)          | risk_0.25        | final equity                  | +1.278    | +0.903          | +1.050         | +1.204           | 1.5%                                                                         
+  same-day (registered)          | risk_0.5         | final equity                  | +1.567    | +0.887          | +1.085         | +1.342           | 0.0%                                                                         
+  same-day (registered)          | cap_10           | final equity                  | +1.434    | +0.913          | +1.050         | +1.220           | 0.5%                                                                         
+  same-day (registered)          | cap_30           | final equity                  | +2.044    | +0.834          | +1.119         | +1.587           | 0.5%                                                                         
+  same-day (registered)          | room_trim        | final equity                  | +1.847    | +0.849          | +1.113         | +1.425           | 0.5%                                                                         
+  same-day (registered)          | same_ticker_skip | final equity                  | +1.904    | +0.847          | +1.109         | +1.444           | 0.0%                                                                         
+  same-day (registered)          | exit_slip_0.1    | final equity                  | +1.801    | +0.819          | +1.078         | +1.398           | 0.0%                                                                         
+  same-day, mix-matched (beside) | primary          | 2017 return                   | +0.005    | -0.032          | -0.008         | +0.017           | 12.5%                                                                        
+  same-day, mix-matched (beside) | primary          | 2018 return                   | +0.000    | -0.002          | +0.000         | +0.008           | 92.5%                                                                        
+  same-day, mix-matched (beside) | primary          | 2019 return                   | +0.000    | -0.045          | -0.005         | +0.046           | 45.5%                                                                        
+  same-day, mix-matched (beside) | primary          | 2020 return                   | +0.479    | -0.123          | +0.046         | +0.312           | 1.0%                                                                         
+  same-day, mix-matched (beside) | primary          | 2021 return                   | +0.253    | -0.059          | +0.045         | +0.220           | 3.5%                                                                         
+  same-day, mix-matched (beside) | primary          | final equity                  | +1.850    | +0.866          | +1.090         | +1.424           | 0.0%                                                                         
+  same-day, mix-matched (beside) | primary          | max drawdown (higher = WORSE) | +0.191    | +0.088          | +0.133         | +0.218           | 11.0%                                                                        
+  same-day, mix-matched (beside) | risk_0.25        | final equity                  | +1.278    | +0.901          | +1.031         | +1.226           | 0.5%                                                                         
+  same-day, mix-matched (beside) | risk_0.5         | final equity                  | +1.567    | +0.872          | +1.060         | +1.317           | 0.5%                                                                         
+  same-day, mix-matched (beside) | cap_10           | final equity                  | +1.434    | +0.924          | +1.053         | +1.203           | 0.5%                                                                         
+  same-day, mix-matched (beside) | cap_30           | final equity                  | +2.044    | +0.860          | +1.092         | +1.606           | 0.0%                                                                         
+  same-day, mix-matched (beside) | room_trim        | final equity                  | +1.847    | +0.854          | +1.085         | +1.413           | 0.0%                                                                         
+  same-day, mix-matched (beside) | same_ticker_skip | final equity                  | +1.904    | +0.867          | +1.092         | +1.422           | 0.0%                                                                         
+  same-day, mix-matched (beside) | exit_slip_0.1    | final equity                  | +1.801    | +0.839          | +1.058         | +1.382           | 0.0%                                                                         
+
+- era B his calls (descriptive, 9 trades): yearly 2022 -0.2%, 2023 -4.0%, final 0.958, max drawdown 4.2%
+
+## THE FORK (registered before any outcome; era A, ORH5 + p33_s3_t10, the primary account: 1% risk, 20% cap, 30% per stock)
+- curve arm: yearly return >= +50% in 0 of 2017-21 (none; needs >= 2 -> not strong) AND the registered same-day band at or above his final equity in 0.5% of 200 draws (needs <= 5%) -> not met
+- interval arm: his minus control mean R per filled mature trade, DATE-MATCHED +0.543 [-0.132, +1.424] -> not met
+- VERDICT: **EXECUTION / data** — even his own calls do not carry it under these rules: the gap is EXECUTION / data (vary entry, stop, exit, sizing per his words)
+- BESIDE (decides nothing): both arms on the 127 strictly-before calls (clean of E's bar; 87 filled, 87 mature): curve — yearly >= +50% in none, final 1.737, their own same-day band (200 draws, 127 events on 103 dates) at or above it in 1.5% -> not met; interval — DATE-MATCHED +0.911 [-0.221, +2.758] (0 cells / 0 trades uncovered, dropped) -> not met
+
+(32s)

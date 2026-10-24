@@ -467,3 +467,22 @@ The inline mention of the marker inside §11 was reworded before the pins were t
 - minutes_A_used: b6a99cdf084ad42c1a4d846e05d10b48404f8225499253583ff78170e95b592a  the 193 minute date files the walk set opens
 - minutes_B_used: d548f85679b9ded20bfa4650c45535d685d820d4dd2040fce84d01bae7b2b652  the 8 minute date files the walk set opens
 - doc_body: aaaadd295aba5a9de534a738410ebe391ac4993637faa7ead0cab78e2b7a9dab  the doc text above the marker
+
+## RESULT — the one real run, 2026-10-23 after the freeze commit `2c080f19` (printout `scripts/probes/_705_qm_replay_1023/01_replay.txt`)
+
+- **Registered verdict: EXECUTION / data.** Curve arm: no 2017–21 year reached +50% at the primary sizing (2020 +47.9%, 2021 +25.3%;
+  final equity 1.850), although the same-day band sits at or above his final equity in only 0.5% of 200 draws (≤ 5% needed). Interval
+  arm: his minus same-day control, date-matched, +0.543R per trade [−0.132, +1.424] — includes zero.
+- **His picks beat the field clearly:** final equity 1.850 against the same-day random-pick band's median 1.111 and 95th percentile
+  1.441; per trade +0.639R (174 filled) against +0.120R (17,939); 2020 +47.9% against a band median of +2.4%.
+- **But far below his audited record**, and the run shows where our version leaks (descriptive, read after the verdict):
+  - **62 of his 236 calls never fill:** 42 never trade above OUR level after the opening range, 20 are skipped as a stop wider than
+    the ADR — he bought them, so our level or our stop rule is not his.
+  - **Re-entries are not walked:** 134 of 174 trades stop out; 91 of those bases break again within 20 sessions of E (33 of the
+    re-breaks are themselves his calls) — his "even if we need to retry" is missing from the account.
+  - **Sizing without margin:** 28 calls skipped for no room at a 20% cap; the 30% cap reads final 2.044 (2020 +62.8%).
+  - **2021:** his calls −0.199R per trade (50) against the control's +0.207R — the year the growth names broke in Feb–Mar.
+  - The 20-day trail and selling on day 5 lift the mean (+0.82 / +0.83R) but not the curve.
+- **Era B (descriptive):** 9 calls, all losers (−0.94R mean).
+- **What this cannot show:** his full P&L (these are 236 stream-confirmed breakout calls; his record also holds EPs, parabolic
+  shorts, adds and the trades never mentioned on stream). Independent recount: running (`verify/recount/`).
