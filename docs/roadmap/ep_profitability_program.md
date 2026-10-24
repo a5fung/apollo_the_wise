@@ -1085,6 +1085,8 @@ target (≈4 converted winners) stops depending entirely on conversion. **If it 
 narrows to conversion alone**, and the honest statement becomes that we cannot pick better, only
 hold better. **The rank shadow decides which of those two plans we are on, and it needs only time.**
 
+> **2026-10-24 — the registered read fired: does NOT validate** (27 sessions, decision-grade by its own rule; the top quartile caught 0 of the 2 tail winners, losers 67% vs 66%; `data_gated_reviews.yaml` `alert_rank_shadow_out_of_sample` resolution_2026_10_24). So this plan narrows to conversion. Read it narrowly: THIS ranking rule did not pick better on two winners — power is close to nil — and selection itself is not ruled out (the 10-23 Qullamaggie replay: his breakout picks beat 99.5% of same-day pick sets). The shadow keeps recording.
+
 ---
 
 ## 0c-pre. ✅ THE ACTUAL PROPOSED CHANGE, SIMULATED AS A RULE (2026-08-16)

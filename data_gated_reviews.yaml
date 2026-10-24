@@ -12947,6 +12947,15 @@ reviews:
     zero_verdict: "2026-10-05 WAITING — a cost watch: zero is the healthy reading (every night 09-14..10-02 under $0.51, no truncations); it fires on the first night over $1.00 or the first truncated call."
   - review_id: alert_rank_shadow_out_of_sample
     title: "Ranking rule — RUNNING out-of-sample read (converted 2026-08-18 from a single 2026-10-15 gate)"
+    resolution_2026_10_24: >-
+      RAN 2026-10-24, prod read-only, the pinned SQL and measure (5-day best high from the EP-day open in ADR20 multiples,
+      8x bar, top quartile = rank <= 0.25). Predicate 27 sessions (was 24). confidence_label(27) = DECISION-GRADE, but the
+      matured top cell is 6 rows (5-day) / 5 (20-day). 5-day: top 0 of 6 at 8x vs rest 2 of 44 (MRNA, KOD); losers 67% vs
+      66%; medians 1.70x vs 1.81x — no separation. By the REGISTERED rule the read is "does not validate" and that reading
+      stands (redefining decision-grade after seeing it would move the bar); power is close to nil (2 winners; KOD a pool
+      of one can never enter the top cell). The shadow keeps running as telemetry; the registered consequence — the plan
+      narrows to conversion alone (docs/roadmap/ep_profitability_program.md §0b-fwd) — is recorded there.
+      Report: scripts/probes/_reviews_1024/alert_rank_shadow_out_of_sample.md.
     resolution_2026_10_18: >-
       Sunday review 10-18 flagged "8 rule changes since 2026-08-16 - re-check the question against the live rule". Checked: the
       changes are exit / entry-execution rules (the 09-06 exit flip, the 10-12 depth exit, the 10-13 era), while this read scores
@@ -14561,7 +14570,15 @@ reviews:
         pre-market). All 19 settled $50M names are 09:31 reads. The >4x close-jump guard, built for unapplied
         reverse splits, also drops real spikes (BENF 09-16: +439% on 09-23, no split); this is stated beside
         every read. Ratios use mi_daily_closes only."
-    status: pending
+    status: done
+    closed_on: 2026-10-24
+    resolution_2026_10_24: >-
+      RAN 2026-10-24 ($0, read-only; scripts/probes/_reviews_1024/same_day_liquidity_recheck_584.md). Predicate 21 vs 15.
+      All four levels have >= 15 clean settled rejected-side names (109 / 73 / 46 / 21). Pre-registered bar NOT met at any
+      level: one-sided Fisher p (reach vs the gap-matched admitted 9 / 94) 0.362 / 0.724 / 0.575 / 0.190 at $10M / $25M /
+      $50M / $100M; leave-one-date-out never < 0.05. Crash cost at $50M: 82% settle <= -20% vs 43.6% gap-matched. The
+      10-15 run reproduces exactly. The D-1 floors stand as is; admission stays his (THE LINE); nothing goes to him.
+      $100M is directionally higher (4 / 21 = 19.0% vs 9.6%, p 0.19) and underpowered — not a bar-clear.
     kind: accrual
     added_on: 2026-08-31
     action_when_ready: >-
@@ -15957,10 +15974,16 @@ reviews:
        WHERE event_type = 'mna_filter_fired' AND created_at >= DATE '2026-10-17'
          AND (summary LIKE '%(flag)%' OR detail LIKE '%''detector'': ''flag''%')
     threshold: 1
-    zero_verdict: "2026-10-17 WAITING — a tripwire born 10-16: 0 flag-detector blocks since 10-04, 36 ever (last 08-12), so the row shape is real; it fires on the first block after the close."
     discriminates_on: []
     earliest_review_date: 2026-10-17
-    status: pending
+    status: done
+    closed_on: 2026-10-24
+    outcome: >-
+      FIRED 2026-10-20 17:25 ET on BMBL (4 name-nights 10-20..10-23, 1 name), and the block is correct: deal
+      TARGET (signed, $6.05 cash, Ithaca Holdings), price pinned 5.94-5.96 with own-day range 0.25-0.34%,
+      flag row unqualified with mna_filter:alpaca_headline_model all 4 nights, absent from the 10-21 and 10-22
+      digests (coiled=[]). First live positive trace of the 17:25 flag screen. No wrong block. One name: a
+      working path, not a hit rate. Report: scripts/probes/_reviews_1024/flag_mna_screen_first_fire_598.md.
     kind: tripwire
     added_on: 2026-10-16
     can_fire:
