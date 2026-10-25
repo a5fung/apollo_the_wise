@@ -2592,3 +2592,7 @@ Method from this (#705): his rules are INFERRED FROM HIS TRADES, not tested one 
 > "let's continue with option 1 tmr" (2026-10-24, on the fork after the reverse-engineering check: option 1 = test his intraday rules from his own words first — the 1-minute / first-30-minute opening-range high to enter, 60-minute lows to stop, the 60-minute chart to exit; option 2 = spend the one sealed 2025-26 test now)
 
 Ruling recorded (#705): the intraday layer is registered and checked BEFORE the sealed 2025-26 test is spent.
+
+> "What seems to be the case is there's no 100% had rule, there's rules and discretion, so best to to categorize them e.g. 20% rule X, 34% rule Y, etc. To see if we get the right coverage when summed together." (2026-10-25, after the intraday check: no single entry, stop or exit rule reproduced his trades)
+
+Method from this (#705): treat his trading as a MIX of rules plus discretion. For each decision (entry, stop, exit), list the candidate rules from his words, tag each trade with the rule that explains it, report each rule's share, and judge the set by its combined coverage — against what the same set of rules covers by chance.
