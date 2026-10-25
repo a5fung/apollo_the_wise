@@ -1,0 +1,221 @@
+# #705 REVERSE-ENGINEER registration: independent pre-freeze recount (OUTCOME-FREE: timeline TSVs, event dates, fetch logs, captions)
+# registration: docs/analysis/cb_reverse_engineer_his_rules_prereg_2026-10-24.md (not edited)
+
+- inputs: entries 1,874 rows, exits 1,861, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept
+
+## 0. Headline counts and pins
+[L26] snapshots | doc 2907 | mine 2907 | OK
+[L26] buys (non-initial entries) | doc 1861 | mine 1861 | OK
+[L26] sells (non-initial entries with an exit window) | doc 1848 | mine 1848 | OK
+[L69] entries / initial / non-initial | doc 1874 / 13 / 1861 | mine 1874 / 13 / 1861 | OK
+[L69] streams (distinct vid after duplicate-upload merge) | doc 517 | mine 517 | OK
+[L69] buy-window span (earliest window start .. latest first sighting, non-initial) | doc 2017-01 .. 2023-12 | mine 2017-01 .. 2023-12 | OK
+[L74] 2017 largest gap between stream dates (days) | doc 164 | mine 164 | OK
+[L383] holdings pin entries.tsv sha prefix | doc 6a0dda2d | mine 6a0dda2d | OK
+[L383] holdings pin exits.tsv sha prefix | doc 1ed76a28 | mine 1ed76a28 | OK
+[L383] holdings pin snapshots.tsv sha prefix | doc a8987fce | mine a8987fce | OK
+[L391] holdings module (02_replay.py) sha prefix | doc 4275d72f | mine 4275d72f | OK
+[L359] era A sessions (export 2016-01-04..2022-06-30) | doc 1634 | mine 1635 | MISMATCH | docs/methodology/backtest_data_standard.md l.31 also says 1,635
+[L359] era B first session / sessions kept to the cut | doc 2021-09-27 onward | mine 2021-09-27; 821 sessions | NOTE
+
+## 1. Population (L71-79)
+[L73] dated deciding n | doc 294 | mine 294 | OK
+[L73] dated deciding names (distinct panel symbol) | doc 153 | mine 153 | OK
+[L73] dated deciding in dense window | doc 264 | mine 264 | OK
+[L73]   2020 (01-27..12-31) | doc 149 | mine 149 | OK
+[L73]   2021-01-04..2022-06-14 | doc 115 | mine 115 | OK
+[L73] dated deciding with exit known | doc 290 | mine 290 | OK
+[L74] dated, window > 10 n | doc 50 | mine 50 | OK
+[L74] dated, window > 10 names (distinct panel symbol) | doc 48 | mine 47 | MISMATCH | distinct sym_a 47; sym UNION sym_a 48 (the doc's 48 only arises if a renamed symbol is counted twice)
+[L74] dated wide: held-to-exit median (sessions, E .. exit window's last session, inclusive) | doc 116 | mine 116 | OK | 45 of 50 have an exit window
+[L74] dated wide: of the 50, buy event in 2017-18 | doc 21 | mine 21 | OK | by event year; by window-start year it is 27
+[L75] no event, non-flicker, window <= 10 n | doc 633 | mine 633 | OK
+[L75]   names | doc 274 | mine 274 | OK
+[L75]   window 1 (exact day) | doc 427 | mine 427 | OK
+[L75]   window 2 | doc 103 | mine 103 | OK
+[L75]   window 3-5 | doc 66 | mine 66 | OK
+[L75]   window 6-10 | doc 37 | mine 37 | OK
+[L54] multi-session (2-10) no-event non-flicker windows | doc 206 | mine 206 | OK
+[L76] no event, flicker, window <= 10 n | doc 349 | mine 349 | OK
+[L76]   names | doc 196 | mine 196 | OK
+[L76]   exact-day flickers | doc 273 | mine 273 | OK
+[L77] no event, window > 10 n | doc 58 | mine 58 | OK
+[L78] never a candidate n | doc 360 | mine 360 | OK
+[L78]   names | doc 147 | mine 147 | OK
+[L78]   TQQQ 26, SOXL 21, TNA 16, GBTC 15, ETHE 14, SPXL 14 | doc 26/21/16/15/14/14 | mine 26/21/16/15/14/14 | OK
+[L79] no bars n | doc 117 | mine 117 | OK
+[L79]   names | doc 81 | mine 81 | OK
+[L79]   NO, SBE, TVIX, ICP, CCIV all in the no-bars list | doc all five | mine all five | OK
+[L71] the seven groups sum to the non-initial entries | doc 1861 | mine 1861 | OK
+
+## 2. The 633 against our events just outside their window (L81-86)
+- event files read (ticker/D/E/K/split, ticker/E/primary only): tl A 81,015 (name,E) pairs, tl B 41,200; other levels (com / k5 / k10 / full) 172,698; EP primary 4,937
+- priority used (a partition; stated nowhere in the doc): other-level fired inside the window first, then 1-5 sessions before, then 1-5 after, then 6-20 before
+[L82] none of our events within 20 sessions before or 5 after | doc 343 | mine 343 | OK
+[L82] one 6-20 sessions before | doc 97 | mine 97 | OK
+[L83] one 1-5 sessions before | doc 69 | mine 69 | OK
+[L83] one 1-5 sessions AFTER the window | doc 77 | mine 77 | OK | 126 of the 633 have an event 1-5 sessions after at all; 33 of them also have one 1-5 before (counted under 'before')
+[L85] one of our OTHER level definitions fired inside the window | doc 47 | mine 47 | OK
+[L81] the five classes sum to | doc 633 | mine 633 | OK
+[L85] by 'buy year' (as printed: 2017/2019/2020/2021/2022/2023) | doc 6/67/301/198/45/16 | mine 6/67/301/198/45/16 | OK | matches the WINDOW-END (stream) year only
+[L85] by buy year under the holdings module's own E (= window start for undated) | doc 6/67/301/198/45/16 | mine 6/69/301/196/45/16 | MISMATCH | the module's `load_events` sets E = lo for undated buys and takes the year from E
+[L86] era-A / era-B windows (era by window start, the R10 buy-day rule with E = lo) | doc 596 / 37 | mine 597 / 36 | MISMATCH | by window end it is 596 / 37
+[L86] touch the Q1-2022 hole | doc 24 | mine 24 | OK
+
+## 3. Exact-day sets (L88-94)
+[L92] exact non-flicker: all years | doc 427 | mine 427 | OK
+[L92]   exits known | doc 427 | mine 427 | OK
+[L92]   dense window | doc 374 | mine 374 | OK
+[L92]   2020 | doc 197 | mine 197 | OK
+[L92]   2021-22 | doc 177 | mine 177 | OK
+[L92]   trade-days all years (E .. exit window's last session, inclusive) | doc 4436 | mine 4436 | OK
+[L92]   trade-days to the window's FIRST session | doc 3203 | mine 3203 | OK
+[L92]   held to the window's last session, median | doc 6 | mine 6 | OK
+[L93] exact incl flickers: all years | doc 700 | mine 700 | OK
+[L93]   flickers | doc 273 | mine 273 | OK
+[L93]   left by the buy day's close (exit window ends on E) | doc 161 | mine 161 | OK
+[L93]   dense window | doc 615 | mine 615 | OK
+[L93]   2020 | doc 335 | mine 335 | OK
+[L93]   2021-22 | doc 280 | mine 280 | OK
+[L93]   trade-days in the dense window | doc 3438 | mine 3438 | OK
+[L93]   held to the window's last session, median | doc 3 | mine 3 | OK
+[L94] dated deciding: n | doc 294 | mine 294 | OK
+[L94]   exits known | doc 290 | mine 290 | OK
+[L94]   same-day exits (exit window ends on E): all 294 | doc 42 | mine 42 | OK | of the 264 in the window: 42
+[L94]   flickers | doc 91 | mine 91 | OK
+[L94]   dense / 2020 / 2021-22 | doc 264 / 149 / 115 | mine 264 / 149 / 115 | OK
+[L94]   trade-days all years | doc 3351 | mine 3351 | OK
+[L94]   trade-days to the window's first session | doc 2260 | mine 2260 | OK
+[L94]   held to the window's last session, median | doc 5 | mine 5 | OK
+[L47] of the 264 dated in the dense window, left the panel by the buy day's close | doc 42 | mine 42 | OK
+[L264] exit window one session wide: dated in window | doc 183 | mine 183 | OK
+[L264] exit window one session wide: overall of the exits | doc 1120 of 1848 | mine 1120 of 1848 | OK
+[L166] SELECT fit 2020 / flickers beside / check 2021-22 / flickers beside | doc 197 / +138 / 177 / +103 | mine 197 / +138 / 177 / +103 | OK
+[L167] beside: 2017 / 2019 / 2023 exact-day non-flicker buys | doc 1 / 35 / 7 | mine 1 / 35 / 7 | OK
+[L288] EXIT fit: undated 2020 exact-day, flickers included: n / trade-days | doc 335 / 1900 | mine 335 / 1900 | OK
+[L289] EXIT check: undated 2021-22 exact-day, flickers included: n / trade-days | doc 280 / 1538 | mine 280 / 1538 | OK
+[L244] STOP fit: dated 2020 (117 filled + 32 proxies = 149) and undated 2020 flickers included | doc 149 / 335 | mine 149 / 335 | OK | the 117 / 32 split is a replay outcome: not recountable from the allowed inputs
+[L299] EXIT check set share of flickers (%) | doc 37 | mine 37 | OK
+[L299] EXIT fit set share of flickers (%) (fit = 290 dated with exits + 335 undated 2020, L287) | doc 31 | mine 37 | MISMATCH | 31% is the dated part alone (31%); the undated 2020 part is 41%; combined 36.6% vs check 36.8%
+[L212] 262 dated buys in the window = 264 less same-day re-buys | doc 262 | mine 262 | OK
+[L246] dated 2021-22: 115 deciding, walked after the two same-day re-buys | doc 113 | mine 113 | OK
+[L--] same-day re-buys INSIDE the registration's undated sets (doc is silent) | doc not stated | mine 427-set 8; 197 fit 3; 700-set 24; 335 fit 15; 280 check 1 | NOTE | the holdings module walks none of them; a second entry of a name on its day repeats the same bar state
+[L--] inverted windows INSIDE the exact-day sets (window forced to 1 by lo := hi; doc calls all of them EXACT) | doc not stated | mine 8 of 427; 26 of 700 | NOTE
+
+## 4. The clock on the buy day (L96-101, L201-208)
+[L97] dated in window: first seen in session on the buy day | doc 172 | mine 172 | OK
+[L97] dated: flat at a full IN-SESSION snapshot on the buy day (L98 wording; L96-97 define flat_clock as 'that session') | doc 185 | mine 94 | MISMATCH | 185 counts every full frame without the name on E, incl. 91 taken PRE-MARKET (before the open)
+[L98] dated: both (a bracket) = first seen in session AND an IN-SESSION flat frame on E (the rule the undated 108 uses) | doc 135 | mine 53 | MISMATCH | 135 reproduces only if a pre-market flat frame counts (135); 82 of the 135 are pre-market-flat
+[L98]   2020 / 2021-22 (in-session flat rule) | doc 73 / 62 | mine 32 / 21 | MISMATCH | the any-context rule gives 73 / 62
+[L98] dated bracket width median (minutes; in-session rule) | doc 36 | mine 24 | MISMATCH | any-context rule: 36
+[L98] dated bracket width quartiles (in-session rule) | doc 21-59 | mine 15-42 | MISMATCH | any-context rule: 22-63
+[L98] dated bracket: <= 30 minutes (in-session rule) | doc 57 | mine 29 | MISMATCH | any-context rule: 54
+[L99] dated in window held before 09:35 | doc 9 | mine 9 | OK
+[L99]   the nine (ticker date) | doc TSLA 2020-04-14, UAL 2020-05-27, DXCM 2020-07-29, PINS 2020-07-31, SHOP 2020-08-26, TTD 2020-08-26, KOLD 2022-04-19, LAC 2022-04-21, TSLA 2022-04-21 | mine TSLA 2020-04-14, UAL 2020-05-27, DXCM 2020-07-29, PINS 2020-07-31, SHOP 2020-08-26, TTD 2020-08-26, KOLD 2022-04-19, LAC 2022-04-21, TSLA 2022-04-21 | OK
+[L100] exact non-flicker: first seen in session (2020 / 2021-22 = 122 / 115) | doc 237 | mine 237 | OK | 122 / 115
+[L101] exact non-flicker: bracketed (flat frame IN-SESSION context) | doc 108 | mine 108 | OK | 2020 / 2021-22 = 60 / 48 (doc 60 / 48)
+[L101] exact non-flicker: bracketed under the ANY-context rule the dated 135 uses | doc (not stated) | mine 237 | NOTE
+[L101] exact non-flicker: in-session bracket width median | doc 34 | mine 35.5 | MISMATCH | the doc's 34 is the with-flickers median
+[L101] exact non-flicker: held before 09:35 | doc 1 | mine 1 | OK
+[L101] exact incl flickers: bracketed (flat frame IN-SESSION context) | doc 175 | mine 175 | OK | 2020 / 2021-22 = 103 / 72 (doc 103 / 72)
+[L101] exact incl flickers: bracketed under the ANY-context rule the dated 135 uses | doc (not stated) | mine 398 | NOTE
+[L101] exact incl flickers: in-session bracket width median | doc (not stated) | mine 34 | NOTE
+[L201] unbracketed in-session sightings: dated (no flat frame at all that day) | doc 37 | mine 37 | OK | counting a pre-market-only flat frame as 'no in-session flat' (the undated 129 is counted that way) it is 119
+[L201] unbracketed in-session sightings: undated 'no flat frame that day' | doc 129 | mine 129 | OK | all 129 of them DO have a pre-market flat frame on E - the dated rule counts that as a bracket
+[L202] pre-market first sightings, dated in window | doc 80 | mine 80 | OK
+[L205] ENTER fit 2020: bracketed dated + bracketed exact-day undated (flickers in brackets), one rule for both (in-session flat) | doc 73 + 60 (103) | mine 32 + 60 (103) | MISMATCH | 73 is the any-context dated count (73); the doc's two sets use different rules
+[L205] ENTER check 2021-22: bracketed dated + bracketed exact-day undated (flickers in brackets), one rule for both (in-session flat) | doc 62 + 48 (72) | mine 21 + 48 (72) | MISMATCH | 62 is the any-context dated count (62)
+[L211] held before 09:35: dated in window + exact-day undated non-flicker in window | doc 9 + 1 | mine 9 + 1 | OK
+[L208] binomial half-width of a 50% share on 48 trades (points) | doc 14 | mine 14 | OK
+
+## 5. Re-buys (L103-104)
+[L103] panel names (distinct symbol over all entries) | doc 684 | mine 684 | OK
+[L103] names with more than one entry | doc 280 | mine 280 | OK
+[L103] entries of those names (non-initial) | doc 1467 | mine 1467 | OK | all 1470 incl. initial holdings
+[L104] entries opening 0..14 calendar days after the same name's previous (non-initial) entry's exit window's last session | doc 564 | mine 564 | OK | reading found by search (window start vs previous exit_hi, previous entry not an initial holding); 559-567 under neighbouring readings
+[L104]   by year 2020 / 2021 / 2019 / 2022 | doc 282 / 184 / 60 / 28 | mine 282 / 184 / 60 / 28 | OK
+[L104]   deciding / undated | doc 75 / 486 | mine 75 / 486 | OK
+
+## 6. Captions (L106-111, L129, L324)
+[L106] videos with a caption track (vtt files) | doc 495 | mine 495 | OK
+[L106] video_status: status ok / track en-orig | doc 495 / 495 | mine 495 / 495 | OK
+[L324] 2021 streams without a caption track | doc 44 of 189 | mine 44 of 189 | OK
+[L324] 2022 streams without a caption track | doc 35 of 64 | mine 35 of 64 | OK
+- 495 videos parsed, 2,576,553 words (qmlib.parse_vtt, lowercased, joined by spaces)
+[L108] 'i sold' occurrences | doc 1221 | mine 1221 | OK
+[L108] 'stopped out' occurrences (doc: 'the two forms i sold and stopped out each 1,221') | doc 1221 | mine 2099 | MISMATCH | 1254 when not part of 'i got stopped out'; no reading gives 1,221
+[L108] 'i got stopped' occurrences | doc 883 | mine 883 | OK
+[L109] 'stopped me out' occurrences | doc 321 | mine 321 | OK
+- phrase set 'listed forms (L106-108)': {'hits': 3818, 'videos': 476, 'yrs': {'2017': 407, '2018': 13, '2019': 333, '2020': 2127, '2021': 817, '2022': 85, '2023': 36}, 'near': 2155, 'qual': 760, 'amb': 147, 'trades': 377, 'deciding': 88, 'q2020': 478, 'q2021': 203}
+- phrase set 'section-9 classes + i closed it': {'hits': 4015, 'videos': 477, 'yrs': {'2017': 425, '2018': 13, '2019': 341, '2020': 2224, '2021': 884, '2022': 87, '2023': 41}, 'near': 2261, 'qual': 786, 'amb': 150, 'trades': 380, 'deciding': 88, 'q2020': 495, 'q2021': 212}
+[L107] caption census 'hits' | doc 4055 | mine listed 3818 | classes 4015 | MISMATCH
+[L107] caption census 'videos' | doc 478 | mine listed 476 | classes 477 | MISMATCH
+[L109] caption census 'near' | doc 2281 | mine listed 2155 | classes 2261 | MISMATCH
+[L110] caption census 'qual' | doc 795 | mine listed 760 | classes 786 | MISMATCH
+[L110] caption census 'trades' | doc 381 | mine listed 377 | classes 380 | MISMATCH
+[L110] caption census 'deciding' | doc 89 | mine listed 88 | classes 88 | MISMATCH
+[L110] caption census 'amb' | doc 153 | mine listed 147 | classes 150 | MISMATCH
+[L110] caption census 'q2020' | doc 504 | mine listed 478 | classes 495 | MISMATCH
+[L110] caption census 'q2021' | doc 212 | mine listed 203 | classes 212 | OK
+[L108] hits by upload year (2020/2021/2017/2019/2022/2023/2018) | doc 2244/895/436/338/89/40/13 | mine listed 2127/817/407/333/85/36/13 | classes 2224/884/425/341/87/41/13 | MISMATCH
+[L324] 795 joins reach 381 of 1,848 exits (%) | doc 21 | mine 21 | OK
+
+## 7. Minute coverage (fetch logs and directory listings only) and the fetch list (L365-368, L425)
+- fetch-log pairs read: A 149,587, B 80,858, EP 196, EP2 39 | other local trees: com_delta_1018 30,452, pre_com_1018 50,406, delta_out 12,084
+[L365] exact-day no-event buys with minute bars on the buy day in the four trees | doc 32 | mine 32 | OK | trees: {'A': 30, 'B': 2}
+[L365]   missing | doc 395 | mine 395 | OK
+[L366]   missing by year 2020 / 2021 / 2019 / 2022 / 2023 / 2017 | doc 188 / 141 / 35 / 25 / 5 / 1 | mine 188 / 141 / 35 / 25 / 5 / 1 | OK
+[L366]   of the missing, covered only by the three other local trees | doc 0 | mine 0 | OK
+[L367] multi-session windows: sessions | doc 717 | mine 717 | OK
+[L367]   covered | doc 22 | mine 22 | OK
+[L367]   windows | doc 206 | mine 206 | OK
+[L365] deciding entries with minute bars on E | doc 290 of 294 | mine 290 of 294 | OK | uncovered: DRYS 2017-02-01, DDOG 2019-11-13, FUBO 2021-01-05, QS 2021-02-12 (no fetch-log row in any tree)
+- exact-day flickers (included per L368): 273, covered 17, missing 256
+- sessions the registration needs minute bars for: 1,391 distinct (ticker, date) pairs (exact-day incl. flickers 676 + window sessions only 715, deduplicated)
+- already held by a pinned tree or another local tree: 69 (of which only in an unpinned tree: 0)
+- FETCH LIST: 1,322 pairs -> /Users/alvinfung/apollo_data/cb702/minutes_rev_1024/fetch_list.psv (format ticker|date, no header, sorted by date; NOT fetched here)
+  by kind: exact_flicker 235, exact_nf 394, window_session 693
+  by year: 2017 17, 2019 139, 2020 615, 2021 368, 2022 131, 2023 52 | total 1322 | latest date 2023-12-14
+[L425] exact-day non-flicker pairs to fetch (doc: ~395 entries; distinct (ticker, date) pairs here) | doc ~395 | mine 394 | NOTE | 395 entries share 394 distinct pairs (one same-day re-buy)
+[L425] window sessions missing before dedupe (doc: ~695 = 717 - 22) | doc 695 | mine 695 | OK
+[L368] exact-day FLICKER pairs to fetch (L368 'included'; the doc's ~395 + ~695 leaves them out) | doc not stated | mine 256 | NOTE
+[L425] total fetch size vs the doc's ~395 + ~695 | doc ~1090 | mine 1322 | MISMATCH | the doc total omits the exact-day flickers
+- fetch pairs whose bar symbol (today's name on era A dates) differs from the panel symbol: 38; e.g. BGNE->ONC 2019-11-08, FB->META 2019-11-12, FB->META 2019-11-13, FB->META 2019-11-14, BLDE->SRTA 2019-11-14, BLDE->SRTA 2019-11-15
+- era B dates use the panel's own symbol (point in time, L371), not sym_a: pairs where it matters 0
+- (sym_a would differ from sym on era-B dates for: SI->SICP 2022-11-17; the task wording says sym_a, the doc says point in time)
+
+## Not recountable from the allowed inputs (outcome or price material; left unverified, not assumed)
+- [L16] 57 strict pairs with the talk before our event (the census)
+- [L119] pool median ~2,460 names a day; planted-wrong-ticker rate 19% (needs the exports' prices)
+- [L212] 47 fills contradict the clock (needs the replay's fill minutes)
+- [L244] 117 filled + 32 close-fill proxies of the 149 (a replay outcome)
+- [L246] S1 / our_status counts from the exits study: 20 of 24 early exits, 11 on day 0; 43 of 205 filled, 25 on day 0
+- [L306] 02_replay.txt l.174: final 20.53 (a replay equity)
+- [L49] OCR symbol accuracy ~98%
+
+## RESULT: 150 lines, 117 OK, 25 MISMATCH, 8 NOTE
+  MISMATCH [L359] era A sessions (export 2016-01-04..2022-06-30): doc 1634 vs mine 1635 (docs/methodology/backtest_data_standard.md l.31 also says 1,635)
+  MISMATCH [L74] dated, window > 10 names (distinct panel symbol): doc 48 vs mine 47 (distinct sym_a 47; sym UNION sym_a 48 (the doc's 48 only arises if a renamed symbol is counted twice))
+  MISMATCH [L85] by buy year under the holdings module's own E (= window start for undated): doc 6/67/301/198/45/16 vs mine 6/69/301/196/45/16 (the module's `load_events` sets E = lo for undated buys and takes the year from E)
+  MISMATCH [L86] era-A / era-B windows (era by window start, the R10 buy-day rule with E = lo): doc 596 / 37 vs mine 597 / 36 (by window end it is 596 / 37)
+  MISMATCH [L299] EXIT fit set share of flickers (%) (fit = 290 dated with exits + 335 undated 2020, L287): doc 31 vs mine 37 (31% is the dated part alone (31%); the undated 2020 part is 41%; combined 36.6% vs check 36.8%)
+  MISMATCH [L97] dated: flat at a full IN-SESSION snapshot on the buy day (L98 wording; L96-97 define flat_clock as 'that session'): doc 185 vs mine 94 (185 counts every full frame without the name on E, incl. 91 taken PRE-MARKET (before the open))
+  MISMATCH [L98] dated: both (a bracket) = first seen in session AND an IN-SESSION flat frame on E (the rule the undated 108 uses): doc 135 vs mine 53 (135 reproduces only if a pre-market flat frame counts (135); 82 of the 135 are pre-market-flat)
+  MISMATCH [L98]   2020 / 2021-22 (in-session flat rule): doc 73 / 62 vs mine 32 / 21 (the any-context rule gives 73 / 62)
+  MISMATCH [L98] dated bracket width median (minutes; in-session rule): doc 36 vs mine 24 (any-context rule: 36)
+  MISMATCH [L98] dated bracket width quartiles (in-session rule): doc 21-59 vs mine 15-42 (any-context rule: 22-63)
+  MISMATCH [L98] dated bracket: <= 30 minutes (in-session rule): doc 57 vs mine 29 (any-context rule: 54)
+  MISMATCH [L101] exact non-flicker: in-session bracket width median: doc 34 vs mine 35.5 (the doc's 34 is the with-flickers median)
+  MISMATCH [L205] ENTER fit 2020: bracketed dated + bracketed exact-day undated (flickers in brackets), one rule for both (in-session flat): doc 73 + 60 (103) vs mine 32 + 60 (103) (73 is the any-context dated count (73); the doc's two sets use different rules)
+  MISMATCH [L205] ENTER check 2021-22: bracketed dated + bracketed exact-day undated (flickers in brackets), one rule for both (in-session flat): doc 62 + 48 (72) vs mine 21 + 48 (72) (62 is the any-context dated count (62))
+  MISMATCH [L108] 'stopped out' occurrences (doc: 'the two forms i sold and stopped out each 1,221'): doc 1221 vs mine 2099 (1254 when not part of 'i got stopped out'; no reading gives 1,221)
+  MISMATCH [L107] caption census 'hits': doc 4055 vs mine listed 3818 | classes 4015
+  MISMATCH [L107] caption census 'videos': doc 478 vs mine listed 476 | classes 477
+  MISMATCH [L109] caption census 'near': doc 2281 vs mine listed 2155 | classes 2261
+  MISMATCH [L110] caption census 'qual': doc 795 vs mine listed 760 | classes 786
+  MISMATCH [L110] caption census 'trades': doc 381 vs mine listed 377 | classes 380
+  MISMATCH [L110] caption census 'deciding': doc 89 vs mine listed 88 | classes 88
+  MISMATCH [L110] caption census 'amb': doc 153 vs mine listed 147 | classes 150
+  MISMATCH [L110] caption census 'q2020': doc 504 vs mine listed 478 | classes 495
+  MISMATCH [L108] hits by upload year (2020/2021/2017/2019/2022/2023/2018): doc 2244/895/436/338/89/40/13 vs mine listed 2127/817/407/333/85/36/13 | classes 2224/884/425/341/87/41/13
+  MISMATCH [L425] total fetch size vs the doc's ~395 + ~695: doc ~1090 vs mine 1322 (the doc total omits the exact-day flickers)
