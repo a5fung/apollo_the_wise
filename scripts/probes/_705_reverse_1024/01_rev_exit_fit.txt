@@ -1,0 +1,39 @@
+- the holdings replay's pins re-checked (exports, candidates, labels, guards, the frozen modules and tests; the holdings module and tests = its freeze record; the fetch list = §12's sha): no drift
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+- populations re-asserted against §2 / §2b / §6 / §8 / §10: 47 claims, every one equals the registration (guard 3)
+# #705 REVERSE 01 — EXIT FIT: a per-day hold-or-sell rule learned from the bar state (§8)
+# registration: docs/analysis/cb_reverse_engineer_his_rules_prereg_2026-10-24.md; written once; the ledger records this printout
+- fit set: dated deciding with a known exit 286 (all years) + exact-day undated 2020 304 = 590; the chain: fill L1 (fit choice; registered where infeasible), stop registered (S1-T dated / one ADR20 undated)
+- fit set composition asserted (guard 5): 590 trades, every one in the registered EXIT fit set; the forward-bar guard allows these eids only
+- daily exports loaded in 6s: era A 267,623 of 12,005,007 rows (216 tickers, 2016-01-04..2022-06-30); era B 10,604 of 13,830,569 rows (13 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- records: 566 (dropped {'bars_before_E_lt_50': 18, 'no_bar_on_E': 6}; the record floor = 50 bars before the buy day)
+
+## G8 — exit_fit: this read's own trade list through trade_impact.py (before any number)
+- era A: entered after the cutoff 0, holds past the last bar 0 (554 trades)
+- era B: entered after the cutoff 0, holds past the last bar 12 (12 trades)
+- the chain: S1_is_S2 290, fill_checkwin_registered 20, fill_close_proxy 26, fill_fallback 512, fill_level:L1 34, fill_open 264, fill_orh5 202, fill_orh5_too_wide 40 (the 20 dated 2021-22 in-session brackets = ENTER's dated check set carry the REGISTERED fill here, flagged `fill_checkwin_registered`, so the chosen level's feasibility on them stays unread until --check)
+- trade-days: 11,735 over 566 trades (0 dropped for a hole on the buy day's path); scorable for the hit rate (exit window <= 20 sessions, not cut by a hole) 551; holes: held_to_hole_before_window 12, window_cut_by_hole 1
+
+## THE FAMILY CHOICE (§8b): both families fit without the 2020-07-01..12-31 buys, compared on those buys' hit rate; the winner refit on the whole fit set
+- dated-inclusive fit: training part (without 2020-07-01..12-31): decision list list: X7<=0 ; X4 ; X1<=0 & X3 (hit rate 37.0% on 319 scorable trades); hazard log-likelihood -850.6 (10 Newton steps; hit rate of its median exit 15.0%)
+- dated-inclusive fit: held-out hit rates: decision list 36.2%, hazard 14.7% on 232 scorable held-out trades -> the list family wins (ties -> the list)
+- dated-inclusive fit: refit on the whole set: decision list list: X7<=0 ; X1<=-0.5 & X4 ; X2<=0 & X5>=3 (hit rate 37.4% on 551 scorable trades); hazard log-likelihood -1380.3 (10 Newton steps; hit rate of its median exit 15.1%)
+- trivial exits on the fit (for scale; the buy day = session 1, so 'session 3' = offset 2; the first red close from session 2 on): close_of_session_3 hit 17.1%, first_red_close hit 26.1%
+
+## BESIDE: the fit on the undated 2020 set alone (population shift vs rule quality; checked on the same 226), the same held-out family rule
+- undated 2020 only: training part (without 2020-07-01..12-31): decision list list: X8>=2 ; X3 ; X7<=0 & X9 (hit rate 37.8% on 127 scorable trades); hazard log-likelihood -276.0 (5 Newton steps; hit rate of its median exit 22.8%)
+- undated 2020 only: held-out hit rates: decision list 34.4%, hazard 22.1% on 154 scorable held-out trades -> the list family wins (ties -> the list)
+- undated 2020 only: refit on the whole set: decision list list: X8>=1 ; X3 ; X7<=0 & X9 (hit rate 36.3% on 281 scorable trades); hazard log-likelihood -618.0 (6 Newton steps; hit rate of its median exit 18.9%)
+
+## THE 2020 ACCOUNTS (in-sample, for scale; the check's bar is on 2021-22): ours = speed trail, chosen = the rule, his = panel exit, all at cap_30
+- chain fill and stop (cut_at_ 0, cut_at_break 0, cut_at_hole 1, trades 431): ours 3.421 | chosen 5.134 | his 8.436 | his / ours 2.47 | recovery +0.450
+    ours: by year 2020 228.1%, 2021 4.3% | max DD 24.5% | entered 213, skipped no room 217
+    chosen: by year 2020 317.2%, 2021 23.0% | max DD 31.6% | entered 178, skipped no room 253
+    his: by year 2020 626.5%, 2021 16.1% | max DD 18.3% | entered 205, skipped no room 226
+- registered fill and stop (cut_at_ 0, cut_at_break 0, cut_at_hole 1, trades 431): ours 3.810 | chosen 5.614 | his 7.382 | his / ours 1.94 | recovery +0.586
+    ours: by year 2020 264.6%, 2021 4.5% | max DD 24.0% | entered 212, skipped no room 219
+    chosen: by year 2020 356.3%, 2021 23.0% | max DD 30.9% | entered 178, skipped no room 253
+    his: by year 2020 523.5%, 2021 18.4% | max DD 17.6% | entered 207, skipped no room 224
+
+CHOSEN EXIT: list: X7<=0 ; X1<=-0.5 & X4 ; X2<=0 & X5>=3
+- §8's check runs the three accounts on the undated 2021-22 buys ONCE in --check (recovery >= 0.25 PASS; VOID when his / ours < 1.25)

@@ -55,19 +55,19 @@
 - panel_reader: 14a9764f883aa5516a85da47346871247eabfbcb514ce03c8e602175cbf2a230
 - qmlib: 0f281f05338f5b40d4b1d8be4b9ada427ebcb919c012cd3af9300f6d70f8640b
 - security_type_check: e634362271876028736100249f21bfa410b4c99a3cd2106af89f3af41972bc40
-- rev_module: aa5feaa41d78c8302a6e8f4ea41e793fd263636cfa48a50941a96411cb725f22
-- rev_tests: c34f1ad11d372516d6c01a63d32d88c3bebff4fa46d32a2808be1f3106f54f30
+- rev_module: e908253f7405f814351ced03bd61a80b7886268bcee366f70f66c4a5f74aaeff
+- rev_tests: c74babedfc1923d65e79698284c3783b0e405fe0f337eab26791fb6a1c6fc749
 - subs_list: 99929453752cb3590b261e6928d99317312f35d9a50c0c147e33393b101a64a9
 - first_doc_body: aaaadd295aba5a9de534a738410ebe391ac4993637faa7ead0cab78e2b7a9dab
 - second_doc_body: 329ac865f814de0909332ff516ea5d52dea525fbef7b5fdcf1c9208a521143fe
 - holdings_doc_body: 69510e1a3092e1c74b9869342a24b624500ca65c814410ae7cf2348f71384b58
-- dryrun_printout: a956c6ffb83993d3aeef06d5d121904c6ecea321e8c10af98789f7353f13df84
-- select_fit_printout: ABSENT
-- enter_fit_printout: ABSENT
-- stop_fit_printout: ABSENT
-- exit_fit_printout: ABSENT
-- ledger: ABSENT
-- doc_body: fda097e38508b0234e8fe2a2eb67787ca6122381101880400ca3113d31b4a195
+- dryrun_printout: 935ce2981efec7b314f6f9ffa9746f6602982ccc195a2456d0b161d79e7e2e4a
+- select_fit_printout: 0893e38a7d2afbf9abfc0c350db2d43f4cf461b0a26f86ce4b46b9b96297208e
+- enter_fit_printout: 743e0c124bc5992b3d7adc1ff55545540f267f4def4f5788f9aae5f93d326724
+- stop_fit_printout: 95b97b95b44099b41c52acbff0623ff48c8b6c918286a6d162e4011c8abe80f0
+- exit_fit_printout: eac07e9a42fce45397b6951e14594fe0bddca59b8dcabedc7635812fbaf29305
+- ledger: aba22388d8747cba87952cd264b09d7fbc6a407466917de1eb55dddb16691611
+- doc_body: 16a3057d99b55f4588ffa3cf3fea34da97d5d1e7dee7c0da76d8bfaffe7fe287
 - freeze record: NOT YET under the marker: 69 of 69 pins
-- absent inputs (named, not refused): select_fit_printout, enter_fit_printout, stop_fit_printout, exit_fit_printout, ledger
-- CHOSEN lines above the marker: none
+- absent inputs (named, not refused): none
+- CHOSEN lines above the marker: ENTER x1, EXIT x1, SELECT x1, STOP x1

@@ -1,0 +1,97 @@
+- the holdings replay's pins re-checked (exports, candidates, labels, guards, the frozen modules and tests; the holdings module and tests = its freeze record; the fetch list = §12's sha): no drift
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+- populations re-asserted against §2 / §2b / §6 / §8 / §10: 47 claims, every one equals the registration (guard 3)
+# #705 REVERSE 01 — SELECT FIT: the bar state he buys, against the same-day pool (§5b), the planted-name control (§3), the placement (§5c), the rank fit (§5d)
+# registration: docs/analysis/cb_reverse_engineer_his_rules_prereg_2026-10-24.md; written once; the ledger records this printout
+- fit buys: 188 exact-day non-flicker no-event 2020 + 12 never-a-candidate stocks (before the pool floor); flickers beside 116
+- fit set composition asserted (guard 5): 200 trades, every one in the registered SELECT fit set; the forward-bar guard allows these eids only
+- daily exports loaded in 9s: era A 12,005,007 of 12,005,007 rows (12,532 tickers, 2016-01-04..2022-06-30); era B 1,642 of 13,830,569 rows (2 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- raw closes (era A, measured) aligned to every export row (12,005,007)
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1818: RuntimeWarning: divide by zero encountered in divide
+  T["F1"] = (c - prev_max20) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1819: RuntimeWarning: divide by zero encountered in divide
+  T["F2"] = (c - prev_max50) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1831: RuntimeWarning: divide by zero encountered in divide
+  T["F4"] = (_roll_max(h, 10) - _roll_min(l, 10)) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1833: RuntimeWarning: divide by zero encountered in divide
+  T[name] = (c - _roll_mean(c, n_)) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1840: RuntimeWarning: invalid value encountered in divide
+  T["F12"] = (h - l) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1843: RuntimeWarning: divide by zero encountered in divide
+  T["F14"] = (o_next - c) / px
+  pool: 10,000 / 12,532 tickers scanned, 148,698 admitted rows
+  pool: 12,000 / 12,532 tickers scanned, 179,837 admitted rows
+- the pool on the 101 fit days (the days of the fit buys only): 188,873 admitted rows (2,494 tickers; per day median 1862) in 6s; rows of names he held that day (excluded from the pool, the pick stays) 1,397
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1818: RuntimeWarning: divide by zero encountered in divide
+  T["F1"] = (c - prev_max20) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1819: RuntimeWarning: divide by zero encountered in divide
+  T["F2"] = (c - prev_max50) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1831: RuntimeWarning: divide by zero encountered in divide
+  T["F4"] = (_roll_max(h, 10) - _roll_min(l, 10)) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1833: RuntimeWarning: divide by zero encountered in divide
+  T[name] = (c - _roll_mean(c, n_)) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1840: RuntimeWarning: invalid value encountered in divide
+  T["F12"] = (h - l) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1843: RuntimeWarning: divide by zero encountered in divide
+  T["F14"] = (o_next - c) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1818: RuntimeWarning: invalid value encountered in divide
+  T["F1"] = (c - prev_max20) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1819: RuntimeWarning: invalid value encountered in divide
+  T["F2"] = (c - prev_max50) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1831: RuntimeWarning: invalid value encountered in divide
+  T["F4"] = (_roll_max(h, 10) - _roll_min(l, 10)) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1833: RuntimeWarning: invalid value encountered in divide
+  T[name] = (c - _roll_mean(c, n_)) / px
+/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py:1843: RuntimeWarning: invalid value encountered in divide
+  T["F14"] = (o_next - c) / px
+- same-day pools for the 1034 other days read (flicker, beside, positive-control and window sessions): 1,927,843 light rows (returns only; they enter no grid and no pool rate) in 11s
+- pick records: 184 (dropped {'bars_before_E_lt_50': 9, 'no_bar_on_E': 4, 'ticker_not_in_export': 3}; the record floor = 50 bars before the buy day)
+- §2b step 5: picks failing the pool's floor on the prior session: 48 (dollar_vol_lt_10M 6, history_lt_130 8, raw_close_lt_5 34) -> kept out of recall
+- fit buys in recall: 136 (no-event 136, never-a-candidate 0; no type row 5)
+- the grid: 291 single conditions (pool deciles x two directions on F1-F16, F17's three states) -> 291 singles, 42,195 pairs, 4,064,785 triples
+- pool counts of every conjunction computed in 6s (4,107,271 conjunctions; 3,211,109 at pool rate <= 20%; a pool rate = the share of the POOLED (ticker, day) rows over the fit days meeting the condition)
+
+## THE FIT (§5b): the condition set
+- F3<=233 & F9>=-0.05785 & F10>=0.04256: recall 74.3%, pool rate 19.0%, lift 3.91
+- the SET: recall 74.3%, pool rate 19.0% (the union's), lift 3.91
+- short-cluster flag `parabolic_short?` per conjunction (median F8 / F9 of its buys above the pool's 95th percentile): [False]
+
+## THE SEARCH CONTROL (§3): 20 planted sets, one random pool name per fit buy (seed 702, key rev|select|k), drawn from that day's pool rows of names he did not hold
+- planted  1: recall 33.8% at pool rate 19.9% — F1>=-3.963 & F7<=-0.03297 & F8<=0.1473
+- planted  2: recall 33.1% at pool rate 18.6% — F9>=0.1774 & F12>=0.7249 & F13<=0.9191
+- planted  3: recall 33.8% at pool rate 19.9% — F4<=3.475 & F15>=0.3982 & F15<=0.7963
+- planted  4: recall 32.4% at pool rate 20.0% — F3>=171 & F7>=-0.8407
+- planted  5: recall 30.9% at pool rate 19.6% — F8>=0.004045 & F10>=0.02863 & F11>=0.8663
+- planted  6: recall 33.1% at pool rate 18.2% — F1>=-3.963 & F7<=2.962 & F13>=0.7413
+- planted  7: recall 33.1% at pool rate 20.0% — F2<=-2.469 & F8<=0.1473 & F12<=0.8056
+- planted  8: recall 32.4% at pool rate 19.4% — F4<=3.475 & F10>=0.03712 & F14>=-0.1246
+- planted  9: recall 30.9% at pool rate 19.8% — F7>=-3.473 & F10>=0.04256 & F13<=0.637
+- planted 10: recall 33.1% at pool rate 19.9% — F1>=-1.912 & F11>=0.7847 & F11<=1.248
+- planted 11: recall 33.8% at pool rate 19.8% — F5>=0.4319 & F7<=4.005 & F10>=0.03261
+- planted 12: recall 39.7% at pool rate 19.9% — F2>=-3.27 & F4>=3.184 & F15>=0.4976
+- planted 13: recall 31.6% at pool rate 18.3% — F3>=63 & F12>=0.5492 & F12<=0.8056
+- planted 14: recall 32.4% at pool rate 19.7% — F8>=0.03243 & F8<=0.2382 & F15<=0.5971
+- planted 15: recall 32.4% at pool rate 19.7% — F10>=0.02863 & F12<=0.8056 & F16<=0.6975
+- planted 16: recall 31.6% at pool rate 20.0% — F11>=0.7078 & F11<=0.8663
+- planted 17: recall 33.1% at pool rate 19.5% — F3>=102 & F4<=3.795 & F11>=0.7078
+- planted 18: recall 30.1% at pool rate 18.9% — F7>=-3.473 & F11>=1.078 & F16<=0.7974
+- planted 19: recall 34.6% at pool rate 19.6% — F3>=37 & F6>=0.3911 & F7<=2.159
+- planted 20: recall 33.8% at pool rate 19.9% — F8>=0.06202 & F13>=0.5263 & F14>=-0.4639
+- the real fit beats 20 of 20 planted runs (needs >= 19) -> the check may be read
+
+## BESIDE
+- recall without the no-type-row buys: 73.3% (131 buys)
+- recall on the no-event buys alone: 74.3%; on the never-a-candidate stocks: -
+- flickers 2020: the condition set fires on 57 of 103 (55.3%); pool floor met by 79; same-day pool missing 0
+- other-level buys, the 32 of 2019 / 2020 / 2023 (the 15 of 2021-22 are read in --check, re-check N3): the condition set fires on 22 of 31 (71.0%); pool floor met by 31; same-day pool missing 0; 1 after the era-A export's end not scored
+STOPPED (crash):
+Traceback (most recent call last):
+  File "/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py", line 3149, in run_fit_stage
+    rc = {"select": select_fit, "enter": enter_fit, "stop": stop_fit, "exit": exit_fit}[stage](say, C)
+  File "/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py", line 3328, in select_fit
+    f = pick_features(r, raw_flat[a:bnd], qst, by_day.get(CI[r.b.E]), tcache)
+  File "/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev.py", line 1938, in pick_features
+    f = {k: float(T[k][p]) for k in NUMERIC[:14]}
+                  ~~~~^^^
+IndexError: index 1039 is out of bounds for axis 0 with size 936
+

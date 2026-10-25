@@ -1,0 +1,31 @@
+- the holdings replay's pins re-checked (exports, candidates, labels, guards, the frozen modules and tests; the holdings module and tests = its freeze record; the fetch list = §12's sha): no drift
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+- populations re-asserted against §2 / §2b / §6 / §8 / §10: 47 claims, every one equals the registration (guard 3)
+# #705 REVERSE 01 — ENTER FIT: the level he buys at, bounded by the panel clock (§6); the random-level control (§3)
+# registration: docs/analysis/cb_reverse_engineer_his_rules_prereg_2026-10-24.md; written once; the ledger records this printout
+- fit set: 32 in-session-bracketed dated + 59 in-session-bracketed exact-day undated buys of 2020 (flickers beside 35)
+- fit set composition asserted (guard 5): 91 trades, every one in the registered ENTER fit set; the forward-bar guard allows these eids only
+- daily exports loaded in 6s: era A 219,448 of 12,005,007 rows (183 tickers, 2016-01-04..2022-06-30); era B 1,642 of 13,830,569 rows (2 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- records: 89 (dropped {'no_bar_on_E': 1, 'bars_before_E_lt_20': 1}; the ENTER record floor = 20 bars before the buy day); minutes: ok 89
+
+## THE FIT (§6c): 89 scorable trades (0 without minutes flagged `no_minutes`; a level that does not exist yet at first_clock reads `no_level_yet`: L1 before 09:35, L6 before 10:30)
+- L1: feasible 32 = 36.0% +-10; hit-or-ballpark 76 = 85.4% +-7; BALLPARK 26, HIT 50, MISS 11, no_bracket_minutes 1, no_level_yet 1
+- L2: feasible 16 = 18.0% +-8; hit-or-ballpark 45 = 50.6% +-10; BALLPARK 18, HIT 27, MISS 42, no_bracket_minutes 2
+- L3: feasible 12 = 13.5% +-7; hit-or-ballpark 26 = 29.2% +-9; BALLPARK 8, HIT 18, MISS 61, no_bracket_minutes 2
+- L4: feasible 1 = 1.1% +-2; hit-or-ballpark 66 = 74.2% +-9; BALLPARK 31, HIT 35, MISS 21, no_bracket_minutes 2
+- L5: feasible 1 = 1.1% +-2; hit-or-ballpark 37 = 41.6% +-10; BALLPARK 23, HIT 14, MISS 50, no_bracket_minutes 2
+- L6: feasible 14 = 15.7% +-8; hit-or-ballpark 33 = 37.1% +-10; BALLPARK 10, HIT 23, MISS 4, no_level_yet 52
+- random-level control: feasible 20.7%, hit-or-ballpark 74.9%
+- held before 09:35 (L1 falsified for them, listed): TSLA 2020-04-14, UAL 2020-05-27, DXCM 2020-07-29, PINS 2020-07-31, SHOP 2020-08-26, TTD 2020-08-26, LAC 2022-04-21, TSLA 2022-04-21, ROKU 2020-09-15
+- dated (32): L1 feasible 46.9% hit 75.0%; L2 feasible 12.5% hit 50.0%; L3 feasible 25.0% hit 43.8%; L4 feasible 0.0% hit 65.6%; L5 feasible 0.0% hit 31.2%; L6 feasible 9.4% hit 28.1%
+- undated (57): L1 feasible 29.8% hit 91.2%; L2 feasible 21.1% hit 50.9%; L3 feasible 7.0% hit 21.1%; L4 feasible 1.8% hit 78.9%; L5 feasible 1.8% hit 47.4%; L6 feasible 19.3% hit 42.1%
+
+## BESIDE
+- flickers 2020 (in-session brackets) (31): L1 feasible 9.7% hit 74.2%; L2 feasible 12.9% hit 61.3%; L3 feasible 3.2% hit 25.8%; L4 feasible 3.2% hit 71.0%; L5 feasible 3.2% hit 67.7%; L6 feasible 9.7% hit 19.4%; control feasible 12.5%
+- pre-market-flat brackets, dated (41): L1 feasible 70.7% hit 90.2%; L2 feasible 92.7% hit 65.9%; L3 feasible 87.8% hit 65.9%; L4 feasible 100.0% hit 100.0%; L5 feasible 97.6% hit 56.1%; L6 feasible 2.4% hit 12.2%; control feasible 59.7%
+- pre-market-flat brackets, undated 2020 (57): L1 feasible 64.9% hit 98.2%; L2 feasible 71.9% hit 66.7%; L3 feasible 35.1% hit 35.1%; L4 feasible 100.0% hit 100.0%; L5 feasible 86.0% hit 63.2%; L6 feasible 7.0% hit 15.8%; control feasible 81.1%
+- no flat frame that day, dated 2020 (19): L1 crossed-by-first-clock 15, within 0.5 ADR20 15; L2 crossed-by-first-clock 12, within 0.5 ADR20 12; L3 crossed-by-first-clock 8, within 0.5 ADR20 8; L4 crossed-by-first-clock 19, within 0.5 ADR20 19; L5 crossed-by-first-clock 10, within 0.5 ADR20 10; L6 crossed-by-first-clock 1, within 0.5 ADR20 1
+- pre-market first sightings, dated 2020 (52 with minutes): crossed that session L1 48 = 92.3%; L2 50 = 96.2%; L3 51 = 98.1%; L4 52 = 100.0%; L5 52 = 100.0%; L6 43 = 82.7% (the level test degraded to 'crossed that session')
+
+CHOSEN ENTER: L1
+- the chain carries this level's price where it is feasible on a trade, else the registered fill (`fill_fallback`); §6's check reads 2021-22 ONCE in --check

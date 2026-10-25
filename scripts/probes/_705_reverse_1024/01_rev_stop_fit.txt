@@ -1,0 +1,127 @@
+- the holdings replay's pins re-checked (exports, candidates, labels, guards, the frozen modules and tests; the holdings module and tests = its freeze record; the fetch list = §12's sha): no drift
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+- populations re-asserted against §2 / §2b / §6 / §8 / §10: 47 claims, every one equals the registration (guard 3)
+# #705 REVERSE 01 — STOP FIT: which levels he held THROUGH (§7); the risk under a close-based stop (§7c)
+# registration: docs/analysis/cb_reverse_engineer_his_rules_prereg_2026-10-24.md; written once; the ledger records this printout
+- fit set: dated 2020 149 + exact-day undated 2020 304 (flickers included); ENTER's fit level L1 where feasible, else the registered fill
+- fit set composition asserted (guard 5): 453 trades, every one in the registered STOP fit set; the forward-bar guard allows these eids only
+- daily exports loaded in 6s: era A 205,188 of 12,005,007 rows (164 tickers, 2016-01-04..2022-06-30); era B 1,642 of 13,830,569 rows (2 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- records: 431 (dropped {'no_bar_on_E': 6, 'bars_before_E_lt_50': 16}; the record floor = 50 bars before the buy day)
+
+## G8 — stop_fit: this read's own trade list through trade_impact.py (before any number)
+- era A: entered after the cutoff 0, holds past the last bar 0 (431 trades)
+- era B: no trade; G8 not run
+- the chain's fills: S1_is_S2 278, fill_close_proxy 14, fill_fallback 398, fill_level:L1 33, fill_open 264, fill_orh5 103, fill_orh5_too_wide 17
+- exit-window first sessions with minute bars in a tree (a touch before the last frame's clock counts): 92 of 333
+
+## THE FIT (§7b): held-through rates, level x variant (H_cond = certain / traded through by exit_hi; H_all = certain / all)
+  level-variant | tightness (median width) | traded through | certain | unresolved | H_cond | H_all | eligible | dated H_cond | undated H_cond
+  --------------+--------------------------+----------------+---------+------------+--------+-------+----------+--------------+---------------
+  S1-T          | 3.0%                     | 193            | 92      | 24         | 47.7%  | 21.3% | True     | 41.6%        | 51.7%         
+  S1-C          | 3.0%                     | 118            | 57      | 0          | 48.3%  | 13.2% | True     | 34.0%        | 57.7%         
+  S2-T          | 3.1%                     | 172            | 77      | 24         | 44.8%  | 17.9% | True     | 33.3%        | 50.9%         
+  S2-C          | 3.1%                     | 105            | 51      | 0          | 48.6%  | 11.8% | True     | 30.6%        | 58.0%         
+  S3-T          | 5.6%                     | 159            | 112     | 11         | 70.4%  | 26.0% | True     | 31.2%        | 80.3%         
+  S3-C          | 5.6%                     | 108            | 63      | 0          | 58.3%  | 14.6% | True     | 26.1%        | 67.1%         
+  S4-T          | 7.4%                     | 120            | 81      | 12         | 67.5%  | 18.8% | True     | 48.8%        | 77.2%         
+  S4-C          | 7.4%                     | 80             | 49      | 0          | 61.3%  | 11.4% | True     | 35.7%        | 75.0%         
+  S5-T          | -4.3%                    | 367            | 347     | 12         | 94.6%  | 80.5% | True     | 79.8%        | 99.6%         
+  S5-C          | -4.3%                    | 309            | 211     | 0          | 68.3%  | 49.0% | True     | 46.3%        | 72.9%         
+  S6-T          | 22.4%                    | 19             | 14      | 1          | 73.7%  | 3.2%  | False    | 40.0%        | 85.7%         
+  S6-C          | 22.4%                    | 14             | 10      | 0          | 71.4%  | 2.3%  | False    | 33.3%        | 81.8%         
+  S7-T          | 3.2%                     | 310            | 234     | 20         | 75.5%  | 54.3% | True     | 56.4%        | 84.7%         
+  S7-C          | 3.2%                     | 249            | 129     | 0          | 51.8%  | 29.9% | True     | 41.0%        | 57.2%         
+  S8-T          | 14.8%                    | 46             | 27      | 4          | 58.7%  | 6.3%  | True     | 40.0%        | 67.7%         
+  S8-C          | 14.8%                    | 29             | 16      | 0          | 55.2%  | 3.7%  | True     | 28.6%        | 63.6%         
+  S8-T          | 14.8%                    | 46             | 27      | 4          | 58.7%  | 6.3%  | True     | 40.0%        | 67.7%         
+  S8-C          | 14.8%                    | 29             | 16      | 0          | 55.2%  | 3.7%  | True     | 28.6%        | 63.6%         
+  SMA50-T       | 14.8%                    | 115            | 89      | 6          | 77.4%  | 20.6% | True     | 33.3%        | 84.0%         
+  SMA50-C       | 14.8%                    | 87             | 46      | 0          | 52.9%  | 10.7% | True     | 28.6%        | 55.0%         
+- his stop ~ the tightest eligible level among S1-S7 (S8 and the 50-day are controls) with a positive median width and H_cond <= 10%: variant T None, variant C None -> CHOSEN none
+- re-buys (163) apart: S1-T H_cond 56.8%; S1-C H_cond 62.3%; S2-T H_cond 56.2%; S2-C H_cond 63.8%; S3-T H_cond 79.2%; S3-C H_cond 66.7%; S4-T H_cond 78.6%; S4-C H_cond 76.9%; S5-T H_cond 93.3%; S5-C H_cond 73.5%; S6-T H_cond 100.0%; S6-C H_cond 88.9%; S7-T H_cond 77.8%; S7-C H_cond 56.4%; S8-T H_cond 65.2%; S8-C H_cond 55.6%
+- 2020 fit: re-buys 163, of them after a loss (the earlier entry's exit-window last close below its INFERRED fill) 78; unread {'earlier_entry_without_record_or_exit': 1}
+
+## RISK (§7c): sized on the level's distance (1% / 30% cap / 30% per stock, no margin), booked at the actual exit; every level sized (no skip rule)
+- S1-T (skipped: wider_than_ADR20 (the registered skip, beside) 58)
+    sized on the level: trades 431, stop-outs 335; realised R of stop-outs worst -25.13, 5th pct -1.00, beyond -1.5R 1.2%, beyond -2R 0.6%; largest single-trade loss -1.81% of equity; account max DD 38.2%, final 0.784
+    same-size variant (S1's width sizes the shares; risk per trade 100.0% of equity at the median, max 100.0%):
+    same size: trades 431, stop-outs 335; realised R of stop-outs worst -25.13, 5th pct -1.00, beyond -1.5R 1.2%, beyond -2R 0.6%; largest single-trade loss -1.81% of equity; account max DD 38.2%, final 0.784
+- S1-C (skipped: wider_than_ADR20 (the registered skip, beside) 58)
+    sized on the level: trades 431, stop-outs 118; realised R of stop-outs worst -66.60, 5th pct -12.31, beyond -1.5R 52.5%, beyond -2R 35.6%; largest single-trade loss -5.73% of equity; account max DD 22.2%, final 12.852
+    same-size variant (S1's width sizes the shares; risk per trade 100.0% of equity at the median, max 100.0%):
+    same size: trades 431, stop-outs 118; realised R of stop-outs worst -66.60, 5th pct -12.31, beyond -1.5R 52.5%, beyond -2R 35.6%; largest single-trade loss -5.73% of equity; account max DD 22.2%, final 12.852
+- S2-T (skipped: wider_than_ADR20 (the registered skip, beside) 71)
+    sized on the level: trades 431, stop-outs 335; realised R of stop-outs worst -25.13, 5th pct -1.00, beyond -1.5R 1.2%, beyond -2R 0.6%; largest single-trade loss -1.81% of equity; account max DD 41.3%, final 0.739
+    same-size variant (S1's width sizes the shares; risk per trade 100.0% of equity at the median, max 531.4%):
+    same size: trades 431, stop-outs 335; realised R of stop-outs worst -25.13, 5th pct -2.13, beyond -1.5R 7.2%, beyond -2R 5.4%; largest single-trade loss -4.89% of equity; account max DD 42.6%, final 0.709
+- S2-C (skipped: wider_than_ADR20 (the registered skip, beside) 71)
+    sized on the level: trades 431, stop-outs 105; realised R of stop-outs worst -66.60, 5th pct -14.89, beyond -1.5R 50.5%, beyond -2R 32.4%; largest single-trade loss -5.73% of equity; account max DD 28.4%, final 5.875
+    same-size variant (S1's width sizes the shares; risk per trade 100.0% of equity at the median, max 531.4%):
+    same size: trades 431, stop-outs 105; realised R of stop-outs worst -66.60, 5th pct -14.89, beyond -1.5R 55.2%, beyond -2R 37.1%; largest single-trade loss -5.73% of equity; account max DD 22.2%, final 18.386
+- S3-T (skipped: level_at_or_above_fill 18, wider_than_ADR20 (the registered skip, beside) 167)
+    sized on the level: trades 413, stop-outs 141; realised R of stop-outs worst -5.38, 5th pct -1.26, beyond -1.5R 4.3%, beyond -2R 2.8%; largest single-trade loss -2.42% of equity; account max DD 19.1%, final 17.313
+    same-size variant (S1's width sizes the shares; risk per trade 204.5% of equity at the median, max 16147.4%):
+    same size: trades 413, stop-outs 141; realised R of stop-outs worst -29.84, 5th pct -7.79, beyond -1.5R 36.2%, beyond -2R 24.1%; largest single-trade loss -5.89% of equity; account max DD 22.0%, final 22.141
+- S3-C (skipped: level_at_or_above_fill 18, wider_than_ADR20 (the registered skip, beside) 167)
+    sized on the level: trades 413, stop-outs 91; realised R of stop-outs worst -79.77, 5th pct -13.24, beyond -1.5R 51.6%, beyond -2R 38.5%; largest single-trade loss -7.73% of equity; account max DD 21.5%, final 13.701
+    same-size variant (S1's width sizes the shares; risk per trade 204.5% of equity at the median, max 16147.4%):
+    same size: trades 413, stop-outs 91; realised R of stop-outs worst -30.30, 5th pct -11.40, beyond -1.5R 45.1%, beyond -2R 33.0%; largest single-trade loss -6.53% of equity; account max DD 22.1%, final 30.664
+- S4-T (skipped: wider_than_ADR20 (the registered skip, beside) 202)
+    sized on the level: trades 431, stop-outs 120; realised R of stop-outs worst -2.47, 5th pct -1.08, beyond -1.5R 0.8%, beyond -2R 0.8%; largest single-trade loss -2.47% of equity; account max DD 18.0%, final 4.991
+    same-size variant (S1's width sizes the shares; risk per trade 248.1% of equity at the median, max 17026.6%):
+    same size: trades 431, stop-outs 120; realised R of stop-outs worst -25.13, 5th pct -4.82, beyond -1.5R 41.7%, beyond -2R 26.7%; largest single-trade loss -5.73% of equity; account max DD 22.3%, final 13.695
+- S4-C (skipped: wider_than_ADR20 (the registered skip, beside) 202)
+    sized on the level: trades 431, stop-outs 80; realised R of stop-outs worst -4.42, 5th pct -3.08, beyond -1.5R 38.8%, beyond -2R 18.8%; largest single-trade loss -4.42% of equity; account max DD 18.1%, final 5.499
+    same-size variant (S1's width sizes the shares; risk per trade 248.1% of equity at the median, max 17026.6%):
+    same size: trades 431, stop-outs 80; realised R of stop-outs worst -31.44, 5th pct -11.12, beyond -1.5R 55.0%, beyond -2R 42.5%; largest single-trade loss -5.89% of equity; account max DD 22.9%, final 6.508
+- S5-T (skipped: level_at_or_above_fill 263, wider_than_ADR20 (the registered skip, beside) 33)
+    sized on the level: trades 168, stop-outs 105; realised R of stop-outs worst -28.25, 5th pct -4.52, beyond -1.5R 20.0%, beyond -2R 14.3%; largest single-trade loss -2.72% of equity; account max DD 11.1%, final 4.253
+    same-size variant (S1's width sizes the shares; risk per trade -143.6% of equity at the median, max 687.0%):
+    same size: trades 168, stop-outs 105; realised R of stop-outs worst -3.14, 5th pct -1.94, beyond -1.5R 12.4%, beyond -2R 4.8%; largest single-trade loss -3.14% of equity; account max DD 9.6%, final 5.314
+- S5-C (skipped: level_at_or_above_fill 263, wider_than_ADR20 (the registered skip, beside) 33)
+    sized on the level: trades 168, stop-outs 66; realised R of stop-outs worst -293.37, 5th pct -71.26, beyond -1.5R 78.8%, beyond -2R 68.2%; largest single-trade loss -10.02% of equity; account max DD 14.1%, final 5.643
+    same-size variant (S1's width sizes the shares; risk per trade -143.6% of equity at the median, max 687.0%):
+    same size: trades 168, stop-outs 66; realised R of stop-outs worst -6.53, 5th pct -4.04, beyond -1.5R 36.4%, beyond -2R 25.8%; largest single-trade loss -6.53% of equity; account max DD 10.7%, final 7.907
+- S6-T (skipped: wider_than_ADR20 (the registered skip, beside) 408)
+    sized on the level: trades 431, stop-outs 19; realised R of stop-outs worst -1.99, 5th pct -1.23, beyond -1.5R 5.3%, beyond -2R 0.0%; largest single-trade loss -1.15% of equity; account max DD 16.1%, final 7.173
+    same-size variant (S1's width sizes the shares; risk per trade 695.3% of equity at the median, max 38366.9%):
+    same size: trades 431, stop-outs 19; realised R of stop-outs worst -18.64, 5th pct -6.91, beyond -1.5R 42.1%, beyond -2R 26.3%; largest single-trade loss -8.35% of equity; account max DD 24.6%, final 21.826
+- S6-C (skipped: wider_than_ADR20 (the registered skip, beside) 408)
+    sized on the level: trades 431, stop-outs 14; realised R of stop-outs worst -10.18, 5th pct -6.37, beyond -1.5R 42.9%, beyond -2R 35.7%; largest single-trade loss -3.01% of equity; account max DD 15.1%, final 7.358
+    same-size variant (S1's width sizes the shares; risk per trade 695.3% of equity at the median, max 38366.9%):
+    same size: trades 431, stop-outs 14; realised R of stop-outs worst -31.44, 5th pct -13.43, beyond -1.5R 28.6%, beyond -2R 21.4%; largest single-trade loss -8.35% of equity; account max DD 24.6%, final 24.324
+- S7-T (skipped: level_at_or_above_fill 101, wider_than_ADR20 (the registered skip, beside) 145)
+    sized on the level: trades 330, stop-outs 209; realised R of stop-outs worst -5.94, 5th pct -1.55, beyond -1.5R 5.3%, beyond -2R 3.3%; largest single-trade loss -5.73% of equity; account max DD 12.7%, final 3.848
+    same-size variant (S1's width sizes the shares; risk per trade 124.9% of equity at the median, max 7926.5%):
+    same size: trades 330, stop-outs 209; realised R of stop-outs worst -25.13, 5th pct -3.44, beyond -1.5R 21.1%, beyond -2R 13.4%; largest single-trade loss -5.89% of equity; account max DD 13.1%, final 6.051
+- S7-C (skipped: level_at_or_above_fill 101, wider_than_ADR20 (the registered skip, beside) 145)
+    sized on the level: trades 330, stop-outs 162; realised R of stop-outs worst -28.53, 5th pct -6.07, beyond -1.5R 22.8%, beyond -2R 19.8%; largest single-trade loss -5.88% of equity; account max DD 20.2%, final 9.909
+    same-size variant (S1's width sizes the shares; risk per trade 124.9% of equity at the median, max 7926.5%):
+    same size: trades 330, stop-outs 162; realised R of stop-outs worst -30.30, 5th pct -5.28, beyond -1.5R 31.5%, beyond -2R 23.5%; largest single-trade loss -5.88% of equity; account max DD 20.8%, final 6.558
+- S8-T (skipped: wider_than_ADR20 (the registered skip, beside) 431)
+    sized on the level: trades 431, stop-outs 46; realised R of stop-outs worst -1.34, 5th pct -1.21, beyond -1.5R 0.0%, beyond -2R 0.0%; largest single-trade loss -1.34% of equity; account max DD 13.9%, final 5.929
+    same-size variant (S1's width sizes the shares; risk per trade 496.2% of equity at the median, max 34053.1%):
+    same size: trades 431, stop-outs 46; realised R of stop-outs worst -42.83, 5th pct -10.43, beyond -1.5R 71.7%, beyond -2R 58.7%; largest single-trade loss -7.20% of equity; account max DD 22.5%, final 37.386
+- S8-C (skipped: wider_than_ADR20 (the registered skip, beside) 431)
+    sized on the level: trades 431, stop-outs 29; realised R of stop-outs worst -2.21, 5th pct -1.89, beyond -1.5R 20.7%, beyond -2R 3.4%; largest single-trade loss -2.21% of equity; account max DD 16.7%, final 5.889
+    same-size variant (S1's width sizes the shares; risk per trade 496.2% of equity at the median, max 34053.1%):
+    same size: trades 431, stop-outs 29; realised R of stop-outs worst -46.21, 5th pct -19.88, beyond -1.5R 75.9%, beyond -2R 69.0%; largest single-trade loss -7.58% of equity; account max DD 22.5%, final 27.863
+- S8-T (skipped: wider_than_ADR20 (the registered skip, beside) 431)
+    sized on the level: trades 431, stop-outs 46; realised R of stop-outs worst -1.34, 5th pct -1.21, beyond -1.5R 0.0%, beyond -2R 0.0%; largest single-trade loss -1.34% of equity; account max DD 13.9%, final 5.929
+    same-size variant (S1's width sizes the shares; risk per trade 496.2% of equity at the median, max 34053.1%):
+    same size: trades 431, stop-outs 46; realised R of stop-outs worst -42.83, 5th pct -10.43, beyond -1.5R 71.7%, beyond -2R 58.7%; largest single-trade loss -7.20% of equity; account max DD 22.5%, final 37.386
+- S8-C (skipped: wider_than_ADR20 (the registered skip, beside) 431)
+    sized on the level: trades 431, stop-outs 29; realised R of stop-outs worst -2.21, 5th pct -1.89, beyond -1.5R 20.7%, beyond -2R 3.4%; largest single-trade loss -2.21% of equity; account max DD 16.7%, final 5.889
+    same-size variant (S1's width sizes the shares; risk per trade 496.2% of equity at the median, max 34053.1%):
+    same size: trades 431, stop-outs 29; realised R of stop-outs worst -46.21, 5th pct -19.88, beyond -1.5R 75.9%, beyond -2R 69.0%; largest single-trade loss -7.58% of equity; account max DD 22.5%, final 27.863
+- SMA50-T (skipped: level_at_or_above_fill 69, wider_than_ADR20 (the registered skip, beside) 318)
+    sized on the level: trades 362, stop-outs 46; realised R of stop-outs worst -1.62, 5th pct -1.07, beyond -1.5R 2.2%, beyond -2R 0.0%; largest single-trade loss -1.62% of equity; account max DD 12.2%, final 5.212
+    same-size variant (S1's width sizes the shares; risk per trade 473.6% of equity at the median, max 23961.5%):
+    same size: trades 362, stop-outs 46; realised R of stop-outs worst -40.36, 5th pct -19.89, beyond -1.5R 54.3%, beyond -2R 41.3%; largest single-trade loss -8.41% of equity; account max DD 25.7%, final 6.149
+- SMA50-C (skipped: level_at_or_above_fill 69, wider_than_ADR20 (the registered skip, beside) 318)
+    sized on the level: trades 362, stop-outs 24; realised R of stop-outs worst -3.61, 5th pct -2.16, beyond -1.5R 25.0%, beyond -2R 16.7%; largest single-trade loss -2.16% of equity; account max DD 10.3%, final 5.677
+    same-size variant (S1's width sizes the shares; risk per trade 473.6% of equity at the median, max 23961.5%):
+    same size: trades 362, stop-outs 24; realised R of stop-outs worst -46.21, 5th pct -28.46, beyond -1.5R 50.0%, beyond -2R 50.0%; largest single-trade loss -7.15% of equity; account max DD 24.7%, final 6.562
+
+CHOSEN STOP: none
+- §7's check reads the undated 2021-22 buys on every level and variant ONCE in --check (the chosen level must hold H_cond <= 15% there); dated 2021-22 is printed beside, never deciding (re-check N1)

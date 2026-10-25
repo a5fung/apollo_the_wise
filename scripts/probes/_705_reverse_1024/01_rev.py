@@ -1924,9 +1924,11 @@ def feature_table_for(rec: Rec, raw_c: "np.ndarray | None", qst: dict, tcache: "
     if tcache is None:
         return ticker_feature_table(rec.bars, rec.cidx, raw_c, qst)
     k = id(rec.bars)
-    if k not in tcache:
-        tcache[k] = ticker_feature_table(rec.bars, rec.cidx, raw_c, qst)
-    return tcache[k]
+    hit = tcache.get(k)
+    if hit is None or hit[0] is not rec.bars:                # the entry holds the bar array itself, so its id cannot be reused by another
+        hit = (rec.bars, ticker_feature_table(rec.bars, rec.cidx, raw_c, qst))   # ticker's array while cached (the 10-24 first SELECT fit crashed on a reused id)
+        tcache[k] = hit
+    return hit[1]
 
 
 def pick_features(rec: Rec, raw_c: "np.ndarray | None", qst: dict, pool_day: "pd.DataFrame | None", tcache: "dict | None" = None) -> dict:
@@ -3084,9 +3086,11 @@ def assert_fit_set(say, stage: str, buys: list) -> set:
 
 def smas_for(rec: Rec, cache: dict) -> dict:
     k = (id(rec.bars),)
-    if k not in cache:
-        cache[k] = {10: sma_series(rec.bars, 10), 20: sma_series(rec.bars, 20), 50: sma_series(rec.bars, 50)}
-    return cache[k]
+    hit = cache.get(k)
+    if hit is None or hit[0] is not rec.bars:                # holds the array (see feature_table_for): an id is never reused while cached
+        hit = (rec.bars, {10: sma_series(rec.bars, 10), 20: sma_series(rec.bars, 20), 50: sma_series(rec.bars, 50)})
+        cache[k] = hit
+    return hit[1]
 
 
 def apply_chain(recs: list, chosen_level: "str | None", chosen_stop: "tuple | None", smas_cache: dict, flag_fallback: bool = True,
@@ -3364,7 +3368,7 @@ def select_fit(say, C: dict) -> int:
         for i in np.flatnonzero(m_real):
             d = picks.loc[i, "day_ci"]
             sp = sc_pool[(qual_pool["day_ci"] == d).to_numpy()]
-            spick = float(((rank_design(picks.iloc[[i]]) - mu) / sd) @ w + b0)
+            spick = float((((rank_design(picks.iloc[[i]]) - mu) / sd) @ w + b0)[0])   # one row -> one score (numpy 2 refuses float() of a 1-element array)
             pcts.append(pick_percentile(spick, sp))
         say(f"- in-sample: his qualifying picks' median percentile within the day's qualifying pool {np.median(pcts):.2f} (read as a baseline; the check reads 2021-22)")
         # beside (§5d): the dated 290 against the `tl` same-day pool — the names our trendline fired on that day, pool floor met, not held, plus the pick
@@ -3388,7 +3392,7 @@ def select_fit(say, C: dict) -> int:
                     if not len(sp):
                         n_alone += 1
                         continue
-                    spick = float(((rank_design(pos.iloc[[i]]) - mu) / sd) @ w + b0)
+                    spick = float((((rank_design(pos.iloc[[i]]) - mu) / sd) @ w + b0)[0])
                     pp.append(pick_percentile(spick, sp))
                 say(f"- beside, the positive control (§5d): his dated picks' median percentile within the day's `tl` pool {np.median(pp) if pp else float('nan'):.2f} "
                     f"({len(pp)} picks with >= 1 other tl name that day, pool floor met; {n_alone} alone in their band) — known from the holdings band, disclosed, not used to fit")
@@ -3980,7 +3984,7 @@ def check_stages(say, C: dict) -> int:
             pcts = []
             for i in np.flatnonzero(m):
                 d = picks.loc[i, "day_ci"]
-                spick = float(((rank_design(picks.iloc[[i]]) - rm["mu"]) / rm["sd"]) @ rm["w"] + b0)
+                spick = float((((rank_design(picks.iloc[[i]]) - rm["mu"]) / rm["sd"]) @ rm["w"] + b0)[0])
                 pcts.append(pick_percentile(spick, sc[(qp["day_ci"] == d).to_numpy()]))
             med = float(np.median(pcts)) if pcts else float("nan")
             rv = "PASS" if med <= RANK_PASS_PCTL else "FAIL" if med >= RANK_FALSIFY_PCTL else "INCONCLUSIVE"

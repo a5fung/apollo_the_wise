@@ -707,6 +707,13 @@ Every finding was checked against the files before it was applied.
 | re-check N5 — §12 still listed `event_facts` among the imported loaders (dropped at L4); the recount F5 row still said 49% | **DECIDED 2026-10-24, main loop:** `event_facts` removed from §12; the F5 row reads 48% |
 | re-check N6 — `pool_floor_for` was a second copy of the floor, used only by a test | **DECIDED 2026-10-24, main loop:** `pool_floor_for` deleted (and `contiguous_ending`, its only helper); the test keeps the `floor_reason_from_table` half, with the raw-close-rescue and the hole-inside-130 cases moved onto it |
 
+## The four fit choices (2026-10-24, copied from the fit printouts `01_rev_<stage>_fit.txt`; the only text added above the marker after the registered commit `1e19a959`)
+
+CHOSEN SELECT: F3<=233 & F9>=-0.05785 & F10>=0.04256
+CHOSEN ENTER: L1
+CHOSEN STOP: none
+CHOSEN EXIT: list: X7<=0 ; X1<=-0.5 & X4 ; X2<=0 & X5>=3
+
 <!-- FREEZE -->
 ## Freeze record
 
@@ -718,4 +725,81 @@ check refuses.
 
 ### Pins
 
-(empty)
+- labels_joined: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b
+- matched_events: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc
+- moments: f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0
+- cand_A: 3c5a66dc3052d0a284cbfee8202f74deb4e5bb75c74565dd8147df015e1baa5a
+- cand_B: b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0
+- guard_A: 876a75ec6d51744579c1ea2744c1b529cbd941355ef12eb8f0451bbe7ba1af08
+- guard_A_audit: 729741b4cfc5759b6ea5d81da6afdd36c11d806bbcad845964b2b37c72d94057
+- guard_B: b6cb81b6c4a1f415defc5adcf236402d93cd654c33736aa0b120b78c357b5650
+- flags_A: 5358e31dc1b27d25c5143bdfca7a98b91a6c7a2d5b1da6c9c9d9ed9c55474c1d
+- flags_B: 8bf843859afb70ea59edf6f11cda12160020936c8df3e978b6a819590ea5c3d5
+- verdict_A: 02cbb1c0106101cb12e8d5deb9448051ae3ced67966ac11d2475d06f26538de3
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178
+- panel: 2f3c5ee919fcb510c0ba31f4cb82d736c75fe3705d6d94fd16776d2a74835012
+- calendar_cache: 47111a051ac101f12818fb1b2e300fd61ff953673db1286e7f1c2cbbe291b610
+- lexicon: c7fb05ac383ff63f8f76702cec07ad1c08c517dbfb7a0843ee9a96a7d1e5105f
+- dedupe_A: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64
+- ep_A: 59f196e5aa45a35eb7d98e1a1147ac4925e9f4967a17863e039659eed6c9dc46
+- ep_B: 160401c752ff0b8d3d3f2ad7a1eff63d6c36d285aaa34c6e5ca00b737b68ee3c
+- entries: 6a0dda2da7932b6d54f122594df817215c1237636629f3ce6efa7cef1b9bdabf
+- exits: 1ed76a2806091f7d56726c56e6b2a389dfa2e96db24c382d4296da096529b50f
+- snapshots: a8987fce15fa1a968010b4290c249f2c62de24d18d1b71bca4b9b0c4f507caff
+- control: 193a5b985b1d979d59b2d09e67a8caeb4fac9d4073f54b84b1f7315d69d15ccc
+- timeline_printout: cbc08080f82705b6fb4e2fd2970166113b5c0f35ab646ca2226d2344cea6a6ac
+- panel_read_printout: cee0fca158007117fa4370511cbbce4a3d1da6ca6760f8792885988ecd1b9ad3
+- done_EP: 0eb3548afe46feecf785e27b4b2e0839d5392c71bf4d67a1789f75e40c6ac735
+- done_EP2: f8255199e52f0fa14aebcec5d50a407a1a52ac7c8b6cd4129bf41aa2f8cc591a
+- small_pulls: b8d37aae5ef85c25bc52479eef7f6b04a8a4e67557caaef7a426d8ae20194643
+- sic: 0e476c4422d56648d615c48d941edb971a348dfb99821023116d0fd98e617346
+- raw_close_A: f978db45074e9109178a1755c232fa1e684a6f83dab96ab007a26b12008f1444
+- stream_moments: 7cd53c671f425f71e44ecd70472564df125780bf2e1a55c92b51f5caecea7104
+- video_status: 9f7a7e4cb1fd8ae5eb69a4daa4eb9eec7f9e969341249d41ffa469cb1bf9c692
+- fetch_list: 4191485f2abddc25c042132729742491c191dfbe85d0dc2099fa023d34e3770f
+- done_REV: 945c41fb3618ed6b85a000232f6becc82c9d8e201b9bde99bd8673f9f7036d5e
+- runner: 213cbe6ddf0ff05555a11c347efd14bfa37f99096fd83961e9f5127f6c7c8dcf
+- registered_read: 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449
+- cb_module: e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b
+- constants: 72dadd72503a842f593621b0868f908ab99e1d77851330c2842be7797aa99400
+- fit_module: 3fca7bf4f26ffcdf7152ddc9d4180c295aafe29067591def812fcc6884f38d27
+- join_script: 6889819c41342c60831b0d62b277d47b677e4deaeab3443cbdde7a05d56b112c
+- aplus_read: e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee
+- trade_impact: 9b7cce415479c1abfda422c432c6de1f3a6d591f298a1167fa637a578051e146
+- replay_module: c44785889670b31f3e9baf1ac0e1563aeacfefacc5de5ef426ee7b15724e7bfa
+- replay_tests: 37c918a08329b138f6c37c5787af3c95e0ea2abeceb100209cd0f5f0dd0a96ad
+- exec_module: 346516fb4c236cc552103032163b790d030b10a536e83c70d4cf2390c3f9f485
+- exec_tests: 6ce013bb1d7f1521e8083d014e4221fc837f30c59f9c5e00fbc023344d1a1949
+- timeline_module: e91e3f4dd8d7bc29664cfeccd2fe6b8ec7a5f906a25281bd338f3fe62d2bfee7
+- timeline_tests: 920085c4fecd2b2ea4799b939f16a30a2f1b271fc199149419c2ed0f0df029af
+- holdings_module: 4275d72f82aaf66c7c24372afe48e0b503dedb51e2c7715d8fbd26c4372e9ce9
+- holdings_tests: eee66bf08ef8f70c5da66b4aeec0f626f592ca327dcfc7c6c0c6fd1943a0b75f
+- panel_reader: 14a9764f883aa5516a85da47346871247eabfbcb514ce03c8e602175cbf2a230
+- qmlib: 0f281f05338f5b40d4b1d8be4b9ada427ebcb919c012cd3af9300f6d70f8640b
+- security_type_check: e634362271876028736100249f21bfa410b4c99a3cd2106af89f3af41972bc40
+- rev_module: e908253f7405f814351ced03bd61a80b7886268bcee366f70f66c4a5f74aaeff
+- rev_tests: c74babedfc1923d65e79698284c3783b0e405fe0f337eab26791fb6a1c6fc749
+- subs_list: 99929453752cb3590b261e6928d99317312f35d9a50c0c147e33393b101a64a9
+- first_doc_body: aaaadd295aba5a9de534a738410ebe391ac4993637faa7ead0cab78e2b7a9dab
+- second_doc_body: 329ac865f814de0909332ff516ea5d52dea525fbef7b5fdcf1c9208a521143fe
+- holdings_doc_body: 69510e1a3092e1c74b9869342a24b624500ca65c814410ae7cf2348f71384b58
+- dryrun_printout: 935ce2981efec7b314f6f9ffa9746f6602982ccc195a2456d0b161d79e7e2e4a
+- select_fit_printout: 0893e38a7d2afbf9abfc0c350db2d43f4cf461b0a26f86ce4b46b9b96297208e
+- enter_fit_printout: 743e0c124bc5992b3d7adc1ff55545540f267f4def4f5788f9aae5f93d326724
+- stop_fit_printout: 95b97b95b44099b41c52acbff0623ff48c8b6c918286a6d162e4011c8abe80f0
+- exit_fit_printout: eac07e9a42fce45397b6951e14594fe0bddca59b8dcabedc7635812fbaf29305
+- ledger: aba22388d8747cba87952cd264b09d7fbc6a407466917de1eb55dddb16691611
+- doc_body: 16a3057d99b55f4588ffa3cf3fea34da97d5d1e7dee7c0da76d8bfaffe7fe287
+
+### Fit-stage events (disclosed; below the marker)
+
+- **Code changed after the registered commit `1e19a959`, before any outcome of a check set was read — two crash fixes, no rule, threshold, grid, family or set changed:**
+  - SELECT fit run 1 crashed in its BESIDE block (`IndexError` in `pick_features`): the feature-table cache was keyed by `id()` of a bar array, and a freed array's id was reused by another ticker's, so a cached table could serve the wrong stock. Fixed in `feature_table_for` and the same pattern in `smas_for` (the cache entry now holds the array, so its id cannot be reused while cached); test `test_id_keyed_caches_never_serve_another_arrays_entry` fails on the old code. Run 1's printout up to the crash (the fit, the planted control, two beside lines) was seen; it is kept in `scripts/probes/_705_reverse_1024/verify/fit_events/select_fit_run1_stdout.txt` and `select_fit_run1_crash_STOPPED.txt`. Its fit lines equal run 3's (same CHOSEN set).
+  - SELECT fit run 2 crashed in the rank fit (§5d): numpy 2 refuses `float()` of a one-element array; three sites (two in the fit, one in `--check`) take element `[0]`; test `test_rank_score_of_one_pick_is_a_scalar`. Run 2's STOPPED file and ledger are kept in `verify/fit_events/`; its side outputs moved to `apollo_data/cb702/qm_streams/holdings_1024/reverse_fit_events/`.
+  - The dry run was re-run after each fix (63 / 63 counts, identical but for the module sha); the earlier printouts are kept in `verify/fit_events/`.
+  - Run 3 of SELECT and the single runs of ENTER, STOP and EXIT are the fit printouts pinned below.
+- `test_stage_outputs_refusal` reads the REAL outputs folder and fails whenever fit outputs exist (as now); it is an environment check, not a code defect.

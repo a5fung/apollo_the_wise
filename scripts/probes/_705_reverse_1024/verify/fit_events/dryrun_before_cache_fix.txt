@@ -1,0 +1,198 @@
+# #705 REVERSE 01 — DRY RUN: every input loaded, every composition count asserted against the registration, the clock columns written for every row, the caption chain, the data gate, the pins. NO outcome: no bar after a buy day, no stop / exit / R / return, no fit.
+# registration: docs/analysis/cb_reverse_engineer_his_rules_prereg_2026-10-24.md
+- the holdings replay's pins re-checked (exports, candidates, labels, guards, the frozen modules and tests; the holdings module and tests = its freeze record; the fetch list = §12's sha): no drift
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+
+## §2 — the population (the timeline as is)
+  [L87] entries / initial / non-initial | doc 1874 / 13 / 1861 | mine 1874 / 13 / 1861 | OK
+  [L87] snapshots | doc 2907 | mine 2907 | OK
+  [L87] streams | doc 517 | mine 517 | OK
+  [L92] dated deciding n / names / dense / 2020 / 2021-22 / exits known | doc 294 / 153 / 264 / 149 / 115 / 290 | mine 294 / 153 / 264 / 149 / 115 / 290 | OK
+  [L93] dated window > 10: n / names / held-to-exit median / 2017-18 | doc 50 / 47 / 116 / 21 | mine 50 / 47 / 116 / 21 | OK
+  [L94] no event non-flicker <= 10: n / names / w1 / w2 / w3-5 / w6-10 | doc 633 / 274 / 427 / 103 / 66 / 37 | mine 633 / 274 / 427 / 103 / 66 / 37 | OK
+  [L95] no event flicker <= 10: n / names / one-session | doc 349 / 196 / 273 | mine 349 / 196 / 273 | OK
+  [L96] no event window > 10 | doc 58 | mine 58 | OK
+  [L97] never a candidate: n / names / funds / ETF / ETV / ETN / other / typed stocks / no type row | doc 360 / 147 / 233 / 178 / 32 / 19 / 4 / 53 / 74 | mine 360 / 147 / 233 / 178 / 32 / 19 / 4 / 53 / 74 | OK
+  [L97] never a candidate ETFs TQQQ / SOXL / TNA / SPXL | doc 26 / 21 / 16 / 14 | mine 26 / 21 / 16 / 14 | OK
+  [L98] no bars: n / names | doc 117 / 81 | mine 117 / 81 | OK
+  - the seven groups sum to 1861 (non-initial 1861)
+  [L101] 633 vs events outside: none / 6-20 before / 1-5 before / 1-5 after (priority) / other level inside | doc 343 / 97 / 69 / 77 / 47 | mine 343 / 97 / 69 / 77 / 47 | OK
+  [L106] 633 with any event 1-5 after | doc 126 | mine 126 | OK
+  [L106] 633 by buy year 2017 / 2019 / 2020 / 2021 / 2022 / 2023 | doc 6 / 69 / 301 / 196 / 45 / 16 | mine 6 / 69 / 301 / 196 / 45 / 16 | OK
+  [L107] 633 era A / B; touch the Q1-2022 hole | doc 597 / 36; 24 | mine 597 / 36; 24 | OK
+  [L113] one-session non-flicker: all / exits known / inverted / dense / 2020 / 2021-22 / trade-days / to first / median | doc 427 / 427 / 8 / 374 / 197 / 177 / 4436 / 3203 / 6 | mine 427 / 427 / 8 / 374 / 197 / 177 / 4436 / 3203 / 6 | OK
+  [L114] one-session incl flickers: all / flickers / left by close / inverted / dense / 2020 / 2021-22 / trade-days dense / median | doc 700 / 273 / 161 / 26 / 615 / 335 / 280 / 3438 / 3 | mine 700 / 273 / 161 / 26 / 615 / 335 / 280 / 3438 / 3 | OK
+  [L115] dated deciding: n / exits / same-day exits / flickers / dense / 2020 / 2021-22 / trade-days / to first / median | doc 294 / 290 / 42 / 91 / 264 / 149 / 115 / 3351 / 2260 / 5 | mine 294 / 290 / 42 / 91 / 264 / 149 / 115 / 3351 / 2260 / 5 | OK
+
+## §2 — the clock on the buy day (one derivation for every row, from the stored frames)
+  [L121] dated in window: first seen in session / flat frame (in, pre) / both / both in-session (2020, 2021-22) | doc 172 / 185 (94, 91) / 135 / 53 (32, 21) | mine 172 / 185 (94, 91) / 135 / 53 (32, 21) | OK
+  [L122] dated in-session bracket width: median / q25 / q75 / <= 30 min | doc 24 / 15 / 42 / 29 | mine 24 / 15 / 42 / 29 | OK
+  [L123] dated: pre-market-flat brackets / no flat frame that day / held before 09:35 | doc 82 / 37 / 9 | mine 82 / 37 / 9 | OK
+  [L124] held before 09:35 (dated in window) | doc TSLA 2020-04-14, UAL 2020-05-27, DXCM 2020-07-29, PINS 2020-07-31, SHOP 2020-08-26, TTD 2020-08-26, KOLD 2022-04-19, LAC 2022-04-21, TSLA 2022-04-21 | mine TSLA 2020-04-14, UAL 2020-05-27, DXCM 2020-07-29, PINS 2020-07-31, SHOP 2020-08-26, TTD 2020-08-26, KOLD 2022-04-19, LAC 2022-04-21, TSLA 2022-04-21 | OK
+  [L125] one-session no-event (window): first seen in session (2020, 2021-22) / flat frame that day | doc 237 (122, 115) / 237 | mine 237 (122, 115) / 237 | OK
+  [L126] one-session no-event: in-session brackets (2020, 2021-22) / median / q25 / q75 / pre-market-flat / held before 09:35 | doc 108 (60, 48) / 35.5 / 21 / 56.5 / 129 / 1 (ROKU 2020-09-15) | mine 108 (60, 48) / 35.5 / 21 / 56.5 / 129 / 1 (ROKU 2020-09-15) | OK
+  [L127] one-session no-event with flickers: in-session brackets (2020, 2021-22) / median | doc 175 (103, 72) / 34 | mine 175 (103, 72) / 34 | OK
+  [L128] stored clock columns: dated in window matching the derivation / undated rows filled | doc 264 / 0 | mine 264 / 0 | OK
+  [L590] guard (8): clock reads off the fitted clock by > 2 min: n / all 2019 | doc 21 / True | mine 21 / True | OK
+  - bracket frames of fit / check trades with a misread clock: 0 (asserted 0)
+
+## §2 — re-buys
+  [L132] re-buys: names with > 1 entry / of 684 / their entries (non-initial) | doc 280 / 684 / 1467 | mine 280 / 684 / 1467 | OK
+  [L132] re-buy (0-14 days after the previous non-initial entry's exit_hi): n / 2020 / 2021 / 2019 / 2022 / deciding / undated | doc 564 / 282 / 184 / 60 / 28 / 75 / 486 | mine 564 / 282 / 184 / 60 / 28 / 75 / 486 | OK
+  [L134] same-day re-buys in the 427 / the 700 / the dated 294 | doc 8 / 24 / 2 (PLUG, SNAP) | mine 8 / 24 / 2 (PLUG, SNAP) | OK
+
+## §2b — the sets used (type gate -> inverted -> same-day re-buys, in that order)
+  [L165] §2b 633: type / inverted / same-day / used / one-session / 2-10 | doc 55 / 8 / 8 / 562 / 375 / 187 | mine 55 / 8 / 8 / 562 / 375 / 187 | OK
+  [L165] §2b type removals | doc UVXY 7, AGQ 7, GUSH 7, ERX 5, FAS 5, BOIL 5, KWEB 4, SLV 3, BRZU 2, JETS 2, VXX 2, 6 others 1 each | mine AGQ 7, GUSH 7, UVXY 7, BOIL 5, ERX 5, FAS 5, KWEB 4, SLV 3, BRZU 2, JETS 2, VXX 2, 6 others 1 each | OK
+  [L166] SELECT fit 2020: 197 - type - inverted - same-day = used / never-a-candidate adds / flickers beside | doc 197 - 5 - 2 - 2 = 188 / 12 / 116 | mine 197 - 5 - 2 - 2 = 188 / 12 / 116 | OK
+  [L167] SELECT check 2021-22: 177 - type - inverted - same-day = used / adds / flickers beside | doc 177 - 30 - 1 - 1 = 145 / 15 / 81 | mine 177 - 30 - 1 - 1 = 145 / 15 / 81 | OK
+  [L168] SELECT beside 2017 / 2019 / 2023 before -> after | doc 1 / 35 / 7 -> 1 / 26 / 5 | mine 1 / 35 / 7 -> 1 / 26 / 5 | OK
+  [L169] STOP/EXIT undated fit 2020: 335 - type - inverted - same-day = used / trade-days / non-flicker | doc 335 - 9 - 14 - 8 = 304 / 1822 / 188 | mine 335 - 9 - 14 - 8 = 304 / 1822 / 188 | OK
+  [L170] STOP/EXIT undated check 2021-22: 280 - type - inverted - same-day = used / trade-days / non-flicker | doc 280 - 51 - 2 - 1 = 226 / 1260 / 145 | mine 280 - 51 - 2 - 1 = 226 / 1260 / 145 | OK
+  [L171] dated deciding: 294 - type - inverted - same-day = used / known exits / 2020 / 2021-22 | doc 294 - 2 - 0 - 2 = 290 / 286 / 149 / 111 | mine 294 - 2 - 0 - 2 = 290 / 286 / 149 / 111 | OK
+  [L171] dated type removals | doc BOIL 2021-05-17, KOLD 2022-04-19 | mine BOIL 2021-05-17, KOLD 2022-04-19 | OK
+  [L173] held before 09:35 after the type gate: dated + undated | doc 8 + 1 | mine 8 + 1 | OK
+  [L154] never-a-candidate stocks (typed CS/ADRC or untyped) re-entering SELECT | doc 127 | mine 127 | OK
+  - no-type-row buys inside the used sets (flagged; every SELECT number is also printed without them): {'sel_fit': 10, 'sel_chk': 5, 'und_fit': 16, 'und_chk': 7, 'dec_used': 21}
+
+## §6 — ENTER's sets (in-session brackets after §2b)
+  [L304] ENTER fit: in-session brackets dated + undated (with flickers) / check | doc 32 + 59 (94) / 20 + 44 (63) | mine 32 + 59 (94) / 20 + 44 (63) | OK
+  [L299] ENTER beside after §2b: pre-market-flat brackets dated / undated non-flicker; dated no flat frame; dated pre-market first sightings / of | doc 82 / 113; 36; 78 / 260 | mine 82 / 113; 36; 78 / 260 | OK
+
+## §8 / §10 — flicker shares, the walked paths, the forward events
+  [L428] EXIT flicker share: fit / dated / undated / check (%); name-confirmed share of the fit (%) | doc 35 / 32 / 38 / 36; 48 | mine 35 / 32 / 38 / 36; 48 | OK
+  [L474] §10 check buys inside a dated trade's 121-session path: of 280 / of 177 nf / of 226 / of 145 nf; fit side of 335 | doc 69 / 40 / 65 / 38; 116 | mine 69 / 40 / 65 / 38; 116 | OK
+  [L480] §10 forward events: the 77 by fit / check / other; the 126; of the 177 nf check buys | doc 39 / 35 / 3; 70 / 48 / 8; 40 | mine 39 / 35 / 3; 70 / 48 / 8; 40 | OK
+  [L252] §5b the 47 other-level buys: fit (2019 / 2020 / 2023) / check (SELECT check buys + windows); 2022 | doc 32 (1 / 30 / 1) / 15 (12 + 3); 0 | mine 32 (1 / 30 / 1) / 15 (12 + 3); 0 | OK
+
+## §2 / §9 — the caption chain (the pinned alternation; qmlib.parse_vtt; his words, never a source)
+  [L138] captions: vtt files | doc 495 | mine 495 | OK
+  - 495 videos parsed in 3s, 2,576,553 words
+  [L140] alternation: hits / videos / 2020 / 2021 / 2017 / 2019 / 2022 / 2023 / 2018 | doc 4015 / 477 / 2224 / 884 / 425 / 341 / 87 / 41 / 13 | mine 4015 / 477 / 2224 / 884 / 425 / 341 / 87 / 41 / 13 | OK
+  [L141] single forms: i sold / stopped out / i got stopped / stopped me out | doc 1221 / 2099 / 883 / 321 | mine 1221 / 2099 / 883 / 321 | OK
+  [L142] within 30 s of a ticker / qualifying (2020, 2021) / trades / deciding / ambiguous | doc 2261 / 786 (495, 212) / 380 / 88 / 150 | mine 2261 / 786 (495, 212) / 380 / 88 / 150 | OK
+  - unambiguous joins by class: {'SOLD': 245, 'STOPPED': 378, 'PARTIAL': 13}; 2020 unambiguous joins by class: {'SOLD': 137, 'STOPPED': 250, 'PARTIAL': 9} (the hand-read sample is drawn in --check)
+
+## §12 — the data gate: minute coverage (fetch logs and date files only; no minute file opened)
+  - fetch logs: A 149,587, B 80,858, EP 196, EP2 39, REV 1,322; date files A 1,219, B 1,140, EP 48, EP2 36, REV 508
+  [L513] §12 deciding with minute bars on E (four trees) / missing | doc 290 of 294 / DRYS 2017-02-01, DDOG 2019-11-13, FUBO 2021-01-05, QS 2021-02-12 | mine 290 of 294 / DRYS 2017-02-01, DDOG 2019-11-13, FUBO 2021-01-05, QS 2021-02-12 | OK
+  [L515] §12 one-session no-event 427: covered (four trees) / missing / by year 2020 2021 2019 2022 2023 2017 | doc 32 / 395 / 188 141 35 25 5 1 | mine 32 / 395 / 188 141 35 25 5 1 | OK
+  [L516] §12 273 flickers covered / 206 multi windows: sessions / covered | doc 17 / 717 / 22 | mine 17 / 717 / 22 | OK
+  [L518] §12 fetch list: pairs / sha prefix / latest / kinds nf flicker window / years 2017 2019 2020 2021 2022 2023 | doc 1322 / 4191485f / 2023-12-14 / 394 235 693 / 17 139 615 368 131 52 | mine 1322 / 4191485f / 2023-12-14 / 394 235 693 / 17 139 615 368 131 52 | OK
+  [L517] §12 ENTER scorable on the four pinned trees alone (pre-fetch): fit dated + undated / check | doc 32 + 7 / 20 + 4 | mine 32 + 7 / 20 + 4 | OK
+  [L524] §12 the new tree minutes_rev_1024: fetch-list pairs ok / empty / still missing; rows not on the list | doc 1302 / 20 / 0; 0 | mine 1302 / 20 / 0; 0 | OK
+  [L525] §12 the 20 empty pairs | doc AXNX 2020-01-02, AXNX 2020-01-03, AXNX 2020-01-06, AXNX 2020-01-07, AXNX 2020-01-08, AXNX 2020-01-09, AXNX 2020-01-10, CHRD 2020-04-30, FACT 2020-10-16, FACT 2020-11-05, FBR 2019-10-22, FBR 2019-10-23, FBR 2019-11-12, FBR 2019-11-15, FBR 2019-11-18, HTZ 2020-03-24, HTZ 2020-07-22, SRTA 2019-11-15, U 2020-07-24, XP 2019-11-29 | mine AXNX 2020-01-02, AXNX 2020-01-03, AXNX 2020-01-06, AXNX 2020-01-07, AXNX 2020-01-08, AXNX 2020-01-09, AXNX 2020-01-10, CHRD 2020-04-30, FACT 2020-10-16, FACT 2020-11-05, FBR 2019-10-22, FBR 2019-10-23, FBR 2019-11-12, FBR 2019-11-15, FBR 2019-11-18, HTZ 2020-03-24, HTZ 2020-07-22, SRTA 2019-11-15, U 2020-07-24, XP 2019-11-29 | OK
+  - the empty pairs by set (each abstains `no_minutes`, counted): ent_chk_und 0, ent_chk_und_fl 0, ent_fit_und 1, ent_fit_und_fl 3, sel_chk 0, sel_fit 2, und_chk 0, und_fit 6, window_session 10
+  [L528] §12 coverage with the new tree: one-session non-flicker / flickers / window sessions | doc 423 of 427 / 267 of 273 / 707 of 717 | mine 423 of 427 / 267 of 273 / 707 of 717 | OK
+  [L529] §12 ENTER set members with minute bars, five trees: fit dated + undated (with flickers) / check | doc 32 + 58 (91) / 20 + 44 (63) | mine 32 + 58 (91) / 20 + 44 (63) | OK
+  - PENDING fetch pairs (on the list, in no tree): 0 -> /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/reverse/dryrun_fetch_pending.psv
+
+## §2b step 5 — his buys against the pool's own floor on the session before the buy day (raw close >= $5; 20-session median export close x export volume >= $10M, split-invariant; 130 consecutive sessions; the prior session adjacent to the buy day), after the record builder (in the export, a bar on the buy day, >= 50 bars before it)
+- daily exports loaded in 6s: era A 692,401 of 12,005,007 rows (563 tickers, 2016-01-04..2022-06-30); era B 63,175 of 13,830,569 rows (81 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+  - unified export calendar == the pickle calendar (2,264 sessions); QQQ / SPY stitched (overlap within 0.5%)
+  - raw closes (era A, measured): 692,401 rows for 563 of his names (a row the raw file lacks fails the $5 test, as the fit's tolerant join does)
+  - sel_fit: 188 -> passes 136; loses bars_before_E_lt_50 7, dollar_vol_lt_10M 6, history_lt_130 6, no_bar_on_E 2, raw_close_lt_5 31
+  - sel_chk: 145 -> passes 121; loses bars_before_E_lt_50 7, dollar_vol_lt_10M 4, history_lt_130 8, raw_close_lt_5 1, ticker_not_in_export 4
+  - sel_fit_nc: 12 -> passes 0; loses bars_before_E_lt_50 2, history_lt_130 2, no_bar_on_E 2, raw_close_lt_5 3, ticker_not_in_export 3
+  - sel_chk_nc: 15 -> passes 1; loses dollar_vol_lt_10M 3, history_lt_130 1, raw_close_lt_5 5, ticker_not_in_export 5
+  - sel_fit_flick: 116 -> passes 79; loses bars_before_E_lt_50 9, dollar_vol_lt_10M 4, history_lt_130 10, no_bar_on_E 4, no_bar_on_prior_session 1, raw_close_lt_5 9
+  - sel_chk_flick: 81 -> passes 69; loses bars_before_E_lt_50 2, dollar_vol_lt_10M 4, history_lt_130 2, no_bar_on_E 1, raw_close_lt_5 3
+  [L159] §2b step 5: fit 188 -> passes / check 145 -> passes / never-a-candidate 12 -> / 15 -> / flickers 116 -> / 81 -> | doc 136 / 121 / 0 / 1 / 79 / 69 | mine 136 / 121 / 0 / 1 / 79 / 69 | OK
+
+## The stages' record builder on the fixed sets (needs the era's export, a bar on the buy day, >= 50 bars before it — ENTER >= 20; R10 era)
+  - dec_used: 290 -> records 288; dropped bars_before_E_lt_50 2
+  - und_fit: 304 -> records 282; dropped bars_before_E_lt_50 16, no_bar_on_E 6
+  - und_chk: 226 -> records 212; dropped bars_before_E_lt_50 9, no_bar_on_E 1, ticker_not_in_export 4
+  - multi_used: 187 -> records 175; dropped bars_before_E_lt_50 7, no_bar_on_E 2, ticker_not_in_export 3
+  - ent_fit_dated: 32 -> records 32; dropped none
+  - ent_fit_und: 59 -> records 57; dropped bars_before_E_lt_20 1, no_bar_on_E 1
+  - ent_chk_dated: 20 -> records 20; dropped none
+  - ent_chk_und: 44 -> records 41; dropped bars_before_E_lt_20 3
+  - exit_fit_dated: 286 -> records 284; dropped bars_before_E_lt_50 2
+  [L572] §13 records: dated 290 -> / undated fit 304 -> / undated check 226 -> / windows 187 -> / ENTER fit 32 + 59 -> / check 20 + 44 -> / EXIT dated 286 -> | doc 288 / 282 / 212 / 175 / 32 + 57 / 20 + 41 / 284 | mine 288 / 282 / 212 / 175 / 32 + 57 / 20 + 41 / 284 | OK
+
+## Guard (5) on the real fit sets: every registered fit buy passes its stage's fit-set predicate (a violation here would STOP the first stage after the freeze)
+  [L585] guard (5): the four fit sets on the real buys: SELECT / ENTER / STOP / EXIT buys; violations | doc 200 / 91 / 453 / 590; 0 | mine 200 / 91 / 453 / 590; 0 | OK
+  - SELECT's pools: full rows on 101 fit days; light rows (returns only) on 1034 other days, of which window sessions 926 (37 dated-but-wider windows contribute 726 of them); check days 99
+
+## Walkability of the used-set buys under the holdings wiring (`ex.history_reason`: a bar on the buy day, 130 consecutive sessions ending there, the prior bar = the session before)
+  - used-set rows: history_not_contiguous 86, no_bar_on_E 11, ticker_not_in_export 15, walkable 922
+
+- clock columns written for every non-initial row (1861) -> /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/reverse/dryrun_clocks.tsv (outcome-free; never refuses a run)
+
+## Pins (sha256) — every value below goes under the doc's freeze marker line before the check (fit printouts and the ledger once they exist)
+- labels_joined: d0299beba6f2d0def7947bb6e77eac008ced4586450bb260ceed51f7b0fdca3b
+- matched_events: 4d07d6e542bf5064cacf5e446a20566e9a1cb17fd126efee560634a2f6cd11fc
+- moments: f2c81633de6c6765477368876e300c4636d34222b43a5b13245cdf96b8d3add0
+- cand_A: 3c5a66dc3052d0a284cbfee8202f74deb4e5bb75c74565dd8147df015e1baa5a
+- cand_B: b75c828671171530225198f97fc1191c9bced8f9448b9b05aa46099d617ce0c7
+- export_A: 0d5d2d0eb027abc06e4186ddec7d1e8b1234fd86f92c26798a8e15f113db668d
+- export_B: ccc0097fe535cb8de9b83d6d534744b6cbadc114d9d29ecac677ac18a52900ba
+- sessions_A: 098a9b50c92a1045043bc089a4d4d600a9631bdb45a8e22969d872440672f2f0
+- guard_A: 876a75ec6d51744579c1ea2744c1b529cbd941355ef12eb8f0451bbe7ba1af08
+- guard_A_audit: 729741b4cfc5759b6ea5d81da6afdd36c11d806bbcad845964b2b37c72d94057
+- guard_B: b6cb81b6c4a1f415defc5adcf236402d93cd654c33736aa0b120b78c357b5650
+- flags_A: 5358e31dc1b27d25c5143bdfca7a98b91a6c7a2d5b1da6c9c9d9ed9c55474c1d
+- flags_B: 8bf843859afb70ea59edf6f11cda12160020936c8df3e978b6a819590ea5c3d5
+- verdict_A: 02cbb1c0106101cb12e8d5deb9448051ae3ced67966ac11d2475d06f26538de3
+- done_A: 1277e2b2e87845bd9c38d5978e1601681b0b6a89dd5afd10ba3d3b67420f0ac6
+- done_B: cf60dbe4d2c514f93dec779b98db7d47054839f1b24f1e74f3fadc0133b92178
+- panel: 2f3c5ee919fcb510c0ba31f4cb82d736c75fe3705d6d94fd16776d2a74835012
+- calendar_cache: 47111a051ac101f12818fb1b2e300fd61ff953673db1286e7f1c2cbbe291b610
+- lexicon: c7fb05ac383ff63f8f76702cec07ad1c08c517dbfb7a0843ee9a96a7d1e5105f
+- dedupe_A: 223d3f360369cc009919c6fae83b3ba0bb37aa437706b45fcbbb70560477cf64
+- ep_A: 59f196e5aa45a35eb7d98e1a1147ac4925e9f4967a17863e039659eed6c9dc46
+- ep_B: 160401c752ff0b8d3d3f2ad7a1eff63d6c36d285aaa34c6e5ca00b737b68ee3c
+- entries: 6a0dda2da7932b6d54f122594df817215c1237636629f3ce6efa7cef1b9bdabf
+- exits: 1ed76a2806091f7d56726c56e6b2a389dfa2e96db24c382d4296da096529b50f
+- snapshots: a8987fce15fa1a968010b4290c249f2c62de24d18d1b71bca4b9b0c4f507caff
+- control: 193a5b985b1d979d59b2d09e67a8caeb4fac9d4073f54b84b1f7315d69d15ccc
+- timeline_printout: cbc08080f82705b6fb4e2fd2970166113b5c0f35ab646ca2226d2344cea6a6ac
+- panel_read_printout: cee0fca158007117fa4370511cbbce4a3d1da6ca6760f8792885988ecd1b9ad3
+- done_EP: 0eb3548afe46feecf785e27b4b2e0839d5392c71bf4d67a1789f75e40c6ac735
+- done_EP2: f8255199e52f0fa14aebcec5d50a407a1a52ac7c8b6cd4129bf41aa2f8cc591a
+- small_pulls: b8d37aae5ef85c25bc52479eef7f6b04a8a4e67557caaef7a426d8ae20194643
+- sic: 0e476c4422d56648d615c48d941edb971a348dfb99821023116d0fd98e617346
+- raw_close_A: f978db45074e9109178a1755c232fa1e684a6f83dab96ab007a26b12008f1444
+- stream_moments: 7cd53c671f425f71e44ecd70472564df125780bf2e1a55c92b51f5caecea7104
+- video_status: 9f7a7e4cb1fd8ae5eb69a4daa4eb9eec7f9e969341249d41ffa469cb1bf9c692
+- fetch_list: 4191485f2abddc25c042132729742491c191dfbe85d0dc2099fa023d34e3770f
+- done_REV: 945c41fb3618ed6b85a000232f6becc82c9d8e201b9bde99bd8673f9f7036d5e
+- runner: 213cbe6ddf0ff05555a11c347efd14bfa37f99096fd83961e9f5127f6c7c8dcf
+- registered_read: 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449
+- cb_module: e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b
+- constants: 72dadd72503a842f593621b0868f908ab99e1d77851330c2842be7797aa99400
+- fit_module: 3fca7bf4f26ffcdf7152ddc9d4180c295aafe29067591def812fcc6884f38d27
+- join_script: 6889819c41342c60831b0d62b277d47b677e4deaeab3443cbdde7a05d56b112c
+- aplus_read: e344277817db88de7af2e65ad8858d4ca515c3cc3a647b3e0a67e0df9f7ec9ee
+- trade_impact: 9b7cce415479c1abfda422c432c6de1f3a6d591f298a1167fa637a578051e146
+- replay_module: c44785889670b31f3e9baf1ac0e1563aeacfefacc5de5ef426ee7b15724e7bfa
+- replay_tests: 37c918a08329b138f6c37c5787af3c95e0ea2abeceb100209cd0f5f0dd0a96ad
+- exec_module: 346516fb4c236cc552103032163b790d030b10a536e83c70d4cf2390c3f9f485
+- exec_tests: 6ce013bb1d7f1521e8083d014e4221fc837f30c59f9c5e00fbc023344d1a1949
+- timeline_module: e91e3f4dd8d7bc29664cfeccd2fe6b8ec7a5f906a25281bd338f3fe62d2bfee7
+- timeline_tests: 920085c4fecd2b2ea4799b939f16a30a2f1b271fc199149419c2ed0f0df029af
+- holdings_module: 4275d72f82aaf66c7c24372afe48e0b503dedb51e2c7715d8fbd26c4372e9ce9
+- holdings_tests: eee66bf08ef8f70c5da66b4aeec0f626f592ca327dcfc7c6c0c6fd1943a0b75f
+- panel_reader: 14a9764f883aa5516a85da47346871247eabfbcb514ce03c8e602175cbf2a230
+- qmlib: 0f281f05338f5b40d4b1d8be4b9ada427ebcb919c012cd3af9300f6d70f8640b
+- security_type_check: e634362271876028736100249f21bfa410b4c99a3cd2106af89f3af41972bc40
+- rev_module: aa5feaa41d78c8302a6e8f4ea41e793fd263636cfa48a50941a96411cb725f22
+- rev_tests: c34f1ad11d372516d6c01a63d32d88c3bebff4fa46d32a2808be1f3106f54f30
+- subs_list: 99929453752cb3590b261e6928d99317312f35d9a50c0c147e33393b101a64a9
+- first_doc_body: aaaadd295aba5a9de534a738410ebe391ac4993637faa7ead0cab78e2b7a9dab
+- second_doc_body: 329ac865f814de0909332ff516ea5d52dea525fbef7b5fdcf1c9208a521143fe
+- holdings_doc_body: 69510e1a3092e1c74b9869342a24b624500ca65c814410ae7cf2348f71384b58
+- dryrun_printout: ABSENT
+- select_fit_printout: ABSENT
+- enter_fit_printout: ABSENT
+- stop_fit_printout: ABSENT
+- exit_fit_printout: ABSENT
+- ledger: ABSENT
+- doc_body: fda097e38508b0234e8fe2a2eb67787ca6122381101880400ca3113d31b4a195
+- freeze record: NOT YET under the freeze marker line: 69 pins
+- CHOSEN lines above the marker: none
+
+## RESULT: 63 claims, 63 OK, 0 MISMATCH
+
+DRY RUN COMPLETE: every composition count reproduced; no minute file opened, no bar after a buy day read, no outcome computed.

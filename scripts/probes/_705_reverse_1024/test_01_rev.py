@@ -1150,3 +1150,31 @@ def test_choose_family_applies_one_held_out_rule():
     assert ch["winner"] in ("list", "hazard") and "held-out hit rates" in " ".join(lines) and ch["full"]["list"]
     obj = rev.family_obj(ch)
     assert set(obj) >= {"family", "list", "hazard", "holdout"}
+
+
+# ═════════════════════════════════════════════════════════════════════════════════════════════ caches keyed by id() (the 10-24 first SELECT fit crash)
+def test_id_keyed_caches_never_serve_another_arrays_entry():
+    """A cache entry planted under the id of a NEW bar array but holding a different array (what a reused id looks like) is never served:
+    the feature table and the moving averages are rebuilt for the new array (the first SELECT fit crashed on a reused id, 2026-10-24)."""
+    b1, c1 = daily(300, seed=1)
+    b2, c2 = daily(260, seed=2)
+    r2 = mk_rec(b2, c2, 200)
+    smas = {(id(b2),): (b1, smas_of_rec(mk_rec(b1, c1, 200)))}
+    got = rev.smas_for(r2, smas)
+    assert len(got[10]) == len(b2.c) and np.allclose(got[20][-1], np.mean(np.asarray(b2.c, dtype=float)[-20:]))
+    qst = {}
+    T_other = rev.ticker_feature_table(b1, c1, None, qst)
+    tc = {id(b2): (b1, T_other)}
+    T = rev.feature_table_for(r2, None, qst, tc)
+    assert len(T["F1"]) == len(b2.c) and tc[id(b2)][0] is b2
+
+
+def test_rank_score_of_one_pick_is_a_scalar():
+    """The rank fit scores one pick at a time: a one-row design times the weights is a 1-element array, which numpy 2 refuses to float()
+    directly (the second SELECT fit run crashed there, 2026-10-24); the module takes element [0]."""
+    df = pd.DataFrame([{**{k: 0.1 * j for j, k in enumerate(rev.NUMERIC)}, "F17": "up"}])
+    X = rev.rank_design(df)
+    w, mu, sd = np.ones(X.shape[1]), np.zeros(X.shape[1]), np.ones(X.shape[1])
+    with pytest.raises(TypeError):
+        float(((X - mu) / sd) @ w + 0.5)
+    assert float((((X - mu) / sd) @ w + 0.5)[0]) == pytest.approx(float(X.sum()) + 0.5)
