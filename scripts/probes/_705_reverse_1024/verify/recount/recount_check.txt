@@ -1,0 +1,125 @@
+# #705 REVERSE 01 — INDEPENDENT RECOUNT of the one check run (01_rev_check.txt)
+# module for paths / loaders only: 01_rev_frozen_e908253f7405.py; nothing of 2025-26 opened; local only
+- entries 1,874, snapshots 2,907, calendar 2016-01-04..2024-12-31 (2,264 sessions)
+
+## 0. POPULATIONS (own derivation) vs the registration (§2b / §6 / §7 / §8)
+- sel_chk: registration 145 | recount 145 -> MATCH
+- sel_chk_nc: registration 15 | recount 15 -> MATCH
+- sel_fit: registration 188 | recount 188 -> MATCH
+- und_chk: registration 226 | recount 226 -> MATCH
+- und_fit: registration 304 | recount 304 -> MATCH
+- dated_chk: registration 111 | recount 111 -> MATCH
+- ent_chk_dated: registration 20 | recount 20 -> MATCH
+- ent_chk_und: registration 44 | recount 44 -> MATCH
+- und_chk non-flicker 145 (registration 145); untouched by a dated path 161 (registration 161)
+- check_select_buys eids 122 ⊆ recount SELECT check set 160: True
+- check_stop_trades undated eids 212 ⊆ recount undated check set 226: True; dated 110 ⊆ 111: True
+- check_exit_trades eids 212 == stop undated eids: True
+- fit-set trades inside the check side outputs: SELECT 0, STOP/EXIT undated 0; any undated 2021-22 eid in ANY fit file: 0; check buys with E outside the check window: 0
+- the dated 2021-22 eids found in exit_fit_trades.tsv: 110 of 111 (registered in-sample, §10 — expected, beside only)
+
+- exports: era A 12,005,007 rows (12,532 tickers), era B 32,494 rows kept (41 tickers, cut 2024-12-31); raw closes aligned 12,005,007 (13s)
+
+## 1. SELECT recount: the check buys, the pick floor, the pool on the check buys' days, recall / pool rate / lift, the §5d rank
+- SELECT check buys rebuilt 160 (no-event 145 + never-a-candidate 15); records 144 (dropped {'ticker_not_in_export': 9, 'bars_before_E_lt_50': 7}); pool floor failed 22 ({'history_lt_130': 9, 'dollar_vol_lt_10M': 7, 'raw_close_lt_5': 6}); pass 122
+- pool read back from the recount's own cache (216,880 rows)
+- pool rows (not held) on 99 days: 215,938 (all admitted incl. his held names 216,880)
+- CHOSEN set (full-precision thresholds): recall 79 / 122 = 64.8% (+-8), pool rate 40,151 / 215,938 = 18.6%, lift 3.48 -> PASS
+- without the no-type-row buys: recall 64.4%; no-event only 65.3%; never-a-candidate 0.0%
+- per-pick vs check_select_buys.tsv (122 joined): max relative diff per feature F1 7.8e-14, F2 7.8e-14, F3 0.0e+00, F4 7.8e-14, F5 1.3e-10, F6 7.0e-12, F7 3.3e-12, F8 4.1e-13, F9 2.1e-14, F10 8.0e-14, F11 6.6e-16, F12 7.8e-14, F13 3.6e-15, F14 7.8e-14, F15 5.0e-15, F16 7.8e-15; F17 differs on 0; 'meets' differs on 0; TSV recall 0.6475
+- §5d rank: median percentile from the top 0.2917 over 79 qualifying picks -> INCONCLUSIVE
+
+## 2. ENTER recount: L1 (and L2-L6) on the 2021-22 in-session brackets; the deciding undated set; the random-level control (seed replayed)
+- ENTER records 61 of 64 (dropped {'bars_before_E_lt_20': 3}); scorable 61 (no minutes 0); deciding (undated) 41; dated beside 20
+- L1: feasible 15/41 = 36.6% (+-15); hit-or-ballpark 36/41 = 87.8% (BALLPARK 9, HIT 27, MISS 5)
+- L2: feasible 9/41 = 22.0% (+-13); hit-or-ballpark 26/41 = 63.4% (BALLPARK 10, HIT 16, MISS 15)
+- L3: feasible 3/41 = 7.3% (+-8); hit-or-ballpark 6/41 = 14.6% (BALLPARK 2, HIT 4, MISS 35)
+- L4: feasible 1/41 = 2.4% (+-5); hit-or-ballpark 35/41 = 85.4% (BALLPARK 14, HIT 21, MISS 6)
+- L5: feasible 3/41 = 7.3% (+-8); hit-or-ballpark 29/41 = 70.7% (BALLPARK 16, HIT 13, MISS 12)
+- L6: feasible 9/41 = 22.0% (+-13); hit-or-ballpark 22/41 = 53.7% (BALLPARK 4, HIT 18, MISS 2, no_level_yet 17)
+- control (seeded stream replayed, one 200-draw per scorable record in (E, eid) order over all 61): feasible 31.7%, hit-or-ballpark 85.9%
+- beside, L1 on the dated 2021-22 brackets (20): feasible 60.0%, hit-or-ballpark 90.0%
+- ENTER verdict (own rule from §6): FAIL (feasible < 50%; feasible < control + 15; hit < control + 15)
+
+## 3. STOP recount on the undated 2021-22 check buys: held-through per level and variant, own walk; then the side output aggregated
+- STOP / EXIT records 212 of 226 (dropped {'no_bar_on_E': 1, 'ticker_not_in_export': 4, 'bars_before_E_lt_50': 9}); era B buys among them 8
+  level-variant | printout (any / certain) | side-output aggregate | recount, module offsets | recount, era-B offsets fixed | nf 145 (mod) | untouched 161 (mod)
+  S1-T          | 43.9% (98 / 43) | 43.9% (98 / 43) | 43.9% (98 / 43) | 39.2% (97 / 38) | 56.3% | 42.6%
+  S1-C          | 50.0% (66 / 33) | 50.0% (66 / 33) | 50.0% (66 / 33) | 41.5% (65 / 27) | 58.8% | 48.0%
+  S2-T          | 43.9% (98 / 43) | 43.9% (98 / 43) | 43.9% (98 / 43) | 39.2% (97 / 38) | 56.3% | 42.6%
+  S2-C          | 50.0% (66 / 33) | 50.0% (66 / 33) | 50.0% (66 / 33) | 41.5% (65 / 27) | 58.8% | 48.0%
+  S3-T          | 72.7% (99 / 72) | 72.7% (99 / 72) | 72.7% (99 / 72) | 68.0% (97 / 66) | 80.0% | 68.7%
+  S3-C          | 64.6% (65 / 42) | 64.6% (65 / 42) | 64.6% (65 / 42) | 57.8% (64 / 37) | 84.1% | 61.4%
+  S4-T          | 65.7% (70 / 46) | 65.7% (70 / 46) | 65.7% (70 / 46) | 58.6% (70 / 41) | 76.9% | 63.5%
+  S4-C          | 80.0% (40 / 32) | 80.0% (40 / 32) | 80.0% (40 / 32) | 66.7% (39 / 26) | 87.9% | 80.0%
+  S5-T          | 99.0% (208 / 206) | 99.0% (208 / 206) | 99.0% (208 / 206) | 99.0% (208 / 206) | 99.2% | 98.6%
+  S5-C          | 69.2% (195 / 135) | 69.2% (195 / 135) | 69.2% (195 / 135) | 67.2% (195 / 131) | 91.9% | 69.4%
+  S6-T          | 91.3% (23 / 21) | 91.3% (23 / 21) | 91.3% (23 / 21) | 85.0% (20 / 17) | 94.1% | 87.5%
+  S6-C          | 88.2% (17 / 15) | 88.2% (17 / 15) | 88.2% (17 / 15) | 78.6% (14 / 11) | 100.0% | 83.3%
+  S7-T          | 86.7% (165 / 143) | 86.7% (165 / 143) | 86.7% (165 / 143) | 85.4% (164 / 140) | 88.5% | 85.5%
+  S7-C          | 53.8% (132 / 71) | 53.8% (132 / 71) | 53.8% (132 / 71) | 49.6% (131 / 65) | 65.3% | 54.9%
+  S8-T          | 77.4% (31 / 24) | 77.4% (31 / 24) | 77.4% (31 / 24) | 64.3% (28 / 18) | 82.1% | 75.0%
+  S8-C          | 86.4% (22 / 19) | 86.4% (22 / 19) | 86.4% (22 / 19) | 72.2% (18 / 13) | 90.0% | 87.5%
+  SMA50-T       | 87.4% (95 / 83) | 87.4% (95 / 83) | 87.4% (95 / 83) | 84.4% (90 / 76) | 87.9% | 89.8%
+  SMA50-C       | 58.2% (79 / 46) | 58.2% (79 / 46) | 58.2% (79 / 46) | 51.4% (74 / 38) | 80.0% | 64.7%
+- STOP verdict: the fit chose no level (lowest eligible S1-S7 H_cond on the fit 44.8% > 10%) -> INCONCLUSIVE; every check level > 30% (falsifier reading, not reached because no level was chosen): True
+
+## 4. EXIT recount: hit rates (own feature rows and own decision-list walk) and the three accounts (own trade lists; frozen simulate)
+- hit rates (module offsets; scorable 204 of 212; {'held_to_hole_before_window': 8}): chosen list 37.3%, close of session 3 19.6%, first red close 27.0%; own list sell day equals the TSV's on 212 of 212
+- hit rates (era-B offsets fixed; scorable 212 of 212; {}): chosen list 37.7%, close of session 3 20.8%, first red close 27.8%
+- hit rate from check_exit_trades.tsv alone (era-A rows, window <= 20 sessions: 204): 37.3% (the bar-based recount above also drops a window cut by a hole)
+- [module offsets] all ({'cut_at_': 0, 'trades': 212, 'cut_at_break': 1}): ours 1.503 | chosen 1.646 | his 1.727 | his / ours 1.149 -> VOID (no bar)
+    ours: by year 2021 47.8%, 2022 1.7% | max DD 19.9% | entered 173, skipped no room 39
+    chosen: by year 2021 70.4%, 2022 -3.4% | max DD 19.8% | entered 159, skipped no room 53
+    his: by year 2021 78.1%, 2022 -3.1% | max DD 26.1% | entered 171, skipped no room 41
+- [module offsets] nf ({'cut_at_': 0, 'trades': 134, 'cut_at_break': 1}): ours 1.883 | chosen 1.772 | his 1.341 | his / ours 0.712 -> VOID (no bar)
+    ours: by year 2021 77.8%, 2022 5.9% | max DD 16.1% | entered 121, skipped no room 13
+    chosen: by year 2021 79.1%, 2022 -1.0% | max DD 16.7% | entered 114, skipped no room 20
+    his: by year 2021 54.3%, 2022 -13.1% | max DD 29.9% | entered 115, skipped no room 19
+- [module offsets] untouched ({'cut_at_': 0, 'trades': 147, 'cut_at_break': 1}): ours 1.333 | chosen 1.337 | his 1.310 | his / ours 0.983 -> VOID (no bar)
+    ours: by year 2021 31.1%, 2022 1.7% | max DD 19.3% | entered 135, skipped no room 12
+    chosen: by year 2021 40.7%, 2022 -5.0% | max DD 18.6% | entered 133, skipped no room 14
+    his: by year 2021 39.3%, 2022 -5.9% | max DD 23.5% | entered 135, skipped no room 12
+- [era-B offsets FIXED] all ({'cut_at_': 0, 'trades': 212, 'cut_at_break': 1}): ours 1.503 | chosen 1.646 | his 1.732 | his / ours 1.152 -> VOID (no bar)
+    ours: by year 2021 47.8%, 2022 1.7% | max DD 19.9% | entered 173, skipped no room 39
+    chosen: by year 2021 70.4%, 2022 -3.4% | max DD 19.8% | entered 159, skipped no room 53
+    his: by year 2021 78.1%, 2022 -2.8% | max DD 18.0% | entered 173, skipped no room 39
+- [era-B offsets FIXED] nf ({'cut_at_': 0, 'trades': 134, 'cut_at_break': 1}): ours 1.883 | chosen 1.772 | his 1.533 | his / ours 0.814 -> VOID (no bar)
+    ours: by year 2021 77.8%, 2022 5.9% | max DD 16.1% | entered 121, skipped no room 13
+    chosen: by year 2021 79.1%, 2022 -1.0% | max DD 16.7% | entered 114, skipped no room 20
+    his: by year 2021 54.3%, 2022 -0.7% | max DD 18.8% | entered 115, skipped no room 19
+- [era-B offsets FIXED] untouched ({'cut_at_': 0, 'trades': 147, 'cut_at_break': 1}): ours 1.333 | chosen 1.337 | his 1.381 | his / ours 1.036 -> VOID (no bar)
+    ours: by year 2021 31.1%, 2022 1.7% | max DD 19.3% | entered 135, skipped no room 12
+    chosen: by year 2021 40.7%, 2022 -5.0% | max DD 18.6% | entered 133, skipped no room 14
+    his: by year 2021 39.3%, 2022 -0.9% | max DD 17.6% | entered 136, skipped no room 11
+
+## RECOUNT TABLE: claim | printout | recount | status
+- SELECT check buys (records) | 144 | 144 | MATCH
+- SELECT failing the pool floor | 22 | 22 | MATCH
+- SELECT pool rows (not held), 99 days | 215,938 on 99 | 215,938 on 99 | MATCH
+- SELECT recall | 64.8% | 64.8% | MATCH
+- SELECT pool rate | 18.6% | 18.6% | MATCH
+- SELECT lift | 3.48 | 3.48 | MATCH
+- SELECT verdict | PASS | PASS | MATCH
+- SELECT §5d rank median percentile | 0.29 (79 picks), INCONCLUSIVE | 0.29 (79), INCONCLUSIVE | MATCH
+- ENTER deciding set | 41 undated (61 records, 3 dropped <20 bars) | 41 undated (61 records, dropped {'bars_before_E_lt_20': 3}) | MATCH
+- ENTER L1 feasible (41) | 36.6% | 36.6% | MATCH
+- ENTER L1 hit-or-ballpark (41) | 87.8% | 87.8% | MATCH
+- ENTER control feasible | 31.7% | 31.7% | MATCH (seeded draw replayed)
+- ENTER control hit-or-ballpark | 85.9% | 85.9% | MATCH (seeded draw replayed)
+- ENTER beside: L1 dated 20 | 60.0% / 90.0% | 60.0% / 90.0% | MATCH
+- ENTER verdict | FAIL | FAIL | MATCH
+- STOP S1-T H_cond (undated; nf / untouched) | 43.9% (98/43); 56.3% / 42.6% | 43.9% (98/43); 56.3% / 42.6%; era-B fixed 39.2% (97/38) | MATCH (side-output aggregate equal)
+- STOP S1-C H_cond (undated; nf / untouched) | 50.0% (66/33); 58.8% / 48.0% | 50.0% (66/33); 58.8% / 48.0%; era-B fixed 41.5% (65/27) | MATCH (side-output aggregate equal)
+- STOP S3-T H_cond (undated; nf / untouched) | 72.7% (99/72); 80.0% / 68.7% | 72.7% (99/72); 80.0% / 68.7%; era-B fixed 68.0% (97/66) | MATCH (side-output aggregate equal)
+- STOP S4-C H_cond (undated; nf / untouched) | 80.0% (40/32); 87.9% / 80.0% | 80.0% (40/32); 87.9% / 80.0%; era-B fixed 66.7% (39/26) | MATCH (side-output aggregate equal)
+- STOP verdict | INCONCLUSIVE | INCONCLUSIVE | MATCH
+- STOP / EXIT base (header says 226) | 226 set; trades 212 | 226 set; 212 records ({'no_bar_on_E': 1, 'ticker_not_in_export': 4, 'bars_before_E_lt_50': 9}) | MATCH (label only: the 14 fall under the registered 50-bar record floor; every number is on the 212)
+- exit_lo_j / exit_hi_j on the era-B undated check trades | 1443-1450 (check_exit_trades.tsv; check_g8_B.tsv: 15 rows incl. 7 dated) | 8 trades, own-calendar offsets 0-1, 4-4, 5-6, 5-6, 0-7, 2-6, 0-4, 0-4 | MISMATCH (pickle-calendar exit index minus the era-B export's bar index; inflates STOP 'certain' on those trades (e.g. S4-C 80.0% -> 66.7%), holds 'his' to the 120-session horizon (non-flicker his 1.341 -> 1.533), and makes the 8 non-scorable in the hit rate (the check's 'held_to_hole_before_window 8'); NO verdict flips; the EXIT fit's era-B dated 2022 trades carry the same offset (not re-run here))
+- EXIT chosen list hit rate | 37.3% | 37.3% (TSV-only 37.3%; era-B fixed 37.7%) | MATCH
+- EXIT all: ours / chosen / his (REUSED-SIM) | 1.503 / 1.646 / 1.727 (212 trades) | 1.503 / 1.646 / 1.727 (212); era-B fixed 1.503 / 1.646 / 1.732 | MATCH (ours = frozen speed trail; chosen / his trade lists own)
+- EXIT his / ours -> verdict | 1.15 -> VOID (no bar) | 1.15 -> VOID; era-B fixed 1.15 -> VOID | MATCH
+- EXIT non-flicker: ours / chosen / his (REUSED-SIM) | 1.883 / 1.772 / 1.341 (134 trades) | 1.883 / 1.772 / 1.341 (134); era-B fixed 1.883 / 1.772 / 1.533 | MATCH
+- Populations = the registration's check sets; no fit trade inside | §2b counts 145/15/188/226/304/111/20/44, nf 145, untouched 161 | sets sel_chk 145, sel_chk_nc 15, sel_fit 188, und_chk 226, und_fit 304, dated_chk 111, ent_chk_dated 20, ent_chk_und 44; undated 2021-22 eids in any fit file 0 | MATCH
+
+RECOUNT COMPLETE in 15s: 26 MATCH, 1 MISMATCH

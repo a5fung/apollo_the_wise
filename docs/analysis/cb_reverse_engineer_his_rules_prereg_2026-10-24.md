@@ -803,3 +803,32 @@ check refuses.
   - The dry run was re-run after each fix (63 / 63 counts, identical but for the module sha); the earlier printouts are kept in `verify/fit_events/`.
   - Run 3 of SELECT and the single runs of ENTER, STOP and EXIT are the fit printouts pinned below.
 - `test_stage_outputs_refusal` reads the REAL outputs folder and fails whenever fit outputs exist (as now); it is an environment check, not a code defect.
+
+## RESULT — the one check, 2026-10-24 (printout `scripts/probes/_705_reverse_1024/01_rev_check.txt`; written BELOW the marker; the body above is the freeze commit `1aea0959`'s)
+
+**SELECT PASS · ENTER FAIL · STOP INCONCLUSIVE · EXIT VOID (no bar) · WHY below its gate (no rate).** Independent recount (Opus, own script,
+`verify/recount/recount_check.py` + `.txt`): every printed number and verdict reproduces; one era-B calendar defect found (below), no verdict changes.
+
+| Stage | What was inferred from his 2020 trades (the fit) | On the 2021-22 trades it never saw (the check) | Verdict |
+|---|---|---|---|
+| SELECT (his no-event buys, n = 144) | a three-part daily condition: ADR20 ≥ 4.26%, not down more than 5.8% over 60 sessions, a 52-week high within the last 233 sessions (fit recall 74% at a 19% pool rate; beats 20 of 20 planted sets) | recall 64.8% (±8) at a pool rate of 18.6%, lift 3.48 | **PASS** (bar: recall ≥ 50% at pool ≤ 20%) |
+| SELECT rank (within the qualifying names, n = 79) | logistic on the 2020 buys vs the qualifying pool | his picks' median percentile 0.29 | INCONCLUSIVE (PASS ≤ 0.25; falsifier ≥ 0.40) |
+| ENTER (in-session buy windows, n = 41) | the opening-range high (5-minute), first crossed inside his buy window on 36% of 2020 trades | 36.6% (random-minute control 31.7%); ballpark 87.8% vs control 85.9% | **FAIL**: no modelled level is his buy point |
+| STOP (undated 2021-22, n = 212 records) | no level met the held-through bar (≤ 10%) on the fit | every level held through on 39-80% of the trades where price crossed it | **INCONCLUSIVE**: no fixed price level |
+| EXIT (undated 2021-22, n = 212) | a 3-rule sell list: a close at or under cost; a close half an ADR under the 10-day AND under the prior low; a close under the 20-day after session 3 (fit recovery +0.45 in-sample) | ours 1.503× · the rule 1.646× · his 1.727×: his exits beat ours by only 1.15× (VOID under 1.25); the rule hits his sell session on 37.3% (trivial rules 19.6-27.0%) | **VOID (no bar)** |
+| WHY (20 caption joins, two readers) | — | 12 of 20 correct (the readers agreed on 18; the two splits, VXRT and MGM, took the stricter reading) = 60% | below the 70% gate: no rate quoted |
+
+- **Beside, read with it:** on the DATED 2021-22 breakout trades (in-sample for EXIT, never deciding) his exits are 2.62× against ours 1.40× — the
+  exit gap lives in his breakout winners, not in the no-event buys the check decides on.
+- **Recount defect (era B, buys on or after 2022-04-01):** the sell-date index came from the full calendar and the buy-day index from era B's
+  own, so 8 check trades (and 12 dated EXIT-fit trades) carried sell dates ~1,440 sessions late. Corrected by the recount: STOP S4-C 80.0% →
+  66.7%, S1-T 43.9% → 39.2% (still INCONCLUSIVE); EXIT his ÷ ours 1.149 → 1.152 (still VOID), the non-flicker 'his' 1.341 → 1.533; the hit rate
+  37.3% → 37.7%. The EXIT fit's 12 era-B trades were not re-fit.
+- **What it means (no money, no rule changed):** his no-event buys are not random — a simple daily scan (volatile, not falling, near the year's
+  high) catches two in three at one stock in five. Inside that pool, which names he picks is not yet shown. His entry is not the first crossing
+  of any daily or 5-minute level we model, and no fixed daily price level is his stop. His own words name the untried layer: *"the opening range
+  highs can be the highs of the first 1-minute candle, the 5-minute candle or the 60-minute candle"* (operator_shared_notes.md l.1941-1942;
+  his 60-minute first candle is 09:30-10:00, l.2090 — our L6 was 09:30-10:30), and 334 of 495 stream caption files mention the 60-minute chart
+  (e.g. FSLY 2020-07-14: half sold *"when it broke below the 20 … ema on the 60-minute chart"*, the rest on the prior day's low).
+- **Next (registered separately):** the intraday layer — the 1-minute and 30-minute opening-range highs for ENTER, 60-minute lows for STOP, the
+  60-minute 20-EMA for EXIT — on the levels never scored here; the sealed 2025-26 test stays unspent until an entry and an exit reproduce him.

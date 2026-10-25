@@ -1,0 +1,21 @@
+n	verdict	note
+1	wrong	generic: "you're gonna get stopped out you know there's no reason to blame any market makers" is said to viewers, not his ROKU exit (he had added shorts, ROKU "looking really weak")
+2	wrong	VXRT: "oh wait no i never bought wait i put the stop on the wrong one"; the stop-out he then takes is SAVE (-52k) and TNA, not VXRT
+3	wrong	the stop is on RH ("what's our age doing... over the 260 area... i just got stopped out"); Fastly appears only as a viewer question ("is fastly a good short here")
+4	correct	"bili is a dog. yeah, it stopped me out. what a piece of [__]" - own stop on BILI
+5	correct	"pltr i just got stopped out of a half or like some of my starter" - partial stop on PLTR
+6	correct	"uber crapped out yeah it did good thing we got stopped out over there" - UBER stop
+7	correct	"i took a tiny starter on this xpev... i just got stopped out of it" - own XPEV stop
+8	correct	"nio oh yeah, nio i got stopped out of. i'm going to put it back on my watch list" - own NIO stop
+9	correct	"when i thought workhorse got a little bit too extended i sold it somewhere here like mid-eighths" - full WKHS sale (recalled, dated to the exit window)
+10	correct	borderline: "oh apxt don't tell me i sold some of these things at the lows. i did" - names APXT then says he sold some at the lows (cruise lines added after); "these things" is vague
+11	correct	"i'm long on fiverr. i long a couple of days ago. i sold it for a small profit on this big reversal candle" - FVRR sale (ASR says fastly)
+12	wrong	phrase "i sold" is Livongo: "livongo is the one i sold all of it"; FSLY is a separate stop-out clause just before ("fastly... i got stopped out... not long anymore") so borderline
+13	correct	"i sold half of it 2 days ago when it broke below the 20... and then i sold the other half when it took out the previous day's lows yesterday" - FSLY full sale in two halves
+14	correct	"i bought spg yesterday that's the only reopening play i'm in right now um i sold some pre-markets as [it] gapped up" - partial SPG sale (his buy-day phrase "yesterday" does not match the list buy_day)
+15	correct	"acb gapping down i sold acb yesterday nearly close... sold a tiny bit of it" - ACB sale
+16	wrong	generic list of trims: "i sold a little bit of b... silo... a tiny bit on nvidia"; WWR only appears as "except for wwr i don't know if i'm gonna trade much" - no WWR sale
+17	wrong	borderline: MGM looks like a short covered - "i think i have some shorts on again", "waiting for ranges to build to short more", "dips got bought so i got stopped out... took profits on nclh and mgm and uber"
+18	wrong	"covered some mrna because... mrna is showing relative weakness" - a short cover; "sold some" in the caption is "i also sold some fas"
+19	correct	"grwg i sold also this is pretty much where i sold it... now i've trimmed down my portfolio" - GRWG sale
+20	wrong	"sold some" is about other names ("fat finger sale on new ideas", "i sold all of my ads"); WLL appears only as a bounce idea for a viewer
