@@ -1,0 +1,101 @@
+- pins re-checked: the previous read's (exports, candidates, labels, guards, the frozen modules and tests) through the frozen module; this read's (the fetch list, 00_pop_fetch.py and its printout, the frozen previous module): no drift
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+- populations re-asserted against §2 / §2a-d of this doc and the previous 63 counts: 25 claims, every one equals the registration (guard 3)
+# #705 INTRADAY 01 — STOP FIT: the intraday lows he held THROUGH — S1 / S3 / S9 / S10 as a touch, a daily close and a 60-minute close (§6)
+# registration: docs/analysis/cb_intraday_layer_prereg_2026-10-25.md; written once; the ledger records this printout
+# runs under the freeze body bc05126f9805087d0c8982f2f7f62cd9c0828dff56a6b47036e1248fc75956ce and the module ac598fc58aae62dc03c93f5d274aa26af37594821f98d1e1c162c2bb8d20f7ee (recorded in the chosen file; --check refuses on a difference)
+- fit set: dated 2020 149 + exact-day undated 2020 304 (flickers included); ENTER's fit level L8 where feasible, else the registered fill
+- fit set composition asserted (guard 5): 453 trades, every one in the registered STOP fit set; the forward-bar guard allows these eids only
+- daily exports loaded in 6s: era A 205,188 of 12,005,007 rows (164 tickers, 2016-01-04..2022-06-30); era B 1,642 of 13,830,569 rows (2 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- minute trees: A 149,587 log rows, B 80,858 log rows, EP 196 log rows, EP2 39 log rows, REV 1,322 log rows, INTRA 19,470 log rows; era B export calendar 2021-09-27..2024-12-31 (821 sessions) — every era-B record's offsets are bisected on it (one calendar per record)
+- guard (5) per ticker-date (the fit trades): 16 of 453 trades excluded because their planned span touches a (symbol, session) after a check-side trade's buy day: FCEL 2020-02-10 (55 pairs; exposes FCEL 2019-11-12, FCEL 2020-01-02); BLDP 2020-02-10 (43 pairs; exposes BLDP 2019-11-12); APT 2020-02-21 (25 pairs; exposes APT 2020-01-23); APT 2020-02-28 (26 pairs; exposes APT 2020-01-23); APT 2020-03-02 (27 pairs; exposes APT 2020-01-23); STNE 2020-03-03 (52 pairs; exposes STNE 2019-11-18); APT 2020-03-05 (27 pairs; exposes APT 2020-01-23); SE 2020-04-06 (44 pairs; exposes SE 2019-12-19); TDOC 2020-04-07 (28 pairs; exposes TDOC 2019-10-31); APT 2020-04-22 (16 pairs; exposes APT 2020-01-23); FCEL 2020-04-22 (8 pairs; exposes FCEL 2020-01-02); APT 2020-04-23 (15 pairs; exposes APT 2020-01-23); SE 2020-04-27 (30 pairs; exposes SE 2019-12-19); SE 2020-05-05 (24 pairs; exposes SE 2019-12-19); APT 2020-05-06 (6 pairs; exposes APT 2020-01-23); TDOC 2020-05-12 (4 pairs; exposes TDOC 2019-10-31)
+- records: 415 (dropped {'no_bar_on_E': 6, 'bars_before_E_lt_50': 16}; the record floor = 50 bars before the buy day)
+- hold sessions preloaded: cached 16, ok 2,498; files read A 283, EP 18, EP2 8, INTRA 242, REV 123
+
+## G8 — stop_fit: this read's own trade list through trade_impact.py (before any number)
+- era A: entered after the cutoff 0, holds past the last bar 0 (415 trades)
+- era B: no trade; G8 not run
+- the chain's fills: S10_is_S1 229, S1_is_S2 261, S9_is_S1 229, fill_close_proxy 14, fill_fallback 382, fill_level:L8 33, fill_open 247, fill_orh5 103, fill_orh5_too_wide 18
+- gate (i) stop_fit: minute-built session bars vs the daily export on 2928 (ticker, session) pairs — high AND low within 0.5%: 2919 = 99.7% (bar 98.0%; failures by ticker: MELI 2, FSLY 1, ENPH 1, JMIA 1, HTBX 1, NCLH 1, GRWG 1, NIO 1); open AND close within 0.5%: 2774 = 94.7% (bar 90.0%; the auction-print band; failures by ticker: APT 15, MARA 13, MARK 10, RIOT 8, GPOR 7, CODX 6, VXRT 5, LAC 5)
+    FSLY 2020-05-15: dev o 0.00% h 0.65% l 0.00% c 0.05% (daily c 39.500 vs minute 39.520)
+    ENPH 2020-11-09: dev o 0.69% h 0.64% l 0.00% c 0.01% (daily c 117.080 vs minute 117.070)
+    JMIA 2020-11-19: dev o 0.00% h 0.66% l 0.00% c 0.00% (daily c 24.230 vs minute 24.230)
+    HTBX 2020-03-20: dev o 0.00% h 1.16% l 0.00% c 0.83% (daily c 4.235 vs minute 4.200)
+    MELI 2020-05-27: dev o 0.97% h 0.68% l 0.00% c 0.15% (daily c 820.830 vs minute 819.580)
+    MELI 2020-07-13: dev o 0.25% h 5.48% l 0.00% c 0.08% (daily c 981.970 vs minute 982.780)
+    NCLH 2020-07-15: dev o 0.00% h 0.70% l 0.00% c 0.00% (daily c 18.500 vs minute 18.500)
+    GRWG 2020-12-01: dev o 0.00% h 0.53% l 0.00% c 0.06% (daily c 33.350 vs minute 33.370)
+    NIO 2020-12-18: dev o 0.00% h 0.75% l 0.00% c 0.38% (daily c 46.720 vs minute 46.543)
+    CODX 2020-04-06: dev o 0.76% h 0.00% l 0.00% c 0.19% (daily c 309.300 vs minute 308.700)
+    BNTX 2020-05-06: dev o 0.80% h 0.00% l 0.00% c 0.02% (daily c 47.780 vs minute 47.770)
+    FSLY 2020-05-08: dev o 0.62% h 0.00% l 0.00% c 0.03% (daily c 34.800 vs minute 34.810)
+    every pair outside a band written -> /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/gate_i_pairs_stop_fit.tsv
+- gate (iv) STOP: S1 / S3 under T and C with the TSV's own fills, the OLD trees' exit minutes and the OLD certainty rule equal the previous fit's rows on 2490 of 2490 cells (old-tree exit minutes read for 90 of 415 records)
+- gate (iii) stop_fit: C event days beyond the 0.5% auction band with a last 60-minute bar 1462; H event days among them 1462 = 100.0% (bar 98.0%); C days inside the band 115, of which not H 4 (counted, never failing)
+- gate (vi) FSLY 693: 60-minute closes below the 20-EMA on 2020-07-10: 3 (first at 13:59); a touch of the prior day's low on 2020-07-13: True; warm-up bars 70, sessions without minutes 0
+
+## THE FIT (§6b): held-through rates, level x variant (H_cond = certain / traded through by exit_hi; H_all = certain / all; the buy-day certainty rule)
+  level-variant | tightness (median width) | traded through | certain | unresolved | H_cond | H_all | eligible | differ from S1 | no-bar sessions | dated | undated | OLD rule (S1 / S3 T / C)
+  --------------+--------------------------+----------------+---------+------------+--------+-------+----------+----------------+-----------------+-------+---------+-------------------------
+  S1-T          | 3.2%                     | 185            | 82      | 46         | 44.3%  | 19.8% | True     | -              | -               | 26.0% | 56.2%   | 46.5%                   
+  S1-C          | 3.2%                     | 113            | 56      | 0          | 49.6%  | 13.5% | True     | -              | -               | 34.1% | 59.4%   | 49.6%                   
+  S1-H          | 3.2%                     | 150            | 69      | 33         | 46.0%  | 16.6% | True     | -              | 0               | 31.1% | 56.2%   | -                       
+  S3-T          | 5.6%                     | 149            | 49      | 77         | 32.9%  | 11.8% | True     | -              | -               | 26.7% | 34.5%   | 71.2%                   
+  S3-C          | 5.6%                     | 103            | 63      | 0          | 61.2%  | 15.2% | True     | -              | -               | 28.6% | 69.5%   | 61.2%                   
+  S3-H          | 5.6%                     | 121            | 48      | 49         | 39.7%  | 11.6% | True     | -              | 0               | 20.8% | 44.3%   | -                       
+  S9-T          | 2.9%                     | 231            | 57      | 124        | 24.7%  | 13.7% | True     | 186            | -               | 26.0% | 24.1%   | -                       
+  S9-C          | 2.9%                     | 131            | 67      | 0          | 51.1%  | 16.1% | True     | 186            | -               | 35.6% | 59.3%   | -                       
+  S9-H          | 2.9%                     | 173            | 84      | 36         | 48.6%  | 20.2% | True     | 186            | 0               | 31.1% | 58.0%   | -                       
+  S10-T         | 2.8%                     | 234            | 58      | 127        | 24.8%  | 14.0% | True     | 186            | -               | 26.3% | 24.1%   | -                       
+  S10-C         | 2.8%                     | 137            | 69      | 0          | 50.4%  | 16.6% | True     | 186            | -               | 35.4% | 58.4%   | -                       
+  S10-H         | 2.8%                     | 177            | 89      | 34         | 50.3%  | 21.4% | True     | 186            | 0               | 31.7% | 60.5%   | -                       
+  S8-T          | 14.6%                    | 45             | 25      | 6          | 55.6%  | 6.0%  | True     | -              | -               | 35.7% | 64.5%   | -                       
+  S8-C          | 14.6%                    | 29             | 16      | 0          | 55.2%  | 3.9%  | True     | -              | -               | 33.3% | 60.9%   | -                       
+  S8-H          | 14.6%                    | 34             | 17      | 4          | 50.0%  | 4.1%  | True     | -              | 0               | 22.2% | 60.0%   | -                       
+  SMA50-T       | 14.8%                    | 111            | 21      | 72         | 18.9%  | 5.1%  | True     | -              | -               | 26.7% | 17.7%   | -                       
+  SMA50-C       | 14.8%                    | 85             | 46      | 0          | 54.1%  | 11.1% | True     | -              | -               | 28.6% | 56.4%   | -                       
+  SMA50-H       | 14.8%                    | 97             | 26      | 51         | 26.8%  | 6.3%  | True     | -              | 0               | 27.3% | 26.7%   | -                       
+- the four old cells under the OLD certainty rule vs the NEW: S1-T old 46.5% (86 / 185) -> new 44.3% (82 / 185); S1-C old 49.6% (56 / 113) -> new 49.6% (56 / 113); S3-T old 71.2% (109 / 153) -> new 32.9% (49 / 149); S3-C old 61.2% (63 / 103) -> new 61.2% (63 / 103)
+- his stop ~ the tightest eligible cell among the 12 (S8 and the 50-day are controls) with a positive median width, >= 20 traded through and H_cond <= 10.0% -> CHOSEN none
+- re-buys (157) apart: S1-T H_cond 58.4%; S1-C H_cond 64.7%; S1-H H_cond 61.2%; S3-T H_cond 41.3%; S3-C H_cond 67.9%; S3-H H_cond 50.8%; S9-T H_cond 34.7%; S9-C H_cond 62.7%; S9-H H_cond 60.8%; S10-T H_cond 35.7%; S10-C H_cond 60.7%; S10-H H_cond 62.8%
+
+## RISK (§6a, the 2020 fit): sized on the level's distance, booked at the cell's exit (T at the level / the gap open; C the next open; H the next minute's open after the bar); an H stop can realise well beyond -1R; nothing is resized
+- S1-T (skipped: none)
+    sized on the level: trades 415, stop-outs 317; realised R of stop-outs worst -3.01, 5th pct -1.00, beyond -1R 3.8%, beyond -1.5R 1.3%, beyond -2R 0.6%; largest single-trade loss -2.30% of equity; account max DD 32.2%, final 1.045
+- S1-C (skipped: none)
+    sized on the level: trades 415, stop-outs 113; realised R of stop-outs worst -66.60, 5th pct -6.04, beyond -1R 76.1%, beyond -1.5R 51.3%, beyond -2R 36.3%; largest single-trade loss -5.73% of equity; account max DD 23.3%, final 13.200
+- S1-H (skipped: none)
+    sized on the level: trades 415, stop-outs 150; realised R of stop-outs worst -18.06, 5th pct -4.02, beyond -1R 94.0%, beyond -1.5R 37.3%, beyond -2R 20.7%; largest single-trade loss -4.15% of equity; account max DD 23.4%, final 14.506
+- S3-T (skipped: level_at_or_above_fill 18)
+    sized on the level: trades 397, stop-outs 135; realised R of stop-outs worst -5.38, 5th pct -1.30, beyond -1R 9.6%, beyond -1.5R 4.4%, beyond -2R 2.2%; largest single-trade loss -2.42% of equity; account max DD 19.5%, final 12.739
+- S3-C (skipped: level_at_or_above_fill 18)
+    sized on the level: trades 397, stop-outs 86; realised R of stop-outs worst -79.77, 5th pct -13.71, beyond -1R 88.4%, beyond -1.5R 51.2%, beyond -2R 37.2%; largest single-trade loss -7.73% of equity; account max DD 21.1%, final 12.246
+- S3-H (skipped: level_at_or_above_fill 18)
+    sized on the level: trades 397, stop-outs 104; realised R of stop-outs worst -223.66, 5th pct -3.72, beyond -1R 95.2%, beyond -1.5R 30.8%, beyond -2R 20.2%; largest single-trade loss -3.43% of equity; account max DD 19.4%, final 13.223
+- S9-T (skipped: level_at_or_above_fill 1)
+    sized on the level: trades 414, stop-outs 316; realised R of stop-outs worst -3.01, 5th pct -1.00, beyond -1R 3.8%, beyond -1.5R 1.6%, beyond -2R 0.9%; largest single-trade loss -2.30% of equity; account max DD 29.9%, final 1.083
+- S9-C (skipped: level_at_or_above_fill 1)
+    sized on the level: trades 414, stop-outs 129; realised R of stop-outs worst -66.60, 5th pct -10.92, beyond -1R 80.6%, beyond -1.5R 54.3%, beyond -2R 41.1%; largest single-trade loss -8.71% of equity; account max DD 22.6%, final 14.269
+- S9-H (skipped: level_at_or_above_fill 1)
+    sized on the level: trades 414, stop-outs 172; realised R of stop-outs worst -50.12, 5th pct -4.10, beyond -1R 93.6%, beyond -1.5R 41.3%, beyond -2R 23.3%; largest single-trade loss -4.15% of equity; account max DD 24.2%, final 20.263
+- S10-T (skipped: level_at_or_above_fill 7)
+    sized on the level: trades 408, stop-outs 314; realised R of stop-outs worst -3.01, 5th pct -1.00, beyond -1R 4.1%, beyond -1.5R 1.6%, beyond -2R 1.0%; largest single-trade loss -2.30% of equity; account max DD 29.7%, final 1.250
+- S10-C (skipped: level_at_or_above_fill 7)
+    sized on the level: trades 408, stop-outs 131; realised R of stop-outs worst -32.54, 5th pct -8.94, beyond -1R 80.9%, beyond -1.5R 54.2%, beyond -2R 37.4%; largest single-trade loss -8.71% of equity; account max DD 22.6%, final 13.209
+- S10-H (skipped: level_at_or_above_fill 7)
+    sized on the level: trades 408, stop-outs 171; realised R of stop-outs worst -50.12, 5th pct -4.10, beyond -1R 94.2%, beyond -1.5R 42.1%, beyond -2R 22.8%; largest single-trade loss -4.15% of equity; account max DD 22.2%, final 22.657
+- S8-T (skipped: none)
+    sized on the level: trades 415, stop-outs 45; realised R of stop-outs worst -1.34, 5th pct -1.21, beyond -1R 8.9%, beyond -1.5R 0.0%, beyond -2R 0.0%; largest single-trade loss -1.34% of equity; account max DD 13.7%, final 5.838
+- S8-C (skipped: none)
+    sized on the level: trades 415, stop-outs 29; realised R of stop-outs worst -2.21, 5th pct -1.89, beyond -1R 72.4%, beyond -1.5R 20.7%, beyond -2R 3.4%; largest single-trade loss -2.21% of equity; account max DD 16.3%, final 5.899
+- S8-H (skipped: none)
+    sized on the level: trades 415, stop-outs 34; realised R of stop-outs worst -1.52, 5th pct -1.48, beyond -1R 91.2%, beyond -1.5R 2.9%, beyond -2R 0.0%; largest single-trade loss -1.52% of equity; account max DD 16.5%, final 5.805
+- SMA50-T (skipped: level_at_or_above_fill 67)
+    sized on the level: trades 348, stop-outs 45; realised R of stop-outs worst -1.62, 5th pct -1.07, beyond -1R 13.3%, beyond -1.5R 2.2%, beyond -2R 0.0%; largest single-trade loss -1.62% of equity; account max DD 11.4%, final 5.066
+- SMA50-C (skipped: level_at_or_above_fill 67)
+    sized on the level: trades 348, stop-outs 23; realised R of stop-outs worst -3.61, 5th pct -2.16, beyond -1R 52.2%, beyond -1.5R 26.1%, beyond -2R 13.0%; largest single-trade loss -2.16% of equity; account max DD 10.2%, final 5.654
+- SMA50-H (skipped: level_at_or_above_fill 67)
+    sized on the level: trades 348, stop-outs 31; realised R of stop-outs worst -2.40, 5th pct -1.95, beyond -1R 45.2%, beyond -1.5R 19.4%, beyond -2R 3.2%; largest single-trade loss -1.98% of equity; account max DD 10.3%, final 5.518
+
+CHOSEN STOP: none
+- §6b's check reads the 62 undated untouched trades on every cell ONCE in --check (the chosen cell must hold H_cond <= 15% there); the 27 untouched dated and 2021-22 are beside

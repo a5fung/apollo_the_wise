@@ -1,0 +1,55 @@
+- pins re-checked: the previous read's (exports, candidates, labels, guards, the frozen modules and tests) through the frozen module; this read's (the fetch list, 00_pop_fetch.py and its printout, the frozen previous module): no drift
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+- populations re-asserted against §2 / §2a-d of this doc and the previous 63 counts: 25 claims, every one equals the registration (guard 3)
+# #705 INTRADAY 01 — EXIT FIT: the FSLY rule on the clock-anchored 60-minute 20-EMA — E1-E4 under the chain's fill and stop (§7)
+# registration: docs/analysis/cb_intraday_layer_prereg_2026-10-25.md; written once; the ledger records this printout
+# runs under the freeze body bc05126f9805087d0c8982f2f7f62cd9c0828dff56a6b47036e1248fc75956ce and the module ac598fc58aae62dc03c93f5d274aa26af37594821f98d1e1c162c2bb8d20f7ee (recorded in the chosen file; --check refuses on a difference)
+- fit set: dated 2020 with a known exit 149; the chain: fill L8 (fit choice; registered where infeasible), stop registered (S1-T dated)
+- fit set composition asserted (guard 5): 149 trades, every one in the registered EXIT fit set; the forward-bar guard allows these eids only
+- daily exports loaded in 6s: era A 104,629 of 12,005,007 rows (83 tickers, 2016-01-04..2022-06-30); era B 1,642 of 13,830,569 rows (2 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- minute trees: A 149,587 log rows, B 80,858 log rows, EP 196 log rows, EP2 39 log rows, REV 1,322 log rows, INTRA 19,470 log rows; era B export calendar 2021-09-27..2024-12-31 (821 sessions) — every era-B record's offsets are bisected on it (one calendar per record)
+- guard (5) per ticker-date (the fit trades): 10 of 149 trades excluded because their planned span touches a (symbol, session) after a check-side trade's buy day: BLDP 2020-02-10 (43 pairs; exposes BLDP 2019-11-12); APT 2020-02-21 (27 pairs; exposes APT 2020-01-23); APT 2020-02-28 (27 pairs; exposes APT 2020-01-23); APT 2020-04-22 (16 pairs; exposes APT 2020-01-23); APT 2020-04-23 (15 pairs; exposes APT 2020-01-23); TDOC 2020-05-12 (4 pairs; exposes TDOC 2019-10-31); FEAC 2020-11-30 (17 pairs; exposes SKLZ 2021-01-05); TLRY 2020-12-16 (18 pairs; exposes TLRY 2021-01-04, TLRY 2021-01-26); MSTR 2020-12-28 (1 pairs; exposes MSTR 2021-01-28); NIO 2020-12-30 (6 pairs; exposes NIO 2021-02-08)
+- records: 139 (dropped {}; the record floor = 50 bars before the buy day)
+- warm-up + hold + tail sessions preloaded: cached 194, empty 15, ok 4,392; files read A 316, EP 15, EP2 8, INTRA 264, REV 74
+
+## G8 — exit_fit: this read's own trade list through trade_impact.py (before any number)
+- era A: entered after the cutoff 0, holds past the last bar 0 (139 trades)
+- era B: no trade; G8 not run
+- the chain: S10_is_S1 76, S1_is_S2 14, S9_is_S1 76, fill_close_proxy 14, fill_fallback 131, fill_level:L8 8, fill_orh5 100, fill_orh5_too_wide 17
+- gate (i) exit_fit: minute-built session bars vs the daily export on 5370 (ticker, session) pairs — high AND low within 0.5%: 5358 = 99.8% (bar 98.0%; failures by ticker: BNTX 2, BE 2, MELI 1, FSLY 1, GNUS 1, SRNE 1, ENPH 1, TSLA 1); open AND close within 0.5%: 5192 = 96.7% (bar 90.0%; the auction-print band; failures by ticker: APT 32, NVAX 19, GNUS 13, CODX 11, BLDP 8, SRNE 8, WKHS 7, BNTX 6)
+    MELI 2020-05-27: dev o 0.97% h 0.68% l 0.00% c 0.15% (daily c 820.830 vs minute 819.580)
+    FSLY 2020-05-15: dev o 0.00% h 0.65% l 0.00% c 0.05% (daily c 39.500 vs minute 39.520)
+    BNTX 2020-06-11: dev o 1.84% h 1.44% l 0.00% c 0.00% (daily c 48.600 vs minute 48.600)
+    GNUS 2020-06-22: dev o 0.00% h 0.00% l 3.59% c 3.59% (daily c 25.100 vs minute 26.000)
+    SRNE 2020-07-06: dev o 0.60% h 0.00% l 0.60% c 0.07% (daily c 7.165 vs minute 7.160)
+    BNTX 2020-06-11: dev o 1.84% h 1.44% l 0.00% c 0.00% (daily c 48.600 vs minute 48.600)
+    BE 2020-08-04: dev o 0.00% h 1.56% l 0.00% c 0.00% (daily c 14.120 vs minute 14.120)
+    BE 2020-08-04: dev o 0.00% h 1.56% l 0.00% c 0.00% (daily c 14.120 vs minute 14.120)
+    ENPH 2020-11-09: dev o 0.69% h 0.64% l 0.00% c 0.01% (daily c 117.080 vs minute 117.070)
+    TSLA 2020-12-18: dev o 0.00% h 1.48% l 0.00% c 1.01% (daily c 219.450 vs minute 221.660)
+    JMIA 2020-11-19: dev o 0.00% h 0.66% l 0.00% c 0.00% (daily c 24.230 vs minute 24.230)
+    MRNA 2020-11-16: dev o 0.04% h 2.62% l 0.00% c 0.05% (daily c 97.950 vs minute 98.000)
+    every pair outside a band written -> /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/gate_i_pairs_exit_fit.tsv
+- arming (`ema_thin` under 20 + 45 = 65 bars before the armed bar): armed 139; the seed's residual weight at the first armed bar: median 0.0067, max 0.0091
+- warm-up bars before the buy day: median 70; sessions in the range without minutes: 0
+
+## THE FIT (§7b): the hit rate of each variant (the LAST leg's booked session inside his sell window; windows <= 20 sessions)
+- EMA(20) on the 60-minute bars: E1 (CHOSEN) last-leg hit 40.3% / half-leg hit 0.0% on 139; E2 last-leg hit 40.3% / half-leg hit 12.9% on 139; E3 last-leg hit 39.6% / half-leg hit 7.9% on 139; E4 last-leg hit 39.6% / half-leg hit 0.0% on 139
+- beside: the 20-bar plain average: E1 last-leg hit 37.4% / half-leg hit 0.0% on 139; E2 last-leg hit 40.3% / half-leg hit 10.8% on 139; E3 last-leg hit 39.6% / half-leg hit 5.8% on 139; E4 last-leg hit 39.6% / half-leg hit 0.0% on 139
+- beside: E1 on the SECOND 60-minute close below the EMA: last-leg hit 41.7% on 139
+- trivial exits and the previous daily list on the same trades (139): close of session 3 20.1%, first red close 31.7%, the daily list 39.6%
+
+## THE 2020 ACCOUNTS (in-sample, for scale; the check's bar is on dated 2021-22): ours = the speed trail, chosen = the variant, his = the panel exit, all at cap_30
+- 2020 fit, chain fill and stop, E1 (cut_at_break 0, cut_at_hole 0, cut_at_tail 0, guard_bounded 22, stop_preempt 67, trades 139): ours 1.970 | chosen 2.418 | his 2.486 | his / ours 1.26 | recovery +0.880 | abstentions (cut_at_tail + cut_at_horizon + cut_at_data_end + cut_at_guard + a hole (mark_hole) + an identity break (mark_break) + ema_thin + no-bar) 0 = 0.0% of the trades
+    X1, a fit stage only: the forward window (ours = the speed trail; his; chosen) bounded on the session before the first forbidden (symbol, session) pair, by dates (22; a trail still open there is the frozen walk's unsettled mark at its last close): PINS 2020-07-31 (first forbidden session +119, bh 118, J_tail 35), BE 2020-08-13 (first forbidden session +101, bh 100, J_tail 36), NIO 2020-09-14 (first forbidden session +102, bh 101, J_tail 27), TSLA 2020-09-21 (first forbidden session +83, bh 82, J_tail 21), TWTR 2020-09-22 (first forbidden session +120, bh 119, J_tail 42), SE 2020-09-25 (first forbidden session +115, bh 114, J_tail 43), NIO 2020-09-29 (first forbidden session +91, bh 90, J_tail 40), TSLA 2020-09-30 (first forbidden session +76, bh 75, J_tail 22), ZM 2020-10-09 (first forbidden session +117, bh 116, J_tail 29), TSLA 2020-10-12 (first forbidden session +68, bh 67, J_tail 23), TTD 2020-10-29 (first forbidden session +77, bh 76, J_tail 21), ENPH 2020-11-05 (first forbidden session +66, bh 65, J_tail 23), SQ 2020-11-06 (first forbidden session +60, bh 59, J_tail 21), TSLA 2020-11-09 (first forbidden session +48, bh 47, J_tail 20), TSLA 2020-11-18 (first forbidden session +41, bh 40, J_tail 29), JMIA 2020-11-18 (first forbidden session +37, bh 36, J_tail 29), MRNA 2020-11-30 (first forbidden session +57, bh 56, J_tail 22), SE 2020-12-03 (first forbidden session +67, bh 66, J_tail 37), LAZR 2020-12-08 (first forbidden session +45, bh 44, J_tail 22), NVAX 2020-12-17 (first forbidden session +79, bh 78, J_tail 27), NCLH 2020-12-28 (first forbidden session +52, bh 51, J_tail 21), CCL 2020-12-28 (first forbidden session +52, bh 51, J_tail 21)
+    ours: by year 2020 90.9%, 2021 3.2% | max DD 16.6% | entered 97, skipped no room 42
+    chosen: by year 2020 141.8% | max DD 15.1% | entered 121, skipped no room 18
+    his: by year 2020 148.6% | max DD 14.3% | entered 70, skipped no room 69
+- 2020 fit, registered fill and stop, E1 (cut_at_break 0, cut_at_hole 0, cut_at_tail 0, guard_bounded 22, stop_preempt 67, trades 139): ours 1.939 | chosen 2.626 | his 2.622 | his / ours 1.35 | recovery +1.006 | abstentions (cut_at_tail + cut_at_horizon + cut_at_data_end + cut_at_guard + a hole (mark_hole) + an identity break (mark_break) + ema_thin + no-bar) 0 = 0.0% of the trades
+    X1, a fit stage only: the forward window (ours = the speed trail; his; chosen) bounded on the session before the first forbidden (symbol, session) pair, by dates (22; a trail still open there is the frozen walk's unsettled mark at its last close): PINS 2020-07-31 (first forbidden session +119, bh 118, J_tail 35), BE 2020-08-13 (first forbidden session +101, bh 100, J_tail 36), NIO 2020-09-14 (first forbidden session +102, bh 101, J_tail 27), TSLA 2020-09-21 (first forbidden session +83, bh 82, J_tail 21), TWTR 2020-09-22 (first forbidden session +120, bh 119, J_tail 42), SE 2020-09-25 (first forbidden session +115, bh 114, J_tail 43), NIO 2020-09-29 (first forbidden session +91, bh 90, J_tail 40), TSLA 2020-09-30 (first forbidden session +76, bh 75, J_tail 22), ZM 2020-10-09 (first forbidden session +117, bh 116, J_tail 29), TSLA 2020-10-12 (first forbidden session +68, bh 67, J_tail 23), TTD 2020-10-29 (first forbidden session +77, bh 76, J_tail 21), ENPH 2020-11-05 (first forbidden session +66, bh 65, J_tail 23), SQ 2020-11-06 (first forbidden session +60, bh 59, J_tail 21), TSLA 2020-11-09 (first forbidden session +48, bh 47, J_tail 20), TSLA 2020-11-18 (first forbidden session +41, bh 40, J_tail 29), JMIA 2020-11-18 (first forbidden session +37, bh 36, J_tail 29), MRNA 2020-11-30 (first forbidden session +57, bh 56, J_tail 22), SE 2020-12-03 (first forbidden session +67, bh 66, J_tail 37), LAZR 2020-12-08 (first forbidden session +45, bh 44, J_tail 22), NVAX 2020-12-17 (first forbidden session +79, bh 78, J_tail 27), NCLH 2020-12-28 (first forbidden session +52, bh 51, J_tail 21), CCL 2020-12-28 (first forbidden session +52, bh 51, J_tail 21)
+    ours: by year 2020 88.0%, 2021 3.2% | max DD 16.6% | entered 99, skipped no room 40
+    chosen: by year 2020 162.6% | max DD 15.1% | entered 119, skipped no room 20
+    his: by year 2020 162.2% | max DD 14.3% | entered 69, skipped no room 70
+
+CHOSEN EXIT: E1
+- §7's check runs the three accounts on the dated 2021-22 trades ONCE in --check (recovery >= 0.25 PASS; VOID when his / ours < 1.25; > 10% abstentions INCONCLUSIVE)

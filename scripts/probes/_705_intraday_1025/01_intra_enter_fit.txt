@@ -1,0 +1,101 @@
+- pins re-checked: the previous read's (exports, candidates, labels, guards, the frozen modules and tests) through the frozen module; this read's (the fetch list, 00_pop_fetch.py and its printout, the frozen previous module): no drift
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+- populations re-asserted against §2 / §2a-d of this doc and the previous 63 counts: 25 claims, every one equals the registration (guard 3)
+# #705 INTRADAY 01 — ENTER FIT: the opening-range level he buys at — L7 (1-minute), L8 (30-minute), L9 (prior 60-minute bar) — bounded by the panel clock (§5)
+# registration: docs/analysis/cb_intraday_layer_prereg_2026-10-25.md; written once; the ledger records this printout
+# runs under the freeze body bc05126f9805087d0c8982f2f7f62cd9c0828dff56a6b47036e1248fc75956ce and the module ac598fc58aae62dc03c93f5d274aa26af37594821f98d1e1c162c2bb8d20f7ee (recorded in the chosen file; --check refuses on a difference)
+- fit set: 31 dated + 59 undated non-flicker in-session windows of 2020 after §2c decide; 34 flickers beside
+- fit set composition asserted (guard 5): 90 trades, every one in the registered ENTER fit set; the forward-bar guard allows these eids only
+- daily exports loaded in 6s: era A 151,860 of 12,005,007 rows (123 tickers, 2016-01-04..2022-06-30); era B 3,284 of 13,830,569 rows (4 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- minute trees: A 149,587 log rows, B 80,858 log rows, EP 196 log rows, EP2 39 log rows, REV 1,322 log rows, INTRA 19,470 log rows; era B export calendar 2021-09-27..2024-12-31 (821 sessions) — every era-B record's offsets are bisected on it (one calendar per record)
+- guard (5) per ticker-date (the fit windows): 1 of 90 trades excluded because their planned span touches a (symbol, session) after a check-side trade's buy day: APT 2020-02-28 (21 pairs; exposes APT 2020-01-23)
+- guard (5) per ticker-date (the beside windows): 6 of 194 trades excluded because their planned span touches a (symbol, session) after a check-side trade's buy day: FCEL 2020-02-10 (21 pairs; exposes FCEL 2020-01-02); BLDP 2020-02-10 (13 pairs; exposes BLDP 2019-11-12); APT 2020-02-21 (20 pairs; exposes APT 2020-01-23); APT 2020-03-05 (19 pairs; exposes APT 2020-01-23); SE 2020-04-06 (14 pairs; exposes SE 2019-12-19); TSLA 2022-04-21 (4 pairs; exposes TSLA 2022-02-11)
+- records: 87 (dropped {'no_bar_on_E': 1, 'bars_before_E_lt_20': 1}; the ENTER record floor = 20 bars before the buy day); minutes: ok 87
+- gate (i) enter_fit: minute-built session bars vs the daily export on 87 (ticker, session) pairs — high AND low within 0.5%: 87 = 100.0% (bar 98.0%; failures by ticker: none); open AND close within 0.5%: 84 = 96.6% (bar 90.0%; the auction-print band; failures by ticker: CODX 1, BLNK 1, OPTT 1)
+    CODX 2020-04-06: dev o 0.76% h 0.00% l 0.00% c 0.19% (daily c 309.300 vs minute 308.700)
+    BLNK 2020-07-22: dev o 0.00% h 0.00% l 0.00% c 0.72% (daily c 6.960 vs minute 7.010)
+    OPTT 2020-10-16: dev o 0.00% h 0.00% l 0.00% c 0.87% (daily c 69.000 vs minute 69.600)
+    every pair outside a band written -> /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/gate_i_pairs_enter_fit.tsv
+- gate (ii) enter_fit: raw L7 <= L1 <= L8 <= L6 on 87 of 87 windows; the builder's first bar equals L8_raw on 87 of 87; builder first-bar high < L6 on 46 of 87 windows with both
+- gate (iv) ENTER: the L1-L6 re-read equals the previous fit's rows on 522 of 522 (window, level) cells
+
+## THE FIT (§5c): L7-L9 on the deciding windows (0 without minutes read `no_minutes`; a level that does not exist yet at first_clock reads `no_level_yet`: L7 before 09:31, L8 / L9 before 10:00, L1 before 09:35, L6 before 10:30)
+- deciding fit windows (dated + undated non-flicker): 87 scorable windows
+  L7 (new): feasible 14 = 16.1% +-8; hit-or-ballpark 69 = 79.3% +-9; shifted-window control feasible 1.7% hit 42.9% (no_room 0); BALLPARK 32, HIT 37, MISS 17, no_bracket_minutes 1
+  L8 (CHOSEN): feasible 30 = 34.5% +-10; hit-or-ballpark 58 = 66.7% +-10; shifted-window control feasible 2.7% hit 49.1% (no_room 0); BALLPARK 18, HIT 40, MISS 6, no_level_yet 23
+  L9 (new): feasible 30 = 34.5% +-10; hit-or-ballpark 61 = 70.1% +-10; shifted-window control feasible 4.9% hit 82.2% (no_room 0); BALLPARK 19, HIT 42, MISS 3, no_level_yet 23
+  L1 (re-read): feasible 32 = 36.8% +-10; hit-or-ballpark 75 = 86.2% +-7; shifted-window control feasible 2.4% hit 47.0% (no_room 0); BALLPARK 26, HIT 49, MISS 11, no_bracket_minutes 1
+  L2 (re-read): feasible 16 = 18.4% +-8; hit-or-ballpark 45 = 51.7% +-11; shifted-window control feasible 2.0% hit 27.0% (no_room 0); BALLPARK 18, HIT 27, MISS 41, no_bracket_minutes 1
+  L3 (re-read): feasible 12 = 13.8% +-7; hit-or-ballpark 26 = 29.9% +-10; shifted-window control feasible 1.7% hit 22.1% (no_room 0); BALLPARK 8, HIT 18, MISS 60, no_bracket_minutes 1
+  L4 (re-read): feasible 1 = 1.1% +-2; hit-or-ballpark 65 = 74.7% +-9; shifted-window control feasible 0.2% hit 38.1% (no_room 0); BALLPARK 31, HIT 34, MISS 21, no_bracket_minutes 1
+  L5 (re-read): feasible 1 = 1.1% +-2; hit-or-ballpark 37 = 42.5% +-10; shifted-window control feasible 0.4% hit 22.7% (no_room 0); BALLPARK 23, HIT 14, MISS 49, no_bracket_minutes 1
+  L6 (re-read): feasible 14 = 16.1% +-8; hit-or-ballpark 32 = 36.8% +-10; shifted-window control feasible 2.7% hit 53.5% (no_room 0); BALLPARK 10, HIT 22, MISS 4, no_level_yet 51
+  random-price control: feasible 21.0%, hit-or-ballpark 75.8%
+  'any opening range' (L7 / L1 / L8; beside): feasible 55.2%, hit 90.8%; its random-price control = the plain one (21.0%: a price is not level-specific, so the union's draw is the same draw); its shifted-window control 6.5%
+- dated: 30 scorable windows
+  L7 (new): feasible 9 = 30.0% +-16; hit-or-ballpark 21 = 70.0% +-16; shifted-window control feasible 3.1% hit 38.7% (no_room 0); BALLPARK 7, HIT 14, MISS 9
+  L8 (new): feasible 8 = 26.7% +-16; hit-or-ballpark 15 = 50.0% +-18; shifted-window control feasible 3.5% hit 54.0% (no_room 0); BALLPARK 3, HIT 12, MISS 3, no_level_yet 12
+  L9 (new): feasible 8 = 26.7% +-16; hit-or-ballpark 17 = 56.7% +-18; shifted-window control feasible 4.1% hit 79.3% (no_room 0); BALLPARK 5, HIT 12, MISS 1, no_level_yet 12
+  L1 (re-read): feasible 15 = 50.0% +-18; hit-or-ballpark 23 = 76.7% +-15; shifted-window control feasible 3.1% hit 49.4% (no_room 0); BALLPARK 5, HIT 18, MISS 7
+  L2 (re-read): feasible 4 = 13.3% +-12; hit-or-ballpark 16 = 53.3% +-18; shifted-window control feasible 1.5% hit 23.6% (no_room 0); BALLPARK 5, HIT 11, MISS 14
+  L3 (re-read): feasible 8 = 26.7% +-16; hit-or-ballpark 14 = 46.7% +-18; shifted-window control feasible 2.4% hit 31.7% (no_room 0); BALLPARK 3, HIT 11, MISS 16
+  L4 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 20 = 66.7% +-17; shifted-window control feasible 0.1% hit 33.0% (no_room 0); BALLPARK 8, HIT 12, MISS 10
+  L5 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 10 = 33.3% +-17; shifted-window control feasible 0.1% hit 13.4% (no_room 0); BALLPARK 9, HIT 1, MISS 20
+  L6 (re-read): feasible 3 = 10.0% +-11; hit-or-ballpark 8 = 26.7% +-16; shifted-window control feasible 3.3% hit 62.1% (no_room 0); HIT 8, MISS 2, no_level_yet 20
+  random-price control: feasible 23.0%, hit-or-ballpark 75.8%
+  'any opening range' (L7 / L1 / L8; beside): feasible 56.7%, hit 86.7%; its random-price control = the plain one (23.0%: a price is not level-specific, so the union's draw is the same draw); its shifted-window control 9.0%
+- undated non-flicker: 57 scorable windows
+  L7 (new): feasible 5 = 8.8% +-7; hit-or-ballpark 48 = 84.2% +-9; shifted-window control feasible 1.0% hit 45.1% (no_room 0); BALLPARK 25, HIT 23, MISS 8, no_bracket_minutes 1
+  L8 (new): feasible 22 = 38.6% +-13; hit-or-ballpark 43 = 75.4% +-11; shifted-window control feasible 2.3% hit 46.5% (no_room 0); BALLPARK 15, HIT 28, MISS 3, no_level_yet 11
+  L9 (new): feasible 22 = 38.6% +-13; hit-or-ballpark 44 = 77.2% +-11; shifted-window control feasible 5.3% hit 83.7% (no_room 0); BALLPARK 14, HIT 30, MISS 2, no_level_yet 11
+  L1 (re-read): feasible 17 = 29.8% +-12; hit-or-ballpark 52 = 91.2% +-7; shifted-window control feasible 2.0% hit 45.8% (no_room 0); BALLPARK 21, HIT 31, MISS 4, no_bracket_minutes 1
+  L2 (re-read): feasible 12 = 21.1% +-11; hit-or-ballpark 29 = 50.9% +-13; shifted-window control feasible 2.2% hit 28.8% (no_room 0); BALLPARK 13, HIT 16, MISS 27, no_bracket_minutes 1
+  L3 (re-read): feasible 4 = 7.0% +-7; hit-or-ballpark 12 = 21.1% +-11; shifted-window control feasible 1.3% hit 17.1% (no_room 0); BALLPARK 5, HIT 7, MISS 44, no_bracket_minutes 1
+  L4 (re-read): feasible 1 = 1.8% +-3; hit-or-ballpark 45 = 78.9% +-11; shifted-window control feasible 0.2% hit 40.9% (no_room 0); BALLPARK 23, HIT 22, MISS 11, no_bracket_minutes 1
+  L5 (re-read): feasible 1 = 1.8% +-3; hit-or-ballpark 27 = 47.4% +-13; shifted-window control feasible 0.6% hit 27.6% (no_room 0); BALLPARK 14, HIT 13, MISS 29, no_bracket_minutes 1
+  L6 (re-read): feasible 11 = 19.3% +-10; hit-or-ballpark 24 = 42.1% +-13; shifted-window control feasible 2.4% hit 49.0% (no_room 0); BALLPARK 10, HIT 14, MISS 2, no_level_yet 31
+  random-price control: feasible 19.9%, hit-or-ballpark 75.8%
+  'any opening range' (L7 / L1 / L8; beside): feasible 54.4%, hit 93.0%; its random-price control = the plain one (19.9%: a price is not level-specific, so the union's draw is the same draw); its shifted-window control 5.2%
+
+## BESIDE
+- flickers 2020 (in-session windows after §2c): 28 scorable windows
+  L7 (new): feasible 1 = 3.6% +-7; hit-or-ballpark 20 = 71.4% +-17; shifted-window control feasible 0.6% hit 42.0% (no_room 0); BALLPARK 10, HIT 10, MISS 7, no_bar_0930 1
+  L8 (new): feasible 4 = 14.3% +-13; hit-or-ballpark 12 = 42.9% +-18; shifted-window control feasible 3.0% hit 42.5% (no_room 0); BALLPARK 5, HIT 7, MISS 8, no_level_yet 8
+  L9 (new): feasible 4 = 14.3% +-13; hit-or-ballpark 14 = 50.0% +-19; shifted-window control feasible 6.4% hit 82.3% (no_room 0); BALLPARK 5, HIT 9, MISS 6, no_level_yet 8
+  L1 (re-read): feasible 2 = 7.1% +-10; hit-or-ballpark 21 = 75.0% +-16; shifted-window control feasible 2.3% hit 45.9% (no_room 0); BALLPARK 13, HIT 8, MISS 6, no_level 1
+  L2 (re-read): feasible 4 = 14.3% +-13; hit-or-ballpark 18 = 64.3% +-18; shifted-window control feasible 2.5% hit 37.6% (no_room 0); BALLPARK 8, HIT 10, MISS 10
+  L3 (re-read): feasible 1 = 3.6% +-7; hit-or-ballpark 8 = 28.6% +-17; shifted-window control feasible 1.1% hit 20.0% (no_room 0); BALLPARK 5, HIT 3, MISS 20
+  L4 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 21 = 75.0% +-16; shifted-window control feasible 0.1% hit 42.9% (no_room 0); BALLPARK 10, HIT 11, MISS 7
+  L5 (re-read): feasible 1 = 3.6% +-7; hit-or-ballpark 21 = 75.0% +-16; shifted-window control feasible 0.9% hit 41.9% (no_room 0); BALLPARK 14, HIT 7, MISS 7
+  L6 (re-read): feasible 3 = 10.7% +-11; hit-or-ballpark 6 = 21.4% +-15; shifted-window control feasible 2.0% hit 34.2% (no_room 0); BALLPARK 2, HIT 4, MISS 4, no_level_yet 18
+  random-price control: feasible 12.9%, hit-or-ballpark 76.4%
+  'any opening range' (L7 / L1 / L8; beside): feasible 17.9%, hit 82.1%; its random-price control = the plain one (12.9%: a price is not level-specific, so the union's draw is the same draw); its shifted-window control 5.7%
+- pre-market-flat windows, dated 2020: 41 scorable windows
+  L7 (new): feasible 34 = 82.9% +-12; hit-or-ballpark 40 = 97.6% +-5; shifted-window control feasible 1.7% hit 49.6% (no_room 0); BALLPARK 3, HIT 37, MISS 1
+  L8 (new): feasible 6 = 14.6% +-11; hit-or-ballpark 19 = 46.3% +-15; shifted-window control feasible 4.4% hit 45.9% (no_room 0); HIT 19, no_level_yet 22
+  L9 (new): feasible 6 = 14.6% +-11; hit-or-ballpark 19 = 46.3% +-15; shifted-window control feasible 7.2% hit 88.3% (no_room 0); HIT 19, no_level_yet 22
+  L1 (re-read): feasible 29 = 70.7% +-14; hit-or-ballpark 37 = 90.2% +-9; shifted-window control feasible 2.1% hit 49.9% (no_room 0); BALLPARK 3, HIT 34, MISS 1, no_level_yet 3
+  L2 (re-read): feasible 38 = 92.7% +-8; hit-or-ballpark 27 = 65.9% +-15; shifted-window control feasible 0.7% hit 26.7% (no_room 0); BALLPARK 9, HIT 18, MISS 14
+  L3 (re-read): feasible 36 = 87.8% +-10; hit-or-ballpark 27 = 65.9% +-15; shifted-window control feasible 1.2% hit 38.8% (no_room 0); BALLPARK 11, HIT 16, MISS 14
+  L4 (re-read): feasible 41 = 100.0% +-0; hit-or-ballpark 41 = 100.0% +-0; shifted-window control feasible 0.0% hit 39.6% (no_room 0); HIT 41
+  L5 (re-read): feasible 40 = 97.6% +-5; hit-or-ballpark 23 = 56.1% +-15; shifted-window control feasible 0.2% hit 15.7% (no_room 0); BALLPARK 14, HIT 9, MISS 18
+  L6 (re-read): feasible 1 = 2.4% +-5; hit-or-ballpark 5 = 12.2% +-10; shifted-window control feasible 4.1% hit 47.9% (no_room 0); HIT 5, no_level_yet 36
+  random-price control: feasible 59.8%, hit-or-ballpark 69.4%
+  'any opening range' (L7 / L1 / L8; beside): feasible 82.9%, hit 97.6%; its random-price control = the plain one (59.8%: a price is not level-specific, so the union's draw is the same draw); its shifted-window control 7.8%
+- pre-market-flat windows, undated 2020: 56 scorable windows
+  L7 (new): feasible 46 = 82.1% +-10; hit-or-ballpark 56 = 100.0% +-0; shifted-window control feasible 1.0% hit 46.3% (no_room 0); HIT 56
+  L8 (new): feasible 15 = 26.8% +-12; hit-or-ballpark 37 = 66.1% +-12; shifted-window control feasible 3.1% hit 51.6% (no_room 0); HIT 37, no_level_yet 19
+  L9 (new): feasible 15 = 26.8% +-12; hit-or-ballpark 37 = 66.1% +-12; shifted-window control feasible 7.2% hit 89.9% (no_room 0); HIT 37, no_level_yet 19
+  L1 (re-read): feasible 36 = 64.3% +-13; hit-or-ballpark 55 = 98.2% +-3; shifted-window control feasible 1.9% hit 50.2% (no_room 0); HIT 55, no_level_yet 1
+  L2 (re-read): feasible 40 = 71.4% +-12; hit-or-ballpark 37 = 66.1% +-12; shifted-window control feasible 1.2% hit 20.9% (no_room 0); BALLPARK 12, HIT 25, MISS 19
+  L3 (re-read): feasible 20 = 35.7% +-13; hit-or-ballpark 20 = 35.7% +-13; shifted-window control feasible 1.0% hit 17.4% (no_room 0); BALLPARK 3, HIT 17, MISS 36
+  L4 (re-read): feasible 56 = 100.0% +-0; hit-or-ballpark 56 = 100.0% +-0; shifted-window control feasible 0.2% hit 42.5% (no_room 0); HIT 56
+  L5 (re-read): feasible 48 = 85.7% +-9; hit-or-ballpark 35 = 62.5% +-13; shifted-window control feasible 0.1% hit 23.4% (no_room 0); BALLPARK 19, HIT 16, MISS 21
+  L6 (re-read): feasible 4 = 7.1% +-7; hit-or-ballpark 9 = 16.1% +-10; shifted-window control feasible 3.4% hit 49.6% (no_room 0); HIT 9, no_level_yet 47
+  random-price control: feasible 80.9%, hit-or-ballpark 84.4%
+  'any opening range' (L7 / L1 / L8; beside): feasible 82.1%, hit 100.0%; its random-price control = the plain one (80.9%: a price is not level-specific, so the union's draw is the same draw); its shifted-window control 5.8%
+- held before 09:35, L7 (beside): TSLA 2020-04-14 first 09:32: L7 46.68 crossed at 09:32 -> by first_clock; UAL 2020-05-27 first 09:34: L7 32.75 crossed at - -> not by first_clock; DXCM 2020-07-29 first 09:32: L7 108.31 crossed at 09:32 -> by first_clock; PINS 2020-07-31 first 09:31: L7 33.57 crossed at 09:31 -> by first_clock; SHOP 2020-08-26 first 09:32: L7 105.36 crossed at 09:31 -> by first_clock; TTD 2020-08-26 first 09:32: L7 47.80 crossed at 09:31 -> by first_clock; LAC 2022-04-21 first 09:30: L7 does not exist yet; ROKU 2020-09-15 first 09:32: L7 163.00 crossed at 09:31 -> by first_clock
+- pre-market first sightings, dated 2020 (crossed that session) (50): L7 crossed that session 48; L8 crossed that session 43; L9 crossed that session 47
+
+CHOSEN ENTER: L8
+- the chain carries this level's price where it is feasible on a trade, else the registered fill (`fill_fallback`); §5d's check reads 2021-22 ONCE in --check

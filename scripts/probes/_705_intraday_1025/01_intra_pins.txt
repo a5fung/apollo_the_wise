@@ -80,13 +80,13 @@
 - intra_module: ac598fc58aae62dc03c93f5d274aa26af37594821f98d1e1c162c2bb8d20f7ee
 - intra_tests: b9669a31d32c36cd5771b69ec8173013e8a774e319d3ca62fafe4664e7725d15
 - dryrun_printout: 62eae23a68e2405a5920f9b8df6aad778462495a890b8941fd38ebb7ee0c21f6
-- enter_fit_printout: ABSENT
-- stop_fit_printout: ABSENT
-- exit_fit_printout: ABSENT
-- ledger: ABSENT
+- enter_fit_printout: c34caf77d12e09aabb95afd33278bd0b0f6111ccd89204eb91a64f93ab9281b6
+- stop_fit_printout: 4b6af1c4b039c477358f793067b72daae40af43e5cd05ba6fec0024b86e9433b
+- exit_fit_printout: 64d9089a1fd95f7e428f8d97ef57bf0d42a1cca358286dfe9753005b69cca9cd
+- ledger: a8ad33c90b41f8c5c15e0eef8955656d12f378c6a210e8d14ce5ea9af6b47de5
 - doc_body_freeze: bc05126f9805087d0c8982f2f7f62cd9c0828dff56a6b47036e1248fc75956ce
-- doc_body: bc05126f9805087d0c8982f2f7f62cd9c0828dff56a6b47036e1248fc75956ce
-- freeze record: NOT YET under the marker: 85 of 87 pins
-- absent inputs / outputs (named, not refused): enter_fit_printout, stop_fit_printout, exit_fit_printout, ledger
-- CHOSEN lines above the marker (column 0, keyed): none
-- the body above the marker stored under freeze_bodies/ (bc05126f9805...); doc_body_freeze above = the pinned value under the marker
+- doc_body: 6c3741e48788c1fab6664a366e86980c9e10b74a07aa63c6190577b773668bc3
+- freeze record: complete
+- absent inputs / outputs (named, not refused): none
+- CHOSEN lines above the marker (column 0, keyed): ENTER x1, EXIT x1, STOP x1
+- the body above the marker stored under freeze_bodies/ (6c3741e48788...); doc_body_freeze above = the pinned value under the marker
