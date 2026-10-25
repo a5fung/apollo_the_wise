@@ -816,7 +816,7 @@ check refuses.
 | ENTER (in-session buy windows, n = 41) | the opening-range high (5-minute), first crossed inside his buy window on 36% of 2020 trades | 36.6% (random-minute control 31.7%); ballpark 87.8% vs control 85.9% | **FAIL**: no modelled level is his buy point |
 | STOP (undated 2021-22, n = 212 records) | no level met the held-through bar (≤ 10%) on the fit | every level held through on 39-80% of the trades where price crossed it | **INCONCLUSIVE**: no fixed price level |
 | EXIT (undated 2021-22, n = 212) | a 3-rule sell list: a close at or under cost; a close half an ADR under the 10-day AND under the prior low; a close under the 20-day after session 3 (fit recovery +0.45 in-sample) | ours 1.503× · the rule 1.646× · his 1.727×: his exits beat ours by only 1.15× (VOID under 1.25); the rule hits his sell session on 37.3% (trivial rules 19.6-27.0%) | **VOID (no bar)** |
-| WHY (20 caption joins, two readers) | — | 12 of 20 correct (the readers agreed on 18; the two splits, VXRT and MGM, took the stricter reading) = 60% | below the 70% gate: no rate quoted |
+| WHY (20 caption joins, two readers) | — | 12 of 20 correct (the readers agreed on 18; the two splits, VXRT and MGM, took the stricter reading) = 60% | below the 70% gate: no rate quoted — **the gate rests on the two split calls: with the main loop's verdicts alone it passes (14 of 20); the blind reader's alone, 12** |
 
 - **Beside, read with it:** on the DATED 2021-22 breakout trades (in-sample for EXIT, never deciding) his exits are 2.62× against ours 1.40× — the
   exit gap lives in his breakout winners, not in the no-event buys the check decides on.
@@ -824,6 +824,11 @@ check refuses.
   own, so 8 check trades (and 12 dated EXIT-fit trades) carried sell dates ~1,440 sessions late. Corrected by the recount: STOP S4-C 80.0% →
   66.7%, S1-T 43.9% → 39.2% (still INCONCLUSIVE); EXIT his ÷ ours 1.149 → 1.152 (still VOID), the non-flicker 'his' 1.341 → 1.533; the hit rate
   37.3% → 37.7%. The EXIT fit's 12 era-B trades were not re-fit.
+- **Named prerequisite:** the sealed 2025-26 test runs on era-B data only, so any module that reuses this one's index logic must fix the era-B
+  calendar index (above) before its freeze.
+- **For the next registration (leakage, stated now):** the ENTER check read the 2021-22 bracket minutes for L1-L6, so their feasibility on those
+  brackets is known and bounds what any new level there can show; a new level (the 1-minute or 30-minute opening-range high) is unread there but
+  2021-22 is not a virgin check set for it. The untouched alternative is 2019 + 2023 (about 85 no-event and 23 dated buys).
 - **What it means (no money, no rule changed):** his no-event buys are not random — a simple daily scan (volatile, not falling, near the year's
   high) catches two in three at one stock in five. Inside that pool, which names he picks is not yet shown. His entry is not the first crossing
   of any daily or 5-minute level we model, and no fixed daily price level is his stop. His own words name the untried layer: *"the opening range
