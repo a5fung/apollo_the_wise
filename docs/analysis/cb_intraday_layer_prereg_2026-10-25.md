@@ -11,7 +11,12 @@ registration only — nothing here changes or proposes to change a strategy, ent
 The questions of §14 are DECIDED (2026-10-25, main loop, no money, not THE LINE; every change since the review is in §15). The main loop
 freezes this doc and the module, runs the fit stages, writes the keyed chosen lines above the marker, pins, and runs the check ONCE.
 **Since this registration the minute fetch has run** (its log only was read, no bar file opened: 19,184 pairs ok, 286 empty at the source,
-0 failed — `verify/recount_prefreeze.txt` §15).
+0 failed — `verify/recount_prefreeze.txt` §15). **The module check of 2026-10-25 (15 findings, verdict BLOCK) is applied: every finding is
+DECIDED in §15 (rows C1-C15) with its direction; the two gates it found failing or empty on real data (gate (i) on the auction-print basis of
+the open and close; the EXIT warm-up floor) were re-set from stated numbers, never from the reading they first cleared (§12, §7a).** The
+check read the 2020 fit trades' buy-day minute and daily bars (gate (i)'s preview) and nothing after any buy day; this revision read none.
+**The re-check of 2026-10-25 (7 findings N1-N7, verdict FIX) is applied (§15), and one read path it did not name is bounded (X1, §9); that
+revision read no price bar.**
 
 **His words this tests.** Entry and stop from his notes, `operator_shared_notes.md` — entry l.1941-1942: *"Enter on the opening range highs.
 The opening range highs can be the highs of the first 1-minute candle, the 5-minute candle or the 60-minute candle."* · the 60-minute candle
@@ -91,7 +96,8 @@ finding that the setup does not work.
      inside a randomly placed window of the same width — is added for every level (§3).
    - (e) **The 60-minute exit needs bars after his sell.** The chosen rule may sell later than he did; its walk is cut 20 sessions after his
      sell window and booked at that close, flagged `cut_at_tail` and counted — a mark at the tail close, direction unknown (on a trend that
-     runs past his sell it flatters the rule). Too many such marks make the recovery INCONCLUSIVE (§7c).
+     runs past his sell it flatters the rule); a walk the frozen 120-session horizon or the export's last bar ends first is the same kind of
+     mark (`cut_at_horizon` / `cut_at_data_end`, §7c). Too many such marks make the recovery INCONCLUSIVE (§7c).
    - (f) **Thin minutes.** Twenty buy days have no minute bars at the source (the previous §12's list; seven are AXNX in January 2020 —
      inside the untouched dates but not one of the 89 trades). The fetch since run logged 286 more pairs empty at the source (fit 2020 213,
      the untouched years 58, 2021-22 15), and four scorable ENTER windows have no buy-day bars (HTZ 2020-07-22, OAS 2020-04-30, U 2020-07-24,
@@ -154,7 +160,12 @@ in the accounts.
 
 - **The random-price control of ENTER (kept from the previous registration, identical draws):** 200 seeded closes of random minutes of the
   session (seed 702, key `rev|minute`), each scored as a level — feasibility and hit-or-ballpark. On the 2021-22 undated windows it read 31.7%
-  feasible / 85.9% hit-or-ballpark; those numbers are known and are the floor there.
+  feasible / 85.9% hit-or-ballpark; those numbers are known and are the floor there. **"Identical" is mechanical (C6):** one generator, the
+  draws taken in (buy day, eid) order over the previous read's own population — its 20 dated in-session windows (7 of them flickers) + its 44
+  undated non-flicker windows (DWAC 2022-01-31 among them), 64 windows, the records with minutes — so the check's draws are exactly
+  **replayed over the previous read's population**; the dated flickers and DWAC are scored and never deciding (§5d). Gate (vii) at the check: the control's
+  mean shares on the previous 41 undated records must re-read 31.7% / 85.9% at one decimal, else the draws are not the previous read's and the
+  stage stops (§12).
 - **The shifted-window control of ENTER (NEW — guards §1d):** for each scorable trade and each level, the trade's own window width is placed at
   200 random starts, uniform over [the level's existence minute, the session close − width] (the close = 16:00, or 13:00 on an
   `H60_EARLY_CLOSE` day); the draw key is `f"intra|bracket|{eid}|{level}|{draw}"` (seed 702). A width larger than close − existence →
@@ -226,8 +237,8 @@ fit windows (ties → L8, the article's own hourly entry). The old L1-L6 are pri
   windows. Fewer than 5 scorable untouched windows → the veto abstains, said so. **Its false-veto rate, stated now:** with a true share of
   50% on n = 9, about 9% against a control at 32% (2 or fewer of 9) and about 25% against a control at 40% (3 or fewer of 9).
 - **Beside, not deciding:** the 20 dated 2021-22 windows (they use max(level, pivot) and were known to read higher — L1 60% dated against
-  37% undated — so admitting them after that was seen would make a PASS easier; they stay out) and the 19 flickers, on L7-L9 under both
-  controls and the same bars.
+  37% undated — so admitting them after that was seen would make a PASS easier; they stay out; the 7 dated flickers among them are scored in the
+  draw population of §3 and printed with the 20) and the 19 undated flickers, on L7-L9 under both controls and the same bars.
 - **Beside, both populations:** L1-L6 (re-reads), the "any opening range" union, the pre-market-flat windows (populations 41 dated + 55
   undated on 2021-22, 41 + 58 on 2020; the previous read scored 52 and 57 of the undated — for the opening-range levels the crossing is NOT
   by construction, unlike L4 / L5, but the window is the whole morning and the controls run high; printed, never deciding — §14 Q7), the
@@ -281,8 +292,10 @@ S1, STOP reads INCONCLUSIVE-by-size. **Expected, said now:** few untouched undat
 the buy day, so S9 and S10 are near-certain INCONCLUSIVE-by-size there and only the H variant of S1 / S3 is new. Falsifier: every cell >
 30% → his stop is not a fixed intraday level either (discretion, time, a mental stop wider than any of these). **Beside, not deciding:** the
 ordering of the 12 cells by H_cond against the fit (Spearman, ties at average rank, cells that equal S1 on more than half their records
-left out) — beside only, since part of the order is mechanical (a daily close below implies the last 60-minute bar closes below, so the C
-events sit inside the H events, which sit inside the T events; and S9 / S10 = S1 ties); the 2021-22 undated (226 / 212 records) on every
+left out) — beside only, since part of the order is set by construction up to the auction difference (the daily close is the closing auction
+print, the last 60-minute bar's close is the 15:59 minute's last trade — median 0.03% apart, p90 0.19%, one 4.9% day on the 88 ENTER-fit buy
+days — so a daily close below a level implies the last bar closes below it except inside that band: the C events sit inside the H events up
+to the band, which sit inside the T events; and S9 / S10 = S1 ties); the 2021-22 undated (226 / 212 records) on every
 cell — the four old cells known there (S1-T 39.2%, S1-C 41.5%, S3-T 68.0%, S3-C 57.8% after the era-B fix, OLD certainty rule), the eight
 new ones unread — and the 2021-22 dated (111) on every cell; the non-flicker and "untouched-by-a-dated-path" subsets as before. Re-buys
 printed apart.
@@ -291,15 +304,26 @@ printed apart.
 
 **7a. The 60-minute 20-period average.** On the clock-anchored 60-minute bars of §5a (7 per full session, 4 on an early-close day; a window
 with no minute bar is no bar). EMA with weight 2/21 on each bar's close; seeded with the plain average of the first 20 bars of a **10-session
-warm-up before the buy day (70 bars)**. After 50 further bars the seed keeps (19/21)^50 = 0.7% of its weight (0.7% of the seed's error, not
-1% of the price). **A trade abstains (`ema_thin`, counted) unless at least 20 seed bars plus 50 post-seed bars exist before its first armed
-bar**; each trade's residual seed weight is printed. A close "below" = the bar's close < the EMA. **Beside, deciding nothing:** the same
-rules on a 20-bar plain average (other captions say *"20ma"* on the 60-minute chart, §0).
+warm-up before the buy day (70 bars; 67 when one early-close day falls inside it)**. **A trade abstains (`ema_thin`, counted) unless at least
+20 seed bars plus 45 post-seed bars — 65 — exist before its first armed bar (C3, DECIDED 2026-10-25)**; after 45 bars the seed keeps
+(19/21)^45 = 1.1% of its weight (1.1% of the seed's error, not of the price). **Why 65 and not 70:** the fetch holds exactly ten sessions
+before each buy, so a 70-bar floor equalled the warm-up with no slack — one early close inside it (13 of the 111 deciding trades, bought after
+2021-11-26; 9 of the 149 fit trades) made the trade `ema_thin` for any fill before about 12:00, and §7c's 10% clause was exceeded by
+construction (11.7%). At 65 every logged warm-up of the deciding set clears the floor with two bars of slack (the dry run counts, from the fetch
+logs and the calendar alone, the trades whose **warm-up alone under the 65-bar floor**: deciding 0 of 111, fit 0 of 149, virgin dated 0 of 23;
+67-bar warm-ups 13 / 9 / 0; the buy day's pre-fill bars only add to these); a silent hour inside the warm-up costs one bar, and an `empty`
+session seven — both counted as `ema_thin` where they bite. **Residual (N7):** that count assumes 7 bars per logged session, and thin hours
+are not measured before the run, so the 13 deciding trades at 67 bars carry two bars of slack — three silent hours inside such a warm-up make
+the trade `ema_thin`, and the abstention counts in §7c's clause. Each trade's residual seed weight is printed. A close "below" = the bar's close <
+the EMA. **Beside, deciding nothing:** the same rules on a 20-bar plain average (other captions say *"20ma"* on the 60-minute chart, §0).
 
 **7b. Variants (four, fixed; the ONLY fit is choosing among them).** **E3 is his FSLY rule in his words; E1, E2 and E4 are our readings
 beyond them** (E2's daily close contradicts his *"took out"*; E1 and E4 are simplifications). Armed from the first completed 60-minute bar
-after the fill minute; the chain's stop pre-empts any leg. **"Undercut, bounced, then broke below":** an undercut is a wick; E1's trigger
-is the first 60-minute CLOSE below the 20-EMA; a "second close below" trigger is printed beside, deciding nothing.
+after the fill minute (a close fill arms on the next session's first bar); **no leg's event counts before the armed bar completes — on the
+armed session, whatever its day, a prior-low touch counts only after that bar's close minute, and E2's daily-close leg from the armed session
+on (C15)**; the chain's stop pre-empts any leg. **"Undercut, bounced, then broke below":** an undercut is a wick; E1's trigger is the first
+60-minute CLOSE below the 20-EMA (a bar whose low pierces the average while its close holds is no trigger); a "second close below" trigger is
+printed beside, deciding nothing.
 - **E1** all out at the first 60-minute close below the 20-EMA — sold at the next minute's open (the day's last bar → the next session's open).
 - **E2** half at E1's bar; the rest at the first DAILY close below the prior session's low (sold at the next open). If that daily close
   comes before E1's bar, all shares leave at it.
@@ -315,9 +339,13 @@ chain's fill and stop; **chosen** = the variant under the chain's fill and stop 
 exit at the close of exit_hi, no stop (the stop sets his size only). Recovery = (ln chosen − ln ours) ÷ (ln his − ln ours). **PASS ≥ 0.25;
 falsifier < 0.25** → the 60-minute exit in his words does not close the gap on these trades, and the hit rate says whether it at least SEES his
 sell day; **VOID if his ÷ ours < 1.25.** The chosen walk is cut at exit_hi + 20 sessions, booked at that close, `cut_at_tail`, counted (§1e: a
-mark, direction unknown). **If `cut_at_tail` + `ema_thin` + no-bar abstentions together exceed 10% of the deciding trades, the recovery reads
-INCONCLUSIVE** (the counts printed); the recovery without the `cut_at_tail` trades is printed beside. A trade-resampled 90% interval of the
-recovery (1,000 draws, seed 702, key `intra|boot`) is printed as information, not a bar.
+mark, direction unknown). A walk the frozen 120-session horizon ends first (a sell window longer than it: GSIT and GTLB 2023, exit offsets 126
+and 123) is `cut_at_horizon`, and one the export's last bar ends first `cut_at_data_end` — the same kind of mark, counted with the tail cuts
+and printed by name; 'his' is that mark there (C11). A walk a missing session or an identity break shortened (`mark_hole` / `mark_break`,
+mid-walk or at the tail) is counted with them (N7: a cut is a cut whichever bound made it). **If `cut_at_tail` + `cut_at_horizon` +
+`cut_at_data_end` + `mark_hole` + `mark_break` + `ema_thin` + no-bar abstentions together exceed 10% of the deciding trades, the recovery reads
+INCONCLUSIVE** (the counts printed); the recovery without the cut and marked trades is printed beside. A trade-resampled 90% interval of the recovery (1,000 draws, seed 702, key `intra|boot`) is printed as information,
+not a bar. The sell window's width (the ≤ 20-session rule of §7b) is read on the record's own calendar, as every offset is (§11c, C12).
 
 **7d. Fit:** dated 2020 (149; every one described by the exits study at the daily level — disclosed; their 60-minute state unread). **Check —
 DECIDES: dated 2021-22 (111).** This is the set the ask names (*"the dated breakout trades where his exit gap lives"*). **Which line decides:**
@@ -380,6 +408,37 @@ session carries a 60-minute close below the 20-EMA is quoted; below → the join
   have a flat frame after the fill), not by any 2021-22 or untouched-year result.
 - **Forward facts carried, none used as a feature:** the previous §10's event count after the window (126 of the 633 no-event buys; 48 in
   2021-22); the known his ÷ ours ratios named above.
+- **Fit trades that would read a check-side trade's path (C9, N1, N3, N5, DECIDED 2026-10-25; dates only, no bar read decides it).** Guard (5)
+  is also per (bar symbol, session): the sessions after any check-side trade's buy day (buy day + 1 .. exit_hi + 20; a still-held trade: its
+  last frame + 20) are forbidden to every fit stage. A fit trade's planned span runs from the daily lookback its stage reads before the buy day
+  (ENTER 20 sessions: ADR20, the prior-session and base levels; STOP and EXIT 50: the 50-day average, the dated base low, the 10-session
+  warm-up) to the last session a walk can book on (ENTER the buy day; STOP exit_hi + 1, a close or 60-minute stop selling at the next open;
+  EXIT exit_hi + 21, the tail's next open). A 2020 fit trade whose span would **collide with a check-side trade's post-buy sessions** is
+  excluded from that fit stage: ENTER 1 of 90 windows, STOP 16 of 453 trades, EXIT 10 of 149 (exposing 1 / 7 / 8 check-side trades) — the trades
+  excluded, by name: ENTER: APT 2020-02-28 (its buy day sits inside the virgin APT 2020-01-23 trade's window); STOP: FCEL 2020-02-10 and
+  2020-04-22 (FCEL 2019-11-12, FCEL 2020-01-02), BLDP 2020-02-10 (BLDP 2019-11-12), APT 2020-02-21, 02-28, 03-02, 03-05, 04-22, 04-23 and 05-06 (APT
+  2020-01-23), STNE 2020-03-03 (the virgin dated STNE 2019-11-18), SE 2020-04-06, 04-27 and 05-05 (SE 2019-12-19), TDOC 2020-04-07 and 05-12
+  (TDOC 2019-10-31); EXIT: BLDP 2020-02-10, APT 2020-02-21, 02-28, 04-22 and 04-23, TDOC 2020-05-12, FEAC 2020-11-30 (its tail runs into SKLZ
+  2021-01-05 on the shared era-A symbol FIRY), TLRY 2020-12-16 (TLRY 2021-01-04 and the flicker 2021-01-26), MSTR 2020-12-28 (its exit_hi + 21
+  session, a next open after the tail, is the first post-buy session of MSTR 2021-01-28 — N1), NIO 2020-12-30 (NIO 2021-02-08). The 50-session
+  lookback adds 11 STOP and 3 EXIT trades whose 50-day average or ADR20 window read a virgin trade's post-buy sessions (N3; consumption, no fit
+  printout carried a check-side value). **ENTER's beside windows lose** 6 of 194 the same way (N5): FCEL 2020-02-10, BLDP 2020-02-10, APT
+  2020-02-21, APT 2020-03-05, SE 2020-04-06 and the held-before-09:35 TSLA 2022-04-21 (exposing TSLA 2022-02-11). **The belt:** the per-date
+  refusal in the record and the minute store, and the record builder's check of the **pre-buy daily reads by bar index** on the record's own
+  calendar (a hole stretches 50 bars past 50 sessions — MI 2020-05-26 and PLL 2020-10-05; on the kept trades none touches a forbidden pair, 0 / 0 /
+  0 / 0 for ENTER, ENTER beside, STOP and EXIT, asserted). The dry run derives and asserts every count and name. Direction: unknown (removes 1 / 16
+  / 10 fit trades and 6 beside windows; nothing of theirs was read).
+- **X1 — the speed trail's forward window (found 2026-10-25 by the card that applied N1-N7; applied as below; **DECIDED 2026-10-25, main loop: keep
+  the cut** — it moves no decision).** `ours` in the EXIT fit's 2020 accounts (in-sample, for scale, deciding nothing) is the frozen speed trail, which slices the
+  121 sessions after the buy day straight off the bar arrays (`cb.forward_window`, as `break_horizon` does), outside `bar_at` and the per-pair
+  belt. On 22 kept EXIT fit trades that **speed-trail window holds a forbidden session**, each after exit_hi + 21: PINS 2020-07-31, BE 2020-08-13,
+  NIO 2020-09-14 and 09-29, TSLA 2020-09-21, 09-30, 10-12, 11-09 and 11-18, TWTR 2020-09-22, SE 2020-09-25 and 12-03, ZM 2020-10-09, TTD
+  2020-10-29, ENPH 2020-11-05, SQ 2020-11-06, JMIA 2020-11-18, MRNA 2020-11-30, LAZR 2020-12-08, NVAX 2020-12-17, NCLH and CCL 2020-12-28. The
+  fit bounds ours, his and chosen there by dates alone: the ticker's identity-break list gains one entry on that session, so every walk ends on
+  the session before it (a trail still open there is the frozen walk's unsettled mark at its last close; the trades are named and counted in
+  the fit printout; `cut_at_guard` if it ever shortened a tail, which the exclusion above rules out). The hit rates (the variant choice) do not
+  move, and the check has no forbidden pairs, so its accounts are as registered. The other options were to exclude the 22 from the EXIT fit
+  (a 15% smaller fit) or to drop the 2020 accounts. Direction: none on any decision; only the in-sample scale account moves.
 - **2025-26 (sealed) holds no panel stream;** it tests the rule set as a STRATEGY once, after this read (§11).
 
 ## 10. Expectations, written now (guesses to be scored, never targets; a miss changes no rule)
@@ -461,28 +520,62 @@ session carries a 60-minute close below the 20-EMA is quoted; below → the join
   frozen one runs only inside known-answer gate (iv), as the OLD certainty rule. Stages: `--dry-run` (populations asserted against §2 and against the previous dry run's counts; §2c's
   dropped windows listed; minute coverage per block; the era-B offsets printed; from clocks alone, per set, the records with S9 ≠ S1 and
   S10 ≠ S1; pins), `--enter-fit`, `--stop-fit`, `--exit-fit` (each writes once and prints its keyed chosen line), `--pins`, `--check` (ONCE:
-  ENTER, STOP, EXIT, then WHY-lite's 10-row sheet), `--why-rates`.
+  ENTER, STOP, EXIT, then WHY-lite's 10-row sheet), `--why-rates`, `--reset-fits "<reason>"` (N2, below).
 - **Known-answer gates on REAL data (NEW — every expected verdict of §10 is also what a broken pipeline prints).** Each STOPS the stage
   before any new number, writes the failing rows, and may be cleared only by a bug fix shown in the code, never by changing a registered
-  rule. **At the top of each fit stage, on the fit trades:** (i) per (ticker, session), the minute-built session open, high, low and close
-  agree with the daily export within 0.5% on ≥ 98% of pairs, the failures listed (this catches a wrong day, a wrong symbol under the era
-  rename map, a wrong calendar and a DST / UTC clock shift; **stated now:** if the daily export and the minute source differ in split
-  adjustment, failures cluster on one ticker's pre-split sessions — such a cluster reads as a source adjustment difference, listed by
-  ticker, and the 2% slack is never raised after the gate fires); (ii) per window, on the raw intraday levels (before any max with a pivot),
-  L7 ≤ L1 ≤ L8 ≤ L6, with the count of L8 < L6 printed (L8 equal
-  to L6 on nearly every trade is the [0,59] bar bug and stops the stage); (iii) every C event day that has a last 60-minute bar is an H event
-  day; (iv) the L1-L6 crossing minute and verdict on the 2020 fit windows equal `reverse/enter_fit_trades.tsv` row for row (in `--enter-fit`),
-  and S1 / S3 under T and C equal `reverse/stop_fit_trades.tsv` row for row (in `--stop-fit`) — that re-read takes each row's `fill_src` and
-  `fill_minute` FROM THE TSV (the previous chain's fill, not this chain's) and applies the OLD certainty rule, so a difference is a bug; then
-  the four old cells are re-printed under the old and the new rule; (vi) **his own words as a known answer, run inside `--stop-fit`** (FSLY is
-  in the STOP fit set, the undated 2020 trades, and in no EXIT set, so guard (5) allows the read and EXIT's fit is not touched): FSLY eid 693
-  (undated 2020-06-29, exit window 07-13..07-14) shows a 60-minute close below the 20-EMA on 2020-07-10 and a touch of the prior day's low on
-  2020-07-13 (§0's two captions) — else the bar builder or the reading is wrong; FSLY's own pattern decides nothing for the variant choice
-  (it is in no EXIT set). **At the top of `--check`, on the check trades, before any
-  score:** (i), (ii) and (iii) again, and (v) under the registered fill and stop, the frozen module's accounts (called read-only) and the new
-  module's agree per trade ("ours" and "his") on the 103 era-A dated 2021-22 trades — a module-against-module check that needs no old
-  offsets, so guard (10) holds; the 7 era-B trades are printed beside under the fixed offsets; l.116's 1.398 / 2.620 / 1.87 is named as the
-  old aggregate, not a target.
+  rule. **At the top of each fit stage, on the fit trades:** (i) per (ticker, session), the minute-built session bar against the daily export,
+  in two arms (C1, DECIDED 2026-10-25 — the module check ran the first form of this gate on the 88 ENTER-fit buy days and saw it fail: 84 of
+  88 within 0.5% on all four fields): **(i-a) the high AND the low within 0.5% on ≥ 98% of pairs** — both are set by trades on both sides, so
+  they are exact on a right day (88 of 88) and gross on a wrong day, a wrong symbol under the era rename map, a wrong calendar or a DST / UTC
+  clock shift; **(i-b) the open AND the close within 0.5% on ≥ 90% of pairs** — the daily open and close are the opening and closing auction
+  prints while the minute bars open and close on ordinary trades, a basis difference of median 0.03%, p90 0.19% and one 4.9% day (APT
+  2020-02-28, the closing cross on a 16.61-41.59 session) on the 88 buy days, where 84 of 88 = 95.5% sat within 0.5%. **The bars are set between
+  the true and the broken readings, measured on the same 88 pairs, not at the first value the reading clears:** a one-hour clock shift (the
+  10:30 price read as the open, the 15:00 price as the close) leaves the high and low within 0.5% on 8% of pairs and the open and close on
+  3.4%; a wrong day (the previous session's daily bar against these minutes) 0% and 1.1%. So 98% for (i-a) sits 2 points under the true
+  reading and 90 above the broken ones; 90% for (i-b) sits 5.5 under and 87 above. **Those margins are for that shift and a wrong day (N6):**
+  on the same buy days (87 pairs now that APT 2020-02-28 is excluded, §9: high/low 100%, open/close 96.6%) the re-check's plants read, for
+  the opposite whole-session shift, high/low 83.9% and open/close 27.6%, and for a daylight-saving bug that shifts only the standard-time
+  sessions (10 of the 87) 98.9% and 88.5% — it clears the high/low arm and is caught by the open/close arm alone, 1.5 points under its bar. Both arms decide; every pair outside a band is written and
+  listed by ticker; the hold, warm-up and tail sessions of the STOP and EXIT stages are unmeasured before their run (their bands are the
+  same). **Stated now:** if the daily export and the minute source differ in split adjustment, failures cluster on one ticker's pre-split
+  sessions — such a cluster reads as a source adjustment difference, listed by ticker, and no bar is raised after a gate fires. (ii) per window,
+  on the raw intraday levels (before any max with a pivot), L7 ≤ L1 ≤ L8 ≤ L6, with the count of L8 < L6 printed; **the 60-minute bar
+  BUILDER's first bar (`H60_0_high`, the value L9, S10 and EXIT consume) must equal the raw 30-minute high on every window, and that builder
+  value equal to L6 on more than 90% of the windows with both is the [0,59] first-bar bug and stops the stage (C8)**; (iii) a daily close below
+  a level implies the last 60-minute bar closes below it, **up to the auction band of (i-b)** (C2): per (session, level) with a last bar, a C
+  event BEYOND the band (daily close < level × (1 − 0.5%)) whose last bar closes at or above the level is a failure, and the gate holds when
+  ≥ 98% of the beyond-band C days are H days (the failures listed; a single APT-like day never stops a stage); C days inside the band that are
+  not H days are counted beside, never failing; (iv) the L1-L6 crossing minute and verdict on the 2020 fit windows equal
+  `reverse/enter_fit_trades.tsv` row for row (in `--enter-fit`), and S1 / S3 under T and C equal `reverse/stop_fit_trades.tsv` row for row (in
+  `--stop-fit`) — that re-read takes each row's `fill_src` and `fill_minute` FROM THE TSV (the previous chain's fill, not this chain's), **takes
+  the exit window's first-session minutes from the trees the previous fit read (A, B, EP, EP2, REV in that fixed order — never the new
+  `minutes_intra_1025` tree, which holds those sessions for 251 of the 346 STOP fit trades with an exit; C4)** and applies the OLD certainty
+  rule, so a difference is a bug; then the four old cells are re-printed under the old and the new rule on the same old-tree minutes; (vi)
+  **his own words as a known answer, run inside `--stop-fit`** (FSLY is in the STOP fit set, the undated 2020 trades, and in no EXIT set, so
+  guard (5) allows the read and EXIT's fit is not touched): FSLY eid 693 (undated 2020-06-29, exit window 07-13..07-14) shows a 60-minute
+  close below the 20-EMA on 2020-07-10 and a touch of the prior day's low on 2020-07-13 (§0's two captions) — else the bar builder or the
+  reading is wrong; FSLY's own pattern decides nothing for the variant choice (it is in no EXIT set). **At the top of `--check`, on the check
+  trades, before any score:** (i), (ii) and (iii) again, (v) under the registered fill and stop, the frozen module's accounts (called
+  read-only) and the new module's agree per trade ("ours" and "his") on the 103 era-A dated 2021-22 trades — a module-against-module check
+  that needs no old offsets, so guard (10) holds; the 7 era-B trades are printed beside under the fixed offsets; l.116's 1.398 / 2.620 / 1.87
+  is named as the old aggregate, not a target; and **(vii) the random-price control's known answer (C6): its mean feasible / hit-or-ballpark
+  shares on the previous 41 undated 2021-22 records must read 31.7% / 85.9% at one decimal**, else the draws are not the previous read's.
+  **The crossing of L7 / L8 is searched from the minute the level exists (09:31 / 10:00; C14).** The module check's F14 said a pivot-floored
+  level could cross before it exists; it cannot: max(raw, pivot) is at least the raw level, which is the maximum high over every minute
+  before the level exists, so no such minute's high is strictly above it — the two searches agree on every row (asserted on pivots above
+  and below the raw range, a pre-10:00 spike, a sparse opening range). The explicit start is kept as a belt; the finding is rejected.
+- **Recovery after a stop (N2, DECIDED 2026-10-25).** If fit 2 or 3, or the check, STOPS (a gate, the belt, a crash) after an earlier
+  fit ran: (1) the fix is made in the code — a bug fix shown in the diff, never a registered rule; a fix that must change the body above the
+  marker is a re-freeze (`doc_body_freeze` re-pinned, the old pin named in the disclosure); (2) `--reset-fits "<reason>"` moves every
+  artifact — the fit, check and WHY printouts, the STOPPED file, the ledger, the dry run's and the pins' printouts, the chosen files, the
+  per-trade files under `intraday/` and the module copies — into `verify/fit_events/<event>/` (copied, each copy's sha256 verified, and only
+  then removed from its place: nothing is deleted), writes `MANIFEST.tsv` and `DISCLOSURE.md` (every archived printout's sha256 with the
+  CHOSEN and STOPPED lines it carried) and appends the event to `verify/fit_events/events.tsv`; it refuses without a reason, when nothing
+  STOPPED (a completed fit is never re-rolled) and after a completed check (the check runs once); (3) the dry run is re-run under the fixed
+  module; (4) ALL three fits re-run in order on the fresh ledger; (5) every event's manifest is pinned under the marker (`fit_event_<event>`,
+  listed by `--print-pins`) and every already-seen printout is disclosed there below it — `--check` refuses an event whose pin is missing or
+  whose manifest changed. The check then runs once, on the final fits.
 - **Tests (synthetic, before any real run).** The 60-minute bar builder (7 bars; 4 on an early-close day; a window without minutes is no
   bar; a [0,59] first bar fails); the EMA against a hand computation incl. the seed and `ema_thin`; L7 / L8 / L9 existence and L9's
   bar-by-bar level; the shifted-window control incl. `no_room` and early-close bounds; the clock-sanity rule on the named frames; the buy-day
@@ -491,17 +584,38 @@ session carries a 60-minute close below the 20-EMA is quoted; below → the join
   comes first, and the tail cut; the era-B offset test; the IdCache tests; the module scan; the freeze lock against this exact text.
   **And one END-TO-END synthetic world** run through every stage (`--dry-run` to `--check`) with real shapes: era-A and era-B trades (an
   era-B sell window five sessions after the buy), early-close days, a missing minute day inside a hold and on a buy day, a still-held
-  trade, a 121-session sell window, numpy one-element arrays, and objects freed and their ids reused between stages (the 10-24 module was
-  green on unit fixtures and crashed twice on real data).
+  trade, a 121-session sell window, numpy one-element arrays, exit-window minutes that exist in the new tree only (gate iv's re-read must not
+  see them), and objects freed and their ids reused between stages — a fresh export and store per stage (the 10-24 module was green on unit
+  fixtures and crashed twice on real data). **The check's DECISIONS are pinned, not only its lines (C7):** the deciding set is the chk22_und
+  records (never the whole draw population); a forced ENTER / STOP PASS, FAIL, PASS-plus-veto and a forced VOID each flip the chain-carries
+  lines, the deciding line and `check_verdicts.json` as §4 / §5d / §7c say; the STOP verdict is read on the virgin-undated table; 'his' is
+  never 'ours'. Fixtures for a bar whose low pierces a level while its close holds (no H or E1 event), L9 crossing at the flat minute
+  (infeasible) and at the first minute (feasible), the shifted starts read from the function, the T33 early-close day (4 bars, the last
+  closing at minute 209, an E1 there sold at the NEXT session's open, never an after-hours print), a close fill whose prior-low touch waits for
+  the armed bar's close on session 1 (C15), the horizon and data-end cuts (C11), the auction band of gates (i) and (iii), the builder's first
+  bar in gate (ii), the collisions of guard (5) and its belt, and the per-fit freeze record. **Added with the re-check (§15 N1-N7, X1):** the
+  planned span's two ends per stage and the bar-index lookback belt (N1, N3); the beside windows' exclusion in the synthetic world (N5); gate
+  (vii) on hand records, the draw population's order and composition in the end-to-end check, a buy-day daily close below the prior low that
+  must not sell a close fill under E2, the builder's first bar routed through `enter_row` with a [0,59] builder, the early-close trim in gate
+  (i), a cached pair and the per-trade refusal from session 1 (N4); the guard bound of the speed trail (X1); a tail a hole or an identity break
+  shortened counted in the clause (N7); and the reset path, unit and end to end: a STOP after the first fit, the reset, the dry run, all three
+  fits and a check that refuses until the event is disclosed (N2). The module check's 37 one-line mutations and the re-check's 30 are re-run
+  against this suite (§15 C7, N4).
 - **Guards (the previous nine kept, three added):** (1) the line-anchored freeze lock — `--check` refuses unless every pin incl. `doc_body` (the
   sha256 of this file above the one line that is exactly the marker) sits under the marker, exactly one keyed chosen line per stage (ENTER,
   STOP, EXIT — parsed by its stage key, never by position; no such line exists in this document yet) stands above it, every fit printout exists
   and the check printout does not. **The freeze commit's (pre-fit) body is pinned too (`doc_body_freeze`), and `--check` asserts that the only
   lines differing above the marker between that commit and now are the three keyed chosen lines** (matched above the marker only, by
-  the anchored pattern `^CHOSEN (ENTER|STOP|EXIT): `), so no other edit made after seeing a fit printout passes; (2) the module copied
-  beside the pins before any post-check edit; (3) populations asserted before any bar; no fit stage without a dry run ending `DRY RUN COMPLETE`; (4) G8 before numbers;
+  the anchored pattern `^CHOSEN (ENTER|STOP|EXIT): `), so no other edit made after seeing a fit printout passes; **and each fit stage records
+  the freeze body it validated and the module's sha in its chosen file and printout, and `--check` refuses unless all three records equal the
+  pin under the marker and the module it is running (C5: without this the body could be edited after the fits, stored, re-pinned and every pin
+  re-pasted — shown on a scratch copy — and the lock would pass)**; (2) the module copied beside the pins before any post-check edit; (3)
+  populations asserted before any bar; no fit stage without a dry run ending `DRY RUN COMPLETE`; (4) G8 before numbers;
   (5) a fit stage opens no DAILY OR MINUTE bar after the buy day of a trade outside its own fit set (the BarGuard extended to minute reads by
-  date; an undated 2021-22 or virgin-block buy refused by every fit stage); (6) a crash writes a STOPPED file; (7) the append-only sha256 ledger;
+  date; an undated 2021-22 or virgin-block buy refused by every fit stage), **and none on a (bar symbol, session) after ANY check-side trade's
+  buy day — the fit trades whose planned span (from the stage's daily lookback to its last booked session, N1 / N3) would touch one are
+  excluded by dates alone and named (§9, C9); the per-date refusal in the record and the minute store is the belt, on the pre-buy daily reads
+  by bar index too; the speed trail's 121-session forward window is bounded before the first forbidden session (X1)**; (6) a crash writes a STOPPED file, and the only way past one is §12's reset (N2); (7) the append-only sha256 ledger;
   (8) misread clocks EXCLUDE, counted (§2c); (9) `replay/` and `his_exits/` never opened for an undated name; **(10) one calendar per record
   (§11c), asserted on every record; (11) IdCache only (§11d); (12) the 2025-26 seal — any file read is asserted ≤ 2024-12-31 at read.**
 - **Outputs:** `01_intra_dryrun.txt`, `01_intra_{enter,stop,exit}_fit.txt`, `01_intra_check.txt`, `01_intra_why.txt`, `01_intra_ledger.tsv` in
@@ -572,6 +686,44 @@ PASS.
 | V1 | files opened on 10-25 to verify the review and the recount, listed: `reverse/check_stop_trades.tsv` (DWAC 2022-01-31's row — its fill, stop and old-cell flags; a beside-set trade), `his_exits/describe_rows_beside_dated.tsv` (ticker, date, setup, `stalled` for the 2019 and 2023 dated — already-read trades; `stalled` is an outcome marker), `reverse/exit_fit_trades.tsv` (`fill_src`, exit offsets), `reverse/stop_fit_trades.tsv` + `reverse/dryrun_clocks.tsv` (the F3 counts), `reverse/enter_fit_trades.tsv` (header), five caption files (`cMkRsqvlVHM`, `YwMoUTd4naQ`, `tnHw5CKxcH4`, `GVTyWZCJPn0`, `kITl8W5eaEA` — text only), `02_replay.txt` l.174 (an aggregate); no price bar, daily or minute | §15 | verification | none (no deciding-set outcome read) |
 | R6 | ±33 points on 9 windows, not ±30; AXNX is not one of the 89; four ENTER windows have no buy-day bars; the fetch outcome | §0, §1f, §11 | recount notes | none |
 
+**The module check (2026-10-25, 15 findings, verdict BLOCK) — every finding DECIDED by the main loop the same day (no money, not THE LINE).** What
+the check itself read: the 2020 fit trades' BUY-DAY minute and daily bars (gate (i)'s preview and the close comparison), the fetch logs, the
+calendar and the sets; nothing after any buy day, nothing of 2021-22 or the untouched years, nothing of 2025-26. This revision read no bar.
+
+| # | finding | decided | reason | direction |
+|---|---|---|---|---|
+| C1 | gate (i) failed as registered: 84 of 88 ENTER-fit buy days within 0.5% on all four fields (APT 2020-02-28 close −4.9%, CODX 2020-04-06 open +0.8%, BLNK 2020-07-22 close +0.7%, OPTT 2020-10-16 close +0.9%; high and low exact to the cent on all 88) | two arms: high AND low within 0.5% on ≥ 98%; open AND close within 0.5% on ≥ 90%; both decide (§12) | the four are auction-print basis differences, not a wrong day / symbol / calendar / clock (high and low exact); the bars sit between the true reading (100% / 95.5%) and the broken readings measured on the same 88 pairs (a one-hour shift 8% / 3.4%; a wrong day 0% / 1.1%), with margin on both sides — not at the value the reading clears | **easier** (the review saw 84 of 88 fail before the change) |
+| C2 | gate (iii) had no tolerance: the daily close differs from the last 60-minute bar's close on 74% of buy days (median 0.03%, p90 0.19%, worst 4.9%), so any level between them failed the stage | a C event beyond the 0.5% auction band whose last bar closes at or above the level is a failure; the gate holds when ≥ 98% of beyond-band C days are H days; in-band non-H days counted beside (§12, §6b) | one band constant for (i-b) and (iii); a single APT-like day must not stop a stage | neutral (a gate) |
+| C3 | EXIT INCONCLUSIVE by construction: the 70-bar floor equalled the 10-session warm-up; 13 of 111 deciding trades (11.7%) start under 70 after the 2021-11-26 early close | the floor is 20 seed + 45 post-seed = 65 bars; the dry run counts, from the fetch logs and the calendar, the trades whose warm-up alone is under 65 (deciding 0 of 111; fit 0 of 149; virgin 0 of 23) and asserts them (§7a) | the seed keeps 1.1% of its weight instead of 0.7%; every logged warm-up of the deciding set clears the floor with two bars of slack; the option (a) of not counting `ema_thin` would have hidden a real abstention | neutral (makes EXIT decidable; the EMA's value moves by the seed's residual only) |
+| C4 | gate (iv) STOP re-read the exit window's first-session minutes from the new tree (251 of 346 fit trades have them there only), so correct code would mismatch the previous fit | the re-read and the old-rule re-print take those minutes from the old trees A, B, EP, EP2, REV in the previous fit's fixed order, through a restricted store; the synthetic world carries new-tree-only pairs (§12) | the previous fit's `exit_minutes_for` read those trees only | neutral (a gate) |
+| C5 | the freeze body could be swapped after the fits (edit, store, re-pin, re-paste every pin: the lock passed on a scratch copy) | each fit records the freeze body and the module sha it ran under in its chosen file and printout; `--check` refuses unless all three equal the pin under the marker and the running module (§12 guard 1); the e2e test replays the hole | nothing tied the pinned body to the fits' versions | harder |
+| C6 | the check's random-price draws were not the previous read's: 57 windows (the 7 dated flickers dropped) against 64, and the dated side set read 13, not 20 | the draw population = the previous read's `ent_chk_dated` (20, 7 flickers) + `ent_chk_und` (44, DWAC in) in (buy day, eid) order; the dated side set = the 20; gate (vii) at the check: the control on the previous 41 undated records must re-read 31.7% / 85.9% (§3, §5d, §12) | "identical draws" is a mechanical claim; the known answer makes it checkable | neutral (a gate; the deciding set is unchanged) |
+| C7 | the tests ran every stage but pinned no decision: 21 of 37 one-line mutations survived | the check's decisions are pure helpers (chain carry, sign veto, deciding line, EXIT verdict order, abstention share) with unit tests; the e2e forces PASS / FAIL / veto / VOID and asserts the lines and `check_verdicts.json`; DECIDING n is pinned; fixtures for every case the check named (§12); the 37 mutations re-run — see the card's return for the kill table | a line that appears is not a decision that holds | neutral |
+| C8 | gate (ii) read L8_raw from the minutes, not from the 60-minute bar builder L9, S10 and EXIT use, so it could not catch a [0,59] builder bug on real data | `enter_row` records the builder's first-bar high; gate (ii) asserts it equals L8_raw on every window and runs the > 90%-equal-to-L6 test on the builder value (§12) | the gate must check the value the stages consume | neutral (a gate) |
+| C9 | guard (5) was per trade only: the STOP fit read 16 (symbol, session) pairs after the buy day of 3 check-side trades, the EXIT fit 59 after 6 | guard (5) per (bar symbol, session): forbidden pairs = every check-side trade's buy day + 1 .. exit_hi + 20 (a still-held trade: its last frame + 20); a fit trade whose planned span touches one is excluded from that stage by dates alone and named — ENTER 1, STOP 5, EXIT 6 (§9, §12; re-derived under N1 / N3: 1 / 16 / 10); the record and the minute store refuse the pairs as a belt | a fit that walks a check-side trade's path has seen its outcome; exclusion by planned span keeps the fit population independent of any outcome | unknown (removes 1 / 5 / 6 fit trades; nothing of theirs read) |
+| C10 | the e2e world gave every stage the same market objects, so no id was ever reused between stages | a fresh export, bars and store per stage, the previous collected; asserted distinct (§12) | the registration promised freed objects and reused ids | neutral |
+| C11 | sell windows longer than the 120-session horizon (GSIT 126, GTLB 123; CVNA 135, AI 134 undated) were labelled `mark_hole` and left out of the 10% clause | `cut_at_horizon` (and `cut_at_data_end` when the export's last bar ends the walk) — counted with `cut_at_tail` in the clause, printed by name; 'his' is that mark there (§7c) | a cut is a cut whichever bound made it | harder (more abstentions count) |
+| C12 | the hit-rate window test read `exit_window_len()` from the main calendar beside offsets from the own calendar (two calendars on one record) | `exit_hi_j − exit_lo_j + 1` on the record's own calendar (§7c, §11c) | one calendar per record | neutral |
+| C13 | `qqq_c` copied QQQ's closes after the buy day for the dry run's 33 era-B records (outside the guard; never used) | a dates-only record (`want_minutes` False) holds no QQQ close after the buy day | the dry run's "no bar after a buy day" must be literally true | none |
+| C14 | "a pivot-floored L7 / L8 can cross before the level exists; L9 can then trigger after L8" | **rejected by proof**: max(raw, pivot) ≥ the raw level = the maximum high over every minute before the level exists, so no such minute's high is strictly above it; the search from the existence minute (09:31 / 10:00) is kept as an explicit belt and asserted equal to the frozen search on floored rows (§12) | the finding's premise cannot occur | none |
+| C15 | E3 / E4 waited for the armed bar's close only on the buy day: a close fill arming on session 1's first bar counted touches from 09:30 that morning | no leg event before the armed session; on the armed session touches after the armed bar's close minute; later sessions from the open; E2's daily close from the armed session on (§7b) | the panel saw him hold from the fill; the rule arms on a completed bar | neutral |
+
+**The re-check (2026-10-25, 7 findings N1-N7, verdict FIX) — every finding DECIDED by the main loop the same day (no money, not THE LINE),
+plus one read path the re-check did not name (X1).** What the re-check itself read: the 2020 fit trades' buy-day minute and daily bars (gate
+(i)'s plants and the close comparison), dates, calendars and fetch logs; nothing after any buy day. This revision read no price bar, daily or
+minute: the re-check's findings and probe outputs, the timeline, the calendars, `base_id` dates and each export's dates and calendar index.
+
+| # | finding | decided | source | direction |
+|---|---|---|---|---|
+| N1 | the planned span stopped at exit_hi (STOP) and exit_hi + 20 (EXIT), but a close or 60-minute stop and a sell on the tail's last session book at the NEXT open: MSTR 2020-12-28's exit_hi + 21 is the first post-buy session of MSTR 2021-01-28, so the belt could stop the EXIT fit after ENTER and STOP had printed | STOP hi = exit_hi + 1, EXIT hi = exit_hi + 21; the exclusions re-derived (EXIT adds MSTR 2020-12-28, exposing MSTR 2021-01-28) and asserted by name (§9) | DECIDED 2026-10-25, main loop | unknown (one more fit trade removed; none of its bars read) |
+| N2 | no recovery once each fit records the module's sha: a fix after a stop split the fits' records and the ledger refused a re-run, so the check could never run | §12's procedure: the fix in the code, `--reset-fits` (archives, never deletes), the dry run, ALL three fits on a fresh ledger, each event pinned and its printouts disclosed under the marker (`--check` refuses until they are); unit and end-to-end tests | DECIDED 2026-10-25, main loop | none (no rule or bar moves; a re-run is disclosed) |
+| N3 | the pre-buy daily reads (ADR20 over 20 bars, the 50-day average over 50, the dated base low) index the bar arrays outside the span and the belt: 3 STOP fit trades read virgin post-buy sessions inside the ADR20 window, 11 STOP and 3 EXIT inside the 50-bar window (consumption; no check-side value printed) | the span's lower bound = the stage's lookback (ENTER 20, STOP and EXIT 50 sessions): ENTER 1 of 90, STOP 16 of 453, EXIT 10 of 149 (exposing 1 / 7 / 8), by name (§9); the record builder refuses a forbidden pair inside the bar-index lookback (the belt); the dry run asserts 0 on the kept trades | DECIDED 2026-10-25, main loop | unknown (11 STOP and 3 EXIT fit trades removed; none of their bars read) |
+| N4 | 11 of the re-check's 30 mutations survived (gate (vii), the draw order, the E2 buy-day close, the builder's wiring, the per-trade guard on session 1, the store's cache, STOP's span, the beside exclusion, the early-close trim, `restricted()`, C14) | the tests of §12 added; re-run on scratch copies: 28 of 30 killed; the 2 left are equivalent — `R_c14_from_zero` (C14's proof) and `R_drawpop_order` (the scoring loop sorts by (buy day, eid) before any draw; the order the draws are consumed in is now asserted end to end); the module check's 37: 36 killed, `h60_no_trim` a no-op (the windows end at minute 209); 15 new ones on this revision's changes: all killed | DECIDED 2026-10-25, main loop | none |
+| N5 | 2 of ENTER's 194 beside windows were excluded by the code, but the dry run neither derived nor asserted them | one list for `enter_fit` and the dry run; under the new span 6 of 194 excluded, named in §9 and asserted | DECIDED 2026-10-25, main loop | none (beside only) |
+| N6 | gate (i)'s margin ("90 points above the broken ones") holds for one shift; a daylight-saving-only shift clears the high/low arm (98.9%) and is caught by open/close alone (88.5%); the stage now reads 87 pairs / 96.6% | one sentence in §12 (i) with the opposite shift's and the daylight-saving plant's readings | DECIDED 2026-10-25, main loop | none (no bar moves) |
+| N7 | a tail a hole or an identity break shortened (`mark_hole` / `mark_break`) was not counted in the 10% clause; the warm-up count's 2-bar slack and unmeasured thin hours were not named | counted with the cuts (§7c, `abstention_share`); the slack named as a residual (§7a) | DECIDED 2026-10-25, main loop | harder (more abstentions count) |
+| X1 | found while applying N1: the frozen speed trail (`ours` in the EXIT fit's 2020 accounts) and `break_horizon` slice 121 forward sessions off the bar arrays outside the belt; 22 kept EXIT fit trades' windows hold a forbidden session (§9) | in a fit stage the ticker's identity-break list gains that session, so ours, his and chosen end before it, by dates; named and counted in the fit printout; the check unchanged | applied 2026-10-25 by the card; **DECIDED 2026-10-25, main loop: keep the cut** (excluding the 22 would shrink the EXIT fit 15%; the cut moves only the in-sample scale account) | none on a decision (the in-sample scale account only) |
+
 <!-- FREEZE -->
 ## Freeze record
 
@@ -583,4 +735,6 @@ edit above the marker after that changes `doc_body`, and the check refuses.
 
 ### Pins
 
-(none yet)
+- doc_body_freeze: bc05126f9805087d0c8982f2f7f62cd9c0828dff56a6b47036e1248fc75956ce
+
+(the rest after the three fit stages and the keyed CHOSEN lines)
