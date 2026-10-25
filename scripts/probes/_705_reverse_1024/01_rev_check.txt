@@ -1,0 +1,127 @@
+# #705 REVERSE 01 — CHECK (ONE run): SELECT -> ENTER -> STOP -> EXIT on 2021-01-04..2022-06-14, each ONCE; then WHY's 2020 hand-read sheet
+# registration: docs/analysis/cb_reverse_engineer_his_rules_prereg_2026-10-24.md; module copied to 01_rev_frozen_e908253f7405.py
+- freeze: every pin incl. doc_body 16a3057d99b5... sits under the marker; CHOSEN lines match the fit printouts; the ledger matches the disk
+- the holdings replay's pins re-checked (exports, candidates, labels, guards, the frozen modules and tests; the holdings module and tests = its freeze record; the fetch list = §12's sha): no drift
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+- populations re-asserted against §2 / §2b / §6 / §8 / §10: 47 claims, every one equals the registration (guard 3)
+
+## SELECT CHECK (§5b / §5d): the CHOSEN condition set on the 2021-01-04..2022-06-14 exact-day non-flicker no-event buys vs the pool
+- daily exports loaded in 8s: era A 12,005,007 of 12,005,007 rows (12,532 tickers, 2016-01-04..2022-06-30); era B 1,642 of 13,830,569 rows (2 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- raw closes (era A, measured) aligned to every export row (12,005,007)
+  pool: 2,000 / 12,532 tickers scanned, 38,881 admitted rows
+  pool: 4,000 / 12,532 tickers scanned, 73,525 admitted rows
+  pool: 10,000 / 12,532 tickers scanned, 171,444 admitted rows
+  pool: 12,000 / 12,532 tickers scanned, 207,007 admitted rows
+- check buys 144 (failing the pool floor, kept out: 22); pool rows on 99 days (the check buys' days only, as the fit) 215,938
+- the CHOSEN set on the check: recall 64.8% (+-8), pool rate 18.6%, lift 3.48 -> **PASS** (PASS recall >= 50% at pool rate <= 20%; falsifier lift < 2.0)
+- without the no-type-row buys: recall 64.4%; no-event only 65.3%; never-a-candidate 0.0%
+- §5d rank: his qualifying picks' median percentile within the day's qualifying pool 0.29 (79 picks) -> INCONCLUSIVE (PASS <= 0.25; falsifier >= 0.40)
+- flickers beside: 78 records, 69 past the floor; the CHOSEN set fires on 37 of 69 (53.6%); same-day pool missing 0
+- beside, the 15 other-level buys of 2021-22 (re-check N3; 15 records): the CHOSEN set fires on 14 of 15 (93.3%); pool floor met by 15; same-day pool missing 0
+
+## ENTER CHECK (§6): the CHOSEN level on the 2021-22 in-session brackets
+- daily exports loaded in 6s: era A 169,398 of 12,005,007 rows (149 tickers, 2016-01-04..2022-06-30); era B 10,892 of 13,830,569 rows (14 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- records 61 (dropped {'bars_before_E_lt_20': 3}; the ENTER record floor = 20 bars); scorable 61 (0 no_minutes); DECIDING 41 = the undated brackets alone (L1 chosen: L1 on the 20 dated 2021-22 brackets is a re-read, printed beside)
+- L1: feasible 36.6% +-15; hit-or-ballpark 87.8% +-10 (CHOSEN; BALLPARK 9, HIT 27, MISS 5)
+- L2: feasible 22.0% +-13; hit-or-ballpark 63.4% +-15 (beside; BALLPARK 10, HIT 16, MISS 15)
+- L3: feasible 7.3% +-8; hit-or-ballpark 14.6% +-11 (beside; BALLPARK 2, HIT 4, MISS 35)
+- L4: feasible 2.4% +-5; hit-or-ballpark 85.4% +-11 (beside; BALLPARK 14, HIT 21, MISS 6)
+- L5: feasible 7.3% +-8; hit-or-ballpark 70.7% +-14 (beside; BALLPARK 16, HIT 13, MISS 12)
+- L6: feasible 22.0% +-13; hit-or-ballpark 53.7% +-15 (beside; BALLPARK 4, HIT 18, MISS 2, no_level_yet 17)
+- control: feasible 31.7%, hit-or-ballpark 85.9% on the deciding set
+- beside, L1 on the dated 2021-22 brackets (a re-read; 20): feasible 60.0%, hit-or-ballpark 90.0%
+- ENTER: **FAIL** feasible 36.6% < 50.0%; feasible 36.6% not >= control 31.7% + 15; hit-or-ballpark 87.8% not >= control 85.9% + 15; no level >= 50% feasible: his entry is not a level crossing we model
+- beside flickers (19): L1 feasible 36.8% hit 89.5%; L2 feasible 21.1% hit 47.4%; L3 feasible 0.0% hit 15.8%; L4 feasible 5.3% hit 94.7%; L5 feasible 5.3% hit 63.2%; L6 feasible 26.3% hit 42.1%
+- beside pre-market-flat brackets dated (41): L1 feasible 80.5% hit 100.0%; L2 feasible 97.6% hit 65.9%; L3 feasible 95.1% hit 70.7%; L4 feasible 100.0% hit 100.0%; L5 feasible 100.0% hit 48.8%; L6 feasible 14.6% hit 48.8%
+- beside pre-market-flat brackets undated (52): L1 feasible 73.1% hit 100.0%; L2 feasible 71.2% hit 61.5%; L3 feasible 23.1% hit 23.1%; L4 feasible 96.2% hit 100.0%; L5 feasible 82.7% hit 67.3%; L6 feasible 11.5% hit 36.5%
+- beside pre-market first sightings, dated 2021-22 (25 with minutes): crossed that session L1 24 = 96.0%; L2 25 = 100.0%; L3 23 = 92.0%; L4 25 = 100.0%; L5 25 = 100.0%; L6 21 = 84.0% (the level test degraded to 'crossed that session')
+- the chain carries: the REGISTERED fill (words-based)
+
+## STOP CHECK (§7): the undated 2021-22 buys decide, on every level and variant; dated 2021-22 beside (re-check N1: the EXIT fit walked them under the chosen stop)
+- fills: S1_is_S2 222, fill_close_proxy 10, fill_fallback 0, fill_open 212, fill_orh5 88, fill_orh5_too_wide 12
+
+## G8 — check: this read's own trade list through trade_impact.py (before any number)
+- era A: entered after the cutoff 0, holds past the last bar 0 (307 trades)
+- era B: entered after the cutoff 0, holds past the last bar 15 (15 trades)
+- exit-window first sessions with minute bars in a tree: 60 of 230
+  level-variant | undated 226 H_cond (traded / certain) | fit H_cond | non-flicker 145 | untouched 161 | dated 111 (beside, never deciding)
+  --------------+---------------------------------------+------------+-----------------+---------------+-----------------------------------
+  S1-T          | 43.9% (98 / 43)                       | 47.7%      | 56.3%           | 42.6%         | 53.2% (a re-read)                 
+  S1-C          | 50.0% (66 / 33)                       | 48.3%      | 58.8%           | 48.0%         | 35.9% (a re-read)                 
+  S2-T          | 43.9% (98 / 43)                       | 44.8%      | 56.3%           | 42.6%         | 47.6% (unread by the exits study) 
+  S2-C          | 50.0% (66 / 33)                       | 48.6%      | 58.8%           | 48.0%         | 40.0% (unread by the exits study) 
+  S3-T          | 72.7% (99 / 72)                       | 70.4%      | 80.0%           | 68.7%         | 57.1% (unread by the exits study) 
+  S3-C          | 64.6% (65 / 42)                       | 58.3%      | 84.1%           | 61.4%         | 64.3% (a re-read)                 
+  S4-T          | 65.7% (70 / 46)                       | 67.5%      | 76.9%           | 63.5%         | 54.5% (unread by the exits study) 
+  S4-C          | 80.0% (40 / 32)                       | 61.3%      | 87.9%           | 80.0%         | 50.0% (unread by the exits study) 
+  S5-T          | 99.0% (208 / 206)                     | 94.6%      | 99.2%           | 98.6%         | 76.2% (unread by the exits study) 
+  S5-C          | 69.2% (195 / 135)                     | 68.3%      | 91.9%           | 69.4%         | 47.9% (a re-read)                 
+  S6-T          | 91.3% (23 / 21)                       | 73.7%      | 94.1%           | 87.5%         | 81.8% (unread by the exits study) 
+  S6-C          | 88.2% (17 / 15)                       | 71.4%      | 100.0%          | 83.3%         | 100.0% (unread by the exits study)
+  S7-T          | 86.7% (165 / 143)                     | 75.5%      | 88.5%           | 85.5%         | 64.1% (unread by the exits study) 
+  S7-C          | 53.8% (132 / 71)                      | 51.8%      | 65.3%           | 54.9%         | 51.0% (a re-read)                 
+  S8-T          | 77.4% (31 / 24)                       | 58.7%      | 82.1%           | 75.0%         | 64.7% (unread by the exits study) 
+  S8-C          | 86.4% (22 / 19)                       | 55.2%      | 90.0%           | 87.5%         | 61.5% (unread by the exits study) 
+  S8-T          | 77.4% (31 / 24)                       | 58.7%      | 82.1%           | 75.0%         | 64.7% (unread by the exits study) 
+  S8-C          | 86.4% (22 / 19)                       | 55.2%      | 90.0%           | 87.5%         | 61.5% (unread by the exits study) 
+  SMA50-T       | 87.4% (95 / 83)                       | 77.4%      | 87.9%           | 89.8%         | 50.0% (unread by the exits study) 
+  SMA50-C       | 58.2% (79 / 46)                       | 52.9%      | 80.0%           | 64.7%         | 68.8% (unread by the exits study) 
+- STOP: **INCONCLUSIVE** no level met H_cond <= 10% on the fit | non-flicker 145: INCONCLUSIVE | untouched 161: INCONCLUSIVE
+- 2021-22 check: re-buys 77, of them after a loss (the earlier entry's exit-window last close below its INFERRED fill) 33; unread {'earlier_exit_past_a_hole': 1}
+- the chain carries: the REGISTERED stop (words-based: S1-T dated / one ADR20 undated)
+
+## EXIT CHECK (§8): the three accounts on the undated 2021-22 buys (226, flickers included) under the chain's fill and stop
+- all 226, chain fill and stop (cut_at_ 0, cut_at_break 1, trades 212): ours 1.503 | chosen 1.646 | his 1.727 | his / ours 1.15 | recovery +nan | VOID (his / ours = 1.149 < 1.25)
+    ours: by year 2021 47.8%, 2022 1.7% | max DD 19.9% | entered 173, skipped no room 39
+    chosen: by year 2021 70.4%, 2022 -3.4% | max DD 19.8% | entered 159, skipped no room 53
+    his: by year 2021 78.1%, 2022 -3.1% | max DD 26.1% | entered 171, skipped no room 41
+- all 226, registered fill and stop (cut_at_ 0, cut_at_break 1, trades 212): ours 1.503 | chosen 1.646 | his 1.727 | his / ours 1.15 | recovery +nan | VOID (his / ours = 1.149 < 1.25)
+    ours: by year 2021 47.8%, 2022 1.7% | max DD 19.9% | entered 173, skipped no room 39
+    chosen: by year 2021 70.4%, 2022 -3.4% | max DD 19.8% | entered 159, skipped no room 53
+    his: by year 2021 78.1%, 2022 -3.1% | max DD 26.1% | entered 171, skipped no room 41
+- EXIT: **VOID (no bar)** (recovery +nan; bar 0.25; his / ours 1.15)
+- non-flicker 145, chain fill and stop (cut_at_ 0, cut_at_break 1, trades 134): ours 1.883 | chosen 1.772 | his 1.341 | his / ours 0.71 | recovery +nan | VOID (his / ours = 0.712 < 1.25)
+    ours: by year 2021 77.8%, 2022 5.9% | max DD 16.1% | entered 121, skipped no room 13
+    chosen: by year 2021 79.1%, 2022 -1.0% | max DD 16.7% | entered 114, skipped no room 20
+    his: by year 2021 54.3%, 2022 -13.1% | max DD 29.9% | entered 115, skipped no room 19
+- non-flicker 145, registered fill and stop (cut_at_ 0, cut_at_break 1, trades 134): ours 1.883 | chosen 1.772 | his 1.341 | his / ours 0.71 | recovery +nan | VOID (his / ours = 0.712 < 1.25)
+    ours: by year 2021 77.8%, 2022 5.9% | max DD 16.1% | entered 121, skipped no room 13
+    chosen: by year 2021 79.1%, 2022 -1.0% | max DD 16.7% | entered 114, skipped no room 20
+    his: by year 2021 54.3%, 2022 -13.1% | max DD 29.9% | entered 115, skipped no room 19
+- untouched 161, chain fill and stop (cut_at_ 0, cut_at_break 1, trades 147): ours 1.333 | chosen 1.337 | his 1.310 | his / ours 0.98 | recovery +nan | VOID (his / ours = 0.983 < 1.25)
+    ours: by year 2021 31.1%, 2022 1.7% | max DD 19.3% | entered 135, skipped no room 12
+    chosen: by year 2021 40.7%, 2022 -5.0% | max DD 18.6% | entered 133, skipped no room 14
+    his: by year 2021 39.3%, 2022 -5.9% | max DD 23.5% | entered 135, skipped no room 12
+- untouched 161, registered fill and stop (cut_at_ 0, cut_at_break 1, trades 147): ours 1.333 | chosen 1.337 | his 1.310 | his / ours 0.98 | recovery +nan | VOID (his / ours = 0.983 < 1.25)
+    ours: by year 2021 31.1%, 2022 1.7% | max DD 19.3% | entered 135, skipped no room 12
+    chosen: by year 2021 40.7%, 2022 -5.0% | max DD 18.6% | entered 133, skipped no room 14
+    his: by year 2021 39.3%, 2022 -5.9% | max DD 23.5% | entered 135, skipped no room 12
+- holes on the check paths: held_to_hole_before_window 8
+- hit rates on the check (the rule's sell session inside his window; windows <= 20 sessions): chosen (list) 37.3%, decision list 37.3%, hazard median 17.2%, close of session 3 19.6%, first red close 27.0%
+- VOID: the readout is the hit rate above; SELECT's short-cluster flags [False]; the sealed test carries the registered speed trail
+- beside, the undated-2020-only fit on the same 226:
+- undated-only fit, chain fill and stop (cut_at_ 0, cut_at_break 1, trades 212): ours 1.503 | chosen 1.655 | his 1.727 | his / ours 1.15 | recovery +nan | VOID (his / ours = 1.149 < 1.25)
+    ours: by year 2021 47.8%, 2022 1.7% | max DD 19.9% | entered 173, skipped no room 39
+    chosen: by year 2021 67.4%, 2022 -1.1% | max DD 8.4% | entered 206, skipped no room 6
+    his: by year 2021 78.1%, 2022 -3.1% | max DD 26.1% | entered 171, skipped no room 41
+- undated-only fit, registered fill and stop (cut_at_ 0, cut_at_break 1, trades 212): ours 1.503 | chosen 1.655 | his 1.727 | his / ours 1.15 | recovery +nan | VOID (his / ours = 1.149 < 1.25)
+    ours: by year 2021 47.8%, 2022 1.7% | max DD 19.9% | entered 173, skipped no room 39
+    chosen: by year 2021 67.4%, 2022 -1.1% | max DD 8.4% | entered 206, skipped no room 6
+    his: by year 2021 78.1%, 2022 -3.1% | max DD 26.1% | entered 171, skipped no room 41
+- dated 2021-22 under the chosen rule (IN-SAMPLE, never deciding):
+- dated 2021-22, chain fill and stop (cut_at_ 0, trades 110): ours 1.398 | chosen 1.374 | his 2.620 | his / ours 1.87 | recovery -0.027
+    ours: by year 2021 45.5%, 2022 -3.9% | max DD 26.2% | entered 92, skipped no room 18
+    chosen: by year 2021 43.6%, 2022 -4.3% | max DD 22.7% | entered 90, skipped no room 20
+    his: by year 2021 260.2%, 2022 -27.3% | max DD 37.6% | entered 74, skipped no room 35
+- dated 2021-22, registered fill and stop (cut_at_ 0, trades 110): ours 1.398 | chosen 1.374 | his 2.620 | his / ours 1.87 | recovery -0.027
+    ours: by year 2021 45.5%, 2022 -3.9% | max DD 26.2% | entered 92, skipped no room 18
+    chosen: by year 2021 43.6%, 2022 -4.3% | max DD 22.7% | entered 90, skipped no room 20
+    his: by year 2021 260.2%, 2022 -27.3% | max DD 37.6% | entered 74, skipped no room 35
+
+## THE SEALED TEST'S BRANCH (stated, not run here)
+- SELECT PASS -> the condition set scans the daily universe; ENTER FAIL -> words-based (ORH5 / the open); STOP INCONCLUSIVE -> words-based (low of the day / one ADR20); EXIT VOID (no bar) -> words-based (the speed trail)
+
+## WHY (§9): the 20-row 2020 hand-read sheet (8 STOPPED, 8 SOLD, 4 PARTIAL; seed 1024) -> fill `verdict` by hand, then --why-rates
+- 20 joins written to /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/reverse/why_sheet_2020.tsv (by class PARTIAL 4, SOLD 8, STOPPED 8)
+
+CHECK COMPLETE: SELECT PASS, ENTER FAIL, STOP INCONCLUSIVE, EXIT VOID (no bar)

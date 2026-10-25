@@ -16,3 +16,11 @@ exit-fit	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/reverse/exi
 exit-fit	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/reverse/exit_fit_days.tsv.gz	d491ff027bba17e880bbc63b017d521e990855bf4ac6e93efed24f302c071729	2026-10-24T21:06:12
 exit-fit	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/reverse/exit_fit_chosen.json	d62e7410ae7c7d0cba825f3763d68a65e860c3244470d6f043a2714085f2074f	2026-10-24T21:06:12
 exit-fit	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev_exit_fit.txt	eac07e9a42fce45397b6951e14594fe0bddca59b8dcabedc7635812fbaf29305	2026-10-24T21:06:12
+check	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/reverse/check_select_buys.tsv	8fbefc667de44f320b0d6062eb9c17b64330084461e21e9eda6bade28b2de69c	2026-10-24T21:07:59
+check	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/reverse/check_select_flickers.tsv	3a49148af6185300259c89196c3bce1a5220807dde025e652fcb43d188de284b	2026-10-24T21:08:05
+check	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/reverse/check_select_other_level.tsv	7358305db8cc23d4198fdd619c0c04ab5ed8d06be23696ac506bced1a847f5dd	2026-10-24T21:08:11
+check	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/reverse/check_stop_trades.tsv	4af6d7fdb7740169edecd8cfb9844c1705bfa470711f8670639e36632ce15501	2026-10-24T21:08:33
+check	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/reverse/check_exit_trades.tsv	9579805b8410dd1a418cc2078cf85423fd9c346860c83f9328660b4443628088	2026-10-24T21:08:33
+check	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/reverse/why_sheet_2020.tsv	b7a246a2e465eb18a2a94bd26b3e29b479cf77c5ccab9d4b89ec7fdfab05b207	2026-10-24T21:08:37
+check	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/reverse/check_verdicts.json	f0c058910180775c10b98148288ea271b3aff48ea19c5b7d52253c734205d14f	2026-10-24T21:08:37
+check	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_reverse_1024/01_rev_check.txt	43e3de92c29f6e955e48176b134ae1f5aca7b8aea0d39c8a2ee8da8b6b56a43a	2026-10-24T21:08:37
