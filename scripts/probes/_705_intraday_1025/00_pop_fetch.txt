@@ -1,0 +1,149 @@
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+- minute trees with fetch logs: ('A', 'B', 'EP', 'EP2', 'REV'); date files per tree: A 1219, B 1140, EP 48, EP2 36, REV 508
+- stream frames per year (snapshots / distinct videos / distinct session dates): 2017: 33 / 11 / 11; 2018: 8 / 1 / 1; 2019: 223 / 39 / 39; 2020: 1535 / 218 / 216; 2021: 887 / 177 / 177; 2022: 159 / 59 / 59; 2023: 62 / 12 / 12
+
+## POPULATIONS PER YEAR (after the §2b gate: type / inverted / same-day re-buy), dated deciding and exact-day no-event buys
+- 2017
+  dated deciding: n 3 | first seen in session 0 | in-session brackets 0 (n/a; minutes on E: {}) | pre-market-flat brackets 0 | held before 09:35 0 | exits known 3 (held to exit_hi median 252 sessions; exit window 1 session: 0) | minutes on E: {'missing': 1, 'ok': 2}
+  undated exact-day non-flicker: n 1 | first seen in session 0 | in-session brackets 0 (n/a; minutes on E: {}) | pre-market-flat brackets 0 | held before 09:35 0 | exits known 1 (held to exit_hi median 251 sessions; exit window 1 session: 0) | minutes on E: {'ok': 1}
+  undated exact-day flickers: n 0 | first seen in session 0 | in-session brackets 0 (n/a; minutes on E: {}) | pre-market-flat brackets 0 | held before 09:35 0 | exits known 0 (held to exit_hi median nan sessions; exit window 1 session: 0) | minutes on E: {}
+  never-a-candidate stocks, exact-day non-flicker: 0
+- 2018
+  dated deciding: n 0 | first seen in session 0 | in-session brackets 0 (n/a; minutes on E: {}) | pre-market-flat brackets 0 | held before 09:35 0 | exits known 0 (held to exit_hi median nan sessions; exit window 1 session: 0) | minutes on E: {}
+  undated exact-day non-flicker: n 0 | first seen in session 0 | in-session brackets 0 (n/a; minutes on E: {}) | pre-market-flat brackets 0 | held before 09:35 0 | exits known 0 (held to exit_hi median nan sessions; exit window 1 session: 0) | minutes on E: {}
+  undated exact-day flickers: n 0 | first seen in session 0 | in-session brackets 0 (n/a; minutes on E: {}) | pre-market-flat brackets 0 | held before 09:35 0 | exits known 0 (held to exit_hi median nan sessions; exit window 1 session: 0) | minutes on E: {}
+  never-a-candidate stocks, exact-day non-flicker: 0
+- 2019
+  dated deciding: n 16 | first seen in session 5 | in-session brackets 1 (median 16.0 min (q25 16, q75 16); minutes on E: {'ok': 1}) | pre-market-flat brackets 2 | held before 09:35 2 | exits known 16 (held to exit_hi median 12 sessions; exit window 1 session: 4) | minutes on E: {'ok': 15, 'missing': 1}
+  undated exact-day non-flicker: n 26 | first seen in session 22 | in-session brackets 10 (median 8.5 min (q25 0, q75 33); minutes on E: {'ok': 9, 'empty': 1}) | pre-market-flat brackets 12 | held before 09:35 9 | exits known 26 (held to exit_hi median 13 sessions; exit window 1 session: 10) | minutes on E: {'ok': 24, 'empty': 2}
+  undated exact-day flickers: n 18 | first seen in session 14 | in-session brackets 8 (median 16.5 min (q25 12, q75 22); minutes on E: {'ok': 7, 'empty': 1}) | pre-market-flat brackets 6 | held before 09:35 4 | exits known 18 (held to exit_hi median 1 sessions; exit window 1 session: 16) | minutes on E: {'ok': 16, 'empty': 2}
+  never-a-candidate stocks, exact-day non-flicker: 1
+- 2020
+  dated deciding: n 151 | first seen in session 93 | in-session brackets 32 (median 22.0 min (q25 15, q75 34); minutes on E: {'ok': 32}) | pre-market-flat brackets 41 | held before 09:35 6 | exits known 151 (held to exit_hi median 5 sessions; exit window 1 session: 98) | minutes on E: {'ok': 151}
+  undated exact-day non-flicker: n 197 | first seen in session 124 | in-session brackets 66 (median 28.5 min (q25 21, q75 44); minutes on E: {'ok': 65, 'empty': 1}) | pre-market-flat brackets 58 | held before 09:35 4 | exits known 197 (held to exit_hi median 5 sessions; exit window 1 session: 136) | minutes on E: {'ok': 195, 'empty': 2}
+  undated exact-day flickers: n 116 | first seen in session 79 | in-session brackets 35 (median 22.0 min (q25 14, q75 34); minutes on E: {'ok': 33, 'empty': 2}) | pre-market-flat brackets 44 | held before 09:35 2 | exits known 116 (held to exit_hi median 1 sessions; exit window 1 session: 100) | minutes on E: {'ok': 112, 'empty': 4}
+  never-a-candidate stocks, exact-day non-flicker: 15
+- 2021
+  dated deciding: n 101 | first seen in session 70 | in-session brackets 15 (median 20.0 min (q25 14, q75 62); minutes on E: {'ok': 15}) | pre-market-flat brackets 40 | held before 09:35 0 | exits known 101 (held to exit_hi median 4 sessions; exit window 1 session: 80) | minutes on E: {'ok': 99, 'missing': 2}
+  undated exact-day non-flicker: n 129 | first seen in session 87 | in-session brackets 39 (median 52.0 min (q25 34, q75 68); minutes on E: {'ok': 39}) | pre-market-flat brackets 48 | held before 09:35 0 | exits known 129 (held to exit_hi median 6 sessions; exit window 1 session: 93) | minutes on E: {'ok': 129}
+  undated exact-day flickers: n 67 | first seen in session 48 | in-session brackets 17 (median 52.0 min (q25 28, q75 71); minutes on E: {'ok': 17}) | pre-market-flat brackets 31 | held before 09:35 1 | exits known 67 (held to exit_hi median 1 sessions; exit window 1 session: 51) | minutes on E: {'ok': 67}
+  never-a-candidate stocks, exact-day non-flicker: 13
+- 2022
+  dated deciding: n 12 | first seen in session 8 | in-session brackets 5 (median 36.0 min (q25 36, q75 46); minutes on E: {'ok': 5}) | pre-market-flat brackets 1 | held before 09:35 2 | exits known 12 (held to exit_hi median 3 sessions; exit window 1 session: 3) | minutes on E: {'ok': 12}
+  undated exact-day non-flicker: n 17 | first seen in session 13 | in-session brackets 5 (median 34.0 min (q25 31, q75 36); minutes on E: {'ok': 5}) | pre-market-flat brackets 8 | held before 09:35 0 | exits known 17 (held to exit_hi median 7 sessions; exit window 1 session: 5) | minutes on E: {'ok': 17}
+  undated exact-day flickers: n 14 | first seen in session 11 | in-session brackets 2 (median 41.5 min (q25 39, q75 44); minutes on E: {'ok': 2}) | pre-market-flat brackets 9 | held before 09:35 0 | exits known 14 (held to exit_hi median 2 sessions; exit window 1 session: 7) | minutes on E: {'ok': 14}
+  -- 2022 H1:
+  dated deciding: n 10 | first seen in session 8 | in-session brackets 5 (median 36.0 min (q25 36, q75 46); minutes on E: {'ok': 5}) | pre-market-flat brackets 1 | held before 09:35 2 | exits known 10 (held to exit_hi median 2 sessions; exit window 1 session: 3) | minutes on E: {'ok': 10}
+  undated exact-day non-flicker: n 16 | first seen in session 12 | in-session brackets 5 (median 34.0 min (q25 31, q75 36); minutes on E: {'ok': 5}) | pre-market-flat brackets 7 | held before 09:35 0 | exits known 16 (held to exit_hi median 7 sessions; exit window 1 session: 5) | minutes on E: {'ok': 16}
+  undated exact-day flickers: n 14 | first seen in session 11 | in-session brackets 2 (median 41.5 min (q25 39, q75 44); minutes on E: {'ok': 2}) | pre-market-flat brackets 9 | held before 09:35 0 | exits known 14 (held to exit_hi median 2 sessions; exit window 1 session: 7) | minutes on E: {'ok': 14}
+  -- 2022 H2:
+  dated deciding: n 2 | first seen in session 0 | in-session brackets 0 (n/a; minutes on E: {}) | pre-market-flat brackets 0 | held before 09:35 0 | exits known 2 (held to exit_hi median 48 sessions; exit window 1 session: 0) | minutes on E: {'ok': 2}
+  undated exact-day non-flicker: n 1 | first seen in session 1 | in-session brackets 0 (n/a; minutes on E: {}) | pre-market-flat brackets 1 | held before 09:35 0 | exits known 1 (held to exit_hi median 46 sessions; exit window 1 session: 0) | minutes on E: {'ok': 1}
+  undated exact-day flickers: n 0 | first seen in session 0 | in-session brackets 0 (n/a; minutes on E: {}) | pre-market-flat brackets 0 | held before 09:35 0 | exits known 0 (held to exit_hi median nan sessions; exit window 1 session: 0) | minutes on E: {}
+  -- 2022 after 2022-06-14 (outside the previous check window): dated 2, undated nf 1, flickers 0
+  never-a-candidate stocks, exact-day non-flicker: 2
+- 2023
+  dated deciding: n 7 | first seen in session 1 | in-session brackets 0 (n/a; minutes on E: {}) | pre-market-flat brackets 1 | held before 09:35 0 | exits known 3 (held to exit_hi median 124 sessions; exit window 1 session: 1) | minutes on E: {'ok': 7}
+  undated exact-day non-flicker: n 5 | first seen in session 4 | in-session brackets 2 (median 11.5 min (q25 10, q75 13); minutes on E: {'ok': 2}) | pre-market-flat brackets 2 | held before 09:35 0 | exits known 5 (held to exit_hi median 78 sessions; exit window 1 session: 1) | minutes on E: {'ok': 5}
+  undated exact-day flickers: n 3 | first seen in session 2 | in-session brackets 1 (median 3.0 min (q25 3, q75 3); minutes on E: {'ok': 1}) | pre-market-flat brackets 1 | held before 09:35 0 | exits known 3 (held to exit_hi median 1 sessions; exit window 1 session: 3) | minutes on E: {'ok': 3}
+  never-a-candidate stocks, exact-day non-flicker: 0
+
+## THE PROPOSED SETS
+- fit_dated: 149 (non-flicker 104; in-session brackets 32 [non-flicker 24]; exits known 149; era B 0)
+- fit_und: 304 (non-flicker 188; in-session brackets 94 [non-flicker 59]; exits known 304; era B 0)
+- chk_dated: 23 (non-flicker 20; in-session brackets 1 [non-flicker 1]; exits known 19; era B 7)
+- chk_und: 52 (non-flicker 31; in-session brackets 21 [non-flicker 12]; exits known 52; era B 8)
+- chk_dated_2022H2: 2 (non-flicker 2; in-session brackets 0 [non-flicker 0]; exits known 2; era B 2)
+- chk_und_2022H2: 1 (non-flicker 1; in-session brackets 0 [non-flicker 0]; exits known 1; era B 1)
+- beside_dated: 111 (non-flicker 68; in-session brackets 20 [non-flicker 13]; exits known 111; era B 7)
+- beside_und: 226 (non-flicker 145; in-session brackets 63 [non-flicker 44]; exits known 226; era B 8)
+- listed_2017: 4 (non-flicker 4; in-session brackets 0 [non-flicker 0]; exits known 4; era B 0)
+- listed_2020_pre0127: 11 (non-flicker 11; in-session brackets 7 [non-flicker 7]; exits known 11; era B 0)
+- virgin_all: 89 (non-flicker 65; in-session brackets 29 [non-flicker 20]; exits known 85; era B 18)
+
+## THE FETCH LIST (pairs = ticker|date with minute bars in NO local tree; 'empty' = fetched before, no bars at the source — not re-listed)
+- variant A: warm-up 10 + buy day + hold to exit_hi (no tail; still-held: +20)
+    fit: trades 453; ticker-days needed 7639; missing pairs 4766 (by kind {'warmup': 3043, 'hold': 2051}); already covered 2096; empty at source 6
+    check_2019_2023: trades 75; ticker-days needed 2292; missing pairs 1802 (by kind {'warmup': 560, 'hold': 1205, 'buyday': 1, 'tail': 76}); already covered 383; empty at source 5
+    check_2022H2: trades 3; ticker-days needed 172; missing pairs 154 (by kind {'warmup': 28, 'hold': 126}); already covered 18; empty at source 0
+    beside_2021_22: trades 337; ticker-days needed 5384; missing pairs 3605 (by kind {'warmup': 2436, 'hold': 1320, 'buyday': 2}); already covered 1357; empty at source 0
+    listed_2017_18: trades 4; ticker-days needed 810; missing pairs 712 (by kind {'warmup': 29, 'buyday': 1, 'hold': 682}); already covered 98; empty at source 0
+    UNION distinct pairs: 11022; by year {'2017': 244, '2018': 468, '2019': 897, '2020': 4977, '2021': 3080, '2022': 605, '2023': 735, '2024': 16}; distinct dates 1252
+- variant B: warm-up 10 + hold + 20-session tail (still-held: +20)
+    fit: trades 453; ticker-days needed 16699; missing pairs 8982 (by kind {'warmup': 3043, 'tail': 5420, 'hold': 2051}); already covered 4369; empty at source 7
+    check_2019_2023: trades 75; ticker-days needed 3712; missing pairs 2697 (by kind {'warmup': 560, 'tail': 1093, 'hold': 1205, 'buyday': 1}); already covered 589; empty at source 14
+    check_2022H2: trades 3; ticker-days needed 232; missing pairs 202 (by kind {'warmup': 28, 'hold': 126, 'tail': 48}); already covered 30; empty at source 0
+    beside_2021_22: trades 337; ticker-days needed 12124; missing pairs 7444 (by kind {'warmup': 2436, 'hold': 1320, 'tail': 4723, 'buyday': 2}); already covered 2502; empty at source 0
+    listed_2017_18: trades 4; ticker-days needed 890; missing pairs 792 (by kind {'warmup': 29, 'buyday': 1, 'hold': 682, 'tail': 80}); already covered 98; empty at source 0
+    UNION distinct pairs: 19960; by year {'2017': 264, '2018': 528, '2019': 1373, '2020': 9097, '2021': 6304, '2022': 1454, '2023': 924, '2024': 16}; distinct dates 1331
+- variant C: hold only (buy day .. exit_hi), no warm-up, no tail
+    fit: trades 453; ticker-days needed 3109; missing pairs 2051 (by kind {'hold': 2051}); already covered 1052; empty at source 6
+    check_2019_2023: trades 75; ticker-days needed 1462; missing pairs 1206 (by kind {'hold': 1205, 'buyday': 1}); already covered 252; empty at source 4
+    check_2022H2: trades 3; ticker-days needed 142; missing pairs 126 (by kind {'hold': 126}); already covered 16; empty at source 0
+    beside_2021_22: trades 337; ticker-days needed 2014; missing pairs 1322 (by kind {'hold': 1320, 'buyday': 2}); already covered 692; empty at source 0
+    listed_2017_18: trades 4; ticker-days needed 770; missing pairs 683 (by kind {'buyday': 1, 'hold': 682}); already covered 87; empty at source 0
+    UNION distinct pairs: 5388; by year {'2017': 215, '2018': 468, '2019': 484, '2020': 2205, '2021': 1155, '2022': 293, '2023': 568}; distinct dates 1138
+- variant B written /Users/alvinfung/apollo_data/cb702/minutes_intra_1025/fetch_list_intra_1025.psv: 19470 pairs over 1005 dates, sha256 e66f33d690f7d0d2ac9c797bedc16ff5bc79b9fffda268859016ed0d1d3f6254; by block {'fit2020': 8795, 'fit2020+virgin': 52, 'fit2020+y2122': 135, 'virgin': 3179, 'y2122': 7309}; by year {'2019': 1405, '2020': 9367, '2021': 6304, '2022': 1454, '2023': 924, '2024': 16}
+    pairs needed by ONE block only: {'fit2020': 8795, 'virgin': 3179, 'y2122': 7309}; fit+virgin without 2021-22: 12026
+- variant A written /Users/alvinfung/apollo_data/cb702/minutes_intra_1025/fetch_list_hold_only_intra_1025.psv: 10503 pairs over 966 dates, sha256 28624df669d9a7e1edeba35da2d6f5d3b0d91b6347648b345a3f41cbd2d0c525; by block {'fit2020': 4749, 'fit2020+y2122': 17, 'virgin': 2149, 'y2122': 3588}; by year {'2019': 939, '2020': 5128, '2021': 3080, '2022': 605, '2023': 735, '2024': 16}
+    pairs needed by ONE block only: {'fit2020': 4749, 'virgin': 2149, 'y2122': 3588}; fit+virgin without 2021-22: 6898
+
+## THE BRACKETS' CLOCKS (when a 1-minute / 30-minute / later-60-minute level can exist at first_clock)
+set | n | width<=0 | first<09:31 | first<09:35 | first<10:00 | first>=10:00 | flat>=10:00 (bracket wholly after the first 60-min candle) | first>=10:30 | pre-market-flat n
+fit dated 2020 (in-session) | 32 | 1 (flat before 09:30 by the clock: 0) | 0 | 1 | 13 | 19 | 10 | 11
+fit undated 2020 nf (in-session) | 59 | 0 (flat before 09:30 by the clock: 0) | 0 | 0 | 11 | 48 | 18 | 26
+fit undated 2020 flickers (in-session) | 35 | 1 (flat before 09:30 by the clock: 0) | 0 | 0 | 9 | 26 | 10 | 14
+2021-22 dated (in-session) | 20 | 0 (flat before 09:30 by the clock: 0) | 0 | 0 | 3 | 17 | 4 | 8
+2021-22 undated nf (in-session) | 44 | 0 (flat before 09:30 by the clock: 1) | 0 | 0 | 1 | 43 | 14 | 26
+2021-22 undated flickers (in-session) | 19 | 0 (flat before 09:30 by the clock: 0) | 0 | 0 | 0 | 19 | 8 | 12
+2019+2023 dated (in-session) | 1 | 0 (flat before 09:30 by the clock: 1) | 0 | 0 | 1 | 0 | 0 | 0
+2019+2023 undated nf (in-session) | 12 | 3 (flat before 09:30 by the clock: 2) | 3 | 3 | 6 | 6 | 3 | 1
+2019+2023 undated flickers (in-session) | 9 | 0 (flat before 09:30 by the clock: 1) | 1 | 1 | 2 | 7 | 4 | 0
+2020 before 01-27 (in-session, dated + undated) | 7 | 0 (flat before 09:30 by the clock: 6) | 0 | 3 | 3 | 4 | 1 | 0
+2022 after 06-14 (in-session) | 0 | 0 (flat before 09:30 by the clock: 0) | 0 | 0 | 0 | 0 | 0 | 0
+misread-clock frames (guard 8): 21; by year {'2019': 21}
+§2c clock sanity per set (in-session windows): ok / flat_before_open / zero_width / clock_misread
+  fit dated 2020 (in-session): n 32 -> ok 31, flat_before_open 0, zero_width 1, clock_misread 0; ok non-flicker 24
+  fit undated 2020 nf (in-session): n 59 -> ok 59, flat_before_open 0, zero_width 0, clock_misread 0; ok non-flicker 59
+  fit undated 2020 flickers (in-session): n 35 -> ok 34, flat_before_open 0, zero_width 1, clock_misread 0; ok non-flicker 0
+  2021-22 dated (in-session): n 20 -> ok 20, flat_before_open 0, zero_width 0, clock_misread 0; ok non-flicker 13
+  2021-22 undated nf (in-session): n 44 -> ok 43, flat_before_open 1, zero_width 0, clock_misread 0; ok non-flicker 43
+  2021-22 undated flickers (in-session): n 19 -> ok 19, flat_before_open 0, zero_width 0, clock_misread 0; ok non-flicker 0
+  2019+2023 dated (in-session): n 1 -> ok 0, flat_before_open 1, zero_width 0, clock_misread 0; ok non-flicker 0
+  2019+2023 undated nf (in-session): n 12 -> ok 8, flat_before_open 2, zero_width 2, clock_misread 0; ok non-flicker 8
+  2019+2023 undated flickers (in-session): n 9 -> ok 8, flat_before_open 1, zero_width 0, clock_misread 0; ok non-flicker 0
+  2020 before 01-27 (in-session, dated + undated): n 7 -> ok 1, flat_before_open 6, zero_width 0, clock_misread 0; ok non-flicker 1
+  2022 after 06-14 (in-session): n 0 -> ok 0, flat_before_open 0, zero_width 0, clock_misread 0; ok non-flicker 0
+held before 09:35: [('DXCM', '2019-11-07', '09:28', '09:34', 'pre'), ('SE', '2019-11-12', '09:25', '09:34', 'pre'), ('TSLA', '2020-04-14', '', '09:32', '-'), ('UAL', '2020-05-27', '', '09:34', '-'), ('DXCM', '2020-07-29', '09:32', '09:32', 'in'), ('PINS', '2020-07-31', '09:23', '09:31', 'pre'), ('SHOP', '2020-08-26', '09:29', '09:32', 'pre'), ('TTD', '2020-08-26', '09:29', '09:32', 'pre'), ('LAC', '2022-04-21', '', '09:30', '-'), ('TSLA', '2022-04-21', '', '09:30', '-'), ('RLGY', '2019-10-01', '07:23', '07:35', 'pre'), ('APPS', '2019-10-01', '10:48', '08:58', 'in'), ('FBR', '2019-10-23', '09:24', '09:25', 'in'), ('JCP', '2019-10-23', '09:25', '09:25', 'in'), ('JD', '2019-11-04', '09:23', '09:31', 'pre'), ('BLDP', '2019-11-12', '09:25', '09:34', 'pre'), ('BYND', '2019-11-29', '09:24', '09:27', 'pre'), ('CCK', '2019-11-29', '09:24', '09:27', 'pre'), ('XP', '2019-11-29', '09:24', '09:27', 'pre'), ('ARWR', '2020-01-02', '09:08', '09:33', 'in'), ('AVLR', '2020-01-02', '09:08', '09:33', 'in'), ('ITCI', '2020-01-02', '09:08', '09:33', 'in'), ('ROKU', '2020-09-15', '09:29', '09:32', 'pre')]
+  virgin bracket: APPS 2019-10-01 undated 10:48 -> 08:58  exit 2019-10-03 2019-10-03
+  virgin bracket: ASPS 2019-10-03 undated 10:42 -> 10:58  exit 2019-10-04 2019-10-04
+  virgin bracket: JCP 2019-10-07 undated 10:07 -> 10:08  exit 2019-10-22 2019-10-22
+  virgin bracket: RLGY 2019-10-10 undated 09:43 -> 10:17  exit 2019-11-29 2019-12-18
+  virgin bracket: ASPS 2019-10-17 undated 09:38 -> 09:38  exit 2019-10-21 2019-10-21
+  virgin bracket: CCS 2019-10-17 undated 09:38 -> 10:20  exit 2019-10-18 2019-10-21
+  virgin bracket: FBR 2019-10-23 undated 09:24 -> 09:25  exit 2019-10-25 2019-11-01
+  virgin bracket: JCP 2019-10-23 undated 09:25 -> 09:25  exit 2019-10-25 2019-11-01
+  virgin bracket: BABA 2019-11-01 undated 09:48 -> 10:25  exit 2020-02-28 2020-02-28
+  virgin bracket: LX 2019-11-15 undated 09:32 -> 10:01  exit 2019-12-30 2019-12-30
+  virgin bracket: CVNA 2023-05-18 undated 09:35 -> 09:49  exit 2023-06-09 2023-11-30
+  virgin bracket: AI 2023-05-19 undated 09:42 -> 09:51  exit 2023-06-09 2023-11-30
+  virgin bracket: MIK 2019-10-10 breakout 09:26 -> 09:42  exit 2019-10-14 2019-10-14
+  virgin bracket: SWN 2019-10-01 undated 07:35 -> 07:36 flicker exit 2019-10-01 2019-10-01
+  virgin bracket: APPS 2019-10-04 undated 10:11 -> 10:26 flicker exit 2019-10-04 2019-10-04
+  virgin bracket: APPS 2019-10-09 undated 09:42 -> 10:04 flicker exit 2019-10-09 2019-10-09
+  virgin bracket: NAT 2019-10-09 undated 09:42 -> 10:04 flicker exit 2019-10-09 2019-10-09
+  virgin bracket: PBR 2019-10-22 undated 09:40 -> 09:55 flicker exit 2019-10-22 2019-10-22
+  virgin bracket: FBR 2019-10-22 undated 10:02 -> 10:03 flicker exit 2019-10-22 2019-10-22
+  virgin bracket: STNE 2019-10-22 undated 10:02 -> 10:24 flicker exit 2019-10-22 2019-10-22
+  virgin bracket: NNN 2019-11-11 undated 09:47 -> 10:05 flicker exit 2019-11-11 2019-11-11
+  virgin bracket: IOT 2023-06-09 undated 10:16 -> 10:19 flicker exit 2023-06-09 2023-06-09
+  virgin bracket: ARWR 2020-01-02 undated 09:08 -> 09:33  exit 2020-01-02 2020-01-14
+  virgin bracket: AVLR 2020-01-02 undated 09:08 -> 09:33  exit 2020-02-28 2020-02-28
+  virgin bracket: ITCI 2020-01-02 undated 09:08 -> 09:33  exit 2020-01-02 2020-01-14
+  virgin bracket: FCEL 2020-01-02 undated 09:08 -> 10:11  exit 2020-01-22 2020-01-22
+  virgin bracket: LX 2020-01-02 undated 09:08 -> 10:11  exit 2020-01-22 2020-01-22
+  virgin bracket: NTCT 2020-01-02 undated 09:08 -> 10:11  exit 2020-01-02 2020-01-14
+  virgin bracket: APT 2020-01-23 undated 10:05 -> 10:10  exit 2020-02-03 2020-02-03
+VIRGIN BLOCK in-session windows 29 -> scorable after §2c 17 (non-flicker 9): ASPS 2019-10-03, JCP 2019-10-07, RLGY 2019-10-10, CCS 2019-10-17, BABA 2019-11-01, LX 2019-11-15, APT 2020-01-23, CVNA 2023-05-18, AI 2023-05-19, APPS 2019-10-04 (flicker), APPS 2019-10-09 (flicker), NAT 2019-10-09 (flicker), PBR 2019-10-22 (flicker), FBR 2019-10-22 (flicker), STNE 2019-10-22 (flicker), NNN 2019-11-11 (flicker), IOT 2023-06-09 (flicker)
+  dropped: MIK 2019-10-10 flat_before_open, SWN 2019-10-01 flat_before_open, APPS 2019-10-01 zero_width, ASPS 2019-10-17 zero_width, FBR 2019-10-23 flat_before_open, JCP 2019-10-23 flat_before_open, ARWR 2020-01-02 flat_before_open, AVLR 2020-01-02 flat_before_open, ITCI 2020-01-02 flat_before_open, FCEL 2020-01-02 flat_before_open, LX 2020-01-02 flat_before_open, NTCT 2020-01-02 flat_before_open
+virgin dated: [('MIK', '2019-10-10', 'breakout', '2019-10-14', '2019-10-14', 1), ('ACAD', '2019-10-21', 'breakout', '2019-10-28', '2019-11-01', 5), ('MIK', '2019-10-21', 'breakout', '2019-10-22', '2019-10-22', 1), ('MIK', '2019-10-22', 'breakout', '2019-10-28', '2019-11-01', 5), ('TIF', '2019-10-28', 'EP', '2019-10-28', '2019-11-01', 5), ('IPHI', '2019-10-30', 'EP', '2019-11-29', '2019-12-18', 14), ('OLED', '2019-10-31', 'EP', '2019-11-29', '2019-12-18', 14), ('TDOC', '2019-10-31', 'breakout', '2020-02-05', '2020-02-05', 1), ('DXCM', '2019-11-07', 'EP', '2020-03-11', '2020-03-16', 4), ('SE', '2019-11-12', 'EP', '2019-11-12', '2019-11-14', 3), ('DDOG', '2019-11-13', 'EP', '2019-11-19', '2019-11-27', 7), ('STNE', '2019-11-18', 'breakout', '2020-02-10', '2020-02-10', 1), ('SE', '2019-12-19', 'breakout', '2020-02-26', '2020-02-27', 2), ('ITCI', '2019-12-23', 'EP', '2019-12-27', '2019-12-30', 2), ('KOD', '2019-12-24', 'breakout', '2020-01-02', '2020-01-14', 9), ('RAD', '2019-12-19', 'EP', '2020-01-09', '2020-01-14', 4), ('GSIT', '2023-06-01', 'breakout', '2023-06-09', '2023-11-30', 121), ('IOT', '2023-06-02', 'EP', '2023-06-08', '2023-06-08', 1), ('GTLB', '2023-06-06', 'EP', '2023-06-09', '2023-11-30', 121), ('PATH', '2023-12-01', 'EP', '', '', -1), ('GME', '2023-12-14', 'breakout', '', '', -1), ('GTLB', '2023-12-05', 'EP', '', '', -1), ('VKTX', '2023-12-04', 'EP', '', '', -1)]

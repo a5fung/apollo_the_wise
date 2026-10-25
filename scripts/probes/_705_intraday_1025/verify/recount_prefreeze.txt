@@ -1,0 +1,349 @@
+# #705 INTRADAY-LAYER registration: independent pre-freeze recount (OUTCOME-FREE: timeline TSVs, dry-run clocks, fetch logs, calendars)
+# registration: docs/analysis/cb_intraday_layer_prereg_2026-10-25.md (not edited); 00_pop_fetch.py not edited and not imported
+
+- inputs: entries 1,874 rows, exits 1,861, snapshots 2,907, dryrun_clocks 1,861; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept
+
+## 0. The borrowed table (dryrun_clocks.tsv) checked against my own derivation, row by row
+[L--] dryrun_clocks.first_clock_on_E vs my fc (rows that differ, of 1861 non-initial) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.flat_clock_on_E vs my flc (rows that differ, of 1861 non-initial) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.flat_ctx vs my p_ctx (rows that differ, of 1861 non-initial) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.first_ctx vs my f_ctx (rows that differ, of 1861 non-initial) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.in_session_bracket vs my inb (rows that differ) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.pre_market_flat_bracket vs my prefl (rows that differ) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.held_before_0935 vs my hb0935 (rows that differ) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.inverted vs my inv (rows that differ) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.same_day_rebuy vs my sdr (rows that differ) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.type_ok vs my type_ok (rows that differ) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.sec_type vs my type resolution (rows that differ) | doc 0 | mine 0 | OK
+[L--] entries.tsv stored first/flat clock of dated rows vs mine (rows that differ) | doc 0 | mine 0 | OK
+[L--] dated rows whose stored era differs from the buy-day era rule (A <= 2022-03-31) | doc 0 | mine 0 | OK
+[L--] frames: rows whose FIRST frame lacks the name (symbols + blip_filled) / whose flat frame shows it / whose flat frame is not full / flat frame not earlier in the same video | doc 0 / 0 / 0 / 0 | mine 0 / 0 / 0 / 0 | OK | all 1,861 non-initial rows
+[L--] my set dec_used vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 290, dry run 290
+[L--] my set und_fit vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 304, dry run 304
+[L--] my set und_chk vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 226, dry run 226
+[L--] my set stop_fit_dated vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 149, dry run 149
+[L--] my set stop_chk_dated vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 111, dry run 111
+[L--] my set sel_fit vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 188, dry run 188
+[L--] my set sel_chk vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 145, dry run 145
+[L--] my set ex_all vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 700, dry run 700
+[L--] my set ex_nf vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 427, dry run 427
+[L--] my set ent_fit_dated vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 32, dry run 32
+[L--] my set ent_chk_dated vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 20, dry run 20
+[L--] my set ent_fit_und vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 59, dry run 59
+[L--] my set ent_chk_und vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 44, dry run 44
+[L--] my set ent_fit_und_fl vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 94, dry run 94
+[L--] my set ent_chk_und_fl vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 63, dry run 63
+[L--] my set c633 vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 633, dry run 633
+[L--] my set c349 vs the predecessor's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 349, dry run 349
+
+## 1. Headline counts and streams
+[L84] entries / initial / non-initial | doc 1874 / 13 / 1861 | mine 1874 / 13 / 1861 | OK
+[L84] snapshots | doc 2907 | mine 2907 | OK
+[L84] streams (distinct vid) | doc 517 | mine 517 | OK
+[L104] videos / session dates per year (2017-2023) | doc 2017: 11 / 11; 2018: 1 / 1; 2019: 39 / 39; 2020: 218 / 216; 2021: 177 / 177; 2022: 59 / 59; 2023: 12 / 12 | mine 2017: 11 / 11; 2018: 1 / 1; 2019: 39 / 39; 2020: 218 / 216; 2021: 177 / 177; 2022: 59 / 59; 2023: 12 / 12 | OK
+[L61] 2019 stream days / 2020 stream days | doc 39 / 216 | mine 39 / 216 | OK
+[L61] misread-clock frames (guard 8): total / in 2019 | doc 21 / 21 | mine 21 / 21 | OK
+
+## 2. The population table, cell by cell: trades / non-flicker / in-session windows (non-flicker) / exits known / era B
+[L--] partition: gated dated + gated exact-day trades / union of the blocks / duplicated rows in the union | doc 883 / 883 / 0 | mine 883 / 883 / 0 | OK
+[L--] partition: trades in the gated pool but in no block | doc 0 | mine 0 | OK
+[L91] fit dated 2020: trades | doc 149 | mine 149 | OK
+[L91] fit dated 2020: non-flicker | doc 104 | mine 104 | OK
+[L91] fit dated 2020: in-session windows | doc 32 | mine 32 | OK
+[L91] fit dated 2020: in-session non-flicker | doc 24 | mine 24 | OK
+[L91] fit dated 2020: exits known | doc 149 | mine 149 | OK
+[L91] fit dated 2020: era B | doc 0 | mine 0 | OK
+[L92] fit undated exact-day 2020 (flickers in): trades | doc 304 | mine 304 | OK
+[L92] fit undated exact-day 2020 (flickers in): non-flicker | doc 188 | mine 188 | OK
+[L92] fit undated exact-day 2020 (flickers in): in-session windows | doc 94 | mine 94 | OK
+[L92] fit undated exact-day 2020 (flickers in): in-session non-flicker | doc 59 | mine 59 | OK
+[L92] fit undated exact-day 2020 (flickers in): exits known | doc 304 | mine 304 | OK
+[L92] fit undated exact-day 2020 (flickers in): era B | doc 0 | mine 0 | OK
+[L93] 2021-22 dated: trades | doc 111 | mine 111 | OK
+[L93] 2021-22 dated: non-flicker | doc 68 | mine 68 | OK
+[L93] 2021-22 dated: in-session windows | doc 20 | mine 20 | OK
+[L93] 2021-22 dated: in-session non-flicker | doc 13 | mine 13 | OK
+[L93] 2021-22 dated: exits known | doc 111 | mine 111 | OK
+[L93] 2021-22 dated: era B | doc 7 | mine 7 | OK
+[L94] 2021-22 undated exact-day: trades | doc 226 | mine 226 | OK
+[L94] 2021-22 undated exact-day: non-flicker | doc 145 | mine 145 | OK
+[L94] 2021-22 undated exact-day: in-session windows | doc 63 | mine 63 | OK
+[L94] 2021-22 undated exact-day: in-session non-flicker | doc 44 | mine 44 | OK
+[L94] 2021-22 undated exact-day: exits known | doc 226 | mine 226 | OK
+[L94] 2021-22 undated exact-day: era B | doc 8 | mine 8 | OK
+[L95] 2019 dated: trades | doc 16 | mine 16 | OK
+[L95] 2019 dated: non-flicker | doc 15 | mine 13 | MISMATCH
+[L95] 2019 dated: in-session windows | doc 1 | mine 1 | OK
+[L95] 2019 dated: in-session non-flicker | doc 1 | mine 1 | OK
+[L95] 2019 dated: exits known | doc 16 | mine 16 | OK
+[L95] 2019 dated: era B | doc 0 | mine 0 | OK
+[L96] 2019 undated exact-day: trades | doc 44 | mine 44 | OK
+[L96] 2019 undated exact-day: non-flicker | doc 26 | mine 26 | OK
+[L96] 2019 undated exact-day: in-session windows | doc 18 | mine 18 | OK
+[L96] 2019 undated exact-day: in-session non-flicker | doc 10 | mine 10 | OK
+[L96] 2019 undated exact-day: exits known | doc 44 | mine 44 | OK
+[L96] 2019 undated exact-day: era B | doc 0 | mine 0 | OK
+[L97] 2023 dated: trades | doc 7 | mine 7 | OK
+[L97] 2023 dated: non-flicker | doc 5 | mine 7 | MISMATCH
+[L97] 2023 dated: in-session windows | doc 0 | mine 0 | OK
+[L97] 2023 dated: in-session non-flicker | doc 0 | mine 0 | OK
+[L97] 2023 dated: exits known | doc 3 | mine 3 | OK
+[L97] 2023 dated: era B | doc 7 | mine 7 | OK
+[L98] 2023 undated exact-day: trades | doc 8 | mine 8 | OK
+[L98] 2023 undated exact-day: non-flicker | doc 5 | mine 5 | OK
+[L98] 2023 undated exact-day: in-session windows | doc 3 | mine 3 | OK
+[L98] 2023 undated exact-day: in-session non-flicker | doc 2 | mine 2 | OK
+[L98] 2023 undated exact-day: exits known | doc 8 | mine 8 | OK
+[L98] 2023 undated exact-day: era B | doc 8 | mine 8 | OK
+[L99] 2022 after 06-14 (dated + undated): trades | doc 3 | mine 3 | OK
+[L99] 2022 after 06-14 (dated + undated): non-flicker | doc 3 | mine 3 | OK
+[L99] 2022 after 06-14 (dated + undated): in-session windows | doc 0 | mine 0 | OK
+[L99] 2022 after 06-14 (dated + undated): in-session non-flicker | doc 0 | mine 0 | OK
+[L99] 2022 after 06-14 (dated + undated): exits known | doc 3 | mine 3 | OK
+[L99] 2022 after 06-14 (dated + undated): era B | doc 3 | mine 3 | OK
+[L100] 2020 before 01-27 (dated + undated): trades | doc 11 | mine 11 | OK
+[L100] 2020 before 01-27 (dated + undated): non-flicker | doc 11 | mine 11 | OK
+[L100] 2020 before 01-27 (dated + undated): in-session windows | doc 7 | mine 7 | OK
+[L100] 2020 before 01-27 (dated + undated): in-session non-flicker | doc 7 | mine 7 | OK
+[L100] 2020 before 01-27 (dated + undated): exits known | doc 11 | mine 11 | OK
+[L100] 2020 before 01-27 (dated + undated): era B | doc 0 | mine 0 | OK
+[L101] the virgin block, all: trades | doc 89 | mine 89 | OK
+[L101] the virgin block, all: non-flicker | doc 65 | mine 65 | OK
+[L101] the virgin block, all: in-session windows | doc 29 | mine 29 | OK
+[L101] the virgin block, all: in-session non-flicker | doc 20 | mine 20 | OK
+[L101] the virgin block, all: exits known | doc 85 | mine 85 | OK
+[L101] the virgin block, all: era B | doc 18 | mine 18 | OK
+[L102] listed, never walked 2017-18: trades | doc 4 | mine 4 | OK
+[L102] listed, never walked 2017-18: non-flicker | doc 4 | mine 4 | OK
+[L102] listed, never walked 2017-18: in-session windows | doc 0 | mine 0 | OK
+[L102] listed, never walked 2017-18: in-session non-flicker | doc 0 | mine 0 | OK
+[L102] listed, never walked 2017-18: exits known | doc 4 | mine 4 | OK
+[L102] listed, never walked 2017-18: era B | doc 0 | mine 0 | OK
+[L99] 2022 after 06-14: dated + undated | doc 2 + 1 | mine 2 + 1 | OK
+[L100] 2020 before 01-27: dated + undated | doc 2 + 9 | mine 2 + 9 | OK
+[L97] 2023 dated: still held at the last stream (no exit window) | doc 4 | mine 4 | OK
+[L33] virgin block: held past one stream (= non-flicker) | doc 65 | mine 65 | OK
+[L33] virgin block: dated by our events | doc 27 | mine 27 | OK
+[L80] era B in the virgin block | doc 18 | mine 18 | OK
+[L78] buys on or after 2022-04-01 in 2021-22: dated / undated | doc 7 / 8 | mine 7 / 8 | OK
+[L78] every 2023 trade is era B (buy day >= 2022-04-01) | doc all | mine all | OK
+[L102] 2017-18 trades: held to the sell window's last session, median sessions (doc '~250') | doc ~250 | mine 251.5 | OK
+[L400] Q3: 2022-after-06-14 + January 2020 add this many trades to the virgin block | doc 14 | mine 14 | OK
+
+## 3. The brackets' clocks: when a level exists at the first sighting
+  fit dated 2020: n 32 | first >= 10:00 19 | flat >= 10:00 10 | first >= 10:30 11 | first < 10:00 13
+  fit undated nf 2020: n 59 | first >= 10:00 48 | flat >= 10:00 18 | first >= 10:30 26 | first < 10:00 11
+  fit undated flickers 2020: n 35 | first >= 10:00 26 | flat >= 10:00 10 | first >= 10:30 14 | first < 10:00 9
+  2021-22 dated: n 20 | first >= 10:00 17 | flat >= 10:00 4 | first >= 10:30 8 | first < 10:00 3
+  2021-22 undated nf: n 44 | first >= 10:00 43 | flat >= 10:00 14 | first >= 10:30 26 | first < 10:00 1
+  2021-22 undated flickers: n 19 | first >= 10:00 19 | flat >= 10:00 8 | first >= 10:30 12 | first < 10:00 0
+[L110] 2021-22 undated nf in-session windows closing at/after 10:00 | doc 43 of 44 | mine 43 of 44 | OK
+[L111] 2021-22 undated nf in-session windows opening at/after 10:00 (flat frame) | doc 14 of 44 | mine 14 of 44 | OK
+[L110] 2021-22 dated in-session windows closing at/after 10:00 | doc 17 of 20 | mine 17 of 20 | OK
+[L111] fit undated nf in-session windows closing at/after 10:00 | doc 48 of 59 | mine 48 of 59 | OK
+[L112] fit dated in-session windows closing at/after 10:00 | doc 19 of 32 | mine 19 of 32 | OK
+[L112] held before 09:35 (gated dated + exact-day non-flicker, 2020-01-27..2022-06-14) | doc 9 | mine 9 | OK
+[L113]   first seen 09:31-09:34 (7: TSLA 2020-04-14, UAL 05-27, DXCM 07-29, PINS 07-31, SHOP and TTD 08-26, ROKU 09-15) | doc TSLA 2020-04-14, UAL 2020-05-27, DXCM 2020-07-29, PINS 2020-07-31, SHOP 2020-08-26, TTD 2020-08-26, ROKU 2020-09-15 | mine TSLA 2020-04-14, UAL 2020-05-27, DXCM 2020-07-29, PINS 2020-07-31, SHOP 2020-08-26, TTD 2020-08-26, ROKU 2020-09-15 | OK
+[L113]   first seen 09:30 (no 1-minute high yet) | doc LAC 2022-04-21, TSLA 2022-04-21 | mine LAC 2022-04-21, TSLA 2022-04-21 | OK
+
+## 4. Clock sanity (§2c)
+[L122] virgin block in-session windows -> scorable after §2c | doc 29 -> 17 | mine 29 -> 17 | OK
+[L122]   scorable non-flicker / flickers | doc 9 / 8 | mine 9 / 8 | OK
+[L122]   the nine scorable non-flicker windows (named) | doc ['AI 2023-05-19', 'APT 2020-01-23', 'ASPS 2019-10-03', 'BABA 2019-11-01', 'CCS 2019-10-17', 'CVNA 2023-05-18', 'JCP 2019-10-07', 'LX 2019-11-15', 'RLGY 2019-10-10'] | mine ['AI 2023-05-19', 'APT 2020-01-23', 'ASPS 2019-10-03', 'BABA 2019-11-01', 'CCS 2019-10-17', 'CVNA 2023-05-18', 'JCP 2019-10-07', 'LX 2019-11-15', 'RLGY 2019-10-10'] | OK
+  dropped by name (virgin): APPS 2019-10-01 zero_width, ARWR 2020-01-02 flat_before_open, ASPS 2019-10-17 zero_width, AVLR 2020-01-02 flat_before_open, FBR 2019-10-23 flat_before_open, FCEL 2020-01-02 flat_before_open, ITCI 2020-01-02 flat_before_open, JCP 2019-10-23 flat_before_open, LX 2020-01-02 flat_before_open, MIK 2019-10-10 flat_before_open, NTCT 2020-01-02 flat_before_open, SWN 2019-10-01 flat_before_open
+[L122]   windows dropped by (i) flat_before_open / (ii) zero_width / (iii) clock_misread | doc 12 dropped in all (29 - 17) | mine 10 / 2 / 0 = 12 | NOTE
+[L124] fit: scorable dated / undated non-flicker / undated flickers | doc 31 / 59 / 34 | mine 31 / 59 / 34 | OK
+[L124] fit: windows out (one dated and one flicker, both zero width) | doc dated {'zero_width': 1}; undated {'zero_width': 1} | mine dated {'zero_width': 1}; undated {'zero_width': 1} | OK
+[L123] 2021-22: scorable dated / undated non-flicker / undated flickers | doc 20 / 43 / 19 | mine 20 / 43 / 19 | OK
+[L123] 2021-22: the one undated window out | doc {'flat_before_open': 1} | mine {'flat_before_open': 1} | OK
+[L117] ARWR 2020-01-02: flat frame clock / label | doc 09:08 / in | mine 09:08 / in | OK
+[L117] AVLR 2020-01-02: flat frame clock / label | doc 09:08 / in | mine 09:08 / in | OK
+[L117] ITCI 2020-01-02: flat frame clock / label | doc 09:08 / in | mine 09:08 / in | OK
+[L117] FCEL 2020-01-02: flat frame clock / label | doc 09:08 / in | mine 09:08 / in | OK
+[L117] LX 2020-01-02: flat frame clock / label | doc 09:08 / in | mine 09:08 / in | OK
+[L117] NTCT 2020-01-02: flat frame clock / label | doc 09:08 / in | mine 09:08 / in | OK
+[L118] FBR 2019-10-23 / JCP 2019-10-23 flat clock | doc 09:24 / 09:25 | mine 09:24 / 09:25 | OK
+[L118] APPS 2019-10-01: flat clock -> first clock | doc 10:48 -> 08:58 | mine 10:48 -> 08:58 | OK
+[L118] ASPS 2019-10-17 width (minutes) | doc 0 | mine 0 | OK
+[L118] JCP 2019-10-23 width (minutes) - but it is already out under (i) | doc 0 | mine 0 | OK
+[L118] JCP 2019-10-23 is dropped under which rule, applied in the doc's order (i), (ii), (iii) | doc flat_before_open | mine flat_before_open | OK | the doc names JCP under both (i) (09:25) and (ii) (zero width); in order it is counted once, under (i) - harmless
+[L120] (iii) APPS 2019-10-01 has a misread frame on one end ('APPS 2019-10-01 is one') | doc True | mine True | OK | first_frame misread: False; prev_full_frame misread: True
+[L120] (iii) in-session windows (any block, any year) with a misread frame on either end, whatever the rule order | doc (only APPS 2019-10-01 is named) | mine 1 | NOTE | APPS 2019-10-01 -> zero_width
+[L120] (iii) windows dropped BY (iii) after (i) and (ii) (anywhere) | doc 0 | mine 0 | OK
+[L120] scorable virgin windows that carry a misread frame | doc 0 | mine 0 | OK
+[L62] 2019's non-flicker in-session buy windows with a flat frame after the first frame or zero width ('3 of its 12') | doc 3 of 12 | mine 3 of 10 (2019 undated alone); 3 of 12 (2019 + 2023 undated) | MISMATCH | 12 is the 2019 + 2023 undated count; 2019 alone has 10 (11 with the dated MIK 2019-10-10)
+[L122] frames of the 17 scorable virgin windows: first frame lacks the name / flat frame shows it / flat frame not full / not earlier | doc 0 / 0 / 0 / 0 | mine 0 / 0 / 0 / 0 | OK
+[L63] January 2020 (before the 27th): in-session windows carrying a 09:08 flat frame / all in-session windows | doc 6 (all at 09:08) / 7 (table row) | mine 6 (on ['2020-01-02']) / 7 (the seventh: APT 2020-01-23 flat 10:05) | NOTE | the sentence says 'January 2020's six in-session windows all carry a flat frame at 09:08'; the six are those of 2020-01-02, the block has seven in-session windows
+
+## 5. Hold lengths and exit windows
+[L106] 2019 undated (non-flicker, gated): held to the sell window's last session, median sessions | doc 13 | mine 13 | OK
+[L106] 2020 undated (non-flicker, gated): median sessions | doc 5 | mine 5 | OK
+[L126] dated 2021: sell window one session wide | doc 80 of 101 | mine 80 of 101 | OK
+[L126] dated 2021-22: with exits | doc 111 | mine 111 | OK
+[L126] virgin dated 2019: sell windows span (sessions) | doc 1-14 | mine 1-14 | OK
+[L127] 2023 dated windows of 121 sessions | doc GSIT 121, GTLB 121 | mine GSIT 121, GTLB 121 | OK
+[L35] virgin dated trades with exits | doc 23 | mine 23 | OK
+[L260]   = 2019's 16 + 2023's 3 with exits + 2022-H2's 2 + January 2020's 2 | doc 16 + 3 + 2 + 2 | mine 16 + 3 + 2 + 2 | OK
+[L35] virgin dated windows of 121 sessions | doc 2 | mine 2 | OK
+[L285] EXIT virgin: dated trades with a sell window <= 20 sessions (the hit-rate base; doc '~19') | doc ~19 | mine 19 | OK | windows > 20 sessions: [46, 46, 121, 121]
+[L278] dated deciding buys in the dense window less same-day re-buys ('all 262 dated') | doc 262 | mine 262 | OK | 264 dated deciding in the window
+[L393] ENTER 2021-22 beside: 20 dated + 43 undated non-flicker = 63 windows (Q1) | doc 63 | mine 63 | OK
+[L411] Q8: 2021-22 undated scorable windows: non-flicker vs with flickers | doc 43 vs 62 | mine 43 vs 62 | OK
+[L410] Q8: virgin scorable windows: non-flicker vs with flickers | doc 9 vs 17 | mine 9 vs 17 | OK
+
+## 6. Pre-market-flat windows beside, and the expected scorable n
+[L194] pre-market-flat windows, dated: 2021-22 / 2020 | doc 41 / 41 | mine 41 / 41 | OK
+[L194] pre-market-flat windows, undated non-flicker (gated): 2021-22 / 2020 (population counts) | doc 52 / 57 | mine 55 / 58 | MISMATCH | the doc's 52 / 57 are the predecessor printouts' SCORED counts (52 / 57), not the populations; with flickers: 95 / 102
+[L198] 2021-22 scorable windows (dated + undated non-flicker) = L7's n | doc 63 | mine 63 | OK
+[L198]   windows closing before 10:00 (no_level_yet for L8 / L9) | doc 3 dated + 1 undated | mine 3 dated + 1 undated | OK
+[L198]   L8 / L9 scorable = 63 minus the 4 windows closing before 10:00 (doc '59-60') | doc 59-60 | mine 59 | NOTE | 59 before the record floor; 60 only if the one window the clock-sanity rule drops (64 - 1) is counted; the floor (3 of 64 last time) would take it to ~56
+[L198]   the record floor of 20 bars took 3 of 64 last time (predecessor printout: records / dropped) | doc 61 / 3 (of 64) | mine 61 / 3 (of 64) | OK | transcription of 01_rev_check.txt; 64 = 20 dated + 44 undated in-session windows before the clock-sanity rule
+
+## 7. Forward events after the window
+[L292] no-event non-flicker buys (window <= 10 sessions) with an event 1-5 sessions after the window | doc 126 | mine 126 | OK
+[L292]   of them in 2021-22 (window start in 2021-01-04..2022-06-14) | doc 48 | mine 48 | OK | other readings: window END in the check window 48; gated and start in the window 46; calendar years 2021-2022 48
+
+## 8. Minute coverage and the fetch list
+- fetch-log pairs read: A 149,587, B 80,858, EP 196, EP2 39, REV 1,322 | rows dropped after the cut at read: {'A': 0, 'B': 72951, 'EP': 0, 'EP2': 0, 'REV': 0}
+- date files per tree: A 1,219, B 1,140, EP 48, EP2 36, REV 508
+- status vocabulary over the five trees: {'ok': 231760, 'empty': 242}
+[L--] walked trades: fit / virgin / 2021-22 (the printout's 453 / 89 / 337) | doc 453 / 89 / 337 | mine 453 / 89 / 337 | NOTE
+[L330] fetch list: pairs / distinct dates | doc 19470 / 1005 | mine 19470 / 1005 | OK
+[L330] fetch list file rows vs my derivation (rows in one not the other, both ways / same order) | doc 0 / 0 / identical | mine 0 / 0 / identical | OK
+[L331] fetch list file sha256 | doc e66f33d690f7d0d2ac9c797bedc16ff5bc79b9fffda268859016ed0d1d3f6254 | mine e66f33d690f7d0d2ac9c797bedc16ff5bc79b9fffda268859016ed0d1d3f6254 | OK
+[L331] sha256 of the bytes of MY regenerated list | doc e66f33d690f7d0d2ac9c797bedc16ff5bc79b9fffda268859016ed0d1d3f6254 | mine e66f33d690f7d0d2ac9c797bedc16ff5bc79b9fffda268859016ed0d1d3f6254 | OK
+[L331] three columns, no header; no third field all digits (so the fetcher's parse_list keeps every row) | doc every row kept | mine every row kept | OK
+[L333] by block: fit 2020 only / virgin only / 2021-22 only | doc 8795 / 3179 / 7309 | mine 8795 / 3179 / 7309 | OK
+[L333] shared: fit+virgin / fit+2021-22 | doc 52 / 135 | mine 52 / 135 | OK
+[L333] shared pairs together ('187' in the headline) and no other block combination | doc 187 / 0 | mine 187 / 0 | OK
+[L334] by year 2019 / 2020 / 2021 / 2022 / 2023 / 2024 | doc 1405 / 9367 / 6304 / 1454 / 924 / 16 | mine 1405 / 9367 / 6304 / 1454 / 924 / 16 | OK
+[L334] pairs in any other year (2017-18, 2025-26) | doc 0 | mine 0 | OK
+[L335] fit + virgin blocks alone (pairs not needed by 2021-22) | doc 12026 | mine 12026 | OK
+[L335] the 2024 pairs: count / symbols = the still-held deciding trades (PATH, GME, GTLB, VKTX) | doc 16 / ['GME', 'GTLB', 'PATH', 'VKTX'] | mine 16 / ['GME', 'GTLB', 'PATH', 'VKTX'] | OK
+[L336] hold-only list: pairs / dates | doc 10503 / 966 | mine 10503 / 966 | OK
+[L336] hold-only file rows vs my derivation (rows in one not the other, both ways / same order) | doc 0 / 0 / identical | mine 0 / 0 / identical | OK
+[L336] hold-only file sha256 | doc 28624df669d9a7e1edeba35da2d6f5d3b0d91b6347648b345a3f41cbd2d0c525 | mine 28624df669d9a7e1edeba35da2d6f5d3b0d91b6347648b345a3f41cbd2d0c525 | OK
+[L336] hold-only pairs are a subset of the with-tail pairs (pairs not in the full list) | doc 0 | mine 0 | OK
+[L336] the tail = the difference (pairs) | doc 8967 | mine 8967 | OK
+[L336] 'hold-only' read literally (no warm-up, no tail, still-held: buy day only) - pairs / dates | doc (not the list on disk) | mine 4809 / 875 | NOTE | the file named hold-only still carries the 10-session warm-up and +20 sessions for the 4 still-held trades; the doc's text does say 'plus ten sessions before each buy'
+[L--] walked ticker-days (with tail): listed (missing) / already covered / logged empty at the source | doc (see variant B in 00_pop_fetch.txt) | mine 25,639 (distinct pairs 19,470) / 7,560 / 21 | NOTE
+[L--] walked trades without a calendar index (skipped) | doc 0 | mine 0 | OK
+[L339] symbols per date: average (rounded) / maximum | doc 19 / 69 | mine 19 / 69 | OK | average 19.37
+[L339] dates needing two requests (more than 50 symbols) | doc (at most 69 -> two requests) | mine 27; max symbols 69 | NOTE
+[L339] requests = sum of ceil(symbols / 50) ('about 1,100') | doc about 1,100 | mine 1032 | OK | -6.2% against 1,100
+[L42] the fetcher's defaults: symbols per request / pause between requests (seconds) | doc 50 / 0.25 | mine 50 / 0.25 | OK
+[L43] the intra folder holds the three files the derivation wrote (00_pop_fetch.txt + the two lists) | doc all three present | mine all three present | OK | the doc says 'written, not fetched' - true when registered; a fetch has since run into this folder (section 15)
+[L43] 10-24 fetch: seconds from first line to 'done' (2 min 34 s = 154) | doc 154 | mine 154 | OK
+[L43] REV tree: ok pairs / empty pairs / dates | doc 1302 / 20 / 508 | mine 1302 / 20 / 508 | OK
+[L43] pace: the nearest earlier run of the same shape (delta_out: 22,989 pairs, 1,137 dates, ~20 symbols a date) took (minutes) | doc 8-12 (this fetch) | mine 9.3 | OK | the 10-24 run's pace (0.30 s/request) alone would give ~5 minutes for these requests; the delta_out run bears out 8-12 minutes
+[L342] 2017-18: ticker-days for warm-up + hold of the 4 trades ('~800 pairs') | doc ~800 | mine 810 | OK
+[L327] listed pairs an UNPINNED local tree (com_delta_1018, pre_com_1018, delta_out) already holds | doc 0 | mine 0 | OK | the derivation reads five trees; these three are not consulted ('NO local tree' in the doc)
+  scorable windows, buy-day minute state (fit dated): {'ok': 31}
+  scorable windows, buy-day minute state (fit undated nf): {'ok': 58, 'empty': 1}  empty: HTZ 2020-07-22
+  scorable windows, buy-day minute state (fit flickers): {'ok': 32, 'empty': 2}  empty: OAS 2020-04-30, U 2020-07-24
+  scorable windows, buy-day minute state (2021-22 dated): {'ok': 20}
+  scorable windows, buy-day minute state (2021-22 undated nf): {'ok': 43}
+  scorable windows, buy-day minute state (2021-22 flickers): {'ok': 19}
+  scorable windows, buy-day minute state (virgin nf): {'ok': 9}
+  scorable windows, buy-day minute state (virgin flickers): {'ok': 7, 'empty': 1}  empty: FBR 2019-10-22
+[L75] scorable ENTER windows whose BUY DAY has no minute bars at the source (read no_minutes) / not yet in any tree | doc (counted, not stated) | mine 4 / 0 | NOTE | listed per block in the lines above; the scorable counts 31 / 59 / 34 / 17 / 9 / 20 / 43 are before this
+[L--] pairs logged twice with different statuses inside one tree (the loaders keep the last row) | doc 0 | mine 0 | OK
+[L327] 'the exit windows' first sessions on 60 of 230 trades' vs the predecessor's check printout | doc 60 of 230 | mine 60 of 230 | OK | transcription of 01_rev_check.txt (its G8 block); a count over the check set's trades, from minute-tree coverage, not bars
+[L327] 1,302 of the 1,322 pairs of the 10-24 list have minute bars | doc 1302 of 1322 | mine 1302 of 1322 | OK
+[L327] the 10-24 fetch list file rows | doc 1322 | mine 1322 | OK
+[L75] REV empties: total / AXNX / all AXNX days in January 2020 | doc 20 / 7 / True | mine 20 / 7 / True | OK | 2020-01-02..2020-01-10
+[L75] AXNX in the virgin block's TRADE list ('now in the untouched block') | doc in the untouched block | mine AXNX is a 7-session window (2020-01-02..2020-01-10), not an exact-day trade: in the virgin block's 89 trades: False | NOTE | the seven days fall inside the untouched DATE range (before 2020-01-27) but the AXNX buy is not one of the 89 trades; only a pair in the walked sessions would matter
+
+## 9. The 60-minute bars and early closes
+[L167] the runner's early-close list: dates | doc 20 | mine 20 | OK
+[L167]   of them inside this read's 2024-12-31 cut / all in the session calendar / 2025 dates | doc (20 named; 2025 is sealed) | mine 17 / True / 3 | NOTE
+[L166] 60-minute windows of a full session | doc [0,29] [30,89] [90,149] [150,209] [210,269] [270,329] [330,389] (7) | mine [0,29] [30,89] [90,149] [150,209] [210,269] [270,329] [330,389] (7) | OK
+[L166] windows on an early-close day | doc 4, last [150,209] | mine 4, last [150,209] | OK
+[L235] EMA seed weight left after the 50 bars beyond the 20-bar seed: (19/21)^50 ('under 1%') | doc < 1% | mine 0.67% | OK
+[L34] binomial 95% half-width of a 50% share on 9 trades (points) - doc 'carries +-30 points' | doc +-30 | mine +-33 | NOTE | the doc rounds down; the half-width is about 33
+[L37] binomial 95% half-width on 35 trades (STOP: 'within +-15 points') | doc +-15 | mine +-17 | NOTE
+
+## 10. Era-B offsets
+[L319] the 8 undated 2021-22 era-B trades: sell-window offsets from the buy day (as a set) | doc ['0-1', '0-4', '0-4', '0-7', '2-6', '4-4', '5-6', '5-6'] | mine ['0-1', '0-4', '0-4', '0-7', '2-6', '4-4', '5-6', '5-6'] | OK
+[L319]   in eid order (the doc gives no order) | doc ['0-1', '4-4', '5-6', '5-6', '0-7', '2-6', '0-4', '0-4'] | mine ['0-1', '4-4', '5-6', '5-6', '0-7', '2-6', '0-4', '0-4'] | OK
+  in buy-day order: ['0-1', '4-4', '5-6', '5-6', '0-7', '2-6', '0-4', '0-4']
+[L80] unified-calendar index of 2021-09-27 (era B's first session: the offset error, 'about 1,440' / '~1,445') | doc ~1,440 / ~1,445 | mine 1443 | OK
+[L80] check trades affected by the era-B defect | doc 8 | mine 8 | OK
+[L319] walked trades with a negative hold or a hold beyond the calendar: min / max sessions (largest = a stream gap) | doc (none) | mine 0 / 135 | NOTE
+
+## 11. Captions (section 8): 495 files
+[L267] caption files | doc 495 | mine 495 | OK
+[L267] '334 of 495 caption files mention the 60-minute chart' (the previous registration): 60[ -]?min | doc 334 | mine raw vtt 334 | parsed words 352 | OK | reproduces only on the raw vtt text (inline timing tags in), not on the parsed words the section-8 join rule reads
+[L268] files matching the printed pattern 60[ -]?min|hourly|hour chart | doc 344 | mine raw vtt 342 | parsed words 358; raw with 'one hour|1 hour' added 344 | MISMATCH | 344 appears only if 'one hour|1 hour' is added to the pattern, on raw text
+[L268] files mentioning the 20 EMA ((20|twenty)[ -]?ema) | doc 103 | mine raw vtt 103 | parsed words 122 | OK | reproduces only on raw text
+[L268] files carrying both within 80 characters (the section-8 pattern) | doc 169 | mine parsed words 77 | raw vtt 27 | raw, dot spanning lines 38 | MISMATCH | no reading of 'within 80 characters' reaches 169; files with both patterns ANYWHERE: raw 92, parsed 113
+[L17] FSLY 2020-07-14 words (half on the 20 EMA on the 60-minute chart, the rest on the previous day's low) in a caption | doc present | mine present in 1 file(s): ['cMkRsqvlVHM'] | OK
+
+## 12. Transcription checks: the numbers the doc quotes from the predecessor, against its own printouts
+[L68] 5-minute opening-range high feasible on 2021-22 undated (L1) | doc 36.6% | mine 36.6% | OK | transcription of the predecessor's printout
+[L68] first-hour high feasible (L6) | doc 22.0% | mine 22.0% | OK | transcription of the predecessor's printout
+[L133] random-price control feasible on 2021-22 undated | doc 31.7% | mine 31.7% | OK | transcription of the predecessor's printout
+[L134] random-price control hit-or-ballpark | doc 85.9% | mine 85.9% | OK | transcription of the predecessor's printout
+[L228] S1-T on 2021-22 undated, era-B fixed | doc 39.2% | mine 39.2% | OK | transcription of the predecessor's printout
+[L228] S1-C | doc 41.5% | mine 41.5% | OK | transcription of the predecessor's printout
+[L228] S3-T | doc 68.0% | mine 68.0% | OK | transcription of the predecessor's printout
+[L228] S3-C | doc 57.8% | mine 57.8% | OK | transcription of the predecessor's printout
+[L256] dated 2021-22 his / ours | doc 1.87 | mine 1.87 | OK | transcription of the predecessor's printout
+[L256] dated 2021-22 ours | doc 1.398 | mine 1.398 | OK | transcription of the predecessor's printout
+[L256] dated 2021-22 his | doc 2.620 | mine 2.620 | OK | transcription of the predecessor's printout
+[L258] daily list recovery on dated 2021-22 | doc -0.027 | mine -0.027 | OK | transcription of the predecessor's printout
+[L142] daily list hit rate on undated 2021-22 (era-B fixed) | doc 37.7% | mine 37.7% | OK | transcription of the predecessor's printout
+[L262] undated 2021-22 his / ours | doc 1.15 | mine 1.15 | OK | transcription of the predecessor's printout
+[L184] L1 feasible on the 2020 fit records | doc 36.0% | mine 36.0% | OK | transcription of the predecessor's printout
+[L183] the previous fit kept 89 records | doc 89 | mine 89 | OK | transcription of the predecessor's printout
+[L223] the STOP / EXIT check kept 212 records of 226 | doc 212 | mine 212 | OK | transcription of the predecessor's printout
+[L225] low of the day (S1-T) traded through on 98 of 212 | doc 98 | mine 98 | OK | transcription of the predecessor's printout
+[L24] SELECT recall on the check (doc '65%') | doc 64.8% | mine 64.8% | OK | transcription of the predecessor's printout
+[L24] SELECT pool rate on the check (doc 'one stock in five') | doc 18.6% | mine 18.6% | OK | transcription of the predecessor's printout
+[L225] 98 / 212 and 97 / 212 (era-B fixed) against the doc's 'about 45%' | doc about 45% | mine 46.2% / 45.8% | NOTE | 46.2% as printed, 45.8% after the era-B fix
+[L26] STOP INCONCLUSIVE: 'every level held through on 39-80% of the trades where price crossed it' (the predecessor's RESULT row, restated here): H_cond over S1-S7 | doc 39-80% | mine era-B fixed 39.2-99.0% (S5-T is the top); as printed (module offsets) 43.9-99.0%; S1-S4 only, fixed 39.2-68.0% | MISMATCH | the 39 is the era-B-fixed S1-T, the 80 the unfixed S4-C (66.7% after the fix); S5-T, S6-T, S7-T sit at 99 / 85 / 85%
+[L80] the previous recount's one MISMATCH (era-B calendar index) | doc 1 | mine 1 | OK | recount_check.txt: RECOUNT COMPLETE in 15s: 26 MATCH, 1 MISMATCH
+[L80]   and its era-B pickle indices of the exit window (the 'about 1,440 sessions late') | doc 1443-1450 | mine 1443-1450 | OK
+[L87] the previous dry run's counts (claims / OK / MISMATCH) | doc 63 | mine 63 / 63 / 0 | OK
+[L112] KOLD 2022-04-19 leaves the held-before-09:35 list by the type gate (type not CS / ADRC / untyped) | doc out by the type gate | mine type 'ETV', type_ok False | OK
+[L302] 2021-22 L1 feasible: dated (a re-read) / undated | doc 60% / 37% | mine 60% / 37% | OK | transcription of 01_rev_check.txt / recount_check.txt
+[L148] SELECT's passed condition set (the chosen json) | doc F3<=233 & F9>=-0.05785 & F10>=0.04256 -> 233 sessions / 5.8% / 4.26% | mine F3<=233 & F9>=-0.05785 & F10>=0.04256 | OK | the doc rounds 0.05785 to 5.8% and 0.04256 to 4.26%; F3 / F9 / F10 meanings are the predecessor's feature list
+- his words in operator_shared_notes.md:
+[L14] 'Enter on the opening range highs...' starts at (doc: l.1941-1942) | doc within 1941-1942 | mine [1941] | OK
+[L14] 'Stop is always lows of the day...' sits at (doc: l.1944) | doc 1944 | mine [1943] | MISMATCH | l.1944 is the next bullet ('Size'); the Stop quote is one line earlier. The doc also lists the refs in a different order from its quotes (entry, 60-minute candle, stop)
+[L14] '(on the 60-minute timeframe the first candle is always only 30 minutes...' starts at (doc: l.2090-2091) | doc within 2090-2091 | mine [2090] | OK
+[L3] the ruling 'let's continue with option 1 tmr' sits in the last section | doc last section | mine [2592] | NOTE
+
+## 13. Pins named in the registration
+[L9] 00_pop_fetch.py sha256 prefix | doc b7b75d56 | mine b7b75d56 | OK
+[L9] 00_pop_fetch.txt sha256 prefix | doc d6bd0f67 | mine d6bd0f67 | OK
+[L9] the copy beside the fetch lists equals the repo printout | doc identical | mine identical | OK
+[L7] 00_pop_fetch.py and the loader it calls (load_core) contain no price / minute-bar reader (static scan of the source) | doc none | mine none | OK | names scanned: read_minutes, read_minute_file, bars_of, load_markets, load_daily_subset, load_raw_flat, load_raw_close, MinuteBars, day0_walk, simulate, trade_impact, minute_bars_from_rows
+[L7] 00_pop_fetch.py reads nothing dated after the cut itself (it passes the 2024-12-31 cut to the done-log loader and cuts the calendar) | doc cut applied | mine cut applied | OK
+[L330] 00_pop_fetch.txt reports the same two list shas as the files on disk | doc both | mine both | OK
+
+## 15. After the registration (not doc claims): the minute fetch has since run into the intra folder - fetch log and _done.psv only, no bar file opened
+- fetch.log: list: 19,470 pairs over 1,005 dates; already done 0; to fetch 19,470 pairs over 1,005 dates (~1,032 requests) | done: ok 19,184 empty 286 failed 0
+[L43] the fetch has since run: wall time (minutes) against the doc's '8-12 minutes' / its '~1,032 requests' against the doc's 'about 1,100' | doc 8-12 / about 1,100 | mine 8.0 / 1,032 | NOTE
+[L--] fetch log vs the list: rows in the log, listed pairs not in the log, logged pairs not listed | doc 19470 / 0 / 0 | mine 19470 / 0 / 0 | OK | the fetch ran exactly the list
+[L--] fetch outcome (statuses) | doc (not in the doc) | mine {'ok': 19184, 'empty': 286} | NOTE | rows after the cut dropped at read: 0
+  empty pairs by block: {'virgin': 58, 'fit2020': 213, 'y2122': 15}; by year: {'2019': 58, '2020': 213, '2021': 14, '2022': 1}
+  trades with at least one session with no minute bars at the source or still missing: hold 6, warm-up 11, tail 9 (of 453 trades) - fit 2020
+  trades with at least one session with no minute bars at the source or still missing: hold 4, warm-up 4, tail 3 (of 89 trades) - virgin block
+  trades with at least one session with no minute bars at the source or still missing: hold 0, warm-up 3, tail 0 (of 337 trades) - 2021-22
+[L--] listed pairs still missing after the fetch (neither ok nor empty in any tree) | doc 0 | mine 0 | NOTE
+
+## 14. Not recountable from the allowed inputs (price or outcome material; left unverified, not assumed)
+[L36] STOP: 'about 80 records', '30-40 traded through' on the tight levels (needs the 50-bar floor and daily bars) | doc - | mine - | NR
+[L182] the 20-bar record floor on the new fit (needs bars before the buy day) | doc - | mine - | NR
+[L301] section 10's expectations (guesses to be scored later) | doc - | mine - | NR
+
+## RESULT: 278 lines, 248 OK, 8 MISMATCH, 19 NOTE, 3 not recountable
+  MISMATCH [L95] 2019 dated: non-flicker: doc 15 vs mine 13
+  MISMATCH [L97] 2023 dated: non-flicker: doc 5 vs mine 7
+  MISMATCH [L62] 2019's non-flicker in-session buy windows with a flat frame after the first frame or zero width ('3 of its 12'): doc 3 of 12 vs mine 3 of 10 (2019 undated alone); 3 of 12 (2019 + 2023 undated) (note: 12 is the 2019 + 2023 undated count; 2019 alone has 10 (11 with the dated MIK 2019-10-10))
+  MISMATCH [L194] pre-market-flat windows, undated non-flicker (gated): 2021-22 / 2020 (population counts): doc 52 / 57 vs mine 55 / 58 (note: the doc's 52 / 57 are the predecessor printouts' SCORED counts (52 / 57), not the populations; with flickers: 95 / 102)
+  MISMATCH [L268] files matching the printed pattern 60[ -]?min|hourly|hour chart: doc 344 vs mine raw vtt 342 | parsed words 358; raw with 'one hour|1 hour' added 344 (note: 344 appears only if 'one hour|1 hour' is added to the pattern, on raw text)
+  MISMATCH [L268] files carrying both within 80 characters (the section-8 pattern): doc 169 vs mine parsed words 77 | raw vtt 27 | raw, dot spanning lines 38 (note: no reading of 'within 80 characters' reaches 169; files with both patterns ANYWHERE: raw 92, parsed 113)
+  MISMATCH [L26] STOP INCONCLUSIVE: 'every level held through on 39-80% of the trades where price crossed it' (the predecessor's RESULT row, restated here): H_cond over S1-S7: doc 39-80% vs mine era-B fixed 39.2-99.0% (S5-T is the top); as printed (module offsets) 43.9-99.0%; S1-S4 only, fixed 39.2-68.0% (note: the 39 is the era-B-fixed S1-T, the 80 the unfixed S4-C (66.7% after the fix); S5-T, S6-T, S7-T sit at 99 / 85 / 85%)
+  MISMATCH [L14] 'Stop is always lows of the day...' sits at (doc: l.1944): doc 1944 vs mine [1943] (note: l.1944 is the next bullet ('Size'); the Stop quote is one line earlier. The doc also lists the refs in a different order from its quotes (entry, 60-minute candle, stop))
