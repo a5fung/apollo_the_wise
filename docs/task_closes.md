@@ -2401,3 +2401,14 @@ EVIDENCE:
 - **WOULD-FAIL-IF checked:** no page copies an Apollo code doc (check 3 PASS: links only); no lesson stays only in machine-local memory — all 71 moved; the one note deliberately kept local is his personal-trading review, by his standing rule that his own trades stay in ~/trading_review (stated in `lessons/README.md`).
 - ⚠ **What this close cannot show:** phases 2–3 (rulings, methods, tests, principles, the ingest + lint routine) — carried by **#709**, not dropped.
 
+
+## #709 — trading knowledge vault: phases 2 and 3 (2026-10-25)
+
+BAR: "every page in rulings/, methods/, tests/ cites its source or commit; the lint runs clean on the whole vault; one new operator note goes in through the ingest routine end to end."
+
+EVIDENCE:
+- **Every rulings/methods/tests page cites its source or commit:** enforced by `tools/lint.py` (NO-CITATION: a page in rulings/, methods/, tests/ or principles/ with no `L<n>` cite of his notes, no Apollo path with a commit, and no link to sources/ or tests/ fails); 0 failing over 186 pages; the Opus check spot-checked 20 quote-to-line cites and all 81 cited Apollo commits exist; a second lint rule (QUOTE-LINE) requires each quote to sit at its cited line.
+- **The lint runs clean on the whole vault:** vault commit `51b6acc` — `lint: 186 pages, 1499 links, 335 quotes checked; 0 failing` (6 report-only verdict-date prompts by design); the vault's pre-commit hook (`core.hooksPath .githooks`) runs it on every commit; 55 tool tests pass.
+- **One new operator note through the ingest routine end to end:** his 10-25 note ("there's no 100% had rule, there's rules and discretion…", Apollo `f56c13bc`, his notes L2596) went in with `tools/ingest_note.py` on the REAL vault: the copy (2594 → 2598 lines, sha256 `bbdf746f…`), the SOURCE.md row and one changelog line written by the tool; it listed the 10 pages citing the old sha256, which were re-pointed; the ruling page `rulings/2026-10-25_rules_plus_discretion_measure_each_rules_share.md` added; lint clean after (vault `51b6acc`).
+- **WOULD-FAIL-IF checked:** no page copies an Apollo code doc (the Opus check: the largest overlap with an Apollo doc is 21%, the SETUP-vs-FAMILY ruling quoting CLAUDE.md); planted defects fail the lint — a broken link, an uncited tests page, a misquote, an orphan, a cite moved to the wrong line (tests in `tools/test_lint.py`, and the check card's planted runs on a scratch copy).
+- ⚠ **What this close cannot show:** the ingest runs when called (by hand or the agent), not on a timer; "living" depends on calling it each time he shares a note — the CLAUDE.md vault rule and the `the-vault-is-living` memory carry that.
