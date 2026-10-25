@@ -1,0 +1,11 @@
+row	video	t	tickers	verdict	note
+1	5KN9uyYF5uo	4600.6	CCL	yes	CCL: rejected at the 60-minute 20-EMA on his position; he will size down or close if it does not reclaim
+2	H6Zu-9jwlyo	1155.6	FSLY	no	FSLY 07-18: commentary on the downtrend after he had sold (07-14); not his sell
+3	Vn-EBl95hes	8709.0	PLL	no	PLL: he sold half, but the 60-minute 20-EMA is cited as support it bounced off, not the trigger
+4	XFjjt4Cm16I	196.7	FSLY	yes	FSLY 07-10: "i am trailing the 20 ema on the 60 minute" as his stop
+5	XFjjt4Cm16I	2873.1	FSLY	yes	FSLY 07-10: "if it starts losing this 20 ema on the 60 minute i'm gonna size down by half"
+6	XFjjt4Cm16I	2894.4	FSLY	yes	FSLY 07-10: same sentence as row 5 (24 s later in the same stream)
+7	cMkRsqvlVHM	305.2	NIO	no	NIO: the 60-minute 20-EMA breakdown was a SHORT entry he missed; not a sell of his long
+8	cMkRsqvlVHM	3152.4	FSLY	yes	FSLY 07-14: "i sold half of it ... when it broke below the 20 ... ema on the 60-minute chart"
+9	m8KjHohwlzM	4552.5	DFS	no	DFS: the turned-down 60-minute averages are about Nikola / resistance; no sale of DFS
+10	oeVZ17lp2aY	2187.8	WWR	no	WWR: 60-minute higher lows; no 20-EMA sale

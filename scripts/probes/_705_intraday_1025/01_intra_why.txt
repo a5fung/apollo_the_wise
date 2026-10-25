@@ -1,0 +1,14 @@
+# #705 INTRADAY 01 — WHY-lite rates: the hand-read precision gate, then the share of his 60-minute-EMA sells whose exit session carries a 60-minute close below the 20-EMA
+- hand read: yes 4, no 6, blank 0; precision 40.0% (gate 70.0%)
+- precision below the gate: the joins are listed, no rate is quoted
+  5KN9uyYF5uo t 4600.6 CCL eids 775 -> yes
+  H6Zu-9jwlyo t 1155.6 FSLY eids 733 -> no
+  Vn-EBl95hes t 8709.0 PLL eids 1042 -> no
+  XFjjt4Cm16I t 196.7 FSLY eids 693 -> no
+  XFjjt4Cm16I t 2873.1 FSLY eids 693 -> yes
+  XFjjt4Cm16I t 2894.4 FSLY eids 693 -> yes
+  cMkRsqvlVHM t 305.2 NIO eids 713 -> no
+  cMkRsqvlVHM t 3152.4 FSLY eids 693 -> yes
+  m8KjHohwlzM t 4552.5 DFS eids 639 -> no
+  oeVZ17lp2aY t 2187.8 WWR eids 925 -> no
+WHY RATES COMPLETE (no rate)

@@ -1,0 +1,465 @@
+# RECOUNT of the #705 intraday-layer CHECK (one run) — independent re-derivation from raw minute files / daily export / frames
+- module under recount: sha ac598fc58aae (frozen copy == live 01_intra.py == the freeze pin); printout 01_intra_check.txt a6db5a635faf; registration 30cb67899731
+
+## A. POPULATIONS
+
+## B. ENTER
+- scored (mine): draw population 61, 2021-22 flickers 19, virgin 16, pre-flat dated 41, undated 52
+
+## C. STOP
+
+## C2. STOP fit column re-derived from raw bars
+
+## D. EXIT
+
+## WHAT RESTS ON FROZEN IMPORTS vs WHAT IS MINE
+- mine (recomputed from raw minute files / daily export / frames): every level (L1-L9), first crossing, feasible, HIT/BALLPARK/MISS, the random-price control replay, the shifted-window control (200 draws x 9 levels per window), the union,
+  the virgin veto; the S1/S3/S9/S10/S8/SMA50 levels, the 18 held-through cells (traded through / certain / unresolved / first session / event minute), the fit-table choose rule, Spearman, re-buys;
+  the 60-minute bars (28,219 rows), the EMA, the armed bar, ema_thin, the registered ORH5 / open fill, the S1-T / ADR20 stop, the day-0 stop, E1's legs, the hit rate, the abstention share, the bootstrap.
+- frozen / loader code NOT recounted: the buys / clock / set loaders (load_core), the daily-export and minute-file readers, the 'ours' speed trail (rev.speed_trail_trade -> cb.walk_arms), 'his' (rev.panel_trade), the account simulator rp.simulate at cap_30,
+  rev.recovery, Trade plumbing make_legs_trade (fed with MY legs), rev.break_horizon, the snapshot frames as loaded. 'ours' and 'his' therefore agree with the printout by construction of the SAME simulator on MY fill/stop inputs; only their inputs are independent.
+- STOP fit column: the 415 fit records' 18 cells are re-derived from bars (C2), but the fit's fills (open / ORH5 / close proxy / level:L8) and fill minutes are taken from stop_fit_trades.tsv as INPUTS (they are ENTER's and the registered fill's outputs on 2020); ENTER's L8 fit and the 2020 EXIT/ENTER fit tables are not recounted.
+- shared-reading risk: where the registration is silent I mirrored the code's rule (strict '>' crossing; a touch = low <= level OR open < level; day-0 events only after max(fill minute, flat clock); the stop is tested before E1 inside a session). The two sensitivities above test the two that could move a number.
+- bootstrap: 895 of 1000 resamples had a finite recovery (the rest were VOID, his/ours < 1.25, and are dropped); the printout says '1000 draws' and prints the interval of the finite ones. Information only.
+- n = 40 on the ENTER deciding set sits exactly on the registered floor; L8's random-control margin passes by 0.0004 on exact numbers (0.4500 vs 0.2996 + 0.15). Neither changes FAIL (45.0% < the 50% bar).
+- on the 58 deciding records S9 and S10 are numerically identical in all three variants (the last completed 60-minute bar before a read minute in 30..89 IS the 30-minute bar), so the 12 STOP cells carry 9 distinct readings there.
+- exact recovery -0.02708 equals the daily list's in-sample -0.027 named in registration §7d to three decimals; the finals differ (daily list on the old offsets: ours 1.398, his 2.620), so this is a coincidence, not a copy.
+
+## CLAIM TABLE (436 claims: 427 MATCH, 9 NOTE, 0 MISMATCH)
+stage | claim | printout | yours | status (note)
+A | early-close days 2019-2024 (mine, from the exchange calendar) == the module's list on those dates | 12 | 12 | MATCH (12 half-days 2019-2024)
+A | set size chk22_dated (registration §2) | 111 | 111 | MATCH
+A | set size chk22_und (registration §2) | 226 | 226 | MATCH
+A | set size virgin_und (registration §2) | 62 | 62 | MATCH
+A | set size virgin_dated (registration §2) | 27 | 27 | MATCH
+A | set size virgin_all (registration §2) | 89 | 89 | MATCH
+A | set size fit_dated (registration §2) | 149 | 149 | MATCH
+A | set size fit_und (registration §2) | 304 | 304 | MATCH
+A | ENTER deciding windows after §2c (2021-22 undated non-flicker in-session) = 43 | 43 | 43 | MATCH
+A |   ... same eids as the loader's E['chk22_und'] | True | True | MATCH
+A | 2021-22 dated in-session windows after §2c = 20 | 20 | 20 | MATCH
+A | 2021-22 undated flicker windows = 19 | 19 | 19 | MATCH
+A | virgin in-session windows scorable after §2c = 17 (9 non-flicker) | 17 (9) | 17 (9) | MATCH
+A | the 9 virgin non-flicker windows by name (registration §2c) | AI 2023-05-19, APT 2020-01-23, ASPS 2019-10-03, BABA 2019-11-01, CCS 2019-10-17, CVNA 2023-05-18, JCP 2019-10-07, LX 2019-11-15, RLGY 2019-10-10 | AI 2023-05-19, APT 2020-01-23, ASPS 2019-10-03, BABA 2019-11-01, CCS 2019-10-17, CVNA 2023-05-18, JCP 2019-10-07, LX 2019-11-15, RLGY 2019-10-10 | MATCH
+A | 2021-22 undated non-flicker in-session window dropped by §2c | DWAC 2022-01-31 flat_before_open | DWAC 2022-01-31 flat_before_open | MATCH
+A | ENTER check TSV: first 61 rows = the draw population's records (64 windows less 3 under the 20-bar floor) | 61 | 61 | MATCH
+A | ENTER DECIDING set = beside empty, undated, scorable, sane ok, non-flicker (TSV) = 40 records | 40 | 40 | MATCH
+A |   ... deciding eids are a subset of the 43 windows; the 3 absent ones are exactly the 20-bar-floor drops | True | True | MATCH
+A |   ... the 3 missing windows each have < 20 daily bars before the buy day (own count from the export) | 3 dropped {'bars_before_E_lt_20': 3} | 3 of 3 have <20 (BMBL 2021-03-11 e=19, DWAC 2021-10-22 e=16, RIVN 2021-11-11 e=1) | MATCH
+A |   ... every window of the deciding set has >= 20 daily bars before the buy day | True | True | MATCH
+A | gate (vii) population: the previous read's 41 undated records (44 windows, DWAC in) scorable here | 41 | 41 | MATCH
+A | ENTER virgin TSV rows: 17 windows' records with minutes (9 nf + 8 flicker, one flicker without minutes -> 16 rows?) | 9 nf / 7 fl scorable | 9 nf / 7 fl rows | MATCH
+A | disjointness: ENTER check rows (96) vs the three fit TSVs by eid / (sym,E) / fit date window 2020-01-27..12-31 | 0 / 0 / 0 | 0 / 0 / 0 | MATCH
+A | disjointness: STOP check rows (406) vs the three fit TSVs by eid / (sym,E) / fit date window 2020-01-27..12-31 | 0 / 0 / 0 | 0 / 0 / 0 | MATCH
+A | disjointness: EXIT check rows (110) vs the three fit TSVs by eid / (sym,E) / fit date window 2020-01-27..12-31 | 0 / 0 / 0 | 0 / 0 / 0 | MATCH
+A | disjointness: the loader's fit sets (fit_dated 149 + fit_und 304) share no eid with any DECIDING/beside-scored check population (chk22 dated+und, virgin, pre-flat, pre-first) | 0 | 0 | MATCH
+A | NOTE: the 'held before 09:35' beside list (9 trades, L7 only, deciding nothing) reuses fit-window trades by design (§2b names TSLA/UAL/DXCM/PINS/SHOP/TTD/ROKU 2020) | beside only | 7 of 9 are fit-set trades (DXCM 2020-07-29, PINS 2020-07-31, ROKU 2020-09-15, SHOP 2020-08-26, TSLA 2020-04-14, TTD 2020-08-26, UAL 2020-05-27) | NOTE (not a check population; no decision reads it)
+A | STOP deciding records = the virgin undated trades after the 50-bar floor (62 -> 58) | 58 of 62 (no_bar_on_E 4) | 58 of 62 | MATCH
+A | STOP deciding = rows undated AND dated in 2019 / 2023 / 2022 after 06-14 / 2020 before 01-27 (own date test) == loader virgin_und rows | True | True | MATCH
+A |   ... the 4 virgin undated trades with no record: no daily bar on the buy day (own test) | 4 | 4 (FBR 2019-10-22, FBR 2019-10-23, FBR 2019-11-12, XP 2019-11-29) | MATCH
+A | STOP beside: virgin dated 27 -> records | 26 (bars_before_E_lt_50 1) | 26 | MATCH
+A | STOP beside: 2021-22 undated 226 -> 212, dated 111 -> 110 | 212 / 110 | 212 / 110 | MATCH
+A | EXIT deciding rows = 2021-22 dated with an exit, after the 50-bar floor | 110 rows, 107 armed | 110 rows, 107 armed | MATCH
+A | EXIT eids == the loader's 2021-22 dated set minus one under the floor | True | True | MATCH
+B | random-price control draw population (the previous read's windows) | 64 | 64 | MATCH
+B |   ... records after the 20-bar floor / with minutes | 61 (dropped 3) | 61 (dropped 3) | MATCH
+B | L2 per-row: 96 TSV rows x 9 levels x (price, crossing minute, feasible, verdict, shifted-control feasible+hit) + control + union + raw levels re-derived from raw minute bars | 96 rows | 96 rows identical, 0 differ | MATCH
+B |   ... TSV rows scored == rows I scored (no row only on one side) | 96 | 96 | MATCH
+B | DECIDING records (mine, scored from raw minutes) | 40 | 40 | MATCH
+B |   ... == TSV deciding eids | True | True | MATCH
+B | [deciding 2021-22 undated nf] scorable windows | 40 | 40 | MATCH
+B | [deciding 2021-22 undated nf] L7: feasible n | 11 | 11 | MATCH
+B | [deciding 2021-22 undated nf] L7: feasible share | 27.5 | 27.5 | MATCH
+B | [deciding 2021-22 undated nf] L7: hit-or-ballpark n | 35 | 35 | MATCH
+B | [deciding 2021-22 undated nf] L7: shifted-window control feasible / hit (%) | 1.2 / 46.6 | 1.2 / 46.6 | MATCH
+B | [deciding 2021-22 undated nf] L8: feasible n | 18 | 18 | MATCH
+B | [deciding 2021-22 undated nf] L8: feasible share | 45 | 45 | MATCH
+B | [deciding 2021-22 undated nf] L8: hit-or-ballpark n | 35 | 35 | MATCH
+B | [deciding 2021-22 undated nf] L8: shifted-window control feasible / hit (%) | 3.6 / 56.5 | 3.6 / 56.5 | MATCH
+B | [deciding 2021-22 undated nf] L9: feasible n | 18 | 18 | MATCH
+B | [deciding 2021-22 undated nf] L9: feasible share | 45 | 45 | MATCH
+B | [deciding 2021-22 undated nf] L9: hit-or-ballpark n | 37 | 37 | MATCH
+B | [deciding 2021-22 undated nf] L9: shifted-window control feasible / hit (%) | 6.9 / 90.8 | 6.9 / 90.8 | MATCH
+B | [deciding 2021-22 undated nf] L1: feasible n | 14 | 14 | MATCH
+B | [deciding 2021-22 undated nf] L1: feasible share | 35 | 35 | MATCH
+B | [deciding 2021-22 undated nf] L1: hit-or-ballpark n | 35 | 35 | MATCH
+B | [deciding 2021-22 undated nf] L1: shifted-window control feasible / hit (%) | 2.2 / 48.1 | 2.2 / 48.1 | MATCH
+B | [deciding 2021-22 undated nf] L2: feasible n | 8 | 8 | MATCH
+B | [deciding 2021-22 undated nf] L2: feasible share | 20 | 20 | MATCH
+B | [deciding 2021-22 undated nf] L2: hit-or-ballpark n | 25 | 25 | MATCH
+B | [deciding 2021-22 undated nf] L2: shifted-window control feasible / hit (%) | 2.8 / 29.8 | 2.8 / 29.8 | MATCH
+B | [deciding 2021-22 undated nf] L3: feasible n | 3 | 3 | MATCH
+B | [deciding 2021-22 undated nf] L3: feasible share | 7.5 | 7.5 | MATCH
+B | [deciding 2021-22 undated nf] L3: hit-or-ballpark n | 6 | 6 | MATCH
+B | [deciding 2021-22 undated nf] L3: shifted-window control feasible / hit (%) | 1.1 / 14.7 | 1.1 / 14.7 | MATCH
+B | [deciding 2021-22 undated nf] L4: feasible n | 0 | 0 | MATCH
+B | [deciding 2021-22 undated nf] L4: feasible share | 0 | 0 | MATCH
+B | [deciding 2021-22 undated nf] L4: hit-or-ballpark n | 34 | 34 | MATCH
+B | [deciding 2021-22 undated nf] L4: shifted-window control feasible / hit (%) | 0.1 / 41.1 | 0.1 / 41.1 | MATCH
+B | [deciding 2021-22 undated nf] L5: feasible n | 2 | 2 | MATCH
+B | [deciding 2021-22 undated nf] L5: feasible share | 5 | 5 | MATCH
+B | [deciding 2021-22 undated nf] L5: hit-or-ballpark n | 28 | 28 | MATCH
+B | [deciding 2021-22 undated nf] L5: shifted-window control feasible / hit (%) | 0.3 / 40.5 | 0.3 / 40.5 | MATCH
+B | [deciding 2021-22 undated nf] L6: feasible n | 9 | 9 | MATCH
+B | [deciding 2021-22 undated nf] L6: feasible share | 22.5 | 22.5 | MATCH
+B | [deciding 2021-22 undated nf] L6: hit-or-ballpark n | 22 | 22 | MATCH
+B | [deciding 2021-22 undated nf] L6: shifted-window control feasible / hit (%) | 2.5 / 55.2 | 2.5 / 55.2 | MATCH
+B | [deciding 2021-22 undated nf] random-price control feasible / hit-or-ballpark (%) | 30.0 / 85.5 | 30.0 / 85.5 | MATCH
+B | [deciding 2021-22 undated nf] 'any opening range' union feasible / hit / shifted control (%) | 62.5 / 92.5 / 6.7 | 62.5 / 92.5 / 6.7 | MATCH
+B | [dated 2021-22 (beside)] scorable windows | 20 | 20 | MATCH
+B | [dated 2021-22 (beside)] L7: feasible n | 9 | 9 | MATCH
+B | [dated 2021-22 (beside)] L7: feasible share | 45 | 45 | MATCH
+B | [dated 2021-22 (beside)] L7: hit-or-ballpark n | 18 | 18 | MATCH
+B | [dated 2021-22 (beside)] L7: shifted-window control feasible / hit (%) | 4.4 / 54.8 | 4.4 / 54.8 | MATCH
+B | [dated 2021-22 (beside)] L8: feasible n | 6 | 6 | MATCH
+B | [dated 2021-22 (beside)] L8: feasible share | 30 | 30 | MATCH
+B | [dated 2021-22 (beside)] L8: hit-or-ballpark n | 15 | 15 | MATCH
+B | [dated 2021-22 (beside)] L8: shifted-window control feasible / hit (%) | 8.0 / 58.5 | 8.0 / 58.5 | MATCH
+B | [dated 2021-22 (beside)] L9: feasible n | 6 | 6 | MATCH
+B | [dated 2021-22 (beside)] L9: feasible share | 30 | 30 | MATCH
+B | [dated 2021-22 (beside)] L9: hit-or-ballpark n | 15 | 15 | MATCH
+B | [dated 2021-22 (beside)] L9: shifted-window control feasible / hit (%) | 9.8 / 78.7 | 9.8 / 78.7 | MATCH
+B | [dated 2021-22 (beside)] L1: feasible n | 12 | 12 | MATCH
+B | [dated 2021-22 (beside)] L1: feasible share | 60 | 60 | MATCH
+B | [dated 2021-22 (beside)] L1: hit-or-ballpark n | 18 | 18 | MATCH
+B | [dated 2021-22 (beside)] L1: shifted-window control feasible / hit (%) | 5.7 / 57.1 | 5.7 / 57.1 | MATCH
+B | [dated 2021-22 (beside)] L2: feasible n | 8 | 8 | MATCH
+B | [dated 2021-22 (beside)] L2: feasible share | 40 | 40 | MATCH
+B | [dated 2021-22 (beside)] L2: hit-or-ballpark n | 14 | 14 | MATCH
+B | [dated 2021-22 (beside)] L2: shifted-window control feasible / hit (%) | 2.7 / 33.3 | 2.7 / 33.3 | MATCH
+B | [dated 2021-22 (beside)] L3: feasible n | 7 | 7 | MATCH
+B | [dated 2021-22 (beside)] L3: feasible share | 35 | 35 | MATCH
+B | [dated 2021-22 (beside)] L3: hit-or-ballpark n | 12 | 12 | MATCH
+B | [dated 2021-22 (beside)] L3: shifted-window control feasible / hit (%) | 3.9 / 34.8 | 3.9 / 34.8 | MATCH
+B | [dated 2021-22 (beside)] L4: feasible n | 0 | 0 | MATCH
+B | [dated 2021-22 (beside)] L4: feasible share | 0 | 0 | MATCH
+B | [dated 2021-22 (beside)] L4: hit-or-ballpark n | 14 | 14 | MATCH
+B | [dated 2021-22 (beside)] L4: shifted-window control feasible / hit (%) | 0.1 / 37.0 | 0.1 / 37.0 | MATCH
+B | [dated 2021-22 (beside)] L5: feasible n | 0 | 0 | MATCH
+B | [dated 2021-22 (beside)] L5: feasible share | 0 | 0 | MATCH
+B | [dated 2021-22 (beside)] L5: hit-or-ballpark n | 9 | 9 | MATCH
+B | [dated 2021-22 (beside)] L5: shifted-window control feasible / hit (%) | 0.0 / 19.8 | 0.0 / 19.8 | MATCH
+B | [dated 2021-22 (beside)] L6: feasible n | 5 | 5 | MATCH
+B | [dated 2021-22 (beside)] L6: feasible share | 25 | 25 | MATCH
+B | [dated 2021-22 (beside)] L6: hit-or-ballpark n | 7 | 7 | MATCH
+B | [dated 2021-22 (beside)] L6: shifted-window control feasible / hit (%) | 4.7 / 54.2 | 4.7 / 54.2 | MATCH
+B | [dated 2021-22 (beside)] random-price control feasible / hit-or-ballpark (%) | 32.7 / 72.5 | 32.7 / 72.5 | MATCH
+B | [dated 2021-22 (beside)] 'any opening range' union feasible / hit / shifted control (%) | 65.0 / 90.0 / 15.2 | 65.0 / 90.0 / 15.2 | MATCH
+B | [2021-22 flickers (beside)] scorable windows | 19 | 19 | MATCH
+B | [2021-22 flickers (beside)] L7: feasible n | 4 | 4 | MATCH
+B | [2021-22 flickers (beside)] L7: feasible share | 21.1 | 21.1 | MATCH
+B | [2021-22 flickers (beside)] L7: hit-or-ballpark n | 18 | 18 | MATCH
+B | [2021-22 flickers (beside)] L7: shifted-window control feasible / hit (%) | 1.7 / 69.1 | 1.7 / 69.1 | MATCH
+B | [2021-22 flickers (beside)] L8: feasible n | 8 | 8 | MATCH
+B | [2021-22 flickers (beside)] L8: feasible share | 42.1 | 42.1 | MATCH
+B | [2021-22 flickers (beside)] L8: hit-or-ballpark n | 15 | 15 | MATCH
+B | [2021-22 flickers (beside)] L8: shifted-window control feasible / hit (%) | 1.9 / 59.1 | 1.9 / 59.1 | MATCH
+B | [2021-22 flickers (beside)] L9: feasible n | 8 | 8 | MATCH
+B | [2021-22 flickers (beside)] L9: feasible share | 42.1 | 42.1 | MATCH
+B | [2021-22 flickers (beside)] L9: hit-or-ballpark n | 16 | 16 | MATCH
+B | [2021-22 flickers (beside)] L9: shifted-window control feasible / hit (%) | 7.1 / 89.2 | 7.1 / 89.2 | MATCH
+B | [2021-22 flickers (beside)] L1: feasible n | 7 | 7 | MATCH
+B | [2021-22 flickers (beside)] L1: feasible share | 36.8 | 36.8 | MATCH
+B | [2021-22 flickers (beside)] L1: hit-or-ballpark n | 17 | 17 | MATCH
+B | [2021-22 flickers (beside)] L1: shifted-window control feasible / hit (%) | 3.3 / 69.3 | 3.3 / 69.3 | MATCH
+B | [2021-22 flickers (beside)] L2: feasible n | 4 | 4 | MATCH
+B | [2021-22 flickers (beside)] L2: feasible share | 21.1 | 21.1 | MATCH
+B | [2021-22 flickers (beside)] L2: hit-or-ballpark n | 9 | 9 | MATCH
+B | [2021-22 flickers (beside)] L2: shifted-window control feasible / hit (%) | 2.3 / 39.4 | 2.3 / 39.4 | MATCH
+B | [2021-22 flickers (beside)] L3: feasible n | 0 | 0 | MATCH
+B | [2021-22 flickers (beside)] L3: feasible share | 0 | 0 | MATCH
+B | [2021-22 flickers (beside)] L3: hit-or-ballpark n | 3 | 3 | MATCH
+B | [2021-22 flickers (beside)] L3: shifted-window control feasible / hit (%) | 0.1 / 8.2 | 0.1 / 8.2 | MATCH
+B | [2021-22 flickers (beside)] L4: feasible n | 1 | 1 | MATCH
+B | [2021-22 flickers (beside)] L4: feasible share | 5.3 | 5.3 | MATCH
+B | [2021-22 flickers (beside)] L4: hit-or-ballpark n | 18 | 18 | MATCH
+B | [2021-22 flickers (beside)] L4: shifted-window control feasible / hit (%) | 0.1 / 70.3 | 0.1 / 70.3 | MATCH
+B | [2021-22 flickers (beside)] L5: feasible n | 1 | 1 | MATCH
+B | [2021-22 flickers (beside)] L5: feasible share | 5.3 | 5.3 | MATCH
+B | [2021-22 flickers (beside)] L5: hit-or-ballpark n | 12 | 12 | MATCH
+B | [2021-22 flickers (beside)] L5: shifted-window control feasible / hit (%) | 0.1 / 52.0 | 0.1 / 52.0 | MATCH
+B | [2021-22 flickers (beside)] L6: feasible n | 5 | 5 | MATCH
+B | [2021-22 flickers (beside)] L6: feasible share | 26.3 | 26.3 | MATCH
+B | [2021-22 flickers (beside)] L6: hit-or-ballpark n | 8 | 8 | MATCH
+B | [2021-22 flickers (beside)] L6: shifted-window control feasible / hit (%) | 1.6 / 51.0 | 1.6 / 51.0 | MATCH
+B | [2021-22 flickers (beside)] random-price control feasible / hit-or-ballpark (%) | 22.5 / 82.3 | 22.5 / 82.3 | MATCH
+B | [2021-22 flickers (beside)] 'any opening range' union feasible / hit / shifted control (%) | 52.6 / 94.7 / 6.4 | 52.6 / 94.7 / 6.4 | MATCH
+B | [untouched nf (veto set)] scorable windows | 9 | 9 | MATCH
+B | [untouched nf (veto set)] L7: feasible n | 2 | 2 | MATCH
+B | [untouched nf (veto set)] L7: feasible share | 22.2 | 22.2 | MATCH
+B | [untouched nf (veto set)] L7: hit-or-ballpark n | 8 | 8 | MATCH
+B | [untouched nf (veto set)] L7: shifted-window control feasible / hit (%) | 1.6 / 48.0 | 1.6 / 48.0 | MATCH
+B | [untouched nf (veto set)] L8: feasible n | 3 | 3 | MATCH
+B | [untouched nf (veto set)] L8: feasible share | 33.3 | 33.3 | MATCH
+B | [untouched nf (veto set)] L8: hit-or-ballpark n | 6 | 6 | MATCH
+B | [untouched nf (veto set)] L8: shifted-window control feasible / hit (%) | 0.9 / 37.6 | 0.9 / 37.6 | MATCH
+B | [untouched nf (veto set)] L9: feasible n | 3 | 3 | MATCH
+B | [untouched nf (veto set)] L9: feasible share | 33.3 | 33.3 | MATCH
+B | [untouched nf (veto set)] L9: hit-or-ballpark n | 6 | 6 | MATCH
+B | [untouched nf (veto set)] L9: shifted-window control feasible / hit (%) | 3.4 / 72.1 | 3.4 / 72.1 | MATCH
+B | [untouched nf (veto set)] L1: feasible n | 2 | 2 | MATCH
+B | [untouched nf (veto set)] L1: feasible share | 22.2 | 22.2 | MATCH
+B | [untouched nf (veto set)] L1: hit-or-ballpark n | 8 | 8 | MATCH
+B | [untouched nf (veto set)] L1: shifted-window control feasible / hit (%) | 1.6 / 55.1 | 1.6 / 55.1 | MATCH
+B | [untouched nf (veto set)] L2: feasible n | 0 | 0 | MATCH
+B | [untouched nf (veto set)] L2: feasible share | 0 | 0 | MATCH
+B | [untouched nf (veto set)] L2: hit-or-ballpark n | 8 | 8 | MATCH
+B | [untouched nf (veto set)] L2: shifted-window control feasible / hit (%) | 0.5 / 52.1 | 0.5 / 52.1 | MATCH
+B | [untouched nf (veto set)] L3: feasible n | 2 | 2 | MATCH
+B | [untouched nf (veto set)] L3: feasible share | 22.2 | 22.2 | MATCH
+B | [untouched nf (veto set)] L3: hit-or-ballpark n | 6 | 6 | MATCH
+B | [untouched nf (veto set)] L3: shifted-window control feasible / hit (%) | 1.0 / 22.4 | 1.0 / 22.4 | MATCH
+B | [untouched nf (veto set)] L4: feasible n | 0 | 0 | MATCH
+B | [untouched nf (veto set)] L4: feasible share | 0 | 0 | MATCH
+B | [untouched nf (veto set)] L4: hit-or-ballpark n | 8 | 8 | MATCH
+B | [untouched nf (veto set)] L4: shifted-window control feasible / hit (%) | 0.9 / 61.9 | 0.9 / 61.9 | MATCH
+B | [untouched nf (veto set)] L5: feasible n | 0 | 0 | MATCH
+B | [untouched nf (veto set)] L5: feasible share | 0 | 0 | MATCH
+B | [untouched nf (veto set)] L5: hit-or-ballpark n | 5 | 5 | MATCH
+B | [untouched nf (veto set)] L5: shifted-window control feasible / hit (%) | 0.3 / 62.7 | 0.3 / 62.7 | MATCH
+B | [untouched nf (veto set)] L6: feasible n | 0 | 0 | MATCH
+B | [untouched nf (veto set)] L6: feasible share | 0 | 0 | MATCH
+B | [untouched nf (veto set)] L6: hit-or-ballpark n | 0 | 0 | MATCH
+B | [untouched nf (veto set)] L6: shifted-window control feasible / hit (%) | 0.4 / 22.4 | 0.4 / 22.4 | MATCH
+B | [untouched nf (veto set)] random-price control feasible / hit-or-ballpark (%) | 3.3 / 73.6 | 3.3 / 73.6 | MATCH
+B | [untouched nf (veto set)] 'any opening range' union feasible / hit / shifted control (%) | 33.3 / 100.0 / 4.0 | 33.3 / 100.0 / 4.0 | MATCH
+B | [untouched flickers (beside)] scorable windows | 7 | 7 | MATCH
+B | [untouched flickers (beside)] L7: feasible n | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L7: feasible share | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L7: hit-or-ballpark n | 5 | 5 | MATCH
+B | [untouched flickers (beside)] L7: shifted-window control feasible / hit (%) | 0.9 / 52.4 | 0.9 / 52.4 | MATCH
+B | [untouched flickers (beside)] L8: feasible n | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L8: feasible share | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L8: hit-or-ballpark n | 4 | 4 | MATCH
+B | [untouched flickers (beside)] L8: shifted-window control feasible / hit (%) | 2.1 / 41.1 | 2.1 / 41.1 | MATCH
+B | [untouched flickers (beside)] L9: feasible n | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L9: feasible share | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L9: hit-or-ballpark n | 4 | 4 | MATCH
+B | [untouched flickers (beside)] L9: shifted-window control feasible / hit (%) | 3.9 / 73.0 | 3.9 / 73.0 | MATCH
+B | [untouched flickers (beside)] L1: feasible n | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L1: feasible share | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L1: hit-or-ballpark n | 6 | 6 | MATCH
+B | [untouched flickers (beside)] L1: shifted-window control feasible / hit (%) | 1.9 / 48.4 | 1.9 / 48.4 | MATCH
+B | [untouched flickers (beside)] L2: feasible n | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L2: feasible share | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L2: hit-or-ballpark n | 4 | 4 | MATCH
+B | [untouched flickers (beside)] L2: shifted-window control feasible / hit (%) | 0.6 / 34.9 | 0.6 / 34.9 | MATCH
+B | [untouched flickers (beside)] L3: feasible n | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L3: feasible share | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L3: hit-or-ballpark n | 1 | 1 | MATCH
+B | [untouched flickers (beside)] L3: shifted-window control feasible / hit (%) | 0.2 / 15.8 | 0.2 / 15.8 | MATCH
+B | [untouched flickers (beside)] L4: feasible n | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L4: feasible share | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L4: hit-or-ballpark n | 5 | 5 | MATCH
+B | [untouched flickers (beside)] L4: shifted-window control feasible / hit (%) | 0.2 / 56.2 | 0.2 / 56.2 | MATCH
+B | [untouched flickers (beside)] L5: feasible n | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L5: feasible share | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L5: hit-or-ballpark n | 3 | 3 | MATCH
+B | [untouched flickers (beside)] L5: shifted-window control feasible / hit (%) | 0.4 / 42.1 | 0.4 / 42.1 | MATCH
+B | [untouched flickers (beside)] L6: feasible n | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L6: feasible share | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L6: hit-or-ballpark n | 0 | 0 | MATCH
+B | [untouched flickers (beside)] L6: shifted-window control feasible / hit (%) | 2.6 / 39.6 | 2.6 / 39.6 | MATCH
+B | [untouched flickers (beside)] random-price control feasible / hit-or-ballpark (%) | 4.5 / 60.0 | 4.5 / 60.0 | MATCH
+B | [untouched flickers (beside)] 'any opening range' union feasible / hit / shifted control (%) | 0.0 / 85.7 / 4.9 | 0.0 / 85.7 / 4.9 | MATCH
+B | [pre-market-flat dated (beside)] scorable windows | 41 | 41 | MATCH
+B | [pre-market-flat dated (beside)] L7: feasible n | 38 | 38 | MATCH
+B | [pre-market-flat dated (beside)] L7: feasible share | 92.7 | 92.7 | MATCH
+B | [pre-market-flat dated (beside)] L7: hit-or-ballpark n | 41 | 41 | MATCH
+B | [pre-market-flat dated (beside)] L7: shifted-window control feasible / hit (%) | 2.0 / 60.4 | 2.0 / 60.4 | MATCH
+B | [pre-market-flat dated (beside)] L8: feasible n | 11 | 11 | MATCH
+B | [pre-market-flat dated (beside)] L8: feasible share | 26.8 | 26.8 | MATCH
+B | [pre-market-flat dated (beside)] L8: hit-or-ballpark n | 31 | 31 | MATCH
+B | [pre-market-flat dated (beside)] L8: shifted-window control feasible / hit (%) | 4.9 / 50.2 | 4.9 / 50.2 | MATCH
+B | [pre-market-flat dated (beside)] L9: feasible n | 11 | 11 | MATCH
+B | [pre-market-flat dated (beside)] L9: feasible share | 26.8 | 26.8 | MATCH
+B | [pre-market-flat dated (beside)] L9: hit-or-ballpark n | 31 | 31 | MATCH
+B | [pre-market-flat dated (beside)] L9: shifted-window control feasible / hit (%) | 11.6 / 89.4 | 11.6 / 89.4 | MATCH
+B | [pre-market-flat dated (beside)] L1: feasible n | 33 | 33 | MATCH
+B | [pre-market-flat dated (beside)] L1: feasible share | 80.5 | 80.5 | MATCH
+B | [pre-market-flat dated (beside)] L1: hit-or-ballpark n | 41 | 41 | MATCH
+B | [pre-market-flat dated (beside)] L1: shifted-window control feasible / hit (%) | 4.3 / 62.2 | 4.3 / 62.2 | MATCH
+B | [pre-market-flat dated (beside)] L2: feasible n | 40 | 40 | MATCH
+B | [pre-market-flat dated (beside)] L2: feasible share | 97.6 | 97.6 | MATCH
+B | [pre-market-flat dated (beside)] L2: hit-or-ballpark n | 27 | 27 | MATCH
+B | [pre-market-flat dated (beside)] L2: shifted-window control feasible / hit (%) | 0.2 / 37.8 | 0.2 / 37.8 | MATCH
+B | [pre-market-flat dated (beside)] L3: feasible n | 39 | 39 | MATCH
+B | [pre-market-flat dated (beside)] L3: feasible share | 95.1 | 95.1 | MATCH
+B | [pre-market-flat dated (beside)] L3: hit-or-ballpark n | 29 | 29 | MATCH
+B | [pre-market-flat dated (beside)] L3: shifted-window control feasible / hit (%) | 0.7 / 33.8 | 0.7 / 33.8 | MATCH
+B | [pre-market-flat dated (beside)] L4: feasible n | 41 | 41 | MATCH
+B | [pre-market-flat dated (beside)] L4: feasible share | 100 | 100 | MATCH
+B | [pre-market-flat dated (beside)] L4: hit-or-ballpark n | 41 | 41 | MATCH
+B | [pre-market-flat dated (beside)] L4: shifted-window control feasible / hit (%) | 0.2 / 48.7 | 0.2 / 48.7 | MATCH
+B | [pre-market-flat dated (beside)] L5: feasible n | 41 | 41 | MATCH
+B | [pre-market-flat dated (beside)] L5: feasible share | 100 | 100 | MATCH
+B | [pre-market-flat dated (beside)] L5: hit-or-ballpark n | 20 | 20 | MATCH
+B | [pre-market-flat dated (beside)] L5: shifted-window control feasible / hit (%) | 0.0 / 24.3 | 0.0 / 24.3 | MATCH
+B | [pre-market-flat dated (beside)] L6: feasible n | 6 | 6 | MATCH
+B | [pre-market-flat dated (beside)] L6: feasible share | 14.6 | 14.6 | MATCH
+B | [pre-market-flat dated (beside)] L6: hit-or-ballpark n | 20 | 20 | MATCH
+B | [pre-market-flat dated (beside)] L6: shifted-window control feasible / hit (%) | 5.8 / 48.0 | 5.8 / 48.0 | MATCH
+B | [pre-market-flat dated (beside)] random-price control feasible / hit-or-ballpark (%) | 74.2 / 83.6 | 74.2 / 83.6 | MATCH
+B | [pre-market-flat dated (beside)] 'any opening range' union feasible / hit / shifted control (%) | 92.7 / 100.0 / 10.3 | 92.7 / 100.0 / 10.3 | MATCH
+B | [pre-market-flat undated (beside)] scorable windows | 52 | 52 | MATCH
+B | [pre-market-flat undated (beside)] L7: feasible n | 46 | 46 | MATCH
+B | [pre-market-flat undated (beside)] L7: feasible share | 88.5 | 88.5 | MATCH
+B | [pre-market-flat undated (beside)] L7: hit-or-ballpark n | 52 | 52 | MATCH
+B | [pre-market-flat undated (beside)] L7: shifted-window control feasible / hit (%) | 2.8 / 42.6 | 2.8 / 42.6 | MATCH
+B | [pre-market-flat undated (beside)] L8: feasible n | 18 | 18 | MATCH
+B | [pre-market-flat undated (beside)] L8: feasible share | 34.6 | 34.6 | MATCH
+B | [pre-market-flat undated (beside)] L8: hit-or-ballpark n | 36 | 36 | MATCH
+B | [pre-market-flat undated (beside)] L8: shifted-window control feasible / hit (%) | 4.1 / 56.2 | 4.1 / 56.2 | MATCH
+B | [pre-market-flat undated (beside)] L9: feasible n | 19 | 19 | MATCH
+B | [pre-market-flat undated (beside)] L9: feasible share | 36.5 | 36.5 | MATCH
+B | [pre-market-flat undated (beside)] L9: hit-or-ballpark n | 35 | 35 | MATCH
+B | [pre-market-flat undated (beside)] L9: shifted-window control feasible / hit (%) | 8.2 / 89.8 | 8.2 / 89.8 | MATCH
+B | [pre-market-flat undated (beside)] L1: feasible n | 38 | 38 | MATCH
+B | [pre-market-flat undated (beside)] L1: feasible share | 73.1 | 73.1 | MATCH
+B | [pre-market-flat undated (beside)] L1: hit-or-ballpark n | 52 | 52 | MATCH
+B | [pre-market-flat undated (beside)] L1: shifted-window control feasible / hit (%) | 3.6 / 47.6 | 3.6 / 47.6 | MATCH
+B | [pre-market-flat undated (beside)] L2: feasible n | 37 | 37 | MATCH
+B | [pre-market-flat undated (beside)] L2: feasible share | 71.2 | 71.2 | MATCH
+B | [pre-market-flat undated (beside)] L2: hit-or-ballpark n | 32 | 32 | MATCH
+B | [pre-market-flat undated (beside)] L2: shifted-window control feasible / hit (%) | 1.9 / 26.6 | 1.9 / 26.6 | MATCH
+B | [pre-market-flat undated (beside)] L3: feasible n | 12 | 12 | MATCH
+B | [pre-market-flat undated (beside)] L3: feasible share | 23.1 | 23.1 | MATCH
+B | [pre-market-flat undated (beside)] L3: hit-or-ballpark n | 12 | 12 | MATCH
+B | [pre-market-flat undated (beside)] L3: shifted-window control feasible / hit (%) | 2.7 / 20.8 | 2.7 / 20.8 | MATCH
+B | [pre-market-flat undated (beside)] L4: feasible n | 50 | 50 | MATCH
+B | [pre-market-flat undated (beside)] L4: feasible share | 96.2 | 96.2 | MATCH
+B | [pre-market-flat undated (beside)] L4: hit-or-ballpark n | 52 | 52 | MATCH
+B | [pre-market-flat undated (beside)] L4: shifted-window control feasible / hit (%) | 0.5 / 40.6 | 0.5 / 40.6 | MATCH
+B | [pre-market-flat undated (beside)] L5: feasible n | 43 | 43 | MATCH
+B | [pre-market-flat undated (beside)] L5: feasible share | 82.7 | 82.7 | MATCH
+B | [pre-market-flat undated (beside)] L5: hit-or-ballpark n | 35 | 35 | MATCH
+B | [pre-market-flat undated (beside)] L5: shifted-window control feasible / hit (%) | 0.6 / 18.9 | 0.6 / 18.9 | MATCH
+B | [pre-market-flat undated (beside)] L6: feasible n | 6 | 6 | MATCH
+B | [pre-market-flat undated (beside)] L6: feasible share | 11.5 | 11.5 | MATCH
+B | [pre-market-flat undated (beside)] L6: hit-or-ballpark n | 19 | 19 | MATCH
+B | [pre-market-flat undated (beside)] L6: shifted-window control feasible / hit (%) | 7.3 / 58.2 | 7.3 / 58.2 | MATCH
+B | [pre-market-flat undated (beside)] random-price control feasible / hit-or-ballpark (%) | 70.9 / 78.9 | 70.9 / 78.9 | MATCH
+B | [pre-market-flat undated (beside)] 'any opening range' union feasible / hit / shifted control (%) | 88.5 / 100.0 / 8.5 | 88.5 / 100.0 / 8.5 | MATCH
+B | HEADLINE L8 (chosen) feasible on the 40 = 18 = 45.0% and hit-or-ballpark 35 = 87.5% | 18 = 45.0% / 35 = 87.5% | 18 = 45.0% / 35 = 87.5% | MATCH
+B | HEADLINE union 'any opening range' (L7/L1/L8) feasible 62.5% vs the random-price control 30.0% (beside) | 62.5% vs 30.0% | 62.5% (n=25) vs 30.0% (exact 0.2996) | MATCH
+B | gate (vii): random-price control on the previous 41 undated windows reproduces 31.7% / 85.9% (replayed draws, mine) | 31.7% / 85.9% on 41 | 31.7% / 85.9% on 41 | MATCH
+B | control margin: L8 feasible 0.4500 vs random-price control + 0.15 (exact) | printout lists only 'feasible 45.0% < 50.0%'; margin not listed | 0.4500 vs 0.2996+0.15 = 0.4496 | NOTE (the margin test is PASSED on exact numbers; it sits at equality, so the printout's reason list silently passes it; the verdict is FAIL on the 50% bar alone)
+B | ENTER verdict on the deciding set (mine: size>=40, feasible>=50%, controls+15, hit floor 70%) | FAIL (feasible 45.0% < 50.0%; falsifier: no new level >= 50%) | FAIL (feasible 45.0% < 50.0%; falsifier no new level>=50%: True) | MATCH
+B | n = 40 sits exactly on the size floor (<=39 -> INCONCLUSIVE-by-size) | 40 (floor 40) | 40 | NOTE (one fewer record would have flipped the stage to INCONCLUSIVE-by-size; the verdict is FAIL either way)
+B | sign veto: L8 feasible on the 9 untouched nf windows (3/9 = 33.3%) vs the larger control (random 3.3%, shifted 0.9%) -> no veto | 33.3% vs 3.3% -> no veto | 33.3% vs 3.3% -> no veto | MATCH
+C | STOP records (mine, loader record builder): virgin undated 58 / virgin dated 26 | 58 / 26 | 58 / 26 | MATCH
+C | L2 sell-window offsets (bisect on each record's OWN calendar) == TSV exit_lo_j/exit_hi_j on the 58; every exit date is a session | 58 rows | 58 equal, 0 snapped | MATCH
+C | era-B offset defect: exit_hi offset on the record's own calendar vs the unified main calendar (virgin undated + dated records, 18 era-B among 89) | own calendar used (defect fixed) | 9 era-B undated records; 0 of 80 offsets (records with an exit) differ own-vs-unified:  | NOTE (informational: 0 differences = the own calendar and the unified calendar agree on the virgin block, so the old 1,445-1,569 session offset defect does not recur there)
+C | L2 fill = daily open x (1 + slippage) on every undated record (constant ratio), fill_minute 0, fill_src 'open', S1_is_S2 | 58 open fills | slippage min 0.001000 max 0.001000 | MATCH (the 0.1% slippage constant is the frozen H.undated_entry's)
+C | L2 ADR20 on the 58 (loader) == TSV adr20 | 0 | 0 | MATCH
+C | L2 read minute / S9_is_S1 / S10_is_S1 flags re-derived from first_clock+f_ctx and the buy-day minutes == TSV | 0 differ | 0 differ | MATCH ([])
+C | L2 level-0 prices S1,S3,S9,S10,S8,SMA50 re-derived (daily export lows / minute lows / h60 bars / fill) == TSV | 0 differ | 0 differ | MATCH ([])
+C | 'differ from S1' counts (S9, S10) = records with S9/S10 != S1 | 22 / 22 | 22 / 22 | MATCH
+C | L2 per record x 18 cells (S1,S3,S9,S10,S8,SMA50 x T,C,H): traded-through / certain / unresolved / first session / event minute re-derived from raw bars+frames == TSV | 1044 cells | 1044 equal, 0 differ | MATCH
+C | last in-session frame on the exit_lo day: frame with the highest idx vs the highest clock (the code takes max idx) — differ on | n/a | 0 of 58 records | NOTE (informational: if > 0 the certainty of a T/H touch on the sell day could depend on the choice)
+C | printed deciding table rows | 18 | 18 | MATCH
+C | [S1-T] tightness / traded through / certain / unresolved | 1.0% / 27 / 9 / 3 | 1.0% / 27 / 9 / 3 | MATCH
+C | [S1-T] H_cond / H_all / eligible / differ | 33.3% / 15.5% / True / - | 33.3% / 15.5% / True / - | MATCH
+C | [S1-C] tightness / traded through / certain / unresolved | 1.0% / 20 / 4 / 0 | 1.0% / 20 / 4 / 0 | MATCH
+C | [S1-C] H_cond / H_all / eligible / differ | 20.0% / 6.9% / True / - | 20.0% / 6.9% / True / - | MATCH
+C | [S1-H] tightness / traded through / certain / unresolved | 1.0% / 23 / 5 / 2 | 1.0% / 23 / 5 / 2 | MATCH
+C | [S1-H] H_cond / H_all / eligible / differ | 21.7% / 8.6% / True / - | 21.7% / 8.6% / True / - | MATCH
+C | [S3-T] tightness / traded through / certain / unresolved | 3.1% / 26 / 6 / 11 | 3.1% / 26 / 6 / 11 | MATCH
+C | [S3-T] H_cond / H_all / eligible / differ | 23.1% / 10.3% / True / - | 23.1% / 10.3% / True / - | MATCH
+C | [S3-C] tightness / traded through / certain / unresolved | 3.1% / 15 / 3 / 0 | 3.1% / 15 / 3 / 0 | MATCH
+C | [S3-C] H_cond / H_all / eligible / differ | 20.0% / 5.2% / False / - | 20.0% / 5.2% / False / - | MATCH
+C | [S3-H] tightness / traded through / certain / unresolved | 3.1% / 22 / 6 / 4 | 3.1% / 22 / 6 / 4 | MATCH
+C | [S3-H] H_cond / H_all / eligible / differ | 27.3% / 10.3% / True / - | 27.3% / 10.3% / True / - | MATCH
+C | [S9-T] tightness / traded through / certain / unresolved | 0.9% / 39 / 10 / 12 | 0.9% / 39 / 10 / 12 | MATCH
+C | [S9-T] H_cond / H_all / eligible / differ | 25.6% / 17.2% / True / 22 | 25.6% / 17.2% / True / 22 | MATCH
+C | [S9-C] tightness / traded through / certain / unresolved | 0.9% / 23 / 6 / 0 | 0.9% / 23 / 6 / 0 | MATCH
+C | [S9-C] H_cond / H_all / eligible / differ | 26.1% / 10.3% / True / 22 | 26.1% / 10.3% / True / 22 | MATCH
+C | [S9-H] tightness / traded through / certain / unresolved | 0.9% / 29 / 8 / 2 | 0.9% / 29 / 8 / 2 | MATCH
+C | [S9-H] H_cond / H_all / eligible / differ | 27.6% / 13.8% / True / 22 | 27.6% / 13.8% / True / 22 | MATCH
+C | [S10-T] tightness / traded through / certain / unresolved | 0.9% / 39 / 10 / 12 | 0.9% / 39 / 10 / 12 | MATCH
+C | [S10-T] H_cond / H_all / eligible / differ | 25.6% / 17.2% / True / 22 | 25.6% / 17.2% / True / 22 | MATCH
+C | [S10-C] tightness / traded through / certain / unresolved | 0.9% / 23 / 6 / 0 | 0.9% / 23 / 6 / 0 | MATCH
+C | [S10-C] H_cond / H_all / eligible / differ | 26.1% / 10.3% / True / 22 | 26.1% / 10.3% / True / 22 | MATCH
+C | [S10-H] tightness / traded through / certain / unresolved | 0.9% / 29 / 8 / 2 | 0.9% / 29 / 8 / 2 | MATCH
+C | [S10-H] H_cond / H_all / eligible / differ | 27.6% / 13.8% / True / 22 | 27.6% / 13.8% / True / 22 | MATCH
+C | [S8-T] tightness / traded through / certain / unresolved | 10.7% / 11 / 3 / 1 | 10.7% / 11 / 3 / 1 | MATCH
+C | [S8-T] H_cond / H_all / eligible / differ | 27.3% / 5.2% / False / - | 27.3% / 5.2% / False / - | MATCH
+C | [S8-C] tightness / traded through / certain / unresolved | 10.7% / 8 / 1 / 0 | 10.7% / 8 / 1 / 0 | MATCH
+C | [S8-C] H_cond / H_all / eligible / differ | 12.5% / 1.7% / False / - | 12.5% / 1.7% / False / - | MATCH
+C | [S8-H] tightness / traded through / certain / unresolved | 10.7% / 10 / 2 / 1 | 10.7% / 10 / 2 / 1 | MATCH
+C | [S8-H] H_cond / H_all / eligible / differ | 20.0% / 3.4% / False / - | 20.0% / 3.4% / False / - | MATCH
+C | [SMA50-T] tightness / traded through / certain / unresolved | 8.0% / 31 / 5 / 17 | 8.0% / 31 / 5 / 17 | MATCH
+C | [SMA50-T] H_cond / H_all / eligible / differ | 16.1% / 8.6% / True / - | 16.1% / 8.6% / True / - | MATCH
+C | [SMA50-C] tightness / traded through / certain / unresolved | 8.0% / 27 / 7 / 0 | 8.0% / 27 / 7 / 0 | MATCH
+C | [SMA50-C] H_cond / H_all / eligible / differ | 25.9% / 12.1% / True / - | 25.9% / 12.1% / True / - | MATCH
+C | [SMA50-H] tightness / traded through / certain / unresolved | 8.0% / 30 / 5 / 14 | 8.0% / 30 / 5 / 14 | MATCH
+C | [SMA50-H] H_cond / H_all / eligible / differ | 16.7% / 8.6% / True / - | 16.7% / 8.6% / True / - | MATCH
+C | L1 beside columns (virgin dated 27, 2021-22 undated 226, nf, untouched-by-path, 2021-22 dated 111) H_cond re-aggregated from the TSV x 18 cells | 90 numbers | 90 equal | MATCH
+C | beside set sizes in the TSV (records): 2021-22 undated / dated / virgin dated | 212 / 110 / 26 | 212 / 110 / 26 | MATCH
+C | L1 fit column: stop_fit_chosen.json fit_table == re-aggregation of stop_fit_trades.tsv == the printed 'fit H_cond' x 18 cells | 18 cells | 18 equal | MATCH
+C | fit TSV population (records) | 415 | 415 | MATCH
+C | STOP chosen cell on the fit = none (no S1/S3/S9/S10 cell with >=20 traded through, positive width and H_cond <= 10%) | none -> INCONCLUSIVE | none (lowest fit H_cond among the 12 cells 24.7% at S9-T) | MATCH
+C | STOP verdict (chosen None) = INCONCLUSIVE; the check table alone cannot produce it | INCONCLUSIVE | INCONCLUSIVE | MATCH
+C | informational: lowest H_cond on the 58 among eligible 12 cells | 20.0% (S1-C) / 21.7% (S1-H) | 20.0% (S1-C) | MATCH (no cell is near the 15% pass bar on the deciding set either)
+C | beside: Spearman of the cells' H_cond order, fit vs deciding (S9/S10 left out: S1 on > half their records) | -0.75 on 6 cells | -0.75 on 6 cells | MATCH
+C | re-buys among the deciding: count | 26 | 26 | MATCH
+C | re-buys apart: 12 cells' H_cond re-derived from my held-through | 12 cells | 12 equal | MATCH ([])
+C | fit records (loader record builder) == fit TSV rows == JSON fit_table n | 415 / 415 | 415 | MATCH
+C | C2 cross-check: the generalised held-through (any fill type) reproduces the 58-record cells exactly | 0 differ | 0 differ of 1044 | MATCH
+C | C2 fit sell-window offsets (own calendar) == fit TSV | 0 differ | 0 differ | MATCH
+C | C2 fit S1/S3/S9/S10/S8 level-0 prices and the S1_is_S2 / S9_is_S1 / S10_is_S1 / read-minute flags re-derived == fit TSV (fill, fill minute, source taken from the fit TSV as inputs: the chain's L8 / ORH5 / open fill is ENTER's output, not recounted here) | 0 differ | 0 levels, 0 flags differ | MATCH ([])
+C | C2 fit L2: 415 records x 18 cells (traded through / certain / unresolved / first session / event minute) re-derived from bars+frames == fit TSV | 7470 cells | 7470 equal, 0 differ | MATCH
+C | C2 fit table (18 cells: n, traded through, certain, unresolved, H_cond, median width, eligible, differ) from MY cells == stop_fit_chosen.json | 18 cells | 18 equal | MATCH
+C | C2 STOP chosen cell on the fit from MY recomputed fit table = none (lowest fit H_cond among the 12 cells) | none -> INCONCLUSIVE | none (lowest 24.7% at S9-T) | MATCH
+D | EXIT deciding records (2021-22 dated with an exit, after the 50-bar floor) | 110 | 110 | MATCH
+D | L2 per trade (110 rows): registered fill (ORH5 / too_wide / close proxy), fill minute and source | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): registered stop (day low at the fill minute; S1-T), source | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): sell-window offsets, window width and J_tail = exit_hi + 20 (no cut) | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): 60-minute bar count per trade | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): 60-minute bars o/h/l/c/close-minute rebuilt from raw minutes (28,219 rows) | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): 20-EMA series (seed = mean of first 20 bars, alpha 2/21) | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): 20-bar plain average series | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): armed flag per bar | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): bars before the armed bar | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): seed residual (19/21)^(n-20) | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): ema_thin abstention (< 65 bars before armed) | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): warm-up bars and missing sessions | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): E1 last-leg session and stop pre-emption flag | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): E1 leg kind@session string | 0 differ | 0 differ | MATCH ([])
+D | L2 per trade (110 rows): E1 scorable / hit flags | 0 differ | 0 differ | MATCH ([])
+D | L2 bars file rows == rows rebuilt | 28219 | 28219 | MATCH
+D | era-B dated 2021-22 trades: own-calendar exit_lo / exit_hi offsets (7 trades) | FTNT 2022-04-21 0-1; LAC 2022-04-21 0-1; LHX 2022-04-05 6-6; LMT 2022-04-05 0-1; LMT 2022-04-06 8-10; TSLA 2022-04-21 0-1; X 2022-04-12 0-0 | FTNT 2022-04-21 0-1; LAC 2022-04-21 0-1; LHX 2022-04-05 6-6; LMT 2022-04-05 0-1; LMT 2022-04-06 8-10; TSLA 2022-04-21 0-1; X 2022-04-12 0-0 | MATCH
+D | own-calendar vs unified-calendar exit_hi offset on the 110 deciding records | n/a (offsets fixed to the record's own calendar) | 0 of 110 differ | NOTE (0 = the two calendars agree on this block; the old 1,445-1,569 session defect does not recur)
+D | trades in the account / stop pre-emptions | 107 / 56 | 107 / 56 | MATCH
+D | ours (speed trail, frozen code; my fill & stop) final equity multiple | 1.568 | 1.568 | MATCH
+D | chosen (E1; MY legs through the frozen account simulator) final equity multiple | 1.54 | 1.54 | MATCH
+D | his (panel exit at the close of exit_hi, frozen code) final equity multiple | 3.1 | 3.1 | MATCH
+D | his / ours | 1.98 | 1.98 | MATCH
+D | recovery = (ln chosen - ln ours) / (ln his - ln ours) | -0.027 | -0.027 | MATCH (exact -0.02708; VOID reason '')
+D | recovery vs the bar: 0.25 -> FAIL | FAIL (-0.027 < 0.25) | FAIL (-0.027) | MATCH
+D | ours: by-year returns | max drawdown | entered | skipped (no room) | ours: by year 2021 63.3%, 2022 -3.9% | max DD 25.9% | entered 87, skipped no room 20 | ours: by year 2021 63.3%, 2022 -3.9% | max DD 25.9% | entered 87, skipped no room 20 | MATCH
+D | chosen: by-year returns | max drawdown | entered | skipped (no room) | chosen: by year 2021 60.2%, 2022 -3.9% | max DD 16.1% | entered 98, skipped no room 9 | chosen: by year 2021 60.2%, 2022 -3.9% | max DD 16.1% | entered 98, skipped no room 9 | MATCH
+D | his: by-year returns | max drawdown | entered | skipped (no room) | his: by year 2021 278.7%, 2022 -18.1% | max DD 28.2% | entered 76, skipped no room 30 | his: by year 2021 278.7%, 2022 -18.1% | max DD 28.2% | entered 76, skipped no room 30 | MATCH
+D | abstentions (cut_at_tail + horizon + data_end + guard + hole + break + ema_thin + no-bar) / share of trades | 3 = 2.7% | 3 = 2.7% | MATCH
+D | ema_thin abstentions | 3 | 3 | MATCH
+D | E1 last-leg hit rate on the 107 (the sell day seen) | 38.3% on 107 | 38.3% (41/107) | MATCH
+D | E1 half-leg hit rate 0.0% (E1 has no half leg) | 0.0% | 0.0% (no half leg by construction) | NOTE
+D | bootstrap 90% interval of the recovery (1000 draws, seed 702, key intra|boot, trade resampling) | [-0.427, +0.406] | [-0.427, +0.406] (895 finite draws) | MATCH
+D | the chain line and the registered line are identical (neither ENTER nor STOP passed) | identical | identical | MATCH
+D | fill_fallback 0 (no ENTER-level fill used) | fill_fallback 0 | fill_fallback 0 (the chain carries the registered fill: ENTER FAIL, STOP INCONCLUSIVE) | MATCH
+D | registered fill sources on the 110 dated trades | orh5 90 / orh5_too_wide 12 / close_proxy 8 | orh5 90 / orh5_too_wide 12 / close_proxy 8 | MATCH
+D | untouched dated trades with an exit: records (23 with exits - DDOG 2019-11-13 under the 50-bar floor = 22) | 22 | 22 | MATCH (virgin dated with exits in the loader set: 23)
+D | untouched dated (veto set): trades / stop pre-emptions | 22 / 8 | 22 / 8 | MATCH
+D | untouched dated: ours / chosen / his final equity | 1.015 / 1.104 / 0.991 | 1.015 / 1.104 / 0.991 | MATCH
+D | untouched dated: his / ours (VOID, < 1.25) and recovery nan | 0.98 (VOID 0.977) / +nan | 0.98 (VOID 0.977) / nan | MATCH
+D | untouched dated ours: by year | max DD | entered | skipped | ours: by year 2019 3.6%, 2020 -4.0%, 2021 0.0%, 2022 -1.0%, 2023 3.0% | max DD 8.9% | entered 22, skipped no room 0 | ours: by year 2019 3.6%, 2020 -4.0%, 2021 0.0%, 2022 -1.0%, 2023 3.0% | max DD 8.9% | entered 22, skipped no room 0 | MATCH
+D | untouched dated chosen: by year | max DD | entered | skipped | chosen: by year 2019 6.4%, 2020 -0.1%, 2021 0.0%, 2022 -1.0%, 2023 5.0% | max DD 3.9% | entered 22, skipped no room 0 | chosen: by year 2019 6.4%, 2020 -0.1%, 2021 0.0%, 2022 -1.0%, 2023 5.0% | max DD 3.9% | entered 22, skipped no room 0 | MATCH
+D | untouched dated his: by year | max DD | entered | skipped | his: by year 2019 11.8%, 2020 -0.8%, 2021 0.0%, 2022 -18.4%, 2023 9.5% | max DD 30.0% | entered 17, skipped no room 5 | his: by year 2019 11.8%, 2020 -0.8%, 2021 0.0%, 2022 -18.4%, 2023 9.5% | max DD 30.0% | entered 17, skipped no room 5 | MATCH
+D | untouched dated hit rate E1 (windows <= 20 sessions) | 33.3% on 18 | 33.3% (6/18) | MATCH
+D | untouched-dated sign veto: fires only if ln(his/ours) > 0 AND ln(chosen/ours) < 0 | abstains (his 0.991 <= ours 1.015) | ln(his/ours) = -0.0237 -> abstains | MATCH
+D | the sign veto abstains, so the verdict stays FAIL (and the VOID of the veto set is not applied to the deciding set) | EXIT FAIL | EXIT FAIL | MATCH
+D | beside undated 2021-22: ema_thin / stop pre-emptions / trades | 12 / 44 / 200 | 12 / 44 / 200 | MATCH
+D | beside undated 2021-22: ours / chosen / his (VOID 1.09) | 1.505 / 1.410 / 1.639 (ratio 1.09) | 1.505 / 1.410 / 1.639 (ratio 1.09) | MATCH
+D | beside undated 2021-22 hit rate E1 | 39.7% on 199 | 39.7% (79/199) | MATCH
+C | SENSITIVITY: scanning on after an unresolved buy-day event (literal reading of 'a session he CERTAINLY held') changes H_cond in | n/a (not in the printout) | 2 of 9 cells tested: S9-T 25.6% -> 28.2%; S10-T 25.6% -> 28.2% | NOTE (can only RAISE H_cond; the INCONCLUSIVE verdict rests on the fit table having no cell <= 10%, which a raise cannot repair)
+D | SENSITIVITY: stop pre-emptions where E1's bar had already closed under the EMA earlier in that session (the 'stop first' reading sells at the stop instead of the E1 open) | n/a (registered reading, listed) | 6 of 56: FUBO 2021-01-05 +0, AMC 2021-02-25 +1, AMAT 2021-03-22 +1, RIOT 2021-04-13 +1, FUTU 2021-06-14 +2, MARA 2021-10-11 +1 | NOTE (informational; a registered reading of the doc ('the chain's stop pre-empts any leg inside a session'))

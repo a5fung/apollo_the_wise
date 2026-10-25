@@ -825,3 +825,28 @@ edit above the marker after that changes `doc_body`, and the check refuses.
 - ledger: a8ad33c90b41f8c5c15e0eef8955656d12f378c6a210e8d14ce5ea9af6b47de5
 - doc_body_freeze: bc05126f9805087d0c8982f2f7f62cd9c0828dff56a6b47036e1248fc75956ce
 - doc_body: 6c3741e48788c1fab6664a366e86980c9e10b74a07aa63c6190577b773668bc3
+
+## RESULT — the one check, 2026-10-25 (printout `scripts/probes/_705_intraday_1025/01_intra_check.txt`; written BELOW the marker; the body above is the freeze commit `3dbd2b72`'s plus the three keyed CHOSEN lines)
+
+**ENTER FAIL · STOP INCONCLUSIVE · EXIT FAIL · WHY-lite below its gate (no rate).** Independent recount (Sonnet, own script,
+`verify/recount/recount_check.py` + `.txt`): 436 claims, 427 MATCH, 9 NOTE, 0 MISMATCH; every row-level sweep (ENTER 96 × 9 levels, STOP 58 + 415
+× 18 cells, EXIT 110 trades and 28,219 sixty-minute bars) differs on 0 rows; every verdict stands. Every real-data gate passed on every stage.
+
+| Stage | Chosen on 2020 (the fit) | On the trades that decide (the check) | Verdict |
+|---|---|---|---|
+| ENTER (n = 40 in-session 2021-22 buy windows) | L8, the 30-minute high (feasible 34.5% on 2020) | L8 first crossed inside his buy window on 45.0% (±15; the random-price control 30.0%, the shifted window 3.6%); hit-or-ballpark 87.5% | **FAIL** (bar ≥ 50%; the +15-point margin over the random price passes by 0.0004) |
+| ENTER, beside (not deciding) | — | ANY of his three opening-range highs (1 / 5 / 30 minutes) first crossed inside his window: 62.5% vs 30.0% random (2020: 55.2% vs 21.0%) | — |
+| STOP (n = 58 records of the 62 undated untouched trades) | no cell met held-through ≤ 10% on 2020 (lowest S9-T 24.7%) | every cell held through on 20-33% of crossings | **INCONCLUSIVE**: no fixed intraday level |
+| EXIT (n = 107 dated 2021-22 trades) | E1, all out at the first 60-minute close under the 60-minute 20-EMA (2020 in-sample recovery +0.88) | ours 1.568× · E1 1.540× · his 3.100× → recovery −0.027 (90% interval −0.43 .. +0.41); hit rate 38.3% | **FAIL** (bar ≥ 0.25) |
+| WHY-lite (10 caption joins, two readers) | — | 4 of 10 (the readers split on one row, FSLY 07-10: he named the 60-minute EMA trail, then retracted it in the same breath for the day's low) | below the 70% gate: no rate |
+
+- **What it means (no money, no rule changed):** no single intraday level is his entry, no fixed intraday level is his stop, and the
+  60-minute EMA exit that fit 2020 (a strong year in which every breakout ran) did not carry to 2021-22 — the same pattern as the 2020 time stop
+  in the exits study. The one consistent signal is the beside line: his buy most often sits on ONE of his three opening-range highs (62.5% /
+  55.2% against 21-30% for a random price), which is his own words — the opening-range high "can be the highs of the first 1-minute candle, the
+  5-minute candle or the 60-minute candle" (operator_shared_notes.md l.1941-1942).
+- **His reading, 2026-10-25 (verbatim, operator_shared_notes.md):** *"there's no 100% had rule, there's rules and discretion, so best to to
+  categorize them e.g. 20% rule X, 34% rule Y, etc. To see if we get the right coverage when summed together."* → the next read is the rule-mix
+  inventory (`docs/analysis/cb_rule_mix_prereg_2026-10-25.md`, registered separately; descriptive — the unseen trades are used up for these rules).
+- **Notes from the recount:** ENTER's n = 40 sits on the registered size floor; 105 of the 1,000 bootstrap draws were VOID and dropped (895
+  finite); on the 58 STOP records S9 and S10 read the same in every variant.
