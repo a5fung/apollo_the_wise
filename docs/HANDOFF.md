@@ -6,7 +6,22 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-10-23 (Fri) CLOSE — 🔴 RESUME HERE. Supersedes the 10-22 close below.
+## 2026-10-24 (Sat) CLOSE — 🔴 RESUME HERE. Supersedes the 10-23 close below.
+
+**2026-10-24 (Sat): CLOSE run on his word.** (This section mirrors the machine-local pickup memory.)
+
+- **Board 22 → 22. Server 66a44047** (deployed today, `both` + `execution`: the Opus fallback pin, the judge-eval gate, the #491 U2 promotion wall). Nothing undeployed that a service runs.
+- **#705 — his trades are now known:** his 'A - Positions' watchlist on every stream frame = his holdings (verified 10-24). Holdings replay (frozen, recounted 13/13): **his bar PASSES** — +264% vs QQQ +27% (2020-01..2022-06), alpha t 2.31; the pass rests on the biggest winners.
+  - His exits study (frozen, checked once): FAIL — no exit rule written from his words reproduces his exits (2.94× vs ours 1.33× on 2021-22).
+  - **Reverse-engineering his rules** (his ask; registered `1e19a959`, frozen `1aea0959`, check `2cbc9a84`, recount all-match; `docs/analysis/cb_reverse_engineer_his_rules_prereg_2026-10-24.md` §RESULT): SELECT PASS (ADR20 ≥ 4.26%, not down > 5.8% over 60 sessions, a 52-week high within 233 sessions — 65% of his unseen buys at a 19% pool rate); ENTER FAIL; STOP INCONCLUSIVE; EXIT VOID; caption joins 12/20 (gate 70%; rests on two split calls).
+  - **His ruling 10-24: "let's continue with option 1 tmr"** — register the intraday layer from his own words (1-minute and 30-minute opening-range highs to enter; 60-minute lows to stop; the 60-minute 20-EMA to exit) BEFORE the sealed 2025-26 test. #705 rebumped once to 10-25 ([b1]; its one free bump is spent).
+  - Carried prerequisites: 2021-22 brackets are not a virgin check set for new entry levels (2019 + 2023 are untouched); any module the sealed test reuses must fix the era-B calendar index (the recount's finding).
+- **Data:** buy-day minutes for the reverse-engineering read in `apollo_data/cb702/minutes_rev_1024/` (1,302 ok, 20 empty; fetched in apollo-execution with his OK; server temp files removed).
+- **Vault** (`~/trading_vault`, private a5fung/trading-vault): tests pages for the holdings replay, the exits study and the reverse-engineering read; his 10-24 notes re-ingested.
+- **Sun 10-25 (build slot):** #705 intraday-layer registration (Fable design → Opus review → fits → freeze → one check → recount); #314 parabolic replay round 3 on v2 (Fable); the data-corrected 2017–21 runner reads; #709 vault phases 2–3. Stagger heavy cards (the 5-hour cap).
+- **Open his-call items: none** (`operator_asks.py` prints none; option 1 is ruled).
+
+## 2026-10-23 (Fri) CLOSE — (superseded by 10-24 above)
 
 **2026-10-23 (Fri): CLOSE run on his word.** (This section mirrors the machine-local pickup memory.)
 

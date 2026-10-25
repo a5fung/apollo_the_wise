@@ -2588,3 +2588,7 @@ Standing rule from this: the vault is not a one-time migration. Every new lesson
 > "we can infer the buy and sell dates based on when the stock appears and when the stock disappears from the list. And once we are able to lock down the date, we can infer the buy point based on the chart pattern, assuming he's using some form of his rules to enter. We're not going to be exact, but we should be in the ballpark based on that." (2026-10-24)
 
 Method from this (#705): his rules are INFERRED FROM HIS TRADES, not tested one by one from his words. The positions list dates each buy (first appearance) and sell (disappearance); on the dated day, the chart pattern places the buy point, assuming some form of his own entry rules. Ballpark accuracy is the bar, not exactness. His words cross-check the inference.
+
+> "let's continue with option 1 tmr" (2026-10-24, on the fork after the reverse-engineering check: option 1 = test his intraday rules from his own words first — the 1-minute / first-30-minute opening-range high to enter, 60-minute lows to stop, the 60-minute chart to exit; option 2 = spend the one sealed 2025-26 test now)
+
+Ruling recorded (#705): the intraday layer is registered and checked BEFORE the sealed 2025-26 test is spent.

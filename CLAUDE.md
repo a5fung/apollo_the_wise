@@ -272,6 +272,7 @@ The preflight walks every enabled non-shadow strategy through `_check_safeguards
 ### 2026-10-23 — the Opus fallback pin names the evaluated model; the judge-eval gate accepts it
 
 - `OPUS_PIN` → `claude-opus-5-5` (the 30-day "fallback pin behind" nudge); the deploy gate `preflight_judge_eval_gate.py` now also accepts a committed pin equal to the model the passing eval graded (`judge_model`, opus-5-5, 36/36 on 10-03) — any other pin, rubric, prompt, corpus or a failed record still refuses (tested). No live binding moves (all roles resolve from the cache). `claude-opus-5` / `claude-opus-4-8` priced explicitly at $5/$25; an unlisted release now prices at its family's highest listed rate (never the pin's, never a cache discount). Deployed 2026-10-24 (`66a44047`, both + execution): the gate passed at deploy, and `mi_model_resolution` shows the judge binding unchanged (no new row; opus-5-5 since 09-23).
+- Same deploy: #491 U2 — the theme promotion wall (`promote_shadow_themes` drops members under cooldown or exclusion; a cohort left under 3 is held). SSoT `docs/architecture/theme_engine.md`; first live read Mon 10-26.
 
 Older entries → `CHANGELOG.md` (search any concept).
 
