@@ -1,0 +1,216 @@
+# #705 INTRADAY 01 — CHECK (ONE run): ENTER (2021-22 undated non-flicker; the virgin 9 veto) -> STOP (the 62 undated untouched) -> EXIT (dated 2021-22; the virgin dated veto), each ONCE; the sealed test's branch; WHY-lite's sheet
+# registration: docs/analysis/cb_intraday_layer_prereg_2026-10-25.md; module copied to 01_intra_frozen_ac598fc58aae.py
+- freeze: every pin incl. doc_body 6c3741e48788... sits under the marker; the body differs from the freeze commit's (bc05126f9805...) only in the three keyed lines; CHOSEN lines match the fit printouts; the ledger matches the disk; all three fits ran under this freeze body and this module (ac598fc58aae...)
+- pins re-checked: the previous read's (exports, candidates, labels, guards, the frozen modules and tests) through the frozen module; this read's (the fetch list, 00_pop_fetch.py and its printout, the frozen previous module): no drift
+- inputs: entries 1,874 rows, snapshots 2,907; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept; type tables 14,102 mi rows / 3,942 SIC rows (as of 2026-10-16)
+- populations re-asserted against §2 / §2a-d of this doc and the previous 63 counts: 25 claims, every one equals the registration (guard 3)
+- daily exports loaded in 6s: era A 236,951 of 12,005,007 rows (200 tickers, 2016-01-04..2022-06-30); era B 22,316 of 13,830,569 rows (29 tickers, 2021-09-27..2024-12-31), rows dated after the cut DROPPED AT READ 5,210,943
+- minute trees: A 149,587 log rows, B 80,858 log rows, EP 196 log rows, EP2 39 log rows, REV 1,322 log rows, INTRA 19,470 log rows; era B export calendar 2021-09-27..2024-12-31 (821 sessions) — every era-B record's offsets are bisected on it (one calendar per record)
+
+## ENTER CHECK (§5d): the CHOSEN level on the 2021-22 undated non-flicker windows after §2c (deciding); the virgin 9 veto by sign; dated / flickers / L1-L6 / the union beside
+- gate (i) check_enter: minute-built session bars vs the daily export on 61 (ticker, session) pairs — high AND low within 0.5%: 61 = 100.0% (bar 98.0%; failures by ticker: none); open AND close within 0.5%: 58 = 95.1% (bar 90.0%; the auction-print band; failures by ticker: GME 1, ZKIN 1, BLIN 1)
+    GME 2021-03-10: dev o 0.00% h 0.00% l 0.00% c 0.74% (daily c 66.250 vs minute 65.760)
+    ZKIN 2021-03-15: dev o 0.00% h 0.00% l 0.00% c 0.91% (daily c 61.250 vs minute 60.690)
+    BLIN 2021-07-09: dev o 0.00% h 0.00% l 0.00% c 0.74% (daily c 6.760 vs minute 6.810)
+    every pair outside a band written -> /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/gate_i_pairs_check_enter.tsv
+- gate (ii) check_enter: raw L7 <= L1 <= L8 <= L6 on 61 of 61 windows; the builder's first bar equals L8_raw on 61 of 61; builder first-bar high < L6 on 23 of 61 windows with both
+- gate (vii) the random-price control's known answer on the previous 41 undated 2021-22 windows: feasible 31.7%, hit-or-ballpark 85.9% (known 31.7% / 85.9% on 41) -> reproduced
+- records 61 of 64 windows (the previous read's draw population: 20 dated incl. 7 flickers + 44 undated non-flicker incl. DWAC; dropped {'bars_before_E_lt_20': 3}; the ENTER record floor = 20 bars); scorable 61; DECIDING 40 (the 43 undated non-flicker windows after §2c; the random draws replayed in the same (E, eid) order)
+- DECIDING: 2021-22 undated non-flicker: 40 scorable windows
+  L7 (new): feasible 11 = 27.5% +-14; hit-or-ballpark 35 = 87.5% +-10; shifted-window control feasible 1.2% hit 46.6% (no_room 0); BALLPARK 11, HIT 24, MISS 5
+  L8 (CHOSEN): feasible 18 = 45.0% +-15; hit-or-ballpark 35 = 87.5% +-10; shifted-window control feasible 3.6% hit 56.5% (no_room 0); BALLPARK 7, HIT 28, MISS 4, no_level_yet 1
+  L9 (new): feasible 18 = 45.0% +-15; hit-or-ballpark 37 = 92.5% +-8; shifted-window control feasible 6.9% hit 90.8% (no_room 0); BALLPARK 6, HIT 31, MISS 2, no_level_yet 1
+  L1 (re-read): feasible 14 = 35.0% +-15; hit-or-ballpark 35 = 87.5% +-10; shifted-window control feasible 2.2% hit 48.1% (no_room 0); BALLPARK 9, HIT 26, MISS 5
+  L2 (re-read): feasible 8 = 20.0% +-12; hit-or-ballpark 25 = 62.5% +-15; shifted-window control feasible 2.8% hit 29.8% (no_room 0); BALLPARK 9, HIT 16, MISS 15
+  L3 (re-read): feasible 3 = 7.5% +-8; hit-or-ballpark 6 = 15.0% +-11; shifted-window control feasible 1.1% hit 14.7% (no_room 0); BALLPARK 2, HIT 4, MISS 34
+  L4 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 34 = 85.0% +-11; shifted-window control feasible 0.1% hit 41.1% (no_room 0); BALLPARK 14, HIT 20, MISS 6
+  L5 (re-read): feasible 2 = 5.0% +-7; hit-or-ballpark 28 = 70.0% +-14; shifted-window control feasible 0.3% hit 40.5% (no_room 0); BALLPARK 15, HIT 13, MISS 12
+  L6 (re-read): feasible 9 = 22.5% +-13; hit-or-ballpark 22 = 55.0% +-15; shifted-window control feasible 2.5% hit 55.2% (no_room 0); BALLPARK 4, HIT 18, MISS 2, no_level_yet 16
+  random-price control: feasible 30.0%, hit-or-ballpark 85.5%
+  'any opening range' (L7 / L1 / L8; beside): feasible 62.5%, hit 92.5%; its random-price control = the plain one (30.0%: a price is not level-specific, so the union's draw is the same draw); its shifted-window control 6.7%
+- beside: the 20 dated 2021-22 windows (max(level, pivot) on breakout rows; flickers included): 20 scorable windows
+  L7 (new): feasible 9 = 45.0% +-22; hit-or-ballpark 18 = 90.0% +-13; shifted-window control feasible 4.4% hit 54.8% (no_room 0); BALLPARK 4, HIT 14, MISS 2
+  L8 (new): feasible 6 = 30.0% +-20; hit-or-ballpark 15 = 75.0% +-19; shifted-window control feasible 8.0% hit 58.5% (no_room 0); BALLPARK 3, HIT 12, MISS 2, no_level_yet 3
+  L9 (new): feasible 6 = 30.0% +-20; hit-or-ballpark 15 = 75.0% +-19; shifted-window control feasible 9.8% hit 78.7% (no_room 0); BALLPARK 3, HIT 12, MISS 2, no_level_yet 3
+  L1 (re-read): feasible 12 = 60.0% +-21; hit-or-ballpark 18 = 90.0% +-13; shifted-window control feasible 5.7% hit 57.1% (no_room 0); BALLPARK 4, HIT 14, MISS 2
+  L2 (re-read): feasible 8 = 40.0% +-21; hit-or-ballpark 14 = 70.0% +-20; shifted-window control feasible 2.7% hit 33.3% (no_room 0); BALLPARK 4, HIT 10, MISS 6
+  L3 (re-read): feasible 7 = 35.0% +-21; hit-or-ballpark 12 = 60.0% +-21; shifted-window control feasible 3.9% hit 34.8% (no_room 0); BALLPARK 2, HIT 10, MISS 8
+  L4 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 14 = 70.0% +-20; shifted-window control feasible 0.1% hit 37.0% (no_room 0); BALLPARK 4, HIT 10, MISS 6
+  L5 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 9 = 45.0% +-22; shifted-window control feasible 0.0% hit 19.8% (no_room 0); BALLPARK 7, HIT 2, MISS 11
+  L6 (re-read): feasible 5 = 25.0% +-19; hit-or-ballpark 7 = 35.0% +-21; shifted-window control feasible 4.7% hit 54.2% (no_room 0); BALLPARK 1, HIT 6, MISS 1, no_level_yet 12
+  random-price control: feasible 32.7%, hit-or-ballpark 72.5%
+  'any opening range' (L7 / L1 / L8; beside): feasible 65.0%, hit 90.0%; its random-price control = the plain one (32.7%: a price is not level-specific, so the union's draw is the same draw); its shifted-window control 15.2%
+- beside: 2021-22 flickers: 19 scorable windows
+  L7 (new): feasible 4 = 21.1% +-18; hit-or-ballpark 18 = 94.7% +-10; shifted-window control feasible 1.7% hit 69.1% (no_room 0); BALLPARK 7, HIT 11, no_bar_0930 1
+  L8 (new): feasible 8 = 42.1% +-22; hit-or-ballpark 15 = 78.9% +-18; shifted-window control feasible 1.9% hit 59.1% (no_room 0); BALLPARK 4, HIT 11, MISS 4
+  L9 (new): feasible 8 = 42.1% +-22; hit-or-ballpark 16 = 84.2% +-16; shifted-window control feasible 7.1% hit 89.2% (no_room 0); BALLPARK 3, HIT 13, MISS 3
+  L1 (re-read): feasible 7 = 36.8% +-22; hit-or-ballpark 17 = 89.5% +-14; shifted-window control feasible 3.3% hit 69.3% (no_room 0); BALLPARK 5, HIT 12, MISS 2
+  L2 (re-read): feasible 4 = 21.1% +-18; hit-or-ballpark 9 = 47.4% +-22; shifted-window control feasible 2.3% hit 39.4% (no_room 0); BALLPARK 2, HIT 7, MISS 10
+  L3 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 3 = 15.8% +-16; shifted-window control feasible 0.1% hit 8.2% (no_room 0); BALLPARK 1, HIT 2, MISS 16
+  L4 (re-read): feasible 1 = 5.3% +-10; hit-or-ballpark 18 = 94.7% +-10; shifted-window control feasible 0.1% hit 70.3% (no_room 0); BALLPARK 7, HIT 11, MISS 1
+  L5 (re-read): feasible 1 = 5.3% +-10; hit-or-ballpark 12 = 63.2% +-22; shifted-window control feasible 0.1% hit 52.0% (no_room 0); BALLPARK 6, HIT 6, MISS 7
+  L6 (re-read): feasible 5 = 26.3% +-20; hit-or-ballpark 8 = 42.1% +-22; shifted-window control feasible 1.6% hit 51.0% (no_room 0); BALLPARK 3, HIT 5, MISS 4, no_level_yet 7
+  random-price control: feasible 22.5%, hit-or-ballpark 82.3%
+  'any opening range' (L7 / L1 / L8; beside): feasible 52.6%, hit 94.7%; its random-price control = the plain one (22.5%: a price is not level-specific, so the union's draw is the same draw); its shifted-window control 6.4%
+- the untouched years, non-flicker (the sign veto): 9 scorable windows
+  L7 (new): feasible 2 = 22.2% +-27; hit-or-ballpark 8 = 88.9% +-21; shifted-window control feasible 1.6% hit 48.0% (no_room 0); BALLPARK 2, HIT 6, no_bar_0930 1
+  L8 (new): feasible 3 = 33.3% +-31; hit-or-ballpark 6 = 66.7% +-31; shifted-window control feasible 0.9% hit 37.6% (no_room 0); BALLPARK 1, HIT 5, MISS 1, no_level_yet 2
+  L9 (new): feasible 3 = 33.3% +-31; hit-or-ballpark 6 = 66.7% +-31; shifted-window control feasible 3.4% hit 72.1% (no_room 0); BALLPARK 1, HIT 5, MISS 1, no_level_yet 2
+  L1 (re-read): feasible 2 = 22.2% +-27; hit-or-ballpark 8 = 88.9% +-21; shifted-window control feasible 1.6% hit 55.1% (no_room 0); BALLPARK 2, HIT 6, MISS 1
+  L2 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 8 = 88.9% +-21; shifted-window control feasible 0.5% hit 52.1% (no_room 0); BALLPARK 5, HIT 3, MISS 1
+  L3 (re-read): feasible 2 = 22.2% +-27; hit-or-ballpark 6 = 66.7% +-31; shifted-window control feasible 1.0% hit 22.4% (no_room 0); BALLPARK 3, HIT 3, MISS 3
+  L4 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 8 = 88.9% +-21; shifted-window control feasible 0.9% hit 61.9% (no_room 0); BALLPARK 3, HIT 5, MISS 1
+  L5 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 5 = 55.6% +-32; shifted-window control feasible 0.3% hit 62.7% (no_room 0); BALLPARK 4, HIT 1, MISS 4
+  L6 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 0 = 0.0% +-0; shifted-window control feasible 0.4% hit 22.4% (no_room 0); MISS 1, no_level_yet 8
+  random-price control: feasible 3.3%, hit-or-ballpark 73.6%
+  'any opening range' (L7 / L1 / L8; beside): feasible 33.3%, hit 100.0%; its random-price control = the plain one (3.3%: a price is not level-specific, so the union's draw is the same draw); its shifted-window control 4.0%
+- beside: the untouched years, flickers: 7 scorable windows
+  L7 (new): feasible 0 = 0.0% +-0; hit-or-ballpark 5 = 71.4% +-33; shifted-window control feasible 0.9% hit 52.4% (no_room 0); BALLPARK 4, HIT 1, MISS 2
+  L8 (new): feasible 0 = 0.0% +-0; hit-or-ballpark 4 = 57.1% +-37; shifted-window control feasible 2.1% hit 41.1% (no_room 0); HIT 4, MISS 2, no_level_yet 1
+  L9 (new): feasible 0 = 0.0% +-0; hit-or-ballpark 4 = 57.1% +-37; shifted-window control feasible 3.9% hit 73.0% (no_room 0); HIT 4, MISS 2, no_level_yet 1
+  L1 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 6 = 85.7% +-26; shifted-window control feasible 1.9% hit 48.4% (no_room 0); BALLPARK 3, HIT 3, MISS 1
+  L2 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 4 = 57.1% +-37; shifted-window control feasible 0.6% hit 34.9% (no_room 0); BALLPARK 2, HIT 2, MISS 3
+  L3 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 1 = 14.3% +-26; shifted-window control feasible 0.2% hit 15.8% (no_room 0); HIT 1, MISS 6
+  L4 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 5 = 71.4% +-33; shifted-window control feasible 0.2% hit 56.2% (no_room 0); BALLPARK 4, HIT 1, MISS 2
+  L5 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 3 = 42.9% +-37; shifted-window control feasible 0.4% hit 42.1% (no_room 0); BALLPARK 2, HIT 1, MISS 4
+  L6 (re-read): feasible 0 = 0.0% +-0; hit-or-ballpark 0 = 0.0% +-0; shifted-window control feasible 2.6% hit 39.6% (no_room 0); no_level_yet 7
+  random-price control: feasible 4.5%, hit-or-ballpark 60.0%
+  'any opening range' (L7 / L1 / L8; beside): feasible 0.0%, hit 85.7%; its random-price control = the plain one (4.5%: a price is not level-specific, so the union's draw is the same draw); its shifted-window control 4.9%
+- the sign veto: L8 feasible 33.3% vs the larger control 3.3% on 9 untouched windows -> no veto
+- ENTER: **FAIL** feasible 45.0% < 50.0%; falsifier: no new level >= 50% feasible
+- beside: pre-market-flat windows, dated 2021-22: 41 scorable windows
+  L7 (new): feasible 38 = 92.7% +-8; hit-or-ballpark 41 = 100.0% +-0; shifted-window control feasible 2.0% hit 60.4% (no_room 0); BALLPARK 1, HIT 40
+  L8 (new): feasible 11 = 26.8% +-14; hit-or-ballpark 31 = 75.6% +-13; shifted-window control feasible 4.9% hit 50.2% (no_room 0); BALLPARK 1, HIT 30, no_level_yet 10
+  L9 (new): feasible 11 = 26.8% +-14; hit-or-ballpark 31 = 75.6% +-13; shifted-window control feasible 11.6% hit 89.4% (no_room 0); BALLPARK 1, HIT 30, no_level_yet 10
+  L1 (re-read): feasible 33 = 80.5% +-12; hit-or-ballpark 41 = 100.0% +-0; shifted-window control feasible 4.3% hit 62.2% (no_room 0); BALLPARK 1, HIT 40
+  L2 (re-read): feasible 40 = 97.6% +-5; hit-or-ballpark 27 = 65.9% +-15; shifted-window control feasible 0.2% hit 37.8% (no_room 0); BALLPARK 10, HIT 17, MISS 14
+  L3 (re-read): feasible 39 = 95.1% +-7; hit-or-ballpark 29 = 70.7% +-14; shifted-window control feasible 0.7% hit 33.8% (no_room 0); BALLPARK 7, HIT 22, MISS 12
+  L4 (re-read): feasible 41 = 100.0% +-0; hit-or-ballpark 41 = 100.0% +-0; shifted-window control feasible 0.2% hit 48.7% (no_room 0); HIT 41
+  L5 (re-read): feasible 41 = 100.0% +-0; hit-or-ballpark 20 = 48.8% +-15; shifted-window control feasible 0.0% hit 24.3% (no_room 0); BALLPARK 14, HIT 6, MISS 21
+  L6 (re-read): feasible 6 = 14.6% +-11; hit-or-ballpark 20 = 48.8% +-15; shifted-window control feasible 5.8% hit 48.0% (no_room 0); HIT 20, no_level_yet 21
+  random-price control: feasible 74.2%, hit-or-ballpark 83.6%
+  'any opening range' (L7 / L1 / L8; beside): feasible 92.7%, hit 100.0%; its random-price control = the plain one (74.2%: a price is not level-specific, so the union's draw is the same draw); its shifted-window control 10.3%
+- beside: pre-market-flat windows, undated 2021-22: 52 scorable windows
+  L7 (new): feasible 46 = 88.5% +-9; hit-or-ballpark 52 = 100.0% +-0; shifted-window control feasible 2.8% hit 42.6% (no_room 0); HIT 52
+  L8 (new): feasible 18 = 34.6% +-13; hit-or-ballpark 36 = 69.2% +-13; shifted-window control feasible 4.1% hit 56.2% (no_room 0); HIT 36, no_level_yet 16
+  L9 (new): feasible 19 = 36.5% +-13; hit-or-ballpark 35 = 67.3% +-13; shifted-window control feasible 8.2% hit 89.8% (no_room 0); HIT 35, no_bar 1, no_level_yet 16
+  L1 (re-read): feasible 38 = 73.1% +-12; hit-or-ballpark 52 = 100.0% +-0; shifted-window control feasible 3.6% hit 47.6% (no_room 0); HIT 52
+  L2 (re-read): feasible 37 = 71.2% +-12; hit-or-ballpark 32 = 61.5% +-13; shifted-window control feasible 1.9% hit 26.6% (no_room 0); BALLPARK 11, HIT 21, MISS 20
+  L3 (re-read): feasible 12 = 23.1% +-11; hit-or-ballpark 12 = 23.1% +-11; shifted-window control feasible 2.7% hit 20.8% (no_room 0); BALLPARK 5, HIT 7, MISS 40
+  L4 (re-read): feasible 50 = 96.2% +-5; hit-or-ballpark 52 = 100.0% +-0; shifted-window control feasible 0.5% hit 40.6% (no_room 0); HIT 52
+  L5 (re-read): feasible 43 = 82.7% +-10; hit-or-ballpark 35 = 67.3% +-13; shifted-window control feasible 0.6% hit 18.9% (no_room 0); BALLPARK 14, HIT 21, MISS 17
+  L6 (re-read): feasible 6 = 11.5% +-9; hit-or-ballpark 19 = 36.5% +-13; shifted-window control feasible 7.3% hit 58.2% (no_room 0); HIT 19, no_level_yet 33
+  random-price control: feasible 70.9%, hit-or-ballpark 78.9%
+  'any opening range' (L7 / L1 / L8; beside): feasible 88.5%, hit 100.0%; its random-price control = the plain one (70.9%: a price is not level-specific, so the union's draw is the same draw); its shifted-window control 8.5%
+- held before 09:35, L7 (beside): TSLA 2020-04-14 first 09:32: L7 46.68 crossed at 09:32 -> by first_clock; UAL 2020-05-27 first 09:34: L7 32.75 crossed at - -> not by first_clock; DXCM 2020-07-29 first 09:32: L7 108.31 crossed at 09:32 -> by first_clock; PINS 2020-07-31 first 09:31: L7 33.57 crossed at 09:31 -> by first_clock; SHOP 2020-08-26 first 09:32: L7 105.36 crossed at 09:31 -> by first_clock; TTD 2020-08-26 first 09:32: L7 47.80 crossed at 09:31 -> by first_clock; LAC 2022-04-21 first 09:30: L7 does not exist yet; TSLA 2022-04-21 first 09:30: L7 does not exist yet; ROKU 2020-09-15 first 09:32: L7 163.00 crossed at 09:31 -> by first_clock
+- beside: pre-market first sightings, dated 2021-22 (crossed that session) (26): L7 crossed that session 25; L8 crossed that session 22; L9 crossed that session 25
+- the chain carries: the REGISTERED fill (words-based: ORH5 / the open)
+
+## STOP CHECK (§6b): the 62 undated untouched trades decide on every cell; the 27 untouched dated, the 2021-22 undated (226) and dated (111) beside
+- records: virgin undated 58 of 62 (dropped {'no_bar_on_E': 4}); virgin dated 26 (dropped {'bars_before_E_lt_50': 1}); 2021-22 undated 212 (dropped {'no_bar_on_E': 1, 'ticker_not_in_export': 4, 'bars_before_E_lt_50': 9}); 2021-22 dated 110 (dropped {'bars_before_E_lt_50': 1})
+- hold sessions preloaded: cached 11, ok 3,246
+- fills: S10_is_S1 185, S1_is_S2 279, S9_is_S1 185, fill_close_proxy 9, fill_fallback 0, fill_open 270, fill_orh5 102, fill_orh5_too_wide 25
+
+## G8 — check: this read's own trade list through trade_impact.py (before any number)
+- era A: entered after the cutoff 0, holds past the last bar 0 (373 trades)
+- era B: entered after the cutoff 0, holds past the last bar 0 (33 trades)
+- gate (i) check_stop: minute-built session bars vs the daily export on 3663 (ticker, session) pairs — high AND low within 0.5%: 3651 = 99.7% (bar 98.0%; failures by ticker: TSLA 2, AI 1, PLUG 1, CLF 1, BYND 1, ALB 1, BE 1, FCX 1); open AND close within 0.5%: 3519 = 96.1% (bar 90.0%; the auction-print band; failures by ticker: GSIT 45, GME 11, JCP 9, FCEL 9, SOUN 6, GMBL 4, BLIN 4, APT 3)
+    AI 2023-05-30: dev o 1.98% h 6.87% l 2.76% c 6.85% (daily c 41.142 vs minute 43.960)
+    TSLA 2021-03-01: dev o 0.07% h 17.55% l 0.00% c 0.00% (daily c 239.480 vs minute 239.480)
+    TSLA 2021-03-04: dev o 0.06% h 23.51% l 0.00% c 0.00% (daily c 207.150 vs minute 207.160)
+    PLUG 2021-03-17: dev o 0.00% h 0.00% l 3.60% c 0.05% (daily c 39.310 vs minute 39.290)
+    CLF 2021-04-19: dev o 0.00% h 0.00% l 2.53% c 2.53% (daily c 17.390 vs minute 17.830)
+    BYND 2021-06-07: dev o 0.00% h 0.00% l 1.00% c 0.01% (daily c 4573.200 vs minute 4573.800)
+    ALB 2021-10-25: dev o 0.00% h 1.90% l 0.00% c 1.90% (daily c 239.440 vs minute 234.900)
+    BE 2021-10-25: dev o 0.00% h 9.63% l 0.00% c 9.50% (daily c 27.690 vs minute 25.060)
+    FCX 2022-03-08: dev o 0.00% h 0.79% l 0.00% c 0.79% (daily c 46.670 vs minute 46.300)
+    RKT 2021-03-02: dev o 0.00% h 0.00% l 0.75% c 0.00% (daily c 41.600 vs minute 41.600)
+    LAC 2021-10-25: dev o 0.00% h 4.47% l 0.00% c 4.47% (daily c 26.650 vs minute 25.460)
+    CCJ 2021-10-25: dev o 0.00% h 1.17% l 0.00% c 1.17% (daily c 26.500 vs minute 26.190)
+    every pair outside a band written -> /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/gate_i_pairs_check_stop.tsv
+- gate (iii) check_stop: C event days beyond the 0.5% auction band with a last 60-minute bar 3666; H event days among them 3666 = 100.0% (bar 98.0%); C days inside the band 178, of which not H 12 (counted, never failing)
+- the deciding table (the 62 undated untouched trades), the fit and the beside sets:
+  level-variant | tightness (median width) | traded through | certain | unresolved | H_cond | H_all | eligible | differ from S1 | no-bar sessions | fit H_cond | virgin dated 27 | 2021-22 undated 226 | nf    | untouched-by-path | 2021-22 dated 111
+  --------------+--------------------------+----------------+---------+------------+--------+-------+----------+----------------+-----------------+------------+-----------------+---------------------+-------+-------------------+------------------
+  S1-T          | 1.0%                     | 27             | 9       | 3          | 33.3%  | 15.5% | True     | -              | -               | 44.3%      | 21.4%           | 45.4%               | 57.7% | 44.8%             | 25.4%            
+  S1-C          | 1.0%                     | 20             | 4       | 0          | 20.0%  | 6.9%  | True     | -              | -               | 49.6%      | 30.0%           | 41.5%               | 52.9% | 38.8%             | 19.4%            
+  S1-H          | 1.0%                     | 23             | 5       | 2          | 21.7%  | 8.6%  | True     | -              | 0               | 46.0%      | 20.0%           | 44.6%               | 52.3% | 40.0%             | 26.1%            
+  S3-T          | 3.1%                     | 26             | 6       | 11         | 23.1%  | 10.3% | True     | -              | -               | 32.9%      | 42.9%           | 23.2%               | 31.7% | 23.8%             | 35.3%            
+  S3-C          | 3.1%                     | 15             | 3       | 0          | 20.0%  | 5.2%  | False    | -              | -               | 61.2%      | 16.7%           | 57.8%               | 77.3% | 53.5%             | 20.0%            
+  S3-H          | 3.1%                     | 22             | 6       | 4          | 27.3%  | 10.3% | True     | -              | 0               | 39.7%      | 16.7%           | 26.6%               | 40.8% | 25.5%             | 21.4%            
+  S9-T          | 0.9%                     | 39             | 10      | 12         | 25.6%  | 17.2% | True     | 22             | -               | 24.7%      | 21.4%           | 20.8%               | 30.1% | 21.8%             | 29.5%            
+  S9-C          | 0.9%                     | 23             | 6       | 0          | 26.1%  | 10.3% | True     | 22             | -               | 51.1%      | 30.0%           | 42.0%               | 59.6% | 39.0%             | 23.7%            
+  S9-H          | 0.9%                     | 29             | 8       | 2          | 27.6%  | 13.8% | True     | 22             | 0               | 48.6%      | 30.0%           | 40.2%               | 57.5% | 35.9%             | 32.6%            
+  S10-T         | 0.9%                     | 39             | 10      | 12         | 25.6%  | 17.2% | True     | 22             | -               | 24.8%      | 21.4%           | 20.3%               | 29.2% | 22.1%             | 29.9%            
+  S10-C         | 0.9%                     | 23             | 6       | 0          | 26.1%  | 10.3% | True     | 22             | -               | 50.4%      | 30.0%           | 41.9%               | 59.0% | 38.1%             | 23.7%            
+  S10-H         | 0.9%                     | 29             | 8       | 2          | 27.6%  | 13.8% | True     | 22             | 0               | 50.3%      | 30.0%           | 42.3%               | 59.5% | 38.5%             | 29.8%            
+  S8-T          | 10.7%                    | 11             | 3       | 1          | 27.3%  | 5.2%  | False    | -              | -               | 55.6%      | 28.6%           | 57.1%               | 57.7% | 52.4%             | 25.0%            
+  S8-C          | 10.7%                    | 8              | 1       | 0          | 12.5%  | 1.7%  | False    | -              | -               | 55.2%      | 33.3%           | 72.2%               | 76.5% | 69.2%             | 12.5%            
+  S8-H          | 10.7%                    | 10             | 2       | 1          | 20.0%  | 3.4%  | False    | -              | 0               | 50.0%      | 33.3%           | 52.2%               | 57.1% | 44.4%             | 18.2%            
+  SMA50-T       | 8.0%                     | 31             | 5       | 17         | 16.1%  | 8.6%  | True     | -              | -               | 18.9%      | 30.0%           | 11.1%               | 18.2% | 7.3%              | 17.6%            
+  SMA50-C       | 8.0%                     | 27             | 7       | 0          | 25.9%  | 12.1% | True     | -              | -               | 54.1%      | 14.3%           | 51.4%               | 73.8% | 55.3%             | 36.4%            
+  SMA50-H       | 8.0%                     | 30             | 5       | 14         | 16.7%  | 8.6%  | True     | -              | 0               | 26.8%      | 12.5%           | 17.3%               | 25.5% | 15.4%             | 14.3%            
+- beside: the cells' ordering by H_cond, fit vs the deciding set (cells equal to S1 on more than half their records left out): Spearman -0.75 on 6 cells
+- STOP: **INCONCLUSIVE** no cell met H_cond <= 10% on the fit (with >= 20 traded through and a positive width)
+- re-buys among the deciding (26) apart: S1-T H_cond 58.3%; S1-C H_cond 37.5%; S1-H H_cond 44.4%; S3-T H_cond 55.6%; S3-C H_cond 40.0%; S3-H H_cond 50.0%; S9-T H_cond 36.8%; S9-C H_cond 44.4%; S9-H H_cond 50.0%; S10-T H_cond 36.8%; S10-C H_cond 44.4%; S10-H H_cond 50.0%
+- the chain carries: the REGISTERED stop (words-based: S1-T dated / one ADR20 undated)
+
+## EXIT CHECK (§7d): the CHOSEN variant on the dated 2021-22 trades (deciding); the untouched dated veto by sign; the undated 2021-22 beside
+- warm-up + hold + tail sessions preloaded: cached 3,689, empty 1, ok 7,519
+- gate (i) check_exit: minute-built session bars vs the daily export on 4052 (ticker, session) pairs — high AND low within 0.5%: 4038 = 99.7% (bar 98.0%; failures by ticker: SNAP 3, QS 2, LAC 2, RKT 1, FCX 1, X 1, CCL 1, CCJ 1); open AND close within 0.5%: 3924 = 96.8% (bar 90.0%; the auction-print band; failures by ticker: CBAT 18, BTBT 12, AMC 10, ZKIN 9, SOS 8, VIR 5, SKLZ 4, APHA 4)
+    RKT 2021-03-02: dev o 0.00% h 0.00% l 0.75% c 0.00% (daily c 41.600 vs minute 41.600)
+    FCX 2021-04-19: dev o 0.00% h 0.00% l 2.79% c 2.79% (daily c 37.330 vs minute 38.370)
+    X 2021-04-19: dev o 0.00% h 1.23% l 0.00% c 1.23% (daily c 22.840 vs minute 22.560)
+    CCL 2021-04-19: dev o 0.00% h 0.00% l 0.78% c 0.78% (daily c 26.890 vs minute 27.100)
+    QS 2021-10-25: dev o 0.00% h 8.73% l 0.00% c 8.73% (daily c 25.530 vs minute 23.300)
+    LAC 2021-10-25: dev o 0.00% h 4.47% l 0.00% c 4.47% (daily c 26.650 vs minute 25.460)
+    LAC 2022-01-24: dev o 0.00% h 4.61% l 0.00% c 7.78% (daily c 25.590 vs minute 23.600)
+    CCJ 2021-10-25: dev o 0.00% h 1.17% l 0.00% c 1.17% (daily c 26.500 vs minute 26.190)
+    BTBT 2021-10-29: dev o 0.00% h 18.39% l 0.00% c 18.39% (daily c 14.250 vs minute 11.630)
+    BKKT 2021-10-25: dev o 0.00% h 54.80% l 0.00% c 55.07% (daily c 765.000 vs minute 343.750)
+    QS 2021-10-25: dev o 0.00% h 8.73% l 0.00% c 8.73% (daily c 25.530 vs minute 23.300)
+    SNAP 2022-01-24: dev o 0.36% h 2.70% l 0.00% c 7.06% (daily c 31.800 vs minute 29.555)
+    every pair outside a band written -> /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/gate_i_pairs_check_exit.tsv
+- gate (v): the frozen record builder and this module's agree on 'ours' and 'his' per trade on 103 of 103 era-A dated 2021-22 trades (the old aggregate 1.398 / 2.620 / 1.87 is named, not a target); era-B trades beside under the fixed offsets: 7
+    era B LHX 2022-04-05: own-calendar offsets exit_lo 6 exit_hi 6
+    era B LMT 2022-04-05: own-calendar offsets exit_lo 0 exit_hi 1
+    era B LMT 2022-04-06: own-calendar offsets exit_lo 8 exit_hi 10
+    era B X 2022-04-12: own-calendar offsets exit_lo 0 exit_hi 0
+    era B LAC 2022-04-21: own-calendar offsets exit_lo 0 exit_hi 1
+    era B TSLA 2022-04-21: own-calendar offsets exit_lo 0 exit_hi 1
+    era B FTNT 2022-04-21: own-calendar offsets exit_lo 0 exit_hi 1
+- arming on dated 2021-22: armed 107, ema_thin 3
+- dated 2021-22, EMA(20) on the 60-minute bars (the half-leg hit rate is the out-of-sample part): E1 (CHOSEN) last-leg hit 38.3% / half-leg hit 0.0% on 107; E2 last-leg hit 36.4% / half-leg hit 10.3% on 107; E3 last-leg hit 35.5% / half-leg hit 1.9% on 107; E4 last-leg hit 35.5% / half-leg hit 0.0% on 107
+- trivial exits and the previous daily list on the same trades (107): close of session 3 14.0%, first red close 25.2%, the daily list (IN-SAMPLE there) 50.5%
+- dated 2021-22, chain fill and stop, E1 (cut_at_break 0, cut_at_hole 0, cut_at_tail 0, ema_thin 3, stop_preempt 56, trades 107): ours 1.568 | chosen 1.540 | his 3.100 | his / ours 1.98 | recovery -0.027 | abstentions (cut_at_tail + cut_at_horizon + cut_at_data_end + cut_at_guard + a hole (mark_hole) + an identity break (mark_break) + ema_thin + no-bar) 3 = 2.7% of the trades
+    ours: by year 2021 63.3%, 2022 -3.9% | max DD 25.9% | entered 87, skipped no room 20
+    chosen: by year 2021 60.2%, 2022 -3.9% | max DD 16.1% | entered 98, skipped no room 9
+    his: by year 2021 278.7%, 2022 -18.1% | max DD 28.2% | entered 76, skipped no room 30
+    trade-resampled 90% interval of the recovery (1000 draws, seed 702, key intra|boot; information, not a bar): [-0.427, +0.406]
+- dated 2021-22, registered fill and stop, E1 (cut_at_break 0, cut_at_hole 0, cut_at_tail 0, ema_thin 3, stop_preempt 56, trades 107): ours 1.568 | chosen 1.540 | his 3.100 | his / ours 1.98 | recovery -0.027 | abstentions (cut_at_tail + cut_at_horizon + cut_at_data_end + cut_at_guard + a hole (mark_hole) + an identity break (mark_break) + ema_thin + no-bar) 3 = 2.7% of the trades
+    ours: by year 2021 63.3%, 2022 -3.9% | max DD 25.9% | entered 87, skipped no room 20
+    chosen: by year 2021 60.2%, 2022 -3.9% | max DD 16.1% | entered 98, skipped no room 9
+    his: by year 2021 278.7%, 2022 -18.1% | max DD 28.2% | entered 76, skipped no room 30
+    trade-resampled 90% interval of the recovery (1000 draws, seed 702, key intra|boot; information, not a bar): [-0.427, +0.406]
+- the deciding line = the registered fill and stop (neither ENTER nor STOP passed)
+- the untouched dated trades (the sign veto), E1 (cut_at_break 0, cut_at_hole 0, cut_at_tail 0, stop_preempt 8, trades 22): ours 1.015 | chosen 1.104 | his 0.991 | his / ours 0.98 | recovery +nan | VOID (his / ours = 0.977 < 1.25) | abstentions (cut_at_tail + cut_at_horizon + cut_at_data_end + cut_at_guard + a hole (mark_hole) + an identity break (mark_break) + ema_thin + no-bar) 0 = 0.0% of the trades
+    ours: by year 2019 3.6%, 2020 -4.0%, 2021 0.0%, 2022 -1.0%, 2023 3.0% | max DD 8.9% | entered 22, skipped no room 0
+    chosen: by year 2019 6.4%, 2020 -0.1%, 2021 0.0%, 2022 -1.0%, 2023 5.0% | max DD 3.9% | entered 22, skipped no room 0
+    his: by year 2019 11.8%, 2020 -0.8%, 2021 0.0%, 2022 -18.4%, 2023 9.5% | max DD 30.0% | entered 17, skipped no room 5
+- the untouched dated trades (windows <= 20 sessions): E1 last-leg hit 33.3% / half-leg hit 0.0% on 18; E2 last-leg hit 38.9% / half-leg hit 11.1% on 18; E3 last-leg hit 33.3% / half-leg hit 0.0% on 18; E4 last-leg hit 33.3% / half-leg hit 0.0% on 18
+- the sign veto: abstains (his 0.991 <= ours 1.015 there: the recovery's sign means nothing)
+- EXIT: **FAIL** (recovery -0.027 vs the bar 0.25; his / ours 1.98; the hit rate says whether the rule at least SEES his sell day: 38.3%)
+- beside: undated 2021-22: E1 last-leg hit 39.7% / half-leg hit 0.0% on 199; E2 last-leg hit 23.6% / half-leg hit 33.2% on 199; E3 last-leg hit 36.7% / half-leg hit 20.1% on 199; E4 last-leg hit 36.7% / half-leg hit 0.0% on 199
+- beside: undated 2021-22 trivial exits and the daily list (199): close of session 3 21.1%, first red close 27.6%, the daily list 38.7% (the previous read: 37.7%)
+- beside: undated 2021-22, chain fill and stop, E1 (cut_at_break 0, cut_at_hole 0, cut_at_tail 0, ema_thin 12, stop_preempt 44, trades 200): ours 1.505 | chosen 1.410 | his 1.639 | his / ours 1.09 | recovery +nan | VOID (his / ours = 1.089 < 1.25) | abstentions (cut_at_tail + cut_at_horizon + cut_at_data_end + cut_at_guard + a hole (mark_hole) + an identity break (mark_break) + ema_thin + no-bar) 12 = 5.7% of the trades
+    ours: by year 2021 47.3%, 2022 2.2% | max DD 19.8% | entered 166, skipped no room 34
+    chosen: by year 2021 42.4%, 2022 -1.0% | max DD 9.3% | entered 191, skipped no room 9
+    his: by year 2021 69.4%, 2022 -3.2% | max DD 17.9% | entered 172, skipped no room 28
+
+## THE SEALED TEST'S BRANCH (stated, not run here; research only, no rule moves)
+- universe = SELECT's PASSED condition set (the previous read); ENTER FAIL -> words-based (ORH5 / the open); STOP INCONCLUSIVE -> words-based (the low of the day at the fill / one ADR20); EXIT FAIL -> words-based (the speed trail)
+
+## WHY-lite (§8): the 10-row 2020 hand-read sheet (seed 1025) -> fill `verdict` (yes / no) by hand, then --why-rates
+- 10 joins written to /Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/why_sheet_h60_2020.tsv (unambiguous 2020 joins available 16)
+
+CHECK COMPLETE: ENTER FAIL, STOP INCONCLUSIVE, EXIT FAIL

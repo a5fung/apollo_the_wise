@@ -10,3 +10,10 @@ exit-fit	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/ex
 exit-fit	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/exit_fit_bars.tsv.gz	e666ff9e5cb72e7a7b914ec58ae93888382f90867429eab0526a2bb720bf4ae0	2026-10-25T14:57:39
 exit-fit	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/exit_fit_chosen.json	a706efeefc8704472a3936090b5fa35600776dd0315e339b5d23084797064728	2026-10-25T14:57:39
 exit-fit	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_intraday_1025/01_intra_exit_fit.txt	64d9089a1fd95f7e428f8d97ef57bf0d42a1cca358286dfe9753005b69cca9cd	2026-10-25T14:57:39
+check	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/check_enter_trades.tsv	36e0f05ce74cf1e3cbcbe04022d1b3d276b43c7656d7347427fa359f5d032865	2026-10-25T14:58:54
+check	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/check_stop_trades.tsv	3ce21d8fd072e2d010f09fe8da31bee1552a1b5addbd66ff7d30c98ae57e0211	2026-10-25T14:59:09
+check	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/check_exit_trades.tsv	ed1e617b1046e46cd75776c1b505a1946342f1e73a07f6f2d71bb55f8286e200	2026-10-25T14:59:18
+check	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/check_exit_bars.tsv.gz	021561d4a479a114dc4d1184797478472450af0febb9026426afd69d82130e2a	2026-10-25T14:59:18
+check	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/why_sheet_h60_2020.tsv	186c55243ea5e3b3f199a01b21d0aa9fa6f7e1bb7f6193b925d9fe0400225e15	2026-10-25T14:59:22
+check	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/intraday/check_verdicts.json	4f4a7d4d172181e851f0bfee46dd39cd68353878410e9feee0d8e67dff0dd8d7	2026-10-25T14:59:22
+check	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_intraday_1025/01_intra_check.txt	a6db5a635fafbe02f78140cf41dcac4ff7f2d2ad32fdb0c54181e314b93b034f	2026-10-25T14:59:22
