@@ -618,6 +618,7 @@ together after the dry run; the one-session join tolerance in §4.1 step 6.
 | review, F15 (low) | step 7's method was over-specified before step 6 reported, and the plan had three freezes | §5 cut to what step 7 may and may not use plus open questions; steps 5 and 6 frozen together after the dry run (one review cycle); the Freeze record paragraph updated |
 | review, F16 (low) | leftover jargon in §0 ("agent cards", "offset chart", "BOUND", "census", "against chance"); "fills 30% of the windows" vague; the first-minutes' high is our old opening-range entry and it was not said | §0 rewritten in plain words; the pull's effect given as 70% / 60% → about 90% of windows; one bullet names which points overlap our old rule levels and why they stay |
 | review, F17 | the doc checker passed | none |
+| operator 2026-10-26 ("Ok", after the main loop's summary of steps 5-8, the choices of §12 and the one decision) | the plan and the main loop's choices approved; the decision of §12 | the minute pull runs AFTER step 5 (the rec); step 5 builds and runs this week on the data on disk (capacity reset 10-26) |
 
 <!-- FREEZE -->
 ## Freeze record
