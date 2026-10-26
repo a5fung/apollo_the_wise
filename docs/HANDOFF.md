@@ -6,7 +6,24 @@ gets it on `git pull`. It exists because the machine-local context does NOT tran
 
 ---
 
-## 2026-10-24 (Sat) CLOSE — 🔴 RESUME HERE. Supersedes the 10-23 close below.
+## 2026-10-25 (Sun) CLOSE — 🔴 RESUME HERE. Supersedes the 10-24 close below.
+
+**2026-10-25 (Sun): CLOSE run on his word.** (This section mirrors the machine-local pickup memory.)
+
+- **Board 22 → 22** (#709 vault phases 2-3 CLOSED; #710 the one combined sealed 2025-26 test FILED, blocked). **Server 9a8d869e** (deployed tonight: market-agent then execution, healthy — the #705 (c) pp shadow recorder).
+- **#705 (his option 1, then his rule-mix note):**
+  - Intraday layer (frozen `3dbd2b72`, one check, recount all-match): ENTER FAIL (30-minute high 45% vs bar 50%; ANY of his three opening-range highs 63% vs 30% random, beside), STOP INCONCLUSIVE, EXIT FAIL (the 60-minute 20-EMA exit −0.03 of the gap on dated 2021-22).
+  - His note: *"there's no 100% had rule, there's rules and discretion, so best to to categorize them e.g. 20% rule X, 34% rule Y"* → the RULE-MIX inventory registered (`docs/analysis/cb_rule_mix_prereg_2026-10-25.md`, reviewed + fixed); its module build is Fable work.
+  - His ruling "1": the sealed 2025-26 data stays unspent; the RS-alone read left #705's DoD → #710.
+  - #705 is `in_progress`, ETA Sat 10-31 at [b2] (his "Ok"). Closes on the pp recorder's first live fill (Mon 10-26 17:48 ET likely: the breakout shadow records ~545-868 fills a day).
+- **Uncommitted at CLOSE:** the 2017-21 breakout re-run build (B1-B9; `scripts/probes/_cb_backtest/v2_*.py`, `_705_rerun_v2_1023/v2_*`, runner.py / 02_build_paths.py / 04_relaunch.sh edits, tests) — its Opus fix stage was still running. Mon: read its result, run the tests + golden harness, commit; then freeze → run once → recount (`docs/analysis/cb_2017_21_rerun_v2_prereg_2026-10-25.md`).
+- **Recorder follow-ups:** four small simplify cleanups to apply after that commit; the structural duplicate (the pp step / SQL copy the registered step's) deferred until after the first live read.
+- **#314:** the nightly shadow row ran every market night, no climax yet (next verify 11-01); the replay plan round 4 on the corrected file is registered — its build is Fable work.
+- **Capacity:** Fable's weekly allowance is used up; he will reset "in the next few days once we exhaust opus capacity". Fable queue after the reset: the rule-mix build, the #314 replay build.
+- **Mon 10-26:** the 6 verifies (#491, #655, #694, #701, #706, #312); the pp recorder's first live read after the 17:48 ET job (SQL check + re-walk of the first 3 minute fills); the breakout re-run build commit.
+- **Open his-call items: none.**
+
+## 2026-10-24 (Sat) CLOSE — (superseded by 10-25 above)
 
 **2026-10-24 (Sat): CLOSE run on his word.** (This section mirrors the machine-local pickup memory.)
 
