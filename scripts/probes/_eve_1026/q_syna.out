@@ -1,0 +1,32 @@
+SET
+id|et|event_type|left|left
+50830|2026-10-02 07:00:10.889864|mna_filter_fired|SYNA via claude_classifier (ep)|{"ticker": "SYNA", "alert_date": "2026-10-02", "detector": "ep", "catalyst_quality": "mna", "news_summary": "[SEC 8-K filed 2026-10-01, items 1.01,7.01,9.01] SYNA gapped up after onsemi announced an amended deal to acquire Synaptics for $123 per share in cash. That fixed cash price replaces the June all-stoc", "source": "claude_classifier", "match_path": "claude_classifier"}
+54489|2026-10-08 17:35:08.944145|mna_pin_confirmed|SYNA: the open window confirmed the block (target/signed/unknown via polygon_headline_model): day range 1.0161% <= 2.0%|{"ticker": "SYNA", "answer": {"role": "target", "status": "signed", "consideration": "unknown", "counterparty": "ON Semiconductor", "note": "Polygon's note says Synaptics surged after announcing a revised merger agreement with ON Semiconductor, but the consideration terms are not stated."}, "source": "polygon_headline_model", "pin": {"window": "day", "range_pct": 1.0161, "threshold_pct": 2.0, "bars_n": 1, "readable": true, "why": "", "as_of": "2026-10-08", "pinned": true}}
+54490|2026-10-08 17:35:09.017417|mna_filter_fired|SYNA via polygon_headline_model (anticipation) — target/signed/unknown, day range 1.0161% <= 2.0% pinned; off the coil board (1 row(s))|{"ticker": "SYNA", "detector": "anticipation", "scan_date": "2026-10-08", "anchor_date": "2026-10-02", "off_board_rows": 1, "source": "polygon_headline_model", "match_path": "description+insights", "matched_keyword": "merger", "title": "Stock Market Midday, Oct. 2: Stocks Rally as Weak Jobs Data Cools Fed Rate Hike Bets", "published_utc": "2026-10-02T16:20:23Z", "publisher": "The Motley Fool", "role": "target", "status": "signed", "consideration": "unknown", "counterparty": "ON Semiconductor", "note": "Polygon's note says Synaptics surged after announcing a revised merger agreement with ON Semiconductor, but the consideration terms are not stated.", "why": "pinned", "pin": {"window": "day", "range_pct": 1.0161, "threshold_pct": 2.0, "bars_n": 1, "readable": true, "why": "", "as_of": "2026-10-08", "pinned": true}}
+55114|2026-10-09 17:35:11.759261|mna_pin_confirmed|SYNA: the open window confirmed the block (target/signed/unknown via polygon_headline_model): day range 1.3854% <= 2.0%|{"ticker": "SYNA", "answer": {"role": "target", "status": "signed", "consideration": "unknown", "counterparty": "ON Semiconductor", "note": "Polygon's note says Synaptics surged after announcing a revised merger agreement with ON Semiconductor, but no consideration terms are given."}, "source": "polygon_headline_model", "pin": {"window": "day", "range_pct": 1.3854, "threshold_pct": 2.0, "bars_n": 1, "readable": true, "why": "", "as_of": "2026-10-09", "pinned": true}}
+55115|2026-10-09 17:35:11.812638|mna_filter_fired|SYNA via polygon_headline_model (anticipation) — target/signed/unknown, day range 1.3854% <= 2.0% pinned; off the coil board (1 row(s))|{"ticker": "SYNA", "detector": "anticipation", "scan_date": "2026-10-09", "anchor_date": "2026-10-02", "off_board_rows": 1, "source": "polygon_headline_model", "match_path": "description+insights", "matched_keyword": "merger", "title": "Stock Market Midday, Oct. 2: Stocks Rally as Weak Jobs Data Cools Fed Rate Hike Bets", "published_utc": "2026-10-02T16:20:23Z", "publisher": "The Motley Fool", "role": "target", "status": "signed", "consideration": "unknown", "counterparty": "ON Semiconductor", "note": "Polygon's note says Synaptics surged after announcing a revised merger agreement with ON Semiconductor, but no consideration terms are given.", "why": "pinned", "pin": {"window": "day", "range_pct": 1.3854, "threshold_pct": 2.0, "bars_n": 1, "readable": true, "why": "", "as_of": "2026-10-09", "pinned": true}}
+(5 rows)
+trade_date|close
+2026-09-25|102.72
+2026-09-28|100.36
+2026-09-29|100.79
+2026-09-30|101.395
+2026-10-01|106.15
+2026-10-02|121.1
+2026-10-05|119.73
+2026-10-06|119.39
+2026-10-07|119.46
+2026-10-08|119.08
+2026-10-09|119.82
+2026-10-12|119.4
+2026-10-13|119.44
+2026-10-14|117.36
+2026-10-15|117.55
+2026-10-16|117.18
+2026-10-19|117.05
+2026-10-20|117.48
+2026-10-21|117.5
+2026-10-22|117.04
+2026-10-23|117.26
+2026-10-26|117.35
+(22 rows)

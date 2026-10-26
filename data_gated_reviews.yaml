@@ -16023,6 +16023,52 @@ reviews:
       never the bidder; its flag row must read `unqualified` with reason `mna_filter:<source>`, and it must not
       appear in that night's 17:25 digest. A wrong block is a P1 back on the board.
     cross_refs: ["docs/task_closes.md", "scripts/probes/_eve_1016/", "scripts/probes/_598_close_1016/"]
+  - review_id: mna_release_merit_grade_first_fire_701
+    title: "#701 (b) — the EP scan has re-graded a released buyout name for the first time (`mna_release_merit_grade`)"
+    question: >-
+      #701 closed 2026-10-26 with its DoD's (b) "each branch read on its first real firing or explicitly carried":
+      the coil-board hold branch (`anticipation_mna_pin_held`) fired for the first time that night on SYNA and was
+      read correct (docs/task_closes.md #701); the EP-side release re-grade has never fired since it shipped 10-03
+      (#692b). A zero cannot tell a working branch from a dead one, so this tripwire fires on its first row and the
+      row is read against its news on the event.
+    predicate_sql: |
+      SELECT count(*) FROM mi_audit_log
+       WHERE event_type = 'mna_release_merit_grade' AND created_at >= DATE '2026-10-03'
+    threshold: 1
+    discriminates_on: []
+    earliest_review_date: 2026-10-27
+    status: pending
+    kind: tripwire
+    added_on: 2026-10-26
+    can_fire:
+      predicate_runs: >-
+        Run as written against prod 2026-10-26 ~18:20 ET (scripts/probes/_eve_1026/q_701_trip.out): 0. The general
+        release event `mna_filter_released` reads 49 since 10-03 in the same query, so the release path itself runs.
+      nonzero_possible: >-
+        Writer: ep_detector.py `_apply_release_merit_grade` (the log_audit_event at ~:983), reached when the M&A filter
+        releases an EP name on price this tick (`released_on_price`) whose grade was 'mna' and the grader gave a usable
+        `quality_if_no_deal`; its fail-safe twin `mna_release_without_merit_grade` logs when no usable grade exists.
+      lane_live: >-
+        MAGNA53 EP is the live setup; the EP scan grades and filters every weekday morning (mi_ep_alerts writes daily).
+      threshold_vs_observed: >-
+        Threshold 1 (a tripwire). 0 in the 17 trading days since 10-03; this week's EP-side 'mna' names (SLN 10-19,
+        BRZE 10-20) were blocked, not released, so the event needs an 'mna'-graded name whose price then breaks the
+        pin — it may stay quiet for weeks.
+      era_scoped: >-
+        Reads mi_audit_log only, from 2026-10-03 (the #692b ship); the event did not exist before.
+      population_actionable: >-
+        Counts exactly the re-grade rows the action reads; the fail-safe twin is a different event and is read beside
+        it in the action, never counted.
+      instrument_trusted: >-
+        The row's own detail carries ticker, alert_date, from / to grade, the acting grade, the pin reading and the
+        screen's answer, written in the same branch that re-scores the candidate; the action joins mi_ep_alerts on
+        (ticker, alert_date) for the alert's final tier.
+    action_when_ready: >-
+      Read the row against its news: the released name's deal must not be a signed cash deal pinning the price (the
+      day range above 2% is what released it); `to` must equal the grader's quality_if_no_deal and `acting` the lattice
+      re-resolution; the alert's final tier must follow the new grade. A signed, pinned target released and graded up
+      is a P1 back on the board.
+    cross_refs: ["docs/task_closes.md", "scripts/probes/_eve_1026/", "scripts/probes/_verify_1023/task_701.md"]
   - review_id: consolidation_breakout_forward_read
     title: "#702 Consolidation Breakout — 30 forward C1 entries have settled on the primary exit; read the forward result"
     question: >-

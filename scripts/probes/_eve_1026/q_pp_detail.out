@@ -1,0 +1,18 @@
+SET
+k|v
+wall_s|7.4
+skipped|
+exit_rows|35636
+timed_out|false
+exit_errors|0
+step_errors|[]
+pp_exit_rows|1142
+pp_exit_errors|0
+pp_exit_mature|334
+pp_exit_status|{"degraded": 808, "stopped_day0": 334}
+pp_day0_missing|0
+pp_entries_open|571
+pp_day0_recorded|571
+pp_entries_stale|0
+pp_split_deferred|0
+(15 rows)

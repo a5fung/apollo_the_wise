@@ -1,0 +1,262 @@
+SET
+== A. #705 (c) pp recorder: tonight's run rows
+id|et|left|left
+(0 rows)
+== A2. filled entries since the deploy: day0_pp present, exit rows by kind
+id|ticker|break_date|fill_minute|feed|has_pp|pp|n15|n_app
+(0 rows)
+== A3. day0_pp NULL on post-deploy fills (expect 0); A/pp rows ever (baseline 0); A/pp on pre-deploy fills (expect 0)
+pp_null|app_rows|app_on_old
+0|0|0
+(1 row)
+== A4. the A / pp rows
+entry_id|ticker|arm|status|realized_r|sessions_held|n_fwd|mature|left
+(0 rows)
+== B. #482 book arms: tonight's audit rows
+id|et|event_type|left|left
+(0 rows)
+== B2. fill_facts rows per fill (expect exactly 1 each); PENG
+trade_id|ticker|fill_day|n_facts|fvt|rr_trig|rr_bud
+372|AMLX|2026-08-18|0|||
+373|MRVL|2026-08-19|0|||
+374|MRNA|2026-08-19|0|||
+382|OKTA|2026-08-27|0|||
+383|CRWD|2026-08-27|0|||
+388|SOLS|2026-08-28|0|||
+392|HOOD|2026-09-03|0|||
+394|PHVS|2026-09-08|0|||
+396|SEI|2026-09-08|0|||
+399|DFTX|2026-09-14|0|||
+400|VICR|2026-09-17|0|||
+404|KOD|2026-09-28|0|||
+409|CEG|2026-10-06|0|||
+414|PENG|2026-10-07|0|||
+419|HUM|2026-10-09|0|||
+422|IRON|2026-10-19|0|||
+424|SMCI|2026-10-21|0|||
+(17 rows)
+== B3. walked book arms
+trade_id|ticker|arm|entry_rule|entry_minute|entry_price|stop_price|outcome|realized_r|exit_session|settled_session
+(0 rows)
+== B4. stop_low_of_day vs stop_orb_low on each fill
+trade_id|ticker|entry_minute|low_of_day|orb_low
+(0 rows)
+== B5. old rows, old columns only, md5 (compare with step0_rows.psv)
+trade_id|arm|md5
+372|harvest_legacy_2r|c4ce886850fdc73299d5a7766d506f24
+372|harvest_no_breakeven|09fb7bbeef115cacd57e0f184b20f68d
+372|harvest_t3|f2a81cc10e3badac0a6d131caf25ece9
+372|harvest_trail_only|42965d38029049e8a946b932c45841b3
+372|live_actual|fe843a3e9eae9729d45556caaf0c9729
+372|live_replay|3dbaaf9620bc9c8fbe0d975396a9d124
+372|stop_adr_050|361ae0458ce92a514949898ebd85285f
+372|stop_adr_075|10216a979af2d7ad604b8bd8e43c1397
+372|stop_orb_3r|7f2d169ad8c28c4ff84d1f86ea7111f4
+372|stop_orb_low|566314fdfaa7f34c89adc57c3c58d79d
+372|trail_character_ma|d41f76775c7ae8c8721b99c1fc48be85
+372|trail_pivot_swing|a7e8d2d0464009aea662158706640169
+373|harvest_legacy_2r|b0995b5dd226f369c51444131069a4fc
+373|harvest_no_breakeven|3af802b9223e74dd6359db0a0dd2fe00
+373|harvest_t3|520e87fff225ab1e2bcbf2fd8903c066
+373|harvest_trail_only|0b3b12bd6d4f7551a4f662f8a585f25a
+373|live_actual|aa9b885e60afabd00892de6ffb1d7c46
+373|live_replay|5f8b08bf0f29dd0659ee79c3e5394881
+373|stop_adr_050|60223c2df358e338017436fec9c223d4
+373|stop_adr_075|d8b13ea6a80f6fa5918fde364271c399
+373|stop_orb_3r|e67b83f1a6d17984062b6cb0a6fd2b2d
+373|stop_orb_low|89b0e1fadf9e6772b8404944daeaee82
+373|trail_character_ma|3dc090b00d08d4ff2d3a6ec137baeb45
+373|trail_pivot_swing|a634a3584555081b34f256cce82460d1
+374|harvest_legacy_2r|65102ef675c6640a1cb2c1282ff69e67
+374|harvest_no_breakeven|7572a7e0eb32ce96d01f4585dcab0860
+374|harvest_t3|eaa4a589935e938f47f6b64da14a386f
+374|harvest_trail_only|265199486766c5919e453b5e2fe742ef
+374|live_actual|3dc27013ee1e08c22ee2f0cb76249770
+374|live_replay|69d500c4d6adc2e78b7e0e825d1b654b
+374|stop_adr_050|e779c8c5eb30d46384b8c448bdcbf720
+374|stop_adr_075|25139a11af48ac63e7a47ea2a813cf6a
+374|stop_orb_3r|709c040e0eb1d49f3aa77a968c1d2a9d
+374|stop_orb_low|31c3018cf6a0f3294d7446755fd6af19
+374|trail_character_ma|4f0cd0acedca825668079953b0a0195a
+374|trail_pivot_swing|6f0d97ee681e801219e1284963452a39
+382|harvest_legacy_2r|56030891aacb5b04fe093968f22a06f2
+382|harvest_no_breakeven|b09f80d215d87dc3ddbbdcb6ba6ce0e2
+382|harvest_t3|14d6561f033202cfab477bf63653a560
+382|harvest_trail_only|615b5efba5b68dc9df052637335493f4
+382|live_actual|87edb04a58a4109f96ef5341673f431f
+382|live_replay|67fd3d0dfd4dd427a3277dbac7cab084
+382|stop_adr_050|080bba179d2db3c9993c2d72382f44f5
+382|stop_adr_075|5305560f4127ce32d25951a396b96f3c
+382|stop_orb_3r|0cd92df27e8dd81348c40e9123870078
+382|stop_orb_low|63d1518aa2398c58bfe1fc4004bc8cbe
+382|trail_character_ma|ec8ab9ebb4d2c84f0549a676f1aa29d6
+382|trail_pivot_swing|dd07f5e11fb9e462fc6d4dfd9ecedb9a
+383|harvest_legacy_2r|51f382cded822c6ad799a445e7bdedd6
+383|harvest_no_breakeven|5506dc416ac99613078bc827a4ffda0c
+383|harvest_t3|85e2540cc343224e2539e9ec26792627
+383|harvest_trail_only|57bdc750ce6a19df9416a6f12380188f
+383|live_actual|5380f5f04392103e7f42cecf87aec2a6
+383|live_replay|bb4c67c468bc774d23a6d579c168cb98
+383|stop_adr_050|0a644bdee6a6d10b856b021af2d0ce0c
+383|stop_adr_075|5c957b15c9173c6b120b4c30f9dca710
+383|stop_orb_3r|36d96b6a18cd5727c30bb79feb41f04d
+383|stop_orb_low|f06058de6a8e8cf0e37c124ece87cddd
+383|trail_character_ma|faa0d2f0fc5b0fd3e74eb95b08782e3c
+383|trail_pivot_swing|7dead437683dbd41b92f7fdc6ed02664
+388|harvest_legacy_2r|d5dffe0aaca87fde9c4ca8c49a0de025
+388|harvest_no_breakeven|c646024d4a41c0f4d0d6da138a188c80
+388|harvest_t3|d9f54901e9e35ebd32960354865f6b60
+388|harvest_trail_only|f9baae1c1045cd2b9706f748e903bf86
+388|live_actual|d95a080742811fc50b266aadcfa1b7e6
+388|live_replay|819322b82fd92df199341a4f774fb2fc
+388|stop_adr_050|88ee33380df85fc1ea464db52bbe66e3
+388|stop_adr_075|42d3f6732494399d1eeecf1b4b8fc18f
+388|stop_orb_3r|ee6639f476e252675ff2d7c658027923
+388|stop_orb_low|7fedbe997c31477e600484b6b959d815
+388|trail_character_ma|7706d561ac8cce1e641a90cc18755ed0
+388|trail_pivot_swing|c3160a58bcd8ab1d5bcea9fa66973f11
+392|harvest_legacy_2r|fbfce77f000125fa5c0d5a8c22167e0c
+392|harvest_no_breakeven|987a623673d39529a852e99775462333
+392|harvest_t3|d4fab16a269c6b1584ac86679cfb73d6
+392|harvest_trail_only|241eae9efc63f62abbc041dab2a53d3b
+392|live_actual|8a418985aaf11c4acb282e248927ea7c
+392|live_replay|4446ed89253816d2fd3267e1cb1b7c44
+392|stop_adr_050|9059628efdfb716ea36b6a772a836f85
+392|stop_adr_075|ac3e97c59294b6bc9c84dad528553dbf
+392|stop_orb_3r|1e8fc129cbf2f1a551f28eca29afa4a8
+392|stop_orb_low|4178b2c6f57f5320864b9ed026871460
+392|trail_character_ma|144bfeefa3d72f2466ecf98ef0df52bd
+392|trail_pivot_swing|1d6dbdf868aa6de02cae312077b327a1
+394|harvest_legacy_2r|c97650424aa4f62b3ec48856e77e5e2f
+394|harvest_no_breakeven|ddf01be2a46a90ddac747142710bce64
+394|harvest_t3|a15380080d0c3ecbc39d552520ee30e7
+394|harvest_trail_only|2bd2ef9212d5f9bc83ca39923e5efe7e
+394|live_actual|f70afc9b239c54364a35d62383d9e383
+394|live_replay|2878ba9a9f2c9779277c2be788dfb988
+394|stop_adr_050|ad161e6f1a0ff7bf1f99a215820cba33
+394|stop_adr_075|74e97c255927ec2839d5203ab5f81b8a
+394|stop_orb_3r|9b0e9dd7cbf215f532b672bc8c428983
+394|stop_orb_low|6fd96edb7b07733d64b28fcfabdb8d53
+394|trail_character_ma|8fee861efae2dd184cf7e030de3f1c79
+394|trail_pivot_swing|294242a464d874bb4a53d2591b2fd22a
+396|harvest_legacy_2r|507b1b432ae86ff3b6117b3495c0c2b8
+396|harvest_no_breakeven|d0dea28855486a929794bab87cc43319
+396|harvest_t3|a5d3d1c0d60886895a2639f0e9f7b16d
+396|harvest_trail_only|81d137ccaef2f0151fec5c2518ad50e7
+396|live_actual|df35b5cb7806bd070754d87a0fe230a2
+396|live_replay|b507f3af564404d74b2cb5b655d1c01f
+396|stop_adr_050|606a14a6eb701b248ff81282e07c122a
+396|stop_adr_075|cfff749d373bac43b883850020e69b3f
+396|stop_orb_3r|d6f0ddb746358e9588e846d0f7665692
+396|stop_orb_low|497c18681fa899ccbd9db6919e140efd
+396|trail_character_ma|256d68f97a1fdb9d998c595b6a129803
+396|trail_pivot_swing|dea60c17f6cfcd858e723d61657c2f11
+399|harvest_legacy_2r|9b6fd4dfc613208a3a795cd52e103034
+399|harvest_no_breakeven|b29f9d773d5ad122887a20894d2823cc
+399|harvest_t3|3cd94b25772bab69037b8f4ac9bc34aa
+399|harvest_trail_only|010d110c758c062be8cd5ce4fda32f66
+399|live_actual|9839a269aff06efcc6f0bc6cb69226c6
+399|live_replay|5e681f49d65de2312c478b9a545d380d
+399|stop_adr_050|a610709b2a409630a0dfa0920eb5e6e2
+399|stop_adr_075|f7494c6b0855b81231ba8654ff290dfa
+399|stop_orb_3r|af183a70dc1d2b9b51f813bbb8f2bdc9
+399|stop_orb_low|c34e400d587f175a839051e13424627a
+399|trail_character_ma|19ef4c9f5d4d277f0f81a177e49ad871
+399|trail_pivot_swing|26b2fd64c7a513e615bcc3d768510850
+400|harvest_legacy_2r|7bdb99ea063a5de28b124b9c26586944
+400|harvest_no_breakeven|c1cdcde40bc9fb56251d7db8aed7ed28
+400|harvest_t3|e0147f92515280643d197459d0c627b7
+400|harvest_trail_only|d7864502e1fb349ddfd3e3da84a786fa
+400|live_actual|d09205169a44c8a12c4eb1e34ee39a2e
+400|live_replay|61edd14d750a4b9029c4f7595a417bf5
+400|stop_adr_050|091752f2732c5f14f437baec5371816e
+400|stop_adr_075|e0189e0b232c23f38af3504d3a4ea37e
+400|stop_orb_3r|4e658fe8e5bf9f97e1bc9afd6c0620e7
+400|stop_orb_low|ff2b7b85b956f618e598a17f696f70d9
+400|trail_character_ma|9a5a6840608039d7d725728bd854e5c7
+400|trail_pivot_swing|9ea06e8c7937ee03c5874970258bfa96
+404|harvest_legacy_2r|f9e9aafc8107a68e242ecc7f0f4ee9d1
+404|harvest_no_breakeven|fef6e4d7e3fdee947c4d64b3fbe0158d
+404|harvest_t3|3c5d4a14fe6adadcf104514408375b9e
+404|harvest_trail_only|1849a053afb9cdf47e1da90631bec48c
+404|live_actual|3333bf101f7884870507911db52a0225
+404|live_replay|feccc2daf3955d33508609afa46140d4
+404|stop_adr_050|5c9f5f034a15211133727cba92b9b9b5
+404|stop_adr_075|797b3fae10c32337a80e8b6ecd2cc350
+404|stop_orb_3r|46023fbb7f3df2f18145220f43127c3f
+404|stop_orb_low|10eed7b886fd68770fd8b64ea4a732f7
+404|trail_pivot_swing|954912f0aa2e2b7920972e988e9bbc28
+409|harvest_legacy_2r|d291300ce59d4f4204835951810ef51c
+409|harvest_no_breakeven|848cc4d663cde982a42477986f5f1067
+409|harvest_t3|0d907c43288f4148513a3494e3818050
+409|harvest_trail_only|9e971850b127f1e0aa56f1eb307a5b89
+409|live_actual|f5a0b096e384853b16af8b661f8e073e
+409|live_replay|c021fd52033349442abc1098f5054d8d
+409|stop_adr_050|fa80b86510a0c8ebec9ece9cc1c20808
+409|stop_adr_075|d7f649e10b06ff71210cab7b4e0d2461
+409|stop_orb_3r|d419713078bc1c80f343ef2811aa0aa2
+409|stop_orb_low|ccf2aec3de6129641c06f37e3b1311af
+409|trail_character_ma|e7d368e37db64a49c0e7891b609b21f9
+409|trail_pivot_swing|3426e1983726b8ed1010906783cc0e2f
+414|harvest_legacy_2r|1b3f5b51c98d0492ab6be6453a6cedbf
+414|harvest_no_breakeven|3ee91aae176310d24c323be65c1568e8
+414|harvest_t3|d5c9daf65e0de9797d2973bff2dc6996
+414|harvest_trail_only|63a5cac6fc328c2b85f33aefdeb4fe81
+414|live_actual|1c47faf49a796633bccadf7610488d1b
+414|live_replay|0dc0e968ff69d3eb07bb9092322ff076
+414|stop_adr_050|fd2fb55a352b5072896e65984acf163f
+414|stop_adr_075|4d3068caa1fa13c45ce080ea79d6f6ff
+414|stop_orb_3r|54bd42b2e52e178701f491e7cea71c6d
+414|stop_orb_low|b82ce7e6ef858456eeabe7f4677eb096
+414|trail_character_ma|09f2977fc3dd3d6898946fc9aed944b9
+414|trail_pivot_swing|73869734905914333e22fda8e9565031
+419|harvest_legacy_2r|884abf2b1af777bced725609d4f923f0
+419|harvest_no_breakeven|b0bd7858d6daf08ab47cd5d3bd264b47
+419|harvest_t3|c658fcaa11d89420764f4400c4538aa6
+419|harvest_trail_only|79153f07b39fe2394d80c777b1a08eea
+419|live_actual|aa147a5a051a38a0d618708201d45e94
+419|live_replay|36042f2d36fc5c3b58aad4134dbb8501
+419|stop_adr_050|02ebd40cc588abfbe667cf2e5d1d9380
+419|stop_adr_075|0e85db27e4735709b145390157fe391d
+419|stop_orb_3r|b998ee9ea9c15285f7c00922113efe45
+419|stop_orb_low|cb2947b8c9b36aa513a5613e4a3a5a9d
+419|trail_character_ma|0b4e87e7795385303952bff57bb6796c
+419|trail_pivot_swing|0e18f91ec4538a5a4cc212aca2752364
+422|stop_adr_050|6e35c3c3fbb6be40efbece1900001a0d
+422|stop_adr_075|2f2bf44c5ca9f726a5a5f112abe6cd78
+422|stop_orb_low|62a5aa94650334ad6c6d33d109199974
+422|trail_character_ma|a115e38dc8f0652fcc49ebedf149bf22
+424|harvest_legacy_2r|76fcb975574e2bcf3dfaa4d066f155fd
+424|harvest_no_breakeven|e267f79c51f9ec541541e7ff23b9184d
+424|harvest_t3|2e8614816414e4151827414fe1c6fced
+424|harvest_trail_only|279b4b6902588343c273f086126d14e1
+424|live_actual|a4ec91a986bd3c04d4b50e3197d76316
+424|live_replay|42071bb06724cd6d65c15205b958e273
+424|stop_adr_050|598944f1d0e0d791b2da819f38380708
+424|stop_adr_075|7aa499fe9877fdd0566650b06f75be41
+424|stop_orb_3r|5720a43cf19cd706831b211f6cd26d9c
+424|stop_orb_low|b05b9866a752b5d125ce68830a031a8e
+424|trail_character_ma|c6be49d79f144519885e02dd613d93c5
+424|trail_pivot_swing|73f9769721ad7d1510166601f2352c82
+(195 rows)
+== C. #491 U2: bounces since the deploy (expect 0)
+tk|frm|theme_date
+(0 rows)
+== C2. skip rows since the deploy
+path|pairs|held_rows|n
+(0 rows)
+et|left
+(0 rows)
+== C3. promotion runs / failures / rehome moves since the deploy
+event_type|count|max
+(0 rows)
+et|left
+(0 rows)
+et|left|left
+(0 rows)
+== D. #701 (b): SYNA tonight + the two never-fired branches, all time
+id|et|event_type|left|left
+(0 rows)
+event_type|count|min|max
+anticipation_mna_pin_released|2|2026-10-20 17:35:24.49431|2026-10-23 17:35:25.643962
+(1 row)

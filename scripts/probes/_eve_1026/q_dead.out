@@ -1,0 +1,21 @@
+SET
+id|et|left|left
+61797|2026-10-26 17:30:37.793236|mi_live_fill_counterfactuals.fill_vs_trigger_pct|{"table": "mi_live_fill_counterfactuals", "column": "fill_vs_trigger_pct", "rows": 195}
+61798|2026-10-26 17:30:37.794875|mi_live_fill_counterfactuals.fill_slippage_dollars|{"table": "mi_live_fill_counterfactuals", "column": "fill_slippage_dollars", "rows": 195}
+61799|2026-10-26 17:30:37.796045|mi_live_fill_counterfactuals.real_risk_dollars|{"table": "mi_live_fill_counterfactuals", "column": "real_risk_dollars", "rows": 195}
+61800|2026-10-26 17:30:37.797211|mi_live_fill_counterfactuals.risk_budget_dollars|{"table": "mi_live_fill_counterfactuals", "column": "risk_budget_dollars", "rows": 195}
+61801|2026-10-26 17:30:37.798444|mi_live_fill_counterfactuals.real_risk_vs_budget|{"table": "mi_live_fill_counterfactuals", "column": "real_risk_vs_budget", "rows": 195}
+61802|2026-10-26 17:30:37.799712|mi_live_fill_counterfactuals.real_risk_vs_trigger_risk|{"table": "mi_live_fill_counterfactuals", "column": "real_risk_vs_trigger_risk", "rows": 195}
+61803|2026-10-26 17:30:37.800965|mi_live_fill_counterfactuals.sizing_risk_pct|{"table": "mi_live_fill_counterfactuals", "column": "sizing_risk_pct", "rows": 195}
+61804|2026-10-26 17:30:37.802031|mi_live_fill_counterfactuals.sizing_regime_mult|{"table": "mi_live_fill_counterfactuals", "column": "sizing_regime_mult", "rows": 195}
+61805|2026-10-26 17:30:37.80315|mi_live_fill_counterfactuals.risk_frac_capped|{"table": "mi_live_fill_counterfactuals", "column": "risk_frac_capped", "rows": 195}
+(9 rows)
+count|min
+9|2026-10-26
+(1 row)
+id|timezone
+372|2026-08-18 09:32:03.313327
+374|2026-08-19 09:33:11.246896
+382|2026-08-27 09:49:50.777226
+383|2026-08-27 09:31:11.80965
+(4 rows)

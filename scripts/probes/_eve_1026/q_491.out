@@ -1,0 +1,6 @@
+SET
+et|tk|frm|too
+(0 rows)
+et|left
+2026-10-26 17:03:45.906499|{"candidates_pre_cap": 56, "offered": 18, "moved": 1, "joined": 0, "stayed": 17, "unjudged": 0, "skipped": {}, "judged_recent": 179, "offer_cap": 18, "per_target_cap": 3, "candidates": ["MNDY", "ASAN", "BOX", "ROL", "CWK", "DBX", "WGO", "STWD", "JLL", "SMG", "PNRG", "SHOE", "ONT", "NRIX", "MBGL", "MANE", "EXPE", "GPI"]}
+(1 row)
