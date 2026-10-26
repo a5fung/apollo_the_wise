@@ -828,3 +828,43 @@ refuses.
 - ctx_const_EXIT_tree_order: b6ca203fb3225ca0ae666e182eae310b0994e15c9d4a37f70151a2114110b553
 - doc_body_freeze: 8d2df4bef3bebdbea5354128f0ca56a4ab4c66fc2e09b3f67467e591cd4e945a
 - doc_body: 8d2df4bef3bebdbea5354128f0ca56a4ab4c66fc2e09b3f67467e591cd4e945a
+
+## RESULT (2026-10-26, the one run `01_ctx_run.txt`, module be361a83 copied to `01_ctx_frozen_be361a83988a.py`; written below the marker, nothing above it changed)
+
+**In plain words: the contexts on the list do not pick which of his rules he used.** A map fitted on 2020 beats the best single rule
+there (ENTER by 10.2 points, EXIT by 3.9), but on 2021-22 the gain is gone (+1.7 / +0.0 / −0.9), and maps searched on shuffled contexts
+reach the same 2020 level. No decision earns `context helps`, none `beats chance`; every summary is `no context gain`, at the primary
+tolerance and at every beside tolerance and map.
+
+- **Gates:** G1 identity 0 differences on 137,288 cells (ENTER 11,716 / STOP 67,724 / EXIT 57,848); G2-G6 0 differences; G6 by date 0
+  violations. The numbers below are new.
+
+| decision (primary) | chosen map (2020) | MAP 2020 / 2021-22 | BEST 2020 / 2021-22 | MAP − BEST paired, 2021-22 | SHUF mean 2020 / 2021-22 | summary |
+|---|---|---|---|---|---|---|
+| ENTER (the bracket) | 4 groups on C-E2 × C-E1 → L8 / L1 | 46.6% / 45.0% | L1 36.4% / 43.3% | +1.7 [−8.3, +11.7] | 41.8% / 41.5% | no context gain |
+| STOP (±1c) | 4 groups on C-S2 × C-S3 → S1-T / S10-H | 56.1% / 52.6% | S1-T 53.2% / 52.6% | +0.0 [−2.6, +2.6] | 55.3% / 52.5% | no context gain |
+| EXIT (±1c) | 4 groups on C-X2 × C-X1 → M-3 / M-8 / M-8 / M-9 | 45.3% / 39.7% | M-8 41.4% / 40.6% | −0.9 [−5.2, +3.1] | 43.6% / 38.6% | no context gain |
+
+- **Beside (never the summary), all `no context gain`:** ENTER B1 / B2 / MAP-T1 / HW-E; STOP ±0 / ±1 / ±2 / MAP-T1 / HW-S; EXIT ±0 / ±1 /
+  ±2 / MAP-T1 / HW-X / HW-X' / SW-a / SW-b. His own speed rule (HW-X, and Apollo's 4.79% cut HW-X') scores 31.8% / 33.6% on 2020 against
+  M-8's 41.4%, and the 10/20 switch (SW-a / SW-b) 33.3% / 30.3%.
+- **The untouched block (sign only):** ENTER 0, STOP −, EXIT −.
+- **What it means:** at the level of these contexts (speed, distance from the 10- and 20-day, the market's trend, the opening volume, the
+  prior high), his choice among the library rules looks like discretion the bars do not show. Per §8, nothing is recorded: the
+  single-rule arms stay. Not answered here (§12): news, the chart's look, his P&L, per-session dynamics; the forward shadow and #710's
+  sealed run are the only out-of-sample reads left.
+- **§9's guesses, scored (a miss changes nothing):** ENTER — in-sample 46.6% (guess 41-47 ✓), SHUF 41.8% (39-43 ✓), 2021-22 within 6 of
+  L1 (✓), the shared-window gain 1.3 (under 3 ✓), B2 90.9 / 88.3 (85-92 ✓), B1 +12.5 (5-15 ✓), summary ✓; but a two-level map, not one
+  split (✗), and HW-E +11.3 over L1 on 2020 (within 5 ✗). STOP — BEST 53.2% (50-60 ✓), SHUF +2.1 (✓), the random-level arm 50.9% (✓),
+  HW-S within 2 (✓), his 1.0 cut under the floor (✓), summary ✓; the map +2.9 (guess +3-7 ✗), UNION 70.7% on 2021-22 (60-70 ✗). EXIT —
+  BEST M-8 41.4% (38-48 ✓), UNION 81.1 / 82.5 (76-86 ✓), SHUF +2.2 (✓), summary one of the two guessed (✓); the map +3.9 in-sample (+6-12
+  ✗) and −0.9 on 2021-22 (+2-8 ✗). MAP-T1 equals MAP on ENTER and sits 3.0 under it on EXIT (within 3 ✓).
+- **Recount (independent, Sonnet, its own script `verify/recount_run.py` → `verify/recount_run.txt`; the module under test not imported):
+  27 checks, 27 MATCH, 0 MISMATCH** (14,527 comparisons): every share, group, label and SHUF mean re-derives; all 4,131 trade-to-group
+  assignments re-derive from `contexts.tsv` and the pinned cuts; the 2020 search re-run from the tag buckets finds the same maximum on
+  every primary and ±0 table, the run's tree among the maximizers. Its notes, read here: (a) the three UNRESOLVED → CLOSE upgrades at STOP
+  ±1c are next-session-booked firings by construction — the ±1c window widens the high side only for those — so they sit in §4a's one
+  case; the recount's probe found no such cell because the tag files carry no missing-session flags (§11), not because none exists; none
+  is a chosen leaf or BEST. (b) HW-E's missing-C-E1 rows (7 scorable + 3 beside) follow the `≤` side (L8), the side the dry run printed and the freeze pinned.
+  (c) ±1c / ±1 / ±2 cells were band-checked from the tag files (91 in an undecidable band, the run reading every one at the lower bound);
+  ±0 and the bracket exact. (d) the context values were taken as given; G6 covers their derivation.

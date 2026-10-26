@@ -1,0 +1,121 @@
+# #705 CONTEXT RULES - independent RECOUNT of the RUN (written from the doc's definitions; the module under test is NOT imported)
+# inputs: 01_ctx_run.txt (claims) | out/groups.tsv, contexts.tsv, maps.tsv, controls.tsv.gz | rule-mix tags_{enter,stop,exit}.tsv (+-0 buckets) | doc pins under the FREEZE marker
+# bucket vocabulary: confirmed in the rule-mix doc docs/analysis/cb_rule_mix_prereg_2026-10-25.md (EXPLAINS defined at l.215 for ENTER, l.249 for the window unit; MISS-EARLY / NEITHER / UNRESOLVED in its 4a table) and as seen in the tag files: EXPLAINS, MISS-EARLY, NEITHER, UNRESOLVED ; CLOSE at +-0 = EXPLAINS (identity-tested row for row in check 3)
+# pins parsed under the marker: 37 ctx_const_* lines
+# populations rebuilt from the tag files' own label columns (ENTER: tagged & (dated | not flicker); STOP: scorable & room & loser; EXIT: scorable & room):
+#   ENTER: 88 / 60 / 9   (ENTER beside, undated flickers: 30 / 19 / 7)
+#   STOP: 139 / 116 / 12
+#   EXIT: 333 / 229 / 44
+
+==============================================================================================================
+CHECK 0 - the populations: tag-file-derived sets vs the printed n, groups.tsv and contexts.tsv (denominators of every share)
+[0] MATCH - printed n, tag-derived populations, contexts.tsv and groups.tsv carry the same trade sets (ENTER 88/60/9 + beside 30/19/7, STOP 139/116/12, EXIT 333/229/44)
+
+==============================================================================================================
+CHECK 1 - every share the groups.tsv can reproduce: MAP / MAP-T1 / HW / SW / group n and share / beside lines; BEST where the tag files can reproduce it
+[1a] MATCH - 547 printed MAP / group n+share+rule+desc / dated counts / MAP-T1 / HW / SW / undated-flicker MAP / losers-non-losers MAP values recomputed from groups.tsv
+
+CHECK 1b - BEST, UNION and ORACLE-1 shares recounted from the tag-file buckets (+-0 / bracket exact; widened tolerances via the derived +-1c/+-1/+-2 window, lower & upper bound)
+[1b] MATCH - 63 BEST rule+shares / UNION / ORACLE-1 recomputed from tag buckets (exact at +-0 and bracket; widened tolerances derived)
+
+[1c] MATCH - 22 'gap closed' cells re-derived (integer counts where tag-derived; interval arithmetic on the printed inputs for ENTER B1/B2)
+
+==============================================================================================================
+CHECK 2 - the group assignment: contexts.tsv + the pinned cuts + missing sides -> group, vs groups.tsv (every MAP line at every tolerance; MAP-T1 and HW-* too)
+[2a] MATCH - 4131 trade-in-group assignments of every MAP line (all tolerances, scorable + beside sets) re-derived from the descriptions; exactly one group must satisfy; 0 disagreements
+[2b] MATCH - 10 distinct (context, cut) tokens: the printed cut equals the pin at 4 significant digits
+    primary ENTER bracket: 213 trade rows over 4 groups; disagreements in 2a restricted to this map: 0
+    primary STOP pm1c: 267 trade rows over 4 groups; disagreements in 2a restricted to this map: 0
+    primary EXIT pm1c: 606 trade rows over 4 groups; disagreements in 2a restricted to this map: 0
+[2d] MATCH - 2778 trade-rule assignments of MAP-T1 / HW-E / HW-S / HW-X / HW-X' re-derived (HW-E's 10 missing-C-E1 rows excluded: sides ['L8'] reported, not judged)
+[2e] MATCH - the pinned tertile cuts T1/T2 (the ceil(n/3)-th and ceil(2n/3)-th smallest defined 2020 values) and the HW medians recomputed from contexts.tsv
+[2f] MATCH - 111 printed 'missing per context' counts recounted from contexts.tsv's missing flags
+
+==============================================================================================================
+CHECK 3 - +-0: every groups.tsv `close` equals the tag file's bucket for that trade's rule (CLOSE <=> EXPLAINS)
+[3.ENTER] MATCH - ENTER bracket: 639 (trade, rule) closes over all maps incl. beside sets vs tag bucket == EXPLAINS; 0 disagreements (this is the claim that ENTER's primary 'bracket' IS the rule-mix EXPLAINS at +-0, doc 4b / 13 Q1)
+[3.STOP] MATCH - STOP pm0: 267 (trade, rule) closes over all maps incl. beside sets vs tag bucket == EXPLAINS; 0 disagreements
+[3.EXIT] MATCH - EXIT pm0: 606 (trade, rule) closes over all maps incl. beside sets vs tag bucket == EXPLAINS; 0 disagreements
+    STOP pm1c MAP: 2 of 267 assigned (trade, rule) cells sit in the undecidable band (0 of them CLOSE in the run); the other 265 are exactly reproduced
+    STOP pm1 MAP: 2 of 267 assigned (trade, rule) cells sit in the undecidable band (0 of them CLOSE in the run); the other 265 are exactly reproduced
+    STOP pm2 MAP: 4 of 267 assigned (trade, rule) cells sit in the undecidable band (0 of them CLOSE in the run); the other 263 are exactly reproduced
+    EXIT pm1c MAP: 5 of 606 assigned (trade, rule) cells sit in the undecidable band (0 of them CLOSE in the run); the other 601 are exactly reproduced
+    EXIT pm1 MAP: 5 of 606 assigned (trade, rule) cells sit in the undecidable band (0 of them CLOSE in the run); the other 601 are exactly reproduced
+    EXIT pm2 MAP: 6 of 606 assigned (trade, rule) cells sit in the undecidable band (0 of them CLOSE in the run); the other 600 are exactly reproduced
+[3b] MATCH - derived +-1c / +-1 / +-2 window (from +-0 bucket, first_j, booked_j, exit_lo_j, exit_hi_j) brackets every run `close` on 4971 assigned (trade, rule) cells (91 of them fall in the undecidable UNRESOLVED-upgrade band); 0 outside the band
+
+==============================================================================================================
+CHECK 4 - the 2020 search recounted: every depth<=2 tree over the candidate splits, floor m, leaf = best rule, max CLOSE; at bracket (ENTER) / +-0 (STOP, EXIT) from the tag buckets alone;
+          and (derived widening) at the primary +-1c, +-1, +-2 for STOP/EXIT
+  ENTER bracket: trees after dedupe+floor mine 21 vs printed 21 (no duplicate split); max 2020 CLOSE mine 41 vs run's chosen map 41 [46.6%]; maximizers (lower) 2; run's tree IS among them; my canonical tie-break reproduces the run's per-trade rules; 2021-22: my canonical 45.0% / run's tree 45.0% / printed 45.0% -> MATCH
+      BEST (no split) mine: rule L1 2020 CLOSE 32/88 = 36.4%; printed BEST L1 36.4%
+  STOP pm0: trees after dedupe+floor mine 26 vs printed 26 (no duplicate split); max 2020 CLOSE mine 63 vs run's chosen map 63 [45.3%]; maximizers (lower) 26; run's tree IS among them; my canonical tie-break reproduces the run's per-trade rules; 2021-22: my canonical 44.8% / run's tree 44.8% / printed 44.8% -> MATCH
+      BEST (no split) mine: rule S1-T 2020 CLOSE 63/139 = 45.3%; printed BEST S1-T 45.3%
+  STOP pm1c: trees after dedupe+floor mine 26 vs printed 26 (no duplicate split); max 2020 CLOSE mine 78 (upper bound 80) vs run's chosen map 78 [56.1%]; maximizers (lower) 1; run's tree IS among them; my canonical tie-break reproduces the run's per-trade rules; 2021-22: my canonical 52.6% / run's tree 52.6% / printed 52.6% -> MATCH
+      BEST (no split) mine: rule S1-T 2020 CLOSE 74/139 = 53.2%; printed BEST S1-T 53.2%
+  STOP pm1: trees after dedupe+floor mine 26 vs printed 26 (no duplicate split); max 2020 CLOSE mine 89 (upper bound 91) vs run's chosen map 89 [64.0%]; maximizers (lower) 6; run's tree IS among them; my canonical tie-break reproduces the run's per-trade rules; 2021-22: my canonical 62.9% / run's tree 62.9% / printed 62.9% -> MATCH
+      BEST (no split) mine: rule S1-T 2020 CLOSE 84/139 = 60.4%; printed BEST S1-T 60.4%
+  STOP pm2: trees after dedupe+floor mine 26 vs printed 26 (no duplicate split); max 2020 CLOSE mine 100 (upper bound 102) vs run's chosen map 100 [71.9%]; maximizers (lower) 2; run's tree IS among them; my canonical tie-break reproduces the run's per-trade rules; 2021-22: my canonical 70.7% / run's tree 70.7% / printed 70.7% -> MATCH
+      BEST (no split) mine: rule S1-H 2020 CLOSE 97/139 = 69.8%; printed BEST S1-H 69.8%
+  EXIT pm0: trees after dedupe+floor mine 151 vs printed 151 (no duplicate split); max 2020 CLOSE mine 117 vs run's chosen map 117 [35.1%]; maximizers (lower) 1; run's tree IS among them; my canonical tie-break reproduces the run's per-trade rules; 2021-22: my canonical 30.6% / run's tree 30.6% / printed 30.6% -> MATCH
+      BEST (no split) mine: rule M-8 2020 CLOSE 103/333 = 30.9%; printed BEST M-8 30.9%
+  EXIT pm1c: trees after dedupe+floor mine 151 vs printed 151 (no duplicate split); max 2020 CLOSE mine 151 (upper bound 156) vs run's chosen map 151 [45.3%]; maximizers (lower) 1; run's tree IS among them; my canonical tie-break reproduces the run's per-trade rules; 2021-22: my canonical 39.7% / run's tree 39.7% / printed 39.7% -> MATCH
+      BEST (no split) mine: rule M-8 2020 CLOSE 138/333 = 41.4%; printed BEST M-8 41.4%
+  EXIT pm1: trees after dedupe+floor mine 151 vs printed 151 (no duplicate split); max 2020 CLOSE mine 192 (upper bound 194) vs run's chosen map 192 [57.7%]; maximizers (lower) 13; run's tree IS among them; my canonical tie-break reproduces the run's per-trade rules; 2021-22: my canonical 51.1% / run's tree 51.1% / printed 51.1% -> MATCH
+      BEST (no split) mine: rule M-9 2020 CLOSE 184/333 = 55.3%; printed BEST M-9 55.3%
+  EXIT pm2: trees after dedupe+floor mine 151 vs printed 151 (no duplicate split); max 2020 CLOSE mine 213 (upper bound 217) vs run's chosen map 213 [64.0%]; maximizers (lower) 1; run's tree IS among them; my canonical tie-break reproduces the run's per-trade rules; 2021-22: my canonical 56.3% / run's tree 56.3% / printed 56.3% -> MATCH
+      BEST (no split) mine: rule M-9 2020 CLOSE 202/333 = 60.7%; printed BEST M-9 60.7%
+[4] MATCH - 27 comparisons: tree counts, max 2020 CLOSE, 2021-22 share of the run's tree, BEST (ENTER bracket, STOP/EXIT +-0 exact from tag buckets; +-1c/+-1/+-2 via the derived window with a lower/upper band)
+
+  MAP-T1 ENTER bracket: my max 2020 CLOSE 41 (upper 41) vs run's MAP-T1 41; my tree on 2021-22 45.0% vs printed 45.0%; BEST-T1 rule L1 2020 36.4% vs printed 'its BEST' 36.4% -> MATCH
+  MAP-T1 STOP pm1c: my max 2020 CLOSE 74 (upper 77) vs run's MAP-T1 74; my tree on 2021-22 52.6% vs printed 52.6%; BEST-T1 rule S1-T 2020 53.2% vs printed 'its BEST' 53.2% -> MATCH
+  MAP-T1 EXIT pm1c: my max 2020 CLOSE 141 (upper 153) vs run's MAP-T1 141; my tree on 2021-22 38.4% vs printed 38.4%; BEST-T1 rule M-2 2020 36.9% vs printed 'its BEST' 36.9% -> MATCH
+[4b] MATCH - MAP-T1 (search restricted to the tier-1 rules): max 2020 CLOSE, 2021-22 share of the chosen tree and the tier-1 BEST (`its BEST`) recounted for ENTER bracket, STOP +-1c, EXIT +-1c
+
+==============================================================================================================
+CHECK 5 - the labels re-derived from the printed one-decimal numbers (helps, beats chance, SUMMARY) for every table and every beside line
+[5a] MATCH - 11 full tables: helps (per block and both) / beats chance (every arm, both blocks, gains >= 10.0) / SUMMARY re-derived from the printed numbers
+[5b] MATCH - 120 printed 'net gain' cells re-derived as (MAP-BEST) - (chance MAP - chance BEST) from the printed levels (allow 0.2 point for rounding)
+    printed values within 2.0 points of a 10.0 threshold: ENTER bracket c-1 k-price random prices 2020 net +10.3; ENTER bracket c-1 the shared random window 2020 net +8.9; ENTER bracket c-2 the shared random window 2020 net +9.0; ENTER bracket MAP-BEST 2020 +10.2; EXIT pm2 c-1 control (a), frames 2020 net +9.7; EXIT pm2 c-1 control (a), frames 2021-22 net +8.4; EXIT pm2 c-1 control (a), no frames 2020 net +8.8
+[5b2] MATCH - `beats chance` is `no` in all 11 full tables under any block reading (2020 only / 2021-22 only / both) - the printed labels do not rest on the both-blocks wording
+[5c] MATCH - 9 beside one-liners (MAP-T1, HW-*, SW-*): helps re-derived for all; beats chance re-derived where 'its BEST' is the table's BEST (BEST's chance levels are printed there); SUMMARY re-derived
+    beats-chance NOT derivable from the printout (BEST-T1 differs from the table's BEST, its chance levels are not printed; SUMMARY still follows because helps = no): EXIT pm1c MAP-T1
+[5d] MATCH - 20 recap / THE SUMMARY labels match the per-table / per-line labels recomputed from the printed numbers
+
+==============================================================================================================
+CHECK 6 - SHUF from controls.tsv.gz 'perm' rows: mean, p95, MAP's percentile; and the MAP (c-2) arm means from the 'draw:*' rows
+[6a] MATCH - 22 SHUF means (2020 and 2021-22, 200 permutations each, every primary and beside full-table tolerance) recomputed from the perm rows
+    percentile convention scan over 11 printed 'MAP at pctile' values: A: 100*mean(perm < MAP) reproduces 1; B: 100*mean(perm <= MAP) reproduces 1; C: midrank (A+B)/2 reproduces 11
+    p95 convention scan (np.percentile method) over 22 printed p95 values: linear reproduces 22; higher reproduces 21; lower reproduces 22; nearest reproduces 22; midpoint reproduces 21
+[6b] MATCH - MAP's 2020 percentile among the 200 permutations: convention 'C: midrank (A+B)/2' reproduces 11/11 printed values
+[6c] MATCH - p95 of the permuted shares: np.percentile(method='linear') reproduces 22/22 printed values
+[6d] MATCH - 4 MAP-T1 SHUF means recomputed from the MAP-T1 perm rows
+[6e] MATCH - 60 MAP (c-2) arm means (mean over the 200 control draws' re-searched maps) recomputed from the draw rows
+
+==============================================================================================================
+CHECK 7 - the untouched sign check: MAP - BEST sign from groups.tsv's untouched set vs the printed sign (BEST count = printed share x n, recoverable at this resolution; exact BEST from tags at +-0 / bracket)
+    ENTER bracket: MAP 2/9 - BEST 2/9 -> 0; printed 0; n printed 9 tag-exact BEST count 2
+    ENTER B1: MAP 3/9 - BEST 4/9 -> -; printed -; n printed 9
+    ENTER B2: MAP 7/9 - BEST 8/9 -> -; printed -; n printed 9
+    STOP pm1c: MAP 9/12 - BEST 10/12 -> -; printed -; n printed 12
+    STOP pm0: MAP 8/12 - BEST 8/12 -> 0; printed 0; n printed 12 tag-exact BEST count 8
+    STOP pm1: MAP 9/12 - BEST 10/12 -> -; printed -; n printed 12
+    STOP pm2: MAP 10/12 - BEST 10/12 -> 0; printed 0; n printed 12
+    EXIT pm1c: MAP 13/44 - BEST 14/44 -> -; printed -; n printed 44
+    EXIT pm0: MAP 10/44 - BEST 8/44 -> +; printed +; n printed 44 tag-exact BEST count 8
+    EXIT pm1: MAP 18/44 - BEST 18/44 -> 0; printed 0; n printed 44
+    EXIT pm2: MAP 18/44 - BEST 20/44 -> -; printed -; n printed 44
+[7] MATCH - 11 decision x tolerance untouched signs (MAP - BEST) recounted
+
+==============================================================================================================
+CHECK 8 (extra) - exact McNemar counts and p for MAP vs BEST where BEST is tag-exact (ENTER bracket, STOP/EXIT +-0) and where derived (+-1c): discordant counts and the exact two-sided binomial p
+[8] MATCH - 36 McNemar counts / exact p / paired point differences recounted for every full table where BEST is tag-derived
+
+==============================================================================================================
+CHECK S (self-test: do the recount's own comparisons have teeth?  each mutated input MUST be flagged)
+[S1] MATCH - moving one pinned cut by one rank flips 1 EXIT pm1c assignments (the assignment check would flag it)
+[S2] MATCH - flipping one STOP pm0 `close` makes the bucket comparison flag 1 row (must be exactly 1)
+[S3] MATCH - a synthetic table with MAP >= BEST+10.0 and >= SHUF+10.0 on both blocks and net gains >= 10.0 reads `context map` (got helps=True, beats=True)
+
+==============================================================================================================
+## RESULT: 27 checks, 27 MATCH, 0 MISMATCH; (+3 recount self-tests, 3 behaved as required); 14527 atomic comparisons; widened-tolerance CLOSE (+-1c/+-1/+-2) is derived from the tag files with a lower/upper UNRESOLVED-upgrade band (parts of 1b/1c/3b/4/8); context VALUES are taken from contexts.tsv, not re-derived from bars
