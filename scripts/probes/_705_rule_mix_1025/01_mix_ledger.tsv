@@ -1,0 +1,6 @@
+stage	path	sha256	time
+tag	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/rule_mix/tags_enter.tsv	877affc1164ac1d8ce0cd6942f4066dda33c462ed616ca4a037889dcc301a735	2026-10-26T09:41:31
+tag	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/rule_mix/tags_stop.tsv	308749c7448e75738dde59d07a4930347c8502673894382e2ad4ea8f51de70ce	2026-10-26T09:41:31
+tag	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/rule_mix/tags_exit.tsv	2d6db0b5d355e1ba89978a9b694e9e0d9e44d82a9ce2efd15fe42daca34a0a21	2026-10-26T09:41:31
+tag	/Users/alvinfung/apollo_data/cb702/qm_streams/holdings_1024/rule_mix/control_windows.tsv.gz	e6900a2efa4dddae39b4049e856c3ac7a26aa2ddb7c5357bfe4a5d0039835643	2026-10-26T09:41:32
+tag	/Users/alvinfung/apollo_the_wise/scripts/probes/_705_rule_mix_1025/01_mix_tag.txt	b83cc6fb6b1c29224ef44fdd499c0992d59069c8bf9a4ece41a34031eec82129	2026-10-26T09:41:32
