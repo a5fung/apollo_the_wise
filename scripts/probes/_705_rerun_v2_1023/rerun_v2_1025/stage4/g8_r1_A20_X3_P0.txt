@@ -1,0 +1,26 @@
+[v2] r1 A20_X3_P0 trades n=10,912  distinct tickers=2,560  E range 2017-03-03..2022-03-29  mean R +0.0648  >=10R per 100 1.246  worst -33.9
+  trades entered after the cutoff 2024-12-31 (their bars are sealed): 0
+  trades whose hold runs past the last bar kept (truncated or no bars): 10
+                                                   class  trades_hold_touched  meanR_touched  meanR_untouched  n_ge10R_touched  trades_pre60_touched  meanR_pre_touched
+                               gap reverted next session                   13         4.4294           0.0596                1                    76            -0.0638
+                                   gap reverted within 5                   26         3.2354           0.0572                4                   133             0.1392
+                        gap open-only, reverted same day                    5         0.1531           0.0647                0                    16            -0.2312
+                        gap reverted AND no volume event                    4        10.2697           0.0610                2                    72            -0.3665
+                                    gap persistent (all)                  242         2.2801           0.0145               23                   978             0.1008
+                gap persistent DOWN >=25% close-to-close                   44        -2.1951           0.0739                3                   242            -0.0836
+                  gap persistent UP >=25% close-to-close                  202         3.2514           0.0047               21                   797             0.1161
+adjusted series broken across a vendor/listed adjustment                    0            NaN           0.0648                0                     0                NaN
+                          spin-off candidate, mechanical                    7       -11.6777           0.0723                0                    23             0.0268
+                               spin-off candidate, other                   32         0.1046           0.0646                3                   132            -0.1132
+                      split-like ratio, volume-confirmed                    2         0.5076           0.0647                1                     2             0.2474
+                           split-like ratio, unconfirmed                    9         0.7228           0.0642                1                    20             0.0713
+                                wick >= 1.5x with volume                    3         2.4724           0.0641                0                    26            -0.4195
+                             interior hole >= 5 sessions                    1        -5.6769           0.0653                0                     0                NaN
+  trades on a ticker inside an identical-series pair: 12  on an exchange test ticker: 0
+  trades duplicated one-for-one under both symbols (same E, same R): 0
+  trades filled at an adjusted price >= $1000: 0  mean R +nan
+UNION of strong artifacts ['gap reverted AND no volume event', 'adjusted series broken across a vendor/listed adjustment', 'spin-off candidate, mechanical', 'split-like ratio, volume-confirmed']
+  touched in the hold: 12  touched in the 60 bars before E: 93  either: 105  (of n=10,912)
+  published              n=10,912  mean R +0.0648  median -0.568  >=10R per 100 1.246  >=4R per 100 4.729  worst -33.9
+  hold-clean             n=10,900  mean R +0.0665  median -0.567  >=10R per 100 1.220  >=4R per 100 4.697  worst -15.1
+  hold- and pre-clean    n=10,807  mean R +0.0691  median -0.560  >=10R per 100 1.231  >=4R per 100 4.719  worst -15.1

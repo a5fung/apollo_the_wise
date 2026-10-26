@@ -1,0 +1,25 @@
+period	entry	cell	K	delta	x	y	n	n_excluded_open	n_differ	mean	ci_lo	ci_hi	verdict	deciding
+pre	orh5	C1	tl	pp_wbe-pp	pp_wbe	pp	209	0	62	-0.113441	-0.168112	-0.055912	loss	1
+pre	orh5	C1	tl	pp-A	pp	A	209	0	1	-0.00122	-0.003787	0.0	can't tell	0
+pre	orh5	C1	tl	pp_wbe-A	pp_wbe	A	209	0	63	-0.114661	-0.165745	-0.059196	loss	0
+pre	orh5	C1	tl	pp_s0-pp	pp_s0	pp	209	0	62	-0.132442	-0.185713	-0.077389	loss	0
+pre	orh5	C1	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	209	0	0	0.0	0.0	0.0	can't tell	0
+pre	orh5	C1	tl	wbe-A	wbe	A	209	0	62	-0.113441	-0.167888	-0.059262	loss	0
+pre	orh5	C0	tl	pp_wbe-pp	pp_wbe	pp	15891	12	3345	0.009822	-0.014375	0.031883	can't tell	1
+pre	orh5	C0	tl	pp-A	pp	A	15894	9	213	0.000636	-0.002102	0.00346	can't tell	0
+pre	orh5	C0	tl	pp_wbe-A	pp_wbe	A	15891	12	3534	0.010458	-0.013672	0.033854	can't tell	0
+pre	orh5	C0	tl	pp_s0-pp	pp_s0	pp	15890	13	3383	0.011102	-0.016175	0.035965	can't tell	0
+pre	orh5	C0	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	15891	12	56	0.000375	-0.00067	0.001509	can't tell	0
+pre	orh5	C0	tl	wbe-A	wbe	A	15891	12	3321	0.009986	-0.011276	0.03417	can't tell	0
+pre	h60	C1	tl	pp_wbe-pp	pp_wbe	pp	204	0	54	-0.103884	-0.1568	-0.03485	loss	0
+pre	h60	C1	tl	pp-A	pp	A	204	0	4	0.08641	-0.012172	0.289617	can't tell	0
+pre	h60	C1	tl	pp_wbe-A	pp_wbe	A	204	0	58	-0.017473	-0.157044	0.209885	can't tell	0
+pre	h60	C1	tl	pp_s0-pp	pp_s0	pp	204	0	54	-0.126953	-0.185321	-0.061809	loss	0
+pre	h60	C1	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	204	0	1	-0.002551	-0.008306	0.0	can't tell	0
+pre	h60	C1	tl	wbe-A	wbe	A	204	0	54	-0.103884	-0.155449	-0.033879	loss	0
+pre	h60	C0	tl	pp_wbe-pp	pp_wbe	pp	16320	11	3376	0.036058	0.005162	0.06456	win	0
+pre	h60	C0	tl	pp-A	pp	A	16321	10	235	-0.000507	-0.003932	0.002984	can't tell	0
+pre	h60	C0	tl	pp_wbe-A	pp_wbe	A	16320	11	3596	0.035551	0.001325	0.065766	win	0
+pre	h60	C0	tl	pp_s0-pp	pp_s0	pp	16317	14	3409	0.036877	0.004166	0.067039	win	0
+pre	h60	C0	tl	pp5_wbe-pp_wbe	pp5_wbe	pp_wbe	16320	11	57	0.000473	-0.00066	0.001644	can't tell	0
+pre	h60	C0	tl	wbe-A	wbe	A	16320	11	3361	0.035877	0.005867	0.066061	win	0

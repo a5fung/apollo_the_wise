@@ -1,0 +1,13 @@
+V2-H60-STEP0 (registered read #705): period pre; 215,367 rows; 149,080 pairs all logged; freeze check NONE DECLARED; code: module sha256 e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b, runner sha256 a4f016720f8226933367ae3d776a7067d9d94dea634b28e5e5685e186bc3ad69, scaffold sha256 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449
+V2 STAGE 0 (before the freeze; no registered table): 45,118 bases, 215,367 rows; restored tickers 2,669; writes /Users/alvinfung/apollo_data/cb702_pre_v2/out/v2_step0_1025 and /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/v2_1025/step0 only (never out/h60_step0_pre.*)
+TL ROWS by label / file: 81015
+B8 C0 tl ORH5 entry-fact fills, window pre: shared 13,302 / restored 2,592; removed: 86 of the old file's 17392 C0 tl bases have no v2 base (ticker, pole date)
+B8 C0 tl ORH5 entry-fact fills, window 2020-21: shared 8,878 / restored 1,583; removed: 31 of the old file's 17392 C0 tl bases have no v2 base (ticker, pole date)
+§5 (B2) - the v2 cells, to paste (python3 scripts/probes/_cb_backtest/v2_rerun_read.py fill-section5 fills the doc's (B2) cells from /Users/alvinfung/apollo_data/cb702_pre_v2/out/v2_step0_1025/h60_step0_pre_counts.json):
+  C0 bases / with ≥ 2 break days: whole era 20,637 / 13,452 | 2020-21 13,603 / 8,921
+  C1 bases / with ≥ 2 break days / opening-range C1 fills: whole era 247 / 151 / 209 | 2020-21 97 / 56 / 81
+  C2 / C3 / C4 / C5 / C6 / C7: whole era 17 / 409 / 1,479 / 484 / 37 / 344 | 2020-21 9 / 148 / 966 / 227 / 12 / 129
+  com C1 / tl rows: whole era 273 / 81,015 | 2020-21 —
+  C0 tl opening-range fills on shared / restored tickers (B8): whole era 13,302 / 2,592 | 2020-21 8,878 / 1,583
+WROTE /Users/alvinfung/apollo_data/cb702_pre_v2/out/v2_step0_1025/h60_step0_pre.tsv.gz, /Users/alvinfung/apollo_data/cb702_pre_v2/out/v2_step0_1025/h60_step0_pre.txt, /Users/alvinfung/apollo_data/cb702_pre_v2/out/v2_step0_1025/h60_step0_pre_counts.json, /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/v2_1025/step0/h60_step0_pre.txt
+WALL TIME: 55s total

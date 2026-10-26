@@ -1,0 +1,16 @@
+PRE MINUTE STAGE: 45,142 pre candidate rows; minute files on disk: 1219 dates (/Users/alvinfung/apollo_data/cb702_pre_v2/minutes); candidates on those dates: 45,142; _done.psv: present (149,587 pairs)
+[load: 5s]
+[entries + exits + controls: 16s]
+
+COVERAGE: candidates with minutes fetched 45,142 (by state {'ok': 45142}); PENDING fetch (skipped, NOT an abstain) 0; files: refetched tickers 0, bad lines 0, truncated 0
+DATA GATE: 119 of 45,142 fetched candidates abstain on the data (0.26%; {'minute_daily_mismatch': 115, 'minute_high_below_pivot': 4}) - limit 5%: ok; minute-vs-daily high/low match rate 99.75%
+ENTRIES (candidate rows x variant; close = the daily stage's rows, joined):
+variant    rows  filled  too_wide  no_trigger  other abstain
+orh1     45,142  37,666     2,919       3,990            567
+orh5     45,142  34,475     3,226       7,293            148
+orh60    45,142  22,022     4,646      18,353            121
+pivot    45,142  42,208     2,815           0            119
+close    45,142  21,188     6,200      17,754              0
+ARM MATURITY (minute variants; filled walks): p33_s3_t10 mature 136,305 / open mark 66; ctl_family_a_settle mature 136,319 / open mark 52; ctl_apollo_today mature 127,618 / open mark 8,753
+WROTE /Users/alvinfung/apollo_data/cb702_pre_v2/out/trades_pre_tl_com.tsv.gz (2,704,278 rows), /Users/alvinfung/apollo_data/cb702_pre_v2/out/entries_pre_tl_com.tsv.gz (225,710 rows)
+WALL TIME: 21s total

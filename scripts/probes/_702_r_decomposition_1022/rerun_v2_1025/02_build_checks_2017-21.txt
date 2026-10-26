@@ -1,0 +1,20 @@
+== 2017-21
+  v2 switch: data /Users/alvinfung/apollo_data/cb702_pre_v2; log dir /Users/alvinfung/apollo_the_wise/scripts/probes/_702_r_decomposition_1022/rerun_v2_1025; manifest line of trades_pre_exitpb verified; restored tickers 2,669
+  export /Users/alvinfung/apollo_data/cb702_pre_v2/daily_closes_all.csv.gz: 12,005,007 rows, kept 12,005,007 (cut None); dates 2016-01-04..2022-06-30; 12,532 tickers; 3s
+  calendar = SPY sessions: 1635 (2016-01-04..2022-06-30); off-calendar bars dropped 0
+  wide frames (1635, 12532); 6s
+  rolling features done; 10s
+  population: 15903 fills, 15894 mature (published 13363)
+  fills whose E lies AFTER the export cut (no bar of theirs is read; they keep their published realized_r but carry no path): 0 (E dates [])
+  E is the session after D for 15894 of 15894 fills (others: [np.int64(1)])
+  CHECK fill inside E's daily bar (+-1%): 15894 of 15894 (100.00%); exceptions: []
+  CHECK my ADR20 at D vs the table's adr20: median rel diff 1.19e-07, p99 7.24e-07, within 1%: 15894 of 15894; NaN 0
+  CHECK pnl_adr == realized_r x width_adr: max abs diff 5.33e-15
+  CHECK width_adr == (fill-stop)/(adr20*fill): max abs diff 3.74e-14
+  B8 restored-ticker rows in r_decomp_fills: 2,588 of 15,894
+  wrote /Users/alvinfung/apollo_data/cb702_pre_v2/out/r_decomp_fills_2017-21.tsv.gz: 15894 rows; complete_20 15894, complete_60 15894
+  B8 restored-ticker rows in r_decomp_control: 246,206 of 2,512,825
+  wrote /Users/alvinfung/apollo_data/cb702_pre_v2/out/r_decomp_control_2017-21.tsv.gz: 2,512,825 control rows over 1197 E dates (mean 2099 per E); excluded as a fill/watch ticker: 225,039
+  CHECK breakouts passing my price/dollar-volume filter at D (adjusted close): 15868 of 15894
+  manifest + cb702_pre_v2/out/r_decomp_fills_2017-21.tsv.gz 314a6fdeddfe...
+  manifest + cb702_pre_v2/out/r_decomp_control_2017-21.tsv.gz aa8f51c18804...

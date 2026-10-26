@@ -1,0 +1,432 @@
+{
+ "2017-21/x200/classes": {
+  "p": {
+   "measurable_breakout": 594,
+   "late_base": 477,
+   "ep_gap": 100,
+   "other": 5,
+   "no_consolidation": 5
+  },
+  "s4": {
+   "measurable_breakout": 607,
+   "late_base": 456,
+   "ep_gap": 102,
+   "other": 9,
+   "no_consolidation": 7
+  },
+  "s7": {
+   "late_base": 547,
+   "measurable_breakout": 506,
+   "ep_gap": 99,
+   "other": 27,
+   "no_consolidation": 2
+  },
+  "a20": {
+   "measurable_breakout": 574,
+   "late_base": 504,
+   "ep_gap": 98,
+   "other": 3,
+   "no_consolidation": 2
+  },
+  "nosw": {
+   "measurable_breakout": 595,
+   "late_base": 475,
+   "ep_gap": 101,
+   "other": 5,
+   "no_consolidation": 5
+  },
+  "shortL": {
+   "measurable_breakout": 696,
+   "late_base": 382,
+   "ep_gap": 97,
+   "no_consolidation": 5,
+   "other": 1
+  }
+ },
+ "2017-21/x200/composition": {
+  "n": 1181,
+  "by_year": {
+   "2017": 40,
+   "2018": 55,
+   "2019": 54,
+   "2020": 889,
+   "2021": 143
+  },
+  "gap_start": 105,
+  "mb": 594,
+  "mb_expansion": 192,
+  "mb_b_minus_t_median": 13.0,
+  "mb_L_median": 26.0,
+  "gain_median": 1.42454,
+  "close_t_median": 16.81
+ },
+ "2017-21/x200/funnel": {
+  "big winners (episodes)": [
+   1181,
+   1181
+  ],
+  "with a measurable breakout (primary rule)": [
+   594,
+   1181
+  ],
+  "\u2026 whose base nights our watch covers": [
+   586,
+   594
+  ],
+  "\u2026 WATCHED (a watch row on some base night)": [
+   296,
+   586
+  ],
+  "\u2026 watched with a trendline level (C0_tl) on some base night": [
+   296,
+   586
+  ],
+  "\u2026 watched on the night before the breakout day": [
+   193,
+   586
+  ],
+  "\u2026 TRIGGERED (a tl ORH5 fill, E in the catch window)": [
+   287,
+   586
+  ],
+  "\u2026 triggered NEAR the breakout (E within 5 sessions of b)": [
+   94,
+   586
+  ],
+  "\u2026 triggered and STILL IN at s50 (half the gain made)": [
+   32,
+   586
+  ],
+  "\u2026 near the breakout and still in at s50": [
+   19,
+   586
+  ],
+  "\u2026 triggered and KEPT >= half of the episode's gain": [
+   3,
+   586
+  ],
+  "\u2026 near the breakout and kept >= half of the episode's gain": [
+   2,
+   586
+  ],
+  "\u2026 triggered and kept >= half of the gain available from the fill": [
+   8,
+   586
+  ]
+ },
+ "2017-21/x200/all_classes": {
+  "n": 1181,
+  "covered": 1173,
+  "watched": 473,
+  "triggered": 371,
+  "still_in_s50": 40,
+  "kept_half": 5,
+  "any_fill_t20_to_p": 909,
+  "any_K": 423
+ },
+ "2017-21/x200/not_watched_furthest_gate": {
+  "sma50": 141,
+  "prior_move": 97,
+  "close_above_pole_high": 42,
+  "universe_price": 5,
+  "universe_dv": 4,
+  "pole_artifact": 1
+ },
+ "2017-21/x200/not_watched_gate_bprev": {
+  "prior_move": 141,
+  "sma50": 72,
+  "universe_dv": 37,
+  "close_above_pole_high": 32,
+  "universe_price": 8
+ },
+ "2017-21/x200/watched_no_trigger": {
+  "n": 57,
+  "tl_level": 57,
+  "bprev": 25,
+  "later_fill": 39,
+  "anyK": 24
+ },
+ "2017-21/x200/triggered": {
+  "n": 287,
+  "stopped_before_s50": 229,
+  "stopped_before_b": 158,
+  "exited_before_s50": 26,
+  "still_in_s50": 32,
+  "E_minus_b_median": -6.0,
+  "before_b": 195,
+  "on_b": 26,
+  "mean_r": 1.9386875585714285,
+  "kept_half": 3,
+  "kept_half_avail": 8,
+  "kept_share_median": -0.009536566,
+  "any_fill_still_in": 58
+ },
+ "2017-21/x200/anyK": {
+  "com": 302,
+  "tl": 287
+ },
+ "2017-21/x200/no2020/funnel": {
+  "big winners (episodes)": [
+   292,
+   292
+  ],
+  "with a measurable breakout (primary rule)": [
+   207,
+   292
+  ],
+  "\u2026 whose base nights our watch covers": [
+   199,
+   207
+  ],
+  "\u2026 WATCHED (a watch row on some base night)": [
+   102,
+   199
+  ],
+  "\u2026 watched with a trendline level (C0_tl) on some base night": [
+   102,
+   199
+  ],
+  "\u2026 watched on the night before the breakout day": [
+   71,
+   199
+  ],
+  "\u2026 TRIGGERED (a tl ORH5 fill, E in the catch window)": [
+   98,
+   199
+  ],
+  "\u2026 triggered NEAR the breakout (E within 5 sessions of b)": [
+   34,
+   199
+  ],
+  "\u2026 triggered and STILL IN at s50 (half the gain made)": [
+   8,
+   199
+  ],
+  "\u2026 near the breakout and still in at s50": [
+   4,
+   199
+  ],
+  "\u2026 triggered and KEPT >= half of the episode's gain": [
+   1,
+   199
+  ],
+  "\u2026 near the breakout and kept >= half of the episode's gain": [
+   1,
+   199
+  ],
+  "\u2026 triggered and kept >= half of the gain available from the fill": [
+   4,
+   199
+  ]
+ },
+ "2017-21/x200/no2020/all_classes": {
+  "n": 292,
+  "covered": 284,
+  "watched": 145,
+  "triggered": 126,
+  "still_in_s50": 13,
+  "kept_half": 3,
+  "any_fill_t20_to_p": 215,
+  "any_K": 148
+ },
+ "2017-21/x200/no2020/not_watched_furthest_gate": {
+  "sma50": 52,
+  "prior_move": 24,
+  "close_above_pole_high": 18,
+  "universe_price": 2,
+  "pole_artifact": 1
+ },
+ "2017-21/x200/no2020/not_watched_gate_bprev": {
+  "prior_move": 45,
+  "sma50": 24,
+  "close_above_pole_high": 13,
+  "universe_dv": 12,
+  "universe_price": 3
+ },
+ "2017-21/x200/no2020/watched_no_trigger": {
+  "n": 18,
+  "tl_level": 18,
+  "bprev": 12,
+  "later_fill": 9,
+  "anyK": 10
+ },
+ "2017-21/x200/no2020/triggered": {
+  "n": 98,
+  "stopped_before_s50": 79,
+  "stopped_before_b": 49,
+  "exited_before_s50": 11,
+  "still_in_s50": 8,
+  "E_minus_b_median": -4.0,
+  "before_b": 62,
+  "on_b": 11,
+  "mean_r": 1.8577242011224493,
+  "kept_half": 1,
+  "kept_half_avail": 4,
+  "kept_share_median": -0.009334057,
+  "any_fill_still_in": 15
+ },
+ "2017-21/x150/classes": {
+  "p": {
+   "late_base": 2420,
+   "measurable_breakout": 2215,
+   "ep_gap": 197,
+   "other": 86,
+   "no_consolidation": 28
+  },
+  "s4": {
+   "measurable_breakout": 2467,
+   "late_base": 2173,
+   "ep_gap": 200,
+   "other": 57,
+   "no_consolidation": 49
+  },
+  "s7": {
+   "late_base": 2847,
+   "measurable_breakout": 1657,
+   "other": 232,
+   "ep_gap": 197,
+   "no_consolidation": 13
+  },
+  "a20": {
+   "late_base": 2476,
+   "measurable_breakout": 2201,
+   "ep_gap": 196,
+   "other": 66,
+   "no_consolidation": 7
+  },
+  "nosw": {
+   "late_base": 2417,
+   "measurable_breakout": 2221,
+   "ep_gap": 198,
+   "other": 85,
+   "no_consolidation": 25
+  },
+  "shortL": {
+   "measurable_breakout": 3140,
+   "late_base": 1572,
+   "ep_gap": 190,
+   "no_consolidation": 28,
+   "other": 16
+  }
+ },
+ "2017-21/x150/composition": {
+  "n": 4946,
+  "by_year": {
+   "2017": 350,
+   "2018": 535,
+   "2019": 421,
+   "2020": 2745,
+   "2021": 895
+  },
+  "gap_start": 205,
+  "mb": 2215,
+  "mb_expansion": 641,
+  "mb_b_minus_t_median": 12.0,
+  "mb_L_median": 26.0,
+  "gain_median": 0.7679853999999999,
+  "close_t_median": 23.994999999999997
+ },
+ "2017-21/x150/funnel": {
+  "big winners (episodes)": [
+   4946,
+   4946
+  ],
+  "with a measurable breakout (primary rule)": [
+   2215,
+   4946
+  ],
+  "\u2026 whose base nights our watch covers": [
+   2139,
+   2215
+  ],
+  "\u2026 WATCHED (a watch row on some base night)": [
+   864,
+   2139
+  ],
+  "\u2026 watched with a trendline level (C0_tl) on some base night": [
+   862,
+   2139
+  ],
+  "\u2026 watched on the night before the breakout day": [
+   491,
+   2139
+  ],
+  "\u2026 TRIGGERED (a tl ORH5 fill, E in the catch window)": [
+   714,
+   2139
+  ],
+  "\u2026 triggered NEAR the breakout (E within 5 sessions of b)": [
+   217,
+   2139
+  ],
+  "\u2026 triggered and STILL IN at s50 (half the gain made)": [
+   59,
+   2139
+  ],
+  "\u2026 near the breakout and still in at s50": [
+   43,
+   2139
+  ],
+  "\u2026 triggered and KEPT >= half of the episode's gain": [
+   6,
+   2139
+  ],
+  "\u2026 near the breakout and kept >= half of the episode's gain": [
+   4,
+   2139
+  ],
+  "\u2026 triggered and kept >= half of the gain available from the fill": [
+   12,
+   2139
+  ]
+ },
+ "2017-21/x150/all_classes": {
+  "n": 4946,
+  "covered": 4857,
+  "watched": 1830,
+  "triggered": 1207,
+  "still_in_s50": 88,
+  "kept_half": 10,
+  "any_fill_t20_to_p": 3465,
+  "any_K": 1455
+ },
+ "2017-21/x150/not_watched_furthest_gate": {
+  "prior_move": 726,
+  "sma50": 395,
+  "close_above_pole_high": 117,
+  "universe_dv": 21,
+  "universe_price": 12,
+  "pole_artifact": 2,
+  "pass": 2
+ },
+ "2017-21/x150/not_watched_gate_bprev": {
+  "prior_move": 827,
+  "sma50": 208,
+  "universe_dv": 146,
+  "close_above_pole_high": 74,
+  "universe_price": 18,
+  "pass": 2
+ },
+ "2017-21/x150/watched_no_trigger": {
+  "n": 245,
+  "tl_level": 243,
+  "bprev": 98,
+  "later_fill": 164,
+  "anyK": 101
+ },
+ "2017-21/x150/triggered": {
+  "n": 714,
+  "stopped_before_s50": 591,
+  "stopped_before_b": 434,
+  "exited_before_s50": 64,
+  "still_in_s50": 59,
+  "E_minus_b_median": -10.0,
+  "before_b": 535,
+  "on_b": 56,
+  "mean_r": 0.9301559688095238,
+  "kept_half": 6,
+  "kept_half_avail": 12,
+  "kept_share_median": -0.011574435000000001,
+  "any_fill_still_in": 96
+ }
+}

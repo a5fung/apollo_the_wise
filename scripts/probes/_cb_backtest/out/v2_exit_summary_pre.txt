@@ -1,0 +1,37 @@
+V2-EXIT-READ (registered read #705): period pre; 71,548 rows; 34,047 pairs all logged; freeze check passed; code: module sha256 e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b, runner sha256 a4f016720f8226933367ae3d776a7067d9d94dea634b28e5e5685e186bc3ad69, scaffold sha256 28fbc47f862f205071ab921af3a29f6093fca95e2d41e3a0f4a0f7afcd9aa449
+V2-EXIT-READ: 71,548 pinned fills (h60/com 20,742, h60/tl 16,331, orh5/com 18,572, orh5/tl 15,903) on 1,216 dates; module sha256 e14027be38b24352dd3c19fd5a1dcd54bae2e1cf80fc58a064d1ea65c821861b (hard pin); B8 restored orh5 / tl fills 2,592
+CALENDAR (B6): daily_closes_all.csv.gz walks 1635 sessions 2016-01-04..2022-06-30 = sessions.txt
+[parity: 10s]
+PARITY: P2 h60/com: 20,742 match, 0 mismatch; P2 h60/tl: 16,331 match, 0 mismatch; P1 orh5/com: 18,572 match, 0 mismatch; P1 orh5/tl: 15,903 match, 0 mismatch
+REACH from the control's rows (entry / level / cell: fills, mature, thirds (day0_r / r / session), stopped after the third at the fill, at or below it, session thirds at or below the fill, movable = trades the pp / pp_wbe rules can change)
+  h60 / tl / C0: fills 16,331, mature 16,321, thirds 5,636 (1,244 / 2,963 / 1,429), stopped after the third at cost 3,071, at or below the fill 3,693, session thirds <= fill 236, movable 3,766
+  h60 / tl / C1: fills 204, mature 204, thirds 73 (9 / 43 / 21), stopped after the third at cost 52, at or below the fill 57, session thirds <= fill 4, movable 58
+  orh5 / tl / C0: fills 15,903, mature 15,894, thirds 5,590 (1,648 / 2,697 / 1,245), stopped after the third at cost 3,042, at or below the fill 3,655, session thirds <= fill 215, movable 3,716
+  orh5 / tl / C1: fills 209, mature 209, thirds 78 (21 / 39 / 18), stopped after the third at cost 60, at or below the fill 63, session thirds <= fill 1, movable 63
+[exit walks: 7s]
+WROTE /Users/alvinfung/apollo_data/cb702_pre_v2/out/trades_pre_exitpb.tsv.gz (71,548 fills x 6 arms)
+  (a) pp-family session thirds on a close <= the fill: 0 (must be 0)
+  (b) wbe-family stop_to levels off max(stop0, min(fill, fill - (p - fill)/2)) or below stop0: 0 of 71142 (must be 0)
+  (c) wbe / stop0 day-0 thirds stopped on day 0 above stop0: 0 (must be 0)
+  (d) pp differs from A on a trade A stopped or cut with no third: 0 of 47284 (must be 0)
+  (d) pp_wbe differs from A on a trade A stopped or cut with no third: 0 of 47284 (must be 0)
+  (d) wbe differs from A on a trade A stopped or cut with no third: 0 of 47284 (must be 0)
+  (d) pp_s0 differs from A on a trade A stopped or cut with no third: 0 of 47284 (must be 0)
+  (d) pp5_wbe differs from A on a trade A stopped or cut with no third: 0 of 47284 (must be 0)
+  (e) pp differs from A on a trade A trailed out after a +2R or above-fill session third: 0 of 7299 (must be 0)
+  (f) cells where the pp_wbe >= 10R count is below A's: 0 (must be 0)
+  (g) TSLA 2020-06-01 under pp_wbe: third r session 5, status trailed after 44 sessions, R +18.527 (must be: no session-3 third, not stopped on session 4)
+WROTE /Users/alvinfung/apollo_data/cb702_pre_v2/out/exitpb_report_pre.tsv (264 rows), /Users/alvinfung/apollo_data/cb702_pre_v2/out/exitpb_deltas_pre.tsv (24 rows), /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/v2_1025/exitpb_report_pre.txt, /Users/alvinfung/apollo_data/cb702_pre_v2/out/exitpb_verdict_pre.json
+MANIFEST + cb702_pre_v2/out/trades_pre_exitpb.tsv.gz 8cdc1d2a44b5...
+MANIFEST + cb702_pre_v2/out/exitpb_report_pre.tsv a06e5b7aa437...
+MANIFEST + cb702_pre_v2/out/exitpb_deltas_pre.tsv 0c49cf5bcb65...
+MANIFEST + cb702_pre_v2/out/exitpb_report_pre.txt f2111305d833...
+MANIFEST + cb702_pre_v2/out/exitpb_verdict_pre.json 926ff49f77b4...
+MANIFEST + cb702_pre_v2/out/exitpb_verdict_pre.txt 0d2816f68476...
+MANIFEST + _cb_backtest/out/v2_1025/exitpb_report_pre.tsv d3a758bfe2db...
+MANIFEST + _cb_backtest/out/v2_1025/exitpb_deltas_pre.tsv 77f0060e548d...
+MANIFEST + _cb_backtest/out/v2_1025/exitpb_report_pre.txt f2111305d833...
+MANIFEST + _cb_backtest/out/v2_1025/exitpb_verdict_pre.txt 0d2816f68476...
+MANIFEST + _cb_backtest/out/v2_1025/exitpb_summary_pre.txt e65725c2fd92...
+WROTE /Users/alvinfung/apollo_data/cb702_pre_v2/out/v2_exit_verdict_pre.json, /Users/alvinfung/apollo_data/cb702_pre_v2/out/v2_exit_verdict_pre.txt, /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/v2_exit_verdict_pre.txt
+WALL TIME: 25s total

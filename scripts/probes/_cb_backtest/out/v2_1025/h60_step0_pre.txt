@@ -1,0 +1,90 @@
+#702 h60 STEP 0 - pre: ENTRY-TIME facts only (no fill price, stop, day-0 or exit was computed here). Population: every row under the pole (spec key, rule (b)), the base's period from its FIRST-break row; levels tl (decides) / com (beside).
+bases 45,118 (20,637 tl / 24,481 com); rows 215,367; (E, ticker) pairs 149,080; pairs not logged in _done.psv 0; logged ok with no file 0; minutes state {'ok': 215367}
+EARLY-CLOSE CHECK (check 2): listed dates read 11 - 2017-07-03 2%, 2017-11-24 1%, 2018-07-03 2%, 2018-11-23 2%, 2018-12-24 8%, 2019-07-03 3%, 2019-11-29 2%, 2019-12-24 2%, 2020-11-27 5%, 2020-12-24 4%, 2021-11-26 5%; other dates with < 25% at minute >= 210: 0 -> ok
+DATA-ABSTAIN SHARE (check 3, h60 on tl, the rows the rule READ): 103 of 25,420 (0.41%; {'minute_daily_mismatch': 97, 'no_minute_after_bar': 5, 'minute_high_below_pivot': 1}) - limit 5%: ok
+
+REGISTERED TABLE CHECK (check 5) - window pre: EQUAL to the registration's table
+cell              tl bases  tl multi-break  ORH5 fills (entry facts)  ORH5 fills (pinned P5 table)  com bases  com ORH5 fills
+C0                   20637           13452                     15894                         15894      24481           18563
+C1                     247             151                       209                           209        273             225
+C2                      17              10                        13                            13         16              12
+C3                     409             249                       347                           347        442             368
+C4                    1479             956                      1190                          1190       1668            1328
+C5                     484             287                       392                           392        528             427
+C6                      37              23                        27                            27         39              33
+C7                     344             211                       294                           294        368             306
+C1_no_retrace          359             221                       302                           302        410             334
+C1_no_tightening       477             281                       399                           399        571             463
+HTF                   1233             798                       980                           980       1277            1008
+C1_s5                  262             160                       220                           220        287             240
+  h60 (tl) per cell: confirmed+filled / confirmed too_wide / confirmed stop_at_or_above_fill / never confirmed (of which data abstains only) / confirmed on the first break day / confirmed after an absent or no-line night
+cell              filled  too_wide  saaf  never (data only)  first day  after a gap
+C0                 16331      2214   155          1937 (38)      15223          646
+C1                   204        21     2             20 (0)        183            4
+C2                    12         1     1              3 (0)         11            1
+C3                   330        33     2             44 (0)        299            9
+C4                  1207       150    13            109 (0)       1100           25
+C5                   400        46     3             35 (0)        361            7
+C6                    30         1     1              5 (0)         24            1
+C7                   284        27     2             31 (0)        257            7
+C1_no_retrace        295        30     3             31 (0)        261           10
+C1_no_tightening     385        46     2             44 (4)        354            9
+HTF                  991       132     5            105 (7)        901           29
+C1_s5                219        21     2             20 (0)        195            3
+  every entry (tl, C0 / C1): confirmed+filled / too_wide / saaf / never
+entry                             C0                 C1
+h60        16331 / 2214 / 155 / 1937  204 / 21 / 2 / 20
+h30        16645 / 2209 / 149 / 1634  214 / 14 / 2 / 17
+h5          17406 / 1785 / 732 / 714   224 / 11 / 4 / 8
+h60_first  13257 / 1839 / 127 / 5414  167 / 15 / 1 / 64
+h60_m025    13253 / 2731 / 58 / 4595  160 / 31 / 0 / 56
+h60_line0  16506 / 2124 / 177 / 1830  210 / 17 / 2 / 18
+orh60        10285 / 2344 / 0 / 8008   139 / 9 / 0 / 99
+
+REGISTERED TABLE CHECK (check 5) - window 2020-21: EQUAL to the registration's table
+cell              tl bases  tl multi-break  ORH5 fills (entry facts)  ORH5 fills (pinned P5 table)  com bases  com ORH5 fills
+C0                   13603            8921                     10461                         10461      16261           12335
+C1                      97              56                        81                            81        107              82
+C2                       9               6                         6                             6          6               2
+C3                     148              89                       126                           126        156             127
+C4                     966             641                       779                           779       1079             848
+C5                     227             135                       177                           177        239             181
+C6                      12               8                         8                             8          9               5
+C7                     129              76                       110                           110        137             110
+C1_no_retrace          170             106                       142                           142        195             155
+C1_no_tightening       208             118                       174                           174        241             192
+HTF                   1004             659                       800                           800       1039             819
+C1_s5                  103              61                        87                            87        110              87
+  h60 (tl) per cell: confirmed+filled / confirmed too_wide / confirmed stop_at_or_above_fill / never confirmed (of which data abstains only) / confirmed on the first break day / confirmed after an absent or no-line night
+cell              filled  too_wide  saaf  never (data only)  first day  after a gap
+C0                 10846      1382   117          1258 (29)      10084          405
+C1                    82         5     1              9 (0)         74            2
+C2                     6         0     1              2 (0)          5            1
+C3                   123        10     1             14 (0)        113            3
+C4                   797        85    10             74 (0)        715           18
+C5                   195        14     1             17 (0)        166            5
+C6                     9         0     1              2 (0)          7            1
+C7                   108         8     1             12 (0)        100            2
+C1_no_retrace        141        11     2             16 (0)        126            6
+C1_no_tightening     175        12     1             20 (4)        158            3
+HTF                  814       107     4             79 (7)        740           23
+C1_s5                 88         6     1              8 (0)         79            2
+  every entry (tl, C0 / C1): confirmed+filled / too_wide / saaf / never
+entry                             C0                C1
+h60        10846 / 1382 / 117 / 1258    82 / 5 / 1 / 9
+h30        11046 / 1365 / 113 / 1079    84 / 4 / 1 / 8
+h5          11515 / 1109 / 497 / 482    89 / 4 / 0 / 4
+h60_first    8827 / 1159 / 98 / 3519   71 / 3 / 0 / 23
+h60_m025     8897 / 1735 / 46 / 2925  65 / 10 / 0 / 22
+h60_line0  10947 / 1339 / 130 / 1187    83 / 4 / 1 / 9
+orh60         6757 / 1514 / 0 / 5332   50 / 2 / 0 / 45
+
+NESTING (per row, tl): rows h60 confirms that h30 does not, plus rows h30 confirms that h5 does not: 0 (must be 0); rows confirmed by h5 73308, h30 63487, h60 60179 of 81,002 rows
+LAST_BAR_ONLY (tl, h60; the hole counted, not fixed): 2368 rows, by what followed: {'ended_base': 137, 'later_confirmed': 550, 'next_line_not_cleared': 1413, 'no_later_row': 253, 'topped_anchor': 15}
+h60_line0 (the first-break night's line held) vs the redrawn line: rows confirmed 73499 vs 60179; rows where the two disagree: 14968
+FILL MINUTE (tl, h60 filled trades, minutes since 09:30): <= 30: 9345  31-90: 3247  91-150: 1473  151-210: 933  211-270: 695  271-330: 585  > 330: 53  (n 16331, median 30)
+FIRST BREAK -> CONFIRMED BREAK (sessions): <= 0: 13257  1-1: 1437  2-5: 1086  6-20: 476  > 20: 75  (n 16331, median 0)
+FILLED AT OR UNDER THE LINE: 205 of 16331
+TSLA 2020-04-30 (tl): rows 2020-05-18 no_confirm, 2020-05-21 last_bar_only, 2020-05-22 no_confirm, 2020-05-26 no_confirm, 2020-05-29 last_bar_only, 2020-06-01 filled <- TRADE; confirmed days: 1 (ONE, as the layout check expects)
+TL ROWS of the period's bases: 81,002 (the registration's row count is by row LABEL / file: see the read's header)
+

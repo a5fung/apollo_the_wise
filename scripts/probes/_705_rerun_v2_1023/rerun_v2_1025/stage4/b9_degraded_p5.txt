@@ -1,0 +1,15 @@
+== stage 1 (pre-read, c3_p33_t20_cut3): /Users/alvinfung/apollo_data/cb702_pre_v2/out/trades_pre_p5.tsv.gz
+B9 DEGRADED-WALK REPORT (C0 / tl / - / c3_p33_t20_cut3; decides nothing): 15,903 rows, 15,894 mature, 9 degraded = 8 endings (the ticker's last bar inside the hold) + 1 holes (a gap inside the walk)
+  endings by class: collapse 0, deal-like 3, other 5
+  by ticker side (B8): restored {'ending': 3, 'hole': 1}, shared {'ending': 5, 'hole': 0}
+  C0 mean R: degraded OUT (the headline) +0.0211; IN at the last close +0.0262; IN with collapse endings at a 30% haircut +0.0262
+  MARK CHECK (an ending's mark = the ticker's last close): ok
+    AKAO E 2018-04-13: hole; restored; R +3.276; held 12 sessions
+    FMI E 2018-05-16: ending / deal-like; restored; R +24.291; held 51 sessions
+    FMI E 2018-05-21: ending / deal-like; restored; R +29.889; held 48 sessions
+    TSRO E 2018-11-20: ending / deal-like; shared; R +8.006; held 39 sessions
+    QTNA E 2019-05-21: ending / other; shared; R +3.722; held 19 sessions
+    CSFL E 2020-06-04: ending / other; shared; R +1.546; held 1 sessions
+    PE E 2021-01-05: ending / other; shared; R +4.033; held 5 sessions
+    PRSC E 2021-01-05: ending / other; restored; R +4.195; held 1 sessions
+    WPX E 2021-01-05: ending / other; shared; R +2.254; held 1 sessions

@@ -1,0 +1,19 @@
+== 2017-21
+  export /Users/alvinfung/apollo_data/cb702_pre_v2/daily_closes_all.csv.gz: 12,005,007 rows, kept 12,005,007 (cut None); dates 2016-01-04..2022-06-30; 12,532 tickers; 3s
+  calendar 1635 sessions (2016-01-04..2022-06-30); wide (1635, 12532); 10s
+  fills 15894: watch adr20 vs table adr20 (6-digit text) max rel diff 4.9e-06 -> using the watch row's full-precision adr20
+  CHECK ret5 from E close vs yesterday's ret5_adr_close: max abs diff 4.58e-05 on 15894 rows
+  CHECK ret20 from E close vs yesterday's ret20_adr_close: max abs diff 4.94e-05 on 15894 rows
+  CHECK ret60 from E close vs yesterday's ret60_adr_close: max abs diff 2.12e-04 on 15894 rows
+  CHECK mfe60 from E close vs yesterday's mfe60_adr_close: max abs diff 4.26e-04; complete_60 agree: 15894 of 15894
+  wrote bdef_fills_2017-21: 15894 rows; s_c found 12050, none within 60 (complete) 3844, unknown (window cut) 0; s_c = 0 (E itself) 1849
+  R3 on E: range ok 5640, close-location ok 6886, volume ok 1850 (vol50 known 15894); all three 636
+  R1: 12023 fills reach a close above the base high within sessions 0..59; one row per (ticker, day): 10912 (removed 1111)
+  no splits file for this era: split_in_vol_window = -1 (unknown)
+  wrote bdef_r1_2017-21: 10912 rows; R2 (all three) 1902; range ok 6713, loc ok 7820, vol ok 3149; s_c = 0 share 14.7%; median s_c 6
+  K variants: 34475 rows, 0 with E after the cut (dropped), dedup removed 0; per K {'com': 18572, 'tl': 15903}
+  CHECK K-variant fills inside E's daily bar (+-1%): 34475 of 34475
+  wrote bdef_kvar_2017-21: 34475 rows
+  control: 1240 entry days (fills 1197, R1 1129, K 1214)
+  wrote bdef_control_2017-21: 2,617,040 rows over 1240 days (mean 2111); excluded as an entry / watch ticker 228,432; 105s
+  CHECK vs yesterday's control on its E dates: rows yesterday 2,512,825, mine on those dates 2,510,927, in both 2,510,927 (only yesterday 1898: tickers now excluded as an R1/K entry; only mine 0); ret20 max abs diff 5.0e-04; mfe60 max abs diff 5.0e-04

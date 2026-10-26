@@ -1,0 +1,184 @@
+#705 v2 COMPARISON (§7 rules, mechanical) - old: the published sources; new: the chain outputs (rerun_v2_1025 / v2_1025 / cb702_pre_v2/out)
+
+Read 1 - was our trigger early, and does a real breakout follow through? -> CONCLUSION HOLDS: every deciding line holds
+  1.1   [deciding, R5] our fill's median distance below the base high, ADR20 units
+        old +1.16  |  new +1.17  ->  HOLDS: +1.16 -> +1.17 (+0.9%; band +-25%)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_report.md | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_report.md [§A, the 2017-21 row: fill distance below the base high, median]
+        restored-only: +1.2099 on 2,588 rows vs all +1.1723 on 15,894; restored fraction 16.3%
+  1.2   [deciding, R3] share of those fills at or above the base high
+        old 1,098 of 13,363 = 8.22%  |  new 1,284 of 15,894 = 8.08%  ->  HOLDS: 8.22% -> 8.08% (|diff| 0.14 vs tolerance +-4.11 points)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_report.md | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_report.md [§A, the 2017-21 row: fill already at/above the base high (count) / n]
+        restored-only: 191 of 2,588 = 7.38% vs all 8.08%; restored fraction 16.3% -> the band (+-4.04 points) detects a restored-minus-survivor gap of about 25 points or more
+  1.3   [deciding, R3] share that close above the base high within 60 sessions
+        old 10,214 of 13,363 = 76.43%  |  new 12,050 of 15,894 = 75.81%  ->  HOLDS: 76.43% -> 75.81% (|diff| 0.62 vs tolerance +-5.00 points)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_numbers.json [A_sc_2017-21: by60 / n]
+        restored-only: 1,877 of 2,588 = 72.53% vs all 75.81%; restored fraction 16.3% -> the band (+-5.00 points) detects a restored-minus-survivor gap of about 31 points or more
+  1.4   [beside, R6] first close above it on the fill day / by 5 / by 20 / never
+        old (1548, 4989, 8110, 3149)  |  new (1849, 5828, 9528, 3844)  ->  REPORTED: 1548 -> 1849 (x1.194) / 4989 -> 5828 (x1.168) / 8110 -> 9528 (x1.175) / 3149 -> 3844 (x1.221)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_numbers.json [A_sc_2017-21: by0, by5, by20, never]
+  1.5   [beside, R3] +5 ADR movers that cleared the base high first
+        old 5,675 of 5,756 = 98.59%  |  new 6,668 of 6,765 = 98.57%  ->  HOLDS: 98.59% -> 98.57% (|diff| 0.03 vs tolerance +-5.00 points)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_numbers.json [A_big_2017-21_5: before / n]
+  1.6   [deciding, R1] R1: share reaching +5 ADR within 60, entries minus matched control
+        old +0.0109 (-0.0069 .. +0.0292) SPANS, n 9,281  |  new +0.0100 (-0.0066 .. +0.0271) SPANS, n 10,912  ->  HOLDS: class SPANS -> SPANS
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_numbers.json [2017-21|R1 base-high close — entry at that close / ADR decile x 63-session return quintile|share >= 5 ADR within 60: d, lo, hi, n]
+        restored-only: +0.4028 on 1,666 rows vs all +0.4313 on 10,912 (entry side; the control is not re-matched); restored fraction 15.3%
+  1.7   [beside, R1] R1 mean close return at +60 sessions, ADR, difference
+        old +0.1749 (+0.0013 .. +0.3904) ABOVE, n 9,191  |  new +0.1027 (-0.0674 .. +0.3046) SPANS, n 10,799  ->  CHANGES: class ABOVE -> SPANS
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_numbers.json [2017-21|R1 base-high close — entry at that close / ADR decile x 63-session return quintile|mean close return +60 (ADR)]
+  1.8   [beside, R1] R2 expansion-day breakouts: +5 ADR share, difference
+        old +0.0310 (+0.0055 .. +0.0554) ABOVE, n 1,582  |  new +0.0324 (+0.0102 .. +0.0536) ABOVE, n 1,902  ->  HOLDS: class ABOVE -> ABOVE
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_numbers.json [2017-21|R2 expansion breakout — entry at that close / ADR decile x 63-session return quintile|share >= 5 ADR within 60]
+
+Read 2 - of the big winners, how many did we catch? -> CONCLUSION HOLDS: every deciding line holds
+  2.0   [check, CHECK] big winners kept (the relaunch must reproduce 1,181)
+        old 994  |  new 1181  ->  PASSES: big winners 1181 (must be 1,181, the 10-23 v2 table)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/rerun_v2_1025/03_numbers.json [2017-21/x200/composition: n]
+  2.1   [beside, R6] measurable breakouts whose base nights our watch tables cover
+        old (481,)  |  new (586,)  ->  REPORTED: 481 -> 586 (x1.218)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/rerun_v2_1025/03_numbers.json [2017-21/x200/funnel: … whose base nights our watch covers]
+  2.2   [deciding, R3] of those, WATCHED
+        old 240 of 481 = 49.90%  |  new 296 of 586 = 50.51%  ->  HOLDS: 49.90% -> 50.51% (|diff| 0.62 vs tolerance +-5.00 points)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/rerun_v2_1025/03_numbers.json [2017-21/x200/funnel: … WATCHED (a watch row on some base night)]
+        restored-only: 56 of 109 = 51.38% vs all 50.51%; restored fraction 18.6% -> the band (+-5.00 points) detects a restored-minus-survivor gap of about 27 points or more
+  2.3   [deciding, R3] TRIGGERED (a tl opening-range fill in the catch window)
+        old 237 of 481 = 49.27%  |  new 287 of 586 = 48.98%  ->  HOLDS: 49.27% -> 48.98% (|diff| 0.30 vs tolerance +-5.00 points)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/rerun_v2_1025/03_numbers.json [2017-21/x200/funnel: … TRIGGERED (a tl ORH5 fill, E in the catch window)]
+        restored-only: 50 of 109 = 45.87% vs all 48.98%; restored fraction 18.6% -> the band (+-5.00 points) detects a restored-minus-survivor gap of about 27 points or more
+  2.4   [deciding, R3] still in the trade when the stock had made half its gain
+        old 25 of 481 = 5.20%  |  new 32 of 586 = 5.46%  ->  HOLDS: 5.20% -> 5.46% (|diff| 0.26 vs tolerance +-2.60 points)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/rerun_v2_1025/03_numbers.json [2017-21/x200/funnel: … triggered and STILL IN at s50 (half the gain made)]
+        restored-only: 7 of 109 = 6.42% vs all 5.46%; restored fraction 18.6% -> the band (+-2.73 points) detects a restored-minus-survivor gap of about 15 points or more
+  2.5   [deciding, R3] kept at least half of the episode's gain
+        old 3 of 481 = 0.62%  |  new 3 of 586 = 0.51%  ->  HOLDS: 0.62% -> 0.51% (|diff| 0.11 vs tolerance +-2.00 points)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/rerun_v2_1025/03_numbers.json [2017-21/x200/funnel: … triggered and KEPT >= half of the episode's gain]
+        restored-only: 0 of 109 = 0.00% vs all 0.51%; restored fraction 18.6% -> the band (+-2.00 points) detects a restored-minus-survivor gap of about 11 points or more
+
+Read 3 - entry at the breakout close x four stops x up to two retries -> CONCLUSION HOLDS: every deciding line holds
+  3.1   [deciding, R4+R3] best-holding cell on the doublers: S2 with two retries, still in at half the move
+        old S2_T2 213 of 481 = 44.3%; best S2_T2 44.3%  |  new S2_T2 256 of 586 = 43.7%; best S2_T2 43.7%  ->  HOLDS: best cell S2_T2 is still the best; 44.28% -> 43.69% (|diff| 0.60 vs tolerance +-5.00 points)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/rerun_v2_1025/03_headline.json [2017-21 / win_S2_T2: still_in_s50, n; R4 over every win_* cell]
+        restored-only: 45 of 109 = 41.28% vs all 43.69%; restored fraction 18.6% -> the band (+-5.00 points) detects a restored-minus-survivor gap of about 27 points or more
+  3.2   [beside, R3] the same cell: kept half
+        old 8 of 481 = 1.66%  |  new 9 of 586 = 1.54%  ->  HOLDS: 1.66% -> 1.54% (|diff| 0.13 vs tolerance +-2.00 points)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/rerun_v2_1025/03_headline.json [2017-21 / win_S2_T2: kept_half]
+  3.2b  [beside, R3] the same cell: kept a quarter
+        old 121 of 481 = 25.16%  |  new 145 of 586 = 24.74%  ->  HOLDS: 25.16% -> 24.74% (|diff| 0.41 vs tolerance +-5.00 points)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/rerun_v2_1025/03_headline.json [2017-21 / win_S2_T2: kept_quarter]
+  3.2c  [beside, R6] the same cell: retries used, mean
+        old (0.656965,)  |  new (0.667235,)  ->  REPORTED: 0.656965 -> 0.667235 (x1.016)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/rerun_v2_1025/03_headline.json [2017-21 / win_S2_T2: retries_mean]
+  3.3   [deciding, R1] R1, S2, no retry: mean R per base, entries minus control
+        old +0.0054 (-0.0355 .. +0.0496) SPANS, n 9,239  |  new -0.0022 (-0.0349 .. +0.0346) SPANS, n 10,864  ->  HOLDS: class SPANS -> SPANS
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/rerun_v2_1025/03_headline.json [2017-21 / all_S2_T0: diff_r_per_base]
+        restored-only: -0.0252 on 1,660 rows vs all +0.0400 on 10,864 (entry side; the control is not re-matched); restored fraction 15.3%
+  3.4   [deciding, R1] R1, S2, no retry: bases with a >= 5R trade per 100, entries minus control
+        old +0.4785 (+0.1383 .. +0.8574) ABOVE, n 9,239  |  new +0.3257 (+0.0855 .. +0.6316) ABOVE, n 10,864  ->  HOLDS: class ABOVE -> ABOVE
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/rerun_v2_1025/03_headline.json [2017-21 / all_S2_T0: diff_any5]
+        restored-only: +1.1446 on 1,660 rows vs all +1.7857 on 10,864 (entry side; the control is not re-matched); restored fraction 15.3%
+  3.5   [beside, R1] R1, S2, two retries: mean R per base difference
+        old +0.0712 (+0.0156 .. +0.1356) ABOVE, n 9,239  |  new +0.0563 (+0.0070 .. +0.1095) ABOVE, n 10,864  ->  HOLDS: class ABOVE -> ABOVE
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/rerun_v2_1025/03_headline.json [2017-21 / all_S2_T2: diff_r_per_base]
+  3.6   [beside, R1] R1, S2, two retries: >= 5R bases per 100
+        old +1.3828 (+0.9950 .. +1.8287) ABOVE, n 9,239  |  new +1.1094 (+0.7854 .. +1.4718) ABOVE, n 10,864  ->  HOLDS: class ABOVE -> ABOVE
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/rerun_v2_1025/03_headline.json [2017-21 / all_S2_T2: diff_any5]
+  3.7   [beside, R3d] R1, S2, no retry: share reaching +5R before the stop, entries minus control
+        old 17.82% vs 18.71% (difference -0.89 points)  |  new 17.69% vs 18.53% (difference -0.84 points)  ->  HOLDS: difference -0.89 -> -0.84 points (tolerance +-2.00)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/rerun_v2_1025/03_headline.json [2017-21 / all_S2_T0: race5_hit - ctl_race5_hit]
+
+Read 4 - the trail exit, sixteen ways -> CONCLUSION HOLDS: every deciding line holds
+  4.0   [check, CHECK] the pp cell (A20_X1_P1) equals read 3's S2 two-retry cell (win) and S2 no-retry R1, to 1e-9 (v2_chain.pp_parity_problems)
+        old every value equal  |  new every value equal  ->  PASSES: every value equal to 1e-9
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/rerun_v2_1025/03_headline.json; old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json [A20_X1_P1 win_T2 vs win_S2_T2; A20_X1_P1 R1_T0 vs all_S2_T0]
+  4.1   [deciding, R4+R3] best-holding cell on the doublers: A20_X3_P0, still in at half
+        old A20_X3_P0 256 of 481 = 53.2%; best A20_X3_P0 53.2%  |  new A20_X3_P0 303 of 586 = 51.7%; best A20_X3_P0 51.7%  ->  HOLDS: best cell A20_X3_P0 is still the best; 53.22% -> 51.71% (|diff| 1.52 vs tolerance +-5.00 points)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json [2017-21 / <cell> / win_T2: still_in_s50 over all 16 cells]
+        restored-only: 49 of 109 = 44.95% vs all 51.71%; restored fraction 18.6% -> the band (+-5.00 points) detects a restored-minus-survivor gap of about 27 points or more
+  4.2   [deciding, R3] kept at least half: A20_X3_P0
+        old 92 of 481 = 19.13%  |  new 105 of 586 = 17.92%  ->  HOLDS: 19.13% -> 17.92% (|diff| 1.21 vs tolerance +-5.00 points)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json [2017-21 / A20_X3_P0 / win_T2: kept_half]
+        restored-only: 15 of 109 = 13.76% vs all 17.92%; restored fraction 18.6% -> the band (+-5.00 points) detects a restored-minus-survivor gap of about 27 points or more
+  4.2b  [deciding, R3] kept at least half: pp (A20_X1_P1)
+        old 8 of 481 = 1.66%  |  new 9 of 586 = 1.54%  ->  HOLDS: 1.66% -> 1.54% (|diff| 0.13 vs tolerance +-2.00 points)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json [2017-21 / A20_X1_P1 / win_T2: kept_half]
+        restored-only: 2 of 109 = 1.83% vs all 1.54%; restored fraction 18.6% -> the band (+-2.00 points) detects a restored-minus-survivor gap of about 11 points or more
+  4.2c  [deciding, SIGN] the sign of the gap: kept half A20_X3_P0 minus pp
+        old 84  |  new 96  ->  HOLDS: +84 -> +96
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json [2017-21 / A20_X3_P0 and A20_X1_P1 / win_T2: kept_half]
+        restored-only: gap +13 doublers on 109 restored doublers vs +96 on all 586; restored fraction 18.6%
+  4.3   [beside, R5] median share of the gain kept, A20_X3_P0
+        old +0.08628  |  new +0.06967  ->  HOLDS: +0.08628 -> +0.06967 (-19.3%; band +-25%)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json [2017-21 / A20_X3_P0 / win_T2: kept_share_q[1]]
+  4.3b  [beside, R5] median share of the gain kept, pp
+        old +0.05403  |  new +0.05232  ->  HOLDS: +0.05403 -> +0.05232 (-3.2%; band +-25%)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json [2017-21 / A20_X1_P1 / win_T2: kept_share_q[1]]
+  4.3c  [beside, R5] median sessions held, A20_X3_P0
+        old +25  |  new +24  ->  HOLDS: +25 -> +24 (-4.0%; band +-25%)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json [2017-21 / A20_X3_P0 / win_T2: held_chain_q[1]]
+  4.3d  [beside, R5] median sessions held, pp
+        old +18  |  new +18  ->  HOLDS: +18 -> +18 (+0.0%; band +-25%)
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json [2017-21 / A20_X1_P1 / win_T2: held_chain_q[1]]
+  4.4   [deciding, R1] R1, no retry: mean R per base, entries minus control - pp
+        old +0.0054 (-0.0355 .. +0.0496) SPANS, n 9,239  |  new -0.0022 (-0.0349 .. +0.0346) SPANS, n 10,864  ->  HOLDS: class SPANS -> SPANS
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json [2017-21 / A20_X1_P1 / R1_T0: diff]
+        restored-only: -0.0252 on 1,660 rows vs all +0.0400 on 10,864 (entry side; the control is not re-matched); restored fraction 15.3%
+  4.4b  [deciding, R1] R1, no retry: mean R per base, entries minus control - A20_X3_P0
+        old +0.0095 (-0.0505 .. +0.0762) SPANS, n 9,239  |  new +0.0057 (-0.0434 .. +0.0624) SPANS, n 10,864  ->  HOLDS: class SPANS -> SPANS
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json [2017-21 / A20_X3_P0 / R1_T0: diff]
+        restored-only: +0.0062 on 1,660 rows vs all +0.0662 on 10,864 (entry side; the control is not re-matched); restored fraction 15.3%
+  4.5   [beside, R1] R1, no retry: >= 5R bases per 100, difference - pp
+        old +0.4785 (+0.1383 .. +0.8574) ABOVE, n 9,239  |  new +0.3257 (+0.0855 .. +0.6316) ABOVE, n 10,864  ->  HOLDS: class ABOVE -> ABOVE
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json [2017-21 / A20_X1_P1 / R1_T0: any5_diff]
+  4.5b  [beside, R1] R1, no retry: >= 5R bases per 100, difference - A20_X3_P0
+        old +0.5997 (+0.2236 .. +1.0334) ABOVE, n 9,239  |  new +0.4625 (+0.1290 .. +0.8546) ABOVE, n 10,864  ->  HOLDS: class ABOVE -> ABOVE
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json [2017-21 / A20_X3_P0 / R1_T0: any5_diff]
+
+The chain's own stages (decide nothing new)
+  S1    [stage, R2+R1] pre-read, whole era, C1 (tl, his exit with the staller cut)
+        old +0.2773 (-0.2388 .. +0.9935) SPANS, n 180, CAN'T TELL  |  new +0.2011 (-0.2794 .. +0.8676) SPANS, n 209, CAN'T TELL  ->  HOLDS: "CAN'T TELL" -> "CAN'T TELL"; class SPANS -> SPANS; n 180 -> 209
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/p5_report_pre.tsv | new /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/v2_1025/p5_report_pre.tsv [key spec, K tl, arm c3_p33_t20_cut3, slice all, window era, cell C1: n, mean_r, ci_lo, ci_hi, verdict]
+  S2    [stage, R1] pre-read, whole era, C0 baseline
+        old +0.0245 (-0.1227 .. +0.1662) SPANS, n 13,363, baseline  |  new +0.0211 (-0.1162 .. +0.1584) SPANS, n 15,894, baseline  ->  HOLDS: class SPANS -> SPANS
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/p5_report_pre.tsv | new /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/v2_1025/p5_report_pre.tsv [the same, cell C0]
+  S3    [stage, R2] pre-read, whole era, C4
+        old FAIL  |  new FAIL  ->  HOLDS: 'FAIL' -> 'FAIL'
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/p5_report_pre.tsv | new /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/v2_1025/p5_report_pre.tsv [the same, cell C4]
+  S4    [stage, R2] pre-read, 2020-21 alone, C1
+        old CAN'T TELL  |  new CAN'T TELL  ->  HOLDS: "CAN'T TELL" -> "CAN'T TELL"
+        source: old /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/p5_report_pre.tsv | new /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/v2_1025/p5_report_pre.tsv [the same, window 2020-21, cell C1]
+  S5    [stage, R2] hourly-close read, pre, C1 verdict | paired entry verdict
+        old CAN'T TELL | can't tell  |  new CAN'T TELL | can't tell  ->  HOLDS: "CAN'T TELL | can't tell" -> "CAN'T TELL | can't tell"
+        source: old /Users/alvinfung/apollo_data/cb702_pre/out/h60_verdict_pre.json | new /Users/alvinfung/apollo_data/cb702_pre_v2/out/h60_verdict_pre.json [windows / pre: c1_verdict, pair_verdict_c1]
+  S6    [stage, R2+R1] exit read, pre, C1: whole-trade breakeven minus pp
+        old -0.1221 (-0.1854 .. -0.0518) BELOW, n 180, loss  |  new -0.1134 (-0.1681 .. -0.0559) BELOW, n 209, loss  ->  HOLDS: 'loss' -> 'loss'; class BELOW -> BELOW; n 180 -> 209
+        source: old /Users/alvinfung/apollo_data/cb702_pre/out/exitpb_verdict_pre.json | new /Users/alvinfung/apollo_data/cb702_pre_v2/out/exitpb_verdict_pre.json [delta_c1: verdict, n, mean, lo, hi]
+  S7    [stage, R2] exit read, pre, C0: the same delta
+        old can't tell  |  new can't tell  ->  HOLDS: "can't tell" -> "can't tell"
+        source: old /Users/alvinfung/apollo_data/cb702_pre/out/exitpb_verdict_pre.json | new /Users/alvinfung/apollo_data/cb702_pre_v2/out/exitpb_verdict_pre.json [delta_c0: verdict]
+
+SOURCES: read1_03_numbers.json: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_numbers.json; read1_03_report.md: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_report.md | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_report.md; read2_03_numbers.json: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/03_numbers.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/rerun_v2_1025/03_numbers.json; read3_03_headline.json: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/rerun_v2_1025/03_headline.json; read4_03_headline.json: old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json | new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json; p5_report_pre.tsv: old /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/p5_report_pre.tsv | new /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/v2_1025/p5_report_pre.tsv; h60_verdict_pre.json: old /Users/alvinfung/apollo_data/cb702_pre/out/h60_verdict_pre.json | new /Users/alvinfung/apollo_data/cb702_pre_v2/out/h60_verdict_pre.json; exitpb_verdict_pre.json: old /Users/alvinfung/apollo_data/cb702_pre/out/exitpb_verdict_pre.json | new /Users/alvinfung/apollo_data/cb702_pre_v2/out/exitpb_verdict_pre.json
+TABLES (restored-only values, new side): /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/breakout_definition/bdef_fills_2017-21.tsv.gz; /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/breakout_definition/bdef_r1_2017-21.tsv.gz; /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/winner_recall/wrecall_catch_2017-21_x200.tsv.gz; /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/entry_stop_retry/esr_win_2017-21.tsv.gz; /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/entry_stop_retry/esr_r1_2017-21.tsv.gz; /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/trail_variants/trail_win_2017-21.tsv.gz; /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/trail_variants/trail_r1_2017-21.tsv.gz
+SOURCE SHA256 (every file this run read, as read):
+  285bb639a775b1715a4edbedbe7e61fe6a664ff1ebf325c0be00dac0e4d9ceaf  old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_numbers.json
+  fe4c5b4964dc9a03d8345df8f29321d193e45db4ad43d7cdf91ac62670436146  old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_report.md
+  2148384d31f2e8bb566c858ca4dc0b0ed9e22515f9ba32619e48950c5357ac43  old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/03_numbers.json
+  2c15f04ebb50a6d72af5b2b3c45e92b4fe25f7330bc8a76375fa14acc0509b71  old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/03_headline.json
+  9a54cde1ba2c6965242fdebb84e991bd22616d4400268c4cb0ff33e7dbe754be  old /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json
+  91fbb78662b55c2ad8360f84ee2c711303eadb8e8e07f11e72a811055b8d74a3  old /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/p5_report_pre.tsv
+  ebb476616471e55c992b0734f450f8905c68b01ada341af2fca56df763dd650d  old /Users/alvinfung/apollo_data/cb702_pre/out/h60_verdict_pre.json
+  0f64293244ca7a23668cc3fcdc6df12b4f63381542aa6a9f342c02c57ec38ad5  old /Users/alvinfung/apollo_data/cb702_pre/out/exitpb_verdict_pre.json
+  f31e6f72f03e7d2ec0a4d72a1f620e83f089fd3c1df5604e3261337838ae9043  new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_numbers.json
+  4f529d7abbbeb31e81fa5248013f82cf546a8f3b1c28aca198aed9254f05ff52  new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_report.md
+  ad7e00918e45dc09f48361d1ee27d46665653f2aeebc9163b440020ddef4a4db  new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/rerun_v2_1025/03_numbers.json
+  8a263eff4c0b930c6a5375bc93e153f66045876cdf5f2e4512417b86d1016675  new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/rerun_v2_1025/03_headline.json
+  47e74e75c20d9b302ac95f4bdfe319aa9508058d277325cd4c15f076e772fdf2  new /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json
+  82315eb5944d9d5e1fddbd8eda64c08588860492ee47c7342f751db46819460a  new /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/v2_1025/p5_report_pre.tsv
+  30c28760356c3138e2ffb066c282c23f659789a675d7c50d96570b1dc1b75e4a  new /Users/alvinfung/apollo_data/cb702_pre_v2/out/h60_verdict_pre.json
+  926ff49f77b4b9b0937abc7d4223ddc746435e5ef0710e2bf23a5d1251c433f1  new /Users/alvinfung/apollo_data/cb702_pre_v2/out/exitpb_verdict_pre.json
+  efaf64b67292a888e5c6639c598644ea6b1dc70ba58b5168a9e985f44c483cc5  new /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/breakout_definition/bdef_fills_2017-21.tsv.gz
+  9cfa226fe4fc17e61eeb7b5646eafb387057a715de64f7aefb1dc1d217a57c6c  new /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/breakout_definition/bdef_r1_2017-21.tsv.gz
+  6c42b33322b793448e3d529f5ec815e6912f829cd5fafbf7477f9274f1509fca  new /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/winner_recall/wrecall_catch_2017-21_x200.tsv.gz
+  b14b6f86a6ed993dc57937a4acaebdfaa0cb0cbeeb927897d21f49826045fbe4  new /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/entry_stop_retry/esr_win_2017-21.tsv.gz
+  a4b8da64ec893f4a896a809d9bfc6c6fac0552db9b3a3681dd8f8193362dae29  new /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/entry_stop_retry/esr_r1_2017-21.tsv.gz
+  9b8187427371a35c7dadbe2550854aa862471b9b14566cc58fc463a631507a45  new /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/trail_variants/trail_win_2017-21.tsv.gz
+  828b045e8bd116933ae4c1a03061011d0166101bc880a66336185a79fec917e8  new /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/trail_variants/trail_r1_2017-21.tsv.gz
