@@ -2600,3 +2600,7 @@ Method from this (#705): treat his trading as a MIX of rules plus discretion. Fo
 > "1" (2026-10-25, choosing option 1 on the fork: keep the sealed 2025-26 data on hold — the 'RS leadership alone' breakout read, registered 2026-10-22 to run once on 2025-26, stays frozen-draft and leaves #705's done-list; it runs inside the one combined 2025-26 test — vs option 2, run it now and spend the sealed data on one stock-picking question)
 
 Ruling recorded (#705): the sealed 2025-26 data stays unspent until an entry and an exit reproduce him; no single read spends it first.
+
+> "we're not looking for 100% coverage, trading is an art, so some variations that are close to a set of rules applied based on context is what I hope we get out of it, then the challenge is to recreate those rules for apollo" (2026-10-26, after the rule-mix inventory: no rule set beat chance by the bar on stops or exits)
+
+Method from this (#705): the target is not full coverage. It is a small set of rules, each applied in a CONTEXT (e.g. a fast vs a slow stock, how far it is from the 10/20-day, the market's trend, the setup), matched closely rather than exactly ("close to"). The next read asks which context picks which rule, and how much closer to his trades that gets than one rule for all; then those context rules are rebuilt for Apollo.
