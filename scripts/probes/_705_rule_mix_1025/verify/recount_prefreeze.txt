@@ -1,0 +1,267 @@
+# #705 RULE-MIX registration: independent pre-freeze recount (OUTCOME-FREE: timeline TSVs, clocks, calendars, fetch logs, printout lines)
+# registration: docs/analysis/cb_rule_mix_prereg_2026-10-25.md (not edited); no predecessor recount imported; the frozen module read as text + sha only
+
+- inputs: entries 1,874 rows, exits 1,861, snapshots 2,907, dryrun_clocks 1,861; calendar 2016-01-04..2024-12-31 = 2,264 sessions (era A sessions.txt 1,635, last 2022-06-30); nothing after 2024-12-31 kept
+
+## 0. The borrowed set membership (dryrun_clocks.tsv) checked against my own derivation from the timeline
+[L--] dryrun_clocks.first_clock_on_E vs my fc (rows that differ, of 1861) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.flat_clock_on_E vs my flc (rows that differ, of 1861) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.flat_ctx vs my p_ctx (rows that differ, of 1861) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.first_ctx vs my f_ctx (rows that differ, of 1861) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.in_session_bracket vs my inb (rows that differ) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.pre_market_flat_bracket vs my prefl (rows that differ) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.inverted vs my inv (rows that differ) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.same_day_rebuy vs my sdr (rows that differ) | doc 0 | mine 0 | OK
+[L--] dryrun_clocks.type_ok vs my type_ok (rows that differ) | doc 0 | mine 0 | OK
+[L--] my set und_fit vs the reverse dry run's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 304
+[L--] my set und_chk vs the reverse dry run's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 226
+[L--] my set stop_fit_dated vs the reverse dry run's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 149
+[L--] my set stop_chk_dated vs the reverse dry run's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 111
+[L--] my set dec_used vs the reverse dry run's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 290
+[L--] my set ent_fit_dated vs the reverse dry run's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 32
+[L--] my set ent_chk_dated vs the reverse dry run's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 20
+[L--] my set ent_fit_und vs the reverse dry run's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 59
+[L--] my set ent_chk_und vs the reverse dry run's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 44
+[L--] my set ent_fit_und_fl vs the reverse dry run's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 94
+[L--] my set ent_chk_und_fl vs the reverse dry run's membership (eids in one but not the other) | doc 0 | mine 0 | OK | mine 63
+
+## 1. Header and §0 (In plain words): the numbers copied from printouts
+[L34] §0: the best entry level's feasible share on the unseen windows / the bar (doc rounds to whole percents) [01_intra_check.txt l.80] | doc 45% / 50% | mine 45.0% / 50.0% | OK
+[L35] §0: H_cond range, the 12 LIBRARY cells (S1/S3/S9/S10 x T/C/H), the deciding 62 untouched (check l.135-146) | doc 16-33% | mine 20-33% | MISMATCH | the 16.1% is SMA50-T (l.150), a control the doc itself says is not in the library; all 18 printed cells: 12-33% (S8-C 12.5% is the floor); library-only floor is ('S1-C', 20.0)
+[L36] §0: H_cond range, the 12 library cells, the 2020 fit (stop fit l.40-51) | doc 25-61% | mine 25-61% | OK | all 18 printed cells: 19-61% (SMA50-T 18.9%)
+[L36] §0: 'the 60-minute exit recovered none of the gap' - recovery on dated 2021-22 (check l.185), bar 0.25 | doc none (<= 0) | mine -0.027 | OK
+[L37] §0: 'any opening range' 2020 feasible / random-price control (doc: 55% against 21%) [01_intra_enter_fit.txt l.34] | doc 55% / 21% | mine 55.2% / 21.0% | OK
+[L37] §0: 'any opening range' 2021-22 feasible / random-price control (doc: 62.5% against 30%) [01_intra_check.txt l.30] | doc 62.5% / 30% | mine 62.5% / 30.0% | OK
+[L285] §7: union 2020 / 2021-22, then random-price controls 2020 / 2021-22 (printed l.34 / l.30) | doc 55.2% / 62.5% / 21.0% / 30.0% | mine 55.2% / 62.5% / 21.0% / 30.0% | OK
+
+## 2. The §2 table: populations recounted from the timeline; printed scorable counts transcribed
+[L84] entries (1,874) | doc 1874 | mine 1874 | OK
+[L95] STOP 2020: dated / undated (flickers in) | doc 149 / 304 | mine 149 / 304 | OK
+[L96] STOP 2021-22: dated / undated | doc 111 / 226 | mine 111 / 226 | OK
+[L97] STOP untouched: undated / dated | doc 62 / 27 | mine 62 / 27 | OK
+[L--] the untouched block total (89 = 62 + 27) and no overlap with the fit / 2021-22 sets (my own partition check) | doc 89 / 0 | mine 89 / 0 | OK
+[L97] STOP check records: virgin undated / virgin dated / 2021-22 undated / 2021-22 dated (printed) [01_intra_check.txt l.110] | doc 58 / 26 / 212 / 110 | mine 58 / 26 / 212 / 110 | OK
+[L95] STOP 2020 fit set (printed) [01_intra_stop_fit.txt l.7] | doc 149 / 304 | mine 149 / 304 | OK
+[L90] ENTER 2020 windows after §2c: dated / undated non-flicker / undated flickers | doc 31 / 59 / 34 | mine 31 / 59 / 34 | OK
+[L90] ENTER 2020 printed: fit-set windows decided / flickers beside [01_intra_enter_fit.txt l.7] | doc 31 / 59 / 34 | mine 31 / 59 / 34 | OK
+[L91] ENTER 2021-22 windows after §2c: dated / of which flickers / undated non-flicker / undated flickers | doc 20 / 7 / 43 / 19 | mine 20 / 7 / 43 / 19 | OK
+[L92] ENTER untouched windows after §2c: non-flicker / flickers | doc 9 / 8 | mine 9 / 8 | OK
+[L92] the nine non-flicker windows: 2019 count / APT 2020-01-23 / 2023 names | doc 6 / APT 2020-01-23 / AI, CVNA | mine 6 / APT 2020-01-23 / AI, CVNA | OK
+[L93] pre-market-flat windows, dated: 2020 / 2021-22 (population = printed) | doc 41 / 41 | mine 41 / 41 | OK
+[L93] pre-market-flat windows, undated non-flicker: POPULATION 2020 / 2021-22 (the printed SCORED counts are 56 / 52) | doc 56 / 52 (scored) | mine 58 / 55 (population) | NOTE | the doc's 56 / 52 are the printouts' scored counts, which is what the cell says ('as the printouts'); the populations are larger
+[L93] printed pre-market-flat 2020 dated [01_intra_enter_fit.txt l.73] | doc 41 | mine 41 | OK
+[L93] printed pre-market-flat 2020 undated [01_intra_enter_fit.txt l.85] | doc 56 | mine 56 | OK
+[L93] printed pre-market-flat 2021-22 dated [01_intra_check.txt l.81] | doc 41 | mine 41 | OK
+[L93] printed pre-market-flat 2021-22 undated [01_intra_check.txt l.93] | doc 52 | mine 52 | OK
+[L90] ENTER 2020 deciding dated scorable (printed) [01_intra_enter_fit.txt l.35] | doc 30 | mine 30 | OK
+[L90] ENTER 2020 deciding total (L23 of the printout: 87) | doc 87 | mine 87 | OK
+[L90] ENTER 2020 undated non-flicker scorable (printed) [01_intra_enter_fit.txt l.47] | doc 57 | mine 57 | OK
+[L90] ENTER 2020 flickers scorable (printed) [01_intra_enter_fit.txt l.61] | doc 28 | mine 28 | OK
+[L91] ENTER 2021-22: DECIDING undated (printed l.18/19) [01_intra_check.txt l.19] | doc 40 | mine 40 | OK
+[L91] ENTER 2021-22: dated scorable (printed) [01_intra_check.txt l.31] | doc 20 | mine 20 | OK
+[L91] ENTER 2021-22: flickers scorable (printed) [01_intra_check.txt l.43] | doc 19 | mine 19 | OK
+[L91] ENTER 2021-22: dated windows / of which flickers (printed draw population) [01_intra_check.txt l.18] | doc 20 / 7 | mine 20 / 7 | OK
+[L92] ENTER untouched non-flicker scorable (printed) [01_intra_check.txt l.55] | doc 9 | mine 9 | OK
+[L92] ENTER untouched flickers scorable (printed) [01_intra_check.txt l.67] | doc 7 | mine 7 | OK
+[L98] EXIT 2020 scorable (printed, hit rate base) [01_intra_exit_fit.txt l.37] | doc 139 | mine 139 | OK
+[L98] EXIT 2020 dated population / minus guard (5) exclusions = 139 | doc 149 / 10 / 139 | mine 149 / 10 / 139 | OK
+[L100] EXIT 2021-22 dated armed (printed) [01_intra_check.txt l.182] | doc 107 | mine 107 | OK
+[L100] EXIT 2021-22 undated scorable (printed) [01_intra_check.txt l.203] | doc 199 | mine 199 | OK
+[L101] EXIT untouched dated: chain trades (printed l.196; timeline 23 minus the one record the floor dropped) [01_intra_check.txt l.196] | doc 22 | mine 22 | OK
+[L101] EXIT untouched dated windows <= 20 sessions (printed) [01_intra_check.txt l.200] | doc 18 | mine 18 | OK
+[L101] EXIT untouched dated: with exits / windows <= 20 sessions, FROM THE TIMELINE | doc 23 / 18 | mine 23 / 19 | NOTE | mixed bases in the doc cell: 23 = timeline, pre record-floor; 18 = the printed hit-rate base AFTER the floor dropped one record (dry run l.112: 23 -> 22); the timeline's own count of windows <= 20 is 19 (windows > 20: [46, 46, 121, 121])
+[L103] §2a: 2021 dated with a one-session sell window | doc 80 of 101 | mine 80 of 101 | OK
+[L100] EXIT 2021-22: dated / undated populations | doc 111 / 226 | mine 111 / 226 | OK
+[L95] EXIT 2020: dated / undated populations | doc 149 / 304 | mine 149 / 304 | OK
+[L101] EXIT untouched: 27 dated / 62 undated populations | doc 27 / 62 | mine 27 / 62 | OK
+[L111] §2b: stop pre-empted the 60-minute walk, 2020 dated (printed) [01_intra_exit_fit.txt l.43] | doc 67 of 139 | mine 67 of 139 | OK
+[L113] §2b: stop pre-empted, 2021-22 dated (printed l.185) [01_intra_check.txt l.185] | doc 56 of 107 | mine 56 of 107 | OK
+[L121] §2b: stop pre-empted, 2021-22 undated (printed l.205) [01_intra_check.txt l.205] | doc 44 of 200 | mine 44 of 200 | OK
+
+## 3. Side outputs: per-trade TSVs tallied (columns the frozen stage already wrote and printed)
+[L359] ENTER 2020 TSV: deciding rows (the doc's n 87) | doc 87 | mine 87 | OK
+[L359] §9 gate (viii) 2020 ENTER standalone shares re-read from the TSV: L7 / L8 / L9 | doc 16.1% / 34.5% / 34.5% | mine 16.1% / 34.5% / 34.5% | OK
+[L359] 2020 deciding, other levels re-read (info: L1 36.8% on 87 vs the rev fit's 36.0% on 89; L2 18.4; L3 13.8; L4 1.1; L5 1.1; L6 16.1) | doc - | mine L1 36.8%; L2 18.4%; L3 13.8%; L4 1.1%; L5 1.1%; L6 16.1% | NOTE
+[L285] 'any opening range' union (L7|L1|L8) feasible on the 87, from the union flag | doc 55.2% | mine 55.2% | OK
+[L90] ENTER 2020 TSV: flickers rows | doc 28 | mine 28 | OK
+[L93] ENTER 2020 TSV: pre-market-flat dated / undated rows | doc 41 / 56 | mine 41 / 56 | OK
+[L360] ENTER 2021-22 TSV: deciding rows (undated non-flicker, sane == ok) | doc 40 | mine 40 | OK
+[L360] §9 gate (viii) 2021-22 ENTER standalone shares re-read from the TSV: L7 / L8 / L9 / L1 | doc 27.5% / 45.0% / 45.0% / 35.0% | mine 27.5% / 45.0% / 45.0% / 35.0% | OK
+[L285] 2021-22 union (L7|L1|L8) on the 40, from the union flag | doc 62.5% | mine 62.5% | OK
+[L91] ENTER 2021-22 TSV: dated rows / of which flickers | doc 20 / 7 | mine 20 / 7 | OK
+[L91] ENTER 2021-22 TSV: undated flicker rows | doc 19 | mine 19 | OK
+[L92] ENTER untouched TSV: non-flicker / flicker rows | doc 9 / 7 | mine 9 / 7 | OK
+[L97] STOP check TSV rows: untouched undated / untouched dated / 2021-22 undated / 2021-22 dated | doc 58 / 26 / 212 / 110 | mine 58 / 26 / 212 / 110 | OK
+[L--] STOP fit TSV rows (415 records of the 453-trade fit set; printed stop fit l.12) | doc 415 | mine 415 | OK
+[L363] EXIT 2020 TSV: E1 / E2 / E3 / E4 last-leg hit on the 139 rows | doc 40.3% / 40.3% / 39.6% / 39.6% on 139 | mine 40.3% / 40.3% / 39.6% / 39.6% on 139 | OK
+[L363] EXIT 2021-22 dated TSV: E1 / E2 / E3 / E4 last-leg hit on the 107 armed rows | doc 38.3% / 36.4% / 35.5% / 35.5% on 107 | mine 38.3% / 36.4% / 35.5% / 35.5% on 107 | OK
+[L111] EXIT TSV: E1_stop_preempt True, 2020 (139 rows) | doc 67 of 139 | mine 67 of 139 | OK
+[L113] EXIT TSV: E1_stop_preempt True, 2021-22 dated (107 armed) | doc 56 of 107 | mine 56 of 107 | OK
+[L298] §7 mapping M-1 / M-2 / M-7 = E1 / E4 / E2: 2020 printed hits | doc 40.3 / 39.6 / 40.3 | mine 40.3 / 39.6 / 40.3 | OK
+[L298] §7 mapping M-1 / M-2 / M-7 = E1 / E4 / E2: 2021-22 printed hits | doc 38.3 / 35.5 / 36.4 | mine 38.3 / 35.5 / 36.4 | OK
+[L363] §9 (viii-a) printed 2020 E1 / E2 / E3 / E4 [01_intra_exit_fit.txt l.37] | doc 40.3 / 40.3 / 39.6 / 39.6 | mine 40.3 / 40.3 / 39.6 / 39.6 | OK
+[L363] §9 (viii-a) printed 2021-22 E1 / E2 / E3 / E4 [01_intra_check.txt l.183] | doc 38.3 / 36.4 / 35.5 / 35.5 | mine 38.3 / 36.4 / 35.5 / 35.5 | OK
+[L363] §9 (viii-a) printed 2021-22 base [01_intra_check.txt l.183] | doc 107 | mine 107 | OK
+[L142] E-7 L4 'never feasible on an in-session window by construction': in-session windows where L4 IS feasible (2020 deciding 87) | doc none | mine 1 (SE 2020-05-05 flat 09:41 first 09:57 cross at minute 12.0) | MISMATCH | the same row cites '1.1% (rev l.15)' = 1 feasible window; the cell's 'never' contradicts its own citation
+[L142] L4 feasible in the 2021-22 / untouched in-session windows (flickers beside) | doc none | mine UNM 2021-10-20 (flickers) flat 09:30 first 10:59 cross at minute 1 | NOTE | printout: 2021-22 flickers L4 feasible 1 = 5.3% (check l.50); further evidence for the row above
+[L142] E-7 L4 2020 number cited (rev l.15) [01_rev_enter_fit.txt l.15] | doc 1.1% | mine 1.1% | OK
+[L136] reverse ENTER fit TSV (89 rows): L1 feasible share | doc 36.0% | mine 36.0% | OK | 32 of 89
+[L138] reverse ENTER fit TSV (89 rows): L2 feasible share | doc 18.0% | mine 18.0% | OK | 16 of 89
+[L140] reverse ENTER fit TSV (89 rows): L3 feasible share | doc 13.5% | mine 13.5% | OK | 12 of 89
+[L142] reverse ENTER fit TSV (89 rows): L4 feasible share | doc 1.1% | mine 1.1% | OK | 1 of 89
+[L142] reverse ENTER fit TSV: the one L4-feasible window (same trade as the intraday fit's?) | doc none | mine SE 2020-05-05 flat 09:41 first 09:57 cross minute 12 | NOTE | same trade as the intraday fit's L4-feasible window
+[L434] §11 item 5 cites R8 for 'the registered his account's booking point' (close of exit_hi, no stop): R8's text in the reverse registration | doc booking point stated | mine R8 says only 'his under no stop, the registered ones beside'; the close-of-exit_hi booking point is stated at the reverse registration's §8c (l.405) and F10 (l.662) | NOTE | a cite pointing at the neighbouring rule, content correct
+[L369] gate (ix): 'its first 60-minute close below is 2020-07-10' - what the cited printout line establishes | doc first close below since the fill = 07-10 | mine the line gives 3 closes ON 07-10 (first at 13:59) and the touch on 07-13; it does not say no earlier close existed since the 06-29 fill | NOTE | the pinned bucket (M-1 MISS-EARLY) holds either way: any earlier first firing is also before exit_lo on a certainly-held session
+[L400] §9 template header: 'pre-market-flat 97 (beside)' = printed 41 dated + 56 undated (enter fit l.73 + l.85) | doc 97 | mine 97 | OK
+[L400] §9 template header: 'in-session 87' = printed deciding windows (enter fit l.23) | doc 87 | mine 87 | OK
+[L92] §2 '±33 points on 9': the 95% half-width of a share on n = 9 at its widest (p = 0.5), points | doc 33 | mine 33 | OK | the printed untouched intervals run +-21 to +-37 (check l.55-66); 33 is the p = 0.5 worst case
+[L442] §11 item 9 / §3c M-10 thresholds vs the exits study's fixed markers (study l.97): extension / big up day, in ADR20 | doc 2.0 / 1.5 | mine 2.0 / 1.5 | OK
+
+## 4. §3 libraries: the 2020 ordering numbers against the cited printout lines, and the order rule against those numbers
+[L136] E-1 L1 [01_rev_enter_fit.txt l.12] | doc 36.0% | mine 36.0% | OK
+[L137] E-2 L8 [01_intra_enter_fit.txt l.25] | doc 34.5% | mine 34.5% | OK
+[L138] E-3 L2 [01_rev_enter_fit.txt l.13] | doc 18.0% | mine 18.0% | OK
+[L139] E-4 L7 [01_intra_enter_fit.txt l.24] | doc 16.1% | mine 16.1% | OK
+[L140] E-5 L3 [01_rev_enter_fit.txt l.14] | doc 13.5% | mine 13.5% | OK
+[L141] E-6 L9 [01_intra_enter_fit.txt l.26] | doc 34.5% | mine 34.5% | OK
+[L142] E-7 L4 [01_rev_enter_fit.txt l.15] | doc 1.1% | mine 1.1% | OK
+[L136] E-1 L1 n (rev fit scored) [01_rev_enter_fit.txt l.11] | doc 89 | mine 89 | OK
+[L137] E-2 L8 n (intra fit scored) [01_intra_enter_fit.txt l.23] | doc 87 | mine 87 | OK
+[L145] L5 'an EP gap level, 1.1% / 5.0%': 2020 / 2021-22 deciding | doc 1.1% / 5.0% | mine 1.1% / 5.0% | OK
+[L127] ENTER order: tier-1 rows E-1..E-5 non-increasing in the printed 2020 number; tier-2 E-6, E-7 non-increasing | doc monotone | mine monotone | OK | numbers [36.0, 34.5, 18.0, 16.1, 13.5, 34.5, 1.1]
+[L153] S-2 S10 median width (cited l.49) [01_intra_stop_fit.txt l.49] | doc 2.8% | mine 2.8% | OK
+[L156] S-5 S9 median width (cited l.46) [01_intra_stop_fit.txt l.46] | doc 2.9% | mine 2.9% | OK
+[L158] S-8 S1-H median width: doc cites l.40 [01_intra_stop_fit.txt l.40] | doc 3.2% | mine 3.2% | OK
+[L158] S-8 is the S1-H cell but l.40 is the S1-T row; the S1-H row is l.42 (same width) | doc l.40 | mine l.42 (S1-H, 3.2%) | NOTE | number holds (all three S1 variants share the width); the line cite names the S1-T row
+[L160] S-10 S3 median width (cited l.43) [01_intra_stop_fit.txt l.43] | doc 5.6% | mine 5.6% | OK
+[L166] STOP tier-2 order S10, S9, S1, S3 ascending by printed width | doc ascending | mine ascending | OK | widths {'S1': 3.2, 'S3': 5.6, 'S9': 2.9, 'S10': 2.8}
+[L162] S-13 'last by definition ... medians under 6%': the largest library median width (S3) | doc < 6% | mine 5.6% | OK
+[L293] §7 'S1 was held through on 44% of the fit trades where price crossed it' (S1-T H_cond, stop fit l.40) | doc 44% | mine 44% | OK
+[L175] M-1 E1 last-leg hit on 139 (l.37) [01_intra_exit_fit.txt l.37] | doc 40.3% | mine 40.3% | OK
+[L176] M-2 E4 last-leg hit (l.37; E3 collapses onto it: 39.6% both) [01_intra_exit_fit.txt l.37] | doc 39.6% | mine 39.6% | OK
+[L176] M-2: E3 = E4 on the 2020 panel (E3) [01_intra_exit_fit.txt l.37] | doc 39.6% | mine 39.6% | OK
+[L176] M-2: E3 = E4 also on the 2021-22 panel (my extra check; the cell states 39.6% both for 2020) | doc equal | mine equal | NOTE | ('35.5%', '35.5%')
+[L182] M-7 E2 last-leg hit (l.37) [01_intra_exit_fit.txt l.37] | doc 40.3% | mine 40.3% | OK
+[L183] M-8 first red close on 139 (l.40) [01_intra_exit_fit.txt l.40] | doc 31.7% | mine 31.7% | OK
+[L184] M-9 close of session 3 on 139 (l.40) [01_intra_exit_fit.txt l.40] | doc 20.1% | mine 20.1% | OK
+[L296] §7 2021-22 dated M-8 first red close / M-9 close of session 3 (check l.184) | doc 25.2% / 14.0% | mine 25.2% / 14.0% | OK
+[L296] §7 2020 dated M-8 / M-9 (exit fit l.40) | doc 31.7% / 20.1% | mine 31.7% / 20.1% | OK
+[L190] the previous 3-rule daily list on dated 2021-22 (check l.184) [01_intra_check.txt l.184] | doc 50.5% | mine 50.5% | OK
+[L175] M-1 warm-up floor in bars (exit fit l.33: 20 seed + 45 post-seed) | doc 65 | mine 65 | OK | 20 + 45
+
+## 5. §3c / §7: the exits-study counts, transcribed from §3 and checked by arithmetic
+[L95] exits study §3 (l.54): 117 filled dated exits | doc 117 | mine 117 | OK
+[L95] STOP 2020 row: filled exits below the fill at exit_hi = 29 + 20 (l.60) | doc 49 of 117 (29 + 20) | mine 49 of 117 (29 + 20) | OK
+[L96] STOP 2021-22 row: filled dated below the fill at exit_hi = 28 + 24 of 88 (study l.247-248) | doc 52 of 88 (28 + 24) | mine 52 of 88 (28 + 24) | OK
+[L177] M-3 within his window = 39 of 117 = 33.3% | doc 39 of 117 = 33.3% | mine 39 of 117 = 33.3% | OK
+[L178] M-4 within his window = 28 of 117 = 23.9% | doc 28 of 117 = 23.9% | mine 28 of 117 = 23.9% | OK
+[L179] M-5 16 of 21 stallers left by session 3 -> <= 13.7% (of 117) | doc 16 of 21 -> 13.7% | mine 16 of 21 -> 13.7% | OK
+[L180] M-6 +2R within his window = 12 of 117 = 10.3% | doc 12 of 117 = 10.3% | mine 12 of 117 = 10.3% | OK
+[L185] M-10 extension 13 / big up 6 of 117 -> ordered on 11.1% | doc 13 / 6 of 117 -> 11.1% | mine 13 / 6 of 117 -> 11.1% | OK | the study's row is 'a big up day / an extension ... 6 / 13', so extension = 13, big up = 6
+[L127] EXIT order: tier-1 M-1..M-6 non-increasing in the printed number; tier-2 M-7..M-10 non-increasing | doc monotone | mine monotone | OK | tier1 [40.3, 39.6, 33.3, 23.9, 13.7, 10.3]; tier2 [40.3, 31.7, 20.1, 11.1]
+[L303] §7 precision floors: M-3 (39 within vs 21 fired-while-held) / M-4 / M-8 / M-6 | doc ~65% / ~74% / ~40% / ~17% | mine 65.0% (39/(39+21)) / 73.7% (28/(28+10)) / 41.5% (39/94) / 17.1% (12/(12+58)) | OK | the doc's 40% for M-8 is 41.5% (within 2 points of a tilde figure)
+[L303] §7: '39 within vs 21 fired-while-held' - the study's counts for the 10-day (l.62) | doc 39 / 21 | mine 39 / 21 | OK
+[L292] §7 guess 'losers are 40-55% of exits per block' vs the doc's own §2 figures (49 of 117 / 52 of 88) | doc 40-55% | mine 41.9% (2020) / 59.1% (2021-22) | NOTE | the 59% is the exits study's FILLED dated subset (88); the guess is per block (111 dated + 226 undated, whose loss share §2 says is read at the run) - a guess about a larger population is not contradicted by a number on a subset; NOTE, not a mismatch
+
+## 6. §5 / §7 / §9: controls, constants, gate numbers
+[L236] §5: random-price control standalone floor 2020 (enter fit l.33) [01_intra_enter_fit.txt l.33] | doc 21.0% | mine 21.0% | OK
+[L236] §5: random-price control standalone floor 2021-22 (check l.29) [01_intra_check.txt l.29] | doc 30.0% | mine 30.0% | OK
+[L239] §5/§9 gate (vii): the control re-read on the previous 41 undated records (check l.17) [01_intra_check.txt l.17] | doc 31.7% / 85.9% / 41 | mine 31.7% / 85.9% / 41 | OK
+[L265] §6: the level the intraday read FAILED = L8 on the 40 (check l.21): feasible / shifted control | doc (not stated in the doc) | mine 45.0% / 3.6% | NOTE
+[L265] §6 'the level the intraday read FAILED at +15 over 31.7%': the margin over each control the check actually printed | doc +15 over 31.7% | mine +15.0 over 30.0% (the check's own control on the 40, l.29); +13.3 over 31.7% (the gate-vii known answer on the previous 41, l.17) | MISMATCH | 45.0 - 31.7 = 13.3, not 15; the +15 margin is met only against 30.0% (by 0.0004 per the intraday RESULT) - the read FAILED on the absolute >= 50% bar
+[L235] constants in the frozen modules: SEED / RANDOM_LEVELS (rev) / SHIFT_DRAWS / SHIFT_KEY / RANDOM_KEY | doc 702 / 200 / 200 / intra|bracket|{eid}|{level}|{draw} / rev|minute | mine 702 / 200 / 200 / intra|bracket|{eid}|{level}|{draw} / rev|minute | OK
+[L169] frozen module STOP_VARIANT_TIE order (the doc: T, C, H) | doc T, C, H | mine T, C, H | OK
+[L175] frozen module EMA_N (the 20-EMA) | doc 20 | mine 20 | OK
+[L336] §9 'reused as they are' names present as def/class in the frozen intraday module (27 names) | doc none missing | mine none missing | OK
+[L336] §9 rev.random_levels / rev.level_at / score_level present in the frozen reverse module | doc none missing | mine none missing | OK
+[L333] §9: frozen intraday module sha256 prefix | doc ac598fc58aae | mine ac598fc58aae | OK
+[L334] §9: the intraday registration's doc_body (sha256 of the bytes above the freeze marker) prefix | doc 6c3741e48788 | mine 6c3741e48788 | OK
+[L375] this doc: the freeze marker appears as an exact line once (and in prose as a quoted literal count) | doc 1 / 1 | mine 1 / 1 | OK | exact-marker lines / occurrences of the literal anywhere in the file
+
+## 7. FSLY 693 (gate ix): timeline, calendar, printout
+[L368] eid 693: symbol / setup / buy day / exit window | doc FSLY / undated / 2020-06-29 / 07-13..07-14 | mine FSLY / undated / 2020-06-29 / 07-13..07-14 | OK
+[L311] sessions from the buy day 06-29 to exit_lo 07-13 inclusive (the doc: a 10-session hold) | doc 10 | mine 10 | OK | calendar: ['2020-06-29', '2020-06-30', '2020-07-01', '2020-07-02', '2020-07-06', '2020-07-07', '2020-07-08', '2020-07-09', '2020-07-10', '2020-07-13', '2020-07-14']
+[L309] 07-10 / 07-11 / 07-12 / 07-13 weekdays | doc Fri / Sat / Sun / Mon | mine Fri / Sat / Sun / Mon | OK
+[L309] 07-10 is one session before 07-13 and two before 07-14 on the calendar (§1 e: 'one to two sessions') | doc 1 / 2 | mine 1 / 2 | OK
+[L--] 07-03 is not a session (the independence-day observance), so the hold counts 9 sessions to 07-10 | doc absent | mine absent | OK
+[L369] FSLY gate (vi): 60-minute closes below the 20-EMA on 07-10 / first at / touch of the prior low on 07-13 [01_intra_stop_fit.txt l.35] | doc 3 / 13:59 / True | mine 3 / 13:59 / True | OK
+[L28] caption videos' upload dates: cMkRsqvlVHM / YwMoUTd4naQ | doc 2020-07-14 / 2020-07-13 | mine 2020-07-14 / 2020-07-13 | OK
+[L28] caption cMkRsqvlVHM: 'sold half ... broke below the 20' cue / 'took out the previous day's lows' cue | doc 00:52:28 | mine 00:52:28 | OK | the 'previous day's lows' half-sentence is the cue at 00:52:42 (14 s later; the doc's '~' covers the pair)
+[L28] caption YwMoUTd4naQ: 'did sell half on friday when it took out' cue | doc 00:04:44 | mine 00:04:44 | OK
+[L141] caption tnHw5CKxcH4 names a '60-minute range' for an add (E-6) | doc present | mine present | OK
+
+## 8. His words: quotes and line cites in operator_shared_notes.md
+[L17] quote at notes l.1941-1942: entry | doc inside the cited lines | mine inside the cited lines | OK
+[L18] quote at notes l.1942-1942: 'buy as the daily chart starts to break out' | doc inside the cited lines | mine inside the cited lines | OK
+[L18] notes l.1942: is 'simply buy as the daily chart starts to break out' a quoted/italic phrase in the notes? | doc quoted (as the doc renders it) | mine unquoted plain text in the notes (the italic quote ends at 'candle."'; the sentence after it is the notes' own paraphrase) | NOTE | the doc says 'the article's words via the notes' - it presents a paraphrase line in quote marks
+[L19] quote at notes l.2090-2091: 60-minute first candle / whatever timeframe / don't even have to use any intraday chart | doc inside the cited lines | mine NOT inside (found in l.2090-2092) | MISMATCH
+[L21] quote at notes l.2093-2094: anticipating the breakout | doc inside the cited lines | mine inside the cited lines | OK
+[L22] quote at notes l.1943-1943: stop | doc inside the cited lines | mine inside the cited lines | OK
+[L23] quote at notes l.1946-1946: exit part 1 | doc inside the cited lines | mine inside the cited lines | OK
+[L23] quote at notes l.1946-1947: exit part 2 | doc inside the cited lines | mine inside the cited lines | OK
+[L23] quote at notes l.1947-1947: exit part 3 | doc inside the cited lines | mine inside the cited lines | OK
+[L24] quote at notes l.2046-2047: 2R | doc inside the cited lines | mine inside the cited lines | OK
+[L24] quote at notes l.2046-2047: 10d/20d | doc inside the cited lines | mine inside the cited lines | OK
+[L26] quote at notes l.2060-2060: combo | doc inside the cited lines | mine inside the cited lines | OK
+[L26] quote at notes l.2066-2067: stallers 1 | doc inside the cited lines | mine inside the cited lines | OK
+[L26] quote at notes l.2070-2070: stallers 2 | doc inside the cited lines | mine inside the cited lines | OK
+[L27] quote at notes l.2078-2079: his yes | doc inside the cited lines | mine inside the cited lines | OK
+[L3] quote at notes l.2596-2596: his 10-25 note | doc inside the cited lines | mine inside the cited lines | OK
+[L6] quote at notes l.2598-2598: method line | doc inside the cited lines | mine inside the cited lines | OK
+[L6] quote at notes l.2598-2598: method line | doc inside the cited lines | mine inside the cited lines | OK
+
+## 6b. Further transcription: the other beside lines the §7 'known already' bullet quotes, cites that bound a block, gate bars, record floors
+[L286] §7: 20 dated 2021-22 windows: union / random-price / shifted (check l.42) [01_intra_check.txt l.42] | doc 65.0% / 32.7% / 15.2% | mine 65.0% / 32.7% / 15.2% | OK
+[L287] §7: untouched 9: union / random-price / shifted (check l.66) [01_intra_check.txt l.66] | doc 33.3% / 3.3% / 4.0% | mine 33.3% / 3.3% / 4.0% | OK
+[L287] §7: 2021-22 flickers: union / random-price (check l.54) [01_intra_check.txt l.54] | doc 52.6% / 22.5% | mine 52.6% / 22.5% | OK
+[L286] §7: shifted-window union 2020 / 2021-22 (the two 'any opening range' lines) | doc 6.5% / 6.7% | mine 6.5% / 6.7% | OK
+[L264] §6: shifted-window feasible shares of the library's tagged levels (L7, L8, L9, L1, L2, L3), 2020 and 2021-22: range | doc 1-7% | mine 1.2-6.9% | OK | rounds to 1-7%
+[L93] cite range enter fit l.73-96 bounds the pre-market-flat blocks (starts at the dated header, ends on the undated block's last line, l.97 is the next item) | doc bounded | mine bounded | OK
+[L93] cite range check l.81-104 bounds the pre-market-flat blocks | doc bounded | mine bounded | OK
+[L86] ENTER record floor (20 bars before the buy day) [enter fit l.13] [01_intra_enter_fit.txt l.13] | doc 20 | mine 20 | OK
+[L86] STOP record floor (50 bars) [stop fit l.12] [01_intra_stop_fit.txt l.12] | doc 50 | mine 50 | OK
+[L86] EXIT record floor (50 bars) [exit fit l.12] [01_intra_exit_fit.txt l.12] | doc 50 | mine 50 | OK
+[L353] gate (i) bars: high/low within 0.5% on >= 98%; open/close within 0.5% on >= 90% [check l.11] [01_intra_check.txt l.11] | doc 98% / 90% | mine 98.0% / 90.0% | OK
+[L355] gate (iii) bar: the last 60-minute bar closes below on >= 98% of such days [check l.131] [01_intra_check.txt l.131] | doc 98% | mine 98.0% | OK
+[L354] gate (ii) wording (raw L7 <= L1 <= L8 <= L6; the builder's first bar = L8_raw) is the printout's | doc present | mine present | OK
+[L356] gate (viii): the TSV columns it names exist in both the fit and the check files (enter L1-L9 cross/feasible/verdict; stop _any/_certain/_unresolved/_first_j; exit E1/E2/E4 _last_j/_stop_preempt) | doc none missing | mine none missing | OK
+[L402] §9 template row shows L1 standalone 36.0% (the rev-fit number on 89, E-1); the intra fit's re-read of L1 on the same 87 windows is higher (enter fit l.27; TSV tally above) | doc 36.0% | mine 36.8% on 87 | NOTE | gate (viii) re-reads one decimal: the printed run will show 36.8 beside a template that says 36.0
+
+## 9. §8: the minute fetch (fetch logs and fetch lists only; NO bar file opened)
+[L318] fetch list: pairs | doc 19470 | mine 19470 | OK
+[L319] fetch log (_done.psv of the intra tree): ok / empty / other, over the listed pairs | doc 19184 / 286 / 0 | mine 19184 / 286 / 0 | OK
+[L321] listed pairs with no fetch-log row (pending.psv expected empty) | doc 0 | mine 0 | OK
+[L319] fetch-log rows not on the list | doc 0 | mine 0 | OK
+[L323] latest listed session (the doc: the tail ends <= 2024-01) | doc <= 2024-01 | mine 2024-01 | OK
+[L319] walked ticker-days of every STOP/EXIT/ENTER population (10 warm-up + hold + 20 tail; still-held 20): neither in the five existing trees nor in the fetch log | doc 0 | mine 0 | OK | walked pairs 24,517; sessions of the listed pairs are the missing ones of the five trees (19,470)
+[L319] walked pairs by state: ok in a tree / empty at source in a tree / missing from the trees, covered by the fetch | doc info | mine 5,035 / 12 / 19,470 | NOTE
+[L319] walked pairs not on the list and not already in a tree = the fetch list is exactly the walked-missing set | doc identical | mine identical | OK
+[L323] latest walked session of the still-held 2023 trades, FROM THE CALENDAR (buy day + 20 sessions) | doc <= 2024-01 | mine 2024-01 | OK
+
+## Summary
+- claims: 213; OK 195; MISMATCH 4; NOTE 14; unresolved doc anchors 0
+
+## DOC-TOKEN CHECK (every number in the 'doc' column must occur within 3 lines of its anchor in the registration; a failure here is MY transcription, not a doc finding)
+(none)
+
+## MISMATCH lines
+[L35] §0: H_cond range, the 12 LIBRARY cells (S1/S3/S9/S10 x T/C/H), the deciding 62 untouched (check l.135-146) | doc 16-33% | mine 20-33% | the 16.1% is SMA50-T (l.150), a control the doc itself says is not in the library; all 18 printed cells: 12-33% (S8-C 12.5% is the floor); library-only floor is ('S1-C', 20.0)
+[L142] E-7 L4 'never feasible on an in-session window by construction': in-session windows where L4 IS feasible (2020 deciding 87) | doc none | mine 1 (SE 2020-05-05 flat 09:41 first 09:57 cross at minute 12.0) | the same row cites '1.1% (rev l.15)' = 1 feasible window; the cell's 'never' contradicts its own citation
+[L265] §6 'the level the intraday read FAILED at +15 over 31.7%': the margin over each control the check actually printed | doc +15 over 31.7% | mine +15.0 over 30.0% (the check's own control on the 40, l.29); +13.3 over 31.7% (the gate-vii known answer on the previous 41, l.17) | 45.0 - 31.7 = 13.3, not 15; the +15 margin is met only against 30.0% (by 0.0004 per the intraday RESULT) - the read FAILED on the absolute >= 50% bar
+[L19] quote at notes l.2090-2091: 60-minute first candle / whatever timeframe / don't even have to use any intraday chart | doc inside the cited lines | mine NOT inside (found in l.2090-2092)
+
+## NOTE lines
+[L93] pre-market-flat windows, undated non-flicker: POPULATION 2020 / 2021-22 (the printed SCORED counts are 56 / 52) | doc 56 / 52 (scored) | mine 58 / 55 (population) | the doc's 56 / 52 are the printouts' scored counts, which is what the cell says ('as the printouts'); the populations are larger
+[L101] EXIT untouched dated: with exits / windows <= 20 sessions, FROM THE TIMELINE | doc 23 / 18 | mine 23 / 19 | mixed bases in the doc cell: 23 = timeline, pre record-floor; 18 = the printed hit-rate base AFTER the floor dropped one record (dry run l.112: 23 -> 22); the timeline's own count of windows <= 20 is 19 (windows > 20: [46, 46, 121, 121])
+[L359] 2020 deciding, other levels re-read (info: L1 36.8% on 87 vs the rev fit's 36.0% on 89; L2 18.4; L3 13.8; L4 1.1; L5 1.1; L6 16.1) | doc - | mine L1 36.8%; L2 18.4%; L3 13.8%; L4 1.1%; L5 1.1%; L6 16.1%
+[L142] L4 feasible in the 2021-22 / untouched in-session windows (flickers beside) | doc none | mine UNM 2021-10-20 (flickers) flat 09:30 first 10:59 cross at minute 1 | printout: 2021-22 flickers L4 feasible 1 = 5.3% (check l.50); further evidence for the row above
+[L142] reverse ENTER fit TSV: the one L4-feasible window (same trade as the intraday fit's?) | doc none | mine SE 2020-05-05 flat 09:41 first 09:57 cross minute 12 | same trade as the intraday fit's L4-feasible window
+[L434] §11 item 5 cites R8 for 'the registered his account's booking point' (close of exit_hi, no stop): R8's text in the reverse registration | doc booking point stated | mine R8 says only 'his under no stop, the registered ones beside'; the close-of-exit_hi booking point is stated at the reverse registration's §8c (l.405) and F10 (l.662) | a cite pointing at the neighbouring rule, content correct
+[L369] gate (ix): 'its first 60-minute close below is 2020-07-10' - what the cited printout line establishes | doc first close below since the fill = 07-10 | mine the line gives 3 closes ON 07-10 (first at 13:59) and the touch on 07-13; it does not say no earlier close existed since the 06-29 fill | the pinned bucket (M-1 MISS-EARLY) holds either way: any earlier first firing is also before exit_lo on a certainly-held session
+[L158] S-8 is the S1-H cell but l.40 is the S1-T row; the S1-H row is l.42 (same width) | doc l.40 | mine l.42 (S1-H, 3.2%) | number holds (all three S1 variants share the width); the line cite names the S1-T row
+[L176] M-2: E3 = E4 also on the 2021-22 panel (my extra check; the cell states 39.6% both for 2020) | doc equal | mine equal | ('35.5%', '35.5%')
+[L292] §7 guess 'losers are 40-55% of exits per block' vs the doc's own §2 figures (49 of 117 / 52 of 88) | doc 40-55% | mine 41.9% (2020) / 59.1% (2021-22) | the 59% is the exits study's FILLED dated subset (88); the guess is per block (111 dated + 226 undated, whose loss share §2 says is read at the run) - a guess about a larger population is not contradicted by a number on a subset; NOTE, not a mismatch
+[L265] §6: the level the intraday read FAILED = L8 on the 40 (check l.21): feasible / shifted control | doc (not stated in the doc) | mine 45.0% / 3.6%
+[L18] notes l.1942: is 'simply buy as the daily chart starts to break out' a quoted/italic phrase in the notes? | doc quoted (as the doc renders it) | mine unquoted plain text in the notes (the italic quote ends at 'candle."'; the sentence after it is the notes' own paraphrase) | the doc says 'the article's words via the notes' - it presents a paraphrase line in quote marks
+[L402] §9 template row shows L1 standalone 36.0% (the rev-fit number on 89, E-1); the intra fit's re-read of L1 on the same 87 windows is higher (enter fit l.27; TSV tally above) | doc 36.0% | mine 36.8% on 87 | gate (viii) re-reads one decimal: the printed run will show 36.8 beside a template that says 36.0
+[L319] walked pairs by state: ok in a tree / empty at source in a tree / missing from the trees, covered by the fetch | doc info | mine 5,035 / 12 / 19,470
