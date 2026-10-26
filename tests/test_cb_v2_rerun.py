@@ -29,13 +29,27 @@ try:
 except ImportError:                                              # pragma: no cover
     from tests import test_cb_backtest_runner as T
 
-REAL_REPO = Path(rn.__file__).resolve().parents[3]
+REAL_REPO = Path(__file__).resolve().parents[1]                 # the checkout under test (CI and the pre-push hook run it from other paths)
 REAL_DATA = Path("/Users/alvinfung/apollo_data")
 # The code tree 04_relaunch.sh guards: its REAL_B literal. NOT REAL_REPO / "scripts" / "probes" - REAL_REPO is whatever checkout runs the suite,
 # and the pre-push hook (dirty tree) and CI run it from another path, where that copy is a scratch tree the guard rightly lets through.
 REAL_PROBES = Path("/Users/alvinfung/apollo_the_wise/scripts/probes")
 PRE_START = T.dt.date(2019, 10, 31)                              # E1 = 2020-05-28, E2 = 2020-06-01 (the exit read's TSLA check); both windows carry the bases
 E1, E2 = T.H60_E1, T.H60_E2
+# The doc AS REGISTERED: commit db876b2a's copy, byte for byte (§5's v2 cells still (B2), the footer empty); its body sha is
+# v2_freeze_diff_check.REG_BODY_SHA. The synthetic tree is built on THIS copy and §5 filled from the fixture's own stage 0 - the live doc's §5
+# carries the real stage-0 counts since cbf0ea76, and a synthetic stage 2 compared against those would refuse ('§5 1583 vs stage 0 2').
+REGISTERED_DOC = Path(__file__).resolve().parent / "fixtures" / "cb_rerun_v2_doc_registered.md"
+REGISTRATION_COMMIT, ROUND1_COMMIT = "db876b2a", "af2b17db"
+
+
+def registered_doc_text() -> str:
+    return REGISTERED_DOC.read_text(encoding="utf-8")
+
+
+def _has_commit(sha: str) -> bool:
+    """False on a shallow clone (GitHub CI checks out depth 1): the commit object is not in the checkout."""
+    return subprocess.run(["git", "-C", str(REAL_REPO), "cat-file", "-e", f"{sha}^{{commit}}"], capture_output=True).returncode == 0
 
 
 # ═══ the synthetic pre-era tree ════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -113,7 +127,7 @@ def build_tree(tmp_path: Path, monkeypatch, tickers=("TSLA", "Y", "Z"), restored
     (repo / "docs" / "analysis").mkdir(parents=True)
     (repo / v2.MODULE_REL).parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(REAL_REPO / v2.MODULE_REL, repo / v2.MODULE_REL)                  # the real module: its sha is the hard pin
-    doc_text = (REAL_REPO / "docs" / "analysis" / v2.V2_DOC).read_text(encoding="utf-8")
+    doc_text = registered_doc_text()                                                  # the doc as registered: §5 unfilled, filled below from stage 0
     (repo / "docs" / "analysis" / v2.V2_DOC).write_text(doc_text.split(rn.FREEZE_MARK)[0] + rn.FREEZE_MARK + "\n## Freeze record\n", encoding="utf-8")
     monkeypatch.setattr(rn, "REPO", repo)
     monkeypatch.setattr(rn, "HERE", root / "hereroot")
@@ -249,9 +263,11 @@ def test_every_tag_starts_with_v2_and_the_computed_names_do_not_exist_today():
     specs = v2.REGISTERED
     assert all(s.tag.startswith("v2") for s in specs.values()) and set(specs) <= set(rn.REGISTERED_READS)
     assert not set(s.tag for s in specs.values()) & {"h60", "exitpb", "p5", "pre"}
-    if (REAL_DATA / v2.V2_NAME / "out" / v2c.MANIFEST_NAME).exists() or (REAL_DATA / v2.V2_NAME / "out" / v2.STEP0_OUT_SUB).exists():
-        pytest.skip("the chain has started (stage 0's dir or the manifest exists): the names exist by design")
     small, out = REAL_REPO / "scripts/probes/_cb_backtest/out", REAL_DATA / v2.V2_NAME / "out"
+    if (out / v2c.MANIFEST_NAME).exists() or (out / v2.STEP0_OUT_SUB).exists() or (small / v2.SMALL_SUB).exists() or \
+            any((small / f"{s.tag}_summary_pre.txt").exists() for s in specs.values()):
+        pytest.skip("the chain has started (stage 0's dir, the manifest, or the v2 printouts committed under _cb_backtest/out/ exist): "
+                    "the names exist by design")
     names = [small / f"{s.tag}_{k}_pre.txt" for s in specs.values() for k in ("summary", "verdict")]
     names += [out / f"{s.tag}_verdict_pre.{x}" for s in specs.values() for x in ("json", "txt")]
     names += [out / n for n in v2.STEP0_OUTPUTS + v2.PRE_OUTPUTS + v2.H60_OUTPUTS + v2.EXIT_OUTPUTS]
@@ -427,9 +443,9 @@ def test_the_call_list_is_the_ast_walk_and_the_sealed_stamps_are_unreachable(cap
     assert v2.MODULE_SHA == rn.EXITPB_MODULE_SHA
 
 
-# ═══ B2 / §5: render -> fill -> parse; the real doc is not filled yet and the read refuses on it ═════════════════════════════════════
+# ═══ B2 / §5: render -> fill -> parse; the doc as registered is not filled and the read refuses on it ═════════════════════════════════
 def test_section5_fills_only_the_b2_cells_and_parses_back_and_an_unfilled_doc_refuses(tmp_path, monkeypatch, capsys):
-    real = (REAL_REPO / "docs" / "analysis" / v2.V2_DOC).read_text(encoding="utf-8")
+    real = registered_doc_text()
     with pytest.raises(v2.Refuse):
         v2.parse_section5(real)
     counts = {"table": {"pre": {"C0": 20000, "C0_multi": 13000, "C1": 230, "C1_multi": 140, "orh5_C1_fills": 200, "C2": 20, "C3": 400, "C4": 1400,
@@ -718,17 +734,29 @@ def test_the_relaunch_calendar_check_refuses_a_doctored_log_and_reads_every_spel
             "d.log": "  export loaded: 1635 sessions 2016-01-04..2022-06-30; 12s\n"}
     for n, t in good.items():
         (tmp_path / n).write_text(t)
-    p = subprocess.run(["bash", str(RELAUNCH), "--check-log", *[str(tmp_path / n) for n in good]], capture_output=True, text=True)
-    assert p.returncode == 0, p.stderr
+    # TEST MODE with a scratch code tree carrying this checkout's v2_chain.py: the real mode resolves the chain module from the script's REAL_B
+    # literal (the operator's machine), which a CI checkout at another path does not have; the --check-log branch is the same cal_check either way
+    v, probes = tmp_path / v2.V2_NAME, tmp_path / "probes"
+    v.mkdir()
+    (probes / "_cb_backtest").mkdir(parents=True)
+    shutil.copyfile(Path(v2c.__file__), probes / "_cb_backtest" / "v2_chain.py")
+    env = {**{k: x for k, x in os.environ.items() if not k.startswith(("CB_PRE_", "V2_", "PROBES", "LOGROOT"))}, "V2_CHAIN_TEST": "1",
+           "V2_TEST_FREEZE_CMD": "false", "V2_DIR": str(v), "PROBES": str(probes), "LOGROOT": str(tmp_path / "logs")}
+
+    def check(*logs):
+        return subprocess.run(["bash", str(RELAUNCH), "--check-log", *[str(tmp_path / n) for n in logs]], capture_output=True, text=True, env=env)
+    p = check(*good)
+    assert p.returncode == 0 and f"CALENDAR OK: {len(good)} log(s)" in p.stdout and "TEST MODE" in p.stdout, (p.stdout, p.stderr)
     (tmp_path / "bad.log").write_text(good["a.log"].replace("1635 sessions (2016-01-04", "1634 sessions (2016-01-05"))
-    p = subprocess.run(["bash", str(RELAUNCH), "--check-log", str(tmp_path / "bad.log")], capture_output=True, text=True)
+    p = check("bad.log")
     assert p.returncode == 2 and "calendar 1634 sessions" in p.stderr
     (tmp_path / "bad_d.log").write_text(good["d.log"].replace("1635 sessions 2016-01-04", "1636 sessions 2016-01-04"))
-    p = subprocess.run(["bash", str(RELAUNCH), "--check-log", str(tmp_path / "bad_d.log")], capture_output=True, text=True)
+    p = check("bad_d.log")
     assert p.returncode == 2 and "calendar 1636 sessions" in p.stderr
     (tmp_path / "none.log").write_text("no calendar here\n")
-    p = subprocess.run(["bash", str(RELAUNCH), "--check-log", str(tmp_path / "none.log")], capture_output=True, text=True)
+    p = check("none.log")
     assert p.returncode == 2 and "carries no calendar line" in p.stderr
+    assert not (tmp_path / "logs").exists() and not (v / "out").exists()             # the check alone: nothing created
 
 
 # ═══ B7: the comparison's two proofs (old vs old = all holds; a pushed value = changes) on the published sources ═══════════════════════
@@ -838,7 +866,7 @@ def test_02_build_paths_refuses_a_switch_that_would_write_the_committed_checks_f
 # ═══ F7: the G9 bullet may only gain a console reference ═════════════════════════════════════════════════════════════════════════════════
 def test_the_freeze_diff_rule_allows_only_an_inserted_g9_console_reference():
     from scripts.probes._705_rerun_v2_1023 import v2_freeze_diff_check as fd
-    real = (REAL_REPO / "docs" / "analysis" / v2.V2_DOC).read_text(encoding="utf-8")
+    real = registered_doc_text()
     counts = {"table": {"pre": {k: 1 for k in ("C0", "C0_multi", "C1", "C1_multi", "orh5_C1_fills", "C2", "C3", "C4", "C5", "C6", "C7", "com_C1", "tl_rows")},
                         "2020-21": {k: 1 for k in ("C0", "C0_multi", "C1", "C1_multi", "orh5_C1_fills", "C2", "C3", "C4", "C5", "C6", "C7")}},
               "b8": {"pre": {"shared": 1, "restored": 1}, "2020-21": {"shared": 1, "restored": 1}}}
@@ -1048,6 +1076,14 @@ def _no_python_path(tmp_path) -> str:
     return f"{b}:{os.environ.get('PATH', '')}"
 
 
+def _tree_state(d: Path):
+    """None when `d` is absent, else every entry under it with its size and mtime: a refusal that created, removed or rewrote anything there
+    reads differently (an existence check alone fails once the real run has made the dir)."""
+    if not d.exists():
+        return None
+    return sorted((str(p.relative_to(d)), p.lstat().st_size, p.lstat().st_mtime_ns) for p in d.rglob("*"))
+
+
 def _bp(env):
     return subprocess.run([sys.executable, str(BP_SCRIPT), "2017-21"], capture_output=True, text=True, env=env, cwd=BP_SCRIPT.parent)
 
@@ -1243,6 +1279,8 @@ def test_the_relaunch_honours_its_overrides_only_in_test_mode(case, tmp_path):
     base["PATH"] = _no_python_path(tmp_path)                           # a guard that failed to refuse can start nothing (the refusals are pure bash)
     tm = {"V2_CHAIN_TEST": "1", "V2_TEST_FREEZE_CMD": "false", "LOGROOT": str(tmp_path / "logs")}
     (tmp_path / "probes").mkdir()
+    real_out = v2c.REAL_V2 / "out" / "rerun_v2_1025"                 # the real run's once-only outputs (present since the 10-26 run): never touched
+    before = _tree_state(real_out)
     if case == "test_mode_real_dir" and not v2c.REAL_V2.is_dir():
         pytest.skip("the real cb702_pre_v2 is not on this machine")
     if case == "test_mode_real_probes" and not REAL_PROBES.is_dir():
@@ -1256,7 +1294,7 @@ def test_the_relaunch_honours_its_overrides_only_in_test_mode(case, tmp_path):
             "test_mode_real_dir": "with the REAL /Users/alvinfung/apollo_data", "test_mode_real_probes": "its rerun_v2_1025/ dirs are the real run's",
             "test_mode_no_probes": "needs V2_DIR and PROBES"}[case]
     assert p.returncode == 2 and want in p.stdout, p.stdout
-    assert not (tmp_path / "logs").exists() and not (v2c.REAL_V2 / "out" / "rerun_v2_1025").exists()
+    assert not (tmp_path / "logs").exists() and _tree_state(real_out) == before
 
 
 # ─── F2: the freeze re-check ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1589,18 +1627,13 @@ def test_the_ending_classes_on_their_boundaries_the_raw_close_and_a_holed_ticker
 # ─── F5: the freeze diff gate's base is pinned, never chosen at check time ────────────────────────────────────────────────────────────
 def test_the_freeze_diff_base_is_the_pinned_registered_body(monkeypatch):
     from scripts.probes._705_rerun_v2_1023 import v2_freeze_diff_check as fd
-    real = (REAL_REPO / "docs" / "analysis" / v2.V2_DOC).read_text(encoding="utf-8")
-    try:
+    real = registered_doc_text()                                    # the doc as registered (the fixture): §5 unfilled, the body pinned
+    with pytest.raises(v2.Refuse):
         v2.parse_section5(real)
-        filled = True
-    except v2.Refuse:
-        filled = False
-    if not filled:                                                  # before stage 0: the working doc IS the registered body
-        assert fd.body_sha(real) == fd.REG_BODY_SHA == rn.doc_body_sha(real)
+    assert fd.body_sha(real) == fd.REG_BODY_SHA == rn.doc_body_sha(real)
+    live = (REAL_REPO / "docs" / "analysis" / v2.V2_DOC).read_text(encoding="utf-8")
+    assert fd.problems(real, live) == []                            # the working doc = the registered body + §5's counts and the G9 reference only
     rel = f"docs/analysis/{v2.V2_DOC}"
-    _t, pr = fd.base_text("af2b17db", rel)                          # the 10-25 commit carries the round-1 body, not the registered one
-    assert pr and "is not the registration commit" in pr[0]
-    assert fd.main(["af2b17db"]) == 2
     assert fd.base_text("0" * 40, rel)[1] and fd.main([]) == 2
     # a commit carrying the registered body passes the base check; a later §7 edit committed and passed as the base does not
     calls = {}
@@ -1620,22 +1653,33 @@ def test_the_freeze_diff_base_is_the_pinned_registered_body(monkeypatch):
     monkeypatch.setattr(fd, "_git", git)
     calls["doc"] = real.split(fd.MARK)[0].replace("R3 — a share of a population.", "R3 — a share.") + fd.MARK
     assert "is not the registration commit" in fd.base_text("HEAD", rel)[1][0]
-    if not filled:
-        calls["doc"] = real
-        assert fd.base_text("HEAD", rel) == (real, [])
+    calls["doc"] = real
+    assert fd.base_text("HEAD", rel) == (real, [])
+
+
+def test_the_freeze_diff_base_refuses_the_round_1_commit_and_takes_the_registration_commit():
+    """The same base check on the REAL history: the 10-25 round-1 commit carries another body and is refused; the registration commit passes and
+    its doc is the fixture byte for byte. Needs both commits in the checkout - a depth-1 clone (GitHub CI) has neither."""
+    from scripts.probes._705_rerun_v2_1023 import v2_freeze_diff_check as fd
+    missing = [c for c in (ROUND1_COMMIT, REGISTRATION_COMMIT) if not _has_commit(c)]
+    if missing:
+        pytest.skip(f"commit(s) {', '.join(missing)} not in this checkout (a shallow clone: GitHub CI checks out depth 1); the pinned-body "
+                    f"half runs in test_the_freeze_diff_base_is_the_pinned_registered_body")
+    rel = f"docs/analysis/{v2.V2_DOC}"
+    _t, pr = fd.base_text(ROUND1_COMMIT, rel)                       # the 10-25 commit carries the round-1 body, not the registered one
+    assert pr and "is not the registration commit" in pr[0]
+    assert fd.main([ROUND1_COMMIT]) == 2
+    assert fd.base_text(REGISTRATION_COMMIT, rel) == (registered_doc_text(), [])
 
 
 def test_the_freeze_diff_rule_refuses_re_filling_an_already_filled_v2_cell():
     """M69: a v2 cell that already holds a count may not change again (only (B2) cells are filled)."""
     from scripts.probes._705_rerun_v2_1023 import v2_freeze_diff_check as fd
-    real = (REAL_REPO / "docs" / "analysis" / v2.V2_DOC).read_text(encoding="utf-8")
+    real = registered_doc_text()
     keys = ("C0", "C0_multi", "C1", "C1_multi", "orh5_C1_fills", "C2", "C3", "C4", "C5", "C6", "C7")
     counts = lambda v: {"table": {"pre": {**{k: v for k in keys}, "com_C1": v, "tl_rows": v}, "2020-21": {k: v for k in keys}},
                         "b8": {"pre": {"shared": v, "restored": v}, "2020-21": {"shared": v, "restored": v}}}
-    try:
-        first = v2.fill_section5(real, counts(1))
-    except ValueError:
-        pytest.skip("§5 is already filled in the working doc")
+    first = v2.fill_section5(real, counts(1))
     second = first.replace("| 1 / 1 |", "| 2 / 1 |", 1)
     assert second != first
     assert any("not (B2)" in p for p in fd.problems(first, second))
