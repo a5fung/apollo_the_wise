@@ -1,0 +1,218 @@
+#705 v2 COMPARISON - INDEPENDENT RECOUNT (written from prereg section 7; does not import v2_compare.py)
+old = published sources; new = chain outputs (rerun_v2_1025 / v2_1025 / cb702_pre_v2/out).  Rules R1-R6 as registered.
+Match columns compare MY strings to the strings printed in v2_compare.txt (old text, new text, verdict word).
+
+Read 1 - was our trigger early, and does a real breakout follow through? -> CONCLUSION HOLDS: every deciding line holds
+  1.1   [deciding, R5] fill median distance below the base high (ADR20)
+        old +1.16  |  new +1.17  ->  HOLDS: +1.16 -> +1.17 (+0.9%; band +-25%)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  1.2   [deciding, R3] share of fills at/above the base high
+        old 1,098 of 13,363 = 8.22%  |  new 1,284 of 15,894 = 8.08%  ->  HOLDS: 8.22% -> 8.08% (|diff| 0.14 vs tolerance +-4.11 points)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  1.3   [deciding, R3] share that close above the base high within 60 sessions
+        old 10,214 of 13,363 = 76.43%  |  new 12,050 of 15,894 = 75.81%  ->  HOLDS: 76.43% -> 75.81% (|diff| 0.62 vs tolerance +-5.00 points)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  1.4   [beside, R6] first close above it: fill day / by 5 / by 20 / never
+        old (1548, 4989, 8110, 3149)  |  new (1849, 5828, 9528, 3844)  ->  REPORTED: 1548 -> 1849 (x1.194) / 4989 -> 5828 (x1.168) / 8110 -> 9528 (x1.175) / 3149 -> 3844 (x1.221)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: REPORTED)
+  1.5   [beside, R3] +5 ADR movers that cleared the base high first
+        old 5,675 of 5,756 = 98.59%  |  new 6,668 of 6,765 = 98.57%  ->  HOLDS: 98.59% -> 98.57% (|diff| 0.03 vs tolerance +-5.00 points)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  1.6   [deciding, R1] R1: share reaching +5 ADR within 60, entries minus control
+        old +0.0109 (-0.0069 .. +0.0292) SPANS, n 9,281  |  new +0.0100 (-0.0066 .. +0.0271) SPANS, n 10,912  ->  HOLDS: class SPANS -> SPANS
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  1.7   [beside, R1] R1 mean close return at +60 sessions (ADR), difference
+        old +0.1749 (+0.0013 .. +0.3904) ABOVE, n 9,191  |  new +0.1027 (-0.0674 .. +0.3046) SPANS, n 10,799  ->  CHANGES: class ABOVE -> SPANS
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: CHANGES)
+  1.8   [beside, R1] R2 expansion-day breakouts: +5 ADR share, difference
+        old +0.0310 (+0.0055 .. +0.0554) ABOVE, n 1,582  |  new +0.0324 (+0.0102 .. +0.0536) ABOVE, n 1,902  ->  HOLDS: class ABOVE -> ABOVE
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+
+Read 2 - of the big winners, how many did we catch? -> CONCLUSION HOLDS: every deciding line holds
+  2.0   [check, R6] big winners kept
+        old 994  |  new 1181  ->  PASSES: big winners 1181 (must be 1,181)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: PASSES)
+  2.1   [beside, R6] measurable breakouts whose base nights are covered
+        old (481,)  |  new (586,)  ->  REPORTED: 481 -> 586 (x1.218)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: REPORTED)
+  2.2   [deciding, R3] of those, WATCHED
+        old 240 of 481 = 49.90%  |  new 296 of 586 = 50.51%  ->  HOLDS: 49.90% -> 50.51% (|diff| 0.62 vs tolerance +-5.00 points)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  2.3   [deciding, R3] TRIGGERED
+        old 237 of 481 = 49.27%  |  new 287 of 586 = 48.98%  ->  HOLDS: 49.27% -> 48.98% (|diff| 0.30 vs tolerance +-5.00 points)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  2.4   [deciding, R3] still in the trade when the stock had made half its gain
+        old 25 of 481 = 5.20%  |  new 32 of 586 = 5.46%  ->  HOLDS: 5.20% -> 5.46% (|diff| 0.26 vs tolerance +-2.60 points)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  2.5   [deciding, R3] kept at least half of the episode's gain
+        old 3 of 481 = 0.62%  |  new 3 of 586 = 0.51%  ->  HOLDS: 0.62% -> 0.51% (|diff| 0.11 vs tolerance +-2.00 points)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+
+Read 3 - entry at the breakout close x four stops x up to two retries -> CONCLUSION HOLDS: every deciding line holds
+  3.1   [deciding, R4+R3] best-holding cell on the doublers: S2 with two retries, still in at half
+        old S2_T2 213 of 481 = 44.3%; best S2_T2 44.3%  |  new S2_T2 256 of 586 = 43.7%; best S2_T2 43.7%  ->  HOLDS: best cell S2_T2 is still the best; 44.28% -> 43.69% (|diff| 0.60 vs tolerance +-5.00 points)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  3.2   [beside, R3] the same cell: kept half
+        old 8 of 481 = 1.66%  |  new 9 of 586 = 1.54%  ->  HOLDS: 1.66% -> 1.54% (|diff| 0.13 vs tolerance +-2.00 points)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  3.2b  [beside, R3] the same cell: kept a quarter
+        old 121 of 481 = 25.16%  |  new 145 of 586 = 24.74%  ->  HOLDS: 25.16% -> 24.74% (|diff| 0.41 vs tolerance +-5.00 points)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  3.2c  [beside, R6] the same cell: retries used, mean
+        old (0.656965,)  |  new (0.667235,)  ->  REPORTED: 0.656965 -> 0.667235 (x1.016)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: REPORTED)
+  3.3   [deciding, R1] R1, S2, no retry: mean R per base, entries minus control
+        old +0.0054 (-0.0355 .. +0.0496) SPANS, n 9,239  |  new -0.0022 (-0.0349 .. +0.0346) SPANS, n 10,864  ->  HOLDS: class SPANS -> SPANS
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  3.4   [deciding, R1] R1, S2, no retry: bases with a >= 5R trade per 100, entries minus control
+        old +0.4785 (+0.1383 .. +0.8574) ABOVE, n 9,239  |  new +0.3257 (+0.0855 .. +0.6316) ABOVE, n 10,864  ->  HOLDS: class ABOVE -> ABOVE
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  3.5   [beside, R1] R1, S2, two retries: mean R per base difference
+        old +0.0712 (+0.0156 .. +0.1356) ABOVE, n 9,239  |  new +0.0563 (+0.0070 .. +0.1095) ABOVE, n 10,864  ->  HOLDS: class ABOVE -> ABOVE
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  3.6   [beside, R1] R1, S2, two retries: >= 5R bases per 100
+        old +1.3828 (+0.9950 .. +1.8287) ABOVE, n 9,239  |  new +1.1094 (+0.7854 .. +1.4718) ABOVE, n 10,864  ->  HOLDS: class ABOVE -> ABOVE
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  3.7   [beside, R3d] R1, S2, no retry: share reaching +5R before the stop, entries vs control
+        old 17.82% vs 18.71% (difference -0.89 points)  |  new 17.69% vs 18.53% (difference -0.84 points)  ->  HOLDS: difference -0.89 -> -0.84 points (tolerance +-2.00)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+
+Read 4 - the trail exit, sixteen ways -> CONCLUSION HOLDS: every deciding line holds
+  4.0   [check, must pass] pp cell (A20_X1_P1) equals read 3's S2 two-retry cell and S2 no-retry R1
+        old every value equal  |  new every value equal  ->  PASSES: values compared at 1e-9: old 7+34, new 7+34 (win cell + R1 cell); problems old [] new []
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: PASSES)
+  4.1   [deciding, R4+R3] best-holding cell on the doublers: A20_X3_P0, still in at half
+        old A20_X3_P0 256 of 481 = 53.2%; best A20_X3_P0 53.2%  |  new A20_X3_P0 303 of 586 = 51.7%; best A20_X3_P0 51.7%  ->  HOLDS: best cell A20_X3_P0 is still the best; 53.22% -> 51.71% (|diff| 1.52 vs tolerance +-5.00 points)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  4.2   [deciding, R3] kept at least half: A20_X3_P0
+        old 92 of 481 = 19.13%  |  new 105 of 586 = 17.92%  ->  HOLDS: 19.13% -> 17.92% (|diff| 1.21 vs tolerance +-5.00 points)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  4.2b  [deciding, R3] kept at least half: pp (A20_X1_P1)
+        old 8 of 481 = 1.66%  |  new 9 of 586 = 1.54%  ->  HOLDS: 1.66% -> 1.54% (|diff| 0.13 vs tolerance +-2.00 points)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  4.2c  [deciding, SIGN] sign of the gap: kept half A20_X3_P0 minus pp
+        old 84  |  new 96  ->  HOLDS: count gap +84 -> +96; share gap +17.46 -> +16.38 points
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  4.3   [beside, R5] median share of the gain kept, A20_X3_P0
+        old +0.08628  |  new +0.06967  ->  HOLDS: +0.08628 -> +0.06967 (-19.3%; band +-25%)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  4.3b  [beside, R5] median share of the gain kept, pp
+        old +0.05403  |  new +0.05232  ->  HOLDS: +0.05403 -> +0.05232 (-3.2%; band +-25%)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  4.3c  [beside, R5] median sessions held, A20_X3_P0
+        old +25  |  new +24  ->  HOLDS: +25 -> +24 (-4.0%; band +-25%)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  4.3d  [beside, R5] median sessions held, pp
+        old +18  |  new +18  ->  HOLDS: +18 -> +18 (+0.0%; band +-25%)
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  4.4   [deciding, R1] R1, no retry: mean R per base, entries minus control - pp
+        old +0.0054 (-0.0355 .. +0.0496) SPANS, n 9,239  |  new -0.0022 (-0.0349 .. +0.0346) SPANS, n 10,864  ->  HOLDS: class SPANS -> SPANS
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  4.4b  [deciding, R1] R1, no retry: mean R per base, entries minus control - A20_X3_P0
+        old +0.0095 (-0.0505 .. +0.0762) SPANS, n 9,239  |  new +0.0057 (-0.0434 .. +0.0624) SPANS, n 10,864  ->  HOLDS: class SPANS -> SPANS
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  4.5   [beside, R1] R1, no retry: >= 5R bases per 100, difference - pp
+        old +0.4785 (+0.1383 .. +0.8574) ABOVE, n 9,239  |  new +0.3257 (+0.0855 .. +0.6316) ABOVE, n 10,864  ->  HOLDS: class ABOVE -> ABOVE
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  4.5b  [beside, R1] R1, no retry: >= 5R bases per 100, difference - A20_X3_P0
+        old +0.5997 (+0.2236 .. +1.0334) ABOVE, n 9,239  |  new +0.4625 (+0.1290 .. +0.8546) ABOVE, n 10,864  ->  HOLDS: class ABOVE -> ABOVE
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+
+the chain's own stages (decide nothing new)
+  S1    [stage, R2+R1] pre-read, whole era, C1 (tl, his exit with the staller cut)
+        old +0.2773 (-0.2388 .. +0.9935) SPANS, n 180, CAN'T TELL  |  new +0.2011 (-0.2794 .. +0.8676) SPANS, n 209, CAN'T TELL  ->  HOLDS: 'CAN'T TELL' -> 'CAN'T TELL'; class SPANS -> SPANS; n 180 -> 209
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  S2    [stage, R1] pre-read, whole era, C0 baseline
+        old +0.0245 (-0.1227 .. +0.1662) SPANS, n 13,363, baseline  |  new +0.0211 (-0.1162 .. +0.1584) SPANS, n 15,894, baseline  ->  HOLDS: class SPANS -> SPANS
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  S3    [stage, R2] pre-read, whole era, C4
+        old FAIL  |  new FAIL  ->  HOLDS: 'FAIL' -> 'FAIL'
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  S4    [stage, R2] pre-read, 2020-21 alone, C1
+        old CAN'T TELL  |  new CAN'T TELL  ->  HOLDS: 'CAN'T TELL' -> 'CAN'T TELL'
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  S5    [stage, R2] hourly-close read, pre, C1 verdict | paired entry verdict
+        old CAN'T TELL | can't tell  |  new CAN'T TELL | can't tell  ->  HOLDS: 'CAN'T TELL | can't tell' -> 'CAN'T TELL | can't tell'
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  S6    [stage, R2+R1] exit read, pre, C1: whole-trade breakeven minus pp
+        old -0.1221 (-0.1854 .. -0.0518) BELOW, n 180, loss  |  new -0.1134 (-0.1681 .. -0.0559) BELOW, n 209, loss  ->  HOLDS: 'loss' -> 'loss'; class BELOW -> BELOW; n 180 -> 209
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+  S7    [stage, R2] exit read, pre, C0: the same delta
+        old can't tell  |  new can't tell  ->  HOLDS: 'can't tell' -> 'can't tell'
+        vs printout: old MATCH | new MATCH | verdict MATCH   (printout verdict word: HOLDS)
+
+CROSS-CHECK (bonus; not the section-7 source) - lines 1.1 / 1.2 from the fills tables themselves:
+  old fills table: 13,363 rows, 13,363 with a distance; median +1.1630 ADR; at/above the base high 1,098
+  new fills table: 15,894 rows, 15,894 with a distance; median +1.1723 ADR; at/above the base high 1,284
+  tables AGREE with the report md numbers used for 1.1 (median 1.16 -> 1.17) and 1.2 (count/n 1,098/13,363 -> 1,284/15,894)
+
+REGISTERED-OLD CHECK - the old values typed in prereg section 7 vs the old source files (at the doc's printed precision):
+  1.1   OK  median 1.16: source 1.16 vs registered 1.16
+  1.2   OK  1,098 count: source 1098 vs registered 1098
+  1.2   OK  n 13,363: source 13363 vs registered 13363
+  1.3   OK  by60 10,214: source 10214 vs registered 10214
+  1.4   OK  1,548/4,989/8,110/3,149: source (1548, 4989, 8110, 3149) vs registered (1548, 4989, 8110, 3149)
+  1.5   OK  5,675 of 5,756: source (5675, 5756) vs registered (5675, 5756)
+  1.6   OK  d/lo/hi/n: source (0.010899499634589574, -0.006874756396821412, 0.029235576608055702, 9281) vs registered (0.0109, -0.0069, 0.0292, 9281)
+  1.7   OK  d/lo/hi/n: source (0.17494142090865553, 0.0013255112133656944, 0.39043081913940086, 9191) vs registered (0.1749, 0.0013, 0.3904, 9191)
+  1.8   OK  d/lo/hi/n: source (0.031027145070615873, 0.005523763521026312, 0.055446803902821196, 1582) vs registered (0.031, 0.0055, 0.0554, 1582)
+  2.0   OK  994: source 994 vs registered 994
+  2.1   OK  481: source 481 vs registered 481
+  2.2   OK  count of 481: source (240, 481) vs registered (240, 481)
+  2.3   OK  count of 481: source (237, 481) vs registered (237, 481)
+  2.4   OK  count of 481: source (25, 481) vs registered (25, 481)
+  2.5   OK  count of 481: source (3, 481) vs registered (3, 481)
+  3.1   OK  213 of 481 (44.3%): source (213, 481) vs registered (213, 481)
+  3.2   OK  kept half 8, quarter 121: source (8, 121) vs registered (8, 121)
+  3.2c  OK  0.657: source 0.656964656964657 vs registered 0.657
+  3.3   OK  d/lo/hi/n: source (0.005379326523986105, -0.0354581080229188, 0.049568738140675174, 9239) vs registered (0.0054, -0.0355, 0.0496, 9239)
+  3.4   OK  d/lo/hi/n: source (0.4784736898733363, 0.138321956851401, 0.8573927013938822, 9239) vs registered (0.478, 0.138, 0.857, 9239)
+  3.5   OK  d/lo/hi/n: source (0.07115764326728116, 0.01563649597288612, 0.1355637861513861, 9239) vs registered (0.0712, 0.0156, 0.1356, 9239)
+  3.6   OK  d/lo/hi/n: source (1.3827835497279382, 0.9949778485504185, 1.8286995077866417, 9239) vs registered (1.383, 0.995, 1.829, 9239)
+  3.4   OK  any5 1.905 / ctl 1.426: source (1.9049680701374607, 1.4264943802641243) vs registered (1.905, 1.426)
+  3.7   OK  17.82% vs 18.71%: source (17.815780928671934, 18.70575705193329) vs registered (17.82, 18.71)
+  4.1   OK  256 of 481 (53.2%): source (256, 481) vs registered (256, 481)
+  4.2   OK  92 (19.1%) vs 8 (1.7%): source (92, 8) vs registered (92, 8)
+  4.3   OK  0.0863 vs 0.054 / 25 vs 18: source (0.08627745417370228, 0.054033244500531444, 25.0, 18.0) vs registered (0.0863, 0.054, 25, 18)
+  4.4   OK  d/lo/hi/n: source (0.005379326523986105, -0.0354581080229188, 0.049568738140675174, 9239) vs registered (0.0054, -0.0355, 0.0496, 9239)
+  4.4b  OK  d/lo/hi/n: source (0.009534130033759629, -0.05046577464923719, 0.0762247767648948, 9239) vs registered (0.0095, -0.0505, 0.0762, 9239)
+  4.5   OK  d/lo/hi/n: source (0.4784736898733363, 0.138321956851401, 0.8573927013938822, 9239) vs registered (0.478, 0.138, 0.857, 9239)
+  4.5b  OK  d/lo/hi/n: source (0.5996832957859164, 0.22364313163705277, 1.0333732974285474, 9239) vs registered (0.6, 0.224, 1.033, 9239)
+  S1    OK  n 180, +0.277 (-0.24 .. +0.99) CAN'T TELL: source (180, 0.277277, -0.238773, 0.993538, "CAN'T TELL") vs registered (180, 0.277, -0.24, 0.99, "CAN'T TELL")
+  S2    OK  +0.024 (-0.12 .. +0.17) n 13,363: source (13363, 0.024488, -0.122733, 0.166223) vs registered (13363, 0.024, -0.12, 0.17)
+  S3    OK  FAIL n 1,017 -0.202 (-0.34 .. -0.05): source ('FAIL', 1017, -0.201681, -0.338336, -0.04621) vs registered ('FAIL', 1017, -0.202, -0.34, -0.05)
+  S4    OK  CAN'T TELL n 72: source ("CAN'T TELL", 72) vs registered ("CAN'T TELL", 72)
+  S5    OK  CAN'T TELL n 180 +0.588 (-0.15 .. +1.61); pair can't tell: source ("CAN'T TELL", 180, 0.5876510738251758, -0.1511263136088449, 1.6117748529353313, "can't tell") vs registered ("CAN'T TELL", 180, 0.588, -0.15, 1.61, "can't tell")
+  S6    OK  loss n 180 -0.1221 (-0.19 .. -0.05): source ('loss', 180, -0.12205121912876973, -0.1854467774370195, -0.05175042265554572) vs registered ('loss', 180, -0.1221, -0.19, -0.05)
+  S7    OK  can't tell n 13,362 +0.0112 (-0.02 .. +0.04): source ("can't tell", 13362, 0.01124534229103499, -0.01576227339929755, 0.03697906677839475) vs registered ("can't tell", 13362, 0.0112, -0.02, 0.04)
+  -> all registered old values equal the old sources
+
+SOURCE SHA256 - bytes this script read vs the hashes v2_compare.txt printed:
+  not in the printout list (bonus cross-check file): /Users/alvinfung/apollo_data/cb702_pre/out/bdef_fills_2017-21.tsv.gz
+  SAME  0f64293244ca7a23  /Users/alvinfung/apollo_data/cb702_pre/out/exitpb_verdict_pre.json
+  SAME  ebb476616471e55c  /Users/alvinfung/apollo_data/cb702_pre/out/h60_verdict_pre.json
+  SAME  926ff49f77b4b9b0  /Users/alvinfung/apollo_data/cb702_pre_v2/out/exitpb_verdict_pre.json
+  SAME  30c28760356c3138  /Users/alvinfung/apollo_data/cb702_pre_v2/out/h60_verdict_pre.json
+  SAME  efaf64b67292a888  /Users/alvinfung/apollo_data/cb702_pre_v2/out/rerun_v2_1025/breakout_definition/bdef_fills_2017-21.tsv.gz
+  SAME  285bb639a775b171  /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_numbers.json
+  SAME  fe4c5b4964dc9a03  /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/03_report.md
+  SAME  f31e6f72f03e7d2e  /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_numbers.json
+  SAME  4f529d7abbbeb31e  /Users/alvinfung/apollo_the_wise/scripts/probes/_702_breakout_definition_1022/rerun_v2_1025/03_report.md
+  SAME  2c15f04ebb50a6d7  /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/03_headline.json
+  SAME  8a263eff4c0b930c  /Users/alvinfung/apollo_the_wise/scripts/probes/_702_entry_stop_retry_1022/rerun_v2_1025/03_headline.json
+  SAME  9a54cde1ba2c6965  /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/03_headline.json
+  SAME  47e74e75c20d9b30  /Users/alvinfung/apollo_the_wise/scripts/probes/_702_trail_variants_1023/rerun_v2_1025/03_headline.json
+  SAME  2148384d31f2e8bb  /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/03_numbers.json
+  SAME  ad7e00918e45dc09  /Users/alvinfung/apollo_the_wise/scripts/probes/_702_winner_recall_1022/rerun_v2_1025/03_numbers.json
+  SAME  91fbb78662b55c2a  /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/p5_report_pre.tsv
+  SAME  82315eb5944d9d5e  /Users/alvinfung/apollo_the_wise/scripts/probes/_cb_backtest/out/v2_1025/p5_report_pre.tsv
+
+SUMMARY
+  deciding lines: 17 (1.1, 1.2, 1.3, 1.6, 2.2, 2.3, 2.4, 2.5, 3.1, 3.3, 3.4, 4.1, 4.2, 4.2b, 4.2c, 4.4, 4.4b); HOLDS 17; CHANGES 0
+  every line that reads CHANGES (deciding or not): ['1.7']
+  read conclusions (mine): Read 1 HOLDS; Read 2 HOLDS; Read 3 HOLDS; Read 4 HOLDS
+  read conclusions (printout): Read 1 HOLDS; Read 2 HOLDS; Read 3 HOLDS; Read 4 HOLDS
+  checks 2.0 / 4.0: PASSES / PASSES
+  stages S1-S7: S1 HOLDS, S2 HOLDS, S3 HOLDS, S4 HOLDS, S5 HOLDS, S6 HOLDS, S7 HOLDS
+  lines whose old/new/verdict string differs from the printout: none
+  OVERALL: RECOUNT MATCHES THE PRINTOUT on every line, conclusion, registered old value and source hash
